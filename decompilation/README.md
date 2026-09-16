@@ -128,6 +128,10 @@ cmake --build 'C:\Github\shadowrun\decompilation\build-debug-verify'
 & 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_native.exe'
 ```
 
+On Windows, the build also extracts `shadowrun_native.srna` beside the
+executable. When launched from that build directory, the native frontend finds
+the pack automatically; the ROM is only an input to the build-time extractor.
+
 To load the ROM explicitly from any working directory:
 
 ```powershell

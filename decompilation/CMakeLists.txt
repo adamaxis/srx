@@ -67,6 +67,21 @@ if (WIN32)
         src/native_main.cpp
     )
     target_link_libraries(shadowrun_native PRIVATE shadowrun_port user32 gdi32)
+
+    set(SHADOWRUN_NATIVE_ASSET_PACK
+        "${CMAKE_CURRENT_BINARY_DIR}/shadowrun_native.srna")
+    add_custom_command(
+        OUTPUT "${SHADOWRUN_NATIVE_ASSET_PACK}"
+        COMMAND $<TARGET_FILE:shadowrun_graphics_extract>
+            "${CMAKE_CURRENT_SOURCE_DIR}/input/shadowrun_genesis_us.bin"
+            "${SHADOWRUN_NATIVE_ASSET_PACK}" --native-pack
+        DEPENDS shadowrun_graphics_extract
+            "${CMAKE_CURRENT_SOURCE_DIR}/input/shadowrun_genesis_us.bin"
+        COMMENT "Extracting native Shadowrun host assets"
+        VERBATIM)
+    add_custom_target(shadowrun_native_assets
+        DEPENDS "${SHADOWRUN_NATIVE_ASSET_PACK}")
+    add_dependencies(shadowrun_native shadowrun_native_assets)
 endif()
 
 if (MSVC)

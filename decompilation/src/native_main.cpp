@@ -143,6 +143,7 @@ int main(int argc, char** argv) {
     } else if (argc == 1) {
         const auto current = std::filesystem::current_path();
         const std::filesystem::path asset_candidates[] = {
+            current / "shadowrun_native.srna",
             current / "assets" / "shadowrun_native.srna",
             current / "decompilation" / "assets" / "shadowrun_native.srna",
         };
