@@ -59,6 +59,11 @@ struct GenesisFieldEntityTemplate {
     std::uint8_t ammo_rounds = 0;
     std::uint8_t ammo_clips = 0;
     std::uint16_t cyberware_flags = 0;
+    std::array<std::uint8_t, native::kNativeAttributeCount>
+        attribute_values{};
+    std::array<std::uint8_t, native::kNativeSkillCount> skill_values{};
+    std::array<std::uint8_t, native::kNativeAttributeSkillAuxiliaryCount>
+        attribute_skill_auxiliary{};
 };
 
 // Typed view of the selected mode-2 record at ROM 0x172C80. The names here
@@ -104,6 +109,11 @@ read_genesis_inventory_catalog(const std::vector<std::uint8_t>& rom);
 // native cyberware view has no ROM dependency at runtime.
 std::array<std::string, native::kNativeCyberwareCount>
 read_genesis_cyberware_catalog(const std::vector<std::uint8_t>& rom);
+
+// ROM 0xD01C loads twenty labels through the pointer table at 0xC1A2A.
+std::array<std::string,
+          native::kNativeAttributeCount + native::kNativeSkillCount>
+read_genesis_attribute_skill_catalog(const std::vector<std::uint8_t>& rom);
 
 // Assemble the currently reconstructed native title-to-field data from the
 // ROM into host-owned RGBA/state values. This is the extraction boundary used

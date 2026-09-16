@@ -141,8 +141,16 @@ The Cyberware command now enters a native display screen corresponding to ROM
 cyberware field and expands the pointer names at `0xD2072` into host strings;
 the initial record therefore shows the recovered `Hand Razors` entry. The
 handler is display-only in the ROM, so Start returns to the command screen and
-there is no invented mutation or selection behavior. These values are stored
-in native asset-pack version 5.
+there is no invented mutation or selection behavior. These values are carried
+in the native asset-pack version 6 format.
+
+The Attributes/Skills command now enters a native two-column view corresponding
+to ROM `0xD01C`. It extracts the eight attribute bytes at `+0x77..+0x7E`, the
+twelve skill bytes at `+0x80..+0x85` and `+0x87..+0x8C`, and the twenty labels
+from the `0xC1A2A` pointer table. The four intervening bytes at `+0x7F`,
+`+0x86`, `+0x8D`, and `+0x8E` are retained as auxiliary state until their
+upgrade/display roles are proven; the unresolved A/B/C mutations remain
+isolated. The expanded data is stored in native asset-pack version 6.
 
 The Windows frontend preserves the reviewed controller boundary from ROM
 0x195C: the sampled word uses its low byte for held state and its high byte for
@@ -154,7 +162,7 @@ The extracted field template also carries the signed display bytes at
 `+0x56/+0x57`. Native projection preserves the `0x36FC` display gate: a
 negative `+0x56` or the sentinel `0x7F` leaves the entity hidden even when its
 screen projection is in range. These values are included in native asset-pack
-version 5, so the host-only runtime retains the recovered state, inventory,
+version 6, so the host-only runtime retains the recovered state, inventory,
 cyberware catalog, and clip values without
 reading the ROM.
 

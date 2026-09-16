@@ -231,6 +231,25 @@ GenesisFieldEntityTemplate read_genesis_field_entity_template(
     result.cyberware_flags = read_rom_u16(
         rom, record_offset + 0x90U,
         "Genesis field entity cyberware flags are truncated");
+    for (std::size_t index = 0; index < result.attribute_values.size();
+         ++index) {
+        result.attribute_values[index] =
+            rom[record_offset + 0x77U + index];
+    }
+    for (std::size_t index = 0; index < result.skill_values.size();
+         ++index) {
+        const auto offset = index < 6U
+            ? 0x80U + index
+            : 0x87U + (index - 6U);
+        result.skill_values[index] = rom[record_offset + offset];
+    }
+    constexpr std::array<std::size_t,
+                         native::kNativeAttributeSkillAuxiliaryCount>
+        auxiliary_offsets{{0x7FU, 0x86U, 0x8DU, 0x8EU}};
+    for (std::size_t index = 0; index < auxiliary_offsets.size(); ++index) {
+        result.attribute_skill_auxiliary[index] =
+            rom[record_offset + auxiliary_offsets[index]];
+    }
     return result;
 }
 
@@ -266,6 +285,26 @@ read_genesis_cyberware_catalog(const std::vector<std::uint8_t>& rom) {
         result[index] = read_genesis_fixed_text(
             rom, string_offset, 64U,
             "Genesis cyberware name is truncated");
+    }
+    return result;
+}
+
+std::array<std::string,
+           native::kNativeAttributeCount + native::kNativeSkillCount>
+read_genesis_attribute_skill_catalog(const std::vector<std::uint8_t>& rom) {
+    std::array<std::string,
+               native::kNativeAttributeCount + native::kNativeSkillCount>
+        result{};
+    for (std::size_t index = 0; index < result.size(); ++index) {
+        const auto pointer_offset =
+            static_cast<std::size_t>(rom::kAttributeSkillPointerTable) +
+            index * 4U;
+        const auto string_offset = static_cast<std::size_t>(read_rom_u32(
+            rom, pointer_offset,
+            "Genesis attribute/skill pointer table is truncated"));
+        result[index] = read_genesis_fixed_text(
+            rom, string_offset, 64U,
+            "Genesis attribute/skill name is truncated");
     }
     return result;
 }
@@ -327,8 +366,14 @@ native::NativePortAssets decode_genesis_native_assets(
     assets.entity_template.cyberware_flags = read_rom_u16(
         rom, entity_template.record_offset + 0x90U,
         "Genesis field entity cyberware flags are truncated");
+    assets.entity_template.attribute_values =
+        entity_template.attribute_values;
+    assets.entity_template.skill_values = entity_template.skill_values;
+    assets.entity_template.attribute_skill_auxiliary =
+        entity_template.attribute_skill_auxiliary;
     assets.inventory_items = read_genesis_inventory_catalog(rom);
     assets.cyberware_names = read_genesis_cyberware_catalog(rom);
+    assets.attribute_skill_names = read_genesis_attribute_skill_catalog(rom);
 
     for (std::size_t index = 0;
          index < assets.field_direction_table.size(); ++index) {
@@ -352,7 +397,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 5);
+    write_u16(output, 6);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     write_native_image(output, assets.field_map);
@@ -419,6 +464,15 @@ void write_native_asset_pack(const std::string& path,
     output.put(static_cast<char>(entity.ammo_rounds));
     output.put(static_cast<char>(entity.ammo_clips));
     write_u16(output, entity.cyberware_flags);
+    for (const auto value : entity.attribute_values) {
+        output.put(static_cast<char>(value));
+    }
+    for (const auto value : entity.skill_values) {
+        output.put(static_cast<char>(value));
+    }
+    for (const auto value : entity.attribute_skill_auxiliary) {
+        output.put(static_cast<char>(value));
+    }
     write_u16(output, static_cast<std::uint16_t>(assets.inventory_items.size()));
     for (const auto& item : assets.inventory_items) {
         output.put(static_cast<char>(item.code));
@@ -432,6 +486,12 @@ void write_native_asset_pack(const std::string& path,
     for (const auto& name : assets.cyberware_names) {
         write_pack_string(output, name,
                           "native cyberware name is too long");
+    }
+    write_u16(output, static_cast<std::uint16_t>(
+                           assets.attribute_skill_names.size()));
+    for (const auto& name : assets.attribute_skill_names) {
+        write_pack_string(output, name,
+                          "native attribute/skill name is too long");
     }
     for (const auto& direction : assets.field_direction_table) {
         write_u16(output, static_cast<std::uint16_t>(direction[0]));
@@ -452,7 +512,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 5U)) {
+        (version < 2U || version > 6U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -555,6 +615,20 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
             entity.cyberware_flags = read_pack_u16(
                 input, "native cyberware state is truncated");
         }
+        if (version >= 6U) {
+            for (auto& value : entity.attribute_values) {
+                value = read_pack_u8(
+                    input, "native attribute state is truncated");
+            }
+            for (auto& value : entity.skill_values) {
+                value = read_pack_u8(
+                    input, "native skill state is truncated");
+            }
+            for (auto& value : entity.attribute_skill_auxiliary) {
+                value = read_pack_u8(
+                    input, "native attribute/skill auxiliary state is truncated");
+            }
+        }
         const auto item_count = static_cast<std::size_t>(read_pack_u16(
             input, "native inventory catalog count is truncated"));
         if (item_count > assets.inventory_items.size()) {
@@ -579,6 +653,20 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
             for (std::size_t index = 0; index < cyberware_count; ++index) {
                 assets.cyberware_names[index] = read_pack_string(
                     input, "native cyberware name is truncated");
+            }
+            if (version >= 6U) {
+                const auto attribute_skill_count = static_cast<std::size_t>(
+                    read_pack_u16(input,
+                                  "native attribute/skill catalog count is truncated"));
+                if (attribute_skill_count > assets.attribute_skill_names.size()) {
+                    throw std::runtime_error(
+                        "native asset pack has too many attribute/skill names");
+                }
+                for (std::size_t index = 0;
+                     index < attribute_skill_count; ++index) {
+                    assets.attribute_skill_names[index] = read_pack_string(
+                        input, "native attribute/skill name is truncated");
+                }
             }
         }
     }

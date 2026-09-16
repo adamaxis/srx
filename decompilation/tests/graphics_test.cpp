@@ -98,6 +98,13 @@ int main() {
     assert(entity_template.ammo_rounds == 0x20);
     assert(entity_template.ammo_clips == 0x0A);
     assert(entity_template.cyberware_flags == 0x0004);
+    assert((entity_template.attribute_values ==
+            std::array<std::uint8_t, 8>{4, 3, 4, 1, 2, 4, 3, 5}));
+    assert((entity_template.skill_values ==
+            std::array<std::uint8_t, 12>{0, 4, 0, 0, 0, 3, 2, 0, 1, 0,
+                                         1, 1}));
+    assert((entity_template.attribute_skill_auxiliary ==
+            std::array<std::uint8_t, 4>{0, 0, 0, 9}));
     const auto inventory_catalog = read_genesis_inventory_catalog(rom);
     assert(inventory_catalog.size() == 50);
     assert(inventory_catalog[1].code == 2);
@@ -111,6 +118,14 @@ int main() {
     assert(cyberware_catalog[1] == "CyberEyes");
     assert(cyberware_catalog[2] == "Hand Razors");
     assert(cyberware_catalog[14] == "Wired Reflexes(3)");
+    const auto attribute_skill_catalog =
+        read_genesis_attribute_skill_catalog(rom);
+    assert(attribute_skill_catalog.size() == 20);
+    assert(attribute_skill_catalog[0] == "Body");
+    assert(attribute_skill_catalog[1] == "Quickness");
+    assert(attribute_skill_catalog[7] == "Magic");
+    assert(attribute_skill_catalog[8] == "Sorcery");
+    assert(attribute_skill_catalog[19] == "Negotiation");
     const auto metatile_resource = decode_genesis_resource_stream(rom, 0x170102);
     assert(metatile_resource.size() == 0x4F40);
     const auto field_resources = read_genesis_mode2_field_resources(rom);
@@ -273,6 +288,12 @@ int main() {
            native_assets.entity_template.ammo_clips);
     assert(loaded_assets.entity_template.cyberware_flags ==
            native_assets.entity_template.cyberware_flags);
+    assert(loaded_assets.entity_template.attribute_values ==
+           native_assets.entity_template.attribute_values);
+    assert(loaded_assets.entity_template.skill_values ==
+           native_assets.entity_template.skill_values);
+    assert(loaded_assets.entity_template.attribute_skill_auxiliary ==
+           native_assets.entity_template.attribute_skill_auxiliary);
     assert(loaded_assets.inventory_items.size() ==
            native_assets.inventory_items.size());
     assert(loaded_assets.inventory_items[1].name ==
@@ -280,6 +301,8 @@ int main() {
     assert(loaded_assets.inventory_items[43].category ==
            native_assets.inventory_items[43].category);
     assert(loaded_assets.cyberware_names == native_assets.cyberware_names);
+    assert(loaded_assets.attribute_skill_names ==
+           native_assets.attribute_skill_names);
     std::filesystem::remove(pack_path);
     return 0;
 }

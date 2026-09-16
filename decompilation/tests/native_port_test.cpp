@@ -201,6 +201,37 @@ int main() {
     assert(rom_shell.scene() == NativeScene::FieldMenu);
     assert(rom_shell.field_menu_selection() == 4);
 
+    // ROM 0xD01C renders the direct attribute/skill fields. The twenty names
+    // come from 0xC1A2A; the startup record's values stay host-native while
+    // the unresolved A/B/C upgrade mutations remain disabled.
+    rom_shell.update(InputState{button_mask(Button::Left),
+                                button_mask(Button::Left)});
+    assert(rom_shell.field_menu_selection() == 3);
+    rom_shell.update(InputState{button_mask(Button::A),
+                                button_mask(Button::A)});
+    assert(rom_shell.scene() == NativeScene::AttributesMenu);
+    assert(rom_shell.attributes_menu_open());
+    assert(rom_shell.attributes_menu_column() == 0);
+    assert(rom_shell.attributes_menu_row() == 0);
+    assert(rom_shell.field_attribute_skill_name(0) == "Body");
+    assert(rom_shell.field_attribute_value(0) == 4);
+    assert(rom_shell.field_attribute_value(7) == 5);
+    assert(rom_shell.field_skill_value(0) == 0);
+    assert(rom_shell.field_skill_value(5) == 3);
+    assert(rom_shell.field_attribute_skill_auxiliary(3) == 9);
+    rom_shell.update(InputState{button_mask(Button::Right),
+                                button_mask(Button::Right)});
+    rom_shell.update(InputState{button_mask(Button::Down),
+                                button_mask(Button::Down)});
+    assert(rom_shell.attributes_menu_column() == 1);
+    assert(rom_shell.attributes_menu_row() == 1);
+    assert(rom_shell.field_attribute_skill_name(11) == "SMGs");
+    rom_shell.render(screen);
+    rom_shell.update(InputState{button_mask(Button::Start),
+                                button_mask(Button::Start)});
+    assert(rom_shell.scene() == NativeScene::FieldMenu);
+    assert(rom_shell.field_menu_selection() == 3);
+
     // C follows the same 0x391A record-selection path from the command
     // screen, restoring the menu selector to six before continuing.
     rom_shell.update(InputState{button_mask(Button::C),
@@ -270,7 +301,7 @@ int main() {
                                 button_mask(Button::A)});
     rom_shell.render(screen);
     assert(rom_shell.frame_number() == before_action_frame + 1);
-    assert(screen.presented_frames() == 9);
+    assert(screen.presented_frames() == 10);
 
     // The runtime constructor below receives only the host asset pack. This
     // is the PC-port path: the ROM is used by extraction, not by the native

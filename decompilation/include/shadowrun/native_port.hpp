@@ -16,6 +16,9 @@ constexpr std::uint16_t kScreenHeight = 224;
 constexpr std::size_t kNativeInventorySlotCount = 8;
 constexpr std::size_t kNativeInventoryItemCount = 50;
 constexpr std::size_t kNativeCyberwareCount = 15;
+constexpr std::size_t kNativeAttributeCount = 8;
+constexpr std::size_t kNativeSkillCount = 12;
+constexpr std::size_t kNativeAttributeSkillAuxiliaryCount = 4;
 
 enum class Button : std::uint16_t {
     Up = 1U << 0U,
@@ -68,6 +71,7 @@ enum class NativeScene {
     FieldMenu,
     ClipsMenu,
     CyberwareMenu,
+    AttributesMenu,
 };
 
 struct Rgba8 {
@@ -161,6 +165,13 @@ struct NativeFieldEntity {
     // ROM 0x11950 reads the active record's +0x90 word as fifteen installed
     // cyberware flags. The native port preserves that bitfield directly.
     std::uint16_t cyberware_flags = 0;
+    // ROM 0xD01C displays these named fields directly. The skipped bytes are
+    // kept separately because their upgrade/display roles are not resolved.
+    std::array<std::uint8_t, kNativeAttributeCount> attribute_values{};
+    std::array<std::uint8_t, kNativeSkillCount> skill_values{};
+    // Exact record offsets: +0x7F, +0x86, +0x8D, +0x8E.
+    std::array<std::uint8_t, kNativeAttributeSkillAuxiliaryCount>
+        attribute_skill_auxiliary{};
 };
 
 // Host-owned data required by the current native title-to-field slice. This
@@ -180,6 +191,8 @@ struct NativePortAssets {
     std::array<NativeInventoryItem, kNativeInventoryItemCount>
         inventory_items{};
     std::array<std::string, kNativeCyberwareCount> cyberware_names{};
+    std::array<std::string, kNativeAttributeCount + kNativeSkillCount>
+        attribute_skill_names{};
 };
 
 // Native game code writes to this interface instead of issuing Genesis VDP
@@ -263,6 +276,9 @@ public:
     bool cyberware_menu_open() const {
         return scene_ == NativeScene::CyberwareMenu;
     }
+    bool attributes_menu_open() const {
+        return scene_ == NativeScene::AttributesMenu;
+    }
     std::size_t field_menu_selection() const { return field_menu_selection_; }
     std::size_t field_menu_row() const { return field_menu_row_; }
     std::size_t clips_menu_selection() const { return clips_menu_selection_; }
@@ -282,6 +298,30 @@ public:
     std::string_view field_cyberware_name(std::size_t index) const {
         return index < cyberware_names_.size()
             ? std::string_view(cyberware_names_[index])
+            : std::string_view{};
+    }
+    std::size_t attributes_menu_column() const {
+        return attributes_menu_column_;
+    }
+    std::size_t attributes_menu_row() const { return attributes_menu_row_; }
+    std::uint8_t field_attribute_value(std::size_t index) const {
+        return index < field_entity_.attribute_values.size()
+            ? field_entity_.attribute_values[index]
+            : 0;
+    }
+    std::uint8_t field_skill_value(std::size_t index) const {
+        return index < field_entity_.skill_values.size()
+            ? field_entity_.skill_values[index]
+            : 0;
+    }
+    std::uint8_t field_attribute_skill_auxiliary(std::size_t index) const {
+        return index < field_entity_.attribute_skill_auxiliary.size()
+            ? field_entity_.attribute_skill_auxiliary[index]
+            : 0;
+    }
+    std::string_view field_attribute_skill_name(std::size_t index) const {
+        return index < attribute_skill_names_.size()
+            ? std::string_view(attribute_skill_names_[index])
             : std::string_view{};
     }
     std::size_t field_last_command_selection() const {
@@ -342,6 +382,8 @@ private:
     void update_clips_menu(const InputState& input);
     void open_cyberware_menu();
     void update_cyberware_menu(const InputState& input);
+    void open_attributes_menu();
+    void update_attributes_menu(const InputState& input);
 
     std::string title_;
     InputState input_{};
@@ -359,6 +401,8 @@ private:
     std::array<NativeInventoryItem, kNativeInventoryItemCount>
         inventory_items_{};
     std::array<std::string, kNativeCyberwareCount> cyberware_names_{};
+    std::array<std::string, kNativeAttributeCount + kNativeSkillCount>
+        attribute_skill_names_{};
     std::array<std::uint8_t, 3> field_equipped_armor_by_record_{};
     std::uint8_t field_initial_equipped_armor_ = 0;
     std::array<NativeFieldRecordPosition, 3> field_initial_records_{};
@@ -393,6 +437,8 @@ private:
     std::uint32_t clips_action_count_ = 0;
     std::uint8_t clips_action_message_frames_ = 0;
     bool clips_out_of_ammo_ = false;
+    std::size_t attributes_menu_column_ = 0;
+    std::size_t attributes_menu_row_ = 0;
     std::size_t field_last_command_selection_ = 0;
     std::size_t field_last_command_row_ = 0;
     std::uint32_t field_command_count_ = 0;

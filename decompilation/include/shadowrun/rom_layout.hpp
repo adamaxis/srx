@@ -102,6 +102,11 @@ constexpr std::size_t kInventoryItemCount = 50;
 // the installed names. The pointers resolve to FF-terminated host text.
 constexpr std::uint32_t kCyberwarePointerTable = 0xD2072;
 constexpr std::size_t kCyberwareCount = 15;
+// ROM 0xD01C loads twenty labels through this longword table. The first
+// eight correspond to the attribute bytes at record +0x77..+0x7E; the final
+// twelve correspond to the skill bytes at +0x80..+0x85 and +0x87..+0x8C.
+constexpr std::uint32_t kAttributeSkillPointerTable = 0xC1A2A;
+constexpr std::size_t kAttributeSkillCount = 20;
 inline constexpr std::array<GenesisAddress, 4> kEntityObjectVariantTables{
     0x5D92, 0x5DBE, 0x5DA8, 0x5DD4
 };

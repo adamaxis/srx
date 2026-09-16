@@ -233,6 +233,7 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     field_direction_table_ = assets.field_direction_table;
     inventory_items_ = std::move(assets.inventory_items);
     cyberware_names_ = std::move(assets.cyberware_names);
+    attribute_skill_names_ = std::move(assets.attribute_skill_names);
     field_initial_records_ = assets.initial_field_records;
     field_records_ = field_initial_records_;
     field_terrain_ = std::move(assets.field_terrain);
@@ -500,6 +501,8 @@ void NativePortShell::update_field_menu(const InputState& input) {
             open_clips_menu();
         } else if (field_menu_selection_ == 4U) {
             open_cyberware_menu();
+        } else if (field_menu_selection_ == 3U) {
+            open_attributes_menu();
         }
         field_command_message_frames_ = 30;
         ++field_command_count_;
@@ -619,6 +622,45 @@ void NativePortShell::update_cyberware_menu(const InputState& input) {
     }
 }
 
+void NativePortShell::open_attributes_menu() {
+    // ROM 0xD01C initializes FFF0D0 to zero before entering the attribute /
+    // skill display loop. FFF0D1 is the ten-row cursor used by that loop.
+    scene_ = NativeScene::AttributesMenu;
+    attributes_menu_column_ = 0;
+    attributes_menu_row_ = 0;
+}
+
+void NativePortShell::update_attributes_menu(const InputState& input) {
+    // ROM 0xD27C keeps the first selector in the two-column range 0..1.
+    if (input.is_held(Button::Left) && !input.is_held(Button::Right)) {
+        attributes_menu_column_ = 0;
+    } else if (input.is_held(Button::Right) &&
+               !input.is_held(Button::Left)) {
+        attributes_menu_column_ = 1;
+    }
+    // ROM 0xD2DA/0xD302 clamps the secondary selector to rows 0..9. The
+    // native view uses the same two-column, ten-row presentation boundary.
+    if (input.is_held(Button::Up) && !input.is_held(Button::Down)) {
+        if (attributes_menu_row_ != 0) {
+            --attributes_menu_row_;
+        }
+    } else if (input.is_held(Button::Down) &&
+               !input.is_held(Button::Up)) {
+        if (attributes_menu_row_ < 9U) {
+            ++attributes_menu_row_;
+        }
+    }
+
+    // The ROM's A/B/C update/distribution branches mutate unresolved points
+    // and are deliberately not guessed here. Start is the proven display
+    // loop exit and returns to the same top-level command selector.
+    if (input.was_pressed(Button::Start)) {
+        scene_ = NativeScene::FieldMenu;
+        field_menu_selection_ = 3;
+        field_command_message_frames_ = 0;
+    }
+}
+
 void NativePortShell::update(const InputState& input) {
     input_ = input;
 
@@ -653,6 +695,12 @@ void NativePortShell::update(const InputState& input) {
 
     if (scene_ == NativeScene::CyberwareMenu) {
         update_cyberware_menu(input);
+        ++frame_number_;
+        return;
+    }
+
+    if (scene_ == NativeScene::AttributesMenu) {
+        update_attributes_menu(input);
         ++frame_number_;
         return;
     }
@@ -790,7 +838,8 @@ void NativePortShell::render(ScreenWriter& screen) const {
     } else if ((scene_ == NativeScene::Field ||
                 scene_ == NativeScene::FieldMenu ||
                 scene_ == NativeScene::ClipsMenu ||
-                scene_ == NativeScene::CyberwareMenu) &&
+                scene_ == NativeScene::CyberwareMenu ||
+                scene_ == NativeScene::AttributesMenu) &&
                !field_view_pixels_.empty()) {
         // The field background is the ROM's mode-2 map translated into a host
         // RGBA viewport. NativeFieldEntity is composited after the terrain,
@@ -988,6 +1037,40 @@ void NativePortShell::render(ScreenWriter& screen) const {
                         : Rgba8{0xA8, 0xB8, 0xC8, 0xFF});
             }
             screen.write_text(36, 181, "START RETURN", 1,
+                              {0x90, 0xB8, 0xC8, 0xFF});
+        } else if (scene_ == NativeScene::AttributesMenu) {
+            screen.fill_rect(24, 44, 272, 144,
+                             {0x02, 0x08, 0x18, 0xF0});
+            screen.fill_rect(24, 44, 272, 2,
+                             {0x00, 0xA8, 0xC8, 0xFF});
+            screen.write_text(36, 52, "ATTRIBUTES/SKILLS", 2,
+                              {0xE8, 0xF4, 0xFF, 0xFF});
+            for (std::size_t column = 0; column < 2U; ++column) {
+                for (std::size_t row = 0; row < 10U; ++row) {
+                    const auto index = column * 10U + row;
+                    const auto selected = column == attributes_menu_column_ &&
+                                          row == attributes_menu_row_;
+                    const auto x = column == 0U ? 32 : 164;
+                    const auto y = 70 + static_cast<std::int32_t>(row) * 10;
+                    if (selected) {
+                        screen.fill_rect(x, y - 2, 124, 10,
+                                         {0x00, 0x68, 0x88, 0xFF});
+                    }
+                    const auto value = index < kNativeAttributeCount
+                        ? field_entity_.attribute_values[index]
+                        : field_entity_.skill_values[index -
+                                                      kNativeAttributeCount];
+                    const auto& name = attribute_skill_names_[index];
+                    const auto line = (name.empty() ? "UNKNOWN" : name) +
+                                      " " + std::to_string(value);
+                    screen.write_text(
+                        x + 6, y, line, 1,
+                        selected
+                            ? Rgba8{0xFF, 0xF0, 0x90, 0xFF}
+                            : Rgba8{0xD0, 0xE0, 0xF0, 0xFF});
+                }
+            }
+            screen.write_text(36, 181, "ARROWS SELECT  START RETURN", 1,
                               {0x90, 0xB8, 0xC8, 0xFF});
         } else {
             screen.fill_rect(0, 204, kScreenWidth, 20,
