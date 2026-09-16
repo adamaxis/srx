@@ -1,0 +1,45 @@
+// Decompiled by Ghidra from Shadowrun Genesis ROM.
+// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
+// ROM address: 0x0001BB6A
+
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_0001bb6a(void)
+
+{
+  short sVar1;
+  
+  if ((DAT_00fff0a1 & 4) == 0) {
+    _DAT_00ffe0ca = _DAT_00ffe0ca - 1;
+    if ((short)_DAT_00ffe0ca < 0) {
+      DAT_00fff0a1 = DAT_00fff0a1 | 4;
+      _DAT_00ffe0ca = 0x3c;
+      return;
+    }
+    _DAT_00ffe0ce = FUN_00000d44();
+  }
+  else {
+    _DAT_00ffe0ca = _DAT_00ffe0ca - 1;
+    if ((short)_DAT_00ffe0ca < 0) {
+      DAT_00fff0a1 = DAT_00fff0a1 & 0xfa;
+      FUN_0001b680();
+      _DAT_00ffe0d6 = 0;
+      _DAT_00ffe0f4 = 1;
+      FUN_0001a09c();
+      return;
+    }
+    if (3 < (_DAT_00ffe0ca & 7)) {
+      FUN_00001378();
+      FUN_00001378();
+    }
+  }
+  sVar1 = 6;
+  do {
+    FUN_00001378();
+    sVar1 = sVar1 + -1;
+  } while (sVar1 != -1);
+  return;
+}
+
+

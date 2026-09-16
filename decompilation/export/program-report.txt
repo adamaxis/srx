@@ -1,0 +1,27 @@
+Program: shadowrun_genesis_us.bin
+Language: 68000:BE:32:default
+Compiler: default
+Image base: 00000000
+Max address: 001fffff
+Processor: 68000
+
+Memory blocks:
+00000000-001fffff ram 7 initialized=true
+
+Exception vectors (big-endian 32-bit addresses):
+00: 00FFFFF8
+04: 00000236
+08: 00000200
+0C: 00000208
+10: 00000210
+14: 00000218
+18: 00000220
+1C: 00000220
+20: 00000220
+24: 00000220
+28: 00000220
+2C: 00000220
+30: 00000220
+34: 00000220
+38: 00000220
+3C: 00000220

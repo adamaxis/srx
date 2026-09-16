@@ -1,0 +1,32 @@
+// Decompiled by Ghidra from Shadowrun Genesis ROM.
+// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
+// ROM address: 0x00003674
+
+
+undefined8 FUN_00003674(void)
+
+{
+  char cVar1;
+  char cVar2;
+  undefined4 in_D0;
+  undefined4 in_D1;
+  int in_A0;
+  
+  if ((*(byte *)(in_A0 + 0x10) & 1) != 0) {
+    cVar1 = *(char *)(in_A0 + 0x4c);
+    cVar2 = (char)in_D1 + cVar1;
+    *(char *)(in_A0 + 0x4c) = cVar2;
+    if (cVar2 != '\0' && SCARRY1((char)in_D1,cVar1) == cVar2 < '\0') {
+      if ('\n' < *(char *)(in_A0 + 0x4c)) {
+        *(undefined1 *)(in_A0 + 0x4c) = 10;
+      }
+      goto LAB_000036e4;
+    }
+  }
+  *(undefined1 *)(in_A0 + 0x4c) = 0;
+LAB_000036e4:
+  FUN_00001232();
+  return CONCAT44(in_D0,in_D1);
+}
+
+
