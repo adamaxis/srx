@@ -26,6 +26,7 @@ add_library(shadowrun_port STATIC
     src/resource_setup.cpp
     src/runtime.cpp
     src/session.cpp
+    src/terrain.cpp
     src/z80_transport.cpp
 )
 target_include_directories(shadowrun_port PUBLIC include)

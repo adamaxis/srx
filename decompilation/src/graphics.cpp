@@ -275,12 +275,14 @@ GenesisMode2FieldResources read_genesis_mode2_field_resources(
 GenesisTerrainMap decode_genesis_mode2_terrain_map(
     const std::vector<std::uint8_t>& rom,
     const GenesisMode2FieldResources& resources) {
-    GenesisTerrainMap terrain{
-        0,
-        std::vector<std::uint8_t>(GenesisTerrainMap::kWidth *
-                                      GenesisTerrainMap::kHeight,
-                                  0),
-    };
+    GenesisTerrainMap terrain{};
+    terrain.x_exclusive_upper = resources.terrain_x_exclusive_upper;
+    terrain.y_exclusive_upper = resources.terrain_y_exclusive_upper;
+    terrain.x_inclusive_lower = resources.terrain_x_inclusive_lower;
+    terrain.y_inclusive_lower = resources.terrain_y_inclusive_lower;
+    terrain.statuses.assign(GenesisTerrainMap::kWidth *
+                                GenesisTerrainMap::kHeight,
+                            0);
     auto cursor = resources.terrain_record_offset;
     for (;;) {
         const auto x_start = read_rom_u16(
@@ -304,6 +306,9 @@ GenesisTerrainMap decode_genesis_mode2_terrain_map(
             throw std::runtime_error(
                 "Genesis mode-2 terrain rectangle is inverted");
         }
+        terrain.regions.push_back({
+            x_start, x_end, y_start, y_end,
+            static_cast<std::uint8_t>(status)});
 
         auto y_value = static_cast<std::uint32_t>(y_start & 0xFFE0U);
         for (;;) {

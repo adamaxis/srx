@@ -96,6 +96,25 @@ int main() {
                              (832U / 32U)] == 0);
     assert(terrain.statuses[(536U / 32U) * GenesisTerrainMap::kWidth +
                              (864U / 32U)] == 0x7FU);
+    const auto clear_probe = shadowrun::terrain::probe(
+        terrain, static_cast<std::uint16_t>(832U * 16U),
+        static_cast<std::uint16_t>(552U * 16U));
+    assert(clear_probe.status == 0 && !clear_probe.blocked &&
+           !clear_probe.out_of_bounds);
+    const auto blocked_probe = shadowrun::terrain::probe(
+        terrain, static_cast<std::uint16_t>(864U * 16U),
+        static_cast<std::uint16_t>(536U * 16U));
+    assert(blocked_probe.status == 0x7FU && blocked_probe.blocked &&
+           !blocked_probe.out_of_bounds);
+    const auto rectangle_probe = shadowrun::terrain::probe(
+        terrain, static_cast<std::uint16_t>(600U * 16U),
+        static_cast<std::uint16_t>(1250U * 16U));
+    assert(rectangle_probe.status == 0x7FU && rectangle_probe.blocked);
+    const auto bounds_probe = shadowrun::terrain::probe(
+        terrain, static_cast<std::uint16_t>(43U * 16U),
+        static_cast<std::uint16_t>(552U * 16U));
+    assert(bounds_probe.status == 0x7FU && bounds_probe.blocked &&
+           bounds_probe.out_of_bounds);
     const auto field_map = decode_genesis_mode2_field_map(
         rom, field_resources);
     assert(field_map.width == 1920 && field_map.height == 1344);

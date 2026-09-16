@@ -1,6 +1,7 @@
 #pragma once
 
 #include "shadowrun/native_port.hpp"
+#include "shadowrun/terrain.hpp"
 
 #include <array>
 #include <cstddef>
@@ -45,16 +46,7 @@ struct GenesisMode2FieldResources {
     std::size_t tilemap_height = 0;
 };
 
-// Native copy of the 64x64 byte grid rebuilt by ROM 0xEE10. A zero status is
-// empty terrain; nonzero values retain the ROM status byte for later typed
-// collision/reaction rules rather than collapsing all terrain into a bool.
-struct GenesisTerrainMap {
-    static constexpr std::size_t kWidth = 64;
-    static constexpr std::size_t kHeight = 64;
-
-    std::size_t region_count = 0;
-    std::vector<std::uint8_t> statuses;
-};
+using GenesisTerrainMap = terrain::Map;
 
 // Genesis CRAM stores three 3-bit channels in the spaced bit positions of a
 // 16-bit word. This expands each channel to the normal 0..255 host range.

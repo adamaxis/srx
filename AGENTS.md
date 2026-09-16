@@ -120,7 +120,10 @@ grid, retaining each status byte for the forthcoming native movement and
 collision pass. It is intentionally extracted but not yet applied to the
 shell's movement until the entity's original record population and collision
 anchor are connected; the current visual anchor is still a presentation
-scaffold.
+scaffold. The renderer-independent `terrain::probe` now ports the direct
+`0xE7C8` bounds/status path and its `0xE8A0/0xE9EE/0xEA36/0xEAD2` helpers over
+that host grid, so only the final entity-state integration remains for this
+boundary.
 
 This is now a runnable native title-to-field slice with controls, actual
 ROM-derived field graphics, and a ROM-derived entity frame rendered through
