@@ -292,6 +292,19 @@ struct EntityAnimationAcaeResult {
     std::size_t unresolved_calls;
 };
 
+struct EntityAnimationCleanupResult {
+    bool global_reset_cleared;
+    bool active_flag_cleared;
+    bool indexed_state_cleared;
+};
+
+struct EntityAnimationFallbackResult {
+    bool delay_updated;
+    bool handler_installed;
+    bool frame_selected;
+    std::uint16_t selected_frame;
+};
+
 struct EntityAnimationDelayResult {
     std::uint16_t sampled_base;
     std::uint16_t state_adjustment;
@@ -826,6 +839,18 @@ EntityAnimationDelayResult update_entity_animation_delay_0xABFC(
     GenesisBus& bus,
     GenesisAddress entity_record_address,
     std::uint16_t d0);
+
+// ROM 0x1E514 clears the transient entity state and, when the record is not
+// retained, clears the indexed object byte selected by +0x30.
+EntityAnimationCleanupResult run_entity_animation_cleanup_0x1E514(
+    GenesisBus& bus, GenesisAddress entity_record_address);
+
+// ROM 0xAF7C/0xAFAE share the ABFC delay and AF6C state tail. Their only
+// difference is the continuation handler installed at +0x3A.
+EntityAnimationFallbackResult run_entity_animation_fallback_0xAF7C(
+    GenesisBus& bus, GenesisAddress entity_record_address);
+EntityAnimationFallbackResult run_entity_animation_fallback_0xAFAE(
+    GenesisBus& bus, GenesisAddress entity_record_address);
 
 // ROM 0x14D8E: initialize the FF1380 scratch entity, test its terrain sample,
 // and scan the ten FF0100 entity records through 0x15ABA. The source A1

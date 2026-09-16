@@ -2497,6 +2497,8 @@ void dispatch_animation_continuation(
         result.unresolved_calls += direct.unresolved_calls;
     } else if (target == kAnimationContinuation_0x13E40) {
         finish_entity_animation_0x13E40(bus, entity_record_address);
+    } else if (target == kAnimationContinuation_0x1E514) {
+        run_entity_animation_cleanup_0x1E514(bus, entity_record_address);
     } else {
         ++result.unresolved_calls;
     }
@@ -4888,6 +4890,90 @@ EntityAnimationDelayResult update_entity_animation_delay_0xABFC(
     return {sampled_base, adjustment, delay};
 }
 
+namespace {
+
+EntityAnimationCleanupResult apply_entity_animation_cleanup_0x1E514(
+    GenesisBus& bus,
+    GenesisAddress entity_record_address,
+    bool clear_indexed_state) {
+    const auto old_b0 = bus.read8(entity_record_address + 0xB0U);
+    bus.write8(entity_record_address + 0xB0U,
+               static_cast<std::uint8_t>(old_b0 & ~0x80U));
+    if ((old_b0 & 0x80U) != 0) {
+        // The ROM uses CLR.L here. Keep the longword write because the word
+        // above the named flag is part of the same global scratch field.
+        bus.write32(session_ram::kFrameEntityGlobalReset, 0);
+    }
+
+    bus.write8(entity_record_address + 0x10U,
+               static_cast<std::uint8_t>(
+                   bus.read8(entity_record_address + 0x10U) & ~1U));
+    const auto indexed_state_cleared =
+        (bus.read8(entity_record_address + 0x10U) & 0x08U) == 0;
+    if (indexed_state_cleared && clear_indexed_state) {
+        clear_indexed_object_byte(
+            bus, bus.read16(entity_record_address + 0x30U));
+    }
+    return {(old_b0 & 0x80U) != 0, true, indexed_state_cleared};
+}
+
+} // namespace
+
+EntityAnimationCleanupResult run_entity_animation_cleanup_0x1E514(
+    GenesisBus& bus, GenesisAddress entity_record_address) {
+    return apply_entity_animation_cleanup_0x1E514(
+        bus, entity_record_address, true);
+}
+
+namespace {
+
+void apply_entity_animation_state_tail_0xAF6C(
+    GenesisBus& bus, GenesisAddress entity_record_address) {
+    bus.write16(entity_record_address + 0x1AU, 0);
+    bus.write8(entity_record_address + 0x11U,
+               static_cast<std::uint8_t>(
+                   bus.read8(entity_record_address + 0x11U) | 0x01U));
+    bus.write16(entity_record_address + 0x1EU, 0);
+}
+
+EntityAnimationFallbackResult run_entity_animation_fallback(
+    GenesisBus& bus,
+    GenesisAddress entity_record_address,
+    GenesisAddress handler) {
+    update_entity_animation_delay_0xABFC(bus, entity_record_address, 0);
+    bus.write32(entity_record_address + 0x3AU, handler);
+
+    // 0xAF7C/0xAFAE rotate the signed direction word, round negative values
+    // toward zero with ADDQ, then select one of eight frame words.
+    auto direction = bus.read16(entity_record_address + 0x2EU);
+    direction = static_cast<std::uint16_t>(
+        (direction << 3U) | (direction >> 13U));
+    if (static_cast<std::int16_t>(direction) < 0) {
+        direction = static_cast<std::uint16_t>(direction + 1U);
+    }
+    direction = static_cast<std::uint16_t>(direction & 0x0007U);
+    const auto selected_frame = bus.read16(
+        rom::kEntityAnimationFallbackDirectionTable +
+        static_cast<GenesisAddress>(direction << 1U));
+    bus.write16(entity_record_address + 0x16U, selected_frame);
+    apply_entity_animation_state_tail_0xAF6C(bus, entity_record_address);
+    return {true, true, true, selected_frame};
+}
+
+} // namespace
+
+EntityAnimationFallbackResult run_entity_animation_fallback_0xAF7C(
+    GenesisBus& bus, GenesisAddress entity_record_address) {
+    return run_entity_animation_fallback(
+        bus, entity_record_address, 0x0000AFE0U);
+}
+
+EntityAnimationFallbackResult run_entity_animation_fallback_0xAFAE(
+    GenesisBus& bus, GenesisAddress entity_record_address) {
+    return run_entity_animation_fallback(
+        bus, entity_record_address, 0x0000AFE2U);
+}
+
 EntityAnimationResourceDecisionResult
 run_entity_animation_resource_decision_0x14D8E(
     GenesisBus& bus,
@@ -5431,6 +5517,14 @@ EntityAnimationAcaeResult run_entity_animation_update_0xACAE(
             // record state, and writes the result through the current A0.
             update_entity_animation_delay_0xABFC(
                 bus, context.a0, context.d0);
+        } else if (target == 0x0000AF7CU) {
+            const auto direct = run_entity_animation_fallback_0xAF7C(
+                bus, context.a0);
+            context.d0 = direct.selected_frame;
+        } else if (target == 0x0000AFAEU) {
+            const auto direct = run_entity_animation_fallback_0xAFAE(
+                bus, context.a0);
+            context.d0 = direct.selected_frame;
         } else {
             ++result.unresolved_calls;
         }
@@ -5762,22 +5856,15 @@ FrameEntityUpdateResult update_frame_entity_records_0xA8EA(
     };
 
     const auto call_1e514 = [&](GenesisAddress record_address) {
-        const auto old_b0 = bus.read8(record_address + 0xB0U);
-        bus.write8(record_address + 0xB0U,
-                   static_cast<std::uint8_t>(old_b0 & ~0x80U));
-        if ((old_b0 & 0x80U) != 0) {
-            bus.write16(session_ram::kFrameEntityGlobalReset, 0);
+        if (!hooks.routine_0x1A304) {
+            run_entity_animation_cleanup_0x1E514(bus, record_address);
+            return;
         }
-        bus.write8(record_address + 0x10U,
-                   static_cast<std::uint8_t>(
-                       bus.read8(record_address + 0x10U) & ~1U));
-        if ((bus.read8(record_address + 0x10U) & 0x08U) == 0) {
-            if (hooks.routine_0x1A304) {
-                hooks.routine_0x1A304(bus, record_address);
-            } else {
-                clear_indexed_object_byte(
-                    bus, bus.read16(record_address + 0x30U));
-            }
+
+        const auto cleanup = apply_entity_animation_cleanup_0x1E514(
+            bus, record_address, false);
+        if (cleanup.indexed_state_cleared) {
+            hooks.routine_0x1A304(bus, record_address);
         }
     };
 

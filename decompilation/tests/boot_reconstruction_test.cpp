@@ -2242,6 +2242,62 @@ int main() {
     assert(acae_targets[0] == 0x0000AE6EU);
     assert(acae_targets[1] == 0x0000AF7CU);
 
+    // The small cleanup/fallback leaves are direct defaults when no
+    // continuation is supplied.  The cleanup uses CLR.L on FFFC3C and only
+    // enters 1A304 when the record's retained bit is clear.
+    std::vector<std::uint8_t> fallback_rom(0x200000U, 0);
+    const auto fallback_write16 =
+        [&fallback_rom](shadowrun::GenesisAddress address,
+                        std::uint16_t value) {
+            fallback_rom[address] = static_cast<std::uint8_t>(value >> 8U);
+            fallback_rom[address + 1U] = static_cast<std::uint8_t>(value);
+        };
+    fallback_write16(shadowrun::rom::kEntityAnimationFallbackDirectionTable,
+                     0x5678U);
+    fallback_write16(shadowrun::rom::kEntityAnimationFallbackDirectionTable +
+                         8U,
+                     0x1234U);
+    auto fallback_bus = std::make_unique<shadowrun::GenesisMemoryBus>(
+        std::move(fallback_rom));
+    constexpr auto fallback_record = 0xFF0300U;
+    fallback_bus->write8(fallback_record + 0xB0U, 0x80U);
+    fallback_bus->write8(fallback_record + 0x10U, 1U);
+    fallback_bus->write16(fallback_record + 0x30U, 3U);
+    fallback_bus->write32(shadowrun::session_ram::kFrameEntityGlobalReset,
+                          0xAABBCCDDU);
+    fallback_bus->write8(shadowrun::ram::kIndexedObjectClearTable + 3U,
+                         0xA5U);
+    const auto cleanup = shadowrun::run_entity_animation_cleanup_0x1E514(
+        *fallback_bus, fallback_record);
+    assert(cleanup.global_reset_cleared);
+    assert(cleanup.active_flag_cleared);
+    assert(cleanup.indexed_state_cleared);
+    assert(fallback_bus->read32(
+               shadowrun::session_ram::kFrameEntityGlobalReset) == 0);
+    assert((fallback_bus->read8(fallback_record + 0x10U) & 1U) == 0);
+    assert(fallback_bus->read8(
+               shadowrun::ram::kIndexedObjectClearTable + 3U) == 0);
+
+    fallback_bus->write16(fallback_record + 0x2EU, 0x8000U);
+    const auto fallback = shadowrun::run_entity_animation_fallback_0xAF7C(
+        *fallback_bus, fallback_record);
+    assert(fallback.delay_updated);
+    assert(fallback.handler_installed);
+    assert(fallback.frame_selected);
+    assert(fallback.selected_frame == 0x1234U);
+    assert(fallback_bus->read16(fallback_record + 0x16U) == 0x1234U);
+    assert(fallback_bus->read32(fallback_record + 0x3AU) == 0x0000AFE0U);
+    assert(fallback_bus->read16(fallback_record + 0x1AU) == 0);
+    assert(fallback_bus->read16(fallback_record + 0x1EU) == 0);
+    assert((fallback_bus->read8(fallback_record + 0x11U) & 1U) != 0);
+
+    fallback_bus->write16(fallback_record + 0x2EU, 0xFFFFU);
+    const auto alternate_fallback =
+        shadowrun::run_entity_animation_fallback_0xAFAE(
+            *fallback_bus, fallback_record);
+    assert(alternate_fallback.selected_frame == 0x5678U);
+    assert(fallback_bus->read32(fallback_record + 0x3AU) == 0x0000AFE2U);
+
     // AAD2 changes A0 to FFFC04 in the ROM. The typed call context must carry
     // that register change into the later command/timer calls and AE26 tail.
     constexpr auto acae_rebound_record = 0xFF0200U;
