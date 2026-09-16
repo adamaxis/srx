@@ -65,10 +65,32 @@ int main() {
         button_mask(Button::Right) | button_mask(Button::Down), 0});
     assert(rom_shell.marker_x() == field_start_x + 2);
     assert(rom_shell.marker_y() == kScreenHeight / 2 + 2);
+    rom_shell.render(screen);
+    const auto field_before_scroll = screen.pixels();
+    const auto initial_camera_x = rom_shell.field_camera_x();
+    for (int frame = 0; frame < 100; ++frame) {
+        rom_shell.update(InputState{button_mask(Button::Right), 0});
+    }
+    assert(rom_shell.marker_x() == kScreenWidth - 16);
+    assert(rom_shell.field_world_x() > initial_camera_x);
+    assert(rom_shell.field_camera_x() > initial_camera_x);
+    rom_shell.render(screen);
+    bool background_scrolled = false;
+    for (std::int32_t y = 36; y < 204 && !background_scrolled; ++y) {
+        for (std::int32_t x = 0; x < 140; ++x) {
+            if (screen.pixel(x, y) !=
+                field_before_scroll[static_cast<std::size_t>(y) *
+                                     screen.width() + x]) {
+                background_scrolled = true;
+                break;
+            }
+        }
+    }
+    assert(background_scrolled);
     rom_shell.update(InputState{button_mask(Button::A),
                                 button_mask(Button::A)});
     rom_shell.render(screen);
-    assert(rom_shell.frame_number() == 4);
-    assert(screen.presented_frames() == 4);
+    assert(rom_shell.frame_number() == 104);
+    assert(screen.presented_frames() == 6);
     return 0;
 }

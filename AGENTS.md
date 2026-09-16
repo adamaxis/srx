@@ -105,13 +105,15 @@ placeholder composition. The mode record at `0x172C80` selects the raw
 `0x166B82` pattern upload (`0x6E20` bytes), the compressed 4x4 VDP name-word
 stamps at `0x170102`, and 60x42 primary/secondary map tables at `0x16D9A2` and
 `0x16ED52`. `graphics.cpp` translates those records, palette attributes, and
-flips into a 1920x1344 host RGBA map and the native shell presents the ROM's
-initial camera viewport through `ScreenWriter`.
+flips into a 1920x1344 host RGBA map and the native shell presents a cropped
+viewport through `ScreenWriter`. Directional input now advances typed world
+coordinates and follows the marker at the viewport edge, so the field scrolls
+over the recovered map instead of moving only a screen-space placeholder.
 
 This is now a runnable native title-to-field slice with controls and actual
 ROM-derived field graphics, not a claim that the whole game is playable. The
-next port slices should connect camera movement, recovered entity records, and
-field UI to the typed session/VBlank boundaries.
+next port slices should connect recovered entity records and field UI to the
+typed session/VBlank boundaries.
 
 ## Build and source discipline
 

@@ -82,10 +82,11 @@ a typed C++ field state with held directional movement and edge-triggered
 `A`/`B`/`C` actions. The field presentation translates the mode-2 data path:
 raw pattern data at `0x166B82`, compressed 4x4 name-word stamps at `0x170102`,
 and the 60x42 primary/secondary tables at `0x16D9A2`/`0x16ED52`. The result is
-a 1920x1344 host RGBA map cropped to the ROM's initial camera viewport; it does
-not run a 68000 interpreter or depend on Genesis VDP state. This is a runnable
-title-to-field slice, while camera/entity/UI presentation remains the next
-port boundary.
+a 1920x1344 host RGBA map cropped to the ROM's initial camera viewport. Arrow
+input advances typed world coordinates and the viewport follows when the
+marker reaches its edge; it does not run a 68000 interpreter or depend on
+Genesis VDP state. This is a runnable title-to-field slice, while
+entity/UI presentation remains the next port boundary.
 
 ```powershell
 cmake --build 'C:\Github\shadowrun\decompilation\build-debug-verify'

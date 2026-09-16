@@ -221,7 +221,7 @@ NativePortShell::NativePortShell(
     const auto actor = graphics::decode_tile_atlas(
         graphics::decode_genesis_resource_stream(rom, 0x1E62BE),
         0, 2, palette, 2, 0);
-    const auto field_map = graphics::decode_genesis_mode2_field_map(rom);
+    auto field_map = graphics::decode_genesis_mode2_field_map(rom);
     const auto scaled_art = scale_image(art, 4);
     const auto scaled_actor = scale_image(actor, 4);
     rom_art_width_ = scaled_art.width;
@@ -232,22 +232,43 @@ NativePortShell::NativePortShell(
     rom_actor_pixels_ = scaled_actor.pixels;
 
     // Mode 2 starts with camera coordinates 0x3400/0x2280 in the selected
-    // ROM record. They are 1/16-pixel values; the native viewport is centered
-    // at that same world location and then rendered as ordinary RGBA pixels.
-    constexpr std::size_t kFieldViewportWidth = kScreenWidth;
-    constexpr std::size_t kFieldViewportHeight = 168;
-    const auto camera_x = static_cast<std::size_t>(0x3400U >> 4U);
-    const auto camera_y = static_cast<std::size_t>(0x2280U >> 4U);
-    const auto viewport_x = camera_x - kFieldViewportWidth / 2U;
-    const auto viewport_y = camera_y - kFieldViewportHeight / 2U;
+    // ROM record. They are 1/16-pixel values, so the native state keeps their
+    // pixel conversion and follows the same world position as the marker.
+    rom_field_map_width_ = field_map.width;
+    rom_field_map_height_ = field_map.height;
+    rom_field_map_pixels_ = std::move(field_map.pixels);
+    field_world_x_ = static_cast<std::int32_t>(0x3400U >> 4U);
+    field_world_y_ = static_cast<std::int32_t>(0x2280U >> 4U);
+    field_camera_x_ = field_world_x_;
+    field_camera_y_ = field_world_y_;
+    refresh_field_view();
+}
+
+void NativePortShell::refresh_field_view() {
+    if (rom_field_map_pixels_.empty() || rom_field_map_width_ == 0 ||
+        rom_field_map_height_ == 0) {
+        return;
+    }
+    constexpr std::int32_t kFieldViewportWidth = kScreenWidth;
+    constexpr std::int32_t kFieldViewportHeight = 168;
+    const auto max_viewport_x = static_cast<std::int32_t>(
+        rom_field_map_width_) - kFieldViewportWidth;
+    const auto max_viewport_y = static_cast<std::int32_t>(
+        rom_field_map_height_) - kFieldViewportHeight;
+    const auto viewport_x = std::clamp(
+        field_camera_x_ - kFieldViewportWidth / 2, 0, max_viewport_x);
+    const auto viewport_y = std::clamp(
+        field_camera_y_ - kFieldViewportHeight / 2, 0, max_viewport_y);
     rom_field_width_ = static_cast<std::uint16_t>(kFieldViewportWidth);
     rom_field_height_ = static_cast<std::uint16_t>(kFieldViewportHeight);
-    rom_field_pixels_.resize(kFieldViewportWidth * kFieldViewportHeight);
-    for (std::size_t y = 0; y < kFieldViewportHeight; ++y) {
-        for (std::size_t x = 0; x < kFieldViewportWidth; ++x) {
-            rom_field_pixels_[y * kFieldViewportWidth + x] =
-                field_map.pixels[(viewport_y + y) * field_map.width +
-                                 viewport_x + x];
+    rom_field_pixels_.resize(static_cast<std::size_t>(
+        kFieldViewportWidth * kFieldViewportHeight));
+    for (std::int32_t y = 0; y < kFieldViewportHeight; ++y) {
+        for (std::int32_t x = 0; x < kFieldViewportWidth; ++x) {
+            rom_field_pixels_[static_cast<std::size_t>(y) * kFieldViewportWidth +
+                              x] = rom_field_map_pixels_[
+                static_cast<std::size_t>(viewport_y + y) * rom_field_map_width_ +
+                viewport_x + x];
         }
     }
 }
@@ -263,24 +284,35 @@ void NativePortShell::update(const InputState& input) {
             scene_ = NativeScene::Field;
             marker_x_ = kScreenWidth / 2;
             marker_y_ = kScreenHeight / 2;
+            if (!rom_field_map_pixels_.empty()) {
+                field_world_x_ = static_cast<std::int32_t>(0x3400U >> 4U);
+                field_world_y_ = static_cast<std::int32_t>(0x2280U >> 4U);
+                field_camera_x_ = field_world_x_;
+                field_camera_y_ = field_world_y_;
+                refresh_field_view();
+            }
         }
         ++frame_number_;
         return;
     }
 
     constexpr std::int32_t kSpeed = 2;
+    auto delta_x = 0;
+    auto delta_y = 0;
     if (input.is_held(Button::Up)) {
-        marker_y_ -= kSpeed;
+        delta_y -= kSpeed;
     }
     if (input.is_held(Button::Down)) {
-        marker_y_ += kSpeed;
+        delta_y += kSpeed;
     }
     if (input.is_held(Button::Left)) {
-        marker_x_ -= kSpeed;
+        delta_x -= kSpeed;
     }
     if (input.is_held(Button::Right)) {
-        marker_x_ += kSpeed;
+        delta_x += kSpeed;
     }
+    marker_x_ += delta_x;
+    marker_y_ += delta_y;
     if (input.was_pressed(Button::Start)) {
         marker_x_ = kScreenWidth / 2;
         marker_y_ = kScreenHeight / 2;
@@ -301,6 +333,15 @@ void NativePortShell::update(const InputState& input) {
     }
     marker_x_ = std::clamp(marker_x_, 8, static_cast<std::int32_t>(kScreenWidth) - 16);
     marker_y_ = std::clamp(marker_y_, 48, static_cast<std::int32_t>(kScreenHeight) - 16);
+    if (!rom_field_map_pixels_.empty()) {
+        field_world_x_ += delta_x;
+        field_world_y_ += delta_y;
+        field_camera_x_ = field_world_x_ -
+                          (marker_x_ - static_cast<std::int32_t>(kScreenWidth / 2));
+        field_camera_y_ = field_world_y_ -
+                          (marker_y_ - static_cast<std::int32_t>(kScreenHeight / 2));
+        refresh_field_view();
+    }
     if (action_flash_frames_ != 0) {
         --action_flash_frames_;
     }
