@@ -17,6 +17,7 @@ add_library(shadowrun_port STATIC
     src/entity_projection.cpp
     src/entity_state.cpp
     src/memory_bus.cpp
+    src/native_port.cpp
     src/object_mask.cpp
     src/object_list.cpp
     src/object_update.cpp
@@ -33,6 +34,19 @@ add_executable(shadowrun_boot_reconstruction_test
 )
 target_link_libraries(shadowrun_boot_reconstruction_test PRIVATE shadowrun_port)
 add_test(NAME shadowrun_boot_reconstruction COMMAND shadowrun_boot_reconstruction_test)
+
+add_executable(shadowrun_native_port_test
+    tests/native_port_test.cpp
+)
+target_link_libraries(shadowrun_native_port_test PRIVATE shadowrun_port)
+add_test(NAME shadowrun_native_port COMMAND shadowrun_native_port_test)
+
+if (WIN32)
+    add_executable(shadowrun_native
+        src/native_main.cpp
+    )
+    target_link_libraries(shadowrun_native PRIVATE shadowrun_port user32 gdi32)
+endif()
 
 if (MSVC)
     target_compile_options(shadowrun_rom_analyzer PRIVATE /W4 /permissive-)

@@ -59,6 +59,25 @@ filename safely.
 The old Ghidra snapshot can be regenerated independently if needed, but it is
 not required to build or run the C++ analyzer.
 
+## Native C++ bootstrap
+
+The first native frontend seam is implemented in
+`include/shadowrun/native_port.hpp` and `src/native_port.cpp`. It provides an
+abstract `InputState`, a generic `ScreenWriter`, and a renderer-neutral RGBA8
+software surface. The Windows target `shadowrun_native.exe` opens a 320x224
+software-rendered window, accepts arrow/Z/X/C/Enter input, and presents native
+C++ screen output without a 68000 interpreter or Genesis VDP dependency.
+
+This is an executable frontend/bootstrap milestone, not a claim that the full
+game is playable yet. The current shell proves the controls and presentation
+boundary; the reconstructed frame/update systems and extracted ROM graphics
+will replace its bootstrap scene incrementally.
+
+```powershell
+cmake --build 'C:\Github\shadowrun\decompilation\build-debug-verify'
+& 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_native.exe'
+```
+
 ## ROM facts established so far
 
 - Initial stack pointer: `0x00FFFFF8`.
@@ -424,8 +443,8 @@ not required to build or run the C++ analyzer.
   available as a bounded, renderer-neutral pass, including its type-specific
   list selection and `0x1378` output.
 - `GenesisMemoryBus` in `include/shadowrun/memory_bus.hpp` provides a
-  renderer-neutral ROM/RAM/I/O address space and records VDP port writes for
-  later frontend integration.
+  transitional ROM/RAM/I/O verification space and records VDP port writes;
+  native code uses `ScreenWriter`/`InputState` instead of requiring that bus.
 - The initial vector/direct pass reached 332 function entries and 6,342 decoded
   instructions. Correcting immediate bit-op widths and following the reviewed
   dispatch paths now yields 717 direct-analysis entries and 18,803 decoded
@@ -452,10 +471,12 @@ The next work is manual reverse engineering, not another blind decompiler pass:
 3. Name subsystems from call-graph and hardware evidence: startup/region,
    VDP rendering, controllers, timing/interrupts, audio, map/field logic,
    menus, combat, and persistence.
-4. Define a small Genesis hardware interface and port the verified routines to
-   C++, keeping ROM data explicit and endian-correct.
-5. Validate each subsystem against an emulator and recorded game traces, then
-   add a buildable CMake target only after the hardware boundary is explicit.
+4. Convert VBlank graphics work into native screen/tilemap/sprite operations,
+   extract ROM graphics into RGBA8 assets, and connect Windows controls through
+   `InputState`.
+5. Compose the verified update systems into the native executable, then
+   validate its frames and behavior against emulator traces without making an
+   emulator or 68000 interpreter part of the runtime.
 
 The generated decompiler files provide coverage and addresses for that work;
 they should not be mistaken for proof that the original 68000 program has

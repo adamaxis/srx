@@ -1,0 +1,124 @@
+#pragma once
+
+#include <cstdint>
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace shadowrun::native {
+
+constexpr std::uint16_t kScreenWidth = 320;
+constexpr std::uint16_t kScreenHeight = 224;
+
+enum class Button : std::uint16_t {
+    Up = 1U << 0U,
+    Down = 1U << 1U,
+    Left = 1U << 2U,
+    Right = 1U << 3U,
+    A = 1U << 4U,
+    B = 1U << 5U,
+    C = 1U << 6U,
+    Start = 1U << 7U,
+};
+
+constexpr std::uint16_t button_mask(Button button) {
+    return static_cast<std::uint16_t>(button);
+}
+
+struct InputState {
+    std::uint16_t held = 0;
+    std::uint16_t pressed = 0;
+
+    bool is_held(Button button) const {
+        return (held & button_mask(button)) != 0;
+    }
+
+    bool was_pressed(Button button) const {
+        return (pressed & button_mask(button)) != 0;
+    }
+};
+
+struct Rgba8 {
+    std::uint8_t red = 0;
+    std::uint8_t green = 0;
+    std::uint8_t blue = 0;
+    std::uint8_t alpha = 255;
+};
+
+// Native game code writes to this interface instead of issuing Genesis VDP
+// commands. The first implementation is a software surface; SDL/DirectX or
+// another Windows backend can implement the same operations later.
+class ScreenWriter {
+public:
+    virtual ~ScreenWriter() = default;
+
+    virtual void begin_frame() = 0;
+    virtual void clear(Rgba8 color) = 0;
+    virtual void fill_rect(std::int32_t x, std::int32_t y,
+                           std::int32_t width, std::int32_t height,
+                           Rgba8 color) = 0;
+    virtual void write_text(std::int32_t x, std::int32_t y,
+                            std::string_view text, std::uint8_t scale,
+                            Rgba8 color) = 0;
+    virtual void present() = 0;
+};
+
+// Renderer-neutral RGBA8 framebuffer used by headless tests and the initial
+// Windows software window. Pixels are stored as 0x00RRGGBB so that the Windows
+// GDI presenter can consume the same buffer as a 32-bit BGRX DIB.
+class SoftwareScreen final : public ScreenWriter {
+public:
+    SoftwareScreen(std::uint16_t width = kScreenWidth,
+                   std::uint16_t height = kScreenHeight);
+
+    void begin_frame() override;
+    void clear(Rgba8 color) override;
+    void fill_rect(std::int32_t x, std::int32_t y,
+                   std::int32_t width, std::int32_t height,
+                   Rgba8 color) override;
+    void write_text(std::int32_t x, std::int32_t y,
+                    std::string_view text, std::uint8_t scale,
+                    Rgba8 color) override;
+    void present() override;
+
+    std::uint16_t width() const { return width_; }
+    std::uint16_t height() const { return height_; }
+    std::uint64_t presented_frames() const { return presented_frames_; }
+    const std::vector<std::uint32_t>& pixels() const { return pixels_; }
+    std::uint32_t pixel(std::int32_t x, std::int32_t y) const;
+
+private:
+    static std::uint32_t pack(Rgba8 color);
+    void write_glyph(std::int32_t x, std::int32_t y, char character,
+                     std::uint8_t scale, std::uint32_t packed_color);
+
+    std::uint16_t width_;
+    std::uint16_t height_;
+    std::vector<std::uint32_t> pixels_;
+    std::uint64_t presented_frames_ = 0;
+};
+
+// Small native update/render shell. It exists to make the controls and screen
+// boundary executable now; reconstructed gameplay systems will replace its
+// bootstrap scene as their typed state becomes available.
+class NativePortShell {
+public:
+    explicit NativePortShell(std::string title = "SHADOWRUN");
+
+    void update(const InputState& input);
+    void render(ScreenWriter& screen) const;
+
+    std::int32_t marker_x() const { return marker_x_; }
+    std::int32_t marker_y() const { return marker_y_; }
+    std::uint64_t frame_number() const { return frame_number_; }
+
+private:
+    std::string title_;
+    InputState input_{};
+    std::int32_t marker_x_ = kScreenWidth / 2;
+    std::int32_t marker_y_ = kScreenHeight / 2;
+    std::uint64_t frame_number_ = 0;
+    Rgba8 marker_color_{0x00, 0xD8, 0xFF, 0xFF};
+};
+
+} // namespace shadowrun::native
