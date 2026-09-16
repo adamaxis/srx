@@ -1047,6 +1047,11 @@ EntityAnimation1450EResult run_entity_animation_target_update_0x1450E(
 EntityAnimation1450EResult run_entity_animation_update_0x14508(
     GenesisBus& bus, GenesisAddress entity_record_address);
 
+// ROM 0x144FA selects the linked +0xA2 source when present and otherwise
+// enters the 0x14508 absolute-source prefix.
+EntityAnimation1450EResult run_entity_animation_target_dispatch_0x144FA(
+    GenesisBus& bus, GenesisAddress entity_record_address);
+
 // ROM 0x14492 selects a linked record from the already-built primary or
 // secondary pointer list, preserving an existing member and avoiding a
 // self-selection update to +0xB5.

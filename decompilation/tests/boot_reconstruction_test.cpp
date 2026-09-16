@@ -2340,6 +2340,17 @@ int main() {
     assert(fixed_source_update.first_probe_attempted);
     assert(fixed_source_update.reverse_probe_attempted);
 
+    fallback_bus->write32(fallback_record + 0xA2U, target_source);
+    const auto linked_target_dispatch =
+        shadowrun::run_entity_animation_target_dispatch_0x144FA(
+            *fallback_bus, fallback_record);
+    assert(linked_target_dispatch.source_record == target_source);
+    fallback_bus->write32(fallback_record + 0xA2U, 0);
+    const auto absolute_target_dispatch =
+        shadowrun::run_entity_animation_target_dispatch_0x144FA(
+            *fallback_bus, fallback_record);
+    assert(absolute_target_dispatch.source_record == target_source);
+
     // 14492 selects from the lists prepared by 13874. It preserves an
     // existing primary-list member, does not stamp primary changes with the
     // secondary-list state byte, and marks a changed secondary selection.

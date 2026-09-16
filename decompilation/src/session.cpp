@@ -2446,6 +2446,7 @@ constexpr GenesisAddress kAnimationContinuation_0x139D8 = 0x000139D8U;
 constexpr GenesisAddress kAnimationContinuation_0x13D0C = 0x00013D0CU;
 constexpr GenesisAddress kAnimationContinuation_0x14508 = 0x00014508U;
 constexpr GenesisAddress kAnimationContinuation_0x1450E = 0x0001450EU;
+constexpr GenesisAddress kAnimationContinuation_0x144FA = 0x000144FAU;
 constexpr GenesisAddress kAnimationContinuation_0x13E8C = 0x00013E8CU;
 constexpr GenesisAddress kAnimationContinuation_0x1E514 = 0x0001E514U;
 constexpr GenesisAddress kAnimationContinuation_0x142AE = 0x000142AEU;
@@ -2483,6 +2484,11 @@ void dispatch_animation_continuation(
         result.unresolved_calls += direct.unresolved_calls;
     } else if (target == kAnimationContinuation_0x14508) {
         const auto direct = run_entity_animation_update_0x14508(
+            bus, entity_record_address);
+        result.continuation_calls += direct.continuation_calls;
+        result.unresolved_calls += direct.unresolved_calls;
+    } else if (target == kAnimationContinuation_0x144FA) {
+        const auto direct = run_entity_animation_target_dispatch_0x144FA(
             bus, entity_record_address);
         result.continuation_calls += direct.continuation_calls;
         result.unresolved_calls += direct.unresolved_calls;
@@ -3092,6 +3098,17 @@ EntityAnimation1450EResult run_entity_animation_update_0x14508(
     return run_entity_animation_target_update_0x1450E(
         bus, entity_record_address,
         bus.read32(ram::kEntityObjectControlPointer));
+}
+
+EntityAnimation1450EResult run_entity_animation_target_dispatch_0x144FA(
+    GenesisBus& bus, GenesisAddress entity_record_address) {
+    const auto linked_record = bus.read32(entity_record_address + 0xA2U);
+    if (linked_record == 0) {
+        return run_entity_animation_update_0x14508(
+            bus, entity_record_address);
+    }
+    return run_entity_animation_target_update_0x1450E(
+        bus, entity_record_address, linked_record);
 }
 
 EntityAnimationListSelectionResult select_entity_animation_link_0x14492(

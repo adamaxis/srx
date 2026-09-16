@@ -167,6 +167,8 @@ not required to build or run the C++ analyzer.
   one-step `0x15DCC` target construction, `0x144E8` gate, and `0x145A2` tail.
 - The `0x14508` entry prefix is now explicit and shares the direct `0x1450E`
   target-probe implementation with its absolute `FFFC04` source record.
+- The `0x144FA` target dispatcher now directly selects that same probe body
+  from either the linked `+0xA2` record or the `0x14508` absolute-source path.
 - The linked-record gate at `0x14C7C` now directly covers the ordinary
   `0x15C84` close-link predicate, the `0x0C` distance/slot branches, and the
   `0x0D/0x0E` movement-timer path.
