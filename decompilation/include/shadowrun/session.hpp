@@ -48,6 +48,7 @@ constexpr GenesisAddress kFrameListPrimaryCount = 0xFFDF94;
 constexpr GenesisAddress kFrameListPrimary = 0xFFDF96;
 constexpr GenesisAddress kFrameListSecondaryCount = 0xFFDFC8;
 constexpr GenesisAddress kFrameListSecondary = 0xFFDFCA;
+constexpr GenesisAddress kFrameAnimationMode = 0xFFDFE0;
 constexpr GenesisAddress kFrameClipHorizontalMode = 0xFFE173;
 constexpr GenesisAddress kFrameClipVerticalMode = 0xFFE174;
 constexpr GenesisAddress kFrameTransformProgress = 0xFFDF5C;
@@ -450,6 +451,28 @@ struct EntityAnimation1450EResult {
     GenesisAddress source_record;
     std::uint16_t first_probe_status;
     std::uint16_t reverse_probe_status;
+    std::size_t continuation_calls;
+    std::size_t unresolved_calls;
+};
+
+struct EntityAnimation13D0CResult {
+    bool entered;
+    bool routed_to_0x13E40;
+    bool blocked_by_animation_mode;
+    bool linked_record_present;
+    bool linked_position_copied;
+    bool distance_table_used;
+    bool target_position_copied;
+    bool target_position_built;
+    bool position_gate_called;
+    bool position_gate_carry;
+    bool routed_to_0x145A2;
+    bool handler_installed;
+    GenesisAddress linked_record;
+    GenesisAddress timing_row;
+    std::uint16_t direction;
+    std::uint16_t distance;
+    std::uint8_t distance_table_index;
     std::size_t continuation_calls;
     std::size_t unresolved_calls;
 };
@@ -1008,6 +1031,15 @@ EntityAnimation1450EResult run_entity_animation_target_update_0x1450E(
 // self-selection update to +0xB5.
 EntityAnimationListSelectionResult select_entity_animation_link_0x14492(
     GenesisBus& bus, GenesisAddress entity_record_address);
+
+// ROM 0x13D0C coordinates linked-record movement, its distance thresholds,
+// the 0x144E8 position gate, and the direct 0x145A2 tail. The larger callers
+// that establish the surrounding state-machine register context remain
+// separate from this typed body.
+EntityAnimation13D0CResult run_entity_animation_update_0x13D0C(
+    GenesisBus& bus,
+    GenesisAddress entity_record_address,
+    const EntityAnimationContinuationRoutine& continuation = {});
 
 // ROM 0x14BA6, including its direct direction-sign flag derivation and the
 // 0x14682 movement/collision body.

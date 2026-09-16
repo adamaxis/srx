@@ -2443,6 +2443,7 @@ namespace {
 
 constexpr GenesisAddress kAnimationContinuation_0x13A92 = 0x00013A92U;
 constexpr GenesisAddress kAnimationContinuation_0x139D8 = 0x000139D8U;
+constexpr GenesisAddress kAnimationContinuation_0x13D0C = 0x00013D0CU;
 constexpr GenesisAddress kAnimationContinuation_0x14508 = 0x00014508U;
 constexpr GenesisAddress kAnimationContinuation_0x1450E = 0x0001450EU;
 constexpr GenesisAddress kAnimationContinuation_0x13E8C = 0x00013E8CU;
@@ -2475,6 +2476,11 @@ void dispatch_animation_continuation(
         // this legacy entry wrapper starts with the zeroed context used by
         // the surrounding C++ call boundary.
         run_entity_animation_branch_0x13A92(bus, entity_record_address);
+    } else if (target == kAnimationContinuation_0x13D0C) {
+        const auto direct = run_entity_animation_update_0x13D0C(
+            bus, entity_record_address);
+        result.continuation_calls += direct.continuation_calls;
+        result.unresolved_calls += direct.unresolved_calls;
     } else if (target == kAnimationContinuation_0x142AE) {
         const auto direct = run_entity_animation_continuation_0x142AE(
             bus, entity_record_address);
@@ -3125,6 +3131,164 @@ EntityAnimationListSelectionResult select_entity_animation_link_0x14492(
     if (!primary_list_path && result.selected_link_changed) {
         bus.write8(entity_record_address + 0xB5U, 6U);
     }
+    return result;
+}
+
+EntityAnimation13D0CResult run_entity_animation_update_0x13D0C(
+    GenesisBus& bus,
+    GenesisAddress entity_record_address,
+    const EntityAnimationContinuationRoutine& continuation) {
+    EntityAnimation13D0CResult result{};
+    result.entered = true;
+
+    const auto finish_at_0x13E40 = [&]() {
+        result.routed_to_0x13E40 = true;
+        result.handler_installed = finish_entity_animation_0x13E40(
+            bus, entity_record_address);
+    };
+    const auto continue_at_0x145A2 = [&]() {
+        const auto direct = run_entity_animation_update_0x145A2(
+            bus, entity_record_address, continuation);
+        result.routed_to_0x145A2 = true;
+        result.continuation_calls += direct.continuation_calls;
+        result.unresolved_calls += direct.unresolved_calls;
+    };
+    const auto run_position_gate = [&]() {
+        const auto position = evaluate_entity_animation_position_gate_0x144E8(
+            bus, entity_record_address);
+        result.position_gate_called = true;
+        result.position_gate_carry = position.carry;
+        if (!position.carry) {
+            continue_at_0x145A2();
+            return;
+        }
+
+        // 0x13E3C clears the delay byte only on the carry-producing gate
+        // path before entering the shared 0x13E40 frame cutoff.
+        bus.write8(entity_record_address + 0xB5U, 0);
+        finish_at_0x13E40();
+    };
+
+    // 0x13D0C has an early type-0x28 terminal path while the global phase is
+    // active, except for records already marked with +0x10 bit three.
+    if (bus.read8(ram::kEntityStateGlobalPhase) != 0 &&
+        (bus.read8(entity_record_address + 0x10U) & 0x08U) == 0 &&
+        bus.read8(entity_record_address + 0x4EU) == 0x28U) {
+        finish_at_0x13E40();
+        return result;
+    }
+
+    const auto animation_mode = bus.read16(session_ram::kFrameAnimationMode);
+    if (animation_mode != 0) {
+        if (animation_mode != 2U) {
+            result.blocked_by_animation_mode = true;
+            return result;
+        }
+
+        // Mode two bypasses the normal distance thresholds and copies the
+        // linked record's coordinates before tail-entering 0x145A2.
+        result.linked_record = bus.read32(entity_record_address + 0xA2U);
+        if (result.linked_record == 0) {
+            return result;
+        }
+        result.linked_record_present = true;
+        copy_entity_animation_position_0x13A40(
+            bus, entity_record_address, result.linked_record);
+        result.linked_position_copied = true;
+        continue_at_0x145A2();
+        return result;
+    }
+
+    result.linked_record = bus.read32(entity_record_address + 0xA2U);
+    if (result.linked_record == 0) {
+        return result;
+    }
+    result.linked_record_present = true;
+
+    const auto transform = transform_frame_delta_0x15D3C(
+        bus,
+        bus.read16(result.linked_record + 4U),
+        bus.read16(result.linked_record),
+        bus.read16(entity_record_address + 4U),
+        bus.read16(entity_record_address));
+    result.direction = transform.d2;
+    result.distance = transform.d3;
+
+    // 0x13D74 clears the previous route bit before testing the two distance
+    // tables. The type-flag branch indexes 0x13E58 by +0x4D; the delay-byte
+    // branch uses 0x14D6A and then indexes 0x13E7C by its returned +0x27.
+    bus.write8(entity_record_address + 0xB0U,
+               static_cast<std::uint8_t>(
+                   bus.read8(entity_record_address + 0xB0U) & ~0x10U));
+    GenesisAddress distance_table = 0;
+    std::uint8_t distance_table_index = 0;
+    if ((bus.read8(entity_record_address + 0x10U) & 0x08U) != 0) {
+        distance_table = rom::kEntityAnimationDistanceTableByType;
+        distance_table_index = bus.read8(entity_record_address + 0x4DU);
+    } else if (bus.read8(entity_record_address + 0xB5U) != 0) {
+        bus.write8(entity_record_address + 0xB5U,
+                   static_cast<std::uint8_t>(
+                       bus.read8(entity_record_address + 0xB5U) - 1U));
+        const auto row_base = static_cast<GenesisAddress>(
+            static_cast<std::int8_t>(bus.read8(entity_record_address + 0x56U))
+                < 0
+                ? rom::kEntityTimingAdjustmentTable
+                : rom::kEntityStateGridAnimationLimitTable);
+        const auto row_index = static_cast<std::uint16_t>(
+            static_cast<std::uint16_t>(
+                bus.read8(entity_record_address + 0x57U)) - 1U);
+        result.timing_row = static_cast<GenesisAddress>(
+            row_base + static_cast<GenesisAddress>(row_index) * 0x30U);
+        distance_table = rom::kEntityAnimationDistanceTableByPhase;
+        distance_table_index = bus.read8(result.timing_row + 0x27U);
+    }
+
+    result.distance_table_index = distance_table_index;
+    if (distance_table != 0) {
+        result.distance_table_used = true;
+        const auto table_row = static_cast<GenesisAddress>(
+            distance_table + static_cast<GenesisAddress>(
+                                  distance_table_index) * 4U);
+        const auto lower_bound = bus.read16(table_row);
+        const auto upper_bound = bus.read16(table_row + 2U);
+        if (result.distance < lower_bound) {
+            // The ROM falls through to the same movement construction used
+            // by the in-range branch.
+        } else if (result.distance < upper_bound) {
+            bus.write8(entity_record_address + 0xB5U, 0);
+        } else {
+            bus.write16(entity_record_address + 0x96U,
+                        bus.read16(result.linked_record));
+            bus.write16(entity_record_address + 0x98U,
+                        bus.read16(result.linked_record + 4U));
+            result.target_position_copied = true;
+            run_position_gate();
+            return result;
+        }
+    }
+
+    // 0x13DCA sets the route bit, then either terminates under the terrain
+    // collision gate or builds a one-step target through 0x15DCC.
+    bus.write8(entity_record_address + 0xB0U,
+               static_cast<std::uint8_t>(
+                   bus.read8(entity_record_address + 0xB0U) | 0x10U));
+    if (bus.read16(session_ram::kEntityTerrainCollisionGate) != 0) {
+        finish_at_0x13E40();
+        return result;
+    }
+
+    auto direction = static_cast<std::uint16_t>(result.direction + 0x4000U);
+    const auto magnitude = static_cast<std::uint16_t>(result.distance << 1U);
+    const auto vector = transform_frame_vector_0x15DCC(
+        bus, direction, magnitude);
+    const auto target_x = static_cast<std::uint16_t>(
+        bus.read16(entity_record_address) + vector.d3);
+    const auto target_y = static_cast<std::uint16_t>(
+        bus.read16(entity_record_address + 4U) + vector.d2);
+    bus.write16(entity_record_address + 0x96U, target_x);
+    bus.write16(entity_record_address + 0x98U, target_y);
+    result.target_position_built = true;
+    run_position_gate();
     return result;
 }
 

@@ -162,6 +162,9 @@ not required to build or run the C++ analyzer.
   secondary lists built by `0x13874`, preserves an existing member, performs
   the ROM `0x0D3A` random selection when needed, and retains the empty-primary
   relationship-reset branch.
+- The `0x13D0C` linked-animation update now directly handles its active-phase
+  terminal gate, mode-two linked-coordinate copy, type/phase distance tables,
+  one-step `0x15DCC` target construction, `0x144E8` gate, and `0x145A2` tail.
 - The `0x145A2` tail is now direct through the `0x14C2E` direction flags,
   `0x14BA6` sign/route decision, `0x149C0` route, and `0x15D3C` transform
   terminal. Its `0x14682` movement body now directly performs the reviewed

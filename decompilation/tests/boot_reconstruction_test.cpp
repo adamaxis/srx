@@ -2257,6 +2257,16 @@ int main() {
     fallback_write16(shadowrun::rom::kEntityAnimationFallbackDirectionTable +
                          8U,
                      0x1234U);
+    fallback_write16(shadowrun::rom::kEntityAnimationDistanceTableByType,
+                     0x0100U);
+    fallback_write16(shadowrun::rom::kEntityAnimationDistanceTableByType +
+                         2U,
+                     0x0200U);
+    fallback_write16(shadowrun::rom::kEntityAnimationDistanceTableByPhase,
+                     0x0100U);
+    fallback_write16(shadowrun::rom::kEntityAnimationDistanceTableByPhase +
+                         2U,
+                     0x0200U);
     auto fallback_bus = std::make_unique<shadowrun::GenesisMemoryBus>(
         std::move(fallback_rom));
     constexpr auto fallback_record = 0xFF0300U;
@@ -2379,6 +2389,70 @@ int main() {
     assert(empty_primary_link.global_relationships_cleared);
     assert(!empty_primary_link.current_link_preserved);
     assert(fallback_bus->read32(fallback_record + 0xA2U) == 0);
+
+    // 13D0C first honors the active-global-phase type-0x28 terminal gate.
+    fallback_bus->write8(shadowrun::ram::kEntityStateGlobalPhase, 1U);
+    fallback_bus->write8(fallback_record + 0x10U, 0);
+    fallback_bus->write8(fallback_record + 0x4EU, 0x28U);
+    fallback_bus->write16(fallback_record + 0x16U, 0);
+    fallback_bus->write32(fallback_record + 0x3AU, 0);
+    const auto phase_terminal =
+        shadowrun::run_entity_animation_update_0x13D0C(
+            *fallback_bus, fallback_record);
+    assert(phase_terminal.routed_to_0x13E40);
+    assert(phase_terminal.handler_installed);
+    assert(fallback_bus->read32(fallback_record + 0x3AU) == 0x0000B45CU);
+
+    // Mode two copies the linked record's coordinates and tail-enters the
+    // already direct 145A2 routine without passing through 144E8 here.
+    constexpr auto mode_two_source = 0xFF0400U;
+    fallback_bus->write8(shadowrun::ram::kEntityStateGlobalPhase, 0);
+    fallback_bus->write16(shadowrun::session_ram::kFrameAnimationMode, 2U);
+    fallback_bus->write32(fallback_record + 0xA2U, mode_two_source);
+    fallback_bus->write16(mode_two_source, 0x1100U);
+    fallback_bus->write16(mode_two_source + 4U, 0x1200U);
+    fallback_bus->write16(fallback_record, 0x0100U);
+    fallback_bus->write16(fallback_record + 4U, 0x0200U);
+    fallback_bus->write16(fallback_record + 0x16U, 0);
+    fallback_bus->write8(fallback_record + 0xB0U, 0);
+    fallback_bus->write16(fallback_record + 0xB8U, 0x1000U);
+    const auto mode_two_update =
+        shadowrun::run_entity_animation_update_0x13D0C(
+            *fallback_bus, fallback_record);
+    assert(mode_two_update.linked_record_present);
+    assert(mode_two_update.linked_position_copied);
+    assert(mode_two_update.routed_to_0x145A2);
+    assert(!mode_two_update.position_gate_called);
+    assert(mode_two_update.unresolved_calls == 0);
+    assert(fallback_bus->read16(fallback_record + 0x96U) == 0x1100U);
+    assert(fallback_bus->read16(fallback_record + 0x98U) == 0x1200U);
+
+    // The normal type-table path builds a one-step target when the linked
+    // distance is below its upper threshold, then takes the direct position
+    // gate and 13E40 carry tail for a zero-distance synthetic case.
+    fallback_bus->write16(shadowrun::session_ram::kFrameAnimationMode, 0);
+    fallback_bus->write8(fallback_record + 0x10U, 0x08U);
+    fallback_bus->write8(fallback_record + 0x4DU, 0);
+    fallback_bus->write32(fallback_record + 0xA2U, mode_two_source);
+    fallback_bus->write16(mode_two_source, 0x0100U);
+    fallback_bus->write16(mode_two_source + 4U, 0x0200U);
+    fallback_bus->write16(fallback_record, 0x0100U);
+    fallback_bus->write16(fallback_record + 4U, 0x0200U);
+    fallback_bus->write8(fallback_record + 0xB5U, 1U);
+    fallback_bus->write8(fallback_record + 0xB0U, 0);
+    fallback_bus->write16(shadowrun::session_ram::kEntityTerrainCollisionGate,
+                          0);
+    const auto normal_update =
+        shadowrun::run_entity_animation_update_0x13D0C(
+            *fallback_bus, fallback_record);
+    assert(normal_update.distance_table_used);
+    assert(normal_update.distance_table_index == 0);
+    assert(normal_update.target_position_built);
+    assert(normal_update.position_gate_called);
+    assert(normal_update.position_gate_carry);
+    assert(normal_update.routed_to_0x13E40);
+    assert(!normal_update.routed_to_0x145A2);
+    assert(fallback_bus->read8(fallback_record + 0xB5U) == 0);
 
     // AAD2 changes A0 to FFFC04 in the ROM. The typed call context must carry
     // that register change into the later command/timer calls and AE26 tail.
