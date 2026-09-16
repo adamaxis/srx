@@ -307,6 +307,20 @@ struct EntityAnimationResourceDecisionResult {
     GenesisAddress scratch_record;
 };
 
+struct EntityAnimationResourceSpawnResult {
+    bool carry;
+    bool animation_slot_gate_passed;
+    bool first_record_allocated;
+    bool second_record_allocated;
+    bool command_dispatched;
+    bool mode2_transition_unresolved;
+    GenesisAddress first_record;
+    GenesisAddress second_record;
+    std::uint16_t first_record_index;
+    std::uint16_t second_record_index;
+    std::size_t unresolved_calls;
+};
+
 struct EntityAnimationPhaseSelectionResult {
     std::uint8_t selected_phase;
     bool selected;
@@ -778,6 +792,14 @@ run_entity_animation_resource_decision_0x14D8E(
     GenesisBus& bus,
     GenesisAddress entity_record_address,
     GenesisAddress source_record_address);
+
+// ROM 0x1514E: allocate and initialize the two post-object animation records
+// used by a resource frame, preserving the original carry/record-index
+// boundaries. The mode-2 0x1E04A allocator side branch is reported explicitly
+// until its separate resource list is translated.
+EntityAnimationResourceSpawnResult
+run_entity_animation_resource_spawn_0x1514E(
+    GenesisBus& bus, GenesisAddress entity_record_address);
 
 // ROM 0x13F76: perform the animation resource/visibility gates. Its default
 // 0x14D8E call is direct; the typed continuation still replaces the call when

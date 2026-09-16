@@ -3520,13 +3520,144 @@ std::uint16_t scaled_animation_resource_offset(
         static_cast<std::uint32_t>(product) >> 4U);
 }
 
+std::uint16_t select_animation_resource_timing_value_0x12C74(
+    GenesisBus& bus, GenesisAddress entity_record_address,
+    std::uint16_t d6) {
+    const auto value = bus.read8(entity_record_address + 0x81U);
+    const auto phase = static_cast<std::int8_t>(
+        bus.read8(entity_record_address + 0x57U));
+    std::uint8_t candidate = value;
+    if (phase < 8) {
+        if (bus.read8(entity_record_address + 0x82U) < value) {
+            candidate = bus.read8(entity_record_address + 0x82U);
+        }
+    } else if (phase < 11) {
+        if (bus.read8(entity_record_address + 0x83U) < value) {
+            candidate = bus.read8(entity_record_address + 0x83U);
+        }
+    } else if (bus.read8(entity_record_address + 0x84U) < value) {
+        candidate = bus.read8(entity_record_address + 0x84U);
+    }
+
+    if (candidate < d6) {
+        d6 = candidate;
+    }
+    d6 = static_cast<std::uint16_t>(d6 + candidate);
+    return d6 == 0 ? 1U : d6;
+}
+
+std::uint16_t adjust_animation_resource_timing_0x556C6(
+    GenesisBus& bus, GenesisAddress entity_record_address,
+    std::uint16_t d4) {
+    const auto phase = bus.read8(entity_record_address + 0x57U);
+    if (phase >= 8U && phase < 0x0BU) {
+        d4 = static_cast<std::uint16_t>(d4 + 3U);
+        const auto index = static_cast<GenesisAddress>(phase - 1U);
+        const auto flags = bus.read8(entity_record_address + 0x6EU + index);
+        if ((flags & 0x10U) != 0) {
+            d4 = static_cast<std::uint16_t>(d4 - 2U);
+        } else if ((flags & 0x20U) != 0) {
+            d4 = static_cast<std::uint16_t>(d4 - 3U);
+        }
+    }
+
+    const auto index = static_cast<GenesisAddress>(phase - 1U);
+    const auto flags = bus.read8(entity_record_address + 0x6EU + index);
+    if ((flags & 0x08U) == 0 || (flags & 0x01U) == 0) {
+        return d4;
+    }
+    if ((bus.read16(entity_record_address + 0x90U) & 0x0010U) != 0) {
+        return static_cast<std::uint16_t>(d4 - 2U);
+    }
+    for (int offset = 7; offset >= 0; --offset) {
+        if (bus.read8(entity_record_address + 0x66U +
+                     static_cast<GenesisAddress>(offset)) == 0x16U) {
+            return static_cast<std::uint16_t>(d4 - 1U);
+        }
+    }
+    return d4;
+}
+
+std::uint16_t adjust_animation_resource_timing_0x0D5A(
+    GenesisBus& bus, GenesisAddress entity_record_address,
+    std::uint16_t d4) {
+    const auto adjust = [&](std::uint8_t value) {
+        const auto signed_value = static_cast<std::int8_t>(value);
+        if (signed_value >= 8) {
+            return static_cast<std::uint16_t>(0);
+        }
+        return static_cast<std::uint16_t>(signed_value < 5 ? 2U : 1U);
+    };
+    d4 = static_cast<std::uint16_t>(
+        d4 + adjust(bus.read8(entity_record_address + 0x4CU)));
+    d4 = static_cast<std::uint16_t>(
+        d4 + adjust(bus.read8(entity_record_address + 0x9CU)));
+    return d4;
+}
+
+void prepare_animation_resource_timing_0x55640(
+    GenesisBus& bus, GenesisAddress entity_record_address,
+    GenesisAddress output_record_address) {
+    auto d1 = calculate_entity_base_0x55ED6(bus, entity_record_address);
+    auto d6 = calculate_entity_rate_0x55F20(
+        bus, entity_record_address, d1, false).selected_result;
+    d6 = select_animation_resource_timing_value_0x12C74(
+        bus, entity_record_address, d6);
+
+    const auto kind = bus.read8(entity_record_address + 0xB4U);
+    auto d4 = kind == 0 ? 4U : (kind == 1U ? 5U : (kind == 2U ? 6U : 8U));
+    d4 = adjust_entity_timing_0x55740(
+        bus, entity_record_address, output_record_address, d4);
+    d4 = adjust_entity_timing_0x55786(
+        bus, entity_record_address, d4, d6);
+    d4 = adjust_animation_resource_timing_0x556C6(
+        bus, entity_record_address, d4);
+    d4 = adjust_animation_resource_timing_0x0D5A(
+        bus, entity_record_address, d4);
+    if (static_cast<std::int16_t>(d4) < 2) {
+        d4 = 2;
+    }
+
+    const auto bucket = roll_entity_threshold_0x0DBA(bus, d4, d6);
+    bus.write8(entity_record_address + 0x9FU, bucket);
+    bus.write8(output_record_address + 0x9FU, bucket);
+}
+
+bool run_animation_resource_slot_gate_0x038AC(
+    GenesisBus& bus, GenesisAddress entity_record_address) {
+    if (bus.read8(entity_record_address + 0x4EU) == 0 ||
+        bus.read8(entity_record_address + 0x57U) == 0) {
+        return false;
+    }
+
+    const auto type = static_cast<std::int16_t>(
+        bus.read16(entity_record_address + 0x3EU));
+    const auto phase = bus.read8(entity_record_address + 0x57U);
+    const auto delta = (phase >= 8U && phase < 0x0BU) ? 0xFDU : 0xFFU;
+    if (type <= 2) {
+        update_entity_display_state_0x36FC(
+            bus, entity_record_address, delta, FrameEntityUpdateHooks{});
+    } else {
+        bus.write8(entity_record_address + 0x4EU,
+                   static_cast<std::uint8_t>(
+                       bus.read8(entity_record_address + 0x4EU) - 1U));
+    }
+    return true;
+}
+
 GenesisAddress prepare_animation_resource_scratch_0x14FF8(
     GenesisBus& bus,
     GenesisAddress entity_record_address,
+    GenesisAddress output_record_address,
+    std::uint16_t initial_frame,
     GenesisAddress source_record_address) {
-    constexpr auto scratch = session_ram::kEntityAnimationResourceScratch;
+    const auto scratch = output_record_address;
 
     initialize_animation_resource_scratch_0x15118(bus, scratch);
+    if (bus.read16(session_ram::kEntityAnimationResourceGateState) == 0) {
+        prepare_animation_resource_timing_0x55640(
+            bus, entity_record_address, scratch);
+    }
     bus.write16(scratch, bus.read16(entity_record_address));
     bus.write16(scratch + 0x04U,
                 bus.read16(entity_record_address + 0x04U));
@@ -3538,7 +3669,7 @@ GenesisAddress prepare_animation_resource_scratch_0x14FF8(
                bus.read8(entity_record_address + 0x57U));
     bus.write8(scratch + 0x56U,
                bus.read8(entity_record_address + 0x56U));
-    bus.write16(scratch + 0x3EU, 0xFFFFU);
+    bus.write16(scratch + 0x3EU, initial_frame);
     bus.write16(scratch + 0x16U, 0x0014U);
     bus.write32(scratch + 0x60U, entity_record_address);
 
@@ -3548,12 +3679,14 @@ GenesisAddress prepare_animation_resource_scratch_0x14FF8(
                        bus.read8(scratch + 0x10U) | 0x08U));
     }
 
-    // 0x14D8E sets FFDFD8 before entering 0x14FF8, so the 0x55640 side
-    // effect is deliberately not entered on this path. When the source A1
-    // record is active, 0x14FF8 derives the scratch direction through the
-    // direct 0x15D3C transform.
+    // 0x14D8E sets FFDFD8 before entering 0x14FF8, so its timing side effect
+    // is skipped. Other callers run the direct 0x55640 timing helper above.
     if (source_record_address != 0 &&
         (bus.read8(source_record_address + 0x10U) & 0x01U) != 0) {
+        if (bus.read16(session_ram::kEntityAnimationResourceGateState) == 0) {
+            bus.write32(source_record_address + 0xACU,
+                        entity_record_address);
+        }
         const auto transform = transform_frame_delta_0x15D3C(
             bus,
             bus.read16(source_record_address + 0x04U),
@@ -4438,7 +4571,8 @@ run_entity_animation_resource_decision_0x14D8E(
                 source_record_address);
 
     const auto scratch_record = prepare_animation_resource_scratch_0x14FF8(
-        bus, entity_record_address, source_record_address);
+        bus, entity_record_address, session_ram::kEntityAnimationResourceScratch,
+        0xFFFFU, source_record_address);
     const auto probe = run_animation_resource_terrain_probe_0x14F26(
         bus, scratch_record);
     bus.write32(scratch_record, probe.fixed_d5);
@@ -4466,6 +4600,134 @@ run_entity_animation_resource_decision_0x14D8E(
     bus.write16(session_ram::kEntityAnimationResourceGateState, 0);
     return {false, terrain_nonzero, terrain_collision_gate_active,
             occupancy_scan_stopped, occupancy_checks, scratch_record};
+}
+
+EntityAnimationResourceSpawnResult
+run_entity_animation_resource_spawn_0x1514E(
+    GenesisBus& bus, GenesisAddress entity_record_address) {
+    bus.write16(0x00FFDD3AU, 0);
+    const auto phase = bus.read8(entity_record_address + 0x57U);
+    if (phase >= 8U && phase <= 0x0AU) {
+        bus.write16(0x00FFDD3AU, 0xFFFFU);
+    }
+
+    const auto blocked = [&](bool slot_gate_passed) {
+        return EntityAnimationResourceSpawnResult{
+            true, slot_gate_passed, false, false, false, false,
+            0, 0, 15, 15, 0};
+    };
+    if (bus.read8(0x00FFE186U) == 3U) {
+        return blocked(false);
+    }
+
+    const auto frame = static_cast<std::uint16_t>(
+        bus.read16(entity_record_address + 0x16U) & 0x07FFU);
+    if (frame > 0x003CU) {
+        if ((bus.read8(entity_record_address + 0x10U) & 0x02U) != 0) {
+            bus.write16(0x00FFDfe6U, 0xFFFFU);
+        }
+        return blocked(false);
+    }
+    if (!run_animation_resource_slot_gate_0x038AC(
+            bus, entity_record_address)) {
+        return blocked(false);
+    }
+
+    const auto first = allocate_post_object_record_0x15A8C(bus);
+    if (!first.allocated) {
+        return {true, true, false, false, false, false,
+                0, 0, 15, 15, 0};
+    }
+
+    arm_entity_global_gate_0x1DBAA(bus);
+    const auto source_record = bus.read32(entity_record_address + 0xA2U);
+    prepare_animation_resource_scratch_0x14FF8(
+        bus, entity_record_address, first.record_address,
+        first.record_index, source_record);
+    bus.write8(first.record_address + 0x89U, 0x7FU);
+    bus.write8(first.record_address + 0x8BU, 0);
+    if (bus.read16(0x00FFDD3AU) != 0) {
+        bus.write8(first.record_address + 0x41U, 2U);
+        bus.write16(first.record_address + 0x58U,
+                    bus.read16(first.record_address));
+        bus.write16(first.record_address + 0x5AU,
+                    bus.read16(first.record_address + 0x04U));
+        bus.write8(first.record_address + 0x8BU, 1U);
+        bus.write8(first.record_address + 0x89U, 0x20U);
+    }
+
+    const auto second = allocate_post_object_record_0x15A8C(bus);
+    if (!second.allocated) {
+        return {true, true, true, false, false, false,
+                first.record_address, 0, first.record_index, 15, 0};
+    }
+
+    bool special_command = false;
+    const auto event_index = static_cast<GenesisAddress>(
+        static_cast<std::uint8_t>(phase + 0x6EU));
+    const auto event_flags = bus.read8(entity_record_address + event_index);
+    if ((event_flags & 0x02U) != 0 || (event_flags & 0x04U) != 0) {
+        bus.write8(0x00FFDD6DU,
+                   bus.read8(static_cast<GenesisAddress>(-1)));
+        special_command = true;
+    }
+
+    const auto command_table = special_command
+        ? rom::kAnimationResourceAlternateCommandTable
+        : rom::kAnimationResourceCommandTable;
+    const auto signed_phase_offset = static_cast<std::int32_t>(
+        static_cast<std::int16_t>(static_cast<std::uint8_t>(phase - 1U)));
+    const auto command_address = static_cast<GenesisAddress>(
+        static_cast<std::int32_t>(command_table) + signed_phase_offset * 2);
+    dispatch_z80_command_0x530DE(bus, bus.read16(command_address));
+
+    bool mode2_transition_unresolved = false;
+    if (bus.read16(session_ram::kEntityAnimationResourceMode) == 2U) {
+        const auto mode_flags = bus.read8(
+            entity_record_address + 0x6EU +
+            static_cast<GenesisAddress>(bus.read8(entity_record_address +
+                                                  0x56U)));
+        if ((mode_flags & 0x06U) == 0) {
+            // 0x1E04A owns a separate resource allocator and is kept as an
+            // explicit boundary until that list's A5/A6 contract is mapped.
+            mode2_transition_unresolved = true;
+        }
+    }
+
+    for (std::size_t index = 0; index < 0x50U; ++index) {
+        bus.write16(second.record_address + index * 2U,
+                    bus.read16(first.record_address + index * 2U));
+    }
+    bus.write16(second.record_address,
+                bus.read16(session_ram::kEntityAnimationResourceProbeX));
+    bus.write16(second.record_address + 0x04U,
+                bus.read16(session_ram::kEntityAnimationResourceProbeY));
+    bus.write16(second.record_address + 0x3EU, second.record_index);
+    bus.write8(second.record_address + 0x11U,
+               static_cast<std::uint8_t>(
+                   bus.read8(second.record_address + 0x11U) | 0x01U));
+    bus.write16(second.record_address + 0x0EU, 0);
+    bus.write32(second.record_address + 0x3AU, 0x0000AC4EU);
+    bus.write8(second.record_address + 0x64U,
+               bus.read8(0x00FFDD6DU));
+    bus.write8(second.record_address + 0x41U, 0);
+
+    auto direction_index = rotate_left_word(
+        bus.read16(second.record_address + 0x2EU), 3U);
+    if ((direction_index & 0x8000U) != 0) {
+        direction_index = static_cast<std::uint16_t>(direction_index + 1U);
+    }
+    direction_index = static_cast<std::uint16_t>(direction_index & 0x0007U);
+    const auto direction_table = bus.read16(0x00FFDD3AU) != 0
+        ? rom::kAnimationResourceAlternateDirectionTable
+        : rom::kAnimationResourceDirectionTable;
+    bus.write16(second.record_address + 0x16U,
+                bus.read16(direction_table +
+                           static_cast<GenesisAddress>(direction_index << 1U)));
+
+    return {false, true, true, true, true, mode2_transition_unresolved,
+            first.record_address, second.record_address, first.record_index,
+            second.record_index, mode2_transition_unresolved ? 1U : 0U};
 }
 
 EntityAnimationResourceGateResult run_entity_animation_resource_gate_0x13F76(
@@ -4645,6 +4907,16 @@ EntityAnimationAcaeResult run_entity_animation_update_0xACAE(
         } else if (target == 0x0000B1DCU) {
             const auto direct = run_entity_animation_update_0xB1DC(
                 bus, context.a0);
+            result.unresolved_calls += direct.unresolved_calls;
+        } else if (target == 0x0001514EU) {
+            const auto direct = run_entity_animation_resource_spawn_0x1514E(
+                bus, context.a0);
+            if (direct.second_record != 0) {
+                context.a1 = direct.second_record;
+            } else if (direct.first_record != 0) {
+                context.a1 = direct.first_record;
+            }
+            context.carry = direct.carry;
             result.unresolved_calls += direct.unresolved_calls;
         } else if (target == 0x0000ABFCU) {
             // ABFC discards the inherited D1, derives its delay from the

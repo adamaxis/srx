@@ -178,6 +178,11 @@ not required to build or run the C++ analyzer.
 - The `0x15C84`/`0x15C58` linked-animation predicate is also direct: it
   applies the +0x10 flag gates, uses the reviewed `0x15D3C` transform, and
   preserves the ROM's `< 0x200` distance cutoff and +0x34 direction write.
+- The `0x1514E` resource-spawn path is direct through its `0x038AC` slot
+  gate, generic `0x14FF8` output initializer, `0x55640` timing calculation,
+  dual `0x15A8C` allocation, phase command tables, and final record copy.
+  The mode-2 `0x1E04A` resource-list allocator is surfaced as an explicit
+  unresolved result when that branch is selected.
 - The `0xACAE` animation/reaction state machine is now direct through its
   lock, transition, `FFE18B/FFE18C`, controller-input, phase, and terminal
   branches. Its register-dependent callees use

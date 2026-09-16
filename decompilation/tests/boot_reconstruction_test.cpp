@@ -1942,6 +1942,55 @@ int main() {
     assert(resource_targets.size() == 1);
     assert(resource_targets[0] == 0x00014D8EU);
 
+    // 0x1514E allocates two post-object records, uses the direct 0x14FF8
+    // output initializer, chooses its phase command from the ROM table, and
+    // copies the first record into the final visible record.
+    auto resource_spawn_bus = std::make_unique<shadowrun::GenesisMemoryBus>(
+        std::vector<std::uint8_t>(0x200000U, 0));
+    constexpr auto resource_spawn_entity = 0xFF0600U;
+    resource_spawn_bus->write8(resource_spawn_entity + 0x10U, 0x01U);
+    resource_spawn_bus->write8(resource_spawn_entity + 0x4EU, 1U);
+    resource_spawn_bus->write8(resource_spawn_entity + 0x57U, 1U);
+    resource_spawn_bus->write16(resource_spawn_entity + 0x16U, 0);
+    resource_spawn_bus->write16(resource_spawn_entity + 0x3EU, 0);
+    resource_spawn_bus->write16(resource_spawn_entity, 0x0100U);
+    resource_spawn_bus->write16(resource_spawn_entity + 0x04U, 0x0200U);
+    const auto resource_spawn =
+        shadowrun::run_entity_animation_resource_spawn_0x1514E(
+            *resource_spawn_bus, resource_spawn_entity);
+    assert(!resource_spawn.carry);
+    assert(resource_spawn.animation_slot_gate_passed);
+    assert(resource_spawn.first_record_allocated);
+    assert(resource_spawn.second_record_allocated);
+    assert(resource_spawn.command_dispatched);
+    assert(!resource_spawn.mode2_transition_unresolved);
+    assert(resource_spawn.first_record == 0xFF0B00U);
+    assert(resource_spawn.second_record == 0xFF0C00U);
+    assert(resource_spawn.first_record_index == 9U);
+    assert(resource_spawn.second_record_index == 10U);
+    assert(resource_spawn.unresolved_calls == 0);
+    assert(resource_spawn_bus->read16(0xFF0C00U) ==
+           resource_spawn_bus->read16(
+               shadowrun::session_ram::kEntityAnimationResourceProbeX));
+    assert(resource_spawn_bus->read16(0xFF0C00U + 0x3EU) == 10U);
+
+    auto resource_spawn_special_bus = std::make_unique<shadowrun::GenesisMemoryBus>(
+        std::vector<std::uint8_t>(0x200000U, 0));
+    resource_spawn_special_bus->write8(resource_spawn_entity + 0x10U, 0x01U);
+    resource_spawn_special_bus->write8(resource_spawn_entity + 0x4EU, 1U);
+    resource_spawn_special_bus->write8(resource_spawn_entity + 0x57U, 8U);
+    resource_spawn_special_bus->write16(resource_spawn_entity + 0x16U, 0);
+    resource_spawn_special_bus->write16(resource_spawn_entity + 0x3EU, 0);
+    const auto resource_spawn_special =
+        shadowrun::run_entity_animation_resource_spawn_0x1514E(
+            *resource_spawn_special_bus, resource_spawn_entity);
+    assert(!resource_spawn_special.carry);
+    assert(resource_spawn_special.first_record_allocated);
+    assert(resource_spawn_special.second_record_allocated);
+    assert(!resource_spawn_special.mode2_transition_unresolved);
+    assert(resource_spawn_special_bus->read8(0xFF0B00U + 0x41U) == 2U);
+    assert(resource_spawn_special_bus->read8(0xFF0B00U + 0x89U) == 0x20U);
+
     // B1DC now performs its direct delay/command/frame-selection prefix,
     // enters the reconstructed linked-record predicate, and invokes the
     // direct 55C76 entity reaction when the link is close enough.
