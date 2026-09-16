@@ -85,6 +85,21 @@ Genesis I/O addresses in the native frontend.
 Each milestone must produce a runnable artifact. Keep the original ROM
 unchanged and retain raw assets alongside converted assets.
 
+## Current implementation status
+
+The native Windows bootstrap is now fed by the ROM's reviewed startup data.
+`graphics.cpp` decodes the three `0x1530` pattern uploads at `0x1F310E`,
+`0x67CB0`, and `0x6875C`, reconstructs the `0x1728` delta-coded tilemap at
+`0x67DF6`, expands the selected CRAM image at `0x1FF0` to RGBA8, and submits a
+320x224 frame through `ScreenWriter`. `shadowrun_native.exe` accepts an
+optional ROM path and maps Windows keyboard input into `InputState`.
+
+This is a real native startup-screen slice, not a playable-game claim. The
+current screen still includes a host-side marker and help footer so the input
+boundary is visibly testable. The next port slices should recover the startup
+text/tile presentation and then connect typed session state and the reviewed
+VBlank update paths to this renderer.
+
 ## Build and source discipline
 
 - Use C++17 and the existing CMake build.

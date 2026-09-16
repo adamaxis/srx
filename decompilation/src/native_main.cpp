@@ -6,7 +6,10 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -20,6 +23,33 @@ struct WindowContext {
     SoftwareScreen* screen = nullptr;
     bool quit = false;
 };
+
+std::vector<std::uint8_t> read_file(const std::filesystem::path& path) {
+    std::ifstream input(path, std::ios::binary);
+    if (!input) {
+        return {};
+    }
+    return std::vector<std::uint8_t>(
+        std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
+}
+
+std::vector<std::uint8_t> load_rom(int argc, char** argv) {
+    if (argc > 1) {
+        return read_file(argv[1]);
+    }
+    const auto current = std::filesystem::current_path();
+    const std::filesystem::path relative_candidates[] = {
+        current / ".." / "input" / "shadowrun_genesis_us.bin",
+        current / "decompilation" / "input" / "shadowrun_genesis_us.bin",
+    };
+    for (const auto& candidate : relative_candidates) {
+        auto rom = read_file(candidate);
+        if (!rom.empty()) {
+            return rom;
+        }
+    }
+    return {};
+}
 
 LRESULT CALLBACK window_proc(HWND window, UINT message,
                              WPARAM w_param, LPARAM l_param) {
@@ -90,7 +120,7 @@ std::uint16_t poll_buttons() {
 
 } // namespace
 
-int main() {
+int main(int argc, char** argv) {
     constexpr wchar_t kClassName[] = L"ShadowrunNativePort";
     WNDCLASSW window_class{};
     window_class.lpfnWndProc = window_proc;
@@ -102,7 +132,11 @@ int main() {
     }
 
     SoftwareScreen screen;
+    const auto rom = load_rom(argc, argv);
     NativePortShell game("SHADOWRUN");
+    if (!rom.empty()) {
+        game = NativePortShell("SHADOWRUN", rom);
+    }
     WindowContext context{&screen, false};
 
     RECT desired{0, 0, 960, 672};

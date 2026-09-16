@@ -473,14 +473,14 @@ DeltaVdpStreamResult ShadowrunRuntime::stream_delta_vdp(
         }
         const auto count = static_cast<std::uint8_t>(token & 0x1FU);
         const auto wide = (token & 0x20U) != 0;
+        std::uint16_t value = 0;
+        if (wide) {
+            value = static_cast<std::uint16_t>(
+                static_cast<std::uint16_t>(bus_.read8(source++)) << 8U);
+        }
+        value = static_cast<std::uint16_t>(value | bus_.read8(source++));
+        value = static_cast<std::uint16_t>(value + base_word);
         for (unsigned int iteration = 0; iteration <= count; ++iteration) {
-            std::uint16_t value = 0;
-            if (wide) {
-                value = static_cast<std::uint16_t>(
-                    static_cast<std::uint16_t>(bus_.read8(source++)) << 8U);
-            }
-            value = static_cast<std::uint16_t>(value | bus_.read8(source++));
-            value = static_cast<std::uint16_t>(value + base_word);
             if (emit_candidate(value)) {
                 return {rows_completed,
                         static_cast<std::size_t>(source - initial_source),
@@ -573,7 +573,7 @@ CompressedVdpStreamResult ShadowrunRuntime::decode_compressed_vdp(
     const auto emit_byte = [&](std::uint8_t value) {
         bus_.write8(staging + ring_index, value);
         ring_index = static_cast<std::uint16_t>((ring_index + 1U) & 0x07FFU);
-        const auto vdp_value = (initial_counter & 1U) == 0
+        const auto vdp_value = (d2_counter & 1U) == 0
             ? static_cast<std::uint16_t>(value)
             : static_cast<std::uint16_t>(value) << 8U;
         bus_.write16(genesis::kVdpData, vdp_value);

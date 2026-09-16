@@ -29,9 +29,23 @@ std::vector<std::uint8_t> read_file(const std::string& path) {
 } // namespace
 
 int main(int argc, char** argv) {
+    if (argc == 4 && std::string(argv[3]) == "--title") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto image = shadowrun::graphics::decode_genesis_startup_screen(rom);
+            shadowrun::graphics::write_bmp32(argv[2], image);
+            std::cout << "startup scene: " << image.width << "x" << image.height << "\n"
+                      << "output: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
     if (argc != 6 && argc != 7) {
         std::cerr << "usage: shadowrun_graphics_extract <rom.bin> <out.bmp> "
                      "<tile-offset> <tile-count> <palette-offset> [--resource]\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> --title\n";
         std::cerr << "numeric offsets accept decimal or 0x-prefixed hex\n";
         return 2;
     }

@@ -69,13 +69,32 @@ software-rendered window, accepts arrow/Z/X/C/Enter input, and presents native
 C++ screen output without a 68000 interpreter or Genesis VDP dependency.
 
 This is an executable frontend/bootstrap milestone, not a claim that the full
-game is playable yet. The current shell proves the controls and presentation
-boundary; the reconstructed frame/update systems and extracted ROM graphics
-will replace its bootstrap scene incrementally.
+game is playable yet. When given the ROM, the shell now decodes the reviewed
+startup resource path: the three `0x1530` pattern streams at `0x1F310E`,
+`0x67CB0`, and `0x6875C`, the `0x1728` tilemap stream at `0x67DF6`, and the
+four-line CRAM image at `0x1FF0`. Those resources are converted to host RGBA8
+and submitted through `ScreenWriter`; no Genesis VDP or 68000 runtime is
+needed by the native executable. A host marker and footer remain on this
+first slice so keyboard input is visibly testable.
 
 ```powershell
 cmake --build 'C:\Github\shadowrun\decompilation\build-debug-verify'
 & 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_native.exe'
+```
+
+To load the ROM explicitly from any working directory:
+
+```powershell
+& 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_native.exe' `
+  'C:\Github\shadowrun\decompilation\input\shadowrun_genesis_us.bin'
+```
+
+The same startup frame can be exported as a diagnostic BMP:
+
+```powershell
+& 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_graphics_extract.exe' `
+  'C:\Github\shadowrun\decompilation\input\shadowrun_genesis_us.bin' `
+  'C:\Github\shadowrun\decompilation\build-debug-verify\startup_scene.bmp' --title
 ```
 
 The dependency-free graphics converter accepts offsets recovered from the ROM

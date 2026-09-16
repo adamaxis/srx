@@ -27,8 +27,9 @@ struct RgbaImage {
 native::Rgba8 decode_genesis_cram_word(std::uint16_t cram_word,
                                        bool transparent = false);
 
-// Decode one Genesis 4-bit planar tile. Each row consists of four plane bytes,
-// rather than eight packed pixel nibbles.
+// Decode one Genesis 4bpp tile. Each row contains four interleaved bitplane
+// bytes: one byte for each color bit, with bit 7 representing the leftmost
+// pixel.
 IndexedTile decode_genesis_tile(const std::uint8_t* source,
                                 std::size_t source_size);
 
@@ -41,6 +42,12 @@ std::vector<std::uint8_t> decode_genesis_resource_stream(
 std::array<native::Rgba8, 16> read_genesis_palette(
     const std::vector<std::uint8_t>& rom, std::size_t byte_offset);
 
+// Read all four 16-color Genesis palette lines from a contiguous CRAM image.
+// Palette expansion is a load-time conversion; native rendering consumes the
+// resulting RGBA8 colors rather than palette indices.
+std::array<native::Rgba8, 64> read_genesis_palette_set(
+    const std::vector<std::uint8_t>& rom, std::size_t byte_offset);
+
 RgbaImage decode_tile_atlas(
     const std::vector<std::uint8_t>& rom,
     std::size_t tile_byte_offset,
@@ -48,6 +55,17 @@ RgbaImage decode_tile_atlas(
     const std::array<native::Rgba8, 16>& palette,
     std::size_t columns = 16,
     int transparent_index = -1);
+
+// Reconstruct the startup scene assembled by ROM 0x1D00/0x1D58. The source
+// offsets and dimensions are the operands of that path, not guessed graphic
+// locations: 0x1F310E is the compressed pattern stream, 0x67DF6 is its
+// delta-coded 40-column tilemap, and 0x1FF0 is the four-line palette image
+// selected by the 0x1FD8 resource setup block.
+RgbaImage decode_genesis_startup_screen(
+    const std::vector<std::uint8_t>& rom,
+    std::size_t pattern_stream_offset = 0x1F310E,
+    std::size_t tilemap_stream_offset = 0x67DF6,
+    std::size_t palette_offset = 0x1FF0);
 
 // Write a 32-bit uncompressed BMP. This is intentionally dependency-free and
 // can be opened directly by Windows or used as an intermediate asset format.

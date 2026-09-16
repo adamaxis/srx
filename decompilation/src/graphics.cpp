@@ -156,6 +156,21 @@ std::array<native::Rgba8, 16> read_genesis_palette(
     return palette;
 }
 
+std::array<native::Rgba8, 64> read_genesis_palette_set(
+    const std::vector<std::uint8_t>& rom, std::size_t byte_offset) {
+    require_bytes(rom.size() - std::min(byte_offset, rom.size()), 128,
+                  "Genesis palette set is truncated");
+    std::array<native::Rgba8, 64> palette{};
+    for (std::size_t index = 0; index < palette.size(); ++index) {
+        const auto offset = byte_offset + index * 2U;
+        const auto word = static_cast<std::uint16_t>(
+            (static_cast<std::uint16_t>(rom[offset]) << 8U) |
+            rom[offset + 1U]);
+        palette[index] = decode_genesis_cram_word(word, index % 16U == 0);
+    }
+    return palette;
+}
+
 RgbaImage decode_tile_atlas(
     const std::vector<std::uint8_t>& rom,
     std::size_t tile_byte_offset,
@@ -195,6 +210,182 @@ RgbaImage decode_tile_atlas(
                 image.pixels[(tile_y + pixel_y) * image.width +
                              tile_x + pixel_x] =
                     index == transparent_index ? transparent : palette[index];
+            }
+        }
+    }
+    return image;
+}
+
+RgbaImage decode_genesis_startup_screen(
+    const std::vector<std::uint8_t>& rom,
+    std::size_t pattern_stream_offset,
+    std::size_t tilemap_stream_offset,
+    std::size_t palette_offset) {
+    constexpr std::size_t kColumns = 40;
+    constexpr std::size_t kRows = 28;
+    constexpr std::size_t kMapRows = 32;
+    constexpr std::uint16_t kWordsPerRow = 0x27;
+    constexpr std::uint16_t kRowCounter = 0x1F;
+    constexpr std::uint16_t kD5WordCount = 0x28;
+    constexpr std::uint16_t kWordMask = 0x4000;
+    constexpr std::size_t kPatternVramSize = 0x10000;
+    constexpr std::size_t kPatternVramOffset = 0x20;
+    constexpr std::size_t kPatternStream2Offset = 0x67CB0;
+    constexpr std::size_t kPatternStream2VramOffset = 0x4B20;
+    constexpr std::size_t kPatternStream3Offset = 0x6875C;
+    constexpr std::size_t kPatternStream3VramOffset = 0x5020;
+
+    const auto pattern_stream1 = decode_genesis_resource_stream(
+        rom, pattern_stream_offset);
+    const auto pattern_stream2 = decode_genesis_resource_stream(
+        rom, kPatternStream2Offset);
+    const auto pattern_stream3 = decode_genesis_resource_stream(
+        rom, kPatternStream3Offset);
+    std::vector<std::uint8_t> pattern_vram(kPatternVramSize, 0);
+    const auto copy_pattern_stream = [&](const auto& bytes, std::size_t target) {
+        if (target > pattern_vram.size() ||
+            bytes.size() > pattern_vram.size() - target) {
+            throw std::out_of_range("Genesis startup pattern upload is truncated");
+        }
+        std::copy(bytes.begin(), bytes.end(), pattern_vram.begin() + target);
+    };
+    copy_pattern_stream(pattern_stream1, kPatternVramOffset);
+    copy_pattern_stream(pattern_stream2, kPatternStream2VramOffset);
+    copy_pattern_stream(pattern_stream3, kPatternStream3VramOffset);
+    const auto palette = read_genesis_palette_set(rom, palette_offset);
+    require_bytes(rom.size() - std::min(tilemap_stream_offset, rom.size()), 2,
+                  "Genesis startup tilemap is truncated");
+
+    const auto read16 = [&](std::size_t offset) {
+        require_bytes(rom.size() - std::min(offset, rom.size()), 2,
+                      "Genesis startup tilemap word is truncated");
+        return static_cast<std::uint16_t>(
+            (static_cast<std::uint16_t>(rom[offset]) << 8U) |
+            rom[offset + 1U]);
+    };
+
+    const auto read8 = [&](std::size_t offset) {
+        require_bytes(rom.size() - std::min(offset, rom.size()), 1,
+                      "Genesis startup tilemap byte is truncated");
+        return rom[offset];
+    };
+    auto source = tilemap_stream_offset;
+    const auto base_word = read16(source);
+    source += 2U;
+    std::vector<std::uint16_t> map;
+    map.reserve(kColumns * kMapRows);
+    std::uint16_t output_index = 0;
+    std::uint16_t words_remaining = kWordsPerRow;
+    auto rows_remaining = kRowCounter;
+    const auto row_compare = static_cast<std::int16_t>(
+        static_cast<std::uint16_t>(kWordsPerRow - kD5WordCount));
+
+    const auto emit = [&](std::uint16_t value) {
+        ++output_index;
+        if (static_cast<std::int16_t>(
+                static_cast<std::uint16_t>(0U - output_index)) >= 0) {
+            return false;
+        }
+        if (static_cast<std::int16_t>(words_remaining) > row_compare) {
+            value = static_cast<std::uint16_t>(value | kWordMask);
+        }
+        map.push_back(value);
+        --words_remaining;
+        if (words_remaining != 0xFFFFU) {
+            return false;
+        }
+        --rows_remaining;
+        if (rows_remaining == 0xFFFFU) {
+            return true;
+        }
+        words_remaining = kWordsPerRow;
+        return false;
+    };
+
+    while (rows_remaining != 0xFFFFU) {
+        const auto token = read8(source++);
+        if (token == 0) {
+            break;
+        }
+        if (token > 0xC0U) {
+            const auto count = static_cast<unsigned>(token & 0x1FU);
+            const auto iterations = count == 0 ? 1U : count;
+            const auto wide = (token & 0x20U) != 0;
+            for (unsigned index = 0; index < iterations; ++index) {
+                std::uint16_t value = 0;
+                if (wide) {
+                    value = read16(source);
+                    source += 2U;
+                } else {
+                    value = read8(source++);
+                }
+                value = static_cast<std::uint16_t>(value + base_word);
+                if (emit(value)) {
+                    rows_remaining = 0xFFFFU;
+                    break;
+                }
+            }
+            continue;
+        }
+
+        const auto delta = token > 0x80U ? 1 : token > 0x40U ? 0 : -1;
+        const auto count = static_cast<unsigned>(token & 0x1FU);
+        const auto wide = (token & 0x20U) != 0;
+        std::uint16_t value = 0;
+        if (wide) {
+            value = static_cast<std::uint16_t>(read8(source++)) << 8U;
+        }
+        value = static_cast<std::uint16_t>(value | read8(source++));
+        value = static_cast<std::uint16_t>(value + base_word);
+        for (unsigned index = 0; index <= count; ++index) {
+            if (emit(value)) {
+                rows_remaining = 0xFFFFU;
+                break;
+            }
+            value = static_cast<std::uint16_t>(value + delta);
+        }
+    }
+
+    if (map.empty()) {
+        throw std::runtime_error("Genesis startup tilemap is empty");
+    }
+
+    RgbaImage image{
+        static_cast<std::uint16_t>(kColumns * 8U),
+        static_cast<std::uint16_t>(kRows * 8U),
+        std::vector<native::Rgba8>(
+            kColumns * kRows * 64U, native::Rgba8{0, 0, 0, 255}),
+    };
+    for (std::size_t map_y = 0; map_y < kRows; ++map_y) {
+        for (std::size_t map_x = 0; map_x < kColumns; ++map_x) {
+            const auto map_index = map_y * kColumns + map_x;
+            if (map_index >= map.size()) {
+                continue;
+            }
+            const auto entry = map[map_index];
+            if (entry == 0) {
+                continue;
+            }
+            const auto tile_index = static_cast<std::size_t>(entry & 0x07FFU);
+            if (tile_index * 32U + 32U > pattern_vram.size()) {
+                throw std::out_of_range("Genesis startup tile index is truncated");
+            }
+            const auto tile = decode_genesis_tile(
+                pattern_vram.data() + tile_index * 32U, 32U);
+            const auto palette_line = static_cast<std::size_t>(
+                (entry >> 13U) & 0x03U);
+            const auto hflip = (entry & 0x0800U) != 0;
+            const auto vflip = (entry & 0x1000U) != 0;
+            for (std::size_t pixel_y = 0; pixel_y < 8U; ++pixel_y) {
+                for (std::size_t pixel_x = 0; pixel_x < 8U; ++pixel_x) {
+                    const auto source_x = hflip ? 7U - pixel_x : pixel_x;
+                    const auto source_y = vflip ? 7U - pixel_y : pixel_y;
+                    const auto color_index = tile.pixels[source_y * 8U +
+                                                         source_x];
+                    image.pixels[(map_y * 8U + pixel_y) * image.width +
+                                 map_x * 8U + pixel_x] =
+                        palette[palette_line * 16U + color_index];
+                }
             }
         }
     }

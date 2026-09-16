@@ -3100,6 +3100,25 @@ int main() {
     assert(memory_bus.port_writes()[3].value == 0x1020);
     assert(memory_bus.port_writes()[4].value == 0x1030);
 
+    const std::array<std::uint8_t, 6> delta_repeat_source = {
+        0x20, 0x00,       // D6 base word
+        0x83, 0x00,       // four narrow values, stepping by D3 (+1)
+        0x00, 0x00};
+    for (std::size_t index = 0; index < delta_repeat_source.size(); ++index) {
+        memory_bus.write8(0xFF4100U + index, delta_repeat_source[index]);
+    }
+    memory_bus.clear_port_writes();
+    const auto delta_repeat_result = memory_runtime.stream_delta_vdp(
+        0xFF4100U, 0x2400U, 3, 4, 0, 0, 0);
+    assert(delta_repeat_result.rows_completed == 1);
+    assert(delta_repeat_result.source_bytes_consumed == 4);
+    assert(!delta_repeat_result.terminated_by_zero);
+    assert(memory_bus.port_writes().size() == 6);
+    assert(memory_bus.port_writes()[2].value == 0x2000);
+    assert(memory_bus.port_writes()[3].value == 0x2001);
+    assert(memory_bus.port_writes()[4].value == 0x2002);
+    assert(memory_bus.port_writes()[5].value == 0x2003);
+
     for (std::size_t index = 0; index < 70; ++index) {
         memory_bus.write8(0xFF5000U + index,
                           static_cast<std::uint8_t>(index));
@@ -3180,7 +3199,7 @@ int main() {
     assert(memory_bus.port_writes()[1].value == 0x6234);
     assert(memory_bus.port_writes()[2].value == 0);
     assert(memory_bus.port_writes()[3].value == 0x4100);
-    assert(memory_bus.port_writes()[6].value == 0x4100);
+    assert(memory_bus.port_writes()[6].value == 0x0041);
 
     memory_bus.write16(shadowrun::ram::kObjectListVdpCommand, 0xC000);
     memory_bus.clear_port_writes();

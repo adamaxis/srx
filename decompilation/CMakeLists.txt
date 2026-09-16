@@ -52,6 +52,10 @@ add_executable(shadowrun_graphics_extract
     src/graphics_extract.cpp
 )
 target_link_libraries(shadowrun_graphics_extract PRIVATE shadowrun_port)
+add_test(NAME shadowrun_graphics_startup
+    COMMAND shadowrun_graphics_extract
+        "${CMAKE_CURRENT_SOURCE_DIR}/input/shadowrun_genesis_us.bin"
+        "${CMAKE_CURRENT_BINARY_DIR}/startup_scene.bmp" --title)
 
 if (WIN32)
     add_executable(shadowrun_native

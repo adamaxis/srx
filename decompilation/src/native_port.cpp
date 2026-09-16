@@ -1,5 +1,7 @@
 #include "shadowrun/native_port.hpp"
 
+#include "shadowrun/graphics.hpp"
+
 #include <algorithm>
 #include <array>
 
@@ -13,7 +15,8 @@ Glyph glyph_for(char character) {
     switch (character) {
     case 'A': return {0x0E, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11};
     case 'B': return {0x1E, 0x11, 0x11, 0x1E, 0x11, 0x11, 0x1E};
-    case 'C': return {0x0F, 0x10, 0x10, 0x10, 0x10, 0x10, 0x0F};
+    case 'C':
+    case 'c': return {0x0F, 0x10, 0x10, 0x10, 0x10, 0x10, 0x0F};
     case 'D': return {0x1E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x1E};
     case 'E': return {0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x1F};
     case 'F': return {0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x10};
@@ -95,6 +98,31 @@ void SoftwareScreen::fill_rect(std::int32_t x, std::int32_t y,
     }
 }
 
+void SoftwareScreen::blit_rgba(std::int32_t x, std::int32_t y,
+                               std::uint16_t width, std::uint16_t height,
+                               const std::vector<Rgba8>& pixels) {
+    if (pixels.size() != static_cast<std::size_t>(width) * height) {
+        return;
+    }
+    for (std::int32_t source_y = 0; source_y < height; ++source_y) {
+        for (std::int32_t source_x = 0; source_x < width; ++source_x) {
+            const auto target_x = x + source_x;
+            const auto target_y = y + source_y;
+            if (target_x < 0 || target_y < 0 || target_x >= width_ ||
+                target_y >= height_) {
+                continue;
+            }
+            const auto& source = pixels[static_cast<std::size_t>(source_y) *
+                                         width + source_x];
+            if (source.alpha == 0) {
+                continue;
+            }
+            pixels_[static_cast<std::size_t>(target_y) * width_ + target_x] =
+                pack(source);
+        }
+    }
+}
+
 void SoftwareScreen::write_glyph(std::int32_t x, std::int32_t y,
                                  char character, std::uint8_t scale,
                                  std::uint32_t packed_color) {
@@ -148,6 +176,15 @@ std::uint32_t SoftwareScreen::pixel(std::int32_t x, std::int32_t y) const {
 NativePortShell::NativePortShell(std::string title)
     : title_(std::move(title)) {}
 
+NativePortShell::NativePortShell(
+    std::string title, const std::vector<std::uint8_t>& rom)
+    : title_(std::move(title)) {
+    const auto scene = graphics::decode_genesis_startup_screen(rom);
+    rom_scene_width_ = scene.width;
+    rom_scene_height_ = scene.height;
+    rom_scene_pixels_ = scene.pixels;
+}
+
 void NativePortShell::update(const InputState& input) {
     input_ = input;
     constexpr std::int32_t kSpeed = 2;
@@ -181,16 +218,34 @@ void NativePortShell::update(const InputState& input) {
 
 void NativePortShell::render(ScreenWriter& screen) const {
     screen.begin_frame();
-    screen.clear({0x06, 0x08, 0x18, 0xFF});
-    screen.fill_rect(0, 0, kScreenWidth, 34, {0x16, 0x24, 0x48, 0xFF});
-    screen.fill_rect(0, 34, kScreenWidth, 2, {0x00, 0xA8, 0xC8, 0xFF});
-    screen.write_text(18, 10, title_, 2, {0xE8, 0xF4, 0xFF, 0xFF});
-    screen.write_text(18, 52, "NATIVE C++ PORT BOOTSTRAP", 1,
-                      {0x7C, 0xD8, 0xF0, 0xFF});
-    screen.write_text(18, 66, "ARROWS MOVE  Z X C TEST BUTTONS", 1,
-                      {0xA0, 0xA8, 0xC0, 0xFF});
-    screen.write_text(18, 78, "ENTER RESETS THE MARKER", 1,
-                      {0xA0, 0xA8, 0xC0, 0xFF});
+    if (!rom_scene_pixels_.empty()) {
+        screen.clear({0x00, 0x00, 0x00, 0xFF});
+        screen.blit_rgba(0, 0, rom_scene_width_, rom_scene_height_,
+                         rom_scene_pixels_);
+        // These are the actual strings selected by the ROM's 0x1DCA and
+        // 0x1DF6 startup paths. Their original tile codes are converted by
+        // the host text primitive instead of requiring a Genesis font table.
+        screen.write_text(112, 168, "PRESS START", 1,
+                          {0xF0, 0xC0, 0x50, 0xFF});
+        screen.write_text(16, 176,
+                          "SHADOWRUN (c) 1989, 1993 FASA CORP.", 1,
+                          {0xB0, 0xB8, 0xC8, 0xFF});
+        screen.fill_rect(0, 208, kScreenWidth, 16,
+                         {0x00, 0x00, 0x00, 0xB0});
+        screen.write_text(8, 211, "ARROWS MOVE  Z X C  ENTER RESET",
+                          1, {0xE8, 0xF4, 0xFF, 0xFF});
+    } else {
+        screen.clear({0x06, 0x08, 0x18, 0xFF});
+        screen.fill_rect(0, 0, kScreenWidth, 34, {0x16, 0x24, 0x48, 0xFF});
+        screen.fill_rect(0, 34, kScreenWidth, 2, {0x00, 0xA8, 0xC8, 0xFF});
+        screen.write_text(18, 10, title_, 2, {0xE8, 0xF4, 0xFF, 0xFF});
+        screen.write_text(18, 52, "NATIVE C++ PORT BOOTSTRAP", 1,
+                          {0x7C, 0xD8, 0xF0, 0xFF});
+        screen.write_text(18, 66, "ARROWS MOVE  Z X C TEST BUTTONS", 1,
+                          {0xA0, 0xA8, 0xC0, 0xFF});
+        screen.write_text(18, 78, "ENTER RESETS THE MARKER", 1,
+                          {0xA0, 0xA8, 0xC0, 0xFF});
+    }
     screen.fill_rect(marker_x_, marker_y_, 8, 8, marker_color_);
     screen.fill_rect(marker_x_ + 2, marker_y_ + 2, 4, 4,
                      {0xFF, 0xFF, 0xFF, 0xFF});

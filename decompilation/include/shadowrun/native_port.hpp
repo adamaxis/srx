@@ -57,6 +57,9 @@ public:
     virtual void fill_rect(std::int32_t x, std::int32_t y,
                            std::int32_t width, std::int32_t height,
                            Rgba8 color) = 0;
+    virtual void blit_rgba(std::int32_t x, std::int32_t y,
+                           std::uint16_t width, std::uint16_t height,
+                           const std::vector<Rgba8>& pixels) = 0;
     virtual void write_text(std::int32_t x, std::int32_t y,
                             std::string_view text, std::uint8_t scale,
                             Rgba8 color) = 0;
@@ -76,6 +79,9 @@ public:
     void fill_rect(std::int32_t x, std::int32_t y,
                    std::int32_t width, std::int32_t height,
                    Rgba8 color) override;
+    void blit_rgba(std::int32_t x, std::int32_t y,
+                   std::uint16_t width, std::uint16_t height,
+                   const std::vector<Rgba8>& pixels) override;
     void write_text(std::int32_t x, std::int32_t y,
                     std::string_view text, std::uint8_t scale,
                     Rgba8 color) override;
@@ -104,6 +110,7 @@ private:
 class NativePortShell {
 public:
     explicit NativePortShell(std::string title = "SHADOWRUN");
+    NativePortShell(std::string title, const std::vector<std::uint8_t>& rom);
 
     void update(const InputState& input);
     void render(ScreenWriter& screen) const;
@@ -119,6 +126,9 @@ private:
     std::int32_t marker_y_ = kScreenHeight / 2;
     std::uint64_t frame_number_ = 0;
     Rgba8 marker_color_{0x00, 0xD8, 0xFF, 0xFF};
+    std::uint16_t rom_scene_width_ = 0;
+    std::uint16_t rom_scene_height_ = 0;
+    std::vector<Rgba8> rom_scene_pixels_;
 };
 
 } // namespace shadowrun::native
