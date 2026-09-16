@@ -162,6 +162,19 @@ also be exported directly:
 & 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_graphics_extract.exe' `
   'C:\Github\shadowrun\decompilation\input\shadowrun_genesis_us.bin' `
   'C:\Github\shadowrun\decompilation\build-debug-verify\field_entity_state_2.bmp' --field-entity-state 2
+& 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_graphics_extract.exe' `
+  'C:\Github\shadowrun\decompilation\input\shadowrun_genesis_us.bin' `
+  'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_native.srna' --native-pack
+```
+
+The `.srna` pack contains the expanded RGBA title/field/entity images, the
+host terrain grid, initial field positions/camera, and the reviewed native
+entity/direction state. `shadowrun_native.exe` accepts that pack path directly,
+so the Windows runtime can start without reading the ROM:
+
+```powershell
+& 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_native.exe' `
+  'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_native.srna'
 ```
 
 The dependency-free graphics converter accepts offsets recovered from the ROM

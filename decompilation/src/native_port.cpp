@@ -2,11 +2,9 @@
 
 #include "shadowrun/entity_projection.hpp"
 #include "shadowrun/graphics.hpp"
-#include "shadowrun/rom_layout.hpp"
 
 #include <algorithm>
 #include <array>
-#include <stdexcept>
 #include <utility>
 
 namespace shadowrun::native {
@@ -184,21 +182,6 @@ std::uint16_t fixed_world_coordinate(std::int32_t pixels) {
         static_cast<std::uint32_t>(pixels) << 4U);
 }
 
-std::uint16_t read_rom_word(const std::vector<std::uint8_t>& rom,
-                            std::size_t offset, const char* what) {
-    if (offset > rom.size() || rom.size() - offset < 2U) {
-        throw std::out_of_range(what);
-    }
-    return static_cast<std::uint16_t>(
-        (static_cast<std::uint16_t>(rom[offset]) << 8U) |
-        rom[offset + 1U]);
-}
-
-std::int16_t read_rom_signed_word(const std::vector<std::uint8_t>& rom,
-                                  std::size_t offset, const char* what) {
-    return static_cast<std::int16_t>(read_rom_word(rom, offset, what));
-}
-
 constexpr std::int32_t kGenesisVdpSpriteOrigin = 0x80;
 constexpr std::int32_t kFieldViewportWidth = kScreenWidth;
 constexpr std::int32_t kFieldViewportHeight = 168;
@@ -216,82 +199,46 @@ NativePortShell::NativePortShell(std::string title)
 
 NativePortShell::NativePortShell(
     std::string title, const std::vector<std::uint8_t>& rom)
+    : NativePortShell(
+          std::move(title), graphics::decode_genesis_native_assets(rom)) {}
+
+NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     : title_(std::move(title)), scene_(NativeScene::Title) {
-    const auto scene = graphics::decode_genesis_startup_screen(rom);
-    rom_scene_width_ = scene.width;
-    rom_scene_height_ = scene.height;
-    rom_scene_pixels_ = scene.pixels;
+    rom_scene_width_ = assets.title_scene.width;
+    rom_scene_height_ = assets.title_scene.height;
+    rom_scene_pixels_ = std::move(assets.title_scene.pixels);
+    rom_entity_frames_ = std::move(assets.entity_frames);
+    field_direction_table_ = assets.field_direction_table;
+    field_terrain_ = std::move(assets.field_terrain);
+    rom_field_map_width_ = assets.field_map.width;
+    rom_field_map_height_ = assets.field_map.height;
+    rom_field_map_pixels_ = std::move(assets.field_map.pixels);
 
-    // ROM 0x600E resolves the field-record kind through 0x62AC, then uses the
-    // kind-3 state-pointer table at 0x6378. Its eight directional state lists
-    // begin at 0x9334 and each 0x8002 descriptor becomes a transparent host
-    // RGBA image through the direct 0x3E86/0x3EFE extraction path.
-    const auto entity_frames =
-        graphics::decode_genesis_field_entity_animation(rom);
-    const auto entity_template =
-        graphics::read_genesis_field_entity_template(rom);
-    for (std::size_t index = 0; index < field_direction_table_.size();
-         ++index) {
-        const auto table_offset =
-            rom::kEntityMovementDirectionTable + index * 4U;
-        field_direction_table_[index] = {
-            read_rom_signed_word(
-                rom, table_offset,
-                "Genesis entity movement direction table is truncated"),
-            read_rom_signed_word(
-                rom, table_offset + 2U,
-                "Genesis entity movement direction table is truncated"),
-        };
-    }
-    const auto field_resources =
-        graphics::read_genesis_mode2_field_resources(rom);
-    auto field_map = graphics::decode_genesis_mode2_field_map(
-        rom, field_resources);
-    field_terrain_ = graphics::decode_genesis_mode2_terrain_map(
-        rom, field_resources);
-    rom_entity_frames_.reserve(entity_frames.size());
-    for (const auto& frame : entity_frames) {
-        rom_entity_frames_.push_back({frame.width, frame.height, frame.pixels});
-    }
-
-    // ROM 0x3084 copies the mode record into FFDDC6 and ROM 0x2B34 copies the
-    // first three coordinate pairs at +0x42..+0x4C into FF0100..FF0304.
-    // Keep the camera and controlled record separate: the mode record's
-    // camera is a top-left world origin, not a viewport center.
-    rom_field_map_width_ = field_map.width;
-    rom_field_map_height_ = field_map.height;
-    rom_field_map_pixels_ = std::move(field_map.pixels);
+    // These values are the host form of ROM 0x3084/0x2B34's mode and record
+    // initialization. Keep the camera and controlled record separate: the
+    // mode camera remains a top-left world origin, not a viewport center.
     field_initial_world_x_ = static_cast<std::int32_t>(
-        field_resources.initial_field_records[0].world_x_fixed >> 4U);
+        assets.initial_field_records[0].world_x_fixed >> 4U);
     field_initial_world_y_ = static_cast<std::int32_t>(
-        field_resources.initial_field_records[0].world_y_fixed >> 4U);
+        assets.initial_field_records[0].world_y_fixed >> 4U);
     field_initial_world_x_fixed_ =
-        field_resources.initial_field_records[0].world_x_fixed;
+        assets.initial_field_records[0].world_x_fixed;
     field_initial_world_y_fixed_ =
-        field_resources.initial_field_records[0].world_y_fixed;
+        assets.initial_field_records[0].world_y_fixed;
     field_initial_camera_x_ = static_cast<std::int32_t>(
-        field_resources.initial_camera_x_fixed >> 4U);
+        assets.initial_camera_x_fixed >> 4U);
     field_initial_camera_y_ = static_cast<std::int32_t>(
-        field_resources.initial_camera_y_fixed >> 4U);
+        assets.initial_camera_y_fixed >> 4U);
     field_world_x_ = field_initial_world_x_;
     field_world_y_ = field_initial_world_y_;
     field_camera_x_ = field_initial_camera_x_;
     field_camera_y_ = field_initial_camera_y_;
+    field_entity_ = std::move(assets.entity_template);
     field_entity_.record_index = 0;
-    field_entity_.projection_word_08 = entity_template.projection_word_08;
-    field_entity_.kind = entity_template.kind;
-    field_entity_.flags_10 = entity_template.flags_10;
-    field_entity_.flags_11 = entity_template.flags_11;
-    field_entity_.state_pointer = entity_template.state_pointer;
-    field_entity_.state_selector = entity_template.state_selector;
-    field_entity_.animation_multiplier = entity_template.timing_multiplier;
-    field_entity_.animation_accumulator = entity_template.timing_accumulator;
-    field_entity_.animation_threshold = entity_template.timing_threshold;
-    field_entity_.state_index = entity_template.state_index;
     field_entity_.world_x_fixed =
-        field_resources.initial_field_records[0].world_x_fixed;
+        assets.initial_field_records[0].world_x_fixed;
     field_entity_.world_y_fixed =
-        field_resources.initial_field_records[0].world_y_fixed;
+        assets.initial_field_records[0].world_y_fixed;
     refresh_field_view();
     refresh_field_entity_projection();
     marker_x_ = field_entity_screen_x();

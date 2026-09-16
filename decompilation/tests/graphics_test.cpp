@@ -3,6 +3,7 @@
 #include <array>
 #include <cassert>
 #include <cstdint>
+#include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <vector>
@@ -201,5 +202,32 @@ int main() {
         }
     }
     assert(field_entity_directions_vary);
+
+    const auto native_assets = decode_genesis_native_assets(rom);
+    const auto pack_path = std::filesystem::temp_directory_path() /
+                           "shadowrun_native_port_assets_test.srna";
+    write_native_asset_pack(pack_path.string(), native_assets);
+    const auto loaded_assets = read_native_asset_pack(pack_path.string());
+    assert(loaded_assets.title_scene.width == native_assets.title_scene.width);
+    assert(loaded_assets.title_scene.height == native_assets.title_scene.height);
+    assert(loaded_assets.title_scene.pixels.size() ==
+           native_assets.title_scene.pixels.size());
+    assert(loaded_assets.field_map.width == native_assets.field_map.width);
+    assert(loaded_assets.field_map.height == native_assets.field_map.height);
+    assert(loaded_assets.field_map.pixels.size() ==
+           native_assets.field_map.pixels.size());
+    assert(loaded_assets.entity_frames.size() ==
+           native_assets.entity_frames.size());
+    assert(loaded_assets.field_terrain.statuses ==
+           native_assets.field_terrain.statuses);
+    assert(loaded_assets.initial_camera_x_fixed ==
+           native_assets.initial_camera_x_fixed);
+    assert(loaded_assets.initial_camera_y_fixed ==
+           native_assets.initial_camera_y_fixed);
+    assert(loaded_assets.field_direction_table ==
+           native_assets.field_direction_table);
+    assert(loaded_assets.entity_template.kind ==
+           native_assets.entity_template.kind);
+    std::filesystem::remove(pack_path);
     return 0;
 }

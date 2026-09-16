@@ -1,4 +1,5 @@
 #include "shadowrun/graphics.hpp"
+#include "shadowrun/rom_layout.hpp"
 
 #include <algorithm>
 #include <array>
@@ -50,6 +51,82 @@ void write_u32(std::ostream& output, std::uint32_t value) {
     }
 }
 
+void write_native_image(std::ostream& output,
+                        const native::NativeImage& image) {
+    const auto expected = static_cast<std::size_t>(image.width) * image.height;
+    if (image.width == 0 || image.height == 0 || image.pixels.size() != expected) {
+        throw std::invalid_argument("invalid native asset image");
+    }
+    write_u16(output, image.width);
+    write_u16(output, image.height);
+    write_u32(output, static_cast<std::uint32_t>(image.pixels.size()));
+    for (const auto& pixel : image.pixels) {
+        output.put(static_cast<char>(pixel.red));
+        output.put(static_cast<char>(pixel.green));
+        output.put(static_cast<char>(pixel.blue));
+        output.put(static_cast<char>(pixel.alpha));
+    }
+}
+
+std::uint8_t read_pack_u8(std::istream& input, const char* what) {
+    const auto value = input.get();
+    if (value == std::char_traits<char>::eof()) {
+        throw std::out_of_range(what);
+    }
+    return static_cast<std::uint8_t>(value);
+}
+
+std::uint16_t read_pack_u16(std::istream& input, const char* what) {
+    const auto low = read_pack_u8(input, what);
+    const auto high = read_pack_u8(input, what);
+    return static_cast<std::uint16_t>(low | (high << 8U));
+}
+
+std::uint32_t read_pack_u32(std::istream& input, const char* what) {
+    const auto b0 = read_pack_u8(input, what);
+    const auto b1 = read_pack_u8(input, what);
+    const auto b2 = read_pack_u8(input, what);
+    const auto b3 = read_pack_u8(input, what);
+    return static_cast<std::uint32_t>(b0) |
+           (static_cast<std::uint32_t>(b1) << 8U) |
+           (static_cast<std::uint32_t>(b2) << 16U) |
+           (static_cast<std::uint32_t>(b3) << 24U);
+}
+
+void read_pack_bytes(std::istream& input, std::uint8_t* destination,
+                     std::size_t size, const char* what) {
+    if (size > static_cast<std::size_t>(std::numeric_limits<std::streamsize>::max())) {
+        throw std::out_of_range(what);
+    }
+    input.read(reinterpret_cast<char*>(destination),
+               static_cast<std::streamsize>(size));
+    if (!input) {
+        throw std::out_of_range(what);
+    }
+}
+
+native::NativeImage read_native_image(std::istream& input) {
+    const auto width = read_pack_u16(input, "native asset image header is truncated");
+    const auto height = read_pack_u16(input, "native asset image header is truncated");
+    const auto pixel_count = static_cast<std::size_t>(read_pack_u32(
+        input, "native asset image size is truncated"));
+    if (width == 0 || height == 0 || width > 8192 || height > 8192 ||
+        pixel_count != static_cast<std::size_t>(width) * height) {
+        throw std::runtime_error("invalid native asset image dimensions");
+    }
+    native::NativeImage image{
+        width, height,
+        std::vector<native::Rgba8>(pixel_count),
+    };
+    for (auto& pixel : image.pixels) {
+        pixel.red = read_pack_u8(input, "native asset RGBA data is truncated");
+        pixel.green = read_pack_u8(input, "native asset RGBA data is truncated");
+        pixel.blue = read_pack_u8(input, "native asset RGBA data is truncated");
+        pixel.alpha = read_pack_u8(input, "native asset RGBA data is truncated");
+    }
+    return image;
+}
+
 } // namespace
 
 GenesisFieldEntityTemplate read_genesis_field_entity_template(
@@ -86,6 +163,232 @@ GenesisFieldEntityTemplate read_genesis_field_entity_template(
             rom, record_offset + 0x1EU,
             "Genesis field entity template state index is truncated"),
     };
+}
+
+native::NativePortAssets decode_genesis_native_assets(
+    const std::vector<std::uint8_t>& rom) {
+    native::NativePortAssets assets;
+    auto title = decode_genesis_startup_screen(rom);
+    assets.title_scene = {
+        title.width, title.height, std::move(title.pixels)};
+
+    const auto entity_frames = decode_genesis_field_entity_animation(rom);
+    assets.entity_frames.reserve(entity_frames.size());
+    for (const auto& frame : entity_frames) {
+        assets.entity_frames.push_back(
+            {frame.width, frame.height, frame.pixels});
+    }
+
+    const auto resources = read_genesis_mode2_field_resources(rom);
+    auto field_map = decode_genesis_mode2_field_map(rom, resources);
+    assets.field_map = {
+        field_map.width, field_map.height, std::move(field_map.pixels)};
+    assets.field_terrain = decode_genesis_mode2_terrain_map(rom, resources);
+    for (std::size_t index = 0; index < assets.initial_field_records.size();
+         ++index) {
+        assets.initial_field_records[index] = {
+            resources.initial_field_records[index].world_x_fixed,
+            resources.initial_field_records[index].world_y_fixed,
+        };
+    }
+    assets.initial_camera_x_fixed = resources.initial_camera_x_fixed;
+    assets.initial_camera_y_fixed = resources.initial_camera_y_fixed;
+
+    const auto entity_template = read_genesis_field_entity_template(rom);
+    assets.entity_template.projection_word_08 =
+        entity_template.projection_word_08;
+    assets.entity_template.kind = entity_template.kind;
+    assets.entity_template.flags_10 = entity_template.flags_10;
+    assets.entity_template.flags_11 = entity_template.flags_11;
+    assets.entity_template.state_pointer = entity_template.state_pointer;
+    assets.entity_template.state_selector = entity_template.state_selector;
+    assets.entity_template.animation_multiplier =
+        entity_template.timing_multiplier;
+    assets.entity_template.animation_accumulator =
+        entity_template.timing_accumulator;
+    assets.entity_template.animation_threshold =
+        entity_template.timing_threshold;
+    assets.entity_template.state_index = entity_template.state_index;
+
+    for (std::size_t index = 0;
+         index < assets.field_direction_table.size(); ++index) {
+        const auto table_offset = rom::kEntityMovementDirectionTable + index * 4U;
+        assets.field_direction_table[index] = {
+            static_cast<std::int16_t>(read_rom_u16(
+                rom, table_offset,
+                "Genesis entity movement direction table is truncated")),
+            static_cast<std::int16_t>(read_rom_u16(
+                rom, table_offset + 2U,
+                "Genesis entity movement direction table is truncated")),
+        };
+    }
+    return assets;
+}
+
+void write_native_asset_pack(const std::string& path,
+                             const native::NativePortAssets& assets) {
+    std::ofstream output(path, std::ios::binary);
+    if (!output) {
+        throw std::runtime_error("cannot create native asset pack: " + path);
+    }
+    output.write("SRNA", 4);
+    write_u16(output, 1);
+    write_u16(output, 0);
+    write_native_image(output, assets.title_scene);
+    write_native_image(output, assets.field_map);
+    if (assets.entity_frames.size() > 256) {
+        throw std::invalid_argument("too many native entity frames");
+    }
+    write_u32(output, static_cast<std::uint32_t>(assets.entity_frames.size()));
+    for (const auto& frame : assets.entity_frames) {
+        write_native_image(output, {frame.width, frame.height, frame.pixels});
+    }
+
+    const auto& terrain = assets.field_terrain;
+    if (terrain.regions.size() != terrain.region_count) {
+        throw std::invalid_argument("native terrain region count is inconsistent");
+    }
+    write_u16(output, terrain.x_exclusive_upper);
+    write_u16(output, terrain.y_exclusive_upper);
+    write_u16(output, terrain.x_inclusive_lower);
+    write_u16(output, terrain.y_inclusive_lower);
+    write_u32(output, static_cast<std::uint32_t>(terrain.regions.size()));
+    for (const auto& region : terrain.regions) {
+        write_u16(output, region.x_start);
+        write_u16(output, region.x_end);
+        write_u16(output, region.y_start);
+        write_u16(output, region.y_end);
+        output.put(static_cast<char>(region.status));
+    }
+    if (terrain.statuses.size() > 0xFFFFFFFFU) {
+        throw std::invalid_argument("native terrain status grid is too large");
+    }
+    write_u32(output, static_cast<std::uint32_t>(terrain.statuses.size()));
+    output.write(reinterpret_cast<const char*>(terrain.statuses.data()),
+                 static_cast<std::streamsize>(terrain.statuses.size()));
+
+    write_u16(output, assets.initial_camera_x_fixed);
+    write_u16(output, assets.initial_camera_y_fixed);
+    for (const auto& position : assets.initial_field_records) {
+        write_u16(output, position.world_x_fixed);
+        write_u16(output, position.world_y_fixed);
+    }
+
+    const auto& entity = assets.entity_template;
+    write_u16(output, entity.projection_word_08);
+    write_u16(output, entity.kind);
+    output.put(static_cast<char>(entity.flags_10));
+    output.put(static_cast<char>(entity.flags_11));
+    write_u32(output, entity.state_pointer);
+    write_u16(output, entity.state_selector);
+    write_u16(output, entity.animation_multiplier);
+    write_u16(output, entity.animation_accumulator);
+    write_u16(output, entity.animation_threshold);
+    write_u16(output, entity.state_index);
+    for (const auto& direction : assets.field_direction_table) {
+        write_u16(output, static_cast<std::uint16_t>(direction[0]));
+        write_u16(output, static_cast<std::uint16_t>(direction[1]));
+    }
+    if (!output) {
+        throw std::runtime_error("failed writing native asset pack: " + path);
+    }
+}
+
+native::NativePortAssets read_native_asset_pack(const std::string& path) {
+    std::ifstream input(path, std::ios::binary);
+    if (!input) {
+        throw std::runtime_error("cannot open native asset pack: " + path);
+    }
+    char magic[4]{};
+    input.read(magic, sizeof(magic));
+    if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
+        read_pack_u16(input, "native asset pack version is truncated") != 1U) {
+        throw std::runtime_error("invalid native asset pack header");
+    }
+    (void)read_pack_u16(input, "native asset pack header is truncated");
+
+    native::NativePortAssets assets;
+    assets.title_scene = read_native_image(input);
+    assets.field_map = read_native_image(input);
+    const auto entity_count = static_cast<std::size_t>(read_pack_u32(
+        input, "native entity frame count is truncated"));
+    if (entity_count > 256) {
+        throw std::runtime_error("native asset pack has too many entity frames");
+    }
+    assets.entity_frames.reserve(entity_count);
+    for (std::size_t index = 0; index < entity_count; ++index) {
+        const auto image = read_native_image(input);
+        assets.entity_frames.push_back(
+            {image.width, image.height, image.pixels});
+    }
+
+    auto& terrain = assets.field_terrain;
+    terrain.x_exclusive_upper = read_pack_u16(
+        input, "native terrain bounds are truncated");
+    terrain.y_exclusive_upper = read_pack_u16(
+        input, "native terrain bounds are truncated");
+    terrain.x_inclusive_lower = read_pack_u16(
+        input, "native terrain bounds are truncated");
+    terrain.y_inclusive_lower = read_pack_u16(
+        input, "native terrain bounds are truncated");
+    terrain.region_count = static_cast<std::size_t>(read_pack_u32(
+        input, "native terrain region count is truncated"));
+    if (terrain.region_count > 65536) {
+        throw std::runtime_error("native asset pack has too many terrain regions");
+    }
+    terrain.regions.resize(terrain.region_count);
+    for (auto& region : terrain.regions) {
+        region.x_start = read_pack_u16(input, "native terrain region is truncated");
+        region.x_end = read_pack_u16(input, "native terrain region is truncated");
+        region.y_start = read_pack_u16(input, "native terrain region is truncated");
+        region.y_end = read_pack_u16(input, "native terrain region is truncated");
+        region.status = read_pack_u8(input, "native terrain region is truncated");
+    }
+    const auto status_count = static_cast<std::size_t>(read_pack_u32(
+        input, "native terrain status count is truncated"));
+    if (status_count != terrain::Map::kWidth * terrain::Map::kHeight) {
+        throw std::runtime_error("native asset pack has an invalid terrain grid");
+    }
+    terrain.statuses.resize(status_count);
+    read_pack_bytes(input, terrain.statuses.data(), status_count,
+                    "native terrain status grid is truncated");
+
+    assets.initial_camera_x_fixed = read_pack_u16(
+        input, "native field camera is truncated");
+    assets.initial_camera_y_fixed = read_pack_u16(
+        input, "native field camera is truncated");
+    for (auto& position : assets.initial_field_records) {
+        position.world_x_fixed = read_pack_u16(
+            input, "native field record position is truncated");
+        position.world_y_fixed = read_pack_u16(
+            input, "native field record position is truncated");
+    }
+
+    auto& entity = assets.entity_template;
+    entity.projection_word_08 = read_pack_u16(
+        input, "native entity template is truncated");
+    entity.kind = read_pack_u16(input, "native entity template is truncated");
+    entity.flags_10 = read_pack_u8(input, "native entity template is truncated");
+    entity.flags_11 = read_pack_u8(input, "native entity template is truncated");
+    entity.state_pointer = read_pack_u32(
+        input, "native entity template is truncated");
+    entity.state_selector = read_pack_u16(
+        input, "native entity template is truncated");
+    entity.animation_multiplier = read_pack_u16(
+        input, "native entity template is truncated");
+    entity.animation_accumulator = read_pack_u16(
+        input, "native entity template is truncated");
+    entity.animation_threshold = read_pack_u16(
+        input, "native entity template is truncated");
+    entity.state_index = read_pack_u16(
+        input, "native entity template is truncated");
+    for (auto& direction : assets.field_direction_table) {
+        direction[0] = static_cast<std::int16_t>(read_pack_u16(
+            input, "native direction table is truncated"));
+        direction[1] = static_cast<std::int16_t>(read_pack_u16(
+            input, "native direction table is truncated"));
+    }
+    return assets;
 }
 
 native::Rgba8 decode_genesis_cram_word(std::uint16_t cram_word,

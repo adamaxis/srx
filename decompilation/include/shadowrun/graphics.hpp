@@ -81,6 +81,19 @@ GenesisFieldEntityTemplate read_genesis_field_entity_template(
     const std::vector<std::uint8_t>& rom,
     std::size_t record_offset = 0x7291A);
 
+// Assemble the currently reconstructed native title-to-field data from the
+// ROM into host-owned RGBA/state values. This is the extraction boundary used
+// to build a runtime asset pack; it does not execute ROM code.
+native::NativePortAssets decode_genesis_native_assets(
+    const std::vector<std::uint8_t>& rom);
+
+// Persist/load the host-only asset pack consumed by NativePortShell. The pack
+// contains RGBA images, terrain/status data, initial field positions, and the
+// reviewed entity/direction state; no 68000 interpreter state is serialized.
+void write_native_asset_pack(const std::string& path,
+                             const native::NativePortAssets& assets);
+native::NativePortAssets read_native_asset_pack(const std::string& path);
+
 // Genesis CRAM stores three 3-bit channels in the spaced bit positions of a
 // 16-bit word. This expands each channel to the normal 0..255 host range.
 native::Rgba8 decode_genesis_cram_word(std::uint16_t cram_word,

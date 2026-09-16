@@ -1,5 +1,6 @@
 #ifdef _WIN32
 
+#include "shadowrun/graphics.hpp"
 #include "shadowrun/native_port.hpp"
 
 #include <windows.h>
@@ -132,10 +133,35 @@ int main(int argc, char** argv) {
     }
 
     SoftwareScreen screen;
-    const auto rom = load_rom(argc, argv);
     NativePortShell game("SHADOWRUN");
-    if (!rom.empty()) {
-        game = NativePortShell("SHADOWRUN", rom);
+    bool loaded_assets = false;
+    if (argc > 1 && std::filesystem::path(argv[1]).extension() == ".srna") {
+        game = NativePortShell(
+            "SHADOWRUN",
+            shadowrun::graphics::read_native_asset_pack(argv[1]));
+        loaded_assets = true;
+    } else if (argc == 1) {
+        const auto current = std::filesystem::current_path();
+        const std::filesystem::path asset_candidates[] = {
+            current / "assets" / "shadowrun_native.srna",
+            current / "decompilation" / "assets" / "shadowrun_native.srna",
+        };
+        for (const auto& candidate : asset_candidates) {
+            if (!std::filesystem::exists(candidate)) {
+                continue;
+            }
+            game = NativePortShell(
+                "SHADOWRUN",
+                shadowrun::graphics::read_native_asset_pack(candidate.string()));
+            loaded_assets = true;
+            break;
+        }
+    }
+    if (!loaded_assets) {
+        const auto rom = load_rom(argc, argv);
+        if (!rom.empty()) {
+            game = NativePortShell("SHADOWRUN", rom);
+        }
     }
     WindowContext context{&screen, false};
 

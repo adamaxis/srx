@@ -87,12 +87,18 @@ unchanged and retain raw assets alongside converted assets.
 
 ## Current implementation status
 
-The native Windows port is fed by the ROM's reviewed startup data.
-`graphics.cpp` decodes the three `0x1530` pattern uploads at `0x1F310E`,
+The native Windows port can be fed by a host-only asset pack generated from
+the ROM's reviewed startup data. `graphics.cpp` decodes the three `0x1530`
+pattern uploads at `0x1F310E`,
 `0x67CB0`, and `0x6875C`, reconstructs the `0x1728` delta-coded tilemap at
 `0x67DF6`, expands the selected CRAM image at `0x1FF0` to RGBA8, and submits a
-320x224 frame through `ScreenWriter`. `shadowrun_native.exe` accepts an
-optional ROM path and maps Windows keyboard input into `InputState`.
+320x224 frame through `ScreenWriter`. `decode_genesis_native_assets` packages
+the expanded title/field/entity images, host terrain grid, initial field
+positions/camera, entity template, and reviewed direction table into `.srna`.
+`shadowrun_native.exe` accepts that pack directly, so ROM decoding is an
+extraction/verification path rather than a runtime requirement; it also keeps
+the optional ROM path for development comparisons. Windows keyboard input is
+mapped into `InputState`.
 
 `NativePortShell` now has an explicit native scene boundary. A ROM-backed
 instance starts in `Title`; the pressed `Start` edge models the reviewed

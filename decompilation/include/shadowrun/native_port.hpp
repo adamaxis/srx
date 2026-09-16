@@ -61,6 +61,17 @@ struct NativeEntityFrame {
     std::vector<Rgba8> pixels;
 };
 
+struct NativeImage {
+    std::uint16_t width = 0;
+    std::uint16_t height = 0;
+    std::vector<Rgba8> pixels;
+};
+
+struct NativeFieldRecordPosition {
+    std::uint16_t world_x_fixed = 0;
+    std::uint16_t world_y_fixed = 0;
+};
+
 // Native representation of the field record fields needed by the current
 // presentation slice. World coordinates retain the ROM's 1/16-pixel unit so
 // the recovered projection can consume them without a second rounding rule.
@@ -96,6 +107,22 @@ struct NativeFieldEntity {
     std::uint16_t animation_multiplier = 0;
     std::uint16_t animation_threshold = 0;
     std::uint32_t animation_descriptor = 0;
+};
+
+// Host-owned data required by the current native title-to-field slice. This
+// contains expanded RGBA pixels and typed collision/state data, not Genesis
+// addresses or palette-indexed runtime resources. It can be serialized into
+// a native asset pack and loaded without the ROM present.
+struct NativePortAssets {
+    NativeImage title_scene;
+    NativeImage field_map;
+    std::vector<NativeEntityFrame> entity_frames;
+    terrain::Map field_terrain;
+    std::array<NativeFieldRecordPosition, 3> initial_field_records{};
+    std::uint16_t initial_camera_x_fixed = 0;
+    std::uint16_t initial_camera_y_fixed = 0;
+    std::array<std::array<std::int16_t, 2>, 8> field_direction_table{};
+    NativeFieldEntity entity_template;
 };
 
 // Native game code writes to this interface instead of issuing Genesis VDP
@@ -164,6 +191,7 @@ class NativePortShell {
 public:
     explicit NativePortShell(std::string title = "SHADOWRUN");
     NativePortShell(std::string title, const std::vector<std::uint8_t>& rom);
+    NativePortShell(std::string title, NativePortAssets assets);
 
     void update(const InputState& input);
     void render(ScreenWriter& screen) const;

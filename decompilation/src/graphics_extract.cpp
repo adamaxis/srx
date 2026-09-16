@@ -182,6 +182,25 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
+    if (argc == 4 && std::string(argv[3]) == "--native-pack") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto assets =
+                shadowrun::graphics::decode_genesis_native_assets(rom);
+            shadowrun::graphics::write_native_asset_pack(argv[2], assets);
+            std::cout << "native asset pack: "
+                      << assets.title_scene.width << "x"
+                      << assets.title_scene.height << " title, "
+                      << assets.field_map.width << "x"
+                      << assets.field_map.height << " field, "
+                      << assets.entity_frames.size() << " entity states\n"
+                      << "output: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
     if (argc != 6 && argc != 7) {
         std::cerr << "usage: shadowrun_graphics_extract <rom.bin> <out.bmp> "
                      "<tile-offset> <tile-count> <palette-offset> [--resource]\n";
@@ -196,6 +215,8 @@ int main(int argc, char** argv) {
                      "--field-entity-states\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
                      "--field-entity-state <index>\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.srna> "
+                     "--native-pack\n";
         std::cerr << "numeric offsets accept decimal or 0x-prefixed hex\n";
         return 2;
     }
