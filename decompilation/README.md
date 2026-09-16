@@ -78,6 +78,25 @@ cmake --build 'C:\Github\shadowrun\decompilation\build-debug-verify'
 & 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_native.exe'
 ```
 
+The dependency-free graphics converter accepts offsets recovered from the ROM
+analysis and emits a Windows-readable 32-bit BMP atlas. It does not guess
+whether arbitrary bytes are graphics; the caller supplies the reviewed tile
+and palette locations.
+
+```powershell
+$tileOffset = 0x000000 # replace with a reviewed tile-data offset
+$tileCount = 16        # replace with the reviewed tile count
+$paletteOffset = 0x000000 # replace with a reviewed CRAM-data offset
+& 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_graphics_extract.exe' `
+  'C:\Github\shadowrun\decompilation\input\shadowrun_genesis_us.bin' `
+  'C:\Github\shadowrun\decompilation\build-debug-verify\tiles.bmp' `
+  $tileOffset $tileCount $paletteOffset
+```
+
+`graphics.hpp` exposes the same tile/CRAM/RGBA operations to the native game,
+so BMP is only an extraction or diagnostic format; runtime rendering is not
+palette-indexed.
+
 ## ROM facts established so far
 
 - Initial stack pointer: `0x00FFFFF8`.

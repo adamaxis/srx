@@ -16,6 +16,7 @@ add_library(shadowrun_port STATIC
     src/compression.cpp
     src/entity_projection.cpp
     src/entity_state.cpp
+    src/graphics.cpp
     src/memory_bus.cpp
     src/native_port.cpp
     src/object_mask.cpp
@@ -40,6 +41,17 @@ add_executable(shadowrun_native_port_test
 )
 target_link_libraries(shadowrun_native_port_test PRIVATE shadowrun_port)
 add_test(NAME shadowrun_native_port COMMAND shadowrun_native_port_test)
+
+add_executable(shadowrun_graphics_test
+    tests/graphics_test.cpp
+)
+target_link_libraries(shadowrun_graphics_test PRIVATE shadowrun_port)
+add_test(NAME shadowrun_graphics COMMAND shadowrun_graphics_test)
+
+add_executable(shadowrun_graphics_extract
+    src/graphics_extract.cpp
+)
+target_link_libraries(shadowrun_graphics_extract PRIVATE shadowrun_port)
 
 if (WIN32)
     add_executable(shadowrun_native
