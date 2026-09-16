@@ -2298,6 +2298,28 @@ int main() {
     assert(alternate_fallback.selected_frame == 0x5678U);
     assert(fallback_bus->read32(fallback_record + 0x3AU) == 0x0000AFE2U);
 
+    // 1450E probes both sides when E7C8 returns its positive out-of-bounds
+    // status, then restores A1's coordinates before the final position-gate
+    // call. With a distant source this reaches the direct 145A2 cutoff.
+    constexpr auto target_source = 0xFF0400U;
+    fallback_bus->write16(fallback_record + 0x3EU, 2U);
+    fallback_bus->write16(target_source + 0x2EU, 0);
+    fallback_bus->write16(target_source, 0x0100U);
+    fallback_bus->write16(target_source + 4U, 0x0200U);
+    const auto target_update =
+        shadowrun::run_entity_animation_target_update_0x1450E(
+            *fallback_bus, fallback_record, target_source);
+    assert(target_update.first_probe_attempted);
+    assert(target_update.reverse_probe_attempted);
+    assert(target_update.first_probe_status == 0x007FU);
+    assert(target_update.reverse_probe_status == 0x007FU);
+    assert(target_update.target_position_written);
+    assert(!target_update.position_gate_carry);
+    assert(target_update.routed_to_0x145A2);
+    assert(target_update.unresolved_calls == 0);
+    assert(fallback_bus->read16(fallback_record + 0x96U) == 0x0100U);
+    assert(fallback_bus->read16(fallback_record + 0x98U) == 0x0200U);
+
     // AAD2 changes A0 to FFFC04 in the ROM. The typed call context must carry
     // that register change into the later command/timer calls and AE26 tail.
     constexpr auto acae_rebound_record = 0xFF0200U;

@@ -2480,6 +2480,11 @@ void dispatch_animation_continuation(
             bus, entity_record_address);
         result.continuation_calls += direct.continuation_calls;
         result.unresolved_calls += direct.unresolved_calls;
+    } else if (target == kAnimationContinuation_0x1450E) {
+        const auto direct = run_entity_animation_target_update_0x1450E(
+            bus, entity_record_address);
+        result.continuation_calls += direct.continuation_calls;
+        result.unresolved_calls += direct.unresolved_calls;
     } else if (target == kAnimationContinuation_0x14682) {
         const auto direct = run_entity_animation_route_0x14682(
             bus, entity_record_address);
@@ -2984,6 +2989,88 @@ EntityAnimationPositionGateResult evaluate_entity_animation_position_gate_0x144E
     return {true, distance, minor_axis};
 }
 
+EntityAnimation1450EResult run_entity_animation_target_update_0x1450E(
+    GenesisBus& bus,
+    GenesisAddress entity_record_address,
+    GenesisAddress source_record_address) {
+    if (source_record_address == 0) {
+        source_record_address = bus.read32(entity_record_address + 0xA2U);
+        if (source_record_address == 0) {
+            source_record_address = bus.read32(
+                ram::kEntityObjectControlPointer);
+        }
+    }
+
+    EntityAnimation1450EResult result{
+        true, false, false, false, false, false, false,
+        source_record_address, 0, 0, 0, 0};
+
+    // 0x1450E selects +/-0x6000 from the source direction. Type zero always
+    // uses the negative side; type one follows the source record's type bit;
+    // all other entity types use the positive side. Every operation remains a
+    // 68000 word operation, including the wrap at the sign boundary.
+    auto direction = bus.read16(source_record_address + 0x2EU);
+    const auto entity_type = bus.read16(entity_record_address + 0x3EU);
+    bool add_offset = entity_type != 0;
+    if (entity_type == 1U) {
+        add_offset = bus.read16(source_record_address + 0x3EU) != 0;
+    }
+    direction = static_cast<std::uint16_t>(
+        direction + (add_offset ? 0x6000U : 0xA000U));
+
+    // The ROM loads #0x20 and immediately overwrites it with #0xE0 before
+    // entering 0x15DCC. Preserve the final register value, not the dead load.
+    const auto vector = transform_frame_vector_0x15DCC(
+        bus, direction, 0x00E0U);
+    auto offset_x = vector.d3;
+    auto offset_y = vector.d2;
+    auto target_x = static_cast<std::uint16_t>(
+        bus.read16(source_record_address) + offset_x);
+    auto target_y = static_cast<std::uint16_t>(
+        bus.read16(source_record_address + 4U) + offset_y);
+
+    const auto first_probe = sample_entity_terrain_0xE7C8(
+        bus, entity_record_address, target_x, target_y);
+    result.first_probe_attempted = true;
+    result.first_probe_status = first_probe.status;
+    if (static_cast<std::int16_t>(first_probe.status) > 0) {
+        offset_x = static_cast<std::uint16_t>(0U - offset_x);
+        offset_y = static_cast<std::uint16_t>(0U - offset_y);
+        target_x = static_cast<std::uint16_t>(
+            bus.read16(source_record_address) + offset_x);
+        target_y = static_cast<std::uint16_t>(
+            bus.read16(source_record_address + 4U) + offset_y);
+
+        const auto reverse_probe = sample_entity_terrain_0xE7C8(
+            bus, entity_record_address, target_x, target_y);
+        result.reverse_probe_attempted = true;
+        result.reverse_probe_status = reverse_probe.status;
+        if (static_cast<std::int16_t>(reverse_probe.status) > 0) {
+            // Both probes returned a positive terrain status. The ROM then
+            // reloads A1's original coordinates before the final store.
+            target_x = bus.read16(source_record_address);
+            target_y = bus.read16(source_record_address + 4U);
+        }
+    }
+
+    bus.write16(entity_record_address + 0x96U, target_x);
+    bus.write16(entity_record_address + 0x98U, target_y);
+    result.target_position_written = true;
+
+    const auto position = evaluate_entity_animation_position_gate_0x144E8(
+        bus, entity_record_address);
+    result.position_gate_called = true;
+    result.position_gate_carry = position.carry;
+    if (!position.carry) {
+        const auto continuation = run_entity_animation_update_0x145A2(
+            bus, entity_record_address);
+        result.routed_to_0x145A2 = true;
+        result.continuation_calls += continuation.continuation_calls;
+        result.unresolved_calls += continuation.unresolved_calls;
+    }
+    return result;
+}
+
 EntityAnimation142AeResult run_entity_animation_continuation_0x142AE(
     GenesisBus& bus,
     GenesisAddress entity_record_address,
@@ -2996,6 +3083,11 @@ EntityAnimation142AeResult run_entity_animation_continuation_0x142AE(
         ++result.continuation_calls;
         if (continuation) {
             continuation(bus, entity_record_address, target);
+        } else if (target == kAnimationContinuation_0x1450E) {
+            const auto direct = run_entity_animation_target_update_0x1450E(
+                bus, entity_record_address);
+            result.continuation_calls += direct.continuation_calls;
+            result.unresolved_calls += direct.unresolved_calls;
         } else if (target == kAnimationContinuation_0x149C0) {
             const auto direct = run_entity_animation_route_0x149C0(
                 bus, entity_record_address);

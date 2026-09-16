@@ -152,8 +152,10 @@ not required to build or run the C++ analyzer.
   and the `0x036FC`/`0x03404` display tail are represented in typed C++.
 - The `0x142AE` continuation is now direct through its `0x144E8`/`0x1460E`
   close-distance gate. It preserves the post-`0x15CA4` minor-axis register,
-  handles the converging indexed-table update at `0x14300`, and keeps the
-  `0x1450E`/`0x145A2` tails as explicit continuation targets. The unusual
+  handles the converging indexed-table update at `0x14300`, and enters the
+  direct `0x1450E` target-probe path. `0x1450E` preserves the source-type
+  `+/-0x6000` selection, `0x15DCC` transform, forward/reverse `0xE7C8`
+  probes, final `+0x96/+0x98` restore, and `0x145A2` fallthrough. The unusual
   packed-`DIVU.W` increment in `0x125FA` is modeled rather than replaced
   with a host-language rounding rule.
 - The `0x145A2` tail is now direct through the `0x14C2E` direction flags,
@@ -194,7 +196,9 @@ not required to build or run the C++ analyzer.
   `EntityAnimationAcaeCallContext` (`D0`, `A1`, and carry), while typed
   defaults are used for the already-recovered `0x1DBAA` and `0x530DE` calls.
   Its `0xABFC` delay leaf is now direct as well, including the nested
-  `0xD7EA` state-bit selection and `0xD81C` byte-average calculation.
+  `0xD7EA` state-bit selection and `0xD81C` byte-average calculation. The
+  `0xAF7C`/`0xAFAE` fallback tails and `0x1E514` cleanup leaf are direct too;
+  the larger `0xAE6E` jump into `0x1033E` remains an explicit boundary.
 - The self-contained `0x3A90`/`0x3B1E` frame-boundary leaves are translated
   as word-accurate horizontal/vertical status helpers, including borrow,
   `0x180` thresholds, and the `FFE173`/`FFE174` mode-byte branches.

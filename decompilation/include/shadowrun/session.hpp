@@ -439,6 +439,21 @@ struct EntityAnimation142AeResult {
     std::size_t unresolved_calls;
 };
 
+struct EntityAnimation1450EResult {
+    bool entered;
+    bool first_probe_attempted;
+    bool reverse_probe_attempted;
+    bool target_position_written;
+    bool position_gate_called;
+    bool position_gate_carry;
+    bool routed_to_0x145A2;
+    GenesisAddress source_record;
+    std::uint16_t first_probe_status;
+    std::uint16_t reverse_probe_status;
+    std::size_t continuation_calls;
+    std::size_t unresolved_calls;
+};
+
 struct EntityAnimationDirectionUpdateResult {
     bool requested_0x14682;
     std::uint8_t direction_flags;
@@ -969,6 +984,13 @@ EntityAnimation142AeResult run_entity_animation_continuation_0x142AE(
     GenesisBus& bus,
     GenesisAddress entity_record_address,
     const EntityAnimationContinuationRoutine& continuation = {});
+
+// ROM 0x1450E. Build the forward/reverse terrain probes from the source
+// record, write the accepted animation-position pair, and enter 0x144E8.
+// A clear position-gate carry continues directly through 0x145A2.
+EntityAnimation1450EResult run_entity_animation_target_update_0x1450E(
+    GenesisBus& bus, GenesisAddress entity_record_address,
+    GenesisAddress source_record_address = 0);
 
 // ROM 0x14BA6, including its direct direction-sign flag derivation and the
 // 0x14682 movement/collision body.
