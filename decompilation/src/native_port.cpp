@@ -192,6 +192,16 @@ constexpr std::int32_t kFieldScreenOriginY = 36;
 constexpr std::int32_t kFieldEntityMaxHostX = 0x1AE -
                                                 kGenesisVdpSpriteOrigin - 1;
 
+// ROM 0x391A walks entity records after the current record. A candidate must
+// be active (bit 0), not suppressed (bit 6), and reach the selection exit
+// with bit 4 clear. These are record-state predicates, not UI guesses.
+bool runner_switch_candidate(const NativeFieldRecord& record) {
+    return record.kind != 2U &&
+           (record.flags_10 & 0x01U) != 0 &&
+           (record.flags_10 & 0x40U) == 0 &&
+           (record.flags_10 & 0x10U) == 0;
+}
+
 // ROM 0x1170C selects these labels from the 17-byte strings beginning at
 // 0xD1D28. The first two selector values intentionally resolve to the same
 // Inventory label; their secondary row is handled by FF F0D1 in 0x11506.
@@ -245,13 +255,13 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     // initialization. Keep the camera and controlled record separate: the
     // mode camera remains a top-left world origin, not a viewport center.
     field_initial_world_x_ = static_cast<std::int32_t>(
-        assets.initial_field_records[0].world_x_fixed >> 4U);
+        assets.initial_field_records[0].position.world_x_fixed >> 4U);
     field_initial_world_y_ = static_cast<std::int32_t>(
-        assets.initial_field_records[0].world_y_fixed >> 4U);
+        assets.initial_field_records[0].position.world_y_fixed >> 4U);
     field_initial_world_x_fixed_ =
-        assets.initial_field_records[0].world_x_fixed;
+        assets.initial_field_records[0].position.world_x_fixed;
     field_initial_world_y_fixed_ =
-        assets.initial_field_records[0].world_y_fixed;
+        assets.initial_field_records[0].position.world_y_fixed;
     field_initial_camera_x_ = static_cast<std::int32_t>(
         assets.initial_camera_x_fixed >> 4U);
     field_initial_camera_y_ = static_cast<std::int32_t>(
@@ -262,12 +272,15 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     field_camera_y_ = field_initial_camera_y_;
     field_entity_ = std::move(assets.entity_template);
     field_entity_.record_index = 0;
+    field_entity_.kind = field_records_[0].kind;
+    field_entity_.flags_10 = field_records_[0].flags_10;
+    field_entity_.flags_11 = field_records_[0].flags_11;
     field_initial_equipped_armor_ = field_entity_.equipped_armor_index;
     field_equipped_armor_by_record_.fill(field_initial_equipped_armor_);
     field_entity_.world_x_fixed =
-        assets.initial_field_records[0].world_x_fixed;
+        assets.initial_field_records[0].position.world_x_fixed;
     field_entity_.world_y_fixed =
-        assets.initial_field_records[0].world_y_fixed;
+        assets.initial_field_records[0].position.world_y_fixed;
     refresh_field_view();
     refresh_field_entity_projection();
     marker_x_ = field_entity_screen_x();
@@ -279,16 +292,21 @@ void NativePortShell::reset_field_state() {
     field_records_ = field_initial_records_;
     active_field_record_ = 0;
     field_initial_world_x_ = static_cast<std::int32_t>(
-        field_initial_records_[0].world_x_fixed >> 4U);
+        field_initial_records_[0].position.world_x_fixed >> 4U);
     field_initial_world_y_ = static_cast<std::int32_t>(
-        field_initial_records_[0].world_y_fixed >> 4U);
-    field_initial_world_x_fixed_ = field_initial_records_[0].world_x_fixed;
-    field_initial_world_y_fixed_ = field_initial_records_[0].world_y_fixed;
+        field_initial_records_[0].position.world_y_fixed >> 4U);
+    field_initial_world_x_fixed_ =
+        field_initial_records_[0].position.world_x_fixed;
+    field_initial_world_y_fixed_ =
+        field_initial_records_[0].position.world_y_fixed;
     field_world_x_ = field_initial_world_x_;
     field_world_y_ = field_initial_world_y_;
     field_camera_x_ = field_initial_camera_x_;
     field_camera_y_ = field_initial_camera_y_;
     field_entity_.record_index = 0;
+    field_entity_.kind = field_records_[0].kind;
+    field_entity_.flags_10 = field_records_[0].flags_10;
+    field_entity_.flags_11 = field_records_[0].flags_11;
     field_entity_.world_x_fixed = field_initial_world_x_fixed_;
     field_entity_.world_y_fixed = field_initial_world_y_fixed_;
     field_equipped_armor_by_record_.fill(field_initial_equipped_armor_);
@@ -314,14 +332,23 @@ void NativePortShell::activate_field_record(std::size_t record_index) {
     // ROM 0x391A changes the controlled record, but does not discard the
     // record that was just left. Retain its current fixed-point position in
     // the native party state before selecting the next proven slot.
-    field_records_[active_field_record_] = {
-        field_entity_.world_x_fixed, field_entity_.world_y_fixed};
+    field_records_[active_field_record_] = NativeFieldRecord{
+        {field_entity_.world_x_fixed, field_entity_.world_y_fixed},
+        field_entity_.kind,
+        field_entity_.flags_10,
+        field_entity_.flags_11,
+    };
     field_equipped_armor_by_record_[active_field_record_] =
         field_entity_.equipped_armor_index;
     active_field_record_ = record_index;
     field_entity_.record_index = static_cast<std::uint8_t>(record_index);
-    field_entity_.world_x_fixed = field_records_[record_index].world_x_fixed;
-    field_entity_.world_y_fixed = field_records_[record_index].world_y_fixed;
+    field_entity_.world_x_fixed =
+        field_records_[record_index].position.world_x_fixed;
+    field_entity_.world_y_fixed =
+        field_records_[record_index].position.world_y_fixed;
+    field_entity_.kind = field_records_[record_index].kind;
+    field_entity_.flags_10 = field_records_[record_index].flags_10;
+    field_entity_.flags_11 = field_records_[record_index].flags_11;
     field_entity_.equipped_armor_index =
         field_equipped_armor_by_record_[record_index];
     field_world_x_ = static_cast<std::int32_t>(
@@ -338,6 +365,23 @@ void NativePortShell::activate_field_record(std::size_t record_index) {
     marker_y_ = field_entity_screen_y();
     move_rejected_ = false;
     refresh_field_collision();
+}
+
+std::size_t NativePortShell::next_available_field_record() const {
+    if (field_records_.empty()) {
+        return active_field_record_;
+    }
+    for (std::size_t step = 1; step <= field_records_.size(); ++step) {
+        const auto candidate =
+            (active_field_record_ + step) % field_records_.size();
+        if (runner_switch_candidate(field_records_[candidate])) {
+            return candidate;
+        }
+    }
+    // 0x391A can walk to its terminal record without finding a usable
+    // runner. The observed menu behavior is a sound-only no-op: retain the
+    // current controlled record and all of its position/state.
+    return active_field_record_;
 }
 
 void NativePortShell::refresh_field_view() {
@@ -511,8 +555,12 @@ void NativePortShell::update_field_menu(const InputState& input) {
     // C enters 0x391A, switches the controlled field record, and restores
     // FFF0D0 to six before returning to the command loop.
     if (input.was_pressed(Button::C) && !field_records_.empty()) {
-        activate_field_record(
-            (active_field_record_ + 1U) % field_records_.size());
+        ++runner_switch_attempts_;
+        const auto previous_record = active_field_record_;
+        activate_field_record(next_available_field_record());
+        if (active_field_record_ == previous_record) {
+            ++runner_switch_rejections_;
+        }
         field_menu_selection_ = 6;
         field_menu_row_ = 0;
         ++action_count_;
@@ -800,16 +848,24 @@ void NativePortShell::update(const InputState& input) {
         if (!attempted_movement) {
             refresh_field_collision();
         }
-        field_records_[active_field_record_] = {
-            field_entity_.world_x_fixed, field_entity_.world_y_fixed};
+        field_records_[active_field_record_] = NativeFieldRecord{
+            {field_entity_.world_x_fixed, field_entity_.world_y_fixed},
+            field_entity_.kind,
+            field_entity_.flags_10,
+            field_entity_.flags_11,
+        };
     }
     if (input.was_pressed(Button::C) && !field_map_pixels_.empty()) {
         // The main field loop dispatches raw 0x2000 to 0x391A after its
         // ordinary entity pass. Raw 0x2000 is the Genesis C edge; on a
         // three-record startup party this selects the next controlled record
         // in the same order as the ROM loop.
-        activate_field_record(
-            (active_field_record_ + 1U) % field_records_.size());
+        ++runner_switch_attempts_;
+        const auto previous_record = active_field_record_;
+        activate_field_record(next_available_field_record());
+        if (active_field_record_ == previous_record) {
+            ++runner_switch_rejections_;
+        }
         ++action_count_;
     }
     if (action_flash_frames_ != 0) {

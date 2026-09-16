@@ -240,6 +240,22 @@ int main() {
     assert(rom_shell.field_menu_selection() == 6);
     assert(rom_shell.field_menu_row() == 0);
 
+    // The 0x391A selector skips records that are no longer active. If the
+    // party has no other eligible runner, C still produces the input/audio
+    // action but leaves the controlled record untouched.
+    auto no_runner_assets = shadowrun::graphics::decode_genesis_native_assets(
+        rom);
+    no_runner_assets.initial_field_records[1].flags_10 = 0;
+    no_runner_assets.initial_field_records[2].flags_10 = 0;
+    NativePortShell no_runner_shell("SHADOWRUN", std::move(no_runner_assets));
+    no_runner_shell.update(InputState{button_mask(Button::Start),
+                                      button_mask(Button::Start)});
+    no_runner_shell.update(InputState{button_mask(Button::C),
+                                      button_mask(Button::C)});
+    assert(no_runner_shell.field_active_record_index() == 0);
+    assert(no_runner_shell.field_runner_switch_attempts() == 1);
+    assert(no_runner_shell.field_runner_switch_rejections() == 1);
+
     const auto field_start_x = rom_shell.marker_x();
     const auto field_start_y = rom_shell.marker_y();
     rom_shell.update(InputState{button_mask(Button::Start),

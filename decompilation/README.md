@@ -115,7 +115,11 @@ left/right wraps the seven `0x114A0` values, up/down wraps the four `0x11564`
 secondary rows, and its labels are extracted from the `0x1170C`/`0xD1D28`
 string path. A/B record the same shared `0x10E4E` dispatch boundary, C retains
 the reviewed `0x391A` runner switch, and Start closes the menu without
-resetting field state. This is a runnable title-to-field slice, not a claim
+resetting field state. The native record pack also carries each startup
+record's `kind` and `+0x10` selection flags. C scans those flags using the
+reviewed `0x391A` active/suppressed/selection gates, skips unavailable runners,
+and leaves the current runner unchanged when no eligible record exists. This
+is a runnable title-to-field slice, not a claim
 that the whole game is playable; the remaining command-handler bodies,
 expanded entity/session population, and additional field object behavior
 remain the next integration boundaries.
@@ -142,7 +146,8 @@ cyberware field and expands the pointer names at `0xD2072` into host strings;
 the initial record therefore shows the recovered `Hand Razors` entry. The
 handler is display-only in the ROM, so Start returns to the command screen and
 there is no invented mutation or selection behavior. These values are carried
-in the native asset-pack version 6 format.
+in the native asset-pack version 7 format, which also carries runner selection
+flags.
 
 The Attributes/Skills command now enters a native two-column view corresponding
 to ROM `0xD01C`. It extracts the eight attribute bytes at `+0x77..+0x7E`, the
@@ -150,7 +155,7 @@ twelve skill bytes at `+0x80..+0x85` and `+0x87..+0x8C`, and the twenty labels
 from the `0xC1A2A` pointer table. The four intervening bytes at `+0x7F`,
 `+0x86`, `+0x8D`, and `+0x8E` are retained as auxiliary state until their
 upgrade/display roles are proven; the unresolved A/B/C mutations remain
-isolated. The expanded data is stored in native asset-pack version 6.
+isolated. The expanded data is stored in native asset-pack version 7.
 
 The Windows frontend preserves the reviewed controller boundary from ROM
 0x195C: the sampled word uses its low byte for held state and its high byte for
@@ -162,8 +167,8 @@ The extracted field template also carries the signed display bytes at
 `+0x56/+0x57`. Native projection preserves the `0x36FC` display gate: a
 negative `+0x56` or the sentinel `0x7F` leaves the entity hidden even when its
 screen projection is in range. These values are included in native asset-pack
-version 6, so the host-only runtime retains the recovered state, inventory,
-cyberware catalog, and clip values without
+version 7, so the host-only runtime retains the recovered state, inventory,
+cyberware catalog, clip values, and runner selection flags without
 reading the ROM.
 
 The mode-2 map loader now reads a typed `GenesisMode2FieldResources` view from

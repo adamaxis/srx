@@ -108,6 +108,18 @@ struct NativeFieldRecordPosition {
     std::uint16_t world_y_fixed = 0;
 };
 
+// The first three field records receive their positions from the selected
+// mode record at ROM 0x2B34. Their other selection fields already exist in
+// the normal 0x100-byte entity records; keep those fields at the native asset
+// boundary as well so 0x391A can select records by state instead of cycling
+// through coordinates blindly.
+struct NativeFieldRecord {
+    NativeFieldRecordPosition position{};
+    std::uint16_t kind = 0;
+    std::uint8_t flags_10 = 0;
+    std::uint8_t flags_11 = 0;
+};
+
 // Native representation of the field record fields needed by the current
 // presentation slice. World coordinates retain the ROM's 1/16-pixel unit so
 // the recovered projection can consume them without a second rounding rule.
@@ -183,7 +195,7 @@ struct NativePortAssets {
     NativeImage field_map;
     std::vector<NativeEntityFrame> entity_frames;
     terrain::Map field_terrain;
-    std::array<NativeFieldRecordPosition, 3> initial_field_records{};
+    std::array<NativeFieldRecord, 3> initial_field_records{};
     std::uint16_t initial_camera_x_fixed = 0;
     std::uint16_t initial_camera_y_fixed = 0;
     std::array<std::array<std::int16_t, 2>, 8> field_direction_table{};
@@ -361,6 +373,12 @@ public:
     std::size_t field_active_record_index() const {
         return active_field_record_;
     }
+    std::uint32_t field_runner_switch_attempts() const {
+        return runner_switch_attempts_;
+    }
+    std::uint32_t field_runner_switch_rejections() const {
+        return runner_switch_rejections_;
+    }
     std::int32_t field_world_x() const { return field_world_x_; }
     std::int32_t field_world_y() const { return field_world_y_; }
     std::int32_t field_camera_x() const { return field_camera_x_; }
@@ -373,6 +391,7 @@ private:
     void refresh_field_collision();
     void reset_field_state();
     void activate_field_record(std::size_t record_index);
+    std::size_t next_available_field_record() const;
     void update_field_entity_direction(std::int32_t delta_x,
                                        std::int32_t delta_y);
     void open_field_menu();
@@ -405,8 +424,8 @@ private:
         attribute_skill_names_{};
     std::array<std::uint8_t, 3> field_equipped_armor_by_record_{};
     std::uint8_t field_initial_equipped_armor_ = 0;
-    std::array<NativeFieldRecordPosition, 3> field_initial_records_{};
-    std::array<NativeFieldRecordPosition, 3> field_records_{};
+    std::array<NativeFieldRecord, 3> field_initial_records_{};
+    std::array<NativeFieldRecord, 3> field_records_{};
     std::size_t active_field_record_ = 0;
     terrain::Map field_terrain_{};
     terrain::ProbeResult field_collision_{};
@@ -445,6 +464,8 @@ private:
     std::uint8_t field_command_message_frames_ = 0;
     std::uint8_t action_flash_frames_ = 0;
     std::uint32_t action_count_ = 0;
+    std::uint32_t runner_switch_attempts_ = 0;
+    std::uint32_t runner_switch_rejections_ = 0;
 };
 
 } // namespace shadowrun::native

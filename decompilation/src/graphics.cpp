@@ -331,8 +331,10 @@ native::NativePortAssets decode_genesis_native_assets(
     for (std::size_t index = 0; index < assets.initial_field_records.size();
          ++index) {
         assets.initial_field_records[index] = {
-            resources.initial_field_records[index].world_x_fixed,
-            resources.initial_field_records[index].world_y_fixed,
+            {
+                resources.initial_field_records[index].world_x_fixed,
+                resources.initial_field_records[index].world_y_fixed,
+            },
         };
     }
     assets.initial_camera_x_fixed = resources.initial_camera_x_fixed;
@@ -371,6 +373,14 @@ native::NativePortAssets decode_genesis_native_assets(
     assets.entity_template.skill_values = entity_template.skill_values;
     assets.entity_template.attribute_skill_auxiliary =
         entity_template.attribute_skill_auxiliary;
+    // 0x2B34 writes only the three position pairs into the already-created
+    // field records. The remaining selection fields therefore come from the
+    // same typed entity initialization used for the startup template.
+    for (auto& record : assets.initial_field_records) {
+        record.kind = assets.entity_template.kind;
+        record.flags_10 = assets.entity_template.flags_10;
+        record.flags_11 = assets.entity_template.flags_11;
+    }
     assets.inventory_items = read_genesis_inventory_catalog(rom);
     assets.cyberware_names = read_genesis_cyberware_catalog(rom);
     assets.attribute_skill_names = read_genesis_attribute_skill_catalog(rom);
@@ -397,7 +407,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 6);
+    write_u16(output, 7);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     write_native_image(output, assets.field_map);
@@ -434,9 +444,12 @@ void write_native_asset_pack(const std::string& path,
 
     write_u16(output, assets.initial_camera_x_fixed);
     write_u16(output, assets.initial_camera_y_fixed);
-    for (const auto& position : assets.initial_field_records) {
-        write_u16(output, position.world_x_fixed);
-        write_u16(output, position.world_y_fixed);
+    for (const auto& record : assets.initial_field_records) {
+        write_u16(output, record.position.world_x_fixed);
+        write_u16(output, record.position.world_y_fixed);
+        write_u16(output, record.kind);
+        output.put(static_cast<char>(record.flags_10));
+        output.put(static_cast<char>(record.flags_11));
     }
 
     const auto& entity = assets.entity_template;
@@ -512,7 +525,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 6U)) {
+        (version < 2U || version > 7U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -567,11 +580,19 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
         input, "native field camera is truncated");
     assets.initial_camera_y_fixed = read_pack_u16(
         input, "native field camera is truncated");
-    for (auto& position : assets.initial_field_records) {
-        position.world_x_fixed = read_pack_u16(
+    for (auto& record : assets.initial_field_records) {
+        record.position.world_x_fixed = read_pack_u16(
             input, "native field record position is truncated");
-        position.world_y_fixed = read_pack_u16(
+        record.position.world_y_fixed = read_pack_u16(
             input, "native field record position is truncated");
+        if (version >= 7U) {
+            record.kind = read_pack_u16(
+                input, "native field record kind is truncated");
+            record.flags_10 = read_pack_u8(
+                input, "native field record flags are truncated");
+            record.flags_11 = read_pack_u8(
+                input, "native field record flags are truncated");
+        }
     }
 
     auto& entity = assets.entity_template;
@@ -596,6 +617,13 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
         input, "native entity display state is truncated"));
     entity.display_substate = static_cast<std::int8_t>(read_pack_u8(
         input, "native entity display substate is truncated"));
+    if (version < 7U) {
+        for (auto& record : assets.initial_field_records) {
+            record.kind = entity.kind;
+            record.flags_10 = entity.flags_10;
+            record.flags_11 = entity.flags_11;
+        }
+    }
     if (version >= 3U) {
         for (auto& code : entity.inventory_item_codes) {
             code = read_pack_u8(input, "native inventory state is truncated");
