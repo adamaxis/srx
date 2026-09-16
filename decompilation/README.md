@@ -183,6 +183,9 @@ not required to build or run the C++ analyzer.
   dual `0x15A8C` allocation, phase command tables, and final record copy.
   The mode-2 `0x1E04A` resource-list allocator is surfaced as an explicit
   unresolved result when that branch is selected.
+- The `0x15646` route-resource path is direct through the secondary record
+  initializer, sprite-slot allocation, probe/coordinate tables, fixed
+  interpolation branch, and linked `0x55848` random displacement branch.
 - The `0xACAE` animation/reaction state machine is now direct through its
   lock, transition, `FFE18B/FFE18C`, controller-input, phase, and terminal
   branches. Its register-dependent callees use

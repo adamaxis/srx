@@ -321,6 +321,18 @@ struct EntityAnimationResourceSpawnResult {
     std::size_t unresolved_calls;
 };
 
+struct EntityAnimationRouteResourceResult {
+    bool carry;
+    bool record_allocated;
+    bool sprite_allocated;
+    bool linked_record_present;
+    bool linked_adjustment_applied;
+    GenesisAddress record_address;
+    std::uint16_t record_index;
+    std::uint16_t sprite_slot_index;
+    std::uint16_t transformed_distance;
+};
+
 struct EntityAnimationPhaseSelectionResult {
     std::uint8_t selected_phase;
     bool selected;
@@ -799,6 +811,12 @@ run_entity_animation_resource_decision_0x14D8E(
 // until its separate resource list is translated.
 EntityAnimationResourceSpawnResult
 run_entity_animation_resource_spawn_0x1514E(
+    GenesisBus& bus, GenesisAddress entity_record_address);
+
+// ROM 0x15646: build the secondary animation resource record, allocate its
+// sprite slot, and derive either the unlinked interpolation offsets or the
+// linked-record random displacement through 0x55848.
+EntityAnimationRouteResourceResult run_entity_animation_route_resource_0x15646(
     GenesisBus& bus, GenesisAddress entity_record_address);
 
 // ROM 0x13F76: perform the animation resource/visibility gates. Its default

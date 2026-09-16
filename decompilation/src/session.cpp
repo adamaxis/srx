@@ -3645,6 +3645,89 @@ bool run_animation_resource_slot_gate_0x038AC(
     return true;
 }
 
+std::uint16_t scale_animation_resource_component(
+    GenesisBus& bus, GenesisAddress table_address, std::uint16_t index,
+    std::int32_t multiplier, unsigned shift) {
+    const auto factor = static_cast<std::int32_t>(
+        static_cast<std::int16_t>(bus.read16(table_address + index)));
+    const auto product = factor * multiplier;
+    return static_cast<std::uint16_t>(
+        static_cast<std::uint32_t>(product) >> shift);
+}
+
+struct AnimationResourceRandomDisplacementResult {
+    std::int16_t y;
+    std::int16_t x;
+    std::uint8_t bucket;
+};
+
+AnimationResourceRandomDisplacementResult
+calculate_animation_resource_displacement_0x55848(
+    GenesisBus& bus, GenesisAddress entity_record_address,
+    GenesisAddress output_record_address) {
+    auto d1 = calculate_entity_base_0x55ED6(bus, entity_record_address);
+    auto d6 = calculate_entity_rate_0x55F20(
+        bus, entity_record_address, d1, false).selected_result;
+    const auto d7 = bus.read8(entity_record_address + 0x87U);
+    if (d7 < d6) {
+        d6 = d7;
+    }
+    d6 = static_cast<std::uint16_t>(d6 + d7);
+    if (d6 == 0) {
+        d6 = 1;
+    }
+
+    auto d4 = static_cast<std::uint16_t>(d7 > 0 ? 5U : 8U);
+    d4 = adjust_entity_timing_0x55740(
+        bus, entity_record_address, output_record_address, d4);
+    d4 = adjust_entity_timing_0x55786(
+        bus, entity_record_address, d4, d6);
+    if (static_cast<std::int16_t>(d4) < 2) {
+        d4 = 2;
+    }
+    const auto bucket = roll_entity_threshold_0x0DBA(bus, d4, d6);
+
+    std::int16_t y = 0;
+    std::int16_t x = 0;
+    auto threshold = static_cast<std::uint16_t>(bucket >> 1U);
+    auto sample = static_cast<std::uint16_t>(
+        ShadowrunRuntime(bus).random_below(6) + 1U);
+    sample = static_cast<std::uint16_t>(sample - threshold);
+    if (static_cast<std::int16_t>(sample) <= 0) {
+        return {y, x, bucket};
+    }
+
+    const auto magnitude = static_cast<std::int16_t>(sample * 0x000CU);
+    sample = static_cast<std::uint16_t>(
+        ShadowrunRuntime(bus).random_below(3) + 1U);
+    sample = static_cast<std::uint16_t>(sample - 1U);
+    if (static_cast<std::int16_t>(sample) < 0) {
+        y = static_cast<std::int16_t>(-magnitude);
+    } else if (sample > 0) {
+        y = magnitude;
+    }
+
+    sample = static_cast<std::uint16_t>(
+        ShadowrunRuntime(bus).random_below(3) + 1U);
+    sample = static_cast<std::uint16_t>(sample - 1U);
+    if (static_cast<std::int16_t>(sample) < 0) {
+        return {y, x, bucket};
+    }
+    if (sample > 0) {
+        x = magnitude;
+        return {y, x, bucket};
+    }
+    if (y != 0) {
+        return {y, x, bucket};
+    }
+
+    if (ShadowrunRuntime(bus).random_below(2) == 0) {
+        return {y, x, bucket};
+    }
+    x = static_cast<std::int16_t>(-magnitude);
+    return {y, x, bucket};
+}
+
 GenesisAddress prepare_animation_resource_scratch_0x14FF8(
     GenesisBus& bus,
     GenesisAddress entity_record_address,
@@ -4730,6 +4813,140 @@ run_entity_animation_resource_spawn_0x1514E(
             second.record_index, mode2_transition_unresolved ? 1U : 0U};
 }
 
+EntityAnimationRouteResourceResult run_entity_animation_route_resource_0x15646(
+    GenesisBus& bus, GenesisAddress entity_record_address) {
+    const auto frame = static_cast<std::uint16_t>(
+        bus.read16(entity_record_address + 0x16U) & 0x07FFU);
+    if (frame > 0x003CU) {
+        return {true, false, false, false, false, 0, 15, 0, 0};
+    }
+
+    // 0x15646 enters 0x36FC with D1=-1 before allocating the output record.
+    update_entity_display_state_0x36FC(
+        bus, entity_record_address, 0xFFU, FrameEntityUpdateHooks{});
+    const auto record = allocate_post_object_record_0x15A8C(bus);
+    if (!record.allocated) {
+        return {true, false, false, false, false, 0, 15, 0, 0};
+    }
+
+    arm_entity_global_gate_0x1DBAA(bus);
+    initialize_animation_resource_scratch_0x15118(
+        bus, record.record_address);
+    bus.write32(record.record_address + 0x3AU, 0x00015390U);
+    bus.write16(record.record_address + 0x2CU, 0x2000U);
+    bus.write16(record.record_address,
+                bus.read16(entity_record_address));
+    bus.write16(record.record_address + 0x04U,
+                bus.read16(entity_record_address + 0x04U));
+    bus.write16(record.record_address + 0x2EU,
+                bus.read16(entity_record_address + 0x2EU));
+    bus.write8(record.record_address + 0x9DU,
+               bus.read8(entity_record_address + 0x9DU));
+    bus.write8(record.record_address + 0x57U,
+               bus.read8(entity_record_address + 0x57U));
+    bus.write8(record.record_address + 0x56U,
+               bus.read8(entity_record_address + 0x56U));
+    bus.write16(record.record_address + 0x3EU, record.record_index);
+    bus.write16(record.record_address + 0x46U, 0x0013U);
+    bus.write16(record.record_address + 0x36U, 0xFB00U);
+    bus.write16(record.record_address + 0x34U, 0xF400U);
+    bus.write16(record.record_address + 0x0EU, 2U);
+    bus.write16(record.record_address + 0x40U, 0x00B4U);
+    bus.write16(record.record_address + 0x16U, 0);
+
+    const auto sprite = allocate_sprite_slot_0x1A2CC(bus);
+    if (!sprite.allocated) {
+        bus.write8(record.record_address + 0x10U, 0);
+        return {true, true, false, false, false, record.record_address,
+                record.record_index, 0, 0};
+    }
+    bus.write16(record.record_address + 0x30U, sprite.slot_index);
+    bus.write16(record.record_address + 0x20U, sprite.d1_value);
+    bus.write16(record.record_address + 0x26U, sprite.a2_value);
+
+    auto direction = bus.read16(record.record_address + 0x2EU);
+    auto direction_index = rotate_left_word(direction, 3U);
+    if ((direction_index & 0x8000U) != 0) {
+        direction_index = static_cast<std::uint16_t>(direction_index + 1U);
+    }
+    direction_index = static_cast<std::uint16_t>(direction_index & 0x0007U);
+    auto table_offset = static_cast<GenesisAddress>(direction_index << 2U);
+    bus.write16(session_ram::kEntityAnimationResourceProbeX,
+                static_cast<std::uint16_t>(
+                    bus.read16(record.record_address) +
+                    bus.read16(rom::kAnimationResourceProbeOffsetTable +
+                               table_offset)));
+    bus.write16(session_ram::kEntityAnimationResourceProbeY,
+                static_cast<std::uint16_t>(
+                    bus.read16(record.record_address + 0x04U) +
+                    bus.read16(rom::kAnimationResourceProbeOffsetTable +
+                               table_offset + 2U)));
+    bus.write16(record.record_address,
+                static_cast<std::uint16_t>(
+                    bus.read16(record.record_address) +
+                    bus.read16(rom::kAnimationResourceCoordinateOffsetTable +
+                               table_offset)));
+    bus.write16(record.record_address + 0x04U,
+                static_cast<std::uint16_t>(
+                    bus.read16(record.record_address + 0x04U) +
+                    bus.read16(rom::kAnimationResourceCoordinateOffsetTable +
+                               table_offset + 2U)));
+
+    const auto linked_record = bus.read32(entity_record_address + 0xA2U);
+    if (linked_record == 0) {
+        bus.write8(record.record_address + 0x9FU,
+                   static_cast<std::uint8_t>(
+                       bus.read8(entity_record_address + 0x87U) >> 1U));
+        const auto fixed_index = static_cast<std::uint16_t>(
+            (direction >> 8U) & 0x00FEU);
+        bus.write16(record.record_address + 0x4CU,
+                    scale_animation_resource_component(
+                        bus, rom::kObjectGenerationInterpolationTable + 0x40U,
+                        fixed_index, 8, 5));
+        bus.write16(record.record_address + 0x4EU,
+                    scale_animation_resource_component(
+                        bus, rom::kObjectGenerationInterpolationTable,
+                        fixed_index, 8, 5));
+        return {false, true, true, false, false, record.record_address,
+                record.record_index, sprite.slot_index, 0};
+    }
+
+    const auto displacement = calculate_animation_resource_displacement_0x55848(
+        bus, entity_record_address, record.record_address);
+    bus.write8(record.record_address + 0x9FU, displacement.bucket);
+    const auto target_y = static_cast<std::uint16_t>(
+        bus.read16(linked_record + 0x04U) +
+        static_cast<std::uint16_t>(displacement.y * 0x10));
+    const auto target_x = static_cast<std::uint16_t>(
+        bus.read16(linked_record) +
+        static_cast<std::uint16_t>(displacement.x * 0x10));
+    const auto transform = transform_frame_delta_0x15D3C(
+        bus, target_y, target_x,
+        bus.read16(entity_record_address + 0x04U),
+        bus.read16(entity_record_address));
+    auto distance = transform.d3;
+    if (distance >= 0x0BE0U) {
+        distance = 0x0BE0U;
+    }
+    bus.write16(record.record_address + 0x2EU, transform.d2);
+    bus.write16(record.record_address + 0x40U,
+                static_cast<std::uint16_t>((distance / 0x80U) * 2U));
+    const auto linked_index = static_cast<std::uint16_t>(
+        (transform.d2 >> 8U) & 0x00FEU);
+    bus.write16(record.record_address + 0x4CU,
+                scale_animation_resource_component(
+                    bus, rom::kObjectGenerationInterpolationTable + 0x40U,
+                    linked_index, 8, 4));
+    bus.write16(record.record_address + 0x4EU,
+                scale_animation_resource_component(
+                    bus, rom::kObjectGenerationInterpolationTable,
+                    linked_index, 8, 4));
+    bus.write16(record.record_address + 0x36U,
+                static_cast<std::uint16_t>(0U - distance * 0x20U));
+    return {false, true, true, true, true, record.record_address,
+            record.record_index, sprite.slot_index, distance};
+}
+
 EntityAnimationResourceGateResult run_entity_animation_resource_gate_0x13F76(
     GenesisBus& bus,
     GenesisAddress entity_record_address,
@@ -4918,6 +5135,11 @@ EntityAnimationAcaeResult run_entity_animation_update_0xACAE(
             }
             context.carry = direct.carry;
             result.unresolved_calls += direct.unresolved_calls;
+        } else if (target == 0x00015646U) {
+            const auto direct = run_entity_animation_route_resource_0x15646(
+                bus, context.a0);
+            context.a1 = direct.record_address;
+            context.carry = direct.carry;
         } else if (target == 0x0000ABFCU) {
             // ABFC discards the inherited D1, derives its delay from the
             // record state, and writes the result through the current A0.

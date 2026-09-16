@@ -1991,6 +1991,53 @@ int main() {
     assert(resource_spawn_special_bus->read8(0xFF0B00U + 0x41U) == 2U);
     assert(resource_spawn_special_bus->read8(0xFF0B00U + 0x89U) == 0x20U);
 
+    // 0x15646 uses the secondary animation record layout and the sprite-slot
+    // allocator. With no linked record it takes the fixed interpolation
+    // branch; with a link it enters the direct 0x55848 displacement path.
+    auto route_resource_bus = std::make_unique<shadowrun::GenesisMemoryBus>(
+        std::vector<std::uint8_t>(0x200000U, 0));
+    constexpr auto route_resource_entity = 0xFF0800U;
+    route_resource_bus->write8(route_resource_entity + 0x10U, 0x01U);
+    route_resource_bus->write8(route_resource_entity + 0x57U, 1U);
+    route_resource_bus->write16(route_resource_entity + 0x16U, 0);
+    route_resource_bus->write16(route_resource_entity + 0x3EU, 0);
+    route_resource_bus->write8(route_resource_entity + 0x87U, 6U);
+    const auto route_resource_no_link =
+        shadowrun::run_entity_animation_route_resource_0x15646(
+            *route_resource_bus, route_resource_entity);
+    assert(!route_resource_no_link.carry);
+    assert(route_resource_no_link.record_allocated);
+    assert(route_resource_no_link.sprite_allocated);
+    assert(!route_resource_no_link.linked_record_present);
+    assert(!route_resource_no_link.linked_adjustment_applied);
+    assert(route_resource_no_link.record_address == 0xFF0B00U);
+    assert(route_resource_no_link.record_index == 9U);
+    assert(route_resource_no_link.sprite_slot_index == 0U);
+    assert(route_resource_no_link.transformed_distance == 0);
+    assert(route_resource_bus->read16(0xFF0B00U + 0x2CU) == 0x2000U);
+    assert(route_resource_bus->read8(0xFF0B00U + 0x9FU) == 3U);
+
+    auto route_resource_link_bus = std::make_unique<shadowrun::GenesisMemoryBus>(
+        std::vector<std::uint8_t>(0x200000U, 0));
+    constexpr auto route_resource_linked = 0xFF0900U;
+    route_resource_link_bus->write8(route_resource_entity + 0x10U, 0x01U);
+    route_resource_link_bus->write8(route_resource_entity + 0x57U, 1U);
+    route_resource_link_bus->write16(route_resource_entity + 0x16U, 0);
+    route_resource_link_bus->write16(route_resource_entity + 0x3EU, 0);
+    route_resource_link_bus->write32(route_resource_entity + 0xA2U,
+                                     route_resource_linked);
+    route_resource_link_bus->write16(route_resource_linked, 0x0100U);
+    route_resource_link_bus->write16(route_resource_linked + 0x04U, 0x0100U);
+    const auto route_resource_link =
+        shadowrun::run_entity_animation_route_resource_0x15646(
+            *route_resource_link_bus, route_resource_entity);
+    assert(!route_resource_link.carry);
+    assert(route_resource_link.record_allocated);
+    assert(route_resource_link.sprite_allocated);
+    assert(route_resource_link.linked_record_present);
+    assert(route_resource_link.linked_adjustment_applied);
+    assert(route_resource_link.transformed_distance <= 0x0BE0U);
+
     // B1DC now performs its direct delay/command/frame-selection prefix,
     // enters the reconstructed linked-record predicate, and invokes the
     // direct 55C76 entity reaction when the link is close enough.
