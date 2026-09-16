@@ -40,6 +40,8 @@ add_executable(shadowrun_native_port_test
     tests/native_port_test.cpp
 )
 target_link_libraries(shadowrun_native_port_test PRIVATE shadowrun_port)
+target_compile_definitions(shadowrun_native_port_test PRIVATE
+    SHADOWRUN_TEST_ROM="${CMAKE_CURRENT_SOURCE_DIR}/input/shadowrun_genesis_us.bin")
 add_test(NAME shadowrun_native_port COMMAND shadowrun_native_port_test)
 
 add_executable(shadowrun_graphics_test

@@ -87,18 +87,26 @@ unchanged and retain raw assets alongside converted assets.
 
 ## Current implementation status
 
-The native Windows bootstrap is now fed by the ROM's reviewed startup data.
+The native Windows port is fed by the ROM's reviewed startup data.
 `graphics.cpp` decodes the three `0x1530` pattern uploads at `0x1F310E`,
 `0x67CB0`, and `0x6875C`, reconstructs the `0x1728` delta-coded tilemap at
 `0x67DF6`, expands the selected CRAM image at `0x1FF0` to RGBA8, and submits a
 320x224 frame through `ScreenWriter`. `shadowrun_native.exe` accepts an
 optional ROM path and maps Windows keyboard input into `InputState`.
 
-This is a real native startup-screen slice, not a playable-game claim. The
-current screen still includes a host-side marker and help footer so the input
-boundary is visibly testable. The next port slices should recover the startup
-text/tile presentation and then connect typed session state and the reviewed
-VBlank update paths to this renderer.
+`NativePortShell` now has an explicit native scene boundary. A ROM-backed
+instance starts in `Title`; the pressed `Start` edge models the reviewed
+`0x0BF2`/`0x1A9E` exit condition and transitions to `Field`. The field update
+is ordinary typed C++ state with held directional movement and edge-triggered
+actions. Its visual strips come from the reviewed compressed resources at
+`0x1E3F38` and `0x1E62BE`, expanded to host RGBA8; the surrounding composition
+uses host drawing primitives rather than Genesis VRAM or palette constraints.
+
+This is now a runnable native title-to-field slice with controls and visible
+ROM-derived graphics, not a claim that the whole game is playable. The next
+port slices should replace the field composition with the recovered map/entity
+presentation and connect typed session state to the reviewed VBlank update
+paths.
 
 ## Build and source discipline
 

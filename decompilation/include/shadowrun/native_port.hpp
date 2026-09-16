@@ -38,6 +38,12 @@ struct InputState {
     }
 };
 
+enum class NativeScene {
+    Bootstrap,
+    Title,
+    Field,
+};
+
 struct Rgba8 {
     std::uint8_t red = 0;
     std::uint8_t green = 0;
@@ -115,6 +121,8 @@ public:
     void update(const InputState& input);
     void render(ScreenWriter& screen) const;
 
+    NativeScene scene() const { return scene_; }
+    bool has_rom_assets() const { return !rom_scene_pixels_.empty(); }
     std::int32_t marker_x() const { return marker_x_; }
     std::int32_t marker_y() const { return marker_y_; }
     std::uint64_t frame_number() const { return frame_number_; }
@@ -122,6 +130,7 @@ public:
 private:
     std::string title_;
     InputState input_{};
+    NativeScene scene_ = NativeScene::Bootstrap;
     std::int32_t marker_x_ = kScreenWidth / 2;
     std::int32_t marker_y_ = kScreenHeight / 2;
     std::uint64_t frame_number_ = 0;
@@ -129,6 +138,14 @@ private:
     std::uint16_t rom_scene_width_ = 0;
     std::uint16_t rom_scene_height_ = 0;
     std::vector<Rgba8> rom_scene_pixels_;
+    std::uint16_t rom_art_width_ = 0;
+    std::uint16_t rom_art_height_ = 0;
+    std::vector<Rgba8> rom_art_pixels_;
+    std::uint16_t rom_actor_width_ = 0;
+    std::uint16_t rom_actor_height_ = 0;
+    std::vector<Rgba8> rom_actor_pixels_;
+    std::uint8_t action_flash_frames_ = 0;
+    std::uint32_t action_count_ = 0;
 };
 
 } // namespace shadowrun::native

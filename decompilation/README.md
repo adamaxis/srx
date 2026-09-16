@@ -74,8 +74,16 @@ startup resource path: the three `0x1530` pattern streams at `0x1F310E`,
 `0x67CB0`, and `0x6875C`, the `0x1728` tilemap stream at `0x67DF6`, and the
 four-line CRAM image at `0x1FF0`. Those resources are converted to host RGBA8
 and submitted through `ScreenWriter`; no Genesis VDP or 68000 runtime is
-needed by the native executable. A host marker and footer remain on this
-first slice so keyboard input is visibly testable.
+needed by the native executable.
+
+The ROM-backed shell now exposes a native scene transition as well. It starts
+on the reconstructed title scene, consumes the pressed `Start` edge, and enters
+a typed C++ field state with held directional movement and edge-triggered
+`A`/`B`/`C` actions. The field presentation uses host RGBA drawing plus art
+decoded from the post-title resources at `0x1E3F38` and `0x1E62BE`; it does not
+run a 68000 interpreter or depend on Genesis VDP state. This is a runnable
+title-to-field slice, while map/entity presentation remains the next port
+boundary.
 
 ```powershell
 cmake --build 'C:\Github\shadowrun\decompilation\build-debug-verify'

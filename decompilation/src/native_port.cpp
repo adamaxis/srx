@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <utility>
 
 namespace shadowrun::native {
 
@@ -59,6 +60,31 @@ Glyph glyph_for(char character) {
     case '!': return {0x04, 0x04, 0x04, 0x04, 0x04, 0x00, 0x04};
     default: return {0, 0, 0, 0, 0, 0, 0};
     }
+}
+
+graphics::RgbaImage scale_image(const graphics::RgbaImage& source,
+                                std::uint8_t scale) {
+    if (scale == 0 || source.width == 0 || source.height == 0) {
+        return {};
+    }
+    graphics::RgbaImage scaled{
+        static_cast<std::uint16_t>(source.width * scale),
+        static_cast<std::uint16_t>(source.height * scale),
+        std::vector<Rgba8>(static_cast<std::size_t>(source.width) * scale *
+                           source.height * scale),
+    };
+    for (std::size_t y = 0; y < source.height; ++y) {
+        for (std::size_t x = 0; x < source.width; ++x) {
+            const auto& pixel = source.pixels[y * source.width + x];
+            for (std::size_t dy = 0; dy < scale; ++dy) {
+                for (std::size_t dx = 0; dx < scale; ++dx) {
+                    scaled.pixels[(y * scale + dy) * scaled.width +
+                                  x * scale + dx] = pixel;
+                }
+            }
+        }
+    }
+    return scaled;
 }
 
 } // namespace
@@ -178,15 +204,49 @@ NativePortShell::NativePortShell(std::string title)
 
 NativePortShell::NativePortShell(
     std::string title, const std::vector<std::uint8_t>& rom)
-    : title_(std::move(title)) {
+    : title_(std::move(title)), scene_(NativeScene::Title) {
     const auto scene = graphics::decode_genesis_startup_screen(rom);
     rom_scene_width_ = scene.width;
     rom_scene_height_ = scene.height;
     rom_scene_pixels_ = scene.pixels;
+
+    // 0x59C5E/0x5AA96 uses these two reviewed compressed resources after the
+    // title path. They are kept as host RGBA strips here so the native field
+    // scene has ROM-derived visual material without retaining a Genesis VDP
+    // or palette-indexed runtime.
+    const auto palette = graphics::read_genesis_palette(rom, 0xD29D6);
+    const auto art = graphics::decode_tile_atlas(
+        graphics::decode_genesis_resource_stream(rom, 0x1E3F38),
+        0, 4, palette, 4, 0);
+    const auto actor = graphics::decode_tile_atlas(
+        graphics::decode_genesis_resource_stream(rom, 0x1E62BE),
+        0, 2, palette, 2, 0);
+    const auto scaled_art = scale_image(art, 4);
+    const auto scaled_actor = scale_image(actor, 4);
+    rom_art_width_ = scaled_art.width;
+    rom_art_height_ = scaled_art.height;
+    rom_art_pixels_ = scaled_art.pixels;
+    rom_actor_width_ = scaled_actor.width;
+    rom_actor_height_ = scaled_actor.height;
+    rom_actor_pixels_ = scaled_actor.pixels;
 }
 
 void NativePortShell::update(const InputState& input) {
     input_ = input;
+
+    if (scene_ == NativeScene::Title) {
+        // ROM 0x0BF2 records Start as a pressed high-byte input and the
+        // 0x1A9E loop exits when FFDDC2 is set. The native equivalent is the
+        // supplied pressed edge, not a held-button poll.
+        if (input.was_pressed(Button::Start)) {
+            scene_ = NativeScene::Field;
+            marker_x_ = kScreenWidth / 2;
+            marker_y_ = kScreenHeight / 2;
+        }
+        ++frame_number_;
+        return;
+    }
+
     constexpr std::int32_t kSpeed = 2;
     if (input.is_held(Button::Up)) {
         marker_y_ -= kSpeed;
@@ -203,22 +263,32 @@ void NativePortShell::update(const InputState& input) {
     if (input.was_pressed(Button::Start)) {
         marker_x_ = kScreenWidth / 2;
         marker_y_ = kScreenHeight / 2;
+        action_flash_frames_ = 0;
     }
     if (input.was_pressed(Button::A)) {
         marker_color_ = {0x00, 0xD8, 0xFF, 0xFF};
+        action_flash_frames_ = 8;
+        ++action_count_;
     } else if (input.was_pressed(Button::B)) {
         marker_color_ = {0xFF, 0x40, 0x70, 0xFF};
+        action_flash_frames_ = 8;
+        ++action_count_;
     } else if (input.was_pressed(Button::C)) {
         marker_color_ = {0xFF, 0xD0, 0x40, 0xFF};
+        action_flash_frames_ = 8;
+        ++action_count_;
     }
     marker_x_ = std::clamp(marker_x_, 8, static_cast<std::int32_t>(kScreenWidth) - 16);
     marker_y_ = std::clamp(marker_y_, 48, static_cast<std::int32_t>(kScreenHeight) - 16);
+    if (action_flash_frames_ != 0) {
+        --action_flash_frames_;
+    }
     ++frame_number_;
 }
 
 void NativePortShell::render(ScreenWriter& screen) const {
     screen.begin_frame();
-    if (!rom_scene_pixels_.empty()) {
+    if (scene_ == NativeScene::Title && !rom_scene_pixels_.empty()) {
         screen.clear({0x00, 0x00, 0x00, 0xFF});
         screen.blit_rgba(0, 0, rom_scene_width_, rom_scene_height_,
                          rom_scene_pixels_);
@@ -234,6 +304,56 @@ void NativePortShell::render(ScreenWriter& screen) const {
                          {0x00, 0x00, 0x00, 0xB0});
         screen.write_text(8, 211, "ARROWS MOVE  Z X C  ENTER RESET",
                           1, {0xE8, 0xF4, 0xFF, 0xFF});
+    } else if (scene_ == NativeScene::Field && !rom_art_pixels_.empty()) {
+        // This is the first native field presentation. The ROM supplied the
+        // art strips; the surrounding composition is ordinary host drawing,
+        // deliberately free of Genesis tilemap/VRAM constraints.
+        screen.clear({0x04, 0x08, 0x14, 0xFF});
+        screen.fill_rect(0, 0, kScreenWidth, 34,
+                         {0x12, 0x20, 0x38, 0xFF});
+        screen.fill_rect(0, 34, kScreenWidth, 2,
+                         {0x00, 0xA8, 0xC8, 0xFF});
+        screen.write_text(12, 8, "SHADOWRUN FIELD", 2,
+                          {0xE8, 0xF4, 0xFF, 0xFF});
+        screen.write_text(204, 10, "MODE 2", 1,
+                          {0xA0, 0xE8, 0xF8, 0xFF});
+
+        screen.fill_rect(0, 36, kScreenWidth, 168,
+                         {0x08, 0x12, 0x20, 0xFF});
+        for (std::int32_t x = 0; x <= kScreenWidth; x += 16) {
+            screen.fill_rect(x, 36, 1, 168,
+                             {0x14, 0x2A, 0x38, 0xFF});
+        }
+        for (std::int32_t y = 36; y <= 204; y += 16) {
+            screen.fill_rect(0, y, kScreenWidth, 1,
+                             {0x14, 0x2A, 0x38, 0xFF});
+        }
+        screen.fill_rect(32, 52, 96, 48, {0x0C, 0x28, 0x34, 0xFF});
+        screen.fill_rect(192, 116, 96, 56, {0x0C, 0x28, 0x34, 0xFF});
+        screen.blit_rgba(16, 52, rom_art_width_, rom_art_height_,
+                         rom_art_pixels_);
+        screen.blit_rgba(224, 52, rom_actor_width_, rom_actor_height_,
+                         rom_actor_pixels_);
+
+        screen.fill_rect(marker_x_ - 6, marker_y_ + 10, 20, 4,
+                         {0x00, 0x00, 0x00, 0xA0});
+        screen.fill_rect(marker_x_, marker_y_, 8, 12, marker_color_);
+        screen.fill_rect(marker_x_ + 2, marker_y_ - 4, 4, 4,
+                         {0xFF, 0xFF, 0xFF, 0xFF});
+        if (action_flash_frames_ != 0) {
+            screen.fill_rect(marker_x_ - 4, marker_y_ + 4, 16, 2,
+                             {0xFF, 0xF0, 0x90, 0xFF});
+            screen.fill_rect(marker_x_ + 3, marker_y_ - 8, 2, 24,
+                             {0xFF, 0xF0, 0x90, 0xFF});
+        }
+        screen.fill_rect(0, 204, kScreenWidth, 20,
+                         {0x02, 0x05, 0x0C, 0xFF});
+        screen.write_text(8, 208, "ARROWS MOVE  Z X C ACTION", 1,
+                          {0xE8, 0xF4, 0xFF, 0xFF});
+        screen.write_text(8, 216, "ENTER RESET  ACTIONS", 1,
+                          {0x90, 0xB8, 0xC8, 0xFF});
+        screen.write_text(226, 216, std::to_string(action_count_), 1,
+                          {0xF0, 0xC0, 0x50, 0xFF});
     } else {
         screen.clear({0x06, 0x08, 0x18, 0xFF});
         screen.fill_rect(0, 0, kScreenWidth, 34, {0x16, 0x24, 0x48, 0xFF});
@@ -246,12 +366,14 @@ void NativePortShell::render(ScreenWriter& screen) const {
         screen.write_text(18, 78, "ENTER RESETS THE MARKER", 1,
                           {0xA0, 0xA8, 0xC0, 0xFF});
     }
-    screen.fill_rect(marker_x_, marker_y_, 8, 8, marker_color_);
-    screen.fill_rect(marker_x_ + 2, marker_y_ + 2, 4, 4,
-                     {0xFF, 0xFF, 0xFF, 0xFF});
-    screen.write_text(18, 204, "FRAME", 1, {0x78, 0x88, 0xA8, 0xFF});
-    screen.write_text(60, 204, std::to_string(frame_number_), 1,
-                      {0xD0, 0xD8, 0xF0, 0xFF});
+    if (scene_ == NativeScene::Bootstrap) {
+        screen.fill_rect(marker_x_, marker_y_, 8, 8, marker_color_);
+        screen.fill_rect(marker_x_ + 2, marker_y_ + 2, 4, 4,
+                         {0xFF, 0xFF, 0xFF, 0xFF});
+        screen.write_text(18, 204, "FRAME", 1, {0x78, 0x88, 0xA8, 0xFF});
+        screen.write_text(60, 204, std::to_string(frame_number_), 1,
+                          {0xD0, 0xD8, 0xF0, 0xFF});
+    }
     screen.present();
 }
 
