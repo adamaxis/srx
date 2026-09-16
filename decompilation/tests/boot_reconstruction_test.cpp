@@ -2170,6 +2170,45 @@ int main() {
     assert(zero_frame_vector.d2 == 0);
     assert(zero_frame_vector.d3 == 0);
 
+    // 0x15C84 follows the linked record through +0xA2, applies the exact
+    // 0x15C58 allocation/visibility flags, and writes the transformed
+    // direction only for a distance below 0x200.
+    auto link_bus = std::make_unique<shadowrun::GenesisMemoryBus>(
+        std::vector<std::uint8_t>(0x200000U, 0));
+    constexpr shadowrun::GenesisAddress link_entity = 0xFF3000U;
+    constexpr shadowrun::GenesisAddress linked_entity = 0xFF3100U;
+    link_bus->write32(link_entity + 0xA2U, linked_entity);
+    link_bus->write8(linked_entity + 0x10U, 0x01U);
+    link_bus->write16(link_entity, 0x0000U);
+    link_bus->write16(link_entity + 0x04U, 0x0000U);
+    link_bus->write16(linked_entity, 0x0100U);
+    link_bus->write16(linked_entity + 0x04U, 0x0000U);
+    const auto expected_link_transform = shadowrun::transform_frame_delta_0x15D3C(
+        *link_bus, 0x0000U, 0x0100U, 0x0000U, 0x0000U);
+    const auto linked_result = shadowrun::check_entity_animation_link_0x15C84(
+        *link_bus, link_entity);
+    assert(linked_result.carry);
+    assert(linked_result.linked_record_present);
+    assert(linked_result.linked_record_eligible);
+    assert(linked_result.linked_record == linked_entity);
+    assert(linked_result.direction == expected_link_transform.d2);
+    assert(linked_result.distance == expected_link_transform.d3);
+    assert(link_bus->read16(link_entity + 0x34U) == expected_link_transform.d2);
+
+    link_bus->write16(linked_entity, 0x0200U);
+    const auto distant_result = shadowrun::check_entity_animation_link_0x15C84(
+        *link_bus, link_entity);
+    assert(!distant_result.carry);
+    assert(distant_result.linked_record_present);
+    assert(distant_result.linked_record_eligible);
+
+    link_bus->write8(linked_entity + 0x10U, 0x41U);
+    const auto hidden_result = shadowrun::check_entity_animation_link_0x15C84(
+        *link_bus, link_entity);
+    assert(!hidden_result.carry);
+    assert(hidden_result.linked_record_present);
+    assert(!hidden_result.linked_record_eligible);
+
     // 0x15CA4 preserves the high word through its word-only differences,
     // exchanges complete D0/D1 longwords when the second axis is larger, and
     // rounds an odd smaller-axis magnitude before adding it.

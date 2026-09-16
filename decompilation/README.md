@@ -171,6 +171,9 @@ not required to build or run the C++ analyzer.
   now directly initializes its FF1380 scratch record, calls the reviewed
   fixed-point `0xE7C8` terrain sample, and performs the ten-record `0x15ABA`
   occupancy scan; its typed continuation remains available as an override.
+- The `0x15C84`/`0x15C58` linked-animation predicate is also direct: it
+  applies the +0x10 flag gates, uses the reviewed `0x15D3C` transform, and
+  preserves the ROM's `< 0x200` distance cutoff and +0x34 direction write.
 - The `0xACAE` animation/reaction state machine is now direct through its
   lock, transition, `FFE18B/FFE18C`, controller-input, phase, and terminal
   branches. Its register-dependent callees use

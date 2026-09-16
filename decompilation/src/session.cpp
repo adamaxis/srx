@@ -5349,6 +5349,37 @@ FrameDeltaTransformResult transform_frame_delta_0x15D3C(
     return {direction, average};
 }
 
+EntityAnimationLinkCheckResult check_entity_animation_link_0x15C84(
+    GenesisBus& bus, GenesisAddress entity_record_address) {
+    // 0x15C84 takes the linked record from +0xA2 and leaves carry clear when
+    // that pointer is null. The two flag tests belong to 0x15C58 and happen
+    // before 0x14D58/0x15D3C is entered.
+    const auto linked_record = bus.read32(entity_record_address + 0xA2U);
+    if (linked_record == 0) {
+        return {false, false, false, 0, 0, 0};
+    }
+
+    const auto flags = bus.read8(linked_record + 0x10U);
+    if ((flags & 0x01U) == 0 || (flags & 0x40U) != 0) {
+        return {false, true, false, linked_record, 0, 0};
+    }
+
+    // 0x14D58 loads D5/D4 from A0 and D3/D2 from A1 before calling 0x15D3C.
+    // The public transform follows the callee's D2,D3,D4,D5 ordering.
+    const auto transform = transform_frame_delta_0x15D3C(
+        bus,
+        bus.read16(linked_record + 0x04U),
+        bus.read16(linked_record),
+        bus.read16(entity_record_address + 0x04U),
+        bus.read16(entity_record_address));
+    const auto accepted = transform.d3 < 0x0200U;
+    if (accepted) {
+        bus.write16(entity_record_address + 0x34U, transform.d2);
+    }
+    return {accepted, true, true, linked_record, transform.d2,
+            transform.d3};
+}
+
 FrameSpatialTailResult update_frame_spatial_tail_0x3BAC(GenesisBus& bus) {
     const auto transform = transform_frame_delta_0x15D3C(
         bus,

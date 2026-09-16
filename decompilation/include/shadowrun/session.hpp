@@ -471,6 +471,15 @@ struct FrameDeltaTransformResult {
     std::uint16_t d3;
 };
 
+struct EntityAnimationLinkCheckResult {
+    bool carry;
+    bool linked_record_present;
+    bool linked_record_eligible;
+    GenesisAddress linked_record;
+    std::uint16_t direction;
+    std::uint16_t distance;
+};
+
 struct FrameSpatialPreludeResult {
     bool phase_three_path;
     std::uint16_t d2_after;
@@ -914,6 +923,12 @@ FrameDeltaTransformResult transform_frame_delta_0x15D3C(
     std::uint16_t d3,
     std::uint16_t d4,
     std::uint16_t d5);
+
+// ROM 0x15C84/0x15C58 checks the current record's linked animation record,
+// derives its direction/distance through 0x15D3C, and stores the direction in
+// +0x34 when the link is active and closer than 0x200.
+EntityAnimationLinkCheckResult check_entity_animation_link_0x15C84(
+    GenesisBus& bus, GenesisAddress entity_record_address);
 
 // The reviewed prelude of ROM 0x3A1C: phase-3 reset writes, the 0x15DCC
 // vector transform, signed clamps, camera offsets, and mode-byte stores.
