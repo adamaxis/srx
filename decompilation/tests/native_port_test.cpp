@@ -127,7 +127,7 @@ int main() {
     // The runtime constructor below receives only the host asset pack. This
     // is the PC-port path: the ROM is used by extraction, not by the native
     // update/render loop.
-    const auto native_assets = shadowrun::graphics::decode_genesis_native_assets(
+    auto native_assets = shadowrun::graphics::decode_genesis_native_assets(
         rom);
     const auto pack_path = std::filesystem::temp_directory_path() /
                            "shadowrun_native_port_runtime_test.srna";
@@ -152,5 +152,16 @@ int main() {
     assert(pack_shell.marker_x() == pack_start_x + 2);
     pack_shell.render(pack_screen);
     assert(pack_screen.presented_frames() == 1);
+
+    // ROM 0x36FC suppresses an otherwise projected entity when template
+    // byte +0x56 is negative. The native asset boundary must preserve that
+    // rule independently of the ROM-backed constructor.
+    auto hidden_assets = native_assets;
+    hidden_assets.entity_template.display_state = -1;
+    NativePortShell hidden_shell("SHADOWRUN", std::move(hidden_assets));
+    hidden_shell.update(InputState{button_mask(Button::Start),
+                                   button_mask(Button::Start)});
+    assert(hidden_shell.scene() == NativeScene::Field);
+    assert(!hidden_shell.field_entity_visible());
     return 0;
 }

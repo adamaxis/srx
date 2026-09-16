@@ -82,6 +82,8 @@ int main() {
     assert(entity_template.timing_accumulator == 0);
     assert(entity_template.timing_threshold == 0x1000);
     assert(entity_template.state_index == 0);
+    assert(entity_template.display_state == 0);
+    assert(entity_template.display_substate == 2);
     const auto metatile_resource = decode_genesis_resource_stream(rom, 0x170102);
     assert(metatile_resource.size() == 0x4F40);
     const auto field_resources = read_genesis_mode2_field_resources(rom);
@@ -228,6 +230,10 @@ int main() {
            native_assets.field_direction_table);
     assert(loaded_assets.entity_template.kind ==
            native_assets.entity_template.kind);
+    assert(loaded_assets.entity_template.display_state ==
+           native_assets.entity_template.display_state);
+    assert(loaded_assets.entity_template.display_substate ==
+           native_assets.entity_template.display_substate);
     std::filesystem::remove(pack_path);
     return 0;
 }

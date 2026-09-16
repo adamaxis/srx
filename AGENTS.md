@@ -147,6 +147,13 @@ game is playable. The next port slices should expand typed entity/session
 records and connect field UI and additional object behavior to the native
 update/render interfaces.
 
+The first display-state bytes are now part of that native record boundary:
+template offsets `+0x56` and `+0x57` are extracted as signed
+`display_state`/`display_substate` values. The native projection preserves the
+`0x36FC` visibility gate (`+0x56 < 0` or `+0x56 == 0x7F` suppresses the
+sprite), and the values are serialized in native asset-pack version 2. This
+is a direct behavior port, not a new animation rule.
+
 ## Build and source discipline
 
 - Use C++17 and the existing CMake build.

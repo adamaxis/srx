@@ -131,6 +131,10 @@ native::NativeImage read_native_image(std::istream& input) {
 
 GenesisFieldEntityTemplate read_genesis_field_entity_template(
     const std::vector<std::uint8_t>& rom, std::size_t record_offset) {
+    if (record_offset > rom.size() || rom.size() - record_offset < 0x58U) {
+        throw std::out_of_range(
+            "Genesis field entity template display state is truncated");
+    }
     const auto flags = read_rom_u16(
         rom, record_offset + 0x10U,
         "Genesis field entity template flags are truncated");
@@ -162,6 +166,8 @@ GenesisFieldEntityTemplate read_genesis_field_entity_template(
         read_rom_u16(
             rom, record_offset + 0x1EU,
             "Genesis field entity template state index is truncated"),
+        static_cast<std::int8_t>(rom[record_offset + 0x56U]),
+        static_cast<std::int8_t>(rom[record_offset + 0x57U]),
     };
 }
 
@@ -209,6 +215,8 @@ native::NativePortAssets decode_genesis_native_assets(
     assets.entity_template.animation_threshold =
         entity_template.timing_threshold;
     assets.entity_template.state_index = entity_template.state_index;
+    assets.entity_template.display_state = entity_template.display_state;
+    assets.entity_template.display_substate = entity_template.display_substate;
 
     for (std::size_t index = 0;
          index < assets.field_direction_table.size(); ++index) {
@@ -232,7 +240,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 1);
+    write_u16(output, 2);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     write_native_image(output, assets.field_map);
@@ -285,6 +293,10 @@ void write_native_asset_pack(const std::string& path,
     write_u16(output, entity.animation_accumulator);
     write_u16(output, entity.animation_threshold);
     write_u16(output, entity.state_index);
+    output.put(static_cast<char>(
+        static_cast<std::uint8_t>(entity.display_state)));
+    output.put(static_cast<char>(
+        static_cast<std::uint8_t>(entity.display_substate)));
     for (const auto& direction : assets.field_direction_table) {
         write_u16(output, static_cast<std::uint16_t>(direction[0]));
         write_u16(output, static_cast<std::uint16_t>(direction[1]));
@@ -302,7 +314,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     char magic[4]{};
     input.read(magic, sizeof(magic));
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        read_pack_u16(input, "native asset pack version is truncated") != 1U) {
+        read_pack_u16(input, "native asset pack version is truncated") != 2U) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -382,6 +394,10 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
         input, "native entity template is truncated");
     entity.state_index = read_pack_u16(
         input, "native entity template is truncated");
+    entity.display_state = static_cast<std::int8_t>(read_pack_u8(
+        input, "native entity display state is truncated"));
+    entity.display_substate = static_cast<std::int8_t>(read_pack_u8(
+        input, "native entity display substate is truncated"));
     for (auto& direction : assets.field_direction_table) {
         direction[0] = static_cast<std::int16_t>(read_pack_u16(
             input, "native direction table is truncated"));

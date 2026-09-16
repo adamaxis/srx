@@ -301,7 +301,12 @@ void NativePortShell::refresh_field_entity_projection() {
         result.screen_x - kGenesisVdpSpriteOrigin);
     field_entity_.screen_y = static_cast<std::uint16_t>(
         result.screen_y - kGenesisVdpSpriteOrigin);
-    field_entity_.visible = result.visible;
+    // ROM 0x36FC checks the signed template byte at +0x56 after projection.
+    // Keep that display-state gate in native state even though the current
+    // extracted startup template is displayable (0x00).
+    const auto displayable = field_entity_.display_state >= 0 &&
+                             field_entity_.display_state != 0x7F;
+    field_entity_.visible = result.visible && displayable;
 }
 
 void NativePortShell::refresh_field_collision() {

@@ -106,6 +106,13 @@ updated. This is a runnable title-to-field slice, not a claim that the whole
 game is playable; expanded entity/session population and field UI remain the
 next integration boundary.
 
+The extracted field template also carries the signed display bytes at
+`+0x56/+0x57`. Native projection preserves the `0x36FC` display gate: a
+negative `+0x56` or the sentinel `0x7F` leaves the entity hidden even when its
+screen projection is in range. These values are included in native asset-pack
+version 2, so the host-only runtime retains the recovered state without
+reading the ROM.
+
 The mode-2 map loader now reads a typed `GenesisMode2FieldResources` view from
 the selected record at `0x172C80` and its setup block at `0x172C50`. That view
 supplies the initial `0x3400`/`0x2280` fixed-point camera, `0x166B82` pattern

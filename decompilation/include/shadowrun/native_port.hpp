@@ -103,6 +103,10 @@ struct NativeFieldEntity {
     std::size_t frame_index = 0;
     std::uint16_t state_selector = 0;
     std::uint16_t state_index = 0;
+    // Direct host forms of the signed bytes at template offsets +0x56/+0x57.
+    // ROM 0x36FC suppresses display when +0x56 is negative or 0x7F.
+    std::int8_t display_state = 0;
+    std::int8_t display_substate = 0;
     std::uint16_t animation_accumulator = 0;
     std::uint16_t animation_multiplier = 0;
     std::uint16_t animation_threshold = 0;

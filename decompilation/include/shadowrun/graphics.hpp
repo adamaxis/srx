@@ -47,6 +47,10 @@ struct GenesisFieldEntityTemplate {
     std::uint16_t timing_accumulator = 0;
     std::uint16_t timing_threshold = 0;
     std::uint16_t state_index = 0;
+    // ROM 0x36FC tests +0x56 before emitting the sprite and uses +0x57 in
+    // the following state branch. Preserve both signed bytes at extraction.
+    std::int8_t display_state = 0;
+    std::int8_t display_substate = 0;
 };
 
 // Typed view of the selected mode-2 record at ROM 0x172C80. The names here
