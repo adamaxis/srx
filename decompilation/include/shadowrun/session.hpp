@@ -104,6 +104,7 @@ constexpr GenesisAddress kEntityAnimationEventSpecialArgument = 0xFFDD66;
 constexpr GenesisAddress kEntityAnimationEventTable = 0xFFF9FA;
 constexpr GenesisAddress kEntityAnimationTargetX = 0xFFDD2A;
 constexpr GenesisAddress kEntityAnimationTargetY = 0xFFDD2C;
+constexpr GenesisAddress kEntityAnimationSavedDirection = 0xFFDD48;
 constexpr GenesisAddress kEntityTerrainSelectedOffset = 0xFFDFE4;
 constexpr GenesisAddress kEntityTerrainOutOfBounds = 0xFFDF68;
 constexpr GenesisAddress kEntityTerrainCollisionGate = 0xFFDFE2;
@@ -475,6 +476,21 @@ struct EntityAnimation13D0CResult {
     std::uint8_t distance_table_index;
     std::size_t continuation_calls;
     std::size_t unresolved_calls;
+};
+
+struct EntityAnimation14C7CResult {
+    bool entered;
+    bool carry;
+    bool linked_record_present;
+    bool state_0x0C_path;
+    bool state_0x0D_or_0x0E_path;
+    bool link_predicate_accepted;
+    bool sprite_slot_allocated;
+    bool movement_timer_written;
+    bool direction_written;
+    GenesisAddress linked_record;
+    std::uint16_t direction;
+    std::uint16_t distance;
 };
 
 struct EntityAnimationListSelectionResult {
@@ -1040,6 +1056,11 @@ EntityAnimation13D0CResult run_entity_animation_update_0x13D0C(
     GenesisBus& bus,
     GenesisAddress entity_record_address,
     const EntityAnimationContinuationRoutine& continuation = {});
+
+// ROM 0x14C7C selects the close-linked-record path for animation states
+// 0x0C through 0x0E and reuses the direct 0x15C84 predicate elsewhere.
+EntityAnimation14C7CResult evaluate_entity_animation_link_gate_0x14C7C(
+    GenesisBus& bus, GenesisAddress entity_record_address);
 
 // ROM 0x14BA6, including its direct direction-sign flag derivation and the
 // 0x14682 movement/collision body.

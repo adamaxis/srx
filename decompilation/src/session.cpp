@@ -3292,6 +3292,102 @@ EntityAnimation13D0CResult run_entity_animation_update_0x13D0C(
     return result;
 }
 
+EntityAnimation14C7CResult evaluate_entity_animation_link_gate_0x14C7C(
+    GenesisBus& bus, GenesisAddress entity_record_address) {
+    EntityAnimation14C7CResult result{};
+    result.entered = true;
+    result.linked_record = bus.read32(entity_record_address + 0xA2U);
+    if (result.linked_record == 0) {
+        return result;
+    }
+    result.linked_record_present = true;
+
+    const auto transform = transform_frame_delta_0x15D3C(
+        bus,
+        bus.read16(result.linked_record + 4U),
+        bus.read16(result.linked_record),
+        bus.read16(entity_record_address + 4U),
+        bus.read16(entity_record_address));
+    result.direction = transform.d2;
+    result.distance = transform.d3;
+
+    const auto state = bus.read16(entity_record_address + 0x0EU);
+    if (state == 0x000CU) {
+        result.state_0x0C_path = true;
+        if (result.distance >= 0x0300U) {
+            if (result.distance >= 0x0600U) {
+                return result;
+            }
+            bus.write16(entity_record_address + 0x2EU, result.direction);
+            bus.write16(entity_record_address + 0x34U, result.direction);
+            result.direction_written = true;
+            result.carry = true;
+            return result;
+        }
+
+        if (static_cast<std::int16_t>(
+                bus.read16(entity_record_address + 0xDCU)) < 0) {
+            const auto sprite = allocate_sprite_slot_0x1A2CC(bus);
+            if (!sprite.allocated) {
+                return result;
+            }
+            result.sprite_slot_allocated = true;
+            bus.write16(entity_record_address + 0x32U, sprite.slot_index);
+            bus.write16(entity_record_address + 0x2AU, sprite.d1_value);
+            bus.write8(entity_record_address + 0x11U,
+                       static_cast<std::uint8_t>(
+                           bus.read8(entity_record_address + 0x11U) | 0x40U));
+        }
+        if (static_cast<std::int16_t>(
+                bus.read16(entity_record_address + 0xDCU)) < 0) {
+            bus.write16(entity_record_address + 0x2EU, result.direction);
+        }
+        bus.write16(entity_record_address + 0x34U, result.direction);
+        result.direction_written = true;
+        result.carry = true;
+        return result;
+    }
+
+    if (state == 0x000DU || state == 0x000EU) {
+        result.state_0x0D_or_0x0E_path = true;
+        const auto saved_direction = bus.read16(entity_record_address + 0x2EU);
+        bus.write16(session_ram::kEntityAnimationSavedDirection,
+                    saved_direction);
+        bus.write16(entity_record_address + 0x2EU, result.direction);
+        const auto link = check_entity_animation_link_0x15C84(
+            bus, entity_record_address);
+        result.link_predicate_accepted = link.carry;
+        bus.write16(entity_record_address + 0x2EU,
+                    bus.read16(session_ram::kEntityAnimationSavedDirection));
+        if (!link.carry) {
+            return result;
+        }
+
+        if (state == 0x000EU ||
+            bus.read16(entity_record_address + 0x1EU) == 2U) {
+            bus.write16(entity_record_address + 0x1AU, 0x1000U);
+            result.movement_timer_written = true;
+            return result;
+        }
+        bus.write16(entity_record_address + 0x2EU, result.direction);
+        bus.write16(entity_record_address + 0x34U, result.direction);
+        result.direction_written = true;
+        result.carry = true;
+        return result;
+    }
+
+    const auto link = check_entity_animation_link_0x15C84(
+        bus, entity_record_address);
+    result.link_predicate_accepted = link.carry;
+    if (link.carry) {
+        result.direction = link.direction;
+        result.distance = link.distance;
+        result.direction_written = true;
+        result.carry = true;
+    }
+    return result;
+}
+
 EntityAnimation142AeResult run_entity_animation_continuation_0x142AE(
     GenesisBus& bus,
     GenesisAddress entity_record_address,

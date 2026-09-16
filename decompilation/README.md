@@ -165,6 +165,9 @@ not required to build or run the C++ analyzer.
 - The `0x13D0C` linked-animation update now directly handles its active-phase
   terminal gate, mode-two linked-coordinate copy, type/phase distance tables,
   one-step `0x15DCC` target construction, `0x144E8` gate, and `0x145A2` tail.
+- The linked-record gate at `0x14C7C` now directly covers the ordinary
+  `0x15C84` close-link predicate, the `0x0C` distance/slot branches, and the
+  `0x0D/0x0E` movement-timer path.
 - The `0x145A2` tail is now direct through the `0x14C2E` direction flags,
   `0x14BA6` sign/route decision, `0x149C0` route, and `0x15D3C` transform
   terminal. Its `0x14682` movement body now directly performs the reviewed

@@ -2454,6 +2454,52 @@ int main() {
     assert(!normal_update.routed_to_0x145A2);
     assert(fallback_bus->read8(fallback_record + 0xB5U) == 0);
 
+    // 14C7C reuses the direct 15C84 close-link predicate for ordinary
+    // animation states.
+    fallback_bus->write32(fallback_record + 0xA2U, mode_two_source);
+    fallback_bus->write8(mode_two_source + 0x10U, 1U);
+    fallback_bus->write8(mode_two_source + 0x40U, 0);
+    fallback_bus->write16(fallback_record, 0x0100U);
+    fallback_bus->write16(fallback_record + 4U, 0x0200U);
+    fallback_bus->write16(mode_two_source, 0x0100U);
+    fallback_bus->write16(mode_two_source + 4U, 0x0200U);
+    fallback_bus->write16(fallback_record + 0x0EU, 1U);
+    const auto ordinary_link_gate =
+        shadowrun::evaluate_entity_animation_link_gate_0x14C7C(
+            *fallback_bus, fallback_record);
+    assert(ordinary_link_gate.link_predicate_accepted);
+    assert(ordinary_link_gate.carry);
+    assert(ordinary_link_gate.direction_written);
+
+    // States 0x0D/0x0E restore the record's old +0x2E after the link test;
+    // the movement-word-2 case arms +0x1A instead of returning carry.
+    fallback_bus->write16(fallback_record + 0x0EU, 0x000DU);
+    fallback_bus->write16(fallback_record + 0x1EU, 2U);
+    fallback_bus->write16(fallback_record + 0x1AU, 0);
+    fallback_bus->write16(fallback_record + 0x2EU, 0x1111U);
+    const auto delayed_link_gate =
+        shadowrun::evaluate_entity_animation_link_gate_0x14C7C(
+            *fallback_bus, fallback_record);
+    assert(delayed_link_gate.state_0x0D_or_0x0E_path);
+    assert(delayed_link_gate.link_predicate_accepted);
+    assert(!delayed_link_gate.carry);
+    assert(delayed_link_gate.movement_timer_written);
+    assert(fallback_bus->read16(fallback_record + 0x1AU) == 0x1000U);
+    assert(fallback_bus->read16(fallback_record + 0x2EU) == 0x1111U);
+
+    // State 0x0C's short path writes +0x34 while preserving +0x2E; the
+    // longer 0x0300..0x05FF path is covered by the same direct transform.
+    fallback_bus->write16(fallback_record + 0x0EU, 0x000CU);
+    fallback_bus->write16(fallback_record + 0xDCU, 0);
+    fallback_bus->write16(fallback_record + 0x2EU, 0x2222U);
+    const auto short_link_gate =
+        shadowrun::evaluate_entity_animation_link_gate_0x14C7C(
+            *fallback_bus, fallback_record);
+    assert(short_link_gate.state_0x0C_path);
+    assert(short_link_gate.carry);
+    assert(short_link_gate.direction_written);
+    assert(fallback_bus->read16(fallback_record + 0x2EU) == 0x2222U);
+
     // AAD2 changes A0 to FFFC04 in the ROM. The typed call context must carry
     // that register change into the later command/timer calls and AE26 tail.
     constexpr auto acae_rebound_record = 0xFF0200U;
