@@ -165,10 +165,28 @@ int main() {
     assert(field_entity_animation.size() == 8);
     assert(field_entity_animation.front().width == 24);
     assert(field_entity_animation.front().height == 32);
-    for (const auto& frame : field_entity_animation) {
-        assert(frame.width != 0 && frame.height != 0);
+    const std::array<std::uint16_t, 8> field_entity_widths{
+        24, 24, 16, 24, 32, 24, 16, 24};
+    bool field_entity_directions_vary = false;
+    for (std::size_t index = 0; index < field_entity_animation.size();
+         ++index) {
+        const auto& frame = field_entity_animation[index];
+        assert(frame.width == field_entity_widths[index]);
+        assert(frame.height == 32);
         assert(frame.pixels.size() ==
                static_cast<std::size_t>(frame.width) * frame.height);
+        if (index != 0) {
+            for (std::size_t pixel = 0; pixel < frame.pixels.size(); ++pixel) {
+                const auto& left = frame.pixels[pixel];
+                const auto& right = field_entity_animation.front().pixels[pixel];
+                if (left.red != right.red || left.green != right.green ||
+                    left.blue != right.blue || left.alpha != right.alpha) {
+                    field_entity_directions_vary = true;
+                    break;
+                }
+            }
+        }
     }
+    assert(field_entity_directions_vary);
     return 0;
 }

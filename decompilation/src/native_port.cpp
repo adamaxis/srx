@@ -205,10 +205,10 @@ NativePortShell::NativePortShell(
     rom_scene_height_ = scene.height;
     rom_scene_pixels_ = scene.pixels;
 
-    // ROM 0x600E resolves the field-record kind through 0x62AC and reaches
-    // the eight-entry state list at 0x9334. Each 0x8002 descriptor goes
-    // through the direct 0x3E86/0x3EFE extraction path and becomes a
-    // transparent host RGBA image for the native scene.
+    // ROM 0x600E resolves the field-record kind through 0x62AC, then uses the
+    // kind-3 state-pointer table at 0x6378. Its eight directional state lists
+    // begin at 0x9334 and each 0x8002 descriptor becomes a transparent host
+    // RGBA image through the direct 0x3E86/0x3EFE extraction path.
     const auto entity_frames =
         graphics::decode_genesis_field_entity_animation(rom);
     const auto field_resources =
@@ -246,6 +246,8 @@ NativePortShell::NativePortShell(
     field_camera_x_ = field_initial_camera_x_;
     field_camera_y_ = field_initial_camera_y_;
     field_entity_.record_index = 0;
+    field_entity_.animation_multiplier = 0x1000;
+    field_entity_.animation_threshold = 0x1000;
     field_entity_.world_x_fixed =
         field_resources.initial_field_records[0].world_x_fixed;
     field_entity_.world_y_fixed =
@@ -325,6 +327,37 @@ void NativePortShell::refresh_field_collision() {
         field_entity_.world_y_fixed, true);
 }
 
+void NativePortShell::update_field_entity_direction(
+    std::int32_t delta_x, std::int32_t delta_y) {
+    if ((delta_x == 0 && delta_y == 0) || rom_entity_frames_.empty()) {
+        return;
+    }
+
+    // The eight entries are the field kind-3 directional table selected by
+    // ROM 0x600E. Keep the table ordinal and its byte-addressed +0x16 value
+    // explicit at the native boundary.
+    std::size_t direction = 0;
+    if (delta_x > 0 && delta_y < 0) {
+        direction = 1;
+    } else if (delta_x > 0 && delta_y == 0) {
+        direction = 2;
+    } else if (delta_x > 0 && delta_y > 0) {
+        direction = 3;
+    } else if (delta_x == 0 && delta_y > 0) {
+        direction = 4;
+    } else if (delta_x < 0 && delta_y > 0) {
+        direction = 5;
+    } else if (delta_x < 0 && delta_y == 0) {
+        direction = 6;
+    } else if (delta_x < 0 && delta_y < 0) {
+        direction = 7;
+    }
+    field_entity_.frame_index = direction % rom_entity_frames_.size();
+    field_entity_.state_selector = static_cast<std::uint16_t>(direction * 4U);
+    field_entity_.state_index = 0;
+    field_entity_.animation_accumulator = 0;
+}
+
 void NativePortShell::update(const InputState& input) {
     input_ = input;
 
@@ -342,7 +375,9 @@ void NativePortShell::update(const InputState& input) {
                 field_entity_.world_x_fixed = field_initial_world_x_fixed_;
                 field_entity_.world_y_fixed = field_initial_world_y_fixed_;
                 field_entity_.frame_index = 0;
-                field_entity_.animation_timer = 0;
+                field_entity_.state_selector = 0;
+                field_entity_.state_index = 0;
+                field_entity_.animation_accumulator = 0;
                 refresh_field_view();
                 refresh_field_entity_projection();
                 marker_x_ = field_entity_screen_x();
@@ -384,7 +419,9 @@ void NativePortShell::update(const InputState& input) {
             field_entity_.world_x_fixed = field_initial_world_x_fixed_;
             field_entity_.world_y_fixed = field_initial_world_y_fixed_;
             field_entity_.frame_index = 0;
-            field_entity_.animation_timer = 0;
+            field_entity_.state_selector = 0;
+            field_entity_.state_index = 0;
+            field_entity_.animation_accumulator = 0;
             move_rejected_ = false;
             refresh_field_view();
             refresh_field_entity_projection();
@@ -439,6 +476,7 @@ void NativePortShell::update(const InputState& input) {
         marker_y_ = std::clamp(marker_y_, 48,
                                static_cast<std::int32_t>(kScreenHeight) - 16);
     }
+    update_field_entity_direction(delta_x, delta_y);
     if (!rom_field_map_pixels_.empty()) {
         // The direct 0x5A62 result is a VDP coordinate. Keep the decoded map
         // in the same top-left world space and shift the camera only after
@@ -465,19 +503,6 @@ void NativePortShell::update(const InputState& input) {
         marker_y_ = field_entity_screen_y();
         if (!attempted_movement) {
             refresh_field_collision();
-        }
-    }
-    if (!rom_entity_frames_.empty()) {
-        if (delta_x != 0 || delta_y != 0) {
-            ++field_entity_.animation_timer;
-            if (field_entity_.animation_timer >= 4) {
-                field_entity_.animation_timer = 0;
-                field_entity_.frame_index =
-                    (field_entity_.frame_index + 1U) % rom_entity_frames_.size();
-            }
-        } else {
-            field_entity_.animation_timer = 0;
-            field_entity_.frame_index = 0;
         }
     }
     if (action_flash_frames_ != 0) {

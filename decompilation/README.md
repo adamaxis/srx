@@ -87,16 +87,17 @@ a 1920x1344 host RGBA map using the ROM's initial top-left camera viewport. ROM
 resource descriptor, and arrow input advances the first recovered field record
 through that world space; the viewport follows when the entity reaches the
 reviewed projection window. It does not run a 68000 interpreter or depend on
-Genesis VDP state. The native field resolves the field-record animation via
-the reviewed `0x600E` kind/state indirection (`0x62AC` -> `0x9334`). Its eight
-`0x8002` descriptors (`0x9D6E` through `0x9F66`) use the direct `0x3E86`
-packed-source expansion through the `0x3EDC` nibble table, the `0x3EFE`
-column-major arrangement, and conversion to transparent RGBA8 images. The
-native entity advances through that extracted frame set while movement is
-held. Its anchor uses the reviewed `0x5A62` projection routine and adapts the
-VDP's `0x80` sprite origin into host pixels. The generic `0x72B0` decoder
-remains available for other ROM animation blocks, but is not used to choose
-the field entity frames.
+Genesis VDP state. The native field resolves the field-record directional
+state via the reviewed `0x600E` kind/state indirection (`0x62AC` -> kind-3
+table `0x6378` -> lists beginning at `0x9334`). Its eight `0x8002` descriptors
+(`0x9D6E` through `0x9F66`) use the direct `0x3E86` packed-source expansion
+through the `0x3EDC` nibble table, the `0x3EFE` column-major arrangement, and
+conversion to transparent RGBA8 images. The native entity selects that table
+entry from the held movement vector, preserving the ROM's directional-state
+boundary instead of cycling through unrelated directions. Its anchor uses the
+reviewed `0x5A62` projection routine and adapts the VDP's `0x80` sprite origin
+into host pixels. The generic `0x72B0` decoder remains available for other ROM
+animation blocks, but is not used to choose the field entity frames.
 The terrain table at `0x172DAA` is rebuilt into the native status grid and the
 four-corner `0xE7C8` probe rejects blocked movement before the typed record is
 updated. This is a runnable title-to-field slice, not a claim that the whole

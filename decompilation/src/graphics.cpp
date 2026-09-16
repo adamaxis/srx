@@ -690,7 +690,8 @@ std::vector<RgbaImage> decode_genesis_field_entity_animation(
     std::size_t entity_record_offset,
     std::size_t entity_state_pointer_table_offset,
     std::size_t nibble_table_offset,
-    std::size_t palette_offset) {
+    std::size_t palette_offset,
+    std::size_t state_count) {
     const auto read16 = [&](std::size_t offset, const char* what) {
         require_bytes(rom.size() - std::min(offset, rom.size()), 2U, what);
         return static_cast<std::uint16_t>(
@@ -715,59 +716,56 @@ std::vector<RgbaImage> decode_genesis_field_entity_animation(
     const auto state_selector = static_cast<std::size_t>(read16(
         entity_record_offset + 0x16U,
         "Genesis field entity state selector is truncated") & 0x7FFFU);
-    const auto state_pointer = static_cast<std::size_t>(read32(
+    const auto selected_state_pointer = static_cast<std::size_t>(read32(
         first_pointer + state_selector,
         "Genesis field entity state list is truncated"));
-    const auto state_index = read16(
-        state_pointer, "Genesis field entity state marker is truncated");
-    if (static_cast<std::int16_t>(state_index) < 0) {
+    const auto record_state_index = read16(
+        entity_record_offset + 0x1EU,
+        "Genesis field entity state index is truncated");
+    const auto selected_state_marker = read16(
+        selected_state_pointer,
+        "Genesis field entity state marker is truncated");
+    if (static_cast<std::int16_t>(selected_state_marker) < 0) {
         throw std::runtime_error(
             "Genesis field entity starts in an unsupported terminal state");
     }
 
-    // The selected A2 pointer is itself the state-list base.  ROM 0x600E
-    // consumes its first word as the state marker, skips the following word,
-    // and reads the current descriptor from list_base + 4 + (record+0x1E)*4.
-    // Keep the list base here so extraction can preserve every terminal-
-    // marked entry, rather than reducing the table to the current frame.
-    const auto state_list_base = state_pointer;
-    if (read16(state_list_base,
-               "Genesis field entity descriptor list marker is truncated") !=
-        0x0001U) {
+    if (state_count == 0 || state_count > 256) {
         throw std::runtime_error(
-            "Genesis field entity does not resolve to a positive state list");
-    }
-    const auto first_descriptor = static_cast<std::size_t>(read32(
-        state_list_base + 4U,
-        "Genesis field entity first frame descriptor is truncated"));
-    if (read16(first_descriptor,
-               "Genesis field entity descriptor is truncated") !=
-        0x8002U) {
-        throw std::runtime_error(
-            "Genesis field entity does not resolve to an 0x8002 frame");
+            "Genesis field entity state count is outside the supported range");
     }
 
     std::vector<RgbaImage> frames;
-    constexpr std::size_t kMaximumStateEntries = 256;
-    for (std::size_t index = 0; index < kMaximumStateEntries; ++index) {
-        const auto entry = state_list_base + index * 8U;
-        const auto marker = read16(
-            entry, "Genesis field entity state-list entry is truncated");
-        if (static_cast<std::int16_t>(marker) < 0) {
-            if (frames.empty()) {
-                throw std::runtime_error(
-                    "Genesis field entity state list has no frames");
-            }
-            return frames;
+    frames.reserve(state_count);
+    for (std::size_t index = 0; index < state_count; ++index) {
+        // The outer table is a longword table at the address selected by the
+        // kind. Its entries point to independent state lists; they are not
+        // eight adjacent frames in one list. ROM 0x600E uses the record's
+        // +0x1E index, resetting it to zero when it reaches a list's marker.
+        const auto state_list = static_cast<std::size_t>(read32(
+            first_pointer + index * 4U,
+            "Genesis field entity state-pointer table is truncated"));
+        const auto state_marker = read16(
+            state_list, "Genesis field entity state-list marker is truncated");
+        if (static_cast<std::int16_t>(state_marker) < 0) {
+            throw std::runtime_error(
+                "Genesis field entity state-pointer table terminates early");
         }
+        const auto frame_index = record_state_index >= state_marker
+            ? 0U : static_cast<std::size_t>(record_state_index);
         const auto descriptor = static_cast<std::size_t>(read32(
-            entry + 4U,
+            state_list + 4U + frame_index * 4U,
             "Genesis field entity frame descriptor is truncated"));
+        if (read16(descriptor,
+                   "Genesis field entity descriptor is truncated") !=
+            0x8002U) {
+            throw std::runtime_error(
+                "Genesis field entity does not resolve to an 0x8002 frame");
+        }
         frames.push_back(decode_genesis_entity_frame(
             rom, descriptor, nibble_table_offset, palette_offset));
     }
-    throw std::runtime_error(
-        "Genesis field entity state list has no terminal marker");
+    return frames;
 }
 
 RgbaImage decode_genesis_startup_screen(

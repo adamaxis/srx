@@ -128,16 +128,18 @@ only after it reaches the reviewed projection window. The renderer-independent
 
 This is now a runnable native title-to-field slice with controls, actual
 ROM-derived field graphics, collision rejection, and a ROM-derived entity
-frame rendered through the native screen boundary. The field-record animation
-set follows the direct `0x600E` kind/state indirection (`0x62AC` -> `0x9334`)
-through the reviewed `0x5A62` projection; its eight `0x8002` descriptors are
-decoded to host RGBA at extraction time. The native record stores the recovered
-fixed-point world position, exact VDP projection words, host screen
-coordinates, visibility, collision result, and animation state; its remaining
-0x100-byte fields stay in the transitional bus-backed session layer until
-recovered. This is not a claim that the whole game is playable. The next port
-slices should expand typed entity/session records and connect field UI and
-additional object behavior to the native update/render interfaces.
+frame rendered through the native screen boundary. The field-record
+directional state follows the direct `0x600E` kind/state indirection
+(`0x62AC` -> kind-3 table `0x6378` -> lists beginning at `0x9334`) through
+the reviewed `0x5A62` projection; its eight `0x8002` descriptors are decoded
+to host RGBA at extraction time and selected from the native movement vector.
+The native record stores the recovered fixed-point world position, exact VDP
+projection words, host screen coordinates, visibility, collision result, and
+directional state; its remaining 0x100-byte fields stay in the transitional
+bus-backed session layer until recovered. This is not a claim that the whole
+game is playable. The next port slices should expand typed entity/session
+records and connect field UI and additional object behavior to the native
+update/render interfaces.
 
 ## Build and source discipline
 

@@ -81,8 +81,16 @@ struct NativeFieldEntity {
     std::uint16_t screen_x = 0;
     std::uint16_t screen_y = 0;
     bool visible = false;
+    // The field kind-3 table is a directional state table. The native
+    // renderer keeps the selected table ordinal as the extracted-frame index
+    // and the ROM byte offset used by record+0x16 separately.
     std::size_t frame_index = 0;
-    std::uint8_t animation_timer = 0;
+    std::uint16_t state_selector = 0;
+    std::uint16_t state_index = 0;
+    std::uint16_t animation_accumulator = 0;
+    std::uint16_t animation_multiplier = 0;
+    std::uint16_t animation_threshold = 0;
+    std::uint32_t animation_descriptor = 0;
 };
 
 // Native game code writes to this interface instead of issuing Genesis VDP
@@ -191,6 +199,8 @@ private:
     void refresh_field_view();
     void refresh_field_entity_projection();
     void refresh_field_collision();
+    void update_field_entity_direction(std::int32_t delta_x,
+                                       std::int32_t delta_y);
 
     std::string title_;
     InputState input_{};

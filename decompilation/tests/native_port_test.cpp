@@ -75,6 +75,7 @@ int main() {
         button_mask(Button::Right) | button_mask(Button::Down), 0});
     assert(rom_shell.marker_x() == field_start_x + 2);
     assert(rom_shell.marker_y() == 168);
+    assert(rom_shell.field_entity_frame_index() == 3);
     assert(rom_shell.field_entity_screen_x() == rom_shell.marker_x());
     assert(rom_shell.field_entity_screen_y() == rom_shell.marker_y());
     rom_shell.render(screen);
@@ -84,8 +85,7 @@ int main() {
         rom_shell.update(InputState{button_mask(Button::Right), 0});
     }
     assert(rom_shell.marker_x() == 301);
-    assert(rom_shell.field_entity_frame_index() != 0);
-    assert(rom_shell.field_entity_frame_index() < 8);
+    assert(rom_shell.field_entity_frame_index() == 2);
     assert(rom_shell.field_world_x() > initial_camera_x);
     assert(rom_shell.field_camera_x() > initial_camera_x);
     rom_shell.render(screen);

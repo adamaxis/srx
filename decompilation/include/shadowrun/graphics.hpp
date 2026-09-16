@@ -146,17 +146,19 @@ std::vector<RgbaImage> decode_genesis_entity_animation(
     std::size_t nibble_table_offset = 0x3EDC,
     std::size_t palette_offset = 0x172D8A);
 
-// Resolve the field-record animation selected by ROM 0x600E. The record
-// template's +0x0E kind indexes the pointer table at 0x62AC; its +0x16 state
-// selects a state list, whose terminal-marked entries point at 0x8002 frame
-// descriptors. This preserves the ROM's indirection while returning ordinary
-// host RGBA images to the native renderer.
+// Resolve the field-record directional states selected by ROM 0x600E. The
+// record template's +0x0E kind indexes the pointer table at 0x62AC; its +0x16
+// state is a byte offset into that kind's state-pointer table. Each selected
+// state list supplies an 0x8002 frame descriptor. The kind-3 field table has
+// eight entries, which are returned in the table's original order as ordinary
+// host RGBA images.
 std::vector<RgbaImage> decode_genesis_field_entity_animation(
     const std::vector<std::uint8_t>& rom,
     std::size_t entity_record_offset = 0x7291A,
     std::size_t entity_state_pointer_table_offset = 0x62AC,
     std::size_t nibble_table_offset = 0x3EDC,
-    std::size_t palette_offset = 0x172D8A);
+    std::size_t palette_offset = 0x172D8A,
+    std::size_t state_count = 8);
 
 // Reconstruct the startup scene assembled by ROM 0x1D00/0x1D58. The source
 // offsets and dimensions are the operands of that path, not guessed graphic
