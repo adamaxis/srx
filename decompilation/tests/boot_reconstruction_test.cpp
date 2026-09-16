@@ -1942,9 +1942,9 @@ int main() {
     assert(resource_targets.size() == 1);
     assert(resource_targets[0] == 0x00014D8EU);
 
-    // B1DC now performs its direct delay/command/frame-selection prefix and
-    // enters the reconstructed linked-record predicate. Its later 55C76
-    // adjustment is intentionally surfaced as one unresolved boundary.
+    // B1DC now performs its direct delay/command/frame-selection prefix,
+    // enters the reconstructed linked-record predicate, and invokes the
+    // direct 55C76 entity reaction when the link is close enough.
     auto b1dc_bus = std::make_unique<shadowrun::GenesisMemoryBus>(
         std::vector<std::uint8_t>(0x200000U, 0));
     constexpr auto b1dc_record = 0xFF0600U;
@@ -1955,7 +1955,7 @@ int main() {
     assert(b1dc_no_link.initial_command_dispatched);
     assert(!b1dc_no_link.linked_record_transformed);
     assert(!b1dc_no_link.linked_gate_carry);
-    assert(!b1dc_no_link.unresolved_0x55C76);
+    assert(!b1dc_no_link.reaction_update_called);
     assert(b1dc_no_link.unresolved_calls == 0);
     assert(b1dc_bus->read16(b1dc_record + 0x2EU) == 0);
     assert(b1dc_bus->read16(b1dc_record + 0x16U) == 0);
@@ -1977,8 +1977,8 @@ int main() {
     assert(b1dc_linked_result.linked_record_transformed);
     assert(b1dc_linked_result.linked_gate_carry);
     assert(b1dc_linked_result.linked_command_dispatched);
-    assert(b1dc_linked_result.unresolved_0x55C76);
-    assert(b1dc_linked_result.unresolved_calls == 1);
+    assert(b1dc_linked_result.reaction_update_called);
+    assert(b1dc_linked_result.unresolved_calls == 0);
     assert(b1dc_linked_result.link_check.linked_record == b1dc_linked);
     assert(b1dc_bus->read16(shadowrun::session_ram::kFrameEntityGlobalGate) !=
            0);

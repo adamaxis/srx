@@ -173,8 +173,8 @@ not required to build or run the C++ analyzer.
   occupancy scan; its typed continuation remains available as an override.
 - The `0xB1DC` animation-state prefix is direct through its ABFC delay,
   type-dependent Z80 command, linked direction setup, `0xC0A2` frame table,
-  `0xAF6C` state tail, and `0x15C84` link gate. The register-heavy `0x55C76`
-  adjustment is reported as the next explicit unresolved boundary.
+  `0xAF6C` state tail, `0x15C84` link gate, and direct `0x55C76` entity
+  reaction update.
 - The `0x15C84`/`0x15C58` linked-animation predicate is also direct: it
   applies the +0x10 flag gates, uses the reviewed `0x15D3C` transform, and
   preserves the ROM's `< 0x200` distance cutoff and +0x34 direction write.

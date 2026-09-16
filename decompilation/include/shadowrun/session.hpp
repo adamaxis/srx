@@ -485,7 +485,10 @@ struct EntityAnimationB1dcResult {
     bool linked_record_transformed;
     bool linked_gate_carry;
     bool linked_command_dispatched;
-    bool unresolved_0x55C76;
+    bool reaction_update_called;
+    bool reaction_position_updated;
+    bool reaction_animation_updated;
+    std::uint8_t reaction_random_bucket;
     EntityAnimationLinkCheckResult link_check;
     std::size_t unresolved_calls;
 };
@@ -755,9 +758,8 @@ EntityAnimationAcaeResult run_entity_animation_update_0xACAE(
     GenesisAddress entity_record_address,
     const EntityAnimationAcaeContinuationRoutine& continuation = {});
 
-// ROM 0xB1DC: perform the direct state/linked-record setup and enter the
-// linked animation gate. The later 0x55C76 adjustment remains an explicit
-// unresolved boundary until its register-heavy body is reconstructed.
+// ROM 0xB1DC: perform the direct state/linked-record setup, enter the linked
+// animation gate, and run the already-translated 0x55C76 entity reaction.
 EntityAnimationB1dcResult run_entity_animation_update_0xB1DC(
     GenesisBus& bus, GenesisAddress entity_record_address);
 

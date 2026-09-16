@@ -4598,21 +4598,26 @@ EntityAnimationB1dcResult run_entity_animation_update_0xB1DC(
     const auto link_check = check_entity_animation_link_0x15C84(
         bus, entity_record_address);
     if (!link_check.carry) {
-        return {true, linked_record_transformed, false, false, false,
-                link_check, 0};
+        return {true, linked_record_transformed, false, false, false, false,
+                false, 0, link_check, 0};
     }
 
     arm_entity_global_gate_0x1DBAA(bus);
     const auto linked_command =
-        (bus.read8(session_ram::kEntityAnimationEventTable - 2U) & 0x80U) != 0
+        (bus.read8(session_ram::kRandomState) & 0x80U) != 0
             ? 0x004EU
             : 0x004DU;
     dispatch_z80_command_0x530DE(bus, linked_command);
 
-    // 0x55C76 performs the resource/combat adjustment after this command.
-    // Keep the boundary visible in the typed result until its register
-    // contract is translated instead of silently claiming the call ran.
-    return {true, linked_record_transformed, true, true, true, link_check, 1};
+    // 0x55C76 is already a direct entity-state translation. B1DC supplies
+    // the current record as A0 and the linked record as A1 after the second
+    // command, so preserve that exact pair rather than reducing the call to
+    // an unresolved handler boundary.
+    const auto reaction = run_entity_reaction_0x55C76(
+        bus, entity_record_address, linked_record);
+    return {true, linked_record_transformed, true, true, true,
+            reaction.position_update_called, reaction.animation_update_called,
+            reaction.random_bucket, link_check, 0};
 }
 
 EntityAnimationAcaeResult run_entity_animation_update_0xACAE(
