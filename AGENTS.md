@@ -112,8 +112,12 @@ placeholder composition. The mode record at `0x172C80` selects the raw
 stamps at `0x170102`, and 60x42 primary/secondary map tables at `0x16D9A2` and
 `0x16ED52`. `read_genesis_mode2_field_resources` follows the record's
 `0x172C50` setup pointer and exposes those pointers, dimensions, palette, and
-initial fixed-point camera as a typed native resource descriptor. It also
-retains the three fixed-point field-record pairs at `+0x42..+0x4C`, which ROM
+initial fixed-point camera as a typed native resource descriptor. Genesis
+`0x166B82` graphics are linear pixel-packed tiles: each 8-pixel row uses four
+bytes, with the high nibble followed by the low nibble. Treating those bytes
+as interleaved bitplanes creates the vertical/noise corruption that this
+native extraction path must avoid. The descriptor also retains the three
+fixed-point field-record pairs at `+0x42..+0x4C`, which ROM
 `0x2B34` copies into the first three `0x100`-byte records. The decoder
 translates those records, palette attributes, and flips into a 1920x1344 host
 RGBA map and the native shell presents a top-left-camera viewport through

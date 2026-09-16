@@ -427,18 +427,13 @@ IndexedTile decode_genesis_tile(const std::uint8_t* source,
     require_bytes(source_size, 32, "Genesis tile is truncated");
     IndexedTile tile;
     for (std::size_t row = 0; row < IndexedTile::kHeight; ++row) {
-        const auto plane0 = source[row * 4U];
-        const auto plane1 = source[row * 4U + 1U];
-        const auto plane2 = source[row * 4U + 2U];
-        const auto plane3 = source[row * 4U + 3U];
-        for (std::size_t column = 0; column < IndexedTile::kWidth; ++column) {
-            const auto bit = static_cast<unsigned>(7U - column);
-            tile.pixels[row * IndexedTile::kWidth + column] =
-                static_cast<std::uint8_t>(
-                    ((plane0 >> bit) & 1U) |
-                    (((plane1 >> bit) & 1U) << 1U) |
-                    (((plane2 >> bit) & 1U) << 2U) |
-                    (((plane3 >> bit) & 1U) << 3U));
+        for (std::size_t byte = 0; byte < 4U; ++byte) {
+            const auto packed_pixels = source[row * 4U + byte];
+            const auto pixel = row * IndexedTile::kWidth + byte * 2U;
+            tile.pixels[pixel] = static_cast<std::uint8_t>(
+                packed_pixels >> 4U);
+            tile.pixels[pixel + 1U] = static_cast<std::uint8_t>(
+                packed_pixels & 0x0FU);
         }
     }
     return tile;

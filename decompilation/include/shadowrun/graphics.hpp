@@ -103,9 +103,9 @@ native::NativePortAssets read_native_asset_pack(const std::string& path);
 native::Rgba8 decode_genesis_cram_word(std::uint16_t cram_word,
                                        bool transparent = false);
 
-// Decode one Genesis 4bpp tile. Each row contains four interleaved bitplane
-// bytes: one byte for each color bit, with bit 7 representing the leftmost
-// pixel.
+// Decode one Genesis 4bpp tile. Each row contains four packed bytes, with the
+// high nibble holding the left pixel and the low nibble holding the right
+// pixel. The result is host-native color-index pixels.
 IndexedTile decode_genesis_tile(const std::uint8_t* source,
                                 std::size_t source_size);
 

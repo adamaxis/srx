@@ -28,10 +28,8 @@ int main() {
     assert(red.red == 255 && red.green == 0 && red.blue == 0);
 
     std::vector<std::uint8_t> tile(32, 0);
-    tile[0] = 0x80;
-    tile[1] = 0x40;
-    tile[2] = 0x20;
-    tile[3] = 0x10;
+    tile[0] = 0x12;
+    tile[1] = 0x48;
     const auto indexed = decode_genesis_tile(tile.data(), tile.size());
     assert(indexed.pixels[0] == 1);
     assert(indexed.pixels[1] == 2);
@@ -69,6 +67,14 @@ int main() {
     assert(atlas.pixels[4].alpha == 0);
 
     const auto rom = read_rom();
+    const auto field_tile = decode_genesis_tile(
+        rom.data() + 0x166B82, 32);
+    assert(field_tile.pixels[0] == 0);
+    assert(field_tile.pixels[1] == 0);
+    assert(field_tile.pixels[2] == 0x0D);
+    assert(field_tile.pixels[3] == 0x0C);
+    assert(field_tile.pixels[8] == 0x0D);
+    assert(field_tile.pixels[9] == 0x0D);
     const auto entity_template =
         read_genesis_field_entity_template(rom);
     assert(entity_template.record_offset == 0x7291A);

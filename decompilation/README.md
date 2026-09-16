@@ -81,9 +81,12 @@ on the reconstructed title scene, consumes the pressed `Start` edge, and enters
 a typed C++ field state with held directional movement. The field presentation
 translates the mode-2 data path:
 raw pattern data at `0x166B82`, compressed 4x4 name-word stamps at `0x170102`,
-and the 60x42 primary/secondary tables at `0x16D9A2`/`0x16ED52`. The result is
-a 1920x1344 host RGBA map using the ROM's initial top-left camera viewport. ROM
-`0x2B34`'s first three mode-record coordinate pairs are retained in the typed
+and the 60x42 primary/secondary tables at `0x16D9A2`/`0x16ED52`. Genesis tile
+rows are decoded as four packed bytes (high nibble then low nibble), matching
+the VDP's linear pixel format; treating those bytes as bitplanes produces the
+vertical/noise corruption seen in the earlier native field output. The result
+is a 1920x1344 host RGBA map using the ROM's initial top-left camera viewport.
+ROM `0x2B34`'s first three mode-record coordinate pairs are retained in the typed
 resource descriptor, and arrow input advances the first recovered field record
 through that world space; the viewport follows when the entity reaches the
 reviewed projection window. The reviewed field-loop raw `0x2000` branch to
@@ -544,7 +547,8 @@ palette-indexed.
   `graphics.cpp`: the raw `0x166B82`/`0x6E20` pattern upload, the compressed
   `0x170102` 4x4 name-word stamps, and the 60x42 maps at `0x16D9A2` and
   `0x16ED52` are composed without retaining VDP name tables or palette indices
-  at runtime.
+  at runtime. The extraction test covers the first field tile's packed-nibble
+  pixels so the old planar interpretation cannot silently return.
 - ROM `0x0F5C`/`0x0F98` is translated by
   `ShadowrunRuntime::stream_primary_vdp`, including its 64 KiB boundary split,
   64-byte/4-byte/2-byte copy tiers, and command offset behavior.
