@@ -2,9 +2,11 @@
 
 #include "shadowrun/entity_projection.hpp"
 #include "shadowrun/graphics.hpp"
+#include "shadowrun/rom_layout.hpp"
 
 #include <algorithm>
 #include <array>
+#include <stdexcept>
 #include <utility>
 
 namespace shadowrun::native {
@@ -182,6 +184,21 @@ std::uint16_t fixed_world_coordinate(std::int32_t pixels) {
         static_cast<std::uint32_t>(pixels) << 4U);
 }
 
+std::uint16_t read_rom_word(const std::vector<std::uint8_t>& rom,
+                            std::size_t offset, const char* what) {
+    if (offset > rom.size() || rom.size() - offset < 2U) {
+        throw std::out_of_range(what);
+    }
+    return static_cast<std::uint16_t>(
+        (static_cast<std::uint16_t>(rom[offset]) << 8U) |
+        rom[offset + 1U]);
+}
+
+std::int16_t read_rom_signed_word(const std::vector<std::uint8_t>& rom,
+                                  std::size_t offset, const char* what) {
+    return static_cast<std::int16_t>(read_rom_word(rom, offset, what));
+}
+
 constexpr std::int32_t kGenesisVdpSpriteOrigin = 0x80;
 constexpr std::int32_t kFieldViewportWidth = kScreenWidth;
 constexpr std::int32_t kFieldViewportHeight = 168;
@@ -211,6 +228,19 @@ NativePortShell::NativePortShell(
     // RGBA image through the direct 0x3E86/0x3EFE extraction path.
     const auto entity_frames =
         graphics::decode_genesis_field_entity_animation(rom);
+    for (std::size_t index = 0; index < field_direction_table_.size();
+         ++index) {
+        const auto table_offset =
+            rom::kEntityMovementDirectionTable + index * 4U;
+        field_direction_table_[index] = {
+            read_rom_signed_word(
+                rom, table_offset,
+                "Genesis entity movement direction table is truncated"),
+            read_rom_signed_word(
+                rom, table_offset + 2U,
+                "Genesis entity movement direction table is truncated"),
+        };
+    }
     const auto field_resources =
         graphics::read_genesis_mode2_field_resources(rom);
     auto field_map = graphics::decode_genesis_mode2_field_map(
@@ -333,24 +363,23 @@ void NativePortShell::update_field_entity_direction(
         return;
     }
 
-    // The eight entries are the field kind-3 directional table selected by
-    // ROM 0x600E. Keep the table ordinal and its byte-addressed +0x16 value
-    // explicit at the native boundary.
+    // ROM 0xBABC probes the eight signed vectors at 0xC002. Their ordinal is
+    // also the byte-addressed state-table selector consumed by 0x600E, so
+    // match the host input vector against the extracted table rather than
+    // duplicating its directional order in the frontend.
+    const auto sign = [](std::int32_t value) {
+        return value < 0 ? -1 : value > 0 ? 1 : 0;
+    };
+    const auto desired_x = sign(delta_x);
+    const auto desired_y = sign(delta_y);
     std::size_t direction = 0;
-    if (delta_x > 0 && delta_y < 0) {
-        direction = 1;
-    } else if (delta_x > 0 && delta_y == 0) {
-        direction = 2;
-    } else if (delta_x > 0 && delta_y > 0) {
-        direction = 3;
-    } else if (delta_x == 0 && delta_y > 0) {
-        direction = 4;
-    } else if (delta_x < 0 && delta_y > 0) {
-        direction = 5;
-    } else if (delta_x < 0 && delta_y == 0) {
-        direction = 6;
-    } else if (delta_x < 0 && delta_y < 0) {
-        direction = 7;
+    for (std::size_t index = 0; index < field_direction_table_.size();
+         ++index) {
+        const auto& vector = field_direction_table_[index];
+        if (sign(vector[0]) == desired_x && sign(vector[1]) == desired_y) {
+            direction = index;
+            break;
+        }
     }
     field_entity_.frame_index = direction % rom_entity_frames_.size();
     field_entity_.state_selector = static_cast<std::uint16_t>(direction * 4U);

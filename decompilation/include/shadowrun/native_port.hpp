@@ -2,6 +2,7 @@
 
 #include "shadowrun/terrain.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -213,6 +214,7 @@ private:
     std::uint16_t rom_scene_height_ = 0;
     std::vector<Rgba8> rom_scene_pixels_;
     std::vector<NativeEntityFrame> rom_entity_frames_;
+    std::array<std::array<std::int16_t, 2>, 8> field_direction_table_{};
     NativeFieldEntity field_entity_{};
     terrain::Map field_terrain_{};
     terrain::ProbeResult field_collision_{};

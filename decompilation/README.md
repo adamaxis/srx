@@ -94,7 +94,9 @@ table `0x6378` -> lists beginning at `0x9334`). Its eight `0x8002` descriptors
 through the `0x3EDC` nibble table, the `0x3EFE` column-major arrangement, and
 conversion to transparent RGBA8 images. The native entity selects that table
 entry from the held movement vector, preserving the ROM's directional-state
-boundary instead of cycling through unrelated directions. Its anchor uses the
+boundary instead of cycling through unrelated directions; the vector match is
+driven by the signed eight-entry probe table at `0xC002` used by `0xBABC`.
+Its anchor uses the
 reviewed `0x5A62` projection routine and adapts the VDP's `0x80` sprite origin
 into host pixels. The generic `0x72B0` decoder remains available for other ROM
 animation blocks, but is not used to choose the field entity frames.
