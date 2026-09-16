@@ -18,6 +18,27 @@ void require_bytes(std::size_t available, std::size_t required,
     }
 }
 
+std::uint16_t read_rom_u16(const std::vector<std::uint8_t>& rom,
+                           std::size_t offset, const char* what) {
+    if (offset > rom.size() || rom.size() - offset < 2U) {
+        throw std::out_of_range(what);
+    }
+    return static_cast<std::uint16_t>(
+        (static_cast<std::uint16_t>(rom[offset]) << 8U) |
+        rom[offset + 1U]);
+}
+
+std::uint32_t read_rom_u32(const std::vector<std::uint8_t>& rom,
+                           std::size_t offset, const char* what) {
+    if (offset > rom.size() || rom.size() - offset < 4U) {
+        throw std::out_of_range(what);
+    }
+    return (static_cast<std::uint32_t>(rom[offset]) << 24U) |
+           (static_cast<std::uint32_t>(rom[offset + 1U]) << 16U) |
+           (static_cast<std::uint32_t>(rom[offset + 2U]) << 8U) |
+           static_cast<std::uint32_t>(rom[offset + 3U]);
+}
+
 void write_u16(std::ostream& output, std::uint16_t value) {
     output.put(static_cast<char>(value & 0xFFU));
     output.put(static_cast<char>((value >> 8U) & 0xFFU));
@@ -172,6 +193,74 @@ std::array<native::Rgba8, 64> read_genesis_palette_set(
     return palette;
 }
 
+GenesisMode2FieldResources read_genesis_mode2_field_resources(
+    const std::vector<std::uint8_t>& rom, std::size_t record_offset) {
+    if (record_offset > rom.size() || rom.size() - record_offset < 0x3EU) {
+        throw std::out_of_range("Genesis mode-2 field record is truncated");
+    }
+
+    const auto setup_block = static_cast<std::size_t>(read_rom_u32(
+        rom, record_offset + 0x34U,
+        "Genesis mode-2 setup pointer is truncated"));
+    if (setup_block > rom.size() || rom.size() - setup_block < 0x20U) {
+        throw std::out_of_range("Genesis mode-2 setup block is truncated");
+    }
+
+    const auto width_bytes = static_cast<std::size_t>(read_rom_u16(
+        rom, record_offset + 0x24U,
+        "Genesis mode-2 tilemap stride is truncated"));
+    if (width_bytes == 0 || (width_bytes & 1U) != 0) {
+        throw std::runtime_error(
+            "Genesis mode-2 tilemap stride is not word-aligned");
+    }
+    const auto tilemap_width = width_bytes / 2U;
+
+    const auto primary_tilemap = static_cast<std::size_t>(read_rom_u32(
+        rom, record_offset + 0x14U,
+        "Genesis mode-2 primary tilemap pointer is truncated"));
+    const auto secondary_tilemap = static_cast<std::size_t>(read_rom_u32(
+        rom, record_offset + 0x1CU,
+        "Genesis mode-2 secondary tilemap pointer is truncated"));
+    if (primary_tilemap > rom.size() || secondary_tilemap > rom.size()) {
+        throw std::out_of_range("Genesis mode-2 tilemaps are outside the ROM");
+    }
+    if (secondary_tilemap <= primary_tilemap ||
+        (secondary_tilemap - primary_tilemap) % 2U != 0) {
+        throw std::runtime_error(
+            "Genesis mode-2 tilemap pointers do not describe adjacent maps");
+    }
+    const auto tilemap_entries = (secondary_tilemap - primary_tilemap) / 2U;
+    if (tilemap_entries == 0 || tilemap_entries % tilemap_width != 0) {
+        throw std::runtime_error(
+            "Genesis mode-2 tilemap size does not match its stride");
+    }
+
+    return {
+        record_offset,
+        read_rom_u16(rom, record_offset,
+                     "Genesis mode-2 camera X is truncated"),
+        read_rom_u16(rom, record_offset + 2U,
+                     "Genesis mode-2 camera Y is truncated"),
+        setup_block,
+        static_cast<std::size_t>(read_rom_u32(
+            rom, setup_block + 4U,
+            "Genesis mode-2 palette pointer is truncated")),
+        static_cast<std::size_t>(read_rom_u32(
+            rom, setup_block + 0x10U,
+            "Genesis mode-2 pattern pointer is truncated")) & ~std::size_t{1},
+        static_cast<std::size_t>(read_rom_u32(
+            rom, setup_block + 0x18U,
+            "Genesis mode-2 pattern length is truncated")),
+        static_cast<std::size_t>(read_rom_u32(
+            rom, record_offset + 0x18U,
+            "Genesis mode-2 metatile pointer is truncated")) & ~std::size_t{1},
+        primary_tilemap,
+        secondary_tilemap,
+        tilemap_width,
+        tilemap_entries / tilemap_width,
+    };
+}
+
 RgbaImage decode_tile_atlas(
     const std::vector<std::uint8_t>& rom,
     std::size_t tile_byte_offset,
@@ -215,6 +304,16 @@ RgbaImage decode_tile_atlas(
         }
     }
     return image;
+}
+
+RgbaImage decode_genesis_mode2_field_map(
+    const std::vector<std::uint8_t>& rom,
+    const GenesisMode2FieldResources& resources) {
+    return decode_genesis_mode2_field_map(
+        rom, resources.pattern_data_offset, resources.pattern_byte_count,
+        resources.metatile_stream_offset, resources.primary_tilemap_offset,
+        resources.secondary_tilemap_offset, resources.tilemap_width,
+        resources.tilemap_height, resources.palette_offset);
 }
 
 RgbaImage decode_genesis_mode2_field_map(

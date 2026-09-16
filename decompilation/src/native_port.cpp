@@ -203,20 +203,27 @@ NativePortShell::NativePortShell(
     // the VBlank queue consumes it, and extraction converts the results to
     // transparent host RGBA so the native scene can draw them directly.
     const auto entity_frames = graphics::decode_genesis_entity_animation(rom);
-    auto field_map = graphics::decode_genesis_mode2_field_map(rom);
+    const auto field_resources =
+        graphics::read_genesis_mode2_field_resources(rom);
+    auto field_map = graphics::decode_genesis_mode2_field_map(
+        rom, field_resources);
     rom_entity_frames_.reserve(entity_frames.size());
     for (const auto& frame : entity_frames) {
         rom_entity_frames_.push_back({frame.width, frame.height, frame.pixels});
     }
 
-    // Mode 2 starts with camera coordinates 0x3400/0x2280 in the selected
-    // ROM record. They are 1/16-pixel values, so the native state keeps their
-    // pixel conversion and follows the same world position as the marker.
+    // The selected mode-2 record carries the initial camera coordinates as
+    // 1/16-pixel values. Keep the native state in pixels while retaining the
+    // fixed-point values in NativeFieldEntity for the reviewed projection.
     rom_field_map_width_ = field_map.width;
     rom_field_map_height_ = field_map.height;
     rom_field_map_pixels_ = std::move(field_map.pixels);
-    field_world_x_ = static_cast<std::int32_t>(0x3400U >> 4U);
-    field_world_y_ = static_cast<std::int32_t>(0x2280U >> 4U);
+    field_initial_world_x_ = static_cast<std::int32_t>(
+        field_resources.initial_camera_x_fixed >> 4U);
+    field_initial_world_y_ = static_cast<std::int32_t>(
+        field_resources.initial_camera_y_fixed >> 4U);
+    field_world_x_ = field_initial_world_x_;
+    field_world_y_ = field_initial_world_y_;
     field_camera_x_ = field_world_x_;
     field_camera_y_ = field_world_y_;
     field_entity_.world_x_fixed = fixed_world_coordinate(
@@ -292,8 +299,8 @@ void NativePortShell::update(const InputState& input) {
             marker_x_ = kScreenWidth / 2;
             marker_y_ = kScreenHeight / 2;
             if (!rom_field_map_pixels_.empty()) {
-                field_world_x_ = static_cast<std::int32_t>(0x3400U >> 4U);
-                field_world_y_ = static_cast<std::int32_t>(0x2280U >> 4U);
+                field_world_x_ = field_initial_world_x_;
+                field_world_y_ = field_initial_world_y_;
                 field_camera_x_ = field_world_x_;
                 field_camera_y_ = field_world_y_;
                 field_entity_.world_x_fixed = fixed_world_coordinate(

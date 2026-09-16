@@ -22,6 +22,24 @@ struct RgbaImage {
     std::vector<native::Rgba8> pixels;
 };
 
+// Typed view of the selected mode-2 record at ROM 0x172C80. The names here
+// describe the values' role at the resource boundary; they intentionally do
+// not invent meanings for the record's remaining words.
+struct GenesisMode2FieldResources {
+    std::size_t record_offset = 0;
+    std::uint16_t initial_camera_x_fixed = 0;
+    std::uint16_t initial_camera_y_fixed = 0;
+    std::size_t setup_block_offset = 0;
+    std::size_t palette_offset = 0;
+    std::size_t pattern_data_offset = 0;
+    std::size_t pattern_byte_count = 0;
+    std::size_t metatile_stream_offset = 0;
+    std::size_t primary_tilemap_offset = 0;
+    std::size_t secondary_tilemap_offset = 0;
+    std::size_t tilemap_width = 0;
+    std::size_t tilemap_height = 0;
+};
+
 // Genesis CRAM stores three 3-bit channels in the spaced bit positions of a
 // 16-bit word. This expands each channel to the normal 0..255 host range.
 native::Rgba8 decode_genesis_cram_word(std::uint16_t cram_word,
@@ -48,6 +66,13 @@ std::array<native::Rgba8, 16> read_genesis_palette(
 std::array<native::Rgba8, 64> read_genesis_palette_set(
     const std::vector<std::uint8_t>& rom, std::size_t byte_offset);
 
+// Read the resource pointers and dimensions used by the first mode-2 field.
+// The setup block is followed through the record's setup pointer, so callers
+// do not need to duplicate the ROM layout or rely on fixed camera literals.
+GenesisMode2FieldResources read_genesis_mode2_field_resources(
+    const std::vector<std::uint8_t>& rom,
+    std::size_t record_offset = 0x172C80);
+
 RgbaImage decode_tile_atlas(
     const std::vector<std::uint8_t>& rom,
     std::size_t tile_byte_offset,
@@ -61,6 +86,10 @@ RgbaImage decode_tile_atlas(
 // tagged 0x170102 source into 4x4 VDP name-word stamps, and indexes those
 // stamps through the two 60x42 tables at 0x16D9A2 and 0x16ED52. This produces
 // a host RGBA map (1920x1344) rather than a VDP/VRAM representation.
+RgbaImage decode_genesis_mode2_field_map(
+    const std::vector<std::uint8_t>& rom,
+    const GenesisMode2FieldResources& resources);
+
 RgbaImage decode_genesis_mode2_field_map(
     const std::vector<std::uint8_t>& rom,
     std::size_t pattern_data_offset = 0x166B82,

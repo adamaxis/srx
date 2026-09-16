@@ -192,6 +192,8 @@ private:
     std::uint16_t rom_field_width_ = 0;
     std::uint16_t rom_field_height_ = 0;
     std::vector<Rgba8> rom_field_pixels_;
+    std::int32_t field_initial_world_x_ = 0;
+    std::int32_t field_initial_world_y_ = 0;
     std::int32_t field_world_x_ = 0;
     std::int32_t field_world_y_ = 0;
     std::int32_t field_camera_x_ = 0;

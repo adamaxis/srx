@@ -98,6 +98,14 @@ next integration boundary. The native record currently contains the recovered
 position, projection, and animation fields; its remaining ROM record data is
 still isolated in the transitional session layer.
 
+The mode-2 map loader now reads a typed `GenesisMode2FieldResources` view from
+the selected record at `0x172C80` and its setup block at `0x172C50`. That view
+supplies the initial `0x3400`/`0x2280` fixed-point camera, `0x166B82` pattern
+source and length, `0x170102` metatile stream, the two map pointers, the
+`0x172D8A` palette, and the derived 60x42 dimensions. The native field uses
+this descriptor for loading and reset, keeping ROM layout knowledge at the
+asset boundary rather than duplicating literals in the game loop.
+
 ```powershell
 cmake --build 'C:\Github\shadowrun\decompilation\build-debug-verify'
 & 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_native.exe'

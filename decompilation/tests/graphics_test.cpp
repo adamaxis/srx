@@ -70,7 +70,21 @@ int main() {
     const auto rom = read_rom();
     const auto metatile_resource = decode_genesis_resource_stream(rom, 0x170102);
     assert(metatile_resource.size() == 0x4F40);
-    const auto field_map = decode_genesis_mode2_field_map(rom);
+    const auto field_resources = read_genesis_mode2_field_resources(rom);
+    assert(field_resources.record_offset == 0x172C80);
+    assert(field_resources.initial_camera_x_fixed == 0x3400);
+    assert(field_resources.initial_camera_y_fixed == 0x2280);
+    assert(field_resources.setup_block_offset == 0x172C50);
+    assert(field_resources.palette_offset == 0x172D8A);
+    assert(field_resources.pattern_data_offset == 0x166B82);
+    assert(field_resources.pattern_byte_count == 0x6E20);
+    assert(field_resources.metatile_stream_offset == 0x170102);
+    assert(field_resources.primary_tilemap_offset == 0x16D9A2);
+    assert(field_resources.secondary_tilemap_offset == 0x16ED52);
+    assert(field_resources.tilemap_width == 60);
+    assert(field_resources.tilemap_height == 42);
+    const auto field_map = decode_genesis_mode2_field_map(
+        rom, field_resources);
     assert(field_map.width == 1920 && field_map.height == 1344);
     assert(field_map.pixels.size() ==
            static_cast<std::size_t>(field_map.width) * field_map.height);

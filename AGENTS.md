@@ -104,11 +104,14 @@ The field background is now the recovered mode-2 presentation rather than a
 placeholder composition. The mode record at `0x172C80` selects the raw
 `0x166B82` pattern upload (`0x6E20` bytes), the compressed 4x4 VDP name-word
 stamps at `0x170102`, and 60x42 primary/secondary map tables at `0x16D9A2` and
-`0x16ED52`. `graphics.cpp` translates those records, palette attributes, and
-flips into a 1920x1344 host RGBA map and the native shell presents a cropped
-viewport through `ScreenWriter`. Directional input now advances typed world
-coordinates and follows the marker at the viewport edge, so the field scrolls
-over the recovered map instead of moving only a screen-space placeholder.
+`0x16ED52`. `read_genesis_mode2_field_resources` follows the record's
+`0x172C50` setup pointer and exposes those pointers, dimensions, palette, and
+initial fixed-point camera as a typed native resource descriptor. The decoder
+translates those records, palette attributes, and flips into a 1920x1344 host
+RGBA map and the native shell presents a cropped viewport through
+`ScreenWriter`. Directional input now advances typed world coordinates and
+follows the marker at the viewport edge, so the field scrolls over the
+recovered map instead of moving only a screen-space placeholder.
 
 This is now a runnable native title-to-field slice with controls, actual
 ROM-derived field graphics, and a ROM-derived entity frame rendered through
