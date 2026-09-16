@@ -4,6 +4,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -67,6 +68,32 @@ shadowrun::graphics::RgbaImage make_field_entity_state_sheet(
     return sheet;
 }
 
+shadowrun::graphics::RgbaImage render_native_field(
+    shadowrun::native::NativePortAssets assets) {
+    shadowrun::native::SoftwareScreen screen;
+    shadowrun::native::NativePortShell shell("SHADOWRUN", std::move(assets));
+    shell.update(shadowrun::native::InputState{
+        shadowrun::native::button_mask(
+            shadowrun::native::Button::Start),
+        shadowrun::native::button_mask(
+            shadowrun::native::Button::Start)});
+    shell.render(screen);
+
+    shadowrun::graphics::RgbaImage image{
+        screen.width(), screen.height(),
+        std::vector<shadowrun::native::Rgba8>(screen.pixels().size()),
+    };
+    for (std::size_t index = 0; index < screen.pixels().size(); ++index) {
+        const auto packed = screen.pixels()[index];
+        image.pixels[index] = {
+            static_cast<std::uint8_t>(packed >> 16U),
+            static_cast<std::uint8_t>(packed >> 8U),
+            static_cast<std::uint8_t>(packed), 255,
+        };
+    }
+    return image;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -86,29 +113,24 @@ int main(int argc, char** argv) {
     if (argc == 4 && std::string(argv[3]) == "--native-field") {
         try {
             const auto rom = read_file(argv[1]);
-            shadowrun::native::SoftwareScreen screen;
-            shadowrun::native::NativePortShell shell("SHADOWRUN", rom);
-            shell.update(shadowrun::native::InputState{
-                shadowrun::native::button_mask(
-                    shadowrun::native::Button::Start),
-                shadowrun::native::button_mask(
-                    shadowrun::native::Button::Start)});
-            shell.render(screen);
-
-            shadowrun::graphics::RgbaImage image{
-                screen.width(), screen.height(),
-                std::vector<shadowrun::native::Rgba8>(screen.pixels().size()),
-            };
-            for (std::size_t index = 0; index < screen.pixels().size(); ++index) {
-                const auto packed = screen.pixels()[index];
-                image.pixels[index] = {
-                    static_cast<std::uint8_t>(packed >> 16U),
-                    static_cast<std::uint8_t>(packed >> 8U),
-                    static_cast<std::uint8_t>(packed), 255,
-                };
-            }
+            const auto image = render_native_field(
+                shadowrun::graphics::decode_genesis_native_assets(rom));
             shadowrun::graphics::write_bmp32(argv[2], image);
             std::cout << "native field scene: " << image.width << "x"
+                      << image.height << "\n"
+                      << "output: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 4 && std::string(argv[3]) == "--native-field-pack") {
+        try {
+            const auto image = render_native_field(
+                shadowrun::graphics::read_native_asset_pack(argv[1]));
+            shadowrun::graphics::write_bmp32(argv[2], image);
+            std::cout << "native field scene from pack: " << image.width << "x"
                       << image.height << "\n"
                       << "output: " << argv[2] << "\n";
             return 0;
@@ -207,6 +229,8 @@ int main(int argc, char** argv) {
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> --title\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
                      "--native-field\n";
+        std::cerr << "       shadowrun_graphics_extract <assets.srna> <out.bmp> "
+                     "--native-field-pack\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
                      "--mode2-map\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "

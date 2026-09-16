@@ -183,6 +183,16 @@ host terrain grid, initial field positions/camera, and the reviewed native
 entity/direction state. `shadowrun_native.exe` accepts that pack path directly,
 so the Windows runtime can start without reading the ROM:
 
+The graphics extractor can also render the field from the pack alone. This
+keeps the extraction artifact path identical to what a future SDL/DirectX
+frontend will consume:
+
+```powershell
+& 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_graphics_extract.exe' `
+  'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_native.srna' `
+  'C:\Github\shadowrun\decompilation\build-debug-verify\native_field_scene_from_pack.bmp' --native-field-pack
+```
+
 ```powershell
 & 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_native.exe' `
   'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_native.srna'
