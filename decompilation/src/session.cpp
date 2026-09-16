@@ -5415,6 +5415,69 @@ EntityAnimationFallbackResult run_entity_animation_fallback_0xAFAE(
         bus, entity_record_address, 0x0000AFE2U);
 }
 
+namespace {
+
+EntityAnimationFallbackResult run_entity_animation_direct_tail(
+    GenesisBus& bus,
+    GenesisAddress entity_record_address,
+    std::uint16_t direction,
+    GenesisAddress handler,
+    GenesisAddress frame_table,
+    std::uint16_t delay_mode,
+    bool delay_before_state_tail) {
+    bus.write16(entity_record_address + 0x2EU, direction);
+    bus.write32(entity_record_address + 0x3AU, handler);
+
+    auto frame_direction = static_cast<std::uint16_t>(
+        (direction << 3U) | (direction >> 13U));
+    if (static_cast<std::int16_t>(frame_direction) < 0) {
+        frame_direction = static_cast<std::uint16_t>(frame_direction + 1U);
+    }
+    frame_direction = static_cast<std::uint16_t>(frame_direction & 0x0007U);
+    const auto selected_frame = bus.read16(
+        frame_table + static_cast<GenesisAddress>(frame_direction << 1U));
+    bus.write16(entity_record_address + 0x16U, selected_frame);
+
+    if (delay_before_state_tail) {
+        update_entity_animation_delay_0xABFC(
+            bus, entity_record_address, delay_mode);
+        apply_entity_animation_state_tail_0xAF6C(
+            bus, entity_record_address);
+    } else {
+        apply_entity_animation_state_tail_0xAF6C(
+            bus, entity_record_address);
+        update_entity_animation_delay_0xABFC(
+            bus, entity_record_address, delay_mode);
+    }
+    return {true, true, true, selected_frame};
+}
+
+} // namespace
+
+EntityAnimationFallbackResult run_entity_animation_state_tail_0xB39A(
+    GenesisBus& bus,
+    GenesisAddress entity_record_address,
+    std::uint16_t direction) {
+    const auto phase_minus_one = static_cast<std::uint8_t>(
+        bus.read8(entity_record_address + 0x57U) - 1U);
+    const auto delay_mode = (phase_minus_one == 0x0AU ||
+                             phase_minus_one == 0x0BU)
+        ? 0U
+        : 1U;
+    return run_entity_animation_direct_tail(
+        bus, entity_record_address, direction, 0x0000B3EEU,
+        rom::kEntityAnimationStateFrameTable, delay_mode, true);
+}
+
+EntityAnimationFallbackResult run_entity_animation_resource_tail_0xB3FE(
+    GenesisBus& bus,
+    GenesisAddress entity_record_address,
+    std::uint16_t direction) {
+    return run_entity_animation_direct_tail(
+        bus, entity_record_address, direction, 0x0000B432U,
+        rom::kEntityAnimationResourceFrameTable, 0U, false);
+}
+
 EntityAnimationResourceDecisionResult
 run_entity_animation_resource_decision_0x14D8E(
     GenesisBus& bus,

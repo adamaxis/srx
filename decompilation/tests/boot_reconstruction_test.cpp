@@ -2257,6 +2257,10 @@ int main() {
     fallback_write16(shadowrun::rom::kEntityAnimationFallbackDirectionTable +
                          8U,
                      0x1234U);
+    fallback_write16(shadowrun::rom::kEntityAnimationStateFrameTable,
+                     0x2345U);
+    fallback_write16(shadowrun::rom::kEntityAnimationResourceFrameTable,
+                     0x3456U);
     fallback_write16(shadowrun::rom::kEntityAnimationDistanceTableByType,
                      0x0100U);
     fallback_write16(shadowrun::rom::kEntityAnimationDistanceTableByType +
@@ -2307,6 +2311,41 @@ int main() {
             *fallback_bus, fallback_record);
     assert(alternate_fallback.selected_frame == 0x5678U);
     assert(fallback_bus->read32(fallback_record + 0x3AU) == 0x0000AFE2U);
+
+    // B39A and B3FE are separate direct tails used by the larger 13FFE
+    // coordinator. They share AF6C but differ in handler/table selection,
+    // phase-dependent ABFC mode, and delay ordering.
+    fallback_bus->write8(fallback_record + 0x57U, 0x0BU);
+    fallback_bus->write16(fallback_record + 0x90U, 0);
+    fallback_bus->write8(fallback_record + 0x11U, 0);
+    fallback_bus->write16(fallback_record + 0x1EU, 0x9999U);
+    const auto state_tail =
+        shadowrun::run_entity_animation_state_tail_0xB39A(
+            *fallback_bus, fallback_record, 0);
+    assert(state_tail.delay_updated);
+    assert(state_tail.handler_installed);
+    assert(state_tail.frame_selected);
+    assert(state_tail.selected_frame == 0x2345U);
+    assert(fallback_bus->read32(fallback_record + 0x3AU) == 0x0000B3EEU);
+    assert(fallback_bus->read16(fallback_record + 0x16U) == 0x2345U);
+    assert(fallback_bus->read16(fallback_record + 0x1AU) == 0);
+    assert(fallback_bus->read16(fallback_record + 0x1EU) == 0);
+    assert((fallback_bus->read8(fallback_record + 0x11U) & 1U) != 0);
+
+    fallback_bus->write8(fallback_record + 0x57U, 1U);
+    fallback_bus->write8(fallback_record + 0x11U, 0);
+    fallback_bus->write16(fallback_record + 0x1EU, 0xAAAAU);
+    const auto resource_tail =
+        shadowrun::run_entity_animation_resource_tail_0xB3FE(
+            *fallback_bus, fallback_record, 0);
+    assert(resource_tail.delay_updated);
+    assert(resource_tail.handler_installed);
+    assert(resource_tail.frame_selected);
+    assert(resource_tail.selected_frame == 0x3456U);
+    assert(fallback_bus->read32(fallback_record + 0x3AU) == 0x0000B432U);
+    assert(fallback_bus->read16(fallback_record + 0x16U) == 0x3456U);
+    assert(fallback_bus->read16(fallback_record + 0x1AU) == 0);
+    assert((fallback_bus->read8(fallback_record + 0x11U) & 1U) != 0);
 
     // 1450E probes both sides when E7C8 returns its positive out-of-bounds
     // status, then restores A1's coordinates before the final position-gate

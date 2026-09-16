@@ -186,6 +186,9 @@ palette-indexed.
   camera-relative coordinates under its one-shot flag guard. `0xAC84` uses
   these direct gates by default; its known `0xAE5E` post-call remains in the
   surrounding frame pass.
+- The `0xB39A` and `0xB3FE` tails used by the larger animation coordinator
+  are now direct. Their separate handlers and frame tables, phase-dependent
+  `0xABFC` mode, and distinct `0xAF6C`/`0xABFC` ordering are covered by tests.
 - The next animation transition chain is now direct through `0x13A92`,
   `0x13B12`, `0x13CDE`, `0x13AE6`, and `0x13466`. Counted event records,
   type-B special arguments, PRNG selection, the `0x55F02`/`0x55F20` rate

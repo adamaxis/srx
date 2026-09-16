@@ -917,6 +917,15 @@ EntityAnimationFallbackResult run_entity_animation_fallback_0xAF7C(
 EntityAnimationFallbackResult run_entity_animation_fallback_0xAFAE(
     GenesisBus& bus, GenesisAddress entity_record_address);
 
+// ROM 0xB39A/0xB3FE install their distinct continuation handlers, select from
+// their direct frame tables, and run the shared AF6C state tail.
+EntityAnimationFallbackResult run_entity_animation_state_tail_0xB39A(
+    GenesisBus& bus, GenesisAddress entity_record_address,
+    std::uint16_t direction);
+EntityAnimationFallbackResult run_entity_animation_resource_tail_0xB3FE(
+    GenesisBus& bus, GenesisAddress entity_record_address,
+    std::uint16_t direction);
+
 // ROM 0x14D8E: initialize the FF1380 scratch entity, test its terrain sample,
 // and scan the ten FF0100 entity records through 0x15ABA. The source A1
 // pointer is explicit because the ROM stores it in FFDD3C for that scan.
