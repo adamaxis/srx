@@ -192,6 +192,19 @@ constexpr std::int32_t kFieldScreenOriginY = 36;
 constexpr std::int32_t kFieldEntityMaxHostX = 0x1AE -
                                                 kGenesisVdpSpriteOrigin - 1;
 
+// ROM 0x1170C selects these labels from the 17-byte strings beginning at
+// 0xD1D28. The first two selector values intentionally resolve to the same
+// Inventory label; their secondary row is handled by FF F0D1 in 0x11506.
+constexpr std::array<std::string_view, 7> kFieldMenuLabels{{
+    "Inventory",
+    "Inventory",
+    "Clips",
+    "Attributes/Skills",
+    "Cyberware",
+    "Magic",
+    "Pocket Secretary",
+}};
+
 } // namespace
 
 NativePortShell::NativePortShell(std::string title)
@@ -410,6 +423,81 @@ void NativePortShell::update_field_entity_direction(
     field_entity_.animation_accumulator = 0;
 }
 
+void NativePortShell::open_field_menu() {
+    if (field_map_pixels_.empty()) {
+        return;
+    }
+
+    // ROM 0x10F50 initializes FFF0D0 to six and FFF0D1 to zero before
+    // entering the command-screen loop. Opening the native state preserves
+    // the field record, camera, and collision result instead of restarting
+    // the map.
+    scene_ = NativeScene::FieldMenu;
+    field_menu_selection_ = 6;
+    field_menu_row_ = 0;
+    field_last_command_selection_ = 0;
+    field_last_command_row_ = 0;
+    field_command_message_frames_ = 0;
+}
+
+void NativePortShell::update_field_menu(const InputState& input) {
+    // 0x114A0 changes FFF0D0 for left/right. It wraps the seven native
+    // selector values with the same 6 -> 0 and 0 -> 6 behavior.
+    const auto cycle_selection = [this](std::int32_t delta) {
+        constexpr auto count = kFieldMenuLabels.size();
+        const auto current = static_cast<std::int32_t>(field_menu_selection_);
+        const auto next = (current + delta + static_cast<std::int32_t>(count)) %
+                          static_cast<std::int32_t>(count);
+        field_menu_selection_ = static_cast<std::size_t>(next);
+    };
+    if (input.is_held(Button::Left) && !input.is_held(Button::Right)) {
+        cycle_selection(-1);
+    } else if (input.is_held(Button::Right) &&
+               !input.is_held(Button::Left)) {
+        cycle_selection(1);
+    }
+
+    // 0x11564 changes FFF0D1 between zero and three. This secondary row is
+    // retained even where the corresponding submenu has not been ported.
+    if (input.is_held(Button::Up) && !input.is_held(Button::Down)) {
+        field_menu_row_ = field_menu_row_ == 0 ? 3 : field_menu_row_ - 1;
+    } else if (input.is_held(Button::Down) &&
+               !input.is_held(Button::Up)) {
+        field_menu_row_ = (field_menu_row_ + 1U) % 4U;
+    }
+
+    // Both A (bit 14) and B (bit 12) enter the same 0x10E4E dispatch path in
+    // the reviewed ROM. Keep the selected command explicit until its typed
+    // subsystem replaces this dispatch record.
+    if (input.was_pressed(Button::A) || input.was_pressed(Button::B)) {
+        field_last_command_selection_ = field_menu_selection_;
+        field_last_command_row_ = field_menu_row_;
+        field_command_message_frames_ = 30;
+        ++field_command_count_;
+    }
+
+    // C enters 0x391A, switches the controlled field record, and restores
+    // FFF0D0 to six before returning to the command loop.
+    if (input.was_pressed(Button::C) && !field_records_.empty()) {
+        activate_field_record(
+            (active_field_record_ + 1U) % field_records_.size());
+        field_menu_selection_ = 6;
+        field_menu_row_ = 0;
+        ++action_count_;
+    }
+
+    // The Start edge exits the command-screen loop. It does not reset the
+    // selected field record or its camera.
+    if (input.was_pressed(Button::Start)) {
+        scene_ = NativeScene::Field;
+        field_command_message_frames_ = 0;
+    }
+
+    if (field_command_message_frames_ != 0) {
+        --field_command_message_frames_;
+    }
+}
+
 void NativePortShell::update(const InputState& input) {
     input_ = input;
 
@@ -426,6 +514,12 @@ void NativePortShell::update(const InputState& input) {
                 marker_y_ = kScreenHeight / 2;
             }
         }
+        ++frame_number_;
+        return;
+    }
+
+    if (scene_ == NativeScene::FieldMenu) {
+        update_field_menu(input);
         ++frame_number_;
         return;
     }
@@ -449,7 +543,9 @@ void NativePortShell::update(const InputState& input) {
     if (input.was_pressed(Button::Start)) {
         action_flash_frames_ = 0;
         if (!field_map_pixels_.empty()) {
-            reset_field_state();
+            open_field_menu();
+            ++frame_number_;
+            return;
         } else {
             marker_x_ = kScreenWidth / 2;
             marker_y_ = kScreenHeight / 2;
@@ -558,7 +654,9 @@ void NativePortShell::render(ScreenWriter& screen) const {
                          {0x00, 0x00, 0x00, 0xB0});
         screen.write_text(8, 211, "ARROWS MOVE  Z X C  ENTER START",
                           1, {0xE8, 0xF4, 0xFF, 0xFF});
-    } else if (scene_ == NativeScene::Field && !field_view_pixels_.empty()) {
+    } else if ((scene_ == NativeScene::Field ||
+                scene_ == NativeScene::FieldMenu) &&
+               !field_view_pixels_.empty()) {
         // The field background is the ROM's mode-2 map translated into a host
         // RGBA viewport. NativeFieldEntity is composited after the terrain,
         // matching the ROM's entity/object ordering at this boundary.
@@ -607,12 +705,54 @@ void NativePortShell::render(ScreenWriter& screen) const {
             screen.fill_rect(action_x + 3, action_y - 8, 2, 24,
                              {0xFF, 0xF0, 0x90, 0xFF});
         }
-        screen.fill_rect(0, 204, kScreenWidth, 20,
-                         {0x02, 0x05, 0x0C, 0xFF});
-        screen.write_text(8, 208, "ARROWS MOVE ENTITY  C SWITCH RUNNER", 1,
-                          {0xE8, 0xF4, 0xFF, 0xFF});
-        screen.write_text(8, 216, "ENTER RESET  Z/X PENDING", 1,
-                          {0x90, 0xB8, 0xC8, 0xFF});
+        if (scene_ == NativeScene::FieldMenu) {
+            // This is a renderer-neutral host presentation of the ROM
+            // command screen. The field remains underneath because the
+            // original routine changes the VDP/menu state without changing
+            // the active field record.
+            screen.fill_rect(24, 44, 272, 144,
+                             {0x02, 0x08, 0x18, 0xF0});
+            screen.fill_rect(24, 44, 272, 2,
+                             {0x00, 0xA8, 0xC8, 0xFF});
+            screen.write_text(36, 52, "FIELD COMMANDS", 2,
+                              {0xE8, 0xF4, 0xFF, 0xFF});
+            for (std::size_t index = 0; index < kFieldMenuLabels.size();
+                 ++index) {
+                const auto y = 72 + static_cast<std::int32_t>(index) * 14;
+                const auto selected = index == field_menu_selection_;
+                if (selected) {
+                    screen.fill_rect(32, y - 2, 256, 11,
+                                     {0x00, 0x68, 0x88, 0xFF});
+                }
+                screen.write_text(40, y, kFieldMenuLabels[index], 1,
+                                  selected
+                                      ? Rgba8{0xFF, 0xF0, 0x90, 0xFF}
+                                      : Rgba8{0xD0, 0xE0, 0xF0, 0xFF});
+            }
+            screen.write_text(36, 174,
+                              "ARROWS SELECT  Z/X USE  C RUNNER  ENTER EXIT",
+                              1, {0x90, 0xB8, 0xC8, 0xFF});
+            screen.fill_rect(0, 204, kScreenWidth, 20,
+                             {0x02, 0x05, 0x0C, 0xFF});
+            screen.write_text(8, 208, "FIELD COMMAND SCREEN", 1,
+                              {0xE8, 0xF4, 0xFF, 0xFF});
+            screen.write_text(8, 216,
+                              "ROW " + std::to_string(field_menu_row_) +
+                                  "  COMMAND " +
+                                  std::to_string(field_command_count_),
+                              1, {0x90, 0xB8, 0xC8, 0xFF});
+            if (field_command_message_frames_ != 0) {
+                screen.write_text(174, 216, "USED", 1,
+                                  {0xF0, 0xC0, 0x50, 0xFF});
+            }
+        } else {
+            screen.fill_rect(0, 204, kScreenWidth, 20,
+                             {0x02, 0x05, 0x0C, 0xFF});
+            screen.write_text(8, 208, "ARROWS MOVE ENTITY  C SWITCH RUNNER", 1,
+                              {0xE8, 0xF4, 0xFF, 0xFF});
+            screen.write_text(8, 216, "ENTER COMMANDS  Z/X PENDING", 1,
+                              {0x90, 0xB8, 0xC8, 0xFF});
+        }
         screen.write_text(226, 216, std::to_string(action_count_), 1,
                           {0xF0, 0xC0, 0x50, 0xFF});
     } else {

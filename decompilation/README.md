@@ -109,10 +109,16 @@ into host pixels. The generic `0x72B0` decoder remains available for other ROM
 animation blocks, but is not used to choose the field entity frames.
 The terrain table at `0x172DAA` is rebuilt into the native status grid and the
 four-corner `0xE7C8` probe rejects blocked movement before the typed record is
-updated. This is a runnable title-to-field slice, not a claim that the whole
-game is playable; the remaining A/Z and B input semantics, expanded
-entity/session population, and field UI remain the next integration
-boundaries.
+updated. Field `Start` now enters a native `FieldMenu` matching the reviewed
+`0x10D30` command-screen loop: the selector starts at ROM value six,
+left/right wraps the seven `0x114A0` values, up/down wraps the four `0x11564`
+secondary rows, and its labels are extracted from the `0x1170C`/`0xD1D28`
+string path. A/B record the same shared `0x10E4E` dispatch boundary, C retains
+the reviewed `0x391A` runner switch, and Start closes the menu without
+resetting field state. This is a runnable title-to-field slice, not a claim
+that the whole game is playable; the remaining command-handler bodies,
+expanded entity/session population, and additional field object behavior
+remain the next integration boundaries.
 
 The Windows frontend preserves the reviewed controller boundary from ROM
 0x195C: the sampled word uses its low byte for held state and its high byte for

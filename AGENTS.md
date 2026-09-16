@@ -104,7 +104,10 @@ mapped into `InputState`.
 instance starts in `Title`; the pressed `Start` edge models the reviewed
 `0x0BF2`/`0x1A9E` exit condition and transitions to `Field`. The field update
 is ordinary typed C++ state with held directional movement and edge-triggered
-actions.
+actions. Field `Start` opens a typed `FieldMenu` instead of resetting the map;
+the menu preserves the active record/camera, uses the seven selector values
+and four-row secondary index from ROM `0x10D30`/`0x114A0`/`0x11564`, and
+renders the reviewed labels from `0xD1D28` through the native screen boundary.
 
 The host controller boundary now follows ROM 0x195C: a sampled Genesis word
 has the current controller state in its low byte and newly asserted bits in its
@@ -160,8 +163,8 @@ projection words, host screen coordinates, visibility, collision result, and
 directional state; its remaining 0x100-byte fields stay in the transitional
 bus-backed session layer until recovered. This is not a claim that the whole
 game is playable. The next port slices should expand typed entity/session
-records and connect field UI and additional object behavior to the native
-update/render interfaces.
+records and connect the deeper field command handlers and additional object
+behavior to the native update/render interfaces.
 
 The first display-state bytes are now part of that native record boundary:
 template offsets `+0x56` and `+0x57` are extracted as signed
@@ -169,9 +172,11 @@ template offsets `+0x56` and `+0x57` are extracted as signed
 `0x36FC` visibility gate (`+0x56 < 0` or `+0x56 == 0x7F` suppresses the
 sprite), and the values are serialized in native asset-pack version 2. This
 is a direct behavior port, not a new animation rule. The native C runner
-selection is a recovered field-loop action; A/Z and B remain explicit
-unresolved input boundaries rather than being described as fully ported game
-actions.
+selection is a recovered field-loop action. Field A/B now enter the reviewed
+shared command dispatch boundary and retain the selected command as typed
+state; the deeper Inventory/Clips/Attributes/Skills subsystems remain to be
+ported from their ROM tables rather than being represented by placeholder
+flashes.
 
 ## Build and source discipline
 

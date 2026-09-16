@@ -62,6 +62,7 @@ enum class NativeScene {
     Bootstrap,
     Title,
     Field,
+    FieldMenu,
 };
 
 struct Rgba8 {
@@ -221,6 +222,16 @@ public:
     bool has_field_map() const { return !field_map_pixels_.empty(); }
     bool has_terrain() const { return !field_terrain_.statuses.empty(); }
     bool has_entity_frame() const { return !entity_frames_.empty(); }
+    bool field_menu_open() const { return scene_ == NativeScene::FieldMenu; }
+    std::size_t field_menu_selection() const { return field_menu_selection_; }
+    std::size_t field_menu_row() const { return field_menu_row_; }
+    std::size_t field_last_command_selection() const {
+        return field_last_command_selection_;
+    }
+    std::size_t field_last_command_row() const {
+        return field_last_command_row_;
+    }
+    std::uint32_t field_command_count() const { return field_command_count_; }
     std::int32_t marker_x() const { return marker_x_; }
     std::int32_t marker_y() const { return marker_y_; }
     std::int32_t field_entity_screen_x() const {
@@ -257,6 +268,8 @@ private:
     void activate_field_record(std::size_t record_index);
     void update_field_entity_direction(std::int32_t delta_x,
                                        std::int32_t delta_y);
+    void open_field_menu();
+    void update_field_menu(const InputState& input);
 
     std::string title_;
     InputState input_{};
@@ -293,6 +306,15 @@ private:
     std::int32_t field_world_y_ = 0;
     std::int32_t field_camera_x_ = 0;
     std::int32_t field_camera_y_ = 0;
+    // ROM 0x10D30 stores the command-menu selector in FFF0D0 and the
+    // secondary row/slot in FFF0D1. The host keeps those as typed indices;
+    // the renderer adapts the reviewed ROM labels to ordinary text.
+    std::size_t field_menu_selection_ = 6;
+    std::size_t field_menu_row_ = 0;
+    std::size_t field_last_command_selection_ = 0;
+    std::size_t field_last_command_row_ = 0;
+    std::uint32_t field_command_count_ = 0;
+    std::uint8_t field_command_message_frames_ = 0;
     std::uint8_t action_flash_frames_ = 0;
     std::uint32_t action_count_ = 0;
 };

@@ -101,12 +101,49 @@ int main() {
                                 button_mask(Button::C)});
     assert(rom_shell.field_active_record_index() == 2);
     assert(rom_shell.field_world_x() == (0x3DA0 >> 4));
+
+    // ROM 0x0075E dispatches Start to 0x10D30, which opens the field command
+    // screen. It does not reset the selected record or camera. The selector
+    // starts at six (0x10F50), and the reviewed 0x1170C label path resolves
+    // that value to Pocket Secretary.
     rom_shell.update(InputState{button_mask(Button::Start),
                                 button_mask(Button::Start)});
+    assert(rom_shell.scene() == NativeScene::FieldMenu);
+    assert(rom_shell.field_menu_open());
+    assert(rom_shell.field_menu_selection() == 6);
+    assert(rom_shell.field_menu_row() == 0);
+    assert(rom_shell.field_active_record_index() == 2);
+    assert(rom_shell.field_world_x() == (0x3DA0 >> 4));
+
+    rom_shell.update(InputState{button_mask(Button::Left),
+                                button_mask(Button::Left)});
+    assert(rom_shell.field_menu_selection() == 5);
+    rom_shell.update(InputState{button_mask(Button::Up),
+                                button_mask(Button::Up)});
+    assert(rom_shell.field_menu_row() == 3);
+    rom_shell.update(InputState{button_mask(Button::A),
+                                button_mask(Button::A)});
+    assert(rom_shell.field_command_count() == 1);
+    assert(rom_shell.field_last_command_selection() == 5);
+    assert(rom_shell.field_last_command_row() == 3);
+    assert(rom_shell.scene() == NativeScene::FieldMenu);
+
+    // C follows the same 0x391A record-selection path from the command
+    // screen, restoring the menu selector to six before continuing.
+    rom_shell.update(InputState{button_mask(Button::C),
+                                button_mask(Button::C)});
     assert(rom_shell.field_active_record_index() == 0);
-    assert(rom_shell.field_world_x() == (0x3CE0 >> 4));
+    assert(rom_shell.field_menu_selection() == 6);
+    assert(rom_shell.field_menu_row() == 0);
 
     const auto field_start_x = rom_shell.marker_x();
+    const auto field_start_y = rom_shell.marker_y();
+    rom_shell.update(InputState{button_mask(Button::Start),
+                                button_mask(Button::Start)});
+    assert(rom_shell.scene() == NativeScene::Field);
+    assert(rom_shell.marker_x() == field_start_x);
+    assert(rom_shell.marker_y() == field_start_y);
+
     rom_shell.update(InputState{button_mask(Button::Start), 0});
     assert(rom_shell.scene() == NativeScene::Field);
     assert(rom_shell.marker_x() == field_start_x);
