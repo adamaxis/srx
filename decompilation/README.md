@@ -158,12 +158,13 @@ not required to build or run the C++ analyzer.
   with a host-language rounding rule.
 - The `0x145A2` tail is now direct through the `0x14C2E` direction flags,
   `0x14BA6` sign/route decision, `0x149C0` route, and `0x15D3C` transform
-  terminal. Its larger `0x14682` route remains an explicit typed target.
+  terminal. Its `0x14682` movement body now directly performs the reviewed
+  direction-table probes, FF1700 collision tests, path writes, and route
+  escalation.
 - The movement route helpers `0x14902`, `0x14914/0x1494C`, and `0x14B4E`
   are now bus-backed. `0x149C0` directly handles the FF1700 obstruction
   walks, inline path cursor, route-bit clearing, target-coordinate emission,
-  and common B574 transform; only its larger `0x14A54` alternate route is
-  still an explicit typed continuation.
+  common B574 transform, and the `0x14A54` alternate route search.
 - The shared `0x13EF4` tail and `0x13F76` resource gate are now direct. The
   type-specific `0x15CA4`/`0x15D3C` distance tests, B45C/+2E writes, global
   resource flags, and direct `0x1E2E0` queue call are preserved; `0x14D8E`

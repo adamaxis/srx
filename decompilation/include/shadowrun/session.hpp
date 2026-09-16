@@ -367,6 +367,8 @@ struct EntityAnimation14682Result {
     bool path_written;
     bool route_escalated;
     std::uint16_t probe_index;
+    std::uint16_t primary_direction;
+    std::uint16_t secondary_direction;
     std::uint16_t target_grid;
     std::uint16_t path_value;
     GenesisAddress continuation_target;
@@ -823,8 +825,8 @@ EntityAnimation14682Result run_entity_animation_route_0x14682(
     GenesisAddress entity_record_address,
     const EntityAnimationContinuationRoutine& continuation = {});
 
-// ROM 0x145A2. The 0x14C2E flag update, 0x149C0 route, and 0x15D3C
-// transform are direct; 0x14682 remains visible as its original typed edge.
+// ROM 0x145A2. The 0x14C2E flag update, 0x14BA6/0x14682 route, 0x149C0
+// route, and 0x15D3C transform are direct.
 EntityAnimation145A2Result run_entity_animation_update_0x145A2(
     GenesisBus& bus,
     GenesisAddress entity_record_address,

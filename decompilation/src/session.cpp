@@ -3508,7 +3508,7 @@ EntityAnimation14682Result run_entity_animation_route_0x14682(
     GenesisAddress entity_record_address,
     const EntityAnimationContinuationRoutine& continuation) {
     EntityAnimation14682Result result{
-        true, false, false, false, false, 0, 0, 0, 0, 0, 0};
+        true, false, false, false, false, 0, 0, 0, 0, 0, 0, 0, 0};
 
     // 0x14682 begins with BSET and immediately returns if the route-search
     // bit is already set. This is a genuine one-byte state-machine guard,
@@ -3549,6 +3549,8 @@ EntityAnimation14682Result run_entity_animation_route_0x14682(
     }
     const auto probe_index = x_magnitude;
     result.probe_index = probe_index;
+    result.primary_direction = d6;
+    result.secondary_direction = d7;
     result.target_grid = calculate_entity_animation_grid_0x14902(
         target_x, target_y);
 

@@ -373,14 +373,13 @@ their original typed continuation targets. The packed `DIVU.W` increment in
 `0x125FA` is modeled at its actual 32-bit intermediate value.
 
 The `0x145A2` tail is direct through the `0x14C2E` direction flags,
-`0x14BA6` sign/route decision, and `0x15D3C` transform terminal. The
-`0x14682` route and `0x149C0` tail remain explicit typed targets for the next
-movement reconstruction pass.
+`0x14BA6` sign/route decision, the `0x14682` direction-table/collision body,
+and the `0x15D3C` transform terminal.
 
 The route helpers `0x14902`, `0x14914/0x1494C`, and `0x14B4E` are now direct
 bus-backed translations. `0x149C0` handles the FF1700 obstruction walks, the
-inline path cursor, route-bit clearing, target emission, and common B574
-transform. Its larger `0x14A54` alternate route remains a typed continuation.
+inline path cursor, route-bit clearing, target emission, common B574
+transform, and its direct `0x14A54` alternate route search.
 
 The shared `0x13EF4` tail and `0x13F76` resource gate are direct as well.
 `0x13EF4` preserves the signed animation-type branches, calls the direct

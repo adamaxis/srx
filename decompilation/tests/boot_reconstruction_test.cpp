@@ -1541,6 +1541,23 @@ int main() {
     // the close path writes the B45C state before 0x142AE copies the table's
     // first coordinate pair into +0x96/+0x98.
     std::vector<std::uint8_t> animation_142ae_rom(0x200000U, 0);
+    const auto put_animation_word = [](
+        std::vector<std::uint8_t>& bytes,
+        std::size_t address,
+        std::uint16_t value) {
+        bytes[address] = static_cast<std::uint8_t>(value >> 8U);
+        bytes[address + 1U] = static_cast<std::uint8_t>(value);
+    };
+    const std::array<std::uint16_t, 8> animation_rom_offsets{
+        0x00C0U, 0x0001U, 0x0040U, 0x00FFU,
+        0x00A7U, 0x0000U, 0x003CU, 0x0006U};
+    for (std::size_t index = 0; index < animation_rom_offsets.size();
+         ++index) {
+        put_animation_word(
+            animation_142ae_rom,
+            shadowrun::rom::kAnimationDirectionOffsetTable + index * 2U,
+            animation_rom_offsets[index]);
+    }
     auto animation_142ae_bus = std::make_unique<shadowrun::GenesisMemoryBus>(
         std::move(animation_142ae_rom));
     constexpr auto animation_142ae_record = 0xFF1100U;
@@ -1642,6 +1659,82 @@ int main() {
     assert(animation_142ae_targets[0] == 0x00014682U);
     assert(animation_142ae_targets[1] == 0x000149C0U);
 
+    // 0x14682 is a real movement body rather than just the continuation
+    // target observed above. Seed its eight-byte direction table with the
+    // ROM values, then exercise the 0x148AA single-step path, the 0x14854
+    // paired path, and the 0x14AF4/0x149C0 escalation.
+    animation_142ae_bus->write16(shadowrun::ram::kTilePlaneWidth, 0x003FU);
+    animation_142ae_bus->write16(
+        shadowrun::session_ram::kEntityTerrainBoundsYLower, 0x00A0U);
+    for (std::uint16_t index = 0; index <= 0x0400U; ++index) {
+        animation_142ae_bus->write8(
+            shadowrun::ram::kIndexedObjectByteTable + index, 0U);
+    }
+    animation_142ae_bus->write16(animation_142ae_record, 0U);
+    animation_142ae_bus->write16(animation_142ae_record + 4U, 0U);
+    animation_142ae_bus->write16(animation_142ae_record + 0x96U, 0x0200U);
+    animation_142ae_bus->write16(animation_142ae_record + 0x98U, 0U);
+    animation_142ae_bus->write16(animation_142ae_record + 0xBAU, 0x0020U);
+    animation_142ae_bus->write8(animation_142ae_record + 0xB0U, 0U);
+    // D5=0x200, D7=2, and the first 0x148AA candidate is 0x201. The
+    // following obstacle makes 0x148AA return 0x201 as its first path.
+    animation_142ae_bus->write8(
+        shadowrun::ram::kIndexedObjectByteTable + 0x0202U, 1U);
+    const auto animation_14682_single =
+        shadowrun::run_entity_animation_route_0x14682(
+            *animation_142ae_bus, animation_142ae_record);
+    assert(animation_14682_single.entered);
+    assert(!animation_14682_single.map_blocked);
+    assert(animation_14682_single.path_written);
+    assert(animation_14682_single.path_value == 0x0201U);
+    assert(animation_142ae_bus->read16(animation_142ae_record + 0xBCU) ==
+           0x0201U);
+    assert(animation_142ae_bus->read16(animation_142ae_record + 0xBEU) ==
+           0xFFFFU);
+    assert(animation_142ae_bus->read16(animation_142ae_record + 0xBAU) == 0U);
+
+    for (std::uint16_t index = 0; index <= 0x0400U; ++index) {
+        animation_142ae_bus->write8(
+            shadowrun::ram::kIndexedObjectByteTable + index, 0U);
+    }
+    animation_142ae_bus->write8(
+        shadowrun::ram::kIndexedObjectByteTable + 0x0201U, 1U);
+    const auto animation_14682_paired =
+        shadowrun::run_entity_animation_route_0x14682(
+            *animation_142ae_bus, animation_142ae_record);
+    assert(animation_14682_paired.path_written);
+    assert(!animation_14682_paired.route_escalated);
+    assert(animation_14682_paired.path_value == 0x02C0U);
+    assert(animation_142ae_bus->read16(animation_142ae_record + 0xBCU) ==
+           0x02C0U);
+    assert(animation_142ae_bus->read16(animation_142ae_record + 0xBEU) ==
+           0x02C1U);
+    assert(animation_142ae_bus->read16(animation_142ae_record + 0xC0U) ==
+           0xFFFFU);
+
+    for (std::uint16_t index = 0; index <= 0x0400U; ++index) {
+        animation_142ae_bus->write8(
+            shadowrun::ram::kIndexedObjectByteTable + index, 0U);
+    }
+    animation_142ae_bus->write8(
+        shadowrun::ram::kIndexedObjectByteTable + 0x0201U, 1U);
+    animation_142ae_bus->write8(
+        shadowrun::ram::kIndexedObjectByteTable + 0x02C0U, 1U);
+    animation_142ae_bus->write8(
+        shadowrun::ram::kIndexedObjectByteTable + 0x0240U, 1U);
+    animation_142ae_bus->write16(animation_142ae_record + 0x34U, 0U);
+    const auto animation_14682_route =
+        shadowrun::run_entity_animation_route_0x14682(
+            *animation_142ae_bus, animation_142ae_record);
+    assert(animation_14682_route.route_escalated);
+    assert(animation_14682_route.continuation_target == 0x000149C0U);
+    assert(animation_14682_route.continuation_calls == 1U);
+    assert(animation_14682_route.unresolved_calls == 0U);
+    assert((animation_142ae_bus->read8(animation_142ae_record + 0xB0U) &
+            0x0AU) == 0U);
+    assert(animation_142ae_bus->read16(animation_142ae_record + 0xBCU) ==
+           0x00C0U);
+
     // The 0x14902/0x14914 route helpers use the live FF1700 map bytes. An
     // unobstructed same-cell path clears the route bits through 0x14756.
     assert(shadowrun::calculate_entity_animation_grid_0x14902(0, 0) == 0U);
@@ -1707,6 +1800,28 @@ int main() {
     assert(animation_149c0_alternate.alternate_route);
     assert(animation_149c0_alternate.continuation_target == 0x00014A54U);
     assert(animation_142ae_targets.size() == 1U);
+
+    // The same 0x14A54 tail runs directly when no continuation observer is
+    // installed. With the primary C0 candidate blocked, its five-attempt
+    // 0x14764 search reaches the direction-6 candidate at grid 0xFF.
+    animation_142ae_bus->write16(animation_142ae_record + 0x34U, 0U);
+    animation_142ae_bus->write16(animation_142ae_record + 0xBAU, 0U);
+    animation_142ae_bus->write16(animation_142ae_record + 0xBCU, 0U);
+    animation_142ae_bus->write16(animation_142ae_record + 0xBEU, 0xFFFFU);
+    animation_142ae_bus->write8(
+        shadowrun::ram::kIndexedObjectByteTable + 0x00C0U, 1U);
+    const auto animation_149c0_alternate_direct =
+        shadowrun::run_entity_animation_route_0x149C0(
+            *animation_142ae_bus, animation_142ae_record);
+    assert(animation_149c0_alternate_direct.alternate_route);
+    assert(animation_149c0_alternate_direct.continuation_target ==
+           0x00014A54U);
+    assert(animation_149c0_alternate_direct.continuation_calls == 1U);
+    assert(animation_149c0_alternate_direct.unresolved_calls == 0U);
+    assert(animation_142ae_bus->read16(animation_142ae_record + 0xBCU) ==
+           0x00FFU);
+    assert(animation_142ae_bus->read16(animation_142ae_record + 0xBEU) ==
+           0xFFFFU);
 
     // 0x13F76's resource gate keeps 0x14D8E's carry-producing boundary typed.
     // With no override the unknown call is reported, but the direct 0x1E2E0
