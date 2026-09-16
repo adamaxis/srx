@@ -130,6 +130,12 @@ discard effects in the `0x12168` handler remain separate work; its reviewed
 armor toggle (`+0x76` and the selected `+0x6E` byte for item codes `0x2C+`)
 is now carried into native typed state.
 
+The top-level Clips command now enters a native `ClipsMenu` corresponding to
+ROM `0x11B58`. It carries the active record's `+0x4E` ammunition and `+0x4F`
+available-clip values, cycles the reviewed selectors `2..5`, and preserves the
+`0x12062` no-clips gate. The reload, trade, and recipient quantity mutations
+remain isolated behind that typed dispatch boundary.
+
 The Windows frontend preserves the reviewed controller boundary from ROM
 0x195C: the sampled word uses its low byte for held state and its high byte for
 newly asserted edges, in the order Up, Down, Left, Right, B, C, A, Start. It
@@ -140,7 +146,8 @@ The extracted field template also carries the signed display bytes at
 `+0x56/+0x57`. Native projection preserves the `0x36FC` display gate: a
 negative `+0x56` or the sentinel `0x7F` leaves the entity hidden even when its
 screen projection is in range. These values are included in native asset-pack
-version 3, so the host-only runtime retains the recovered state and inventory
+version 4, so the host-only runtime retains the recovered state, inventory
+catalog, and clip values without
 catalog without
 reading the ROM.
 

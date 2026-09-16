@@ -170,7 +170,7 @@ The first display-state bytes are now part of that native record boundary:
 template offsets `+0x56` and `+0x57` are extracted as signed
 `display_state`/`display_substate` values. The native projection preserves the
 `0x36FC` visibility gate (`+0x56 < 0` or `+0x56 == 0x7F` suppresses the
-sprite), and the values are serialized in native asset-pack version 3. The
+sprite), and the values are serialized in native asset-pack version 4. The
 native field command screen also carries the eight `+0x66` item codes and the
 adjacent phase bytes, with the 50-name item catalog extracted from `0xD4540`.
 This is a direct behavior port, not a new animation rule. The native C runner
@@ -180,6 +180,9 @@ state; Inventory now renders the ROM-selected slots and names and ports the
 reviewed armor toggle at `0x1219C`/`0x121B0`. Its remaining weapon/medical/
 discard effects and the other command subsystems remain to be ported from
 their ROM tables rather than being represented by placeholder flashes.
+The Clips command now has a native submenu for the ROM `0x11B58` selector and
+the extracted `+0x4E`/`+0x4F` ammunition values; its reload/trade quantity
+mutations remain separate typed handler work.
 
 ## Build and source discipline
 

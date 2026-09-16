@@ -226,6 +226,8 @@ GenesisFieldEntityTemplate read_genesis_field_entity_template(
             rom[record_offset + 0x6EU + index];
     }
     result.equipped_armor_index = rom[record_offset + 0x76U];
+    result.ammo_rounds = rom[record_offset + 0x4EU];
+    result.ammo_clips = rom[record_offset + 0x4FU];
     return result;
 }
 
@@ -300,6 +302,8 @@ native::NativePortAssets decode_genesis_native_assets(
         entity_template.inventory_phase_bytes;
     assets.entity_template.equipped_armor_index =
         entity_template.equipped_armor_index;
+    assets.entity_template.ammo_rounds = entity_template.ammo_rounds;
+    assets.entity_template.ammo_clips = entity_template.ammo_clips;
     assets.inventory_items = read_genesis_inventory_catalog(rom);
 
     for (std::size_t index = 0;
@@ -324,7 +328,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 3);
+    write_u16(output, 4);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     write_native_image(output, assets.field_map);
@@ -388,6 +392,8 @@ void write_native_asset_pack(const std::string& path,
         output.put(static_cast<char>(phase));
     }
     output.put(static_cast<char>(entity.equipped_armor_index));
+    output.put(static_cast<char>(entity.ammo_rounds));
+    output.put(static_cast<char>(entity.ammo_clips));
     write_u16(output, static_cast<std::uint16_t>(assets.inventory_items.size()));
     for (const auto& item : assets.inventory_items) {
         output.put(static_cast<char>(item.code));
@@ -415,7 +421,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version != 2U && version != 3U)) {
+        (version < 2U || version > 4U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -508,6 +514,12 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
         }
         entity.equipped_armor_index = read_pack_u8(
             input, "native inventory state is truncated");
+        if (version >= 4U) {
+            entity.ammo_rounds = read_pack_u8(
+                input, "native ammunition state is truncated");
+            entity.ammo_clips = read_pack_u8(
+                input, "native ammunition state is truncated");
+        }
         const auto item_count = static_cast<std::size_t>(read_pack_u16(
             input, "native inventory catalog count is truncated"));
         if (item_count > assets.inventory_items.size()) {

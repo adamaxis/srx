@@ -205,6 +205,15 @@ constexpr std::array<std::string_view, 7> kFieldMenuLabels{{
     "Pocket Secretary",
 }};
 
+// ROM 0x11B58 enters this four-option clip submenu with selector two. The
+// 0x118C6 helper keeps the selector in the inclusive range 2..5.
+constexpr std::array<std::string_view, 4> kClipsMenuLabels{{
+    "Increase Clips",
+    "Decrease Clips",
+    "Trade Clips",
+    "Change Recipient",
+}};
+
 } // namespace
 
 NativePortShell::NativePortShell(std::string title)
@@ -486,6 +495,8 @@ void NativePortShell::update_field_menu(const InputState& input) {
             // at 0x1219C/0x121B0 toggles record +0x76 and stores the
             // one-based armor ordinal in the selected slot's +0x6E byte.
             apply_field_inventory_action();
+        } else if (field_menu_selection_ == 2U) {
+            open_clips_menu();
         }
         field_command_message_frames_ = 30;
         ++field_command_count_;
@@ -539,6 +550,55 @@ void NativePortShell::apply_field_inventory_action() {
         field_entity_.equipped_armor_index;
 }
 
+void NativePortShell::open_clips_menu() {
+    // ROM 0x11B58 saves the field selector, then starts its own selector at
+    // two before drawing Increase Clips. Keep the parent FieldMenu selection
+    // intact so Start returns to the same command entry.
+    scene_ = NativeScene::ClipsMenu;
+    clips_menu_selection_ = 2;
+    clips_last_action_selection_ = 2;
+    clips_action_message_frames_ = 0;
+    clips_out_of_ammo_ = false;
+}
+
+void NativePortShell::update_clips_menu(const InputState& input) {
+    // ROM 0x118C6 applies the left/right delta and wraps 2 -> 5 and 5 -> 2.
+    if (input.is_held(Button::Left) && !input.is_held(Button::Right)) {
+        clips_menu_selection_ = clips_menu_selection_ == 2U
+            ? 5U : clips_menu_selection_ - 1U;
+    } else if (input.is_held(Button::Right) &&
+               !input.is_held(Button::Left)) {
+        clips_menu_selection_ = clips_menu_selection_ == 5U
+            ? 2U : clips_menu_selection_ + 1U;
+    }
+
+    // 0x12062 gates every A/B/C action on the active record's +0x4F clip
+    // count. The selected reload/trade handlers are kept as a typed dispatch
+    // record until their shared quantity-transfer path is ported.
+    if (input.was_pressed(Button::A) || input.was_pressed(Button::B) ||
+        input.was_pressed(Button::C)) {
+        clips_last_action_selection_ = clips_menu_selection_;
+        clips_out_of_ammo_ = field_entity_.ammo_clips == 0;
+        clips_action_message_frames_ = 30;
+        if (!clips_out_of_ammo_) {
+            ++clips_action_count_;
+        }
+    }
+
+    // The ROM's Start edge restores the saved top-level selector and returns
+    // to the command-screen loop. It does not reset the active field record.
+    if (input.was_pressed(Button::Start)) {
+        scene_ = NativeScene::FieldMenu;
+        field_menu_selection_ = 2;
+        field_command_message_frames_ = 0;
+        clips_action_message_frames_ = 0;
+    }
+
+    if (clips_action_message_frames_ != 0) {
+        --clips_action_message_frames_;
+    }
+}
+
 void NativePortShell::update(const InputState& input) {
     input_ = input;
 
@@ -561,6 +621,12 @@ void NativePortShell::update(const InputState& input) {
 
     if (scene_ == NativeScene::FieldMenu) {
         update_field_menu(input);
+        ++frame_number_;
+        return;
+    }
+
+    if (scene_ == NativeScene::ClipsMenu) {
+        update_clips_menu(input);
         ++frame_number_;
         return;
     }
@@ -696,7 +762,8 @@ void NativePortShell::render(ScreenWriter& screen) const {
         screen.write_text(8, 211, "ARROWS MOVE  Z X C  ENTER START",
                           1, {0xE8, 0xF4, 0xFF, 0xFF});
     } else if ((scene_ == NativeScene::Field ||
-                scene_ == NativeScene::FieldMenu) &&
+                scene_ == NativeScene::FieldMenu ||
+                scene_ == NativeScene::ClipsMenu) &&
                !field_view_pixels_.empty()) {
         // The field background is the ROM's mode-2 map translated into a host
         // RGBA viewport. NativeFieldEntity is composited after the terrain,
@@ -825,6 +892,53 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 screen.write_text(174, 216, "USED", 1,
                                   {0xF0, 0xC0, 0x50, 0xFF});
             }
+        } else if (scene_ == NativeScene::ClipsMenu) {
+            screen.fill_rect(24, 44, 272, 144,
+                             {0x02, 0x08, 0x18, 0xF0});
+            screen.fill_rect(24, 44, 272, 2,
+                             {0x00, 0xA8, 0xC8, 0xFF});
+            screen.write_text(36, 52, "CLIPS", 2,
+                              {0xE8, 0xF4, 0xFF, 0xFF});
+            screen.write_text(166, 54,
+                              "AVAILABLE " +
+                                  std::to_string(field_entity_.ammo_clips),
+                              1, {0xA0, 0xE8, 0xF8, 0xFF});
+            screen.write_text(166, 66,
+                              "IN WEAPON " +
+                                  std::to_string(field_entity_.ammo_rounds),
+                              1, {0xA0, 0xE8, 0xF8, 0xFF});
+            for (std::size_t index = 0; index < kClipsMenuLabels.size();
+                 ++index) {
+                const auto selector = index + 2U;
+                const auto y = 82 + static_cast<std::int32_t>(index) * 16;
+                const auto selected = selector == clips_menu_selection_;
+                if (selected) {
+                    screen.fill_rect(32, y - 2, 256, 13,
+                                     {0x00, 0x68, 0x88, 0xFF});
+                }
+                screen.write_text(40, y, kClipsMenuLabels[index], 1,
+                                  selected
+                                      ? Rgba8{0xFF, 0xF0, 0x90, 0xFF}
+                                      : Rgba8{0xD0, 0xE0, 0xF0, 0xFF});
+            }
+            screen.write_text(36, 152,
+                              "LEFT/RIGHT SELECT  Z/X/C ACTION", 1,
+                              {0x90, 0xB8, 0xC8, 0xFF});
+            if (clips_action_message_frames_ != 0) {
+                screen.write_text(176, 152,
+                                  clips_out_of_ammo_ ? "NO CLIPS" : "QUEUED",
+                                  1, {0xF0, 0xC0, 0x50, 0xFF});
+            }
+            screen.fill_rect(0, 204, kScreenWidth, 20,
+                             {0x02, 0x05, 0x0C, 0xFF});
+            screen.write_text(8, 208, "CLIPS COMMANDS  ENTER RETURN", 1,
+                              {0xE8, 0xF4, 0xFF, 0xFF});
+            screen.write_text(8, 216,
+                              "SELECTOR " +
+                                  std::to_string(clips_menu_selection_) +
+                                  "  ACTIONS " +
+                                  std::to_string(clips_action_count_),
+                              1, {0x90, 0xB8, 0xC8, 0xFF});
         } else {
             screen.fill_rect(0, 204, kScreenWidth, 20,
                              {0x02, 0x05, 0x0C, 0xFF});

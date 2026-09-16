@@ -152,7 +152,32 @@ int main() {
     rom_shell.update(InputState{button_mask(Button::A),
                                 button_mask(Button::A)});
     assert(rom_shell.field_equipped_armor_index() == 1);
+    assert(rom_shell.field_ammo_rounds() == 0x20);
+    assert(rom_shell.field_ammo_clips() == 0x0A);
     rom_shell.render(screen);
+
+    // Top-level Clips enters ROM 0x11B58's independent selector loop. The
+    // native submenu starts at selector two, wraps through 2..5, and gates
+    // its actions on the extracted +0x4F clip count via 0x12062.
+    rom_shell.update(InputState{button_mask(Button::Right),
+                                button_mask(Button::Right)});
+    assert(rom_shell.field_menu_selection() == 2);
+    rom_shell.update(InputState{button_mask(Button::A),
+                                button_mask(Button::A)});
+    assert(rom_shell.scene() == NativeScene::ClipsMenu);
+    assert(rom_shell.clips_menu_open());
+    assert(rom_shell.clips_menu_selection() == 2);
+    rom_shell.update(InputState{button_mask(Button::Left),
+                                button_mask(Button::Left)});
+    assert(rom_shell.clips_menu_selection() == 5);
+    rom_shell.update(InputState{button_mask(Button::A),
+                                button_mask(Button::A)});
+    assert(rom_shell.clips_action_count() == 1);
+    rom_shell.render(screen);
+    rom_shell.update(InputState{button_mask(Button::Start),
+                                button_mask(Button::Start)});
+    assert(rom_shell.scene() == NativeScene::FieldMenu);
+    assert(rom_shell.field_menu_selection() == 2);
 
     // C follows the same 0x391A record-selection path from the command
     // screen, restoring the menu selector to six before continuing.
@@ -223,7 +248,7 @@ int main() {
                                 button_mask(Button::A)});
     rom_shell.render(screen);
     assert(rom_shell.frame_number() == before_action_frame + 1);
-    assert(screen.presented_frames() == 7);
+    assert(screen.presented_frames() == 8);
 
     // The runtime constructor below receives only the host asset pack. This
     // is the PC-port path: the ROM is used by extraction, not by the native

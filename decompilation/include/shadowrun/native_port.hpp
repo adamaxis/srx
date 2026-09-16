@@ -65,6 +65,7 @@ enum class NativeScene {
     Title,
     Field,
     FieldMenu,
+    ClipsMenu,
 };
 
 struct Rgba8 {
@@ -151,6 +152,10 @@ struct NativeFieldEntity {
     // ROM 0x12168 uses record +0x76 as the one-based equipped armor index
     // when an item code is at or above 0x2C.
     std::uint8_t equipped_armor_index = 0;
+    // ROM 0x11B76 displays +0x4F as the available clip count. The adjacent
+    // +0x4E byte is retained as the current weapon ammunition value.
+    std::uint8_t ammo_rounds = 0;
+    std::uint8_t ammo_clips = 0;
 };
 
 // Host-owned data required by the current native title-to-field slice. This
@@ -248,8 +253,15 @@ public:
     bool has_terrain() const { return !field_terrain_.statuses.empty(); }
     bool has_entity_frame() const { return !entity_frames_.empty(); }
     bool field_menu_open() const { return scene_ == NativeScene::FieldMenu; }
+    bool clips_menu_open() const { return scene_ == NativeScene::ClipsMenu; }
     std::size_t field_menu_selection() const { return field_menu_selection_; }
     std::size_t field_menu_row() const { return field_menu_row_; }
+    std::size_t clips_menu_selection() const { return clips_menu_selection_; }
+    std::uint32_t clips_action_count() const { return clips_action_count_; }
+    std::uint8_t field_ammo_rounds() const {
+        return field_entity_.ammo_rounds;
+    }
+    std::uint8_t field_ammo_clips() const { return field_entity_.ammo_clips; }
     std::size_t field_last_command_selection() const {
         return field_last_command_selection_;
     }
@@ -304,6 +316,8 @@ private:
     void open_field_menu();
     void update_field_menu(const InputState& input);
     void apply_field_inventory_action();
+    void open_clips_menu();
+    void update_clips_menu(const InputState& input);
 
     std::string title_;
     InputState input_{};
@@ -349,6 +363,11 @@ private:
     // the renderer adapts the reviewed ROM labels to ordinary text.
     std::size_t field_menu_selection_ = 6;
     std::size_t field_menu_row_ = 0;
+    std::size_t clips_menu_selection_ = 2;
+    std::size_t clips_last_action_selection_ = 2;
+    std::uint32_t clips_action_count_ = 0;
+    std::uint8_t clips_action_message_frames_ = 0;
+    bool clips_out_of_ammo_ = false;
     std::size_t field_last_command_selection_ = 0;
     std::size_t field_last_command_row_ = 0;
     std::uint32_t field_command_count_ = 0;
