@@ -59,6 +59,13 @@ constexpr GenesisAddress kFrameEntityCollisionState = 0xFFDF64;
 constexpr GenesisAddress kFrameEntityGlobalGate = 0xFFDF84;
 constexpr GenesisAddress kEntityAnimationResourceMode = 0xFFDF40;
 constexpr GenesisAddress kEntityAnimationResourceReference = 0xFF13AE;
+constexpr GenesisAddress kEntityAnimationResourceScratch = 0xFF1380;
+constexpr GenesisAddress kEntityAnimationResourceSource = 0xFFDD3C;
+constexpr GenesisAddress kEntityAnimationResourceProbeX = 0xFFDD60;
+constexpr GenesisAddress kEntityAnimationResourceProbeY = 0xFFDD62;
+constexpr GenesisAddress kEntityAnimationResourceGateState = 0xFFDFD8;
+constexpr GenesisAddress kEntityAnimationResourceEntityBase = 0xFF0100;
+constexpr std::size_t kEntityAnimationResourceEntityCount = 10;
 constexpr GenesisAddress kEntityAnimationDispatchTimer = 0xFFE188;
 constexpr GenesisAddress kFrameEntityReactionOffsets = 0xFFDF44;
 constexpr GenesisAddress kFrameEntityReactionCameraX = 0xFFDF50;
@@ -289,6 +296,15 @@ struct EntityAnimationResourceGateResult {
     bool resource_queued;
     std::size_t continuation_calls;
     std::size_t unresolved_calls;
+};
+
+struct EntityAnimationResourceDecisionResult {
+    bool carry;
+    bool terrain_nonzero;
+    bool terrain_collision_gate_active;
+    bool occupancy_scan_stopped;
+    std::uint16_t occupancy_checks;
+    GenesisAddress scratch_record;
 };
 
 struct EntityAnimationPhaseSelectionResult {
@@ -727,9 +743,18 @@ EntityAnimationDelayResult update_entity_animation_delay_0xABFC(
     GenesisAddress entity_record_address,
     std::uint16_t d0);
 
-// ROM 0x13F76: perform the animation resource/visibility gates. 0x14D8E is
-// represented by the typed continuation because its carry result controls
-// whether the later resource queue path is entered.
+// ROM 0x14D8E: initialize the FF1380 scratch entity, test its terrain sample,
+// and scan the ten FF0100 entity records through 0x15ABA. The source A1
+// pointer is explicit because the ROM stores it in FFDD3C for that scan.
+EntityAnimationResourceDecisionResult
+run_entity_animation_resource_decision_0x14D8E(
+    GenesisBus& bus,
+    GenesisAddress entity_record_address,
+    GenesisAddress source_record_address);
+
+// ROM 0x13F76: perform the animation resource/visibility gates. Its default
+// 0x14D8E call is direct; the typed continuation still replaces the call when
+// a caller needs to observe or supply a larger CPU-context boundary.
 EntityAnimationResourceGateResult run_entity_animation_resource_gate_0x13F76(
     GenesisBus& bus,
     GenesisAddress entity_record_address,

@@ -1823,9 +1823,9 @@ int main() {
     assert(animation_142ae_bus->read16(animation_142ae_record + 0xBEU) ==
            0xFFFFU);
 
-    // 0x13F76's resource gate keeps 0x14D8E's carry-producing boundary typed.
-    // With no override the unknown call is reported, but the direct 0x1E2E0
-    // queue leaf still executes when the remaining gates admit the request.
+    // 0x13F76's resource gate now runs the direct 0x14D8E scratch/terrain
+    // decision. Keep the scratch point inside the reviewed terrain bounds so
+    // the empty map reaches the later 0x1E2E0 queue leaf.
     constexpr auto resource_gate_record = 0xFF0500U;
     constexpr auto resource_control_record = 0xFF0600U;
     animation_entry_bus->write16(
@@ -1839,6 +1839,14 @@ int main() {
     animation_entry_bus->write16(resource_gate_record + 0x2EU, 0);
     animation_entry_bus->write16(
         shadowrun::session_ram::kEntityAnimationResourceMode, 2U);
+    animation_entry_bus->write16(
+        shadowrun::session_ram::kEntityTerrainBoundsXLower, 0U);
+    animation_entry_bus->write16(
+        shadowrun::session_ram::kEntityTerrainBoundsXUpper, 0x0200U);
+    animation_entry_bus->write16(
+        shadowrun::session_ram::kEntityTerrainBoundsYLower, 0U);
+    animation_entry_bus->write16(
+        shadowrun::session_ram::kEntityTerrainBoundsYUpper, 0x0200U);
     animation_entry_bus->write32(
         shadowrun::ram::kEntityObjectControlPointer,
         resource_control_record);
@@ -1850,13 +1858,68 @@ int main() {
     assert(!resource_direct.blocked_by_global_gate);
     assert(resource_direct.resource_queued);
     assert(resource_direct.continuation_calls == 2);
-    assert(resource_direct.unresolved_calls == 1);
+    assert(resource_direct.unresolved_calls == 0);
+    assert(animation_entry_bus->read16(
+               shadowrun::session_ram::kEntityAnimationResourceGateState) ==
+           0U);
+    assert((animation_entry_bus->read8(
+                shadowrun::session_ram::kEntityAnimationResourceScratch +
+                0x10U) & 1U) != 0);
     assert(animation_entry_bus->read32(
                shadowrun::ram::kBackgroundQueuePointer) == 0x00020FECU);
     assert(animation_entry_bus->read16(shadowrun::ram::kBackgroundQueueTimer) ==
            0x003CU);
     assert((animation_entry_bus->read8(resource_gate_record + 0x9EU) & 1U) !=
            0);
+
+    // A nonzero terrain byte returns through 0x14DFC before the occupancy
+    // loop. This checks the direct carry result independently of 0x13F76.
+    animation_entry_bus->write8(
+        shadowrun::ram::kIndexedObjectByteTable, 1U);
+    animation_entry_bus->write16(
+        shadowrun::session_ram::kEntityAnimationResourceGateState, 0);
+    const auto resource_blocked =
+        shadowrun::run_entity_animation_resource_decision_0x14D8E(
+            *animation_entry_bus, resource_gate_record,
+            resource_control_record);
+    assert(resource_blocked.carry);
+    assert(resource_blocked.terrain_nonzero);
+    assert(!resource_blocked.terrain_collision_gate_active);
+    assert(!resource_blocked.occupancy_scan_stopped);
+    assert(resource_blocked.occupancy_checks == 0U);
+    animation_entry_bus->write8(
+        shadowrun::ram::kIndexedObjectByteTable, 0U);
+
+    // With terrain clear, a matching active FF0100 record makes 0x15ABA
+    // stop the first occupancy pass. 0x14D8E still clears its own carry at
+    // 0x14DEE after that scan result.
+    animation_entry_bus->write16(resource_gate_record, 0x1000U);
+    animation_entry_bus->write16(resource_gate_record + 0x04U, 0x1000U);
+    animation_entry_bus->write8(0xFF0100U + 0x10U, 1U);
+    animation_entry_bus->write8(0xFF0100U + 0x4CU, 1U);
+    animation_entry_bus->write16(0xFF0100U, 0x1000U);
+    animation_entry_bus->write16(0xFF0100U + 0x04U, 0x1000U);
+    animation_entry_bus->write32(
+        shadowrun::ram::kEntityObjectControlPointer, 0xFF0100U);
+    const auto resource_occupancy =
+        shadowrun::run_entity_animation_resource_decision_0x14D8E(
+            *animation_entry_bus, resource_gate_record, 0xFF0100U);
+    assert(animation_entry_bus->read32(
+               shadowrun::session_ram::kEntityAnimationResourceSource) ==
+           0xFF0100U);
+    assert(animation_entry_bus->read16(
+               resource_occupancy.scratch_record) == 0x1000U);
+    assert(animation_entry_bus->read16(
+               resource_occupancy.scratch_record + 0x04U) == 0x1000U);
+    assert(!resource_occupancy.carry);
+    assert(!resource_occupancy.terrain_nonzero);
+    assert(resource_occupancy.occupancy_scan_stopped);
+    assert(resource_occupancy.occupancy_checks == 1U);
+    animation_entry_bus->write8(0xFF0100U + 0x10U, 0U);
+    animation_entry_bus->write8(0xFF0100U + 0x4CU, 0U);
+    animation_entry_bus->write32(
+        shadowrun::ram::kEntityObjectControlPointer,
+        resource_control_record);
 
     std::vector<shadowrun::GenesisAddress> resource_targets;
     const shadowrun::EntityAnimationResourceContinuationRoutine resource_hook =

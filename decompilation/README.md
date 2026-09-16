@@ -167,8 +167,10 @@ not required to build or run the C++ analyzer.
   common B574 transform, and the `0x14A54` alternate route search.
 - The shared `0x13EF4` tail and `0x13F76` resource gate are now direct. The
   type-specific `0x15CA4`/`0x15D3C` distance tests, B45C/+2E writes, global
-  resource flags, and direct `0x1E2E0` queue call are preserved; `0x14D8E`
-  remains an explicit carry-returning typed continuation.
+  resource flags, and direct `0x1E2E0` queue call are preserved. `0x14D8E`
+  now directly initializes its FF1380 scratch record, calls the reviewed
+  fixed-point `0xE7C8` terrain sample, and performs the ten-record `0x15ABA`
+  occupancy scan; its typed continuation remains available as an override.
 - The `0xACAE` animation/reaction state machine is now direct through its
   lock, transition, `FFE18B/FFE18C`, controller-input, phase, and terminal
   branches. Its register-dependent callees use
