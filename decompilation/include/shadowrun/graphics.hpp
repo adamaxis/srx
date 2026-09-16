@@ -83,6 +83,16 @@ RgbaImage decode_genesis_entity_frame(
     std::size_t nibble_table_offset = 0x3EDC,
     std::size_t palette_offset = 0x172D8A);
 
+// Extract the seven frame descriptors referenced by the reviewed state block
+// at ROM 0x72B0. The block's 0x8007 marker supplies the pointer count; each
+// pointer resolves through decode_genesis_entity_frame above. The returned
+// images are independent host assets and retain no ROM/VDP state.
+std::vector<RgbaImage> decode_genesis_entity_animation(
+    const std::vector<std::uint8_t>& rom,
+    std::size_t state_block_offset = 0x72B0,
+    std::size_t nibble_table_offset = 0x3EDC,
+    std::size_t palette_offset = 0x172D8A);
+
 // Reconstruct the startup scene assembled by ROM 0x1D00/0x1D58. The source
 // offsets and dimensions are the operands of that path, not guessed graphic
 // locations: 0x1F310E is the compressed pattern stream, 0x67DF6 is its

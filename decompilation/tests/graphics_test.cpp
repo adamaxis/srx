@@ -97,5 +97,15 @@ int main() {
         entity_has_color |= pixel.alpha != 0;
     }
     assert(entity_has_transparency && entity_has_color);
+
+    const auto entity_animation = decode_genesis_entity_animation(rom);
+    assert(entity_animation.size() == 7);
+    assert(entity_animation.front().width == 24);
+    assert(entity_animation.front().height == 24);
+    for (const auto& frame : entity_animation) {
+        assert(frame.width != 0 && frame.height != 0);
+        assert(frame.pixels.size() ==
+               static_cast<std::size_t>(frame.width) * frame.height);
+    }
     return 0;
 }

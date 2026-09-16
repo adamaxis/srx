@@ -442,6 +442,52 @@ RgbaImage decode_genesis_entity_frame(
     return image;
 }
 
+std::vector<RgbaImage> decode_genesis_entity_animation(
+    const std::vector<std::uint8_t>& rom,
+    std::size_t state_block_offset,
+    std::size_t nibble_table_offset,
+    std::size_t palette_offset) {
+    require_bytes(rom.size() - std::min(state_block_offset, rom.size()), 4U,
+                  "Genesis entity animation state block is truncated");
+    const auto read16 = [&](std::size_t offset, const char* what) {
+        require_bytes(rom.size() - std::min(offset, rom.size()), 2U, what);
+        return static_cast<std::uint16_t>(
+            (static_cast<std::uint16_t>(rom[offset]) << 8U) |
+            rom[offset + 1U]);
+    };
+    const auto read32 = [&](std::size_t offset, const char* what) {
+        require_bytes(rom.size() - std::min(offset, rom.size()), 4U, what);
+        return (static_cast<std::uint32_t>(rom[offset]) << 24U) |
+               (static_cast<std::uint32_t>(rom[offset + 1U]) << 16U) |
+               (static_cast<std::uint32_t>(rom[offset + 2U]) << 8U) |
+               static_cast<std::uint32_t>(rom[offset + 3U]);
+    };
+
+    const auto state_marker = read16(
+        state_block_offset, "Genesis entity animation marker is truncated");
+    if ((state_marker & 0x8000U) == 0) {
+        throw std::runtime_error(
+            "Genesis entity animation state block has no terminal marker");
+    }
+    const auto frame_count = static_cast<std::size_t>(state_marker & 0x7FFFU);
+    if (frame_count == 0 || frame_count >
+        (rom.size() - std::min(state_block_offset, rom.size()) - 4U) / 4U) {
+        throw std::runtime_error(
+            "Genesis entity animation frame table is truncated");
+    }
+
+    std::vector<RgbaImage> frames;
+    frames.reserve(frame_count);
+    for (std::size_t index = 0; index < frame_count; ++index) {
+        const auto descriptor = static_cast<std::size_t>(read32(
+            state_block_offset + 4U + index * 4U,
+            "Genesis entity animation descriptor is truncated"));
+        frames.push_back(decode_genesis_entity_frame(
+            rom, descriptor, nibble_table_offset, palette_offset));
+    }
+    return frames;
+}
+
 RgbaImage decode_genesis_startup_screen(
     const std::vector<std::uint8_t>& rom,
     std::size_t pattern_stream_offset,

@@ -88,11 +88,13 @@ entity reaches its edge; it does not run a 68000 interpreter or depend on
 Genesis VDP state. The native field also decodes the reviewed `0x600E` frame
 descriptor at `0x9540`: `0x3E86`'s packed `0x86846` source is expanded through
 the `0x3EDC` nibble table, arranged in the `0x3EFE` column-major order, and
-converted to a transparent 24x24 RGBA8 image. The entity anchor uses the
-reviewed `0x5A62` projection routine, so the visible frame moves with the
-typed camera and input state. This is a runnable title-to-field slice, not a
-claim that the whole game is playable; recovered entity-record population and
-field UI remain the next integration boundary.
+converted to a transparent RGBA8 image. The seven descriptors referenced by
+the `0x72B0` state block are extracted, and the native entity advances through
+that frame set while movement is held. Its anchor uses the reviewed `0x5A62`
+projection routine, so the visible frame moves with the typed camera and input
+state. This is a runnable title-to-field slice, not a claim that the whole
+game is playable; recovered entity-record population and field UI remain the
+next integration boundary.
 
 ```powershell
 cmake --build 'C:\Github\shadowrun\decompilation\build-debug-verify'

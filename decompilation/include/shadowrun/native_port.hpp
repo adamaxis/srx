@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -49,6 +50,12 @@ struct Rgba8 {
     std::uint8_t green = 0;
     std::uint8_t blue = 0;
     std::uint8_t alpha = 255;
+};
+
+struct NativeEntityFrame {
+    std::uint16_t width = 0;
+    std::uint16_t height = 0;
+    std::vector<Rgba8> pixels;
 };
 
 // Native game code writes to this interface instead of issuing Genesis VDP
@@ -125,7 +132,7 @@ public:
     bool has_rom_assets() const { return !rom_scene_pixels_.empty(); }
     bool has_rom_field_map() const { return !rom_field_map_pixels_.empty(); }
     bool has_rom_entity_frame() const {
-        return !rom_entity_frame_pixels_.empty();
+        return !rom_entity_frames_.empty();
     }
     std::int32_t marker_x() const { return marker_x_; }
     std::int32_t marker_y() const { return marker_y_; }
@@ -136,6 +143,9 @@ public:
         return field_entity_screen_y_;
     }
     bool field_entity_visible() const { return field_entity_visible_; }
+    std::size_t field_entity_frame_index() const {
+        return field_entity_frame_index_;
+    }
     std::int32_t field_world_x() const { return field_world_x_; }
     std::int32_t field_world_y() const { return field_world_y_; }
     std::int32_t field_camera_x() const { return field_camera_x_; }
@@ -156,9 +166,9 @@ private:
     std::uint16_t rom_scene_width_ = 0;
     std::uint16_t rom_scene_height_ = 0;
     std::vector<Rgba8> rom_scene_pixels_;
-    std::uint16_t rom_entity_frame_width_ = 0;
-    std::uint16_t rom_entity_frame_height_ = 0;
-    std::vector<Rgba8> rom_entity_frame_pixels_;
+    std::vector<NativeEntityFrame> rom_entity_frames_;
+    std::size_t field_entity_frame_index_ = 0;
+    std::uint8_t field_entity_animation_timer_ = 0;
     std::uint16_t rom_field_map_width_ = 0;
     std::uint16_t rom_field_map_height_ = 0;
     std::vector<Rgba8> rom_field_map_pixels_;

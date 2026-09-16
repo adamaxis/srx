@@ -186,15 +186,16 @@ NativePortShell::NativePortShell(
     rom_scene_height_ = scene.height;
     rom_scene_pixels_ = scene.pixels;
 
-    // ROM 0x600E reaches the 0x8002 frame descriptor at 0x9540 for the first
-    // reviewed entity-state branch. 0x3E86 expands its packed 0x86846 source
-    // before the VBlank queue consumes it; extraction converts that result to
-    // transparent host RGBA so the native scene can draw it directly.
-    const auto entity_frame = graphics::decode_genesis_entity_frame(rom);
+    // ROM 0x600E reaches the seven-frame state block at 0x72B0. Its first
+    // 0x8002 descriptor is 0x9540; 0x3E86 expands each packed source before
+    // the VBlank queue consumes it, and extraction converts the results to
+    // transparent host RGBA so the native scene can draw them directly.
+    const auto entity_frames = graphics::decode_genesis_entity_animation(rom);
     auto field_map = graphics::decode_genesis_mode2_field_map(rom);
-    rom_entity_frame_width_ = entity_frame.width;
-    rom_entity_frame_height_ = entity_frame.height;
-    rom_entity_frame_pixels_ = entity_frame.pixels;
+    rom_entity_frames_.reserve(entity_frames.size());
+    for (const auto& frame : entity_frames) {
+        rom_entity_frames_.push_back({frame.width, frame.height, frame.pixels});
+    }
 
     // Mode 2 starts with camera coordinates 0x3400/0x2280 in the selected
     // ROM record. They are 1/16-pixel values, so the native state keeps their
@@ -252,7 +253,7 @@ void NativePortShell::refresh_field_view() {
 }
 
 void NativePortShell::refresh_field_entity_projection() {
-    if (rom_entity_frame_pixels_.empty() || rom_field_map_pixels_.empty()) {
+    if (rom_entity_frames_.empty() || rom_field_map_pixels_.empty()) {
         field_entity_visible_ = false;
         field_entity_screen_x_ = 0;
         field_entity_screen_y_ = 0;
@@ -293,6 +294,8 @@ void NativePortShell::update(const InputState& input) {
                 field_world_y_ = static_cast<std::int32_t>(0x2280U >> 4U);
                 field_camera_x_ = field_world_x_;
                 field_camera_y_ = field_world_y_;
+                field_entity_frame_index_ = 0;
+                field_entity_animation_timer_ = 0;
                 refresh_field_view();
                 refresh_field_entity_projection();
             }
@@ -338,6 +341,19 @@ void NativePortShell::update(const InputState& input) {
     }
     marker_x_ = std::clamp(marker_x_, 8, static_cast<std::int32_t>(kScreenWidth) - 16);
     marker_y_ = std::clamp(marker_y_, 48, static_cast<std::int32_t>(kScreenHeight) - 16);
+    if (!rom_entity_frames_.empty()) {
+        if (delta_x != 0 || delta_y != 0) {
+            ++field_entity_animation_timer_;
+            if (field_entity_animation_timer_ >= 4) {
+                field_entity_animation_timer_ = 0;
+                field_entity_frame_index_ =
+                    (field_entity_frame_index_ + 1U) % rom_entity_frames_.size();
+            }
+        } else {
+            field_entity_animation_timer_ = 0;
+            field_entity_frame_index_ = 0;
+        }
+    }
     if (!rom_field_map_pixels_.empty()) {
         field_world_x_ += delta_x;
         field_world_y_ += delta_y;
@@ -389,15 +405,15 @@ void NativePortShell::render(ScreenWriter& screen) const {
         screen.blit_rgba(0, 36, rom_field_width_, rom_field_height_,
                          rom_field_pixels_);
 
-        if (field_entity_visible_ && !rom_entity_frame_pixels_.empty()) {
+        if (field_entity_visible_ && !rom_entity_frames_.empty()) {
+            const auto& frame = rom_entity_frames_[field_entity_frame_index_];
             screen.fill_rect(field_entity_screen_x_ - 7,
                              field_entity_screen_y_ - 2, 14, 4,
                              {0x00, 0x00, 0x00, 0xB0});
             screen.blit_rgba(
-                field_entity_screen_x_ - rom_entity_frame_width_ / 2,
-                field_entity_screen_y_ - rom_entity_frame_height_,
-                rom_entity_frame_width_, rom_entity_frame_height_,
-                rom_entity_frame_pixels_);
+                field_entity_screen_x_ - frame.width / 2,
+                field_entity_screen_y_ - frame.height,
+                frame.width, frame.height, frame.pixels);
         } else {
             // Keep the input seam visible if a ROM is supplied without the
             // reviewed entity descriptor.
