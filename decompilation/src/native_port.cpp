@@ -460,7 +460,7 @@ void NativePortShell::update(const InputState& input) {
         action_flash_frames_ = 8;
         ++action_count_;
     }
-    if (input.was_pressed(Button::C)) {
+    if (input.was_pressed(Button::B)) {
         marker_color_ = {0xFF, 0x40, 0x70, 0xFF};
         action_flash_frames_ = 8;
         ++action_count_;
@@ -526,10 +526,11 @@ void NativePortShell::update(const InputState& input) {
         field_records_[active_field_record_] = {
             field_entity_.world_x_fixed, field_entity_.world_y_fixed};
     }
-    if (input.was_pressed(Button::B) && !field_map_pixels_.empty()) {
+    if (input.was_pressed(Button::C) && !field_map_pixels_.empty()) {
         // The main field loop dispatches raw 0x2000 to 0x391A after its
-        // ordinary entity pass. On a three-record startup party this selects
-        // the next controlled record in the same order as the ROM loop.
+        // ordinary entity pass. Raw 0x2000 is the Genesis C edge; on a
+        // three-record startup party this selects the next controlled record
+        // in the same order as the ROM loop.
         activate_field_record(
             (active_field_record_ + 1U) % field_records_.size());
         ++action_count_;
@@ -608,9 +609,9 @@ void NativePortShell::render(ScreenWriter& screen) const {
         }
         screen.fill_rect(0, 204, kScreenWidth, 20,
                          {0x02, 0x05, 0x0C, 0xFF});
-        screen.write_text(8, 208, "ARROWS MOVE ENTITY  X SWITCH RUNNER", 1,
+        screen.write_text(8, 208, "ARROWS MOVE ENTITY  C SWITCH RUNNER", 1,
                           {0xE8, 0xF4, 0xFF, 0xFF});
-        screen.write_text(8, 216, "ENTER RESET  Z/C PENDING", 1,
+        screen.write_text(8, 216, "ENTER RESET  Z/X PENDING", 1,
                           {0x90, 0xB8, 0xC8, 0xFF});
         screen.write_text(226, 216, std::to_string(action_count_), 1,
                           {0xF0, 0xC0, 0x50, 0xFF});

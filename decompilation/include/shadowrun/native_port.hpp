@@ -42,6 +42,22 @@ struct InputState {
     }
 };
 
+// ROM 0x195C stores the sampled controller state in the low byte of FFDD22
+// and the newly asserted (edge) bits in the high byte. The Genesis hardware
+// order is Up, Down, Left, Right, B, C, A, Start from bit 0 through bit 7.
+// Keeping this word format at the host boundary lets Windows, SDL, or another
+// frontend feed the same native input decoder.
+constexpr std::uint16_t kGenesisInputUp = 0x0001;
+constexpr std::uint16_t kGenesisInputDown = 0x0002;
+constexpr std::uint16_t kGenesisInputLeft = 0x0004;
+constexpr std::uint16_t kGenesisInputRight = 0x0008;
+constexpr std::uint16_t kGenesisInputB = 0x0010;
+constexpr std::uint16_t kGenesisInputC = 0x0020;
+constexpr std::uint16_t kGenesisInputA = 0x0040;
+constexpr std::uint16_t kGenesisInputStart = 0x0080;
+
+InputState decode_genesis_controller_word(std::uint16_t sampled_word);
+
 enum class NativeScene {
     Bootstrap,
     Title,

@@ -106,6 +106,14 @@ instance starts in `Title`; the pressed `Start` edge models the reviewed
 is ordinary typed C++ state with held directional movement and edge-triggered
 actions.
 
+The host controller boundary now follows ROM 0x195C: a sampled Genesis word
+has the current controller state in its low byte and newly asserted bits in its
+high byte, with bit order Up, Down, Left, Right, B, C, A, Start. The Windows
+frontend polls keys into that word and passes it through
+`decode_genesis_controller_word`, so the native update loop consumes the same
+held/edge distinction as the ROM. SDL or another frontend should provide the
+same sampled word rather than mapping directly to `InputState`.
+
 The field background is now the recovered mode-2 presentation rather than a
 placeholder composition. The mode record at `0x172C80` selects the raw
 `0x166B82` pattern upload (`0x6E20` bytes), the compressed 4x4 VDP name-word
@@ -125,7 +133,7 @@ RGBA map and the native shell presents a top-left-camera viewport through
 record instead of a presentation-only marker, so the field scrolls over the
 recovered map using the same world origin as the direct projection path. The
 field loop's reviewed raw `0x2000` dispatch to `0x391A` is represented by the
-native X/B edge: it selects the next of the three initialized records and
+native C edge: it selects the next of the three initialized records and
 retains each selected record's fixed-point position. This is a controlled
 record boundary, not speculative rendering of duplicate party members.
 
@@ -160,8 +168,8 @@ template offsets `+0x56` and `+0x57` are extracted as signed
 `display_state`/`display_substate` values. The native projection preserves the
 `0x36FC` visibility gate (`+0x56 < 0` or `+0x56 == 0x7F` suppresses the
 sprite), and the values are serialized in native asset-pack version 2. This
-is a direct behavior port, not a new animation rule. The native X/B runner
-selection is the next recovered field-loop action; A/Z and C remain explicit
+is a direct behavior port, not a new animation rule. The native C runner
+selection is a recovered field-loop action; A/Z and B remain explicit
 unresolved input boundaries rather than being described as fully ported game
 actions.
 

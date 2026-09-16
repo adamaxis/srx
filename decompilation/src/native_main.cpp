@@ -14,11 +14,9 @@
 
 namespace {
 
-using shadowrun::native::Button;
 using shadowrun::native::InputState;
 using shadowrun::native::NativePortShell;
 using shadowrun::native::SoftwareScreen;
-using shadowrun::native::button_mask;
 
 struct WindowContext {
     SoftwareScreen* screen = nullptr;
@@ -101,21 +99,21 @@ LRESULT CALLBACK window_proc(HWND window, UINT message,
     }
 }
 
-std::uint16_t poll_buttons() {
+std::uint16_t poll_controller_state() {
     std::uint16_t held = 0;
-    const auto add_key = [&](int key, Button button) {
+    const auto add_key = [&](int key, std::uint16_t genesis_mask) {
         if ((GetAsyncKeyState(key) & 0x8000) != 0) {
-            held = static_cast<std::uint16_t>(held | button_mask(button));
+            held = static_cast<std::uint16_t>(held | genesis_mask);
         }
     };
-    add_key(VK_UP, Button::Up);
-    add_key(VK_DOWN, Button::Down);
-    add_key(VK_LEFT, Button::Left);
-    add_key(VK_RIGHT, Button::Right);
-    add_key('Z', Button::A);
-    add_key('X', Button::B);
-    add_key('C', Button::C);
-    add_key(VK_RETURN, Button::Start);
+    add_key(VK_UP, shadowrun::native::kGenesisInputUp);
+    add_key(VK_DOWN, shadowrun::native::kGenesisInputDown);
+    add_key(VK_LEFT, shadowrun::native::kGenesisInputLeft);
+    add_key(VK_RIGHT, shadowrun::native::kGenesisInputRight);
+    add_key('Z', shadowrun::native::kGenesisInputA);
+    add_key('X', shadowrun::native::kGenesisInputB);
+    add_key('C', shadowrun::native::kGenesisInputC);
+    add_key(VK_RETURN, shadowrun::native::kGenesisInputStart);
     return held;
 }
 
@@ -179,7 +177,7 @@ int main(int argc, char** argv) {
     ShowWindow(window, SW_SHOW);
     UpdateWindow(window);
 
-    std::uint16_t previous_held = 0;
+    std::uint16_t previous_controller_state = 0;
     while (!context.quit) {
         MSG message{};
         while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE) != 0) {
@@ -194,10 +192,16 @@ int main(int argc, char** argv) {
             break;
         }
 
-        const auto held = poll_buttons();
-        game.update(InputState{
-            held, static_cast<std::uint16_t>(held & ~previous_held)});
-        previous_held = held;
+        const auto controller_state = poll_controller_state();
+        const auto sampled_word = static_cast<std::uint16_t>(
+            controller_state |
+            static_cast<std::uint16_t>(
+                (controller_state &
+                 static_cast<std::uint16_t>(~previous_controller_state))
+                << 8U));
+        game.update(shadowrun::native::decode_genesis_controller_word(
+            sampled_word));
+        previous_controller_state = controller_state;
         game.render(screen);
         InvalidateRect(window, nullptr, FALSE);
         UpdateWindow(window);

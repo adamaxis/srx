@@ -21,6 +21,23 @@ std::vector<std::uint8_t> read_rom() {
 int main() {
     using namespace shadowrun::native;
 
+    const auto decoded_input = decode_genesis_controller_word(
+        static_cast<std::uint16_t>(
+            kGenesisInputUp | kGenesisInputA |
+            static_cast<std::uint16_t>(kGenesisInputC << 8U) |
+            static_cast<std::uint16_t>(kGenesisInputStart << 8U)));
+    assert(decoded_input.is_held(Button::Up));
+    assert(decoded_input.is_held(Button::A));
+    assert(!decoded_input.is_held(Button::C));
+    assert(decoded_input.was_pressed(Button::C));
+    assert(decoded_input.was_pressed(Button::Start));
+    assert(!decoded_input.was_pressed(Button::A));
+
+    const auto decoded_b = decode_genesis_controller_word(
+        static_cast<std::uint16_t>(kGenesisInputB << 8U));
+    assert(decoded_b.was_pressed(Button::B));
+    assert(!decoded_b.was_pressed(Button::C));
+
     SoftwareScreen screen;
     NativePortShell shell("SHADOWRUN");
     shell.render(screen);
@@ -74,14 +91,14 @@ int main() {
     // records. The native port keeps the selection edge-triggered and uses
     // the three reviewed coordinate pairs without inventing extra actors.
     assert(rom_shell.field_active_record_index() == 0);
-    rom_shell.update(InputState{button_mask(Button::B),
-                                button_mask(Button::B)});
+    rom_shell.update(InputState{button_mask(Button::C),
+                                button_mask(Button::C)});
     assert(rom_shell.field_active_record_index() == 1);
     assert(rom_shell.field_world_x() == (0x3BA0 >> 4));
-    rom_shell.update(InputState{button_mask(Button::B), 0});
+    rom_shell.update(InputState{button_mask(Button::C), 0});
     assert(rom_shell.field_active_record_index() == 1);
-    rom_shell.update(InputState{button_mask(Button::B),
-                                button_mask(Button::B)});
+    rom_shell.update(InputState{button_mask(Button::C),
+                                button_mask(Button::C)});
     assert(rom_shell.field_active_record_index() == 2);
     assert(rom_shell.field_world_x() == (0x3DA0 >> 4));
     rom_shell.update(InputState{button_mask(Button::Start),

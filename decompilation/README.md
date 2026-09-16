@@ -90,7 +90,7 @@ ROM `0x2B34`'s first three mode-record coordinate pairs are retained in the type
 resource descriptor, and arrow input advances the first recovered field record
 through that world space; the viewport follows when the entity reaches the
 reviewed projection window. The reviewed field-loop raw `0x2000` branch to
-`0x391A` is mapped to the native X/B edge: it selects the next of those three
+`0x391A` is mapped to the native C edge: it selects the next of those three
 initialized records and preserves each record's fixed-point position when the
 selection changes. It does not render unverified duplicate actors. The native
 port does not run a 68000 interpreter or depend on Genesis VDP state. The
@@ -110,9 +110,15 @@ animation blocks, but is not used to choose the field entity frames.
 The terrain table at `0x172DAA` is rebuilt into the native status grid and the
 four-corner `0xE7C8` probe rejects blocked movement before the typed record is
 updated. This is a runnable title-to-field slice, not a claim that the whole
-game is playable; the remaining A/Z and C input semantics, expanded
+game is playable; the remaining A/Z and B input semantics, expanded
 entity/session population, and field UI remain the next integration
 boundaries.
+
+The Windows frontend preserves the reviewed controller boundary from ROM
+0x195C: the sampled word uses its low byte for held state and its high byte for
+newly asserted edges, in the order Up, Down, Left, Right, B, C, A, Start. It
+feeds that word through `decode_genesis_controller_word`; a future SDL or
+graphics frontend can use the same host input contract.
 
 The extracted field template also carries the signed display bytes at
 `+0x56/+0x57`. Native projection preserves the `0x36FC` display gate: a

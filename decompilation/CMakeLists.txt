@@ -18,6 +18,7 @@ add_library(shadowrun_port STATIC
     src/entity_state.cpp
     src/graphics.cpp
     src/memory_bus.cpp
+    src/native_input.cpp
     src/native_port.cpp
     src/object_mask.cpp
     src/object_list.cpp
