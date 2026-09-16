@@ -97,6 +97,7 @@ int main() {
     assert(entity_template.equipped_armor_index == 1);
     assert(entity_template.ammo_rounds == 0x20);
     assert(entity_template.ammo_clips == 0x0A);
+    assert(entity_template.cyberware_flags == 0x0004);
     const auto inventory_catalog = read_genesis_inventory_catalog(rom);
     assert(inventory_catalog.size() == 50);
     assert(inventory_catalog[1].code == 2);
@@ -104,6 +105,12 @@ int main() {
     assert(inventory_catalog[1].category == "Light Pistol");
     assert(inventory_catalog[43].code == 44);
     assert(inventory_catalog[43].name == "Armor Vest");
+    const auto cyberware_catalog = read_genesis_cyberware_catalog(rom);
+    assert(cyberware_catalog.size() == 15);
+    assert(cyberware_catalog[0] == "Datajack");
+    assert(cyberware_catalog[1] == "CyberEyes");
+    assert(cyberware_catalog[2] == "Hand Razors");
+    assert(cyberware_catalog[14] == "Wired Reflexes(3)");
     const auto metatile_resource = decode_genesis_resource_stream(rom, 0x170102);
     assert(metatile_resource.size() == 0x4F40);
     const auto field_resources = read_genesis_mode2_field_resources(rom);
@@ -264,12 +271,15 @@ int main() {
            native_assets.entity_template.ammo_rounds);
     assert(loaded_assets.entity_template.ammo_clips ==
            native_assets.entity_template.ammo_clips);
+    assert(loaded_assets.entity_template.cyberware_flags ==
+           native_assets.entity_template.cyberware_flags);
     assert(loaded_assets.inventory_items.size() ==
            native_assets.inventory_items.size());
     assert(loaded_assets.inventory_items[1].name ==
            native_assets.inventory_items[1].name);
     assert(loaded_assets.inventory_items[43].category ==
            native_assets.inventory_items[43].category);
+    assert(loaded_assets.cyberware_names == native_assets.cyberware_names);
     std::filesystem::remove(pack_path);
     return 0;
 }

@@ -179,6 +179,28 @@ int main() {
     assert(rom_shell.scene() == NativeScene::FieldMenu);
     assert(rom_shell.field_menu_selection() == 2);
 
+    // ROM 0x11950 is the display-only Cyberware handler. It reads +0x90 as
+    // fifteen bit flags and emits the pointer-table name for each set bit.
+    // The extracted startup record has only bit 2 set, which is Hand Razors.
+    rom_shell.update(InputState{button_mask(Button::Right),
+                                button_mask(Button::Right)});
+    rom_shell.update(InputState{button_mask(Button::Right),
+                                button_mask(Button::Right)});
+    assert(rom_shell.field_menu_selection() == 4);
+    rom_shell.update(InputState{button_mask(Button::A),
+                                button_mask(Button::A)});
+    assert(rom_shell.scene() == NativeScene::CyberwareMenu);
+    assert(rom_shell.cyberware_menu_open());
+    assert(rom_shell.field_cyberware_flags() == 0x0004);
+    assert(!rom_shell.field_cyberware_installed(1));
+    assert(rom_shell.field_cyberware_installed(2));
+    assert(rom_shell.field_cyberware_name(2) == "Hand Razors");
+    rom_shell.render(screen);
+    rom_shell.update(InputState{button_mask(Button::Start),
+                                button_mask(Button::Start)});
+    assert(rom_shell.scene() == NativeScene::FieldMenu);
+    assert(rom_shell.field_menu_selection() == 4);
+
     // C follows the same 0x391A record-selection path from the command
     // screen, restoring the menu selector to six before continuing.
     rom_shell.update(InputState{button_mask(Button::C),
@@ -248,7 +270,7 @@ int main() {
                                 button_mask(Button::A)});
     rom_shell.render(screen);
     assert(rom_shell.frame_number() == before_action_frame + 1);
-    assert(screen.presented_frames() == 8);
+    assert(screen.presented_frames() == 9);
 
     // The runtime constructor below receives only the host asset pack. This
     // is the PC-port path: the ROM is used by extraction, not by the native

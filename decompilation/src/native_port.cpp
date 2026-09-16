@@ -232,6 +232,7 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     entity_frames_ = std::move(assets.entity_frames);
     field_direction_table_ = assets.field_direction_table;
     inventory_items_ = std::move(assets.inventory_items);
+    cyberware_names_ = std::move(assets.cyberware_names);
     field_initial_records_ = assets.initial_field_records;
     field_records_ = field_initial_records_;
     field_terrain_ = std::move(assets.field_terrain);
@@ -497,6 +498,8 @@ void NativePortShell::update_field_menu(const InputState& input) {
             apply_field_inventory_action();
         } else if (field_menu_selection_ == 2U) {
             open_clips_menu();
+        } else if (field_menu_selection_ == 4U) {
+            open_cyberware_menu();
         }
         field_command_message_frames_ = 30;
         ++field_command_count_;
@@ -599,6 +602,23 @@ void NativePortShell::update_clips_menu(const InputState& input) {
     }
 }
 
+void NativePortShell::open_cyberware_menu() {
+    // ROM 0x11950 is a display-only handler. It reads +0x90, emits one line
+    // for each installed bit, then waits for the controller before returning
+    // to the command screen. Keep the active record and its field state intact.
+    scene_ = NativeScene::CyberwareMenu;
+}
+
+void NativePortShell::update_cyberware_menu(const InputState& input) {
+    // The original handler has no selection or mutation loop. Start is the
+    // only exit edge at this boundary; arrows and action buttons are ignored.
+    if (input.was_pressed(Button::Start)) {
+        scene_ = NativeScene::FieldMenu;
+        field_menu_selection_ = 4;
+        field_command_message_frames_ = 0;
+    }
+}
+
 void NativePortShell::update(const InputState& input) {
     input_ = input;
 
@@ -627,6 +647,12 @@ void NativePortShell::update(const InputState& input) {
 
     if (scene_ == NativeScene::ClipsMenu) {
         update_clips_menu(input);
+        ++frame_number_;
+        return;
+    }
+
+    if (scene_ == NativeScene::CyberwareMenu) {
+        update_cyberware_menu(input);
         ++frame_number_;
         return;
     }
@@ -763,7 +789,8 @@ void NativePortShell::render(ScreenWriter& screen) const {
                           1, {0xE8, 0xF4, 0xFF, 0xFF});
     } else if ((scene_ == NativeScene::Field ||
                 scene_ == NativeScene::FieldMenu ||
-                scene_ == NativeScene::ClipsMenu) &&
+                scene_ == NativeScene::ClipsMenu ||
+                scene_ == NativeScene::CyberwareMenu) &&
                !field_view_pixels_.empty()) {
         // The field background is the ROM's mode-2 map translated into a host
         // RGBA viewport. NativeFieldEntity is composited after the terrain,
@@ -939,6 +966,29 @@ void NativePortShell::render(ScreenWriter& screen) const {
                                   "  ACTIONS " +
                                   std::to_string(clips_action_count_),
                               1, {0x90, 0xB8, 0xC8, 0xFF});
+        } else if (scene_ == NativeScene::CyberwareMenu) {
+            screen.fill_rect(24, 44, 272, 144,
+                             {0x02, 0x08, 0x18, 0xF0});
+            screen.fill_rect(24, 44, 272, 2,
+                             {0x00, 0xA8, 0xC8, 0xFF});
+            screen.write_text(36, 52, "CYBERWARE", 2,
+                              {0xE8, 0xF4, 0xFF, 0xFF});
+            for (std::size_t index = 0; index < cyberware_names_.size();
+                 ++index) {
+                const auto installed =
+                    (field_entity_.cyberware_flags &
+                     static_cast<std::uint16_t>(1U << index)) != 0;
+                const auto& name = cyberware_names_[index];
+                const auto line = std::string(installed ? "[ON] " : "[--] ") +
+                                  (name.empty() ? "UNKNOWN" : name);
+                screen.write_text(
+                    36, 70 + static_cast<std::int32_t>(index) * 7, line, 1,
+                    installed
+                        ? Rgba8{0xFF, 0xF0, 0x90, 0xFF}
+                        : Rgba8{0xA8, 0xB8, 0xC8, 0xFF});
+            }
+            screen.write_text(36, 181, "START RETURN", 1,
+                              {0x90, 0xB8, 0xC8, 0xFF});
         } else {
             screen.fill_rect(0, 204, kScreenWidth, 20,
                              {0x02, 0x05, 0x0C, 0xFF});

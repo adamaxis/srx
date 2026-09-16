@@ -15,6 +15,7 @@ constexpr std::uint16_t kScreenWidth = 320;
 constexpr std::uint16_t kScreenHeight = 224;
 constexpr std::size_t kNativeInventorySlotCount = 8;
 constexpr std::size_t kNativeInventoryItemCount = 50;
+constexpr std::size_t kNativeCyberwareCount = 15;
 
 enum class Button : std::uint16_t {
     Up = 1U << 0U,
@@ -66,6 +67,7 @@ enum class NativeScene {
     Field,
     FieldMenu,
     ClipsMenu,
+    CyberwareMenu,
 };
 
 struct Rgba8 {
@@ -156,6 +158,9 @@ struct NativeFieldEntity {
     // +0x4E byte is retained as the current weapon ammunition value.
     std::uint8_t ammo_rounds = 0;
     std::uint8_t ammo_clips = 0;
+    // ROM 0x11950 reads the active record's +0x90 word as fifteen installed
+    // cyberware flags. The native port preserves that bitfield directly.
+    std::uint16_t cyberware_flags = 0;
 };
 
 // Host-owned data required by the current native title-to-field slice. This
@@ -174,6 +179,7 @@ struct NativePortAssets {
     NativeFieldEntity entity_template;
     std::array<NativeInventoryItem, kNativeInventoryItemCount>
         inventory_items{};
+    std::array<std::string, kNativeCyberwareCount> cyberware_names{};
 };
 
 // Native game code writes to this interface instead of issuing Genesis VDP
@@ -254,6 +260,9 @@ public:
     bool has_entity_frame() const { return !entity_frames_.empty(); }
     bool field_menu_open() const { return scene_ == NativeScene::FieldMenu; }
     bool clips_menu_open() const { return scene_ == NativeScene::ClipsMenu; }
+    bool cyberware_menu_open() const {
+        return scene_ == NativeScene::CyberwareMenu;
+    }
     std::size_t field_menu_selection() const { return field_menu_selection_; }
     std::size_t field_menu_row() const { return field_menu_row_; }
     std::size_t clips_menu_selection() const { return clips_menu_selection_; }
@@ -262,6 +271,19 @@ public:
         return field_entity_.ammo_rounds;
     }
     std::uint8_t field_ammo_clips() const { return field_entity_.ammo_clips; }
+    std::uint16_t field_cyberware_flags() const {
+        return field_entity_.cyberware_flags;
+    }
+    bool field_cyberware_installed(std::size_t index) const {
+        return index < kNativeCyberwareCount &&
+               (field_entity_.cyberware_flags &
+                static_cast<std::uint16_t>(1U << index)) != 0;
+    }
+    std::string_view field_cyberware_name(std::size_t index) const {
+        return index < cyberware_names_.size()
+            ? std::string_view(cyberware_names_[index])
+            : std::string_view{};
+    }
     std::size_t field_last_command_selection() const {
         return field_last_command_selection_;
     }
@@ -318,6 +340,8 @@ private:
     void apply_field_inventory_action();
     void open_clips_menu();
     void update_clips_menu(const InputState& input);
+    void open_cyberware_menu();
+    void update_cyberware_menu(const InputState& input);
 
     std::string title_;
     InputState input_{};
@@ -334,6 +358,7 @@ private:
     NativeFieldEntity field_entity_{};
     std::array<NativeInventoryItem, kNativeInventoryItemCount>
         inventory_items_{};
+    std::array<std::string, kNativeCyberwareCount> cyberware_names_{};
     std::array<std::uint8_t, 3> field_equipped_armor_by_record_{};
     std::uint8_t field_initial_equipped_armor_ = 0;
     std::array<NativeFieldRecordPosition, 3> field_initial_records_{};

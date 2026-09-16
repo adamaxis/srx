@@ -97,6 +97,11 @@ constexpr std::uint32_t kPostObjectBackgroundTileTable = 0x1EB3E2;
 constexpr std::uint32_t kInventoryItemTable = 0xD4540;
 constexpr std::size_t kInventoryItemRecordStride = 0x30;
 constexpr std::size_t kInventoryItemCount = 50;
+// ROM 0x11950 tests the active record's +0x90 cyberware bitfield from bit 0
+// through bit 14, then indexes this fifteen-entry longword table to display
+// the installed names. The pointers resolve to FF-terminated host text.
+constexpr std::uint32_t kCyberwarePointerTable = 0xD2072;
+constexpr std::size_t kCyberwareCount = 15;
 inline constexpr std::array<GenesisAddress, 4> kEntityObjectVariantTables{
     0x5D92, 0x5DBE, 0x5DA8, 0x5DD4
 };

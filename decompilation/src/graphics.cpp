@@ -180,9 +180,9 @@ native::NativeImage read_native_image(std::istream& input) {
 
 GenesisFieldEntityTemplate read_genesis_field_entity_template(
     const std::vector<std::uint8_t>& rom, std::size_t record_offset) {
-    if (record_offset > rom.size() || rom.size() - record_offset < 0x77U) {
+    if (record_offset > rom.size() || rom.size() - record_offset < 0x92U) {
         throw std::out_of_range(
-            "Genesis field entity template inventory state is truncated");
+            "Genesis field entity template state is truncated");
     }
     const auto flags = read_rom_u16(
         rom, record_offset + 0x10U,
@@ -228,6 +228,9 @@ GenesisFieldEntityTemplate read_genesis_field_entity_template(
     result.equipped_armor_index = rom[record_offset + 0x76U];
     result.ammo_rounds = rom[record_offset + 0x4EU];
     result.ammo_clips = rom[record_offset + 0x4FU];
+    result.cyberware_flags = read_rom_u16(
+        rom, record_offset + 0x90U,
+        "Genesis field entity cyberware flags are truncated");
     return result;
 }
 
@@ -246,6 +249,23 @@ read_genesis_inventory_catalog(const std::vector<std::uint8_t>& rom) {
         result[index].category = read_genesis_fixed_text(
             rom, record_offset + 0x0DU, 12U,
             "Genesis inventory item category is truncated");
+    }
+    return result;
+}
+
+std::array<std::string, native::kNativeCyberwareCount>
+read_genesis_cyberware_catalog(const std::vector<std::uint8_t>& rom) {
+    std::array<std::string, native::kNativeCyberwareCount> result{};
+    for (std::size_t index = 0; index < result.size(); ++index) {
+        const auto pointer_offset =
+            static_cast<std::size_t>(rom::kCyberwarePointerTable) +
+            index * 4U;
+        const auto string_offset = static_cast<std::size_t>(read_rom_u32(
+            rom, pointer_offset,
+            "Genesis cyberware pointer table is truncated"));
+        result[index] = read_genesis_fixed_text(
+            rom, string_offset, 64U,
+            "Genesis cyberware name is truncated");
     }
     return result;
 }
@@ -304,7 +324,11 @@ native::NativePortAssets decode_genesis_native_assets(
         entity_template.equipped_armor_index;
     assets.entity_template.ammo_rounds = entity_template.ammo_rounds;
     assets.entity_template.ammo_clips = entity_template.ammo_clips;
+    assets.entity_template.cyberware_flags = read_rom_u16(
+        rom, entity_template.record_offset + 0x90U,
+        "Genesis field entity cyberware flags are truncated");
     assets.inventory_items = read_genesis_inventory_catalog(rom);
+    assets.cyberware_names = read_genesis_cyberware_catalog(rom);
 
     for (std::size_t index = 0;
          index < assets.field_direction_table.size(); ++index) {
@@ -328,7 +352,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 4);
+    write_u16(output, 5);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     write_native_image(output, assets.field_map);
@@ -394,6 +418,7 @@ void write_native_asset_pack(const std::string& path,
     output.put(static_cast<char>(entity.equipped_armor_index));
     output.put(static_cast<char>(entity.ammo_rounds));
     output.put(static_cast<char>(entity.ammo_clips));
+    write_u16(output, entity.cyberware_flags);
     write_u16(output, static_cast<std::uint16_t>(assets.inventory_items.size()));
     for (const auto& item : assets.inventory_items) {
         output.put(static_cast<char>(item.code));
@@ -401,6 +426,12 @@ void write_native_asset_pack(const std::string& path,
                           "native inventory item name is too long");
         write_pack_string(output, item.category,
                           "native inventory item category is too long");
+    }
+    write_u16(output, static_cast<std::uint16_t>(
+                           assets.cyberware_names.size()));
+    for (const auto& name : assets.cyberware_names) {
+        write_pack_string(output, name,
+                          "native cyberware name is too long");
     }
     for (const auto& direction : assets.field_direction_table) {
         write_u16(output, static_cast<std::uint16_t>(direction[0]));
@@ -421,7 +452,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 4U)) {
+        (version < 2U || version > 5U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -520,6 +551,10 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
             entity.ammo_clips = read_pack_u8(
                 input, "native ammunition state is truncated");
         }
+        if (version >= 5U) {
+            entity.cyberware_flags = read_pack_u16(
+                input, "native cyberware state is truncated");
+        }
         const auto item_count = static_cast<std::size_t>(read_pack_u16(
             input, "native inventory catalog count is truncated"));
         if (item_count > assets.inventory_items.size()) {
@@ -533,6 +568,18 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
                 input, "native inventory item name is truncated");
             item.category = read_pack_string(
                 input, "native inventory item category is truncated");
+        }
+        if (version >= 5U) {
+            const auto cyberware_count = static_cast<std::size_t>(
+                read_pack_u16(input, "native cyberware catalog count is truncated"));
+            if (cyberware_count > assets.cyberware_names.size()) {
+                throw std::runtime_error(
+                    "native asset pack has too many cyberware names");
+            }
+            for (std::size_t index = 0; index < cyberware_count; ++index) {
+                assets.cyberware_names[index] = read_pack_string(
+                    input, "native cyberware name is truncated");
+            }
         }
     }
     for (auto& direction : assets.field_direction_table) {

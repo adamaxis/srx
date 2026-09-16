@@ -136,6 +136,14 @@ available-clip values, cycles the reviewed selectors `2..5`, and preserves the
 `0x12062` no-clips gate. The reload, trade, and recipient quantity mutations
 remain isolated behind that typed dispatch boundary.
 
+The Cyberware command now enters a native display screen corresponding to ROM
+`0x11950`. Extraction preserves the active record's `+0x90` fifteen-bit
+cyberware field and expands the pointer names at `0xD2072` into host strings;
+the initial record therefore shows the recovered `Hand Razors` entry. The
+handler is display-only in the ROM, so Start returns to the command screen and
+there is no invented mutation or selection behavior. These values are stored
+in native asset-pack version 5.
+
 The Windows frontend preserves the reviewed controller boundary from ROM
 0x195C: the sampled word uses its low byte for held state and its high byte for
 newly asserted edges, in the order Up, Down, Left, Right, B, C, A, Start. It
@@ -146,9 +154,8 @@ The extracted field template also carries the signed display bytes at
 `+0x56/+0x57`. Native projection preserves the `0x36FC` display gate: a
 negative `+0x56` or the sentinel `0x7F` leaves the entity hidden even when its
 screen projection is in range. These values are included in native asset-pack
-version 4, so the host-only runtime retains the recovered state, inventory
-catalog, and clip values without
-catalog without
+version 5, so the host-only runtime retains the recovered state, inventory,
+cyberware catalog, and clip values without
 reading the ROM.
 
 The mode-2 map loader now reads a typed `GenesisMode2FieldResources` view from

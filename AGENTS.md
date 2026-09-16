@@ -170,7 +170,7 @@ The first display-state bytes are now part of that native record boundary:
 template offsets `+0x56` and `+0x57` are extracted as signed
 `display_state`/`display_substate` values. The native projection preserves the
 `0x36FC` visibility gate (`+0x56 < 0` or `+0x56 == 0x7F` suppresses the
-sprite), and the values are serialized in native asset-pack version 4. The
+sprite), and the values are serialized in native asset-pack version 5. The
 native field command screen also carries the eight `+0x66` item codes and the
 adjacent phase bytes, with the 50-name item catalog extracted from `0xD4540`.
 This is a direct behavior port, not a new animation rule. The native C runner
@@ -183,6 +183,12 @@ their ROM tables rather than being represented by placeholder flashes.
 The Clips command now has a native submenu for the ROM `0x11B58` selector and
 the extracted `+0x4E`/`+0x4F` ammunition values; its reload/trade quantity
 mutations remain separate typed handler work.
+The Cyberware command now has the ROM `0x11950` display path: `+0x90` is
+preserved as a fifteen-bit installed-cyberware field, and the FF-terminated
+names behind the `0xD2072` pointer table are extracted into the native pack.
+The initial active record consequently exposes `Hand Razors`; the display
+handler returns on Start without adding mutation behavior that the ROM does
+not perform. Native asset-pack version 5 carries this catalog and field.
 
 ## Build and source discipline
 
