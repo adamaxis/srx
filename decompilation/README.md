@@ -156,6 +156,12 @@ also be exported directly:
 & 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_graphics_extract.exe' `
   'C:\Github\shadowrun\decompilation\input\shadowrun_genesis_us.bin' `
   'C:\Github\shadowrun\decompilation\build-debug-verify\entity_frame.bmp' --entity-frame
+& 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_graphics_extract.exe' `
+  'C:\Github\shadowrun\decompilation\input\shadowrun_genesis_us.bin' `
+  'C:\Github\shadowrun\decompilation\build-debug-verify\field_entity_states.bmp' --field-entity-states
+& 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_graphics_extract.exe' `
+  'C:\Github\shadowrun\decompilation\input\shadowrun_genesis_us.bin' `
+  'C:\Github\shadowrun\decompilation\build-debug-verify\field_entity_state_2.bmp' --field-entity-state 2
 ```
 
 The dependency-free graphics converter accepts offsets recovered from the ROM
