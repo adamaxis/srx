@@ -1942,6 +1942,47 @@ int main() {
     assert(resource_targets.size() == 1);
     assert(resource_targets[0] == 0x00014D8EU);
 
+    // B1DC now performs its direct delay/command/frame-selection prefix and
+    // enters the reconstructed linked-record predicate. Its later 55C76
+    // adjustment is intentionally surfaced as one unresolved boundary.
+    auto b1dc_bus = std::make_unique<shadowrun::GenesisMemoryBus>(
+        std::vector<std::uint8_t>(0x200000U, 0));
+    constexpr auto b1dc_record = 0xFF0600U;
+    b1dc_bus->write16(b1dc_record + 0x34U, 0x0000U);
+    b1dc_bus->write16(b1dc_record + 0x0EU, 0x0001U);
+    const auto b1dc_no_link = shadowrun::run_entity_animation_update_0xB1DC(
+        *b1dc_bus, b1dc_record);
+    assert(b1dc_no_link.initial_command_dispatched);
+    assert(!b1dc_no_link.linked_record_transformed);
+    assert(!b1dc_no_link.linked_gate_carry);
+    assert(!b1dc_no_link.unresolved_0x55C76);
+    assert(b1dc_no_link.unresolved_calls == 0);
+    assert(b1dc_bus->read16(b1dc_record + 0x2EU) == 0);
+    assert(b1dc_bus->read16(b1dc_record + 0x16U) == 0);
+    assert(b1dc_bus->read32(b1dc_record + 0x3AU) == 0x0000B316U);
+    assert(b1dc_bus->read16(b1dc_record + 0x1AU) == 0);
+    assert(b1dc_bus->read16(b1dc_record + 0x1EU) == 0);
+    assert((b1dc_bus->read8(b1dc_record + 0x11U) & 0x01U) != 0);
+
+    constexpr auto b1dc_linked = 0xFF0700U;
+    b1dc_bus->write32(b1dc_record + 0xA2U, b1dc_linked);
+    b1dc_bus->write8(b1dc_linked + 0x10U, 0x01U);
+    b1dc_bus->write16(b1dc_record, 0x0000U);
+    b1dc_bus->write16(b1dc_record + 0x04U, 0x0000U);
+    b1dc_bus->write16(b1dc_linked, 0x0100U);
+    b1dc_bus->write16(b1dc_linked + 0x04U, 0x0000U);
+    const auto b1dc_linked_result =
+        shadowrun::run_entity_animation_update_0xB1DC(
+            *b1dc_bus, b1dc_record);
+    assert(b1dc_linked_result.linked_record_transformed);
+    assert(b1dc_linked_result.linked_gate_carry);
+    assert(b1dc_linked_result.linked_command_dispatched);
+    assert(b1dc_linked_result.unresolved_0x55C76);
+    assert(b1dc_linked_result.unresolved_calls == 1);
+    assert(b1dc_linked_result.link_check.linked_record == b1dc_linked);
+    assert(b1dc_bus->read16(shadowrun::session_ram::kFrameEntityGlobalGate) !=
+           0);
+
     auto acae_bus = std::make_unique<shadowrun::GenesisMemoryBus>(
         std::vector<std::uint8_t>(0x200000U, 0));
     constexpr auto acae_record = 0xFF0100U;

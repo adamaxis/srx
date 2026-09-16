@@ -4547,6 +4547,74 @@ EntityAnimationResourceGateResult run_entity_animation_resource_gate_0x13F76(
     return result;
 }
 
+EntityAnimationB1dcResult run_entity_animation_update_0xB1DC(
+    GenesisBus& bus, GenesisAddress entity_record_address) {
+    // 0xB1DC supplies mode one to ABFC, then chooses the 0x4C/0x55 command
+    // from the current entity type. Neither operation consumes a caller
+    // carry, so retain the effects and make the dispatch explicit.
+    update_entity_animation_delay_0xABFC(bus, entity_record_address, 1U);
+    const auto command = bus.read16(entity_record_address + 0x0EU) == 0x000CU
+                             ? 0x0055U
+                             : 0x004CU;
+    dispatch_z80_command_0x530DE(bus, command);
+
+    const auto linked_record = bus.read32(entity_record_address + 0xA2U);
+    bool linked_record_transformed = false;
+    if (linked_record != 0) {
+        // B1DC's prelude computes the linked direction without applying the
+        // 0x15C58 flag/distance predicate; that predicate is entered below.
+        const auto transform = transform_frame_delta_0x15D3C(
+            bus,
+            bus.read16(linked_record + 0x04U),
+            bus.read16(linked_record),
+            bus.read16(entity_record_address + 0x04U),
+            bus.read16(entity_record_address));
+        bus.write16(entity_record_address + 0x34U, transform.d2);
+        linked_record_transformed = true;
+    }
+
+    bus.write16(entity_record_address + 0x2EU,
+                bus.read16(entity_record_address + 0x34U));
+    bus.write32(entity_record_address + 0x3AU, 0x0000B316U);
+
+    auto direction_index = rotate_left_word(
+        bus.read16(entity_record_address + 0x2EU), 3U);
+    if ((direction_index & 0x8000U) != 0) {
+        direction_index = static_cast<std::uint16_t>(direction_index + 1U);
+    }
+    direction_index = static_cast<std::uint16_t>(direction_index & 0x0007U);
+    bus.write16(entity_record_address + 0x16U,
+                bus.read16(rom::kEntityAnimationLinkedFrameTable +
+                           static_cast<GenesisAddress>(direction_index << 1U)));
+
+    // 0xAF6C is a small direct state tail shared by the surrounding animation
+    // handlers.
+    bus.write16(entity_record_address + 0x1AU, 0);
+    bus.write8(entity_record_address + 0x11U,
+               static_cast<std::uint8_t>(
+                   bus.read8(entity_record_address + 0x11U) | 0x01U));
+    bus.write16(entity_record_address + 0x1EU, 0);
+
+    const auto link_check = check_entity_animation_link_0x15C84(
+        bus, entity_record_address);
+    if (!link_check.carry) {
+        return {true, linked_record_transformed, false, false, false,
+                link_check, 0};
+    }
+
+    arm_entity_global_gate_0x1DBAA(bus);
+    const auto linked_command =
+        (bus.read8(session_ram::kEntityAnimationEventTable - 2U) & 0x80U) != 0
+            ? 0x004EU
+            : 0x004DU;
+    dispatch_z80_command_0x530DE(bus, linked_command);
+
+    // 0x55C76 performs the resource/combat adjustment after this command.
+    // Keep the boundary visible in the typed result until its register
+    // contract is translated instead of silently claiming the call ran.
+    return {true, linked_record_transformed, true, true, true, link_check, 1};
+}
+
 EntityAnimationAcaeResult run_entity_animation_update_0xACAE(
     GenesisBus& bus,
     GenesisAddress entity_record_address,
@@ -4569,6 +4637,10 @@ EntityAnimationAcaeResult run_entity_animation_update_0xACAE(
             // 0xACAE supplies D0=0x4B at this one call site. The transport
             // gate is direct; its command result does not affect the branch.
             dispatch_z80_command_0x530DE(bus, context.d0);
+        } else if (target == 0x0000B1DCU) {
+            const auto direct = run_entity_animation_update_0xB1DC(
+                bus, context.a0);
+            result.unresolved_calls += direct.unresolved_calls;
         } else if (target == 0x0000ABFCU) {
             // ABFC discards the inherited D1, derives its delay from the
             // record state, and writes the result through the current A0.

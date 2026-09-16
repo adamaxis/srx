@@ -54,6 +54,7 @@ constexpr std::uint32_t kEntityTimingAdjustmentTable = 0xD4EA0;
 constexpr std::uint32_t kEntityAnimationFrameTable = 0xC072;
 constexpr std::uint32_t kEntityAnimationFallbackCommandTable = 0xB05E;
 constexpr std::uint32_t kEntityAnimationFallbackFrameTable = 0xC0B2;
+constexpr std::uint32_t kEntityAnimationLinkedFrameTable = 0xC0A2;
 constexpr std::uint32_t kEntitySpawnAnimationPointerTable = 0x16CC8;
 constexpr std::uint32_t kEntitySpawnAnimationTableMode2 = 0x16CF0;
 constexpr std::uint32_t kEntitySpawnAnimationTableDefault = 0x16D50;

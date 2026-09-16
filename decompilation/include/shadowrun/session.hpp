@@ -480,6 +480,16 @@ struct EntityAnimationLinkCheckResult {
     std::uint16_t distance;
 };
 
+struct EntityAnimationB1dcResult {
+    bool initial_command_dispatched;
+    bool linked_record_transformed;
+    bool linked_gate_carry;
+    bool linked_command_dispatched;
+    bool unresolved_0x55C76;
+    EntityAnimationLinkCheckResult link_check;
+    std::size_t unresolved_calls;
+};
+
 struct FrameSpatialPreludeResult {
     bool phase_three_path;
     std::uint16_t d2_after;
@@ -744,6 +754,12 @@ EntityAnimationAcaeResult run_entity_animation_update_0xACAE(
     GenesisBus& bus,
     GenesisAddress entity_record_address,
     const EntityAnimationAcaeContinuationRoutine& continuation = {});
+
+// ROM 0xB1DC: perform the direct state/linked-record setup and enter the
+// linked animation gate. The later 0x55C76 adjustment remains an explicit
+// unresolved boundary until its register-heavy body is reconstructed.
+EntityAnimationB1dcResult run_entity_animation_update_0xB1DC(
+    GenesisBus& bus, GenesisAddress entity_record_address);
 
 // ROM 0xABFC, including its 0xD7EA/0xD81C state-bit selection. The original
 // incoming D1 is discarded by 0xD7EA; d0 is the mode word supplied by ABFC.

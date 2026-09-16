@@ -171,6 +171,10 @@ not required to build or run the C++ analyzer.
   now directly initializes its FF1380 scratch record, calls the reviewed
   fixed-point `0xE7C8` terrain sample, and performs the ten-record `0x15ABA`
   occupancy scan; its typed continuation remains available as an override.
+- The `0xB1DC` animation-state prefix is direct through its ABFC delay,
+  type-dependent Z80 command, linked direction setup, `0xC0A2` frame table,
+  `0xAF6C` state tail, and `0x15C84` link gate. The register-heavy `0x55C76`
+  adjustment is reported as the next explicit unresolved boundary.
 - The `0x15C84`/`0x15C58` linked-animation predicate is also direct: it
   applies the +0x10 flag gates, uses the reviewed `0x15D3C` transform, and
   preserves the ROM's `< 0x200` distance cutoff and +0x34 direction write.
