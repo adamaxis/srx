@@ -120,6 +120,14 @@ that the whole game is playable; the remaining command-handler bodies,
 expanded entity/session population, and additional field object behavior
 remain the next integration boundaries.
 
+The Inventory selector now has its first typed data path. ROM `0x12148`
+addresses eight item bytes at entity record `+0x66` as `2*row+selector`.
+Extraction preserves those item and adjacent phase bytes, and converts the
+50 fixed `0x30`-byte records at `0xD4540` into host item names/categories.
+The native command screen can therefore browse the actual initial inventory
+slots from the `.srna` pack without reading the ROM. The deeper equip/use/
+discard effects in the `0x12168` handler remain separate work.
+
 The Windows frontend preserves the reviewed controller boundary from ROM
 0x195C: the sampled word uses its low byte for held state and its high byte for
 newly asserted edges, in the order Up, Down, Left, Right, B, C, A, Start. It
@@ -130,7 +138,8 @@ The extracted field template also carries the signed display bytes at
 `+0x56/+0x57`. Native projection preserves the `0x36FC` display gate: a
 negative `+0x56` or the sentinel `0x7F` leaves the entity hidden even when its
 screen projection is in range. These values are included in native asset-pack
-version 2, so the host-only runtime retains the recovered state without
+version 3, so the host-only runtime retains the recovered state and inventory
+catalog without
 reading the ROM.
 
 The mode-2 map loader now reads a typed `GenesisMode2FieldResources` view from

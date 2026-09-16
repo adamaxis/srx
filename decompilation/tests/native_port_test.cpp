@@ -128,6 +128,20 @@ int main() {
     assert(rom_shell.field_last_command_row() == 3);
     assert(rom_shell.scene() == NativeScene::FieldMenu);
 
+    // The two Inventory selector values are the columns used by ROM
+    // 0x12148. Its row/column address is 2*row+selector, so the extracted
+    // first character record exposes Model 101T in slot 0 and Armor Vest in
+    // slot 1 without consulting the ROM at runtime.
+    for (int step = 0; step < 4; ++step) {
+        rom_shell.update(InputState{button_mask(Button::Left),
+                                    button_mask(Button::Left)});
+    }
+    assert(rom_shell.field_menu_selection() == 1);
+    assert(rom_shell.field_inventory_item_code(0) == 2);
+    assert(rom_shell.field_inventory_item_code(1) == 0x2C);
+    assert(rom_shell.field_inventory_item_code(2) == 0x0E);
+    rom_shell.render(screen);
+
     // C follows the same 0x391A record-selection path from the command
     // screen, restoring the menu selector to six before continuing.
     rom_shell.update(InputState{button_mask(Button::C),
@@ -197,7 +211,7 @@ int main() {
                                 button_mask(Button::A)});
     rom_shell.render(screen);
     assert(rom_shell.frame_number() == before_action_frame + 1);
-    assert(screen.presented_frames() == 6);
+    assert(screen.presented_frames() == 7);
 
     // The runtime constructor below receives only the host asset pack. This
     // is the PC-port path: the ROM is used by extraction, not by the native

@@ -170,12 +170,15 @@ The first display-state bytes are now part of that native record boundary:
 template offsets `+0x56` and `+0x57` are extracted as signed
 `display_state`/`display_substate` values. The native projection preserves the
 `0x36FC` visibility gate (`+0x56 < 0` or `+0x56 == 0x7F` suppresses the
-sprite), and the values are serialized in native asset-pack version 2. This
-is a direct behavior port, not a new animation rule. The native C runner
+sprite), and the values are serialized in native asset-pack version 3. The
+native field command screen also carries the eight `+0x66` item codes and the
+adjacent phase bytes, with the 50-name item catalog extracted from `0xD4540`.
+This is a direct behavior port, not a new animation rule. The native C runner
 selection is a recovered field-loop action. Field A/B now enter the reviewed
 shared command dispatch boundary and retain the selected command as typed
-state; the deeper Inventory/Clips/Attributes/Skills subsystems remain to be
-ported from their ROM tables rather than being represented by placeholder
+state; Inventory now renders the ROM-selected slots and names, while its
+deeper equip/use/discard effects and the other command subsystems remain to
+be ported from their ROM tables rather than being represented by placeholder
 flashes.
 
 ## Build and source discipline

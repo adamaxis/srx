@@ -222,6 +222,7 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     title_pixels_ = std::move(assets.title_scene.pixels);
     entity_frames_ = std::move(assets.entity_frames);
     field_direction_table_ = assets.field_direction_table;
+    inventory_items_ = std::move(assets.inventory_items);
     field_initial_records_ = assets.initial_field_records;
     field_records_ = field_initial_records_;
     field_terrain_ = std::move(assets.field_terrain);
@@ -728,6 +729,40 @@ void NativePortShell::render(ScreenWriter& screen) const {
                                   selected
                                       ? Rgba8{0xFF, 0xF0, 0x90, 0xFF}
                                       : Rgba8{0xD0, 0xE0, 0xF0, 0xFF});
+            }
+            if (field_menu_selection_ < 2U) {
+                // ROM 0x12148 addresses one of eight item bytes using the
+                // selected inventory column and row. Show that same slot
+                // selection with the extracted host item catalog.
+                screen.fill_rect(154, 60, 132, 100,
+                                 {0x04, 0x12, 0x24, 0xFF});
+                screen.write_text(162, 64,
+                                  "INVENTORY " +
+                                      std::to_string(field_menu_selection_),
+                                  1, {0xA0, 0xE8, 0xF8, 0xFF});
+                for (std::size_t row = 0; row < 4U; ++row) {
+                    const auto slot = row * 2U + field_menu_selection_;
+                    const auto selected = row == field_menu_row_;
+                    const auto y = 80 + static_cast<std::int32_t>(row) * 18;
+                    if (selected) {
+                        screen.fill_rect(158, y - 2, 124, 14,
+                                         {0x00, 0x68, 0x88, 0xFF});
+                    }
+                    const auto code = field_entity_.inventory_item_codes[slot];
+                    std::string item_name = "EMPTY";
+                    if (code != 0U &&
+                        code <= inventory_items_.size() &&
+                        !inventory_items_[code - 1U].name.empty()) {
+                        item_name = inventory_items_[code - 1U].name;
+                    }
+                    screen.write_text(
+                        162, y,
+                        "R" + std::to_string(row) + " " + item_name,
+                        1,
+                        selected
+                            ? Rgba8{0xFF, 0xF0, 0x90, 0xFF}
+                            : Rgba8{0xD0, 0xE0, 0xF0, 0xFF});
+                }
             }
             screen.write_text(36, 174,
                               "ARROWS SELECT  Z/X USE  C RUNNER  ENTER EXIT",

@@ -51,6 +51,10 @@ struct GenesisFieldEntityTemplate {
     // the following state branch. Preserve both signed bytes at extraction.
     std::int8_t display_state = 0;
     std::int8_t display_substate = 0;
+    std::array<std::uint8_t, native::kNativeInventorySlotCount>
+        inventory_item_codes{};
+    std::array<std::uint8_t, native::kNativeInventorySlotCount>
+        inventory_phase_bytes{};
 };
 
 // Typed view of the selected mode-2 record at ROM 0x172C80. The names here
@@ -84,6 +88,12 @@ using GenesisTerrainMap = terrain::Map;
 GenesisFieldEntityTemplate read_genesis_field_entity_template(
     const std::vector<std::uint8_t>& rom,
     std::size_t record_offset = 0x7291A);
+
+// Read the 50 fixed-size item records at ROM 0xD4540. The native runtime uses
+// these expanded names to present the item codes stored in +0x66 without
+// retaining ROM pointers or Genesis text encoding.
+std::array<native::NativeInventoryItem, native::kNativeInventoryItemCount>
+read_genesis_inventory_catalog(const std::vector<std::uint8_t>& rom);
 
 // Assemble the currently reconstructed native title-to-field data from the
 // ROM into host-owned RGBA/state values. This is the extraction boundary used

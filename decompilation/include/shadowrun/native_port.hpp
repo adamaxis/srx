@@ -13,6 +13,8 @@ namespace shadowrun::native {
 
 constexpr std::uint16_t kScreenWidth = 320;
 constexpr std::uint16_t kScreenHeight = 224;
+constexpr std::size_t kNativeInventorySlotCount = 8;
+constexpr std::size_t kNativeInventoryItemCount = 50;
 
 enum class Button : std::uint16_t {
     Up = 1U << 0U,
@@ -78,6 +80,16 @@ struct NativeEntityFrame {
     std::vector<Rgba8> pixels;
 };
 
+// Host text extracted from one 0x30-byte item record in ROM 0xD4540. The
+// numeric code remains the value stored in a field record's +0x66 inventory
+// byte; the two text lines are expanded into ordinary strings for the native
+// menu instead of retaining Genesis text placement/pointers.
+struct NativeInventoryItem {
+    std::uint8_t code = 0;
+    std::string name;
+    std::string category;
+};
+
 struct NativeImage {
     std::uint16_t width = 0;
     std::uint16_t height = 0;
@@ -128,6 +140,14 @@ struct NativeFieldEntity {
     std::uint16_t animation_multiplier = 0;
     std::uint16_t animation_threshold = 0;
     std::uint32_t animation_descriptor = 0;
+    // ROM 0x12148 indexes these eight item codes as 2*FFF0D1+FFF0D0.
+    std::array<std::uint8_t, kNativeInventorySlotCount>
+        inventory_item_codes{};
+    // The adjacent +0x6E bytes are phase/status bytes used by the ROM's
+    // animation and item handlers. Preserve them at extraction even though
+    // the native inventory view does not reinterpret them as quantities.
+    std::array<std::uint8_t, kNativeInventorySlotCount>
+        inventory_phase_bytes{};
 };
 
 // Host-owned data required by the current native title-to-field slice. This
@@ -144,6 +164,8 @@ struct NativePortAssets {
     std::uint16_t initial_camera_y_fixed = 0;
     std::array<std::array<std::int16_t, 2>, 8> field_direction_table{};
     NativeFieldEntity entity_template;
+    std::array<NativeInventoryItem, kNativeInventoryItemCount>
+        inventory_items{};
 };
 
 // Native game code writes to this interface instead of issuing Genesis VDP
@@ -232,6 +254,11 @@ public:
         return field_last_command_row_;
     }
     std::uint32_t field_command_count() const { return field_command_count_; }
+    std::uint8_t field_inventory_item_code(std::size_t slot) const {
+        return slot < field_entity_.inventory_item_codes.size()
+            ? field_entity_.inventory_item_codes[slot]
+            : 0;
+    }
     std::int32_t marker_x() const { return marker_x_; }
     std::int32_t marker_y() const { return marker_y_; }
     std::int32_t field_entity_screen_x() const {
@@ -284,6 +311,8 @@ private:
     std::vector<NativeEntityFrame> entity_frames_;
     std::array<std::array<std::int16_t, 2>, 8> field_direction_table_{};
     NativeFieldEntity field_entity_{};
+    std::array<NativeInventoryItem, kNativeInventoryItemCount>
+        inventory_items_{};
     std::array<NativeFieldRecordPosition, 3> field_initial_records_{};
     std::array<NativeFieldRecordPosition, 3> field_records_{};
     std::size_t active_field_record_ = 0;

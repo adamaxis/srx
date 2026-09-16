@@ -91,6 +91,12 @@ constexpr std::uint32_t kPostObjectUploadTable = 0x1D494E;
 constexpr std::uint32_t kPostObjectUploadTableB = 0x5D53C;
 constexpr std::uint32_t kPostObjectEntityTemplate = 0x7361A;
 constexpr std::uint32_t kPostObjectBackgroundTileTable = 0x1EB3E2;
+// Field item codes are one-based indexes into these fixed 0x30-byte records.
+// ROM 0x12148 reads the code from entity record +0x66; the native extractor
+// converts the paired 12-byte display lines at this table into host strings.
+constexpr std::uint32_t kInventoryItemTable = 0xD4540;
+constexpr std::size_t kInventoryItemRecordStride = 0x30;
+constexpr std::size_t kInventoryItemCount = 50;
 inline constexpr std::array<GenesisAddress, 4> kEntityObjectVariantTables{
     0x5D92, 0x5DBE, 0x5DA8, 0x5DD4
 };

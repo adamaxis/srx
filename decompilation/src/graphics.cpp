@@ -105,6 +105,55 @@ void read_pack_bytes(std::istream& input, std::uint8_t* destination,
     }
 }
 
+std::string read_genesis_fixed_text(const std::vector<std::uint8_t>& rom,
+                                    std::size_t offset, std::size_t length,
+                                    const char* what) {
+    if (offset > rom.size() || rom.size() - offset < length) {
+        throw std::out_of_range(what);
+    }
+    std::string value;
+    value.reserve(length);
+    for (std::size_t index = 0; index < length; ++index) {
+        const auto byte = rom[offset + index];
+        if (byte == 0xFFU) {
+            break;
+        }
+        value.push_back(byte >= 0x20U && byte <= 0x7EU
+                            ? static_cast<char>(byte)
+                            : ' ');
+    }
+    const auto first = value.find_first_not_of(' ');
+    if (first == std::string::npos) {
+        return {};
+    }
+    const auto last = value.find_last_not_of(' ');
+    return value.substr(first, last - first + 1U);
+}
+
+void write_pack_string(std::ostream& output, const std::string& value,
+                       const char* what) {
+    if (value.size() > 0xFFFFU) {
+        throw std::invalid_argument(what);
+    }
+    write_u16(output, static_cast<std::uint16_t>(value.size()));
+    output.write(value.data(), static_cast<std::streamsize>(value.size()));
+}
+
+std::string read_pack_string(std::istream& input, const char* what) {
+    const auto size = static_cast<std::size_t>(read_pack_u16(input, what));
+    if (size > 1024U) {
+        throw std::runtime_error("native asset pack string is too long");
+    }
+    std::string value(size, '\0');
+    if (size != 0U) {
+        input.read(value.data(), static_cast<std::streamsize>(size));
+        if (!input) {
+            throw std::out_of_range(what);
+        }
+    }
+    return value;
+}
+
 native::NativeImage read_native_image(std::istream& input) {
     const auto width = read_pack_u16(input, "native asset image header is truncated");
     const auto height = read_pack_u16(input, "native asset image header is truncated");
@@ -131,44 +180,71 @@ native::NativeImage read_native_image(std::istream& input) {
 
 GenesisFieldEntityTemplate read_genesis_field_entity_template(
     const std::vector<std::uint8_t>& rom, std::size_t record_offset) {
-    if (record_offset > rom.size() || rom.size() - record_offset < 0x58U) {
+    if (record_offset > rom.size() || rom.size() - record_offset < 0x76U) {
         throw std::out_of_range(
-            "Genesis field entity template display state is truncated");
+            "Genesis field entity template inventory state is truncated");
     }
     const auto flags = read_rom_u16(
         rom, record_offset + 0x10U,
         "Genesis field entity template flags are truncated");
-    return {
-        record_offset,
-        read_rom_u16(
-            rom, record_offset + 0x08U,
-            "Genesis field entity template projection is truncated"),
-        read_rom_u16(
-            rom, record_offset + 0x0EU,
-            "Genesis field entity template kind is truncated"),
-        static_cast<std::uint8_t>(flags >> 8U),
-        static_cast<std::uint8_t>(flags),
-        read_rom_u32(
-            rom, record_offset + 0x12U,
-            "Genesis field entity template state pointer is truncated"),
-        read_rom_u16(
-            rom, record_offset + 0x16U,
-            "Genesis field entity template selector is truncated"),
-        read_rom_u16(
-            rom, record_offset + 0x18U,
-            "Genesis field entity template multiplier is truncated"),
-        read_rom_u16(
-            rom, record_offset + 0x1AU,
-            "Genesis field entity template accumulator is truncated"),
-        read_rom_u16(
-            rom, record_offset + 0x1CU,
-            "Genesis field entity template threshold is truncated"),
-        read_rom_u16(
-            rom, record_offset + 0x1EU,
-            "Genesis field entity template state index is truncated"),
-        static_cast<std::int8_t>(rom[record_offset + 0x56U]),
-        static_cast<std::int8_t>(rom[record_offset + 0x57U]),
-    };
+    GenesisFieldEntityTemplate result;
+    result.record_offset = record_offset;
+    result.projection_word_08 = read_rom_u16(
+        rom, record_offset + 0x08U,
+        "Genesis field entity template projection is truncated");
+    result.kind = read_rom_u16(
+        rom, record_offset + 0x0EU,
+        "Genesis field entity template kind is truncated");
+    result.flags_10 = static_cast<std::uint8_t>(flags >> 8U);
+    result.flags_11 = static_cast<std::uint8_t>(flags);
+    result.state_pointer = read_rom_u32(
+        rom, record_offset + 0x12U,
+        "Genesis field entity template state pointer is truncated");
+    result.state_selector = read_rom_u16(
+        rom, record_offset + 0x16U,
+        "Genesis field entity template selector is truncated");
+    result.timing_multiplier = read_rom_u16(
+        rom, record_offset + 0x18U,
+        "Genesis field entity template multiplier is truncated");
+    result.timing_accumulator = read_rom_u16(
+        rom, record_offset + 0x1AU,
+        "Genesis field entity template accumulator is truncated");
+    result.timing_threshold = read_rom_u16(
+        rom, record_offset + 0x1CU,
+        "Genesis field entity template threshold is truncated");
+    result.state_index = read_rom_u16(
+        rom, record_offset + 0x1EU,
+        "Genesis field entity template state index is truncated");
+    result.display_state = static_cast<std::int8_t>(rom[record_offset + 0x56U]);
+    result.display_substate =
+        static_cast<std::int8_t>(rom[record_offset + 0x57U]);
+    for (std::size_t index = 0; index < result.inventory_item_codes.size();
+         ++index) {
+        result.inventory_item_codes[index] =
+            rom[record_offset + 0x66U + index];
+        result.inventory_phase_bytes[index] =
+            rom[record_offset + 0x6EU + index];
+    }
+    return result;
+}
+
+std::array<native::NativeInventoryItem, native::kNativeInventoryItemCount>
+read_genesis_inventory_catalog(const std::vector<std::uint8_t>& rom) {
+    std::array<native::NativeInventoryItem, native::kNativeInventoryItemCount>
+        result{};
+    for (std::size_t index = 0; index < result.size(); ++index) {
+        const auto record_offset =
+            static_cast<std::size_t>(rom::kInventoryItemTable) +
+            index * rom::kInventoryItemRecordStride;
+        result[index].code = static_cast<std::uint8_t>(index + 1U);
+        result[index].name = read_genesis_fixed_text(
+            rom, record_offset, 12U,
+            "Genesis inventory item name is truncated");
+        result[index].category = read_genesis_fixed_text(
+            rom, record_offset + 0x0DU, 12U,
+            "Genesis inventory item category is truncated");
+    }
+    return result;
 }
 
 native::NativePortAssets decode_genesis_native_assets(
@@ -217,6 +293,11 @@ native::NativePortAssets decode_genesis_native_assets(
     assets.entity_template.state_index = entity_template.state_index;
     assets.entity_template.display_state = entity_template.display_state;
     assets.entity_template.display_substate = entity_template.display_substate;
+    assets.entity_template.inventory_item_codes =
+        entity_template.inventory_item_codes;
+    assets.entity_template.inventory_phase_bytes =
+        entity_template.inventory_phase_bytes;
+    assets.inventory_items = read_genesis_inventory_catalog(rom);
 
     for (std::size_t index = 0;
          index < assets.field_direction_table.size(); ++index) {
@@ -240,7 +321,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 2);
+    write_u16(output, 3);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     write_native_image(output, assets.field_map);
@@ -297,6 +378,20 @@ void write_native_asset_pack(const std::string& path,
         static_cast<std::uint8_t>(entity.display_state)));
     output.put(static_cast<char>(
         static_cast<std::uint8_t>(entity.display_substate)));
+    for (const auto code : entity.inventory_item_codes) {
+        output.put(static_cast<char>(code));
+    }
+    for (const auto phase : entity.inventory_phase_bytes) {
+        output.put(static_cast<char>(phase));
+    }
+    write_u16(output, static_cast<std::uint16_t>(assets.inventory_items.size()));
+    for (const auto& item : assets.inventory_items) {
+        output.put(static_cast<char>(item.code));
+        write_pack_string(output, item.name,
+                          "native inventory item name is too long");
+        write_pack_string(output, item.category,
+                          "native inventory item category is too long");
+    }
     for (const auto& direction : assets.field_direction_table) {
         write_u16(output, static_cast<std::uint16_t>(direction[0]));
         write_u16(output, static_cast<std::uint16_t>(direction[1]));
@@ -313,8 +408,10 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     }
     char magic[4]{};
     input.read(magic, sizeof(magic));
+    const auto version = read_pack_u16(
+        input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        read_pack_u16(input, "native asset pack version is truncated") != 2U) {
+        (version != 2U && version != 3U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -398,6 +495,28 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
         input, "native entity display state is truncated"));
     entity.display_substate = static_cast<std::int8_t>(read_pack_u8(
         input, "native entity display substate is truncated"));
+    if (version >= 3U) {
+        for (auto& code : entity.inventory_item_codes) {
+            code = read_pack_u8(input, "native inventory state is truncated");
+        }
+        for (auto& phase : entity.inventory_phase_bytes) {
+            phase = read_pack_u8(input, "native inventory state is truncated");
+        }
+        const auto item_count = static_cast<std::size_t>(read_pack_u16(
+            input, "native inventory catalog count is truncated"));
+        if (item_count > assets.inventory_items.size()) {
+            throw std::runtime_error("native asset pack has too many inventory items");
+        }
+        for (std::size_t index = 0; index < item_count; ++index) {
+            auto& item = assets.inventory_items[index];
+            item.code = read_pack_u8(
+                input, "native inventory item code is truncated");
+            item.name = read_pack_string(
+                input, "native inventory item name is truncated");
+            item.category = read_pack_string(
+                input, "native inventory item category is truncated");
+        }
+    }
     for (auto& direction : assets.field_direction_table) {
         direction[0] = static_cast<std::int16_t>(read_pack_u16(
             input, "native direction table is truncated"));
