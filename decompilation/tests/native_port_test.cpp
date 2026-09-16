@@ -47,10 +47,10 @@ int main() {
 
     const auto rom = read_rom();
     NativePortShell rom_shell("SHADOWRUN", rom);
-    assert(rom_shell.has_rom_assets());
-    assert(rom_shell.has_rom_field_map());
-    assert(rom_shell.has_rom_terrain());
-    assert(rom_shell.has_rom_entity_frame());
+    assert(rom_shell.has_assets());
+    assert(rom_shell.has_field_map());
+    assert(rom_shell.has_terrain());
+    assert(rom_shell.has_entity_frame());
     assert(rom_shell.scene() == NativeScene::Title);
     rom_shell.render(screen);
     assert(screen.presented_frames() == 3);
@@ -137,10 +137,10 @@ int main() {
         "SHADOWRUN",
         shadowrun::graphics::read_native_asset_pack(pack_path.string()));
     std::filesystem::remove(pack_path);
-    assert(pack_shell.has_rom_assets());
-    assert(pack_shell.has_rom_field_map());
-    assert(pack_shell.has_rom_terrain());
-    assert(pack_shell.has_rom_entity_frame());
+    assert(pack_shell.has_assets());
+    assert(pack_shell.has_field_map());
+    assert(pack_shell.has_terrain());
+    assert(pack_shell.has_entity_frame());
     assert(pack_shell.scene() == NativeScene::Title);
     SoftwareScreen pack_screen;
     pack_shell.update(InputState{button_mask(Button::Start),

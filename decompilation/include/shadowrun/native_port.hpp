@@ -197,12 +197,10 @@ public:
     void render(ScreenWriter& screen) const;
 
     NativeScene scene() const { return scene_; }
-    bool has_rom_assets() const { return !rom_scene_pixels_.empty(); }
-    bool has_rom_field_map() const { return !rom_field_map_pixels_.empty(); }
-    bool has_rom_terrain() const { return !field_terrain_.statuses.empty(); }
-    bool has_rom_entity_frame() const {
-        return !rom_entity_frames_.empty();
-    }
+    bool has_assets() const { return !title_pixels_.empty(); }
+    bool has_field_map() const { return !field_map_pixels_.empty(); }
+    bool has_terrain() const { return !field_terrain_.statuses.empty(); }
+    bool has_entity_frame() const { return !entity_frames_.empty(); }
     std::int32_t marker_x() const { return marker_x_; }
     std::int32_t marker_y() const { return marker_y_; }
     std::int32_t field_entity_screen_x() const {
@@ -242,21 +240,21 @@ private:
     std::int32_t marker_y_ = kScreenHeight / 2;
     std::uint64_t frame_number_ = 0;
     Rgba8 marker_color_{0x00, 0xD8, 0xFF, 0xFF};
-    std::uint16_t rom_scene_width_ = 0;
-    std::uint16_t rom_scene_height_ = 0;
-    std::vector<Rgba8> rom_scene_pixels_;
-    std::vector<NativeEntityFrame> rom_entity_frames_;
+    std::uint16_t title_width_ = 0;
+    std::uint16_t title_height_ = 0;
+    std::vector<Rgba8> title_pixels_;
+    std::vector<NativeEntityFrame> entity_frames_;
     std::array<std::array<std::int16_t, 2>, 8> field_direction_table_{};
     NativeFieldEntity field_entity_{};
     terrain::Map field_terrain_{};
     terrain::ProbeResult field_collision_{};
     bool move_rejected_ = false;
-    std::uint16_t rom_field_map_width_ = 0;
-    std::uint16_t rom_field_map_height_ = 0;
-    std::vector<Rgba8> rom_field_map_pixels_;
-    std::uint16_t rom_field_width_ = 0;
-    std::uint16_t rom_field_height_ = 0;
-    std::vector<Rgba8> rom_field_pixels_;
+    std::uint16_t field_map_width_ = 0;
+    std::uint16_t field_map_height_ = 0;
+    std::vector<Rgba8> field_map_pixels_;
+    std::uint16_t field_view_width_ = 0;
+    std::uint16_t field_view_height_ = 0;
+    std::vector<Rgba8> field_view_pixels_;
     std::int32_t field_initial_world_x_ = 0;
     std::int32_t field_initial_world_y_ = 0;
     std::uint16_t field_initial_world_x_fixed_ = 0;

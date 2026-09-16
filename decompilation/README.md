@@ -76,7 +76,7 @@ four-line CRAM image at `0x1FF0`. Those resources are converted to host RGBA8
 and submitted through `ScreenWriter`; no Genesis VDP or 68000 runtime is
 needed by the native executable.
 
-The ROM-backed shell now exposes a native scene transition as well. It starts
+The asset-backed native shell now exposes a native scene transition as well. It starts
 on the reconstructed title scene, consumes the pressed `Start` edge, and enters
 a typed C++ field state with held directional movement and edge-triggered
 `A`/`B`/`C` actions. The field presentation translates the mode-2 data path:
