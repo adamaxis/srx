@@ -58,6 +58,22 @@ struct NativeEntityFrame {
     std::vector<Rgba8> pixels;
 };
 
+// Native representation of the field record fields needed by the current
+// presentation slice. World coordinates retain the ROM's 1/16-pixel unit so
+// the recovered projection can consume them without a second rounding rule.
+// The remaining 0x100-byte record fields stay in the transitional bus-backed
+// session code until their meanings are recovered.
+struct NativeFieldEntity {
+    std::uint16_t world_x_fixed = 0;
+    std::uint16_t world_y_fixed = 0;
+    std::uint16_t projection_word_08 = 0;
+    std::uint16_t screen_x = 0;
+    std::uint16_t screen_y = 0;
+    bool visible = false;
+    std::size_t frame_index = 0;
+    std::uint8_t animation_timer = 0;
+};
+
 // Native game code writes to this interface instead of issuing Genesis VDP
 // commands. The first implementation is a software surface; SDL/DirectX or
 // another Windows backend can implement the same operations later.
@@ -137,14 +153,16 @@ public:
     std::int32_t marker_x() const { return marker_x_; }
     std::int32_t marker_y() const { return marker_y_; }
     std::int32_t field_entity_screen_x() const {
-        return field_entity_screen_x_;
+        return static_cast<std::int32_t>(
+            static_cast<std::int16_t>(field_entity_.screen_x));
     }
     std::int32_t field_entity_screen_y() const {
-        return field_entity_screen_y_;
+        return static_cast<std::int32_t>(
+            static_cast<std::int16_t>(field_entity_.screen_y));
     }
-    bool field_entity_visible() const { return field_entity_visible_; }
+    bool field_entity_visible() const { return field_entity_.visible; }
     std::size_t field_entity_frame_index() const {
-        return field_entity_frame_index_;
+        return field_entity_.frame_index;
     }
     std::int32_t field_world_x() const { return field_world_x_; }
     std::int32_t field_world_y() const { return field_world_y_; }
@@ -167,8 +185,7 @@ private:
     std::uint16_t rom_scene_height_ = 0;
     std::vector<Rgba8> rom_scene_pixels_;
     std::vector<NativeEntityFrame> rom_entity_frames_;
-    std::size_t field_entity_frame_index_ = 0;
-    std::uint8_t field_entity_animation_timer_ = 0;
+    NativeFieldEntity field_entity_{};
     std::uint16_t rom_field_map_width_ = 0;
     std::uint16_t rom_field_map_height_ = 0;
     std::vector<Rgba8> rom_field_map_pixels_;
@@ -179,9 +196,6 @@ private:
     std::int32_t field_world_y_ = 0;
     std::int32_t field_camera_x_ = 0;
     std::int32_t field_camera_y_ = 0;
-    std::int32_t field_entity_screen_x_ = 0;
-    std::int32_t field_entity_screen_y_ = 0;
-    bool field_entity_visible_ = false;
     std::uint8_t action_flash_frames_ = 0;
     std::uint32_t action_count_ = 0;
 };

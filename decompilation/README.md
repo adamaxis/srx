@@ -94,7 +94,9 @@ that frame set while movement is held. Its anchor uses the reviewed `0x5A62`
 projection routine, so the visible frame moves with the typed camera and input
 state. This is a runnable title-to-field slice, not a claim that the whole
 game is playable; recovered entity-record population and field UI remain the
-next integration boundary.
+next integration boundary. The native record currently contains the recovered
+position, projection, and animation fields; its remaining ROM record data is
+still isolated in the transitional session layer.
 
 ```powershell
 cmake --build 'C:\Github\shadowrun\decompilation\build-debug-verify'

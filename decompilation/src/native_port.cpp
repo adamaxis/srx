@@ -175,6 +175,18 @@ std::uint32_t SoftwareScreen::pixel(std::int32_t x, std::int32_t y) const {
     return pixels_[static_cast<std::size_t>(y) * width_ + x];
 }
 
+namespace {
+
+std::uint16_t fixed_world_coordinate(std::int32_t pixels) {
+    return static_cast<std::uint16_t>(
+        static_cast<std::uint32_t>(pixels) << 4U);
+}
+
+constexpr std::int32_t kEntityWorldOffsetX = 32;
+constexpr std::int32_t kEntityWorldOffsetY = -16;
+
+} // namespace
+
 NativePortShell::NativePortShell(std::string title)
     : title_(std::move(title)) {}
 
@@ -207,21 +219,13 @@ NativePortShell::NativePortShell(
     field_world_y_ = static_cast<std::int32_t>(0x2280U >> 4U);
     field_camera_x_ = field_world_x_;
     field_camera_y_ = field_world_y_;
+    field_entity_.world_x_fixed = fixed_world_coordinate(
+        field_world_x_ + kEntityWorldOffsetX);
+    field_entity_.world_y_fixed = fixed_world_coordinate(
+        field_world_y_ + kEntityWorldOffsetY);
     refresh_field_view();
     refresh_field_entity_projection();
 }
-
-namespace {
-
-std::uint16_t fixed_world_coordinate(std::int32_t pixels) {
-    return static_cast<std::uint16_t>(
-        static_cast<std::uint32_t>(pixels) << 4U);
-}
-
-constexpr std::int32_t kEntityWorldOffsetX = 32;
-constexpr std::int32_t kEntityWorldOffsetY = -16;
-
-} // namespace
 
 void NativePortShell::refresh_field_view() {
     if (rom_field_map_pixels_.empty() || rom_field_map_width_ == 0 ||
@@ -254,9 +258,9 @@ void NativePortShell::refresh_field_view() {
 
 void NativePortShell::refresh_field_entity_projection() {
     if (rom_entity_frames_.empty() || rom_field_map_pixels_.empty()) {
-        field_entity_visible_ = false;
-        field_entity_screen_x_ = 0;
-        field_entity_screen_y_ = 0;
+        field_entity_.visible = false;
+        field_entity_.screen_x = 0;
+        field_entity_.screen_y = 0;
         return;
     }
 
@@ -264,18 +268,16 @@ void NativePortShell::refresh_field_entity_projection() {
     // place an entity's feet at that anchor; projection itself is the
     // reviewed ROM 0x5A62 fixed-point transform.
     const shadowrun::EntityProjectionInput entity{
-        fixed_world_coordinate(field_world_x_ + kEntityWorldOffsetX),
-        fixed_world_coordinate(field_world_y_ + kEntityWorldOffsetY),
-        0,
+        field_entity_.world_x_fixed,
+        field_entity_.world_y_fixed,
+        field_entity_.projection_word_08,
     };
     const auto result = shadowrun::project_entity_field(
         entity, fixed_world_coordinate(field_camera_x_),
         fixed_world_coordinate(field_camera_y_));
-    field_entity_screen_x_ = static_cast<std::int32_t>(
-        static_cast<std::int16_t>(result.screen_x));
-    field_entity_screen_y_ = static_cast<std::int32_t>(
-        static_cast<std::int16_t>(result.screen_y));
-    field_entity_visible_ = result.visible;
+    field_entity_.screen_x = result.screen_x;
+    field_entity_.screen_y = result.screen_y;
+    field_entity_.visible = result.visible;
 }
 
 void NativePortShell::update(const InputState& input) {
@@ -294,8 +296,12 @@ void NativePortShell::update(const InputState& input) {
                 field_world_y_ = static_cast<std::int32_t>(0x2280U >> 4U);
                 field_camera_x_ = field_world_x_;
                 field_camera_y_ = field_world_y_;
-                field_entity_frame_index_ = 0;
-                field_entity_animation_timer_ = 0;
+                field_entity_.world_x_fixed = fixed_world_coordinate(
+                    field_world_x_ + kEntityWorldOffsetX);
+                field_entity_.world_y_fixed = fixed_world_coordinate(
+                    field_world_y_ + kEntityWorldOffsetY);
+                field_entity_.frame_index = 0;
+                field_entity_.animation_timer = 0;
                 refresh_field_view();
                 refresh_field_entity_projection();
             }
@@ -342,16 +348,22 @@ void NativePortShell::update(const InputState& input) {
     marker_x_ = std::clamp(marker_x_, 8, static_cast<std::int32_t>(kScreenWidth) - 16);
     marker_y_ = std::clamp(marker_y_, 48, static_cast<std::int32_t>(kScreenHeight) - 16);
     if (!rom_entity_frames_.empty()) {
+        field_entity_.world_x_fixed = static_cast<std::uint16_t>(
+            static_cast<std::int32_t>(field_entity_.world_x_fixed) +
+            delta_x * 16);
+        field_entity_.world_y_fixed = static_cast<std::uint16_t>(
+            static_cast<std::int32_t>(field_entity_.world_y_fixed) +
+            delta_y * 16);
         if (delta_x != 0 || delta_y != 0) {
-            ++field_entity_animation_timer_;
-            if (field_entity_animation_timer_ >= 4) {
-                field_entity_animation_timer_ = 0;
-                field_entity_frame_index_ =
-                    (field_entity_frame_index_ + 1U) % rom_entity_frames_.size();
+            ++field_entity_.animation_timer;
+            if (field_entity_.animation_timer >= 4) {
+                field_entity_.animation_timer = 0;
+                field_entity_.frame_index =
+                    (field_entity_.frame_index + 1U) % rom_entity_frames_.size();
             }
         } else {
-            field_entity_animation_timer_ = 0;
-            field_entity_frame_index_ = 0;
+            field_entity_.animation_timer = 0;
+            field_entity_.frame_index = 0;
         }
     }
     if (!rom_field_map_pixels_.empty()) {
@@ -389,9 +401,9 @@ void NativePortShell::render(ScreenWriter& screen) const {
         screen.write_text(8, 211, "ARROWS MOVE  Z X C  ENTER RESET",
                           1, {0xE8, 0xF4, 0xFF, 0xFF});
     } else if (scene_ == NativeScene::Field && !rom_field_pixels_.empty()) {
-        // The field background is now the ROM's mode-2 map translated into a
-        // host RGBA viewport. The old strip assets remain available for later
-        // entity/UI reconstruction, but are no longer the scene background.
+        // The field background is the ROM's mode-2 map translated into a host
+        // RGBA viewport. NativeFieldEntity is composited after the terrain,
+        // matching the ROM's entity/object ordering at this boundary.
         screen.clear({0x04, 0x08, 0x14, 0xFF});
         screen.fill_rect(0, 0, kScreenWidth, 34,
                          {0x12, 0x20, 0x38, 0xFF});
@@ -405,14 +417,16 @@ void NativePortShell::render(ScreenWriter& screen) const {
         screen.blit_rgba(0, 36, rom_field_width_, rom_field_height_,
                          rom_field_pixels_);
 
-        if (field_entity_visible_ && !rom_entity_frames_.empty()) {
-            const auto& frame = rom_entity_frames_[field_entity_frame_index_];
-            screen.fill_rect(field_entity_screen_x_ - 7,
-                             field_entity_screen_y_ - 2, 14, 4,
+        if (field_entity_.visible && !rom_entity_frames_.empty()) {
+            const auto& frame = rom_entity_frames_[field_entity_.frame_index];
+            const auto entity_x = static_cast<std::int32_t>(
+                static_cast<std::int16_t>(field_entity_.screen_x));
+            const auto entity_y = static_cast<std::int32_t>(
+                static_cast<std::int16_t>(field_entity_.screen_y));
+            screen.fill_rect(entity_x - 7, entity_y - 2, 14, 4,
                              {0x00, 0x00, 0x00, 0xB0});
             screen.blit_rgba(
-                field_entity_screen_x_ - frame.width / 2,
-                field_entity_screen_y_ - frame.height,
+                entity_x - frame.width / 2, entity_y - frame.height,
                 frame.width, frame.height, frame.pixels);
         } else {
             // Keep the input seam visible if a ROM is supplied without the
@@ -420,10 +434,14 @@ void NativePortShell::render(ScreenWriter& screen) const {
             screen.fill_rect(marker_x_, marker_y_, 8, 12, marker_color_);
         }
         if (action_flash_frames_ != 0) {
-            const auto action_x = field_entity_visible_
-                ? field_entity_screen_x_ : marker_x_;
-            const auto action_y = field_entity_visible_
-                ? field_entity_screen_y_ : marker_y_;
+            const auto action_x = field_entity_.visible
+                ? static_cast<std::int32_t>(
+                      static_cast<std::int16_t>(field_entity_.screen_x))
+                : marker_x_;
+            const auto action_y = field_entity_.visible
+                ? static_cast<std::int32_t>(
+                      static_cast<std::int16_t>(field_entity_.screen_y))
+                : marker_y_;
             screen.fill_rect(action_x - 4, action_y + 4, 16, 2,
                              {0xFF, 0xF0, 0x90, 0xFF});
             screen.fill_rect(action_x + 3, action_y - 8, 2, 24,

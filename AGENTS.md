@@ -114,10 +114,13 @@ This is now a runnable native title-to-field slice with controls, actual
 ROM-derived field graphics, and a ROM-derived entity frame rendered through
 the native screen boundary. The seven-frame set follows the typed field camera
 through the reviewed `0x5A62` projection; `0x600E`/`0x3E86` data is converted
-to RGBA8 at load time and advances while movement is held. This is not a claim
+to RGBA8 at load time and advances while movement is held. Its native record
+now stores fixed-point world position, projected coordinates, visibility, and
+animation state; the rest of the original 0x100-byte record remains in the
+transitional bus-backed session layer until recovered. This is not a claim
 that the whole game is playable. The next port slices should replace the
-native input-anchor scaffold with recovered entity records and connect field
-UI to the typed session/VBlank boundaries.
+remaining input-anchor scaffold with recovered entity-record population and
+connect field UI to the typed session/VBlank boundaries.
 
 ## Build and source discipline
 
