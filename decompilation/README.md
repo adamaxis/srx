@@ -181,8 +181,10 @@ not required to build or run the C++ analyzer.
 - The `0x1514E` resource-spawn path is direct through its `0x038AC` slot
   gate, generic `0x14FF8` output initializer, `0x55640` timing calculation,
   dual `0x15A8C` allocation, phase command tables, and final record copy.
-  The mode-2 `0x1E04A` resource-list allocator is surfaced as an explicit
-  unresolved result when that branch is selected.
+  Its mode-2 `0x1E04A` branch is also direct through the seven-record
+  `0x1DF00`/`0x1E0B8` flag passes, RAM descriptor list, `0x1A342` and
+  `0x1A2CC` allocators, fixed `0x044BC` template/overlay layout, and
+  projection/coordinate tail at `0x1E0DC`.
 - The `0x15646` route-resource path is direct through the secondary record
   initializer, sprite-slot allocation, probe/coordinate tables, fixed
   interpolation branch, and linked `0x55848` random displacement branch.

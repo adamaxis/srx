@@ -1991,6 +1991,81 @@ int main() {
     assert(resource_spawn_special_bus->read8(0xFF0B00U + 0x41U) == 2U);
     assert(resource_spawn_special_bus->read8(0xFF0B00U + 0x89U) == 0x20U);
 
+    // 0x1E04A prioritizes the mode-0x14 global gate, then enters the mode-2
+    // resource list after clearing the seven FF0400 flags. The list below
+    // exercises both 0x044BC descriptor forms: a special entry seeds A6 and
+    // a following normal entry stores that prior record at +0xA8.
+    auto mode2_transition_bus = std::make_unique<shadowrun::GenesisMemoryBus>(
+        std::vector<std::uint8_t>(0x200000U, 0));
+    mode2_transition_bus->write16(shadowrun::session_ram::kSessionMode, 0);
+    mode2_transition_bus->write16(
+        shadowrun::session_ram::kEntityAnimationResourceMode, 2U);
+    constexpr auto mode2_descriptor = 0xFF1200U;
+    constexpr auto mode2_list = 0xFF1300U;
+    constexpr auto mode2_special_data = 0xFF1400U;
+    constexpr auto mode2_special_coordinates = 0xFF1500U;
+    constexpr auto mode2_normal_data = 0xFF1600U;
+    constexpr auto mode2_normal_coordinates = 0xFF1700U;
+    mode2_transition_bus->write32(
+        shadowrun::session_ram::kEntityAnimationMode2Descriptor,
+        mode2_descriptor);
+    mode2_transition_bus->write32(mode2_descriptor + 0x10U, mode2_list);
+    mode2_transition_bus->write32(
+        mode2_list, 0x80FF1400U);
+    mode2_transition_bus->write32(mode2_list + 4U,
+                                  mode2_special_coordinates);
+    mode2_transition_bus->write32(mode2_list + 8U, mode2_normal_data);
+    mode2_transition_bus->write32(mode2_list + 0x0CU,
+                                  mode2_normal_coordinates);
+    mode2_transition_bus->write32(mode2_list + 0x10U, 0);
+    mode2_transition_bus->write16(mode2_special_data, 0x1234U);
+    mode2_transition_bus->write16(mode2_special_data + 2U, 0x5678U);
+    mode2_transition_bus->write8(mode2_special_data + 4U, 1U);
+    mode2_transition_bus->write16(mode2_special_coordinates, 0x0100U);
+    mode2_transition_bus->write16(mode2_special_coordinates + 2U, 0x0200U);
+    mode2_transition_bus->write16(mode2_special_coordinates + 4U, 0x0300U);
+    mode2_transition_bus->write16(mode2_normal_coordinates, 0x0400U);
+    mode2_transition_bus->write16(mode2_normal_coordinates + 2U, 0x0500U);
+    mode2_transition_bus->write16(mode2_normal_coordinates + 4U, 0x0600U);
+    mode2_transition_bus->write16(0xFF0400U + 0x9EU, 0x0200U);
+    const auto mode2_transition =
+        shadowrun::run_entity_animation_transition_0x1E04A(
+            *mode2_transition_bus, {0x0042U, 0});
+    assert(!mode2_transition.mode14_gate_armed);
+    assert(mode2_transition.mode2_path_entered);
+    assert(!mode2_transition.special_gate_preexisting);
+    assert(mode2_transition.command_dispatched);
+    assert(mode2_transition.mode2_flags_cleared);
+    assert(mode2_transition.records_created == 2U);
+    assert(mode2_transition.sprite_slots_allocated == 2U);
+    assert(mode2_transition.unresolved_calls == 0U);
+    assert(mode2_transition_bus->read16(0xFF0400U + 0x3EU) == 3U);
+    assert(mode2_transition_bus->read16(0xFF0400U + 0x0EU) == 0x1234U);
+    assert(mode2_transition_bus->read16(0xFF0400U + 0x20U) == 0x0042U);
+    assert((mode2_transition_bus->read8(0xFF0400U + 0x10U) & 0x20U) != 0);
+    assert((mode2_transition_bus->read8(0xFF0400U + 0x9EU) & 0x06U) == 0x02U);
+    assert(mode2_transition_bus->read16(0xFF0400U + 0xE4U) == 4U);
+    assert(mode2_transition_bus->read16(0xFF0500U + 0x98U) == 0x05C0U);
+    assert(mode2_transition_bus->read32(0xFF0500U + 0xA8U) == 0xFF0400U);
+    const auto mode2_flags =
+        shadowrun::mark_entity_animation_mode2_records_0x1E0B8(
+            *mode2_transition_bus);
+    assert(mode2_flags.records_examined == 7U);
+    assert(mode2_flags.records_marked == 2U);
+    assert((mode2_transition_bus->read8(0xFF0500U + 0x9EU) & 0x06U) == 0x06U);
+
+    auto mode14_transition_bus = std::make_unique<shadowrun::GenesisMemoryBus>(
+        std::vector<std::uint8_t>(0x200000U, 0));
+    mode14_transition_bus->write16(shadowrun::session_ram::kSessionMode,
+                                   0x0014U);
+    const auto mode14_transition =
+        shadowrun::run_entity_animation_transition_0x1E04A(
+            *mode14_transition_bus);
+    assert(mode14_transition.mode14_gate_armed);
+    assert(!mode14_transition.mode2_path_entered);
+    assert(mode14_transition_bus->read16(
+               shadowrun::session_ram::kFrameEntityGlobalGate) != 0);
+
     // 0x15646 uses the secondary animation record layout and the sprite-slot
     // allocator. With no linked record it takes the fixed interpolation
     // branch; with a link it enters the direct 0x55848 displacement path.

@@ -64,8 +64,15 @@ constexpr GenesisAddress kEntityAnimationResourceSource = 0xFFDD3C;
 constexpr GenesisAddress kEntityAnimationResourceProbeX = 0xFFDD60;
 constexpr GenesisAddress kEntityAnimationResourceProbeY = 0xFFDD62;
 constexpr GenesisAddress kEntityAnimationResourceGateState = 0xFFDFD8;
+constexpr GenesisAddress kEntityAnimationMode2Descriptor = 0xFFDE1E;
+constexpr GenesisAddress kEntityAnimationMode2Selection = 0xFFDD40;
+constexpr GenesisAddress kEntityAnimationMode2Offset = 0xFFDD42;
+constexpr GenesisAddress kEntityAnimationMode2Timer = 0xFFE11E;
 constexpr GenesisAddress kEntityAnimationResourceEntityBase = 0xFF0100;
 constexpr std::size_t kEntityAnimationResourceEntityCount = 10;
+constexpr GenesisAddress kEntityAnimationMode2RecordBase = 0xFF0400;
+constexpr std::size_t kEntityAnimationMode2RecordCount = 7;
+constexpr std::size_t kEntityAnimationMode2RecordStride = 0x100;
 constexpr GenesisAddress kEntityAnimationDispatchTimer = 0xFFE188;
 constexpr GenesisAddress kFrameEntityReactionOffsets = 0xFFDF44;
 constexpr GenesisAddress kFrameEntityReactionCameraX = 0xFFDF50;
@@ -321,6 +328,22 @@ struct EntityAnimationResourceSpawnResult {
     std::size_t unresolved_calls;
 };
 
+struct EntityAnimationMode2ResourceResult {
+    bool mode14_gate_armed;
+    bool mode2_path_entered;
+    bool special_gate_preexisting;
+    bool command_dispatched;
+    bool mode2_flags_cleared;
+    std::size_t records_created;
+    std::size_t sprite_slots_allocated;
+    std::size_t unresolved_calls;
+};
+
+struct EntityAnimationMode2FlagResult {
+    std::size_t records_examined;
+    std::size_t records_marked;
+};
+
 struct EntityAnimationRouteResourceResult {
     bool carry;
     bool record_allocated;
@@ -352,6 +375,14 @@ struct EntityAnimationRegisterContext {
     std::uint16_t d4 = 0;
     std::uint16_t d5 = 0;
     std::uint16_t d7 = 0;
+};
+
+// ROM 0x1E0DC reaches 0x044BC with D1 and A6 inherited from its caller. They
+// are separate from the event-transition register context above because the
+// two call sites preserve different live registers.
+struct EntityAnimationMode2RegisterContext {
+    std::uint16_t d1 = 0;
+    GenesisAddress a6 = 0;
 };
 
 struct EntityAnimationRateDecisionResult {
@@ -807,11 +838,22 @@ run_entity_animation_resource_decision_0x14D8E(
 
 // ROM 0x1514E: allocate and initialize the two post-object animation records
 // used by a resource frame, preserving the original carry/record-index
-// boundaries. The mode-2 0x1E04A allocator side branch is reported explicitly
-// until its separate resource list is translated.
+// boundaries. Its mode-2 0x1E04A side branch is direct as well.
 EntityAnimationResourceSpawnResult
 run_entity_animation_resource_spawn_0x1514E(
     GenesisBus& bus, GenesisAddress entity_record_address);
+
+// ROM 0x1E04A: enter the mode-0x14 global gate or the mode-2 resource-list
+// allocator. D1/A6 are live registers at the 0x1E0DC/0x044BC boundary in the
+// original caller, so they remain explicit inputs rather than being inferred.
+EntityAnimationMode2ResourceResult run_entity_animation_transition_0x1E04A(
+    GenesisBus& bus,
+    const EntityAnimationMode2RegisterContext& context = {});
+
+// ROM 0x1E0B8: promote the mode-2 record flag from bit 1 to bit 2 across the
+// seven FF0400 records.
+EntityAnimationMode2FlagResult mark_entity_animation_mode2_records_0x1E0B8(
+    GenesisBus& bus);
 
 // ROM 0x15646: build the secondary animation resource record, allocate its
 // sprite slot, and derive either the unlinked interpolation offsets or the

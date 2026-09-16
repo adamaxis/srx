@@ -3946,6 +3946,250 @@ void clear_animation_route_bits_0x14756(
                    bus.read8(entity_record_address + 0xB0U) & ~0x08U));
 }
 
+struct Mode2EntitySlotAllocationResult {
+    bool allocated;
+    GenesisAddress record_address;
+    std::uint16_t record_index;
+};
+
+Mode2EntitySlotAllocationResult allocate_mode2_entity_slot_0x1A342(
+    GenesisBus& bus) {
+    auto record_address = session_ram::kEntityAnimationMode2RecordBase;
+    auto record_index = static_cast<std::uint16_t>(3U);
+    for (std::size_t index = 0;
+         index < session_ram::kEntityAnimationMode2RecordCount; ++index) {
+        if ((bus.read8(record_address + 0x10U) & 1U) == 0) {
+            return {true, record_address, record_index};
+        }
+        record_address = static_cast<GenesisAddress>(
+            record_address + session_ram::kEntityAnimationMode2RecordStride);
+        record_index = static_cast<std::uint16_t>(record_index + 1U);
+    }
+    return {false, record_address, record_index};
+}
+
+void clear_mode2_entity_record_flags_0x1DF00(GenesisBus& bus) {
+    auto record_address = session_ram::kEntityAnimationMode2RecordBase;
+    for (std::size_t index = 0;
+         index < session_ram::kEntityAnimationMode2RecordCount; ++index) {
+        bus.write8(record_address + 0x9EU,
+                   static_cast<std::uint8_t>(
+                       bus.read8(record_address + 0x9EU) & ~1U));
+        record_address = static_cast<GenesisAddress>(
+            record_address + session_ram::kEntityAnimationMode2RecordStride);
+    }
+}
+
+EntityAnimationMode2FlagResult mark_mode2_entity_record_flags_0x1E0B8(
+    GenesisBus& bus) {
+    auto result = EntityAnimationMode2FlagResult{0, 0};
+    auto record_address = session_ram::kEntityAnimationMode2RecordBase;
+    for (std::size_t index = 0;
+         index < session_ram::kEntityAnimationMode2RecordCount; ++index) {
+        ++result.records_examined;
+        const auto flags = bus.read8(record_address + 0x9EU);
+        if ((flags & 0x02U) != 0) {
+            bus.write8(record_address + 0x9EU,
+                       static_cast<std::uint8_t>(flags | 0x04U));
+            ++result.records_marked;
+        }
+        record_address = static_cast<GenesisAddress>(
+            record_address + session_ram::kEntityAnimationMode2RecordStride);
+    }
+    return result;
+}
+
+void initialise_mode2_entity_record_0x044BC(
+    GenesisBus& bus,
+    GenesisAddress record_address,
+    std::uint16_t d0,
+    std::uint16_t d1,
+    std::uint16_t a2,
+    GenesisAddress d4,
+    GenesisAddress a3,
+    GenesisAddress mode2_override_cursor) {
+    // 0x044BC copies exactly 0x100 bytes from the shared post-object entity
+    // template before applying the resource descriptor overlays.
+    for (std::size_t index = 0; index < 0x80U; ++index) {
+        bus.write16(record_address + static_cast<GenesisAddress>(index * 2U),
+                    bus.read16(rom::kPostObjectEntityTemplate +
+                               static_cast<GenesisAddress>(index * 2U)));
+    }
+
+    bus.write16(record_address + 0x3EU,
+                bus.read16(session_ram::kEntityAnimationMode2Selection));
+    bus.write8(record_address + 0x10U, 0x05U);
+    bus.write16(record_address + 0x20U, d1);
+    bus.write16(record_address + 0x26U, a2);
+    bus.write32(record_address + 0xE0U, a3);
+
+    const auto a3_x = bus.read16(a3);
+    const auto a3_y = static_cast<std::uint16_t>(
+        bus.read16(a3 + 2U) +
+        bus.read16(session_ram::kEntityAnimationMode2Offset));
+    bus.write16(record_address, a3_x);
+    bus.write16(record_address + 0x96U, a3_x);
+    bus.write16(record_address + 0x04U, a3_y);
+    bus.write16(record_address + 0x98U, a3_y);
+
+    bus.write16(record_address + 0x0EU, bus.read16(d4));
+    bus.write16(record_address + 0x2CU, bus.read16(d4 + 2U));
+    const auto copy8 = [&](GenesisAddress destination,
+                           GenesisAddress source) {
+        bus.write8(record_address + destination, bus.read8(d4 + source));
+    };
+    copy8(0x4CU, 0x04U);
+    copy8(0x4DU, 0x05U);
+    copy8(0x4EU, 0x06U);
+    copy8(0x4FU, 0x07U);
+    copy8(0x56U, 0x08U);
+    copy8(0x57U, 0x09U);
+    bus.write32(record_address + 0x58U, bus.read32(d4 + 0x0AU));
+    bus.write32(record_address + 0x5CU, bus.read32(d4 + 0x0EU));
+    bus.write32(record_address + 0x60U, bus.read32(d4 + 0x12U));
+    bus.write16(record_address + 0x64U, bus.read16(d4 + 0x16U));
+    bus.write32(record_address + 0x66U, bus.read32(d4 + 0x18U));
+    bus.write32(record_address + 0x6AU, bus.read32(d4 + 0x1CU));
+    bus.write32(record_address + 0x6EU, bus.read32(d4 + 0x20U));
+    bus.write32(record_address + 0x72U, bus.read32(d4 + 0x24U));
+    copy8(0x76U, 0x28U);
+    copy8(0x77U, 0x29U);
+    copy8(0x78U, 0x2AU);
+    copy8(0x79U, 0x2BU);
+    copy8(0x7AU, 0x2CU);
+    copy8(0x7BU, 0x2DU);
+    copy8(0x7CU, 0x2EU);
+    copy8(0x7DU, 0x2FU);
+    copy8(0x7EU, 0x30U);
+    copy8(0x7FU, 0x31U);
+    copy8(0x80U, 0x32U);
+    copy8(0x81U, 0x33U);
+    copy8(0x82U, 0x34U);
+    copy8(0x83U, 0x35U);
+    copy8(0x84U, 0x36U);
+    copy8(0x85U, 0x37U);
+    copy8(0x86U, 0x38U);
+    copy8(0x87U, 0x39U);
+    copy8(0x88U, 0x3AU);
+    copy8(0x89U, 0x3BU);
+    copy8(0x8AU, 0x3CU);
+    copy8(0x8BU, 0x3DU);
+    copy8(0x8CU, 0x3EU);
+    copy8(0x8DU, 0x3FU);
+    copy8(0x8EU, 0x40U);
+    copy8(0x9AU, 0x41U);
+    copy8(0x9BU, 0x42U);
+    copy8(0x9CU, 0x43U);
+    bus.write16(record_address + 0x90U, bus.read16(d4 + 0x45U));
+    bus.write16(record_address + 0xA0U, bus.read16(d4 + 0x47U));
+    copy8(0x8FU, 0x49U);
+    copy8(0x9DU, 0x49U);
+
+    bus.write16(record_address + 0x30U, d0);
+    auto random_value = static_cast<std::uint16_t>(
+        ShadowrunRuntime(bus).advance_random() & 0x000FU);
+    if (bus.read16(session_ram::kSessionMode) == 0x0037U) {
+        random_value = 0x0028U;
+    }
+    bus.write16(record_address + 0xB6U, random_value);
+    if (bus.read8(session_ram::kFrameEntityGateSource) != 0) {
+        bus.write8(record_address + 0x9EU,
+                   static_cast<std::uint8_t>(
+                       bus.read8(record_address + 0x9EU) | 0x40U));
+    }
+
+    // A descriptor value of two is followed by byte patch pairs. A5 is
+    // already advanced past D4/A3 by 0x1E0DC when this helper is called.
+    if (bus.read32(mode2_override_cursor) == 2U) {
+        auto cursor = static_cast<GenesisAddress>(mode2_override_cursor + 4U);
+        while (bus.read16(cursor) != 0) {
+            const auto offset = bus.read8(cursor);
+            const auto value = bus.read8(cursor + 1U);
+            bus.write8(record_address + offset, value);
+            cursor += 2U;
+        }
+    }
+}
+
+struct Mode2ResourceListResult {
+    std::size_t records_created;
+    std::size_t sprite_slots_allocated;
+};
+
+Mode2ResourceListResult run_mode2_resource_list_0x1E0DC(
+    GenesisBus& bus, const EntityAnimationMode2RegisterContext& context) {
+    Mode2ResourceListResult result{0, 0};
+    const auto descriptor = bus.read32(session_ram::kEntityAnimationMode2Descriptor);
+    if (descriptor == 0) {
+        return result;
+    }
+
+    auto list_cursor = bus.read32(descriptor + 0x10U);
+    if (list_cursor == 0) {
+        return result;
+    }
+    auto previous_special_record = context.a6;
+    while (bus.read32(list_cursor) != 0) {
+        const auto entity = allocate_mode2_entity_slot_0x1A342(bus);
+        if (!entity.allocated) {
+            break;
+        }
+        bus.write16(session_ram::kEntityAnimationMode2Selection,
+                    entity.record_index);
+        const auto sprite = allocate_sprite_slot_0x1A2CC(bus);
+        if (!sprite.allocated) {
+            break;
+        }
+        ++result.sprite_slots_allocated;
+
+        const auto descriptor_value = bus.read32(list_cursor);
+        const auto coordinates = bus.read32(list_cursor + 4U);
+        list_cursor += 8U;
+        const bool special = (descriptor_value & 0x80000000U) != 0;
+        const auto descriptor_address =
+            static_cast<GenesisAddress>(descriptor_value & 0x7FFFFFFFU);
+        if (special) {
+            bus.write16(session_ram::kEntityAnimationMode2Offset, 0);
+            previous_special_record = entity.record_address;
+            initialise_mode2_entity_record_0x044BC(
+                bus, entity.record_address, entity.record_index,
+                context.d1, sprite.a2_value, descriptor_address, coordinates,
+                list_cursor);
+            bus.write8(entity.record_address + 0x10U,
+                       static_cast<std::uint8_t>(
+                           bus.read8(entity.record_address + 0x10U) | 0x20U));
+        } else {
+            bus.write16(
+                session_ram::kEntityAnimationMode2Offset,
+                static_cast<std::uint16_t>(
+                    bus.read16(session_ram::kEntityAnimationMode2Offset) +
+                    0x00C0U));
+            initialise_mode2_entity_record_0x044BC(
+                bus, entity.record_address, entity.record_index,
+                context.d1, sprite.a2_value, descriptor_address, coordinates,
+                list_cursor);
+            bus.write32(entity.record_address + 0xA8U,
+                        previous_special_record);
+        }
+
+        bus.write8(entity.record_address + 0x9EU,
+                   static_cast<std::uint8_t>(
+                       bus.read8(entity.record_address + 0x9EU) | 0x02U));
+        project_entity_record(bus, entity.record_address,
+                              bus.read16(ram::kCameraX),
+                              bus.read16(ram::kCameraY));
+        if (bus.read16(entity.record_address + 0x0CU) != 0) {
+            bus.write16(entity.record_address + 0xE4U, 4U);
+            bus.write16(entity.record_address,
+                        bus.read16(coordinates + 2U));
+            bus.write16(entity.record_address + 4U,
+                        bus.read16(coordinates + 4U));
+        }
+        ++result.records_created;
+    }
+    return result;
+}
+
 } // namespace
 
 EntityAnimation14682Result run_entity_animation_route_0x14682(
@@ -4685,6 +4929,46 @@ run_entity_animation_resource_decision_0x14D8E(
             occupancy_scan_stopped, occupancy_checks, scratch_record};
 }
 
+EntityAnimationMode2FlagResult mark_entity_animation_mode2_records_0x1E0B8(
+    GenesisBus& bus) {
+    return mark_mode2_entity_record_flags_0x1E0B8(bus);
+}
+
+EntityAnimationMode2ResourceResult run_entity_animation_transition_0x1E04A(
+    GenesisBus& bus, const EntityAnimationMode2RegisterContext& context) {
+    EntityAnimationMode2ResourceResult result{
+        false, false, false, false, false, 0, 0, 0};
+
+    // The first compare has priority over the mode-2 branch.
+    if (bus.read16(session_ram::kSessionMode) == 0x0014U) {
+        arm_entity_global_gate_0x1DBAA(bus);
+        result.mode14_gate_armed = true;
+        return result;
+    }
+    if (bus.read16(session_ram::kEntityAnimationResourceMode) != 2U) {
+        return result;
+    }
+    result.mode2_path_entered = true;
+
+    bus.write16(session_ram::kEntityAnimationMode2Timer, 0x0960U);
+    result.special_gate_preexisting =
+        bus.read8(session_ram::kEntityReactionSpecialGate) != 0;
+    if (result.special_gate_preexisting) {
+        return result;
+    }
+
+    bus.write8(session_ram::kEntityReactionSpecialGate, 0xFFU);
+    dispatch_z80_command_0x530DE(bus, 0x0030U);
+    result.command_dispatched = true;
+    clear_mode2_entity_record_flags_0x1DF00(bus);
+    result.mode2_flags_cleared = true;
+
+    const auto list = run_mode2_resource_list_0x1E0DC(bus, context);
+    result.records_created = list.records_created;
+    result.sprite_slots_allocated = list.sprite_slots_allocated;
+    return result;
+}
+
 EntityAnimationResourceSpawnResult
 run_entity_animation_resource_spawn_0x1514E(
     GenesisBus& bus, GenesisAddress entity_record_address) {
@@ -4765,15 +5049,17 @@ run_entity_animation_resource_spawn_0x1514E(
     dispatch_z80_command_0x530DE(bus, bus.read16(command_address));
 
     bool mode2_transition_unresolved = false;
+    std::size_t unresolved_calls = 0;
     if (bus.read16(session_ram::kEntityAnimationResourceMode) == 2U) {
         const auto mode_flags = bus.read8(
             entity_record_address + 0x6EU +
             static_cast<GenesisAddress>(bus.read8(entity_record_address +
                                                   0x56U)));
         if ((mode_flags & 0x06U) == 0) {
-            // 0x1E04A owns a separate resource allocator and is kept as an
-            // explicit boundary until that list's A5/A6 contract is mapped.
-            mode2_transition_unresolved = true;
+            const auto transition = run_entity_animation_transition_0x1E04A(
+                bus);
+            mode2_transition_unresolved = transition.unresolved_calls != 0;
+            unresolved_calls = transition.unresolved_calls;
         }
     }
 
@@ -4810,7 +5096,7 @@ run_entity_animation_resource_spawn_0x1514E(
 
     return {false, true, true, true, true, mode2_transition_unresolved,
             first.record_address, second.record_address, first.record_index,
-            second.record_index, mode2_transition_unresolved ? 1U : 0U};
+            second.record_index, unresolved_calls};
 }
 
 EntityAnimationRouteResourceResult run_entity_animation_route_resource_0x15646(
