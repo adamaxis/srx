@@ -1,6 +1,8 @@
+#include "shadowrun/graphics.hpp"
 #include "shadowrun/native_port.hpp"
 
 #include <cassert>
+#include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <vector>
@@ -121,5 +123,34 @@ int main() {
     rom_shell.render(screen);
     assert(rom_shell.frame_number() == before_action_frame + 1);
     assert(screen.presented_frames() == 6);
+
+    // The runtime constructor below receives only the host asset pack. This
+    // is the PC-port path: the ROM is used by extraction, not by the native
+    // update/render loop.
+    const auto native_assets = shadowrun::graphics::decode_genesis_native_assets(
+        rom);
+    const auto pack_path = std::filesystem::temp_directory_path() /
+                           "shadowrun_native_port_runtime_test.srna";
+    shadowrun::graphics::write_native_asset_pack(
+        pack_path.string(), native_assets);
+    NativePortShell pack_shell(
+        "SHADOWRUN",
+        shadowrun::graphics::read_native_asset_pack(pack_path.string()));
+    std::filesystem::remove(pack_path);
+    assert(pack_shell.has_rom_assets());
+    assert(pack_shell.has_rom_field_map());
+    assert(pack_shell.has_rom_terrain());
+    assert(pack_shell.has_rom_entity_frame());
+    assert(pack_shell.scene() == NativeScene::Title);
+    SoftwareScreen pack_screen;
+    pack_shell.update(InputState{button_mask(Button::Start),
+                                 button_mask(Button::Start)});
+    assert(pack_shell.scene() == NativeScene::Field);
+    assert(pack_shell.field_entity_visible());
+    const auto pack_start_x = pack_shell.marker_x();
+    pack_shell.update(InputState{button_mask(Button::Right), 0});
+    assert(pack_shell.marker_x() == pack_start_x + 2);
+    pack_shell.render(pack_screen);
+    assert(pack_screen.presented_frames() == 1);
     return 0;
 }
