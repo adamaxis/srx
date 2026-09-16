@@ -205,11 +205,12 @@ NativePortShell::NativePortShell(
     rom_scene_height_ = scene.height;
     rom_scene_pixels_ = scene.pixels;
 
-    // ROM 0x600E reaches the seven-frame state block at 0x72B0. Its first
-    // 0x8002 descriptor is 0x9540; 0x3E86 expands each packed source before
-    // the VBlank queue consumes it, and extraction converts the results to
-    // transparent host RGBA so the native scene can draw them directly.
-    const auto entity_frames = graphics::decode_genesis_entity_animation(rom);
+    // ROM 0x600E resolves the field-record kind through 0x62AC and reaches
+    // the eight-entry state list at 0x9334. Each 0x8002 descriptor goes
+    // through the direct 0x3E86/0x3EFE extraction path and becomes a
+    // transparent host RGBA image for the native scene.
+    const auto entity_frames =
+        graphics::decode_genesis_field_entity_animation(rom);
     const auto field_resources =
         graphics::read_genesis_mode2_field_resources(rom);
     auto field_map = graphics::decode_genesis_mode2_field_map(

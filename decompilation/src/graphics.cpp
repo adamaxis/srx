@@ -685,6 +685,91 @@ std::vector<RgbaImage> decode_genesis_entity_animation(
     return frames;
 }
 
+std::vector<RgbaImage> decode_genesis_field_entity_animation(
+    const std::vector<std::uint8_t>& rom,
+    std::size_t entity_record_offset,
+    std::size_t entity_state_pointer_table_offset,
+    std::size_t nibble_table_offset,
+    std::size_t palette_offset) {
+    const auto read16 = [&](std::size_t offset, const char* what) {
+        require_bytes(rom.size() - std::min(offset, rom.size()), 2U, what);
+        return static_cast<std::uint16_t>(
+            (static_cast<std::uint16_t>(rom[offset]) << 8U) |
+            rom[offset + 1U]);
+    };
+    const auto read32 = [&](std::size_t offset, const char* what) {
+        require_bytes(rom.size() - std::min(offset, rom.size()), 4U, what);
+        return (static_cast<std::uint32_t>(rom[offset]) << 24U) |
+               (static_cast<std::uint32_t>(rom[offset + 1U]) << 16U) |
+               (static_cast<std::uint32_t>(rom[offset + 2U]) << 8U) |
+               static_cast<std::uint32_t>(rom[offset + 3U]);
+    };
+
+    const auto entity_kind = read16(
+        entity_record_offset + 0x0EU,
+        "Genesis field entity kind is truncated");
+    const auto first_pointer = static_cast<std::size_t>(read32(
+        entity_state_pointer_table_offset +
+            static_cast<std::size_t>(entity_kind) * 4U,
+        "Genesis field entity state pointer is truncated"));
+    const auto state_selector = static_cast<std::size_t>(read16(
+        entity_record_offset + 0x16U,
+        "Genesis field entity state selector is truncated") & 0x7FFFU);
+    const auto state_pointer = static_cast<std::size_t>(read32(
+        first_pointer + state_selector,
+        "Genesis field entity state list is truncated"));
+    const auto state_index = read16(
+        state_pointer, "Genesis field entity state marker is truncated");
+    if (static_cast<std::int16_t>(state_index) < 0) {
+        throw std::runtime_error(
+            "Genesis field entity starts in an unsupported terminal state");
+    }
+
+    // The selected A2 pointer is itself the state-list base.  ROM 0x600E
+    // consumes its first word as the state marker, skips the following word,
+    // and reads the current descriptor from list_base + 4 + (record+0x1E)*4.
+    // Keep the list base here so extraction can preserve every terminal-
+    // marked entry, rather than reducing the table to the current frame.
+    const auto state_list_base = state_pointer;
+    if (read16(state_list_base,
+               "Genesis field entity descriptor list marker is truncated") !=
+        0x0001U) {
+        throw std::runtime_error(
+            "Genesis field entity does not resolve to a positive state list");
+    }
+    const auto first_descriptor = static_cast<std::size_t>(read32(
+        state_list_base + 4U,
+        "Genesis field entity first frame descriptor is truncated"));
+    if (read16(first_descriptor,
+               "Genesis field entity descriptor is truncated") !=
+        0x8002U) {
+        throw std::runtime_error(
+            "Genesis field entity does not resolve to an 0x8002 frame");
+    }
+
+    std::vector<RgbaImage> frames;
+    constexpr std::size_t kMaximumStateEntries = 256;
+    for (std::size_t index = 0; index < kMaximumStateEntries; ++index) {
+        const auto entry = state_list_base + index * 8U;
+        const auto marker = read16(
+            entry, "Genesis field entity state-list entry is truncated");
+        if (static_cast<std::int16_t>(marker) < 0) {
+            if (frames.empty()) {
+                throw std::runtime_error(
+                    "Genesis field entity state list has no frames");
+            }
+            return frames;
+        }
+        const auto descriptor = static_cast<std::size_t>(read32(
+            entry + 4U,
+            "Genesis field entity frame descriptor is truncated"));
+        frames.push_back(decode_genesis_entity_frame(
+            rom, descriptor, nibble_table_offset, palette_offset));
+    }
+    throw std::runtime_error(
+        "Genesis field entity state list has no terminal marker");
+}
+
 RgbaImage decode_genesis_startup_screen(
     const std::vector<std::uint8_t>& rom,
     std::size_t pattern_stream_offset,

@@ -159,5 +159,16 @@ int main() {
         assert(frame.pixels.size() ==
                static_cast<std::size_t>(frame.width) * frame.height);
     }
+
+    const auto field_entity_animation =
+        decode_genesis_field_entity_animation(rom);
+    assert(field_entity_animation.size() == 8);
+    assert(field_entity_animation.front().width == 24);
+    assert(field_entity_animation.front().height == 32);
+    for (const auto& frame : field_entity_animation) {
+        assert(frame.width != 0 && frame.height != 0);
+        assert(frame.pixels.size() ==
+               static_cast<std::size_t>(frame.width) * frame.height);
+    }
     return 0;
 }

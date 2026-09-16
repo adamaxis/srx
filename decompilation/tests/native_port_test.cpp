@@ -85,7 +85,7 @@ int main() {
     }
     assert(rom_shell.marker_x() == 301);
     assert(rom_shell.field_entity_frame_index() != 0);
-    assert(rom_shell.field_entity_frame_index() < 7);
+    assert(rom_shell.field_entity_frame_index() < 8);
     assert(rom_shell.field_world_x() > initial_camera_x);
     assert(rom_shell.field_camera_x() > initial_camera_x);
     rom_shell.render(screen);
