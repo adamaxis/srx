@@ -68,6 +68,19 @@ int main() {
     assert(atlas.pixels[4].alpha == 0);
 
     const auto rom = read_rom();
+    const auto entity_template =
+        read_genesis_field_entity_template(rom);
+    assert(entity_template.record_offset == 0x7291A);
+    assert(entity_template.projection_word_08 == 0);
+    assert(entity_template.kind == 3);
+    assert(entity_template.flags_10 == 0x0F);
+    assert(entity_template.flags_11 == 0);
+    assert(entity_template.state_pointer == 0);
+    assert(entity_template.state_selector == 0);
+    assert(entity_template.timing_multiplier == 0x1000);
+    assert(entity_template.timing_accumulator == 0);
+    assert(entity_template.timing_threshold == 0x1000);
+    assert(entity_template.state_index == 0);
     const auto metatile_resource = decode_genesis_resource_stream(rom, 0x170102);
     assert(metatile_resource.size() == 0x4F40);
     const auto field_resources = read_genesis_mode2_field_resources(rom);

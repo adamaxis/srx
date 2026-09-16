@@ -32,6 +32,23 @@ struct GenesisFieldRecordPosition {
     std::uint16_t world_y_fixed = 0;
 };
 
+// Reviewed fields from the 0x100-byte entity template copied by ROM 0x42B0.
+// These are kept as field roles only where the update/projection paths already
+// establish them; the rest of the template remains untyped until recovered.
+struct GenesisFieldEntityTemplate {
+    std::size_t record_offset = 0;
+    std::uint16_t projection_word_08 = 0;
+    std::uint16_t kind = 0;
+    std::uint8_t flags_10 = 0;
+    std::uint8_t flags_11 = 0;
+    std::uint32_t state_pointer = 0;
+    std::uint16_t state_selector = 0;
+    std::uint16_t timing_multiplier = 0;
+    std::uint16_t timing_accumulator = 0;
+    std::uint16_t timing_threshold = 0;
+    std::uint16_t state_index = 0;
+};
+
 // Typed view of the selected mode-2 record at ROM 0x172C80. The names here
 // describe the values' role at the resource boundary; they intentionally do
 // not invent meanings for the record's remaining words.
@@ -57,6 +74,12 @@ struct GenesisMode2FieldResources {
 };
 
 using GenesisTerrainMap = terrain::Map;
+
+// Read the reviewed entity-template fields at ROM 0x7291A. The returned
+// record is a host value object and has no dependency on Genesis RAM.
+GenesisFieldEntityTemplate read_genesis_field_entity_template(
+    const std::vector<std::uint8_t>& rom,
+    std::size_t record_offset = 0x7291A);
 
 // Genesis CRAM stores three 3-bit channels in the spaced bit positions of a
 // 16-bit word. This expands each channel to the normal 0..255 host range.

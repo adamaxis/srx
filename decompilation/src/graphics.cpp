@@ -52,6 +52,42 @@ void write_u32(std::ostream& output, std::uint32_t value) {
 
 } // namespace
 
+GenesisFieldEntityTemplate read_genesis_field_entity_template(
+    const std::vector<std::uint8_t>& rom, std::size_t record_offset) {
+    const auto flags = read_rom_u16(
+        rom, record_offset + 0x10U,
+        "Genesis field entity template flags are truncated");
+    return {
+        record_offset,
+        read_rom_u16(
+            rom, record_offset + 0x08U,
+            "Genesis field entity template projection is truncated"),
+        read_rom_u16(
+            rom, record_offset + 0x0EU,
+            "Genesis field entity template kind is truncated"),
+        static_cast<std::uint8_t>(flags >> 8U),
+        static_cast<std::uint8_t>(flags),
+        read_rom_u32(
+            rom, record_offset + 0x12U,
+            "Genesis field entity template state pointer is truncated"),
+        read_rom_u16(
+            rom, record_offset + 0x16U,
+            "Genesis field entity template selector is truncated"),
+        read_rom_u16(
+            rom, record_offset + 0x18U,
+            "Genesis field entity template multiplier is truncated"),
+        read_rom_u16(
+            rom, record_offset + 0x1AU,
+            "Genesis field entity template accumulator is truncated"),
+        read_rom_u16(
+            rom, record_offset + 0x1CU,
+            "Genesis field entity template threshold is truncated"),
+        read_rom_u16(
+            rom, record_offset + 0x1EU,
+            "Genesis field entity template state index is truncated"),
+    };
+}
+
 native::Rgba8 decode_genesis_cram_word(std::uint16_t cram_word,
                                        bool transparent) {
     const auto expand = [](std::uint8_t value) {

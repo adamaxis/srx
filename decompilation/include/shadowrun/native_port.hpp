@@ -74,6 +74,10 @@ struct NativeFieldEntity {
     std::uint16_t world_x_fixed = 0;
     std::uint16_t world_y_fixed = 0;
     std::uint16_t projection_word_08 = 0;
+    std::uint16_t kind = 0;
+    std::uint8_t flags_10 = 0;
+    std::uint8_t flags_11 = 0;
+    std::uint32_t state_pointer = 0;
     // These retain the exact words written by ROM 0x5A62 before the VDP
     // origin is removed at the native screen boundary.
     std::uint16_t vdp_screen_x = 0;

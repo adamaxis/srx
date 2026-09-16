@@ -228,6 +228,8 @@ NativePortShell::NativePortShell(
     // RGBA image through the direct 0x3E86/0x3EFE extraction path.
     const auto entity_frames =
         graphics::decode_genesis_field_entity_animation(rom);
+    const auto entity_template =
+        graphics::read_genesis_field_entity_template(rom);
     for (std::size_t index = 0; index < field_direction_table_.size();
          ++index) {
         const auto table_offset =
@@ -276,8 +278,16 @@ NativePortShell::NativePortShell(
     field_camera_x_ = field_initial_camera_x_;
     field_camera_y_ = field_initial_camera_y_;
     field_entity_.record_index = 0;
-    field_entity_.animation_multiplier = 0x1000;
-    field_entity_.animation_threshold = 0x1000;
+    field_entity_.projection_word_08 = entity_template.projection_word_08;
+    field_entity_.kind = entity_template.kind;
+    field_entity_.flags_10 = entity_template.flags_10;
+    field_entity_.flags_11 = entity_template.flags_11;
+    field_entity_.state_pointer = entity_template.state_pointer;
+    field_entity_.state_selector = entity_template.state_selector;
+    field_entity_.animation_multiplier = entity_template.timing_multiplier;
+    field_entity_.animation_accumulator = entity_template.timing_accumulator;
+    field_entity_.animation_threshold = entity_template.timing_threshold;
+    field_entity_.state_index = entity_template.state_index;
     field_entity_.world_x_fixed =
         field_resources.initial_field_records[0].world_x_fixed;
     field_entity_.world_y_fixed =
