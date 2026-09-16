@@ -29,9 +29,9 @@ std::vector<std::uint8_t> read_file(const std::string& path) {
 } // namespace
 
 int main(int argc, char** argv) {
-    if (argc != 6) {
+    if (argc != 6 && argc != 7) {
         std::cerr << "usage: shadowrun_graphics_extract <rom.bin> <out.bmp> "
-                     "<tile-offset> <tile-count> <palette-offset>\n";
+                     "<tile-offset> <tile-count> <palette-offset> [--resource]\n";
         std::cerr << "numeric offsets accept decimal or 0x-prefixed hex\n";
         return 2;
     }
@@ -40,10 +40,18 @@ int main(int argc, char** argv) {
         const auto tile_offset = static_cast<std::size_t>(parse_number(argv[3]));
         const auto tile_count = static_cast<std::size_t>(parse_number(argv[4]));
         const auto palette_offset = static_cast<std::size_t>(parse_number(argv[5]));
+        const auto resource_stream = argc == 7 && std::string(argv[6]) == "--resource";
+        if (argc == 7 && !resource_stream) {
+            throw std::invalid_argument("unknown extractor mode");
+        }
         const auto palette = shadowrun::graphics::read_genesis_palette(
             rom, palette_offset);
+        const auto resource = resource_stream
+            ? shadowrun::graphics::decode_genesis_resource_stream(rom, tile_offset)
+            : std::vector<std::uint8_t>{};
+        const auto& tile_source = resource_stream ? resource : rom;
         const auto image = shadowrun::graphics::decode_tile_atlas(
-            rom, tile_offset, tile_count, palette);
+            tile_source, resource_stream ? 0U : tile_offset, tile_count, palette);
         shadowrun::graphics::write_bmp32(argv[2], image);
         std::cout << "tiles: " << tile_count << "\n"
                   << "image: " << image.width << "x" << image.height << "\n"

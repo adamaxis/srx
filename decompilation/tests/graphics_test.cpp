@@ -25,6 +25,21 @@ int main() {
     assert(indexed.pixels[3] == 8);
     assert(indexed.pixels[4] == 0);
 
+    const std::vector<std::uint8_t> compressed_run = {
+        0x00, 0x02, 0x00, 0xAB, 0xAB, 0xAB
+    };
+    const auto decoded_run = decode_genesis_resource_stream(
+        compressed_run, 0);
+    assert((decoded_run == std::vector<std::uint8_t>{0xAB, 0xAB, 0xAB}));
+
+    const std::vector<std::uint8_t> compressed_backref = {
+        0x00, 0x03, 0x40, 0x41, 0x90, 0x00
+    };
+    const auto decoded_backref = decode_genesis_resource_stream(
+        compressed_backref, 0);
+    assert((decoded_backref == std::vector<std::uint8_t>{
+        0x41, 0x41, 0x41, 0x41}));
+
     std::array<shadowrun::native::Rgba8, 16> palette{};
     palette[0] = {0, 0, 0, 255};
     palette[1] = {255, 0, 0, 255};

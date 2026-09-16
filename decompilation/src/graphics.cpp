@@ -67,6 +67,80 @@ IndexedTile decode_genesis_tile(const std::uint8_t* source,
     return tile;
 }
 
+std::vector<std::uint8_t> decode_genesis_resource_stream(
+    const std::vector<std::uint8_t>& rom, std::size_t source_offset) {
+    if (source_offset > rom.size() || rom.size() - source_offset < 2U) {
+        throw std::out_of_range("Genesis resource stream is truncated");
+    }
+    const auto initial_counter = static_cast<std::uint16_t>(
+        (static_cast<std::uint16_t>(rom[source_offset]) << 8U) |
+        rom[source_offset + 1U]);
+    auto source = source_offset + 2U;
+    auto remaining = initial_counter;
+    std::array<std::uint8_t, 0x800> ring{};
+    std::uint16_t ring_index = 0;
+    std::uint8_t control = 0;
+    std::uint16_t control_bits_remaining = 1;
+    std::vector<std::uint8_t> output;
+    output.reserve(static_cast<std::size_t>(initial_counter) + 1U);
+
+    const auto read_byte = [&]() {
+        if (source >= rom.size()) {
+            throw std::out_of_range("Genesis resource token is truncated");
+        }
+        return rom[source++];
+    };
+    const auto emit = [&](std::uint8_t value) {
+        ring[ring_index] = value;
+        ring_index = static_cast<std::uint16_t>((ring_index + 1U) & 0x07FFU);
+        output.push_back(value);
+        --remaining;
+    };
+
+    for (;;) {
+        --control_bits_remaining;
+        if (control_bits_remaining == 0) {
+            control = read_byte();
+            control_bits_remaining = 8;
+        }
+        const auto compressed = (control & 0x80U) != 0;
+        control = static_cast<std::uint8_t>(control << 1U);
+
+        if (!compressed) {
+            emit(read_byte());
+        } else {
+            const auto descriptor = read_byte();
+            if ((descriptor & 0x80U) == 0) {
+                const auto run_count = static_cast<unsigned>(
+                    (descriptor & 0x7FU) + 2U);
+                const auto value = read_byte();
+                for (unsigned index = 0; index <= run_count; ++index) {
+                    emit(value);
+                }
+            } else {
+                const auto offset_low = read_byte();
+                const auto offset = static_cast<std::uint16_t>(
+                    ((static_cast<std::uint16_t>(offset_low) << 3U) |
+                     ((descriptor >> 4U) & 0x0007U)) & 0x07FFU);
+                const auto run_count = static_cast<unsigned>(
+                    (descriptor & 0x0FU) + 2U);
+                auto copy_index = static_cast<std::uint16_t>(
+                    (ring_index - offset) & 0x07FFU);
+                for (unsigned index = 0; index <= run_count; ++index) {
+                    const auto value = ring[copy_index];
+                    copy_index = static_cast<std::uint16_t>(
+                        (copy_index + 1U) & 0x07FFU);
+                    emit(value);
+                }
+            }
+        }
+        if (remaining == 0xFFFFU) {
+            break;
+        }
+    }
+    return output;
+}
+
 std::array<native::Rgba8, 16> read_genesis_palette(
     const std::vector<std::uint8_t>& rom, std::size_t byte_offset) {
     require_bytes(rom.size() - std::min(byte_offset, rom.size()), 32,

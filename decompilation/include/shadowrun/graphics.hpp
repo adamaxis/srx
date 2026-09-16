@@ -32,6 +32,12 @@ native::Rgba8 decode_genesis_cram_word(std::uint16_t cram_word,
 IndexedTile decode_genesis_tile(const std::uint8_t* source,
                                 std::size_t source_size);
 
+// Decode the ROM 0x1530 resource stream without emitting to a VDP. The first
+// word is the DBF counter and the remaining stream uses the ROM's literal,
+// repeated-byte, and 11-bit overlapping back-reference tokens.
+std::vector<std::uint8_t> decode_genesis_resource_stream(
+    const std::vector<std::uint8_t>& rom, std::size_t source_offset);
+
 std::array<native::Rgba8, 16> read_genesis_palette(
     const std::vector<std::uint8_t>& rom, std::size_t byte_offset);
 

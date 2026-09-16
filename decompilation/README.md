@@ -94,7 +94,10 @@ $paletteOffset = 0x000000 # replace with a reviewed CRAM-data offset
 ```
 
 `graphics.hpp` exposes the same tile/CRAM/RGBA operations to the native game,
-so BMP is only an extraction or diagnostic format; runtime rendering is not
+and also decodes the reviewed `0x1530` literal/repeat/back-reference resource
+stream. Add `--resource` when the supplied tile offset points at that
+compressed stream; the converter will use its decoded bytes as the tile source.
+BMP is only an extraction or diagnostic format; runtime rendering is not
 palette-indexed.
 
 ## ROM facts established so far
