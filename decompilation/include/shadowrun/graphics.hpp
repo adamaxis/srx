@@ -56,6 +56,22 @@ RgbaImage decode_tile_atlas(
     std::size_t columns = 16,
     int transparent_index = -1);
 
+// Decode the first native field presentation selected by the mode-2 record at
+// ROM 0x172C80. The ROM expands 0x166B82 into pattern graphics, expands the
+// tagged 0x170102 source into 4x4 VDP name-word stamps, and indexes those
+// stamps through the two 60x42 tables at 0x16D9A2 and 0x16ED52. This produces
+// a host RGBA map (1920x1344) rather than a VDP/VRAM representation.
+RgbaImage decode_genesis_mode2_field_map(
+    const std::vector<std::uint8_t>& rom,
+    std::size_t pattern_data_offset = 0x166B82,
+    std::size_t pattern_byte_count = 0x6E20,
+    std::size_t metatile_stream_offset = 0x170102,
+    std::size_t primary_tilemap_offset = 0x16D9A2,
+    std::size_t secondary_tilemap_offset = 0x16ED52,
+    std::size_t tilemap_width = 60,
+    std::size_t tilemap_height = 42,
+    std::size_t palette_offset = 0xD29D6);
+
 // Reconstruct the startup scene assembled by ROM 0x1D00/0x1D58. The source
 // offsets and dimensions are the operands of that path, not guessed graphic
 // locations: 0x1F310E is the compressed pattern stream, 0x67DF6 is its

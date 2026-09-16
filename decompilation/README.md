@@ -79,11 +79,13 @@ needed by the native executable.
 The ROM-backed shell now exposes a native scene transition as well. It starts
 on the reconstructed title scene, consumes the pressed `Start` edge, and enters
 a typed C++ field state with held directional movement and edge-triggered
-`A`/`B`/`C` actions. The field presentation uses host RGBA drawing plus art
-decoded from the post-title resources at `0x1E3F38` and `0x1E62BE`; it does not
-run a 68000 interpreter or depend on Genesis VDP state. This is a runnable
-title-to-field slice, while map/entity presentation remains the next port
-boundary.
+`A`/`B`/`C` actions. The field presentation translates the mode-2 data path:
+raw pattern data at `0x166B82`, compressed 4x4 name-word stamps at `0x170102`,
+and the 60x42 primary/secondary tables at `0x16D9A2`/`0x16ED52`. The result is
+a 1920x1344 host RGBA map cropped to the ROM's initial camera viewport; it does
+not run a 68000 interpreter or depend on Genesis VDP state. This is a runnable
+title-to-field slice, while camera/entity/UI presentation remains the next
+port boundary.
 
 ```powershell
 cmake --build 'C:\Github\shadowrun\decompilation\build-debug-verify'
@@ -103,6 +105,18 @@ The same startup frame can be exported as a diagnostic BMP:
 & 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_graphics_extract.exe' `
   'C:\Github\shadowrun\decompilation\input\shadowrun_genesis_us.bin' `
   'C:\Github\shadowrun\decompilation\build-debug-verify\startup_scene.bmp' --title
+```
+
+The recovered mode-2 field map and the exact native title-to-field frame can
+also be exported directly:
+
+```powershell
+& 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_graphics_extract.exe' `
+  'C:\Github\shadowrun\decompilation\input\shadowrun_genesis_us.bin' `
+  'C:\Github\shadowrun\decompilation\build-debug-verify\mode2_map.bmp' --mode2-map
+& 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_graphics_extract.exe' `
+  'C:\Github\shadowrun\decompilation\input\shadowrun_genesis_us.bin' `
+  'C:\Github\shadowrun\decompilation\build-debug-verify\native_field_scene.bmp' --native-field
 ```
 
 The dependency-free graphics converter accepts offsets recovered from the ROM
@@ -442,6 +456,11 @@ palette-indexed.
 - ROM `0x1728` is translated by `ShadowrunRuntime::stream_delta_vdp`, including
   its base-word token decoder, delta classes, byte/word payload forms, signed
   output skip, row width/mask state, terminator, and per-row command stride.
+- The mode-2 field resource chain is translated into native RGBA in
+  `graphics.cpp`: the raw `0x166B82`/`0x6E20` pattern upload, the compressed
+  `0x170102` 4x4 name-word stamps, and the 60x42 maps at `0x16D9A2` and
+  `0x16ED52` are composed without retaining VDP name tables or palette indices
+  at runtime.
 - ROM `0x0F5C`/`0x0F98` is translated by
   `ShadowrunRuntime::stream_primary_vdp`, including its 64 KiB boundary split,
   64-byte/4-byte/2-byte copy tiers, and command offset behavior.

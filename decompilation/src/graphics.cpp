@@ -5,6 +5,7 @@
 #include <fstream>
 #include <limits>
 #include <stdexcept>
+#include <string>
 
 namespace shadowrun::graphics {
 
@@ -213,6 +214,147 @@ RgbaImage decode_tile_atlas(
             }
         }
     }
+    return image;
+}
+
+RgbaImage decode_genesis_mode2_field_map(
+    const std::vector<std::uint8_t>& rom,
+    std::size_t pattern_data_offset,
+    std::size_t pattern_byte_count,
+    std::size_t metatile_stream_offset,
+    std::size_t primary_tilemap_offset,
+    std::size_t secondary_tilemap_offset,
+    std::size_t tilemap_width,
+    std::size_t tilemap_height,
+    std::size_t palette_offset) {
+    if (tilemap_width == 0 || tilemap_height == 0) {
+        throw std::invalid_argument("Genesis field map dimensions are invalid");
+    }
+    if (tilemap_width > std::numeric_limits<std::size_t>::max() / 32U ||
+        tilemap_height > std::numeric_limits<std::size_t>::max() / 32U) {
+        throw std::invalid_argument("Genesis field map dimensions overflow");
+    }
+    const auto output_width = tilemap_width * 32U;
+    const auto output_height = tilemap_height * 32U;
+    if (output_width > std::numeric_limits<std::uint16_t>::max() ||
+        output_height > std::numeric_limits<std::uint16_t>::max()) {
+        throw std::invalid_argument("Genesis field map is too large");
+    }
+    if (tilemap_width > std::numeric_limits<std::size_t>::max() /
+                           tilemap_height) {
+        throw std::invalid_argument("Genesis field map dimensions overflow");
+    }
+    const auto map_entries = tilemap_width * tilemap_height;
+    const auto require_map = [&](std::size_t offset, const char* what) {
+        if (offset > rom.size() ||
+            map_entries > (rom.size() - offset) / 2U) {
+            throw std::out_of_range(what);
+        }
+    };
+    require_map(primary_tilemap_offset, "Genesis primary field tilemap is truncated");
+    require_map(secondary_tilemap_offset,
+                "Genesis secondary field tilemap is truncated");
+
+    if (pattern_data_offset > rom.size() ||
+        pattern_byte_count > rom.size() - pattern_data_offset ||
+        pattern_byte_count < 32U || pattern_byte_count % 32U != 0) {
+        throw std::runtime_error(
+            "Genesis field pattern upload is not tile-aligned");
+    }
+    const auto metatile_resource = decode_genesis_resource_stream(
+        rom, metatile_stream_offset);
+    if (metatile_resource.empty() || metatile_resource.size() % 32U != 0) {
+        throw std::runtime_error("Genesis field metatiles are not stamp-aligned");
+    }
+    const auto tile_count = pattern_byte_count / 32U;
+    const auto metatile_count = metatile_resource.size() / 32U;
+    std::vector<IndexedTile> tiles;
+    tiles.reserve(tile_count);
+    for (std::size_t tile_index = 0; tile_index < tile_count; ++tile_index) {
+        tiles.push_back(decode_genesis_tile(
+            rom.data() + pattern_data_offset + tile_index * 32U, 32U));
+    }
+
+    const auto palette = read_genesis_palette_set(rom, palette_offset);
+    const auto read_map_word = [&](std::size_t offset,
+                                   std::size_t entry_index) {
+        const auto word_offset = offset + entry_index * 2U;
+        return static_cast<std::uint16_t>(
+            (static_cast<std::uint16_t>(rom[word_offset]) << 8U) |
+            rom[word_offset + 1U]);
+    };
+    const auto read_metatile_word = [&](std::size_t metatile_index,
+                                        std::size_t word_index) {
+        const auto word_offset = metatile_index * 32U + word_index * 2U;
+        return static_cast<std::uint16_t>(
+            (static_cast<std::uint16_t>(metatile_resource[word_offset]) << 8U) |
+            metatile_resource[word_offset + 1U]);
+    };
+    RgbaImage image{
+        static_cast<std::uint16_t>(output_width),
+        static_cast<std::uint16_t>(output_height),
+        std::vector<native::Rgba8>(output_width * output_height),
+    };
+
+    const auto render_layer = [&](std::size_t tilemap_offset,
+                                  bool transparent_zero) {
+        for (std::size_t stamp_y = 0; stamp_y < tilemap_height; ++stamp_y) {
+            for (std::size_t stamp_x = 0; stamp_x < tilemap_width; ++stamp_x) {
+                const auto metatile_index = static_cast<std::size_t>(
+                    read_map_word(tilemap_offset,
+                                  stamp_y * tilemap_width + stamp_x));
+                if (metatile_index >= metatile_count) {
+                    throw std::out_of_range(
+                        "Genesis field metatile index is truncated (index " +
+                        std::to_string(metatile_index) + ", count " +
+                        std::to_string(metatile_count) + ")");
+                }
+                for (std::size_t tile_y = 0; tile_y < 4U; ++tile_y) {
+                    for (std::size_t tile_x = 0; tile_x < 4U; ++tile_x) {
+                        const auto name_word = read_metatile_word(
+                            metatile_index, tile_y * 4U + tile_x);
+                        const auto pattern_word =
+                            static_cast<std::int32_t>(name_word & 0x07FFU) -
+                            0x0201;
+                        if (pattern_word < 0 ||
+                            static_cast<std::size_t>(pattern_word) >= tile_count) {
+                            throw std::out_of_range(
+                                "Genesis field pattern index is truncated (name " +
+                                std::to_string(name_word) + ", relative " +
+                                std::to_string(pattern_word) + ", tiles " +
+                                std::to_string(tile_count) + ")");
+                        }
+                        const auto& tile = tiles[
+                            static_cast<std::size_t>(pattern_word)];
+                        const auto palette_line = static_cast<std::size_t>(
+                            (name_word >> 13U) & 0x03U);
+                        const auto hflip = (name_word & 0x0800U) != 0;
+                        const auto vflip = (name_word & 0x1000U) != 0;
+                        const auto origin_x = stamp_x * 32U + tile_x * 8U;
+                        const auto origin_y = stamp_y * 32U + tile_y * 8U;
+                        for (std::size_t pixel_y = 0; pixel_y < 8U; ++pixel_y) {
+                            for (std::size_t pixel_x = 0; pixel_x < 8U; ++pixel_x) {
+                                const auto source_x = hflip ? 7U - pixel_x : pixel_x;
+                                const auto source_y = vflip ? 7U - pixel_y : pixel_y;
+                                const auto color_index = tile.pixels[
+                                    source_y * 8U + source_x];
+                                if (transparent_zero && color_index == 0) {
+                                    continue;
+                                }
+                                auto color = palette[palette_line * 16U +
+                                                      color_index];
+                                color.alpha = 255;
+                                image.pixels[(origin_y + pixel_y) * image.width +
+                                             origin_x + pixel_x] = color;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    };
+    render_layer(primary_tilemap_offset, false);
+    render_layer(secondary_tilemap_offset, true);
     return image;
 }
 

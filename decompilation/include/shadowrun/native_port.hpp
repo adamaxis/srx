@@ -123,6 +123,7 @@ public:
 
     NativeScene scene() const { return scene_; }
     bool has_rom_assets() const { return !rom_scene_pixels_.empty(); }
+    bool has_rom_field_map() const { return !rom_field_pixels_.empty(); }
     std::int32_t marker_x() const { return marker_x_; }
     std::int32_t marker_y() const { return marker_y_; }
     std::uint64_t frame_number() const { return frame_number_; }
@@ -144,6 +145,9 @@ private:
     std::uint16_t rom_actor_width_ = 0;
     std::uint16_t rom_actor_height_ = 0;
     std::vector<Rgba8> rom_actor_pixels_;
+    std::uint16_t rom_field_width_ = 0;
+    std::uint16_t rom_field_height_ = 0;
+    std::vector<Rgba8> rom_field_pixels_;
     std::uint8_t action_flash_frames_ = 0;
     std::uint32_t action_count_ = 0;
 };

@@ -46,6 +46,7 @@ int main() {
     const auto rom = read_rom();
     NativePortShell rom_shell("SHADOWRUN", rom);
     assert(rom_shell.has_rom_assets());
+    assert(rom_shell.has_rom_field_map());
     assert(rom_shell.scene() == NativeScene::Title);
     rom_shell.render(screen);
     assert(screen.presented_frames() == 3);

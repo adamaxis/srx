@@ -48,6 +48,8 @@ add_executable(shadowrun_graphics_test
     tests/graphics_test.cpp
 )
 target_link_libraries(shadowrun_graphics_test PRIVATE shadowrun_port)
+target_compile_definitions(shadowrun_graphics_test PRIVATE
+    SHADOWRUN_TEST_ROM="${CMAKE_CURRENT_SOURCE_DIR}/input/shadowrun_genesis_us.bin")
 add_test(NAME shadowrun_graphics COMMAND shadowrun_graphics_test)
 
 add_executable(shadowrun_graphics_extract

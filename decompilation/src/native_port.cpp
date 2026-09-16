@@ -221,6 +221,7 @@ NativePortShell::NativePortShell(
     const auto actor = graphics::decode_tile_atlas(
         graphics::decode_genesis_resource_stream(rom, 0x1E62BE),
         0, 2, palette, 2, 0);
+    const auto field_map = graphics::decode_genesis_mode2_field_map(rom);
     const auto scaled_art = scale_image(art, 4);
     const auto scaled_actor = scale_image(actor, 4);
     rom_art_width_ = scaled_art.width;
@@ -229,6 +230,26 @@ NativePortShell::NativePortShell(
     rom_actor_width_ = scaled_actor.width;
     rom_actor_height_ = scaled_actor.height;
     rom_actor_pixels_ = scaled_actor.pixels;
+
+    // Mode 2 starts with camera coordinates 0x3400/0x2280 in the selected
+    // ROM record. They are 1/16-pixel values; the native viewport is centered
+    // at that same world location and then rendered as ordinary RGBA pixels.
+    constexpr std::size_t kFieldViewportWidth = kScreenWidth;
+    constexpr std::size_t kFieldViewportHeight = 168;
+    const auto camera_x = static_cast<std::size_t>(0x3400U >> 4U);
+    const auto camera_y = static_cast<std::size_t>(0x2280U >> 4U);
+    const auto viewport_x = camera_x - kFieldViewportWidth / 2U;
+    const auto viewport_y = camera_y - kFieldViewportHeight / 2U;
+    rom_field_width_ = static_cast<std::uint16_t>(kFieldViewportWidth);
+    rom_field_height_ = static_cast<std::uint16_t>(kFieldViewportHeight);
+    rom_field_pixels_.resize(kFieldViewportWidth * kFieldViewportHeight);
+    for (std::size_t y = 0; y < kFieldViewportHeight; ++y) {
+        for (std::size_t x = 0; x < kFieldViewportWidth; ++x) {
+            rom_field_pixels_[y * kFieldViewportWidth + x] =
+                field_map.pixels[(viewport_y + y) * field_map.width +
+                                 viewport_x + x];
+        }
+    }
 }
 
 void NativePortShell::update(const InputState& input) {
@@ -304,10 +325,10 @@ void NativePortShell::render(ScreenWriter& screen) const {
                          {0x00, 0x00, 0x00, 0xB0});
         screen.write_text(8, 211, "ARROWS MOVE  Z X C  ENTER RESET",
                           1, {0xE8, 0xF4, 0xFF, 0xFF});
-    } else if (scene_ == NativeScene::Field && !rom_art_pixels_.empty()) {
-        // This is the first native field presentation. The ROM supplied the
-        // art strips; the surrounding composition is ordinary host drawing,
-        // deliberately free of Genesis tilemap/VRAM constraints.
+    } else if (scene_ == NativeScene::Field && !rom_field_pixels_.empty()) {
+        // The field background is now the ROM's mode-2 map translated into a
+        // host RGBA viewport. The old strip assets remain available for later
+        // entity/UI reconstruction, but are no longer the scene background.
         screen.clear({0x04, 0x08, 0x14, 0xFF});
         screen.fill_rect(0, 0, kScreenWidth, 34,
                          {0x12, 0x20, 0x38, 0xFF});
@@ -318,22 +339,8 @@ void NativePortShell::render(ScreenWriter& screen) const {
         screen.write_text(204, 10, "MODE 2", 1,
                           {0xA0, 0xE8, 0xF8, 0xFF});
 
-        screen.fill_rect(0, 36, kScreenWidth, 168,
-                         {0x08, 0x12, 0x20, 0xFF});
-        for (std::int32_t x = 0; x <= kScreenWidth; x += 16) {
-            screen.fill_rect(x, 36, 1, 168,
-                             {0x14, 0x2A, 0x38, 0xFF});
-        }
-        for (std::int32_t y = 36; y <= 204; y += 16) {
-            screen.fill_rect(0, y, kScreenWidth, 1,
-                             {0x14, 0x2A, 0x38, 0xFF});
-        }
-        screen.fill_rect(32, 52, 96, 48, {0x0C, 0x28, 0x34, 0xFF});
-        screen.fill_rect(192, 116, 96, 56, {0x0C, 0x28, 0x34, 0xFF});
-        screen.blit_rgba(16, 52, rom_art_width_, rom_art_height_,
-                         rom_art_pixels_);
-        screen.blit_rgba(224, 52, rom_actor_width_, rom_actor_height_,
-                         rom_actor_pixels_);
+        screen.blit_rgba(0, 36, rom_field_width_, rom_field_height_,
+                         rom_field_pixels_);
 
         screen.fill_rect(marker_x_ - 6, marker_y_ + 10, 20, 4,
                          {0x00, 0x00, 0x00, 0xA0});

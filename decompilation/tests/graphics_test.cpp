@@ -3,7 +3,20 @@
 #include <array>
 #include <cassert>
 #include <cstdint>
+#include <fstream>
+#include <iterator>
 #include <vector>
+
+namespace {
+
+std::vector<std::uint8_t> read_rom() {
+    std::ifstream input(SHADOWRUN_TEST_ROM, std::ios::binary);
+    assert(input);
+    return std::vector<std::uint8_t>(
+        std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
+}
+
+} // namespace
 
 int main() {
     using namespace shadowrun::graphics;
@@ -53,5 +66,24 @@ int main() {
     assert(atlas.pixels[2].blue == 255);
     assert(atlas.pixels[3].red == 255 && atlas.pixels[3].green == 255);
     assert(atlas.pixels[4].alpha == 0);
+
+    const auto rom = read_rom();
+    const auto metatile_resource = decode_genesis_resource_stream(rom, 0x170102);
+    assert(metatile_resource.size() == 0x4F40);
+    const auto field_map = decode_genesis_mode2_field_map(rom);
+    assert(field_map.width == 1920 && field_map.height == 1344);
+    assert(field_map.pixels.size() ==
+           static_cast<std::size_t>(field_map.width) * field_map.height);
+    assert(field_map.pixels.front().alpha == 255);
+    const auto first_pixel = field_map.pixels.front();
+    bool varied = false;
+    for (const auto pixel : field_map.pixels) {
+        if (pixel.red != first_pixel.red || pixel.green != first_pixel.green ||
+            pixel.blue != first_pixel.blue) {
+            varied = true;
+            break;
+        }
+    }
+    assert(varied);
     return 0;
 }

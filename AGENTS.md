@@ -98,15 +98,20 @@ optional ROM path and maps Windows keyboard input into `InputState`.
 instance starts in `Title`; the pressed `Start` edge models the reviewed
 `0x0BF2`/`0x1A9E` exit condition and transitions to `Field`. The field update
 is ordinary typed C++ state with held directional movement and edge-triggered
-actions. Its visual strips come from the reviewed compressed resources at
-`0x1E3F38` and `0x1E62BE`, expanded to host RGBA8; the surrounding composition
-uses host drawing primitives rather than Genesis VRAM or palette constraints.
+actions.
 
-This is now a runnable native title-to-field slice with controls and visible
-ROM-derived graphics, not a claim that the whole game is playable. The next
-port slices should replace the field composition with the recovered map/entity
-presentation and connect typed session state to the reviewed VBlank update
-paths.
+The field background is now the recovered mode-2 presentation rather than a
+placeholder composition. The mode record at `0x172C80` selects the raw
+`0x166B82` pattern upload (`0x6E20` bytes), the compressed 4x4 VDP name-word
+stamps at `0x170102`, and 60x42 primary/secondary map tables at `0x16D9A2` and
+`0x16ED52`. `graphics.cpp` translates those records, palette attributes, and
+flips into a 1920x1344 host RGBA map and the native shell presents the ROM's
+initial camera viewport through `ScreenWriter`.
+
+This is now a runnable native title-to-field slice with controls and actual
+ROM-derived field graphics, not a claim that the whole game is playable. The
+next port slices should connect camera movement, recovered entity records, and
+field UI to the typed session/VBlank boundaries.
 
 ## Build and source discipline
 
