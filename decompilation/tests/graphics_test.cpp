@@ -74,6 +74,12 @@ int main() {
     assert(field_resources.record_offset == 0x172C80);
     assert(field_resources.initial_camera_x_fixed == 0x3400);
     assert(field_resources.initial_camera_y_fixed == 0x2280);
+    assert(field_resources.initial_field_records[0].world_x_fixed == 0x3CE0);
+    assert(field_resources.initial_field_records[0].world_y_fixed == 0x2D00);
+    assert(field_resources.initial_field_records[1].world_x_fixed == 0x3BA0);
+    assert(field_resources.initial_field_records[1].world_y_fixed == 0x2D00);
+    assert(field_resources.initial_field_records[2].world_x_fixed == 0x3DA0);
+    assert(field_resources.initial_field_records[2].world_y_fixed == 0x2D00);
     assert(field_resources.terrain_x_exclusive_upper == 0x0754);
     assert(field_resources.terrain_y_exclusive_upper == 0x0518);
     assert(field_resources.terrain_x_inclusive_lower == 0x002C);

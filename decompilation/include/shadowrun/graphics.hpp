@@ -23,6 +23,15 @@ struct RgbaImage {
     std::vector<native::Rgba8> pixels;
 };
 
+// The three coordinate pairs at mode-record offsets +0x42..+0x4C are copied
+// by ROM 0x2B34 into the first three 0x100-byte field records. Their final
+// high-level identities are not assumed here; they are retained as the
+// direct field-record initialization data they demonstrably are.
+struct GenesisFieldRecordPosition {
+    std::uint16_t world_x_fixed = 0;
+    std::uint16_t world_y_fixed = 0;
+};
+
 // Typed view of the selected mode-2 record at ROM 0x172C80. The names here
 // describe the values' role at the resource boundary; they intentionally do
 // not invent meanings for the record's remaining words.
@@ -30,6 +39,7 @@ struct GenesisMode2FieldResources {
     std::size_t record_offset = 0;
     std::uint16_t initial_camera_x_fixed = 0;
     std::uint16_t initial_camera_y_fixed = 0;
+    std::array<GenesisFieldRecordPosition, 3> initial_field_records{};
     std::uint16_t terrain_x_exclusive_upper = 0;
     std::uint16_t terrain_y_exclusive_upper = 0;
     std::uint16_t terrain_x_inclusive_lower = 0;

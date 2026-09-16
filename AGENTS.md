@@ -106,36 +106,37 @@ placeholder composition. The mode record at `0x172C80` selects the raw
 stamps at `0x170102`, and 60x42 primary/secondary map tables at `0x16D9A2` and
 `0x16ED52`. `read_genesis_mode2_field_resources` follows the record's
 `0x172C50` setup pointer and exposes those pointers, dimensions, palette, and
-initial fixed-point camera as a typed native resource descriptor. The decoder
+initial fixed-point camera as a typed native resource descriptor. It also
+retains the three fixed-point field-record pairs at `+0x42..+0x4C`, which ROM
+`0x2B34` copies into the first three `0x100`-byte records. The decoder
 translates those records, palette attributes, and flips into a 1920x1344 host
-RGBA map and the native shell presents a cropped viewport through
-`ScreenWriter`. Directional input now advances typed world coordinates and
-follows the marker at the viewport edge, so the field scrolls over the
-recovered map instead of moving only a screen-space placeholder.
+RGBA map and the native shell presents a top-left-camera viewport through
+`ScreenWriter`. Directional input now advances the first recovered field
+record instead of a presentation-only marker, so the field scrolls over the
+recovered map using the same world origin as the direct projection path.
 
 The same mode-2 descriptor exposes the terrain table at `0x172DAA` and the
 direct bounds words used by ROM `0xE7C8`. `decode_genesis_mode2_terrain_map`
 rebuilds its 101 sentinel-terminated rectangles into a 64x64 host status
-grid, retaining each status byte for the forthcoming native movement and
-collision pass. It is intentionally extracted but not yet applied to the
-shell's movement until the entity's original record population and collision
-anchor are connected; the current visual anchor is still a presentation
-scaffold. The renderer-independent `terrain::probe` now ports the direct
-`0xE7C8` bounds/status path and its `0xE8A0/0xE9EE/0xEA36/0xEAD2` helpers over
-that host grid, so only the final entity-state integration remains for this
-boundary.
+grid, retaining each status byte for native movement and collision. The native
+shell now drives record zero from the first `0x2B34` coordinate pair and probes
+the candidate position at all four `0xE8A0` corner offsets before committing a
+move. Blocked candidates remain in place, while the camera follows the record
+only after it reaches the reviewed projection window. The renderer-independent
+`terrain::probe` ports the direct `0xE7C8` bounds/status path and its
+`0xE8A0/0xE9EE/0xEA36/0xEAD2` helpers over that host grid.
 
 This is now a runnable native title-to-field slice with controls, actual
-ROM-derived field graphics, and a ROM-derived entity frame rendered through
-the native screen boundary. The seven-frame set follows the typed field camera
-through the reviewed `0x5A62` projection; `0x600E`/`0x3E86` data is converted
-to RGBA8 at load time and advances while movement is held. Its native record
-now stores fixed-point world position, projected coordinates, visibility, and
-animation state; the rest of the original 0x100-byte record remains in the
-transitional bus-backed session layer until recovered. This is not a claim
-that the whole game is playable. The next port slices should replace the
-remaining input-anchor scaffold with recovered entity-record population and
-connect field UI to the typed session/VBlank boundaries.
+ROM-derived field graphics, collision rejection, and a ROM-derived entity
+frame rendered through the native screen boundary. The seven-frame set follows
+the typed field camera through the reviewed `0x5A62` projection. The native
+record stores the recovered fixed-point world position, exact VDP projection
+words, host screen coordinates, visibility, collision result, and animation
+state; its remaining 0x100-byte fields stay in the transitional bus-backed
+session layer until recovered. This is not a claim that the whole game is
+playable. The next port slices should expand typed entity/session records and
+connect field UI and additional object behavior to the native update/render
+interfaces.
 
 ## Build and source discipline
 

@@ -241,6 +241,23 @@ GenesisMode2FieldResources read_genesis_mode2_field_resources(
                      "Genesis mode-2 camera X is truncated"),
         read_rom_u16(rom, record_offset + 2U,
                      "Genesis mode-2 camera Y is truncated"),
+        {{
+            GenesisFieldRecordPosition{
+                read_rom_u16(rom, record_offset + 0x42U,
+                             "Genesis mode-2 first field-record X is truncated"),
+                read_rom_u16(rom, record_offset + 0x44U,
+                             "Genesis mode-2 first field-record Y is truncated")},
+            GenesisFieldRecordPosition{
+                read_rom_u16(rom, record_offset + 0x46U,
+                             "Genesis mode-2 second field-record X is truncated"),
+                read_rom_u16(rom, record_offset + 0x48U,
+                             "Genesis mode-2 second field-record Y is truncated")},
+            GenesisFieldRecordPosition{
+                read_rom_u16(rom, record_offset + 0x4AU,
+                             "Genesis mode-2 third field-record X is truncated"),
+                read_rom_u16(rom, record_offset + 0x4CU,
+                             "Genesis mode-2 third field-record Y is truncated")}
+        }},
         read_rom_u16(rom, record_offset + 0x0CU,
                      "Genesis mode-2 terrain X bound is truncated"),
         read_rom_u16(rom, record_offset + 0x0EU,

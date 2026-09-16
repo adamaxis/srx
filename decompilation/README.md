@@ -82,21 +82,23 @@ a typed C++ field state with held directional movement and edge-triggered
 `A`/`B`/`C` actions. The field presentation translates the mode-2 data path:
 raw pattern data at `0x166B82`, compressed 4x4 name-word stamps at `0x170102`,
 and the 60x42 primary/secondary tables at `0x16D9A2`/`0x16ED52`. The result is
-a 1920x1344 host RGBA map cropped to the ROM's initial camera viewport. Arrow
-input advances typed world coordinates and the viewport follows when the
-entity reaches its edge; it does not run a 68000 interpreter or depend on
+a 1920x1344 host RGBA map using the ROM's initial top-left camera viewport. ROM
+`0x2B34`'s first three mode-record coordinate pairs are retained in the typed
+resource descriptor, and arrow input advances the first recovered field record
+through that world space; the viewport follows when the entity reaches the
+reviewed projection window. It does not run a 68000 interpreter or depend on
 Genesis VDP state. The native field also decodes the reviewed `0x600E` frame
 descriptor at `0x9540`: `0x3E86`'s packed `0x86846` source is expanded through
 the `0x3EDC` nibble table, arranged in the `0x3EFE` column-major order, and
 converted to a transparent RGBA8 image. The seven descriptors referenced by
 the `0x72B0` state block are extracted, and the native entity advances through
 that frame set while movement is held. Its anchor uses the reviewed `0x5A62`
-projection routine, so the visible frame moves with the typed camera and input
-state. This is a runnable title-to-field slice, not a claim that the whole
-game is playable; recovered entity-record population and field UI remain the
-next integration boundary. The native record currently contains the recovered
-position, projection, and animation fields; its remaining ROM record data is
-still isolated in the transitional session layer.
+projection routine and adapts the VDP's `0x80` sprite origin into host pixels.
+The terrain table at `0x172DAA` is rebuilt into the native status grid and the
+four-corner `0xE7C8` probe rejects blocked movement before the typed record is
+updated. This is a runnable title-to-field slice, not a claim that the whole
+game is playable; expanded entity/session population and field UI remain the
+next integration boundary.
 
 The mode-2 map loader now reads a typed `GenesisMode2FieldResources` view from
 the selected record at `0x172C80` and its setup block at `0x172C50`. That view
@@ -109,12 +111,11 @@ asset boundary rather than duplicating literals in the game loop.
 That descriptor also identifies the terrain rectangle table at `0x172DAA` and
 the direct `0xE7C8` bounds. `decode_genesis_mode2_terrain_map` expands its 101
 sentinel-terminated rectangles into a 64x64 host status grid, retaining the
-original status values for the native movement/collision pass. The grid is
-currently not wired into the shell because its entity collision anchor is not
-yet proven. The renderer-independent `terrain::probe` already ports the
-direct `0xE7C8` bounds/status path and its `0xE8A0/0xE9EE/0xEA36/0xEAD2`
-helpers over this host grid, leaving the final entity-state integration as the
-next boundary.
+original status values for native movement/collision. The shell drives record
+zero from the first coordinate pair copied by `0x2B34`, probes candidate
+positions at the four `0xE8A0` offsets, and commits only unblocked moves. The
+renderer-independent `terrain::probe` ports the direct `0xE7C8` bounds/status
+path and its `0xE8A0/0xE9EE/0xEA36/0xEAD2` helpers over this host grid.
 
 ```powershell
 cmake --build 'C:\Github\shadowrun\decompilation\build-debug-verify'

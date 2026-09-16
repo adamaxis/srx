@@ -1,5 +1,7 @@
 #pragma once
 
+#include "shadowrun/terrain.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -64,9 +66,18 @@ struct NativeEntityFrame {
 // The remaining 0x100-byte record fields stay in the transitional bus-backed
 // session code until their meanings are recovered.
 struct NativeFieldEntity {
+    // ROM 0x2B34 initializes the first three records from the selected field
+    // descriptor. The native shell currently drives record zero; the index is
+    // explicit so later party/entity population can replace that choice.
+    std::uint8_t record_index = 0;
     std::uint16_t world_x_fixed = 0;
     std::uint16_t world_y_fixed = 0;
     std::uint16_t projection_word_08 = 0;
+    // These retain the exact words written by ROM 0x5A62 before the VDP
+    // origin is removed at the native screen boundary.
+    std::uint16_t vdp_screen_x = 0;
+    std::uint16_t vdp_screen_y = 0;
+    // Host pixels after adapting the Genesis sprite origin (0x80, 0x80).
     std::uint16_t screen_x = 0;
     std::uint16_t screen_y = 0;
     bool visible = false;
@@ -147,6 +158,7 @@ public:
     NativeScene scene() const { return scene_; }
     bool has_rom_assets() const { return !rom_scene_pixels_.empty(); }
     bool has_rom_field_map() const { return !rom_field_map_pixels_.empty(); }
+    bool has_rom_terrain() const { return !field_terrain_.statuses.empty(); }
     bool has_rom_entity_frame() const {
         return !rom_entity_frames_.empty();
     }
@@ -161,6 +173,11 @@ public:
             static_cast<std::int16_t>(field_entity_.screen_y));
     }
     bool field_entity_visible() const { return field_entity_.visible; }
+    std::uint8_t field_collision_status() const {
+        return field_collision_.status;
+    }
+    bool field_collision_blocked() const { return field_collision_.blocked; }
+    bool field_move_rejected() const { return move_rejected_; }
     std::size_t field_entity_frame_index() const {
         return field_entity_.frame_index;
     }
@@ -173,6 +190,7 @@ public:
 private:
     void refresh_field_view();
     void refresh_field_entity_projection();
+    void refresh_field_collision();
 
     std::string title_;
     InputState input_{};
@@ -186,6 +204,9 @@ private:
     std::vector<Rgba8> rom_scene_pixels_;
     std::vector<NativeEntityFrame> rom_entity_frames_;
     NativeFieldEntity field_entity_{};
+    terrain::Map field_terrain_{};
+    terrain::ProbeResult field_collision_{};
+    bool move_rejected_ = false;
     std::uint16_t rom_field_map_width_ = 0;
     std::uint16_t rom_field_map_height_ = 0;
     std::vector<Rgba8> rom_field_map_pixels_;
@@ -194,6 +215,10 @@ private:
     std::vector<Rgba8> rom_field_pixels_;
     std::int32_t field_initial_world_x_ = 0;
     std::int32_t field_initial_world_y_ = 0;
+    std::uint16_t field_initial_world_x_fixed_ = 0;
+    std::uint16_t field_initial_world_y_fixed_ = 0;
+    std::int32_t field_initial_camera_x_ = 0;
+    std::int32_t field_initial_camera_y_ = 0;
     std::int32_t field_world_x_ = 0;
     std::int32_t field_world_y_ = 0;
     std::int32_t field_camera_x_ = 0;

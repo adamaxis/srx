@@ -182,8 +182,15 @@ std::uint16_t fixed_world_coordinate(std::int32_t pixels) {
         static_cast<std::uint32_t>(pixels) << 4U);
 }
 
-constexpr std::int32_t kEntityWorldOffsetX = 32;
-constexpr std::int32_t kEntityWorldOffsetY = -16;
+constexpr std::int32_t kGenesisVdpSpriteOrigin = 0x80;
+constexpr std::int32_t kFieldViewportWidth = kScreenWidth;
+constexpr std::int32_t kFieldViewportHeight = 168;
+constexpr std::int32_t kFieldScreenOriginY = 36;
+// ROM 0x5A62 accepts VDP X values strictly below 0x1AE. After removing the
+// 0x80 sprite origin, this is the last host pixel at which the record remains
+// in the direct projection window.
+constexpr std::int32_t kFieldEntityMaxHostX = 0x1AE -
+                                                kGenesisVdpSpriteOrigin - 1;
 
 } // namespace
 
@@ -207,31 +214,46 @@ NativePortShell::NativePortShell(
         graphics::read_genesis_mode2_field_resources(rom);
     auto field_map = graphics::decode_genesis_mode2_field_map(
         rom, field_resources);
+    field_terrain_ = graphics::decode_genesis_mode2_terrain_map(
+        rom, field_resources);
     rom_entity_frames_.reserve(entity_frames.size());
     for (const auto& frame : entity_frames) {
         rom_entity_frames_.push_back({frame.width, frame.height, frame.pixels});
     }
 
-    // The selected mode-2 record carries the initial camera coordinates as
-    // 1/16-pixel values. Keep the native state in pixels while retaining the
-    // fixed-point values in NativeFieldEntity for the reviewed projection.
+    // ROM 0x3084 copies the mode record into FFDDC6 and ROM 0x2B34 copies the
+    // first three coordinate pairs at +0x42..+0x4C into FF0100..FF0304.
+    // Keep the camera and controlled record separate: the mode record's
+    // camera is a top-left world origin, not a viewport center.
     rom_field_map_width_ = field_map.width;
     rom_field_map_height_ = field_map.height;
     rom_field_map_pixels_ = std::move(field_map.pixels);
     field_initial_world_x_ = static_cast<std::int32_t>(
-        field_resources.initial_camera_x_fixed >> 4U);
+        field_resources.initial_field_records[0].world_x_fixed >> 4U);
     field_initial_world_y_ = static_cast<std::int32_t>(
+        field_resources.initial_field_records[0].world_y_fixed >> 4U);
+    field_initial_world_x_fixed_ =
+        field_resources.initial_field_records[0].world_x_fixed;
+    field_initial_world_y_fixed_ =
+        field_resources.initial_field_records[0].world_y_fixed;
+    field_initial_camera_x_ = static_cast<std::int32_t>(
+        field_resources.initial_camera_x_fixed >> 4U);
+    field_initial_camera_y_ = static_cast<std::int32_t>(
         field_resources.initial_camera_y_fixed >> 4U);
     field_world_x_ = field_initial_world_x_;
     field_world_y_ = field_initial_world_y_;
-    field_camera_x_ = field_world_x_;
-    field_camera_y_ = field_world_y_;
-    field_entity_.world_x_fixed = fixed_world_coordinate(
-        field_world_x_ + kEntityWorldOffsetX);
-    field_entity_.world_y_fixed = fixed_world_coordinate(
-        field_world_y_ + kEntityWorldOffsetY);
+    field_camera_x_ = field_initial_camera_x_;
+    field_camera_y_ = field_initial_camera_y_;
+    field_entity_.record_index = 0;
+    field_entity_.world_x_fixed =
+        field_resources.initial_field_records[0].world_x_fixed;
+    field_entity_.world_y_fixed =
+        field_resources.initial_field_records[0].world_y_fixed;
     refresh_field_view();
     refresh_field_entity_projection();
+    marker_x_ = field_entity_screen_x();
+    marker_y_ = field_entity_screen_y();
+    refresh_field_collision();
 }
 
 void NativePortShell::refresh_field_view() {
@@ -239,16 +261,14 @@ void NativePortShell::refresh_field_view() {
         rom_field_map_height_ == 0) {
         return;
     }
-    constexpr std::int32_t kFieldViewportWidth = kScreenWidth;
-    constexpr std::int32_t kFieldViewportHeight = 168;
     const auto max_viewport_x = static_cast<std::int32_t>(
         rom_field_map_width_) - kFieldViewportWidth;
     const auto max_viewport_y = static_cast<std::int32_t>(
         rom_field_map_height_) - kFieldViewportHeight;
     const auto viewport_x = std::clamp(
-        field_camera_x_ - kFieldViewportWidth / 2, 0, max_viewport_x);
+        field_camera_x_, 0, max_viewport_x);
     const auto viewport_y = std::clamp(
-        field_camera_y_ - kFieldViewportHeight / 2, 0, max_viewport_y);
+        field_camera_y_, 0, max_viewport_y);
     rom_field_width_ = static_cast<std::uint16_t>(kFieldViewportWidth);
     rom_field_height_ = static_cast<std::uint16_t>(kFieldViewportHeight);
     rom_field_pixels_.resize(static_cast<std::size_t>(
@@ -282,9 +302,26 @@ void NativePortShell::refresh_field_entity_projection() {
     const auto result = shadowrun::project_entity_field(
         entity, fixed_world_coordinate(field_camera_x_),
         fixed_world_coordinate(field_camera_y_));
-    field_entity_.screen_x = result.screen_x;
-    field_entity_.screen_y = result.screen_y;
+    field_entity_.vdp_screen_x = result.screen_x;
+    field_entity_.vdp_screen_y = result.screen_y;
+    // Genesis sprite coordinates are encoded relative to 0x80. The native
+    // screen writer consumes ordinary top-left-origin pixels, so this is the
+    // explicit hardware-boundary adaptation of ROM 0x5A62's result.
+    field_entity_.screen_x = static_cast<std::uint16_t>(
+        result.screen_x - kGenesisVdpSpriteOrigin);
+    field_entity_.screen_y = static_cast<std::uint16_t>(
+        result.screen_y - kGenesisVdpSpriteOrigin);
     field_entity_.visible = result.visible;
+}
+
+void NativePortShell::refresh_field_collision() {
+    if (field_terrain_.statuses.empty()) {
+        field_collision_ = {};
+        return;
+    }
+    field_collision_ = terrain::probe(
+        field_terrain_, field_entity_.world_x_fixed,
+        field_entity_.world_y_fixed, true);
 }
 
 void NativePortShell::update(const InputState& input) {
@@ -296,21 +333,24 @@ void NativePortShell::update(const InputState& input) {
         // supplied pressed edge, not a held-button poll.
         if (input.was_pressed(Button::Start)) {
             scene_ = NativeScene::Field;
-            marker_x_ = kScreenWidth / 2;
-            marker_y_ = kScreenHeight / 2;
             if (!rom_field_map_pixels_.empty()) {
                 field_world_x_ = field_initial_world_x_;
                 field_world_y_ = field_initial_world_y_;
-                field_camera_x_ = field_world_x_;
-                field_camera_y_ = field_world_y_;
-                field_entity_.world_x_fixed = fixed_world_coordinate(
-                    field_world_x_ + kEntityWorldOffsetX);
-                field_entity_.world_y_fixed = fixed_world_coordinate(
-                    field_world_y_ + kEntityWorldOffsetY);
+                field_camera_x_ = field_initial_camera_x_;
+                field_camera_y_ = field_initial_camera_y_;
+                field_entity_.world_x_fixed = field_initial_world_x_fixed_;
+                field_entity_.world_y_fixed = field_initial_world_y_fixed_;
                 field_entity_.frame_index = 0;
                 field_entity_.animation_timer = 0;
                 refresh_field_view();
                 refresh_field_entity_projection();
+                marker_x_ = field_entity_screen_x();
+                marker_y_ = field_entity_screen_y();
+                move_rejected_ = false;
+                refresh_field_collision();
+            } else {
+                marker_x_ = kScreenWidth / 2;
+                marker_y_ = kScreenHeight / 2;
             }
         }
         ++frame_number_;
@@ -332,12 +372,28 @@ void NativePortShell::update(const InputState& input) {
     if (input.is_held(Button::Right)) {
         delta_x += kSpeed;
     }
-    marker_x_ += delta_x;
-    marker_y_ += delta_y;
+    const auto attempted_movement = delta_x != 0 || delta_y != 0;
     if (input.was_pressed(Button::Start)) {
-        marker_x_ = kScreenWidth / 2;
-        marker_y_ = kScreenHeight / 2;
         action_flash_frames_ = 0;
+        if (!rom_field_map_pixels_.empty()) {
+            field_world_x_ = field_initial_world_x_;
+            field_world_y_ = field_initial_world_y_;
+            field_camera_x_ = field_initial_camera_x_;
+            field_camera_y_ = field_initial_camera_y_;
+            field_entity_.world_x_fixed = field_initial_world_x_fixed_;
+            field_entity_.world_y_fixed = field_initial_world_y_fixed_;
+            field_entity_.frame_index = 0;
+            field_entity_.animation_timer = 0;
+            move_rejected_ = false;
+            refresh_field_view();
+            refresh_field_entity_projection();
+            marker_x_ = field_entity_screen_x();
+            marker_y_ = field_entity_screen_y();
+            refresh_field_collision();
+        } else {
+            marker_x_ = kScreenWidth / 2;
+            marker_y_ = kScreenHeight / 2;
+        }
     }
     if (input.was_pressed(Button::A)) {
         marker_color_ = {0x00, 0xD8, 0xFF, 0xFF};
@@ -352,15 +408,65 @@ void NativePortShell::update(const InputState& input) {
         action_flash_frames_ = 8;
         ++action_count_;
     }
-    marker_x_ = std::clamp(marker_x_, 8, static_cast<std::int32_t>(kScreenWidth) - 16);
-    marker_y_ = std::clamp(marker_y_, 48, static_cast<std::int32_t>(kScreenHeight) - 16);
-    if (!rom_entity_frames_.empty()) {
-        field_entity_.world_x_fixed = static_cast<std::uint16_t>(
+    move_rejected_ = false;
+    if (!rom_field_map_pixels_.empty() &&
+        (delta_x != 0 || delta_y != 0)) {
+        const auto candidate_x = static_cast<std::uint16_t>(
             static_cast<std::int32_t>(field_entity_.world_x_fixed) +
             delta_x * 16);
-        field_entity_.world_y_fixed = static_cast<std::uint16_t>(
+        const auto candidate_y = static_cast<std::uint16_t>(
             static_cast<std::int32_t>(field_entity_.world_y_fixed) +
             delta_y * 16);
+        const auto candidate_collision = terrain::probe(
+            field_terrain_, candidate_x, candidate_y, true);
+        field_collision_ = candidate_collision;
+        if (candidate_collision.blocked) {
+            move_rejected_ = true;
+            delta_x = 0;
+            delta_y = 0;
+        } else {
+            field_entity_.world_x_fixed = candidate_x;
+            field_entity_.world_y_fixed = candidate_y;
+            field_world_x_ = static_cast<std::int32_t>(candidate_x >> 4U);
+            field_world_y_ = static_cast<std::int32_t>(candidate_y >> 4U);
+        }
+    } else if (rom_field_map_pixels_.empty()) {
+        marker_x_ += delta_x;
+        marker_y_ += delta_y;
+        marker_x_ = std::clamp(marker_x_, 8,
+                               static_cast<std::int32_t>(kScreenWidth) - 16);
+        marker_y_ = std::clamp(marker_y_, 48,
+                               static_cast<std::int32_t>(kScreenHeight) - 16);
+    }
+    if (!rom_field_map_pixels_.empty()) {
+        // The direct 0x5A62 result is a VDP coordinate. Keep the decoded map
+        // in the same top-left world space and shift the camera only after
+        // the entity would leave the native viewport.
+        const auto entity_x = static_cast<std::int32_t>(
+            field_entity_.world_x_fixed >> 4U);
+        const auto entity_y = static_cast<std::int32_t>(
+            field_entity_.world_y_fixed >> 4U);
+        const auto screen_x = entity_x - field_camera_x_;
+        const auto screen_y = entity_y - field_camera_y_;
+        if (screen_x < 0) {
+            field_camera_x_ = entity_x;
+        } else if (screen_x > kFieldEntityMaxHostX) {
+            field_camera_x_ = entity_x - kFieldEntityMaxHostX;
+        }
+        if (screen_y < 0) {
+            field_camera_y_ = entity_y;
+        } else if (screen_y > kFieldViewportHeight) {
+            field_camera_y_ = entity_y - kFieldViewportHeight;
+        }
+        refresh_field_view();
+        refresh_field_entity_projection();
+        marker_x_ = field_entity_screen_x();
+        marker_y_ = field_entity_screen_y();
+        if (!attempted_movement) {
+            refresh_field_collision();
+        }
+    }
+    if (!rom_entity_frames_.empty()) {
         if (delta_x != 0 || delta_y != 0) {
             ++field_entity_.animation_timer;
             if (field_entity_.animation_timer >= 4) {
@@ -372,16 +478,6 @@ void NativePortShell::update(const InputState& input) {
             field_entity_.animation_timer = 0;
             field_entity_.frame_index = 0;
         }
-    }
-    if (!rom_field_map_pixels_.empty()) {
-        field_world_x_ += delta_x;
-        field_world_y_ += delta_y;
-        field_camera_x_ = field_world_x_ -
-                          (marker_x_ - static_cast<std::int32_t>(kScreenWidth / 2));
-        field_camera_y_ = field_world_y_ -
-                          (marker_y_ - static_cast<std::int32_t>(kScreenHeight / 2));
-        refresh_field_view();
-        refresh_field_entity_projection();
     }
     if (action_flash_frames_ != 0) {
         --action_flash_frames_;
@@ -429,7 +525,8 @@ void NativePortShell::render(ScreenWriter& screen) const {
             const auto entity_x = static_cast<std::int32_t>(
                 static_cast<std::int16_t>(field_entity_.screen_x));
             const auto entity_y = static_cast<std::int32_t>(
-                static_cast<std::int16_t>(field_entity_.screen_y));
+                static_cast<std::int16_t>(field_entity_.screen_y)) +
+                kFieldScreenOriginY;
             screen.fill_rect(entity_x - 7, entity_y - 2, 14, 4,
                              {0x00, 0x00, 0x00, 0xB0});
             screen.blit_rgba(
@@ -447,7 +544,8 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 : marker_x_;
             const auto action_y = field_entity_.visible
                 ? static_cast<std::int32_t>(
-                      static_cast<std::int16_t>(field_entity_.screen_y))
+                      static_cast<std::int16_t>(field_entity_.screen_y)) +
+                      kFieldScreenOriginY
                 : marker_y_;
             screen.fill_rect(action_x - 4, action_y + 4, 16, 2,
                              {0xFF, 0xF0, 0x90, 0xFF});

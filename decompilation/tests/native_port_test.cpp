@@ -47,6 +47,7 @@ int main() {
     NativePortShell rom_shell("SHADOWRUN", rom);
     assert(rom_shell.has_rom_assets());
     assert(rom_shell.has_rom_field_map());
+    assert(rom_shell.has_rom_terrain());
     assert(rom_shell.has_rom_entity_frame());
     assert(rom_shell.scene() == NativeScene::Title);
     rom_shell.render(screen);
@@ -58,8 +59,13 @@ int main() {
                                 button_mask(Button::Start)});
     assert(rom_shell.scene() == NativeScene::Field);
     assert(rom_shell.field_entity_visible());
-    assert(rom_shell.field_entity_screen_x() == kScreenWidth / 2);
-    assert(rom_shell.field_entity_screen_y() == kScreenHeight / 2);
+    // Mode 2's +0x42/+0x44 pair is copied by ROM 0x2B34 into the first
+    // field record. 0x5A62 writes VDP coordinates with a 0x80 origin; the
+    // native accessor exposes the adapted host pixels.
+    assert(rom_shell.field_entity_screen_x() == 142);
+    assert(rom_shell.field_entity_screen_y() == 168);
+    assert(rom_shell.field_collision_status() == 0);
+    assert(!rom_shell.field_collision_blocked());
     const auto field_start_x = rom_shell.marker_x();
     rom_shell.update(InputState{button_mask(Button::Start), 0});
     assert(rom_shell.scene() == NativeScene::Field);
@@ -68,7 +74,7 @@ int main() {
     rom_shell.update(InputState{
         button_mask(Button::Right) | button_mask(Button::Down), 0});
     assert(rom_shell.marker_x() == field_start_x + 2);
-    assert(rom_shell.marker_y() == kScreenHeight / 2 + 2);
+    assert(rom_shell.marker_y() == 168);
     assert(rom_shell.field_entity_screen_x() == rom_shell.marker_x());
     assert(rom_shell.field_entity_screen_y() == rom_shell.marker_y());
     rom_shell.render(screen);
@@ -77,7 +83,7 @@ int main() {
     for (int frame = 0; frame < 100; ++frame) {
         rom_shell.update(InputState{button_mask(Button::Right), 0});
     }
-    assert(rom_shell.marker_x() == kScreenWidth - 16);
+    assert(rom_shell.marker_x() == 301);
     assert(rom_shell.field_entity_frame_index() != 0);
     assert(rom_shell.field_entity_frame_index() < 7);
     assert(rom_shell.field_world_x() > initial_camera_x);
@@ -95,10 +101,25 @@ int main() {
         }
     }
     assert(background_scrolled);
+    bool rejected = false;
+    auto world_at_rejection = std::int32_t{};
+    for (int frame = 0; frame < 1000; ++frame) {
+        const auto before = rom_shell.field_world_x();
+        rom_shell.update(InputState{button_mask(Button::Right), 0});
+        if (rom_shell.field_move_rejected()) {
+            rejected = true;
+            world_at_rejection = before;
+            assert(rom_shell.field_world_x() == world_at_rejection);
+            assert(rom_shell.field_collision_blocked());
+            break;
+        }
+    }
+    assert(rejected);
+    const auto before_action_frame = rom_shell.frame_number();
     rom_shell.update(InputState{button_mask(Button::A),
                                 button_mask(Button::A)});
     rom_shell.render(screen);
-    assert(rom_shell.frame_number() == 104);
+    assert(rom_shell.frame_number() == before_action_frame + 1);
     assert(screen.presented_frames() == 6);
     return 0;
 }
