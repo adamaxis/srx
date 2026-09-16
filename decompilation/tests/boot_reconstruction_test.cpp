@@ -2330,6 +2330,16 @@ int main() {
     assert(fallback_bus->read16(fallback_record + 0x96U) == 0x0100U);
     assert(fallback_bus->read16(fallback_record + 0x98U) == 0x0200U);
 
+    // 14508 enters the same probe body with the absolute FFFC04 source.
+    fallback_bus->write32(shadowrun::ram::kEntityObjectControlPointer,
+                          target_source);
+    const auto fixed_source_update =
+        shadowrun::run_entity_animation_update_0x14508(
+            *fallback_bus, fallback_record);
+    assert(fixed_source_update.source_record == target_source);
+    assert(fixed_source_update.first_probe_attempted);
+    assert(fixed_source_update.reverse_probe_attempted);
+
     // 14492 selects from the lists prepared by 13874. It preserves an
     // existing primary-list member, does not stamp primary changes with the
     // secondary-list state byte, and marks a changed secondary selection.

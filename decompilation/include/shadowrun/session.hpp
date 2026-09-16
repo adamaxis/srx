@@ -1042,6 +1042,11 @@ EntityAnimation1450EResult run_entity_animation_target_update_0x1450E(
     GenesisBus& bus, GenesisAddress entity_record_address,
     GenesisAddress source_record_address = 0);
 
+// ROM 0x14508 is the shared target-probe body entered with A1 loaded from
+// FFFC04 rather than from the record's +0xA2 link.
+EntityAnimation1450EResult run_entity_animation_update_0x14508(
+    GenesisBus& bus, GenesisAddress entity_record_address);
+
 // ROM 0x14492 selects a linked record from the already-built primary or
 // secondary pointer list, preserving an existing member and avoiding a
 // self-selection update to +0xB5.

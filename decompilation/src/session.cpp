@@ -2481,6 +2481,11 @@ void dispatch_animation_continuation(
             bus, entity_record_address);
         result.continuation_calls += direct.continuation_calls;
         result.unresolved_calls += direct.unresolved_calls;
+    } else if (target == kAnimationContinuation_0x14508) {
+        const auto direct = run_entity_animation_update_0x14508(
+            bus, entity_record_address);
+        result.continuation_calls += direct.continuation_calls;
+        result.unresolved_calls += direct.unresolved_calls;
     } else if (target == kAnimationContinuation_0x142AE) {
         const auto direct = run_entity_animation_continuation_0x142AE(
             bus, entity_record_address);
@@ -3077,6 +3082,16 @@ EntityAnimation1450EResult run_entity_animation_target_update_0x1450E(
         result.unresolved_calls += continuation.unresolved_calls;
     }
     return result;
+}
+
+EntityAnimation1450EResult run_entity_animation_update_0x14508(
+    GenesisBus& bus, GenesisAddress entity_record_address) {
+    // 0x14508 is a two-instruction entry prefix. The following bytes are
+    // exactly the 0x1450E body, so preserve that shared implementation and
+    // supply its absolute A1 source explicitly.
+    return run_entity_animation_target_update_0x1450E(
+        bus, entity_record_address,
+        bus.read32(ram::kEntityObjectControlPointer));
 }
 
 EntityAnimationListSelectionResult select_entity_animation_link_0x14492(
