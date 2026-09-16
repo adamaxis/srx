@@ -124,8 +124,18 @@ public:
     NativeScene scene() const { return scene_; }
     bool has_rom_assets() const { return !rom_scene_pixels_.empty(); }
     bool has_rom_field_map() const { return !rom_field_map_pixels_.empty(); }
+    bool has_rom_entity_frame() const {
+        return !rom_entity_frame_pixels_.empty();
+    }
     std::int32_t marker_x() const { return marker_x_; }
     std::int32_t marker_y() const { return marker_y_; }
+    std::int32_t field_entity_screen_x() const {
+        return field_entity_screen_x_;
+    }
+    std::int32_t field_entity_screen_y() const {
+        return field_entity_screen_y_;
+    }
+    bool field_entity_visible() const { return field_entity_visible_; }
     std::int32_t field_world_x() const { return field_world_x_; }
     std::int32_t field_world_y() const { return field_world_y_; }
     std::int32_t field_camera_x() const { return field_camera_x_; }
@@ -134,6 +144,7 @@ public:
 
 private:
     void refresh_field_view();
+    void refresh_field_entity_projection();
 
     std::string title_;
     InputState input_{};
@@ -145,12 +156,9 @@ private:
     std::uint16_t rom_scene_width_ = 0;
     std::uint16_t rom_scene_height_ = 0;
     std::vector<Rgba8> rom_scene_pixels_;
-    std::uint16_t rom_art_width_ = 0;
-    std::uint16_t rom_art_height_ = 0;
-    std::vector<Rgba8> rom_art_pixels_;
-    std::uint16_t rom_actor_width_ = 0;
-    std::uint16_t rom_actor_height_ = 0;
-    std::vector<Rgba8> rom_actor_pixels_;
+    std::uint16_t rom_entity_frame_width_ = 0;
+    std::uint16_t rom_entity_frame_height_ = 0;
+    std::vector<Rgba8> rom_entity_frame_pixels_;
     std::uint16_t rom_field_map_width_ = 0;
     std::uint16_t rom_field_map_height_ = 0;
     std::vector<Rgba8> rom_field_map_pixels_;
@@ -161,6 +169,9 @@ private:
     std::int32_t field_world_y_ = 0;
     std::int32_t field_camera_x_ = 0;
     std::int32_t field_camera_y_ = 0;
+    std::int32_t field_entity_screen_x_ = 0;
+    std::int32_t field_entity_screen_y_ = 0;
+    bool field_entity_visible_ = false;
     std::uint8_t action_flash_frames_ = 0;
     std::uint32_t action_count_ = 0;
 };

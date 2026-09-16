@@ -1,5 +1,6 @@
 #include "shadowrun/native_port.hpp"
 
+#include "shadowrun/entity_projection.hpp"
 #include "shadowrun/graphics.hpp"
 
 #include <algorithm>
@@ -60,31 +61,6 @@ Glyph glyph_for(char character) {
     case '!': return {0x04, 0x04, 0x04, 0x04, 0x04, 0x00, 0x04};
     default: return {0, 0, 0, 0, 0, 0, 0};
     }
-}
-
-graphics::RgbaImage scale_image(const graphics::RgbaImage& source,
-                                std::uint8_t scale) {
-    if (scale == 0 || source.width == 0 || source.height == 0) {
-        return {};
-    }
-    graphics::RgbaImage scaled{
-        static_cast<std::uint16_t>(source.width * scale),
-        static_cast<std::uint16_t>(source.height * scale),
-        std::vector<Rgba8>(static_cast<std::size_t>(source.width) * scale *
-                           source.height * scale),
-    };
-    for (std::size_t y = 0; y < source.height; ++y) {
-        for (std::size_t x = 0; x < source.width; ++x) {
-            const auto& pixel = source.pixels[y * source.width + x];
-            for (std::size_t dy = 0; dy < scale; ++dy) {
-                for (std::size_t dx = 0; dx < scale; ++dx) {
-                    scaled.pixels[(y * scale + dy) * scaled.width +
-                                  x * scale + dx] = pixel;
-                }
-            }
-        }
-    }
-    return scaled;
 }
 
 } // namespace
@@ -210,26 +186,15 @@ NativePortShell::NativePortShell(
     rom_scene_height_ = scene.height;
     rom_scene_pixels_ = scene.pixels;
 
-    // 0x59C5E/0x5AA96 uses these two reviewed compressed resources after the
-    // title path. They are kept as host RGBA strips here so the native field
-    // scene has ROM-derived visual material without retaining a Genesis VDP
-    // or palette-indexed runtime.
-    const auto palette = graphics::read_genesis_palette(rom, 0xD29D6);
-    const auto art = graphics::decode_tile_atlas(
-        graphics::decode_genesis_resource_stream(rom, 0x1E3F38),
-        0, 4, palette, 4, 0);
-    const auto actor = graphics::decode_tile_atlas(
-        graphics::decode_genesis_resource_stream(rom, 0x1E62BE),
-        0, 2, palette, 2, 0);
+    // ROM 0x600E reaches the 0x8002 frame descriptor at 0x9540 for the first
+    // reviewed entity-state branch. 0x3E86 expands its packed 0x86846 source
+    // before the VBlank queue consumes it; extraction converts that result to
+    // transparent host RGBA so the native scene can draw it directly.
+    const auto entity_frame = graphics::decode_genesis_entity_frame(rom);
     auto field_map = graphics::decode_genesis_mode2_field_map(rom);
-    const auto scaled_art = scale_image(art, 4);
-    const auto scaled_actor = scale_image(actor, 4);
-    rom_art_width_ = scaled_art.width;
-    rom_art_height_ = scaled_art.height;
-    rom_art_pixels_ = scaled_art.pixels;
-    rom_actor_width_ = scaled_actor.width;
-    rom_actor_height_ = scaled_actor.height;
-    rom_actor_pixels_ = scaled_actor.pixels;
+    rom_entity_frame_width_ = entity_frame.width;
+    rom_entity_frame_height_ = entity_frame.height;
+    rom_entity_frame_pixels_ = entity_frame.pixels;
 
     // Mode 2 starts with camera coordinates 0x3400/0x2280 in the selected
     // ROM record. They are 1/16-pixel values, so the native state keeps their
@@ -242,7 +207,20 @@ NativePortShell::NativePortShell(
     field_camera_x_ = field_world_x_;
     field_camera_y_ = field_world_y_;
     refresh_field_view();
+    refresh_field_entity_projection();
 }
+
+namespace {
+
+std::uint16_t fixed_world_coordinate(std::int32_t pixels) {
+    return static_cast<std::uint16_t>(
+        static_cast<std::uint32_t>(pixels) << 4U);
+}
+
+constexpr std::int32_t kEntityWorldOffsetX = 32;
+constexpr std::int32_t kEntityWorldOffsetY = -16;
+
+} // namespace
 
 void NativePortShell::refresh_field_view() {
     if (rom_field_map_pixels_.empty() || rom_field_map_width_ == 0 ||
@@ -273,6 +251,32 @@ void NativePortShell::refresh_field_view() {
     }
 }
 
+void NativePortShell::refresh_field_entity_projection() {
+    if (rom_entity_frame_pixels_.empty() || rom_field_map_pixels_.empty()) {
+        field_entity_visible_ = false;
+        field_entity_screen_x_ = 0;
+        field_entity_screen_y_ = 0;
+        return;
+    }
+
+    // The field cursor is the native control anchor. The small world offsets
+    // place an entity's feet at that anchor; projection itself is the
+    // reviewed ROM 0x5A62 fixed-point transform.
+    const shadowrun::EntityProjectionInput entity{
+        fixed_world_coordinate(field_world_x_ + kEntityWorldOffsetX),
+        fixed_world_coordinate(field_world_y_ + kEntityWorldOffsetY),
+        0,
+    };
+    const auto result = shadowrun::project_entity_field(
+        entity, fixed_world_coordinate(field_camera_x_),
+        fixed_world_coordinate(field_camera_y_));
+    field_entity_screen_x_ = static_cast<std::int32_t>(
+        static_cast<std::int16_t>(result.screen_x));
+    field_entity_screen_y_ = static_cast<std::int32_t>(
+        static_cast<std::int16_t>(result.screen_y));
+    field_entity_visible_ = result.visible;
+}
+
 void NativePortShell::update(const InputState& input) {
     input_ = input;
 
@@ -290,6 +294,7 @@ void NativePortShell::update(const InputState& input) {
                 field_camera_x_ = field_world_x_;
                 field_camera_y_ = field_world_y_;
                 refresh_field_view();
+                refresh_field_entity_projection();
             }
         }
         ++frame_number_;
@@ -341,6 +346,7 @@ void NativePortShell::update(const InputState& input) {
         field_camera_y_ = field_world_y_ -
                           (marker_y_ - static_cast<std::int32_t>(kScreenHeight / 2));
         refresh_field_view();
+        refresh_field_entity_projection();
     }
     if (action_flash_frames_ != 0) {
         --action_flash_frames_;
@@ -383,20 +389,33 @@ void NativePortShell::render(ScreenWriter& screen) const {
         screen.blit_rgba(0, 36, rom_field_width_, rom_field_height_,
                          rom_field_pixels_);
 
-        screen.fill_rect(marker_x_ - 6, marker_y_ + 10, 20, 4,
-                         {0x00, 0x00, 0x00, 0xA0});
-        screen.fill_rect(marker_x_, marker_y_, 8, 12, marker_color_);
-        screen.fill_rect(marker_x_ + 2, marker_y_ - 4, 4, 4,
-                         {0xFF, 0xFF, 0xFF, 0xFF});
+        if (field_entity_visible_ && !rom_entity_frame_pixels_.empty()) {
+            screen.fill_rect(field_entity_screen_x_ - 7,
+                             field_entity_screen_y_ - 2, 14, 4,
+                             {0x00, 0x00, 0x00, 0xB0});
+            screen.blit_rgba(
+                field_entity_screen_x_ - rom_entity_frame_width_ / 2,
+                field_entity_screen_y_ - rom_entity_frame_height_,
+                rom_entity_frame_width_, rom_entity_frame_height_,
+                rom_entity_frame_pixels_);
+        } else {
+            // Keep the input seam visible if a ROM is supplied without the
+            // reviewed entity descriptor.
+            screen.fill_rect(marker_x_, marker_y_, 8, 12, marker_color_);
+        }
         if (action_flash_frames_ != 0) {
-            screen.fill_rect(marker_x_ - 4, marker_y_ + 4, 16, 2,
+            const auto action_x = field_entity_visible_
+                ? field_entity_screen_x_ : marker_x_;
+            const auto action_y = field_entity_visible_
+                ? field_entity_screen_y_ : marker_y_;
+            screen.fill_rect(action_x - 4, action_y + 4, 16, 2,
                              {0xFF, 0xF0, 0x90, 0xFF});
-            screen.fill_rect(marker_x_ + 3, marker_y_ - 8, 2, 24,
+            screen.fill_rect(action_x + 3, action_y - 8, 2, 24,
                              {0xFF, 0xF0, 0x90, 0xFF});
         }
         screen.fill_rect(0, 204, kScreenWidth, 20,
                          {0x02, 0x05, 0x0C, 0xFF});
-        screen.write_text(8, 208, "ARROWS MOVE  Z X C ACTION", 1,
+        screen.write_text(8, 208, "ARROWS MOVE ENTITY  Z X C ACTION", 1,
                           {0xE8, 0xF4, 0xFF, 0xFF});
         screen.write_text(8, 216, "ENTER RESET  ACTIONS", 1,
                           {0x90, 0xB8, 0xC8, 0xFF});

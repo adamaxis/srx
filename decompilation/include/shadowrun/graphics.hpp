@@ -72,6 +72,17 @@ RgbaImage decode_genesis_mode2_field_map(
     std::size_t tilemap_height = 42,
     std::size_t palette_offset = 0xD29D6);
 
+// Decode the reviewed 0x8002 entity frame descriptor at ROM 0x9540. ROM
+// 0x3E86 expands the packed source through the nibble table at 0x3EDC and
+// writes the result as column-major Genesis tile data. This helper performs
+// those extraction steps once and returns an ordinary transparent RGBA image;
+// the native renderer never needs the packed source or a palette index.
+RgbaImage decode_genesis_entity_frame(
+    const std::vector<std::uint8_t>& rom,
+    std::size_t descriptor_offset = 0x9540,
+    std::size_t nibble_table_offset = 0x3EDC,
+    std::size_t palette_offset = 0x172D8A);
+
 // Reconstruct the startup scene assembled by ROM 0x1D00/0x1D58. The source
 // offsets and dimensions are the operands of that path, not guessed graphic
 // locations: 0x1F310E is the compressed pattern stream, 0x67DF6 is its

@@ -358,6 +358,90 @@ RgbaImage decode_genesis_mode2_field_map(
     return image;
 }
 
+RgbaImage decode_genesis_entity_frame(
+    const std::vector<std::uint8_t>& rom,
+    std::size_t descriptor_offset,
+    std::size_t nibble_table_offset,
+    std::size_t palette_offset) {
+    require_bytes(rom.size() - std::min(descriptor_offset, rom.size()), 0x10U,
+                  "Genesis entity frame descriptor is truncated");
+    const auto read16 = [&](std::size_t offset, const char* what) {
+        require_bytes(rom.size() - std::min(offset, rom.size()), 2U, what);
+        return static_cast<std::uint16_t>(
+            (static_cast<std::uint16_t>(rom[offset]) << 8U) |
+            rom[offset + 1U]);
+    };
+    const auto read32 = [&](std::size_t offset, const char* what) {
+        require_bytes(rom.size() - std::min(offset, rom.size()), 4U, what);
+        return (static_cast<std::uint32_t>(rom[offset]) << 24U) |
+               (static_cast<std::uint32_t>(rom[offset + 1U]) << 16U) |
+               (static_cast<std::uint32_t>(rom[offset + 2U]) << 8U) |
+               static_cast<std::uint32_t>(rom[offset + 3U]);
+    };
+
+    if (read16(descriptor_offset, "Genesis entity frame marker is truncated") !=
+        0x8002U) {
+        throw std::runtime_error(
+            "Genesis entity descriptor is not an 0x8002 frame");
+    }
+    const auto source = static_cast<std::size_t>(read32(
+        descriptor_offset + 2U, "Genesis entity frame source is truncated"));
+    const auto length = static_cast<std::size_t>(read16(
+        descriptor_offset + 6U, "Genesis entity frame length is truncated"));
+    const auto dimensions = read16(
+        descriptor_offset + 0x0CU,
+        "Genesis entity frame dimensions are truncated");
+    const auto columns = static_cast<std::size_t>((dimensions >> 2U) + 1U);
+    const auto rows = static_cast<std::size_t>((dimensions & 3U) + 1U);
+    const auto expected_length = columns * rows * 32U;
+    if (length != expected_length) {
+        throw std::runtime_error(
+            "Genesis entity frame length does not match its dimensions");
+    }
+    if (source > rom.size() || length > rom.size() - source) {
+        throw std::out_of_range("Genesis entity frame source is truncated");
+    }
+    require_bytes(rom.size() - std::min(nibble_table_offset, rom.size()),
+                  16U, "Genesis entity nibble table is truncated");
+
+    const auto palette = read_genesis_palette(rom, palette_offset);
+    std::vector<std::uint8_t> decoded(length);
+    for (std::size_t index = 0; index < length; ++index) {
+        const auto packed = rom[source + index];
+        const auto low = rom[nibble_table_offset + (packed & 0x0FU)];
+        const auto high = rom[nibble_table_offset + (packed >> 4U)];
+        decoded[index] = static_cast<std::uint8_t>(low | (high << 4U));
+    }
+
+    RgbaImage image{
+        static_cast<std::uint16_t>(columns * 8U),
+        static_cast<std::uint16_t>(rows * 8U),
+        std::vector<native::Rgba8>(columns * rows * 64U,
+                                   native::Rgba8{0, 0, 0, 0}),
+    };
+    // 0x3EFE consumes the generated tile buffer column first, then row.
+    for (std::size_t column = 0; column < columns; ++column) {
+        for (std::size_t row = 0; row < rows; ++row) {
+            const auto tile_index = column * rows + row;
+            const auto tile = decode_genesis_tile(
+                decoded.data() + tile_index * 32U, 32U);
+            for (std::size_t pixel_y = 0; pixel_y < 8U; ++pixel_y) {
+                for (std::size_t pixel_x = 0; pixel_x < 8U; ++pixel_x) {
+                    const auto color_index =
+                        tile.pixels[pixel_y * 8U + pixel_x];
+                    auto color = palette[color_index];
+                    if (color_index == 0) {
+                        color.alpha = 0;
+                    }
+                    image.pixels[(row * 8U + pixel_y) * image.width +
+                                 column * 8U + pixel_x] = color;
+                }
+            }
+        }
+    }
+    return image;
+}
+
 RgbaImage decode_genesis_startup_screen(
     const std::vector<std::uint8_t>& rom,
     std::size_t pattern_stream_offset,

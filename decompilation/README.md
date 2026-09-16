@@ -84,9 +84,15 @@ raw pattern data at `0x166B82`, compressed 4x4 name-word stamps at `0x170102`,
 and the 60x42 primary/secondary tables at `0x16D9A2`/`0x16ED52`. The result is
 a 1920x1344 host RGBA map cropped to the ROM's initial camera viewport. Arrow
 input advances typed world coordinates and the viewport follows when the
-marker reaches its edge; it does not run a 68000 interpreter or depend on
-Genesis VDP state. This is a runnable title-to-field slice, while
-entity/UI presentation remains the next port boundary.
+entity reaches its edge; it does not run a 68000 interpreter or depend on
+Genesis VDP state. The native field also decodes the reviewed `0x600E` frame
+descriptor at `0x9540`: `0x3E86`'s packed `0x86846` source is expanded through
+the `0x3EDC` nibble table, arranged in the `0x3EFE` column-major order, and
+converted to a transparent 24x24 RGBA8 image. The entity anchor uses the
+reviewed `0x5A62` projection routine, so the visible frame moves with the
+typed camera and input state. This is a runnable title-to-field slice, not a
+claim that the whole game is playable; recovered entity-record population and
+field UI remain the next integration boundary.
 
 ```powershell
 cmake --build 'C:\Github\shadowrun\decompilation\build-debug-verify'
@@ -118,6 +124,9 @@ also be exported directly:
 & 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_graphics_extract.exe' `
   'C:\Github\shadowrun\decompilation\input\shadowrun_genesis_us.bin' `
   'C:\Github\shadowrun\decompilation\build-debug-verify\native_field_scene.bmp' --native-field
+& 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_graphics_extract.exe' `
+  'C:\Github\shadowrun\decompilation\input\shadowrun_genesis_us.bin' `
+  'C:\Github\shadowrun\decompilation\build-debug-verify\entity_frame.bmp' --entity-frame
 ```
 
 The dependency-free graphics converter accepts offsets recovered from the ROM

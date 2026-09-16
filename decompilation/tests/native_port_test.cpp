@@ -47,6 +47,7 @@ int main() {
     NativePortShell rom_shell("SHADOWRUN", rom);
     assert(rom_shell.has_rom_assets());
     assert(rom_shell.has_rom_field_map());
+    assert(rom_shell.has_rom_entity_frame());
     assert(rom_shell.scene() == NativeScene::Title);
     rom_shell.render(screen);
     assert(screen.presented_frames() == 3);
@@ -56,6 +57,9 @@ int main() {
     rom_shell.update(InputState{button_mask(Button::Start),
                                 button_mask(Button::Start)});
     assert(rom_shell.scene() == NativeScene::Field);
+    assert(rom_shell.field_entity_visible());
+    assert(rom_shell.field_entity_screen_x() == kScreenWidth / 2);
+    assert(rom_shell.field_entity_screen_y() == kScreenHeight / 2);
     const auto field_start_x = rom_shell.marker_x();
     rom_shell.update(InputState{button_mask(Button::Start), 0});
     assert(rom_shell.scene() == NativeScene::Field);
@@ -65,6 +69,8 @@ int main() {
         button_mask(Button::Right) | button_mask(Button::Down), 0});
     assert(rom_shell.marker_x() == field_start_x + 2);
     assert(rom_shell.marker_y() == kScreenHeight / 2 + 2);
+    assert(rom_shell.field_entity_screen_x() == rom_shell.marker_x());
+    assert(rom_shell.field_entity_screen_y() == rom_shell.marker_y());
     rom_shell.render(screen);
     const auto field_before_scroll = screen.pixels();
     const auto initial_camera_x = rom_shell.field_camera_x();

@@ -85,5 +85,17 @@ int main() {
         }
     }
     assert(varied);
+
+    const auto entity_frame = decode_genesis_entity_frame(rom);
+    assert(entity_frame.width == 24 && entity_frame.height == 24);
+    assert(entity_frame.pixels.size() ==
+           static_cast<std::size_t>(entity_frame.width) * entity_frame.height);
+    bool entity_has_transparency = false;
+    bool entity_has_color = false;
+    for (const auto& pixel : entity_frame.pixels) {
+        entity_has_transparency |= pixel.alpha == 0;
+        entity_has_color |= pixel.alpha != 0;
+    }
+    assert(entity_has_transparency && entity_has_color);
     return 0;
 }

@@ -110,10 +110,13 @@ viewport through `ScreenWriter`. Directional input now advances typed world
 coordinates and follows the marker at the viewport edge, so the field scrolls
 over the recovered map instead of moving only a screen-space placeholder.
 
-This is now a runnable native title-to-field slice with controls and actual
-ROM-derived field graphics, not a claim that the whole game is playable. The
-next port slices should connect recovered entity records and field UI to the
-typed session/VBlank boundaries.
+This is now a runnable native title-to-field slice with controls, actual
+ROM-derived field graphics, and a ROM-derived entity frame rendered through
+the native screen boundary. The frame follows the typed field camera through
+the reviewed `0x5A62` projection; `0x600E`/`0x3E86` data is converted to RGBA8
+at load time. This is not a claim that the whole game is playable. The next
+port slices should replace the native input-anchor scaffold with recovered
+entity records and connect field UI to the typed session/VBlank boundaries.
 
 ## Build and source discipline
 
