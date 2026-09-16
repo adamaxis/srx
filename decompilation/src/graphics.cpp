@@ -241,6 +241,17 @@ GenesisMode2FieldResources read_genesis_mode2_field_resources(
                      "Genesis mode-2 camera X is truncated"),
         read_rom_u16(rom, record_offset + 2U,
                      "Genesis mode-2 camera Y is truncated"),
+        read_rom_u16(rom, record_offset + 0x0CU,
+                     "Genesis mode-2 terrain X bound is truncated"),
+        read_rom_u16(rom, record_offset + 0x0EU,
+                     "Genesis mode-2 terrain Y bound is truncated"),
+        read_rom_u16(rom, record_offset + 0x10U,
+                     "Genesis mode-2 terrain X minimum is truncated"),
+        read_rom_u16(rom, record_offset + 0x12U,
+                     "Genesis mode-2 terrain Y minimum is truncated"),
+        static_cast<std::size_t>(read_rom_u32(
+            rom, record_offset + 0x26U,
+            "Genesis mode-2 terrain record pointer is truncated")),
         setup_block,
         static_cast<std::size_t>(read_rom_u32(
             rom, setup_block + 4U,
@@ -259,6 +270,71 @@ GenesisMode2FieldResources read_genesis_mode2_field_resources(
         tilemap_width,
         tilemap_entries / tilemap_width,
     };
+}
+
+GenesisTerrainMap decode_genesis_mode2_terrain_map(
+    const std::vector<std::uint8_t>& rom,
+    const GenesisMode2FieldResources& resources) {
+    GenesisTerrainMap terrain{
+        0,
+        std::vector<std::uint8_t>(GenesisTerrainMap::kWidth *
+                                      GenesisTerrainMap::kHeight,
+                                  0),
+    };
+    auto cursor = resources.terrain_record_offset;
+    for (;;) {
+        const auto x_start = read_rom_u16(
+            rom, cursor, "Genesis mode-2 terrain record is truncated");
+        if ((x_start & 0x8000U) != 0) {
+            return terrain;
+        }
+        const auto x_end = read_rom_u16(
+            rom, cursor + 2U,
+            "Genesis mode-2 terrain X range is truncated");
+        const auto y_start = read_rom_u16(
+            rom, cursor + 4U,
+            "Genesis mode-2 terrain Y range is truncated");
+        const auto y_end = read_rom_u16(
+            rom, cursor + 6U,
+            "Genesis mode-2 terrain Y range is truncated");
+        const auto status = read_rom_u16(
+            rom, cursor + 8U,
+            "Genesis mode-2 terrain status is truncated");
+        if (x_end < x_start || y_end < (y_start & 0xFFE0U)) {
+            throw std::runtime_error(
+                "Genesis mode-2 terrain rectangle is inverted");
+        }
+
+        auto y_value = static_cast<std::uint32_t>(y_start & 0xFFE0U);
+        for (;;) {
+            const auto row = y_value / 0x20U;
+            if (row >= GenesisTerrainMap::kHeight) {
+                throw std::out_of_range(
+                    "Genesis mode-2 terrain row is outside the grid");
+            }
+            auto x_value = static_cast<std::uint32_t>(x_start);
+            auto column = static_cast<std::size_t>(x_start >> 5U);
+            for (;;) {
+                if (column >= GenesisTerrainMap::kWidth) {
+                    throw std::out_of_range(
+                        "Genesis mode-2 terrain column is outside the grid");
+                }
+                terrain.statuses[row * GenesisTerrainMap::kWidth + column] =
+                    static_cast<std::uint8_t>(status);
+                if (x_value + 0x20U > x_end) {
+                    break;
+                }
+                x_value += 0x20U;
+                ++column;
+            }
+            if (y_value + 0x20U > y_end) {
+                break;
+            }
+            y_value += 0x20U;
+        }
+        ++terrain.region_count;
+        cursor += 10U;
+    }
 }
 
 RgbaImage decode_tile_atlas(

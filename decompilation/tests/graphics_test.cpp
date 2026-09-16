@@ -74,6 +74,11 @@ int main() {
     assert(field_resources.record_offset == 0x172C80);
     assert(field_resources.initial_camera_x_fixed == 0x3400);
     assert(field_resources.initial_camera_y_fixed == 0x2280);
+    assert(field_resources.terrain_x_exclusive_upper == 0x0754);
+    assert(field_resources.terrain_y_exclusive_upper == 0x0518);
+    assert(field_resources.terrain_x_inclusive_lower == 0x002C);
+    assert(field_resources.terrain_y_inclusive_lower == 0x002C);
+    assert(field_resources.terrain_record_offset == 0x172DAA);
     assert(field_resources.setup_block_offset == 0x172C50);
     assert(field_resources.palette_offset == 0x172D8A);
     assert(field_resources.pattern_data_offset == 0x166B82);
@@ -83,6 +88,14 @@ int main() {
     assert(field_resources.secondary_tilemap_offset == 0x16ED52);
     assert(field_resources.tilemap_width == 60);
     assert(field_resources.tilemap_height == 42);
+    const auto terrain = decode_genesis_mode2_terrain_map(rom, field_resources);
+    assert(terrain.region_count == 101);
+    assert(terrain.statuses.size() ==
+           GenesisTerrainMap::kWidth * GenesisTerrainMap::kHeight);
+    assert(terrain.statuses[(552U / 32U) * GenesisTerrainMap::kWidth +
+                             (832U / 32U)] == 0);
+    assert(terrain.statuses[(536U / 32U) * GenesisTerrainMap::kWidth +
+                             (864U / 32U)] == 0x7FU);
     const auto field_map = decode_genesis_mode2_field_map(
         rom, field_resources);
     assert(field_map.width == 1920 && field_map.height == 1344);

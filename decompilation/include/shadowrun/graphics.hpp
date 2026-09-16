@@ -29,6 +29,11 @@ struct GenesisMode2FieldResources {
     std::size_t record_offset = 0;
     std::uint16_t initial_camera_x_fixed = 0;
     std::uint16_t initial_camera_y_fixed = 0;
+    std::uint16_t terrain_x_exclusive_upper = 0;
+    std::uint16_t terrain_y_exclusive_upper = 0;
+    std::uint16_t terrain_x_inclusive_lower = 0;
+    std::uint16_t terrain_y_inclusive_lower = 0;
+    std::size_t terrain_record_offset = 0;
     std::size_t setup_block_offset = 0;
     std::size_t palette_offset = 0;
     std::size_t pattern_data_offset = 0;
@@ -38,6 +43,17 @@ struct GenesisMode2FieldResources {
     std::size_t secondary_tilemap_offset = 0;
     std::size_t tilemap_width = 0;
     std::size_t tilemap_height = 0;
+};
+
+// Native copy of the 64x64 byte grid rebuilt by ROM 0xEE10. A zero status is
+// empty terrain; nonzero values retain the ROM status byte for later typed
+// collision/reaction rules rather than collapsing all terrain into a bool.
+struct GenesisTerrainMap {
+    static constexpr std::size_t kWidth = 64;
+    static constexpr std::size_t kHeight = 64;
+
+    std::size_t region_count = 0;
+    std::vector<std::uint8_t> statuses;
 };
 
 // Genesis CRAM stores three 3-bit channels in the spaced bit positions of a
@@ -72,6 +88,12 @@ std::array<native::Rgba8, 64> read_genesis_palette_set(
 GenesisMode2FieldResources read_genesis_mode2_field_resources(
     const std::vector<std::uint8_t>& rom,
     std::size_t record_offset = 0x172C80);
+
+// Expand the sentinel-terminated 10-byte terrain rectangles selected by the
+// mode-2 record into the host grid used by ROM 0xE8A0/0xEE10.
+GenesisTerrainMap decode_genesis_mode2_terrain_map(
+    const std::vector<std::uint8_t>& rom,
+    const GenesisMode2FieldResources& resources);
 
 RgbaImage decode_tile_atlas(
     const std::vector<std::uint8_t>& rom,

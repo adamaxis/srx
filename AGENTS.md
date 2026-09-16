@@ -113,6 +113,15 @@ RGBA map and the native shell presents a cropped viewport through
 follows the marker at the viewport edge, so the field scrolls over the
 recovered map instead of moving only a screen-space placeholder.
 
+The same mode-2 descriptor exposes the terrain table at `0x172DAA` and the
+direct bounds words used by ROM `0xE7C8`. `decode_genesis_mode2_terrain_map`
+rebuilds its 101 sentinel-terminated rectangles into a 64x64 host status
+grid, retaining each status byte for the forthcoming native movement and
+collision pass. It is intentionally extracted but not yet applied to the
+shell's movement until the entity's original record population and collision
+anchor are connected; the current visual anchor is still a presentation
+scaffold.
+
 This is now a runnable native title-to-field slice with controls, actual
 ROM-derived field graphics, and a ROM-derived entity frame rendered through
 the native screen boundary. The seven-frame set follows the typed field camera

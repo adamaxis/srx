@@ -106,6 +106,13 @@ source and length, `0x170102` metatile stream, the two map pointers, the
 this descriptor for loading and reset, keeping ROM layout knowledge at the
 asset boundary rather than duplicating literals in the game loop.
 
+That descriptor also identifies the terrain rectangle table at `0x172DAA` and
+the direct `0xE7C8` bounds. `decode_genesis_mode2_terrain_map` expands its 101
+sentinel-terminated rectangles into a 64x64 host status grid, retaining the
+original status values for the native movement/collision pass. The grid is
+currently extraction data: movement remains presentation-scaffolded until the
+entity record's collision anchor is recovered and connected.
+
 ```powershell
 cmake --build 'C:\Github\shadowrun\decompilation\build-debug-verify'
 & 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_native.exe'
