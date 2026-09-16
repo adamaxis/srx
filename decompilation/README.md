@@ -126,7 +126,9 @@ Extraction preserves those item and adjacent phase bytes, and converts the
 50 fixed `0x30`-byte records at `0xD4540` into host item names/categories.
 The native command screen can therefore browse the actual initial inventory
 slots from the `.srna` pack without reading the ROM. The deeper equip/use/
-discard effects in the `0x12168` handler remain separate work.
+discard effects in the `0x12168` handler remain separate work; its reviewed
+armor toggle (`+0x76` and the selected `+0x6E` byte for item codes `0x2C+`)
+is now carried into native typed state.
 
 The Windows frontend preserves the reviewed controller boundary from ROM
 0x195C: the sampled word uses its low byte for held state and its high byte for

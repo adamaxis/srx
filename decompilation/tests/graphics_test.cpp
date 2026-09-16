@@ -94,6 +94,7 @@ int main() {
             std::array<std::uint8_t, 8>{2, 0x2C, 0x0E, 0x10, 0, 0, 0, 0}));
     assert((entity_template.inventory_phase_bytes ==
             std::array<std::uint8_t, 8>{0, 0, 6, 6, 0, 0, 0, 0}));
+    assert(entity_template.equipped_armor_index == 1);
     const auto inventory_catalog = read_genesis_inventory_catalog(rom);
     assert(inventory_catalog.size() == 50);
     assert(inventory_catalog[1].code == 2);
@@ -255,6 +256,8 @@ int main() {
            native_assets.entity_template.inventory_item_codes);
     assert(loaded_assets.entity_template.inventory_phase_bytes ==
            native_assets.entity_template.inventory_phase_bytes);
+    assert(loaded_assets.entity_template.equipped_armor_index ==
+           native_assets.entity_template.equipped_armor_index);
     assert(loaded_assets.inventory_items.size() ==
            native_assets.inventory_items.size());
     assert(loaded_assets.inventory_items[1].name ==

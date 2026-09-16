@@ -140,6 +140,18 @@ int main() {
     assert(rom_shell.field_inventory_item_code(0) == 2);
     assert(rom_shell.field_inventory_item_code(1) == 0x2C);
     assert(rom_shell.field_inventory_item_code(2) == 0x0E);
+    assert(rom_shell.field_equipped_armor_index() == 1);
+    for (int step = 0; step < 3; ++step) {
+        rom_shell.update(InputState{button_mask(Button::Up),
+                                    button_mask(Button::Up)});
+    }
+    assert(rom_shell.field_menu_row() == 0);
+    rom_shell.update(InputState{button_mask(Button::A),
+                                button_mask(Button::A)});
+    assert(rom_shell.field_equipped_armor_index() == 0);
+    rom_shell.update(InputState{button_mask(Button::A),
+                                button_mask(Button::A)});
+    assert(rom_shell.field_equipped_armor_index() == 1);
     rom_shell.render(screen);
 
     // C follows the same 0x391A record-selection path from the command

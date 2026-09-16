@@ -180,7 +180,7 @@ native::NativeImage read_native_image(std::istream& input) {
 
 GenesisFieldEntityTemplate read_genesis_field_entity_template(
     const std::vector<std::uint8_t>& rom, std::size_t record_offset) {
-    if (record_offset > rom.size() || rom.size() - record_offset < 0x76U) {
+    if (record_offset > rom.size() || rom.size() - record_offset < 0x77U) {
         throw std::out_of_range(
             "Genesis field entity template inventory state is truncated");
     }
@@ -225,6 +225,7 @@ GenesisFieldEntityTemplate read_genesis_field_entity_template(
         result.inventory_phase_bytes[index] =
             rom[record_offset + 0x6EU + index];
     }
+    result.equipped_armor_index = rom[record_offset + 0x76U];
     return result;
 }
 
@@ -297,6 +298,8 @@ native::NativePortAssets decode_genesis_native_assets(
         entity_template.inventory_item_codes;
     assets.entity_template.inventory_phase_bytes =
         entity_template.inventory_phase_bytes;
+    assets.entity_template.equipped_armor_index =
+        entity_template.equipped_armor_index;
     assets.inventory_items = read_genesis_inventory_catalog(rom);
 
     for (std::size_t index = 0;
@@ -384,6 +387,7 @@ void write_native_asset_pack(const std::string& path,
     for (const auto phase : entity.inventory_phase_bytes) {
         output.put(static_cast<char>(phase));
     }
+    output.put(static_cast<char>(entity.equipped_armor_index));
     write_u16(output, static_cast<std::uint16_t>(assets.inventory_items.size()));
     for (const auto& item : assets.inventory_items) {
         output.put(static_cast<char>(item.code));
@@ -502,6 +506,8 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
         for (auto& phase : entity.inventory_phase_bytes) {
             phase = read_pack_u8(input, "native inventory state is truncated");
         }
+        entity.equipped_armor_index = read_pack_u8(
+            input, "native inventory state is truncated");
         const auto item_count = static_cast<std::size_t>(read_pack_u16(
             input, "native inventory catalog count is truncated"));
         if (item_count > assets.inventory_items.size()) {

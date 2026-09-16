@@ -251,6 +251,8 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     field_camera_y_ = field_initial_camera_y_;
     field_entity_ = std::move(assets.entity_template);
     field_entity_.record_index = 0;
+    field_initial_equipped_armor_ = field_entity_.equipped_armor_index;
+    field_equipped_armor_by_record_.fill(field_initial_equipped_armor_);
     field_entity_.world_x_fixed =
         assets.initial_field_records[0].world_x_fixed;
     field_entity_.world_y_fixed =
@@ -278,6 +280,8 @@ void NativePortShell::reset_field_state() {
     field_entity_.record_index = 0;
     field_entity_.world_x_fixed = field_initial_world_x_fixed_;
     field_entity_.world_y_fixed = field_initial_world_y_fixed_;
+    field_equipped_armor_by_record_.fill(field_initial_equipped_armor_);
+    field_entity_.equipped_armor_index = field_initial_equipped_armor_;
     field_entity_.frame_index = 0;
     field_entity_.state_selector = 0;
     field_entity_.state_index = 0;
@@ -301,10 +305,14 @@ void NativePortShell::activate_field_record(std::size_t record_index) {
     // the native party state before selecting the next proven slot.
     field_records_[active_field_record_] = {
         field_entity_.world_x_fixed, field_entity_.world_y_fixed};
+    field_equipped_armor_by_record_[active_field_record_] =
+        field_entity_.equipped_armor_index;
     active_field_record_ = record_index;
     field_entity_.record_index = static_cast<std::uint8_t>(record_index);
     field_entity_.world_x_fixed = field_records_[record_index].world_x_fixed;
     field_entity_.world_y_fixed = field_records_[record_index].world_y_fixed;
+    field_entity_.equipped_armor_index =
+        field_equipped_armor_by_record_[record_index];
     field_world_x_ = static_cast<std::int32_t>(
         field_entity_.world_x_fixed >> 4U);
     field_world_y_ = static_cast<std::int32_t>(
@@ -473,6 +481,12 @@ void NativePortShell::update_field_menu(const InputState& input) {
     if (input.was_pressed(Button::A) || input.was_pressed(Button::B)) {
         field_last_command_selection_ = field_menu_selection_;
         field_last_command_row_ = field_menu_row_;
+        if (field_menu_selection_ < 2U) {
+            // ROM 0x12148 supplies the item byte to 0x12168. The armor branch
+            // at 0x1219C/0x121B0 toggles record +0x76 and stores the
+            // one-based armor ordinal in the selected slot's +0x6E byte.
+            apply_field_inventory_action();
+        }
         field_command_message_frames_ = 30;
         ++field_command_count_;
     }
@@ -497,6 +511,32 @@ void NativePortShell::update_field_menu(const InputState& input) {
     if (field_command_message_frames_ != 0) {
         --field_command_message_frames_;
     }
+}
+
+void NativePortShell::apply_field_inventory_action() {
+    const auto slot = field_menu_row_ * 2U + field_menu_selection_;
+    if (slot >= field_entity_.inventory_item_codes.size()) {
+        return;
+    }
+    const auto item_code = field_entity_.inventory_item_codes[slot];
+    // ROM 0x1219C enters this branch for armor item codes 0x2C and above;
+    // 0x121B4 stores code-0x2B in +0x76 and the selected +0x6E byte. A second
+    // activation clears both, matching the ROM toggle without pretending the
+    // unrelated weapon/medical handlers are already ported.
+    if (item_code < 0x2CU) {
+        return;
+    }
+    if (field_entity_.equipped_armor_index != 0U) {
+        field_entity_.equipped_armor_index = 0;
+        field_entity_.inventory_phase_bytes[slot] = 0;
+    } else {
+        field_entity_.equipped_armor_index =
+            static_cast<std::uint8_t>(item_code - 0x2BU);
+        field_entity_.inventory_phase_bytes[slot] =
+            field_entity_.equipped_armor_index;
+    }
+    field_equipped_armor_by_record_[active_field_record_] =
+        field_entity_.equipped_armor_index;
 }
 
 void NativePortShell::update(const InputState& input) {
@@ -754,6 +794,11 @@ void NativePortShell::render(ScreenWriter& screen) const {
                         code <= inventory_items_.size() &&
                         !inventory_items_[code - 1U].name.empty()) {
                         item_name = inventory_items_[code - 1U].name;
+                    }
+                    if (code >= 0x2CU &&
+                        field_entity_.equipped_armor_index ==
+                            static_cast<std::uint8_t>(code - 0x2BU)) {
+                        item_name += " [ON]";
                     }
                     screen.write_text(
                         162, y,

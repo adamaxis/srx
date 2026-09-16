@@ -55,6 +55,7 @@ struct GenesisFieldEntityTemplate {
         inventory_item_codes{};
     std::array<std::uint8_t, native::kNativeInventorySlotCount>
         inventory_phase_bytes{};
+    std::uint8_t equipped_armor_index = 0;
 };
 
 // Typed view of the selected mode-2 record at ROM 0x172C80. The names here

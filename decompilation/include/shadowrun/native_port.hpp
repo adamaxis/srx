@@ -148,6 +148,9 @@ struct NativeFieldEntity {
     // the native inventory view does not reinterpret them as quantities.
     std::array<std::uint8_t, kNativeInventorySlotCount>
         inventory_phase_bytes{};
+    // ROM 0x12168 uses record +0x76 as the one-based equipped armor index
+    // when an item code is at or above 0x2C.
+    std::uint8_t equipped_armor_index = 0;
 };
 
 // Host-owned data required by the current native title-to-field slice. This
@@ -259,6 +262,9 @@ public:
             ? field_entity_.inventory_item_codes[slot]
             : 0;
     }
+    std::uint8_t field_equipped_armor_index() const {
+        return field_entity_.equipped_armor_index;
+    }
     std::int32_t marker_x() const { return marker_x_; }
     std::int32_t marker_y() const { return marker_y_; }
     std::int32_t field_entity_screen_x() const {
@@ -297,6 +303,7 @@ private:
                                        std::int32_t delta_y);
     void open_field_menu();
     void update_field_menu(const InputState& input);
+    void apply_field_inventory_action();
 
     std::string title_;
     InputState input_{};
@@ -313,6 +320,8 @@ private:
     NativeFieldEntity field_entity_{};
     std::array<NativeInventoryItem, kNativeInventoryItemCount>
         inventory_items_{};
+    std::array<std::uint8_t, 3> field_equipped_armor_by_record_{};
+    std::uint8_t field_initial_equipped_armor_ = 0;
     std::array<NativeFieldRecordPosition, 3> field_initial_records_{};
     std::array<NativeFieldRecordPosition, 3> field_records_{};
     std::size_t active_field_record_ = 0;

@@ -176,10 +176,10 @@ adjacent phase bytes, with the 50-name item catalog extracted from `0xD4540`.
 This is a direct behavior port, not a new animation rule. The native C runner
 selection is a recovered field-loop action. Field A/B now enter the reviewed
 shared command dispatch boundary and retain the selected command as typed
-state; Inventory now renders the ROM-selected slots and names, while its
-deeper equip/use/discard effects and the other command subsystems remain to
-be ported from their ROM tables rather than being represented by placeholder
-flashes.
+state; Inventory now renders the ROM-selected slots and names and ports the
+reviewed armor toggle at `0x1219C`/`0x121B0`. Its remaining weapon/medical/
+discard effects and the other command subsystems remain to be ported from
+their ROM tables rather than being represented by placeholder flashes.
 
 ## Build and source discipline
 
