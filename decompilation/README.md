@@ -78,18 +78,22 @@ needed by the native executable.
 
 The asset-backed native shell now exposes a native scene transition as well. It starts
 on the reconstructed title scene, consumes the pressed `Start` edge, and enters
-a typed C++ field state with held directional movement and edge-triggered
-`A`/`B`/`C` actions. The field presentation translates the mode-2 data path:
+a typed C++ field state with held directional movement. The field presentation
+translates the mode-2 data path:
 raw pattern data at `0x166B82`, compressed 4x4 name-word stamps at `0x170102`,
 and the 60x42 primary/secondary tables at `0x16D9A2`/`0x16ED52`. The result is
 a 1920x1344 host RGBA map using the ROM's initial top-left camera viewport. ROM
 `0x2B34`'s first three mode-record coordinate pairs are retained in the typed
 resource descriptor, and arrow input advances the first recovered field record
 through that world space; the viewport follows when the entity reaches the
-reviewed projection window. It does not run a 68000 interpreter or depend on
-Genesis VDP state. The native field resolves the field-record directional
-state via the reviewed `0x600E` kind/state indirection (`0x62AC` -> kind-3
-table `0x6378` -> lists beginning at `0x9334`). Its eight `0x8002` descriptors
+reviewed projection window. The reviewed field-loop raw `0x2000` branch to
+`0x391A` is mapped to the native X/B edge: it selects the next of those three
+initialized records and preserves each record's fixed-point position when the
+selection changes. It does not render unverified duplicate actors. The native
+port does not run a 68000 interpreter or depend on Genesis VDP state. The
+native field resolves the field-record directional state via the reviewed
+`0x600E` kind/state indirection (`0x62AC` -> kind-3 table `0x6378` -> lists
+beginning at `0x9334`). Its eight `0x8002` descriptors
 (`0x9D6E` through `0x9F66`) use the direct `0x3E86` packed-source expansion
 through the `0x3EDC` nibble table, the `0x3EFE` column-major arrangement, and
 conversion to transparent RGBA8 images. The native entity selects that table
@@ -103,8 +107,9 @@ animation blocks, but is not used to choose the field entity frames.
 The terrain table at `0x172DAA` is rebuilt into the native status grid and the
 four-corner `0xE7C8` probe rejects blocked movement before the typed record is
 updated. This is a runnable title-to-field slice, not a claim that the whole
-game is playable; expanded entity/session population and field UI remain the
-next integration boundary.
+game is playable; the remaining A/Z and C input semantics, expanded
+entity/session population, and field UI remain the next integration
+boundaries.
 
 The extracted field template also carries the signed display bytes at
 `+0x56/+0x57`. Native projection preserves the `0x36FC` display gate: a

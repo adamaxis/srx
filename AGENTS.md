@@ -119,7 +119,11 @@ translates those records, palette attributes, and flips into a 1920x1344 host
 RGBA map and the native shell presents a top-left-camera viewport through
 `ScreenWriter`. Directional input now advances the first recovered field
 record instead of a presentation-only marker, so the field scrolls over the
-recovered map using the same world origin as the direct projection path.
+recovered map using the same world origin as the direct projection path. The
+field loop's reviewed raw `0x2000` dispatch to `0x391A` is represented by the
+native X/B edge: it selects the next of the three initialized records and
+retains each selected record's fixed-point position. This is a controlled
+record boundary, not speculative rendering of duplicate party members.
 
 The same mode-2 descriptor exposes the terrain table at `0x172DAA` and the
 direct bounds words used by ROM `0xE7C8`. `decode_genesis_mode2_terrain_map`
@@ -152,7 +156,10 @@ template offsets `+0x56` and `+0x57` are extracted as signed
 `display_state`/`display_substate` values. The native projection preserves the
 `0x36FC` visibility gate (`+0x56 < 0` or `+0x56 == 0x7F` suppresses the
 sprite), and the values are serialized in native asset-pack version 2. This
-is a direct behavior port, not a new animation rule.
+is a direct behavior port, not a new animation rule. The native X/B runner
+selection is the next recovered field-loop action; A/Z and C remain explicit
+unresolved input boundaries rather than being described as fully ported game
+actions.
 
 ## Build and source discipline
 

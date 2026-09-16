@@ -224,6 +224,9 @@ public:
     std::size_t field_entity_frame_index() const {
         return field_entity_.frame_index;
     }
+    std::size_t field_active_record_index() const {
+        return active_field_record_;
+    }
     std::int32_t field_world_x() const { return field_world_x_; }
     std::int32_t field_world_y() const { return field_world_y_; }
     std::int32_t field_camera_x() const { return field_camera_x_; }
@@ -234,6 +237,8 @@ private:
     void refresh_field_view();
     void refresh_field_entity_projection();
     void refresh_field_collision();
+    void reset_field_state();
+    void activate_field_record(std::size_t record_index);
     void update_field_entity_direction(std::int32_t delta_x,
                                        std::int32_t delta_y);
 
@@ -250,6 +255,9 @@ private:
     std::vector<NativeEntityFrame> entity_frames_;
     std::array<std::array<std::int16_t, 2>, 8> field_direction_table_{};
     NativeFieldEntity field_entity_{};
+    std::array<NativeFieldRecordPosition, 3> field_initial_records_{};
+    std::array<NativeFieldRecordPosition, 3> field_records_{};
+    std::size_t active_field_record_ = 0;
     terrain::Map field_terrain_{};
     terrain::ProbeResult field_collision_{};
     bool move_rejected_ = false;

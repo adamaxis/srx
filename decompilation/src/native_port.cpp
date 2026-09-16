@@ -209,6 +209,8 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     title_pixels_ = std::move(assets.title_scene.pixels);
     entity_frames_ = std::move(assets.entity_frames);
     field_direction_table_ = assets.field_direction_table;
+    field_initial_records_ = assets.initial_field_records;
+    field_records_ = field_initial_records_;
     field_terrain_ = std::move(assets.field_terrain);
     field_map_width_ = assets.field_map.width;
     field_map_height_ = assets.field_map.height;
@@ -243,6 +245,65 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     refresh_field_entity_projection();
     marker_x_ = field_entity_screen_x();
     marker_y_ = field_entity_screen_y();
+    refresh_field_collision();
+}
+
+void NativePortShell::reset_field_state() {
+    field_records_ = field_initial_records_;
+    active_field_record_ = 0;
+    field_initial_world_x_ = static_cast<std::int32_t>(
+        field_initial_records_[0].world_x_fixed >> 4U);
+    field_initial_world_y_ = static_cast<std::int32_t>(
+        field_initial_records_[0].world_y_fixed >> 4U);
+    field_initial_world_x_fixed_ = field_initial_records_[0].world_x_fixed;
+    field_initial_world_y_fixed_ = field_initial_records_[0].world_y_fixed;
+    field_world_x_ = field_initial_world_x_;
+    field_world_y_ = field_initial_world_y_;
+    field_camera_x_ = field_initial_camera_x_;
+    field_camera_y_ = field_initial_camera_y_;
+    field_entity_.record_index = 0;
+    field_entity_.world_x_fixed = field_initial_world_x_fixed_;
+    field_entity_.world_y_fixed = field_initial_world_y_fixed_;
+    field_entity_.frame_index = 0;
+    field_entity_.state_selector = 0;
+    field_entity_.state_index = 0;
+    field_entity_.animation_accumulator = 0;
+    refresh_field_view();
+    refresh_field_entity_projection();
+    marker_x_ = field_entity_screen_x();
+    marker_y_ = field_entity_screen_y();
+    move_rejected_ = false;
+    refresh_field_collision();
+}
+
+void NativePortShell::activate_field_record(std::size_t record_index) {
+    if (record_index >= field_records_.size() ||
+        record_index == active_field_record_) {
+        return;
+    }
+
+    // ROM 0x391A changes the controlled record, but does not discard the
+    // record that was just left. Retain its current fixed-point position in
+    // the native party state before selecting the next proven slot.
+    field_records_[active_field_record_] = {
+        field_entity_.world_x_fixed, field_entity_.world_y_fixed};
+    active_field_record_ = record_index;
+    field_entity_.record_index = static_cast<std::uint8_t>(record_index);
+    field_entity_.world_x_fixed = field_records_[record_index].world_x_fixed;
+    field_entity_.world_y_fixed = field_records_[record_index].world_y_fixed;
+    field_world_x_ = static_cast<std::int32_t>(
+        field_entity_.world_x_fixed >> 4U);
+    field_world_y_ = static_cast<std::int32_t>(
+        field_entity_.world_y_fixed >> 4U);
+    field_entity_.frame_index = 0;
+    field_entity_.state_selector = 0;
+    field_entity_.state_index = 0;
+    field_entity_.animation_accumulator = 0;
+    refresh_field_view();
+    refresh_field_entity_projection();
+    marker_x_ = field_entity_screen_x();
+    marker_y_ = field_entity_screen_y();
+    move_rejected_ = false;
     refresh_field_collision();
 }
 
@@ -359,22 +420,7 @@ void NativePortShell::update(const InputState& input) {
         if (input.was_pressed(Button::Start)) {
             scene_ = NativeScene::Field;
             if (!field_map_pixels_.empty()) {
-                field_world_x_ = field_initial_world_x_;
-                field_world_y_ = field_initial_world_y_;
-                field_camera_x_ = field_initial_camera_x_;
-                field_camera_y_ = field_initial_camera_y_;
-                field_entity_.world_x_fixed = field_initial_world_x_fixed_;
-                field_entity_.world_y_fixed = field_initial_world_y_fixed_;
-                field_entity_.frame_index = 0;
-                field_entity_.state_selector = 0;
-                field_entity_.state_index = 0;
-                field_entity_.animation_accumulator = 0;
-                refresh_field_view();
-                refresh_field_entity_projection();
-                marker_x_ = field_entity_screen_x();
-                marker_y_ = field_entity_screen_y();
-                move_rejected_ = false;
-                refresh_field_collision();
+                reset_field_state();
             } else {
                 marker_x_ = kScreenWidth / 2;
                 marker_y_ = kScreenHeight / 2;
@@ -403,22 +449,7 @@ void NativePortShell::update(const InputState& input) {
     if (input.was_pressed(Button::Start)) {
         action_flash_frames_ = 0;
         if (!field_map_pixels_.empty()) {
-            field_world_x_ = field_initial_world_x_;
-            field_world_y_ = field_initial_world_y_;
-            field_camera_x_ = field_initial_camera_x_;
-            field_camera_y_ = field_initial_camera_y_;
-            field_entity_.world_x_fixed = field_initial_world_x_fixed_;
-            field_entity_.world_y_fixed = field_initial_world_y_fixed_;
-            field_entity_.frame_index = 0;
-            field_entity_.state_selector = 0;
-            field_entity_.state_index = 0;
-            field_entity_.animation_accumulator = 0;
-            move_rejected_ = false;
-            refresh_field_view();
-            refresh_field_entity_projection();
-            marker_x_ = field_entity_screen_x();
-            marker_y_ = field_entity_screen_y();
-            refresh_field_collision();
+            reset_field_state();
         } else {
             marker_x_ = kScreenWidth / 2;
             marker_y_ = kScreenHeight / 2;
@@ -428,12 +459,9 @@ void NativePortShell::update(const InputState& input) {
         marker_color_ = {0x00, 0xD8, 0xFF, 0xFF};
         action_flash_frames_ = 8;
         ++action_count_;
-    } else if (input.was_pressed(Button::B)) {
+    }
+    if (input.was_pressed(Button::C)) {
         marker_color_ = {0xFF, 0x40, 0x70, 0xFF};
-        action_flash_frames_ = 8;
-        ++action_count_;
-    } else if (input.was_pressed(Button::C)) {
-        marker_color_ = {0xFF, 0xD0, 0x40, 0xFF};
         action_flash_frames_ = 8;
         ++action_count_;
     }
@@ -495,6 +523,16 @@ void NativePortShell::update(const InputState& input) {
         if (!attempted_movement) {
             refresh_field_collision();
         }
+        field_records_[active_field_record_] = {
+            field_entity_.world_x_fixed, field_entity_.world_y_fixed};
+    }
+    if (input.was_pressed(Button::B) && !field_map_pixels_.empty()) {
+        // The main field loop dispatches raw 0x2000 to 0x391A after its
+        // ordinary entity pass. On a three-record startup party this selects
+        // the next controlled record in the same order as the ROM loop.
+        activate_field_record(
+            (active_field_record_ + 1U) % field_records_.size());
+        ++action_count_;
     }
     if (action_flash_frames_ != 0) {
         --action_flash_frames_;
@@ -517,7 +555,7 @@ void NativePortShell::render(ScreenWriter& screen) const {
                           {0xB0, 0xB8, 0xC8, 0xFF});
         screen.fill_rect(0, 208, kScreenWidth, 16,
                          {0x00, 0x00, 0x00, 0xB0});
-        screen.write_text(8, 211, "ARROWS MOVE  Z X C  ENTER RESET",
+        screen.write_text(8, 211, "ARROWS MOVE  Z X C  ENTER START",
                           1, {0xE8, 0xF4, 0xFF, 0xFF});
     } else if (scene_ == NativeScene::Field && !field_view_pixels_.empty()) {
         // The field background is the ROM's mode-2 map translated into a host
@@ -570,9 +608,9 @@ void NativePortShell::render(ScreenWriter& screen) const {
         }
         screen.fill_rect(0, 204, kScreenWidth, 20,
                          {0x02, 0x05, 0x0C, 0xFF});
-        screen.write_text(8, 208, "ARROWS MOVE ENTITY  Z X C ACTION", 1,
+        screen.write_text(8, 208, "ARROWS MOVE ENTITY  X SWITCH RUNNER", 1,
                           {0xE8, 0xF4, 0xFF, 0xFF});
-        screen.write_text(8, 216, "ENTER RESET  ACTIONS", 1,
+        screen.write_text(8, 216, "ENTER RESET  Z/C PENDING", 1,
                           {0x90, 0xB8, 0xC8, 0xFF});
         screen.write_text(226, 216, std::to_string(action_count_), 1,
                           {0xF0, 0xC0, 0x50, 0xFF});

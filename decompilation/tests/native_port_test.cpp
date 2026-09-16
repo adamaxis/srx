@@ -68,6 +68,27 @@ int main() {
     assert(rom_shell.field_entity_screen_y() == 168);
     assert(rom_shell.field_collision_status() == 0);
     assert(!rom_shell.field_collision_blocked());
+
+    // The field loop's raw 0x2000 branch calls 0x391A, which advances the
+    // controlled record through the first three initialized 0x100-byte
+    // records. The native port keeps the selection edge-triggered and uses
+    // the three reviewed coordinate pairs without inventing extra actors.
+    assert(rom_shell.field_active_record_index() == 0);
+    rom_shell.update(InputState{button_mask(Button::B),
+                                button_mask(Button::B)});
+    assert(rom_shell.field_active_record_index() == 1);
+    assert(rom_shell.field_world_x() == (0x3BA0 >> 4));
+    rom_shell.update(InputState{button_mask(Button::B), 0});
+    assert(rom_shell.field_active_record_index() == 1);
+    rom_shell.update(InputState{button_mask(Button::B),
+                                button_mask(Button::B)});
+    assert(rom_shell.field_active_record_index() == 2);
+    assert(rom_shell.field_world_x() == (0x3DA0 >> 4));
+    rom_shell.update(InputState{button_mask(Button::Start),
+                                button_mask(Button::Start)});
+    assert(rom_shell.field_active_record_index() == 0);
+    assert(rom_shell.field_world_x() == (0x3CE0 >> 4));
+
     const auto field_start_x = rom_shell.marker_x();
     rom_shell.update(InputState{button_mask(Button::Start), 0});
     assert(rom_shell.scene() == NativeScene::Field);
