@@ -2320,6 +2320,66 @@ int main() {
     assert(fallback_bus->read16(fallback_record + 0x96U) == 0x0100U);
     assert(fallback_bus->read16(fallback_record + 0x98U) == 0x0200U);
 
+    // 14492 selects from the lists prepared by 13874. It preserves an
+    // existing primary-list member, does not stamp primary changes with the
+    // secondary-list state byte, and marks a changed secondary selection.
+    fallback_bus->write8(fallback_record + 0x10U, 0x08U);
+    fallback_bus->write8(fallback_record + 0xB5U, 0xA5U);
+    fallback_bus->write16(shadowrun::session_ram::kFrameListPrimaryCount, 2U);
+    fallback_bus->write32(shadowrun::session_ram::kFrameListPrimary,
+                          0xFF0500U);
+    fallback_bus->write32(shadowrun::session_ram::kFrameListPrimary + 4U,
+                          0xFF0600U);
+    fallback_bus->write32(fallback_record + 0xA2U, 0xFF0500U);
+    const auto preserved_link =
+        shadowrun::select_entity_animation_link_0x14492(
+            *fallback_bus, fallback_record);
+    assert(preserved_link.primary_list_path);
+    assert(!preserved_link.list_empty);
+    assert(preserved_link.current_link_preserved);
+    assert(!preserved_link.selected_link_changed);
+    assert(preserved_link.previous_link == 0xFF0500U);
+    assert(preserved_link.selected_link == 0xFF0500U);
+    assert(preserved_link.candidates_examined == 1);
+    assert(fallback_bus->read8(fallback_record + 0xB5U) == 0xA5U);
+
+    fallback_bus->write32(fallback_record + 0xA2U, 0xFF0700U);
+    const auto changed_primary_link =
+        shadowrun::select_entity_animation_link_0x14492(
+            *fallback_bus, fallback_record);
+    assert(changed_primary_link.selected_link_changed);
+    assert(changed_primary_link.selected_link == 0xFF0500U);
+    assert(fallback_bus->read32(fallback_record + 0xA2U) == 0xFF0500U);
+    assert(fallback_bus->read8(fallback_record + 0xB5U) == 0xA5U);
+
+    fallback_bus->write8(fallback_record + 0x10U, 0);
+    fallback_bus->write8(fallback_record + 0xB5U, 0);
+    fallback_bus->write16(shadowrun::session_ram::kFrameListSecondaryCount,
+                          1U);
+    fallback_bus->write32(shadowrun::session_ram::kFrameListSecondary,
+                          0xFF0600U);
+    fallback_bus->write32(fallback_record + 0xA2U, 0xFF0700U);
+    const auto changed_secondary_link =
+        shadowrun::select_entity_animation_link_0x14492(
+            *fallback_bus, fallback_record);
+    assert(!changed_secondary_link.primary_list_path);
+    assert(changed_secondary_link.selected_link_changed);
+    assert(changed_secondary_link.selected_link == 0xFF0600U);
+    assert(fallback_bus->read32(fallback_record + 0xA2U) == 0xFF0600U);
+    assert(fallback_bus->read8(fallback_record + 0xB5U) == 6U);
+
+    fallback_bus->write8(fallback_record + 0x10U, 0x08U);
+    fallback_bus->write16(shadowrun::session_ram::kFrameListPrimaryCount, 0);
+    fallback_bus->write32(fallback_record + 0xA2U, 0xFF0600U);
+    fallback_bus->write8(shadowrun::session_ram::kFrameEntityGateSource, 0);
+    const auto empty_primary_link =
+        shadowrun::select_entity_animation_link_0x14492(
+            *fallback_bus, fallback_record);
+    assert(empty_primary_link.list_empty);
+    assert(empty_primary_link.global_relationships_cleared);
+    assert(!empty_primary_link.current_link_preserved);
+    assert(fallback_bus->read32(fallback_record + 0xA2U) == 0);
+
     // AAD2 changes A0 to FFFC04 in the ROM. The typed call context must carry
     // that register change into the later command/timer calls and AE26 tail.
     constexpr auto acae_rebound_record = 0xFF0200U;

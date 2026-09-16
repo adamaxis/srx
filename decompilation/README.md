@@ -158,6 +158,10 @@ not required to build or run the C++ analyzer.
   probes, final `+0x96/+0x98` restore, and `0x145A2` fallthrough. The unusual
   packed-`DIVU.W` increment in `0x125FA` is modeled rather than replaced
   with a host-language rounding rule.
+- The `0x14492` animation-link selector now directly consumes the primary and
+  secondary lists built by `0x13874`, preserves an existing member, performs
+  the ROM `0x0D3A` random selection when needed, and retains the empty-primary
+  relationship-reset branch.
 - The `0x145A2` tail is now direct through the `0x14C2E` direction flags,
   `0x14BA6` sign/route decision, `0x149C0` route, and `0x15D3C` transform
   terminal. Its `0x14682` movement body now directly performs the reviewed

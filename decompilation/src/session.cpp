@@ -2504,6 +2504,8 @@ void dispatch_animation_continuation(
         finish_entity_animation_0x13E40(bus, entity_record_address);
     } else if (target == kAnimationContinuation_0x1E514) {
         run_entity_animation_cleanup_0x1E514(bus, entity_record_address);
+    } else if (target == kAnimationContinuation_0x14492) {
+        select_entity_animation_link_0x14492(bus, entity_record_address);
     } else {
         ++result.unresolved_calls;
     }
@@ -3067,6 +3069,61 @@ EntityAnimation1450EResult run_entity_animation_target_update_0x1450E(
         result.routed_to_0x145A2 = true;
         result.continuation_calls += continuation.continuation_calls;
         result.unresolved_calls += continuation.unresolved_calls;
+    }
+    return result;
+}
+
+EntityAnimationListSelectionResult select_entity_animation_link_0x14492(
+    GenesisBus& bus, GenesisAddress entity_record_address) {
+    // 0x14492 selects from one of the lists built by 0x13874. The record's
+    // bit +0x10.3 chooses the primary list; the opposite path uses the
+    // secondary list and marks a changed selection with +0xB5 = 6.
+    const bool primary_list_path =
+        (bus.read8(entity_record_address + 0x10U) & 0x08U) != 0;
+    const auto count_address = primary_list_path
+        ? session_ram::kFrameListPrimaryCount
+        : session_ram::kFrameListSecondaryCount;
+    const auto list_address = primary_list_path
+        ? session_ram::kFrameListPrimary
+        : session_ram::kFrameListSecondary;
+    const auto previous_link = bus.read32(entity_record_address + 0xA2U);
+    const auto count = bus.read16(count_address);
+
+    EntityAnimationListSelectionResult result{
+        primary_list_path, count == 0, false, false, false,
+        previous_link, 0, 0};
+    if (count == 0) {
+        // The primary empty-list branch additionally clears the global
+        // relationship state when FFE162 is clear, then both branches clear
+        // this record's +0xA2 link.
+        if (primary_list_path &&
+            bus.read8(session_ram::kFrameEntityGateSource) == 0) {
+            clear_entity_relationships_0x1DBF0(bus);
+            result.global_relationships_cleared = true;
+        }
+        bus.write32(entity_record_address + 0xA2U, 0);
+        return result;
+    }
+
+    for (std::uint16_t index = 0; index < count; ++index) {
+        ++result.candidates_examined;
+        const auto candidate = bus.read32(
+            list_address + static_cast<GenesisAddress>(index) * 4U);
+        if (candidate == previous_link) {
+            result.current_link_preserved = true;
+            result.selected_link = previous_link;
+            return result;
+        }
+    }
+
+    const auto selected_index = ShadowrunRuntime(bus).random_below(count);
+    const auto selected_link = bus.read32(
+        list_address + static_cast<GenesisAddress>(selected_index) * 4U);
+    bus.write32(entity_record_address + 0xA2U, selected_link);
+    result.selected_link = selected_link;
+    result.selected_link_changed = selected_link != previous_link;
+    if (!primary_list_path && result.selected_link_changed) {
+        bus.write8(entity_record_address + 0xB5U, 6U);
     }
     return result;
 }

@@ -454,6 +454,17 @@ struct EntityAnimation1450EResult {
     std::size_t unresolved_calls;
 };
 
+struct EntityAnimationListSelectionResult {
+    bool primary_list_path;
+    bool list_empty;
+    bool global_relationships_cleared;
+    bool current_link_preserved;
+    bool selected_link_changed;
+    GenesisAddress previous_link;
+    GenesisAddress selected_link;
+    std::size_t candidates_examined;
+};
+
 struct EntityAnimationDirectionUpdateResult {
     bool requested_0x14682;
     std::uint8_t direction_flags;
@@ -991,6 +1002,12 @@ EntityAnimation142AeResult run_entity_animation_continuation_0x142AE(
 EntityAnimation1450EResult run_entity_animation_target_update_0x1450E(
     GenesisBus& bus, GenesisAddress entity_record_address,
     GenesisAddress source_record_address = 0);
+
+// ROM 0x14492 selects a linked record from the already-built primary or
+// secondary pointer list, preserving an existing member and avoiding a
+// self-selection update to +0xB5.
+EntityAnimationListSelectionResult select_entity_animation_link_0x14492(
+    GenesisBus& bus, GenesisAddress entity_record_address);
 
 // ROM 0x14BA6, including its direct direction-sign flag derivation and the
 // 0x14682 movement/collision body.
