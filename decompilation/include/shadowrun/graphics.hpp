@@ -39,6 +39,9 @@ struct GenesisFieldEntityTemplate {
     std::size_t record_offset = 0;
     std::uint16_t projection_word_08 = 0;
     std::uint16_t kind = 0;
+    // ROM 0x391A reads the entity-record type at +0x3E. This is distinct
+    // from the graphics/state kind at +0x0E.
+    std::uint16_t record_type = 0;
     std::uint8_t flags_10 = 0;
     std::uint8_t flags_11 = 0;
     std::uint32_t state_pointer = 0;

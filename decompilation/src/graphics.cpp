@@ -195,6 +195,9 @@ GenesisFieldEntityTemplate read_genesis_field_entity_template(
     result.kind = read_rom_u16(
         rom, record_offset + 0x0EU,
         "Genesis field entity template kind is truncated");
+    result.record_type = read_rom_u16(
+        rom, record_offset + 0x3EU,
+        "Genesis field entity record type is truncated");
     result.flags_10 = static_cast<std::uint8_t>(flags >> 8U);
     result.flags_11 = static_cast<std::uint8_t>(flags);
     result.state_pointer = read_rom_u32(
@@ -344,6 +347,7 @@ native::NativePortAssets decode_genesis_native_assets(
     assets.entity_template.projection_word_08 =
         entity_template.projection_word_08;
     assets.entity_template.kind = entity_template.kind;
+    assets.entity_template.record_type = entity_template.record_type;
     assets.entity_template.flags_10 = entity_template.flags_10;
     assets.entity_template.flags_11 = entity_template.flags_11;
     assets.entity_template.state_pointer = entity_template.state_pointer;
@@ -373,13 +377,17 @@ native::NativePortAssets decode_genesis_native_assets(
     assets.entity_template.skill_values = entity_template.skill_values;
     assets.entity_template.attribute_skill_auxiliary =
         entity_template.attribute_skill_auxiliary;
-    // 0x2B34 writes only the three position pairs into the already-created
-    // field records. The remaining selection fields therefore come from the
-    // same typed entity initialization used for the startup template.
-    for (auto& record : assets.initial_field_records) {
-        record.kind = assets.entity_template.kind;
-        record.flags_10 = assets.entity_template.flags_10;
-        record.flags_11 = assets.entity_template.flags_11;
+    // 0x2B34 writes only the three position pairs into already-created field
+    // records. Their +0x3E type and +0x10/+0x11 flags come from the three
+    // contiguous startup records at 0x7291A, 0x72A1A, and 0x72B1A.
+    for (std::size_t index = 0; index < assets.initial_field_records.size();
+         ++index) {
+        const auto startup_entity = read_genesis_field_entity_template(
+            rom, entity_template.record_offset + index * 0x100U);
+        auto& record = assets.initial_field_records[index];
+        record.record_type = startup_entity.record_type;
+        record.flags_10 = startup_entity.flags_10;
+        record.flags_11 = startup_entity.flags_11;
     }
     assets.inventory_items = read_genesis_inventory_catalog(rom);
     assets.cyberware_names = read_genesis_cyberware_catalog(rom);
@@ -407,7 +415,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 7);
+    write_u16(output, 8);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     write_native_image(output, assets.field_map);
@@ -447,7 +455,7 @@ void write_native_asset_pack(const std::string& path,
     for (const auto& record : assets.initial_field_records) {
         write_u16(output, record.position.world_x_fixed);
         write_u16(output, record.position.world_y_fixed);
-        write_u16(output, record.kind);
+        write_u16(output, record.record_type);
         output.put(static_cast<char>(record.flags_10));
         output.put(static_cast<char>(record.flags_11));
     }
@@ -455,6 +463,7 @@ void write_native_asset_pack(const std::string& path,
     const auto& entity = assets.entity_template;
     write_u16(output, entity.projection_word_08);
     write_u16(output, entity.kind);
+    write_u16(output, entity.record_type);
     output.put(static_cast<char>(entity.flags_10));
     output.put(static_cast<char>(entity.flags_11));
     write_u32(output, entity.state_pointer);
@@ -525,7 +534,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 7U)) {
+        (version < 2U || version > 8U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -586,7 +595,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
         record.position.world_y_fixed = read_pack_u16(
             input, "native field record position is truncated");
         if (version >= 7U) {
-            record.kind = read_pack_u16(
+            record.record_type = read_pack_u16(
                 input, "native field record kind is truncated");
             record.flags_10 = read_pack_u8(
                 input, "native field record flags are truncated");
@@ -599,6 +608,9 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     entity.projection_word_08 = read_pack_u16(
         input, "native entity template is truncated");
     entity.kind = read_pack_u16(input, "native entity template is truncated");
+    entity.record_type = version >= 8U
+        ? read_pack_u16(input, "native entity record type is truncated")
+        : 0;
     entity.flags_10 = read_pack_u8(input, "native entity template is truncated");
     entity.flags_11 = read_pack_u8(input, "native entity template is truncated");
     entity.state_pointer = read_pack_u32(
@@ -619,7 +631,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
         input, "native entity display substate is truncated"));
     if (version < 7U) {
         for (auto& record : assets.initial_field_records) {
-            record.kind = entity.kind;
+            record.record_type = entity.record_type;
             record.flags_10 = entity.flags_10;
             record.flags_11 = entity.flags_11;
         }

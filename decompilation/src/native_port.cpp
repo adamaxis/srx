@@ -194,10 +194,11 @@ constexpr std::int32_t kFieldEntityMaxHostX = 0x1AE -
 
 // ROM 0x391A walks entity records after the current record. A candidate must
 // be active (bit 0), not suppressed (bit 6), and reach the selection exit
-// with bit 4 clear. These are record-state predicates, not UI guesses.
+// with bit 4 clear. These are record-state predicates, not UI guesses. The
+// record type at +0x3E controls wrap-around when the current record is type 2;
+// it does not make that third startup record ineligible.
 bool runner_switch_candidate(const NativeFieldRecord& record) {
-    return record.kind != 2U &&
-           (record.flags_10 & 0x01U) != 0 &&
+    return (record.flags_10 & 0x01U) != 0 &&
            (record.flags_10 & 0x40U) == 0 &&
            (record.flags_10 & 0x10U) == 0;
 }
@@ -272,7 +273,7 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     field_camera_y_ = field_initial_camera_y_;
     field_entity_ = std::move(assets.entity_template);
     field_entity_.record_index = 0;
-    field_entity_.kind = field_records_[0].kind;
+    field_entity_.record_type = field_records_[0].record_type;
     field_entity_.flags_10 = field_records_[0].flags_10;
     field_entity_.flags_11 = field_records_[0].flags_11;
     field_initial_equipped_armor_ = field_entity_.equipped_armor_index;
@@ -304,7 +305,7 @@ void NativePortShell::reset_field_state() {
     field_camera_x_ = field_initial_camera_x_;
     field_camera_y_ = field_initial_camera_y_;
     field_entity_.record_index = 0;
-    field_entity_.kind = field_records_[0].kind;
+    field_entity_.record_type = field_records_[0].record_type;
     field_entity_.flags_10 = field_records_[0].flags_10;
     field_entity_.flags_11 = field_records_[0].flags_11;
     field_entity_.world_x_fixed = field_initial_world_x_fixed_;
@@ -334,7 +335,7 @@ void NativePortShell::activate_field_record(std::size_t record_index) {
     // the native party state before selecting the next proven slot.
     field_records_[active_field_record_] = NativeFieldRecord{
         {field_entity_.world_x_fixed, field_entity_.world_y_fixed},
-        field_entity_.kind,
+        field_entity_.record_type,
         field_entity_.flags_10,
         field_entity_.flags_11,
     };
@@ -346,7 +347,7 @@ void NativePortShell::activate_field_record(std::size_t record_index) {
         field_records_[record_index].position.world_x_fixed;
     field_entity_.world_y_fixed =
         field_records_[record_index].position.world_y_fixed;
-    field_entity_.kind = field_records_[record_index].kind;
+    field_entity_.record_type = field_records_[record_index].record_type;
     field_entity_.flags_10 = field_records_[record_index].flags_10;
     field_entity_.flags_11 = field_records_[record_index].flags_11;
     field_entity_.equipped_armor_index =
@@ -850,7 +851,7 @@ void NativePortShell::update(const InputState& input) {
         }
         field_records_[active_field_record_] = NativeFieldRecord{
             {field_entity_.world_x_fixed, field_entity_.world_y_fixed},
-            field_entity_.kind,
+            field_entity_.record_type,
             field_entity_.flags_10,
             field_entity_.flags_11,
         };

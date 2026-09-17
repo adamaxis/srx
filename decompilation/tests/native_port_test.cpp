@@ -90,6 +90,11 @@ int main() {
     // controlled record through the first three initialized 0x100-byte
     // records. The native port keeps the selection edge-triggered and uses
     // the three reviewed coordinate pairs without inventing extra actors.
+    const auto extracted_assets =
+        shadowrun::graphics::decode_genesis_native_assets(rom);
+    assert(extracted_assets.initial_field_records[0].record_type == 0);
+    assert(extracted_assets.initial_field_records[1].record_type == 1);
+    assert(extracted_assets.initial_field_records[2].record_type == 2);
     assert(rom_shell.field_active_record_index() == 0);
     rom_shell.update(InputState{button_mask(Button::C),
                                 button_mask(Button::C)});
