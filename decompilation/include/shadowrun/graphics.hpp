@@ -261,16 +261,45 @@ std::vector<RgbaImage> decode_genesis_entity_animation(
     std::size_t nibble_table_offset = 0x3EDC,
     std::size_t palette_offset = 0x172D8A);
 
-// Resolve the field-record directional states selected by ROM 0x600E. The
-// record template's +0x0E kind indexes the pointer table at 0x62AC; its +0x16
-// state is a byte offset into that kind's state-pointer table. Each selected
-// state list supplies an 0x8002 frame descriptor. The kind-3 field table has
-// eight entries, which are returned in the table's original order as ordinary
-// host RGBA images.
+// Resolve the initial field-record directional states selected by ROM 0x600E.
+// The record template's +0x0E kind indexes the pointer table at 0x62AC; its
+// +0x16 state is a byte offset into that kind's state-pointer table. Each
+// selected state list supplies one 0x8002 frame descriptor. The kind-3 field
+// table has eight entries, which are returned in the table's original order
+// as ordinary host RGBA images. This is retained as the fallback path for
+// asset packs written before the full walking lists were extracted.
 std::vector<RgbaImage> decode_genesis_field_entity_animation(
     const std::vector<std::uint8_t>& rom,
     std::size_t entity_record_offset = 0x7291A,
     std::size_t entity_state_pointer_table_offset = 0x62AC,
+    std::size_t nibble_table_offset = 0x3EDC,
+    std::size_t palette_offset = 0x172D8A,
+    std::size_t state_count = 8);
+
+struct GenesisFieldEntityAnimation {
+    // ROM 0xAFF2 writes this byte offset from 0xC072 into the kind-3 table.
+    std::uint16_t state_selector = 0;
+    // The signed 0x8002 list marker gives the number of frame descriptors.
+    std::uint16_t state_marker = 0;
+    // The word between the marker and descriptor table is preserved without
+    // assigning it a host meaning; it is part of the reviewed list layout.
+    std::uint16_t state_auxiliary_word = 0;
+    // ROM 0x600E reads this word at first_pointer + 0xCA, then selects the
+    // 0x10/0x1C record multiplier. Both are retained at extraction.
+    std::uint16_t source_timing_value = 0;
+    std::uint16_t timing_multiplier = 0;
+    std::vector<RgbaImage> frames;
+};
+
+// Extract the complete kind-3 field walking table selected by ROM 0xAFF2's
+// 0xC072 entries. The native runtime consumes the resulting transparent RGBA
+// frame sequences and does not retain ROM pointers, VDP state, or palettes.
+std::vector<GenesisFieldEntityAnimation>
+decode_genesis_field_entity_animation_sequences(
+    const std::vector<std::uint8_t>& rom,
+    std::size_t entity_record_offset = 0x7291A,
+    std::size_t entity_state_pointer_table_offset = 0x62AC,
+    std::size_t animation_frame_table_offset = 0xC072,
     std::size_t nibble_table_offset = 0x3EDC,
     std::size_t palette_offset = 0x172D8A,
     std::size_t state_count = 8);

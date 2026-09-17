@@ -97,14 +97,18 @@ initialized records and preserves each record's fixed-point position when the
 selection changes. It does not render unverified duplicate actors. The native
 port does not run a 68000 interpreter or depend on Genesis VDP state. The
 native field resolves the field-record directional state via the reviewed
-`0x600E` kind/state indirection (`0x62AC` -> kind-3 table `0x6378` -> lists
-beginning at `0x9334`). Its eight `0x8002` descriptors
-(`0x9D6E` through `0x9F66`) use the direct `0x3E86` packed-source expansion
-through the `0x3EDC` nibble table, the `0x3EFE` column-major arrangement, and
-conversion to transparent RGBA8 images. The native entity selects that table
-entry from the held movement vector, preserving the ROM's directional-state
-boundary instead of cycling through unrelated directions; the vector match is
-driven by the signed eight-entry probe table at `0xC002` used by `0xBABC`.
+`0x600E` kind/state indirection (`0x62AC` -> kind-3 table `0x6378`). Its
+directional idle descriptors (`0x9D6E` through `0x9F66`) and the full walking
+lists selected by `0xAFF2` through `0xC072` use the direct `0x3E86`
+packed-source expansion through the `0x3EDC` nibble table, the `0x3EFE`
+column-major arrangement, and conversion to transparent RGBA8 images. The
+walking lists begin at `0x77D4` and contain eight `0x8002` two-frame lists;
+their descriptors are the `0xA30E`-through-`0xA47C` records. The native entity
+selects the list from the held movement vector and advances its two-frame
+state index while movement is accepted, preserving the ROM's directional and
+animation state boundary instead of cycling through unrelated directions. The
+vector match is driven by the signed eight-entry probe table at `0xC002` used
+by `0xBABC`.
 Its anchor uses the
 reviewed `0x5A62` projection routine and adapts the VDP's `0x80` sprite origin
 into host pixels. The generic `0x72B0` decoder remains available for other ROM
@@ -133,7 +137,7 @@ The first native field transition is now also wired from reviewed ROM data.
 The mode-2 dispatcher indexes the event table at `0x172CDC`; Redmond's C0
 doorway class selects mode `0x14` (decimal 20). That destination uses a raw
 16-bit name-word table at `0x1CD29A`, producing a 1600x960 host interior map
-from 50x30 entries. The version-9 `.srna` pack includes mode-2, mode-13,
+from 50x30 entries. The version-10 `.srna` pack includes mode-2, mode-13,
 mode-19, mode-20, mode-26, and mode-50..52 area records with their converted
 maps, terrain, camera, spawn, and event data. These cover every non-empty
 destination named by the mode-2 Redmond event table; transition geometry and
@@ -161,7 +165,7 @@ cyberware field and expands the pointer names at `0xD2072` into host strings;
 the initial record therefore shows the recovered `Hand Razors` entry. The
 handler is display-only in the ROM, so Start returns to the command screen and
 there is no invented mutation or selection behavior. These values are carried
-in the native asset-pack version 9 format, which also carries runner selection
+in the native asset-pack version 10 format, which also carries runner selection
 flags.
 
 The Attributes/Skills command now enters a native two-column view corresponding
@@ -170,7 +174,7 @@ twelve skill bytes at `+0x80..+0x85` and `+0x87..+0x8C`, and the twenty labels
 from the `0xC1A2A` pointer table. The four intervening bytes at `+0x7F`,
 `+0x86`, `+0x8D`, and `+0x8E` are retained as auxiliary state until their
 upgrade/display roles are proven; the unresolved A/B/C mutations remain
-isolated. The expanded data is stored in native asset-pack version 9.
+isolated. The expanded data is stored in native asset-pack version 10.
 
 The Windows frontend preserves the reviewed controller boundary from ROM
 0x195C: the sampled word uses its low byte for held state and its high byte for
@@ -182,7 +186,7 @@ The extracted field template also carries the signed display bytes at
 `+0x56/+0x57`. Native projection preserves the `0x36FC` display gate: a
 negative `+0x56` or the sentinel `0x7F` leaves the entity hidden even when its
 screen projection is in range. These values are included in native asset-pack
-version 9, so the host-only runtime retains the recovered state, inventory,
+version 10, so the host-only runtime retains the recovered state, inventory,
 cyberware catalog, clip values, and runner selection flags without
 reading the ROM.
 

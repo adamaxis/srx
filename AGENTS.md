@@ -176,12 +176,15 @@ mode-26, and mode-50..52 area records. Modes 26 and 50..52 use the reviewed
 raw name-word tables; modes whose metatile streams are not yet stamp-aligned
 remain extraction-only until their distinct format is recovered.
 
-The extracted field entity set currently contains eight directional states.
-The native shell selects one state from movement direction, but does not yet
-advance the ROM's time-based state-list animation index. Walking animation,
-NPC/object animation, audio/music output, authentic screen composition, and
-the remaining field/interior transitions remain explicit native-port work
-rather than being hidden behind placeholder logic.
+The extracted field entity set contains eight directional idle states plus the
+eight two-frame walking sequences selected by `0xC072`. The native asset pack
+version 10 carries the selector, signed `0x8002` marker, auxiliary list word,
+source timing value, and host RGBA frames. The native shell selects the
+sequence through the ROM's movement-vector table and advances its two-frame
+state index while accepted movement is occurring. This is the current field
+animation slice; NPC/object animation, audio/music output, authentic screen
+composition, and the remaining field/interior transitions still require their
+own direct ROM ports.
 
 This is now a runnable native title-to-field slice with controls, actual
 ROM-derived field graphics, collision rejection, and a ROM-derived entity

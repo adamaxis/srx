@@ -1,5 +1,6 @@
 #include "shadowrun/graphics.hpp"
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
@@ -32,13 +33,14 @@ shadowrun::graphics::RgbaImage make_field_entity_state_sheet(
     constexpr std::uint16_t kCellWidth = 40;
     constexpr std::uint16_t kCellHeight = 40;
     constexpr std::size_t kColumns = 4;
-    constexpr std::size_t kRows = 2;
+    const auto rows = std::max<std::size_t>(
+        1U, (frames.size() + kColumns - 1U) / kColumns);
     shadowrun::graphics::RgbaImage sheet{
         static_cast<std::uint16_t>(kCellWidth * kColumns),
-        static_cast<std::uint16_t>(kCellHeight * kRows),
+        static_cast<std::uint16_t>(kCellHeight * rows),
         std::vector<shadowrun::native::Rgba8>(
             static_cast<std::size_t>(kCellWidth * kColumns) *
-                (kCellHeight * kRows),
+                (kCellHeight * rows),
             {0x04, 0x08, 0x14, 0xFF}),
     };
     for (std::size_t index = 0; index < frames.size(); ++index) {
@@ -68,15 +70,41 @@ shadowrun::graphics::RgbaImage make_field_entity_state_sheet(
     return sheet;
 }
 
+std::vector<shadowrun::graphics::RgbaImage> flatten_field_entity_animations(
+    const std::vector<shadowrun::graphics::GenesisFieldEntityAnimation>&
+        animations) {
+    std::vector<shadowrun::graphics::RgbaImage> frames;
+    for (const auto& animation : animations) {
+        for (const auto& frame : animation.frames) {
+            frames.push_back(frame);
+        }
+    }
+    return frames;
+}
+
 shadowrun::graphics::RgbaImage render_native_field(
     shadowrun::native::NativePortAssets assets) {
     shadowrun::native::SoftwareScreen screen;
     shadowrun::native::NativePortShell shell("SHADOWRUN", std::move(assets));
-    shell.update(shadowrun::native::InputState{
-        shadowrun::native::button_mask(
-            shadowrun::native::Button::Start),
-        shadowrun::native::button_mask(
-            shadowrun::native::Button::Start)});
+    const auto press = [&shell](shadowrun::native::Button button) {
+        const auto mask = shadowrun::native::button_mask(button);
+        shell.update(shadowrun::native::InputState{mask, mask});
+    };
+    // Follow the same title -> new game -> archetype -> opening-story path
+    // used by the native test seam. This diagnostic must render the field,
+    // not the first menu behind the title screen.
+    press(shadowrun::native::Button::Start);
+    press(shadowrun::native::Button::A);
+    press(shadowrun::native::Button::A);
+    for (std::size_t page = 0;
+         shell.scene() == shadowrun::native::NativeScene::Intro &&
+         page <= shell.intro_story_line_count(); ++page) {
+        press(shadowrun::native::Button::A);
+    }
+    if (shell.scene() != shadowrun::native::NativeScene::Field) {
+        throw std::runtime_error(
+            "native field diagnostic did not reach the field scene");
+    }
     shell.render(screen);
 
     shadowrun::graphics::RgbaImage image{
@@ -205,6 +233,24 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
+    if (argc == 4 && std::string(argv[3]) == "--field-entity-walking") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto animations =
+                shadowrun::graphics::decode_genesis_field_entity_animation_sequences(
+                    rom);
+            const auto frames = flatten_field_entity_animations(animations);
+            const auto sheet = make_field_entity_state_sheet(frames);
+            shadowrun::graphics::write_bmp32(argv[2], sheet);
+            std::cout << "field entity walking sheet: " << sheet.width << "x"
+                      << sheet.height << " (" << frames.size() << " frames)\n"
+                      << "output: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
     if (argc == 5 && std::string(argv[3]) == "--field-entity-state") {
         try {
             const auto rom = read_file(argv[1]);
@@ -235,7 +281,18 @@ int main(int argc, char** argv) {
                       << assets.title_scene.height << " title, "
                       << assets.field_map.width << "x"
                       << assets.field_map.height << " field, "
-                      << assets.entity_frames.size() << " entity states\n"
+                      << assets.entity_frames.size() << " idle states, "
+                      << assets.field_entity_animations.size() << " walking "
+                      << "directions / "
+                      << [&assets]() {
+                             std::size_t frames = 0;
+                             for (const auto& animation :
+                                  assets.field_entity_animations) {
+                                 frames += animation.frames.size();
+                             }
+                             return frames;
+                         }()
+                      << " walking frames\n"
                       << "output: " << argv[2] << "\n";
             return 0;
         } catch (const std::exception& error) {
@@ -259,6 +316,8 @@ int main(int argc, char** argv) {
                      "--entity-frame\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
                      "--field-entity-states\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
+                     "--field-entity-walking\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
                      "--field-entity-state <index>\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.srna> "

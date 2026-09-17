@@ -90,6 +90,15 @@ struct NativeEntityFrame {
     std::vector<Rgba8> pixels;
 };
 
+struct NativeFieldAnimation {
+    std::uint16_t state_selector = 0;
+    std::uint16_t state_marker = 0;
+    std::uint16_t state_auxiliary_word = 0;
+    std::uint16_t source_timing_value = 0;
+    std::uint16_t timing_multiplier = 0;
+    std::vector<NativeEntityFrame> frames;
+};
+
 // Host text extracted from one 0x30-byte item record in ROM 0xD4540. The
 // numeric code remains the value stored in a field record's +0x66 inventory
 // byte; the two text lines are expanded into ordinary strings for the native
@@ -177,9 +186,8 @@ struct NativeFieldEntity {
     std::uint16_t screen_x = 0;
     std::uint16_t screen_y = 0;
     bool visible = false;
-    // The field kind-3 table is a directional state table. The native
-    // renderer keeps the selected table ordinal as the extracted-frame index
-    // and the ROM byte offset used by record+0x16 separately.
+    // The active image within the selected native walking sequence. The raw
+    // ROM selector and its current sequence index remain separate below.
     std::size_t frame_index = 0;
     std::uint16_t state_selector = 0;
     std::uint16_t state_index = 0;
@@ -227,6 +235,7 @@ struct NativePortAssets {
     NativeIntroData intro;
     NativeImage field_map;
     std::vector<NativeEntityFrame> entity_frames;
+    std::array<NativeFieldAnimation, 8> field_entity_animations{};
     terrain::Map field_terrain;
     std::array<NativeFieldRecord, 3> initial_field_records{};
     std::uint16_t initial_camera_x_fixed = 0;
@@ -414,6 +423,12 @@ public:
     std::size_t field_entity_frame_index() const {
         return field_entity_.frame_index;
     }
+    std::uint16_t field_entity_state_selector() const {
+        return field_entity_.state_selector;
+    }
+    std::uint16_t field_entity_state_index() const {
+        return field_entity_.state_index;
+    }
     std::size_t field_active_record_index() const {
         return active_field_record_;
     }
@@ -452,8 +467,10 @@ private:
     void update_intro(const InputState& input);
     void activate_field_record(std::size_t record_index);
     std::size_t next_available_field_record() const;
+    void select_field_entity_animation(std::size_t direction);
     void update_field_entity_direction(std::int32_t delta_x,
                                        std::int32_t delta_y);
+    void update_field_entity_animation(bool movement_attempted);
     void open_field_menu();
     void update_field_menu(const InputState& input);
     void apply_field_inventory_action();
@@ -480,6 +497,7 @@ private:
     std::size_t intro_line_start_ = 0;
     bool start_options_load_rejected_ = false;
     std::vector<NativeEntityFrame> entity_frames_;
+    std::array<NativeFieldAnimation, 8> field_entity_animations_{};
     std::array<std::array<std::int16_t, 2>, 8> field_direction_table_{};
     NativeFieldEntity field_entity_{};
     std::array<NativeInventoryItem, kNativeInventoryItemCount>

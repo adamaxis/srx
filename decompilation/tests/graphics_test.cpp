@@ -337,6 +337,39 @@ int main() {
     }
     assert(field_entity_directions_vary);
 
+    const auto field_entity_animations =
+        decode_genesis_field_entity_animation_sequences(rom);
+    assert(field_entity_animations.size() == 8);
+    for (std::size_t index = 0; index < field_entity_animations.size();
+         ++index) {
+        const auto& animation = field_entity_animations[index];
+        assert(animation.state_selector ==
+               static_cast<std::uint16_t>(0x60U + index * 4U));
+        assert(animation.state_marker == 0x8002);
+        assert(animation.state_auxiliary_word == 0x0300);
+        assert(animation.source_timing_value == 0x76F0);
+        assert(animation.timing_multiplier == 0x0010);
+        assert(animation.frames.size() == 2);
+        for (const auto& frame : animation.frames) {
+            assert(frame.width != 0 && frame.height != 0);
+            assert(frame.pixels.size() ==
+                   static_cast<std::size_t>(frame.width) * frame.height);
+        }
+        bool walking_frames_differ = false;
+        for (std::size_t pixel = 0;
+             pixel < animation.frames[0].pixels.size() &&
+             pixel < animation.frames[1].pixels.size(); ++pixel) {
+            const auto& left = animation.frames[0].pixels[pixel];
+            const auto& right = animation.frames[1].pixels[pixel];
+            if (left.red != right.red || left.green != right.green ||
+                left.blue != right.blue || left.alpha != right.alpha) {
+                walking_frames_differ = true;
+                break;
+            }
+        }
+        assert(walking_frames_differ);
+    }
+
     const auto native_assets = decode_genesis_native_assets(rom);
     assert(native_assets.field_areas.size() == 8);
     assert(native_assets.field_areas[0].mode_id == 2);
@@ -367,6 +400,13 @@ int main() {
            native_assets.field_map.pixels.size());
     assert(loaded_assets.entity_frames.size() ==
            native_assets.entity_frames.size());
+    for (std::size_t index = 0;
+         index < native_assets.field_entity_animations.size(); ++index) {
+        assert(loaded_assets.field_entity_animations[index].state_selector ==
+               native_assets.field_entity_animations[index].state_selector);
+        assert(loaded_assets.field_entity_animations[index].frames.size() ==
+               native_assets.field_entity_animations[index].frames.size());
+    }
     assert(loaded_assets.field_terrain.statuses ==
            native_assets.field_terrain.statuses);
     assert(loaded_assets.initial_camera_x_fixed ==

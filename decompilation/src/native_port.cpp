@@ -246,6 +246,7 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     title_pixels_ = std::move(assets.title_scene.pixels);
     intro_ = std::move(assets.intro);
     entity_frames_ = std::move(assets.entity_frames);
+    field_entity_animations_ = std::move(assets.field_entity_animations);
     field_direction_table_ = assets.field_direction_table;
     inventory_items_ = std::move(assets.inventory_items);
     cyberware_names_ = std::move(assets.cyberware_names);
@@ -289,6 +290,7 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
         assets.initial_field_records[0].position.world_x_fixed;
     field_entity_.world_y_fixed =
         assets.initial_field_records[0].position.world_y_fixed;
+    select_field_entity_animation(0);
     refresh_field_view();
     refresh_field_entity_projection();
     marker_x_ = field_entity_screen_x();
@@ -323,6 +325,7 @@ void NativePortShell::reset_field_state() {
     field_entity_.state_selector = 0;
     field_entity_.state_index = 0;
     field_entity_.animation_accumulator = 0;
+    select_field_entity_animation(0);
     refresh_field_view();
     refresh_field_entity_projection();
     marker_x_ = field_entity_screen_x();
@@ -376,6 +379,7 @@ bool NativePortShell::load_field_area(std::uint16_t mode_id) {
     field_entity_.state_selector = 0;
     field_entity_.state_index = 0;
     field_entity_.animation_accumulator = 0;
+    select_field_entity_animation(0);
     move_rejected_ = false;
     refresh_field_view();
     refresh_field_entity_projection();
@@ -489,6 +493,7 @@ void NativePortShell::activate_field_record(std::size_t record_index) {
     field_entity_.state_selector = 0;
     field_entity_.state_index = 0;
     field_entity_.animation_accumulator = 0;
+    select_field_entity_animation(0);
     refresh_field_view();
     refresh_field_entity_projection();
     marker_x_ = field_entity_screen_x();
@@ -589,7 +594,13 @@ void NativePortShell::refresh_field_collision() {
 
 void NativePortShell::update_field_entity_direction(
     std::int32_t delta_x, std::int32_t delta_y) {
-    if ((delta_x == 0 && delta_y == 0) || entity_frames_.empty()) {
+    const auto has_animation_frames = std::any_of(
+        field_entity_animations_.begin(), field_entity_animations_.end(),
+        [](const NativeFieldAnimation& animation) {
+            return !animation.frames.empty();
+        });
+    if ((delta_x == 0 && delta_y == 0) ||
+        (entity_frames_.empty() && !has_animation_frames)) {
         return;
     }
 
@@ -611,10 +622,84 @@ void NativePortShell::update_field_entity_direction(
             break;
         }
     }
+    if (direction < field_entity_animations_.size() &&
+        !field_entity_animations_[direction].frames.empty() &&
+        field_entity_.state_selector ==
+            field_entity_animations_[direction].state_selector) {
+        return;
+    }
+    if (direction >= field_entity_animations_.size() ||
+        field_entity_animations_[direction].frames.empty()) {
+        const auto fallback_selector = static_cast<std::uint16_t>(direction * 4U);
+        if (field_entity_.state_selector == fallback_selector) {
+            return;
+        }
+    }
+    select_field_entity_animation(direction);
+}
+
+void NativePortShell::select_field_entity_animation(std::size_t direction) {
+    if (direction < field_entity_animations_.size() &&
+        !field_entity_animations_[direction].frames.empty()) {
+        const auto& animation = field_entity_animations_[direction];
+        field_entity_.frame_index = 0;
+        field_entity_.state_selector = animation.state_selector;
+        field_entity_.state_index = 0;
+        field_entity_.animation_accumulator = 0;
+        field_entity_.animation_multiplier = animation.timing_multiplier;
+        field_entity_.animation_descriptor = 0;
+        return;
+    }
+    if (entity_frames_.empty()) {
+        field_entity_.frame_index = 0;
+        field_entity_.state_selector = static_cast<std::uint16_t>(
+            direction * 4U);
+        field_entity_.state_index = 0;
+        field_entity_.animation_accumulator = 0;
+        return;
+    }
+    // Packs written before version 10 only have the old one-frame-per-
+    // direction table. Keep that data usable while the current extractor
+    // supplies the complete walking lists.
     field_entity_.frame_index = direction % entity_frames_.size();
     field_entity_.state_selector = static_cast<std::uint16_t>(direction * 4U);
     field_entity_.state_index = 0;
     field_entity_.animation_accumulator = 0;
+}
+
+void NativePortShell::update_field_entity_animation(bool movement_attempted) {
+    if (!movement_attempted) {
+        return;
+    }
+    const auto animation = std::find_if(
+        field_entity_animations_.begin(), field_entity_animations_.end(),
+        [this](const NativeFieldAnimation& candidate) {
+            return candidate.state_selector == field_entity_.state_selector;
+        });
+    if (animation == field_entity_animations_.end() ||
+        animation->frames.size() < 2U) {
+        return;
+    }
+
+    // The kind-3 ROM path selects multiplier 0x10. The native update boundary
+    // is one host frame, so retain that fixed-point cadence and advance after
+    // four 0x10 units (0x40), matching the ROM's coarse field animation tick
+    // without retaining a Genesis timer or VDP dependency.
+    constexpr std::uint16_t kHostAnimationQuantum = 0x0040U;
+    const auto multiplier = std::max<std::uint16_t>(
+        field_entity_.animation_multiplier, 1U);
+    const auto accumulated = static_cast<std::uint32_t>(
+        field_entity_.animation_accumulator) + multiplier;
+    if (accumulated < kHostAnimationQuantum) {
+        field_entity_.animation_accumulator =
+            static_cast<std::uint16_t>(accumulated);
+        return;
+    }
+    field_entity_.animation_accumulator = static_cast<std::uint16_t>(
+        accumulated - kHostAnimationQuantum);
+    field_entity_.state_index = static_cast<std::uint16_t>(
+        (field_entity_.state_index + 1U) % animation->frames.size());
+    field_entity_.frame_index = field_entity_.state_index;
 }
 
 void NativePortShell::open_field_menu() {
@@ -1003,6 +1088,9 @@ void NativePortShell::update(const InputState& input) {
                                static_cast<std::int32_t>(kScreenHeight) - 16);
     }
     update_field_entity_direction(delta_x, delta_y);
+    update_field_entity_animation(
+        !field_map_pixels_.empty() && attempted_movement &&
+        !move_rejected_ && (delta_x != 0 || delta_y != 0));
     if (!field_map_pixels_.empty()) {
         // The direct 0x5A62 result is a VDP coordinate. Keep the decoded map
         // in the same top-left world space and shift the camera only after
@@ -1174,8 +1262,20 @@ void NativePortShell::render(ScreenWriter& screen) const {
         screen.blit_rgba(0, 36, field_view_width_, field_view_height_,
                          field_view_pixels_);
 
-        if (field_entity_.visible && !entity_frames_.empty()) {
-            const auto& frame = entity_frames_[field_entity_.frame_index];
+        const NativeEntityFrame* frame = nullptr;
+        const auto animation = std::find_if(
+            field_entity_animations_.begin(), field_entity_animations_.end(),
+            [this](const NativeFieldAnimation& candidate) {
+                return candidate.state_selector == field_entity_.state_selector;
+            });
+        if (animation != field_entity_animations_.end() &&
+            field_entity_.frame_index < animation->frames.size()) {
+            frame = &animation->frames[field_entity_.frame_index];
+        } else if (!entity_frames_.empty() &&
+                   field_entity_.frame_index < entity_frames_.size()) {
+            frame = &entity_frames_[field_entity_.frame_index];
+        }
+        if (field_entity_.visible && frame != nullptr) {
             const auto entity_x = static_cast<std::int32_t>(
                 static_cast<std::int16_t>(field_entity_.screen_x));
             const auto entity_y = static_cast<std::int32_t>(
@@ -1184,8 +1284,8 @@ void NativePortShell::render(ScreenWriter& screen) const {
             screen.fill_rect(entity_x - 7, entity_y - 2, 14, 4,
                              {0x00, 0x00, 0x00, 0xB0});
             screen.blit_rgba(
-                entity_x - frame.width / 2, entity_y - frame.height,
-                frame.width, frame.height, frame.pixels);
+                entity_x - frame->width / 2, entity_y - frame->height,
+                frame->width, frame->height, frame->pixels);
         } else {
             // Keep the input seam visible if a ROM is supplied without the
             // reviewed entity descriptor.

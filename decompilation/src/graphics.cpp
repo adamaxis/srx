@@ -405,6 +405,26 @@ native::NativePortAssets decode_genesis_native_assets(
         assets.entity_frames.push_back(
             {frame.width, frame.height, frame.pixels});
     }
+    const auto entity_animations =
+        decode_genesis_field_entity_animation_sequences(rom);
+    if (entity_animations.size() != assets.field_entity_animations.size()) {
+        throw std::runtime_error(
+            "Genesis field entity animation direction count is invalid");
+    }
+    for (std::size_t index = 0; index < entity_animations.size(); ++index) {
+        const auto& source = entity_animations[index];
+        auto& destination = assets.field_entity_animations[index];
+        destination.state_selector = source.state_selector;
+        destination.state_marker = source.state_marker;
+        destination.state_auxiliary_word = source.state_auxiliary_word;
+        destination.source_timing_value = source.source_timing_value;
+        destination.timing_multiplier = source.timing_multiplier;
+        destination.frames.reserve(source.frames.size());
+        for (const auto& frame : source.frames) {
+            destination.frames.push_back(
+                {frame.width, frame.height, frame.pixels});
+        }
+    }
 
     const auto resources = read_genesis_mode2_field_resources(rom);
     auto field_map = decode_genesis_mode2_field_map(rom, resources);
@@ -543,7 +563,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 9);
+    write_u16(output, 10);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     write_native_image(output, assets.field_map);
@@ -716,6 +736,21 @@ void write_native_asset_pack(const std::string& path,
             output.put(static_cast<char>(mode));
         }
     }
+    for (const auto& animation : assets.field_entity_animations) {
+        write_u16(output, animation.state_selector);
+        write_u16(output, animation.state_marker);
+        write_u16(output, animation.state_auxiliary_word);
+        write_u16(output, animation.source_timing_value);
+        write_u16(output, animation.timing_multiplier);
+        if (animation.frames.size() > 256U) {
+            throw std::invalid_argument(
+                "native field animation has too many frames");
+        }
+        write_u32(output, static_cast<std::uint32_t>(animation.frames.size()));
+        for (const auto& frame : animation.frames) {
+            write_native_image(output, {frame.width, frame.height, frame.pixels});
+        }
+    }
     if (!output) {
         throw std::runtime_error("failed writing native asset pack: " + path);
     }
@@ -731,7 +766,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 9U)) {
+        (version < 2U || version > 10U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -1011,6 +1046,33 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
                     input, "native field area event table is truncated");
             }
             assets.field_areas.push_back(std::move(area));
+        }
+    }
+    if (version >= 10U) {
+        for (auto& animation : assets.field_entity_animations) {
+            animation.state_selector = read_pack_u16(
+                input, "native field animation selector is truncated");
+            animation.state_marker = read_pack_u16(
+                input, "native field animation marker is truncated");
+            animation.state_auxiliary_word = read_pack_u16(
+                input, "native field animation auxiliary word is truncated");
+            animation.source_timing_value = read_pack_u16(
+                input, "native field animation timing value is truncated");
+            animation.timing_multiplier = read_pack_u16(
+                input, "native field animation multiplier is truncated");
+            const auto frame_count = static_cast<std::size_t>(read_pack_u32(
+                input, "native field animation frame count is truncated"));
+            if (frame_count > 256U) {
+                throw std::runtime_error(
+                    "native field animation has too many frames");
+            }
+            animation.frames.reserve(frame_count);
+            for (std::size_t frame_index = 0; frame_index < frame_count;
+                 ++frame_index) {
+                const auto image = read_native_image(input);
+                animation.frames.push_back(
+                    {image.width, image.height, image.pixels});
+            }
         }
     }
     return assets;
@@ -1831,6 +1893,97 @@ std::vector<RgbaImage> decode_genesis_field_entity_animation(
             rom, descriptor, nibble_table_offset, palette_offset));
     }
     return frames;
+}
+
+std::vector<GenesisFieldEntityAnimation>
+decode_genesis_field_entity_animation_sequences(
+    const std::vector<std::uint8_t>& rom,
+    std::size_t entity_record_offset,
+    std::size_t entity_state_pointer_table_offset,
+    std::size_t animation_frame_table_offset,
+    std::size_t nibble_table_offset,
+    std::size_t palette_offset,
+    std::size_t state_count) {
+    const auto read16 = [&](std::size_t offset, const char* what) {
+        require_bytes(rom.size() - std::min(offset, rom.size()), 2U, what);
+        return static_cast<std::uint16_t>(
+            (static_cast<std::uint16_t>(rom[offset]) << 8U) |
+            rom[offset + 1U]);
+    };
+    const auto read32 = [&](std::size_t offset, const char* what) {
+        require_bytes(rom.size() - std::min(offset, rom.size()), 4U, what);
+        return (static_cast<std::uint32_t>(rom[offset]) << 24U) |
+               (static_cast<std::uint32_t>(rom[offset + 1U]) << 16U) |
+               (static_cast<std::uint32_t>(rom[offset + 2U]) << 8U) |
+               static_cast<std::uint32_t>(rom[offset + 3U]);
+    };
+
+    if (state_count == 0 || state_count > 256U) {
+        throw std::invalid_argument(
+            "Genesis field entity animation direction count is invalid");
+    }
+    const auto entity_kind = read16(
+        entity_record_offset + 0x0EU,
+        "Genesis field entity kind is truncated");
+    const auto first_pointer = static_cast<std::size_t>(read32(
+        entity_state_pointer_table_offset +
+            static_cast<std::size_t>(entity_kind) * 4U,
+        "Genesis field entity animation pointer is truncated"));
+    const auto source_timing_value = read16(
+        first_pointer + 0x00CAU,
+        "Genesis field animation timing value is truncated");
+
+    std::vector<GenesisFieldEntityAnimation> animations;
+    animations.reserve(state_count);
+    for (std::size_t direction = 0; direction < state_count; ++direction) {
+        GenesisFieldEntityAnimation animation;
+        animation.state_selector = read16(
+            animation_frame_table_offset + direction * 2U,
+            "Genesis field animation selector table is truncated");
+        const auto state_list = static_cast<std::size_t>(read32(
+            first_pointer + animation.state_selector,
+            "Genesis field animation state list is truncated"));
+        animation.state_marker = read16(
+            state_list, "Genesis field animation marker is truncated");
+        if (static_cast<std::int16_t>(animation.state_marker) >= 0) {
+            throw std::runtime_error(
+                "Genesis field walking animation has no terminal marker");
+        }
+        const auto frame_count = static_cast<std::size_t>(
+            animation.state_marker & 0x7FFFU);
+        if (frame_count == 0 || frame_count > 256U) {
+            throw std::runtime_error(
+                "Genesis field walking animation frame count is invalid");
+        }
+
+        // The reviewed kind-3 lists are laid out as:
+        //   0x8002, auxiliary word, descriptor pointer[0..1].
+        // This is distinct from the positive-marker lists handled by the
+        // legacy single-frame decoder above.
+        animation.state_auxiliary_word = read16(
+            state_list + 2U,
+            "Genesis field animation auxiliary word is truncated");
+        animation.source_timing_value = source_timing_value;
+        animation.timing_multiplier = entity_kind == 0x000DU
+            ? 0x0180U
+            : source_timing_value >= 0x0016U ? 0x0010U : 0x001CU;
+        animation.frames.reserve(frame_count);
+        for (std::size_t frame = 0; frame < frame_count; ++frame) {
+            const auto descriptor = static_cast<std::size_t>(read32(
+                state_list + 4U + frame * 4U,
+                "Genesis field animation descriptor is truncated"));
+            if (read16(descriptor,
+                       "Genesis field animation descriptor header is truncated") !=
+                0x8002U) {
+                throw std::runtime_error(
+                    "Genesis field walking animation descriptor is invalid");
+            }
+            animation.frames.push_back(decode_genesis_entity_frame(
+                rom, descriptor, nibble_table_offset, palette_offset));
+        }
+        animations.push_back(std::move(animation));
+    }
+    return animations;
 }
 
 RgbaImage decode_genesis_startup_screen(
