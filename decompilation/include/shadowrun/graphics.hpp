@@ -101,8 +101,12 @@ struct GenesisMode2FieldResources {
     std::size_t tilemap_height = 0;
     GenesisMetatileEncoding metatile_encoding =
         GenesisMetatileEncoding::CompressedResource;
-    // ROM 0x167AE indexes this descriptor-selected byte table with the
-    // low-byte field status before choosing the destination mode.
+    // The descriptor is copied to FFDDC6 by ROM 0x3074, making this pointer
+    // available at FFDE14. ROM 0x167AE indexes the pointed-to bytes with the
+    // reaction substate in FFFBF9; for mode 2, the first entries select the
+    // next field/session mode after a terrain reaction. This is not a direct
+    // index by the raw terrain byte: 0xB7B8 first copies that byte's low five
+    // bits into the reaction substate.
     std::size_t event_table_offset = 0;
     std::array<std::uint8_t, 32> event_mode_table{};
 };

@@ -82,6 +82,32 @@ std::vector<shadowrun::graphics::RgbaImage> flatten_field_entity_animations(
     return frames;
 }
 
+void print_field_event_cells(
+    const shadowrun::terrain::Map& terrain,
+    const std::array<std::uint8_t, 32>& event_mode_table) {
+    std::size_t count = 0;
+    for (std::size_t row = 0; row < shadowrun::terrain::Map::kHeight; ++row) {
+        for (std::size_t column = 0;
+             column < shadowrun::terrain::Map::kWidth; ++column) {
+            const auto status = terrain.statuses[
+                row * shadowrun::terrain::Map::kWidth + column];
+            if ((status & 0xE0U) != 0xC0U) {
+                continue;
+            }
+            const auto event_index = static_cast<std::size_t>(status & 0x1FU);
+            const auto destination = event_index < event_mode_table.size()
+                ? event_mode_table[event_index]
+                : 0U;
+            std::cout << "cell (" << column * 32U << "," << row * 32U
+                      << ") raw=0x" << std::hex << static_cast<unsigned>(status)
+                      << " event=" << std::dec << event_index
+                      << " destination=" << destination << "\n";
+            ++count;
+        }
+    }
+    std::cout << "C0 event cells: " << count << "\n";
+}
+
 shadowrun::graphics::RgbaImage render_native_field(
     shadowrun::native::NativePortAssets assets) {
     shadowrun::native::SoftwareScreen screen;
@@ -125,6 +151,42 @@ shadowrun::graphics::RgbaImage render_native_field(
 } // namespace
 
 int main(int argc, char** argv) {
+    if (argc == 4 && std::string(argv[3]) == "--field-event-cells") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto assets =
+                shadowrun::graphics::decode_genesis_native_assets(rom);
+            print_field_event_cells(assets.field_terrain,
+                                    assets.field_event_mode_table);
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 5 && std::string(argv[3]) == "--field-event-cells") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto assets =
+                shadowrun::graphics::decode_genesis_native_assets(rom);
+            const auto mode_id = static_cast<std::uint16_t>(
+                parse_number(argv[4]));
+            const auto area = std::find_if(
+                assets.field_areas.begin(), assets.field_areas.end(),
+                [mode_id](const shadowrun::native::NativeFieldArea& candidate) {
+                    return candidate.mode_id == mode_id;
+                });
+            if (area == assets.field_areas.end()) {
+                throw std::out_of_range("field mode is not in the native catalog");
+            }
+            std::cout << "field mode " << mode_id << " event cells:\n";
+            print_field_event_cells(area->terrain, area->event_mode_table);
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
     if (argc == 4 && std::string(argv[3]) == "--title") {
         try {
             const auto rom = read_file(argv[1]);
@@ -306,6 +368,10 @@ int main(int argc, char** argv) {
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> --title\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
                      "--native-field\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <ignored> "
+                     "--field-event-cells\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <ignored> "
+                     "--field-event-cells <mode-id>\n";
         std::cerr << "       shadowrun_graphics_extract <assets.srna> <out.bmp> "
                      "--native-field-pack\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "

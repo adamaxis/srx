@@ -447,7 +447,7 @@ native::NativePortAssets decode_genesis_native_assets(
     // Keep the legacy mode-2 fields above for existing callers, while also
     // creating the host area catalog consumed by the native transition loop.
     // These are every non-empty destination named by the mode-2 Redmond
-    // event table: 0x14/0x1A/0x0D/0x13/0x34/0x32/0x33. The decoder has
+    // reaction-mode table: 0x14/0x1A/0x0D/0x13/0x34/0x32/0x33. The decoder has
     // reviewed resource boundaries for all seven, so keep the native area
     // catalog data-driven instead of making the field loop special-case only
     // the first doorway.

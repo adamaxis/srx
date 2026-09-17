@@ -147,9 +147,9 @@ struct NativeFieldRecord {
 
 // Host-owned field area data. The mode id is the value written to the ROM's
 // FFDDC4 mode word; everything needed to render and walk the area is already
-// converted to ordinary host data. The event table is the low-byte status
-// translation used by ROM 0x167AE (the first 32 entries are sufficient for
-// the field status values which reach that dispatcher).
+// converted to ordinary host data. The optional reaction-mode table is the
+// host form of the descriptor pointer consumed by ROM 0x167AE. Its first 32
+// bytes are sufficient for the reaction substates reachable from terrain.
 struct NativeFieldArea {
     std::uint16_t mode_id = 0;
     NativeImage map;

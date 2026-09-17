@@ -152,18 +152,20 @@ only after it reaches the reviewed projection window. The renderer-independent
 `0xE8A0/0xE9EE/0xEA36/0xEAD2` helpers over that host grid.
 
 The mode-2 interaction path is now carried through the native area boundary.
-ROM `0x167AE` indexes the descriptor table at `0x172CDC` with the low five
-bits of the retained raw terrain status; the first Redmond entrance class is
-therefore a proven destination mode `0x14` (decimal 20), not mode 14. The
-native asset extractor packages a `NativeFieldArea` catalog with converted
-RGBA maps, terrain grids, spawn records, camera origins, and event tables.
+ROM `0xB7B8` copies the low five bits of the retained raw terrain status into
+the reaction substate, and the later `0x167AE` path indexes the descriptor's
+`+0x4E` table at `0x172CDC` with that substate. The first Redmond entrance
+class is therefore a proven destination mode `0x14` (decimal 20), not mode
+14. The native asset extractor packages a `NativeFieldArea` catalog with
+converted RGBA maps, terrain grids, spawn records, camera origins, and
+reaction-mode tables.
 Mode `0x14` uses the ROM's raw 16-bit name-word stamp table at `0x1CD29A`
 (941 four-by-four stamps, 50x30 map entries, 1600x960 host map), while modes
 2 and 10..19 retain their compressed resource streams. The native field loop
 now loads that extracted mode when the reviewed C0 doorway status is reached;
 the focused test crosses a synthetic doorway and verifies the mode-20 spawn
-`0x5A00/0x0800`. Every non-empty destination named by the mode-2 Redmond event
-table (`0x14`, `0x1A`, `0x0D`, `0x13`, `0x34`, `0x32`, and `0x33`) now has a
+`0x5A00/0x0800`. Every non-empty destination named by the mode-2 Redmond
+reaction-mode table (`0x14`, `0x1A`, `0x0D`, `0x13`, `0x34`, `0x32`, and `0x33`) now has a
 decoded native area record; transition geometry and exits still need focused
 in-game verification.
 

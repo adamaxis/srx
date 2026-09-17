@@ -1041,22 +1041,22 @@ void NativePortShell::update(const InputState& input) {
         if (candidate_collision.blocked) {
             move_rejected_ = true;
             // ROM 0xB7B8 retains the raw terrain byte even though 0xE7C8
-            // returns 0x7F for the blocked move. The mode-2 event table at
-            // the descriptor's +0x4E pointer is then consumed by 0x167AE.
+            // returns 0x7F for the blocked move. The active descriptor's
+            // +0x4E reaction-mode table is consumed by the later 0x167AE
+            // transition path after 0xB7B8 copies the low five status bits
+            // into FFFBF9. The host combines those already-decoded steps at
+            // the native boundary.
             // Probe the center cell as well because the four-corner player
             // footprint can report a neighboring wall's 0x7F over a doorway.
             auto interaction = candidate_collision;
-            if (field_mode_ == 2U) {
-                const auto center = terrain::probe(
-                    field_terrain_, candidate_x, candidate_y, false);
-                if ((center.raw_status & 0xE0U) == 0xC0U) {
-                    interaction = center;
-                }
+            const auto center = terrain::probe(
+                field_terrain_, candidate_x, candidate_y, false);
+            if ((center.raw_status & 0xE0U) == 0xC0U) {
+                interaction = center;
             }
             const auto event_index = static_cast<std::size_t>(
                 interaction.raw_status & 0x1FU);
-            if (field_mode_ == 2U &&
-                (interaction.raw_status & 0xE0U) == 0xC0U &&
+            if ((interaction.raw_status & 0xE0U) == 0xC0U &&
                 event_index < field_event_mode_table_.size()) {
                 const auto destination = field_event_mode_table_[event_index];
                 if (destination != 0U && destination != 0x80U &&

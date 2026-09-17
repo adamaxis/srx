@@ -134,14 +134,18 @@ expanded entity/session population, and additional field object behavior
 remain the next integration boundaries.
 
 The first native field transition is now also wired from reviewed ROM data.
-The mode-2 dispatcher indexes the event table at `0x172CDC`; Redmond's C0
-doorway class selects mode `0x14` (decimal 20). That destination uses a raw
+The mode-2 reaction path copies the terrain status low five bits into the
+reaction substate, then the `0x167AE` dispatcher indexes the descriptor table
+at `0x172CDC`; Redmond's C0 doorway class selects mode `0x14` (decimal 20).
+That destination uses a raw
 16-bit name-word table at `0x1CD29A`, producing a 1600x960 host interior map
 from 50x30 entries. The version-10 `.srna` pack includes mode-2, mode-13,
 mode-19, mode-20, mode-26, and mode-50..52 area records with their converted
-maps, terrain, camera, spawn, and event data. These cover every non-empty
-destination named by the mode-2 Redmond event table; transition geometry and
-interior exits still need focused in-game verification.
+maps, terrain, camera, spawn, and reaction-mode data. These cover every
+non-empty destination named by the mode-2 Redmond reaction-mode table;
+interior descriptors have zero `+0x4E` transition pointers, so their exit path
+still needs to be recovered from the other reaction/resource data rather than
+guessed.
 
 The Inventory selector now has its first typed data path. ROM `0x12148`
 addresses eight item bytes at entity record `+0x66` as `2*row+selector`.
