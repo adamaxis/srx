@@ -16,6 +16,22 @@ std::vector<std::uint8_t> read_rom() {
         std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
 }
 
+void enter_field_from_start(shadowrun::native::NativePortShell& shell) {
+    using namespace shadowrun::native;
+    shell.update(InputState{button_mask(Button::Start),
+                             button_mask(Button::Start)});
+    assert(shell.scene() == NativeScene::StartOptions);
+    shell.update(InputState{button_mask(Button::A), button_mask(Button::A)});
+    assert(shell.scene() == NativeScene::ArchetypeMenu);
+    shell.update(InputState{button_mask(Button::A), button_mask(Button::A)});
+    assert(shell.scene() == NativeScene::Intro);
+    for (std::size_t line = 0; line < shell.intro_story_line_count();
+         line += 5U) {
+        shell.update(InputState{button_mask(Button::A), button_mask(Button::A)});
+    }
+    assert(shell.scene() == NativeScene::Field);
+}
+
 } // namespace
 
 int main() {
@@ -76,6 +92,25 @@ int main() {
     // pressed edge must not repeatedly re-enter or reset the field scene.
     rom_shell.update(InputState{button_mask(Button::Start),
                                 button_mask(Button::Start)});
+    assert(rom_shell.scene() == NativeScene::StartOptions);
+    assert(rom_shell.start_options_selection() == 0);
+    rom_shell.update(InputState{button_mask(Button::A),
+                                button_mask(Button::A)});
+    assert(rom_shell.scene() == NativeScene::ArchetypeMenu);
+    assert(rom_shell.archetype_selection() == 0);
+    rom_shell.update(InputState{button_mask(Button::A),
+                                button_mask(Button::A)});
+    assert(rom_shell.scene() == NativeScene::Intro);
+    assert(rom_shell.intro_story_line_count() == 22);
+    assert(rom_shell.intro_line_start() == 0);
+    rom_shell.update(InputState{button_mask(Button::A),
+                                button_mask(Button::A)});
+    assert(rom_shell.intro_line_start() == 5);
+    for (std::size_t line = 5; line < rom_shell.intro_story_line_count();
+         line += 5U) {
+        rom_shell.update(InputState{button_mask(Button::A),
+                                    button_mask(Button::A)});
+    }
     assert(rom_shell.scene() == NativeScene::Field);
     assert(rom_shell.field_entity_visible());
     // Mode 2's +0x42/+0x44 pair is copied by ROM 0x2B34 into the first
@@ -253,8 +288,7 @@ int main() {
     no_runner_assets.initial_field_records[1].flags_10 = 0;
     no_runner_assets.initial_field_records[2].flags_10 = 0;
     NativePortShell no_runner_shell("SHADOWRUN", std::move(no_runner_assets));
-    no_runner_shell.update(InputState{button_mask(Button::Start),
-                                      button_mask(Button::Start)});
+    enter_field_from_start(no_runner_shell);
     no_runner_shell.update(InputState{button_mask(Button::C),
                                       button_mask(Button::C)});
     assert(no_runner_shell.field_active_record_index() == 0);
@@ -343,8 +377,7 @@ int main() {
     assert(pack_shell.has_entity_frame());
     assert(pack_shell.scene() == NativeScene::Title);
     SoftwareScreen pack_screen;
-    pack_shell.update(InputState{button_mask(Button::Start),
-                                 button_mask(Button::Start)});
+    enter_field_from_start(pack_shell);
     assert(pack_shell.scene() == NativeScene::Field);
     assert(pack_shell.field_entity_visible());
     const auto pack_start_x = pack_shell.marker_x();
@@ -359,8 +392,7 @@ int main() {
     auto hidden_assets = native_assets;
     hidden_assets.entity_template.display_state = -1;
     NativePortShell hidden_shell("SHADOWRUN", std::move(hidden_assets));
-    hidden_shell.update(InputState{button_mask(Button::Start),
-                                   button_mask(Button::Start)});
+    enter_field_from_start(hidden_shell);
     assert(hidden_shell.scene() == NativeScene::Field);
     assert(!hidden_shell.field_entity_visible());
     return 0;

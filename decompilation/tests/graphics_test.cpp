@@ -126,6 +126,18 @@ int main() {
     assert(attribute_skill_catalog[7] == "Magic");
     assert(attribute_skill_catalog[8] == "Sorcery");
     assert(attribute_skill_catalog[19] == "Negotiation");
+    const auto intro = read_genesis_intro_data(rom);
+    assert(intro.start_options_title == "Start Options");
+    assert((intro.start_options ==
+            std::array<std::string, 2>{"New Game", "Load Game"}));
+    assert(intro.archetype_title == "Choose Archetype");
+    assert((intro.archetypes ==
+            std::array<std::string, 4>{"Samurai", "Decker", "Gator",
+                                       "Shaman"}));
+    assert(intro.story_lines.size() == 22);
+    assert(intro.story_lines.front() == "The Time:  January 31, 2058");
+    assert(intro.story_lines.back() ==
+           "in the Redmond Barrens.");
     const auto metatile_resource = decode_genesis_resource_stream(rom, 0x170102);
     assert(metatile_resource.size() == 0x4F40);
     const auto field_resources = read_genesis_mode2_field_resources(rom);
@@ -272,6 +284,15 @@ int main() {
            native_assets.field_direction_table);
     assert(loaded_assets.entity_template.kind ==
            native_assets.entity_template.kind);
+    assert(loaded_assets.entity_template.record_type ==
+           native_assets.entity_template.record_type);
+    assert(loaded_assets.intro.start_options_title ==
+           native_assets.intro.start_options_title);
+    assert(loaded_assets.intro.start_options == native_assets.intro.start_options);
+    assert(loaded_assets.intro.archetype_title ==
+           native_assets.intro.archetype_title);
+    assert(loaded_assets.intro.archetypes == native_assets.intro.archetypes);
+    assert(loaded_assets.intro.story_lines == native_assets.intro.story_lines);
     assert(loaded_assets.entity_template.display_state ==
            native_assets.entity_template.display_state);
     assert(loaded_assets.entity_template.display_substate ==

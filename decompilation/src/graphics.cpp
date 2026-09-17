@@ -130,6 +130,31 @@ std::string read_genesis_fixed_text(const std::vector<std::uint8_t>& rom,
     return value.substr(first, last - first + 1U);
 }
 
+std::string read_genesis_menu_text(const std::vector<std::uint8_t>& rom,
+                                   std::size_t offset, std::size_t length,
+                                   const char* what) {
+    if (offset > rom.size() || rom.size() - offset < length) {
+        throw std::out_of_range(what);
+    }
+    std::string value;
+    value.reserve(length);
+    for (std::size_t index = 0; index < length; ++index) {
+        const auto byte = rom[offset + index];
+        if (byte == 0x80U) {
+            continue;
+        }
+        if (byte >= 0x20U && byte <= 0x7EU) {
+            value.push_back(static_cast<char>(byte));
+        }
+    }
+    const auto first = value.find_first_not_of(' ');
+    if (first == std::string::npos) {
+        return {};
+    }
+    const auto last = value.find_last_not_of(' ');
+    return value.substr(first, last - first + 1U);
+}
+
 void write_pack_string(std::ostream& output, const std::string& value,
                        const char* what) {
     if (value.size() > 0xFFFFU) {
@@ -312,12 +337,67 @@ read_genesis_attribute_skill_catalog(const std::vector<std::uint8_t>& rom) {
     return result;
 }
 
+native::NativeIntroData read_genesis_intro_data(
+    const std::vector<std::uint8_t>& rom) {
+    native::NativeIntroData result;
+    result.start_options_title = read_genesis_menu_text(
+        rom, rom::kStartupOptionsTitleText, 13U,
+        "Genesis startup options title is truncated");
+    result.start_options[0] = read_genesis_menu_text(
+        rom, rom::kStartupNewGameText, 8U,
+        "Genesis new-game label is truncated");
+    result.start_options[1] = read_genesis_menu_text(
+        rom, rom::kStartupLoadGameText, 9U,
+        "Genesis load-game label is truncated");
+    result.archetype_title = read_genesis_menu_text(
+        rom, rom::kStartupArchetypeTitleText, 17U,
+        "Genesis archetype title is truncated");
+    result.archetypes[0] = read_genesis_menu_text(
+        rom, rom::kStartupSamuraiText, 7U,
+        "Genesis Samurai label is truncated");
+    result.archetypes[1] = read_genesis_menu_text(
+        rom, rom::kStartupDeckerText, 6U,
+        "Genesis Decker label is truncated");
+    result.archetypes[2] = read_genesis_menu_text(
+        rom, rom::kStartupGatorText, 5U,
+        "Genesis Gator label is truncated");
+    result.archetypes[3] = read_genesis_menu_text(
+        rom, rom::kStartupShamanText, 6U,
+        "Genesis Shaman label is truncated");
+
+    if (rom::kIntroStoryTextEnd > rom.size() ||
+        rom::kIntroStoryText > rom::kIntroStoryTextEnd) {
+        throw std::out_of_range("Genesis opening story block is truncated");
+    }
+    auto offset = static_cast<std::size_t>(rom::kIntroStoryText);
+    const auto end = static_cast<std::size_t>(rom::kIntroStoryTextEnd);
+    while (offset < end) {
+        std::string line;
+        while (offset < end && rom[offset] != 0xFFU) {
+            const auto byte = rom[offset++];
+            if (byte < 0x20U || byte > 0x7EU) {
+                throw std::runtime_error(
+                    "Genesis opening story contains an unsupported text byte");
+            }
+            line.push_back(static_cast<char>(byte));
+        }
+        if (offset == end) {
+            throw std::out_of_range(
+                "Genesis opening story line terminator is truncated");
+        }
+        result.story_lines.push_back(std::move(line));
+        ++offset;
+    }
+    return result;
+}
+
 native::NativePortAssets decode_genesis_native_assets(
     const std::vector<std::uint8_t>& rom) {
     native::NativePortAssets assets;
     auto title = decode_genesis_startup_screen(rom);
     assets.title_scene = {
         title.width, title.height, std::move(title.pixels)};
+    assets.intro = read_genesis_intro_data(rom);
 
     const auto entity_frames = decode_genesis_field_entity_animation(rom);
     assets.entity_frames.reserve(entity_frames.size());
@@ -519,6 +599,26 @@ void write_native_asset_pack(const std::string& path,
         write_u16(output, static_cast<std::uint16_t>(direction[0]));
         write_u16(output, static_cast<std::uint16_t>(direction[1]));
     }
+    const auto& intro = assets.intro;
+    write_pack_string(output, intro.start_options_title,
+                      "native startup options title is too long");
+    for (const auto& option : intro.start_options) {
+        write_pack_string(output, option,
+                          "native startup option is too long");
+    }
+    write_pack_string(output, intro.archetype_title,
+                      "native archetype title is too long");
+    for (const auto& archetype : intro.archetypes) {
+        write_pack_string(output, archetype,
+                          "native archetype label is too long");
+    }
+    if (intro.story_lines.size() > 0xFFFFU) {
+        throw std::invalid_argument("too many native intro story lines");
+    }
+    write_u16(output, static_cast<std::uint16_t>(intro.story_lines.size()));
+    for (const auto& line : intro.story_lines) {
+        write_pack_string(output, line, "native intro story line is too long");
+    }
     if (!output) {
         throw std::runtime_error("failed writing native asset pack: " + path);
     }
@@ -715,6 +815,31 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
             input, "native direction table is truncated"));
         direction[1] = static_cast<std::int16_t>(read_pack_u16(
             input, "native direction table is truncated"));
+    }
+    if (version >= 8U) {
+        auto& intro = assets.intro;
+        intro.start_options_title = read_pack_string(
+            input, "native startup options title is truncated");
+        for (auto& option : intro.start_options) {
+            option = read_pack_string(input,
+                                      "native startup option is truncated");
+        }
+        intro.archetype_title = read_pack_string(
+            input, "native archetype title is truncated");
+        for (auto& archetype : intro.archetypes) {
+            archetype = read_pack_string(
+                input, "native archetype label is truncated");
+        }
+        const auto story_count = static_cast<std::size_t>(read_pack_u16(
+            input, "native intro story count is truncated"));
+        if (story_count > 1024U) {
+            throw std::runtime_error("native asset pack has too many intro lines");
+        }
+        intro.story_lines.reserve(story_count);
+        for (std::size_t index = 0; index < story_count; ++index) {
+            intro.story_lines.push_back(read_pack_string(
+                input, "native intro story line is truncated"));
+        }
     }
     return assets;
 }

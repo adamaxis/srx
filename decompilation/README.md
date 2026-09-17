@@ -76,9 +76,11 @@ four-line CRAM image at `0x1FF0`. Those resources are converted to host RGBA8
 and submitted through `ScreenWriter`; no Genesis VDP or 68000 runtime is
 needed by the native executable.
 
-The asset-backed native shell now exposes a native scene transition as well. It starts
-on the reconstructed title scene, consumes the pressed `Start` edge, and enters
-a typed C++ field state with held directional movement. The field presentation
+The asset-backed native shell now exposes a native startup flow as well. It starts
+on the reconstructed title scene, consumes the pressed `Start` edge, enters the
+ROM's `Start Options` and `Choose Archetype` screens, then presents the extracted
+opening story before entering a typed C++ field state with held directional
+movement. The field presentation
 translates the mode-2 data path:
 raw pattern data at `0x166B82`, compressed 4x4 name-word stamps at `0x170102`,
 and the 60x42 primary/secondary tables at `0x16D9A2`/`0x16ED52`. Genesis tile
@@ -116,10 +118,13 @@ secondary rows, and its labels are extracted from the `0x1170C`/`0xD1D28`
 string path. A/B record the same shared `0x10E4E` dispatch boundary, C retains
 the reviewed `0x391A` runner switch, and Start closes the menu without
 resetting field state. The native record pack also carries each startup
-record's `kind` and `+0x10` selection flags. C scans those flags using the
-reviewed `0x391A` active/suppressed/selection gates, skips unavailable runners,
-and leaves the current runner unchanged when no eligible record exists. This
-is a runnable title-to-field slice, not a claim
+record's `+0x3E` type and `+0x10/+0x11` selection flags. C scans those flags
+using the reviewed `0x391A` active/suppressed/selection gates; the type-2
+startup record is selectable and is the ROM's wrap-around boundary. It skips
+unavailable runners and leaves the current runner unchanged when no eligible
+record exists. The opening story lines are extracted from `0x5B7D8` through
+`0x5BA4B`, while the startup labels come from `0x1B6499` through `0x1B6517`.
+This is a runnable startup-to-field slice, not a claim
 that the whole game is playable; the remaining command-handler bodies,
 expanded entity/session population, and additional field object behavior
 remain the next integration boundaries.
@@ -146,7 +151,7 @@ cyberware field and expands the pointer names at `0xD2072` into host strings;
 the initial record therefore shows the recovered `Hand Razors` entry. The
 handler is display-only in the ROM, so Start returns to the command screen and
 there is no invented mutation or selection behavior. These values are carried
-in the native asset-pack version 7 format, which also carries runner selection
+in the native asset-pack version 8 format, which also carries runner selection
 flags.
 
 The Attributes/Skills command now enters a native two-column view corresponding
@@ -155,7 +160,7 @@ twelve skill bytes at `+0x80..+0x85` and `+0x87..+0x8C`, and the twenty labels
 from the `0xC1A2A` pointer table. The four intervening bytes at `+0x7F`,
 `+0x86`, `+0x8D`, and `+0x8E` are retained as auxiliary state until their
 upgrade/display roles are proven; the unresolved A/B/C mutations remain
-isolated. The expanded data is stored in native asset-pack version 7.
+isolated. The expanded data is stored in native asset-pack version 8.
 
 The Windows frontend preserves the reviewed controller boundary from ROM
 0x195C: the sampled word uses its low byte for held state and its high byte for
@@ -167,7 +172,7 @@ The extracted field template also carries the signed display bytes at
 `+0x56/+0x57`. Native projection preserves the `0x36FC` display gate: a
 negative `+0x56` or the sentinel `0x7F` leaves the entity hidden even when its
 screen projection is in range. These values are included in native asset-pack
-version 7, so the host-only runtime retains the recovered state, inventory,
+version 8, so the host-only runtime retains the recovered state, inventory,
 cyberware catalog, clip values, and runner selection flags without
 reading the ROM.
 

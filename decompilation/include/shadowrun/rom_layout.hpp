@@ -107,6 +107,20 @@ constexpr std::size_t kCyberwareCount = 15;
 // twelve correspond to the skill bytes at +0x80..+0x85 and +0x87..+0x8C.
 constexpr std::uint32_t kAttributeSkillPointerTable = 0xC1A2A;
 constexpr std::size_t kAttributeSkillCount = 20;
+// Title/startup menu strings and opening story text used by the native
+// startup flow. The story block is ASCII with 0xFF line separators; the
+// following bytes are code, so the end is an explicit reviewed boundary.
+constexpr std::uint32_t kStartupMenuText = 0x1B6498;
+constexpr std::uint32_t kStartupOptionsTitleText = 0x1B6499;
+constexpr std::uint32_t kStartupNewGameText = 0x1B64B9;
+constexpr std::uint32_t kStartupLoadGameText = 0x1B64C5;
+constexpr std::uint32_t kStartupArchetypeTitleText = 0x1B64D1;
+constexpr std::uint32_t kStartupSamuraiText = 0x1B64F2;
+constexpr std::uint32_t kStartupDeckerText = 0x1B64FD;
+constexpr std::uint32_t kStartupGatorText = 0x1B6507;
+constexpr std::uint32_t kStartupShamanText = 0x1B6511;
+constexpr std::uint32_t kIntroStoryText = 0x5B7D8;
+constexpr std::uint32_t kIntroStoryTextEnd = 0x5BA4C;
 inline constexpr std::array<GenesisAddress, 4> kEntityObjectVariantTables{
     0x5D92, 0x5DBE, 0x5DA8, 0x5DD4
 };

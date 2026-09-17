@@ -14,6 +14,9 @@ namespace {
 using Glyph = std::array<std::uint8_t, 7>;
 
 Glyph glyph_for(char character) {
+    if (character >= 'a' && character <= 'z') {
+        character = static_cast<char>(character - ('a' - 'A'));
+    }
     switch (character) {
     case 'A': return {0x0E, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11};
     case 'B': return {0x1E, 0x11, 0x11, 0x1E, 0x11, 0x11, 0x1E};
@@ -191,6 +194,7 @@ constexpr std::int32_t kFieldScreenOriginY = 36;
 // in the direct projection window.
 constexpr std::int32_t kFieldEntityMaxHostX = 0x1AE -
                                                 kGenesisVdpSpriteOrigin - 1;
+constexpr std::size_t kIntroLinesPerPage = 5;
 
 // ROM 0x391A walks entity records after the current record. A candidate must
 // be active (bit 0), not suppressed (bit 6), and reach the selection exit
@@ -240,6 +244,7 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     title_width_ = assets.title_scene.width;
     title_height_ = assets.title_scene.height;
     title_pixels_ = std::move(assets.title_scene.pixels);
+    intro_ = std::move(assets.intro);
     entity_frames_ = std::move(assets.entity_frames);
     field_direction_table_ = assets.field_direction_table;
     inventory_items_ = std::move(assets.inventory_items);
@@ -322,6 +327,74 @@ void NativePortShell::reset_field_state() {
     marker_y_ = field_entity_screen_y();
     move_rejected_ = false;
     refresh_field_collision();
+}
+
+void NativePortShell::update_start_options(const InputState& input) {
+    if (input.is_held(Button::Up) && !input.is_held(Button::Down)) {
+        start_options_selection_ = start_options_selection_ == 0
+            ? intro_.start_options.size() - 1U
+            : start_options_selection_ - 1U;
+    } else if (input.is_held(Button::Down) &&
+               !input.is_held(Button::Up)) {
+        start_options_selection_ =
+            (start_options_selection_ + 1U) % intro_.start_options.size();
+    }
+
+    if (!input.was_pressed(Button::A) && !input.was_pressed(Button::B)) {
+        return;
+    }
+    if (start_options_selection_ == 0U) {
+        archetype_selection_ = 0;
+        start_options_load_rejected_ = false;
+        scene_ = NativeScene::ArchetypeMenu;
+        return;
+    }
+
+    // The reviewed title data contains a Load Game branch, but no native save
+    // format has been reconstructed yet. Preserve its actual no-save result
+    // rather than silently starting a new game from the wrong menu entry.
+    start_options_load_rejected_ = true;
+}
+
+void NativePortShell::update_archetype_menu(const InputState& input) {
+    if (input.is_held(Button::Up) && !input.is_held(Button::Down)) {
+        archetype_selection_ = archetype_selection_ == 0
+            ? intro_.archetypes.size() - 1U
+            : archetype_selection_ - 1U;
+    } else if (input.is_held(Button::Down) &&
+               !input.is_held(Button::Up)) {
+        archetype_selection_ =
+            (archetype_selection_ + 1U) % intro_.archetypes.size();
+    }
+
+    if (input.was_pressed(Button::Start)) {
+        scene_ = NativeScene::StartOptions;
+        return;
+    }
+    if (!input.was_pressed(Button::A) && !input.was_pressed(Button::B)) {
+        return;
+    }
+    intro_line_start_ = 0;
+    scene_ = intro_.story_lines.empty() ? NativeScene::Field
+                                        : NativeScene::Intro;
+    if (scene_ == NativeScene::Field && !field_map_pixels_.empty()) {
+        reset_field_state();
+    }
+}
+
+void NativePortShell::update_intro(const InputState& input) {
+    if (!input.was_pressed(Button::A) && !input.was_pressed(Button::B) &&
+        !input.was_pressed(Button::Start)) {
+        return;
+    }
+    if (intro_line_start_ + kIntroLinesPerPage < intro_.story_lines.size()) {
+        intro_line_start_ += kIntroLinesPerPage;
+        return;
+    }
+    scene_ = NativeScene::Field;
+    if (!field_map_pixels_.empty()) {
+        reset_field_state();
+    }
 }
 
 void NativePortShell::activate_field_record(std::size_t record_index) {
@@ -718,14 +791,35 @@ void NativePortShell::update(const InputState& input) {
         // 0x1A9E loop exits when FFDDC2 is set. The native equivalent is the
         // supplied pressed edge, not a held-button poll.
         if (input.was_pressed(Button::Start)) {
-            scene_ = NativeScene::Field;
-            if (!field_map_pixels_.empty()) {
-                reset_field_state();
-            } else {
-                marker_x_ = kScreenWidth / 2;
-                marker_y_ = kScreenHeight / 2;
+            scene_ = has_intro() ? NativeScene::StartOptions
+                                 : NativeScene::Field;
+            if (scene_ == NativeScene::Field) {
+                if (!field_map_pixels_.empty()) {
+                    reset_field_state();
+                } else {
+                    marker_x_ = kScreenWidth / 2;
+                    marker_y_ = kScreenHeight / 2;
+                }
             }
         }
+        ++frame_number_;
+        return;
+    }
+
+    if (scene_ == NativeScene::StartOptions) {
+        update_start_options(input);
+        ++frame_number_;
+        return;
+    }
+
+    if (scene_ == NativeScene::ArchetypeMenu) {
+        update_archetype_menu(input);
+        ++frame_number_;
+        return;
+    }
+
+    if (scene_ == NativeScene::Intro) {
+        update_intro(input);
         ++frame_number_;
         return;
     }
@@ -892,6 +986,84 @@ void NativePortShell::render(ScreenWriter& screen) const {
                          {0x00, 0x00, 0x00, 0xB0});
         screen.write_text(8, 211, "ARROWS MOVE  Z X C  ENTER START",
                           1, {0xE8, 0xF4, 0xFF, 0xFF});
+    } else if (scene_ == NativeScene::StartOptions) {
+        screen.clear({0x04, 0x08, 0x18, 0xFF});
+        if (!title_pixels_.empty()) {
+            screen.blit_rgba(0, 0, title_width_, title_height_, title_pixels_);
+        }
+        screen.fill_rect(34, 48, 252, 128, {0x02, 0x08, 0x18, 0xF4});
+        screen.fill_rect(34, 48, 252, 2, {0x00, 0xA8, 0xC8, 0xFF});
+        screen.write_text(48, 58, intro_.start_options_title, 2,
+                          {0xE8, 0xF4, 0xFF, 0xFF});
+        for (std::size_t index = 0; index < intro_.start_options.size();
+             ++index) {
+            const auto y = 92 + static_cast<std::int32_t>(index) * 20;
+            const auto selected = index == start_options_selection_;
+            if (selected) {
+                screen.fill_rect(48, y - 3, 220, 15,
+                                 {0x00, 0x68, 0x88, 0xFF});
+            }
+            screen.write_text(60, y, intro_.start_options[index], 1,
+                              selected
+                                  ? Rgba8{0xFF, 0xF0, 0x90, 0xFF}
+                                  : Rgba8{0xD0, 0xE0, 0xF0, 0xFF});
+        }
+        if (start_options_load_rejected_) {
+            screen.write_text(50, 136, "THERE'S NO GAME SAVED HERE!", 1,
+                              {0xF0, 0xC0, 0x50, 0xFF});
+        }
+        screen.write_text(48, 160, "ARROWS SELECT  Z/X CHOOSE", 1,
+                          {0x90, 0xB8, 0xC8, 0xFF});
+        screen.present();
+        return;
+    } else if (scene_ == NativeScene::ArchetypeMenu) {
+        screen.clear({0x04, 0x08, 0x18, 0xFF});
+        if (!title_pixels_.empty()) {
+            screen.blit_rgba(0, 0, title_width_, title_height_, title_pixels_);
+        }
+        screen.fill_rect(34, 40, 252, 148, {0x02, 0x08, 0x18, 0xF4});
+        screen.fill_rect(34, 40, 252, 2, {0x00, 0xA8, 0xC8, 0xFF});
+        screen.write_text(48, 50, intro_.archetype_title, 2,
+                          {0xE8, 0xF4, 0xFF, 0xFF});
+        for (std::size_t index = 0; index < intro_.archetypes.size();
+             ++index) {
+            const auto y = 84 + static_cast<std::int32_t>(index) * 18;
+            const auto selected = index == archetype_selection_;
+            if (selected) {
+                screen.fill_rect(48, y - 3, 220, 14,
+                                 {0x00, 0x68, 0x88, 0xFF});
+            }
+            screen.write_text(60, y, intro_.archetypes[index], 1,
+                              selected
+                                  ? Rgba8{0xFF, 0xF0, 0x90, 0xFF}
+                                  : Rgba8{0xD0, 0xE0, 0xF0, 0xFF});
+        }
+        screen.write_text(48, 166, "ARROWS SELECT  Z/X CHOOSE", 1,
+                          {0x90, 0xB8, 0xC8, 0xFF});
+        screen.write_text(48, 178, "ENTER BACK", 1,
+                          {0x90, 0xB8, 0xC8, 0xFF});
+        screen.present();
+        return;
+    } else if (scene_ == NativeScene::Intro) {
+        screen.clear({0x02, 0x06, 0x12, 0xFF});
+        screen.fill_rect(0, 0, kScreenWidth, 3, {0x00, 0xA8, 0xC8, 0xFF});
+        screen.write_text(20, 16, "SHADOWRUN", 2,
+                          {0xE8, 0xF4, 0xFF, 0xFF});
+        screen.write_text(202, 20, intro_.archetypes[archetype_selection_], 1,
+                          {0xA0, 0xE8, 0xF8, 0xFF});
+        screen.fill_rect(14, 48, 292, 122, {0x08, 0x12, 0x28, 0xFF});
+        screen.fill_rect(14, 48, 292, 2, {0x00, 0x68, 0x88, 0xFF});
+        const auto line_end = std::min(
+            intro_line_start_ + kIntroLinesPerPage, intro_.story_lines.size());
+        for (auto line = intro_line_start_; line < line_end; ++line) {
+            screen.write_text(
+                22, 62 + static_cast<std::int32_t>(line - intro_line_start_) * 18,
+                intro_.story_lines[line], 1, {0xD0, 0xE0, 0xF0, 0xFF});
+        }
+        screen.write_text(20, 184, "Z/X/ENTER NEXT", 1,
+                          {0x90, 0xB8, 0xC8, 0xFF});
+        screen.present();
+        return;
     } else if ((scene_ == NativeScene::Field ||
                 scene_ == NativeScene::FieldMenu ||
                 scene_ == NativeScene::ClipsMenu ||

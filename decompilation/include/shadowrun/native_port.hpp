@@ -67,6 +67,9 @@ InputState decode_genesis_controller_word(std::uint16_t sampled_word);
 enum class NativeScene {
     Bootstrap,
     Title,
+    StartOptions,
+    ArchetypeMenu,
+    Intro,
     Field,
     FieldMenu,
     ClipsMenu,
@@ -101,6 +104,17 @@ struct NativeImage {
     std::uint16_t width = 0;
     std::uint16_t height = 0;
     std::vector<Rgba8> pixels;
+};
+
+// Host form of the title/startup text resources. The labels and story lines
+// are extracted from the ROM; the native frontend only chooses how many lines
+// fit on one host page.
+struct NativeIntroData {
+    std::string start_options_title;
+    std::array<std::string, 2> start_options{};
+    std::string archetype_title;
+    std::array<std::string, 4> archetypes{};
+    std::vector<std::string> story_lines;
 };
 
 struct NativeFieldRecordPosition {
@@ -195,6 +209,7 @@ struct NativeFieldEntity {
 // a native asset pack and loaded without the ROM present.
 struct NativePortAssets {
     NativeImage title_scene;
+    NativeIntroData intro;
     NativeImage field_map;
     std::vector<NativeEntityFrame> entity_frames;
     terrain::Map field_terrain;
@@ -283,6 +298,7 @@ public:
 
     NativeScene scene() const { return scene_; }
     bool has_assets() const { return !title_pixels_.empty(); }
+    bool has_intro() const { return !intro_.story_lines.empty(); }
     bool has_field_map() const { return !field_map_pixels_.empty(); }
     bool has_terrain() const { return !field_terrain_.statuses.empty(); }
     bool has_entity_frame() const { return !entity_frames_.empty(); }
@@ -376,6 +392,14 @@ public:
     std::size_t field_active_record_index() const {
         return active_field_record_;
     }
+    std::size_t start_options_selection() const {
+        return start_options_selection_;
+    }
+    std::size_t archetype_selection() const { return archetype_selection_; }
+    std::size_t intro_line_start() const { return intro_line_start_; }
+    std::size_t intro_story_line_count() const {
+        return intro_.story_lines.size();
+    }
     std::uint32_t field_runner_switch_attempts() const {
         return runner_switch_attempts_;
     }
@@ -393,6 +417,9 @@ private:
     void refresh_field_entity_projection();
     void refresh_field_collision();
     void reset_field_state();
+    void update_start_options(const InputState& input);
+    void update_archetype_menu(const InputState& input);
+    void update_intro(const InputState& input);
     void activate_field_record(std::size_t record_index);
     std::size_t next_available_field_record() const;
     void update_field_entity_direction(std::int32_t delta_x,
@@ -417,6 +444,11 @@ private:
     std::uint16_t title_width_ = 0;
     std::uint16_t title_height_ = 0;
     std::vector<Rgba8> title_pixels_;
+    NativeIntroData intro_{};
+    std::size_t start_options_selection_ = 0;
+    std::size_t archetype_selection_ = 0;
+    std::size_t intro_line_start_ = 0;
+    bool start_options_load_rejected_ = false;
     std::vector<NativeEntityFrame> entity_frames_;
     std::array<std::array<std::int16_t, 2>, 8> field_direction_table_{};
     NativeFieldEntity field_entity_{};

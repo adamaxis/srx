@@ -118,6 +118,12 @@ std::array<std::string,
           native::kNativeAttributeCount + native::kNativeSkillCount>
 read_genesis_attribute_skill_catalog(const std::vector<std::uint8_t>& rom);
 
+// Extract the startup menu labels at ROM 0x1B6499 and the 0xFF-delimited
+// opening story block at ROM 0x5B7D8. This is text data only; no Genesis text
+// renderer or VDP state is retained at the native boundary.
+native::NativeIntroData read_genesis_intro_data(
+    const std::vector<std::uint8_t>& rom);
+
 // Assemble the currently reconstructed native title-to-field data from the
 // ROM into host-owned RGBA/state values. This is the extraction boundary used
 // to build a runtime asset pack; it does not execute ROM code.
