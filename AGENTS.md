@@ -162,16 +162,19 @@ Mode `0x14` uses the ROM's raw 16-bit name-word stamp table at `0x1CD29A`
 2 and 10..19 retain their compressed resource streams. The native field loop
 now loads that extracted mode when the reviewed C0 doorway status is reached;
 the focused test crosses a synthetic doorway and verifies the mode-20 spawn
-`0x5A00/0x0800`. The remaining destination modes and interior exits are still
-explicit port work.
+`0x5A00/0x0800`. Every non-empty destination named by the mode-2 Redmond event
+table (`0x14`, `0x1A`, `0x0D`, `0x13`, `0x34`, `0x32`, and `0x33`) now has a
+decoded native area record; transition geometry and exits still need focused
+in-game verification.
 
 The same descriptor layout is now resolved through the ROM mode pointer table
 at `0x3232`, rather than being hard-coded to mode 2. The shared decoder and
 extractor cover the small indoor-style resources at modes `10..19`, including
 their reversed layer-pointer order and the 10x21 scrolling map at mode 11.
-The native shell now consumes the extracted mode-2, mode-13, mode-20, and
-mode-19 area records; other destinations remain extraction-only until their
-resource formats and dispatch behavior are recovered.
+The native shell now consumes the extracted mode-2, mode-13, mode-20, mode-19,
+mode-26, and mode-50..52 area records. Modes 26 and 50..52 use the reviewed
+raw name-word tables; modes whose metatile streams are not yet stamp-aligned
+remain extraction-only until their distinct format is recovered.
 
 The extracted field entity set currently contains eight directional states.
 The native shell selects one state from movement direction, but does not yet

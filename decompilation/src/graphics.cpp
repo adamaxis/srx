@@ -426,10 +426,11 @@ native::NativePortAssets decode_genesis_native_assets(
 
     // Keep the legacy mode-2 fields above for existing callers, while also
     // creating the host area catalog consumed by the native transition loop.
-    // The first Redmond doorway classes resolve to modes 0x0D, 0x14, and
-    // 0x13. Mode 0x14 is the large raw-name-word interior resource; the
-    // other two are the compact shared-stream resources. Other destinations
-    // remain extraction work until their distinct formats are recovered.
+    // These are every non-empty destination named by the mode-2 Redmond
+    // event table: 0x14/0x1A/0x0D/0x13/0x34/0x32/0x33. The decoder has
+    // reviewed resource boundaries for all seven, so keep the native area
+    // catalog data-driven instead of making the field loop special-case only
+    // the first doorway.
     native::NativeFieldArea mode2_area;
     mode2_area.mode_id = 2;
     mode2_area.map = assets.field_map;
@@ -439,7 +440,8 @@ native::NativePortAssets decode_genesis_native_assets(
     mode2_area.event_mode_table = assets.field_event_mode_table;
     assets.field_areas.push_back(std::move(mode2_area));
 
-    for (const auto mode_id : std::array<std::uint16_t, 3>{13, 20, 19}) {
+    for (const auto mode_id :
+         std::array<std::uint16_t, 7>{13, 20, 19, 26, 50, 51, 52}) {
         const auto area_resources = read_genesis_field_mode_resources(
             rom, mode_id);
         const auto area_map = decode_genesis_field_mode_map(
@@ -1323,13 +1325,21 @@ GenesisTerrainMap decode_genesis_mode2_terrain_map(
         const auto status = read_rom_u16(
             rom, cursor + 8U,
             "Genesis mode-2 terrain status is truncated");
-        if (x_end < x_start || y_end < (y_start & 0xFFE0U)) {
-            throw std::runtime_error(
-                "Genesis mode-2 terrain rectangle is inverted");
-        }
+        const auto x_range_inverted = x_end < x_start;
+        const auto y_range_inverted = y_end < (y_start & 0xFFE0U);
         terrain.regions.push_back({
             x_start, x_end, y_start, y_end,
             static_cast<std::uint8_t>(status)});
+
+        // ROM 0xEE10 retains the five-word record and advances to the next
+        // one even when either DBF-style range test has no iterations. Mode
+        // 0x33 contains one such intentional empty Y range; do not invent a
+        // rectangle or reject the remaining native area because of it.
+        if (x_range_inverted || y_range_inverted) {
+            ++terrain.region_count;
+            cursor += 10U;
+            continue;
+        }
 
         auto y_value = static_cast<std::uint32_t>(y_start & 0xFFE0U);
         for (;;) {
@@ -1916,7 +1926,10 @@ RgbaImage decode_genesis_startup_screen(
         }
         if (token > 0xC0U) {
             const auto count = static_cast<unsigned>(token & 0x1FU);
-            const auto iterations = count == 0 ? 1U : count;
+            // ROM 0x1728 uses the low five bits as the DBF counter.  As with
+            // the incremental run below, a zero counter still emits once and
+            // every non-zero counter emits count + 1 values.
+            const auto iterations = count + 1U;
             const auto wide = (token & 0x20U) != 0;
             for (unsigned index = 0; index < iterations; ++index) {
                 std::uint16_t value = 0;

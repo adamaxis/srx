@@ -338,11 +338,15 @@ int main() {
     assert(field_entity_directions_vary);
 
     const auto native_assets = decode_genesis_native_assets(rom);
-    assert(native_assets.field_areas.size() == 4);
+    assert(native_assets.field_areas.size() == 8);
     assert(native_assets.field_areas[0].mode_id == 2);
     assert(native_assets.field_areas[1].mode_id == 13);
     assert(native_assets.field_areas[2].mode_id == 20);
     assert(native_assets.field_areas[3].mode_id == 19);
+    assert(native_assets.field_areas[4].mode_id == 26);
+    assert(native_assets.field_areas[5].mode_id == 50);
+    assert(native_assets.field_areas[6].mode_id == 51);
+    assert(native_assets.field_areas[7].mode_id == 52);
     assert(native_assets.field_areas[2].map.width == 1600);
     assert(native_assets.field_areas[2].map.height == 960);
     assert(native_assets.field_areas[2].initial_field_records[0]
