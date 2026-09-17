@@ -136,6 +136,21 @@ struct NativeFieldRecord {
     std::uint8_t flags_11 = 0;
 };
 
+// Host-owned field area data. The mode id is the value written to the ROM's
+// FFDDC4 mode word; everything needed to render and walk the area is already
+// converted to ordinary host data. The event table is the low-byte status
+// translation used by ROM 0x167AE (the first 32 entries are sufficient for
+// the field status values which reach that dispatcher).
+struct NativeFieldArea {
+    std::uint16_t mode_id = 0;
+    NativeImage map;
+    terrain::Map terrain;
+    std::uint16_t initial_camera_x_fixed = 0;
+    std::uint16_t initial_camera_y_fixed = 0;
+    std::array<NativeFieldRecord, 3> initial_field_records{};
+    std::array<std::uint8_t, 32> event_mode_table{};
+};
+
 // Native representation of the field record fields needed by the current
 // presentation slice. World coordinates retain the ROM's 1/16-pixel unit so
 // the recovered projection can consume them without a second rounding rule.
@@ -217,6 +232,10 @@ struct NativePortAssets {
     std::uint16_t initial_camera_x_fixed = 0;
     std::uint16_t initial_camera_y_fixed = 0;
     std::array<std::array<std::int16_t, 2>, 8> field_direction_table{};
+    // Mode 2 remains available in the legacy fields above. The area catalog
+    // adds the extracted destination maps used by native field transitions.
+    std::vector<NativeFieldArea> field_areas;
+    std::array<std::uint8_t, 32> field_event_mode_table{};
     NativeFieldEntity entity_template;
     std::array<NativeInventoryItem, kNativeInventoryItemCount>
         inventory_items{};
@@ -416,6 +435,10 @@ public:
     std::int32_t field_world_y() const { return field_world_y_; }
     std::int32_t field_camera_x() const { return field_camera_x_; }
     std::int32_t field_camera_y() const { return field_camera_y_; }
+    std::uint16_t field_mode() const { return field_mode_; }
+    std::uint32_t field_area_transition_count() const {
+        return field_area_transition_count_;
+    }
     std::uint64_t frame_number() const { return frame_number_; }
 
 private:
@@ -423,6 +446,7 @@ private:
     void refresh_field_entity_projection();
     void refresh_field_collision();
     void reset_field_state();
+    bool load_field_area(std::uint16_t mode_id);
     void update_start_options(const InputState& input);
     void update_archetype_menu(const InputState& input);
     void update_intro(const InputState& input);
@@ -487,6 +511,10 @@ private:
     std::int32_t field_world_y_ = 0;
     std::int32_t field_camera_x_ = 0;
     std::int32_t field_camera_y_ = 0;
+    std::uint16_t field_mode_ = 2;
+    std::vector<NativeFieldArea> field_areas_;
+    std::array<std::uint8_t, 32> field_event_mode_table_{};
+    std::uint32_t field_area_transition_count_ = 0;
     // ROM 0x10D30 stores the command-menu selector in FFF0D0 and the
     // secondary row/slot in FFF0D1. The host keeps those as typed indices;
     // the renderer adapts the reviewed ROM labels to ordinary text.

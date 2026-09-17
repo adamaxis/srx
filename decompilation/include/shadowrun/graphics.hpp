@@ -32,6 +32,14 @@ struct GenesisFieldRecordPosition {
     std::uint16_t world_y_fixed = 0;
 };
 
+// The ROM has both compressed 0x1530-style metatile streams and raw 16-bit
+// name-word stamp tables. Keep the distinction in the extracted descriptor
+// instead of making the renderer guess from bytes.
+enum class GenesisMetatileEncoding {
+    CompressedResource,
+    RawNameWords,
+};
+
 // Reviewed fields from the 0x100-byte entity template copied by ROM 0x42B0.
 // These are kept as field roles only where the update/projection paths already
 // establish them; the rest of the template remains untyped until recovered.
@@ -91,6 +99,12 @@ struct GenesisMode2FieldResources {
     std::size_t secondary_tilemap_offset = 0;
     std::size_t tilemap_width = 0;
     std::size_t tilemap_height = 0;
+    GenesisMetatileEncoding metatile_encoding =
+        GenesisMetatileEncoding::CompressedResource;
+    // ROM 0x167AE indexes this descriptor-selected byte table with the
+    // low-byte field status before choosing the destination mode.
+    std::size_t event_table_offset = 0;
+    std::array<std::uint8_t, 32> event_mode_table{};
 };
 
 // The mode table at ROM 0x3232 uses the same descriptor layout for every
@@ -222,7 +236,9 @@ RgbaImage decode_genesis_mode2_field_map(
     std::size_t secondary_tilemap_offset = 0x16ED52,
     std::size_t tilemap_width = 60,
     std::size_t tilemap_height = 42,
-    std::size_t palette_offset = 0xD29D6);
+    std::size_t palette_offset = 0xD29D6,
+    GenesisMetatileEncoding metatile_encoding =
+        GenesisMetatileEncoding::CompressedResource);
 
 // Decode the reviewed 0x8002 entity frame descriptor at ROM 0x9540. ROM
 // 0x3E86 expands the packed source through the nibble table at 0x3EDC and

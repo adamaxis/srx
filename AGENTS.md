@@ -151,19 +151,34 @@ only after it reaches the reviewed projection window. The renderer-independent
 `terrain::probe` ports the direct `0xE7C8` bounds/status path and its
 `0xE8A0/0xE9EE/0xEA36/0xEAD2` helpers over that host grid.
 
+The mode-2 interaction path is now carried through the native area boundary.
+ROM `0x167AE` indexes the descriptor table at `0x172CDC` with the low five
+bits of the retained raw terrain status; the first Redmond entrance class is
+therefore a proven destination mode `0x14` (decimal 20), not mode 14. The
+native asset extractor packages a `NativeFieldArea` catalog with converted
+RGBA maps, terrain grids, spawn records, camera origins, and event tables.
+Mode `0x14` uses the ROM's raw 16-bit name-word stamp table at `0x1CD29A`
+(941 four-by-four stamps, 50x30 map entries, 1600x960 host map), while modes
+2 and 10..19 retain their compressed resource streams. The native field loop
+now loads that extracted mode when the reviewed C0 doorway status is reached;
+the focused test crosses a synthetic doorway and verifies the mode-20 spawn
+`0x5A00/0x0800`. The remaining destination modes and interior exits are still
+explicit port work.
+
 The same descriptor layout is now resolved through the ROM mode pointer table
 at `0x3232`, rather than being hard-coded to mode 2. The shared decoder and
 extractor cover the small indoor-style resources at modes `10..19`, including
 their reversed layer-pointer order and the 10x21 scrolling map at mode 11.
-These maps are verified host RGBA extraction artifacts only; the native shell
-still loads mode 2, and no entrance is allowed to teleport to a guessed indoor
-mode until the ROM's event/object dispatch identifies the exact destination.
+The native shell now consumes the extracted mode-2, mode-13, mode-20, and
+mode-19 area records; other destinations remain extraction-only until their
+resource formats and dispatch behavior are recovered.
 
 The extracted field entity set currently contains eight directional states.
 The native shell selects one state from movement direction, but does not yet
 advance the ROM's time-based state-list animation index. Walking animation,
-NPC/object animation, audio/music output, and field-to-interior transitions
-remain explicit native-port work rather than hidden behind placeholder logic.
+NPC/object animation, audio/music output, authentic screen composition, and
+the remaining field/interior transitions remain explicit native-port work
+rather than being hidden behind placeholder logic.
 
 This is now a runnable native title-to-field slice with controls, actual
 ROM-derived field graphics, collision rejection, and a ROM-derived entity

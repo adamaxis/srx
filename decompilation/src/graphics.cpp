@@ -422,6 +422,50 @@ native::NativePortAssets decode_genesis_native_assets(
     }
     assets.initial_camera_x_fixed = resources.initial_camera_x_fixed;
     assets.initial_camera_y_fixed = resources.initial_camera_y_fixed;
+    assets.field_event_mode_table = resources.event_mode_table;
+
+    // Keep the legacy mode-2 fields above for existing callers, while also
+    // creating the host area catalog consumed by the native transition loop.
+    // The first Redmond doorway classes resolve to modes 0x0D, 0x14, and
+    // 0x13. Mode 0x14 is the large raw-name-word interior resource; the
+    // other two are the compact shared-stream resources. Other destinations
+    // remain extraction work until their distinct formats are recovered.
+    native::NativeFieldArea mode2_area;
+    mode2_area.mode_id = 2;
+    mode2_area.map = assets.field_map;
+    mode2_area.terrain = assets.field_terrain;
+    mode2_area.initial_camera_x_fixed = assets.initial_camera_x_fixed;
+    mode2_area.initial_camera_y_fixed = assets.initial_camera_y_fixed;
+    mode2_area.event_mode_table = assets.field_event_mode_table;
+    assets.field_areas.push_back(std::move(mode2_area));
+
+    for (const auto mode_id : std::array<std::uint16_t, 3>{13, 20, 19}) {
+        const auto area_resources = read_genesis_field_mode_resources(
+            rom, mode_id);
+        const auto area_map = decode_genesis_field_mode_map(
+            rom, area_resources);
+        native::NativeFieldArea area;
+        area.mode_id = mode_id;
+        area.map = {area_map.width, area_map.height, area_map.pixels};
+        area.terrain = decode_genesis_field_mode_terrain_map(
+            rom, area_resources);
+        area.initial_camera_x_fixed = area_resources.initial_camera_x_fixed;
+        area.initial_camera_y_fixed = area_resources.initial_camera_y_fixed;
+        area.event_mode_table = area_resources.event_mode_table;
+        for (std::size_t index = 0;
+             index < area.initial_field_records.size(); ++index) {
+            area.initial_field_records[index] = {
+                {
+                    area_resources.initial_field_records[index].world_x_fixed,
+                    area_resources.initial_field_records[index].world_y_fixed,
+                },
+                assets.initial_field_records[index].record_type,
+                assets.initial_field_records[index].flags_10,
+                assets.initial_field_records[index].flags_11,
+            };
+        }
+        assets.field_areas.push_back(std::move(area));
+    }
 
     const auto entity_template = read_genesis_field_entity_template(rom);
     assets.entity_template.projection_word_08 =
@@ -469,6 +513,8 @@ native::NativePortAssets decode_genesis_native_assets(
         record.flags_10 = startup_entity.flags_10;
         record.flags_11 = startup_entity.flags_11;
     }
+    assets.field_areas.front().initial_field_records =
+        assets.initial_field_records;
     assets.inventory_items = read_genesis_inventory_catalog(rom);
     assets.cyberware_names = read_genesis_cyberware_catalog(rom);
     assets.attribute_skill_names = read_genesis_attribute_skill_catalog(rom);
@@ -495,7 +541,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 8);
+    write_u16(output, 9);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     write_native_image(output, assets.field_map);
@@ -619,6 +665,55 @@ void write_native_asset_pack(const std::string& path,
     for (const auto& line : intro.story_lines) {
         write_pack_string(output, line, "native intro story line is too long");
     }
+    // Version 9 appends the native field-area catalog so older packs remain
+    // readable while new packs can cross ROM-derived building transitions.
+    for (const auto mode : assets.field_event_mode_table) {
+        output.put(static_cast<char>(mode));
+    }
+    if (assets.field_areas.size() > 0xFFFFU) {
+        throw std::invalid_argument("too many native field areas");
+    }
+    write_u16(output, static_cast<std::uint16_t>(assets.field_areas.size()));
+    for (const auto& area : assets.field_areas) {
+        write_u16(output, area.mode_id);
+        write_native_image(output, area.map);
+        const auto& terrain = area.terrain;
+        if (terrain.regions.size() != terrain.region_count) {
+            throw std::invalid_argument(
+                "native field area terrain region count is inconsistent");
+        }
+        write_u16(output, terrain.x_exclusive_upper);
+        write_u16(output, terrain.y_exclusive_upper);
+        write_u16(output, terrain.x_inclusive_lower);
+        write_u16(output, terrain.y_inclusive_lower);
+        write_u32(output, static_cast<std::uint32_t>(terrain.regions.size()));
+        for (const auto& region : terrain.regions) {
+            write_u16(output, region.x_start);
+            write_u16(output, region.x_end);
+            write_u16(output, region.y_start);
+            write_u16(output, region.y_end);
+            output.put(static_cast<char>(region.status));
+        }
+        if (terrain.statuses.size() > 0xFFFFFFFFU) {
+            throw std::invalid_argument(
+                "native field area terrain grid is too large");
+        }
+        write_u32(output, static_cast<std::uint32_t>(terrain.statuses.size()));
+        output.write(reinterpret_cast<const char*>(terrain.statuses.data()),
+                     static_cast<std::streamsize>(terrain.statuses.size()));
+        write_u16(output, area.initial_camera_x_fixed);
+        write_u16(output, area.initial_camera_y_fixed);
+        for (const auto& record : area.initial_field_records) {
+            write_u16(output, record.position.world_x_fixed);
+            write_u16(output, record.position.world_y_fixed);
+            write_u16(output, record.record_type);
+            output.put(static_cast<char>(record.flags_10));
+            output.put(static_cast<char>(record.flags_11));
+        }
+        for (const auto mode : area.event_mode_table) {
+            output.put(static_cast<char>(mode));
+        }
+    }
     if (!output) {
         throw std::runtime_error("failed writing native asset pack: " + path);
     }
@@ -634,7 +729,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 8U)) {
+        (version < 2U || version > 9U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -841,6 +936,81 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
                 input, "native intro story line is truncated"));
         }
     }
+    if (version >= 9U) {
+        for (auto& mode : assets.field_event_mode_table) {
+            mode = read_pack_u8(input, "native field event table is truncated");
+        }
+        const auto area_count = static_cast<std::size_t>(read_pack_u16(
+            input, "native field area count is truncated"));
+        if (area_count > 56U) {
+            throw std::runtime_error("native asset pack has too many field areas");
+        }
+        assets.field_areas.reserve(area_count);
+        for (std::size_t index = 0; index < area_count; ++index) {
+            native::NativeFieldArea area;
+            area.mode_id = read_pack_u16(
+                input, "native field area mode is truncated");
+            area.map = read_native_image(input);
+            auto& terrain = area.terrain;
+            terrain.x_exclusive_upper = read_pack_u16(
+                input, "native field area terrain bounds are truncated");
+            terrain.y_exclusive_upper = read_pack_u16(
+                input, "native field area terrain bounds are truncated");
+            terrain.x_inclusive_lower = read_pack_u16(
+                input, "native field area terrain bounds are truncated");
+            terrain.y_inclusive_lower = read_pack_u16(
+                input, "native field area terrain bounds are truncated");
+            terrain.region_count = static_cast<std::size_t>(read_pack_u32(
+                input, "native field area terrain region count is truncated"));
+            if (terrain.region_count > 65536U) {
+                throw std::runtime_error(
+                    "native field area has too many terrain regions");
+            }
+            terrain.regions.resize(terrain.region_count);
+            for (auto& region : terrain.regions) {
+                region.x_start = read_pack_u16(
+                    input, "native field area terrain region is truncated");
+                region.x_end = read_pack_u16(
+                    input, "native field area terrain region is truncated");
+                region.y_start = read_pack_u16(
+                    input, "native field area terrain region is truncated");
+                region.y_end = read_pack_u16(
+                    input, "native field area terrain region is truncated");
+                region.status = read_pack_u8(
+                    input, "native field area terrain region is truncated");
+            }
+            const auto status_count = static_cast<std::size_t>(read_pack_u32(
+                input, "native field area terrain grid is truncated"));
+            if (status_count != terrain::Map::kWidth * terrain::Map::kHeight) {
+                throw std::runtime_error(
+                    "native field area has an invalid terrain grid");
+            }
+            terrain.statuses.resize(status_count);
+            read_pack_bytes(input, terrain.statuses.data(), status_count,
+                            "native field area terrain grid is truncated");
+            area.initial_camera_x_fixed = read_pack_u16(
+                input, "native field area camera is truncated");
+            area.initial_camera_y_fixed = read_pack_u16(
+                input, "native field area camera is truncated");
+            for (auto& record : area.initial_field_records) {
+                record.position.world_x_fixed = read_pack_u16(
+                    input, "native field area record position is truncated");
+                record.position.world_y_fixed = read_pack_u16(
+                    input, "native field area record position is truncated");
+                record.record_type = read_pack_u16(
+                    input, "native field area record type is truncated");
+                record.flags_10 = read_pack_u8(
+                    input, "native field area record flags are truncated");
+                record.flags_11 = read_pack_u8(
+                    input, "native field area record flags are truncated");
+            }
+            for (auto& mode : area.event_mode_table) {
+                mode = read_pack_u8(
+                    input, "native field area event table is truncated");
+            }
+            assets.field_areas.push_back(std::move(area));
+        }
+    }
     return assets;
 }
 
@@ -1024,7 +1194,19 @@ GenesisFieldModeResources read_genesis_field_mode_resources_at(
             "Genesis field mode tilemap size does not match its stride");
     }
 
-    return {
+    const auto metatile_stream = static_cast<std::size_t>(read_rom_u32(
+        rom, record_offset + 0x18U,
+        "Genesis mode-2 metatile pointer is truncated")) &
+        ~std::size_t{1};
+    // The large field sets point at direct name-word tables. These are shared
+    // by the reviewed mode-20 and mode-50..52 descriptors; mode 26 has its
+    // own raw table. The remaining reviewed pointers are 0x1530 streams.
+    const auto metatile_encoding =
+        metatile_stream == 0x1A84B2U || metatile_stream == 0x1CD29AU
+            ? GenesisMetatileEncoding::RawNameWords
+            : GenesisMetatileEncoding::CompressedResource;
+
+    GenesisFieldModeResources result{
         record_offset,
         read_rom_u16(rom, record_offset,
                      "Genesis mode-2 camera X is truncated"),
@@ -1068,14 +1250,29 @@ GenesisFieldModeResources read_genesis_field_mode_resources_at(
         static_cast<std::size_t>(read_rom_u32(
             rom, setup_block + 0x18U,
             "Genesis mode-2 pattern length is truncated")),
-        static_cast<std::size_t>(read_rom_u32(
-            rom, record_offset + 0x18U,
-            "Genesis mode-2 metatile pointer is truncated")) & ~std::size_t{1},
+        metatile_stream,
         primary_tilemap,
         secondary_tilemap,
         tilemap_width,
         tilemap_entries / tilemap_width,
+        metatile_encoding,
     };
+    result.event_table_offset = static_cast<std::size_t>(read_rom_u32(
+        rom, record_offset + 0x4EU,
+        "Genesis field mode event table pointer is truncated"));
+    if (result.event_table_offset != 0) {
+        if (result.event_table_offset > rom.size() ||
+            rom.size() - result.event_table_offset <
+                result.event_mode_table.size()) {
+            throw std::out_of_range(
+                "Genesis field mode event table is truncated");
+        }
+        std::copy_n(rom.begin() +
+                        static_cast<std::ptrdiff_t>(result.event_table_offset),
+                    result.event_mode_table.size(),
+                    result.event_mode_table.begin());
+    }
+    return result;
 }
 
 GenesisMode2FieldResources read_genesis_mode2_field_resources(
@@ -1224,7 +1421,8 @@ RgbaImage decode_genesis_mode2_field_map(
         rom, resources.pattern_data_offset, resources.pattern_byte_count,
         resources.metatile_stream_offset, resources.primary_tilemap_offset,
         resources.secondary_tilemap_offset, resources.tilemap_width,
-        resources.tilemap_height, resources.palette_offset);
+        resources.tilemap_height, resources.palette_offset,
+        resources.metatile_encoding);
 }
 
 RgbaImage decode_genesis_field_mode_map(
@@ -1242,7 +1440,8 @@ RgbaImage decode_genesis_mode2_field_map(
     std::size_t secondary_tilemap_offset,
     std::size_t tilemap_width,
     std::size_t tilemap_height,
-    std::size_t palette_offset) {
+    std::size_t palette_offset,
+    GenesisMetatileEncoding metatile_encoding) {
     if (tilemap_width == 0 || tilemap_height == 0) {
         throw std::invalid_argument("Genesis field map dimensions are invalid");
     }
@@ -1277,13 +1476,18 @@ RgbaImage decode_genesis_mode2_field_map(
         throw std::runtime_error(
             "Genesis field pattern upload is not tile-aligned");
     }
-    const auto metatile_resource = decode_genesis_resource_stream(
-        rom, metatile_stream_offset);
-    if (metatile_resource.empty() || metatile_resource.size() % 32U != 0) {
-        throw std::runtime_error("Genesis field metatiles are not stamp-aligned");
-    }
     const auto tile_count = pattern_byte_count / 32U;
-    const auto metatile_count = metatile_resource.size() / 32U;
+    std::vector<std::uint8_t> metatile_resource;
+    std::size_t metatile_count = 0;
+    if (metatile_encoding == GenesisMetatileEncoding::CompressedResource) {
+        metatile_resource = decode_genesis_resource_stream(
+            rom, metatile_stream_offset);
+        if (metatile_resource.empty() || metatile_resource.size() % 32U != 0) {
+            throw std::runtime_error(
+                "Genesis field metatiles are not stamp-aligned");
+        }
+        metatile_count = metatile_resource.size() / 32U;
+    }
     std::vector<IndexedTile> tiles;
     tiles.reserve(tile_count);
     for (std::size_t tile_index = 0; tile_index < tile_count; ++tile_index) {
@@ -1301,6 +1505,17 @@ RgbaImage decode_genesis_mode2_field_map(
     };
     const auto read_metatile_word = [&](std::size_t metatile_index,
                                         std::size_t word_index) {
+        if (metatile_encoding == GenesisMetatileEncoding::RawNameWords) {
+            const auto word_offset = metatile_stream_offset +
+                                     (metatile_index * 16U + word_index) * 2U;
+            if (word_offset > rom.size() || rom.size() - word_offset < 2U) {
+                throw std::out_of_range(
+                    "Genesis raw field metatile table is truncated");
+            }
+            return static_cast<std::uint16_t>(
+                (static_cast<std::uint16_t>(rom[word_offset]) << 8U) |
+                rom[word_offset + 1U]);
+        }
         const auto word_offset = metatile_index * 32U + word_index * 2U;
         return static_cast<std::uint16_t>(
             (static_cast<std::uint16_t>(metatile_resource[word_offset]) << 8U) |
@@ -1319,7 +1534,9 @@ RgbaImage decode_genesis_mode2_field_map(
                 const auto metatile_index = static_cast<std::size_t>(
                     read_map_word(tilemap_offset,
                                   stamp_y * tilemap_width + stamp_x));
-                if (metatile_index >= metatile_count) {
+                if (metatile_encoding ==
+                        GenesisMetatileEncoding::CompressedResource &&
+                    metatile_index >= metatile_count) {
                     throw std::out_of_range(
                         "Genesis field metatile index is truncated (index " +
                         std::to_string(metatile_index) + ", count " +
@@ -1369,6 +1586,25 @@ RgbaImage decode_genesis_mode2_field_map(
             }
         }
     };
+    std::size_t required_metatile_count = 0;
+    const auto scan_metatile_indices = [&](std::size_t tilemap_offset) {
+        for (std::size_t entry = 0; entry < map_entries; ++entry) {
+            required_metatile_count = std::max(
+                required_metatile_count,
+                static_cast<std::size_t>(read_map_word(tilemap_offset, entry)) +
+                    1U);
+        }
+    };
+    scan_metatile_indices(primary_tilemap_offset);
+    scan_metatile_indices(secondary_tilemap_offset);
+    if (metatile_encoding == GenesisMetatileEncoding::RawNameWords) {
+        if (metatile_stream_offset > rom.size() ||
+            required_metatile_count >
+                (rom.size() - metatile_stream_offset) / 32U) {
+            throw std::out_of_range(
+                "Genesis raw field metatile table is truncated");
+        }
+    }
     render_layer(primary_tilemap_offset, false);
     render_layer(secondary_tilemap_offset, true);
     return image;

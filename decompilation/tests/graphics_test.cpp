@@ -164,6 +164,32 @@ int main() {
     assert(field_resources.secondary_tilemap_offset == 0x16ED52);
     assert(field_resources.tilemap_width == 60);
     assert(field_resources.tilemap_height == 42);
+    assert(field_resources.event_table_offset == 0x172CDC);
+    const std::array<std::uint8_t, 12> redmond_event_modes{
+        0x14, 0x1A, 0x1A, 0x1A, 0x0D, 0x13,
+        0x1A, 0x1A, 0x34, 0x1A, 0x32, 0x33,
+    };
+    for (std::size_t index = 0; index < redmond_event_modes.size();
+         ++index) {
+        assert(field_resources.event_mode_table[index] ==
+               redmond_event_modes[index]);
+    }
+
+    const auto mode20_resources =
+        read_genesis_field_mode_resources(rom, 20);
+    assert(mode20_resources.record_offset == 0x1D917A);
+    assert(mode20_resources.metatile_stream_offset == 0x1CD29A);
+    assert(mode20_resources.metatile_encoding ==
+           GenesisMetatileEncoding::RawNameWords);
+    assert(mode20_resources.tilemap_width == 50);
+    assert(mode20_resources.tilemap_height == 30);
+    assert(mode20_resources.initial_field_records[0].world_x_fixed ==
+           0x5A00);
+    assert(mode20_resources.initial_field_records[0].world_y_fixed == 0x0800);
+    const auto mode20_map =
+        decode_genesis_field_mode_map(rom, mode20_resources);
+    assert(mode20_map.width == 1600);
+    assert(mode20_map.height == 960);
 
     // ROM 0x3074 uses the same descriptor layout for the small indoor-style
     // maps. Their two layer pointers are sometimes reversed relative to the
@@ -312,6 +338,17 @@ int main() {
     assert(field_entity_directions_vary);
 
     const auto native_assets = decode_genesis_native_assets(rom);
+    assert(native_assets.field_areas.size() == 4);
+    assert(native_assets.field_areas[0].mode_id == 2);
+    assert(native_assets.field_areas[1].mode_id == 13);
+    assert(native_assets.field_areas[2].mode_id == 20);
+    assert(native_assets.field_areas[3].mode_id == 19);
+    assert(native_assets.field_areas[2].map.width == 1600);
+    assert(native_assets.field_areas[2].map.height == 960);
+    assert(native_assets.field_areas[2].initial_field_records[0]
+               .position.world_x_fixed == 0x5A00);
+    assert(native_assets.field_areas[2].initial_field_records[0]
+               .position.world_y_fixed == 0x0800);
     const auto pack_path = std::filesystem::temp_directory_path() /
                            "shadowrun_native_port_assets_test.srna";
     write_native_asset_pack(pack_path.string(), native_assets);
@@ -334,6 +371,48 @@ int main() {
            native_assets.initial_camera_y_fixed);
     assert(loaded_assets.field_direction_table ==
            native_assets.field_direction_table);
+    assert(loaded_assets.field_event_mode_table ==
+           native_assets.field_event_mode_table);
+    assert(loaded_assets.field_areas.size() ==
+           native_assets.field_areas.size());
+    for (std::size_t index = 0; index < native_assets.field_areas.size();
+         ++index) {
+        assert(loaded_assets.field_areas[index].mode_id ==
+               native_assets.field_areas[index].mode_id);
+        assert(loaded_assets.field_areas[index].map.width ==
+               native_assets.field_areas[index].map.width);
+        assert(loaded_assets.field_areas[index].map.height ==
+               native_assets.field_areas[index].map.height);
+        assert(loaded_assets.field_areas[index].map.pixels.size() ==
+               native_assets.field_areas[index].map.pixels.size());
+        for (std::size_t pixel = 0;
+             pixel < native_assets.field_areas[index].map.pixels.size();
+             ++pixel) {
+            const auto& loaded =
+                loaded_assets.field_areas[index].map.pixels[pixel];
+            const auto& native =
+                native_assets.field_areas[index].map.pixels[pixel];
+            assert(loaded.red == native.red && loaded.green == native.green &&
+                   loaded.blue == native.blue && loaded.alpha == native.alpha);
+        }
+        assert(loaded_assets.field_areas[index].terrain.statuses ==
+               native_assets.field_areas[index].terrain.statuses);
+        assert(loaded_assets.field_areas[index].event_mode_table ==
+               native_assets.field_areas[index].event_mode_table);
+        for (std::size_t record = 0; record < 3; ++record) {
+            const auto& loaded =
+                loaded_assets.field_areas[index].initial_field_records[record];
+            const auto& native =
+                native_assets.field_areas[index].initial_field_records[record];
+            assert(loaded.position.world_x_fixed ==
+                       native.position.world_x_fixed &&
+                   loaded.position.world_y_fixed ==
+                       native.position.world_y_fixed &&
+                   loaded.record_type == native.record_type &&
+                   loaded.flags_10 == native.flags_10 &&
+                   loaded.flags_11 == native.flags_11);
+        }
+    }
     assert(loaded_assets.entity_template.kind ==
            native_assets.entity_template.kind);
     assert(loaded_assets.entity_template.record_type ==

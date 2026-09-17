@@ -256,6 +256,8 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     field_map_width_ = assets.field_map.width;
     field_map_height_ = assets.field_map.height;
     field_map_pixels_ = std::move(assets.field_map.pixels);
+    field_areas_ = std::move(assets.field_areas);
+    field_event_mode_table_ = assets.field_event_mode_table;
 
     // These values are the host form of ROM 0x3084/0x2B34's mode and record
     // initialization. Keep the camera and controlled record separate: the
@@ -327,6 +329,60 @@ void NativePortShell::reset_field_state() {
     marker_y_ = field_entity_screen_y();
     move_rejected_ = false;
     refresh_field_collision();
+}
+
+bool NativePortShell::load_field_area(std::uint16_t mode_id) {
+    const auto area = std::find_if(
+        field_areas_.begin(), field_areas_.end(),
+        [mode_id](const NativeFieldArea& candidate) {
+            return candidate.mode_id == mode_id;
+        });
+    if (area == field_areas_.end() || area->map.pixels.empty()) {
+        return false;
+    }
+
+    field_mode_ = mode_id;
+    field_map_width_ = area->map.width;
+    field_map_height_ = area->map.height;
+    field_map_pixels_ = area->map.pixels;
+    field_terrain_ = area->terrain;
+    field_initial_records_ = area->initial_field_records;
+    field_records_ = field_initial_records_;
+    field_initial_world_x_ = static_cast<std::int32_t>(
+        field_initial_records_[0].position.world_x_fixed >> 4U);
+    field_initial_world_y_ = static_cast<std::int32_t>(
+        field_initial_records_[0].position.world_y_fixed >> 4U);
+    field_initial_world_x_fixed_ =
+        field_initial_records_[0].position.world_x_fixed;
+    field_initial_world_y_fixed_ =
+        field_initial_records_[0].position.world_y_fixed;
+    field_initial_camera_x_ = static_cast<std::int32_t>(
+        area->initial_camera_x_fixed >> 4U);
+    field_initial_camera_y_ = static_cast<std::int32_t>(
+        area->initial_camera_y_fixed >> 4U);
+    field_world_x_ = field_initial_world_x_;
+    field_world_y_ = field_initial_world_y_;
+    field_camera_x_ = field_initial_camera_x_;
+    field_camera_y_ = field_initial_camera_y_;
+    field_event_mode_table_ = area->event_mode_table;
+    active_field_record_ = 0;
+    field_entity_.record_index = 0;
+    field_entity_.record_type = field_records_[0].record_type;
+    field_entity_.flags_10 = field_records_[0].flags_10;
+    field_entity_.flags_11 = field_records_[0].flags_11;
+    field_entity_.world_x_fixed = field_initial_world_x_fixed_;
+    field_entity_.world_y_fixed = field_initial_world_y_fixed_;
+    field_entity_.frame_index = 0;
+    field_entity_.state_selector = 0;
+    field_entity_.state_index = 0;
+    field_entity_.animation_accumulator = 0;
+    move_rejected_ = false;
+    refresh_field_view();
+    refresh_field_entity_projection();
+    marker_x_ = field_entity_screen_x();
+    marker_y_ = field_entity_screen_y();
+    refresh_field_collision();
+    return true;
 }
 
 void NativePortShell::update_start_options(const InputState& input) {
@@ -899,8 +955,39 @@ void NativePortShell::update(const InputState& input) {
         field_collision_ = candidate_collision;
         if (candidate_collision.blocked) {
             move_rejected_ = true;
-            delta_x = 0;
-            delta_y = 0;
+            // ROM 0xB7B8 retains the raw terrain byte even though 0xE7C8
+            // returns 0x7F for the blocked move. The mode-2 event table at
+            // the descriptor's +0x4E pointer is then consumed by 0x167AE.
+            // Probe the center cell as well because the four-corner player
+            // footprint can report a neighboring wall's 0x7F over a doorway.
+            auto interaction = candidate_collision;
+            if (field_mode_ == 2U) {
+                const auto center = terrain::probe(
+                    field_terrain_, candidate_x, candidate_y, false);
+                if ((center.raw_status & 0xE0U) == 0xC0U) {
+                    interaction = center;
+                }
+            }
+            const auto event_index = static_cast<std::size_t>(
+                interaction.raw_status & 0x1FU);
+            if (field_mode_ == 2U &&
+                (interaction.raw_status & 0xE0U) == 0xC0U &&
+                event_index < field_event_mode_table_.size()) {
+                const auto destination = field_event_mode_table_[event_index];
+                if (destination != 0U && destination != 0x80U &&
+                    load_field_area(destination)) {
+                    ++field_area_transition_count_;
+                    action_flash_frames_ = 0;
+                    delta_x = 0;
+                    delta_y = 0;
+                } else {
+                    delta_x = 0;
+                    delta_y = 0;
+                }
+            } else {
+                delta_x = 0;
+                delta_y = 0;
+            }
         } else {
             field_entity_.world_x_fixed = candidate_x;
             field_entity_.world_y_fixed = candidate_y;
@@ -1080,7 +1167,8 @@ void NativePortShell::render(ScreenWriter& screen) const {
                          {0x00, 0xA8, 0xC8, 0xFF});
         screen.write_text(12, 8, "SHADOWRUN FIELD", 2,
                           {0xE8, 0xF4, 0xFF, 0xFF});
-        screen.write_text(204, 10, "MODE 2", 1,
+        screen.write_text(204, 10,
+                          "MODE " + std::to_string(field_mode_), 1,
                           {0xA0, 0xE8, 0xF8, 0xFF});
 
         screen.blit_rgba(0, 36, field_view_width_, field_view_height_,

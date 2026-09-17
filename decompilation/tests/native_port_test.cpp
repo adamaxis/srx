@@ -121,6 +121,29 @@ int main() {
     assert(rom_shell.field_collision_status() == 0);
     assert(rom_shell.field_raw_status() == 0);
     assert(!rom_shell.field_collision_blocked());
+    assert(rom_shell.field_mode() == 2);
+
+    // Redmond's C0 doorway class is a blocked terrain cell, but the ROM keeps
+    // its raw byte and dispatches the low status through the mode-2 event
+    // table. Put a synthetic runner on that reviewed doorway rectangle and
+    // verify that the native shell crosses into the extracted mode-20 room.
+    auto transition_assets =
+        shadowrun::graphics::decode_genesis_native_assets(rom);
+    transition_assets.initial_field_records[0].position =
+        {static_cast<std::uint16_t>(240U * 16U),
+         static_cast<std::uint16_t>(624U * 16U)};
+    transition_assets.field_areas[0].initial_field_records[0].position =
+        transition_assets.initial_field_records[0].position;
+    NativePortShell transition_shell("SHADOWRUN", std::move(transition_assets));
+    enter_field_from_start(transition_shell);
+    assert(transition_shell.field_mode() == 2);
+    assert(transition_shell.field_raw_status() == 0xC0);
+    transition_shell.update(InputState{
+        button_mask(Button::Right), button_mask(Button::Right)});
+    assert(transition_shell.field_mode() == 0x14);
+    assert(transition_shell.field_area_transition_count() == 1);
+    assert(transition_shell.field_world_x() == (0x5A00 >> 4));
+    assert(transition_shell.field_world_y() == (0x0800 >> 4));
 
     // The field loop's raw 0x2000 branch calls 0x391A, which advances the
     // controlled record through the first three initialized 0x100-byte
