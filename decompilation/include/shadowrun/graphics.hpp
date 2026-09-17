@@ -93,6 +93,11 @@ struct GenesisMode2FieldResources {
     std::size_t tilemap_height = 0;
 };
 
+// The mode table at ROM 0x3232 uses the same descriptor layout for every
+// field/map mode. The mode-2 name is retained above for source compatibility;
+// this alias makes the shared layout explicit for other reconstructed areas.
+using GenesisFieldModeResources = GenesisMode2FieldResources;
+
 using GenesisTerrainMap = terrain::Map;
 
 // Read the reviewed entity-template fields at ROM 0x7291A. The returned
@@ -170,11 +175,22 @@ GenesisMode2FieldResources read_genesis_mode2_field_resources(
     const std::vector<std::uint8_t>& rom,
     std::size_t record_offset = 0x172C80);
 
+// Resolve one of the 56 field descriptors selected by ROM 0x3074. Map
+// pointers are not required to be ordered: the small mode-10..19 maps store
+// the two layers in either order, but their absolute separation still gives
+// the exact map entry count.
+GenesisFieldModeResources read_genesis_field_mode_resources(
+    const std::vector<std::uint8_t>& rom, std::uint16_t mode_id);
+
 // Expand the sentinel-terminated 10-byte terrain rectangles selected by the
 // mode-2 record into the host grid used by ROM 0xE8A0/0xEE10.
 GenesisTerrainMap decode_genesis_mode2_terrain_map(
     const std::vector<std::uint8_t>& rom,
     const GenesisMode2FieldResources& resources);
+
+GenesisTerrainMap decode_genesis_field_mode_terrain_map(
+    const std::vector<std::uint8_t>& rom,
+    const GenesisFieldModeResources& resources);
 
 RgbaImage decode_tile_atlas(
     const std::vector<std::uint8_t>& rom,
@@ -192,6 +208,10 @@ RgbaImage decode_tile_atlas(
 RgbaImage decode_genesis_mode2_field_map(
     const std::vector<std::uint8_t>& rom,
     const GenesisMode2FieldResources& resources);
+
+RgbaImage decode_genesis_field_mode_map(
+    const std::vector<std::uint8_t>& rom,
+    const GenesisFieldModeResources& resources);
 
 RgbaImage decode_genesis_mode2_field_map(
     const std::vector<std::uint8_t>& rom,

@@ -154,6 +154,26 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
+    if (argc == 5 && std::string(argv[3]) == "--mode-map") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto mode_id = static_cast<std::uint16_t>(
+                parse_number(argv[4]));
+            const auto resources =
+                shadowrun::graphics::read_genesis_field_mode_resources(
+                    rom, mode_id);
+            const auto image = shadowrun::graphics::decode_genesis_field_mode_map(
+                rom, resources);
+            shadowrun::graphics::write_bmp32(argv[2], image);
+            std::cout << "field mode " << mode_id << ": " << image.width
+                      << "x" << image.height << "\n"
+                      << "output: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
     if (argc == 4 && std::string(argv[3]) == "--entity-frame") {
         try {
             const auto rom = read_file(argv[1]);
@@ -233,6 +253,8 @@ int main(int argc, char** argv) {
                      "--native-field-pack\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
                      "--mode2-map\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
+                     "--mode-map <mode-id>\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
                      "--entity-frame\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "

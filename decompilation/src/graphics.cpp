@@ -980,10 +980,10 @@ std::array<native::Rgba8, 64> read_genesis_palette_set(
     return palette;
 }
 
-GenesisMode2FieldResources read_genesis_mode2_field_resources(
+GenesisFieldModeResources read_genesis_field_mode_resources_at(
     const std::vector<std::uint8_t>& rom, std::size_t record_offset) {
-    if (record_offset > rom.size() || rom.size() - record_offset < 0x3EU) {
-        throw std::out_of_range("Genesis mode-2 field record is truncated");
+    if (record_offset > rom.size() || rom.size() - record_offset < 0x58U) {
+        throw std::out_of_range("Genesis field mode record is truncated");
     }
 
     const auto setup_block = static_cast<std::size_t>(read_rom_u32(
@@ -1011,15 +1011,17 @@ GenesisMode2FieldResources read_genesis_mode2_field_resources(
     if (primary_tilemap > rom.size() || secondary_tilemap > rom.size()) {
         throw std::out_of_range("Genesis mode-2 tilemaps are outside the ROM");
     }
-    if (secondary_tilemap <= primary_tilemap ||
-        (secondary_tilemap - primary_tilemap) % 2U != 0) {
+    const auto lower_tilemap = std::min(primary_tilemap, secondary_tilemap);
+    const auto upper_tilemap = std::max(primary_tilemap, secondary_tilemap);
+    if (lower_tilemap == upper_tilemap ||
+        (upper_tilemap - lower_tilemap) % 2U != 0) {
         throw std::runtime_error(
-            "Genesis mode-2 tilemap pointers do not describe adjacent maps");
+            "Genesis field mode tilemap pointers do not describe equal maps");
     }
-    const auto tilemap_entries = (secondary_tilemap - primary_tilemap) / 2U;
+    const auto tilemap_entries = (upper_tilemap - lower_tilemap) / 2U;
     if (tilemap_entries == 0 || tilemap_entries % tilemap_width != 0) {
         throw std::runtime_error(
-            "Genesis mode-2 tilemap size does not match its stride");
+            "Genesis field mode tilemap size does not match its stride");
     }
 
     return {
@@ -1074,6 +1076,24 @@ GenesisMode2FieldResources read_genesis_mode2_field_resources(
         tilemap_width,
         tilemap_entries / tilemap_width,
     };
+}
+
+GenesisMode2FieldResources read_genesis_mode2_field_resources(
+    const std::vector<std::uint8_t>& rom, std::size_t record_offset) {
+    return read_genesis_field_mode_resources_at(rom, record_offset);
+}
+
+GenesisFieldModeResources read_genesis_field_mode_resources(
+    const std::vector<std::uint8_t>& rom, std::uint16_t mode_id) {
+    if (mode_id >= rom::kFieldModeCount) {
+        throw std::out_of_range(
+            "Genesis field mode id is outside the mode table");
+    }
+    const auto table_entry = static_cast<std::size_t>(
+        rom::kFieldModePointerTable) + static_cast<std::size_t>(mode_id) * 4U;
+    const auto record_offset = static_cast<std::size_t>(read_rom_u32(
+        rom, table_entry, "Genesis field mode pointer table is truncated"));
+    return read_genesis_field_mode_resources_at(rom, record_offset);
 }
 
 GenesisTerrainMap decode_genesis_mode2_terrain_map(
@@ -1146,6 +1166,12 @@ GenesisTerrainMap decode_genesis_mode2_terrain_map(
     }
 }
 
+GenesisTerrainMap decode_genesis_field_mode_terrain_map(
+    const std::vector<std::uint8_t>& rom,
+    const GenesisFieldModeResources& resources) {
+    return decode_genesis_mode2_terrain_map(rom, resources);
+}
+
 RgbaImage decode_tile_atlas(
     const std::vector<std::uint8_t>& rom,
     std::size_t tile_byte_offset,
@@ -1199,6 +1225,12 @@ RgbaImage decode_genesis_mode2_field_map(
         resources.metatile_stream_offset, resources.primary_tilemap_offset,
         resources.secondary_tilemap_offset, resources.tilemap_width,
         resources.tilemap_height, resources.palette_offset);
+}
+
+RgbaImage decode_genesis_field_mode_map(
+    const std::vector<std::uint8_t>& rom,
+    const GenesisFieldModeResources& resources) {
+    return decode_genesis_mode2_field_map(rom, resources);
 }
 
 RgbaImage decode_genesis_mode2_field_map(

@@ -164,6 +164,48 @@ int main() {
     assert(field_resources.secondary_tilemap_offset == 0x16ED52);
     assert(field_resources.tilemap_width == 60);
     assert(field_resources.tilemap_height == 42);
+
+    // ROM 0x3074 uses the same descriptor layout for the small indoor-style
+    // maps. Their two layer pointers are sometimes reversed relative to the
+    // mode-2 record, so the reader derives the equal layer size from their
+    // absolute separation rather than assuming pointer order.
+    const auto mode10_resources =
+        read_genesis_field_mode_resources(rom, 10);
+    assert(mode10_resources.record_offset == 0x1D609A);
+    assert(mode10_resources.primary_tilemap_offset == 0x1B25F4);
+    assert(mode10_resources.secondary_tilemap_offset == 0x1B2568);
+    assert(mode10_resources.tilemap_width == 10);
+    assert(mode10_resources.tilemap_height == 7);
+    assert(mode10_resources.pattern_data_offset == 0x1ACA20);
+    assert(mode10_resources.pattern_byte_count == 0x53A0);
+    const auto mode10_map =
+        decode_genesis_field_mode_map(rom, mode10_resources);
+    assert(mode10_map.width == 320);
+    assert(mode10_map.height == 224);
+
+    const auto mode11_resources =
+        read_genesis_field_mode_resources(rom, 11);
+    assert(mode11_resources.record_offset == 0x1D5A44);
+    assert(mode11_resources.tilemap_width == 10);
+    assert(mode11_resources.tilemap_height == 21);
+    assert(mode11_resources.primary_tilemap_offset == 0x1B1ED8);
+    assert(mode11_resources.secondary_tilemap_offset == 0x1B207C);
+    const auto mode11_map =
+        decode_genesis_field_mode_map(rom, mode11_resources);
+    assert(mode11_map.width == 320);
+    assert(mode11_map.height == 672);
+
+    const auto mode15_resources =
+        read_genesis_field_mode_resources(rom, 15);
+    assert(mode15_resources.tilemap_width == 10);
+    assert(mode15_resources.tilemap_height == 7);
+    assert(mode15_resources.primary_tilemap_offset == 0x1B2194);
+    assert(mode15_resources.secondary_tilemap_offset == 0x1B2108);
+    const auto mode15_map =
+        decode_genesis_field_mode_map(rom, mode15_resources);
+    assert(mode15_map.width == 320);
+    assert(mode15_map.height == 224);
+
     const auto terrain = decode_genesis_mode2_terrain_map(rom, field_resources);
     assert(terrain.region_count == 101);
     assert(terrain.statuses.size() ==

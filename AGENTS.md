@@ -151,6 +151,20 @@ only after it reaches the reviewed projection window. The renderer-independent
 `terrain::probe` ports the direct `0xE7C8` bounds/status path and its
 `0xE8A0/0xE9EE/0xEA36/0xEAD2` helpers over that host grid.
 
+The same descriptor layout is now resolved through the ROM mode pointer table
+at `0x3232`, rather than being hard-coded to mode 2. The shared decoder and
+extractor cover the small indoor-style resources at modes `10..19`, including
+their reversed layer-pointer order and the 10x21 scrolling map at mode 11.
+These maps are verified host RGBA extraction artifacts only; the native shell
+still loads mode 2, and no entrance is allowed to teleport to a guessed indoor
+mode until the ROM's event/object dispatch identifies the exact destination.
+
+The extracted field entity set currently contains eight directional states.
+The native shell selects one state from movement direction, but does not yet
+advance the ROM's time-based state-list animation index. Walking animation,
+NPC/object animation, audio/music output, and field-to-interior transitions
+remain explicit native-port work rather than hidden behind placeholder logic.
+
 This is now a runnable native title-to-field slice with controls, actual
 ROM-derived field graphics, collision rejection, and a ROM-derived entity
 frame rendered through the native screen boundary. The field-record

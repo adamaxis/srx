@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 
 #include "shadowrun/genesis_bus.hpp"
@@ -24,6 +25,11 @@ constexpr std::uint32_t kStateRoutinePairTable = 0xF3E1E;
 constexpr std::uint32_t kEntityDispatchTable = 0x490A;
 constexpr std::uint32_t kControllerInputDecodeTable = 0x19D2;
 constexpr std::uint32_t kEntityStatePointerTable = 0x62AC;
+// ROM 0x3074 indexes this longword table with the active mode id before
+// copying the selected 0x80-byte descriptor into FFDDC6. The descriptors
+// share one field-map layout, including the small indoor maps at modes 10-19.
+constexpr std::uint32_t kFieldModePointerTable = 0x3232;
+constexpr std::size_t kFieldModeCount = 56;
 constexpr std::uint32_t kObjectGenerationPointerTable = 0xAF3E;
 constexpr std::uint32_t kObjectGenerationInterpolationTable = 0x15E16;
 constexpr std::uint32_t kAnimatedObjectFactorTable = 0x5BEE;
