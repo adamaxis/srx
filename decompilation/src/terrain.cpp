@@ -141,13 +141,14 @@ ProbeResult probe(const Map& map, std::uint16_t world_x_fixed,
     const auto y = static_cast<std::uint16_t>(world_y_fixed >> 4U);
     if (x >= map.x_exclusive_upper || x < map.x_inclusive_lower ||
         y >= map.y_exclusive_upper || y < map.y_inclusive_lower) {
-        return {0x7FU, true, false, true, 0};
+        return {0x7FU, 0x7FU, true, false, true, 0};
     }
 
     const auto selected = select_cell(map, x, y, sample_four_corners);
     if (selected.status == 0 || selected.status == 0x7FU ||
         signed_word(selected.status) < 0) {
-        return {selected.status, false, false, selected.status != 0,
+        return {selected.status, selected.status, false, false,
+                selected.status != 0,
                 selected.offset};
     }
 
@@ -156,14 +157,16 @@ ProbeResult probe(const Map& map, std::uint16_t world_x_fixed,
     if ((selected.status & 0x40U) != 0) {
         if (selected.status == 0x7EU ||
             (selected.status & 0x20U) == 0) {
-            return {0x7FU, false, true, true, selected.offset};
+        return {selected.status, 0x7FU, false, true, true,
+                    selected.offset};
         }
     }
     const auto blocked = directional
         ? directional_test(selected, x, y)
         : rectangle_test(map, selected.status, x, y);
-    return {static_cast<std::uint8_t>(blocked ? 0x7FU : 0), false,
-            (selected.status & 0x40U) != 0, blocked, selected.offset};
+    return {selected.status, static_cast<std::uint8_t>(blocked ? 0x7FU : 0),
+            false, (selected.status & 0x40U) != 0, blocked,
+            selected.offset};
 }
 
 } // namespace shadowrun::terrain

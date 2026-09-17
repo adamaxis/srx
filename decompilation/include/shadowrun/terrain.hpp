@@ -32,6 +32,10 @@ struct Map {
 };
 
 struct ProbeResult {
+    // The raw byte selected by ROM 0xE8A0. `status` is the post-0xE7C8
+    // movement result (zero for a traversable positive-status region), so it
+    // cannot be used by native interaction dispatch on its own.
+    std::uint8_t raw_status = 0;
     std::uint8_t status = 0;
     bool out_of_bounds = false;
     bool collision_gate = false;

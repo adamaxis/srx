@@ -384,6 +384,12 @@ public:
     std::uint8_t field_collision_status() const {
         return field_collision_.status;
     }
+    // The movement result above intentionally collapses traversable positive
+    // statuses to zero, matching ROM 0xE7C8. Keep the selected raw grid byte
+    // available for the later field interaction/event dispatcher.
+    std::uint8_t field_raw_status() const {
+        return field_collision_.raw_status;
+    }
     bool field_collision_blocked() const { return field_collision_.blocked; }
     bool field_move_rejected() const { return move_rejected_; }
     std::size_t field_entity_frame_index() const {

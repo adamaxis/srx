@@ -119,6 +119,7 @@ int main() {
     assert(rom_shell.field_entity_screen_x() == 142);
     assert(rom_shell.field_entity_screen_y() == 168);
     assert(rom_shell.field_collision_status() == 0);
+    assert(rom_shell.field_raw_status() == 0);
     assert(!rom_shell.field_collision_blocked());
 
     // The field loop's raw 0x2000 branch calls 0x391A, which advances the

@@ -175,21 +175,31 @@ int main() {
     const auto clear_probe = shadowrun::terrain::probe(
         terrain, static_cast<std::uint16_t>(832U * 16U),
         static_cast<std::uint16_t>(552U * 16U));
-    assert(clear_probe.status == 0 && !clear_probe.blocked &&
+    assert(clear_probe.raw_status == 0 && clear_probe.status == 0 &&
+           !clear_probe.blocked &&
            !clear_probe.out_of_bounds);
     const auto blocked_probe = shadowrun::terrain::probe(
         terrain, static_cast<std::uint16_t>(864U * 16U),
         static_cast<std::uint16_t>(536U * 16U));
-    assert(blocked_probe.status == 0x7FU && blocked_probe.blocked &&
+    assert(blocked_probe.raw_status == 0x7FU &&
+           blocked_probe.status == 0x7FU && blocked_probe.blocked &&
            !blocked_probe.out_of_bounds);
     const auto rectangle_probe = shadowrun::terrain::probe(
         terrain, static_cast<std::uint16_t>(600U * 16U),
         static_cast<std::uint16_t>(1250U * 16U));
-    assert(rectangle_probe.status == 0x7FU && rectangle_probe.blocked);
+    assert(rectangle_probe.raw_status == 1 &&
+           rectangle_probe.status == 0x7FU && rectangle_probe.blocked);
+    const auto positive_status_probe = shadowrun::terrain::probe(
+        terrain, static_cast<std::uint16_t>(0x240U * 16U),
+        static_cast<std::uint16_t>(0x4E0U * 16U), false);
+    assert(positive_status_probe.raw_status == 1 &&
+           positive_status_probe.status == 0 &&
+           !positive_status_probe.blocked);
     const auto bounds_probe = shadowrun::terrain::probe(
         terrain, static_cast<std::uint16_t>(43U * 16U),
         static_cast<std::uint16_t>(552U * 16U));
-    assert(bounds_probe.status == 0x7FU && bounds_probe.blocked &&
+    assert(bounds_probe.raw_status == 0x7FU &&
+           bounds_probe.status == 0x7FU && bounds_probe.blocked &&
            bounds_probe.out_of_bounds);
     const auto field_map = decode_genesis_mode2_field_map(
         rom, field_resources);
