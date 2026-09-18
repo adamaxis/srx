@@ -291,12 +291,15 @@ uses the `0xC8C8` bitfield/catalog path and its source empty-catalog message.
 The Cyberdeck row now follows the first branch of `0x18150`: with the native
 new-game state equivalent to clear `FF018F` bit 0, it writes the exact three
 lines at `0xE43D1`, `0xE43E2`, and `0xE43F3` into the Pocket Secretary panel.
+Notebook now follows the base `0xF236`/`0xF33E` path: it extracts the title,
+Current Run, Tips & Clues, and the three event-gated labels, starts with only
+the two ungated rows, and displays the exact `0xF2E2` no-current-run response.
 Dismiss Runner now follows the source `0xC448` active-record enumeration: the
 native panel lists live non-current party records, starts on the extracted
 Abort row, and clears the selected record's active bit only after that runner
 is selected. The deck-present Matrix path is intentionally still pending, as
-are Notebook, the restricted four-row bound, class/combat gates, contact
-records, and the debug path.
+are the Notebook Tips & Clues/conditional screens, the restricted four-row
+bound, class/combat gates, contact records, and the debug path.
 
 ## Magic, Matrix, and combat screens
 
@@ -361,7 +364,7 @@ of a port.
 | Attributes/skills | `0xD01C` | Partial | Read-only display is present; mutation branches are pending |
 | Cyberware | `0x11950` | Partial | Installed-bit display is present; mutation flows are pending |
 | Runner switching | `0x391A` | Partial | No-eligible-runner behavior is covered; recruited roster is pending |
-| Pocket Secretary | `0xC2A6`, `0xC3E6`, `0xC376`, `0xC8C8`, `0xF312`, `0x18150`, `0xC448` | Partial | Source five-row order, cursor wrap, caller-specific Save/Load return, Group Items catalog/empty path, any-edge return, Cyberdeck no-deck feedback, and active-runner Dismiss path are present; deck-present Matrix path, Notebook, and restricted-mode gates remain |
+| Pocket Secretary / Notebook | `0xC2A6`, `0xC3E6`, `0xC376`, `0xC8C8`, `0xF236`, `0xF2E2`, `0xF312`, `0x18150`, `0xC448` | Partial | Source five-row order, cursor wrap, caller-specific Save/Load return, Notebook base labels and no-current-run response, Group Items catalog/empty path, any-edge return, Cyberdeck no-deck feedback, and active-runner Dismiss path are present; Tips & Clues, conditional Notebook screens, deck-present Matrix path, and restricted-mode gates remain |
 | Magic | `0xFBA6` | Pending | Handler and spell state are pending |
 | Matrix/cyberdeck | source deck/program loop | Pending | Separate from Magic and command overview |
 | Field combat | source target/action loops | Pending | Posture consumers, damage, ammo/spell drain, and animation are pending |

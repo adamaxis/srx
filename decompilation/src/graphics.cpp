@@ -579,6 +579,30 @@ read_genesis_dismiss_runner_labels(const std::vector<std::uint8_t>& rom) {
     return result;
 }
 
+std::array<std::string, native::kNativeNotebookLabelCount>
+read_genesis_notebook_labels(const std::vector<std::uint8_t>& rom) {
+    std::array<std::string, native::kNativeNotebookLabelCount> result{};
+    for (std::size_t index = 0; index < result.size(); ++index) {
+        result[index] = read_genesis_padded_text(
+            rom, rom::kNotebookLabelText[index],
+            rom::kNotebookLabelTextLengths[index],
+            "Genesis Notebook label is truncated");
+    }
+    return result;
+}
+
+std::array<std::string, native::kNativeNotebookNoRunLineCount>
+read_genesis_notebook_no_run_text(const std::vector<std::uint8_t>& rom) {
+    std::array<std::string, native::kNativeNotebookNoRunLineCount> result{};
+    for (std::size_t index = 0; index < result.size(); ++index) {
+        result[index] = read_genesis_padded_text(
+            rom, rom::kNotebookNoRunText[index],
+            rom::kNotebookNoRunTextLengths[index],
+            "Genesis Notebook no-run text is truncated");
+    }
+    return result;
+}
+
 std::array<std::string,
            native::kNativeAttributeCount + native::kNativeSkillCount>
 read_genesis_attribute_skill_catalog(const std::vector<std::uint8_t>& rom) {
@@ -1009,6 +1033,8 @@ native::NativePortAssets decode_genesis_native_assets(
     assets.cyberdeck_unavailable_lines =
         read_genesis_cyberdeck_unavailable_text(rom);
     assets.dismiss_runner_labels = read_genesis_dismiss_runner_labels(rom);
+    assets.notebook_labels = read_genesis_notebook_labels(rom);
+    assets.notebook_no_run_lines = read_genesis_notebook_no_run_text(rom);
 
     for (std::size_t index = 0;
          index < assets.field_direction_table.size(); ++index) {
@@ -1032,7 +1058,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 29);
+    write_u16(output, 30);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     for (const auto& title_frame : assets.title_animation_frames) {
@@ -1291,6 +1317,14 @@ void write_native_asset_pack(const std::string& path,
         write_pack_string(output, label,
                           "native dismiss-runner label is too long");
     }
+    for (const auto& label : assets.notebook_labels) {
+        write_pack_string(output, label,
+                          "native Notebook label is too long");
+    }
+    for (const auto& line : assets.notebook_no_run_lines) {
+        write_pack_string(output, line,
+                          "native Notebook no-run text is too long");
+    }
     for (const auto& direction : assets.field_direction_table) {
         write_u16(output, static_cast<std::uint16_t>(direction[0]));
         write_u16(output, static_cast<std::uint16_t>(direction[1]));
@@ -1415,7 +1449,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 29U)) {
+        (version < 2U || version > 30U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -1896,6 +1930,18 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
                             label = read_pack_string(
                                 input,
                                 "native dismiss-runner label is truncated");
+                        }
+                        if (version >= 30U) {
+                            for (auto& label : assets.notebook_labels) {
+                                label = read_pack_string(
+                                    input,
+                                    "native Notebook label is truncated");
+                            }
+                            for (auto& line : assets.notebook_no_run_lines) {
+                                line = read_pack_string(
+                                    input,
+                                    "native Notebook no-run text is truncated");
+                            }
                         }
                     }
                 }

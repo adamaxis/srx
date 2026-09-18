@@ -32,6 +32,14 @@ constexpr std::size_t kNativeCyberdeckUnavailableLineCount = 3;
 // runner-name list. The placeholder line at 0xC14AE is VDP layout padding and
 // is intentionally not carried as user-facing text.
 constexpr std::size_t kNativeDismissRunnerLabelCount = 3;
+// ROM 0xF33E writes two base Notebook entries from 0xC567E, then appends
+// Contacts/Mr. Johnsons/Shadowrunners when their persistent event gates are
+// set. Keep the complete extracted label catalog even though the native
+// runtime currently starts with only the two ungated entries.
+constexpr std::size_t kNativeNotebookLabelCount = 6;
+// ROM 0xF2F6 writes the three 0x80-delimited lines at 0xC56E7 when there is
+// no active shadowrun. Leading spaces are source layout and are preserved.
+constexpr std::size_t kNativeNotebookNoRunLineCount = 3;
 constexpr std::size_t kNativeAttributeCount = 8;
 constexpr std::size_t kNativeSkillCount = 12;
 constexpr std::size_t kNativeAttributeSkillAuxiliaryCount = 4;
@@ -91,6 +99,7 @@ enum class NativeScene {
     FieldDialog,
     FieldMenu,
     PocketSecretaryMenu,
+    NotebookMenu,
     GroupItemsMenu,
     DismissRunnerMenu,
     ClipsMenu,
@@ -410,6 +419,9 @@ struct NativePortAssets {
         cyberdeck_unavailable_lines{};
     std::array<std::string, kNativeDismissRunnerLabelCount>
         dismiss_runner_labels{};
+    std::array<std::string, kNativeNotebookLabelCount> notebook_labels{};
+    std::array<std::string, kNativeNotebookNoRunLineCount>
+        notebook_no_run_lines{};
 };
 
 // Native game code writes to this interface instead of issuing Genesis VDP
@@ -497,6 +509,26 @@ public:
     bool field_menu_open() const { return scene_ == NativeScene::FieldMenu; }
     bool pocket_secretary_menu_open() const {
         return scene_ == NativeScene::PocketSecretaryMenu;
+    }
+    bool notebook_menu_open() const {
+        return scene_ == NativeScene::NotebookMenu;
+    }
+    std::size_t notebook_selection() const { return notebook_selection_; }
+    std::size_t notebook_option_count() const {
+        return notebook_option_count_;
+    }
+    bool notebook_message_visible() const {
+        return notebook_message_visible_;
+    }
+    std::string_view notebook_label(std::size_t index) const {
+        return index < notebook_labels_.size()
+            ? std::string_view(notebook_labels_[index])
+            : std::string_view{};
+    }
+    std::string_view notebook_no_run_line(std::size_t index) const {
+        return index < notebook_no_run_lines_.size()
+            ? std::string_view(notebook_no_run_lines_[index])
+            : std::string_view{};
     }
     std::size_t pocket_secretary_selection() const {
         return pocket_secretary_selection_;
@@ -820,6 +852,8 @@ private:
     void update_field_menu(const InputState& input);
     void open_pocket_secretary_menu();
     void update_pocket_secretary_menu(const InputState& input);
+    void open_notebook_menu();
+    void update_notebook_menu(const InputState& input);
     void update_group_items_menu(const InputState& input);
     void open_dismiss_runner_menu();
     void update_dismiss_runner_menu(const InputState& input);
@@ -946,6 +980,9 @@ private:
         cyberdeck_unavailable_lines_{};
     std::array<std::string, kNativeDismissRunnerLabelCount>
         dismiss_runner_labels_{};
+    std::array<std::string, kNativeNotebookLabelCount> notebook_labels_{};
+    std::array<std::string, kNativeNotebookNoRunLineCount>
+        notebook_no_run_lines_{};
     bool pocket_secretary_message_visible_ = false;
     std::array<std::size_t, 2> dismiss_runner_candidate_records_{};
     std::size_t dismiss_runner_candidate_count_ = 0;
@@ -988,6 +1025,13 @@ private:
     // the source removes Save/Load in its restricted mode branches.
     std::size_t pocket_secretary_selection_ = 0;
     bool pocket_secretary_save_load_enabled_ = true;
+    // ROM 0xF33E starts this at one (two selectable rows, 0..1) and
+    // increments it only for the three persistent Notebook event gates.
+    // Those setters are not ported yet, so a fresh native session exposes
+    // the same ungated Current Run/Tips & Clues base rows.
+    std::size_t notebook_selection_ = 0;
+    std::size_t notebook_option_count_ = 2;
+    bool notebook_message_visible_ = false;
     // ROM 0xC8C8 reads the persistent global FFFC22 bitfield. The current
     // native field slice has not yet ported the event setters, so a new game
     // starts at the source's empty catalog state until those setters land.

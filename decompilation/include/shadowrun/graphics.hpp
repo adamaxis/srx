@@ -167,6 +167,14 @@ read_genesis_cyberdeck_unavailable_text(
 std::array<std::string, native::kNativeDismissRunnerLabelCount>
 read_genesis_dismiss_runner_labels(const std::vector<std::uint8_t>& rom);
 
+// ROM 0xF33E/0xF2F6 supplies the Notebook menu labels and the exact
+// no-current-run response. Preserve source leading spaces and separators in
+// host-owned strings before the runtime starts.
+std::array<std::string, native::kNativeNotebookLabelCount>
+read_genesis_notebook_labels(const std::vector<std::uint8_t>& rom);
+std::array<std::string, native::kNativeNotebookNoRunLineCount>
+read_genesis_notebook_no_run_text(const std::vector<std::uint8_t>& rom);
+
 // ROM 0xD01C loads twenty labels through the pointer table at 0xC1A2A.
 std::array<std::string,
           native::kNativeAttributeCount + native::kNativeSkillCount>

@@ -395,6 +395,17 @@ int main() {
     assert(native_assets.dismiss_runner_labels[0] == "   Dismiss");
     assert(native_assets.dismiss_runner_labels[1] == "    Who??");
     assert(native_assets.dismiss_runner_labels[2] == "    Abort");
+    const auto notebook_labels = read_genesis_notebook_labels(rom);
+    assert((notebook_labels == std::array<std::string, 6>{
+        "  Notebook", "Current Run", "Tips & Clues", "Contacts",
+        "Mr. Johnsons", "Shadowrunners"}));
+    assert((read_genesis_notebook_no_run_text(rom) ==
+            std::array<std::string, 3>{
+                " You are not currently", "engaged in a shadowrun.",
+                "     Get a job!!"}));
+    assert(native_assets.notebook_labels == notebook_labels);
+    assert(native_assets.notebook_no_run_lines ==
+           read_genesis_notebook_no_run_text(rom));
     const auto pack_path = std::filesystem::temp_directory_path() /
                            "shadowrun_native_port_assets_test.srna";
     write_native_asset_pack(pack_path.string(), native_assets);
@@ -429,6 +440,9 @@ int main() {
            native_assets.cyberdeck_unavailable_lines);
     assert(loaded_assets.dismiss_runner_labels ==
            native_assets.dismiss_runner_labels);
+    assert(loaded_assets.notebook_labels == native_assets.notebook_labels);
+    assert(loaded_assets.notebook_no_run_lines ==
+           native_assets.notebook_no_run_lines);
     assert(loaded_assets.field_event_mode_table ==
            native_assets.field_event_mode_table);
     assert(loaded_assets.field_areas.size() ==

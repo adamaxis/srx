@@ -653,6 +653,20 @@ native port extracts the fixed labels, lists live non-current host records,
 preserves the Abort boundary, and clears the selected record's active bit.
 The source event's narrative/audio side effects remain a separate boundary.
 
+Notebook dispatches to `0xF236`. Its setup helper `0xF33E` writes the title
+and two ungated rows from `0xC567E`, then appends `Contacts`, `Mr. Johnsons`,
+and `Shadowrunners` only when `FFFC2C`, `FFFC27`, and `FFFC2A` are nonzero.
+The copied action table at `0xC6648` resolves those rows to `0xF2E2`,
+`0xF9A4`, `0xF840`, `0xF416`, and `0xF6DC`; `FFF0B9` is the inclusive
+selector bound and `FFF0DC` is the cursor. The native port now extracts all
+six labels and the `0xC56E7` three-line response. In a fresh session, where
+the current-run flag is not active, selecting `Current Run` follows `0xF2E2`
+and displays `You are not currently / engaged in a shadowrun. / Get a job!!`,
+then waits for an input edge before rebuilding Notebook. The Tips & Clues
+pointer lists and the three conditional event setters remain explicit next
+boundaries; they must be ported from their source tables rather than replaced
+with an always-visible invented list.
+
 ### Matrix
 
 Matrix is a separate state family from Magic and from the command overview.

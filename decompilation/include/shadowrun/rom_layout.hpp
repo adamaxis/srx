@@ -123,6 +123,19 @@ inline constexpr std::array<GenesisAddress, 3> kDismissRunnerLabelText{
     0xC1499, 0xC14A4, 0xC14BD};
 inline constexpr std::array<std::size_t, 3> kDismissRunnerLabelTextLengths{
     10, 9, 9};
+// ROM 0xF33E feeds 0xC567E to C0DA. The source separators make the first
+// block's title, Current Run, and Tips & Clues separate host strings; the
+// remaining three labels are appended when their event gates are set.
+inline constexpr std::array<GenesisAddress, 6> kNotebookLabelText{
+    0xC567E, 0xC568B, 0xC5698, 0xC56A5, 0xC56AE, 0xC56BB};
+inline constexpr std::array<std::size_t, 6> kNotebookLabelTextLengths{
+    10, 11, 12, 8, 12, 13};
+// ROM 0xF2F6 passes this three-line 0x80-delimited response to C0DA when
+// FFBEC says no shadowrun is currently active.
+inline constexpr std::array<GenesisAddress, 3> kNotebookNoRunText{
+    0xC56E7, 0xC56FE, 0xC5717};
+inline constexpr std::array<std::size_t, 3> kNotebookNoRunTextLengths{
+    22, 23, 16};
 // ROM 0xD01C loads twenty labels through this longword table. The first
 // eight correspond to the attribute bytes at record +0x77..+0x7E; the final
 // twelve correspond to the skill bytes at +0x80..+0x85 and +0x87..+0x8C.

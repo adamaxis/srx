@@ -635,6 +635,8 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     cyberdeck_unavailable_lines_ =
         std::move(assets.cyberdeck_unavailable_lines);
     dismiss_runner_labels_ = std::move(assets.dismiss_runner_labels);
+    notebook_labels_ = std::move(assets.notebook_labels);
+    notebook_no_run_lines_ = std::move(assets.notebook_no_run_lines);
     protagonist_archetype_records_ =
         std::move(assets.protagonist_archetype_records);
     field_initial_records_ = assets.initial_field_records;
@@ -2174,8 +2176,66 @@ void NativePortShell::update_pocket_secretary_menu(const InputState& input) {
         open_dismiss_runner_menu();
         return;
     }
-    // Notebook retains its source selection boundary until its handler is
-    // traced.
+    if (pocket_secretary_selection_ == 0U) {
+        open_notebook_menu();
+    }
+}
+
+void NativePortShell::open_notebook_menu() {
+    // ROM 0xC2A6 dispatches Notebook to 0xF236. F33E rebuilds the panel,
+    // resets FFF0DC, and starts with the two ungated rows from C567E. The
+    // three event-gated rows are deliberately not exposed until their source
+    // setters have been ported.
+    scene_ = NativeScene::NotebookMenu;
+    notebook_selection_ = 0;
+    notebook_option_count_ = 2;
+    notebook_message_visible_ = false;
+    menu_horizontal_repeat_frames_ = 0;
+    menu_vertical_repeat_frames_ = 0;
+    menu_horizontal_repeat_mask_ = 0;
+    menu_vertical_repeat_mask_ = 0;
+}
+
+void NativePortShell::update_notebook_menu(const InputState& input) {
+    // F236 uses the shared C376 selector helper with D3=FFF0B9, so the
+    // source range is inclusive and wraps between the visible rows.
+    if (notebook_message_visible_) {
+        if (input.pressed != 0U) {
+            notebook_message_visible_ = false;
+        }
+        return;
+    }
+    const auto vertical_step =
+        menu_direction_step(input, Button::Up, Button::Down, false);
+    if (vertical_step && input.is_held(Button::Up) &&
+        !input.is_held(Button::Down)) {
+        notebook_selection_ = notebook_selection_ == 0U
+            ? notebook_option_count_ - 1U : notebook_selection_ - 1U;
+    } else if (vertical_step && input.is_held(Button::Down) &&
+               !input.is_held(Button::Up)) {
+        notebook_selection_ =
+            (notebook_selection_ + 1U) % notebook_option_count_;
+    }
+
+    if (input.was_pressed(Button::Start) || input.was_pressed(Button::B)) {
+        scene_ = NativeScene::FieldMenu;
+        field_menu_selection_ = 6;
+        return;
+    }
+    if (!input.was_pressed(Button::A)) {
+        return;
+    }
+    if (notebook_selection_ == 0U) {
+        // F2E2 checks FFBEC. A fresh native session has no active run, so it
+        // writes C56E7 to C30C, waits at F312 for any edge, and rebuilds the
+        // Notebook panel. Keep that response modal and source-backed.
+        notebook_message_visible_ = true;
+        return;
+    }
+    // F9A4 (Tips & Clues) and the conditional Contacts/Johnson/Shadowrunners
+    // handlers are separate source screens. Their tables and event gates are
+    // not being collapsed into a fabricated generic page here; they remain
+    // the next Notebook audit boundary.
 }
 
 void NativePortShell::update_group_items_menu(const InputState& input) {
@@ -2938,6 +2998,12 @@ void NativePortShell::update(const InputState& input) {
 
     if (scene_ == NativeScene::PocketSecretaryMenu) {
         update_pocket_secretary_menu(input);
+        ++frame_number_;
+        return;
+    }
+
+    if (scene_ == NativeScene::NotebookMenu) {
+        update_notebook_menu(input);
         ++frame_number_;
         return;
     }
@@ -3939,6 +4005,48 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 }
             }
             write_field_menu_text(screen, 80, 176, " A SELECT  B RETURN");
+        } else if (scene_ == NativeScene::NotebookMenu) {
+            // ROM 0xF33E writes C567E to the Notebook panel: the title,
+            // Current Run, and Tips & Clues are the base rows. Conditional
+            // rows use C56A5/C56AE/C56BB at the same two-row stride, so keep
+            // their source strings available without displaying them until
+            // the corresponding event globals are reconstructed.
+            screen.fill_rect(56, 24, 208, 168,
+                             {0x02, 0x08, 0x18, 0xF0});
+            screen.fill_rect(56, 24, 208, 2,
+                             {0x00, 0xA8, 0xC8, 0xFF});
+            write_field_menu_text(screen, 112, 32, notebook_label(0));
+            for (std::size_t index = 0; index < notebook_option_count_; ++index) {
+                const auto selected = index == notebook_selection_;
+                const auto y = 72 + static_cast<std::int32_t>(index) * 16;
+                if (selected && !notebook_message_visible_) {
+                    screen.fill_rect(80, y - 2, 176, 13,
+                                     {0x00, 0x68, 0x88, 0xFF});
+                    if (!field_menu_cursor_.pixels.empty()) {
+                        screen.blit_rgba(64, y - 10, field_menu_cursor_.width,
+                                         field_menu_cursor_.height,
+                                         field_menu_cursor_.pixels);
+                    }
+                }
+                write_field_menu_text(screen, 96, y,
+                                      notebook_label(index + 1U));
+            }
+            if (notebook_message_visible_) {
+                // F2F6 passes C56E7 to C0DA at C30C. These are the exact
+                // three source rows, including the intentional leading
+                // spaces and the blank separator row.
+                for (std::size_t index = 0;
+                     index < notebook_no_run_lines_.size(); ++index) {
+                    write_field_menu_text(
+                        screen, 80,
+                        112 + static_cast<std::int32_t>(index) * 12,
+                        notebook_no_run_lines_[index]);
+                }
+                write_field_menu_text(screen, 80, 176, " PRESS ANY BUTTON");
+            } else {
+                write_field_menu_text(screen, 80, 176,
+                                      " A SELECT  B RETURN");
+            }
         } else if (scene_ == NativeScene::GroupItemsMenu) {
             // ROM 0xC8C8 clears the command plane with C3E6, writes the
             // extracted C1471 empty message when FFFC22 is zero, otherwise

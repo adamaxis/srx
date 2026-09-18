@@ -406,6 +406,33 @@ void test_pocket_secretary_menu(const std::vector<std::uint8_t>& rom) {
     press(shell, Button::A);
     assert(shell.pocket_secretary_menu_open());
     assert(shell.pocket_secretary_selection() == 0U);
+    press(shell, Button::A);
+    assert(shell.notebook_menu_open());
+    assert(shell.notebook_option_count() == 2U);
+    assert(shell.notebook_selection() == 0U);
+    assert(shell.notebook_label(0) == "  Notebook");
+    assert(shell.notebook_label(1) == "Current Run");
+    assert(shell.notebook_label(2) == "Tips & Clues");
+    SoftwareScreen notebook_screen;
+    shell.render(notebook_screen);
+    assert(notebook_screen.pixel(56, 24) != 0U);
+    // F2E2 takes the no-current-run branch in a fresh session. It displays
+    // the source C56E7 response and waits for an edge before rebuilding the
+    // same Notebook panel.
+    press(shell, Button::A);
+    assert(shell.notebook_menu_open());
+    assert(shell.notebook_message_visible());
+    assert(shell.notebook_no_run_line(0) == " You are not currently");
+    assert(shell.notebook_no_run_line(1) == "engaged in a shadowrun.");
+    assert(shell.notebook_no_run_line(2) == "     Get a job!!");
+    press(shell, Button::Down);
+    assert(!shell.notebook_message_visible());
+    assert(shell.notebook_selection() == 0U);
+    press(shell, Button::B);
+    assert(shell.scene() == NativeScene::FieldMenu);
+    press(shell, Button::A);
+    assert(shell.pocket_secretary_menu_open());
+    assert(shell.pocket_secretary_selection() == 0U);
     press(shell, Button::Down);
     press(shell, Button::Down);
     assert(shell.pocket_secretary_selection() == 2U);
