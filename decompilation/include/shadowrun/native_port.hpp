@@ -22,6 +22,9 @@ constexpr std::size_t kNativeMenuStatusCount = 5;
 // another selectable archetype.
 constexpr std::size_t kNativeArchetypeChoiceCount = 3;
 constexpr std::size_t kNativeCyberwareCount = 15;
+// ROM 0xC8C8 walks bits 0..14 of FFFC22 and indexes the fifteen longwords
+// at 0xC25C4 when drawing Group Items.
+constexpr std::size_t kNativeGroupItemCount = 15;
 constexpr std::size_t kNativeAttributeCount = 8;
 constexpr std::size_t kNativeSkillCount = 12;
 constexpr std::size_t kNativeAttributeSkillAuxiliaryCount = 4;
@@ -81,6 +84,7 @@ enum class NativeScene {
     FieldDialog,
     FieldMenu,
     PocketSecretaryMenu,
+    GroupItemsMenu,
     ClipsMenu,
     CyberwareMenu,
     AttributesMenu,
@@ -393,6 +397,7 @@ struct NativePortAssets {
     std::array<std::string, kNativeCyberwareCount> cyberware_names{};
     std::array<std::string, kNativeAttributeCount + kNativeSkillCount>
         attribute_skill_names{};
+    std::array<std::string, kNativeGroupItemCount> group_item_names{};
 };
 
 // Native game code writes to this interface instead of issuing Genesis VDP
@@ -489,6 +494,16 @@ public:
     }
     bool pocket_secretary_save_load_enabled() const {
         return pocket_secretary_save_load_enabled_;
+    }
+    bool group_items_menu_open() const {
+        return scene_ == NativeScene::GroupItemsMenu;
+    }
+    std::uint32_t group_item_flags() const { return group_item_flags_; }
+    std::size_t group_item_count() const { return kNativeGroupItemCount; }
+    std::string_view group_item_name(std::size_t index) const {
+        return index < group_item_names_.size()
+            ? std::string_view(group_item_names_[index])
+            : std::string_view{};
     }
     bool field_dialog_open() const {
         return scene_ == NativeScene::FieldDialog;
@@ -776,6 +791,7 @@ private:
     void update_field_menu(const InputState& input);
     void open_pocket_secretary_menu();
     void update_pocket_secretary_menu(const InputState& input);
+    void update_group_items_menu(const InputState& input);
     void write_field_menu_text(ScreenWriter& screen, std::int32_t x,
                                std::int32_t y, std::string_view text) const;
     void write_startup_text(ScreenWriter& screen, std::int32_t x,
@@ -894,6 +910,7 @@ private:
     std::array<std::string, kNativeCyberwareCount> cyberware_names_{};
     std::array<std::string, kNativeAttributeCount + kNativeSkillCount>
         attribute_skill_names_{};
+    std::array<std::string, kNativeGroupItemCount> group_item_names_{};
     std::array<std::uint8_t, 3> field_equipped_armor_by_record_{};
     std::uint8_t field_initial_equipped_armor_ = 0;
     std::array<NativeFieldRecord, 3> field_initial_records_{};
@@ -932,6 +949,10 @@ private:
     // the source removes Save/Load in its restricted mode branches.
     std::size_t pocket_secretary_selection_ = 0;
     bool pocket_secretary_save_load_enabled_ = true;
+    // ROM 0xC8C8 reads the persistent global FFFC22 bitfield. The current
+    // native field slice has not yet ported the event setters, so a new game
+    // starts at the source's empty catalog state until those setters land.
+    std::uint32_t group_item_flags_ = 0;
     // ROM 0x11740 saves the inventory column/row, sets the action selector to
     // 2, and enters the four-choice loop at 0x117D4. Keep that focus separate
     // from the parent inventory cursor so the first button press cannot equip.

@@ -615,16 +615,22 @@ cyberware panel and must not be enabled merely because the command selector
 can reach index 5. The display shell is identified; spell availability,
 selection, costs, effects, and failure messages remain `PENDING`.
 
-### Pocket Secretary: `0xC2A6`
+### Pocket Secretary: `0xC2A6`, Group Items: `0xC8C8`
 
-Pocket Secretary draws through `0xC3E6`, with the source option/label tables at
-`0xC1418` and the shared command text resources at `0xD1D94`/`0xD1E6C`. The
-cursor is maintained at `0xC376`. The source debug/state byte at `FFF101`
-changes the visible bounds between four and five entries, which is evidence
-that this panel has state-dependent contents and is not a decorative list.
-The native base now presents the verified five-row field-mode order and sends
-Save/Load to the existing `0x59172` screen; the four other row actions and the
-restricted four-row branch remain separate traces.
+Pocket Secretary draws through `0xC3E6`, with the source option/label table at
+`0xC1418`; the cursor is maintained at `0xC376`. The source debug/state byte
+at `FFF101` changes the visible bounds between four and five entries, which is
+evidence that this panel has state-dependent contents and is not a decorative
+list. The native base presents the verified five-row field-mode order and sends
+Save/Load to the existing `0x59172` screen.
+
+Selecting Group Items dispatches to `0xC8C8`. That handler reads the persistent
+global bitfield at `FFFC22`, emits the names from the fifteen-entry pointer
+table at `0xC25C4` in descending bit order, or writes the exact empty message
+at `0xC1471` when no bits are set. It then waits through `0xF312` for any
+controller edge and returns to the command loop. The native port has extracted
+the catalog into the host asset pack and covers the empty-catalog path; event
+setters for the persistent bits remain pending.
 
 ### Matrix
 

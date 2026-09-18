@@ -390,6 +390,22 @@ void test_pocket_secretary_menu(const std::vector<std::uint8_t>& rom) {
     assert(screen.pixel(56, 24) != 0U);
     // The screen-level test is intentionally state-based because the source
     // C0DA writer is a tile-plane operation, not a host checklist.
+    press(shell, Button::Down);
+    assert(shell.pocket_secretary_selection() == 1U);
+    press(shell, Button::A);
+    assert(shell.group_items_menu_open());
+    assert(shell.group_item_flags() == 0U);
+    assert(shell.group_item_count() == 15U);
+    assert(shell.group_item_name(0) == "Prototype Cyber-heart");
+    shell.render(screen);
+    // ROM C8C8 selects the exact empty-catalog message when FFFC22 is zero.
+    assert(screen.pixel(56, 24) != 0U);
+    press(shell, Button::Up);
+    assert(shell.scene() == NativeScene::FieldMenu);
+    assert(shell.field_menu_selection() == 6U);
+    press(shell, Button::A);
+    assert(shell.pocket_secretary_menu_open());
+    assert(shell.pocket_secretary_selection() == 0U);
     for (std::size_t expected = 1U; expected < 5U; ++expected) {
         press(shell, Button::Down);
         assert(shell.pocket_secretary_selection() == expected);

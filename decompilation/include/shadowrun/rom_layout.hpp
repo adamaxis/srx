@@ -108,6 +108,10 @@ constexpr std::size_t kInventoryItemCount = 50;
 // the installed names. The pointers resolve to FF-terminated host text.
 constexpr std::uint32_t kCyberwarePointerTable = 0xD2072;
 constexpr std::size_t kCyberwareCount = 15;
+// ROM 0xC8C8 walks the global FFFC22 item bitfield and uses this fifteen-entry
+// pointer table for the visible Group Items names.
+constexpr std::uint32_t kGroupItemPointerTable = 0xC25C4;
+constexpr std::size_t kGroupItemCount = 15;
 // ROM 0xD01C loads twenty labels through this longword table. The first
 // eight correspond to the attribute bytes at record +0x77..+0x7E; the final
 // twelve correspond to the skill bytes at +0x80..+0x85 and +0x87..+0x8C.

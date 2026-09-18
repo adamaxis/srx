@@ -149,6 +149,12 @@ read_genesis_inventory_catalog(const std::vector<std::uint8_t>& rom);
 std::array<std::string, native::kNativeCyberwareCount>
 read_genesis_cyberware_catalog(const std::vector<std::uint8_t>& rom);
 
+// ROM 0xC8C8 indexes the fifteen Group Items names through the longword
+// table at 0xC25C4. These strings are FF-terminated and are extracted into
+// host storage before the native runtime starts.
+std::array<std::string, native::kNativeGroupItemCount>
+read_genesis_group_item_catalog(const std::vector<std::uint8_t>& rom);
+
 // ROM 0xD01C loads twenty labels through the pointer table at 0xC1A2A.
 std::array<std::string,
           native::kNativeAttributeCount + native::kNativeSkillCount>

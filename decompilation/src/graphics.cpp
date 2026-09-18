@@ -513,6 +513,23 @@ read_genesis_cyberware_catalog(const std::vector<std::uint8_t>& rom) {
     return result;
 }
 
+std::array<std::string, native::kNativeGroupItemCount>
+read_genesis_group_item_catalog(const std::vector<std::uint8_t>& rom) {
+    std::array<std::string, native::kNativeGroupItemCount> result{};
+    for (std::size_t index = 0; index < result.size(); ++index) {
+        const auto pointer_offset =
+            static_cast<std::size_t>(rom::kGroupItemPointerTable) +
+            index * 4U;
+        const auto string_offset = static_cast<std::size_t>(read_rom_u32(
+            rom, pointer_offset,
+            "Genesis group-item pointer table is truncated"));
+        result[index] = read_genesis_fixed_text(
+            rom, string_offset, 64U,
+            "Genesis group-item name is truncated");
+    }
+    return result;
+}
+
 std::array<std::string,
            native::kNativeAttributeCount + native::kNativeSkillCount>
 read_genesis_attribute_skill_catalog(const std::vector<std::uint8_t>& rom) {
@@ -939,6 +956,7 @@ native::NativePortAssets decode_genesis_native_assets(
         assets.initial_field_records;
     assets.cyberware_names = read_genesis_cyberware_catalog(rom);
     assets.attribute_skill_names = read_genesis_attribute_skill_catalog(rom);
+    assets.group_item_names = read_genesis_group_item_catalog(rom);
 
     for (std::size_t index = 0;
          index < assets.field_direction_table.size(); ++index) {
@@ -962,7 +980,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 26);
+    write_u16(output, 27);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     for (const auto& title_frame : assets.title_animation_frames) {
@@ -1207,6 +1225,12 @@ void write_native_asset_pack(const std::string& path,
         write_pack_string(output, name,
                           "native attribute/skill name is too long");
     }
+    write_u16(output, static_cast<std::uint16_t>(
+                           assets.group_item_names.size()));
+    for (const auto& name : assets.group_item_names) {
+        write_pack_string(output, name,
+                          "native group-item name is too long");
+    }
     for (const auto& direction : assets.field_direction_table) {
         write_u16(output, static_cast<std::uint16_t>(direction[0]));
         write_u16(output, static_cast<std::uint16_t>(direction[1]));
@@ -1331,7 +1355,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 26U)) {
+        (version < 2U || version > 27U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -1787,6 +1811,19 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
                      index < attribute_skill_count; ++index) {
                     assets.attribute_skill_names[index] = read_pack_string(
                         input, "native attribute/skill name is truncated");
+                }
+            }
+            if (version >= 27U) {
+                const auto group_item_count = static_cast<std::size_t>(
+                    read_pack_u16(input,
+                                  "native group-item catalog count is truncated"));
+                if (group_item_count > assets.group_item_names.size()) {
+                    throw std::runtime_error(
+                        "native asset pack has too many group-item names");
+                }
+                for (std::size_t index = 0; index < group_item_count; ++index) {
+                    assets.group_item_names[index] = read_pack_string(
+                        input, "native group-item name is truncated");
                 }
             }
         }

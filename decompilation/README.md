@@ -192,9 +192,12 @@ isolated behind that typed dispatch boundary.
 Pocket Secretary now has a native stateful base from ROM `0xC2A6`: the
 extracted C1418 table is presented in its five-row field order, Up/Down wraps
 the cursor, B/Start returns to the command screen, and Save/Load enters the
-existing two-slot screen. Notebook, Group Items, Cyberdeck, Dismiss Runner,
-and restricted-mode gates remain separate source boundaries until their
-handlers are traced.
+existing two-slot screen with a caller-specific return. Group Items now
+follows `0xC8C8`/`0xF312`, extracts the fifteen-name `0xC25C4` catalog into
+the host pack, displays the source empty-catalog message for an empty
+`FFFC22` bitfield, and returns to the command loop on any controller edge.
+Notebook, Cyberdeck, Dismiss Runner, and restricted-mode gates remain separate
+source boundaries until their handlers are traced.
 
 Inventory Trade is now ported from `0x12836`/`0x129FE`. The native action path
 rejects source magic/special codes `0x17..0x2B`, finds the first eligible party

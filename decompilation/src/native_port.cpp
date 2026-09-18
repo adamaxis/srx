@@ -631,6 +631,7 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     inventory_items_ = std::move(assets.inventory_items);
     cyberware_names_ = std::move(assets.cyberware_names);
     attribute_skill_names_ = std::move(assets.attribute_skill_names);
+    group_item_names_ = std::move(assets.group_item_names);
     protagonist_archetype_records_ =
         std::move(assets.protagonist_archetype_records);
     field_initial_records_ = assets.initial_field_records;
@@ -2144,8 +2145,25 @@ void NativePortShell::update_pocket_secretary_menu(const InputState& input) {
         save_load_from_pocket_secretary_ = true;
         return;
     }
+    if (pocket_secretary_selection_ == 1U) {
+        // ROM 0xC8C8 is a modal catalog. It reads FFFC22, emits only the
+        // entries whose bits are set, or the exact empty-catalog message,
+        // then waits for any controller edge before returning to 0x10D30.
+        scene_ = NativeScene::GroupItemsMenu;
+        return;
+    }
     // Notebook, Group Items, Cyberdeck, and Dismiss Runner retain their
     // source selection boundary until their individual handlers are traced.
+}
+
+void NativePortShell::update_group_items_menu(const InputState& input) {
+    // ROM F312 waits for any newly asserted controller bit, not only A/B.
+    // Returning to FieldMenu mirrors the 0x10D30 command-screen redraw after
+    // the C8C8 handler returns through the 0x11740 dispatch.
+    if (input.pressed != 0U) {
+        scene_ = NativeScene::FieldMenu;
+        field_menu_selection_ = 6;
+    }
 }
 
 void NativePortShell::update_field_menu(const InputState& input) {
@@ -2827,6 +2845,12 @@ void NativePortShell::update(const InputState& input) {
 
     if (scene_ == NativeScene::PocketSecretaryMenu) {
         update_pocket_secretary_menu(input);
+        ++frame_number_;
+        return;
+    }
+
+    if (scene_ == NativeScene::GroupItemsMenu) {
+        update_group_items_menu(input);
         ++frame_number_;
         return;
     }
@@ -3804,6 +3828,34 @@ void NativePortShell::render(ScreenWriter& screen) const {
                                       kPocketSecretaryLabels[index]);
             }
             write_field_menu_text(screen, 80, 176, " A SELECT  B RETURN");
+        } else if (scene_ == NativeScene::GroupItemsMenu) {
+            // ROM 0xC8C8 clears the command plane with C3E6, writes the
+            // extracted C1471 empty message when FFFC22 is zero, otherwise
+            // walks the C25C4 pointer table from bit 14 through bit 0.
+            screen.fill_rect(56, 24, 208, 168,
+                             {0x02, 0x08, 0x18, 0xF0});
+            screen.fill_rect(56, 24, 208, 2,
+                             {0x00, 0xA8, 0xC8, 0xFF});
+            write_field_menu_text(screen, 112, 32, " Group Items");
+            std::int32_t row = 64;
+            if (group_item_flags_ == 0U) {
+                write_field_menu_text(
+                    screen, 72, row,
+                    "You are not carrying any group items.");
+            } else {
+                for (std::size_t index = kNativeGroupItemCount; index-- > 0;) {
+                    if ((group_item_flags_ &
+                         (static_cast<std::uint32_t>(1U) << index)) == 0U) {
+                        continue;
+                    }
+                    const auto& name = group_item_names_[index];
+                    write_field_menu_text(
+                        screen, 80, row,
+                        name.empty() ? "UNKNOWN" : std::string_view(name));
+                    row += 10;
+                }
+            }
+            write_field_menu_text(screen, 80, 176, " PRESS ANY BUTTON");
         } else if (scene_ == NativeScene::ClipsMenu) {
             screen.fill_rect(24, 44, 272, 144,
                              {0x02, 0x08, 0x18, 0xF0});

@@ -387,6 +387,8 @@ int main() {
                .position.world_x_fixed == 0x5A00);
     assert(native_assets.field_areas[2].initial_field_records[0]
                .position.world_y_fixed == 0x0800);
+    assert(native_assets.group_item_names[0] == "Prototype Cyber-heart");
+    assert(native_assets.group_item_names[14] == "Ork Armband");
     const auto pack_path = std::filesystem::temp_directory_path() /
                            "shadowrun_native_port_assets_test.srna";
     write_native_asset_pack(pack_path.string(), native_assets);
@@ -416,6 +418,7 @@ int main() {
            native_assets.initial_camera_y_fixed);
     assert(loaded_assets.field_direction_table ==
            native_assets.field_direction_table);
+    assert(loaded_assets.group_item_names == native_assets.group_item_names);
     assert(loaded_assets.field_event_mode_table ==
            native_assets.field_event_mode_table);
     assert(loaded_assets.field_areas.size() ==

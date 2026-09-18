@@ -11,6 +11,7 @@ game/menu\tassets/game/menu/base.bmp\t0xCAB0C, 0xCD598, 0xCD838, 0xCD88C, 0xCD8B
 game/menu\tassets/game/menu/font.bmp\t0xC1064, 0xB560\t0x1232 text writer\tfield menu text and labels\textracted; native consumer
 game/menu\tassets/game/menu/cursor.bmp\tmenu writer tables\t0x11136/0x11190 and cursor path\tfield menu selection cursor\tpartial native port
 game/menu\tassets/game/menu/item-actions\t0xD1D94-0xD2022\t0x11740/0x11712/0x118C6/0x12298/0x1253E/0x12634/0x127B0/0x12836 action loops\tinventory action labels, First Aid target/result text, discard/trade confirmation, and result text\textracted from source table; Equip/Unequip, Discard, Trade, and First Aid native
+game/menu\tassets/game/menu/group-items.tsv\t0xC1471, 0xC25C4-0xC25FF\t0xC8C8/0xF312\tGroup Items empty message and fifteen FF-terminated catalog names\textracted; native empty-catalog screen and host catalog consumer
 game/items\tassets/game/items/item-art\t0xD4540 records and +0x1E pointers\t0x12A8C selected-item path\tinventory cells and item details\textracted; native consumer
 game/items\tassets/game/items/detail-values\t0x6AC46-0x6B046\t0x12A8C selects record +0x6E, calls 0x1232\tUses/Rtng detail value row\textracted; native consumer
 game/items\tassets/game/items/detail-bars\t0x6A0C6, 0x6A2A6, 0x6A3F2\t0x12F70/0x12FA4/0x13000\tdamage, drain, and power detail rows\tpartial native port
