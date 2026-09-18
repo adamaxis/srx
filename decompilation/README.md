@@ -172,10 +172,13 @@ addresses eight item bytes at entity record `+0x66` as `2*row+selector`.
 Extraction preserves those item and adjacent phase bytes, and converts the
 50 fixed `0x30`-byte records at `0xD4540` into host item names/categories.
 The native command screen can therefore browse the actual initial inventory
-slots from the `.srna` pack without reading the ROM. The deeper equip/use/
-discard effects in the `0x12168` handler remain separate work; its reviewed
+slots from the `.srna` pack without reading the ROM. The reviewed
+`0x12168` split now preserves the source distinction between possession and
+equipment: weapon/gear and armor have their own mutations, while codes
+`0x14`, `0x16`, and `0x18..0x2B` follow `0x121C0` and display the extracted
+automatic-use acknowledgement without consuming or equipping the item. Its
 armor toggle (`+0x76` and the selected `+0x6E` byte for item codes `0x2C+`)
-is now carried into native typed state.
+is carried into native typed state.
 
 The top-level Clips command now enters a native `ClipsMenu` corresponding to
 ROM `0x11B58`. It carries the active record's `+0x4E` ammunition and `+0x4F`

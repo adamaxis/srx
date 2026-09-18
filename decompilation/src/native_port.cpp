@@ -1265,6 +1265,8 @@ void NativePortShell::open_field_menu() {
     field_first_aid_target_count_ = 0;
     field_first_aid_target_index_ = 0;
     field_first_aid_message_.clear();
+    field_item_message_active_ = false;
+    field_item_message_.clear();
     field_last_command_selection_ = 0;
     field_last_command_row_ = 0;
     field_command_message_frames_ = 0;
@@ -1303,6 +1305,8 @@ void NativePortShell::open_field_inventory_action() {
     field_first_aid_target_count_ = 0;
     field_first_aid_target_index_ = 0;
     field_first_aid_message_.clear();
+    field_item_message_active_ = false;
+    field_item_message_.clear();
     menu_horizontal_repeat_frames_ = 0;
     menu_vertical_repeat_frames_ = 0;
     menu_horizontal_repeat_mask_ = 0;
@@ -1821,6 +1825,18 @@ void NativePortShell::update_field_inventory_action(const InputState& input) {
         update_field_first_aid(input);
         return;
     }
+    if (field_item_message_active_) {
+        // 0x121C0 tail-calls 0x0D94 after writing D202F. The source waits for
+        // an acknowledgement before the parent command loop is redrawn.
+        if (input.was_pressed(Button::A) || input.was_pressed(Button::B) ||
+            input.was_pressed(Button::Start)) {
+            field_item_message_active_ = false;
+            field_item_message_.clear();
+            field_menu_action_active_ = false;
+            field_menu_action_selection_ = 2;
+        }
+        return;
+    }
     if (field_trade_active_) {
         update_field_trade(input);
         return;
@@ -1889,8 +1905,10 @@ void NativePortShell::update_field_inventory_action(const InputState& input) {
                 open_field_first_aid();
             } else {
                 apply_field_inventory_action();
-                field_menu_action_active_ = false;
-                field_menu_action_selection_ = 2;
+                if (!field_item_message_active_) {
+                    field_menu_action_active_ = false;
+                    field_menu_action_selection_ = 2;
+                }
             }
         } else if (field_menu_action_selection_ == 3U) {
             open_field_discard_confirmation();
@@ -2229,12 +2247,17 @@ void NativePortShell::apply_field_inventory_action() {
         }
     } else if ((item_code >= 0x10U && item_code <= 0x13U) ||
                item_code == 0x14U || item_code == 0x16U ||
-               item_code >= 0x18U) {
+               (item_code >= 0x18U && item_code < 0x2CU)) {
         // ROM 0x11740 routes item codes 0x10..0x13 through the D1E6C
         // First-Aid action table. The 0x121C0 path likewise handles 0x13,
-        // 0x14, 0x16, and 0x18+ through separate use/error handlers. None of
-        // these source-specific actions is silently replaced with a weapon
-        // equip mutation here.
+        // 0x14, 0x16, and 0x18..0x2B through the source automatic-use
+        // message. 0x121C0 does not consume or equip the item; it clears the
+        // panel, writes D202F, and waits for acknowledgement.
+        if (item_code == 0x14U || item_code == 0x16U ||
+            (item_code >= 0x18U && item_code < 0x2CU)) {
+            field_item_message_active_ = true;
+            field_item_message_ = "This item is automatically used.";
+        }
         return;
     } else {
         // ROM 0x121E0..0x1228C is the weapon/gear equip path. +0x56 stores
@@ -3383,6 +3406,9 @@ void NativePortShell::render(ScreenWriter& screen) const {
                         write_field_menu_text(screen, 112, 200,
                                               field_first_aid_message_);
                     }
+                } else if (field_item_message_active_) {
+                    write_field_menu_text(screen, 112, 200,
+                                          field_item_message_);
                 } else if (field_trade_active_) {
                     if (field_trade_cannot_trade_ ||
                         field_trade_full_inventory_) {

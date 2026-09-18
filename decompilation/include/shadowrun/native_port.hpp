@@ -520,6 +520,14 @@ public:
         return field_menu_action_selection_;
     }
     std::string_view field_menu_action_label() const;
+    // ROM 0x121C0 displays D202F for the item classes that are consumed by
+    // field events rather than equipped from the inventory action loop.
+    bool field_item_message_active() const {
+        return field_item_message_active_;
+    }
+    std::string_view field_item_message() const {
+        return field_item_message_;
+    }
     bool field_discard_confirmation_active() const {
         return field_discard_confirmation_active_;
     }
@@ -907,6 +915,11 @@ private:
     std::size_t field_first_aid_target_count_ = 0;
     std::size_t field_first_aid_target_index_ = 0;
     std::string field_first_aid_message_;
+    // ROM 0x121C0 clears the command panel, writes D202F, then tail-calls the
+    // common button wait at 0x0D94. Keep that message modal until an A/B/
+    // Start edge acknowledges it; it is not an equipment mutation.
+    bool field_item_message_active_ = false;
+    std::string field_item_message_;
     // Native form of the Genesis 0xD44 LCG state used by 0x0DBA. The
     // original seed comes from boot-time RAM entropy; a fixed host seed keeps
     // this extracted item path deterministic until that unrelated boot seed

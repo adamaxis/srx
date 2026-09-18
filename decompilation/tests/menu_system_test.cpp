@@ -483,6 +483,40 @@ void test_first_aid_handler(const std::vector<std::uint8_t>& rom) {
     assert(physical_patch.field_inventory_phase(3U) == 1U);
 }
 
+void test_automatic_use_item_handler(const std::vector<std::uint8_t>& rom) {
+    // 0x12168 sends 0x14, 0x16, and 0x18..0x2B to 0x121C0. That routine
+    // displays D202F and waits; it does not equip, consume, or reinterpret
+    // possession as equipment. Exercise the path through the real action
+    // selector rather than calling a native helper directly.
+    auto assets = shadowrun::graphics::decode_genesis_native_assets(rom);
+    assets.protagonist_archetype_records[0].inventory_item_codes[0] = 0x14U;
+    assets.protagonist_archetype_records[0].inventory_phase_bytes[0] = 7U;
+    NativePortShell shell("SHADOWRUN", std::move(assets));
+    enter_field(shell);
+    press(shell, Button::Start);
+    select_field_inventory_slot(shell, 0U);
+    const auto active_before = shell.field_active_item_code();
+    const auto slot_before = shell.field_equipped_weapon_slot();
+    press(shell, Button::A);
+    assert(shell.field_menu_action_active());
+    assert(shell.field_menu_action_selection() == 2U);
+    press(shell, Button::A);
+    assert(shell.field_item_message_active());
+    assert(shell.field_item_message() ==
+           "This item is automatically used.");
+    assert(shell.field_inventory_item_code(0U) == 0x14U);
+    assert(shell.field_inventory_phase(0U) == 7U);
+    assert(shell.field_active_item_code() == active_before);
+    assert(shell.field_equipped_weapon_slot() == slot_before);
+
+    // 0x0D94 acknowledgement returns to the parent action loop without
+    // silently applying an equipment change.
+    press(shell, Button::B);
+    assert(!shell.field_item_message_active());
+    assert(!shell.field_menu_action_active());
+    assert(shell.field_inventory_item_code(0U) == 0x14U);
+}
+
 void test_trade_handler(const std::vector<std::uint8_t>& rom) {
     // The shipped startup party has no eligible recipient. The reviewed
     // source path does not fabricate a new runner or an error panel here.
@@ -604,6 +638,7 @@ int main() {
     test_field_menu_behavior_and_rendering(rom, assets);
     test_no_clip_gate(rom);
     test_first_aid_handler(rom);
+    test_automatic_use_item_handler(rom);
     test_trade_handler(rom);
     return 0;
 }

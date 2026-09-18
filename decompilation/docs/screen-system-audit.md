@@ -166,6 +166,11 @@ equipment are separate: an item in one of the eight cells is not active until
 the source equip action sets the live record's equipped slot/item bytes.
 Medical items stay in their source-specific First Aid path and never become
 weapons through the generic Equip/Unequip branch.
+The remaining reviewed utility/magic branch is also source-specific:
+`0x12168` routes item codes `0x14`, `0x16`, and `0x18..0x2B` to `0x121C0`,
+which writes `D202F` (`This item is automatically used.`), waits for the
+common acknowledgement edge, and returns without changing possession or
+equipment. This behavior is covered by `test_automatic_use_item_handler`.
 Discard now follows `0x12634`/`0x1275C`: it opens the source Yes/No
 confirmation with No selected, shows the equipped-item warning, protects item
 codes `0x29..0x2B` in slot 7, and clears the possession cell only after Yes.
@@ -408,6 +413,10 @@ behavior:
   damage stat merely because a table record has a nonzero field. The adjacent
   `0x12B8E` branch now selects the source `ammo`, `uses`, and `rtng` labels;
   the value tile table at `0x6AC46` is still pending native asset extraction.
+- The reviewed `0x12168` item-code split now sends `0x14`, `0x16`, and
+  `0x18..0x2B` through the source `0x121C0` automatic-use acknowledgement;
+  native tests verify that the item remains in its possession cell and does
+  not become equipped.
 - Unequipping no longer removes the projected runner body. The item sprite
   selection path and the body projection path are separate source effects;
   the native fallback marker is not a character sprite.
