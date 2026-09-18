@@ -541,6 +541,27 @@ public:
         return field_trade_recipient_slot_;
     }
     std::string_view field_trade_message() const;
+    bool field_first_aid_active() const { return field_first_aid_active_; }
+    bool field_first_aid_message_active() const {
+        return field_first_aid_message_active_;
+    }
+    std::size_t field_first_aid_target_count() const {
+        return field_first_aid_target_count_;
+    }
+    std::size_t field_first_aid_target_index() const {
+        return field_first_aid_target_index_;
+    }
+    std::size_t field_first_aid_target_record() const {
+        return field_first_aid_target_index_ < field_first_aid_target_count_
+            ? field_first_aid_target_records_[field_first_aid_target_index_]
+            : active_field_record_;
+    }
+    bool field_first_aid_cancel_selected() const {
+        return field_first_aid_target_index_ >= field_first_aid_target_count_;
+    }
+    std::string_view field_first_aid_message() const {
+        return field_first_aid_message_;
+    }
     std::int8_t field_equipped_weapon_slot() const {
         return field_entity_.display_state;
     }
@@ -599,6 +620,11 @@ public:
             ? field_entity_.inventory_item_codes[slot]
             : 0;
     }
+    std::uint8_t field_inventory_phase(std::size_t slot) const {
+        return slot < field_entity_.inventory_phase_bytes.size()
+            ? field_entity_.inventory_phase_bytes[slot]
+            : 0;
+    }
     std::uint8_t field_record_inventory_item_code(std::size_t record,
                                                   std::size_t slot) const {
         return record < field_entity_records_.size() &&
@@ -606,6 +632,14 @@ public:
                                   .inventory_item_codes.size()
             ? field_entity_records_[record].inventory_item_codes[slot]
             : 0;
+    }
+    std::uint8_t field_record_physical_value(std::size_t record) const {
+        return record < field_entity_records_.size()
+            ? field_entity_records_[record].physical_value : 0;
+    }
+    std::uint8_t field_record_mental_value(std::size_t record) const {
+        return record < field_entity_records_.size()
+            ? field_entity_records_[record].mental_value : 0;
     }
     std::uint8_t field_equipped_armor_index() const {
         return field_entity_.equipped_armor_index;
@@ -704,6 +738,9 @@ private:
     bool menu_direction_step(const InputState& input, Button negative,
                              Button positive, bool horizontal);
     void open_field_inventory_action();
+    void open_field_first_aid();
+    void update_field_first_aid(const InputState& input);
+    void apply_field_first_aid();
     void open_field_discard_confirmation();
     void open_field_trade();
     void update_field_trade(const InputState& input);
@@ -860,6 +897,21 @@ private:
     std::size_t field_trade_recipient_record_ = 0;
     std::size_t field_trade_recipient_slot_ = 0;
     std::string field_trade_full_inventory_message_;
+    // ROM 0x12298 builds a pointer list of every record with +0x10 bit 0,
+    // then uses the count entry as the visible CANCEL row. Keep that target
+    // list separate from the runner-switch predicate: First Aid only tests
+    // the source active bit and does not apply the switcher's bit 4/6 gates.
+    bool field_first_aid_active_ = false;
+    bool field_first_aid_message_active_ = false;
+    std::array<std::size_t, 3> field_first_aid_target_records_{};
+    std::size_t field_first_aid_target_count_ = 0;
+    std::size_t field_first_aid_target_index_ = 0;
+    std::string field_first_aid_message_;
+    // Native form of the Genesis 0xD44 LCG state used by 0x0DBA. The
+    // original seed comes from boot-time RAM entropy; a fixed host seed keeps
+    // this extracted item path deterministic until that unrelated boot seed
+    // is ported.
+    std::uint16_t first_aid_random_state_ = 1;
     std::size_t clips_menu_selection_ = 2;
     std::size_t clips_last_action_selection_ = 2;
     std::uint32_t clips_action_count_ = 0;

@@ -369,6 +369,120 @@ void test_no_clip_gate(const std::vector<std::uint8_t>& rom) {
     assert(shell.clips_action_count() == 0U);
 }
 
+void open_medical_action(NativePortShell& shell) {
+    enter_field(shell);
+    press(shell, Button::Start);
+    select_field_inventory_slot(shell, 3U);
+    assert(shell.field_inventory_item_code(3U) >= 0x10U);
+    press(shell, Button::A);
+    assert(shell.field_menu_action_active());
+    assert(shell.field_menu_action_selection() == 2U);
+    press(shell, Button::A);
+    assert(shell.field_first_aid_active());
+}
+
+void test_first_aid_handler(const std::vector<std::uint8_t>& rom) {
+    // 0x12298 creates a target list from active record bits and adds a
+    // count-entry CANCEL row. It does not reuse the runner-switch eligibility
+    // predicate, and Up/Down therefore moves through target rows, not posture.
+    auto selector_assets = shadowrun::graphics::decode_genesis_native_assets(rom);
+    selector_assets.initial_field_records[1].flags_10 |= 0x01U;
+    selector_assets.field_entity_records[1].flags_10 |= 0x01U;
+    NativePortShell selector("SHADOWRUN", std::move(selector_assets));
+    open_medical_action(selector);
+    assert(selector.field_first_aid_target_count() == 2U);
+    assert(selector.field_first_aid_target_index() == 0U);
+    assert(selector.field_first_aid_target_record() == 0U);
+    press(selector, Button::Down);
+    assert(selector.field_first_aid_target_record() == 1U);
+    press(selector, Button::Down);
+    assert(selector.field_first_aid_cancel_selected());
+    press(selector, Button::Up);
+    assert(selector.field_first_aid_target_record() == 1U);
+    press(selector, Button::Up);
+    assert(selector.field_first_aid_target_record() == 0U);
+    SoftwareScreen selector_screen;
+    selector.render(selector_screen);
+    press(selector, Button::B);
+    assert(!selector.field_first_aid_active());
+    assert(!selector.field_menu_action_active());
+
+    // The shipped Joshua record starts with a damaged physical value and a
+    // six-use medkit. 0x1253E uses the source Biotech roll, 0x3674/0x37EC
+    // clamp both health values, and 0x124DC consumes exactly one phase unit.
+    auto medkit_assets = shadowrun::graphics::decode_genesis_native_assets(rom);
+    medkit_assets.protagonist_archetype_records[0].physical_value = 4U;
+    medkit_assets.protagonist_archetype_records[0].mental_value = 8U;
+    NativePortShell medkit("SHADOWRUN", std::move(medkit_assets));
+    open_medical_action(medkit);
+    const auto physical_before = medkit.field_record_physical_value(0U);
+    const auto mental_before = medkit.field_record_mental_value(0U);
+    const auto phase_before = medkit.field_inventory_phase(3U);
+    assert(phase_before == 6U);
+    press(medkit, Button::A);
+    assert(medkit.field_first_aid_message_active());
+    assert(medkit.field_first_aid_message() == "Medkit used.");
+    assert(medkit.field_record_physical_value(0U) > physical_before);
+    assert(medkit.field_record_mental_value(0U) > mental_before);
+    assert(medkit.field_inventory_phase(3U) == phase_before - 1U);
+    press(medkit, Button::A);
+    assert(!medkit.field_first_aid_active());
+    assert(!medkit.field_menu_action_active());
+
+    // 0x12548/0x12552 is a no-use result: a fully healed target keeps the
+    // item and displays the source D1F28/D1F37 message.
+    auto full_assets = shadowrun::graphics::decode_genesis_native_assets(rom);
+    full_assets.protagonist_archetype_records[0].physical_value = 10U;
+    full_assets.protagonist_archetype_records[0].mental_value = 10U;
+    NativePortShell full("SHADOWRUN", std::move(full_assets));
+    open_medical_action(full);
+    assert(full.field_inventory_phase(3U) == 6U);
+    press(full, Button::A);
+    assert(full.field_first_aid_message() == "This person is not injured!");
+    assert(full.field_inventory_item_code(3U) == 0x10U);
+    assert(full.field_inventory_phase(3U) == 6U);
+    press(full, Button::A);
+    assert(!full.field_menu_action_active());
+
+    // 0x1247E/0x1248C is the mental slap-patch (+2 on the 0..10 scale).
+    auto mental_patch_assets =
+        shadowrun::graphics::decode_genesis_native_assets(rom);
+    mental_patch_assets.protagonist_archetype_records[0].mental_value = 4U;
+    mental_patch_assets.protagonist_archetype_records[0].inventory_item_codes[3] =
+        0x11U;
+    mental_patch_assets.protagonist_archetype_records[0].inventory_phase_bytes[3] =
+        1U;
+    NativePortShell mental_patch("SHADOWRUN", std::move(mental_patch_assets));
+    open_medical_action(mental_patch);
+    const auto mental_patch_before =
+        mental_patch.field_record_mental_value(0U);
+    press(mental_patch, Button::A);
+    assert(mental_patch.field_first_aid_message() == "Slap-patch used.");
+    assert(mental_patch.field_record_mental_value(0U) ==
+           mental_patch_before + 2U);
+    assert(mental_patch.field_inventory_item_code(3U) == 0U);
+    assert(mental_patch.field_inventory_phase(3U) == 0U);
+
+    // Codes 0x12/0x13 share the physical patch path at 0x12466. This guards
+    // the source distinction from the medkit's Biotech-based branch.
+    auto physical_patch_assets =
+        shadowrun::graphics::decode_genesis_native_assets(rom);
+    physical_patch_assets.protagonist_archetype_records[0].physical_value = 4U;
+    physical_patch_assets.protagonist_archetype_records[0].inventory_item_codes[3] =
+        0x12U;
+    physical_patch_assets.protagonist_archetype_records[0].inventory_phase_bytes[3] =
+        2U;
+    NativePortShell physical_patch("SHADOWRUN", std::move(physical_patch_assets));
+    open_medical_action(physical_patch);
+    const auto physical_patch_before =
+        physical_patch.field_record_physical_value(0U);
+    press(physical_patch, Button::A);
+    assert(physical_patch.field_first_aid_message() == "Slap-patch used.");
+    assert(physical_patch.field_record_physical_value(0U) ==
+           physical_patch_before + 2U);
+    assert(physical_patch.field_inventory_phase(3U) == 1U);
+}
+
 void test_trade_handler(const std::vector<std::uint8_t>& rom) {
     // The shipped startup party has no eligible recipient. The reviewed
     // source path does not fabricate a new runner or an error panel here.
@@ -489,6 +603,7 @@ int main() {
     test_startup_behavior_and_rendering(rom, assets);
     test_field_menu_behavior_and_rendering(rom, assets);
     test_no_clip_gate(rom);
+    test_first_aid_handler(rom);
     test_trade_handler(rom);
     return 0;
 }

@@ -164,14 +164,19 @@ Discard, and the reviewed Trade branch now route through their source-backed
 native handlers. Possession and
 equipment are separate: an item in one of the eight cells is not active until
 the source equip action sets the live record's equipped slot/item bytes.
-Medical items do not become weapons merely because First Aid is not ported.
+Medical items stay in their source-specific First Aid path and never become
+weapons through the generic Equip/Unequip branch.
 Discard now follows `0x12634`/`0x1275C`: it opens the source Yes/No
 confirmation with No selected, shows the equipped-item warning, protects item
 codes `0x29..0x2B` in slot 7, and clears the possession cell only after Yes.
 If the discarded cell is live equipment, its weapon or armor state is cleared
-with it. The remaining item-action handler is `0x12298` First Aid; the Trade
-magic-item rejection, recipient/full-inventory gate, Yes/No confirmation, and
-`0x129FE` possession transfer are now covered by the native handler.
+with it. First Aid now follows `0x12298`/`0x1253E`: it builds the active
+record target list plus the source `CANCEL` row, preserves the target cursor,
+uses the `0x0DBA` Biotech roll for medkits, applies the `0x3674` physical and
+`0x37EC` mental writers for patches, shows the source result strings, and
+decrements/removes the selected phase byte only after a successful use. The
+Trade magic-item rejection, recipient/full-inventory gate, Yes/No confirmation,
+and `0x129FE` possession transfer are also covered by the native handler.
 
 ### Posture (`0x11928`, `0x119CE`, `0x11ABE`, `0x11AE4`)
 
@@ -324,7 +329,7 @@ of a port.
 | Area transitions | `0x5A62`, `0x172CDC`, `0x20E48` | Partial | The reviewed mode-2 C0/event-0 tuple loads mode `0x14` and enters the source Stoker dialogue state; every building reaction and reverse transition is not |
 | Command overview | `0x10D30`, `0x10F50`, `0x111E8` | Partial | Normal overview and selector are present; Magic/Pocket Secretary handlers are pending |
 | Inventory navigation | `0x11506`..`0x11678` | Implemented | Eight-cell cursor and source column/row semantics are covered |
-| Equipment action | `0x11740`..`0x118C6`, `0x12148`, `0x12168`..`0x1228C`, `0x12634`..`0x129FE` | Partial | Two-step source action loop, Equip/Unequip, armor, Discard, and Trade transfer/error gates are present; First Aid remains pending |
+| Equipment action | `0x11740`..`0x118C6`, `0x12148`, `0x12168`..`0x125F8`, `0x12634`..`0x129FE` | Partial | Two-step source action loop, Equip/Unequip, armor, Discard, Trade, and First Aid target/effect/result paths are present; later item handlers remain |
 | Posture and bars | `0x119CE`, `0x11ABE`, `0x11AE4`, `0x12CEE` | Partial | Normal equipped-item attack/defense calculation is source-derived; special negative `+0x56` path and combat consumers are pending |
 | Clips | `0x11B58`, `0x12062` | Partial | Selector, ammo fields, and empty gate are present; final action panel remains |
 | Attributes/skills | `0xD01C` | Partial | Read-only display is present; mutation branches are pending |
@@ -409,5 +414,5 @@ behavior:
 
 These are correction slices, not a completion claim. The right-hand party
 status/sidebar layer, recruited roster, source submenu layouts, animated
-opening artwork/music, valid SRAM load, and the remaining First Aid item-action
-branch still require their own source traces and focused comparisons.
+opening artwork/music, valid SRAM load, and the remaining item-action branches
+still require their own source traces and focused comparisons.

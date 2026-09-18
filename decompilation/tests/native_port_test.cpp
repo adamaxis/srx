@@ -321,12 +321,17 @@ int main() {
     assert(medical_shell.field_menu_action_label() == "    First Aid    ");
     assert(medical_shell.field_selected_item_detail_label() == "uses");
     // First Aid is the medical handler selected by the ROM's D1E6C action
-    // table. Until that separate handler is ported, confirming it must not
-    // pretend to equip the medkit as a weapon.
+    // table. Its second edge opens the source target list rather than
+    // pretending to equip the medkit as a weapon.
     const auto medical_equipped_item = medical_shell.field_active_item_code();
     medical_shell.update(InputState{});
     medical_shell.update(InputState{button_mask(Button::A),
                                     button_mask(Button::A)});
+    assert(medical_shell.field_first_aid_active());
+    assert(medical_shell.field_first_aid_target_count() == 1);
+    assert(medical_shell.field_first_aid_target_record() == 0);
+    medical_shell.update(InputState{button_mask(Button::B),
+                                    button_mask(Button::B)});
     assert(!medical_shell.field_menu_action_active());
     assert(medical_shell.field_active_item_code() == medical_equipped_item);
 

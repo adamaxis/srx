@@ -1260,6 +1260,11 @@ void NativePortShell::open_field_menu() {
     field_trade_cannot_trade_ = false;
     field_trade_full_inventory_ = false;
     field_trade_full_inventory_message_.clear();
+    field_first_aid_active_ = false;
+    field_first_aid_message_active_ = false;
+    field_first_aid_target_count_ = 0;
+    field_first_aid_target_index_ = 0;
+    field_first_aid_message_.clear();
     field_last_command_selection_ = 0;
     field_last_command_row_ = 0;
     field_command_message_frames_ = 0;
@@ -1293,10 +1298,274 @@ void NativePortShell::open_field_inventory_action() {
     field_trade_cannot_trade_ = false;
     field_trade_full_inventory_ = false;
     field_trade_full_inventory_message_.clear();
+    field_first_aid_active_ = false;
+    field_first_aid_message_active_ = false;
+    field_first_aid_target_count_ = 0;
+    field_first_aid_target_index_ = 0;
+    field_first_aid_message_.clear();
     menu_horizontal_repeat_frames_ = 0;
     menu_vertical_repeat_frames_ = 0;
     menu_horizontal_repeat_mask_ = 0;
     menu_vertical_repeat_mask_ = 0;
+}
+
+void NativePortShell::open_field_first_aid() {
+    const auto source_slot = field_menu_row_ * 2U + field_menu_selection_;
+    if (source_slot >= field_entity_.inventory_item_codes.size()) {
+        return;
+    }
+    const auto item_code = field_entity_.inventory_item_codes[source_slot];
+    if (item_code < 0x10U || item_code > 0x13U) {
+        return;
+    }
+
+    // 0x122C8/0x122EC/0x1231C walk the three 0x100-byte party records in
+    // order and test only +0x10 bit 0. This is deliberately not
+    // runner_switch_candidate(): First Aid can target an active record even
+    // when the separate C-button roster gate rejects it.
+    field_first_aid_target_count_ = 0;
+    for (std::size_t record = 0;
+         record < field_records_.size() &&
+             field_first_aid_target_count_ <
+                 field_first_aid_target_records_.size();
+         ++record) {
+        if ((field_records_[record].flags_10 & 0x01U) == 0U) {
+            continue;
+        }
+        field_first_aid_target_records_[field_first_aid_target_count_++] =
+            record;
+    }
+    field_first_aid_target_index_ = 0;
+    field_first_aid_message_.clear();
+    field_first_aid_message_active_ = false;
+    field_first_aid_active_ = true;
+    menu_horizontal_repeat_frames_ = 0;
+    menu_vertical_repeat_frames_ = 0;
+    menu_horizontal_repeat_mask_ = 0;
+    menu_vertical_repeat_mask_ = 0;
+}
+
+void NativePortShell::apply_field_first_aid() {
+    const auto source_slot = field_menu_row_ * 2U + field_menu_selection_;
+    if (source_slot >= field_entity_.inventory_item_codes.size() ||
+        field_first_aid_target_index_ >= field_first_aid_target_count_) {
+        return;
+    }
+    const auto item_code = field_entity_.inventory_item_codes[source_slot];
+    if (item_code < 0x10U || item_code > 0x13U) {
+        return;
+    }
+
+    const auto target_record =
+        field_first_aid_target_records_[field_first_aid_target_index_];
+    if (target_record >= field_entity_records_.size() ||
+        target_record >= field_records_.size()) {
+        return;
+    }
+    auto& target = target_record == active_field_record_
+        ? field_entity_ : field_entity_records_[target_record];
+    // `field_records_` is the native projection of the same +0x10 flag byte
+    // used by the source target pointer. Keep the entity copy synchronized
+    // before the 0x3674/0x37EC active-bit tests.
+    target.flags_10 = field_records_[target_record].flags_10;
+
+    constexpr std::string_view kNotInjured = "This person is not injured!";
+    constexpr std::string_view kSlapPatchUsed = "Slap-patch used.";
+    constexpr std::string_view kMedkitUsed = "Medkit used.";
+
+    // 0x3674 and 0x37EC are the source physical/mental writers. Their
+    // positive First Aid inputs clamp at ten and only apply to an active
+    // record. The target list already guarantees the active bit, but retain
+    // the branch because the original helpers perform it themselves.
+    const auto add_physical = [&target](std::uint8_t amount) {
+        if ((target.flags_10 & 0x01U) == 0U) {
+            return;
+        }
+        target.physical_value = static_cast<std::uint8_t>(std::min<int>(
+            10, static_cast<int>(target.physical_value) + amount));
+    };
+    const auto add_mental = [&target](std::uint8_t amount) {
+        if ((target.flags_10 & 0x01U) == 0U) {
+            return;
+        }
+        target.mental_value = static_cast<std::uint8_t>(std::min<int>(
+            10, static_cast<int>(target.mental_value) + amount));
+    };
+
+    bool used = false;
+    if (item_code == 0x10U) {
+        // 0x12548/0x12552 rejects a fully healed target before consuming the
+        // medkit.  The base threshold is the literal 0x12572 branch, then
+        // Body (+0x77) / 3 is subtracted and the result is clamped to 2.
+        if (target.physical_value == 10U && target.mental_value == 10U) {
+            field_first_aid_message_ = std::string(kNotInjured);
+        } else {
+            const auto base = target.physical_value >= 7U
+                ? 4U : target.physical_value >= 4U ? 6U : 8U;
+            const auto body_penalty =
+                static_cast<unsigned>(target.attribute_values[0]) / 3U;
+            const auto threshold = static_cast<unsigned>(
+                std::max<int>(2, static_cast<int>(base) -
+                                     static_cast<int>(body_penalty)));
+
+            // Native form of 0x0DBA/0x0D3A. Each Biotech die rolls 1..6;
+            // sixes explode into the shared D2 bonus, and a die succeeds
+            // when its total reaches the computed threshold. The source
+            // always executes one die when the skill byte is zero.
+            const auto biotech = static_cast<unsigned>(
+                field_entity_.skill_values[8]);
+            const auto rolls = std::max(1U, biotech);
+            unsigned exploding_bonus = 0;
+            unsigned amount = 0;
+            const auto random_six = [this]() {
+                first_aid_random_state_ = static_cast<std::uint16_t>(
+                    static_cast<std::uint32_t>(first_aid_random_state_) *
+                        0x20E5U + 1U);
+                return static_cast<unsigned>(
+                    (static_cast<std::uint32_t>(first_aid_random_state_) * 6U) >>
+                    16U) + 1U;
+            };
+            for (unsigned roll = 0; roll < rolls; ++roll) {
+                unsigned die = 0;
+                do {
+                    die = random_six();
+                    if (die == 6U) {
+                        exploding_bonus += die;
+                    }
+                } while (die == 6U);
+                if (die + exploding_bonus >= threshold) {
+                    ++amount;
+                }
+            }
+            // 0x124D8 converts a zero result to one before calling the two
+            // source stat writers.
+            const auto heal_amount = static_cast<std::uint8_t>(
+                std::max(1U, amount));
+            add_physical(heal_amount);
+            add_mental(heal_amount);
+            target.flags_10 = static_cast<std::uint8_t>(
+                (target.flags_10 & static_cast<std::uint8_t>(~0x50U)) |
+                0x01U);
+            target.state_pointer = 0xB45CU;
+            field_first_aid_message_ = std::string(kMedkitUsed);
+            used = true;
+        }
+    } else if (item_code == 0x11U) {
+        // 0x1247E/0x1248C is the mental-health slap-patch branch. D1=2 is
+        // the source's fixed twenty-percent step on the 0..10 scale.
+        if (target.mental_value == 10U) {
+            field_first_aid_message_ = std::string(kNotInjured);
+        } else {
+            add_mental(2U);
+            if (target.physical_value != 0U) {
+                target.flags_10 = static_cast<std::uint8_t>(
+                    (target.flags_10 & static_cast<std::uint8_t>(~0x50U)) |
+                    0x01U);
+            }
+            field_first_aid_message_ = std::string(kSlapPatchUsed);
+            used = true;
+        }
+    } else {
+        // Codes 0x12 and 0x13 share the 0x12466 physical patch path. The
+        // source checks physical health only, then adds D1=2.
+        if (target.physical_value == 10U) {
+            field_first_aid_message_ = std::string(kNotInjured);
+        } else {
+            add_physical(2U);
+            if (target.mental_value != 0U) {
+                target.flags_10 = static_cast<std::uint8_t>(
+                    (target.flags_10 & static_cast<std::uint8_t>(~0x50U)) |
+                    0x01U);
+            }
+            field_first_aid_message_ = std::string(kSlapPatchUsed);
+            used = true;
+        }
+    }
+
+    if (!used) {
+        field_first_aid_message_active_ = true;
+        return;
+    }
+
+    // 0x124AE/0x124DC decrements the selected possession phase. A phase of
+    // one is consumed through the same 0x1275C source removal path; medical
+    // items cannot be live weapon/armor equipment.
+    auto& source_phase = field_entity_.inventory_phase_bytes[source_slot];
+    if (source_phase > 1U) {
+        --source_phase;
+    } else {
+        field_entity_.inventory_item_codes[source_slot] = 0U;
+        source_phase = 0U;
+    }
+    const auto bars = compute_command_bar_indices(
+        field_entity_, inventory_items_, field_entity_.menu_status_index,
+        static_cast<std::uint8_t>(field_menu_selection_),
+        static_cast<std::uint8_t>(field_menu_row_));
+    field_entity_.attack_bar_index = bars.attack;
+    field_entity_.defense_bar_index = bars.defense;
+    field_entity_.attack_bar_indices_by_posture[
+        field_entity_.menu_status_index] = bars.attack;
+    field_entity_.defense_bar_indices_by_posture[
+        field_entity_.menu_status_index] = bars.defense;
+    field_entity_records_[active_field_record_] = field_entity_;
+
+    if (target_record != active_field_record_) {
+        field_entity_records_[target_record] = target;
+    }
+    field_records_[target_record].flags_10 = target.flags_10;
+    if (target_record == active_field_record_) {
+        field_entity_.flags_10 = target.flags_10;
+        field_entity_records_[active_field_record_] = field_entity_;
+    }
+    refresh_field_entity_projection();
+    field_first_aid_message_active_ = true;
+}
+
+void NativePortShell::update_field_first_aid(const InputState& input) {
+    if (field_first_aid_message_active_) {
+        // 0x124F8 acknowledges the result before 0x12538 returns to the
+        // command overview. Keep the message visible until that edge.
+        if (input.was_pressed(Button::A) || input.was_pressed(Button::B) ||
+            input.was_pressed(Button::Start)) {
+            field_first_aid_active_ = false;
+            field_first_aid_message_active_ = false;
+            field_first_aid_message_.clear();
+            field_menu_action_active_ = false;
+            field_menu_action_selection_ = 2U;
+        }
+        return;
+    }
+
+    const auto vertical_step =
+        menu_direction_step(input, Button::Up, Button::Down, false);
+    if (vertical_step && field_first_aid_target_count_ != 0U) {
+        const auto row_count = field_first_aid_target_count_ + 1U;
+        if (input.is_held(Button::Up) && !input.is_held(Button::Down)) {
+            field_first_aid_target_index_ =
+                field_first_aid_target_index_ == 0U
+                    ? row_count - 1U : field_first_aid_target_index_ - 1U;
+        } else if (input.is_held(Button::Down) &&
+                   !input.is_held(Button::Up)) {
+            field_first_aid_target_index_ =
+                (field_first_aid_target_index_ + 1U) % row_count;
+        }
+    }
+
+    if (input.was_pressed(Button::A)) {
+        if (field_first_aid_cancel_selected()) {
+            field_first_aid_active_ = false;
+            field_menu_action_active_ = false;
+            field_menu_action_selection_ = 2U;
+        } else {
+            apply_field_first_aid();
+        }
+        return;
+    }
+    if (input.was_pressed(Button::B) || input.was_pressed(Button::Start)) {
+        field_first_aid_active_ = false;
+        field_menu_action_active_ = false;
+        field_menu_action_selection_ = 2U;
+    }
 }
 
 void NativePortShell::open_field_discard_confirmation() {
@@ -1548,6 +1817,10 @@ void NativePortShell::update_field_trade(const InputState& input) {
 }
 
 void NativePortShell::update_field_inventory_action(const InputState& input) {
+    if (field_first_aid_active_) {
+        update_field_first_aid(input);
+        return;
+    }
     if (field_trade_active_) {
         update_field_trade(input);
         return;
@@ -1606,9 +1879,19 @@ void NativePortShell::update_field_inventory_action(const InputState& input) {
     // Source A and B both enter the selected action dispatch at 0x1185E.
     if (input.was_pressed(Button::A) || input.was_pressed(Button::B)) {
         if (field_menu_action_selection_ == 2U) {
-            apply_field_inventory_action();
-            field_menu_action_active_ = false;
-            field_menu_action_selection_ = 2;
+            const auto slot = field_menu_row_ * 2U + field_menu_selection_;
+            const auto item_code = slot < field_entity_.inventory_item_codes.size()
+                ? field_entity_.inventory_item_codes[slot] : 0U;
+            if (item_code >= 0x10U && item_code <= 0x13U) {
+                // ROM 0x11740 selects D1E6C for medical codes and dispatches
+                // the target-selection routine at 0x12298 on the second
+                // action edge. It must not fall through to weapon equip.
+                open_field_first_aid();
+            } else {
+                apply_field_inventory_action();
+                field_menu_action_active_ = false;
+                field_menu_action_selection_ = 2;
+            }
         } else if (field_menu_action_selection_ == 3U) {
             open_field_discard_confirmation();
         } else if (field_menu_action_selection_ == 4U) {
@@ -3068,7 +3351,39 @@ void NativePortShell::render(ScreenWriter& screen) const {
             // or item action at plane-B address EC9C (x=112, y=200). The
             // other choices are not a vertical checklist on this screen.
             if (field_menu_action_active_) {
-                if (field_trade_active_) {
+                if (field_first_aid_active_) {
+                    // ROM 0x122B2/0x12344 writes the extracted Heal who?? and
+                    // CANCEL strings into the command panel, while the
+                    // shared selector helper moves the cursor through the
+                    // active-record list plus the count/cancel row.
+                    write_field_menu_text(screen, 112, 168, " Heal who??");
+                    for (std::size_t index = 0;
+                         index < field_first_aid_target_count_; ++index) {
+                        const auto y = 176 + static_cast<std::int32_t>(index) * 8;
+                        const auto record = field_first_aid_target_records_[index];
+                        if (record < field_menu_runner_names_.size()) {
+                            write_field_menu_text(
+                                screen, 112, y,
+                                field_menu_runner_names_[record]);
+                        }
+                    }
+                    const auto cancel_y = 176 + static_cast<std::int32_t>(
+                        field_first_aid_target_count_) * 8;
+                    write_field_menu_text(screen, 112, cancel_y, "CANCEL");
+                    if (!field_first_aid_message_active_ &&
+                        !field_menu_cursor_.pixels.empty()) {
+                        const auto cursor_y = 174 + static_cast<std::int32_t>(
+                            std::min(field_first_aid_target_index_,
+                                     field_first_aid_target_count_) * 8U);
+                        screen.blit_rgba(96, cursor_y, field_menu_cursor_.width,
+                                         field_menu_cursor_.height,
+                                         field_menu_cursor_.pixels);
+                    }
+                    if (field_first_aid_message_active_) {
+                        write_field_menu_text(screen, 112, 200,
+                                              field_first_aid_message_);
+                    }
+                } else if (field_trade_active_) {
                     if (field_trade_cannot_trade_ ||
                         field_trade_full_inventory_) {
                         write_field_menu_text(

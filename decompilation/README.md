@@ -190,6 +190,13 @@ reports a full destination inventory, and transfers both possession and the
 source phase byte. Equipped source weapons/armor are cleared as in the source
 record path; the runtime still consumes only the extracted asset pack.
 
+Inventory First Aid is now ported from `0x12298`/`0x1253E`. The native action
+path builds the source active-record target list and `CANCEL` row, applies the
+`0x0DBA` Biotech roll for medkits, applies the source `+2` physical/mental
+patch writers, preserves the full-health rejection, and decrements or removes
+the selected medical phase byte only after use. The extracted result strings
+and target-selection state are covered by `test_first_aid_handler`.
+
 The Cyberware command now enters a native display screen corresponding to ROM
 `0x11950`. Extraction preserves the active record's `+0x90` fifteen-bit
 cyberware field and expands the pointer names at `0xD2072` into host strings;
