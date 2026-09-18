@@ -48,8 +48,21 @@ int main() {
     const auto rom = read_rom();
     const auto assets = shadowrun::graphics::decode_genesis_native_assets(rom);
     assert(assets.boot_background.width == 320);
+    assert(assets.boot_static.width == 320);
     assert(assets.boot_guy.width == 320);
     assert(!assets.boot_sega_frames[0].pixels.empty());
+    assert(!assets.boot_logo_strobe[0].pixels.empty());
+
+    std::size_t logo_pixels = 0;
+    for (const auto& pixel : assets.boot_background.pixels) {
+        if (pixel.red != 0 || pixel.green != 0 || pixel.blue != 0) {
+            ++logo_pixels;
+        }
+    }
+    if (logo_pixels == 0) {
+        throw std::runtime_error(
+            "plane B SEGA letterforms produced no opaque pixels");
+    }
 
     const auto artifact_dir =
         std::filesystem::path(SHADOWRUN_VISUAL_ARTIFACT_DIR) / "boot";
@@ -62,16 +75,25 @@ int main() {
             (artifact_dir / name).string(), layer);
     };
     write_layer(assets.boot_background, "layer-background.bmp");
+    write_layer(assets.boot_static, "layer-static.bmp");
     write_layer(assets.boot_guy, "layer-guy.bmp");
     write_layer(assets.boot_sega_frames[0], "layer-sega-0.bmp");
     write_layer(assets.boot_sega_frames[3], "layer-sega-3.bmp");
+    write_layer(assets.boot_logo_strobe[0], "layer-strobe-0.bmp");
+    write_layer(assets.boot_logo_strobe[3], "layer-strobe-3.bmp");
 
     NativePortShell shell("SHADOWRUN", assets);
     assert(shell.scene() == NativeScene::Bootstrap);
     assert(shell.boot_guy_sat_y() == static_cast<std::int16_t>(kBootGuyStartY));
     assert(!shell.boot_sega_visible());
+    assert(!shell.boot_logo_strobe_active());
 
     write_dump(shell, artifact_dir / "boot-0.bmp");
+    SoftwareScreen boot_zero;
+    shell.render(boot_zero);
+    if (opaque_count(boot_zero) == 0) {
+        throw std::runtime_error("boot-0 framebuffer has no SEGA letter pixels");
+    }
 
     SoftwareScreen before;
     shell.render(before);
@@ -98,6 +120,29 @@ int main() {
     if (opaque_count(with_sega) <= start_pixels) {
         throw std::runtime_error(
             "SEGA SAT phase did not add opaque pixels over the boot planes");
+    }
+    if (shell.boot_hscroll_line(80) > 0x1FU) {
+        throw std::runtime_error("boot HSCROLL left the 0x5DAC4 0..31 range");
+    }
+
+    while (shell.scene() == NativeScene::Bootstrap &&
+           !shell.boot_logo_strobe_active()) {
+        shell.update(InputState{});
+    }
+    if (shell.scene() == NativeScene::Bootstrap) {
+        write_dump(shell, artifact_dir / "boot-strobe.bmp");
+        assert(shell.boot_logo_strobe_active());
+        const auto strobe_phase = shell.boot_logo_strobe_phase();
+        for (int step = 0; step < 16 &&
+                           shell.scene() == NativeScene::Bootstrap; ++step) {
+            shell.update(InputState{});
+        }
+        if (shell.scene() == NativeScene::Bootstrap &&
+            shell.boot_logo_strobe_phase() == strobe_phase &&
+            shell.boot_logo_strobe_active()) {
+            throw std::runtime_error(
+                "0x5D8BA logo strobe phase did not advance");
+        }
     }
 
     shell.finish_boot();

@@ -1,7 +1,9 @@
 rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x0236	reset / boot	ShadowrunBoot	shadowrun_boot_reconstruction	partial		TMSS/region only; logos are 0x5D746
-0x5D746	pre-title SEGA / rising SAT	NativePortShell::update_boot	shadowrun_boot_sequence	partial	boot-0/arrived/sega.bmp	HSCROLL 0x5DAC4 and pal strobe 0x5D8BA pending
+0x5D746	pre-title SEGA / rising SAT	NativePortShell::update_boot	shadowrun_boot_sequence	partial	boot-0/arrived/sega/strobe.bmp	0x5B2E2 guy pal fade still pending
 0x5DA50	pre-title resource setup	decode_genesis_boot_*	shadowrun_boot_sequence	partial		planes 0x1FFA66/0x1FFB66, tiles 0x1FEC46/0x14C222/0xDA038
+0x5DAC4	pre-title HSCROLL noise	NativePortShell::update_boot	shadowrun_boot_sequence	partial		plane-A line scroll 0..31 via 0xD44
+0x5D8BA	pre-title logo pal strobe	NativePortShell::update_boot	shadowrun_boot_sequence	partial		0x5DCE6 slide into line 0 colors 3..10
 0x1A9E	title loop	NativePortShell::render	shadowrun_menu_system; shadowrun_visual_dump	partial		dump frames 0/90/128/500; replace six-frame cycle as claimed title
 0x1E4E	title logo columns	NativePortShell::render	shadowrun_visual_dump	partial		phase-match against 320x224 capture
 0x1C6A	title sprite lists	NativePortShell::render	shadowrun_visual_dump	partial		SAT origin/clip vs capture

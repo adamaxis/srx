@@ -666,8 +666,10 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     title_sprite_frames_ = std::move(assets.title_sprite_frames);
     title_animation_frames_ = std::move(assets.title_animation_frames);
     boot_background_ = std::move(assets.boot_background);
+    boot_static_ = std::move(assets.boot_static);
     boot_guy_ = std::move(assets.boot_guy);
     boot_sega_frames_ = std::move(assets.boot_sega_frames);
+    boot_logo_strobe_ = std::move(assets.boot_logo_strobe);
     if (!boot_background_.pixels.empty()) {
         scene_ = NativeScene::Bootstrap;
     }
@@ -3088,6 +3090,26 @@ void NativePortShell::finish_boot() {
 
 void NativePortShell::update_boot() {
     if (boot_loop_left_ != 0U) {
+        // ROM 0x5DAC4: 224 line-scroll words, PRNG 0xD44 mulu #$20E5 addq #1,
+        // lsr #5, and #$1F, written to the plane-A half of each HSCROLL pair.
+        for (std::size_t line = 0; line < boot_hscroll_.size(); ++line) {
+            boot_rng_ = static_cast<std::uint16_t>(
+                static_cast<std::uint16_t>(boot_rng_ * kBootRngMul) + 1U);
+            boot_hscroll_[line] = static_cast<std::uint16_t>(
+                (boot_rng_ >> 5U) & 0x1FU);
+        }
+        // ROM 0x5D8BA runs only while DD3C is set. DF90 counts 4..-1; on
+        // wrap it slides DF92 through 0..7 and copies 0x5DCE6 into CRAM.
+        if (boot_dd3c_ != 0) {
+            --boot_df90_;
+            if (boot_df90_ < 0) {
+                boot_df90_ = 4;
+                ++boot_df92_;
+                if (boot_df92_ >= 8) {
+                    boot_df92_ = 0;
+                }
+            }
+        }
         // ROM 0x5D938 draws, then 0x5D7A2 mutates SAT Y / SEGA timers.
         if (boot_guy_y_ != static_cast<std::int16_t>(kBootGuyStopY)) {
             --boot_guy_y_;
@@ -3466,8 +3488,47 @@ void NativePortShell::render(ScreenWriter& screen) const {
     if (scene_ == NativeScene::Bootstrap) {
         screen.clear({0x00, 0x00, 0x00, 0xFF});
         if (boot_loop_left_ != 0U && !boot_background_.pixels.empty()) {
-            screen.blit_rgba(0, 0, boot_background_.width,
-                             boot_background_.height, boot_background_.pixels);
+            if (!boot_static_.pixels.empty() &&
+                boot_static_.pixels.size() ==
+                    static_cast<std::size_t>(boot_static_.width) *
+                        boot_static_.height) {
+                std::vector<Rgba8> scrolled(boot_static_.pixels.size(),
+                                            Rgba8{0, 0, 0, 0});
+                const auto width = static_cast<std::int32_t>(boot_static_.width);
+                const auto height =
+                    static_cast<std::int32_t>(boot_static_.height);
+                for (std::int32_t row = 0; row < height; ++row) {
+                    const auto scroll =
+                        static_cast<std::int32_t>(boot_hscroll_line(
+                            static_cast<std::size_t>(row)));
+                    for (std::int32_t column = 0; column < width; ++column) {
+                        const auto source_x = column + scroll;
+                        if (source_x < 0 || source_x >= width) {
+                            continue;
+                        }
+                        scrolled[static_cast<std::size_t>(row) *
+                                     static_cast<std::size_t>(width) +
+                                 static_cast<std::size_t>(column)] =
+                            boot_static_.pixels
+                                [static_cast<std::size_t>(row) *
+                                     static_cast<std::size_t>(width) +
+                                 static_cast<std::size_t>(source_x)];
+                    }
+                }
+                screen.blit_rgba(0, 0, boot_static_.width, boot_static_.height,
+                                 scrolled);
+            }
+            const NativeImage* logo = &boot_background_;
+            if (boot_dd3c_ != 0 && !boot_logo_strobe_.empty()) {
+                const auto phase =
+                    static_cast<std::size_t>(std::max<std::int16_t>(
+                        boot_df92_, 0)) %
+                    boot_logo_strobe_.size();
+                if (!boot_logo_strobe_[phase].pixels.empty()) {
+                    logo = &boot_logo_strobe_[phase];
+                }
+            }
+            screen.blit_rgba(0, 0, logo->width, logo->height, logo->pixels);
             if (!boot_guy_.pixels.empty()) {
                 const auto guy_delta_y = static_cast<std::int32_t>(
                     boot_guy_y_ - static_cast<std::int16_t>(kBootGuyComposeY));

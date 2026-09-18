@@ -439,6 +439,10 @@ int main() {
            native_assets.boot_background.width);
     assert(loaded_assets.boot_background.pixels.size() ==
            native_assets.boot_background.pixels.size());
+    assert(loaded_assets.boot_static.pixels.size() ==
+           native_assets.boot_static.pixels.size());
+    assert(loaded_assets.boot_logo_strobe[0].pixels.size() ==
+           native_assets.boot_logo_strobe[0].pixels.size());
     assert(loaded_assets.boot_guy.pixels.size() ==
            native_assets.boot_guy.pixels.size());
     assert(loaded_assets.title_scene.width == native_assets.title_scene.width);

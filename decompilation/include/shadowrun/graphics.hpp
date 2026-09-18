@@ -401,15 +401,22 @@ std::array<RgbaImage, native::kNativeTitleAnimationFrameCount>
 decode_genesis_title_animation_frames(
     const std::vector<std::uint8_t>& rom);
 
-// ROM 0x5DA50 / 0x5D746 pre-title layers. Background is the 0x1232 plane
-// writes; the guy and SEGA frames are 0x1378 SAT compositions. Palette
-// strobe 0x5D8BA and HSCROLL noise 0x5DAC4 remain host approximations.
+// ROM 0x5DA50 / 0x5D746 pre-title layers. Background is plane B at $E51A
+// (SEGA letterforms). Static is plane A at $C400 (1-bit snow). Guy and
+// lightning frames are 0x1378 SAT compositions. Logo strobe frames apply
+// the 0x5DCE6 CRAM slide used by 0x5D8BA. HSCROLL 0x5DAC4 is applied at
+// native render time, not baked into these images.
 RgbaImage decode_genesis_boot_background(
+    const std::vector<std::uint8_t>& rom);
+RgbaImage decode_genesis_boot_static(
     const std::vector<std::uint8_t>& rom);
 RgbaImage decode_genesis_boot_guy(
     const std::vector<std::uint8_t>& rom);
 std::array<RgbaImage, native::kNativeBootSegaPhaseCount>
 decode_genesis_boot_sega_frames(
+    const std::vector<std::uint8_t>& rom);
+std::array<RgbaImage, native::kNativeBootLogoStrobeCount>
+decode_genesis_boot_logo_strobe(
     const std::vector<std::uint8_t>& rom);
 
 // Reconstruct the field command screen's plane-B base from the exact 0x1232

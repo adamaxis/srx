@@ -790,6 +790,9 @@ native::NativePortAssets decode_genesis_native_assets(
     const auto boot_background = decode_genesis_boot_background(rom);
     assets.boot_background = {
         boot_background.width, boot_background.height, boot_background.pixels};
+    const auto boot_static = decode_genesis_boot_static(rom);
+    assets.boot_static = {
+        boot_static.width, boot_static.height, boot_static.pixels};
     const auto boot_guy = decode_genesis_boot_guy(rom);
     assets.boot_guy = {boot_guy.width, boot_guy.height, boot_guy.pixels};
     const auto boot_sega = decode_genesis_boot_sega_frames(rom);
@@ -797,6 +800,12 @@ native::NativePortAssets decode_genesis_native_assets(
         assets.boot_sega_frames[index] = {
             boot_sega[index].width, boot_sega[index].height,
             boot_sega[index].pixels};
+    }
+    const auto boot_strobe = decode_genesis_boot_logo_strobe(rom);
+    for (std::size_t index = 0; index < boot_strobe.size(); ++index) {
+        assets.boot_logo_strobe[index] = {
+            boot_strobe[index].width, boot_strobe[index].height,
+            boot_strobe[index].pixels};
     }
     auto field_menu_background = decode_genesis_field_menu_background(rom);
     assets.field_menu_background = {
@@ -1148,7 +1157,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 36);
+    write_u16(output, 37);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     for (const auto& title_frame : assets.title_animation_frames) {
@@ -1546,6 +1555,10 @@ void write_native_asset_pack(const std::string& path,
     for (const auto& frame : assets.boot_sega_frames) {
         write_native_image(output, frame);
     }
+    write_native_image(output, assets.boot_static);
+    for (const auto& frame : assets.boot_logo_strobe) {
+        write_native_image(output, frame);
+    }
     if (!output) {
         throw std::runtime_error("failed writing native asset pack: " + path);
     }
@@ -1561,7 +1574,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 36U)) {
+        (version < 2U || version > 37U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -2258,6 +2271,12 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
         assets.boot_background = read_native_image(input);
         assets.boot_guy = read_native_image(input);
         for (auto& frame : assets.boot_sega_frames) {
+            frame = read_native_image(input);
+        }
+    }
+    if (version >= 37U) {
+        assets.boot_static = read_native_image(input);
+        for (auto& frame : assets.boot_logo_strobe) {
             frame = read_native_image(input);
         }
     }
@@ -4750,7 +4769,7 @@ void blit_genesis_name_table(
     const std::vector<std::uint8_t>& rom, const GenesisBootPatternData& boot,
     RgbaImage& image, std::size_t map_offset, std::size_t columns,
     std::size_t rows, std::uint32_t dest_vram, std::uint32_t plane_base,
-    std::uint16_t attr_or) {
+    std::uint16_t attr_or, bool transparent_zero) {
     const auto plane_offset = dest_vram - plane_base;
     const auto start_tile_x = (plane_offset % 0x80U) / 2U;
     const auto start_tile_y = plane_offset / 0x80U;
@@ -4769,7 +4788,8 @@ void blit_genesis_name_table(
             blit_genesis_tile(
                 image, boot, tile_index, palette_line, hflip, vflip,
                 static_cast<std::int32_t>((start_tile_x + col) * 8U),
-                static_cast<std::int32_t>((start_tile_y + row) * 8U), false);
+                static_cast<std::int32_t>((start_tile_y + row) * 8U),
+                transparent_zero);
         }
     }
 }
@@ -4837,12 +4857,21 @@ RgbaImage decode_genesis_boot_background(
         pixel = {0, 0, 0, 255};
     }
     const auto boot = decode_genesis_boot_pattern_data(rom);
-    // 0x5DB10 tilemap 0: 12x4 at Plane B $E51A, source 0x1FFA66.
+    // 0x5DB10 tilemap 0 / 0x5DAA8: 12x4 at Plane B $E51A, source 0x1FFA66.
+    // Index 0 stays transparent so the letters composite over plane A snow.
     blit_genesis_name_table(rom, boot, image, 0x1FFA66U, 12U, 4U, 0xE51AU,
-                            0xE000U, 0);
+                            0xE000U, 0, true);
+    return image;
+}
+
+RgbaImage decode_genesis_boot_static(
+    const std::vector<std::uint8_t>& rom) {
+    auto image = make_transparent_title_layer();
+    const auto boot = decode_genesis_boot_pattern_data(rom);
     // 0x5DB10 tilemap 1: 40x9 at Plane A $C400, source 0x1FFB66, attr $2000.
+    // Index 0 is the snow holes; 0x5DAC4 HSCROLLS this plane only.
     blit_genesis_name_table(rom, boot, image, 0x1FFB66U, 40U, 9U, 0xC400U,
-                            0xC000U, 0x2000U);
+                            0xC000U, 0x2000U, true);
     return image;
 }
 
@@ -4881,6 +4910,31 @@ decode_genesis_boot_sega_frames(const std::vector<std::uint8_t>& rom) {
                               kSegaAttr);
         blit_genesis_sat_list(rom, boot, frames[index], right, kRightX, kSegaY,
                               kSegaAttr);
+    }
+    return frames;
+}
+
+std::array<RgbaImage, native::kNativeBootLogoStrobeCount>
+decode_genesis_boot_logo_strobe(const std::vector<std::uint8_t>& rom) {
+    std::array<RgbaImage, native::kNativeBootLogoStrobeCount> frames{};
+    const auto boot = decode_genesis_boot_pattern_data(rom);
+    constexpr std::size_t kStrobeTable = 0x5DCE6U;
+    for (std::size_t index = 0; index < frames.size(); ++index) {
+        auto strobe = boot;
+        // 0x5D8BA copies eight words from 0x5DCE6 + (DF92 << 1) into live
+        // CRAM at FFD884 (line 0 colors 3..10).
+        for (std::size_t color = 0; color < 8U; ++color) {
+            const auto word = read_rom_u16(
+                rom, kStrobeTable + (index + color) * 2U,
+                "Genesis boot logo strobe table is truncated");
+            strobe.palette[3U + color] = decode_genesis_cram_word(word, false);
+        }
+        frames[index] = make_transparent_title_layer();
+        for (auto& pixel : frames[index].pixels) {
+            pixel = {0, 0, 0, 255};
+        }
+        blit_genesis_name_table(rom, strobe, frames[index], 0x1FFA66U, 12U, 4U,
+                                0xE51AU, 0xE000U, 0, true);
     }
     return frames;
 }

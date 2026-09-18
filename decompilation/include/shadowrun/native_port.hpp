@@ -18,6 +18,11 @@ constexpr std::size_t kNativeInventoryItemCount = 50;
 constexpr std::size_t kNativeTitleAnimationFrameCount = 6;
 // ROM 0x5D996 ping-pongs six SAT lists from 0x5DA20/0x5DA38.
 constexpr std::size_t kNativeBootSegaPhaseCount = 6;
+// ROM 0x5D8BA slides eight CRAM words from 0x5DCE6 across line 0 colors 3..10.
+constexpr std::size_t kNativeBootLogoStrobeCount = 8;
+// ROM 0x5DAC4 writes one HSCROLL word per visible line (D7 = $DF).
+constexpr std::size_t kBootHscrollLineCount = 224;
+constexpr std::uint16_t kBootRngMul = 0x20E5;
 // ROM 0x5D746: guy SAT Y starts at $01A8 and stops at $0160.
 constexpr std::uint16_t kBootGuyStartY = 0x1A8;
 constexpr std::uint16_t kBootGuyStopY = 0x160;
@@ -365,11 +370,14 @@ struct NativePortAssets {
     // the native shell advances them on the same four-vblank cadence.
     std::array<NativeImage, kNativeTitleAnimationFrameCount>
         title_animation_frames{};
-    // ROM 0x5D746 pre-title: plane A/B from descriptor 0x5DB10, the rising
-    // SAT pair at 0x1D4E4/0x1D50E, and six SEGA-logo SAT phases.
+    // ROM 0x5D746 pre-title: plane B 12x4 at $E51A is the SEGA letterforms,
+    // plane A 40x9 at $C400 is the 1-bit snow band, the rising SAT pair is
+    // at 0x1D4E4/0x1D50E, and six lightning SAT phases come from 0x5DA20.
     NativeImage boot_background;
+    NativeImage boot_static;
     NativeImage boot_guy;
     std::array<NativeImage, kNativeBootSegaPhaseCount> boot_sega_frames{};
+    std::array<NativeImage, kNativeBootLogoStrobeCount> boot_logo_strobe{};
     // Plane-B base written by the ROM command-screen initializer at 0x10F50.
     // It contains the real menu panel and inventory-box geometry; dynamic
     // labels and cursor state are rendered by the native command loop.
@@ -542,6 +550,11 @@ public:
     bool has_boot() const { return !boot_background_.pixels.empty(); }
     std::int16_t boot_guy_sat_y() const { return boot_guy_y_; }
     bool boot_sega_visible() const { return boot_dd30_ < 0; }
+    bool boot_logo_strobe_active() const { return boot_dd3c_ != 0; }
+    std::int16_t boot_logo_strobe_phase() const { return boot_df92_; }
+    std::uint16_t boot_hscroll_line(std::size_t line) const {
+        return line < boot_hscroll_.size() ? boot_hscroll_[line] : 0;
+    }
     // ROM 0x5D746 has no Start skip. Tick empty input until 0x1A9E.
     void finish_boot();
     bool has_intro() const { return !intro_.story_lines.empty(); }
@@ -973,8 +986,10 @@ private:
     std::array<NativeImage, kNativeTitleAnimationFrameCount>
         title_animation_frames_{};
     NativeImage boot_background_{};
+    NativeImage boot_static_{};
     NativeImage boot_guy_{};
     std::array<NativeImage, kNativeBootSegaPhaseCount> boot_sega_frames_{};
+    std::array<NativeImage, kNativeBootLogoStrobeCount> boot_logo_strobe_{};
     std::int16_t boot_guy_y_ = static_cast<std::int16_t>(kBootGuyStartY);
     std::int16_t boot_dd2a_ = 0x41;
     std::int16_t boot_dd28_ = 0;
@@ -982,6 +997,10 @@ private:
     std::int16_t boot_dd3c_ = 0;
     std::int16_t boot_sega_phase_ = 0;
     std::int16_t boot_sega_cadence_ = 0;
+    std::int16_t boot_df90_ = 0;
+    std::int16_t boot_df92_ = 9;
+    std::uint16_t boot_rng_ = 0;
+    std::array<std::uint16_t, kBootHscrollLineCount> boot_hscroll_{};
     std::uint16_t boot_loop_left_ = kBootLoopDbf + 1U;
     std::uint16_t boot_fade_left_ = 0;
     std::uint16_t boot_hold_left_ = 0;
