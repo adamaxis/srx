@@ -120,6 +120,7 @@ shadowrun::graphics::RgbaImage render_native_field(
     // path. New Game enters 0x59C5E; skip that source-timed opening for this
     // field-only diagnostic, just as a user can with an action edge.
     press(shadowrun::native::Button::Start);
+    press(shadowrun::native::Button::Start);
     press(shadowrun::native::Button::A);
     press(shadowrun::native::Button::A);
     if (shell.scene() == shadowrun::native::NativeScene::Intro) {
@@ -154,6 +155,7 @@ shadowrun::graphics::RgbaImage render_native_field_menu(
         const auto mask = shadowrun::native::button_mask(button);
         shell.update(shadowrun::native::InputState{mask, mask});
     };
+    press(shadowrun::native::Button::Start);
     press(shadowrun::native::Button::Start);
     press(shadowrun::native::Button::A);
     press(shadowrun::native::Button::A);
@@ -209,7 +211,9 @@ shadowrun::graphics::RgbaImage render_native_startup_scene(
     };
     if (scene_name == "start-options") {
         press(shadowrun::native::Button::Start);
+        press(shadowrun::native::Button::Start);
     } else if (scene_name == "save-load" || scene_name == "no-save") {
+        press(shadowrun::native::Button::Start);
         press(shadowrun::native::Button::Start);
         press(shadowrun::native::Button::Down);
         press(shadowrun::native::Button::A);
@@ -218,8 +222,10 @@ shadowrun::graphics::RgbaImage render_native_startup_scene(
         }
     } else if (scene_name == "archetype") {
         press(shadowrun::native::Button::Start);
+        press(shadowrun::native::Button::Start);
         press(shadowrun::native::Button::A);
     } else if (scene_name == "intro") {
+        press(shadowrun::native::Button::Start);
         press(shadowrun::native::Button::Start);
         press(shadowrun::native::Button::A);
         press(shadowrun::native::Button::A);

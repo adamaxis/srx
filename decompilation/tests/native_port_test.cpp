@@ -20,6 +20,10 @@ void enter_field_from_start(shadowrun::native::NativePortShell& shell) {
     using namespace shadowrun::native;
     shell.update(InputState{button_mask(Button::Start),
                              button_mask(Button::Start)});
+    assert(shell.scene() == NativeScene::Title);
+    shell.update(InputState{});
+    shell.update(InputState{button_mask(Button::Start),
+                             button_mask(Button::Start)});
     assert(shell.scene() == NativeScene::StartOptions);
     shell.update(InputState{button_mask(Button::A), button_mask(Button::A)});
     assert(shell.scene() == NativeScene::ArchetypeMenu);
@@ -96,8 +100,13 @@ int main() {
     rom_shell.render(screen);
     assert(screen.presented_frames() == 3);
 
-    // Start is an edge-triggered title transition. Holding it without a
-    // pressed edge must not repeatedly re-enter or reset the field scene.
+    // The first Start edge settles the title animation; the next edge enters
+    // the source startup-options block. Holding it without a pressed edge
+    // must not repeatedly re-enter or reset the field scene.
+    rom_shell.update(InputState{button_mask(Button::Start),
+                                button_mask(Button::Start)});
+    assert(rom_shell.scene() == NativeScene::Title);
+    rom_shell.update(InputState{});
     rom_shell.update(InputState{button_mask(Button::Start),
                                 button_mask(Button::Start)});
     assert(rom_shell.scene() == NativeScene::StartOptions);
@@ -148,6 +157,9 @@ int main() {
     // Archetype selection mutates Joshua's one live template before the
     // opening; it does not create a switchable Decker/Shaman runner.
     NativePortShell decker_shell("SHADOWRUN", extracted_assets);
+    decker_shell.update(InputState{button_mask(Button::Start),
+                                   button_mask(Button::Start)});
+    decker_shell.update(InputState{});
     decker_shell.update(InputState{button_mask(Button::Start),
                                    button_mask(Button::Start)});
     decker_shell.update(InputState{button_mask(Button::A),
@@ -531,9 +543,9 @@ int main() {
     pack_shell.render(pack_screen);
     assert(pack_screen.presented_frames() == 1);
 
-    // ROM 0x36FC suppresses an otherwise projected entity when template
-    // byte +0x56 is negative. The native asset boundary must preserve that
-    // rule independently of the ROM-backed constructor.
+    // ROM 0x36FC suppresses the separately rendered equipped-item sprite
+    // when template byte +0x56 is negative; the projected runner body still
+    // remains present.
     auto hidden_assets = native_assets;
     hidden_assets.entity_template.display_state = -1;
     hidden_assets.protagonist_archetype_records[0].display_state = -1;
@@ -541,6 +553,6 @@ int main() {
     NativePortShell hidden_shell("SHADOWRUN", std::move(hidden_assets));
     enter_field_from_start(hidden_shell);
     assert(hidden_shell.scene() == NativeScene::Field);
-    assert(!hidden_shell.field_entity_visible());
+    assert(hidden_shell.field_entity_visible());
     return 0;
 }

@@ -3963,7 +3963,7 @@ RgbaImage decode_genesis_title_background(
     // priority/palette interpretation remains a comparison item, so keep the
     // raw decoded map separate from the logo and sprite layers for now.
     return decode_genesis_startup_screen(
-        rom, 0x1F310EU, 0x67DF6U, 0x1FF0U, 0x0000U);
+        rom, 0x1F310EU, 0x67DF6U, 0x1C064U, 0x0000U);
 }
 
 RgbaImage decode_genesis_title_logo_plane(

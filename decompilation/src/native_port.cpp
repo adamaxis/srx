@@ -998,12 +998,12 @@ void NativePortShell::refresh_field_entity_projection() {
         result.screen_x - kGenesisVdpSpriteOrigin);
     field_entity_.screen_y = static_cast<std::uint16_t>(
         result.screen_y - kGenesisVdpSpriteOrigin);
-    // ROM 0x36FC checks the signed template byte at +0x56 after projection.
-    // Keep that display-state gate in native state even though the current
-    // extracted startup template is displayable (0x00).
-    const auto displayable = field_entity_.display_state >= 0 &&
-                             field_entity_.display_state != 0x7F;
-    field_entity_.visible = result.visible && displayable;
+    // ROM 0x36FC uses +0x56/+0x57 while choosing the separately rendered
+    // equipped-item sprite and palette. It does not remove the runner body
+    // when +0x56 becomes 0x7F (no weapon). Keep item display state separate
+    // from the projected body visibility so unequipping cannot replace the
+    // character with the native fallback marker.
+    field_entity_.visible = result.visible;
 }
 
 void NativePortShell::refresh_field_collision() {
@@ -1281,14 +1281,10 @@ void NativePortShell::write_startup_text(ScreenWriter& screen,
 }
 
 void NativePortShell::render_startup_background(ScreenWriter& screen) const {
+    // 0x59092/0x59172/0x59248 enter their own cleared startup planes. The
+    // title circuit plane is not retained behind these menus; blitting it
+    // here made the create-character screen visibly unlike the source.
     screen.clear({0x00, 0x00, 0x00, 0xFF});
-    if (!title_background_.pixels.empty()) {
-        screen.blit_rgba(0, 0, title_background_.width,
-                         title_background_.height, title_background_.pixels);
-    }
-    // ROM 0xC3E6 clears D4=C186 for 0x15 rows of 0x1C words. In the visible
-    // 64-column plane that is the 28x21-tile central startup work area.
-    screen.fill_rect(24, 24, 224, 168, {0x00, 0x00, 0x00, 0xFF});
 }
 
 void NativePortShell::update_field_menu(const InputState& input) {
@@ -1303,6 +1299,14 @@ void NativePortShell::update_field_menu(const InputState& input) {
         }
         if (input.was_pressed(Button::B)) {
             field_menu_posture_active_ = false;
+            return;
+        }
+        // Posture is a focus inside the command overview, not a modal screen.
+        // The source returns to the command selector when Down is pressed.
+        if (input.was_pressed(Button::Down)) {
+            field_menu_posture_active_ = false;
+            menu_vertical_repeat_frames_ = 0;
+            menu_vertical_repeat_mask_ = 0;
             return;
         }
         const auto horizontal_step =
@@ -1652,20 +1656,27 @@ void NativePortShell::update(const InputState& input) {
 
     if (scene_ == NativeScene::Title) {
         // ROM 0x0BF2 records Start as a pressed high-byte input and the
-        // 0x1A9E loop exits when FFDDC2 is set. The native equivalent is the
-        // supplied pressed edge, not a held-button poll.
+        // 0x1A9E loop exits when FFDDC2 is set. An early edge finishes the
+        // title presentation; it does not jump directly to the game field.
         if (input.was_pressed(Button::Start)) {
-            // ROM 0x59092 enters the 0x1B6498 start-options block.  New Game
-            // later enters the 0x59C5E opening; Load Game skips it only after
-            // a valid save sets FFE108.
-            scene_ = has_startup_menus() ? NativeScene::StartOptions
-                                         : NativeScene::Field;
-            if (scene_ == NativeScene::Field) {
-                if (!field_map_pixels_.empty()) {
-                    reset_field_state();
-                } else {
-                    marker_x_ = kScreenWidth / 2;
-                    marker_y_ = kScreenHeight / 2;
+            if (!title_skip_requested_) {
+                title_skip_requested_ = true;
+                constexpr std::uint64_t kTitleSettledLoop = 0xE10U;
+                frame_number_ = std::max(frame_number_,
+                                         kTitleSettledLoop + 1U);
+            } else {
+                // ROM 0x59092 enters the startup-options block. New Game
+                // later enters 0x59C5E; Load Game skips it only after a valid
+                // save sets FFE108.
+                scene_ = has_startup_menus() ? NativeScene::StartOptions
+                                             : NativeScene::Field;
+                if (scene_ == NativeScene::Field) {
+                    if (!field_map_pixels_.empty()) {
+                        reset_field_state();
+                    } else {
+                        marker_x_ = kScreenWidth / 2;
+                        marker_y_ = kScreenHeight / 2;
+                    }
                 }
             }
         }
@@ -1973,7 +1984,8 @@ void NativePortShell::render(ScreenWriter& screen) const {
             // visible sequence starts at pointer-table entry 1. The SAT
             // origin is already $009C in the extracted layer (the initial
             // source value is $0098 and 0x1C6A adds four before 0x1378).
-            if (!title_sprite_frames_.empty() && visible_columns != 0U) {
+            if (!title_sprite_frames_.empty() && visible_columns != 0U &&
+                visible_columns < kTitleRevealColumns) {
                 const auto sprite_call_count = visible_columns;
                 const auto phase = static_cast<std::size_t>(
                     (1U + (sprite_call_count - 1U) / 4U) %
@@ -2330,7 +2342,12 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 if (!item.category.empty()) {
                     write_field_menu_text(screen, 128, 72, item.category);
                 }
-                if (item.damage_table_index < field_menu_damage_bars_.size()) {
+                // 0x115F2 calls 0x12E9E only for item codes below 0x10.
+                // Medkit (0x10), patches, tools, spells, and armor do not
+                // use the weapon Damage/Power detail writer.
+                const auto is_weapon_detail = item_code < 0x10U;
+                if (is_weapon_detail &&
+                    item.damage_table_index < field_menu_damage_bars_.size()) {
                     write_field_menu_text(screen, 112, 80, "Damage");
                     const auto& damage_bar =
                         field_menu_damage_bars_[item.damage_table_index];
@@ -2339,7 +2356,7 @@ void NativePortShell::render(ScreenWriter& screen) const {
                                          damage_bar.height, damage_bar.pixels);
                     }
                 }
-                if (item.power_table_index != 0U) {
+                if (is_weapon_detail && item.power_table_index != 0U) {
                     write_field_menu_text(screen, 112, 88, "Power");
                     const auto label_index = static_cast<std::size_t>(
                         item.power_table_index - 1U);
@@ -2358,15 +2375,24 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 // empty center panel.
                 const auto race = field_entity_.race_index == 7U
                     ? std::string_view("Human") : std::string_view("Human");
-                static constexpr std::array<std::string_view, 4>
-                    kArchetypeNames{{"Mage", "Shaman", "Samurai", "Decker"}};
-                const auto archetype = field_entity_.archetype_index <
-                        kArchetypeNames.size()
-                    ? kArchetypeNames[field_entity_.archetype_index]
-                    : std::string_view("Mage");
+                // The live record stores the source class index, not the
+                // startup selector index: 1=Gator Shaman, 2=Samurai,
+                // 3=Decker in the three 0x7291A templates.
+                const auto archetype = [&]() -> std::string {
+                    switch (field_entity_.archetype_index) {
+                    case 1U:
+                        return intro_.archetypes[2] + " " + intro_.archetypes[3];
+                    case 2U:
+                        return intro_.archetypes[0];
+                    case 3U:
+                        return intro_.archetypes[1];
+                    default:
+                        return "Unknown";
+                    }
+                }();
                 write_field_menu_text(
                     screen, 128, 24,
-                    std::string(race) + " " + std::string(archetype));
+                    std::string(race) + " " + archetype);
                 write_field_menu_text(screen, 128, 40, "Physical");
                 write_field_menu_text(screen, 128, 48, "Mental");
                 write_field_menu_text(
@@ -2478,20 +2504,38 @@ void NativePortShell::render(ScreenWriter& screen) const {
                         field_menu_cursor_.width, field_menu_cursor_.height,
                         field_menu_cursor_.pixels);
                 }
-                // 0x11678 replaces the selected 5x4 cell before 0x11136
-                // writes the actual item icon, so the icon remains visible
-                // above the selected-cell art.
-                const auto overlay_index =
-                    ((field_menu_row_ / 2U) & 1U) == 0U ? 0U : 1U;
-                const auto& selected_cell =
-                    field_menu_selected_cells_[overlay_index];
-                if (!selected_cell.pixels.empty()) {
+            }
+            // 0x11624 draws the light cell border only for source equipment:
+            // first +0x56 (weapon slot), then the inventory cell containing
+            // +0x76+0x2B (armor). It is not the cursor and must not surround
+            // every merely selected inventory cell.
+            const auto draw_equipment_border = [this, &screen](std::size_t slot) {
+                if (slot >= kNativeInventorySlotCount) {
+                    return;
+                }
+                const auto overlay_index = ((slot / 2U) & 1U) == 0U ? 0U : 1U;
+                const auto& overlay = field_menu_selected_cells_[overlay_index];
+                if (!overlay.pixels.empty()) {
                     screen.blit_rgba(
-                        8 + static_cast<std::int32_t>(
-                                field_menu_selection_ * 40U),
-                        112 + static_cast<std::int32_t>(field_menu_row_ * 24U),
-                        selected_cell.width, selected_cell.height,
-                        selected_cell.pixels);
+                        8 + static_cast<std::int32_t>((slot % 2U) * 40U),
+                        112 + static_cast<std::int32_t>((slot / 2U) * 24U),
+                        overlay.width, overlay.height, overlay.pixels);
+                }
+            };
+            if (field_entity_.display_state >= 0 &&
+                field_entity_.display_state != 0x7F) {
+                draw_equipment_border(
+                    static_cast<std::size_t>(field_entity_.display_state));
+            }
+            if (field_entity_.equipped_armor_index != 0U) {
+                const auto armor_code = static_cast<std::uint8_t>(
+                    0x2BU + field_entity_.equipped_armor_index);
+                for (std::size_t slot = 0;
+                     slot < field_entity_.inventory_item_codes.size(); ++slot) {
+                    if (field_entity_.inventory_item_codes[slot] == armor_code) {
+                        draw_equipment_border(slot);
+                        break;
+                    }
                 }
             }
             for (std::size_t slot = 0; slot <

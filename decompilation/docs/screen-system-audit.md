@@ -364,3 +364,37 @@ The next system passes should be completed in this order:
 
 This list is deliberately explicit so new native UI code cannot introduce a
 screen, option, or state transition that the ROM does not have.
+
+## Correction ledger (2026-09-18)
+
+The following source checks were completed during the current visual audit;
+they are recorded here because each one corrects a previously invented native
+behavior:
+
+- Title input is now two-stage: the first Start edge settles the source reveal
+  and the next edge enters startup options. The transient reveal sprite is
+  removed once the source column counter reaches its terminal value. The
+  title background comparison currently uses the dark circuit map at `0x1C064`;
+  frame-by-frame timing and audio still remain to be verified.
+- The startup archetype plane is cleared independently from the title plane.
+  It now renders the source choices and cursor on black instead of retaining
+  the title circuit background.
+- The command overview keeps the inventory cursor separate from the source
+  equipment highlight. `0x11624` highlights only the live weapon byte at
+  `+0x56` and the inventory cell matching the armor byte at `+0x76`.
+- The overview class text uses the three source template records at
+  `0x7291A` (`Gator Shaman`, `Samurai`, `Decker`) rather than a made-up class
+  list. The active runner remains the only initialized party record; the
+  recruited roster is still pending.
+- The item detail writer now follows the `0x115F2`/`0x12E9E` boundary:
+  weapon Damage/Power rows are emitted only for item codes below `0x10`.
+  Medkits and the later item categories therefore cannot acquire a weapon
+  damage stat merely because a table record has a nonzero field.
+- Unequipping no longer removes the projected runner body. The item sprite
+  selection path and the body projection path are separate source effects;
+  the native fallback marker is not a character sprite.
+
+These are correction slices, not a completion claim. The right-hand party
+status/sidebar layer, recruited roster, source submenu layouts, animated
+opening artwork/music, valid SRAM load, and remaining item-action branches
+still require their own source traces and focused comparisons.

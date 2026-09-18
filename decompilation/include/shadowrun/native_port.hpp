@@ -728,6 +728,9 @@ private:
     bool start_options_load_rejected_ = false;
     bool save_load_message_visible_ = false;
     bool save_load_message_success_ = false;
+    // An early Start finishes the source title presentation; the following
+    // edge enters the startup-options routine.
+    bool title_skip_requested_ = false;
     std::vector<NativeEntityFrame> entity_frames_;
     std::array<NativeFieldAnimation, 8> field_entity_animations_{};
     // Source text routed by the motel interaction callback at ROM 0x20E48.
