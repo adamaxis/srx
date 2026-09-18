@@ -433,6 +433,33 @@ void test_clip_trade_menu(const std::vector<std::uint8_t>& rom) {
     assert(shell.field_record_ammo_clips(1U) == 5U);
 }
 
+void test_clip_distribution(const std::vector<std::uint8_t>& rom) {
+    // 0x11FDE averages +0x4F across at least two active records. With an
+    // even total this isolates the quotient write from the bit-1 remainder
+    // assignment at 0x1202A.
+    auto assets = shadowrun::graphics::decode_genesis_native_assets(rom);
+    assets.protagonist_archetype_records[0].ammo_clips = 5U;
+    assets.initial_field_records[1].flags_10 |= 0x01U;
+    assets.field_entity_records[1].flags_10 |= 0x01U;
+    assets.field_entity_records[1].ammo_clips = 1U;
+    NativePortShell shell("SHADOWRUN", std::move(assets));
+    enter_field(shell);
+    press(shell, Button::Start);
+    while (shell.field_menu_selection() != 2U) {
+        press(shell, Button::Right);
+    }
+    press(shell, Button::A);
+    assert(shell.clips_menu_open());
+    press(shell, Button::Right);
+    press(shell, Button::Right);
+    assert(shell.clips_menu_selection() == 4U);
+    press(shell, Button::A);
+    assert(!shell.clips_trade_menu_open());
+    assert(shell.clips_action_message() == "Exchange complete");
+    assert(shell.field_ammo_clips() == 3U);
+    assert(shell.field_record_ammo_clips(1U) == 3U);
+}
+
 void open_medical_action(NativePortShell& shell) {
     enter_field(shell);
     press(shell, Button::Start);
@@ -703,6 +730,7 @@ int main() {
     test_no_clip_gate(rom);
     test_clip_item_gate(rom);
     test_clip_trade_menu(rom);
+    test_clip_distribution(rom);
     test_first_aid_handler(rom);
     test_automatic_use_item_handler(rom);
     test_trade_handler(rom);

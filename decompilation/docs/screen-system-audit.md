@@ -220,7 +220,8 @@ action gates, exact reviewed error text, and the native transition are
 implemented. The positive reload/trade/distribute quantity-transfer loops and
 implemented. The nested Trade loop now follows `D1E24`/`0x1209A`/`0x120E4`
 for quantity wrapping, recipient changes, and `Exchange complete`; the
-positive Reload and top-level Distribute loops and final source-authentic
+positive top-level Distribute average now follows `0x11FDE`/`0x12014` with
+the source remainder-bit rule. Positive Reload and final source-authentic
 panel art remain separate work.
 
 ### Attributes/Skills (`0xD01C`)

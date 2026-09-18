@@ -2384,6 +2384,10 @@ void NativePortShell::update_clips_menu(const InputState& input) {
             // ROM 0x11DD2 builds the recipient list and enters the nested
             // D1E24 loop. It does not perform a transfer on this first edge.
             open_clips_trade();
+        } else if (clips_menu_selection_ == 4U) {
+            // ROM 0x11FDE distributes the available clips across the active
+            // records; it is distinct from the nested one-recipient Trade.
+            distribute_clips();
         } else {
             // The quantity-transfer/reload loops remain a separate source
             // boundary; count entry only after the exact source gate passes.
@@ -2404,6 +2408,49 @@ void NativePortShell::update_clips_menu(const InputState& input) {
     if (clips_action_message_frames_ != 0) {
         --clips_action_message_frames_;
     }
+}
+
+void NativePortShell::distribute_clips() {
+    std::size_t active_count = 0;
+    unsigned total_clips = 0;
+    for (std::size_t record = 0; record < field_records_.size(); ++record) {
+        if ((field_records_[record].flags_10 & 0x01U) == 0U) {
+            continue;
+        }
+        ++active_count;
+        total_clips += field_entity_records_[record].ammo_clips;
+    }
+
+    if (active_count < 2U) {
+        // ROM 0x1200C returns to D1B8A when fewer than two active records
+        // participate in the distribution operation.
+        clips_action_message_ = "You have no party members to trade with.";
+        clips_action_message_frames_ = 30;
+        return;
+    }
+
+    // 0x1201A performs DIVU by the active count. The quotient is written to
+    // every active record and the remainder is added only to records whose
+    // +0x10 bit 1 is set. Preserve the source byte arithmetic at the host
+    // boundary instead of silently saturating the result.
+    const auto quotient = total_clips / active_count;
+    const auto remainder = total_clips % active_count;
+    for (std::size_t record = 0; record < field_records_.size(); ++record) {
+        if ((field_records_[record].flags_10 & 0x01U) == 0U) {
+            continue;
+        }
+        auto distributed = static_cast<unsigned>(
+            static_cast<std::uint8_t>(quotient & 0xFFU));
+        if ((field_records_[record].flags_10 & 0x02U) != 0U) {
+            distributed += remainder;
+        }
+        field_entity_records_[record].ammo_clips =
+            static_cast<std::uint8_t>(distributed & 0xFFU);
+    }
+    field_entity_ = field_entity_records_[active_field_record_];
+    clips_action_message_ = "Exchange complete";
+    clips_action_message_frames_ = 30;
+    ++clips_action_count_;
 }
 
 void NativePortShell::open_clips_trade() {

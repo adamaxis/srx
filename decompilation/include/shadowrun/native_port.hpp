@@ -777,6 +777,7 @@ private:
     void update_clips_menu(const InputState& input);
     void open_clips_trade();
     void update_clips_trade(const InputState& input);
+    void distribute_clips();
     void open_cyberware_menu();
     void update_cyberware_menu(const InputState& input);
     void open_attributes_menu();
