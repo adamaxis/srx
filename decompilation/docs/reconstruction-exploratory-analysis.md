@@ -670,6 +670,15 @@ pointer lists and the three conditional event setters remain explicit next
 boundaries; they must be ported from their source tables rather than replaced
 with an always-visible invented list.
 
+The Tips & Clues handler at `0xF9A4` is backed by three 32-entry pointer
+tables: `0xC2716` selected by `FFFC30`, `0xC2796` by `FFFC34`, and `0xC2816`
+by `FFFC38`. It starts `FFF0B9` at `0xFF`, appends the pointers for set bits
+to `FFEF56`, and uses the same `FFF0DC`/`C376` cursor family as the other
+Notebook screens. The native extractor now resolves all 96 pointers and
+converts each source `0x80` separator to a host newline in asset-pack data;
+the gate filtering, page count writer at `0xC663A`, and selected-entry text
+screen remain pending.
+
 ### Matrix
 
 Matrix is a separate state family from Magic and from the command overview.

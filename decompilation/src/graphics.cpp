@@ -292,6 +292,31 @@ std::string read_genesis_padded_text(const std::vector<std::uint8_t>& rom,
     return value;
 }
 
+std::string read_genesis_multiline_text(const std::vector<std::uint8_t>& rom,
+                                        std::size_t offset,
+                                        std::size_t length,
+                                        const char* what) {
+    if (offset > rom.size() || rom.size() - offset < length) {
+        throw std::out_of_range(what);
+    }
+    std::string value;
+    value.reserve(length);
+    for (std::size_t index = 0; index < length; ++index) {
+        const auto byte = rom[offset + index];
+        if (byte == 0xFFU) {
+            break;
+        }
+        if (byte == 0x80U) {
+            value.push_back('\n');
+        } else {
+            value.push_back(byte >= 0x20U && byte <= 0x7EU
+                                ? static_cast<char>(byte)
+                                : ' ');
+        }
+    }
+    return value;
+}
+
 std::string read_genesis_menu_text(const std::vector<std::uint8_t>& rom,
                                    std::size_t offset, std::size_t length,
                                    const char* what) {
@@ -599,6 +624,28 @@ read_genesis_notebook_no_run_text(const std::vector<std::uint8_t>& rom) {
             rom, rom::kNotebookNoRunText[index],
             rom::kNotebookNoRunTextLengths[index],
             "Genesis Notebook no-run text is truncated");
+    }
+    return result;
+}
+
+std::array<std::string, native::kNativeNotebookTipCount>
+read_genesis_notebook_tip_catalog(const std::vector<std::uint8_t>& rom) {
+    std::array<std::string, native::kNativeNotebookTipCount> result{};
+    for (std::size_t group = 0; group < rom::kNotebookTipPointerTables.size();
+         ++group) {
+        for (std::size_t entry = 0;
+             entry < rom::kNotebookTipTableEntryCount; ++entry) {
+            const auto table_offset =
+                static_cast<std::size_t>(rom::kNotebookTipPointerTables[group]) +
+                entry * 4U;
+            const auto string_offset = static_cast<std::size_t>(read_rom_u32(
+                rom, table_offset,
+                "Genesis Notebook tip pointer table is truncated"));
+            result[group * rom::kNotebookTipTableEntryCount + entry] =
+                read_genesis_multiline_text(
+                    rom, string_offset, rom.size() - string_offset,
+                    "Genesis Notebook tip text is truncated");
+        }
     }
     return result;
 }
@@ -1043,6 +1090,7 @@ native::NativePortAssets decode_genesis_native_assets(
         "Genesis Notebook initial event gate is truncated") != 0U;
     assets.notebook_event_gates[1] = 0;
     assets.notebook_event_gates[2] = 0;
+    assets.notebook_tip_text = read_genesis_notebook_tip_catalog(rom);
 
     for (std::size_t index = 0;
          index < assets.field_direction_table.size(); ++index) {
@@ -1066,7 +1114,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 31);
+    write_u16(output, 32);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     for (const auto& title_frame : assets.title_animation_frames) {
@@ -1336,6 +1384,10 @@ void write_native_asset_pack(const std::string& path,
     for (const auto gate : assets.notebook_event_gates) {
         output.put(static_cast<char>(gate));
     }
+    for (const auto& tip : assets.notebook_tip_text) {
+        write_pack_string(output, tip,
+                          "native Notebook tip text is too long");
+    }
     for (const auto& direction : assets.field_direction_table) {
         write_u16(output, static_cast<std::uint16_t>(direction[0]));
         write_u16(output, static_cast<std::uint16_t>(direction[1]));
@@ -1460,7 +1512,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 31U)) {
+        (version < 2U || version > 32U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -1958,6 +2010,13 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
                                     gate = read_pack_u8(
                                         input,
                                         "native Notebook event gates are truncated");
+                                }
+                                if (version >= 32U) {
+                                    for (auto& tip : assets.notebook_tip_text) {
+                                        tip = read_pack_string(
+                                            input,
+                                            "native Notebook tip text is truncated");
+                                    }
                                 }
                             }
                         }

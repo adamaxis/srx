@@ -140,6 +140,10 @@ inline constexpr std::array<std::size_t, 3> kNotebookNoRunTextLengths{
 // F33E tests the word only for nonzero when deciding whether Contacts is
 // visible on the fresh-game Notebook panel.
 constexpr std::uint32_t kInitialNotebookContactsFlags = 0x59C48;
+// F9A4 appends active pointers from these three 32-entry tables to FFEF16.
+inline constexpr std::array<GenesisAddress, 3> kNotebookTipPointerTables{
+    0xC2716, 0xC2796, 0xC2816};
+constexpr std::size_t kNotebookTipTableEntryCount = 32;
 // ROM 0xD01C loads twenty labels through this longword table. The first
 // eight correspond to the attribute bytes at record +0x77..+0x7E; the final
 // twelve correspond to the skill bytes at +0x80..+0x85 and +0x87..+0x8C.

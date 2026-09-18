@@ -296,6 +296,9 @@ Current Run, Tips & Clues, and the three event-gated labels. The New Game
 initializer at `0x59C48` sets `FFFC2C`, so Contacts is visible in the fresh
 post-opening session; the native screen displays the exact `0xF2E2`
 no-current-run response.
+The 96 Tips & Clues source entries are also extracted from the three
+`0xC2716`/`0xC2796`/`0xC2816` pointer tables; their `FFFC30/34/38` filtering,
+page-count writer, and selected-text screen remain pending.
 Dismiss Runner now follows the source `0xC448` active-record enumeration: the
 native panel lists live non-current party records, starts on the extracted
 Abort row, and clears the selected record's active bit only after that runner

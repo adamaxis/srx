@@ -408,6 +408,13 @@ int main() {
            read_genesis_notebook_no_run_text(rom));
     assert((native_assets.notebook_event_gates ==
             std::array<std::uint8_t, 3>{1, 0, 0}));
+    const auto notebook_tips = read_genesis_notebook_tip_catalog(rom);
+    assert(notebook_tips.size() == 96U);
+    assert(notebook_tips[0].find("Michael's last credstick\ntransaction:") ==
+           0U);
+    assert(notebook_tips[32].find("Ilene is doing time") == 0U);
+    assert(notebook_tips[95].find("You have deleted the") == 0U);
+    assert(native_assets.notebook_tip_text == notebook_tips);
     const auto pack_path = std::filesystem::temp_directory_path() /
                            "shadowrun_native_port_assets_test.srna";
     write_native_asset_pack(pack_path.string(), native_assets);
@@ -447,6 +454,7 @@ int main() {
            native_assets.notebook_no_run_lines);
     assert(loaded_assets.notebook_event_gates ==
            native_assets.notebook_event_gates);
+    assert(loaded_assets.notebook_tip_text == native_assets.notebook_tip_text);
     assert(loaded_assets.field_event_mode_table ==
            native_assets.field_event_mode_table);
     assert(loaded_assets.field_areas.size() ==

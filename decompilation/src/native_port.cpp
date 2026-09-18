@@ -638,6 +638,7 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     notebook_labels_ = std::move(assets.notebook_labels);
     notebook_no_run_lines_ = std::move(assets.notebook_no_run_lines);
     notebook_event_gates_ = assets.notebook_event_gates;
+    notebook_tip_text_ = std::move(assets.notebook_tip_text);
     protagonist_archetype_records_ =
         std::move(assets.protagonist_archetype_records);
     field_initial_records_ = assets.initial_field_records;

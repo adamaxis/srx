@@ -40,6 +40,8 @@ constexpr std::size_t kNativeNotebookLabelCount = 6;
 // ROM 0xF2F6 writes the three 0x80-delimited lines at 0xC56E7 when there is
 // no active shadowrun. Leading spaces are source layout and are preserved.
 constexpr std::size_t kNativeNotebookNoRunLineCount = 3;
+// F9A4 selects one of three 32-entry pointer tables for Tips & Clues.
+constexpr std::size_t kNativeNotebookTipCount = 96;
 constexpr std::size_t kNativeAttributeCount = 8;
 constexpr std::size_t kNativeSkillCount = 12;
 constexpr std::size_t kNativeAttributeSkillAuxiliaryCount = 4;
@@ -426,6 +428,7 @@ struct NativePortAssets {
     // Contacts visible immediately after the opening. The other two rows
     // remain gated until their source event setters are ported.
     std::array<std::uint8_t, 3> notebook_event_gates{{1, 0, 0}};
+    std::array<std::string, kNativeNotebookTipCount> notebook_tip_text{};
 };
 
 // Native game code writes to this interface instead of issuing Genesis VDP
@@ -532,6 +535,11 @@ public:
     std::string_view notebook_no_run_line(std::size_t index) const {
         return index < notebook_no_run_lines_.size()
             ? std::string_view(notebook_no_run_lines_[index])
+            : std::string_view{};
+    }
+    std::string_view notebook_tip_text(std::size_t index) const {
+        return index < notebook_tip_text_.size()
+            ? std::string_view(notebook_tip_text_[index])
             : std::string_view{};
     }
     std::size_t pocket_secretary_selection() const {
@@ -988,6 +996,7 @@ private:
     std::array<std::string, kNativeNotebookNoRunLineCount>
         notebook_no_run_lines_{};
     std::array<std::uint8_t, 3> notebook_event_gates_{{1, 0, 0}};
+    std::array<std::string, kNativeNotebookTipCount> notebook_tip_text_{};
     bool pocket_secretary_message_visible_ = false;
     std::array<std::size_t, 2> dismiss_runner_candidate_records_{};
     std::size_t dismiss_runner_candidate_count_ = 0;
