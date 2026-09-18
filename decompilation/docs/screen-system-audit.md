@@ -112,10 +112,13 @@ searches the initialized roster for the next eligible active record. If no
 other record passes the flag tests, the source produces the action sound but
 leaves the controlled runner unchanged.
 
-Native status: movement, collision/event transitions, extracted area maps,
-walking animation state, Start entry, and no-eligible-runner C behavior are
-implemented. Recruited roster population and NPC/entity interaction systems
-remain incomplete.
+Native status: the reviewed player movement/collision path now follows the
+source `0x19D2` input-angle table, `0xB530` angle slew, `0xC002` fixed-point
+vectors, and `0xE7C8` probe. Extracted area maps, walking animation state, Start
+entry, and no-eligible-runner C behavior are present. Source camera transitions,
+the right-side runner/HUD entity presentation, recruited roster population, and
+NPC/entity interaction systems remain incomplete; the native build must not
+present this as a finished field loop.
 
 ### Command overview (`0x10D30`, `0x10F50`, `0x111E8`)
 
@@ -138,13 +141,19 @@ reads the active record's race, archetype, physical/mental values, active
 item, attack/defense tables, armor record, weapon/gun bars, five-state
 posture, and inventory cells.
 
+The five small command buttons are a separate source focus surface. ROM
+`0x11454` selects a 2x2 tile block from `0xCD3F2` for selectors `2..6` and
+writes it at x coordinates `128, 152, 176, 200, 224`, row `184`. That focus
+surface is distinct from the lower selected-command label and from the
+inventory cursor.
+
 Native status: source background geometry, record-derived overview fields,
-inventory boxes/icons/art, selected-cell overlays, source-derived attack and
-defense strips for the normal equipped-item branch, and command selector state
-are implemented. Magic and Pocket Secretary are still only their selected
-labels; their source handlers need a dedicated audit. The negative `+0x56`
-special attack branch and the field combat consumers of these values remain
-explicitly incomplete.
+inventory boxes/icons/art, source command-tab focus blocks, selected-cell
+equipment overlays, source-derived attack and defense strips for the normal
+equipped-item branch, and command selector state are implemented. Magic and
+Pocket Secretary are still only their selected labels; their source handlers
+need a dedicated audit. The negative `+0x56` special attack branch and the
+field combat consumers of these values remain explicitly incomplete.
 
 ### Inventory (`0x11506`, `0x11564`, `0x11592`, `0x11678`, `0x12148`)
 
@@ -155,8 +164,11 @@ Left/Right chooses the column. The selected item is read as
 weapon/gear equip toggle and armor branch that updates the record's equipped
 armor field; it is not a generic "check" action.
 
-Native status: cell geometry, cursor, extracted item icons/art, selected-item
-details, row/column state, and the source action loop are implemented. The
+Native status: cell geometry, the extracted 3x4 source cursor sprite from
+`0xD29F6`, extracted item icons/art, selected-item details, row/column state,
+and the source action loop are implemented. The cursor is composited after the
+tile-based item art and equipment overlays, matching the Genesis sprite
+priority; the equipment overlay is not reused as the cursor.
 first A/B edge enters the four-choice `0x11740` loop; the second A/B edge
 confirms its selected action. The native loop uses the source `Equip/Unequip`,
 `Discard`, `Trade`, `Cancel`, and medical `First Aid` labels. Equip/Unequip,
@@ -365,9 +377,9 @@ of a port.
 | Save/load | `0x59172` | Partial | Empty-slot result is covered; SRAM restore is pending |
 | Archetype selection | `0x59248`, `0x42B0` | Implemented | Only the three Joshua templates are selectable |
 | Opening | `0x59C5E` and timed groups | Partial | Text/timing/skip are present; animated art and music are pending |
-| Field movement | `0x3084`, `0x2B34`, `0xE7C8`, `0x5FDC`, `0x600E` | Partial | Movement, four-corner collision, eight directional two-frame states, and source timer classification are present; NPC/entity logic outside the reviewed player path remains pending |
+| Field movement | `0x3084`, `0x2B34`, `0xE7C8`, `0x5FDC`, `0x600E` | Partial | Reviewed player collision and animation path is present; movement step/timing, source camera transitions, right-side HUD/entity presentation, and NPC/entity logic remain pending |
 | Area transitions | `0x5A62`, `0x172CDC`, `0x20E48` | Partial | The reviewed mode-2 C0/event-0 tuple loads mode `0x14` and enters the source Stoker dialogue state; every building reaction and reverse transition is not |
-| Command overview | `0x10D30`, `0x10F50`, `0x111E8` | Partial | Normal overview and selector are present; Magic and remaining Pocket Secretary row handlers remain pending |
+| Command overview | `0x10D30`, `0x10F50`, `0x111E8`, `0x11454` | Partial | Normal overview, source command-tab focus blocks, and selector are present; Magic and remaining Pocket Secretary row handlers remain pending |
 | Inventory navigation | `0x11506`..`0x11678` | Implemented | Eight-cell cursor and source column/row semantics are covered |
 | Equipment action | `0x11740`..`0x118C6`, `0x12148`, `0x12168`..`0x125F8`, `0x12634`..`0x129FE` | Partial | Two-step source action loop, Equip/Unequip, armor, Discard, Trade, and First Aid target/effect/result paths are present; later item handlers remain |
 | Posture and bars | `0x119CE`, `0x11ABE`, `0x11AE4`, `0x12CEE` | Partial | Normal equipped-item attack/defense calculation is source-derived; special negative `+0x56` path and combat consumers are pending |

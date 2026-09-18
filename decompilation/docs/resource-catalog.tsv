@@ -8,8 +8,9 @@ game/field\tassets/game/field/mode2-map\t0x170102, 0x172C80, 0x166B82, 0x16D9A2,
 game/field\tassets/game/field/entities\t0x17708, 0x18252, entity tables\t0x5A62/0x5FDC projection and animation paths\tfield entity renderer and movement\tpartial native port
 game/field\tassets/game/field/hud\t0xD8316, 0xD92AA, 0xD92B6, 0xD9C96, 0xD9376\t0x17708/0x18252\tfield HUD and sidebar\tpending canonical extraction
 game/menu\tassets/game/menu/base.bmp\t0xCAB0C, 0xCD598, 0xCD838, 0xCD88C, 0xCD8BA, 0xCD48A, 0xCD570, 0xCD2C6, 0xCF134, 0x10F50\t0x10F50 and 0x1232 writers\tfield command menu renderer\textracted; screen audit pending
+game/menu\tassets/game/menu/command-focus\t0xCD3F2, 0xCAB0C, 0x11454\t0x11454 -> 0x1232 (2x2 block per selector 2..6)\tfield command-tab focus renderer\textracted into native asset pack; source coordinates verified
 game/menu\tassets/game/menu/font.bmp\t0xC1064, 0xB560\t0x1232 text writer\tfield menu text and labels\textracted; native consumer
-game/menu\tassets/game/menu/cursor.bmp\tmenu writer tables\t0x11136/0x11190 and cursor path\tfield menu selection cursor\tpartial native port
+game/menu\tassets/game/menu/cursor.bmp\t0xD29F6, 0xCAB0C\t0x11592 sprite list and 0x1232 pattern upload\tfield menu inventory selection cursor\textracted into native asset pack; source coordinates verified
 game/menu\tassets/game/menu/item-actions\t0xD1D94-0xD2022\t0x11740/0x11712/0x118C6/0x12298/0x1253E/0x12634/0x127B0/0x12836 action loops\tinventory action labels, First Aid target/result text, discard/trade confirmation, and result text\textracted from source table; Equip/Unequip, Discard, Trade, and First Aid native
 game/menu\tassets/game/menu/group-items.tsv\t0xC1471, 0xC25C4-0xC25FF\t0xC8C8/0xF312\tGroup Items empty message and fifteen FF-terminated catalog names\textracted; native empty-catalog screen and host catalog consumer
 game/menu\tassets/game/menu/pocket-secretary-cyberdeck.tsv\t0xE43D1-0xE4400\t0x18150 -> 0xC3E6/0xC0DA\tCyberdeck-unavailable feedback lines selected when FF018F bit 0 is clear\textracted; native no-deck feedback; Matrix path pending

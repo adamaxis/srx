@@ -553,22 +553,30 @@ int main() {
     assert(rom_shell.scene() == NativeScene::Field);
     assert(rom_shell.marker_x() == field_start_x);
 
+    const auto initial_world_x = rom_shell.field_world_x();
+    const auto initial_world_y = rom_shell.field_world_y();
     rom_shell.update(InputState{
         button_mask(Button::Right) | button_mask(Button::Down), 0});
-    assert(rom_shell.marker_x() == field_start_x + 2);
-    assert(rom_shell.marker_y() == 168);
-    assert(rom_shell.field_entity_state_selector() == 0x006C);
+    // The source does not snap the facing direction to the requested
+    // diagonal.  0xB530 advances +0x2E by 0x0800 first; the first C002
+    // vector is therefore the current direction's vector, not the host's
+    // requested pixel delta.
+    assert(rom_shell.field_world_x() == initial_world_x);
+    assert(rom_shell.field_world_y() < initial_world_y);
+    assert(rom_shell.field_entity_state_selector() == 0x0060);
     assert(rom_shell.field_entity_state_index() == 0);
     assert(rom_shell.field_entity_frame_index() == 0);
     assert(rom_shell.field_entity_screen_x() == rom_shell.marker_x());
     assert(rom_shell.field_entity_screen_y() == rom_shell.marker_y());
     rom_shell.render(screen);
-    const auto field_before_scroll = screen.pixels();
     const auto initial_camera_x = rom_shell.field_camera_x();
     for (int frame = 0; frame < 100; ++frame) {
         rom_shell.update(InputState{button_mask(Button::Right), 0});
     }
-    assert(rom_shell.marker_x() == 301);
+    // The source C002 movement vector is 0x28 fixed-point units (2.5
+    // pixels), and the angle slew settles on direction two (0x68 walking
+    // state). The runner is outside 0x5A62's strict host-visible x bound.
+    assert(!rom_shell.field_entity_visible());
     assert(rom_shell.field_entity_state_selector() == 0x0068);
     // Kind-3's 0x8002 walking lists classify their 0x76F0 source timing word
     // to multiplier 0x0010; the neighboring 0x0300 list word is not the
@@ -576,20 +584,10 @@ int main() {
     assert(rom_shell.field_entity_state_index() == 0);
     assert(rom_shell.field_entity_frame_index() == 0);
     assert(rom_shell.field_world_x() > initial_camera_x);
-    assert(rom_shell.field_camera_x() > initial_camera_x);
+    // 0x2B34/0x3074 load FFDDC6/FFDDC8 from the mode descriptor. The
+    // ordinary movement path does not rewrite those camera globals.
+    assert(rom_shell.field_camera_x() == initial_camera_x);
     rom_shell.render(screen);
-    bool background_scrolled = false;
-    for (std::int32_t y = 36; y < 204 && !background_scrolled; ++y) {
-        for (std::int32_t x = 0; x < 140; ++x) {
-            if (screen.pixel(x, y) !=
-                field_before_scroll[static_cast<std::size_t>(y) *
-                                     screen.width() + x]) {
-                background_scrolled = true;
-                break;
-            }
-        }
-    }
-    assert(background_scrolled);
     bool rejected = false;
     auto world_at_rejection = std::int32_t{};
     for (int frame = 0; frame < 1000; ++frame) {
@@ -651,8 +649,11 @@ int main() {
     assert(pack_shell.scene() == NativeScene::Field);
     assert(pack_shell.field_entity_visible());
     const auto pack_start_x = pack_shell.marker_x();
+    const auto pack_start_y = pack_shell.marker_y();
     pack_shell.update(InputState{button_mask(Button::Right), 0});
-    assert(pack_shell.marker_x() == pack_start_x + 2);
+    assert(pack_shell.marker_x() == pack_start_x);
+    assert(pack_shell.marker_y() < pack_start_y);
+    assert(pack_shell.field_entity_state_selector() == 0x0060);
     pack_shell.render(pack_screen);
     assert(pack_screen.presented_frames() == 1);
 

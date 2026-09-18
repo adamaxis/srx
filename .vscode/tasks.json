@@ -1,0 +1,155 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "CMake: Configure (Debug)",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--preset", "debug"],
+      "options": {
+        "cwd": "${workspaceFolder}/decompilation"
+      },
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "Shadowrun: Build Native (Debug)",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--build", "--preset", "debug-native"],
+      "options": {
+        "cwd": "${workspaceFolder}/decompilation"
+      },
+      "dependsOn": ["CMake: Configure (Debug)"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "Shadowrun: Build Qt Frontend (Debug)",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--build", "--preset", "debug-qt"],
+      "options": {
+        "cwd": "${workspaceFolder}/decompilation",
+        "env": {
+          "PATH": "C:\\Qt\\6.9.1\\mingw_64\\bin;C:\\msys64\\ucrt64\\bin;${env:PATH}"
+        }
+      },
+      "dependsOn": ["CMake: Configure (Qt Debug)"],
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "CMake: Configure (Qt Debug)",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--preset", "qt-debug"],
+      "options": {
+        "cwd": "${workspaceFolder}/decompilation"
+      },
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "Shadowrun: Build Tests (Debug)",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--build", "--preset", "debug-tests"],
+      "options": {
+        "cwd": "${workspaceFolder}/decompilation"
+      },
+      "dependsOn": ["CMake: Configure (Debug)"],
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "Shadowrun: Test (Debug)",
+      "type": "shell",
+      "command": "ctest",
+      "args": ["--preset", "debug"],
+      "options": {
+        "cwd": "${workspaceFolder}/decompilation"
+      },
+      "dependsOn": ["Shadowrun: Build Tests (Debug)"],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Shadowrun: Build Native (Release)",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--build", "--preset", "release-native"],
+      "options": {
+        "cwd": "${workspaceFolder}/decompilation"
+      },
+      "dependsOn": ["CMake: Configure (Release)"],
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "CMake: Configure (Release)",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--preset", "release"],
+      "options": {
+        "cwd": "${workspaceFolder}/decompilation"
+      },
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "Shadowrun: Run Native (Debug)",
+      "type": "process",
+      "command": "${workspaceFolder}/decompilation/build-debug/shadowrun_native.exe",
+      "options": {
+        "cwd": "${workspaceFolder}/decompilation/build-debug"
+      },
+      "dependsOn": ["Shadowrun: Build Native (Debug)"],
+      "presentation": {
+        "reveal": "never",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Shadowrun: Run Qt Frontend (Debug)",
+      "type": "process",
+      "command": "${workspaceFolder}/decompilation/build-qt-debug/shadowrun_qt.exe",
+      "options": {
+        "cwd": "${workspaceFolder}/decompilation/build-qt-debug",
+        "env": {
+          "PATH": "C:\\Qt\\6.9.1\\mingw_64\\bin;C:\\msys64\\ucrt64\\bin;${env:PATH}"
+        }
+      },
+      "dependsOn": ["Shadowrun: Build Qt Frontend (Debug)"],
+      "presentation": {
+        "reveal": "never",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

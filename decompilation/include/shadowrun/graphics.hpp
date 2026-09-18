@@ -420,6 +420,11 @@ std::array<RgbaImage, 3> decode_genesis_field_menu_runner_portraits(
     const std::vector<std::uint8_t>& rom);
 std::array<RgbaImage, 2> decode_genesis_field_menu_selected_cells(
     const std::vector<std::uint8_t>& rom);
+// Extract the five source focus blocks written by ROM 0x11454. Each block is
+// a 2x2 tile update from 0xCD3F2, one block per command tab (Clips through
+// Pocket Secretary); it is not a host-generated rectangle.
+std::array<RgbaImage, 5> decode_genesis_field_menu_command_focus(
+    const std::vector<std::uint8_t>& rom);
 RgbaImage decode_genesis_field_menu_cursor(
     const std::vector<std::uint8_t>& rom);
 std::array<RgbaImage, native::kNativeInventoryItemCount>

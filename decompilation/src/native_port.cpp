@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <array>
+#include <optional>
 #include <utility>
 
 namespace shadowrun::native {
@@ -187,13 +188,80 @@ std::uint16_t fixed_world_coordinate(std::int32_t pixels) {
 
 constexpr std::int32_t kGenesisVdpSpriteOrigin = 0x80;
 constexpr std::int32_t kFieldViewportWidth = kScreenWidth;
-constexpr std::int32_t kFieldViewportHeight = 168;
-constexpr std::int32_t kFieldScreenOriginY = 36;
+// The source field plane occupies the complete Genesis display. The old
+// native shell reserved a host-only header/footer, which moved every sprite
+// and made the camera disagree with the source projection.
+constexpr std::int32_t kFieldViewportHeight = kScreenHeight;
+constexpr std::int32_t kFieldScreenOriginY = 0;
 // ROM 0x5A62 accepts VDP X values strictly below 0x1AE. After removing the
 // 0x80 sprite origin, this is the last host pixel at which the record remains
 // in the direct projection window.
 constexpr std::int32_t kFieldEntityMaxHostX = 0x1AE -
                                                 kGenesisVdpSpriteOrigin - 1;
+
+// The five command tabs are part of the extracted base plane. The source
+// redraws their focus block separately from the selected command label.
+constexpr std::array<std::int32_t, 5> kFieldMenuCommandButtonX{{
+    128, 152, 176, 200, 224}};
+constexpr std::int32_t kFieldMenuCommandButtonY = 184;
+
+std::optional<std::uint16_t> source_heading_for_input(
+    std::int32_t delta_x, std::int32_t delta_y) {
+    // ROM 0x195C indexes the 16-entry table at 0x19D2 with the raw
+    // active-low D-pad nibble. InputState has already normalized the
+    // controller state, so rebuild that nibble from the held directions.
+    std::uint8_t source_mask = 0;
+    if (delta_y < 0) {
+        source_mask |= 0x01U; // Up
+    } else if (delta_y > 0) {
+        source_mask |= 0x02U; // Down
+    }
+    if (delta_x < 0) {
+        source_mask |= 0x04U; // Left
+    } else if (delta_x > 0) {
+        source_mask |= 0x08U; // Right
+    }
+
+    switch (source_mask) {
+    case 0x01U: return 0x0000U;
+    case 0x02U: return 0x8000U;
+    case 0x04U: return 0xC000U;
+    case 0x08U: return 0x4000U;
+    case 0x05U: return 0xE000U;
+    case 0x06U: return 0xA000U;
+    case 0x09U: return 0x2000U;
+    case 0x0AU: return 0x6000U;
+    default: return std::nullopt;
+    }
+}
+
+std::size_t source_direction_index(std::uint16_t heading) {
+    // This is the repeated ROM idiom at 0xBABC, 0xB39A, and 0xB574:
+    // ROL.W #3, compensate a negative signed result, then retain 3 bits.
+    auto rotated = static_cast<std::uint16_t>(
+        static_cast<std::uint16_t>(heading << 3U) |
+        static_cast<std::uint16_t>(heading >> 13U));
+    if (static_cast<std::int16_t>(rotated) < 0) {
+        rotated = static_cast<std::uint16_t>(rotated + 1U);
+    }
+    return static_cast<std::size_t>(rotated & 0x0007U);
+}
+
+std::uint16_t slew_source_heading(std::uint16_t current,
+                                  std::uint16_t target) {
+    // Direct host form of 0xB530. The unsigned comparisons intentionally
+    // preserve the original wraparound behavior at the 0/0xFFFF boundary.
+    const auto difference = static_cast<std::uint16_t>(current - target);
+    if (current == target) {
+        return current;
+    }
+    if (static_cast<std::int16_t>(difference) < 0) {
+        return difference >= 0xF800U
+            ? target : static_cast<std::uint16_t>(current + 0x0800U);
+    }
+    return difference < 0x0800U
+        ? target : static_cast<std::uint16_t>(current - 0x0800U);
+}
 
 // The opening is not a menu page carousel.  New Game enters ROM 0x59C5E,
 // which runs the three timed presentation routines 0x59D7C, 0x5AA96, and
@@ -611,6 +679,7 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     startup_cursor_ = std::move(assets.startup_cursor);
     field_menu_runner_portraits_ = std::move(assets.field_menu_runner_portraits);
     field_menu_selected_cells_ = std::move(assets.field_menu_selected_cells);
+    field_menu_command_focus_ = std::move(assets.field_menu_command_focus);
     field_menu_cursor_ = std::move(assets.field_menu_cursor);
     field_menu_item_art_ = std::move(assets.field_menu_item_art);
     field_menu_inventory_icons_ = std::move(assets.field_menu_inventory_icons);
@@ -771,6 +840,8 @@ void NativePortShell::reset_field_state() {
     field_entity_.state_selector = 0;
     field_entity_.state_index = 0;
     field_entity_.animation_accumulator = 0;
+    field_entity_heading_current_ = 0;
+    field_entity_heading_target_ = 0;
     select_field_entity_idle(0);
     refresh_field_view();
     refresh_field_entity_projection();
@@ -828,6 +899,8 @@ bool NativePortShell::load_field_area(std::uint16_t mode_id) {
     field_entity_.state_selector = 0;
     field_entity_.state_index = 0;
     field_entity_.animation_accumulator = 0;
+    field_entity_heading_current_ = 0;
+    field_entity_heading_target_ = 0;
     select_field_entity_idle(0);
     move_rejected_ = false;
     refresh_field_view();
@@ -1164,25 +1237,15 @@ void NativePortShell::update_field_entity_direction(
         return;
     }
 
-    // ROM 0xBABC probes the eight signed vectors at 0xC002. Their ordinal is
-    // also the byte-addressed state-table selector consumed by 0x600E, so
-    // match the host input vector against the extracted table rather than
-    // duplicating its directional order in the frontend.
-    const auto sign = [](std::int32_t value) {
-        return value < 0 ? -1 : value > 0 ? 1 : 0;
-    };
-    const auto desired_x = sign(delta_x);
-    const auto desired_y = sign(delta_y);
-    std::size_t direction = 0;
-    for (std::size_t index = 0; index < field_direction_table_.size();
-         ++index) {
-        const auto& vector = field_direction_table_[index];
-        if (sign(vector[0]) == desired_x && sign(vector[1]) == desired_y) {
-            direction = index;
-            break;
-        }
+    const auto requested_heading = source_heading_for_input(delta_x, delta_y);
+    if (!requested_heading) {
+        return;
     }
-    field_entity_direction_ = direction;
+    field_entity_heading_target_ = *requested_heading;
+    field_entity_heading_current_ = slew_source_heading(
+        field_entity_heading_current_, field_entity_heading_target_);
+    field_entity_direction_ = source_direction_index(
+        field_entity_heading_current_) % field_direction_table_.size();
 }
 
 void NativePortShell::select_field_entity_idle(std::size_t direction) {
@@ -3127,24 +3190,28 @@ void NativePortShell::update(const InputState& input) {
         return;
     }
 
-    constexpr std::int32_t kSpeed = 2;
-    auto delta_x = 0;
-    auto delta_y = 0;
-    if (input.is_held(Button::Up)) {
-        delta_y -= kSpeed;
+    // ROM 0x195C reduces the D-pad to one of eight valid source nibbles.
+    // Opposing directions are not a zero-length movement; they produce the
+    // source -1 sentinel and leave the entity in its current state.
+    auto input_delta_x = 0;
+    auto input_delta_y = 0;
+    if (input.is_held(Button::Left) && !input.is_held(Button::Right)) {
+        input_delta_x = -1;
+    } else if (input.is_held(Button::Right) && !input.is_held(Button::Left)) {
+        input_delta_x = 1;
     }
-    if (input.is_held(Button::Down)) {
-        delta_y += kSpeed;
+    if (input.is_held(Button::Up) && !input.is_held(Button::Down)) {
+        input_delta_y = -1;
+    } else if (input.is_held(Button::Down) && !input.is_held(Button::Up)) {
+        input_delta_y = 1;
     }
-    if (input.is_held(Button::Left)) {
-        delta_x -= kSpeed;
+    const auto attempted_movement = source_heading_for_input(
+        input_delta_x, input_delta_y).has_value();
+    if (attempted_movement && !field_direction_table_.empty()) {
+        // This updates +0x34, advances +0x2E through the source 0xB530
+        // slew, and selects the same C002 vector used by 0xB77E.
+        update_field_entity_direction(input_delta_x, input_delta_y);
     }
-    if (input.is_held(Button::Right)) {
-        delta_x += kSpeed;
-    }
-    const auto attempted_movement = delta_x != 0 || delta_y != 0;
-    const auto requested_delta_x = delta_x;
-    const auto requested_delta_y = delta_y;
     if (input.was_pressed(Button::Start)) {
         action_flash_frames_ = 0;
         if (!field_map_pixels_.empty()) {
@@ -3167,14 +3234,17 @@ void NativePortShell::update(const InputState& input) {
         ++action_count_;
     }
     move_rejected_ = false;
-    if (!field_map_pixels_.empty() &&
-        (delta_x != 0 || delta_y != 0)) {
+    auto delta_x = input_delta_x;
+    auto delta_y = input_delta_y;
+    if (!field_map_pixels_.empty() && attempted_movement) {
+        const auto& movement_vector = field_direction_table_[
+            field_entity_direction_ % field_direction_table_.size()];
         const auto candidate_x = static_cast<std::uint16_t>(
             static_cast<std::int32_t>(field_entity_.world_x_fixed) +
-            delta_x * 16);
+            movement_vector[0]);
         const auto candidate_y = static_cast<std::uint16_t>(
             static_cast<std::int32_t>(field_entity_.world_y_fixed) +
-            delta_y * 16);
+            movement_vector[1]);
         const auto candidate_collision = terrain::probe(
             field_terrain_, candidate_x, candidate_y, true);
         field_collision_ = candidate_collision;
@@ -3228,9 +3298,12 @@ void NativePortShell::update(const InputState& input) {
             field_world_x_ = static_cast<std::int32_t>(candidate_x >> 4U);
             field_world_y_ = static_cast<std::int32_t>(candidate_y >> 4U);
         }
-    } else if (field_map_pixels_.empty()) {
-        marker_x_ += delta_x;
-        marker_y_ += delta_y;
+    } else if (field_map_pixels_.empty() && attempted_movement) {
+        // Bootstrap has no extracted field descriptor. Keep its diagnostic
+        // marker moving, but do not let that fallback define the real field
+        // movement path above.
+        marker_x_ += input_delta_x * 2;
+        marker_y_ += input_delta_y * 2;
         marker_x_ = std::clamp(marker_x_, 8,
                                static_cast<std::int32_t>(kScreenWidth) - 16);
         marker_y_ = std::clamp(marker_y_, 48,
@@ -3240,7 +3313,6 @@ void NativePortShell::update(const InputState& input) {
         !field_map_pixels_.empty() && attempted_movement &&
         !move_rejected_ && (delta_x != 0 || delta_y != 0);
     if (attempted_movement) {
-        update_field_entity_direction(requested_delta_x, requested_delta_y);
         if (movement_accepted) {
             const auto animation = std::find_if(
                 field_entity_animations_.begin(),
@@ -3271,25 +3343,12 @@ void NativePortShell::update(const InputState& input) {
     }
     update_field_entity_animation(movement_accepted);
     if (!field_map_pixels_.empty()) {
-        // The direct 0x5A62 result is a VDP coordinate. Keep the decoded map
-        // in the same top-left world space and shift the camera only after
-        // the entity would leave the native viewport.
-        const auto entity_x = static_cast<std::int32_t>(
-            field_entity_.world_x_fixed >> 4U);
-        const auto entity_y = static_cast<std::int32_t>(
-            field_entity_.world_y_fixed >> 4U);
-        const auto screen_x = entity_x - field_camera_x_;
-        const auto screen_y = entity_y - field_camera_y_;
-        if (screen_x < 0) {
-            field_camera_x_ = entity_x;
-        } else if (screen_x > kFieldEntityMaxHostX) {
-            field_camera_x_ = entity_x - kFieldEntityMaxHostX;
-        }
-        if (screen_y < 0) {
-            field_camera_y_ = entity_y;
-        } else if (screen_y > kFieldViewportHeight) {
-            field_camera_y_ = entity_y - kFieldViewportHeight;
-        }
+        // The direct 0x5A62 result is a VDP coordinate. FFDDC6/FFDDC8 are
+        // loaded from the mode descriptor by 0x2B34/0x3074 and consumed by
+        // projection and tilemap rendering. The reviewed ordinary field
+        // loop does not follow the controlled entity by rewriting them;
+        // keep the descriptor camera until a source mode/transition changes
+        // it.
         refresh_field_view();
         refresh_field_entity_projection();
         marker_x_ = field_entity_screen_x();
@@ -3550,18 +3609,10 @@ void NativePortShell::render(ScreenWriter& screen) const {
         // The field background is the ROM's mode-2 map translated into a host
         // RGBA viewport. NativeFieldEntity is composited after the terrain,
         // matching the ROM's entity/object ordering at this boundary.
+        // 0x3084/0x1406 leave the map plane at the native display origin.
+        // Do not paint a host-only title bar over the first map rows.
         screen.clear({0x04, 0x08, 0x14, 0xFF});
-        screen.fill_rect(0, 0, kScreenWidth, 34,
-                         {0x12, 0x20, 0x38, 0xFF});
-        screen.fill_rect(0, 34, kScreenWidth, 2,
-                         {0x00, 0xA8, 0xC8, 0xFF});
-        screen.write_text(12, 8, "SHADOWRUN FIELD", 2,
-                          {0xE8, 0xF4, 0xFF, 0xFF});
-        screen.write_text(204, 10,
-                          "MODE " + std::to_string(field_mode_), 1,
-                          {0xA0, 0xE8, 0xF8, 0xFF});
-
-        screen.blit_rgba(0, 36, field_view_width_, field_view_height_,
+        screen.blit_rgba(0, 0, field_view_width_, field_view_height_,
                          field_view_pixels_);
 
         const NativeEntityFrame* frame = nullptr;
@@ -3904,18 +3955,18 @@ void NativePortShell::render(ScreenWriter& screen) const {
                     selected_slot < field_entity_.inventory_item_codes.size()
                 ? field_entity_.inventory_item_codes[selected_slot]
                 : 0U;
-            if (field_menu_selection_ < 2U) {
-                // ROM 0x11592 emits D29F6 before 0x11624 redraws the cell
-                // layers. The 0x80 sprite origin converts its first
-                // coordinate pair to (12,116), then the source's 0x28/0x18
-                // selector strides move it with the selected slot.
-                if (!field_menu_cursor_.pixels.empty()) {
+            if (field_menu_selection_ >= 2U && field_menu_selection_ <= 6U) {
+                // ROM 0x11454 writes a source 2x2 tile block at the selected
+                // tab's button coordinate. Its x destinations are 24 pixels
+                // apart; the extracted block supplies the real white/blue
+                // focus treatment seen on the Genesis screen.
+                const auto focus_index = field_menu_selection_ - 2U;
+                const auto& focus = field_menu_command_focus_[focus_index];
+                if (!focus.pixels.empty()) {
                     screen.blit_rgba(
-                        12 + static_cast<std::int32_t>(
-                                 field_menu_selection_ * 40U),
-                        116 + static_cast<std::int32_t>(field_menu_row_ * 24U),
-                        field_menu_cursor_.width, field_menu_cursor_.height,
-                        field_menu_cursor_.pixels);
+                        kFieldMenuCommandButtonX[focus_index],
+                        kFieldMenuCommandButtonY,
+                        focus.width, focus.height, focus.pixels);
                 }
             }
             // 0x11624 draws the light cell border only for source equipment:
@@ -3965,6 +4016,23 @@ void NativePortShell::render(ScreenWriter& screen) const {
                     screen.blit_rgba(kInventoryIconPositions[slot][0],
                                      kInventoryIconPositions[slot][1],
                                      icon.width, icon.height, icon.pixels);
+                }
+            }
+            if (field_menu_selection_ < 2U) {
+                // ROM 0x11592 creates this selector as a sprite. Its source
+                // coordinates are (0x8C,0xF4), which become (12,116) after
+                // the Genesis 0x80 sprite origin is adapted to host pixels;
+                // the source strides are 0x28 horizontally and 0x18
+                // vertically. Keep it above tile-based item art and
+                // selected-equipment overlays, as the VDP sprite is above
+                // those name-table layers.
+                if (!field_menu_cursor_.pixels.empty()) {
+                    screen.blit_rgba(
+                        12 + static_cast<std::int32_t>(
+                                 field_menu_selection_ * 40U),
+                        116 + static_cast<std::int32_t>(field_menu_row_ * 24U),
+                        field_menu_cursor_.width, field_menu_cursor_.height,
+                        field_menu_cursor_.pixels);
                 }
             }
             if (field_menu_selection_ < 2U) {
@@ -4397,15 +4465,9 @@ void NativePortShell::render(ScreenWriter& screen) const {
             screen.write_text(36, 181, "ARROWS SELECT  START RETURN", 1,
                               {0x90, 0xB8, 0xC8, 0xFF});
         } else {
-            screen.fill_rect(0, 204, kScreenWidth, 20,
-                             {0x02, 0x05, 0x0C, 0xFF});
-            screen.write_text(8, 208, "ARROWS MOVE ENTITY  C SWITCH RUNNER", 1,
-                              {0xE8, 0xF4, 0xFF, 0xFF});
-            screen.write_text(8, 216, "ENTER COMMANDS  Z/X PENDING", 1,
-                              {0x90, 0xB8, 0xC8, 0xFF});
+            // Field mode is the map/object plane plus its source HUD. The
+            // old host-only control legend did not exist in the cartridge.
         }
-        screen.write_text(226, 216, std::to_string(action_count_), 1,
-                          {0xF0, 0xC0, 0x50, 0xFF});
     } else {
         screen.clear({0x06, 0x08, 0x18, 0xFF});
         screen.fill_rect(0, 0, kScreenWidth, 34, {0x16, 0x24, 0x48, 0xFF});

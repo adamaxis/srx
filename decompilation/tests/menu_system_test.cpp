@@ -222,6 +222,16 @@ void test_field_menu_behavior_and_rendering(
     assert(has_image_pixel(screen, assets.field_menu_status_bars[2],
                           176, 168));
 
+    // Selectors 2..6 are the five small command tabs in the source panel.
+    // The selected command label is not the complete visual selector.
+    press(shell, Button::Left);
+    assert(shell.field_menu_selection() == 5U);
+    shell.render(screen);
+    assert(has_image_pixel(screen, assets.field_menu_command_focus[3],
+                           200, 184));
+    press(shell, Button::Right);
+    assert(shell.field_menu_selection() == 6U);
+
     // 0x114A0 wraps all seven top-level command values. 0x11506 enters a
     // separate posture focus for values 2..6; it does not trap the cursor.
     press(shell, Button::Right);

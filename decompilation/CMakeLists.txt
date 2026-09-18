@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
 project(shadowrun_rom_analysis LANGUAGES CXX)
 
+option(SHADOWRUN_QT_FRONTEND
+       "Build the Qt Widgets native frontend (requires Qt 6 Widgets)" OFF)
+
 enable_testing()
 
 set(CMAKE_CXX_STANDARD 17)
@@ -72,6 +75,19 @@ if (WIN32)
         src/native_main.cpp
     )
     target_link_libraries(shadowrun_native PRIVATE shadowrun_port user32 gdi32)
+
+    if (SHADOWRUN_QT_FRONTEND)
+        find_package(Qt6 REQUIRED COMPONENTS Widgets)
+        # Keep the normal MinGW entry point. The installed Qt kit is static
+        # and its Windows GUI entry-point archive targets a different MinGW
+        # CRT; the QWidget itself is still a normal native window.
+        add_executable(shadowrun_qt
+            src/qt_native_main.cpp
+        )
+        target_link_libraries(shadowrun_qt PRIVATE
+            shadowrun_port Qt6::Widgets
+        )
+    endif()
 endif()
 
 if (MSVC)

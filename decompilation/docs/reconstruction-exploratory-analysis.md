@@ -428,6 +428,25 @@ then dispatches the event/reaction state. A blocked movement can still carry a
 raw interaction byte. Replacing that with a center-cell collision check changes
 doorway behavior and is `REJECTED`.
 
+The controller and step path are now pinned down rather than approximated:
+
+- `0x195C` maps the normalized D-pad nibble through `0x19D2` to one of eight
+  16-bit target angles; opposing/invalid combinations return `0xFFFF`.
+- `0xB530` slews record `+0x2E` toward `+0x34` in `0x0800` increments, with
+  the source's unsigned wrap comparisons.
+- `0xBABC`/`0xB77E` convert the current angle to an ordinal and add the signed
+  fixed-point vector pair at `0xC002` before calling `0xB48C`/`0xE7C8`.
+- `0xBBE4` commits the accepted D5/D6 position; a rejected step leaves the
+  record coordinates unchanged while the raw terrain result remains available
+  to the event path.
+
+The native field loop now follows those angle, vector, and fixed-point rules.
+The descriptor camera remains fixed during ordinary movement because the only
+reviewed camera writes are the descriptor/transition paths at `0x2B34` and
+`0x3074`; the right-hand HUD/entity panel and transition-specific camera writes
+are still separate work items. This is a source-derived movement slice, not a
+claim that field presentation is complete.
+
 ### Walking animation
 
 Walking is driven by source direction/state tables, not a host “move one frame

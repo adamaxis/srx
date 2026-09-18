@@ -31,6 +31,20 @@
       }
     },
     {
+      "name": "qt-debug",
+      "displayName": "Debug Qt Widgets (MSYS2 UCRT64)",
+      "description": "Debug build of the QWidget framebuffer frontend using the installed Qt 6 MinGW kit.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-qt-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_COMPILER": "C:/msys64/ucrt64/bin/gcc.exe",
+        "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe",
+        "SHADOWRUN_QT_FRONTEND": "ON",
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.9.1/mingw_64"
+      }
+    },
+    {
       "name": "msvc-debug",
       "displayName": "Debug (MSVC)",
       "description": "Debug build using Visual Studio 2022.",
@@ -68,6 +82,12 @@
       "name": "debug-all",
       "displayName": "Build All (Debug)",
       "configurePreset": "debug"
+    },
+    {
+      "name": "debug-qt",
+      "displayName": "Build Qt Widgets (Debug)",
+      "configurePreset": "qt-debug",
+      "targets": ["shadowrun_qt"]
     },
     {
       "name": "release-native",

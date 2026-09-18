@@ -363,6 +363,9 @@ struct NativePortAssets {
     // cell. They remain separate because the source chooses them by the
     // selected display-state pair, not by a host highlight color.
     std::array<NativeImage, 2> field_menu_selected_cells{};
+    // ROM 0x11454 writes one source 2x2 focus block over the selected small
+    // command button. The five entries correspond to selectors 2..6.
+    std::array<NativeImage, 5> field_menu_command_focus{};
     // ROM 0x11592 emits the 3x4-tile selector sprite from D29F6. It is kept
     // as a transparent host image and positioned from the same 0x28/0x18
     // selector strides as the source routine.
@@ -956,6 +959,7 @@ private:
     NativeImage startup_cursor_{};
     std::array<NativeImage, 3> field_menu_runner_portraits_{};
     std::array<NativeImage, 2> field_menu_selected_cells_{};
+    std::array<NativeImage, 5> field_menu_command_focus_{};
     NativeImage field_menu_cursor_{};
     std::array<NativeImage, kNativeInventoryItemCount> field_menu_item_art_{};
     std::array<std::array<NativeImage, 2>, kNativeInventoryItemCount>
@@ -1009,6 +1013,11 @@ private:
     // active; keeping that distinction prevents an idle runner from showing
     // a walking pose before the first accepted step.
     std::size_t field_entity_direction_ = 0;
+    // ROM +0x2E/+0x34 are the current and requested facing angles. They are
+    // runtime state, not extracted graphics data: 0xB530 slews the current
+    // angle toward the requested angle before 0xB77E consumes its C002 vector.
+    std::uint16_t field_entity_heading_current_ = 0;
+    std::uint16_t field_entity_heading_target_ = 0;
     bool field_entity_walking_ = false;
     std::array<NativeInventoryItem, kNativeInventoryItemCount>
         inventory_items_{};

@@ -154,9 +154,11 @@ fixed-point field-record pairs at `+0x42..+0x4C`, which ROM
 `0x2B34` copies into the first three `0x100`-byte records. The decoder
 translates those records, palette attributes, and flips into a 1920x1344 host
 RGBA map and the native shell presents a top-left-camera viewport through
-`ScreenWriter`. Directional input now advances the first recovered field
-record instead of a presentation-only marker, so the field scrolls over the
-recovered map using the same world origin as the direct projection path. The
+`ScreenWriter`. Directional input now follows the reviewed native path: the
+`0x19D2` D-pad table selects a target angle, `0xB530` slews the current angle,
+and `0xB77E` applies the signed fixed-point vector from `0xC002` before the
+`0xE7C8` probe. The native shell advances the first recovered field record
+using the same world origin as the direct projection path. The
 field loop's reviewed raw `0x2000` dispatch to `0x391A` is represented by the
 native C edge: it selects the next of the three initialized records and
 retains each selected record's fixed-point position. This is a controlled
@@ -168,8 +170,10 @@ rebuilds its 101 sentinel-terminated rectangles into a 64x64 host status
 grid, retaining each status byte for native movement and collision. The native
 shell now drives record zero from the first `0x2B34` coordinate pair and probes
 the candidate position at all four `0xE8A0` corner offsets before committing a
-move. Blocked candidates remain in place, while the camera follows the record
-only after it reaches the reviewed projection window. The renderer-independent
+move. Blocked candidates remain in place. Ordinary movement keeps the camera
+from the active descriptor; camera updates belong to the reviewed
+`0x2B34`/`0x3074` setup and transition paths rather than an invented host
+follow rule. The renderer-independent
 `terrain::probe` ports the direct `0xE7C8` bounds/status path and its
 `0xE8A0/0xE9EE/0xEA36/0xEAD2` helpers over that host grid.
 

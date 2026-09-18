@@ -387,6 +387,11 @@ int main() {
                .position.world_x_fixed == 0x5A00);
     assert(native_assets.field_areas[2].initial_field_records[0]
                .position.world_y_fixed == 0x0800);
+    for (const auto& focus : native_assets.field_menu_command_focus) {
+        assert(focus.width == 16U);
+        assert(focus.height == 16U);
+        assert(!focus.pixels.empty());
+    }
     assert(native_assets.group_item_names[0] == "Prototype Cyber-heart");
     assert(native_assets.group_item_names[14] == "Ork Armband");
     assert(native_assets.cyberdeck_unavailable_lines[0] == " You do not have");
@@ -434,6 +439,27 @@ int main() {
     assert(loaded_assets.title_scene.height == native_assets.title_scene.height);
     assert(loaded_assets.title_scene.pixels.size() ==
            native_assets.title_scene.pixels.size());
+    for (std::size_t index = 0;
+         index < native_assets.field_menu_command_focus.size(); ++index) {
+        assert(loaded_assets.field_menu_command_focus[index].width ==
+               native_assets.field_menu_command_focus[index].width);
+        assert(loaded_assets.field_menu_command_focus[index].height ==
+               native_assets.field_menu_command_focus[index].height);
+        assert(loaded_assets.field_menu_command_focus[index].pixels.size() ==
+               native_assets.field_menu_command_focus[index].pixels.size());
+        for (std::size_t pixel = 0;
+             pixel < native_assets.field_menu_command_focus[index].pixels.size();
+             ++pixel) {
+            const auto& loaded =
+                loaded_assets.field_menu_command_focus[index].pixels[pixel];
+            const auto& native =
+                native_assets.field_menu_command_focus[index].pixels[pixel];
+            assert(loaded.red == native.red);
+            assert(loaded.green == native.green);
+            assert(loaded.blue == native.blue);
+            assert(loaded.alpha == native.alpha);
+        }
+    }
     assert(loaded_assets.field_map.width == native_assets.field_map.width);
     assert(loaded_assets.field_map.height == native_assets.field_map.height);
     assert(loaded_assets.field_map.pixels.size() ==

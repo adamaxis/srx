@@ -822,6 +822,13 @@ native::NativePortAssets decode_genesis_native_assets(
             selected_cells[index].width, selected_cells[index].height,
             selected_cells[index].pixels};
     }
+    const auto command_focus =
+        decode_genesis_field_menu_command_focus(rom);
+    for (std::size_t index = 0; index < command_focus.size(); ++index) {
+        assets.field_menu_command_focus[index] = {
+            command_focus[index].width, command_focus[index].height,
+            command_focus[index].pixels};
+    }
     const auto field_menu_cursor = decode_genesis_field_menu_cursor(rom);
     assets.field_menu_cursor = {
         field_menu_cursor.width, field_menu_cursor.height,
@@ -1129,7 +1136,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 34);
+    write_u16(output, 35);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     for (const auto& title_frame : assets.title_animation_frames) {
@@ -1167,6 +1174,9 @@ void write_native_asset_pack(const std::string& path,
     }
     for (const auto& selected_cell : assets.field_menu_selected_cells) {
         write_native_image(output, selected_cell);
+    }
+    for (const auto& command_focus : assets.field_menu_command_focus) {
+        write_native_image(output, command_focus);
     }
     write_native_image(output, assets.field_menu_cursor);
     for (const auto& item_art : assets.field_menu_item_art) {
@@ -1534,7 +1544,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 34U)) {
+        (version < 2U || version > 35U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -1587,6 +1597,11 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
             if (version >= 14U) {
                 for (auto& selected_cell : assets.field_menu_selected_cells) {
                     selected_cell = read_native_image(input);
+                }
+                if (version >= 35U) {
+                    for (auto& command_focus : assets.field_menu_command_focus) {
+                        command_focus = read_native_image(input);
+                    }
                 }
                 if (version >= 15U) {
                     assets.field_menu_cursor = read_native_image(input);
@@ -2866,6 +2881,36 @@ std::array<RgbaImage, 2> decode_genesis_field_menu_selected_cells(
             rom, pattern_vram, kOverlayOffsets[index], 5U, 4U, palette);
     }
     return overlays;
+}
+
+std::array<RgbaImage, 5> decode_genesis_field_menu_command_focus(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kPatternStreamOffset = 0xCAB0CU;
+    constexpr std::size_t kPatternVramOffset = 0x1E20U;
+    // 0x11454 receives A1=0xCD3F2 for the command-tab selector. It advances
+    // by (selector - 2) * 8 bytes and writes a 2x2 block through 0x1232.
+    constexpr std::size_t kFocusTableOffset = 0xCD3F2U;
+    constexpr std::size_t kFocusCount = 5U;
+    constexpr std::size_t kFocusWidth = 2U;
+    constexpr std::size_t kFocusHeight = 2U;
+    const auto pattern_vram = decode_genesis_1530_vram(
+        rom, kPatternStreamOffset, kPatternVramOffset);
+    const auto palette = read_genesis_command_palette_set(rom);
+
+    std::array<RgbaImage, kFocusCount> focus{};
+    for (std::size_t index = 0; index < focus.size(); ++index) {
+        focus[index] = decode_genesis_menu_name_table_block(
+            rom, pattern_vram,
+            kFocusTableOffset + index * kFocusWidth * kFocusHeight * 2U,
+            kFocusWidth, kFocusHeight, palette);
+        // The 0x1232 writer uses color zero as an opaque name-table pixel for
+        // this block. Preserve that exact source composition rather than
+        // treating it as a transparent sprite overlay.
+        for (auto& pixel : focus[index].pixels) {
+            pixel.alpha = 255U;
+        }
+    }
+    return focus;
 }
 
 RgbaImage decode_genesis_field_menu_cursor(

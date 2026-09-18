@@ -1,0 +1,51 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Shadowrun Native (Debug)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/decompilation/build-debug/shadowrun_native.exe",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}/decompilation/build-debug",
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "miDebuggerPath": "C:/msys64/ucrt64/bin/gdb.exe",
+      "preLaunchTask": "Shadowrun: Build Native (Debug)",
+      "setupCommands": [
+        {
+          "description": "Enable GDB pretty-printing",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    },
+    {
+      "name": "Shadowrun Qt Frontend (Debug)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/decompilation/build-qt-debug/shadowrun_qt.exe",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}/decompilation/build-qt-debug",
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "miDebuggerPath": "C:/msys64/ucrt64/bin/gdb.exe",
+      "preLaunchTask": "Shadowrun: Build Qt Frontend (Debug)",
+      "environment": [
+        {
+          "name": "PATH",
+          "value": "C:\\Qt\\6.9.1\\mingw_64\\bin;C:\\msys64\\ucrt64\\bin;${env:PATH}"
+        }
+      ],
+      "setupCommands": [
+        {
+          "description": "Enable GDB pretty-printing",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    }
+  ]
+}
