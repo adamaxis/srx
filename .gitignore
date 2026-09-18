@@ -14,5 +14,14 @@
 /decompilation/assets/**/*.jpg
 /decompilation/assets/native/*.srna
 
+# Local screenshot and raw listing diagnostics are disposable analysis output,
+# not reconstructed game resources or source.
+/*.bmp
+/decompilation/*.bmp
+/decompilation/*.png
+/decompilation/*.jpg
+/decompilation/*.txt
+/decompilation/*.log
+
 # Local IDE state is machine-specific.
 /.vscode/
