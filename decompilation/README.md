@@ -183,8 +183,9 @@ is carried into native typed state.
 The top-level Clips command now enters a native `ClipsMenu` corresponding to
 ROM `0x11B58`. It carries the active record's `+0x4E` ammunition and `+0x4F`
 available-clip values, cycles the reviewed selectors `2..5`, and preserves the
-`0x12062` no-clips gate. The remaining reload/recipient quantity mutations
-remain isolated behind that typed dispatch boundary.
+`0x12062` no-clips gate. The source nested Trade loop now covers recipient
+cycling, quantity wrapping, and clip transfer; positive Reload and Distribute
+mutations remain isolated behind that typed dispatch boundary.
 
 Inventory Trade is now ported from `0x12836`/`0x129FE`. The native action path
 rejects source magic/special codes `0x17..0x2B`, finds the first eligible party

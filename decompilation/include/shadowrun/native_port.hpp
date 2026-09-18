@@ -578,6 +578,16 @@ public:
     std::string_view clips_action_message() const {
         return clips_action_message_;
     }
+    bool clips_trade_menu_open() const { return clips_trade_active_; }
+    std::size_t clips_trade_menu_selection() const {
+        return clips_trade_menu_selection_;
+    }
+    std::size_t clips_trade_recipient_record() const {
+        return clips_trade_recipient_record_;
+    }
+    std::uint8_t clips_trade_quantity() const {
+        return clips_trade_quantity_;
+    }
     std::uint8_t field_ammo_rounds() const {
         return field_entity_.ammo_rounds;
     }
@@ -651,6 +661,10 @@ public:
     std::uint8_t field_record_mental_value(std::size_t record) const {
         return record < field_entity_records_.size()
             ? field_entity_records_[record].mental_value : 0;
+    }
+    std::uint8_t field_record_ammo_clips(std::size_t record) const {
+        return record < field_entity_records_.size()
+            ? field_entity_records_[record].ammo_clips : 0;
     }
     std::uint8_t field_equipped_armor_index() const {
         return field_entity_.equipped_armor_index;
@@ -761,6 +775,8 @@ private:
     void discard_selected_inventory_item();
     void open_clips_menu();
     void update_clips_menu(const InputState& input);
+    void open_clips_trade();
+    void update_clips_trade(const InputState& input);
     void open_cyberware_menu();
     void update_cyberware_menu(const InputState& input);
     void open_attributes_menu();
@@ -934,6 +950,13 @@ private:
     std::uint8_t clips_action_message_frames_ = 0;
     std::string clips_action_message_;
     bool clips_out_of_ammo_ = false;
+    bool clips_trade_active_ = false;
+    std::array<std::size_t, 3> clips_trade_recipient_records_{};
+    std::size_t clips_trade_recipient_count_ = 0;
+    std::size_t clips_trade_recipient_index_ = 0;
+    std::size_t clips_trade_recipient_record_ = 0;
+    std::size_t clips_trade_menu_selection_ = 2;
+    std::uint8_t clips_trade_quantity_ = 0;
     std::size_t attributes_menu_column_ = 0;
     std::size_t attributes_menu_row_ = 0;
     std::size_t field_last_command_selection_ = 0;

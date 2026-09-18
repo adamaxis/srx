@@ -304,6 +304,13 @@ constexpr std::array<std::string_view, 4> kClipsMenuLabels{{
     "   Distribute    ",
     "     Cancel      ",
 }};
+constexpr std::array<std::string_view, 4> kClipsTradeMenuLabels{{
+    // ROM 0x11E7E writes the nested D1E24 table after Trade is selected.
+    " Increase Clips ",
+    " Decrease Clips ",
+    "  Trade Clips  ",
+    "Change Recipient",
+}};
 
 // 0x11740 selects the standard action table at 0xD1D94 unless the selected
 // item code is 0x10..0x13, which selects the medical table at 0xD1E6C.
@@ -2323,6 +2330,12 @@ void NativePortShell::open_clips_menu() {
     clips_action_message_frames_ = 0;
     clips_action_message_.clear();
     clips_out_of_ammo_ = false;
+    clips_trade_active_ = false;
+    clips_trade_recipient_count_ = 0;
+    clips_trade_recipient_index_ = 0;
+    clips_trade_recipient_record_ = active_field_record_;
+    clips_trade_menu_selection_ = 2;
+    clips_trade_quantity_ = 0;
     menu_horizontal_repeat_frames_ = 0;
     menu_vertical_repeat_frames_ = 0;
     menu_horizontal_repeat_mask_ = 0;
@@ -2330,6 +2343,11 @@ void NativePortShell::open_clips_menu() {
 }
 
 void NativePortShell::update_clips_menu(const InputState& input) {
+    if (clips_trade_active_) {
+        update_clips_trade(input);
+        return;
+    }
+
     // ROM 0x118C6 applies the left/right delta and wraps 2 -> 5 and 5 -> 2.
     const auto horizontal_step =
         menu_direction_step(input, Button::Left, Button::Right, true);
@@ -2362,6 +2380,10 @@ void NativePortShell::update_clips_menu(const InputState& input) {
             // ROM 0x11CCA branches to D1B40 when no weapon is equipped or
             // the equipped item is not a clip-using weapon.
             clips_action_message_ = "This item does not use clips!!";
+        } else if (clips_menu_selection_ == 3U) {
+            // ROM 0x11DD2 builds the recipient list and enters the nested
+            // D1E24 loop. It does not perform a transfer on this first edge.
+            open_clips_trade();
         } else {
             // The quantity-transfer/reload loops remain a separate source
             // boundary; count entry only after the exact source gate passes.
@@ -2381,6 +2403,102 @@ void NativePortShell::update_clips_menu(const InputState& input) {
 
     if (clips_action_message_frames_ != 0) {
         --clips_action_message_frames_;
+    }
+}
+
+void NativePortShell::open_clips_trade() {
+    clips_trade_recipient_count_ = 0;
+    clips_trade_recipient_index_ = 0;
+    clips_trade_recipient_record_ = active_field_record_;
+    clips_trade_menu_selection_ = 2;
+    clips_trade_quantity_ = field_entity_.ammo_clips;
+
+    // ROM 0x11DDE accepts an active record with +0x10 bit 1 clear. The
+    // current record is the source of the transfer and is not a recipient.
+    for (std::size_t record = 0;
+         record < field_records_.size() &&
+             clips_trade_recipient_count_ <
+                 clips_trade_recipient_records_.size();
+         ++record) {
+        if (record == active_field_record_ ||
+            (field_records_[record].flags_10 & 0x02U) != 0U ||
+            (field_records_[record].flags_10 & 0x01U) == 0U) {
+            continue;
+        }
+        clips_trade_recipient_records_[clips_trade_recipient_count_++] =
+            record;
+    }
+    if (clips_trade_recipient_count_ == 0U) {
+        // ROM 0x11E14 writes D1B8A and returns to the clips command loop.
+        clips_action_message_ = "You have no party members to trade with.";
+        clips_action_message_frames_ = 30;
+        return;
+    }
+    clips_trade_recipient_record_ = clips_trade_recipient_records_[0];
+    clips_trade_active_ = true;
+}
+
+void NativePortShell::update_clips_trade(const InputState& input) {
+    const auto horizontal_step =
+        menu_direction_step(input, Button::Left, Button::Right, true);
+    if (horizontal_step && input.is_held(Button::Left) &&
+        !input.is_held(Button::Right)) {
+        clips_trade_menu_selection_ = clips_trade_menu_selection_ == 2U
+            ? 5U : clips_trade_menu_selection_ - 1U;
+    } else if (horizontal_step && input.is_held(Button::Right) &&
+               !input.is_held(Button::Left)) {
+        clips_trade_menu_selection_ = clips_trade_menu_selection_ == 5U
+            ? 2U : clips_trade_menu_selection_ + 1U;
+    }
+
+    if (input.was_pressed(Button::A)) {
+        switch (clips_trade_menu_selection_) {
+        case 2U:
+            // Native form of 0x120E4 with D2=1. The source wraps the
+            // quantity from the available clip count back to one.
+            clips_trade_quantity_ = clips_trade_quantity_ >=
+                    field_entity_.ammo_clips
+                ? 1U : static_cast<std::uint8_t>(clips_trade_quantity_ + 1U);
+            break;
+        case 3U:
+            // Native form of 0x120E4 with D2=-1. A decrement below one wraps
+            // to the source record's complete available clip count.
+            clips_trade_quantity_ = clips_trade_quantity_ <= 1U
+                ? field_entity_.ammo_clips
+                : static_cast<std::uint8_t>(clips_trade_quantity_ - 1U);
+            break;
+        case 4U: {
+            const auto recipient = clips_trade_recipient_record_;
+            if (recipient < field_entity_records_.size() &&
+                clips_trade_quantity_ != 0U) {
+                auto& destination = field_entity_records_[recipient];
+                field_entity_.ammo_clips = static_cast<std::uint8_t>(
+                    field_entity_.ammo_clips - clips_trade_quantity_);
+                destination.ammo_clips = static_cast<std::uint8_t>(
+                    destination.ammo_clips + clips_trade_quantity_);
+                field_entity_records_[active_field_record_] = field_entity_;
+                clips_action_message_ = "Exchange complete";
+                clips_action_message_frames_ = 30;
+                ++clips_action_count_;
+            }
+            clips_trade_active_ = false;
+            break;
+        }
+        case 5U:
+            // Native form of 0x1209A's next-recipient selection. Keep the
+            // quantity unchanged while the recipient pointer changes.
+            clips_trade_recipient_index_ =
+                (clips_trade_recipient_index_ + 1U) %
+                clips_trade_recipient_count_;
+            clips_trade_recipient_record_ = clips_trade_recipient_records_[
+                clips_trade_recipient_index_];
+            break;
+        default:
+            break;
+        }
+    }
+    if (input.was_pressed(Button::B) || input.was_pressed(Button::Start)) {
+        clips_trade_active_ = false;
     }
 }
 
@@ -3478,30 +3596,64 @@ void NativePortShell::render(ScreenWriter& screen) const {
                              {0x00, 0xA8, 0xC8, 0xFF});
             screen.write_text(36, 52, "CLIPS", 2,
                               {0xE8, 0xF4, 0xFF, 0xFF});
-            screen.write_text(166, 54,
-                              "AVAILABLE " +
-                                  std::to_string(field_entity_.ammo_clips),
-                              1, {0xA0, 0xE8, 0xF8, 0xFF});
-            screen.write_text(166, 66,
-                              "IN WEAPON " +
-                                  std::to_string(field_entity_.ammo_rounds),
-                              1, {0xA0, 0xE8, 0xF8, 0xFF});
-            for (std::size_t index = 0; index < kClipsMenuLabels.size();
-                 ++index) {
-                const auto selector = index + 2U;
-                const auto y = 82 + static_cast<std::int32_t>(index) * 16;
-                const auto selected = selector == clips_menu_selection_;
-                if (selected) {
-                    screen.fill_rect(32, y - 2, 256, 13,
-                                     {0x00, 0x68, 0x88, 0xFF});
+            if (clips_trade_active_) {
+                // ROM 0x11E7E replaces the top-level D1DDC table with the
+                // nested D1E24 trade table. The source also keeps the
+                // transfer quantity and recipient visible while this loop is
+                // active.
+                screen.write_text(
+                    166, 54,
+                    "TO " +
+                        (clips_trade_recipient_record_ <
+                                 field_menu_runner_names_.size()
+                             ? field_menu_runner_names_[
+                                   clips_trade_recipient_record_]
+                             : std::string("?")),
+                    1, {0xA0, 0xE8, 0xF8, 0xFF});
+                screen.write_text(
+                    166, 66,
+                    "CLIPS " + std::to_string(clips_trade_quantity_), 1,
+                    {0xA0, 0xE8, 0xF8, 0xFF});
+                for (std::size_t index = 0;
+                     index < kClipsTradeMenuLabels.size(); ++index) {
+                    const auto selector = index + 2U;
+                    const auto y = 82 + static_cast<std::int32_t>(index) * 16;
+                    const auto selected = selector == clips_trade_menu_selection_;
+                    if (selected) {
+                        screen.fill_rect(32, y - 2, 256, 13,
+                                         {0x00, 0x68, 0x88, 0xFF});
+                    }
+                    screen.write_text(
+                        40, y, kClipsTradeMenuLabels[index], 1,
+                        selected ? Rgba8{0xFF, 0xF0, 0x90, 0xFF}
+                                 : Rgba8{0xD0, 0xE0, 0xF0, 0xFF});
                 }
-                screen.write_text(40, y, kClipsMenuLabels[index], 1,
-                                  selected
-                                      ? Rgba8{0xFF, 0xF0, 0x90, 0xFF}
-                                      : Rgba8{0xD0, 0xE0, 0xF0, 0xFF});
+            } else {
+                screen.write_text(166, 54,
+                                  "AVAILABLE " +
+                                      std::to_string(field_entity_.ammo_clips),
+                                  1, {0xA0, 0xE8, 0xF8, 0xFF});
+                screen.write_text(166, 66,
+                                  "IN WEAPON " +
+                                      std::to_string(field_entity_.ammo_rounds),
+                                  1, {0xA0, 0xE8, 0xF8, 0xFF});
+                for (std::size_t index = 0; index < kClipsMenuLabels.size();
+                     ++index) {
+                    const auto selector = index + 2U;
+                    const auto y = 82 + static_cast<std::int32_t>(index) * 16;
+                    const auto selected = selector == clips_menu_selection_;
+                    if (selected) {
+                        screen.fill_rect(32, y - 2, 256, 13,
+                                         {0x00, 0x68, 0x88, 0xFF});
+                    }
+                    screen.write_text(
+                        40, y, kClipsMenuLabels[index], 1,
+                        selected ? Rgba8{0xFF, 0xF0, 0x90, 0xFF}
+                                 : Rgba8{0xD0, 0xE0, 0xF0, 0xFF});
+                }
             }
             screen.write_text(36, 152,
-                              "LEFT/RIGHT SELECT  Z/X/C ACTION", 1,
+                              "LEFT/RIGHT SELECT  A ACTION", 1,
                               {0x90, 0xB8, 0xC8, 0xFF});
             if (clips_action_message_frames_ != 0) {
                 screen.write_text(120, 152, clips_action_message_,

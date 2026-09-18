@@ -394,6 +394,45 @@ void test_clip_item_gate(const std::vector<std::uint8_t>& rom) {
     assert(shell.field_ammo_clips() == 3U);
 }
 
+void test_clip_trade_menu(const std::vector<std::uint8_t>& rom) {
+    // 0x11DD2 builds the active recipient list, then 0x11E7E enters the
+    // nested D1E24 quantity/recipient loop. This verifies that Trade is not
+    // mistaken for the top-level Distribute action.
+    auto assets = shadowrun::graphics::decode_genesis_native_assets(rom);
+    assets.protagonist_archetype_records[0].ammo_clips = 5U;
+    assets.initial_field_records[1].flags_10 |= 0x01U;
+    assets.field_entity_records[1].flags_10 |= 0x01U;
+    assets.field_entity_records[1].ammo_clips = 1U;
+    NativePortShell shell("SHADOWRUN", std::move(assets));
+    enter_field(shell);
+    press(shell, Button::Start);
+    while (shell.field_menu_selection() != 2U) {
+        press(shell, Button::Right);
+    }
+    press(shell, Button::A);
+    assert(shell.clips_menu_open());
+    press(shell, Button::Right);
+    assert(shell.clips_menu_selection() == 3U);
+    press(shell, Button::A);
+    assert(shell.clips_trade_menu_open());
+    assert(shell.clips_trade_menu_selection() == 2U);
+    assert(shell.clips_trade_recipient_record() == 1U);
+    assert(shell.clips_trade_quantity() == 5U);
+
+    // D2=1/negative one in 0x120E4 wraps the quantity in the inclusive
+    // range 1..source +0x4F; the source starts at the full quantity.
+    press(shell, Button::Right);
+    assert(shell.clips_trade_menu_selection() == 3U);
+    press(shell, Button::A);
+    assert(shell.clips_trade_quantity() == 4U);
+    press(shell, Button::Right);
+    press(shell, Button::A);
+    assert(!shell.clips_trade_menu_open());
+    assert(shell.clips_action_message() == "Exchange complete");
+    assert(shell.field_ammo_clips() == 1U);
+    assert(shell.field_record_ammo_clips(1U) == 5U);
+}
+
 void open_medical_action(NativePortShell& shell) {
     enter_field(shell);
     press(shell, Button::Start);
@@ -663,6 +702,7 @@ int main() {
     test_field_menu_behavior_and_rendering(rom, assets);
     test_no_clip_gate(rom);
     test_clip_item_gate(rom);
+    test_clip_trade_menu(rom);
     test_first_aid_handler(rom);
     test_automatic_use_item_handler(rom);
     test_trade_handler(rom);
