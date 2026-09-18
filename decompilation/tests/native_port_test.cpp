@@ -281,7 +281,12 @@ int main() {
     assert(rom_shell.field_menu_row() == 3);
     rom_shell.update(InputState{button_mask(Button::A),
                                 button_mask(Button::A)});
-    assert(rom_shell.field_command_count() == 1);
+    // ROM 0x11740 only opens the item-action loop for a non-empty slot. The
+    // selected final cell is empty in Joshua's source record, so this first
+    // press is a source no-op rather than an invented command count.
+    assert(rom_shell.field_inventory_item_code(7) == 0);
+    assert(!rom_shell.field_menu_action_active());
+    assert(rom_shell.field_command_count() == 0);
     assert(rom_shell.field_last_command_selection() == 1);
     assert(rom_shell.field_last_command_row() == 3);
     assert(rom_shell.scene() == NativeScene::FieldMenu);
@@ -310,8 +315,20 @@ int main() {
     press_menu_direction(medical_shell, Button::Right);
     medical_shell.update(InputState{button_mask(Button::A),
                                     button_mask(Button::A)});
-    assert(medical_shell.field_active_item_code() == 0x10);
-    assert(medical_shell.field_active_item_detail_label() == "uses");
+    assert(medical_shell.field_inventory_item_code(3) == 0x10);
+    assert(medical_shell.field_menu_action_active());
+    assert(medical_shell.field_menu_action_selection() == 2);
+    assert(medical_shell.field_menu_action_label() == "    First Aid    ");
+    assert(medical_shell.field_selected_item_detail_label() == "uses");
+    // First Aid is the medical handler selected by the ROM's D1E6C action
+    // table. Until that separate handler is ported, confirming it must not
+    // pretend to equip the medkit as a weapon.
+    const auto medical_equipped_item = medical_shell.field_active_item_code();
+    medical_shell.update(InputState{});
+    medical_shell.update(InputState{button_mask(Button::A),
+                                    button_mask(Button::A)});
+    assert(!medical_shell.field_menu_action_active());
+    assert(medical_shell.field_active_item_code() == medical_equipped_item);
 
     // Inventory possession is not equipment. Joshua starts with Model 101T
     // (slot 0, item 2) equipped; selecting the Scatter gear in slot 2 must
@@ -331,6 +348,18 @@ int main() {
     assert(equipment_shell.field_menu_row() == 1);
     equipment_shell.update(InputState{button_mask(Button::A),
                                       button_mask(Button::A)});
+    assert(equipment_shell.field_menu_action_active());
+    assert(equipment_shell.field_menu_action_selection() == 2);
+    assert(equipment_shell.field_menu_action_label() == "  Equip/Unequip  ");
+    assert(equipment_shell.field_active_item_code() == 2);
+    press_menu_direction(equipment_shell, Button::Left);
+    assert(equipment_shell.field_menu_action_selection() == 5);
+    assert(equipment_shell.field_menu_action_label() == "     Cancel      ");
+    press_menu_direction(equipment_shell, Button::Right);
+    assert(equipment_shell.field_menu_action_selection() == 2);
+    equipment_shell.update(InputState{});
+    equipment_shell.update(InputState{button_mask(Button::A),
+                                      button_mask(Button::A)});
     assert(equipment_shell.field_active_item_code() == 0x0E);
     assert(equipment_shell.field_equipped_weapon_slot() == 2);
     // Item 0x0E is a non-ammunition gear class in 0x121E0; the source
@@ -338,6 +367,11 @@ int main() {
     // catalog factor as if it were a firearm.
     assert(equipment_shell.field_ammo_rounds() == 11);
     const auto equipped_attack = equipment_shell.field_attack_bar_index();
+    equipment_shell.update(InputState{});
+    equipment_shell.update(InputState{button_mask(Button::A),
+                                      button_mask(Button::A)});
+    assert(equipment_shell.field_menu_action_active());
+    assert(equipment_shell.field_active_item_code() == 0x0E);
     equipment_shell.update(InputState{});
     equipment_shell.update(InputState{button_mask(Button::A),
                                       button_mask(Button::A)});

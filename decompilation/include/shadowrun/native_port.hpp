@@ -514,6 +514,12 @@ public:
     // Damage/Power writer. Medical and utility items therefore expose Uses or
     // Rtng instead of being presented as weapons.
     std::string_view field_active_item_detail_label() const;
+    std::string_view field_selected_item_detail_label() const;
+    bool field_menu_action_active() const { return field_menu_action_active_; }
+    std::size_t field_menu_action_selection() const {
+        return field_menu_action_selection_;
+    }
+    std::string_view field_menu_action_label() const;
     std::int8_t field_equipped_weapon_slot() const {
         return field_entity_.display_state;
     }
@@ -668,6 +674,8 @@ private:
     void render_startup_background(ScreenWriter& screen) const;
     bool menu_direction_step(const InputState& input, Button negative,
                              Button positive, bool horizontal);
+    void open_field_inventory_action();
+    void update_field_inventory_action(const InputState& input);
     void apply_field_inventory_action();
     void open_clips_menu();
     void update_clips_menu(const InputState& input);
@@ -796,6 +804,11 @@ private:
     std::size_t field_menu_selection_ = 6;
     std::size_t field_menu_row_ = 0;
     bool field_menu_posture_active_ = false;
+    // ROM 0x11740 saves the inventory column/row, sets the action selector to
+    // 2, and enters the four-choice loop at 0x117D4. Keep that focus separate
+    // from the parent inventory cursor so the first button press cannot equip.
+    bool field_menu_action_active_ = false;
+    std::size_t field_menu_action_selection_ = 2;
     std::size_t clips_menu_selection_ = 2;
     std::size_t clips_last_action_selection_ = 2;
     std::uint32_t clips_action_count_ = 0;

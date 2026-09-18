@@ -303,6 +303,22 @@ constexpr std::array<std::string_view, 4> kClipsMenuLabels{{
     "Change Recipient",
 }};
 
+// 0x11740 selects the standard action table at 0xD1D94 unless the selected
+// item code is 0x10..0x13, which selects the medical table at 0xD1E6C.
+// 0x118C6 keeps the action selector in the inclusive range 2..5.
+constexpr std::array<std::string_view, 4> kInventoryActionLabels{{
+    "  Equip/Unequip  ",
+    "     Discard     ",
+    "      Trade      ",
+    "     Cancel      ",
+}};
+constexpr std::array<std::string_view, 4> kMedicalActionLabels{{
+    "    First Aid    ",
+    "     Discard     ",
+    "      Trade      ",
+    "     Cancel      ",
+}};
+
 } // namespace
 
 namespace {
@@ -486,6 +502,33 @@ NativePortShell::NativePortShell(std::string title)
 
 std::string_view NativePortShell::field_active_item_detail_label() const {
     return source_item_detail_label(field_entity_.active_item_code);
+}
+
+std::string_view NativePortShell::field_selected_item_detail_label() const {
+    if (field_menu_selection_ >= 2U) {
+        return {};
+    }
+    const auto slot = field_menu_row_ * 2U + field_menu_selection_;
+    if (slot >= field_entity_.inventory_item_codes.size()) {
+        return {};
+    }
+    return source_item_detail_label(field_entity_.inventory_item_codes[slot]);
+}
+
+std::string_view NativePortShell::field_menu_action_label() const {
+    if (!field_menu_action_active_ || field_menu_action_selection_ < 2U ||
+        field_menu_action_selection_ > 5U || field_menu_selection_ >= 2U) {
+        return {};
+    }
+    const auto slot = field_menu_row_ * 2U + field_menu_selection_;
+    if (slot >= field_entity_.inventory_item_codes.size() ||
+        field_entity_.inventory_item_codes[slot] == 0U) {
+        return {};
+    }
+    const auto item_code = field_entity_.inventory_item_codes[slot];
+    const auto& labels = item_code >= 0x10U && item_code <= 0x13U
+        ? kMedicalActionLabels : kInventoryActionLabels;
+    return labels[field_menu_action_selection_ - 2U];
 }
 
 NativePortShell::NativePortShell(
@@ -1176,6 +1219,8 @@ void NativePortShell::open_field_menu() {
     field_menu_selection_ = 6;
     field_menu_row_ = 0;
     field_menu_posture_active_ = false;
+    field_menu_action_active_ = false;
+    field_menu_action_selection_ = 2;
     field_last_command_selection_ = 0;
     field_last_command_row_ = 0;
     field_command_message_frames_ = 0;
@@ -1183,6 +1228,67 @@ void NativePortShell::open_field_menu() {
     menu_vertical_repeat_frames_ = 0;
     menu_horizontal_repeat_mask_ = 0;
     menu_vertical_repeat_mask_ = 0;
+}
+
+void NativePortShell::open_field_inventory_action() {
+    if (field_menu_selection_ >= 2U) {
+        return;
+    }
+    const auto slot = field_menu_row_ * 2U + field_menu_selection_;
+    if (slot >= field_entity_.inventory_item_codes.size() ||
+        field_entity_.inventory_item_codes[slot] == 0U) {
+        // ROM 0x11740 returns immediately when 0x12148 finds an empty slot.
+        return;
+    }
+    // ROM 0x11740 saves the parent selector, changes the visible selector to
+    // two, and enters 0x117D4. The first action press only opens this loop;
+    // 0x12168 is reached by a later A/B confirmation.
+    field_menu_action_active_ = true;
+    field_menu_action_selection_ = 2;
+    menu_horizontal_repeat_frames_ = 0;
+    menu_vertical_repeat_frames_ = 0;
+    menu_horizontal_repeat_mask_ = 0;
+    menu_vertical_repeat_mask_ = 0;
+}
+
+void NativePortShell::update_field_inventory_action(const InputState& input) {
+    // ROM 0x118C6 changes the action selector only on left/right and wraps
+    // 2..5. Up/down do not move the parent inventory cursor in this loop.
+    const auto horizontal_step =
+        menu_direction_step(input, Button::Left, Button::Right, true);
+    if (horizontal_step && input.is_held(Button::Left) &&
+        !input.is_held(Button::Right)) {
+        field_menu_action_selection_ = field_menu_action_selection_ == 2U
+            ? 5U : field_menu_action_selection_ - 1U;
+    } else if (horizontal_step && input.is_held(Button::Right) &&
+               !input.is_held(Button::Left)) {
+        field_menu_action_selection_ = field_menu_action_selection_ == 5U
+            ? 2U : field_menu_action_selection_ + 1U;
+    }
+
+    // Source A and B both enter the selected action dispatch at 0x1185E.
+    if (input.was_pressed(Button::A) || input.was_pressed(Button::B)) {
+        if (field_menu_action_selection_ == 2U) {
+            apply_field_inventory_action();
+            field_menu_action_active_ = false;
+            field_menu_action_selection_ = 2;
+        } else if (field_menu_action_selection_ == 5U) {
+            // Cancel is the source loop's return path; the saved inventory
+            // column/row remains selected when the parent redraws.
+            field_menu_action_active_ = false;
+            field_menu_action_selection_ = 2;
+        }
+        // Discard and Trade dispatch through separate source handlers. Keep
+        // their visible action focus intact until those handlers are ported;
+        // silently mutating or deleting an item here would invent behavior.
+    }
+
+    // The source Start path restores the saved parent selector and redraws
+    // the command screen; it does not leave the field menu.
+    if (input.was_pressed(Button::Start)) {
+        field_menu_action_active_ = false;
+        field_menu_action_selection_ = 2;
+    }
 }
 
 bool NativePortShell::menu_direction_step(const InputState& input,
@@ -1311,6 +1417,11 @@ void NativePortShell::render_startup_background(ScreenWriter& screen) const {
 }
 
 void NativePortShell::update_field_menu(const InputState& input) {
+    if (field_menu_action_active_) {
+        update_field_inventory_action(input);
+        return;
+    }
+
     // ROM 0x119CE replaces the command selector with a dedicated posture
     // loop. Left/right mutate record +0x4D through 0x11AE4; they do not move
     // the command selector while that loop is active.
@@ -1414,10 +1525,10 @@ void NativePortShell::update_field_menu(const InputState& input) {
         field_last_command_selection_ = field_menu_selection_;
         field_last_command_row_ = field_menu_row_;
         if (field_menu_selection_ < 2U) {
-            // ROM 0x12148 supplies the item byte to 0x12168. The armor branch
-            // at 0x1219C/0x121B0 toggles record +0x76 and stores the
-            // one-based armor ordinal in the selected slot's +0x6E byte.
-            apply_field_inventory_action();
+            // ROM 0x11740 opens the item-action loop. Its default selection
+            // is Equip/Unequip (or First Aid for item codes 0x10..0x13);
+            // 0x12168 is intentionally deferred until the next A/B edge.
+            open_field_inventory_action();
         } else if (field_menu_selection_ == 2U) {
             open_clips_menu();
         } else if (field_menu_selection_ == 4U) {
@@ -1426,7 +1537,9 @@ void NativePortShell::update_field_menu(const InputState& input) {
             open_attributes_menu();
         }
         field_command_message_frames_ = 30;
-        ++field_command_count_;
+        if (field_menu_selection_ >= 2U) {
+            ++field_command_count_;
+        }
     }
 
     // C enters 0x391A, switches the controlled field record, and restores
@@ -1486,12 +1599,14 @@ void NativePortShell::apply_field_inventory_action() {
             field_entity_.inventory_phase_bytes[slot] =
                 field_entity_.equipped_armor_index;
         }
-    } else if (item_code == 0x13U || item_code == 0x14U ||
-               item_code == 0x16U ||
+    } else if ((item_code >= 0x10U && item_code <= 0x13U) ||
+               item_code == 0x14U || item_code == 0x16U ||
                item_code >= 0x18U) {
-        // ROM 0x121C0 dispatches these item classes to their own use/error
-        // path. It does not equip them as a weapon. Those handlers are not
-        // silently replaced with a native mutation here.
+        // ROM 0x11740 routes item codes 0x10..0x13 through the D1E6C
+        // First-Aid action table. The 0x121C0 path likewise handles 0x13,
+        // 0x14, 0x16, and 0x18+ through separate use/error handlers. None of
+        // these source-specific actions is silently replaced with a weapon
+        // equip mutation here.
         return;
     } else {
         // ROM 0x121E0..0x1228C is the weapon/gear equip path. +0x56 stores
@@ -2604,11 +2719,17 @@ void NativePortShell::render(ScreenWriter& screen) const {
             if (field_menu_selection_ < 2U) {
                 draw_item_detail(selected_code, true);
             }
-            // ROM 0x1170C emits only the currently selected command at
-            // plane-B address EC9C (x=112, y=200). The other command names
-            // are not a vertical checklist on this screen.
-            write_field_menu_text(screen, 112, 200,
-                                  kFieldMenuLabels[field_menu_selection_]);
+            // ROM 0x1170C/0x11712 emits only the currently selected command
+            // or item action at plane-B address EC9C (x=112, y=200). The
+            // other choices are not a vertical checklist on this screen.
+            if (field_menu_action_active_) {
+                write_field_menu_text(screen, 112, 200,
+                                      field_menu_action_label());
+            } else {
+                write_field_menu_text(
+                    screen, 112, 200,
+                    kFieldMenuLabels[field_menu_selection_]);
+            }
         } else if (scene_ == NativeScene::ClipsMenu) {
             screen.fill_rect(24, 44, 272, 144,
                              {0x02, 0x08, 0x18, 0xF0});
