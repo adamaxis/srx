@@ -499,6 +499,48 @@ void test_clip_reload(const std::vector<std::uint8_t>& rom) {
     assert(confirmation.field_ammo_rounds() == 6U);
 }
 
+void test_dismiss_runner_menu(const std::vector<std::uint8_t>& rom) {
+    auto assets = shadowrun::graphics::decode_genesis_native_assets(rom);
+    // Populate one real party slot, leaving Joshua as the controlled record.
+    // This follows the source C448 active-record predicate rather than
+    // turning the three archetype templates into dismissible runners.
+    assets.initial_field_records[1].flags_10 |= 0x01U;
+    assets.field_areas[0].initial_field_records[1].flags_10 |= 0x01U;
+    assets.field_entity_records[1] = assets.protagonist_archetype_records[0];
+    assets.field_entity_records[1].record_index = 1U;
+    assets.field_entity_records[1].flags_10 |= 0x01U;
+    assets.field_menu_runner_names[1] = "Sally";
+
+    NativePortShell shell("SHADOWRUN", std::move(assets));
+    enter_field(shell);
+    press(shell, Button::Start);
+    press(shell, Button::A);
+    for (std::size_t index = 0; index < 3U; ++index) {
+        press(shell, Button::Down);
+    }
+    assert(shell.pocket_secretary_selection() == 3U);
+    press(shell, Button::A);
+    assert(shell.dismiss_runner_menu_open());
+    assert(shell.dismiss_runner_option_count() == 2U);
+    assert(shell.dismiss_runner_selection() == 0U);
+
+    SoftwareScreen screen;
+    shell.render(screen);
+    assert(screen.pixel(56, 24) != 0U);
+    // C448 starts on the source Abort row. Selecting the active companion
+    // removes its active bit and returns to the Pocket Secretary loop.
+    press(shell, Button::Down);
+    assert(shell.dismiss_runner_selection() == 1U);
+    press(shell, Button::A);
+    assert(shell.pocket_secretary_menu_open());
+    assert(shell.pocket_secretary_selection() == 3U);
+    press(shell, Button::B);
+    assert(shell.scene() == NativeScene::FieldMenu);
+    shell.update(InputState{button_mask(Button::C), button_mask(Button::C)});
+    assert(shell.field_active_record_index() == 0U);
+    assert(shell.field_runner_switch_rejections() == 1U);
+}
+
 void test_clip_item_gate(const std::vector<std::uint8_t>& rom) {
     // 0x11CCA rejects Reload when +0x56 is the source no-equipment marker or
     // +0x57 names a non-weapon item. It displays D1B40 and does not mutate
@@ -859,6 +901,7 @@ int main() {
     test_no_clip_gate(rom);
     test_pocket_secretary_menu(rom);
     test_clip_reload(rom);
+    test_dismiss_runner_menu(rom);
     test_clip_item_gate(rom);
     test_clip_trade_menu(rom);
     test_clip_distribution(rom);

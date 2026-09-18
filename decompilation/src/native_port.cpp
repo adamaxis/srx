@@ -634,6 +634,7 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     group_item_names_ = std::move(assets.group_item_names);
     cyberdeck_unavailable_lines_ =
         std::move(assets.cyberdeck_unavailable_lines);
+    dismiss_runner_labels_ = std::move(assets.dismiss_runner_labels);
     protagonist_archetype_records_ =
         std::move(assets.protagonist_archetype_records);
     field_initial_records_ = assets.initial_field_records;
@@ -2169,8 +2170,12 @@ void NativePortShell::update_pocket_secretary_menu(const InputState& input) {
         pocket_secretary_message_visible_ = true;
         return;
     }
-    // Notebook and Dismiss Runner retain their source selection boundary until
-    // their individual handlers are traced.
+    if (pocket_secretary_selection_ == 3U) {
+        open_dismiss_runner_menu();
+        return;
+    }
+    // Notebook retains its source selection boundary until its handler is
+    // traced.
 }
 
 void NativePortShell::update_group_items_menu(const InputState& input) {
@@ -2181,6 +2186,77 @@ void NativePortShell::update_group_items_menu(const InputState& input) {
         scene_ = NativeScene::FieldMenu;
         field_menu_selection_ = 6;
     }
+}
+
+void NativePortShell::open_dismiss_runner_menu() {
+    // ROM C448 starts the Dismiss panel with selector zero, then enumerates
+    // active runner records around FF0200/FF0300. The native record array is
+    // already the extracted host form of those slots; do not turn the three
+    // archetype templates into a party list.
+    scene_ = NativeScene::DismissRunnerMenu;
+    dismiss_runner_selection_ = 0;
+    dismiss_runner_candidate_count_ = 0;
+    for (std::size_t index = 0; index < field_records_.size(); ++index) {
+        if (index == active_field_record_ ||
+            (field_records_[index].flags_10 & 0x01U) == 0U ||
+            dismiss_runner_candidate_count_ >=
+                dismiss_runner_candidate_records_.size()) {
+            continue;
+        }
+        dismiss_runner_candidate_records_[dismiss_runner_candidate_count_++] =
+            index;
+    }
+    menu_horizontal_repeat_frames_ = 0;
+    menu_vertical_repeat_frames_ = 0;
+    menu_horizontal_repeat_mask_ = 0;
+    menu_vertical_repeat_mask_ = 0;
+}
+
+void NativePortShell::update_dismiss_runner_menu(const InputState& input) {
+    const auto option_count = dismiss_runner_option_count();
+    const auto vertical_step =
+        menu_direction_step(input, Button::Up, Button::Down, false);
+    if (vertical_step && input.is_held(Button::Up) &&
+        !input.is_held(Button::Down)) {
+        dismiss_runner_selection_ = dismiss_runner_selection_ == 0U
+            ? option_count - 1U : dismiss_runner_selection_ - 1U;
+    } else if (vertical_step && input.is_held(Button::Down) &&
+               !input.is_held(Button::Up)) {
+        dismiss_runner_selection_ =
+            (dismiss_runner_selection_ + 1U) % option_count;
+    }
+
+    if (input.was_pressed(Button::Start) || input.was_pressed(Button::B)) {
+        scene_ = NativeScene::PocketSecretaryMenu;
+        pocket_secretary_selection_ = 3U;
+        return;
+    }
+    if (!input.was_pressed(Button::A)) {
+        return;
+    }
+    // C448 exits immediately when selector zero is chosen. The source label
+    // for that row is Abort, so it returns to C2A6 without changing roster
+    // state.
+    if (dismiss_runner_selection_ == 0U) {
+        scene_ = NativeScene::PocketSecretaryMenu;
+        pocket_secretary_selection_ = 3U;
+        return;
+    }
+
+    const auto candidate_index = dismiss_runner_selection_ - 1U;
+    if (candidate_index >= dismiss_runner_candidate_count_) {
+        return;
+    }
+    const auto record_index =
+        dismiss_runner_candidate_records_[candidate_index];
+    // The source dismissal event removes the selected active roster record;
+    // the native state keeps the record data but clears its active bit so it
+    // can no longer be switched to or shown as a live party member.
+    field_records_[record_index].flags_10 &= static_cast<std::uint8_t>(~0x01U);
+    field_entity_records_[record_index].flags_10 &=
+        static_cast<std::uint8_t>(~0x01U);
+    scene_ = NativeScene::PocketSecretaryMenu;
+    pocket_secretary_selection_ = 3U;
 }
 
 void NativePortShell::update_field_menu(const InputState& input) {
@@ -2868,6 +2944,12 @@ void NativePortShell::update(const InputState& input) {
 
     if (scene_ == NativeScene::GroupItemsMenu) {
         update_group_items_menu(input);
+        ++frame_number_;
+        return;
+    }
+
+    if (scene_ == NativeScene::DismissRunnerMenu) {
+        update_dismiss_runner_menu(input);
         ++frame_number_;
         return;
     }
@@ -3885,6 +3967,54 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 }
             }
             write_field_menu_text(screen, 80, 176, " PRESS ANY BUTTON");
+        } else if (scene_ == NativeScene::DismissRunnerMenu) {
+            // ROM C448 writes C1499/C14A4/C14BD around the dynamic names
+            // emitted from active runner records. Selector zero is the
+            // source Abort row; runner candidates follow it.
+            screen.fill_rect(56, 24, 208, 168,
+                             {0x02, 0x08, 0x18, 0xF0});
+            screen.fill_rect(56, 24, 208, 2,
+                             {0x00, 0xA8, 0xC8, 0xFF});
+            write_field_menu_text(screen, 112, 32,
+                                  dismiss_runner_labels_[0]);
+            write_field_menu_text(screen, 112, 52,
+                                  dismiss_runner_labels_[1]);
+            for (std::size_t index = 0;
+                 index < dismiss_runner_candidate_count_; ++index) {
+                const auto record_index =
+                    dismiss_runner_candidate_records_[index];
+                const auto selected = dismiss_runner_selection_ == index + 1U;
+                const auto y = 76 + static_cast<std::int32_t>(index) * 16;
+                if (selected) {
+                    screen.fill_rect(80, y - 2, 176, 13,
+                                     {0x00, 0x68, 0x88, 0xFF});
+                    if (!field_menu_cursor_.pixels.empty()) {
+                        screen.blit_rgba(64, y - 10, field_menu_cursor_.width,
+                                         field_menu_cursor_.height,
+                                         field_menu_cursor_.pixels);
+                    }
+                }
+                const auto name = record_index < field_menu_runner_names_.size()
+                    ? std::string_view(field_menu_runner_names_[record_index])
+                    : std::string_view{};
+                write_field_menu_text(screen, 96, y,
+                                      name.empty() ? "UNKNOWN" : name);
+            }
+            const auto abort_y = 76 + static_cast<std::int32_t>(
+                dismiss_runner_candidate_count_) * 16;
+            if (dismiss_runner_selection_ == 0U) {
+                screen.fill_rect(80, abort_y - 2, 176, 13,
+                                 {0x00, 0x68, 0x88, 0xFF});
+                if (!field_menu_cursor_.pixels.empty()) {
+                    screen.blit_rgba(64, abort_y - 10,
+                                     field_menu_cursor_.width,
+                                     field_menu_cursor_.height,
+                                     field_menu_cursor_.pixels);
+                }
+            }
+            write_field_menu_text(screen, 112, abort_y,
+                                  dismiss_runner_labels_[2]);
+            write_field_menu_text(screen, 80, 176, " A SELECT  B RETURN");
         } else if (scene_ == NativeScene::ClipsMenu) {
             screen.fill_rect(24, 44, 272, 144,
                              {0x02, 0x08, 0x18, 0xF0});

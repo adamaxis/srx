@@ -269,6 +269,29 @@ std::string read_genesis_fixed_text(const std::vector<std::uint8_t>& rom,
     return value.substr(first, last - first + 1U);
 }
 
+// C0DA consumes 0x80/0xFF-delimited source lines whose leading spaces are
+// layout, not disposable padding. Keep this separate from the catalog reader
+// above, which intentionally trims fixed-width names.
+std::string read_genesis_padded_text(const std::vector<std::uint8_t>& rom,
+                                     std::size_t offset, std::size_t length,
+                                     const char* what) {
+    if (offset > rom.size() || rom.size() - offset < length) {
+        throw std::out_of_range(what);
+    }
+    std::string value;
+    value.reserve(length);
+    for (std::size_t index = 0; index < length; ++index) {
+        const auto byte = rom[offset + index];
+        if (byte == 0x80U || byte == 0xFFU) {
+            break;
+        }
+        value.push_back(byte >= 0x20U && byte <= 0x7EU
+                            ? static_cast<char>(byte)
+                            : ' ');
+    }
+    return value;
+}
+
 std::string read_genesis_menu_text(const std::vector<std::uint8_t>& rom,
                                    std::size_t offset, std::size_t length,
                                    const char* what) {
@@ -536,24 +559,22 @@ read_genesis_cyberdeck_unavailable_text(
     std::array<std::string, native::kNativeCyberdeckUnavailableLineCount>
         result{};
     for (std::size_t index = 0; index < result.size(); ++index) {
-        const auto offset = static_cast<std::size_t>(
-            rom::kCyberdeckUnavailableText[index]);
-        const auto length = rom::kCyberdeckUnavailableTextLengths[index];
-        if (offset > rom.size() || rom.size() - offset < length) {
-            throw std::out_of_range(
-                "Genesis cyberdeck-unavailable text is truncated");
-        }
-        auto& line = result[index];
-        line.reserve(length);
-        for (std::size_t character = 0; character < length; ++character) {
-            const auto byte = rom[offset + character];
-            if (byte == 0x80U || byte == 0xFFU) {
-                break;
-            }
-            line.push_back(byte >= 0x20U && byte <= 0x7EU
-                               ? static_cast<char>(byte)
-                               : ' ');
-        }
+        result[index] = read_genesis_padded_text(
+            rom, rom::kCyberdeckUnavailableText[index],
+            rom::kCyberdeckUnavailableTextLengths[index],
+            "Genesis cyberdeck-unavailable text is truncated");
+    }
+    return result;
+}
+
+std::array<std::string, native::kNativeDismissRunnerLabelCount>
+read_genesis_dismiss_runner_labels(const std::vector<std::uint8_t>& rom) {
+    std::array<std::string, native::kNativeDismissRunnerLabelCount> result{};
+    for (std::size_t index = 0; index < result.size(); ++index) {
+        result[index] = read_genesis_padded_text(
+            rom, rom::kDismissRunnerLabelText[index],
+            rom::kDismissRunnerLabelTextLengths[index],
+            "Genesis dismiss-runner label is truncated");
     }
     return result;
 }
@@ -987,6 +1008,7 @@ native::NativePortAssets decode_genesis_native_assets(
     assets.group_item_names = read_genesis_group_item_catalog(rom);
     assets.cyberdeck_unavailable_lines =
         read_genesis_cyberdeck_unavailable_text(rom);
+    assets.dismiss_runner_labels = read_genesis_dismiss_runner_labels(rom);
 
     for (std::size_t index = 0;
          index < assets.field_direction_table.size(); ++index) {
@@ -1010,7 +1032,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 28);
+    write_u16(output, 29);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     for (const auto& title_frame : assets.title_animation_frames) {
@@ -1265,6 +1287,10 @@ void write_native_asset_pack(const std::string& path,
         write_pack_string(output, line,
                           "native cyberdeck-unavailable text is too long");
     }
+    for (const auto& label : assets.dismiss_runner_labels) {
+        write_pack_string(output, label,
+                          "native dismiss-runner label is too long");
+    }
     for (const auto& direction : assets.field_direction_table) {
         write_u16(output, static_cast<std::uint16_t>(direction[0]));
         write_u16(output, static_cast<std::uint16_t>(direction[1]));
@@ -1389,7 +1415,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 28U)) {
+        (version < 2U || version > 29U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -1864,6 +1890,13 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
                         line = read_pack_string(
                             input,
                             "native cyberdeck-unavailable text is truncated");
+                    }
+                    if (version >= 29U) {
+                        for (auto& label : assets.dismiss_runner_labels) {
+                            label = read_pack_string(
+                                input,
+                                "native dismiss-runner label is truncated");
+                        }
                     }
                 }
             }

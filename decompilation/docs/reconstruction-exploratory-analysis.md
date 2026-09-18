@@ -642,6 +642,17 @@ them. The branch beginning at `0x1817E` initializes the actual deck/Matrix
 screen and remains a separate audit target; a generic Matrix placeholder is
 not an acceptable substitute.
 
+Dismiss Runner dispatches to `0xC448`. It writes the fixed lines at `0xC1499`
+(`Dismiss`), `0xC14A4` (`Who??`), and `0xC14BD` (`Abort`), then checks the
+active-record bit at `+0x10` while enumerating the source runner records. The
+selector starts at zero; `0xC376` clamps it to the active-list bound, and the
+zero row returns without changing party state. A nonzero selection resolves a
+live runner and enters the source dismissal event path (`0x6AA7E`/`0x33AA`),
+after which that record is no longer eligible as an active party member. The
+native port extracts the fixed labels, lists live non-current host records,
+preserves the Abort boundary, and clears the selected record's active bit.
+The source event's narrative/audio side effects remain a separate boundary.
+
 ### Matrix
 
 Matrix is a separate state family from Magic and from the command overview.

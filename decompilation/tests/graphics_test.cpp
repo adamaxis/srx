@@ -392,6 +392,9 @@ int main() {
     assert(native_assets.cyberdeck_unavailable_lines[0] == " You do not have");
     assert(native_assets.cyberdeck_unavailable_lines[1] == "  a cyberdeck!!");
     assert(native_assets.cyberdeck_unavailable_lines[2] == " Keep looking.");
+    assert(native_assets.dismiss_runner_labels[0] == "   Dismiss");
+    assert(native_assets.dismiss_runner_labels[1] == "    Who??");
+    assert(native_assets.dismiss_runner_labels[2] == "    Abort");
     const auto pack_path = std::filesystem::temp_directory_path() /
                            "shadowrun_native_port_assets_test.srna";
     write_native_asset_pack(pack_path.string(), native_assets);
@@ -424,6 +427,8 @@ int main() {
     assert(loaded_assets.group_item_names == native_assets.group_item_names);
     assert(loaded_assets.cyberdeck_unavailable_lines ==
            native_assets.cyberdeck_unavailable_lines);
+    assert(loaded_assets.dismiss_runner_labels ==
+           native_assets.dismiss_runner_labels);
     assert(loaded_assets.field_event_mode_table ==
            native_assets.field_event_mode_table);
     assert(loaded_assets.field_areas.size() ==

@@ -162,6 +162,11 @@ std::array<std::string, native::kNativeCyberdeckUnavailableLineCount>
 read_genesis_cyberdeck_unavailable_text(
     const std::vector<std::uint8_t>& rom);
 
+// ROM 0xC448 emits the fixed Dismiss/Who/Abort labels around the active
+// runner names. The VDP placeholder line at 0xC14AE is not user-facing.
+std::array<std::string, native::kNativeDismissRunnerLabelCount>
+read_genesis_dismiss_runner_labels(const std::vector<std::uint8_t>& rom);
+
 // ROM 0xD01C loads twenty labels through the pointer table at 0xC1A2A.
 std::array<std::string,
           native::kNativeAttributeCount + native::kNativeSkillCount>

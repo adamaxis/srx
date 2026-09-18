@@ -28,6 +28,10 @@ constexpr std::size_t kNativeGroupItemCount = 15;
 // ROM 0x18150 writes three fixed strings at 0xE43D1 when FF018F bit 0 is
 // clear. Keep the lines separate because C0DA receives one source pointer.
 constexpr std::size_t kNativeCyberdeckUnavailableLineCount = 3;
+// ROM 0xC448 emits these fixed Dismiss Runner panel lines around its dynamic
+// runner-name list. The placeholder line at 0xC14AE is VDP layout padding and
+// is intentionally not carried as user-facing text.
+constexpr std::size_t kNativeDismissRunnerLabelCount = 3;
 constexpr std::size_t kNativeAttributeCount = 8;
 constexpr std::size_t kNativeSkillCount = 12;
 constexpr std::size_t kNativeAttributeSkillAuxiliaryCount = 4;
@@ -88,6 +92,7 @@ enum class NativeScene {
     FieldMenu,
     PocketSecretaryMenu,
     GroupItemsMenu,
+    DismissRunnerMenu,
     ClipsMenu,
     CyberwareMenu,
     AttributesMenu,
@@ -403,6 +408,8 @@ struct NativePortAssets {
     std::array<std::string, kNativeGroupItemCount> group_item_names{};
     std::array<std::string, kNativeCyberdeckUnavailableLineCount>
         cyberdeck_unavailable_lines{};
+    std::array<std::string, kNativeDismissRunnerLabelCount>
+        dismiss_runner_labels{};
 };
 
 // Native game code writes to this interface instead of issuing Genesis VDP
@@ -502,6 +509,15 @@ public:
     }
     bool group_items_menu_open() const {
         return scene_ == NativeScene::GroupItemsMenu;
+    }
+    bool dismiss_runner_menu_open() const {
+        return scene_ == NativeScene::DismissRunnerMenu;
+    }
+    std::size_t dismiss_runner_selection() const {
+        return dismiss_runner_selection_;
+    }
+    std::size_t dismiss_runner_option_count() const {
+        return dismiss_runner_candidate_count_ + 1U;
     }
     std::uint32_t group_item_flags() const { return group_item_flags_; }
     std::size_t group_item_count() const { return kNativeGroupItemCount; }
@@ -805,6 +821,8 @@ private:
     void open_pocket_secretary_menu();
     void update_pocket_secretary_menu(const InputState& input);
     void update_group_items_menu(const InputState& input);
+    void open_dismiss_runner_menu();
+    void update_dismiss_runner_menu(const InputState& input);
     void write_field_menu_text(ScreenWriter& screen, std::int32_t x,
                                std::int32_t y, std::string_view text) const;
     void write_startup_text(ScreenWriter& screen, std::int32_t x,
@@ -926,7 +944,12 @@ private:
     std::array<std::string, kNativeGroupItemCount> group_item_names_{};
     std::array<std::string, kNativeCyberdeckUnavailableLineCount>
         cyberdeck_unavailable_lines_{};
+    std::array<std::string, kNativeDismissRunnerLabelCount>
+        dismiss_runner_labels_{};
     bool pocket_secretary_message_visible_ = false;
+    std::array<std::size_t, 2> dismiss_runner_candidate_records_{};
+    std::size_t dismiss_runner_candidate_count_ = 0;
+    std::size_t dismiss_runner_selection_ = 0;
     std::array<std::uint8_t, 3> field_equipped_armor_by_record_{};
     std::uint8_t field_initial_equipped_armor_ = 0;
     std::array<NativeFieldRecord, 3> field_initial_records_{};

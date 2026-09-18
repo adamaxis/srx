@@ -118,6 +118,11 @@ inline constexpr std::array<GenesisAddress, 3>
     kCyberdeckUnavailableText{0xE43D1, 0xE43E2, 0xE43F3};
 inline constexpr std::array<std::size_t, 3> kCyberdeckUnavailableTextLengths{
     16, 15, 14};
+// 0xC448 passes these source lines to C0DA around its dynamic runner list.
+inline constexpr std::array<GenesisAddress, 3> kDismissRunnerLabelText{
+    0xC1499, 0xC14A4, 0xC14BD};
+inline constexpr std::array<std::size_t, 3> kDismissRunnerLabelTextLengths{
+    10, 9, 9};
 // ROM 0xD01C loads twenty labels through this longword table. The first
 // eight correspond to the attribute bytes at record +0x77..+0x7E; the final
 // twelve correspond to the skill bytes at +0x80..+0x85 and +0x87..+0x8C.
