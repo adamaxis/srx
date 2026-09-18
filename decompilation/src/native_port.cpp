@@ -863,6 +863,7 @@ void NativePortShell::update_start_options(const InputState& input) {
     save_load_message_visible_ = false;
     save_load_message_success_ = false;
     start_options_load_rejected_ = false;
+    save_load_from_pocket_secretary_ = false;
     scene_ = NativeScene::SaveLoad;
 }
 
@@ -882,7 +883,15 @@ void NativePortShell::update_save_load(const InputState& input) {
     }
 
     if (input.was_pressed(Button::Start) || input.was_pressed(Button::B)) {
-        scene_ = NativeScene::StartOptions;
+        // ROM 0x59172 is shared by startup and Pocket Secretary, but each
+        // caller resumes at its own menu after the handler returns.
+        if (save_load_from_pocket_secretary_) {
+            scene_ = NativeScene::PocketSecretaryMenu;
+            field_menu_selection_ = 6;
+            save_load_from_pocket_secretary_ = false;
+        } else {
+            scene_ = NativeScene::StartOptions;
+        }
         save_load_message_visible_ = false;
         return;
     }
@@ -2132,6 +2141,7 @@ void NativePortShell::update_pocket_secretary_menu(const InputState& input) {
         save_load_selection_ = 0;
         save_load_message_visible_ = false;
         save_load_message_success_ = false;
+        save_load_from_pocket_secretary_ = true;
         return;
     }
     // Notebook, Group Items, Cyberdeck, and Dismiss Runner retain their

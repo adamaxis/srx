@@ -402,7 +402,11 @@ void test_pocket_secretary_menu(const std::vector<std::uint8_t>& rom) {
     assert(shell.scene() == NativeScene::SaveLoad);
 
     press(shell, Button::B);
-    assert(shell.scene() == NativeScene::StartOptions);
+    assert(shell.scene() == NativeScene::PocketSecretaryMenu);
+    assert(shell.field_menu_selection() == 6U);
+    press(shell, Button::B);
+    assert(shell.scene() == NativeScene::FieldMenu);
+    assert(shell.field_menu_selection() == 6U);
 }
 
 void test_clip_reload(const std::vector<std::uint8_t>& rom) {

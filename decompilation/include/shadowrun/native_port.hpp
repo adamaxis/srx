@@ -864,6 +864,9 @@ private:
     bool start_options_load_rejected_ = false;
     bool save_load_message_visible_ = false;
     bool save_load_message_success_ = false;
+    // The same 0x59172 save/load handler is reachable from startup and from
+    // Pocket Secretary; its return target is different in those two callers.
+    bool save_load_from_pocket_secretary_ = false;
     // An early Start finishes the source title presentation; the following
     // edge enters the startup-options routine.
     bool title_skip_requested_ = false;
