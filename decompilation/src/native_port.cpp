@@ -297,10 +297,12 @@ bool field_menu_uses_alt_item_palette(const NativeFieldEntity& entity) {
 // ROM 0x11B58 enters this four-option clip submenu with selector two. The
 // 0x118C6 helper keeps the selector in the inclusive range 2..5.
 constexpr std::array<std::string_view, 4> kClipsMenuLabels{{
-    "Increase Clips",
-    "Decrease Clips",
-    "Trade Clips",
-    "Change Recipient",
+    // ROM 0x11B58 writes the D1DDC table here. Increase/Decrease/Trade
+    // Clips/Change Recipient are the nested D1E24 trade table instead.
+    "     Reload      ",
+    "      Trade      ",
+    "   Distribute    ",
+    "     Cancel      ",
 }};
 
 // 0x11740 selects the standard action table at 0xD1D94 unless the selected
@@ -2319,6 +2321,7 @@ void NativePortShell::open_clips_menu() {
     clips_menu_selection_ = 2;
     clips_last_action_selection_ = 2;
     clips_action_message_frames_ = 0;
+    clips_action_message_.clear();
     clips_out_of_ammo_ = false;
     menu_horizontal_repeat_frames_ = 0;
     menu_vertical_repeat_frames_ = 0;
@@ -2342,14 +2345,26 @@ void NativePortShell::update_clips_menu(const InputState& input) {
     }
 
     // 0x12062 gates every A/B/C action on the active record's +0x4F clip
-    // count. The selected reload/trade handlers are kept as a typed dispatch
-    // record until their shared quantity-transfer path is ported.
+    // count. Keep its exact visible result instead of the old invented
+    // "NO CLIPS"/"QUEUED" feedback.
     if (input.was_pressed(Button::A) || input.was_pressed(Button::B) ||
         input.was_pressed(Button::C)) {
         clips_last_action_selection_ = clips_menu_selection_;
+        clips_action_message_.clear();
         clips_out_of_ammo_ = field_entity_.ammo_clips == 0;
         clips_action_message_frames_ = 30;
-        if (!clips_out_of_ammo_) {
+        if (clips_out_of_ammo_) {
+            // ROM 0x12062 writes the two extracted lines at D1AC6/D1AD3.
+            clips_action_message_ = "is out of ammo clips!";
+        } else if (clips_menu_selection_ == 2U &&
+                   (field_entity_.display_state == 0x7F ||
+                    field_entity_.active_item_code >= 0x0DU)) {
+            // ROM 0x11CCA branches to D1B40 when no weapon is equipped or
+            // the equipped item is not a clip-using weapon.
+            clips_action_message_ = "This item does not use clips!!";
+        } else {
+            // The quantity-transfer/reload loops remain a separate source
+            // boundary; count entry only after the exact source gate passes.
             ++clips_action_count_;
         }
     }
@@ -2361,6 +2376,7 @@ void NativePortShell::update_clips_menu(const InputState& input) {
         field_menu_selection_ = 2;
         field_command_message_frames_ = 0;
         clips_action_message_frames_ = 0;
+        clips_action_message_.clear();
     }
 
     if (clips_action_message_frames_ != 0) {
@@ -3488,8 +3504,7 @@ void NativePortShell::render(ScreenWriter& screen) const {
                               "LEFT/RIGHT SELECT  Z/X/C ACTION", 1,
                               {0x90, 0xB8, 0xC8, 0xFF});
             if (clips_action_message_frames_ != 0) {
-                screen.write_text(176, 152,
-                                  clips_out_of_ammo_ ? "NO CLIPS" : "QUEUED",
+                screen.write_text(120, 152, clips_action_message_,
                                   1, {0xF0, 0xC0, 0x50, 0xFF});
             }
             screen.fill_rect(0, 204, kScreenWidth, 20,

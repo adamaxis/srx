@@ -207,14 +207,18 @@ outside the audited command path remains pending.
 ### Clips (`0x11B58`, `0x12062`)
 
 The clips screen has its own selector loop and uses the active record's clip
-and ammunition bytes. A dispatch is gated by the extracted clip count; an
-empty count produces the source no-ammunition result rather than changing the
-weapon state.
+and ammunition bytes. Its top-level source labels are `Reload`, `Trade`,
+`Distribute`, and `Cancel` from `D1DDC`; `Increase Clips`, `Decrease Clips`,
+`Trade Clips`, and `Change Recipient` belong to the nested trade table at
+`D1E24`. A dispatch is gated by the extracted clip count; an empty count
+produces the source `D1AC6`/`D1AD3` result (`is out of ammo clips!`) rather
+than changing the weapon state. Reload also rejects no-equipment and
+non-clip-using items through `D1B40` (`This item does not use clips!!`).
 
-Native status: selector bounds, extracted ammunition fields, action gate, and
-the native transition are implemented. The final source-authentic panel art
-and exact action text still need the same asset extraction treatment as the
-overview.
+Native status: selector bounds, source labels, extracted ammunition fields,
+action gates, exact reviewed error text, and the native transition are
+implemented. The positive reload/trade/distribute quantity-transfer loops and
+final source-authentic panel art remain separate work.
 
 ### Attributes/Skills (`0xD01C`)
 

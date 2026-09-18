@@ -367,6 +367,31 @@ void test_no_clip_gate(const std::vector<std::uint8_t>& rom) {
     assert(shell.clips_menu_open());
     shell.update(InputState{button_mask(Button::A), button_mask(Button::A)});
     assert(shell.clips_action_count() == 0U);
+    assert(shell.clips_action_message() == "is out of ammo clips!");
+}
+
+void test_clip_item_gate(const std::vector<std::uint8_t>& rom) {
+    // 0x11CCA rejects Reload when +0x56 is the source no-equipment marker or
+    // +0x57 names a non-weapon item. It displays D1B40 and does not mutate
+    // ammunition or count the action as a reload.
+    auto assets = shadowrun::graphics::decode_genesis_native_assets(rom);
+    assets.protagonist_archetype_records[0].display_state = 0x7F;
+    assets.protagonist_archetype_records[0].display_substate = 0;
+    assets.protagonist_archetype_records[0].active_item_code = 0;
+    assets.protagonist_archetype_records[0].ammo_clips = 3U;
+    NativePortShell shell("SHADOWRUN", std::move(assets));
+    enter_field(shell);
+    press(shell, Button::Start);
+    while (shell.field_menu_selection() != 2U) {
+        press(shell, Button::Right);
+    }
+    press(shell, Button::A);
+    assert(shell.clips_menu_open());
+    press(shell, Button::A);
+    assert(shell.clips_action_count() == 0U);
+    assert(shell.clips_action_message() ==
+           "This item does not use clips!!");
+    assert(shell.field_ammo_clips() == 3U);
 }
 
 void open_medical_action(NativePortShell& shell) {
@@ -637,6 +662,7 @@ int main() {
     test_startup_behavior_and_rendering(rom, assets);
     test_field_menu_behavior_and_rendering(rom, assets);
     test_no_clip_gate(rom);
+    test_clip_item_gate(rom);
     test_first_aid_handler(rom);
     test_automatic_use_item_handler(rom);
     test_trade_handler(rom);

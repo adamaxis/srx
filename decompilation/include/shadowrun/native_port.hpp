@@ -575,6 +575,9 @@ public:
     }
     std::size_t clips_menu_selection() const { return clips_menu_selection_; }
     std::uint32_t clips_action_count() const { return clips_action_count_; }
+    std::string_view clips_action_message() const {
+        return clips_action_message_;
+    }
     std::uint8_t field_ammo_rounds() const {
         return field_entity_.ammo_rounds;
     }
@@ -929,6 +932,7 @@ private:
     std::size_t clips_last_action_selection_ = 2;
     std::uint32_t clips_action_count_ = 0;
     std::uint8_t clips_action_message_frames_ = 0;
+    std::string clips_action_message_;
     bool clips_out_of_ammo_ = false;
     std::size_t attributes_menu_column_ = 0;
     std::size_t attributes_menu_row_ = 0;
