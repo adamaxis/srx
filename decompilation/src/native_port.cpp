@@ -550,6 +550,17 @@ std::string_view NativePortShell::field_discard_message() const {
     return {};
 }
 
+std::string_view NativePortShell::field_trade_message() const {
+    if (field_trade_cannot_trade_) {
+        return "Cannot trade magic items!";
+    }
+    if (field_trade_full_inventory_ &&
+        field_trade_recipient_record_ < field_menu_runner_names_.size()) {
+        return field_trade_full_inventory_message_;
+    }
+    return {};
+}
+
 NativePortShell::NativePortShell(
     std::string title, const std::vector<std::uint8_t>& rom)
     : NativePortShell(
@@ -1244,6 +1255,11 @@ void NativePortShell::open_field_menu() {
     field_discard_confirmation_yes_ = false;
     field_discard_item_was_equipped_ = false;
     field_discard_cannot_discard_ = false;
+    field_trade_active_ = false;
+    field_trade_confirmation_yes_ = false;
+    field_trade_cannot_trade_ = false;
+    field_trade_full_inventory_ = false;
+    field_trade_full_inventory_message_.clear();
     field_last_command_selection_ = 0;
     field_last_command_row_ = 0;
     field_command_message_frames_ = 0;
@@ -1272,6 +1288,11 @@ void NativePortShell::open_field_inventory_action() {
     field_discard_confirmation_yes_ = false;
     field_discard_item_was_equipped_ = false;
     field_discard_cannot_discard_ = false;
+    field_trade_active_ = false;
+    field_trade_confirmation_yes_ = false;
+    field_trade_cannot_trade_ = false;
+    field_trade_full_inventory_ = false;
+    field_trade_full_inventory_message_.clear();
     menu_horizontal_repeat_frames_ = 0;
     menu_vertical_repeat_frames_ = 0;
     menu_horizontal_repeat_mask_ = 0;
@@ -1358,7 +1379,179 @@ void NativePortShell::discard_selected_inventory_item() {
     refresh_field_entity_projection();
 }
 
+void NativePortShell::open_field_trade() {
+    const auto source_slot = field_menu_row_ * 2U + field_menu_selection_;
+    if (source_slot >= field_entity_.inventory_item_codes.size()) {
+        return;
+    }
+    const auto item_code = field_entity_.inventory_item_codes[source_slot];
+    if (item_code == 0U) {
+        return;
+    }
+
+    field_trade_cannot_trade_ = item_code >= 0x17U && item_code < 0x2CU;
+    field_trade_full_inventory_ = false;
+    field_trade_full_inventory_message_.clear();
+    field_trade_active_ = false;
+    field_trade_confirmation_yes_ = false;
+    field_trade_recipient_record_ = active_field_record_;
+    field_trade_recipient_slot_ = 0;
+
+    // ROM 0x12836 rejects the inclusive 0x17..0x2B range before it scans
+    // party records. Those are the source magic/special items and must not be
+    // silently moved as ordinary inventory.
+    if (field_trade_cannot_trade_) {
+        field_trade_active_ = true;
+        return;
+    }
+
+    // 0x1288E advances by 0x100-byte records, wraps at the type boundary,
+    // and accepts only records with the source active bit. The native roster
+    // already contains those reviewed record flags, so use them directly.
+    for (std::size_t step = 1; step <= field_records_.size(); ++step) {
+        const auto candidate =
+            (active_field_record_ + step) % field_records_.size();
+        if (candidate == active_field_record_ ||
+            !runner_switch_candidate(field_records_[candidate])) {
+            continue;
+        }
+        field_trade_recipient_record_ = candidate;
+        const auto& recipient = field_entity_records_[candidate];
+        for (std::size_t slot = 0;
+             slot < recipient.inventory_item_codes.size(); ++slot) {
+            if (recipient.inventory_item_codes[slot] == 0U) {
+                field_trade_recipient_slot_ = slot;
+                field_trade_active_ = true;
+                return;
+            }
+        }
+        // The source displays the first eligible recipient's name followed by
+        // D1CE1/D1CEE rather than pretending that another recipient was
+        // selected. Preserve that failure as a visible acknowledgement.
+        field_trade_full_inventory_ = true;
+        field_trade_full_inventory_message_ =
+            field_menu_runner_names_[candidate] + " has a full inventory.";
+        field_trade_active_ = true;
+        return;
+    }
+
+    // No eligible party record is the same sound-only/no-mutation boundary as
+    // the source roster gate. Do not invent a new error string: leave the
+    // action loop open with the source item untouched so another A edge can
+    // retry after the roster changes.
+    field_trade_full_inventory_ = false;
+    field_trade_active_ = false;
+}
+
+void NativePortShell::trade_selected_inventory_item() {
+    const auto source_slot = field_menu_row_ * 2U + field_menu_selection_;
+    if (source_slot >= field_entity_.inventory_item_codes.size() ||
+        field_trade_recipient_record_ >= field_entity_records_.size()) {
+        return;
+    }
+    auto& recipient = field_entity_records_[field_trade_recipient_record_];
+    if (field_trade_recipient_slot_ >= recipient.inventory_item_codes.size()) {
+        return;
+    }
+    const auto item_code = field_entity_.inventory_item_codes[source_slot];
+    if (item_code == 0U || recipient.inventory_item_codes[
+                                field_trade_recipient_slot_] != 0U) {
+        return;
+    }
+
+    // Native form of 0x129FE. Possession and phase bytes move together for
+    // ordinary items. Armor has no transferable phase, and an equipped source
+    // weapon/armor is cleared on the source record while the item is moved.
+    recipient.inventory_item_codes[field_trade_recipient_slot_] = item_code;
+    if (item_code >= 0x2CU) {
+        recipient.inventory_phase_bytes[field_trade_recipient_slot_] = 0U;
+        const auto armor_index = static_cast<std::uint8_t>(item_code - 0x2BU);
+        if (field_entity_.equipped_armor_index == armor_index) {
+            field_entity_.equipped_armor_index = 0U;
+        }
+    } else {
+        recipient.inventory_phase_bytes[field_trade_recipient_slot_] =
+            field_entity_.inventory_phase_bytes[source_slot];
+    }
+    if (field_entity_.display_state >= 0 &&
+        static_cast<std::size_t>(field_entity_.display_state) == source_slot) {
+        field_entity_.display_state = 0x7F;
+        field_entity_.display_substate = 0;
+        field_entity_.active_item_code = 0;
+        field_entity_.ammo_rounds = 0;
+    }
+    field_entity_.inventory_item_codes[source_slot] = 0U;
+    field_entity_.inventory_phase_bytes[source_slot] = 0U;
+
+    const auto source_bars = compute_command_bar_indices(
+        field_entity_, inventory_items_, field_entity_.menu_status_index, 6, 0);
+    field_entity_.attack_bar_index = source_bars.attack;
+    field_entity_.defense_bar_index = source_bars.defense;
+    field_entity_.attack_bar_indices_by_posture[
+        field_entity_.menu_status_index] = source_bars.attack;
+    field_entity_.defense_bar_indices_by_posture[
+        field_entity_.menu_status_index] = source_bars.defense;
+    field_entity_records_[active_field_record_] = field_entity_;
+
+    const auto recipient_bars = compute_command_bar_indices(
+        recipient, inventory_items_, recipient.menu_status_index, 6, 0);
+    recipient.attack_bar_index = recipient_bars.attack;
+    recipient.defense_bar_index = recipient_bars.defense;
+    recipient.attack_bar_indices_by_posture[
+        recipient.menu_status_index] = recipient_bars.attack;
+    recipient.defense_bar_indices_by_posture[
+        recipient.menu_status_index] = recipient_bars.defense;
+    field_equipped_armor_by_record_[active_field_record_] =
+        field_entity_.equipped_armor_index;
+    field_equipped_armor_by_record_[field_trade_recipient_record_] =
+        recipient.equipped_armor_index;
+    refresh_field_entity_projection();
+}
+
+void NativePortShell::update_field_trade(const InputState& input) {
+    if (field_trade_cannot_trade_ || field_trade_full_inventory_) {
+        if (input.was_pressed(Button::A) || input.was_pressed(Button::B) ||
+            input.was_pressed(Button::Start)) {
+            field_trade_active_ = false;
+            field_trade_cannot_trade_ = false;
+            field_trade_full_inventory_ = false;
+            field_trade_full_inventory_message_.clear();
+            field_menu_action_active_ = false;
+            field_menu_action_selection_ = 2U;
+        }
+        return;
+    }
+
+    const auto horizontal_step =
+        menu_direction_step(input, Button::Left, Button::Right, true);
+    if (horizontal_step &&
+        ((input.is_held(Button::Left) && !input.is_held(Button::Right)) ||
+         (input.is_held(Button::Right) && !input.is_held(Button::Left)))) {
+        // 0x129B2 calls the same 0x127B0 writer used by Discard. The source
+        // starts at No, and the horizontal edge toggles the visible choice.
+        field_trade_confirmation_yes_ = !field_trade_confirmation_yes_;
+    }
+    if (input.was_pressed(Button::A)) {
+        if (field_trade_confirmation_yes_) {
+            trade_selected_inventory_item();
+            field_trade_active_ = false;
+            field_menu_action_active_ = false;
+            field_menu_action_selection_ = 2U;
+        }
+        return;
+    }
+    if (input.was_pressed(Button::B) || input.was_pressed(Button::Start)) {
+        field_trade_active_ = false;
+        field_menu_action_active_ = false;
+        field_menu_action_selection_ = 2U;
+    }
+}
+
 void NativePortShell::update_field_inventory_action(const InputState& input) {
+    if (field_trade_active_) {
+        update_field_trade(input);
+        return;
+    }
     if (field_discard_cannot_discard_) {
         // The source's common acknowledgement path keeps this result separate
         // from the action selector and never deletes the protected item.
@@ -1418,6 +1611,8 @@ void NativePortShell::update_field_inventory_action(const InputState& input) {
             field_menu_action_selection_ = 2;
         } else if (field_menu_action_selection_ == 3U) {
             open_field_discard_confirmation();
+        } else if (field_menu_action_selection_ == 4U) {
+            open_field_trade();
         } else if (field_menu_action_selection_ == 5U) {
             // Cancel is the source loop's return path; the saved inventory
             // column/row remains selected when the parent redraws.
@@ -2873,7 +3068,30 @@ void NativePortShell::render(ScreenWriter& screen) const {
             // or item action at plane-B address EC9C (x=112, y=200). The
             // other choices are not a vertical checklist on this screen.
             if (field_menu_action_active_) {
-                if (field_discard_confirmation_active_) {
+                if (field_trade_active_) {
+                    if (field_trade_cannot_trade_ ||
+                        field_trade_full_inventory_) {
+                        write_field_menu_text(
+                            screen, 112, 200, field_trade_message());
+                    } else {
+                        // 0x1287E/0x12908 write the source "Give to" prompt
+                        // and recipient name, then 0x127B0 places the shared
+                        // Yes/No choice at EC9C. Keep that composition in the
+                        // command screen instead of inventing a party list.
+                        write_field_menu_text(screen, 112, 176, "Give to");
+                        if (field_trade_recipient_record_ <
+                            field_menu_runner_names_.size()) {
+                            write_field_menu_text(
+                                screen, 112, 184,
+                                field_menu_runner_names_[
+                                    field_trade_recipient_record_]);
+                        }
+                        write_field_menu_text(
+                            screen, 112, 200,
+                            kDiscardChoiceLabels[
+                                field_trade_confirmation_yes_ ? 1U : 0U]);
+                    }
+                } else if (field_discard_confirmation_active_) {
                     write_field_menu_text(screen, 112, 176,
                                           "Discard item?");
                     if (!field_discard_message().empty()) {

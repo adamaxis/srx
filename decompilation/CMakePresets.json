@@ -60,6 +60,7 @@
         "shadowrun_boot_reconstruction_test",
         "shadowrun_native_port_test",
         "shadowrun_graphics_test",
+        "shadowrun_menu_system_test",
         "shadowrun_graphics_extract"
       ]
     },

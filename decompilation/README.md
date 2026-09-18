@@ -180,8 +180,15 @@ is now carried into native typed state.
 The top-level Clips command now enters a native `ClipsMenu` corresponding to
 ROM `0x11B58`. It carries the active record's `+0x4E` ammunition and `+0x4F`
 available-clip values, cycles the reviewed selectors `2..5`, and preserves the
-`0x12062` no-clips gate. The reload, trade, and recipient quantity mutations
+`0x12062` no-clips gate. The remaining reload/recipient quantity mutations
 remain isolated behind that typed dispatch boundary.
+
+Inventory Trade is now ported from `0x12836`/`0x129FE`. The native action path
+rejects source magic/special codes `0x17..0x2B`, finds the first eligible party
+record with an empty cell, preserves the source Yes/No confirmation semantics,
+reports a full destination inventory, and transfers both possession and the
+source phase byte. Equipped source weapons/armor are cleared as in the source
+record path; the runtime still consumes only the extracted asset pack.
 
 The Cyberware command now enters a native display screen corresponding to ROM
 `0x11950`. Extraction preserves the active record's `+0x90` fifteen-bit

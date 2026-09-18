@@ -54,6 +54,14 @@ target_compile_definitions(shadowrun_graphics_test PRIVATE
     SHADOWRUN_TEST_ROM="${CMAKE_CURRENT_SOURCE_DIR}/input/shadowrun_genesis_us.bin")
 add_test(NAME shadowrun_graphics COMMAND shadowrun_graphics_test)
 
+add_executable(shadowrun_menu_system_test
+    tests/menu_system_test.cpp
+)
+target_link_libraries(shadowrun_menu_system_test PRIVATE shadowrun_port)
+target_compile_definitions(shadowrun_menu_system_test PRIVATE
+    SHADOWRUN_TEST_ROM="${CMAKE_CURRENT_SOURCE_DIR}/input/shadowrun_genesis_us.bin")
+add_test(NAME shadowrun_menu_system COMMAND shadowrun_menu_system_test)
+
 add_executable(shadowrun_graphics_extract
     src/graphics_extract.cpp
 )

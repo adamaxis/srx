@@ -527,6 +527,20 @@ public:
         return field_discard_confirmation_yes_;
     }
     std::string_view field_discard_message() const;
+    bool field_trade_active() const { return field_trade_active_; }
+    bool field_trade_confirmation_yes() const {
+        return field_trade_confirmation_yes_;
+    }
+    bool field_trade_cannot_trade() const {
+        return field_trade_cannot_trade_;
+    }
+    std::size_t field_trade_recipient_record() const {
+        return field_trade_recipient_record_;
+    }
+    std::size_t field_trade_recipient_slot() const {
+        return field_trade_recipient_slot_;
+    }
+    std::string_view field_trade_message() const;
     std::int8_t field_equipped_weapon_slot() const {
         return field_entity_.display_state;
     }
@@ -583,6 +597,14 @@ public:
     std::uint8_t field_inventory_item_code(std::size_t slot) const {
         return slot < field_entity_.inventory_item_codes.size()
             ? field_entity_.inventory_item_codes[slot]
+            : 0;
+    }
+    std::uint8_t field_record_inventory_item_code(std::size_t record,
+                                                  std::size_t slot) const {
+        return record < field_entity_records_.size() &&
+                       slot < field_entity_records_[record]
+                                  .inventory_item_codes.size()
+            ? field_entity_records_[record].inventory_item_codes[slot]
             : 0;
     }
     std::uint8_t field_equipped_armor_index() const {
@@ -683,6 +705,9 @@ private:
                              Button positive, bool horizontal);
     void open_field_inventory_action();
     void open_field_discard_confirmation();
+    void open_field_trade();
+    void update_field_trade(const InputState& input);
+    void trade_selected_inventory_item();
     void update_field_inventory_action(const InputState& input);
     void apply_field_inventory_action();
     void discard_selected_inventory_item();
@@ -824,6 +849,17 @@ private:
     bool field_discard_confirmation_yes_ = false;
     bool field_discard_item_was_equipped_ = false;
     bool field_discard_cannot_discard_ = false;
+    // ROM 0x12836 reuses the source Yes/No writer at 0x127B0 after finding
+    // the first eligible recipient and an empty destination slot. Keep the
+    // recipient and destination slot explicit so Trade cannot be confused
+    // with mere inventory possession.
+    bool field_trade_active_ = false;
+    bool field_trade_confirmation_yes_ = false;
+    bool field_trade_cannot_trade_ = false;
+    bool field_trade_full_inventory_ = false;
+    std::size_t field_trade_recipient_record_ = 0;
+    std::size_t field_trade_recipient_slot_ = 0;
+    std::string field_trade_full_inventory_message_;
     std::size_t clips_menu_selection_ = 2;
     std::size_t clips_last_action_selection_ = 2;
     std::uint32_t clips_action_count_ = 0;
