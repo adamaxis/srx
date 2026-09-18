@@ -289,9 +289,10 @@ For the Redmond Barrens startup map, the reviewed C0 doorway at the motel
 entrance selects mode `0x14` (Stoker's Coffin Motel). Ares Weapon Emporium and
 other buildings have different event cells and must be reached through their
 own source table entries. The native area catalog currently contains the
-reviewed mode-2 destinations and the motel transition; building interiors,
-exit reaction context, NPC interaction, shops, and combat triggers still need
-their individual source dispatches.
+reviewed mode-2 destinations and the motel transition. The mode-2 event-0
+tuple now enters the source Stoker interaction state after loading mode `0x14`;
+other building interiors, exit reaction context, shops, and combat triggers
+still need their individual source dispatches.
 
 ## Audit matrix
 
@@ -308,8 +309,8 @@ of a port.
 | Save/load | `0x59172` | Partial | Empty-slot result is covered; SRAM restore is pending |
 | Archetype selection | `0x59248`, `0x42B0` | Implemented | Only the three Joshua templates are selectable |
 | Opening | `0x59C5E` and timed groups | Partial | Text/timing/skip are present; animated art and music are pending |
-| Field movement | `0x3084`, `0x2B34`, `0xE7C8` | Partial | Movement, collision, animation state, and reviewed maps are present; NPC/entity logic is pending |
-| Area transitions | `0x5A62`, `0x172CDC` | Partial | Reviewed mode-2 and motel reaction are present; every building reaction is not |
+| Field movement | `0x3084`, `0x2B34`, `0xE7C8`, `0x5FDC`, `0x600E` | Partial | Movement, four-corner collision, eight directional two-frame states, and source timer classification are present; NPC/entity logic outside the reviewed player path remains pending |
+| Area transitions | `0x5A62`, `0x172CDC`, `0x20E48` | Partial | The reviewed mode-2 C0/event-0 tuple loads mode `0x14` and enters the source Stoker dialogue state; every building reaction and reverse transition is not |
 | Command overview | `0x10D30`, `0x10F50`, `0x111E8` | Partial | Normal overview and selector are present; Magic/Pocket Secretary handlers are pending |
 | Inventory navigation | `0x11506`..`0x11678` | Implemented | Eight-cell cursor and source column/row semantics are covered |
 | Equipment action | `0x12148`, `0x12168`..`0x1228C` | Partial | Audited weapon/gear toggle and armor mutation are present; other item-action branches are pending |

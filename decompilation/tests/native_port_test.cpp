@@ -183,10 +183,28 @@ int main() {
     assert(transition_shell.field_raw_status() == 0xC0);
     transition_shell.update(InputState{
         button_mask(Button::Right), button_mask(Button::Right)});
+    // The reviewed mode-2 C0/event-0 tuple must load the motel (0x14) and
+    // immediately enter the source interaction callback, not fall through to
+    // the unrelated mode-26 security interior.
+    assert(transition_shell.scene() == NativeScene::FieldDialog);
     assert(transition_shell.field_mode() == 0x14);
     assert(transition_shell.field_area_transition_count() == 1);
     assert(transition_shell.field_world_x() == (0x5A00 >> 4));
     assert(transition_shell.field_world_y() == (0x0800 >> 4));
+    assert(transition_shell.field_dialog_line().find("Stoker") !=
+           std::string_view::npos);
+    transition_shell.render(screen);
+    assert(screen.pixel(8, 92) == 0x0000A8C8U);
+    transition_shell.update(InputState{button_mask(Button::A),
+                                       button_mask(Button::A)});
+    assert(transition_shell.field_dialog_line_index() == 1);
+    assert(transition_shell.scene() == NativeScene::FieldDialog);
+    for (std::size_t line = 1; line <= 7; ++line) {
+        transition_shell.update(InputState{});
+        transition_shell.update(InputState{button_mask(Button::A),
+                                           button_mask(Button::A)});
+    }
+    assert(transition_shell.scene() == NativeScene::Field);
 
     // The first three records at 0x7291A are Joshua archetype templates, not
     // three active runners. New Game therefore starts with Joshua only.
@@ -427,9 +445,9 @@ int main() {
     }
     assert(rom_shell.marker_x() == 301);
     assert(rom_shell.field_entity_state_selector() == 0x0068);
-    // Kind-3's 0x8002 walking lists carry auxiliary=0x0300 and the entity
-    // timer threshold is 0x1000. After the direction change, 100 field ticks
-    // therefore advance 18 times and land back on frame zero.
+    // Kind-3's 0x8002 walking lists classify their 0x76F0 source timing word
+    // to multiplier 0x0010; the neighboring 0x0300 list word is not the
+    // timer increment. 100 field ticks therefore do not yet cross 0x1000.
     assert(rom_shell.field_entity_state_index() == 0);
     assert(rom_shell.field_entity_frame_index() == 0);
     assert(rom_shell.field_world_x() > initial_camera_x);
@@ -466,7 +484,7 @@ int main() {
                                 button_mask(Button::A)});
     rom_shell.render(screen);
     assert(rom_shell.frame_number() == before_action_frame + 1);
-    assert(screen.presented_frames() == 10);
+    assert(screen.presented_frames() == 11);
 
     // The runtime constructor below receives only the host asset pack. This
     // is the PC-port path: the ROM is used by extraction, not by the native

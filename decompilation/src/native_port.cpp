@@ -842,6 +842,41 @@ void NativePortShell::update_intro(const InputState& input) {
     }
 }
 
+void NativePortShell::open_stoker_motel_dialog() {
+    // The C0 doorway resolves to mode 0x14. The source interaction callback
+    // queued at ROM 0x20E48 uses the following text resources at ROM
+    // 0x1167EB..0x116A79; keep the original paragraphs intact and let the host
+    // writer wrap them to the Genesis dialogue width.
+    field_dialog_lines_ = {
+        "<The battered sign reads Stoker's Coffin Motel.",
+        "Motels like these are cheap, each room only large enough to fit a small bed.",
+        "Dumps like these tend to attract the dregs of humanity.>",
+        "<Stoker squints at you with his one good eye.",
+        "So whadda' ya' want?",
+        "I got a room for 20$, up front.",
+        "You interested?",
+    };
+    field_dialog_line_index_ = 0;
+    scene_ = NativeScene::FieldDialog;
+}
+
+void NativePortShell::update_field_dialog(const InputState& input) {
+    if (!input.was_pressed(Button::A) && !input.was_pressed(Button::B) &&
+        !input.was_pressed(Button::Start)) {
+        return;
+    }
+    if (field_dialog_line_index_ + 1U < field_dialog_lines_.size()) {
+        ++field_dialog_line_index_;
+        return;
+    }
+    field_dialog_lines_.clear();
+    field_dialog_line_index_ = 0;
+    scene_ = NativeScene::Field;
+    field_entity_walking_ = false;
+    select_field_entity_idle(field_entity_direction_);
+    refresh_field_entity_projection();
+}
+
 void NativePortShell::activate_field_record(std::size_t record_index) {
     if (record_index >= field_records_.size() ||
         record_index == active_field_record_) {
@@ -1039,12 +1074,12 @@ void NativePortShell::select_field_entity_animation(std::size_t direction) {
         field_entity_.state_selector = animation.state_selector;
         field_entity_.state_index = 0;
         field_entity_.animation_accumulator = 0;
-        // 0x600E loads the active list's auxiliary word at +2 into the
-        // record's +0x18 timer increment. The extracted timing_multiplier is
-        // the separate +0xCA classification value and is retained in the
-        // asset for analysis; it is not the walking frame cadence.
+        // ROM 0x600E resolves the active state list and writes its timing
+        // classification to record +0x18. For Joshua's kind-3 walking lists
+        // the source timing word is 0x76F0, which classifies to 0x0010. The
+        // neighboring 0x0300 word is list metadata, not the frame cadence.
         field_entity_.animation_multiplier =
-            std::max<std::uint16_t>(animation.state_auxiliary_word, 1U);
+            std::max<std::uint16_t>(animation.timing_multiplier, 1U);
         if (field_entity_.animation_threshold == 0U) {
             field_entity_.animation_threshold = 0x1000U;
         }
@@ -1084,8 +1119,9 @@ void NativePortShell::update_field_entity_animation(bool movement_attempted) {
 
     // This is the direct host form of ROM 0x5FDC: +0x18 advances +0x1A and
     // a frame changes only when +0x1C is reached. For the kind-3 walking
-    // lists the source values are auxiliary=0x0300 and threshold=0x1000,
-    // which gives the same six-vblank cadence in every direction.
+    // lists the source values are timing_multiplier=0x0010 and
+    // threshold=0x1000. Keep the 16-bit accumulator and threshold behavior
+    // of 0x5FDC instead of converting the source cadence to a host delay.
     const auto threshold = std::max<std::uint16_t>(
         field_entity_.animation_threshold, 1U);
     const auto multiplier = std::max<std::uint16_t>(
@@ -1661,6 +1697,12 @@ void NativePortShell::update(const InputState& input) {
         return;
     }
 
+    if (scene_ == NativeScene::FieldDialog) {
+        update_field_dialog(input);
+        ++frame_number_;
+        return;
+    }
+
     if (scene_ == NativeScene::FieldMenu) {
         update_field_menu(input);
         ++frame_number_;
@@ -1754,6 +1796,7 @@ void NativePortShell::update(const InputState& input) {
             // the source event-0 mode 0x14 destination.
             if ((candidate_collision.raw_status & 0xE0U) == 0xC0U &&
                 event_index < field_event_mode_table_.size()) {
+                const auto source_mode = field_mode_;
                 const auto destination = field_event_mode_table_[event_index];
                 if (destination != 0U && destination != 0x80U &&
                     load_field_area(destination)) {
@@ -1761,6 +1804,16 @@ void NativePortShell::update(const InputState& input) {
                     action_flash_frames_ = 0;
                     delta_x = 0;
                     delta_y = 0;
+                    // This is the reviewed Redmond event tuple: mode 2,
+                    // raw C0/event 0, reaction table destination 0x14. The
+                    // source does not turn this into the unrelated mode-26
+                    // security interior; its 0x20E48 callback enters the
+                    // motel NPC/dialogue state after the area load.
+                    if (source_mode == 2U && field_mode_ == 0x14U &&
+                        event_index == 0U &&
+                        candidate_collision.raw_status == 0xC0U) {
+                        open_stoker_motel_dialog();
+                    }
                 } else {
                     delta_x = 0;
                     delta_y = 0;
@@ -2081,6 +2134,7 @@ void NativePortShell::render(ScreenWriter& screen) const {
         screen.present();
         return;
     } else if ((scene_ == NativeScene::Field ||
+                scene_ == NativeScene::FieldDialog ||
                 scene_ == NativeScene::FieldMenu ||
                 scene_ == NativeScene::ClipsMenu ||
                 scene_ == NativeScene::CyberwareMenu ||
@@ -2135,6 +2189,58 @@ void NativePortShell::render(ScreenWriter& screen) const {
             // Keep the input seam visible if a ROM is supplied without the
             // reviewed entity descriptor.
             screen.fill_rect(marker_x_, marker_y_, 8, 12, marker_color_);
+        }
+        if (scene_ == NativeScene::FieldDialog) {
+            // The source 0x20E48 callback presents a text interaction over
+            // the loaded 0x14 motel state. Keep the field behind it so the
+            // transition remains observable, then wrap the source paragraph
+            // at the Genesis 40-column text width.
+            screen.fill_rect(8, 92, 304, 104, {0x00, 0x00, 0x00, 0xFF});
+            screen.fill_rect(8, 92, 304, 2, {0x00, 0xA8, 0xC8, 0xFF});
+            screen.fill_rect(8, 194, 304, 2, {0x00, 0xA8, 0xC8, 0xFF});
+            screen.fill_rect(8, 92, 2, 104, {0x00, 0xA8, 0xC8, 0xFF});
+            screen.fill_rect(310, 92, 2, 104, {0x00, 0xA8, 0xC8, 0xFF});
+            write_field_menu_text(screen, 16, 100,
+                                  "STOKER'S COFFIN MOTEL");
+
+            const auto& paragraph = field_dialog_lines_[field_dialog_line_index_];
+            std::vector<std::string> wrapped;
+            std::string current;
+            std::string word;
+            const auto flush_word = [&]() {
+                if (word.empty()) {
+                    return;
+                }
+                if (!current.empty() && current.size() + 1U + word.size() >
+                        34U) {
+                    wrapped.push_back(current);
+                    current.clear();
+                }
+                if (!current.empty()) {
+                    current += ' ';
+                }
+                current += word;
+                word.clear();
+            };
+            for (const auto character : paragraph) {
+                if (character == ' ') {
+                    flush_word();
+                } else {
+                    word += character;
+                }
+            }
+            flush_word();
+            if (!current.empty()) {
+                wrapped.push_back(current);
+            }
+            for (std::size_t row = 0; row < wrapped.size() && row < 8U;
+                 ++row) {
+                write_field_menu_text(
+                    screen, 16, 116 + static_cast<std::int32_t>(row) * 8,
+                    wrapped[row]);
+            }
+            screen.write_text(222, 184, "A NEXT", 1,
+                              {0xFF, 0xF0, 0x90, 0xFF});
         }
         if (action_flash_frames_ != 0) {
             const auto action_x = field_entity_.visible

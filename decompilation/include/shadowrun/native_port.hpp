@@ -78,6 +78,7 @@ enum class NativeScene {
     ArchetypeMenu,
     Intro,
     Field,
+    FieldDialog,
     FieldMenu,
     ClipsMenu,
     CyberwareMenu,
@@ -474,6 +475,17 @@ public:
     bool has_terrain() const { return !field_terrain_.statuses.empty(); }
     bool has_entity_frame() const { return !entity_frames_.empty(); }
     bool field_menu_open() const { return scene_ == NativeScene::FieldMenu; }
+    bool field_dialog_open() const {
+        return scene_ == NativeScene::FieldDialog;
+    }
+    std::size_t field_dialog_line_index() const {
+        return field_dialog_line_index_;
+    }
+    std::string_view field_dialog_line() const {
+        return field_dialog_line_index_ < field_dialog_lines_.size()
+            ? std::string_view(field_dialog_lines_[field_dialog_line_index_])
+            : std::string_view{};
+    }
     bool clips_menu_open() const { return scene_ == NativeScene::ClipsMenu; }
     bool cyberware_menu_open() const {
         return scene_ == NativeScene::CyberwareMenu;
@@ -631,6 +643,8 @@ private:
     void update_save_load(const InputState& input);
     void update_archetype_menu(const InputState& input);
     void update_intro(const InputState& input);
+    void update_field_dialog(const InputState& input);
+    void open_stoker_motel_dialog();
     void apply_protagonist_archetype();
     void activate_field_record(std::size_t record_index);
     std::size_t next_available_field_record() const;
@@ -716,6 +730,11 @@ private:
     bool save_load_message_success_ = false;
     std::vector<NativeEntityFrame> entity_frames_;
     std::array<NativeFieldAnimation, 8> field_entity_animations_{};
+    // Source text routed by the motel interaction callback at ROM 0x20E48.
+    // These are paragraphs rather than invented UI labels; the renderer wraps
+    // the original strings into the native dialogue window.
+    std::vector<std::string> field_dialog_lines_;
+    std::size_t field_dialog_line_index_ = 0;
     std::array<std::array<std::int16_t, 2>, 8> field_direction_table_{};
     NativeFieldEntity field_entity_{};
     std::array<NativeFieldEntity, kNativeArchetypeChoiceCount>
