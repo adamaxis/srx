@@ -75,6 +75,10 @@
         "shadowrun_native_port_test",
         "shadowrun_graphics_test",
         "shadowrun_menu_system_test",
+        "shadowrun_menu_visual_regression_test",
+        "shadowrun_leftover_clear_test",
+        "shadowrun_boot_sequence_test",
+        "shadowrun_visual_dump",
         "shadowrun_graphics_extract"
       ]
     },

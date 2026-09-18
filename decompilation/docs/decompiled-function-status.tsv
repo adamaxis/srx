@@ -1,14 +1,30 @@
-rom_entry\tsubsystem\tnative_owner\tstatus\tevidence_or_coverage\tnext
-0x1A9E/0x1C6A/0x1DCA/0x1DF6/0x1E4E\ttitle animation and startup\tNativePortShell::render_title\tpartial\tgraphics::decode_genesis_title_animation_frames; title screenshots\tmatch timing, background motion, and skip-to-end behavior
-0x10F50/0x1232\tfield command screen\tNativePortShell::render_field_menu\tpartial\tgraphics::decode_genesis_field_menu_layer and font/cursor assets\tcomplete source-accurate menu state and layout audit
-0x11740/0x118C6\tinventory action loop\tNativePortShell::update_field_inventory_action\tported\tD1D94/D1E6C labels, 2..5 selector, two-step confirmation, Equip/Unequip, Discard, Trade, First Aid, automatic-use acknowledgement, and cancel paths are covered\tport remaining item handlers
-0x12148/0x12168/0x121C0/0x12298/0x1253E/0x12634/0x1275C/0x12836/0x129FE/0x12A8C\tinventory and item detail\tNativePortShell::render_item_detail; apply_field_inventory_action; apply_field_first_aid; discard_selected_inventory_item; trade_selected_inventory_item\tpartial\titem art, bars, labels, 0x6AC46 value table, Equip/Unequip, automatic-use D202F acknowledgement, Discard, Trade transfer/rejection, First Aid target/effect/result paths, and source phase removal are covered\tport remaining item handlers without conflating possession and equipment
-0x11B58/0x11CCA/0x11D86/0x11DD2/0x11E7E/0x11FDE/0x12014/0x12062/0x1209A/0x120E4/0x36FC\tclips menu\tNativePortShell::update_clips_menu; update_clips_trade; reload_one_clip; distribute_clips\tpartial\tD1DDC top-level labels, D1E24 nested Trade loop, selector, ammo fields, zero-clip/non-clip gates, Reload confirmation and source capacity clamp, quantity transfer, Distribute average\tport final Clips panel resources
-0xC2A6/0xC3E6/0xC376/0xC8C8/0xF236/0xF2E2/0xF312/0xF416/0xF9A4/0x18150/0xC448\tPocket Secretary, Notebook base, Group Items, and Dismiss Runner\tNativePortShell::open_pocket_secretary_menu; update_pocket_secretary_menu; open_notebook_menu; update_notebook_menu; open_notebook_tips_menu; update_notebook_tips_menu; update_group_items_menu; open_dismiss_runner_menu; update_dismiss_runner_menu\tpartial\tC1418 source option order, five-row cursor loop, caller-specific Save/Load return, F33E base Notebook labels plus 59C48 initial Contacts gate and inclusive selector, F2E2 no-current-run response, F9A4 MSB-first three-table tip filtering/page loop/text display, F416 five-name Mr. Johnson catalog extraction, C25C4 group-item extraction, C8C8 empty-catalog path, F312 any-edge return, 18150 no-deck feedback, and C448 active-runner dismissal path are covered\tport F416 FFFC27-gated name list/detail loop, conditional Contacts/Shadowrunners screens, Cyberdeck-present Matrix path, persistent FFFC22/FFFC27/FFFC2A event setters, and restricted-mode gates
-0x12F70/0x12FA4/0x13000\titem detail rows\tNativePortShell::render_item_detail\tpartial\tdamage/drain bars and power labels extracted\tverify per-item row visibility against source branches
-0x195C/0x2B34/0xB530/0xB77E/0xBABC/0xE7C8/0xE8A0-0xEAD2\tfield input, movement, and collision\tNativePortShell::update; terrain::probe\tpartial\t0x19D2 input-angle mapping, 0xB530 slew, C002 fixed-point vectors, mode-2 rectangles, direct bounds tests\tport source transition/reaction paths and field HUD
-0x391A\trunner roster/switch\tNativePortShell::update\tpartial\tsource roster gate identified\tverify no-runner switch rejection and sound-only path
-0x5A62/0x5FDC\tentity projection and walking\tentity_projection; NativePortShell::render\tpartial\tfield entity state and direction assets\tsource-match all four walking directions and frame timing
-0x17708/0x18252\tfield HUD and VDP setup\tNativePortShell::render_field\tpending\tROM call paths cataloged\textract canonical HUD resources and remove layout guesses
-matrix dispatch paths\tmatrix menu\tNativePortShell::render_matrix\tpending\tnot yet tied to native code\taudit matrix screens before implementation
-Z80/music dispatch paths\taudio\tnative audio backend\tpending\tsource boundary only\textract sequences and match playback timing
+rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
+0x0236	reset / boot	ShadowrunBoot	shadowrun_boot_reconstruction	partial		TMSS/region only; logos are 0x5D746
+0x5D746	pre-title SEGA / rising SAT	NativePortShell::update_boot	shadowrun_boot_sequence	partial	boot-0/arrived/sega.bmp	HSCROLL 0x5DAC4 and pal strobe 0x5D8BA pending
+0x5DA50	pre-title resource setup	decode_genesis_boot_*	shadowrun_boot_sequence	partial		planes 0x1FFA66/0x1FFB66, tiles 0x1FEC46/0x14C222/0xDA038
+0x1A9E	title loop	NativePortShell::render	shadowrun_menu_system; shadowrun_visual_dump	partial		dump frames 0/90/128/500; replace six-frame cycle as claimed title
+0x1E4E	title logo columns	NativePortShell::render	shadowrun_visual_dump	partial		phase-match against 320x224 capture
+0x1C6A	title sprite lists	NativePortShell::render	shadowrun_visual_dump	partial		SAT origin/clip vs capture
+0x1DCA	PRESS START blink	NativePortShell::render	shadowrun_menu_system	partial		
+0x1DF6	title copyright	NativePortShell::render	shadowrun_visual_dump	partial		
+0x59092	start options	NativePortShell::update_start_options	test_startup_behavior_and_rendering; leftover_clear	partial		
+0x59172	save/load empty	NativePortShell::update_save_load	leftover_clear	partial		SRAM restore pending
+0x59248	archetype select	NativePortShell	test_startup_behavior_and_rendering	partial		
+0x42B0	Joshua template copy	NativePortShell	test_startup_behavior_and_rendering	partial		
+0x59C5E	intro text	NativePortShell	test_startup_behavior_and_rendering	partial		intro art/music pending
+0x3084	field loop	NativePortShell::update	shadowrun_native_port	partial		HUD 0x17708 separate
+0xE7C8	terrain probe	terrain::probe	shadowrun_native_port	partial		
+0x600E	walk animation	NativePortShell::render	shadowrun_native_port	partial		
+0x391A	runner switch	NativePortShell::update	shadowrun_native_port	partial		recruited roster pending
+0x172CDC	mode-2 events	NativePortShell::update	shadowrun_native_port motel tuple	partial		do not fall through to mode 0x1A
+0x20E48	Stoker dialog	NativePortShell::open_stoker_motel_dialog	shadowrun_native_port	partial		lift to shared dialog scene
+0x10F50	command overview	NativePortShell::render_field_menu	shadowrun_menu_visual_regression	partial	same-source (not a golden)	swap expected to 320x224 capture
+0x11740	inventory actions	NativePortShell::update_field_inventory_action	shadowrun_menu_system	ported		
+0x11B58	clips menu	NativePortShell::update_clips_menu	shadowrun_menu_system	partial		panel art pending
+0xC2A6	pocket secretary	NativePortShell::update_pocket_secretary_menu	shadowrun_menu_system	partial		Matrix 0x1817E pending
+0xD01C	attributes/skills	NativePortShell	shadowrun_menu_system	partial		mutations pending
+0x11950	cyberware display	NativePortShell	shadowrun_menu_system	partial		
+0xFBA6	magic	—	—	pending		
+0x1817E	matrix run	—	—	pending		
+0x17708	field HUD	—	—	pending		
+0x530DE	Z80/audio	—	—	pending		

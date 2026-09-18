@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <fstream>
 #include <limits>
 #include <stdexcept>
@@ -786,6 +787,17 @@ native::NativePortAssets decode_genesis_native_assets(
             title_frames[index].width, title_frames[index].height,
             title_frames[index].pixels};
     }
+    const auto boot_background = decode_genesis_boot_background(rom);
+    assets.boot_background = {
+        boot_background.width, boot_background.height, boot_background.pixels};
+    const auto boot_guy = decode_genesis_boot_guy(rom);
+    assets.boot_guy = {boot_guy.width, boot_guy.height, boot_guy.pixels};
+    const auto boot_sega = decode_genesis_boot_sega_frames(rom);
+    for (std::size_t index = 0; index < boot_sega.size(); ++index) {
+        assets.boot_sega_frames[index] = {
+            boot_sega[index].width, boot_sega[index].height,
+            boot_sega[index].pixels};
+    }
     auto field_menu_background = decode_genesis_field_menu_background(rom);
     assets.field_menu_background = {
         field_menu_background.width, field_menu_background.height,
@@ -1136,7 +1148,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 35);
+    write_u16(output, 36);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     for (const auto& title_frame : assets.title_animation_frames) {
@@ -1529,6 +1541,11 @@ void write_native_asset_pack(const std::string& path,
             write_native_image(output, {frame.width, frame.height, frame.pixels});
         }
     }
+    write_native_image(output, assets.boot_background);
+    write_native_image(output, assets.boot_guy);
+    for (const auto& frame : assets.boot_sega_frames) {
+        write_native_image(output, frame);
+    }
     if (!output) {
         throw std::runtime_error("failed writing native asset pack: " + path);
     }
@@ -1544,7 +1561,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 35U)) {
+        (version < 2U || version > 36U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -2237,6 +2254,13 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
             }
         }
     }
+    if (version >= 36U) {
+        assets.boot_background = read_native_image(input);
+        assets.boot_guy = read_native_image(input);
+        for (auto& frame : assets.boot_sega_frames) {
+            frame = read_native_image(input);
+        }
+    }
     return assets;
 }
 
@@ -2391,6 +2415,28 @@ std::vector<std::uint8_t> decode_genesis_1530_vram(
     std::vector<std::uint8_t> vram(0x10000U, 0);
     write_genesis_1530_vram(rom, source_offset, target_offset, vram);
     return vram;
+}
+
+void write_genesis_f5c_vram(
+    const std::vector<std::uint8_t>& rom, std::size_t source_offset,
+    std::size_t target_offset, std::size_t byte_count,
+    std::vector<std::uint8_t>& vram) {
+    constexpr std::size_t kVramSize = 0x10000U;
+    if (vram.size() != kVramSize) {
+        throw std::invalid_argument("Genesis VDP buffer has invalid size");
+    }
+    if (source_offset > rom.size() ||
+        rom.size() - source_offset < byte_count) {
+        throw std::out_of_range("Genesis 0xF5C ROM copy is truncated");
+    }
+    if (target_offset > kVramSize ||
+        byte_count > kVramSize - target_offset) {
+        throw std::out_of_range("Genesis 0xF5C VDP upload is truncated");
+    }
+    std::copy(rom.begin() + static_cast<std::ptrdiff_t>(source_offset),
+              rom.begin() + static_cast<std::ptrdiff_t>(source_offset +
+                                                         byte_count),
+              vram.begin() + static_cast<std::ptrdiff_t>(target_offset));
 }
 
 std::array<native::Rgba8, 16> read_genesis_palette(
@@ -4640,6 +4686,217 @@ decode_genesis_title_animation_frames(
         frames[index] = decode_genesis_title_frame(rom, index);
     }
     return frames;
+}
+
+namespace {
+
+struct GenesisBootPatternData {
+    std::vector<std::uint8_t> pattern_vram;
+    std::array<native::Rgba8, 64> palette{};
+};
+
+GenesisBootPatternData decode_genesis_boot_pattern_data(
+    const std::vector<std::uint8_t>& rom) {
+    GenesisBootPatternData result{
+        std::vector<std::uint8_t>(0x10000U, 0),
+        read_genesis_palette_set(rom, 0x5DC66U),
+    };
+    // 0x5DB10 pattern list: even 0xF5C copy 0x1FEC46 -> VRAM $8000, $E20 bytes.
+    write_genesis_f5c_vram(rom, 0x1FEC46U, 0x8000U, 0xE20U,
+                           result.pattern_vram);
+    // 0x176BA: uncompressed guy tiles at VRAM $2360, then 0x1530 at $2DE0.
+    write_genesis_f5c_vram(rom, 0xDA038U, 0x2360U, 0xA80U,
+                           result.pattern_vram);
+    write_genesis_1530_vram(rom, 0xDAAB8U, 0x2DE0U, result.pattern_vram);
+    // 0x5DA50 packed SEGA tiles: 0x1530 from 0x14C222 to VRAM $400.
+    write_genesis_1530_vram(rom, 0x14C222U, 0x400U, result.pattern_vram);
+    return result;
+}
+
+void blit_genesis_tile(
+    RgbaImage& image, const GenesisBootPatternData& boot,
+    std::size_t tile_index, std::size_t palette_line, bool hflip, bool vflip,
+    std::int32_t dest_x, std::int32_t dest_y, bool transparent_zero) {
+    if (tile_index * 32U + 32U > boot.pattern_vram.size()) {
+        throw std::out_of_range("Genesis boot tile is truncated");
+    }
+    const auto tile = decode_genesis_tile(
+        boot.pattern_vram.data() + tile_index * 32U, 32U);
+    for (std::size_t pixel_y = 0; pixel_y < 8U; ++pixel_y) {
+        for (std::size_t pixel_x = 0; pixel_x < 8U; ++pixel_x) {
+            const auto source_x = hflip ? 7U - pixel_x : pixel_x;
+            const auto source_y = vflip ? 7U - pixel_y : pixel_y;
+            const auto color_index =
+                tile.pixels[source_y * 8U + source_x];
+            auto color =
+                boot.palette[palette_line * 16U + color_index];
+            if (transparent_zero && color_index == 0U) {
+                continue;
+            }
+            color.alpha = 255;
+            const auto target_x = dest_x + static_cast<std::int32_t>(pixel_x);
+            const auto target_y = dest_y + static_cast<std::int32_t>(pixel_y);
+            if (target_x < 0 || target_y < 0 ||
+                target_x >= image.width || target_y >= image.height) {
+                continue;
+            }
+            image.pixels[static_cast<std::size_t>(target_y) * image.width +
+                         static_cast<std::size_t>(target_x)] = color;
+        }
+    }
+}
+
+void blit_genesis_name_table(
+    const std::vector<std::uint8_t>& rom, const GenesisBootPatternData& boot,
+    RgbaImage& image, std::size_t map_offset, std::size_t columns,
+    std::size_t rows, std::uint32_t dest_vram, std::uint32_t plane_base,
+    std::uint16_t attr_or) {
+    const auto plane_offset = dest_vram - plane_base;
+    const auto start_tile_x = (plane_offset % 0x80U) / 2U;
+    const auto start_tile_y = plane_offset / 0x80U;
+    for (std::size_t row = 0; row < rows; ++row) {
+        for (std::size_t col = 0; col < columns; ++col) {
+            const auto word = static_cast<std::uint16_t>(
+                read_rom_u16(
+                    rom, map_offset + (row * columns + col) * 2U,
+                    "Genesis boot nametable is truncated") |
+                attr_or);
+            const auto tile_index = static_cast<std::size_t>(word & 0x07FFU);
+            const auto palette_line =
+                static_cast<std::size_t>((word >> 13U) & 0x03U);
+            const auto hflip = (word & 0x0800U) != 0;
+            const auto vflip = (word & 0x1000U) != 0;
+            blit_genesis_tile(
+                image, boot, tile_index, palette_line, hflip, vflip,
+                static_cast<std::int32_t>((start_tile_x + col) * 8U),
+                static_cast<std::int32_t>((start_tile_y + row) * 8U), false);
+        }
+    }
+}
+
+void blit_genesis_sat_list(
+    const std::vector<std::uint8_t>& rom, const GenesisBootPatternData& boot,
+    RgbaImage& image, std::size_t list_offset, std::int32_t origin_x,
+    std::int32_t origin_y, std::uint16_t attr_or) {
+    constexpr std::int32_t kSatOrigin = 0x80;
+    for (auto source = list_offset;;) {
+        const auto source_x = read_rom_u16(
+            rom, source, "Genesis boot sprite list is truncated");
+        if (source_x == 0x8000U) {
+            return;
+        }
+        const auto source_y = read_rom_u16(
+            rom, source + 2U, "Genesis boot sprite list is truncated");
+        const auto source_size = read_rom_u16(
+            rom, source + 4U, "Genesis boot sprite list is truncated");
+        const auto source_tile = read_rom_u16(
+            rom, source + 6U, "Genesis boot sprite list is truncated");
+        source += 8U;
+        const auto size = static_cast<std::uint16_t>(source_size & 0x00FFU);
+        const auto width_tiles =
+            static_cast<std::size_t>(((size >> 2U) & 0x03U) + 1U);
+        const auto height_tiles =
+            static_cast<std::size_t>((size & 0x03U) + 1U);
+        const auto tile_attributes =
+            static_cast<std::uint16_t>(source_tile | attr_or);
+        const auto tile_index =
+            static_cast<std::size_t>(tile_attributes & 0x07FFU);
+        const auto palette_line =
+            static_cast<std::size_t>((tile_attributes >> 13U) & 0x03U);
+        const auto hflip = (tile_attributes & 0x0800U) != 0;
+        const auto vflip = (tile_attributes & 0x1000U) != 0;
+        const auto screen_x = static_cast<std::int32_t>(
+                                  static_cast<std::int16_t>(source_x)) +
+                              origin_x - kSatOrigin;
+        const auto screen_y =
+            static_cast<std::int32_t>(static_cast<std::int16_t>(source_y)) +
+            origin_y - kSatOrigin;
+        for (std::size_t tile_x = 0; tile_x < width_tiles; ++tile_x) {
+            for (std::size_t tile_y = 0; tile_y < height_tiles; ++tile_y) {
+                const auto source_tile_x =
+                    hflip ? width_tiles - 1U - tile_x : tile_x;
+                const auto source_tile_y =
+                    vflip ? height_tiles - 1U - tile_y : tile_y;
+                const auto current_tile =
+                    tile_index + source_tile_x * height_tiles + source_tile_y;
+                blit_genesis_tile(
+                    image, boot, current_tile, palette_line, hflip, vflip,
+                    screen_x + static_cast<std::int32_t>(tile_x * 8U),
+                    screen_y + static_cast<std::int32_t>(tile_y * 8U), true);
+            }
+        }
+    }
+}
+
+} // namespace
+
+RgbaImage decode_genesis_boot_background(
+    const std::vector<std::uint8_t>& rom) {
+    auto image = make_transparent_title_layer();
+    for (auto& pixel : image.pixels) {
+        pixel = {0, 0, 0, 255};
+    }
+    const auto boot = decode_genesis_boot_pattern_data(rom);
+    // 0x5DB10 tilemap 0: 12x4 at Plane B $E51A, source 0x1FFA66.
+    blit_genesis_name_table(rom, boot, image, 0x1FFA66U, 12U, 4U, 0xE51AU,
+                            0xE000U, 0);
+    // 0x5DB10 tilemap 1: 40x9 at Plane A $C400, source 0x1FFB66, attr $2000.
+    blit_genesis_name_table(rom, boot, image, 0x1FFB66U, 40U, 9U, 0xC400U,
+                            0xC000U, 0x2000U);
+    return image;
+}
+
+RgbaImage decode_genesis_boot_guy(const std::vector<std::uint8_t>& rom) {
+    auto image = make_transparent_title_layer();
+    const auto boot = decode_genesis_boot_pattern_data(rom);
+    constexpr std::int32_t kOriginX = native::kBootGuyOriginX;
+    constexpr std::int32_t kOriginY = native::kBootGuyComposeY;
+    constexpr std::uint16_t kGuyAttr = 0x6000;
+    blit_genesis_sat_list(rom, boot, image, 0x1D4E4U, kOriginX, kOriginY,
+                          kGuyAttr);
+    blit_genesis_sat_list(rom, boot, image, 0x1D50EU, kOriginX, kOriginY,
+                          kGuyAttr);
+    return image;
+}
+
+std::array<RgbaImage, native::kNativeBootSegaPhaseCount>
+decode_genesis_boot_sega_frames(const std::vector<std::uint8_t>& rom) {
+    std::array<RgbaImage, native::kNativeBootSegaPhaseCount> frames{};
+    const auto boot = decode_genesis_boot_pattern_data(rom);
+    constexpr std::uint32_t kLeftTable = 0x5DA20U;
+    constexpr std::uint32_t kRightTable = 0x5DA38U;
+    constexpr std::int32_t kLeftX = 0x158;
+    constexpr std::int32_t kRightX = 0xD8;
+    constexpr std::int32_t kSegaY = 0x120;
+    constexpr std::uint16_t kSegaAttr = 0x2000;
+    for (std::size_t index = 0; index < frames.size(); ++index) {
+        frames[index] = make_transparent_title_layer();
+        const auto left = static_cast<std::size_t>(
+            read_rom_u32(rom, kLeftTable + index * 4U,
+                         "Genesis boot SEGA pointer table is truncated"));
+        const auto right = static_cast<std::size_t>(
+            read_rom_u32(rom, kRightTable + index * 4U,
+                         "Genesis boot SEGA pointer table is truncated"));
+        blit_genesis_sat_list(rom, boot, frames[index], left, kLeftX, kSegaY,
+                              kSegaAttr);
+        blit_genesis_sat_list(rom, boot, frames[index], right, kRightX, kSegaY,
+                              kSegaAttr);
+    }
+    return frames;
+}
+
+RgbaImage software_screen_image(const native::SoftwareScreen& screen) {
+    RgbaImage image{
+        screen.width(), screen.height(),
+        std::vector<native::Rgba8>(screen.pixels().size())};
+    for (std::size_t index = 0; index < screen.pixels().size(); ++index) {
+        const auto packed = screen.pixels()[index];
+        image.pixels[index] = {
+            static_cast<std::uint8_t>(packed >> 16U),
+            static_cast<std::uint8_t>(packed >> 8U),
+            static_cast<std::uint8_t>(packed), 255};
+    }
+    return image;
 }
 
 void write_bmp32(const std::string& path, const RgbaImage& image) {

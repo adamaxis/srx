@@ -74,6 +74,29 @@ target_compile_definitions(shadowrun_menu_visual_regression_test PRIVATE
     SHADOWRUN_VISUAL_ARTIFACT_DIR="${CMAKE_CURRENT_BINARY_DIR}/visual-regression")
 add_test(NAME shadowrun_menu_visual_regression COMMAND shadowrun_menu_visual_regression_test)
 
+add_executable(shadowrun_visual_dump
+    src/visual_dump.cpp
+)
+target_link_libraries(shadowrun_visual_dump PRIVATE shadowrun_port)
+
+add_executable(shadowrun_boot_sequence_test
+    tests/boot_sequence_test.cpp
+)
+target_link_libraries(shadowrun_boot_sequence_test PRIVATE shadowrun_port)
+target_compile_definitions(shadowrun_boot_sequence_test PRIVATE
+    SHADOWRUN_TEST_ROM="${CMAKE_CURRENT_SOURCE_DIR}/input/shadowrun_genesis_us.bin"
+    SHADOWRUN_VISUAL_ARTIFACT_DIR="${CMAKE_CURRENT_BINARY_DIR}/visual-regression")
+add_test(NAME shadowrun_boot_sequence COMMAND shadowrun_boot_sequence_test)
+
+add_executable(shadowrun_leftover_clear_test
+    tests/leftover_clear_test.cpp
+)
+target_link_libraries(shadowrun_leftover_clear_test PRIVATE shadowrun_port)
+target_compile_definitions(shadowrun_leftover_clear_test PRIVATE
+    SHADOWRUN_NATIVE_PACK="${CMAKE_CURRENT_SOURCE_DIR}/assets/native/shadowrun_native.srna"
+    SHADOWRUN_VISUAL_ARTIFACT_DIR="${CMAKE_CURRENT_BINARY_DIR}/visual-regression")
+add_test(NAME shadowrun_leftover_clear COMMAND shadowrun_leftover_clear_test)
+
 add_executable(shadowrun_graphics_extract
     src/graphics_extract.cpp
 )

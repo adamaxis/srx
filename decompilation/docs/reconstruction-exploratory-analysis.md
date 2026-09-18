@@ -109,6 +109,9 @@ The source flow is stateful and has multiple independent loops:
 Reset/region
     |
     v
+Pre-title (0x5D746)  SAT guy rises $01A8->$0160, then SEGA SAT from 0x5DA20/0x5DA38
+    |
+    v
 Title (0x1A9E)
     | Start edge
     v

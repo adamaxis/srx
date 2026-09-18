@@ -591,7 +591,7 @@ NativeCommandBarIndices compute_command_bar_indices(
 }
 
 NativePortShell::NativePortShell(std::string title)
-    : title_(std::move(title)) {}
+    : title_(std::move(title)), scene_(NativeScene::Field) {}
 
 std::string_view NativePortShell::field_active_item_detail_label() const {
     return source_item_detail_label(field_entity_.active_item_code);
@@ -665,6 +665,12 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     title_text_ = std::move(assets.title_text);
     title_sprite_frames_ = std::move(assets.title_sprite_frames);
     title_animation_frames_ = std::move(assets.title_animation_frames);
+    boot_background_ = std::move(assets.boot_background);
+    boot_guy_ = std::move(assets.boot_guy);
+    boot_sega_frames_ = std::move(assets.boot_sega_frames);
+    if (!boot_background_.pixels.empty()) {
+        scene_ = NativeScene::Bootstrap;
+    }
     field_menu_background_width_ = assets.field_menu_background.width;
     field_menu_background_height_ = assets.field_menu_background.height;
     field_menu_background_pixels_ = std::move(assets.field_menu_background.pixels);
@@ -3073,8 +3079,80 @@ void NativePortShell::update_attributes_menu(const InputState& input) {
     }
 }
 
+void NativePortShell::finish_boot() {
+    for (std::uint32_t step = 0; step < 2048U && scene_ == NativeScene::Bootstrap;
+         ++step) {
+        update(InputState{});
+    }
+}
+
+void NativePortShell::update_boot() {
+    if (boot_loop_left_ != 0U) {
+        // ROM 0x5D938 draws, then 0x5D7A2 mutates SAT Y / SEGA timers.
+        if (boot_guy_y_ != static_cast<std::int16_t>(kBootGuyStopY)) {
+            --boot_guy_y_;
+            if (boot_guy_y_ == static_cast<std::int16_t>(kBootGuyStopY)) {
+                boot_dd30_ = static_cast<std::int16_t>(kBootSegaDelay);
+                --boot_dd30_;
+            }
+        } else {
+            --boot_dd30_;
+            if (boot_dd30_ < 0) {
+                ++boot_dd28_;
+                if ((boot_dd28_ & 1) == 0) {
+                    --boot_dd2a_;
+                    if (boot_dd2a_ == 0) {
+                        boot_dd3c_ = 1;
+                    }
+                }
+            }
+        }
+        if (boot_dd30_ < 0 && boot_dd3c_ == 0) {
+            --boot_sega_cadence_;
+            if (boot_sega_cadence_ < 0) {
+                boot_sega_cadence_ = 3;
+                ++boot_sega_phase_;
+                if (boot_sega_phase_ > 5) {
+                    boot_sega_phase_ = 0;
+                }
+            }
+        }
+        --boot_loop_left_;
+        if (boot_loop_left_ == 0U) {
+            boot_fade_left_ = kBootFadePasses;
+        }
+        return;
+    }
+    if (boot_fade_left_ != 0U) {
+        --boot_fade_left_;
+        if (boot_fade_left_ == 0U) {
+            boot_hold_left_ = kBootHoldDbf + 1U;
+        }
+        return;
+    }
+    if (boot_hold_left_ != 0U) {
+        --boot_hold_left_;
+        if (boot_hold_left_ == 0U) {
+            boot_fade_left_ = kBootFadePasses;
+            // Second 0x131C is a fade-into-title; the native title loop
+            // starts at its own frame zero after this hold.
+            scene_ = NativeScene::Title;
+            frame_number_ = 0;
+            boot_fade_left_ = 0;
+        }
+    }
+}
+
 void NativePortShell::update(const InputState& input) {
     input_ = input;
+
+    if (scene_ == NativeScene::Bootstrap) {
+        update_boot();
+        if (scene_ == NativeScene::Bootstrap) {
+            ++frame_number_;
+        }
+        return;
+    }
 
     if (scene_ == NativeScene::Title) {
         // ROM 0x0BF2 records Start as a pressed high-byte input and the
@@ -3385,6 +3463,29 @@ void NativePortShell::update(const InputState& input) {
 
 void NativePortShell::render(ScreenWriter& screen) const {
     screen.begin_frame();
+    if (scene_ == NativeScene::Bootstrap) {
+        screen.clear({0x00, 0x00, 0x00, 0xFF});
+        if (boot_loop_left_ != 0U && !boot_background_.pixels.empty()) {
+            screen.blit_rgba(0, 0, boot_background_.width,
+                             boot_background_.height, boot_background_.pixels);
+            if (!boot_guy_.pixels.empty()) {
+                const auto guy_delta_y = static_cast<std::int32_t>(
+                    boot_guy_y_ - static_cast<std::int16_t>(kBootGuyComposeY));
+                screen.blit_rgba(0, guy_delta_y, boot_guy_.width,
+                                 boot_guy_.height, boot_guy_.pixels);
+            }
+            if (boot_dd30_ < 0 && !boot_sega_frames_.empty()) {
+                const auto phase = static_cast<std::size_t>(boot_sega_phase_) %
+                                   boot_sega_frames_.size();
+                const auto& sega = boot_sega_frames_[phase];
+                if (!sega.pixels.empty()) {
+                    screen.blit_rgba(0, 0, sega.width, sega.height, sega.pixels);
+                }
+            }
+        }
+        screen.present();
+        return;
+    }
     if (scene_ == NativeScene::Title && !title_pixels_.empty()) {
         screen.clear({0x00, 0x00, 0x00, 0xFF});
         // ROM 0x1E4E reveals one logo column on each title-loop pass after

@@ -1,9 +1,13 @@
 # Field menu visual regression contract
 
-`shadowrun_menu_visual_regression_test` is the pixel-level visual gate for the
-field command screen. It compares the complete 320x224 `SoftwareScreen`
-framebuffer against a separate source-derived compositor. Each exercised case
-writes three real framebuffer images to
+`shadowrun_menu_visual_regression_test` compares the native command-screen
+framebuffer against a **same-source compositor** of the extracted `.srna`
+assets. That catches renderer bugs. It does **not** defend the hill against
+Genesis: a bad extraction matches itself. Treat it as `same-source` until
+`assets/visual-goldens/` holds integer-scale 320x224 captures. Headless dumps
+(`shadowrun_visual_dump`) and leftover-clear tests are the visual CLI.
+
+Each exercised case writes three real framebuffer images to
 `build-<config>/visual-regression/`:
 
 - `<case>-actual.bmp`: the pixels produced by the native C++ renderer;

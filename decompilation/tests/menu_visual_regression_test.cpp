@@ -43,6 +43,7 @@ void press(NativePortShell& shell, Button button) {
 }
 
 void enter_field(NativePortShell& shell, std::size_t archetype) {
+    shell.finish_boot();
     press(shell, Button::Start);
     press(shell, Button::Start);
     if (shell.scene() != NativeScene::StartOptions) {

@@ -18,6 +18,7 @@ std::vector<std::uint8_t> read_rom() {
 
 void enter_field_from_start(shadowrun::native::NativePortShell& shell) {
     using namespace shadowrun::native;
+    shell.finish_boot();
     shell.update(InputState{button_mask(Button::Start),
                              button_mask(Button::Start)});
     assert(shell.scene() == NativeScene::Title);
@@ -96,6 +97,9 @@ int main() {
     assert(rom_shell.has_field_map());
     assert(rom_shell.has_terrain());
     assert(rom_shell.has_entity_frame());
+    assert(rom_shell.has_boot());
+    assert(rom_shell.scene() == NativeScene::Bootstrap);
+    rom_shell.finish_boot();
     assert(rom_shell.scene() == NativeScene::Title);
     rom_shell.render(screen);
     assert(screen.presented_frames() == 3);
@@ -157,6 +161,7 @@ int main() {
     // Archetype selection mutates Joshua's one live template before the
     // opening; it does not create a switchable Decker/Shaman runner.
     NativePortShell decker_shell("SHADOWRUN", extracted_assets);
+    decker_shell.finish_boot();
     decker_shell.update(InputState{button_mask(Button::Start),
                                    button_mask(Button::Start)});
     decker_shell.update(InputState{});
@@ -643,7 +648,8 @@ int main() {
     assert(pack_shell.has_field_map());
     assert(pack_shell.has_terrain());
     assert(pack_shell.has_entity_frame());
-    assert(pack_shell.scene() == NativeScene::Title);
+    assert(pack_shell.has_boot());
+    assert(pack_shell.scene() == NativeScene::Bootstrap);
     SoftwareScreen pack_screen;
     enter_field_from_start(pack_shell);
     assert(pack_shell.scene() == NativeScene::Field);

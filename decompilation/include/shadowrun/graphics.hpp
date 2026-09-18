@@ -401,6 +401,17 @@ std::array<RgbaImage, native::kNativeTitleAnimationFrameCount>
 decode_genesis_title_animation_frames(
     const std::vector<std::uint8_t>& rom);
 
+// ROM 0x5DA50 / 0x5D746 pre-title layers. Background is the 0x1232 plane
+// writes; the guy and SEGA frames are 0x1378 SAT compositions. Palette
+// strobe 0x5D8BA and HSCROLL noise 0x5DAC4 remain host approximations.
+RgbaImage decode_genesis_boot_background(
+    const std::vector<std::uint8_t>& rom);
+RgbaImage decode_genesis_boot_guy(
+    const std::vector<std::uint8_t>& rom);
+std::array<RgbaImage, native::kNativeBootSegaPhaseCount>
+decode_genesis_boot_sega_frames(
+    const std::vector<std::uint8_t>& rom);
+
 // Reconstruct the field command screen's plane-B base from the exact 0x1232
 // writers called by ROM 0x10F50. This is host RGBA output, not a Genesis
 // name-table or palette dependency retained by the runtime.
@@ -454,5 +465,8 @@ std::array<std::string, 13> decode_genesis_field_menu_power_labels(
 // Write a 32-bit uncompressed BMP. This is intentionally dependency-free and
 // can be opened directly by Windows or used as an intermediate asset format.
 void write_bmp32(const std::string& path, const RgbaImage& image);
+
+// Convert the native software framebuffer (0x00RRGGBB) to RGBA8 for dumps.
+RgbaImage software_screen_image(const native::SoftwareScreen& screen);
 
 } // namespace shadowrun::graphics

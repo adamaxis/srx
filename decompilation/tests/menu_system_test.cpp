@@ -36,6 +36,7 @@ void press(NativePortShell& shell, Button button) {
 }
 
 void enter_start_options(NativePortShell& shell) {
+    shell.finish_boot();
     shell.update(InputState{button_mask(Button::Start),
                             button_mask(Button::Start)});
     assert(shell.scene() == NativeScene::Title);
@@ -114,6 +115,10 @@ void test_startup_behavior_and_rendering(const std::vector<std::uint8_t>& rom,
                                          const NativePortAssets& assets) {
     NativePortShell shell("SHADOWRUN", assets);
     SoftwareScreen screen;
+
+    assert(shell.scene() == NativeScene::Bootstrap);
+    shell.finish_boot();
+    assert(shell.scene() == NativeScene::Title);
 
     // Screenshot evidence: the reference title captures show the circuit
     // plane, progressive logo reveal, sprite phases, and delayed text. The

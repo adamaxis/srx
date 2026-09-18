@@ -16,6 +16,21 @@ constexpr std::uint16_t kScreenHeight = 224;
 constexpr std::size_t kNativeInventorySlotCount = 8;
 constexpr std::size_t kNativeInventoryItemCount = 50;
 constexpr std::size_t kNativeTitleAnimationFrameCount = 6;
+// ROM 0x5D996 ping-pongs six SAT lists from 0x5DA20/0x5DA38.
+constexpr std::size_t kNativeBootSegaPhaseCount = 6;
+// ROM 0x5D746: guy SAT Y starts at $01A8 and stops at $0160.
+constexpr std::uint16_t kBootGuyStartY = 0x1A8;
+constexpr std::uint16_t kBootGuyStopY = 0x160;
+constexpr std::uint16_t kBootGuyOriginX = 0x119;
+// SAT Y $01A8 is below the 224px host surface, so the guy layer is
+// composed at this origin and the runtime blits it at (guy_y - compose).
+constexpr std::uint16_t kBootGuyComposeY = 0xD0;
+// move.w #$150,D7 / DBF => $151 loop passes, then 0x131C fade,
+// 0x78+1 black hold, and a second 0x131C before 0x1A9E.
+constexpr std::uint16_t kBootLoopDbf = 0x150;
+constexpr std::uint16_t kBootHoldDbf = 0x78;
+constexpr std::uint16_t kBootFadePasses = 0x11;
+constexpr std::uint16_t kBootSegaDelay = 0x14;
 constexpr std::size_t kNativeMenuStatusCount = 5;
 // ROM 0xC376 clamps the startup archetype selector to 0..2. The fourth
 // string in NativeIntroData is the continuation line of "Gator Shaman", not
@@ -350,6 +365,11 @@ struct NativePortAssets {
     // the native shell advances them on the same four-vblank cadence.
     std::array<NativeImage, kNativeTitleAnimationFrameCount>
         title_animation_frames{};
+    // ROM 0x5D746 pre-title: plane A/B from descriptor 0x5DB10, the rising
+    // SAT pair at 0x1D4E4/0x1D50E, and six SEGA-logo SAT phases.
+    NativeImage boot_background;
+    NativeImage boot_guy;
+    std::array<NativeImage, kNativeBootSegaPhaseCount> boot_sega_frames{};
     // Plane-B base written by the ROM command-screen initializer at 0x10F50.
     // It contains the real menu panel and inventory-box geometry; dynamic
     // labels and cursor state are rendered by the native command loop.
@@ -519,6 +539,11 @@ public:
 
     NativeScene scene() const { return scene_; }
     bool has_assets() const { return !title_pixels_.empty(); }
+    bool has_boot() const { return !boot_background_.pixels.empty(); }
+    std::int16_t boot_guy_sat_y() const { return boot_guy_y_; }
+    bool boot_sega_visible() const { return boot_dd30_ < 0; }
+    // ROM 0x5D746 has no Start skip. Tick empty input until 0x1A9E.
+    void finish_boot();
     bool has_intro() const { return !intro_.story_lines.empty(); }
     bool has_startup_menus() const {
         return !intro_.start_options_layout.empty() &&
@@ -917,6 +942,7 @@ private:
     void trade_selected_inventory_item();
     void update_field_inventory_action(const InputState& input);
     void apply_field_inventory_action();
+    void update_boot();
     void discard_selected_inventory_item();
     void open_clips_menu();
     void update_clips_menu(const InputState& input);
@@ -931,7 +957,7 @@ private:
 
     std::string title_;
     InputState input_{};
-    NativeScene scene_ = NativeScene::Bootstrap;
+    NativeScene scene_ = NativeScene::Title;
     std::int32_t marker_x_ = kScreenWidth / 2;
     std::int32_t marker_y_ = kScreenHeight / 2;
     std::uint64_t frame_number_ = 0;
@@ -946,6 +972,19 @@ private:
         title_sprite_frames_{};
     std::array<NativeImage, kNativeTitleAnimationFrameCount>
         title_animation_frames_{};
+    NativeImage boot_background_{};
+    NativeImage boot_guy_{};
+    std::array<NativeImage, kNativeBootSegaPhaseCount> boot_sega_frames_{};
+    std::int16_t boot_guy_y_ = static_cast<std::int16_t>(kBootGuyStartY);
+    std::int16_t boot_dd2a_ = 0x41;
+    std::int16_t boot_dd28_ = 0;
+    std::int16_t boot_dd30_ = 0;
+    std::int16_t boot_dd3c_ = 0;
+    std::int16_t boot_sega_phase_ = 0;
+    std::int16_t boot_sega_cadence_ = 0;
+    std::uint16_t boot_loop_left_ = kBootLoopDbf + 1U;
+    std::uint16_t boot_fade_left_ = 0;
+    std::uint16_t boot_hold_left_ = 0;
     std::uint16_t field_menu_background_width_ = 0;
     std::uint16_t field_menu_background_height_ = 0;
     std::vector<Rgba8> field_menu_background_pixels_;

@@ -435,6 +435,12 @@ int main() {
                            "shadowrun_native_port_assets_test.srna";
     write_native_asset_pack(pack_path.string(), native_assets);
     const auto loaded_assets = read_native_asset_pack(pack_path.string());
+    assert(loaded_assets.boot_background.width ==
+           native_assets.boot_background.width);
+    assert(loaded_assets.boot_background.pixels.size() ==
+           native_assets.boot_background.pixels.size());
+    assert(loaded_assets.boot_guy.pixels.size() ==
+           native_assets.boot_guy.pixels.size());
     assert(loaded_assets.title_scene.width == native_assets.title_scene.width);
     assert(loaded_assets.title_scene.height == native_assets.title_scene.height);
     assert(loaded_assets.title_scene.pixels.size() ==
