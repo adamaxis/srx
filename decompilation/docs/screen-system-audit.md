@@ -6,6 +6,11 @@ reconstructed merely because it has a similar-looking panel: its entry path,
 cursor state, input dispatch, source records, exits, and side effects must be
 accounted for.
 
+The detailed source-oriented exploration, evidence ledger, and reconstruction
+worksheet are maintained in [reconstruction-exploratory-analysis.md](reconstruction-exploratory-analysis.md).
+That document is the required audit map for states and implementation order;
+this file remains the concise screen contract.
+
 ## Global rules
 
 - The source runs one screen loop per VBlank and stores cursor/focus state in

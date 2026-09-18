@@ -3956,12 +3956,14 @@ RgbaImage decode_genesis_title_text_layer(
 RgbaImage decode_genesis_title_background(
     const std::vector<std::uint8_t>& rom) {
     // The circuit field is a separate layer from the logo reveal. Keep it in
-    // the source palette family used by the title art rather than decoding
-    // the ROM header/pointer bytes at 0xF0/0x1FD8 as if they were CRAM. The
-    // host layer remains separate so title timing can reveal the logo and
-    // sprites over it.
+    // the source palette family used by the title background. 0xD29D6 is the
+    // command-screen data/table region, not title CRAM; the title resource
+    // descriptor at 0x1FD8 points the palette mirror at 0x1FF0. The source
+    // 0x1D58 tilemap writer also emits a VDP attribute word; its host plane
+    // priority/palette interpretation remains a comparison item, so keep the
+    // raw decoded map separate from the logo and sprite layers for now.
     return decode_genesis_startup_screen(
-        rom, 0x1F310EU, 0x67DF6U, 0xD29D6U, 0x0000U);
+        rom, 0x1F310EU, 0x67DF6U, 0x1FF0U, 0x0000U);
 }
 
 RgbaImage decode_genesis_title_logo_plane(
@@ -4234,8 +4236,11 @@ RgbaImage decode_genesis_title_frame(const std::vector<std::uint8_t>& rom,
     constexpr std::size_t kCopyrightTileY = 22;
 
     auto image = decode_genesis_title_background(rom);
+    // 0x1FF0 is the title logo/sprite/text resource palette. 0xD29D6 is
+    // command-screen data, not palette data; passing it here made the
+    // composed title frame use pointer/text bytes as colors.
     const auto startup = decode_genesis_startup_pattern_data(
-        rom, 0x1F310EU, 0xD29D6U);
+        rom, 0x1F310EU, 0x1FF0U);
     draw_genesis_startup_logo_plane(rom, startup, image, 0x2090U, 38U);
     // The static 0x1D58 plane is the dark circuit field. The title mark is
     // emitted separately by 0x1C6A through 0x1378 into the sprite list; its
