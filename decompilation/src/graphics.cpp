@@ -1114,7 +1114,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 32);
+    write_u16(output, 33);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     for (const auto& title_frame : assets.title_animation_frames) {
@@ -1388,6 +1388,9 @@ void write_native_asset_pack(const std::string& path,
         write_pack_string(output, tip,
                           "native Notebook tip text is too long");
     }
+    for (const auto flags : assets.notebook_tip_flags) {
+        write_u32(output, flags);
+    }
     for (const auto& direction : assets.field_direction_table) {
         write_u16(output, static_cast<std::uint16_t>(direction[0]));
         write_u16(output, static_cast<std::uint16_t>(direction[1]));
@@ -1512,7 +1515,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 32U)) {
+        (version < 2U || version > 33U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -2016,6 +2019,14 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
                                         tip = read_pack_string(
                                             input,
                                             "native Notebook tip text is truncated");
+                                    }
+                                    if (version >= 33U) {
+                                        for (auto& flags :
+                                             assets.notebook_tip_flags) {
+                                            flags = read_pack_u32(
+                                                input,
+                                                "native Notebook tip flags are truncated");
+                                        }
                                     }
                                 }
                             }

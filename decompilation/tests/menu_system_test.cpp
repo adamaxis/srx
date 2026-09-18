@@ -472,6 +472,46 @@ void test_pocket_secretary_menu(const std::vector<std::uint8_t>& rom) {
     assert(shell.field_menu_selection() == 6U);
 }
 
+void test_notebook_tip_filtering(const std::vector<std::uint8_t>& rom) {
+    auto assets = shadowrun::graphics::decode_genesis_native_assets(rom);
+    // F9A4 tests D7=31..0 while consuming each table pointer in order. These
+    // two bits therefore expose source entries 0 and 31, in that order.
+    assets.notebook_tip_flags =
+        std::array<std::uint32_t, 3>{0x80000001U, 0U, 0U};
+    NativePortShell shell("SHADOWRUN", std::move(assets));
+    enter_field(shell);
+    press(shell, Button::Start);
+    press(shell, Button::A);
+    assert(shell.pocket_secretary_menu_open());
+    press(shell, Button::A);
+    assert(shell.notebook_menu_open());
+    press(shell, Button::Down);
+    press(shell, Button::A);
+    assert(shell.notebook_tips_menu_open());
+    assert(shell.notebook_visible_tip_count() == 2U);
+    assert(shell.notebook_tip_selection() == 0U);
+    assert(shell.notebook_visible_tip_index(0) == 0U);
+    assert(shell.notebook_visible_tip_index(1) == 31U);
+    assert(shell.notebook_tip_text(0).find("Michael's last credstick") == 0U);
+
+    SoftwareScreen screen;
+    shell.render(screen);
+    assert(screen.pixel(56, 24) != 0U);
+    press(shell, Button::Down);
+    assert(shell.notebook_tip_selection() == 1U);
+    press(shell, Button::Up);
+    assert(shell.notebook_tip_selection() == 0U);
+    // B follows the source 0x391A switch path and leaves the Tips page open;
+    // with Joshua as the only active runner it is a rejected/sound-only edge.
+    press(shell, Button::B);
+    assert(shell.notebook_tips_menu_open());
+    assert(shell.field_runner_switch_attempts() == 1U);
+    assert(shell.field_runner_switch_rejections() == 1U);
+    press(shell, Button::A);
+    assert(shell.notebook_menu_open());
+    assert(shell.notebook_selection() == 1U);
+}
+
 void test_clip_reload(const std::vector<std::uint8_t>& rom) {
     auto assets = shadowrun::graphics::decode_genesis_native_assets(rom);
     auto& weapon = assets.protagonist_archetype_records[0];
@@ -928,6 +968,7 @@ int main() {
     test_field_menu_behavior_and_rendering(rom, assets);
     test_no_clip_gate(rom);
     test_pocket_secretary_menu(rom);
+    test_notebook_tip_filtering(rom);
     test_clip_reload(rom);
     test_dismiss_runner_menu(rom);
     test_clip_item_gate(rom);

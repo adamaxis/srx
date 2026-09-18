@@ -297,14 +297,18 @@ initializer at `0x59C48` sets `FFFC2C`, so Contacts is visible in the fresh
 post-opening session; the native screen displays the exact `0xF2E2`
 no-current-run response.
 The 96 Tips & Clues source entries are also extracted from the three
-`0xC2716`/`0xC2796`/`0xC2816` pointer tables; their `FFFC30/34/38` filtering,
-page-count writer, and selected-text screen remain pending.
+`0xC2716`/`0xC2796`/`0xC2816` pointer tables. The native screen preserves the
+three `FFFC30/34/38` flag longwords, applies the source MSB-first bit order,
+renders the selected source text and page count, and returns on the source
+A/C/Start edges; B follows the existing runner-switch path. Story/event
+writers that set those tip flags remain pending, as do the conditional
+Contacts/Mr. Johnsons/Shadowrunners detail screens.
 Dismiss Runner now follows the source `0xC448` active-record enumeration: the
 native panel lists live non-current party records, starts on the extracted
 Abort row, and clears the selected record's active bit only after that runner
 is selected. The deck-present Matrix path is intentionally still pending, as
-are the Notebook Tips & Clues/conditional screens, the restricted four-row
-bound, class/combat gates, contact records, and the debug path.
+are the restricted four-row bound, class/combat gates, contact records, and
+the debug path.
 
 ## Magic, Matrix, and combat screens
 

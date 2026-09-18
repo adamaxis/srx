@@ -371,7 +371,7 @@ int main() {
         assert(walking_frames_differ);
     }
 
-    const auto native_assets = decode_genesis_native_assets(rom);
+    auto native_assets = decode_genesis_native_assets(rom);
     assert(native_assets.field_areas.size() == 8);
     assert(native_assets.field_areas[0].mode_id == 2);
     assert(native_assets.field_areas[1].mode_id == 13);
@@ -415,6 +415,11 @@ int main() {
     assert(notebook_tips[32].find("Ilene is doing time") == 0U);
     assert(notebook_tips[95].find("You have deleted the") == 0U);
     assert(native_assets.notebook_tip_text == notebook_tips);
+    assert((native_assets.notebook_tip_flags ==
+            std::array<std::uint32_t, 3>{0U, 0U, 0U}));
+    native_assets.notebook_tip_flags =
+        std::array<std::uint32_t, 3>{0x80000001U, 0x00000000U,
+                                     0x00000000U};
     const auto pack_path = std::filesystem::temp_directory_path() /
                            "shadowrun_native_port_assets_test.srna";
     write_native_asset_pack(pack_path.string(), native_assets);
@@ -455,6 +460,7 @@ int main() {
     assert(loaded_assets.notebook_event_gates ==
            native_assets.notebook_event_gates);
     assert(loaded_assets.notebook_tip_text == native_assets.notebook_tip_text);
+    assert(loaded_assets.notebook_tip_flags == native_assets.notebook_tip_flags);
     assert(loaded_assets.field_event_mode_table ==
            native_assets.field_event_mode_table);
     assert(loaded_assets.field_areas.size() ==

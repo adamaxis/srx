@@ -639,6 +639,7 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     notebook_no_run_lines_ = std::move(assets.notebook_no_run_lines);
     notebook_event_gates_ = assets.notebook_event_gates;
     notebook_tip_text_ = std::move(assets.notebook_tip_text);
+    notebook_tip_flags_ = assets.notebook_tip_flags;
     protagonist_archetype_records_ =
         std::move(assets.protagonist_archetype_records);
     field_initial_records_ = assets.initial_field_records;
@@ -2200,6 +2201,38 @@ void NativePortShell::open_notebook_menu() {
     menu_vertical_repeat_mask_ = 0;
 }
 
+void NativePortShell::open_notebook_tips_menu() {
+    // ROM 0xF9A4 builds FFEF56 by walking each pointer table in source order
+    // while testing D7 from 31 down to 0. Thus table entry zero is controlled
+    // by the most-significant flag bit, not by bit zero. Keep that ordering in
+    // the host list so page selection follows the source bytecode exactly.
+    notebook_visible_tip_count_ = 0;
+    for (std::size_t group = 0;
+         group < notebook_tip_flags_.size(); ++group) {
+        for (std::size_t entry = 0; entry < 32U; ++entry) {
+            const auto source_bit = 31U - entry;
+            if ((notebook_tip_flags_[group] &
+                 (static_cast<std::uint32_t>(1U) << source_bit)) == 0U) {
+                continue;
+            }
+            const auto index = group * 32U + entry;
+            if (notebook_visible_tip_count_ >=
+                notebook_visible_tip_indices_.size()) {
+                return;
+            }
+            notebook_visible_tip_indices_[notebook_visible_tip_count_++] =
+                index;
+        }
+    }
+    scene_ = NativeScene::NotebookTipsMenu;
+    notebook_tip_selection_ = 0;
+    notebook_message_visible_ = false;
+    menu_horizontal_repeat_frames_ = 0;
+    menu_vertical_repeat_frames_ = 0;
+    menu_horizontal_repeat_mask_ = 0;
+    menu_vertical_repeat_mask_ = 0;
+}
+
 void NativePortShell::update_notebook_menu(const InputState& input) {
     // F236 uses the shared C376 selector helper with D3=FFF0B9, so the
     // source range is inclusive and wraps between the visible rows.
@@ -2236,10 +2269,55 @@ void NativePortShell::update_notebook_menu(const InputState& input) {
         notebook_message_visible_ = true;
         return;
     }
-    // F9A4 (Tips & Clues) and the conditional Contacts/Johnson/Shadowrunners
-    // handlers are separate source screens. Their tables and event gates are
-    // not being collapsed into a fabricated generic page here; they remain
-    // the next Notebook audit boundary.
+    if (notebook_selection_ == 1U) {
+        open_notebook_tips_menu();
+        return;
+    }
+    // The conditional Contacts/Johnson/Shadowrunners handlers are separate
+    // source screens and remain an explicit audit boundary. Do not turn a
+    // visible label into a generic page until its handler is ported.
+}
+
+void NativePortShell::update_notebook_tips_menu(const InputState& input) {
+    // F9A4 leaves its selected text page on screen and returns to F236 on A,
+    // C, or Start. A zero-page state is valid before the story has set any
+    // FFFC30/34/38 bit, so navigation remains a no-op in that state.
+    if (notebook_visible_tip_count_ != 0U) {
+        const auto vertical_step =
+            menu_direction_step(input, Button::Up, Button::Down, false);
+        if (vertical_step && input.is_held(Button::Up) &&
+            !input.is_held(Button::Down)) {
+            notebook_tip_selection_ = notebook_tip_selection_ == 0U
+                ? notebook_visible_tip_count_ - 1U
+                : notebook_tip_selection_ - 1U;
+        } else if (vertical_step && input.is_held(Button::Down) &&
+                   !input.is_held(Button::Up)) {
+            notebook_tip_selection_ =
+                (notebook_tip_selection_ + 1U) % notebook_visible_tip_count_;
+        }
+    }
+
+    if (input.was_pressed(Button::A) || input.was_pressed(Button::C) ||
+        input.was_pressed(Button::Start)) {
+        scene_ = NativeScene::NotebookMenu;
+        notebook_selection_ = 1U;
+        return;
+    }
+    if (!input.was_pressed(Button::B)) {
+        return;
+    }
+    // F9A4 dispatches B to 0x391A and then redraws the same page. Preserve
+    // the source's sound-only/rejection behavior when no other active runner
+    // exists, while using the already ported roster switch for real parties.
+    if (!field_records_.empty()) {
+        ++runner_switch_attempts_;
+        const auto previous_record = active_field_record_;
+        activate_field_record(next_available_field_record());
+        if (active_field_record_ == previous_record) {
+            ++runner_switch_rejections_;
+        }
+        ++action_count_;
+    }
 }
 
 void NativePortShell::update_group_items_menu(const InputState& input) {
@@ -3008,6 +3086,12 @@ void NativePortShell::update(const InputState& input) {
 
     if (scene_ == NativeScene::NotebookMenu) {
         update_notebook_menu(input);
+        ++frame_number_;
+        return;
+    }
+
+    if (scene_ == NativeScene::NotebookTipsMenu) {
+        update_notebook_tips_menu(input);
         ++frame_number_;
         return;
     }
@@ -4051,6 +4135,44 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 write_field_menu_text(screen, 80, 176,
                                       " A SELECT  B RETURN");
             }
+        } else if (scene_ == NativeScene::NotebookTipsMenu) {
+            // F9A4 writes the selected pointer target through C0DA after the
+            // page counter has been emitted from C663A. The extracted text
+            // keeps source 0x80 separators as host newlines, so render each
+            // source line at the same fixed tile stride instead of flattening
+            // the page into a checklist.
+            screen.fill_rect(56, 24, 208, 168,
+                             {0x02, 0x08, 0x18, 0xF0});
+            screen.fill_rect(56, 24, 208, 2,
+                             {0x00, 0xA8, 0xC8, 0xFF});
+            write_field_menu_text(screen, 104, 32, notebook_label(2));
+            const auto page_number = notebook_visible_tip_count_ == 0U
+                ? 0U : notebook_tip_selection_ + 1U;
+            write_field_menu_text(
+                screen, 80, 48,
+                "Page " + std::to_string(page_number) + " of " +
+                    std::to_string(notebook_visible_tip_count_));
+            if (notebook_visible_tip_count_ != 0U) {
+                const auto source_index =
+                    notebook_visible_tip_indices_[notebook_tip_selection_];
+                const auto& text = notebook_tip_text_[source_index];
+                std::size_t line_start = 0;
+                std::int32_t y = 72;
+                for (std::size_t position = 0;
+                     position <= text.size() && y < 168; ++position) {
+                    if (position != text.size() && text[position] != '\n') {
+                        continue;
+                    }
+                    write_field_menu_text(
+                        screen, 72, y,
+                        std::string_view(text).substr(
+                            line_start, position - line_start));
+                    y += 10;
+                    line_start = position + 1U;
+                }
+            }
+            write_field_menu_text(screen, 64, 176,
+                                  " A/C/START RETURN B SWITCH");
         } else if (scene_ == NativeScene::GroupItemsMenu) {
             // ROM 0xC8C8 clears the command plane with C3E6, writes the
             // extracted C1471 empty message when FFFC22 is zero, otherwise

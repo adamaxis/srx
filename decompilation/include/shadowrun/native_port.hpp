@@ -42,6 +42,7 @@ constexpr std::size_t kNativeNotebookLabelCount = 6;
 constexpr std::size_t kNativeNotebookNoRunLineCount = 3;
 // F9A4 selects one of three 32-entry pointer tables for Tips & Clues.
 constexpr std::size_t kNativeNotebookTipCount = 96;
+constexpr std::size_t kNativeNotebookTipFlagGroupCount = 3;
 constexpr std::size_t kNativeAttributeCount = 8;
 constexpr std::size_t kNativeSkillCount = 12;
 constexpr std::size_t kNativeAttributeSkillAuxiliaryCount = 4;
@@ -102,6 +103,7 @@ enum class NativeScene {
     FieldMenu,
     PocketSecretaryMenu,
     NotebookMenu,
+    NotebookTipsMenu,
     GroupItemsMenu,
     DismissRunnerMenu,
     ClipsMenu,
@@ -429,6 +431,12 @@ struct NativePortAssets {
     // remain gated until their source event setters are ported.
     std::array<std::uint8_t, 3> notebook_event_gates{{1, 0, 0}};
     std::array<std::string, kNativeNotebookTipCount> notebook_tip_text{};
+    // F9A4 reads these three source longwords at FFFC30/34/38 and tests
+    // their bits before appending a pointer to the visible page list. The
+    // new-game initializer leaves these event-owned fields clear; setters
+    // will be ported as their story/event writers are audited.
+    std::array<std::uint32_t, kNativeNotebookTipFlagGroupCount>
+        notebook_tip_flags{};
 };
 
 // Native game code writes to this interface instead of issuing Genesis VDP
@@ -520,6 +528,9 @@ public:
     bool notebook_menu_open() const {
         return scene_ == NativeScene::NotebookMenu;
     }
+    bool notebook_tips_menu_open() const {
+        return scene_ == NativeScene::NotebookTipsMenu;
+    }
     std::size_t notebook_selection() const { return notebook_selection_; }
     std::size_t notebook_option_count() const {
         return notebook_option_count_;
@@ -541,6 +552,17 @@ public:
         return index < notebook_tip_text_.size()
             ? std::string_view(notebook_tip_text_[index])
             : std::string_view{};
+    }
+    std::size_t notebook_tip_selection() const {
+        return notebook_tip_selection_;
+    }
+    std::size_t notebook_visible_tip_count() const {
+        return notebook_visible_tip_count_;
+    }
+    std::size_t notebook_visible_tip_index(std::size_t index) const {
+        return index < notebook_visible_tip_count_
+            ? notebook_visible_tip_indices_[index]
+            : kNativeNotebookTipCount;
     }
     std::size_t pocket_secretary_selection() const {
         return pocket_secretary_selection_;
@@ -866,6 +888,8 @@ private:
     void update_pocket_secretary_menu(const InputState& input);
     void open_notebook_menu();
     void update_notebook_menu(const InputState& input);
+    void open_notebook_tips_menu();
+    void update_notebook_tips_menu(const InputState& input);
     void update_group_items_menu(const InputState& input);
     void open_dismiss_runner_menu();
     void update_dismiss_runner_menu(const InputState& input);
@@ -997,6 +1021,12 @@ private:
         notebook_no_run_lines_{};
     std::array<std::uint8_t, 3> notebook_event_gates_{{1, 0, 0}};
     std::array<std::string, kNativeNotebookTipCount> notebook_tip_text_{};
+    std::array<std::uint32_t, kNativeNotebookTipFlagGroupCount>
+        notebook_tip_flags_{};
+    std::array<std::size_t, kNativeNotebookTipCount>
+        notebook_visible_tip_indices_{};
+    std::size_t notebook_visible_tip_count_ = 0;
+    std::size_t notebook_tip_selection_ = 0;
     bool pocket_secretary_message_visible_ = false;
     std::array<std::size_t, 2> dismiss_runner_candidate_records_{};
     std::size_t dismiss_runner_candidate_count_ = 0;

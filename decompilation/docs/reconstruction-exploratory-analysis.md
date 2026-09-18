@@ -672,12 +672,18 @@ with an always-visible invented list.
 
 The Tips & Clues handler at `0xF9A4` is backed by three 32-entry pointer
 tables: `0xC2716` selected by `FFFC30`, `0xC2796` by `FFFC34`, and `0xC2816`
-by `FFFC38`. It starts `FFF0B9` at `0xFF`, appends the pointers for set bits
-to `FFEF56`, and uses the same `FFF0DC`/`C376` cursor family as the other
-Notebook screens. The native extractor now resolves all 96 pointers and
-converts each source `0x80` separator to a host newline in asset-pack data;
-the gate filtering, page count writer at `0xC663A`, and selected-entry text
-screen remain pending.
+by `FFFC38`. It starts `FFF0B9` at `0xFF`, walks each table pointer in order,
+and tests D7 from 31 down to 0; therefore table entry `n` is enabled by flag
+bit `31-n`. Set pointers are appended to `FFEF56` and use the same
+`FFF0DC`/`C376` cursor family as the other Notebook screens. The native
+extractor resolves all 96 pointers and converts each source `0x80` separator
+to a host newline in asset-pack data. The native Tips screen now preserves the
+three source flag longwords, builds the MSB-first visible page list, writes the
+source page counter boundary from `C663A`, renders the selected entry's source
+lines, and returns on A/C/Start; B follows the already ported `0x391A` runner
+switch path and redraws the page. Story/event writers that set the three tip
+flag longwords remain pending, so a fresh decoded session correctly has zero
+visible tips until a test or future event path sets them.
 
 ### Matrix
 
