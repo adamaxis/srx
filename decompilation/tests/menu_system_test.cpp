@@ -408,11 +408,12 @@ void test_pocket_secretary_menu(const std::vector<std::uint8_t>& rom) {
     assert(shell.pocket_secretary_selection() == 0U);
     press(shell, Button::A);
     assert(shell.notebook_menu_open());
-    assert(shell.notebook_option_count() == 2U);
+    assert(shell.notebook_option_count() == 3U);
     assert(shell.notebook_selection() == 0U);
     assert(shell.notebook_label(0) == "  Notebook");
     assert(shell.notebook_label(1) == "Current Run");
     assert(shell.notebook_label(2) == "Tips & Clues");
+    assert(shell.notebook_label(3) == "Contacts");
     SoftwareScreen notebook_screen;
     shell.render(notebook_screen);
     assert(notebook_screen.pixel(56, 24) != 0U);

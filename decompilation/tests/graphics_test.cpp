@@ -406,6 +406,8 @@ int main() {
     assert(native_assets.notebook_labels == notebook_labels);
     assert(native_assets.notebook_no_run_lines ==
            read_genesis_notebook_no_run_text(rom));
+    assert((native_assets.notebook_event_gates ==
+            std::array<std::uint8_t, 3>{1, 0, 0}));
     const auto pack_path = std::filesystem::temp_directory_path() /
                            "shadowrun_native_port_assets_test.srna";
     write_native_asset_pack(pack_path.string(), native_assets);
@@ -443,6 +445,8 @@ int main() {
     assert(loaded_assets.notebook_labels == native_assets.notebook_labels);
     assert(loaded_assets.notebook_no_run_lines ==
            native_assets.notebook_no_run_lines);
+    assert(loaded_assets.notebook_event_gates ==
+           native_assets.notebook_event_gates);
     assert(loaded_assets.field_event_mode_table ==
            native_assets.field_event_mode_table);
     assert(loaded_assets.field_areas.size() ==

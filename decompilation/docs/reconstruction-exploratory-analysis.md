@@ -656,6 +656,9 @@ The source event's narrative/audio side effects remain a separate boundary.
 Notebook dispatches to `0xF236`. Its setup helper `0xF33E` writes the title
 and two ungated rows from `0xC567E`, then appends `Contacts`, `Mr. Johnsons`,
 and `Shadowrunners` only when `FFFC2C`, `FFFC27`, and `FFFC2A` are nonzero.
+The New Game initializer at `0x59C48` stores `0x1C7F` in `FFFC2C`, so a
+fresh post-opening session has Contacts visible; the native asset pack carries
+that initial gate rather than hiding the row.
 The copied action table at `0xC6648` resolves those rows to `0xF2E2`,
 `0xF9A4`, `0xF840`, `0xF416`, and `0xF6DC`; `FFF0B9` is the inclusive
 selector bound and `FFF0DC` is the cursor. The native port now extracts all

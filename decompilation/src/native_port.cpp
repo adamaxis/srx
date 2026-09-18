@@ -637,6 +637,7 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     dismiss_runner_labels_ = std::move(assets.dismiss_runner_labels);
     notebook_labels_ = std::move(assets.notebook_labels);
     notebook_no_run_lines_ = std::move(assets.notebook_no_run_lines);
+    notebook_event_gates_ = assets.notebook_event_gates;
     protagonist_archetype_records_ =
         std::move(assets.protagonist_archetype_records);
     field_initial_records_ = assets.initial_field_records;
@@ -2183,12 +2184,14 @@ void NativePortShell::update_pocket_secretary_menu(const InputState& input) {
 
 void NativePortShell::open_notebook_menu() {
     // ROM 0xC2A6 dispatches Notebook to 0xF236. F33E rebuilds the panel,
-    // resets FFF0DC, and starts with the two ungated rows from C567E. The
-    // three event-gated rows are deliberately not exposed until their source
-    // setters have been ported.
+    // resets FFF0DC, and starts with the two base rows from C567E. New Game
+    // has the Contacts gate set by 0x59C48; later event setters can expose
+    // the remaining two rows once their source mutations are ported.
     scene_ = NativeScene::NotebookMenu;
     notebook_selection_ = 0;
-    notebook_option_count_ = 2;
+    notebook_option_count_ = 2U + static_cast<std::size_t>(std::count_if(
+        notebook_event_gates_.begin(), notebook_event_gates_.end(),
+        [](const auto gate) { return gate != 0U; }));
     notebook_message_visible_ = false;
     menu_horizontal_repeat_frames_ = 0;
     menu_vertical_repeat_frames_ = 0;

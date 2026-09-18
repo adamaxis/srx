@@ -136,6 +136,10 @@ inline constexpr std::array<GenesisAddress, 3> kNotebookNoRunText{
     0xC56E7, 0xC56FE, 0xC5717};
 inline constexpr std::array<std::size_t, 3> kNotebookNoRunTextLengths{
     22, 23, 16};
+// New Game's setup helper at 0x59C48 initializes FFFC2C with 0x1C7F;
+// F33E tests the word only for nonzero when deciding whether Contacts is
+// visible on the fresh-game Notebook panel.
+constexpr std::uint32_t kInitialNotebookContactsFlags = 0x59C48;
 // ROM 0xD01C loads twenty labels through this longword table. The first
 // eight correspond to the attribute bytes at record +0x77..+0x7E; the final
 // twelve correspond to the skill bytes at +0x80..+0x85 and +0x87..+0x8C.

@@ -1035,6 +1035,14 @@ native::NativePortAssets decode_genesis_native_assets(
     assets.dismiss_runner_labels = read_genesis_dismiss_runner_labels(rom);
     assets.notebook_labels = read_genesis_notebook_labels(rom);
     assets.notebook_no_run_lines = read_genesis_notebook_no_run_text(rom);
+    // 0x59C48 is the New Game initializer's move.l #$1C7F,FFFC2C. F33E
+    // exposes Contacts when that source gate is nonzero; the other two
+    // Notebook gates are event-driven and start clear in a fresh game.
+    assets.notebook_event_gates[0] = read_rom_u32(
+        rom, rom::kInitialNotebookContactsFlags,
+        "Genesis Notebook initial event gate is truncated") != 0U;
+    assets.notebook_event_gates[1] = 0;
+    assets.notebook_event_gates[2] = 0;
 
     for (std::size_t index = 0;
          index < assets.field_direction_table.size(); ++index) {
@@ -1058,7 +1066,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 30);
+    write_u16(output, 31);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     for (const auto& title_frame : assets.title_animation_frames) {
@@ -1325,6 +1333,9 @@ void write_native_asset_pack(const std::string& path,
         write_pack_string(output, line,
                           "native Notebook no-run text is too long");
     }
+    for (const auto gate : assets.notebook_event_gates) {
+        output.put(static_cast<char>(gate));
+    }
     for (const auto& direction : assets.field_direction_table) {
         write_u16(output, static_cast<std::uint16_t>(direction[0]));
         write_u16(output, static_cast<std::uint16_t>(direction[1]));
@@ -1449,7 +1460,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 30U)) {
+        (version < 2U || version > 31U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -1941,6 +1952,13 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
                                 line = read_pack_string(
                                     input,
                                     "native Notebook no-run text is truncated");
+                            }
+                            if (version >= 31U) {
+                                for (auto& gate : assets.notebook_event_gates) {
+                                    gate = read_pack_u8(
+                                        input,
+                                        "native Notebook event gates are truncated");
+                                }
                             }
                         }
                     }

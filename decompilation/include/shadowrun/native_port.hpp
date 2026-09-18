@@ -422,6 +422,10 @@ struct NativePortAssets {
     std::array<std::string, kNativeNotebookLabelCount> notebook_labels{};
     std::array<std::string, kNativeNotebookNoRunLineCount>
         notebook_no_run_lines{};
+    // New Game's 0x59C48 initializer sets FFFC2C to 0x1C7F, which makes
+    // Contacts visible immediately after the opening. The other two rows
+    // remain gated until their source event setters are ported.
+    std::array<std::uint8_t, 3> notebook_event_gates{{1, 0, 0}};
 };
 
 // Native game code writes to this interface instead of issuing Genesis VDP
@@ -983,6 +987,7 @@ private:
     std::array<std::string, kNativeNotebookLabelCount> notebook_labels_{};
     std::array<std::string, kNativeNotebookNoRunLineCount>
         notebook_no_run_lines_{};
+    std::array<std::uint8_t, 3> notebook_event_gates_{{1, 0, 0}};
     bool pocket_secretary_message_visible_ = false;
     std::array<std::size_t, 2> dismiss_runner_candidate_records_{};
     std::size_t dismiss_runner_candidate_count_ = 0;
@@ -1026,11 +1031,10 @@ private:
     std::size_t pocket_secretary_selection_ = 0;
     bool pocket_secretary_save_load_enabled_ = true;
     // ROM 0xF33E starts this at one (two selectable rows, 0..1) and
-    // increments it only for the three persistent Notebook event gates.
-    // Those setters are not ported yet, so a fresh native session exposes
-    // the same ungated Current Run/Tips & Clues base rows.
+    // increments it for each nonzero event gate. New Game's 0x59C48 setup
+    // enables Contacts, so the default fresh-session bound is three rows.
     std::size_t notebook_selection_ = 0;
-    std::size_t notebook_option_count_ = 2;
+    std::size_t notebook_option_count_ = 3;
     bool notebook_message_visible_ = false;
     // ROM 0xC8C8 reads the persistent global FFFC22 bitfield. The current
     // native field slice has not yet ported the event setters, so a new game

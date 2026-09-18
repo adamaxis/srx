@@ -292,8 +292,10 @@ The Cyberdeck row now follows the first branch of `0x18150`: with the native
 new-game state equivalent to clear `FF018F` bit 0, it writes the exact three
 lines at `0xE43D1`, `0xE43E2`, and `0xE43F3` into the Pocket Secretary panel.
 Notebook now follows the base `0xF236`/`0xF33E` path: it extracts the title,
-Current Run, Tips & Clues, and the three event-gated labels, starts with only
-the two ungated rows, and displays the exact `0xF2E2` no-current-run response.
+Current Run, Tips & Clues, and the three event-gated labels. The New Game
+initializer at `0x59C48` sets `FFFC2C`, so Contacts is visible in the fresh
+post-opening session; the native screen displays the exact `0xF2E2`
+no-current-run response.
 Dismiss Runner now follows the source `0xC448` active-record enumeration: the
 native panel lists live non-current party records, starts on the extracted
 Abort row, and clears the selected record's active bit only after that runner
