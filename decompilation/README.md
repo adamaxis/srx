@@ -76,11 +76,19 @@ four-line CRAM image at `0x1FF0`. Those resources are converted to host RGBA8
 and submitted through `ScreenWriter`; no Genesis VDP or 68000 runtime is
 needed by the native executable.
 
+The source-backed screen contract is maintained in
+[`docs/screen-system-audit.md`](docs/screen-system-audit.md). It records each
+screen's entry path, choices, cursor/focus state, exits, source side effects,
+and the native implementation boundary. Visual similarity alone is not
+treated as completion.
+
 The asset-backed native shell now exposes a native startup flow as well. It starts
 on the reconstructed title scene, consumes the pressed `Start` edge, enters the
-ROM's `Start Options` and `Choose Archetype` screens, then presents the extracted
-opening story before entering a typed C++ field state with held directional
-movement. The field presentation
+ROM's `Start Options`, `Save/Load`, and `Choose Archetype` screens, then returns
+through the reviewed `0x59248`/`0x42B0` path into a typed C++ field state with
+held directional movement. The extracted story block at `0x5B7D8` is retained
+as data for separate analysis; it is not called by the startup path traced from
+`0x59092`. The field presentation
 translates the mode-2 data path:
 raw pattern data at `0x166B82`, compressed 4x4 name-word stamps at `0x170102`,
 and the 60x42 primary/secondary tables at `0x16D9A2`/`0x16ED52`. Genesis tile
@@ -91,11 +99,13 @@ is a 1920x1344 host RGBA map using the ROM's initial top-left camera viewport.
 ROM `0x2B34`'s first three mode-record coordinate pairs are retained in the typed
 resource descriptor, and arrow input advances the first recovered field record
 through that world space; the viewport follows when the entity reaches the
-reviewed projection window. The reviewed field-loop raw `0x2000` branch to
-`0x391A` is mapped to the native C edge: it selects the next of those three
-initialized records and preserves each record's fixed-point position when the
-selection changes. It does not render unverified duplicate actors. The native
-port does not run a 68000 interpreter or depend on Genesis VDP state. The
+reviewed projection window. The first three records at `0x7291A` are Joshua's
+Samurai, Decker, and Gator Shaman archetype templates, not three runners. The
+native shell copies the selected template once during New Game and leaves the
+other runtime party slots inactive until the recruited roster at `0x72C1A` is
+decoded. The reviewed field-loop raw `0x2000` branch to `0x391A` therefore
+produces the source no-op when no eligible runner exists. The native port does
+not run a 68000 interpreter or depend on Genesis VDP state. The
 native field resolves the field-record directional state via the reviewed
 `0x600E` kind/state indirection (`0x62AC` -> kind-3 table `0x6378`). Its
 directional idle descriptors (`0x9D6E` through `0x9F66`) and the full walking
@@ -117,17 +127,24 @@ The terrain table at `0x172DAA` is rebuilt into the native status grid and the
 four-corner `0xE7C8` probe rejects blocked movement before the typed record is
 updated. Field `Start` now enters a native `FieldMenu` matching the reviewed
 `0x10D30` command-screen loop: the selector starts at ROM value six,
-left/right wraps the seven `0x114A0` values, up/down wraps the four `0x11564`
-secondary rows, and its labels are extracted from the `0x1170C`/`0xD1D28`
-string path. A/B record the same shared `0x10E4E` dispatch boundary, C retains
-the reviewed `0x391A` runner switch, and Start closes the menu without
-resetting field state. The native record pack also carries each startup
-record's `+0x3E` type and `+0x10/+0x11` selection flags. C scans those flags
-using the reviewed `0x391A` active/suppressed/selection gates; the type-2
-startup record is selectable and is the ROM's wrap-around boundary. It skips
-unavailable runners and leaves the current runner unchanged when no eligible
-record exists. The opening story lines are extracted from `0x5B7D8` through
+left/right wraps the seven `0x114A0` values, and Up enters the source posture
+loop for selectors `2..6`; only the two Inventory selectors use the four-row
+`0x11564` secondary cursor. The labels are extracted from the
+`0x1170C`/`0xD1D28` string path. A/B record the same shared `0x10E4E` dispatch
+boundary, C retains the reviewed `0x391A` runner switch, and Start closes the
+menu without resetting field state. The native record pack also carries each
+runtime record's `+0x3E` type and `+0x10/+0x11` selection flags. C scans those
+flags using the reviewed `0x391A` active/suppressed/selection gates and skips
+unavailable runners. The opening story lines are extracted from `0x5B7D8` through
 `0x5BA4B`, while the startup labels come from `0x1B6499` through `0x1B6517`.
+The native title keeps the source's separate circuit-field, column-revealed
+logo, SAT sprite, copyright, and blinking prompt layers; its timing is derived
+from the `0x1A9E`, `0x1C6A`, `0x1DCA`, `0x1DF6`, and `0x1E4E` paths instead of
+presenting a completed composite immediately.
+Posture is also a stateful source path: the five `+0x4D` values are retained
+per runner, and the native pack carries the source-derived attack/defense bar
+table index for each value so `0x11ABE` changes the visible strips through the
+same `0x12CEE` boundary.
 This is a runnable startup-to-field slice, not a claim
 that the whole game is playable; the remaining command-handler bodies,
 expanded entity/session population, and additional field object behavior
@@ -139,13 +156,16 @@ reaction substate, then the `0x167AE` dispatcher indexes the descriptor table
 at `0x172CDC`; Redmond's C0 doorway class selects mode `0x14` (decimal 20).
 That destination uses a raw
 16-bit name-word table at `0x1CD29A`, producing a 1600x960 host interior map
-from 50x30 entries. The version-10 `.srna` pack includes mode-2, mode-13,
+from 50x30 entries. The current `.srna` pack includes mode-2, mode-13,
 mode-19, mode-20, mode-26, and mode-50..52 area records with their converted
 maps, terrain, camera, spawn, and reaction-mode data. These cover every
 non-empty destination named by the mode-2 Redmond reaction-mode table;
 interior descriptors have zero `+0x4E` transition pointers, so their exit path
 still needs to be recovered from the other reaction/resource data rather than
-guessed.
+guessed. Entry camera/runner placement is a separate source concern: a mode's
+descriptor coordinates are not automatically a correct doorway-specific
+arrival point, so the transition path must retain reaction context while
+selecting the destination view.
 
 The Inventory selector now has its first typed data path. ROM `0x12148`
 addresses eight item bytes at entity record `+0x66` as `2*row+selector`.
@@ -169,8 +189,8 @@ cyberware field and expands the pointer names at `0xD2072` into host strings;
 the initial record therefore shows the recovered `Hand Razors` entry. The
 handler is display-only in the ROM, so Start returns to the command screen and
 there is no invented mutation or selection behavior. These values are carried
-in the native asset-pack version 10 format, which also carries runner selection
-flags.
+in the current versioned native asset-pack format, which also carries the
+separate Joshua archetype templates and runtime party records.
 
 The Attributes/Skills command now enters a native two-column view corresponding
 to ROM `0xD01C`. It extracts the eight attribute bytes at `+0x77..+0x7E`, the
@@ -178,7 +198,8 @@ twelve skill bytes at `+0x80..+0x85` and `+0x87..+0x8C`, and the twenty labels
 from the `0xC1A2A` pointer table. The four intervening bytes at `+0x7F`,
 `+0x86`, `+0x8D`, and `+0x8E` are retained as auxiliary state until their
 upgrade/display roles are proven; the unresolved A/B/C mutations remain
-isolated. The expanded data is stored in native asset-pack version 10.
+isolated. The expanded data is stored in the current versioned native
+asset-pack format.
 
 The Windows frontend preserves the reviewed controller boundary from ROM
 0x195C: the sampled word uses its low byte for held state and its high byte for
@@ -189,8 +210,8 @@ graphics frontend can use the same host input contract.
 The extracted field template also carries the signed display bytes at
 `+0x56/+0x57`. Native projection preserves the `0x36FC` display gate: a
 negative `+0x56` or the sentinel `0x7F` leaves the entity hidden even when its
-screen projection is in range. These values are included in native asset-pack
-version 10, so the host-only runtime retains the recovered state, inventory,
+screen projection is in range. These values are included in the current native
+asset-pack format, so the host-only runtime retains the recovered state, inventory,
 cyberware catalog, clip values, and runner selection flags without
 reading the ROM.
 

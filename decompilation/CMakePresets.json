@@ -1,0 +1,113 @@
+{
+  "version": 6,
+  "vendor": {
+    "shadowrun": {
+      "toolchainPolicy": "MSYS2 UCRT64 presets are the primary Windows build path; MSVC presets are available as an alternative."
+    }
+  },
+  "configurePresets": [
+    {
+      "name": "debug",
+      "displayName": "Debug (MSYS2 UCRT64)",
+      "description": "Debug build using the MSYS2 UCRT64 GCC toolchain.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_COMPILER": "C:/msys64/ucrt64/bin/gcc.exe",
+        "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release (MSYS2 UCRT64)",
+      "description": "Release build using the MSYS2 UCRT64 GCC toolchain.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "C:/msys64/ucrt64/bin/gcc.exe",
+        "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe"
+      }
+    },
+    {
+      "name": "msvc-debug",
+      "displayName": "Debug (MSVC)",
+      "description": "Debug build using Visual Studio 2022.",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "${sourceDir}/build-msvc-debug"
+    },
+    {
+      "name": "msvc-release",
+      "displayName": "Release (MSVC)",
+      "description": "Release build using Visual Studio 2022.",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "${sourceDir}/build-msvc-release"
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug-native",
+      "displayName": "Build Native (Debug)",
+      "configurePreset": "debug",
+      "targets": ["shadowrun_native"]
+    },
+    {
+      "name": "debug-tests",
+      "displayName": "Build Tests (Debug)",
+      "configurePreset": "debug",
+      "targets": [
+        "shadowrun_boot_reconstruction_test",
+        "shadowrun_native_port_test",
+        "shadowrun_graphics_test",
+        "shadowrun_graphics_extract"
+      ]
+    },
+    {
+      "name": "debug-all",
+      "displayName": "Build All (Debug)",
+      "configurePreset": "debug"
+    },
+    {
+      "name": "release-native",
+      "displayName": "Build Native (Release)",
+      "configurePreset": "release",
+      "targets": ["shadowrun_native"]
+    },
+    {
+      "name": "release-all",
+      "displayName": "Build All (Release)",
+      "configurePreset": "release"
+    },
+    {
+      "name": "msvc-debug-all",
+      "displayName": "Build All (MSVC Debug)",
+      "configurePreset": "msvc-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "msvc-release-all",
+      "displayName": "Build All (MSVC Release)",
+      "configurePreset": "msvc-release",
+      "configuration": "Release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "debug",
+      "displayName": "CTest (Debug)",
+      "configurePreset": "debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "CTest (Release)",
+      "configurePreset": "release",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

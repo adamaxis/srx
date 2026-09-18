@@ -25,11 +25,19 @@ void enter_field_from_start(shadowrun::native::NativePortShell& shell) {
     assert(shell.scene() == NativeScene::ArchetypeMenu);
     shell.update(InputState{button_mask(Button::A), button_mask(Button::A)});
     assert(shell.scene() == NativeScene::Intro);
-    for (std::size_t line = 0; line < shell.intro_story_line_count();
-         line += 5U) {
-        shell.update(InputState{button_mask(Button::A), button_mask(Button::A)});
-    }
+    shell.update(InputState{button_mask(Button::Start),
+                             button_mask(Button::Start)});
     assert(shell.scene() == NativeScene::Field);
+}
+
+void press_menu_direction(shadowrun::native::NativePortShell& shell,
+                          shadowrun::native::Button button) {
+    const auto mask = shadowrun::native::button_mask(button);
+    shell.update(shadowrun::native::InputState{mask, mask});
+    // The Genesis input sampler reports an edge only when the button was
+    // released between menu steps. This also makes the test independent of
+    // the held-repeat delay used by the native menu loop.
+    shell.update(shadowrun::native::InputState{});
 }
 
 } // namespace
@@ -101,16 +109,14 @@ int main() {
     rom_shell.update(InputState{button_mask(Button::A),
                                 button_mask(Button::A)});
     assert(rom_shell.scene() == NativeScene::Intro);
+    assert(rom_shell.intro_frame() == 0);
     assert(rom_shell.intro_story_line_count() == 22);
     assert(rom_shell.intro_line_start() == 0);
-    rom_shell.update(InputState{button_mask(Button::A),
-                                button_mask(Button::A)});
-    assert(rom_shell.intro_line_start() == 5);
-    for (std::size_t line = 5; line < rom_shell.intro_story_line_count();
-         line += 5U) {
-        rom_shell.update(InputState{button_mask(Button::A),
-                                    button_mask(Button::A)});
-    }
+    rom_shell.update(InputState{});
+    assert(rom_shell.intro_frame() == 1);
+    assert(rom_shell.scene() == NativeScene::Intro);
+    rom_shell.update(InputState{button_mask(Button::Start),
+                                button_mask(Button::Start)});
     assert(rom_shell.scene() == NativeScene::Field);
     assert(rom_shell.field_entity_visible());
     // Mode 2's +0x42/+0x44 pair is copied by ROM 0x2B34 into the first
@@ -122,6 +128,33 @@ int main() {
     assert(rom_shell.field_raw_status() == 0);
     assert(!rom_shell.field_collision_blocked());
     assert(rom_shell.field_mode() == 2);
+    // The first pointer table at ROM 0x6378 is the idle directional table;
+    // walking selectors are selected only after an accepted movement step.
+    assert(rom_shell.field_entity_state_selector() == 0);
+    assert(rom_shell.field_entity_frame_index() == 0);
+    const auto extracted_assets =
+        shadowrun::graphics::decode_genesis_native_assets(rom);
+
+    // Archetype selection mutates Joshua's one live template before the
+    // opening; it does not create a switchable Decker/Shaman runner.
+    NativePortShell decker_shell("SHADOWRUN", extracted_assets);
+    decker_shell.update(InputState{button_mask(Button::Start),
+                                   button_mask(Button::Start)});
+    decker_shell.update(InputState{button_mask(Button::A),
+                                   button_mask(Button::A)});
+    press_menu_direction(decker_shell, Button::Down);
+    assert(decker_shell.archetype_selection() == 1);
+    decker_shell.update(InputState{button_mask(Button::A),
+                                   button_mask(Button::A)});
+    assert(decker_shell.selected_archetype() == 1);
+    assert(decker_shell.scene() == NativeScene::Intro);
+    decker_shell.update(InputState{button_mask(Button::Start),
+                                   button_mask(Button::Start)});
+    assert(decker_shell.scene() == NativeScene::Field);
+    decker_shell.update(InputState{button_mask(Button::C),
+                                   button_mask(Button::C)});
+    assert(decker_shell.field_active_record_index() == 0);
+    assert(decker_shell.field_runner_switch_rejections() == 1);
 
     // Redmond's C0 doorway class is a blocked terrain cell, but the ROM keeps
     // its raw byte and dispatches the low status through the mode-2 event
@@ -145,26 +178,20 @@ int main() {
     assert(transition_shell.field_world_x() == (0x5A00 >> 4));
     assert(transition_shell.field_world_y() == (0x0800 >> 4));
 
-    // The field loop's raw 0x2000 branch calls 0x391A, which advances the
-    // controlled record through the first three initialized 0x100-byte
-    // records. The native port keeps the selection edge-triggered and uses
-    // the three reviewed coordinate pairs without inventing extra actors.
-    const auto extracted_assets =
-        shadowrun::graphics::decode_genesis_native_assets(rom);
+    // The first three records at 0x7291A are Joshua archetype templates, not
+    // three active runners. New Game therefore starts with Joshua only.
     assert(extracted_assets.initial_field_records[0].record_type == 0);
     assert(extracted_assets.initial_field_records[1].record_type == 1);
     assert(extracted_assets.initial_field_records[2].record_type == 2);
     assert(rom_shell.field_active_record_index() == 0);
     rom_shell.update(InputState{button_mask(Button::C),
                                 button_mask(Button::C)});
-    assert(rom_shell.field_active_record_index() == 1);
-    assert(rom_shell.field_world_x() == (0x3BA0 >> 4));
-    rom_shell.update(InputState{button_mask(Button::C), 0});
-    assert(rom_shell.field_active_record_index() == 1);
-    rom_shell.update(InputState{button_mask(Button::C),
-                                button_mask(Button::C)});
-    assert(rom_shell.field_active_record_index() == 2);
-    assert(rom_shell.field_world_x() == (0x3DA0 >> 4));
+    assert(rom_shell.field_active_record_index() == 0);
+    assert(rom_shell.field_runner_switch_attempts() == 1);
+    assert(rom_shell.field_runner_switch_rejections() == 1);
+    assert(extracted_assets.protagonist_archetype_records[0].archetype_index == 2);
+    assert(extracted_assets.protagonist_archetype_records[1].archetype_index == 3);
+    assert(extracted_assets.protagonist_archetype_records[2].archetype_index == 1);
 
     // ROM 0x0075E dispatches Start to 0x10D30, which opens the field command
     // screen. It does not reset the selected record or camera. The selector
@@ -176,46 +203,53 @@ int main() {
     assert(rom_shell.field_menu_open());
     assert(rom_shell.field_menu_selection() == 6);
     assert(rom_shell.field_menu_row() == 0);
-    assert(rom_shell.field_active_record_index() == 2);
-    assert(rom_shell.field_world_x() == (0x3DA0 >> 4));
+    assert(rom_shell.field_active_record_index() == 0);
 
-    rom_shell.update(InputState{button_mask(Button::Left),
-                                button_mask(Button::Left)});
+    // Up from a non-inventory command enters the real posture focus. The
+    // source field is +0x4D, with Neutral at index 2 for Joshua's template.
+    assert(rom_shell.field_posture_index() == 2);
+    const auto neutral_attack_bar = rom_shell.field_attack_bar_index();
+    const auto neutral_defense_bar = rom_shell.field_defense_bar_index();
+    press_menu_direction(rom_shell, Button::Up);
+    assert(rom_shell.field_menu_posture_active());
+    press_menu_direction(rom_shell, Button::Left);
+    assert(rom_shell.field_posture_index() == 1);
+    assert(rom_shell.field_attack_bar_index() ==
+           extracted_assets.protagonist_archetype_records[0]
+               .attack_bar_indices_by_posture[1]);
+    assert(rom_shell.field_defense_bar_index() ==
+           extracted_assets.protagonist_archetype_records[0]
+               .defense_bar_indices_by_posture[1]);
+    assert(rom_shell.field_attack_bar_index() != neutral_attack_bar ||
+           rom_shell.field_defense_bar_index() != neutral_defense_bar);
+    press_menu_direction(rom_shell, Button::Right);
+    assert(rom_shell.field_posture_index() == 2);
+    assert(rom_shell.field_attack_bar_index() == neutral_attack_bar);
+    assert(rom_shell.field_defense_bar_index() == neutral_defense_bar);
+    rom_shell.update(InputState{button_mask(Button::B), button_mask(Button::B)});
+    assert(!rom_shell.field_menu_posture_active());
+
+    press_menu_direction(rom_shell, Button::Left);
     assert(rom_shell.field_menu_selection() == 5);
-    rom_shell.update(InputState{button_mask(Button::Up),
-                                button_mask(Button::Up)});
+    for (int step = 0; step < 4; ++step) {
+        press_menu_direction(rom_shell, Button::Left);
+    }
+    assert(rom_shell.field_menu_selection() == 1);
+    for (int step = 0; step < 3; ++step) {
+        press_menu_direction(rom_shell, Button::Down);
+    }
     assert(rom_shell.field_menu_row() == 3);
     rom_shell.update(InputState{button_mask(Button::A),
                                 button_mask(Button::A)});
     assert(rom_shell.field_command_count() == 1);
-    assert(rom_shell.field_last_command_selection() == 5);
+    assert(rom_shell.field_last_command_selection() == 1);
     assert(rom_shell.field_last_command_row() == 3);
     assert(rom_shell.scene() == NativeScene::FieldMenu);
 
-    // The two Inventory selector values are the columns used by ROM
-    // 0x12148. Its row/column address is 2*row+selector, so the extracted
-    // first character record exposes Model 101T in slot 0 and Armor Vest in
-    // slot 1 without consulting the ROM at runtime.
-    for (int step = 0; step < 4; ++step) {
-        rom_shell.update(InputState{button_mask(Button::Left),
-                                    button_mask(Button::Left)});
-    }
-    assert(rom_shell.field_menu_selection() == 1);
+    // Joshua's extracted record, rather than a fabricated third runner, owns
+    // the inventory and ammunition state shown here.
     assert(rom_shell.field_inventory_item_code(0) == 2);
     assert(rom_shell.field_inventory_item_code(1) == 0x2C);
-    assert(rom_shell.field_inventory_item_code(2) == 0x0E);
-    assert(rom_shell.field_equipped_armor_index() == 1);
-    for (int step = 0; step < 3; ++step) {
-        rom_shell.update(InputState{button_mask(Button::Up),
-                                    button_mask(Button::Up)});
-    }
-    assert(rom_shell.field_menu_row() == 0);
-    rom_shell.update(InputState{button_mask(Button::A),
-                                button_mask(Button::A)});
-    assert(rom_shell.field_equipped_armor_index() == 0);
-    rom_shell.update(InputState{button_mask(Button::A),
-                                button_mask(Button::A)});
-    assert(rom_shell.field_equipped_armor_index() == 1);
     assert(rom_shell.field_ammo_rounds() == 0x20);
     assert(rom_shell.field_ammo_clips() == 0x0A);
     rom_shell.render(screen);
@@ -223,16 +257,14 @@ int main() {
     // Top-level Clips enters ROM 0x11B58's independent selector loop. The
     // native submenu starts at selector two, wraps through 2..5, and gates
     // its actions on the extracted +0x4F clip count via 0x12062.
-    rom_shell.update(InputState{button_mask(Button::Right),
-                                button_mask(Button::Right)});
+    press_menu_direction(rom_shell, Button::Right);
     assert(rom_shell.field_menu_selection() == 2);
     rom_shell.update(InputState{button_mask(Button::A),
                                 button_mask(Button::A)});
     assert(rom_shell.scene() == NativeScene::ClipsMenu);
     assert(rom_shell.clips_menu_open());
     assert(rom_shell.clips_menu_selection() == 2);
-    rom_shell.update(InputState{button_mask(Button::Left),
-                                button_mask(Button::Left)});
+    press_menu_direction(rom_shell, Button::Left);
     assert(rom_shell.clips_menu_selection() == 5);
     rom_shell.update(InputState{button_mask(Button::A),
                                 button_mask(Button::A)});
@@ -245,19 +277,23 @@ int main() {
 
     // ROM 0x11950 is the display-only Cyberware handler. It reads +0x90 as
     // fifteen bit flags and emits the pointer-table name for each set bit.
-    // The extracted startup record has only bit 2 set, which is Hand Razors.
-    rom_shell.update(InputState{button_mask(Button::Right),
-                                button_mask(Button::Right)});
-    rom_shell.update(InputState{button_mask(Button::Right),
-                                button_mask(Button::Right)});
+    // Joshua's active record owns this bitfield; the catalog name remains
+    // available even when its bit is clear.
+    press_menu_direction(rom_shell, Button::Right);
+    press_menu_direction(rom_shell, Button::Right);
     assert(rom_shell.field_menu_selection() == 4);
     rom_shell.update(InputState{button_mask(Button::A),
                                 button_mask(Button::A)});
     assert(rom_shell.scene() == NativeScene::CyberwareMenu);
     assert(rom_shell.cyberware_menu_open());
-    assert(rom_shell.field_cyberware_flags() == 0x0004);
-    assert(!rom_shell.field_cyberware_installed(1));
-    assert(rom_shell.field_cyberware_installed(2));
+    assert(rom_shell.field_cyberware_flags() ==
+           extracted_assets.protagonist_archetype_records[0].cyberware_flags);
+    assert(rom_shell.field_cyberware_installed(1) ==
+           ((extracted_assets.protagonist_archetype_records[0].cyberware_flags &
+             (1U << 1U)) != 0));
+    assert(rom_shell.field_cyberware_installed(2) ==
+           ((extracted_assets.protagonist_archetype_records[0].cyberware_flags &
+             (1U << 2U)) != 0));
     assert(rom_shell.field_cyberware_name(2) == "Hand Razors");
     rom_shell.render(screen);
     rom_shell.update(InputState{button_mask(Button::Start),
@@ -268,8 +304,7 @@ int main() {
     // ROM 0xD01C renders the direct attribute/skill fields. The twenty names
     // come from 0xC1A2A; the startup record's values stay host-native while
     // the unresolved A/B/C upgrade mutations remain disabled.
-    rom_shell.update(InputState{button_mask(Button::Left),
-                                button_mask(Button::Left)});
+    press_menu_direction(rom_shell, Button::Left);
     assert(rom_shell.field_menu_selection() == 3);
     rom_shell.update(InputState{button_mask(Button::A),
                                 button_mask(Button::A)});
@@ -348,8 +383,11 @@ int main() {
     }
     assert(rom_shell.marker_x() == 301);
     assert(rom_shell.field_entity_state_selector() == 0x0068);
-    assert(rom_shell.field_entity_state_index() == 1);
-    assert(rom_shell.field_entity_frame_index() == 1);
+    // Kind-3's 0x8002 walking lists carry auxiliary=0x0300 and the entity
+    // timer threshold is 0x1000. After the direction change, 100 field ticks
+    // therefore advance 18 times and land back on frame zero.
+    assert(rom_shell.field_entity_state_index() == 0);
+    assert(rom_shell.field_entity_frame_index() == 0);
     assert(rom_shell.field_world_x() > initial_camera_x);
     assert(rom_shell.field_camera_x() > initial_camera_x);
     rom_shell.render(screen);
@@ -391,13 +429,30 @@ int main() {
     // update/render loop.
     auto native_assets = shadowrun::graphics::decode_genesis_native_assets(
         rom);
+    assert(native_assets.field_menu_cursor.width == 24);
+    assert(native_assets.field_menu_cursor.height == 32);
+    assert(native_assets.field_menu_selected_cells[0].width == 40);
+    assert(native_assets.field_menu_selected_cells[0].height == 32);
+    assert(native_assets.field_menu_item_art[1].width == 72);
+    assert(native_assets.field_menu_item_art[1].height == 40);
+    assert(native_assets.field_menu_damage_bars[0].width == 56);
+    assert(native_assets.field_menu_damage_bars[0].height == 8);
+    assert(native_assets.field_menu_power_labels[5] == "Light");
     const auto pack_path = std::filesystem::temp_directory_path() /
                            "shadowrun_native_port_runtime_test.srna";
     shadowrun::graphics::write_native_asset_pack(
         pack_path.string(), native_assets);
-    NativePortShell pack_shell(
-        "SHADOWRUN",
-        shadowrun::graphics::read_native_asset_pack(pack_path.string()));
+    auto packed_assets = shadowrun::graphics::read_native_asset_pack(
+        pack_path.string());
+    assert(packed_assets.protagonist_archetype_records[0]
+               .attack_bar_indices_by_posture ==
+           native_assets.protagonist_archetype_records[0]
+               .attack_bar_indices_by_posture);
+    assert(packed_assets.protagonist_archetype_records[0]
+               .defense_bar_indices_by_posture ==
+           native_assets.protagonist_archetype_records[0]
+               .defense_bar_indices_by_posture);
+    NativePortShell pack_shell("SHADOWRUN", std::move(packed_assets));
     std::filesystem::remove(pack_path);
     assert(pack_shell.has_assets());
     assert(pack_shell.has_field_map());
@@ -419,6 +474,8 @@ int main() {
     // rule independently of the ROM-backed constructor.
     auto hidden_assets = native_assets;
     hidden_assets.entity_template.display_state = -1;
+    hidden_assets.protagonist_archetype_records[0].display_state = -1;
+    hidden_assets.field_entity_records[0].display_state = -1;
     NativePortShell hidden_shell("SHADOWRUN", std::move(hidden_assets));
     enter_field_from_start(hidden_shell);
     assert(hidden_shell.scene() == NativeScene::Field);

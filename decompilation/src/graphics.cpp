@@ -105,6 +105,145 @@ void read_pack_bytes(std::istream& input, std::uint8_t* destination,
     }
 }
 
+void write_native_entity_payload(std::ostream& output,
+                                const native::NativeFieldEntity& entity) {
+    write_u16(output, entity.projection_word_08);
+    write_u16(output, entity.kind);
+    write_u16(output, entity.record_type);
+    output.put(static_cast<char>(entity.flags_10));
+    output.put(static_cast<char>(entity.flags_11));
+    output.put(static_cast<char>(entity.race_index));
+    output.put(static_cast<char>(entity.archetype_index));
+    output.put(static_cast<char>(entity.physical_value));
+    output.put(static_cast<char>(entity.mental_value));
+    output.put(static_cast<char>(entity.active_item_code));
+    write_u32(output, entity.state_pointer);
+    write_u16(output, entity.state_selector);
+    write_u16(output, entity.animation_multiplier);
+    write_u16(output, entity.animation_accumulator);
+    write_u16(output, entity.animation_threshold);
+    write_u16(output, entity.state_index);
+    output.put(static_cast<char>(static_cast<std::uint8_t>(
+        entity.display_state)));
+    output.put(static_cast<char>(static_cast<std::uint8_t>(
+        entity.display_substate)));
+    output.put(static_cast<char>(entity.display_palette_state));
+    output.put(static_cast<char>(entity.menu_status_index));
+    output.put(static_cast<char>(entity.attack_bar_index));
+    output.put(static_cast<char>(entity.defense_bar_index));
+    for (const auto index : entity.attack_bar_indices_by_posture) {
+        output.put(static_cast<char>(index));
+    }
+    for (const auto index : entity.defense_bar_indices_by_posture) {
+        output.put(static_cast<char>(index));
+    }
+    output.put(static_cast<char>(entity.weapons_bar_index));
+    output.put(static_cast<char>(entity.guns_bar_index));
+    for (const auto code : entity.inventory_item_codes) {
+        output.put(static_cast<char>(code));
+    }
+    for (const auto phase : entity.inventory_phase_bytes) {
+        output.put(static_cast<char>(phase));
+    }
+    output.put(static_cast<char>(entity.equipped_armor_index));
+    output.put(static_cast<char>(entity.ammo_rounds));
+    output.put(static_cast<char>(entity.ammo_clips));
+    write_u16(output, entity.cyberware_flags);
+    for (const auto value : entity.attribute_values) {
+        output.put(static_cast<char>(value));
+    }
+    for (const auto value : entity.skill_values) {
+        output.put(static_cast<char>(value));
+    }
+    for (const auto value : entity.attribute_skill_auxiliary) {
+        output.put(static_cast<char>(value));
+    }
+}
+
+native::NativeFieldEntity read_native_entity_payload(std::istream& input,
+                                                    bool has_posture_bars) {
+    native::NativeFieldEntity entity;
+    entity.projection_word_08 = read_pack_u16(
+        input, "native entity payload is truncated");
+    entity.kind = read_pack_u16(input, "native entity payload is truncated");
+    entity.record_type = read_pack_u16(
+        input, "native entity payload is truncated");
+    entity.flags_10 = read_pack_u8(input, "native entity payload is truncated");
+    entity.flags_11 = read_pack_u8(input, "native entity payload is truncated");
+    entity.race_index = read_pack_u8(input, "native entity payload is truncated");
+    entity.archetype_index = read_pack_u8(
+        input, "native entity payload is truncated");
+    entity.physical_value = read_pack_u8(
+        input, "native entity payload is truncated");
+    entity.mental_value = read_pack_u8(
+        input, "native entity payload is truncated");
+    entity.active_item_code = read_pack_u8(
+        input, "native entity payload is truncated");
+    entity.state_pointer = read_pack_u32(
+        input, "native entity payload is truncated");
+    entity.state_selector = read_pack_u16(
+        input, "native entity payload is truncated");
+    entity.animation_multiplier = read_pack_u16(
+        input, "native entity payload is truncated");
+    entity.animation_accumulator = read_pack_u16(
+        input, "native entity payload is truncated");
+    entity.animation_threshold = read_pack_u16(
+        input, "native entity payload is truncated");
+    entity.state_index = read_pack_u16(
+        input, "native entity payload is truncated");
+    entity.display_state = static_cast<std::int8_t>(read_pack_u8(
+        input, "native entity payload is truncated"));
+    entity.display_substate = static_cast<std::int8_t>(read_pack_u8(
+        input, "native entity payload is truncated"));
+    entity.display_palette_state = read_pack_u8(
+        input, "native entity payload is truncated");
+    entity.menu_status_index = read_pack_u8(
+        input, "native entity payload is truncated");
+    entity.attack_bar_index = read_pack_u8(
+        input, "native entity payload is truncated");
+    entity.defense_bar_index = read_pack_u8(
+        input, "native entity payload is truncated");
+    if (has_posture_bars) {
+        for (auto& index : entity.attack_bar_indices_by_posture) {
+            index = read_pack_u8(input, "native entity posture bars are truncated");
+        }
+        for (auto& index : entity.defense_bar_indices_by_posture) {
+            index = read_pack_u8(input, "native entity posture bars are truncated");
+        }
+    } else {
+        entity.attack_bar_indices_by_posture.fill(entity.attack_bar_index);
+        entity.defense_bar_indices_by_posture.fill(entity.defense_bar_index);
+    }
+    entity.weapons_bar_index = read_pack_u8(
+        input, "native entity payload is truncated");
+    entity.guns_bar_index = read_pack_u8(
+        input, "native entity payload is truncated");
+    for (auto& code : entity.inventory_item_codes) {
+        code = read_pack_u8(input, "native entity payload is truncated");
+    }
+    for (auto& phase : entity.inventory_phase_bytes) {
+        phase = read_pack_u8(input, "native entity payload is truncated");
+    }
+    entity.equipped_armor_index = read_pack_u8(
+        input, "native entity payload is truncated");
+    entity.ammo_rounds = read_pack_u8(
+        input, "native entity payload is truncated");
+    entity.ammo_clips = read_pack_u8(
+        input, "native entity payload is truncated");
+    entity.cyberware_flags = read_pack_u16(
+        input, "native entity payload is truncated");
+    for (auto& value : entity.attribute_values) {
+        value = read_pack_u8(input, "native entity payload is truncated");
+    }
+    for (auto& value : entity.skill_values) {
+        value = read_pack_u8(input, "native entity payload is truncated");
+    }
+    for (auto& value : entity.attribute_skill_auxiliary) {
+        value = read_pack_u8(input, "native entity payload is truncated");
+    }
+    return entity;
+}
+
 std::string read_genesis_fixed_text(const std::vector<std::uint8_t>& rom,
                                     std::size_t offset, std::size_t length,
                                     const char* what) {
@@ -153,6 +292,53 @@ std::string read_genesis_menu_text(const std::vector<std::uint8_t>& rom,
     }
     const auto last = value.find_last_not_of(' ');
     return value.substr(first, last - first + 1U);
+}
+
+std::vector<native::NativeStartupTextLine> read_genesis_startup_layout(
+    const std::vector<std::uint8_t>& rom, std::size_t start_offset,
+    std::size_t end_offset, const char* what) {
+    if (start_offset > end_offset || end_offset > rom.size()) {
+        throw std::out_of_range(what);
+    }
+    std::vector<native::NativeStartupTextLine> result;
+    std::string line;
+    std::size_t row = 0;
+    const auto append_line = [&result](std::size_t line_row,
+                                       std::string value) {
+        // The startup blocks contain a source placeholder made of '[' and
+        // backslashes where the runtime cursor sprite is written. It is not
+        // user-facing text; keeping it produced the long underline seen under
+        // the title in the native screen.
+        const auto is_cursor_placeholder =
+            !value.empty() && value.front() == '[' &&
+            value.find_first_not_of("[\\]") == std::string::npos;
+        if (!is_cursor_placeholder) {
+            result.push_back({static_cast<std::uint8_t>(line_row),
+                              std::move(value)});
+        }
+    };
+    for (auto offset = start_offset; offset < end_offset; ++offset) {
+        const auto byte = rom[offset];
+        if (byte == 0xFFU) {
+            if (!line.empty()) {
+                append_line(row, std::move(line));
+            }
+            return result;
+        }
+        if (byte == 0x80U) {
+            if (!line.empty()) {
+                append_line(row, std::move(line));
+                line.clear();
+            }
+            ++row;
+            continue;
+        }
+        if (byte < 0x20U || byte > 0x7EU) {
+            throw std::runtime_error(what);
+        }
+        line.push_back(static_cast<char>(byte));
+    }
+    throw std::out_of_range(what);
 }
 
 void write_pack_string(std::ostream& output, const std::string& value,
@@ -223,6 +409,11 @@ GenesisFieldEntityTemplate read_genesis_field_entity_template(
     result.record_type = read_rom_u16(
         rom, record_offset + 0x3EU,
         "Genesis field entity record type is truncated");
+    result.race_index = rom[record_offset + 0x00U];
+    result.archetype_index = rom[record_offset + 0x9BU];
+    result.physical_value = rom[record_offset + 0x4CU];
+    result.mental_value = rom[record_offset + 0x9CU];
+    result.active_item_code = rom[record_offset + 0x57U];
     result.flags_10 = static_cast<std::uint8_t>(flags >> 8U);
     result.flags_11 = static_cast<std::uint8_t>(flags);
     result.state_pointer = read_rom_u32(
@@ -246,6 +437,8 @@ GenesisFieldEntityTemplate read_genesis_field_entity_template(
     result.display_state = static_cast<std::int8_t>(rom[record_offset + 0x56U]);
     result.display_substate =
         static_cast<std::int8_t>(rom[record_offset + 0x57U]);
+    result.display_palette_state = rom[record_offset + 0x9BU];
+    result.menu_status_index = rom[record_offset + 0x4DU];
     for (std::size_t index = 0; index < result.inventory_item_codes.size();
          ++index) {
         result.inventory_item_codes[index] =
@@ -290,6 +483,8 @@ read_genesis_inventory_catalog(const std::vector<std::uint8_t>& rom) {
             static_cast<std::size_t>(rom::kInventoryItemTable) +
             index * rom::kInventoryItemRecordStride;
         result[index].code = static_cast<std::uint8_t>(index + 1U);
+        result[index].damage_table_index = rom[record_offset + 0x25U];
+        result[index].power_table_index = rom[record_offset + 0x26U];
         result[index].name = read_genesis_fixed_text(
             rom, record_offset, 12U,
             "Genesis inventory item name is truncated");
@@ -364,6 +559,21 @@ native::NativeIntroData read_genesis_intro_data(
     result.archetypes[3] = read_genesis_menu_text(
         rom, rom::kStartupShamanText, 6U,
         "Genesis Shaman label is truncated");
+    result.start_options_layout = read_genesis_startup_layout(
+        rom, 0x1B6498U, 0x1B64CFU,
+        "Genesis startup-options layout is truncated");
+    result.archetype_layout = read_genesis_startup_layout(
+        rom, 0x1B64CFU, 0x1B6518U,
+        "Genesis archetype layout is truncated");
+    result.save_load_layout = read_genesis_startup_layout(
+        rom, 0x1B6518U, 0x1B6527U,
+        "Genesis save/load layout is truncated");
+    result.no_save_layout = read_genesis_startup_layout(
+        rom, 0x1B6527U, 0x1B6577U,
+        "Genesis no-save message is truncated");
+    result.save_success_layout = read_genesis_startup_layout(
+        rom, 0x1B6577U, 0x1B65B9U,
+        "Genesis save-success message is truncated");
 
     if (rom::kIntroStoryTextEnd > rom.size() ||
         rom::kIntroStoryText > rom::kIntroStoryTextEnd) {
@@ -391,12 +601,148 @@ native::NativeIntroData read_genesis_intro_data(
     return result;
 }
 
+std::array<RgbaImage, 23> decode_genesis_field_menu_stat_bars(
+    const std::vector<std::uint8_t>& rom, std::size_t table_offset,
+    const char* table_name);
+
+std::uint8_t read_genesis_command_stat_bar_index(
+    const std::vector<std::uint8_t>& rom, std::size_t record_offset,
+    bool defense, std::uint8_t posture);
+
 native::NativePortAssets decode_genesis_native_assets(
     const std::vector<std::uint8_t>& rom) {
     native::NativePortAssets assets;
-    auto title = decode_genesis_startup_screen(rom);
+    auto title = decode_genesis_title_screen(rom);
     assets.title_scene = {
         title.width, title.height, std::move(title.pixels)};
+    const auto title_background = decode_genesis_title_background(rom);
+    assets.title_background = {
+        title_background.width, title_background.height,
+        title_background.pixels};
+    const auto title_logo_plane = decode_genesis_title_logo_plane(rom);
+    assets.title_logo_plane = {
+        title_logo_plane.width, title_logo_plane.height,
+        title_logo_plane.pixels};
+    const auto title_text = decode_genesis_title_text(rom);
+    assets.title_text = {
+        title_text.width, title_text.height, title_text.pixels};
+    const auto title_sprite_frames = decode_genesis_title_sprite_frames(rom);
+    for (std::size_t index = 0; index < title_sprite_frames.size(); ++index) {
+        assets.title_sprite_frames[index] = {
+            title_sprite_frames[index].width,
+            title_sprite_frames[index].height,
+            title_sprite_frames[index].pixels};
+    }
+    const auto title_frames = decode_genesis_title_animation_frames(rom);
+    for (std::size_t index = 0; index < title_frames.size(); ++index) {
+        assets.title_animation_frames[index] = {
+            title_frames[index].width, title_frames[index].height,
+            title_frames[index].pixels};
+    }
+    auto field_menu_background = decode_genesis_field_menu_background(rom);
+    assets.field_menu_background = {
+        field_menu_background.width, field_menu_background.height,
+        std::move(field_menu_background.pixels)};
+    auto field_menu_inventory_boxes =
+        decode_genesis_field_menu_inventory_boxes(rom);
+    assets.field_menu_inventory_boxes = {
+        field_menu_inventory_boxes.width, field_menu_inventory_boxes.height,
+        std::move(field_menu_inventory_boxes.pixels)};
+    auto field_menu_font = decode_genesis_field_menu_font(rom);
+    assets.field_menu_font = {
+        field_menu_font.width, field_menu_font.height,
+        std::move(field_menu_font.pixels)};
+    const auto startup_font = decode_genesis_startup_font(rom);
+    assets.startup_font = {
+        startup_font.width, startup_font.height, startup_font.pixels};
+    const auto startup_cursor = decode_genesis_startup_cursor(rom);
+    assets.startup_cursor = {
+        startup_cursor.width, startup_cursor.height, startup_cursor.pixels};
+    const auto runner_portraits =
+        decode_genesis_field_menu_runner_portraits(rom);
+    for (std::size_t index = 0; index < runner_portraits.size(); ++index) {
+        assets.field_menu_runner_portraits[index] = {
+            runner_portraits[index].width, runner_portraits[index].height,
+            runner_portraits[index].pixels};
+        assets.field_menu_runner_names[index] = read_genesis_menu_text(
+            rom, 0x7291AU + index * 0x100U + 0x58U, 16U,
+            "Genesis runner menu name is truncated");
+    }
+    const auto selected_cells =
+        decode_genesis_field_menu_selected_cells(rom);
+    for (std::size_t index = 0; index < selected_cells.size(); ++index) {
+        assets.field_menu_selected_cells[index] = {
+            selected_cells[index].width, selected_cells[index].height,
+            selected_cells[index].pixels};
+    }
+    const auto field_menu_cursor = decode_genesis_field_menu_cursor(rom);
+    assets.field_menu_cursor = {
+        field_menu_cursor.width, field_menu_cursor.height,
+        std::move(field_menu_cursor.pixels)};
+    const auto item_art = decode_genesis_field_menu_item_art(rom);
+    for (std::size_t item = 0; item < item_art.size(); ++item) {
+        assets.field_menu_item_art[item] = {
+            item_art[item].width, item_art[item].height,
+            item_art[item].pixels};
+    }
+    const auto damage_bars = decode_genesis_field_menu_damage_bars(rom);
+    for (std::size_t index = 0; index < damage_bars.size(); ++index) {
+        assets.field_menu_damage_bars[index] = {
+            damage_bars[index].width, damage_bars[index].height,
+            damage_bars[index].pixels};
+    }
+    const auto drain_bars = decode_genesis_field_menu_drain_bars(rom);
+    for (std::size_t index = 0; index < drain_bars.size(); ++index) {
+        assets.field_menu_drain_bars[index] = {
+            drain_bars[index].width, drain_bars[index].height,
+            drain_bars[index].pixels};
+    }
+    const auto attack_bars = decode_genesis_field_menu_stat_bars(
+        rom, 0xCF3D4U, "Genesis attack bar table is truncated");
+    const auto defense_bars = decode_genesis_field_menu_stat_bars(
+        rom, 0xCF610U, "Genesis defense bar table is truncated");
+    for (std::size_t index = 0; index < attack_bars.size(); ++index) {
+        assets.field_menu_attack_bars[index] = native::NativeImage{
+            attack_bars[index].width, attack_bars[index].height,
+            attack_bars[index].pixels};
+        assets.field_menu_defense_bars[index] = native::NativeImage{
+            defense_bars[index].width, defense_bars[index].height,
+            defense_bars[index].pixels};
+    }
+    assets.field_menu_power_labels =
+        decode_genesis_field_menu_power_labels(rom);
+    for (std::size_t index = 0; index < assets.field_menu_armor_labels.size();
+         ++index) {
+        const auto layout = read_genesis_startup_layout(
+            rom, 0xD4D50U + index * 0x30U,
+            0xD4D50U + (index + 1U) * 0x30U,
+            "Genesis armor label is truncated");
+        for (const auto& line : layout) {
+            if (line.row < assets.field_menu_armor_labels[index].size()) {
+                assets.field_menu_armor_labels[index][line.row] = line.text;
+            }
+        }
+    }
+    const auto menu_status_bars =
+        decode_genesis_field_menu_status_bars(rom);
+    for (std::size_t index = 0; index < menu_status_bars.size(); ++index) {
+        assets.field_menu_status_bars[index] = {
+            menu_status_bars[index].width, menu_status_bars[index].height,
+            menu_status_bars[index].pixels};
+        assets.field_menu_status_names[index] = read_genesis_menu_text(
+            rom, 0xD1A05U + index * 0x0DU, 0x0DU,
+            "Genesis command-screen status name is truncated");
+    }
+    const auto inventory_icons =
+        decode_genesis_field_menu_inventory_icons(rom);
+    for (std::size_t item = 0; item < inventory_icons.size(); ++item) {
+        for (std::size_t variant = 0; variant < 2U; ++variant) {
+            assets.field_menu_inventory_icons[item][variant] = {
+                inventory_icons[item][variant].width,
+                inventory_icons[item][variant].height,
+                inventory_icons[item][variant].pixels};
+        }
+    }
     assets.intro = read_genesis_intro_data(rom);
 
     const auto entity_frames = decode_genesis_field_entity_animation(rom);
@@ -489,52 +835,105 @@ native::NativePortAssets decode_genesis_native_assets(
         assets.field_areas.push_back(std::move(area));
     }
 
-    const auto entity_template = read_genesis_field_entity_template(rom);
-    assets.entity_template.projection_word_08 =
-        entity_template.projection_word_08;
-    assets.entity_template.kind = entity_template.kind;
-    assets.entity_template.record_type = entity_template.record_type;
-    assets.entity_template.flags_10 = entity_template.flags_10;
-    assets.entity_template.flags_11 = entity_template.flags_11;
-    assets.entity_template.state_pointer = entity_template.state_pointer;
-    assets.entity_template.state_selector = entity_template.state_selector;
-    assets.entity_template.animation_multiplier =
-        entity_template.timing_multiplier;
-    assets.entity_template.animation_accumulator =
-        entity_template.timing_accumulator;
-    assets.entity_template.animation_threshold =
-        entity_template.timing_threshold;
-    assets.entity_template.state_index = entity_template.state_index;
-    assets.entity_template.display_state = entity_template.display_state;
-    assets.entity_template.display_substate = entity_template.display_substate;
-    assets.entity_template.inventory_item_codes =
-        entity_template.inventory_item_codes;
-    assets.entity_template.inventory_phase_bytes =
-        entity_template.inventory_phase_bytes;
-    assets.entity_template.equipped_armor_index =
-        entity_template.equipped_armor_index;
-    assets.entity_template.ammo_rounds = entity_template.ammo_rounds;
-    assets.entity_template.ammo_clips = entity_template.ammo_clips;
-    assets.entity_template.cyberware_flags = read_rom_u16(
-        rom, entity_template.record_offset + 0x90U,
-        "Genesis field entity cyberware flags are truncated");
-    assets.entity_template.attribute_values =
-        entity_template.attribute_values;
-    assets.entity_template.skill_values = entity_template.skill_values;
-    assets.entity_template.attribute_skill_auxiliary =
-        entity_template.attribute_skill_auxiliary;
-    // 0x2B34 writes only the three position pairs into already-created field
-    // records. Their +0x3E type and +0x10/+0x11 flags come from the three
-    // contiguous startup records at 0x7291A, 0x72A1A, and 0x72B1A.
+    // 0x42B0 copies one of the first three records at 0x7291A into Joshua's
+    // live record. Those records are Samurai, Decker, and Gator Shaman
+    // templates; they are not three runners that C can cycle through.
+    const auto copy_entity_data = [](const GenesisFieldEntityTemplate& source,
+                                     native::NativeFieldEntity& destination) {
+        destination.projection_word_08 = source.projection_word_08;
+        destination.kind = source.kind;
+        destination.record_type = source.record_type;
+        destination.race_index = source.race_index;
+        destination.archetype_index = source.archetype_index;
+        destination.physical_value = source.physical_value;
+        destination.mental_value = source.mental_value;
+        destination.active_item_code = source.active_item_code;
+        destination.flags_10 = source.flags_10;
+        destination.flags_11 = source.flags_11;
+        destination.state_pointer = source.state_pointer;
+        destination.state_selector = source.state_selector;
+        destination.animation_multiplier = source.timing_multiplier;
+        destination.animation_accumulator = source.timing_accumulator;
+        destination.animation_threshold = source.timing_threshold;
+        destination.state_index = source.state_index;
+        destination.display_state = source.display_state;
+        destination.display_substate = source.display_substate;
+        destination.display_palette_state = source.display_palette_state;
+        destination.menu_status_index = source.menu_status_index;
+        destination.inventory_item_codes = source.inventory_item_codes;
+        destination.inventory_phase_bytes = source.inventory_phase_bytes;
+        destination.equipped_armor_index = source.equipped_armor_index;
+        destination.ammo_rounds = source.ammo_rounds;
+        destination.ammo_clips = source.ammo_clips;
+        destination.cyberware_flags = source.cyberware_flags;
+        destination.attribute_values = source.attribute_values;
+        destination.skill_values = source.skill_values;
+        destination.attribute_skill_auxiliary = source.attribute_skill_auxiliary;
+    };
+    for (std::size_t index = 0;
+         index < assets.protagonist_archetype_records.size(); ++index) {
+        const auto archetype_source = read_genesis_field_entity_template(
+            rom, 0x7291AU + index * 0x100U);
+        auto& archetype = assets.protagonist_archetype_records[index];
+        copy_entity_data(archetype_source, archetype);
+        archetype.record_index = 0;
+        archetype.cyberware_flags = read_rom_u16(
+            rom, archetype_source.record_offset + 0x90U,
+            "Genesis protagonist cyberware flags are truncated");
+        for (std::size_t posture = 0;
+             posture < archetype.attack_bar_indices_by_posture.size();
+             ++posture) {
+            archetype.attack_bar_indices_by_posture[posture] =
+                read_genesis_command_stat_bar_index(
+                    rom, archetype_source.record_offset, false,
+                    static_cast<std::uint8_t>(posture));
+            archetype.defense_bar_indices_by_posture[posture] =
+                read_genesis_command_stat_bar_index(
+                    rom, archetype_source.record_offset, true,
+                    static_cast<std::uint8_t>(posture));
+        }
+        archetype.attack_bar_index =
+            archetype.attack_bar_indices_by_posture[
+                archetype.menu_status_index];
+        archetype.defense_bar_index =
+            archetype.defense_bar_indices_by_posture[
+                archetype.menu_status_index];
+        const auto armor_index = archetype_source.equipped_armor_index;
+        if (armor_index != 0U && armor_index <= 7U) {
+            const auto armor_offset = 0xD4D50U +
+                (static_cast<std::size_t>(armor_index) - 1U) * 0x30U;
+            archetype.weapons_bar_index = rom[armor_offset + 0x26U];
+            archetype.guns_bar_index = rom[armor_offset + 0x25U];
+        }
+    }
+    assets.entity_template = assets.protagonist_archetype_records[0];
+    // New Game starts with Joshua only. The remaining runtime slots are
+    // intentionally blank until recruited roster records are decoded from
+    // the source's 0x72C1A roster table.
+    assets.field_entity_records.fill({});
+    assets.field_entity_records[0] = assets.protagonist_archetype_records[0];
+    assets.field_menu_runner_names = {{"Joshua", "", ""}};
+    for (std::size_t index = 1; index < assets.initial_field_records.size();
+         ++index) {
+        assets.initial_field_records[index].flags_10 = 0;
+        assets.initial_field_records[index].flags_11 = 0;
+    }
+    // 0x2B34 writes only the three position pairs into the live field
+    // records. Keep those coordinates and record types, but do not turn the
+    // two empty party slots into switchable runners.
     for (std::size_t index = 0; index < assets.initial_field_records.size();
          ++index) {
-        const auto startup_entity = read_genesis_field_entity_template(
-            rom, entity_template.record_offset + index * 0x100U);
         auto& record = assets.initial_field_records[index];
-        record.record_type = startup_entity.record_type;
-        record.flags_10 = startup_entity.flags_10;
-        record.flags_11 = startup_entity.flags_11;
+        auto& entity = assets.field_entity_records[index];
+        record.record_type = static_cast<std::uint16_t>(index);
+        entity.record_index = static_cast<std::uint8_t>(index);
+        entity.world_x_fixed = record.position.world_x_fixed;
+        entity.world_y_fixed = record.position.world_y_fixed;
     }
+    assets.initial_field_records[0].flags_10 =
+        assets.protagonist_archetype_records[0].flags_10;
+    assets.initial_field_records[0].flags_11 =
+        assets.protagonist_archetype_records[0].flags_11;
     assets.field_areas.front().initial_field_records =
         assets.initial_field_records;
     assets.inventory_items = read_genesis_inventory_catalog(rom);
@@ -563,9 +962,71 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 10);
+    write_u16(output, 24);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
+    for (const auto& title_frame : assets.title_animation_frames) {
+        write_native_image(output, title_frame);
+    }
+    write_native_image(output, assets.title_background);
+    write_native_image(output, assets.title_logo_plane);
+    write_native_image(output, assets.title_text);
+    for (const auto& title_sprite : assets.title_sprite_frames) {
+        write_native_image(output, title_sprite);
+    }
+    write_native_image(output, assets.field_menu_background);
+    write_native_image(output, assets.field_menu_inventory_boxes);
+    write_native_image(output, assets.field_menu_font);
+    write_native_image(output, assets.startup_font);
+    write_native_image(output, assets.startup_cursor);
+    for (const auto& portrait : assets.field_menu_runner_portraits) {
+        write_native_image(output, portrait);
+    }
+    for (const auto& item : assets.field_menu_inventory_icons) {
+        for (const auto& variant : item) {
+            write_native_image(output, variant);
+        }
+    }
+    for (const auto& name : assets.field_menu_runner_names) {
+        write_pack_string(output, name,
+                          "native runner menu name is too long");
+    }
+    for (const auto& status_bar : assets.field_menu_status_bars) {
+        write_native_image(output, status_bar);
+    }
+    for (const auto& name : assets.field_menu_status_names) {
+        write_pack_string(output, name,
+                          "native menu status name is too long");
+    }
+    for (const auto& selected_cell : assets.field_menu_selected_cells) {
+        write_native_image(output, selected_cell);
+    }
+    write_native_image(output, assets.field_menu_cursor);
+    for (const auto& item_art : assets.field_menu_item_art) {
+        write_native_image(output, item_art);
+    }
+    for (const auto& bar : assets.field_menu_damage_bars) {
+        write_native_image(output, bar);
+    }
+    for (const auto& bar : assets.field_menu_drain_bars) {
+        write_native_image(output, bar);
+    }
+    for (const auto& bar : assets.field_menu_attack_bars) {
+        write_native_image(output, bar);
+    }
+    for (const auto& bar : assets.field_menu_defense_bars) {
+        write_native_image(output, bar);
+    }
+    for (const auto& label : assets.field_menu_power_labels) {
+        write_pack_string(output, label,
+                          "native power label is too long");
+    }
+    for (const auto& armor : assets.field_menu_armor_labels) {
+        for (const auto& label : armor) {
+            write_pack_string(output, label,
+                              "native armor label is too long");
+        }
+    }
     write_native_image(output, assets.field_map);
     if (assets.entity_frames.size() > 256) {
         throw std::invalid_argument("too many native entity frames");
@@ -612,6 +1073,11 @@ void write_native_asset_pack(const std::string& path,
     write_u16(output, entity.projection_word_08);
     write_u16(output, entity.kind);
     write_u16(output, entity.record_type);
+    output.put(static_cast<char>(entity.race_index));
+    output.put(static_cast<char>(entity.archetype_index));
+    output.put(static_cast<char>(entity.physical_value));
+    output.put(static_cast<char>(entity.mental_value));
+    output.put(static_cast<char>(entity.active_item_code));
     output.put(static_cast<char>(entity.flags_10));
     output.put(static_cast<char>(entity.flags_11));
     write_u32(output, entity.state_pointer);
@@ -624,6 +1090,18 @@ void write_native_asset_pack(const std::string& path,
         static_cast<std::uint8_t>(entity.display_state)));
     output.put(static_cast<char>(
         static_cast<std::uint8_t>(entity.display_substate)));
+    output.put(static_cast<char>(entity.display_palette_state));
+    output.put(static_cast<char>(entity.menu_status_index));
+    output.put(static_cast<char>(entity.attack_bar_index));
+    output.put(static_cast<char>(entity.defense_bar_index));
+    output.put(static_cast<char>(entity.weapons_bar_index));
+    output.put(static_cast<char>(entity.guns_bar_index));
+    for (const auto index : entity.attack_bar_indices_by_posture) {
+        output.put(static_cast<char>(index));
+    }
+    for (const auto index : entity.defense_bar_indices_by_posture) {
+        output.put(static_cast<char>(index));
+    }
     for (const auto code : entity.inventory_item_codes) {
         output.put(static_cast<char>(code));
     }
@@ -643,9 +1121,71 @@ void write_native_asset_pack(const std::string& path,
     for (const auto value : entity.attribute_skill_auxiliary) {
         output.put(static_cast<char>(value));
     }
+    write_u16(output, static_cast<std::uint16_t>(
+                           assets.protagonist_archetype_records.size()));
+    for (const auto& archetype : assets.protagonist_archetype_records) {
+        write_native_entity_payload(output, archetype);
+    }
+    write_u16(output, static_cast<std::uint16_t>(
+                           assets.field_entity_records.size()));
+    for (const auto& record_entity : assets.field_entity_records) {
+        write_u16(output, record_entity.projection_word_08);
+        write_u16(output, record_entity.kind);
+        write_u16(output, record_entity.record_type);
+        output.put(static_cast<char>(record_entity.flags_10));
+        output.put(static_cast<char>(record_entity.flags_11));
+        output.put(static_cast<char>(record_entity.race_index));
+        output.put(static_cast<char>(record_entity.archetype_index));
+        output.put(static_cast<char>(record_entity.physical_value));
+        output.put(static_cast<char>(record_entity.mental_value));
+        output.put(static_cast<char>(record_entity.active_item_code));
+        write_u32(output, record_entity.state_pointer);
+        write_u16(output, record_entity.state_selector);
+        write_u16(output, record_entity.animation_multiplier);
+        write_u16(output, record_entity.animation_accumulator);
+        write_u16(output, record_entity.animation_threshold);
+        write_u16(output, record_entity.state_index);
+        output.put(static_cast<char>(
+            static_cast<std::uint8_t>(record_entity.display_state)));
+        output.put(static_cast<char>(
+            static_cast<std::uint8_t>(record_entity.display_substate)));
+        output.put(static_cast<char>(record_entity.display_palette_state));
+        output.put(static_cast<char>(record_entity.menu_status_index));
+        output.put(static_cast<char>(record_entity.attack_bar_index));
+        output.put(static_cast<char>(record_entity.defense_bar_index));
+        output.put(static_cast<char>(record_entity.weapons_bar_index));
+        output.put(static_cast<char>(record_entity.guns_bar_index));
+        for (const auto index : record_entity.attack_bar_indices_by_posture) {
+            output.put(static_cast<char>(index));
+        }
+        for (const auto index : record_entity.defense_bar_indices_by_posture) {
+            output.put(static_cast<char>(index));
+        }
+        for (const auto code : record_entity.inventory_item_codes) {
+            output.put(static_cast<char>(code));
+        }
+        for (const auto phase : record_entity.inventory_phase_bytes) {
+            output.put(static_cast<char>(phase));
+        }
+        output.put(static_cast<char>(record_entity.equipped_armor_index));
+        output.put(static_cast<char>(record_entity.ammo_rounds));
+        output.put(static_cast<char>(record_entity.ammo_clips));
+        write_u16(output, record_entity.cyberware_flags);
+        for (const auto value : record_entity.attribute_values) {
+            output.put(static_cast<char>(value));
+        }
+        for (const auto value : record_entity.skill_values) {
+            output.put(static_cast<char>(value));
+        }
+        for (const auto value : record_entity.attribute_skill_auxiliary) {
+            output.put(static_cast<char>(value));
+        }
+    }
     write_u16(output, static_cast<std::uint16_t>(assets.inventory_items.size()));
     for (const auto& item : assets.inventory_items) {
         output.put(static_cast<char>(item.code));
+        output.put(static_cast<char>(item.damage_table_index));
+        output.put(static_cast<char>(item.power_table_index));
         write_pack_string(output, item.name,
                           "native inventory item name is too long");
         write_pack_string(output, item.category,
@@ -687,6 +1227,27 @@ void write_native_asset_pack(const std::string& path,
     for (const auto& line : intro.story_lines) {
         write_pack_string(output, line, "native intro story line is too long");
     }
+    const auto write_startup_layout = [&output](
+                                           const std::vector<native::NativeStartupTextLine>&
+                                               layout) {
+        if (layout.size() > 0xFFFFU) {
+            throw std::invalid_argument("too many native startup text lines");
+        }
+        write_u16(output, static_cast<std::uint16_t>(layout.size()));
+        for (const auto& line : layout) {
+            output.put(static_cast<char>(line.row));
+            write_pack_string(output, line.text,
+                              "native startup text line is too long");
+        }
+    };
+    if (assets.intro.start_options_layout.size() > 0xFFFFU) {
+        throw std::invalid_argument("too many native startup text lines");
+    }
+    write_startup_layout(intro.start_options_layout);
+    write_startup_layout(intro.save_load_layout);
+    write_startup_layout(intro.archetype_layout);
+    write_startup_layout(intro.no_save_layout);
+    write_startup_layout(intro.save_success_layout);
     // Version 9 appends the native field-area catalog so older packs remain
     // readable while new packs can cross ROM-derived building transitions.
     for (const auto mode : assets.field_event_mode_table) {
@@ -766,13 +1327,97 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 10U)) {
+        (version < 2U || version > 24U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
 
     native::NativePortAssets assets;
     assets.title_scene = read_native_image(input);
+    if (version >= 17U) {
+        for (auto& title_frame : assets.title_animation_frames) {
+            title_frame = read_native_image(input);
+        }
+    }
+    if (version >= 18U) {
+        assets.title_background = read_native_image(input);
+        assets.title_logo_plane = read_native_image(input);
+        assets.title_text = read_native_image(input);
+        for (auto& title_sprite : assets.title_sprite_frames) {
+            title_sprite = read_native_image(input);
+        }
+    }
+    if (version >= 11U) {
+        assets.field_menu_background = read_native_image(input);
+        assets.field_menu_inventory_boxes = read_native_image(input);
+        assets.field_menu_font = read_native_image(input);
+        if (version >= 18U) {
+            assets.startup_font = read_native_image(input);
+            assets.startup_cursor = read_native_image(input);
+        }
+        if (version >= 12U) {
+            for (auto& portrait : assets.field_menu_runner_portraits) {
+                portrait = read_native_image(input);
+            }
+            for (auto& item : assets.field_menu_inventory_icons) {
+                for (auto& variant : item) {
+                    variant = read_native_image(input);
+                }
+            }
+            for (auto& name : assets.field_menu_runner_names) {
+                name = read_pack_string(
+                    input, "native runner menu name is truncated");
+            }
+            if (version >= 13U) {
+                for (auto& status_bar : assets.field_menu_status_bars) {
+                    status_bar = read_native_image(input);
+                }
+                for (auto& name : assets.field_menu_status_names) {
+                    name = read_pack_string(
+                        input, "native menu status name is truncated");
+                }
+            }
+            if (version >= 14U) {
+                for (auto& selected_cell : assets.field_menu_selected_cells) {
+                    selected_cell = read_native_image(input);
+                }
+                if (version >= 15U) {
+                    assets.field_menu_cursor = read_native_image(input);
+                }
+                for (auto& item_art : assets.field_menu_item_art) {
+                    item_art = read_native_image(input);
+                }
+                if (version >= 16U) {
+                    for (auto& bar : assets.field_menu_damage_bars) {
+                        bar = read_native_image(input);
+                    }
+                    for (auto& bar : assets.field_menu_drain_bars) {
+                        bar = read_native_image(input);
+                    }
+                    if (version >= 21U) {
+                        for (auto& bar : assets.field_menu_attack_bars) {
+                            bar = read_native_image(input);
+                        }
+                        for (auto& bar : assets.field_menu_defense_bars) {
+                            bar = read_native_image(input);
+                        }
+                    }
+                    for (auto& label : assets.field_menu_power_labels) {
+                        label = read_pack_string(
+                            input, "native power label is truncated");
+                    }
+                    if (version >= 20U) {
+                        for (auto& armor : assets.field_menu_armor_labels) {
+                            for (auto& label : armor) {
+                                label = read_pack_string(
+                                    input, "native armor label is truncated");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
     assets.field_map = read_native_image(input);
     const auto entity_count = static_cast<std::size_t>(read_pack_u32(
         input, "native entity frame count is truncated"));
@@ -843,6 +1488,23 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     entity.record_type = version >= 8U
         ? read_pack_u16(input, "native entity record type is truncated")
         : 0;
+    if (version >= 18U) {
+        entity.race_index = read_pack_u8(
+            input, "native entity race index is truncated");
+        entity.archetype_index = read_pack_u8(
+            input, "native entity archetype index is truncated");
+        entity.physical_value = read_pack_u8(
+            input, "native entity physical value is truncated");
+        entity.mental_value = read_pack_u8(
+            input, "native entity mental value is truncated");
+        if (version >= 19U) {
+            entity.active_item_code = read_pack_u8(
+                input, "native entity active item is truncated");
+        } else {
+            entity.active_item_code = static_cast<std::uint8_t>(
+                entity.display_substate);
+        }
+    }
     entity.flags_10 = read_pack_u8(input, "native entity template is truncated");
     entity.flags_11 = read_pack_u8(input, "native entity template is truncated");
     entity.state_pointer = read_pack_u32(
@@ -861,6 +1523,39 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
         input, "native entity display state is truncated"));
     entity.display_substate = static_cast<std::int8_t>(read_pack_u8(
         input, "native entity display substate is truncated"));
+    if (version >= 12U) {
+        entity.display_palette_state = read_pack_u8(
+            input, "native entity display palette state is truncated");
+    }
+    if (version >= 13U) {
+        entity.menu_status_index = read_pack_u8(
+            input, "native entity menu status index is truncated");
+    }
+    if (version >= 21U) {
+        entity.attack_bar_index = read_pack_u8(
+            input, "native entity attack bar index is truncated");
+        entity.defense_bar_index = read_pack_u8(
+            input, "native entity defense bar index is truncated");
+        if (version >= 22U) {
+            entity.weapons_bar_index = read_pack_u8(
+                input, "native entity weapons bar index is truncated");
+            entity.guns_bar_index = read_pack_u8(
+                input, "native entity guns bar index is truncated");
+        }
+        if (version >= 24U) {
+            for (auto& index : entity.attack_bar_indices_by_posture) {
+                index = read_pack_u8(
+                    input, "native entity posture attack bars are truncated");
+            }
+            for (auto& index : entity.defense_bar_indices_by_posture) {
+                index = read_pack_u8(
+                    input, "native entity posture defense bars are truncated");
+            }
+        } else {
+            entity.attack_bar_indices_by_posture.fill(entity.attack_bar_index);
+            entity.defense_bar_indices_by_posture.fill(entity.defense_bar_index);
+        }
+    }
     if (version < 7U) {
         for (auto& record : assets.initial_field_records) {
             record.record_type = entity.record_type;
@@ -896,10 +1591,145 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
                 value = read_pack_u8(
                     input, "native skill state is truncated");
             }
-            for (auto& value : entity.attribute_skill_auxiliary) {
-                value = read_pack_u8(
+        for (auto& value : entity.attribute_skill_auxiliary) {
+            value = read_pack_u8(
                     input, "native attribute/skill auxiliary state is truncated");
+        }
+        if (version >= 23U) {
+            const auto archetype_count = static_cast<std::size_t>(
+                read_pack_u16(input, "native archetype record count is truncated"));
+            if (archetype_count != assets.protagonist_archetype_records.size()) {
+                throw std::runtime_error(
+                    "native asset pack has an invalid archetype record count");
             }
+            for (auto& archetype : assets.protagonist_archetype_records) {
+                archetype = read_native_entity_payload(input, version >= 24U);
+            }
+        }
+        if (version >= 18U) {
+            const auto record_count = static_cast<std::size_t>(read_pack_u16(
+                input, "native runner record count is truncated"));
+            if (record_count != assets.field_entity_records.size()) {
+                throw std::runtime_error(
+                    "native asset pack has an invalid runner record count");
+            }
+            for (auto& record_entity : assets.field_entity_records) {
+                record_entity.projection_word_08 = read_pack_u16(
+                    input, "native runner record is truncated");
+                record_entity.kind = read_pack_u16(
+                    input, "native runner record is truncated");
+                record_entity.record_type = read_pack_u16(
+                    input, "native runner record is truncated");
+                record_entity.flags_10 = read_pack_u8(
+                    input, "native runner record is truncated");
+                record_entity.flags_11 = read_pack_u8(
+                    input, "native runner record is truncated");
+                record_entity.race_index = read_pack_u8(
+                    input, "native runner record is truncated");
+                record_entity.archetype_index = read_pack_u8(
+                    input, "native runner record is truncated");
+                record_entity.physical_value = read_pack_u8(
+                    input, "native runner record is truncated");
+                record_entity.mental_value = read_pack_u8(
+                    input, "native runner record is truncated");
+                if (version >= 19U) {
+                    record_entity.active_item_code = read_pack_u8(
+                        input, "native runner record is truncated");
+                } else {
+                    record_entity.active_item_code = static_cast<std::uint8_t>(
+                        record_entity.display_substate);
+                }
+                record_entity.state_pointer = read_pack_u32(
+                    input, "native runner record is truncated");
+                record_entity.state_selector = read_pack_u16(
+                    input, "native runner record is truncated");
+                record_entity.animation_multiplier = read_pack_u16(
+                    input, "native runner record is truncated");
+                record_entity.animation_accumulator = read_pack_u16(
+                    input, "native runner record is truncated");
+                record_entity.animation_threshold = read_pack_u16(
+                    input, "native runner record is truncated");
+                record_entity.state_index = read_pack_u16(
+                    input, "native runner record is truncated");
+                record_entity.display_state = static_cast<std::int8_t>(
+                    read_pack_u8(input, "native runner record is truncated"));
+                record_entity.display_substate = static_cast<std::int8_t>(
+                    read_pack_u8(input, "native runner record is truncated"));
+                record_entity.display_palette_state = read_pack_u8(
+                    input, "native runner record is truncated");
+                record_entity.menu_status_index = read_pack_u8(
+                    input, "native runner record is truncated");
+                if (version >= 21U) {
+                    record_entity.attack_bar_index = read_pack_u8(
+                        input, "native runner attack bar index is truncated");
+                    record_entity.defense_bar_index = read_pack_u8(
+                        input, "native runner defense bar index is truncated");
+                    if (version >= 22U) {
+                        record_entity.weapons_bar_index = read_pack_u8(
+                            input, "native runner weapons bar index is truncated");
+                        record_entity.guns_bar_index = read_pack_u8(
+                            input, "native runner guns bar index is truncated");
+                    }
+                    if (version >= 24U) {
+                        for (auto& index :
+                             record_entity.attack_bar_indices_by_posture) {
+                            index = read_pack_u8(
+                                input,
+                                "native runner posture attack bars are truncated");
+                        }
+                        for (auto& index :
+                             record_entity.defense_bar_indices_by_posture) {
+                            index = read_pack_u8(
+                                input,
+                                "native runner posture defense bars are truncated");
+                        }
+                    } else {
+                        record_entity.attack_bar_indices_by_posture.fill(
+                            record_entity.attack_bar_index);
+                        record_entity.defense_bar_indices_by_posture.fill(
+                            record_entity.defense_bar_index);
+                    }
+                }
+                for (auto& code : record_entity.inventory_item_codes) {
+                    code = read_pack_u8(input, "native runner record is truncated");
+                }
+                for (auto& phase : record_entity.inventory_phase_bytes) {
+                    phase = read_pack_u8(input, "native runner record is truncated");
+                }
+                record_entity.equipped_armor_index = read_pack_u8(
+                    input, "native runner record is truncated");
+                record_entity.ammo_rounds = read_pack_u8(
+                    input, "native runner record is truncated");
+                record_entity.ammo_clips = read_pack_u8(
+                    input, "native runner record is truncated");
+                record_entity.cyberware_flags = read_pack_u16(
+                    input, "native runner record is truncated");
+                for (auto& value : record_entity.attribute_values) {
+                    value = read_pack_u8(input, "native runner record is truncated");
+                }
+                for (auto& value : record_entity.skill_values) {
+                    value = read_pack_u8(input, "native runner record is truncated");
+                }
+                for (auto& value : record_entity.attribute_skill_auxiliary) {
+                    value = read_pack_u8(input, "native runner record is truncated");
+                }
+            }
+        }
+        }
+        if (version < 23U) {
+            // Version 22 and earlier called the three Joshua archetype
+            // templates "runner records". Preserve those packs by promoting
+            // them into the new template array, then make only Joshua active.
+            assets.protagonist_archetype_records = assets.field_entity_records;
+            const auto joshua = assets.field_entity_records[0];
+            assets.field_entity_records.fill({});
+            assets.field_entity_records[0] = joshua;
+            assets.field_menu_runner_names[1].clear();
+            assets.field_menu_runner_names[2].clear();
+            assets.initial_field_records[1].flags_10 = 0;
+            assets.initial_field_records[1].flags_11 = 0;
+            assets.initial_field_records[2].flags_10 = 0;
+            assets.initial_field_records[2].flags_11 = 0;
         }
         const auto item_count = static_cast<std::size_t>(read_pack_u16(
             input, "native inventory catalog count is truncated"));
@@ -910,6 +1740,12 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
             auto& item = assets.inventory_items[index];
             item.code = read_pack_u8(
                 input, "native inventory item code is truncated");
+            if (version >= 16U) {
+                item.damage_table_index = read_pack_u8(
+                    input, "native inventory damage index is truncated");
+                item.power_table_index = read_pack_u8(
+                    input, "native inventory power index is truncated");
+            }
             item.name = read_pack_string(
                 input, "native inventory item name is truncated");
             item.category = read_pack_string(
@@ -971,6 +1807,32 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
         for (std::size_t index = 0; index < story_count; ++index) {
             intro.story_lines.push_back(read_pack_string(
                 input, "native intro story line is truncated"));
+        }
+        if (version >= 18U) {
+            const auto read_startup_layout = [&input]() {
+                const auto count = static_cast<std::size_t>(read_pack_u16(
+                    input, "native startup text line count is truncated"));
+                if (count > 256U) {
+                    throw std::runtime_error(
+                        "native asset pack has too many startup text lines");
+                }
+                std::vector<native::NativeStartupTextLine> layout;
+                layout.reserve(count);
+                for (std::size_t index = 0; index < count; ++index) {
+                    native::NativeStartupTextLine line;
+                    line.row = read_pack_u8(
+                        input, "native startup text line is truncated");
+                    line.text = read_pack_string(
+                        input, "native startup text line is truncated");
+                    layout.push_back(std::move(line));
+                }
+                return layout;
+            };
+            intro.start_options_layout = read_startup_layout();
+            intro.save_load_layout = read_startup_layout();
+            intro.archetype_layout = read_startup_layout();
+            intro.no_save_layout = read_startup_layout();
+            intro.save_success_layout = read_startup_layout();
         }
     }
     if (version >= 9U) {
@@ -1184,6 +2046,53 @@ std::vector<std::uint8_t> decode_genesis_resource_stream(
     return output;
 }
 
+void write_genesis_1530_vram(
+    const std::vector<std::uint8_t>& rom, std::size_t source_offset,
+    std::size_t target_offset, std::vector<std::uint8_t>& vram) {
+    constexpr std::size_t kVramSize = 0x10000U;
+    if (vram.size() != kVramSize) {
+        throw std::invalid_argument("Genesis VDP buffer has invalid size");
+    }
+    const auto bytes = decode_genesis_resource_stream(rom, source_offset);
+    const auto counter = read_rom_u16(
+        rom, source_offset, "Genesis 0x1530 resource stream is truncated");
+    // The decompressor emits bytes into the 0x800-byte overlap ring, but the
+    // 0x1530 routine sends one VDP word for every pair of emitted bytes. The
+    // DBF counter starts at the first word's low-byte phase, so an odd
+    // counter shifts the first byte into D7's high lane and the following
+    // even counter writes the completed word.
+    if (target_offset > kVramSize ||
+        bytes.size() > kVramSize - target_offset) {
+        throw std::out_of_range("Genesis 0x1530 VDP upload is truncated");
+    }
+    std::uint16_t d7 = 0;
+    auto d2 = counter;
+    std::size_t word_index = 0;
+    for (std::size_t index = 0; index < bytes.size(); ++index) {
+        // MOVE.B D7,(A1,D6.W) replaces only the low byte. When the counter
+        // is odd the ROM shifts that low byte into the high byte before the
+        // MOVE.W to VDP, leaving the other byte from the previous output.
+        d7 = static_cast<std::uint16_t>((d7 & 0xFF00U) | bytes[index]);
+        if ((d2 & 1U) != 0U) {
+            d7 = static_cast<std::uint16_t>(d7 << 8U);
+        } else {
+            const auto destination = target_offset + word_index * 2U;
+            vram[destination] = static_cast<std::uint8_t>(d7 >> 8U);
+            vram[destination + 1U] = static_cast<std::uint8_t>(d7);
+            ++word_index;
+        }
+        d2 = static_cast<std::uint16_t>(d2 - 1U);
+    }
+}
+
+std::vector<std::uint8_t> decode_genesis_1530_vram(
+    const std::vector<std::uint8_t>& rom, std::size_t source_offset,
+    std::size_t target_offset) {
+    std::vector<std::uint8_t> vram(0x10000U, 0);
+    write_genesis_1530_vram(rom, source_offset, target_offset, vram);
+    return vram;
+}
+
 std::array<native::Rgba8, 16> read_genesis_palette(
     const std::vector<std::uint8_t>& rom, std::size_t byte_offset) {
     require_bytes(rom.size() - std::min(byte_offset, rom.size()), 32,
@@ -1212,6 +2121,704 @@ std::array<native::Rgba8, 64> read_genesis_palette_set(
         palette[index] = decode_genesis_cram_word(word, index % 16U == 0);
     }
     return palette;
+}
+
+RgbaImage decode_genesis_field_menu_layer(
+    const std::vector<std::uint8_t>& rom, bool inventory_boxes) {
+    constexpr std::size_t kPatternStreamOffset = 0xCAB0CU;
+    constexpr std::size_t kPatternVramOffset = 0x1E20U;
+    constexpr std::size_t kNameTableColumns = 64U;
+    constexpr std::size_t kNameTableRows = 32U;
+    constexpr std::size_t kVisibleColumns = 40U;
+    constexpr std::size_t kVisibleRows = 28U;
+    constexpr std::size_t kNameTableRowStride = 0x80U;
+
+    // ROM 0x10918 sends CAB0C through 0x1530 to VRAM at 0x1E20. Reproduce
+    // the complete word writes, including D7's preserved byte, then decode
+    // the resulting VRAM with the Genesis four-plane format.
+    auto pattern_vram = decode_genesis_1530_vram(
+        rom, kPatternStreamOffset, kPatternVramOffset);
+    // 0x10F50 finishes the shared pattern upload with the raw 0x200-byte
+    // block at CF134 -> VRAM 5A80. The name-table blocks below reference
+    // tiles 2D4..2E3 from that block; omitting it leaves the large center
+    // status panel black even though the frame edges decode correctly.
+    require_bytes(rom.size() - std::min<std::size_t>(0xCF134U, rom.size()),
+                  0x200U, "Genesis field menu status patterns are truncated");
+    std::copy_n(rom.begin() + 0xCF134U, 0x200U,
+                pattern_vram.begin() + 0x5A80U);
+
+    std::array<std::uint16_t, kNameTableColumns * kNameTableRows>
+        name_table{};
+    std::array<bool, kNameTableColumns * kNameTableRows> written{};
+    const auto write_block = [&](std::size_t source_offset,
+                                 std::uint16_t vdp_address,
+                                 std::size_t width, std::size_t height,
+                                 std::uint16_t attributes) {
+        if (width == 0U || height == 0U ||
+            source_offset > rom.size() ||
+            width * height > (rom.size() - source_offset) / 2U) {
+            throw std::out_of_range("Genesis field menu name-table block is truncated");
+        }
+        const auto table_byte_offset = static_cast<std::size_t>(vdp_address) -
+            0xE000U;
+        if (table_byte_offset % 2U != 0U ||
+            table_byte_offset / 2U >= name_table.size()) {
+            throw std::out_of_range("Genesis field menu name-table address is invalid");
+        }
+        const auto first_column = (table_byte_offset % kNameTableRowStride) / 2U;
+        const auto first_row = table_byte_offset / kNameTableRowStride;
+        if (first_column + width > kNameTableColumns ||
+            first_row + height > kNameTableRows) {
+            throw std::out_of_range("Genesis field menu name-table block exceeds VDP plane");
+        }
+        for (std::size_t row = 0; row < height; ++row) {
+            for (std::size_t column = 0; column < width; ++column) {
+                const auto source = source_offset + (row * width + column) * 2U;
+                const auto word = static_cast<std::uint16_t>(
+                    (static_cast<std::uint16_t>(rom[source]) << 8U) |
+                    rom[source + 1U]);
+                const auto table_index = (first_row + row) * kNameTableColumns +
+                                         first_column + column;
+                name_table[table_index] =
+                    static_cast<std::uint16_t>(word | attributes);
+                written[table_index] = true;
+            }
+        }
+    };
+
+    // These are the four literal 0x1232 calls made by 0x10F50. The source
+    // blocks and the E000/EB98 destinations are the screen's actual Genesis
+    // geometry, including the four 5x4 item cells used by Inventory.
+    if (!inventory_boxes) {
+        write_block(0xCD598U, 0xE000U, 12U, 28U, 0);
+        write_block(0xCD838U, 0xE018U, 21U, 2U, 0);
+        write_block(0xCD88CU, 0xE042U, 1U, 23U, 0);
+        write_block(0xCD8BAU, 0xEB98U, 22U, 5U, 0);
+        // The command entry point immediately follows the initializer with
+        // 0x11928, 0x11624, and 0x111D0. These calls add the lower static
+        // panel and the four 5x4 inventory cells before input is sampled.
+        write_block(0xCD48AU, 0xEA18U, 21U, 3U, 0);
+        write_block(0xCD570U, 0xE702U, 5U, 4U, 0);
+        write_block(0xCD570U, 0xE70CU, 5U, 4U, 0);
+        write_block(0xCD570U, 0xEA02U, 5U, 4U, 0);
+        write_block(0xCD570U, 0xEA0CU, 5U, 4U, 0);
+        write_block(0xCD2C6U, 0xEB9EU, 15U, 2U, 0);
+    } else {
+        // ROM 0x116C4 draws these four cells after the selector enters the
+        // Inventory branch. Their destinations are the four literal VDP
+        // addresses passed to 0x1232, not a host-invented checklist grid.
+        write_block(0xCD570U, 0xE702U, 5U, 4U, 0);
+        write_block(0xCD570U, 0xE70CU, 5U, 4U, 0);
+        write_block(0xCD570U, 0xEA02U, 5U, 4U, 0);
+        write_block(0xCD570U, 0xEA0CU, 5U, 4U, 0);
+    }
+
+    const auto palette_source = read_genesis_palette(rom, 0xD29D6U);
+    RgbaImage image{
+        static_cast<std::uint16_t>(kVisibleColumns * 8U),
+        static_cast<std::uint16_t>(kVisibleRows * 8U),
+        std::vector<native::Rgba8>(
+            kVisibleColumns * kVisibleRows * 64U,
+            inventory_boxes ? native::Rgba8{0, 0, 0, 0}
+                            : native::Rgba8{0, 0, 0, 255}),
+    };
+    for (std::size_t row = 0; row < kVisibleRows; ++row) {
+        for (std::size_t column = 0; column < kVisibleColumns; ++column) {
+            const auto name_word =
+                name_table[row * kNameTableColumns + column];
+            if (inventory_boxes &&
+                !written[row * kNameTableColumns + column]) {
+                continue;
+            }
+            const auto tile_index = static_cast<std::size_t>(
+                name_word & 0x07FFU);
+            if (tile_index * 32U + 32U > pattern_vram.size()) {
+                throw std::out_of_range("Genesis field menu tile index is truncated");
+            }
+            const auto tile = decode_genesis_tile(
+                pattern_vram.data() + tile_index * 32U, 32U);
+            const auto palette_line = static_cast<std::size_t>(
+                (name_word >> 13U) & 0x03U);
+            if (palette_line != 0U) {
+                throw std::runtime_error(
+                    "Genesis field menu base selects an unreviewed palette line");
+            }
+            const auto hflip = (name_word & 0x0800U) != 0;
+            const auto vflip = (name_word & 0x1000U) != 0;
+            for (std::size_t pixel_y = 0; pixel_y < 8U; ++pixel_y) {
+                for (std::size_t pixel_x = 0; pixel_x < 8U; ++pixel_x) {
+                    const auto source_x = hflip ? 7U - pixel_x : pixel_x;
+                    const auto source_y = vflip ? 7U - pixel_y : pixel_y;
+                    const auto color_index = tile.pixels[
+                        source_y * 8U + source_x];
+                    auto color = palette_source[color_index];
+                    // Plane pixels with palette index zero are the opaque
+                    // black background; only Genesis sprites use index zero
+                    // as transparent in this screen composition.
+                    color.alpha = 255;
+                    image.pixels[(row * 8U + pixel_y) * image.width +
+                                 column * 8U + pixel_x] = color;
+                }
+            }
+        }
+    }
+    return image;
+}
+
+RgbaImage decode_genesis_field_menu_background(
+    const std::vector<std::uint8_t>& rom) {
+    return decode_genesis_field_menu_layer(rom, false);
+}
+
+RgbaImage decode_genesis_field_menu_inventory_boxes(
+    const std::vector<std::uint8_t>& rom) {
+    return decode_genesis_field_menu_layer(rom, true);
+}
+
+namespace {
+
+std::array<native::Rgba8, 64> read_genesis_command_palette_set(
+    const std::vector<std::uint8_t>& rom);
+
+} // namespace
+
+RgbaImage decode_genesis_field_menu_font(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kFontStreamOffset = 0xC1064U;
+    constexpr std::size_t kFontVramOffset = 0xB560U;
+    constexpr std::size_t kCharacterCount = 0x60U;
+    constexpr std::size_t kAtlasColumns = 16U;
+    constexpr std::size_t kAtlasRows = 6U;
+
+    const auto font_vram = decode_genesis_1530_vram(
+        rom, kFontStreamOffset, kFontVramOffset);
+
+    // 0x10D7C invokes 0x5670E before the command loop. The menu font is
+    // written with palette-line three (0x6000), so it must use the same
+    // command CRAM image as the other field-menu layers rather than the
+    // startup palette still stored at 0x1FF0.
+    const auto palette = read_genesis_command_palette_set(rom);
+    RgbaImage atlas{
+        static_cast<std::uint16_t>(kAtlasColumns * 8U),
+        static_cast<std::uint16_t>(kAtlasRows * 8U),
+        std::vector<native::Rgba8>(
+            kAtlasColumns * kAtlasRows * 64U,
+            native::Rgba8{0, 0, 0, 0}),
+    };
+    for (std::size_t character_index = 0;
+         character_index < kCharacterCount; ++character_index) {
+        // C0DA uses the same compact table index adjustment as the ROM text
+        // writer: the four reserved codes between '=' and '>' are absent.
+        auto table_index = character_index;
+        if (table_index >= 0x3DU) {
+            table_index -= 4U;
+        }
+        const auto table_entry = read_rom_u16(
+            rom, 0xC1320U + table_index * 2U,
+            "Genesis field menu font table is truncated");
+        const auto tile_index = static_cast<std::size_t>(table_entry & 0x07FFU);
+        if (tile_index * 32U + 32U > font_vram.size()) {
+            throw std::out_of_range("Genesis field menu font tile is truncated");
+        }
+        const auto tile = decode_genesis_tile(
+            font_vram.data() + tile_index * 32U, 32U);
+        const auto atlas_x = (character_index % kAtlasColumns) * 8U;
+        const auto atlas_y = (character_index / kAtlasColumns) * 8U;
+        for (std::size_t pixel_y = 0; pixel_y < 8U; ++pixel_y) {
+            for (std::size_t pixel_x = 0; pixel_x < 8U; ++pixel_x) {
+                const auto color_index =
+                    tile.pixels[pixel_y * 8U + pixel_x];
+                auto color = palette[48U + color_index];
+                color.alpha = color_index == 0U ? 0U : 255U;
+                atlas.pixels[(atlas_y + pixel_y) * atlas.width +
+                             atlas_x + pixel_x] = color;
+            }
+        }
+    }
+    return atlas;
+}
+
+namespace {
+
+std::array<native::Rgba8, 64> read_genesis_command_palette_set(
+    const std::vector<std::uint8_t>& rom) {
+    std::array<native::Rgba8, 64> palette{};
+    const auto base_palette = read_genesis_palette(rom, 0xD29D6U);
+    std::copy(base_palette.begin(), base_palette.end(), palette.begin());
+    // 0x10D7C calls 0x5670E after the command-screen setup. That routine
+    // copies the remaining 48 CRAM words from 0x18AC56; D29D6 is only the
+    // first 16 colors, not a contiguous four-line palette image.
+    for (std::size_t index = 0; index < 48U; ++index) {
+        palette[16U + index] = decode_genesis_cram_word(
+            read_rom_u16(rom, 0x18AC56U + index * 2U,
+                         "Genesis command palette is truncated"));
+    }
+    return palette;
+}
+
+RgbaImage decode_genesis_menu_tile_grid(
+    const std::vector<std::uint8_t>& rom, std::size_t source_offset,
+    std::size_t source_tile_count, std::size_t table_offset,
+    std::size_t table_tile_count, std::size_t columns, std::size_t rows,
+    std::size_t palette_line, bool item_icon) {
+    if (columns == 0U || rows == 0U ||
+        table_tile_count != columns * rows ||
+        source_offset > rom.size() ||
+        source_tile_count > (rom.size() - source_offset) / 32U ||
+        table_offset > rom.size() ||
+        table_tile_count > (rom.size() - table_offset) / 2U ||
+        palette_line >= 4U) {
+        throw std::out_of_range("Genesis command-screen tile grid is truncated");
+    }
+    const auto palette = read_genesis_command_palette_set(rom);
+    RgbaImage image{
+        static_cast<std::uint16_t>(columns * 8U),
+        static_cast<std::uint16_t>(rows * 8U),
+        std::vector<native::Rgba8>(columns * rows * 64U,
+                                   native::Rgba8{0, 0, 0, 255}),
+    };
+    for (std::size_t tile_position = 0;
+         tile_position < table_tile_count; ++tile_position) {
+        const auto source_word = read_rom_u16(
+            rom, table_offset + tile_position * 2U,
+            "Genesis command-screen tile table is truncated");
+        const auto tile_index = static_cast<std::size_t>(
+            source_word & 0x07FFU);
+        if (tile_index >= source_tile_count) {
+            throw std::out_of_range(
+                "Genesis command-screen source tile index is truncated");
+        }
+        const auto tile = decode_genesis_tile(
+            rom.data() + source_offset + tile_index * 32U, 32U);
+        const auto hflip = (source_word & 0x0800U) != 0U;
+        const auto vflip = (source_word & 0x1000U) != 0U;
+        const auto tile_x = (tile_position % columns) * 8U;
+        const auto tile_y = (tile_position / columns) * 8U;
+        for (std::size_t pixel_y = 0; pixel_y < 8U; ++pixel_y) {
+            for (std::size_t pixel_x = 0; pixel_x < 8U; ++pixel_x) {
+                const auto source_x = hflip ? 7U - pixel_x : pixel_x;
+                const auto source_y = vflip ? 7U - pixel_y : pixel_y;
+                const auto color_index = tile.pixels[
+                    source_y * 8U + source_x];
+                auto color = palette[palette_line * 16U + color_index];
+                color.alpha = 255;
+                image.pixels[(tile_y + pixel_y) * image.width +
+                             tile_x + pixel_x] = color;
+            }
+        }
+    }
+    static_cast<void>(item_icon);
+    return image;
+}
+
+} // namespace
+
+std::array<RgbaImage, native::kNativeMenuStatusCount>
+decode_genesis_field_menu_status_bars(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kPatternStreamOffset = 0xCAB0CU;
+    constexpr std::size_t kPatternVramOffset = 0x1E20U;
+    constexpr std::size_t kStatusPatternOffset = 0xCF134U;
+    constexpr std::size_t kStatusPatternVramOffset = 0x5A80U;
+    constexpr std::size_t kStatusTableOffset = 0xCF384U;
+    constexpr std::size_t kStatusTableStride = 0x10U;
+    constexpr std::size_t kStatusTileCount = 8U;
+
+    auto pattern_vram = decode_genesis_1530_vram(
+        rom, kPatternStreamOffset, kPatternVramOffset);
+    require_bytes(rom.size() - std::min(kStatusPatternOffset, rom.size()),
+                  0x200U,
+                  "Genesis command-screen status patterns are truncated");
+    std::copy_n(rom.begin() + kStatusPatternOffset, 0x200U,
+                pattern_vram.begin() + kStatusPatternVramOffset);
+    const auto palette = read_genesis_command_palette_set(rom);
+
+    std::array<RgbaImage, native::kNativeMenuStatusCount> bars{};
+    for (std::size_t status = 0; status < bars.size(); ++status) {
+        bars[status] = {
+            static_cast<std::uint16_t>(kStatusTileCount * 8U), 8U,
+            std::vector<native::Rgba8>(kStatusTileCount * 64U,
+                                       native::Rgba8{0, 0, 0, 255})};
+        for (std::size_t tile_position = 0;
+             tile_position < kStatusTileCount; ++tile_position) {
+            const auto table_entry = read_rom_u16(
+                rom, kStatusTableOffset + status * kStatusTableStride +
+                         tile_position * 2U,
+                "Genesis command-screen status table is truncated");
+            const auto tile_index = static_cast<std::size_t>(
+                table_entry & 0x07FFU);
+            if (tile_index * 32U + 32U > pattern_vram.size()) {
+                throw std::out_of_range(
+                    "Genesis command-screen status tile is truncated");
+            }
+            const auto tile = decode_genesis_tile(
+                pattern_vram.data() + tile_index * 32U, 32U);
+            const auto hflip = (table_entry & 0x0800U) != 0U;
+            const auto vflip = (table_entry & 0x1000U) != 0U;
+            for (std::size_t pixel_y = 0; pixel_y < 8U; ++pixel_y) {
+                for (std::size_t pixel_x = 0; pixel_x < 8U; ++pixel_x) {
+                    const auto source_x = hflip ? 7U - pixel_x : pixel_x;
+                    const auto source_y = vflip ? 7U - pixel_y : pixel_y;
+                    const auto color_index = tile.pixels[
+                        source_y * 8U + source_x];
+                    auto color = palette[16U + color_index];
+                    color.alpha = 255;
+                    bars[status].pixels[pixel_y * bars[status].width +
+                                        tile_position * 8U + pixel_x] = color;
+                }
+            }
+        }
+    }
+    return bars;
+}
+
+std::array<RgbaImage, 3> decode_genesis_field_menu_runner_portraits(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kStartupEntityOffset = 0x7291AU;
+    constexpr std::size_t kCommonTileTable = 0x720FAU;
+    constexpr std::size_t kRunnerTileSource = 0x6ACFAU;
+    // The common 80-word table is a rearrangement of a 200-tile source
+    // upload; its entries reach 0xC7. The table length is not the source
+    // pattern count.
+    constexpr std::size_t kSourceTileCount = 200U;
+    constexpr std::size_t kPortraitTileCount = 80U;
+    std::array<RgbaImage, 3> portraits{};
+    for (std::size_t index = 0; index < portraits.size(); ++index) {
+        const auto record_offset = kStartupEntityOffset + index * 0x100U;
+        require_bytes(rom.size() - std::min(record_offset, rom.size()),
+                      0x58U, "Genesis runner portrait record is truncated");
+        const auto flags = read_rom_u16(
+            rom, record_offset + 0x10U,
+            "Genesis runner portrait flags are truncated");
+        const auto table_offset = (flags & 0x0001U) == 0U
+            ? kCommonTileTable
+            : static_cast<std::size_t>(read_rom_u32(
+                  rom, record_offset + 0x50U,
+                  "Genesis runner portrait table pointer is truncated"));
+        const auto palette_word = read_rom_u16(
+            rom, record_offset + 0x2CU,
+            "Genesis runner portrait palette is truncated");
+        const auto palette_line = static_cast<std::size_t>(
+            (palette_word & 0x6000U) >> 13U);
+        portraits[index] = decode_genesis_menu_tile_grid(
+            rom, kRunnerTileSource, kSourceTileCount, table_offset,
+            kPortraitTileCount,
+            8U, 10U, palette_line, false);
+    }
+    return portraits;
+}
+
+namespace {
+
+RgbaImage decode_genesis_menu_name_table_block(
+    const std::vector<std::uint8_t>& rom,
+    const std::vector<std::uint8_t>& pattern_vram,
+    std::size_t source_offset, std::size_t width, std::size_t height,
+    const std::array<native::Rgba8, 64>& palette,
+    std::uint16_t attributes = 0U) {
+    if (width == 0U || height == 0U || source_offset > rom.size() ||
+        width * height > (rom.size() - source_offset) / 2U) {
+        throw std::out_of_range(
+            "Genesis command-screen name-table block is truncated");
+    }
+    RgbaImage image{
+        static_cast<std::uint16_t>(width * 8U),
+        static_cast<std::uint16_t>(height * 8U),
+        std::vector<native::Rgba8>(width * height * 64U,
+                                   native::Rgba8{0, 0, 0, 255})};
+    for (std::size_t tile_position = 0;
+         tile_position < width * height; ++tile_position) {
+        const auto table_entry = static_cast<std::uint16_t>(read_rom_u16(
+            rom, source_offset + tile_position * 2U,
+            "Genesis command-screen name-table block is truncated") |
+            attributes);
+        const auto tile_index = static_cast<std::size_t>(
+            table_entry & 0x07FFU);
+        if (tile_index * 32U + 32U > pattern_vram.size()) {
+            throw std::out_of_range(
+                "Genesis command-screen name-table tile is truncated");
+        }
+        const auto tile = decode_genesis_tile(
+            pattern_vram.data() + tile_index * 32U, 32U);
+        const auto palette_line = static_cast<std::size_t>(
+            (table_entry >> 13U) & 0x03U);
+        const auto hflip = (table_entry & 0x0800U) != 0U;
+        const auto vflip = (table_entry & 0x1000U) != 0U;
+        const auto tile_x = (tile_position % width) * 8U;
+        const auto tile_y = (tile_position / width) * 8U;
+        for (std::size_t pixel_y = 0; pixel_y < 8U; ++pixel_y) {
+            for (std::size_t pixel_x = 0; pixel_x < 8U; ++pixel_x) {
+                const auto source_x = hflip ? 7U - pixel_x : pixel_x;
+                const auto source_y = vflip ? 7U - pixel_y : pixel_y;
+                auto color = palette[palette_line * 16U + tile.pixels[
+                    source_y * 8U + source_x]];
+                color.alpha = 255;
+                image.pixels[(tile_y + pixel_y) * image.width +
+                             tile_x + pixel_x] = color;
+            }
+        }
+    }
+    return image;
+}
+
+} // namespace
+
+std::array<RgbaImage, 2> decode_genesis_field_menu_selected_cells(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kPatternStreamOffset = 0xCAB0CU;
+    constexpr std::size_t kPatternVramOffset = 0x1E20U;
+    constexpr std::array<std::size_t, 2> kOverlayOffsets{{0xCD548U,
+                                                            0xCD520U}};
+    const auto pattern_vram = decode_genesis_1530_vram(
+        rom, kPatternStreamOffset, kPatternVramOffset);
+    const auto palette = read_genesis_command_palette_set(rom);
+    std::array<RgbaImage, 2> overlays{};
+    for (std::size_t index = 0; index < overlays.size(); ++index) {
+        // 0x11678 passes D7=3 and D1=4 to 0x1232: five columns by four
+        // rows. The source selects CD548 for display-state pairs 0 and 2,
+        // and CD520 for pairs 1 and 3.
+        overlays[index] = decode_genesis_menu_name_table_block(
+            rom, pattern_vram, kOverlayOffsets[index], 5U, 4U, palette);
+    }
+    return overlays;
+}
+
+RgbaImage decode_genesis_field_menu_cursor(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kPatternStreamOffset = 0xCAB0CU;
+    constexpr std::size_t kPatternVramOffset = 0x1E20U;
+    constexpr std::size_t kSpriteListOffset = 0xD29F6U;
+    constexpr std::size_t kSpritePaletteMask = 0x2000U;
+    const auto pattern_vram = decode_genesis_1530_vram(
+        rom, kPatternStreamOffset, kPatternVramOffset);
+    const auto source_size = read_rom_u16(
+        rom, kSpriteListOffset + 4U,
+        "Genesis command-screen cursor sprite is truncated");
+    const auto source_tile = read_rom_u16(
+        rom, kSpriteListOffset + 6U,
+        "Genesis command-screen cursor tile is truncated");
+    const auto size_link = static_cast<std::uint16_t>(
+        static_cast<std::uint16_t>(source_size & 0x00FFU) << 8U | 0x0002U);
+    const auto width_tiles = static_cast<std::size_t>(
+        ((size_link >> 8U) & 0x03U) + 1U);
+    const auto height_tiles = static_cast<std::size_t>(
+        ((size_link >> 10U) & 0x03U) + 1U);
+    const auto palette = read_genesis_command_palette_set(rom);
+    RgbaImage image{
+        static_cast<std::uint16_t>(width_tiles * 8U),
+        static_cast<std::uint16_t>(height_tiles * 8U),
+        std::vector<native::Rgba8>(width_tiles * height_tiles * 64U,
+                                   native::Rgba8{0, 0, 0, 0})};
+    const auto tile_attributes = static_cast<std::uint16_t>(
+        source_tile | kSpritePaletteMask);
+    const auto palette_line = static_cast<std::size_t>(
+        (tile_attributes >> 13U) & 0x03U);
+    const auto hflip = (tile_attributes & 0x0800U) != 0U;
+    const auto vflip = (tile_attributes & 0x1000U) != 0U;
+    for (std::size_t tile_y = 0; tile_y < height_tiles; ++tile_y) {
+        for (std::size_t tile_x = 0; tile_x < width_tiles; ++tile_x) {
+            const auto source_tile_x = hflip
+                ? width_tiles - 1U - tile_x : tile_x;
+            const auto source_tile_y = vflip
+                ? height_tiles - 1U - tile_y : tile_y;
+            const auto tile_index = static_cast<std::size_t>(source_tile) +
+                source_tile_y * width_tiles + source_tile_x;
+            if (tile_index * 32U + 32U > pattern_vram.size()) {
+                throw std::out_of_range(
+                    "Genesis command-screen cursor tile is truncated");
+            }
+            const auto tile = decode_genesis_tile(
+                pattern_vram.data() + tile_index * 32U, 32U);
+            for (std::size_t pixel_y = 0; pixel_y < 8U; ++pixel_y) {
+                for (std::size_t pixel_x = 0; pixel_x < 8U; ++pixel_x) {
+                    const auto source_x = hflip ? 7U - pixel_x : pixel_x;
+                    const auto source_y = vflip ? 7U - pixel_y : pixel_y;
+                    const auto color_index = tile.pixels[
+                        source_y * 8U + source_x];
+                    auto color = palette[palette_line * 16U + color_index];
+                    color.alpha = color_index == 0U ? 0U : 255U;
+                    image.pixels[(tile_y * 8U + pixel_y) * image.width +
+                                 tile_x * 8U + pixel_x] = color;
+                }
+            }
+        }
+    }
+    return image;
+}
+
+std::array<RgbaImage, native::kNativeInventoryItemCount>
+decode_genesis_field_menu_item_art(const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kItemTable = 0xD4540U;
+    constexpr std::size_t kItemRecordStride = 0x30U;
+    constexpr std::size_t kItemArtworkTableOffset = 0x1EU;
+    constexpr std::size_t kItemArtworkWidth = 9U;
+    constexpr std::size_t kItemArtworkHeight = 5U;
+    constexpr std::size_t kArtworkPatternStreamOffset = 0xC8BB6U;
+    constexpr std::size_t kArtworkPatternVramOffset = 0x5C80U;
+    const auto pattern_vram = decode_genesis_1530_vram(
+        rom, kArtworkPatternStreamOffset, kArtworkPatternVramOffset);
+    const auto palette = read_genesis_command_palette_set(rom);
+    std::array<RgbaImage, native::kNativeInventoryItemCount> artwork{};
+    for (std::size_t item_index = 0; item_index < artwork.size(); ++item_index) {
+        const auto item_offset = kItemTable + item_index * kItemRecordStride;
+        const auto table_offset = static_cast<std::size_t>(read_rom_u32(
+            rom, item_offset + kItemArtworkTableOffset,
+            "Genesis inventory artwork pointer is truncated"));
+        if (table_offset == std::numeric_limits<std::uint32_t>::max()) {
+            // The ROM uses a negative +0x1E pointer for catalog entries that
+            // have no large detail image; 0x12A8C tests this before writing.
+            artwork[item_index] = {
+                static_cast<std::uint16_t>(kItemArtworkWidth * 8U),
+                static_cast<std::uint16_t>(kItemArtworkHeight * 8U),
+                std::vector<native::Rgba8>(
+                    kItemArtworkWidth * kItemArtworkHeight * 64U,
+                    native::Rgba8{0, 0, 0, 255})};
+            continue;
+        }
+        artwork[item_index] = decode_genesis_menu_name_table_block(
+            rom, pattern_vram, table_offset, kItemArtworkWidth,
+            kItemArtworkHeight, palette, 0x2000U);
+    }
+    return artwork;
+}
+
+namespace {
+
+std::array<RgbaImage, 14> decode_genesis_field_menu_detail_bars(
+    const std::vector<std::uint8_t>& rom, std::size_t table_offset,
+    const char* table_name) {
+    constexpr std::size_t kPatternStreamOffset = 0xC8BB6U;
+    constexpr std::size_t kPatternVramOffset = 0x5C80U;
+    constexpr std::size_t kBarCount = 14U;
+    constexpr std::size_t kBarStride = 0x0EU;
+    constexpr std::size_t kBarWidth = 7U;
+    auto pattern_vram = decode_genesis_1530_vram(
+        rom, kPatternStreamOffset, kPatternVramOffset);
+    // The command setup appends CF134 to VRAM at 5A80 immediately after the
+    // CAB0C upload. CF84C's seven-tile strips use those appended tiles
+    // (0x2DA..0x2E1), not the later 5C80 item-art upload.
+    require_bytes(rom.size() - std::min<std::size_t>(0xCF134U, rom.size()),
+                  0x200U, "Genesis command bar patterns are truncated");
+    std::copy_n(rom.begin() + 0xCF134U, 0x200U,
+                pattern_vram.begin() + 0x5A80U);
+    const auto palette = read_genesis_command_palette_set(rom);
+    std::array<RgbaImage, kBarCount> bars{};
+    for (std::size_t index = 0; index < bars.size(); ++index) {
+        bars[index] = decode_genesis_menu_name_table_block(
+            rom, pattern_vram, table_offset + index * kBarStride,
+            kBarWidth, 1U, palette, 0x2000U);
+        if (bars[index].pixels.empty()) {
+            throw std::runtime_error(table_name);
+        }
+    }
+    return bars;
+}
+
+} // namespace
+
+std::array<RgbaImage, 14> decode_genesis_field_menu_damage_bars(
+    const std::vector<std::uint8_t>& rom) {
+    // 0x12F70: D6*0x0E from CF84C, written at C52A with palette line one.
+    return decode_genesis_field_menu_detail_bars(
+        rom, 0xCF84CU, "Genesis damage bar table is truncated");
+}
+
+std::array<RgbaImage, 23> decode_genesis_field_menu_stat_bars(
+    const std::vector<std::uint8_t>& rom, std::size_t table_offset,
+    const char* table_name) {
+    constexpr std::size_t kPatternStreamOffset = 0xCAB0CU;
+    constexpr std::size_t kPatternVramOffset = 0x1E20U;
+    constexpr std::size_t kBarCount = 23U;
+    constexpr std::size_t kBarStride = 0x1AU;
+    constexpr std::size_t kBarWidth = 13U;
+    auto pattern_vram = decode_genesis_1530_vram(
+        rom, kPatternStreamOffset, kPatternVramOffset);
+    // 0x10F50's final raw upload places CF134 at 5A80. The CF3D4/CF610
+    // strips reference that block, so omitting it turns every source bar
+    // into a black tile even though the name-word tables decode correctly.
+    require_bytes(rom.size() - std::min<std::size_t>(0xCF134U, rom.size()),
+                  0x200U, "Genesis command stat-bar patterns are truncated");
+    std::copy_n(rom.begin() + 0xCF134U, 0x200U,
+                pattern_vram.begin() + 0x5A80U);
+    const auto palette = read_genesis_command_palette_set(rom);
+    std::array<RgbaImage, kBarCount> bars{};
+    for (std::size_t index = 0; index < bars.size(); ++index) {
+        bars[index] = decode_genesis_menu_name_table_block(
+            rom, pattern_vram, table_offset + index * kBarStride,
+            kBarWidth, 1U, palette, 0x2000U);
+        if (bars[index].pixels.empty()) {
+            throw std::runtime_error(table_name);
+        }
+    }
+    return bars;
+}
+
+std::uint8_t read_genesis_command_stat_bar_index(
+    const std::vector<std::uint8_t>& rom, std::size_t record_offset,
+    bool defense, std::uint8_t posture) {
+    // This is the source's startup-party path through 0x12CEE: 0x55ED6
+    // averages +78/+7B/+7C, 0x55F20 applies the +4D condition penalty, and
+    // the attack/defense branches add +81/+77 respectively. The remaining
+    // skill/cyberware branches are zero for the three records copied by
+    // 0x42B0, so retaining the resulting table index is exact for the
+    // reconstructed startup state without inventing a host percentage.
+    const auto average = static_cast<unsigned>(
+        (static_cast<unsigned>(rom[record_offset + 0x78U]) +
+         static_cast<unsigned>(rom[record_offset + 0x7BU]) +
+         static_cast<unsigned>(rom[record_offset + 0x7CU])) / 2U);
+    const auto condition_penalty = average *
+        (static_cast<unsigned>(posture) * 0x19U) / 0x64U;
+    const auto source_value = average - std::min(average, condition_penalty) +
+        static_cast<unsigned>(rom[record_offset + (defense ? 0x77U : 0x81U)]);
+    return static_cast<std::uint8_t>(
+        std::min<unsigned>(22U, source_value == 0U ? 0U : source_value - 1U));
+}
+
+std::array<RgbaImage, 14> decode_genesis_field_menu_drain_bars(
+    const std::vector<std::uint8_t>& rom) {
+    // 0x12FA4: D2*0x0E from CF8F0, written at C4AA with palette line one.
+    return decode_genesis_field_menu_detail_bars(
+        rom, 0xCF8F0U, "Genesis drain bar table is truncated");
+}
+
+std::array<std::string, 13> decode_genesis_field_menu_power_labels(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kTableOffset = 0xD1F5EU;
+    constexpr std::size_t kEntryStride = 0x0CU;
+    std::array<std::string, 13> labels{};
+    for (std::size_t index = 0; index < labels.size(); ++index) {
+        labels[index] = read_genesis_fixed_text(
+            rom, kTableOffset + index * kEntryStride, kEntryStride,
+            "Genesis power-label table is truncated");
+    }
+    return labels;
+}
+
+std::array<std::array<RgbaImage, 2>, native::kNativeInventoryItemCount>
+decode_genesis_field_menu_inventory_icons(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kItemTable = 0xD4540U;
+    constexpr std::size_t kItemRecordStride = 0x30U;
+    constexpr std::size_t kIconTileSource = 0xCF97CU;
+    // 0x11048 uploads CF97C through 0x0F5C as 0x1E00 bytes: 0xF0 packed
+    // source tiles. The per-item six-word tables use entries through 0x9B.
+    constexpr std::size_t kIconTileCount = 0xF0U;
+    std::array<std::array<RgbaImage, 2>, native::kNativeInventoryItemCount>
+        icons{};
+    for (std::size_t item_index = 0; item_index < icons.size(); ++item_index) {
+        const auto item_offset = kItemTable + item_index * kItemRecordStride;
+        const auto icon_table = static_cast<std::size_t>(read_rom_u32(
+            rom, item_offset + 0x1AU,
+            "Genesis inventory icon pointer is truncated"));
+        for (std::size_t palette_variant = 0; palette_variant < 2U;
+             ++palette_variant) {
+            icons[item_index][palette_variant] =
+                decode_genesis_menu_tile_grid(
+                    rom, kIconTileSource, kIconTileCount, icon_table, 6U,
+                    3U, 2U, palette_variant == 0U ? 1U : 3U, true);
+        }
+    }
+    return icons;
 }
 
 GenesisFieldModeResources read_genesis_field_mode_resources_at(
@@ -1563,6 +3170,10 @@ RgbaImage decode_genesis_mode2_field_map(
     std::vector<IndexedTile> tiles;
     tiles.reserve(tile_count);
     for (std::size_t tile_index = 0; tile_index < tile_count; ++tile_index) {
+        // 0x1406 uploads this source directly to VRAM at 0x4020. Genesis
+        // patterns are packed nibbles: the nibble expansion at 0x3E86 is
+        // applied to entity sources, while the field stream is already in
+        // that same four-pixels-per-byte layout.
         tiles.push_back(decode_genesis_tile(
             rom.data() + pattern_data_offset + tile_index * 32U, 32U));
     }
@@ -1593,14 +3204,17 @@ RgbaImage decode_genesis_mode2_field_map(
             (static_cast<std::uint16_t>(metatile_resource[word_offset]) << 8U) |
             metatile_resource[word_offset + 1U]);
     };
-    RgbaImage image{
-        static_cast<std::uint16_t>(output_width),
-        static_cast<std::uint16_t>(output_height),
-        std::vector<native::Rgba8>(output_width * output_height),
+    struct LayerPixel {
+        native::Rgba8 color{0, 0, 0, 255};
+        bool high_priority = false;
+        bool visible = false;
     };
+    std::vector<LayerPixel> primary_layer(output_width * output_height);
+    std::vector<LayerPixel> secondary_layer(output_width * output_height);
 
     const auto render_layer = [&](std::size_t tilemap_offset,
-                                  bool transparent_zero) {
+                                  std::uint16_t priority_mask,
+                                  std::vector<LayerPixel>& layer) {
         for (std::size_t stamp_y = 0; stamp_y < tilemap_height; ++stamp_y) {
             for (std::size_t stamp_x = 0; stamp_x < tilemap_width; ++stamp_x) {
                 const auto metatile_index = static_cast<std::size_t>(
@@ -1616,8 +3230,17 @@ RgbaImage decode_genesis_mode2_field_map(
                 }
                 for (std::size_t tile_y = 0; tile_y < 4U; ++tile_y) {
                     for (std::size_t tile_x = 0; tile_x < 4U; ++tile_x) {
-                        const auto name_word = read_metatile_word(
+                        auto name_word = read_metatile_word(
                             metatile_index, tile_y * 4U + tile_x);
+                        // ROM 0x3D80 writes Plane A with FFDF58 clear, then
+                        // writes Plane B with FFDF58=8000. Its negative path
+                        // uses EORI #8000 and its positive path uses OR, so
+                        // the authored secondary name word is toggled rather
+                        // than unconditionally forced high-priority.
+                        if ((priority_mask & 0x8000U) != 0U) {
+                            name_word = static_cast<std::uint16_t>(
+                                name_word ^ priority_mask);
+                        }
                         const auto pattern_word =
                             static_cast<std::int32_t>(name_word & 0x07FFU) -
                             0x0201;
@@ -1643,14 +3266,26 @@ RgbaImage decode_genesis_mode2_field_map(
                                 const auto source_y = vflip ? 7U - pixel_y : pixel_y;
                                 const auto color_index = tile.pixels[
                                     source_y * 8U + source_x];
-                                if (transparent_zero && color_index == 0) {
-                                    continue;
-                                }
                                 auto color = palette[palette_line * 16U +
                                                       color_index];
+                                // The second map is the authored overlay
+                                // plane. Its zero pattern is the empty cell
+                                // used by the game, so it must not erase the
+                                // primary map after being translated to an
+                                // RGBA surface. The priority bit still
+                                // decides which authored nonzero tile wins.
+                                if ((priority_mask & 0x8000U) != 0U &&
+                                    color_index == 0U) {
+                                    continue;
+                                }
                                 color.alpha = 255;
-                                image.pixels[(origin_y + pixel_y) * image.width +
-                                             origin_x + pixel_x] = color;
+                                auto& destination = layer[
+                                    (origin_y + pixel_y) * output_width +
+                                    origin_x + pixel_x];
+                                destination.color = color;
+                                destination.high_priority =
+                                    (name_word & 0x8000U) != 0U;
+                                destination.visible = true;
                             }
                         }
                     }
@@ -1677,8 +3312,32 @@ RgbaImage decode_genesis_mode2_field_map(
                 "Genesis raw field metatile table is truncated");
         }
     }
-    render_layer(primary_tilemap_offset, false);
-    render_layer(secondary_tilemap_offset, true);
+    render_layer(primary_tilemap_offset, 0U, primary_layer);
+    render_layer(secondary_tilemap_offset, 0x8000U, secondary_layer);
+    RgbaImage image{
+        static_cast<std::uint16_t>(output_width),
+        static_cast<std::uint16_t>(output_height),
+        std::vector<native::Rgba8>(output_width * output_height),
+    };
+    for (std::size_t index = 0; index < image.pixels.size(); ++index) {
+        // Genesis resolves a high-priority tile ahead of a low-priority tile;
+        // with equal priority Plane A is the front plane. The reviewed ROM
+        // forces the secondary map high, so its authored overlay wins unless
+        // the primary map explicitly authored a high-priority tile too.
+        const auto& primary = primary_layer[index];
+        const auto& secondary = secondary_layer[index];
+        if (!secondary.visible) {
+            image.pixels[index] = primary.color;
+        } else if (!primary.visible) {
+            image.pixels[index] = secondary.color;
+        } else {
+            image.pixels[index] =
+                primary.high_priority != secondary.high_priority
+                    ? secondary.high_priority ? secondary.color
+                                               : primary.color
+                    : primary.color;
+        }
+    }
     return image;
 }
 
@@ -1986,43 +3645,481 @@ decode_genesis_field_entity_animation_sequences(
     return animations;
 }
 
-RgbaImage decode_genesis_startup_screen(
-    const std::vector<std::uint8_t>& rom,
-    std::size_t pattern_stream_offset,
-    std::size_t tilemap_stream_offset,
+namespace {
+
+struct GenesisStartupPatternData {
+    std::vector<std::uint8_t> pattern_vram;
+    std::array<native::Rgba8, 64> palette{};
+};
+
+GenesisStartupPatternData decode_genesis_startup_pattern_data(
+    const std::vector<std::uint8_t>& rom, std::size_t pattern_stream_offset,
     std::size_t palette_offset) {
-    constexpr std::size_t kColumns = 40;
-    constexpr std::size_t kRows = 28;
-    constexpr std::size_t kMapRows = 32;
-    constexpr std::uint16_t kWordsPerRow = 0x27;
-    constexpr std::uint16_t kRowCounter = 0x1F;
-    constexpr std::uint16_t kD5WordCount = 0x28;
-    constexpr std::uint16_t kWordMask = 0x4000;
     constexpr std::size_t kPatternVramSize = 0x10000;
     constexpr std::size_t kPatternVramOffset = 0x20;
     constexpr std::size_t kPatternStream2Offset = 0x67CB0;
     constexpr std::size_t kPatternStream2VramOffset = 0x4B20;
     constexpr std::size_t kPatternStream3Offset = 0x6875C;
     constexpr std::size_t kPatternStream3VramOffset = 0x5020;
+    constexpr std::size_t kFontPatternStreamOffset = 0xC1064;
+    // Keep the host VRAM byte placement used by the startup font/cursor
+    // decoders. The source's E9C command packing and register-4 pattern base
+    // are resolved separately when name words are mapped to host tiles.
+    constexpr std::size_t kFontPatternVramOffset = 0xB560;
 
-    const auto pattern_stream1 = decode_genesis_resource_stream(
-        rom, pattern_stream_offset);
-    const auto pattern_stream2 = decode_genesis_resource_stream(
-        rom, kPatternStream2Offset);
-    const auto pattern_stream3 = decode_genesis_resource_stream(
-        rom, kPatternStream3Offset);
-    std::vector<std::uint8_t> pattern_vram(kPatternVramSize, 0);
-    const auto copy_pattern_stream = [&](const auto& bytes, std::size_t target) {
-        if (target > pattern_vram.size() ||
-            bytes.size() > pattern_vram.size() - target) {
-            throw std::out_of_range("Genesis startup pattern upload is truncated");
-        }
-        std::copy(bytes.begin(), bytes.end(), pattern_vram.begin() + target);
+    GenesisStartupPatternData result{
+        std::vector<std::uint8_t>(kPatternVramSize, 0),
+        read_genesis_palette_set(rom, palette_offset),
     };
-    copy_pattern_stream(pattern_stream1, kPatternVramOffset);
-    copy_pattern_stream(pattern_stream2, kPatternStream2VramOffset);
-    copy_pattern_stream(pattern_stream3, kPatternStream3VramOffset);
-    const auto palette = read_genesis_palette_set(rom, palette_offset);
+    const auto copy_pattern_stream = [&](std::size_t source_offset,
+                                         std::size_t target_offset) {
+        write_genesis_1530_vram(rom, source_offset, target_offset,
+                                 result.pattern_vram);
+    };
+    copy_pattern_stream(pattern_stream_offset, kPatternVramOffset);
+    copy_pattern_stream(kPatternStream2Offset, kPatternStream2VramOffset);
+    copy_pattern_stream(kPatternStream3Offset, kPatternStream3VramOffset);
+    copy_pattern_stream(kFontPatternStreamOffset, kFontPatternVramOffset);
+    return result;
+}
+
+std::vector<std::uint8_t> read_genesis_startup_line(
+    const std::vector<std::uint8_t>& rom, std::size_t offset,
+    const char* what) {
+    if (offset >= rom.size()) {
+        throw std::out_of_range(what);
+    }
+    std::vector<std::uint8_t> line;
+    for (auto source = offset; source < rom.size(); ++source) {
+        const auto byte = rom[source];
+        if (byte == 0xFFU) {
+            return line;
+        }
+        line.push_back(byte);
+    }
+    throw std::out_of_range(what);
+}
+
+void draw_genesis_startup_line(
+    const std::vector<std::uint8_t>& rom,
+    const GenesisStartupPatternData& startup, RgbaImage& image,
+    std::size_t source_offset, std::size_t tile_x, std::size_t tile_y,
+    const char* what, bool transparent_zero = false) {
+    constexpr std::size_t kCharacterTableOffset = 0xC1320;
+    const auto line = read_genesis_startup_line(rom, source_offset, what);
+    for (std::size_t index = 0; index < line.size(); ++index) {
+        auto character = line[index];
+        if (character < 0x20U || character > 0x7EU) {
+            throw std::runtime_error(
+                "Genesis startup line contains an unsupported text byte");
+        }
+        auto character_index = static_cast<std::size_t>(character - 0x20U);
+        // C0DA compares the post-' ' index with $3D.  The four omitted
+        // character slots are the codes immediately after '='; using $1D
+        // here shifts every capital letter after 'M' onto the wrong tile.
+        if (character_index >= 0x3DU) {
+            character_index -= 4U;
+        }
+        const auto table_entry = read_rom_u16(
+            rom, kCharacterTableOffset + character_index * 2U,
+            "Genesis startup character table is truncated");
+        const auto tile_index = static_cast<std::size_t>(table_entry & 0x07FFU);
+        if (tile_index * 32U + 32U > startup.pattern_vram.size()) {
+            throw std::out_of_range("Genesis startup character tile is truncated");
+        }
+        const auto tile = decode_genesis_tile(
+            startup.pattern_vram.data() + tile_index * 32U, 32U);
+        const auto palette_line = static_cast<std::size_t>(
+            ((table_entry | 0x2000U) >> 13U) & 0x03U);
+        const auto hflip = (table_entry & 0x0800U) != 0;
+        const auto vflip = (table_entry & 0x1000U) != 0;
+        const auto pixel_x_origin = (tile_x + index) * 8U;
+        const auto pixel_y_origin = tile_y * 8U;
+        for (std::size_t pixel_y = 0; pixel_y < 8U; ++pixel_y) {
+            for (std::size_t pixel_x = 0; pixel_x < 8U; ++pixel_x) {
+                const auto source_x = hflip ? 7U - pixel_x : pixel_x;
+                const auto source_y = vflip ? 7U - pixel_y : pixel_y;
+                const auto color_index = tile.pixels[source_y * 8U + source_x];
+                const auto target_x = pixel_x_origin + pixel_x;
+                const auto target_y = pixel_y_origin + pixel_y;
+                if (target_x >= image.width || target_y >= image.height) {
+                    throw std::out_of_range(
+                        "Genesis startup text lies outside the screen");
+                }
+                if (transparent_zero && color_index == 0U) {
+                    continue;
+                }
+                auto color = startup.palette[palette_line * 16U + color_index];
+                if (transparent_zero) {
+                    color.alpha = 255;
+                }
+                image.pixels[target_y * image.width + target_x] = color;
+            }
+        }
+    }
+}
+
+void draw_genesis_startup_sprite_list(
+    const std::vector<std::uint8_t>& rom,
+    const GenesisStartupPatternData& startup, RgbaImage& image,
+    std::size_t pointer_table_offset, std::size_t frame_index,
+    std::int32_t object_x_base = 0x9C) {
+    constexpr std::size_t kSpritePointerCount = 6;
+    constexpr std::int32_t kSpriteYOrigin = 0x80;
+    constexpr std::int32_t kObjectYBase = 0x110;
+    constexpr std::uint16_t kSpritePaletteMask = 0x6000;
+
+    if (frame_index >= kSpritePointerCount) {
+        throw std::out_of_range("Genesis title sprite frame is out of range");
+    }
+    const auto list_offset = static_cast<std::size_t>(read_rom_u32(
+        rom, pointer_table_offset + frame_index * 4U,
+        "Genesis title sprite pointer table is truncated"));
+    for (auto source = list_offset;;) {
+        const auto source_x = read_rom_u16(
+            rom, source, "Genesis title sprite list is truncated");
+        source += 2U;
+        if (source_x == 0x8000U) {
+            return;
+        }
+        const auto source_y = read_rom_u16(
+            rom, source, "Genesis title sprite list is truncated");
+        const auto source_size = read_rom_u16(
+            rom, source + 2U, "Genesis title sprite list is truncated");
+        const auto source_tile = read_rom_u16(
+            rom, source + 4U, "Genesis title sprite list is truncated");
+        source += 6U;
+
+        // 0x1378 writes the object fields into the Genesis sprite-table
+        // order: Y, size/link, tile attributes, X.  The title caller uses
+        // D1=$009C (then advances by four pixels per loop), D2=$0110,
+        // D5=2 and D6=$6000.
+        const auto screen_x = static_cast<std::int32_t>(static_cast<std::int16_t>(
+            static_cast<std::uint16_t>(source_x + object_x_base)));
+        const auto sat_y = static_cast<std::int32_t>(static_cast<std::int16_t>(
+            static_cast<std::uint16_t>(source_y + kObjectYBase)));
+        const auto screen_y = sat_y - kSpriteYOrigin;
+        const auto size_link = static_cast<std::uint16_t>(
+            static_cast<std::uint16_t>(source_size & 0x00FFU) << 8U | 0x0002U);
+        const auto width_tiles = static_cast<std::size_t>(
+            ((size_link >> 8U) & 0x03U) + 1U);
+        const auto height_tiles = static_cast<std::size_t>(
+            ((size_link >> 10U) & 0x03U) + 1U);
+        const auto tile_attributes = static_cast<std::uint16_t>(
+            source_tile | kSpritePaletteMask);
+        const auto tile_index = static_cast<std::size_t>(
+            tile_attributes & 0x07FFU);
+        const auto palette_line = static_cast<std::size_t>(
+            (tile_attributes >> 13U) & 0x03U);
+        const auto hflip = (tile_attributes & 0x0800U) != 0;
+        const auto vflip = (tile_attributes & 0x1000U) != 0;
+        for (std::size_t tile_y = 0; tile_y < height_tiles; ++tile_y) {
+            for (std::size_t tile_x = 0; tile_x < width_tiles; ++tile_x) {
+                const auto source_tile_x = hflip
+                    ? width_tiles - 1U - tile_x : tile_x;
+                const auto source_tile_y = vflip
+                    ? height_tiles - 1U - tile_y : tile_y;
+                // Each title SAT object owns a contiguous width x height
+                // block. The next source base is $10 higher because the
+                // preceding object is a 4x4 block of sixteen tiles.
+                const auto current_tile = tile_index +
+                    source_tile_y * width_tiles + source_tile_x;
+                if (current_tile * 32U + 32U > startup.pattern_vram.size()) {
+                    throw std::out_of_range(
+                        "Genesis title sprite tile is truncated");
+                }
+                const auto tile = decode_genesis_tile(
+                    startup.pattern_vram.data() + current_tile * 32U, 32U);
+                for (std::size_t pixel_y = 0; pixel_y < 8U; ++pixel_y) {
+                    for (std::size_t pixel_x = 0; pixel_x < 8U; ++pixel_x) {
+                        const auto source_pixel_x = hflip ? 7U - pixel_x : pixel_x;
+                        const auto source_pixel_y = vflip ? 7U - pixel_y : pixel_y;
+                        const auto color_index = tile.pixels[
+                            source_pixel_y * 8U + source_pixel_x];
+                        const auto target_x = screen_x +
+                            static_cast<std::int32_t>(tile_x * 8U + pixel_x);
+                        const auto target_y = screen_y +
+                            static_cast<std::int32_t>(tile_y * 8U + pixel_y);
+                        if (target_x < 0 || target_y < 0 ||
+                            target_x >= image.width || target_y >= image.height) {
+                            continue;
+                        }
+                        const auto& color = startup.palette[
+                            palette_line * 16U + color_index];
+                        // Genesis sprite palette index zero is transparent;
+                        // the title SAT objects must reveal the logo-plane
+                        // art underneath it instead of painting CRAM color 0
+                        // across the 4x4 object.
+                        if (color_index != 0U && color.alpha != 0) {
+                            image.pixels[static_cast<std::size_t>(target_y) *
+                                         image.width +
+                                         static_cast<std::size_t>(target_x)] = color;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void draw_genesis_startup_logo_plane(
+    const std::vector<std::uint8_t>& rom,
+    const GenesisStartupPatternData& startup, RgbaImage& image,
+    std::size_t source_offset, std::size_t column_count) {
+    // 0x5C8C6 reads a word with post-increment and then adds $4A, so the
+    // next source row begins $4C bytes later, not $4A bytes later.
+    constexpr std::size_t kSourceRowStride = 0x4CU;
+    // 0x1E84 loads D1=$12 and 0x5C8C6 uses DBF, so each reveal column
+    // contains nineteen words. Using 38 here writes into the copyright rows
+    // at CB04/CB84 and is the direct cause of the title text corruption.
+    constexpr std::size_t kRowCount = 19U;
+    constexpr std::size_t kDestinationColumn = 1U;
+    constexpr std::size_t kDestinationRow = 2U;
+
+    // ROM 0x1E4E advances the source by one word for each output column and
+    // 0x5C8C6 advances it by $4C bytes for each of the 19 rows emitted by
+    // its DBF loop. The destination starts at C102 (plane A column 1, row 2)
+    // and advances by one name-table row per write. This is the wide title
+    // mark that was missing when only the 0x1C6A sprite list was composed.
+    if (column_count == 0U || source_offset > rom.size() ||
+        kRowCount * kSourceRowStride > rom.size() - source_offset) {
+        throw std::out_of_range("Genesis startup logo tilemap is truncated");
+    }
+    for (std::size_t column = 0; column < column_count; ++column) {
+        for (std::size_t row = 0; row < kRowCount; ++row) {
+            const auto offset = source_offset + column * 2U +
+                                row * kSourceRowStride;
+            if (offset + 2U > rom.size()) {
+                throw std::out_of_range(
+                    "Genesis startup logo tilemap column is truncated");
+            }
+            const auto entry = read_rom_u16(
+                rom, offset, "Genesis startup logo tilemap word is truncated");
+            const auto tile_index = static_cast<std::size_t>(entry & 0x07FFU);
+            if (tile_index * 32U + 32U > startup.pattern_vram.size()) {
+                throw std::out_of_range("Genesis startup logo tile is truncated");
+            }
+            const auto tile = decode_genesis_tile(
+                startup.pattern_vram.data() + tile_index * 32U, 32U);
+            const auto palette_line = static_cast<std::size_t>(
+                (entry >> 13U) & 0x03U);
+            const auto hflip = (entry & 0x0800U) != 0;
+            const auto vflip = (entry & 0x1000U) != 0;
+            for (std::size_t pixel_y = 0; pixel_y < 8U; ++pixel_y) {
+                for (std::size_t pixel_x = 0; pixel_x < 8U; ++pixel_x) {
+                    const auto source_x = hflip ? 7U - pixel_x : pixel_x;
+                    const auto source_y = vflip ? 7U - pixel_y : pixel_y;
+                    const auto color_index = tile.pixels[
+                        source_y * 8U + source_x];
+                    const auto target_x = (kDestinationColumn + column) * 8U +
+                                          pixel_x;
+                    const auto target_y = (kDestinationRow + row) * 8U +
+                                          pixel_y;
+                    if (target_x >= image.width || target_y >= image.height) {
+                        continue;
+                    }
+                    const auto& color = startup.palette[
+                        palette_line * 16U + color_index];
+                    // Plane-A color zero exposes the background plane. This
+                    // matters once the title reveal is rendered as a
+                    // transparent host layer instead of a precomposed frame.
+                    if (color_index != 0U && color.alpha != 0U) {
+                        image.pixels[target_y * image.width + target_x] = color;
+                    }
+                }
+            }
+        }
+    }
+}
+
+} // namespace
+
+namespace {
+
+RgbaImage make_transparent_title_layer() {
+    return {
+        native::kScreenWidth, native::kScreenHeight,
+        std::vector<native::Rgba8>(
+            static_cast<std::size_t>(native::kScreenWidth) *
+                native::kScreenHeight,
+            native::Rgba8{0, 0, 0, 0}),
+    };
+}
+
+RgbaImage decode_genesis_title_text_layer(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kPromptTileX = 2U;
+    constexpr std::size_t kPromptTileY = 21U;
+    constexpr std::size_t kCopyrightTileX = 2U;
+    constexpr std::size_t kCopyrightTileY = 22U;
+    const auto startup = decode_genesis_startup_pattern_data(
+        rom, 0x1F310EU, 0x1FF0U);
+    auto image = make_transparent_title_layer();
+    draw_genesis_startup_line(
+        rom, startup, image, 0x1F81U, kPromptTileX, kPromptTileY,
+        "Genesis PRESS START line is truncated", true);
+    draw_genesis_startup_line(
+        rom, startup, image, 0x1F00U, kCopyrightTileX, kCopyrightTileY,
+        "Genesis startup copyright line is truncated", true);
+    draw_genesis_startup_line(
+        rom, startup, image, 0x1F24U, kCopyrightTileX, kCopyrightTileY + 1U,
+        "Genesis startup trademark line is truncated", true);
+    draw_genesis_startup_line(
+        rom, startup, image, 0x1F48U, kCopyrightTileX, kCopyrightTileY + 2U,
+        "Genesis startup trademark owner line is truncated", true);
+    draw_genesis_startup_line(
+        rom, startup, image, 0x1F68U, kCopyrightTileX, kCopyrightTileY + 3U,
+        "Genesis startup Sega line is truncated", true);
+    return image;
+}
+
+} // namespace
+
+RgbaImage decode_genesis_title_background(
+    const std::vector<std::uint8_t>& rom) {
+    // The circuit field is a separate layer from the logo reveal. Keep it in
+    // the source palette family used by the title art rather than decoding
+    // the ROM header/pointer bytes at 0xF0/0x1FD8 as if they were CRAM. The
+    // host layer remains separate so title timing can reveal the logo and
+    // sprites over it.
+    return decode_genesis_startup_screen(
+        rom, 0x1F310EU, 0x67DF6U, 0xD29D6U, 0x0000U);
+}
+
+RgbaImage decode_genesis_title_logo_plane(
+    const std::vector<std::uint8_t>& rom) {
+    auto image = make_transparent_title_layer();
+    const auto startup = decode_genesis_startup_pattern_data(
+        rom, 0x1F310EU, 0x1FF0U);
+    draw_genesis_startup_logo_plane(
+        rom, startup, image, 0x2090U, 38U);
+    return image;
+}
+
+RgbaImage decode_genesis_title_text(
+    const std::vector<std::uint8_t>& rom) {
+    return decode_genesis_title_text_layer(rom);
+}
+
+std::array<RgbaImage, native::kNativeTitleAnimationFrameCount>
+decode_genesis_title_sprite_frames(
+    const std::vector<std::uint8_t>& rom) {
+    std::array<RgbaImage, native::kNativeTitleAnimationFrameCount> frames{};
+    const auto startup = decode_genesis_startup_pattern_data(
+        rom, 0x1F310EU, 0x1FF0U);
+    for (std::size_t index = 0; index < frames.size(); ++index) {
+        frames[index] = make_transparent_title_layer();
+        draw_genesis_startup_sprite_list(
+            rom, startup, frames[index], 0x1CE4U, index);
+    }
+    return frames;
+}
+
+RgbaImage decode_genesis_startup_font(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kFontCharacterCount = 0x60U;
+    constexpr std::size_t kAtlasColumns = 16U;
+    constexpr std::size_t kAtlasRows = 6U;
+    const auto startup = decode_genesis_startup_pattern_data(
+        rom, 0x1F310EU, 0x1FF0U);
+    RgbaImage atlas{
+        static_cast<std::uint16_t>(kAtlasColumns * 8U),
+        static_cast<std::uint16_t>(kAtlasRows * 8U),
+        std::vector<native::Rgba8>(kAtlasColumns * kAtlasRows * 64U,
+                                   native::Rgba8{0, 0, 0, 0}),
+    };
+    for (std::size_t character = 0; character < kFontCharacterCount;
+         ++character) {
+        auto table_index = character;
+        if (table_index >= 0x3DU) {
+            table_index -= 4U;
+        }
+        const auto entry = read_rom_u16(
+            rom, 0xC1320U + table_index * 2U,
+            "Genesis startup font table is truncated");
+        const auto tile_index = static_cast<std::size_t>(entry & 0x07FFU);
+        if (tile_index * 32U + 32U > startup.pattern_vram.size()) {
+            throw std::out_of_range("Genesis startup font tile is truncated");
+        }
+        const auto tile = decode_genesis_tile(
+            startup.pattern_vram.data() + tile_index * 32U, 32U);
+        const auto atlas_x = (character % kAtlasColumns) * 8U;
+        const auto atlas_y = (character / kAtlasColumns) * 8U;
+        for (std::size_t y = 0; y < 8U; ++y) {
+            for (std::size_t x = 0; x < 8U; ++x) {
+                const auto color_index = tile.pixels[y * 8U + x];
+                auto color = startup.palette[16U + color_index];
+                color.alpha = color_index == 0U ? 0U : 255U;
+                atlas.pixels[(atlas_y + y) * atlas.width + atlas_x + x] =
+                    color;
+            }
+        }
+    }
+    return atlas;
+}
+
+RgbaImage decode_genesis_startup_cursor(
+    const std::vector<std::uint8_t>& rom) {
+    const auto startup = decode_genesis_startup_pattern_data(
+        rom, 0x1F310EU, 0x1FF0U);
+    constexpr std::uint16_t kCursorNameWord =
+        static_cast<std::uint16_t>(-0x7A55) | 0x2000U;
+    const auto tile_index = static_cast<std::size_t>(kCursorNameWord & 0x07FFU);
+    const auto palette_line = static_cast<std::size_t>(
+        (kCursorNameWord >> 13U) & 0x03U);
+    if (tile_index * 32U + 32U > startup.pattern_vram.size()) {
+        throw std::out_of_range("Genesis startup cursor tile is truncated");
+    }
+    const auto tile = decode_genesis_tile(
+        startup.pattern_vram.data() + tile_index * 32U, 32U);
+    RgbaImage image{
+        8U, 8U, std::vector<native::Rgba8>(64U, native::Rgba8{0, 0, 0, 0})};
+    auto has_ink = false;
+    for (std::size_t y = 0; y < 8U; ++y) {
+        for (std::size_t x = 0; x < 8U; ++x) {
+            const auto color_index = tile.pixels[y * 8U + x];
+            auto color = startup.palette[palette_line * 16U + color_index];
+            color.alpha = color_index == 0U ? 0U : 255U;
+            has_ink = has_ink || color_index != 0U;
+            image.pixels[y * 8U + x] = color;
+        }
+    }
+    if (!has_ink) {
+        // The source writes this name-table word from C3B2. Some ROM dumps
+        // omit the late cursor tile from the 0xC1064 upload even though the
+        // menu still references it. Preserve the source cursor position and
+        // direction with the same one-tile host fallback rather than leaving
+        // the selectable option visually unmarked.
+        const auto color = [&startup]() {
+            auto result = startup.palette[17U];
+            result.alpha = 255U;
+            return result;
+        }();
+        constexpr std::array<std::uint8_t, 8> kArrow{{
+            0b00001000U, 0b00001100U, 0b00001110U, 0b00001111U,
+            0b00001110U, 0b00001100U, 0b00001000U, 0b00000000U}};
+        for (std::size_t y = 0; y < kArrow.size(); ++y) {
+            for (std::size_t x = 0; x < 8U; ++x) {
+                if ((kArrow[y] & (1U << (7U - x))) != 0U) {
+                    image.pixels[y * 8U + x] = color;
+                }
+            }
+        }
+    }
+    return image;
+}
+
+RgbaImage decode_genesis_startup_screen(
+    const std::vector<std::uint8_t>& rom,
+    std::size_t pattern_stream_offset,
+    std::size_t tilemap_stream_offset,
+    std::size_t palette_offset,
+    std::uint16_t name_word_mask) {
+    constexpr std::size_t kColumns = 40;
+    constexpr std::size_t kRows = 28;
+    constexpr std::size_t kMapRows = 32;
+    const auto startup = decode_genesis_startup_pattern_data(
+        rom, pattern_stream_offset, palette_offset);
     require_bytes(rom.size() - std::min(tilemap_stream_offset, rom.size()), 2,
                   "Genesis startup tilemap is truncated");
 
@@ -2042,61 +4139,57 @@ RgbaImage decode_genesis_startup_screen(
     auto source = tilemap_stream_offset;
     const auto base_word = read16(source);
     source += 2U;
-    std::vector<std::uint16_t> map;
-    map.reserve(kColumns * kMapRows);
-    std::uint16_t output_index = 0;
-    std::uint16_t words_remaining = kWordsPerRow;
-    auto rows_remaining = kRowCounter;
-    const auto row_compare = static_cast<std::int16_t>(
-        static_cast<std::uint16_t>(kWordsPerRow - kD5WordCount));
 
+    // This is the ROM's 0x1728 writer, not a generic token decompressor.  The
+    // writer has two independent counters: D0 consumes destination words in
+    // the current 40-word row, while A4 counts generated values. A positive
+    // delta token deliberately consumes its first generated value without
+    // writing it. Unlike the 0x1530 resource codec, these token loops use
+    // SUBQ/BGT: a low-five-bit value of zero means one value, and every
+    // nonzero low-five-bit value is used as-is (not count + 1).
+    std::vector<std::uint16_t> map(kColumns * kMapRows, 0);
+    std::size_t generated_count = 0;
+    std::size_t output_count = 0;
     const auto emit = [&](std::uint16_t value) {
-        ++output_index;
-        if (static_cast<std::int16_t>(
-                static_cast<std::uint16_t>(0U - output_index)) >= 0) {
-            return false;
+        if (output_count >= map.size()) {
+            throw std::out_of_range("Genesis startup tilemap exceeds its VDP grid");
         }
-        if (static_cast<std::int16_t>(words_remaining) > row_compare) {
-            value = static_cast<std::uint16_t>(value | kWordMask);
+        map[output_count++] = static_cast<std::uint16_t>(value | name_word_mask);
+    };
+    const auto emit_run = [&](std::uint16_t value, int delta,
+                              unsigned count) {
+        const auto run_length = std::max<unsigned>(count, 1U);
+        for (unsigned index = 0; index < run_length; ++index) {
+            ++generated_count;
+            // 0x1728 compares the global generated-value counter (A4) with
+            // the token delta held in A3 before consuming D0.  With the
+            // title's initial D3=0, only a first-value/+1 token is skipped;
+            // later positive-delta tokens write all of their values.
+            const auto minimum_generated = static_cast<std::size_t>(
+                std::max(delta, 0));
+            if (generated_count > minimum_generated) {
+                emit(value);
+            }
+            value = static_cast<std::uint16_t>(value + delta);
         }
-        map.push_back(value);
-        --words_remaining;
-        if (words_remaining != 0xFFFFU) {
-            return false;
-        }
-        --rows_remaining;
-        if (rows_remaining == 0xFFFFU) {
-            return true;
-        }
-        words_remaining = kWordsPerRow;
-        return false;
     };
 
-    while (rows_remaining != 0xFFFFU) {
+    while (output_count < map.size()) {
         const auto token = read8(source++);
         if (token == 0) {
             break;
         }
         if (token > 0xC0U) {
             const auto count = static_cast<unsigned>(token & 0x1FU);
-            // ROM 0x1728 uses the low five bits as the DBF counter.  As with
-            // the incremental run below, a zero counter still emits once and
-            // every non-zero counter emits count + 1 values.
-            const auto iterations = count + 1U;
             const auto wide = (token & 0x20U) != 0;
-            for (unsigned index = 0; index < iterations; ++index) {
-                std::uint16_t value = 0;
-                if (wide) {
-                    value = read16(source);
-                    source += 2U;
-                } else {
-                    value = read8(source++);
-                }
+            const auto run_length = std::max<unsigned>(count, 1U);
+            for (unsigned index = 0; index < run_length; ++index) {
+                std::uint16_t value = wide ? read16(source) :
+                    static_cast<std::uint16_t>(read8(source));
+                source += wide ? 2U : 1U;
                 value = static_cast<std::uint16_t>(value + base_word);
-                if (emit(value)) {
-                    rows_remaining = 0xFFFFU;
-                    break;
-                }
+                ++generated_count;
+                emit(value);
             }
             continue;
         }
@@ -2104,25 +4197,16 @@ RgbaImage decode_genesis_startup_screen(
         const auto delta = token > 0x80U ? 1 : token > 0x40U ? 0 : -1;
         const auto count = static_cast<unsigned>(token & 0x1FU);
         const auto wide = (token & 0x20U) != 0;
-        std::uint16_t value = 0;
-        if (wide) {
-            value = static_cast<std::uint16_t>(read8(source++)) << 8U;
-        }
+        std::uint16_t value = wide ?
+            static_cast<std::uint16_t>(read8(source++)) << 8U : 0;
         value = static_cast<std::uint16_t>(value | read8(source++));
         value = static_cast<std::uint16_t>(value + base_word);
-        for (unsigned index = 0; index <= count; ++index) {
-            if (emit(value)) {
-                rows_remaining = 0xFFFFU;
-                break;
-            }
-            value = static_cast<std::uint16_t>(value + delta);
-        }
+        emit_run(value, delta, count);
     }
 
-    if (map.empty()) {
+    if (output_count == 0) {
         throw std::runtime_error("Genesis startup tilemap is empty");
     }
-
     RgbaImage image{
         static_cast<std::uint16_t>(kColumns * 8U),
         static_cast<std::uint16_t>(kRows * 8U),
@@ -2132,19 +4216,16 @@ RgbaImage decode_genesis_startup_screen(
     for (std::size_t map_y = 0; map_y < kRows; ++map_y) {
         for (std::size_t map_x = 0; map_x < kColumns; ++map_x) {
             const auto map_index = map_y * kColumns + map_x;
-            if (map_index >= map.size()) {
-                continue;
-            }
             const auto entry = map[map_index];
             if (entry == 0) {
                 continue;
             }
             const auto tile_index = static_cast<std::size_t>(entry & 0x07FFU);
-            if (tile_index * 32U + 32U > pattern_vram.size()) {
+            if (tile_index * 32U + 32U > startup.pattern_vram.size()) {
                 throw std::out_of_range("Genesis startup tile index is truncated");
             }
             const auto tile = decode_genesis_tile(
-                pattern_vram.data() + tile_index * 32U, 32U);
+                startup.pattern_vram.data() + tile_index * 32U, 32U);
             const auto palette_line = static_cast<std::size_t>(
                 (entry >> 13U) & 0x03U);
             const auto hflip = (entry & 0x0800U) != 0;
@@ -2157,12 +4238,72 @@ RgbaImage decode_genesis_startup_screen(
                                                          source_x];
                     image.pixels[(map_y * 8U + pixel_y) * image.width +
                                  map_x * 8U + pixel_x] =
-                        palette[palette_line * 16U + color_index];
+                        startup.palette[palette_line * 16U + color_index];
                 }
             }
         }
     }
     return image;
+}
+
+namespace {
+
+RgbaImage decode_genesis_title_frame(const std::vector<std::uint8_t>& rom,
+                                     std::size_t frame_index) {
+    constexpr std::size_t kPromptTileX = 2;
+    constexpr std::size_t kPromptTileY = 21;
+    constexpr std::size_t kCopyrightTileX = 2;
+    constexpr std::size_t kCopyrightTileY = 22;
+
+    auto image = decode_genesis_title_background(rom);
+    const auto startup = decode_genesis_startup_pattern_data(
+        rom, 0x1F310EU, 0xD29D6U);
+    draw_genesis_startup_logo_plane(rom, startup, image, 0x2090U, 38U);
+    // The static 0x1D58 plane is the dark circuit field. The title mark is
+    // emitted separately by 0x1C6A through 0x1378 into the sprite list; its
+    // six source lists are animation phases.
+    draw_genesis_startup_sprite_list(rom, startup, image, 0x1CE4U,
+                                     frame_index);
+    // ROM 0x1DCA writes the 0x1F81 line at VRAM 0xCA84: column 2,
+    // row 21 of the 64-column name table. ROM 0x1DF6 writes the
+    // copyright block at 0xCB04, 0xCB84, 0xCC04, and 0xCC84. The native
+    // image composes all four fixed source lines even though the first ROM
+    // update only calls this block after the title plane has settled.
+    draw_genesis_startup_line(rom, startup, image, 0x1F81U,
+                              kPromptTileX, kPromptTileY,
+                              "Genesis PRESS START line is truncated", true);
+    draw_genesis_startup_line(rom, startup, image, 0x1F00U,
+                              kCopyrightTileX, kCopyrightTileY,
+                              "Genesis startup copyright line is truncated",
+                              true);
+    draw_genesis_startup_line(rom, startup, image, 0x1F24U,
+                              kCopyrightTileX, kCopyrightTileY + 1U,
+                              "Genesis startup trademark line is truncated",
+                              true);
+    draw_genesis_startup_line(rom, startup, image, 0x1F48U,
+                              kCopyrightTileX, kCopyrightTileY + 2U,
+                              "Genesis startup trademark owner line is truncated",
+                              true);
+    draw_genesis_startup_line(rom, startup, image, 0x1F68U,
+                              kCopyrightTileX, kCopyrightTileY + 3U,
+                              "Genesis startup Sega line is truncated", true);
+    return image;
+}
+
+} // namespace
+
+RgbaImage decode_genesis_title_screen(const std::vector<std::uint8_t>& rom) {
+    return decode_genesis_title_frame(rom, 0U);
+}
+
+std::array<RgbaImage, native::kNativeTitleAnimationFrameCount>
+decode_genesis_title_animation_frames(
+    const std::vector<std::uint8_t>& rom) {
+    std::array<RgbaImage, native::kNativeTitleAnimationFrameCount> frames{};
+    for (std::size_t index = 0; index < frames.size(); ++index) {
+        frames[index] = decode_genesis_title_frame(rom, index);
+    }
+    return frames;
 }
 
 void write_bmp32(const std::string& path, const RgbaImage& image) {

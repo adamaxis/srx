@@ -116,16 +116,14 @@ shadowrun::graphics::RgbaImage render_native_field(
         const auto mask = shadowrun::native::button_mask(button);
         shell.update(shadowrun::native::InputState{mask, mask});
     };
-    // Follow the same title -> new game -> archetype -> opening-story path
-    // used by the native test seam. This diagnostic must render the field,
-    // not the first menu behind the title screen.
+    // Follow the reviewed title -> start options -> new game -> archetype
+    // path. New Game enters 0x59C5E; skip that source-timed opening for this
+    // field-only diagnostic, just as a user can with an action edge.
     press(shadowrun::native::Button::Start);
     press(shadowrun::native::Button::A);
     press(shadowrun::native::Button::A);
-    for (std::size_t page = 0;
-         shell.scene() == shadowrun::native::NativeScene::Intro &&
-         page <= shell.intro_story_line_count(); ++page) {
-        press(shadowrun::native::Button::A);
+    if (shell.scene() == shadowrun::native::NativeScene::Intro) {
+        press(shadowrun::native::Button::Start);
     }
     if (shell.scene() != shadowrun::native::NativeScene::Field) {
         throw std::runtime_error(
@@ -144,6 +142,121 @@ shadowrun::graphics::RgbaImage render_native_field(
             static_cast<std::uint8_t>(packed >> 8U),
             static_cast<std::uint8_t>(packed), 255,
         };
+    }
+    return image;
+}
+
+shadowrun::graphics::RgbaImage render_native_field_menu(
+    shadowrun::native::NativePortAssets assets, bool inventory) {
+    shadowrun::native::SoftwareScreen screen;
+    shadowrun::native::NativePortShell shell("SHADOWRUN", std::move(assets));
+    const auto press = [&shell](shadowrun::native::Button button) {
+        const auto mask = shadowrun::native::button_mask(button);
+        shell.update(shadowrun::native::InputState{mask, mask});
+    };
+    press(shadowrun::native::Button::Start);
+    press(shadowrun::native::Button::A);
+    press(shadowrun::native::Button::A);
+    if (shell.scene() == shadowrun::native::NativeScene::Intro) {
+        press(shadowrun::native::Button::Start);
+    }
+    if (shell.scene() != shadowrun::native::NativeScene::Field) {
+        throw std::runtime_error(
+            "native field-menu diagnostic did not reach the field scene");
+    }
+    press(shadowrun::native::Button::Start);
+    if (shell.scene() != shadowrun::native::NativeScene::FieldMenu) {
+        throw std::runtime_error(
+            "native field-menu diagnostic did not open the command screen");
+    }
+    if (inventory) {
+        const auto press_menu_edge = [&shell](shadowrun::native::Button button) {
+            const auto mask = shadowrun::native::button_mask(button);
+            shell.update(shadowrun::native::InputState{mask, mask});
+            shell.update(shadowrun::native::InputState{});
+        };
+        // The ROM starts at Pocket Secretary (selector 6). Six left edges
+        // select the first Inventory column, which exercises the real
+        // selected-cell, item-art, and item-stat destinations.
+        for (int step = 0; step < 6; ++step) {
+            press_menu_edge(shadowrun::native::Button::Left);
+        }
+    }
+    shell.render(screen);
+
+    shadowrun::graphics::RgbaImage image{
+        screen.width(), screen.height(),
+        std::vector<shadowrun::native::Rgba8>(screen.pixels().size()),
+    };
+    for (std::size_t index = 0; index < screen.pixels().size(); ++index) {
+        const auto packed = screen.pixels()[index];
+        image.pixels[index] = {
+            static_cast<std::uint8_t>(packed >> 16U),
+            static_cast<std::uint8_t>(packed >> 8U),
+            static_cast<std::uint8_t>(packed), 255,
+        };
+    }
+    return image;
+}
+
+shadowrun::graphics::RgbaImage render_native_startup_scene(
+    shadowrun::native::NativePortAssets assets, const std::string& scene_name) {
+    shadowrun::native::SoftwareScreen screen;
+    shadowrun::native::NativePortShell shell("SHADOWRUN", std::move(assets));
+    const auto press = [&shell](shadowrun::native::Button button) {
+        const auto mask = shadowrun::native::button_mask(button);
+        shell.update(shadowrun::native::InputState{mask, mask});
+    };
+    if (scene_name == "start-options") {
+        press(shadowrun::native::Button::Start);
+    } else if (scene_name == "save-load" || scene_name == "no-save") {
+        press(shadowrun::native::Button::Start);
+        press(shadowrun::native::Button::Down);
+        press(shadowrun::native::Button::A);
+        if (scene_name == "no-save") {
+            press(shadowrun::native::Button::A);
+        }
+    } else if (scene_name == "archetype") {
+        press(shadowrun::native::Button::Start);
+        press(shadowrun::native::Button::A);
+    } else if (scene_name == "intro") {
+        press(shadowrun::native::Button::Start);
+        press(shadowrun::native::Button::A);
+        press(shadowrun::native::Button::A);
+    } else {
+        throw std::invalid_argument("unknown native startup scene");
+    }
+    shell.render(screen);
+    shadowrun::graphics::RgbaImage image{
+        screen.width(), screen.height(),
+        std::vector<shadowrun::native::Rgba8>(screen.pixels().size())};
+    for (std::size_t index = 0; index < screen.pixels().size(); ++index) {
+        const auto packed = screen.pixels()[index];
+        image.pixels[index] = {
+            static_cast<std::uint8_t>(packed >> 16U),
+            static_cast<std::uint8_t>(packed >> 8U),
+            static_cast<std::uint8_t>(packed), 255};
+    }
+    return image;
+}
+
+shadowrun::graphics::RgbaImage render_native_title_frame(
+    shadowrun::native::NativePortAssets assets, std::size_t frame) {
+    shadowrun::native::SoftwareScreen screen;
+    shadowrun::native::NativePortShell shell("SHADOWRUN", std::move(assets));
+    for (std::size_t index = 0; index < frame; ++index) {
+        shell.update(shadowrun::native::InputState{});
+    }
+    shell.render(screen);
+    shadowrun::graphics::RgbaImage image{
+        screen.width(), screen.height(),
+        std::vector<shadowrun::native::Rgba8>(screen.pixels().size())};
+    for (std::size_t index = 0; index < screen.pixels().size(); ++index) {
+        const auto packed = screen.pixels()[index];
+        image.pixels[index] = {
+            static_cast<std::uint8_t>(packed >> 16U),
+            static_cast<std::uint8_t>(packed >> 8U),
+            static_cast<std::uint8_t>(packed), 255};
     }
     return image;
 }
@@ -190,9 +303,95 @@ int main(int argc, char** argv) {
     if (argc == 4 && std::string(argv[3]) == "--title") {
         try {
             const auto rom = read_file(argv[1]);
-            const auto image = shadowrun::graphics::decode_genesis_startup_screen(rom);
+            const auto image = shadowrun::graphics::decode_genesis_title_screen(rom);
             shadowrun::graphics::write_bmp32(argv[2], image);
             std::cout << "startup scene: " << image.width << "x" << image.height << "\n"
+                      << "output: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 4 && std::string(argv[3]) == "--native-title-text") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto image = shadowrun::graphics::decode_genesis_title_text(rom);
+            shadowrun::graphics::write_bmp32(argv[2], image);
+            std::cout << "native title text layer: " << image.width << "x"
+                      << image.height << "\n"
+                      << "output: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 4 &&
+        (std::string(argv[3]) == "--native-start-options" ||
+         std::string(argv[3]) == "--native-save-load" ||
+         std::string(argv[3]) == "--native-no-save" ||
+         std::string(argv[3]) == "--native-archetype" ||
+         std::string(argv[3]) == "--native-intro")) {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto name = std::string(argv[3]).substr(9);
+            const auto image = render_native_startup_scene(
+                shadowrun::graphics::decode_genesis_native_assets(rom), name);
+            shadowrun::graphics::write_bmp32(argv[2], image);
+            std::cout << "native startup scene: " << name << "\n"
+                      << "output: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 5 && std::string(argv[3]) == "--native-title-frame") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto frame = static_cast<std::size_t>(
+                parse_number(argv[4]));
+            const auto image = render_native_title_frame(
+                shadowrun::graphics::decode_genesis_native_assets(rom), frame);
+            shadowrun::graphics::write_bmp32(argv[2], image);
+            std::cout << "native title frame: " << frame << "\n"
+                      << "output: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 4 && std::string(argv[3]) == "--startup-base") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto image = shadowrun::graphics::decode_genesis_startup_screen(
+                rom, 0x1F310EU, 0x67DF6U, 0x1FF0U);
+            shadowrun::graphics::write_bmp32(argv[2], image);
+            std::cout << "startup base scene: " << image.width << "x"
+                      << image.height << "\n"
+                      << "output: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 5 && std::string(argv[3]) == "--title-frame") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto frames =
+                shadowrun::graphics::decode_genesis_title_animation_frames(rom);
+            const auto frame_index = static_cast<std::size_t>(
+                parse_number(argv[4]));
+            if (frame_index >= frames.size()) {
+                throw std::out_of_range("title frame is outside the ROM frame set");
+            }
+            shadowrun::graphics::write_bmp32(argv[2], frames[frame_index]);
+            std::cout << "title animation frame " << frame_index << ": "
+                      << frames[frame_index].width << "x"
+                      << frames[frame_index].height << "\n"
                       << "output: " << argv[2] << "\n";
             return 0;
         } catch (const std::exception& error) {
@@ -215,6 +414,65 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
+    if (argc == 4 && std::string(argv[3]) == "--native-field-menu") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto image = render_native_field_menu(
+                shadowrun::graphics::decode_genesis_native_assets(rom), false);
+            shadowrun::graphics::write_bmp32(argv[2], image);
+            std::cout << "native field menu scene: " << image.width << "x"
+                      << image.height << "\n"
+                      << "output: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 4 && std::string(argv[3]) == "--native-field-menu-inventory") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto image = render_native_field_menu(
+                shadowrun::graphics::decode_genesis_native_assets(rom), true);
+            shadowrun::graphics::write_bmp32(argv[2], image);
+            std::cout << "native field inventory menu scene: " << image.width
+                      << "x" << image.height << "\n"
+                      << "output: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 4 && std::string(argv[3]) == "--native-menu") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto image =
+                shadowrun::graphics::decode_genesis_field_menu_background(rom);
+            shadowrun::graphics::write_bmp32(argv[2], image);
+            std::cout << "native field menu base: " << image.width << "x"
+                      << image.height << "\n"
+                      << "output: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 4 && std::string(argv[3]) == "--native-menu-inventory") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto image = shadowrun::graphics::decode_genesis_field_menu_inventory_boxes(rom);
+            shadowrun::graphics::write_bmp32(argv[2], image);
+            std::cout << "native field inventory boxes: " << image.width << "x"
+                      << image.height << "\n"
+                      << "output: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
     if (argc == 4 && std::string(argv[3]) == "--native-field-pack") {
         try {
             const auto image = render_native_field(
@@ -222,6 +480,20 @@ int main(int argc, char** argv) {
             shadowrun::graphics::write_bmp32(argv[2], image);
             std::cout << "native field scene from pack: " << image.width << "x"
                       << image.height << "\n"
+                      << "output: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 4 && std::string(argv[3]) == "--native-field-menu-pack") {
+        try {
+            const auto image = render_native_field_menu(
+                shadowrun::graphics::read_native_asset_pack(argv[1]), false);
+            shadowrun::graphics::write_bmp32(argv[2], image);
+            std::cout << "native field menu scene from pack: " << image.width
+                      << "x" << image.height << "\n"
                       << "output: " << argv[2] << "\n";
             return 0;
         } catch (const std::exception& error) {
@@ -367,7 +639,13 @@ int main(int argc, char** argv) {
                      "<tile-offset> <tile-count> <palette-offset> [--resource]\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> --title\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
-                     "--native-field\n";
+                      "--native-field\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
+                      "--native-menu\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
+                      "--native-menu-inventory\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
+                      "--native-field-menu-inventory\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <ignored> "
                      "--field-event-cells\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <ignored> "

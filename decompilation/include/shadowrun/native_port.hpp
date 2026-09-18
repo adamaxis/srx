@@ -15,6 +15,12 @@ constexpr std::uint16_t kScreenWidth = 320;
 constexpr std::uint16_t kScreenHeight = 224;
 constexpr std::size_t kNativeInventorySlotCount = 8;
 constexpr std::size_t kNativeInventoryItemCount = 50;
+constexpr std::size_t kNativeTitleAnimationFrameCount = 6;
+constexpr std::size_t kNativeMenuStatusCount = 5;
+// ROM 0xC376 clamps the startup archetype selector to 0..2. The fourth
+// string in NativeIntroData is the continuation line of "Gator Shaman", not
+// another selectable archetype.
+constexpr std::size_t kNativeArchetypeChoiceCount = 3;
 constexpr std::size_t kNativeCyberwareCount = 15;
 constexpr std::size_t kNativeAttributeCount = 8;
 constexpr std::size_t kNativeSkillCount = 12;
@@ -68,6 +74,7 @@ enum class NativeScene {
     Bootstrap,
     Title,
     StartOptions,
+    SaveLoad,
     ArchetypeMenu,
     Intro,
     Field,
@@ -105,6 +112,10 @@ struct NativeFieldAnimation {
 // menu instead of retaining Genesis text placement/pointers.
 struct NativeInventoryItem {
     std::uint8_t code = 0;
+    // ROM 0x12F60/0x13084 use these two record bytes as indexes into the
+    // source detail tables. They are not derived statistics.
+    std::uint8_t damage_table_index = 0; // item record +0x25
+    std::uint8_t power_table_index = 0;  // item record +0x26 (one-based)
     std::string name;
     std::string category;
 };
@@ -115,15 +126,32 @@ struct NativeImage {
     std::vector<Rgba8> pixels;
 };
 
+// One line emitted by the ROM's C0DA text writer. The row is relative to the
+// destination name-table address passed by the caller; preserving it keeps
+// the native startup screens in the source's tile geometry instead of
+// reflowing the strings as a host UI.
+struct NativeStartupTextLine {
+    std::uint8_t row = 0;
+    std::string text;
+};
+
 // Host form of the title/startup text resources. The labels and story lines
-// are extracted from the ROM; the native frontend only chooses how many lines
-// fit on one host page.
+// are extracted from the ROM. The opening story is emitted by the source
+// 0x59C5E sequence, so the native frontend keeps the text as source data and
+// drives its timed write groups from the reviewed call path.
 struct NativeIntroData {
     std::string start_options_title;
     std::array<std::string, 2> start_options{};
     std::string archetype_title;
+    // The fourth entry is retained because it is a separately written source
+    // line in the extracted layout; only entries 0..2 are choices.
     std::array<std::string, 4> archetypes{};
     std::vector<std::string> story_lines;
+    std::vector<NativeStartupTextLine> start_options_layout;
+    std::vector<NativeStartupTextLine> save_load_layout;
+    std::vector<NativeStartupTextLine> archetype_layout;
+    std::vector<NativeStartupTextLine> no_save_layout;
+    std::vector<NativeStartupTextLine> save_success_layout;
 };
 
 struct NativeFieldRecordPosition {
@@ -175,6 +203,14 @@ struct NativeFieldEntity {
     std::uint16_t projection_word_08 = 0;
     std::uint16_t kind = 0;
     std::uint16_t record_type = 0;
+    // The command overview reads these directly from each 0x100-byte runner
+    // record. They are source indexes/values, not host-generated labels.
+    std::uint8_t race_index = 0;
+    std::uint8_t archetype_index = 0;
+    std::uint8_t physical_value = 0;
+    std::uint8_t mental_value = 0;
+    // ROM +0x57: the active weapon/gear item shown by the command overview.
+    std::uint8_t active_item_code = 0;
     std::uint8_t flags_10 = 0;
     std::uint8_t flags_11 = 0;
     std::uint32_t state_pointer = 0;
@@ -195,6 +231,25 @@ struct NativeFieldEntity {
     // ROM 0x36FC suppresses display when +0x56 is negative or 0x7F.
     std::int8_t display_state = 0;
     std::int8_t display_substate = 0;
+    // ROM 0x3602 reads +0x9B to select the item-icon palette line.
+    std::uint8_t display_palette_state = 0;
+    // ROM 0x11928 indexes the five command-screen status strips with +0x4D.
+    std::uint8_t menu_status_index = 0;
+    // Source output of 0x12CEE for this runner's command overview. The
+    // indexes select the 13-tile strips extracted from CF3D4/CF610.
+    std::uint8_t attack_bar_index = 0;
+    std::uint8_t defense_bar_index = 0;
+    // 0x11ABE calls 0x12CEE again after changing +0x4D. Preserve the exact
+    // source-derived strip selection for every posture so the host screen
+    // changes the attack/defense bars along with the status slider.
+    std::array<std::uint8_t, kNativeMenuStatusCount>
+        attack_bar_indices_by_posture{};
+    std::array<std::uint8_t, kNativeMenuStatusCount>
+        defense_bar_indices_by_posture{};
+    // 0x11352 receives the raw armor +0x26/+0x25 values from 0x55EB4/
+    // 0x55E92 and uses them as indexes into the seven-tile CF884 table.
+    std::uint8_t weapons_bar_index = 0;
+    std::uint8_t guns_bar_index = 0;
     std::uint16_t animation_accumulator = 0;
     std::uint16_t animation_multiplier = 0;
     std::uint16_t animation_threshold = 0;
@@ -232,6 +287,61 @@ struct NativeFieldEntity {
 // a native asset pack and loaded without the ROM present.
 struct NativePortAssets {
     NativeImage title_scene;
+    // Separate host layers preserve the ROM's title timing: the circuit
+    // plane is present first, the logo columns arrive two frames apart, the
+    // sprite overlay advances every four frames, and text is a fixed plane.
+    NativeImage title_background;
+    NativeImage title_logo_plane;
+    NativeImage title_text;
+    std::array<NativeImage, kNativeTitleAnimationFrameCount>
+        title_sprite_frames{};
+    // ROM 0x1C6A selects one of six title sprite lists. These are complete
+    // host frames with the source logo plane and title text already composed;
+    // the native shell advances them on the same four-vblank cadence.
+    std::array<NativeImage, kNativeTitleAnimationFrameCount>
+        title_animation_frames{};
+    // Plane-B base written by the ROM command-screen initializer at 0x10F50.
+    // It contains the real menu panel and inventory-box geometry; dynamic
+    // labels and cursor state are rendered by the native command loop.
+    NativeImage field_menu_background;
+    NativeImage field_menu_inventory_boxes;
+    NativeImage field_menu_font;
+    NativeImage startup_font;
+    NativeImage startup_cursor;
+    std::array<NativeImage, 3> field_menu_runner_portraits{};
+    // ROM 0x11678 has two 5x4 name-table overlays for the selected inventory
+    // cell. They remain separate because the source chooses them by the
+    // selected display-state pair, not by a host highlight color.
+    std::array<NativeImage, 2> field_menu_selected_cells{};
+    // ROM 0x11592 emits the 3x4-tile selector sprite from D29F6. It is kept
+    // as a transparent host image and positioned from the same 0x28/0x18
+    // selector strides as the source routine.
+    NativeImage field_menu_cursor;
+    // ROM 0x12A8C writes the selected item's 9x5 artwork from the item
+    // record's +0x1E table to Plane A at C1A4.
+    std::array<NativeImage, kNativeInventoryItemCount>
+        field_menu_item_art{};
+    std::array<std::array<NativeImage, 2>, kNativeInventoryItemCount>
+        field_menu_inventory_icons{};
+    std::array<std::string, 3> field_menu_runner_names{};
+    std::array<NativeImage, kNativeMenuStatusCount>
+        field_menu_status_bars{};
+    std::array<std::string, kNativeMenuStatusCount>
+        field_menu_status_names{};
+    // ROM 0x12F70 and 0x12FA4 write seven-tile detail bars from these
+    // tables. The arrays preserve the source table index; the runtime does
+    // not synthesize a percentage bar from a guessed item statistic.
+    std::array<NativeImage, 14> field_menu_damage_bars{};
+    std::array<NativeImage, 14> field_menu_drain_bars{};
+    // ROM 0x12CEE selects the 13-tile command-screen attack/defense strips
+    // from CF3D4 and CF610. These are separate from the seven-tile weapon
+    // damage/drain bars above.
+    std::array<NativeImage, 23> field_menu_attack_bars{};
+    std::array<NativeImage, 23> field_menu_defense_bars{};
+    std::array<std::string, 13> field_menu_power_labels{};
+    // The seven armor records at ROM D4D50 are the exact two-row labels
+    // written by the command overview's 0x11352 path.
+    std::array<std::array<std::string, 2>, 7> field_menu_armor_labels{};
     NativeIntroData intro;
     NativeImage field_map;
     std::vector<NativeEntityFrame> entity_frames;
@@ -246,6 +356,14 @@ struct NativePortAssets {
     std::vector<NativeFieldArea> field_areas;
     std::array<std::uint8_t, 32> field_event_mode_table{};
     NativeFieldEntity entity_template;
+    // These are the three source records copied by 0x42B0 when Joshua's
+    // startup archetype is selected. They are templates, not switchable
+    // party members.
+    std::array<NativeFieldEntity, kNativeArchetypeChoiceCount>
+        protagonist_archetype_records{};
+    // Runtime party slots. New Game populates slot zero with Joshua and
+    // leaves the other slots inactive until recruited records are recovered.
+    std::array<NativeFieldEntity, 3> field_entity_records{};
     std::array<NativeInventoryItem, kNativeInventoryItemCount>
         inventory_items{};
     std::array<std::string, kNativeCyberwareCount> cyberware_names{};
@@ -327,6 +445,11 @@ public:
     NativeScene scene() const { return scene_; }
     bool has_assets() const { return !title_pixels_.empty(); }
     bool has_intro() const { return !intro_.story_lines.empty(); }
+    bool has_startup_menus() const {
+        return !intro_.start_options_layout.empty() &&
+               !intro_.save_load_layout.empty() &&
+               !intro_.archetype_layout.empty();
+    }
     bool has_field_map() const { return !field_map_pixels_.empty(); }
     bool has_terrain() const { return !field_terrain_.statuses.empty(); }
     bool has_entity_frame() const { return !entity_frames_.empty(); }
@@ -340,6 +463,16 @@ public:
     }
     std::size_t field_menu_selection() const { return field_menu_selection_; }
     std::size_t field_menu_row() const { return field_menu_row_; }
+    bool field_menu_posture_active() const { return field_menu_posture_active_; }
+    std::uint8_t field_posture_index() const {
+        return field_entity_.menu_status_index;
+    }
+    std::uint8_t field_attack_bar_index() const {
+        return field_entity_.attack_bar_index;
+    }
+    std::uint8_t field_defense_bar_index() const {
+        return field_entity_.defense_bar_index;
+    }
     std::size_t clips_menu_selection() const { return clips_menu_selection_; }
     std::uint32_t clips_action_count() const { return clips_action_count_; }
     std::uint8_t field_ammo_rounds() const {
@@ -435,8 +568,14 @@ public:
     std::size_t start_options_selection() const {
         return start_options_selection_;
     }
+    std::size_t save_load_selection() const { return save_load_selection_; }
+    bool save_load_message_visible() const {
+        return save_load_message_visible_;
+    }
     std::size_t archetype_selection() const { return archetype_selection_; }
+    std::size_t selected_archetype() const { return selected_archetype_; }
     std::size_t intro_line_start() const { return intro_line_start_; }
+    std::uint64_t intro_frame() const { return intro_frame_; }
     std::size_t intro_story_line_count() const {
         return intro_.story_lines.size();
     }
@@ -463,16 +602,26 @@ private:
     void reset_field_state();
     bool load_field_area(std::uint16_t mode_id);
     void update_start_options(const InputState& input);
+    void update_save_load(const InputState& input);
     void update_archetype_menu(const InputState& input);
     void update_intro(const InputState& input);
+    void apply_protagonist_archetype();
     void activate_field_record(std::size_t record_index);
     std::size_t next_available_field_record() const;
+    void select_field_entity_idle(std::size_t direction);
     void select_field_entity_animation(std::size_t direction);
     void update_field_entity_direction(std::int32_t delta_x,
                                        std::int32_t delta_y);
     void update_field_entity_animation(bool movement_attempted);
     void open_field_menu();
     void update_field_menu(const InputState& input);
+    void write_field_menu_text(ScreenWriter& screen, std::int32_t x,
+                               std::int32_t y, std::string_view text) const;
+    void write_startup_text(ScreenWriter& screen, std::int32_t x,
+                            std::int32_t y, std::string_view text) const;
+    void render_startup_background(ScreenWriter& screen) const;
+    bool menu_direction_step(const InputState& input, Button negative,
+                             Button positive, bool horizontal);
     void apply_field_inventory_action();
     void open_clips_menu();
     void update_clips_menu(const InputState& input);
@@ -491,15 +640,68 @@ private:
     std::uint16_t title_width_ = 0;
     std::uint16_t title_height_ = 0;
     std::vector<Rgba8> title_pixels_;
+    NativeImage title_background_{};
+    NativeImage title_logo_plane_{};
+    NativeImage title_text_{};
+    std::array<NativeImage, kNativeTitleAnimationFrameCount>
+        title_sprite_frames_{};
+    std::array<NativeImage, kNativeTitleAnimationFrameCount>
+        title_animation_frames_{};
+    std::uint16_t field_menu_background_width_ = 0;
+    std::uint16_t field_menu_background_height_ = 0;
+    std::vector<Rgba8> field_menu_background_pixels_;
+    std::uint16_t field_menu_inventory_boxes_width_ = 0;
+    std::uint16_t field_menu_inventory_boxes_height_ = 0;
+    std::vector<Rgba8> field_menu_inventory_boxes_pixels_;
+    std::uint16_t field_menu_font_width_ = 0;
+    std::uint16_t field_menu_font_height_ = 0;
+    std::vector<Rgba8> field_menu_font_pixels_;
+    NativeImage startup_font_{};
+    NativeImage startup_cursor_{};
+    std::array<NativeImage, 3> field_menu_runner_portraits_{};
+    std::array<NativeImage, 2> field_menu_selected_cells_{};
+    NativeImage field_menu_cursor_{};
+    std::array<NativeImage, kNativeInventoryItemCount> field_menu_item_art_{};
+    std::array<std::array<NativeImage, 2>, kNativeInventoryItemCount>
+        field_menu_inventory_icons_{};
+    std::array<std::string, 3> field_menu_runner_names_{};
+    std::array<NativeImage, kNativeMenuStatusCount>
+        field_menu_status_bars_{};
+    std::array<std::string, kNativeMenuStatusCount>
+        field_menu_status_names_{};
+    std::array<NativeImage, 14> field_menu_damage_bars_{};
+    std::array<NativeImage, 14> field_menu_drain_bars_{};
+    std::array<NativeImage, 23> field_menu_attack_bars_{};
+    std::array<NativeImage, 23> field_menu_defense_bars_{};
+    std::array<std::string, 13> field_menu_power_labels_{};
+    // ROM 0x11352 writes the selected armor record from D4D50 at C820;
+    // preserve its two source text rows instead of substituting generic
+    // Armor/Clothing labels.
+    std::array<std::array<std::string, 2>, 7> field_menu_armor_labels_{};
     NativeIntroData intro_{};
     std::size_t start_options_selection_ = 0;
+    std::size_t save_load_selection_ = 0;
     std::size_t archetype_selection_ = 0;
+    std::size_t selected_archetype_ = 0;
     std::size_t intro_line_start_ = 0;
+    std::uint64_t intro_frame_ = 0;
     bool start_options_load_rejected_ = false;
+    bool save_load_message_visible_ = false;
+    bool save_load_message_success_ = false;
     std::vector<NativeEntityFrame> entity_frames_;
     std::array<NativeFieldAnimation, 8> field_entity_animations_{};
     std::array<std::array<std::int16_t, 2>, 8> field_direction_table_{};
     NativeFieldEntity field_entity_{};
+    std::array<NativeFieldEntity, kNativeArchetypeChoiceCount>
+        protagonist_archetype_records_{};
+    std::array<NativeFieldEntity, 3> field_entity_records_{};
+    std::array<NativeFieldEntity, 3> field_initial_entity_records_{};
+    // ROM starts a controlled record on its one-frame directional state. The
+    // multi-frame state list is selected only while the movement state is
+    // active; keeping that distinction prevents an idle runner from showing
+    // a walking pose before the first accepted step.
+    std::size_t field_entity_direction_ = 0;
+    bool field_entity_walking_ = false;
     std::array<NativeInventoryItem, kNativeInventoryItemCount>
         inventory_items_{};
     std::array<std::string, kNativeCyberwareCount> cyberware_names_{};
@@ -538,6 +740,7 @@ private:
     // the renderer adapts the reviewed ROM labels to ordinary text.
     std::size_t field_menu_selection_ = 6;
     std::size_t field_menu_row_ = 0;
+    bool field_menu_posture_active_ = false;
     std::size_t clips_menu_selection_ = 2;
     std::size_t clips_last_action_selection_ = 2;
     std::uint32_t clips_action_count_ = 0;
@@ -549,6 +752,10 @@ private:
     std::size_t field_last_command_row_ = 0;
     std::uint32_t field_command_count_ = 0;
     std::uint8_t field_command_message_frames_ = 0;
+    std::uint16_t menu_horizontal_repeat_frames_ = 0;
+    std::uint16_t menu_vertical_repeat_frames_ = 0;
+    std::uint16_t menu_horizontal_repeat_mask_ = 0;
+    std::uint16_t menu_vertical_repeat_mask_ = 0;
     std::uint8_t action_flash_frames_ = 0;
     std::uint32_t action_count_ = 0;
     std::uint32_t runner_switch_attempts_ = 0;

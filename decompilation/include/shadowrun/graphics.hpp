@@ -50,6 +50,15 @@ struct GenesisFieldEntityTemplate {
     // ROM 0x391A reads the entity-record type at +0x3E. This is distinct
     // from the graphics/state kind at +0x0E.
     std::uint16_t record_type = 0;
+    // Command overview source fields: race/archetype indexes and the two
+    // current condition percentages read from each runner record.
+    std::uint8_t race_index = 0;
+    std::uint8_t archetype_index = 0;
+    std::uint8_t physical_value = 0;
+    std::uint8_t mental_value = 0;
+    // ROM command-screen routines 0x11260/0x12A8C use +0x57 as the
+    // one-based equipped-item record shown in the center panel.
+    std::uint8_t active_item_code = 0;
     std::uint8_t flags_10 = 0;
     std::uint8_t flags_11 = 0;
     std::uint32_t state_pointer = 0;
@@ -62,6 +71,10 @@ struct GenesisFieldEntityTemplate {
     // the following state branch. Preserve both signed bytes at extraction.
     std::int8_t display_state = 0;
     std::int8_t display_substate = 0;
+    // ROM 0x3602 reads +0x9B to select the item-icon palette line.
+    std::uint8_t display_palette_state = 0;
+    // ROM 0x11928 indexes the five command-screen status strips with +0x4D.
+    std::uint8_t menu_status_index = 0;
     std::array<std::uint8_t, native::kNativeInventorySlotCount>
         inventory_item_codes{};
     std::array<std::uint8_t, native::kNativeInventorySlotCount>
@@ -142,8 +155,9 @@ std::array<std::string,
 read_genesis_attribute_skill_catalog(const std::vector<std::uint8_t>& rom);
 
 // Extract the startup menu labels at ROM 0x1B6499 and the 0xFF-delimited
-// opening story block at ROM 0x5B7D8. This is text data only; no Genesis text
-// renderer or VDP state is retained at the native boundary.
+// opening story block at ROM 0x5B7D8. The native boundary retains ordinary
+// host text; the opening renderer follows the source routine's timed C0DA
+// write groups instead of carrying VDP state into the runtime.
 native::NativeIntroData read_genesis_intro_data(
     const std::vector<std::uint8_t>& rom);
 
@@ -311,13 +325,86 @@ decode_genesis_field_entity_animation_sequences(
 // Reconstruct the startup scene assembled by ROM 0x1D00/0x1D58. The source
 // offsets and dimensions are the operands of that path, not guessed graphic
 // locations: 0x1F310E is the compressed pattern stream, 0x67DF6 is its
-// delta-coded 40-column tilemap, and 0x1FF0 is the four-line palette image
-// selected by the 0x1FD8 resource setup block.
+// delta-coded 40-column tilemap. The circuit field and logo/text layers are
+// kept as separate host layers because the ROM reveals and updates them at
+// different times during startup.
 RgbaImage decode_genesis_startup_screen(
     const std::vector<std::uint8_t>& rom,
     std::size_t pattern_stream_offset = 0x1F310E,
     std::size_t tilemap_stream_offset = 0x67DF6,
-    std::size_t palette_offset = 0x1FF0);
+    std::size_t palette_offset = 0x1FF0,
+    std::uint16_t name_word_mask = 0x4000);
+
+// Title layers are extracted separately because the ROM does not present a
+// completed bitmap in one operation. These functions return host RGBA
+// surfaces, with transparent pixels where the corresponding Genesis plane
+// leaves the underlying layer visible.
+RgbaImage decode_genesis_title_background(
+    const std::vector<std::uint8_t>& rom);
+RgbaImage decode_genesis_title_logo_plane(
+    const std::vector<std::uint8_t>& rom);
+RgbaImage decode_genesis_title_text(
+    const std::vector<std::uint8_t>& rom);
+std::array<RgbaImage, native::kNativeTitleAnimationFrameCount>
+decode_genesis_title_sprite_frames(
+    const std::vector<std::uint8_t>& rom);
+RgbaImage decode_genesis_startup_font(
+    const std::vector<std::uint8_t>& rom);
+RgbaImage decode_genesis_startup_cursor(
+    const std::vector<std::uint8_t>& rom);
+
+// Compose the title frame after the ROM 0x1DCA/0x1DF6 VRAM text writes. The
+// returned image contains the extracted logo plus the ROM's own glyph tiles
+// for PRESS START and the copyright line; the native runtime supplies the
+// original 10/64-frame prompt blanking cadence.
+RgbaImage decode_genesis_title_screen(
+    const std::vector<std::uint8_t>& rom);
+
+// Extract the six source title sprite phases used by ROM 0x1C6A. Each image
+// is fully composed for the host surface; no VDP/SAT state is required by
+// the native runtime.
+std::array<RgbaImage, native::kNativeTitleAnimationFrameCount>
+decode_genesis_title_animation_frames(
+    const std::vector<std::uint8_t>& rom);
+
+// Reconstruct the field command screen's plane-B base from the exact 0x1232
+// writers called by ROM 0x10F50. This is host RGBA output, not a Genesis
+// name-table or palette dependency retained by the runtime.
+RgbaImage decode_genesis_field_menu_background(
+    const std::vector<std::uint8_t>& rom);
+
+RgbaImage decode_genesis_field_menu_inventory_boxes(
+    const std::vector<std::uint8_t>& rom);
+
+RgbaImage decode_genesis_field_menu_font(
+    const std::vector<std::uint8_t>& rom);
+
+// Extract the dynamic command-screen artwork emitted after the static
+// 0x10F50 plane setup. These are host RGBA equivalents of the ROM's
+// 0x110BC runner portrait and 0x11136/0x11190 item-icon writers.
+std::array<RgbaImage, 3> decode_genesis_field_menu_runner_portraits(
+    const std::vector<std::uint8_t>& rom);
+std::array<RgbaImage, 2> decode_genesis_field_menu_selected_cells(
+    const std::vector<std::uint8_t>& rom);
+RgbaImage decode_genesis_field_menu_cursor(
+    const std::vector<std::uint8_t>& rom);
+std::array<RgbaImage, native::kNativeInventoryItemCount>
+decode_genesis_field_menu_item_art(const std::vector<std::uint8_t>& rom);
+std::array<std::array<RgbaImage, 2>, native::kNativeInventoryItemCount>
+decode_genesis_field_menu_inventory_icons(
+    const std::vector<std::uint8_t>& rom);
+std::array<RgbaImage, native::kNativeMenuStatusCount>
+decode_genesis_field_menu_status_bars(const std::vector<std::uint8_t>& rom);
+
+// Extract the source item-detail tables used by 0x12F70, 0x12FA4, and
+// 0x13000. Each bar is a seven-tile name-table row; power labels are the
+// twelve-byte FF-terminated strings selected by the item record's +0x26.
+std::array<RgbaImage, 14> decode_genesis_field_menu_damage_bars(
+    const std::vector<std::uint8_t>& rom);
+std::array<RgbaImage, 14> decode_genesis_field_menu_drain_bars(
+    const std::vector<std::uint8_t>& rom);
+std::array<std::string, 13> decode_genesis_field_menu_power_labels(
+    const std::vector<std::uint8_t>& rom);
 
 // Write a 32-bit uncompressed BMP. This is intentionally dependency-free and
 // can be opened directly by Windows or used as an intermediate asset format.
