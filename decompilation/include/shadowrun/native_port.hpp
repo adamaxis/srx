@@ -80,6 +80,7 @@ enum class NativeScene {
     Field,
     FieldDialog,
     FieldMenu,
+    PocketSecretaryMenu,
     ClipsMenu,
     CyberwareMenu,
     AttributesMenu,
@@ -477,6 +478,18 @@ public:
     bool has_terrain() const { return !field_terrain_.statuses.empty(); }
     bool has_entity_frame() const { return !entity_frames_.empty(); }
     bool field_menu_open() const { return scene_ == NativeScene::FieldMenu; }
+    bool pocket_secretary_menu_open() const {
+        return scene_ == NativeScene::PocketSecretaryMenu;
+    }
+    std::size_t pocket_secretary_selection() const {
+        return pocket_secretary_selection_;
+    }
+    std::size_t pocket_secretary_option_count() const {
+        return pocket_secretary_save_load_enabled_ ? 5U : 4U;
+    }
+    bool pocket_secretary_save_load_enabled() const {
+        return pocket_secretary_save_load_enabled_;
+    }
     bool field_dialog_open() const {
         return scene_ == NativeScene::FieldDialog;
     }
@@ -761,6 +774,8 @@ private:
     void update_field_entity_animation(bool movement_attempted);
     void open_field_menu();
     void update_field_menu(const InputState& input);
+    void open_pocket_secretary_menu();
+    void update_pocket_secretary_menu(const InputState& input);
     void write_field_menu_text(ScreenWriter& screen, std::int32_t x,
                                std::int32_t y, std::string_view text) const;
     void write_startup_text(ScreenWriter& screen, std::int32_t x,
@@ -910,6 +925,10 @@ private:
     std::size_t field_menu_selection_ = 6;
     std::size_t field_menu_row_ = 0;
     bool field_menu_posture_active_ = false;
+    // ROM 0xC2A6 draws five Pocket Secretary entries in ordinary field mode;
+    // the source removes Save/Load in its restricted mode branches.
+    std::size_t pocket_secretary_selection_ = 0;
+    bool pocket_secretary_save_load_enabled_ = true;
     // ROM 0x11740 saves the inventory column/row, sets the action selector to
     // 2, and enters the four-choice loop at 0x117D4. Keep that focus separate
     // from the parent inventory cursor so the first button press cannot equip.

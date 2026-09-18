@@ -207,7 +207,7 @@ The primary native extraction paths are:
 | `0xD2072`, 15 pointers | cyberware names |
 | `0xC1A2A`, 20 pointers | attribute/skill names |
 | `0xD1D28`, `0xD1D3A` | command labels |
-| `0xD1D94`, `0xD1E6C` | Pocket Secretary menu text sets |
+| `0xC1418` | Pocket Secretary menu text set |
 
 Palettes are source data, not a runtime restriction. The native renderer uses
 RGBA pixels, but the index-to-color conversion must happen from the correct
@@ -618,11 +618,13 @@ selection, costs, effects, and failure messages remain `PENDING`.
 ### Pocket Secretary: `0xC2A6`
 
 Pocket Secretary draws through `0xC3E6`, with the source option/label tables at
-`0xD1D94` and `0xD1E6C`. The cursor is maintained at `0xC376`. The source
-debug/state byte at `FFF101` changes the visible bounds between four and five
-entries, which is evidence that this panel has state-dependent contents and
-is not a decorative list. Its option actions and return transitions need a
-separate trace from the ordinary command overview.
+`0xC1418` and the shared command text resources at `0xD1D94`/`0xD1E6C`. The
+cursor is maintained at `0xC376`. The source debug/state byte at `FFF101`
+changes the visible bounds between four and five entries, which is evidence
+that this panel has state-dependent contents and is not a decorative list.
+The native base now presents the verified five-row field-mode order and sends
+Save/Load to the existing `0x59172` screen; the four other row actions and the
+restricted four-row branch remain separate traces.
 
 ### Matrix
 
@@ -748,7 +750,9 @@ entry command, loop/stop condition, action sounds, and exit command.
 | equipment | audited path | possession/equipment distinction and major dispatch branches identified |
 | posture | partial | normal calculation branch translated/tested; special/combat consumers pending |
 | clips/attributes/cyberware | partial | panel sources identified; action/effect mutations pending |
-| Magic/Pocket Secretary/Matrix | pending | state-specific action paths and transitions incomplete |
+| Magic | pending | spell-specific action paths and transitions incomplete |
+| Pocket Secretary | partial | five-row field-mode menu and Save/Load entry translated; row effects and restricted-mode gates pending |
+| Matrix | pending | state-specific action paths and transitions incomplete |
 | combat | pending | posture consumers, actions, damage, AI, and result presentation incomplete |
 | audio | partial | command boundary/ring identified; source timing and asset mapping pending |
 

@@ -370,6 +370,41 @@ void test_no_clip_gate(const std::vector<std::uint8_t>& rom) {
     assert(shell.clips_action_message() == "is out of ammo clips!");
 }
 
+void test_pocket_secretary_menu(const std::vector<std::uint8_t>& rom) {
+    // ROM 0x10E4E dispatches command selector six to 0xC2A6. The C1418
+    // table has a header/separator followed by five rows; Save/Load is the
+    // fifth row in ordinary field mode.
+    auto assets = shadowrun::graphics::decode_genesis_native_assets(rom);
+    NativePortShell shell("SHADOWRUN", std::move(assets));
+    enter_field(shell);
+    press(shell, Button::Start);
+    assert(shell.scene() == NativeScene::FieldMenu);
+    assert(shell.field_menu_selection() == 6U);
+    press(shell, Button::A);
+    assert(shell.pocket_secretary_menu_open());
+    assert(shell.pocket_secretary_option_count() == 5U);
+    assert(shell.pocket_secretary_selection() == 0U);
+
+    SoftwareScreen screen;
+    shell.render(screen);
+    assert(screen.pixel(56, 24) != 0U);
+    // The screen-level test is intentionally state-based because the source
+    // C0DA writer is a tile-plane operation, not a host checklist.
+    for (std::size_t expected = 1U; expected < 5U; ++expected) {
+        press(shell, Button::Down);
+        assert(shell.pocket_secretary_selection() == expected);
+    }
+    press(shell, Button::Down);
+    assert(shell.pocket_secretary_selection() == 0U);
+    press(shell, Button::Up);
+    assert(shell.pocket_secretary_selection() == 4U);
+    press(shell, Button::A);
+    assert(shell.scene() == NativeScene::SaveLoad);
+
+    press(shell, Button::B);
+    assert(shell.scene() == NativeScene::StartOptions);
+}
+
 void test_clip_reload(const std::vector<std::uint8_t>& rom) {
     auto assets = shadowrun::graphics::decode_genesis_native_assets(rom);
     auto& weapon = assets.protagonist_archetype_records[0];
@@ -783,6 +818,7 @@ int main() {
     test_startup_behavior_and_rendering(rom, assets);
     test_field_menu_behavior_and_rendering(rom, assets);
     test_no_clip_gate(rom);
+    test_pocket_secretary_menu(rom);
     test_clip_reload(rom);
     test_clip_item_gate(rom);
     test_clip_trade_menu(rom);

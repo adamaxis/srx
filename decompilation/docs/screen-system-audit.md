@@ -282,10 +282,12 @@ save/load. Save/Load is disabled in buildings and during combat. A blank entry
 under Save/Load is an intentional debug-menu path in the shipped ROM, not a
 missing label to fill with a made-up option.
 
-Native status: the command selector reaches the source Pocket Secretary label,
-but its submenu rows, class/mode gates, save/load effects, runner/contact
-records, and debug path are not yet ported. The next pass must recover the
-`0xC2A6` loop and its text/table pointers before presenting those choices.
+Native status: the `0xC2A6` panel now uses the extracted C1418 option order,
+has a five-row cursor loop in ordinary field mode, returns through B/Start,
+and sends Save/Load to the existing two-slot `0x59172` screen. Notebook,
+Group Items, Cyberdeck, and Dismiss Runner remain source-selected but have no
+native effects yet. The restricted four-row bound, class/combat gates, runner
+and contact records, and debug path still require their own traces.
 
 ## Magic, Matrix, and combat screens
 
@@ -342,7 +344,7 @@ of a port.
 | Opening | `0x59C5E` and timed groups | Partial | Text/timing/skip are present; animated art and music are pending |
 | Field movement | `0x3084`, `0x2B34`, `0xE7C8`, `0x5FDC`, `0x600E` | Partial | Movement, four-corner collision, eight directional two-frame states, and source timer classification are present; NPC/entity logic outside the reviewed player path remains pending |
 | Area transitions | `0x5A62`, `0x172CDC`, `0x20E48` | Partial | The reviewed mode-2 C0/event-0 tuple loads mode `0x14` and enters the source Stoker dialogue state; every building reaction and reverse transition is not |
-| Command overview | `0x10D30`, `0x10F50`, `0x111E8` | Partial | Normal overview and selector are present; Magic/Pocket Secretary handlers are pending |
+| Command overview | `0x10D30`, `0x10F50`, `0x111E8` | Partial | Normal overview and selector are present; Magic and Pocket Secretary row handlers remain pending |
 | Inventory navigation | `0x11506`..`0x11678` | Implemented | Eight-cell cursor and source column/row semantics are covered |
 | Equipment action | `0x11740`..`0x118C6`, `0x12148`, `0x12168`..`0x125F8`, `0x12634`..`0x129FE` | Partial | Two-step source action loop, Equip/Unequip, armor, Discard, Trade, and First Aid target/effect/result paths are present; later item handlers remain |
 | Posture and bars | `0x119CE`, `0x11ABE`, `0x11AE4`, `0x12CEE` | Partial | Normal equipped-item attack/defense calculation is source-derived; special negative `+0x56` path and combat consumers are pending |
@@ -350,7 +352,7 @@ of a port.
 | Attributes/skills | `0xD01C` | Partial | Read-only display is present; mutation branches are pending |
 | Cyberware | `0x11950` | Partial | Installed-bit display is present; mutation flows are pending |
 | Runner switching | `0x391A` | Partial | No-eligible-runner behavior is covered; recruited roster is pending |
-| Pocket Secretary | `0xC2A6` | Pending | Label only; submenu, mode gates, and effects are pending |
+| Pocket Secretary | `0xC2A6`, `0xC3E6`, `0xC376` | Partial | Source five-row order, cursor wrap, return path, and Save/Load entry are present; four row effects and restricted-mode gates remain |
 | Magic | `0xFBA6` | Pending | Handler and spell state are pending |
 | Matrix/cyberdeck | source deck/program loop | Pending | Separate from Magic and command overview |
 | Field combat | source target/action loops | Pending | Posture consumers, damage, ammo/spell drain, and animation are pending |

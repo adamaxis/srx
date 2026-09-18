@@ -257,6 +257,18 @@ constexpr std::array<std::string_view, 7> kFieldMenuLabels{{
     "Pocket Secretary ",
 }};
 
+// ROM 0xC2A6 passes this source table to the common menu writer at 0xC0DA.
+// Main Menu and the separator at 0xC1418/0xC1423 are panel text, not
+// selectable entries; the five rows beginning at 0xC1430 are the cursor's
+// actual option range. Restricted source modes omit the final Save/Load row.
+constexpr std::array<std::string_view, 5> kPocketSecretaryLabels{{
+    "Notebook",
+    "Group Items",
+    "Cyberdeck",
+    "Dismiss Runner",
+    "Save/Load Game",
+}};
+
 // ROM 0x12B8E..0x12BBA chooses the literal strings at 0xD29C4 (ammo),
 // 0xD29CA (uses), and 0xD29D0 (rtng). Codes 0x15..0x17 and 0x29..0x2B
 // fall through to item-specific handlers; armor >=0x2C uses the separate
@@ -1258,6 +1270,8 @@ void NativePortShell::open_field_menu() {
     field_menu_selection_ = 6;
     field_menu_row_ = 0;
     field_menu_posture_active_ = false;
+    pocket_secretary_selection_ = 0;
+    pocket_secretary_save_load_enabled_ = true;
     field_menu_action_active_ = false;
     field_menu_action_selection_ = 2;
     field_discard_confirmation_active_ = false;
@@ -2071,6 +2085,59 @@ void NativePortShell::render_startup_background(ScreenWriter& screen) const {
     screen.clear({0x00, 0x00, 0x00, 0xFF});
 }
 
+void NativePortShell::open_pocket_secretary_menu() {
+    // ROM 0x10E4E dispatches selector six to 0xC2A6. The source cursor is
+    // reset by the panel entry path, while the field command selector remains
+    // six so return restores Pocket Secretary rather than an unrelated row.
+    scene_ = NativeScene::PocketSecretaryMenu;
+    pocket_secretary_selection_ = 0;
+    pocket_secretary_save_load_enabled_ = true;
+    menu_horizontal_repeat_frames_ = 0;
+    menu_vertical_repeat_frames_ = 0;
+    menu_horizontal_repeat_mask_ = 0;
+    menu_vertical_repeat_mask_ = 0;
+}
+
+void NativePortShell::update_pocket_secretary_menu(const InputState& input) {
+    const auto option_count = pocket_secretary_option_count();
+    const auto vertical_step =
+        menu_direction_step(input, Button::Up, Button::Down, false);
+    if (vertical_step && input.is_held(Button::Up) &&
+        !input.is_held(Button::Down)) {
+        pocket_secretary_selection_ = pocket_secretary_selection_ == 0U
+            ? option_count - 1U : pocket_secretary_selection_ - 1U;
+    } else if (vertical_step && input.is_held(Button::Down) &&
+               !input.is_held(Button::Up)) {
+        pocket_secretary_selection_ =
+            (pocket_secretary_selection_ + 1U) % option_count;
+    }
+
+    // C2A6's ordinary panel returns to the command loop on the same B/Start
+    // boundary as the other command screens. The source A dispatches the
+    // selected row; only Save/Load is currently a reconstructed destination.
+    if (input.was_pressed(Button::Start) || input.was_pressed(Button::B)) {
+        scene_ = NativeScene::FieldMenu;
+        field_menu_selection_ = 6;
+        return;
+    }
+    if (!input.was_pressed(Button::A)) {
+        return;
+    }
+
+    if (pocket_secretary_save_load_enabled_ &&
+        pocket_secretary_selection_ == 4U) {
+        // The source Save/Load row enters the same two-slot 0x59172 screen;
+        // it is not a New Game shortcut and does not alter field state here.
+        scene_ = NativeScene::SaveLoad;
+        save_load_selection_ = 0;
+        save_load_message_visible_ = false;
+        save_load_message_success_ = false;
+        return;
+    }
+    // Notebook, Group Items, Cyberdeck, and Dismiss Runner retain their
+    // source selection boundary until their individual handlers are traced.
+}
+
 void NativePortShell::update_field_menu(const InputState& input) {
     if (field_menu_action_active_) {
         update_field_inventory_action(input);
@@ -2190,6 +2257,8 @@ void NativePortShell::update_field_menu(const InputState& input) {
             open_cyberware_menu();
         } else if (field_menu_selection_ == 3U) {
             open_attributes_menu();
+        } else if (field_menu_selection_ == 6U) {
+            open_pocket_secretary_menu();
         }
         field_command_message_frames_ = 30;
         if (field_menu_selection_ >= 2U) {
@@ -2742,6 +2811,12 @@ void NativePortShell::update(const InputState& input) {
 
     if (scene_ == NativeScene::FieldMenu) {
         update_field_menu(input);
+        ++frame_number_;
+        return;
+    }
+
+    if (scene_ == NativeScene::PocketSecretaryMenu) {
+        update_pocket_secretary_menu(input);
         ++frame_number_;
         return;
     }
@@ -3692,6 +3767,33 @@ void NativePortShell::render(ScreenWriter& screen) const {
                     screen, 112, 200,
                     kFieldMenuLabels[field_menu_selection_]);
             }
+        } else if (scene_ == NativeScene::PocketSecretaryMenu) {
+            // ROM 0xC2A6 clears/loads its own menu plane before 0xC0DA emits
+            // the C1418 table. Keep the extracted command font and the
+            // source five-row ordering visible while the remaining row
+            // handlers are brought across individually.
+            screen.fill_rect(56, 24, 208, 168,
+                             {0x02, 0x08, 0x18, 0xF0});
+            screen.fill_rect(56, 24, 208, 2,
+                             {0x00, 0xA8, 0xC8, 0xFF});
+            write_field_menu_text(screen, 112, 32, " Main Menu");
+            const auto option_count = pocket_secretary_option_count();
+            for (std::size_t index = 0; index < option_count; ++index) {
+                const auto selected = index == pocket_secretary_selection_;
+                const auto y = 72 + static_cast<std::int32_t>(index) * 16;
+                if (selected) {
+                    screen.fill_rect(80, y - 2, 176, 13,
+                                     {0x00, 0x68, 0x88, 0xFF});
+                    if (!field_menu_cursor_.pixels.empty()) {
+                        screen.blit_rgba(64, y - 10, field_menu_cursor_.width,
+                                         field_menu_cursor_.height,
+                                         field_menu_cursor_.pixels);
+                    }
+                }
+                write_field_menu_text(screen, 96, y,
+                                      kPocketSecretaryLabels[index]);
+            }
+            write_field_menu_text(screen, 80, 176, " A SELECT  B RETURN");
         } else if (scene_ == NativeScene::ClipsMenu) {
             screen.fill_rect(24, 44, 272, 144,
                              {0x02, 0x08, 0x18, 0xF0});
