@@ -1,0 +1,11 @@
+rom_entry\tsubsystem\tnative_owner\tstatus\tevidence_or_coverage\tnext
+0x1A9E/0x1C6A/0x1DCA/0x1DF6/0x1E4E\ttitle animation and startup\tNativePortShell::render_title\tpartial\tgraphics::decode_genesis_title_animation_frames; title screenshots\tmatch timing, background motion, and skip-to-end behavior
+0x10F50/0x1232\tfield command screen\tNativePortShell::render_field_menu\tpartial\tgraphics::decode_genesis_field_menu_layer and font/cursor assets\tcomplete source-accurate menu state and layout audit
+0x12148/0x12168/0x12A8C\tinventory and item detail\tNativePortShell::render_item_detail\tpartial\titem art, bars, labels, and 0x6AC46 value table are extracted\timplement selection/equip two-step behavior and all item types
+0x12F70/0x12FA4/0x13000\titem detail rows\tNativePortShell::render_item_detail\tpartial\tdamage/drain bars and power labels extracted\tverify per-item row visibility against source branches
+0x2B34/0xE7C8/0xE8A0-0xEAD2\tfield movement and collision\tNativePortShell::update; terrain::probe\tported\tmode-2 rectangles and direct bounds tests\tadd building/event transition paths
+0x391A\trunner roster/switch\tNativePortShell::update\tpartial\tsource roster gate identified\tverify no-runner switch rejection and sound-only path
+0x5A62/0x5FDC\tentity projection and walking\tentity_projection; NativePortShell::render\tpartial\tfield entity state and direction assets\tsource-match all four walking directions and frame timing
+0x17708/0x18252\tfield HUD and VDP setup\tNativePortShell::render_field\tpending\tROM call paths cataloged\textract canonical HUD resources and remove layout guesses
+matrix dispatch paths\tmatrix menu\tNativePortShell::render_matrix\tpending\tnot yet tied to native code\taudit matrix screens before implementation
+Z80/music dispatch paths\taudio\tnative audio backend\tpending\tsource boundary only\textract sequences and match playback timing

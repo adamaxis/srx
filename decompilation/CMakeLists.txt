@@ -58,31 +58,12 @@ add_executable(shadowrun_graphics_extract
     src/graphics_extract.cpp
 )
 target_link_libraries(shadowrun_graphics_extract PRIVATE shadowrun_port)
-add_test(NAME shadowrun_graphics_startup
-    COMMAND shadowrun_graphics_extract
-        "${CMAKE_CURRENT_SOURCE_DIR}/input/shadowrun_genesis_us.bin"
-        "${CMAKE_CURRENT_BINARY_DIR}/startup_scene.bmp" --title)
 
 if (WIN32)
     add_executable(shadowrun_native
         src/native_main.cpp
     )
     target_link_libraries(shadowrun_native PRIVATE shadowrun_port user32 gdi32)
-
-    set(SHADOWRUN_NATIVE_ASSET_PACK
-        "${CMAKE_CURRENT_BINARY_DIR}/shadowrun_native.srna")
-    add_custom_command(
-        OUTPUT "${SHADOWRUN_NATIVE_ASSET_PACK}"
-        COMMAND $<TARGET_FILE:shadowrun_graphics_extract>
-            "${CMAKE_CURRENT_SOURCE_DIR}/input/shadowrun_genesis_us.bin"
-            "${SHADOWRUN_NATIVE_ASSET_PACK}" --native-pack
-        DEPENDS shadowrun_graphics_extract
-            "${CMAKE_CURRENT_SOURCE_DIR}/input/shadowrun_genesis_us.bin"
-        COMMENT "Extracting native Shadowrun host assets"
-        VERBATIM)
-    add_custom_target(shadowrun_native_assets
-        DEPENDS "${SHADOWRUN_NATIVE_ASSET_PACK}")
-    add_dependencies(shadowrun_native shadowrun_native_assets)
 endif()
 
 if (MSVC)

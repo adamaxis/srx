@@ -8,5 +8,11 @@
 /decompilation/ShadowRunGenesis.rep/
 /decompilation/analysis/ghidra-*/
 
+# Host-rendered diagnostics and explicit extraction outputs.
+/decompilation/assets/**/*.bmp
+/decompilation/assets/**/*.png
+/decompilation/assets/**/*.jpg
+/decompilation/assets/native/*.srna
+
 # Local IDE state is machine-specific.
 /.vscode/

@@ -355,6 +355,7 @@ struct NativePortAssets {
     // not synthesize a percentage bar from a guessed item statistic.
     std::array<NativeImage, 14> field_menu_damage_bars{};
     std::array<NativeImage, 14> field_menu_drain_bars{};
+    std::array<NativeImage, 256> field_menu_detail_values{};
     // ROM 0x12CEE selects the 13-tile command-screen attack/defense strips
     // from CF3D4 and CF610. These are separate from the seven-tile weapon
     // damage/drain bars above.
@@ -716,6 +717,7 @@ private:
         field_menu_status_names_{};
     std::array<NativeImage, 14> field_menu_damage_bars_{};
     std::array<NativeImage, 14> field_menu_drain_bars_{};
+    std::array<NativeImage, 256> field_menu_detail_values_{};
     std::array<NativeImage, 23> field_menu_attack_bars_{};
     std::array<NativeImage, 23> field_menu_defense_bars_{};
     std::array<std::string, 13> field_menu_power_labels_{};

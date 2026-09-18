@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -30,24 +31,6 @@ std::vector<std::uint8_t> read_file(const std::filesystem::path& path) {
     }
     return std::vector<std::uint8_t>(
         std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
-}
-
-std::vector<std::uint8_t> load_rom(int argc, char** argv) {
-    if (argc > 1) {
-        return read_file(argv[1]);
-    }
-    const auto current = std::filesystem::current_path();
-    const std::filesystem::path relative_candidates[] = {
-        current / ".." / "input" / "shadowrun_genesis_us.bin",
-        current / "decompilation" / "input" / "shadowrun_genesis_us.bin",
-    };
-    for (const auto& candidate : relative_candidates) {
-        auto rom = read_file(candidate);
-        if (!rom.empty()) {
-            return rom;
-        }
-    }
-    return {};
 }
 
 LRESULT CALLBACK window_proc(HWND window, UINT message,
@@ -133,17 +116,26 @@ int main(int argc, char** argv) {
     SoftwareScreen screen;
     NativePortShell game("SHADOWRUN");
     bool loaded_assets = false;
-    if (argc > 1 && std::filesystem::path(argv[1]).extension() == ".srna") {
+    if (argc > 1) {
+        const std::filesystem::path explicit_pack(argv[1]);
+        if (explicit_pack.extension() != ".srna") {
+            std::cerr << "shadowrun_native expects an extracted .srna asset pack; "
+                         "ROM input is accepted only by explicit analysis tools.\n";
+            return 1;
+        }
         game = NativePortShell(
             "SHADOWRUN",
-            shadowrun::graphics::read_native_asset_pack(argv[1]));
+            shadowrun::graphics::read_native_asset_pack(explicit_pack.string()));
         loaded_assets = true;
     } else if (argc == 1) {
         const auto current = std::filesystem::current_path();
         const std::filesystem::path asset_candidates[] = {
-            current / "shadowrun_native.srna",
-            current / "assets" / "shadowrun_native.srna",
-            current / "decompilation" / "assets" / "shadowrun_native.srna",
+            current / "assets" / "native" / "shadowrun_native.srna",
+            current / ".." / "assets" / "native" / "shadowrun_native.srna",
+            current / "decompilation" / "assets" / "native" /
+                "shadowrun_native.srna",
+            current / ".." / "decompilation" / "assets" / "native" /
+                "shadowrun_native.srna",
         };
         for (const auto& candidate : asset_candidates) {
             if (!std::filesystem::exists(candidate)) {
@@ -157,10 +149,9 @@ int main(int argc, char** argv) {
         }
     }
     if (!loaded_assets) {
-        const auto rom = load_rom(argc, argv);
-        if (!rom.empty()) {
-            game = NativePortShell("SHADOWRUN", rom);
-        }
+        std::cerr << "No extracted assets found. Run tools/extract_assets.ps1 "
+                     "before starting the native frontend.\n";
+        return 1;
     }
     WindowContext context{&screen, false};
 

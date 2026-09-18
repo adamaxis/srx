@@ -233,19 +233,23 @@ renderer-independent `terrain::probe` ports the direct `0xE7C8` bounds/status
 path and its `0xE8A0/0xE9EE/0xEA36/0xEAD2` helpers over this host grid.
 
 ```powershell
-cmake --build 'C:\Github\shadowrun\decompilation\build-debug-verify'
+cmake --build 'C:\Github\shadowrun\decompilation\build-debug-verify' --target shadowrun_native shadowrun_graphics_extract
+& 'C:\Github\shadowrun\decompilation\tools\extract_assets.ps1' `
+  -BuildDir 'C:\Github\shadowrun\decompilation\build-debug-verify'
 & 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_native.exe'
 ```
 
-On Windows, the build also extracts `shadowrun_native.srna` beside the
-executable. When launched from that build directory, the native frontend finds
-the pack automatically; the ROM is only an input to the build-time extractor.
+The C++ build never runs extraction. Run `tools/extract_assets.ps1` only when
+the reviewed extracted resources need to be regenerated. It writes the
+organized assets under `assets/`, including the runtime pack at
+`assets/native/shadowrun_native.srna`; the native frontend finds that pack from
+the repository or build working directory.
 
-To load the ROM explicitly from any working directory:
+To load an extracted pack explicitly from any working directory:
 
 ```powershell
 & 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_native.exe' `
-  'C:\Github\shadowrun\decompilation\input\shadowrun_genesis_us.bin'
+  'C:\Github\shadowrun\decompilation\assets\native\shadowrun_native.srna'
 ```
 
 The same startup frame can be exported as a diagnostic BMP:
@@ -277,13 +281,13 @@ also be exported directly:
   'C:\Github\shadowrun\decompilation\build-debug-verify\field_entity_state_2.bmp' --field-entity-state 2
 & 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_graphics_extract.exe' `
   'C:\Github\shadowrun\decompilation\input\shadowrun_genesis_us.bin' `
-  'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_native.srna' --native-pack
+  'C:\Github\shadowrun\decompilation\assets\native\shadowrun_native.srna' --native-pack
 ```
 
 The `.srna` pack contains the expanded RGBA title/field/entity images, the
-host terrain grid, initial field positions/camera, and the reviewed native
-entity/direction state. `shadowrun_native.exe` accepts that pack path directly,
-so the Windows runtime can start without reading the ROM:
+host terrain grid, initial field positions/camera, item-detail value images,
+and the reviewed native entity/direction state. `shadowrun_native.exe` accepts
+that pack path directly, so the Windows runtime starts without reading the ROM:
 
 The graphics extractor can also render the field from the pack alone. This
 keeps the extraction artifact path identical to what a future SDL/DirectX
@@ -291,13 +295,13 @@ frontend will consume:
 
 ```powershell
 & 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_graphics_extract.exe' `
-  'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_native.srna' `
+  'C:\Github\shadowrun\decompilation\assets\native\shadowrun_native.srna' `
   'C:\Github\shadowrun\decompilation\build-debug-verify\native_field_scene_from_pack.bmp' --native-field-pack
 ```
 
 ```powershell
 & 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_native.exe' `
-  'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_native.srna'
+  'C:\Github\shadowrun\decompilation\assets\native\shadowrun_native.srna'
 ```
 
 The dependency-free graphics converter accepts offsets recovered from the ROM

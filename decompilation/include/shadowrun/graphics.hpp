@@ -403,6 +403,12 @@ std::array<RgbaImage, 14> decode_genesis_field_menu_damage_bars(
     const std::vector<std::uint8_t>& rom);
 std::array<RgbaImage, 14> decode_genesis_field_menu_drain_bars(
     const std::vector<std::uint8_t>& rom);
+// ROM 0x12A8C selects a two-tile value from 0x6AC46 using the selected
+// inventory record's +0x6E byte. Entries are kept by source index so the
+// native command screen can render Uses/Rtng values without inventing a
+// numeric conversion.
+std::array<RgbaImage, 256> decode_genesis_field_menu_detail_values(
+    const std::vector<std::uint8_t>& rom);
 std::array<std::string, 13> decode_genesis_field_menu_power_labels(
     const std::vector<std::uint8_t>& rom);
 

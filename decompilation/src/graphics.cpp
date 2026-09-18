@@ -694,6 +694,12 @@ native::NativePortAssets decode_genesis_native_assets(
             drain_bars[index].width, drain_bars[index].height,
             drain_bars[index].pixels};
     }
+    const auto detail_values = decode_genesis_field_menu_detail_values(rom);
+    for (std::size_t index = 0; index < detail_values.size(); ++index) {
+        assets.field_menu_detail_values[index] = {
+            detail_values[index].width, detail_values[index].height,
+            detail_values[index].pixels};
+    }
     const auto attack_bars = decode_genesis_field_menu_stat_bars(
         rom, 0xCF3D4U, "Genesis attack bar table is truncated");
     const auto defense_bars = decode_genesis_field_menu_stat_bars(
@@ -956,7 +962,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 25);
+    write_u16(output, 26);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     for (const auto& title_frame : assets.title_animation_frames) {
@@ -1004,6 +1010,9 @@ void write_native_asset_pack(const std::string& path,
     }
     for (const auto& bar : assets.field_menu_drain_bars) {
         write_native_image(output, bar);
+    }
+    for (const auto& value : assets.field_menu_detail_values) {
+        write_native_image(output, value);
     }
     for (const auto& bar : assets.field_menu_attack_bars) {
         write_native_image(output, bar);
@@ -1322,7 +1331,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 25U)) {
+        (version < 2U || version > 26U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -1388,6 +1397,11 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
                     }
                     for (auto& bar : assets.field_menu_drain_bars) {
                         bar = read_native_image(input);
+                    }
+                    if (version >= 26U) {
+                        for (auto& value : assets.field_menu_detail_values) {
+                            value = read_native_image(input);
+                        }
                     }
                     if (version >= 21U) {
                         for (auto& bar : assets.field_menu_attack_bars) {
@@ -2757,6 +2771,28 @@ std::array<RgbaImage, 14> decode_genesis_field_menu_drain_bars(
     // 0x12FA4: D2*0x0E from CF8F0, written at C4AA with palette line one.
     return decode_genesis_field_menu_detail_bars(
         rom, 0xCF8F0U, "Genesis drain bar table is truncated");
+}
+
+std::array<RgbaImage, 256> decode_genesis_field_menu_detail_values(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kPatternStreamOffset = 0xC8BB6U;
+    constexpr std::size_t kPatternVramOffset = 0x5C80U;
+    constexpr std::size_t kValueTableOffset = 0x6AC46U;
+    constexpr std::size_t kEntryStride = 4U;
+
+    // 0x12A8C uses the same command-screen pattern upload as the detail bars,
+    // then sends exactly two name-table words with D7=1 and D1=0. The source
+    // phase byte is an index, not a damage or percentage value.
+    const auto pattern_vram = decode_genesis_1530_vram(
+        rom, kPatternStreamOffset, kPatternVramOffset);
+    const auto palette = read_genesis_command_palette_set(rom);
+    std::array<RgbaImage, 256> values{};
+    for (std::size_t index = 0; index < values.size(); ++index) {
+        values[index] = decode_genesis_menu_name_table_block(
+            rom, pattern_vram, kValueTableOffset + index * kEntryStride,
+            2U, 1U, palette, 0x2000U);
+    }
+    return values;
 }
 
 std::array<std::string, 13> decode_genesis_field_menu_power_labels(

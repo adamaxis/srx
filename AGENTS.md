@@ -66,6 +66,29 @@ Dynamic palette effects should become RGBA texture updates, color swaps,
 tints, or other native material operations. Preserve the visual effect, not
 the 35-year-old VRAM/palette limitation.
 
+## Resource and decompilation backlog
+
+- The ROM and `0x` files are analysis inputs only. The native executable and
+  normal CMake build must never read them.
+- Extraction is explicit and infrequent. Run
+  `decompilation/tools/extract_assets.ps1` when a reviewed resource changes;
+  never attach extraction to a CMake target, build dependency, or test.
+- Store host-ready resources in the organized `decompilation/assets/` taxonomy:
+  `title/`, `startup/`, `game/field/`, `game/menu/`, `game/items/`,
+  `matrix/menu/`, `audio/`, and `native/`. The native runtime consumes the
+  extracted `.srna` pack from `assets/native/`.
+- Record each asset's ROM range, source writer/call path, format, native
+  consumers, and extraction status in `decompilation/docs/resource-catalog.tsv`.
+  A resource referenced by multiple source paths gets one canonical extracted
+  artifact with multiple consumer entries.
+- Tie each native behavior slice to its decompiled ROM entry points and record
+  the state in `decompilation/docs/decompiled-function-status.tsv`. Remove a
+  decompiled placeholder from the pending pile only after its native owner and
+  focused verification exist.
+- Polish every screen to the source behavior: layout, cursor, controls,
+  transitions, timing, animation, sound, and rules. Do not invent substitute
+  menus or mechanics to fill an unresolved source path.
+
 ## Native controls
 
 Replace Genesis controller probing with an `InputState` supplied by a Windows
@@ -96,9 +119,8 @@ pattern uploads at `0x1F310E`,
 the expanded title/field/entity images, host terrain grid, initial field
 positions/camera, entity template, and reviewed direction table into `.srna`.
 `shadowrun_native.exe` accepts that pack directly, so ROM decoding is an
-extraction/verification path rather than a runtime requirement; it also keeps
-the optional ROM path for development comparisons. Windows keyboard input is
-mapped into `InputState`.
+extraction/verification path rather than a runtime requirement. Windows
+keyboard input is mapped into `InputState`.
 
 `NativePortShell` now has an explicit native scene boundary. A ROM-backed
 instance starts in `Title`; the pressed `Start` edge models the reviewed
@@ -238,6 +260,8 @@ out of the native state until their exact shared handlers are recovered.
 - Keep platform/frontend code separate from native game logic.
 - Preserve unrelated worktree changes.
 - Run Debug and Release builds plus CTest for each completed slice.
+- Run extraction only as an explicit tool step when needed, never as part of a
+  compile or test.
 - Commit completed topic changes with a focused message.
 - Do not describe the project as playable until a native executable accepts
   controls and produces visible game graphics.

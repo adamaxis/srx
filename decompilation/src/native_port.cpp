@@ -525,6 +525,7 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     field_menu_status_names_ = std::move(assets.field_menu_status_names);
     field_menu_damage_bars_ = std::move(assets.field_menu_damage_bars);
     field_menu_drain_bars_ = std::move(assets.field_menu_drain_bars);
+    field_menu_detail_values_ = std::move(assets.field_menu_detail_values);
     field_menu_attack_bars_ = std::move(assets.field_menu_attack_bars);
     field_menu_defense_bars_ = std::move(assets.field_menu_defense_bars);
     field_menu_power_labels_ = std::move(assets.field_menu_power_labels);
@@ -2400,14 +2401,17 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 if (!detail_label.empty()) {
                     write_field_menu_text(screen, 112, 80, detail_label);
                     // The source value is a two-tile entry selected from
-                    // 0x6AC46 by the selected slot's +0x6E byte. Until that
-                    // tile table is promoted into the native asset pack,
-                    // expose the exact source selector rather than faking a
-                    // weapon damage statistic for medical/utility items.
+                    // 0x6AC46 by the selected slot's +0x6E byte. It is a
+                    // source-rendered value, not a host numeric statistic.
                     const auto phase = source_inventory_phase_for_code(
                         field_entity_, item_code);
-                    write_field_menu_text(screen, 168, 80,
-                                          std::to_string(phase));
+                    if (phase < field_menu_detail_values_.size()) {
+                        const auto& value = field_menu_detail_values_[phase];
+                        if (!value.pixels.empty()) {
+                            screen.blit_rgba(168, 80, value.width, value.height,
+                                             value.pixels);
+                        }
+                    }
                 }
             };
             if (field_menu_selection_ >= 2U) {
