@@ -453,7 +453,9 @@ int main() {
     assert(rom_shell.clips_menu_selection() == 5);
     rom_shell.update(InputState{button_mask(Button::A),
                                 button_mask(Button::A)});
-    assert(rom_shell.clips_action_count() == 1);
+    // Selector five is the source D1E00 Cancel path; 0x11C74 returns
+    // without an action or mutation.
+    assert(rom_shell.clips_action_count() == 0);
     rom_shell.render(screen);
     rom_shell.update(InputState{button_mask(Button::Start),
                                 button_mask(Button::Start)});

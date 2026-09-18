@@ -578,6 +578,12 @@ public:
     std::string_view clips_action_message() const {
         return clips_action_message_;
     }
+    bool clips_reload_confirmation_active() const {
+        return clips_reload_confirmation_active_;
+    }
+    bool clips_reload_confirmation_yes() const {
+        return clips_reload_confirmation_yes_;
+    }
     bool clips_trade_menu_open() const { return clips_trade_active_; }
     std::size_t clips_trade_menu_selection() const {
         return clips_trade_menu_selection_;
@@ -778,6 +784,7 @@ private:
     void open_clips_trade();
     void update_clips_trade(const InputState& input);
     void distribute_clips();
+    void reload_one_clip();
     void open_cyberware_menu();
     void update_cyberware_menu(const InputState& input);
     void open_attributes_menu();
@@ -951,6 +958,8 @@ private:
     std::uint8_t clips_action_message_frames_ = 0;
     std::string clips_action_message_;
     bool clips_out_of_ammo_ = false;
+    bool clips_reload_confirmation_active_ = false;
+    bool clips_reload_confirmation_yes_ = false;
     bool clips_trade_active_ = false;
     std::array<std::size_t, 3> clips_trade_recipient_records_{};
     std::size_t clips_trade_recipient_count_ = 0;

@@ -370,6 +370,61 @@ void test_no_clip_gate(const std::vector<std::uint8_t>& rom) {
     assert(shell.clips_action_message() == "is out of ammo clips!");
 }
 
+void test_clip_reload(const std::vector<std::uint8_t>& rom) {
+    auto assets = shadowrun::graphics::decode_genesis_native_assets(rom);
+    auto& weapon = assets.protagonist_archetype_records[0];
+    weapon.display_state = 0;
+    weapon.display_substate = 2;
+    weapon.active_item_code = 2U;
+    weapon.ammo_rounds = 0U;
+    weapon.ammo_clips = 5U;
+    assets.inventory_items[1].source_combat_factor = 6U;
+    NativePortShell empty_weapon("SHADOWRUN", std::move(assets));
+    enter_field(empty_weapon);
+    press(empty_weapon, Button::Start);
+    while (empty_weapon.field_menu_selection() != 2U) {
+        press(empty_weapon, Button::Right);
+    }
+    press(empty_weapon, Button::A);
+    press(empty_weapon, Button::A);
+    assert(!empty_weapon.clips_reload_confirmation_active());
+    assert(empty_weapon.field_ammo_clips() == 4U);
+    assert(empty_weapon.field_ammo_rounds() == 6U);
+    assert(empty_weapon.clips_action_message() ==
+           "Rock & Roll, chummers!!");
+
+    // 0x11D00 opens the source Yes/No confirmation whenever +0x4E is still
+    // nonzero. No is the initial choice; the reload only occurs after the
+    // horizontal edge selects Yes and A confirms it.
+    auto confirmation_assets =
+        shadowrun::graphics::decode_genesis_native_assets(rom);
+    auto& confirmation_weapon =
+        confirmation_assets.protagonist_archetype_records[0];
+    confirmation_weapon.display_state = 0;
+    confirmation_weapon.display_substate = 2;
+    confirmation_weapon.active_item_code = 2U;
+    confirmation_weapon.ammo_rounds = 1U;
+    confirmation_weapon.ammo_clips = 5U;
+    confirmation_assets.inventory_items[1].source_combat_factor = 6U;
+    NativePortShell confirmation("SHADOWRUN", std::move(confirmation_assets));
+    enter_field(confirmation);
+    press(confirmation, Button::Start);
+    while (confirmation.field_menu_selection() != 2U) {
+        press(confirmation, Button::Right);
+    }
+    press(confirmation, Button::A);
+    press(confirmation, Button::A);
+    assert(confirmation.clips_reload_confirmation_active());
+    assert(!confirmation.clips_reload_confirmation_yes());
+    assert(confirmation.field_ammo_clips() == 5U);
+    press(confirmation, Button::Right);
+    assert(confirmation.clips_reload_confirmation_yes());
+    press(confirmation, Button::A);
+    assert(!confirmation.clips_reload_confirmation_active());
+    assert(confirmation.field_ammo_clips() == 4U);
+    assert(confirmation.field_ammo_rounds() == 6U);
+}
+
 void test_clip_item_gate(const std::vector<std::uint8_t>& rom) {
     // 0x11CCA rejects Reload when +0x56 is the source no-equipment marker or
     // +0x57 names a non-weapon item. It displays D1B40 and does not mutate
@@ -728,6 +783,7 @@ int main() {
     test_startup_behavior_and_rendering(rom, assets);
     test_field_menu_behavior_and_rendering(rom, assets);
     test_no_clip_gate(rom);
+    test_clip_reload(rom);
     test_clip_item_gate(rom);
     test_clip_trade_menu(rom);
     test_clip_distribution(rom);

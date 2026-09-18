@@ -217,12 +217,14 @@ non-clip-using items through `D1B40` (`This item does not use clips!!`).
 
 Native status: selector bounds, source labels, extracted ammunition fields,
 action gates, exact reviewed error text, and the native transition are
-implemented. The positive reload/trade/distribute quantity-transfer loops and
-implemented. The nested Trade loop now follows `D1E24`/`0x1209A`/`0x120E4`
-for quantity wrapping, recipient changes, and `Exchange complete`; the
-positive top-level Distribute average now follows `0x11FDE`/`0x12014` with
-the source remainder-bit rule. Positive Reload and final source-authentic
-panel art remain separate work.
+implemented. The nested Trade loop follows `D1E24`/`0x1209A`/`0x120E4` for
+quantity wrapping, recipient changes, and `Exchange complete`; the positive
+top-level Distribute average follows `0x11FDE`/`0x12014` with the source
+remainder-bit rule. Reload now follows `0x11CCA`/`0x11D86`/`0x36FC`: it gates
+non-clip items, asks for confirmation when ammunition remains, consumes one
+clip, clamps loaded ammunition to the extracted item capacity, and emits the
+source `Rock & Roll, chummers!!` result. Final source-authentic panel art
+remains separate work.
 
 ### Attributes/Skills (`0xD01C`)
 
@@ -344,7 +346,7 @@ of a port.
 | Inventory navigation | `0x11506`..`0x11678` | Implemented | Eight-cell cursor and source column/row semantics are covered |
 | Equipment action | `0x11740`..`0x118C6`, `0x12148`, `0x12168`..`0x125F8`, `0x12634`..`0x129FE` | Partial | Two-step source action loop, Equip/Unequip, armor, Discard, Trade, and First Aid target/effect/result paths are present; later item handlers remain |
 | Posture and bars | `0x119CE`, `0x11ABE`, `0x11AE4`, `0x12CEE` | Partial | Normal equipped-item attack/defense calculation is source-derived; special negative `+0x56` path and combat consumers are pending |
-| Clips | `0x11B58`, `0x11DD2`, `0x11E7E`, `0x12062`, `0x1209A`, `0x120E4` | Partial | Source top-level/nested selectors, ammo gates, recipient selection, quantity wrap, and clip transfer are present; Reload and Distribute remain |
+| Clips | `0x11B58`, `0x11CCA`, `0x11D86`, `0x11DD2`, `0x11E7E`, `0x11FDE`, `0x12014`, `0x12062`, `0x1209A`, `0x120E4`, `0x36FC` | Partial | Source top-level/nested selectors, ammo gates, Reload confirmation/consumption/clamp, recipient selection, quantity wrap, clip transfer, and Distribute average are present; final panel art remains |
 | Attributes/skills | `0xD01C` | Partial | Read-only display is present; mutation branches are pending |
 | Cyberware | `0x11950` | Partial | Installed-bit display is present; mutation flows are pending |
 | Runner switching | `0x391A` | Partial | No-eligible-runner behavior is covered; recruited roster is pending |

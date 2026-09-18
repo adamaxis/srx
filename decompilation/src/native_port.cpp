@@ -2330,6 +2330,8 @@ void NativePortShell::open_clips_menu() {
     clips_action_message_frames_ = 0;
     clips_action_message_.clear();
     clips_out_of_ammo_ = false;
+    clips_reload_confirmation_active_ = false;
+    clips_reload_confirmation_yes_ = false;
     clips_trade_active_ = false;
     clips_trade_recipient_count_ = 0;
     clips_trade_recipient_index_ = 0;
@@ -2345,6 +2347,29 @@ void NativePortShell::open_clips_menu() {
 void NativePortShell::update_clips_menu(const InputState& input) {
     if (clips_trade_active_) {
         update_clips_trade(input);
+        return;
+    }
+    if (clips_reload_confirmation_active_) {
+        const auto horizontal_step =
+            menu_direction_step(input, Button::Left, Button::Right, true);
+        if (horizontal_step &&
+            ((input.is_held(Button::Left) && !input.is_held(Button::Right)) ||
+             (input.is_held(Button::Right) && !input.is_held(Button::Left)))) {
+            // ROM 0x11D48 re-enters 0x127B0 for either horizontal edge.
+            clips_reload_confirmation_yes_ =
+                !clips_reload_confirmation_yes_;
+        }
+        if (input.was_pressed(Button::A)) {
+            if (clips_reload_confirmation_yes_) {
+                reload_one_clip();
+            }
+            clips_reload_confirmation_active_ = false;
+            clips_reload_confirmation_yes_ = false;
+        } else if (input.was_pressed(Button::B) ||
+                   input.was_pressed(Button::Start)) {
+            clips_reload_confirmation_active_ = false;
+            clips_reload_confirmation_yes_ = false;
+        }
         return;
     }
 
@@ -2388,10 +2413,18 @@ void NativePortShell::update_clips_menu(const InputState& input) {
             // ROM 0x11FDE distributes the available clips across the active
             // records; it is distinct from the nested one-recipient Trade.
             distribute_clips();
+        } else if (clips_menu_selection_ == 2U) {
+            // ROM 0x11CCA accepts only an equipped clip-using weapon here.
+            // Its source item range is 1..0x0C; no-equipment and later item
+            // codes already received the D1B40 message above.
+            if (field_entity_.ammo_rounds != 0U) {
+                clips_reload_confirmation_active_ = true;
+                clips_reload_confirmation_yes_ = false;
+            } else {
+                reload_one_clip();
+            }
         } else {
-            // The quantity-transfer/reload loops remain a separate source
-            // boundary; count entry only after the exact source gate passes.
-            ++clips_action_count_;
+            // Selector five is the source Cancel path.
         }
     }
 
@@ -2403,11 +2436,34 @@ void NativePortShell::update_clips_menu(const InputState& input) {
         field_command_message_frames_ = 0;
         clips_action_message_frames_ = 0;
         clips_action_message_.clear();
+        clips_reload_confirmation_active_ = false;
+        clips_reload_confirmation_yes_ = false;
     }
 
     if (clips_action_message_frames_ != 0) {
         --clips_action_message_frames_;
     }
+}
+
+void NativePortShell::reload_one_clip() {
+    if (field_entity_.ammo_clips == 0U ||
+        field_entity_.active_item_code == 0U ||
+        field_entity_.active_item_code >= 0x0DU) {
+        return;
+    }
+    // Native form of 0x11D86 -> 0x36FC. The source decrements +0x4F and
+    // adds literal 0x26 to +0x4E, clamping the result to item record +0x24.
+    --field_entity_.ammo_clips;
+    const auto capacity = source_item_factor(
+        inventory_items_, field_entity_.active_item_code);
+    const auto loaded = static_cast<unsigned>(field_entity_.ammo_rounds) +
+                        0x26U;
+    field_entity_.ammo_rounds = static_cast<std::uint8_t>(
+        std::min<unsigned>(loaded, capacity == 0U ? loaded : capacity));
+    field_entity_records_[active_field_record_] = field_entity_;
+    clips_action_message_ = "Rock & Roll, chummers!!";
+    clips_action_message_frames_ = 30;
+    ++clips_action_count_;
 }
 
 void NativePortShell::distribute_clips() {
@@ -3702,7 +3758,16 @@ void NativePortShell::render(ScreenWriter& screen) const {
             screen.write_text(36, 152,
                               "LEFT/RIGHT SELECT  A ACTION", 1,
                               {0x90, 0xB8, 0xC8, 0xFF});
-            if (clips_action_message_frames_ != 0) {
+            if (clips_reload_confirmation_active_) {
+                screen.write_text(40, 152,
+                                  "You still have ammo left. Reload?", 1,
+                                  {0xF0, 0xC0, 0x50, 0xFF});
+                screen.write_text(
+                    248, 152,
+                    clips_reload_confirmation_yes_ ? "Yes" : "No", 1,
+                    {0xF0, 0xC0, 0x50, 0xFF});
+            } else if (clips_action_message_frames_ != 0 &&
+                       !clips_action_message_.empty()) {
                 screen.write_text(120, 152, clips_action_message_,
                                   1, {0xF0, 0xC0, 0x50, 0xFF});
             }
