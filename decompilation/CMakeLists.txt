@@ -70,7 +70,8 @@ add_executable(shadowrun_menu_visual_regression_test
 )
 target_link_libraries(shadowrun_menu_visual_regression_test PRIVATE shadowrun_port)
 target_compile_definitions(shadowrun_menu_visual_regression_test PRIVATE
-    SHADOWRUN_TEST_ROM="${CMAKE_CURRENT_SOURCE_DIR}/input/shadowrun_genesis_us.bin")
+    SHADOWRUN_TEST_ROM="${CMAKE_CURRENT_SOURCE_DIR}/input/shadowrun_genesis_us.bin"
+    SHADOWRUN_VISUAL_ARTIFACT_DIR="${CMAKE_CURRENT_BINARY_DIR}/visual-regression")
 add_test(NAME shadowrun_menu_visual_regression COMMAND shadowrun_menu_visual_regression_test)
 
 add_executable(shadowrun_graphics_extract

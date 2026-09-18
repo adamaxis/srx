@@ -1,10 +1,22 @@
 # Field menu visual regression contract
 
 `shadowrun_menu_visual_regression_test` is the pixel-level visual gate for the
-field command screen. It is intentionally independent of the current BMP
-diagnostic outputs: each expected region is selected from the extracted
-Genesis resource or from the selected `0x7291A`/`0x72A1A`/`0x72B1A` runner
-record.
+field command screen. It compares the complete 320x224 `SoftwareScreen`
+framebuffer against a separate source-derived compositor. Each exercised case
+writes three real framebuffer images to
+`build-<config>/visual-regression/`:
+
+- `<case>-actual.bmp`: the pixels produced by the native C++ renderer;
+- `<case>-expected.bmp`: the pixels composed from extracted Genesis assets and
+  source runner records; and
+- `<case>-diff.bmp`: black matching pixels and red mismatches.
+
+`manifest.tsv` in the same directory records the state that produced each
+frame: stage, archetype, menu selection/row, active item, equipped weapon and
+armor, posture/status indexes, combat-bar indexes, inventory item codes, and
+the three corresponding image filenames. A failed test leaves these artifacts
+in place, so a failure is inspectable from the rendered image and its state,
+not just from a boolean assertion.
 
 The test covers:
 
@@ -17,6 +29,10 @@ The test covers:
 - the `0x11624` equipment borders independently of the inventory cursor; and
 - the source command font at the runner, status, item, and combat-label
   destinations.
+
+The test also exercises every occupied inventory slot in each startup
+archetype, so item detail art and the source-selected item data are covered by
+full-frame comparisons rather than isolated pixel-presence checks.
 
 The ROM listing/bytecode call paths remain the behavioral evidence:
 `0x10F50`, `0x110BC`, `0x11136`, `0x111E8`, `0x11454`, `0x11592`,
@@ -32,7 +48,7 @@ cmake --build --preset debug-tests --target shadowrun_menu_visual_regression_tes
 ctest --preset debug --output-on-failure -R shadowrun_menu_visual_regression
 ```
 
-When a source resource or record mapping changes, the test should fail with
-the affected region and mismatch count. Do not weaken it to a single
-"some pixel exists" assertion or approve a new menu screenshot without
+When a source resource or record mapping changes, the test fails with the
+affected case, mismatch count, and artifact paths. Do not weaken it to a
+single "some pixel exists" assertion or approve a new menu screenshot without
 checking the corresponding source writer and extracted asset.

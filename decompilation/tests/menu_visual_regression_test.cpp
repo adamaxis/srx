@@ -2,13 +2,16 @@
 #include "shadowrun/native_port.hpp"
 
 #include <array>
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace {
@@ -70,6 +73,333 @@ std::uint32_t pack(Rgba8 color) {
     return (static_cast<std::uint32_t>(color.red) << 16U) |
            (static_cast<std::uint32_t>(color.green) << 8U) |
            color.blue;
+}
+
+void write_source_text(SoftwareScreen& screen, const NativeImage& font,
+                       std::int32_t destination_x,
+                       std::int32_t destination_y,
+                       std::string_view text) {
+    auto cursor = destination_x;
+    for (const auto character : text) {
+        const auto code = static_cast<unsigned char>(character);
+        if (code < 0x20U || code > 0x7FU) {
+            cursor += 8;
+            continue;
+        }
+        const auto glyph_index = static_cast<std::size_t>(code - 0x20U);
+        const auto glyph_x = (glyph_index % 16U) * 8U;
+        const auto glyph_y = (glyph_index / 16U) * 8U;
+        std::vector<Rgba8> glyph(64U);
+        for (std::size_t y = 0; y < 8U; ++y) {
+            for (std::size_t x = 0; x < 8U; ++x) {
+                glyph[y * 8U + x] =
+                    font.pixels[(glyph_y + y) * font.width + glyph_x + x];
+            }
+        }
+        screen.blit_rgba(cursor, destination_y, 8, 8, glyph);
+        cursor += 8;
+    }
+}
+
+std::string source_item_detail_label_for_test(std::uint8_t item_code) {
+    if (item_code < 0x0DU) {
+        return "ammo";
+    }
+    if (item_code < 0x14U) {
+        return "uses";
+    }
+    if (item_code == 0x14U ||
+        (item_code >= 0x18U && item_code < 0x29U)) {
+        return "rtng";
+    }
+    return {};
+}
+
+std::uint8_t source_phase_for_test(const NativeFieldEntity& record,
+                                   std::uint8_t item_code) {
+    for (std::size_t slot = 0; slot < record.inventory_item_codes.size();
+         ++slot) {
+        if (record.inventory_item_codes[slot] == item_code) {
+            return record.inventory_phase_bytes[slot];
+        }
+    }
+    return 0;
+}
+
+bool source_alt_icon_palette(const NativeFieldEntity& entity);
+
+SoftwareScreen source_field_menu_reference(const NativePortAssets& assets,
+                                           const NativeFieldEntity& record,
+                                           std::size_t portrait_index,
+                                           std::size_t selection,
+                                           std::size_t row) {
+    SoftwareScreen expected;
+    expected.clear({0, 0, 0, 255});
+    expected.blit_rgba(0, 0, assets.field_menu_background.width,
+                       assets.field_menu_background.height,
+                       assets.field_menu_background.pixels);
+    expected.blit_rgba(0, 0, assets.field_menu_inventory_boxes.width,
+                       assets.field_menu_inventory_boxes.height,
+                       assets.field_menu_inventory_boxes.pixels);
+
+    const auto write_text = [&](std::int32_t x, std::int32_t y,
+                                std::string_view text) {
+        write_source_text(expected, assets.field_menu_font, x, y, text);
+    };
+    const auto archetype = [&]() {
+        switch (record.archetype_index) {
+        case 1U:
+            return assets.intro.archetypes[2] + " " + assets.intro.archetypes[3];
+        case 2U:
+            return assets.intro.archetypes[0];
+        case 3U:
+            return assets.intro.archetypes[1];
+        default:
+            return std::string("Unknown");
+        }
+    }();
+    const auto draw_item_detail = [&](std::uint8_t item_code,
+                                      bool include_art) {
+        if (item_code == 0U || item_code > assets.inventory_items.size()) {
+            return;
+        }
+        const auto item_index = static_cast<std::size_t>(item_code - 1U);
+        const auto& item = assets.inventory_items[item_index];
+        if (include_art) {
+            expected.blit_rgba(144, 24,
+                               assets.field_menu_item_art[item_index].width,
+                               assets.field_menu_item_art[item_index].height,
+                               assets.field_menu_item_art[item_index].pixels);
+        }
+        write_text(128, 64, item.name);
+        write_text(128, 72, item.category);
+        const auto is_weapon_detail = item_code < 0x10U;
+        if (is_weapon_detail &&
+            item.damage_table_index < assets.field_menu_damage_bars.size()) {
+            write_text(112, 80, "Damage");
+            const auto& bar = assets.field_menu_damage_bars[
+                item.damage_table_index];
+            expected.blit_rgba(168, 80, bar.width, bar.height, bar.pixels);
+        }
+        if (is_weapon_detail && item.power_table_index != 0U) {
+            write_text(112, 88, "Power");
+            const auto label_index = static_cast<std::size_t>(
+                item.power_table_index - 1U);
+            if (label_index < assets.field_menu_power_labels.size()) {
+                write_text(168, 88,
+                           assets.field_menu_power_labels[label_index]);
+            }
+        }
+        const auto detail_label = source_item_detail_label_for_test(item_code);
+        if (!detail_label.empty()) {
+            write_text(112, 80, detail_label);
+            const auto phase = source_phase_for_test(record, item_code);
+            if (phase < assets.field_menu_detail_values.size()) {
+                const auto& value = assets.field_menu_detail_values[phase];
+                expected.blit_rgba(168, 80, value.width, value.height,
+                                   value.pixels);
+            }
+        }
+    };
+
+    // The source field-menu compositor writes the active portrait, runner
+    // name, and status strip before branching to the overview or item page.
+    // They remain visible while an inventory item is selected; only the
+    // overview detail block changes with the middle-button selection.
+    expected.blit_rgba(
+        16, 16, assets.field_menu_runner_portraits[portrait_index].width,
+        assets.field_menu_runner_portraits[portrait_index].height,
+        assets.field_menu_runner_portraits[portrait_index].pixels);
+    write_text(128, 8, assets.field_menu_runner_names[0]);
+    const auto status_index = std::min<std::size_t>(
+        record.menu_status_index, assets.field_menu_status_bars.size() - 1U);
+    const auto& status = assets.field_menu_status_bars[status_index];
+    expected.blit_rgba(176, 168, status.width, status.height, status.pixels);
+    write_text(136, 176, assets.field_menu_status_names[status_index]);
+
+    if (selection >= 2U) {
+        write_text(128, 24, "Human " + archetype);
+        write_text(128, 40, "Physical");
+        write_text(128, 48, "Mental");
+        write_text(208, 40,
+                   std::to_string(std::min<unsigned>(
+                       100U, static_cast<unsigned>(record.physical_value) * 10U)) +
+                       "%");
+        write_text(208, 48,
+                   std::to_string(std::min<unsigned>(
+                       100U, static_cast<unsigned>(record.mental_value) * 10U)) +
+                       "%");
+        draw_item_detail(record.active_item_code, false);
+        write_text(112, 104, "Atk");
+        write_text(112, 112, "Def");
+        if (record.attack_bar_index < assets.field_menu_attack_bars.size()) {
+            const auto& bar = assets.field_menu_attack_bars[record.attack_bar_index];
+            expected.blit_rgba(144, 104, bar.width, bar.height, bar.pixels);
+        }
+        if (record.defense_bar_index < assets.field_menu_defense_bars.size()) {
+            const auto& bar = assets.field_menu_defense_bars[record.defense_bar_index];
+            expected.blit_rgba(144, 112, bar.width, bar.height, bar.pixels);
+        }
+        if (record.equipped_armor_index != 0U &&
+            record.equipped_armor_index <= assets.field_menu_armor_labels.size()) {
+            const auto& armor = assets.field_menu_armor_labels[
+                record.equipped_armor_index - 1U];
+            for (std::size_t line = 0; line < armor.size(); ++line) {
+                write_text(128, 128 + static_cast<std::int32_t>(line * 8U),
+                           armor[line]);
+            }
+        } else {
+            write_text(152, 136, "No Armor");
+        }
+        write_text(136, 144, "Wpns");
+        write_text(136, 152, "Guns");
+        if (record.weapons_bar_index < assets.field_menu_damage_bars.size()) {
+            const auto& bar = assets.field_menu_damage_bars[record.weapons_bar_index];
+            expected.blit_rgba(176, 144, bar.width, bar.height, bar.pixels);
+        }
+        if (record.guns_bar_index < assets.field_menu_drain_bars.size()) {
+            const auto& bar = assets.field_menu_drain_bars[record.guns_bar_index];
+            expected.blit_rgba(176, 152, bar.width, bar.height, bar.pixels);
+        }
+    }
+
+    constexpr std::array<std::array<std::int32_t, 2>, 8> icon_positions{{
+        {{16, 120}}, {{56, 120}}, {{16, 144}}, {{56, 144}},
+        {{16, 168}}, {{56, 168}}, {{16, 192}}, {{56, 192}},
+    }};
+    const auto variant = source_alt_icon_palette(record) ? 1U : 0U;
+    const auto draw_equipment_border = [&](std::size_t slot) {
+        if (slot >= record.inventory_item_codes.size()) {
+            return;
+        }
+        const auto overlay_index = ((slot / 2U) & 1U) == 0U ? 0U : 1U;
+        const auto& overlay = assets.field_menu_selected_cells[overlay_index];
+        expected.blit_rgba(8 + static_cast<std::int32_t>((slot % 2U) * 40U),
+                           112 + static_cast<std::int32_t>((slot / 2U) * 24U),
+                           overlay.width, overlay.height, overlay.pixels);
+    };
+    if (record.display_state >= 0 && record.display_state != 0x7F) {
+        draw_equipment_border(static_cast<std::size_t>(record.display_state));
+    }
+    if (record.equipped_armor_index != 0U) {
+        const auto armor_code = static_cast<std::uint8_t>(
+            0x2BU + record.equipped_armor_index);
+        for (std::size_t slot = 0; slot < record.inventory_item_codes.size();
+             ++slot) {
+            if (record.inventory_item_codes[slot] == armor_code) {
+                draw_equipment_border(slot);
+                break;
+            }
+        }
+    }
+    // The source composition draws the equipment cell layer first and the
+    // inventory icon tiles over it, matching the VDP plane order.
+    for (std::size_t slot = 0; slot < record.inventory_item_codes.size();
+         ++slot) {
+        const auto code = record.inventory_item_codes[slot];
+        if (code == 0U || code > assets.field_menu_inventory_icons.size()) {
+            continue;
+        }
+        const auto& icon = assets.field_menu_inventory_icons[code - 1U][variant];
+        expected.blit_rgba(icon_positions[slot][0], icon_positions[slot][1],
+                           icon.width, icon.height, icon.pixels);
+    }
+    if (selection >= 2U && selection <= 6U) {
+        const auto& focus = assets.field_menu_command_focus[selection - 2U];
+        expected.blit_rgba(128 + static_cast<std::int32_t>((selection - 2U) * 24U),
+                           184, focus.width, focus.height, focus.pixels);
+    }
+    if (selection < 2U) {
+        expected.blit_rgba(12 + static_cast<std::int32_t>(selection * 40U),
+                           116 + static_cast<std::int32_t>(row * 24U),
+                           assets.field_menu_cursor.width,
+                           assets.field_menu_cursor.height,
+                           assets.field_menu_cursor.pixels);
+        const auto slot = row * 2U + selection;
+        if (slot < record.inventory_item_codes.size()) {
+            draw_item_detail(record.inventory_item_codes[slot], true);
+        }
+    }
+    constexpr std::array<std::string_view, 7> labels{{
+        "    Inventory    ", "    Inventory    ", "      Clips      ",
+        "Attributes/Skills", "    Cyberware    ", "      Magic      ",
+        "Pocket Secretary ",
+    }};
+    write_text(112, 200, labels[selection]);
+    return expected;
+}
+
+shadowrun::graphics::RgbaImage screen_image(const SoftwareScreen& screen) {
+    shadowrun::graphics::RgbaImage image{
+        screen.width(), screen.height(),
+        std::vector<Rgba8>(screen.pixels().size())};
+    for (std::size_t index = 0; index < screen.pixels().size(); ++index) {
+        const auto packed = screen.pixels()[index];
+        image.pixels[index] = {
+            static_cast<std::uint8_t>(packed >> 16U),
+            static_cast<std::uint8_t>(packed >> 8U),
+            static_cast<std::uint8_t>(packed), 255};
+    }
+    return image;
+}
+
+void capture_and_compare(const SoftwareScreen& actual,
+                         const SoftwareScreen& expected,
+                         const std::filesystem::path& directory,
+                         const std::string& label) {
+    std::filesystem::create_directories(directory);
+    const auto actual_path = directory / (label + "-actual.bmp");
+    const auto expected_path = directory / (label + "-expected.bmp");
+    const auto diff_path = directory / (label + "-diff.bmp");
+    shadowrun::graphics::write_bmp32(actual_path.string(), screen_image(actual));
+    shadowrun::graphics::write_bmp32(expected_path.string(), screen_image(expected));
+
+    auto diff = screen_image(actual);
+    std::size_t mismatches = 0;
+    for (std::size_t index = 0; index < actual.pixels().size(); ++index) {
+        if (actual.pixels()[index] == expected.pixels()[index]) {
+            diff.pixels[index] = {0, 0, 0, 255};
+        } else {
+            diff.pixels[index] = {255, 0, 0, 255};
+            ++mismatches;
+        }
+    }
+    shadowrun::graphics::write_bmp32(diff_path.string(), diff);
+    if (mismatches != 0U) {
+        throw std::runtime_error(
+            "full-frame visual mismatch for " + label + ": " +
+            std::to_string(mismatches) + " pixels; see " +
+            actual_path.string() + ", " + expected_path.string() +
+            ", and " + diff_path.string());
+    }
+}
+
+void write_case_manifest_row(std::ofstream& manifest,
+                             const std::string& label,
+                             std::string_view stage,
+                             std::size_t archetype,
+                             const NativePortShell& shell) {
+    manifest << label << '\t'
+             << stage << '\t'
+             << archetype << '\t'
+             << shell.field_menu_selection() << '\t'
+             << shell.field_menu_row() << '\t'
+             << static_cast<unsigned>(shell.field_active_item_code()) << '\t'
+             << static_cast<int>(shell.field_equipped_weapon_slot()) << '\t'
+             << static_cast<unsigned>(shell.field_equipped_armor_index()) << '\t'
+             << static_cast<unsigned>(shell.field_posture_index()) << '\t'
+             << static_cast<unsigned>(shell.field_attack_bar_index()) << '\t'
+             << static_cast<unsigned>(shell.field_defense_bar_index()) << '\t';
+    for (std::size_t slot = 0; slot < 8U; ++slot) {
+        if (slot != 0U) {
+            manifest << ',';
+        }
+        manifest << static_cast<unsigned>(shell.field_inventory_item_code(slot));
+    }
+    manifest << "\t" << label << "-actual.bmp\t"
+             << label << "-expected.bmp\t"
+             << label << "-diff.bmp\n";
+    manifest.flush();
 }
 
 void require_image_pixels(const SoftwareScreen& screen, const NativeImage& image,
@@ -285,7 +615,20 @@ void require_equipment_borders(const SoftwareScreen& screen,
     }
 }
 
-void test_field_menu_visual_contract(const NativePortAssets& assets) {
+void test_field_menu_visual_contract(
+    const NativePortAssets& assets, const std::filesystem::path& artifact_dir) {
+    std::filesystem::create_directories(artifact_dir);
+    std::ofstream manifest(artifact_dir / "manifest.tsv",
+                           std::ios::out | std::ios::trunc);
+    if (!manifest) {
+        throw std::runtime_error("could not create visual artifact manifest: " +
+                                 (artifact_dir / "manifest.tsv").string());
+    }
+    manifest << "case\tstage\tarchetype\tselection\trow\tactive_item_code\t"
+                "equipped_weapon_slot\tequipped_armor_index\tposture_index\t"
+                "attack_bar_index\tdefense_bar_index\tinventory_item_codes\t"
+                "actual_bmp\texpected_bmp\tdiff_bmp\n";
+
     constexpr std::array<std::array<std::int32_t, 2>, 8> icon_positions{{
         {{16, 120}}, {{56, 120}}, {{16, 144}}, {{56, 144}},
         {{16, 168}}, {{56, 168}}, {{16, 192}}, {{56, 192}},
@@ -306,6 +649,16 @@ void test_field_menu_visual_contract(const NativePortAssets& assets) {
         require_static_menu_pixels(screen, assets);
 
         const auto& source_record = assets.protagonist_archetype_records[archetype];
+        const auto overview_label =
+            "archetype-" + std::to_string(archetype) + "-overview";
+        write_case_manifest_row(manifest, overview_label, "overview", archetype,
+                                shell);
+        capture_and_compare(
+            screen,
+            source_field_menu_reference(assets, source_record, archetype,
+                                        shell.field_menu_selection(),
+                                        shell.field_menu_row()),
+            artifact_dir, overview_label);
         require_image_pixels(screen, assets.field_menu_runner_portraits[archetype],
                              16, 16, "runner portrait for archetype " +
                                  std::to_string(archetype));
@@ -381,6 +734,17 @@ void test_field_menu_visual_contract(const NativePortAssets& assets) {
                 press(shell, Button::Left);
             }
             shell.render(screen);
+            const auto focus_label =
+                "archetype-" + std::to_string(archetype) + "-focus-" +
+                std::to_string(focus);
+            write_case_manifest_row(manifest, focus_label, "command-focus",
+                                    archetype, shell);
+            capture_and_compare(
+                screen,
+                source_field_menu_reference(
+                    assets, source_record, archetype,
+                    shell.field_menu_selection(), shell.field_menu_row()),
+                artifact_dir, focus_label);
             require_image_pixels(screen, assets.field_menu_command_focus[focus],
                                  focus_positions[focus][0],
                                  focus_positions[focus][1],
@@ -418,6 +782,17 @@ void test_field_menu_visual_contract(const NativePortAssets& assets) {
                 continue;
             }
             shell.render(screen);
+            const auto item_label =
+                "archetype-" + std::to_string(archetype) + "-item-" +
+                std::to_string(slot);
+            write_case_manifest_row(manifest, item_label, "inventory-item",
+                                    archetype, shell);
+            capture_and_compare(
+                screen,
+                source_field_menu_reference(
+                    assets, source_record, archetype,
+                    shell.field_menu_selection(), shell.field_menu_row()),
+                artifact_dir, item_label);
             require_image_pixels(
                 screen, assets.field_menu_item_art[code - 1U], 144, 24,
                 "item detail art for archetype " + std::to_string(archetype) +
@@ -438,7 +813,8 @@ int main() {
     try {
         const auto rom = read_rom();
         const auto assets = shadowrun::graphics::decode_genesis_native_assets(rom);
-        test_field_menu_visual_contract(assets);
+        test_field_menu_visual_contract(
+            assets, std::filesystem::path(SHADOWRUN_VISUAL_ARTIFACT_DIR));
         return 0;
     } catch (const std::exception& error) {
         std::fprintf(stderr, "menu visual regression: %s\n", error.what());
