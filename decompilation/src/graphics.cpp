@@ -483,6 +483,7 @@ read_genesis_inventory_catalog(const std::vector<std::uint8_t>& rom) {
             static_cast<std::size_t>(rom::kInventoryItemTable) +
             index * rom::kInventoryItemRecordStride;
         result[index].code = static_cast<std::uint8_t>(index + 1U);
+        result[index].source_combat_factor = rom[record_offset + 0x24U];
         result[index].damage_table_index = rom[record_offset + 0x25U];
         result[index].power_table_index = rom[record_offset + 0x26U];
         result[index].name = read_genesis_fixed_text(
@@ -604,10 +605,6 @@ native::NativeIntroData read_genesis_intro_data(
 std::array<RgbaImage, 23> decode_genesis_field_menu_stat_bars(
     const std::vector<std::uint8_t>& rom, std::size_t table_offset,
     const char* table_name);
-
-std::uint8_t read_genesis_command_stat_bar_index(
-    const std::vector<std::uint8_t>& rom, std::size_t record_offset,
-    bool defense, std::uint8_t posture);
 
 native::NativePortAssets decode_genesis_native_assets(
     const std::vector<std::uint8_t>& rom) {
@@ -870,6 +867,7 @@ native::NativePortAssets decode_genesis_native_assets(
         destination.skill_values = source.skill_values;
         destination.attribute_skill_auxiliary = source.attribute_skill_auxiliary;
     };
+    assets.inventory_items = read_genesis_inventory_catalog(rom);
     for (std::size_t index = 0;
          index < assets.protagonist_archetype_records.size(); ++index) {
         const auto archetype_source = read_genesis_field_entity_template(
@@ -883,14 +881,11 @@ native::NativePortAssets decode_genesis_native_assets(
         for (std::size_t posture = 0;
              posture < archetype.attack_bar_indices_by_posture.size();
              ++posture) {
-            archetype.attack_bar_indices_by_posture[posture] =
-                read_genesis_command_stat_bar_index(
-                    rom, archetype_source.record_offset, false,
-                    static_cast<std::uint8_t>(posture));
-            archetype.defense_bar_indices_by_posture[posture] =
-                read_genesis_command_stat_bar_index(
-                    rom, archetype_source.record_offset, true,
-                    static_cast<std::uint8_t>(posture));
+            const auto bars = native::compute_command_bar_indices(
+                archetype, assets.inventory_items,
+                static_cast<std::uint8_t>(posture), 6U, 0U);
+            archetype.attack_bar_indices_by_posture[posture] = bars.attack;
+            archetype.defense_bar_indices_by_posture[posture] = bars.defense;
         }
         archetype.attack_bar_index =
             archetype.attack_bar_indices_by_posture[
@@ -936,7 +931,6 @@ native::NativePortAssets decode_genesis_native_assets(
         assets.protagonist_archetype_records[0].flags_11;
     assets.field_areas.front().initial_field_records =
         assets.initial_field_records;
-    assets.inventory_items = read_genesis_inventory_catalog(rom);
     assets.cyberware_names = read_genesis_cyberware_catalog(rom);
     assets.attribute_skill_names = read_genesis_attribute_skill_catalog(rom);
 
@@ -962,7 +956,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 24);
+    write_u16(output, 25);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     for (const auto& title_frame : assets.title_animation_frames) {
@@ -1184,6 +1178,7 @@ void write_native_asset_pack(const std::string& path,
     write_u16(output, static_cast<std::uint16_t>(assets.inventory_items.size()));
     for (const auto& item : assets.inventory_items) {
         output.put(static_cast<char>(item.code));
+        output.put(static_cast<char>(item.source_combat_factor));
         output.put(static_cast<char>(item.damage_table_index));
         output.put(static_cast<char>(item.power_table_index));
         write_pack_string(output, item.name,
@@ -1327,7 +1322,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 24U)) {
+        (version < 2U || version > 25U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -1740,6 +1735,10 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
             auto& item = assets.inventory_items[index];
             item.code = read_pack_u8(
                 input, "native inventory item code is truncated");
+            if (version >= 25U) {
+                item.source_combat_factor = read_pack_u8(
+                    input, "native inventory source factor is truncated");
+            }
             if (version >= 16U) {
                 item.damage_table_index = read_pack_u8(
                     input, "native inventory damage index is truncated");
@@ -2751,27 +2750,6 @@ std::array<RgbaImage, 23> decode_genesis_field_menu_stat_bars(
         }
     }
     return bars;
-}
-
-std::uint8_t read_genesis_command_stat_bar_index(
-    const std::vector<std::uint8_t>& rom, std::size_t record_offset,
-    bool defense, std::uint8_t posture) {
-    // This is the source's startup-party path through 0x12CEE: 0x55ED6
-    // averages +78/+7B/+7C, 0x55F20 applies the +4D condition penalty, and
-    // the attack/defense branches add +81/+77 respectively. The remaining
-    // skill/cyberware branches are zero for the three records copied by
-    // 0x42B0, so retaining the resulting table index is exact for the
-    // reconstructed startup state without inventing a host percentage.
-    const auto average = static_cast<unsigned>(
-        (static_cast<unsigned>(rom[record_offset + 0x78U]) +
-         static_cast<unsigned>(rom[record_offset + 0x7BU]) +
-         static_cast<unsigned>(rom[record_offset + 0x7CU])) / 2U);
-    const auto condition_penalty = average *
-        (static_cast<unsigned>(posture) * 0x19U) / 0x64U;
-    const auto source_value = average - std::min(average, condition_penalty) +
-        static_cast<unsigned>(rom[record_offset + (defense ? 0x77U : 0x81U)]);
-    return static_cast<std::uint8_t>(
-        std::min<unsigned>(22U, source_value == 0U ? 0U : source_value - 1U));
 }
 
 std::array<RgbaImage, 14> decode_genesis_field_menu_drain_bars(

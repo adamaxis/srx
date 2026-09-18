@@ -108,6 +108,7 @@ int main() {
     const auto inventory_catalog = read_genesis_inventory_catalog(rom);
     assert(inventory_catalog.size() == 50);
     assert(inventory_catalog[1].code == 2);
+    assert(inventory_catalog[1].source_combat_factor == 12);
     assert(inventory_catalog[1].name == "Model 101T");
     assert(inventory_catalog[1].category == "Light Pistol");
     assert(inventory_catalog[43].code == 44);
@@ -492,6 +493,8 @@ int main() {
            native_assets.entity_template.attribute_skill_auxiliary);
     assert(loaded_assets.inventory_items.size() ==
            native_assets.inventory_items.size());
+    assert(loaded_assets.inventory_items[1].source_combat_factor ==
+           native_assets.inventory_items[1].source_combat_factor);
     assert(loaded_assets.inventory_items[1].name ==
            native_assets.inventory_items[1].name);
     assert(loaded_assets.inventory_items[43].category ==

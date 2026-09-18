@@ -287,6 +287,182 @@ constexpr std::array<std::string_view, 4> kClipsMenuLabels{{
 
 } // namespace
 
+namespace {
+
+std::uint8_t source_inventory_phase_for_code(
+    const NativeFieldEntity& entity, std::uint8_t item_code) {
+    for (std::size_t slot = 0; slot < entity.inventory_item_codes.size();
+         ++slot) {
+        if (entity.inventory_item_codes[slot] == item_code) {
+            return entity.inventory_phase_bytes[slot];
+        }
+    }
+    return 0;
+}
+
+unsigned source_command_average(const NativeFieldEntity& entity) {
+    // 0x55ED6: (+0x78 + +0x7B + +0x7C) / 2, then the phase byte for item
+    // 0x28 if that special item is present in one of the eight slots.
+    const auto average =
+        (static_cast<unsigned>(entity.attribute_values[1]) +
+         static_cast<unsigned>(entity.attribute_values[4]) +
+         static_cast<unsigned>(entity.attribute_values[5])) /
+        2U;
+    return average + source_inventory_phase_for_code(entity, 0x28U);
+}
+
+unsigned source_posture_value(unsigned base, std::uint8_t posture,
+                              bool defense) {
+    // 0x55F20: D1 * (+0x4D * 0x19) / 0x64. D7 >= 0 returns the penalty
+    // (attack); D7 < 0 returns the post-penalty value (defense).
+    const auto penalty =
+        base * static_cast<unsigned>(posture) * 0x19U / 0x64U;
+    return defense ? base - std::min(base, penalty) : penalty;
+}
+
+unsigned source_merge_skill(unsigned current, unsigned skill) {
+    // 0x12C74's 12CC2 tail: when skill is below the current value it is
+    // doubled; otherwise it is added to the current value. Zero becomes one.
+    if (skill < current) {
+        current = skill;
+    }
+    current += skill;
+    return current == 0U ? 1U : current;
+}
+
+std::uint8_t source_bar_index(unsigned value) {
+    // 0x12E7A decrements the selected row and clamps negative values to the
+    // first source strip. The extracted table contains 23 rows.
+    return static_cast<std::uint8_t>(
+        std::min<unsigned>(22U, value == 0U ? 0U : value - 1U));
+}
+
+std::uint8_t source_item_factor(
+    const std::array<NativeInventoryItem, kNativeInventoryItemCount>& items,
+    std::uint8_t code) {
+    if (code == 0U || code > items.size()) {
+        return 0;
+    }
+    return items[code - 1U].source_combat_factor;
+}
+
+unsigned source_store_ammunition_units(
+    unsigned rounds,
+    const std::array<NativeInventoryItem, kNativeInventoryItemCount>& items,
+    std::uint8_t code) {
+    // 0x125FA converts +0x4E into the common source unit before a weapon is
+    // changed. The original rounds upward whenever the quotient is nonzero.
+    const auto factor = source_item_factor(items, code);
+    if (factor == 0U) {
+        return rounds * 100U + (rounds == 0U ? 0U : 1U);
+    }
+    const auto quotient = rounds * 100U / factor;
+    return quotient + (quotient == 0U ? 0U : 1U);
+}
+
+std::uint8_t source_load_ammunition(
+    unsigned units,
+    const std::array<NativeInventoryItem, kNativeInventoryItemCount>& items,
+    std::uint8_t code) {
+    // 0x12256..0x12284 converts the common unit into the new weapon's
+    // rounds and rounds at a remainder of at least 50.
+    const auto factor = source_item_factor(items, code);
+    if (factor == 0U) {
+        return static_cast<std::uint8_t>(units & 0xFFU);
+    }
+    const auto scaled = units * factor;
+    auto rounds = scaled / 100U;
+    if (scaled % 100U >= 50U) {
+        ++rounds;
+    }
+    // The source stores the result with MOVE.B, so retain its low-byte
+    // truncation instead of applying a host saturation rule.
+    return static_cast<std::uint8_t>(rounds & 0xFFU);
+}
+
+} // namespace
+
+NativeCommandBarIndices compute_command_bar_indices(
+    const NativeFieldEntity& entity,
+    const std::array<NativeInventoryItem, kNativeInventoryItemCount>&,
+    std::uint8_t posture, std::uint8_t command_selector,
+    std::uint8_t command_row) {
+    NativeCommandBarIndices result{};
+    const auto base = source_command_average(entity);
+
+    // 0x12CEE is called with D0=0 for attack and D0=-1 for defense by
+    // 0x11ABE. The startup/normal command overview takes the selector >= 2
+    // path; the native shell only calls this helper for that same overview.
+    const auto attack_value = [&]() {
+        auto value = source_posture_value(base, posture, false);
+        const auto active_item = entity.active_item_code;
+        unsigned skill = 0;
+        if (entity.display_state == 0x7F) {
+            // 0x12DD2: no equipped weapon uses +0x85.
+            skill = entity.skill_values[5];
+        } else if (entity.display_state >= 0) {
+            if (active_item < 0x0DU) {
+                // 0x12D60 -> 0x12C74 selects +0x81/+0x82, +0x83, or
+                // +0x84 according to the active item code.
+                skill = entity.skill_values[1];
+                if (active_item < 0x08U) {
+                    skill = std::max<unsigned>(skill, entity.skill_values[2]);
+                } else if (active_item < 0x0BU) {
+                    skill = std::max<unsigned>(skill, entity.skill_values[3]);
+                } else {
+                    skill = std::max<unsigned>(skill, entity.skill_values[4]);
+                }
+            } else if (active_item < 0x10U) {
+                // 0x12D46: item codes 0x0D..0x0F use +0x87 directly.
+                skill = entity.skill_values[6];
+            } else if (active_item == 0x17U) {
+                skill = entity.skill_values[5];
+            } else {
+                // 0x12E98 returns without writing an attack strip for the
+                // remaining item classes.
+                return 0U;
+            }
+        } else {
+            // The negative +0x56 branch (0x12D7C/0x12FA4) is a separate
+            // special-item calculation. It is not used by the extracted
+            // startup records; keep its unsupported result explicit rather
+            // than substituting the old guessed formula.
+            return 0U;
+        }
+        return source_merge_skill(value, skill);
+    }();
+    result.attack = source_bar_index(attack_value);
+
+    // 0x12E12 only writes the defense strip for an empty/low item selector or
+    // the special item 0x17. This is the selector read performed by 0x12148,
+    // not the currently highlighted inventory cell's display code.
+    const auto selected_slot = static_cast<std::size_t>(command_row) * 2U +
+                               command_selector;
+    const auto selected_item = selected_slot < entity.inventory_item_codes.size()
+        ? entity.inventory_item_codes[selected_slot]
+        : 0U;
+    if (selected_item >= 0x10U && selected_item != 0x17U) {
+        result.defense = 0U;
+        return result;
+    }
+    auto defense_value = source_posture_value(base, posture, true);
+    // 0x12E3E adds +0x77 before the cyberware branch.
+    defense_value += entity.attribute_values[0];
+    // 0x12E52..0x12E66 starts at 9 and examines cyberware bits 9..11,
+    // subtracting eight for an installed flag and incrementing otherwise.
+    unsigned cyberware_adjustment = 9U;
+    for (unsigned bit = 9U; bit <= 11U; ++bit) {
+        if ((entity.cyberware_flags & (1U << bit)) != 0U) {
+            cyberware_adjustment -= 8U;
+        } else {
+            ++cyberware_adjustment;
+        }
+    }
+    defense_value += cyberware_adjustment;
+    result.defense = source_bar_index(defense_value);
+    return result;
+}
+
 NativePortShell::NativePortShell(std::string title)
     : title_(std::move(title)) {}
 
@@ -1107,17 +1283,21 @@ void NativePortShell::update_field_menu(const InputState& input) {
                 ++field_entity_.menu_status_index;
             }
         }
-        // ROM 0x11ABE redraws both command-screen stat strips through
-        // 0x12CEE after it mutates +0x4D. The posture is therefore gameplay
-        // state, not just the five-state label/slider. The extraction keeps
-        // the exact source table index for each posture on the record.
-        const auto posture = std::min<std::size_t>(
+        // ROM 0x11ABE redraws the command overview through 0x12CEE after it
+        // mutates +0x4D. 12CEE does not apply a generic posture multiplier to
+        // the existing bars: it recomputes the source attack/defense branch
+        // from the equipped item, skills, cyberware, and item selector.
+        const auto posture = static_cast<std::uint8_t>(std::min<std::size_t>(
             field_entity_.menu_status_index,
-            field_entity_.attack_bar_indices_by_posture.size() - 1U);
-        field_entity_.attack_bar_index =
-            field_entity_.attack_bar_indices_by_posture[posture];
-        field_entity_.defense_bar_index =
-            field_entity_.defense_bar_indices_by_posture[posture];
+            kNativeMenuStatusCount - 1U));
+        const auto bars = compute_command_bar_indices(
+            field_entity_, inventory_items_, posture,
+            static_cast<std::uint8_t>(field_menu_selection_),
+            static_cast<std::uint8_t>(field_menu_row_));
+        field_entity_.attack_bar_index = bars.attack;
+        field_entity_.defense_bar_index = bars.defense;
+        field_entity_.attack_bar_indices_by_posture[posture] = bars.attack;
+        field_entity_.defense_bar_indices_by_posture[posture] = bars.defense;
         field_entity_records_[active_field_record_] = field_entity_;
         return;
     }
@@ -1218,21 +1398,84 @@ void NativePortShell::apply_field_inventory_action() {
         return;
     }
     const auto item_code = field_entity_.inventory_item_codes[slot];
+    // Empty +0x66 cells are not actionable inventory records. The source
+    // dispatch returns through its no-item path; they do not become a weapon
+    // with item code zero and must not disturb +0x4E ammunition.
+    if (item_code == 0U) {
+        return;
+    }
     // ROM 0x1219C enters this branch for armor item codes 0x2C and above;
     // 0x121B4 stores code-0x2B in +0x76 and the selected +0x6E byte. A second
     // activation clears both, matching the ROM toggle without pretending the
     // unrelated weapon/medical handlers are already ported.
-    if (item_code < 0x2CU) {
+    if (item_code >= 0x2CU) {
+        // ROM 0x1219C is the armor branch. It deliberately tests the
+        // currently equipped armor field rather than treating possession as
+        // equipment: an equipped armor value clears first; an empty value
+        // equips the selected armor ordinal and writes that ordinal into the
+        // selected slot's +0x6E phase byte.
+        if (field_entity_.equipped_armor_index != 0U) {
+            field_entity_.equipped_armor_index = 0;
+            field_entity_.inventory_phase_bytes[slot] = 0;
+        } else {
+            field_entity_.equipped_armor_index =
+                static_cast<std::uint8_t>(item_code - 0x2BU);
+            field_entity_.inventory_phase_bytes[slot] =
+                field_entity_.equipped_armor_index;
+        }
+    } else if (item_code == 0x13U || item_code == 0x14U ||
+               item_code == 0x16U ||
+               item_code >= 0x18U) {
+        // ROM 0x121C0 dispatches these item classes to their own use/error
+        // path. It does not equip them as a weapon. Those handlers are not
+        // silently replaced with a native mutation here.
         return;
-    }
-    if (field_entity_.equipped_armor_index != 0U) {
-        field_entity_.equipped_armor_index = 0;
-        field_entity_.inventory_phase_bytes[slot] = 0;
     } else {
-        field_entity_.equipped_armor_index =
-            static_cast<std::uint8_t>(item_code - 0x2BU);
-        field_entity_.inventory_phase_bytes[slot] =
-            field_entity_.equipped_armor_index;
+        // ROM 0x121E0..0x1228C is the weapon/gear equip path. +0x56 stores
+        // the selected inventory slot and +0x57 stores the equipped item;
+        // the eight +0x66 bytes are merely possession slots.
+        const auto old_slot = field_entity_.display_state;
+        const auto old_item = field_entity_.active_item_code;
+        auto source_units = static_cast<unsigned>(field_entity_.ammo_rounds);
+        if (old_item != 0U && old_item < 0x0DU) {
+            source_units = source_store_ammunition_units(
+                source_units, inventory_items_, old_item);
+        }
+        field_entity_.ammo_rounds = 0;
+        if (old_slot >= 0 && old_slot != 0x7F &&
+            static_cast<std::size_t>(old_slot) == slot) {
+            // Selecting the equipped cell again sets +0x56=0x7F and clears
+            // +0x57 in the ROM. The record is no longer weapon-equipped.
+            field_entity_.display_state = 0x7F;
+            field_entity_.display_substate = 0;
+            field_entity_.active_item_code = 0;
+            field_entity_.ammo_rounds =
+                static_cast<std::uint8_t>(source_units & 0xFFU);
+        } else {
+            field_entity_.display_state = static_cast<std::int8_t>(slot);
+            field_entity_.display_substate =
+                static_cast<std::int8_t>(item_code);
+            field_entity_.active_item_code = item_code;
+            if (item_code >= 0x0DU) {
+                // The source carries raw +0x4E through non-ammunition gear.
+                field_entity_.ammo_rounds =
+                    static_cast<std::uint8_t>(source_units & 0xFFU);
+            } else {
+                field_entity_.ammo_rounds = source_load_ammunition(
+                    source_units, inventory_items_, item_code);
+            }
+        }
+        const auto bars = compute_command_bar_indices(
+            field_entity_, inventory_items_, field_entity_.menu_status_index,
+            static_cast<std::uint8_t>(field_menu_selection_),
+            static_cast<std::uint8_t>(field_menu_row_));
+        field_entity_.attack_bar_index = bars.attack;
+        field_entity_.defense_bar_index = bars.defense;
+        field_entity_.attack_bar_indices_by_posture[
+            field_entity_.menu_status_index] = bars.attack;
+        field_entity_.defense_bar_indices_by_posture[
+            field_entity_.menu_status_index] = bars.defense;
+        refresh_field_entity_projection();
     }
     field_equipped_armor_by_record_[active_field_record_] =
         field_entity_.equipped_armor_index;

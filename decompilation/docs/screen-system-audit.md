@@ -9,8 +9,10 @@ accounted for.
 ## Global rules
 
 - The source runs one screen loop per VBlank and stores cursor/focus state in
-  RAM. The native update loop preserves those state transitions and adapts
-  VDP writes to RGBA screen writes.
+  RAM. The native update loop preserves the audited state transitions and
+  adapts VDP writes to RGBA screen writes. Unaudited handlers remain explicit
+  boundaries; they are not treated as reconstructed merely because a panel is
+  visible.
 - Genesis palette indexes are converted to host RGBA during extraction. The
   native runtime does not emulate VRAM, the VDP, or a 68000.
 - A source record is not automatically a party member. Eligibility comes from
@@ -132,9 +134,12 @@ item, attack/defense tables, armor record, weapon/gun bars, five-state
 posture, and inventory cells.
 
 Native status: source background geometry, record-derived overview fields,
-inventory boxes/icons/art, selected-cell overlays, status strips, and command
-selector state are implemented. Magic and Pocket Secretary are still only
-their selected labels; their source handlers need a dedicated audit.
+inventory boxes/icons/art, selected-cell overlays, source-derived attack and
+defense strips for the normal equipped-item branch, and command selector state
+are implemented. Magic and Pocket Secretary are still only their selected
+labels; their source handlers need a dedicated audit. The negative `+0x56`
+special attack branch and the field combat consumers of these values remain
+explicitly incomplete.
 
 ### Inventory (`0x11506`, `0x11564`, `0x11592`, `0x11678`, `0x12148`)
 
@@ -142,11 +147,15 @@ Inventory is an 8-cell, two-column by four-row grid. The selector is a source
 cursor sprite over a box, not a checklist. Up/Down clamps the row to `0..3`;
 Left/Right chooses the column. The selected item is read as
 `record + 2*row + column`. A dispatches the source item action, including the
-armor branch that updates the record's equipped armor field; it is not a
-generic “check” action.
+weapon/gear equip toggle and armor branch that updates the record's equipped
+armor field; it is not a generic "check" action.
 
 Native status: cell geometry, cursor, extracted item icons/art, selected-item
-details, row/column state, and the reviewed armor mutation are implemented.
+details, row/column state, and the source weapon/gear and armor state changes
+for the audited `0x12168` path are implemented. Possession and equipment are
+separate: an item in one of the eight cells is not active until the source
+equip action sets the live record's equipped slot/item bytes. The other item
+action branches (`0x12634`, `0x12836`, and `0x11040`) are still not ported.
 
 ### Posture (`0x11928`, `0x119CE`, `0x11ABE`, `0x11AE4`)
 
@@ -156,14 +165,18 @@ The five source values are:
 `Full Defense`, `Med. Defense`, `Neutral`, `Med. Offense`, `Full Offense`.
 
 Left/Right mutates the active record's byte `+0x4D`, clamped to `0..4`, then
-rewrites the matching source strip and status name. This is a gameplay state
-used by the field behavior, not a decorative slider. B returns focus to the
-command bar; Start exits the command screen.
+calls `0x11ABE`. That routine redraws the posture strip and calls `0x12CEE`
+to recompute the attack/defense source bars. This is a gameplay state used by
+the field behavior, not a decorative slider. B returns focus to the command
+bar; Start exits the command screen.
 
 Native status: the active posture focus, source five-state values, clamping,
-record persistence, and rendering are implemented. The field AI/combat code
-that consumes posture is not yet reconstructed, so its effect outside the
-command screen remains pending.
+record persistence, rendering, and the normal `0x12CEE` attack/defense
+calculation are implemented. The native results match the Joshua source record
+for all five posture values (`attack 3,4,5,6,7`; `defense 19,18,17,16,15`).
+The negative `+0x56` special branch (`0x12D7C`/`0x12FA4`) and the field
+AI/combat code that consumes posture are not yet reconstructed, so their effect
+outside the audited command path remains pending.
 
 ### Clips (`0x11B58`, `0x12062`)
 
@@ -215,9 +228,12 @@ at `0xD2A0A` routes the five non-inventory commands as follows:
 The second indirect table at `0xD2A1E` is the selected-inventory action
 dispatch. `0x12168` is the item/armor path; `0x12634`, `0x12836`, and
 `0x11040` are separate item-action branches. They must not be collapsed into
-one generic checklist action. The first two selector values are both labeled
-`Inventory`, because they identify the left and right columns; Up/Down changes
-the row and Left/Right changes the column.
+one generic checklist action. In the audited `0x12168` path, item codes below
+`0x18` take the weapon/gear or special-use split, item codes `0x18..0x2B`
+take the separate item-use path, and item codes `0x2C+` take the armor path.
+The first two selector values are both labeled `Inventory`, because they
+identify the left and right columns; Up/Down changes the row and Left/Right
+changes the column.
 
 ## Pocket Secretary systems
 
@@ -249,7 +265,8 @@ The manual and the source both make posture consequential: the five settings
 are Full Defense, Med Defense, Neutral, Med Offense, and Full Offense; computer
 controlled runners use that setting to decide whether to hang back/heal or
 advance/attack. The native command screen now updates the source attack and
-defense strips for all five settings. Field/combat consumers, spell drain, and
+defense strips for all five settings in the normal equipped-item branch. The
+special negative-`+0x56` calculation, field/combat consumers, spell drain, and
 the Matrix program loop remain explicit implementation boundaries rather than
 placeholder UI.
 
@@ -261,7 +278,7 @@ probes the four corners through `0xE7C8`, advances its directional animation,
 and then dispatches the raw terrain/event byte. A doorway's event index is
 looked up in the active mode table at `0x172CDC`; it is the combination of the
 current area, raw cell, reaction substate, and destination descriptor that
-chooses the next area. A generic “building” transition is therefore invalid.
+chooses the next area. A generic "building" transition is therefore invalid.
 
 For the Redmond Barrens startup map, the reviewed C0 doorway at the motel
 entrance selects mode `0x14` (Stoker's Coffin Motel). Ares Weapon Emporium and
@@ -270,6 +287,41 @@ own source table entries. The native area catalog currently contains the
 reviewed mode-2 destinations and the motel transition; building interiors,
 exit reaction context, NPC interaction, shops, and combat triggers still need
 their individual source dispatches.
+
+## Audit matrix
+
+This is the implementation boundary for the current native build. `Implemented`
+means that the listed source path has been traced to its native counterpart and
+has a focused test or source-record check. `Partial` means that only the named
+subpath is present. `Pending` means that a visible placeholder is not evidence
+of a port.
+
+| System | Source path audited | Native status | Explicit boundary |
+| --- | --- | --- | --- |
+| Title | `0x0BF2` and reveal/sprite helpers | Partial | Needs frame-by-frame sprite comparison and final audio timing |
+| Startup options | `0x59092`, `0xC376` | Implemented | Source layout and New/Load dispatch are covered |
+| Save/load | `0x59172` | Partial | Empty-slot result is covered; SRAM restore is pending |
+| Archetype selection | `0x59248`, `0x42B0` | Implemented | Only the three Joshua templates are selectable |
+| Opening | `0x59C5E` and timed groups | Partial | Text/timing/skip are present; animated art and music are pending |
+| Field movement | `0x3084`, `0x2B34`, `0xE7C8` | Partial | Movement, collision, animation state, and reviewed maps are present; NPC/entity logic is pending |
+| Area transitions | `0x5A62`, `0x172CDC` | Partial | Reviewed mode-2 and motel reaction are present; every building reaction is not |
+| Command overview | `0x10D30`, `0x10F50`, `0x111E8` | Partial | Normal overview and selector are present; Magic/Pocket Secretary handlers are pending |
+| Inventory navigation | `0x11506`..`0x11678` | Implemented | Eight-cell cursor and source column/row semantics are covered |
+| Equipment action | `0x12148`, `0x12168`..`0x1228C` | Partial | Audited weapon/gear toggle and armor mutation are present; other item-action branches are pending |
+| Posture and bars | `0x119CE`, `0x11ABE`, `0x11AE4`, `0x12CEE` | Partial | Normal equipped-item attack/defense calculation is source-derived; special negative `+0x56` path and combat consumers are pending |
+| Clips | `0x11B58`, `0x12062` | Partial | Selector, ammo fields, and empty gate are present; final action panel remains |
+| Attributes/skills | `0xD01C` | Partial | Read-only display is present; mutation branches are pending |
+| Cyberware | `0x11950` | Partial | Installed-bit display is present; mutation flows are pending |
+| Runner switching | `0x391A` | Partial | No-eligible-runner behavior is covered; recruited roster is pending |
+| Pocket Secretary | `0xC2A6` | Pending | Label only; submenu, mode gates, and effects are pending |
+| Magic | `0xFBA6` | Pending | Handler and spell state are pending |
+| Matrix/cyberdeck | source deck/program loop | Pending | Separate from Magic and command overview |
+| Field combat | source target/action loops | Pending | Posture consumers, damage, ammo/spell drain, and animation are pending |
+
+The equipment rows are intentionally separate from the inventory rows. The
+source record has both possession cells and live equipped-state bytes (`+0x56`,
+`+0x57`, and the armor field). Native code must preserve that distinction; it
+must not infer that an item is equipped from its presence in a cell.
 
 ## Startup, persistence, and non-game screens
 

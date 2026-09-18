@@ -134,6 +134,16 @@ int main() {
     assert(rom_shell.field_entity_frame_index() == 0);
     const auto extracted_assets =
         shadowrun::graphics::decode_genesis_native_assets(rom);
+    // These are the direct 0x12CEE results for Joshua's startup record:
+    // 0x55ED6 gives base 4, 0x55F20 supplies the posture penalty, 0x12C74
+    // selects skill +0x81 for equipped item 2, and the defense branch adds
+    // +0x77 plus the three uninstalled cyberware adjustments.
+    assert((extracted_assets.protagonist_archetype_records[0]
+                .attack_bar_indices_by_posture ==
+            std::array<std::uint8_t, 5>{{3, 4, 5, 6, 7}}));
+    assert((extracted_assets.protagonist_archetype_records[0]
+                .defense_bar_indices_by_posture ==
+            std::array<std::uint8_t, 5>{{19, 18, 17, 16, 15}}));
 
     // Archetype selection mutates Joshua's one live template before the
     // opening; it does not create a switchable Decker/Shaman runner.
@@ -252,6 +262,40 @@ int main() {
     assert(rom_shell.field_inventory_item_code(1) == 0x2C);
     assert(rom_shell.field_ammo_rounds() == 0x20);
     assert(rom_shell.field_ammo_clips() == 0x0A);
+
+    // Inventory possession is not equipment. Joshua starts with Model 101T
+    // (slot 0, item 2) equipped; selecting the Scatter gear in slot 2 must
+    // execute the source 0x121E0 weapon/gear path and change +0x56/+0x57, while
+    // selecting that equipped cell again must set +0x56=0x7F and clear +0x57.
+    auto equipment_assets =
+        shadowrun::graphics::decode_genesis_native_assets(rom);
+    NativePortShell equipment_shell("SHADOWRUN", std::move(equipment_assets));
+    enter_field_from_start(equipment_shell);
+    equipment_shell.update(InputState{button_mask(Button::Start),
+                                      button_mask(Button::Start)});
+    for (int step = 0; step < 6; ++step) {
+        press_menu_direction(equipment_shell, Button::Left);
+    }
+    assert(equipment_shell.field_menu_selection() == 0);
+    press_menu_direction(equipment_shell, Button::Down);
+    assert(equipment_shell.field_menu_row() == 1);
+    equipment_shell.update(InputState{button_mask(Button::A),
+                                      button_mask(Button::A)});
+    assert(equipment_shell.field_active_item_code() == 0x0E);
+    assert(equipment_shell.field_equipped_weapon_slot() == 2);
+    // Item 0x0E is a non-ammunition gear class in 0x121E0; the source
+    // preserves the converted byte value rather than applying item 0x0E's
+    // catalog factor as if it were a firearm.
+    assert(equipment_shell.field_ammo_rounds() == 11);
+    const auto equipped_attack = equipment_shell.field_attack_bar_index();
+    equipment_shell.update(InputState{});
+    equipment_shell.update(InputState{button_mask(Button::A),
+                                      button_mask(Button::A)});
+    assert(equipment_shell.field_active_item_code() == 0);
+    assert(equipment_shell.field_equipped_weapon_slot() == 0x7F);
+    assert(equipment_shell.field_ammo_rounds() != 0);
+    assert(equipment_shell.field_attack_bar_index() != equipped_attack ||
+           !equipment_shell.field_entity_visible());
     rom_shell.render(screen);
 
     // Top-level Clips enters ROM 0x11B58's independent selector loop. The

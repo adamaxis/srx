@@ -112,6 +112,9 @@ struct NativeFieldAnimation {
 // menu instead of retaining Genesis text placement/pointers.
 struct NativeInventoryItem {
     std::uint8_t code = 0;
+    // ROM item record +0x24. The weapon/equipment handlers use this source
+    // factor when transferring ammunition between equipped weapons.
+    std::uint8_t source_combat_factor = 0;
     // ROM 0x12F60/0x13084 use these two record bytes as indexes into the
     // source detail tables. They are not derived statistics.
     std::uint8_t damage_table_index = 0; // item record +0x25
@@ -209,7 +212,8 @@ struct NativeFieldEntity {
     std::uint8_t archetype_index = 0;
     std::uint8_t physical_value = 0;
     std::uint8_t mental_value = 0;
-    // ROM +0x57: the active weapon/gear item shown by the command overview.
+    // ROM +0x57: the currently equipped weapon/gear item. Inventory slot
+    // contents at +0x66 are only possession; they do not imply this value.
     std::uint8_t active_item_code = 0;
     std::uint8_t flags_10 = 0;
     std::uint8_t flags_11 = 0;
@@ -228,7 +232,9 @@ struct NativeFieldEntity {
     std::uint16_t state_selector = 0;
     std::uint16_t state_index = 0;
     // Direct host forms of the signed bytes at template offsets +0x56/+0x57.
-    // ROM 0x36FC suppresses display when +0x56 is negative or 0x7F.
+    // +0x56 is the equipped inventory slot (0x7F means no weapon); ROM
+    // 0x36FC suppresses display when it is negative or 0x7F. +0x57 mirrors
+    // active_item_code for the original record layout.
     std::int8_t display_state = 0;
     std::int8_t display_substate = 0;
     // ROM 0x3602 reads +0x9B to select the item-icon palette line.
@@ -239,9 +245,9 @@ struct NativeFieldEntity {
     // indexes select the 13-tile strips extracted from CF3D4/CF610.
     std::uint8_t attack_bar_index = 0;
     std::uint8_t defense_bar_index = 0;
-    // 0x11ABE calls 0x12CEE again after changing +0x4D. Preserve the exact
-    // source-derived strip selection for every posture so the host screen
-    // changes the attack/defense bars along with the status slider.
+    // 0x11ABE calls 0x12CEE again after changing +0x4D. These are cached
+    // source results for the extracted initial record; runtime equipment
+    // changes recompute them through compute_command_bar_indices().
     std::array<std::uint8_t, kNativeMenuStatusCount>
         attack_bar_indices_by_posture{};
     std::array<std::uint8_t, kNativeMenuStatusCount>
@@ -280,6 +286,20 @@ struct NativeFieldEntity {
     std::array<std::uint8_t, kNativeAttributeSkillAuxiliaryCount>
         attribute_skill_auxiliary{};
 };
+
+struct NativeCommandBarIndices {
+    std::uint8_t attack = 0;
+    std::uint8_t defense = 0;
+};
+
+// Native C++ transcription of the command overview's 0x12CEE branch. It
+// preserves the source helper boundaries used by 0x55ED6/0x55F20/0x12C74
+// and consumes host-extracted item records rather than Genesis addresses.
+NativeCommandBarIndices compute_command_bar_indices(
+    const NativeFieldEntity& entity,
+    const std::array<NativeInventoryItem, kNativeInventoryItemCount>& items,
+    std::uint8_t posture, std::uint8_t command_selector = 6,
+    std::uint8_t command_row = 0);
 
 // Host-owned data required by the current native title-to-field slice. This
 // contains expanded RGBA pixels and typed collision/state data, not Genesis
@@ -472,6 +492,12 @@ public:
     }
     std::uint8_t field_defense_bar_index() const {
         return field_entity_.defense_bar_index;
+    }
+    std::uint8_t field_active_item_code() const {
+        return field_entity_.active_item_code;
+    }
+    std::int8_t field_equipped_weapon_slot() const {
+        return field_entity_.display_state;
     }
     std::size_t clips_menu_selection() const { return clips_menu_selection_; }
     std::uint32_t clips_action_count() const { return clips_action_count_; }
