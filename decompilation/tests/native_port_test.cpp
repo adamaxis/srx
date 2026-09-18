@@ -380,6 +380,58 @@ int main() {
     assert(equipment_shell.field_ammo_rounds() != 0);
     assert(equipment_shell.field_attack_bar_index() != equipped_attack ||
            !equipment_shell.field_entity_visible());
+
+    // ROM 0x12634 is a separate Yes/No loop, not an immediate delete. The
+    // source starts on No; only the explicit Yes choice reaches 0x1275C.
+    auto discard_assets =
+        shadowrun::graphics::decode_genesis_native_assets(rom);
+    NativePortShell discard_shell("SHADOWRUN", std::move(discard_assets));
+    enter_field_from_start(discard_shell);
+    discard_shell.update(InputState{button_mask(Button::Start),
+                                    button_mask(Button::Start)});
+    for (int step = 0; step < 6; ++step) {
+        press_menu_direction(discard_shell, Button::Left);
+    }
+    discard_shell.update(InputState{button_mask(Button::A),
+                                    button_mask(Button::A)});
+    press_menu_direction(discard_shell, Button::Right);
+    assert(discard_shell.field_menu_action_selection() == 3);
+    discard_shell.update(InputState{});
+    discard_shell.update(InputState{button_mask(Button::A),
+                                    button_mask(Button::A)});
+    assert(discard_shell.field_menu_action_active());
+    assert(discard_shell.field_discard_confirmation_active());
+    assert(!discard_shell.field_discard_confirmation_yes());
+    assert(discard_shell.field_discard_message() ==
+           "This item is equipped");
+    assert(discard_shell.field_inventory_item_code(0) == 2);
+    discard_shell.update(InputState{});
+    discard_shell.update(InputState{button_mask(Button::A),
+                                    button_mask(Button::A)});
+    assert(!discard_shell.field_menu_action_active());
+    assert(discard_shell.field_inventory_item_code(0) == 2);
+    assert(discard_shell.field_active_item_code() == 2);
+
+    // Re-enter the same action, toggle the source Yes/No choice once, and
+    // confirm. This clears possession and live equipment because the
+    // selected cell owns the equipped weapon.
+    discard_shell.update(InputState{button_mask(Button::A),
+                                    button_mask(Button::A)});
+    press_menu_direction(discard_shell, Button::Right);
+    discard_shell.update(InputState{});
+    discard_shell.update(InputState{button_mask(Button::A),
+                                    button_mask(Button::A)});
+    press_menu_direction(discard_shell, Button::Right);
+    assert(discard_shell.field_discard_confirmation_yes());
+    discard_shell.update(InputState{});
+    discard_shell.update(InputState{button_mask(Button::A),
+                                    button_mask(Button::A)});
+    assert(!discard_shell.field_menu_action_active());
+    assert(!discard_shell.field_discard_confirmation_active());
+    assert(discard_shell.field_inventory_item_code(0) == 0);
+    assert(discard_shell.field_active_item_code() == 0);
+    assert(discard_shell.field_equipped_weapon_slot() == 0x7F);
+
     rom_shell.render(screen);
 
     // Top-level Clips enters ROM 0x11B58's independent selector loop. The

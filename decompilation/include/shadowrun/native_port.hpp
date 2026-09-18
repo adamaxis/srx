@@ -520,6 +520,13 @@ public:
         return field_menu_action_selection_;
     }
     std::string_view field_menu_action_label() const;
+    bool field_discard_confirmation_active() const {
+        return field_discard_confirmation_active_;
+    }
+    bool field_discard_confirmation_yes() const {
+        return field_discard_confirmation_yes_;
+    }
+    std::string_view field_discard_message() const;
     std::int8_t field_equipped_weapon_slot() const {
         return field_entity_.display_state;
     }
@@ -675,8 +682,10 @@ private:
     bool menu_direction_step(const InputState& input, Button negative,
                              Button positive, bool horizontal);
     void open_field_inventory_action();
+    void open_field_discard_confirmation();
     void update_field_inventory_action(const InputState& input);
     void apply_field_inventory_action();
+    void discard_selected_inventory_item();
     void open_clips_menu();
     void update_clips_menu(const InputState& input);
     void open_cyberware_menu();
@@ -809,6 +818,12 @@ private:
     // from the parent inventory cursor so the first button press cannot equip.
     bool field_menu_action_active_ = false;
     std::size_t field_menu_action_selection_ = 2;
+    // ROM 0x12634 uses a separate Yes/No loop before 0x1275C removes the
+    // selected possession cell. The default source choice is No.
+    bool field_discard_confirmation_active_ = false;
+    bool field_discard_confirmation_yes_ = false;
+    bool field_discard_item_was_equipped_ = false;
+    bool field_discard_cannot_discard_ = false;
     std::size_t clips_menu_selection_ = 2;
     std::size_t clips_last_action_selection_ = 2;
     std::uint32_t clips_action_count_ = 0;

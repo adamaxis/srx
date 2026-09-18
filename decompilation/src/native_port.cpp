@@ -318,6 +318,10 @@ constexpr std::array<std::string_view, 4> kMedicalActionLabels{{
     "      Trade      ",
     "     Cancel      ",
 }};
+constexpr std::array<std::string_view, 2> kDiscardChoiceLabels{{
+    "       No        ",
+    "       Yes       ",
+}};
 
 } // namespace
 
@@ -529,6 +533,21 @@ std::string_view NativePortShell::field_menu_action_label() const {
     const auto& labels = item_code >= 0x10U && item_code <= 0x13U
         ? kMedicalActionLabels : kInventoryActionLabels;
     return labels[field_menu_action_selection_ - 2U];
+}
+
+std::string_view NativePortShell::field_discard_message() const {
+    if (field_discard_cannot_discard_) {
+        // ROM 0x12634 routes protected item codes to D1FFA/Cannot discard
+        // through the common acknowledgement path rather than mutating the
+        // possession cell.
+        return "Cannot discard";
+    }
+    if (field_discard_item_was_equipped_) {
+        // ROM 0x126A6 selects D1CBB/D1CC8 while the confirmation loop is
+        // active; it does not make the item undeletable.
+        return "This item is equipped";
+    }
+    return {};
 }
 
 NativePortShell::NativePortShell(
@@ -1221,6 +1240,10 @@ void NativePortShell::open_field_menu() {
     field_menu_posture_active_ = false;
     field_menu_action_active_ = false;
     field_menu_action_selection_ = 2;
+    field_discard_confirmation_active_ = false;
+    field_discard_confirmation_yes_ = false;
+    field_discard_item_was_equipped_ = false;
+    field_discard_cannot_discard_ = false;
     field_last_command_selection_ = 0;
     field_last_command_row_ = 0;
     field_command_message_frames_ = 0;
@@ -1245,13 +1268,134 @@ void NativePortShell::open_field_inventory_action() {
     // 0x12168 is reached by a later A/B confirmation.
     field_menu_action_active_ = true;
     field_menu_action_selection_ = 2;
+    field_discard_confirmation_active_ = false;
+    field_discard_confirmation_yes_ = false;
+    field_discard_item_was_equipped_ = false;
+    field_discard_cannot_discard_ = false;
     menu_horizontal_repeat_frames_ = 0;
     menu_vertical_repeat_frames_ = 0;
     menu_horizontal_repeat_mask_ = 0;
     menu_vertical_repeat_mask_ = 0;
 }
 
+void NativePortShell::open_field_discard_confirmation() {
+    const auto slot = field_menu_row_ * 2U + field_menu_selection_;
+    if (slot >= field_entity_.inventory_item_codes.size()) {
+        return;
+    }
+    const auto item_code = field_entity_.inventory_item_codes[slot];
+    if (item_code == 0U) {
+        return;
+    }
+
+    field_discard_item_was_equipped_ =
+        field_entity_.display_state >= 0 &&
+        static_cast<std::size_t>(field_entity_.display_state) == slot;
+    field_discard_cannot_discard_ =
+        slot == 7U && item_code >= 0x29U && item_code <= 0x2BU;
+    if (field_discard_cannot_discard_) {
+        // ROM 0x12634 takes this protected-item branch before entering the
+        // Yes/No loop and sends D1FFA through the common acknowledgement path.
+        field_discard_confirmation_active_ = false;
+        field_discard_confirmation_yes_ = false;
+        field_menu_action_active_ = true;
+        field_menu_action_selection_ = 2;
+        return;
+    }
+
+    // ROM 0x12694 clears FFF114 and 0x127B0 toggles it before the first
+    // draw, so the initial visible choice is No. Left/right toggles the
+    // source choice; it is not a hidden immediate deletion.
+    field_discard_confirmation_active_ = true;
+    field_discard_confirmation_yes_ = false;
+}
+
+void NativePortShell::discard_selected_inventory_item() {
+    const auto slot = field_menu_row_ * 2U + field_menu_selection_;
+    if (slot >= field_entity_.inventory_item_codes.size()) {
+        return;
+    }
+    const auto item_code = field_entity_.inventory_item_codes[slot];
+    if (item_code == 0U) {
+        return;
+    }
+
+    // Native form of 0x1275C. Possession (+0x66/+0x6E) is cleared
+    // independently from live equipment. If this cell is the equipped
+    // weapon, the source also clears +0x56/+0x57/+0x4E. Armor uses the
+    // separate +0x76 ordinal and is cleared when this cell owns it.
+    const auto equipped_weapon =
+        field_entity_.display_state >= 0 &&
+        static_cast<std::size_t>(field_entity_.display_state) == slot;
+    const auto equipped_armor =
+        item_code >= 0x2CU &&
+        field_entity_.equipped_armor_index == item_code - 0x2BU;
+    if (equipped_weapon) {
+        field_entity_.display_state = 0x7F;
+        field_entity_.display_substate = 0;
+        field_entity_.active_item_code = 0;
+        field_entity_.ammo_rounds = 0;
+    }
+    if (equipped_armor) {
+        field_entity_.equipped_armor_index = 0;
+    }
+    field_entity_.inventory_item_codes[slot] = 0;
+    field_entity_.inventory_phase_bytes[slot] = 0;
+
+    const auto bars = compute_command_bar_indices(
+        field_entity_, inventory_items_, field_entity_.menu_status_index,
+        static_cast<std::uint8_t>(field_menu_selection_),
+        static_cast<std::uint8_t>(field_menu_row_));
+    field_entity_.attack_bar_index = bars.attack;
+    field_entity_.defense_bar_index = bars.defense;
+    field_entity_.attack_bar_indices_by_posture[
+        field_entity_.menu_status_index] = bars.attack;
+    field_entity_.defense_bar_indices_by_posture[
+        field_entity_.menu_status_index] = bars.defense;
+    field_equipped_armor_by_record_[active_field_record_] =
+        field_entity_.equipped_armor_index;
+    field_entity_records_[active_field_record_] = field_entity_;
+    refresh_field_entity_projection();
+}
+
 void NativePortShell::update_field_inventory_action(const InputState& input) {
+    if (field_discard_cannot_discard_) {
+        // The source's common acknowledgement path keeps this result separate
+        // from the action selector and never deletes the protected item.
+        if (input.was_pressed(Button::A) || input.was_pressed(Button::B) ||
+            input.was_pressed(Button::Start)) {
+            field_discard_cannot_discard_ = false;
+            field_menu_action_active_ = false;
+        }
+        return;
+    }
+
+    if (field_discard_confirmation_active_) {
+        const auto horizontal_step =
+            menu_direction_step(input, Button::Left, Button::Right, true);
+        if (horizontal_step &&
+            ((input.is_held(Button::Left) &&
+              !input.is_held(Button::Right)) ||
+             (input.is_held(Button::Right) &&
+              !input.is_held(Button::Left)))) {
+            // ROM 0x12704 calls 0x127B0 for either horizontal direction;
+            // that routine toggles FFF114 between Yes and No.
+            field_discard_confirmation_yes_ =
+                !field_discard_confirmation_yes_;
+        }
+        if (input.was_pressed(Button::A) || input.was_pressed(Button::B)) {
+            if (field_discard_confirmation_yes_) {
+                discard_selected_inventory_item();
+            }
+            field_discard_confirmation_active_ = false;
+            field_discard_confirmation_yes_ = false;
+            field_discard_item_was_equipped_ = false;
+            field_menu_action_active_ = false;
+            field_menu_action_selection_ = 2;
+        }
+        return;
+    }
+
     // ROM 0x118C6 changes the action selector only on left/right and wraps
     // 2..5. Up/down do not move the parent inventory cursor in this loop.
     const auto horizontal_step =
@@ -1272,6 +1416,8 @@ void NativePortShell::update_field_inventory_action(const InputState& input) {
             apply_field_inventory_action();
             field_menu_action_active_ = false;
             field_menu_action_selection_ = 2;
+        } else if (field_menu_action_selection_ == 3U) {
+            open_field_discard_confirmation();
         } else if (field_menu_action_selection_ == 5U) {
             // Cancel is the source loop's return path; the saved inventory
             // column/row remains selected when the parent redraws.
@@ -1288,6 +1434,10 @@ void NativePortShell::update_field_inventory_action(const InputState& input) {
     if (input.was_pressed(Button::Start)) {
         field_menu_action_active_ = false;
         field_menu_action_selection_ = 2;
+        field_discard_confirmation_active_ = false;
+        field_discard_confirmation_yes_ = false;
+        field_discard_item_was_equipped_ = false;
+        field_discard_cannot_discard_ = false;
     }
 }
 
@@ -2723,8 +2873,24 @@ void NativePortShell::render(ScreenWriter& screen) const {
             // or item action at plane-B address EC9C (x=112, y=200). The
             // other choices are not a vertical checklist on this screen.
             if (field_menu_action_active_) {
-                write_field_menu_text(screen, 112, 200,
-                                      field_menu_action_label());
+                if (field_discard_confirmation_active_) {
+                    write_field_menu_text(screen, 112, 176,
+                                          "Discard item?");
+                    if (!field_discard_message().empty()) {
+                        write_field_menu_text(screen, 112, 184,
+                                              field_discard_message());
+                    }
+                    write_field_menu_text(
+                        screen, 112, 200,
+                        kDiscardChoiceLabels[field_discard_confirmation_yes_
+                                                 ? 1U : 0U]);
+                } else if (field_discard_cannot_discard_) {
+                    write_field_menu_text(screen, 112, 200,
+                                          field_discard_message());
+                } else {
+                    write_field_menu_text(screen, 112, 200,
+                                          field_menu_action_label());
+                }
             } else {
                 write_field_menu_text(
                     screen, 112, 200,
