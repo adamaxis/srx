@@ -650,6 +650,19 @@ read_genesis_notebook_tip_catalog(const std::vector<std::uint8_t>& rom) {
     return result;
 }
 
+std::array<std::string, native::kNativeNotebookMrJohnsonCount>
+read_genesis_notebook_mr_johnson_names(
+    const std::vector<std::uint8_t>& rom) {
+    std::array<std::string, native::kNativeNotebookMrJohnsonCount> result{};
+    for (std::size_t index = 0; index < result.size(); ++index) {
+        result[index] = read_genesis_padded_text(
+            rom, rom::kNotebookMrJohnsonText[index],
+            rom::kNotebookMrJohnsonTextLengths[index],
+            "Genesis Mr. Johnson name is truncated");
+    }
+    return result;
+}
+
 std::array<std::string,
            native::kNativeAttributeCount + native::kNativeSkillCount>
 read_genesis_attribute_skill_catalog(const std::vector<std::uint8_t>& rom) {
@@ -1091,6 +1104,8 @@ native::NativePortAssets decode_genesis_native_assets(
     assets.notebook_event_gates[1] = 0;
     assets.notebook_event_gates[2] = 0;
     assets.notebook_tip_text = read_genesis_notebook_tip_catalog(rom);
+    assets.notebook_mr_johnson_names =
+        read_genesis_notebook_mr_johnson_names(rom);
 
     for (std::size_t index = 0;
          index < assets.field_direction_table.size(); ++index) {
@@ -1114,7 +1129,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 33);
+    write_u16(output, 34);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     for (const auto& title_frame : assets.title_animation_frames) {
@@ -1391,6 +1406,10 @@ void write_native_asset_pack(const std::string& path,
     for (const auto flags : assets.notebook_tip_flags) {
         write_u32(output, flags);
     }
+    for (const auto& name : assets.notebook_mr_johnson_names) {
+        write_pack_string(output, name,
+                          "native Mr. Johnson name is too long");
+    }
     for (const auto& direction : assets.field_direction_table) {
         write_u16(output, static_cast<std::uint16_t>(direction[0]));
         write_u16(output, static_cast<std::uint16_t>(direction[1]));
@@ -1515,7 +1534,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 33U)) {
+        (version < 2U || version > 34U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -2026,6 +2045,14 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
                                             flags = read_pack_u32(
                                                 input,
                                                 "native Notebook tip flags are truncated");
+                                        }
+                                        if (version >= 34U) {
+                                            for (auto& name :
+                                                 assets.notebook_mr_johnson_names) {
+                                                name = read_pack_string(
+                                                    input,
+                                                    "native Mr. Johnson name is truncated");
+                                            }
                                         }
                                     }
                                 }

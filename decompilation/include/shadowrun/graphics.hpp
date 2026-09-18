@@ -178,6 +178,10 @@ read_genesis_notebook_no_run_text(const std::vector<std::uint8_t>& rom);
 // 0x80 is converted to a host newline and 0xFF terminates each source item.
 std::array<std::string, native::kNativeNotebookTipCount>
 read_genesis_notebook_tip_catalog(const std::vector<std::uint8_t>& rom);
+// ROM 0xF416 emits these fixed names into the dynamic Mr. Johnson list;
+// FFFC27 bits 0..4 gate the entries at runtime.
+std::array<std::string, native::kNativeNotebookMrJohnsonCount>
+read_genesis_notebook_mr_johnson_names(const std::vector<std::uint8_t>& rom);
 
 // ROM 0xD01C loads twenty labels through the pointer table at 0xC1A2A.
 std::array<std::string,

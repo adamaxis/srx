@@ -301,8 +301,10 @@ The 96 Tips & Clues source entries are also extracted from the three
 three `FFFC30/34/38` flag longwords, applies the source MSB-first bit order,
 renders the selected source text and page count, and returns on the source
 A/C/Start edges; B follows the existing runner-switch path. Story/event
-writers that set those tip flags remain pending, as do the conditional
-Contacts/Mr. Johnsons/Shadowrunners detail screens.
+writers that set those tip flags remain pending. The Mr. Johnsons handler at
+`0xF416` has also been audited far enough to extract its five fixed source
+names in source order; its FFFC27-gated list/detail loop remains pending, as
+do the conditional Contacts and Shadowrunners detail screens.
 Dismiss Runner now follows the source `0xC448` active-record enumeration: the
 native panel lists live non-current party records, starts on the extracted
 Abort row, and clears the selected record's active bit only after that runner

@@ -685,6 +685,19 @@ switch path and redraws the page. Story/event writers that set the three tip
 flag longwords remain pending, so a fresh decoded session correctly has zero
 visible tips until a test or future event path sets them.
 
+The conditional Mr. Johnsons handler at `0xF416` is a separate five-name
+screen, not another Tips page. It writes the title from `0xC56AE`, then tests
+bits 0 through 4 of `FFFC27` and emits these source-order names into its
+dynamic list: `Mr. Gunderson` (`0xC5728`), `Julius Strouther` (`0xC5755`),
+`Mortimer Reed` (`0xC5766`), `Vigore & Jarl` (`0xC5736`), and
+`Caleb Brightmore` (`0xC5744`). Its selector starts at zero and uses the same
+`C376` bound/cursor family, but A writes the selected entry through a separate
+`C38C` destination; C returns, B calls `0x391A`, and Start continues the loop.
+The five fixed names are now extracted into the organized Notebook asset pack
+with their source order preserved. The native list/detail loop and the story
+writers that set `FFFC27` remain pending until the omitted middle block is
+resolved against the bytecode.
+
 ### Matrix
 
 Matrix is a separate state family from Magic and from the command overview.

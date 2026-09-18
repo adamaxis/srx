@@ -136,6 +136,12 @@ inline constexpr std::array<GenesisAddress, 3> kNotebookNoRunText{
     0xC56E7, 0xC56FE, 0xC5717};
 inline constexpr std::array<std::size_t, 3> kNotebookNoRunTextLengths{
     22, 23, 16};
+// F416 writes these five fixed Mr. Johnson names when FFFC27 bits 0..4 are
+// set. Their source order is intentionally not alphabetical.
+inline constexpr std::array<GenesisAddress, 5> kNotebookMrJohnsonText{
+    0xC5728, 0xC5755, 0xC5766, 0xC5736, 0xC5744};
+inline constexpr std::array<std::size_t, 5> kNotebookMrJohnsonTextLengths{
+    13, 16, 13, 13, 16};
 // New Game's setup helper at 0x59C48 initializes FFFC2C with 0x1C7F;
 // F33E tests the word only for nonzero when deciding whether Contacts is
 // visible on the fresh-game Notebook panel.

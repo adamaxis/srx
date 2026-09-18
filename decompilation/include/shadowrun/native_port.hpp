@@ -43,6 +43,8 @@ constexpr std::size_t kNativeNotebookNoRunLineCount = 3;
 // F9A4 selects one of three 32-entry pointer tables for Tips & Clues.
 constexpr std::size_t kNativeNotebookTipCount = 96;
 constexpr std::size_t kNativeNotebookTipFlagGroupCount = 3;
+// F416 exposes five source Mr. Johnson records behind FFFC27 bits 0..4.
+constexpr std::size_t kNativeNotebookMrJohnsonCount = 5;
 constexpr std::size_t kNativeAttributeCount = 8;
 constexpr std::size_t kNativeSkillCount = 12;
 constexpr std::size_t kNativeAttributeSkillAuxiliaryCount = 4;
@@ -437,6 +439,8 @@ struct NativePortAssets {
     // will be ported as their story/event writers are audited.
     std::array<std::uint32_t, kNativeNotebookTipFlagGroupCount>
         notebook_tip_flags{};
+    std::array<std::string, kNativeNotebookMrJohnsonCount>
+        notebook_mr_johnson_names{};
 };
 
 // Native game code writes to this interface instead of issuing Genesis VDP
@@ -1023,6 +1027,8 @@ private:
     std::array<std::string, kNativeNotebookTipCount> notebook_tip_text_{};
     std::array<std::uint32_t, kNativeNotebookTipFlagGroupCount>
         notebook_tip_flags_{};
+    std::array<std::string, kNativeNotebookMrJohnsonCount>
+        notebook_mr_johnson_names_{};
     std::array<std::size_t, kNativeNotebookTipCount>
         notebook_visible_tip_indices_{};
     std::size_t notebook_visible_tip_count_ = 0;

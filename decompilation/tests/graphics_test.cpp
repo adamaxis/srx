@@ -415,6 +415,12 @@ int main() {
     assert(notebook_tips[32].find("Ilene is doing time") == 0U);
     assert(notebook_tips[95].find("You have deleted the") == 0U);
     assert(native_assets.notebook_tip_text == notebook_tips);
+    const auto mr_johnson_names = read_genesis_notebook_mr_johnson_names(rom);
+    assert((mr_johnson_names ==
+            std::array<std::string, 5>{
+                "Mr. Gunderson", "Julius Strouther", "Mortimer Reed",
+                "Vigore & Jarl", "Caleb Brightmore"}));
+    assert(native_assets.notebook_mr_johnson_names == mr_johnson_names);
     assert((native_assets.notebook_tip_flags ==
             std::array<std::uint32_t, 3>{0U, 0U, 0U}));
     native_assets.notebook_tip_flags =
@@ -461,6 +467,8 @@ int main() {
            native_assets.notebook_event_gates);
     assert(loaded_assets.notebook_tip_text == native_assets.notebook_tip_text);
     assert(loaded_assets.notebook_tip_flags == native_assets.notebook_tip_flags);
+    assert(loaded_assets.notebook_mr_johnson_names ==
+           native_assets.notebook_mr_johnson_names);
     assert(loaded_assets.field_event_mode_table ==
            native_assets.field_event_mode_table);
     assert(loaded_assets.field_areas.size() ==
