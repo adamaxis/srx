@@ -297,13 +297,15 @@ The text resources are written at these source locations:
 
 ### Confirmed native defect
 
-The title background/frame decoder previously passed `0xD29D6` as the palette
-address. That region contains command-screen data/tables, not title CRAM. The
-title resource descriptor at `0x1FD8` points the palette mirror at `0x1FF0`.
-The background writer also emits the source `0x4000` VDP attribute. Its host
-plane priority/palette interpretation still needs a capture comparison; this
-detail remains `PENDING`. The palette correction is now corrected in
-`graphics.cpp`; the unresolved attribute comparison remains explicit.
+The title circuit plane and the title palette transition are separate source
+operations. The current host decoder uses the dark circuit-plane palette at
+`0x1C064`, which matches the settled reference background; `0x1FF0` is the
+64-word target palette consumed by the source transition helper at `0x10D6`,
+not a horizontal-scroll table. The native host currently expands the settled
+plane to RGBA at extraction time, so the exact per-pass palette interpolation
+still needs to be represented as a source-indexed layer. The background writer
+also emits the source `0x4000` VDP attribute; its host priority interpretation
+remains `PENDING` until a phase-matched capture is compared.
 
 ### Remaining title work
 
@@ -311,7 +313,7 @@ The title is not considered complete yet. The next comparison must capture the
 same source loop phases and compare:
 
 - first frame before the reveal delay;
-- each two-pass logo reveal step;
+- each one-pass logo reveal step after the initial delay;
 - each four-call sprite-list phase;
 - SAT X translation and clipping;
 - source plane/sprite priority;

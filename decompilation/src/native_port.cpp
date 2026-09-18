@@ -1939,7 +1939,7 @@ void NativePortShell::render(ScreenWriter& screen) const {
     screen.begin_frame();
     if (scene_ == NativeScene::Title && !title_pixels_.empty()) {
         screen.clear({0x00, 0x00, 0x00, 0xFF});
-        // ROM 0x1E4E reveals one logo column every two title-loop frames after
+        // ROM 0x1E4E reveals one logo column on each title-loop pass after
         // the initial 0x5A-frame delay. The same loop calls 0x1C6A only while
         // that reveal is active; the SAT origin advances four pixels per call
         // and its six lists advance every four calls. Keep those source state
@@ -1961,7 +1961,7 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 visible_columns = std::min<std::size_t>(
                     kTitleRevealColumns,
                     1U + static_cast<std::size_t>(
-                             (title_loop - kTitleRevealStart) / 2U));
+                             title_loop - kTitleRevealStart));
             }
             if (visible_columns != 0U && !title_logo_plane_.pixels.empty()) {
                 auto logo = title_logo_plane_.pixels;
@@ -2038,7 +2038,13 @@ void NativePortShell::render(ScreenWriter& screen) const {
                     screen.blit_rgba(0, 0, title_text_.width,
                                      title_text_.height, text);
                 };
-                if (has_title_loop && title_loop >= 0xFFU) {
+                // 0x1C1E starts DD5C at 0x5A when the final logo column sets
+                // DD5A=1. It writes the copyright block when that countdown
+                // crosses below zero, after the 38 reveal passes.
+                constexpr auto kTitleCopyrightLoop =
+                    kTitleRevealStart + kTitleRevealColumns + 0x5AU;
+                if (has_title_loop &&
+                    title_loop >= kTitleCopyrightLoop) {
                     blit_title_rows(22U, 4U);
                 }
                 // 0x1B72 selects 0x1DCA (PRESS START) for the first ten
