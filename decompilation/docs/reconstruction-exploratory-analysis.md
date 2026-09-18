@@ -532,6 +532,16 @@ The armor path at `0x1219C`/`0x121B0` uses `+0x76` and the selected slot's
 `+0x6E` phase byte. A second activation clears the equipped armor state. The
 presence of an armor code in a cell alone does not equip it.
 
+The selected-item detail path is a separate source classification. `0x115F2`
+calls the weapon Damage/Power writer only for codes below `0x10`. The
+`0x12B8E` branch selects literal labels from `0xD29C4`, `0xD29CA`, and
+`0xD29D0`: `ammo` for `<0x0D`, `uses` for `0x0D..0x13`, and `rtng` for
+`0x14`/`0x18..0x28`. The medkit code `0x10` therefore uses `uses`; it is not
+a weapon and must not display a Damage row. Its value is a two-tile
+source-indexed entry selected from `0x6AC46` by the selected slot's `+0x6E`
+byte. The native port now preserves the label classification and exposes the
+raw selector while the source tile table is promoted into native assets.
+
 The separate branches at `0x12634`, `0x12836`, and `0x11040` have their own
 messages, target/runner selection, and mutations. They must not be collapsed
 into the audited `0x12168` path.

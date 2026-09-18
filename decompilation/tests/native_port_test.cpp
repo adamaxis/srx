@@ -292,6 +292,26 @@ int main() {
     assert(rom_shell.field_inventory_item_code(1) == 0x2C);
     assert(rom_shell.field_ammo_rounds() == 0x20);
     assert(rom_shell.field_ammo_clips() == 0x0A);
+    // The equipped item is code 2, so 0x12A8C selects the source "ammo"
+    // branch. This is intentionally separate from the later medkit Uses
+    // branch; neither is a generic Damage field.
+    assert(rom_shell.field_active_item_detail_label() == "ammo");
+
+    auto medical_assets =
+        shadowrun::graphics::decode_genesis_native_assets(rom);
+    NativePortShell medical_shell("SHADOWRUN", std::move(medical_assets));
+    enter_field_from_start(medical_shell);
+    medical_shell.update(InputState{button_mask(Button::Start),
+                                    button_mask(Button::Start)});
+    for (int step = 0; step < 6; ++step) {
+        press_menu_direction(medical_shell, Button::Left);
+    }
+    press_menu_direction(medical_shell, Button::Down);
+    press_menu_direction(medical_shell, Button::Right);
+    medical_shell.update(InputState{button_mask(Button::A),
+                                    button_mask(Button::A)});
+    assert(medical_shell.field_active_item_code() == 0x10);
+    assert(medical_shell.field_active_item_detail_label() == "uses");
 
     // Inventory possession is not equipment. Joshua starts with Model 101T
     // (slot 0, item 2) equipped; selecting the Scatter gear in slot 2 must

@@ -257,6 +257,24 @@ constexpr std::array<std::string_view, 7> kFieldMenuLabels{{
     "Pocket Secretary ",
 }};
 
+// ROM 0x12B8E..0x12BBA chooses the literal strings at 0xD29C4 (ammo),
+// 0xD29CA (uses), and 0xD29D0 (rtng). Codes 0x15..0x17 and 0x29..0x2B
+// fall through to item-specific handlers; armor >=0x2C uses the separate
+// 0x11352 armor writer.
+std::string_view source_item_detail_label(std::uint8_t item_code) {
+    if (item_code < 0x0DU) {
+        return "ammo";
+    }
+    if (item_code < 0x14U) {
+        return "uses";
+    }
+    if (item_code == 0x14U ||
+        (item_code >= 0x18U && item_code < 0x29U)) {
+        return "rtng";
+    }
+    return {};
+}
+
 bool field_menu_uses_alt_item_palette(const NativeFieldEntity& entity) {
     // ROM 0x3602 selects the command-screen icon palette from the active
     // record's +0x56, +0x57, and +0x9B bytes. Keep the branch structure in
@@ -465,6 +483,10 @@ NativeCommandBarIndices compute_command_bar_indices(
 
 NativePortShell::NativePortShell(std::string title)
     : title_(std::move(title)) {}
+
+std::string_view NativePortShell::field_active_item_detail_label() const {
+    return source_item_detail_label(field_entity_.active_item_code);
+}
 
 NativePortShell::NativePortShell(
     std::string title, const std::vector<std::uint8_t>& rom)
@@ -2350,7 +2372,9 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 }
                 // 0x115F2 calls 0x12E9E only for item codes below 0x10.
                 // Medkit (0x10), patches, tools, spells, and armor do not
-                // use the weapon Damage/Power detail writer.
+                // use the weapon Damage/Power detail writer. 0x12A8C still
+                // writes its source Ammo/Uses/Rtng label and phase-table
+                // value for categories that have one.
                 const auto is_weapon_detail = item_code < 0x10U;
                 if (is_weapon_detail &&
                     item.damage_table_index < field_menu_damage_bars_.size()) {
@@ -2371,6 +2395,19 @@ void NativePortShell::render(ScreenWriter& screen) const {
                             screen, 168, 88,
                             field_menu_power_labels_[label_index]);
                     }
+                }
+                const auto detail_label = source_item_detail_label(item_code);
+                if (!detail_label.empty()) {
+                    write_field_menu_text(screen, 112, 80, detail_label);
+                    // The source value is a two-tile entry selected from
+                    // 0x6AC46 by the selected slot's +0x6E byte. Until that
+                    // tile table is promoted into the native asset pack,
+                    // expose the exact source selector rather than faking a
+                    // weapon damage statistic for medical/utility items.
+                    const auto phase = source_inventory_phase_for_code(
+                        field_entity_, item_code);
+                    write_field_menu_text(screen, 168, 80,
+                                          std::to_string(phase));
                 }
             };
             if (field_menu_selection_ >= 2U) {

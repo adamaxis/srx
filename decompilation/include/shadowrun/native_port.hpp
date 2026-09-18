@@ -309,8 +309,9 @@ NativeCommandBarIndices compute_command_bar_indices(
 struct NativePortAssets {
     NativeImage title_scene;
     // Separate host layers preserve the ROM's title timing: the circuit
-    // plane is present first, the logo columns arrive two frames apart, the
-    // sprite overlay advances every four frames, and text is a fixed plane.
+    // plane is present first, the logo columns arrive one per title-loop
+    // pass after the initial delay, the sprite overlay advances every four
+    // calls, and text is a fixed plane.
     NativeImage title_background;
     NativeImage title_logo_plane;
     NativeImage title_text;
@@ -508,6 +509,10 @@ public:
     std::uint8_t field_active_item_code() const {
         return field_entity_.active_item_code;
     }
+    // ROM 0x12A8C selects this source label independently of the weapon
+    // Damage/Power writer. Medical and utility items therefore expose Uses or
+    // Rtng instead of being presented as weapons.
+    std::string_view field_active_item_detail_label() const;
     std::int8_t field_equipped_weapon_slot() const {
         return field_entity_.display_state;
     }

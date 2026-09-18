@@ -389,7 +389,9 @@ behavior:
 - The item detail writer now follows the `0x115F2`/`0x12E9E` boundary:
   weapon Damage/Power rows are emitted only for item codes below `0x10`.
   Medkits and the later item categories therefore cannot acquire a weapon
-  damage stat merely because a table record has a nonzero field.
+  damage stat merely because a table record has a nonzero field. The adjacent
+  `0x12B8E` branch now selects the source `ammo`, `uses`, and `rtng` labels;
+  the value tile table at `0x6AC46` is still pending native asset extraction.
 - Unequipping no longer removes the projected runner body. The item sprite
   selection path and the body projection path are separate source effects;
   the native fallback marker is not a character sprite.
