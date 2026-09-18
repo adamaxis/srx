@@ -406,6 +406,25 @@ void test_pocket_secretary_menu(const std::vector<std::uint8_t>& rom) {
     press(shell, Button::A);
     assert(shell.pocket_secretary_menu_open());
     assert(shell.pocket_secretary_selection() == 0U);
+    press(shell, Button::Down);
+    press(shell, Button::Down);
+    assert(shell.pocket_secretary_selection() == 2U);
+    press(shell, Button::A);
+    // 0x18150 tests FF018F bit 0 before entering the Matrix path. New Game
+    // starts without that flag, so A produces the exact extracted feedback
+    // in the Pocket Secretary instead of opening an invented cyberdeck UI.
+    assert(shell.pocket_secretary_menu_open());
+    assert(shell.pocket_secretary_message_visible());
+    assert(shell.pocket_secretary_message_line(0) == " You do not have");
+    assert(shell.pocket_secretary_message_line(1) == "  a cyberdeck!!");
+    assert(shell.pocket_secretary_message_line(2) == " Keep looking.");
+    shell.render(screen);
+    assert(screen.pixel(88, 120) != 0U);
+    press(shell, Button::Up);
+    assert(shell.pocket_secretary_selection() == 1U);
+    assert(!shell.pocket_secretary_message_visible());
+    press(shell, Button::Up);
+    assert(shell.pocket_secretary_selection() == 0U);
     for (std::size_t expected = 1U; expected < 5U; ++expected) {
         press(shell, Button::Down);
         assert(shell.pocket_secretary_selection() == expected);

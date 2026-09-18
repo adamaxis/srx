@@ -632,6 +632,16 @@ controller edge and returns to the command loop. The native port has extracted
 the catalog into the host asset pack and covers the empty-catalog path; event
 setters for the persistent bits remain pending.
 
+The Cyberdeck row dispatches to `0x18150`. The first instruction tests
+`FF018F` bit 0, the source deck-present flag. When it is clear, the handler
+calls `0xC3E6`, passes `0xE43D1` to `0xC0DA` with destination `0xC40E`, and
+returns to the Pocket Secretary loop. The three fixed source strings are:
+`" You do not have"`, `"  a cyberdeck!!"`, and `" Keep looking."`. The native
+port extracts those lines and keeps the Pocket Secretary open while displaying
+them. The branch beginning at `0x1817E` initializes the actual deck/Matrix
+screen and remains a separate audit target; a generic Matrix placeholder is
+not an acceptable substitute.
+
 ### Matrix
 
 Matrix is a separate state family from Magic and from the command overview.

@@ -25,6 +25,9 @@ constexpr std::size_t kNativeCyberwareCount = 15;
 // ROM 0xC8C8 walks bits 0..14 of FFFC22 and indexes the fifteen longwords
 // at 0xC25C4 when drawing Group Items.
 constexpr std::size_t kNativeGroupItemCount = 15;
+// ROM 0x18150 writes three fixed strings at 0xE43D1 when FF018F bit 0 is
+// clear. Keep the lines separate because C0DA receives one source pointer.
+constexpr std::size_t kNativeCyberdeckUnavailableLineCount = 3;
 constexpr std::size_t kNativeAttributeCount = 8;
 constexpr std::size_t kNativeSkillCount = 12;
 constexpr std::size_t kNativeAttributeSkillAuxiliaryCount = 4;
@@ -398,6 +401,8 @@ struct NativePortAssets {
     std::array<std::string, kNativeAttributeCount + kNativeSkillCount>
         attribute_skill_names{};
     std::array<std::string, kNativeGroupItemCount> group_item_names{};
+    std::array<std::string, kNativeCyberdeckUnavailableLineCount>
+        cyberdeck_unavailable_lines{};
 };
 
 // Native game code writes to this interface instead of issuing Genesis VDP
@@ -503,6 +508,14 @@ public:
     std::string_view group_item_name(std::size_t index) const {
         return index < group_item_names_.size()
             ? std::string_view(group_item_names_[index])
+            : std::string_view{};
+    }
+    bool pocket_secretary_message_visible() const {
+        return pocket_secretary_message_visible_;
+    }
+    std::string_view pocket_secretary_message_line(std::size_t index) const {
+        return index < cyberdeck_unavailable_lines_.size()
+            ? std::string_view(cyberdeck_unavailable_lines_[index])
             : std::string_view{};
     }
     bool field_dialog_open() const {
@@ -911,6 +924,9 @@ private:
     std::array<std::string, kNativeAttributeCount + kNativeSkillCount>
         attribute_skill_names_{};
     std::array<std::string, kNativeGroupItemCount> group_item_names_{};
+    std::array<std::string, kNativeCyberdeckUnavailableLineCount>
+        cyberdeck_unavailable_lines_{};
+    bool pocket_secretary_message_visible_ = false;
     std::array<std::uint8_t, 3> field_equipped_armor_by_record_{};
     std::uint8_t field_initial_equipped_armor_ = 0;
     std::array<NativeFieldRecord, 3> field_initial_records_{};

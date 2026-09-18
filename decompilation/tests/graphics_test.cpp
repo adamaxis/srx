@@ -389,6 +389,9 @@ int main() {
                .position.world_y_fixed == 0x0800);
     assert(native_assets.group_item_names[0] == "Prototype Cyber-heart");
     assert(native_assets.group_item_names[14] == "Ork Armband");
+    assert(native_assets.cyberdeck_unavailable_lines[0] == " You do not have");
+    assert(native_assets.cyberdeck_unavailable_lines[1] == "  a cyberdeck!!");
+    assert(native_assets.cyberdeck_unavailable_lines[2] == " Keep looking.");
     const auto pack_path = std::filesystem::temp_directory_path() /
                            "shadowrun_native_port_assets_test.srna";
     write_native_asset_pack(pack_path.string(), native_assets);
@@ -419,6 +422,8 @@ int main() {
     assert(loaded_assets.field_direction_table ==
            native_assets.field_direction_table);
     assert(loaded_assets.group_item_names == native_assets.group_item_names);
+    assert(loaded_assets.cyberdeck_unavailable_lines ==
+           native_assets.cyberdeck_unavailable_lines);
     assert(loaded_assets.field_event_mode_table ==
            native_assets.field_event_mode_table);
     assert(loaded_assets.field_areas.size() ==

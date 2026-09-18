@@ -632,6 +632,8 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     cyberware_names_ = std::move(assets.cyberware_names);
     attribute_skill_names_ = std::move(assets.attribute_skill_names);
     group_item_names_ = std::move(assets.group_item_names);
+    cyberdeck_unavailable_lines_ =
+        std::move(assets.cyberdeck_unavailable_lines);
     protagonist_archetype_records_ =
         std::move(assets.protagonist_archetype_records);
     field_initial_records_ = assets.initial_field_records;
@@ -2101,6 +2103,7 @@ void NativePortShell::open_pocket_secretary_menu() {
     // six so return restores Pocket Secretary rather than an unrelated row.
     scene_ = NativeScene::PocketSecretaryMenu;
     pocket_secretary_selection_ = 0;
+    pocket_secretary_message_visible_ = false;
     pocket_secretary_save_load_enabled_ = true;
     menu_horizontal_repeat_frames_ = 0;
     menu_vertical_repeat_frames_ = 0;
@@ -2114,10 +2117,12 @@ void NativePortShell::update_pocket_secretary_menu(const InputState& input) {
         menu_direction_step(input, Button::Up, Button::Down, false);
     if (vertical_step && input.is_held(Button::Up) &&
         !input.is_held(Button::Down)) {
+        pocket_secretary_message_visible_ = false;
         pocket_secretary_selection_ = pocket_secretary_selection_ == 0U
             ? option_count - 1U : pocket_secretary_selection_ - 1U;
     } else if (vertical_step && input.is_held(Button::Down) &&
                !input.is_held(Button::Up)) {
+        pocket_secretary_message_visible_ = false;
         pocket_secretary_selection_ =
             (pocket_secretary_selection_ + 1U) % option_count;
     }
@@ -2126,6 +2131,7 @@ void NativePortShell::update_pocket_secretary_menu(const InputState& input) {
     // boundary as the other command screens. The source A dispatches the
     // selected row; only Save/Load is currently a reconstructed destination.
     if (input.was_pressed(Button::Start) || input.was_pressed(Button::B)) {
+        pocket_secretary_message_visible_ = false;
         scene_ = NativeScene::FieldMenu;
         field_menu_selection_ = 6;
         return;
@@ -2143,6 +2149,7 @@ void NativePortShell::update_pocket_secretary_menu(const InputState& input) {
         save_load_message_visible_ = false;
         save_load_message_success_ = false;
         save_load_from_pocket_secretary_ = true;
+        pocket_secretary_message_visible_ = false;
         return;
     }
     if (pocket_secretary_selection_ == 1U) {
@@ -2150,10 +2157,20 @@ void NativePortShell::update_pocket_secretary_menu(const InputState& input) {
         // entries whose bits are set, or the exact empty-catalog message,
         // then waits for any controller edge before returning to 0x10D30.
         scene_ = NativeScene::GroupItemsMenu;
+        pocket_secretary_message_visible_ = false;
         return;
     }
-    // Notebook, Group Items, Cyberdeck, and Dismiss Runner retain their
-    // source selection boundary until their individual handlers are traced.
+    if (pocket_secretary_selection_ == 2U) {
+        // ROM 0x18150 first tests FF018F bit 0. The native new-game state has
+        // no deck until the corresponding source acquisition path is ported;
+        // preserve the source feedback instead of opening an invented Matrix
+        // screen. The handler returns to C2A6, so the Pocket Secretary stays
+        // open and the message is an in-panel response.
+        pocket_secretary_message_visible_ = true;
+        return;
+    }
+    // Notebook and Dismiss Runner retain their source selection boundary until
+    // their individual handlers are traced.
 }
 
 void NativePortShell::update_group_items_menu(const InputState& input) {
@@ -3826,6 +3843,18 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 }
                 write_field_menu_text(screen, 96, y,
                                       kPocketSecretaryLabels[index]);
+            }
+            if (pocket_secretary_message_visible_) {
+                // C0DA receives A2=0xC40E from 0x18150. Preserve the three
+                // extracted source lines as an in-panel response; this is
+                // deliberately not a synthetic Matrix/cyberdeck screen.
+                for (std::size_t index = 0;
+                     index < cyberdeck_unavailable_lines_.size(); ++index) {
+                    write_field_menu_text(
+                        screen, 88,
+                        120 + static_cast<std::int32_t>(index) * 12,
+                        cyberdeck_unavailable_lines_[index]);
+                }
             }
             write_field_menu_text(screen, 80, 176, " A SELECT  B RETURN");
         } else if (scene_ == NativeScene::GroupItemsMenu) {

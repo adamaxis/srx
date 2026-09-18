@@ -530,6 +530,34 @@ read_genesis_group_item_catalog(const std::vector<std::uint8_t>& rom) {
     return result;
 }
 
+std::array<std::string, native::kNativeCyberdeckUnavailableLineCount>
+read_genesis_cyberdeck_unavailable_text(
+    const std::vector<std::uint8_t>& rom) {
+    std::array<std::string, native::kNativeCyberdeckUnavailableLineCount>
+        result{};
+    for (std::size_t index = 0; index < result.size(); ++index) {
+        const auto offset = static_cast<std::size_t>(
+            rom::kCyberdeckUnavailableText[index]);
+        const auto length = rom::kCyberdeckUnavailableTextLengths[index];
+        if (offset > rom.size() || rom.size() - offset < length) {
+            throw std::out_of_range(
+                "Genesis cyberdeck-unavailable text is truncated");
+        }
+        auto& line = result[index];
+        line.reserve(length);
+        for (std::size_t character = 0; character < length; ++character) {
+            const auto byte = rom[offset + character];
+            if (byte == 0x80U || byte == 0xFFU) {
+                break;
+            }
+            line.push_back(byte >= 0x20U && byte <= 0x7EU
+                               ? static_cast<char>(byte)
+                               : ' ');
+        }
+    }
+    return result;
+}
+
 std::array<std::string,
            native::kNativeAttributeCount + native::kNativeSkillCount>
 read_genesis_attribute_skill_catalog(const std::vector<std::uint8_t>& rom) {
@@ -957,6 +985,8 @@ native::NativePortAssets decode_genesis_native_assets(
     assets.cyberware_names = read_genesis_cyberware_catalog(rom);
     assets.attribute_skill_names = read_genesis_attribute_skill_catalog(rom);
     assets.group_item_names = read_genesis_group_item_catalog(rom);
+    assets.cyberdeck_unavailable_lines =
+        read_genesis_cyberdeck_unavailable_text(rom);
 
     for (std::size_t index = 0;
          index < assets.field_direction_table.size(); ++index) {
@@ -980,7 +1010,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 27);
+    write_u16(output, 28);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     for (const auto& title_frame : assets.title_animation_frames) {
@@ -1231,6 +1261,10 @@ void write_native_asset_pack(const std::string& path,
         write_pack_string(output, name,
                           "native group-item name is too long");
     }
+    for (const auto& line : assets.cyberdeck_unavailable_lines) {
+        write_pack_string(output, line,
+                          "native cyberdeck-unavailable text is too long");
+    }
     for (const auto& direction : assets.field_direction_table) {
         write_u16(output, static_cast<std::uint16_t>(direction[0]));
         write_u16(output, static_cast<std::uint16_t>(direction[1]));
@@ -1355,7 +1389,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 27U)) {
+        (version < 2U || version > 28U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -1824,6 +1858,13 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
                 for (std::size_t index = 0; index < group_item_count; ++index) {
                     assets.group_item_names[index] = read_pack_string(
                         input, "native group-item name is truncated");
+                }
+                if (version >= 28U) {
+                    for (auto& line : assets.cyberdeck_unavailable_lines) {
+                        line = read_pack_string(
+                            input,
+                            "native cyberdeck-unavailable text is truncated");
+                    }
                 }
             }
         }

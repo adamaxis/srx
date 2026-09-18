@@ -287,11 +287,13 @@ option.
 Native status: the `0xC2A6` panel now uses the extracted C1418 option order,
 has a five-row cursor loop in ordinary field mode, returns through B/Start,
 and sends Save/Load to the existing two-slot `0x59172` screen. Group Items now
-uses the `0xC8C8` bitfield/catalog path and its source empty-catalog message;
-the remaining Notebook, Cyberdeck, and Dismiss Runner effects are still
-source-selected but pending. The restricted four-row bound, class/combat
-gates, runner and contact records, and debug path still require their own
-traces.
+uses the `0xC8C8` bitfield/catalog path and its source empty-catalog message.
+The Cyberdeck row now follows the first branch of `0x18150`: with the native
+new-game state equivalent to clear `FF018F` bit 0, it writes the exact three
+lines at `0xE43D1`, `0xE43E2`, and `0xE43F3` into the Pocket Secretary panel.
+The deck-present Matrix path is intentionally still pending, as are Notebook,
+Dismiss Runner, the restricted four-row bound, class/combat gates, runner and
+contact records, and the debug path.
 
 ## Magic, Matrix, and combat screens
 
@@ -356,7 +358,7 @@ of a port.
 | Attributes/skills | `0xD01C` | Partial | Read-only display is present; mutation branches are pending |
 | Cyberware | `0x11950` | Partial | Installed-bit display is present; mutation flows are pending |
 | Runner switching | `0x391A` | Partial | No-eligible-runner behavior is covered; recruited roster is pending |
-| Pocket Secretary | `0xC2A6`, `0xC3E6`, `0xC376`, `0xC8C8`, `0xF312` | Partial | Source five-row order, cursor wrap, caller-specific Save/Load return, Group Items catalog/empty path, and any-edge return are present; Notebook, Cyberdeck, Dismiss Runner, and restricted-mode gates remain |
+| Pocket Secretary | `0xC2A6`, `0xC3E6`, `0xC376`, `0xC8C8`, `0xF312`, `0x18150` | Partial | Source five-row order, cursor wrap, caller-specific Save/Load return, Group Items catalog/empty path, any-edge return, and Cyberdeck no-deck feedback are present; deck-present Matrix path, Notebook, Dismiss Runner, and restricted-mode gates remain |
 | Magic | `0xFBA6` | Pending | Handler and spell state are pending |
 | Matrix/cyberdeck | source deck/program loop | Pending | Separate from Magic and command overview |
 | Field combat | source target/action loops | Pending | Posture consumers, damage, ammo/spell drain, and animation are pending |

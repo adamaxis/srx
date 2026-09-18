@@ -112,6 +112,12 @@ constexpr std::size_t kCyberwareCount = 15;
 // pointer table for the visible Group Items names.
 constexpr std::uint32_t kGroupItemPointerTable = 0xC25C4;
 constexpr std::size_t kGroupItemCount = 15;
+// 0x18150 passes these three FF-terminated strings to C0DA when the
+// cyberdeck-present flag at FF018F bit 0 is clear.
+inline constexpr std::array<GenesisAddress, 3>
+    kCyberdeckUnavailableText{0xE43D1, 0xE43E2, 0xE43F3};
+inline constexpr std::array<std::size_t, 3> kCyberdeckUnavailableTextLengths{
+    16, 15, 14};
 // ROM 0xD01C loads twenty labels through this longword table. The first
 // eight correspond to the attribute bytes at record +0x77..+0x7E; the final
 // twelve correspond to the skill bytes at +0x80..+0x85 and +0x87..+0x8C.

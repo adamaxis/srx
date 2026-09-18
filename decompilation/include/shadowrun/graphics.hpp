@@ -155,6 +155,13 @@ read_genesis_cyberware_catalog(const std::vector<std::uint8_t>& rom);
 std::array<std::string, native::kNativeGroupItemCount>
 read_genesis_group_item_catalog(const std::vector<std::uint8_t>& rom);
 
+// ROM 0x18150 writes these three source strings when FF018F bit 0 says the
+// player has no cyberdeck. They are extracted before the native runtime starts
+// so the menu does not read the ROM at runtime.
+std::array<std::string, native::kNativeCyberdeckUnavailableLineCount>
+read_genesis_cyberdeck_unavailable_text(
+    const std::vector<std::uint8_t>& rom);
+
 // ROM 0xD01C loads twenty labels through the pointer table at 0xC1A2A.
 std::array<std::string,
           native::kNativeAttributeCount + native::kNativeSkillCount>
