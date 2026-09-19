@@ -808,6 +808,8 @@ native::NativePortAssets decode_genesis_native_assets(
             boot_strobe[index].width, boot_strobe[index].height,
             boot_strobe[index].pixels};
     }
+    const auto boot_fasa = decode_genesis_boot_fasa(rom);
+    assets.boot_fasa = {boot_fasa.width, boot_fasa.height, boot_fasa.pixels};
     const auto intro_stages = decode_genesis_intro_stages(rom);
     for (std::size_t index = 0; index < intro_stages.size(); ++index) {
         assets.intro_stages[index] = {
@@ -818,6 +820,10 @@ native::NativePortAssets decode_genesis_native_assets(
     assets.field_menu_background = {
         field_menu_background.width, field_menu_background.height,
         std::move(field_menu_background.pixels)};
+    auto startup_background = decode_genesis_startup_background(rom);
+    assets.startup_background = {
+        startup_background.width, startup_background.height,
+        std::move(startup_background.pixels)};
     auto field_menu_inventory_boxes =
         decode_genesis_field_menu_inventory_boxes(rom);
     assets.field_menu_inventory_boxes = {
@@ -1164,7 +1170,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 38);
+    write_u16(output, 39);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     for (const auto& title_frame : assets.title_animation_frames) {
@@ -1569,6 +1575,8 @@ void write_native_asset_pack(const std::string& path,
     for (const auto& stage : assets.intro_stages) {
         write_native_image(output, stage);
     }
+    write_native_image(output, assets.boot_fasa);
+    write_native_image(output, assets.startup_background);
     if (!output) {
         throw std::runtime_error("failed writing native asset pack: " + path);
     }
@@ -1584,7 +1592,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 38U)) {
+        (version < 2U || version > 39U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -2295,6 +2303,10 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
             stage = read_native_image(input);
         }
     }
+    if (version >= 39U) {
+        assets.boot_fasa = read_native_image(input);
+        assets.startup_background = read_native_image(input);
+    }
     return assets;
 }
 
@@ -2504,7 +2516,8 @@ std::array<native::Rgba8, 64> read_genesis_palette_set(
 }
 
 RgbaImage decode_genesis_field_menu_layer(
-    const std::vector<std::uint8_t>& rom, bool inventory_boxes) {
+    const std::vector<std::uint8_t>& rom, bool inventory_boxes,
+    bool startup_crt = false) {
     constexpr std::size_t kPatternStreamOffset = 0xCAB0CU;
     constexpr std::size_t kPatternVramOffset = 0x1E20U;
     constexpr std::size_t kNameTableColumns = 64U;
@@ -2569,7 +2582,14 @@ RgbaImage decode_genesis_field_menu_layer(
     // These are the four literal 0x1232 calls made by 0x10F50. The source
     // blocks and the E000/EB98 destinations are the screen's actual Genesis
     // geometry, including the four 5x4 item cells used by Inventory.
-    if (!inventory_boxes) {
+    if (startup_crt) {
+        // ROM 0x10B5A: centered CRT bezel used by Start Options / Load /
+        // Choose Archetype. D4 is the signed VRAM word (-0x1FFA = $E006).
+        write_block(0xCDCE6U, 0xE006U, 34U, 4U, 0);
+        write_block(0xCDDF6U, 0xE206U, 5U, 17U, 0);
+        write_block(0xCDEA0U, 0xE240U, 5U, 17U, 0);
+        write_block(0xCDF4AU, 0xEA86U, 34U, 7U, 0);
+    } else if (!inventory_boxes) {
         write_block(0xCD598U, 0xE000U, 12U, 28U, 0);
         write_block(0xCD838U, 0xE018U, 21U, 2U, 0);
         write_block(0xCD88CU, 0xE042U, 1U, 23U, 0);
@@ -2648,6 +2668,11 @@ RgbaImage decode_genesis_field_menu_layer(
 RgbaImage decode_genesis_field_menu_background(
     const std::vector<std::uint8_t>& rom) {
     return decode_genesis_field_menu_layer(rom, false);
+}
+
+RgbaImage decode_genesis_startup_background(
+    const std::vector<std::uint8_t>& rom) {
+    return decode_genesis_field_menu_layer(rom, false, true);
 }
 
 RgbaImage decode_genesis_field_menu_inventory_boxes(
@@ -5196,6 +5221,18 @@ decode_genesis_boot_logo_strobe(const std::vector<std::uint8_t>& rom) {
                                 0xE51AU, 0xE000U, 0, true);
     }
     return frames;
+}
+
+RgbaImage decode_genesis_boot_fasa(const std::vector<std::uint8_t>& rom) {
+    auto image = make_transparent_title_layer();
+    for (auto& pixel : image.pixels) {
+        pixel = {0, 0, 0, 255};
+    }
+    const auto boot = decode_genesis_boot_pattern_data(rom);
+    // 0x5D886: 16x5 at $E518 from 0x1FFAC6, same tiles as the SEGA 12x4.
+    blit_genesis_name_table(rom, boot, image, 0x1FFAC6U, 16U, 5U, 0xE518U,
+                            0xE000U, 0, true);
+    return image;
 }
 
 std::array<RgbaImage, native::kNativeIntroStageCount>

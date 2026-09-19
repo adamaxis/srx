@@ -686,6 +686,8 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     boot_guy_ = std::move(assets.boot_guy);
     boot_sega_frames_ = std::move(assets.boot_sega_frames);
     boot_logo_strobe_ = std::move(assets.boot_logo_strobe);
+    boot_fasa_ = std::move(assets.boot_fasa);
+    startup_background_ = std::move(assets.startup_background);
     intro_stages_ = std::move(assets.intro_stages);
     if (!boot_background_.pixels.empty()) {
         scene_ = NativeScene::Bootstrap;
@@ -2186,10 +2188,12 @@ void NativePortShell::write_startup_text(ScreenWriter& screen,
 }
 
 void NativePortShell::render_startup_background(ScreenWriter& screen) const {
-    // 0x59092/0x59172/0x59248 enter their own cleared startup planes. The
-    // title circuit plane is not retained behind these menus; blitting it
-    // here made the create-character screen visibly unlike the source.
     screen.clear({0x00, 0x00, 0x00, 0xFF});
+    if (!startup_background_.pixels.empty()) {
+        screen.blit_rgba(0, 0, startup_background_.width,
+                         startup_background_.height,
+                         startup_background_.pixels);
+    }
 }
 
 void NativePortShell::open_pocket_secretary_menu() {
@@ -3126,6 +3130,13 @@ void NativePortShell::update_boot() {
                     boot_df92_ = 0;
                 }
             }
+            // 0x5D8BA at DF90==2 calls 0x5B2E2: the chrome figure fades
+            // while the SEGA logo shines.
+            if (boot_guy_fade_ > 8U) {
+                boot_guy_fade_ = static_cast<std::uint16_t>(boot_guy_fade_ - 8U);
+            } else {
+                boot_guy_fade_ = 0;
+            }
         }
         // ROM 0x5D938 draws, then 0x5D7A2 mutates SAT Y / SEGA timers.
         if (boot_guy_y_ != static_cast<std::int16_t>(kBootGuyStopY)) {
@@ -3172,8 +3183,14 @@ void NativePortShell::update_boot() {
     if (boot_hold_left_ != 0U) {
         --boot_hold_left_;
         if (boot_hold_left_ == 0U) {
-            // Second 0x131C fades already-black CRAM; the title loop
-            // starts at its own frame zero after this hold.
+            // Second 0x131C fades the 0x5D886 FASA plane to black.
+            boot_fasa_fade_left_ = kBootFadeFrames;
+        }
+        return;
+    }
+    if (boot_fasa_fade_left_ != 0U) {
+        --boot_fasa_fade_left_;
+        if (boot_fasa_fade_left_ == 0U) {
             scene_ = NativeScene::Title;
             frame_number_ = 0;
         }
@@ -3502,30 +3519,48 @@ void NativePortShell::render(ScreenWriter& screen) const {
     screen.begin_frame();
     if (scene_ == NativeScene::Bootstrap) {
         screen.clear({0x00, 0x00, 0x00, 0xFF});
+        const auto showing_fasa =
+            boot_loop_left_ == 0U && boot_fade_left_ == 0U &&
+            (boot_hold_left_ != 0U || boot_fasa_fade_left_ != 0U);
+        const auto scale_copy = [](const std::vector<Rgba8>& source,
+                                   std::uint16_t remaining,
+                                   std::uint16_t total) {
+            auto faded = source;
+            if (total == 0U || remaining >= total) {
+                return faded;
+            }
+            for (auto& pixel : faded) {
+                pixel.red = static_cast<std::uint8_t>(
+                    (static_cast<std::uint16_t>(pixel.red) * remaining) /
+                    total);
+                pixel.green = static_cast<std::uint8_t>(
+                    (static_cast<std::uint16_t>(pixel.green) * remaining) /
+                    total);
+                pixel.blue = static_cast<std::uint8_t>(
+                    (static_cast<std::uint16_t>(pixel.blue) * remaining) /
+                    total);
+            }
+            return faded;
+        };
+        if (showing_fasa && !boot_fasa_.pixels.empty()) {
+            const auto fade_left = boot_hold_left_ != 0U
+                ? kBootFadeFrames
+                : boot_fasa_fade_left_;
+            screen.blit_rgba(0, 0, boot_fasa_.width, boot_fasa_.height,
+                             scale_copy(boot_fasa_.pixels, fade_left,
+                                        kBootFadeFrames));
+            screen.present();
+            return;
+        }
         const auto boot_layers_visible =
             boot_loop_left_ != 0U || boot_fade_left_ != 0U;
         if (boot_layers_visible && !boot_background_.pixels.empty()) {
-            const auto fade_copy = [this](const std::vector<Rgba8>& source) {
-                auto faded = source;
-                if (boot_fade_left_ == 0U ||
-                    boot_fade_left_ >= kBootFadeFrames) {
-                    return faded;
-                }
-                for (auto& pixel : faded) {
-                    pixel.red = static_cast<std::uint8_t>(
-                        (static_cast<std::uint16_t>(pixel.red) *
-                         boot_fade_left_) /
-                        kBootFadeFrames);
-                    pixel.green = static_cast<std::uint8_t>(
-                        (static_cast<std::uint16_t>(pixel.green) *
-                         boot_fade_left_) /
-                        kBootFadeFrames);
-                    pixel.blue = static_cast<std::uint8_t>(
-                        (static_cast<std::uint16_t>(pixel.blue) *
-                         boot_fade_left_) /
-                        kBootFadeFrames);
-                }
-                return faded;
+            const auto fade_copy = [&scale_copy, this](
+                                       const std::vector<Rgba8>& source) {
+                return scale_copy(source,
+                                  boot_fade_left_ == 0U ? kBootFadeFrames
+                                                        : boot_fade_left_,
+                                  kBootFadeFrames);
             };
             if (!boot_static_.pixels.empty() &&
                 boot_static_.pixels.size() ==
@@ -3569,11 +3604,15 @@ void NativePortShell::render(ScreenWriter& screen) const {
             }
             screen.blit_rgba(0, 0, logo->width, logo->height,
                              fade_copy(logo->pixels));
-            if (!boot_guy_.pixels.empty()) {
+            if (!boot_guy_.pixels.empty() && boot_guy_fade_ != 0U) {
                 const auto guy_delta_y = static_cast<std::int32_t>(
                     boot_guy_y_ - static_cast<std::int16_t>(kBootGuyComposeY));
+                auto guy = fade_copy(boot_guy_.pixels);
+                if (boot_guy_fade_ < 256U) {
+                    guy = scale_copy(guy, boot_guy_fade_, 256U);
+                }
                 screen.blit_rgba(0, guy_delta_y, boot_guy_.width,
-                                 boot_guy_.height, fade_copy(boot_guy_.pixels));
+                                 boot_guy_.height, guy);
             }
             if (boot_dd30_ < 0 && !boot_sega_frames_.empty()) {
                 const auto phase = static_cast<std::size_t>(boot_sega_phase_) %
@@ -3590,70 +3629,97 @@ void NativePortShell::render(ScreenWriter& screen) const {
     }
     if (scene_ == NativeScene::Title && !title_pixels_.empty()) {
         screen.clear({0x00, 0x00, 0x00, 0xFF});
-        // ROM 0x1E4E writes one logo column every other reveal pass
-        // (DD40 cadence). 0x1C6A runs every reveal pass while FFF1E6<=$25,
-        // advancing SAT X by four and the six lists every four calls.
-        if (!title_background_.pixels.empty()) {
-            screen.blit_rgba(0, 0, title_background_.width,
-                             title_background_.height,
-                             title_background_.pixels);
+        // Host recreation of the 0x1A9E title: start black, explode the
+        // extracted logo left-to-right, then fade in the scrolling circuit
+        // plane. SAT lists are baked into title_logo_plane at extract time.
+        if (!title_background_.pixels.empty() ||
+            !title_logo_plane_.pixels.empty()) {
             constexpr std::uint64_t kTitleRevealStart = 0x5AU;
-            constexpr std::size_t kTitleRevealColumns = 38U;
+            constexpr std::size_t kTitleRevealColumns = 40U;
+            constexpr std::size_t kCircuitFadeFrames = 16U;
             const auto has_title_loop = frame_number_ != 0U;
             const auto title_loop = has_title_loop ? frame_number_ - 1U : 0U;
             auto visible_columns = std::size_t{0};
-            auto sprite_call_count = std::size_t{0};
             if (has_title_loop && title_loop >= kTitleRevealStart) {
                 const auto reveal_frames = static_cast<std::size_t>(
                     title_loop - kTitleRevealStart + 1U);
                 visible_columns = std::min<std::size_t>(
                     kTitleRevealColumns, (reveal_frames + 1U) / 2U);
-                // Last 0x1C6A shares the pass that writes column 38
-                // (FFF1E6 0x25 -> 0x26). That is reveal frame 75.
-                constexpr std::size_t kLastSpriteCall = 75U;
-                sprite_call_count = std::min(reveal_frames, kLastSpriteCall);
+            }
+            const auto logo_complete =
+                visible_columns >= kTitleRevealColumns;
+            if (logo_complete && !title_background_.pixels.empty()) {
+                const auto fade_frames = has_title_loop
+                    ? static_cast<std::size_t>(
+                          title_loop - (kTitleRevealStart +
+                                        (kTitleRevealColumns * 2U - 1U)))
+                    : 0U;
+                const auto circuit_weight = std::min(
+                    fade_frames + 1U, kCircuitFadeFrames);
+                const auto width =
+                    static_cast<std::int32_t>(title_background_.width);
+                const auto height =
+                    static_cast<std::int32_t>(title_background_.height);
+                const auto scroll = static_cast<std::int32_t>(
+                    title_loop % static_cast<std::uint64_t>(
+                                     std::max<std::int32_t>(width, 1)));
+                auto circuits = title_background_.pixels;
+                if (width > 0 && height > 0 &&
+                    circuits.size() ==
+                        static_cast<std::size_t>(width) *
+                            static_cast<std::size_t>(height)) {
+                    std::vector<Rgba8> scrolled(
+                        circuits.size(), Rgba8{0, 0, 0, 0});
+                    for (std::int32_t row = 0; row < height; ++row) {
+                        for (std::int32_t column = 0; column < width;
+                             ++column) {
+                            auto source_x = column + scroll;
+                            source_x %= width;
+                            if (source_x < 0) {
+                                source_x += width;
+                            }
+                            scrolled[static_cast<std::size_t>(row) *
+                                         static_cast<std::size_t>(width) +
+                                     static_cast<std::size_t>(column)] =
+                                circuits[static_cast<std::size_t>(row) *
+                                             static_cast<std::size_t>(width) +
+                                         static_cast<std::size_t>(source_x)];
+                        }
+                    }
+                    circuits = std::move(scrolled);
+                }
+                if (circuit_weight < kCircuitFadeFrames) {
+                    for (auto& pixel : circuits) {
+                        pixel.red = static_cast<std::uint8_t>(
+                            (static_cast<std::uint16_t>(pixel.red) *
+                             circuit_weight) /
+                            kCircuitFadeFrames);
+                        pixel.green = static_cast<std::uint8_t>(
+                            (static_cast<std::uint16_t>(pixel.green) *
+                             circuit_weight) /
+                            kCircuitFadeFrames);
+                        pixel.blue = static_cast<std::uint8_t>(
+                            (static_cast<std::uint16_t>(pixel.blue) *
+                             circuit_weight) /
+                            kCircuitFadeFrames);
+                    }
+                }
+                screen.blit_rgba(0, 0, title_background_.width,
+                                 title_background_.height, circuits);
             }
             if (visible_columns != 0U && !title_logo_plane_.pixels.empty()) {
                 auto logo = title_logo_plane_.pixels;
-                const auto first_visible_x = std::size_t{8U};
                 const auto last_visible_x = std::min<std::size_t>(
-                    title_logo_plane_.width,
-                    first_visible_x + visible_columns * 8U);
+                    title_logo_plane_.width, visible_columns * 8U);
                 for (std::size_t y = 0; y < title_logo_plane_.height; ++y) {
                     for (std::size_t x = 0; x < title_logo_plane_.width; ++x) {
-                        if (x < first_visible_x || x >= last_visible_x) {
+                        if (x >= last_visible_x) {
                             logo[y * title_logo_plane_.width + x].alpha = 0;
                         }
                     }
                 }
                 screen.blit_rgba(0, 0, title_logo_plane_.width,
                                  title_logo_plane_.height, logo);
-            }
-            if (!title_sprite_frames_.empty() && sprite_call_count != 0U) {
-                const auto phase = static_cast<std::size_t>(
-                    (1U + (sprite_call_count - 1U) / 4U) %
-                    title_sprite_frames_.size());
-                const auto& sprite = title_sprite_frames_[phase];
-                auto translated = std::vector<Rgba8>(
-                    sprite.pixels.size(), Rgba8{0, 0, 0, 0});
-                const auto delta = static_cast<std::int32_t>(
-                    (sprite_call_count - 1U) * 4U);
-                for (std::size_t y = 0; y < sprite.height; ++y) {
-                    for (std::size_t x = 0; x < sprite.width; ++x) {
-                        const auto source_index =
-                            y * static_cast<std::size_t>(sprite.width) + x;
-                        const auto target_x = static_cast<std::int32_t>(x) +
-                                              delta;
-                        if (target_x < 0 || target_x >= sprite.width) {
-                            continue;
-                        }
-                        translated[y * static_cast<std::size_t>(sprite.width) +
-                                   static_cast<std::size_t>(target_x)] =
-                            sprite.pixels[source_index];
-                    }
-                }
-                screen.blit_rgba(0, 0, sprite.width, sprite.height,
-                                 translated);
             }
             if (!title_text_.pixels.empty()) {
                 auto blit_title_rows = [&screen, this](std::size_t first_row,
@@ -3709,7 +3775,7 @@ void NativePortShell::render(ScreenWriter& screen) const {
     } else if (scene_ == NativeScene::StartOptions) {
         render_startup_background(screen);
         for (const auto& line : intro_.start_options_layout) {
-            write_startup_text(
+            write_field_menu_text(
                 screen, 104, 56 + static_cast<std::int32_t>(line.row) * 8,
                 line.text);
         }
@@ -3728,13 +3794,13 @@ void NativePortShell::render(ScreenWriter& screen) const {
             const auto& layout = save_load_message_success_
                 ? intro_.save_success_layout : intro_.no_save_layout;
             for (const auto& line : layout) {
-                write_startup_text(
+                write_field_menu_text(
                     screen, 72, 72 + static_cast<std::int32_t>(line.row) * 8,
                     line.text);
             }
         } else {
             for (const auto& line : intro_.save_load_layout) {
-                write_startup_text(
+                write_field_menu_text(
                     screen, 152, 112 + static_cast<std::int32_t>(line.row) * 8,
                     line.text);
             }
@@ -3750,8 +3816,16 @@ void NativePortShell::render(ScreenWriter& screen) const {
         return;
     } else if (scene_ == NativeScene::ArchetypeMenu) {
         render_startup_background(screen);
+        if (archetype_selection_ < field_menu_runner_portraits_.size()) {
+            const auto& portrait =
+                field_menu_runner_portraits_[archetype_selection_];
+            if (!portrait.pixels.empty()) {
+                screen.blit_rgba(80, 56, portrait.width, portrait.height,
+                                 portrait.pixels);
+            }
+        }
         for (const auto& line : intro_.archetype_layout) {
-            write_startup_text(
+            write_field_menu_text(
                 screen, 152, 56 + static_cast<std::int32_t>(line.row) * 8,
                 line.text);
         }

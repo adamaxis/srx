@@ -131,6 +131,11 @@ void test_startup_behavior_and_rendering(const std::vector<std::uint8_t>& rom,
     }
     shell.render(screen);
     assert(first_title != screen.pixels());
+    assert(has_image_pixel(screen, assets.title_logo_plane, 0, 0));
+    for (std::size_t frame = 0; frame < 100U; ++frame) {
+        shell.update(InputState{});
+    }
+    shell.render(screen);
     assert(has_image_pixel(screen, assets.title_background, 0, 0));
 
     // Bytecode/source evidence: 0x0BF2/0x1A9E consumes the first Start edge
@@ -139,7 +144,7 @@ void test_startup_behavior_and_rendering(const std::vector<std::uint8_t>& rom,
     enter_start_options(shell);
     assert(shell.start_options_selection() == 0U);
     shell.render(screen);
-    assert(screen.pixel(0, 0) == 0U);
+    assert(has_image_pixel(screen, assets.startup_background, 0, 0));
     assert_cursor_at(screen, assets.startup_cursor, 104, 80);
 
     // 0x59092's two choices wrap on the vertical selector. The cursor moves
@@ -179,6 +184,9 @@ void test_startup_behavior_and_rendering(const std::vector<std::uint8_t>& rom,
     shell.update(InputState{button_mask(Button::A), button_mask(Button::A)});
     assert(shell.scene() == NativeScene::ArchetypeMenu);
     shell.render(screen);
+    assert(has_image_pixel(screen, assets.startup_background, 0, 0));
+    assert(has_image_pixel(screen, assets.field_menu_runner_portraits[0],
+                           80, 56));
     assert_cursor_at(screen, assets.startup_cursor, 152, 88);
     press(shell, Button::Up);
     assert(shell.archetype_selection() == 2U);

@@ -386,6 +386,12 @@ struct NativePortAssets {
     NativeImage boot_guy;
     std::array<NativeImage, kNativeBootSegaPhaseCount> boot_sega_frames{};
     std::array<NativeImage, kNativeBootLogoStrobeCount> boot_logo_strobe{};
+    // ROM 0x5D886 copies 16x5 at plane B $E518 from 0x1FFAC6 (the FASA
+    // letterforms, immediately after the SEGA 12x4 at 0x1FFA66).
+    NativeImage boot_fasa;
+    // ROM 0x10B5A startup CRT: same CAB0C patterns as the command screen,
+    // four 0x1232 blocks at 0xCDCE6/0xCDDF6/0xCDEA0/0xCDF4A.
+    NativeImage startup_background;
     // Plane-B base written by the ROM command-screen initializer at 0x10F50.
     // It contains the real menu panel and inventory-box geometry; dynamic
     // labels and cursor state are rendered by the native command loop.
@@ -565,6 +571,11 @@ public:
     bool boot_fading() const {
         return scene_ == NativeScene::Bootstrap && boot_loop_left_ == 0U &&
                boot_fade_left_ != 0U;
+    }
+    bool boot_fasa_visible() const {
+        return scene_ == NativeScene::Bootstrap && boot_loop_left_ == 0U &&
+               boot_fade_left_ == 0U &&
+               (boot_hold_left_ != 0U || boot_fasa_fade_left_ != 0U);
     }
     std::int16_t boot_logo_strobe_phase() const { return boot_df92_; }
     std::uint16_t boot_hscroll_line(std::size_t line) const {
@@ -1005,7 +1016,10 @@ private:
     NativeImage boot_guy_{};
     std::array<NativeImage, kNativeBootSegaPhaseCount> boot_sega_frames_{};
     std::array<NativeImage, kNativeBootLogoStrobeCount> boot_logo_strobe_{};
+    NativeImage boot_fasa_{};
+    NativeImage startup_background_{};
     std::int16_t boot_guy_y_ = static_cast<std::int16_t>(kBootGuyStartY);
+    std::uint16_t boot_guy_fade_ = 256;
     std::int16_t boot_dd2a_ = 0x41;
     std::int16_t boot_dd28_ = 0;
     std::int16_t boot_dd30_ = 0;
@@ -1019,6 +1033,7 @@ private:
     std::uint16_t boot_loop_left_ = kBootLoopDbf + 1U;
     std::uint16_t boot_fade_left_ = 0;
     std::uint16_t boot_hold_left_ = 0;
+    std::uint16_t boot_fasa_fade_left_ = 0;
     std::uint16_t field_menu_background_width_ = 0;
     std::uint16_t field_menu_background_height_ = 0;
     std::vector<Rgba8> field_menu_background_pixels_;

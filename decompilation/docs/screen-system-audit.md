@@ -38,11 +38,11 @@ cadence, writes the copyright rows late in the countdown, and flashes PRESS
 START from the countdown low bits. Start is an edge-triggered exit into the
 startup options block at `0x59092`.
 
-Native status: the title layers, 0x1E4E two-pass column reveal, 0x1C6A SAT
-cadence (column-major tiles, origin $80, persist after the last write),
-copyright after DD5A, and PRESS START after D7<$C6C with inverted 10/64
+Native status: extracted logo/circuit/text layers. The title starts black,
+explodes the logo left-to-right, then fades in a wrapping circuit scroll.
+Copyright after DD5A and PRESS START after D7<$C6C with inverted 10/64
 blanking are implemented. Remaining: 0x10D6 palette interpolation and a
-phase-matched Genesis capture.
+phase-matched Genesis capture. Live SAT compositing is not used at runtime.
 
 ### Start Options (`0x59092`, layout `0x1B6498`)
 
@@ -57,8 +57,9 @@ clears the load state and proceeds to the archetype screen. Load Game enters
 the save/load slot screen; it does not silently become New Game when a slot is
 empty.
 
-Native status: source layout text, cursor asset, two-choice bounds, and the
-New/Load dispatch are implemented.
+Native status: 0x10B5A CRT frame, source layout text (command-menu green
+font), cursor asset, two-choice bounds, and the New/Load dispatch are
+implemented.
 
 ### Save/Load (`0x59172`, layout `0x1B6518`)
 
@@ -87,7 +88,8 @@ A/B confirms the selected template. The call to `0x42B0` copies the selected
 There is no standalone Shaman choice and no later command-screen operation
 that changes Joshua's archetype.
 
-Native status: three-choice bounds, exact split Gator/Shaman layout, selected
+Native status: 0x10B5A CRT frame, large runner portraits that follow the
+selector, three-choice bounds, exact split Gator/Shaman layout, selected
 template storage, and one-time Joshua initialization are implemented.
 
 ### New-game opening (`0x59C5E`, `0x59D7C`, `0x5AA96`, `0x5AD1A`)

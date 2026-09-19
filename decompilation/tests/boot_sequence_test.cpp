@@ -52,6 +52,8 @@ int main() {
     assert(assets.boot_guy.width == 320);
     assert(!assets.boot_sega_frames[0].pixels.empty());
     assert(!assets.boot_logo_strobe[0].pixels.empty());
+    assert(!assets.boot_fasa.pixels.empty());
+    assert(!assets.startup_background.pixels.empty());
 
     std::size_t logo_pixels = 0;
     for (const auto& pixel : assets.boot_background.pixels) {
@@ -81,6 +83,8 @@ int main() {
     write_layer(assets.boot_sega_frames[3], "layer-sega-3.bmp");
     write_layer(assets.boot_logo_strobe[0], "layer-strobe-0.bmp");
     write_layer(assets.boot_logo_strobe[3], "layer-strobe-3.bmp");
+    write_layer(assets.boot_fasa, "layer-fasa.bmp");
+    write_layer(assets.startup_background, "layer-startup.bmp");
 
     NativePortShell shell("SHADOWRUN", assets);
     assert(shell.scene() == NativeScene::Bootstrap);
@@ -171,6 +175,18 @@ int main() {
     };
     assert(brightness(fade_mid) < brightness(fade_start));
     assert(opaque_count(fade_mid) > 0);
+
+    while (shell.scene() == NativeScene::Bootstrap &&
+           !shell.boot_fasa_visible()) {
+        shell.update(InputState{});
+    }
+    assert(shell.boot_fasa_visible());
+    write_dump(shell, artifact_dir / "boot-fasa.bmp");
+    SoftwareScreen fasa_screen;
+    shell.render(fasa_screen);
+    if (opaque_count(fasa_screen) == 0) {
+        throw std::runtime_error("FASA splash produced no opaque pixels");
+    }
 
     shell.finish_boot();
     assert(shell.scene() == NativeScene::Title);

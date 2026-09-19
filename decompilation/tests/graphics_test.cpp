@@ -443,6 +443,10 @@ int main() {
            native_assets.boot_static.pixels.size());
     assert(loaded_assets.boot_logo_strobe[0].pixels.size() ==
            native_assets.boot_logo_strobe[0].pixels.size());
+    assert(loaded_assets.boot_fasa.pixels.size() ==
+           native_assets.boot_fasa.pixels.size());
+    assert(loaded_assets.startup_background.pixels.size() ==
+           native_assets.startup_background.pixels.size());
     const auto intro_stages = decode_genesis_intro_stages(rom);
     for (std::size_t index = 0; index < intro_stages.size(); ++index) {
         assert(intro_stages[index].width == 320);
