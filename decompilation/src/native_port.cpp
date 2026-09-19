@@ -187,10 +187,8 @@ std::uint16_t fixed_world_coordinate(std::int32_t pixels) {
 }
 
 constexpr std::int32_t kGenesisVdpSpriteOrigin = 0x80;
-// Capture t1720: 0x17708's runner sidebar is sprite HUD over the 320px
-// field plane, not a cropped playfield. Keep the map at full Genesis size.
-constexpr std::int32_t kFieldHudWidth = 64;
-constexpr std::int32_t kFieldViewportWidth = kScreenWidth;
+// Capture t1720: playfield is 256px; HUD is a separate 64px column.
+constexpr std::int32_t kFieldViewportWidth = kFieldPlayfieldWidth;
 constexpr std::int32_t kFieldViewportHeight = kScreenHeight;
 constexpr std::int32_t kFieldScreenOriginY = 0;
 constexpr std::uint64_t kCabMapFrames = 90;
@@ -3270,6 +3268,41 @@ void NativePortShell::render_dialog_panel(ScreenWriter& screen) const {
                      kDialogPanelHeight, {0x00, 0x00, 0x00, 0xFF});
 }
 
+void NativePortShell::render_field_hud(ScreenWriter& screen) const {
+    // Dedicated 64x224 panel on the right of the 256px playfield. Capture
+    // t1720: metal bezel, face window, gun slot, 00 counters — not the
+    // 64x80 command portrait stamped over the street.
+    if (!field_hud_.pixels.empty()) {
+        screen.blit_rgba(0, 0, field_hud_.width, field_hud_.height,
+                         field_hud_.pixels);
+    }
+    const auto portrait_index =
+        selected_archetype_ < field_menu_runner_portraits_.size()
+            ? selected_archetype_
+            : 0U;
+    const auto& portrait = field_menu_runner_portraits_[portrait_index];
+    if (portrait.pixels.empty() || portrait.width < 48U ||
+        portrait.height < 48U) {
+        return;
+    }
+    // Head crop from the 64x80 command portrait into the HUD face window.
+    constexpr std::int32_t kFaceX = 264;
+    constexpr std::int32_t kFaceY = 16;
+    constexpr std::uint16_t kFaceW = 48;
+    constexpr std::uint16_t kFaceH = 48;
+    constexpr std::uint16_t kSourceX = 8;
+    std::vector<Rgba8> face(
+        static_cast<std::size_t>(kFaceW) * kFaceH, Rgba8{0, 0, 0, 0});
+    for (std::uint16_t y = 0; y < kFaceH; ++y) {
+        for (std::uint16_t x = 0; x < kFaceW; ++x) {
+            face[static_cast<std::size_t>(y) * kFaceW + x] =
+                portrait.pixels[static_cast<std::size_t>(y) * portrait.width +
+                                (kSourceX + x)];
+        }
+    }
+    screen.blit_rgba(kFaceX, kFaceY, kFaceW, kFaceH, face);
+}
+
 void NativePortShell::finish_boot() {
     for (std::uint32_t step = 0; step < 2048U && scene_ == NativeScene::Bootstrap;
          ++step) {
@@ -3862,7 +3895,8 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 const auto circuit_weight = std::min(
                     fade_frames + 1U, kCircuitFadeFrames);
                 const auto light_phase = static_cast<std::size_t>(
-                    (title_loop / 5U) % kNativeTitleCircuitLightCount);
+                    (title_loop / kTitleCircuitLightTicks) %
+                    kNativeTitleCircuitLightCount);
                 auto circuits =
                     !title_circuit_lights_[light_phase].pixels.empty()
                         ? title_circuit_lights_[light_phase].pixels
@@ -4239,22 +4273,7 @@ void NativePortShell::render(ScreenWriter& screen) const {
         }
         if (scene_ == NativeScene::Field ||
             scene_ == NativeScene::FieldDialog) {
-            if (!field_hud_.pixels.empty()) {
-                screen.blit_rgba(0, 0, field_hud_.width, field_hud_.height,
-                                 field_hud_.pixels);
-            }
-            const auto hud_x =
-                static_cast<std::int32_t>(kScreenWidth) - kFieldHudWidth;
-            const auto portrait_index =
-                selected_archetype_ < field_menu_runner_portraits_.size()
-                    ? selected_archetype_
-                    : 0U;
-            const auto& hud_portrait =
-                field_menu_runner_portraits_[portrait_index];
-            if (!hud_portrait.pixels.empty()) {
-                screen.blit_rgba(hud_x, 8, hud_portrait.width,
-                                 hud_portrait.height, hud_portrait.pixels);
-            }
+            render_field_hud(screen);
         }
         if (scene_ == NativeScene::FieldDialog) {
             render_dialog_panel(screen);
@@ -5059,6 +5078,13 @@ void NativePortShell::render(ScreenWriter& screen) const {
         } else {
             // Field mode is the map/object plane plus its source HUD. The
             // old host-only control legend did not exist in the cartridge.
+        }
+        if (scene_ != NativeScene::Field &&
+            scene_ != NativeScene::FieldDialog) {
+            // Command, Pocket Secretary, and the other C0DA panels keep the
+            // 64px HUD column. Capture character/PS screens never cover the
+            // sidebar with the 64x80 overview portrait.
+            render_field_hud(screen);
         }
     } else {
         screen.clear({0x06, 0x08, 0x18, 0xFF});

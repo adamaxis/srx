@@ -26,6 +26,7 @@ using shadowrun::native::NativeScene;
 using shadowrun::native::Rgba8;
 using shadowrun::native::SoftwareScreen;
 using shadowrun::native::button_mask;
+using shadowrun::native::kFieldPlayfieldWidth;
 
 std::vector<std::uint8_t> read_rom() {
     std::ifstream input(SHADOWRUN_TEST_ROM, std::ios::binary);
@@ -332,6 +333,27 @@ SoftwareScreen source_field_menu_reference(const NativePortAssets& assets,
         "Pocket Secretary ",
     }};
     write_text(112, 200, labels[selection]);
+    if (!assets.field_hud.pixels.empty()) {
+        expected.blit_rgba(0, 0, assets.field_hud.width,
+                           assets.field_hud.height, assets.field_hud.pixels);
+    }
+    if (portrait_index < assets.field_menu_runner_portraits.size()) {
+        const auto& portrait =
+            assets.field_menu_runner_portraits[portrait_index];
+        if (!portrait.pixels.empty() && portrait.width >= 56U &&
+            portrait.height >= 48U) {
+            std::vector<Rgba8> face(48U * 48U, Rgba8{0, 0, 0, 0});
+            for (std::uint16_t y = 0; y < 48U; ++y) {
+                for (std::uint16_t x = 0; x < 48U; ++x) {
+                    face[static_cast<std::size_t>(y) * 48U + x] =
+                        portrait.pixels[static_cast<std::size_t>(y) *
+                                            portrait.width +
+                                        (8U + x)];
+                }
+            }
+            expected.blit_rgba(264, 16, 48, 48, face);
+        }
+    }
     return expected;
 }
 
@@ -467,8 +489,12 @@ void require_source_text(const SoftwareScreen& screen, const NativeImage& font,
                 if (source.alpha == 0U) {
                     continue;
                 }
+                const auto dest_x = cursor + static_cast<std::int32_t>(x);
+                if (dest_x >= kFieldPlayfieldWidth) {
+                    continue;
+                }
                 ++compared;
-                if (screen.pixel(cursor + static_cast<std::int32_t>(x),
+                if (screen.pixel(dest_x,
                                  destination_y + static_cast<std::int32_t>(y)) !=
                     pack(source)) {
                     ++mismatches;
@@ -532,9 +558,14 @@ void require_static_menu_pixels(const SoftwareScreen& actual,
     expected.blit_rgba(0, 0, assets.field_menu_inventory_boxes.width,
                        assets.field_menu_inventory_boxes.height,
                        assets.field_menu_inventory_boxes.pixels);
+    if (!assets.field_hud.pixels.empty()) {
+        expected.blit_rgba(0, 0, assets.field_hud.width,
+                           assets.field_hud.height, assets.field_hud.pixels);
+    }
 
     // These are the source-owned dynamic rectangles. Every other pixel must
-    // still be the exact composition of the two 0x10F50/0x116C4 plane layers.
+    // still be the exact composition of the two 0x10F50/0x116C4 plane layers
+    // plus the 64px field HUD column.
     std::size_t compared = 0;
     std::size_t mismatches = 0;
     std::string first_mismatch;
@@ -546,7 +577,8 @@ void require_static_menu_pixels(const SoftwareScreen& actual,
                 inside(x, y, 144, 24, 128, 64) ||
                 inside(x, y, 8, 112, 80, 112) ||
                 inside(x, y, 128, 184, 112, 16) ||
-                inside(x, y, 112, 200, 144, 24);
+                inside(x, y, 112, 200, 144, 24) ||
+                inside(x, y, 264, 16, 48, 48);
             if (dynamic) {
                 continue;
             }

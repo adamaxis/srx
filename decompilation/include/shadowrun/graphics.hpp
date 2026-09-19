@@ -294,14 +294,18 @@ RgbaImage decode_genesis_mode2_field_map(
 
 // Decode the reviewed 0x8002 entity frame descriptor at ROM 0x9540. ROM
 // 0x3E86 expands the packed source through the nibble table at 0x3EDC and
-// writes the result as column-major Genesis tile data. This helper performs
-// those extraction steps once and returns an ordinary transparent RGBA image;
-// the native renderer never needs the packed source or a palette index.
+// writes the result as column-major Genesis tile data. Extraction bakes the
+// runner's color line into RGBA; a grayscale twin is stored beside it. The
+// native renderer never palette-swaps at runtime.
 RgbaImage decode_genesis_entity_frame(
     const std::vector<std::uint8_t>& rom,
     std::size_t descriptor_offset = 0x9540,
     std::size_t nibble_table_offset = 0x3EDC,
     std::size_t palette_offset = 0x172D8A);
+
+// Host luminance copy of a baked RGBA sprite. Used so a grey runner is a
+// second image, not a live CRAM line.
+RgbaImage make_grayscale_image(const RgbaImage& color);
 
 // Extract the seven frame descriptors referenced by the reviewed state block
 // at ROM 0x72B0. The block's 0x8007 marker supplies the pointer count; each
@@ -373,9 +377,10 @@ std::array<RgbaImage, native::kNativeTitleCircuitLightCount>
 decode_genesis_title_circuit_lights(const std::vector<std::uint8_t>& rom);
 std::array<RgbaImage, native::kNativeIntroHeliFrameCount>
 decode_genesis_intro_heli_frames(const std::vector<std::uint8_t>& rom);
-// ROM 0x17708 field HUD: 0x1530 tiles 0xD86E0 -> VRAM $17E0, packed
-// 40x6 0xD8316 at $EB00, five 3x2 slots 0xD92AA/0xD92B6. Host image is
-// 320x224 with chrome kept on the capture-right 64px.
+// Field HUD column. 0x18252: 0xD9376 -> $8160, packed 40x22 0xD9C96 at
+// $E000. 0x17708: 0xD86E0 -> $17E0, 40x6 0xD8316 at $EB00, five 3x2
+// slots. Host image is 320x224 with chrome on the capture-right 64px
+// (full height), left 256px transparent.
 RgbaImage decode_genesis_field_hud(const std::vector<std::uint8_t>& rom);
 
 // Title layers are extracted separately because the ROM does not present a

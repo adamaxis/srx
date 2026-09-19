@@ -132,6 +132,20 @@ int main() {
                                 button_mask(Button::Start)});
     assert(rom_shell.scene() == NativeScene::Field);
     assert(rom_shell.field_entity_visible());
+    rom_shell.render(screen);
+    // HUD is the right 64px panel. The playfield (x<256) must not be covered
+    // by the 64x80 command portrait that used to sit at (256,8).
+    bool hud_ink = false;
+    for (std::int32_t y = 0; y < kScreenHeight && !hud_ink; ++y) {
+        for (std::int32_t x = kFieldPlayfieldWidth; x < kScreenWidth; ++x) {
+            if (screen.pixel(x, y) != 0U) {
+                hud_ink = true;
+                break;
+            }
+        }
+    }
+    assert(hud_ink);
+    assert(screen.pixel(200, 40) != 0U || screen.pixel(120, 80) != 0U);
     // Mode 2's +0x42/+0x44 pair is copied by ROM 0x2B34 into the first
     // field record. 0x5A62 writes VDP coordinates with a 0x80 origin; the
     // native accessor exposes the adapted host pixels.
@@ -614,7 +628,7 @@ int main() {
                                 button_mask(Button::A)});
     rom_shell.render(screen);
     assert(rom_shell.frame_number() == before_action_frame + 1);
-    assert(screen.presented_frames() == 11);
+    assert(screen.presented_frames() == 12);
 
     // The runtime constructor below receives only the host asset pack. This
     // is the PC-port path: the ROM is used by extraction, not by the native

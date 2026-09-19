@@ -1,5 +1,6 @@
 #include "shadowrun/graphics.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstdint>
@@ -324,11 +325,28 @@ int main() {
            static_cast<std::size_t>(entity_frame.width) * entity_frame.height);
     bool entity_has_transparency = false;
     bool entity_has_color = false;
+    bool entity_has_chroma = false;
     for (const auto& pixel : entity_frame.pixels) {
         entity_has_transparency |= pixel.alpha == 0;
         entity_has_color |= pixel.alpha != 0;
+        if (pixel.alpha != 0) {
+            const auto maxc = std::max({pixel.red, pixel.green, pixel.blue});
+            const auto minc = std::min({pixel.red, pixel.green, pixel.blue});
+            entity_has_chroma |= (maxc - minc) > 40;
+        }
     }
     assert(entity_has_transparency && entity_has_color);
+    assert(entity_has_chroma);
+    const auto entity_gray = make_grayscale_image(entity_frame);
+    assert(entity_gray.pixels.size() == entity_frame.pixels.size());
+    bool gray_is_grey = true;
+    for (const auto& pixel : entity_gray.pixels) {
+        if (pixel.alpha != 0 &&
+            (pixel.red != pixel.green || pixel.green != pixel.blue)) {
+            gray_is_grey = false;
+        }
+    }
+    assert(gray_is_grey);
 
     const auto entity_animation = decode_genesis_entity_animation(rom);
     assert(entity_animation.size() == 7);
@@ -403,6 +421,26 @@ int main() {
     }
 
     auto native_assets = decode_genesis_native_assets(rom);
+    {
+        const auto lights = decode_genesis_title_circuit_lights(rom);
+        std::size_t light_delta = 0;
+        const auto& first = lights.front();
+        for (std::size_t index = 1; index < lights.size(); ++index) {
+            const auto& other = lights[index];
+            assert(other.pixels.size() == first.pixels.size());
+            for (std::size_t pixel = 0; pixel < first.pixels.size(); ++pixel) {
+                const auto& left = first.pixels[pixel];
+                const auto& right = other.pixels[pixel];
+                if (left.red != right.red || left.green != right.green ||
+                    left.blue != right.blue) {
+                    ++light_delta;
+                }
+            }
+        }
+        assert(light_delta > 100U);
+        assert(native_assets.title_circuit_lights[0].pixels.size() ==
+               first.pixels.size());
+    }
     assert(native_assets.field_areas.size() == 8);
     assert(native_assets.field_areas[0].mode_id == 2);
     assert(native_assets.field_areas[1].mode_id == 13);
@@ -523,9 +561,34 @@ int main() {
         }
         assert(hud_ink > 20U);
         assert(right_ink == hud_ink);
+        std::size_t hud_top_ink = 0;
+        std::size_t hud_bottom_ink = 0;
+        for (std::uint16_t y = 0; y < field_hud.height; ++y) {
+            for (std::uint16_t x = 256; x < field_hud.width; ++x) {
+                const auto& pixel =
+                    field_hud.pixels[static_cast<std::size_t>(y) *
+                                         field_hud.width +
+                                     x];
+                if (pixel.alpha == 0U) {
+                    continue;
+                }
+                if (y < 48U) {
+                    ++hud_top_ink;
+                } else {
+                    ++hud_bottom_ink;
+                }
+            }
+        }
+        // Capture t1720: metal + face occupy the top of the column, not
+        // only the 40x6 strip at row 22.
+        assert(hud_top_ink > 20U);
+        assert(hud_bottom_ink > 20U);
         assert(native_assets.field_hud.pixels.size() == field_hud.pixels.size());
         assert(loaded_assets.field_hud.pixels.size() ==
                native_assets.field_hud.pixels.size());
+        assert(!native_assets.entity_frames_gray.empty());
+        assert(native_assets.entity_frames_gray.size() ==
+               native_assets.entity_frames.size());
     }
     const auto heli_frames = decode_genesis_intro_heli_frames(rom);
     {

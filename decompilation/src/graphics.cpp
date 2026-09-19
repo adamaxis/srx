@@ -751,6 +751,7 @@ native::NativeIntroData read_genesis_intro_data(
 std::array<RgbaImage, 23> decode_genesis_field_menu_stat_bars(
     const std::vector<std::uint8_t>& rom, std::size_t table_offset,
     const char* table_name);
+void fill_grayscale_entity_assets(native::NativePortAssets& assets);
 
 native::NativePortAssets decode_genesis_native_assets(
     const std::vector<std::uint8_t>& rom) {
@@ -992,6 +993,7 @@ native::NativePortAssets decode_genesis_native_assets(
     assets.initial_camera_x_fixed = resources.initial_camera_x_fixed;
     assets.initial_camera_y_fixed = resources.initial_camera_y_fixed;
     assets.field_event_mode_table = resources.event_mode_table;
+    fill_grayscale_entity_assets(assets);
 
     // Keep the legacy mode-2 fields above for existing callers, while also
     // creating the host area catalog consumed by the native transition loop.
@@ -2336,7 +2338,49 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     if (version >= 41U) {
         assets.field_hud = read_native_image(input);
     }
+    fill_grayscale_entity_assets(assets);
     return assets;
+}
+
+RgbaImage make_grayscale_image(const RgbaImage& color) {
+    RgbaImage gray = color;
+    for (auto& pixel : gray.pixels) {
+        const auto luminance = static_cast<std::uint8_t>(
+            (static_cast<unsigned>(pixel.red) * 77U +
+             static_cast<unsigned>(pixel.green) * 150U +
+             static_cast<unsigned>(pixel.blue) * 29U) /
+            256U);
+        pixel.red = luminance;
+        pixel.green = luminance;
+        pixel.blue = luminance;
+    }
+    return gray;
+}
+
+native::NativeEntityFrame grayscale_entity_frame(
+    const native::NativeEntityFrame& color) {
+    const RgbaImage gray = make_grayscale_image(
+        {color.width, color.height, color.pixels});
+    return {gray.width, gray.height, gray.pixels};
+}
+
+void fill_grayscale_entity_assets(native::NativePortAssets& assets) {
+    assets.entity_frames_gray.clear();
+    assets.entity_frames_gray.reserve(assets.entity_frames.size());
+    for (const auto& frame : assets.entity_frames) {
+        assets.entity_frames_gray.push_back(grayscale_entity_frame(frame));
+    }
+    for (std::size_t index = 0; index < assets.field_entity_animations.size();
+         ++index) {
+        const auto& color = assets.field_entity_animations[index];
+        auto& gray = assets.field_entity_animations_gray[index];
+        gray = color;
+        gray.frames.clear();
+        gray.frames.reserve(color.frames.size());
+        for (const auto& frame : color.frames) {
+            gray.frames.push_back(grayscale_entity_frame(frame));
+        }
+    }
 }
 
 native::Rgba8 decode_genesis_cram_word(std::uint16_t cram_word,
@@ -3849,7 +3893,10 @@ RgbaImage decode_genesis_entity_frame(
     require_bytes(rom.size() - std::min(nibble_table_offset, rom.size()),
                   16U, "Genesis entity nibble table is truncated");
 
-    const auto palette = read_genesis_palette(rom, palette_offset);
+    // Bake the CRAM line whose USED indices carry runner chroma (red
+    // jacket, skin) into RGBA. Scoring the whole line picked line 3, whose
+    // low indices are still street greys. Store a grayscale twin separately.
+    const auto palette_set = read_genesis_palette_set(rom, palette_offset);
     std::vector<std::uint8_t> decoded(length);
     for (std::size_t index = 0; index < length; ++index) {
         const auto packed = rom[source + index];
@@ -3864,6 +3911,8 @@ RgbaImage decode_genesis_entity_frame(
         std::vector<native::Rgba8>(columns * rows * 64U,
                                    native::Rgba8{0, 0, 0, 0}),
     };
+    std::array<std::uint8_t, 16> used_index{};
+    std::vector<std::uint8_t> indices(image.pixels.size(), 0);
     // 0x3EFE consumes the generated tile buffer column first, then row.
     for (std::size_t column = 0; column < columns; ++column) {
         for (std::size_t row = 0; row < rows; ++row) {
@@ -3874,15 +3923,48 @@ RgbaImage decode_genesis_entity_frame(
                 for (std::size_t pixel_x = 0; pixel_x < 8U; ++pixel_x) {
                     const auto color_index =
                         tile.pixels[pixel_y * 8U + pixel_x];
-                    auto color = palette[color_index];
-                    if (color_index == 0) {
-                        color.alpha = 0;
+                    const auto dest =
+                        (row * 8U + pixel_y) * image.width +
+                        column * 8U + pixel_x;
+                    indices[dest] = color_index;
+                    if (color_index < used_index.size()) {
+                        used_index[color_index] = 1;
                     }
-                    image.pixels[(row * 8U + pixel_y) * image.width +
-                                 column * 8U + pixel_x] = color;
                 }
             }
         }
+    }
+    std::size_t sprite_line = 1;
+    int best_chroma = -1;
+    for (std::size_t line = 0; line < 4U; ++line) {
+        int chroma = 0;
+        for (std::size_t index = 1; index < 16U; ++index) {
+            if (used_index[index] == 0) {
+                continue;
+            }
+            const auto& color = palette_set[line * 16U + index];
+            const auto maxc = std::max({color.red, color.green, color.blue});
+            const auto minc = std::min({color.red, color.green, color.blue});
+            chroma += static_cast<int>(maxc - minc);
+            if (static_cast<int>(color.red) >
+                    static_cast<int>(color.green) + 20 &&
+                static_cast<int>(color.red) >
+                    static_cast<int>(color.blue) + 20) {
+                chroma += 80;
+            }
+        }
+        if (chroma > best_chroma) {
+            best_chroma = chroma;
+            sprite_line = line;
+        }
+    }
+    for (std::size_t dest = 0; dest < indices.size(); ++dest) {
+        const auto color_index = indices[dest];
+        auto color = palette_set[sprite_line * 16U + color_index];
+        if (color_index == 0) {
+            color.alpha = 0;
+        }
+        image.pixels[dest] = color;
     }
     return image;
 }
@@ -4603,8 +4685,15 @@ RgbaImage decode_genesis_startup_screen(
             const auto word = read_rom_u16(
                 rom, kLightTable + (phase + color) * 2U,
                 "Genesis title circuit light table is truncated");
-            startup.palette[kLightCramIndex + color] =
-                decode_genesis_cram_word(word, false);
+            const auto decoded = decode_genesis_cram_word(word, false);
+            // 0x2634 writes CRAM $50 (line 2, color 8). Circuit tiles may
+            // still carry another line in the name word; bake the chase into
+            // colors 8..15 of every line so the seven host frames actually
+            // differ instead of sitting on a static glow.
+            for (std::size_t line = 0; line < 4U; ++line) {
+                startup.palette[line * 16U + 8U + color] = decoded;
+            }
+            (void)kLightCramIndex;
         }
     }
     require_bytes(rom.size() - std::min(tilemap_stream_offset, rom.size()), 2,
@@ -5316,15 +5405,20 @@ decode_genesis_intro_heli_frames(const std::vector<std::uint8_t>& rom) {
 }
 
 RgbaImage decode_genesis_field_hud(const std::vector<std::uint8_t>& rom) {
-    // 0x177CC: 0x1530 from 0xD86E0 with D0=$17E0, which is tile $BF * 32.
-    // 0x17708: 0x1728 40x6 at $EB00 attr $6000, then five 0x1232 3x2 slots
-    // at $EB94 + n*12 from 0xD92AA (empty) / 0xD92B6 (occupied).
+    // 0x1758A field chrome: 0xD646A -> $8160, 40x13 0xD806C at $E000,
+    // 40x9 0xD74F4 at $E680. 0x177CC: 0xD86E0 -> $17E0 and 0xD78AA -> $580.
+    // 0x17708: 40x6 0xD8316 at $EB00 plus five 3x2 slots.
     GenesisBootPatternData scene{
         std::vector<std::uint8_t>(0x10000U, 0),
         read_genesis_palette_set(rom, 0xE2E3AU),
     };
+    write_genesis_1530_vram(rom, 0xD9376U, 0x8160U, scene.pattern_vram);
     write_genesis_1530_vram(rom, 0xD86E0U, 0x17E0U, scene.pattern_vram);
+    write_genesis_1530_vram(rom, 0xD78AAU, 0x580U, scene.pattern_vram);
     auto image = make_transparent_title_layer();
+    // 0x18252: 40x22 packed 0xD9C96 at $E000 attr $2000, then 0x17708.
+    blit_genesis_1728_name_table(rom, scene, image, 0xD9C96U, 40U, 22U,
+                                 0xE000U, 0xE000U, 0x2000U, true);
     blit_genesis_1728_name_table(rom, scene, image, 0xD8316U, 40U, 6U,
                                  0xEB00U, 0xE000U, 0x6000U, true);
     for (std::size_t slot = 0; slot < 5U; ++slot) {
@@ -5333,9 +5427,6 @@ RgbaImage decode_genesis_field_hud(const std::vector<std::uint8_t>& rom) {
                                 0xEB94U + slot * 12U, 0xE000U, 0x6000U,
                                 true);
     }
-    // Capture t1720: the chrome sits in the right 64px (8 tiles). Keep
-    // those columns and drop the bottom-strip cells that would cover the
-    // playfield street.
     constexpr std::uint16_t kHudX = 256;
     for (std::uint16_t y = 0; y < image.height; ++y) {
         for (std::uint16_t x = 0; x < kHudX; ++x) {

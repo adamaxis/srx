@@ -13,6 +13,14 @@ namespace shadowrun::native {
 
 constexpr std::uint16_t kScreenWidth = 320;
 constexpr std::uint16_t kScreenHeight = 224;
+// Capture t1720: playfield is the left 256px; the HUD column is its own
+// 64x224 panel. Do not overlay command portraits on the map.
+constexpr std::int32_t kFieldHudWidth = 64;
+constexpr std::int32_t kFieldPlayfieldWidth =
+    static_cast<std::int32_t>(kScreenWidth) - kFieldHudWidth;
+// Title 0x2634 slides CRAM every 5 vblanks. Host clips step every 3 ticks
+// so the baked light frames read as motion at capture 0.05s.
+constexpr std::uint16_t kTitleCircuitLightTicks = 3;
 constexpr std::size_t kNativeInventorySlotCount = 8;
 constexpr std::size_t kNativeInventoryItemCount = 50;
 constexpr std::size_t kNativeTitleAnimationFrameCount = 6;
@@ -409,9 +417,10 @@ struct NativePortAssets {
     // four 0x1232 blocks at 0xCDCE6/0xCDDF6/0xCDEA0/0xCDF4A.
     NativeImage startup_background;
     std::array<NativeImage, kNativeIntroHeliFrameCount> intro_heli_frames{};
-    // ROM 0x17708: packed 40x6 at $EB00 from 0xD8316 plus five 3x2 slots
-    // from 0xD92AA/0xD92B6. Capture t1720 places that chrome on the right
-    // 64px (window), not as a host-invented purple sidebar.
+    // Field HUD column: 0x18252 uploads 0xD9376/$8160 and packed 40x22
+    // 0xD9C96 at $E000, then 0x17708's 40x6 0xD8316 at $EB00. Capture t1720
+    // is this full-height right 64px panel, not a command-menu portrait
+    // overlaid on the street.
     NativeImage field_hud;
     // Plane-B base written by the ROM command-screen initializer at 0x10F50.
     // It contains the real menu panel and inventory-box geometry; dynamic
@@ -465,7 +474,11 @@ struct NativePortAssets {
     std::array<NativeImage, kNativeIntroStageCount> intro_stages{};
     NativeImage field_map;
     std::vector<NativeEntityFrame> entity_frames;
+    // Baked luminance copies of the color walk/idle frames. Extract stores
+    // both; runtime never palette-swaps a sprite to grey.
+    std::vector<NativeEntityFrame> entity_frames_gray;
     std::array<NativeFieldAnimation, 8> field_entity_animations{};
+    std::array<NativeFieldAnimation, 8> field_entity_animations_gray{};
     terrain::Map field_terrain;
     std::array<NativeFieldRecord, 3> initial_field_records{};
     std::uint16_t initial_camera_x_fixed = 0;
@@ -512,9 +525,27 @@ struct NativePortAssets {
         notebook_mr_johnson_names{};
 };
 
-// Presenter used by tests and the current Qt/GDI window. Animation is clip
-// duration (see kBootShockFrames), not SAT list copies. A later QRhi / Qt
-// Quick 3D presenter can implement the same operations as textured sprites.
+// Host animation clip: baked RGBA frames plus a tick cadence and an optional
+// sound cue id. Lights, walk cycles, and later 3D-upgraded sprites all use
+// this instead of live palette writes or SAT copies.
+struct NativeAnimationClip {
+    std::vector<NativeImage> frames;
+    std::uint16_t ticks_per_frame = kTitleCircuitLightTicks;
+    std::uint16_t sound_cue_id = 0;
+
+    std::size_t frame_index(std::uint64_t ticks) const {
+        if (frames.empty()) {
+            return 0;
+        }
+        const auto cadence = ticks_per_frame == 0U ? 1U : ticks_per_frame;
+        return static_cast<std::size_t>((ticks / cadence) % frames.size());
+    }
+};
+
+// Presenter used by tests and the current Qt/GDI window. Layers are
+// playfield (256x224), actors, HUD (64x224), then UI. Animation is clip
+// duration, not SAT list copies. A later QRhi / Qt Quick 3D presenter can
+// implement the same operations as textured sprites with bound audio.
 class ScreenWriter {
 public:
     virtual ~ScreenWriter() = default;
@@ -1032,6 +1063,7 @@ private:
     void open_field_dialog(std::vector<std::string> lines);
     void render_command_base(ScreenWriter& screen) const;
     void render_dialog_panel(ScreenWriter& screen) const;
+    void render_field_hud(ScreenWriter& screen) const;
 
     std::string title_;
     InputState input_{};
