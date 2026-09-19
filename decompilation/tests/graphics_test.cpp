@@ -459,6 +459,23 @@ int main() {
         assert(loaded_assets.intro_stages[index].pixels.size() ==
                native_assets.intro_stages[index].pixels.size());
     }
+    const auto title_sprites = decode_genesis_title_sprite_frames(rom);
+    // List 1 object 0: SAT X=$FFF1 Y=$FF9F size 4x4 at D1=$9C D2=$110.
+    // Host pixel origin is that SAT pair minus $80.
+    {
+        const auto& sprite = title_sprites[1];
+        std::size_t ink = 0;
+        for (std::size_t y = 47; y < 79 && y < sprite.height; ++y) {
+            for (std::size_t x = 13; x < 45 && x < sprite.width; ++x) {
+                const auto& pixel = sprite.pixels[y * sprite.width + x];
+                if (pixel.alpha != 0U &&
+                    (pixel.red != 0 || pixel.green != 0 || pixel.blue != 0)) {
+                    ++ink;
+                }
+            }
+        }
+        assert(ink > 200U);
+    }
     assert(loaded_assets.boot_guy.pixels.size() ==
            native_assets.boot_guy.pixels.size());
     assert(loaded_assets.title_scene.width == native_assets.title_scene.width);

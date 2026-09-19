@@ -37,7 +37,12 @@ constexpr std::uint16_t kBootGuyComposeY = 0xD0;
 // 0x78+1 black hold, and a second 0x131C before 0x1A9E.
 constexpr std::uint16_t kBootLoopDbf = 0x150;
 constexpr std::uint16_t kBootHoldDbf = 0x78;
+// 0x131C: D6=$10 / DBF => 17 CRAM steps. 0x1342 waits D5=1 / DBF =>
+// two vblanks per step.
 constexpr std::uint16_t kBootFadePasses = 0x11;
+constexpr std::uint16_t kBootFadeWaitDbf = 0x1;
+constexpr std::uint16_t kBootFadeFrames =
+    kBootFadePasses * (kBootFadeWaitDbf + 1U);
 constexpr std::uint16_t kBootSegaDelay = 0x14;
 constexpr std::size_t kNativeMenuStatusCount = 5;
 // ROM 0xC376 clamps the startup archetype selector to 0..2. The fourth
@@ -557,6 +562,10 @@ public:
     std::int16_t boot_guy_sat_y() const { return boot_guy_y_; }
     bool boot_sega_visible() const { return boot_dd30_ < 0; }
     bool boot_logo_strobe_active() const { return boot_dd3c_ != 0; }
+    bool boot_fading() const {
+        return scene_ == NativeScene::Bootstrap && boot_loop_left_ == 0U &&
+               boot_fade_left_ != 0U;
+    }
     std::int16_t boot_logo_strobe_phase() const { return boot_df92_; }
     std::uint16_t boot_hscroll_line(std::size_t line) const {
         return line < boot_hscroll_.size() ? boot_hscroll_[line] : 0;

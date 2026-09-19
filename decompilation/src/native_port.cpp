@@ -275,21 +275,37 @@ struct IntroStoryGroup {
     std::int32_t top_y;
 };
 
-constexpr std::array<IntroStoryGroup, 5> kIntroStoryGroups{{
-    // 0x59D7C's first 0xA0-vblank presentation.
-    {0x000U, 0U, 5U, 72},
-    // 0x59D7C's second loop.  The 0xADFE/0xAE3A writes at countdown 0x164
-    // add the three ambush aftermath lines before 0x5AA96 begins.
-    {0x0A0U, 5U, 5U, 72},
-    // 0x5AA96 writes the tri-vid paragraph before its 0x114-frame loop.
-    {0x290U, 10U, 3U, 80},
-    // 0x5AD1A calls 0x5A9E2 during setup, before its 0x528-frame loop.
-    {0x3A4U, 13U, 3U, 80},
-    // 0x5AD1A calls 0x5A96A when its countdown reaches 0x1E0.
-    {0x6ECU, 16U, 6U, 64},
-}};
+// 0x5AF62 script 0x5ADD0: wait 0x3C, 0x5AEC6 line 0; wait 0x78,
+// 0x5AEDA line 1; wait 0xB4, 0x5AEEE lines 2-4; wait 0xF0+0x0F.
+constexpr std::uint64_t kIntroSeattleHold = 0x3CU;
+constexpr std::uint64_t kIntroSeattlePlace = kIntroSeattleHold + 0x78U;
+constexpr std::uint64_t kIntroSeattleTeam = kIntroSeattlePlace + 0xB4U;
+constexpr std::uint64_t kIntroSeattleEnd =
+    kIntroSeattleTeam + 0xF0U + 0x0FU;
+// 0x59D7C: 0xA0/DBF pan, then 0x1F0/DBF SAT loop. 0x5AE9E after the
+// first pan vblank. 0x5ADFE/0x5AE3A when the second countdown is 0x164.
+constexpr std::uint64_t kIntroWildernessPan = kIntroSeattleEnd + 0xA1U;
+constexpr std::uint64_t kIntroWildernessMassacre =
+    kIntroWildernessPan + (0x1F0U - 0x164U);
+constexpr std::uint64_t kIntroWildernessEnd =
+    kIntroWildernessPan + 0x1F1U;
+// 0x5AA96 0x114/DBF, then 0x5AD1A 0x528/DBF. 0x5A96A at countdown 0x1E0.
+constexpr std::uint64_t kIntroTrividEnd = kIntroWildernessEnd + 0x115U;
+constexpr std::uint64_t kIntroAirportText =
+    kIntroTrividEnd + (0x528U - 0x1E0U);
+constexpr std::uint64_t kIntroDuration = kIntroTrividEnd + 0x529U;
 
-constexpr std::uint64_t kIntroDuration = 0x8CCU;
+constexpr std::array<IntroStoryGroup, 9> kIntroStoryGroups{{
+    {0x000U, 0U, 0U, 72},
+    {kIntroSeattleHold, 0U, 1U, 72},
+    {kIntroSeattlePlace, 0U, 2U, 72},
+    {kIntroSeattleTeam, 0U, 5U, 72},
+    {kIntroSeattleEnd, 5U, 2U, 72},
+    {kIntroWildernessMassacre, 5U, 5U, 72},
+    {kIntroWildernessEnd, 10U, 3U, 80},
+    {kIntroTrividEnd, 13U, 3U, 80},
+    {kIntroAirportText, 16U, 6U, 64},
+}};
 
 const IntroStoryGroup& intro_story_group(std::uint64_t frame) {
     const auto group = std::find_if(
@@ -3142,7 +3158,7 @@ void NativePortShell::update_boot() {
         }
         --boot_loop_left_;
         if (boot_loop_left_ == 0U) {
-            boot_fade_left_ = kBootFadePasses;
+            boot_fade_left_ = kBootFadeFrames;
         }
         return;
     }
@@ -3156,12 +3172,10 @@ void NativePortShell::update_boot() {
     if (boot_hold_left_ != 0U) {
         --boot_hold_left_;
         if (boot_hold_left_ == 0U) {
-            boot_fade_left_ = kBootFadePasses;
-            // Second 0x131C is a fade-into-title; the native title loop
+            // Second 0x131C fades already-black CRAM; the title loop
             // starts at its own frame zero after this hold.
             scene_ = NativeScene::Title;
             frame_number_ = 0;
-            boot_fade_left_ = 0;
         }
     }
 }
@@ -3488,7 +3502,31 @@ void NativePortShell::render(ScreenWriter& screen) const {
     screen.begin_frame();
     if (scene_ == NativeScene::Bootstrap) {
         screen.clear({0x00, 0x00, 0x00, 0xFF});
-        if (boot_loop_left_ != 0U && !boot_background_.pixels.empty()) {
+        const auto boot_layers_visible =
+            boot_loop_left_ != 0U || boot_fade_left_ != 0U;
+        if (boot_layers_visible && !boot_background_.pixels.empty()) {
+            const auto fade_copy = [this](const std::vector<Rgba8>& source) {
+                auto faded = source;
+                if (boot_fade_left_ == 0U ||
+                    boot_fade_left_ >= kBootFadeFrames) {
+                    return faded;
+                }
+                for (auto& pixel : faded) {
+                    pixel.red = static_cast<std::uint8_t>(
+                        (static_cast<std::uint16_t>(pixel.red) *
+                         boot_fade_left_) /
+                        kBootFadeFrames);
+                    pixel.green = static_cast<std::uint8_t>(
+                        (static_cast<std::uint16_t>(pixel.green) *
+                         boot_fade_left_) /
+                        kBootFadeFrames);
+                    pixel.blue = static_cast<std::uint8_t>(
+                        (static_cast<std::uint16_t>(pixel.blue) *
+                         boot_fade_left_) /
+                        kBootFadeFrames);
+                }
+                return faded;
+            };
             if (!boot_static_.pixels.empty() &&
                 boot_static_.pixels.size() ==
                     static_cast<std::size_t>(boot_static_.width) *
@@ -3517,7 +3555,7 @@ void NativePortShell::render(ScreenWriter& screen) const {
                     }
                 }
                 screen.blit_rgba(0, 0, boot_static_.width, boot_static_.height,
-                                 scrolled);
+                                 fade_copy(scrolled));
             }
             const NativeImage* logo = &boot_background_;
             if (boot_dd3c_ != 0 && !boot_logo_strobe_.empty()) {
@@ -3529,19 +3567,21 @@ void NativePortShell::render(ScreenWriter& screen) const {
                     logo = &boot_logo_strobe_[phase];
                 }
             }
-            screen.blit_rgba(0, 0, logo->width, logo->height, logo->pixels);
+            screen.blit_rgba(0, 0, logo->width, logo->height,
+                             fade_copy(logo->pixels));
             if (!boot_guy_.pixels.empty()) {
                 const auto guy_delta_y = static_cast<std::int32_t>(
                     boot_guy_y_ - static_cast<std::int16_t>(kBootGuyComposeY));
                 screen.blit_rgba(0, guy_delta_y, boot_guy_.width,
-                                 boot_guy_.height, boot_guy_.pixels);
+                                 boot_guy_.height, fade_copy(boot_guy_.pixels));
             }
             if (boot_dd30_ < 0 && !boot_sega_frames_.empty()) {
                 const auto phase = static_cast<std::size_t>(boot_sega_phase_) %
                                    boot_sega_frames_.size();
                 const auto& sega = boot_sega_frames_[phase];
                 if (!sega.pixels.empty()) {
-                    screen.blit_rgba(0, 0, sega.width, sega.height, sega.pixels);
+                    screen.blit_rgba(0, 0, sega.width, sega.height,
+                                     fade_copy(sega.pixels));
                 }
             }
         }
@@ -3550,29 +3590,28 @@ void NativePortShell::render(ScreenWriter& screen) const {
     }
     if (scene_ == NativeScene::Title && !title_pixels_.empty()) {
         screen.clear({0x00, 0x00, 0x00, 0xFF});
-        // ROM 0x1E4E reveals one logo column on each title-loop pass after
-        // the initial 0x5A-frame delay. The same loop calls 0x1C6A only while
-        // that reveal is active; the SAT origin advances four pixels per call
-        // and its six lists advance every four calls. Keep those source state
-        // machines separate on the host instead of treating the sprite as a
-        // continuously moving full-screen layer.
+        // ROM 0x1E4E writes one logo column every other reveal pass
+        // (DD40 cadence). 0x1C6A runs every reveal pass while FFF1E6<=$25,
+        // advancing SAT X by four and the six lists every four calls.
         if (!title_background_.pixels.empty()) {
             screen.blit_rgba(0, 0, title_background_.width,
                              title_background_.height,
                              title_background_.pixels);
             constexpr std::uint64_t kTitleRevealStart = 0x5AU;
             constexpr std::size_t kTitleRevealColumns = 38U;
-            // frame_number_ is the number of completed host update calls. A
-            // freshly constructed shell has performed no title-loop pass yet;
-            // after the first update, source loop index zero has completed.
             const auto has_title_loop = frame_number_ != 0U;
             const auto title_loop = has_title_loop ? frame_number_ - 1U : 0U;
             auto visible_columns = std::size_t{0};
+            auto sprite_call_count = std::size_t{0};
             if (has_title_loop && title_loop >= kTitleRevealStart) {
+                const auto reveal_frames = static_cast<std::size_t>(
+                    title_loop - kTitleRevealStart + 1U);
                 visible_columns = std::min<std::size_t>(
-                    kTitleRevealColumns,
-                    1U + static_cast<std::size_t>(
-                             title_loop - kTitleRevealStart));
+                    kTitleRevealColumns, (reveal_frames + 1U) / 2U);
+                // Last 0x1C6A shares the pass that writes column 38
+                // (FFF1E6 0x25 -> 0x26). That is reveal frame 75.
+                constexpr std::size_t kLastSpriteCall = 75U;
+                sprite_call_count = std::min(reveal_frames, kLastSpriteCall);
             }
             if (visible_columns != 0U && !title_logo_plane_.pixels.empty()) {
                 auto logo = title_logo_plane_.pixels;
@@ -3590,21 +3629,11 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 screen.blit_rgba(0, 0, title_logo_plane_.width,
                                  title_logo_plane_.height, logo);
             }
-            // 0x1C6A is called once for each of the first 38 reveal writes.
-            // Its first call increments DD3E before selecting a list, so the
-            // visible sequence starts at pointer-table entry 1. The SAT
-            // origin is already $009C in the extracted layer (the initial
-            // source value is $0098 and 0x1C6A adds four before 0x1378).
-            if (!title_sprite_frames_.empty() && visible_columns != 0U &&
-                visible_columns < kTitleRevealColumns) {
-                const auto sprite_call_count = visible_columns;
+            if (!title_sprite_frames_.empty() && sprite_call_count != 0U) {
                 const auto phase = static_cast<std::size_t>(
                     (1U + (sprite_call_count - 1U) / 4U) %
                     title_sprite_frames_.size());
                 const auto& sprite = title_sprite_frames_[phase];
-                // Translate by the number of completed source sprite calls,
-                // not by host frames. Once the logo is complete the source
-                // stops calling 0x1C6A and the last SAT image remains stable.
                 auto translated = std::vector<Rgba8>(
                     sprite.pixels.size(), Rgba8{0, 0, 0, 0});
                 const auto delta = static_cast<std::int32_t>(
@@ -3627,12 +3656,6 @@ void NativePortShell::render(ScreenWriter& screen) const {
                                  translated);
             }
             if (!title_text_.pixels.empty()) {
-                // 0x1DCA does not write PRESS START until the title loop has
-                // reached its late countdown, while 0x1DF6 writes the
-                // copyright block after the logo reveal. Keep these text
-                // writes as a separate transparent layer so the native title
-                // follows the source timing instead of showing a settled
-                // screenshot on frame zero.
                 auto blit_title_rows = [&screen, this](std::size_t first_row,
                                                         std::size_t row_count) {
                     auto text = title_text_.pixels;
@@ -3649,22 +3672,21 @@ void NativePortShell::render(ScreenWriter& screen) const {
                     screen.blit_rgba(0, 0, title_text_.width,
                                      title_text_.height, text);
                 };
-                // 0x1C1E starts DD5C at 0x5A when the final logo column sets
-                // DD5A=1. It writes the copyright block when that countdown
-                // crosses below zero, after the 38 reveal passes.
+                // 0x1E4E sets DD5A=1 when FFF1E6 becomes $25 (column 37).
+                // 0x1C1E then counts DD5C from $5A down through -1.
                 constexpr auto kTitleCopyrightLoop =
-                    kTitleRevealStart + kTitleRevealColumns + 0x5AU;
+                    kTitleRevealStart + 72U + 0x5BU;
                 if (has_title_loop &&
                     title_loop >= kTitleCopyrightLoop) {
                     blit_title_rows(22U, 4U);
                 }
-                // 0x1B72 selects 0x1DCA (PRESS START) for the first ten
-                // values of D7&$3F; 0x1DE0 writes the blank companion line
-                // for the other 54 values. D7 starts at $E10 and is decremented
-                // once per title loop.
+                // 0x1A9E writes PRESS START only after D7 drops below $C6C,
+                // and only when (D7 & $3F) >= 10. The other 10 of 64 values
+                // call 0x1DE0 and leave the prompt blank.
                 const auto title_timer = static_cast<std::uint64_t>(
                     0xE10U - std::min<std::uint64_t>(title_loop, 0xE10U));
-                if (has_title_loop && (title_timer & 0x3FU) < 10U) {
+                if (has_title_loop && title_timer < 0xC6CU &&
+                    (title_timer & 0x3FU) >= 10U) {
                     blit_title_rows(21U, 1U);
                 }
             }
@@ -3750,11 +3772,11 @@ void NativePortShell::render(ScreenWriter& screen) const {
         screen.clear({0x00, 0x00, 0x00, 0xFF});
         const auto& group = intro_story_group(intro_frame_);
         std::size_t stage_index = 0;
-        if (intro_frame_ >= 0x3A4U) {
+        if (intro_frame_ >= kIntroTrividEnd) {
             stage_index = 3;
-        } else if (intro_frame_ >= 0x290U) {
+        } else if (intro_frame_ >= kIntroWildernessEnd) {
             stage_index = 2;
-        } else if (intro_frame_ >= 0x0A0U) {
+        } else if (intro_frame_ >= kIntroSeattleEnd) {
             stage_index = 1;
         }
         if (stage_index < intro_stages_.size() &&

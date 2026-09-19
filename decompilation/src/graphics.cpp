@@ -4201,21 +4201,21 @@ void draw_genesis_startup_sprite_list(
             rom, source + 4U, "Genesis title sprite list is truncated");
         source += 6U;
 
-        // 0x1378 writes the object fields into the Genesis sprite-table
-        // order: Y, size/link, tile attributes, X.  The title caller uses
-        // D1=$009C (then advances by four pixels per loop), D2=$0110,
-        // D5=2 and D6=$6000.
-        const auto screen_x = static_cast<std::int32_t>(static_cast<std::int16_t>(
-            static_cast<std::uint16_t>(source_x + object_x_base)));
-        const auto sat_y = static_cast<std::int32_t>(static_cast<std::int16_t>(
-            static_cast<std::uint16_t>(source_y + kObjectYBase)));
-        const auto screen_y = sat_y - kSpriteYOrigin;
-        const auto size_link = static_cast<std::uint16_t>(
-            static_cast<std::uint16_t>(source_size & 0x00FFU) << 8U | 0x0002U);
-        const auto width_tiles = static_cast<std::size_t>(
-            ((size_link >> 8U) & 0x03U) + 1U);
-        const auto height_tiles = static_cast<std::size_t>(
-            ((size_link >> 10U) & 0x03U) + 1U);
+        // 0x1378: SAT X = D1 + list X, SAT Y = D2 + list Y. VDP origin is
+        // $80 on both axes. Size byte is Genesis width-in-bits-2..3 /
+        // height-in-bits-0..1; tiles run column-major.
+        constexpr std::int32_t kSpriteXOrigin = 0x80;
+        const auto screen_x =
+            static_cast<std::int32_t>(static_cast<std::int16_t>(source_x)) +
+            object_x_base - kSpriteXOrigin;
+        const auto screen_y =
+            static_cast<std::int32_t>(static_cast<std::int16_t>(source_y)) +
+            kObjectYBase - kSpriteYOrigin;
+        const auto size = static_cast<std::uint16_t>(source_size & 0x00FFU);
+        const auto width_tiles =
+            static_cast<std::size_t>(((size >> 2U) & 0x03U) + 1U);
+        const auto height_tiles =
+            static_cast<std::size_t>((size & 0x03U) + 1U);
         const auto tile_attributes = static_cast<std::uint16_t>(
             source_tile | kSpritePaletteMask);
         const auto tile_index = static_cast<std::size_t>(
@@ -4230,11 +4230,8 @@ void draw_genesis_startup_sprite_list(
                     ? width_tiles - 1U - tile_x : tile_x;
                 const auto source_tile_y = vflip
                     ? height_tiles - 1U - tile_y : tile_y;
-                // Each title SAT object owns a contiguous width x height
-                // block. The next source base is $10 higher because the
-                // preceding object is a 4x4 block of sixteen tiles.
                 const auto current_tile = tile_index +
-                    source_tile_y * width_tiles + source_tile_x;
+                    source_tile_x * height_tiles + source_tile_y;
                 if (current_tile * 32U + 32U > startup.pattern_vram.size()) {
                     throw std::out_of_range(
                         "Genesis title sprite tile is truncated");

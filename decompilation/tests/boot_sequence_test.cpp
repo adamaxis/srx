@@ -145,6 +145,33 @@ int main() {
         }
     }
 
+    while (shell.scene() == NativeScene::Bootstrap && !shell.boot_fading()) {
+        shell.update(InputState{});
+    }
+    assert(shell.boot_fading());
+    write_dump(shell, artifact_dir / "boot-fade-start.bmp");
+    SoftwareScreen fade_start;
+    shell.render(fade_start);
+    const auto fade_start_ink = opaque_count(fade_start);
+    assert(fade_start_ink > 0);
+    for (int step = 0; step < 16 && shell.boot_fading(); ++step) {
+        shell.update(InputState{});
+    }
+    write_dump(shell, artifact_dir / "boot-fade-mid.bmp");
+    SoftwareScreen fade_mid;
+    shell.render(fade_mid);
+    auto brightness = [](const SoftwareScreen& screen) {
+        std::uint64_t sum = 0;
+        for (const auto pixel : screen.pixels()) {
+            sum += (pixel >> 16U) & 0xFFU;
+            sum += (pixel >> 8U) & 0xFFU;
+            sum += pixel & 0xFFU;
+        }
+        return sum;
+    };
+    assert(brightness(fade_mid) < brightness(fade_start));
+    assert(opaque_count(fade_mid) > 0);
+
     shell.finish_boot();
     assert(shell.scene() == NativeScene::Title);
     write_dump(shell, artifact_dir / "boot-to-title.bmp");

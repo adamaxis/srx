@@ -88,13 +88,15 @@ int main(int argc, char** argv) {
         const std::filesystem::path pack(argv[1]);
         const std::filesystem::path out(argv[2]);
         std::string scene;
-        std::vector<std::uint64_t> frames{0, 90, 128, 500};
+        std::vector<std::uint64_t> frames{0, 90, 110, 160, 200, 500};
+        auto frames_specified = false;
         for (int index = 3; index < argc; ++index) {
             const std::string arg(argv[index]);
             if (arg == "--scene" && index + 1 < argc) {
                 scene = argv[++index];
             } else if (arg == "--frames" && index + 1 < argc) {
                 frames = parse_frames(argv[++index]);
+                frames_specified = true;
             } else {
                 throw std::invalid_argument("unknown argument: " + arg);
             }
@@ -157,9 +159,10 @@ int main(int argc, char** argv) {
             }
             std::uint64_t current = 0;
             const auto intro_frames =
-                frames.size() == 4 && frames[0] == 0 && frames[1] == 90
-                    ? std::vector<std::uint64_t>{0, 0xA0, 0x290, 0x3A4, 0x6EC}
-                    : frames;
+                frames_specified
+                    ? frames
+                    : std::vector<std::uint64_t>{0, 0x3C, 0x168, 0x267, 0x394,
+                                                 0x4F9, 0x60E, 0x956};
             for (const auto target : intro_frames) {
                 while (current < target) {
                     shell.update(InputState{});

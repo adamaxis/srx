@@ -38,10 +38,11 @@ cadence, writes the copyright rows late in the countdown, and flashes PRESS
 START from the countdown low bits. Start is an edge-triggered exit into the
 startup options block at `0x59092`.
 
-Native status: the title layers, reveal timing, sprite cadence, copyright,
-and PRESS START timing are extracted and implemented. The remaining audit
-item is frame-by-frame visual comparison of every sprite-list phase against a
-Genesis capture; a settled title screenshot is not sufficient evidence.
+Native status: the title layers, 0x1E4E two-pass column reveal, 0x1C6A SAT
+cadence (column-major tiles, origin $80, persist after the last write),
+copyright after DD5A, and PRESS START after D7<$C6C with inverted 10/64
+blanking are implemented. Remaining: 0x10D6 palette interpolation and a
+phase-matched Genesis capture.
 
 ### Start Options (`0x59092`, layout `0x1B6498`)
 
@@ -92,12 +93,14 @@ template storage, and one-time Joshua initialization are implemented.
 ### New-game opening (`0x59C5E`, `0x59D7C`, `0x5AA96`, `0x5AD1A`)
 
 New Game runs timed presentation groups and may be skipped with the source
-input edge. The recovered text groups begin at host frames `0x000`, `0x0A0`,
-`0x290`, `0x3A4`, and `0x6EC`; the full sequence ends at `0x8CC`.
+input edge. The recovered text groups follow the 0x5ADD0/0x5ADF0 script tables and the
+stage DBF counters: Seattle hold `0x3C` then lines 0/1/2-4, wilderness from
+`0x267`, massacre lines at `0x394`, tri-vid at `0x4F9`, nuyen at `0x60E`,
+Sea-Tac at `0x956`; the sequence ends at `0xB37`.
 
-Native status: source text, timing groups, skip, and the four 0x1406/0x5AA96
-stage compositions are implemented. Per-frame SAT choreography and music are
-not yet reconstructed.
+Native status: source text, 0x5AF62/0x59D7C/0x5AA96/0x5AD1A stage switch,
+skip, and the four 0x1406/0x5AA96 stills are implemented. Per-frame SAT
+choreography, camera pan, 0x5B378, and music are not yet reconstructed.
 
 ## Field and command screens
 
