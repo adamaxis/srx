@@ -419,6 +419,11 @@ std::array<RgbaImage, native::kNativeBootLogoStrobeCount>
 decode_genesis_boot_logo_strobe(
     const std::vector<std::uint8_t>& rom);
 
+// ROM 0x59C5E opening stages. Each image is the 0x1406 (or 0x5AA96)
+// plane composition plus the SAT lists those paths emit during setup.
+std::array<RgbaImage, native::kNativeIntroStageCount>
+decode_genesis_intro_stages(const std::vector<std::uint8_t>& rom);
+
 // Reconstruct the field command screen's plane-B base from the exact 0x1232
 // writers called by ROM 0x10F50. This is host RGBA output, not a Genesis
 // name-table or palette dependency retained by the runtime.

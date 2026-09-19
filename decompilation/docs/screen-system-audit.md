@@ -95,10 +95,9 @@ New Game runs timed presentation groups and may be skipped with the source
 input edge. The recovered text groups begin at host frames `0x000`, `0x0A0`,
 `0x290`, `0x3A4`, and `0x6EC`; the full sequence ends at `0x8CC`.
 
-Native status: source text, timing groups, and skip behavior are implemented.
-The original cutscene's animated artwork, sprite choreography, and music are
-not yet reconstructed. The native text-only opening must not be presented as
-the finished intro.
+Native status: source text, timing groups, skip, and the four 0x1406/0x5AA96
+stage compositions are implemented. Per-frame SAT choreography and music are
+not yet reconstructed.
 
 ## Field and command screens
 

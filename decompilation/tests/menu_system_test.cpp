@@ -199,6 +199,14 @@ void test_startup_behavior_and_rendering(const std::vector<std::uint8_t>& rom,
     shell.update(InputState{});
     assert(shell.intro_frame() == intro_frame + 1U);
     shell.render(screen);
+    bool intro_has_art = false;
+    for (std::size_t index = 0; index < screen.pixels().size(); ++index) {
+        if (screen.pixels()[index] != 0U) {
+            intro_has_art = true;
+            break;
+        }
+    }
+    assert(intro_has_art);
     shell.update(InputState{button_mask(Button::Start),
                             button_mask(Button::Start)});
     assert(shell.scene() == NativeScene::Field);

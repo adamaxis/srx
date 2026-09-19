@@ -20,6 +20,9 @@ constexpr std::size_t kNativeTitleAnimationFrameCount = 6;
 constexpr std::size_t kNativeBootSegaPhaseCount = 6;
 // ROM 0x5D8BA slides eight CRAM words from 0x5DCE6 across line 0 colors 3..10.
 constexpr std::size_t kNativeBootLogoStrobeCount = 8;
+// ROM 0x59C5E stages: 0x5AF62 (0x5B574), 0x59D7C (0x5B4A8), 0x5AA96
+// tri-vid, 0x5AD1A (0x5B528).
+constexpr std::size_t kNativeIntroStageCount = 4;
 // ROM 0x5DAC4 writes one HSCROLL word per visible line (D7 = $DF).
 constexpr std::size_t kBootHscrollLineCount = 224;
 constexpr std::uint16_t kBootRngMul = 0x20E5;
@@ -425,6 +428,9 @@ struct NativePortAssets {
     // written by the command overview's 0x11352 path.
     std::array<std::array<std::string, 2>, 7> field_menu_armor_labels{};
     NativeIntroData intro;
+    // Host RGBA of the four 0x59C5E presentation stages. Text remains a
+    // separate C0DA overlay; these are the plane/SAT compositions.
+    std::array<NativeImage, kNativeIntroStageCount> intro_stages{};
     NativeImage field_map;
     std::vector<NativeEntityFrame> entity_frames;
     std::array<NativeFieldAnimation, 8> field_entity_animations{};
@@ -1015,6 +1021,7 @@ private:
     std::vector<Rgba8> field_menu_font_pixels_;
     NativeImage startup_font_{};
     NativeImage startup_cursor_{};
+    std::array<NativeImage, kNativeIntroStageCount> intro_stages_{};
     std::array<NativeImage, 3> field_menu_runner_portraits_{};
     std::array<NativeImage, 2> field_menu_selected_cells_{};
     std::array<NativeImage, 5> field_menu_command_focus_{};

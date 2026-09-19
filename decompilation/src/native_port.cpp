@@ -670,6 +670,7 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     boot_guy_ = std::move(assets.boot_guy);
     boot_sega_frames_ = std::move(assets.boot_sega_frames);
     boot_logo_strobe_ = std::move(assets.boot_logo_strobe);
+    intro_stages_ = std::move(assets.intro_stages);
     if (!boot_background_.pixels.empty()) {
         scene_ = NativeScene::Bootstrap;
     }
@@ -3748,6 +3749,19 @@ void NativePortShell::render(ScreenWriter& screen) const {
         // in the 40-column Genesis display area.
         screen.clear({0x00, 0x00, 0x00, 0xFF});
         const auto& group = intro_story_group(intro_frame_);
+        std::size_t stage_index = 0;
+        if (intro_frame_ >= 0x3A4U) {
+            stage_index = 3;
+        } else if (intro_frame_ >= 0x290U) {
+            stage_index = 2;
+        } else if (intro_frame_ >= 0x0A0U) {
+            stage_index = 1;
+        }
+        if (stage_index < intro_stages_.size() &&
+            !intro_stages_[stage_index].pixels.empty()) {
+            const auto& stage = intro_stages_[stage_index];
+            screen.blit_rgba(0, 0, stage.width, stage.height, stage.pixels);
+        }
         const auto line_end = std::min(
             group.first_line + group.line_count, intro_.story_lines.size());
         for (auto line = group.first_line; line < line_end; ++line) {

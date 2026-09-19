@@ -8,6 +8,7 @@
 #include <limits>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace shadowrun::graphics {
 
@@ -807,6 +808,12 @@ native::NativePortAssets decode_genesis_native_assets(
             boot_strobe[index].width, boot_strobe[index].height,
             boot_strobe[index].pixels};
     }
+    const auto intro_stages = decode_genesis_intro_stages(rom);
+    for (std::size_t index = 0; index < intro_stages.size(); ++index) {
+        assets.intro_stages[index] = {
+            intro_stages[index].width, intro_stages[index].height,
+            intro_stages[index].pixels};
+    }
     auto field_menu_background = decode_genesis_field_menu_background(rom);
     assets.field_menu_background = {
         field_menu_background.width, field_menu_background.height,
@@ -1157,7 +1164,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 37);
+    write_u16(output, 38);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     for (const auto& title_frame : assets.title_animation_frames) {
@@ -1559,6 +1566,9 @@ void write_native_asset_pack(const std::string& path,
     for (const auto& frame : assets.boot_logo_strobe) {
         write_native_image(output, frame);
     }
+    for (const auto& stage : assets.intro_stages) {
+        write_native_image(output, stage);
+    }
     if (!output) {
         throw std::runtime_error("failed writing native asset pack: " + path);
     }
@@ -1574,7 +1584,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 37U)) {
+        (version < 2U || version > 38U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -2278,6 +2288,11 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
         assets.boot_static = read_native_image(input);
         for (auto& frame : assets.boot_logo_strobe) {
             frame = read_native_image(input);
+        }
+    }
+    if (version >= 38U) {
+        for (auto& stage : assets.intro_stages) {
+            stage = read_native_image(input);
         }
     }
     return assets;
@@ -4769,7 +4784,8 @@ void blit_genesis_name_table(
     const std::vector<std::uint8_t>& rom, const GenesisBootPatternData& boot,
     RgbaImage& image, std::size_t map_offset, std::size_t columns,
     std::size_t rows, std::uint32_t dest_vram, std::uint32_t plane_base,
-    std::uint16_t attr_or, bool transparent_zero) {
+    std::uint16_t attr_or, bool transparent_zero,
+    std::int32_t dest_y_adjust = 0) {
     const auto plane_offset = dest_vram - plane_base;
     const auto start_tile_x = (plane_offset % 0x80U) / 2U;
     const auto start_tile_y = plane_offset / 0x80U;
@@ -4788,7 +4804,8 @@ void blit_genesis_name_table(
             blit_genesis_tile(
                 image, boot, tile_index, palette_line, hflip, vflip,
                 static_cast<std::int32_t>((start_tile_x + col) * 8U),
-                static_cast<std::int32_t>((start_tile_y + row) * 8U),
+                static_cast<std::int32_t>((start_tile_y + row) * 8U) +
+                    dest_y_adjust,
                 transparent_zero);
         }
     }
@@ -4846,6 +4863,264 @@ void blit_genesis_sat_list(
             }
         }
     }
+}
+
+void blit_genesis_1728_name_table(
+    const std::vector<std::uint8_t>& rom, const GenesisBootPatternData& scene,
+    RgbaImage& image, std::size_t map_offset, std::size_t columns,
+    std::size_t rows, std::uint32_t dest_vram, std::uint32_t plane_base,
+    std::uint16_t attr_or, bool transparent_zero,
+    std::int32_t dest_y_adjust = 0) {
+    if (columns == 0U || rows == 0U) {
+        throw std::invalid_argument("Genesis 0x1728 map dimensions are invalid");
+    }
+    const auto cell_count = columns * rows;
+    std::vector<std::uint16_t> map(cell_count, 0);
+    auto source = map_offset;
+    const auto base_word = read_rom_u16(
+        rom, source, "Genesis 0x1728 map is truncated");
+    source += 2U;
+    std::size_t generated_count = 0;
+    std::size_t output_count = 0;
+    const auto emit = [&](std::uint16_t value) {
+        if (output_count >= map.size()) {
+            return;
+        }
+        map[output_count++] = static_cast<std::uint16_t>(value | attr_or);
+    };
+    const auto emit_run = [&](std::uint16_t value, int delta,
+                              unsigned count) {
+        const auto run_length = std::max<unsigned>(count, 1U);
+        for (unsigned index = 0; index < run_length; ++index) {
+            ++generated_count;
+            // 0x1406 packed maps clear D3, so A3 is 0 and every generated
+            // value is written. Title's D3/delta skip is a different caller.
+            if (generated_count > 0U) {
+                emit(value);
+            }
+            value = static_cast<std::uint16_t>(
+                static_cast<std::uint16_t>(value) +
+                static_cast<std::uint16_t>(static_cast<std::int16_t>(delta)));
+        }
+    };
+    while (output_count < map.size()) {
+        if (source >= rom.size()) {
+            throw std::out_of_range("Genesis 0x1728 map is truncated");
+        }
+        const auto token = rom[source++];
+        if (token == 0) {
+            break;
+        }
+        if (token > 0xC0U) {
+            const auto count = static_cast<unsigned>(token & 0x1FU);
+            const auto wide = (token & 0x20U) != 0;
+            const auto run_length = std::max<unsigned>(count, 1U);
+            for (unsigned index = 0; index < run_length; ++index) {
+                std::uint16_t value = 0;
+                if (wide) {
+                    value = read_rom_u16(
+                        rom, source, "Genesis 0x1728 map is truncated");
+                    source += 2U;
+                } else {
+                    if (source >= rom.size()) {
+                        throw std::out_of_range(
+                            "Genesis 0x1728 map is truncated");
+                    }
+                    value = rom[source++];
+                }
+                value = static_cast<std::uint16_t>(value + base_word);
+                ++generated_count;
+                emit(value);
+            }
+            continue;
+        }
+        const auto delta = token > 0x80U ? 1 : token > 0x40U ? 0 : -1;
+        const auto count = static_cast<unsigned>(token & 0x1FU);
+        const auto wide = (token & 0x20U) != 0;
+        std::uint16_t value = 0;
+        if (wide) {
+            if (source >= rom.size()) {
+                throw std::out_of_range("Genesis 0x1728 map is truncated");
+            }
+            value = static_cast<std::uint16_t>(rom[source++]) << 8U;
+        }
+        if (source >= rom.size()) {
+            throw std::out_of_range("Genesis 0x1728 map is truncated");
+        }
+        value = static_cast<std::uint16_t>(value | rom[source++]);
+        value = static_cast<std::uint16_t>(value + base_word);
+        emit_run(value, delta, count);
+    }
+    const auto plane_offset = dest_vram - plane_base;
+    const auto start_tile_x = (plane_offset % 0x80U) / 2U;
+    const auto start_tile_y = plane_offset / 0x80U;
+    for (std::size_t row = 0; row < rows; ++row) {
+        for (std::size_t col = 0; col < columns; ++col) {
+            const auto word = map[row * columns + col];
+            if (word == 0U && transparent_zero) {
+                continue;
+            }
+            const auto tile_index = static_cast<std::size_t>(word & 0x07FFU);
+            const auto palette_line =
+                static_cast<std::size_t>((word >> 13U) & 0x03U);
+            const auto hflip = (word & 0x0800U) != 0;
+            const auto vflip = (word & 0x1000U) != 0;
+            blit_genesis_tile(
+                image, scene, tile_index, palette_line, hflip, vflip,
+                static_cast<std::int32_t>((start_tile_x + col) * 8U),
+                static_cast<std::int32_t>((start_tile_y + row) * 8U) +
+                    dest_y_adjust,
+                transparent_zero);
+        }
+    }
+}
+
+std::uint32_t plane_base_for_dest(std::uint16_t plane_a, std::uint16_t plane_b,
+                                  std::uint32_t dest_vram) {
+    if (plane_b != 0U && dest_vram >= plane_b) {
+        return plane_b;
+    }
+    return plane_a;
+}
+
+void load_genesis_1406_patterns(const std::vector<std::uint8_t>& rom,
+                                std::size_t descriptor,
+                                GenesisBootPatternData& scene,
+                                std::size_t& map_list_offset) {
+    auto offset = descriptor + 0x10U;
+    while (true) {
+        const auto source = read_rom_u32(
+            rom, offset, "Genesis 0x1406 pattern list is truncated");
+        offset += 4U;
+        if (source == 0U) {
+            break;
+        }
+        const auto dest = read_rom_u32(
+            rom, offset, "Genesis 0x1406 pattern list is truncated");
+        offset += 4U;
+        const auto size = read_rom_u32(
+            rom, offset, "Genesis 0x1406 pattern list is truncated");
+        offset += 4U;
+        if ((source & 1U) != 0U) {
+            write_genesis_1530_vram(
+                rom, static_cast<std::size_t>(source & ~1U),
+                static_cast<std::size_t>(dest & 0xFFFFU), scene.pattern_vram);
+        } else {
+            write_genesis_f5c_vram(
+                rom, static_cast<std::size_t>(source),
+                static_cast<std::size_t>(dest),
+                static_cast<std::size_t>(size), scene.pattern_vram);
+        }
+    }
+    map_list_offset = offset;
+}
+
+void blit_genesis_1406_maps(const std::vector<std::uint8_t>& rom,
+                            const GenesisBootPatternData& scene,
+                            RgbaImage& image, std::size_t map_list_offset,
+                            std::uint16_t plane_a, std::uint16_t plane_b,
+                            std::int32_t plane_b_vscroll = 0) {
+    auto offset = map_list_offset;
+    auto first_map = true;
+    while (true) {
+        const auto source = read_rom_u32(
+            rom, offset, "Genesis 0x1406 map list is truncated");
+        offset += 4U;
+        if (source == 0U) {
+            break;
+        }
+        const auto dest = read_rom_u32(
+            rom, offset, "Genesis 0x1406 map list is truncated");
+        offset += 4U;
+        const auto columns = static_cast<std::size_t>(
+            read_rom_u16(rom, offset, "Genesis 0x1406 map list is truncated") +
+            1U);
+        offset += 2U;
+        const auto rows = static_cast<std::size_t>(
+            read_rom_u16(rom, offset, "Genesis 0x1406 map list is truncated") +
+            1U);
+        offset += 2U;
+        const auto attr = read_rom_u16(
+            rom, offset, "Genesis 0x1406 map list is truncated");
+        offset += 2U;
+        const auto plane = plane_base_for_dest(plane_a, plane_b, dest);
+        const auto transparent = !first_map;
+        const auto y_adjust =
+            plane == plane_b ? -plane_b_vscroll : 0;
+        if ((source & 1U) != 0U) {
+            blit_genesis_1728_name_table(
+                rom, scene, image, static_cast<std::size_t>(source & ~1U),
+                columns, rows, dest, plane, attr, transparent, y_adjust);
+        } else {
+            blit_genesis_name_table(
+                rom, scene, image, static_cast<std::size_t>(source), columns,
+                rows, dest, plane, attr, transparent, y_adjust);
+        }
+        first_map = false;
+    }
+}
+
+RgbaImage decode_genesis_1406_scene(const std::vector<std::uint8_t>& rom,
+                                    std::size_t descriptor,
+                                    GenesisBootPatternData* patterns = nullptr,
+                                    std::int32_t plane_b_vscroll = 0) {
+    const auto vdp = static_cast<std::size_t>(read_rom_u32(
+        rom, descriptor, "Genesis 0x1406 descriptor is truncated"));
+    const auto palette = static_cast<std::size_t>(read_rom_u32(
+        rom, descriptor + 4U, "Genesis 0x1406 descriptor is truncated"));
+    const auto plane_a = read_rom_u16(
+        rom, vdp, "Genesis 0x1406 VDP table is truncated");
+    const auto plane_b = read_rom_u16(
+        rom, vdp + 2U, "Genesis 0x1406 VDP table is truncated");
+    GenesisBootPatternData scene{
+        std::vector<std::uint8_t>(0x10000U, 0),
+        read_genesis_palette_set(rom, palette),
+    };
+    std::size_t map_list_offset = 0;
+    load_genesis_1406_patterns(rom, descriptor, scene, map_list_offset);
+    auto image = make_transparent_title_layer();
+    for (auto& pixel : image.pixels) {
+        pixel = {0, 0, 0, 255};
+    }
+    blit_genesis_1406_maps(rom, scene, image, map_list_offset, plane_a,
+                           plane_b, plane_b_vscroll);
+    if (patterns != nullptr) {
+        *patterns = std::move(scene);
+    }
+    return image;
+}
+
+RgbaImage decode_genesis_intro_trivid(const std::vector<std::uint8_t>& rom) {
+    GenesisBootPatternData scene{
+        std::vector<std::uint8_t>(0x10000U, 0),
+        read_genesis_palette_set(rom, 0x5B632U),
+    };
+    write_genesis_1530_vram(rom, 0x1E3F38U, 0x3020U, scene.pattern_vram);
+    write_genesis_1530_vram(rom, 0x1E62BEU, 0xC000U, scene.pattern_vram);
+    write_genesis_1530_vram(rom, 0xC1064U, 0xB560U, scene.pattern_vram);
+    auto image = make_transparent_title_layer();
+    for (auto& pixel : image.pixels) {
+        pixel = {0, 0, 0, 255};
+    }
+    blit_genesis_1728_name_table(rom, scene, image, 0x1E620EU, 40U, 14U,
+                                 0x700U, 0U, 0x8000U, false);
+    blit_genesis_sat_list(rom, scene, image, 0x1DF1D6U, 0xC2, 0x13C, 0xC000U);
+    blit_genesis_sat_list(rom, scene, image, 0x1DF238U, 0x60, 0x123, 0x6000U);
+    return image;
+}
+
+std::array<RgbaImage, native::kNativeIntroStageCount>
+decode_genesis_intro_stages_impl(const std::vector<std::uint8_t>& rom) {
+    std::array<RgbaImage, native::kNativeIntroStageCount> stages{};
+    stages[0] = decode_genesis_1406_scene(rom, 0x5B574U);
+    GenesisBootPatternData wilderness;
+    stages[1] = decode_genesis_1406_scene(rom, 0x5B4A8U, &wilderness);
+    blit_genesis_sat_list(rom, wilderness, stages[1], 0x1DF1B2U, 0x138, 0xF1,
+                          0x2000U);
+    stages[2] = decode_genesis_intro_trivid(rom);
+    GenesisBootPatternData ending;
+    stages[3] = decode_genesis_1406_scene(rom, 0x5B528U, &ending, 0x78);
+    return stages;
 }
 
 } // namespace
@@ -4937,6 +5212,11 @@ decode_genesis_boot_logo_strobe(const std::vector<std::uint8_t>& rom) {
                                 0xE51AU, 0xE000U, 0, true);
     }
     return frames;
+}
+
+std::array<RgbaImage, native::kNativeIntroStageCount>
+decode_genesis_intro_stages(const std::vector<std::uint8_t>& rom) {
+    return decode_genesis_intro_stages_impl(rom);
 }
 
 RgbaImage software_screen_image(const native::SoftwareScreen& screen) {

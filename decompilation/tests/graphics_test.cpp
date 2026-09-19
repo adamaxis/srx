@@ -443,6 +443,22 @@ int main() {
            native_assets.boot_static.pixels.size());
     assert(loaded_assets.boot_logo_strobe[0].pixels.size() ==
            native_assets.boot_logo_strobe[0].pixels.size());
+    const auto intro_stages = decode_genesis_intro_stages(rom);
+    for (std::size_t index = 0; index < intro_stages.size(); ++index) {
+        assert(intro_stages[index].width == 320);
+        assert(intro_stages[index].height == 224);
+        std::size_t ink = 0;
+        for (const auto& pixel : intro_stages[index].pixels) {
+            if (pixel.red != 0 || pixel.green != 0 || pixel.blue != 0) {
+                ++ink;
+            }
+        }
+        assert(ink > 100U);
+        assert(native_assets.intro_stages[index].pixels.size() ==
+               intro_stages[index].pixels.size());
+        assert(loaded_assets.intro_stages[index].pixels.size() ==
+               native_assets.intro_stages[index].pixels.size());
+    }
     assert(loaded_assets.boot_guy.pixels.size() ==
            native_assets.boot_guy.pixels.size());
     assert(loaded_assets.title_scene.width == native_assets.title_scene.width);

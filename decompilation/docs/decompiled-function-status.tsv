@@ -13,7 +13,11 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x59172	save/load empty	NativePortShell::update_save_load	leftover_clear	partial		SRAM restore pending
 0x59248	archetype select	NativePortShell	test_startup_behavior_and_rendering	partial		
 0x42B0	Joshua template copy	NativePortShell	test_startup_behavior_and_rendering	partial		
-0x59C5E	intro text	NativePortShell	test_startup_behavior_and_rendering	partial		intro art/music pending
+0x59C5E	intro stages	NativePortShell	test_startup_behavior_and_rendering; shadowrun_graphics	partial	intro-0/160/656/932/1772.bmp	music pending; SAT choreography still setup-time
+0x5AF62	intro stage 1 0x1406	decode_genesis_intro_stages	shadowrun_graphics	partial		descriptor 0x5B574
+0x59D7C	intro stage 2 0x1406	decode_genesis_intro_stages	shadowrun_graphics	partial		descriptor 0x5B4A8 + SAT 0x1DF1B2
+0x5AA96	intro tri-vid	decode_genesis_intro_stages	shadowrun_graphics	partial		0x1E620E map + SAT 0x1DF1D6/0x1DF238
+0x5AD1A	intro stage 4 0x1406	decode_genesis_intro_stages	shadowrun_graphics	partial		descriptor 0x5B528
 0x3084	field loop	NativePortShell::update	shadowrun_native_port	partial		HUD 0x17708 separate
 0xE7C8	terrain probe	terrain::probe	shadowrun_native_port	partial		
 0x600E	walk animation	NativePortShell::render	shadowrun_native_port	partial		

@@ -155,7 +155,24 @@ int main(int argc, char** argv) {
             if (shell.scene() != NativeScene::Intro) {
                 throw std::runtime_error("failed to enter Intro");
             }
-            write_frame(shell, out / "intro.bmp");
+            std::uint64_t current = 0;
+            const auto intro_frames =
+                frames.size() == 4 && frames[0] == 0 && frames[1] == 90
+                    ? std::vector<std::uint64_t>{0, 0xA0, 0x290, 0x3A4, 0x6EC}
+                    : frames;
+            for (const auto target : intro_frames) {
+                while (current < target) {
+                    shell.update(InputState{});
+                    ++current;
+                    if (shell.scene() != NativeScene::Intro) {
+                        throw std::runtime_error(
+                            "intro ended before dump frame " +
+                            std::to_string(target));
+                    }
+                }
+                write_frame(shell, out / ("intro-" + std::to_string(target) +
+                                          ".bmp"));
+            }
             return 0;
         }
         if (scene == "field") {
