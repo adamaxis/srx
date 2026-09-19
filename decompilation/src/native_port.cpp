@@ -767,6 +767,7 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     startup_background_ = std::move(assets.startup_background);
     intro_heli_frames_ = std::move(assets.intro_heli_frames);
     field_hud_ = std::move(assets.field_hud);
+    pocket_secretary_background_ = std::move(assets.pocket_secretary_background);
     intro_stages_ = std::move(assets.intro_stages);
     if (!boot_background_.pixels.empty()) {
         scene_ = NativeScene::Bootstrap;
@@ -3269,9 +3270,7 @@ void NativePortShell::render_dialog_panel(ScreenWriter& screen) const {
 }
 
 void NativePortShell::render_field_hud(ScreenWriter& screen) const {
-    // Dedicated 64x224 panel on the right of the 256px playfield. Capture
-    // t1720: metal bezel, face window, gun slot, 00 counters — not the
-    // 64x80 command portrait stamped over the street.
+    // Capture t1720: 64px sidebar with headshot, gun/01, empty 00 slots.
     if (!field_hud_.pixels.empty()) {
         screen.blit_rgba(0, 0, field_hud_.width, field_hud_.height,
                          field_hud_.pixels);
@@ -3281,26 +3280,52 @@ void NativePortShell::render_field_hud(ScreenWriter& screen) const {
             ? selected_archetype_
             : 0U;
     const auto& portrait = field_menu_runner_portraits_[portrait_index];
-    if (portrait.pixels.empty() || portrait.width < 48U ||
-        portrait.height < 48U) {
-        return;
+    if (!portrait.pixels.empty() && portrait.width >= 24U &&
+        portrait.height >= 24U) {
+        // HUD is a headshot. The 64x80 command portrait is a full pose; take
+        // the top-center of it so the gun/sword stay off this panel.
+        const auto src_x = static_cast<std::uint16_t>(
+            (portrait.width > 40U) ? (portrait.width - 40U) / 2U : 0U);
+        const auto src_w = static_cast<std::uint16_t>(
+            std::min<std::uint16_t>(40, portrait.width));
+        const auto src_h = static_cast<std::uint16_t>(
+            std::min<std::uint16_t>(40, portrait.height));
+        std::vector<Rgba8> face(
+            static_cast<std::size_t>(src_w) * src_h, Rgba8{0, 0, 0, 0});
+        for (std::uint16_t y = 0; y < src_h; ++y) {
+            for (std::uint16_t x = 0; x < src_w; ++x) {
+                face[static_cast<std::size_t>(y) * src_w + x] =
+                    portrait.pixels[static_cast<std::size_t>(y) *
+                                        portrait.width +
+                                    (src_x + x)];
+            }
+        }
+        const auto dest_x =
+            kFieldHudFaceX + (kFieldHudFaceWidth - src_w) / 2;
+        const auto dest_y =
+            kFieldHudFaceY + (kFieldHudFaceHeight - src_h) / 2;
+        screen.blit_rgba(dest_x, dest_y, src_w, src_h, face);
     }
-    // Head crop from the 64x80 command portrait into the HUD face window.
-    constexpr std::int32_t kFaceX = 264;
-    constexpr std::int32_t kFaceY = 16;
-    constexpr std::uint16_t kFaceW = 48;
-    constexpr std::uint16_t kFaceH = 48;
-    constexpr std::uint16_t kSourceX = 8;
-    std::vector<Rgba8> face(
-        static_cast<std::size_t>(kFaceW) * kFaceH, Rgba8{0, 0, 0, 0});
-    for (std::uint16_t y = 0; y < kFaceH; ++y) {
-        for (std::uint16_t x = 0; x < kFaceW; ++x) {
-            face[static_cast<std::size_t>(y) * kFaceW + x] =
-                portrait.pixels[static_cast<std::size_t>(y) * portrait.width +
-                                (kSourceX + x)];
+    const auto item_code = field_entity_.active_item_code;
+    if (item_code > 0U &&
+        item_code <= field_menu_inventory_icons_.size()) {
+        const auto& icon = field_menu_inventory_icons_[item_code - 1U][0];
+        if (!icon.pixels.empty()) {
+            // Capture: ammo on the left, gun icon on the right of the slot.
+            const auto icon_x =
+                kFieldHudGunX + kFieldHudGunWidth -
+                static_cast<std::int32_t>(icon.width) - 4;
+            const auto icon_y =
+                kFieldHudGunY +
+                (kFieldHudGunHeight - static_cast<std::int32_t>(icon.height)) /
+                    2;
+            screen.blit_rgba(icon_x, icon_y, icon.width, icon.height,
+                             icon.pixels);
         }
     }
-    screen.blit_rgba(kFaceX, kFaceY, kFaceW, kFaceH, face);
+    write_field_menu_text(screen, kFieldHudGunX + 4, kFieldHudGunY + 12, "01");
+    write_field_menu_text(screen, kFieldHudFaceX + 4, 124, "00");
+    write_field_menu_text(screen, kFieldHudFaceX + 4, 172, "00");
 }
 
 void NativePortShell::finish_boot() {
@@ -4750,8 +4775,17 @@ void NativePortShell::render(ScreenWriter& screen) const {
             }
         } else if (scene_ == NativeScene::PocketSecretaryMenu) {
             // ROM 0xC2A6 -> 0xC3E6 fills $C186 then C0DA writes 0xC1418.
-            render_command_base(screen);
-            render_dialog_panel(screen);
+            // 0x18252's 0xD9C96 computer is this screen's bezel. Do not reuse
+            // the command-overview portrait plane as Main Menu.
+            if (!pocket_secretary_background_.pixels.empty()) {
+                screen.clear({0x00, 0x00, 0x00, 0xFF});
+                screen.blit_rgba(0, 0, pocket_secretary_background_.width,
+                                 pocket_secretary_background_.height,
+                                 pocket_secretary_background_.pixels);
+            } else {
+                render_command_base(screen);
+                render_dialog_panel(screen);
+            }
             write_field_menu_text(screen, 112, 32, " Main Menu");
             write_field_menu_text(screen, 104, 40, "[\\\\\\\\\\\\\\\\");
             const auto option_count = pocket_secretary_option_count();

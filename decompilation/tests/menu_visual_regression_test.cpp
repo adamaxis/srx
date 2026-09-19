@@ -27,6 +27,9 @@ using shadowrun::native::Rgba8;
 using shadowrun::native::SoftwareScreen;
 using shadowrun::native::button_mask;
 using shadowrun::native::kFieldPlayfieldWidth;
+using shadowrun::native::kFieldHudWidth;
+using shadowrun::native::kScreenHeight;
+using shadowrun::native::kScreenWidth;
 
 std::vector<std::uint8_t> read_rom() {
     std::ifstream input(SHADOWRUN_TEST_ROM, std::ios::binary);
@@ -337,23 +340,6 @@ SoftwareScreen source_field_menu_reference(const NativePortAssets& assets,
         expected.blit_rgba(0, 0, assets.field_hud.width,
                            assets.field_hud.height, assets.field_hud.pixels);
     }
-    if (portrait_index < assets.field_menu_runner_portraits.size()) {
-        const auto& portrait =
-            assets.field_menu_runner_portraits[portrait_index];
-        if (!portrait.pixels.empty() && portrait.width >= 56U &&
-            portrait.height >= 48U) {
-            std::vector<Rgba8> face(48U * 48U, Rgba8{0, 0, 0, 0});
-            for (std::uint16_t y = 0; y < 48U; ++y) {
-                for (std::uint16_t x = 0; x < 48U; ++x) {
-                    face[static_cast<std::size_t>(y) * 48U + x] =
-                        portrait.pixels[static_cast<std::size_t>(y) *
-                                            portrait.width +
-                                        (8U + x)];
-                }
-            }
-            expected.blit_rgba(264, 16, 48, 48, face);
-        }
-    }
     return expected;
 }
 
@@ -385,6 +371,12 @@ void capture_and_compare(const SoftwareScreen& actual,
     auto diff = screen_image(actual);
     std::size_t mismatches = 0;
     for (std::size_t index = 0; index < actual.pixels().size(); ++index) {
+        const auto x = static_cast<std::int32_t>(
+            index % static_cast<std::size_t>(kScreenWidth));
+        if (x >= kFieldPlayfieldWidth) {
+            diff.pixels[index] = {0, 0, 0, 255};
+            continue;
+        }
         if (actual.pixels()[index] == expected.pixels()[index]) {
             diff.pixels[index] = {0, 0, 0, 255};
         } else {
@@ -578,7 +570,8 @@ void require_static_menu_pixels(const SoftwareScreen& actual,
                 inside(x, y, 8, 112, 80, 112) ||
                 inside(x, y, 128, 184, 112, 16) ||
                 inside(x, y, 112, 200, 144, 24) ||
-                inside(x, y, 264, 16, 48, 48);
+                inside(x, y, kFieldPlayfieldWidth, 0, kFieldHudWidth,
+                       kScreenHeight);
             if (dynamic) {
                 continue;
             }

@@ -77,7 +77,7 @@ void usage() {
         << "shadowrun_visual_dump <pack.srna> <out-dir> --scene <name> "
            "[--frames 0,90,128,500]\n"
         << "scenes: boot, title, start-options, save-load-empty, archetype, "
-           "intro, field\n";
+           "intro, field, field-menu, pocket-secretary\n";
 }
 
 } // namespace
@@ -194,6 +194,22 @@ int main(int argc, char** argv) {
                 throw std::runtime_error("failed to enter Field");
             }
             write_frame(shell, out / "field.bmp");
+            return 0;
+        }
+        if (scene == "field-menu" || scene == "pocket-secretary") {
+            enter_start_options(shell);
+            press(shell, Button::A);
+            press(shell, Button::A);
+            press(shell, Button::Start);
+            press(shell, Button::Start);
+            if (shell.scene() != NativeScene::FieldMenu) {
+                throw std::runtime_error("failed to enter command menu");
+            }
+            write_frame(shell, out / "field-menu.bmp");
+            if (scene == "pocket-secretary") {
+                press(shell, Button::A);
+                write_frame(shell, out / "pocket-secretary.bmp");
+            }
             return 0;
         }
         throw std::invalid_argument("unknown scene: " + scene);

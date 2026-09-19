@@ -18,6 +18,16 @@ constexpr std::uint16_t kScreenHeight = 224;
 constexpr std::int32_t kFieldHudWidth = 64;
 constexpr std::int32_t kFieldPlayfieldWidth =
     static_cast<std::int32_t>(kScreenWidth) - kFieldHudWidth;
+// Capture t1720 / command-screen HUD: headshot, then gun slot, then two
+// empty 00 slots. These are host panel coordinates, not VDP cells.
+constexpr std::int32_t kFieldHudFaceX = 256;
+constexpr std::int32_t kFieldHudFaceY = 8;
+constexpr std::int32_t kFieldHudFaceWidth = 64;
+constexpr std::int32_t kFieldHudFaceHeight = 56;
+constexpr std::int32_t kFieldHudGunX = 256;
+constexpr std::int32_t kFieldHudGunY = 72;
+constexpr std::int32_t kFieldHudGunWidth = 64;
+constexpr std::int32_t kFieldHudGunHeight = 32;
 // Title 0x2634 slides CRAM every 5 vblanks. Host clips step every 3 ticks
 // so the baked light frames read as motion at capture 0.05s.
 constexpr std::uint16_t kTitleCircuitLightTicks = 3;
@@ -417,11 +427,13 @@ struct NativePortAssets {
     // four 0x1232 blocks at 0xCDCE6/0xCDDF6/0xCDEA0/0xCDF4A.
     NativeImage startup_background;
     std::array<NativeImage, kNativeIntroHeliFrameCount> intro_heli_frames{};
-    // Field HUD column: 0x18252 uploads 0xD9376/$8160 and packed 40x22
-    // 0xD9C96 at $E000, then 0x17708's 40x6 0xD8316 at $EB00. Capture t1720
-    // is this full-height right 64px panel, not a command-menu portrait
-    // overlaid on the street.
+    // Field HUD column (64x224 at x=256): metal sidebar with face window,
+    // gun slot, and two empty slots. Capture t1720 / command / PS all share
+    // this panel. 0xD9C96 is the Pocket Secretary computer bezel, not HUD.
     NativeImage field_hud;
+    // Pocket Secretary: command chrome with the inner panel cleared, matching
+    // 0xC3E6. Combat overlay 0xD9C96 is not this screen.
+    NativeImage pocket_secretary_background;
     // Plane-B base written by the ROM command-screen initializer at 0x10F50.
     // It contains the real menu panel and inventory-box geometry; dynamic
     // labels and cursor state are rendered by the native command loop.
@@ -1093,6 +1105,7 @@ private:
     NativeImage startup_background_{};
     std::array<NativeImage, kNativeIntroHeliFrameCount> intro_heli_frames_{};
     NativeImage field_hud_{};
+    NativeImage pocket_secretary_background_{};
     std::int16_t boot_guy_y_ = static_cast<std::int16_t>(kBootGuyStartY);
     std::uint16_t boot_guy_fade_ = 256;
     std::int16_t boot_dd2a_ = 0x41;

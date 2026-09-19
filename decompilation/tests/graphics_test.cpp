@@ -589,6 +589,19 @@ int main() {
         assert(!native_assets.entity_frames_gray.empty());
         assert(native_assets.entity_frames_gray.size() ==
                native_assets.entity_frames.size());
+        const auto ps = decode_genesis_pocket_secretary_background(rom);
+        assert(ps.width == 320);
+        assert(ps.height == 224);
+        std::size_t ps_ink = 0;
+        for (const auto& pixel : ps.pixels) {
+            if (pixel.alpha != 0U &&
+                (pixel.red != 0 || pixel.green != 0 || pixel.blue != 0)) {
+                ++ps_ink;
+            }
+        }
+        assert(ps_ink > 100U);
+        assert(native_assets.pocket_secretary_background.pixels.size() ==
+               ps.pixels.size());
     }
     const auto heli_frames = decode_genesis_intro_heli_frames(rom);
     {

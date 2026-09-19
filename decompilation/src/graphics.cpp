@@ -826,6 +826,11 @@ native::NativePortAssets decode_genesis_native_assets(
     const auto field_hud = decode_genesis_field_hud(rom);
     assets.field_hud = {
         field_hud.width, field_hud.height, field_hud.pixels};
+    const auto pocket_secretary_background =
+        decode_genesis_pocket_secretary_background(rom);
+    assets.pocket_secretary_background = {
+        pocket_secretary_background.width, pocket_secretary_background.height,
+        pocket_secretary_background.pixels};
     auto field_menu_background = decode_genesis_field_menu_background(rom);
     assets.field_menu_background = {
         field_menu_background.width, field_menu_background.height,
@@ -1181,7 +1186,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 41);
+    write_u16(output, 42);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     for (const auto& title_frame : assets.title_animation_frames) {
@@ -1595,6 +1600,7 @@ void write_native_asset_pack(const std::string& path,
         write_native_image(output, heli);
     }
     write_native_image(output, assets.field_hud);
+    write_native_image(output, assets.pocket_secretary_background);
     if (!output) {
         throw std::runtime_error("failed writing native asset pack: " + path);
     }
@@ -1610,7 +1616,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 41U)) {
+        (version < 2U || version > 42U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -2337,6 +2343,9 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     }
     if (version >= 41U) {
         assets.field_hud = read_native_image(input);
+    }
+    if (version >= 42U) {
+        assets.pocket_secretary_background = read_native_image(input);
     }
     fill_grayscale_entity_assets(assets);
     return assets;
@@ -5404,35 +5413,76 @@ decode_genesis_intro_heli_frames(const std::vector<std::uint8_t>& rom) {
     return decode_genesis_intro_heli_frames_impl(rom);
 }
 
-RgbaImage decode_genesis_field_hud(const std::vector<std::uint8_t>& rom) {
-    // 0x1758A field chrome: 0xD646A -> $8160, 40x13 0xD806C at $E000,
-    // 40x9 0xD74F4 at $E680. 0x177CC: 0xD86E0 -> $17E0 and 0xD78AA -> $580.
-    // 0x17708: 40x6 0xD8316 at $EB00 plus five 3x2 slots.
-    GenesisBootPatternData scene{
-        std::vector<std::uint8_t>(0x10000U, 0),
-        read_genesis_palette_set(rom, 0xE2E3AU),
-    };
-    write_genesis_1530_vram(rom, 0xD9376U, 0x8160U, scene.pattern_vram);
-    write_genesis_1530_vram(rom, 0xD86E0U, 0x17E0U, scene.pattern_vram);
-    write_genesis_1530_vram(rom, 0xD78AAU, 0x580U, scene.pattern_vram);
-    auto image = make_transparent_title_layer();
-    // 0x18252: 40x22 packed 0xD9C96 at $E000 attr $2000, then 0x17708.
-    blit_genesis_1728_name_table(rom, scene, image, 0xD9C96U, 40U, 22U,
-                                 0xE000U, 0xE000U, 0x2000U, true);
-    blit_genesis_1728_name_table(rom, scene, image, 0xD8316U, 40U, 6U,
-                                 0xEB00U, 0xE000U, 0x6000U, true);
-    for (std::size_t slot = 0; slot < 5U; ++slot) {
-        const auto source = slot == 0U ? 0xD92B6U : 0xD92AAU;
-        blit_genesis_name_table(rom, scene, image, source, 3U, 2U,
-                                0xEB94U + slot * 12U, 0xE000U, 0x6000U,
-                                true);
-    }
-    constexpr std::uint16_t kHudX = 256;
-    for (std::uint16_t y = 0; y < image.height; ++y) {
-        for (std::uint16_t x = 0; x < kHudX; ++x) {
+RgbaImage decode_genesis_pocket_secretary_background(
+    const std::vector<std::uint8_t>& rom) {
+    // 0xC2A6 / 0xC3E6: the command chrome stays as the computer bezel and
+    // the inner 28x21 panel is cleared black. 0xD9C96 is a combat overlay
+    // (COMBAT/DEFENSE/COMMAND) and is not this screen.
+    auto image = decode_genesis_field_menu_background(rom);
+    for (std::uint16_t y = 8; y < 208 && y < image.height; ++y) {
+        for (std::uint16_t x = 8; x < 248 && x < image.width; ++x) {
             image.pixels[static_cast<std::size_t>(y) * image.width + x] =
-                native::Rgba8{0, 0, 0, 0};
+                native::Rgba8{0, 0, 0, 255};
         }
+    }
+    return image;
+}
+
+RgbaImage decode_genesis_field_hud(const std::vector<std::uint8_t>& rom) {
+    // Capture t1720 / command / PS share one 64px sidebar: riveted metal,
+    // headshot window, gun slot, two empty 00 slots. 0xD9C96 is the PS
+    // computer and must not be cropped into this column.
+    (void)rom;
+    auto image = make_transparent_title_layer();
+    const native::Rgba8 metal{0xA0, 0xA0, 0xA8, 255};
+    const native::Rgba8 metal_hi{0xC8, 0xC8, 0xD0, 255};
+    const native::Rgba8 metal_lo{0x48, 0x48, 0x50, 255};
+    const native::Rgba8 cavity{0x00, 0x00, 0x00, 255};
+    const native::Rgba8 hp{0xC8, 0x18, 0x18, 255};
+    const native::Rgba8 mp{0x28, 0xB8, 0xC0, 255};
+    const auto put = [&](std::int32_t x, std::int32_t y, native::Rgba8 color) {
+        if (x < 0 || y < 0 || x >= image.width || y >= image.height) {
+            return;
+        }
+        image.pixels[static_cast<std::size_t>(y) * image.width +
+                     static_cast<std::size_t>(x)] = color;
+    };
+    const auto fill = [&](std::int32_t x, std::int32_t y, std::int32_t w,
+                          std::int32_t h, native::Rgba8 color) {
+        for (std::int32_t row = 0; row < h; ++row) {
+            for (std::int32_t col = 0; col < w; ++col) {
+                put(x + col, y + row, color);
+            }
+        }
+    };
+    const auto frame = [&](std::int32_t x, std::int32_t y, std::int32_t w,
+                           std::int32_t h) {
+        fill(x, y, w, h, metal_lo);
+        fill(x + 1, y + 1, w - 2, 1, metal_hi);
+        fill(x + 1, y + 1, 1, h - 2, metal_hi);
+        fill(x + 1, y + h - 2, w - 2, 1, metal_lo);
+        fill(x + w - 2, y + 1, 1, h - 2, metal_lo);
+        fill(x + 2, y + 2, w - 4, h - 4, cavity);
+    };
+    constexpr std::int32_t kX = native::kFieldHudFaceX;
+    fill(kX, 0, native::kFieldHudWidth, native::kScreenHeight, metal_lo);
+    fill(kX, 0, native::kFieldHudWidth, 8, metal);
+    for (std::int32_t rivet = 0; rivet < 4; ++rivet) {
+        fill(kX + 8 + rivet * 14, 2, 4, 4, metal_hi);
+    }
+    frame(kX, native::kFieldHudFaceY, native::kFieldHudFaceWidth,
+          native::kFieldHudFaceHeight);
+    fill(kX + 2, native::kFieldHudFaceY + 2, 3,
+         native::kFieldHudFaceHeight - 8, hp);
+    fill(kX + 2, native::kFieldHudFaceY + native::kFieldHudFaceHeight - 6,
+         native::kFieldHudFaceWidth - 4, 4, mp);
+    frame(kX, native::kFieldHudGunY, native::kFieldHudGunWidth,
+          native::kFieldHudGunHeight);
+    frame(kX, 104, native::kFieldHudWidth, 48);
+    frame(kX, 152, native::kFieldHudWidth, 48);
+    fill(kX, 200, native::kFieldHudWidth, 24, metal);
+    for (std::int32_t rivet = 0; rivet < 4; ++rivet) {
+        fill(kX + 8 + rivet * 14, 210, 4, 4, metal_hi);
     }
     return image;
 }

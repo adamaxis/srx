@@ -377,11 +377,12 @@ std::array<RgbaImage, native::kNativeTitleCircuitLightCount>
 decode_genesis_title_circuit_lights(const std::vector<std::uint8_t>& rom);
 std::array<RgbaImage, native::kNativeIntroHeliFrameCount>
 decode_genesis_intro_heli_frames(const std::vector<std::uint8_t>& rom);
-// Field HUD column. 0x18252: 0xD9376 -> $8160, packed 40x22 0xD9C96 at
-// $E000. 0x17708: 0xD86E0 -> $17E0, 40x6 0xD8316 at $EB00, five 3x2
-// slots. Host image is 320x224 with chrome on the capture-right 64px
-// (full height), left 256px transparent.
+// Field HUD column at x=256: metal sidebar matching capture t1720 (face
+// window, gun slot, two empty 00 slots). Left 256px stays transparent.
 RgbaImage decode_genesis_field_hud(const std::vector<std::uint8_t>& rom);
+// Pocket Secretary bezel: command chrome with the 0xC3E6 inner panel black.
+RgbaImage decode_genesis_pocket_secretary_background(
+    const std::vector<std::uint8_t>& rom);
 
 // Title layers are extracted separately because the ROM does not present a
 // completed bitmap in one operation. These functions return host RGBA
