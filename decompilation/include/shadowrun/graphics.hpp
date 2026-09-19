@@ -377,8 +377,8 @@ std::array<RgbaImage, native::kNativeTitleCircuitLightCount>
 decode_genesis_title_circuit_lights(const std::vector<std::uint8_t>& rom);
 std::array<RgbaImage, native::kNativeIntroHeliFrameCount>
 decode_genesis_intro_heli_frames(const std::vector<std::uint8_t>& rom);
-// Field HUD column at x=256: metal sidebar matching capture t1720 (face
-// window, gun slot, two empty 00 slots). Left 256px stays transparent.
+// ROM 0x334C field HUD: 0x6A5BE -> $DAC0, 6x2 caps 0x6ACE2, 6x8 slots
+// 0x6AA7E at $F044/$F144/$F544/$F944/$FD44. Transparent left of x=272.
 RgbaImage decode_genesis_field_hud(const std::vector<std::uint8_t>& rom);
 // Pocket Secretary bezel: command chrome with the 0xC3E6 inner panel black.
 RgbaImage decode_genesis_pocket_secretary_background(

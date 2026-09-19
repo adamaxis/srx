@@ -5429,61 +5429,26 @@ RgbaImage decode_genesis_pocket_secretary_background(
 }
 
 RgbaImage decode_genesis_field_hud(const std::vector<std::uint8_t>& rom) {
-    // Capture t1720 / command / PS share one 64px sidebar: riveted metal,
-    // headshot window, gun slot, two empty 00 slots. 0xD9C96 is the PS
-    // computer and must not be cropped into this column.
-    (void)rom;
+    // ROM 0x334C: copy 0x6A5BE -> VRAM $DAC0 ($4C0 bytes), then 0x1232
+    // stamps at $F044 / $FD44 (6x2 caps) and $F144 / $F544 / $F944 (6x8
+    // slots). That is the vertical sidebar. Palette 0xE2E3A from 0x176EA.
+    GenesisBootPatternData scene{
+        std::vector<std::uint8_t>(0x10000U, 0),
+        read_genesis_palette_set(rom, 0xE2E3AU),
+    };
+    write_genesis_f5c_vram(rom, 0x6A5BEU, 0xDAC0U, 0x4C0U, scene.pattern_vram);
     auto image = make_transparent_title_layer();
-    const native::Rgba8 metal{0xA0, 0xA0, 0xA8, 255};
-    const native::Rgba8 metal_hi{0xC8, 0xC8, 0xD0, 255};
-    const native::Rgba8 metal_lo{0x48, 0x48, 0x50, 255};
-    const native::Rgba8 cavity{0x00, 0x00, 0x00, 255};
-    const native::Rgba8 hp{0xC8, 0x18, 0x18, 255};
-    const native::Rgba8 mp{0x28, 0xB8, 0xC0, 255};
-    const auto put = [&](std::int32_t x, std::int32_t y, native::Rgba8 color) {
-        if (x < 0 || y < 0 || x >= image.width || y >= image.height) {
-            return;
-        }
-        image.pixels[static_cast<std::size_t>(y) * image.width +
-                     static_cast<std::size_t>(x)] = color;
-    };
-    const auto fill = [&](std::int32_t x, std::int32_t y, std::int32_t w,
-                          std::int32_t h, native::Rgba8 color) {
-        for (std::int32_t row = 0; row < h; ++row) {
-            for (std::int32_t col = 0; col < w; ++col) {
-                put(x + col, y + row, color);
-            }
-        }
-    };
-    const auto frame = [&](std::int32_t x, std::int32_t y, std::int32_t w,
-                           std::int32_t h) {
-        fill(x, y, w, h, metal_lo);
-        fill(x + 1, y + 1, w - 2, 1, metal_hi);
-        fill(x + 1, y + 1, 1, h - 2, metal_hi);
-        fill(x + 1, y + h - 2, w - 2, 1, metal_lo);
-        fill(x + w - 2, y + 1, 1, h - 2, metal_lo);
-        fill(x + 2, y + 2, w - 4, h - 4, cavity);
-    };
-    constexpr std::int32_t kX = native::kFieldHudFaceX;
-    fill(kX, 0, native::kFieldHudWidth, native::kScreenHeight, metal_lo);
-    fill(kX, 0, native::kFieldHudWidth, 8, metal);
-    for (std::int32_t rivet = 0; rivet < 4; ++rivet) {
-        fill(kX + 8 + rivet * 14, 2, 4, 4, metal_hi);
-    }
-    frame(kX, native::kFieldHudFaceY, native::kFieldHudFaceWidth,
-          native::kFieldHudFaceHeight);
-    fill(kX + 2, native::kFieldHudFaceY + 2, 3,
-         native::kFieldHudFaceHeight - 8, hp);
-    fill(kX + 2, native::kFieldHudFaceY + native::kFieldHudFaceHeight - 6,
-         native::kFieldHudFaceWidth - 4, 4, mp);
-    frame(kX, native::kFieldHudGunY, native::kFieldHudGunWidth,
-          native::kFieldHudGunHeight);
-    frame(kX, 104, native::kFieldHudWidth, 48);
-    frame(kX, 152, native::kFieldHudWidth, 48);
-    fill(kX, 200, native::kFieldHudWidth, 24, metal);
-    for (std::int32_t rivet = 0; rivet < 4; ++rivet) {
-        fill(kX + 8 + rivet * 14, 210, 4, 4, metal_hi);
-    }
+    constexpr std::uint32_t kWindow = 0xF000U;
+    blit_genesis_name_table(rom, scene, image, 0x6ACE2U, 6U, 2U, 0xF044U,
+                            kWindow, 0x6000U, true);
+    blit_genesis_name_table(rom, scene, image, 0x6ACE2U, 6U, 2U, 0xFD44U,
+                            kWindow, 0x6000U, true);
+    blit_genesis_name_table(rom, scene, image, 0x6AA7EU, 6U, 8U, 0xF144U,
+                            kWindow, 0x6000U, true);
+    blit_genesis_name_table(rom, scene, image, 0x6AA7EU, 6U, 8U, 0xF544U,
+                            kWindow, 0x6000U, true);
+    blit_genesis_name_table(rom, scene, image, 0x6AA7EU, 6U, 8U, 0xF944U,
+                            kWindow, 0x6000U, true);
     return image;
 }
 

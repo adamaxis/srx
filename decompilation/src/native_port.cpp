@@ -3270,7 +3270,7 @@ void NativePortShell::render_dialog_panel(ScreenWriter& screen) const {
 }
 
 void NativePortShell::render_field_hud(ScreenWriter& screen) const {
-    // Capture t1720: 64px sidebar with headshot, gun/01, empty 00 slots.
+    // 0x334C chrome plus 0x33BE's 4x4 portrait and 0x3404 item icon.
     if (!field_hud_.pixels.empty()) {
         screen.blit_rgba(0, 0, field_hud_.width, field_hud_.height,
                          field_hud_.pixels);
@@ -3280,52 +3280,35 @@ void NativePortShell::render_field_hud(ScreenWriter& screen) const {
             ? selected_archetype_
             : 0U;
     const auto& portrait = field_menu_runner_portraits_[portrait_index];
-    if (!portrait.pixels.empty() && portrait.width >= 24U &&
-        portrait.height >= 24U) {
-        // HUD is a headshot. The 64x80 command portrait is a full pose; take
-        // the top-center of it so the gun/sword stay off this panel.
-        const auto src_x = static_cast<std::uint16_t>(
-            (portrait.width > 40U) ? (portrait.width - 40U) / 2U : 0U);
-        const auto src_w = static_cast<std::uint16_t>(
-            std::min<std::uint16_t>(40, portrait.width));
-        const auto src_h = static_cast<std::uint16_t>(
-            std::min<std::uint16_t>(40, portrait.height));
+    if (!portrait.pixels.empty() &&
+        portrait.width >= kFieldHudFaceWidth &&
+        portrait.height >= kFieldHudFaceHeight) {
         std::vector<Rgba8> face(
-            static_cast<std::size_t>(src_w) * src_h, Rgba8{0, 0, 0, 0});
-        for (std::uint16_t y = 0; y < src_h; ++y) {
-            for (std::uint16_t x = 0; x < src_w; ++x) {
-                face[static_cast<std::size_t>(y) * src_w + x] =
+            static_cast<std::size_t>(kFieldHudFaceWidth) *
+                kFieldHudFaceHeight,
+            Rgba8{0, 0, 0, 0});
+        for (std::int32_t y = 0; y < kFieldHudFaceHeight; ++y) {
+            for (std::int32_t x = 0; x < kFieldHudFaceWidth; ++x) {
+                face[static_cast<std::size_t>(y) * kFieldHudFaceWidth + x] =
                     portrait.pixels[static_cast<std::size_t>(y) *
                                         portrait.width +
-                                    (src_x + x)];
+                                    x];
             }
         }
-        const auto dest_x =
-            kFieldHudFaceX + (kFieldHudFaceWidth - src_w) / 2;
-        const auto dest_y =
-            kFieldHudFaceY + (kFieldHudFaceHeight - src_h) / 2;
-        screen.blit_rgba(dest_x, dest_y, src_w, src_h, face);
+        screen.blit_rgba(kFieldHudFaceX, kFieldHudFaceY,
+                         static_cast<std::uint16_t>(kFieldHudFaceWidth),
+                         static_cast<std::uint16_t>(kFieldHudFaceHeight),
+                         face);
     }
     const auto item_code = field_entity_.active_item_code;
     if (item_code > 0U &&
         item_code <= field_menu_inventory_icons_.size()) {
         const auto& icon = field_menu_inventory_icons_[item_code - 1U][0];
         if (!icon.pixels.empty()) {
-            // Capture: ammo on the left, gun icon on the right of the slot.
-            const auto icon_x =
-                kFieldHudGunX + kFieldHudGunWidth -
-                static_cast<std::int32_t>(icon.width) - 4;
-            const auto icon_y =
-                kFieldHudGunY +
-                (kFieldHudGunHeight - static_cast<std::int32_t>(icon.height)) /
-                    2;
-            screen.blit_rgba(icon_x, icon_y, icon.width, icon.height,
-                             icon.pixels);
+            screen.blit_rgba(kFieldHudGunX, kFieldHudGunY, icon.width,
+                             icon.height, icon.pixels);
         }
     }
-    write_field_menu_text(screen, kFieldHudGunX + 4, kFieldHudGunY + 12, "01");
-    write_field_menu_text(screen, kFieldHudFaceX + 4, 124, "00");
-    write_field_menu_text(screen, kFieldHudFaceX + 4, 172, "00");
 }
 
 void NativePortShell::finish_boot() {
