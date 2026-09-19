@@ -4550,13 +4550,7 @@ RgbaImage decode_genesis_startup_screen(
     const auto base_word = read16(source);
     source += 2U;
 
-    // This is the ROM's 0x1728 writer, not a generic token decompressor.  The
-    // writer has two independent counters: D0 consumes destination words in
-    // the current 40-word row, while A4 counts generated values. A positive
-    // delta token deliberately consumes its first generated value without
-    // writing it. Unlike the 0x1530 resource codec, these token loops use
-    // SUBQ/BGT: a low-five-bit value of zero means one value, and every
-    // nonzero low-five-bit value is used as-is (not count + 1).
+    // ROM 0x1D58/0x1728: D7=$27 (40-wide), D1=$1F (32-tall), D3=0, D5=40.
     std::vector<std::uint16_t> map(kColumns * kMapRows, 0);
     std::size_t generated_count = 0;
     std::size_t output_count = 0;
@@ -4568,18 +4562,14 @@ RgbaImage decode_genesis_startup_screen(
     };
     const auto emit_run = [&](std::uint16_t value, int delta,
                               unsigned count) {
-        const auto run_length = std::max<unsigned>(count, 1U);
+        // 0x1816 uses SUBQ.B / BGE, so a low-five-bit count of N writes
+        // N+1 cells. Literal tokens at 0x178C use BGT and stay N (or 1
+        // when N is 0). 0x1D58 clears D3, so every generated cell is
+        // written.
+        const auto run_length = count + 1U;
         for (unsigned index = 0; index < run_length; ++index) {
             ++generated_count;
-            // 0x1728 compares the global generated-value counter (A4) with
-            // the token delta held in A3 before consuming D0.  With the
-            // title's initial D3=0, only a first-value/+1 token is skipped;
-            // later positive-delta tokens write all of their values.
-            const auto minimum_generated = static_cast<std::size_t>(
-                std::max(delta, 0));
-            if (generated_count > minimum_generated) {
-                emit(value);
-            }
+            emit(value);
             value = static_cast<std::uint16_t>(value + delta);
         }
     };
@@ -4887,14 +4877,11 @@ void blit_genesis_1728_name_table(
     };
     const auto emit_run = [&](std::uint16_t value, int delta,
                               unsigned count) {
-        const auto run_length = std::max<unsigned>(count, 1U);
+        // 0x1816: SUBQ.B / BGE writes count+1 cells. 0x1406 clears D3.
+        const auto run_length = count + 1U;
         for (unsigned index = 0; index < run_length; ++index) {
             ++generated_count;
-            // 0x1406 packed maps clear D3, so A3 is 0 and every generated
-            // value is written. Title's D3/delta skip is a different caller.
-            if (generated_count > 0U) {
-                emit(value);
-            }
+            emit(value);
             value = static_cast<std::uint16_t>(
                 static_cast<std::uint16_t>(value) +
                 static_cast<std::uint16_t>(static_cast<std::int16_t>(delta)));

@@ -13,7 +13,7 @@ composites do not count.
 | 3 Startup | Start Options | `0x59092` | partial | `test_startup_behavior_and_rendering` | `--scene start-options` |
 | 3 Startup | Save/Load empty slot | `0x59172` | partial | leftover-clear + startup test | `--scene save-load-empty` |
 | 3 Startup | Archetype | `0x59248` / `0x42B0` | partial | startup test | `--scene archetype` |
-| 3 Startup | Intro stages | `0x59C5E` / `0x5AF62` / `0x59D7C` / `0x5AA96` / `0x5AD1A` | partial | `shadowrun_menu_system`; `shadowrun_graphics` | `--scene intro` frames 0/0x3C/0x168/0x267/0x394/0x4F9/0x60E/0x956 |
+| 3 Startup | Intro stages | `0x59C5E` / `0x5AF62` / `0x59D7C` / `0x5AA96` / `0x5AD1A` | partial | `shadowrun_menu_system`; `shadowrun_graphics` (0x1728 BGE fill) | `--scene intro` frames 0/0x3C/0x168/0x267/0x394/0x4F9/0x60E/0x956 |
 | 4 Field | Walk / collide | `0x3084` / `0xE7C8` | partial | `shadowrun_native_port` | `--scene field` |
 | 5 Dialog | Motel doorway | mode 2 `C0`/event 0 → `0x14` + `0x20E48` | partial | `shadowrun_native_port` motel tuple | `--scene motel-dialog` |
 | 6 Menu | Command overview pixels | `0x10F50` | partial (same-source composite, not a golden) | `shadowrun_menu_visual_regression` | command-menu actual BMP |

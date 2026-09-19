@@ -454,6 +454,12 @@ int main() {
             }
         }
         assert(ink > 100U);
+        if (index == 1U) {
+            // 0x1728 BGE runs must fill the 17x16 wilderness stamp. A
+            // count-not-plus-one decode left 32 empty cells and sheared
+            // every character row.
+            assert(ink > 8000U);
+        }
         assert(native_assets.intro_stages[index].pixels.size() ==
                intro_stages[index].pixels.size());
         assert(loaded_assets.intro_stages[index].pixels.size() ==
