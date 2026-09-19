@@ -213,7 +213,9 @@ int main() {
     assert(transition_shell.field_dialog_line().find("Stoker") !=
            std::string_view::npos);
     transition_shell.render(screen);
-    assert(screen.pixel(8, 92) == 0x0000A8C8U);
+    // 0xC3E6 panel at (24,24) is black; the old cyan host border is gone.
+    assert(screen.pixel(kDialogPanelX, kDialogPanelY) == 0U);
+    assert(screen.pixel(8, 92) != 0x0000A8C8U);
     transition_shell.update(InputState{button_mask(Button::A),
                                        button_mask(Button::A)});
     assert(transition_shell.field_dialog_line_index() == 1);

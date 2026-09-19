@@ -102,6 +102,33 @@ add_executable(shadowrun_graphics_extract
 )
 target_link_libraries(shadowrun_graphics_extract PRIVATE shadowrun_port)
 
+set(SHADOWRUN_ROM "${CMAKE_CURRENT_SOURCE_DIR}/input/shadowrun_genesis_us.bin")
+set(SHADOWRUN_NATIVE_PACK
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets/native/shadowrun_native.srna")
+set(SHADOWRUN_NATIVE_PACK_BUILD
+    "${CMAKE_CURRENT_BINARY_DIR}/shadowrun_native.srna")
+if (EXISTS "${SHADOWRUN_ROM}")
+    add_custom_command(
+        OUTPUT "${SHADOWRUN_NATIVE_PACK}" "${SHADOWRUN_NATIVE_PACK_BUILD}"
+        COMMAND "${CMAKE_COMMAND}" -E make_directory
+                "${CMAKE_CURRENT_SOURCE_DIR}/assets/native"
+        COMMAND "$<TARGET_FILE:shadowrun_graphics_extract>"
+                "${SHADOWRUN_ROM}"
+                "${SHADOWRUN_NATIVE_PACK}"
+                --native-pack
+        COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                "${SHADOWRUN_NATIVE_PACK}"
+                "${SHADOWRUN_NATIVE_PACK_BUILD}"
+        DEPENDS shadowrun_graphics_extract "${SHADOWRUN_ROM}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/src/graphics.cpp"
+                "${CMAKE_CURRENT_SOURCE_DIR}/src/graphics_extract.cpp"
+        COMMENT "Extracting native .srna pack from the US ROM"
+        VERBATIM
+    )
+    add_custom_target(shadowrun_native_pack ALL
+        DEPENDS "${SHADOWRUN_NATIVE_PACK}")
+endif()
+
 if (WIN32)
     add_executable(shadowrun_native
         src/native_main.cpp
@@ -119,6 +146,21 @@ if (WIN32)
         target_link_libraries(shadowrun_qt PRIVATE
             shadowrun_port Qt6::Widgets
         )
+    endif()
+endif()
+
+if (TARGET shadowrun_native_pack)
+    if (TARGET shadowrun_native)
+        add_dependencies(shadowrun_native shadowrun_native_pack)
+    endif()
+    if (TARGET shadowrun_qt)
+        add_dependencies(shadowrun_qt shadowrun_native_pack)
+    endif()
+    if (TARGET shadowrun_leftover_clear_test)
+        add_dependencies(shadowrun_leftover_clear_test shadowrun_native_pack)
+    endif()
+    if (TARGET shadowrun_visual_dump)
+        add_dependencies(shadowrun_visual_dump shadowrun_native_pack)
     endif()
 endif()
 

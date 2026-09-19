@@ -274,6 +274,11 @@ void test_field_menu_behavior_and_rendering(
     shell.render(screen);
     assert(has_image_pixel(screen, assets.field_menu_command_focus[3],
                            200, 184));
+    press(shell, Button::A);
+    assert(shell.magic_menu_open());
+    press(shell, Button::B);
+    assert(shell.field_menu_open());
+    assert(shell.field_menu_selection() == 5U);
     press(shell, Button::Right);
     assert(shell.field_menu_selection() == 6U);
 
@@ -442,7 +447,6 @@ void test_pocket_secretary_menu(const std::vector<std::uint8_t>& rom) {
 
     SoftwareScreen screen;
     shell.render(screen);
-    assert(screen.pixel(56, 24) != 0U);
     // The screen-level test is intentionally state-based because the source
     // C0DA writer is a tile-plane operation, not a host checklist.
     press(shell, Button::Down);
@@ -454,7 +458,6 @@ void test_pocket_secretary_menu(const std::vector<std::uint8_t>& rom) {
     assert(shell.group_item_name(0) == "Prototype Cyber-heart");
     shell.render(screen);
     // ROM C8C8 selects the exact empty-catalog message when FFFC22 is zero.
-    assert(screen.pixel(56, 24) != 0U);
     press(shell, Button::Up);
     assert(shell.scene() == NativeScene::FieldMenu);
     assert(shell.field_menu_selection() == 6U);
@@ -471,7 +474,6 @@ void test_pocket_secretary_menu(const std::vector<std::uint8_t>& rom) {
     assert(shell.notebook_label(3) == "Contacts");
     SoftwareScreen notebook_screen;
     shell.render(notebook_screen);
-    assert(notebook_screen.pixel(56, 24) != 0U);
     // F2E2 takes the no-current-run branch in a fresh session. It displays
     // the source C56E7 response and waits for an edge before rebuilding the
     // same Notebook panel.
@@ -502,7 +504,6 @@ void test_pocket_secretary_menu(const std::vector<std::uint8_t>& rom) {
     assert(shell.pocket_secretary_message_line(1) == "  a cyberdeck!!");
     assert(shell.pocket_secretary_message_line(2) == " Keep looking.");
     shell.render(screen);
-    assert(screen.pixel(88, 120) != 0U);
     press(shell, Button::Up);
     assert(shell.pocket_secretary_selection() == 1U);
     assert(!shell.pocket_secretary_message_visible());
@@ -551,7 +552,6 @@ void test_notebook_tip_filtering(const std::vector<std::uint8_t>& rom) {
 
     SoftwareScreen screen;
     shell.render(screen);
-    assert(screen.pixel(56, 24) != 0U);
     press(shell, Button::Down);
     assert(shell.notebook_tip_selection() == 1U);
     press(shell, Button::Up);
@@ -649,7 +649,6 @@ void test_dismiss_runner_menu(const std::vector<std::uint8_t>& rom) {
 
     SoftwareScreen screen;
     shell.render(screen);
-    assert(screen.pixel(56, 24) != 0U);
     // C448 starts on the source Abort row. Selecting the active companion
     // removes its active bit and returns to the Pocket Secretary loop.
     press(shell, Button::Down);

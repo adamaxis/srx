@@ -500,6 +500,33 @@ int main() {
         assert(loaded_assets.intro_stages[index].pixels.size() ==
                native_assets.intro_stages[index].pixels.size());
     }
+    const auto field_hud = decode_genesis_field_hud(rom);
+    assert(field_hud.width == 320);
+    assert(field_hud.height == 224);
+    {
+        std::size_t hud_ink = 0;
+        std::size_t right_ink = 0;
+        for (std::uint16_t y = 0; y < field_hud.height; ++y) {
+            for (std::uint16_t x = 0; x < field_hud.width; ++x) {
+                const auto& pixel =
+                    field_hud.pixels[static_cast<std::size_t>(y) *
+                                         field_hud.width +
+                                     x];
+                if (pixel.alpha == 0U) {
+                    continue;
+                }
+                ++hud_ink;
+                if (x >= 256U) {
+                    ++right_ink;
+                }
+            }
+        }
+        assert(hud_ink > 20U);
+        assert(right_ink == hud_ink);
+        assert(native_assets.field_hud.pixels.size() == field_hud.pixels.size());
+        assert(loaded_assets.field_hud.pixels.size() ==
+               native_assets.field_hud.pixels.size());
+    }
     const auto heli_frames = decode_genesis_intro_heli_frames(rom);
     {
         std::size_t heli_ink = 0;

@@ -64,7 +64,7 @@
       "name": "debug-native",
       "displayName": "Build Native (Debug)",
       "configurePreset": "debug",
-      "targets": ["shadowrun_native"]
+      "targets": ["shadowrun_native", "shadowrun_native_pack"]
     },
     {
       "name": "debug-tests",
@@ -79,7 +79,8 @@
         "shadowrun_leftover_clear_test",
         "shadowrun_boot_sequence_test",
         "shadowrun_visual_dump",
-        "shadowrun_graphics_extract"
+        "shadowrun_graphics_extract",
+        "shadowrun_native_pack"
       ]
     },
     {
@@ -91,13 +92,13 @@
       "name": "debug-qt",
       "displayName": "Build Qt Widgets (Debug)",
       "configurePreset": "qt-debug",
-      "targets": ["shadowrun_qt"]
+      "targets": ["shadowrun_qt", "shadowrun_native_pack"]
     },
     {
       "name": "release-native",
       "displayName": "Build Native (Release)",
       "configurePreset": "release",
-      "targets": ["shadowrun_native"]
+      "targets": ["shadowrun_native", "shadowrun_native_pack"]
     },
     {
       "name": "release-all",

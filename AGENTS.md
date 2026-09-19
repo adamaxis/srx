@@ -52,8 +52,10 @@ Screen map: `decompilation/docs/screen-system-audit.md` and
 
 ## Runtime shape
 
-- Extract once with `decompilation/tools/extract_assets.ps1`. Never attach
-  extraction to CMake or CTest as a build step.
+- CMake target `shadowrun_native_pack` runs `shadowrun_graphics_extract`
+  `--native-pack` whenever the native/Qt exe is built, writing
+  `decompilation/assets/native/shadowrun_native.srna`. Do not attach
+  extraction to CTest as an extra per-test step.
 - Native exe and Qt exe consume `decompilation/assets/native/shadowrun_native.srna`
   only. They must not open the ROM.
 - Genesis 4-bit tiles and 9-bit CRAM become RGBA8 at extraction. Preserve the

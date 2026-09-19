@@ -25,6 +25,13 @@ constexpr std::size_t kNativeBootLogoStrobeCount = 8;
 constexpr std::size_t kNativeTitleCircuitLightCount = 7;
 // ROM 0x5B180 is six 0x1378 SAT lists for the last-million chopper.
 constexpr std::size_t kNativeIntroHeliFrameCount = 6;
+// Capture t071–t091: shock SFX is ~2s. Host 60 Hz uses 120 frames.
+constexpr std::uint16_t kBootShockFrames = 120;
+// ROM 0xC3E6 fills 28x21 tiles at $C186 (host 24,24 224x168).
+constexpr std::int32_t kDialogPanelX = 24;
+constexpr std::int32_t kDialogPanelY = 24;
+constexpr std::int32_t kDialogPanelWidth = 224;
+constexpr std::int32_t kDialogPanelHeight = 168;
 // ROM 0x59C5E stages: 0x5AF62 (0x5B574), 0x59D7C (0x5B4A8), 0x5AA96
 // tri-vid, 0x5AD1A (0x5B528).
 constexpr std::size_t kNativeIntroStageCount = 4;
@@ -145,6 +152,7 @@ enum class NativeScene {
     ClipsMenu,
     CyberwareMenu,
     AttributesMenu,
+    MagicMenu,
 };
 
 struct Rgba8 {
@@ -401,6 +409,10 @@ struct NativePortAssets {
     // four 0x1232 blocks at 0xCDCE6/0xCDDF6/0xCDEA0/0xCDF4A.
     NativeImage startup_background;
     std::array<NativeImage, kNativeIntroHeliFrameCount> intro_heli_frames{};
+    // ROM 0x17708: packed 40x6 at $EB00 from 0xD8316 plus five 3x2 slots
+    // from 0xD92AA/0xD92B6. Capture t1720 places that chrome on the right
+    // 64px (window), not as a host-invented purple sidebar.
+    NativeImage field_hud;
     // Plane-B base written by the ROM command-screen initializer at 0x10F50.
     // It contains the real menu panel and inventory-box geometry; dynamic
     // labels and cursor state are rendered by the native command loop.
@@ -500,9 +512,9 @@ struct NativePortAssets {
         notebook_mr_johnson_names{};
 };
 
-// Native game code writes to this interface instead of issuing Genesis VDP
-// commands. The first implementation is a software surface; SDL/DirectX or
-// another Windows backend can implement the same operations later.
+// Presenter used by tests and the current Qt/GDI window. Animation is clip
+// duration (see kBootShockFrames), not SAT list copies. A later QRhi / Qt
+// Quick 3D presenter can implement the same operations as textured sprites.
 class ScreenWriter {
 public:
     virtual ~ScreenWriter() = default;
@@ -578,7 +590,8 @@ public:
     bool boot_sega_visible() const { return boot_dd30_ < 0; }
     // Lightning SAT 0x5DA20/0x5DA38 is gone the frame the guy fade starts.
     bool boot_lightning_visible() const {
-        return boot_dd30_ < 0 && boot_dd3c_ == 0 && boot_guy_fade_ == 256U;
+        return boot_dd30_ < 0 && boot_dd3c_ == 0 && boot_guy_fade_ == 256U &&
+               boot_shock_left_ != 0U;
     }
     // Capture: SEGA shine runs while the guy fades, then the logo holds
     // static. ROM 0x5D8BA keeps cycling CRAM until the $150 loop ends.
@@ -707,6 +720,7 @@ public:
     bool attributes_menu_open() const {
         return scene_ == NativeScene::AttributesMenu;
     }
+    bool magic_menu_open() const { return scene_ == NativeScene::MagicMenu; }
     std::size_t field_menu_selection() const { return field_menu_selection_; }
     std::size_t field_menu_row() const { return field_menu_row_; }
     bool field_menu_posture_active() const { return field_menu_posture_active_; }
@@ -1013,6 +1027,11 @@ private:
     void update_cyberware_menu(const InputState& input);
     void open_attributes_menu();
     void update_attributes_menu(const InputState& input);
+    void open_magic_menu();
+    void update_magic_menu(const InputState& input);
+    void open_field_dialog(std::vector<std::string> lines);
+    void render_command_base(ScreenWriter& screen) const;
+    void render_dialog_panel(ScreenWriter& screen) const;
 
     std::string title_;
     InputState input_{};
@@ -1041,6 +1060,7 @@ private:
     NativeImage boot_fasa_{};
     NativeImage startup_background_{};
     std::array<NativeImage, kNativeIntroHeliFrameCount> intro_heli_frames_{};
+    NativeImage field_hud_{};
     std::int16_t boot_guy_y_ = static_cast<std::int16_t>(kBootGuyStartY);
     std::uint16_t boot_guy_fade_ = 256;
     std::int16_t boot_dd2a_ = 0x41;
@@ -1058,6 +1078,7 @@ private:
     std::uint16_t boot_fasa_fade_in_left_ = 0;
     std::uint16_t boot_hold_left_ = 0;
     std::uint16_t boot_fasa_fade_left_ = 0;
+    std::uint16_t boot_shock_left_ = 0;
     std::uint16_t field_menu_background_width_ = 0;
     std::uint16_t field_menu_background_height_ = 0;
     std::vector<Rgba8> field_menu_background_pixels_;

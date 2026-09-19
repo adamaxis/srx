@@ -373,6 +373,10 @@ std::array<RgbaImage, native::kNativeTitleCircuitLightCount>
 decode_genesis_title_circuit_lights(const std::vector<std::uint8_t>& rom);
 std::array<RgbaImage, native::kNativeIntroHeliFrameCount>
 decode_genesis_intro_heli_frames(const std::vector<std::uint8_t>& rom);
+// ROM 0x17708 field HUD: 0x1530 tiles 0xD86E0 -> VRAM $17E0, packed
+// 40x6 0xD8316 at $EB00, five 3x2 slots 0xD92AA/0xD92B6. Host image is
+// 320x224 with chrome kept on the capture-right 64px.
+RgbaImage decode_genesis_field_hud(const std::vector<std::uint8_t>& rom);
 
 // Title layers are extracted separately because the ROM does not present a
 // completed bitmap in one operation. These functions return host RGBA

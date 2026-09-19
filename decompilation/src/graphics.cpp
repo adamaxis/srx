@@ -822,6 +822,9 @@ native::NativePortAssets decode_genesis_native_assets(
             intro_heli[index].width, intro_heli[index].height,
             intro_heli[index].pixels};
     }
+    const auto field_hud = decode_genesis_field_hud(rom);
+    assets.field_hud = {
+        field_hud.width, field_hud.height, field_hud.pixels};
     auto field_menu_background = decode_genesis_field_menu_background(rom);
     assets.field_menu_background = {
         field_menu_background.width, field_menu_background.height,
@@ -1176,7 +1179,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 40);
+    write_u16(output, 41);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     for (const auto& title_frame : assets.title_animation_frames) {
@@ -1589,6 +1592,7 @@ void write_native_asset_pack(const std::string& path,
     for (const auto& heli : assets.intro_heli_frames) {
         write_native_image(output, heli);
     }
+    write_native_image(output, assets.field_hud);
     if (!output) {
         throw std::runtime_error("failed writing native asset pack: " + path);
     }
@@ -1604,7 +1608,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 40U)) {
+        (version < 2U || version > 41U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -2328,6 +2332,9 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
         for (auto& heli : assets.intro_heli_frames) {
             heli = read_native_image(input);
         }
+    }
+    if (version >= 41U) {
+        assets.field_hud = read_native_image(input);
     }
     return assets;
 }
@@ -5306,6 +5313,37 @@ decode_genesis_intro_stages(const std::vector<std::uint8_t>& rom) {
 std::array<RgbaImage, native::kNativeIntroHeliFrameCount>
 decode_genesis_intro_heli_frames(const std::vector<std::uint8_t>& rom) {
     return decode_genesis_intro_heli_frames_impl(rom);
+}
+
+RgbaImage decode_genesis_field_hud(const std::vector<std::uint8_t>& rom) {
+    // 0x177CC: 0x1530 from 0xD86E0 with D0=$17E0, which is tile $BF * 32.
+    // 0x17708: 0x1728 40x6 at $EB00 attr $6000, then five 0x1232 3x2 slots
+    // at $EB94 + n*12 from 0xD92AA (empty) / 0xD92B6 (occupied).
+    GenesisBootPatternData scene{
+        std::vector<std::uint8_t>(0x10000U, 0),
+        read_genesis_palette_set(rom, 0xE2E3AU),
+    };
+    write_genesis_1530_vram(rom, 0xD86E0U, 0x17E0U, scene.pattern_vram);
+    auto image = make_transparent_title_layer();
+    blit_genesis_1728_name_table(rom, scene, image, 0xD8316U, 40U, 6U,
+                                 0xEB00U, 0xE000U, 0x6000U, true);
+    for (std::size_t slot = 0; slot < 5U; ++slot) {
+        const auto source = slot == 0U ? 0xD92B6U : 0xD92AAU;
+        blit_genesis_name_table(rom, scene, image, source, 3U, 2U,
+                                0xEB94U + slot * 12U, 0xE000U, 0x6000U,
+                                true);
+    }
+    // Capture t1720: the chrome sits in the right 64px (8 tiles). Keep
+    // those columns and drop the bottom-strip cells that would cover the
+    // playfield street.
+    constexpr std::uint16_t kHudX = 256;
+    for (std::uint16_t y = 0; y < image.height; ++y) {
+        for (std::uint16_t x = 0; x < kHudX; ++x) {
+            image.pixels[static_cast<std::size_t>(y) * image.width + x] =
+                native::Rgba8{0, 0, 0, 0};
+        }
+    }
+    return image;
 }
 
 RgbaImage software_screen_image(const native::SoftwareScreen& screen) {

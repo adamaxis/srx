@@ -194,7 +194,9 @@ SoftwareScreen source_field_menu_reference(const NativePortAssets& assets,
                            assets.field_menu_power_labels[label_index]);
             }
         }
-        const auto detail_label = source_item_detail_label_for_test(item_code);
+        const auto detail_label = include_art
+            ? source_item_detail_label_for_test(item_code)
+            : std::string_view{};
         if (!detail_label.empty()) {
             write_text(112, 80, detail_label);
             const auto phase = source_phase_for_test(record, item_code);

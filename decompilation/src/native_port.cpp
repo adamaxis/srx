@@ -768,6 +768,7 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     boot_fasa_ = std::move(assets.boot_fasa);
     startup_background_ = std::move(assets.startup_background);
     intro_heli_frames_ = std::move(assets.intro_heli_frames);
+    field_hud_ = std::move(assets.field_hud);
     intro_stages_ = std::move(assets.intro_stages);
     if (!boot_background_.pixels.empty()) {
         scene_ = NativeScene::Bootstrap;
@@ -1207,12 +1208,18 @@ void NativePortShell::follow_field_camera() {
                                  0, max_y);
 }
 
+void NativePortShell::open_field_dialog(std::vector<std::string> lines) {
+    field_dialog_lines_ = std::move(lines);
+    field_dialog_line_index_ = 0;
+    scene_ = NativeScene::FieldDialog;
+}
+
 void NativePortShell::open_stoker_motel_dialog() {
     // The C0 doorway resolves to mode 0x14. The source interaction callback
     // queued at ROM 0x20E48 uses the following text resources at ROM
-    // 0x1167EB..0x116A79; keep the original paragraphs intact and let the host
-    // writer wrap them to the Genesis dialogue width.
-    field_dialog_lines_ = {
+    // 0x1167EB..0x116A79. Street vendors and other talk events reuse this
+    // same C0DA panel (0xC3E6 28x21 at $C186).
+    open_field_dialog({
         "<The battered sign reads Stoker's Coffin Motel.",
         "Motels like these are cheap, each room only large enough to fit a small bed.",
         "Dumps like these tend to attract the dregs of humanity.>",
@@ -1220,9 +1227,7 @@ void NativePortShell::open_stoker_motel_dialog() {
         "So whadda' ya' want?",
         "I got a room for 20$, up front.",
         "You interested?",
-    };
-    field_dialog_line_index_ = 0;
-    scene_ = NativeScene::FieldDialog;
+    });
 }
 
 void NativePortShell::update_field_dialog(const InputState& input) {
@@ -2742,6 +2747,8 @@ void NativePortShell::update_field_menu(const InputState& input) {
             open_cyberware_menu();
         } else if (field_menu_selection_ == 3U) {
             open_attributes_menu();
+        } else if (field_menu_selection_ == 5U) {
+            open_magic_menu();
         } else if (field_menu_selection_ == 6U) {
             open_pocket_secretary_menu();
         }
@@ -3231,6 +3238,38 @@ void NativePortShell::update_attributes_menu(const InputState& input) {
     }
 }
 
+void NativePortShell::open_magic_menu() {
+    // ROM 0xFBA6: cmpi.b #2,($9B,A0); bmi skips the panel. +0x9B<2 (Decker)
+    // never enters 0x11900/C0DA. Samurai=2 and Gator=3 do.
+    scene_ = NativeScene::MagicMenu;
+    menu_horizontal_repeat_frames_ = 0;
+    menu_vertical_repeat_frames_ = 0;
+}
+
+void NativePortShell::update_magic_menu(const InputState& input) {
+    if (input.was_pressed(Button::B) || input.was_pressed(Button::Start)) {
+        scene_ = NativeScene::FieldMenu;
+        field_menu_selection_ = 5;
+        field_command_message_frames_ = 0;
+    }
+}
+
+void NativePortShell::render_command_base(ScreenWriter& screen) const {
+    screen.clear({0x00, 0x00, 0x00, 0xFF});
+    if (!field_menu_background_pixels_.empty()) {
+        screen.blit_rgba(0, 0, field_menu_background_width_,
+                         field_menu_background_height_,
+                         field_menu_background_pixels_);
+    }
+}
+
+void NativePortShell::render_dialog_panel(ScreenWriter& screen) const {
+    // 0xC3E6 / 0x12C5A: 28x21 tile fill at $C186. Same panel for motel
+    // talk, street vendors, and other C0DA conversations.
+    screen.fill_rect(kDialogPanelX, kDialogPanelY, kDialogPanelWidth,
+                     kDialogPanelHeight, {0x00, 0x00, 0x00, 0xFF});
+}
+
 void NativePortShell::finish_boot() {
     for (std::uint32_t step = 0; step < 2048U && scene_ == NativeScene::Bootstrap;
          ++step) {
@@ -3272,6 +3311,7 @@ void NativePortShell::update_boot() {
             --boot_guy_y_;
             if (boot_guy_y_ == static_cast<std::int16_t>(kBootGuyStopY)) {
                 boot_dd30_ = static_cast<std::int16_t>(kBootSegaDelay);
+                boot_shock_left_ = kBootShockFrames;
                 --boot_dd30_;
             }
         } else {
@@ -3287,6 +3327,9 @@ void NativePortShell::update_boot() {
             }
         }
         if (boot_dd30_ < 0 && boot_dd3c_ == 0) {
+            if (boot_shock_left_ != 0U) {
+                --boot_shock_left_;
+            }
             --boot_sega_cadence_;
             if (boot_sega_cadence_ < 0) {
                 boot_sega_cadence_ = 3;
@@ -3458,6 +3501,12 @@ void NativePortShell::update(const InputState& input) {
 
     if (scene_ == NativeScene::AttributesMenu) {
         update_attributes_menu(input);
+        ++frame_number_;
+        return;
+    }
+
+    if (scene_ == NativeScene::MagicMenu) {
+        update_magic_menu(input);
         ++frame_number_;
         return;
     }
@@ -4136,9 +4185,15 @@ void NativePortShell::render(ScreenWriter& screen) const {
     } else if ((scene_ == NativeScene::Field ||
                 scene_ == NativeScene::FieldDialog ||
                 scene_ == NativeScene::FieldMenu ||
+                scene_ == NativeScene::PocketSecretaryMenu ||
+                scene_ == NativeScene::NotebookMenu ||
+                scene_ == NativeScene::NotebookTipsMenu ||
+                scene_ == NativeScene::GroupItemsMenu ||
+                scene_ == NativeScene::DismissRunnerMenu ||
                 scene_ == NativeScene::ClipsMenu ||
                 scene_ == NativeScene::CyberwareMenu ||
-                scene_ == NativeScene::AttributesMenu) &&
+                scene_ == NativeScene::AttributesMenu ||
+                scene_ == NativeScene::MagicMenu) &&
                !field_view_pixels_.empty()) {
         // The field background is the ROM's mode-2 map translated into a host
         // RGBA viewport. NativeFieldEntity is composited after the terrain,
@@ -4184,12 +4239,12 @@ void NativePortShell::render(ScreenWriter& screen) const {
         }
         if (scene_ == NativeScene::Field ||
             scene_ == NativeScene::FieldDialog) {
-            // 0x17708 sidebar: active runner portrait and empty companion
-            // slots. Capture t1720 puts this strip on the right of the map.
+            if (!field_hud_.pixels.empty()) {
+                screen.blit_rgba(0, 0, field_hud_.width, field_hud_.height,
+                                 field_hud_.pixels);
+            }
             const auto hud_x =
                 static_cast<std::int32_t>(kScreenWidth) - kFieldHudWidth;
-            screen.fill_rect(hud_x, 0, kFieldHudWidth, kScreenHeight,
-                             {0x10, 0x08, 0x18, 0xFF});
             const auto portrait_index =
                 selected_archetype_ < field_menu_runner_portraits_.size()
                     ? selected_archetype_
@@ -4200,23 +4255,9 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 screen.blit_rgba(hud_x, 8, hud_portrait.width,
                                  hud_portrait.height, hud_portrait.pixels);
             }
-            screen.fill_rect(hud_x + 8, 96, 48, 40, {0x08, 0x04, 0x10, 0xFF});
-            screen.fill_rect(hud_x + 8, 144, 48, 40,
-                             {0x08, 0x04, 0x10, 0xFF});
         }
         if (scene_ == NativeScene::FieldDialog) {
-            // The source 0x20E48 callback presents a text interaction over
-            // the loaded 0x14 motel state. Keep the field behind it so the
-            // transition remains observable, then wrap the source paragraph
-            // at the Genesis 40-column text width.
-            screen.fill_rect(8, 92, 304, 104, {0x00, 0x00, 0x00, 0xFF});
-            screen.fill_rect(8, 92, 304, 2, {0x00, 0xA8, 0xC8, 0xFF});
-            screen.fill_rect(8, 194, 304, 2, {0x00, 0xA8, 0xC8, 0xFF});
-            screen.fill_rect(8, 92, 2, 104, {0x00, 0xA8, 0xC8, 0xFF});
-            screen.fill_rect(310, 92, 2, 104, {0x00, 0xA8, 0xC8, 0xFF});
-            write_field_menu_text(screen, 16, 100,
-                                  "STOKER'S COFFIN MOTEL");
-
+            render_dialog_panel(screen);
             const auto& paragraph = field_dialog_lines_[field_dialog_line_index_];
             std::vector<std::string> wrapped;
             std::string current;
@@ -4226,7 +4267,7 @@ void NativePortShell::render(ScreenWriter& screen) const {
                     return;
                 }
                 if (!current.empty() && current.size() + 1U + word.size() >
-                        34U) {
+                        26U) {
                     wrapped.push_back(current);
                     current.clear();
                 }
@@ -4247,14 +4288,13 @@ void NativePortShell::render(ScreenWriter& screen) const {
             if (!current.empty()) {
                 wrapped.push_back(current);
             }
-            for (std::size_t row = 0; row < wrapped.size() && row < 8U;
+            for (std::size_t row = 0; row < wrapped.size() && row < 16U;
                  ++row) {
                 write_field_menu_text(
-                    screen, 16, 116 + static_cast<std::int32_t>(row) * 8,
+                    screen, kDialogPanelX + 8,
+                    kDialogPanelY + 16 + static_cast<std::int32_t>(row) * 8,
                     wrapped[row]);
             }
-            screen.write_text(222, 184, "A NEXT", 1,
-                              {0xFF, 0xF0, 0x90, 0xFF});
         }
         if (action_flash_frames_ != 0) {
             const auto action_x = field_entity_.visible
@@ -4370,7 +4410,12 @@ void NativePortShell::render(ScreenWriter& screen) const {
                             field_menu_power_labels_[label_index]);
                     }
                 }
-                const auto detail_label = source_item_detail_label(item_code);
+                // 0x12A8C writes ammo/uses/rtng only for the selected
+                // inventory cell (include_art). Overview 0x11260 keeps
+                // Damage/Power and must not be overwritten.
+                const auto detail_label = include_art
+                    ? source_item_detail_label(item_code)
+                    : std::string_view{};
                 if (!detail_label.empty()) {
                     write_field_menu_text(screen, 112, 80, detail_label);
                     // The source value is a two-tile entry selected from
@@ -4513,12 +4558,8 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 : 0U;
             if (field_menu_posture_active_) {
                 // 0x119CE moves focus off the five command tabs and onto
-                // the posture strip at CAAC. Capture: the tab icon clears
-                // and the status bar is the highlighted control.
-                screen.fill_rect(168, 166, 64, 2, {0x18, 0xE0, 0x30, 0xFF});
-                screen.fill_rect(168, 190, 64, 2, {0x18, 0xE0, 0x30, 0xFF});
-                screen.fill_rect(168, 166, 2, 26, {0x18, 0xE0, 0x30, 0xFF});
-                screen.fill_rect(230, 166, 2, 26, {0x18, 0xE0, 0x30, 0xFF});
+                // the posture strip at CAAC. Do not invent a host bar; the
+                // extracted status strip is the control.
             } else if (field_menu_selection_ >= 2U &&
                        field_menu_selection_ <= 6U) {
                 // ROM 0x11454 writes a source 2x2 tile block at the selected
@@ -4689,29 +4730,21 @@ void NativePortShell::render(ScreenWriter& screen) const {
                     kFieldMenuLabels[field_menu_selection_]);
             }
         } else if (scene_ == NativeScene::PocketSecretaryMenu) {
-            // ROM 0xC2A6 clears/loads its own menu plane before 0xC0DA emits
-            // the C1418 table. Keep the extracted command font and the
-            // source five-row ordering visible while the remaining row
-            // handlers are brought across individually.
-            screen.fill_rect(56, 24, 208, 168,
-                             {0x02, 0x08, 0x18, 0xF0});
-            screen.fill_rect(56, 24, 208, 2,
-                             {0x00, 0xA8, 0xC8, 0xFF});
+            // ROM 0xC2A6 -> 0xC3E6 fills $C186 then C0DA writes 0xC1418.
+            render_command_base(screen);
+            render_dialog_panel(screen);
             write_field_menu_text(screen, 112, 32, " Main Menu");
+            write_field_menu_text(screen, 104, 40, "[\\\\\\\\\\\\\\\\");
             const auto option_count = pocket_secretary_option_count();
             for (std::size_t index = 0; index < option_count; ++index) {
                 const auto selected = index == pocket_secretary_selection_;
                 const auto y = 72 + static_cast<std::int32_t>(index) * 16;
-                if (selected) {
-                    screen.fill_rect(80, y - 2, 176, 13,
-                                     {0x00, 0x68, 0x88, 0xFF});
-                    if (!field_menu_cursor_.pixels.empty()) {
-                        screen.blit_rgba(64, y - 10, field_menu_cursor_.width,
-                                         field_menu_cursor_.height,
-                                         field_menu_cursor_.pixels);
-                    }
+                if (selected && !startup_cursor_.pixels.empty()) {
+                    screen.blit_rgba(88, y, startup_cursor_.width,
+                                     startup_cursor_.height,
+                                     startup_cursor_.pixels);
                 }
-                write_field_menu_text(screen, 96, y,
+                write_field_menu_text(screen, 112, y,
                                       kPocketSecretaryLabels[index]);
             }
             if (pocket_secretary_message_visible_) {
@@ -4726,31 +4759,26 @@ void NativePortShell::render(ScreenWriter& screen) const {
                         cyberdeck_unavailable_lines_[index]);
                 }
             }
-            write_field_menu_text(screen, 80, 176, " A SELECT  B RETURN");
         } else if (scene_ == NativeScene::NotebookMenu) {
             // ROM 0xF33E writes C567E to the Notebook panel: the title,
             // Current Run, and Tips & Clues are the base rows. Conditional
             // rows use C56A5/C56AE/C56BB at the same two-row stride, so keep
             // their source strings available without displaying them until
             // the corresponding event globals are reconstructed.
-            screen.fill_rect(56, 24, 208, 168,
-                             {0x02, 0x08, 0x18, 0xF0});
-            screen.fill_rect(56, 24, 208, 2,
-                             {0x00, 0xA8, 0xC8, 0xFF});
+            render_command_base(screen);
+            render_dialog_panel(screen);
             write_field_menu_text(screen, 112, 32, notebook_label(0));
+            write_field_menu_text(screen, 104, 40, "[\\\\\\\\\\\\\\\\");
             for (std::size_t index = 0; index < notebook_option_count_; ++index) {
                 const auto selected = index == notebook_selection_;
                 const auto y = 72 + static_cast<std::int32_t>(index) * 16;
-                if (selected && !notebook_message_visible_) {
-                    screen.fill_rect(80, y - 2, 176, 13,
-                                     {0x00, 0x68, 0x88, 0xFF});
-                    if (!field_menu_cursor_.pixels.empty()) {
-                        screen.blit_rgba(64, y - 10, field_menu_cursor_.width,
-                                         field_menu_cursor_.height,
-                                         field_menu_cursor_.pixels);
-                    }
+                if (selected && !notebook_message_visible_ &&
+                    !startup_cursor_.pixels.empty()) {
+                    screen.blit_rgba(88, y, startup_cursor_.width,
+                                     startup_cursor_.height,
+                                     startup_cursor_.pixels);
                 }
-                write_field_menu_text(screen, 96, y,
+                write_field_menu_text(screen, 112, y,
                                       notebook_label(index + 1U));
             }
             if (notebook_message_visible_) {
@@ -4775,10 +4803,8 @@ void NativePortShell::render(ScreenWriter& screen) const {
             // keeps source 0x80 separators as host newlines, so render each
             // source line at the same fixed tile stride instead of flattening
             // the page into a checklist.
-            screen.fill_rect(56, 24, 208, 168,
-                             {0x02, 0x08, 0x18, 0xF0});
-            screen.fill_rect(56, 24, 208, 2,
-                             {0x00, 0xA8, 0xC8, 0xFF});
+            render_command_base(screen);
+            render_dialog_panel(screen);
             write_field_menu_text(screen, 104, 32, notebook_label(2));
             const auto page_number = notebook_visible_tip_count_ == 0U
                 ? 0U : notebook_tip_selection_ + 1U;
@@ -4811,10 +4837,8 @@ void NativePortShell::render(ScreenWriter& screen) const {
             // ROM 0xC8C8 clears the command plane with C3E6, writes the
             // extracted C1471 empty message when FFFC22 is zero, otherwise
             // walks the C25C4 pointer table from bit 14 through bit 0.
-            screen.fill_rect(56, 24, 208, 168,
-                             {0x02, 0x08, 0x18, 0xF0});
-            screen.fill_rect(56, 24, 208, 2,
-                             {0x00, 0xA8, 0xC8, 0xFF});
+            render_command_base(screen);
+            render_dialog_panel(screen);
             write_field_menu_text(screen, 112, 32, " Group Items");
             std::int32_t row = 64;
             if (group_item_flags_ == 0U) {
@@ -4839,10 +4863,8 @@ void NativePortShell::render(ScreenWriter& screen) const {
             // ROM C448 writes C1499/C14A4/C14BD around the dynamic names
             // emitted from active runner records. Selector zero is the
             // source Abort row; runner candidates follow it.
-            screen.fill_rect(56, 24, 208, 168,
-                             {0x02, 0x08, 0x18, 0xF0});
-            screen.fill_rect(56, 24, 208, 2,
-                             {0x00, 0xA8, 0xC8, 0xFF});
+            render_command_base(screen);
+            render_dialog_panel(screen);
             write_field_menu_text(screen, 112, 32,
                                   dismiss_runner_labels_[0]);
             write_field_menu_text(screen, 112, 52,
@@ -4884,8 +4906,8 @@ void NativePortShell::render(ScreenWriter& screen) const {
                                   dismiss_runner_labels_[2]);
             write_field_menu_text(screen, 80, 176, " A SELECT  B RETURN");
         } else if (scene_ == NativeScene::ClipsMenu) {
-            screen.fill_rect(24, 44, 272, 144,
-                             {0x02, 0x08, 0x18, 0xF0});
+            render_command_base(screen);
+            render_dialog_panel(screen);
             screen.fill_rect(24, 44, 272, 2,
                              {0x00, 0xA8, 0xC8, 0xFF});
             screen.write_text(36, 52, "CLIPS", 2,
@@ -4973,12 +4995,10 @@ void NativePortShell::render(ScreenWriter& screen) const {
                                   std::to_string(clips_action_count_),
                               1, {0x90, 0xB8, 0xC8, 0xFF});
         } else if (scene_ == NativeScene::CyberwareMenu) {
-            screen.fill_rect(24, 44, 272, 144,
-                             {0x02, 0x08, 0x18, 0xF0});
-            screen.fill_rect(24, 44, 272, 2,
-                             {0x00, 0xA8, 0xC8, 0xFF});
-            screen.write_text(36, 52, "CYBERWARE", 2,
-                              {0xE8, 0xF4, 0xFF, 0xFF});
+            render_command_base(screen);
+            render_dialog_panel(screen);
+            write_field_menu_text(screen, 112, 32, "    Cyberware");
+            write_field_menu_text(screen, 104, 40, "[\\\\\\\\\\\\\\\\");
             for (std::size_t index = 0; index < cyberware_names_.size();
                  ++index) {
                 const auto installed =
@@ -4987,31 +5007,26 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 const auto& name = cyberware_names_[index];
                 const auto line = std::string(installed ? "[ON] " : "[--] ") +
                                   (name.empty() ? "UNKNOWN" : name);
-                screen.write_text(
-                    36, 70 + static_cast<std::int32_t>(index) * 7, line, 1,
-                    installed
-                        ? Rgba8{0xFF, 0xF0, 0x90, 0xFF}
-                        : Rgba8{0xA8, 0xB8, 0xC8, 0xFF});
+                write_field_menu_text(
+                    screen, 40, 56 + static_cast<std::int32_t>(index) * 8,
+                    line);
             }
-            screen.write_text(36, 181, "START RETURN", 1,
-                              {0x90, 0xB8, 0xC8, 0xFF});
         } else if (scene_ == NativeScene::AttributesMenu) {
-            screen.fill_rect(24, 44, 272, 144,
-                             {0x02, 0x08, 0x18, 0xF0});
-            screen.fill_rect(24, 44, 272, 2,
-                             {0x00, 0xA8, 0xC8, 0xFF});
-            screen.write_text(36, 52, "ATTRIBUTES/SKILLS", 2,
-                              {0xE8, 0xF4, 0xFF, 0xFF});
+            render_command_base(screen);
+            render_dialog_panel(screen);
+            write_field_menu_text(screen, 96, 32, "Attributes/Skills");
+            write_field_menu_text(screen, 104, 40, "[\\\\\\\\\\\\\\\\");
             for (std::size_t column = 0; column < 2U; ++column) {
                 for (std::size_t row = 0; row < 10U; ++row) {
                     const auto index = column * 10U + row;
                     const auto selected = column == attributes_menu_column_ &&
                                           row == attributes_menu_row_;
                     const auto x = column == 0U ? 32 : 164;
-                    const auto y = 70 + static_cast<std::int32_t>(row) * 10;
-                    if (selected) {
-                        screen.fill_rect(x, y - 2, 124, 10,
-                                         {0x00, 0x68, 0x88, 0xFF});
+                    const auto y = 56 + static_cast<std::int32_t>(row) * 10;
+                    if (selected && !startup_cursor_.pixels.empty()) {
+                        screen.blit_rgba(x - 16, y, startup_cursor_.width,
+                                         startup_cursor_.height,
+                                         startup_cursor_.pixels);
                     }
                     const auto value = index < kNativeAttributeCount
                         ? field_entity_.attribute_values[index]
@@ -5020,15 +5035,27 @@ void NativePortShell::render(ScreenWriter& screen) const {
                     const auto& name = attribute_skill_names_[index];
                     const auto line = (name.empty() ? "UNKNOWN" : name) +
                                       " " + std::to_string(value);
-                    screen.write_text(
-                        x + 6, y, line, 1,
-                        selected
-                            ? Rgba8{0xFF, 0xF0, 0x90, 0xFF}
-                            : Rgba8{0xD0, 0xE0, 0xF0, 0xFF});
+                    write_field_menu_text(screen, x, y, line);
                 }
             }
-            screen.write_text(36, 181, "ARROWS SELECT  START RETURN", 1,
-                              {0x90, 0xB8, 0xC8, 0xFF});
+        } else if (scene_ == NativeScene::MagicMenu) {
+            // ROM 0xFBA6 C0DA at 0xC89C0: Magical Defense panel.
+            render_command_base(screen);
+            render_dialog_panel(screen);
+            write_field_menu_text(screen, 104, 32, " Magical Defense");
+            write_field_menu_text(screen, 104, 40, "[\\\\\\\\\\\\\\\\");
+            if (field_entity_.display_palette_state < 2U) {
+                write_field_menu_text(screen, 112, 72, "None");
+            } else {
+                write_field_menu_text(screen, 48, 64, "  vs. Phys");
+                write_field_menu_text(screen, 48, 80, "  vs. Mana");
+                write_field_menu_text(screen, 48, 104, "Success");
+                write_field_menu_text(screen, 48, 120, "Drain");
+                write_field_menu_text(screen, 48, 136, "Defense");
+                write_field_menu_text(screen, 48, 152, "Force");
+                write_field_menu_text(screen, 48, 168, "Posture");
+                write_field_menu_text(screen, 48, 184, "Set Force & Posture.");
+            }
         } else {
             // Field mode is the map/object plane plus its source HUD. The
             // old host-only control legend did not exist in the cartridge.
