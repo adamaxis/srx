@@ -215,6 +215,25 @@ void test_startup_behavior_and_rendering(const std::vector<std::uint8_t>& rom,
         }
     }
     assert(intro_has_art);
+    // Capture: ambush is SAT/map actors on black, not the packed landscape.
+    while (shell.scene() == NativeScene::Intro &&
+           shell.intro_frame() < 0x267U) {
+        shell.update(InputState{});
+    }
+    if (shell.scene() == NativeScene::Intro) {
+        shell.render(screen);
+        const auto wilderness = assets.intro_stages[1];
+        if (!wilderness.pixels.empty() && wilderness.width > 16U &&
+            wilderness.height > 16U) {
+            const auto& src = wilderness.pixels[16U * wilderness.width + 16U];
+            const auto packed =
+                (static_cast<std::uint32_t>(src.red) << 16U) |
+                (static_cast<std::uint32_t>(src.green) << 8U) | src.blue;
+            if (src.alpha != 0U && packed != 0U) {
+                assert(screen.pixel(16, 16) != packed);
+            }
+        }
+    }
     shell.update(InputState{button_mask(Button::Start),
                             button_mask(Button::Start)});
     assert(shell.scene() == NativeScene::Field);

@@ -136,6 +136,7 @@ int main() {
     if (shell.scene() == NativeScene::Bootstrap) {
         write_dump(shell, artifact_dir / "boot-strobe.bmp");
         assert(shell.boot_logo_strobe_active());
+        assert(!shell.boot_lightning_visible());
         const auto strobe_phase = shell.boot_logo_strobe_phase();
         for (int step = 0; step < 16 &&
                            shell.scene() == NativeScene::Bootstrap; ++step) {
@@ -181,11 +182,19 @@ int main() {
         shell.update(InputState{});
     }
     assert(shell.boot_fasa_visible());
+    SoftwareScreen fasa_in;
+    shell.render(fasa_in);
+    for (int step = 0; step < 12 && shell.boot_fasa_visible(); ++step) {
+        shell.update(InputState{});
+    }
     write_dump(shell, artifact_dir / "boot-fasa.bmp");
     SoftwareScreen fasa_screen;
     shell.render(fasa_screen);
     if (opaque_count(fasa_screen) == 0) {
         throw std::runtime_error("FASA splash produced no opaque pixels");
+    }
+    if (brightness(fasa_screen) <= brightness(fasa_in)) {
+        throw std::runtime_error("FASA splash did not fade in from black");
     }
 
     shell.finish_boot();

@@ -567,6 +567,10 @@ public:
     bool has_boot() const { return !boot_background_.pixels.empty(); }
     std::int16_t boot_guy_sat_y() const { return boot_guy_y_; }
     bool boot_sega_visible() const { return boot_dd30_ < 0; }
+    // Lightning SAT 0x5DA20/0x5DA38 is gone the frame the guy fade starts.
+    bool boot_lightning_visible() const {
+        return boot_dd30_ < 0 && boot_dd3c_ == 0 && boot_guy_fade_ == 256U;
+    }
     bool boot_logo_strobe_active() const { return boot_dd3c_ != 0; }
     bool boot_fading() const {
         return scene_ == NativeScene::Bootstrap && boot_loop_left_ == 0U &&
@@ -575,7 +579,8 @@ public:
     bool boot_fasa_visible() const {
         return scene_ == NativeScene::Bootstrap && boot_loop_left_ == 0U &&
                boot_fade_left_ == 0U &&
-               (boot_hold_left_ != 0U || boot_fasa_fade_left_ != 0U);
+               (boot_fasa_fade_in_left_ != 0U || boot_hold_left_ != 0U ||
+                boot_fasa_fade_left_ != 0U);
     }
     std::int16_t boot_logo_strobe_phase() const { return boot_df92_; }
     std::uint16_t boot_hscroll_line(std::size_t line) const {
@@ -1032,6 +1037,7 @@ private:
     std::array<std::uint16_t, kBootHscrollLineCount> boot_hscroll_{};
     std::uint16_t boot_loop_left_ = kBootLoopDbf + 1U;
     std::uint16_t boot_fade_left_ = 0;
+    std::uint16_t boot_fasa_fade_in_left_ = 0;
     std::uint16_t boot_hold_left_ = 0;
     std::uint16_t boot_fasa_fade_left_ = 0;
     std::uint16_t field_menu_background_width_ = 0;
