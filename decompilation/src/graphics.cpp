@@ -355,17 +355,11 @@ std::vector<native::NativeStartupTextLine> read_genesis_startup_layout(
     std::size_t row = 0;
     const auto append_line = [&result](std::size_t line_row,
                                        std::string value) {
-        // The startup blocks contain a source placeholder made of '[' and
-        // backslashes where the runtime cursor sprite is written. It is not
-        // user-facing text; keeping it produced the long underline seen under
-        // the title in the native screen.
-        const auto is_cursor_placeholder =
-            !value.empty() && value.front() == '[' &&
-            value.find_first_not_of("[\\]") == std::string::npos;
-        if (!is_cursor_placeholder) {
-            result.push_back({static_cast<std::uint8_t>(line_row),
-                              std::move(value)});
-        }
+        // 0x1B6498 / 0x1B64CF store the title underline as font tiles
+        // '[' + a run of '\'. Capture t1005/t1065 shows that bar under the
+        // title only; the selector is the triangle cursor, not a host bar.
+        result.push_back({static_cast<std::uint8_t>(line_row),
+                          std::move(value)});
     };
     for (auto offset = start_offset; offset < end_offset; ++offset) {
         const auto byte = rom[offset];
@@ -768,6 +762,12 @@ native::NativePortAssets decode_genesis_native_assets(
     assets.title_background = {
         title_background.width, title_background.height,
         title_background.pixels};
+    const auto title_lights = decode_genesis_title_circuit_lights(rom);
+    for (std::size_t index = 0; index < title_lights.size(); ++index) {
+        assets.title_circuit_lights[index] = {
+            title_lights[index].width, title_lights[index].height,
+            title_lights[index].pixels};
+    }
     const auto title_logo_plane = decode_genesis_title_logo_plane(rom);
     assets.title_logo_plane = {
         title_logo_plane.width, title_logo_plane.height,
@@ -815,6 +815,12 @@ native::NativePortAssets decode_genesis_native_assets(
         assets.intro_stages[index] = {
             intro_stages[index].width, intro_stages[index].height,
             intro_stages[index].pixels};
+    }
+    const auto intro_heli = decode_genesis_intro_heli_frames(rom);
+    for (std::size_t index = 0; index < intro_heli.size(); ++index) {
+        assets.intro_heli_frames[index] = {
+            intro_heli[index].width, intro_heli[index].height,
+            intro_heli[index].pixels};
     }
     auto field_menu_background = decode_genesis_field_menu_background(rom);
     assets.field_menu_background = {
@@ -1170,13 +1176,16 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 39);
+    write_u16(output, 40);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     for (const auto& title_frame : assets.title_animation_frames) {
         write_native_image(output, title_frame);
     }
     write_native_image(output, assets.title_background);
+    for (const auto& light : assets.title_circuit_lights) {
+        write_native_image(output, light);
+    }
     write_native_image(output, assets.title_logo_plane);
     write_native_image(output, assets.title_text);
     for (const auto& title_sprite : assets.title_sprite_frames) {
@@ -1577,6 +1586,9 @@ void write_native_asset_pack(const std::string& path,
     }
     write_native_image(output, assets.boot_fasa);
     write_native_image(output, assets.startup_background);
+    for (const auto& heli : assets.intro_heli_frames) {
+        write_native_image(output, heli);
+    }
     if (!output) {
         throw std::runtime_error("failed writing native asset pack: " + path);
     }
@@ -1592,7 +1604,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 39U)) {
+        (version < 2U || version > 40U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -1606,6 +1618,11 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     }
     if (version >= 18U) {
         assets.title_background = read_native_image(input);
+        if (version >= 40U) {
+            for (auto& light : assets.title_circuit_lights) {
+                light = read_native_image(input);
+            }
+        }
         assets.title_logo_plane = read_native_image(input);
         assets.title_text = read_native_image(input);
         for (auto& title_sprite : assets.title_sprite_frames) {
@@ -2307,6 +2324,11 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
         assets.boot_fasa = read_native_image(input);
         assets.startup_background = read_native_image(input);
     }
+    if (version >= 40U) {
+        for (auto& heli : assets.intro_heli_frames) {
+            heli = read_native_image(input);
+        }
+    }
     return assets;
 }
 
@@ -2880,26 +2902,23 @@ decode_genesis_field_menu_status_bars(
 std::array<RgbaImage, 3> decode_genesis_field_menu_runner_portraits(
     const std::vector<std::uint8_t>& rom) {
     constexpr std::size_t kStartupEntityOffset = 0x7291AU;
-    constexpr std::size_t kCommonTileTable = 0x720FAU;
     constexpr std::size_t kRunnerTileSource = 0x6ACFAU;
-    // The common 80-word table is a rearrangement of a 200-tile source
-    // upload; its entries reach 0xC7. The table length is not the source
-    // pattern count.
-    constexpr std::size_t kSourceTileCount = 200U;
+    // Each 0x7291A template has its own 80-word nametable at +0x50.
+    constexpr std::size_t kSourceTileCount = 256U;
     constexpr std::size_t kPortraitTileCount = 80U;
     std::array<RgbaImage, 3> portraits{};
     for (std::size_t index = 0; index < portraits.size(); ++index) {
         const auto record_offset = kStartupEntityOffset + index * 0x100U;
         require_bytes(rom.size() - std::min(record_offset, rom.size()),
                       0x58U, "Genesis runner portrait record is truncated");
-        const auto flags = read_rom_u16(
-            rom, record_offset + 0x10U,
-            "Genesis runner portrait flags are truncated");
-        const auto table_offset = (flags & 0x0001U) == 0U
-            ? kCommonTileTable
-            : static_cast<std::size_t>(read_rom_u32(
-                  rom, record_offset + 0x50U,
-                  "Genesis runner portrait table pointer is truncated"));
+        // 0x7291A+0x50 is the 80-word nametable for that template. Bit 0 of
+        // +0x10 is not a "use common table" switch: Samurai/Decker/Gator
+        // Shaman all have flags $0F00 and distinct tables at 0x720FA /
+        // 0x7223A / 0x7219A. Using the common table for all three made the
+        // archetype portrait never change.
+        const auto table_offset = static_cast<std::size_t>(read_rom_u32(
+            rom, record_offset + 0x50U,
+            "Genesis runner portrait table pointer is truncated"));
         const auto palette_word = read_rom_u16(
             rom, record_offset + 0x2CU,
             "Genesis runner portrait palette is truncated");
@@ -4421,6 +4440,17 @@ RgbaImage decode_genesis_title_background(
         rom, 0x1F310EU, 0x67DF6U, 0x1C064U, 0x0000U);
 }
 
+std::array<RgbaImage, native::kNativeTitleCircuitLightCount>
+decode_genesis_title_circuit_lights(const std::vector<std::uint8_t>& rom) {
+    std::array<RgbaImage, native::kNativeTitleCircuitLightCount> frames{};
+    for (std::size_t phase = 0; phase < frames.size(); ++phase) {
+        frames[phase] = decode_genesis_startup_screen(
+            rom, 0x1F310EU, 0x67DF6U, 0x1C064U, 0x0000U,
+            static_cast<int>(phase));
+    }
+    return frames;
+}
+
 RgbaImage decode_genesis_title_logo_plane(
     const std::vector<std::uint8_t>& rom) {
     auto image = make_transparent_title_layer();
@@ -4549,12 +4579,27 @@ RgbaImage decode_genesis_startup_screen(
     std::size_t pattern_stream_offset,
     std::size_t tilemap_stream_offset,
     std::size_t palette_offset,
-    std::uint16_t name_word_mask) {
+    std::uint16_t name_word_mask,
+    int circuit_light_phase) {
     constexpr std::size_t kColumns = 40;
     constexpr std::size_t kRows = 28;
     constexpr std::size_t kMapRows = 32;
-    const auto startup = decode_genesis_startup_pattern_data(
+    auto startup = decode_genesis_startup_pattern_data(
         rom, pattern_stream_offset, palette_offset);
+    if (circuit_light_phase >= 0) {
+        // 0x2634: move.w #$C050,VDP_CTRL then eight data words from
+        // 0x26F2 + (DF92<<1). CRAM byte $50 is palette index 40.
+        constexpr std::size_t kLightTable = 0x26F2U;
+        constexpr std::size_t kLightCramIndex = 40U;
+        const auto phase = static_cast<std::size_t>(circuit_light_phase);
+        for (std::size_t color = 0; color < 8U; ++color) {
+            const auto word = read_rom_u16(
+                rom, kLightTable + (phase + color) * 2U,
+                "Genesis title circuit light table is truncated");
+            startup.palette[kLightCramIndex + color] =
+                decode_genesis_cram_word(word, false);
+        }
+    }
     require_bytes(rom.size() - std::min(tilemap_stream_offset, rom.size()), 2,
                   "Genesis startup tilemap is truncated");
 
@@ -5132,6 +5177,24 @@ decode_genesis_intro_stages_impl(const std::vector<std::uint8_t>& rom) {
     return stages;
 }
 
+std::array<RgbaImage, native::kNativeIntroHeliFrameCount>
+decode_genesis_intro_heli_frames_impl(const std::vector<std::uint8_t>& rom) {
+    std::array<RgbaImage, native::kNativeIntroHeliFrameCount> frames{};
+    GenesisBootPatternData skyline;
+    decode_genesis_1406_scene(rom, 0x5B528U, &skyline, 0x78);
+    constexpr std::array<std::size_t, native::kNativeIntroHeliFrameCount>
+        kLists{{0x1DF2D8U, 0x1DF30AU, 0x1DF344U, 0x1DF36EU, 0x1DF3A0U,
+                0x1DF3CAU}};
+    for (std::size_t index = 0; index < frames.size(); ++index) {
+        frames[index] = make_transparent_title_layer();
+        // List X/Y are signed SAT offsets. Origin $E8/$F0 puts the first
+        // $FFA8/$FFFC piece near capture t1525 (left of the skyline).
+        blit_genesis_sat_list(rom, skyline, frames[index], kLists[index],
+                              0xE8, 0xF0, 0x2000U);
+    }
+    return frames;
+}
+
 } // namespace
 
 RgbaImage decode_genesis_boot_background(
@@ -5238,6 +5301,11 @@ RgbaImage decode_genesis_boot_fasa(const std::vector<std::uint8_t>& rom) {
 std::array<RgbaImage, native::kNativeIntroStageCount>
 decode_genesis_intro_stages(const std::vector<std::uint8_t>& rom) {
     return decode_genesis_intro_stages_impl(rom);
+}
+
+std::array<RgbaImage, native::kNativeIntroHeliFrameCount>
+decode_genesis_intro_heli_frames(const std::vector<std::uint8_t>& rom) {
+    return decode_genesis_intro_heli_frames_impl(rom);
 }
 
 RgbaImage software_screen_image(const native::SoftwareScreen& screen) {

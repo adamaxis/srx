@@ -367,7 +367,12 @@ RgbaImage decode_genesis_startup_screen(
     std::size_t pattern_stream_offset = 0x1F310E,
     std::size_t tilemap_stream_offset = 0x67DF6,
     std::size_t palette_offset = 0x1FF0,
-    std::uint16_t name_word_mask = 0x4000);
+    std::uint16_t name_word_mask = 0x4000,
+    int circuit_light_phase = -1);
+std::array<RgbaImage, native::kNativeTitleCircuitLightCount>
+decode_genesis_title_circuit_lights(const std::vector<std::uint8_t>& rom);
+std::array<RgbaImage, native::kNativeIntroHeliFrameCount>
+decode_genesis_intro_heli_frames(const std::vector<std::uint8_t>& rom);
 
 // Title layers are extracted separately because the ROM does not present a
 // completed bitmap in one operation. These functions return host RGBA

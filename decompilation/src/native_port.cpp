@@ -364,14 +364,15 @@ void blit_intro_actor(ScreenWriter& screen, const NativeImage& image,
             if (pixel.alpha == 0U) {
                 continue;
             }
-            // The 0x5B4A8 plate includes wilderness terrain around the three
-            // runners. Capture puts them on black; drop grass/dirt so a hit
-            // flash cannot become a white box.
             const auto grass = pixel.green > pixel.red + 16U &&
                                pixel.green > pixel.blue + 8U;
+            // Dirt is near-neutral brown. Shaman skin is red-dominant; the
+            // previous dirt test dropped the head.
             const auto dirt = pixel.red > 40U && pixel.green > 28U &&
                               pixel.blue < 50U && pixel.red < 160U &&
-                              pixel.green < 130U;
+                              pixel.green < 130U &&
+                              pixel.red < pixel.green + 24U &&
+                              pixel.green < pixel.red + 24U;
             if (grass || dirt) {
                 continue;
             }
@@ -387,30 +388,11 @@ void blit_intro_actor(ScreenWriter& screen, const NativeImage& image,
                      static_cast<std::uint16_t>(height), tile);
 }
 
-void draw_startup_underline(ScreenWriter& screen, std::int32_t x,
-                            std::int32_t y, std::int32_t width) {
-    // Capture Start Options / Choose Archetype: a green bar under the title
-    // and under the selected command. Same ink as the CRT command font.
-    screen.fill_rect(x, y, width, 2, {0x18, 0xE0, 0x30, 0xFF});
-}
-
 void draw_intro_bolt(ScreenWriter& screen, std::int32_t x, std::int32_t y) {
     // Capture muzzle ticks are short cyan capsules, not 8x2 white bars.
     const Rgba8 bolt{0x48, 0xD0, 0xE0, 0xFF};
     std::vector<Rgba8> bar(12U * 3U, bolt);
     screen.blit_rgba(x, y, 12, 3, bar);
-}
-
-void draw_intro_helicopter(ScreenWriter& screen, std::int32_t x,
-                           std::int32_t y) {
-    // Host recreation of the 0x5B08E SAT chopper on the last-million
-    // skyline: a small cyan rotor craft that flies in and settles.
-    const Rgba8 body{0x28, 0x98, 0xB0, 0xFF};
-    const Rgba8 rotor{0x70, 0xC8, 0xD8, 0xFF};
-    screen.fill_rect(x + 2, y + 3, 14, 4, body);
-    screen.fill_rect(x + 12, y + 1, 3, 3, body);
-    screen.fill_rect(x, y, 16, 1, rotor);
-    screen.fill_rect(x + 6, y + 1, 2, 2, rotor);
 }
 
 // ROM 0x391A walks entity records after the current record. A candidate must
@@ -773,6 +755,7 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     title_height_ = assets.title_scene.height;
     title_pixels_ = std::move(assets.title_scene.pixels);
     title_background_ = std::move(assets.title_background);
+    title_circuit_lights_ = std::move(assets.title_circuit_lights);
     title_logo_plane_ = std::move(assets.title_logo_plane);
     title_text_ = std::move(assets.title_text);
     title_sprite_frames_ = std::move(assets.title_sprite_frames);
@@ -784,6 +767,7 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     boot_logo_strobe_ = std::move(assets.boot_logo_strobe);
     boot_fasa_ = std::move(assets.boot_fasa);
     startup_background_ = std::move(assets.startup_background);
+    intro_heli_frames_ = std::move(assets.intro_heli_frames);
     intro_stages_ = std::move(assets.intro_stages);
     if (!boot_background_.pixels.empty()) {
         scene_ = NativeScene::Bootstrap;
@@ -3794,7 +3778,8 @@ void NativePortShell::render(ScreenWriter& screen) const {
         screen.clear({0x00, 0x00, 0x00, 0xFF});
         // Host recreation of the 0x1A9E title: start black, explode the
         // extracted logo left-to-right, then fade in the circuit plane.
-        // 0x2634 pulses circuit lights in place; chips do not wrap-scroll.
+        // 0x2634 slides one CRAM color through pal line 2 colors 8..15;
+        // chips stay put. Do not pulse the traces.
         if (!title_background_.pixels.empty() ||
             !title_logo_plane_.pixels.empty()) {
             constexpr std::uint64_t kTitleRevealStart = 0x5AU;
@@ -3827,29 +3812,12 @@ void NativePortShell::render(ScreenWriter& screen) const {
                     : 0U;
                 const auto circuit_weight = std::min(
                     fade_frames + 1U, kCircuitFadeFrames);
-                auto circuits = title_background_.pixels;
-                constexpr std::array<std::uint16_t, 7> kLightPulse{
-                    {80, 130, 190, 255, 190, 130, 80}};
-                const auto pulse = kLightPulse[static_cast<std::size_t>(
-                    (title_loop / 5U) % 7U)];
-                for (auto& pixel : circuits) {
-                    if (pixel.alpha == 0U) {
-                        continue;
-                    }
-                    if (pixel.green > 40U && pixel.green >= pixel.red &&
-                        pixel.green >= pixel.blue && pixel.red < 90U) {
-                        pixel.green = static_cast<std::uint8_t>(
-                            std::min<std::uint16_t>(
-                                0xFFU,
-                                static_cast<std::uint16_t>(pixel.green) *
-                                    pulse / 160U));
-                        pixel.blue = static_cast<std::uint8_t>(
-                            std::min<std::uint16_t>(
-                                0xFFU,
-                                static_cast<std::uint16_t>(pixel.blue) *
-                                    pulse / 160U));
-                    }
-                }
+                const auto light_phase = static_cast<std::size_t>(
+                    (title_loop / 5U) % kNativeTitleCircuitLightCount);
+                auto circuits =
+                    !title_circuit_lights_[light_phase].pixels.empty()
+                        ? title_circuit_lights_[light_phase].pixels
+                        : title_background_.pixels;
                 if (circuit_weight < kCircuitFadeFrames) {
                     circuits = scale_rgba(
                         circuits,
@@ -3949,11 +3917,6 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 screen, 104, 56 + static_cast<std::int32_t>(line.row) * 8,
                 line.text);
         }
-        draw_startup_underline(screen, 104, 66, 96);
-        draw_startup_underline(
-            screen, 112,
-            90 + static_cast<std::int32_t>(start_options_selection_) * 16,
-            80);
         if (!startup_cursor_.pixels.empty()) {
             screen.blit_rgba(
                 104, 80 + static_cast<std::int32_t>(start_options_selection_) *
@@ -4004,10 +3967,6 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 screen, 152, 56 + static_cast<std::int32_t>(line.row) * 8,
                 line.text);
         }
-        draw_startup_underline(screen, 152, 74, 128);
-        draw_startup_underline(
-            screen, 160,
-            98 + static_cast<std::int32_t>(archetype_selection_) * 16, 96);
         if (!startup_cursor_.pixels.empty()) {
             screen.blit_rgba(
                 152, 88 + static_cast<std::int32_t>(archetype_selection_) * 16,
@@ -4054,8 +4013,8 @@ void NativePortShell::render(ScreenWriter& screen) const {
                              fade_weight(0, kIntroSeattleEnd));
         } else if (intro_frame_ < kIntroWildernessEnd &&
                    !intro_stages_[1].pixels.empty()) {
-            // Capture: three runners on black, rising in, then flashing
-            // white and dropping. Do not blit the packed landscape plate.
+            // Capture: three runners on black. Crop the 0x5B4A8 plate and
+            // drop grass plus near-neutral dirt, not red-dominant skin.
             const auto local = intro_frame_ - kIntroSeattleEnd;
             const auto pan_frames = kIntroWildernessPan - kIntroSeattleEnd;
             const auto rise = local < pan_frames
@@ -4119,14 +4078,25 @@ void NativePortShell::render(ScreenWriter& screen) const {
             // lands it on the left building during the last-million hold.
             blit_faded_stage(intro_stages_[0],
                              fade_weight(kIntroTrividEnd, kIntroDuration));
+            // Capture t1525-t1560: small SAT chopper enters from the left
+            // and lands on the building cluster left of the Needle.
+            // 0x5B180/0x5B08E cycle six SAT lists every 8 vblanks.
             const auto fly = std::min<std::uint64_t>(
                 intro_frame_ - kIntroTrividEnd, 180U);
-            const auto heli_x = -16 + static_cast<std::int32_t>(fly) * 168 /
-                                          180;
-            const auto heli_y = 90 + static_cast<std::int32_t>(fly) * 38 /
-                                         180;
-            if (fade_weight(kIntroTrividEnd, kIntroDuration) != 0U) {
-                draw_intro_helicopter(screen, heli_x, heli_y);
+            // Capture t1525 starts left of the skyline; t1545-t1560 lands on
+            // the building cluster left of the Needle. 0x5B1B6 adds the
+            // 0x5B270 deltas onto the SAT origin after frame $225.
+            const auto heli_x = static_cast<std::int32_t>(fly) * 2 / 3;
+            const auto heli_y = static_cast<std::int32_t>(fly) / 10;
+            if (fade_weight(kIntroTrividEnd, kIntroDuration) != 0U &&
+                !intro_heli_frames_.empty()) {
+                const auto heli_phase = static_cast<std::size_t>(
+                    (intro_frame_ / 8U) % intro_heli_frames_.size());
+                const auto& heli = intro_heli_frames_[heli_phase];
+                if (!heli.pixels.empty()) {
+                    screen.blit_rgba(heli_x, heli_y, heli.width, heli.height,
+                                     heli.pixels);
+                }
             }
         }
         const auto line_end = std::min(
@@ -4148,41 +4118,19 @@ void NativePortShell::render(ScreenWriter& screen) const {
         constexpr std::int32_t kMapY = 32;
         constexpr std::int32_t kMapW = 208;
         constexpr std::int32_t kMapH = 140;
-        screen.fill_rect(kMapX - 2, kMapY - 2, kMapW + 4, kMapH + 4,
-                         {0x10, 0x18, 0x20, 0xFF});
-        if (!field_map_pixels_.empty() && field_map_width_ > 0 &&
-            field_map_height_ > 0) {
-            std::vector<Rgba8> overview(
-                static_cast<std::size_t>(kMapW * kMapH), Rgba8{});
-            for (std::int32_t row = 0; row < kMapH; ++row) {
-                const auto source_y = row * static_cast<std::int32_t>(
-                                                field_map_height_) /
-                                      kMapH;
-                for (std::int32_t column = 0; column < kMapW; ++column) {
-                    const auto source_x = column * static_cast<std::int32_t>(
-                                                       field_map_width_) /
-                                          kMapW;
-                    overview[static_cast<std::size_t>(row * kMapW + column)] =
-                        field_map_pixels_[static_cast<std::size_t>(
-                            source_y * static_cast<std::int32_t>(
-                                           field_map_width_) +
-                            source_x)];
-                }
-            }
-            screen.blit_rgba(kMapX, kMapY, static_cast<std::uint16_t>(kMapW),
-                             static_cast<std::uint16_t>(kMapH), overview);
-            screen.fill_rect(kMapX + kMapW / 2 - 10, kMapY + kMapH / 2 - 8,
-                             20, 16, {0x00, 0x00, 0x00, 0x00});
-            screen.fill_rect(kMapX + kMapW / 2 - 11, kMapY + kMapH / 2 - 9,
-                             22, 2, {0xF0, 0xF0, 0xF0, 0xFF});
-            screen.fill_rect(kMapX + kMapW / 2 - 11, kMapY + kMapH / 2 + 7,
-                             22, 2, {0xF0, 0xF0, 0xF0, 0xFF});
-            screen.fill_rect(kMapX + kMapW / 2 - 11, kMapY + kMapH / 2 - 9,
-                             2, 18, {0xF0, 0xF0, 0xF0, 0xFF});
-            screen.fill_rect(kMapX + kMapW / 2 + 9, kMapY + kMapH / 2 - 9,
-                             2, 18, {0xF0, 0xF0, 0xF0, 0xFF});
-        }
-        write_field_menu_text(screen, 88, 180, "Redmond Barrens");
+        // Capture t1660/t1675 is the 0x134D2 world map (grass/water with a
+        // white district cursor), not a scaled Redmond field plane. Until
+        // that 0xD4456 resource is extracted, keep the black cab plate and
+        // the source district label instead of the wrong map.
+        screen.fill_rect(kMapX, kMapY, kMapW, kMapH, {0x00, 0x00, 0x00, 0xFF});
+        screen.fill_rect(kMapX + 70, kMapY + 48, 48, 32,
+                         {0xF0, 0xF0, 0xF0, 0xFF});
+        screen.fill_rect(kMapX + 72, kMapY + 50, 44, 28,
+                         {0x00, 0x00, 0x00, 0xFF});
+        const auto cab_label =
+            cab_frame_ < 45U ? "Downtown Seattle" : "Redmond Barrens";
+        const auto label_x = cab_frame_ < 45U ? 96 : 88;
+        write_field_menu_text(screen, label_x, 180, cab_label);
         screen.present();
         return;
     } else if ((scene_ == NativeScene::Field ||
@@ -4563,7 +4511,16 @@ void NativePortShell::render(ScreenWriter& screen) const {
                     selected_slot < field_entity_.inventory_item_codes.size()
                 ? field_entity_.inventory_item_codes[selected_slot]
                 : 0U;
-            if (field_menu_selection_ >= 2U && field_menu_selection_ <= 6U) {
+            if (field_menu_posture_active_) {
+                // 0x119CE moves focus off the five command tabs and onto
+                // the posture strip at CAAC. Capture: the tab icon clears
+                // and the status bar is the highlighted control.
+                screen.fill_rect(168, 166, 64, 2, {0x18, 0xE0, 0x30, 0xFF});
+                screen.fill_rect(168, 190, 64, 2, {0x18, 0xE0, 0x30, 0xFF});
+                screen.fill_rect(168, 166, 2, 26, {0x18, 0xE0, 0x30, 0xFF});
+                screen.fill_rect(230, 166, 2, 26, {0x18, 0xE0, 0x30, 0xFF});
+            } else if (field_menu_selection_ >= 2U &&
+                       field_menu_selection_ <= 6U) {
                 // ROM 0x11454 writes a source 2x2 tile block at the selected
                 // tab's button coordinate. Its x destinations are 24 pixels
                 // apart; the extracted block supplies the real white/blue

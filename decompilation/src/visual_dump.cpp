@@ -151,6 +151,10 @@ int main(int argc, char** argv) {
                 throw std::runtime_error("failed to enter Archetype");
             }
             write_frame(shell, out / "archetype.bmp");
+            press(shell, Button::Down);
+            write_frame(shell, out / "archetype-decker.bmp");
+            press(shell, Button::Down);
+            write_frame(shell, out / "archetype-gator.bmp");
             return 0;
         }
         if (scene == "intro") {

@@ -20,6 +20,11 @@ constexpr std::size_t kNativeTitleAnimationFrameCount = 6;
 constexpr std::size_t kNativeBootSegaPhaseCount = 6;
 // ROM 0x5D8BA slides eight CRAM words from 0x5DCE6 across line 0 colors 3..10.
 constexpr std::size_t kNativeBootLogoStrobeCount = 8;
+// ROM 0x2634 writes eight CRAM words from 0x26F2+(DF92<<1) to CRAM $50
+// (palette line 2 colors 8..15). DF92 cycles 0..6 every five vblanks.
+constexpr std::size_t kNativeTitleCircuitLightCount = 7;
+// ROM 0x5B180 is six 0x1378 SAT lists for the last-million chopper.
+constexpr std::size_t kNativeIntroHeliFrameCount = 6;
 // ROM 0x59C5E stages: 0x5AF62 (0x5B574), 0x59D7C (0x5B4A8), 0x5AA96
 // tri-vid, 0x5AD1A (0x5B528).
 constexpr std::size_t kNativeIntroStageCount = 4;
@@ -370,6 +375,8 @@ struct NativePortAssets {
     // pass after the initial delay, the sprite overlay advances every four
     // calls, and text is a fixed plane.
     NativeImage title_background;
+    std::array<NativeImage, kNativeTitleCircuitLightCount>
+        title_circuit_lights{};
     NativeImage title_logo_plane;
     NativeImage title_text;
     std::array<NativeImage, kNativeTitleAnimationFrameCount>
@@ -393,6 +400,7 @@ struct NativePortAssets {
     // ROM 0x10B5A startup CRT: same CAB0C patterns as the command screen,
     // four 0x1232 blocks at 0xCDCE6/0xCDDF6/0xCDEA0/0xCDF4A.
     NativeImage startup_background;
+    std::array<NativeImage, kNativeIntroHeliFrameCount> intro_heli_frames{};
     // Plane-B base written by the ROM command-screen initializer at 0x10F50.
     // It contains the real menu panel and inventory-box geometry; dynamic
     // labels and cursor state are rendered by the native command loop.
@@ -1017,6 +1025,8 @@ private:
     std::uint16_t title_height_ = 0;
     std::vector<Rgba8> title_pixels_;
     NativeImage title_background_{};
+    std::array<NativeImage, kNativeTitleCircuitLightCount>
+        title_circuit_lights_{};
     NativeImage title_logo_plane_{};
     NativeImage title_text_{};
     std::array<NativeImage, kNativeTitleAnimationFrameCount>
@@ -1030,6 +1040,7 @@ private:
     std::array<NativeImage, kNativeBootLogoStrobeCount> boot_logo_strobe_{};
     NativeImage boot_fasa_{};
     NativeImage startup_background_{};
+    std::array<NativeImage, kNativeIntroHeliFrameCount> intro_heli_frames_{};
     std::int16_t boot_guy_y_ = static_cast<std::int16_t>(kBootGuyStartY);
     std::uint16_t boot_guy_fade_ = 256;
     std::int16_t boot_dd2a_ = 0x41;

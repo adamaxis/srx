@@ -135,6 +135,37 @@ int main() {
     assert((intro.archetypes ==
             std::array<std::string, 4>{"Samurai", "Decker", "Gator",
                                        "Shaman"}));
+    assert(!intro.start_options_layout.empty());
+    assert(intro.start_options_layout[0].text.find("Start Options") !=
+           std::string::npos);
+    bool saw_title_underline = false;
+    for (const auto& line : intro.start_options_layout) {
+        if (!line.text.empty() && line.text.front() == '[') {
+            saw_title_underline = true;
+        }
+    }
+    assert(saw_title_underline);
+    const auto portraits = decode_genesis_field_menu_runner_portraits(rom);
+    assert(!portraits[0].pixels.empty());
+    assert(!portraits[1].pixels.empty());
+    assert(!portraits[2].pixels.empty());
+    const auto portraits_differ = [](const auto& left, const auto& right) {
+        if (left.pixels.size() != right.pixels.size()) {
+            return true;
+        }
+        for (std::size_t index = 0; index < left.pixels.size(); ++index) {
+            const auto& a = left.pixels[index];
+            const auto& b = right.pixels[index];
+            if (a.red != b.red || a.green != b.green || a.blue != b.blue ||
+                a.alpha != b.alpha) {
+                return true;
+            }
+        }
+        return false;
+    };
+    assert(portraits_differ(portraits[0], portraits[1]));
+    assert(portraits_differ(portraits[0], portraits[2]));
+    assert(portraits_differ(portraits[1], portraits[2]));
     assert(intro.story_lines.size() == 22);
     assert(intro.story_lines.front() == "The Time:  January 31, 2058");
     assert(intro.story_lines.back() ==
@@ -468,6 +499,17 @@ int main() {
                intro_stages[index].pixels.size());
         assert(loaded_assets.intro_stages[index].pixels.size() ==
                native_assets.intro_stages[index].pixels.size());
+    }
+    const auto heli_frames = decode_genesis_intro_heli_frames(rom);
+    {
+        std::size_t heli_ink = 0;
+        for (const auto& pixel : heli_frames[0].pixels) {
+            if (pixel.alpha != 0U &&
+                (pixel.red != 0 || pixel.green != 0 || pixel.blue != 0)) {
+                ++heli_ink;
+            }
+        }
+        assert(heli_ink > 20U);
     }
     const auto title_sprites = decode_genesis_title_sprite_frames(rom);
     // List 1 object 0: SAT X=$FFF1 Y=$FF9F size 4x4 at D1=$9C D2=$110.
