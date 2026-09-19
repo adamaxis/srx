@@ -187,12 +187,13 @@ std::uint16_t fixed_world_coordinate(std::int32_t pixels) {
 }
 
 constexpr std::int32_t kGenesisVdpSpriteOrigin = 0x80;
+// Capture t1720: 0x17708's runner sidebar is sprite HUD over the 320px
+// field plane, not a cropped playfield. Keep the map at full Genesis size.
+constexpr std::int32_t kFieldHudWidth = 64;
 constexpr std::int32_t kFieldViewportWidth = kScreenWidth;
-// The source field plane occupies the complete Genesis display. The old
-// native shell reserved a host-only header/footer, which moved every sprite
-// and made the camera disagree with the source projection.
 constexpr std::int32_t kFieldViewportHeight = kScreenHeight;
 constexpr std::int32_t kFieldScreenOriginY = 0;
+constexpr std::uint64_t kCabMapFrames = 90;
 // ROM 0x5A62 accepts VDP X values strictly below 0x1AE. After removing the
 // 0x80 sprite origin, this is the last host pixel at which the record remains
 // in the direct projection window.
@@ -303,7 +304,7 @@ constexpr std::array<IntroStoryGroup, 9> kIntroStoryGroups{{
     {kIntroSeattlePlace, 0U, 2U, 16},
     {kIntroSeattleTeam, 0U, 5U, 16},
     {kIntroSeattleEnd, 5U, 2U, 16},
-    {kIntroWildernessMassacre, 5U, 5U, 16},
+    {kIntroWildernessMassacre, 5U, 2U, 16},
     {kIntroWildernessEnd, 10U, 3U, 16},
     {kIntroTrividEnd, 13U, 3U, 16},
     {kIntroAirportText, 16U, 6U, 16},
@@ -363,6 +364,17 @@ void blit_intro_actor(ScreenWriter& screen, const NativeImage& image,
             if (pixel.alpha == 0U) {
                 continue;
             }
+            // The 0x5B4A8 plate includes wilderness terrain around the three
+            // runners. Capture puts them on black; drop grass/dirt so a hit
+            // flash cannot become a white box.
+            const auto grass = pixel.green > pixel.red + 16U &&
+                               pixel.green > pixel.blue + 8U;
+            const auto dirt = pixel.red > 40U && pixel.green > 28U &&
+                              pixel.blue < 50U && pixel.red < 160U &&
+                              pixel.green < 130U;
+            if (grass || dirt) {
+                continue;
+            }
             if (flash) {
                 pixel.red = 0xFF;
                 pixel.green = 0xFF;
@@ -373,6 +385,32 @@ void blit_intro_actor(ScreenWriter& screen, const NativeImage& image,
     }
     screen.blit_rgba(dest_x, dest_y, static_cast<std::uint16_t>(width),
                      static_cast<std::uint16_t>(height), tile);
+}
+
+void draw_startup_underline(ScreenWriter& screen, std::int32_t x,
+                            std::int32_t y, std::int32_t width) {
+    // Capture Start Options / Choose Archetype: a green bar under the title
+    // and under the selected command. Same ink as the CRT command font.
+    screen.fill_rect(x, y, width, 2, {0x18, 0xE0, 0x30, 0xFF});
+}
+
+void draw_intro_bolt(ScreenWriter& screen, std::int32_t x, std::int32_t y) {
+    // Capture muzzle ticks are short cyan capsules, not 8x2 white bars.
+    const Rgba8 bolt{0x48, 0xD0, 0xE0, 0xFF};
+    std::vector<Rgba8> bar(12U * 3U, bolt);
+    screen.blit_rgba(x, y, 12, 3, bar);
+}
+
+void draw_intro_helicopter(ScreenWriter& screen, std::int32_t x,
+                           std::int32_t y) {
+    // Host recreation of the 0x5B08E SAT chopper on the last-million
+    // skyline: a small cyan rotor craft that flies in and settles.
+    const Rgba8 body{0x28, 0x98, 0xB0, 0xFF};
+    const Rgba8 rotor{0x70, 0xC8, 0xD8, 0xFF};
+    screen.fill_rect(x + 2, y + 3, 14, 4, body);
+    screen.fill_rect(x + 12, y + 1, 3, 3, body);
+    screen.fill_rect(x, y, 16, 1, rotor);
+    screen.fill_rect(x + 6, y + 1, 2, 2, rotor);
 }
 
 // ROM 0x391A walks entity records after the current record. A candidate must
@@ -1129,11 +1167,60 @@ void NativePortShell::update_intro(const InputState& input) {
     const auto& group = intro_story_group(intro_frame_);
     intro_line_start_ = group.first_line;
     if (intro_frame_ >= kIntroDuration) {
+        // 0x59C5E fades, sets FFFBF8=2, then 0x59D12/0x134D2 — the cab
+        // world-map before the field loop.
+        cab_frame_ = 0;
+        scene_ = NativeScene::CabMap;
+    }
+}
+
+void NativePortShell::update_cab_map(const InputState& input) {
+    if (input.was_pressed(Button::A) || input.was_pressed(Button::B) ||
+        input.was_pressed(Button::Start) || cab_frame_ >= kCabMapFrames) {
         scene_ = NativeScene::Field;
         if (!field_map_pixels_.empty()) {
             reset_field_state();
         }
+        return;
     }
+    ++cab_frame_;
+}
+
+void NativePortShell::follow_field_camera() {
+    if (field_map_pixels_.empty() || field_map_width_ == 0 ||
+        field_map_height_ == 0) {
+        return;
+    }
+    const auto max_x = std::max<std::int32_t>(
+        0, static_cast<std::int32_t>(field_map_width_) - kFieldViewportWidth);
+    const auto max_y = std::max<std::int32_t>(
+        0, static_cast<std::int32_t>(field_map_height_) - kFieldViewportHeight);
+    const auto desired_x = field_world_x_ - kFieldViewportWidth / 2;
+    const auto desired_y = field_world_y_ - kFieldViewportHeight / 2;
+    const auto step_toward = [](std::int32_t current, std::int32_t desired) {
+        const auto delta = desired - current;
+        const auto distance = delta < 0 ? -delta : delta;
+        // 0x3A1C/0x3BAC: the camera only writes once the entity is far
+        // enough from the 0x700 window, then catches up from the movement
+        // table. Host form: 24px deadzone, then a 1/8 catch-up.
+        if (distance <= 24) {
+            return current;
+        }
+        auto step = delta / 8;
+        if (step == 0) {
+            step = delta > 0 ? 1 : -1;
+        }
+        if (step > 6) {
+            step = 6;
+        } else if (step < -6) {
+            step = -6;
+        }
+        return current + step;
+    };
+    field_camera_x_ = std::clamp(step_toward(field_camera_x_, desired_x),
+                                 0, max_x);
+    field_camera_y_ = std::clamp(step_toward(field_camera_y_, desired_y),
+                                 0, max_y);
 }
 
 void NativePortShell::open_stoker_motel_dialog() {
@@ -3179,7 +3266,7 @@ void NativePortShell::update_boot() {
         }
         // ROM 0x5D8BA runs only while DD3C is set. DF90 counts 4..-1; on
         // wrap it slides DF92 through 0..7 and copies 0x5DCE6 into CRAM.
-        if (boot_dd3c_ != 0) {
+        if (boot_dd3c_ != 0 && boot_guy_fade_ != 0U) {
             --boot_df90_;
             if (boot_df90_ < 0) {
                 boot_df90_ = 4;
@@ -3189,7 +3276,7 @@ void NativePortShell::update_boot() {
                 }
             }
             // 0x5D8BA at DF90==2 calls 0x5B2E2: the chrome figure fades
-            // while the SEGA logo shines.
+            // while the SEGA logo shines. Capture then holds static SEGA.
             if (boot_guy_fade_ > 8U) {
                 boot_guy_fade_ = static_cast<std::uint16_t>(boot_guy_fade_ - 8U);
             } else {
@@ -3275,19 +3362,11 @@ void NativePortShell::update(const InputState& input) {
     }
 
     if (scene_ == NativeScene::Title) {
-        // ROM 0x0BF2 records Start as a pressed high-byte input and the
-        // 0x1A9E loop exits when FFDDC2 is set. An early edge finishes the
-        // title presentation; it does not jump directly to the game field.
-        if (input.was_pressed(Button::Start)) {
-            if (!title_skip_requested_) {
-                title_skip_requested_ = true;
-                constexpr std::uint64_t kTitleSettledLoop = 0xE10U;
-                frame_number_ = std::max(frame_number_,
-                                         kTitleSettledLoop + 1U);
-            } else {
-                // ROM 0x59092 enters the startup-options block. New Game
-                // later enters 0x59C5E; Load Game skips it only after a valid
-                // save sets FFE108.
+        // 0x1A9E samples Start via 0x0BF2 into FFDDC2, breaks the D7 loop,
+        // then 0x131C fades before 0x1BAC returns into 0x59092. One edge.
+        if (title_fade_left_ != 0U) {
+            --title_fade_left_;
+            if (title_fade_left_ == 0U) {
                 scene_ = has_startup_menus() ? NativeScene::StartOptions
                                              : NativeScene::Field;
                 if (scene_ == NativeScene::Field) {
@@ -3299,6 +3378,11 @@ void NativePortShell::update(const InputState& input) {
                     }
                 }
             }
+            ++frame_number_;
+            return;
+        }
+        if (input.was_pressed(Button::Start)) {
+            title_fade_left_ = kBootFadeFrames;
         }
         ++frame_number_;
         return;
@@ -3324,6 +3408,12 @@ void NativePortShell::update(const InputState& input) {
 
     if (scene_ == NativeScene::Intro) {
         update_intro(input);
+        ++frame_number_;
+        return;
+    }
+
+    if (scene_ == NativeScene::CabMap) {
+        update_cab_map(input);
         ++frame_number_;
         return;
     }
@@ -3541,12 +3631,12 @@ void NativePortShell::update(const InputState& input) {
     }
     update_field_entity_animation(movement_accepted);
     if (!field_map_pixels_.empty()) {
-        // The direct 0x5A62 result is a VDP coordinate. FFDDC6/FFDDC8 are
-        // loaded from the mode descriptor by 0x2B34/0x3074 and consumed by
-        // projection and tilemap rendering. The reviewed ordinary field
-        // loop does not follow the controlled entity by rewriting them;
-        // keep the descriptor camera until a source mode/transition changes
-        // it.
+        // 0x3A1C/0x3BAC rewrite FFDDC6/FFDDC8 so the camera catches up
+        // when the runner leaves the 0x700 window. The mode descriptor is
+        // the starting camera; catch-up runs on accepted steps.
+        if (movement_accepted) {
+            follow_field_camera();
+        }
         refresh_field_view();
         refresh_field_entity_projection();
         marker_x_ = field_entity_screen_x();
@@ -3666,7 +3756,7 @@ void NativePortShell::render(ScreenWriter& screen) const {
                                  fade_copy(scrolled));
             }
             const NativeImage* logo = &boot_background_;
-            if (boot_dd3c_ != 0 && !boot_logo_strobe_.empty()) {
+            if (boot_logo_strobe_active() && !boot_logo_strobe_.empty()) {
                 const auto phase =
                     static_cast<std::size_t>(std::max<std::int16_t>(
                         boot_df92_, 0)) %
@@ -3703,93 +3793,83 @@ void NativePortShell::render(ScreenWriter& screen) const {
     if (scene_ == NativeScene::Title && !title_pixels_.empty()) {
         screen.clear({0x00, 0x00, 0x00, 0xFF});
         // Host recreation of the 0x1A9E title: start black, explode the
-        // extracted logo left-to-right, then fade in the scrolling circuit
-        // plane. SAT lists are baked into title_logo_plane at extract time.
+        // extracted logo left-to-right, then fade in the circuit plane.
+        // 0x2634 pulses circuit lights in place; chips do not wrap-scroll.
         if (!title_background_.pixels.empty() ||
             !title_logo_plane_.pixels.empty()) {
             constexpr std::uint64_t kTitleRevealStart = 0x5AU;
-            constexpr std::size_t kTitleRevealColumns = 40U;
+            constexpr std::size_t kTitleRevealPixelsPerFrame = 4U;
             constexpr std::size_t kCircuitFadeFrames = 16U;
             const auto has_title_loop = frame_number_ != 0U;
             const auto title_loop = has_title_loop ? frame_number_ - 1U : 0U;
-            auto visible_columns = std::size_t{0};
+            const auto title_fade_weight =
+                title_fade_left_ == 0U ? kBootFadeFrames : title_fade_left_;
+            auto visible_pixels = std::size_t{0};
             if (has_title_loop && title_loop >= kTitleRevealStart) {
                 const auto reveal_frames = static_cast<std::size_t>(
                     title_loop - kTitleRevealStart + 1U);
-                visible_columns = std::min<std::size_t>(
-                    kTitleRevealColumns, (reveal_frames + 1U) / 2U);
+                visible_pixels = reveal_frames * kTitleRevealPixelsPerFrame;
             }
-            const auto logo_complete =
-                visible_columns >= kTitleRevealColumns;
+            const auto logo_width = title_logo_plane_.pixels.empty()
+                ? std::size_t{320}
+                : title_logo_plane_.width;
+            const auto last_visible_x =
+                std::min(logo_width, visible_pixels);
+            const auto logo_complete = last_visible_x >= logo_width;
             if (logo_complete && !title_background_.pixels.empty()) {
-                const auto fade_frames = has_title_loop
-                    ? static_cast<std::size_t>(
-                          title_loop - (kTitleRevealStart +
-                                        (kTitleRevealColumns * 2U - 1U)))
+                const auto reveal_end =
+                    kTitleRevealStart +
+                    (logo_width + kTitleRevealPixelsPerFrame - 1U) /
+                        kTitleRevealPixelsPerFrame;
+                const auto fade_frames = has_title_loop &&
+                        title_loop >= reveal_end
+                    ? static_cast<std::size_t>(title_loop - reveal_end)
                     : 0U;
                 const auto circuit_weight = std::min(
                     fade_frames + 1U, kCircuitFadeFrames);
-                const auto width =
-                    static_cast<std::int32_t>(title_background_.width);
-                const auto height =
-                    static_cast<std::int32_t>(title_background_.height);
-                const auto scroll = static_cast<std::int32_t>(
-                    title_loop % static_cast<std::uint64_t>(
-                                     std::max<std::int32_t>(width, 1)));
                 auto circuits = title_background_.pixels;
-                if (width > 0 && height > 0 &&
-                    circuits.size() ==
-                        static_cast<std::size_t>(width) *
-                            static_cast<std::size_t>(height)) {
-                    std::vector<Rgba8> scrolled(
-                        circuits.size(), Rgba8{0, 0, 0, 0});
-                    for (std::int32_t row = 0; row < height; ++row) {
-                        for (std::int32_t column = 0; column < width;
-                             ++column) {
-                            auto source_x = column + scroll;
-                            source_x %= width;
-                            if (source_x < 0) {
-                                source_x += width;
-                            }
-                            scrolled[static_cast<std::size_t>(row) *
-                                         static_cast<std::size_t>(width) +
-                                     static_cast<std::size_t>(column)] =
-                                circuits[static_cast<std::size_t>(row) *
-                                             static_cast<std::size_t>(width) +
-                                         static_cast<std::size_t>(source_x)];
-                        }
+                constexpr std::array<std::uint16_t, 7> kLightPulse{
+                    {80, 130, 190, 255, 190, 130, 80}};
+                const auto pulse = kLightPulse[static_cast<std::size_t>(
+                    (title_loop / 5U) % 7U)];
+                for (auto& pixel : circuits) {
+                    if (pixel.alpha == 0U) {
+                        continue;
                     }
-                    circuits = std::move(scrolled);
+                    if (pixel.green > 40U && pixel.green >= pixel.red &&
+                        pixel.green >= pixel.blue && pixel.red < 90U) {
+                        pixel.green = static_cast<std::uint8_t>(
+                            std::min<std::uint16_t>(
+                                0xFFU,
+                                static_cast<std::uint16_t>(pixel.green) *
+                                    pulse / 160U));
+                        pixel.blue = static_cast<std::uint8_t>(
+                            std::min<std::uint16_t>(
+                                0xFFU,
+                                static_cast<std::uint16_t>(pixel.blue) *
+                                    pulse / 160U));
+                    }
                 }
                 if (circuit_weight < kCircuitFadeFrames) {
-                    for (auto& pixel : circuits) {
-                        pixel.red = static_cast<std::uint8_t>(
-                            (static_cast<std::uint16_t>(pixel.red) *
-                             circuit_weight) /
-                            kCircuitFadeFrames);
-                        pixel.green = static_cast<std::uint8_t>(
-                            (static_cast<std::uint16_t>(pixel.green) *
-                             circuit_weight) /
-                            kCircuitFadeFrames);
-                        pixel.blue = static_cast<std::uint8_t>(
-                            (static_cast<std::uint16_t>(pixel.blue) *
-                             circuit_weight) /
-                            kCircuitFadeFrames);
-                    }
+                    circuits = scale_rgba(
+                        circuits,
+                        static_cast<std::uint16_t>(circuit_weight),
+                        static_cast<std::uint16_t>(kCircuitFadeFrames));
                 }
                 screen.blit_rgba(0, 0, title_background_.width,
-                                 title_background_.height, circuits);
+                                 title_background_.height,
+                                 scale_rgba(circuits, title_fade_weight,
+                                            kBootFadeFrames));
             }
-            if (visible_columns != 0U && !title_logo_plane_.pixels.empty()) {
+            if (last_visible_x != 0U && !title_logo_plane_.pixels.empty()) {
                 auto logo = title_logo_plane_.pixels;
-                const auto last_visible_x = std::min<std::size_t>(
-                    title_logo_plane_.width, visible_columns * 8U);
                 // Capture: a hot explode edge leads the L-R reveal and is
-                // gone once the ram skull is complete.
+                // gone once the ram skull is complete. 4px/frame is the
+                // 0x1E4E column-every-two-vblanks average without 8px steps.
                 const auto edge_start =
-                    logo_complete || last_visible_x < 8U
+                    logo_complete || last_visible_x < 12U
                         ? last_visible_x
-                        : last_visible_x - 8U;
+                        : last_visible_x - 12U;
                 for (std::size_t y = 0; y < title_logo_plane_.height; ++y) {
                     for (std::size_t x = 0; x < title_logo_plane_.width; ++x) {
                         auto& pixel =
@@ -3807,9 +3887,11 @@ void NativePortShell::render(ScreenWriter& screen) const {
                     }
                 }
                 screen.blit_rgba(0, 0, title_logo_plane_.width,
-                                 title_logo_plane_.height, logo);
+                                 title_logo_plane_.height,
+                                 scale_rgba(logo, title_fade_weight,
+                                            kBootFadeFrames));
             }
-            if (!title_text_.pixels.empty()) {
+            if (!title_text_.pixels.empty() && title_fade_left_ == 0U) {
                 auto blit_title_rows = [&screen, this](std::size_t first_row,
                                                         std::size_t row_count) {
                     auto text = title_text_.pixels;
@@ -3867,6 +3949,11 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 screen, 104, 56 + static_cast<std::int32_t>(line.row) * 8,
                 line.text);
         }
+        draw_startup_underline(screen, 104, 66, 96);
+        draw_startup_underline(
+            screen, 112,
+            90 + static_cast<std::int32_t>(start_options_selection_) * 16,
+            80);
         if (!startup_cursor_.pixels.empty()) {
             screen.blit_rgba(
                 104, 80 + static_cast<std::int32_t>(start_options_selection_) *
@@ -3917,6 +4004,10 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 screen, 152, 56 + static_cast<std::int32_t>(line.row) * 8,
                 line.text);
         }
+        draw_startup_underline(screen, 152, 74, 128);
+        draw_startup_underline(
+            screen, 160,
+            98 + static_cast<std::int32_t>(archetype_selection_) * 16, 96);
         if (!startup_cursor_.pixels.empty()) {
             screen.blit_rgba(
                 152, 88 + static_cast<std::int32_t>(archetype_selection_) * 16,
@@ -3983,28 +4074,39 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 shaman_alive &&
                 intro_frame_ >= kIntroWildernessMassacre + 0x50U &&
                 ((intro_frame_ / 4U) % 2U) == 0U;
-            const auto flash_samurai =
-                intro_frame_ >= kIntroWildernessMassacre + 0xB0U &&
-                ((intro_frame_ / 4U) % 2U) == 0U;
+            const auto gator_drop =
+                gator_alive ? 0
+                            : std::min<std::int32_t>(
+                                  80, static_cast<std::int32_t>(
+                                          intro_frame_ -
+                                          (kIntroWildernessMassacre +
+                                           0x50U)) *
+                                      4);
+            const auto shaman_drop =
+                shaman_alive ? 0
+                             : std::min<std::int32_t>(
+                                   80, static_cast<std::int32_t>(
+                                           intro_frame_ -
+                                           (kIntroWildernessMassacre +
+                                            0x8CU)) *
+                                       4);
             const auto& plate = intro_stages_[1];
-            blit_intro_actor(screen, plate, 8, 96, 128, 128, 8, 96 + rise,
-                             flash_samurai);
-            if (gator_alive) {
-                blit_intro_actor(screen, plate, 136, 120, 88, 104, 136,
-                                 120 + rise, flash_gator);
+            blit_intro_actor(screen, plate, 8, 80, 128, 144, 8, 80 + rise,
+                             false);
+            if (gator_alive || gator_drop < 80) {
+                blit_intro_actor(screen, plate, 128, 100, 96, 124, 128,
+                                 100 + rise + gator_drop, flash_gator);
             }
-            if (shaman_alive) {
-                blit_intro_actor(screen, plate, 208, 48, 104, 96, 208,
-                                 48 + rise, flash_shaman);
+            if (shaman_alive || shaman_drop < 80) {
+                blit_intro_actor(screen, plate, 200, 8, 112, 136, 200,
+                                 8 + rise + shaman_drop, flash_shaman);
             }
             if (local > pan_frames) {
                 const auto shot = static_cast<std::int32_t>(
                     (local * 3U) % 220U);
-                const Rgba8 bolt{0xE8, 0xF0, 0xFF, 0xFF};
-                std::vector<Rgba8> bar(16U, bolt);
-                screen.blit_rgba(40 + (shot % 180), 110 + (shot % 40) / 4,
-                                 8, 2, bar);
-                screen.blit_rgba(90 + ((shot * 2) % 160), 150, 8, 2, bar);
+                draw_intro_bolt(screen, 40 + (shot % 180),
+                                110 + (shot % 40) / 4);
+                draw_intro_bolt(screen, 90 + ((shot * 2) % 160), 150);
             }
         } else if (intro_frame_ < kIntroTrividEnd &&
                    !intro_stages_[2].pixels.empty()) {
@@ -4013,9 +4115,19 @@ void NativePortShell::render(ScreenWriter& screen) const {
                                          kIntroTrividEnd));
         } else if (!intro_stages_[0].pixels.empty()) {
             // Capture returns to the seattle skyline for Sea-Tac, not a
-            // distinct airport painting.
+            // distinct airport painting. 0x5B08E flies a chopper in and
+            // lands it on the left building during the last-million hold.
             blit_faded_stage(intro_stages_[0],
                              fade_weight(kIntroTrividEnd, kIntroDuration));
+            const auto fly = std::min<std::uint64_t>(
+                intro_frame_ - kIntroTrividEnd, 180U);
+            const auto heli_x = -16 + static_cast<std::int32_t>(fly) * 168 /
+                                          180;
+            const auto heli_y = 90 + static_cast<std::int32_t>(fly) * 38 /
+                                         180;
+            if (fade_weight(kIntroTrividEnd, kIntroDuration) != 0U) {
+                draw_intro_helicopter(screen, heli_x, heli_y);
+            }
         }
         const auto line_end = std::min(
             group.first_line + group.line_count, intro_.story_lines.size());
@@ -4028,6 +4140,49 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 line - group.first_line) * 16;
             write_field_menu_text(screen, x, y, text);
         }
+        screen.present();
+        return;
+    } else if (scene_ == NativeScene::CabMap) {
+        screen.clear({0x00, 0x00, 0x00, 0xFF});
+        constexpr std::int32_t kMapX = 56;
+        constexpr std::int32_t kMapY = 32;
+        constexpr std::int32_t kMapW = 208;
+        constexpr std::int32_t kMapH = 140;
+        screen.fill_rect(kMapX - 2, kMapY - 2, kMapW + 4, kMapH + 4,
+                         {0x10, 0x18, 0x20, 0xFF});
+        if (!field_map_pixels_.empty() && field_map_width_ > 0 &&
+            field_map_height_ > 0) {
+            std::vector<Rgba8> overview(
+                static_cast<std::size_t>(kMapW * kMapH), Rgba8{});
+            for (std::int32_t row = 0; row < kMapH; ++row) {
+                const auto source_y = row * static_cast<std::int32_t>(
+                                                field_map_height_) /
+                                      kMapH;
+                for (std::int32_t column = 0; column < kMapW; ++column) {
+                    const auto source_x = column * static_cast<std::int32_t>(
+                                                       field_map_width_) /
+                                          kMapW;
+                    overview[static_cast<std::size_t>(row * kMapW + column)] =
+                        field_map_pixels_[static_cast<std::size_t>(
+                            source_y * static_cast<std::int32_t>(
+                                           field_map_width_) +
+                            source_x)];
+                }
+            }
+            screen.blit_rgba(kMapX, kMapY, static_cast<std::uint16_t>(kMapW),
+                             static_cast<std::uint16_t>(kMapH), overview);
+            screen.fill_rect(kMapX + kMapW / 2 - 10, kMapY + kMapH / 2 - 8,
+                             20, 16, {0x00, 0x00, 0x00, 0x00});
+            screen.fill_rect(kMapX + kMapW / 2 - 11, kMapY + kMapH / 2 - 9,
+                             22, 2, {0xF0, 0xF0, 0xF0, 0xFF});
+            screen.fill_rect(kMapX + kMapW / 2 - 11, kMapY + kMapH / 2 + 7,
+                             22, 2, {0xF0, 0xF0, 0xF0, 0xFF});
+            screen.fill_rect(kMapX + kMapW / 2 - 11, kMapY + kMapH / 2 - 9,
+                             2, 18, {0xF0, 0xF0, 0xF0, 0xFF});
+            screen.fill_rect(kMapX + kMapW / 2 + 9, kMapY + kMapH / 2 - 9,
+                             2, 18, {0xF0, 0xF0, 0xF0, 0xFF});
+        }
+        write_field_menu_text(screen, 88, 180, "Redmond Barrens");
         screen.present();
         return;
     } else if ((scene_ == NativeScene::Field ||
@@ -4078,6 +4233,28 @@ void NativePortShell::render(ScreenWriter& screen) const {
             // Keep the input seam visible if a ROM is supplied without the
             // reviewed entity descriptor.
             screen.fill_rect(marker_x_, marker_y_, 8, 12, marker_color_);
+        }
+        if (scene_ == NativeScene::Field ||
+            scene_ == NativeScene::FieldDialog) {
+            // 0x17708 sidebar: active runner portrait and empty companion
+            // slots. Capture t1720 puts this strip on the right of the map.
+            const auto hud_x =
+                static_cast<std::int32_t>(kScreenWidth) - kFieldHudWidth;
+            screen.fill_rect(hud_x, 0, kFieldHudWidth, kScreenHeight,
+                             {0x10, 0x08, 0x18, 0xFF});
+            const auto portrait_index =
+                selected_archetype_ < field_menu_runner_portraits_.size()
+                    ? selected_archetype_
+                    : 0U;
+            const auto& hud_portrait =
+                field_menu_runner_portraits_[portrait_index];
+            if (!hud_portrait.pixels.empty()) {
+                screen.blit_rgba(hud_x, 8, hud_portrait.width,
+                                 hud_portrait.height, hud_portrait.pixels);
+            }
+            screen.fill_rect(hud_x + 8, 96, 48, 40, {0x08, 0x04, 0x10, 0xFF});
+            screen.fill_rect(hud_x + 8, 144, 48, 40,
+                             {0x08, 0x04, 0x10, 0xFF});
         }
         if (scene_ == NativeScene::FieldDialog) {
             // The source 0x20E48 callback presents a text interaction over

@@ -21,10 +21,10 @@ void enter_field_from_start(shadowrun::native::NativePortShell& shell) {
     shell.finish_boot();
     shell.update(InputState{button_mask(Button::Start),
                              button_mask(Button::Start)});
-    assert(shell.scene() == NativeScene::Title);
-    shell.update(InputState{});
-    shell.update(InputState{button_mask(Button::Start),
-                             button_mask(Button::Start)});
+    for (int frame = 0; frame < 48 && shell.scene() == NativeScene::Title;
+         ++frame) {
+        shell.update(InputState{});
+    }
     assert(shell.scene() == NativeScene::StartOptions);
     shell.update(InputState{button_mask(Button::A), button_mask(Button::A)});
     assert(shell.scene() == NativeScene::ArchetypeMenu);
@@ -104,15 +104,15 @@ int main() {
     rom_shell.render(screen);
     assert(screen.presented_frames() == 3);
 
-    // The first Start edge settles the title animation; the next edge enters
-    // the source startup-options block. Holding it without a pressed edge
-    // must not repeatedly re-enter or reset the field scene.
+    // 0x1A9E's first Start edge fades via 0x131C into 0x59092. Holding Start
+    // without a pressed edge must not skip the fade or jump to the field.
     rom_shell.update(InputState{button_mask(Button::Start),
                                 button_mask(Button::Start)});
     assert(rom_shell.scene() == NativeScene::Title);
-    rom_shell.update(InputState{});
-    rom_shell.update(InputState{button_mask(Button::Start),
-                                button_mask(Button::Start)});
+    for (int frame = 0; frame < 48 &&
+         rom_shell.scene() == NativeScene::Title; ++frame) {
+        rom_shell.update(InputState{});
+    }
     assert(rom_shell.scene() == NativeScene::StartOptions);
     assert(rom_shell.start_options_selection() == 0);
     rom_shell.update(InputState{button_mask(Button::A),
@@ -164,9 +164,11 @@ int main() {
     decker_shell.finish_boot();
     decker_shell.update(InputState{button_mask(Button::Start),
                                    button_mask(Button::Start)});
-    decker_shell.update(InputState{});
-    decker_shell.update(InputState{button_mask(Button::Start),
-                                   button_mask(Button::Start)});
+    for (int frame = 0; frame < 48 &&
+         decker_shell.scene() == NativeScene::Title; ++frame) {
+        decker_shell.update(InputState{});
+    }
+    assert(decker_shell.scene() == NativeScene::StartOptions);
     decker_shell.update(InputState{button_mask(Button::A),
                                    button_mask(Button::A)});
     press_menu_direction(decker_shell, Button::Down);
@@ -580,8 +582,8 @@ int main() {
     }
     // The source C002 movement vector is 0x28 fixed-point units (2.5
     // pixels), and the angle slew settles on direction two (0x68 walking
-    // state). The runner is outside 0x5A62's strict host-visible x bound.
-    assert(!rom_shell.field_entity_visible());
+    // state). 0x3BAC catches the camera up so the runner stays on-screen.
+    assert(rom_shell.field_entity_visible());
     assert(rom_shell.field_entity_state_selector() == 0x0068);
     // Kind-3's 0x8002 walking lists classify their 0x76F0 source timing word
     // to multiplier 0x0010; the neighboring 0x0300 list word is not the
@@ -589,9 +591,7 @@ int main() {
     assert(rom_shell.field_entity_state_index() == 0);
     assert(rom_shell.field_entity_frame_index() == 0);
     assert(rom_shell.field_world_x() > initial_camera_x);
-    // 0x2B34/0x3074 load FFDDC6/FFDDC8 from the mode descriptor. The
-    // ordinary movement path does not rewrite those camera globals.
-    assert(rom_shell.field_camera_x() == initial_camera_x);
+    assert(rom_shell.field_camera_x() > initial_camera_x);
     rom_shell.render(screen);
     bool rejected = false;
     auto world_at_rejection = std::int32_t{};

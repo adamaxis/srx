@@ -34,7 +34,10 @@ void write_frame(const NativePortShell& shell, const std::filesystem::path& path
 void enter_start_options(NativePortShell& shell) {
     shell.finish_boot();
     press(shell, Button::Start);
-    press(shell, Button::Start);
+    for (int frame = 0; frame < 48 &&
+         shell.scene() == NativeScene::Title; ++frame) {
+        shell.update(InputState{});
+    }
     if (shell.scene() != NativeScene::StartOptions) {
         throw std::runtime_error("failed to enter Start Options");
     }

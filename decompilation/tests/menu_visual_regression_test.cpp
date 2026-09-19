@@ -45,7 +45,10 @@ void press(NativePortShell& shell, Button button) {
 void enter_field(NativePortShell& shell, std::size_t archetype) {
     shell.finish_boot();
     press(shell, Button::Start);
-    press(shell, Button::Start);
+    for (int frame = 0; frame < 48 && shell.scene() == NativeScene::Title;
+         ++frame) {
+        shell.update(InputState{});
+    }
     if (shell.scene() != NativeScene::StartOptions) {
         throw std::runtime_error("title/start-options transition did not match source");
     }

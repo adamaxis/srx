@@ -128,6 +128,7 @@ enum class NativeScene {
     SaveLoad,
     ArchetypeMenu,
     Intro,
+    CabMap,
     Field,
     FieldDialog,
     FieldMenu,
@@ -571,7 +572,11 @@ public:
     bool boot_lightning_visible() const {
         return boot_dd30_ < 0 && boot_dd3c_ == 0 && boot_guy_fade_ == 256U;
     }
-    bool boot_logo_strobe_active() const { return boot_dd3c_ != 0; }
+    // Capture: SEGA shine runs while the guy fades, then the logo holds
+    // static. ROM 0x5D8BA keeps cycling CRAM until the $150 loop ends.
+    bool boot_logo_strobe_active() const {
+        return boot_dd3c_ != 0 && boot_guy_fade_ != 0U;
+    }
     bool boot_fading() const {
         return scene_ == NativeScene::Bootstrap && boot_loop_left_ == 0U &&
                boot_fade_left_ != 0U;
@@ -948,6 +953,8 @@ private:
     void update_save_load(const InputState& input);
     void update_archetype_menu(const InputState& input);
     void update_intro(const InputState& input);
+    void update_cab_map(const InputState& input);
+    void follow_field_camera();
     void update_field_dialog(const InputState& input);
     void open_stoker_motel_dialog();
     void apply_protagonist_archetype();
@@ -1087,9 +1094,10 @@ private:
     // The same 0x59172 save/load handler is reachable from startup and from
     // Pocket Secretary; its return target is different in those two callers.
     bool save_load_from_pocket_secretary_ = false;
-    // An early Start finishes the source title presentation; the following
-    // edge enters the startup-options routine.
-    bool title_skip_requested_ = false;
+    // 0x1A9E breaks on Start once PRESS START is live, then 0x131C fades
+    // into 0x59092. One edge is enough; do not eat the first press as a skip.
+    std::uint16_t title_fade_left_ = 0;
+    std::uint64_t cab_frame_ = 0;
     std::vector<NativeEntityFrame> entity_frames_;
     std::array<NativeFieldAnimation, 8> field_entity_animations_{};
     // Source text routed by the motel interaction callback at ROM 0x20E48.

@@ -37,12 +37,11 @@ void press(NativePortShell& shell, Button button) {
 
 void enter_start_options(NativePortShell& shell) {
     shell.finish_boot();
-    shell.update(InputState{button_mask(Button::Start),
-                            button_mask(Button::Start)});
-    assert(shell.scene() == NativeScene::Title);
-    shell.update(InputState{});
-    shell.update(InputState{button_mask(Button::Start),
-                            button_mask(Button::Start)});
+    press(shell, Button::Start);
+    for (int frame = 0; frame < 48 && shell.scene() == NativeScene::Title;
+         ++frame) {
+        shell.update(InputState{});
+    }
     assert(shell.scene() == NativeScene::StartOptions);
 }
 
@@ -138,9 +137,8 @@ void test_startup_behavior_and_rendering(const std::vector<std::uint8_t>& rom,
     shell.render(screen);
     assert(has_image_pixel(screen, assets.title_background, 0, 0));
 
-    // Bytecode/source evidence: 0x0BF2/0x1A9E consumes the first Start edge
-    // as a title skip; the following edge enters the source 0x59092 options
-    // block. It must not skip directly into New Game.
+    // 0x1A9E breaks on the first Start edge once sampled, then 0x131C fades
+    // into 0x59092. It must not skip directly into New Game.
     enter_start_options(shell);
     assert(shell.start_options_selection() == 0U);
     shell.render(screen);
@@ -188,6 +186,13 @@ void test_startup_behavior_and_rendering(const std::vector<std::uint8_t>& rom,
     assert(has_image_pixel(screen, assets.field_menu_runner_portraits[0],
                            80, 56));
     assert_cursor_at(screen, assets.startup_cursor, 152, 88);
+    press(shell, Button::Down);
+    assert(shell.archetype_selection() == 1U);
+    shell.render(screen);
+    assert(has_image_pixel(screen, assets.field_menu_runner_portraits[1],
+                           80, 56));
+    press(shell, Button::Up);
+    assert(shell.archetype_selection() == 0U);
     press(shell, Button::Up);
     assert(shell.archetype_selection() == 2U);
     press(shell, Button::Down);

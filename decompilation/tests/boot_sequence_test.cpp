@@ -148,6 +148,15 @@ int main() {
             throw std::runtime_error(
                 "0x5D8BA logo strobe phase did not advance");
         }
+        while (shell.scene() == NativeScene::Bootstrap &&
+               shell.boot_logo_strobe_active()) {
+            shell.update(InputState{});
+        }
+        if (shell.scene() == NativeScene::Bootstrap &&
+            shell.boot_logo_strobe_active()) {
+            throw std::runtime_error(
+                "SEGA shine did not stop after the guy fade");
+        }
     }
 
     while (shell.scene() == NativeScene::Bootstrap && !shell.boot_fading()) {

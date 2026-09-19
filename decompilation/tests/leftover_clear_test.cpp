@@ -27,7 +27,10 @@ void press(NativePortShell& shell, Button button) {
 void enter_start_options(NativePortShell& shell) {
     shell.finish_boot();
     press(shell, Button::Start);
-    press(shell, Button::Start);
+    for (int frame = 0; frame < 48 && shell.scene() == NativeScene::Title;
+         ++frame) {
+        shell.update(InputState{});
+    }
     assert(shell.scene() == NativeScene::StartOptions);
 }
 
