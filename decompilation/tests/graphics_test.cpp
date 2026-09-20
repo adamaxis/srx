@@ -387,6 +387,31 @@ int main() {
     }
     assert(field_entity_directions_vary);
 
+    // The field record's +0x11 bit 5 is clear, so its 0x8002 source is
+    // uploaded as raw packed tile bytes. Its +0x2C word selects palette line
+    // one after the 0x172D8A/0x18AC56 field palette composition. Keep this
+    // source check here so the fire/checkerboard regression cannot return.
+    const auto field_raw_frame = decode_genesis_entity_frame(
+        rom, 0x9D6E, 0x3EDC, 0x172D8A, false, 1, true);
+    bool field_frame_matches_raw_source =
+        field_entity_animation.front().width == field_raw_frame.width &&
+        field_entity_animation.front().height == field_raw_frame.height &&
+        field_entity_animation.front().pixels.size() ==
+            field_raw_frame.pixels.size();
+    if (field_frame_matches_raw_source) {
+        for (std::size_t pixel = 0;
+             pixel < field_raw_frame.pixels.size(); ++pixel) {
+            const auto& left = field_entity_animation.front().pixels[pixel];
+            const auto& right = field_raw_frame.pixels[pixel];
+            if (left.red != right.red || left.green != right.green ||
+                left.blue != right.blue || left.alpha != right.alpha) {
+                field_frame_matches_raw_source = false;
+                break;
+            }
+        }
+    }
+    assert(field_frame_matches_raw_source);
+
     const auto field_entity_animations =
         decode_genesis_field_entity_animation_sequences(rom);
     assert(field_entity_animations.size() == 8);

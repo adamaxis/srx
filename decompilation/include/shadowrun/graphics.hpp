@@ -293,15 +293,19 @@ RgbaImage decode_genesis_mode2_field_map(
         GenesisMetatileEncoding::CompressedResource);
 
 // Decode the reviewed 0x8002 entity frame descriptor at ROM 0x9540. ROM
-// 0x3E86 expands the packed source through the nibble table at 0x3EDC and
-// writes the result as column-major Genesis tile data. Extraction bakes the
-// runner's color line into RGBA; a grayscale twin is stored beside it. The
-// native renderer never palette-swaps at runtime.
+// 0x3E86 is conditional: only records with +0x11 bit 5 set expand the source
+// through the nibble table at 0x3EDC. Ordinary field records upload their raw
+// packed tile bytes. Extraction bakes the selected color line into RGBA; a
+// grayscale twin is stored beside it. The native renderer never palette-swaps
+// at runtime.
 RgbaImage decode_genesis_entity_frame(
     const std::vector<std::uint8_t>& rom,
     std::size_t descriptor_offset = 0x9540,
     std::size_t nibble_table_offset = 0x3EDC,
-    std::size_t palette_offset = 0x172D8A);
+    std::size_t palette_offset = 0x172D8A,
+    bool expand_packed_source = true,
+    int palette_line = -1,
+    bool compose_field_palette = false);
 
 // Host luminance copy of a baked RGBA sprite. Used so a grey runner is a
 // second image, not a live CRAM line.

@@ -2776,6 +2776,26 @@ std::array<native::Rgba8, 64> read_genesis_palette_set(
     return palette;
 }
 
+namespace {
+
+std::array<native::Rgba8, 64> read_genesis_field_palette_set(
+    const std::vector<std::uint8_t>& rom, std::size_t first_line_offset) {
+    // 0x1406 loads the setup palette's first line, then field entry 0x2C6C
+    // calls 0x566C2, which replaces the remaining 48 words from 0x18AC56.
+    auto palette = read_genesis_palette_set(rom, first_line_offset);
+    require_bytes(rom.size() - std::min<std::size_t>(0x18AC56U, rom.size()),
+                  48U * 2U, "Genesis field palette tail is truncated");
+    for (std::size_t index = 16U; index < palette.size(); ++index) {
+        palette[index] = decode_genesis_cram_word(
+            read_rom_u16(rom, 0x18AC56U + (index - 16U) * 2U,
+                         "Genesis field palette tail is truncated"),
+            index % 16U == 0U);
+    }
+    return palette;
+}
+
+} // namespace
+
 RgbaImage decode_genesis_field_menu_layer(
     const std::vector<std::uint8_t>& rom, bool inventory_boxes,
     bool startup_crt = false) {
@@ -4044,7 +4064,7 @@ RgbaImage decode_genesis_mode2_field_map(
             rom.data() + pattern_data_offset + tile_index * 32U, 32U));
     }
 
-    const auto palette = read_genesis_palette_set(rom, palette_offset);
+    const auto palette = read_genesis_field_palette_set(rom, palette_offset);
     const auto read_map_word = [&](std::size_t offset,
                                    std::size_t entry_index) {
         const auto word_offset = offset + entry_index * 2U;
@@ -4211,7 +4231,10 @@ RgbaImage decode_genesis_entity_frame(
     const std::vector<std::uint8_t>& rom,
     std::size_t descriptor_offset,
     std::size_t nibble_table_offset,
-    std::size_t palette_offset) {
+    std::size_t palette_offset,
+    bool expand_packed_source,
+    int palette_line,
+    bool compose_field_palette) {
     require_bytes(rom.size() - std::min(descriptor_offset, rom.size()), 0x10U,
                   "Genesis entity frame descriptor is truncated");
     const auto read16 = [&](std::size_t offset, const char* what) {
@@ -4253,13 +4276,19 @@ RgbaImage decode_genesis_entity_frame(
     require_bytes(rom.size() - std::min(nibble_table_offset, rom.size()),
                   16U, "Genesis entity nibble table is truncated");
 
-    // Bake the CRAM line whose USED indices carry runner chroma (red
-    // jacket, skin) into RGBA. Scoring the whole line picked line 3, whose
-    // low indices are still street greys. Store a grayscale twin separately.
-    const auto palette_set = read_genesis_palette_set(rom, palette_offset);
+    // Bake the CRAM line whose USED indices carry runner chroma (red jacket,
+    // skin) into RGBA. The source's 0x3E86 preprocessing is conditional on
+    // record +0x11 bit 5; field Joshua records take the raw-byte path.
+    const auto palette_set = compose_field_palette
+        ? read_genesis_field_palette_set(rom, palette_offset)
+        : read_genesis_palette_set(rom, palette_offset);
     std::vector<std::uint8_t> decoded(length);
     for (std::size_t index = 0; index < length; ++index) {
         const auto packed = rom[source + index];
+        if (!expand_packed_source) {
+            decoded[index] = packed;
+            continue;
+        }
         const auto low = rom[nibble_table_offset + (packed & 0x0FU)];
         const auto high = rom[nibble_table_offset + (packed >> 4U)];
         decoded[index] = static_cast<std::uint8_t>(low | (high << 4U));
@@ -4294,28 +4323,35 @@ RgbaImage decode_genesis_entity_frame(
             }
         }
     }
-    std::size_t sprite_line = 1;
-    int best_chroma = -1;
-    for (std::size_t line = 0; line < 4U; ++line) {
-        int chroma = 0;
-        for (std::size_t index = 1; index < 16U; ++index) {
-            if (used_index[index] == 0) {
-                continue;
-            }
-            const auto& color = palette_set[line * 16U + index];
-            const auto maxc = std::max({color.red, color.green, color.blue});
-            const auto minc = std::min({color.red, color.green, color.blue});
-            chroma += static_cast<int>(maxc - minc);
-            if (static_cast<int>(color.red) >
-                    static_cast<int>(color.green) + 20 &&
-                static_cast<int>(color.red) >
-                    static_cast<int>(color.blue) + 20) {
-                chroma += 80;
-            }
+    std::size_t sprite_line = 1U;
+    if (palette_line >= 0) {
+        if (palette_line >= 4) {
+            throw std::out_of_range("Genesis entity palette line is invalid");
         }
-        if (chroma > best_chroma) {
-            best_chroma = chroma;
-            sprite_line = line;
+        sprite_line = static_cast<std::size_t>(palette_line);
+    } else {
+        int best_chroma = -1;
+        for (std::size_t line = 0; line < 4U; ++line) {
+            int chroma = 0;
+            for (std::size_t index = 1; index < 16U; ++index) {
+                if (used_index[index] == 0) {
+                    continue;
+                }
+                const auto& color = palette_set[line * 16U + index];
+                const auto maxc = std::max({color.red, color.green, color.blue});
+                const auto minc = std::min({color.red, color.green, color.blue});
+                chroma += static_cast<int>(maxc - minc);
+                if (static_cast<int>(color.red) >
+                        static_cast<int>(color.green) + 20 &&
+                    static_cast<int>(color.red) >
+                        static_cast<int>(color.blue) + 20) {
+                    chroma += 80;
+                }
+            }
+            if (chroma > best_chroma) {
+                best_chroma = chroma;
+                sprite_line = line;
+            }
         }
     }
     for (std::size_t dest = 0; dest < indices.size(); ++dest) {
@@ -4403,6 +4439,10 @@ std::vector<RgbaImage> decode_genesis_field_entity_animation(
         entity_state_pointer_table_offset +
             static_cast<std::size_t>(entity_kind) * 4U,
         "Genesis field entity state pointer is truncated"));
+    const auto field_palette_line = static_cast<int>(
+        (read16(entity_record_offset + 0x2CU,
+                "Genesis field entity palette attributes are truncated") >>
+         13U) & 0x03U);
     const auto state_selector = static_cast<std::size_t>(read16(
         entity_record_offset + 0x16U,
         "Genesis field entity state selector is truncated") & 0x7FFFU);
@@ -4453,7 +4493,8 @@ std::vector<RgbaImage> decode_genesis_field_entity_animation(
                 "Genesis field entity does not resolve to an 0x8002 frame");
         }
         frames.push_back(decode_genesis_entity_frame(
-            rom, descriptor, nibble_table_offset, palette_offset));
+            rom, descriptor, nibble_table_offset, palette_offset, false,
+            field_palette_line, true));
     }
     return frames;
 }
@@ -4495,6 +4536,10 @@ decode_genesis_field_entity_animation_sequences(
     const auto source_timing_value = read16(
         first_pointer + 0x00CAU,
         "Genesis field animation timing value is truncated");
+    const auto field_palette_line = static_cast<int>(
+        (read16(entity_record_offset + 0x2CU,
+                "Genesis field entity palette attributes are truncated") >>
+         13U) & 0x03U);
 
     std::vector<GenesisFieldEntityAnimation> animations;
     animations.reserve(state_count);
@@ -4542,7 +4587,8 @@ decode_genesis_field_entity_animation_sequences(
                     "Genesis field walking animation descriptor is invalid");
             }
             animation.frames.push_back(decode_genesis_entity_frame(
-                rom, descriptor, nibble_table_offset, palette_offset));
+                rom, descriptor, nibble_table_offset, palette_offset, false,
+                field_palette_line, true));
         }
         animations.push_back(std::move(animation));
     }
