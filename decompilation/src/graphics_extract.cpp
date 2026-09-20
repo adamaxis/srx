@@ -1,6 +1,7 @@
 #include "shadowrun/graphics.hpp"
 
 #include <algorithm>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
@@ -26,6 +27,222 @@ std::vector<std::uint8_t> read_file(const std::string& path) {
     }
     return std::vector<std::uint8_t>(
         std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
+}
+
+struct CroppedAsset {
+    shadowrun::graphics::RgbaImage image;
+    std::int32_t origin_x = 0;
+    std::int32_t origin_y = 0;
+};
+
+CroppedAsset crop_transparent_bounds(
+    const shadowrun::graphics::RgbaImage& source) {
+    if (source.width == 0 || source.height == 0 || source.pixels.empty()) {
+        throw std::invalid_argument("cannot crop an empty asset");
+    }
+    std::int32_t left = source.width;
+    std::int32_t top = source.height;
+    std::int32_t right = -1;
+    std::int32_t bottom = -1;
+    for (std::int32_t y = 0; y < source.height; ++y) {
+        for (std::int32_t x = 0; x < source.width; ++x) {
+            const auto& pixel = source.pixels[
+                static_cast<std::size_t>(y) * source.width + x];
+            if (pixel.alpha == 0U) {
+                continue;
+            }
+            left = std::min(left, x);
+            top = std::min(top, y);
+            right = std::max(right, x);
+            bottom = std::max(bottom, y);
+        }
+    }
+    if (right < left || bottom < top) {
+        throw std::runtime_error("asset contains no opaque pixels");
+    }
+    CroppedAsset result;
+    result.origin_x = left;
+    result.origin_y = top;
+    result.image.width = static_cast<std::uint16_t>(right - left + 1);
+    result.image.height = static_cast<std::uint16_t>(bottom - top + 1);
+    result.image.pixels.resize(static_cast<std::size_t>(result.image.width) *
+                               result.image.height);
+    for (std::int32_t y = top; y <= bottom; ++y) {
+        for (std::int32_t x = left; x <= right; ++x) {
+            result.image.pixels[
+                static_cast<std::size_t>(y - top) * result.image.width +
+                (x - left)] = source.pixels[
+                    static_cast<std::size_t>(y) * source.width + x];
+        }
+    }
+    return result;
+}
+
+void write_scene_asset(const std::filesystem::path& root,
+                       const std::string& relative_name,
+                       const shadowrun::graphics::RgbaImage& source,
+                       std::ofstream& manifest, bool crop) {
+    const auto asset = crop ? crop_transparent_bounds(source)
+                            : CroppedAsset{source, 0, 0};
+    const auto path = root / relative_name;
+    std::filesystem::create_directories(path.parent_path());
+    shadowrun::graphics::write_bmp32(path.string(), asset.image);
+    manifest << relative_name << '\t' << asset.origin_x << '\t'
+             << asset.origin_y << '\t' << asset.image.width << '\t'
+             << asset.image.height << '\n';
+}
+
+shadowrun::graphics::RgbaImage make_difference_overlay(
+    const shadowrun::graphics::RgbaImage& background,
+    const shadowrun::graphics::RgbaImage& phase) {
+    if (background.width != phase.width || background.height != phase.height ||
+        background.pixels.size() != phase.pixels.size()) {
+        throw std::invalid_argument(
+            "circuit light background and phase dimensions differ");
+    }
+    shadowrun::graphics::RgbaImage overlay{
+        background.width, background.height,
+        std::vector<shadowrun::native::Rgba8>(
+            background.pixels.size(), shadowrun::native::Rgba8{0, 0, 0, 0})};
+    for (std::size_t index = 0; index < phase.pixels.size(); ++index) {
+        if (background.pixels[index].red != phase.pixels[index].red ||
+            background.pixels[index].green != phase.pixels[index].green ||
+            background.pixels[index].blue != phase.pixels[index].blue ||
+            background.pixels[index].alpha != phase.pixels[index].alpha) {
+            auto pixel = phase.pixels[index];
+            pixel.alpha = 255U;
+            overlay.pixels[index] = pixel;
+        }
+    }
+    return overlay;
+}
+
+void write_circuit_light_sprites(
+    const std::filesystem::path& root,
+    const shadowrun::graphics::RgbaImage& background,
+    const std::array<shadowrun::graphics::RgbaImage, 7>& phases,
+    std::ofstream& manifest) {
+    constexpr std::uint16_t kTileSize = 8U;
+    const auto phase_count = phases.size();
+    for (std::size_t phase_index = 0; phase_index < phase_count;
+         ++phase_index) {
+        const auto overlay =
+            make_difference_overlay(background, phases[phase_index]);
+        for (std::uint16_t tile_y = 0; tile_y < background.height;
+             tile_y += kTileSize) {
+            for (std::uint16_t tile_x = 0; tile_x < background.width;
+                 tile_x += kTileSize) {
+                shadowrun::graphics::RgbaImage tile{
+                    kTileSize, kTileSize,
+                    std::vector<shadowrun::native::Rgba8>(
+                        kTileSize * kTileSize,
+                        shadowrun::native::Rgba8{0, 0, 0, 0})};
+                auto has_light = false;
+                for (std::uint16_t y = 0; y < kTileSize; ++y) {
+                    for (std::uint16_t x = 0; x < kTileSize; ++x) {
+                        const auto source_x = tile_x + x;
+                        const auto source_y = tile_y + y;
+                        if (source_x >= overlay.width ||
+                            source_y >= overlay.height) {
+                            continue;
+                        }
+                        const auto pixel = overlay.pixels[
+                            static_cast<std::size_t>(source_y) * overlay.width +
+                            source_x];
+                        tile.pixels[static_cast<std::size_t>(y) * kTileSize +
+                                    x] = pixel;
+                        has_light = has_light || pixel.alpha != 0U;
+                    }
+                }
+                if (!has_light) {
+                    continue;
+                }
+                const auto asset = crop_transparent_bounds(tile);
+                const auto relative_name =
+                    "title/circuit-light-" + std::to_string(phase_index) +
+                    "-" + std::to_string(tile_y / kTileSize) + "-" +
+                    std::to_string(tile_x / kTileSize) + ".bmp";
+                const auto path = root / relative_name;
+                std::filesystem::create_directories(path.parent_path());
+                shadowrun::graphics::write_bmp32(path.string(), asset.image);
+                manifest << relative_name << '\t'
+                         << static_cast<unsigned>(tile_x) + asset.origin_x
+                         << '\t'
+                         << static_cast<unsigned>(tile_y) + asset.origin_y
+                         << '\t' << asset.image.width << '\t'
+                         << asset.image.height << '\n';
+            }
+        }
+    }
+}
+
+void extract_title_boot_assets(const std::vector<std::uint8_t>& rom,
+                               const std::filesystem::path& root) {
+    std::filesystem::create_directories(root);
+    std::ofstream manifest(root / "manifest.tsv", std::ios::binary);
+    if (!manifest) {
+        throw std::runtime_error("cannot create title/boot asset manifest");
+    }
+    manifest << "asset\tx\ty\twidth\theight\n";
+
+    const auto title_background =
+        shadowrun::graphics::decode_genesis_title_background(rom);
+    write_scene_asset(root, "title/background.bmp", title_background,
+                      manifest, false);
+    const auto title_lights =
+        shadowrun::graphics::decode_genesis_title_circuit_lights(rom);
+    for (std::size_t index = 0; index < title_lights.size(); ++index) {
+        std::error_code error;
+        std::filesystem::remove(
+            root / ("title/circuit-light-" + std::to_string(index) +
+                    ".bmp"),
+            error);
+        if (error) {
+            throw std::runtime_error("cannot remove stale circuit light asset");
+        }
+    }
+    write_circuit_light_sprites(root, title_background, title_lights, manifest);
+    write_scene_asset(root, "title/logo.bmp",
+                      shadowrun::graphics::decode_genesis_title_logo_plane(rom),
+                      manifest, true);
+    write_scene_asset(root, "title/text.bmp",
+                      shadowrun::graphics::decode_genesis_title_text(rom),
+                      manifest, true);
+    const auto title_sprites =
+        shadowrun::graphics::decode_genesis_title_sprite_frames(rom);
+    for (std::size_t index = 0; index < title_sprites.size(); ++index) {
+        write_scene_asset(root,
+                          "title/sprite-" + std::to_string(index) + ".bmp",
+                          title_sprites[index], manifest, true);
+    }
+
+    write_scene_asset(root, "boot/snow.bmp",
+                      shadowrun::graphics::decode_genesis_boot_static(rom),
+                      manifest, false);
+    write_scene_asset(root, "boot/sega-background.bmp",
+                      shadowrun::graphics::decode_genesis_boot_background(rom),
+                      manifest, true);
+    write_scene_asset(root, "boot/guy.bmp",
+                      shadowrun::graphics::decode_genesis_boot_guy(rom),
+                      manifest, true);
+    const auto sega = shadowrun::graphics::decode_genesis_boot_sega_frames(rom);
+    for (std::size_t index = 0; index < sega.size(); ++index) {
+        write_scene_asset(root,
+                          "boot/sega-lightning-" + std::to_string(index) +
+                              ".bmp",
+                          sega[index], manifest, true);
+    }
+    const auto strobe =
+        shadowrun::graphics::decode_genesis_boot_logo_strobe(rom);
+    for (std::size_t index = 0; index < strobe.size(); ++index) {
+        write_scene_asset(root,
+                          "boot/sega-strobe-" + std::to_string(index) +
+                              ".bmp",
+                          strobe[index], manifest, true);
+    }
+    write_scene_asset(root, "boot/fasa.bmp",
+                      shadowrun::graphics::decode_genesis_boot_fasa(rom),
+                      manifest, true);
 }
 
 shadowrun::graphics::RgbaImage make_field_entity_state_sheet(
@@ -736,6 +953,18 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
+    if (argc == 4 && std::string(argv[3]) == "--title-boot-assets") {
+        try {
+            const auto rom = read_file(argv[1]);
+            extract_title_boot_assets(rom, argv[2]);
+            std::cout << "individual title/boot assets written to "
+                      << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
     if (argc == 4 && std::string(argv[3]) == "--native-pack") {
         try {
             const auto rom = read_file(argv[1]);
@@ -810,6 +1039,8 @@ int main(int argc, char** argv) {
                      "--field-entity-state <index>\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.srna> "
                      "--native-pack\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <asset-dir> "
+                     "--title-boot-assets\n";
         std::cerr << "numeric offsets accept decimal or 0x-prefixed hex\n";
         return 2;
     }

@@ -4929,14 +4929,12 @@ RgbaImage decode_genesis_title_text_layer(
 RgbaImage decode_genesis_title_background(
     const std::vector<std::uint8_t>& rom) {
     // The circuit field is a separate layer from the logo reveal. Keep it in
-    // the source palette family used by the title background. 0xD29D6 is the
-    // command-screen data/table region, not title CRAM; the title resource
-    // descriptor at 0x1FD8 points the palette mirror at 0x1FF0. The source
-    // 0x1D58 tilemap writer also emits a VDP attribute word; its host plane
-    // priority/palette interpretation remains a comparison item, so keep the
-    // raw decoded map separate from the logo and sprite layers for now.
+    // The 64-word circuit palette begins at 0x1C024; 0x1C064 is its third
+    // line, not the palette-set base. The source 0x1D58 tilemap writer ORs
+    // $4000 into each name word, selecting the green circuit line (line 2).
+    // The separate 0x1FF0 palette belongs to the logo/text resources.
     return decode_genesis_startup_screen(
-        rom, 0x1F310EU, 0x67DF6U, 0x1C064U, 0x0000U);
+        rom, 0x1F310EU, 0x67DF6U, 0x1C024U, 0x4000U);
 }
 
 std::array<RgbaImage, native::kNativeTitleCircuitLightCount>
@@ -4944,7 +4942,7 @@ decode_genesis_title_circuit_lights(const std::vector<std::uint8_t>& rom) {
     std::array<RgbaImage, native::kNativeTitleCircuitLightCount> frames{};
     for (std::size_t phase = 0; phase < frames.size(); ++phase) {
         frames[phase] = decode_genesis_startup_screen(
-            rom, 0x1F310EU, 0x67DF6U, 0x1C064U, 0x0000U,
+            rom, 0x1F310EU, 0x67DF6U, 0x1C024U, 0x4000U,
             static_cast<int>(phase));
     }
     return frames;
@@ -5089,21 +5087,17 @@ RgbaImage decode_genesis_startup_screen(
         // 0x2634: move.w #$C050,VDP_CTRL then eight data words from
         // 0x26F2 + (DF92<<1). CRAM byte $50 is palette index 40.
         constexpr std::size_t kLightTable = 0x26F2U;
-        constexpr std::size_t kLightCramIndex = 40U;
         const auto phase = static_cast<std::size_t>(circuit_light_phase);
         for (std::size_t color = 0; color < 8U; ++color) {
             const auto word = read_rom_u16(
                 rom, kLightTable + (phase + color) * 2U,
                 "Genesis title circuit light table is truncated");
             const auto decoded = decode_genesis_cram_word(word, false);
-            // 0x2634 writes CRAM $50 (line 2, color 8). Circuit tiles may
-            // still carry another line in the name word; bake the chase into
-            // colors 8..15 of every line so the seven host frames actually
-            // differ instead of sitting on a static glow.
-            for (std::size_t line = 0; line < 4U; ++line) {
-                startup.palette[line * 16U + 8U + color] = decoded;
-            }
-            (void)kLightCramIndex;
+            // 0x2634 writes CRAM $50, which is palette line 2, color 8.
+            // Do not copy the live CRAM write into the other three palette
+            // lines: those lines belong to the title logo/text and changing
+            // them makes the extracted circuit frames visually drift.
+            startup.palette[2U * 16U + 8U + color] = decoded;
         }
     }
     require_bytes(rom.size() - std::min(tilemap_stream_offset, rom.size()), 2,
@@ -6567,9 +6561,6 @@ decode_genesis_boot_logo_strobe(const std::vector<std::uint8_t>& rom) {
             strobe.palette[3U + color] = decode_genesis_cram_word(word, false);
         }
         frames[index] = make_transparent_title_layer();
-        for (auto& pixel : frames[index].pixels) {
-            pixel = {0, 0, 0, 255};
-        }
         blit_genesis_name_table(rom, strobe, frames[index], 0x1FFA66U, 12U, 4U,
                                 0xE51AU, 0xE000U, 0, true);
     }
@@ -6578,9 +6569,6 @@ decode_genesis_boot_logo_strobe(const std::vector<std::uint8_t>& rom) {
 
 RgbaImage decode_genesis_boot_fasa(const std::vector<std::uint8_t>& rom) {
     auto image = make_transparent_title_layer();
-    for (auto& pixel : image.pixels) {
-        pixel = {0, 0, 0, 255};
-    }
     const auto boot = decode_genesis_boot_pattern_data(rom);
     // 0x5D886: 16x5 at $E518 from 0x1FFAC6, same tiles as the SEGA 12x4.
     blit_genesis_name_table(rom, boot, image, 0x1FFAC6U, 16U, 5U, 0xE518U,

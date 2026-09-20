@@ -446,8 +446,9 @@ behavior:
 - Title input is now two-stage: the first Start edge settles the source reveal
   and the next edge enters startup options. The transient reveal sprite is
   removed once the source column counter reaches its terminal value. The
-  title background comparison currently uses the dark circuit map at `0x1C064`;
-  frame-by-frame timing and audio still remain to be verified.
+  title background comparison currently uses the 64-word dark circuit palette
+  beginning at `0x1C024`; frame-by-frame timing and audio still remain to be
+  verified.
 - The startup archetype plane is cleared independently from the title plane.
   It now renders the source choices and cursor on black instead of retaining
   the title circuit background.

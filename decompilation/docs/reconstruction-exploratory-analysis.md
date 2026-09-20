@@ -301,8 +301,9 @@ The text resources are written at these source locations:
 ### Confirmed native defect
 
 The title circuit plane and the title palette transition are separate source
-operations. The current host decoder uses the dark circuit-plane palette at
-`0x1C064`, which matches the settled reference background; `0x1FF0` is the
+operations. The current host decoder uses the 64-word dark circuit-plane
+palette beginning at `0x1C024` (`0x1C064` is its third line), which matches the
+settled reference background; `0x1FF0` is the
 64-word target palette consumed by the source transition helper at `0x10D6`,
 not a horizontal-scroll table. The native host currently expands the settled
 plane to RGBA at extraction time, so the exact per-pass palette interpolation

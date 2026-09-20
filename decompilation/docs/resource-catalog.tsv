@@ -1,6 +1,6 @@
 category\thost_artifact\tsource_rom_range\tsource_writer_or_path\tnative_consumers\tstatus
-title\tassets/title/title-static.bmp\t0x1F310E, 0x67DF6, 0x1C064\t0x1A9E -> 0x1D58 -> 0x1E4E\tNativePortShell title renderer; title extractor\textracted; verify animation timing
-title\tassets/title/title-frames\t0x1F310E, 0x67DF6, 0x1C064\t0x1A9E/0x1C6A/0x1DCA/0x1DF6\tNativePortShell title animation\tpartial native port
+title\tassets/title/title-static.bmp\t0x1F310E, 0x67DF6, 0x1C024\t0x1A9E -> 0x1D58 -> 0x1E4E\tNativePortShell title renderer; title extractor\textracted; verify animation timing
+title\tassets/title/title-frames\t0x1F310E, 0x67DF6, 0x1C024\t0x1A9E/0x1C6A/0x1DCA/0x1DF6\tNativePortShell title animation\tpartial native port
 startup\tassets/startup/intro.bmp\t0x5B7D8-0x5BA4C, 0x59C5E\tstartup text and image setup paths\tnative startup scene\textracted; behavior audit pending
 startup\tassets/startup/save-load.bmp\tstartup tables and 0x59C5E\tstartup save/load dispatch\tnative startup scene\textracted; behavior audit pending
 startup\tassets/startup/archetype.bmp\tstartup tables and 0x59C5E\tcharacter creation dispatch\tnative archetype scene\textracted; behavior audit pending

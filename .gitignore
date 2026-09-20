@@ -13,6 +13,11 @@
 /decompilation/assets/**/*.png
 /decompilation/assets/**/*.jpg
 /decompilation/assets/native/*.srna
+!/decompilation/assets/title/
+!/decompilation/assets/title/**/*.bmp
+!/decompilation/assets/boot/
+!/decompilation/assets/boot/**/*.bmp
+!/decompilation/assets/manifest.tsv
 
 # Local screenshot and raw listing diagnostics are disposable analysis output,
 # not reconstructed game resources or source.
