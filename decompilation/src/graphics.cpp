@@ -42,6 +42,12 @@ std::uint32_t read_rom_u32(const std::vector<std::uint8_t>& rom,
            static_cast<std::uint32_t>(rom[offset + 3U]);
 }
 
+RgbaImage decode_genesis_intro_aircraft_plane_a_impl(
+    const std::vector<std::uint8_t>& rom);
+std::array<RgbaImage, native::kNativeIntroAircraftMovementFrameCount>
+decode_genesis_intro_aircraft_movement_frames_impl(
+    const std::vector<std::uint8_t>& rom);
+
 void write_u16(std::ostream& output, std::uint16_t value) {
     output.put(static_cast<char>(value & 0xFFU));
     output.put(static_cast<char>((value >> 8U) & 0xFFU));
@@ -817,12 +823,43 @@ native::NativePortAssets decode_genesis_native_assets(
             intro_stages[index].width, intro_stages[index].height,
             intro_stages[index].pixels};
     }
+    const auto intro_wilderness_pan =
+        decode_genesis_intro_wilderness_pan_frames(rom);
+    for (std::size_t index = 0; index < intro_wilderness_pan.size(); ++index) {
+        assets.intro_wilderness_pan_frames[index] = {
+            intro_wilderness_pan[index].width,
+            intro_wilderness_pan[index].height,
+            intro_wilderness_pan[index].pixels};
+    }
+    const auto intro_ambush = decode_genesis_intro_ambush_frames(rom);
+    for (std::size_t index = 0; index < intro_ambush.size(); ++index) {
+        assets.intro_ambush_frames[index] = {
+            intro_ambush[index].width, intro_ambush[index].height,
+            intro_ambush[index].pixels};
+    }
     const auto intro_heli = decode_genesis_intro_heli_frames(rom);
     for (std::size_t index = 0; index < intro_heli.size(); ++index) {
         assets.intro_heli_frames[index] = {
             intro_heli[index].width, intro_heli[index].height,
             intro_heli[index].pixels};
     }
+    const auto intro_aircraft_plane_a =
+        decode_genesis_intro_aircraft_plane_a_impl(rom);
+    assets.intro_aircraft_plane_a = {
+        intro_aircraft_plane_a.width, intro_aircraft_plane_a.height,
+        intro_aircraft_plane_a.pixels};
+    const auto intro_aircraft_movement =
+        decode_genesis_intro_aircraft_movement_frames_impl(rom);
+    for (std::size_t index = 0; index < intro_aircraft_movement.size();
+         ++index) {
+        assets.intro_aircraft_movement_frames[index] = {
+            intro_aircraft_movement[index].width,
+            intro_aircraft_movement[index].height,
+            intro_aircraft_movement[index].pixels};
+    }
+    const auto cab_map = decode_genesis_cab_map(rom);
+    assets.cab_map = {
+        cab_map.width, cab_map.height, std::move(cab_map.pixels)};
     const auto field_hud = decode_genesis_field_hud(rom);
     assets.field_hud = {
         field_hud.width, field_hud.height, field_hud.pixels};
@@ -835,6 +872,12 @@ native::NativePortAssets decode_genesis_native_assets(
     assets.field_menu_background = {
         field_menu_background.width, field_menu_background.height,
         std::move(field_menu_background.pixels)};
+    auto field_menu_attributes_background =
+        decode_genesis_field_menu_attributes_background(rom);
+    assets.field_menu_attributes_background = {
+        field_menu_attributes_background.width,
+        field_menu_attributes_background.height,
+        std::move(field_menu_attributes_background.pixels)};
     auto startup_background = decode_genesis_startup_background(rom);
     assets.startup_background = {
         startup_background.width, startup_background.height,
@@ -878,6 +921,22 @@ native::NativePortAssets decode_genesis_native_assets(
             command_focus[index].width, command_focus[index].height,
             command_focus[index].pixels};
     }
+    const auto clips_focus = decode_genesis_field_menu_clips_focus(rom);
+    for (std::size_t index = 0; index < clips_focus.size(); ++index) {
+        assets.field_menu_clips_focus[index] = {
+            clips_focus[index].width, clips_focus[index].height,
+            clips_focus[index].pixels};
+    }
+    const auto clips_trade_focus =
+        decode_genesis_field_menu_clips_trade_focus(rom);
+    for (std::size_t index = 0; index < clips_trade_focus.size(); ++index) {
+        assets.field_menu_clips_trade_focus[index] = {
+            clips_trade_focus[index].width, clips_trade_focus[index].height,
+            clips_trade_focus[index].pixels};
+    }
+    const auto posture_focus = decode_genesis_field_menu_posture_focus(rom);
+    assets.field_menu_posture_focus = {
+        posture_focus.width, posture_focus.height, posture_focus.pixels};
     const auto field_menu_cursor = decode_genesis_field_menu_cursor(rom);
     assets.field_menu_cursor = {
         field_menu_cursor.width, field_menu_cursor.height,
@@ -1081,10 +1140,12 @@ native::NativePortAssets decode_genesis_native_assets(
         destination.attribute_skill_auxiliary = source.attribute_skill_auxiliary;
     };
     assets.inventory_items = read_genesis_inventory_catalog(rom);
+    std::array<GenesisFieldEntityTemplate, 3> hud_records{};
     for (std::size_t index = 0;
          index < assets.protagonist_archetype_records.size(); ++index) {
         const auto archetype_source = read_genesis_field_entity_template(
             rom, 0x7291AU + index * 0x100U);
+        hud_records[index] = archetype_source;
         auto& archetype = assets.protagonist_archetype_records[index];
         copy_entity_data(archetype_source, archetype);
         archetype.record_index = 0;
@@ -1113,6 +1174,26 @@ native::NativePortAssets decode_genesis_native_assets(
             archetype.weapons_bar_index = rom[armor_offset + 0x26U];
             archetype.guns_bar_index = rom[armor_offset + 0x25U];
         }
+    }
+    const auto field_hud_layers = decode_genesis_field_hud_layers(
+        rom, hud_records);
+    for (std::size_t index = 0; index < hud_records.size(); ++index) {
+        assets.field_hud_faces[index] = {
+            field_hud_layers.faces[index].width,
+            field_hud_layers.faces[index].height,
+            field_hud_layers.faces[index].pixels};
+        assets.field_hud_item_blocks[index] = {
+            field_hud_layers.item_blocks[index].width,
+            field_hud_layers.item_blocks[index].height,
+            field_hud_layers.item_blocks[index].pixels};
+        assets.field_hud_vertical_counters[index] = {
+            field_hud_layers.vertical_counters[index].width,
+            field_hud_layers.vertical_counters[index].height,
+            field_hud_layers.vertical_counters[index].pixels};
+        assets.field_hud_horizontal_counters[index] = {
+            field_hud_layers.horizontal_counters[index].width,
+            field_hud_layers.horizontal_counters[index].height,
+            field_hud_layers.horizontal_counters[index].pixels};
     }
     assets.entity_template = assets.protagonist_archetype_records[0];
     // New Game starts with Joshua only. The remaining runtime slots are
@@ -1186,7 +1267,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 42);
+    write_u16(output, 49);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     for (const auto& title_frame : assets.title_animation_frames) {
@@ -1202,6 +1283,7 @@ void write_native_asset_pack(const std::string& path,
         write_native_image(output, title_sprite);
     }
     write_native_image(output, assets.field_menu_background);
+    write_native_image(output, assets.field_menu_attributes_background);
     write_native_image(output, assets.field_menu_inventory_boxes);
     write_native_image(output, assets.field_menu_font);
     write_native_image(output, assets.startup_font);
@@ -1231,6 +1313,13 @@ void write_native_asset_pack(const std::string& path,
     for (const auto& command_focus : assets.field_menu_command_focus) {
         write_native_image(output, command_focus);
     }
+    for (const auto& focus : assets.field_menu_clips_focus) {
+        write_native_image(output, focus);
+    }
+    for (const auto& focus : assets.field_menu_clips_trade_focus) {
+        write_native_image(output, focus);
+    }
+    write_native_image(output, assets.field_menu_posture_focus);
     write_native_image(output, assets.field_menu_cursor);
     for (const auto& item_art : assets.field_menu_item_art) {
         write_native_image(output, item_art);
@@ -1594,13 +1683,36 @@ void write_native_asset_pack(const std::string& path,
     for (const auto& stage : assets.intro_stages) {
         write_native_image(output, stage);
     }
+    for (const auto& frame : assets.intro_wilderness_pan_frames) {
+        write_native_image(output, frame);
+    }
+    for (const auto& frame : assets.intro_ambush_frames) {
+        write_native_image(output, frame);
+    }
     write_native_image(output, assets.boot_fasa);
     write_native_image(output, assets.startup_background);
     for (const auto& heli : assets.intro_heli_frames) {
         write_native_image(output, heli);
     }
+    write_native_image(output, assets.intro_aircraft_plane_a);
+    for (const auto& movement : assets.intro_aircraft_movement_frames) {
+        write_native_image(output, movement);
+    }
     write_native_image(output, assets.field_hud);
+    for (const auto& face : assets.field_hud_faces) {
+        write_native_image(output, face);
+    }
+    for (const auto& item : assets.field_hud_item_blocks) {
+        write_native_image(output, item);
+    }
+    for (const auto& counter : assets.field_hud_vertical_counters) {
+        write_native_image(output, counter);
+    }
+    for (const auto& counter : assets.field_hud_horizontal_counters) {
+        write_native_image(output, counter);
+    }
     write_native_image(output, assets.pocket_secretary_background);
+    write_native_image(output, assets.cab_map);
     if (!output) {
         throw std::runtime_error("failed writing native asset pack: " + path);
     }
@@ -1616,7 +1728,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 42U)) {
+        (version < 2U || version > 49U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -1643,6 +1755,9 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     }
     if (version >= 11U) {
         assets.field_menu_background = read_native_image(input);
+        if (version >= 48U) {
+            assets.field_menu_attributes_background = read_native_image(input);
+        }
         assets.field_menu_inventory_boxes = read_native_image(input);
         assets.field_menu_font = read_native_image(input);
         if (version >= 18U) {
@@ -1679,6 +1794,15 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
                     for (auto& command_focus : assets.field_menu_command_focus) {
                         command_focus = read_native_image(input);
                     }
+                }
+                if (version >= 47U) {
+                    for (auto& focus : assets.field_menu_clips_focus) {
+                        focus = read_native_image(input);
+                    }
+                    for (auto& focus : assets.field_menu_clips_trade_focus) {
+                        focus = read_native_image(input);
+                    }
+                    assets.field_menu_posture_focus = read_native_image(input);
                 }
                 if (version >= 15U) {
                     assets.field_menu_cursor = read_native_image(input);
@@ -2332,6 +2456,16 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
             stage = read_native_image(input);
         }
     }
+    if (version >= 46U) {
+        for (auto& frame : assets.intro_wilderness_pan_frames) {
+            frame = read_native_image(input);
+        }
+    }
+    if (version >= 45U) {
+        for (auto& frame : assets.intro_ambush_frames) {
+            frame = read_native_image(input);
+        }
+    }
     if (version >= 39U) {
         assets.boot_fasa = read_native_image(input);
         assets.startup_background = read_native_image(input);
@@ -2341,11 +2475,34 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
             heli = read_native_image(input);
         }
     }
+    if (version >= 49U) {
+        assets.intro_aircraft_plane_a = read_native_image(input);
+        for (auto& movement : assets.intro_aircraft_movement_frames) {
+            movement = read_native_image(input);
+        }
+    }
     if (version >= 41U) {
         assets.field_hud = read_native_image(input);
     }
+    if (version >= 43U) {
+        for (auto& face : assets.field_hud_faces) {
+            face = read_native_image(input);
+        }
+        for (auto& item : assets.field_hud_item_blocks) {
+            item = read_native_image(input);
+        }
+        for (auto& counter : assets.field_hud_vertical_counters) {
+            counter = read_native_image(input);
+        }
+        for (auto& counter : assets.field_hud_horizontal_counters) {
+            counter = read_native_image(input);
+        }
+    }
     if (version >= 42U) {
         assets.pocket_secretary_background = read_native_image(input);
+    }
+    if (version >= 44U) {
+        assets.cab_map = read_native_image(input);
     }
     fill_grayscale_entity_assets(assets);
     return assets;
@@ -2424,8 +2581,13 @@ IndexedTile decode_genesis_tile(const std::uint8_t* source,
     return tile;
 }
 
-std::vector<std::uint8_t> decode_genesis_resource_stream(
-    const std::vector<std::uint8_t>& rom, std::size_t source_offset) {
+struct GenesisResourceDecoderState {
+    std::array<std::uint8_t, 0x800> ring{};
+};
+
+std::vector<std::uint8_t> decode_genesis_resource_stream_with_state(
+    const std::vector<std::uint8_t>& rom, std::size_t source_offset,
+    GenesisResourceDecoderState& state) {
     if (source_offset > rom.size() || rom.size() - source_offset < 2U) {
         throw std::out_of_range("Genesis resource stream is truncated");
     }
@@ -2434,7 +2596,7 @@ std::vector<std::uint8_t> decode_genesis_resource_stream(
         rom[source_offset + 1U]);
     auto source = source_offset + 2U;
     auto remaining = initial_counter;
-    std::array<std::uint8_t, 0x800> ring{};
+    auto& ring = state.ring;
     std::uint16_t ring_index = 0;
     std::uint8_t control = 0;
     std::uint16_t control_bits_remaining = 1;
@@ -2498,14 +2660,23 @@ std::vector<std::uint8_t> decode_genesis_resource_stream(
     return output;
 }
 
-void write_genesis_1530_vram(
+std::vector<std::uint8_t> decode_genesis_resource_stream(
+    const std::vector<std::uint8_t>& rom, std::size_t source_offset) {
+    GenesisResourceDecoderState state;
+    return decode_genesis_resource_stream_with_state(rom, source_offset,
+                                                     state);
+}
+
+void write_genesis_1530_vram_with_state(
     const std::vector<std::uint8_t>& rom, std::size_t source_offset,
-    std::size_t target_offset, std::vector<std::uint8_t>& vram) {
+    std::size_t target_offset, std::vector<std::uint8_t>& vram,
+    GenesisResourceDecoderState& state) {
     constexpr std::size_t kVramSize = 0x10000U;
     if (vram.size() != kVramSize) {
         throw std::invalid_argument("Genesis VDP buffer has invalid size");
     }
-    const auto bytes = decode_genesis_resource_stream(rom, source_offset);
+    const auto bytes = decode_genesis_resource_stream_with_state(
+        rom, source_offset, state);
     const auto counter = read_rom_u16(
         rom, source_offset, "Genesis 0x1530 resource stream is truncated");
     // The decompressor emits bytes into the 0x800-byte overlap ring, but the
@@ -2535,6 +2706,14 @@ void write_genesis_1530_vram(
         }
         d2 = static_cast<std::uint16_t>(d2 - 1U);
     }
+}
+
+void write_genesis_1530_vram(
+    const std::vector<std::uint8_t>& rom, std::size_t source_offset,
+    std::size_t target_offset, std::vector<std::uint8_t>& vram) {
+    GenesisResourceDecoderState state;
+    write_genesis_1530_vram_with_state(rom, source_offset, target_offset, vram,
+                                       state);
 }
 
 std::vector<std::uint8_t> decode_genesis_1530_vram(
@@ -2750,6 +2929,116 @@ RgbaImage decode_genesis_field_menu_layer(
 RgbaImage decode_genesis_field_menu_background(
     const std::vector<std::uint8_t>& rom) {
     return decode_genesis_field_menu_layer(rom, false);
+}
+
+RgbaImage decode_genesis_field_menu_attributes_background(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kPatternStreamOffset = 0xCAB0CU;
+    constexpr std::size_t kPatternVramOffset = 0x1E20U;
+    constexpr std::size_t kNameTableColumns = 64U;
+    constexpr std::size_t kNameTableRows = 32U;
+    constexpr std::size_t kVisibleColumns = 40U;
+    constexpr std::size_t kVisibleRows = 28U;
+    constexpr std::size_t kNameTableRowStride = 0x80U;
+
+    // 0xD01C reaches 0x10C96, whose seven 0x1232 calls paint a different
+    // frame from the ordinary command-screen initializer at 0x10F50.
+    const auto pattern_vram = decode_genesis_1530_vram(
+        rom, kPatternStreamOffset, kPatternVramOffset);
+    std::array<std::uint16_t, kNameTableColumns * kNameTableRows>
+        name_table{};
+    std::array<bool, kNameTableColumns * kNameTableRows> written{};
+    const auto write_block = [&](std::size_t source_offset,
+                                 std::uint16_t vdp_address,
+                                 std::size_t width, std::size_t height) {
+        if (width == 0U || height == 0U || source_offset > rom.size() ||
+            width * height > (rom.size() - source_offset) / 2U) {
+            throw std::out_of_range(
+                "Genesis attributes name-table block is truncated");
+        }
+        const auto table_byte_offset = static_cast<std::size_t>(vdp_address) -
+            0xE000U;
+        if (table_byte_offset % 2U != 0U ||
+            table_byte_offset / 2U >= name_table.size()) {
+            throw std::out_of_range(
+                "Genesis attributes name-table address is invalid");
+        }
+        const auto first_column =
+            (table_byte_offset % kNameTableRowStride) / 2U;
+        const auto first_row = table_byte_offset / kNameTableRowStride;
+        if (first_column + width > kNameTableColumns ||
+            first_row + height > kNameTableRows) {
+            throw std::out_of_range(
+                "Genesis attributes name-table block exceeds VDP plane");
+        }
+        for (std::size_t row = 0; row < height; ++row) {
+            for (std::size_t column = 0; column < width; ++column) {
+                const auto source = source_offset +
+                    (row * width + column) * 2U;
+                const auto word = static_cast<std::uint16_t>(
+                    (static_cast<std::uint16_t>(rom[source]) << 8U) |
+                    rom[source + 1U]);
+                const auto table_index =
+                    (first_row + row) * kNameTableColumns +
+                    first_column + column;
+                name_table[table_index] = word;
+                written[table_index] = true;
+            }
+        }
+    };
+
+    // 0x10C96 literals, in VDP order. The first two blocks form the upper
+    // panes, the next two are the side rails, and the last three are the
+    // horizontal dividers surrounding the six skill rows.
+    write_block(0xCE850U, 0xE000U, 20U, 7U);
+    write_block(0xCE968U, 0xE028U, 20U, 7U);
+    write_block(0xCEA80U, 0xE380U, 2U, 21U);
+    write_block(0xCEAD4U, 0xE3CCU, 2U, 21U);
+    write_block(0xCEB28U, 0xE584U, 36U, 2U);
+    write_block(0xCEBB8U, 0xE984U, 36U, 2U);
+    write_block(0xCEC48U, 0xED04U, 36U, 2U);
+
+    const auto palette = read_genesis_palette(rom, 0xD29D6U);
+    RgbaImage image{
+        static_cast<std::uint16_t>(kVisibleColumns * 8U),
+        static_cast<std::uint16_t>(kVisibleRows * 8U),
+        std::vector<native::Rgba8>(
+            kVisibleColumns * kVisibleRows * 64U,
+            native::Rgba8{0, 0, 0, 255}),
+    };
+    for (std::size_t row = 0; row < kVisibleRows; ++row) {
+        for (std::size_t column = 0; column < kVisibleColumns; ++column) {
+            const auto table_index = row * kNameTableColumns + column;
+            if (!written[table_index]) {
+                continue;
+            }
+            const auto name_word = name_table[table_index];
+            const auto tile_index = static_cast<std::size_t>(
+                name_word & 0x07FFU);
+            if (tile_index * 32U + 32U > pattern_vram.size()) {
+                throw std::out_of_range(
+                    "Genesis attributes name-table tile is truncated");
+            }
+            const auto tile = decode_genesis_tile(
+                pattern_vram.data() + tile_index * 32U, 32U);
+            const auto palette_line = static_cast<std::size_t>(
+                (name_word >> 13U) & 0x03U);
+            for (std::size_t pixel_y = 0; pixel_y < 8U; ++pixel_y) {
+                for (std::size_t pixel_x = 0; pixel_x < 8U; ++pixel_x) {
+                    const auto source_x = (name_word & 0x0800U) != 0U
+                        ? 7U - pixel_x : pixel_x;
+                    const auto source_y = (name_word & 0x1000U) != 0U
+                        ? 7U - pixel_y : pixel_y;
+                    auto color = palette[palette_line * 16U +
+                        tile.pixels[source_y * 8U + source_x]];
+                    color.alpha = 255U;
+                    image.pixels[(row * 8U + pixel_y) * image.width +
+                                 column * 8U + pixel_x] = color;
+                }
+            }
+        }
+    }
+    return image;
 }
 
 RgbaImage decode_genesis_startup_background(
@@ -3093,6 +3382,68 @@ std::array<RgbaImage, 5> decode_genesis_field_menu_command_focus(
         for (auto& pixel : focus[index].pixels) {
             pixel.alpha = 255U;
         }
+    }
+    return focus;
+}
+
+namespace {
+
+std::array<RgbaImage, 4> decode_genesis_field_menu_focus_table(
+    const std::vector<std::uint8_t>& rom, std::size_t table_offset,
+    const char* error_prefix) {
+    constexpr std::size_t kPatternStreamOffset = 0xCAB0CU;
+    constexpr std::size_t kPatternVramOffset = 0x1E20U;
+    constexpr std::size_t kFocusCount = 4U;
+    constexpr std::size_t kFocusWidth = 2U;
+    constexpr std::size_t kFocusHeight = 2U;
+    const auto pattern_vram = decode_genesis_1530_vram(
+        rom, kPatternStreamOffset, kPatternVramOffset);
+    const auto palette = read_genesis_command_palette_set(rom);
+    std::array<RgbaImage, kFocusCount> focus{};
+    for (std::size_t index = 0; index < focus.size(); ++index) {
+        focus[index] = decode_genesis_menu_name_table_block(
+            rom, pattern_vram,
+            table_offset + index * kFocusWidth * kFocusHeight * 2U,
+            kFocusWidth, kFocusHeight, palette);
+        for (auto& pixel : focus[index].pixels) {
+            pixel.alpha = 255U;
+        }
+    }
+    static_cast<void>(error_prefix);
+    return focus;
+}
+
+} // namespace
+
+std::array<RgbaImage, 4> decode_genesis_field_menu_clips_focus(
+    const std::vector<std::uint8_t>& rom) {
+    // 0x11B58 passes CD43A to 0x11454 for Reload/Trade/Distribute/Cancel.
+    return decode_genesis_field_menu_focus_table(rom, 0xCD43AU,
+                                                 "Genesis Clips focus table");
+}
+
+std::array<RgbaImage, 4> decode_genesis_field_menu_clips_trade_focus(
+    const std::vector<std::uint8_t>& rom) {
+    // 0x11E7E passes CD45A to the same writer for the nested trade actions.
+    return decode_genesis_field_menu_focus_table(
+        rom, 0xCD45AU, "Genesis Clips trade focus table");
+}
+
+RgbaImage decode_genesis_field_menu_posture_focus(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kPatternStreamOffset = 0xCAB0CU;
+    constexpr std::size_t kPatternVramOffset = 0x1E20U;
+    constexpr std::size_t kFocusTableOffset = 0xCD514U;
+    constexpr std::size_t kFocusWidth = 6U;
+    constexpr std::size_t kFocusHeight = 1U;
+    const auto pattern_vram = decode_genesis_1530_vram(
+        rom, kPatternStreamOffset, kPatternVramOffset);
+    const auto palette = read_genesis_command_palette_set(rom);
+    auto focus = decode_genesis_menu_name_table_block(
+        rom, pattern_vram, kFocusTableOffset, kFocusWidth, kFocusHeight,
+        palette);
+    for (auto& pixel : focus.pixels) {
+        pixel.alpha = 255U;
     }
     return focus;
 }
@@ -4345,7 +4696,7 @@ void draw_genesis_startup_sprite_list(
 
         // 0x1378: SAT X = D1 + list X, SAT Y = D2 + list Y. VDP origin is
         // $80 on both axes. Size byte is Genesis width-in-bits-2..3 /
-        // height-in-bits-0..1; tiles run column-major.
+        // height-in-bits-0..1; sprite pattern numbers advance column-major.
         constexpr std::int32_t kSpriteXOrigin = 0x80;
         const auto screen_x =
             static_cast<std::int32_t>(static_cast<std::int16_t>(source_x)) +
@@ -4486,14 +4837,18 @@ void draw_genesis_startup_logo_plane(
 
 namespace {
 
-RgbaImage make_transparent_title_layer() {
+RgbaImage make_transparent_layer(std::uint16_t width,
+                                 std::uint16_t height) {
     return {
-        native::kScreenWidth, native::kScreenHeight,
+        width, height,
         std::vector<native::Rgba8>(
-            static_cast<std::size_t>(native::kScreenWidth) *
-                native::kScreenHeight,
+            static_cast<std::size_t>(width) * height,
             native::Rgba8{0, 0, 0, 0}),
     };
+}
+
+RgbaImage make_transparent_title_layer() {
+    return make_transparent_layer(native::kScreenWidth, native::kScreenHeight);
 }
 
 RgbaImage decode_genesis_title_text_layer(
@@ -4741,7 +5096,7 @@ RgbaImage decode_genesis_startup_screen(
         // N+1 cells. Literal tokens at 0x178C use BGT and stay N (or 1
         // when N is 0). 0x1D58 clears D3, so every generated cell is
         // written.
-        const auto run_length = count + 1U;
+        const auto run_length = std::max<unsigned>(count, 1U);
         for (unsigned index = 0; index < run_length; ++index) {
             ++generated_count;
             emit(value);
@@ -4947,7 +5302,8 @@ void blit_genesis_name_table(
     RgbaImage& image, std::size_t map_offset, std::size_t columns,
     std::size_t rows, std::uint32_t dest_vram, std::uint32_t plane_base,
     std::uint16_t attr_or, bool transparent_zero,
-    std::int32_t dest_y_adjust = 0) {
+    std::int32_t dest_y_adjust = 0, bool wrap_horizontal = false,
+    std::int32_t dest_x_adjust = 0) {
     const auto plane_offset = dest_vram - plane_base;
     const auto start_tile_x = (plane_offset % 0x80U) / 2U;
     const auto start_tile_y = plane_offset / 0x80U;
@@ -4963,9 +5319,11 @@ void blit_genesis_name_table(
                 static_cast<std::size_t>((word >> 13U) & 0x03U);
             const auto hflip = (word & 0x0800U) != 0;
             const auto vflip = (word & 0x1000U) != 0;
+            const auto screen_tile_x = wrap_horizontal
+                ? (start_tile_x + col) % 64U : start_tile_x + col;
             blit_genesis_tile(
                 image, boot, tile_index, palette_line, hflip, vflip,
-                static_cast<std::int32_t>((start_tile_x + col) * 8U),
+                static_cast<std::int32_t>(screen_tile_x * 8U) + dest_x_adjust,
                 static_cast<std::int32_t>((start_tile_y + row) * 8U) +
                     dest_y_adjust,
                 transparent_zero);
@@ -5032,7 +5390,8 @@ void blit_genesis_1728_name_table(
     RgbaImage& image, std::size_t map_offset, std::size_t columns,
     std::size_t rows, std::uint32_t dest_vram, std::uint32_t plane_base,
     std::uint16_t attr_or, bool transparent_zero,
-    std::int32_t dest_y_adjust = 0) {
+    std::int32_t dest_y_adjust = 0, bool wrap_horizontal = false,
+    std::int32_t dest_x_adjust = 0) {
     if (columns == 0U || rows == 0U) {
         throw std::invalid_argument("Genesis 0x1728 map dimensions are invalid");
     }
@@ -5124,9 +5483,11 @@ void blit_genesis_1728_name_table(
                 static_cast<std::size_t>((word >> 13U) & 0x03U);
             const auto hflip = (word & 0x0800U) != 0;
             const auto vflip = (word & 0x1000U) != 0;
+            const auto screen_tile_x = wrap_horizontal
+                ? (start_tile_x + col) % 64U : start_tile_x + col;
             blit_genesis_tile(
                 image, scene, tile_index, palette_line, hflip, vflip,
-                static_cast<std::int32_t>((start_tile_x + col) * 8U),
+                static_cast<std::int32_t>(screen_tile_x * 8U) + dest_x_adjust,
                 static_cast<std::int32_t>((start_tile_y + row) * 8U) +
                     dest_y_adjust,
                 transparent_zero);
@@ -5146,6 +5507,10 @@ void load_genesis_1406_patterns(const std::vector<std::uint8_t>& rom,
                                 std::size_t descriptor,
                                 GenesisBootPatternData& scene,
                                 std::size_t& map_list_offset) {
+    // 0x1406 keeps the 0x1530 overlap buffer at $FF9700 alive while it
+    // uploads each consecutive compressed pattern block. The aircraft block
+    // at 0x1E8910 uses back-references into the preceding 0x1E6956 upload.
+    GenesisResourceDecoderState decoder_state;
     auto offset = descriptor + 0x10U;
     while (true) {
         const auto source = read_rom_u32(
@@ -5161,9 +5526,10 @@ void load_genesis_1406_patterns(const std::vector<std::uint8_t>& rom,
             rom, offset, "Genesis 0x1406 pattern list is truncated");
         offset += 4U;
         if ((source & 1U) != 0U) {
-            write_genesis_1530_vram(
+            write_genesis_1530_vram_with_state(
                 rom, static_cast<std::size_t>(source & ~1U),
-                static_cast<std::size_t>(dest & 0xFFFFU), scene.pattern_vram);
+                static_cast<std::size_t>(dest & 0xFFFFU), scene.pattern_vram,
+                decoder_state);
         } else {
             write_genesis_f5c_vram(
                 rom, static_cast<std::size_t>(source),
@@ -5178,7 +5544,19 @@ void blit_genesis_1406_maps(const std::vector<std::uint8_t>& rom,
                             const GenesisBootPatternData& scene,
                             RgbaImage& image, std::size_t map_list_offset,
                             std::uint16_t plane_a, std::uint16_t plane_b,
-                            std::int32_t plane_b_vscroll = 0) {
+                            std::int32_t plane_b_vscroll = 0,
+                            std::int32_t plane_a_xscroll = 0,
+                            bool draw_plane_a = true,
+                            bool draw_plane_b = true) {
+    struct MapEntry {
+        std::uint32_t source;
+        std::uint32_t dest;
+        std::size_t columns;
+        std::size_t rows;
+        std::uint16_t attr;
+        bool transparent;
+    };
+    std::vector<MapEntry> maps;
     auto offset = map_list_offset;
     auto first_map = true;
     while (true) {
@@ -5202,27 +5580,44 @@ void blit_genesis_1406_maps(const std::vector<std::uint8_t>& rom,
         const auto attr = read_rom_u16(
             rom, offset, "Genesis 0x1406 map list is truncated");
         offset += 2U;
-        const auto plane = plane_base_for_dest(plane_a, plane_b, dest);
-        const auto transparent = !first_map;
-        const auto y_adjust =
-            plane == plane_b ? -plane_b_vscroll : 0;
-        if ((source & 1U) != 0U) {
+        maps.push_back({source, dest, columns, rows, attr, !first_map});
+        first_map = false;
+    }
+    // 0x1406 lists Plane A before Plane B, but Genesis draws Plane B first
+    // and Plane A over it. The ending descriptor's 27x8 Plane-A map is the
+    // vehicle; drawing the list in source order hid it under the skyline.
+    for (auto map = maps.rbegin(); map != maps.rend(); ++map) {
+        const auto plane = plane_base_for_dest(
+            plane_a, plane_b, static_cast<std::uint32_t>(map->dest));
+        if ((plane == plane_a && !draw_plane_a) ||
+            (plane == plane_b && !draw_plane_b)) {
+            continue;
+        }
+        const auto y_adjust = plane == plane_b ? -plane_b_vscroll : 0;
+        const auto x_adjust = plane == plane_a ? -plane_a_xscroll : 0;
+        if ((map->source & 1U) != 0U) {
             blit_genesis_1728_name_table(
-                rom, scene, image, static_cast<std::size_t>(source & ~1U),
-                columns, rows, dest, plane, attr, transparent, y_adjust);
+                rom, scene, image,
+                static_cast<std::size_t>(map->source & ~1U), map->columns,
+                map->rows, map->dest, plane, map->attr, map->transparent,
+                y_adjust, true, x_adjust);
         } else {
             blit_genesis_name_table(
-                rom, scene, image, static_cast<std::size_t>(source), columns,
-                rows, dest, plane, attr, transparent, y_adjust);
+                rom, scene, image, static_cast<std::size_t>(map->source),
+                map->columns, map->rows, map->dest, plane, map->attr,
+                map->transparent, y_adjust, true, x_adjust);
         }
-        first_map = false;
     }
 }
 
 RgbaImage decode_genesis_1406_scene(const std::vector<std::uint8_t>& rom,
                                     std::size_t descriptor,
                                     GenesisBootPatternData* patterns = nullptr,
-                                    std::int32_t plane_b_vscroll = 0) {
+                                    std::int32_t plane_b_vscroll = 0,
+                                    std::int32_t plane_a_xscroll = 0,
+                                    bool draw_plane_a = true,
+                                    bool draw_plane_b = true,
+                                    bool transparent_background = false) {
     const auto vdp = static_cast<std::size_t>(read_rom_u32(
         rom, descriptor, "Genesis 0x1406 descriptor is truncated"));
     const auto palette = static_cast<std::size_t>(read_rom_u32(
@@ -5238,11 +5633,14 @@ RgbaImage decode_genesis_1406_scene(const std::vector<std::uint8_t>& rom,
     std::size_t map_list_offset = 0;
     load_genesis_1406_patterns(rom, descriptor, scene, map_list_offset);
     auto image = make_transparent_title_layer();
-    for (auto& pixel : image.pixels) {
-        pixel = {0, 0, 0, 255};
+    if (!transparent_background) {
+        for (auto& pixel : image.pixels) {
+            pixel = {0, 0, 0, 255};
+        }
     }
     blit_genesis_1406_maps(rom, scene, image, map_list_offset, plane_a,
-                           plane_b, plane_b_vscroll);
+                           plane_b, plane_b_vscroll, plane_a_xscroll,
+                           draw_plane_a, draw_plane_b);
     if (patterns != nullptr) {
         *patterns = std::move(scene);
     }
@@ -5254,9 +5652,14 @@ RgbaImage decode_genesis_intro_trivid(const std::vector<std::uint8_t>& rom) {
         std::vector<std::uint8_t>(0x10000U, 0),
         read_genesis_palette_set(rom, 0x5B632U),
     };
-    write_genesis_1530_vram(rom, 0x1E3F38U, 0x3020U, scene.pattern_vram);
-    write_genesis_1530_vram(rom, 0x1E62BEU, 0xC000U, scene.pattern_vram);
-    write_genesis_1530_vram(rom, 0xC1064U, 0xB560U, scene.pattern_vram);
+    // 0x5AAAE reuses the same $FFBF40 overlap buffer for all three uploads.
+    GenesisResourceDecoderState decoder_state;
+    write_genesis_1530_vram_with_state(
+        rom, 0x1E3F38U, 0x3020U, scene.pattern_vram, decoder_state);
+    write_genesis_1530_vram_with_state(
+        rom, 0x1E62BEU, 0xC000U, scene.pattern_vram, decoder_state);
+    write_genesis_1530_vram_with_state(
+        rom, 0xC1064U, 0xB560U, scene.pattern_vram, decoder_state);
     auto image = make_transparent_title_layer();
     for (auto& pixel : image.pixels) {
         pixel = {0, 0, 0, 255};
@@ -5268,36 +5671,772 @@ RgbaImage decode_genesis_intro_trivid(const std::vector<std::uint8_t>& rom) {
     return image;
 }
 
+std::array<RgbaImage, native::kNativeIntroWildernessPanFrameCount>
+decode_genesis_intro_wilderness_pan_frames_impl(
+    const std::vector<std::uint8_t>& rom) {
+    std::array<RgbaImage, native::kNativeIntroWildernessPanFrameCount> frames{};
+    GenesisBootPatternData wilderness;
+    const auto base = decode_genesis_1406_scene(
+        rom, 0x5B4A8U, &wilderness);
+    for (std::size_t index = 0; index < frames.size(); ++index) {
+        frames[index] = base;
+        // 0x59D7C updates DD46 every pass until 0x178 and updates DD48 on
+        // alternating passes until 0xD1; the remaining pan time holds the
+        // settled actor position while the scene transition continues.
+        const auto progress = std::min<std::size_t>(index * 0x10U, 0x40U);
+        const auto actor_x = static_cast<std::int32_t>(0x138U + progress);
+        const auto actor_y = static_cast<std::int32_t>(
+            0xF1U - std::min<std::size_t>(progress / 2U, 0x20U));
+        blit_genesis_sat_list(rom, wilderness, frames[index], 0x1DF1B2U,
+                              actor_x, actor_y, 0x2000U);
+    }
+    return frames;
+}
+
+[[maybe_unused]] std::array<RgbaImage, native::kNativeIntroAmbushLegacyFrameCount>
+decode_genesis_intro_ambush_frames_sampled_legacy(
+    const std::vector<std::uint8_t>& rom) {
+    std::array<RgbaImage, native::kNativeIntroAmbushLegacyFrameCount> frames{};
+    GenesisBootPatternData wilderness;
+    const auto base = decode_genesis_1406_scene(
+        rom, 0x5B4A8U, &wilderness);
+
+    // 0x5A1EA owns eight independent SAT update routines. Their tables are
+    // source animation data, not a host approximation of the characters:
+    // each list is decoded with the same 0x1378 coordinate/origin contract
+    // used by the pre-pan wilderness plate.
+    constexpr std::array<std::size_t, 4> kActorLists{{
+        0x1DF1B2U, 0x1DF1C4U, 0x1DF1B2U, 0x1DF1C4U}};
+    constexpr std::array<std::size_t, 4> kActorDelays{{
+        0x3CU, 0x24U, 0x3CU, 0x18U}};
+    constexpr std::array<std::size_t, 5> kMuzzleLists{{
+        0x1DF0CCU, 0x1DF0D6U, 0x1DF0D6U, 0x1DF0D6U, 0x1DF0D6U}};
+    constexpr std::array<std::size_t, 5> kMuzzleDelays{{
+        0x3CU, 0x06U, 0x0CU, 0x12U, 0x3CU}};
+    constexpr std::array<std::int32_t, 5> kMuzzleX{{
+        0x0001, 0x011A, 0x0000, 0x0000, 0x0001}};
+    constexpr std::array<std::int32_t, 5> kMuzzleVelocity{{
+        0x0000, 0x0004, 0x0006, 0x0008, 0x0000}};
+    constexpr std::array<std::size_t, 4> kLeftFlashLists{{
+        0x1DF182U, 0x1DF18CU, 0x1DF19EU, 0x1DF1A8U}};
+    constexpr std::array<std::size_t, 6> kLeftBodyLists{{
+        0x1DEF28U, 0x1DEF32U, 0x1DEF8CU, 0x1DEFC6U, 0x1DF010U,
+        0x1DF06AU}};
+    constexpr std::array<std::size_t, 7> kProjectileListsA{{
+        0x1DF0EAU, 0x1DF0FCU, 0x1DF0E0U, 0x1DF0E0U,
+        0x1DF0FCU, 0x1DF0E0U, 0x1DF130U}};
+    constexpr std::array<std::int32_t, 7> kProjectileAY{{
+        0x00BB, 0x00A3, 0x0113, 0x00E3,
+        0x00F8, 0x0105, 0x00BC}};
+    constexpr std::array<std::int32_t, 7> kProjectileAThresholds{{
+        0x0040, 0x0040, 0x0145, 0x0183,
+        0x0040, 0x0104, 0x0040}};
+    constexpr std::array<std::size_t, 7> kProjectileADelays{{
+        0x2AU, 0x30U, 0x4EU, 0x30U,
+        0x6AU, 0x2AU, 0x3CU}};
+    constexpr std::array<std::size_t, 8> kProjectileListsB{{
+        0x1DF170U, 0x1DF130U, 0x1DF11EU, 0x1DF170U,
+        0x1DF0EAU, 0x1DF170U, 0x1DF0FCU, 0x1DF0E0U}};
+    constexpr std::array<std::int32_t, 8> kProjectileBY{{
+        0x00AC, 0x00E6, 0x00BB, 0x0116,
+        0x00B1, 0x012A, 0x00AC, 0x0116}};
+    constexpr std::array<std::size_t, 8> kProjectileBDelays{{
+        0x30U, 0x3CU, 0x30U, 0x3CU,
+        0x30U, 0x3CU, 0x30U, 0x3CU}};
+    constexpr std::array<std::size_t, 8> kProjectileListsC{{
+        0x1DF0EAU, 0x1DF170U, 0x1DF11EU, 0x1DF0FCU,
+        0x1DF130U, 0x1DF0E0U, 0x1DF170U, 0x1DF11EU}};
+    constexpr std::array<std::int32_t, 8> kProjectileCY{{
+        0x0120, 0x00D7, 0x0094, 0x00A6,
+        0x010C, 0x00E2, 0x00C4, 0x00F8}};
+    constexpr std::array<std::size_t, 8> kProjectileCDelays{{
+        0x36U, 0x48U, 0x36U, 0x48U,
+        0x36U, 0x48U, 0x36U, 0x48U}};
+    constexpr std::array<std::size_t, 3> kLastShotLists{{
+        0x1DF142U, 0x1DF154U, 0x1DF166U}};
+    constexpr std::array<std::size_t, 3> kLastShotDelays{{
+        0x03U, 0x06U, 0x09U}};
+    constexpr std::array<std::size_t, 4> kMapLists{{
+        0x1E2EBAU, 0x1E2F04U, 0x1E2F6CU, 0x1E2EBAU}};
+    constexpr std::array<std::size_t, 4> kMapDelays{{
+        0x0CU, 0x18U, 0x3CU, 0x0CU}};
+
+    const auto render_sample = [&](std::size_t sample_frame) {
+        auto image = base;
+
+        std::size_t actor_phase = 0;
+        std::size_t actor_list = kActorLists.front();
+        std::size_t actor_next = 0;
+        bool actor_loaded = false;
+
+        std::size_t muzzle_phase = 0;
+        std::size_t muzzle_list = kMuzzleLists.front();
+        std::size_t muzzle_next = 0;
+        std::int32_t muzzle_x = 0;
+        std::int32_t muzzle_velocity = 0;
+        bool muzzle_loaded = false;
+
+        std::size_t flash_phase = 0;
+        std::size_t flash_next = 0;
+        std::size_t flash_first = kLeftFlashLists.front();
+        std::size_t flash_second = kLeftFlashLists[1];
+        bool flash_loaded = false;
+
+        std::size_t body_phase = kLeftBodyLists.size();
+        std::size_t body_list = kLeftBodyLists.front();
+        std::size_t body_next = 0;
+        std::int32_t body_x = 0;
+        std::int32_t body_y = 0;
+        bool body_loaded = false;
+
+        std::size_t projectile_a_phase = 0;
+        std::size_t projectile_a_list = kProjectileListsA.front();
+        std::size_t projectile_a_next = 0;
+        std::int32_t projectile_a_x = 0;
+        std::int32_t projectile_a_threshold = 0;
+        std::int32_t projectile_a_y = 0;
+        bool projectile_a_active = false;
+
+        std::size_t projectile_b_phase = 0;
+        std::size_t projectile_b_list = kProjectileListsB.front();
+        std::size_t projectile_b_next = 0;
+        std::int32_t projectile_b_x = 0;
+        std::int32_t projectile_b_y = 0;
+        bool projectile_b_active = false;
+
+        std::size_t projectile_c_phase = 0;
+        std::size_t projectile_c_list = kProjectileListsC.front();
+        std::size_t projectile_c_next = 0;
+        std::int32_t projectile_c_x = 0;
+        std::int32_t projectile_c_y = 0;
+        bool projectile_c_active = false;
+
+        std::size_t last_shot_phase = 0;
+        std::size_t last_shot_list = kLastShotLists.front();
+        std::size_t last_shot_next = 0;
+        std::int32_t last_shot_x = 0x193;
+        bool last_shot_active = false;
+
+        std::size_t map_phase = 0;
+        std::size_t map_next = 0;
+        std::size_t map_list = kMapLists.front();
+        bool map_loaded = false;
+
+        // FFF14E/FFF150/FFF152/FFF154 are shared by the map hit routine and
+        // the actor routine. Both source paths call 0x5A582 and then the
+        // common body draw in 0x5A59C.
+        const auto start_body = [&](std::int32_t x, std::int32_t y) {
+            body_phase = 0;
+            body_next = 0;
+            body_x = x;
+            body_y = y;
+            body_loaded = false;
+        };
+
+        // 0xFFF124 is a fixed-point scroll term updated by 0x59F8E only
+        // during the late tail. The projectile routines do not consume it;
+        // only the muzzle/projectile list at 0x5A3BE does.
+        std::int32_t scroll_fixed = 0;
+
+        for (std::size_t frame = 0; frame <= sample_frame; ++frame) {
+            // 0x59F8E runs before the map and dynamic SAT passes.
+            if (frame >= 0x120U && frame <= 0x168U) {
+                scroll_fixed += 0xAA;
+            }
+            const auto scroll_x = scroll_fixed >> 8;
+
+            // 0x5A0B2 first patches the 13x12 name-table block. Its first
+            // four phases select map lists; the remaining phases only drive
+            // the source timing/sound and leave the final patch in place.
+            if (map_phase < 0x0CU && frame >= map_next) {
+                if (map_phase < kMapLists.size()) {
+                    map_list = kMapLists[map_phase];
+                    map_next = frame + kMapDelays[map_phase];
+                    map_loaded = true;
+                } else {
+                    map_next = frame + 9U;
+                }
+                ++map_phase;
+                if (map_phase == 9U) {
+                    start_body(0x13D, 0x139);
+                }
+            }
+
+            image = base;
+            if (map_loaded) {
+                // 0x5A0B2 invokes 0x1728 with D4=$0826, D7=$0C and
+                // D1=$0B. This is the source's hit/death tile patch.
+                blit_genesis_1728_name_table(
+                    rom, wilderness, image, map_list, 13U, 12U, 0x826U,
+                    0x0000U, 0, false);
+            }
+
+            // 0x5A252: the top-right actor advances through four lists,
+            // pauses, then runs its terminal timing before disappearing.
+            bool draw_actor = actor_loaded && actor_phase < 0x0CU;
+            if (actor_phase < 0x0CU && frame >= actor_next) {
+                if (actor_phase < kActorLists.size()) {
+                    actor_list = kActorLists[actor_phase];
+                    actor_next = frame + kActorDelays[actor_phase];
+                    ++actor_phase;
+                    actor_loaded = true;
+                    draw_actor = true;
+                } else if (actor_phase == 4U) {
+                    // The actor routine disables the flash pair at its
+                    // phase-four transition.
+                    flash_phase = 4U;
+                    actor_next = frame + 9U;
+                    ++actor_phase;
+                    draw_actor = true;
+                } else {
+                    actor_next = frame + 9U;
+                    ++actor_phase;
+                    draw_actor = true;
+                    if (actor_phase == 9U) {
+                        start_body(0x182, 0x0E2);
+                    }
+                }
+            }
+            if (draw_actor) {
+                blit_genesis_sat_list(rom, wilderness, image, actor_list,
+                                      0x178, 0xD1, 0x2000U);
+            }
+
+            // 0x5A3BE: the muzzle sequence loops back to table entry one
+            // until the relative counter reaches $168, then stops.
+            bool draw_muzzle = muzzle_loaded && muzzle_phase < 5U;
+            if (muzzle_phase < 5U && frame >= muzzle_next) {
+                const auto index = muzzle_phase;
+                muzzle_list = kMuzzleLists[index];
+                if (kMuzzleX[index] != 0) {
+                    muzzle_x = kMuzzleX[index];
+                }
+                muzzle_velocity = kMuzzleVelocity[index];
+                muzzle_next = frame + kMuzzleDelays[index];
+                ++muzzle_phase;
+                if (muzzle_phase >= 5U) {
+                    muzzle_phase = frame < 0x168U ? 1U : 5U;
+                }
+                muzzle_loaded = true;
+                draw_muzzle = muzzle_phase < 5U;
+            }
+            if (draw_muzzle) {
+                muzzle_x += muzzle_velocity;
+                blit_genesis_sat_list(rom, wilderness, image, muzzle_list,
+                                      muzzle_x + scroll_x, 0x133, 0x6000U);
+            }
+
+            // 0x5A4C2: two flashing SAT lists share a six-frame cadence.
+            // 0x5A252 can set FFF146=$4, which suppresses this pair.
+            bool draw_flash = flash_loaded && flash_phase < 4U;
+            if (flash_phase < 4U && frame >= flash_next) {
+                flash_first = kLeftFlashLists[flash_phase];
+                flash_second = kLeftFlashLists[
+                    (flash_phase + 1U) % kLeftFlashLists.size()];
+                flash_next = frame + 6U;
+                ++flash_phase;
+                if (flash_phase >= 4U) {
+                    flash_phase = 0U;
+                }
+                flash_loaded = true;
+                draw_flash = true;
+            }
+            if (draw_flash) {
+                blit_genesis_sat_list(rom, wilderness, image, flash_first,
+                                      0x183, 0xBE, 0x6000U);
+                blit_genesis_sat_list(rom, wilderness, image, flash_second,
+                                      0x1AB, 0xD7, 0x6000U);
+            }
+
+            // 0x5A59C draws the left body/death sequence at the position set
+            // by either 0x5A0B2 or the actor's phase-nine callback.
+            bool draw_body = body_loaded && body_phase < kLeftBodyLists.size();
+            if (body_phase < kLeftBodyLists.size() && frame >= body_next) {
+                body_list = kLeftBodyLists[body_phase];
+                body_next = frame + 8U;
+                ++body_phase;
+                body_loaded = true;
+                draw_body = true;
+            }
+            if (draw_body) {
+                blit_genesis_sat_list(rom, wilderness, image, body_list,
+                                      body_x, body_y, 0x6000U);
+            }
+
+            // The three projectile routines all subtract before drawing,
+            // but test the prior position against their table threshold.
+            bool draw_projectile_a = false;
+            const auto projectile_a_due = frame >= projectile_a_next;
+            if (projectile_a_due) {
+                if (projectile_a_phase < kProjectileListsA.size()) {
+                    projectile_a_list = kProjectileListsA[projectile_a_phase];
+                    projectile_a_y = kProjectileAY[projectile_a_phase];
+                    projectile_a_threshold =
+                        kProjectileAThresholds[projectile_a_phase];
+                    projectile_a_x = 0x200;
+                    projectile_a_next = frame +
+                        kProjectileADelays[projectile_a_phase];
+                    ++projectile_a_phase;
+                    projectile_a_active = true;
+                } else {
+                    projectile_a_active = false;
+                }
+            }
+            if (projectile_a_active &&
+                (projectile_a_due || projectile_a_x >= projectile_a_threshold)) {
+                projectile_a_x -= 9;
+                draw_projectile_a = true;
+            }
+            if (draw_projectile_a) {
+                blit_genesis_sat_list(
+                    rom, wilderness, image, projectile_a_list,
+                    projectile_a_x, projectile_a_y + 0x18, 0x6000U);
+            }
+
+            bool draw_projectile_b = false;
+            const auto projectile_b_due = frame >= projectile_b_next;
+            if (projectile_b_due) {
+                if (projectile_b_phase < kProjectileListsB.size()) {
+                    projectile_b_list = kProjectileListsB[projectile_b_phase];
+                    projectile_b_y = kProjectileBY[projectile_b_phase];
+                    projectile_b_x = 0x200;
+                    projectile_b_next = frame +
+                        kProjectileBDelays[projectile_b_phase];
+                    ++projectile_b_phase;
+                    projectile_b_active = true;
+                } else {
+                    projectile_b_active = false;
+                }
+            }
+            if (projectile_b_active &&
+                (projectile_b_due || projectile_b_x >= 0x40)) {
+                projectile_b_x -= 8;
+                draw_projectile_b = true;
+            }
+            if (draw_projectile_b) {
+                blit_genesis_sat_list(
+                    rom, wilderness, image, projectile_b_list,
+                    projectile_b_x, projectile_b_y + 0x18, 0x6000U);
+            }
+
+            bool draw_projectile_c = false;
+            const auto projectile_c_due = frame >= projectile_c_next;
+            if (projectile_c_due) {
+                if (projectile_c_phase < kProjectileListsC.size()) {
+                    projectile_c_list = kProjectileListsC[projectile_c_phase];
+                    projectile_c_y = kProjectileCY[projectile_c_phase];
+                    projectile_c_x = 0x200;
+                    projectile_c_next = frame +
+                        kProjectileCDelays[projectile_c_phase];
+                    ++projectile_c_phase;
+                    projectile_c_active = true;
+                } else {
+                    projectile_c_active = false;
+                }
+            }
+            if (projectile_c_active &&
+                (projectile_c_due || projectile_c_x >= 0x40)) {
+                projectile_c_x -= 0x0B;
+                draw_projectile_c = true;
+            }
+            if (draw_projectile_c) {
+                blit_genesis_sat_list(
+                    rom, wilderness, image, projectile_c_list,
+                    projectile_c_x, projectile_c_y + 0x18, 0x6000U);
+            }
+
+            // 0x5A8DE starts only after six relative frames, then exposes
+            // three short SAT bursts while advancing FFF184 by four pixels.
+            if (frame >= last_shot_next) {
+                if (frame < 6U) {
+                    last_shot_active = false;
+                } else if (last_shot_phase < kLastShotLists.size()) {
+                    last_shot_list = kLastShotLists[last_shot_phase];
+                    last_shot_next = frame + kLastShotDelays[last_shot_phase];
+                    ++last_shot_phase;
+                    last_shot_active = true;
+                } else {
+                    last_shot_active = false;
+                }
+            }
+            if (last_shot_active) {
+                last_shot_x += 4;
+                blit_genesis_sat_list(rom, wilderness, image,
+                                      last_shot_list, last_shot_x, 0x13C,
+                                      0x6000U);
+            }
+        }
+        return image;
+    };
+
+    for (std::size_t index = 0;
+         index < native::kNativeIntroAmbushLegacyFrameCount; ++index) {
+        frames[index] = render_sample(
+            std::min<std::size_t>(
+                index * native::kNativeIntroAmbushFrameStep, 0x1F0U));
+    }
+    return frames;
+}
+
+std::array<RgbaImage, native::kNativeIntroAmbushFrameCount>
+decode_genesis_intro_ambush_frames_impl(
+    const std::vector<std::uint8_t>& rom) {
+    std::array<RgbaImage, native::kNativeIntroAmbushFrameCount> frames{};
+    GenesisBootPatternData wilderness;
+    auto base = decode_genesis_1406_scene(rom, 0x5B4A8U, &wilderness);
+    // The pan leaves the actor SAT slot live in VDP memory, but 0x5A1EA
+    // immediately takes ownership of that slot.  Its 0x5A252 pass writes
+    // the four actor lists and then deliberately stops writing after the
+    // terminal nine-tick passes.  Keep the ambush base clean here: baking
+    // the pan actor into every frame makes a slain body persist underneath
+    // the source death/impact lists.
+
+    const auto pointer = [&rom](std::size_t table, std::size_t index,
+                                std::size_t stride) {
+        return static_cast<std::size_t>(read_rom_u32(
+            rom, table + index * stride,
+            "Genesis intro animation pointer table is truncated"));
+    };
+    const auto word = [&rom](std::size_t table, std::size_t index,
+                             std::size_t stride, std::size_t offset) {
+        return static_cast<std::uint32_t>(read_rom_u16(
+            rom, table + index * stride + offset,
+            "Genesis intro animation timing table is truncated"));
+    };
+
+    std::size_t actor_phase = 0;
+    std::size_t actor_list = 0x1DF1B2U;
+    std::uint32_t actor_next = 0;
+    bool actor_loaded = false;
+    std::size_t muzzle_phase = 0;
+    std::size_t muzzle_list = 0x1DF0CCU;
+    std::int32_t muzzle_x = 0;
+    std::int32_t muzzle_velocity = 0;
+    std::uint32_t muzzle_next = 0;
+    std::size_t flash_phase = 0;
+    std::size_t flash_first = 0x1DF182U;
+    std::size_t flash_second = 0x1DF18CU;
+    std::uint32_t flash_next = 0;
+    bool flash_suppressed = false;
+    std::size_t body_phase = 6;
+    std::size_t body_list = 0x1DEF28U;
+    std::int32_t body_x = 0;
+    std::int32_t body_y = 0;
+    std::uint32_t body_next = 0;
+    bool body_loaded = false;
+    std::size_t projectile_b_phase = 0;
+    std::size_t projectile_b_list = 0x1DF0EAU;
+    std::int32_t projectile_b_x = 0;
+    std::int32_t projectile_b_y = 0;
+    std::int32_t projectile_b_threshold = 0;
+    std::uint32_t projectile_b_next = 0;
+    std::size_t projectile_c_phase = 0;
+    std::size_t projectile_c_list = 0x1DF170U;
+    std::int32_t projectile_c_x = 0;
+    std::int32_t projectile_c_y = 0;
+    std::uint32_t projectile_c_next = 0;
+    std::size_t projectile_d_phase = 0;
+    std::size_t projectile_d_list = 0x1DF0EAU;
+    std::int32_t projectile_d_x = 0;
+    std::int32_t projectile_d_y = 0;
+    std::uint32_t projectile_d_next = 0;
+    std::size_t last_shot_phase = 0;
+    std::size_t last_shot_list = 0x1DF142U;
+    std::int32_t last_shot_x = 0x193;
+    std::uint32_t last_shot_next = 0;
+    bool last_shot_active = false;
+    std::size_t map_phase = 0;
+    std::size_t map_list = 0x1E2EBAU;
+    std::uint32_t map_next = 0;
+    bool map_loaded = false;
+    std::int32_t scroll_fixed = 0;
+
+    const auto start_body = [&](std::int32_t x, std::int32_t y) {
+        body_phase = 0;
+        body_next = 0;
+        body_x = x;
+        body_y = y;
+        body_loaded = false;
+    };
+
+    // One iteration below is one execution of the ROM's DBRA loop. Every
+    // pointer, delay, projectile velocity, and removal boundary comes from
+    // the 0x5Axxx tables; no video sampling interval is involved.
+    for (std::size_t frame = 0;
+         frame < native::kNativeIntroAmbushFrameCount; ++frame) {
+        const auto now = static_cast<std::uint32_t>(frame);
+        if (now >= 0x120U && now <= 0x168U) {
+            scroll_fixed += 0xAA;
+        }
+        const auto scroll_x = scroll_fixed >> 8;
+
+        // 0x5A0B2: four 0x1728 map writes, then the source nine-tick
+        // callbacks; phase 9 starts the left body/death sequence.
+        if (map_phase < 0x0CU && now >= map_next) {
+            if (map_phase < 4U) {
+                map_list = pointer(0x5A1D2U, map_phase, 6U);
+                map_next = now + word(0x5A1D2U, map_phase, 6U, 4U);
+                map_loaded = true;
+                ++map_phase;
+            } else if (map_phase == 4U) {
+                ++map_phase;
+                map_next = now + 9U;
+            } else {
+                map_next = now + 9U;
+                ++map_phase;
+                if (map_phase == 9U) {
+                    start_body(0x13D, 0x139);
+                }
+            }
+        }
+
+        auto image = base;
+        if (map_loaded) {
+            blit_genesis_1728_name_table(
+                rom, wilderness, image, map_list, 13U, 12U, 0x826U,
+                0x0000U, 0, false);
+        }
+
+        // 0x5A252: four actor list records followed by eight nine-tick
+        // terminal passes. The list is no longer written at phase $C.
+        if (actor_phase < 0x0CU && now >= actor_next) {
+            if (actor_phase < 4U) {
+                actor_list = pointer(0x5A398U, actor_phase, 6U);
+                actor_next = now + word(0x5A398U, actor_phase, 6U, 4U);
+                ++actor_phase;
+                actor_loaded = true;
+            } else {
+                if (actor_phase == 4U) {
+                    flash_suppressed = true;
+                }
+                actor_next = now + 9U;
+                ++actor_phase;
+                if (actor_phase == 9U) {
+                    start_body(0x182, 0x0E2);
+                }
+            }
+        }
+        if (actor_loaded && actor_phase < 0x0CU) {
+            blit_genesis_sat_list(rom, wilderness, image, actor_list,
+                                  0x178, 0xD1, 0x2000U);
+        }
+
+        // 0x5A3BE: long pointer, delay, initial X, velocity. The fifth
+        // record loops to phase one until relative time $168. The source
+        // passes D2=$133 directly; there is no host +$18 Y adjustment.
+        if (muzzle_phase < 5U && now >= muzzle_next) {
+            const auto record = muzzle_phase;
+            muzzle_list = pointer(0x5A482U, record, 10U);
+            const auto initial_x = word(0x5A482U, record, 10U, 6U);
+            if (initial_x != 0U) {
+                muzzle_x = static_cast<std::int32_t>(initial_x);
+            }
+            muzzle_velocity = static_cast<std::int32_t>(static_cast<
+                std::int16_t>(word(0x5A482U, record, 10U, 8U)));
+            muzzle_next = now + word(0x5A482U, record, 10U, 4U);
+            ++muzzle_phase;
+            if (muzzle_phase >= 5U) {
+                muzzle_phase = now < 0x168U ? 1U : 5U;
+            }
+        }
+        if (!flash_suppressed && muzzle_phase < 5U) {
+            muzzle_x += muzzle_velocity;
+            blit_genesis_sat_list(rom, wilderness, image, muzzle_list,
+                                  muzzle_x + scroll_x, 0x133, 0x6000U);
+        }
+
+        // 0x5A4C2: two SAT lists, each at a fixed origin, cycled every six
+        // source passes until FFF146=$4 suppresses the pair.
+        if (!flash_suppressed) {
+            if (now >= flash_next) {
+                flash_first = pointer(0x5A562U, flash_phase, 4U);
+                flash_second = pointer(
+                    0x5A562U, (flash_phase + 1U) % 4U, 4U);
+                flash_next = now + 6U;
+                flash_phase = (flash_phase + 1U) % 4U;
+            }
+            blit_genesis_sat_list(rom, wilderness, image, flash_first,
+                                  0x183, 0xBE, 0x6000U);
+            blit_genesis_sat_list(rom, wilderness, image, flash_second,
+                                  0x1AB, 0xD7, 0x6000U);
+        }
+
+        // 0x5A59C: list 6 remains visible for its final eight-tick deadline,
+        // then the source stops writing the slot entirely.
+        if (body_phase < 6U && now >= body_next) {
+            body_list = pointer(0x5A602U, body_phase, 4U);
+            body_next = now + 8U;
+            ++body_phase;
+            body_loaded = true;
+        }
+        if (body_loaded && (body_phase < 6U || now < body_next)) {
+            blit_genesis_sat_list(rom, wilderness, image, body_list, body_x,
+                                  body_y, 0x6000U);
+        }
+
+        // 0x5A628: seven records carry pointer/Y/threshold/delay. X is
+        // decremented by nine every source pass while it remains >= threshold.
+        if (projectile_b_phase < 7U && now >= projectile_b_next) {
+            const auto record = projectile_b_phase;
+            projectile_b_list = pointer(0x5A6C8U, record, 10U);
+            projectile_b_y = static_cast<std::int32_t>(
+                word(0x5A6C8U, record, 10U, 4U));
+            projectile_b_threshold = static_cast<std::int32_t>(
+                word(0x5A6C8U, record, 10U, 6U));
+            projectile_b_next = now + word(0x5A6C8U, record, 10U, 8U);
+            projectile_b_x = 0x200;
+            ++projectile_b_phase;
+        }
+        if (projectile_b_phase != 0U && projectile_b_phase <= 7U &&
+            projectile_b_x >= projectile_b_threshold) {
+            projectile_b_x -= 9;
+            blit_genesis_sat_list(rom, wilderness, image, projectile_b_list,
+                                  projectile_b_x, projectile_b_y + 0x18,
+                                  0x6000U);
+        }
+
+        // 0x5A71C and 0x5A7F8: eight pointer/Y/delay records with -8 and
+        // -$B source motion respectively.
+        if (projectile_c_phase < 8U && now >= projectile_c_next) {
+            const auto record = projectile_c_phase;
+            projectile_c_list = pointer(0x5A7AAU, record, 8U);
+            projectile_c_y = static_cast<std::int32_t>(
+                word(0x5A7AAU, record, 8U, 4U));
+            projectile_c_next = now + word(0x5A7AAU, record, 8U, 6U);
+            projectile_c_x = 0x200;
+            ++projectile_c_phase;
+        }
+        if (projectile_c_phase != 0U && projectile_c_phase <= 8U &&
+            projectile_c_x >= 0x40) {
+            projectile_c_x -= 8;
+            blit_genesis_sat_list(rom, wilderness, image, projectile_c_list,
+                                  projectile_c_x, projectile_c_y + 0x18,
+                                  0x6000U);
+        }
+        if (projectile_d_phase < 8U && now >= projectile_d_next) {
+            const auto record = projectile_d_phase;
+            projectile_d_list = pointer(0x5A888U, record, 8U);
+            projectile_d_y = static_cast<std::int32_t>(
+                word(0x5A888U, record, 8U, 4U));
+            projectile_d_next = now + word(0x5A888U, record, 8U, 6U);
+            projectile_d_x = 0x200;
+            ++projectile_d_phase;
+        }
+        if (projectile_d_phase != 0U && projectile_d_phase <= 8U &&
+            projectile_d_x >= 0x40) {
+            projectile_d_x -= 0x0B;
+            blit_genesis_sat_list(rom, wilderness, image, projectile_d_list,
+                                  projectile_d_x, projectile_d_y + 0x18,
+                                  0x6000U);
+        }
+
+        // 0x5A8DE: six-tick delay, then the three source Michael lists. The
+        // x position advances by four on every pass and the third list is
+        // removed when its nine-tick deadline expires.
+        if (now < last_shot_next) {
+            if (last_shot_active) {
+                last_shot_x += 4;
+                blit_genesis_sat_list(rom, wilderness, image, last_shot_list,
+                                      last_shot_x, 0x13C, 0x6000U);
+            }
+        } else if (now >= 6U && last_shot_phase < 3U) {
+            last_shot_list = pointer(0x5A958U, last_shot_phase, 6U);
+            last_shot_next = now +
+                word(0x5A958U, last_shot_phase, 6U, 4U);
+            ++last_shot_phase;
+            last_shot_active = true;
+            last_shot_x += 4;
+            blit_genesis_sat_list(rom, wilderness, image, last_shot_list,
+                                  last_shot_x, 0x13C, 0x6000U);
+        } else {
+            last_shot_active = false;
+        }
+        frames[frame] = std::move(image);
+    }
+    return frames;
+}
+
 std::array<RgbaImage, native::kNativeIntroStageCount>
 decode_genesis_intro_stages_impl(const std::vector<std::uint8_t>& rom) {
     std::array<RgbaImage, native::kNativeIntroStageCount> stages{};
     stages[0] = decode_genesis_1406_scene(rom, 0x5B574U);
     GenesisBootPatternData wilderness;
     stages[1] = decode_genesis_1406_scene(rom, 0x5B4A8U, &wilderness);
-    blit_genesis_sat_list(rom, wilderness, stages[1], 0x1DF1B2U, 0x138, 0xF1,
+    // 0x59D7C's pre-pan draw uses the wilderness actor SAT at 0x1DF1B2.
+    // Keep this source layer separate from the later animated SAT calls.
+    blit_genesis_sat_list(rom, wilderness, stages[1], 0x1DF1B2U, 0x178, 0xD1,
                           0x2000U);
+    // 0x59D7C's pre-pan draw uses the wilderness actor SAT at 0x1DF1B2.
+    // Keep this as the source plate; the later 0x5Axxx calls are animated
+    // overlays and must not be baked into the still.
     stages[2] = decode_genesis_intro_trivid(rom);
-    GenesisBootPatternData ending;
-    stages[3] = decode_genesis_1406_scene(rom, 0x5B528U, &ending, 0x78);
+    // The plane-A 27x8 vehicle is a transient foreground layer. Keep the
+    // settled airport/city plate as plane B; the native intro renderer
+    // selects the vehicle layer during its source-timed window.
+    stages[3] = decode_genesis_1406_scene(rom, 0x5B528U, nullptr, 0x78, 0,
+                                          false, true);
     return stages;
 }
 
 std::array<RgbaImage, native::kNativeIntroHeliFrameCount>
 decode_genesis_intro_heli_frames_impl(const std::vector<std::uint8_t>& rom) {
     std::array<RgbaImage, native::kNativeIntroHeliFrameCount> frames{};
-    GenesisBootPatternData skyline;
-    decode_genesis_1406_scene(rom, 0x5B528U, &skyline, 0x78);
-    constexpr std::array<std::size_t, native::kNativeIntroHeliFrameCount>
-        kLists{{0x1DF2D8U, 0x1DF30AU, 0x1DF344U, 0x1DF36EU, 0x1DF3A0U,
-                0x1DF3CAU}};
+    GenesisBootPatternData scene;
+    // 0x1406 supplies the patterns and palette used by both the Plane-A map
+    // and the adjacent 0x1378 SAT overlays. Do not retain its opaque scene;
+    // each overlay is composed onto an independent transparent layer.
+    (void)decode_genesis_1406_scene(rom, 0x5B528U, &scene, 0, 0, false,
+                                    false, true);
     for (std::size_t index = 0; index < frames.size(); ++index) {
-        frames[index] = make_transparent_title_layer();
-        // List X/Y are signed SAT offsets. Origin $E8/$F0 puts the first
-        // $FFA8/$FFFC piece near capture t1525 (left of the skyline).
-        blit_genesis_sat_list(rom, skyline, frames[index], kLists[index],
-                              0xE8, 0xF0, 0x2000U);
+        frames[index] = make_transparent_layer(512U, native::kScreenHeight);
+        const auto list = static_cast<std::size_t>(read_rom_u32(
+            rom, 0x5B180U + index * 4U,
+            "Genesis airport overlay pointer table is truncated"));
+        // 0x5B100 passes D1=DD08+$1FC and D2=$EF. The extracted reference
+        // layer is therefore translated by DD08 at runtime. The 512px canvas
+        // is intentional: at DD08=0 the source SAT list extends past the
+        // right edge of the 320px viewport, and clipping it during extraction
+        // would make the craft's rotor/tail disappear before the native scroll
+        // begins.
+        blit_genesis_sat_list(rom, scene, frames[index], list, 0x1FC, 0xEF,
+                              0x2000U);
     }
     return frames;
+}
+
+std::array<RgbaImage, native::kNativeIntroAircraftMovementFrameCount>
+decode_genesis_intro_aircraft_movement_frames_impl(
+    const std::vector<std::uint8_t>& rom) {
+    std::array<RgbaImage, native::kNativeIntroAircraftMovementFrameCount>
+        frames{};
+    GenesisBootPatternData scene;
+    (void)decode_genesis_1406_scene(rom, 0x5B528U, &scene, 0, 0, false,
+                                    false, true);
+    // 0x5B1B6 switches between these two lists when the source Y band reaches
+    // the middle strip. Both use the same 0x1378 origin contract.
+    constexpr std::array<std::size_t,
+                         native::kNativeIntroAircraftMovementFrameCount> lists{{
+        0x1DF3F4U, 0x1DF3FEU}};
+    for (std::size_t index = 0; index < frames.size(); ++index) {
+        frames[index] = make_transparent_layer(320U, 224U);
+        blit_genesis_sat_list(rom, scene, frames[index], lists[index],
+                              0x90, 0x90, 0x2000U);
+    }
+    return frames;
+}
+
+RgbaImage decode_genesis_intro_aircraft_plane_a_impl(
+    const std::vector<std::uint8_t>& rom) {
+    // 0x5AD1A's first map is the 27x8 vehicle layer at Plane A $074A. Render
+    // that map at a normalized origin here; NativePort restores the source
+    // $074A origin (x=296, y=112) and applies DD08 on every source pass.
+    GenesisBootPatternData scene;
+    (void)decode_genesis_1406_scene(rom, 0x5B528U, &scene, 0, 0, false,
+                                    false, true);
+    auto image = make_transparent_title_layer();
+    blit_genesis_1728_name_table(rom, scene, image, 0x1E87BAU, 27U, 8U,
+                                 0U, 0U, 0x2000U, false, 0, true, 0);
+    return image;
 }
 
 } // namespace
@@ -5413,43 +6552,440 @@ decode_genesis_intro_heli_frames(const std::vector<std::uint8_t>& rom) {
     return decode_genesis_intro_heli_frames_impl(rom);
 }
 
-RgbaImage decode_genesis_pocket_secretary_background(
+std::array<RgbaImage, native::kNativeIntroAircraftMovementFrameCount>
+decode_genesis_intro_aircraft_movement_frames(
     const std::vector<std::uint8_t>& rom) {
-    // 0xC2A6 / 0xC3E6: the command chrome stays as the computer bezel and
-    // the inner 28x21 panel is cleared black. 0xD9C96 is a combat overlay
-    // (COMBAT/DEFENSE/COMMAND) and is not this screen.
-    auto image = decode_genesis_field_menu_background(rom);
-    for (std::uint16_t y = 8; y < 208 && y < image.height; ++y) {
-        for (std::uint16_t x = 8; x < 248 && x < image.width; ++x) {
-            image.pixels[static_cast<std::size_t>(y) * image.width + x] =
-                native::Rgba8{0, 0, 0, 255};
+    return decode_genesis_intro_aircraft_movement_frames_impl(rom);
+}
+
+RgbaImage decode_genesis_intro_aircraft_plane_a(
+    const std::vector<std::uint8_t>& rom) {
+    return decode_genesis_intro_aircraft_plane_a_impl(rom);
+}
+
+std::array<RgbaImage, native::kNativeIntroWildernessPanFrameCount>
+decode_genesis_intro_wilderness_pan_frames(
+    const std::vector<std::uint8_t>& rom) {
+    return decode_genesis_intro_wilderness_pan_frames_impl(rom);
+}
+
+std::array<RgbaImage, native::kNativeIntroAmbushFrameCount>
+decode_genesis_intro_ambush_frames(const std::vector<std::uint8_t>& rom) {
+    return decode_genesis_intro_ambush_frames_impl(rom);
+}
+
+RgbaImage decode_genesis_cab_map(const std::vector<std::uint8_t>& rom) {
+    // 0x134D2 follows 0x59D12's VDP setup. The map resource is not one of
+    // the field-mode assets: it uploads its own pattern stream at $6420 and
+    // then writes the 0xD4298 0x1728 name table at $2208. Treat the latter
+    // as a plane-local address with the source screen's $2000 origin; that
+    // gives the same 26x17 tile window that the VDP displays.
+    GenesisBootPatternData scene{
+        decode_genesis_1530_vram(rom, 0xD2A2EU, 0x6420U),
+        read_genesis_palette_set(rom, 0x5B732U),
+    };
+    auto source_image = make_transparent_title_layer();
+    for (auto& pixel : source_image.pixels) {
+        pixel = {0, 0, 0, 255};
+    }
+    blit_genesis_1728_name_table(rom, scene, source_image, 0xD4298U, 26U,
+                                 17U, 0x2208U, 0x2000U, 0, false);
+
+    // 0x134D2 enters 0x13726 with FFE18B set during this opening path, so
+    // FFF09C is forced to four and D445D[4] selects record zero. The visible
+    // settled selection is the record's terminal zero-size outline slot
+    // (D4464+8, D4536+8); reproduce its source tile list from D4446 rather
+    // than drawing a host rectangle over the map.
+    const auto draw_cursor_tile = [&](std::uint16_t address,
+                                      std::uint16_t word) {
+        const auto relative = static_cast<std::uint16_t>(
+            address - 0xC000U);
+        const auto tile_x = static_cast<std::int32_t>((relative % 0x80U) / 2U);
+        const auto tile_y = static_cast<std::int32_t>(relative / 0x80U);
+        const auto tile_attributes = word;
+        blit_genesis_tile(
+            source_image, scene,
+            static_cast<std::size_t>(tile_attributes & 0x07FFU),
+            static_cast<std::size_t>((tile_attributes >> 13U) & 0x03U),
+            (tile_attributes & 0x0800U) != 0,
+            (tile_attributes & 0x1000U) != 0, tile_x * 8, tile_y * 8, true);
+    };
+    const auto position = read_rom_u16(
+        rom, 0xD4464U + 4U * 2U,
+        "Genesis cab cursor record is truncated");
+    const auto width = static_cast<unsigned>(rom[0xD4536U + 8U]);
+    const auto height = static_cast<unsigned>(rom[0xD4536U + 9U]);
+    const auto base = static_cast<std::uint16_t>(0xC208U + position);
+    auto cursor_source = 0xD4446U;
+        const auto top_left = read_rom_u16(
+            rom, cursor_source, "Genesis cab cursor tile list is truncated");
+        cursor_source += 2U;
+        draw_cursor_tile(base, top_left);
+        const auto top_middle = read_rom_u16(
+            rom, cursor_source, "Genesis cab cursor tile list is truncated");
+        cursor_source += 2U;
+        for (unsigned count = 0; count <= width; ++count) {
+            draw_cursor_tile(static_cast<std::uint16_t>(
+                                 base + 2U * (count + 1U)),
+                             top_middle);
+        }
+        const auto top_right = read_rom_u16(
+            rom, cursor_source, "Genesis cab cursor tile list is truncated");
+        cursor_source += 2U;
+        draw_cursor_tile(static_cast<std::uint16_t>(
+                             base + 2U * (width + 2U)),
+                         top_right);
+
+        const auto left = read_rom_u16(
+            rom, cursor_source, "Genesis cab cursor tile list is truncated");
+        cursor_source += 2U;
+        for (unsigned count = 0; count <= height + 1U; ++count) {
+            draw_cursor_tile(static_cast<std::uint16_t>(
+                                 base + 0x80U * (count + 1U)),
+                             left);
+        }
+        const auto right = read_rom_u16(
+            rom, cursor_source, "Genesis cab cursor tile list is truncated");
+        cursor_source += 2U;
+        for (unsigned count = 0; count <= height + 1U; ++count) {
+            draw_cursor_tile(static_cast<std::uint16_t>(
+                                 base + 0x80U * (count + 1U) +
+                                     2U * (width + 2U)),
+                             right);
+        }
+
+        const auto bottom_left = read_rom_u16(
+            rom, cursor_source, "Genesis cab cursor tile list is truncated");
+        cursor_source += 2U;
+        draw_cursor_tile(static_cast<std::uint16_t>(
+                             base + 0x80U * (height + 2U)),
+                         bottom_left);
+        const auto bottom_middle = read_rom_u16(
+            rom, cursor_source, "Genesis cab cursor tile list is truncated");
+        cursor_source += 2U;
+        for (unsigned count = 0; count <= width; ++count) {
+            draw_cursor_tile(static_cast<std::uint16_t>(
+                                 base + 0x80U * (height + 2U) +
+                                     2U * (count + 1U)),
+                             bottom_middle);
+        }
+        const auto bottom_right = read_rom_u16(
+            rom, cursor_source, "Genesis cab cursor tile list is truncated");
+        cursor_source += 2U;
+        draw_cursor_tile(static_cast<std::uint16_t>(
+                             base + 0x80U * (height + 2U) +
+                                 2U * (width + 2U)),
+                         bottom_right);
+
+    // The supplied gameplay capture presents this 208x136 VDP plate in the
+    // 166x130 viewport at (62,30). Keep the source-derived tile decode above
+    // intact and bake only that capture-space presentation transform here.
+    constexpr std::int32_t kSourceX = 32;
+    constexpr std::int32_t kSourceY = 32;
+    constexpr std::int32_t kTargetX = 62;
+    constexpr std::int32_t kTargetY = 30;
+    constexpr std::int32_t kSourceWidth = 208;
+    constexpr std::int32_t kSourceHeight = 136;
+    constexpr std::int32_t kTargetWidth = 166;
+    constexpr std::int32_t kTargetHeight = 130;
+    auto image = make_transparent_title_layer();
+    for (auto& pixel : image.pixels) {
+        pixel = {0, 0, 0, 255};
+    }
+    for (std::int32_t y = 0; y < kTargetHeight; ++y) {
+        const auto source_y = kSourceY +
+            (y * kSourceHeight) / kTargetHeight;
+        for (std::int32_t x = 0; x < kTargetWidth; ++x) {
+            const auto source_x = kSourceX +
+                (x * kSourceWidth) / kTargetWidth;
+            image.pixels[static_cast<std::size_t>(kTargetY + y) * image.width +
+                         static_cast<std::size_t>(kTargetX + x)] =
+                source_image.pixels[static_cast<std::size_t>(source_y) *
+                                        source_image.width +
+                                    static_cast<std::size_t>(source_x)];
         }
     }
     return image;
 }
 
+RgbaImage decode_genesis_pocket_secretary_background(
+    const std::vector<std::uint8_t>& rom) {
+    // ROM 0x10A7E is the Pocket Secretary initializer. It is a separate
+    // 0x1232 composition from the field command bezel: the 34x3 top edge is
+    // written at $E000, the two 3x21 right-edge strips at $E180/$E1BE, and
+    // the 34x4 bottom edge at $EC00. Preserve the actual plane geometry so
+    // the native text/cursor layer can use the same window coordinates.
+    GenesisBootPatternData scene{
+        decode_genesis_1530_vram(rom, 0xCAB0CU, 0x1E20U),
+        read_genesis_palette_set(rom, 0xD29D6U),
+    };
+    auto image = make_transparent_title_layer();
+    for (auto& pixel : image.pixels) {
+        pixel = {0, 0, 0, 255};
+    }
+    blit_genesis_name_table(rom, scene, image, 0xCDA0EU, 34U, 3U,
+                            0xE000U, 0xE000U, 0, false);
+    blit_genesis_name_table(rom, scene, image, 0xCDADAU, 3U, 21U,
+                            0xE180U, 0xE000U, 0, false);
+    blit_genesis_name_table(rom, scene, image, 0xCDB58U, 3U, 21U,
+                            0xE1BEU, 0xE000U, 0, false);
+    blit_genesis_name_table(rom, scene, image, 0xCDBD6U, 34U, 4U,
+                            0xEC00U, 0xE000U, 0, false);
+    return image;
+}
+
 RgbaImage decode_genesis_field_hud(const std::vector<std::uint8_t>& rom) {
-    // ROM 0x334C: copy 0x6A5BE -> VRAM $DAC0 ($4C0 bytes), then 0x1232
-    // stamps at $F044 / $FD44 (6x2 caps) and $F144 / $F544 / $F944 (6x8
-    // slots). That is the vertical sidebar. Palette 0xE2E3A from 0x176EA.
+    // 0x334C is the field-loop HUD refresh called after 0x1745E's plane
+    // setup. Its 0x6A5BE pattern upload is followed by five raw 0x1232
+    // writes. The source addresses are in the plane's $F000 alias; normalize
+    // them to the visible $E000 plane first. The field presentation window
+    // then shifts this 48px source strip left by 16 pixels, leaving the
+    // rightmost 16px black in the 320px capture.
     GenesisBootPatternData scene{
         std::vector<std::uint8_t>(0x10000U, 0),
-        read_genesis_palette_set(rom, 0xE2E3AU),
+        read_genesis_command_palette_set(rom),
     };
-    write_genesis_f5c_vram(rom, 0x6A5BEU, 0xDAC0U, 0x4C0U, scene.pattern_vram);
+    write_genesis_f5c_vram(rom, 0x6A5BEU, 0xDAC0U, 0x4C0U,
+                           scene.pattern_vram);
     auto image = make_transparent_title_layer();
-    constexpr std::uint32_t kWindow = 0xF000U;
-    blit_genesis_name_table(rom, scene, image, 0x6ACE2U, 6U, 2U, 0xF044U,
-                            kWindow, 0x6000U, true);
-    blit_genesis_name_table(rom, scene, image, 0x6ACE2U, 6U, 2U, 0xFD44U,
-                            kWindow, 0x6000U, true);
-    blit_genesis_name_table(rom, scene, image, 0x6AA7EU, 6U, 8U, 0xF144U,
-                            kWindow, 0x6000U, true);
-    blit_genesis_name_table(rom, scene, image, 0x6AA7EU, 6U, 8U, 0xF544U,
-                            kWindow, 0x6000U, true);
-    blit_genesis_name_table(rom, scene, image, 0x6AA7EU, 6U, 8U, 0xF944U,
-                            kWindow, 0x6000U, true);
-    return image;
+    blit_genesis_name_table(rom, scene, image, 0x6ACE2U, 6U, 2U,
+                            0xF044U, 0xF000U, 0x6000U, true);
+    blit_genesis_name_table(rom, scene, image, 0x6ACE2U, 6U, 2U,
+                            0xFD44U, 0xF000U, 0x6000U, true);
+    for (const auto dest : {0xF144U, 0xF544U, 0xF944U}) {
+        blit_genesis_name_table(rom, scene, image, 0x6AA7EU, 6U, 8U,
+                                dest, 0xF000U, 0x6000U, true);
+    }
+    constexpr std::int32_t kRomHudX = 272;
+    constexpr std::int32_t kDisplayedHudX = native::kFieldHudX;
+    RgbaImage shifted = make_transparent_title_layer();
+    for (std::uint16_t y = 0; y < image.height; ++y) {
+        for (std::uint16_t x = 0; x < image.width; ++x) {
+            const auto source_x = static_cast<std::int32_t>(x);
+            if (source_x < kRomHudX ||
+                source_x >= kRomHudX + native::kFieldHudWidth) {
+                continue;
+            }
+            const auto target_x = source_x - kRomHudX + kDisplayedHudX;
+            if (target_x < 0 || target_x >= image.width) {
+                continue;
+            }
+            shifted.pixels[static_cast<std::size_t>(y) * shifted.width +
+                           static_cast<std::size_t>(target_x)] =
+                image.pixels[static_cast<std::size_t>(y) * image.width + x];
+        }
+    }
+    return shifted;
+}
+
+GenesisFieldHudLayers decode_genesis_field_hud_layers(
+    const std::vector<std::uint8_t>& rom,
+    const std::array<GenesisFieldEntityTemplate, 3>& records) {
+    // 0x177CC is part of the field initializer and supplies the fixed counter
+    // tiles before 0x39F2 stamps their name words.  0x3404 then appends each
+    // runner's 16 portrait tiles and six item tiles at the exact VRAM offsets
+    // consumed by 0x35D4/0x35F0.
+    GenesisBootPatternData scene{
+        std::vector<std::uint8_t>(0x10000U, 0),
+        read_genesis_command_palette_set(rom),
+    };
+    write_genesis_1530_vram(rom, 0xD86E0U, 0x17E0U, scene.pattern_vram);
+    write_genesis_1530_vram(rom, 0xD78AAU, 0x0580U, scene.pattern_vram);
+
+    constexpr std::size_t kPortraitTileSource = 0x6ACFAU;
+    constexpr std::size_t kItemTileSource = 0xCF97CU;
+    constexpr std::size_t kItemTable = 0xD4540U;
+    constexpr std::size_t kItemRecordStride = 0x30U;
+    constexpr std::size_t kPortraitUploadBase = 0xD280U;
+    constexpr std::size_t kPortraitUploadStride = 0x2C0U;
+    constexpr std::size_t kPortraitTileCount = 16U;
+    constexpr std::size_t kItemTileCount = 6U;
+
+    const auto copy_rom_tile = [&rom, &scene](std::size_t source,
+                                               std::size_t destination) {
+        if (source > rom.size() || rom.size() - source < 32U ||
+            destination > scene.pattern_vram.size() ||
+            scene.pattern_vram.size() - destination < 32U) {
+            throw std::out_of_range("Genesis field HUD tile upload is truncated");
+        }
+        std::copy_n(rom.begin() + static_cast<std::ptrdiff_t>(source), 32U,
+                    scene.pattern_vram.begin() +
+                        static_cast<std::ptrdiff_t>(destination));
+    };
+
+    for (std::size_t index = 0; index < records.size(); ++index) {
+        const auto& record = records[index];
+        if (record.record_offset == 0U || record.kind == 0U) {
+            continue;
+        }
+        auto portrait_table = static_cast<std::size_t>(read_rom_u32(
+            rom, record.record_offset + 0x50U,
+            "Genesis field HUD portrait pointer is truncated"));
+        // 0x3404 uses the live record's +0x54 word as a byte offset into the
+        // portrait nametable.  This is why the field face is not simply the
+        // command-screen portrait's top-left 3x2 crop.
+        portrait_table += read_rom_u16(
+            rom, record.record_offset + 0x54U,
+            "Genesis field HUD portrait selector is truncated");
+        const auto record_upload =
+            kPortraitUploadBase + index * kPortraitUploadStride;
+        for (std::size_t row = 0; row < 4U; ++row) {
+            for (std::size_t column = 0; column < 4U; ++column) {
+                // 0x3404 copies four words, then advances A2 by eight bytes;
+                // the source portrait table is 8 tiles wide while the live
+                // upload is the left 4x4 crop used by 0x35F0.
+                const auto table_word = read_rom_u16(
+                    rom, portrait_table + (row * 8U + column) * 2U,
+                    "Genesis field HUD portrait table is truncated");
+                const auto source_tile = static_cast<std::size_t>(
+                    table_word & 0x07FFU);
+                const auto upload_tile = row * 4U + column;
+                copy_rom_tile(kPortraitTileSource + source_tile * 32U,
+                              record_upload + upload_tile * 32U);
+            }
+        }
+
+        const auto item_code = static_cast<std::size_t>(record.active_item_code);
+        if (item_code != 0U && item_code <= native::kNativeInventoryItemCount) {
+            const auto item_record =
+                kItemTable + (item_code - 1U) * kItemRecordStride;
+            const auto item_table = static_cast<std::size_t>(read_rom_u32(
+                rom, item_record + 0x1AU,
+                "Genesis field HUD item pointer is truncated"));
+            const auto item_upload =
+                record_upload + kPortraitTileCount * 32U;
+            for (std::size_t tile = 0; tile < kItemTileCount; ++tile) {
+                const auto table_word = read_rom_u16(
+                    rom, item_table + tile * 2U,
+                    "Genesis field HUD item table is truncated");
+                const auto source_tile = static_cast<std::size_t>(
+                    table_word & 0x07FFU);
+                copy_rom_tile(kItemTileSource + source_tile * 32U,
+                              item_upload + tile * 32U);
+            }
+        }
+    }
+
+    const auto palette_line_for_item = [&rom](const auto& record) {
+        const auto palette_word = read_rom_u16(
+            rom, record.record_offset + 0x2CU,
+            "Genesis field HUD item palette is truncated");
+        return palette_word == 0U
+            ? std::size_t{1U}
+            : static_cast<std::size_t>((palette_word & 0x6000U) >> 13U);
+    };
+
+    const auto make_tile_block = [&scene](std::size_t tile_base,
+                                           std::size_t columns,
+                                           std::size_t rows,
+                                           std::size_t palette_line,
+                                           std::size_t source_columns = 0U) {
+        if (source_columns == 0U) {
+            source_columns = columns;
+        }
+        RgbaImage image{
+            static_cast<std::uint16_t>(columns * 8U),
+            static_cast<std::uint16_t>(rows * 8U),
+            std::vector<native::Rgba8>(columns * rows * 64U,
+                                       native::Rgba8{0, 0, 0, 0})};
+        for (std::size_t row = 0; row < rows; ++row) {
+            for (std::size_t column = 0; column < columns; ++column) {
+                blit_genesis_tile(
+                    image, scene, tile_base + row * source_columns + column,
+                    palette_line, false, false,
+                    static_cast<std::int32_t>(column * 8U),
+                    static_cast<std::int32_t>(row * 8U), true);
+            }
+        }
+        return image;
+    };
+
+    const auto crop = [](const RgbaImage& source, std::int32_t x,
+                         std::int32_t y, std::uint16_t width,
+                         std::uint16_t height) {
+        RgbaImage result{
+            width, height,
+            std::vector<native::Rgba8>(static_cast<std::size_t>(width) * height,
+                                       native::Rgba8{0, 0, 0, 0})};
+        for (std::uint16_t row = 0; row < height; ++row) {
+            for (std::uint16_t column = 0; column < width; ++column) {
+                const auto source_x = x + static_cast<std::int32_t>(column);
+                const auto source_y = y + static_cast<std::int32_t>(row);
+                if (source_x < 0 || source_y < 0 ||
+                    source_x >= static_cast<std::int32_t>(source.width) ||
+                    source_y >= static_cast<std::int32_t>(source.height)) {
+                    continue;
+                }
+                result.pixels[static_cast<std::size_t>(row) * width + column] =
+                    source.pixels[static_cast<std::size_t>(source_y) *
+                                      source.width +
+                                  static_cast<std::size_t>(source_x)];
+            }
+        }
+        return result;
+    };
+
+    GenesisFieldHudLayers result;
+    for (std::size_t index = 0; index < records.size(); ++index) {
+        const auto& record = records[index];
+        if (record.record_offset == 0U || record.kind == 0U) {
+            continue;
+        }
+        const auto portrait_base =
+            (kPortraitUploadBase + index * kPortraitUploadStride) / 32U;
+        // 0x35D4 writes the uploaded portrait as a 4x4 block at F1C6.  The
+        // command screen's 8x10 portrait is a different destination and must
+        // not be cropped into this field-HUD slot: doing that leaves the face
+        // undersized and exposes the wrong source window.
+        const auto portrait_palette_word = read_rom_u16(
+            rom, record.record_offset + 0x2CU,
+            "Genesis field HUD portrait palette is truncated");
+        const auto portrait_palette_line = static_cast<std::size_t>(
+            (portrait_palette_word & 0x6000U) >> 13U);
+        result.faces[index] = make_tile_block(
+            portrait_base, 4U, 4U, portrait_palette_line);
+
+        const auto item_base = portrait_base + kPortraitTileCount;
+        // 0x3404 uploads only six item tiles. 0x35D4's surrounding 4x4 VDP
+        // writes leave the remaining source cells untouched; keeping only the
+        // uploaded 3x2 item region avoids leaking the next runner's portrait
+        // tiles into this slot in the host representation.
+        result.item_blocks[index] = make_tile_block(
+            item_base, 3U, 2U, palette_line_for_item(record));
+
+        const auto vertical_progress = std::min<std::size_t>(
+            static_cast<std::size_t>(record.physical_value), 10U);
+        const auto vertical_source =
+            0x6AB3EU + (record.flags_10 & 0x01U ? vertical_progress * 8U : 0U);
+        auto vertical_canvas = make_transparent_title_layer();
+        blit_genesis_name_table(rom, scene, vertical_canvas, vertical_source,
+                                1U, 4U, 0xF4C4U + index * 0x400U,
+                                0xF000U, 0x6000U, true);
+        // The canvas is still in ROM plane coordinates. Apply the same
+        // source-to-capture -16px window shift used by the static chrome when
+        // selecting the layer crop.
+        result.vertical_counters[index] = crop(
+            vertical_canvas, native::kFieldHudVerticalCounterX + 16,
+            native::kFieldHudVerticalCounterY +
+                static_cast<std::int32_t>(index * 64U),
+            8U, 32U);
+
+        const auto horizontal_progress = std::min<std::size_t>(
+            static_cast<std::size_t>(record.mental_value), 10U);
+        const auto horizontal_source =
+            (index == 0U ? 0x6ABEEU : 0x6AB96U) + horizontal_progress * 8U;
+        auto horizontal_canvas = make_transparent_title_layer();
+        blit_genesis_name_table(rom, scene, horizontal_canvas,
+                                horizontal_source, 4U, 1U,
+                                0xF3C6U + index * 0x400U, 0xF000U,
+                                0x6000U, true);
+        result.horizontal_counters[index] = crop(
+            horizontal_canvas, native::kFieldHudHorizontalCounterX + 16,
+            native::kFieldHudHorizontalCounterY +
+                static_cast<std::int32_t>(index * 64U),
+            32U, 8U);
+    }
+    return result;
 }
 
 RgbaImage software_screen_image(const native::SoftwareScreen& screen) {

@@ -109,7 +109,7 @@ void write_source_text(SoftwareScreen& screen, const NativeImage& font,
     }
 }
 
-std::string source_item_detail_label_for_test(std::uint8_t item_code) {
+std::string_view source_item_detail_label_for_test(std::uint8_t item_code) {
     if (item_code < 0x0DU) {
         return "ammo";
     }
@@ -121,6 +121,15 @@ std::string source_item_detail_label_for_test(std::uint8_t item_code) {
         return "rtng";
     }
     return {};
+}
+
+std::string center_source_fixed_field_for_test(std::string_view value,
+                                               std::size_t width = 12U) {
+    if (value.size() >= width) {
+        return std::string(value);
+    }
+    const auto left_padding = (width - value.size()) / 2U;
+    return std::string(left_padding, ' ') + std::string(value);
 }
 
 std::uint8_t source_phase_for_test(const NativeFieldEntity& record,
@@ -179,8 +188,9 @@ SoftwareScreen source_field_menu_reference(const NativePortAssets& assets,
                                assets.field_menu_item_art[item_index].height,
                                assets.field_menu_item_art[item_index].pixels);
         }
-        write_text(128, 64, item.name);
-        write_text(128, 72, item.category);
+        write_text(128, 64, center_source_fixed_field_for_test(item.name));
+        write_text(128, 72,
+                   center_source_fixed_field_for_test(item.category));
         const auto is_weapon_detail = item_code < 0x10U;
         if (is_weapon_detail &&
             item.damage_table_index < assets.field_menu_damage_bars.size()) {
@@ -202,11 +212,11 @@ SoftwareScreen source_field_menu_reference(const NativePortAssets& assets,
             ? source_item_detail_label_for_test(item_code)
             : std::string_view{};
         if (!detail_label.empty()) {
-            write_text(112, 80, detail_label);
+            write_text(112, 48, detail_label);
             const auto phase = source_phase_for_test(record, item_code);
             if (phase < assets.field_menu_detail_values.size()) {
                 const auto& value = assets.field_menu_detail_values[phase];
-                expected.blit_rgba(168, 80, value.width, value.height,
+                expected.blit_rgba(120, 56, value.width, value.height,
                                    value.pixels);
             }
         }
@@ -732,10 +742,14 @@ void test_field_menu_visual_contract(
             source_record.active_item_code <= assets.inventory_items.size()) {
             const auto& active_item = assets.inventory_items[
                 source_record.active_item_code - 1U];
-            require_source_text(screen, assets.field_menu_font, 128, 64,
-                                active_item.name, "active item name");
-            require_source_text(screen, assets.field_menu_font, 128, 72,
-                                active_item.category, "active item category");
+            require_source_text(
+                screen, assets.field_menu_font, 128, 64,
+                center_source_fixed_field_for_test(active_item.name),
+                "active item name");
+            require_source_text(
+                screen, assets.field_menu_font, 128, 72,
+                center_source_fixed_field_for_test(active_item.category),
+                "active item category");
         }
         if (shell.field_equipped_weapon_slot() != source_record.display_state ||
             shell.field_equipped_armor_index() != source_record.equipped_armor_index) {

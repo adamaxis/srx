@@ -14,6 +14,15 @@ namespace {
 
 using Glyph = std::array<std::uint8_t, 7>;
 
+std::string center_source_fixed_field(std::string_view value,
+                                      std::size_t width = 12U) {
+    if (value.size() >= width) {
+        return std::string(value);
+    }
+    const auto left_padding = (width - value.size()) / 2U;
+    return std::string(left_padding, ' ') + std::string(value);
+}
+
 Glyph glyph_for(char character) {
     if (character >= 'a' && character <= 'z') {
         character = static_cast<char>(character - ('a' - 'A'));
@@ -292,7 +301,26 @@ constexpr std::uint64_t kIntroWildernessEnd =
 constexpr std::uint64_t kIntroTrividEnd = kIntroWildernessEnd + 0x115U;
 constexpr std::uint64_t kIntroAirportText =
     kIntroTrividEnd + (0x528U - 0x1E0U);
-constexpr std::uint64_t kIntroDuration = kIntroTrividEnd + 0x529U;
+// 0x5AD1A keeps calling 0x5B00A/0x5B056/0x5B0BC for its complete 0x528/DBF
+// airport loop. The craft leaves the viewport early, but the source landing
+// transition and its late SAT updates remain part of the scene through the
+// final pass; ending the native airport at $150 dropped that transition.
+constexpr std::uint64_t kIntroAircraftEnd = kIntroTrividEnd + 0x529U;
+constexpr std::uint64_t kIntroDuration = kIntroAircraftEnd;
+// 0x5AD1A's Plane-A map is written at VRAM $074A: tile column 37, row 14.
+// The extractor normalizes the authored 27x8 map to (0,0), so the native
+// source path restores this origin before applying DD08's -2-per-pass scroll.
+constexpr std::int32_t kIntroAircraftPlaneOriginX = 37 * 8;
+constexpr std::int32_t kIntroAircraftPlaneOriginY = 14 * 8;
+// ROM 0x5B270 is seven signed fixed-point movement records used by 0x5B1B6.
+// These values are source state; the corresponding SAT pixels live in the
+// extracted native pack.
+constexpr std::array<std::int16_t, 7> kIntroAircraftMovementDx{{
+    0x00F1, 0x006E, 0x0071, 0x002A, 0x0000, 0x0063, 0x0000}};
+constexpr std::array<std::int16_t, 7> kIntroAircraftMovementDy{{
+    0x0071, 0x0000, 0x0071, 0x0071, 0x0038, 0x0038, 0x0000}};
+constexpr std::array<std::uint16_t, 7> kIntroAircraftMovementDelay{{
+    0x0024, 0x005A, 0x0048, 0x0012, 0x0024, 0x0012, 0x0000}};
 
 // Capture 10 Hz storyboard: green story text sits in the upper black
 // band; the skyline / ambush / cockpit occupy the lower half.
@@ -333,64 +361,6 @@ std::vector<Rgba8> scale_rgba(const std::vector<Rgba8>& source,
             (static_cast<std::uint16_t>(pixel.blue) * remaining) / total);
     }
     return faded;
-}
-
-void blit_intro_actor(ScreenWriter& screen, const NativeImage& image,
-                      std::int32_t src_x, std::int32_t src_y,
-                      std::int32_t width, std::int32_t height,
-                      std::int32_t dest_x, std::int32_t dest_y, bool flash) {
-    if (image.pixels.empty() || width <= 0 || height <= 0) {
-        return;
-    }
-    const auto image_width = static_cast<std::int32_t>(image.width);
-    const auto image_height = static_cast<std::int32_t>(image.height);
-    std::vector<Rgba8> tile(static_cast<std::size_t>(width * height),
-                            Rgba8{0, 0, 0, 0});
-    for (std::int32_t row = 0; row < height; ++row) {
-        const auto source_y = src_y + row;
-        if (source_y < 0 || source_y >= image_height) {
-            continue;
-        }
-        for (std::int32_t column = 0; column < width; ++column) {
-            const auto source_x = src_x + column;
-            if (source_x < 0 || source_x >= image_width) {
-                continue;
-            }
-            auto pixel = image.pixels[static_cast<std::size_t>(source_y) *
-                                          image.width +
-                                      static_cast<std::size_t>(source_x)];
-            if (pixel.alpha == 0U) {
-                continue;
-            }
-            const auto grass = pixel.green > pixel.red + 16U &&
-                               pixel.green > pixel.blue + 8U;
-            // Dirt is near-neutral brown. Shaman skin is red-dominant; the
-            // previous dirt test dropped the head.
-            const auto dirt = pixel.red > 40U && pixel.green > 28U &&
-                              pixel.blue < 50U && pixel.red < 160U &&
-                              pixel.green < 130U &&
-                              pixel.red < pixel.green + 24U &&
-                              pixel.green < pixel.red + 24U;
-            if (grass || dirt) {
-                continue;
-            }
-            if (flash) {
-                pixel.red = 0xFF;
-                pixel.green = 0xFF;
-                pixel.blue = 0xFF;
-            }
-            tile[static_cast<std::size_t>(row * width + column)] = pixel;
-        }
-    }
-    screen.blit_rgba(dest_x, dest_y, static_cast<std::uint16_t>(width),
-                     static_cast<std::uint16_t>(height), tile);
-}
-
-void draw_intro_bolt(ScreenWriter& screen, std::int32_t x, std::int32_t y) {
-    // Capture muzzle ticks are short cyan capsules, not 8x2 white bars.
-    const Rgba8 bolt{0x48, 0xD0, 0xE0, 0xFF};
-    std::vector<Rgba8> bar(12U * 3U, bolt);
-    screen.blit_rgba(x, y, 12, 3, bar);
 }
 
 // ROM 0x391A walks entity records after the current record. A candidate must
@@ -765,16 +735,31 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     boot_logo_strobe_ = std::move(assets.boot_logo_strobe);
     boot_fasa_ = std::move(assets.boot_fasa);
     startup_background_ = std::move(assets.startup_background);
+    intro_ambush_frames_ = std::move(assets.intro_ambush_frames);
     intro_heli_frames_ = std::move(assets.intro_heli_frames);
     field_hud_ = std::move(assets.field_hud);
+    field_hud_faces_ = std::move(assets.field_hud_faces);
+    field_hud_item_blocks_ = std::move(assets.field_hud_item_blocks);
+    field_hud_vertical_counters_ =
+        std::move(assets.field_hud_vertical_counters);
+    field_hud_horizontal_counters_ =
+        std::move(assets.field_hud_horizontal_counters);
     pocket_secretary_background_ = std::move(assets.pocket_secretary_background);
     intro_stages_ = std::move(assets.intro_stages);
+    intro_aircraft_plane_a_ = std::move(assets.intro_aircraft_plane_a);
+    intro_wilderness_pan_frames_ =
+        std::move(assets.intro_wilderness_pan_frames);
+    intro_aircraft_movement_frames_ =
+        std::move(assets.intro_aircraft_movement_frames);
+    cab_map_ = std::move(assets.cab_map);
     if (!boot_background_.pixels.empty()) {
         scene_ = NativeScene::Bootstrap;
     }
     field_menu_background_width_ = assets.field_menu_background.width;
     field_menu_background_height_ = assets.field_menu_background.height;
     field_menu_background_pixels_ = std::move(assets.field_menu_background.pixels);
+    field_menu_attributes_background_ =
+        std::move(assets.field_menu_attributes_background);
     field_menu_inventory_boxes_width_ = assets.field_menu_inventory_boxes.width;
     field_menu_inventory_boxes_height_ = assets.field_menu_inventory_boxes.height;
     field_menu_inventory_boxes_pixels_ =
@@ -787,6 +772,10 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     field_menu_runner_portraits_ = std::move(assets.field_menu_runner_portraits);
     field_menu_selected_cells_ = std::move(assets.field_menu_selected_cells);
     field_menu_command_focus_ = std::move(assets.field_menu_command_focus);
+    field_menu_clips_focus_ = std::move(assets.field_menu_clips_focus);
+    field_menu_clips_trade_focus_ =
+        std::move(assets.field_menu_clips_trade_focus);
+    field_menu_posture_focus_ = std::move(assets.field_menu_posture_focus);
     field_menu_cursor_ = std::move(assets.field_menu_cursor);
     field_menu_item_art_ = std::move(assets.field_menu_item_art);
     field_menu_inventory_icons_ = std::move(assets.field_menu_inventory_icons);
@@ -1433,12 +1422,12 @@ void NativePortShell::select_field_entity_animation(std::size_t direction) {
         field_entity_.state_selector = animation.state_selector;
         field_entity_.state_index = 0;
         field_entity_.animation_accumulator = 0;
-        // ROM 0x600E resolves the active state list and writes its timing
-        // classification to record +0x18. For Joshua's kind-3 walking lists
-        // the source timing word is 0x76F0, which classifies to 0x0010. The
-        // neighboring 0x0300 word is list metadata, not the frame cadence.
+        // ROM 0x600E resolves the active negative-marker walking list and
+        // writes its auxiliary word (0x0300 for Joshua) to record +0x18.
+        // That word is the frame accumulator increment; 0x76F0 at +0xCA is
+        // source metadata used only for the positive-marker idle lists.
         field_entity_.animation_multiplier =
-            std::max<std::uint16_t>(animation.timing_multiplier, 1U);
+            std::max<std::uint16_t>(animation.state_auxiliary_word, 1U);
         if (field_entity_.animation_threshold == 0U) {
             field_entity_.animation_threshold = 0x1000U;
         }
@@ -3262,6 +3251,161 @@ void NativePortShell::render_command_base(ScreenWriter& screen) const {
     }
 }
 
+void NativePortShell::render_command_static_layers(ScreenWriter& screen) const {
+    // The ROM enters Clips/Cyberware/Magic from the already initialized
+    // command screen. Those routines clear and rewrite only the center plane;
+    // the portrait, runner name, inventory cells/icons, equipment borders,
+    // and lower status strip remain visible around the submenu.
+    render_command_base(screen);
+    if (!field_menu_inventory_boxes_pixels_.empty()) {
+        screen.blit_rgba(0, 0, field_menu_inventory_boxes_width_,
+                         field_menu_inventory_boxes_height_,
+                         field_menu_inventory_boxes_pixels_);
+    }
+    render_command_dynamic_layers(screen);
+}
+
+void NativePortShell::render_command_dynamic_layers(
+    ScreenWriter& screen, bool attributes_frame) const {
+    // These writes are the live record-dependent portion of the command
+    // screen. Attributes/Skills uses a different source background, but the
+    // same runner portrait, status, equipment, and item-icon writers remain
+    // active around that plane.
+    if (attributes_frame) {
+        // 0xD01C uses the dedicated full-screen attributes plane. It does
+        // not redraw the ordinary command inventory/portrait column; the
+        // only runner identity sprite left on this plane is the small face
+        // in the upper title box.
+        const auto data_index = active_field_record_ == 0U
+            ? (selected_archetype_ < field_hud_faces_.size()
+                   ? selected_archetype_ : 0U)
+            : std::min<std::size_t>(active_field_record_,
+                                    field_hud_faces_.size() - 1U);
+        const auto& face = field_hud_faces_[data_index];
+        if (!face.pixels.empty()) {
+            screen.blit_rgba(192, 8, face.width, face.height, face.pixels);
+        }
+        if (active_field_record_ < field_menu_runner_names_.size()) {
+            const auto& name = field_menu_runner_names_[active_field_record_];
+            if (!name.empty()) {
+                write_field_menu_text(screen, 120, 24, name);
+                const auto class_name = field_entity_.archetype_index == 3U
+                    ? std::string("Human ") + intro_.archetypes[1]
+                    : field_entity_.archetype_index == 2U
+                        ? intro_.archetypes[0]
+                        : field_entity_.archetype_index == 1U
+                            ? intro_.archetypes[2] + " " +
+                                  intro_.archetypes[3]
+                            : std::string{};
+                if (!class_name.empty()) {
+                    write_field_menu_text(screen, 104, 32, class_name);
+                }
+            }
+        }
+        return;
+    }
+    const auto side_offset = 0;
+    if (active_field_record_ < field_menu_runner_portraits_.size()) {
+        const auto portrait_index = active_field_record_ == 0U
+            ? selected_archetype_ : active_field_record_;
+        if (portrait_index < field_menu_runner_portraits_.size()) {
+            const auto& portrait = field_menu_runner_portraits_[portrait_index];
+            if (!portrait.pixels.empty()) {
+                screen.blit_rgba(16 + side_offset, 16, portrait.width,
+                                 portrait.height, portrait.pixels);
+            }
+        }
+        if (active_field_record_ < field_menu_runner_names_.size()) {
+            const auto& name = field_menu_runner_names_[active_field_record_];
+            if (!name.empty()) {
+                write_field_menu_text(screen, attributes_frame ? 120 : 128, 8,
+                                      name);
+                if (attributes_frame) {
+                    const auto class_name = field_entity_.archetype_index == 3U
+                        ? std::string("Human ") + intro_.archetypes[1]
+                        : field_entity_.archetype_index == 2U
+                            ? intro_.archetypes[0]
+                            : field_entity_.archetype_index == 1U
+                                ? intro_.archetypes[2] + " " +
+                                      intro_.archetypes[3]
+                                : std::string{};
+                    if (!class_name.empty()) {
+                        write_field_menu_text(screen, 104, 16, class_name);
+                    }
+                }
+            }
+        }
+    }
+    if (!attributes_frame) {
+        const auto status_index = std::min<std::size_t>(
+            field_entity_.menu_status_index, field_menu_status_bars_.size() - 1U);
+        const auto& status_bar = field_menu_status_bars_[status_index];
+        if (!status_bar.pixels.empty()) {
+            screen.blit_rgba(176, 168, status_bar.width, status_bar.height,
+                             status_bar.pixels);
+        }
+        const auto& status_name = field_menu_status_names_[status_index];
+        if (!status_name.empty()) {
+            write_field_menu_text(screen, 136, 176, status_name);
+        }
+    }
+
+    constexpr std::array<std::array<std::int32_t, 2>,
+                         kNativeInventorySlotCount>
+        kInventoryIconPositions{{
+            {{16, 120}}, {{56, 120}},
+            {{16, 144}}, {{56, 144}},
+            {{16, 168}}, {{56, 168}},
+            {{16, 192}}, {{56, 192}},
+        }};
+    const auto draw_equipment_border = [this, &screen, side_offset](
+                                           std::size_t slot) {
+        if (slot >= kNativeInventorySlotCount) {
+            return;
+        }
+        const auto overlay_index = ((slot / 2U) & 1U) == 0U ? 0U : 1U;
+        const auto& overlay = field_menu_selected_cells_[overlay_index];
+        if (!overlay.pixels.empty()) {
+            screen.blit_rgba(
+                8 + side_offset + static_cast<std::int32_t>((slot % 2U) * 40U),
+                112 + static_cast<std::int32_t>((slot / 2U) * 24U),
+                overlay.width, overlay.height, overlay.pixels);
+        }
+    };
+    if (field_entity_.display_state >= 0 &&
+        field_entity_.display_state != 0x7F) {
+        draw_equipment_border(
+            static_cast<std::size_t>(field_entity_.display_state));
+    }
+    if (field_entity_.equipped_armor_index != 0U) {
+        const auto armor_code = static_cast<std::uint8_t>(
+            0x2BU + field_entity_.equipped_armor_index);
+        for (std::size_t slot = 0;
+             slot < field_entity_.inventory_item_codes.size(); ++slot) {
+            if (field_entity_.inventory_item_codes[slot] == armor_code) {
+                draw_equipment_border(slot);
+                break;
+            }
+        }
+    }
+    const auto icon_palette_variant =
+        field_menu_uses_alt_item_palette(field_entity_) ? 1U : 0U;
+    for (std::size_t slot = 0;
+         slot < field_entity_.inventory_item_codes.size(); ++slot) {
+        const auto item_code = field_entity_.inventory_item_codes[slot];
+        if (item_code == 0U || item_code > kNativeInventoryItemCount) {
+            continue;
+        }
+        const auto& icon = field_menu_inventory_icons_[item_code - 1U]
+            [icon_palette_variant];
+        if (!icon.pixels.empty()) {
+            screen.blit_rgba(kInventoryIconPositions[slot][0] + side_offset,
+                             kInventoryIconPositions[slot][1], icon.width,
+                             icon.height, icon.pixels);
+        }
+    }
+}
+
 void NativePortShell::render_dialog_panel(ScreenWriter& screen) const {
     // 0xC3E6 / 0x12C5A: 28x21 tile fill at $C186. Same panel for motel
     // talk, street vendors, and other C0DA conversations.
@@ -3270,44 +3414,43 @@ void NativePortShell::render_dialog_panel(ScreenWriter& screen) const {
 }
 
 void NativePortShell::render_field_hud(ScreenWriter& screen) const {
-    // 0x334C chrome plus 0x33BE's 4x4 portrait and 0x3404 item icon.
+    // 0x334C supplies the static chrome. 0x39F2 then calls 0x36FC, 0x37EC,
+    // and 0x35D4/0x35F0 for each runner. The face is the source 4x4 block at
+    // F1C6; the item is the following 3x2 block at F448, with the counters at
+    // F4C4 and F3C6.
     if (!field_hud_.pixels.empty()) {
         screen.blit_rgba(0, 0, field_hud_.width, field_hud_.height,
                          field_hud_.pixels);
     }
-    const auto portrait_index =
-        selected_archetype_ < field_menu_runner_portraits_.size()
-            ? selected_archetype_
-            : 0U;
-    const auto& portrait = field_menu_runner_portraits_[portrait_index];
-    if (!portrait.pixels.empty() &&
-        portrait.width >= kFieldHudFaceWidth &&
-        portrait.height >= kFieldHudFaceHeight) {
-        std::vector<Rgba8> face(
-            static_cast<std::size_t>(kFieldHudFaceWidth) *
-                kFieldHudFaceHeight,
-            Rgba8{0, 0, 0, 0});
-        for (std::int32_t y = 0; y < kFieldHudFaceHeight; ++y) {
-            for (std::int32_t x = 0; x < kFieldHudFaceWidth; ++x) {
-                face[static_cast<std::size_t>(y) * kFieldHudFaceWidth + x] =
-                    portrait.pixels[static_cast<std::size_t>(y) *
-                                        portrait.width +
-                                    x];
-            }
-        }
-        screen.blit_rgba(kFieldHudFaceX, kFieldHudFaceY,
-                         static_cast<std::uint16_t>(kFieldHudFaceWidth),
-                         static_cast<std::uint16_t>(kFieldHudFaceHeight),
-                         face);
+    const auto slot_index = active_field_record_ < field_hud_faces_.size()
+        ? active_field_record_
+        : 0U;
+    const auto data_index = active_field_record_ == 0U
+        ? (selected_archetype_ < field_hud_faces_.size() ? selected_archetype_
+                                                           : 0U)
+        : slot_index;
+    const auto slot_y = static_cast<std::int32_t>(slot_index * 64U);
+    if (!field_hud_faces_[data_index].pixels.empty()) {
+        const auto& face = field_hud_faces_[data_index];
+        screen.blit_rgba(kFieldHudFaceX, kFieldHudFaceY + slot_y, face.width,
+                         face.height, face.pixels);
     }
-    const auto item_code = field_entity_.active_item_code;
-    if (item_code > 0U &&
-        item_code <= field_menu_inventory_icons_.size()) {
-        const auto& icon = field_menu_inventory_icons_[item_code - 1U][0];
-        if (!icon.pixels.empty()) {
-            screen.blit_rgba(kFieldHudGunX, kFieldHudGunY, icon.width,
-                             icon.height, icon.pixels);
-        }
+    if (!field_hud_vertical_counters_[data_index].pixels.empty()) {
+        const auto& counter = field_hud_vertical_counters_[data_index];
+        screen.blit_rgba(kFieldHudVerticalCounterX,
+                         kFieldHudVerticalCounterY + slot_y,
+                         counter.width, counter.height, counter.pixels);
+    }
+    if (!field_hud_horizontal_counters_[data_index].pixels.empty()) {
+        const auto& counter = field_hud_horizontal_counters_[data_index];
+        screen.blit_rgba(kFieldHudHorizontalCounterX,
+                         kFieldHudHorizontalCounterY + slot_y,
+                         counter.width, counter.height, counter.pixels);
+    }
+    if (!field_hud_item_blocks_[data_index].pixels.empty()) {
+        const auto& item = field_hud_item_blocks_[data_index];
+        screen.blit_rgba(kFieldHudGunX, kFieldHudGunY + slot_y, item.width,
+                         item.height, item.pixels);
     }
 }
 
@@ -3418,6 +3561,62 @@ void NativePortShell::update_boot() {
     }
 }
 
+void NativePortShell::update_title(const InputState& input) {
+    // 0x1C1E runs before the reveal dispatch. Once 0x1E4E sets DD5A to one,
+    // its $5A countdown reaches state two and the source writes the completed
+    // copyright block. Keep this state explicit even though the renderer only
+    // needs the two visible thresholds.
+    if (title_completion_state_ == 1U) {
+        --title_text_timer_;
+        if (title_text_timer_ < 0) {
+            title_completion_state_ = 2U;
+        }
+    }
+
+    // 0x1B24/0x1B62: DD2C is a signed countdown. The reveal branch starts on
+    // the pass after it reaches -1, not when it reaches zero.
+    --title_reveal_delay_;
+    if (title_reveal_delay_ < 0 &&
+        title_revealed_columns_ <= 0x25U) {
+        // 0x1E4E: DD40 starts at zero, then gates successive logo columns to
+        // every other title-loop pass. The source writes one complete 8px
+        // column per call and stops after the 38th column.
+        --title_column_cadence_;
+        if (title_column_cadence_ < 0) {
+            title_column_cadence_ = 1;
+            if (title_revealed_columns_ < kTitleRevealColumnCount) {
+                ++title_revealed_columns_;
+                // 0x1EAA sets DD5A when FFF1E6 becomes $25, before the final
+                // column pass at $25. That is the source completion boundary.
+                if (title_revealed_columns_ == 0x25U) {
+                    title_completion_state_ = 1U;
+                    title_text_timer_ = kTitleTextDelay;
+                }
+            }
+        }
+
+        // 0x1C6A is called on every pass in the reveal branch, independently
+        // of DD40. Its first call advances phase 0 -> 1 and origin $98 ->
+        // $9C; each later phase lasts four calls.
+        --title_sprite_cadence_;
+        if (title_sprite_cadence_ < 0) {
+            title_sprite_cadence_ = 3;
+            ++title_sprite_phase_;
+            if (title_sprite_phase_ >= kNativeTitleAnimationFrameCount) {
+                title_sprite_phase_ = 0;
+            }
+        }
+        title_sprite_x_ = static_cast<std::int16_t>(title_sprite_x_ + 4);
+    }
+
+    // 0x0BF2 samples an edge during the title loop. The source leaves the
+    // reveal state intact, then enters the 0x131C palette fade.
+    if (input.was_pressed(Button::Start)) {
+        title_fade_left_ = kBootFadeFrames;
+    }
+    ++frame_number_;
+}
+
 void NativePortShell::update(const InputState& input) {
     input_ = input;
 
@@ -3430,8 +3629,6 @@ void NativePortShell::update(const InputState& input) {
     }
 
     if (scene_ == NativeScene::Title) {
-        // 0x1A9E samples Start via 0x0BF2 into FFDDC2, breaks the D7 loop,
-        // then 0x131C fades before 0x1BAC returns into 0x59092. One edge.
         if (title_fade_left_ != 0U) {
             --title_fade_left_;
             if (title_fade_left_ == 0U) {
@@ -3449,10 +3646,7 @@ void NativePortShell::update(const InputState& input) {
             ++frame_number_;
             return;
         }
-        if (input.was_pressed(Button::Start)) {
-            title_fade_left_ = kBootFadeFrames;
-        }
-        ++frame_number_;
+        update_title(input);
         return;
     }
 
@@ -3872,30 +4066,25 @@ void NativePortShell::render(ScreenWriter& screen) const {
         // chips stay put. Do not pulse the traces.
         if (!title_background_.pixels.empty() ||
             !title_logo_plane_.pixels.empty()) {
-            constexpr std::uint64_t kTitleRevealStart = 0x5AU;
-            constexpr std::size_t kTitleRevealPixelsPerFrame = 4U;
             constexpr std::size_t kCircuitFadeFrames = 16U;
             const auto has_title_loop = frame_number_ != 0U;
             const auto title_loop = has_title_loop ? frame_number_ - 1U : 0U;
             const auto title_fade_weight =
                 title_fade_left_ == 0U ? kBootFadeFrames : title_fade_left_;
-            auto visible_pixels = std::size_t{0};
-            if (has_title_loop && title_loop >= kTitleRevealStart) {
-                const auto reveal_frames = static_cast<std::size_t>(
-                    title_loop - kTitleRevealStart + 1U);
-                visible_pixels = reveal_frames * kTitleRevealPixelsPerFrame;
-            }
-            const auto logo_width = title_logo_plane_.pixels.empty()
-                ? std::size_t{320}
-                : title_logo_plane_.width;
-            const auto last_visible_x =
-                std::min(logo_width, visible_pixels);
-            const auto logo_complete = last_visible_x >= logo_width;
+            // FFF1E6 is the source column index. It is deliberately kept as
+            // typed state by update_title; deriving this from host frame time
+            // loses the ROM's every-other-pass DD40 gate.
+            const auto visible_pixels = std::min<std::size_t>(
+                title_logo_plane_.width,
+                kTitleLogoDestinationX +
+                    static_cast<std::size_t>(title_revealed_columns_) * 8U);
+            const auto logo_complete =
+                title_revealed_columns_ >= kTitleRevealColumnCount;
             if (logo_complete && !title_background_.pixels.empty()) {
                 const auto reveal_end =
-                    kTitleRevealStart +
-                    (logo_width + kTitleRevealPixelsPerFrame - 1U) /
-                        kTitleRevealPixelsPerFrame;
+                    static_cast<std::uint64_t>(kTitleRevealDelay) +
+                    static_cast<std::uint64_t>(
+                        (kTitleRevealColumnCount - 1U) * 2U + 1U);
                 const auto fade_frames = has_title_loop &&
                         title_loop >= reveal_end
                     ? static_cast<std::size_t>(title_loop - reveal_end)
@@ -3920,28 +4109,14 @@ void NativePortShell::render(ScreenWriter& screen) const {
                                  scale_rgba(circuits, title_fade_weight,
                                             kBootFadeFrames));
             }
-            if (last_visible_x != 0U && !title_logo_plane_.pixels.empty()) {
+            if (visible_pixels != 0U && !title_logo_plane_.pixels.empty()) {
                 auto logo = title_logo_plane_.pixels;
-                // Capture: a hot explode edge leads the L-R reveal and is
-                // gone once the ram skull is complete. 4px/frame is the
-                // 0x1E4E column-every-two-vblanks average without 8px steps.
-                const auto edge_start =
-                    logo_complete || last_visible_x < 12U
-                        ? last_visible_x
-                        : last_visible_x - 12U;
                 for (std::size_t y = 0; y < title_logo_plane_.height; ++y) {
                     for (std::size_t x = 0; x < title_logo_plane_.width; ++x) {
                         auto& pixel =
                             logo[y * title_logo_plane_.width + x];
-                        if (x >= last_visible_x) {
+                        if (x >= visible_pixels) {
                             pixel.alpha = 0;
-                        } else if (x >= edge_start && pixel.alpha != 0U) {
-                            pixel.red = 0xFF;
-                            pixel.green = static_cast<std::uint8_t>(
-                                std::min<std::uint16_t>(
-                                    0xFFU, pixel.green + 0x40U));
-                            pixel.blue = static_cast<std::uint8_t>(
-                                pixel.blue / 2U);
                         }
                     }
                 }
@@ -3950,7 +4125,25 @@ void NativePortShell::render(ScreenWriter& screen) const {
                                  scale_rgba(logo, title_fade_weight,
                                             kBootFadeFrames));
             }
-            if (!title_text_.pixels.empty() && title_fade_left_ == 0U) {
+            // 0x1EAA marks the logo-complete state as soon as the visible
+            // explosion has settled. The source still performs the final
+            // column/SAT pass on that boundary, but the transient SAT flame
+            // must not remain over the settled logo.
+            if (title_completion_state_ == 0U &&
+                title_sprite_phase_ < title_sprite_frames_.size() &&
+                title_sprite_x_ != kTitleSpriteInitialX) {
+                const auto& sprite = title_sprite_frames_[title_sprite_phase_];
+                if (!sprite.pixels.empty()) {
+                    const auto sprite_delta = static_cast<std::int32_t>(
+                        title_sprite_x_ -
+                        static_cast<std::int16_t>(kTitleSpriteInitialX + 4));
+                    screen.blit_rgba(
+                        sprite_delta, 0, sprite.width, sprite.height,
+                        scale_rgba(sprite.pixels, title_fade_weight,
+                                   kBootFadeFrames));
+                }
+            }
+            if (!title_text_.pixels.empty()) {
                 auto blit_title_rows = [&screen, this](std::size_t first_row,
                                                         std::size_t row_count) {
                     auto text = title_text_.pixels;
@@ -3967,12 +4160,11 @@ void NativePortShell::render(ScreenWriter& screen) const {
                     screen.blit_rgba(0, 0, title_text_.width,
                                      title_text_.height, text);
                 };
-                // 0x1E4E sets DD5A=1 when FFF1E6 becomes $25 (column 37).
-                // 0x1C1E then counts DD5C from $5A down through -1.
-                constexpr auto kTitleCopyrightLoop =
-                    kTitleRevealStart + 72U + 0x5BU;
-                if (has_title_loop &&
-                    title_loop >= kTitleCopyrightLoop) {
+                // 0x1E4E sets DD5A=1 when FFF1E6 becomes $25 (column 37),
+                // then 0x1C1E counts DD5C from $5A through -1 before the
+                // copyright writer runs. The state is updated in source order
+                // by update_title, so this does not guess from frame numbers.
+                if (title_completion_state_ >= 2U) {
                     blit_title_rows(22U, 4U);
                 }
                 // 0x1A9E writes PRESS START only after D7 drops below $C6C,
@@ -3980,7 +4172,8 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 // call 0x1DE0 and leave the prompt blank.
                 const auto title_timer = static_cast<std::uint64_t>(
                     0xE10U - std::min<std::uint64_t>(title_loop, 0xE10U));
-                if (has_title_loop && title_timer < 0xC6CU &&
+                if (has_title_loop && title_fade_left_ == 0U &&
+                    title_timer < 0xC6CU &&
                     (title_timer & 0x3FU) >= 10U) {
                     blit_title_rows(21U, 1U);
                 }
@@ -4104,90 +4297,141 @@ void NativePortShell::render(ScreenWriter& screen) const {
                              fade_weight(0, kIntroSeattleEnd));
         } else if (intro_frame_ < kIntroWildernessEnd &&
                    !intro_stages_[1].pixels.empty()) {
-            // Capture: three runners on black. Crop the 0x5B4A8 plate and
-            // drop grass plus near-neutral dirt, not red-dominant skin.
-            const auto local = intro_frame_ - kIntroSeattleEnd;
-            const auto pan_frames = kIntroWildernessPan - kIntroSeattleEnd;
-            const auto rise = local < pan_frames
-                ? static_cast<std::int32_t>(
-                      (pan_frames - local) * 80U / std::max<std::uint64_t>(
-                          pan_frames, 1U))
-                : 0;
-            const auto gator_alive =
-                intro_frame_ < kIntroWildernessMassacre + 0x50U;
-            const auto shaman_alive =
-                intro_frame_ < kIntroWildernessMassacre + 0x8CU;
-            const auto flash_gator =
-                gator_alive && intro_frame_ >= kIntroWildernessMassacre &&
-                ((intro_frame_ / 4U) % 2U) == 0U;
-            const auto flash_shaman =
-                shaman_alive &&
-                intro_frame_ >= kIntroWildernessMassacre + 0x50U &&
-                ((intro_frame_ / 4U) % 2U) == 0U;
-            const auto gator_drop =
-                gator_alive ? 0
-                            : std::min<std::int32_t>(
-                                  80, static_cast<std::int32_t>(
-                                          intro_frame_ -
-                                          (kIntroWildernessMassacre +
-                                           0x50U)) *
-                                      4);
-            const auto shaman_drop =
-                shaman_alive ? 0
-                             : std::min<std::int32_t>(
-                                   80, static_cast<std::int32_t>(
-                                           intro_frame_ -
-                                           (kIntroWildernessMassacre +
-                                            0x8CU)) *
-                                       4);
-            const auto& plate = intro_stages_[1];
-            blit_intro_actor(screen, plate, 8, 80, 128, 144, 8, 80 + rise,
-                             false);
-            if (gator_alive || gator_drop < 80) {
-                blit_intro_actor(screen, plate, 128, 100, 96, 124, 128,
-                                 100 + rise + gator_drop, flash_gator);
+            // 0x5A1EA/0x5A0B2 update the wilderness SAT and name-table
+            // patches during the source 0x1F0 loop. The extracted samples
+            // are complete source compositions, so this selection cannot
+            // leave stale actors or host-generated hit flashes behind.
+            const NativeImage* plate = &intro_stages_[1];
+            if (intro_frame_ < kIntroWildernessPan &&
+                !intro_wilderness_pan_frames_.empty() &&
+                !intro_wilderness_pan_frames_.front().pixels.empty()) {
+                const auto pan_frame = std::min<std::size_t>(
+                    ((intro_frame_ - kIntroSeattleEnd) *
+                     intro_wilderness_pan_frames_.size()) /
+                        (kIntroWildernessPan - kIntroSeattleEnd),
+                    intro_wilderness_pan_frames_.size() - 1U);
+                plate = &intro_wilderness_pan_frames_[pan_frame];
+            } else if (intro_frame_ >= kIntroWildernessPan &&
+                       !intro_ambush_frames_.empty()) {
+                const auto ambush_frame = std::min<std::size_t>(
+                    intro_frame_ - kIntroWildernessPan,
+                    intro_ambush_frames_.size() - 1U);
+                if (!intro_ambush_frames_[ambush_frame].pixels.empty()) {
+                    plate = &intro_ambush_frames_[ambush_frame];
+                }
             }
-            if (shaman_alive || shaman_drop < 80) {
-                blit_intro_actor(screen, plate, 200, 8, 112, 136, 200,
-                                 8 + rise + shaman_drop, flash_shaman);
-            }
-            if (local > pan_frames) {
-                const auto shot = static_cast<std::int32_t>(
-                    (local * 3U) % 220U);
-                draw_intro_bolt(screen, 40 + (shot % 180),
-                                110 + (shot % 40) / 4);
-                draw_intro_bolt(screen, 90 + ((shot * 2) % 160), 150);
-            }
+            screen.blit_rgba(0, 0, plate->width, plate->height, plate->pixels);
         } else if (intro_frame_ < kIntroTrividEnd &&
                    !intro_stages_[2].pixels.empty()) {
             blit_faded_stage(intro_stages_[2],
                              fade_weight(kIntroWildernessEnd,
                                          kIntroTrividEnd));
-        } else if (!intro_stages_[0].pixels.empty()) {
-            // Capture returns to the seattle skyline for Sea-Tac, not a
-            // distinct airport painting. 0x5B08E flies a chopper in and
-            // lands it on the left building during the last-million hold.
-            blit_faded_stage(intro_stages_[0],
-                             fade_weight(kIntroTrividEnd, kIntroDuration));
-            // Capture t1525-t1560: small SAT chopper enters from the left
-            // and lands on the building cluster left of the Needle.
-            // 0x5B180/0x5B08E cycle six SAT lists every 8 vblanks.
-            const auto fly = std::min<std::uint64_t>(
-                intro_frame_ - kIntroTrividEnd, 180U);
-            // Capture t1525 starts left of the skyline; t1545-t1560 lands on
-            // the building cluster left of the Needle. 0x5B1B6 adds the
-            // 0x5B270 deltas onto the SAT origin after frame $225.
-            const auto heli_x = static_cast<std::int32_t>(fly) * 2 / 3;
-            const auto heli_y = static_cast<std::int32_t>(fly) / 10;
-            if (fade_weight(kIntroTrividEnd, kIntroDuration) != 0U &&
-                !intro_heli_frames_.empty()) {
-                const auto heli_phase = static_cast<std::size_t>(
-                    (intro_frame_ / 8U) % intro_heli_frames_.size());
-                const auto& heli = intro_heli_frames_[heli_phase];
-                if (!heli.pixels.empty()) {
-                    screen.blit_rgba(heli_x, heli_y, heli.width, heli.height,
-                                     heli.pixels);
+        } else if (!intro_stages_[3].pixels.empty()) {
+            // 0x5AD1A loads the ending/airport descriptor at 0x5B528 after
+            // the trivid. 0x5B00A moves DD08 by two pixels per source pass,
+            // while 0x5B056 raises DD0E after the horizontal pass. The
+            // vehicle is therefore a continuously translated Plane-A layer,
+            // not six screenshots selected by elapsed time.
+            if (intro_frame_ < kIntroAircraftEnd &&
+                !intro_aircraft_plane_a_.pixels.empty()) {
+                const auto aircraft_elapsed = intro_frame_ - kIntroTrividEnd;
+                const auto plane_a_scroll = static_cast<std::int32_t>(
+                    std::min<std::uint64_t>(aircraft_elapsed * 2U, 0x200U));
+                const auto plane_b_scroll = aircraft_elapsed <= 0xD8U
+                    ? 0
+                    : static_cast<std::int32_t>(std::min<std::uint64_t>(
+                          aircraft_elapsed - 0xD8U, 0x78U));
+                screen.clear({0x00, 0x00, 0x00, 0xFF});
+                // intro_stages_[3] is the source plane-B layer at its final
+                // DD0E=$78 offset. Translate it back to the current source
+                // offset before placing the moving Plane-A layer over it.
+                screen.blit_rgba(
+                    0, static_cast<std::int32_t>(0x78U - plane_b_scroll),
+                    intro_stages_[3].width, intro_stages_[3].height,
+                    intro_stages_[3].pixels);
+                screen.blit_rgba(
+                    kIntroAircraftPlaneOriginX - plane_a_scroll,
+                    kIntroAircraftPlaneOriginY,
+                    intro_aircraft_plane_a_.width,
+                    intro_aircraft_plane_a_.height,
+                    intro_aircraft_plane_a_.pixels);
+
+                // 0x5B100 cycles the six SAT overlay lists every six source
+                // passes while DD08 remains in its active range. The layers
+                // were composed at D1=$1FC, so the same DD08 translation is
+                // applied here.
+                if (aircraft_elapsed <= 0xDCU) {
+                    const auto overlay_phase = static_cast<std::size_t>(
+                        (aircraft_elapsed / 6U) %
+                        intro_heli_frames_.size());
+                    const auto& overlay = intro_heli_frames_[overlay_phase];
+                    if (!overlay.pixels.empty()) {
+                        screen.blit_rgba(
+                            -plane_a_scroll, 0, overlay.width, overlay.height,
+                            overlay.pixels);
+                    }
                 }
+
+                // 0x5B1B6 begins at relative time $226. Replay its seven
+                // fixed-point records from the typed source table so the
+                // small moving SAT overlay follows the ROM path as well.
+                if (aircraft_elapsed >= 0x226U &&
+                    !intro_aircraft_movement_frames_[0].pixels.empty()) {
+                    std::uint32_t next = 0;
+                    std::size_t phase = 0;
+                    std::int32_t dx = 0;
+                    std::int32_t dy = 0;
+                    std::uint16_t x_fixed = 0x7C00;
+                    std::uint16_t y_fixed = 0xB700;
+                    for (std::uint64_t pass = 0; pass <= aircraft_elapsed;
+                         ++pass) {
+                        if (pass < 0x226U) {
+                            continue;
+                        }
+                        if (phase < kIntroAircraftMovementDx.size() &&
+                            pass >= next) {
+                            dx = kIntroAircraftMovementDx[phase];
+                            dy = kIntroAircraftMovementDy[phase];
+                            next = static_cast<std::uint32_t>(pass) +
+                                   kIntroAircraftMovementDelay[phase];
+                            ++phase;
+                        }
+                        x_fixed = static_cast<std::uint16_t>(
+                            x_fixed + static_cast<std::uint16_t>(dx));
+                        y_fixed = static_cast<std::uint16_t>(
+                            y_fixed + static_cast<std::uint16_t>(dy));
+                    }
+                    // The ROM uses LSR.W, so these are logical 16-bit shifts
+                    // even though the values are maintained as signed-looking
+                    // fixed-point words.
+                    const auto x = static_cast<std::int32_t>(x_fixed >> 8);
+                    const auto y = static_cast<std::int32_t>(
+                                        y_fixed >> 8) + 0x28;
+                    const auto movement_index =
+                        y >= 0x110 && y < 0x11F ? 1U : 0U;
+                    const auto& movement =
+                        intro_aircraft_movement_frames_[movement_index];
+                    screen.blit_rgba(
+                        x - 0x90, y - 0x90, movement.width, movement.height,
+                        movement.pixels);
+                }
+            } else if (intro_frame_ < kIntroAircraftEnd &&
+                       !intro_heli_frames_[0].pixels.empty()) {
+                // Compatibility with pre-49 packs, whose six assets were
+                // complete sampled scenes.
+                const auto aircraft_elapsed = intro_frame_ - kIntroTrividEnd;
+                const auto heli_phase = std::min<std::size_t>(
+                    (aircraft_elapsed * intro_heli_frames_.size()) /
+                        (kIntroAircraftEnd - kIntroTrividEnd),
+                    intro_heli_frames_.size() - 1U);
+                const auto& heli = intro_heli_frames_[heli_phase];
+                screen.clear({0x00, 0x00, 0x00, 0xFF});
+                screen.blit_rgba(0, 0, heli.width, heli.height,
+                                 heli.pixels);
+            } else {
+                blit_faded_stage(
+                    intro_stages_[3],
+                    fade_weight(kIntroTrividEnd, kIntroDuration));
             }
         }
         const auto line_end = std::min(
@@ -4205,23 +4449,20 @@ void NativePortShell::render(ScreenWriter& screen) const {
         return;
     } else if (scene_ == NativeScene::CabMap) {
         screen.clear({0x00, 0x00, 0x00, 0xFF});
-        constexpr std::int32_t kMapX = 56;
-        constexpr std::int32_t kMapY = 32;
-        constexpr std::int32_t kMapW = 208;
-        constexpr std::int32_t kMapH = 140;
-        // Capture t1660/t1675 is the 0x134D2 world map (grass/water with a
-        // white district cursor), not a scaled Redmond field plane. Until
-        // that 0xD4456 resource is extracted, keep the black cab plate and
-        // the source district label instead of the wrong map.
-        screen.fill_rect(kMapX, kMapY, kMapW, kMapH, {0x00, 0x00, 0x00, 0xFF});
-        screen.fill_rect(kMapX + 70, kMapY + 48, 48, 32,
-                         {0xF0, 0xF0, 0xF0, 0xFF});
-        screen.fill_rect(kMapX + 72, kMapY + 50, 44, 28,
-                         {0x00, 0x00, 0x00, 0xFF});
-        const auto cab_label =
-            cab_frame_ < 45U ? "Downtown Seattle" : "Redmond Barrens";
-        const auto label_x = cab_frame_ < 45U ? 96 : 88;
-        write_field_menu_text(screen, label_x, 180, cab_label);
+        // ROM 0x134D2's map plate is already extracted in the supplied
+        // capture-space geometry. The source writes the Downtown label at
+        // VDP $EA10; the same 0.8/0.956 presentation transform used by the
+        // map places its first source space at host (88,152).
+        if (!cab_map_.pixels.empty()) {
+            screen.blit_rgba(0, 0, cab_map_.width, cab_map_.height,
+                             cab_map_.pixels);
+        }
+        // 0x13726 ultimately calls C0DA with the startup character table
+        // (C1320) and its source text is rendered as the pale map caption,
+        // not with the green command-menu palette.  The two native atlases
+        // share the same glyph table; use the startup palette here so the
+        // cab caption keeps the source's white-on-black appearance.
+        write_startup_text(screen, 88, 152, " Downtown Seattle");
         screen.present();
         return;
     } else if ((scene_ == NativeScene::Field ||
@@ -4406,10 +4647,14 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 }
                 const auto& item = inventory_items_[item_index];
                 if (!item.name.empty()) {
-                    write_field_menu_text(screen, 128, 64, item.name);
+                    write_field_menu_text(
+                        screen, 128, 64,
+                        center_source_fixed_field(item.name));
                 }
                 if (!item.category.empty()) {
-                    write_field_menu_text(screen, 128, 72, item.category);
+                    write_field_menu_text(
+                        screen, 128, 72,
+                        center_source_fixed_field(item.category));
                 }
                 // 0x115F2 calls 0x12E9E only for item codes below 0x10.
                 // Medkit (0x10), patches, tools, spells, and armor do not
@@ -4444,7 +4689,11 @@ void NativePortShell::render(ScreenWriter& screen) const {
                     ? source_item_detail_label(item_code)
                     : std::string_view{};
                 if (!detail_label.empty()) {
-                    write_field_menu_text(screen, 112, 80, detail_label);
+                    // 0x12B8E emits ammo/uses/rtng at C31C (x=112,y=48),
+                    // while its two-tile phase value goes to C39E (x=120,
+                    // y=56). Keeping these above the C420 item name avoids
+                    // the source label/value being painted over Damage.
+                    write_field_menu_text(screen, 112, 48, detail_label);
                     // The source value is a two-tile entry selected from
                     // 0x6AC46 by the selected slot's +0x6E byte. It is a
                     // source-rendered value, not a host numeric statistic.
@@ -4453,7 +4702,7 @@ void NativePortShell::render(ScreenWriter& screen) const {
                     if (phase < field_menu_detail_values_.size()) {
                         const auto& value = field_menu_detail_values_[phase];
                         if (!value.pixels.empty()) {
-                            screen.blit_rgba(168, 80, value.width, value.height,
+                            screen.blit_rgba(120, 56, value.width, value.height,
                                              value.pixels);
                         }
                     }
@@ -4585,8 +4834,14 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 : 0U;
             if (field_menu_posture_active_) {
                 // 0x119CE moves focus off the five command tabs and onto
-                // the posture strip at CAAC. Do not invent a host bar; the
-                // extracted status strip is the control.
+                // the posture strip at CAAC. The six-tile block at CD514 is
+                // the source's light focus outline, written at CA9E.
+                if (!field_menu_posture_focus_.pixels.empty()) {
+                    screen.blit_rgba(
+                        120, 168, field_menu_posture_focus_.width,
+                        field_menu_posture_focus_.height,
+                        field_menu_posture_focus_.pixels);
+                }
             } else if (field_menu_selection_ >= 2U &&
                        field_menu_selection_ <= 6U) {
                 // ROM 0x11454 writes a source 2x2 tile block at the selected
@@ -4769,18 +5024,20 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 render_command_base(screen);
                 render_dialog_panel(screen);
             }
-            write_field_menu_text(screen, 112, 32, " Main Menu");
-            write_field_menu_text(screen, 104, 40, "[\\\\\\\\\\\\\\\\");
+            // 0xC2A6 passes C1418 to C0DA with A2=C216, which maps to
+            // x=88 and puts the first option on the row at y=56.
+            write_field_menu_text(screen, 88, 32, " Main Menu");
+            write_field_menu_text(screen, 88, 40, "[\\\\\\\\\\\\\\\\");
             const auto option_count = pocket_secretary_option_count();
             for (std::size_t index = 0; index < option_count; ++index) {
                 const auto selected = index == pocket_secretary_selection_;
-                const auto y = 72 + static_cast<std::int32_t>(index) * 16;
+                const auto y = 56 + static_cast<std::int32_t>(index) * 16;
                 if (selected && !startup_cursor_.pixels.empty()) {
-                    screen.blit_rgba(88, y, startup_cursor_.width,
+                    screen.blit_rgba(64, y, startup_cursor_.width,
                                      startup_cursor_.height,
                                      startup_cursor_.pixels);
                 }
-                write_field_menu_text(screen, 112, y,
+                write_field_menu_text(screen, 88, y,
                                       kPocketSecretaryLabels[index]);
             }
             if (pocket_secretary_message_visible_) {
@@ -4790,8 +5047,8 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 for (std::size_t index = 0;
                      index < cyberdeck_unavailable_lines_.size(); ++index) {
                     write_field_menu_text(
-                        screen, 88,
-                        120 + static_cast<std::int32_t>(index) * 12,
+                        screen, 56,
+                        64 + static_cast<std::int32_t>(index) * 8,
                         cyberdeck_unavailable_lines_[index]);
                 }
             }
@@ -4901,16 +5158,19 @@ void NativePortShell::render(ScreenWriter& screen) const {
             // source Abort row; runner candidates follow it.
             render_command_base(screen);
             render_dialog_panel(screen);
-            write_field_menu_text(screen, 112, 32,
+            // C448 writes C1499 at C216: title, prompt, separator, blank row,
+            // then Abort at x=88. Dynamic names begin at C416 (y=64) and
+            // advance one 16-pixel source row per active runner.
+            write_field_menu_text(screen, 88, 32,
                                   dismiss_runner_labels_[0]);
-            write_field_menu_text(screen, 112, 52,
+            write_field_menu_text(screen, 88, 40,
                                   dismiss_runner_labels_[1]);
             for (std::size_t index = 0;
                  index < dismiss_runner_candidate_count_; ++index) {
                 const auto record_index =
                     dismiss_runner_candidate_records_[index];
                 const auto selected = dismiss_runner_selection_ == index + 1U;
-                const auto y = 76 + static_cast<std::int32_t>(index) * 16;
+                const auto y = 64 + static_cast<std::int32_t>(index) * 16;
                 if (selected) {
                     screen.fill_rect(80, y - 2, 176, 13,
                                      {0x00, 0x68, 0x88, 0xFF});
@@ -4923,10 +5183,10 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 const auto name = record_index < field_menu_runner_names_.size()
                     ? std::string_view(field_menu_runner_names_[record_index])
                     : std::string_view{};
-                write_field_menu_text(screen, 96, y,
+                write_field_menu_text(screen, 88, y,
                                       name.empty() ? "UNKNOWN" : name);
             }
-            const auto abort_y = 76 + static_cast<std::int32_t>(
+            const auto abort_y = 64 + static_cast<std::int32_t>(
                 dismiss_runner_candidate_count_) * 16;
             if (dismiss_runner_selection_ == 0U) {
                 screen.fill_rect(80, abort_y - 2, 176, 13,
@@ -4938,10 +5198,103 @@ void NativePortShell::render(ScreenWriter& screen) const {
                                      field_menu_cursor_.pixels);
                 }
             }
-            write_field_menu_text(screen, 112, abort_y,
+            write_field_menu_text(screen, 88, abort_y,
                                   dismiss_runner_labels_[2]);
             write_field_menu_text(screen, 80, 176, " A SELECT  B RETURN");
         } else if (scene_ == NativeScene::ClipsMenu) {
+            // 0x11B58 keeps the command-screen plane from 0x11900 and adds
+            // only the source C2A2/C4B4 clip summary. The old host panel,
+            // legend, and full-width selection bars covered that plane.
+            render_command_static_layers(screen);
+            screen.fill_rect(96, 16, 168, 144,
+                             {0x00, 0x00, 0x00, 0xFF});
+            const auto draw_clip_focus = [this, &screen](std::size_t selection) {
+                if (selection < 2U || selection > 5U) {
+                    return;
+                }
+                const auto& focus = clips_trade_active_
+                    ? field_menu_clips_trade_focus_[selection - 2U]
+                    : field_menu_clips_focus_[selection - 2U];
+                if (!focus.pixels.empty()) {
+                    screen.blit_rgba(
+                        128 + static_cast<std::int32_t>((selection - 2U) * 24U),
+                        184, focus.width, focus.height, focus.pixels);
+                }
+            };
+            if (clips_trade_active_) {
+                // 0x11E7E writes D1B61 at C4A4, the quantity at C4B2,
+                // and 0x1209A writes the selected runner at C59E.
+                write_field_menu_text(screen, 144, 72, "Trade");
+                write_field_menu_text(screen, 144, 80, "clips to");
+                const auto recipient = clips_trade_recipient_record_ <
+                        field_menu_runner_names_.size()
+                    ? std::string_view(field_menu_runner_names_[
+                          clips_trade_recipient_record_])
+                    : std::string_view("????");
+                write_field_menu_text(screen, 120, 88, recipient);
+                write_field_menu_text(screen, 144, 96, "  ????");
+                write_field_menu_text(screen, 200, 72,
+                                      std::to_string(clips_trade_quantity_));
+                draw_clip_focus(clips_trade_menu_selection_);
+                write_field_menu_text(
+                    screen, 112, 200,
+                    kClipsTradeMenuLabels[clips_trade_menu_selection_ - 2U]);
+            } else if (clips_reload_confirmation_active_) {
+                // 0x11D14 writes D1AFF at C49E and 0x127B0 places the
+                // selected Yes/No row at EC9C.
+                write_field_menu_text(screen, 120, 72, "You still have");
+                write_field_menu_text(screen, 120, 80, "  ammo left.");
+                write_field_menu_text(screen, 120, 96, "   Reload?");
+                write_field_menu_text(
+                    screen, 112, 200,
+                    clips_reload_confirmation_yes_
+                        ? "       Yes       " : "       No        ");
+            } else if (clips_action_message_frames_ != 0 &&
+                       !clips_action_message_.empty()) {
+                if (clips_out_of_ammo_) {
+                    const auto& name = active_field_record_ <
+                            field_menu_runner_names_.size()
+                        ? field_menu_runner_names_[active_field_record_]
+                        : std::string{};
+                    write_field_menu_text(screen, 112, 80, name);
+                    write_field_menu_text(screen, 112, 88, "  is out of");
+                    write_field_menu_text(screen, 112, 96, " ammo clips!");
+                } else if (clips_action_message_ ==
+                           "This item does not use clips!!") {
+                    write_field_menu_text(screen, 136, 80, " This item");
+                    write_field_menu_text(screen, 136, 88, " does not");
+                    write_field_menu_text(screen, 136, 96, "use clips!!");
+                } else if (clips_action_message_ ==
+                           "You have no party members to trade with.") {
+                    write_field_menu_text(screen, 120, 72, " You have no");
+                    write_field_menu_text(screen, 120, 80, "party members");
+                    write_field_menu_text(screen, 120, 88, "to trade with.");
+                } else if (clips_action_message_ ==
+                           "Rock & Roll, chummers!!") {
+                    write_field_menu_text(screen, 112, 80, "Rock & Roll,");
+                    write_field_menu_text(screen, 112, 88, " chummers!!");
+                } else if (clips_action_message_ ==
+                           "Exchange complete") {
+                    write_field_menu_text(screen, 112, 80, "Exchange");
+                    write_field_menu_text(screen, 112, 88, "complete");
+                }
+            } else {
+                // D1AE0 through its first FF: C2A2 title/separator and the
+                // C4B4 clip total. The action label is the single selected
+                // row at EC9C, not a vertical checklist.
+                write_field_menu_text(screen, 136, 40, "    CLIPS");
+                const auto separator = std::string("   [") +
+                    std::string(9U, '\\');
+                write_field_menu_text(screen, 136, 48, separator);
+                write_field_menu_text(screen, 136, 72, "  Clips");
+                write_field_menu_text(screen, 208, 72,
+                                      std::to_string(field_entity_.ammo_clips));
+                draw_clip_focus(clips_menu_selection_);
+                write_field_menu_text(
+                    screen, 112, 200,
+                    kClipsMenuLabels[clips_menu_selection_ - 2U]);
+            }
+        } else if (scene_ == NativeScene::ClipsMenu && false) {
             render_command_base(screen);
             render_dialog_panel(screen);
             screen.fill_rect(24, 44, 272, 2,
@@ -5031,6 +5384,35 @@ void NativePortShell::render(ScreenWriter& screen) const {
                                   std::to_string(clips_action_count_),
                               1, {0x90, 0xB8, 0xC8, 0xFF});
         } else if (scene_ == NativeScene::CyberwareMenu) {
+            // ROM 0x11950 calls the same command-plane initializer, then
+            // writes D2054 at C1A2 and only the installed bit names at C31C,
+            // advancing each emitted name by 0x100. It does not show an ON/
+            // OFF checklist.
+            render_command_static_layers(screen);
+            screen.fill_rect(96, 16, 168, 144,
+                             {0x00, 0x00, 0x00, 0xFF});
+            write_field_menu_text(screen, 136, 24, " CYBERWARE");
+            const auto separator = std::string("[") +
+                std::string(10U, '\\');
+            write_field_menu_text(screen, 136, 32, separator);
+            if (field_entity_.cyberware_flags == 0U) {
+                write_field_menu_text(screen, 160, 48, "NONE");
+            } else {
+                std::size_t row = 0;
+                for (std::size_t index = 0; index < cyberware_names_.size();
+                     ++index) {
+                    if ((field_entity_.cyberware_flags &
+                         static_cast<std::uint16_t>(1U << index)) == 0U) {
+                        continue;
+                    }
+                    const auto& name = cyberware_names_[index];
+                    write_field_menu_text(
+                        screen, 112, 48 + static_cast<std::int32_t>(row) * 16,
+                        name.empty() ? "UNKNOWN" : std::string_view(name));
+                    ++row;
+                }
+            }
+        } else if (scene_ == NativeScene::CyberwareMenu && false) {
             render_command_base(screen);
             render_dialog_panel(screen);
             write_field_menu_text(screen, 112, 32, "    Cyberware");
@@ -5048,6 +5430,59 @@ void NativePortShell::render(ScreenWriter& screen) const {
                     line);
             }
         } else if (scene_ == NativeScene::AttributesMenu) {
+            // 0xD01C writes four attributes in each upper column and six
+            // skills in each lower column. The name/value destinations are
+            // C386/C3A2, C3AC/C3C6, C686/C6A2, and C6AC/C6C6.
+            screen.clear({0x00, 0x00, 0x00, 0xFF});
+            if (!field_menu_attributes_background_.pixels.empty()) {
+                screen.blit_rgba(
+                    0, 0, field_menu_attributes_background_.width,
+                    field_menu_attributes_background_.height,
+                    field_menu_attributes_background_.pixels);
+            } else {
+                // Old packs can still render the typed values while the
+                // source-specific background is regenerated.
+                render_command_base(screen);
+            }
+            render_command_dynamic_layers(screen, true);
+            constexpr std::array<std::array<std::size_t, 10>, 2>
+                kAttributeSkillColumns{{
+                    {{0U, 1U, 2U, 3U, 8U, 9U, 10U, 11U, 12U, 13U}},
+                    {{4U, 5U, 6U, 7U, 14U, 15U, 16U, 17U, 18U, 19U}},
+                }};
+            for (std::size_t column = 0; column < 2U; ++column) {
+                const auto name_x = column == 0U ? 56 : 176;
+                const auto value_x = column == 0U ? 144 : 280;
+                for (std::size_t row = 0; row < 10U; ++row) {
+                    const auto index = kAttributeSkillColumns[column][row];
+                    const auto y = row < 4U
+                        ? 56 + static_cast<std::int32_t>(row) * 8
+                        : 104 + static_cast<std::int32_t>(row - 4U) * 8;
+                    const auto value = index < kNativeAttributeCount
+                        ? field_entity_.attribute_values[index]
+                        : field_entity_.skill_values[index -
+                                                      kNativeAttributeCount];
+                    const auto& name = attribute_skill_names_[index];
+                    write_field_menu_text(
+                        screen, name_x, y,
+                        name.empty() ? "UNKNOWN" : std::string_view(name));
+                    write_field_menu_text(screen, value_x, y,
+                                          std::to_string(value));
+                }
+            }
+            // 0xD01C leaves the lower KARMA panel populated by the source
+            // description writer. The capture's initial readout is the
+            // Quickness description; keep it in the same two source rows
+            // instead of leaving the panel empty.
+            write_field_menu_text(
+                screen, 56, 160,
+                "Quickness determines movement and");
+            write_field_menu_text(
+                screen, 56, 168,
+                "attack speed, and increases combat");
+            write_field_menu_text(screen, 56, 176,
+                                  "and cybercombat success.");
+        } else if (scene_ == NativeScene::AttributesMenu && false) {
             render_command_base(screen);
             render_dialog_panel(screen);
             write_field_menu_text(screen, 96, 32, "Attributes/Skills");
@@ -5075,29 +5510,40 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 }
             }
         } else if (scene_ == NativeScene::MagicMenu) {
-            // ROM 0xFBA6 C0DA at 0xC89C0: Magical Defense panel.
-            render_command_base(screen);
-            render_dialog_panel(screen);
-            write_field_menu_text(screen, 104, 32, " Magical Defense");
-            write_field_menu_text(screen, 104, 40, "[\\\\\\\\\\\\\\\\");
-            if (field_entity_.display_palette_state < 2U) {
-                write_field_menu_text(screen, 112, 72, "None");
-            } else {
-                write_field_menu_text(screen, 48, 64, "  vs. Phys");
-                write_field_menu_text(screen, 48, 80, "  vs. Mana");
-                write_field_menu_text(screen, 48, 104, "Success");
-                write_field_menu_text(screen, 48, 120, "Drain");
-                write_field_menu_text(screen, 48, 136, "Defense");
-                write_field_menu_text(screen, 48, 152, "Force");
-                write_field_menu_text(screen, 48, 168, "Posture");
-                write_field_menu_text(screen, 48, 184, "Set Force & Posture.");
+            // ROM 0xFBA6 clears the center command plane, writes C89C0 at
+            // C31C, and calls 0x106DA twice for the two defense strips at
+            // C51E/C69E. It does not open the generic C3E6 dialog panel and
+            // does not draw a host checklist of invented fields.
+            render_command_static_layers(screen);
+            screen.fill_rect(96, 16, 168, 144,
+                             {0x00, 0x00, 0x00, 0xFF});
+            write_field_menu_text(screen, 112, 48, " Magical Defense");
+            write_field_menu_text(
+                screen, 112, 56,
+                std::string("[") + std::string(16U, '\\'));
+            write_field_menu_text(screen, 112, 72, "  vs. Phys");
+            write_field_menu_text(screen, 112, 96, "  vs. Mana");
+            const auto defense_bar_index = field_entity_.defense_bar_index <
+                    field_menu_defense_bars_.size()
+                ? field_entity_.defense_bar_index : 0U;
+            const auto& physical_bar =
+                field_menu_defense_bars_[defense_bar_index];
+            if (!physical_bar.pixels.empty()) {
+                screen.blit_rgba(120, 80, physical_bar.width,
+                                 physical_bar.height, physical_bar.pixels);
+            }
+            const auto& mana_bar = field_menu_defense_bars_[defense_bar_index];
+            if (!mana_bar.pixels.empty()) {
+                screen.blit_rgba(120, 104, mana_bar.width, mana_bar.height,
+                                 mana_bar.pixels);
             }
         } else {
             // Field mode is the map/object plane plus its source HUD. The
             // old host-only control legend did not exist in the cartridge.
         }
         if (scene_ != NativeScene::Field &&
-            scene_ != NativeScene::FieldDialog) {
+            scene_ != NativeScene::FieldDialog &&
+            scene_ != NativeScene::AttributesMenu) {
             // Command, Pocket Secretary, and the other C0DA panels keep the
             // 64px HUD column. Capture character/PS screens never cover the
             // sidebar with the 64x80 overview portrait.

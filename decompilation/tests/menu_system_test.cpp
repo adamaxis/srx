@@ -21,6 +21,10 @@ using shadowrun::native::NativeScene;
 using shadowrun::native::Rgba8;
 using shadowrun::native::SoftwareScreen;
 using shadowrun::native::button_mask;
+using shadowrun::native::kTitleLogoDestinationX;
+using shadowrun::native::kTitleRevealColumnCount;
+using shadowrun::native::kTitleRevealDelay;
+using shadowrun::native::kTitleSpriteInitialX;
 
 std::vector<std::uint8_t> read_rom() {
     std::ifstream input(SHADOWRUN_TEST_ROM, std::ios::binary);
@@ -112,6 +116,132 @@ void select_field_inventory_slot(NativePortShell& shell, std::size_t slot) {
 
 void test_startup_behavior_and_rendering(const std::vector<std::uint8_t>& rom,
                                          const NativePortAssets& assets) {
+    // Title timing is a source loop, not a host animation clip. 0x1A9E waits
+    // 0x5A passes, 0x1E4E emits one complete 8px column every other pass, and
+    // 0x1C6A advances the SAT phase on every reveal pass while moving its
+    // origin by four pixels.
+    NativePortShell title_shell("SHADOWRUN", assets);
+    title_shell.finish_boot();
+    assert(title_shell.scene() == NativeScene::Title);
+    assert(title_shell.title_reveal_delay() == kTitleRevealDelay);
+    assert(title_shell.title_revealed_columns() == 0U);
+    assert(title_shell.title_sprite_phase() == 0U);
+    assert(title_shell.title_sprite_x() == kTitleSpriteInitialX);
+
+    for (std::size_t pass = 0; pass < 90U; ++pass) {
+        title_shell.update(InputState{});
+    }
+    assert(title_shell.title_revealed_columns() == 0U);
+    assert(title_shell.title_sprite_phase() == 0U);
+    assert(title_shell.title_sprite_x() == kTitleSpriteInitialX);
+
+    // The first reveal pass writes the first complete source column and the
+    // first SAT list (phase 1), rather than a guessed 4px slice.
+    title_shell.update(InputState{});
+    assert(title_shell.title_revealed_columns() == 1U);
+    assert(title_shell.title_sprite_phase() == 1U);
+    assert(title_shell.title_sprite_x() == kTitleSpriteInitialX + 4);
+    SoftwareScreen title_screen;
+    title_shell.render(title_screen);
+    bool first_logo_column_visible = false;
+    for (std::size_t y = 0; y < assets.title_logo_plane.height; ++y) {
+        for (std::size_t x = kTitleLogoDestinationX;
+             x < kTitleLogoDestinationX + 8U; ++x) {
+            const auto& pixel = assets.title_logo_plane.pixels[
+                y * assets.title_logo_plane.width + x];
+            if (pixel.alpha != 0U && pack(pixel) != 0U &&
+                title_screen.pixel(static_cast<std::int32_t>(x),
+                                   static_cast<std::int32_t>(y)) ==
+                    pack(pixel)) {
+                first_logo_column_visible = true;
+            }
+        }
+    }
+    assert(first_logo_column_visible);
+
+    auto first_ink = [](const NativeImage& image) {
+        for (std::size_t y = 0; y < image.height; ++y) {
+            for (std::size_t x = 0; x < image.width; ++x) {
+                const auto& pixel = image.pixels[y * image.width + x];
+                if (pixel.alpha != 0U && pack(pixel) != 0U) {
+                    return std::array<std::size_t, 2>{{x, y}};
+                }
+            }
+        }
+        return std::array<std::size_t, 2>{{image.width, image.height}};
+    };
+    const auto phase_one_ink = first_ink(assets.title_sprite_frames[1]);
+    assert(phase_one_ink[0] < assets.title_sprite_frames[1].width);
+    assert(title_screen.pixel(static_cast<std::int32_t>(phase_one_ink[0]),
+                              static_cast<std::int32_t>(phase_one_ink[1])) ==
+           pack(assets.title_sprite_frames[1].pixels[
+               phase_one_ink[1] * assets.title_sprite_frames[1].width +
+               phase_one_ink[0]]));
+
+    // Three more calls keep phase 1; the fifth call advances to phase 2 and
+    // shifts the same source SAT surface by four pixels per prior call.
+    for (std::size_t pass = 0; pass < 4U; ++pass) {
+        title_shell.update(InputState{});
+    }
+    assert(title_shell.title_revealed_columns() == 3U);
+    assert(title_shell.title_sprite_phase() == 2U);
+    assert(title_shell.title_sprite_x() == kTitleSpriteInitialX + 20);
+    title_shell.render(title_screen);
+    const auto phase_two_ink = first_ink(assets.title_sprite_frames[2]);
+    assert(phase_two_ink[0] + 16U < assets.title_sprite_frames[2].width + 16U);
+    assert(title_screen.pixel(
+               static_cast<std::int32_t>(phase_two_ink[0] + 16U),
+               static_cast<std::int32_t>(phase_two_ink[1])) ==
+           pack(assets.title_sprite_frames[2].pixels[
+               phase_two_ink[1] * assets.title_sprite_frames[2].width +
+               phase_two_ink[0]]));
+
+    while (title_shell.title_revealed_columns() <
+           kTitleRevealColumnCount - 1U) {
+        title_shell.update(InputState{});
+    }
+    assert(title_shell.title_revealed_columns() == 0x25U);
+    assert(title_shell.title_completion_state() == 1U);
+    NativePortAssets no_flame_assets = assets;
+    for (auto& frame : no_flame_assets.title_sprite_frames) {
+        frame = {};
+    }
+    NativePortShell no_flame_shell("SHADOWRUN", std::move(no_flame_assets));
+    no_flame_shell.finish_boot();
+    while (no_flame_shell.title_revealed_columns() <
+           kTitleRevealColumnCount - 1U) {
+        no_flame_shell.update(InputState{});
+    }
+    SoftwareScreen no_flame_screen;
+    no_flame_shell.render(no_flame_screen);
+    title_shell.render(title_screen);
+    // 0x1EAA's completion flag is the visual boundary: the flame SAT is
+    // transient and must be gone even during the source's final column pass.
+    assert(title_screen.pixels() == no_flame_screen.pixels());
+    while (title_shell.title_revealed_columns() < kTitleRevealColumnCount) {
+        title_shell.update(InputState{});
+    }
+    assert(title_shell.title_revealed_columns() == kTitleRevealColumnCount);
+    while (title_shell.title_completion_state() < 2U) {
+        title_shell.update(InputState{});
+    }
+    title_shell.render(title_screen);
+    bool copyright_pixel_visible = false;
+    for (std::size_t y = 176U; y < 208U; ++y) {
+        for (std::size_t x = 0; x < assets.title_text.width; ++x) {
+            const auto& source = assets.title_text.pixels[
+                y * assets.title_text.width + x];
+            if (source.alpha == 0U) {
+                continue;
+            }
+            if (title_screen.pixel(static_cast<std::int32_t>(x),
+                                   static_cast<std::int32_t>(y)) == pack(source)) {
+                copyright_pixel_visible = true;
+            }
+        }
+    }
+    assert(copyright_pixel_visible);
+
     NativePortShell shell("SHADOWRUN", assets);
     SoftwareScreen screen;
 

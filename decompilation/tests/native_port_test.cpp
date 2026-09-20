@@ -35,6 +35,22 @@ void enter_field_from_start(shadowrun::native::NativePortShell& shell) {
     assert(shell.scene() == NativeScene::Field);
 }
 
+void enter_intro_from_start(shadowrun::native::NativePortShell& shell) {
+    using namespace shadowrun::native;
+    shell.finish_boot();
+    shell.update(InputState{button_mask(Button::Start),
+                             button_mask(Button::Start)});
+    for (int frame = 0; frame < 48 && shell.scene() == NativeScene::Title;
+         ++frame) {
+        shell.update(InputState{});
+    }
+    assert(shell.scene() == NativeScene::StartOptions);
+    shell.update(InputState{button_mask(Button::A), button_mask(Button::A)});
+    assert(shell.scene() == NativeScene::ArchetypeMenu);
+    shell.update(InputState{button_mask(Button::A), button_mask(Button::A)});
+    assert(shell.scene() == NativeScene::Intro);
+}
+
 void press_menu_direction(shadowrun::native::NativePortShell& shell,
                           shadowrun::native::Button button) {
     const auto mask = shadowrun::native::button_mask(button);
@@ -128,6 +144,58 @@ int main() {
     rom_shell.update(InputState{});
     assert(rom_shell.intro_frame() == 1);
     assert(rom_shell.scene() == NativeScene::Intro);
+
+    // The airport is source-timed, not a handful of storyboard stills. At
+    // the craft pass the Plane-A body and the off-screen-preserved rotor strip
+    // must both reach the framebuffer. After the city settles, the late
+    // 0x5B1B6 SAT movement must still change pixels; the old $150 cutoff
+    // rendered a static skyline through this part of the ROM loop.
+    NativePortShell intro_shell("SHADOWRUN", rom);
+    enter_intro_from_start(intro_shell);
+    while (intro_shell.intro_frame() < 1620U) {
+        intro_shell.update(InputState{});
+    }
+    SoftwareScreen aircraft_screen;
+    intro_shell.render(aircraft_screen);
+    std::size_t rotor_ink = 0;
+    std::size_t body_ink = 0;
+    for (std::int32_t y = 90; y < 116; ++y) {
+        for (std::int32_t x = 0; x < kScreenWidth; ++x) {
+            if (aircraft_screen.pixel(x, y) != 0U) {
+                ++rotor_ink;
+            }
+        }
+    }
+    for (std::int32_t y = 116; y < 184; ++y) {
+        for (std::int32_t x = 0; x < kScreenWidth; ++x) {
+            if (aircraft_screen.pixel(x, y) != 0U) {
+                ++body_ink;
+            }
+        }
+    }
+    assert(rotor_ink > 20U);
+    assert(body_ink > 200U);
+    while (intro_shell.intro_frame() < 2300U) {
+        intro_shell.update(InputState{});
+    }
+    SoftwareScreen landing_before;
+    intro_shell.render(landing_before);
+    while (intro_shell.intro_frame() < 2340U) {
+        intro_shell.update(InputState{});
+    }
+    SoftwareScreen landing_after;
+    intro_shell.render(landing_after);
+    std::size_t landing_delta = 0;
+    for (std::int32_t y = 80; y < 184; ++y) {
+        for (std::int32_t x = 0; x < kScreenWidth; ++x) {
+            if (landing_before.pixel(x, y) != landing_after.pixel(x, y)) {
+                ++landing_delta;
+            }
+        }
+    }
+    assert(intro_shell.scene() == NativeScene::Intro);
+    assert(landing_delta > 20U);
+
     rom_shell.update(InputState{button_mask(Button::Start),
                                 button_mask(Button::Start)});
     assert(rom_shell.scene() == NativeScene::Field);

@@ -461,6 +461,22 @@ int main() {
         assert(focus.height == 16U);
         assert(!focus.pixels.empty());
     }
+    assert(native_assets.field_menu_attributes_background.width == 320U);
+    assert(native_assets.field_menu_attributes_background.height == 224U);
+    std::size_t attributes_ink = 0;
+    for (const auto& pixel :
+         native_assets.field_menu_attributes_background.pixels) {
+        if (pixel.alpha != 0U &&
+            (pixel.red != 0U || pixel.green != 0U || pixel.blue != 0U)) {
+            ++attributes_ink;
+        }
+    }
+    assert(attributes_ink > 1000U);
+    for (const auto& focus : native_assets.field_menu_clips_focus) {
+        assert(focus.width == 16U);
+        assert(focus.height == 16U);
+        assert(!focus.pixels.empty());
+    }
     assert(native_assets.group_item_names[0] == "Prototype Cyber-heart");
     assert(native_assets.group_item_names[14] == "Ork Armband");
     assert(native_assets.cyberdeck_unavailable_lines[0] == " You do not have");
@@ -516,6 +532,24 @@ int main() {
            native_assets.boot_fasa.pixels.size());
     assert(loaded_assets.startup_background.pixels.size() ==
            native_assets.startup_background.pixels.size());
+    assert(loaded_assets.field_menu_attributes_background.width ==
+           native_assets.field_menu_attributes_background.width);
+    assert(loaded_assets.field_menu_attributes_background.height ==
+           native_assets.field_menu_attributes_background.height);
+    assert(loaded_assets.field_menu_attributes_background.pixels.size() ==
+           native_assets.field_menu_attributes_background.pixels.size());
+    for (std::size_t pixel = 0;
+         pixel < native_assets.field_menu_attributes_background.pixels.size();
+         ++pixel) {
+        const auto& loaded =
+            loaded_assets.field_menu_attributes_background.pixels[pixel];
+        const auto& native =
+            native_assets.field_menu_attributes_background.pixels[pixel];
+        assert(loaded.red == native.red);
+        assert(loaded.green == native.green);
+        assert(loaded.blue == native.blue);
+        assert(loaded.alpha == native.alpha);
+    }
     const auto intro_stages = decode_genesis_intro_stages(rom);
     for (std::size_t index = 0; index < intro_stages.size(); ++index) {
         assert(intro_stages[index].width == 320);
@@ -605,14 +639,79 @@ int main() {
     }
     const auto heli_frames = decode_genesis_intro_heli_frames(rom);
     {
-        std::size_t heli_ink = 0;
-        for (const auto& pixel : heli_frames[0].pixels) {
-            if (pixel.alpha != 0U &&
-                (pixel.red != 0 || pixel.green != 0 || pixel.blue != 0)) {
-                ++heli_ink;
+        // 0x5B100's SAT source starts at D1=$1FC. Its first phase extends
+        // past the right edge of the Genesis viewport, so the native asset
+        // must retain a wider source canvas instead of clipping that rotor
+        // strip at extraction time.
+        std::uint16_t min_x = 512U;
+        std::uint16_t max_x = 0U;
+        std::size_t total_ink = 0;
+        for (const auto& frame : heli_frames) {
+            assert(frame.width == 512U);
+            assert(frame.height == 224U);
+            assert(frame.pixels.size() ==
+                   static_cast<std::size_t>(frame.width) * frame.height);
+            for (std::uint16_t y = 0; y < frame.height; ++y) {
+                for (std::uint16_t x = 0; x < frame.width; ++x) {
+                    const auto& pixel =
+                        frame.pixels[static_cast<std::size_t>(y) *
+                                         frame.width + x];
+                    if (pixel.alpha == 0U ||
+                        (pixel.red == 0U && pixel.green == 0U &&
+                         pixel.blue == 0U)) {
+                        continue;
+                    }
+                    ++total_ink;
+                    min_x = std::min(min_x, x);
+                    max_x = std::max(max_x, x);
+                }
             }
         }
-        assert(heli_ink > 20U);
+        assert(total_ink > 100U);
+        assert(min_x > 250U);
+        assert(max_x > 400U);
+    }
+    const auto plane_a = decode_genesis_intro_aircraft_plane_a(rom);
+    {
+        std::size_t ink = 0;
+        std::uint16_t min_x = plane_a.width;
+        std::uint16_t max_x = 0U;
+        std::uint16_t min_y = plane_a.height;
+        std::uint16_t max_y = 0U;
+        for (std::uint16_t y = 0; y < plane_a.height; ++y) {
+            for (std::uint16_t x = 0; x < plane_a.width; ++x) {
+                const auto& pixel =
+                    plane_a.pixels[static_cast<std::size_t>(y) *
+                                       plane_a.width + x];
+                if (pixel.alpha == 0U ||
+                    (pixel.red == 0U && pixel.green == 0U &&
+                     pixel.blue == 0U)) {
+                    continue;
+                }
+                ++ink;
+                min_x = std::min(min_x, x);
+                max_x = std::max(max_x, x);
+                min_y = std::min(min_y, y);
+                max_y = std::max(max_y, y);
+            }
+        }
+        // The normalized 27x8 Plane-A map is the detailed craft body. These
+        // bounds reject the former one-byte-offset decode and the clipped SAT
+        // strip as substitutes for the authored map.
+        assert(plane_a.width == 320U);
+        assert(plane_a.height == 224U);
+        assert(ink > 1000U);
+        assert(min_x < 80U && max_x > 200U);
+        assert(min_y < 80U && max_y > 50U);
+    }
+    assert(native_assets.intro_aircraft_plane_a.width == plane_a.width);
+    assert(native_assets.intro_aircraft_plane_a.pixels.size() ==
+           plane_a.pixels.size());
+    for (const auto& movement : native_assets.intro_aircraft_movement_frames) {
+        assert(movement.width == 320U);
+        assert(movement.height == 224U);
+        assert(movement.pixels.size() ==
+               static_cast<std::size_t>(movement.width) * movement.height);
     }
     const auto title_sprites = decode_genesis_title_sprite_frames(rom);
     // List 1 object 0: SAT X=$FFF1 Y=$FF9F size 4x4 at D1=$9C D2=$110.

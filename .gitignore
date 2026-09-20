@@ -25,3 +25,5 @@
 
 # Local IDE state is machine-specific.
 /.vscode/
+
+decompilation/tools/ffmpeg

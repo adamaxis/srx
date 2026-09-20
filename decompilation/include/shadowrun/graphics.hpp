@@ -375,12 +375,46 @@ RgbaImage decode_genesis_startup_screen(
     int circuit_light_phase = -1);
 std::array<RgbaImage, native::kNativeTitleCircuitLightCount>
 decode_genesis_title_circuit_lights(const std::vector<std::uint8_t>& rom);
+// The returned frames are the six source $5B180 SAT overlay phases used by
+// 0x5B100. They are transparent 512px canvases so the source rotor/aircraft
+// strip that begins off the right edge is preserved before DD08 scrolls it
+// through the 320px viewport. The separate Plane-A map is exposed below.
 std::array<RgbaImage, native::kNativeIntroHeliFrameCount>
 decode_genesis_intro_heli_frames(const std::vector<std::uint8_t>& rom);
-// ROM 0x334C field HUD: 0x6A5BE -> $DAC0, 6x2 caps 0x6ACE2, 6x8 slots
-// 0x6AA7E at $F044/$F144/$F544/$F944/$FD44. Transparent left of x=272.
+// ROM 0x5B1B6's late movement path alternates the two source SAT lists at
+// 0x1DF3F4/0x1DF3FE. These are exposed separately from the earlier 0x5B100
+// overlay phases so the landing sprite, including its rotor tile, can be
+// checked against the actual source lists.
+std::array<RgbaImage, native::kNativeIntroAircraftMovementFrameCount>
+decode_genesis_intro_aircraft_movement_frames(
+    const std::vector<std::uint8_t>& rom);
+// ROM 0x5B528's first 0x1406 map is the transient Plane-A vehicle layer.
+// This diagnostic keeps it separate from the settled Plane-B airport plate
+// so its source HSCROLL path can be inspected independently.
+RgbaImage decode_genesis_intro_aircraft_plane_a(
+    const std::vector<std::uint8_t>& rom);
+std::array<RgbaImage, native::kNativeIntroWildernessPanFrameCount>
+decode_genesis_intro_wilderness_pan_frames(
+    const std::vector<std::uint8_t>& rom);
+// ROM 0x334C field HUD: 0x6A5BE -> $DAC0, 6x2 caps 0x6ACE2, and 6x8
+// slots 0x6AA7E at the $F000 plane alias. The native image retains the
+// visible 48px right column.
 RgbaImage decode_genesis_field_hud(const std::vector<std::uint8_t>& rom);
-// Pocket Secretary bezel: command chrome with the 0xC3E6 inner panel black.
+struct GenesisFieldHudLayers {
+    std::array<RgbaImage, 3> faces{};
+    std::array<RgbaImage, 3> item_blocks{};
+    std::array<RgbaImage, 3> vertical_counters{};
+    std::array<RgbaImage, 3> horizontal_counters{};
+};
+// ROM 0x3404 uploads each runner's raw 4x4 portrait and six-tile item block;
+// 0x35D4/0x35F0/0x36FC/0x37EC then stamp those resources at the four fixed
+// field-HUD destinations. Extraction keeps the layers separate so the native
+// shell can select the typed runner record without retaining VRAM state.
+GenesisFieldHudLayers decode_genesis_field_hud_layers(
+    const std::vector<std::uint8_t>& rom,
+    const std::array<GenesisFieldEntityTemplate, 3>& records);
+// Pocket Secretary bezel from ROM 0x10A7E's four raw 0x1232 name-table
+// writes, independent of the field command-screen base.
 RgbaImage decode_genesis_pocket_secretary_background(
     const std::vector<std::uint8_t>& rom);
 
@@ -435,15 +469,32 @@ decode_genesis_boot_logo_strobe(
     const std::vector<std::uint8_t>& rom);
 RgbaImage decode_genesis_boot_fasa(const std::vector<std::uint8_t>& rom);
 
-// ROM 0x59C5E opening stages. Each image is the 0x1406 (or 0x5AA96)
-// plane composition plus the SAT lists those paths emit during setup.
+// ROM 0x59C5E opening stages. Each image is the settled 0x1406 (or 0x5AA96)
+// plane composition; transient vehicle/actor layers are returned separately
+// where their source timing requires them.
 std::array<RgbaImage, native::kNativeIntroStageCount>
 decode_genesis_intro_stages(const std::vector<std::uint8_t>& rom);
+
+// ROM 0x5A1EA's wilderness animation calls the eight 0x1378 sprite update
+// routines and 0x5A0B2's four 0x1728 map patches. The returned samples are
+// full 320x224 compositions at source frames 0,16,...,496 of that loop.
+std::array<RgbaImage, native::kNativeIntroAmbushFrameCount>
+decode_genesis_intro_ambush_frames(const std::vector<std::uint8_t>& rom);
+
+// ROM 0x134D2's cab transition uploads the shared map patterns from 0xD2A2E
+// to VRAM $6420 and expands the 0xD4298 0x1728 stream into a 26x17 name
+// table. The extraction returns the resulting 320x224 map plate; the native
+// runtime owns the destination text/cadence separately.
+RgbaImage decode_genesis_cab_map(const std::vector<std::uint8_t>& rom);
 
 // Reconstruct the field command screen's plane-B base from the exact 0x1232
 // writers called by ROM 0x10F50. This is host RGBA output, not a Genesis
 // name-table or palette dependency retained by the runtime.
 RgbaImage decode_genesis_field_menu_background(
+    const std::vector<std::uint8_t>& rom);
+// ROM 0xD01C uses the separate 0x10C96 frame: two upper panels, two side
+// rails, and three lower separator rows. It is not the 0x10F50 command base.
+RgbaImage decode_genesis_field_menu_attributes_background(
     const std::vector<std::uint8_t>& rom);
 RgbaImage decode_genesis_startup_background(
     const std::vector<std::uint8_t>& rom);
@@ -454,6 +505,9 @@ RgbaImage decode_genesis_field_menu_inventory_boxes(
 RgbaImage decode_genesis_field_menu_font(
     const std::vector<std::uint8_t>& rom);
 
+// The clip counter at C4B4 is emitted with C0DA's palette-line zero rather
+// than the command text's palette-line three. Keep that source palette
+// variant separate so the native renderer does not recolor it heuristically.
 // Extract the dynamic command-screen artwork emitted after the static
 // 0x10F50 plane setup. These are host RGBA equivalents of the ROM's
 // 0x110BC runner portrait and 0x11136/0x11190 item-icon writers.
@@ -465,6 +519,15 @@ std::array<RgbaImage, 2> decode_genesis_field_menu_selected_cells(
 // a 2x2 tile update from 0xCD3F2, one block per command tab (Clips through
 // Pocket Secretary); it is not a host-generated rectangle.
 std::array<RgbaImage, 5> decode_genesis_field_menu_command_focus(
+    const std::vector<std::uint8_t>& rom);
+// ROM 0x11B58/0x11E7E pass CD43A/CD45A to the same writer for the Clips
+// action rows. These four 2x2 blocks are separate from the command tabs.
+std::array<RgbaImage, 4> decode_genesis_field_menu_clips_focus(
+    const std::vector<std::uint8_t>& rom);
+std::array<RgbaImage, 4> decode_genesis_field_menu_clips_trade_focus(
+    const std::vector<std::uint8_t>& rom);
+// ROM 0x119CE writes the six-tile posture focus strip from CD514 at CA9E.
+RgbaImage decode_genesis_field_menu_posture_focus(
     const std::vector<std::uint8_t>& rom);
 RgbaImage decode_genesis_field_menu_cursor(
     const std::vector<std::uint8_t>& rom);

@@ -369,6 +369,132 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
+    if (argc == 5 && std::string(argv[3]) == "--intro-stage") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto index = static_cast<std::size_t>(parse_number(argv[4]));
+            const auto stages = shadowrun::graphics::decode_genesis_intro_stages(rom);
+            if (index >= stages.size()) {
+                throw std::out_of_range("intro stage is outside the ROM stage set");
+            }
+            shadowrun::graphics::write_bmp32(argv[2], stages[index]);
+            std::cout << "intro stage " << index << ": " << stages[index].width
+                      << "x" << stages[index].height << "\n"
+                      << "output: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 5 && std::string(argv[3]) == "--intro-heli") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto index = static_cast<std::size_t>(parse_number(argv[4]));
+            const auto frames = shadowrun::graphics::decode_genesis_intro_heli_frames(rom);
+            if (index >= frames.size()) {
+                throw std::out_of_range("intro helicopter frame is outside the ROM frame set");
+            }
+            shadowrun::graphics::write_bmp32(argv[2], frames[index]);
+            std::cout << "intro helicopter frame " << index << ": "
+                      << frames[index].width << "x" << frames[index].height << "\n"
+                      << "output: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 5 && std::string(argv[3]) == "--intro-aircraft-movement") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto index = static_cast<std::size_t>(parse_number(argv[4]));
+            const auto frames =
+                shadowrun::graphics::decode_genesis_intro_aircraft_movement_frames(
+                    rom);
+            if (index >= frames.size()) {
+                throw std::out_of_range(
+                    "intro aircraft movement frame is outside the ROM frame set");
+            }
+            shadowrun::graphics::write_bmp32(argv[2], frames[index]);
+            std::cout << "intro aircraft movement frame " << index << ": "
+                      << frames[index].width << "x" << frames[index].height
+                      << "\noutput: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 4 && std::string(argv[3]) == "--intro-aircraft-plane-a") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto image =
+                shadowrun::graphics::decode_genesis_intro_aircraft_plane_a(rom);
+            shadowrun::graphics::write_bmp32(argv[2], image);
+            std::cout << "intro aircraft Plane-A: " << image.width << "x"
+                      << image.height << "\n"
+                      << "output: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 5 && std::string(argv[3]) == "--intro-wilderness-pan") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto index = static_cast<std::size_t>(parse_number(argv[4]));
+            const auto frames =
+                shadowrun::graphics::decode_genesis_intro_wilderness_pan_frames(
+                    rom);
+            if (index >= frames.size()) {
+                throw std::out_of_range(
+                    "intro wilderness pan frame is outside the ROM frame set");
+            }
+            shadowrun::graphics::write_bmp32(argv[2], frames[index]);
+            std::cout << "intro wilderness pan frame " << index << ": "
+                      << frames[index].width << "x" << frames[index].height
+                      << "\noutput: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 5 && std::string(argv[3]) == "--intro-ambush") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto index = static_cast<std::size_t>(parse_number(argv[4]));
+            const auto frames =
+                shadowrun::graphics::decode_genesis_intro_ambush_frames(rom);
+            if (index >= frames.size()) {
+                throw std::out_of_range(
+                    "intro ambush frame is outside the ROM frame set");
+            }
+            shadowrun::graphics::write_bmp32(argv[2], frames[index]);
+            std::cout << "intro ambush frame " << index << ": "
+                      << frames[index].width << "x" << frames[index].height
+                      << "\noutput: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << error.what() << '\n';
+            return 1;
+        }
+    }
+    if (argc == 4 && std::string(argv[3]) == "--cab-map") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto image = shadowrun::graphics::decode_genesis_cab_map(rom);
+            shadowrun::graphics::write_bmp32(argv[2], image);
+            std::cout << "cab map: " << image.width << "x" << image.height
+                      << "\noutput: " << argv[2] << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
     if (argc == 4 && std::string(argv[3]) == "--startup-base") {
         try {
             const auto rom = read_file(argv[1]);
@@ -646,6 +772,18 @@ int main(int argc, char** argv) {
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> --title\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
                       "--native-field\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
+                      "--intro-stage <index>\n";
+    std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
+                      "--intro-heli <index>\n";
+    std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
+                     "--intro-aircraft-plane-a\n";
+    std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
+                     "--intro-wilderness-pan <index>\n";
+    std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
+                     "--intro-ambush <index>\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
+                      "--cab-map\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
                       "--native-menu\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "

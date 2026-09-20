@@ -13,21 +13,29 @@ namespace shadowrun::native {
 
 constexpr std::uint16_t kScreenWidth = 320;
 constexpr std::uint16_t kScreenHeight = 224;
-// Capture t1720: playfield is the left 256px; the HUD column is its own
-// 64x224 panel. Do not overlay command portraits on the map.
-// ROM 0x334C: 6-tile (48px) sidebar at nametable col 34 (x=272).
+// Capture t1720: playfield is the left 256px; the visible HUD art occupies
+// x=256..303 and the rightmost 16px remain black. The ROM name-table
+// addresses decode to x=272..319; the field presentation applies a -16px
+// display offset when that plane is presented.
+// ROM 0x334C refreshes the 6-tile sidebar through the $F000 plane alias.
 constexpr std::int32_t kFieldHudWidth = 48;
-constexpr std::int32_t kFieldHudX = 272;
-constexpr std::int32_t kFieldPlayfieldWidth =
-    static_cast<std::int32_t>(kScreenWidth) - kFieldHudWidth;
-// 0x33BE copies the left 4x4 of the 8x10 command portrait into the first
-// 6x8 window (32x32 inside the 48x64 frame).
-constexpr std::int32_t kFieldHudFaceX = 280;
+constexpr std::int32_t kFieldHudX = 256;
+constexpr std::int32_t kFieldPlayfieldWidth = 256;
+// 0x35D4 writes the uploaded 4x4 portrait at F1C6. The following 0x35F0
+// item write uses F448; the two resources must not be conflated.
+constexpr std::int32_t kFieldHudFaceX = 264;
 constexpr std::int32_t kFieldHudFaceY = 24;
 constexpr std::int32_t kFieldHudFaceWidth = 32;
-constexpr std::int32_t kFieldHudFaceHeight = 48;
-constexpr std::int32_t kFieldHudGunX = 280;
-constexpr std::int32_t kFieldHudGunY = 96;
+constexpr std::int32_t kFieldHudFaceHeight = 32;
+// 0x35D4 writes the equipped item block at F448. Only the six uploaded item
+// tiles carry item art; the surrounding 4x4 source block preserves the ROM's
+// placement and transparent/empty pixels.
+constexpr std::int32_t kFieldHudGunX = 272;
+constexpr std::int32_t kFieldHudGunY = 64;
+constexpr std::int32_t kFieldHudVerticalCounterX = 256;
+constexpr std::int32_t kFieldHudVerticalCounterY = 72;
+constexpr std::int32_t kFieldHudHorizontalCounterX = 264;
+constexpr std::int32_t kFieldHudHorizontalCounterY = 56;
 // Title 0x2634 slides CRAM every 5 vblanks. Host clips step every 3 ticks
 // so the baked light frames read as motion at capture 0.05s.
 constexpr std::uint16_t kTitleCircuitLightTicks = 3;
@@ -41,8 +49,29 @@ constexpr std::size_t kNativeBootLogoStrobeCount = 8;
 // ROM 0x2634 writes eight CRAM words from 0x26F2+(DF92<<1) to CRAM $50
 // (palette line 2 colors 8..15). DF92 cycles 0..6 every five vblanks.
 constexpr std::size_t kNativeTitleCircuitLightCount = 7;
-// ROM 0x5B180 is six 0x1378 SAT lists for the last-million chopper.
+// ROM 0x1A9E starts the logo after DD2C's $5A-pass delay. 0x1E4E emits
+// thirty-eight 8-pixel columns, but DD40 gates those writes to every other
+// title-loop pass.  0x1C6A advances the SAT origin by four pixels per pass.
+constexpr std::int16_t kTitleRevealDelay = 0x5A;
+constexpr std::size_t kTitleRevealColumnCount = 38;
+constexpr std::size_t kTitleLogoDestinationX = 8;
+constexpr std::int16_t kTitleSpriteInitialX = 0x98;
+constexpr std::int16_t kTitleTextDelay = 0x5A;
+// ROM 0x5B180 is six 0x1378 SAT lists for the airport craft overlay. The
+// vehicle itself is the continuously scrolled Plane-A layer; these are the
+// source overlay phases drawn on top of it.
 constexpr std::size_t kNativeIntroHeliFrameCount = 6;
+constexpr std::size_t kNativeIntroAircraftMovementFrameCount = 2;
+// ROM 0x59D7C raises the wilderness SAT pair from (0x138,0xF1) to
+// (0x178,0xD1) over its 0xA0-frame pan before 0x5A1EA takes over.
+constexpr std::size_t kNativeIntroWildernessPanFrameCount = 8;
+// ROM 0x5A0B2/0x5A1EA animate the ambush during the 0x1F0/DBRA loop. The
+// extractor keeps every source pass so the native runtime can present the
+// exact actor, projectile, hit, and disappearance state instead of selecting
+// sparse storyboard plates.
+constexpr std::size_t kNativeIntroAmbushFrameCount = 0x1F1;
+constexpr std::size_t kNativeIntroAmbushLegacyFrameCount = 32;
+constexpr std::size_t kNativeIntroAmbushFrameStep = 16;
 // Capture t071–t091: shock SFX is ~2s. Host 60 Hz uses 120 frames.
 constexpr std::uint16_t kBootShockFrames = 120;
 // ROM 0xC3E6 fills 28x21 tiles at $C186 (host 24,24 224x168).
@@ -426,18 +455,31 @@ struct NativePortAssets {
     // ROM 0x10B5A startup CRT: same CAB0C patterns as the command screen,
     // four 0x1232 blocks at 0xCDCE6/0xCDDF6/0xCDEA0/0xCDF4A.
     NativeImage startup_background;
+    // ROM 0x5B528 Plane-A 27x8 vehicle layer at zero scroll. NativePort
+    // applies the source DD08 scroll every airport pass.
+    NativeImage intro_aircraft_plane_a;
+    // ROM 0x5B180 overlay phases and 0x5B270 movement-list variants.
     std::array<NativeImage, kNativeIntroHeliFrameCount> intro_heli_frames{};
-    // Field HUD from ROM 0x334C: 6x2 caps at $F044/$FD44 and three 6x8
-    // slots at $F144/$F544/$F944, tiles 0x6A5BE. Shared by field, command,
-    // and Pocket Secretary.
+    std::array<NativeImage, kNativeIntroAircraftMovementFrameCount>
+        intro_aircraft_movement_frames{};
+    // Field HUD from ROM 0x334C/0x39F2: the static right-column name tables
+    // plus the dynamic SAT-like face, item, and counter writes.
     NativeImage field_hud;
-    // Pocket Secretary: command chrome with the inner panel cleared, matching
-    // 0xC3E6. Combat overlay 0xD9C96 is not this screen.
+    std::array<NativeImage, 3> field_hud_faces{};
+    std::array<NativeImage, 3> field_hud_item_blocks{};
+    std::array<NativeImage, 3> field_hud_vertical_counters{};
+    std::array<NativeImage, 3> field_hud_horizontal_counters{};
+    // Pocket Secretary: exact 0x10A7E raw name-table composition.
     NativeImage pocket_secretary_background;
     // Plane-B base written by the ROM command-screen initializer at 0x10F50.
     // It contains the real menu panel and inventory-box geometry; dynamic
     // labels and cursor state are rendered by the native command loop.
     NativeImage field_menu_background;
+    // ROM 0xD01C calls 0x10C96 instead of the ordinary 0x10F50 command
+    // initializer. Preserve that complete attributes/skills frame separately
+    // so its source border and separators are not replaced by the field-menu
+    // shell.
+    NativeImage field_menu_attributes_background;
     NativeImage field_menu_inventory_boxes;
     NativeImage field_menu_font;
     NativeImage startup_font;
@@ -450,6 +492,14 @@ struct NativePortAssets {
     // ROM 0x11454 writes one source 2x2 focus block over the selected small
     // command button. The five entries correspond to selectors 2..6.
     std::array<NativeImage, 5> field_menu_command_focus{};
+    // ROM 0x11B58 uses a separate four-entry focus table at CD43A for the
+    // Clips action row. It is not the top-level CD3F2 command focus table.
+    std::array<NativeImage, 4> field_menu_clips_focus{};
+    // ROM 0x11E7E uses CD45A for the nested Clips trade actions.
+    std::array<NativeImage, 4> field_menu_clips_trade_focus{};
+    // ROM 0x119CE writes the six-tile posture focus strip at CA9E when the
+    // status/posture selector owns input.
+    NativeImage field_menu_posture_focus;
     // ROM 0x11592 emits the 3x4-tile selector sprite from D29F6. It is kept
     // as a transparent host image and positioned from the same 0x28/0x18
     // selector strides as the source routine.
@@ -484,6 +534,13 @@ struct NativePortAssets {
     // Host RGBA of the four 0x59C5E presentation stages. Text remains a
     // separate C0DA overlay; these are the plane/SAT compositions.
     std::array<NativeImage, kNativeIntroStageCount> intro_stages{};
+    std::array<NativeImage, kNativeIntroWildernessPanFrameCount>
+        intro_wilderness_pan_frames{};
+    std::array<NativeImage, kNativeIntroAmbushFrameCount>
+        intro_ambush_frames{};
+    // ROM 0x134D2's 0xD2A2E/0xD4298 cab plate, including the source
+    // district selector outline in its capture-space presentation.
+    NativeImage cab_map;
     NativeImage field_map;
     std::vector<NativeEntityFrame> entity_frames;
     // Baked luminance copies of the color walk/idle frames. Extract stores
@@ -657,6 +714,15 @@ public:
     }
     // ROM 0x5D746 has no Start skip. Tick empty input until 0x1A9E.
     void finish_boot();
+    std::int16_t title_reveal_delay() const { return title_reveal_delay_; }
+    std::uint16_t title_revealed_columns() const {
+        return title_revealed_columns_;
+    }
+    std::uint16_t title_sprite_phase() const { return title_sprite_phase_; }
+    std::int16_t title_sprite_x() const { return title_sprite_x_; }
+    std::uint16_t title_completion_state() const {
+        return title_completion_state_;
+    }
     bool has_intro() const { return !intro_.story_lines.empty(); }
     bool has_startup_menus() const {
         return !intro_.start_options_layout.empty() &&
@@ -1059,6 +1125,7 @@ private:
     void update_field_inventory_action(const InputState& input);
     void apply_field_inventory_action();
     void update_boot();
+    void update_title(const InputState& input);
     void discard_selected_inventory_item();
     void open_clips_menu();
     void update_clips_menu(const InputState& input);
@@ -1074,6 +1141,9 @@ private:
     void update_magic_menu(const InputState& input);
     void open_field_dialog(std::vector<std::string> lines);
     void render_command_base(ScreenWriter& screen) const;
+    void render_command_static_layers(ScreenWriter& screen) const;
+    void render_command_dynamic_layers(ScreenWriter& screen,
+                                       bool attributes_frame = false) const;
     void render_dialog_panel(ScreenWriter& screen) const;
     void render_field_hud(ScreenWriter& screen) const;
 
@@ -1105,6 +1175,10 @@ private:
     NativeImage startup_background_{};
     std::array<NativeImage, kNativeIntroHeliFrameCount> intro_heli_frames_{};
     NativeImage field_hud_{};
+    std::array<NativeImage, 3> field_hud_faces_{};
+    std::array<NativeImage, 3> field_hud_item_blocks_{};
+    std::array<NativeImage, 3> field_hud_vertical_counters_{};
+    std::array<NativeImage, 3> field_hud_horizontal_counters_{};
     NativeImage pocket_secretary_background_{};
     std::int16_t boot_guy_y_ = static_cast<std::int16_t>(kBootGuyStartY);
     std::uint16_t boot_guy_fade_ = 256;
@@ -1127,6 +1201,7 @@ private:
     std::uint16_t field_menu_background_width_ = 0;
     std::uint16_t field_menu_background_height_ = 0;
     std::vector<Rgba8> field_menu_background_pixels_;
+    NativeImage field_menu_attributes_background_{};
     std::uint16_t field_menu_inventory_boxes_width_ = 0;
     std::uint16_t field_menu_inventory_boxes_height_ = 0;
     std::vector<Rgba8> field_menu_inventory_boxes_pixels_;
@@ -1136,9 +1211,20 @@ private:
     NativeImage startup_font_{};
     NativeImage startup_cursor_{};
     std::array<NativeImage, kNativeIntroStageCount> intro_stages_{};
+    NativeImage intro_aircraft_plane_a_{};
+    std::array<NativeImage, kNativeIntroWildernessPanFrameCount>
+        intro_wilderness_pan_frames_{};
+    std::array<NativeImage, kNativeIntroAircraftMovementFrameCount>
+        intro_aircraft_movement_frames_{};
+    std::array<NativeImage, kNativeIntroAmbushFrameCount>
+        intro_ambush_frames_{};
+    NativeImage cab_map_{};
     std::array<NativeImage, 3> field_menu_runner_portraits_{};
     std::array<NativeImage, 2> field_menu_selected_cells_{};
     std::array<NativeImage, 5> field_menu_command_focus_{};
+    std::array<NativeImage, 4> field_menu_clips_focus_{};
+    std::array<NativeImage, 4> field_menu_clips_trade_focus_{};
+    NativeImage field_menu_posture_focus_{};
     NativeImage field_menu_cursor_{};
     std::array<NativeImage, kNativeInventoryItemCount> field_menu_item_art_{};
     std::array<std::array<NativeImage, 2>, kNativeInventoryItemCount>
@@ -1174,6 +1260,17 @@ private:
     // 0x1A9E breaks on Start once PRESS START is live, then 0x131C fades
     // into 0x59092. One edge is enough; do not eat the first press as a skip.
     std::uint16_t title_fade_left_ = 0;
+    // Typed host state for the source title loop. These mirror the RAM fields
+    // used by 0x1A9E/0x1C6A/0x1E4E rather than deriving the visible frame from
+    // an invented animation clip.
+    std::int16_t title_reveal_delay_ = kTitleRevealDelay;
+    std::uint16_t title_revealed_columns_ = 0;
+    std::int16_t title_column_cadence_ = 0;
+    std::int16_t title_sprite_cadence_ = 0;
+    std::uint16_t title_sprite_phase_ = 0;
+    std::int16_t title_sprite_x_ = kTitleSpriteInitialX;
+    std::int16_t title_text_timer_ = kTitleTextDelay;
+    std::uint16_t title_completion_state_ = 0;
     std::uint64_t cab_frame_ = 0;
     std::vector<NativeEntityFrame> entity_frames_;
     std::array<NativeFieldAnimation, 8> field_entity_animations_{};
