@@ -2,10 +2,12 @@
 
 ## Objective
 
-Reconstruct US Genesis Shadowrun as a native C++ Windows game. Qt (or GDI)
-presents a 320x224 software framebuffer. The finished program runs ordinary
-C++ game logic with extracted host assets. A pile of Ghidra C, a disassembly,
-or a test-only bus harness is not the game.
+Reconstruct US Genesis Shadowrun as a native x86 C++ Windows game. Qt (or GDI)
+presents a native software image using extracted host assets. The presentation
+size is chosen to reproduce the supplied reference images; Genesis resolution
+and VDP limits are not runtime requirements. The finished program runs
+ordinary C++ game logic. A pile of Ghidra C, a disassembly, or a test-only bus
+harness is not the game.
 
 ## Non-goals
 
@@ -22,9 +24,9 @@ or a test-only bus harness is not the game.
    follow tables, RAM, and callees.
 2. **Secondary:** Ghidra C under `decompilation/export-seeded/`. Cross-check
    only. Never copy it in as the native implementation.
-3. **Tertiary:** real-game visuals. `screen-capture.webm` is storyboard and
-   timing. Pixel goldens must be integer-scale 320x224 captures. Until a
-   golden exists, dump the native framebuffer BMP and look at it.
+3. **Tertiary:** real-game visuals. `screen-capture.webm` and supplied images
+   are the visual sanity check and timing reference. Until an independent
+   reference is available, dump the native image and inspect it.
 
 ## Hill rule (take and defend)
 
@@ -35,7 +37,7 @@ A hill is **defended** only when all of these exist:
 1. ROM entry, cursor/RAM, draw path, and exit traced.
 2. Typed native state in `NativePortShell` (not a Qt widget machine).
 3. A CTest that fails if that behavior or those pixels regress.
-4. A CLI framebuffer dump (`actual.bmp`) for that scene.
+4. A CLI image dump (`actual.bmp`) for that scene.
 
 `pending` = entry known, not reconstructed.  
 `partial` = subpath native, not fully defended.  
@@ -61,8 +63,8 @@ Screen map: `decompilation/docs/screen-system-audit.md` and
 - Genesis 4-bit tiles and 9-bit CRAM become RGBA8 at extraction. Preserve the
   look, not VRAM limits.
 - Host may run at 60 FPS. Animation cadence still follows ROM counters.
-- Qt is one `QWidget` that blits the native framebuffer with nearest-neighbor
-  scaling and forwards keys into `InputState`. No second menu state machine.
+- Qt is one `QWidget` that blits the native image and forwards keys into
+  `InputState`. No second menu state machine.
 - Unresolved indirect calls stay explicit boundaries.
 
 ## Build
