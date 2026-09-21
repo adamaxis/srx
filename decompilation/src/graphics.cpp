@@ -6286,10 +6286,45 @@ decode_genesis_intro_ambush_frames_impl(
         }
 
         auto image = base;
+
+        // The 0x1406 wilderness plate contains the three runners from the
+        // preceding pan.  In the ROM those name-table cells are replaced as
+        // each death sequence starts; they are not permanent background art.
+        // Clear the corresponding source rectangles before drawing the live
+        // SAT lists.  Without this step the explosion sprites appear to hit
+        // a second, baked-in copy of the runner and the character never
+        // disappears.
+        const auto clear_rect = [&image](std::int32_t x, std::int32_t y,
+                                         std::int32_t width,
+                                         std::int32_t height) {
+            for (std::int32_t row = 0; row < height; ++row) {
+                for (std::int32_t column = 0; column < width; ++column) {
+                    const auto target_x = x + column;
+                    const auto target_y = y + row;
+                    if (target_x < 0 || target_y < 0 ||
+                        target_x >= static_cast<std::int32_t>(image.width) ||
+                        target_y >= static_cast<std::int32_t>(image.height)) {
+                        continue;
+                    }
+                    image.pixels[static_cast<std::size_t>(target_y) *
+                                     image.width +
+                                 static_cast<std::size_t>(target_x)] =
+                        {0, 0, 0, 255};
+                }
+            }
+        };
         if (map_loaded) {
             blit_genesis_1728_name_table(
                 rom, wilderness, image, map_list, 13U, 12U, 0x826U,
                 0x0000U, 0, false);
+        }
+
+        // 0x5A0B2 phase 9 starts the body sequence for the lower-right
+        // runner.  The map write has replaced the old 13x12 name-table
+        // window by this point, so remove its baked sprite before the body
+        // SAT is composed.
+        if (map_phase >= 9U) {
+            clear_rect(152, 128, 104, 96);
         }
 
         // 0x5A252: four actor list records followed by eight nine-tick
@@ -6314,6 +6349,13 @@ decode_genesis_intro_ambush_frames_impl(
         if (actor_loaded && actor_phase < 0x0CU) {
             blit_genesis_sat_list(rom, wilderness, image, actor_list,
                                   0x178, 0xD1, 0x2000U);
+        }
+
+        // 0x5A252 phase 9 starts the Indian runner's body/explosion sequence.
+        // His head is a separate actor SAT and remains source-positioned;
+        // only the old body pixels are removed here.
+        if (actor_phase >= 9U) {
+            clear_rect(224, 64, 96, 96);
         }
 
         // 0x5A3BE: long pointer, delay, initial X, velocity. The fifth
@@ -6356,15 +6398,17 @@ decode_genesis_intro_ambush_frames_impl(
                                   0x1AB, 0xD7, 0x6000U);
         }
 
-        // 0x5A59C: list 6 remains visible for its final eight-tick deadline,
-        // then the source stops writing the slot entirely.
+        // 0x5A59C always redraws the currently loaded body list after a
+        // deadline update.  That includes the final smoke list; the next
+        // source map/scene transition, rather than a host-side sampled-frame
+        // cutoff, removes it.
         if (body_phase < 6U && now >= body_next) {
             body_list = pointer(0x5A602U, body_phase, 4U);
             body_next = now + 8U;
             ++body_phase;
             body_loaded = true;
         }
-        if (body_loaded && (body_phase < 6U || now < body_next)) {
+        if (body_loaded) {
             blit_genesis_sat_list(rom, wilderness, image, body_list, body_x,
                                   body_y, 0x6000U);
         }
@@ -6445,6 +6489,17 @@ decode_genesis_intro_ambush_frames_impl(
                                   last_shot_x, 0x13C, 0x6000U);
         } else {
             last_shot_active = false;
+        }
+
+        // The final 0x5A8DE record is Michael's hit state.  The source then
+        // exposes the same trivid-left SAT used by 0x5A96A in the following
+        // transition.  Keep the transition boundary in the source counter
+        // domain: the late ambush passes are the only ones that replace his
+        // standing sprite with the slain pose.
+        if (now >= 0x1E0U) {
+            clear_rect(0, 128, 152, 96);
+            blit_genesis_sat_list(rom, wilderness, image, 0x1DF1D6U,
+                                  0xC2, 0x13C, 0xC000U);
         }
         frames[frame] = std::move(image);
     }

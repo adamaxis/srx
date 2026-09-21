@@ -330,11 +330,13 @@ SoftwareScreen source_field_menu_reference(const NativePortAssets& assets,
                            184, focus.width, focus.height, focus.pixels);
     }
     if (selection < 2U) {
-        expected.blit_rgba(12 + static_cast<std::int32_t>(selection * 40U),
-                           116 + static_cast<std::int32_t>(row * 24U),
-                           assets.field_menu_cursor.width,
-                           assets.field_menu_cursor.height,
-                           assets.field_menu_cursor.pixels);
+        const auto x = 8 + static_cast<std::int32_t>(selection * 40U);
+        const auto y = 112 + static_cast<std::int32_t>(row * 24U);
+        constexpr Rgba8 kInventorySelection{0xFF, 0xD8, 0x00, 0xFF};
+        expected.fill_rect(x, y, 32, 2, kInventorySelection);
+        expected.fill_rect(x, y + 22, 32, 2, kInventorySelection);
+        expected.fill_rect(x, y, 2, 24, kInventorySelection);
+        expected.fill_rect(x + 30, y, 2, 24, kInventorySelection);
         const auto slot = row * 2U + selection;
         if (slot < record.inventory_item_codes.size()) {
             draw_item_detail(record.inventory_item_codes[slot], true);
@@ -542,6 +544,18 @@ void require_edge_pixels(const SoftwareScreen& screen, const NativeImage& image,
             label + " differs from its extracted equipment border (" +
             std::to_string(mismatches) + "/" + std::to_string(compared) +
             " mismatched)");
+    }
+}
+
+void require_inventory_selection_band(const SoftwareScreen& screen,
+                                      std::int32_t x, std::int32_t y,
+                                      const std::string& label) {
+    constexpr auto expected = static_cast<std::uint32_t>(0xFFD800U);
+    if (screen.pixel(x, y + 2) != expected ||
+        screen.pixel(x + 31, y + 2) != expected ||
+        screen.pixel(x + 2, y) != expected ||
+        screen.pixel(x + 2, y + 23) != expected) {
+        throw std::runtime_error(label + " is missing the yellow selection band");
     }
 }
 
@@ -796,14 +810,14 @@ void test_field_menu_visual_contract(
                                  "command-tab focus " + std::to_string(focus));
         }
 
-        // Inventory selection uses the extracted 24x32 sprite. It is a
-        // separate cursor from the equipment border and must land on slot 0.
+        // Inventory selection uses the full yellow cell band shown by the
+        // native command screen, separate from equipment borders.
         while (shell.field_menu_selection() != 0U) {
             press(shell, Button::Left);
         }
         shell.render(screen);
-        require_image_pixels(screen, assets.field_menu_cursor, 12, 116,
-                             "inventory cursor at slot 0");
+        require_inventory_selection_band(screen, 8, 112,
+                                         "inventory selection at slot 0");
 
         // Each occupied inventory cell also opens the source item-detail
         // page. Verify the exact item art selected by the source item code,
@@ -853,11 +867,11 @@ void test_field_menu_visual_contract(
                         std::to_string(slot) + ", item " +
                         std::to_string(code));
             }
-            require_image_pixels(
-                screen, assets.field_menu_cursor,
-                12 + static_cast<std::int32_t>((slot & 1U) * 40U),
-                116 + static_cast<std::int32_t>((slot / 2U) * 24U),
-                "inventory cursor for slot " + std::to_string(slot));
+            require_inventory_selection_band(
+                screen,
+                8 + static_cast<std::int32_t>((slot & 1U) * 40U),
+                112 + static_cast<std::int32_t>((slot / 2U) * 24U),
+                "inventory selection for slot " + std::to_string(slot));
         }
     }
 }

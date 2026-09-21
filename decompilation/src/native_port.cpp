@@ -2470,8 +2470,8 @@ void NativePortShell::update_notebook_menu(const InputState& input) {
     }
 
     if (input.was_pressed(Button::Start) || input.was_pressed(Button::B)) {
-        scene_ = NativeScene::FieldMenu;
-        field_menu_selection_ = 6;
+        scene_ = NativeScene::PocketSecretaryMenu;
+        pocket_secretary_selection_ = 0;
         return;
     }
     if (!input.was_pressed(Button::A)) {
@@ -2536,9 +2536,14 @@ void NativePortShell::update_notebook_tips_menu(const InputState& input) {
 }
 
 void NativePortShell::update_group_items_menu(const InputState& input) {
-    // ROM F312 waits for any newly asserted controller bit, not only A/B.
-    // Returning to FieldMenu mirrors the 0x10D30 command-screen redraw after
-    // the C8C8 handler returns through the 0x11740 dispatch.
+    // ROM F312 waits for any newly asserted controller bit.  B is the parent
+    // navigation edge from this sub-menu; other edges retain the reviewed
+    // command-loop return path.
+    if (input.was_pressed(Button::B)) {
+        scene_ = NativeScene::PocketSecretaryMenu;
+        pocket_secretary_selection_ = 1;
+        return;
+    }
     if (input.pressed != 0U) {
         scene_ = NativeScene::FieldMenu;
         field_menu_selection_ = 6;
@@ -2922,6 +2927,13 @@ void NativePortShell::update_clips_menu(const InputState& input) {
         return;
     }
 
+    if (input.was_pressed(Button::B) || input.was_pressed(Button::Start)) {
+        scene_ = NativeScene::FieldMenu;
+        field_menu_selection_ = 2;
+        field_command_message_frames_ = 0;
+        return;
+    }
+
     // ROM 0x118C6 applies the left/right delta and wraps 2 -> 5 and 5 -> 2.
     const auto horizontal_step =
         menu_direction_step(input, Button::Left, Button::Right, true);
@@ -3150,6 +3162,8 @@ void NativePortShell::update_clips_trade(const InputState& input) {
         }
     }
     if (input.was_pressed(Button::B) || input.was_pressed(Button::Start)) {
+        // B/Start leave the nested clip-trade loop but remain in Clips until
+        // the parent command-screen edge is pressed again.
         clips_trade_active_ = false;
     }
 }
@@ -3166,9 +3180,9 @@ void NativePortShell::open_cyberware_menu() {
 }
 
 void NativePortShell::update_cyberware_menu(const InputState& input) {
-    // The original handler has no selection or mutation loop. Start is the
-    // only exit edge at this boundary; arrows and action buttons are ignored.
-    if (input.was_pressed(Button::Start)) {
+    // The original handler has no selection or mutation loop. B/Start return
+    // to the command selector; arrows and action buttons are ignored.
+    if (input.was_pressed(Button::Start) || input.was_pressed(Button::B)) {
         scene_ = NativeScene::FieldMenu;
         field_menu_selection_ = 4;
         field_command_message_frames_ = 0;
@@ -3217,9 +3231,9 @@ void NativePortShell::update_attributes_menu(const InputState& input) {
     }
 
     // The ROM's A/B/C update/distribution branches mutate unresolved points
-    // and are deliberately not guessed here. Start is the proven display
-    // loop exit and returns to the same top-level command selector.
-    if (input.was_pressed(Button::Start)) {
+    // and are deliberately not guessed here. B/Start return to the same
+    // top-level command selector.
+    if (input.was_pressed(Button::Start) || input.was_pressed(Button::B)) {
         scene_ = NativeScene::FieldMenu;
         field_menu_selection_ = 3;
         field_command_message_frames_ = 0;
@@ -3430,6 +3444,11 @@ void NativePortShell::render_field_hud(ScreenWriter& screen) const {
                                                            : 0U)
         : slot_index;
     const auto slot_y = static_cast<std::int32_t>(slot_index * 64U);
+    // 0x39F2 highlights the active record's portrait slot.  The static HUD
+    // chrome only contains the slot geometry; the live selection bar must
+    // move with active_field_record_.
+    screen.fill_rect(kFieldHudX, kFieldHudFaceY + slot_y, 2,
+                     kFieldHudFaceHeight, {0xF0, 0x18, 0x28, 0xFF});
     if (!field_hud_faces_[data_index].pixels.empty()) {
         const auto& face = field_hud_faces_[data_index];
         screen.blit_rgba(kFieldHudFaceX, kFieldHudFaceY + slot_y, face.width,
@@ -3447,10 +3466,26 @@ void NativePortShell::render_field_hud(ScreenWriter& screen) const {
                          kFieldHudHorizontalCounterY + slot_y,
                          counter.width, counter.height, counter.pixels);
     }
-    if (!field_hud_item_blocks_[data_index].pixels.empty()) {
-        const auto& item = field_hud_item_blocks_[data_index];
-        screen.blit_rgba(kFieldHudGunX, kFieldHudGunY + slot_y, item.width,
-                         item.height, item.pixels);
+    // The extracted HUD item block is the startup record's upload.  Once the
+    // native record changes equipment it is stale, so redraw this six-tile
+    // area from the live equipped item exactly as the ROM's 0x3404/0x35D4
+    // path does.  A 0x7F display slot is the source's unarmed state and must
+    // not leave the startup pistol behind.
+    screen.fill_rect(kFieldHudGunX, kFieldHudGunY + slot_y, 24, 16,
+                     {0x00, 0x00, 0x00, 0xFF});
+    if (field_entity_.display_state >= 0 &&
+        field_entity_.display_state != 0x7F &&
+        field_entity_.active_item_code > 0U &&
+        field_entity_.active_item_code <= kNativeInventoryItemCount) {
+        const auto icon_index = static_cast<std::size_t>(
+            field_entity_.active_item_code - 1U);
+        const auto palette = field_menu_uses_alt_item_palette(field_entity_)
+            ? 1U : 0U;
+        const auto& item = field_menu_inventory_icons_[icon_index][palette];
+        if (!item.pixels.empty()) {
+            screen.blit_rgba(kFieldHudGunX, kFieldHudGunY + slot_y,
+                             item.width, item.height, item.pixels);
+        }
     }
 }
 
@@ -4634,6 +4669,14 @@ void NativePortShell::render(ScreenWriter& screen) const {
                                               std::uint8_t item_code,
                                               bool include_art) {
                 if (item_code == 0U || item_code > kNativeInventoryItemCount) {
+                    if (include_art) {
+                        write_field_menu_text(
+                            screen, 128, 64,
+                            center_source_fixed_field("This slot is"));
+                        write_field_menu_text(
+                            screen, 128, 72,
+                            center_source_fixed_field("empty"));
+                    }
                     return;
                 }
                 const auto item_index = static_cast<std::size_t>(item_code - 1U);
@@ -4906,22 +4949,21 @@ void NativePortShell::render(ScreenWriter& screen) const {
                                      icon.width, icon.height, icon.pixels);
                 }
             }
+            // 0x11592's extracted cursor is a small source sprite used by
+            // the old ROM viewport.  The native menu's visible selection is
+            // the full yellow cell band shown by the reference UI.  Keep it
+            // independent from the white equipment borders above: selecting
+            // an item is not equipping it.
             if (field_menu_selection_ < 2U) {
-                // ROM 0x11592 creates this selector as a sprite. Its source
-                // coordinates are (0x8C,0xF4), which become (12,116) after
-                // the Genesis 0x80 sprite origin is adapted to host pixels;
-                // the source strides are 0x28 horizontally and 0x18
-                // vertically. Keep it above tile-based item art and
-                // selected-equipment overlays, as the VDP sprite is above
-                // those name-table layers.
-                if (!field_menu_cursor_.pixels.empty()) {
-                    screen.blit_rgba(
-                        12 + static_cast<std::int32_t>(
-                                 field_menu_selection_ * 40U),
-                        116 + static_cast<std::int32_t>(field_menu_row_ * 24U),
-                        field_menu_cursor_.width, field_menu_cursor_.height,
-                        field_menu_cursor_.pixels);
-                }
+                const auto x = 8 + static_cast<std::int32_t>(
+                    field_menu_selection_ * 40U);
+                const auto y = 112 + static_cast<std::int32_t>(
+                    field_menu_row_ * 24U);
+                constexpr Rgba8 kInventorySelection{0xFF, 0xD8, 0x00, 0xFF};
+                screen.fill_rect(x, y, 32, 2, kInventorySelection);
+                screen.fill_rect(x, y + 22, 32, 2, kInventorySelection);
+                screen.fill_rect(x, y, 2, 24, kInventorySelection);
+                screen.fill_rect(x + 30, y, 2, 24, kInventorySelection);
             }
             if (field_menu_selection_ < 2U) {
                 draw_item_detail(selected_code, true);
@@ -4930,6 +4972,29 @@ void NativePortShell::render(ScreenWriter& screen) const {
             // or item action at plane-B address EC9C (x=112, y=200). The
             // other choices are not a vertical checklist on this screen.
             if (field_menu_action_active_) {
+                // The action loop replaces the five top-level command tabs
+                // with four action buttons. Render the replacement buttons
+                // explicitly so stale CP/AS/CY/HG/PS labels cannot survive
+                // underneath an Equip/Discard/Trade/Cancel action state.
+                screen.fill_rect(120, 182, 128, 20,
+                                 {0x00, 0x00, 0x00, 0xFF});
+                const auto action_button_labels = field_first_aid_active_
+                    ? std::array<std::string_view, 4>{{"FA", "DS", "TR", "CL"}}
+                    : std::array<std::string_view, 4>{{"EQ", "DS", "TR", "CL"}};
+                for (std::size_t index = 0; index < action_button_labels.size();
+                     ++index) {
+                    const auto x = 128 + static_cast<std::int32_t>(index * 24U);
+                    const auto selected = field_menu_action_selection_ ==
+                        index + 2U;
+                    screen.fill_rect(x, 184, 20, 16,
+                                     selected
+                                         ? Rgba8{0xE8, 0xF4, 0xFF, 0xFF}
+                                         : Rgba8{0x70, 0x78, 0x80, 0xFF});
+                    screen.fill_rect(x + 2, 186, 16, 12,
+                                     {0x20, 0x24, 0x28, 0xFF});
+                    write_field_menu_text(screen, x + 4, 188,
+                                          action_button_labels[index]);
+                }
                 if (field_first_aid_active_) {
                     // ROM 0x122B2/0x12344 writes the extracted Heal who?? and
                     // CANCEL strings into the command panel, while the
@@ -5463,6 +5528,16 @@ void NativePortShell::render(ScreenWriter& screen) const {
                         : field_entity_.skill_values[index -
                                                       kNativeAttributeCount];
                     const auto& name = attribute_skill_names_[index];
+                    if (column == attributes_menu_column_ &&
+                        row == attributes_menu_row_) {
+                        const auto highlight_x = name_x - 4;
+                        const auto highlight_width = value_x + 24 - highlight_x;
+                        screen.fill_rect(highlight_x, y - 2, highlight_width, 12,
+                                         {0xE8, 0xF4, 0xFF, 0xFF});
+                        screen.fill_rect(highlight_x + 2, y,
+                                         highlight_width - 4, 8,
+                                         {0x00, 0x00, 0x00, 0xFF});
+                    }
                     write_field_menu_text(
                         screen, name_x, y,
                         name.empty() ? "UNKNOWN" : std::string_view(name));
@@ -5470,18 +5545,33 @@ void NativePortShell::render(ScreenWriter& screen) const {
                                           std::to_string(value));
                 }
             }
-            // 0xD01C leaves the lower KARMA panel populated by the source
-            // description writer. The capture's initial readout is the
-            // Quickness description; keep it in the same two source rows
-            // instead of leaving the panel empty.
-            write_field_menu_text(
-                screen, 56, 160,
-                "Quickness determines movement and");
-            write_field_menu_text(
-                screen, 56, 168,
-                "attack speed, and increases combat");
-            write_field_menu_text(screen, 56, 176,
-                                  "and cybercombat success.");
+            // 0xD01C writes the current karma total beside the lower panel.
+            // New-game records start at zero; keep the description tied to
+            // the same cursor rather than leaving Quickness text painted
+            // after navigating to another row.
+            write_field_menu_text(screen, 96, 152, "KARMA  0");
+            const auto selected_index =
+                kAttributeSkillColumns[attributes_menu_column_]
+                    [attributes_menu_row_];
+            if (selected_index == 0U) {
+                write_field_menu_text(
+                    screen, 56, 160,
+                    "Body resists damage from weapons,");
+                write_field_menu_text(
+                    screen, 56, 168,
+                    "firearms, physical spells, and");
+                write_field_menu_text(screen, 56, 176,
+                                      "Black Ice.");
+            } else if (selected_index == 1U) {
+                write_field_menu_text(
+                    screen, 56, 160,
+                    "Quickness determines movement and");
+                write_field_menu_text(
+                    screen, 56, 168,
+                    "attack speed, and increases combat");
+                write_field_menu_text(screen, 56, 176,
+                                      "and cybercombat success.");
+            }
         } else if (scene_ == NativeScene::AttributesMenu && false) {
             render_command_base(screen);
             render_dialog_panel(screen);

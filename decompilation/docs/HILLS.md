@@ -14,6 +14,7 @@ composites do not count.
 | 3 Startup | Save/Load empty slot | `0x59172` | partial | leftover-clear + startup test | `--scene save-load-empty` |
 | 3 Startup | Archetype | `0x59248` / `0x42B0` | partial | startup test | `--scene archetype` (CRT + 0x7291A+0x50 portraits) |
 | 3 Startup | Intro stages | `0x59C5E` / `0x5AF62` / `0x59D7C` / `0x5AA96` / `0x5AD1A` | partial | `shadowrun_menu_system`; `shadowrun_graphics` (0x1728 BGE fill) | `--scene intro` (seattle + heli, ambush on black, trivid, cab map, green story text) |
+| 3 Startup | Ambush source choreography | `0x5A1EA` / `0x5A252` / `0x5A59C` / `0x5A8DE` | partial | `shadowrun_native_port` | `--scene intro --frames 776,1000,1262` (source-timed body replacement and late Michael transition) |
 | 4 Field | Walk / collide | `0x3084` / `0xE7C8` / `0x3BAC` | partial | `shadowrun_native_port` | `--scene field` (272px playfield, 0x334C 6-tile HUD column) |
 | 5 Dialog | Motel doorway | mode 2 `C0`/event 0 → `0x14` + `0x20E48` | partial | `shadowrun_native_port` motel tuple | `--scene field` after C0; shared 0xC3E6 panel |
 | 6 Menu | Command overview pixels | `0x10F50` | partial (same-source composite, not a golden) | `shadowrun_menu_visual_regression` | command-menu actual BMP |

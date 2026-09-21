@@ -436,12 +436,11 @@ void test_field_menu_behavior_and_rendering(
     // Inventory is a two-column/four-row selector. Its action loop is the
     // source 0x11740/0x118C6 table: Equip, Discard, Trade, Cancel, wrapped by
     // Left/Right and confirmed by a second A/B edge.
-    // Slot 7 is the source-empty cell in Joshua's startup record. Checking
-    // the cursor there isolates the extracted selector sprite from item-art
-    // and equipment overlays, which are intentionally composited later.
+    // Slot 7 is the source-empty cell in Joshua's startup record. The native
+    // selector is the full yellow cell band, separate from equipment borders.
     select_field_inventory_slot(shell, 7U);
     shell.render(screen);
-    assert_cursor_at(screen, assets.field_menu_cursor, 52, 188);
+    assert(screen.pixel(48, 188) == pack({0xFF, 0xD8, 0x00, 0xFF}));
     select_field_inventory_slot(shell, 0U);
     assert(shell.field_inventory_item_code(0U) != 0U);
     shell.render(screen);
@@ -617,8 +616,6 @@ void test_pocket_secretary_menu(const std::vector<std::uint8_t>& rom) {
     assert(!shell.notebook_message_visible());
     assert(shell.notebook_selection() == 0U);
     press(shell, Button::B);
-    assert(shell.scene() == NativeScene::FieldMenu);
-    press(shell, Button::A);
     assert(shell.pocket_secretary_menu_open());
     assert(shell.pocket_secretary_selection() == 0U);
     press(shell, Button::Down);

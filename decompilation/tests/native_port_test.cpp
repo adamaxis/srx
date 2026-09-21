@@ -145,6 +145,52 @@ int main() {
     assert(rom_shell.intro_frame() == 1);
     assert(rom_shell.scene() == NativeScene::Intro);
 
+    // The wilderness loop is the ROM's 0x5A1EA pass, not a storyboard
+    // sequence.  The pan plate initially contains the runners; the source
+    // map/body phases then replace the lower-right and Indian body regions,
+    // and the late pass changes Michael to the trivid-left pose.
+    NativePortShell ambush_shell("SHADOWRUN", rom);
+    enter_intro_from_start(ambush_shell);
+    while (ambush_shell.intro_frame() < 0x308U) {
+        ambush_shell.update(InputState{});
+    }
+    SoftwareScreen ambush_initial;
+    ambush_shell.render(ambush_initial);
+    const auto count_ink = [](const SoftwareScreen& image,
+                              std::int32_t left, std::int32_t top,
+                              std::int32_t width, std::int32_t height) {
+        std::size_t count = 0;
+        for (std::int32_t y = top; y < top + height; ++y) {
+            for (std::int32_t x = left; x < left + width; ++x) {
+                if (image.pixel(x, y) != 0U) {
+                    ++count;
+                }
+            }
+        }
+        return count;
+    };
+    assert(count_ink(ambush_initial, 160, 148, 88, 56) > 200U);
+    while (ambush_shell.intro_frame() < 0x3E8U) {
+        ambush_shell.update(InputState{});
+    }
+    SoftwareScreen ambush_after_deaths;
+    ambush_shell.render(ambush_after_deaths);
+    assert(count_ink(ambush_after_deaths, 160, 148, 88, 56) < 40U);
+    while (ambush_shell.intro_frame() < 0x4EEU) {
+        ambush_shell.update(InputState{});
+    }
+    SoftwareScreen ambush_late;
+    ambush_shell.render(ambush_late);
+    std::size_t michael_transition_delta = 0;
+    for (std::int32_t y = 128; y < 224; ++y) {
+        for (std::int32_t x = 0; x < 152; ++x) {
+            if (ambush_after_deaths.pixel(x, y) != ambush_late.pixel(x, y)) {
+                ++michael_transition_delta;
+            }
+        }
+    }
+    assert(michael_transition_delta > 20U);
+
     // The airport is source-timed, not a handful of storyboard stills. At
     // the craft pass the Plane-A body and the off-screen-preserved rotor strip
     // must both reach the framebuffer. After the city settles, the late
