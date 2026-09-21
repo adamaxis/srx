@@ -80,6 +80,7 @@
         "shadowrun_boot_sequence_test",
         "shadowrun_visual_dump",
         "shadowrun_graphics_extract",
+        "shadowrun_graphics_catalog_test",
         "shadowrun_native_pack"
       ]
     },

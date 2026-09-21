@@ -1,0 +1,18 @@
+scope	kind	output_pattern	source_decoder_or_table	status	notes
+title	background	assets/title/background.bmp	decode_genesis_title_background; 0x1F310E/0x67DF6/0x1C024	extracted	One reusable circuit-plane background
+title	sprite	assets/title/circuit-light-*.bmp; title/logo/text/sprite assets	decode_genesis_title_circuit_lights and title/boot manifest	extracted	Per-light assets retain manifest placement
+boot	background	assets/boot/*.bmp	boot plane decoders; 0x1FFA66/0x1FFB66	extracted	Snow and SEGA layers are separate backgrounds
+startup	background	assets/startup/background.bmp	decode_genesis_startup_background; 0x10B5A/0xCDCE6	extracted	Precolored CRT/startup background
+startup	sprite	assets/startup/font.bmp; assets/startup/cursor.bmp	decode_genesis_startup_font/startup_cursor; 0xC1320/0xD29F6	extracted	Host-ready glyph and cursor resources
+intro	background	assets/intro/background-0.bmp through background-3.bmp	decode_genesis_intro_backgrounds; 0x5B574/0x5B4A8/0x5AA96/0x5B528	extracted	Static plane backgrounds only
+intro	sprite	assets/intro/aircraft-plane-a.bmp; helicopter-*.bmp; aircraft-movement-*.bmp	intro vehicle/SAT decoders; 0x5B180/0x5B270/0x5B528	extracted	Independent vehicle and rotor resources
+intro	sprite	assets/intro/sprites/*.bmp	decode_genesis_intro_sprite_resources; 0x1DFxxx and 0x5Axxx pointer tables	extracted	Tri-vid, actor, muzzle, flash, body, projectile, and Michael lists
+intro	background	assets/intro/background-patch-*.bmp	decode_genesis_intro_ambush_background_resources; 0x5A1D2/0x1E2EBA	extracted	Individual ambush hit/death map overlays
+intro	composite	not exported	NativePort runtime intro_stages/intro_wilderness_pan_frames/intro_ambush_frames	extracted as runtime-only	Full-screen sampled compositions are deliberately excluded from the asset catalog
+field/hud	background	assets/field/hud/background.bmp	decode_genesis_field_hud; 0x334C/0x39F2	extracted	Static sidebar/background layer
+field/hud	sprite	assets/field/hud/face-*.bmp; item-*.bmp; *-counter-*.bmp	decode_genesis_field_hud_layers; 0x3404/0x35D4	extracted	Transparent runner, item, and counter resources
+field/menu	background	assets/field/menu/*background*.bmp; inventory-boxes.bmp	field menu background decoders; 0x10F50/0x10C96/0x10A7E/0x1232	extracted	Bezel and panel backgrounds
+field/menu	sprite	assets/field/menu/*.bmp	field menu sprite decoders; 0xC1064/0x7291A/0x11454/0x11592/0x119CE/0x11B58/0x11E7E	extracted	Font, portraits, focus, cursor, item, and status assets
+field/menu	sprite	assets/field/menu/detail-value-*.bmp; *-bar-*.bmp	field detail tables; 0x6AC46/0x6A0C6/0x6A2A6/0x6A3F2/0xCF3D4/0xCF610	extracted	Source-indexed detail and attack/defense bars
+field/map	background	assets/field/map/mode-*.bmp	decode_genesis_mode2_field_map/decode_genesis_field_mode_map; mode 2,13,20,19,26,50,51,52	extracted	One host background per decoded field area
+field/entity	sprite	assets/field/entities/idle-*.bmp; walk-*.bmp	decode_genesis_field_entity_animation and animation sequences; 0x5A62/0x5FDC/0xC072	extracted	Color and baked grayscale frames are separate files

@@ -5687,7 +5687,8 @@ RgbaImage decode_genesis_1406_scene(const std::vector<std::uint8_t>& rom,
     return image;
 }
 
-RgbaImage decode_genesis_intro_trivid(const std::vector<std::uint8_t>& rom) {
+GenesisBootPatternData decode_genesis_intro_trivid_patterns(
+    const std::vector<std::uint8_t>& rom) {
     GenesisBootPatternData scene{
         std::vector<std::uint8_t>(0x10000U, 0),
         read_genesis_palette_set(rom, 0x5B632U),
@@ -5700,15 +5701,29 @@ RgbaImage decode_genesis_intro_trivid(const std::vector<std::uint8_t>& rom) {
         rom, 0x1E62BEU, 0xC000U, scene.pattern_vram, decoder_state);
     write_genesis_1530_vram_with_state(
         rom, 0xC1064U, 0xB560U, scene.pattern_vram, decoder_state);
+    return scene;
+}
+
+RgbaImage decode_genesis_intro_trivid_impl(
+    const std::vector<std::uint8_t>& rom, bool include_sprites) {
+    auto scene = decode_genesis_intro_trivid_patterns(rom);
     auto image = make_transparent_title_layer();
     for (auto& pixel : image.pixels) {
         pixel = {0, 0, 0, 255};
     }
     blit_genesis_1728_name_table(rom, scene, image, 0x1E620EU, 40U, 14U,
                                  0x700U, 0U, 0x8000U, false);
-    blit_genesis_sat_list(rom, scene, image, 0x1DF1D6U, 0xC2, 0x13C, 0xC000U);
-    blit_genesis_sat_list(rom, scene, image, 0x1DF238U, 0x60, 0x123, 0x6000U);
+    if (include_sprites) {
+        blit_genesis_sat_list(rom, scene, image, 0x1DF1D6U, 0xC2, 0x13C,
+                              0xC000U);
+        blit_genesis_sat_list(rom, scene, image, 0x1DF238U, 0x60, 0x123,
+                              0x6000U);
+    }
     return image;
+}
+
+RgbaImage decode_genesis_intro_trivid(const std::vector<std::uint8_t>& rom) {
+    return decode_genesis_intro_trivid_impl(rom, true);
 }
 
 std::array<RgbaImage, native::kNativeIntroWildernessPanFrameCount>
@@ -6479,6 +6494,101 @@ RgbaImage decode_genesis_intro_aircraft_plane_a_impl(
     return image;
 }
 
+std::array<RgbaImage, native::kNativeIntroStageCount>
+decode_genesis_intro_backgrounds_impl(const std::vector<std::uint8_t>& rom) {
+    std::array<RgbaImage, native::kNativeIntroStageCount> backgrounds{};
+    backgrounds[0] = decode_genesis_1406_scene(rom, 0x5B574U);
+    // The actor used during the wilderness pan is a separate SAT resource;
+    // do not bake it into the reusable background plate.
+    backgrounds[1] = decode_genesis_1406_scene(rom, 0x5B4A8U);
+    backgrounds[2] = decode_genesis_intro_trivid_impl(rom, false);
+    backgrounds[3] = decode_genesis_1406_scene(rom, 0x5B528U, nullptr, 0x78,
+                                                0, false, true);
+    return backgrounds;
+}
+
+std::vector<GenesisGraphicsResource>
+decode_genesis_intro_sprite_resources_impl(
+    const std::vector<std::uint8_t>& rom) {
+    const auto trivid = decode_genesis_intro_trivid_patterns(rom);
+    GenesisBootPatternData wilderness;
+    (void)decode_genesis_1406_scene(rom, 0x5B4A8U, &wilderness, 0, 0, false,
+                                    false, true);
+    std::vector<GenesisGraphicsResource> resources;
+    const auto add = [&](const GenesisBootPatternData& scene,
+                         const std::string& role, std::size_t table,
+                         std::size_t index, std::size_t source,
+                         std::uint16_t attr_or) {
+        GenesisGraphicsResource resource;
+        resource.role = role;
+        resource.table_offset = table;
+        resource.table_index = index;
+        resource.source_offset = source;
+        resource.attr_or = attr_or;
+        resource.image = make_transparent_layer(1024U, 512U);
+        // The extra 0x80 canvas offset keeps signed SAT coordinates (including
+        // the actor lists that begin above the visible origin) in bounds. The
+        // extractor later crops this host-only staging canvas to the sprite.
+        blit_genesis_sat_list(rom, scene, resource.image, source, 0x100, 0x100,
+                              attr_or);
+        resources.push_back(std::move(resource));
+    };
+    const auto add_table = [&](const GenesisBootPatternData& scene,
+                               const std::string& role, std::size_t table,
+                               std::size_t count, std::size_t stride,
+                               std::uint16_t attr_or) {
+        for (std::size_t index = 0; index < count; ++index) {
+            const auto source = static_cast<std::size_t>(read_rom_u32(
+                rom, table + index * stride,
+                "Genesis intro sprite pointer table is truncated"));
+            add(scene, role, table, index, source, attr_or);
+        }
+    };
+
+    // The two tri-vid SAT lists are direct source lists, not pointer-table
+    // records. Their palette attributes are the values used by 0x5AAAE.
+    add(trivid, "trivid-left", 0x1DF1D6U, 0, 0x1DF1D6U, 0xC000U);
+    add(trivid, "trivid-right", 0x1DF238U, 0, 0x1DF238U, 0x6000U);
+
+    // These tables are the exact 0x5Axxx pointer selections used by the
+    // ambush loop: actor, muzzle, flash, body/death, three projectile paths,
+    // and the terminal Michael hit sequence.
+    add_table(wilderness, "ambush-actor", 0x5A398U, 4, 6, 0x2000U);
+    add_table(wilderness, "ambush-muzzle", 0x5A482U, 5, 10, 0x6000U);
+    add_table(wilderness, "ambush-flash", 0x5A562U, 4, 4, 0x6000U);
+    add_table(wilderness, "ambush-body", 0x5A602U, 6, 4, 0x6000U);
+    add_table(wilderness, "ambush-projectile-b", 0x5A6C8U, 7, 10, 0x6000U);
+    add_table(wilderness, "ambush-projectile-c", 0x5A7AAU, 8, 8, 0x6000U);
+    add_table(wilderness, "ambush-projectile-d", 0x5A888U, 8, 8, 0x6000U);
+    add_table(wilderness, "ambush-michael", 0x5A958U, 3, 6, 0x6000U);
+    return resources;
+}
+
+std::vector<GenesisGraphicsResource>
+decode_genesis_intro_ambush_background_resources_impl(
+    const std::vector<std::uint8_t>& rom) {
+    GenesisBootPatternData scene;
+    (void)decode_genesis_1406_scene(rom, 0x5B4A8U, &scene, 0, 0, false,
+                                    false, true);
+    std::vector<GenesisGraphicsResource> resources;
+    for (std::size_t index = 0; index < 4U; ++index) {
+        const auto table = 0x5A1D2U;
+        const auto source = static_cast<std::size_t>(read_rom_u32(
+            rom, table + index * 6U,
+            "Genesis intro background pointer table is truncated"));
+        GenesisGraphicsResource resource;
+        resource.role = "ambush-map-patch";
+        resource.table_offset = table;
+        resource.table_index = index;
+        resource.source_offset = source;
+        resource.image = make_transparent_title_layer();
+        blit_genesis_1728_name_table(rom, scene, resource.image, source, 13U,
+                                     12U, 0x826U, 0x0000U, 0, false);
+        resources.push_back(std::move(resource));
+    }
+    return resources;
+}
+
 } // namespace
 
 RgbaImage decode_genesis_boot_background(
@@ -6579,6 +6689,23 @@ RgbaImage decode_genesis_boot_fasa(const std::vector<std::uint8_t>& rom) {
 std::array<RgbaImage, native::kNativeIntroStageCount>
 decode_genesis_intro_stages(const std::vector<std::uint8_t>& rom) {
     return decode_genesis_intro_stages_impl(rom);
+}
+
+std::array<RgbaImage, native::kNativeIntroStageCount>
+decode_genesis_intro_backgrounds(const std::vector<std::uint8_t>& rom) {
+    return decode_genesis_intro_backgrounds_impl(rom);
+}
+
+std::vector<GenesisGraphicsResource>
+decode_genesis_intro_sprite_resources(
+    const std::vector<std::uint8_t>& rom) {
+    return decode_genesis_intro_sprite_resources_impl(rom);
+}
+
+std::vector<GenesisGraphicsResource>
+decode_genesis_intro_ambush_background_resources(
+    const std::vector<std::uint8_t>& rom) {
+    return decode_genesis_intro_ambush_background_resources_impl(rom);
 }
 
 std::array<RgbaImage, native::kNativeIntroHeliFrameCount>

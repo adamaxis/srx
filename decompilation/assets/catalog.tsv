@@ -1,0 +1,2040 @@
+asset	kind	x	y	width	height	source	status
+title/background.bmp	background	0	0	320	224	ROM title/boot resource	extracted
+title/circuit-light-0-0-9.bmp	sprite	72	3	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-0-10.bmp	sprite	80	0	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-0-30.bmp	sprite	244	0	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-0-33.bmp	sprite	267	0	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-0-35.bmp	sprite	280	3	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-0-36.bmp	sprite	288	0	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-1-4.bmp	sprite	36	8	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-1-6.bmp	sprite	49	9	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-1-7.bmp	sprite	59	8	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-1-24.bmp	sprite	196	8	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-1-28.bmp	sprite	228	8	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-1-31.bmp	sprite	251	8	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-1-33.bmp	sprite	265	9	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-1-34.bmp	sprite	275	8	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-2-2.bmp	sprite	20	16	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-2-39.bmp	sprite	315	20	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-3-14.bmp	sprite	115	28	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-3-20.bmp	sprite	164	24	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-3-29.bmp	sprite	235	24	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-3-30.bmp	sprite	243	25	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-4-7.bmp	sprite	56	36	7	1	ROM title/boot resource	extracted
+title/circuit-light-0-5-20.bmp	sprite	163	40	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-5-21.bmp	sprite	171	41	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-5-26.bmp	sprite	211	43	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-5-37.bmp	sprite	296	43	7	1	ROM title/boot resource	extracted
+title/circuit-light-0-6-2.bmp	sprite	20	48	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-6-3.bmp	sprite	27	49	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-6-18.bmp	sprite	148	48	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-6-35.bmp	sprite	283	48	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-7-10.bmp	sprite	80	59	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-7-11.bmp	sprite	88	56	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-7-15.bmp	sprite	124	56	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-7-22.bmp	sprite	180	56	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-7-23.bmp	sprite	187	59	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-7-30.bmp	sprite	243	56	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-7-35.bmp	sprite	281	56	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-7-36.bmp	sprite	291	59	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-8-5.bmp	sprite	41	65	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-8-6.bmp	sprite	51	64	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-8-8.bmp	sprite	64	64	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-8-16.bmp	sprite	128	67	7	1	ROM title/boot resource	extracted
+title/circuit-light-0-8-17.bmp	sprite	139	67	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-8-27.bmp	sprite	216	64	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-8-28.bmp	sprite	224	65	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-8-31.bmp	sprite	252	64	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-8-32.bmp	sprite	263	67	1	1	ROM title/boot resource	extracted
+title/circuit-light-0-9-0.bmp	sprite	0	72	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-9-25.bmp	sprite	204	72	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-9-30.bmp	sprite	240	72	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-9-31.bmp	sprite	249	72	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-9-37.bmp	sprite	296	72	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-10-18.bmp	sprite	144	83	7	1	ROM title/boot resource	extracted
+title/circuit-light-0-10-24.bmp	sprite	195	80	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-10-25.bmp	sprite	200	80	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-10-31.bmp	sprite	248	80	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-10-35.bmp	sprite	280	83	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-11-2.bmp	sprite	16	88	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-11-28.bmp	sprite	225	88	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-11-33.bmp	sprite	265	89	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-11-38.bmp	sprite	307	88	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-11-39.bmp	sprite	312	88	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-12-1.bmp	sprite	11	96	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-12-2.bmp	sprite	19	97	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-12-3.bmp	sprite	24	96	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-12-10.bmp	sprite	83	99	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-12-22.bmp	sprite	179	96	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-12-35.bmp	sprite	280	96	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-12-39.bmp	sprite	312	96	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-13-6.bmp	sprite	52	104	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-13-14.bmp	sprite	116	104	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-13-15.bmp	sprite	123	107	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-13-33.bmp	sprite	264	107	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-13-34.bmp	sprite	275	104	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-13-35.bmp	sprite	283	105	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-14-0.bmp	sprite	4	112	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-14-1.bmp	sprite	11	115	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-14-4.bmp	sprite	36	112	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-14-5.bmp	sprite	40	115	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-14-10.bmp	sprite	84	112	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-14-11.bmp	sprite	91	113	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-14-21.bmp	sprite	168	115	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-14-23.bmp	sprite	188	112	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-14-26.bmp	sprite	211	115	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-14-28.bmp	sprite	224	112	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-14-29.bmp	sprite	232	113	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-14-34.bmp	sprite	272	115	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-14-37.bmp	sprite	300	112	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-14-38.bmp	sprite	307	113	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-15-13.bmp	sprite	107	120	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-15-18.bmp	sprite	145	121	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-15-20.bmp	sprite	164	120	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-15-23.bmp	sprite	187	121	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-15-25.bmp	sprite	203	120	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-15-28.bmp	sprite	227	120	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-15-29.bmp	sprite	235	121	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-15-30.bmp	sprite	240	121	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-15-38.bmp	sprite	308	120	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-16-5.bmp	sprite	43	128	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-16-6.bmp	sprite	51	129	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-16-8.bmp	sprite	64	131	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-16-9.bmp	sprite	72	128	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-16-10.bmp	sprite	81	128	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-16-28.bmp	sprite	225	128	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-16-29.bmp	sprite	235	131	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-17-6.bmp	sprite	49	137	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-17-7.bmp	sprite	59	136	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-17-18.bmp	sprite	144	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-17-19.bmp	sprite	152	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-17-20.bmp	sprite	160	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-17-21.bmp	sprite	168	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-17-22.bmp	sprite	176	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-17-23.bmp	sprite	184	136	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-17-24.bmp	sprite	192	137	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-17-35.bmp	sprite	283	136	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-17-36.bmp	sprite	291	137	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-17-38.bmp	sprite	307	136	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-17-39.bmp	sprite	315	137	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-18-29.bmp	sprite	236	144	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-19-2.bmp	sprite	16	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-19-3.bmp	sprite	24	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-19-4.bmp	sprite	32	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-19-5.bmp	sprite	40	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-19-6.bmp	sprite	48	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-19-7.bmp	sprite	56	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-19-8.bmp	sprite	64	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-19-9.bmp	sprite	72	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-19-12.bmp	sprite	96	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-19-13.bmp	sprite	104	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-19-14.bmp	sprite	112	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-19-29.bmp	sprite	233	152	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-20-6.bmp	sprite	51	160	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-20-7.bmp	sprite	57	161	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-20-24.bmp	sprite	195	160	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-20-30.bmp	sprite	240	163	7	1	ROM title/boot resource	extracted
+title/circuit-light-0-20-31.bmp	sprite	248	163	7	1	ROM title/boot resource	extracted
+title/circuit-light-0-20-35.bmp	sprite	280	163	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-20-36.bmp	sprite	288	163	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-21-0.bmp	sprite	4	168	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-21-1.bmp	sprite	11	171	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-21-9.bmp	sprite	72	171	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-21-10.bmp	sprite	80	168	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-21-27.bmp	sprite	219	168	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-21-29.bmp	sprite	235	169	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-21-37.bmp	sprite	300	168	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-21-38.bmp	sprite	307	169	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-22-6.bmp	sprite	49	177	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-22-7.bmp	sprite	59	176	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-22-20.bmp	sprite	167	179	1	1	ROM title/boot resource	extracted
+title/circuit-light-0-22-21.bmp	sprite	171	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-22-22.bmp	sprite	179	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-22-25.bmp	sprite	207	179	1	1	ROM title/boot resource	extracted
+title/circuit-light-0-22-26.bmp	sprite	211	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-22-27.bmp	sprite	219	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-22-30.bmp	sprite	247	179	1	1	ROM title/boot resource	extracted
+title/circuit-light-0-22-31.bmp	sprite	248	176	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-22-32.bmp	sprite	256	179	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-23-11.bmp	sprite	89	184	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-23-15.bmp	sprite	120	184	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-23-24.bmp	sprite	193	184	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-23-27.bmp	sprite	216	184	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-23-30.bmp	sprite	241	184	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-23-34.bmp	sprite	272	184	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-24-9.bmp	sprite	72	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-24-13.bmp	sprite	107	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-24-22.bmp	sprite	179	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-24-28.bmp	sprite	224	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-24-29.bmp	sprite	235	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-24-34.bmp	sprite	272	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-25-21.bmp	sprite	169	203	7	1	ROM title/boot resource	extracted
+title/circuit-light-0-25-22.bmp	sprite	176	203	7	1	ROM title/boot resource	extracted
+title/circuit-light-0-25-25.bmp	sprite	203	203	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-25-26.bmp	sprite	208	203	7	1	ROM title/boot resource	extracted
+title/circuit-light-0-25-34.bmp	sprite	276	200	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-25-36.bmp	sprite	291	201	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-26-0.bmp	sprite	3	208	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-26-1.bmp	sprite	11	209	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-26-3.bmp	sprite	27	208	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-26-4.bmp	sprite	35	209	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-26-15.bmp	sprite	124	209	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-26-26.bmp	sprite	208	208	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-26-30.bmp	sprite	244	208	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-26-32.bmp	sprite	259	211	1	5	ROM title/boot resource	extracted
+title/circuit-light-0-27-1.bmp	sprite	9	216	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-27-2.bmp	sprite	19	219	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-27-4.bmp	sprite	32	219	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-27-5.bmp	sprite	40	216	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-27-11.bmp	sprite	88	219	7	1	ROM title/boot resource	extracted
+title/circuit-light-0-27-12.bmp	sprite	99	219	5	1	ROM title/boot resource	extracted
+title/circuit-light-0-27-20.bmp	sprite	160	216	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-27-24.bmp	sprite	196	216	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-27-26.bmp	sprite	211	217	1	7	ROM title/boot resource	extracted
+title/circuit-light-0-27-35.bmp	sprite	280	216	5	5	ROM title/boot resource	extracted
+title/circuit-light-0-27-36.bmp	sprite	288	217	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-27-38.bmp	sprite	305	217	7	7	ROM title/boot resource	extracted
+title/circuit-light-0-27-39.bmp	sprite	315	216	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-0-9.bmp	sprite	72	1	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-0-10.bmp	sprite	82	2	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-0-30.bmp	sprite	244	2	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-0-33.bmp	sprite	267	2	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-0-35.bmp	sprite	280	1	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-0-36.bmp	sprite	290	2	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-1-4.bmp	sprite	36	10	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-1-6.bmp	sprite	49	9	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-1-7.bmp	sprite	57	8	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-1-24.bmp	sprite	196	9	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-1-28.bmp	sprite	228	8	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-1-31.bmp	sprite	251	8	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-1-33.bmp	sprite	265	9	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-1-34.bmp	sprite	273	8	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-2-2.bmp	sprite	20	16	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-2-39.bmp	sprite	313	20	7	1	ROM title/boot resource	extracted
+title/circuit-light-1-3-14.bmp	sprite	113	28	7	1	ROM title/boot resource	extracted
+title/circuit-light-1-3-20.bmp	sprite	164	25	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-3-29.bmp	sprite	235	24	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-3-30.bmp	sprite	243	25	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-4-7.bmp	sprite	58	36	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-5-20.bmp	sprite	163	40	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-5-21.bmp	sprite	171	41	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-5-26.bmp	sprite	209	43	7	1	ROM title/boot resource	extracted
+title/circuit-light-1-5-37.bmp	sprite	298	43	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-6-2.bmp	sprite	20	49	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-6-3.bmp	sprite	27	48	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-6-18.bmp	sprite	148	50	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-6-35.bmp	sprite	283	50	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-7-10.bmp	sprite	80	57	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-7-11.bmp	sprite	90	58	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-7-15.bmp	sprite	124	56	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-7-22.bmp	sprite	180	58	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-7-23.bmp	sprite	187	57	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-7-30.bmp	sprite	243	56	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-7-35.bmp	sprite	281	58	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-7-36.bmp	sprite	289	57	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-8-5.bmp	sprite	41	65	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-8-6.bmp	sprite	49	64	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-8-8.bmp	sprite	64	64	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-8-16.bmp	sprite	130	67	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-8-17.bmp	sprite	137	67	7	1	ROM title/boot resource	extracted
+title/circuit-light-1-8-27.bmp	sprite	216	64	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-8-28.bmp	sprite	226	65	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-8-31.bmp	sprite	252	66	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-8-32.bmp	sprite	259	67	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-9-0.bmp	sprite	2	74	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-9-25.bmp	sprite	204	72	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-9-30.bmp	sprite	242	74	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-9-31.bmp	sprite	249	74	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-9-37.bmp	sprite	296	72	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-10-18.bmp	sprite	146	83	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-10-24.bmp	sprite	193	80	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-10-25.bmp	sprite	200	80	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-10-31.bmp	sprite	250	82	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-10-35.bmp	sprite	280	81	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-11-2.bmp	sprite	18	90	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-11-28.bmp	sprite	225	90	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-11-33.bmp	sprite	265	89	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-11-38.bmp	sprite	305	88	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-11-39.bmp	sprite	314	90	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-12-1.bmp	sprite	11	96	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-12-2.bmp	sprite	19	97	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-12-3.bmp	sprite	26	98	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-12-10.bmp	sprite	81	99	7	1	ROM title/boot resource	extracted
+title/circuit-light-1-12-22.bmp	sprite	177	96	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-12-35.bmp	sprite	280	96	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-12-39.bmp	sprite	312	96	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-13-6.bmp	sprite	52	106	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-13-14.bmp	sprite	116	106	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-13-15.bmp	sprite	123	105	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-13-33.bmp	sprite	264	105	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-13-34.bmp	sprite	275	104	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-13-35.bmp	sprite	283	105	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-14-0.bmp	sprite	4	114	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-14-1.bmp	sprite	11	113	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-14-4.bmp	sprite	36	112	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-14-5.bmp	sprite	44	115	1	1	ROM title/boot resource	extracted
+title/circuit-light-1-14-10.bmp	sprite	84	112	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-14-11.bmp	sprite	91	113	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-14-21.bmp	sprite	168	113	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-14-23.bmp	sprite	188	114	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-14-26.bmp	sprite	211	113	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-14-28.bmp	sprite	226	114	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-14-29.bmp	sprite	234	113	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-14-34.bmp	sprite	272	113	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-14-37.bmp	sprite	300	112	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-14-38.bmp	sprite	307	113	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-15-13.bmp	sprite	105	120	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-15-18.bmp	sprite	145	121	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-15-20.bmp	sprite	164	120	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-15-23.bmp	sprite	187	121	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-15-25.bmp	sprite	201	120	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-15-28.bmp	sprite	227	120	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-15-29.bmp	sprite	235	121	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-15-30.bmp	sprite	242	121	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-15-38.bmp	sprite	308	122	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-16-5.bmp	sprite	43	128	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-16-6.bmp	sprite	51	129	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-16-8.bmp	sprite	64	129	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-16-9.bmp	sprite	74	130	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-16-10.bmp	sprite	81	130	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-16-28.bmp	sprite	225	130	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-16-29.bmp	sprite	233	129	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-17-6.bmp	sprite	49	137	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-17-7.bmp	sprite	57	136	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-17-18.bmp	sprite	144	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-17-19.bmp	sprite	152	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-17-20.bmp	sprite	164	139	1	1	ROM title/boot resource	extracted
+title/circuit-light-1-17-21.bmp	sprite	168	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-17-22.bmp	sprite	176	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-17-23.bmp	sprite	184	136	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-17-24.bmp	sprite	194	137	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-17-35.bmp	sprite	283	136	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-17-36.bmp	sprite	291	137	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-17-38.bmp	sprite	307	136	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-17-39.bmp	sprite	315	137	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-18-29.bmp	sprite	236	144	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-19-2.bmp	sprite	16	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-19-3.bmp	sprite	24	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-19-4.bmp	sprite	36	155	1	1	ROM title/boot resource	extracted
+title/circuit-light-1-19-5.bmp	sprite	40	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-19-6.bmp	sprite	48	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-19-7.bmp	sprite	60	155	1	1	ROM title/boot resource	extracted
+title/circuit-light-1-19-8.bmp	sprite	64	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-19-9.bmp	sprite	72	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-19-12.bmp	sprite	100	155	1	1	ROM title/boot resource	extracted
+title/circuit-light-1-19-13.bmp	sprite	104	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-19-14.bmp	sprite	112	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-19-29.bmp	sprite	233	154	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-20-6.bmp	sprite	49	160	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-20-7.bmp	sprite	57	161	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-20-24.bmp	sprite	193	160	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-20-30.bmp	sprite	242	163	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-20-31.bmp	sprite	250	163	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-20-35.bmp	sprite	280	163	7	1	ROM title/boot resource	extracted
+title/circuit-light-1-20-36.bmp	sprite	288	163	7	1	ROM title/boot resource	extracted
+title/circuit-light-1-21-0.bmp	sprite	4	170	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-21-1.bmp	sprite	11	169	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-21-9.bmp	sprite	72	169	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-21-10.bmp	sprite	82	170	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-21-27.bmp	sprite	219	168	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-21-29.bmp	sprite	235	169	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-21-37.bmp	sprite	300	168	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-21-38.bmp	sprite	307	169	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-22-6.bmp	sprite	49	177	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-22-7.bmp	sprite	57	176	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-22-20.bmp	sprite	163	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-22-21.bmp	sprite	171	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-22-22.bmp	sprite	179	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-22-25.bmp	sprite	203	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-22-26.bmp	sprite	211	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-22-27.bmp	sprite	219	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-22-30.bmp	sprite	243	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-22-31.bmp	sprite	250	178	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-22-32.bmp	sprite	256	177	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-23-11.bmp	sprite	89	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-23-15.bmp	sprite	122	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-23-24.bmp	sprite	193	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-23-27.bmp	sprite	218	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-23-30.bmp	sprite	241	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-23-34.bmp	sprite	274	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-24-9.bmp	sprite	72	192	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-24-13.bmp	sprite	105	192	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-24-22.bmp	sprite	177	192	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-24-28.bmp	sprite	224	192	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-24-29.bmp	sprite	233	192	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-24-34.bmp	sprite	272	192	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-25-21.bmp	sprite	169	203	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-25-22.bmp	sprite	178	203	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-25-25.bmp	sprite	201	203	7	1	ROM title/boot resource	extracted
+title/circuit-light-1-25-26.bmp	sprite	210	203	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-25-34.bmp	sprite	276	202	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-25-36.bmp	sprite	291	201	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-26-0.bmp	sprite	3	208	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-26-1.bmp	sprite	11	209	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-26-3.bmp	sprite	27	208	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-26-4.bmp	sprite	35	209	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-26-15.bmp	sprite	124	208	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-26-26.bmp	sprite	210	210	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-26-30.bmp	sprite	244	208	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-26-32.bmp	sprite	259	209	1	7	ROM title/boot resource	extracted
+title/circuit-light-1-27-1.bmp	sprite	9	218	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-27-2.bmp	sprite	17	217	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-27-4.bmp	sprite	32	217	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-27-5.bmp	sprite	42	218	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-27-11.bmp	sprite	90	219	5	1	ROM title/boot resource	extracted
+title/circuit-light-1-27-12.bmp	sprite	97	219	7	1	ROM title/boot resource	extracted
+title/circuit-light-1-27-20.bmp	sprite	160	216	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-27-24.bmp	sprite	196	218	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-27-26.bmp	sprite	211	217	1	5	ROM title/boot resource	extracted
+title/circuit-light-1-27-35.bmp	sprite	280	216	7	7	ROM title/boot resource	extracted
+title/circuit-light-1-27-36.bmp	sprite	290	217	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-27-38.bmp	sprite	305	217	5	5	ROM title/boot resource	extracted
+title/circuit-light-1-27-39.bmp	sprite	313	216	7	7	ROM title/boot resource	extracted
+title/circuit-light-2-0-9.bmp	sprite	72	3	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-0-10.bmp	sprite	82	2	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-0-30.bmp	sprite	244	2	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-0-33.bmp	sprite	267	2	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-0-35.bmp	sprite	280	3	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-0-36.bmp	sprite	290	2	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-1-4.bmp	sprite	36	10	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-1-6.bmp	sprite	49	9	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-1-7.bmp	sprite	59	8	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-1-24.bmp	sprite	196	9	1	6	ROM title/boot resource	extracted
+title/circuit-light-2-1-28.bmp	sprite	228	8	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-1-31.bmp	sprite	251	8	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-1-33.bmp	sprite	265	9	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-1-34.bmp	sprite	275	8	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-2-2.bmp	sprite	20	16	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-2-39.bmp	sprite	315	20	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-3-14.bmp	sprite	115	28	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-3-20.bmp	sprite	164	25	1	6	ROM title/boot resource	extracted
+title/circuit-light-2-3-29.bmp	sprite	235	24	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-3-30.bmp	sprite	243	25	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-4-7.bmp	sprite	58	36	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-5-20.bmp	sprite	163	40	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-5-21.bmp	sprite	171	41	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-5-26.bmp	sprite	211	43	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-5-37.bmp	sprite	298	43	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-6-2.bmp	sprite	20	49	1	6	ROM title/boot resource	extracted
+title/circuit-light-2-6-3.bmp	sprite	27	49	1	6	ROM title/boot resource	extracted
+title/circuit-light-2-6-18.bmp	sprite	148	50	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-6-35.bmp	sprite	283	50	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-7-10.bmp	sprite	80	59	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-7-11.bmp	sprite	90	58	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-7-15.bmp	sprite	124	56	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-7-22.bmp	sprite	180	58	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-7-23.bmp	sprite	187	59	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-7-30.bmp	sprite	243	56	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-7-35.bmp	sprite	281	58	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-7-36.bmp	sprite	291	59	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-8-5.bmp	sprite	41	65	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-8-6.bmp	sprite	51	64	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-8-8.bmp	sprite	64	64	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-8-16.bmp	sprite	130	67	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-8-17.bmp	sprite	139	67	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-8-27.bmp	sprite	216	64	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-8-28.bmp	sprite	226	65	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-8-31.bmp	sprite	252	66	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-8-32.bmp	sprite	263	67	1	1	ROM title/boot resource	extracted
+title/circuit-light-2-9-0.bmp	sprite	2	74	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-9-25.bmp	sprite	204	72	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-9-30.bmp	sprite	242	74	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-9-31.bmp	sprite	249	74	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-9-37.bmp	sprite	296	72	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-10-18.bmp	sprite	146	83	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-10-24.bmp	sprite	195	80	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-10-25.bmp	sprite	200	80	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-10-31.bmp	sprite	250	82	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-10-35.bmp	sprite	280	83	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-11-2.bmp	sprite	18	90	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-11-28.bmp	sprite	225	90	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-11-33.bmp	sprite	265	89	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-11-38.bmp	sprite	307	88	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-11-39.bmp	sprite	314	90	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-12-1.bmp	sprite	11	96	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-12-2.bmp	sprite	19	97	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-12-3.bmp	sprite	26	98	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-12-10.bmp	sprite	83	99	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-12-22.bmp	sprite	179	96	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-12-35.bmp	sprite	280	96	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-12-39.bmp	sprite	312	96	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-13-6.bmp	sprite	52	106	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-13-14.bmp	sprite	116	106	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-13-15.bmp	sprite	123	107	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-13-33.bmp	sprite	264	107	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-13-34.bmp	sprite	275	104	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-13-35.bmp	sprite	283	105	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-14-0.bmp	sprite	4	114	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-14-1.bmp	sprite	11	115	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-14-4.bmp	sprite	36	112	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-14-5.bmp	sprite	44	115	1	1	ROM title/boot resource	extracted
+title/circuit-light-2-14-10.bmp	sprite	84	112	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-14-11.bmp	sprite	91	113	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-14-21.bmp	sprite	168	115	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-14-23.bmp	sprite	188	114	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-14-26.bmp	sprite	211	115	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-14-28.bmp	sprite	226	114	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-14-29.bmp	sprite	234	113	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-14-34.bmp	sprite	272	115	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-14-37.bmp	sprite	300	112	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-14-38.bmp	sprite	307	113	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-15-13.bmp	sprite	107	120	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-15-18.bmp	sprite	145	121	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-15-20.bmp	sprite	164	120	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-15-23.bmp	sprite	187	121	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-15-25.bmp	sprite	203	120	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-15-28.bmp	sprite	227	120	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-15-29.bmp	sprite	235	121	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-15-30.bmp	sprite	242	121	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-15-38.bmp	sprite	308	122	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-16-5.bmp	sprite	43	128	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-16-6.bmp	sprite	51	129	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-16-8.bmp	sprite	64	131	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-16-9.bmp	sprite	74	130	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-16-10.bmp	sprite	81	130	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-16-28.bmp	sprite	225	130	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-16-29.bmp	sprite	235	131	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-17-6.bmp	sprite	49	137	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-17-7.bmp	sprite	59	136	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-17-18.bmp	sprite	144	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-17-19.bmp	sprite	152	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-17-20.bmp	sprite	164	139	1	1	ROM title/boot resource	extracted
+title/circuit-light-2-17-21.bmp	sprite	168	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-17-22.bmp	sprite	176	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-17-23.bmp	sprite	184	136	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-17-24.bmp	sprite	194	137	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-17-35.bmp	sprite	283	136	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-17-36.bmp	sprite	291	137	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-17-38.bmp	sprite	307	136	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-17-39.bmp	sprite	315	137	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-18-29.bmp	sprite	236	144	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-19-2.bmp	sprite	16	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-19-3.bmp	sprite	24	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-19-4.bmp	sprite	36	155	1	1	ROM title/boot resource	extracted
+title/circuit-light-2-19-5.bmp	sprite	40	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-19-6.bmp	sprite	48	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-19-7.bmp	sprite	60	155	1	1	ROM title/boot resource	extracted
+title/circuit-light-2-19-8.bmp	sprite	64	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-19-9.bmp	sprite	72	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-19-12.bmp	sprite	100	155	1	1	ROM title/boot resource	extracted
+title/circuit-light-2-19-13.bmp	sprite	104	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-19-14.bmp	sprite	112	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-19-29.bmp	sprite	233	154	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-20-6.bmp	sprite	51	160	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-20-7.bmp	sprite	57	161	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-20-24.bmp	sprite	195	160	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-20-30.bmp	sprite	242	163	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-20-31.bmp	sprite	250	163	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-20-35.bmp	sprite	280	163	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-20-36.bmp	sprite	288	163	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-21-0.bmp	sprite	4	170	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-21-1.bmp	sprite	11	171	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-21-9.bmp	sprite	72	171	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-21-10.bmp	sprite	82	170	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-21-27.bmp	sprite	219	168	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-21-29.bmp	sprite	235	169	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-21-37.bmp	sprite	300	168	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-21-38.bmp	sprite	307	169	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-22-6.bmp	sprite	49	177	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-22-7.bmp	sprite	59	176	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-22-20.bmp	sprite	167	179	1	1	ROM title/boot resource	extracted
+title/circuit-light-2-22-21.bmp	sprite	171	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-22-22.bmp	sprite	179	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-22-25.bmp	sprite	207	179	1	1	ROM title/boot resource	extracted
+title/circuit-light-2-22-26.bmp	sprite	211	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-22-27.bmp	sprite	219	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-22-30.bmp	sprite	247	179	1	1	ROM title/boot resource	extracted
+title/circuit-light-2-22-31.bmp	sprite	250	178	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-22-32.bmp	sprite	256	179	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-23-11.bmp	sprite	89	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-23-15.bmp	sprite	122	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-23-24.bmp	sprite	193	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-23-27.bmp	sprite	218	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-23-30.bmp	sprite	241	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-23-34.bmp	sprite	274	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-24-9.bmp	sprite	72	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-24-13.bmp	sprite	107	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-24-22.bmp	sprite	179	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-24-28.bmp	sprite	224	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-24-29.bmp	sprite	235	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-24-34.bmp	sprite	272	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-25-21.bmp	sprite	169	203	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-25-22.bmp	sprite	178	203	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-25-25.bmp	sprite	203	203	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-25-26.bmp	sprite	210	203	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-25-34.bmp	sprite	276	202	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-25-36.bmp	sprite	291	201	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-26-0.bmp	sprite	3	208	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-26-1.bmp	sprite	11	209	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-26-3.bmp	sprite	27	208	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-26-4.bmp	sprite	35	209	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-26-15.bmp	sprite	124	209	1	6	ROM title/boot resource	extracted
+title/circuit-light-2-26-26.bmp	sprite	210	210	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-26-30.bmp	sprite	244	208	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-26-32.bmp	sprite	259	211	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-27-1.bmp	sprite	9	218	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-27-2.bmp	sprite	19	219	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-27-4.bmp	sprite	32	219	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-27-5.bmp	sprite	42	218	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-27-11.bmp	sprite	90	219	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-27-12.bmp	sprite	99	219	5	1	ROM title/boot resource	extracted
+title/circuit-light-2-27-20.bmp	sprite	160	216	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-27-24.bmp	sprite	196	218	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-27-26.bmp	sprite	211	217	1	5	ROM title/boot resource	extracted
+title/circuit-light-2-27-35.bmp	sprite	280	216	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-27-36.bmp	sprite	290	217	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-27-38.bmp	sprite	305	217	5	5	ROM title/boot resource	extracted
+title/circuit-light-2-27-39.bmp	sprite	315	216	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-0-9.bmp	sprite	72	3	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-0-10.bmp	sprite	82	2	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-0-30.bmp	sprite	244	2	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-0-33.bmp	sprite	267	2	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-0-35.bmp	sprite	280	3	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-0-36.bmp	sprite	290	2	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-1-4.bmp	sprite	36	10	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-1-6.bmp	sprite	49	9	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-1-7.bmp	sprite	59	8	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-1-24.bmp	sprite	196	9	1	6	ROM title/boot resource	extracted
+title/circuit-light-3-1-28.bmp	sprite	228	8	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-1-31.bmp	sprite	251	8	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-1-33.bmp	sprite	265	9	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-1-34.bmp	sprite	275	8	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-2-2.bmp	sprite	20	16	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-2-39.bmp	sprite	315	20	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-3-14.bmp	sprite	115	28	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-3-20.bmp	sprite	164	25	1	6	ROM title/boot resource	extracted
+title/circuit-light-3-3-29.bmp	sprite	235	24	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-3-30.bmp	sprite	243	25	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-4-7.bmp	sprite	58	36	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-5-20.bmp	sprite	163	40	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-5-21.bmp	sprite	171	41	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-5-26.bmp	sprite	211	43	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-5-37.bmp	sprite	298	43	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-6-2.bmp	sprite	20	49	1	6	ROM title/boot resource	extracted
+title/circuit-light-3-6-3.bmp	sprite	27	49	1	6	ROM title/boot resource	extracted
+title/circuit-light-3-6-18.bmp	sprite	148	50	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-6-35.bmp	sprite	283	50	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-7-10.bmp	sprite	80	59	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-7-11.bmp	sprite	90	58	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-7-15.bmp	sprite	124	56	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-7-22.bmp	sprite	180	58	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-7-23.bmp	sprite	187	59	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-7-30.bmp	sprite	243	56	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-7-35.bmp	sprite	281	58	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-7-36.bmp	sprite	291	59	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-8-5.bmp	sprite	41	65	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-8-6.bmp	sprite	51	64	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-8-8.bmp	sprite	64	64	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-8-16.bmp	sprite	130	67	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-8-17.bmp	sprite	139	67	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-8-27.bmp	sprite	216	64	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-8-28.bmp	sprite	226	65	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-8-31.bmp	sprite	252	66	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-8-32.bmp	sprite	263	67	1	1	ROM title/boot resource	extracted
+title/circuit-light-3-9-0.bmp	sprite	2	74	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-9-25.bmp	sprite	204	72	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-9-30.bmp	sprite	242	74	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-9-31.bmp	sprite	249	74	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-9-37.bmp	sprite	296	72	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-10-18.bmp	sprite	146	83	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-10-24.bmp	sprite	195	80	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-10-25.bmp	sprite	200	80	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-10-31.bmp	sprite	250	82	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-10-35.bmp	sprite	280	83	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-11-2.bmp	sprite	18	90	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-11-28.bmp	sprite	225	90	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-11-33.bmp	sprite	265	89	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-11-38.bmp	sprite	307	88	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-11-39.bmp	sprite	314	90	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-12-1.bmp	sprite	11	96	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-12-2.bmp	sprite	19	97	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-12-3.bmp	sprite	26	98	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-12-10.bmp	sprite	83	99	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-12-22.bmp	sprite	179	96	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-12-35.bmp	sprite	280	96	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-12-39.bmp	sprite	312	96	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-13-6.bmp	sprite	52	106	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-13-14.bmp	sprite	116	106	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-13-15.bmp	sprite	123	107	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-13-33.bmp	sprite	264	107	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-13-34.bmp	sprite	275	104	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-13-35.bmp	sprite	283	105	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-14-0.bmp	sprite	4	114	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-14-1.bmp	sprite	11	115	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-14-4.bmp	sprite	36	112	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-14-5.bmp	sprite	44	115	1	1	ROM title/boot resource	extracted
+title/circuit-light-3-14-10.bmp	sprite	84	112	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-14-11.bmp	sprite	91	113	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-14-21.bmp	sprite	168	115	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-14-23.bmp	sprite	188	114	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-14-26.bmp	sprite	211	115	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-14-28.bmp	sprite	226	114	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-14-29.bmp	sprite	234	113	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-14-34.bmp	sprite	272	115	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-14-37.bmp	sprite	300	112	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-14-38.bmp	sprite	307	113	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-15-13.bmp	sprite	107	120	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-15-18.bmp	sprite	145	121	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-15-20.bmp	sprite	164	120	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-15-23.bmp	sprite	187	121	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-15-25.bmp	sprite	203	120	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-15-28.bmp	sprite	227	120	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-15-29.bmp	sprite	235	121	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-15-30.bmp	sprite	242	121	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-15-38.bmp	sprite	308	122	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-16-5.bmp	sprite	43	128	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-16-6.bmp	sprite	51	129	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-16-8.bmp	sprite	64	131	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-16-9.bmp	sprite	74	130	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-16-10.bmp	sprite	81	130	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-16-28.bmp	sprite	225	130	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-16-29.bmp	sprite	235	131	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-17-6.bmp	sprite	49	137	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-17-7.bmp	sprite	59	136	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-17-18.bmp	sprite	144	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-17-19.bmp	sprite	152	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-17-20.bmp	sprite	164	139	1	1	ROM title/boot resource	extracted
+title/circuit-light-3-17-21.bmp	sprite	168	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-17-22.bmp	sprite	176	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-17-23.bmp	sprite	184	136	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-17-24.bmp	sprite	194	137	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-17-35.bmp	sprite	283	136	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-17-36.bmp	sprite	291	137	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-17-38.bmp	sprite	307	136	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-17-39.bmp	sprite	315	137	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-18-29.bmp	sprite	236	144	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-19-2.bmp	sprite	16	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-19-3.bmp	sprite	24	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-19-4.bmp	sprite	36	155	1	1	ROM title/boot resource	extracted
+title/circuit-light-3-19-5.bmp	sprite	40	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-19-6.bmp	sprite	48	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-19-7.bmp	sprite	60	155	1	1	ROM title/boot resource	extracted
+title/circuit-light-3-19-8.bmp	sprite	64	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-19-9.bmp	sprite	72	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-19-12.bmp	sprite	100	155	1	1	ROM title/boot resource	extracted
+title/circuit-light-3-19-13.bmp	sprite	104	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-19-14.bmp	sprite	112	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-19-29.bmp	sprite	233	154	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-20-6.bmp	sprite	51	160	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-20-7.bmp	sprite	57	161	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-20-24.bmp	sprite	195	160	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-20-30.bmp	sprite	242	163	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-20-31.bmp	sprite	250	163	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-20-35.bmp	sprite	280	163	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-20-36.bmp	sprite	288	163	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-21-0.bmp	sprite	4	170	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-21-1.bmp	sprite	11	171	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-21-9.bmp	sprite	72	171	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-21-10.bmp	sprite	82	170	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-21-27.bmp	sprite	219	168	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-21-29.bmp	sprite	235	169	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-21-37.bmp	sprite	300	168	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-21-38.bmp	sprite	307	169	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-22-6.bmp	sprite	49	177	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-22-7.bmp	sprite	59	176	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-22-20.bmp	sprite	167	179	1	1	ROM title/boot resource	extracted
+title/circuit-light-3-22-21.bmp	sprite	171	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-22-22.bmp	sprite	179	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-22-25.bmp	sprite	207	179	1	1	ROM title/boot resource	extracted
+title/circuit-light-3-22-26.bmp	sprite	211	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-22-27.bmp	sprite	219	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-22-30.bmp	sprite	247	179	1	1	ROM title/boot resource	extracted
+title/circuit-light-3-22-31.bmp	sprite	250	178	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-22-32.bmp	sprite	256	179	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-23-11.bmp	sprite	89	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-23-15.bmp	sprite	122	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-23-24.bmp	sprite	193	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-23-27.bmp	sprite	218	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-23-30.bmp	sprite	241	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-23-34.bmp	sprite	274	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-24-9.bmp	sprite	72	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-24-13.bmp	sprite	107	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-24-22.bmp	sprite	179	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-24-28.bmp	sprite	224	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-24-29.bmp	sprite	235	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-24-34.bmp	sprite	272	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-25-21.bmp	sprite	169	203	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-25-22.bmp	sprite	178	203	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-25-25.bmp	sprite	203	203	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-25-26.bmp	sprite	210	203	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-25-34.bmp	sprite	276	202	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-25-36.bmp	sprite	291	201	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-26-0.bmp	sprite	3	208	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-26-1.bmp	sprite	11	209	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-26-3.bmp	sprite	27	208	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-26-4.bmp	sprite	35	209	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-26-15.bmp	sprite	124	209	1	6	ROM title/boot resource	extracted
+title/circuit-light-3-26-26.bmp	sprite	210	210	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-26-30.bmp	sprite	244	208	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-26-32.bmp	sprite	259	211	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-27-1.bmp	sprite	9	218	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-27-2.bmp	sprite	19	219	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-27-4.bmp	sprite	32	219	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-27-5.bmp	sprite	42	218	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-27-11.bmp	sprite	90	219	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-27-12.bmp	sprite	99	219	5	1	ROM title/boot resource	extracted
+title/circuit-light-3-27-20.bmp	sprite	160	216	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-27-24.bmp	sprite	196	218	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-27-26.bmp	sprite	211	217	1	5	ROM title/boot resource	extracted
+title/circuit-light-3-27-35.bmp	sprite	280	216	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-27-36.bmp	sprite	290	217	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-27-38.bmp	sprite	305	217	5	5	ROM title/boot resource	extracted
+title/circuit-light-3-27-39.bmp	sprite	315	216	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-0-9.bmp	sprite	72	3	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-0-10.bmp	sprite	82	2	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-0-30.bmp	sprite	244	2	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-0-33.bmp	sprite	267	2	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-0-35.bmp	sprite	280	3	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-0-36.bmp	sprite	290	2	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-1-4.bmp	sprite	36	10	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-1-6.bmp	sprite	49	9	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-1-7.bmp	sprite	59	8	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-1-24.bmp	sprite	196	9	1	6	ROM title/boot resource	extracted
+title/circuit-light-4-1-28.bmp	sprite	228	8	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-1-31.bmp	sprite	251	8	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-1-33.bmp	sprite	265	9	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-1-34.bmp	sprite	275	8	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-2-2.bmp	sprite	20	16	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-2-39.bmp	sprite	315	20	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-3-14.bmp	sprite	115	28	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-3-20.bmp	sprite	164	25	1	6	ROM title/boot resource	extracted
+title/circuit-light-4-3-29.bmp	sprite	235	24	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-3-30.bmp	sprite	243	25	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-4-7.bmp	sprite	58	36	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-5-20.bmp	sprite	163	40	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-5-21.bmp	sprite	171	41	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-5-26.bmp	sprite	211	43	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-5-37.bmp	sprite	298	43	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-6-2.bmp	sprite	20	49	1	6	ROM title/boot resource	extracted
+title/circuit-light-4-6-3.bmp	sprite	27	49	1	6	ROM title/boot resource	extracted
+title/circuit-light-4-6-18.bmp	sprite	148	50	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-6-35.bmp	sprite	283	50	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-7-10.bmp	sprite	80	59	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-7-11.bmp	sprite	90	58	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-7-15.bmp	sprite	124	56	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-7-22.bmp	sprite	180	58	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-7-23.bmp	sprite	187	59	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-7-30.bmp	sprite	243	56	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-7-35.bmp	sprite	281	58	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-7-36.bmp	sprite	291	59	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-8-5.bmp	sprite	41	65	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-8-6.bmp	sprite	51	64	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-8-8.bmp	sprite	64	64	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-8-16.bmp	sprite	130	67	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-8-17.bmp	sprite	139	67	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-8-27.bmp	sprite	216	64	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-8-28.bmp	sprite	226	65	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-8-31.bmp	sprite	252	66	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-8-32.bmp	sprite	263	67	1	1	ROM title/boot resource	extracted
+title/circuit-light-4-9-0.bmp	sprite	2	74	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-9-25.bmp	sprite	204	72	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-9-30.bmp	sprite	242	74	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-9-31.bmp	sprite	249	74	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-9-37.bmp	sprite	296	72	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-10-18.bmp	sprite	146	83	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-10-24.bmp	sprite	195	80	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-10-25.bmp	sprite	200	80	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-10-31.bmp	sprite	250	82	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-10-35.bmp	sprite	280	83	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-11-2.bmp	sprite	18	90	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-11-28.bmp	sprite	225	90	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-11-33.bmp	sprite	265	89	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-11-38.bmp	sprite	307	88	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-11-39.bmp	sprite	314	90	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-12-1.bmp	sprite	11	96	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-12-2.bmp	sprite	19	97	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-12-3.bmp	sprite	26	98	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-12-10.bmp	sprite	83	99	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-12-22.bmp	sprite	179	96	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-12-35.bmp	sprite	280	96	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-12-39.bmp	sprite	312	96	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-13-6.bmp	sprite	52	106	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-13-14.bmp	sprite	116	106	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-13-15.bmp	sprite	123	107	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-13-33.bmp	sprite	264	107	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-13-34.bmp	sprite	275	104	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-13-35.bmp	sprite	283	105	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-14-0.bmp	sprite	4	114	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-14-1.bmp	sprite	11	115	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-14-4.bmp	sprite	36	112	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-14-5.bmp	sprite	44	115	1	1	ROM title/boot resource	extracted
+title/circuit-light-4-14-10.bmp	sprite	84	112	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-14-11.bmp	sprite	91	113	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-14-21.bmp	sprite	168	115	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-14-23.bmp	sprite	188	114	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-14-26.bmp	sprite	211	115	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-14-28.bmp	sprite	226	114	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-14-29.bmp	sprite	234	113	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-14-34.bmp	sprite	272	115	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-14-37.bmp	sprite	300	112	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-14-38.bmp	sprite	307	113	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-15-13.bmp	sprite	107	120	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-15-18.bmp	sprite	145	121	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-15-20.bmp	sprite	164	120	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-15-23.bmp	sprite	187	121	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-15-25.bmp	sprite	203	120	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-15-28.bmp	sprite	227	120	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-15-29.bmp	sprite	235	121	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-15-30.bmp	sprite	242	121	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-15-38.bmp	sprite	308	122	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-16-5.bmp	sprite	43	128	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-16-6.bmp	sprite	51	129	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-16-8.bmp	sprite	64	131	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-16-9.bmp	sprite	74	130	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-16-10.bmp	sprite	81	130	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-16-28.bmp	sprite	225	130	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-16-29.bmp	sprite	235	131	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-17-6.bmp	sprite	49	137	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-17-7.bmp	sprite	59	136	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-17-18.bmp	sprite	144	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-17-19.bmp	sprite	152	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-17-20.bmp	sprite	164	139	1	1	ROM title/boot resource	extracted
+title/circuit-light-4-17-21.bmp	sprite	168	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-17-22.bmp	sprite	176	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-17-23.bmp	sprite	184	136	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-17-24.bmp	sprite	194	137	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-17-35.bmp	sprite	283	136	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-17-36.bmp	sprite	291	137	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-17-38.bmp	sprite	307	136	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-17-39.bmp	sprite	315	137	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-18-29.bmp	sprite	236	144	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-19-2.bmp	sprite	16	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-19-3.bmp	sprite	24	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-19-4.bmp	sprite	36	155	1	1	ROM title/boot resource	extracted
+title/circuit-light-4-19-5.bmp	sprite	40	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-19-6.bmp	sprite	48	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-19-7.bmp	sprite	60	155	1	1	ROM title/boot resource	extracted
+title/circuit-light-4-19-8.bmp	sprite	64	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-19-9.bmp	sprite	72	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-19-12.bmp	sprite	100	155	1	1	ROM title/boot resource	extracted
+title/circuit-light-4-19-13.bmp	sprite	104	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-19-14.bmp	sprite	112	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-19-29.bmp	sprite	233	154	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-20-6.bmp	sprite	51	160	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-20-7.bmp	sprite	57	161	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-20-24.bmp	sprite	195	160	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-20-30.bmp	sprite	242	163	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-20-31.bmp	sprite	250	163	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-20-35.bmp	sprite	280	163	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-20-36.bmp	sprite	288	163	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-21-0.bmp	sprite	4	170	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-21-1.bmp	sprite	11	171	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-21-9.bmp	sprite	72	171	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-21-10.bmp	sprite	82	170	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-21-27.bmp	sprite	219	168	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-21-29.bmp	sprite	235	169	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-21-37.bmp	sprite	300	168	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-21-38.bmp	sprite	307	169	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-22-6.bmp	sprite	49	177	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-22-7.bmp	sprite	59	176	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-22-20.bmp	sprite	167	179	1	1	ROM title/boot resource	extracted
+title/circuit-light-4-22-21.bmp	sprite	171	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-22-22.bmp	sprite	179	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-22-25.bmp	sprite	207	179	1	1	ROM title/boot resource	extracted
+title/circuit-light-4-22-26.bmp	sprite	211	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-22-27.bmp	sprite	219	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-22-30.bmp	sprite	247	179	1	1	ROM title/boot resource	extracted
+title/circuit-light-4-22-31.bmp	sprite	250	178	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-22-32.bmp	sprite	256	179	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-23-11.bmp	sprite	89	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-23-15.bmp	sprite	122	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-23-24.bmp	sprite	193	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-23-27.bmp	sprite	218	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-23-30.bmp	sprite	241	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-23-34.bmp	sprite	274	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-24-9.bmp	sprite	72	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-24-13.bmp	sprite	107	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-24-22.bmp	sprite	179	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-24-28.bmp	sprite	224	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-24-29.bmp	sprite	235	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-24-34.bmp	sprite	272	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-25-21.bmp	sprite	169	203	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-25-22.bmp	sprite	178	203	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-25-25.bmp	sprite	203	203	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-25-26.bmp	sprite	210	203	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-25-34.bmp	sprite	276	202	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-25-36.bmp	sprite	291	201	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-26-0.bmp	sprite	3	208	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-26-1.bmp	sprite	11	209	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-26-3.bmp	sprite	27	208	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-26-4.bmp	sprite	35	209	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-26-15.bmp	sprite	124	209	1	6	ROM title/boot resource	extracted
+title/circuit-light-4-26-26.bmp	sprite	210	210	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-26-30.bmp	sprite	244	208	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-26-32.bmp	sprite	259	211	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-27-1.bmp	sprite	9	218	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-27-2.bmp	sprite	19	219	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-27-4.bmp	sprite	32	219	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-27-5.bmp	sprite	42	218	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-27-11.bmp	sprite	90	219	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-27-12.bmp	sprite	99	219	5	1	ROM title/boot resource	extracted
+title/circuit-light-4-27-20.bmp	sprite	160	216	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-27-24.bmp	sprite	196	218	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-27-26.bmp	sprite	211	217	1	5	ROM title/boot resource	extracted
+title/circuit-light-4-27-35.bmp	sprite	280	216	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-27-36.bmp	sprite	290	217	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-27-38.bmp	sprite	305	217	5	5	ROM title/boot resource	extracted
+title/circuit-light-4-27-39.bmp	sprite	315	216	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-0-9.bmp	sprite	72	3	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-0-10.bmp	sprite	82	2	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-0-30.bmp	sprite	244	2	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-0-33.bmp	sprite	267	2	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-0-35.bmp	sprite	280	3	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-0-36.bmp	sprite	290	2	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-1-4.bmp	sprite	36	10	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-1-6.bmp	sprite	49	9	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-1-7.bmp	sprite	59	8	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-1-24.bmp	sprite	196	9	1	6	ROM title/boot resource	extracted
+title/circuit-light-5-1-28.bmp	sprite	228	8	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-1-31.bmp	sprite	251	8	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-1-33.bmp	sprite	265	9	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-1-34.bmp	sprite	275	8	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-2-2.bmp	sprite	20	16	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-2-39.bmp	sprite	315	20	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-3-14.bmp	sprite	115	28	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-3-20.bmp	sprite	164	25	1	6	ROM title/boot resource	extracted
+title/circuit-light-5-3-29.bmp	sprite	235	24	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-3-30.bmp	sprite	243	25	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-4-7.bmp	sprite	58	36	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-5-20.bmp	sprite	163	40	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-5-21.bmp	sprite	171	41	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-5-26.bmp	sprite	211	43	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-5-37.bmp	sprite	298	43	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-6-2.bmp	sprite	20	49	1	6	ROM title/boot resource	extracted
+title/circuit-light-5-6-3.bmp	sprite	27	49	1	6	ROM title/boot resource	extracted
+title/circuit-light-5-6-18.bmp	sprite	148	50	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-6-35.bmp	sprite	283	50	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-7-10.bmp	sprite	80	59	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-7-11.bmp	sprite	90	58	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-7-15.bmp	sprite	124	56	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-7-22.bmp	sprite	180	58	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-7-23.bmp	sprite	187	59	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-7-30.bmp	sprite	243	56	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-7-35.bmp	sprite	281	58	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-7-36.bmp	sprite	291	59	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-8-5.bmp	sprite	41	65	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-8-6.bmp	sprite	51	64	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-8-8.bmp	sprite	64	64	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-8-16.bmp	sprite	130	67	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-8-17.bmp	sprite	139	67	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-8-27.bmp	sprite	216	64	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-8-28.bmp	sprite	226	65	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-8-31.bmp	sprite	252	66	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-8-32.bmp	sprite	263	67	1	1	ROM title/boot resource	extracted
+title/circuit-light-5-9-0.bmp	sprite	2	74	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-9-25.bmp	sprite	204	72	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-9-30.bmp	sprite	242	74	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-9-31.bmp	sprite	249	74	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-9-37.bmp	sprite	296	72	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-10-18.bmp	sprite	146	83	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-10-24.bmp	sprite	195	80	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-10-25.bmp	sprite	200	80	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-10-31.bmp	sprite	250	82	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-10-35.bmp	sprite	280	83	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-11-2.bmp	sprite	18	90	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-11-28.bmp	sprite	225	90	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-11-33.bmp	sprite	265	89	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-11-38.bmp	sprite	307	88	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-11-39.bmp	sprite	314	90	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-12-1.bmp	sprite	11	96	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-12-2.bmp	sprite	19	97	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-12-3.bmp	sprite	26	98	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-12-10.bmp	sprite	83	99	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-12-22.bmp	sprite	179	96	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-12-35.bmp	sprite	280	96	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-12-39.bmp	sprite	312	96	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-13-6.bmp	sprite	52	106	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-13-14.bmp	sprite	116	106	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-13-15.bmp	sprite	123	107	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-13-33.bmp	sprite	264	107	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-13-34.bmp	sprite	275	104	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-13-35.bmp	sprite	283	105	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-14-0.bmp	sprite	4	114	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-14-1.bmp	sprite	11	115	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-14-4.bmp	sprite	36	112	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-14-5.bmp	sprite	44	115	1	1	ROM title/boot resource	extracted
+title/circuit-light-5-14-10.bmp	sprite	84	112	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-14-11.bmp	sprite	91	113	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-14-21.bmp	sprite	168	115	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-14-23.bmp	sprite	188	114	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-14-26.bmp	sprite	211	115	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-14-28.bmp	sprite	226	114	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-14-29.bmp	sprite	234	113	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-14-34.bmp	sprite	272	115	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-14-37.bmp	sprite	300	112	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-14-38.bmp	sprite	307	113	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-15-13.bmp	sprite	107	120	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-15-18.bmp	sprite	145	121	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-15-20.bmp	sprite	164	120	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-15-23.bmp	sprite	187	121	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-15-25.bmp	sprite	203	120	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-15-28.bmp	sprite	227	120	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-15-29.bmp	sprite	235	121	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-15-30.bmp	sprite	242	121	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-15-38.bmp	sprite	308	122	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-16-5.bmp	sprite	43	128	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-16-6.bmp	sprite	51	129	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-16-8.bmp	sprite	64	131	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-16-9.bmp	sprite	74	130	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-16-10.bmp	sprite	81	130	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-16-28.bmp	sprite	225	130	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-16-29.bmp	sprite	235	131	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-17-6.bmp	sprite	49	137	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-17-7.bmp	sprite	59	136	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-17-18.bmp	sprite	144	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-17-19.bmp	sprite	152	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-17-20.bmp	sprite	164	139	1	1	ROM title/boot resource	extracted
+title/circuit-light-5-17-21.bmp	sprite	168	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-17-22.bmp	sprite	176	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-17-23.bmp	sprite	184	136	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-17-24.bmp	sprite	194	137	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-17-35.bmp	sprite	283	136	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-17-36.bmp	sprite	291	137	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-17-38.bmp	sprite	307	136	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-17-39.bmp	sprite	315	137	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-18-29.bmp	sprite	236	144	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-19-2.bmp	sprite	16	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-19-3.bmp	sprite	24	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-19-4.bmp	sprite	36	155	1	1	ROM title/boot resource	extracted
+title/circuit-light-5-19-5.bmp	sprite	40	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-19-6.bmp	sprite	48	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-19-7.bmp	sprite	60	155	1	1	ROM title/boot resource	extracted
+title/circuit-light-5-19-8.bmp	sprite	64	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-19-9.bmp	sprite	72	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-19-12.bmp	sprite	100	155	1	1	ROM title/boot resource	extracted
+title/circuit-light-5-19-13.bmp	sprite	104	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-19-14.bmp	sprite	112	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-19-29.bmp	sprite	233	154	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-20-6.bmp	sprite	51	160	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-20-7.bmp	sprite	57	161	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-20-24.bmp	sprite	195	160	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-20-30.bmp	sprite	242	163	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-20-31.bmp	sprite	250	163	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-20-35.bmp	sprite	280	163	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-20-36.bmp	sprite	288	163	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-21-0.bmp	sprite	4	170	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-21-1.bmp	sprite	11	171	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-21-9.bmp	sprite	72	171	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-21-10.bmp	sprite	82	170	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-21-27.bmp	sprite	219	168	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-21-29.bmp	sprite	235	169	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-21-37.bmp	sprite	300	168	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-21-38.bmp	sprite	307	169	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-22-6.bmp	sprite	49	177	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-22-7.bmp	sprite	59	176	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-22-20.bmp	sprite	167	179	1	1	ROM title/boot resource	extracted
+title/circuit-light-5-22-21.bmp	sprite	171	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-22-22.bmp	sprite	179	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-22-25.bmp	sprite	207	179	1	1	ROM title/boot resource	extracted
+title/circuit-light-5-22-26.bmp	sprite	211	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-22-27.bmp	sprite	219	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-22-30.bmp	sprite	247	179	1	1	ROM title/boot resource	extracted
+title/circuit-light-5-22-31.bmp	sprite	250	178	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-22-32.bmp	sprite	256	179	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-23-11.bmp	sprite	89	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-23-15.bmp	sprite	122	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-23-24.bmp	sprite	193	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-23-27.bmp	sprite	218	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-23-30.bmp	sprite	241	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-23-34.bmp	sprite	274	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-24-9.bmp	sprite	72	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-24-13.bmp	sprite	107	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-24-22.bmp	sprite	179	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-24-28.bmp	sprite	224	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-24-29.bmp	sprite	235	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-24-34.bmp	sprite	272	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-25-21.bmp	sprite	169	203	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-25-22.bmp	sprite	178	203	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-25-25.bmp	sprite	203	203	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-25-26.bmp	sprite	210	203	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-25-34.bmp	sprite	276	202	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-25-36.bmp	sprite	291	201	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-26-0.bmp	sprite	3	208	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-26-1.bmp	sprite	11	209	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-26-3.bmp	sprite	27	208	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-26-4.bmp	sprite	35	209	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-26-15.bmp	sprite	124	209	1	6	ROM title/boot resource	extracted
+title/circuit-light-5-26-26.bmp	sprite	210	210	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-26-30.bmp	sprite	244	208	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-26-32.bmp	sprite	259	211	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-27-1.bmp	sprite	9	218	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-27-2.bmp	sprite	19	219	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-27-4.bmp	sprite	32	219	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-27-5.bmp	sprite	42	218	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-27-11.bmp	sprite	90	219	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-27-12.bmp	sprite	99	219	5	1	ROM title/boot resource	extracted
+title/circuit-light-5-27-20.bmp	sprite	160	216	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-27-24.bmp	sprite	196	218	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-27-26.bmp	sprite	211	217	1	5	ROM title/boot resource	extracted
+title/circuit-light-5-27-35.bmp	sprite	280	216	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-27-36.bmp	sprite	290	217	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-27-38.bmp	sprite	305	217	5	5	ROM title/boot resource	extracted
+title/circuit-light-5-27-39.bmp	sprite	315	216	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-0-9.bmp	sprite	72	3	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-0-10.bmp	sprite	82	2	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-0-30.bmp	sprite	244	2	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-0-33.bmp	sprite	267	2	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-0-35.bmp	sprite	280	3	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-0-36.bmp	sprite	290	2	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-1-4.bmp	sprite	36	10	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-1-6.bmp	sprite	49	9	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-1-7.bmp	sprite	59	8	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-1-24.bmp	sprite	196	9	1	6	ROM title/boot resource	extracted
+title/circuit-light-6-1-28.bmp	sprite	228	8	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-1-31.bmp	sprite	251	8	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-1-33.bmp	sprite	265	9	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-1-34.bmp	sprite	275	8	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-2-2.bmp	sprite	20	16	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-2-39.bmp	sprite	315	20	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-3-14.bmp	sprite	115	28	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-3-20.bmp	sprite	164	25	1	6	ROM title/boot resource	extracted
+title/circuit-light-6-3-29.bmp	sprite	235	24	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-3-30.bmp	sprite	243	25	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-4-7.bmp	sprite	58	36	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-5-20.bmp	sprite	163	40	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-5-21.bmp	sprite	171	41	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-5-26.bmp	sprite	211	43	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-5-37.bmp	sprite	298	43	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-6-2.bmp	sprite	20	49	1	6	ROM title/boot resource	extracted
+title/circuit-light-6-6-3.bmp	sprite	27	49	1	6	ROM title/boot resource	extracted
+title/circuit-light-6-6-18.bmp	sprite	148	50	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-6-35.bmp	sprite	283	50	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-7-10.bmp	sprite	80	59	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-7-11.bmp	sprite	90	58	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-7-15.bmp	sprite	124	56	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-7-22.bmp	sprite	180	58	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-7-23.bmp	sprite	187	59	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-7-30.bmp	sprite	243	56	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-7-35.bmp	sprite	281	58	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-7-36.bmp	sprite	291	59	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-8-5.bmp	sprite	41	65	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-8-6.bmp	sprite	51	64	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-8-8.bmp	sprite	64	64	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-8-16.bmp	sprite	130	67	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-8-17.bmp	sprite	139	67	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-8-27.bmp	sprite	216	64	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-8-28.bmp	sprite	226	65	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-8-31.bmp	sprite	252	66	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-8-32.bmp	sprite	263	67	1	1	ROM title/boot resource	extracted
+title/circuit-light-6-9-0.bmp	sprite	2	74	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-9-25.bmp	sprite	204	72	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-9-30.bmp	sprite	242	74	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-9-31.bmp	sprite	249	74	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-9-37.bmp	sprite	296	72	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-10-18.bmp	sprite	146	83	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-10-24.bmp	sprite	195	80	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-10-25.bmp	sprite	200	80	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-10-31.bmp	sprite	250	82	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-10-35.bmp	sprite	280	83	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-11-2.bmp	sprite	18	90	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-11-28.bmp	sprite	225	90	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-11-33.bmp	sprite	265	89	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-11-38.bmp	sprite	307	88	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-11-39.bmp	sprite	314	90	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-12-1.bmp	sprite	11	96	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-12-2.bmp	sprite	19	97	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-12-3.bmp	sprite	26	98	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-12-10.bmp	sprite	83	99	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-12-22.bmp	sprite	179	96	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-12-35.bmp	sprite	280	96	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-12-39.bmp	sprite	312	96	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-13-6.bmp	sprite	52	106	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-13-14.bmp	sprite	116	106	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-13-15.bmp	sprite	123	107	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-13-33.bmp	sprite	264	107	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-13-34.bmp	sprite	275	104	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-13-35.bmp	sprite	283	105	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-14-0.bmp	sprite	4	114	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-14-1.bmp	sprite	11	115	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-14-4.bmp	sprite	36	112	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-14-5.bmp	sprite	44	115	1	1	ROM title/boot resource	extracted
+title/circuit-light-6-14-10.bmp	sprite	84	112	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-14-11.bmp	sprite	91	113	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-14-21.bmp	sprite	168	115	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-14-23.bmp	sprite	188	114	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-14-26.bmp	sprite	211	115	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-14-28.bmp	sprite	226	114	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-14-29.bmp	sprite	234	113	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-14-34.bmp	sprite	272	115	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-14-37.bmp	sprite	300	112	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-14-38.bmp	sprite	307	113	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-15-13.bmp	sprite	107	120	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-15-18.bmp	sprite	145	121	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-15-20.bmp	sprite	164	120	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-15-23.bmp	sprite	187	121	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-15-25.bmp	sprite	203	120	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-15-28.bmp	sprite	227	120	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-15-29.bmp	sprite	235	121	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-15-30.bmp	sprite	242	121	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-15-38.bmp	sprite	308	122	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-16-5.bmp	sprite	43	128	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-16-6.bmp	sprite	51	129	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-16-8.bmp	sprite	64	131	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-16-9.bmp	sprite	74	130	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-16-10.bmp	sprite	81	130	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-16-28.bmp	sprite	225	130	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-16-29.bmp	sprite	235	131	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-17-6.bmp	sprite	49	137	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-17-7.bmp	sprite	59	136	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-17-18.bmp	sprite	144	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-17-19.bmp	sprite	152	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-17-20.bmp	sprite	164	139	1	1	ROM title/boot resource	extracted
+title/circuit-light-6-17-21.bmp	sprite	168	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-17-22.bmp	sprite	176	139	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-17-23.bmp	sprite	184	136	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-17-24.bmp	sprite	194	137	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-17-35.bmp	sprite	283	136	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-17-36.bmp	sprite	291	137	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-17-38.bmp	sprite	307	136	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-17-39.bmp	sprite	315	137	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-18-29.bmp	sprite	236	144	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-19-2.bmp	sprite	16	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-19-3.bmp	sprite	24	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-19-4.bmp	sprite	36	155	1	1	ROM title/boot resource	extracted
+title/circuit-light-6-19-5.bmp	sprite	40	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-19-6.bmp	sprite	48	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-19-7.bmp	sprite	60	155	1	1	ROM title/boot resource	extracted
+title/circuit-light-6-19-8.bmp	sprite	64	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-19-9.bmp	sprite	72	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-19-12.bmp	sprite	100	155	1	1	ROM title/boot resource	extracted
+title/circuit-light-6-19-13.bmp	sprite	104	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-19-14.bmp	sprite	112	155	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-19-29.bmp	sprite	233	154	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-20-6.bmp	sprite	51	160	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-20-7.bmp	sprite	57	161	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-20-24.bmp	sprite	195	160	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-20-30.bmp	sprite	242	163	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-20-31.bmp	sprite	250	163	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-20-35.bmp	sprite	280	163	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-20-36.bmp	sprite	288	163	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-21-0.bmp	sprite	4	170	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-21-1.bmp	sprite	11	171	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-21-9.bmp	sprite	72	171	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-21-10.bmp	sprite	82	170	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-21-27.bmp	sprite	219	168	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-21-29.bmp	sprite	235	169	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-21-37.bmp	sprite	300	168	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-21-38.bmp	sprite	307	169	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-22-6.bmp	sprite	49	177	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-22-7.bmp	sprite	59	176	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-22-20.bmp	sprite	167	179	1	1	ROM title/boot resource	extracted
+title/circuit-light-6-22-21.bmp	sprite	171	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-22-22.bmp	sprite	179	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-22-25.bmp	sprite	207	179	1	1	ROM title/boot resource	extracted
+title/circuit-light-6-22-26.bmp	sprite	211	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-22-27.bmp	sprite	219	179	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-22-30.bmp	sprite	247	179	1	1	ROM title/boot resource	extracted
+title/circuit-light-6-22-31.bmp	sprite	250	178	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-22-32.bmp	sprite	256	179	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-23-11.bmp	sprite	89	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-23-15.bmp	sprite	122	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-23-24.bmp	sprite	193	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-23-27.bmp	sprite	218	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-23-30.bmp	sprite	241	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-23-34.bmp	sprite	274	186	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-24-9.bmp	sprite	72	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-24-13.bmp	sprite	107	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-24-22.bmp	sprite	179	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-24-28.bmp	sprite	224	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-24-29.bmp	sprite	235	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-24-34.bmp	sprite	272	192	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-25-21.bmp	sprite	169	203	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-25-22.bmp	sprite	178	203	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-25-25.bmp	sprite	203	203	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-25-26.bmp	sprite	210	203	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-25-34.bmp	sprite	276	202	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-25-36.bmp	sprite	291	201	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-26-0.bmp	sprite	3	208	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-26-1.bmp	sprite	11	209	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-26-3.bmp	sprite	27	208	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-26-4.bmp	sprite	35	209	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-26-15.bmp	sprite	124	209	1	6	ROM title/boot resource	extracted
+title/circuit-light-6-26-26.bmp	sprite	210	210	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-26-30.bmp	sprite	244	208	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-26-32.bmp	sprite	259	211	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-27-1.bmp	sprite	9	218	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-27-2.bmp	sprite	19	219	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-27-4.bmp	sprite	32	219	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-27-5.bmp	sprite	42	218	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-27-11.bmp	sprite	90	219	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-27-12.bmp	sprite	99	219	5	1	ROM title/boot resource	extracted
+title/circuit-light-6-27-20.bmp	sprite	160	216	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-27-24.bmp	sprite	196	218	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-27-26.bmp	sprite	211	217	1	5	ROM title/boot resource	extracted
+title/circuit-light-6-27-35.bmp	sprite	280	216	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-27-36.bmp	sprite	290	217	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-27-38.bmp	sprite	305	217	5	5	ROM title/boot resource	extracted
+title/circuit-light-6-27-39.bmp	sprite	315	216	5	5	ROM title/boot resource	extracted
+title/logo.bmp	sprite	13	16	296	152	ROM title/boot resource	extracted
+title/text.bmp	sprite	17	168	277	39	ROM title/boot resource	extracted
+title/sprite-0.bmp	sprite	14	25	30	118	ROM title/boot resource	extracted
+title/sprite-1.bmp	sprite	13	22	31	123	ROM title/boot resource	extracted
+title/sprite-2.bmp	sprite	12	24	31	121	ROM title/boot resource	extracted
+title/sprite-3.bmp	sprite	12	22	32	121	ROM title/boot resource	extracted
+title/sprite-4.bmp	sprite	12	23	31	122	ROM title/boot resource	extracted
+title/sprite-5.bmp	sprite	13	29	30	116	ROM title/boot resource	extracted
+boot/snow.bmp	background	0	0	320	224	ROM title/boot resource	extracted
+boot/sega-background.bmp	background	0	0	320	224	ROM title/boot resource	extracted
+boot/guy.bmp	sprite	86	14	133	67	ROM title/boot resource	extracted
+boot/sega-lightning-0.bmp	sprite	58	105	188	56	ROM title/boot resource	extracted
+boot/sega-lightning-1.bmp	sprite	80	105	144	56	ROM title/boot resource	extracted
+boot/sega-lightning-2.bmp	sprite	76	102	152	59	ROM title/boot resource	extracted
+boot/sega-lightning-3.bmp	sprite	51	102	202	59	ROM title/boot resource	extracted
+boot/sega-lightning-4.bmp	sprite	76	102	152	59	ROM title/boot resource	extracted
+boot/sega-lightning-5.bmp	sprite	80	105	144	56	ROM title/boot resource	extracted
+boot/sega-strobe-0.bmp	sprite	104	80	96	32	ROM title/boot resource	extracted
+boot/sega-strobe-1.bmp	sprite	104	80	96	32	ROM title/boot resource	extracted
+boot/sega-strobe-2.bmp	sprite	104	80	96	32	ROM title/boot resource	extracted
+boot/sega-strobe-3.bmp	sprite	104	80	96	32	ROM title/boot resource	extracted
+boot/sega-strobe-4.bmp	sprite	104	80	96	32	ROM title/boot resource	extracted
+boot/sega-strobe-5.bmp	sprite	104	80	96	32	ROM title/boot resource	extracted
+boot/sega-strobe-6.bmp	sprite	104	80	96	32	ROM title/boot resource	extracted
+boot/sega-strobe-7.bmp	sprite	104	80	96	32	ROM title/boot resource	extracted
+boot/fasa.bmp	sprite	96	80	127	40	ROM title/boot resource	extracted
+startup/background.bmp	background	0	0	320	224	0x10B5A/0xCDCE6	extracted
+startup/font.bmp	sprite	0	0	128	48	0xC1320	extracted
+startup/cursor.bmp	sprite	4	0	4	7	0xD29F6	extracted
+intro/aircraft-plane-a.bmp	sprite	0	0	216	64	0x5B528/0x5B7D8	extracted
+intro/helicopter-0.bmp	sprite	292	106	190	5	0x5B180[0]	extracted
+intro/helicopter-1.bmp	sprite	289	107	195	4	0x5B180[1]	extracted
+intro/helicopter-2.bmp	sprite	293	106	155	5	0x5B180[2]	extracted
+intro/helicopter-3.bmp	sprite	311	106	162	5	0x5B180[3]	extracted
+intro/helicopter-4.bmp	sprite	298	106	150	5	0x5B180[4]	extracted
+intro/helicopter-5.bmp	sprite	302	107	142	4	0x5B180[5]	extracted
+intro/aircraft-movement-0.bmp	sprite	3	8	24	8	0x5B270[0]	extracted
+intro/aircraft-movement-1.bmp	sprite	3	5	23	13	0x5B270[1]	extracted
+intro/background-0.bmp	background	0	0	320	224	0x59C5E	extracted
+intro/background-1.bmp	background	0	0	320	224	0x59C5E	extracted
+intro/background-2.bmp	background	0	0	320	224	0x59C5E	extracted
+intro/background-3.bmp	background	0	0	320	224	0x59C5E	extracted
+intro/sprites/trivid-left-0-0.bmp	sprite	113	88	52	43	table=0x1df1d6 index=0 source=0x1df1d6 attr=0xc000	extracted
+intro/sprites/trivid-right-0-1.bmp	sprite	120	120	299	14	table=0x1df238 index=0 source=0x1df238 attr=0x6000	extracted
+intro/sprites/ambush-actor-0-2.bmp	sprite	129	113	18	16	table=0x5a398 index=0 source=0x1df1b2 attr=0x2000	extracted
+intro/sprites/ambush-actor-1-3.bmp	sprite	128	113	18	15	table=0x5a398 index=1 source=0x1df1c4 attr=0x2000	extracted
+intro/sprites/ambush-actor-2-4.bmp	sprite	129	113	18	16	table=0x5a398 index=2 source=0x1df1b2 attr=0x2000	extracted
+intro/sprites/ambush-actor-3-5.bmp	sprite	128	113	18	15	table=0x5a398 index=3 source=0x1df1c4 attr=0x2000	extracted
+intro/sprites/ambush-muzzle-0-6.bmp	sprite	112	125	32	8	table=0x5a482 index=0 source=0x1df0cc attr=0x6000	extracted
+intro/sprites/ambush-muzzle-1-7.bmp	sprite	112	126	32	5	table=0x5a482 index=1 source=0x1df0d6 attr=0x6000	extracted
+intro/sprites/ambush-muzzle-2-8.bmp	sprite	112	126	32	5	table=0x5a482 index=2 source=0x1df0d6 attr=0x6000	extracted
+intro/sprites/ambush-muzzle-3-9.bmp	sprite	112	126	32	5	table=0x5a482 index=3 source=0x1df0d6 attr=0x6000	extracted
+intro/sprites/ambush-muzzle-4-10.bmp	sprite	112	126	32	5	table=0x5a482 index=4 source=0x1df0d6 attr=0x6000	extracted
+intro/sprites/ambush-flash-0-11.bmp	sprite	122	123	13	11	table=0x5a562 index=0 source=0x1df182 attr=0x6000	extracted
+intro/sprites/ambush-flash-1-12.bmp	sprite	122	123	14	12	table=0x5a562 index=1 source=0x1df18c attr=0x6000	extracted
+intro/sprites/ambush-flash-2-13.bmp	sprite	121	120	14	14	table=0x5a562 index=2 source=0x1df19e attr=0x6000	extracted
+intro/sprites/ambush-flash-3-14.bmp	sprite	125	123	8	10	table=0x5a562 index=3 source=0x1df1a8 attr=0x6000	extracted
+intro/sprites/ambush-body-0-15.bmp	sprite	117	112	24	31	table=0x5a602 index=0 source=0x1def28 attr=0x6000	extracted
+intro/sprites/ambush-body-1-16.bmp	sprite	108	104	42	46	table=0x5a602 index=1 source=0x1def32 attr=0x6000	extracted
+intro/sprites/ambush-body-2-17.bmp	sprite	110	103	41	51	table=0x5a602 index=2 source=0x1def8c attr=0x6000	extracted
+intro/sprites/ambush-body-3-18.bmp	sprite	103	99	53	55	table=0x5a602 index=3 source=0x1defc6 attr=0x6000	extracted
+intro/sprites/ambush-body-4-19.bmp	sprite	101	99	60	60	table=0x5a602 index=4 source=0x1df010 attr=0x6000	extracted
+intro/sprites/ambush-body-5-20.bmp	sprite	94	92	71	70	table=0x5a602 index=5 source=0x1df06a attr=0x6000	extracted
+intro/sprites/ambush-projectile-b-0-21.bmp	sprite	112	126	64	69	table=0x5a6c8 index=0 source=0x1df0ea attr=0x6000	extracted
+intro/sprites/ambush-projectile-b-1-22.bmp	sprite	112	94	96	45	table=0x5a6c8 index=1 source=0x1df0fc attr=0x6000	extracted
+intro/sprites/ambush-projectile-b-2-23.bmp	sprite	112	126	32	5	table=0x5a6c8 index=2 source=0x1df0e0 attr=0x6000	extracted
+intro/sprites/ambush-projectile-b-3-24.bmp	sprite	112	126	32	5	table=0x5a6c8 index=3 source=0x1df0e0 attr=0x6000	extracted
+intro/sprites/ambush-projectile-b-4-25.bmp	sprite	112	94	96	45	table=0x5a6c8 index=4 source=0x1df0fc attr=0x6000	extracted
+intro/sprites/ambush-projectile-b-5-26.bmp	sprite	112	126	32	5	table=0x5a6c8 index=5 source=0x1df0e0 attr=0x6000	extracted
+intro/sprites/ambush-projectile-b-6-27.bmp	sprite	112	110	88	21	table=0x5a6c8 index=6 source=0x1df130 attr=0x6000	extracted
+intro/sprites/ambush-projectile-c-0-28.bmp	sprite	113	125	47	7	table=0x5a7aa index=0 source=0x1df170 attr=0x6000	extracted
+intro/sprites/ambush-projectile-c-1-29.bmp	sprite	112	110	88	21	table=0x5a7aa index=1 source=0x1df130 attr=0x6000	extracted
+intro/sprites/ambush-projectile-c-2-30.bmp	sprite	112	126	80	21	table=0x5a7aa index=2 source=0x1df11e attr=0x6000	extracted
+intro/sprites/ambush-projectile-c-3-31.bmp	sprite	113	125	47	7	table=0x5a7aa index=3 source=0x1df170 attr=0x6000	extracted
+intro/sprites/ambush-projectile-c-4-32.bmp	sprite	112	126	64	69	table=0x5a7aa index=4 source=0x1df0ea attr=0x6000	extracted
+intro/sprites/ambush-projectile-c-5-33.bmp	sprite	113	125	47	7	table=0x5a7aa index=5 source=0x1df170 attr=0x6000	extracted
+intro/sprites/ambush-projectile-c-6-34.bmp	sprite	112	94	96	45	table=0x5a7aa index=6 source=0x1df0fc attr=0x6000	extracted
+intro/sprites/ambush-projectile-c-7-35.bmp	sprite	112	126	32	5	table=0x5a7aa index=7 source=0x1df0e0 attr=0x6000	extracted
+intro/sprites/ambush-projectile-d-0-36.bmp	sprite	112	126	64	69	table=0x5a888 index=0 source=0x1df0ea attr=0x6000	extracted
+intro/sprites/ambush-projectile-d-1-37.bmp	sprite	113	125	47	7	table=0x5a888 index=1 source=0x1df170 attr=0x6000	extracted
+intro/sprites/ambush-projectile-d-2-38.bmp	sprite	112	126	80	21	table=0x5a888 index=2 source=0x1df11e attr=0x6000	extracted
+intro/sprites/ambush-projectile-d-3-39.bmp	sprite	112	94	96	45	table=0x5a888 index=3 source=0x1df0fc attr=0x6000	extracted
+intro/sprites/ambush-projectile-d-4-40.bmp	sprite	112	110	88	21	table=0x5a888 index=4 source=0x1df130 attr=0x6000	extracted
+intro/sprites/ambush-projectile-d-5-41.bmp	sprite	112	126	32	5	table=0x5a888 index=5 source=0x1df0e0 attr=0x6000	extracted
+intro/sprites/ambush-projectile-d-6-42.bmp	sprite	113	125	47	7	table=0x5a888 index=6 source=0x1df170 attr=0x6000	extracted
+intro/sprites/ambush-projectile-d-7-43.bmp	sprite	112	126	80	21	table=0x5a888 index=7 source=0x1df11e attr=0x6000	extracted
+intro/sprites/ambush-michael-0-44.bmp	sprite	109	124	34	8	table=0x5a958 index=0 source=0x1df142 attr=0x6000	extracted
+intro/sprites/ambush-michael-1-45.bmp	sprite	96	125	47	7	table=0x5a958 index=1 source=0x1df154 attr=0x6000	extracted
+intro/sprites/ambush-michael-2-46.bmp	sprite	115	125	28	6	table=0x5a958 index=2 source=0x1df166 attr=0x6000	extracted
+intro/background-patch-0.bmp	background	152	128	104	96	table=0x5a1d2 index=0 source=0x1e2eba attr=0x0	extracted
+intro/background-patch-1.bmp	background	152	128	104	96	table=0x5a1d2 index=1 source=0x1e2f04 attr=0x0	extracted
+intro/background-patch-2.bmp	background	152	128	104	96	table=0x5a1d2 index=2 source=0x1e2f6c attr=0x0	extracted
+intro/background-patch-3.bmp	background	152	128	104	96	table=0x5a1d2 index=3 source=0x1e2eba attr=0x0	extracted
+intro/cab-map.bmp	background	0	0	320	224	0x134D2/0xD2A2E	extracted
+field/hud/background.bmp	background	0	0	320	224	0x334C/0x39F2	extracted
+field/hud/face-0.bmp	sprite	0	0	32	32	0x3404[0]	extracted
+field/hud/face-1.bmp	sprite	0	0	32	32	0x3404[1]	extracted
+field/hud/face-2.bmp	sprite	0	0	32	32	0x3404[2]	extracted
+field/hud/item-0.bmp	sprite	0	0	24	16	0x3404[0]	extracted
+field/hud/item-1.bmp	sprite	0	0	24	16	0x3404[1]	extracted
+field/hud/item-2.bmp	sprite	0	0	24	16	0x3404[2]	extracted
+field/hud/vertical-counter-0.bmp	sprite	0	0	8	32	0x35D4[0]	extracted-empty
+field/hud/vertical-counter-1.bmp	sprite	0	0	8	32	0x35D4[1]	extracted-empty
+field/hud/vertical-counter-2.bmp	sprite	0	0	8	32	0x35D4[2]	extracted-empty
+field/hud/horizontal-counter-0.bmp	sprite	0	0	32	8	0x35D4[0]	extracted-empty
+field/hud/horizontal-counter-1.bmp	sprite	0	0	32	8	0x35D4[1]	extracted-empty
+field/hud/horizontal-counter-2.bmp	sprite	0	0	32	8	0x35D4[2]	extracted-empty
+field/menu/pocket-secretary-background.bmp	background	0	0	320	224	0x10A7E	extracted
+field/menu/background.bmp	background	0	0	320	224	0x10F50	extracted
+field/menu/attributes-background.bmp	background	0	0	320	224	0x10C96	extracted
+field/menu/inventory-boxes.bmp	background	0	0	320	224	0x10F50/0x1232	extracted
+field/menu/font.bmp	sprite	0	0	128	48	0xC1064	extracted
+field/menu/runner-portrait-0.bmp	sprite	0	0	64	80	0x7291A[0]	extracted
+field/menu/runner-portrait-1.bmp	sprite	0	0	64	80	0x7291A[1]	extracted
+field/menu/runner-portrait-2.bmp	sprite	0	0	64	80	0x7291A[2]	extracted
+field/menu/selected-cell-0.bmp	sprite	0	0	40	32	0x11678[0]	extracted
+field/menu/selected-cell-1.bmp	sprite	0	0	40	32	0x11678[1]	extracted
+field/menu/command-focus-0.bmp	sprite	0	0	16	16	0x11454[0]	extracted
+field/menu/command-focus-1.bmp	sprite	0	0	16	16	0x11454[1]	extracted
+field/menu/command-focus-2.bmp	sprite	0	0	16	16	0x11454[2]	extracted
+field/menu/command-focus-3.bmp	sprite	0	0	16	16	0x11454[3]	extracted
+field/menu/command-focus-4.bmp	sprite	0	0	16	16	0x11454[4]	extracted
+field/menu/clips-focus-0.bmp	sprite	0	0	16	16	0x11B58[0]	extracted
+field/menu/clips-focus-1.bmp	sprite	0	0	16	16	0x11B58[1]	extracted
+field/menu/clips-focus-2.bmp	sprite	0	0	16	16	0x11B58[2]	extracted
+field/menu/clips-focus-3.bmp	sprite	0	0	16	16	0x11B58[3]	extracted
+field/menu/clips-trade-focus-0.bmp	sprite	0	0	16	16	0x11E7E[0]	extracted
+field/menu/clips-trade-focus-1.bmp	sprite	0	0	16	16	0x11E7E[1]	extracted
+field/menu/clips-trade-focus-2.bmp	sprite	0	0	16	16	0x11E7E[2]	extracted
+field/menu/clips-trade-focus-3.bmp	sprite	0	0	16	16	0x11E7E[3]	extracted
+field/menu/posture-focus.bmp	sprite	0	0	48	8	0x119CE	extracted
+field/menu/cursor.bmp	sprite	0	0	24	32	0x11592	extracted
+field/menu/item-art-0.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[0]	extracted
+field/menu/item-art-1.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[1]	extracted
+field/menu/item-art-2.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[2]	extracted
+field/menu/item-art-3.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[3]	extracted
+field/menu/item-art-4.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[4]	extracted
+field/menu/item-art-5.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[5]	extracted
+field/menu/item-art-6.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[6]	extracted
+field/menu/item-art-7.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[7]	extracted
+field/menu/item-art-8.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[8]	extracted
+field/menu/item-art-9.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[9]	extracted
+field/menu/item-art-10.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[10]	extracted
+field/menu/item-art-11.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[11]	extracted
+field/menu/item-art-12.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[12]	extracted
+field/menu/item-art-13.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[13]	extracted
+field/menu/item-art-14.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[14]	extracted
+field/menu/item-art-15.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[15]	extracted
+field/menu/item-art-16.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[16]	extracted
+field/menu/item-art-17.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[17]	extracted
+field/menu/item-art-18.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[18]	extracted
+field/menu/item-art-19.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[19]	extracted
+field/menu/item-art-20.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[20]	extracted
+field/menu/item-art-21.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[21]	extracted
+field/menu/item-art-22.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[22]	extracted
+field/menu/item-art-23.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[23]	extracted
+field/menu/item-art-24.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[24]	extracted
+field/menu/item-art-25.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[25]	extracted
+field/menu/item-art-26.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[26]	extracted
+field/menu/item-art-27.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[27]	extracted
+field/menu/item-art-28.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[28]	extracted
+field/menu/item-art-29.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[29]	extracted
+field/menu/item-art-30.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[30]	extracted
+field/menu/item-art-31.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[31]	extracted
+field/menu/item-art-32.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[32]	extracted
+field/menu/item-art-33.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[33]	extracted
+field/menu/item-art-34.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[34]	extracted
+field/menu/item-art-35.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[35]	extracted
+field/menu/item-art-36.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[36]	extracted
+field/menu/item-art-37.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[37]	extracted
+field/menu/item-art-38.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[38]	extracted
+field/menu/item-art-39.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[39]	extracted
+field/menu/item-art-40.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[40]	extracted
+field/menu/item-art-41.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[41]	extracted
+field/menu/item-art-42.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[42]	extracted
+field/menu/item-art-43.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[43]	extracted
+field/menu/item-art-44.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[44]	extracted
+field/menu/item-art-45.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[45]	extracted
+field/menu/item-art-46.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[46]	extracted
+field/menu/item-art-47.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[47]	extracted
+field/menu/item-art-48.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[48]	extracted
+field/menu/item-art-49.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[49]	extracted
+field/menu/inventory-icon-0-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-0-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-1-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-1-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-2-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-2-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-3-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-3-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-4-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-4-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-5-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-5-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-6-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-6-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-7-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-7-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-8-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-8-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-9-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-9-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-10-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-10-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-11-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-11-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-12-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-12-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-13-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-13-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-14-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-14-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-15-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-15-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-16-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-16-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-17-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-17-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-18-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-18-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-19-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-19-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-20-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-20-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-21-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-21-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-22-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-22-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-23-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-23-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-24-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-24-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-25-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-25-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-26-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-26-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-27-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-27-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-28-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-28-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-29-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-29-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-30-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-30-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-31-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-31-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-32-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-32-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-33-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-33-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-34-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-34-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-35-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-35-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-36-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-36-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-37-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-37-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-38-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-38-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-39-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-39-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-40-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-40-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-41-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-41-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-42-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-42-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-43-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-43-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-44-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-44-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-45-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-45-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-46-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-46-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-47-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-47-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-48-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-48-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-49-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/inventory-icon-49-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
+field/menu/status-bar-0.bmp	sprite	0	0	64	8	0x11928[0]	extracted
+field/menu/status-bar-1.bmp	sprite	0	0	64	8	0x11928[1]	extracted
+field/menu/status-bar-2.bmp	sprite	0	0	64	8	0x11928[2]	extracted
+field/menu/status-bar-3.bmp	sprite	0	0	64	8	0x11928[3]	extracted
+field/menu/status-bar-4.bmp	sprite	0	0	64	8	0x11928[4]	extracted
+field/menu/damage-bar-0.bmp	sprite	0	0	56	8	0x12F70[0]	extracted
+field/menu/damage-bar-1.bmp	sprite	0	0	56	8	0x12F70[1]	extracted
+field/menu/damage-bar-2.bmp	sprite	0	0	56	8	0x12F70[2]	extracted
+field/menu/damage-bar-3.bmp	sprite	0	0	56	8	0x12F70[3]	extracted
+field/menu/damage-bar-4.bmp	sprite	0	0	56	8	0x12F70[4]	extracted
+field/menu/damage-bar-5.bmp	sprite	0	0	56	8	0x12F70[5]	extracted
+field/menu/damage-bar-6.bmp	sprite	0	0	56	8	0x12F70[6]	extracted
+field/menu/damage-bar-7.bmp	sprite	0	0	56	8	0x12F70[7]	extracted
+field/menu/damage-bar-8.bmp	sprite	0	0	56	8	0x12F70[8]	extracted
+field/menu/damage-bar-9.bmp	sprite	0	0	56	8	0x12F70[9]	extracted
+field/menu/damage-bar-10.bmp	sprite	0	0	56	8	0x12F70[10]	extracted
+field/menu/damage-bar-11.bmp	sprite	0	0	56	8	0x12F70[11]	extracted
+field/menu/damage-bar-12.bmp	sprite	0	0	56	8	0x12F70[12]	extracted
+field/menu/damage-bar-13.bmp	sprite	0	0	56	8	0x12F70[13]	extracted
+field/menu/drain-bar-0.bmp	sprite	0	0	56	8	0x12FA4[0]	extracted
+field/menu/drain-bar-1.bmp	sprite	0	0	56	8	0x12FA4[1]	extracted
+field/menu/drain-bar-2.bmp	sprite	0	0	56	8	0x12FA4[2]	extracted
+field/menu/drain-bar-3.bmp	sprite	0	0	56	8	0x12FA4[3]	extracted
+field/menu/drain-bar-4.bmp	sprite	0	0	56	8	0x12FA4[4]	extracted
+field/menu/drain-bar-5.bmp	sprite	0	0	56	8	0x12FA4[5]	extracted
+field/menu/drain-bar-6.bmp	sprite	0	0	56	8	0x12FA4[6]	extracted
+field/menu/drain-bar-7.bmp	sprite	0	0	56	8	0x12FA4[7]	extracted
+field/menu/drain-bar-8.bmp	sprite	0	0	56	8	0x12FA4[8]	extracted
+field/menu/drain-bar-9.bmp	sprite	0	0	56	8	0x12FA4[9]	extracted
+field/menu/drain-bar-10.bmp	sprite	0	0	56	8	0x12FA4[10]	extracted
+field/menu/drain-bar-11.bmp	sprite	0	0	56	8	0x12FA4[11]	extracted
+field/menu/drain-bar-12.bmp	sprite	0	0	56	8	0x12FA4[12]	extracted
+field/menu/drain-bar-13.bmp	sprite	0	0	56	8	0x12FA4[13]	extracted
+field/menu/detail-value-0.bmp	sprite	0	0	16	8	0x13000[0]	extracted
+field/menu/detail-value-1.bmp	sprite	0	0	16	8	0x13000[1]	extracted
+field/menu/detail-value-2.bmp	sprite	0	0	16	8	0x13000[2]	extracted
+field/menu/detail-value-3.bmp	sprite	0	0	16	8	0x13000[3]	extracted
+field/menu/detail-value-4.bmp	sprite	0	0	16	8	0x13000[4]	extracted
+field/menu/detail-value-5.bmp	sprite	0	0	16	8	0x13000[5]	extracted
+field/menu/detail-value-6.bmp	sprite	0	0	16	8	0x13000[6]	extracted
+field/menu/detail-value-7.bmp	sprite	0	0	16	8	0x13000[7]	extracted
+field/menu/detail-value-8.bmp	sprite	0	0	16	8	0x13000[8]	extracted
+field/menu/detail-value-9.bmp	sprite	0	0	16	8	0x13000[9]	extracted
+field/menu/detail-value-10.bmp	sprite	0	0	16	8	0x13000[10]	extracted
+field/menu/detail-value-11.bmp	sprite	0	0	16	8	0x13000[11]	extracted
+field/menu/detail-value-12.bmp	sprite	0	0	16	8	0x13000[12]	extracted
+field/menu/detail-value-13.bmp	sprite	0	0	16	8	0x13000[13]	extracted
+field/menu/detail-value-14.bmp	sprite	0	0	16	8	0x13000[14]	extracted
+field/menu/detail-value-15.bmp	sprite	0	0	16	8	0x13000[15]	extracted
+field/menu/detail-value-16.bmp	sprite	0	0	16	8	0x13000[16]	extracted
+field/menu/detail-value-17.bmp	sprite	0	0	16	8	0x13000[17]	extracted
+field/menu/detail-value-18.bmp	sprite	0	0	16	8	0x13000[18]	extracted
+field/menu/detail-value-19.bmp	sprite	0	0	16	8	0x13000[19]	extracted
+field/menu/detail-value-20.bmp	sprite	0	0	16	8	0x13000[20]	extracted
+field/menu/detail-value-21.bmp	sprite	0	0	16	8	0x13000[21]	extracted
+field/menu/detail-value-22.bmp	sprite	0	0	16	8	0x13000[22]	extracted
+field/menu/detail-value-23.bmp	sprite	0	0	16	8	0x13000[23]	extracted
+field/menu/detail-value-24.bmp	sprite	0	0	16	8	0x13000[24]	extracted
+field/menu/detail-value-25.bmp	sprite	0	0	16	8	0x13000[25]	extracted
+field/menu/detail-value-26.bmp	sprite	0	0	16	8	0x13000[26]	extracted
+field/menu/detail-value-27.bmp	sprite	0	0	16	8	0x13000[27]	extracted
+field/menu/detail-value-28.bmp	sprite	0	0	16	8	0x13000[28]	extracted
+field/menu/detail-value-29.bmp	sprite	0	0	16	8	0x13000[29]	extracted
+field/menu/detail-value-30.bmp	sprite	0	0	16	8	0x13000[30]	extracted
+field/menu/detail-value-31.bmp	sprite	0	0	16	8	0x13000[31]	extracted
+field/menu/detail-value-32.bmp	sprite	0	0	16	8	0x13000[32]	extracted
+field/menu/detail-value-33.bmp	sprite	0	0	16	8	0x13000[33]	extracted
+field/menu/detail-value-34.bmp	sprite	0	0	16	8	0x13000[34]	extracted
+field/menu/detail-value-35.bmp	sprite	0	0	16	8	0x13000[35]	extracted
+field/menu/detail-value-36.bmp	sprite	0	0	16	8	0x13000[36]	extracted
+field/menu/detail-value-37.bmp	sprite	0	0	16	8	0x13000[37]	extracted
+field/menu/detail-value-38.bmp	sprite	0	0	16	8	0x13000[38]	extracted
+field/menu/detail-value-39.bmp	sprite	0	0	16	8	0x13000[39]	extracted
+field/menu/detail-value-40.bmp	sprite	0	0	16	8	0x13000[40]	extracted
+field/menu/detail-value-41.bmp	sprite	0	0	16	8	0x13000[41]	extracted
+field/menu/detail-value-42.bmp	sprite	0	0	16	8	0x13000[42]	extracted
+field/menu/detail-value-43.bmp	sprite	0	0	16	8	0x13000[43]	extracted
+field/menu/detail-value-44.bmp	sprite	0	0	16	8	0x13000[44]	extracted
+field/menu/detail-value-45.bmp	sprite	0	0	16	8	0x13000[45]	extracted
+field/menu/detail-value-46.bmp	sprite	0	0	16	8	0x13000[46]	extracted
+field/menu/detail-value-47.bmp	sprite	0	0	16	8	0x13000[47]	extracted
+field/menu/detail-value-48.bmp	sprite	0	0	16	8	0x13000[48]	extracted
+field/menu/detail-value-49.bmp	sprite	0	0	16	8	0x13000[49]	extracted
+field/menu/detail-value-50.bmp	sprite	0	0	16	8	0x13000[50]	extracted
+field/menu/detail-value-51.bmp	sprite	0	0	16	8	0x13000[51]	extracted
+field/menu/detail-value-52.bmp	sprite	0	0	16	8	0x13000[52]	extracted
+field/menu/detail-value-53.bmp	sprite	0	0	16	8	0x13000[53]	extracted
+field/menu/detail-value-54.bmp	sprite	0	0	16	8	0x13000[54]	extracted
+field/menu/detail-value-55.bmp	sprite	0	0	16	8	0x13000[55]	extracted
+field/menu/detail-value-56.bmp	sprite	0	0	16	8	0x13000[56]	extracted
+field/menu/detail-value-57.bmp	sprite	0	0	16	8	0x13000[57]	extracted
+field/menu/detail-value-58.bmp	sprite	0	0	16	8	0x13000[58]	extracted
+field/menu/detail-value-59.bmp	sprite	0	0	16	8	0x13000[59]	extracted
+field/menu/detail-value-60.bmp	sprite	0	0	16	8	0x13000[60]	extracted
+field/menu/detail-value-61.bmp	sprite	0	0	16	8	0x13000[61]	extracted
+field/menu/detail-value-62.bmp	sprite	0	0	16	8	0x13000[62]	extracted
+field/menu/detail-value-63.bmp	sprite	0	0	16	8	0x13000[63]	extracted
+field/menu/detail-value-64.bmp	sprite	0	0	16	8	0x13000[64]	extracted
+field/menu/detail-value-65.bmp	sprite	0	0	16	8	0x13000[65]	extracted
+field/menu/detail-value-66.bmp	sprite	0	0	16	8	0x13000[66]	extracted
+field/menu/detail-value-67.bmp	sprite	0	0	16	8	0x13000[67]	extracted
+field/menu/detail-value-68.bmp	sprite	0	0	16	8	0x13000[68]	extracted
+field/menu/detail-value-69.bmp	sprite	0	0	16	8	0x13000[69]	extracted
+field/menu/detail-value-70.bmp	sprite	0	0	16	8	0x13000[70]	extracted
+field/menu/detail-value-71.bmp	sprite	0	0	16	8	0x13000[71]	extracted
+field/menu/detail-value-72.bmp	sprite	0	0	16	8	0x13000[72]	extracted
+field/menu/detail-value-73.bmp	sprite	0	0	16	8	0x13000[73]	extracted
+field/menu/detail-value-74.bmp	sprite	0	0	16	8	0x13000[74]	extracted
+field/menu/detail-value-75.bmp	sprite	0	0	16	8	0x13000[75]	extracted
+field/menu/detail-value-76.bmp	sprite	0	0	16	8	0x13000[76]	extracted
+field/menu/detail-value-77.bmp	sprite	0	0	16	8	0x13000[77]	extracted
+field/menu/detail-value-78.bmp	sprite	0	0	16	8	0x13000[78]	extracted
+field/menu/detail-value-79.bmp	sprite	0	0	16	8	0x13000[79]	extracted
+field/menu/detail-value-80.bmp	sprite	0	0	16	8	0x13000[80]	extracted
+field/menu/detail-value-81.bmp	sprite	0	0	16	8	0x13000[81]	extracted
+field/menu/detail-value-82.bmp	sprite	0	0	16	8	0x13000[82]	extracted
+field/menu/detail-value-83.bmp	sprite	0	0	16	8	0x13000[83]	extracted
+field/menu/detail-value-84.bmp	sprite	0	0	16	8	0x13000[84]	extracted
+field/menu/detail-value-85.bmp	sprite	0	0	16	8	0x13000[85]	extracted
+field/menu/detail-value-86.bmp	sprite	0	0	16	8	0x13000[86]	extracted
+field/menu/detail-value-87.bmp	sprite	0	0	16	8	0x13000[87]	extracted
+field/menu/detail-value-88.bmp	sprite	0	0	16	8	0x13000[88]	extracted
+field/menu/detail-value-89.bmp	sprite	0	0	16	8	0x13000[89]	extracted
+field/menu/detail-value-90.bmp	sprite	0	0	16	8	0x13000[90]	extracted
+field/menu/detail-value-91.bmp	sprite	0	0	16	8	0x13000[91]	extracted
+field/menu/detail-value-92.bmp	sprite	0	0	16	8	0x13000[92]	extracted
+field/menu/detail-value-93.bmp	sprite	0	0	16	8	0x13000[93]	extracted
+field/menu/detail-value-94.bmp	sprite	0	0	16	8	0x13000[94]	extracted
+field/menu/detail-value-95.bmp	sprite	0	0	16	8	0x13000[95]	extracted
+field/menu/detail-value-96.bmp	sprite	0	0	16	8	0x13000[96]	extracted
+field/menu/detail-value-97.bmp	sprite	0	0	16	8	0x13000[97]	extracted
+field/menu/detail-value-98.bmp	sprite	0	0	16	8	0x13000[98]	extracted
+field/menu/detail-value-99.bmp	sprite	0	0	16	8	0x13000[99]	extracted
+field/menu/detail-value-100.bmp	sprite	0	0	16	8	0x13000[100]	extracted
+field/menu/detail-value-101.bmp	sprite	0	0	16	8	0x13000[101]	extracted
+field/menu/detail-value-102.bmp	sprite	0	0	16	8	0x13000[102]	extracted
+field/menu/detail-value-103.bmp	sprite	0	0	16	8	0x13000[103]	extracted
+field/menu/detail-value-104.bmp	sprite	0	0	16	8	0x13000[104]	extracted
+field/menu/detail-value-105.bmp	sprite	0	0	16	8	0x13000[105]	extracted
+field/menu/detail-value-106.bmp	sprite	0	0	16	8	0x13000[106]	extracted
+field/menu/detail-value-107.bmp	sprite	0	0	16	8	0x13000[107]	extracted
+field/menu/detail-value-108.bmp	sprite	0	0	16	8	0x13000[108]	extracted
+field/menu/detail-value-109.bmp	sprite	0	0	16	8	0x13000[109]	extracted
+field/menu/detail-value-110.bmp	sprite	0	0	16	8	0x13000[110]	extracted
+field/menu/detail-value-111.bmp	sprite	0	0	16	8	0x13000[111]	extracted
+field/menu/detail-value-112.bmp	sprite	0	0	16	8	0x13000[112]	extracted
+field/menu/detail-value-113.bmp	sprite	0	0	16	8	0x13000[113]	extracted
+field/menu/detail-value-114.bmp	sprite	0	0	16	8	0x13000[114]	extracted
+field/menu/detail-value-115.bmp	sprite	0	0	16	8	0x13000[115]	extracted
+field/menu/detail-value-116.bmp	sprite	0	0	16	8	0x13000[116]	extracted
+field/menu/detail-value-117.bmp	sprite	0	0	16	8	0x13000[117]	extracted
+field/menu/detail-value-118.bmp	sprite	0	0	16	8	0x13000[118]	extracted
+field/menu/detail-value-119.bmp	sprite	0	0	16	8	0x13000[119]	extracted
+field/menu/detail-value-120.bmp	sprite	0	0	16	8	0x13000[120]	extracted
+field/menu/detail-value-121.bmp	sprite	0	0	16	8	0x13000[121]	extracted
+field/menu/detail-value-122.bmp	sprite	0	0	16	8	0x13000[122]	extracted
+field/menu/detail-value-123.bmp	sprite	0	0	16	8	0x13000[123]	extracted
+field/menu/detail-value-124.bmp	sprite	0	0	16	8	0x13000[124]	extracted
+field/menu/detail-value-125.bmp	sprite	0	0	16	8	0x13000[125]	extracted
+field/menu/detail-value-126.bmp	sprite	0	0	16	8	0x13000[126]	extracted
+field/menu/detail-value-127.bmp	sprite	0	0	16	8	0x13000[127]	extracted
+field/menu/detail-value-128.bmp	sprite	0	0	16	8	0x13000[128]	extracted
+field/menu/detail-value-129.bmp	sprite	0	0	16	8	0x13000[129]	extracted
+field/menu/detail-value-130.bmp	sprite	0	0	16	8	0x13000[130]	extracted
+field/menu/detail-value-131.bmp	sprite	0	0	16	8	0x13000[131]	extracted
+field/menu/detail-value-132.bmp	sprite	0	0	16	8	0x13000[132]	extracted
+field/menu/detail-value-133.bmp	sprite	0	0	16	8	0x13000[133]	extracted
+field/menu/detail-value-134.bmp	sprite	0	0	16	8	0x13000[134]	extracted
+field/menu/detail-value-135.bmp	sprite	0	0	16	8	0x13000[135]	extracted
+field/menu/detail-value-136.bmp	sprite	0	0	16	8	0x13000[136]	extracted
+field/menu/detail-value-137.bmp	sprite	0	0	16	8	0x13000[137]	extracted
+field/menu/detail-value-138.bmp	sprite	0	0	16	8	0x13000[138]	extracted
+field/menu/detail-value-139.bmp	sprite	0	0	16	8	0x13000[139]	extracted
+field/menu/detail-value-140.bmp	sprite	0	0	16	8	0x13000[140]	extracted
+field/menu/detail-value-141.bmp	sprite	0	0	16	8	0x13000[141]	extracted
+field/menu/detail-value-142.bmp	sprite	0	0	16	8	0x13000[142]	extracted
+field/menu/detail-value-143.bmp	sprite	0	0	16	8	0x13000[143]	extracted
+field/menu/detail-value-144.bmp	sprite	0	0	16	8	0x13000[144]	extracted
+field/menu/detail-value-145.bmp	sprite	0	0	16	8	0x13000[145]	extracted
+field/menu/detail-value-146.bmp	sprite	0	0	16	8	0x13000[146]	extracted
+field/menu/detail-value-147.bmp	sprite	0	0	16	8	0x13000[147]	extracted
+field/menu/detail-value-148.bmp	sprite	0	0	16	8	0x13000[148]	extracted
+field/menu/detail-value-149.bmp	sprite	0	0	16	8	0x13000[149]	extracted
+field/menu/detail-value-150.bmp	sprite	0	0	16	8	0x13000[150]	extracted
+field/menu/detail-value-151.bmp	sprite	0	0	16	8	0x13000[151]	extracted
+field/menu/detail-value-152.bmp	sprite	0	0	16	8	0x13000[152]	extracted
+field/menu/detail-value-153.bmp	sprite	0	0	16	8	0x13000[153]	extracted
+field/menu/detail-value-154.bmp	sprite	0	0	16	8	0x13000[154]	extracted
+field/menu/detail-value-155.bmp	sprite	0	0	16	8	0x13000[155]	extracted
+field/menu/detail-value-156.bmp	sprite	0	0	16	8	0x13000[156]	extracted
+field/menu/detail-value-157.bmp	sprite	0	0	16	8	0x13000[157]	extracted
+field/menu/detail-value-158.bmp	sprite	0	0	16	8	0x13000[158]	extracted
+field/menu/detail-value-159.bmp	sprite	0	0	16	8	0x13000[159]	extracted
+field/menu/detail-value-160.bmp	sprite	0	0	16	8	0x13000[160]	extracted
+field/menu/detail-value-161.bmp	sprite	0	0	16	8	0x13000[161]	extracted
+field/menu/detail-value-162.bmp	sprite	0	0	16	8	0x13000[162]	extracted
+field/menu/detail-value-163.bmp	sprite	0	0	16	8	0x13000[163]	extracted
+field/menu/detail-value-164.bmp	sprite	0	0	16	8	0x13000[164]	extracted
+field/menu/detail-value-165.bmp	sprite	0	0	16	8	0x13000[165]	extracted
+field/menu/detail-value-166.bmp	sprite	0	0	16	8	0x13000[166]	extracted
+field/menu/detail-value-167.bmp	sprite	0	0	16	8	0x13000[167]	extracted
+field/menu/detail-value-168.bmp	sprite	0	0	16	8	0x13000[168]	extracted
+field/menu/detail-value-169.bmp	sprite	0	0	16	8	0x13000[169]	extracted
+field/menu/detail-value-170.bmp	sprite	0	0	16	8	0x13000[170]	extracted
+field/menu/detail-value-171.bmp	sprite	0	0	16	8	0x13000[171]	extracted
+field/menu/detail-value-172.bmp	sprite	0	0	16	8	0x13000[172]	extracted
+field/menu/detail-value-173.bmp	sprite	0	0	16	8	0x13000[173]	extracted
+field/menu/detail-value-174.bmp	sprite	0	0	16	8	0x13000[174]	extracted
+field/menu/detail-value-175.bmp	sprite	0	0	16	8	0x13000[175]	extracted
+field/menu/detail-value-176.bmp	sprite	0	0	16	8	0x13000[176]	extracted
+field/menu/detail-value-177.bmp	sprite	0	0	16	8	0x13000[177]	extracted
+field/menu/detail-value-178.bmp	sprite	0	0	16	8	0x13000[178]	extracted
+field/menu/detail-value-179.bmp	sprite	0	0	16	8	0x13000[179]	extracted
+field/menu/detail-value-180.bmp	sprite	0	0	16	8	0x13000[180]	extracted
+field/menu/detail-value-181.bmp	sprite	0	0	16	8	0x13000[181]	extracted
+field/menu/detail-value-182.bmp	sprite	0	0	16	8	0x13000[182]	extracted
+field/menu/detail-value-183.bmp	sprite	0	0	16	8	0x13000[183]	extracted
+field/menu/detail-value-184.bmp	sprite	0	0	16	8	0x13000[184]	extracted
+field/menu/detail-value-185.bmp	sprite	0	0	16	8	0x13000[185]	extracted
+field/menu/detail-value-186.bmp	sprite	0	0	16	8	0x13000[186]	extracted
+field/menu/detail-value-187.bmp	sprite	0	0	16	8	0x13000[187]	extracted
+field/menu/detail-value-188.bmp	sprite	0	0	16	8	0x13000[188]	extracted
+field/menu/detail-value-189.bmp	sprite	0	0	16	8	0x13000[189]	extracted
+field/menu/detail-value-190.bmp	sprite	0	0	16	8	0x13000[190]	extracted
+field/menu/detail-value-191.bmp	sprite	0	0	16	8	0x13000[191]	extracted
+field/menu/detail-value-192.bmp	sprite	0	0	16	8	0x13000[192]	extracted
+field/menu/detail-value-193.bmp	sprite	0	0	16	8	0x13000[193]	extracted
+field/menu/detail-value-194.bmp	sprite	0	0	16	8	0x13000[194]	extracted
+field/menu/detail-value-195.bmp	sprite	0	0	16	8	0x13000[195]	extracted
+field/menu/detail-value-196.bmp	sprite	0	0	16	8	0x13000[196]	extracted
+field/menu/detail-value-197.bmp	sprite	0	0	16	8	0x13000[197]	extracted
+field/menu/detail-value-198.bmp	sprite	0	0	16	8	0x13000[198]	extracted
+field/menu/detail-value-199.bmp	sprite	0	0	16	8	0x13000[199]	extracted
+field/menu/detail-value-200.bmp	sprite	0	0	16	8	0x13000[200]	extracted
+field/menu/detail-value-201.bmp	sprite	0	0	16	8	0x13000[201]	extracted
+field/menu/detail-value-202.bmp	sprite	0	0	16	8	0x13000[202]	extracted
+field/menu/detail-value-203.bmp	sprite	0	0	16	8	0x13000[203]	extracted
+field/menu/detail-value-204.bmp	sprite	0	0	16	8	0x13000[204]	extracted
+field/menu/detail-value-205.bmp	sprite	0	0	16	8	0x13000[205]	extracted
+field/menu/detail-value-206.bmp	sprite	0	0	16	8	0x13000[206]	extracted
+field/menu/detail-value-207.bmp	sprite	0	0	16	8	0x13000[207]	extracted
+field/menu/detail-value-208.bmp	sprite	0	0	16	8	0x13000[208]	extracted
+field/menu/detail-value-209.bmp	sprite	0	0	16	8	0x13000[209]	extracted
+field/menu/detail-value-210.bmp	sprite	0	0	16	8	0x13000[210]	extracted
+field/menu/detail-value-211.bmp	sprite	0	0	16	8	0x13000[211]	extracted
+field/menu/detail-value-212.bmp	sprite	0	0	16	8	0x13000[212]	extracted
+field/menu/detail-value-213.bmp	sprite	0	0	16	8	0x13000[213]	extracted
+field/menu/detail-value-214.bmp	sprite	0	0	16	8	0x13000[214]	extracted
+field/menu/detail-value-215.bmp	sprite	0	0	16	8	0x13000[215]	extracted
+field/menu/detail-value-216.bmp	sprite	0	0	16	8	0x13000[216]	extracted
+field/menu/detail-value-217.bmp	sprite	0	0	16	8	0x13000[217]	extracted
+field/menu/detail-value-218.bmp	sprite	0	0	16	8	0x13000[218]	extracted
+field/menu/detail-value-219.bmp	sprite	0	0	16	8	0x13000[219]	extracted
+field/menu/detail-value-220.bmp	sprite	0	0	16	8	0x13000[220]	extracted
+field/menu/detail-value-221.bmp	sprite	0	0	16	8	0x13000[221]	extracted
+field/menu/detail-value-222.bmp	sprite	0	0	16	8	0x13000[222]	extracted
+field/menu/detail-value-223.bmp	sprite	0	0	16	8	0x13000[223]	extracted
+field/menu/detail-value-224.bmp	sprite	0	0	16	8	0x13000[224]	extracted
+field/menu/detail-value-225.bmp	sprite	0	0	16	8	0x13000[225]	extracted
+field/menu/detail-value-226.bmp	sprite	0	0	16	8	0x13000[226]	extracted
+field/menu/detail-value-227.bmp	sprite	0	0	16	8	0x13000[227]	extracted
+field/menu/detail-value-228.bmp	sprite	0	0	16	8	0x13000[228]	extracted
+field/menu/detail-value-229.bmp	sprite	0	0	16	8	0x13000[229]	extracted
+field/menu/detail-value-230.bmp	sprite	0	0	16	8	0x13000[230]	extracted
+field/menu/detail-value-231.bmp	sprite	0	0	16	8	0x13000[231]	extracted
+field/menu/detail-value-232.bmp	sprite	0	0	16	8	0x13000[232]	extracted
+field/menu/detail-value-233.bmp	sprite	0	0	16	8	0x13000[233]	extracted
+field/menu/detail-value-234.bmp	sprite	0	0	16	8	0x13000[234]	extracted
+field/menu/detail-value-235.bmp	sprite	0	0	16	8	0x13000[235]	extracted
+field/menu/detail-value-236.bmp	sprite	0	0	16	8	0x13000[236]	extracted
+field/menu/detail-value-237.bmp	sprite	0	0	16	8	0x13000[237]	extracted
+field/menu/detail-value-238.bmp	sprite	0	0	16	8	0x13000[238]	extracted
+field/menu/detail-value-239.bmp	sprite	0	0	16	8	0x13000[239]	extracted
+field/menu/detail-value-240.bmp	sprite	0	0	16	8	0x13000[240]	extracted
+field/menu/detail-value-241.bmp	sprite	0	0	16	8	0x13000[241]	extracted
+field/menu/detail-value-242.bmp	sprite	0	0	16	8	0x13000[242]	extracted
+field/menu/detail-value-243.bmp	sprite	0	0	16	8	0x13000[243]	extracted
+field/menu/detail-value-244.bmp	sprite	0	0	16	8	0x13000[244]	extracted
+field/menu/detail-value-245.bmp	sprite	0	0	16	8	0x13000[245]	extracted
+field/menu/detail-value-246.bmp	sprite	0	0	16	8	0x13000[246]	extracted
+field/menu/detail-value-247.bmp	sprite	0	0	16	8	0x13000[247]	extracted
+field/menu/detail-value-248.bmp	sprite	0	0	16	8	0x13000[248]	extracted
+field/menu/detail-value-249.bmp	sprite	0	0	16	8	0x13000[249]	extracted
+field/menu/detail-value-250.bmp	sprite	0	0	16	8	0x13000[250]	extracted
+field/menu/detail-value-251.bmp	sprite	0	0	16	8	0x13000[251]	extracted
+field/menu/detail-value-252.bmp	sprite	0	0	16	8	0x13000[252]	extracted
+field/menu/detail-value-253.bmp	sprite	0	0	16	8	0x13000[253]	extracted
+field/menu/detail-value-254.bmp	sprite	0	0	16	8	0x13000[254]	extracted
+field/menu/detail-value-255.bmp	sprite	0	0	16	8	0x13000[255]	extracted
+field/menu/attack-bar-0.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[0]	extracted
+field/menu/attack-bar-1.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[1]	extracted
+field/menu/attack-bar-2.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[2]	extracted
+field/menu/attack-bar-3.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[3]	extracted
+field/menu/attack-bar-4.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[4]	extracted
+field/menu/attack-bar-5.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[5]	extracted
+field/menu/attack-bar-6.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[6]	extracted
+field/menu/attack-bar-7.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[7]	extracted
+field/menu/attack-bar-8.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[8]	extracted
+field/menu/attack-bar-9.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[9]	extracted
+field/menu/attack-bar-10.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[10]	extracted
+field/menu/attack-bar-11.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[11]	extracted
+field/menu/attack-bar-12.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[12]	extracted
+field/menu/attack-bar-13.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[13]	extracted
+field/menu/attack-bar-14.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[14]	extracted
+field/menu/attack-bar-15.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[15]	extracted
+field/menu/attack-bar-16.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[16]	extracted
+field/menu/attack-bar-17.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[17]	extracted
+field/menu/attack-bar-18.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[18]	extracted
+field/menu/attack-bar-19.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[19]	extracted
+field/menu/attack-bar-20.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[20]	extracted
+field/menu/attack-bar-21.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[21]	extracted
+field/menu/attack-bar-22.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[22]	extracted
+field/menu/defense-bar-0.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[0]	extracted
+field/menu/defense-bar-1.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[1]	extracted
+field/menu/defense-bar-2.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[2]	extracted
+field/menu/defense-bar-3.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[3]	extracted
+field/menu/defense-bar-4.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[4]	extracted
+field/menu/defense-bar-5.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[5]	extracted
+field/menu/defense-bar-6.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[6]	extracted
+field/menu/defense-bar-7.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[7]	extracted
+field/menu/defense-bar-8.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[8]	extracted
+field/menu/defense-bar-9.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[9]	extracted
+field/menu/defense-bar-10.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[10]	extracted
+field/menu/defense-bar-11.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[11]	extracted
+field/menu/defense-bar-12.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[12]	extracted
+field/menu/defense-bar-13.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[13]	extracted
+field/menu/defense-bar-14.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[14]	extracted
+field/menu/defense-bar-15.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[15]	extracted
+field/menu/defense-bar-16.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[16]	extracted
+field/menu/defense-bar-17.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[17]	extracted
+field/menu/defense-bar-18.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[18]	extracted
+field/menu/defense-bar-19.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[19]	extracted
+field/menu/defense-bar-20.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[20]	extracted
+field/menu/defense-bar-21.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[21]	extracted
+field/menu/defense-bar-22.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[22]	extracted
+field/map/mode-2.bmp	background	0	0	1920	1344	mode resource catalog	extracted
+field/map/mode-13.bmp	background	0	0	320	224	mode resource catalog	extracted
+field/map/mode-20.bmp	background	0	0	1600	960	mode resource catalog	extracted
+field/map/mode-19.bmp	background	0	0	320	224	mode resource catalog	extracted
+field/map/mode-26.bmp	background	0	0	1504	960	mode resource catalog	extracted
+field/map/mode-50.bmp	background	0	0	896	1248	mode resource catalog	extracted
+field/map/mode-51.bmp	background	0	0	1056	1248	mode resource catalog	extracted
+field/map/mode-52.bmp	background	0	0	960	768	mode resource catalog	extracted
+field/entities/idle-0.bmp	sprite	0	0	24	31	0x5A62/0x5FDC	extracted
+field/entities/idle-gray-0.bmp	sprite	0	0	24	31	baked grayscale	extracted
+field/entities/idle-1.bmp	sprite	0	0	22	30	0x5A62/0x5FDC	extracted
+field/entities/idle-gray-1.bmp	sprite	0	0	22	30	baked grayscale	extracted
+field/entities/idle-2.bmp	sprite	0	2	15	30	0x5A62/0x5FDC	extracted
+field/entities/idle-gray-2.bmp	sprite	0	2	15	30	baked grayscale	extracted
+field/entities/idle-3.bmp	sprite	0	0	19	31	0x5A62/0x5FDC	extracted
+field/entities/idle-gray-3.bmp	sprite	0	0	19	31	baked grayscale	extracted
+field/entities/idle-4.bmp	sprite	0	0	27	30	0x5A62/0x5FDC	extracted
+field/entities/idle-gray-4.bmp	sprite	0	0	27	30	baked grayscale	extracted
+field/entities/idle-5.bmp	sprite	0	0	19	31	0x5A62/0x5FDC	extracted
+field/entities/idle-gray-5.bmp	sprite	0	0	19	31	baked grayscale	extracted
+field/entities/idle-6.bmp	sprite	0	2	15	30	0x5A62/0x5FDC	extracted
+field/entities/idle-gray-6.bmp	sprite	0	2	15	30	baked grayscale	extracted
+field/entities/idle-7.bmp	sprite	0	0	22	30	0x5A62/0x5FDC	extracted
+field/entities/idle-gray-7.bmp	sprite	0	0	22	30	baked grayscale	extracted
+field/entities/walk-0-0.bmp	sprite	0	4	21	27	0x5A62/0x5FDC	extracted
+field/entities/walk-0-1.bmp	sprite	0	1	22	29	0x5A62/0x5FDC	extracted
+field/entities/walk-gray-0-0.bmp	sprite	0	4	21	27	baked grayscale	extracted
+field/entities/walk-gray-0-1.bmp	sprite	0	1	22	29	baked grayscale	extracted
+field/entities/walk-1-0.bmp	sprite	0	2	23	29	0x5A62/0x5FDC	extracted
+field/entities/walk-1-1.bmp	sprite	0	0	22	32	0x5A62/0x5FDC	extracted
+field/entities/walk-gray-1-0.bmp	sprite	0	2	23	29	baked grayscale	extracted
+field/entities/walk-gray-1-1.bmp	sprite	0	0	22	32	baked grayscale	extracted
+field/entities/walk-2-0.bmp	sprite	0	1	16	30	0x5A62/0x5FDC	extracted
+field/entities/walk-2-1.bmp	sprite	0	0	19	31	0x5A62/0x5FDC	extracted
+field/entities/walk-gray-2-0.bmp	sprite	0	1	16	30	baked grayscale	extracted
+field/entities/walk-gray-2-1.bmp	sprite	0	0	19	31	baked grayscale	extracted
+field/entities/walk-3-0.bmp	sprite	0	1	19	31	0x5A62/0x5FDC	extracted
+field/entities/walk-3-1.bmp	sprite	0	2	21	30	0x5A62/0x5FDC	extracted
+field/entities/walk-gray-3-0.bmp	sprite	0	1	19	31	baked grayscale	extracted
+field/entities/walk-gray-3-1.bmp	sprite	0	2	21	30	baked grayscale	extracted
+field/entities/walk-4-0.bmp	sprite	0	1	24	30	0x5A62/0x5FDC	extracted
+field/entities/walk-4-1.bmp	sprite	0	1	24	30	0x5A62/0x5FDC	extracted
+field/entities/walk-gray-4-0.bmp	sprite	0	1	24	30	baked grayscale	extracted
+field/entities/walk-gray-4-1.bmp	sprite	0	1	24	30	baked grayscale	extracted
+field/entities/walk-5-0.bmp	sprite	0	1	19	31	0x5A62/0x5FDC	extracted
+field/entities/walk-5-1.bmp	sprite	0	2	21	30	0x5A62/0x5FDC	extracted
+field/entities/walk-gray-5-0.bmp	sprite	0	1	19	31	baked grayscale	extracted
+field/entities/walk-gray-5-1.bmp	sprite	0	2	21	30	baked grayscale	extracted
+field/entities/walk-6-0.bmp	sprite	0	1	16	30	0x5A62/0x5FDC	extracted
+field/entities/walk-6-1.bmp	sprite	0	0	19	31	0x5A62/0x5FDC	extracted
+field/entities/walk-gray-6-0.bmp	sprite	0	1	16	30	baked grayscale	extracted
+field/entities/walk-gray-6-1.bmp	sprite	0	0	19	31	baked grayscale	extracted
+field/entities/walk-7-0.bmp	sprite	0	2	23	29	0x5A62/0x5FDC	extracted
+field/entities/walk-7-1.bmp	sprite	0	0	22	32	0x5A62/0x5FDC	extracted
+field/entities/walk-gray-7-0.bmp	sprite	0	2	23	29	baked grayscale	extracted
+field/entities/walk-gray-7-1.bmp	sprite	0	0	22	32	baked grayscale	extracted

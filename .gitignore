@@ -17,6 +17,12 @@
 !/decompilation/assets/title/**/*.bmp
 !/decompilation/assets/boot/
 !/decompilation/assets/boot/**/*.bmp
+!/decompilation/assets/startup/
+!/decompilation/assets/startup/**/*.bmp
+!/decompilation/assets/intro/
+!/decompilation/assets/intro/**/*.bmp
+!/decompilation/assets/field/
+!/decompilation/assets/field/**/*.bmp
 !/decompilation/assets/manifest.tsv
 
 # Local screenshot and raw listing diagnostics are disposable analysis output,

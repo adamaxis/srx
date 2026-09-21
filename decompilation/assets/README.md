@@ -8,9 +8,11 @@ The native runtime consumes these artifacts and never opens the ROM.
 | `title/` | Precolored title background, logo, text, circuit, and sprite assets |
 | `boot/` | Precolored boot snow, SEGA, lightning, strobe, guy, and FASA assets |
 | `startup/` | Intro, save/load, no-save, and archetype screens |
-| `game/field/` | Field/map layers, entities, HUD, and movement visuals |
-| `game/menu/` | Field command menu, cursor, boxes, and status UI |
-| `game/items/` | Item art, inventory cells, and item-detail values |
+| `field/map/` | Field map backgrounds for every decoded area |
+| `field/entities/` | Field entity idle, walking, and grayscale sprites |
+| `field/hud/` | Field HUD background, portraits, items, and counters |
+| `field/menu/` | Field command menu, cursor, boxes, and status UI |
+| `intro/` | Opening-stage backgrounds, vehicles, actors, projectiles, and patches |
 | `matrix/menu/` | Matrix-specific screens and menu resources |
 | `audio/` | Host-ready music and sound resources |
 | `native/` | Legacy aggregate pack for screens not yet migrated to directory assets |
@@ -30,3 +32,18 @@ the ROM-derived phase cadence. Generate them explicitly, once, with:
 ```
 
 These files are not screenshots and do not require a runtime Genesis palette.
+
+The complete graphics import is a separate explicit step. It writes every
+currently decoded background, sprite, animation frame, map, HUD layer, and menu
+resource to individual precolored files and records its kind, dimensions, ROM
+provenance, and extraction status in `catalog.tsv`:
+
+```powershell
+cmake --build .\build-debug --target shadowrun_all_assets
+```
+
+The opening export uses one static background per stage, individual SAT sprite
+lists, and individual ambush map patches. It does not export the native
+runtime's sampled full-screen ambush compositions. Fully transparent
+state-specific resources remain as transparent BMPs and are marked
+`extracted-empty`; `missing` is reserved for a decoder coverage failure.

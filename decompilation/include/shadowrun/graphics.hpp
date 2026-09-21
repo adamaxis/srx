@@ -23,6 +23,19 @@ struct RgbaImage {
     std::vector<native::Rgba8> pixels;
 };
 
+// A source sprite/map resource extracted from a ROM pointer table. The
+// renderer-facing image is precolored RGBA; the table and pointer metadata
+// remain in the catalog so a duplicate-looking resource is still auditable
+// against the ROM source that selected it.
+struct GenesisGraphicsResource {
+    std::string role;
+    std::size_t table_offset = 0;
+    std::size_t table_index = 0;
+    std::size_t source_offset = 0;
+    std::uint16_t attr_or = 0;
+    RgbaImage image;
+};
+
 // The three coordinate pairs at mode-record offsets +0x42..+0x4C are copied
 // by ROM 0x2B34 into the first three 0x100-byte field records. Their final
 // high-level identities are not assumed here; they are retained as the
@@ -478,6 +491,24 @@ RgbaImage decode_genesis_boot_fasa(const std::vector<std::uint8_t>& rom);
 // where their source timing requires them.
 std::array<RgbaImage, native::kNativeIntroStageCount>
 decode_genesis_intro_stages(const std::vector<std::uint8_t>& rom);
+// Static plane backgrounds for the four 0x59C5E opening stages. Dynamic actor,
+// projectile, and map-hit layers are intentionally excluded from these
+// plates and are exposed as individual resources below.
+std::array<RgbaImage, native::kNativeIntroStageCount>
+decode_genesis_intro_backgrounds(const std::vector<std::uint8_t>& rom);
+
+// Every SAT list selected by the 0x5Axxx ambush update tables, rendered as an
+// independent transparent sprite resource. The source table metadata is
+// retained so extraction does not turn animation into sampled screenshots.
+std::vector<GenesisGraphicsResource>
+decode_genesis_intro_sprite_resources(
+    const std::vector<std::uint8_t>& rom);
+
+// The four 0x1728 map patches used by the ambush hit/death sequence, kept as
+// transparent background overlays rather than baked into full-screen frames.
+std::vector<GenesisGraphicsResource>
+decode_genesis_intro_ambush_background_resources(
+    const std::vector<std::uint8_t>& rom);
 
 // ROM 0x5A1EA's wilderness animation calls the eight 0x1378 sprite update
 // routines and 0x5A0B2's four 0x1728 map patches. The returned samples are

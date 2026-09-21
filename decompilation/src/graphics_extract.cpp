@@ -3,7 +3,9 @@
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -243,6 +245,272 @@ void extract_title_boot_assets(const std::vector<std::uint8_t>& rom,
     write_scene_asset(root, "boot/fasa.bmp",
                       shadowrun::graphics::decode_genesis_boot_fasa(rom),
                       manifest, true);
+}
+
+shadowrun::graphics::RgbaImage to_rgba_image(
+    const shadowrun::native::NativeImage& source) {
+    return {source.width, source.height, source.pixels};
+}
+
+std::string format_resource_source(
+    const shadowrun::graphics::GenesisGraphicsResource& resource) {
+    std::ostringstream output;
+    output << "table=0x" << std::hex << resource.table_offset << " index="
+           << std::dec << resource.table_index << " source=0x" << std::hex
+           << resource.source_offset << " attr=0x" << resource.attr_or;
+    return output.str();
+}
+
+void write_catalog_asset(const std::filesystem::path& root,
+                         const std::string& relative_name,
+                         const shadowrun::graphics::RgbaImage& image,
+                         const std::string& kind,
+                         const std::string& provenance, bool crop,
+                         std::ofstream& manifest, std::size_t& written,
+                         std::size_t& missing, std::size_t& blank) {
+    if (image.width == 0U || image.height == 0U || image.pixels.empty()) {
+        ++missing;
+        manifest << relative_name << '\t' << kind
+                 << "\t0\t0\t0\t0\t" << provenance << "\tmissing\n";
+        return;
+    }
+    auto status = "extracted";
+    CroppedAsset asset;
+    if (crop) {
+        try {
+            asset = crop_transparent_bounds(image);
+        } catch (const std::runtime_error& error) {
+            if (std::string(error.what()) != "asset contains no opaque pixels") {
+                throw;
+            }
+            // A state-specific source can legitimately be fully transparent
+            // (for example, an empty initial HUD counter). Preserve it as an
+            // individual transparent sprite instead of silently dropping the
+            // resource or treating it as a decoder failure.
+            asset = CroppedAsset{image, 0, 0};
+            status = "extracted-empty";
+            ++blank;
+        }
+    } else {
+        asset = CroppedAsset{image, 0, 0};
+    }
+    const auto path = root / relative_name;
+    std::filesystem::create_directories(path.parent_path());
+    shadowrun::graphics::write_bmp32(path.string(), asset.image);
+    manifest << relative_name << '\t' << kind << '\t' << asset.origin_x
+             << '\t' << asset.origin_y << '\t' << asset.image.width << '\t'
+             << asset.image.height << '\t' << provenance << '\t' << status
+             << '\n';
+    ++written;
+}
+
+void append_title_boot_catalog(const std::filesystem::path& root,
+                               std::ofstream& manifest) {
+    std::ifstream source(root / "manifest.tsv", std::ios::binary);
+    if (!source) {
+        throw std::runtime_error("title/boot manifest was not generated");
+    }
+    std::string line;
+    std::getline(source, line);
+    while (std::getline(source, line)) {
+        if (line.empty()) {
+            continue;
+        }
+        const auto kind = line.find("background.bmp") != std::string::npos ||
+                line.find("snow.bmp") != std::string::npos
+            ? "background"
+            : "sprite";
+        manifest << line.substr(0, line.find('\t')) << '\t' << kind
+                 << '\t' << line.substr(line.find('\t') + 1)
+                 << '\t' << "ROM title/boot resource\textracted\n";
+    }
+}
+
+void extract_all_assets(const std::vector<std::uint8_t>& rom,
+                        const std::filesystem::path& root) {
+    std::filesystem::create_directories(root);
+    extract_title_boot_assets(rom, root);
+
+    std::ofstream manifest(root / "catalog.tsv", std::ios::binary);
+    if (!manifest) {
+        throw std::runtime_error("cannot create all-resource catalog");
+    }
+    manifest << "asset\tkind\tx\ty\twidth\theight\tsource\tstatus\n";
+    append_title_boot_catalog(root, manifest);
+    std::size_t written = 0;
+    std::size_t missing = 0;
+    std::size_t blank = 0;
+    const auto assets = shadowrun::graphics::decode_genesis_native_assets(rom);
+    const auto write = [&](const std::string& name,
+                           const shadowrun::native::NativeImage& image,
+                           const std::string& kind,
+                           const std::string& source, bool crop) {
+        write_catalog_asset(root, name, to_rgba_image(image), kind, source,
+                            crop, manifest, written, missing, blank);
+    };
+    const auto write_frame = [&](const std::string& name,
+                                 const shadowrun::native::NativeEntityFrame& frame,
+                                 const std::string& kind,
+                                 const std::string& source, bool crop) {
+        write(name,
+              shadowrun::native::NativeImage{frame.width, frame.height,
+                                             frame.pixels},
+              kind, source, crop);
+    };
+    const auto write_array = [&](const std::string& prefix,
+                                 const auto& images, const std::string& kind,
+                                 const std::string& source, bool crop) {
+        for (std::size_t index = 0; index < images.size(); ++index) {
+            write(prefix + std::to_string(index) + ".bmp", images[index], kind,
+                  source + "[" + std::to_string(index) + "]", crop);
+        }
+    };
+
+    // Startup and opening source layers.
+    write("startup/background.bmp", assets.startup_background, "background",
+          "0x10B5A/0xCDCE6", false);
+    write("startup/font.bmp", assets.startup_font, "sprite", "0xC1320", true);
+    write("startup/cursor.bmp", assets.startup_cursor, "sprite", "0xD29F6", true);
+    write("intro/aircraft-plane-a.bmp", assets.intro_aircraft_plane_a, "sprite",
+          "0x5B528/0x5B7D8", true);
+    write_array("intro/helicopter-", assets.intro_heli_frames, "sprite",
+                "0x5B180", true);
+    write_array("intro/aircraft-movement-", assets.intro_aircraft_movement_frames,
+                "sprite", "0x5B270", true);
+    const auto intro_backgrounds =
+        shadowrun::graphics::decode_genesis_intro_backgrounds(rom);
+    for (std::size_t index = 0; index < intro_backgrounds.size(); ++index) {
+        write_catalog_asset(root, "intro/background-" + std::to_string(index) +
+                                  ".bmp",
+                            intro_backgrounds[index], "background", "0x59C5E",
+                            false, manifest, written, missing, blank);
+    }
+    const auto intro_sprites =
+        shadowrun::graphics::decode_genesis_intro_sprite_resources(rom);
+    for (std::size_t index = 0; index < intro_sprites.size(); ++index) {
+        const auto& resource = intro_sprites[index];
+        write_catalog_asset(
+            root, "intro/sprites/" + resource.role + "-" +
+                      std::to_string(resource.table_index) + "-" +
+                      std::to_string(index) + ".bmp",
+            resource.image, "sprite",
+            format_resource_source(resource),
+            true, manifest, written, missing, blank);
+    }
+    const auto intro_patches =
+        shadowrun::graphics::decode_genesis_intro_ambush_background_resources(
+            rom);
+    for (std::size_t index = 0; index < intro_patches.size(); ++index) {
+        const auto& resource = intro_patches[index];
+        write_catalog_asset(
+            root, "intro/background-patch-" + std::to_string(index) + ".bmp",
+            resource.image, "background",
+            format_resource_source(resource),
+            true, manifest, written, missing, blank);
+    }
+    write("intro/cab-map.bmp", assets.cab_map, "background", "0x134D2/0xD2A2E",
+          false);
+
+    // Field HUD and menu source layers.
+    write("field/hud/background.bmp", assets.field_hud, "background",
+          "0x334C/0x39F2", false);
+    write_array("field/hud/face-", assets.field_hud_faces, "sprite", "0x3404",
+                true);
+    write_array("field/hud/item-", assets.field_hud_item_blocks, "sprite",
+                "0x3404", true);
+    write_array("field/hud/vertical-counter-", assets.field_hud_vertical_counters,
+                "sprite", "0x35D4", true);
+    write_array("field/hud/horizontal-counter-",
+                assets.field_hud_horizontal_counters, "sprite", "0x35D4", true);
+    write("field/menu/pocket-secretary-background.bmp",
+          assets.pocket_secretary_background, "background", "0x10A7E", false);
+    write("field/menu/background.bmp", assets.field_menu_background, "background",
+          "0x10F50", false);
+    write("field/menu/attributes-background.bmp",
+          assets.field_menu_attributes_background, "background", "0x10C96", false);
+    write("field/menu/inventory-boxes.bmp", assets.field_menu_inventory_boxes,
+          "background", "0x10F50/0x1232", false);
+    write("field/menu/font.bmp", assets.field_menu_font, "sprite", "0xC1064",
+          true);
+    write_array("field/menu/runner-portrait-", assets.field_menu_runner_portraits,
+                "sprite", "0x7291A", true);
+    write_array("field/menu/selected-cell-", assets.field_menu_selected_cells,
+                "sprite", "0x11678", true);
+    write_array("field/menu/command-focus-", assets.field_menu_command_focus,
+                "sprite", "0x11454", true);
+    write_array("field/menu/clips-focus-", assets.field_menu_clips_focus, "sprite",
+                "0x11B58", true);
+    write_array("field/menu/clips-trade-focus-", assets.field_menu_clips_trade_focus,
+                "sprite", "0x11E7E", true);
+    write("field/menu/posture-focus.bmp", assets.field_menu_posture_focus, "sprite",
+          "0x119CE", true);
+    write("field/menu/cursor.bmp", assets.field_menu_cursor, "sprite", "0x11592",
+          true);
+    write_array("field/menu/item-art-", assets.field_menu_item_art, "sprite",
+                "0x12A8C/0xD4540", true);
+    for (std::size_t item = 0; item < assets.field_menu_inventory_icons.size();
+         ++item) {
+        for (std::size_t variant = 0;
+             variant < assets.field_menu_inventory_icons[item].size(); ++variant) {
+            write("field/menu/inventory-icon-" + std::to_string(item) + "-" +
+                      std::to_string(variant) + ".bmp",
+                  assets.field_menu_inventory_icons[item][variant], "sprite",
+                  "0x35D4/0xD4540", true);
+        }
+    }
+    write_array("field/menu/status-bar-", assets.field_menu_status_bars, "sprite",
+                "0x11928", true);
+    write_array("field/menu/damage-bar-", assets.field_menu_damage_bars, "sprite",
+                "0x12F70", true);
+    write_array("field/menu/drain-bar-", assets.field_menu_drain_bars, "sprite",
+                "0x12FA4", true);
+    write_array("field/menu/detail-value-", assets.field_menu_detail_values, "sprite",
+                "0x13000", true);
+    write_array("field/menu/attack-bar-", assets.field_menu_attack_bars, "sprite",
+                "0x12CEE/0xCF3D4", true);
+    write_array("field/menu/defense-bar-", assets.field_menu_defense_bars, "sprite",
+                "0x12CEE/0xCF610", true);
+
+    // Field maps are backgrounds; entity and walking frames are sprites.
+    // The mode-2 map is already the first entry in field_areas; emitting the
+    // legacy field_map field as a second row would overwrite the same asset
+    // path and make the catalog appear to contain a duplicate resource.
+    for (const auto& area : assets.field_areas) {
+        write("field/map/mode-" + std::to_string(area.mode_id) + ".bmp",
+              area.map, "background", "mode resource catalog", false);
+    }
+    for (std::size_t index = 0; index < assets.entity_frames.size(); ++index) {
+        write_frame("field/entities/idle-" + std::to_string(index) + ".bmp",
+                    assets.entity_frames[index], "sprite", "0x5A62/0x5FDC",
+                    true);
+        write_frame("field/entities/idle-gray-" + std::to_string(index) + ".bmp",
+                    assets.entity_frames_gray[index], "sprite", "baked grayscale",
+                    true);
+    }
+    for (std::size_t direction = 0;
+         direction < assets.field_entity_animations.size(); ++direction) {
+        const auto& animation = assets.field_entity_animations[direction];
+        for (std::size_t frame = 0; frame < animation.frames.size(); ++frame) {
+            write_frame("field/entities/walk-" + std::to_string(direction) + "-" +
+                            std::to_string(frame) + ".bmp",
+                        animation.frames[frame], "sprite", "0x5A62/0x5FDC", true);
+        }
+        const auto& gray = assets.field_entity_animations_gray[direction];
+        for (std::size_t frame = 0; frame < gray.frames.size(); ++frame) {
+            write_frame("field/entities/walk-gray-" + std::to_string(direction) +
+                            "-" + std::to_string(frame) + ".bmp",
+                        gray.frames[frame], "sprite", "baked grayscale", true);
+        }
+    }
+
+    manifest.flush();
+    std::cout << "all graphics assets written to " << root << "\n"
+              << "extracted=" << written << " blank=" << blank
+              << " missing=" << missing << "\n";
+    if (missing != 0U) {
+        throw std::runtime_error(
+            "asset catalog contains missing image resources; extraction coverage is incomplete");
+    }
 }
 
 shadowrun::graphics::RgbaImage make_field_entity_state_sheet(
@@ -965,6 +1233,16 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
+    if (argc == 4 && std::string(argv[3]) == "--all-assets") {
+        try {
+            const auto rom = read_file(argv[1]);
+            extract_all_assets(rom, argv[2]);
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
     if (argc == 4 && std::string(argv[3]) == "--native-pack") {
         try {
             const auto rom = read_file(argv[1]);
@@ -1041,6 +1319,8 @@ int main(int argc, char** argv) {
                      "--native-pack\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <asset-dir> "
                      "--title-boot-assets\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <asset-dir> "
+                     "--all-assets\n";
         std::cerr << "numeric offsets accept decimal or 0x-prefixed hex\n";
         return 2;
     }

@@ -102,6 +102,13 @@ add_executable(shadowrun_graphics_extract
 )
 target_link_libraries(shadowrun_graphics_extract PRIVATE shadowrun_port)
 
+add_executable(shadowrun_graphics_catalog_test
+    tests/graphics_catalog_test.cpp
+)
+target_compile_definitions(shadowrun_graphics_catalog_test PRIVATE
+    SHADOWRUN_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/assets")
+add_test(NAME shadowrun_graphics_catalog COMMAND shadowrun_graphics_catalog_test)
+
 set(SHADOWRUN_ROM "${CMAKE_CURRENT_SOURCE_DIR}/input/shadowrun_genesis_us.bin")
 set(SHADOWRUN_NATIVE_PACK
     "${CMAKE_CURRENT_SOURCE_DIR}/assets/native/shadowrun_native.srna")
@@ -120,6 +127,19 @@ if (EXISTS "${SHADOWRUN_ROM}")
                 "${CMAKE_CURRENT_SOURCE_DIR}/src/graphics.cpp"
                 "${CMAKE_CURRENT_SOURCE_DIR}/src/graphics_extract.cpp"
         COMMENT "Extracting individual title/boot assets from the US ROM"
+        VERBATIM
+    )
+    add_custom_target(shadowrun_all_assets
+        COMMAND "${CMAKE_COMMAND}" -E make_directory
+                "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+        COMMAND "$<TARGET_FILE:shadowrun_graphics_extract>"
+                "${SHADOWRUN_ROM}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+                --all-assets
+        DEPENDS shadowrun_graphics_extract "${SHADOWRUN_ROM}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/src/graphics.cpp"
+                "${CMAKE_CURRENT_SOURCE_DIR}/src/graphics_extract.cpp"
+        COMMENT "Extracting the complete native graphics catalog from the US ROM"
         VERBATIM
     )
     # Kept as a compatibility target for the still-unmigrated field screens;
