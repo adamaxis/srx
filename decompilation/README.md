@@ -156,16 +156,15 @@ reaction substate, then the `0x167AE` dispatcher indexes the descriptor table
 at `0x172CDC`; Redmond's C0 doorway class selects mode `0x14` (decimal 20).
 That destination uses a raw
 16-bit name-word table at `0x1CD29A`, producing a 1600x960 host interior map
-from 50x30 entries. The current `.srna` pack includes mode-2, mode-13,
-mode-19, mode-20, mode-26, and mode-50..52 area records with their converted
-maps, terrain, camera, spawn, and reaction-mode data. These cover every
-non-empty destination named by the mode-2 Redmond reaction-mode table;
-interior descriptors have zero `+0x4E` transition pointers, so their exit path
-still needs to be recovered from the other reaction/resource data rather than
-guessed. Entry camera/runner placement is a separate source concern: a mode's
-descriptor coordinates are not automatically a correct doorway-specific
-arrival point, so the transition path must retain reaction context while
-selecting the destination view.
+from 50x30 entries. The `.srna` pack now includes all 56 records from the ROM
+mode pointer table at `0x3232`, with their converted maps, terrain, camera,
+spawn, and reaction-mode data. This keeps Redmond, empty building interiors,
+and infiltration mission maps available as extracted resources even when the
+current native shell does not yet route to every one. Entry camera/runner
+placement is a separate source concern: a mode's descriptor coordinates are
+not automatically a correct doorway-specific arrival point, so the
+transition path must retain reaction context while selecting the destination
+view.
 
 The Inventory selector now has its first typed data path. ROM `0x12148`
 addresses eight item bytes at entity record `+0x66` as `2*row+selector`.

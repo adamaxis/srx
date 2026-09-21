@@ -122,10 +122,19 @@ int main() {
     }
     if (row_count == 0U ||
         listed.find("intro/background-0.bmp") == listed.end() ||
-        listed.find("intro/sprites/ambush-michael-0-44.bmp") == listed.end()) {
+        listed.find("intro/sprites/ambush-michael-0-44.bmp") == listed.end() ||
+        listed.find("title/circuit-background-0.bmp") == listed.end() ||
+        listed.find("field/map/mode-55.bmp") == listed.end()) {
         return fail("required opening background or sprite resource is absent")
             ? 0
             : 1;
+    }
+    for (const auto& relative : listed) {
+        if (relative.find("title/circuit-light-") == 0U) {
+            return fail("legacy circuit-light fragment remains: " + relative)
+                ? 0
+                : 1;
+        }
     }
 
     std::cout << "graphics catalog verified: " << row_count << " resources\n";

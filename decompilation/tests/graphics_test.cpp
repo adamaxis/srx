@@ -446,6 +446,14 @@ int main() {
     }
 
     auto native_assets = decode_genesis_native_assets(rom);
+    const auto opaque_pixel_count = [](const auto& image) {
+        return std::count_if(
+            image.pixels.begin(), image.pixels.end(),
+            [](const auto& pixel) { return pixel.alpha != 0U; });
+    };
+    assert(opaque_pixel_count(native_assets.field_menu_item_art[12]) > 10U);
+    assert(opaque_pixel_count(native_assets.field_menu_item_art[49]) > 10U);
+    assert(opaque_pixel_count(native_assets.field_menu_item_art[40]) == 0U);
     {
         const auto lights = decode_genesis_title_circuit_lights(rom);
         std::size_t light_delta = 0;
@@ -465,21 +473,31 @@ int main() {
         assert(light_delta > 100U);
         assert(native_assets.title_circuit_lights[0].pixels.size() ==
                first.pixels.size());
+        // The first ROM delta run emits two cells after its initial cell;
+        // losing the final cell shifts the rest of the 40-cell row and
+        // visibly disconnects the circuit board. These are deliberately
+        // source-position checks, not a comparison against extracted BMPs.
+        const auto& first_row_trace = first.pixels[16U];
+        assert(first_row_trace.red == 0U && first_row_trace.green > 0U &&
+               first_row_trace.blue == 0U && first_row_trace.alpha != 0U);
+        const auto& first_row_gap = first.pixels[45U];
+        assert(first_row_gap.red == 0U && first_row_gap.green == 0U &&
+               first_row_gap.blue == 0U && first_row_gap.alpha != 0U);
     }
-    assert(native_assets.field_areas.size() == 8);
+    assert(native_assets.field_areas.size() == 56);
     assert(native_assets.field_areas[0].mode_id == 2);
-    assert(native_assets.field_areas[1].mode_id == 13);
-    assert(native_assets.field_areas[2].mode_id == 20);
-    assert(native_assets.field_areas[3].mode_id == 19);
-    assert(native_assets.field_areas[4].mode_id == 26);
-    assert(native_assets.field_areas[5].mode_id == 50);
-    assert(native_assets.field_areas[6].mode_id == 51);
-    assert(native_assets.field_areas[7].mode_id == 52);
-    assert(native_assets.field_areas[2].map.width == 1600);
-    assert(native_assets.field_areas[2].map.height == 960);
-    assert(native_assets.field_areas[2].initial_field_records[0]
+    for (std::size_t index = 1; index < native_assets.field_areas.size();
+         ++index) {
+        const auto expected_mode = index <= 2U
+            ? static_cast<std::uint16_t>(index - 1U)
+            : static_cast<std::uint16_t>(index);
+        assert(native_assets.field_areas[index].mode_id == expected_mode);
+    }
+    assert(native_assets.field_areas[20].map.width == 1600);
+    assert(native_assets.field_areas[20].map.height == 960);
+    assert(native_assets.field_areas[20].initial_field_records[0]
                .position.world_x_fixed == 0x5A00);
-    assert(native_assets.field_areas[2].initial_field_records[0]
+    assert(native_assets.field_areas[20].initial_field_records[0]
                .position.world_y_fixed == 0x0800);
     for (const auto& focus : native_assets.field_menu_command_focus) {
         assert(focus.width == 16U);

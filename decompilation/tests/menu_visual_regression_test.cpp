@@ -838,11 +838,21 @@ void test_field_menu_visual_contract(
                     assets, source_record, archetype,
                     shell.field_menu_selection(), shell.field_menu_row()),
                 artifact_dir, item_label);
-            require_image_pixels(
-                screen, assets.field_menu_item_art[code - 1U], 144, 24,
-                "item detail art for archetype " + std::to_string(archetype) +
-                    ", slot " + std::to_string(slot) + ", item " +
-                    std::to_string(code));
+            const auto& item_art = assets.field_menu_item_art[code - 1U];
+            const auto has_item_art = std::any_of(
+                item_art.pixels.begin(), item_art.pixels.end(),
+                [](const auto& pixel) { return pixel.alpha != 0U; });
+            // The ROM has intentional no-art records (items 40-42). An
+            // empty extracted art record means the detail panel should not
+            // be checked for opaque pixels.
+            if (has_item_art) {
+                require_image_pixels(
+                    screen, item_art, 144, 24,
+                    "item detail art for archetype " +
+                        std::to_string(archetype) + ", slot " +
+                        std::to_string(slot) + ", item " +
+                        std::to_string(code));
+            }
             require_image_pixels(
                 screen, assets.field_menu_cursor,
                 12 + static_cast<std::int32_t>((slot & 1U) * 40U),

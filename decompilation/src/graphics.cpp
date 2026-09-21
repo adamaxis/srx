@@ -1075,33 +1075,46 @@ native::NativePortAssets decode_genesis_native_assets(
     mode2_area.event_mode_table = assets.field_event_mode_table;
     assets.field_areas.push_back(std::move(mode2_area));
 
-    for (const auto mode_id :
-         std::array<std::uint16_t, 7>{13, 20, 19, 26, 50, 51, 52}) {
-        const auto area_resources = read_genesis_field_mode_resources(
-            rom, mode_id);
-        const auto area_map = decode_genesis_field_mode_map(
-            rom, area_resources);
-        native::NativeFieldArea area;
-        area.mode_id = mode_id;
-        area.map = {area_map.width, area_map.height, area_map.pixels};
-        area.terrain = decode_genesis_field_mode_terrain_map(
-            rom, area_resources);
-        area.initial_camera_x_fixed = area_resources.initial_camera_x_fixed;
-        area.initial_camera_y_fixed = area_resources.initial_camera_y_fixed;
-        area.event_mode_table = area_resources.event_mode_table;
-        for (std::size_t index = 0;
-             index < area.initial_field_records.size(); ++index) {
-            area.initial_field_records[index] = {
-                {
-                    area_resources.initial_field_records[index].world_x_fixed,
-                    area_resources.initial_field_records[index].world_y_fixed,
-                },
-                assets.initial_field_records[index].record_type,
-                assets.initial_field_records[index].flags_10,
-                assets.initial_field_records[index].flags_11,
-            };
+    // The ROM mode pointer table contains 56 descriptors, not only the
+    // handful reached by the opening field. Keep mode 2 first because its
+    // event/terrain state is shared with the native shell, then preserve the
+    // complete ROM order for every other map resource.
+    for (std::uint16_t mode_id = 0; mode_id < rom::kFieldModeCount;
+         ++mode_id) {
+        if (mode_id == 2U) {
+            continue;
         }
-        assets.field_areas.push_back(std::move(area));
+        try {
+            const auto area_resources = read_genesis_field_mode_resources(
+                rom, mode_id);
+            const auto area_map = decode_genesis_field_mode_map(
+                rom, area_resources);
+            native::NativeFieldArea area;
+            area.mode_id = mode_id;
+            area.map = {area_map.width, area_map.height, area_map.pixels};
+            area.terrain = decode_genesis_field_mode_terrain_map(
+                rom, area_resources);
+            area.initial_camera_x_fixed = area_resources.initial_camera_x_fixed;
+            area.initial_camera_y_fixed = area_resources.initial_camera_y_fixed;
+            area.event_mode_table = area_resources.event_mode_table;
+            for (std::size_t index = 0;
+                 index < area.initial_field_records.size(); ++index) {
+                area.initial_field_records[index] = {
+                    {
+                        area_resources.initial_field_records[index].world_x_fixed,
+                        area_resources.initial_field_records[index].world_y_fixed,
+                    },
+                    assets.initial_field_records[index].record_type,
+                    assets.initial_field_records[index].flags_10,
+                    assets.initial_field_records[index].flags_11,
+                };
+            }
+            assets.field_areas.push_back(std::move(area));
+        } catch (const std::exception& error) {
+            throw std::runtime_error("Genesis field mode " +
+                                     std::to_string(mode_id) + ": " +
+                                     error.what());
+        }
     }
 
     // 0x42B0 copies one of the first three records at 0x7291A into Joshua's
@@ -3540,8 +3553,13 @@ decode_genesis_field_menu_item_art(const std::vector<std::uint8_t>& rom) {
     constexpr std::size_t kItemArtworkHeight = 5U;
     constexpr std::size_t kArtworkPatternStreamOffset = 0xC8BB6U;
     constexpr std::size_t kArtworkPatternVramOffset = 0x5C80U;
-    const auto pattern_vram = decode_genesis_1530_vram(
+    const auto standard_pattern_vram = decode_genesis_1530_vram(
         rom, kArtworkPatternStreamOffset, kArtworkPatternVramOffset);
+    // ROM 0x12A54 selects the alternate item-art upload at 0xC9B7C when
+    // the one-based item number reaches 13. The native catalog is
+    // zero-based, so item-art-12 is the first resource in that bank.
+    const auto alternate_pattern_vram = decode_genesis_1530_vram(
+        rom, 0xC9B7CU, kArtworkPatternVramOffset);
     const auto palette = read_genesis_command_palette_set(rom);
     std::array<RgbaImage, native::kNativeInventoryItemCount> artwork{};
     for (std::size_t item_index = 0; item_index < artwork.size(); ++item_index) {
@@ -3557,9 +3575,12 @@ decode_genesis_field_menu_item_art(const std::vector<std::uint8_t>& rom) {
                 static_cast<std::uint16_t>(kItemArtworkHeight * 8U),
                 std::vector<native::Rgba8>(
                     kItemArtworkWidth * kItemArtworkHeight * 64U,
-                    native::Rgba8{0, 0, 0, 255})};
+                    native::Rgba8{0, 0, 0, 0})};
             continue;
         }
+        const auto& pattern_vram = item_index < 12U
+            ? standard_pattern_vram
+            : alternate_pattern_vram;
         artwork[item_index] = decode_genesis_menu_name_table_block(
             rom, pattern_vram, table_offset, kItemArtworkWidth,
             kItemArtworkHeight, palette, 0x2000U);
@@ -3745,21 +3766,31 @@ GenesisFieldModeResources read_genesis_field_mode_resources_at(
         throw std::runtime_error(
             "Genesis field mode tilemap pointers do not describe equal maps");
     }
-    const auto tilemap_entries = (upper_tilemap - lower_tilemap) / 2U;
-    if (tilemap_entries == 0 || tilemap_entries % tilemap_width != 0) {
-        throw std::runtime_error(
-            "Genesis field mode tilemap size does not match its stride");
-    }
+    auto tilemap_entries = (upper_tilemap - lower_tilemap) / 2U;
 
     const auto metatile_stream = static_cast<std::size_t>(read_rom_u32(
         rom, record_offset + 0x18U,
         "Genesis mode-2 metatile pointer is truncated")) &
         ~std::size_t{1};
-    // The large field sets point at direct name-word tables. These are shared
-    // by the reviewed mode-20 and mode-50..52 descriptors; mode 26 has its
-    // own raw table. The remaining reviewed pointers are 0x1530 streams.
+    // Modes 6..9 store a separator row between their two 60-column layer
+    // tables. The mode descriptors all share 0x141D20 as the following
+    // name-word resource, so the pointer gap includes that one row even
+    // though it is not part of either visible map.
+    if (metatile_stream == 0x141D20U && tilemap_entries > tilemap_width) {
+        tilemap_entries -= tilemap_width;
+    }
+    if (tilemap_entries == 0 || tilemap_entries % tilemap_width != 0) {
+        throw std::runtime_error(
+            "Genesis field mode tilemap size does not match its stride");
+    }
+
+    // The large field sets point at direct name-word tables. These include
+    // the shared mode-6..9 table, mode 20, mode 26, and modes 44..54; the
+    // remaining mode descriptors use the 0x1530 resource stream.
     const auto metatile_encoding =
-        metatile_stream == 0x1A84B2U || metatile_stream == 0x1CD29AU
+        metatile_stream == 0x141D20U || metatile_stream == 0x155432U ||
+        metatile_stream == 0x1A84B2U || metatile_stream == 0x1EB62EU ||
+        metatile_stream == 0x1CD29AU
             ? GenesisMetatileEncoding::RawNameWords
             : GenesisMetatileEncoding::CompressedResource;
 
@@ -4136,7 +4167,13 @@ RgbaImage decode_genesis_mode2_field_map(
                                 "Genesis field pattern index is truncated (name " +
                                 std::to_string(name_word) + ", relative " +
                                 std::to_string(pattern_word) + ", tiles " +
-                                std::to_string(tile_count) + ")");
+                                std::to_string(tile_count) + ", metatile " +
+                                std::to_string(metatile_index) + ", word " +
+                                std::to_string(tile_y * 4U + tile_x) +
+                                ", stream " +
+                                std::to_string(metatile_stream_offset) +
+                                ", map " + std::to_string(tilemap_offset) +
+                                ")");
                         }
                         const auto& tile = tiles[
                             static_cast<std::size_t>(pattern_word)];
@@ -5135,8 +5172,11 @@ RgbaImage decode_genesis_startup_screen(
         // 0x1816 uses SUBQ.B / BGE, so a low-five-bit count of N writes
         // N+1 cells. Literal tokens at 0x178C use BGT and stay N (or 1
         // when N is 0). 0x1D58 clears D3, so every generated cell is
-        // written.
-        const auto run_length = std::max<unsigned>(count, 1U);
+        // written. The extra cell is important: omitting it shifts every
+        // subsequent compressed run left, which breaks the board's
+        // horizontal trace/chip alignment even though the tile graphics are
+        // individually decoded correctly.
+        const auto run_length = count + 1U;
         for (unsigned index = 0; index < run_length; ++index) {
             ++generated_count;
             emit(value);

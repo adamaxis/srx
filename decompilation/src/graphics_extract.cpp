@@ -94,86 +94,44 @@ void write_scene_asset(const std::filesystem::path& root,
              << asset.image.height << '\n';
 }
 
-shadowrun::graphics::RgbaImage make_difference_overlay(
-    const shadowrun::graphics::RgbaImage& background,
-    const shadowrun::graphics::RgbaImage& phase) {
-    if (background.width != phase.width || background.height != phase.height ||
-        background.pixels.size() != phase.pixels.size()) {
-        throw std::invalid_argument(
-            "circuit light background and phase dimensions differ");
-    }
-    shadowrun::graphics::RgbaImage overlay{
-        background.width, background.height,
-        std::vector<shadowrun::native::Rgba8>(
-            background.pixels.size(), shadowrun::native::Rgba8{0, 0, 0, 0})};
-    for (std::size_t index = 0; index < phase.pixels.size(); ++index) {
-        if (background.pixels[index].red != phase.pixels[index].red ||
-            background.pixels[index].green != phase.pixels[index].green ||
-            background.pixels[index].blue != phase.pixels[index].blue ||
-            background.pixels[index].alpha != phase.pixels[index].alpha) {
-            auto pixel = phase.pixels[index];
-            pixel.alpha = 255U;
-            overlay.pixels[index] = pixel;
-        }
-    }
-    return overlay;
-}
-
-void write_circuit_light_sprites(
+void write_circuit_backgrounds(
     const std::filesystem::path& root,
-    const shadowrun::graphics::RgbaImage& background,
     const std::array<shadowrun::graphics::RgbaImage, 7>& phases,
     std::ofstream& manifest) {
-    constexpr std::uint16_t kTileSize = 8U;
-    const auto phase_count = phases.size();
-    for (std::size_t phase_index = 0; phase_index < phase_count;
+    // Each decoder result is already the complete 320x224 background with
+    // one ROM-selected circuit-light phase applied. Store those seven frames
+    // directly so runtime animation is a small frame selection, not a
+    // reconstruction from hundreds of cropped fragments.
+    for (std::size_t phase_index = 0; phase_index < phases.size();
          ++phase_index) {
-        const auto overlay =
-            make_difference_overlay(background, phases[phase_index]);
-        for (std::uint16_t tile_y = 0; tile_y < background.height;
-             tile_y += kTileSize) {
-            for (std::uint16_t tile_x = 0; tile_x < background.width;
-                 tile_x += kTileSize) {
-                shadowrun::graphics::RgbaImage tile{
-                    kTileSize, kTileSize,
-                    std::vector<shadowrun::native::Rgba8>(
-                        kTileSize * kTileSize,
-                        shadowrun::native::Rgba8{0, 0, 0, 0})};
-                auto has_light = false;
-                for (std::uint16_t y = 0; y < kTileSize; ++y) {
-                    for (std::uint16_t x = 0; x < kTileSize; ++x) {
-                        const auto source_x = tile_x + x;
-                        const auto source_y = tile_y + y;
-                        if (source_x >= overlay.width ||
-                            source_y >= overlay.height) {
-                            continue;
-                        }
-                        const auto pixel = overlay.pixels[
-                            static_cast<std::size_t>(source_y) * overlay.width +
-                            source_x];
-                        tile.pixels[static_cast<std::size_t>(y) * kTileSize +
-                                    x] = pixel;
-                        has_light = has_light || pixel.alpha != 0U;
-                    }
-                }
-                if (!has_light) {
-                    continue;
-                }
-                const auto asset = crop_transparent_bounds(tile);
-                const auto relative_name =
-                    "title/circuit-light-" + std::to_string(phase_index) +
-                    "-" + std::to_string(tile_y / kTileSize) + "-" +
-                    std::to_string(tile_x / kTileSize) + ".bmp";
-                const auto path = root / relative_name;
-                std::filesystem::create_directories(path.parent_path());
-                shadowrun::graphics::write_bmp32(path.string(), asset.image);
-                manifest << relative_name << '\t'
-                         << static_cast<unsigned>(tile_x) + asset.origin_x
-                         << '\t'
-                         << static_cast<unsigned>(tile_y) + asset.origin_y
-                         << '\t' << asset.image.width << '\t'
-                         << asset.image.height << '\n';
-            }
+        write_scene_asset(root,
+                          "title/circuit-background-" +
+                              std::to_string(phase_index) + ".bmp",
+                          phases[phase_index], manifest, false);
+    }
+}
+
+void remove_legacy_circuit_fragments(const std::filesystem::path& root) {
+    const auto title_root = root / "title";
+    if (!std::filesystem::exists(title_root)) {
+        return;
+    }
+    for (const auto& entry :
+         std::filesystem::directory_iterator(title_root)) {
+        if (!entry.is_regular_file()) {
+            continue;
+        }
+        const auto name = entry.path().filename().string();
+        if (name.rfind("circuit-light-", 0) != 0 ||
+            entry.path().extension() != ".bmp") {
+            continue;
+        }
+        std::error_code error;
+        std::filesystem::remove(entry.path(), error);
+        if (error) {
+            throw std::runtime_error(
+                "cannot remove legacy circuit light fragment: " +
+                entry.path().string());
         }
     }
 }
@@ -193,17 +151,8 @@ void extract_title_boot_assets(const std::vector<std::uint8_t>& rom,
                       manifest, false);
     const auto title_lights =
         shadowrun::graphics::decode_genesis_title_circuit_lights(rom);
-    for (std::size_t index = 0; index < title_lights.size(); ++index) {
-        std::error_code error;
-        std::filesystem::remove(
-            root / ("title/circuit-light-" + std::to_string(index) +
-                    ".bmp"),
-            error);
-        if (error) {
-            throw std::runtime_error("cannot remove stale circuit light asset");
-        }
-    }
-    write_circuit_light_sprites(root, title_background, title_lights, manifest);
+    remove_legacy_circuit_fragments(root);
+    write_circuit_backgrounds(root, title_lights, manifest);
     write_scene_asset(root, "title/logo.bmp",
                       shadowrun::graphics::decode_genesis_title_logo_plane(rom),
                       manifest, true);
@@ -317,6 +266,7 @@ void append_title_boot_catalog(const std::filesystem::path& root,
             continue;
         }
         const auto kind = line.find("background.bmp") != std::string::npos ||
+                line.find("circuit-background-") != std::string::npos ||
                 line.find("snow.bmp") != std::string::npos
             ? "background"
             : "sprite";
