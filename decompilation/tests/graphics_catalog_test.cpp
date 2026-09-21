@@ -137,6 +137,31 @@ int main() {
         }
     }
 
+    std::ifstream map_index(root / "field/map/index.tsv", std::ios::binary);
+    if (!map_index) {
+        return fail("field map resource index is missing") ? 0 : 1;
+    }
+    if (!std::getline(map_index, line) ||
+        line.find("mode_id\ttable_entry\trecord_offset") != 0U) {
+        return fail("field map resource index header is invalid") ? 0 : 1;
+    }
+    std::set<std::string> map_modes;
+    while (std::getline(map_index, line)) {
+        if (line.empty()) {
+            continue;
+        }
+        const auto fields = split_tabs(line);
+        if (fields.size() < 24U) {
+            return fail("field map resource index row is incomplete") ? 0 : 1;
+        }
+        map_modes.insert(fields[0]);
+    }
+    if (map_modes.size() != 56U || map_modes.find("0") == map_modes.end() ||
+        map_modes.find("55") == map_modes.end()) {
+        return fail("field map resource index does not cover all 56 modes") ? 0
+                                                                             : 1;
+    }
+
     std::cout << "graphics catalog verified: " << row_count << " resources\n";
     return 0;
 }

@@ -21,5 +21,5 @@ game/items\tassets/game/items/item-art\t0xD4540 records and +0x1E pointers\t0x12
 game/items\tassets/game/items/detail-values\t0x6AC46-0x6B046\t0x12A8C selects record +0x6E, calls 0x1232\tUses/Rtng detail value row\textracted; native consumer
 game/items\tassets/game/items/detail-bars\t0x6A0C6, 0x6A2A6, 0x6A3F2\t0x12F70/0x12FA4/0x13000\tdamage, drain, and power detail rows\tpartial native port
 matrix/menu\tassets/matrix/menu\tmatrix source tables\tmatrix dispatch paths\tmatrix screens\tpending source audit
-audio\tassets/audio\tGenesis sound driver and sequence tables\tZ80/music dispatch paths\tnative audio backend\tpending source audit
+audio\tassets/audio\tExact Z80 driver, four initializer resources, and descriptor table\t0x52DE0/0x531AA; ROM 0x26C5E-0x312C7\tnative audio backend\traw extracted; custom event format pending MIDI conversion
 graphics\tassets/catalog.tsv plus individual assets/**/{background,sprite}.bmp\tAll currently decoded background and sprite resources; see graphics-resource-inventory.tsv\tshadowrun_graphics_extract --all-assets\tnative asset consumers and extraction audit\textracted; catalog reports extracted-empty versus missing

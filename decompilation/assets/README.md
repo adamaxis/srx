@@ -8,13 +8,13 @@ The native runtime consumes these artifacts and never opens the ROM.
 | `title/` | Precolored title background, logo, text, circuit, and sprite assets |
 | `boot/` | Precolored boot snow, SEGA, lightning, strobe, guy, and FASA assets |
 | `startup/` | Intro, save/load, no-save, and archetype screens |
-| `field/map/` | Field map backgrounds for every decoded area |
+| `field/map/` | Field map backgrounds for every decoded area, plus the ROM descriptor index |
 | `field/entities/` | Field entity idle, walking, and grayscale sprites |
 | `field/hud/` | Field HUD background, portraits, items, and counters |
 | `field/menu/` | Field command menu, cursor, boxes, and status UI |
 | `intro/` | Opening-stage backgrounds, vehicles, actors, projectiles, and patches |
 | `matrix/menu/` | Matrix-specific screens and menu resources |
-| `audio/` | Host-ready music and sound resources |
+| `audio/` | ROM-extracted custom Z80 music and sound resources |
 | `native/` | Legacy aggregate pack for screens not yet migrated to directory assets |
 
 `docs/resource-catalog.tsv` is the provenance index. It records the original
@@ -32,6 +32,24 @@ the ROM-derived phase cadence. Generate them explicitly, once, with:
 ```
 
 These files are not screenshots and do not require a runtime Genesis palette.
+
+The sound import is separate because the ROM contains a custom Z80 sound
+driver, not standard MIDI files. Extract its exact source slices with:
+
+```powershell
+& '.\build-debug\shadowrun_audio_extract.exe' `
+  '.\input\shadowrun_genesis_us.bin' '.\assets'
+```
+
+This writes `audio/catalog.tsv`, the driver, the three pointer-delimited
+initializer tables, and the fourth initializer's descriptor table. The raw
+event data is the source for the later MIDI conversion hill; no guessed MIDI
+files are generated.
+
+`field/map/index.tsv` is the corresponding source index for graphics: it
+contains one row for every field descriptor at ROM `0x3232`, including the
+record, setup, palette, pattern, metatile, tilemap, event-table, and rendered
+image dimensions.
 
 The complete graphics import is a separate explicit step. It writes every
 currently decoded background, sprite, animation frame, map, HUD layer, and menu

@@ -1,4 +1,5 @@
 #include "shadowrun/graphics.hpp"
+#include "shadowrun/rom_layout.hpp"
 
 #include <algorithm>
 #include <filesystem>
@@ -429,6 +430,72 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         write("field/map/mode-" + std::to_string(area.mode_id) + ".bmp",
               area.map, "background", "mode resource catalog", false);
     }
+
+    // Keep each rendered map tied to the descriptor that selected it. This is
+    // separate from catalog.tsv: that file describes host images, while this
+    // index audits the complete ROM table used by 0x3074.
+    std::ofstream map_index(root / "field/map/index.tsv", std::ios::binary);
+    if (!map_index) {
+        throw std::runtime_error("cannot create field map resource index");
+    }
+    map_index
+        << "mode_id\ttable_entry\trecord_offset\tcamera_x_fixed"
+           "\tcamera_y_fixed\tbound_x\tbound_y\tmin_x\tmin_y"
+           "\tterrain_record\tsetup_block\tpalette\tpattern\tpattern_bytes"
+           "\tmetatile_stream\tprimary_tilemap\tsecondary_tilemap"
+           "\ttilemap_width\ttilemap_height\tmetatile_encoding"
+           "\tevent_table\tasset\timage_width\timage_height\n";
+    const auto write_hex = [&map_index](std::size_t value) {
+        map_index << "0x" << std::uppercase << std::hex << value << std::dec;
+    };
+    for (std::uint16_t mode_id = 0;
+         mode_id < shadowrun::rom::kFieldModeCount; ++mode_id) {
+        const auto resources =
+            shadowrun::graphics::read_genesis_field_mode_resources(rom, mode_id);
+        const auto area = std::find_if(
+            assets.field_areas.begin(), assets.field_areas.end(),
+            [mode_id](const auto& candidate) { return candidate.mode_id == mode_id; });
+        if (area == assets.field_areas.end()) {
+            throw std::runtime_error("field map index is missing mode " +
+                                     std::to_string(mode_id));
+        }
+        map_index << mode_id << '\t';
+        write_hex(shadowrun::rom::kFieldModePointerTable +
+                  static_cast<std::size_t>(mode_id) * 4U);
+        map_index << '\t';
+        write_hex(resources.record_offset);
+        map_index << '\t' << resources.initial_camera_x_fixed << '\t'
+                  << resources.initial_camera_y_fixed << '\t'
+                  << resources.terrain_x_exclusive_upper << '\t'
+                  << resources.terrain_y_exclusive_upper << '\t'
+                  << resources.terrain_x_inclusive_lower << '\t'
+                  << resources.terrain_y_inclusive_lower << '\t';
+        write_hex(resources.terrain_record_offset);
+        map_index << '\t';
+        write_hex(resources.setup_block_offset);
+        map_index << '\t';
+        write_hex(resources.palette_offset);
+        map_index << '\t';
+        write_hex(resources.pattern_data_offset);
+        map_index << '\t' << resources.pattern_byte_count << '\t';
+        write_hex(resources.metatile_stream_offset);
+        map_index << '\t';
+        write_hex(resources.primary_tilemap_offset);
+        map_index << '\t';
+        write_hex(resources.secondary_tilemap_offset);
+        map_index << '\t' << resources.tilemap_width << '\t'
+                  << resources.tilemap_height << '\t'
+                  << (resources.metatile_encoding ==
+                              shadowrun::graphics::GenesisMetatileEncoding::RawNameWords
+                          ? "raw-name-words"
+                          : "compressed-resource")
+                  << '\t';
+        write_hex(resources.event_table_offset);
+        map_index << "\tfield/map/mode-" << mode_id << ".bmp\t"
+                  << area->map.width << '\t' << area->map.height << '\n';
+    }
+    map_index.flush();
+
     for (std::size_t index = 0; index < assets.entity_frames.size(); ++index) {
         write_frame("field/entities/idle-" + std::to_string(index) + ".bmp",
                     assets.entity_frames[index], "sprite", "0x5A62/0x5FDC",

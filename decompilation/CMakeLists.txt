@@ -102,6 +102,25 @@ add_executable(shadowrun_graphics_extract
 )
 target_link_libraries(shadowrun_graphics_extract PRIVATE shadowrun_port)
 
+add_library(shadowrun_audio_extract_lib STATIC
+    src/audio_extract.cpp
+)
+target_include_directories(shadowrun_audio_extract_lib PUBLIC include)
+
+add_executable(shadowrun_audio_extract
+    src/audio_extract_main.cpp
+)
+target_link_libraries(shadowrun_audio_extract PRIVATE shadowrun_audio_extract_lib)
+
+add_executable(shadowrun_audio_extract_test
+    tests/audio_extract_test.cpp
+)
+target_link_libraries(shadowrun_audio_extract_test PRIVATE
+    shadowrun_audio_extract_lib)
+target_compile_definitions(shadowrun_audio_extract_test PRIVATE
+    SHADOWRUN_TEST_ROM="${CMAKE_CURRENT_SOURCE_DIR}/input/shadowrun_genesis_us.bin")
+add_test(NAME shadowrun_audio_extract COMMAND shadowrun_audio_extract_test)
+
 add_executable(shadowrun_graphics_catalog_test
     tests/graphics_catalog_test.cpp
 )
@@ -140,6 +159,25 @@ if (EXISTS "${SHADOWRUN_ROM}")
                 "${CMAKE_CURRENT_SOURCE_DIR}/src/graphics.cpp"
                 "${CMAKE_CURRENT_SOURCE_DIR}/src/graphics_extract.cpp"
         COMMENT "Extracting the complete native graphics catalog from the US ROM"
+        VERBATIM
+    )
+    add_custom_target(shadowrun_all_resources
+        COMMAND "${CMAKE_COMMAND}" -E make_directory
+                "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+        COMMAND "$<TARGET_FILE:shadowrun_graphics_extract>"
+                "${SHADOWRUN_ROM}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+                --all-assets
+        COMMAND "$<TARGET_FILE:shadowrun_audio_extract>"
+                "${SHADOWRUN_ROM}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+        DEPENDS shadowrun_graphics_extract shadowrun_audio_extract
+                "${SHADOWRUN_ROM}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/src/graphics.cpp"
+                "${CMAKE_CURRENT_SOURCE_DIR}/src/graphics_extract.cpp"
+                "${CMAKE_CURRENT_SOURCE_DIR}/src/audio_extract.cpp"
+                "${CMAKE_CURRENT_SOURCE_DIR}/src/audio_extract_main.cpp"
+        COMMENT "Extracting all indexed graphics and Genesis sound resources"
         VERBATIM
     )
     # Kept as a compatibility target for the still-unmigrated field screens;
