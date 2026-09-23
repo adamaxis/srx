@@ -716,7 +716,6 @@ private:
 class NativePortShell {
 public:
     explicit NativePortShell(std::string title = "SHADOWRUN");
-    NativePortShell(std::string title, const std::vector<std::uint8_t>& rom);
     NativePortShell(std::string title, NativePortAssets assets);
     ~NativePortShell();
     NativePortShell(const NativePortShell&) = delete;

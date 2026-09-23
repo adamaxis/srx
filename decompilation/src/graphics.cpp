@@ -16,6 +16,7 @@ namespace shadowrun::graphics {
 
 namespace {
 
+#ifndef SHADOWRUN_GRAPHICS_RUNTIME_ONLY
 void require_bytes(std::size_t available, std::size_t required,
                    const char* what) {
     if (required > available) {
@@ -44,53 +45,6 @@ std::uint32_t read_rom_u32(const std::vector<std::uint8_t>& rom,
            static_cast<std::uint32_t>(rom[offset + 3U]);
 }
 
-// Runtime-native assets use the same cropped sprite representation as the
-// individual files written by graphics_extract. Keeping the opaque bounds at
-// this boundary prevents a full 320x224 transparent layer from being treated
-// as a sprite with a second, guessed offset.
-native::NativeImage crop_transparent_rgba(const RgbaImage& source) {
-    if (source.width == 0U || source.height == 0U || source.pixels.empty()) {
-        return {};
-    }
-    std::int32_t left = source.width;
-    std::int32_t top = source.height;
-    std::int32_t right = -1;
-    std::int32_t bottom = -1;
-    for (std::int32_t y = 0; y < source.height; ++y) {
-        for (std::int32_t x = 0; x < source.width; ++x) {
-            if (source.pixels[static_cast<std::size_t>(y) * source.width +
-                               static_cast<std::size_t>(x)]
-                    .alpha == 0U) {
-                continue;
-            }
-            left = std::min(left, x);
-            top = std::min(top, y);
-            right = std::max(right, x);
-            bottom = std::max(bottom, y);
-        }
-    }
-    if (right < left || bottom < top) {
-        return {source.width, source.height, source.pixels};
-    }
-
-    native::NativeImage result;
-    result.width = static_cast<std::uint16_t>(right - left + 1);
-    result.height = static_cast<std::uint16_t>(bottom - top + 1);
-    result.origin_x = static_cast<std::int16_t>(left);
-    result.origin_y = static_cast<std::int16_t>(top);
-    result.pixels.resize(static_cast<std::size_t>(result.width) *
-                         result.height);
-    for (std::int32_t y = top; y <= bottom; ++y) {
-        for (std::int32_t x = left; x <= right; ++x) {
-            result.pixels[static_cast<std::size_t>(y - top) * result.width +
-                          static_cast<std::size_t>(x - left)] =
-                source.pixels[static_cast<std::size_t>(y) * source.width +
-                              static_cast<std::size_t>(x)];
-        }
-    }
-    return result;
-}
-
 RgbaImage decode_genesis_intro_aircraft_plane_a_impl(
     const std::vector<std::uint8_t>& rom);
 std::array<RgbaImage, native::kNativeIntroAircraftMovementFrameCount>
@@ -104,6 +58,7 @@ struct GenesisIntroTrividLayers {
 };
 GenesisIntroTrividLayers decode_genesis_intro_trivid_layers(
     const std::vector<std::uint8_t>& rom);
+#endif
 
 void write_u16(std::ostream& output, std::uint16_t value) {
     output.put(static_cast<char>(value & 0xFFU));
@@ -116,6 +71,7 @@ void write_u32(std::ostream& output, std::uint32_t value) {
     }
 }
 
+#ifndef SHADOWRUN_GRAPHICS_RUNTIME_ONLY
 void write_native_image(std::ostream& output,
                         const native::NativeImage& image) {
     const auto expected = static_cast<std::size_t>(image.width) * image.height;
@@ -132,6 +88,7 @@ void write_native_image(std::ostream& output,
         output.put(static_cast<char>(pixel.alpha));
     }
 }
+#endif
 
 std::uint8_t read_pack_u8(std::istream& input, const char* what) {
     const auto value = input.get();
@@ -170,6 +127,7 @@ void read_pack_bytes(std::istream& input, std::uint8_t* destination,
     }
 }
 
+#ifndef SHADOWRUN_GRAPHICS_RUNTIME_ONLY
 void write_native_entity_payload(std::ostream& output,
                                 const native::NativeFieldEntity& entity) {
     write_u16(output, entity.projection_word_08);
@@ -308,7 +266,9 @@ native::NativeFieldEntity read_native_entity_payload(std::istream& input,
     }
     return entity;
 }
+#endif
 
+#ifndef SHADOWRUN_GRAPHICS_RUNTIME_ONLY
 std::string read_genesis_fixed_text(const std::vector<std::uint8_t>& rom,
                                     std::size_t offset, std::size_t length,
                                     const char* what) {
@@ -448,6 +408,9 @@ std::vector<native::NativeStartupTextLine> read_genesis_startup_layout(
     throw std::out_of_range(what);
 }
 
+#endif
+
+#ifndef SHADOWRUN_GRAPHICS_RUNTIME_ONLY
 void write_pack_string(std::ostream& output, const std::string& value,
                        const char* what) {
     if (value.size() > 0xFFFFU) {
@@ -456,6 +419,7 @@ void write_pack_string(std::ostream& output, const std::string& value,
     write_u16(output, static_cast<std::uint16_t>(value.size()));
     output.write(value.data(), static_cast<std::streamsize>(value.size()));
 }
+#endif
 
 std::string read_pack_string(std::istream& input, const char* what) {
     const auto size = static_cast<std::size_t>(read_pack_u16(input, what));
@@ -472,6 +436,7 @@ std::string read_pack_string(std::istream& input, const char* what) {
     return value;
 }
 
+#ifndef SHADOWRUN_GRAPHICS_RUNTIME_ONLY
 native::NativeImage read_native_image(std::istream& input) {
     const auto width = read_pack_u16(input, "native asset image header is truncated");
     const auto height = read_pack_u16(input, "native asset image header is truncated");
@@ -493,9 +458,13 @@ native::NativeImage read_native_image(std::istream& input) {
     }
     return image;
 }
+#endif
 
 } // namespace
 
+static void fill_grayscale_entity_assets(native::NativePortAssets& assets);
+
+#ifndef SHADOWRUN_GRAPHICS_RUNTIME_ONLY
 GenesisFieldEntityTemplate read_genesis_field_entity_template(
     const std::vector<std::uint8_t>& rom, std::size_t record_offset) {
     if (record_offset > rom.size() || rom.size() - record_offset < 0x92U) {
@@ -814,7 +783,6 @@ native::NativeIntroData read_genesis_intro_data(
 std::array<RgbaImage, 23> decode_genesis_field_menu_stat_bars(
     const std::vector<std::uint8_t>& rom, std::size_t table_offset,
     const char* table_name);
-void fill_grayscale_entity_assets(native::NativePortAssets& assets);
 
 native::NativePortAssets decode_genesis_native_assets(
     const std::vector<std::uint8_t>& rom) {
@@ -896,25 +864,34 @@ native::NativePortAssets decode_genesis_native_assets(
     }
     const auto intro_heli = decode_genesis_intro_heli_frames(rom);
     for (std::size_t index = 0; index < intro_heli.size(); ++index) {
-        assets.intro_heli_frames[index] = crop_transparent_rgba(intro_heli[index]);
+        assets.intro_heli_frames[index] = {
+            intro_heli[index].width, intro_heli[index].height,
+            intro_heli[index].pixels};
     }
     const auto intro_aircraft_plane_a =
         decode_genesis_intro_aircraft_plane_a_impl(rom);
-    assets.intro_aircraft_plane_a =
-        crop_transparent_rgba(intro_aircraft_plane_a);
+    assets.intro_aircraft_plane_a = {
+        intro_aircraft_plane_a.width, intro_aircraft_plane_a.height,
+        intro_aircraft_plane_a.pixels};
     const auto intro_aircraft_movement =
         decode_genesis_intro_aircraft_movement_frames_impl(rom);
     for (std::size_t index = 0; index < intro_aircraft_movement.size();
          ++index) {
-        assets.intro_aircraft_movement_frames[index] =
-            crop_transparent_rgba(intro_aircraft_movement[index]);
+        assets.intro_aircraft_movement_frames[index] = {
+            intro_aircraft_movement[index].width,
+            intro_aircraft_movement[index].height,
+            intro_aircraft_movement[index].pixels};
     }
     const auto intro_trivid = decode_genesis_intro_trivid_layers(rom);
     assets.intro_trivid_background = {
         intro_trivid.background.width, intro_trivid.background.height,
         std::move(intro_trivid.background.pixels)};
-    assets.intro_trivid_slain = crop_transparent_rgba(intro_trivid.slain);
-    assets.intro_trivid_moving = crop_transparent_rgba(intro_trivid.moving);
+    assets.intro_trivid_slain = {
+        intro_trivid.slain.width, intro_trivid.slain.height,
+        std::move(intro_trivid.slain.pixels)};
+    assets.intro_trivid_moving = {
+        intro_trivid.moving.width, intro_trivid.moving.height,
+        std::move(intro_trivid.moving.pixels)};
     const auto cab_map = decode_genesis_cab_map(rom);
     assets.cab_map = {
         cab_map.width, cab_map.height, std::move(cab_map.pixels)};
@@ -1354,7 +1331,9 @@ native::NativePortAssets decode_genesis_native_assets(
     }
     return assets;
 }
+#endif
 
+#ifndef SHADOWRUN_GRAPHICS_RUNTIME_ONLY
 void write_native_asset_pack(const std::string& path,
                              const native::NativePortAssets& assets) {
     std::ofstream output(path, std::ios::binary);
@@ -2639,21 +2618,42 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     return assets;
 }
 
+#endif
+
 // Direct-directory state helpers are defined below the legacy pack reader so
 // the old serializer remains easy to compare with its historical format.
-void write_native_field_record_state(std::ostream& output,
+#ifndef SHADOWRUN_GRAPHICS_RUNTIME_ONLY
+static void write_native_field_record_state(std::ostream& output,
                                      const native::NativeFieldRecord& record);
-native::NativeFieldRecord read_native_field_record_state(std::istream& input);
-void write_native_field_entity_state(
+#endif
+#ifndef SHADOWRUN_GRAPHICS_IMPORT_ONLY
+static native::NativeFieldRecord read_native_field_record_state(
+    std::istream& input);
+#endif
+#ifndef SHADOWRUN_GRAPHICS_RUNTIME_ONLY
+static void write_native_field_entity_state(
     std::ostream& output, const native::NativeFieldEntity& entity);
-native::NativeFieldEntity read_native_field_entity_state(std::istream& input);
-void write_native_terrain_state(std::ostream& output,
+#endif
+#ifndef SHADOWRUN_GRAPHICS_IMPORT_ONLY
+static native::NativeFieldEntity read_native_field_entity_state(
+    std::istream& input);
+#endif
+#ifndef SHADOWRUN_GRAPHICS_RUNTIME_ONLY
+static void write_native_terrain_state(std::ostream& output,
                                 const terrain::Map& map);
-terrain::Map read_native_terrain_state(std::istream& input);
-void write_native_intro_state(std::ostream& output,
+#endif
+#ifndef SHADOWRUN_GRAPHICS_IMPORT_ONLY
+static terrain::Map read_native_terrain_state(std::istream& input);
+#endif
+#ifndef SHADOWRUN_GRAPHICS_RUNTIME_ONLY
+static void write_native_intro_state(std::ostream& output,
                               const native::NativeIntroData& intro);
-native::NativeIntroData read_native_intro_state(std::istream& input);
+#endif
+#ifndef SHADOWRUN_GRAPHICS_IMPORT_ONLY
+static native::NativeIntroData read_native_intro_state(std::istream& input);
+#endif
 
+#ifndef SHADOWRUN_GRAPHICS_RUNTIME_ONLY
 void write_native_asset_state(const std::string& path,
                               const native::NativePortAssets& assets) {
     std::ofstream output(path, std::ios::binary);
@@ -2792,6 +2792,9 @@ void write_native_asset_state(const std::string& path,
     }
 }
 
+#endif
+
+#ifndef SHADOWRUN_GRAPHICS_IMPORT_ONLY
 native::NativePortAssets read_native_asset_directory(const std::string& root) {
     const std::filesystem::path asset_root(root);
     const auto state_path = asset_root / "native" / "state.bin";
@@ -3155,7 +3158,9 @@ native::NativePortAssets read_native_asset_directory(const std::string& root) {
     return assets;
 }
 
-RgbaImage make_grayscale_image(const RgbaImage& color) {
+#endif
+
+static RgbaImage make_grayscale_image_impl(const RgbaImage& color) {
     RgbaImage gray = color;
     for (auto& pixel : gray.pixels) {
         const auto luminance = static_cast<std::uint8_t>(
@@ -3170,14 +3175,20 @@ RgbaImage make_grayscale_image(const RgbaImage& color) {
     return gray;
 }
 
-native::NativeEntityFrame grayscale_entity_frame(
+#ifndef SHADOWRUN_GRAPHICS_IMPORT_ONLY
+RgbaImage make_grayscale_image(const RgbaImage& color) {
+    return make_grayscale_image_impl(color);
+}
+#endif
+
+static native::NativeEntityFrame grayscale_entity_frame(
     const native::NativeEntityFrame& color) {
-    const RgbaImage gray = make_grayscale_image(
+    const RgbaImage gray = make_grayscale_image_impl(
         {color.width, color.height, color.pixels});
     return {gray.width, gray.height, gray.pixels};
 }
 
-void fill_grayscale_entity_assets(native::NativePortAssets& assets) {
+static void fill_grayscale_entity_assets(native::NativePortAssets& assets) {
     assets.entity_frames_gray.clear();
     assets.entity_frames_gray.reserve(assets.entity_frames.size());
     for (const auto& frame : assets.entity_frames) {
@@ -3196,6 +3207,7 @@ void fill_grayscale_entity_assets(native::NativePortAssets& assets) {
     }
 }
 
+#ifndef SHADOWRUN_GRAPHICS_RUNTIME_ONLY
 native::Rgba8 decode_genesis_cram_word(std::uint16_t cram_word,
                                        bool transparent) {
     const auto expand = [](std::uint8_t value) {
@@ -3708,7 +3720,10 @@ RgbaImage decode_genesis_field_menu_attributes_background(
     return image;
 }
 
-void write_native_field_record_state(std::ostream& output,
+#endif
+
+#ifndef SHADOWRUN_GRAPHICS_RUNTIME_ONLY
+static void write_native_field_record_state(std::ostream& output,
                                      const native::NativeFieldRecord& record) {
     write_u16(output, record.position.world_x_fixed);
     write_u16(output, record.position.world_y_fixed);
@@ -3716,8 +3731,11 @@ void write_native_field_record_state(std::ostream& output,
     output.put(static_cast<char>(record.flags_10));
     output.put(static_cast<char>(record.flags_11));
 }
+#endif
 
-native::NativeFieldRecord read_native_field_record_state(std::istream& input) {
+#ifndef SHADOWRUN_GRAPHICS_IMPORT_ONLY
+static native::NativeFieldRecord read_native_field_record_state(
+    std::istream& input) {
     native::NativeFieldRecord record;
     record.position.world_x_fixed = read_pack_u16(
         input, "native field record state is truncated");
@@ -3731,8 +3749,10 @@ native::NativeFieldRecord read_native_field_record_state(std::istream& input) {
         input, "native field record state is truncated");
     return record;
 }
+#endif
 
-void write_native_field_entity_state(
+#ifndef SHADOWRUN_GRAPHICS_RUNTIME_ONLY
+static void write_native_field_entity_state(
     std::ostream& output, const native::NativeFieldEntity& entity) {
     output.put(static_cast<char>(entity.record_index));
     write_u16(output, entity.world_x_fixed);
@@ -3799,8 +3819,11 @@ void write_native_field_entity_state(
         output.put(static_cast<char>(value));
     }
 }
+#endif
 
-native::NativeFieldEntity read_native_field_entity_state(std::istream& input) {
+#ifndef SHADOWRUN_GRAPHICS_IMPORT_ONLY
+static native::NativeFieldEntity read_native_field_entity_state(
+    std::istream& input) {
     native::NativeFieldEntity entity;
     entity.record_index = read_pack_u8(
         input, "native field entity state is truncated");
@@ -3900,8 +3923,10 @@ native::NativeFieldEntity read_native_field_entity_state(std::istream& input) {
     }
     return entity;
 }
+#endif
 
-void write_native_terrain_state(std::ostream& output,
+#ifndef SHADOWRUN_GRAPHICS_RUNTIME_ONLY
+static void write_native_terrain_state(std::ostream& output,
                                 const terrain::Map& map) {
     write_u16(output, map.x_exclusive_upper);
     write_u16(output, map.y_exclusive_upper);
@@ -3923,8 +3948,10 @@ void write_native_terrain_state(std::ostream& output,
     output.write(reinterpret_cast<const char*>(map.statuses.data()),
                  static_cast<std::streamsize>(map.statuses.size()));
 }
+#endif
 
-terrain::Map read_native_terrain_state(std::istream& input) {
+#ifndef SHADOWRUN_GRAPHICS_IMPORT_ONLY
+static terrain::Map read_native_terrain_state(std::istream& input) {
     terrain::Map map;
     map.x_exclusive_upper = read_pack_u16(
         input, "native terrain state is truncated");
@@ -3957,8 +3984,10 @@ terrain::Map read_native_terrain_state(std::istream& input) {
                     "native terrain state is truncated");
     return map;
 }
+#endif
 
-void write_native_intro_state(std::ostream& output,
+#ifndef SHADOWRUN_GRAPHICS_RUNTIME_ONLY
+static void write_native_intro_state(std::ostream& output,
                               const native::NativeIntroData& intro) {
     write_pack_string(output, intro.start_options_title,
                       "native state startup title is too long");
@@ -3996,8 +4025,10 @@ void write_native_intro_state(std::ostream& output,
     write_layout(intro.no_save_layout);
     write_layout(intro.save_success_layout);
 }
+#endif
 
-native::NativeIntroData read_native_intro_state(std::istream& input) {
+#ifndef SHADOWRUN_GRAPHICS_IMPORT_ONLY
+static native::NativeIntroData read_native_intro_state(std::istream& input) {
     native::NativeIntroData intro;
     intro.start_options_title = read_pack_string(
         input, "native state startup title is truncated");
@@ -4043,7 +4074,9 @@ native::NativeIntroData read_native_intro_state(std::istream& input) {
     intro.save_success_layout = read_layout();
     return intro;
 }
+#endif
 
+#ifndef SHADOWRUN_GRAPHICS_RUNTIME_ONLY
 RgbaImage decode_genesis_startup_background(
     const std::vector<std::uint8_t>& rom) {
     return decode_genesis_field_menu_layer(rom, false, true);
@@ -8383,6 +8416,9 @@ GenesisFieldHudLayers decode_genesis_field_hud_layers(
     return result;
 }
 
+#endif
+
+#ifndef SHADOWRUN_GRAPHICS_IMPORT_ONLY
 RgbaImage software_screen_image(const native::SoftwareScreen& screen) {
     RgbaImage image{
         screen.width(), screen.height(),
@@ -8538,5 +8574,7 @@ RgbaImage read_bmp32(const std::string& path) {
     }
     return image;
 }
+
+#endif
 
 } // namespace shadowrun::graphics

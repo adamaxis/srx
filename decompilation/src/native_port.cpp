@@ -1,7 +1,6 @@
 #include "shadowrun/native_port.hpp"
 
 #include "shadowrun/entity_projection.hpp"
-#include "shadowrun/graphics.hpp"
 #include "shadowrun/intro_scene.hpp"
 
 #include <algorithm>
@@ -761,11 +760,6 @@ std::string_view NativePortShell::field_trade_message() const {
     }
     return {};
 }
-
-NativePortShell::NativePortShell(
-    std::string title, const std::vector<std::uint8_t>& rom)
-    : NativePortShell(
-          std::move(title), graphics::decode_genesis_native_assets(rom)) {}
 
 NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
       : title_(std::move(title)), scene_(NativeScene::Title) {

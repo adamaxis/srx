@@ -35,6 +35,18 @@ add_library(shadowrun_port STATIC
     src/z80_transport.cpp
 )
 target_include_directories(shadowrun_port PUBLIC include)
+target_compile_definitions(shadowrun_port PRIVATE
+    SHADOWRUN_GRAPHICS_RUNTIME_ONLY)
+
+# The ROM/tilemap/palette importer is an offline tool boundary.  It remains
+# available to extraction and source-analysis tests, but is not compiled into
+# the native/Qt runtime library.
+add_library(shadowrun_graphics_import STATIC
+    src/graphics.cpp
+)
+target_include_directories(shadowrun_graphics_import PUBLIC include)
+target_compile_definitions(shadowrun_graphics_import PRIVATE
+    SHADOWRUN_GRAPHICS_IMPORT_ONLY)
 
 add_executable(shadowrun_boot_reconstruction_test
     tests/boot_reconstruction_test.cpp
@@ -45,7 +57,8 @@ add_test(NAME shadowrun_boot_reconstruction COMMAND shadowrun_boot_reconstructio
 add_executable(shadowrun_native_port_test
     tests/native_port_test.cpp
 )
-target_link_libraries(shadowrun_native_port_test PRIVATE shadowrun_port)
+target_link_libraries(shadowrun_native_port_test PRIVATE
+    shadowrun_graphics_import shadowrun_port)
 target_compile_definitions(shadowrun_native_port_test PRIVATE
     SHADOWRUN_TEST_ROM="${CMAKE_CURRENT_SOURCE_DIR}/input/shadowrun_genesis_us.bin")
 add_test(NAME shadowrun_native_port COMMAND shadowrun_native_port_test)
@@ -53,7 +66,8 @@ add_test(NAME shadowrun_native_port COMMAND shadowrun_native_port_test)
 add_executable(shadowrun_graphics_test
     tests/graphics_test.cpp
 )
-target_link_libraries(shadowrun_graphics_test PRIVATE shadowrun_port)
+target_link_libraries(shadowrun_graphics_test PRIVATE
+    shadowrun_graphics_import shadowrun_port)
 target_compile_definitions(shadowrun_graphics_test PRIVATE
     SHADOWRUN_TEST_ROM="${CMAKE_CURRENT_SOURCE_DIR}/input/shadowrun_genesis_us.bin")
 add_test(NAME shadowrun_graphics COMMAND shadowrun_graphics_test)
@@ -61,7 +75,8 @@ add_test(NAME shadowrun_graphics COMMAND shadowrun_graphics_test)
 add_executable(shadowrun_menu_system_test
     tests/menu_system_test.cpp
 )
-target_link_libraries(shadowrun_menu_system_test PRIVATE shadowrun_port)
+target_link_libraries(shadowrun_menu_system_test PRIVATE
+    shadowrun_graphics_import shadowrun_port)
 target_compile_definitions(shadowrun_menu_system_test PRIVATE
     SHADOWRUN_TEST_ROM="${CMAKE_CURRENT_SOURCE_DIR}/input/shadowrun_genesis_us.bin")
 add_test(NAME shadowrun_menu_system COMMAND shadowrun_menu_system_test)
@@ -69,7 +84,8 @@ add_test(NAME shadowrun_menu_system COMMAND shadowrun_menu_system_test)
 add_executable(shadowrun_menu_visual_regression_test
     tests/menu_visual_regression_test.cpp
 )
-target_link_libraries(shadowrun_menu_visual_regression_test PRIVATE shadowrun_port)
+target_link_libraries(shadowrun_menu_visual_regression_test PRIVATE
+    shadowrun_graphics_import shadowrun_port)
 target_compile_definitions(shadowrun_menu_visual_regression_test PRIVATE
     SHADOWRUN_TEST_ROM="${CMAKE_CURRENT_SOURCE_DIR}/input/shadowrun_genesis_us.bin"
     SHADOWRUN_VISUAL_ARTIFACT_DIR="${CMAKE_CURRENT_BINARY_DIR}/visual-regression")
@@ -83,7 +99,8 @@ target_link_libraries(shadowrun_visual_dump PRIVATE shadowrun_port)
 add_executable(shadowrun_boot_sequence_test
     tests/boot_sequence_test.cpp
 )
-target_link_libraries(shadowrun_boot_sequence_test PRIVATE shadowrun_port)
+target_link_libraries(shadowrun_boot_sequence_test PRIVATE
+    shadowrun_graphics_import shadowrun_port)
 target_compile_definitions(shadowrun_boot_sequence_test PRIVATE
     SHADOWRUN_TEST_ROM="${CMAKE_CURRENT_SOURCE_DIR}/input/shadowrun_genesis_us.bin"
     SHADOWRUN_VISUAL_ARTIFACT_DIR="${CMAKE_CURRENT_BINARY_DIR}/visual-regression")
@@ -101,7 +118,8 @@ add_test(NAME shadowrun_leftover_clear COMMAND shadowrun_leftover_clear_test)
 add_executable(shadowrun_graphics_extract
     src/graphics_extract.cpp
 )
-target_link_libraries(shadowrun_graphics_extract PRIVATE shadowrun_port)
+target_link_libraries(shadowrun_graphics_extract PRIVATE
+    shadowrun_graphics_import shadowrun_port)
 
 add_library(shadowrun_audio_extract_lib STATIC
     src/audio_extract.cpp

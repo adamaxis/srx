@@ -16,6 +16,11 @@ std::vector<std::uint8_t> read_rom() {
         std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
 }
 
+shadowrun::native::NativePortAssets native_assets_from_rom(
+    const std::vector<std::uint8_t>& rom) {
+    return shadowrun::graphics::decode_genesis_native_assets(rom);
+}
+
 void enter_field_from_start(shadowrun::native::NativePortShell& shell) {
     using namespace shadowrun::native;
     shell.finish_boot();
@@ -108,7 +113,7 @@ int main() {
     assert(shell.marker_y() == kScreenHeight / 2);
 
     const auto rom = read_rom();
-    NativePortShell rom_shell("SHADOWRUN", rom);
+    NativePortShell rom_shell("SHADOWRUN", native_assets_from_rom(rom));
     assert(rom_shell.has_assets());
     assert(rom_shell.has_field_map());
     assert(rom_shell.has_terrain());
@@ -152,7 +157,7 @@ int main() {
     // sequence.  The pan plate initially contains the runners; the source
     // map/body phases then replace the lower-right and Indian body regions,
     // and the late pass changes Michael to the trivid-left pose.
-    NativePortShell ambush_shell("SHADOWRUN", rom);
+    NativePortShell ambush_shell("SHADOWRUN", native_assets_from_rom(rom));
     enter_intro_from_start(ambush_shell);
     while (ambush_shell.intro_frame() < 0x308U) {
         ambush_shell.update(InputState{});
@@ -246,7 +251,7 @@ int main() {
     // must both reach the framebuffer. After the city settles, the late
     // 0x5B1B6 SAT movement must still change pixels; the old $150 cutoff
     // rendered a static skyline through this part of the ROM loop.
-    NativePortShell intro_shell("SHADOWRUN", rom);
+    NativePortShell intro_shell("SHADOWRUN", native_assets_from_rom(rom));
     enter_intro_from_start(intro_shell);
     while (intro_shell.intro_frame() < 1614U) {
         intro_shell.update(InputState{});
