@@ -74,12 +74,15 @@ void dump_title(NativePortShell& shell, const std::filesystem::path& out,
 
 void usage() {
     std::cerr
-        << "shadowrun_visual_dump <pack.srna> <out-dir> --scene <name> "
+        << "shadowrun_visual_dump <asset-dir> <out-dir> --scene <name> "
            "[--frames 0,90,128,500] [--archetype 0|1|2]\n"
         << "scenes: boot, title, start-options, save-load-empty, archetype, "
-           "intro, intro-ambush-asset, cab-map, field, field-menu, "
+           "intro, intro-ambush-asset, cab-map, field, field-movement, field-menu, "
+           "field-unarmed, "
+           "field-action, "
            "pocket-secretary, clips, cyberware, attributes, magic, posture, "
-           "inventory\n";
+           "inventory, field-animation-assets, menu-cursor, menu-focus-assets, "
+           "trivid-layers, story\n";
 }
 
 } // namespace
@@ -90,7 +93,7 @@ int main(int argc, char** argv) {
             usage();
             return 1;
         }
-        const std::filesystem::path pack(argv[1]);
+        const std::filesystem::path asset_root(argv[1]);
         const std::filesystem::path out(argv[2]);
         std::string scene;
         std::size_t requested_archetype = 0;
@@ -120,20 +123,127 @@ int main(int argc, char** argv) {
             return 1;
         }
         std::filesystem::create_directories(out);
-        auto assets = shadowrun::graphics::read_native_asset_pack(pack.string());
+        auto assets = shadowrun::graphics::read_native_asset_directory(
+            asset_root.string());
         NativePortShell shell("SHADOWRUN", assets);
 
         if (scene == "intro-ambush-asset") {
             for (const auto target : frames) {
                 if (target >= assets.intro_ambush_frames.size()) {
                     throw std::out_of_range(
-                        "intro ambush asset frame is outside the pack");
+                        "intro ambush asset frame is outside the extracted set");
                 }
                 const auto& image = assets.intro_ambush_frames[target];
                 shadowrun::graphics::write_bmp32(
                     (out / ("intro-ambush-asset-" +
                             std::to_string(target) + ".bmp")).string(),
                     {image.width, image.height, image.pixels});
+            }
+            return 0;
+        }
+
+        if (scene == "field-animation-assets") {
+            for (std::size_t direction = 0;
+                 direction < assets.field_entity_animations.size(); ++direction) {
+                const auto& animation = assets.field_entity_animations[direction];
+                for (std::size_t frame = 0; frame < animation.frames.size();
+                     ++frame) {
+                    const auto& image = animation.frames[frame];
+                    shadowrun::graphics::write_bmp32(
+                        (out / ("walk-" + std::to_string(direction) + "-" +
+                                std::to_string(frame) + ".bmp")).string(),
+                        {image.width, image.height, image.pixels});
+                }
+            }
+            for (std::size_t frame = 0; frame < assets.entity_frames.size();
+                 ++frame) {
+                const auto& image = assets.entity_frames[frame];
+                shadowrun::graphics::write_bmp32(
+                    (out / ("idle-" + std::to_string(frame) + ".bmp")).string(),
+                    {image.width, image.height, image.pixels});
+            }
+            const auto dump_image = [&out](const std::string& name,
+                                           const shadowrun::native::NativeImage& image) {
+                shadowrun::graphics::write_bmp32(
+                    (out / name).string(),
+                    {image.width, image.height, image.pixels});
+            };
+            for (std::size_t index = 0; index < assets.field_hud_faces.size();
+                 ++index) {
+                dump_image("hud-face-" + std::to_string(index) + ".bmp",
+                           assets.field_hud_faces[index]);
+                dump_image("hud-item-" + std::to_string(index) + ".bmp",
+                           assets.field_hud_item_blocks[index]);
+                dump_image("hud-vertical-" + std::to_string(index) + ".bmp",
+                           assets.field_hud_vertical_counters[index]);
+                dump_image("hud-horizontal-" + std::to_string(index) + ".bmp",
+                           assets.field_hud_horizontal_counters[index]);
+            }
+            for (std::size_t index = 0; index < assets.field_hud_ammo_counters.size();
+                 ++index) {
+                dump_image("hud-ammo-" + std::to_string(index) + ".bmp",
+                           assets.field_hud_ammo_counters[index]);
+            }
+            return 0;
+        }
+
+        if (scene == "menu-cursor") {
+            const auto& image = assets.field_menu_cursor;
+            shadowrun::graphics::write_bmp32(
+                (out / "field-menu-cursor.bmp").string(),
+                {image.width, image.height, image.pixels});
+            return 0;
+        }
+
+        if (scene == "menu-focus-assets") {
+            const auto dump_image = [&out](const std::string& name,
+                                           const shadowrun::native::NativeImage& image) {
+                shadowrun::graphics::write_bmp32(
+                    (out / name).string(),
+                    {image.width, image.height, image.pixels});
+            };
+            for (std::size_t index = 0;
+                 index < assets.field_menu_command_focus.size(); ++index) {
+                dump_image("command-focus-" + std::to_string(index) + ".bmp",
+                           assets.field_menu_command_focus[index]);
+            }
+            for (std::size_t index = 0;
+                 index < assets.field_menu_action_focus.size(); ++index) {
+                dump_image("action-focus-" + std::to_string(index) + ".bmp",
+                           assets.field_menu_action_focus[index]);
+            }
+            for (std::size_t index = 0;
+                 index < assets.field_menu_clips_focus.size(); ++index) {
+                dump_image("clips-focus-" + std::to_string(index) + ".bmp",
+                           assets.field_menu_clips_focus[index]);
+            }
+            for (std::size_t index = 0;
+                 index < assets.field_menu_clips_trade_focus.size(); ++index) {
+                dump_image("clips-trade-focus-" + std::to_string(index) + ".bmp",
+                           assets.field_menu_clips_trade_focus[index]);
+            }
+            dump_image("posture-focus.bmp", assets.field_menu_posture_focus);
+            return 0;
+        }
+
+        if (scene == "trivid-layers") {
+            const auto dump_image = [&out](const std::string& name,
+                                           const shadowrun::native::NativeImage& image) {
+                shadowrun::graphics::write_bmp32(
+                    (out / name).string(),
+                    {image.width, image.height, image.pixels});
+            };
+            dump_image("trivid-background.bmp", assets.intro_trivid_background);
+            dump_image("trivid-slain.bmp", assets.intro_trivid_slain);
+            dump_image("trivid-moving.bmp", assets.intro_trivid_moving);
+            return 0;
+        }
+
+        if (scene == "story") {
+            for (std::size_t index = 0; index < assets.intro.story_lines.size();
+                 ++index) {
+                std::cout << index << ": " << assets.intro.story_lines[index]
+                          << '\n';
             }
             return 0;
         }
@@ -213,7 +323,7 @@ int main(int argc, char** argv) {
             }
             return 0;
         }
-        if (scene == "field") {
+        if (scene == "field" || scene == "field-movement") {
             enter_start_options(shell);
             press(shell, Button::A);
             for (std::size_t index = 0; index < requested_archetype; ++index) {
@@ -224,7 +334,19 @@ int main(int argc, char** argv) {
             if (shell.scene() != NativeScene::Field) {
                 throw std::runtime_error("failed to enter Field");
             }
-            write_frame(shell, out / "field.bmp");
+            if (scene == "field") {
+                write_frame(shell, out / "field.bmp");
+            } else {
+                for (std::size_t frame = 0; frame < 96U; ++frame) {
+                    shell.update(InputState{button_mask(Button::Right), 0});
+                    if (frame == 0U || frame == 15U || frame == 31U ||
+                        frame == 63U || frame == 95U) {
+                        write_frame(shell, out / ("field-movement-" +
+                                                   std::to_string(frame) +
+                                                   ".bmp"));
+                    }
+                }
+            }
             return 0;
         }
         if (scene == "cab-map") {
@@ -245,6 +367,11 @@ int main(int argc, char** argv) {
             if (shell.scene() != NativeScene::CabMap) {
                 throw std::runtime_error("intro did not reach cab map");
             }
+            // `current` counted the host ticks needed to reach the cab scene;
+            // cab-map frames are relative to that scene entry. Keeping the
+            // accumulated intro count here made every requested frame below
+            // the intro duration dump the same settled map.
+            current = 0;
             for (const auto target : frames) {
                 while (current < target) {
                     shell.update(InputState{});
@@ -258,7 +385,9 @@ int main(int argc, char** argv) {
             }
             return 0;
         }
-        if (scene == "field-menu" || scene == "pocket-secretary") {
+        if (scene == "field-menu" || scene == "field-action" ||
+            scene == "field-unarmed" ||
+            scene == "pocket-secretary") {
             enter_start_options(shell);
             press(shell, Button::A);
             for (std::size_t index = 0; index < requested_archetype; ++index) {
@@ -271,6 +400,39 @@ int main(int argc, char** argv) {
                 throw std::runtime_error("failed to enter command menu");
             }
             write_frame(shell, out / "field-menu.bmp");
+            if (scene == "field-unarmed") {
+                for (std::size_t index = 0; index < 6U; ++index) {
+                    press(shell, Button::Left);
+                }
+                press(shell, Button::A);
+                press(shell, Button::A);
+                if (shell.field_active_item_code() != 0U) {
+                    throw std::runtime_error("failed to unequip startup item");
+                }
+                // 0x121E0 returns to the selected inventory cell. Move back
+                // through the command selector before dumping the main
+                // overview; otherwise this is the selected pistol detail
+                // panel rather than the no-equipped-item overview.
+                for (std::size_t index = 0; index < 6U; ++index) {
+                    press(shell, Button::Right);
+                }
+                write_frame(shell, out / "field-unarmed.bmp");
+                return 0;
+            }
+            if (scene == "field-action") {
+                for (std::size_t index = 0; index < 6U; ++index) {
+                    press(shell, Button::Left);
+                }
+                press(shell, Button::A);
+                if (!shell.field_menu_action_active()) {
+                    throw std::runtime_error(
+                        "failed to enter inventory action loop");
+                }
+                write_frame(shell, out / "field-action-equip.bmp");
+                press(shell, Button::Right);
+                write_frame(shell, out / "field-action-discard.bmp");
+                return 0;
+            }
             if (scene == "pocket-secretary") {
                 press(shell, Button::A);
                 write_frame(shell, out / "pocket-secretary.bmp");

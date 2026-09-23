@@ -201,6 +201,72 @@ constexpr std::int32_t kFieldViewportWidth = kFieldPlayfieldWidth;
 constexpr std::int32_t kFieldViewportHeight = kScreenHeight;
 constexpr std::int32_t kFieldScreenOriginY = 0;
 constexpr std::uint64_t kCabMapFrames = 90;
+// ROM 0x13726 walks the five D4536 cursor sizes while consuming the five
+// position words at D4464.  The source redraws the map between the two
+// destination records used by the opening cab ride: Downtown Seattle first,
+// then Redmond Barrens.  These are presentation states, not a ROM/VDP
+// emulator; the extracted cab plate remains the map texture underneath.
+struct CabMapCursorState {
+    std::uint16_t position;
+    std::uint8_t width_tiles;
+    std::uint8_t height_tiles;
+};
+constexpr std::array<CabMapCursorState, 5> kCabDowntownCursor{{
+    {0x0000U, 0x17U, 0x0EU}, {0x0184U, 0x11U, 0x0BU},
+    {0x030AU, 0x0CU, 0x08U}, {0x0410U, 0x06U, 0x05U},
+    {0x0514U, 0x00U, 0x00U}}};
+constexpr std::array<CabMapCursorState, 5> kCabRedmondCursor{{
+    {0x0000U, 0x17U, 0x0EU}, {0x010CU, 0x11U, 0x0BU},
+    {0x0216U, 0x0CU, 0x08U}, {0x0322U, 0x06U, 0x05U},
+    {0x03AEU, 0x00U, 0x00U}}};
+constexpr std::uint64_t kCabCursorPhaseFrames = 6;
+constexpr std::int32_t kCabSourceMapX = 32;
+constexpr std::int32_t kCabSourceMapY = 32;
+constexpr std::int32_t kCabTargetMapX = 62;
+constexpr std::int32_t kCabTargetMapY = 30;
+constexpr std::int32_t kCabSourceMapWidth = 208;
+constexpr std::int32_t kCabSourceMapHeight = 136;
+constexpr std::int32_t kCabTargetMapWidth = 166;
+constexpr std::int32_t kCabTargetMapHeight = 130;
+
+void draw_cab_cursor(ScreenWriter& screen, const CabMapCursorState& state) {
+    // D4464 positions are VDP name-table addresses relative to $C000.  The
+    // decoder uses the same $C208 base as 0x13726's D4 register.
+    const auto relative = static_cast<std::uint32_t>(0x0208U) +
+        static_cast<std::uint32_t>(state.position);
+    const auto source_x = static_cast<std::int32_t>(
+        ((relative % 0x80U) / 2U) * 8U);
+    const auto source_y = static_cast<std::int32_t>((relative / 0x80U) * 8U);
+    const auto source_width =
+        static_cast<std::int32_t>(state.width_tiles + 2U) * 8;
+    const auto source_height =
+        static_cast<std::int32_t>(state.height_tiles + 2U) * 8;
+    const auto to_target_x = [](std::int32_t value) {
+        return kCabTargetMapX +
+            ((value - kCabSourceMapX) * kCabTargetMapWidth) /
+                kCabSourceMapWidth;
+    };
+    const auto to_target_y = [](std::int32_t value) {
+        return kCabTargetMapY +
+            ((value - kCabSourceMapY) * kCabTargetMapHeight) /
+                kCabSourceMapHeight;
+    };
+    const auto left = to_target_x(source_x);
+    const auto top = to_target_y(source_y);
+    const auto right = to_target_x(source_x + source_width);
+    const auto bottom = to_target_y(source_y + source_height);
+    const auto width = std::max<std::int32_t>(right - left, 4);
+    const auto height = std::max<std::int32_t>(bottom - top, 4);
+    // The cursor tiles in D4446 are a pale, two-tone outline. Preserve that
+    // visual hierarchy at the host presentation scale while the map itself
+    // remains the extracted ROM art.
+    screen.fill_rect(left, top, width, 2, {0xF0, 0xF0, 0xF0, 0xFF});
+    screen.fill_rect(left, top + height - 2, width, 2,
+                     {0xA8, 0xB8, 0xC0, 0xFF});
+    screen.fill_rect(left, top, 2, height, {0xF0, 0xF0, 0xF0, 0xFF});
+    screen.fill_rect(left + width - 2, top, 2, height,
+                     {0xA8, 0xB8, 0xC0, 0xFF});
+}
 // ROM 0x5A62 accepts VDP X values strictly below 0x1AE. After removing the
 // 0x80 sprite origin, this is the last host pixel at which the record remains
 // in the direct projection window.
@@ -297,8 +363,20 @@ constexpr std::uint64_t kIntroWildernessMassacre =
     kIntroWildernessPan + (0x1F0U - 0x164U);
 constexpr std::uint64_t kIntroWildernessEnd =
     kIntroWildernessPan + 0x1F1U;
+// The final source passes are the hand-off to 0x5AA96/0x5AC0E.  Keep the
+// terminal ambush result visible while that hand-off is being presented so
+// standing Michael is removed before the cockpit setup begins.
+constexpr std::size_t kIntroAmbushDeathStart = 0x1E0U;
 // 0x5AA96 0x114/DBF, then 0x5AD1A 0x528/DBF. 0x5A96A at countdown 0x1E0.
-constexpr std::uint64_t kIntroTrividEnd = kIntroWildernessEnd + 0x115U;
+// 0x5AA96 starts immediately after the wilderness loop. Its first draw pass
+// clears the old plane and writes trivid_left_0_0 through 0x5AC0E. It then
+// waits through 0x12F6 (17 iterations of two 0x00BD2 waits) around the
+// cockpit name-table upload. Keep that source setup interval visible: the
+// reference shows slain Michael on black before the cockpit becomes visible.
+constexpr std::uint64_t kIntroTrividCockpitStart = kIntroWildernessEnd;
+constexpr std::uint64_t kIntroTrividMapStart =
+    kIntroTrividCockpitStart + 1U + (0x11U * 2U);
+constexpr std::uint64_t kIntroTrividEnd = kIntroTrividMapStart + 0x115U;
 constexpr std::uint64_t kIntroAirportText =
     kIntroTrividEnd + (0x528U - 0x1E0U);
 // 0x5AD1A keeps calling 0x5B00A/0x5B056/0x5B0BC for its complete 0x528/DBF
@@ -330,8 +408,11 @@ constexpr std::array<IntroStoryGroup, 9> kIntroStoryGroups{{
     {kIntroSeattlePlace, 0U, 2U, 16},
     {kIntroSeattleTeam, 0U, 5U, 16},
     {kIntroSeattleEnd, 5U, 2U, 16},
-    {kIntroWildernessMassacre, 5U, 2U, 16},
-    {kIntroWildernessEnd, 10U, 3U, 16},
+    // 0x5AA5A advances to the post-massacre paragraph before 0x5AA96
+    // switches to the recovered tri-vid. Do not skip lines 7..9 while the
+    // source still shows the final ambush result.
+    {kIntroWildernessMassacre, 7U, 3U, 16},
+    {kIntroTrividMapStart, 10U, 3U, 16},
     {kIntroTrividEnd, 13U, 3U, 16},
     {kIntroAirportText, 16U, 6U, 16},
 }};
@@ -363,6 +444,61 @@ std::vector<Rgba8> scale_rgba(const std::vector<Rgba8>& source,
     return faded;
 }
 
+std::vector<Rgba8> nearest_scale_rgba(const std::vector<Rgba8>& source,
+                                      std::uint16_t source_width,
+                                      std::uint16_t source_height,
+                                      std::uint16_t target_width,
+                                      std::uint16_t target_height) {
+    if (source_width == 0U || source_height == 0U || target_width == 0U ||
+        target_height == 0U ||
+        source.size() < static_cast<std::size_t>(source_width) *
+                             source_height) {
+        return {};
+    }
+    std::uint16_t min_x = source_width;
+    std::uint16_t min_y = source_height;
+    std::uint16_t max_x = 0U;
+    std::uint16_t max_y = 0U;
+    bool has_ink = false;
+    for (std::uint16_t y = 0; y < source_height; ++y) {
+        for (std::uint16_t x = 0; x < source_width; ++x) {
+            if (source[static_cast<std::size_t>(y) * source_width + x].alpha ==
+                0U) {
+                continue;
+            }
+            has_ink = true;
+            min_x = std::min(min_x, x);
+            min_y = std::min(min_y, y);
+            max_x = std::max(max_x, x);
+            max_y = std::max(max_y, y);
+        }
+    }
+    if (!has_ink) {
+        return {};
+    }
+    const auto ink_width = static_cast<std::uint32_t>(max_x - min_x + 1U);
+    const auto ink_height = static_cast<std::uint32_t>(max_y - min_y + 1U);
+    std::vector<Rgba8> scaled(
+        static_cast<std::size_t>(target_width) * target_height);
+    for (std::uint16_t y = 0; y < target_height; ++y) {
+        const auto source_y = std::min<std::uint32_t>(
+            max_y,
+            static_cast<std::uint32_t>(min_y) +
+                (static_cast<std::uint32_t>(y) * ink_height) / target_height);
+        for (std::uint16_t x = 0; x < target_width; ++x) {
+            const auto source_x = std::min<std::uint32_t>(
+                max_x,
+                static_cast<std::uint32_t>(min_x) +
+                    (static_cast<std::uint32_t>(x) * ink_width) /
+                        target_width);
+            scaled[static_cast<std::size_t>(y) * target_width + x] =
+                source[static_cast<std::size_t>(source_y) * source_width +
+                       source_x];
+        }
+    }
+    return scaled;
+}
+
 // ROM 0x391A walks entity records after the current record. A candidate must
 // be active (bit 0), not suppressed (bit 6), and reach the selection exit
 // with bit 4 clear. These are record-state predicates, not UI guesses. The
@@ -386,6 +522,43 @@ constexpr std::array<std::string_view, 7> kFieldMenuLabels{{
     "      Magic      ",
     "Pocket Secretary ",
 }};
+
+// ROM strings at C1BC0..C2119 are the descriptions emitted by the
+// Attributes/Skills cursor. Keep the three source rows per entry together so
+// moving the selector cannot leave a previous entry's lines on the panel.
+constexpr std::array<std::array<std::string_view, 3>, 20>
+    kAttributeSkillDescriptions{{
+        {{"Body resists damage from weapons,",
+          "firearms, physical spells, and", "Black Ice."}},
+        {{"Quickness determines movement and", "attack speed, and increases combat",
+          "and cybercombat success."}},
+        {{"Strength increases melee damage", "and grenade accuracy.", ""}},
+        {{"Charisma reduces the hiring price", "of Shadowrunners and increases",
+          "fast-talk success."}},
+        {{"Intelligence determines attack", "speed, plus increases combat and",
+          "cybercombat success."}},
+        {{"Willpower resists damage from mana", "spells and magical drain. It also",
+          "increases combat success."}},
+        {{"Essence allows fast magical", "healing.  It decreases when",
+          "cyberware is installed."}},
+        {{"Magic determines the maximum Force", "of spells cast.  It decreases when",
+          "cyberware is installed."}},
+        {{"Sorcery determines success with", "spell casting.", ""}},
+        {{"Firearms determines success", "with ALL types of guns.", ""}},
+        {{"Pistols determines success with", "both light and heavy pistols.", ""}},
+        {{"SMGs determines success with", "sub-machine guns.", ""}},
+        {{"Shotgun determines success with", "various forms of shotguns.", ""}},
+        {{"Melee Combat determines success", "while fighting hand-to-hand.", ""}},
+        {{"Throwing increases accuracy and", "damage when tossing a grenade.", ""}},
+        {{"Computer increases success in", "cybercombat and the operation of",
+          "Nodes."}},
+        {{"Biotech determines success while", "using a Medkit.", ""}},
+        {{"Electronics determines success", "when attempting to force open",
+          "a Maglock."}},
+        {{"Reputation determines overall", "notoriety of the character.", ""}},
+        {{"Negotiation increases Shadowrun", "payments and influences buying and",
+          "selling."}},
+    }};
 
 // ROM 0xC2A6 passes this source table to the common menu writer at 0xC0DA.
 // Main Menu and the separator at 0xC1418/0xC1423 are panel text, not
@@ -718,7 +891,7 @@ NativePortShell::NativePortShell(
           std::move(title), graphics::decode_genesis_native_assets(rom)) {}
 
 NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
-    : title_(std::move(title)), scene_(NativeScene::Title) {
+      : title_(std::move(title)), scene_(NativeScene::Title) {
     title_width_ = assets.title_scene.width;
     title_height_ = assets.title_scene.height;
     title_pixels_ = std::move(assets.title_scene.pixels);
@@ -740,10 +913,13 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     field_hud_ = std::move(assets.field_hud);
     field_hud_faces_ = std::move(assets.field_hud_faces);
     field_hud_item_blocks_ = std::move(assets.field_hud_item_blocks);
+    field_hud_unarmed_item_blocks_ =
+        std::move(assets.field_hud_unarmed_item_blocks);
     field_hud_vertical_counters_ =
         std::move(assets.field_hud_vertical_counters);
     field_hud_horizontal_counters_ =
         std::move(assets.field_hud_horizontal_counters);
+    field_hud_ammo_counters_ = std::move(assets.field_hud_ammo_counters);
     pocket_secretary_background_ = std::move(assets.pocket_secretary_background);
     intro_stages_ = std::move(assets.intro_stages);
     intro_aircraft_plane_a_ = std::move(assets.intro_aircraft_plane_a);
@@ -751,27 +927,27 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
         std::move(assets.intro_wilderness_pan_frames);
     intro_aircraft_movement_frames_ =
         std::move(assets.intro_aircraft_movement_frames);
+    intro_trivid_background_ = std::move(assets.intro_trivid_background);
+    intro_trivid_slain_ = std::move(assets.intro_trivid_slain);
+    intro_trivid_moving_ = std::move(assets.intro_trivid_moving);
     cab_map_ = std::move(assets.cab_map);
     if (!boot_background_.pixels.empty()) {
         scene_ = NativeScene::Bootstrap;
     }
-    field_menu_background_width_ = assets.field_menu_background.width;
-    field_menu_background_height_ = assets.field_menu_background.height;
-    field_menu_background_pixels_ = std::move(assets.field_menu_background.pixels);
+      field_menu_background_ = std::move(assets.field_menu_background);
+    field_menu_action_background_ =
+        std::move(assets.field_menu_action_background);
     field_menu_attributes_background_ =
         std::move(assets.field_menu_attributes_background);
-    field_menu_inventory_boxes_width_ = assets.field_menu_inventory_boxes.width;
-    field_menu_inventory_boxes_height_ = assets.field_menu_inventory_boxes.height;
-    field_menu_inventory_boxes_pixels_ =
-        std::move(assets.field_menu_inventory_boxes.pixels);
-    field_menu_font_width_ = assets.field_menu_font.width;
-    field_menu_font_height_ = assets.field_menu_font.height;
-    field_menu_font_pixels_ = std::move(assets.field_menu_font.pixels);
+      field_menu_inventory_boxes_ =
+          std::move(assets.field_menu_inventory_boxes);
+      field_menu_font_ = std::move(assets.field_menu_font);
     startup_font_ = std::move(assets.startup_font);
     startup_cursor_ = std::move(assets.startup_cursor);
     field_menu_runner_portraits_ = std::move(assets.field_menu_runner_portraits);
     field_menu_selected_cells_ = std::move(assets.field_menu_selected_cells);
     field_menu_command_focus_ = std::move(assets.field_menu_command_focus);
+    field_menu_action_focus_ = std::move(assets.field_menu_action_focus);
     field_menu_clips_focus_ = std::move(assets.field_menu_clips_focus);
     field_menu_clips_trade_focus_ =
         std::move(assets.field_menu_clips_trade_focus);
@@ -869,7 +1045,148 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     refresh_field_entity_projection();
     marker_x_ = field_entity_screen_x();
     marker_y_ = field_entity_screen_y();
-    refresh_field_collision();
+      refresh_field_collision();
+}
+
+namespace {
+
+const NativeImage& empty_native_image() {
+    static const NativeImage empty{};
+    return empty;
+}
+
+} // namespace
+
+std::string NativePortShell::field_menu_class_label() const {
+    switch (field_entity_.archetype_index) {
+    case 1U:
+        return "Human " + intro_.archetypes[2] + " " + intro_.archetypes[3];
+    case 2U:
+        return intro_.archetypes[0];
+    case 3U:
+        return "Human " + intro_.archetypes[1];
+    default:
+        return "Unknown";
+    }
+}
+
+const NativeImage& NativePortShell::field_hud_face_asset(
+    std::size_t index) const {
+    return index < field_hud_faces_.size() ? field_hud_faces_[index]
+                                           : empty_native_image();
+}
+
+const NativeImage& NativePortShell::field_hud_vertical_counter_asset(
+    std::size_t index) const {
+    return index < field_hud_vertical_counters_.size()
+        ? field_hud_vertical_counters_[index] : empty_native_image();
+}
+
+const NativeImage& NativePortShell::field_hud_horizontal_counter_asset(
+    std::size_t index) const {
+    return index < field_hud_horizontal_counters_.size()
+        ? field_hud_horizontal_counters_[index] : empty_native_image();
+}
+
+const NativeImage& NativePortShell::field_hud_ammo_counter_asset(
+    std::size_t index) const {
+    return index < field_hud_ammo_counters_.size()
+        ? field_hud_ammo_counters_[index] : empty_native_image();
+}
+
+const NativeImage& NativePortShell::field_menu_runner_portrait_asset(
+    std::size_t index) const {
+    return index < field_menu_runner_portraits_.size()
+        ? field_menu_runner_portraits_[index] : empty_native_image();
+}
+
+const NativeImage& NativePortShell::field_menu_selected_cell_asset(
+    std::size_t index) const {
+    return index < field_menu_selected_cells_.size()
+        ? field_menu_selected_cells_[index] : empty_native_image();
+}
+
+const NativeImage& NativePortShell::field_menu_item_art_asset(
+    std::uint8_t code) const {
+    return code != 0U && code <= field_menu_item_art_.size()
+        ? field_menu_item_art_[code - 1U] : empty_native_image();
+}
+
+const NativeImage& NativePortShell::field_menu_inventory_icon_asset(
+    std::uint8_t code, std::size_t palette) const {
+    return code != 0U && code <= field_menu_inventory_icons_.size() &&
+            palette < field_menu_inventory_icons_[code - 1U].size()
+        ? field_menu_inventory_icons_[code - 1U][palette]
+        : empty_native_image();
+}
+
+const NativeImage& NativePortShell::field_menu_status_bar_asset(
+    std::size_t index) const {
+    return index < field_menu_status_bars_.size()
+        ? field_menu_status_bars_[index] : empty_native_image();
+}
+
+const NativeImage& NativePortShell::field_menu_command_focus_asset(
+    std::size_t index) const {
+    return index < field_menu_command_focus_.size()
+        ? field_menu_command_focus_[index] : empty_native_image();
+}
+
+const NativeImage& NativePortShell::field_menu_damage_bar_asset(
+    std::size_t index) const {
+    return index < field_menu_damage_bars_.size()
+        ? field_menu_damage_bars_[index] : empty_native_image();
+}
+
+const NativeImage& NativePortShell::field_menu_drain_bar_asset(
+    std::size_t index) const {
+    return index < field_menu_drain_bars_.size()
+        ? field_menu_drain_bars_[index] : empty_native_image();
+}
+
+const NativeImage& NativePortShell::field_menu_attack_bar_asset(
+    std::size_t index) const {
+    return index < field_menu_attack_bars_.size()
+        ? field_menu_attack_bars_[index] : empty_native_image();
+}
+
+const NativeImage& NativePortShell::field_menu_defense_bar_asset(
+    std::size_t index) const {
+    return index < field_menu_defense_bars_.size()
+        ? field_menu_defense_bars_[index] : empty_native_image();
+}
+
+std::string_view NativePortShell::field_menu_runner_name(
+    std::size_t index) const {
+    return index < field_menu_runner_names_.size()
+        ? std::string_view(field_menu_runner_names_[index])
+        : std::string_view{};
+}
+
+std::string_view NativePortShell::field_menu_status_name(
+    std::size_t index) const {
+    return index < field_menu_status_names_.size()
+        ? std::string_view(field_menu_status_names_[index])
+        : std::string_view{};
+}
+
+const NativeInventoryItem* NativePortShell::field_menu_item(
+    std::uint8_t code) const {
+    return code != 0U && code <= inventory_items_.size()
+        ? &inventory_items_[code - 1U] : nullptr;
+}
+
+std::string_view NativePortShell::field_menu_power_label(
+    std::size_t index) const {
+    return index < field_menu_power_labels_.size()
+        ? std::string_view(field_menu_power_labels_[index])
+        : std::string_view{};
+}
+
+const std::array<std::string, 2>* NativePortShell::field_menu_armor_label(
+    std::size_t index) const {
+    return index < field_menu_armor_labels_.size()
+        ? &field_menu_armor_labels_[index] : nullptr;
 }
 
 void NativePortShell::apply_protagonist_archetype() {
@@ -1114,6 +1431,7 @@ void NativePortShell::update_archetype_menu(const InputState& input) {
     // this is the native equivalent of that branch, not an extra menu page.
     intro_line_start_ = 0;
     intro_frame_ = 0;
+    intro_host_tick_ = 0;
     scene_ = intro_.story_lines.empty() ? NativeScene::Field
                                         : NativeScene::Intro;
     if (scene_ == NativeScene::Field && !field_map_pixels_.empty()) {
@@ -1134,8 +1452,16 @@ void NativePortShell::update_intro(const InputState& input) {
         return;
     }
 
-    if (intro_frame_ < kIntroDuration) {
-        ++intro_frame_;
+    // The Qt surface is driven at 60 Hz, while the supplied capture and the
+    // ROM presentation loop advance at the 30 Hz source cadence. Keep the
+    // host responsive at 60 Hz but hold each source pass for two host ticks.
+    if (intro_host_tick_ == 0U) {
+        intro_host_tick_ = 1U;
+    } else {
+        intro_host_tick_ = 0U;
+        if (intro_frame_ < kIntroDuration) {
+            ++intro_frame_;
+        }
     }
     const auto& group = intro_story_group(intro_frame_);
     intro_line_start_ = group.first_line;
@@ -1423,11 +1749,10 @@ void NativePortShell::select_field_entity_animation(std::size_t direction) {
         field_entity_.state_index = 0;
         field_entity_.animation_accumulator = 0;
         // ROM 0x600E resolves the active negative-marker walking list and
-        // writes its auxiliary word (0x0300 for Joshua) to record +0x18.
-        // That word is the frame accumulator increment; 0x76F0 at +0xCA is
-        // source metadata used only for the positive-marker idle lists.
+        // copies its auxiliary word into record +0x18. 0x5FDC consumes that
+        // record field as the animation clock increment.
         field_entity_.animation_multiplier =
-            std::max<std::uint16_t>(animation.state_auxiliary_word, 1U);
+            std::max<std::uint16_t>(animation.timing_multiplier, 1U);
         if (field_entity_.animation_threshold == 0U) {
             field_entity_.animation_threshold = 0x1000U;
         }
@@ -1809,6 +2134,12 @@ void NativePortShell::update_field_first_aid(const InputState& input) {
         }
     }
 
+    if (input.was_pressed(Button::B) || input.was_pressed(Button::Start)) {
+        field_first_aid_active_ = false;
+        field_menu_action_active_ = false;
+        field_menu_action_selection_ = 2U;
+        return;
+    }
     if (input.was_pressed(Button::A)) {
         if (field_first_aid_cancel_selected()) {
             field_first_aid_active_ = false;
@@ -1818,11 +2149,6 @@ void NativePortShell::update_field_first_aid(const InputState& input) {
             apply_field_first_aid();
         }
         return;
-    }
-    if (input.was_pressed(Button::B) || input.was_pressed(Button::Start)) {
-        field_first_aid_active_ = false;
-        field_menu_action_active_ = false;
-        field_menu_action_selection_ = 2U;
     }
 }
 
@@ -2058,6 +2384,12 @@ void NativePortShell::update_field_trade(const InputState& input) {
         // starts at No, and the horizontal edge toggles the visible choice.
         field_trade_confirmation_yes_ = !field_trade_confirmation_yes_;
     }
+    if (input.was_pressed(Button::B)) {
+        field_trade_active_ = false;
+        field_menu_action_active_ = false;
+        field_menu_action_selection_ = 2U;
+        return;
+    }
     if (input.was_pressed(Button::A)) {
         if (field_trade_confirmation_yes_) {
             trade_selected_inventory_item();
@@ -2067,7 +2399,7 @@ void NativePortShell::update_field_trade(const InputState& input) {
         }
         return;
     }
-    if (input.was_pressed(Button::B) || input.was_pressed(Button::Start)) {
+    if (input.was_pressed(Button::Start)) {
         field_trade_active_ = false;
         field_menu_action_active_ = false;
         field_menu_action_selection_ = 2U;
@@ -2119,7 +2451,15 @@ void NativePortShell::update_field_inventory_action(const InputState& input) {
             field_discard_confirmation_yes_ =
                 !field_discard_confirmation_yes_;
         }
-        if (input.was_pressed(Button::A) || input.was_pressed(Button::B)) {
+        if (input.was_pressed(Button::B)) {
+            field_discard_confirmation_active_ = false;
+            field_discard_confirmation_yes_ = false;
+            field_discard_item_was_equipped_ = false;
+            field_menu_action_active_ = false;
+            field_menu_action_selection_ = 2;
+            return;
+        }
+        if (input.was_pressed(Button::A)) {
             if (field_discard_confirmation_yes_) {
                 discard_selected_inventory_item();
             }
@@ -2146,8 +2486,18 @@ void NativePortShell::update_field_inventory_action(const InputState& input) {
             ? 2U : field_menu_action_selection_ + 1U;
     }
 
-    // Source A and B both enter the selected action dispatch at 0x1185E.
-    if (input.was_pressed(Button::A) || input.was_pressed(Button::B)) {
+    // B is the universal cancel edge for the native menu. It returns from the
+    // action loop without dispatching the currently focused command.
+    if (input.was_pressed(Button::B)) {
+        field_menu_action_active_ = false;
+        field_menu_action_selection_ = 2;
+        field_discard_confirmation_active_ = false;
+        field_discard_confirmation_yes_ = false;
+        field_discard_item_was_equipped_ = false;
+        field_discard_cannot_discard_ = false;
+        return;
+    }
+    if (input.was_pressed(Button::A)) {
         if (field_menu_action_selection_ == 2U) {
             const auto slot = field_menu_row_ * 2U + field_menu_selection_;
             const auto item_code = slot < field_entity_.inventory_item_codes.size()
@@ -2225,12 +2575,14 @@ bool NativePortShell::menu_direction_step(const InputState& input,
 
 void NativePortShell::write_field_menu_text(ScreenWriter& screen,
                                             std::int32_t x, std::int32_t y,
-                                            std::string_view text) const {
-    if (field_menu_font_pixels_.size() !=
-        static_cast<std::size_t>(field_menu_font_width_) *
-            field_menu_font_height_ ||
-        field_menu_font_width_ < 8U || field_menu_font_height_ < 8U) {
-        screen.write_text(x, y, text, 1, {0xE8, 0xF4, 0xFF, 0xFF});
+                                            std::string_view text,
+                                            std::optional<Rgba8> tint) const {
+      if (field_menu_font_.pixels.size() !=
+          static_cast<std::size_t>(field_menu_font_.width) *
+              field_menu_font_.height ||
+          field_menu_font_.width < 8U || field_menu_font_.height < 8U) {
+        screen.write_text(x, y, text, 1,
+                          tint.value_or(Rgba8{0xE8, 0xF4, 0xFF, 0xFF}));
         return;
     }
     auto cursor = x;
@@ -2244,7 +2596,7 @@ void NativePortShell::write_field_menu_text(ScreenWriter& screen,
             code - 0x20U);
         const auto glyph_column = glyph_index % 16U;
         const auto glyph_row = glyph_index / 16U;
-        if ((glyph_row + 1U) * 8U > field_menu_font_height_) {
+          if ((glyph_row + 1U) * 8U > field_menu_font_.height) {
             cursor += 8;
             continue;
         }
@@ -2252,9 +2604,14 @@ void NativePortShell::write_field_menu_text(ScreenWriter& screen,
         auto glyph_has_ink = false;
         for (std::size_t row = 0; row < 8U; ++row) {
             for (std::size_t column = 0; column < 8U; ++column) {
-                glyph[row * 8U + column] = field_menu_font_pixels_[
-                    (glyph_row * 8U + row) * field_menu_font_width_ +
+                  glyph[row * 8U + column] = field_menu_font_.pixels[
+                      (glyph_row * 8U + row) * field_menu_font_.width +
                     glyph_column * 8U + column];
+                if (tint && glyph[row * 8U + column].alpha != 0U) {
+                    glyph[row * 8U + column].red = tint->red;
+                    glyph[row * 8U + column].green = tint->green;
+                    glyph[row * 8U + column].blue = tint->blue;
+                }
                 glyph_has_ink = glyph_has_ink ||
                     glyph[row * 8U + column].alpha != 0U;
             }
@@ -2267,7 +2624,7 @@ void NativePortShell::write_field_menu_text(ScreenWriter& screen,
             // retain the source text destination instead of silently losing
             // every command label.
             screen.write_text(cursor, y, std::string(1, character), 1,
-                              {0xA0, 0xE8, 0xF8, 0xFF});
+                              tint.value_or(Rgba8{0xA0, 0xE8, 0xF8, 0xFF}));
         }
         cursor += 8;
     }
@@ -2313,8 +2670,7 @@ void NativePortShell::render_startup_background(ScreenWriter& screen) const {
     screen.clear({0x00, 0x00, 0x00, 0xFF});
     if (!startup_background_.pixels.empty()) {
         screen.blit_rgba(0, 0, startup_background_.width,
-                         startup_background_.height,
-                         startup_background_.pixels);
+                         startup_background_.height, startup_background_.pixels);
     }
 }
 
@@ -2346,6 +2702,17 @@ void NativePortShell::update_pocket_secretary_menu(const InputState& input) {
         pocket_secretary_message_visible_ = false;
         pocket_secretary_selection_ =
             (pocket_secretary_selection_ + 1U) % option_count;
+    }
+
+    // Cyberdeck's unavailable response is a child window of C2A6. Its B edge
+    // dismisses that response and redraws Pocket Secretary; it must not fall
+    // through to the field command loop.
+    if (pocket_secretary_message_visible_) {
+        if (input.was_pressed(Button::A) || input.was_pressed(Button::B) ||
+            input.was_pressed(Button::Start)) {
+            pocket_secretary_message_visible_ = false;
+        }
+        return;
     }
 
     // C2A6's ordinary panel returns to the command loop on the same B/Start
@@ -2518,20 +2885,12 @@ void NativePortShell::update_notebook_tips_menu(const InputState& input) {
         notebook_selection_ = 1U;
         return;
     }
-    if (!input.was_pressed(Button::B)) {
-        return;
-    }
-    // F9A4 dispatches B to 0x391A and then redraws the same page. Preserve
-    // the source's sound-only/rejection behavior when no other active runner
-    // exists, while using the already ported roster switch for real parties.
-    if (!field_records_.empty()) {
-        ++runner_switch_attempts_;
-        const auto previous_record = active_field_record_;
-        activate_field_record(next_available_field_record());
-        if (active_field_record_ == previous_record) {
-            ++runner_switch_rejections_;
-        }
-        ++action_count_;
+    if (input.was_pressed(Button::B)) {
+        // B is the parent-navigation key throughout the Pocket Secretary
+        // tree. The old path incorrectly treated it as the runner-switch
+        // shortcut and left the user on (or altered) the field menu.
+        scene_ = NativeScene::NotebookMenu;
+        notebook_selection_ = 1U;
     }
 }
 
@@ -2723,10 +3082,17 @@ void NativePortShell::update_field_menu(const InputState& input) {
         }
     }
 
-    // Both A (bit 14) and B (bit 12) enter the same 0x10E4E dispatch path in
-    // the reviewed ROM. Keep the selected command explicit until its typed
-    // subsystem replaces this dispatch record.
-    if (input.was_pressed(Button::A) || input.was_pressed(Button::B)) {
+    // B is the universal cancel edge. Test it before A so a simultaneous
+    // controller sample can never confirm or open a command while cancelling.
+    if (input.was_pressed(Button::B)) {
+        scene_ = NativeScene::Field;
+        field_menu_posture_active_ = false;
+        field_command_message_frames_ = 0;
+        return;
+    }
+
+    // A enters the selected command.
+    if (input.was_pressed(Button::A)) {
         field_last_command_selection_ = field_menu_selection_;
         field_last_command_row_ = field_menu_row_;
         if (field_menu_selection_ < 2U) {
@@ -2913,14 +3279,15 @@ void NativePortShell::update_clips_menu(const InputState& input) {
             clips_reload_confirmation_yes_ =
                 !clips_reload_confirmation_yes_;
         }
+        if (input.was_pressed(Button::B) || input.was_pressed(Button::Start)) {
+            clips_reload_confirmation_active_ = false;
+            clips_reload_confirmation_yes_ = false;
+            return;
+        }
         if (input.was_pressed(Button::A)) {
             if (clips_reload_confirmation_yes_) {
                 reload_one_clip();
             }
-            clips_reload_confirmation_active_ = false;
-            clips_reload_confirmation_yes_ = false;
-        } else if (input.was_pressed(Button::B) ||
-                   input.was_pressed(Button::Start)) {
             clips_reload_confirmation_active_ = false;
             clips_reload_confirmation_yes_ = false;
         }
@@ -2951,8 +3318,7 @@ void NativePortShell::update_clips_menu(const InputState& input) {
     // 0x12062 gates every A/B/C action on the active record's +0x4F clip
     // count. Keep its exact visible result instead of the old invented
     // "NO CLIPS"/"QUEUED" feedback.
-    if (input.was_pressed(Button::A) || input.was_pressed(Button::B) ||
-        input.was_pressed(Button::C)) {
+    if (input.was_pressed(Button::A) || input.was_pressed(Button::C)) {
         clips_last_action_selection_ = clips_menu_selection_;
         clips_action_message_.clear();
         clips_out_of_ammo_ = field_entity_.ammo_clips == 0;
@@ -3115,6 +3481,10 @@ void NativePortShell::update_clips_trade(const InputState& input) {
             ? 2U : clips_trade_menu_selection_ + 1U;
     }
 
+    if (input.was_pressed(Button::B)) {
+        clips_trade_active_ = false;
+        return;
+    }
     if (input.was_pressed(Button::A)) {
         switch (clips_trade_menu_selection_) {
         case 2U:
@@ -3161,7 +3531,7 @@ void NativePortShell::update_clips_trade(const InputState& input) {
             break;
         }
     }
-    if (input.was_pressed(Button::B) || input.was_pressed(Button::Start)) {
+    if (input.was_pressed(Button::Start)) {
         // B/Start leave the nested clip-trade loop but remain in Clips until
         // the parent command-screen edge is pressed again.
         clips_trade_active_ = false;
@@ -3258,10 +3628,10 @@ void NativePortShell::update_magic_menu(const InputState& input) {
 
 void NativePortShell::render_command_base(ScreenWriter& screen) const {
     screen.clear({0x00, 0x00, 0x00, 0xFF});
-    if (!field_menu_background_pixels_.empty()) {
-        screen.blit_rgba(0, 0, field_menu_background_width_,
-                         field_menu_background_height_,
-                         field_menu_background_pixels_);
+    if (!field_menu_background_.pixels.empty()) {
+        screen.blit_rgba(0, 0, field_menu_background_.width,
+                         field_menu_background_.height,
+                         field_menu_background_.pixels);
     }
 }
 
@@ -3271,10 +3641,10 @@ void NativePortShell::render_command_static_layers(ScreenWriter& screen) const {
     // the portrait, runner name, inventory cells/icons, equipment borders,
     // and lower status strip remain visible around the submenu.
     render_command_base(screen);
-    if (!field_menu_inventory_boxes_pixels_.empty()) {
-        screen.blit_rgba(0, 0, field_menu_inventory_boxes_width_,
-                         field_menu_inventory_boxes_height_,
-                         field_menu_inventory_boxes_pixels_);
+    if (!field_menu_inventory_boxes_.pixels.empty()) {
+        screen.blit_rgba(0, 0, field_menu_inventory_boxes_.width,
+                         field_menu_inventory_boxes_.height,
+                         field_menu_inventory_boxes_.pixels);
     }
     render_command_dynamic_layers(screen);
 }
@@ -3444,11 +3814,6 @@ void NativePortShell::render_field_hud(ScreenWriter& screen) const {
                                                            : 0U)
         : slot_index;
     const auto slot_y = static_cast<std::int32_t>(slot_index * 64U);
-    // 0x39F2 highlights the active record's portrait slot.  The static HUD
-    // chrome only contains the slot geometry; the live selection bar must
-    // move with active_field_record_.
-    screen.fill_rect(kFieldHudX, kFieldHudFaceY + slot_y, 2,
-                     kFieldHudFaceHeight, {0xF0, 0x18, 0x28, 0xFF});
     if (!field_hud_faces_[data_index].pixels.empty()) {
         const auto& face = field_hud_faces_[data_index];
         screen.blit_rgba(kFieldHudFaceX, kFieldHudFaceY + slot_y, face.width,
@@ -3466,6 +3831,22 @@ void NativePortShell::render_field_hud(ScreenWriter& screen) const {
                          kFieldHudHorizontalCounterY + slot_y,
                          counter.width, counter.height, counter.pixels);
     }
+    // The extracted HUD plate contains zero-filled ammo digits for all three
+    // roster slots.  0x36FC rewrites only the active record's slot; clear the
+    // other baked digits first so inactive records do not look armed.
+    for (std::size_t slot = 0; slot < field_hud_faces_.size(); ++slot) {
+        screen.fill_rect(
+            kFieldHudAmmoCounterX,
+            kFieldHudAmmoCounterY + static_cast<std::int32_t>(slot * 64U),
+            16, 8, {0x00, 0x00, 0x00, 0xFF});
+    }
+    if (field_entity_.ammo_rounds < field_hud_ammo_counters_.size() &&
+        !field_hud_ammo_counters_[field_entity_.ammo_rounds].pixels.empty()) {
+        const auto& counter = field_hud_ammo_counters_[field_entity_.ammo_rounds];
+        screen.blit_rgba(kFieldHudAmmoCounterX,
+                         kFieldHudAmmoCounterY + slot_y,
+                         counter.width, counter.height, counter.pixels);
+    }
     // The extracted HUD item block is the startup record's upload.  Once the
     // native record changes equipment it is stale, so redraw this six-tile
     // area from the live equipped item exactly as the ROM's 0x3404/0x35D4
@@ -3481,7 +3862,19 @@ void NativePortShell::render_field_hud(ScreenWriter& screen) const {
             field_entity_.active_item_code - 1U);
         const auto palette = field_menu_uses_alt_item_palette(field_entity_)
             ? 1U : 0U;
-        const auto& item = field_menu_inventory_icons_[icon_index][palette];
+        const auto& item = field_entity_.active_item_code ==
+                                   field_entity_records_[0].active_item_code &&
+                               data_index < field_hud_item_blocks_.size()
+            ? field_hud_item_blocks_[data_index]
+            : field_menu_inventory_icons_[icon_index][palette];
+        if (!item.pixels.empty()) {
+            screen.blit_rgba(kFieldHudGunX, kFieldHudGunY + slot_y,
+                             item.width, item.height, item.pixels);
+        }
+    } else if (field_entity_.display_state == 0x7F &&
+               field_entity_.active_item_code == 0U &&
+               data_index < field_hud_unarmed_item_blocks_.size()) {
+        const auto& item = field_hud_unarmed_item_blocks_[data_index];
         if (!item.pixels.empty()) {
             screen.blit_rgba(kFieldHudGunX, kFieldHudGunY + slot_y,
                              item.width, item.height, item.pixels);
@@ -3605,6 +3998,7 @@ void NativePortShell::update_title(const InputState& input) {
         --title_text_timer_;
         if (title_text_timer_ < 0) {
             title_completion_state_ = 2U;
+            title_copyright_frame_ = frame_number_;
         }
     }
 
@@ -3905,18 +4299,23 @@ void NativePortShell::update(const InputState& input) {
         !move_rejected_ && (delta_x != 0 || delta_y != 0);
     if (attempted_movement) {
         if (movement_accepted) {
+            // 0x600E selects the direction-specific walking record from the
+            // source selector table at 0xC072.  The values are ROM data, not
+            // an arithmetic 0x60 + direction*4 convention; that convention
+            // selected an unrelated effect state for several directions.
+            const auto desired_selector =
+                field_entity_direction_ < field_entity_animations_.size()
+                    ? field_entity_animations_[field_entity_direction_]
+                          .state_selector
+                    : static_cast<std::uint16_t>(0);
             const auto animation = std::find_if(
                 field_entity_animations_.begin(),
                 field_entity_animations_.end(),
-                [this](const NativeFieldAnimation& candidate) {
-                    return candidate.state_selector ==
-                               static_cast<std::uint16_t>(
-                                   0x60U + field_entity_direction_ * 4U);
+                [desired_selector](const NativeFieldAnimation& candidate) {
+                    return candidate.state_selector == desired_selector;
                 });
             const auto direction_changed =
-                field_entity_.state_selector !=
-                static_cast<std::uint16_t>(0x60U +
-                                           field_entity_direction_ * 4U);
+                field_entity_.state_selector != desired_selector;
             if (!field_entity_walking_ || direction_changed) {
                 select_field_entity_animation(field_entity_direction_);
             } else if (animation == field_entity_animations_.end()) {
@@ -3932,7 +4331,11 @@ void NativePortShell::update(const InputState& input) {
         // than leaving the last walking frame onscreen.
         select_field_entity_idle(field_entity_direction_);
     }
-    update_field_entity_animation(movement_accepted);
+    // ROM 0x4618 runs 0x5FDC in the entity phase every frame while the
+    // walking state remains active; the clock is not advanced only when a
+    // movement step happens. Keep the source cadence visible on a held
+    // direction without falling back to the idle/effect table.
+    update_field_entity_animation(field_entity_walking_);
     if (!field_map_pixels_.empty()) {
         // 0x3A1C/0x3BAC rewrite FFDDC6/FFDDC8 so the camera catches up
         // when the runner leaves the 0x700 window. The mode descriptor is
@@ -4012,7 +4415,8 @@ void NativePortShell::render(ScreenWriter& screen) const {
             } else {
                 fade_weight = boot_fasa_fade_left_;
             }
-            screen.blit_rgba(0, 0, boot_fasa_.width, boot_fasa_.height,
+            screen.blit_rgba(boot_fasa_.origin_x, boot_fasa_.origin_y,
+                             boot_fasa_.width, boot_fasa_.height,
                              scale_copy(boot_fasa_.pixels, fade_weight,
                                         kBootFadeFrames));
             screen.present();
@@ -4068,7 +4472,9 @@ void NativePortShell::render(ScreenWriter& screen) const {
                     logo = &boot_logo_strobe_[phase];
                 }
             }
-            screen.blit_rgba(0, 0, logo->width, logo->height,
+            const auto logo_x = logo == &boot_background_ ? 0 : logo->origin_x;
+            const auto logo_y = logo == &boot_background_ ? 0 : logo->origin_y;
+            screen.blit_rgba(logo_x, logo_y, logo->width, logo->height,
                              fade_copy(logo->pixels));
             if (!boot_guy_.pixels.empty() && boot_guy_fade_ != 0U) {
                 const auto guy_delta_y = static_cast<std::int32_t>(
@@ -4077,7 +4483,9 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 if (boot_guy_fade_ < 256U) {
                     guy = scale_copy(guy, boot_guy_fade_, 256U);
                 }
-                screen.blit_rgba(0, guy_delta_y, boot_guy_.width,
+                screen.blit_rgba(boot_guy_.origin_x,
+                                 guy_delta_y + boot_guy_.origin_y,
+                                 boot_guy_.width,
                                  boot_guy_.height, guy);
             }
             if (boot_lightning_visible() && !boot_sega_frames_.empty()) {
@@ -4085,7 +4493,8 @@ void NativePortShell::render(ScreenWriter& screen) const {
                                    boot_sega_frames_.size();
                 const auto& sega = boot_sega_frames_[phase];
                 if (!sega.pixels.empty()) {
-                    screen.blit_rgba(0, 0, sega.width, sega.height,
+                    screen.blit_rgba(sega.origin_x, sega.origin_y,
+                                     sega.width, sega.height,
                                      fade_copy(sega.pixels));
                 }
             }
@@ -4109,8 +4518,16 @@ void NativePortShell::render(ScreenWriter& screen) const {
             // FFF1E6 is the source column index. It is deliberately kept as
             // typed state by update_title; deriving this from host frame time
             // loses the ROM's every-other-pass DD40 gate.
+            // Direct assets are cropped to their opaque bounds.  The reveal
+            // counter is still expressed in the original 320px source
+            // coordinate space, so include the crop origin when determining
+            // the drawable extent.
+            const auto logo_origin_x = static_cast<std::size_t>(
+                std::max<std::int16_t>(title_logo_plane_.origin_x, 0));
+            const auto logo_source_width = logo_origin_x +
+                                           title_logo_plane_.width;
             const auto visible_pixels = std::min<std::size_t>(
-                title_logo_plane_.width,
+                logo_source_width,
                 kTitleLogoDestinationX +
                     static_cast<std::size_t>(title_revealed_columns_) * 8U);
             const auto logo_complete =
@@ -4150,12 +4567,14 @@ void NativePortShell::render(ScreenWriter& screen) const {
                     for (std::size_t x = 0; x < title_logo_plane_.width; ++x) {
                         auto& pixel =
                             logo[y * title_logo_plane_.width + x];
-                        if (x >= visible_pixels) {
+                        if (logo_origin_x + x >= visible_pixels) {
                             pixel.alpha = 0;
                         }
                     }
                 }
-                screen.blit_rgba(0, 0, title_logo_plane_.width,
+                screen.blit_rgba(title_logo_plane_.origin_x,
+                                 title_logo_plane_.origin_y,
+                                 title_logo_plane_.width,
                                  title_logo_plane_.height,
                                  scale_rgba(logo, title_fade_weight,
                                             kBootFadeFrames));
@@ -4173,7 +4592,8 @@ void NativePortShell::render(ScreenWriter& screen) const {
                         title_sprite_x_ -
                         static_cast<std::int16_t>(kTitleSpriteInitialX + 4));
                     screen.blit_rgba(
-                        sprite_delta, 0, sprite.width, sprite.height,
+                        sprite_delta + sprite.origin_x, sprite.origin_y,
+                        sprite.width, sprite.height,
                         scale_rgba(sprite.pixels, title_fade_weight,
                                    kBootFadeFrames));
                 }
@@ -4182,17 +4602,21 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 auto blit_title_rows = [&screen, this](std::size_t first_row,
                                                         std::size_t row_count) {
                     auto text = title_text_.pixels;
-                    const auto first_pixel =
-                        first_row * 8U * title_text_.width;
-                    const auto last_pixel = std::min<std::size_t>(
-                        text.size(), (first_row + row_count) * 8U *
-                                         title_text_.width);
-                    for (std::size_t pixel = 0; pixel < text.size(); ++pixel) {
-                        if (pixel < first_pixel || pixel >= last_pixel) {
-                            text[pixel].alpha = 0;
+                    const auto first_y = static_cast<std::int32_t>(first_row * 8U) -
+                                         title_text_.origin_y;
+                    const auto last_y = static_cast<std::int32_t>(
+                        (first_row + row_count) * 8U) - title_text_.origin_y;
+                    for (std::size_t y = 0; y < title_text_.height; ++y) {
+                        if (static_cast<std::int32_t>(y) < first_y ||
+                            static_cast<std::int32_t>(y) >= last_y) {
+                            for (std::size_t x = 0; x < title_text_.width; ++x) {
+                                text[y * title_text_.width + x].alpha = 0;
+                            }
                         }
                     }
-                    screen.blit_rgba(0, 0, title_text_.width,
+                    screen.blit_rgba(title_text_.origin_x,
+                                     title_text_.origin_y,
+                                     title_text_.width,
                                      title_text_.height, text);
                 };
                 // 0x1E4E sets DD5A=1 when FFF1E6 becomes $25 (column 37),
@@ -4202,14 +4626,24 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 if (title_completion_state_ >= 2U) {
                     blit_title_rows(22U, 4U);
                 }
-                // 0x1A9E writes PRESS START only after D7 drops below $C6C,
-                // and only when (D7 & $3F) >= 10. The other 10 of 64 values
-                // call 0x1DE0 and leave the prompt blank.
-                const auto title_timer = static_cast<std::uint64_t>(
-                    0xE10U - std::min<std::uint64_t>(title_loop, 0xE10U));
-                if (has_title_loop && title_fade_left_ == 0U &&
-                    title_timer < 0xC6CU &&
-                    (title_timer & 0x3FU) >= 10U) {
+                // The ROM alternates the prompt and its blank string through
+                // 0x1DCA/0x1DE0. The visual capture shows the prompt arriving
+                // shortly after the copyright block, so anchor that cadence
+                // to the actual copyright-write state instead of the old
+                // unrelated 0xE10 countdown (which delayed it several
+                // seconds too long).
+                constexpr std::uint64_t kPromptDelay = 45U;
+                const auto after_copyright =
+                    has_title_loop && title_completion_state_ >= 2U &&
+                    title_loop >= title_copyright_frame_;
+                const auto copyright_elapsed =
+                    after_copyright
+                        ? title_loop - title_copyright_frame_
+                        : 0U;
+                if (after_copyright && title_fade_left_ == 0U &&
+                    title_completion_state_ >= 2U &&
+                    copyright_elapsed >= kPromptDelay &&
+                    (copyright_elapsed & 0x3FU) >= 10U) {
                     blit_title_rows(21U, 1U);
                 }
             }
@@ -4238,8 +4672,7 @@ void NativePortShell::render(ScreenWriter& screen) const {
         }
         if (!startup_cursor_.pixels.empty()) {
             screen.blit_rgba(
-                104, 80 + static_cast<std::int32_t>(start_options_selection_) *
-                              16,
+                104, 80 + static_cast<std::int32_t>(start_options_selection_) * 16,
                 startup_cursor_.width, startup_cursor_.height,
                 startup_cursor_.pixels);
         }
@@ -4263,8 +4696,7 @@ void NativePortShell::render(ScreenWriter& screen) const {
             }
             if (!startup_cursor_.pixels.empty()) {
                 screen.blit_rgba(
-                    136, 112 + static_cast<std::int32_t>(
-                                   save_load_selection_) * 16,
+                    136, 112 + static_cast<std::int32_t>(save_load_selection_) * 16,
                     startup_cursor_.width, startup_cursor_.height,
                     startup_cursor_.pixels);
             }
@@ -4356,11 +4788,98 @@ void NativePortShell::render(ScreenWriter& screen) const {
                 }
             }
             screen.blit_rgba(0, 0, plate->width, plate->height, plate->pixels);
+            if (intro_frame_ >= kIntroWildernessPan +
+                                    kIntroAmbushDeathStart &&
+                intro_frame_ < kIntroWildernessEnd &&
+                !intro_trivid_slain_.pixels.empty()) {
+                // The standing Michael is part of the ambush plate.  The
+                // source clears that authored SAT region before drawing the
+                // 0x1DF1D6 trivid-left list; reproduce the same replacement
+                // instead of merely painting the prone sprite over him.
+                screen.fill_rect(0, 112, 152, 112,
+                                 {0x00, 0x00, 0x00, 0xFF});
+                // The ROM's trivid_left_0_0 list is a 52x43 source sprite.
+                // The supplied capture presents this hand-off at the larger
+                // native presentation scale: visible bounds are x=36..174
+                // and y=120..223 (the lower edge is clipped). Keep the ROM
+                // sprite and state transition, but scale its presentation with
+                // nearest-neighbour pixel art.
+                constexpr std::int32_t kSlainOriginX = 36;
+                constexpr std::int32_t kSlainOriginY = 120;
+                constexpr std::uint16_t kSlainWidth = 139;
+                constexpr std::uint16_t kSlainHeight = 115;
+                const auto slain = nearest_scale_rgba(
+                    intro_trivid_slain_.pixels, intro_trivid_slain_.width,
+                    intro_trivid_slain_.height, kSlainWidth, kSlainHeight);
+                screen.blit_rgba(kSlainOriginX, kSlainOriginY,
+                                 kSlainWidth, kSlainHeight, slain);
+            }
         } else if (intro_frame_ < kIntroTrividEnd &&
-                   !intro_stages_[2].pixels.empty()) {
-            blit_faded_stage(intro_stages_[2],
-                             fade_weight(kIntroWildernessEnd,
-                                         kIntroTrividEnd));
+                    (!intro_trivid_background_.pixels.empty() ||
+                     !intro_stages_[2].pixels.empty())) {
+            const auto weight = static_cast<std::uint16_t>(kIntroFade);
+            if (intro_frame_ < kIntroTrividMapStart) {
+                // Source order at 0x5AA96: 0x5B32C clears the old plane,
+                // 0x5ABD2/0x5AC0E draws the slain Michael SAT, then the
+                // 0x12F6 wait surrounding the 0x1728 cockpit upload keeps
+                // this black/slain state on screen for the source setup
+                // interval. Do not collapse it to one host frame.
+                if (!intro_trivid_slain_.pixels.empty()) {
+                    constexpr std::uint16_t kSlainWidth = 139;
+                    constexpr std::uint16_t kSlainHeight = 115;
+                    const auto slain = nearest_scale_rgba(
+                        intro_trivid_slain_.pixels, intro_trivid_slain_.width,
+                        intro_trivid_slain_.height, kSlainWidth,
+                        kSlainHeight);
+                    screen.blit_rgba(
+                        36, 120, kSlainWidth, kSlainHeight,
+                        scale_rgba(slain, weight, kIntroFade));
+                }
+            } else if (!intro_trivid_background_.pixels.empty()) {
+                if (!intro_trivid_moving_.pixels.empty()) {
+                    // 0x5AC36 is the lower-priority moving SAT list. Draw
+                    // it before the 0x8000 cockpit name table and the slain
+                    // runner, rather than letting the lights roll over the
+                    // foreground as a false white/cyan wash. It draws at
+                    // (0x60,0x123) and advances the two
+                    // fixed-point words by $40/$18 after each pass.  The
+                    // extracted moving layer is the pass-zero composition;
+                    // translate it by the logical 8.8-pixel displacement.
+                    const auto pass = std::min<std::uint64_t>(
+                        intro_frame_ - kIntroTrividMapStart, 0x114U);
+                    const auto moving_x = static_cast<std::int32_t>(
+                        (pass * 0x40U) >> 8U);
+                    const auto moving_y = static_cast<std::int32_t>(
+                        (pass * 0x18U) >> 8U);
+                    screen.blit_rgba(
+                        moving_x + intro_trivid_moving_.origin_x,
+                        moving_y + intro_trivid_moving_.origin_y,
+                        intro_trivid_moving_.width,
+                        intro_trivid_moving_.height,
+                        scale_rgba(intro_trivid_moving_.pixels, weight,
+                                   kIntroFade));
+                }
+                screen.blit_rgba(
+                    0, 0, intro_trivid_background_.width,
+                    intro_trivid_background_.height,
+                    scale_rgba(intro_trivid_background_.pixels, weight,
+                               kIntroFade));
+                if (!intro_trivid_slain_.pixels.empty()) {
+                    constexpr std::uint16_t kSlainWidth = 139;
+                    constexpr std::uint16_t kSlainHeight = 115;
+                    const auto slain = nearest_scale_rgba(
+                        intro_trivid_slain_.pixels, intro_trivid_slain_.width,
+                        intro_trivid_slain_.height, kSlainWidth,
+                        kSlainHeight);
+                    screen.blit_rgba(
+                        36, 120, kSlainWidth, kSlainHeight,
+                        scale_rgba(slain, weight, kIntroFade));
+                }
+            } else {
+                // Packs written before the separate 0x5AA96 layers remain
+                // readable; keep their static trivid fallback intact.
+                blit_faded_stage(intro_stages_[2], weight);
+            }
         } else if (!intro_stages_[3].pixels.empty()) {
             // 0x5AD1A loads the ending/airport descriptor at 0x5B528 after
             // the trivid. 0x5B00A moves DD08 by two pixels per source pass,
@@ -4402,7 +4921,9 @@ void NativePortShell::render(ScreenWriter& screen) const {
                     const auto& overlay = intro_heli_frames_[overlay_phase];
                     if (!overlay.pixels.empty()) {
                         screen.blit_rgba(
-                            -plane_a_scroll, 0, overlay.width, overlay.height,
+                            -plane_a_scroll + overlay.origin_x,
+                            overlay.origin_y,
+                            overlay.width, overlay.height,
                             overlay.pixels);
                     }
                 }
@@ -4447,7 +4968,9 @@ void NativePortShell::render(ScreenWriter& screen) const {
                     const auto& movement =
                         intro_aircraft_movement_frames_[movement_index];
                     screen.blit_rgba(
-                        x - 0x90, y - 0x90, movement.width, movement.height,
+                        x - 0x90 + movement.origin_x,
+                        y - 0x90 + movement.origin_y,
+                        movement.width, movement.height,
                         movement.pixels);
                 }
             } else if (intro_frame_ < kIntroAircraftEnd &&
@@ -4492,12 +5015,31 @@ void NativePortShell::render(ScreenWriter& screen) const {
             screen.blit_rgba(0, 0, cab_map_.width, cab_map_.height,
                              cab_map_.pixels);
         }
+        // 0x13726 does not jump directly to the terminal cursor. It walks
+        // D4536's shrinking outline over the D4464 position words, then
+        // writes the caption. Reconstruct the two source-backed destination
+        // zooms in native presentation state so the cab ride is an animation
+        // rather than a static map plate.
+        const auto destination_frame = cab_frame_ <
+                5U * kCabCursorPhaseFrames
+            ? cab_frame_
+            : cab_frame_ - 5U * kCabCursorPhaseFrames;
+        const auto cursor_phase = static_cast<std::size_t>(
+            std::min<std::uint64_t>(
+                destination_frame / kCabCursorPhaseFrames, 4U));
+        const auto& cursor = cab_frame_ < 5U * kCabCursorPhaseFrames
+            ? kCabDowntownCursor[cursor_phase]
+            : kCabRedmondCursor[cursor_phase];
+        draw_cab_cursor(screen, cursor);
         // 0x13726 ultimately calls C0DA with the startup character table
         // (C1320) and its source text is rendered as the pale map caption,
         // not with the green command-menu palette.  The two native atlases
         // share the same glyph table; use the startup palette here so the
         // cab caption keeps the source's white-on-black appearance.
-        write_startup_text(screen, 88, 152, " Downtown Seattle");
+        write_startup_text(
+            screen, 88, 152,
+            cab_frame_ < 5U * kCabCursorPhaseFrames
+                ? " Downtown Seattle" : "  Redmond Barrens");
         screen.present();
         return;
     } else if ((scene_ == NativeScene::Field ||
@@ -4532,9 +5074,15 @@ void NativePortShell::render(ScreenWriter& screen) const {
                              field_entity_.state_selector;
                   })
             : field_entity_animations_.end();
-        if (animation != field_entity_animations_.end() &&
-            field_entity_.frame_index < animation->frames.size()) {
-            frame = &animation->frames[field_entity_.frame_index];
+        if (field_entity_walking_) {
+            // A walking state is a distinct negative-marker list in the ROM.
+            // Never fall back to the directional idle/effect table here: that
+            // fallback was the visible "blocking/fire-hit" pose defect when
+            // a walking selector was unresolved.
+            if (animation != field_entity_animations_.end() &&
+                field_entity_.frame_index < animation->frames.size()) {
+                frame = &animation->frames[field_entity_.frame_index];
+            }
         } else if (!entity_frames_.empty() &&
                    field_entity_.frame_index < entity_frames_.size()) {
             frame = &entity_frames_[field_entity_.frame_index];
@@ -4619,15 +5167,15 @@ void NativePortShell::render(ScreenWriter& screen) const {
             // base. The extracted image contains the actual panel geometry;
             // Inventory adds the separate 0x116C4 cell layer below.
             screen.clear({0x00, 0x00, 0x00, 0xFF});
-            if (!field_menu_background_pixels_.empty()) {
-                screen.blit_rgba(0, 0, field_menu_background_width_,
-                                 field_menu_background_height_,
-                                 field_menu_background_pixels_);
+            if (!field_menu_background_.pixels.empty()) {
+                screen.blit_rgba(0, 0, field_menu_background_.width,
+                                 field_menu_background_.height,
+                                 field_menu_background_.pixels);
             }
-            if (!field_menu_inventory_boxes_pixels_.empty()) {
-                screen.blit_rgba(0, 0, field_menu_inventory_boxes_width_,
-                                 field_menu_inventory_boxes_height_,
-                                 field_menu_inventory_boxes_pixels_);
+            if (!field_menu_inventory_boxes_.pixels.empty()) {
+                screen.blit_rgba(0, 0, field_menu_inventory_boxes_.width,
+                                 field_menu_inventory_boxes_.height,
+                                 field_menu_inventory_boxes_.pixels);
             }
             // ROM 0x110BC writes the active runner's 8x10 tile portrait to
             // Plane B at E104 (x=16, y=16), then 0x1111A writes its name to
@@ -4676,6 +5224,24 @@ void NativePortShell::render(ScreenWriter& screen) const {
                         write_field_menu_text(
                             screen, 128, 72,
                             center_source_fixed_field("empty"));
+                    } else if (field_entity_.display_state == 0x7F &&
+                               field_entity_.active_item_code == 0U) {
+                        // ROM 0x12D74 takes the no-equipped-item branch of
+                        // 0x12CEE.  Its +0x85 source values are rendered by
+                        // the same detail writer as a weapon, but the label
+                        // is the literal Empty Hand pair and its fixed
+                        // unarmed Damage/Power values.  The previous native
+                        // path returned here and left the overview blank.
+                        write_field_menu_text(
+                            screen, 128, 64,
+                            center_source_fixed_field("Empty"));
+                        write_field_menu_text(
+                            screen, 128, 72,
+                            center_source_fixed_field("Hand"));
+                        write_field_menu_text(screen, 112, 80, "Damage");
+                        write_field_menu_text(screen, 208, 80, "Stun");
+                        write_field_menu_text(screen, 112, 88, "Power");
+                        write_field_menu_text(screen, 168, 88, "Minor");
                     }
                     return;
                 }
@@ -4722,7 +5288,37 @@ void NativePortShell::render(ScreenWriter& screen) const {
                     if (label_index < field_menu_power_labels_.size()) {
                         write_field_menu_text(
                             screen, 168, 88,
-                            field_menu_power_labels_[label_index]);
+                             field_menu_power_labels_[label_index]);
+                    }
+                }
+                // 0x115F2 skips 0x12E9E for armor. The selected armor view
+                // keeps the source armor-specific bars: the extractor maps
+                // D4D50+$26 to Wpns and D4D50+$25 to Guns, just as the main
+                // overview's 0x11352 path does. A generic red Armor bar is
+                // not part of this selected-item screen.
+                const auto is_armor_detail = item_code >= 0x2CU &&
+                                              item_code <= 0x32U;
+                if (is_armor_detail) {
+                    write_field_menu_text(screen, 112, 80, "Wpns");
+                    if (field_entity_.weapons_bar_index <
+                        field_menu_damage_bars_.size()) {
+                        const auto& weapons_bar = field_menu_damage_bars_[
+                            field_entity_.weapons_bar_index];
+                        if (!weapons_bar.pixels.empty()) {
+                            screen.blit_rgba(168, 80, weapons_bar.width,
+                                             weapons_bar.height,
+                                             weapons_bar.pixels);
+                        }
+                    }
+                    write_field_menu_text(screen, 112, 88, "Guns");
+                    if (field_entity_.guns_bar_index <
+                        field_menu_drain_bars_.size()) {
+                        const auto& guns_bar = field_menu_drain_bars_[
+                            field_entity_.guns_bar_index];
+                        if (!guns_bar.pixels.empty()) {
+                            screen.blit_rgba(168, 88, guns_bar.width,
+                                             guns_bar.height, guns_bar.pixels);
+                        }
                     }
                 }
                 // 0x12A8C writes ammo/uses/rtng only for the selected
@@ -4949,21 +5545,20 @@ void NativePortShell::render(ScreenWriter& screen) const {
                                      icon.width, icon.height, icon.pixels);
                 }
             }
-            // 0x11592's extracted cursor is a small source sprite used by
-            // the old ROM viewport.  The native menu's visible selection is
-            // the full yellow cell band shown by the reference UI.  Keep it
-            // independent from the white equipment borders above: selecting
-            // an item is not equipping it.
+            // 0x11592 emits the source 3x4-tile selector at the same 0x28/0x18
+            // strides used by the cursor bytes. Do not redraw it as a host
+            // rectangle: its gaps, palette, and corner treatment are visible
+            // in the original menu.
             if (field_menu_selection_ < 2U) {
                 const auto x = 8 + static_cast<std::int32_t>(
                     field_menu_selection_ * 40U);
                 const auto y = 112 + static_cast<std::int32_t>(
                     field_menu_row_ * 24U);
-                constexpr Rgba8 kInventorySelection{0xFF, 0xD8, 0x00, 0xFF};
-                screen.fill_rect(x, y, 32, 2, kInventorySelection);
-                screen.fill_rect(x, y + 22, 32, 2, kInventorySelection);
-                screen.fill_rect(x, y, 2, 24, kInventorySelection);
-                screen.fill_rect(x + 30, y, 2, 24, kInventorySelection);
+                if (!field_menu_cursor_.pixels.empty()) {
+                    screen.blit_rgba(x, y, field_menu_cursor_.width,
+                                     field_menu_cursor_.height,
+                                     field_menu_cursor_.pixels);
+                }
             }
             if (field_menu_selection_ < 2U) {
                 draw_item_detail(selected_code, true);
@@ -4972,28 +5567,28 @@ void NativePortShell::render(ScreenWriter& screen) const {
             // or item action at plane-B address EC9C (x=112, y=200). The
             // other choices are not a vertical checklist on this screen.
             if (field_menu_action_active_) {
-                // The action loop replaces the five top-level command tabs
-                // with four action buttons. Render the replacement buttons
-                // explicitly so stale CP/AS/CY/HG/PS labels cannot survive
-                // underneath an Equip/Discard/Trade/Cancel action state.
-                screen.fill_rect(120, 182, 128, 20,
-                                 {0x00, 0x00, 0x00, 0xFF});
-                const auto action_button_labels = field_first_aid_active_
-                    ? std::array<std::string_view, 4>{{"FA", "DS", "TR", "CL"}}
-                    : std::array<std::string_view, 4>{{"EQ", "DS", "TR", "CL"}};
-                for (std::size_t index = 0; index < action_button_labels.size();
-                     ++index) {
-                    const auto x = 128 + static_cast<std::int32_t>(index * 24U);
-                    const auto selected = field_menu_action_selection_ ==
-                        index + 2U;
-                    screen.fill_rect(x, 184, 20, 16,
-                                     selected
-                                         ? Rgba8{0xE8, 0xF4, 0xFF, 0xFF}
-                                         : Rgba8{0x70, 0x78, 0x80, 0xFF});
-                    screen.fill_rect(x + 2, 186, 16, 12,
-                                     {0x20, 0x24, 0x28, 0xFF});
-                    write_field_menu_text(screen, x + 4, 188,
-                                          action_button_labels[index]);
+                // 0x117A0 first writes the complete CD302 action row at
+                // $EB9E, then 0x117B6 overlays the selected 2x2 block from
+                // CD41A. Keep both operations source-derived so the old
+                // CP/AS/CY/HG/PS row cannot leak through and no host button
+                // geometry is substituted for the cartridge's bevels.
+                if (!field_menu_action_background_.pixels.empty()) {
+                    screen.blit_rgba(
+                        120, 184, field_menu_action_background_.width,
+                        field_menu_action_background_.height,
+                        field_menu_action_background_.pixels);
+                }
+                const auto action_focus_index =
+                    field_menu_action_selection_ >= 2U &&
+                            field_menu_action_selection_ <= 5U
+                        ? field_menu_action_selection_ - 2U : 0U;
+                const auto& action_focus =
+                    field_menu_action_focus_[action_focus_index];
+                if (!action_focus.pixels.empty()) {
+                    screen.blit_rgba(
+                        kFieldMenuCommandButtonX[action_focus_index],
+                        kFieldMenuCommandButtonY, action_focus.width,
+                        action_focus.height, action_focus.pixels);
                 }
                 if (field_first_aid_active_) {
                     // ROM 0x122B2/0x12344 writes the extracted Heal who?? and
@@ -5528,49 +6123,47 @@ void NativePortShell::render(ScreenWriter& screen) const {
                         : field_entity_.skill_values[index -
                                                       kNativeAttributeCount];
                     const auto& name = attribute_skill_names_[index];
-                    if (column == attributes_menu_column_ &&
-                        row == attributes_menu_row_) {
-                        const auto highlight_x = name_x - 4;
-                        const auto highlight_width = value_x + 24 - highlight_x;
-                        screen.fill_rect(highlight_x, y - 2, highlight_width, 12,
-                                         {0xE8, 0xF4, 0xFF, 0xFF});
-                        screen.fill_rect(highlight_x + 2, y,
-                                         highlight_width - 4, 8,
-                                         {0x00, 0x00, 0x00, 0xFF});
-                    }
+                    // ROM 0x101FE/0xFEBE/0xFF06 keeps the selected attribute
+                    // cursor in the source row/column state. The selected
+                    // row is emitted through the light command palette line
+                    // (the capture shows Quickness as pale text), not a host
+                    // rectangle behind the row.
+                    const auto selected = index ==
+                        kAttributeSkillColumns[attributes_menu_column_]
+                            [attributes_menu_row_];
+                    const std::optional<Rgba8> selected_tint = selected
+                        ? std::optional<Rgba8>{Rgba8{0xDB, 0xDB, 0xDB, 0xFF}}
+                        : std::nullopt;
                     write_field_menu_text(
                         screen, name_x, y,
-                        name.empty() ? "UNKNOWN" : std::string_view(name));
+                        name.empty() ? "UNKNOWN" : std::string_view(name),
+                        selected_tint);
                     write_field_menu_text(screen, value_x, y,
-                                          std::to_string(value));
+                                          std::to_string(value), selected_tint);
                 }
             }
             // 0xD01C writes the current karma total beside the lower panel.
             // New-game records start at zero; keep the description tied to
             // the same cursor rather than leaving Quickness text painted
             // after navigating to another row.
-            write_field_menu_text(screen, 96, 152, "KARMA  0");
+            // KARMA is already part of the source panel tab.  0xD01C writes
+            // only the current total beside that tab; painting the word again
+            // at y=152 was the overlap seen between SKILLS and KARMA.
+            write_field_menu_text(screen, 120, 160, "0");
             const auto selected_index =
                 kAttributeSkillColumns[attributes_menu_column_]
                     [attributes_menu_row_];
-            if (selected_index == 0U) {
-                write_field_menu_text(
-                    screen, 56, 160,
-                    "Body resists damage from weapons,");
-                write_field_menu_text(
-                    screen, 56, 168,
-                    "firearms, physical spells, and");
-                write_field_menu_text(screen, 56, 176,
-                                      "Black Ice.");
-            } else if (selected_index == 1U) {
-                write_field_menu_text(
-                    screen, 56, 160,
-                    "Quickness determines movement and");
-                write_field_menu_text(
-                    screen, 56, 168,
-                    "attack speed, and increases combat");
-                write_field_menu_text(screen, 56, 176,
-                                      "and cybercombat success.");
+            if (selected_index < kAttributeSkillDescriptions.size()) {
+                const auto& description =
+                    kAttributeSkillDescriptions[selected_index];
+                for (std::size_t line = 0; line < description.size(); ++line) {
+                    if (!description[line].empty()) {
+                        write_field_menu_text(
+                            screen, 56,
+                            176 + static_cast<std::int32_t>(line * 8U),
+                            description[line]);
+                    }
+                }
             }
         } else if (scene_ == NativeScene::AttributesMenu && false) {
             render_command_base(screen);

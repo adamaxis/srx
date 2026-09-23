@@ -221,6 +221,14 @@ void write_native_asset_pack(const std::string& path,
                              const native::NativePortAssets& assets);
 native::NativePortAssets read_native_asset_pack(const std::string& path);
 
+// Persist/load the non-graphics native state beside the individually
+// extracted BMP resources. This is deliberately not an image pack: the Qt
+// runtime resolves every image from the asset directory by its named path.
+void write_native_asset_state(const std::string& path,
+                              const native::NativePortAssets& assets);
+native::NativePortAssets read_native_asset_directory(
+    const std::string& root);
+
 // Genesis CRAM stores three 3-bit channels in the spaced bit positions of a
 // 16-bit word. This expands each channel to the normal 0..255 host range.
 native::Rgba8 decode_genesis_cram_word(std::uint16_t cram_word,
@@ -420,8 +428,10 @@ RgbaImage decode_genesis_field_hud(const std::vector<std::uint8_t>& rom);
 struct GenesisFieldHudLayers {
     std::array<RgbaImage, 3> faces{};
     std::array<RgbaImage, 3> item_blocks{};
+    std::array<RgbaImage, 3> unarmed_item_blocks{};
     std::array<RgbaImage, 3> vertical_counters{};
     std::array<RgbaImage, 3> horizontal_counters{};
+    std::array<RgbaImage, 64> ammo_counters{};
 };
 // ROM 0x3404 uploads each runner's raw 4x4 portrait and six-tile item block;
 // 0x35D4/0x35F0/0x36FC/0x37EC then stamp those resources at the four fixed
@@ -527,6 +537,10 @@ RgbaImage decode_genesis_cab_map(const std::vector<std::uint8_t>& rom);
 // name-table or palette dependency retained by the runtime.
 RgbaImage decode_genesis_field_menu_background(
     const std::vector<std::uint8_t>& rom);
+// ROM 0x117A0 redraws the lower action row from the source CD302 name table
+// before applying the selected action focus block.
+RgbaImage decode_genesis_field_menu_action_background(
+    const std::vector<std::uint8_t>& rom);
 // ROM 0xD01C uses the separate 0x10C96 frame: two upper panels, two side
 // rails, and three lower separator rows. It is not the 0x10F50 command base.
 RgbaImage decode_genesis_field_menu_attributes_background(
@@ -554,6 +568,11 @@ std::array<RgbaImage, 2> decode_genesis_field_menu_selected_cells(
 // a 2x2 tile update from 0xCD3F2, one block per command tab (Clips through
 // Pocket Secretary); it is not a host-generated rectangle.
 std::array<RgbaImage, 5> decode_genesis_field_menu_command_focus(
+    const std::vector<std::uint8_t>& rom);
+// ROM 0x117A4 passes CD41A to 0x11454 for the four inventory-action
+// buttons. These source blocks replace the five top-level command tabs while
+// Equip/Discard/Trade/Cancel (or First Aid/Discard/Trade/Cancel) is active.
+std::array<RgbaImage, 4> decode_genesis_field_menu_action_focus(
     const std::vector<std::uint8_t>& rom);
 // ROM 0x11B58/0x11E7E pass CD43A/CD45A to the same writer for the Clips
 // action rows. These four 2x2 blocks are separate from the command tabs.
@@ -593,6 +612,7 @@ std::array<std::string, 13> decode_genesis_field_menu_power_labels(
 // Write a 32-bit uncompressed BMP. This is intentionally dependency-free and
 // can be opened directly by Windows or used as an intermediate asset format.
 void write_bmp32(const std::string& path, const RgbaImage& image);
+RgbaImage read_bmp32(const std::string& path);
 
 // Convert the native software framebuffer (0x00RRGGBB) to RGBA8 for dumps.
 RgbaImage software_screen_image(const native::SoftwareScreen& screen);

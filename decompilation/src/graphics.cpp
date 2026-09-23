@@ -4,8 +4,10 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <filesystem>
 #include <fstream>
 #include <limits>
+#include <unordered_map>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -46,6 +48,14 @@ RgbaImage decode_genesis_intro_aircraft_plane_a_impl(
     const std::vector<std::uint8_t>& rom);
 std::array<RgbaImage, native::kNativeIntroAircraftMovementFrameCount>
 decode_genesis_intro_aircraft_movement_frames_impl(
+    const std::vector<std::uint8_t>& rom);
+
+struct GenesisIntroTrividLayers {
+    RgbaImage background;
+    RgbaImage slain;
+    RgbaImage moving;
+};
+GenesisIntroTrividLayers decode_genesis_intro_trivid_layers(
     const std::vector<std::uint8_t>& rom);
 
 void write_u16(std::ostream& output, std::uint16_t value) {
@@ -857,6 +867,16 @@ native::NativePortAssets decode_genesis_native_assets(
             intro_aircraft_movement[index].height,
             intro_aircraft_movement[index].pixels};
     }
+    const auto intro_trivid = decode_genesis_intro_trivid_layers(rom);
+    assets.intro_trivid_background = {
+        intro_trivid.background.width, intro_trivid.background.height,
+        std::move(intro_trivid.background.pixels)};
+    assets.intro_trivid_slain = {
+        intro_trivid.slain.width, intro_trivid.slain.height,
+        std::move(intro_trivid.slain.pixels)};
+    assets.intro_trivid_moving = {
+        intro_trivid.moving.width, intro_trivid.moving.height,
+        std::move(intro_trivid.moving.pixels)};
     const auto cab_map = decode_genesis_cab_map(rom);
     assets.cab_map = {
         cab_map.width, cab_map.height, std::move(cab_map.pixels)};
@@ -872,6 +892,12 @@ native::NativePortAssets decode_genesis_native_assets(
     assets.field_menu_background = {
         field_menu_background.width, field_menu_background.height,
         std::move(field_menu_background.pixels)};
+    const auto field_menu_action_background =
+        decode_genesis_field_menu_action_background(rom);
+    assets.field_menu_action_background = {
+        field_menu_action_background.width,
+        field_menu_action_background.height,
+        field_menu_action_background.pixels};
     auto field_menu_attributes_background =
         decode_genesis_field_menu_attributes_background(rom);
     assets.field_menu_attributes_background = {
@@ -920,6 +946,13 @@ native::NativePortAssets decode_genesis_native_assets(
         assets.field_menu_command_focus[index] = {
             command_focus[index].width, command_focus[index].height,
             command_focus[index].pixels};
+    }
+    const auto action_focus =
+        decode_genesis_field_menu_action_focus(rom);
+    for (std::size_t index = 0; index < action_focus.size(); ++index) {
+        assets.field_menu_action_focus[index] = {
+            action_focus[index].width, action_focus[index].height,
+            action_focus[index].pixels};
     }
     const auto clips_focus = decode_genesis_field_menu_clips_focus(rom);
     for (std::size_t index = 0; index < clips_focus.size(); ++index) {
@@ -1199,6 +1232,10 @@ native::NativePortAssets decode_genesis_native_assets(
             field_hud_layers.item_blocks[index].width,
             field_hud_layers.item_blocks[index].height,
             field_hud_layers.item_blocks[index].pixels};
+        assets.field_hud_unarmed_item_blocks[index] = {
+            field_hud_layers.unarmed_item_blocks[index].width,
+            field_hud_layers.unarmed_item_blocks[index].height,
+            field_hud_layers.unarmed_item_blocks[index].pixels};
         assets.field_hud_vertical_counters[index] = {
             field_hud_layers.vertical_counters[index].width,
             field_hud_layers.vertical_counters[index].height,
@@ -1207,6 +1244,13 @@ native::NativePortAssets decode_genesis_native_assets(
             field_hud_layers.horizontal_counters[index].width,
             field_hud_layers.horizontal_counters[index].height,
             field_hud_layers.horizontal_counters[index].pixels};
+    }
+    for (std::size_t ammo = 0;
+         ammo < field_hud_layers.ammo_counters.size(); ++ammo) {
+        assets.field_hud_ammo_counters[ammo] = {
+            field_hud_layers.ammo_counters[ammo].width,
+            field_hud_layers.ammo_counters[ammo].height,
+            field_hud_layers.ammo_counters[ammo].pixels};
     }
     assets.entity_template = assets.protagonist_archetype_records[0];
     // New Game starts with Joshua only. The remaining runtime slots are
@@ -1280,7 +1324,7 @@ void write_native_asset_pack(const std::string& path,
         throw std::runtime_error("cannot create native asset pack: " + path);
     }
     output.write("SRNA", 4);
-    write_u16(output, 49);
+    write_u16(output, 53);
     write_u16(output, 0);
     write_native_image(output, assets.title_scene);
     for (const auto& title_frame : assets.title_animation_frames) {
@@ -1296,6 +1340,7 @@ void write_native_asset_pack(const std::string& path,
         write_native_image(output, title_sprite);
     }
     write_native_image(output, assets.field_menu_background);
+    write_native_image(output, assets.field_menu_action_background);
     write_native_image(output, assets.field_menu_attributes_background);
     write_native_image(output, assets.field_menu_inventory_boxes);
     write_native_image(output, assets.field_menu_font);
@@ -1325,6 +1370,9 @@ void write_native_asset_pack(const std::string& path,
     }
     for (const auto& command_focus : assets.field_menu_command_focus) {
         write_native_image(output, command_focus);
+    }
+    for (const auto& action_focus : assets.field_menu_action_focus) {
+        write_native_image(output, action_focus);
     }
     for (const auto& focus : assets.field_menu_clips_focus) {
         write_native_image(output, focus);
@@ -1711,6 +1759,9 @@ void write_native_asset_pack(const std::string& path,
     for (const auto& movement : assets.intro_aircraft_movement_frames) {
         write_native_image(output, movement);
     }
+    write_native_image(output, assets.intro_trivid_background);
+    write_native_image(output, assets.intro_trivid_slain);
+    write_native_image(output, assets.intro_trivid_moving);
     write_native_image(output, assets.field_hud);
     for (const auto& face : assets.field_hud_faces) {
         write_native_image(output, face);
@@ -1718,10 +1769,16 @@ void write_native_asset_pack(const std::string& path,
     for (const auto& item : assets.field_hud_item_blocks) {
         write_native_image(output, item);
     }
+    for (const auto& item : assets.field_hud_unarmed_item_blocks) {
+        write_native_image(output, item);
+    }
     for (const auto& counter : assets.field_hud_vertical_counters) {
         write_native_image(output, counter);
     }
     for (const auto& counter : assets.field_hud_horizontal_counters) {
+        write_native_image(output, counter);
+    }
+    for (const auto& counter : assets.field_hud_ammo_counters) {
         write_native_image(output, counter);
     }
     write_native_image(output, assets.pocket_secretary_background);
@@ -1741,7 +1798,7 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     const auto version = read_pack_u16(
         input, "native asset pack version is truncated");
     if (!input || std::string(magic, sizeof(magic)) != "SRNA" ||
-        (version < 2U || version > 49U)) {
+            (version < 2U || version > 53U)) {
         throw std::runtime_error("invalid native asset pack header");
     }
     (void)read_pack_u16(input, "native asset pack header is truncated");
@@ -1768,6 +1825,9 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     }
     if (version >= 11U) {
         assets.field_menu_background = read_native_image(input);
+        if (version >= 52U) {
+            assets.field_menu_action_background = read_native_image(input);
+        }
         if (version >= 48U) {
             assets.field_menu_attributes_background = read_native_image(input);
         }
@@ -1806,6 +1866,11 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
                 if (version >= 35U) {
                     for (auto& command_focus : assets.field_menu_command_focus) {
                         command_focus = read_native_image(input);
+                    }
+                }
+                if (version >= 52U) {
+                    for (auto& action_focus : assets.field_menu_action_focus) {
+                        action_focus = read_native_image(input);
                     }
                 }
                 if (version >= 47U) {
@@ -2494,6 +2559,11 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
             movement = read_native_image(input);
         }
     }
+    if (version >= 50U) {
+        assets.intro_trivid_background = read_native_image(input);
+        assets.intro_trivid_slain = read_native_image(input);
+        assets.intro_trivid_moving = read_native_image(input);
+    }
     if (version >= 41U) {
         assets.field_hud = read_native_image(input);
     }
@@ -2504,11 +2574,21 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
         for (auto& item : assets.field_hud_item_blocks) {
             item = read_native_image(input);
         }
+        if (version >= 53U) {
+            for (auto& item : assets.field_hud_unarmed_item_blocks) {
+                item = read_native_image(input);
+            }
+        }
         for (auto& counter : assets.field_hud_vertical_counters) {
             counter = read_native_image(input);
         }
         for (auto& counter : assets.field_hud_horizontal_counters) {
             counter = read_native_image(input);
+        }
+        if (version >= 51U) {
+            for (auto& counter : assets.field_hud_ammo_counters) {
+                counter = read_native_image(input);
+            }
         }
     }
     if (version >= 42U) {
@@ -2516,6 +2596,522 @@ native::NativePortAssets read_native_asset_pack(const std::string& path) {
     }
     if (version >= 44U) {
         assets.cab_map = read_native_image(input);
+    }
+    fill_grayscale_entity_assets(assets);
+    return assets;
+}
+
+// Direct-directory state helpers are defined below the legacy pack reader so
+// the old serializer remains easy to compare with its historical format.
+void write_native_field_record_state(std::ostream& output,
+                                     const native::NativeFieldRecord& record);
+native::NativeFieldRecord read_native_field_record_state(std::istream& input);
+void write_native_field_entity_state(
+    std::ostream& output, const native::NativeFieldEntity& entity);
+native::NativeFieldEntity read_native_field_entity_state(std::istream& input);
+void write_native_terrain_state(std::ostream& output,
+                                const terrain::Map& map);
+terrain::Map read_native_terrain_state(std::istream& input);
+void write_native_intro_state(std::ostream& output,
+                              const native::NativeIntroData& intro);
+native::NativeIntroData read_native_intro_state(std::istream& input);
+
+void write_native_asset_state(const std::string& path,
+                              const native::NativePortAssets& assets) {
+    std::ofstream output(path, std::ios::binary);
+    if (!output) {
+        throw std::runtime_error("cannot create native asset state: " + path);
+    }
+    output.write("SRNS", 4);
+    write_u16(output, 2);
+    write_u16(output, 0);
+
+    write_native_terrain_state(output, assets.field_terrain);
+    write_u16(output, assets.initial_camera_x_fixed);
+    write_u16(output, assets.initial_camera_y_fixed);
+    for (const auto& record : assets.initial_field_records) {
+        write_native_field_record_state(output, record);
+    }
+    write_native_field_entity_state(output, assets.entity_template);
+    for (const auto& entity : assets.protagonist_archetype_records) {
+        write_native_field_entity_state(output, entity);
+    }
+    for (const auto& entity : assets.field_entity_records) {
+        write_native_field_entity_state(output, entity);
+    }
+    for (const auto& item : assets.inventory_items) {
+        output.put(static_cast<char>(item.code));
+        output.put(static_cast<char>(item.source_combat_factor));
+        output.put(static_cast<char>(item.damage_table_index));
+        output.put(static_cast<char>(item.power_table_index));
+        write_pack_string(output, item.name,
+                          "native state inventory item name is too long");
+        write_pack_string(output, item.category,
+                          "native state inventory item category is too long");
+    }
+    for (const auto& value : assets.field_menu_runner_names) {
+        write_pack_string(output, value,
+                          "native state runner menu name is too long");
+    }
+    for (const auto& value : assets.field_menu_status_names) {
+        write_pack_string(output, value,
+                          "native state menu status name is too long");
+    }
+    for (const auto& value : assets.field_menu_power_labels) {
+        write_pack_string(output, value,
+                          "native state power label is too long");
+    }
+    for (const auto& armor : assets.field_menu_armor_labels) {
+        for (const auto& value : armor) {
+            write_pack_string(output, value,
+                              "native state armor label is too long");
+        }
+    }
+    for (const auto& value : assets.cyberware_names) {
+        write_pack_string(output, value,
+                          "native state cyberware name is too long");
+    }
+    for (const auto& value : assets.attribute_skill_names) {
+        write_pack_string(output, value,
+                          "native state attribute/skill name is too long");
+    }
+    for (const auto& value : assets.group_item_names) {
+        write_pack_string(output, value,
+                          "native state group item name is too long");
+    }
+    for (const auto& value : assets.cyberdeck_unavailable_lines) {
+        write_pack_string(output, value,
+                          "native state cyberdeck text is too long");
+    }
+    for (const auto& value : assets.dismiss_runner_labels) {
+        write_pack_string(output, value,
+                          "native state dismiss runner label is too long");
+    }
+    for (const auto& value : assets.notebook_labels) {
+        write_pack_string(output, value,
+                          "native state Notebook label is too long");
+    }
+    for (const auto& value : assets.notebook_no_run_lines) {
+        write_pack_string(output, value,
+                          "native state Notebook line is too long");
+    }
+    for (const auto value : assets.notebook_event_gates) {
+        output.put(static_cast<char>(value));
+    }
+    for (const auto& value : assets.notebook_tip_text) {
+        write_pack_string(output, value,
+                          "native state Notebook tip is too long");
+    }
+    for (const auto value : assets.notebook_tip_flags) {
+        write_u32(output, value);
+    }
+    for (const auto& value : assets.notebook_mr_johnson_names) {
+        write_pack_string(output, value,
+                          "native state Mr. Johnson name is too long");
+    }
+    for (const auto direction : assets.field_direction_table) {
+        write_u16(output, static_cast<std::uint16_t>(direction[0]));
+        write_u16(output, static_cast<std::uint16_t>(direction[1]));
+    }
+    write_native_intro_state(output, assets.intro);
+    for (const auto mode : assets.field_event_mode_table) {
+        output.put(static_cast<char>(mode));
+    }
+    if (assets.field_areas.size() > 0xFFFFU) {
+        throw std::invalid_argument("native state has too many field areas");
+    }
+    write_u16(output, static_cast<std::uint16_t>(assets.field_areas.size()));
+    for (const auto& area : assets.field_areas) {
+        write_u16(output, area.mode_id);
+        write_native_terrain_state(output, area.terrain);
+        write_u16(output, area.initial_camera_x_fixed);
+        write_u16(output, area.initial_camera_y_fixed);
+        for (const auto& record : area.initial_field_records) {
+            write_native_field_record_state(output, record);
+        }
+        for (const auto mode : area.event_mode_table) {
+            output.put(static_cast<char>(mode));
+        }
+    }
+    for (const auto& animation : assets.field_entity_animations) {
+        write_u16(output, animation.state_selector);
+        write_u16(output, animation.state_marker);
+        write_u16(output, animation.state_auxiliary_word);
+        write_u16(output, animation.source_timing_value);
+        write_u16(output, animation.timing_multiplier);
+        if (animation.frames.size() > 0xFFFFFFFFU) {
+            throw std::invalid_argument(
+                "native state has too many entity animation frames");
+        }
+        write_u32(output, static_cast<std::uint32_t>(animation.frames.size()));
+    }
+    if (assets.entity_frames.size() > 0xFFFFFFFFU) {
+        throw std::invalid_argument("native state has too many entity frames");
+    }
+    write_u32(output, static_cast<std::uint32_t>(assets.entity_frames.size()));
+    if (!output) {
+        throw std::runtime_error("failed writing native asset state: " + path);
+    }
+}
+
+native::NativePortAssets read_native_asset_directory(const std::string& root) {
+    const std::filesystem::path asset_root(root);
+    const auto state_path = asset_root / "native" / "state.bin";
+    std::ifstream input(state_path, std::ios::binary);
+    if (!input) {
+        throw std::runtime_error(
+            "missing direct asset state: " + state_path.string() +
+            "; run shadowrun_graphics_extract --all-assets");
+    }
+    char magic[4]{};
+    input.read(magic, sizeof(magic));
+    const auto version = read_pack_u16(
+        input, "native asset state version is truncated");
+    if (!input || std::string(magic, sizeof(magic)) != "SRNS" || version != 2U) {
+        throw std::runtime_error("invalid direct native asset state header");
+    }
+    (void)read_pack_u16(input, "native asset state header is truncated");
+
+    native::NativePortAssets assets;
+    assets.field_terrain = read_native_terrain_state(input);
+    assets.initial_camera_x_fixed = read_pack_u16(
+        input, "native asset state camera is truncated");
+    assets.initial_camera_y_fixed = read_pack_u16(
+        input, "native asset state camera is truncated");
+    for (auto& record : assets.initial_field_records) {
+        record = read_native_field_record_state(input);
+    }
+    assets.entity_template = read_native_field_entity_state(input);
+    for (auto& entity : assets.protagonist_archetype_records) {
+        entity = read_native_field_entity_state(input);
+    }
+    for (auto& entity : assets.field_entity_records) {
+        entity = read_native_field_entity_state(input);
+    }
+    for (auto& item : assets.inventory_items) {
+        item.code = read_pack_u8(input, "native asset state item is truncated");
+        item.source_combat_factor = read_pack_u8(
+            input, "native asset state item is truncated");
+        item.damage_table_index = read_pack_u8(
+            input, "native asset state item is truncated");
+        item.power_table_index = read_pack_u8(
+            input, "native asset state item is truncated");
+        item.name = read_pack_string(input,
+                                     "native asset state item is truncated");
+        item.category = read_pack_string(input,
+                                         "native asset state item is truncated");
+    }
+    for (auto& value : assets.field_menu_runner_names) {
+        value = read_pack_string(input,
+                                 "native asset state runner name is truncated");
+    }
+    for (auto& value : assets.field_menu_status_names) {
+        value = read_pack_string(
+            input, "native asset state status name is truncated");
+    }
+    for (auto& value : assets.field_menu_power_labels) {
+        value = read_pack_string(input,
+                                 "native asset state power label is truncated");
+    }
+    for (auto& armor : assets.field_menu_armor_labels) {
+        for (auto& value : armor) {
+            value = read_pack_string(
+                input, "native asset state armor label is truncated");
+        }
+    }
+    for (auto& value : assets.cyberware_names) {
+        value = read_pack_string(input, "native asset state is truncated");
+    }
+    for (auto& value : assets.attribute_skill_names) {
+        value = read_pack_string(input, "native asset state is truncated");
+    }
+    for (auto& value : assets.group_item_names) {
+        value = read_pack_string(input, "native asset state is truncated");
+    }
+    for (auto& value : assets.cyberdeck_unavailable_lines) {
+        value = read_pack_string(input, "native asset state is truncated");
+    }
+    for (auto& value : assets.dismiss_runner_labels) {
+        value = read_pack_string(input, "native asset state is truncated");
+    }
+    for (auto& value : assets.notebook_labels) {
+        value = read_pack_string(input, "native asset state is truncated");
+    }
+    for (auto& value : assets.notebook_no_run_lines) {
+        value = read_pack_string(input, "native asset state is truncated");
+    }
+    for (auto& value : assets.notebook_event_gates) {
+        value = read_pack_u8(input, "native asset state is truncated");
+    }
+    for (auto& value : assets.notebook_tip_text) {
+        value = read_pack_string(input, "native asset state is truncated");
+    }
+    for (auto& value : assets.notebook_tip_flags) {
+        value = read_pack_u32(input, "native asset state is truncated");
+    }
+    for (auto& value : assets.notebook_mr_johnson_names) {
+        value = read_pack_string(input, "native asset state is truncated");
+    }
+    for (auto& direction : assets.field_direction_table) {
+        direction[0] = static_cast<std::int16_t>(read_pack_u16(
+            input, "native asset state direction table is truncated"));
+        direction[1] = static_cast<std::int16_t>(read_pack_u16(
+            input, "native asset state direction table is truncated"));
+    }
+    assets.intro = read_native_intro_state(input);
+    for (auto& mode : assets.field_event_mode_table) {
+        mode = read_pack_u8(input, "native asset state event table is truncated");
+    }
+    const auto area_count = static_cast<std::size_t>(read_pack_u16(
+        input, "native asset state area count is truncated"));
+    if (area_count > 56U) {
+        throw std::runtime_error("native asset state has too many field areas");
+    }
+    assets.field_areas.reserve(area_count);
+    for (std::size_t index = 0; index < area_count; ++index) {
+        native::NativeFieldArea area;
+        area.mode_id = read_pack_u16(
+            input, "native asset state area mode is truncated");
+        area.terrain = read_native_terrain_state(input);
+        area.initial_camera_x_fixed = read_pack_u16(
+            input, "native asset state area camera is truncated");
+        area.initial_camera_y_fixed = read_pack_u16(
+            input, "native asset state area camera is truncated");
+        for (auto& record : area.initial_field_records) {
+            record = read_native_field_record_state(input);
+        }
+        for (auto& mode : area.event_mode_table) {
+            mode = read_pack_u8(input, "native asset state area event table is truncated");
+        }
+        assets.field_areas.push_back(std::move(area));
+    }
+    for (auto& animation : assets.field_entity_animations) {
+        animation.state_selector = read_pack_u16(
+            input, "native asset state animation is truncated");
+        animation.state_marker = read_pack_u16(
+            input, "native asset state animation is truncated");
+        animation.state_auxiliary_word = read_pack_u16(
+            input, "native asset state animation is truncated");
+        animation.source_timing_value = read_pack_u16(
+            input, "native asset state animation is truncated");
+        animation.timing_multiplier = read_pack_u16(
+            input, "native asset state animation is truncated");
+        const auto frame_count = static_cast<std::size_t>(read_pack_u32(
+            input, "native asset state animation frame count is truncated"));
+        if (frame_count > 256U) {
+            throw std::runtime_error(
+                "native asset state has too many animation frames");
+        }
+        animation.frames.resize(frame_count);
+    }
+    const auto entity_count = static_cast<std::size_t>(read_pack_u32(
+        input, "native asset state entity frame count is truncated"));
+    if (entity_count > 256U) {
+        throw std::runtime_error("native asset state has too many entity frames");
+    }
+    assets.entity_frames.resize(entity_count);
+
+    std::unordered_map<std::string, std::pair<std::int16_t, std::int16_t>>
+        direct_asset_origins;
+    const auto catalog_path = asset_root / "catalog.tsv";
+    std::ifstream catalog(catalog_path, std::ios::binary);
+    if (catalog) {
+        std::string line;
+        std::getline(catalog, line); // header
+        while (std::getline(catalog, line)) {
+            const auto first = line.find('\t');
+            const auto second = first == std::string::npos
+                ? std::string::npos : line.find('\t', first + 1U);
+            const auto third = second == std::string::npos
+                ? std::string::npos : line.find('\t', second + 1U);
+            const auto fourth = third == std::string::npos
+                ? std::string::npos : line.find('\t', third + 1U);
+            if (first == std::string::npos || second == std::string::npos ||
+                third == std::string::npos || fourth == std::string::npos) {
+                continue;
+            }
+            const auto relative = line.substr(0, first);
+            const auto origin_x = std::stoi(
+                line.substr(second + 1U, third - second - 1U));
+            const auto origin_y = std::stoi(
+                line.substr(third + 1U, fourth - third - 1U));
+            direct_asset_origins.emplace(
+                relative,
+                std::make_pair(static_cast<std::int16_t>(origin_x),
+                               static_cast<std::int16_t>(origin_y)));
+        }
+    }
+
+    const auto load = [&asset_root, &direct_asset_origins](
+                          const std::string& relative) {
+        const auto path = asset_root / relative;
+        try {
+            const auto image = read_bmp32(path.string());
+            native::NativeImage result{image.width, image.height, image.pixels};
+            if (const auto origin = direct_asset_origins.find(relative);
+                origin != direct_asset_origins.end()) {
+                result.origin_x = origin->second.first;
+                result.origin_y = origin->second.second;
+            }
+            return result;
+        } catch (const std::exception& error) {
+            throw std::runtime_error("cannot load direct asset " +
+                                     path.string() + ": " + error.what());
+        }
+    };
+    assets.title_scene = load("title/background.bmp");
+    assets.title_background = assets.title_scene;
+    for (std::size_t index = 0; index < assets.title_circuit_lights.size(); ++index) {
+        assets.title_circuit_lights[index] =
+            load("title/circuit-background-" + std::to_string(index) + ".bmp");
+    }
+    assets.title_logo_plane = load("title/logo.bmp");
+    assets.title_text = load("title/text.bmp");
+    for (std::size_t index = 0; index < assets.title_sprite_frames.size(); ++index) {
+        assets.title_sprite_frames[index] =
+            load("title/sprite-" + std::to_string(index) + ".bmp");
+        assets.title_animation_frames[index] =
+            load("title/animation-" + std::to_string(index) + ".bmp");
+    }
+    assets.boot_static = load("boot/snow.bmp");
+    assets.boot_background = load("boot/sega-background.bmp");
+    assets.boot_guy = load("boot/guy.bmp");
+    for (std::size_t index = 0; index < assets.boot_sega_frames.size(); ++index) {
+        assets.boot_sega_frames[index] =
+            load("boot/sega-lightning-" + std::to_string(index) + ".bmp");
+    }
+    for (std::size_t index = 0; index < assets.boot_logo_strobe.size(); ++index) {
+        assets.boot_logo_strobe[index] =
+            load("boot/sega-strobe-" + std::to_string(index) + ".bmp");
+    }
+    assets.boot_fasa = load("boot/fasa.bmp");
+    assets.startup_background = load("startup/background.bmp");
+    assets.startup_font = load("startup/font.bmp");
+    assets.startup_cursor = load("startup/cursor.bmp");
+    for (std::size_t index = 0; index < assets.intro_stages.size(); ++index) {
+        assets.intro_stages[index] =
+            load("intro/stage-" + std::to_string(index) + ".bmp");
+    }
+    for (std::size_t index = 0; index < assets.intro_wilderness_pan_frames.size(); ++index) {
+        assets.intro_wilderness_pan_frames[index] =
+            load("intro/wilderness-pan-" + std::to_string(index) + ".bmp");
+    }
+    for (std::size_t index = 0; index < assets.intro_ambush_frames.size(); ++index) {
+        assets.intro_ambush_frames[index] =
+            load("intro/ambush-" + std::to_string(index) + ".bmp");
+    }
+    assets.intro_aircraft_plane_a = load("intro/aircraft-plane-a.bmp");
+    for (std::size_t index = 0; index < assets.intro_heli_frames.size(); ++index) {
+        assets.intro_heli_frames[index] =
+            load("intro/helicopter-" + std::to_string(index) + ".bmp");
+    }
+    for (std::size_t index = 0; index < assets.intro_aircraft_movement_frames.size(); ++index) {
+        assets.intro_aircraft_movement_frames[index] =
+            load("intro/aircraft-movement-" + std::to_string(index) + ".bmp");
+    }
+    assets.intro_trivid_background = load("intro/trivid-background.bmp");
+    assets.intro_trivid_slain = load("intro/trivid-slain.bmp");
+    assets.intro_trivid_moving = load("intro/trivid-moving.bmp");
+    assets.cab_map = load("intro/cab-map.bmp");
+
+    assets.field_hud = load("field/hud/background.bmp");
+    for (std::size_t index = 0; index < assets.field_hud_faces.size(); ++index) {
+        assets.field_hud_faces[index] = load(
+            "field/hud/face-" + std::to_string(index) + ".bmp");
+        assets.field_hud_item_blocks[index] = load(
+            "field/hud/item-" + std::to_string(index) + ".bmp");
+        assets.field_hud_unarmed_item_blocks[index] = load(
+            "field/hud/unarmed-item-" + std::to_string(index) + ".bmp");
+        assets.field_hud_vertical_counters[index] = load(
+            "field/hud/vertical-counter-" + std::to_string(index) + ".bmp");
+        assets.field_hud_horizontal_counters[index] = load(
+            "field/hud/horizontal-counter-" + std::to_string(index) + ".bmp");
+    }
+    for (std::size_t index = 0; index < assets.field_hud_ammo_counters.size(); ++index) {
+        assets.field_hud_ammo_counters[index] = load(
+            "field/hud/ammo-counter-" + std::to_string(index) + ".bmp");
+    }
+    assets.pocket_secretary_background =
+        load("field/menu/pocket-secretary-background.bmp");
+    assets.field_menu_background = load("field/menu/background.bmp");
+    assets.field_menu_action_background =
+        load("field/menu/action-background.bmp");
+    assets.field_menu_attributes_background =
+        load("field/menu/attributes-background.bmp");
+    assets.field_menu_inventory_boxes = load("field/menu/inventory-boxes.bmp");
+    assets.field_menu_font = load("field/menu/font.bmp");
+    for (std::size_t index = 0; index < assets.field_menu_runner_portraits.size(); ++index) {
+        assets.field_menu_runner_portraits[index] = load(
+            "field/menu/runner-portrait-" + std::to_string(index) + ".bmp");
+    }
+    for (std::size_t index = 0; index < assets.field_menu_selected_cells.size(); ++index) {
+        assets.field_menu_selected_cells[index] = load(
+            "field/menu/selected-cell-" + std::to_string(index) + ".bmp");
+    }
+    for (std::size_t index = 0; index < assets.field_menu_command_focus.size(); ++index) {
+        assets.field_menu_command_focus[index] = load(
+            "field/menu/command-focus-" + std::to_string(index) + ".bmp");
+    }
+    for (std::size_t index = 0; index < assets.field_menu_action_focus.size(); ++index) {
+        assets.field_menu_action_focus[index] = load(
+            "field/menu/action-focus-" + std::to_string(index) + ".bmp");
+    }
+    for (std::size_t index = 0; index < assets.field_menu_clips_focus.size(); ++index) {
+        assets.field_menu_clips_focus[index] = load(
+            "field/menu/clips-focus-" + std::to_string(index) + ".bmp");
+        assets.field_menu_clips_trade_focus[index] = load(
+            "field/menu/clips-trade-focus-" + std::to_string(index) + ".bmp");
+    }
+    assets.field_menu_posture_focus = load("field/menu/posture-focus.bmp");
+    assets.field_menu_cursor = load("field/menu/cursor.bmp");
+    for (std::size_t index = 0; index < assets.field_menu_item_art.size(); ++index) {
+        assets.field_menu_item_art[index] = load(
+            "field/menu/item-art-" + std::to_string(index) + ".bmp");
+        for (std::size_t variant = 0;
+             variant < assets.field_menu_inventory_icons[index].size(); ++variant) {
+            assets.field_menu_inventory_icons[index][variant] = load(
+                "field/menu/inventory-icon-" + std::to_string(index) + "-" +
+                std::to_string(variant) + ".bmp");
+        }
+    }
+    for (std::size_t index = 0; index < assets.field_menu_status_bars.size(); ++index) {
+        assets.field_menu_status_bars[index] = load(
+            "field/menu/status-bar-" + std::to_string(index) + ".bmp");
+    }
+    for (std::size_t index = 0; index < assets.field_menu_damage_bars.size(); ++index) {
+        assets.field_menu_damage_bars[index] = load(
+            "field/menu/damage-bar-" + std::to_string(index) + ".bmp");
+        assets.field_menu_drain_bars[index] = load(
+            "field/menu/drain-bar-" + std::to_string(index) + ".bmp");
+    }
+    for (std::size_t index = 0; index < assets.field_menu_detail_values.size(); ++index) {
+        assets.field_menu_detail_values[index] = load(
+            "field/menu/detail-value-" + std::to_string(index) + ".bmp");
+    }
+    for (std::size_t index = 0; index < assets.field_menu_attack_bars.size(); ++index) {
+        assets.field_menu_attack_bars[index] = load(
+            "field/menu/attack-bar-" + std::to_string(index) + ".bmp");
+        assets.field_menu_defense_bars[index] = load(
+            "field/menu/defense-bar-" + std::to_string(index) + ".bmp");
+    }
+
+    assets.field_map = load("field/map/mode-2.bmp");
+    for (auto& area : assets.field_areas) {
+        area.map = load("field/map/mode-" + std::to_string(area.mode_id) + ".bmp");
+    }
+    for (std::size_t index = 0; index < assets.entity_frames.size(); ++index) {
+        const auto image = load("field/entities/idle-" + std::to_string(index) + ".bmp");
+        assets.entity_frames[index] = {image.width, image.height, image.pixels};
+    }
+    for (std::size_t direction = 0;
+         direction < assets.field_entity_animations.size(); ++direction) {
+        auto& animation = assets.field_entity_animations[direction];
+        for (std::size_t frame = 0; frame < animation.frames.size(); ++frame) {
+            const auto image = load("field/entities/walk-" +
+                                    std::to_string(direction) + "-" +
+                                    std::to_string(frame) + ".bmp");
+            animation.frames[frame] = {image.width, image.height, image.pixels};
+        }
     }
     fill_grayscale_entity_assets(assets);
     return assets;
@@ -3074,6 +3670,342 @@ RgbaImage decode_genesis_field_menu_attributes_background(
     return image;
 }
 
+void write_native_field_record_state(std::ostream& output,
+                                     const native::NativeFieldRecord& record) {
+    write_u16(output, record.position.world_x_fixed);
+    write_u16(output, record.position.world_y_fixed);
+    write_u16(output, record.record_type);
+    output.put(static_cast<char>(record.flags_10));
+    output.put(static_cast<char>(record.flags_11));
+}
+
+native::NativeFieldRecord read_native_field_record_state(std::istream& input) {
+    native::NativeFieldRecord record;
+    record.position.world_x_fixed = read_pack_u16(
+        input, "native field record state is truncated");
+    record.position.world_y_fixed = read_pack_u16(
+        input, "native field record state is truncated");
+    record.record_type = read_pack_u16(
+        input, "native field record state is truncated");
+    record.flags_10 = read_pack_u8(
+        input, "native field record state is truncated");
+    record.flags_11 = read_pack_u8(
+        input, "native field record state is truncated");
+    return record;
+}
+
+void write_native_field_entity_state(
+    std::ostream& output, const native::NativeFieldEntity& entity) {
+    output.put(static_cast<char>(entity.record_index));
+    write_u16(output, entity.world_x_fixed);
+    write_u16(output, entity.world_y_fixed);
+    write_u16(output, entity.projection_word_08);
+    write_u16(output, entity.kind);
+    write_u16(output, entity.record_type);
+    output.put(static_cast<char>(entity.race_index));
+    output.put(static_cast<char>(entity.archetype_index));
+    output.put(static_cast<char>(entity.physical_value));
+    output.put(static_cast<char>(entity.mental_value));
+    output.put(static_cast<char>(entity.active_item_code));
+    output.put(static_cast<char>(entity.flags_10));
+    output.put(static_cast<char>(entity.flags_11));
+    write_u32(output, entity.state_pointer);
+    write_u16(output, entity.vdp_screen_x);
+    write_u16(output, entity.vdp_screen_y);
+    write_u16(output, entity.screen_x);
+    write_u16(output, entity.screen_y);
+    output.put(static_cast<char>(entity.visible ? 1U : 0U));
+    if (entity.frame_index > 0xFFFFFFFFU) {
+        throw std::invalid_argument("native entity frame index is too large");
+    }
+    write_u32(output, static_cast<std::uint32_t>(entity.frame_index));
+    write_u16(output, entity.state_selector);
+    write_u16(output, entity.state_index);
+    output.put(static_cast<char>(static_cast<std::uint8_t>(
+        entity.display_state)));
+    output.put(static_cast<char>(static_cast<std::uint8_t>(
+        entity.display_substate)));
+    output.put(static_cast<char>(entity.display_palette_state));
+    output.put(static_cast<char>(entity.menu_status_index));
+    output.put(static_cast<char>(entity.attack_bar_index));
+    output.put(static_cast<char>(entity.defense_bar_index));
+    for (const auto index : entity.attack_bar_indices_by_posture) {
+        output.put(static_cast<char>(index));
+    }
+    for (const auto index : entity.defense_bar_indices_by_posture) {
+        output.put(static_cast<char>(index));
+    }
+    output.put(static_cast<char>(entity.weapons_bar_index));
+    output.put(static_cast<char>(entity.guns_bar_index));
+    write_u16(output, entity.animation_accumulator);
+    write_u16(output, entity.animation_multiplier);
+    write_u16(output, entity.animation_threshold);
+    write_u32(output, entity.animation_descriptor);
+    for (const auto code : entity.inventory_item_codes) {
+        output.put(static_cast<char>(code));
+    }
+    for (const auto phase : entity.inventory_phase_bytes) {
+        output.put(static_cast<char>(phase));
+    }
+    output.put(static_cast<char>(entity.equipped_armor_index));
+    output.put(static_cast<char>(entity.ammo_rounds));
+    output.put(static_cast<char>(entity.ammo_clips));
+    write_u16(output, entity.cyberware_flags);
+    for (const auto value : entity.attribute_values) {
+        output.put(static_cast<char>(value));
+    }
+    for (const auto value : entity.skill_values) {
+        output.put(static_cast<char>(value));
+    }
+    for (const auto value : entity.attribute_skill_auxiliary) {
+        output.put(static_cast<char>(value));
+    }
+}
+
+native::NativeFieldEntity read_native_field_entity_state(std::istream& input) {
+    native::NativeFieldEntity entity;
+    entity.record_index = read_pack_u8(
+        input, "native field entity state is truncated");
+    entity.world_x_fixed = read_pack_u16(
+        input, "native field entity state is truncated");
+    entity.world_y_fixed = read_pack_u16(
+        input, "native field entity state is truncated");
+    entity.projection_word_08 = read_pack_u16(
+        input, "native field entity state is truncated");
+    entity.kind = read_pack_u16(input, "native field entity state is truncated");
+    entity.record_type = read_pack_u16(
+        input, "native field entity state is truncated");
+    entity.race_index = read_pack_u8(
+        input, "native field entity state is truncated");
+    entity.archetype_index = read_pack_u8(
+        input, "native field entity state is truncated");
+    entity.physical_value = read_pack_u8(
+        input, "native field entity state is truncated");
+    entity.mental_value = read_pack_u8(
+        input, "native field entity state is truncated");
+    entity.active_item_code = read_pack_u8(
+        input, "native field entity state is truncated");
+    entity.flags_10 = read_pack_u8(
+        input, "native field entity state is truncated");
+    entity.flags_11 = read_pack_u8(
+        input, "native field entity state is truncated");
+    entity.state_pointer = read_pack_u32(
+        input, "native field entity state is truncated");
+    entity.vdp_screen_x = read_pack_u16(
+        input, "native field entity state is truncated");
+    entity.vdp_screen_y = read_pack_u16(
+        input, "native field entity state is truncated");
+    entity.screen_x = read_pack_u16(
+        input, "native field entity state is truncated");
+    entity.screen_y = read_pack_u16(
+        input, "native field entity state is truncated");
+    entity.visible = read_pack_u8(
+        input, "native field entity state is truncated") != 0U;
+    entity.frame_index = read_pack_u32(
+        input, "native field entity state is truncated");
+    entity.state_selector = read_pack_u16(
+        input, "native field entity state is truncated");
+    entity.state_index = read_pack_u16(
+        input, "native field entity state is truncated");
+    entity.display_state = static_cast<std::int8_t>(read_pack_u8(
+        input, "native field entity state is truncated"));
+    entity.display_substate = static_cast<std::int8_t>(read_pack_u8(
+        input, "native field entity state is truncated"));
+    entity.display_palette_state = read_pack_u8(
+        input, "native field entity state is truncated");
+    entity.menu_status_index = read_pack_u8(
+        input, "native field entity state is truncated");
+    entity.attack_bar_index = read_pack_u8(
+        input, "native field entity state is truncated");
+    entity.defense_bar_index = read_pack_u8(
+        input, "native field entity state is truncated");
+    for (auto& index : entity.attack_bar_indices_by_posture) {
+        index = read_pack_u8(input, "native field entity state is truncated");
+    }
+    for (auto& index : entity.defense_bar_indices_by_posture) {
+        index = read_pack_u8(input, "native field entity state is truncated");
+    }
+    entity.weapons_bar_index = read_pack_u8(
+        input, "native field entity state is truncated");
+    entity.guns_bar_index = read_pack_u8(
+        input, "native field entity state is truncated");
+    entity.animation_accumulator = read_pack_u16(
+        input, "native field entity state is truncated");
+    entity.animation_multiplier = read_pack_u16(
+        input, "native field entity state is truncated");
+    entity.animation_threshold = read_pack_u16(
+        input, "native field entity state is truncated");
+    entity.animation_descriptor = read_pack_u32(
+        input, "native field entity state is truncated");
+    for (auto& code : entity.inventory_item_codes) {
+        code = read_pack_u8(input, "native field entity state is truncated");
+    }
+    for (auto& phase : entity.inventory_phase_bytes) {
+        phase = read_pack_u8(input, "native field entity state is truncated");
+    }
+    entity.equipped_armor_index = read_pack_u8(
+        input, "native field entity state is truncated");
+    entity.ammo_rounds = read_pack_u8(
+        input, "native field entity state is truncated");
+    entity.ammo_clips = read_pack_u8(
+        input, "native field entity state is truncated");
+    entity.cyberware_flags = read_pack_u16(
+        input, "native field entity state is truncated");
+    for (auto& value : entity.attribute_values) {
+        value = read_pack_u8(input, "native field entity state is truncated");
+    }
+    for (auto& value : entity.skill_values) {
+        value = read_pack_u8(input, "native field entity state is truncated");
+    }
+    for (auto& value : entity.attribute_skill_auxiliary) {
+        value = read_pack_u8(input, "native field entity state is truncated");
+    }
+    return entity;
+}
+
+void write_native_terrain_state(std::ostream& output,
+                                const terrain::Map& map) {
+    write_u16(output, map.x_exclusive_upper);
+    write_u16(output, map.y_exclusive_upper);
+    write_u16(output, map.x_inclusive_lower);
+    write_u16(output, map.y_inclusive_lower);
+    if (map.regions.size() > 0xFFFFFFFFU ||
+        map.statuses.size() > 0xFFFFFFFFU) {
+        throw std::invalid_argument("native terrain state is too large");
+    }
+    write_u32(output, static_cast<std::uint32_t>(map.regions.size()));
+    for (const auto& region : map.regions) {
+        write_u16(output, region.x_start);
+        write_u16(output, region.x_end);
+        write_u16(output, region.y_start);
+        write_u16(output, region.y_end);
+        output.put(static_cast<char>(region.status));
+    }
+    write_u32(output, static_cast<std::uint32_t>(map.statuses.size()));
+    output.write(reinterpret_cast<const char*>(map.statuses.data()),
+                 static_cast<std::streamsize>(map.statuses.size()));
+}
+
+terrain::Map read_native_terrain_state(std::istream& input) {
+    terrain::Map map;
+    map.x_exclusive_upper = read_pack_u16(
+        input, "native terrain state is truncated");
+    map.y_exclusive_upper = read_pack_u16(
+        input, "native terrain state is truncated");
+    map.x_inclusive_lower = read_pack_u16(
+        input, "native terrain state is truncated");
+    map.y_inclusive_lower = read_pack_u16(
+        input, "native terrain state is truncated");
+    map.region_count = static_cast<std::size_t>(read_pack_u32(
+        input, "native terrain state is truncated"));
+    if (map.region_count > 65536U) {
+        throw std::runtime_error("native terrain state has too many regions");
+    }
+    map.regions.resize(map.region_count);
+    for (auto& region : map.regions) {
+        region.x_start = read_pack_u16(input, "native terrain state is truncated");
+        region.x_end = read_pack_u16(input, "native terrain state is truncated");
+        region.y_start = read_pack_u16(input, "native terrain state is truncated");
+        region.y_end = read_pack_u16(input, "native terrain state is truncated");
+        region.status = read_pack_u8(input, "native terrain state is truncated");
+    }
+    const auto status_count = static_cast<std::size_t>(read_pack_u32(
+        input, "native terrain state is truncated"));
+    if (status_count != terrain::Map::kWidth * terrain::Map::kHeight) {
+        throw std::runtime_error("native terrain state has an invalid grid");
+    }
+    map.statuses.resize(status_count);
+    read_pack_bytes(input, map.statuses.data(), status_count,
+                    "native terrain state is truncated");
+    return map;
+}
+
+void write_native_intro_state(std::ostream& output,
+                              const native::NativeIntroData& intro) {
+    write_pack_string(output, intro.start_options_title,
+                      "native state startup title is too long");
+    for (const auto& value : intro.start_options) {
+        write_pack_string(output, value, "native state startup option is too long");
+    }
+    write_pack_string(output, intro.archetype_title,
+                      "native state archetype title is too long");
+    for (const auto& value : intro.archetypes) {
+        write_pack_string(output, value, "native state archetype is too long");
+    }
+    if (intro.story_lines.size() > 0xFFFFFFFFU) {
+        throw std::invalid_argument("native state has too many story lines");
+    }
+    write_u32(output, static_cast<std::uint32_t>(intro.story_lines.size()));
+    for (const auto& value : intro.story_lines) {
+        write_pack_string(output, value, "native state story line is too long");
+    }
+    const auto write_layout = [&output](
+                                  const std::vector<native::NativeStartupTextLine>&
+                                      layout) {
+        if (layout.size() > 0xFFFFFFFFU) {
+            throw std::invalid_argument("native state layout is too large");
+        }
+        write_u32(output, static_cast<std::uint32_t>(layout.size()));
+        for (const auto& line : layout) {
+            output.put(static_cast<char>(line.row));
+            write_pack_string(output, line.text,
+                              "native state layout line is too long");
+        }
+    };
+    write_layout(intro.start_options_layout);
+    write_layout(intro.save_load_layout);
+    write_layout(intro.archetype_layout);
+    write_layout(intro.no_save_layout);
+    write_layout(intro.save_success_layout);
+}
+
+native::NativeIntroData read_native_intro_state(std::istream& input) {
+    native::NativeIntroData intro;
+    intro.start_options_title = read_pack_string(
+        input, "native state startup title is truncated");
+    for (auto& value : intro.start_options) {
+        value = read_pack_string(input, "native state startup option is truncated");
+    }
+    intro.archetype_title = read_pack_string(
+        input, "native state archetype title is truncated");
+    for (auto& value : intro.archetypes) {
+        value = read_pack_string(input, "native state archetype is truncated");
+    }
+    const auto story_count = static_cast<std::size_t>(read_pack_u32(
+        input, "native state story count is truncated"));
+    if (story_count > 4096U) {
+        throw std::runtime_error("native state has too many story lines");
+    }
+    intro.story_lines.reserve(story_count);
+    for (std::size_t index = 0; index < story_count; ++index) {
+        intro.story_lines.push_back(read_pack_string(
+            input, "native state story line is truncated"));
+    }
+    const auto read_layout = [&input]() {
+        const auto count = static_cast<std::size_t>(read_pack_u32(
+            input, "native state layout count is truncated"));
+        if (count > 1024U) {
+            throw std::runtime_error("native state has too many layout lines");
+        }
+        std::vector<native::NativeStartupTextLine> layout;
+        layout.reserve(count);
+        for (std::size_t index = 0; index < count; ++index) {
+            native::NativeStartupTextLine line;
+            line.row = read_pack_u8(input, "native state layout is truncated");
+            line.text = read_pack_string(input,
+                                         "native state layout is truncated");
+            layout.push_back(std::move(line));
+        }
+        return layout;
+    };
+    intro.start_options_layout = read_layout();
+    intro.save_load_layout = read_layout();
+    intro.archetype_layout = read_layout();
+    intro.no_save_layout = read_layout();
+    intro.save_success_layout = read_layout();
+    return intro;
+}
+
 RgbaImage decode_genesis_startup_background(
     const std::vector<std::uint8_t>& rom) {
     return decode_genesis_field_menu_layer(rom, false, true);
@@ -3369,6 +4301,20 @@ RgbaImage decode_genesis_menu_name_table_block(
 
 } // namespace
 
+RgbaImage decode_genesis_field_menu_action_background(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kPatternStreamOffset = 0xCAB0CU;
+    constexpr std::size_t kPatternVramOffset = 0x1E20U;
+    const auto pattern_vram = decode_genesis_1530_vram(
+        rom, kPatternStreamOffset, kPatternVramOffset);
+    const auto palette = read_genesis_command_palette_set(rom);
+    // 0x117A0 supplies A1=$CD302 to 0x111D0. That wrapper writes a 15x2
+    // tile row at VDP $EB9E, which is the four-action-button presentation
+    // plus the source's trailing blank cell.
+    return decode_genesis_menu_name_table_block(
+        rom, pattern_vram, 0xCD302U, 15U, 2U, palette);
+}
+
 std::array<RgbaImage, 2> decode_genesis_field_menu_selected_cells(
     const std::vector<std::uint8_t>& rom) {
     constexpr std::size_t kPatternStreamOffset = 0xCAB0CU;
@@ -3447,6 +4393,14 @@ std::array<RgbaImage, 4> decode_genesis_field_menu_focus_table(
 }
 
 } // namespace
+
+std::array<RgbaImage, 4> decode_genesis_field_menu_action_focus(
+    const std::vector<std::uint8_t>& rom) {
+    // 0x117A4 loads A1=$CD41A before calling 0x11454. Four 2x2 blocks
+    // follow the same source-table format as the top-level command focus.
+    return decode_genesis_field_menu_focus_table(rom, 0xCD41AU,
+                                                 "Genesis action focus table");
+}
 
 std::array<RgbaImage, 4> decode_genesis_field_menu_clips_focus(
     const std::vector<std::uint8_t>& rom) {
@@ -4609,9 +5563,12 @@ decode_genesis_field_entity_animation_sequences(
             state_list + 2U,
             "Genesis field animation auxiliary word is truncated");
         animation.source_timing_value = source_timing_value;
-        animation.timing_multiplier = entity_kind == 0x000DU
-            ? 0x0180U
-            : source_timing_value >= 0x0016U ? 0x0010U : 0x001CU;
+        // ROM 0x600E selects the walking cadence in the live record: the
+        // source routine writes 0x0010 to +0x18 and 0x1C remains the 0x1000
+        // threshold consumed by 0x5FDC. The 0x0300 word at state_list+2 is
+        // list metadata, not the animation clock; treating it as the
+        // multiplier made the native walker advance the wrong state.
+        animation.timing_multiplier = 0x0010U;
         animation.frames.reserve(frame_count);
         for (std::size_t frame = 0; frame < frame_count; ++frame) {
             const auto descriptor = static_cast<std::size_t>(read32(
@@ -5061,11 +6018,16 @@ RgbaImage decode_genesis_startup_cursor(
     const std::vector<std::uint8_t>& rom) {
     const auto startup = decode_genesis_startup_pattern_data(
         rom, 0x1F310EU, 0x1FF0U);
+    // The startup menu uses the command-screen text palette loaded by
+    // 0x10918/0x5670E, not the title-logo palette at 0x1FF0.  The source
+    // cursor name word is written with the command text's third palette line;
+    // using the title palette made the selector white even though the menu
+    // text is green.
+    const auto command_palette = read_genesis_command_palette_set(rom);
+    constexpr std::size_t kCursorPaletteLine = 3U;
     constexpr std::uint16_t kCursorNameWord =
-        static_cast<std::uint16_t>(-0x7A55) | 0x2000U;
+        static_cast<std::uint16_t>(-0x7A55) | 0x6000U;
     const auto tile_index = static_cast<std::size_t>(kCursorNameWord & 0x07FFU);
-    const auto palette_line = static_cast<std::size_t>(
-        (kCursorNameWord >> 13U) & 0x03U);
     if (tile_index * 32U + 32U > startup.pattern_vram.size()) {
         throw std::out_of_range("Genesis startup cursor tile is truncated");
     }
@@ -5077,7 +6039,7 @@ RgbaImage decode_genesis_startup_cursor(
     for (std::size_t y = 0; y < 8U; ++y) {
         for (std::size_t x = 0; x < 8U; ++x) {
             const auto color_index = tile.pixels[y * 8U + x];
-            auto color = startup.palette[palette_line * 16U + color_index];
+            auto color = command_palette[kCursorPaletteLine * 16U + color_index];
             color.alpha = color_index == 0U ? 0U : 255U;
             has_ink = has_ink || color_index != 0U;
             image.pixels[y * 8U + x] = color;
@@ -5089,8 +6051,8 @@ RgbaImage decode_genesis_startup_cursor(
         // menu still references it. Preserve the source cursor position and
         // direction with the same one-tile host fallback rather than leaving
         // the selectable option visually unmarked.
-        const auto color = [&startup]() {
-            auto result = startup.palette[17U];
+        const auto color = [&command_palette]() {
+            auto result = command_palette[kCursorPaletteLine * 16U + 11U];
             result.alpha = 255U;
             return result;
         }();
@@ -5674,7 +6636,12 @@ void blit_genesis_1406_maps(const std::vector<std::uint8_t>& rom,
             continue;
         }
         const auto y_adjust = plane == plane_b ? -plane_b_vscroll : 0;
-        const auto x_adjust = plane == plane_a ? -plane_a_xscroll : 0;
+        // The source stores the signed H-scroll value in DD08.  A negative
+        // value moves Plane A left on screen; do not negate it a second time
+        // when converting the source register to a host blit offset.  The
+        // wilderness pan relies on this sign so the body and its separately
+        // drawn head travel toward the same attachment point.
+        const auto x_adjust = plane == plane_a ? plane_a_xscroll : 0;
         if ((map->source & 1U) != 0U) {
             blit_genesis_1728_name_table(
                 rom, scene, image,
@@ -5748,11 +6715,10 @@ RgbaImage decode_genesis_intro_trivid_impl(
     const std::vector<std::uint8_t>& rom, bool include_sprites) {
     auto scene = decode_genesis_intro_trivid_patterns(rom);
     auto image = make_transparent_title_layer();
-    for (auto& pixel : image.pixels) {
-        pixel = {0, 0, 0, 255};
-    }
+    // Keep unused name-table cells transparent. The native compositor applies
+    // the source Plane-A priority relative to the moving SAT layer.
     blit_genesis_1728_name_table(rom, scene, image, 0x1E620EU, 40U, 14U,
-                                 0x700U, 0U, 0x8000U, false);
+                                 0x700U, 0U, 0x8000U, true);
     if (include_sprites) {
         blit_genesis_sat_list(rom, scene, image, 0x1DF1D6U, 0xC2, 0x13C,
                               0xC000U);
@@ -5760,6 +6726,27 @@ RgbaImage decode_genesis_intro_trivid_impl(
                               0x6000U);
     }
     return image;
+}
+
+GenesisIntroTrividLayers decode_genesis_intro_trivid_layers(
+    const std::vector<std::uint8_t>& rom) {
+    auto scene = decode_genesis_intro_trivid_patterns(rom);
+    GenesisIntroTrividLayers result{
+        make_transparent_title_layer(),
+        make_transparent_title_layer(),
+        make_transparent_title_layer(),
+    };
+    // 0x5AA96 draws the 40x14 cockpit name table before entering the 0x114
+    // pass loop. The SAT writes below are intentionally separate layers: the
+    // source calls 0x5AC0E at a fixed origin for the slain runner and moves
+    // 0x5AC36 by FF F186/FF F188 fixed-point deltas each pass.
+    blit_genesis_1728_name_table(rom, scene, result.background, 0x1E620EU,
+                                 40U, 14U, 0x700U, 0U, 0x8000U, true);
+    blit_genesis_sat_list(rom, scene, result.slain, 0x1DF1D6U, 0xC2, 0x13C,
+                          0xC000U);
+    blit_genesis_sat_list(rom, scene, result.moving, 0x1DF238U, 0x60, 0x123,
+                          0x6000U);
+    return result;
 }
 
 RgbaImage decode_genesis_intro_trivid(const std::vector<std::uint8_t>& rom) {
@@ -5771,17 +6758,32 @@ decode_genesis_intro_wilderness_pan_frames_impl(
     const std::vector<std::uint8_t>& rom) {
     std::array<RgbaImage, native::kNativeIntroWildernessPanFrameCount> frames{};
     GenesisBootPatternData wilderness;
-    const auto base = decode_genesis_1406_scene(
-        rom, 0x5B4A8U, &wilderness);
     for (std::size_t index = 0; index < frames.size(); ++index) {
-        frames[index] = base;
-        // 0x59D7C updates DD46 every pass until 0x178 and updates DD48 on
-        // alternating passes until 0xD1; the remaining pan time holds the
-        // settled actor position while the scene transition continues.
-        const auto progress = std::min<std::size_t>(index * 0x10U, 0x40U);
-        const auto actor_x = static_cast<std::int32_t>(0x138U + progress);
+        // 0x59D7C updates the two VDP scroll registers while the scene is
+        // being panned.  The old extractor kept the authored plane at its
+        // final zero-scroll position and moved only the two head SAT pieces;
+        // that made the Indian's head visibly fly into a stationary body.
+        // Rebuild the map with the source scroll values and then apply the
+        // independent SAT coordinates below.
+        const auto plane_a_xscroll = static_cast<std::int32_t>(
+            -0x40 + std::min<std::size_t>(index, 0x40U));
+        const auto plane_b_vscroll = static_cast<std::int32_t>(
+            -0x20 + std::min<std::size_t>(index / 2U, 0x20U));
+        frames[index] = decode_genesis_1406_scene(
+            rom, 0x5B4A8U, &wilderness, plane_b_vscroll,
+            plane_a_xscroll);
+        // 0x59D7C writes the Indian actor through the SAT list at 0x1DF1B2.
+        // The 0x1406 Plane-A plate contains his robe/arms, but not the head
+        // sprite.  The source starts the actor at (0x138,0xF1), then updates
+        // DD46 toward 0x178 on every pan pass and DD48 toward 0xD1 on every
+        // other pass before drawing it again.  Replaying those two source
+        // registers keeps the head attached to the body throughout the pan;
+        // using the terminal (0x178,0xD1) position for every frame was the
+        // defect that made the head appear to fly into the body.
+        const auto actor_x = static_cast<std::int32_t>(
+            0x138 + std::min<std::size_t>(index, 0x40U));
         const auto actor_y = static_cast<std::int32_t>(
-            0xF1U - std::min<std::size_t>(progress / 2U, 0x20U));
+            0xF1 - std::min<std::size_t>(index / 2U, 0x20U));
         blit_genesis_sat_list(rom, wilderness, frames[index], 0x1DF1B2U,
                               actor_x, actor_y, 0x2000U);
     }
@@ -6178,13 +7180,24 @@ decode_genesis_intro_ambush_frames_impl(
     const std::vector<std::uint8_t>& rom) {
     std::array<RgbaImage, native::kNativeIntroAmbushFrameCount> frames{};
     GenesisBootPatternData wilderness;
+    // 0x5A0B2 writes Plane A at $0826, while the descriptor's two authored
+    // maps provide the opening background. The runners are SAT resources,
+    // not a crop from the authored Plane-A map: 0x5A252 installs the first
+    // actor list at its source origin before the animated death lists run.
+    // Keeping the map and SAT layers separate is required for the source
+    // phase-four SAT clear and the later 0x5A582 body starts.
+    // 0x59D7C leaves both authored name-table planes live when the second
+    // 0x5Axxx loop begins.  Plane A contains Michael's standing source art;
+    // dropping it here and rebuilding only Plane B loses him before the ROM
+    // has performed any transition.  The later 0x5A0B2 patches and SAT
+    // updates are applied over this complete live scene below.
     auto base = decode_genesis_1406_scene(rom, 0x5B4A8U, &wilderness);
     // The pan leaves the actor SAT slot live in VDP memory, but 0x5A1EA
-    // immediately takes ownership of that slot.  Its 0x5A252 pass writes
-    // the four actor lists and then deliberately stops writing after the
-    // terminal nine-tick passes.  Keep the ambush base clean here: baking
-    // the pan actor into every frame makes a slain body persist underneath
-    // the source death/impact lists.
+    // immediately takes ownership of that slot. Its 0x5A252 pass writes the
+    // four actor lists and then deliberately stops writing after the
+    // terminal nine-tick passes. Keep the ambush base clean here: baking the
+    // pan actor into every frame makes a slain body persist underneath the
+    // source death/impact lists.
 
     const auto pointer = [&rom](std::size_t table, std::size_t index,
                                 std::size_t stride) {
@@ -6240,8 +7253,11 @@ decode_genesis_intro_ambush_frames_impl(
     std::int32_t last_shot_x = 0x193;
     std::uint32_t last_shot_next = 0;
     bool last_shot_active = false;
+    bool central_body_removed = false;
+    bool indian_body_removed = false;
     std::size_t map_phase = 0;
-    std::size_t map_list = 0x1E2EBAU;
+    std::array<std::size_t, 4> map_lists{};
+    std::size_t map_loaded_count = 0;
     std::uint32_t map_next = 0;
     bool map_loaded = false;
     std::int32_t scroll_fixed = 0;
@@ -6252,6 +7268,11 @@ decode_genesis_intro_ambush_frames_impl(
         body_x = x;
         body_y = y;
         body_loaded = false;
+        if (x == 0x13D) {
+            central_body_removed = true;
+        } else if (x == 0x182) {
+            indian_body_removed = true;
+        }
     };
 
     // One iteration below is one execution of the ROM's DBRA loop. Every
@@ -6269,8 +7290,9 @@ decode_genesis_intro_ambush_frames_impl(
         // callbacks; phase 9 starts the left body/death sequence.
         if (map_phase < 0x0CU && now >= map_next) {
             if (map_phase < 4U) {
-                map_list = pointer(0x5A1D2U, map_phase, 6U);
+                const auto loaded_list = pointer(0x5A1D2U, map_phase, 6U);
                 map_next = now + word(0x5A1D2U, map_phase, 6U, 4U);
+                map_lists[map_loaded_count++] = loaded_list;
                 map_loaded = true;
                 ++map_phase;
             } else if (map_phase == 4U) {
@@ -6287,44 +7309,41 @@ decode_genesis_intro_ambush_frames_impl(
 
         auto image = base;
 
-        // The 0x1406 wilderness plate contains the three runners from the
-        // preceding pan.  In the ROM those name-table cells are replaced as
-        // each death sequence starts; they are not permanent background art.
-        // Clear the corresponding source rectangles before drawing the live
-        // SAT lists.  Without this step the explosion sprites appear to hit
-        // a second, baked-in copy of the runner and the character never
-        // disappears.
-        const auto clear_rect = [&image](std::int32_t x, std::int32_t y,
-                                         std::int32_t width,
-                                         std::int32_t height) {
-            for (std::int32_t row = 0; row < height; ++row) {
-                for (std::int32_t column = 0; column < width; ++column) {
-                    const auto target_x = x + column;
-                    const auto target_y = y + row;
-                    if (target_x < 0 || target_y < 0 ||
-                        target_x >= static_cast<std::int32_t>(image.width) ||
-                        target_y >= static_cast<std::int32_t>(image.height)) {
+        if (map_loaded) {
+            // 0x5A0B2 writes four successive 0x1728 patches into the live
+            // name table.  The later patches do not replace the earlier
+            // writes; rebuilding a frame from the base therefore requires
+            // replaying every patch that has fired so far.  Keeping only the
+            // last pointer leaves the actors baked into the base plate.
+            for (std::size_t patch_index = 0;
+                 patch_index < map_loaded_count; ++patch_index) {
+                blit_genesis_1728_name_table(
+                    rom, wilderness, image, map_lists[patch_index], 13U, 12U,
+                    0x826U, 0x0000U, 0, false);
+            }
+        }
+
+        // The authored Plane-A cells are replaced by the source body/death
+        // passes at the two distinct 0x5A582 origins. Clear only those actor
+        // windows; Michael's authored window deliberately remains live.
+        const auto clear_region = [&image](std::int32_t left,
+                                           std::int32_t top,
+                                           std::int32_t width,
+                                           std::int32_t height) {
+            for (std::int32_t y = top; y < top + height; ++y) {
+                for (std::int32_t x = left; x < left + width; ++x) {
+                    if (x < 0 || y < 0 || x >= image.width ||
+                        y >= image.height) {
                         continue;
                     }
-                    image.pixels[static_cast<std::size_t>(target_y) *
-                                     image.width +
-                                 static_cast<std::size_t>(target_x)] =
+                    image.pixels[static_cast<std::size_t>(y) * image.width +
+                                 static_cast<std::size_t>(x)] =
                         {0, 0, 0, 255};
                 }
             }
         };
-        if (map_loaded) {
-            blit_genesis_1728_name_table(
-                rom, wilderness, image, map_list, 13U, 12U, 0x826U,
-                0x0000U, 0, false);
-        }
-
-        // 0x5A0B2 phase 9 starts the body sequence for the lower-right
-        // runner.  The map write has replaced the old 13x12 name-table
-        // window by this point, so remove its baked sprite before the body
-        // SAT is composed.
-        if (map_phase >= 9U) {
-            clear_rect(152, 128, 104, 96);
+        if (central_body_removed) {
+            clear_region(112, 128, 160, 96);
         }
 
         // 0x5A252: four actor list records followed by eight nine-tick
@@ -6346,16 +7365,23 @@ decode_genesis_intro_ambush_frames_impl(
                 }
             }
         }
-        if (actor_loaded && actor_phase < 0x0CU) {
+        // 0x5A252 writes the four actor SAT lists first.  At phase four the
+        // ROM calls 0x5B2C2, which clears that SAT slot; phases five through
+        // eight only apply 0x5B2E2's coordinate decay to the already-cleared
+        // slot.  Re-blitting the last actor list through phase eleven leaves
+        // the slain runners permanently visible, which is exactly the stale
+        // body defect this source-timed renderer must avoid.
+        if (actor_loaded && actor_phase < 4U) {
             blit_genesis_sat_list(rom, wilderness, image, actor_list,
                                   0x178, 0xD1, 0x2000U);
         }
-
-        // 0x5A252 phase 9 starts the Indian runner's body/explosion sequence.
-        // His head is a separate actor SAT and remains source-positioned;
-        // only the old body pixels are removed here.
-        if (actor_phase >= 9U) {
-            clear_rect(224, 64, 96, 96);
+        // 0x5A252 phase $C calls 0x5B32C with D4=$3B8, D7=$9,
+        // D1=$8.  That is a 10x9 name-table clear at (224,56), which
+        // removes the authored Indian layer after the SAT slot has already
+        // been cleared and decayed.  Clearing the whole guessed actor box
+        // at phase nine was both too early and too large.
+        if (actor_phase >= 0x0CU) {
+            clear_region(224, 56, 80, 72);
         }
 
         // 0x5A3BE: long pointer, delay, initial X, velocity. The fifth
@@ -6398,17 +7424,21 @@ decode_genesis_intro_ambush_frames_impl(
                                   0x1AB, 0xD7, 0x6000U);
         }
 
-        // 0x5A59C always redraws the currently loaded body list after a
-        // deadline update.  That includes the final smoke list; the next
-        // source map/scene transition, rather than a host-side sampled-frame
-        // cutoff, removes it.
+        // 0x5A59C redraws the currently loaded body list for this source
+        // pass. That includes the final smoke list, but once FFF14E reaches
+        // six the routine returns and must not repaint it forever.
+        bool draw_body_this_pass = false;
         if (body_phase < 6U && now >= body_next) {
             body_list = pointer(0x5A602U, body_phase, 4U);
             body_next = now + 8U;
             ++body_phase;
             body_loaded = true;
+            draw_body_this_pass = true;
         }
-        if (body_loaded) {
+        if (body_loaded && body_phase < 6U) {
+            draw_body_this_pass = true;
+        }
+        if (draw_body_this_pass) {
             blit_genesis_sat_list(rom, wilderness, image, body_list, body_x,
                                   body_y, 0x6000U);
         }
@@ -6491,16 +7521,6 @@ decode_genesis_intro_ambush_frames_impl(
             last_shot_active = false;
         }
 
-        // The final 0x5A8DE record is Michael's hit state.  The source then
-        // exposes the same trivid-left SAT used by 0x5A96A in the following
-        // transition.  Keep the transition boundary in the source counter
-        // domain: the late ambush passes are the only ones that replace his
-        // standing sprite with the slain pose.
-        if (now >= 0x1E0U) {
-            clear_rect(0, 128, 152, 96);
-            blit_genesis_sat_list(rom, wilderness, image, 0x1DF1D6U,
-                                  0xC2, 0x13C, 0xC000U);
-        }
         frames[frame] = std::move(image);
     }
     return frames;
@@ -7045,6 +8065,12 @@ GenesisFieldHudLayers decode_genesis_field_hud_layers(
         std::vector<std::uint8_t>(0x10000U, 0),
         read_genesis_command_palette_set(rom),
     };
+    // 0x334C's fixed counter upload is separate from the portrait/item
+    // uploads below. Without 0x6A5BE at $DAC0 the name words in 0x6AB3E,
+    // 0x6AB96, and 0x6AC46 resolve to empty tiles and every live value looks
+    // like 00.
+    write_genesis_f5c_vram(rom, 0x6A5BEU, 0xDAC0U, 0x4C0U,
+                           scene.pattern_vram);
     write_genesis_1530_vram(rom, 0xD86E0U, 0x17E0U, scene.pattern_vram);
     write_genesis_1530_vram(rom, 0xD78AAU, 0x0580U, scene.pattern_vram);
 
@@ -7156,6 +8182,47 @@ GenesisFieldHudLayers decode_genesis_field_hud_layers(
         return image;
     };
 
+    const auto make_rom_tile_block = [&rom, &scene](std::size_t table_offset,
+                                                     std::size_t palette_line) {
+        constexpr std::size_t kItemTileSource = 0xCF97CU;
+        RgbaImage image{
+            24U, 16U,
+            std::vector<native::Rgba8>(24U * 16U,
+                                       native::Rgba8{0, 0, 0, 0})};
+        for (std::size_t tile_index = 0; tile_index < 6U; ++tile_index) {
+            const auto table_word = read_rom_u16(
+                rom, table_offset + tile_index * 2U,
+                "Genesis unarmed HUD item table is truncated");
+            const auto source_tile = static_cast<std::size_t>(
+                table_word & 0x07FFU);
+            const auto source_offset = kItemTileSource + source_tile * 32U;
+            if (source_offset > rom.size() || rom.size() - source_offset < 32U) {
+                throw std::out_of_range(
+                    "Genesis unarmed HUD item tile is truncated");
+            }
+            const auto tile = decode_genesis_tile(
+                rom.data() + source_offset, 32U);
+            const auto hflip = (table_word & 0x0800U) != 0U;
+            const auto vflip = (table_word & 0x1000U) != 0U;
+            const auto tile_x = (tile_index % 3U) * 8U;
+            const auto tile_y = (tile_index / 3U) * 8U;
+            for (std::size_t y = 0; y < 8U; ++y) {
+                for (std::size_t x = 0; x < 8U; ++x) {
+                    const auto source_x = hflip ? 7U - x : x;
+                    const auto source_y = vflip ? 7U - y : y;
+                    const auto color_index = tile.pixels[
+                        source_y * 8U + source_x];
+                    auto color = scene.palette[
+                        palette_line * 16U + color_index];
+                    color.alpha = color_index == 0U ? 0U : 255U;
+                    image.pixels[(tile_y + y) * image.width + tile_x + x] =
+                        color;
+                }
+            }
+        }
+        return image;
+    };
+
     const auto crop = [](const RgbaImage& source, std::int32_t x,
                          std::int32_t y, std::uint16_t width,
                          std::uint16_t height) {
@@ -7209,20 +8276,33 @@ GenesisFieldHudLayers decode_genesis_field_hud_layers(
         result.item_blocks[index] = make_tile_block(
             item_base, 3U, 2U, palette_line_for_item(record));
 
+        // 0x3404 selects the unarmed 3x2 tile list when +0x57 is zero. The
+        // list is chosen by the source cyberware bits at +0x90; it is not a
+        // blank placeholder and must remain a separate extracted resource.
+        const auto unarmed_table = (record.flags_10 & 0x01U) == 0U
+            ? 0x34F8U
+            : (record.cyberware_flags & 0x0008U) != 0U
+                ? 0xD1878U
+                : (record.cyberware_flags & 0x0004U) != 0U
+                    ? 0xD186CU : 0xD1860U;
+        result.unarmed_item_blocks[index] = make_rom_tile_block(
+            unarmed_table, palette_line_for_item(record));
+
         const auto vertical_progress = std::min<std::size_t>(
             static_cast<std::size_t>(record.physical_value), 10U);
         const auto vertical_source =
             0x6AB3EU + (record.flags_10 & 0x01U ? vertical_progress * 8U : 0U);
         auto vertical_canvas = make_transparent_title_layer();
         blit_genesis_name_table(rom, scene, vertical_canvas, vertical_source,
-                                1U, 4U, 0xF4C4U + index * 0x400U,
+                                1U, 4U, 0xF1C4U + index * 0x400U,
                                 0xF000U, 0x6000U, true);
-        // The canvas is still in ROM plane coordinates. Apply the same
-        // source-to-capture -16px window shift used by the static chrome when
-        // selecting the layer crop.
+        // 0x3674 writes this one-column physical bar at F1C4/F5C4/F9C4.
+        // This canvas remains in the ROM plane's source coordinates. Keep
+        // the crop at that source location even though the host overlay is
+        // positioned at the right edge of the presentation.
         result.vertical_counters[index] = crop(
-            vertical_canvas, native::kFieldHudVerticalCounterX + 16,
-            native::kFieldHudVerticalCounterY +
+            vertical_canvas, 272,
+            native::kFieldHudFaceY +
                 static_cast<std::int32_t>(index * 64U),
             8U, 32U);
 
@@ -7236,10 +8316,26 @@ GenesisFieldHudLayers decode_genesis_field_hud_layers(
                                 0xF3C6U + index * 0x400U, 0xF000U,
                                 0x6000U, true);
         result.horizontal_counters[index] = crop(
-            horizontal_canvas, native::kFieldHudHorizontalCounterX + 16,
+            horizontal_canvas, 280,
             native::kFieldHudHorizontalCounterY +
                 static_cast<std::int32_t>(index * 64U),
             32U, 8U);
+    }
+    // 0x36FC indexes the two-tile ammunition table at 0x6AC46 and writes it
+    // at F4C4/F8C4/ FCC4. Preserve the whole source table so loading, firing,
+    // and switching weapons can select the correct live count without
+    // inventing text or repainting the counter in a menu font.
+    for (std::size_t ammo = 0; ammo < result.ammo_counters.size(); ++ammo) {
+        auto ammo_canvas = make_transparent_title_layer();
+        blit_genesis_name_table(
+            rom, scene, ammo_canvas, 0x6AC46U + ammo * 4U, 2U, 1U,
+            0xF4C4U, 0xF000U, 0x6000U, true);
+        // F4C4 is the source name-table row below the portrait. This source
+        // crop remains at its ROM y=72 even though the physical strip's
+        // presentation coordinate is y=24.
+        result.ammo_counters[ammo] = crop(
+            ammo_canvas, 272,
+            72, 16U, 8U);
     }
     return result;
 }
@@ -7301,6 +8397,103 @@ void write_bmp32(const std::string& path, const RgbaImage& image) {
     if (!output) {
         throw std::runtime_error("cannot write BMP output");
     }
+}
+
+RgbaImage read_bmp32(const std::string& path) {
+    std::ifstream input(path, std::ios::binary);
+    if (!input) {
+        throw std::runtime_error("cannot open BMP input");
+    }
+    const auto read_u16 = [&input](const char* what) {
+        const auto b0 = input.get();
+        const auto b1 = input.get();
+        if (b0 == std::char_traits<char>::eof() ||
+            b1 == std::char_traits<char>::eof()) {
+            throw std::out_of_range(what);
+        }
+        return static_cast<std::uint16_t>(
+            static_cast<std::uint8_t>(b0) |
+            (static_cast<std::uint16_t>(static_cast<std::uint8_t>(b1)) << 8U));
+    };
+    const auto read_u32 = [&input](const char* what) {
+        std::uint32_t value = 0;
+        for (unsigned shift = 0; shift < 32; shift += 8) {
+            const auto byte = input.get();
+            if (byte == std::char_traits<char>::eof()) {
+                throw std::out_of_range(what);
+            }
+            value |= static_cast<std::uint32_t>(
+                         static_cast<std::uint8_t>(byte))
+                     << shift;
+        }
+        return value;
+    };
+    if (input.get() != 'B' || input.get() != 'M') {
+        throw std::runtime_error("invalid BMP signature");
+    }
+    (void)read_u32("BMP header is truncated");
+    (void)read_u16("BMP header is truncated");
+    (void)read_u16("BMP header is truncated");
+    const auto pixel_offset = read_u32("BMP header is truncated");
+    const auto header_size = read_u32("BMP info header is truncated");
+    if (header_size < 40U) {
+        throw std::runtime_error("unsupported BMP info header");
+    }
+    const auto width = read_u32("BMP dimensions are truncated");
+    const auto raw_height = read_u32("BMP dimensions are truncated");
+    const auto planes = read_u16("BMP format is truncated");
+    const auto bits = read_u16("BMP format is truncated");
+    const auto compression = read_u32("BMP format is truncated");
+    (void)read_u32("BMP format is truncated");
+    (void)read_u32("BMP format is truncated");
+    (void)read_u32("BMP format is truncated");
+    (void)read_u32("BMP format is truncated");
+    if (width == 0U || raw_height == 0U || width > 8192U ||
+        raw_height > 8192U || planes != 1U || bits != 32U ||
+        compression != 0U) {
+        throw std::runtime_error("unsupported BMP format");
+    }
+    if (header_size > 40U) {
+        input.seekg(static_cast<std::streamoff>(header_size - 40U),
+                    std::ios::cur);
+    }
+    if (!input) {
+        throw std::out_of_range("BMP info header is truncated");
+    }
+    const auto height = static_cast<std::size_t>(raw_height);
+    const auto row_bytes = static_cast<std::size_t>(width) * 4U;
+    if (height > std::numeric_limits<std::size_t>::max() / row_bytes) {
+        throw std::overflow_error("BMP dimensions overflow host size");
+    }
+    input.seekg(static_cast<std::streamoff>(pixel_offset), std::ios::beg);
+    if (!input) {
+        throw std::out_of_range("BMP pixel offset is outside the file");
+    }
+    RgbaImage image{static_cast<std::uint16_t>(width),
+                    static_cast<std::uint16_t>(height),
+                    std::vector<native::Rgba8>(
+                        static_cast<std::size_t>(width) * height)};
+    for (std::size_t source_row = height; source_row-- > 0;) {
+        for (std::size_t column = 0; column < width; ++column) {
+            const auto blue = input.get();
+            const auto green = input.get();
+            const auto red = input.get();
+            const auto alpha = input.get();
+            if (blue == std::char_traits<char>::eof() ||
+                green == std::char_traits<char>::eof() ||
+                red == std::char_traits<char>::eof() ||
+                alpha == std::char_traits<char>::eof()) {
+                throw std::out_of_range("BMP pixel data is truncated");
+            }
+            image.pixels[source_row * width + column] = {
+                static_cast<std::uint8_t>(red),
+                static_cast<std::uint8_t>(green),
+                static_cast<std::uint8_t>(blue),
+                static_cast<std::uint8_t>(alpha),
+            };
+        }
+    }
+    return image;
 }
 
 } // namespace shadowrun::graphics

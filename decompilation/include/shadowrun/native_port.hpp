@@ -5,6 +5,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -19,23 +20,36 @@ constexpr std::uint16_t kScreenHeight = 224;
 // display offset when that plane is presented.
 // ROM 0x334C refreshes the 6-tile sidebar through the $F000 plane alias.
 constexpr std::int32_t kFieldHudWidth = 48;
-constexpr std::int32_t kFieldHudX = 256;
+// The supplied game capture keeps the complete 48px sidebar at the right
+// edge of the 320px presentation. It begins at x=272; leaving it at 256
+// creates a false 16px black gutter and shifts every live counter left.
+constexpr std::int32_t kFieldHudX = 272;
 constexpr std::int32_t kFieldPlayfieldWidth = 256;
 // 0x35D4 writes the uploaded 4x4 portrait at F1C6. The following 0x35F0
 // item write uses F448; the two resources must not be conflated.
-constexpr std::int32_t kFieldHudFaceX = 264;
+constexpr std::int32_t kFieldHudFaceX = 280;
 constexpr std::int32_t kFieldHudFaceY = 24;
 constexpr std::int32_t kFieldHudFaceWidth = 32;
 constexpr std::int32_t kFieldHudFaceHeight = 32;
 // 0x35D4 writes the equipped item block at F448. Only the six uploaded item
 // tiles carry item art; the surrounding 4x4 source block preserves the ROM's
 // placement and transparent/empty pixels.
-constexpr std::int32_t kFieldHudGunX = 272;
+constexpr std::int32_t kFieldHudGunX = 288;
 constexpr std::int32_t kFieldHudGunY = 64;
-constexpr std::int32_t kFieldHudVerticalCounterX = 256;
-constexpr std::int32_t kFieldHudVerticalCounterY = 72;
-constexpr std::int32_t kFieldHudHorizontalCounterX = 264;
+constexpr std::int32_t kFieldHudVerticalCounterX = 272;
+// 0x3674 writes the physical/status strip beside the active portrait, not
+// beneath the equipped item. The native coordinates are the visible window
+// after the source HUD plane's -16px x translation.
+constexpr std::int32_t kFieldHudVerticalCounterY = 24;
+constexpr std::int32_t kFieldHudHorizontalCounterX = 280;
 constexpr std::int32_t kFieldHudHorizontalCounterY = 56;
+// 0x36FC writes the two-tile ammunition value below the portrait and beside
+// the item block. It is a separate destination from the physical strip.
+constexpr std::int32_t kFieldHudAmmoCounterX = 272;
+// 0x36FC writes the two-tile ammunition value at source row F4C4, which is
+// y=72 in the extracted 320x224 presentation.  y=64 is the item row; using
+// it leaves the baked 00 digits at y=72 visible underneath the live value.
+constexpr std::int32_t kFieldHudAmmoCounterY = 72;
 // Title 0x2634 slides CRAM every 5 vblanks. Host clips step every 3 ticks
 // so the baked light frames read as motion at capture 0.05s.
 constexpr std::uint16_t kTitleCircuitLightTicks = 3;
@@ -64,7 +78,10 @@ constexpr std::size_t kNativeIntroHeliFrameCount = 6;
 constexpr std::size_t kNativeIntroAircraftMovementFrameCount = 2;
 // ROM 0x59D7C raises the wilderness SAT pair from (0x138,0xF1) to
 // (0x178,0xD1) over its 0xA0-frame pan before 0x5A1EA takes over.
-constexpr std::size_t kNativeIntroWildernessPanFrameCount = 8;
+// Preserve every pass of the source 0x59D7C $A0 DBF loop. The actor's
+// x-coordinate and its separately positioned head/y-coordinate advance on
+// different cadences; a sparse storyboard makes the head visibly slide.
+constexpr std::size_t kNativeIntroWildernessPanFrameCount = 0xA1;
 // ROM 0x5A0B2/0x5A1EA animate the ambush during the 0x1F0/DBRA loop. The
 // extractor keeps every source pass so the native runtime can present the
 // exact actor, projectile, hit, and disappearance state instead of selecting
@@ -245,6 +262,10 @@ struct NativeImage {
     std::uint16_t width = 0;
     std::uint16_t height = 0;
     std::vector<Rgba8> pixels;
+    // Direct extracted sprites are stored cropped, but retain the source
+    // position of their opaque bounds. Full-screen layers leave these zero.
+    std::int16_t origin_x = 0;
+    std::int16_t origin_y = 0;
 };
 
 // One line emitted by the ROM's C0DA text writer. The row is relative to the
@@ -462,19 +483,30 @@ struct NativePortAssets {
     std::array<NativeImage, kNativeIntroHeliFrameCount> intro_heli_frames{};
     std::array<NativeImage, kNativeIntroAircraftMovementFrameCount>
         intro_aircraft_movement_frames{};
+    // ROM 0x5AA96/0x5ABD2: the trivid plate is a background plus two SAT
+    // layers. Keeping those layers separate lets the native runtime replay
+    // the source fixed-point movement instead of baking a chopped storyboard.
+    NativeImage intro_trivid_background;
+    NativeImage intro_trivid_slain;
+    NativeImage intro_trivid_moving;
     // Field HUD from ROM 0x334C/0x39F2: the static right-column name tables
     // plus the dynamic SAT-like face, item, and counter writes.
     NativeImage field_hud;
     std::array<NativeImage, 3> field_hud_faces{};
     std::array<NativeImage, 3> field_hud_item_blocks{};
+    std::array<NativeImage, 3> field_hud_unarmed_item_blocks{};
     std::array<NativeImage, 3> field_hud_vertical_counters{};
     std::array<NativeImage, 3> field_hud_horizontal_counters{};
+    std::array<NativeImage, 64> field_hud_ammo_counters{};
     // Pocket Secretary: exact 0x10A7E raw name-table composition.
     NativeImage pocket_secretary_background;
     // Plane-B base written by the ROM command-screen initializer at 0x10F50.
     // It contains the real menu panel and inventory-box geometry; dynamic
     // labels and cursor state are rendered by the native command loop.
     NativeImage field_menu_background;
+    // ROM 0x117A0 redraws the lower action row from CD302 when an inventory
+    // action loop replaces the five top-level command tabs.
+    NativeImage field_menu_action_background;
     // ROM 0xD01C calls 0x10C96 instead of the ordinary 0x10F50 command
     // initializer. Preserve that complete attributes/skills frame separately
     // so its source border and separators are not replaced by the field-menu
@@ -492,6 +524,10 @@ struct NativePortAssets {
     // ROM 0x11454 writes one source 2x2 focus block over the selected small
     // command button. The five entries correspond to selectors 2..6.
     std::array<NativeImage, 5> field_menu_command_focus{};
+    // ROM 0x117A4 passes CD41A to the same 0x11454 writer while the
+    // inventory action loop is active. These are the four source action
+    // button blocks; they are distinct from the five top-level commands.
+    std::array<NativeImage, 4> field_menu_action_focus{};
     // ROM 0x11B58 uses a separate four-entry focus table at CD43A for the
     // Clips action row. It is not the top-level CD3F2 command focus table.
     std::array<NativeImage, 4> field_menu_clips_focus{};
@@ -733,6 +769,44 @@ public:
     bool has_terrain() const { return !field_terrain_.statuses.empty(); }
     bool has_entity_frame() const { return !entity_frames_.empty(); }
     bool field_menu_open() const { return scene_ == NativeScene::FieldMenu; }
+    // Qt presentation accessors. These expose stable host assets and the
+    // authoritative native menu state; they do not expose ROM/VRAM data or
+    // create a second menu state machine.
+    const NativeFieldEntity& field_menu_state() const { return field_entity_; }
+    std::string field_menu_class_label() const;
+    const NativeImage& field_menu_background_asset() const {
+        return field_menu_background_;
+    }
+    const NativeImage& field_menu_inventory_boxes_asset() const {
+        return field_menu_inventory_boxes_;
+    }
+    const NativeImage& field_menu_font_asset() const { return field_menu_font_; }
+    const NativeImage& field_hud_asset() const { return field_hud_; }
+    const NativeImage& field_hud_face_asset(std::size_t index) const;
+    const NativeImage& field_hud_vertical_counter_asset(std::size_t index) const;
+    const NativeImage& field_hud_horizontal_counter_asset(std::size_t index) const;
+    const NativeImage& field_hud_ammo_counter_asset(std::size_t index) const;
+    const NativeImage& field_menu_runner_portrait_asset(std::size_t index) const;
+    const NativeImage& field_menu_selected_cell_asset(std::size_t index) const;
+    const NativeImage& field_menu_item_art_asset(std::uint8_t code) const;
+    const NativeImage& field_menu_inventory_icon_asset(std::uint8_t code,
+                                                        std::size_t palette) const;
+    const NativeImage& field_menu_status_bar_asset(std::size_t index) const;
+    const NativeImage& field_menu_command_focus_asset(std::size_t index) const;
+    const NativeImage& field_menu_posture_focus_asset() const {
+        return field_menu_posture_focus_;
+    }
+    const NativeImage& field_menu_damage_bar_asset(std::size_t index) const;
+    const NativeImage& field_menu_drain_bar_asset(std::size_t index) const;
+    const NativeImage& field_menu_attack_bar_asset(std::size_t index) const;
+    const NativeImage& field_menu_defense_bar_asset(std::size_t index) const;
+    const NativeImage& field_menu_cursor_asset() const { return field_menu_cursor_; }
+    std::string_view field_menu_runner_name(std::size_t index) const;
+    std::string_view field_menu_status_name(std::size_t index) const;
+    const NativeInventoryItem* field_menu_item(std::uint8_t code) const;
+    std::string_view field_menu_power_label(std::size_t index) const;
+    const std::array<std::string, 2>* field_menu_armor_label(
+        std::size_t index) const;
     bool pocket_secretary_menu_open() const {
         return scene_ == NativeScene::PocketSecretaryMenu;
     }
@@ -1108,7 +1182,8 @@ private:
     void open_dismiss_runner_menu();
     void update_dismiss_runner_menu(const InputState& input);
     void write_field_menu_text(ScreenWriter& screen, std::int32_t x,
-                               std::int32_t y, std::string_view text) const;
+                               std::int32_t y, std::string_view text,
+                               std::optional<Rgba8> tint = std::nullopt) const;
     void write_startup_text(ScreenWriter& screen, std::int32_t x,
                             std::int32_t y, std::string_view text) const;
     void render_startup_background(ScreenWriter& screen) const;
@@ -1177,8 +1252,10 @@ private:
     NativeImage field_hud_{};
     std::array<NativeImage, 3> field_hud_faces_{};
     std::array<NativeImage, 3> field_hud_item_blocks_{};
+    std::array<NativeImage, 3> field_hud_unarmed_item_blocks_{};
     std::array<NativeImage, 3> field_hud_vertical_counters_{};
     std::array<NativeImage, 3> field_hud_horizontal_counters_{};
+    std::array<NativeImage, 64> field_hud_ammo_counters_{};
     NativeImage pocket_secretary_background_{};
     std::int16_t boot_guy_y_ = static_cast<std::int16_t>(kBootGuyStartY);
     std::uint16_t boot_guy_fade_ = 256;
@@ -1198,16 +1275,11 @@ private:
     std::uint16_t boot_hold_left_ = 0;
     std::uint16_t boot_fasa_fade_left_ = 0;
     std::uint16_t boot_shock_left_ = 0;
-    std::uint16_t field_menu_background_width_ = 0;
-    std::uint16_t field_menu_background_height_ = 0;
-    std::vector<Rgba8> field_menu_background_pixels_;
+    NativeImage field_menu_background_{};
+    NativeImage field_menu_action_background_{};
     NativeImage field_menu_attributes_background_{};
-    std::uint16_t field_menu_inventory_boxes_width_ = 0;
-    std::uint16_t field_menu_inventory_boxes_height_ = 0;
-    std::vector<Rgba8> field_menu_inventory_boxes_pixels_;
-    std::uint16_t field_menu_font_width_ = 0;
-    std::uint16_t field_menu_font_height_ = 0;
-    std::vector<Rgba8> field_menu_font_pixels_;
+    NativeImage field_menu_inventory_boxes_{};
+    NativeImage field_menu_font_{};
     NativeImage startup_font_{};
     NativeImage startup_cursor_{};
     std::array<NativeImage, kNativeIntroStageCount> intro_stages_{};
@@ -1216,12 +1288,16 @@ private:
         intro_wilderness_pan_frames_{};
     std::array<NativeImage, kNativeIntroAircraftMovementFrameCount>
         intro_aircraft_movement_frames_{};
+    NativeImage intro_trivid_background_{};
+    NativeImage intro_trivid_slain_{};
+    NativeImage intro_trivid_moving_{};
     std::array<NativeImage, kNativeIntroAmbushFrameCount>
         intro_ambush_frames_{};
     NativeImage cab_map_{};
     std::array<NativeImage, 3> field_menu_runner_portraits_{};
     std::array<NativeImage, 2> field_menu_selected_cells_{};
     std::array<NativeImage, 5> field_menu_command_focus_{};
+    std::array<NativeImage, 4> field_menu_action_focus_{};
     std::array<NativeImage, 4> field_menu_clips_focus_{};
     std::array<NativeImage, 4> field_menu_clips_trade_focus_{};
     NativeImage field_menu_posture_focus_{};
@@ -1251,6 +1327,9 @@ private:
     std::size_t selected_archetype_ = 0;
     std::size_t intro_line_start_ = 0;
     std::uint64_t intro_frame_ = 0;
+    // Qt presents at 60 Hz; the ROM/video timing reference advances this
+    // opening at one source pass per two host ticks.
+    std::uint8_t intro_host_tick_ = 0;
     bool start_options_load_rejected_ = false;
     bool save_load_message_visible_ = false;
     bool save_load_message_success_ = false;
@@ -1271,6 +1350,7 @@ private:
     std::int16_t title_sprite_x_ = kTitleSpriteInitialX;
     std::int16_t title_text_timer_ = kTitleTextDelay;
     std::uint16_t title_completion_state_ = 0;
+    std::uint64_t title_copyright_frame_ = 0;
     std::uint64_t cab_frame_ = 0;
     std::vector<NativeEntityFrame> entity_frames_;
     std::array<NativeFieldAnimation, 8> field_entity_animations_{};

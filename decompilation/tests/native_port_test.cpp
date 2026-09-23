@@ -141,6 +141,9 @@ int main() {
     assert(rom_shell.intro_frame() == 0);
     assert(rom_shell.intro_story_line_count() == 22);
     assert(rom_shell.intro_line_start() == 0);
+    // The native surface runs at 60 Hz, while intro_frame is the ROM's
+    // 30 Hz source-pass clock. The first host tick holds source pass zero.
+    rom_shell.update(InputState{});
     rom_shell.update(InputState{});
     assert(rom_shell.intro_frame() == 1);
     assert(rom_shell.scene() == NativeScene::Intro);
@@ -169,6 +172,18 @@ int main() {
         }
         return count;
     };
+    // 0x59D7C scrolls Plane A left while the 0x1DF1B2 head SAT advances from
+    // (0x138,0xF1) to (0x178,0xD1).  The source body/head pair must therefore
+    // already occupy one connected composition on the first pan frame; a
+    // detached component here is the regression the video exposed.
+    while (rom_shell.intro_frame() < 0x267U) {
+        rom_shell.update(InputState{});
+    }
+    SoftwareScreen pan_open;
+    rom_shell.render(pan_open);
+    assert(count_ink(pan_open, 160, 56, 80, 72) > 500U);
+    assert(count_ink(pan_open, 240, 56, 80, 72) < 10U);
+
     assert(count_ink(ambush_initial, 160, 148, 88, 56) > 200U);
     while (ambush_shell.intro_frame() < 0x3E8U) {
         ambush_shell.update(InputState{});
@@ -176,7 +191,19 @@ int main() {
     SoftwareScreen ambush_after_deaths;
     ambush_shell.render(ambush_after_deaths);
     assert(count_ink(ambush_after_deaths, 160, 148, 88, 56) < 40U);
-    while (ambush_shell.intro_frame() < 0x4EEU) {
+    while (ambush_shell.intro_frame() < 0x4E8U) {
+        ambush_shell.update(InputState{});
+    }
+    SoftwareScreen michael_slain;
+    ambush_shell.render(michael_slain);
+    // The terminal 0x10 ambush passes hand off to 0x5AC0E. The standing
+    // Michael region is cleared and the source trivid-left pose remains.
+    assert(count_ink(michael_slain, 0, 112, 152, 112) > 500U);
+    assert(count_ink(michael_slain, 0, 112, 36, 112) < 10U);
+    // 0x5A1EA consumes the 0x1F0 ambush passes, then 0x5AA96 starts the
+    // separate 0x114-pass trivid loop. The native terminal hand-off exposes
+    // the same 0x5AC0E slain pose before the black/cockpit setup plate.
+    while (ambush_shell.intro_frame() < 0x4F9U) {
         ambush_shell.update(InputState{});
     }
     SoftwareScreen ambush_late;
@@ -191,6 +218,26 @@ int main() {
     }
     assert(michael_transition_delta > 20U);
 
+    // 0x5AA96's first pass clears the old plane and draws trivid-left before
+    // 0x1728 uploads the cockpit map. The source 0x12F6 setup wait keeps that
+    // black/slain state visible for 0x11*2 source frame advances; a test that
+    // only checks the eventual cockpit would miss that transition ordering.
+    SoftwareScreen trivid_black;
+    ambush_shell.render(trivid_black);
+    assert(count_ink(trivid_black, 0, 0, 320, 224) > 20U);
+    assert(trivid_black.pixel(0, 112) == 0U);
+    constexpr auto kTrividMapSetupFrames = 0x11U * 2U;
+    while (ambush_shell.intro_frame() <
+           0x4F9U + 1U + kTrividMapSetupFrames) {
+        ambush_shell.update(InputState{});
+    }
+    SoftwareScreen trivid_cockpit;
+    ambush_shell.render(trivid_cockpit);
+    // The native layer preserves transparent name-table holes so the moving
+    // SAT list can remain behind the cockpit. Verify the cockpit by its
+    // framebuffer ink, not by assuming the upper-left hole is opaque black.
+    assert(count_ink(trivid_cockpit, 0, 0, 320, 224) > 1000U);
+
     // The airport is source-timed, not a handful of storyboard stills. At
     // the craft pass the Plane-A body and the off-screen-preserved rotor strip
     // must both reach the framebuffer. After the city settles, the late
@@ -198,6 +245,11 @@ int main() {
     // rendered a static skyline through this part of the ROM loop.
     NativePortShell intro_shell("SHADOWRUN", rom);
     enter_intro_from_start(intro_shell);
+    while (intro_shell.intro_frame() < 1614U) {
+        intro_shell.update(InputState{});
+    }
+    SoftwareScreen rotor_before;
+    intro_shell.render(rotor_before);
     while (intro_shell.intro_frame() < 1620U) {
         intro_shell.update(InputState{});
     }
@@ -221,6 +273,15 @@ int main() {
     }
     assert(rotor_ink > 20U);
     assert(body_ink > 200U);
+    std::size_t rotor_phase_delta = 0;
+    for (std::int32_t y = 90; y < 116; ++y) {
+        for (std::int32_t x = 0; x < kScreenWidth; ++x) {
+            if (rotor_before.pixel(x, y) != aircraft_screen.pixel(x, y)) {
+                ++rotor_phase_delta;
+            }
+        }
+    }
+    assert(rotor_phase_delta > 10U);
     while (intro_shell.intro_frame() < 2300U) {
         intro_shell.update(InputState{});
     }
@@ -241,6 +302,31 @@ int main() {
     }
     assert(intro_shell.scene() == NativeScene::Intro);
     assert(landing_delta > 20U);
+
+    // 0x13726 consumes a five-state shrinking cursor for each cab-map
+    // destination. The second destination restarts at its large outline;
+    // it must not inherit the terminal zero-size state from Downtown.
+    while (intro_shell.scene() == NativeScene::Intro) {
+        intro_shell.update(InputState{});
+    }
+    assert(intro_shell.scene() == NativeScene::CabMap);
+    SoftwareScreen downtown_map;
+    intro_shell.render(downtown_map);
+    for (std::size_t frame = 0; frame < 5U * 6U; ++frame) {
+        intro_shell.update(InputState{});
+    }
+    assert(intro_shell.scene() == NativeScene::CabMap);
+    SoftwareScreen redmond_map;
+    intro_shell.render(redmond_map);
+    std::size_t cab_destination_delta = 0;
+    for (std::int32_t y = 0; y < kScreenHeight; ++y) {
+        for (std::int32_t x = 0; x < kScreenWidth; ++x) {
+            if (downtown_map.pixel(x, y) != redmond_map.pixel(x, y)) {
+                ++cab_destination_delta;
+            }
+        }
+    }
+    assert(cab_destination_delta > 200U);
 
     rom_shell.update(InputState{button_mask(Button::Start),
                                 button_mask(Button::Start)});
@@ -523,6 +609,18 @@ int main() {
     assert(equipment_shell.field_attack_bar_index() != equipped_attack ||
            !equipment_shell.field_entity_visible());
 
+    // The same source toggle is rendered by 0x12D74 as Empty/Hand with the
+    // unarmed Damage/Power values; it must not leave the previous weapon
+    // detail blank or painted over by the selected inventory cell.
+    equipment_shell.update(InputState{button_mask(Button::Start),
+                                      button_mask(Button::Start)});
+    equipment_shell.update(InputState{});
+    equipment_shell.update(InputState{button_mask(Button::Start),
+                                      button_mask(Button::Start)});
+    SoftwareScreen unarmed_menu;
+    equipment_shell.render(unarmed_menu);
+    assert(count_ink(unarmed_menu, 112, 56, 128, 40) > 40U);
+
     // ROM 0x12634 is a separate Yes/No loop, not an immediate delete. The
     // source starts on No; only the explicit Yes choice reaches 0x1275C.
     auto discard_assets =
@@ -715,11 +813,21 @@ int main() {
     // state). 0x3BAC catches the camera up so the runner stays on-screen.
     assert(rom_shell.field_entity_visible());
     assert(rom_shell.field_entity_state_selector() == 0x0068);
-    // Kind-3's 0x8002 walking lists classify their 0x76F0 source timing word
-    // to multiplier 0x0010; the neighboring 0x0300 list word is not the
-    // timer increment. 100 field ticks therefore do not yet cross 0x1000.
-    assert(rom_shell.field_entity_state_index() == 0);
-    assert(rom_shell.field_entity_frame_index() == 0);
+    const auto frame_before_source_cadence =
+        rom_shell.field_entity_frame_index();
+    for (int frame = 0; frame < 6; ++frame) {
+        rom_shell.update(InputState{button_mask(Button::Right), 0});
+    }
+    // 0x600E selects multiplier 0x0010 from the reviewed +0xCA timing word;
+    // the list's 0x0300 auxiliary word is not the clock. Six source passes
+    // therefore do not cross the +0x1000 threshold.
+    assert(rom_shell.field_entity_frame_index() ==
+           frame_before_source_cadence);
+    for (int frame = 0; frame < 256; ++frame) {
+        rom_shell.update(InputState{button_mask(Button::Right), 0});
+    }
+    assert(rom_shell.field_entity_frame_index() !=
+           frame_before_source_cadence);
     assert(rom_shell.field_world_x() > initial_camera_x);
     assert(rom_shell.field_camera_x() > initial_camera_x);
     rom_shell.render(screen);
