@@ -198,7 +198,10 @@ int main() {
     ambush_shell.render(michael_slain);
     // The terminal 0x10 ambush passes hand off to 0x5AC0E. The standing
     // Michael region is cleared and the source trivid-left pose remains.
-    assert(count_ink(michael_slain, 0, 112, 152, 112) > 500U);
+    // The source trivid_left_0_0 resource is a 52x43 sprite at (51,148).
+    // Do not turn this into a large guessed presentation plate just to make
+    // a pixel-count threshold pass.
+    assert(count_ink(michael_slain, 51, 148, 52, 43) > 20U);
     assert(count_ink(michael_slain, 0, 112, 36, 112) < 10U);
     // 0x5A1EA consumes the 0x1F0 ambush passes, then 0x5AA96 starts the
     // separate 0x114-pass trivid loop. The native terminal hand-off exposes

@@ -20,6 +20,7 @@ add_library(shadowrun_port STATIC
     src/entity_projection.cpp
     src/entity_state.cpp
     src/graphics.cpp
+    src/intro_scene.cpp
     src/memory_bus.cpp
     src/native_input.cpp
     src/native_port.cpp
@@ -93,7 +94,7 @@ add_executable(shadowrun_leftover_clear_test
 )
 target_link_libraries(shadowrun_leftover_clear_test PRIVATE shadowrun_port)
 target_compile_definitions(shadowrun_leftover_clear_test PRIVATE
-    SHADOWRUN_NATIVE_PACK="${CMAKE_CURRENT_SOURCE_DIR}/assets/native/shadowrun_native.srna"
+    SHADOWRUN_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/assets"
     SHADOWRUN_VISUAL_ARTIFACT_DIR="${CMAKE_CURRENT_BINARY_DIR}/visual-regression")
 add_test(NAME shadowrun_leftover_clear COMMAND shadowrun_leftover_clear_test)
 
@@ -128,9 +129,16 @@ target_compile_definitions(shadowrun_graphics_catalog_test PRIVATE
     SHADOWRUN_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/assets")
 add_test(NAME shadowrun_graphics_catalog COMMAND shadowrun_graphics_catalog_test)
 
+add_executable(shadowrun_native_asset_directory_test
+    tests/native_asset_directory_test.cpp
+)
+target_link_libraries(shadowrun_native_asset_directory_test PRIVATE shadowrun_port)
+target_compile_definitions(shadowrun_native_asset_directory_test PRIVATE
+    SHADOWRUN_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/assets")
+add_test(NAME shadowrun_native_asset_directory
+         COMMAND shadowrun_native_asset_directory_test)
+
 set(SHADOWRUN_ROM "${CMAKE_CURRENT_SOURCE_DIR}/input/shadowrun_genesis_us.bin")
-set(SHADOWRUN_NATIVE_PACK
-    "${CMAKE_CURRENT_SOURCE_DIR}/assets/native/shadowrun_native.srna")
 if (EXISTS "${SHADOWRUN_ROM}")
     # Extraction is an explicit import step. A normal compile must never
     # rewrite the checked-out asset directory or create a second copy of a
@@ -180,13 +188,6 @@ if (EXISTS "${SHADOWRUN_ROM}")
         COMMENT "Extracting all indexed graphics and Genesis sound resources"
         VERBATIM
     )
-    # Kept as a compatibility target for the still-unmigrated field screens;
-    # it intentionally does not generate or copy anything.
-    add_custom_target(shadowrun_native_pack
-        COMMAND "${CMAKE_COMMAND}" -E echo
-                "Using existing explicit asset pack: ${SHADOWRUN_NATIVE_PACK}"
-        VERBATIM
-    )
 endif()
 
 if (WIN32)
@@ -206,6 +207,30 @@ if (WIN32)
         target_link_libraries(shadowrun_qt PRIVATE
             shadowrun_port Qt6::Widgets
         )
+        if (CMAKE_BUILD_TYPE STREQUAL "Release")
+            find_program(SHADOWRUN_WINDEPLOYQT
+                NAMES windeployqt windeployqt.exe
+                HINTS "${CMAKE_PREFIX_PATH}/bin")
+            if (SHADOWRUN_WINDEPLOYQT)
+                add_custom_command(TARGET shadowrun_qt POST_BUILD
+                    COMMAND "${SHADOWRUN_WINDEPLOYQT}"
+                            --release --no-translations
+                            "$<TARGET_FILE:shadowrun_qt>"
+                    COMMENT "Deploying Qt 6 runtime beside shadowrun_qt.exe"
+                    VERBATIM)
+            endif()
+            get_filename_component(SHADOWRUN_COMPILER_BIN
+                "${CMAKE_CXX_COMPILER}" DIRECTORY)
+            foreach(SHADOWRUN_RUNTIME_DLL
+                    libstdc++-6.dll libgcc_s_seh-1.dll libwinpthread-1.dll)
+                add_custom_command(TARGET shadowrun_qt POST_BUILD
+                    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                            "${SHADOWRUN_COMPILER_BIN}/${SHADOWRUN_RUNTIME_DLL}"
+                            "$<TARGET_FILE_DIR:shadowrun_qt>/${SHADOWRUN_RUNTIME_DLL}"
+                    COMMENT "Deploying matching compiler runtime ${SHADOWRUN_RUNTIME_DLL}"
+                    VERBATIM)
+            endforeach()
+        endif()
     endif()
 endif()
 

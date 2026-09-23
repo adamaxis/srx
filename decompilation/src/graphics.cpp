@@ -44,6 +44,53 @@ std::uint32_t read_rom_u32(const std::vector<std::uint8_t>& rom,
            static_cast<std::uint32_t>(rom[offset + 3U]);
 }
 
+// Runtime-native assets use the same cropped sprite representation as the
+// individual files written by graphics_extract. Keeping the opaque bounds at
+// this boundary prevents a full 320x224 transparent layer from being treated
+// as a sprite with a second, guessed offset.
+native::NativeImage crop_transparent_rgba(const RgbaImage& source) {
+    if (source.width == 0U || source.height == 0U || source.pixels.empty()) {
+        return {};
+    }
+    std::int32_t left = source.width;
+    std::int32_t top = source.height;
+    std::int32_t right = -1;
+    std::int32_t bottom = -1;
+    for (std::int32_t y = 0; y < source.height; ++y) {
+        for (std::int32_t x = 0; x < source.width; ++x) {
+            if (source.pixels[static_cast<std::size_t>(y) * source.width +
+                               static_cast<std::size_t>(x)]
+                    .alpha == 0U) {
+                continue;
+            }
+            left = std::min(left, x);
+            top = std::min(top, y);
+            right = std::max(right, x);
+            bottom = std::max(bottom, y);
+        }
+    }
+    if (right < left || bottom < top) {
+        return {source.width, source.height, source.pixels};
+    }
+
+    native::NativeImage result;
+    result.width = static_cast<std::uint16_t>(right - left + 1);
+    result.height = static_cast<std::uint16_t>(bottom - top + 1);
+    result.origin_x = static_cast<std::int16_t>(left);
+    result.origin_y = static_cast<std::int16_t>(top);
+    result.pixels.resize(static_cast<std::size_t>(result.width) *
+                         result.height);
+    for (std::int32_t y = top; y <= bottom; ++y) {
+        for (std::int32_t x = left; x <= right; ++x) {
+            result.pixels[static_cast<std::size_t>(y - top) * result.width +
+                          static_cast<std::size_t>(x - left)] =
+                source.pixels[static_cast<std::size_t>(y) * source.width +
+                              static_cast<std::size_t>(x)];
+        }
+    }
+    return result;
+}
+
 RgbaImage decode_genesis_intro_aircraft_plane_a_impl(
     const std::vector<std::uint8_t>& rom);
 std::array<RgbaImage, native::kNativeIntroAircraftMovementFrameCount>
@@ -849,34 +896,25 @@ native::NativePortAssets decode_genesis_native_assets(
     }
     const auto intro_heli = decode_genesis_intro_heli_frames(rom);
     for (std::size_t index = 0; index < intro_heli.size(); ++index) {
-        assets.intro_heli_frames[index] = {
-            intro_heli[index].width, intro_heli[index].height,
-            intro_heli[index].pixels};
+        assets.intro_heli_frames[index] = crop_transparent_rgba(intro_heli[index]);
     }
     const auto intro_aircraft_plane_a =
         decode_genesis_intro_aircraft_plane_a_impl(rom);
-    assets.intro_aircraft_plane_a = {
-        intro_aircraft_plane_a.width, intro_aircraft_plane_a.height,
-        intro_aircraft_plane_a.pixels};
+    assets.intro_aircraft_plane_a =
+        crop_transparent_rgba(intro_aircraft_plane_a);
     const auto intro_aircraft_movement =
         decode_genesis_intro_aircraft_movement_frames_impl(rom);
     for (std::size_t index = 0; index < intro_aircraft_movement.size();
          ++index) {
-        assets.intro_aircraft_movement_frames[index] = {
-            intro_aircraft_movement[index].width,
-            intro_aircraft_movement[index].height,
-            intro_aircraft_movement[index].pixels};
+        assets.intro_aircraft_movement_frames[index] =
+            crop_transparent_rgba(intro_aircraft_movement[index]);
     }
     const auto intro_trivid = decode_genesis_intro_trivid_layers(rom);
     assets.intro_trivid_background = {
         intro_trivid.background.width, intro_trivid.background.height,
         std::move(intro_trivid.background.pixels)};
-    assets.intro_trivid_slain = {
-        intro_trivid.slain.width, intro_trivid.slain.height,
-        std::move(intro_trivid.slain.pixels)};
-    assets.intro_trivid_moving = {
-        intro_trivid.moving.width, intro_trivid.moving.height,
-        std::move(intro_trivid.moving.pixels)};
+    assets.intro_trivid_slain = crop_transparent_rgba(intro_trivid.slain);
+    assets.intro_trivid_moving = crop_transparent_rgba(intro_trivid.moving);
     const auto cab_map = decode_genesis_cab_map(rom);
     assets.cab_map = {
         cab_map.width, cab_map.height, std::move(cab_map.pixels)};
@@ -6765,8 +6803,13 @@ decode_genesis_intro_wilderness_pan_frames_impl(
         // that made the Indian's head visibly fly into a stationary body.
         // Rebuild the map with the source scroll values and then apply the
         // independent SAT coordinates below.
+        // DD08 is incremented on every pass. DD46 (the actor X register)
+        // reaches its terminal value after 0x40 passes, but DD08 continues
+        // from -0x40 through +0x60 for the complete 0xA0-pass source loop.
+        // Clamping this at zero makes the map stop while the actor keeps
+        // moving, which detaches the head/body composition.
         const auto plane_a_xscroll = static_cast<std::int32_t>(
-            -0x40 + std::min<std::size_t>(index, 0x40U));
+            -0x40 + index);
         const auto plane_b_vscroll = static_cast<std::int32_t>(
             -0x20 + std::min<std::size_t>(index / 2U, 0x20U));
         frames[index] = decode_genesis_1406_scene(

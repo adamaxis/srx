@@ -5,6 +5,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -218,6 +219,8 @@ enum class NativeScene {
     AttributesMenu,
     MagicMenu,
 };
+
+class IntroScene;
 
 struct Rgba8 {
     std::uint8_t red = 0;
@@ -715,6 +718,11 @@ public:
     explicit NativePortShell(std::string title = "SHADOWRUN");
     NativePortShell(std::string title, const std::vector<std::uint8_t>& rom);
     NativePortShell(std::string title, NativePortAssets assets);
+    ~NativePortShell();
+    NativePortShell(const NativePortShell&) = delete;
+    NativePortShell& operator=(const NativePortShell&) = delete;
+    NativePortShell(NativePortShell&&) noexcept;
+    NativePortShell& operator=(NativePortShell&&) noexcept;
 
     void update(const InputState& input);
     void render(ScreenWriter& screen) const;
@@ -759,7 +767,7 @@ public:
     std::uint16_t title_completion_state() const {
         return title_completion_state_;
     }
-    bool has_intro() const { return !intro_.story_lines.empty(); }
+    bool has_intro() const;
     bool has_startup_menus() const {
         return !intro_.start_options_layout.empty() &&
                !intro_.save_load_layout.empty() &&
@@ -1127,11 +1135,9 @@ public:
     }
     std::size_t archetype_selection() const { return archetype_selection_; }
     std::size_t selected_archetype() const { return selected_archetype_; }
-    std::size_t intro_line_start() const { return intro_line_start_; }
-    std::uint64_t intro_frame() const { return intro_frame_; }
-    std::size_t intro_story_line_count() const {
-        return intro_.story_lines.size();
-    }
+    std::size_t intro_line_start() const;
+    std::uint64_t intro_frame() const;
+    std::size_t intro_story_line_count() const;
     std::uint32_t field_runner_switch_attempts() const {
         return runner_switch_attempts_;
     }
@@ -1248,7 +1254,6 @@ private:
     std::array<NativeImage, kNativeBootLogoStrobeCount> boot_logo_strobe_{};
     NativeImage boot_fasa_{};
     NativeImage startup_background_{};
-    std::array<NativeImage, kNativeIntroHeliFrameCount> intro_heli_frames_{};
     NativeImage field_hud_{};
     std::array<NativeImage, 3> field_hud_faces_{};
     std::array<NativeImage, 3> field_hud_item_blocks_{};
@@ -1282,17 +1287,6 @@ private:
     NativeImage field_menu_font_{};
     NativeImage startup_font_{};
     NativeImage startup_cursor_{};
-    std::array<NativeImage, kNativeIntroStageCount> intro_stages_{};
-    NativeImage intro_aircraft_plane_a_{};
-    std::array<NativeImage, kNativeIntroWildernessPanFrameCount>
-        intro_wilderness_pan_frames_{};
-    std::array<NativeImage, kNativeIntroAircraftMovementFrameCount>
-        intro_aircraft_movement_frames_{};
-    NativeImage intro_trivid_background_{};
-    NativeImage intro_trivid_slain_{};
-    NativeImage intro_trivid_moving_{};
-    std::array<NativeImage, kNativeIntroAmbushFrameCount>
-        intro_ambush_frames_{};
     NativeImage cab_map_{};
     std::array<NativeImage, 3> field_menu_runner_portraits_{};
     std::array<NativeImage, 2> field_menu_selected_cells_{};
@@ -1321,15 +1315,11 @@ private:
     // Armor/Clothing labels.
     std::array<std::array<std::string, 2>, 7> field_menu_armor_labels_{};
     NativeIntroData intro_{};
+    std::unique_ptr<IntroScene> intro_scene_;
     std::size_t start_options_selection_ = 0;
     std::size_t save_load_selection_ = 0;
     std::size_t archetype_selection_ = 0;
     std::size_t selected_archetype_ = 0;
-    std::size_t intro_line_start_ = 0;
-    std::uint64_t intro_frame_ = 0;
-    // Qt presents at 60 Hz; the ROM/video timing reference advances this
-    // opening at one source pass per two host ticks.
-    std::uint8_t intro_host_tick_ = 0;
     bool start_options_load_rejected_ = false;
     bool save_load_message_visible_ = false;
     bool save_load_message_success_ = false;

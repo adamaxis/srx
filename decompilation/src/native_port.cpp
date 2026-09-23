@@ -2,6 +2,7 @@
 
 #include "shadowrun/entity_projection.hpp"
 #include "shadowrun/graphics.hpp"
+#include "shadowrun/intro_scene.hpp"
 
 #include <algorithm>
 #include <array>
@@ -337,96 +338,6 @@ std::uint16_t slew_source_heading(std::uint16_t current,
         ? target : static_cast<std::uint16_t>(current - 0x0800U);
 }
 
-// The opening is not a menu page carousel.  New Game enters ROM 0x59C5E,
-// which runs the three timed presentation routines 0x59D7C, 0x5AA96, and
-// 0x5AD1A.  These groups are the text writes those routines make through
-// C0DA.  Their source line order is retained in NativeIntroData; the native
-// renderer only replaces the VDP destination with a host pixel position.
-struct IntroStoryGroup {
-    std::uint64_t start_frame;
-    std::size_t first_line;
-    std::size_t line_count;
-    std::int32_t top_y;
-};
-
-// 0x5AF62 script 0x5ADD0: wait 0x3C, 0x5AEC6 line 0; wait 0x78,
-// 0x5AEDA line 1; wait 0xB4, 0x5AEEE lines 2-4; wait 0xF0+0x0F.
-constexpr std::uint64_t kIntroSeattleHold = 0x3CU;
-constexpr std::uint64_t kIntroSeattlePlace = kIntroSeattleHold + 0x78U;
-constexpr std::uint64_t kIntroSeattleTeam = kIntroSeattlePlace + 0xB4U;
-constexpr std::uint64_t kIntroSeattleEnd =
-    kIntroSeattleTeam + 0xF0U + 0x0FU;
-// 0x59D7C: 0xA0/DBF pan, then 0x1F0/DBF SAT loop. 0x5AE9E after the
-// first pan vblank. 0x5ADFE/0x5AE3A when the second countdown is 0x164.
-constexpr std::uint64_t kIntroWildernessPan = kIntroSeattleEnd + 0xA1U;
-constexpr std::uint64_t kIntroWildernessMassacre =
-    kIntroWildernessPan + (0x1F0U - 0x164U);
-constexpr std::uint64_t kIntroWildernessEnd =
-    kIntroWildernessPan + 0x1F1U;
-// The final source passes are the hand-off to 0x5AA96/0x5AC0E.  Keep the
-// terminal ambush result visible while that hand-off is being presented so
-// standing Michael is removed before the cockpit setup begins.
-constexpr std::size_t kIntroAmbushDeathStart = 0x1E0U;
-// 0x5AA96 0x114/DBF, then 0x5AD1A 0x528/DBF. 0x5A96A at countdown 0x1E0.
-// 0x5AA96 starts immediately after the wilderness loop. Its first draw pass
-// clears the old plane and writes trivid_left_0_0 through 0x5AC0E. It then
-// waits through 0x12F6 (17 iterations of two 0x00BD2 waits) around the
-// cockpit name-table upload. Keep that source setup interval visible: the
-// reference shows slain Michael on black before the cockpit becomes visible.
-constexpr std::uint64_t kIntroTrividCockpitStart = kIntroWildernessEnd;
-constexpr std::uint64_t kIntroTrividMapStart =
-    kIntroTrividCockpitStart + 1U + (0x11U * 2U);
-constexpr std::uint64_t kIntroTrividEnd = kIntroTrividMapStart + 0x115U;
-constexpr std::uint64_t kIntroAirportText =
-    kIntroTrividEnd + (0x528U - 0x1E0U);
-// 0x5AD1A keeps calling 0x5B00A/0x5B056/0x5B0BC for its complete 0x528/DBF
-// airport loop. The craft leaves the viewport early, but the source landing
-// transition and its late SAT updates remain part of the scene through the
-// final pass; ending the native airport at $150 dropped that transition.
-constexpr std::uint64_t kIntroAircraftEnd = kIntroTrividEnd + 0x529U;
-constexpr std::uint64_t kIntroDuration = kIntroAircraftEnd;
-// 0x5AD1A's Plane-A map is written at VRAM $074A: tile column 37, row 14.
-// The extractor normalizes the authored 27x8 map to (0,0), so the native
-// source path restores this origin before applying DD08's -2-per-pass scroll.
-constexpr std::int32_t kIntroAircraftPlaneOriginX = 37 * 8;
-constexpr std::int32_t kIntroAircraftPlaneOriginY = 14 * 8;
-// ROM 0x5B270 is seven signed fixed-point movement records used by 0x5B1B6.
-// These values are source state; the corresponding SAT pixels live in the
-// extracted native pack.
-constexpr std::array<std::int16_t, 7> kIntroAircraftMovementDx{{
-    0x00F1, 0x006E, 0x0071, 0x002A, 0x0000, 0x0063, 0x0000}};
-constexpr std::array<std::int16_t, 7> kIntroAircraftMovementDy{{
-    0x0071, 0x0000, 0x0071, 0x0071, 0x0038, 0x0038, 0x0000}};
-constexpr std::array<std::uint16_t, 7> kIntroAircraftMovementDelay{{
-    0x0024, 0x005A, 0x0048, 0x0012, 0x0024, 0x0012, 0x0000}};
-
-// Capture 10 Hz storyboard: green story text sits in the upper black
-// band; the skyline / ambush / cockpit occupy the lower half.
-constexpr std::array<IntroStoryGroup, 9> kIntroStoryGroups{{
-    {0x000U, 0U, 0U, 16},
-    {kIntroSeattleHold, 0U, 1U, 16},
-    {kIntroSeattlePlace, 0U, 2U, 16},
-    {kIntroSeattleTeam, 0U, 5U, 16},
-    {kIntroSeattleEnd, 5U, 2U, 16},
-    // 0x5AA5A advances to the post-massacre paragraph before 0x5AA96
-    // switches to the recovered tri-vid. Do not skip lines 7..9 while the
-    // source still shows the final ambush result.
-    {kIntroWildernessMassacre, 7U, 3U, 16},
-    {kIntroTrividMapStart, 10U, 3U, 16},
-    {kIntroTrividEnd, 13U, 3U, 16},
-    {kIntroAirportText, 16U, 6U, 16},
-}};
-
-const IntroStoryGroup& intro_story_group(std::uint64_t frame) {
-    const auto group = std::find_if(
-        kIntroStoryGroups.rbegin(), kIntroStoryGroups.rend(),
-        [frame](const IntroStoryGroup& candidate) {
-            return frame >= candidate.start_frame;
-        });
-    return group == kIntroStoryGroups.rend() ? kIntroStoryGroups.front()
-                                             : *group;
-}
-
 std::vector<Rgba8> scale_rgba(const std::vector<Rgba8>& source,
                               std::uint16_t remaining, std::uint16_t total) {
     auto faded = source;
@@ -442,61 +353,6 @@ std::vector<Rgba8> scale_rgba(const std::vector<Rgba8>& source,
             (static_cast<std::uint16_t>(pixel.blue) * remaining) / total);
     }
     return faded;
-}
-
-std::vector<Rgba8> nearest_scale_rgba(const std::vector<Rgba8>& source,
-                                      std::uint16_t source_width,
-                                      std::uint16_t source_height,
-                                      std::uint16_t target_width,
-                                      std::uint16_t target_height) {
-    if (source_width == 0U || source_height == 0U || target_width == 0U ||
-        target_height == 0U ||
-        source.size() < static_cast<std::size_t>(source_width) *
-                             source_height) {
-        return {};
-    }
-    std::uint16_t min_x = source_width;
-    std::uint16_t min_y = source_height;
-    std::uint16_t max_x = 0U;
-    std::uint16_t max_y = 0U;
-    bool has_ink = false;
-    for (std::uint16_t y = 0; y < source_height; ++y) {
-        for (std::uint16_t x = 0; x < source_width; ++x) {
-            if (source[static_cast<std::size_t>(y) * source_width + x].alpha ==
-                0U) {
-                continue;
-            }
-            has_ink = true;
-            min_x = std::min(min_x, x);
-            min_y = std::min(min_y, y);
-            max_x = std::max(max_x, x);
-            max_y = std::max(max_y, y);
-        }
-    }
-    if (!has_ink) {
-        return {};
-    }
-    const auto ink_width = static_cast<std::uint32_t>(max_x - min_x + 1U);
-    const auto ink_height = static_cast<std::uint32_t>(max_y - min_y + 1U);
-    std::vector<Rgba8> scaled(
-        static_cast<std::size_t>(target_width) * target_height);
-    for (std::uint16_t y = 0; y < target_height; ++y) {
-        const auto source_y = std::min<std::uint32_t>(
-            max_y,
-            static_cast<std::uint32_t>(min_y) +
-                (static_cast<std::uint32_t>(y) * ink_height) / target_height);
-        for (std::uint16_t x = 0; x < target_width; ++x) {
-            const auto source_x = std::min<std::uint32_t>(
-                max_x,
-                static_cast<std::uint32_t>(min_x) +
-                    (static_cast<std::uint32_t>(x) * ink_width) /
-                        target_width);
-            scaled[static_cast<std::size_t>(y) * target_width + x] =
-                source[static_cast<std::size_t>(source_y) * source_width +
-                       source_x];
-        }
-    }
-    return scaled;
 }
 
 // ROM 0x391A walks entity records after the current record. A candidate must
@@ -828,6 +684,27 @@ NativeCommandBarIndices compute_command_bar_indices(
 NativePortShell::NativePortShell(std::string title)
     : title_(std::move(title)), scene_(NativeScene::Field) {}
 
+NativePortShell::~NativePortShell() = default;
+NativePortShell::NativePortShell(NativePortShell&&) noexcept = default;
+NativePortShell& NativePortShell::operator=(NativePortShell&&) noexcept =
+    default;
+
+bool NativePortShell::has_intro() const {
+    return intro_scene_ != nullptr && intro_scene_->has_story();
+}
+
+std::size_t NativePortShell::intro_line_start() const {
+    return intro_scene_ == nullptr ? 0U : intro_scene_->line_start();
+}
+
+std::uint64_t NativePortShell::intro_frame() const {
+    return intro_scene_ == nullptr ? 0U : intro_scene_->frame();
+}
+
+std::size_t NativePortShell::intro_story_line_count() const {
+    return intro_scene_ == nullptr ? 0U : intro_scene_->story_line_count();
+}
+
 std::string_view NativePortShell::field_active_item_detail_label() const {
     return source_item_detail_label(field_entity_.active_item_code);
 }
@@ -908,8 +785,6 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     boot_logo_strobe_ = std::move(assets.boot_logo_strobe);
     boot_fasa_ = std::move(assets.boot_fasa);
     startup_background_ = std::move(assets.startup_background);
-    intro_ambush_frames_ = std::move(assets.intro_ambush_frames);
-    intro_heli_frames_ = std::move(assets.intro_heli_frames);
     field_hud_ = std::move(assets.field_hud);
     field_hud_faces_ = std::move(assets.field_hud_faces);
     field_hud_item_blocks_ = std::move(assets.field_hud_item_blocks);
@@ -921,15 +796,6 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
         std::move(assets.field_hud_horizontal_counters);
     field_hud_ammo_counters_ = std::move(assets.field_hud_ammo_counters);
     pocket_secretary_background_ = std::move(assets.pocket_secretary_background);
-    intro_stages_ = std::move(assets.intro_stages);
-    intro_aircraft_plane_a_ = std::move(assets.intro_aircraft_plane_a);
-    intro_wilderness_pan_frames_ =
-        std::move(assets.intro_wilderness_pan_frames);
-    intro_aircraft_movement_frames_ =
-        std::move(assets.intro_aircraft_movement_frames);
-    intro_trivid_background_ = std::move(assets.intro_trivid_background);
-    intro_trivid_slain_ = std::move(assets.intro_trivid_slain);
-    intro_trivid_moving_ = std::move(assets.intro_trivid_moving);
     cab_map_ = std::move(assets.cab_map);
     if (!boot_background_.pixels.empty()) {
         scene_ = NativeScene::Bootstrap;
@@ -966,6 +832,21 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     field_menu_power_labels_ = std::move(assets.field_menu_power_labels);
     field_menu_armor_labels_ = std::move(assets.field_menu_armor_labels);
     intro_ = std::move(assets.intro);
+    IntroSceneAssets intro_assets;
+    intro_assets.story_lines = std::move(intro_.story_lines);
+    intro_assets.stages = std::move(assets.intro_stages);
+    intro_assets.aircraft_plane_a = std::move(assets.intro_aircraft_plane_a);
+    intro_assets.heli_frames = std::move(assets.intro_heli_frames);
+    intro_assets.aircraft_movement_frames =
+        std::move(assets.intro_aircraft_movement_frames);
+    intro_assets.trivid_background = std::move(assets.intro_trivid_background);
+    intro_assets.trivid_slain = std::move(assets.intro_trivid_slain);
+    intro_assets.trivid_moving = std::move(assets.intro_trivid_moving);
+    intro_assets.wilderness_pan_frames =
+        std::move(assets.intro_wilderness_pan_frames);
+    intro_assets.ambush_frames = std::move(assets.intro_ambush_frames);
+    intro_assets.font = field_menu_font_;
+    intro_scene_ = std::make_unique<IntroScene>(std::move(intro_assets));
     entity_frames_ = std::move(assets.entity_frames);
     field_entity_animations_ = std::move(assets.field_entity_animations);
     field_direction_table_ = assets.field_direction_table;
@@ -1429,22 +1310,17 @@ void NativePortShell::update_archetype_menu(const InputState& input) {
     // 0x59C5E after 0x59248/0x42B0, while a successful Load Game sets
     // FFE108 and skips the opening.  Enter the source-timed opening here;
     // this is the native equivalent of that branch, not an extra menu page.
-    intro_line_start_ = 0;
-    intro_frame_ = 0;
-    intro_host_tick_ = 0;
-    scene_ = intro_.story_lines.empty() ? NativeScene::Field
-                                        : NativeScene::Intro;
+    if (intro_scene_ != nullptr) {
+        intro_scene_->reset();
+    }
+    scene_ = has_intro() ? NativeScene::Intro : NativeScene::Field;
     if (scene_ == NativeScene::Field && !field_map_pixels_.empty()) {
         reset_field_state();
     }
 }
 
 void NativePortShell::update_intro(const InputState& input) {
-    // 0x59C5E's presentation loops abort on the same controller edge that
-    // the Genesis input sampler exposes.  Keep that useful skip behavior,
-    // but allow the untouched source timeline to play through as well.
-    if (input.was_pressed(Button::A) || input.was_pressed(Button::B) ||
-        input.was_pressed(Button::Start)) {
+    if (intro_scene_ == nullptr) {
         scene_ = NativeScene::Field;
         if (!field_map_pixels_.empty()) {
             reset_field_state();
@@ -1452,20 +1328,13 @@ void NativePortShell::update_intro(const InputState& input) {
         return;
     }
 
-    // The Qt surface is driven at 60 Hz, while the supplied capture and the
-    // ROM presentation loop advance at the 30 Hz source cadence. Keep the
-    // host responsive at 60 Hz but hold each source pass for two host ticks.
-    if (intro_host_tick_ == 0U) {
-        intro_host_tick_ = 1U;
-    } else {
-        intro_host_tick_ = 0U;
-        if (intro_frame_ < kIntroDuration) {
-            ++intro_frame_;
+    const auto result = intro_scene_->update(input);
+    if (result == IntroSceneResult::Skipped) {
+        scene_ = NativeScene::Field;
+        if (!field_map_pixels_.empty()) {
+            reset_field_state();
         }
-    }
-    const auto& group = intro_story_group(intro_frame_);
-    intro_line_start_ = group.first_line;
-    if (intro_frame_ >= kIntroDuration) {
+    } else if (result == IntroSceneResult::Finished) {
         // 0x59C5E fades, sets FFFBF8=2, then 0x59D12/0x134D2 — the cab
         // world-map before the field loop.
         cab_frame_ = 0;
@@ -4727,281 +4596,10 @@ void NativePortShell::render(ScreenWriter& screen) const {
         screen.present();
         return;
     } else if (scene_ == NativeScene::Intro) {
-        // Host recreation of 0x59C5E from extracted stage plates plus the
-        // capture's 10 Hz beats: seattle/airport skyline, ambush actors on
-        // black (rise, muzzle ticks, white hit flashes, drop), then cockpit.
-        screen.clear({0x00, 0x00, 0x00, 0xFF});
-        const auto& group = intro_story_group(intro_frame_);
-        constexpr std::uint16_t kIntroFade = 16U;
-        const auto fade_weight = [this](std::uint64_t appear,
-                                        std::uint64_t disappear)
-            -> std::uint16_t {
-            if (intro_frame_ < appear) {
-                return 0;
-            }
-            if (disappear != 0U && intro_frame_ >= disappear) {
-                return 0;
-            }
-            const auto into = intro_frame_ - appear;
-            if (into < kIntroFade) {
-                return static_cast<std::uint16_t>(into + 1U);
-            }
-            if (disappear != 0U && intro_frame_ + kIntroFade >= disappear) {
-                return static_cast<std::uint16_t>(disappear - intro_frame_);
-            }
-            return kIntroFade;
-        };
-        const auto blit_faded_stage = [&screen](const NativeImage& stage,
-                                                std::uint16_t weight) {
-            if (stage.pixels.empty() || weight == 0U) {
-                return;
-            }
-            screen.blit_rgba(0, 0, stage.width, stage.height,
-                             scale_rgba(stage.pixels, weight, kIntroFade));
-        };
-        if (intro_frame_ < kIntroSeattleEnd && !intro_stages_[0].pixels.empty()) {
-            blit_faded_stage(intro_stages_[0],
-                             fade_weight(0, kIntroSeattleEnd));
-        } else if (intro_frame_ < kIntroWildernessEnd &&
-                   !intro_stages_[1].pixels.empty()) {
-            // 0x5A1EA/0x5A0B2 update the wilderness SAT and name-table
-            // patches during the source 0x1F0 loop. The extracted samples
-            // are complete source compositions, so this selection cannot
-            // leave stale actors or host-generated hit flashes behind.
-            const NativeImage* plate = &intro_stages_[1];
-            if (intro_frame_ < kIntroWildernessPan &&
-                !intro_wilderness_pan_frames_.empty() &&
-                !intro_wilderness_pan_frames_.front().pixels.empty()) {
-                const auto pan_frame = std::min<std::size_t>(
-                    ((intro_frame_ - kIntroSeattleEnd) *
-                     intro_wilderness_pan_frames_.size()) /
-                        (kIntroWildernessPan - kIntroSeattleEnd),
-                    intro_wilderness_pan_frames_.size() - 1U);
-                plate = &intro_wilderness_pan_frames_[pan_frame];
-            } else if (intro_frame_ >= kIntroWildernessPan &&
-                       !intro_ambush_frames_.empty()) {
-                const auto ambush_frame = std::min<std::size_t>(
-                    intro_frame_ - kIntroWildernessPan,
-                    intro_ambush_frames_.size() - 1U);
-                if (!intro_ambush_frames_[ambush_frame].pixels.empty()) {
-                    plate = &intro_ambush_frames_[ambush_frame];
-                }
-            }
-            screen.blit_rgba(0, 0, plate->width, plate->height, plate->pixels);
-            if (intro_frame_ >= kIntroWildernessPan +
-                                    kIntroAmbushDeathStart &&
-                intro_frame_ < kIntroWildernessEnd &&
-                !intro_trivid_slain_.pixels.empty()) {
-                // The standing Michael is part of the ambush plate.  The
-                // source clears that authored SAT region before drawing the
-                // 0x1DF1D6 trivid-left list; reproduce the same replacement
-                // instead of merely painting the prone sprite over him.
-                screen.fill_rect(0, 112, 152, 112,
-                                 {0x00, 0x00, 0x00, 0xFF});
-                // The ROM's trivid_left_0_0 list is a 52x43 source sprite.
-                // The supplied capture presents this hand-off at the larger
-                // native presentation scale: visible bounds are x=36..174
-                // and y=120..223 (the lower edge is clipped). Keep the ROM
-                // sprite and state transition, but scale its presentation with
-                // nearest-neighbour pixel art.
-                constexpr std::int32_t kSlainOriginX = 36;
-                constexpr std::int32_t kSlainOriginY = 120;
-                constexpr std::uint16_t kSlainWidth = 139;
-                constexpr std::uint16_t kSlainHeight = 115;
-                const auto slain = nearest_scale_rgba(
-                    intro_trivid_slain_.pixels, intro_trivid_slain_.width,
-                    intro_trivid_slain_.height, kSlainWidth, kSlainHeight);
-                screen.blit_rgba(kSlainOriginX, kSlainOriginY,
-                                 kSlainWidth, kSlainHeight, slain);
-            }
-        } else if (intro_frame_ < kIntroTrividEnd &&
-                    (!intro_trivid_background_.pixels.empty() ||
-                     !intro_stages_[2].pixels.empty())) {
-            const auto weight = static_cast<std::uint16_t>(kIntroFade);
-            if (intro_frame_ < kIntroTrividMapStart) {
-                // Source order at 0x5AA96: 0x5B32C clears the old plane,
-                // 0x5ABD2/0x5AC0E draws the slain Michael SAT, then the
-                // 0x12F6 wait surrounding the 0x1728 cockpit upload keeps
-                // this black/slain state on screen for the source setup
-                // interval. Do not collapse it to one host frame.
-                if (!intro_trivid_slain_.pixels.empty()) {
-                    constexpr std::uint16_t kSlainWidth = 139;
-                    constexpr std::uint16_t kSlainHeight = 115;
-                    const auto slain = nearest_scale_rgba(
-                        intro_trivid_slain_.pixels, intro_trivid_slain_.width,
-                        intro_trivid_slain_.height, kSlainWidth,
-                        kSlainHeight);
-                    screen.blit_rgba(
-                        36, 120, kSlainWidth, kSlainHeight,
-                        scale_rgba(slain, weight, kIntroFade));
-                }
-            } else if (!intro_trivid_background_.pixels.empty()) {
-                if (!intro_trivid_moving_.pixels.empty()) {
-                    // 0x5AC36 is the lower-priority moving SAT list. Draw
-                    // it before the 0x8000 cockpit name table and the slain
-                    // runner, rather than letting the lights roll over the
-                    // foreground as a false white/cyan wash. It draws at
-                    // (0x60,0x123) and advances the two
-                    // fixed-point words by $40/$18 after each pass.  The
-                    // extracted moving layer is the pass-zero composition;
-                    // translate it by the logical 8.8-pixel displacement.
-                    const auto pass = std::min<std::uint64_t>(
-                        intro_frame_ - kIntroTrividMapStart, 0x114U);
-                    const auto moving_x = static_cast<std::int32_t>(
-                        (pass * 0x40U) >> 8U);
-                    const auto moving_y = static_cast<std::int32_t>(
-                        (pass * 0x18U) >> 8U);
-                    screen.blit_rgba(
-                        moving_x + intro_trivid_moving_.origin_x,
-                        moving_y + intro_trivid_moving_.origin_y,
-                        intro_trivid_moving_.width,
-                        intro_trivid_moving_.height,
-                        scale_rgba(intro_trivid_moving_.pixels, weight,
-                                   kIntroFade));
-                }
-                screen.blit_rgba(
-                    0, 0, intro_trivid_background_.width,
-                    intro_trivid_background_.height,
-                    scale_rgba(intro_trivid_background_.pixels, weight,
-                               kIntroFade));
-                if (!intro_trivid_slain_.pixels.empty()) {
-                    constexpr std::uint16_t kSlainWidth = 139;
-                    constexpr std::uint16_t kSlainHeight = 115;
-                    const auto slain = nearest_scale_rgba(
-                        intro_trivid_slain_.pixels, intro_trivid_slain_.width,
-                        intro_trivid_slain_.height, kSlainWidth,
-                        kSlainHeight);
-                    screen.blit_rgba(
-                        36, 120, kSlainWidth, kSlainHeight,
-                        scale_rgba(slain, weight, kIntroFade));
-                }
-            } else {
-                // Packs written before the separate 0x5AA96 layers remain
-                // readable; keep their static trivid fallback intact.
-                blit_faded_stage(intro_stages_[2], weight);
-            }
-        } else if (!intro_stages_[3].pixels.empty()) {
-            // 0x5AD1A loads the ending/airport descriptor at 0x5B528 after
-            // the trivid. 0x5B00A moves DD08 by two pixels per source pass,
-            // while 0x5B056 raises DD0E after the horizontal pass. The
-            // vehicle is therefore a continuously translated Plane-A layer,
-            // not six screenshots selected by elapsed time.
-            if (intro_frame_ < kIntroAircraftEnd &&
-                !intro_aircraft_plane_a_.pixels.empty()) {
-                const auto aircraft_elapsed = intro_frame_ - kIntroTrividEnd;
-                const auto plane_a_scroll = static_cast<std::int32_t>(
-                    std::min<std::uint64_t>(aircraft_elapsed * 2U, 0x200U));
-                const auto plane_b_scroll = aircraft_elapsed <= 0xD8U
-                    ? 0
-                    : static_cast<std::int32_t>(std::min<std::uint64_t>(
-                          aircraft_elapsed - 0xD8U, 0x78U));
-                screen.clear({0x00, 0x00, 0x00, 0xFF});
-                // intro_stages_[3] is the source plane-B layer at its final
-                // DD0E=$78 offset. Translate it back to the current source
-                // offset before placing the moving Plane-A layer over it.
-                screen.blit_rgba(
-                    0, static_cast<std::int32_t>(0x78U - plane_b_scroll),
-                    intro_stages_[3].width, intro_stages_[3].height,
-                    intro_stages_[3].pixels);
-                screen.blit_rgba(
-                    kIntroAircraftPlaneOriginX - plane_a_scroll,
-                    kIntroAircraftPlaneOriginY,
-                    intro_aircraft_plane_a_.width,
-                    intro_aircraft_plane_a_.height,
-                    intro_aircraft_plane_a_.pixels);
-
-                // 0x5B100 cycles the six SAT overlay lists every six source
-                // passes while DD08 remains in its active range. The layers
-                // were composed at D1=$1FC, so the same DD08 translation is
-                // applied here.
-                if (aircraft_elapsed <= 0xDCU) {
-                    const auto overlay_phase = static_cast<std::size_t>(
-                        (aircraft_elapsed / 6U) %
-                        intro_heli_frames_.size());
-                    const auto& overlay = intro_heli_frames_[overlay_phase];
-                    if (!overlay.pixels.empty()) {
-                        screen.blit_rgba(
-                            -plane_a_scroll + overlay.origin_x,
-                            overlay.origin_y,
-                            overlay.width, overlay.height,
-                            overlay.pixels);
-                    }
-                }
-
-                // 0x5B1B6 begins at relative time $226. Replay its seven
-                // fixed-point records from the typed source table so the
-                // small moving SAT overlay follows the ROM path as well.
-                if (aircraft_elapsed >= 0x226U &&
-                    !intro_aircraft_movement_frames_[0].pixels.empty()) {
-                    std::uint32_t next = 0;
-                    std::size_t phase = 0;
-                    std::int32_t dx = 0;
-                    std::int32_t dy = 0;
-                    std::uint16_t x_fixed = 0x7C00;
-                    std::uint16_t y_fixed = 0xB700;
-                    for (std::uint64_t pass = 0; pass <= aircraft_elapsed;
-                         ++pass) {
-                        if (pass < 0x226U) {
-                            continue;
-                        }
-                        if (phase < kIntroAircraftMovementDx.size() &&
-                            pass >= next) {
-                            dx = kIntroAircraftMovementDx[phase];
-                            dy = kIntroAircraftMovementDy[phase];
-                            next = static_cast<std::uint32_t>(pass) +
-                                   kIntroAircraftMovementDelay[phase];
-                            ++phase;
-                        }
-                        x_fixed = static_cast<std::uint16_t>(
-                            x_fixed + static_cast<std::uint16_t>(dx));
-                        y_fixed = static_cast<std::uint16_t>(
-                            y_fixed + static_cast<std::uint16_t>(dy));
-                    }
-                    // The ROM uses LSR.W, so these are logical 16-bit shifts
-                    // even though the values are maintained as signed-looking
-                    // fixed-point words.
-                    const auto x = static_cast<std::int32_t>(x_fixed >> 8);
-                    const auto y = static_cast<std::int32_t>(
-                                        y_fixed >> 8) + 0x28;
-                    const auto movement_index =
-                        y >= 0x110 && y < 0x11F ? 1U : 0U;
-                    const auto& movement =
-                        intro_aircraft_movement_frames_[movement_index];
-                    screen.blit_rgba(
-                        x - 0x90 + movement.origin_x,
-                        y - 0x90 + movement.origin_y,
-                        movement.width, movement.height,
-                        movement.pixels);
-                }
-            } else if (intro_frame_ < kIntroAircraftEnd &&
-                       !intro_heli_frames_[0].pixels.empty()) {
-                // Compatibility with pre-49 packs, whose six assets were
-                // complete sampled scenes.
-                const auto aircraft_elapsed = intro_frame_ - kIntroTrividEnd;
-                const auto heli_phase = std::min<std::size_t>(
-                    (aircraft_elapsed * intro_heli_frames_.size()) /
-                        (kIntroAircraftEnd - kIntroTrividEnd),
-                    intro_heli_frames_.size() - 1U);
-                const auto& heli = intro_heli_frames_[heli_phase];
-                screen.clear({0x00, 0x00, 0x00, 0xFF});
-                screen.blit_rgba(0, 0, heli.width, heli.height,
-                                 heli.pixels);
-            } else {
-                blit_faded_stage(
-                    intro_stages_[3],
-                    fade_weight(kIntroTrividEnd, kIntroDuration));
-            }
-        }
-        const auto line_end = std::min(
-            group.first_line + group.line_count, intro_.story_lines.size());
-        for (auto line = group.first_line; line < line_end; ++line) {
-            const auto& text = intro_.story_lines[line];
-            const auto text_width = static_cast<std::int32_t>(text.size() * 8U);
-            const auto x = std::max<std::int32_t>(
-                0, (static_cast<std::int32_t>(kScreenWidth) - text_width) / 2);
-            const auto y = group.top_y + static_cast<std::int32_t>(
-                line - group.first_line) * 16;
-            write_field_menu_text(screen, x, y, text);
+        if (intro_scene_ != nullptr) {
+            intro_scene_->render(screen);
+        } else {
+            screen.clear({0x00, 0x00, 0x00, 0xFF});
         }
         screen.present();
         return;
