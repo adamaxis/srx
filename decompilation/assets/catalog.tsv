@@ -33,10 +33,19 @@ boot/sega-strobe-5.bmp	sprite	104	80	96	32	ROM title/boot resource	extracted
 boot/sega-strobe-6.bmp	sprite	104	80	96	32	ROM title/boot resource	extracted
 boot/sega-strobe-7.bmp	sprite	104	80	96	32	ROM title/boot resource	extracted
 boot/fasa.bmp	sprite	96	80	127	40	ROM title/boot resource	extracted
+title/animation-0.bmp	background	0	0	320	224	native title source composition[0]	extracted
+title/animation-1.bmp	background	0	0	320	224	native title source composition[1]	extracted
+title/animation-2.bmp	background	0	0	320	224	native title source composition[2]	extracted
+title/animation-3.bmp	background	0	0	320	224	native title source composition[3]	extracted
+title/animation-4.bmp	background	0	0	320	224	native title source composition[4]	extracted
+title/animation-5.bmp	background	0	0	320	224	native title source composition[5]	extracted
 startup/background.bmp	background	0	0	320	224	0x10B5A/0xCDCE6	extracted
 startup/font.bmp	sprite	0	0	128	48	0xC1320	extracted
 startup/cursor.bmp	sprite	4	0	4	7	0xD29F6	extracted
 intro/aircraft-plane-a.bmp	sprite	0	0	216	64	0x5B528/0x5B7D8	extracted
+intro/trivid-background.bmp	background	0	0	320	224	0x5AA96	extracted
+intro/trivid-slain.bmp	sprite	51	148	52	43	0x5ABD2	extracted
+intro/trivid-moving.bmp	sprite	6	155	253	14	0x5AC36	extracted
 intro/helicopter-0.bmp	sprite	292	106	190	5	0x5B180[0]	extracted
 intro/helicopter-1.bmp	sprite	289	107	195	4	0x5B180[1]	extracted
 intro/helicopter-2.bmp	sprite	293	106	155	5	0x5B180[2]	extracted
@@ -108,14 +117,82 @@ field/hud/face-2.bmp	sprite	0	0	32	32	0x3404[2]	extracted
 field/hud/item-0.bmp	sprite	0	0	24	16	0x3404[0]	extracted
 field/hud/item-1.bmp	sprite	0	0	24	16	0x3404[1]	extracted
 field/hud/item-2.bmp	sprite	0	0	24	16	0x3404[2]	extracted
-field/hud/vertical-counter-0.bmp	sprite	0	0	8	32	0x35D4[0]	extracted-empty
-field/hud/vertical-counter-1.bmp	sprite	0	0	8	32	0x35D4[1]	extracted-empty
-field/hud/vertical-counter-2.bmp	sprite	0	0	8	32	0x35D4[2]	extracted-empty
-field/hud/horizontal-counter-0.bmp	sprite	0	0	32	8	0x35D4[0]	extracted-empty
-field/hud/horizontal-counter-1.bmp	sprite	0	0	32	8	0x35D4[1]	extracted-empty
-field/hud/horizontal-counter-2.bmp	sprite	0	0	32	8	0x35D4[2]	extracted-empty
+field/hud/unarmed-item-0.bmp	sprite	0	0	24	16	0x3404/0xD1860-0xD1878[0]	extracted
+field/hud/unarmed-item-1.bmp	sprite	0	0	24	16	0x3404/0xD1860-0xD1878[1]	extracted
+field/hud/unarmed-item-2.bmp	sprite	0	0	24	16	0x3404/0xD1860-0xD1878[2]	extracted
+field/hud/vertical-counter-0.bmp	sprite	0	0	8	32	0x35D4[0]	extracted
+field/hud/vertical-counter-1.bmp	sprite	0	0	8	32	0x35D4[1]	extracted
+field/hud/vertical-counter-2.bmp	sprite	0	0	8	32	0x35D4[2]	extracted
+field/hud/horizontal-counter-0.bmp	sprite	0	0	32	8	0x35D4[0]	extracted
+field/hud/horizontal-counter-1.bmp	sprite	0	0	32	8	0x35D4[1]	extracted
+field/hud/horizontal-counter-2.bmp	sprite	0	0	32	8	0x35D4[2]	extracted
+field/hud/ammo-counter-0.bmp	sprite	0	0	16	8	0x36FC[0]	extracted
+field/hud/ammo-counter-1.bmp	sprite	0	0	16	8	0x36FC[1]	extracted
+field/hud/ammo-counter-2.bmp	sprite	0	0	16	8	0x36FC[2]	extracted
+field/hud/ammo-counter-3.bmp	sprite	0	0	16	8	0x36FC[3]	extracted
+field/hud/ammo-counter-4.bmp	sprite	0	0	16	8	0x36FC[4]	extracted
+field/hud/ammo-counter-5.bmp	sprite	0	0	16	8	0x36FC[5]	extracted
+field/hud/ammo-counter-6.bmp	sprite	0	0	16	8	0x36FC[6]	extracted
+field/hud/ammo-counter-7.bmp	sprite	0	0	16	8	0x36FC[7]	extracted
+field/hud/ammo-counter-8.bmp	sprite	0	0	16	8	0x36FC[8]	extracted
+field/hud/ammo-counter-9.bmp	sprite	0	0	16	8	0x36FC[9]	extracted
+field/hud/ammo-counter-10.bmp	sprite	0	0	16	8	0x36FC[10]	extracted
+field/hud/ammo-counter-11.bmp	sprite	0	0	16	8	0x36FC[11]	extracted
+field/hud/ammo-counter-12.bmp	sprite	0	0	16	8	0x36FC[12]	extracted
+field/hud/ammo-counter-13.bmp	sprite	0	0	16	8	0x36FC[13]	extracted
+field/hud/ammo-counter-14.bmp	sprite	0	0	16	8	0x36FC[14]	extracted
+field/hud/ammo-counter-15.bmp	sprite	0	0	16	8	0x36FC[15]	extracted
+field/hud/ammo-counter-16.bmp	sprite	0	0	16	8	0x36FC[16]	extracted
+field/hud/ammo-counter-17.bmp	sprite	0	0	16	8	0x36FC[17]	extracted
+field/hud/ammo-counter-18.bmp	sprite	0	0	16	8	0x36FC[18]	extracted
+field/hud/ammo-counter-19.bmp	sprite	0	0	16	8	0x36FC[19]	extracted
+field/hud/ammo-counter-20.bmp	sprite	0	0	16	8	0x36FC[20]	extracted
+field/hud/ammo-counter-21.bmp	sprite	0	0	16	8	0x36FC[21]	extracted
+field/hud/ammo-counter-22.bmp	sprite	0	0	16	8	0x36FC[22]	extracted
+field/hud/ammo-counter-23.bmp	sprite	0	0	16	8	0x36FC[23]	extracted
+field/hud/ammo-counter-24.bmp	sprite	0	0	16	8	0x36FC[24]	extracted
+field/hud/ammo-counter-25.bmp	sprite	0	0	16	8	0x36FC[25]	extracted
+field/hud/ammo-counter-26.bmp	sprite	0	0	16	8	0x36FC[26]	extracted
+field/hud/ammo-counter-27.bmp	sprite	0	0	16	8	0x36FC[27]	extracted
+field/hud/ammo-counter-28.bmp	sprite	0	0	16	8	0x36FC[28]	extracted
+field/hud/ammo-counter-29.bmp	sprite	0	0	16	8	0x36FC[29]	extracted
+field/hud/ammo-counter-30.bmp	sprite	0	0	16	8	0x36FC[30]	extracted
+field/hud/ammo-counter-31.bmp	sprite	0	0	16	8	0x36FC[31]	extracted
+field/hud/ammo-counter-32.bmp	sprite	0	0	16	8	0x36FC[32]	extracted
+field/hud/ammo-counter-33.bmp	sprite	0	0	16	8	0x36FC[33]	extracted
+field/hud/ammo-counter-34.bmp	sprite	0	0	16	8	0x36FC[34]	extracted
+field/hud/ammo-counter-35.bmp	sprite	0	0	16	8	0x36FC[35]	extracted
+field/hud/ammo-counter-36.bmp	sprite	0	0	16	8	0x36FC[36]	extracted
+field/hud/ammo-counter-37.bmp	sprite	0	0	16	8	0x36FC[37]	extracted
+field/hud/ammo-counter-38.bmp	sprite	0	0	16	8	0x36FC[38]	extracted
+field/hud/ammo-counter-39.bmp	sprite	0	0	16	8	0x36FC[39]	extracted
+field/hud/ammo-counter-40.bmp	sprite	0	0	16	8	0x36FC[40]	extracted
+field/hud/ammo-counter-41.bmp	sprite	0	0	16	8	0x36FC[41]	extracted
+field/hud/ammo-counter-42.bmp	sprite	0	0	16	8	0x36FC[42]	extracted
+field/hud/ammo-counter-43.bmp	sprite	0	0	16	8	0x36FC[43]	extracted
+field/hud/ammo-counter-44.bmp	sprite	0	0	16	8	0x36FC[44]	extracted
+field/hud/ammo-counter-45.bmp	sprite	0	0	16	8	0x36FC[45]	extracted
+field/hud/ammo-counter-46.bmp	sprite	0	0	16	8	0x36FC[46]	extracted
+field/hud/ammo-counter-47.bmp	sprite	0	0	16	8	0x36FC[47]	extracted
+field/hud/ammo-counter-48.bmp	sprite	0	0	16	8	0x36FC[48]	extracted
+field/hud/ammo-counter-49.bmp	sprite	0	0	16	8	0x36FC[49]	extracted
+field/hud/ammo-counter-50.bmp	sprite	0	0	16	8	0x36FC[50]	extracted
+field/hud/ammo-counter-51.bmp	sprite	0	0	16	8	0x36FC[51]	extracted
+field/hud/ammo-counter-52.bmp	sprite	0	0	16	8	0x36FC[52]	extracted
+field/hud/ammo-counter-53.bmp	sprite	0	0	16	8	0x36FC[53]	extracted
+field/hud/ammo-counter-54.bmp	sprite	0	0	16	8	0x36FC[54]	extracted
+field/hud/ammo-counter-55.bmp	sprite	0	0	8	8	0x36FC[55]	extracted
+field/hud/ammo-counter-56.bmp	sprite	0	0	8	8	0x36FC[56]	extracted
+field/hud/ammo-counter-57.bmp	sprite	0	0	8	8	0x36FC[57]	extracted
+field/hud/ammo-counter-58.bmp	sprite	0	0	8	8	0x36FC[58]	extracted
+field/hud/ammo-counter-59.bmp	sprite	0	0	8	8	0x36FC[59]	extracted
+field/hud/ammo-counter-60.bmp	sprite	0	0	8	8	0x36FC[60]	extracted
+field/hud/ammo-counter-61.bmp	sprite	0	0	16	8	0x36FC[61]	extracted-empty
+field/hud/ammo-counter-62.bmp	sprite	0	0	8	8	0x36FC[62]	extracted
+field/hud/ammo-counter-63.bmp	sprite	0	0	16	8	0x36FC[63]	extracted-empty
 field/menu/pocket-secretary-background.bmp	background	0	0	320	224	0x10A7E	extracted
 field/menu/background.bmp	background	0	0	320	224	0x10F50	extracted
+field/menu/action-background.bmp	background	0	0	120	16	0x117A0	extracted
 field/menu/attributes-background.bmp	background	0	0	320	224	0x10C96	extracted
 field/menu/inventory-boxes.bmp	background	0	0	320	224	0x10F50/0x1232	extracted
 field/menu/font.bmp	sprite	0	0	128	48	0xC1064	extracted
@@ -129,6 +206,10 @@ field/menu/command-focus-1.bmp	sprite	0	0	16	16	0x11454[1]	extracted
 field/menu/command-focus-2.bmp	sprite	0	0	16	16	0x11454[2]	extracted
 field/menu/command-focus-3.bmp	sprite	0	0	16	16	0x11454[3]	extracted
 field/menu/command-focus-4.bmp	sprite	0	0	16	16	0x11454[4]	extracted
+field/menu/action-focus-0.bmp	sprite	0	0	16	16	0x117A4[0]	extracted
+field/menu/action-focus-1.bmp	sprite	0	0	16	16	0x117A4[1]	extracted
+field/menu/action-focus-2.bmp	sprite	0	0	16	16	0x117A4[2]	extracted
+field/menu/action-focus-3.bmp	sprite	0	0	16	16	0x117A4[3]	extracted
 field/menu/clips-focus-0.bmp	sprite	0	0	16	16	0x11B58[0]	extracted
 field/menu/clips-focus-1.bmp	sprite	0	0	16	16	0x11B58[1]	extracted
 field/menu/clips-focus-2.bmp	sprite	0	0	16	16	0x11B58[2]	extracted
