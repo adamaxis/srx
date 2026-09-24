@@ -1015,6 +1015,9 @@ The `0x13874` candidate dispatcher now clears its typed service marker and
 selects primary/secondary collection from the source mode and low six action
 bits; alternate mode preserves the two-dispatch path.
 
+The `0x13AE6` threshold leaf now preserves its action-search then action-state
+publication order as two explicit callbacks.
+
 The compact row-writer family is now typed as well. `0x1184` emits one masked
 row with optional `0x8F80`/`0x8F02` display-increment controls, `0x11C0`
 repeats a source row at `0x80`-byte destination strides, and `0x11F6`

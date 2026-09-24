@@ -35,4 +35,10 @@ void dispatch_entity_action_candidates(
     const std::function<void()>& dispatch_primary,
     const std::function<void()>& dispatch_secondary);
 
+// ROM 0x13AE6: find the first action below the source threshold, then publish
+// the resulting entity action state.
+void advance_entity_action_threshold(
+    const std::function<void()>& find_action,
+    const std::function<void()>& set_action_state);
+
 } // namespace shadowrun::ghidra_conversion

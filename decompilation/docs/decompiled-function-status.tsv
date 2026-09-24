@@ -367,3 +367,4 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x12FA4	entity action menu advance	ghidra_conversion::advance_entity_action_menu	shadowrun_ghidra_entity_action_sequence	partial		Typed text/service order and greater-than-one action grid branch
 0x13466	entity action state setter	ghidra_conversion::set_entity_action_state	shadowrun_ghidra_entity_action_state	partial		Typed action/state publication, reset-marker handling, and asset refresh
 0x13874	entity action candidate dispatcher	ghidra_conversion::dispatch_entity_action_candidates	shadowrun_ghidra_entity_action_state	partial		Typed mode/low-six-bit dispatch with service marker reset
+0x13AE6	entity action threshold advance	ghidra_conversion::advance_entity_action_threshold	shadowrun_ghidra_entity_action_state	partial		Typed threshold search followed by action-state publication

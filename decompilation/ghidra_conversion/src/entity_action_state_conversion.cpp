@@ -54,4 +54,15 @@ void dispatch_entity_action_candidates(
     }
 }
 
+void advance_entity_action_threshold(
+    const std::function<void()>& find_action,
+    const std::function<void()>& set_action_state) {
+    if (find_action) {
+        find_action();
+    }
+    if (set_action_state) {
+        set_action_state();
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion

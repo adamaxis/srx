@@ -41,5 +41,11 @@ int main() {
     if (order != std::vector<int>{1, 2, 3, 4, 5, 7, 8}) {
         return 4;
     }
+
+    advance_entity_action_threshold([&order] { order.push_back(9); },
+                                    [&order] { order.push_back(10); });
+    if (order != std::vector<int>{1, 2, 3, 4, 5, 7, 8, 9, 10}) {
+        return 5;
+    }
     return 0;
 }
