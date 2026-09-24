@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000013BE
-// Name: FUN_000013be
+// Name: build_title_sprite_records_with_attribute_offset
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_000013be(void)
+void build_title_sprite_records_with_attribute_offset(void)
 
 {
   short in_D1w;

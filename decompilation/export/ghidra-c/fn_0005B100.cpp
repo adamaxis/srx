@@ -3,7 +3,7 @@
 // Name: advance_title_intro_pulse
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 
 
 void advance_title_intro_pulse(void)
@@ -18,7 +18,7 @@ void advance_title_intro_pulse(void)
         DAT_00fff190 = 0;
       }
     }
-    FUN_00001378();
+    build_title_sprite_records();
   }
   return;
 }

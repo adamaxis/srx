@@ -3,7 +3,7 @@
 // Name: advance_title_intro_persistent_sequence
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 //   0x000530DE service_audio_if_enabled
 //   0x0005A582 begin_title_intro_timed_sprites
 //   0x0005B2C2 set_title_intro_entity_color_words
@@ -44,7 +44,7 @@ void advance_title_intro_persistent_sequence(void)
         }
       }
     }
-    FUN_00001378();
+    build_title_sprite_records();
   }
   return;
 }

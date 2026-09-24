@@ -3,7 +3,7 @@
 // Name: FUN_0001c866
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 //   0x00019E32 FUN_00019e32
 
 
@@ -31,7 +31,7 @@ void FUN_0001c866(void)
       return;
     }
   }
-  FUN_00001378();
+  build_title_sprite_records();
   return;
 }
 

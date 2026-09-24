@@ -3,7 +3,7 @@
 // Name: advance_title_intro_landing
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 
 
 void advance_title_intro_landing(void)
@@ -21,7 +21,7 @@ void advance_title_intro_landing(void)
     }
     DAT_00fff198 = DAT_00fff19c + DAT_00fff198;
     DAT_00fff19a = DAT_00fff19e + DAT_00fff19a;
-    FUN_00001378();
+    build_title_sprite_records();
   }
   return;
 }

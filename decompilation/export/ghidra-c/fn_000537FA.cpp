@@ -3,7 +3,7 @@
 // Name: FUN_000537fa
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 //   0x00053248 FUN_00053248
 
 
@@ -19,7 +19,7 @@ void FUN_000537fa(void)
   while (*(char *)((int)in_A1 + (short)(DAT_00fff118 * 0x14) + 7) < '\0') {
     in_A1 = &DAT_00ff1100;
   }
-  FUN_00001378();
+  build_title_sprite_records();
   *(undefined1 *)(unaff_A3 + -5) = 0;
   _DAT_00ffd980 = 1;
   DAT_00ffef14 = DAT_00ffef14 | 2;

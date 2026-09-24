@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00001378
-// Name: FUN_00001378
+// Name: build_title_sprite_records
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00001378(void)
+void build_title_sprite_records(void)
 
 {
   short in_D1w;

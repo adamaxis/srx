@@ -3,7 +3,7 @@
 // Name: FUN_0001ca12
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 //   0x00019E32 FUN_00019e32
 
 
@@ -22,7 +22,7 @@ void FUN_0001ca12(void)
   DAT_00ffe072 = DAT_00ffe072 + 1;
   DAT_00ffe06a = DAT_00ffe06c + DAT_00ffe06a;
   DAT_00ffe068 = DAT_00ffe068 + -0x1a;
-  FUN_00001378();
+  build_title_sprite_records();
   return;
 }
 

@@ -3,7 +3,7 @@
 // Name: FUN_00004e86
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000013BE FUN_000013be
+//   0x000013BE build_title_sprite_records_with_attribute_offset
 //   0x000061A0 append_entity_sprite_record
 //   0x0001A304 clear_effect_slot
 
@@ -27,7 +27,7 @@ void FUN_00004e86(void)
     }
   }
   append_entity_sprite_record();
-  FUN_000013be();
+  build_title_sprite_records_with_attribute_offset();
   return;
 }
 

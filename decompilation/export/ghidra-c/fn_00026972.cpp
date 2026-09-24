@@ -3,7 +3,7 @@
 // Name: FUN_00026972
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -21,7 +21,7 @@ void FUN_00026972(void)
         return;
       }
     }
-    FUN_00001378();
+    build_title_sprite_records();
   }
   return;
 }

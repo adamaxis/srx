@@ -3,7 +3,7 @@
 // Name: FUN_0000aeba
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -25,7 +25,7 @@ void FUN_0000aeba(void)
     sVar3 = 0x1f;
     sVar5 = 0;
     do {
-      FUN_00001378(uVar1,uVar2,sVar5,uVar4);
+      build_title_sprite_records(uVar1,uVar2,sVar5,uVar4);
       sVar5 = sVar5 + 8;
       sVar3 = sVar3 + -1;
     } while (sVar3 != -1);

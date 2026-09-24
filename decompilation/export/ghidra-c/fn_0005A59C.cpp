@@ -3,7 +3,7 @@
 // Name: advance_title_intro_timed_sprites
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 
 
 void advance_title_intro_timed_sprites(void)
@@ -17,7 +17,7 @@ void advance_title_intro_timed_sprites(void)
     DAT_00fff150 = DAT_00ffdf88 + 8;
     DAT_00fff14e = DAT_00fff14e + 1;
   }
-  FUN_00001378();
+  build_title_sprite_records();
   return;
 }
 

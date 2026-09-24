@@ -11,7 +11,7 @@
 //   0x0000195C sample_controller_input
 //   0x0000C134 normalize_source_text_line
 //   0x0000C168 FUN_0000c168
-//   0x0001F5A8 FUN_0001f5a8
+//   0x0001F5A8 prepare_mode_text_prompt
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -28,7 +28,7 @@ int * run_mode_text_prompt(void)
   
   do {
     if (DAT_00fff10c == '\0') {
-      FUN_0001f5a8();
+      prepare_mode_text_prompt();
       normalize_source_text_line();
       DAT_00ffb740 = 0xff;
       FUN_0000c168();

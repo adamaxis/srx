@@ -663,6 +663,11 @@ The title setup module now also owns `0x12F6`: its DBF `0x10` loop is exposed
 as `advance_title_palette_fade`, with the source ordering of frame wait,
 palette-step, and dirty-mark callbacks tested across all 17 passes.
 
+The adjacent `0x1378`/`0x13BE` sprite-list leaves are now represented by
+`sprite_record_builder_conversion`. They consume typed four-word records to
+the source `0x8000` sentinel, apply position and attribute offsets, and assign
+the sequential runtime sprite index without emitting the sentinel record.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames

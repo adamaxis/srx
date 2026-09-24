@@ -48,8 +48,8 @@ entry	name	size	callingConvention	decompileStatus	file
 00001342	wait_for_palette_frame	22	unknown	ok	ghidra-c/fn_00001342.cpp
 00001358	copy_source_word_block	16	unknown	ok	ghidra-c/fn_00001358.cpp
 00001368	copy_target_palette	16	unknown	ok	ghidra-c/fn_00001368.cpp
-00001378	FUN_00001378	70	unknown	ok	ghidra-c/fn_00001378.cpp
-000013BE	FUN_000013be	72	unknown	ok	ghidra-c/fn_000013BE.cpp
+00001378	build_title_sprite_records	70	unknown	ok	ghidra-c/fn_00001378.cpp
+000013BE	build_title_sprite_records_with_attribute_offset	72	unknown	ok	ghidra-c/fn_000013BE.cpp
 00001406	prepare_title_resources	200	unknown	ok	ghidra-c/fn_00001406.cpp
 000014CE	extract_even_bytes	26	unknown	ok	ghidra-c/fn_000014CE.cpp
 00001502	copy_even_bytes	46	unknown	ok	ghidra-c/fn_00001502.cpp
@@ -658,7 +658,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0001F34A	prepare_mode_resource_variant_b	64	unknown	ok	ghidra-c/fn_0001F34A.cpp
 0001F38A	prepare_mode_resource_variant_a	58	unknown	ok	ghidra-c/fn_0001F38A.cpp
 0001F3C4	run_mode_text_prompt	484	unknown	ok	ghidra-c/fn_0001F3C4.cpp
-0001F5A8	FUN_0001f5a8	34	unknown	ok	ghidra-c/fn_0001F5A8.cpp
+0001F5A8	prepare_mode_text_prompt	34	unknown	ok	ghidra-c/fn_0001F5A8.cpp
 0001F5CA	FUN_0001f5ca	144	unknown	ok	ghidra-c/fn_0001F5CA.cpp
 0001F65A	FUN_0001f65a	470	unknown	ok	ghidra-c/fn_0001F65A.cpp
 0001F830	FUN_0001f830	584	unknown	ok	ghidra-c/fn_0001F830.cpp

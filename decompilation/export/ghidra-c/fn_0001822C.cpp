@@ -11,7 +11,7 @@
 //   0x00000F3C write_fixed_transfer_pair
 //   0x00000FFE clear_and_fill_plane_a
 //   0x0000102A clear_and_fill_plane_b
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 //   0x00001530 decode_and_upload_source_stream
 //   0x00001728 render_hud_sprite_stream
 //   0x0000195C sample_controller_input
@@ -67,7 +67,7 @@ void FUN_0001822c(void)
   render_hud_sprite_stream();
   render_field_hud();
   DAT_00ffdd02 = 1;
-  FUN_00001378();
+  build_title_sprite_records();
   _DAT_00ffd980 = 1;
   DAT_00ffef14 = DAT_00ffef14 | 2;
   _DAT_00fff0d0 = 0;

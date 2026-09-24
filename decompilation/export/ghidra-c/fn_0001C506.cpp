@@ -3,7 +3,7 @@
 // Name: FUN_0001c506
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 //   0x0001A570 FUN_0001a570
 
 
@@ -19,7 +19,7 @@ void FUN_0001c506(void)
   undefined4 unaff_A4;
   int unaff_A6;
   
-  FUN_00001378();
+  build_title_sprite_records();
   if ((*(byte *)(extraout_A1 + 0x12) & 2) != 0) {
     uVar1 = (short)DAT_00ffe169 - 1;
     if (3 < (short)uVar1) {
@@ -27,13 +27,13 @@ void FUN_0001c506(void)
     }
     unaff_A6 = *(int *)((int)&PTR_DAT_0001c5ec + (int)(short)((uVar1 & 3) << 2));
     if (*(short *)(unaff_A6 + (short)((DAT_00ffdf88 & 3) << 1)) != 0) {
-      FUN_00001378(unaff_A2);
+      build_title_sprite_records(unaff_A2);
     }
   }
-  FUN_00001378();
+  build_title_sprite_records();
   if (((*(byte *)(extraout_A1_00 + 0x12) & 2) != 0) &&
      (*(short *)(unaff_A6 + (short)((DAT_00ffdf88 & 3) << 1)) != 0)) {
-    FUN_00001378(unaff_A4);
+    build_title_sprite_records(unaff_A4);
   }
   if ((_DAT_00ffe084 != 0) && (7 < (DAT_00ffdf88 & 0xf))) {
     FUN_0001a570();

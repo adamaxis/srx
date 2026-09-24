@@ -3,7 +3,7 @@
 // Name: advance_title_intro_dual_sprites
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 
 
 void advance_title_intro_dual_sprites(void)
@@ -25,8 +25,8 @@ void advance_title_intro_dual_sprites(void)
         DAT_00fff146 = 0;
       }
     }
-    FUN_00001378();
-    FUN_00001378();
+    build_title_sprite_records();
+    build_title_sprite_records();
   }
   return;
 }

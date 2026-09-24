@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D44 advance_source_prng
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 //   0x0001A09C FUN_0001a09c
 //   0x0001B680 FUN_0001b680
 
@@ -36,13 +36,13 @@ void FUN_0001bb6a(void)
       return;
     }
     if (3 < (DAT_00ffe0ca & 7)) {
-      FUN_00001378();
-      FUN_00001378();
+      build_title_sprite_records();
+      build_title_sprite_records();
     }
   }
   sVar1 = 6;
   do {
-    FUN_00001378();
+    build_title_sprite_records();
     sVar1 = sVar1 + -1;
   } while (sVar1 != -1);
   return;

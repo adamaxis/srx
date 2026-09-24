@@ -3,7 +3,7 @@
 // Name: FUN_00011592
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 //   0x0000C0DA render_title_text_source
 //   0x00011ABE FUN_00011abe
 //   0x00012148 FUN_00012148
@@ -21,7 +21,7 @@ void FUN_00011592(void)
   undefined1 uVar2;
   
   DAT_00ffdd02 = 1;
-  FUN_00001378();
+  build_title_sprite_records();
   _DAT_00ffd980 = 1;
   uVar2 = (DAT_00ffef14 & 2) == 0;
   DAT_00ffef14 = DAT_00ffef14 | 2;

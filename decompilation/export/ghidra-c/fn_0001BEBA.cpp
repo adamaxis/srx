@@ -3,7 +3,7 @@
 // Name: FUN_0001beba
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 //   0x00019D66 FUN_00019d66
 //   0x0001A908 FUN_0001a908
 //   0x0001B612 FUN_0001b612
@@ -39,8 +39,9 @@ void FUN_0001beba(void)
     FUN_0001a908();
     return;
   }
-  FUN_00001378(*(undefined4 *)(&DAT_0001c136 + (short)(((ushort)-DAT_00ffe00c >> 1 & 3) << 2)));
-  FUN_00001378();
+  build_title_sprite_records
+            (*(undefined4 *)(&DAT_0001c136 + (short)(((ushort)-DAT_00ffe00c >> 1 & 3) << 2)));
+  build_title_sprite_records();
   return;
 }
 

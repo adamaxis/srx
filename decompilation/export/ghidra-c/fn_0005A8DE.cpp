@@ -3,7 +3,7 @@
 // Name: advance_title_intro_final_projection
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 
 
 void advance_title_intro_final_projection(void)
@@ -22,7 +22,7 @@ void advance_title_intro_final_projection(void)
     DAT_00fff180 = DAT_00fff180 + 1;
   }
   DAT_00fff184 = DAT_00fff184 + 4;
-  FUN_00001378();
+  build_title_sprite_records();
   return;
 }
 

@@ -3,7 +3,7 @@
 // Name: FUN_00005936
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 
 
 void FUN_00005936(void)
@@ -22,7 +22,7 @@ void FUN_00005936(void)
         *(undefined1 *)(in_A0 + 7) = 0;
       }
     }
-    FUN_00001378();
+    build_title_sprite_records();
     return;
   }
   bVar1 = *(byte *)(in_A0 + 6) - 1;
@@ -34,9 +34,10 @@ void FUN_00005936(void)
       *(undefined1 *)(in_A0 + 7) = 0;
     }
   }
-  FUN_00001378(*(short *)(in_A0 + 10) + -0x2e,*(short *)(in_A0 + 0xc) + -0x20,
-               *(undefined4 *)(&DAT_00005a46 + (short)(((short)*(char *)(in_A0 + 7) & 3U) << 2)));
-  FUN_00001378();
+  build_title_sprite_records
+            (*(short *)(in_A0 + 10) + -0x2e,*(short *)(in_A0 + 0xc) + -0x20,
+             *(undefined4 *)(&DAT_00005a46 + (short)(((short)*(char *)(in_A0 + 7) & 3U) << 2)));
+  build_title_sprite_records();
   return;
 }
 

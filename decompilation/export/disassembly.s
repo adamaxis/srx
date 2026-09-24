@@ -1450,7 +1450,7 @@
 00001CC0: move.w (0x00ffdd42).l,D1w
 00001CC6: move.w #0x110,D2w
 00001CCA: move.w #0x6000,D6w
-00001CCE: jsr 0x00001378.l ; call 00001378 FUN_00001378
+00001CCE: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 00001CD4: subq.w #0x8,A3
 00001CD6: clr.b (0x3,A3)
 00001CDA: move.w #0x1,(0x00ffd980).l
@@ -3256,7 +3256,7 @@
 00004896: move.w (0xa,A0),D1w
 0000489A: move.w (0xc,A0),D2w
 0000489E: move.w #0x4000,D6w
-000048A2: jsr 0x00001378.l ; call 00001378 FUN_00001378
+000048A2: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 000048A8: adda.w #0x12,A0
 000048AC: dbf D7w,0x00004828
 000048B0: rts
@@ -3366,7 +3366,7 @@
 00004B48: clr.w D0w
 00004B4A: cmp.w D0w,D7w
 00004B4C: bne.w 0x00004b56
-00004B50: jsr 0x000013be.l ; call 000013BE FUN_000013be
+00004B50: jsr 0x000013be.l ; call 000013BE build_title_sprite_records_with_attribute_offset
 00004B56: movem.l (SP)+,{  D1 D2 D4 D6 D7 A2}
 00004B5A: dbf D7w,0x00004b24
 00004B5E: lea (0x5802).l,A2 ; data 00005802
@@ -3514,7 +3514,7 @@
 00004F12: add.w (A1),D2w ; data 00004f24
 00004F14: move.w #0x2000,D6w
 00004F18: move.w (0x2a,A0),D4w
-00004F1C: jmp 0x000013be.l ; call 000013BE FUN_000013be
+00004F1C: jmp 0x000013be.l ; call 000013BE build_title_sprite_records_with_attribute_offset
 000053A0: bmi.w 0x000053b4
 000053A4: lsl.w #0x2,D0w
 000053A6: add.w D0w,D2w
@@ -3523,7 +3523,7 @@
 000053B2: add.w D0w,D1w
 000053B4: move.w #0x6000,D6w
 000053B8: move.w (0x2a,A0),D4w
-000053BC: jsr 0x000013be.l ; call 000013BE FUN_000013be
+000053BC: jsr 0x000013be.l ; call 000013BE build_title_sprite_records_with_attribute_offset
 000053C2: rts
 000053C4: tst.w (0x00ffdff6).l
 000053CA: bmi.w 0x000053e0
@@ -3629,7 +3629,7 @@
 0000556C: add.w D0w,D1w
 0000556E: move.w #0x6000,D6w
 00005572: move.w (0x2a,A0),D4w
-00005576: jsr 0x000013be.l ; call 000013BE FUN_000013be
+00005576: jsr 0x000013be.l ; call 000013BE build_title_sprite_records_with_attribute_offset
 0000557C: rts
 0000557E: tst.w (0x00ffdff2).l
 00005584: bmi.w 0x0000559a
@@ -3717,7 +3717,7 @@
 000056CC: add.w D0w,D1w
 000056CE: move.w #0x6000,D6w
 000056D2: move.w (0x2a,A0),D4w
-000056D6: jsr 0x000013be.l ; call 000013BE FUN_000013be
+000056D6: jsr 0x000013be.l ; call 000013BE build_title_sprite_records_with_attribute_offset
 000056DC: rts
 00005750: ori.b #-0x42,D0b
 00005754: rts
@@ -3739,7 +3739,7 @@
 00005978: andi.w #0x3,D0w
 0000597C: lsl.w #0x2,D0w
 0000597E: movea.l (0x0,A2,D0w*0x1),A2 ; data 00005a46
-00005982: jmp 0x00001378.l ; call 00001378 FUN_00001378
+00005982: jmp 0x00001378.l ; call 00001378 build_title_sprite_records
 00005988: move.w (0xa,A0),D1w
 0000598C: move.w (0xc,A0),D2w
 00005990: move.w #0x4000,D6w
@@ -3759,10 +3759,10 @@
 000059CA: subi.w #0x20,D2w
 000059CE: subi.w #0x2e,D1w
 000059D2: movem.l {  A2 D2 D1},-(SP)
-000059D6: jsr 0x00001378.l ; call 00001378 FUN_00001378
+000059D6: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 000059DC: movem.l (SP)+,{  D1 D2 A2}
 000059E0: addi.w #0x57,D1w
-000059E4: jmp 0x00001378.l ; call 00001378 FUN_00001378
+000059E4: jmp 0x00001378.l ; call 00001378 build_title_sprite_records
 000059EA: move.w (0xa,A0),D1w
 000059EE: move.w (0xc,A0),D2w
 000059F2: move.w #0x2000,D6w
@@ -3780,7 +3780,7 @@
 00005A26: lsl.w #0x2,D0w
 00005A28: movea.l (0x0,A2,D0w*0x1),A2 ; data 00005a36
 00005A2C: addi.w #0xc,D2w
-00005A30: jmp 0x00001378.l ; call 00001378 FUN_00001378
+00005A30: jmp 0x00001378.l ; call 00001378 build_title_sprite_records
 00005A56: cmpi.l #0x15390,(0x3a,A0)
 00005A5E: beq.w 0x00005ac6
 00005A62: move.w (A0),D0w
@@ -3892,7 +3892,7 @@
 00005BDC: move.w (A1)+,D2w
 00005BDE: mulu.w D4w,D2
 00005BE0: add.w D0w,D2w
-00005BE2: jsr 0x00001378.l ; call 00001378 FUN_00001378
+00005BE2: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 00005BE8: dbf D3w,0x00005bcc
 00005BEC: rts
 00005C7E: move.b (0x4c,A0),D0b
@@ -3939,28 +3939,28 @@
 00005D30: sub.w D0w,D1w
 00005D32: sub.w D0w,D2w
 00005D34: movea.l (A5)+,A2
-00005D36: jsr 0x00001378.l ; call 00001378 FUN_00001378
+00005D36: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 00005D3C: movem.w (SP)+,{ D0 D1 D2}
 00005D40: movem.w {  D2w D1w D0w},-(SP)
 00005D44: add.w D0w,D1w
 00005D46: sub.w D0w,D2w
 00005D48: movea.l (A5)+,A2
-00005D4A: jsr 0x00001378.l ; call 00001378 FUN_00001378
+00005D4A: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 00005D50: movem.w (SP)+,{ D0 D1 D2}
 00005D54: movem.w {  D2w D1w D0w},-(SP)
 00005D58: sub.w D0w,D1w
 00005D5A: add.w D0w,D2w
 00005D5C: movea.l (A5)+,A2
-00005D5E: jsr 0x00001378.l ; call 00001378 FUN_00001378
+00005D5E: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 00005D64: movem.w (SP)+,{ D0 D1 D2}
 00005D68: add.w D0w,D1w
 00005D6A: add.w D0w,D2w
 00005D6C: movea.l (A5)+,A2
-00005D6E: jsr 0x00001378.l ; call 00001378 FUN_00001378
+00005D6E: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 00005D74: rts
 00005D76: adda.w #0x10,A5
 00005D7A: movea.l (A5),A2
-00005D7C: jmp 0x00001378.l ; call 00001378 FUN_00001378
+00005D7C: jmp 0x00001378.l ; call 00001378 build_title_sprite_records
 00005FDC: move.w (0x1e,A0),(0x00ffdd3e).l
 00005FE4: move.w (0x1a,A0),D0w
 00005FE8: move.w D0w,(0x00ffdd3c).l
@@ -4547,7 +4547,7 @@
 0000AF22: muls.w (0x00ffdfec).l,D0
 0000AF28: swap D0
 0000AF2A: add.w D0w,D2w
-0000AF2C: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0000AF2C: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0000AF32: movem.l (SP)+,{  D1 D2 D4 A2}
 0000AF36: addq.w #0x8,D4w
 0000AF38: dbf D7w,0x0000af08
@@ -7623,7 +7623,7 @@
 0000FE4E: clr.l D1
 0000FE50: clr.l D2
 0000FE52: move.w #0x4000,D6w
-0000FE56: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0000FE56: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0000FE5C: clr.b (0x3,A3)
 0000FE60: lea (0xffd986).l,A4 ; data 00ffd986
 0000FE66: clr.l D0
@@ -8970,7 +8970,7 @@
 000115B6: lea (0xffd986).l,A3 ; data 00ffd986
 000115BC: lea (0xd29f6).l,A2 ; data 000d29f6
 000115C2: move.w #0x2000,D6w
-000115C6: jsr 0x00001378.l ; call 00001378 FUN_00001378
+000115C6: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 000115CC: subq.w #0x8,A3
 000115CE: clr.b (0x3,A3)
 000115D2: move.w #0x1,(0x00ffd980).l
@@ -14712,7 +14712,7 @@
 000182BE: clr.l D2
 000182C0: lea (0xe31e8).l,A2 ; data 000e31e8
 000182C6: move.w #0x2000,D6w
-000182CA: jsr 0x00001378.l ; call 00001378 FUN_00001378
+000182CA: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 000182D0: subq.w #0x8,A3
 000182D2: clr.b (0x3,A3)
 000182D6: move.w #0x1,(0x00ffd980).l
@@ -16387,7 +16387,7 @@
 0001A4DA: move.w #0x2000,D6w
 0001A4DE: addq.w #0x8,A2
 0001A4E0: move.w #0x7da,D4w
-0001A4E4: jmp 0x000013be.l ; call 000013BE FUN_000013be
+0001A4E4: jmp 0x000013be.l ; call 000013BE build_title_sprite_records_with_attribute_offset
 0001A4EA: lea (0xff1100).l,A1 ; data 00ff1100
 0001A4F0: move.w (0x00fff118).l,D1w
 0001A4F6: mulu.w #0x14,D1
@@ -16411,12 +16411,12 @@
 0001A576: move.w #0x12a,D1w
 0001A57A: move.w #0x100,D2w
 0001A57E: move.w #0x2000,D6w
-0001A582: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0001A582: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0001A588: lea (0xf1b28).l,A2 ; data 000f1b28
 0001A58E: move.w #0x115,D1w
 0001A592: move.w #0x100,D2w
 0001A596: move.w #0x2000,D6w
-0001A59A: jmp 0x00001378.l ; call 00001378 FUN_00001378
+0001A59A: jmp 0x00001378.l ; call 00001378 build_title_sprite_records
 0001A5A0: cmpi.w #0x2,(0x00ffe076).l
 0001A5A8: beq.w 0x0001a64c
 0001A5AC: cmpi.w #0x3,(0x00ffe076).l
@@ -16449,7 +16449,7 @@
 0001A63A: move.w #0x2000,D6w
 0001A63E: adda.w #0x8,A2
 0001A642: move.w #0x6e0,D4w
-0001A646: jmp 0x000013be.l ; call 000013BE FUN_000013be
+0001A646: jmp 0x000013be.l ; call 000013BE build_title_sprite_records_with_attribute_offset
 0001A64C: subq.w #0x1,(0x00ffe07c).l
 0001A652: bpl.w 0x0001a72a
 0001A656: movem.l {  A6 A5 A4 A3 A2 A1 A0 D7 D6 D5 D4 D3 D2},-(SP)
@@ -16545,7 +16545,7 @@
 0001A808: move.w #-0x6000,D6w
 0001A80C: addq.w #0x8,A2
 0001A80E: move.w #0x6e0,D4w
-0001A812: jmp 0x000013be.l ; call 000013BE FUN_000013be
+0001A812: jmp 0x000013be.l ; call 000013BE build_title_sprite_records_with_attribute_offset
 0001A818: tst.w (0x00ffe0d4).l
 0001A81E: beq.w 0x0001a824
 0001A822: rts
@@ -16686,7 +16686,7 @@
 0001AAFA: move.w (0x2,A0),D2w
 0001AAFE: move.w #0x694,D4w
 0001AB02: adda.w #0x8,A2
-0001AB06: jsr 0x000013be.l ; call 000013BE FUN_000013be
+0001AB06: jsr 0x000013be.l ; call 000013BE build_title_sprite_records_with_attribute_offset
 0001AB0C: bsr.w 0x0001ab6e ; call 0001AB6E FUN_0001ab6e
 0001AB10: bsr.w 0x0001ac6a ; call 0001AC6A FUN_0001ac6a
 0001AB14: bsr.w 0x0001ad42 ; call 0001AD42 FUN_0001ad42
@@ -16710,7 +16710,7 @@
 0001AB5C: move.w (0x2,A0),D2w
 0001AB60: move.w #0x694,D4w
 0001AB64: adda.w #0x8,A2
-0001AB68: jsr 0x000013be.l ; call 000013BE FUN_000013be
+0001AB68: jsr 0x000013be.l ; call 000013BE build_title_sprite_records_with_attribute_offset
 0001AB6E: tst.w (0x00ffe084).l
 0001AB74: bne.w 0x0001ab82
 0001AB78: tst.w (0x00ffe0b6).l
@@ -16754,7 +16754,7 @@
 0001AC3E: move.w #0x2000,D6w
 0001AC42: adda.w #0x8,A2
 0001AC46: move.w #0x7a8,D4w
-0001AC4A: jmp 0x000013be.l ; call 000013BE FUN_000013be
+0001AC4A: jmp 0x000013be.l ; call 000013BE build_title_sprite_records_with_attribute_offset
 0001AC50: cmpi.w #0x7140,D0w
 0001AC54: bcc.w 0x0001ac5a
 0001AC58: rts
@@ -16802,7 +16802,7 @@
 0001AD30: move.w #0x2000,D6w
 0001AD34: adda.w #0x8,A2
 0001AD38: move.w #0x7a8,D4w
-0001AD3C: jmp 0x000013be.l ; call 000013BE FUN_000013be
+0001AD3C: jmp 0x000013be.l ; call 000013BE build_title_sprite_records_with_attribute_offset
 0001AD42: tst.w (0x00ffe084).l
 0001AD48: bne.w 0x0001ad56
 0001AD4C: tst.w (0x00ffe0c2).l
@@ -16832,7 +16832,7 @@
 0001ADC6: move.w #0x2000,D6w
 0001ADCA: adda.w #0x8,A2
 0001ADCE: move.w #0x7a8,D4w
-0001ADD2: jsr 0x000013be.l ; call 000013BE FUN_000013be
+0001ADD2: jsr 0x000013be.l ; call 000013BE build_title_sprite_records_with_attribute_offset
 0001ADD8: tst.w (0x00ffe0b2).l
 0001ADDE: beq.w 0x0001ade4
 0001ADE2: rts
@@ -17060,7 +17060,7 @@
 0001B266: move.w #0x2000,D6w
 0001B26A: addq.w #0x8,A2
 0001B26C: move.w #0x6e0,D4w
-0001B270: jmp 0x000013be.l ; call 000013BE FUN_000013be
+0001B270: jmp 0x000013be.l ; call 000013BE build_title_sprite_records_with_attribute_offset
 0001B282: subq.w #0x1,(0x00ffe0da).l
 0001B288: bpl.w 0x0001b2dc
 0001B28C: move.w #0xc,(0x00ffe0da).l
@@ -17083,7 +17083,7 @@
 0001B2EE: move.w (0x00ffe0d8).l,D1w
 0001B2F4: move.w #0x147,D2w
 0001B2F8: move.w #0x2000,D6w
-0001B2FC: jmp 0x00001378.l ; call 00001378 FUN_00001378
+0001B2FC: jmp 0x00001378.l ; call 00001378 build_title_sprite_records
 0001B302: addq.w #0x1,(0x00ffe086).l
 0001B308: move.w (0x00ffe086).l,D1w
 0001B30E: cmpi.w #0x3c,D1w
@@ -17133,7 +17133,7 @@
 0001B3BC: move.w #0x6000,D6w
 0001B3C0: move.w #0x780,D4w
 0001B3C4: adda.w #0x8,A2
-0001B3C8: jsr 0x000013be.l ; call 000013BE FUN_000013be
+0001B3C8: jsr 0x000013be.l ; call 000013BE build_title_sprite_records_with_attribute_offset
 0001B3CE: move.w (0x00ffe0ae).l,D0w
 0001B3D4: lsl.w #0x2,D0w
 0001B3D6: lea (0x1db08).l,A2 ; data 0001db08
@@ -17143,7 +17143,7 @@
 0001B3E8: move.w #0x6000,D6w
 0001B3EC: move.w #0x780,D4w
 0001B3F0: adda.w #0x8,A2
-0001B3F4: jsr 0x000013be.l ; call 000013BE FUN_000013be
+0001B3F4: jsr 0x000013be.l ; call 000013BE build_title_sprite_records_with_attribute_offset
 0001B3FA: move.w (0x00ffe0ae).l,D0w
 0001B400: lsl.w #0x2,D0w
 0001B402: lea (0xea490).l,A2 ; data 000ea490
@@ -17155,7 +17155,7 @@
 0001B41E: move.w #0x6000,D6w
 0001B422: move.w #0x7c0,D4w
 0001B426: adda.w #0x8,A2
-0001B42A: jsr 0x000013be.l ; call 000013BE FUN_000013be
+0001B42A: jsr 0x000013be.l ; call 000013BE build_title_sprite_records_with_attribute_offset
 0001B430: move.w (0x00ffe0ae).l,D0w
 0001B436: lsl.w #0x2,D0w
 0001B438: lea (0xea4a4).l,A2 ; data 000ea4a4
@@ -17165,7 +17165,7 @@
 0001B44A: move.w #0x6000,D6w
 0001B44E: move.w #0x7c0,D4w
 0001B452: adda.w #0x8,A2
-0001B456: jmp 0x000013be.l ; call 000013BE FUN_000013be
+0001B456: jmp 0x000013be.l ; call 000013BE build_title_sprite_records_with_attribute_offset
 0001B45C: subq.w #0x1,(0x00ffe0e8).l
 0001B462: bpl.w 0x0001b488
 0001B466: move.w (0x00ffe0e6).l,(0x00ffe0e8).l
@@ -17316,7 +17316,7 @@
 0001B8AA: lsl.w #0x2,D0w
 0001B8AC: lea (0x1bad4).l,A2 ; data 0001bad4
 0001B8B2: movea.l (0x0,A2,D0w*0x1),A2 ; data 0001bad4
-0001B8B6: jmp 0x00001378.l ; call 00001378 FUN_00001378
+0001B8B6: jmp 0x00001378.l ; call 00001378 build_title_sprite_records
 0001B95A: move.w (0x00ffdf88).l,D0w
 0001B960: andi.w #0x3,D0w
 0001B964: beq.w 0x0001b96a
@@ -17360,7 +17360,7 @@
 0001BAC2: move.w #0x6000,D6w
 0001BAC6: move.w #0x780,D4w
 0001BACA: adda.w #0x8,A2
-0001BACE: jmp 0x000013be.l ; call 000013BE FUN_000013be
+0001BACE: jmp 0x000013be.l ; call 000013BE build_title_sprite_records_with_attribute_offset
 0001BB08: move.w (A6)+,(A0)+
 0001BB0A: move.b #0x3c,(0x00ffe16d).l
 0001BB12: jsr 0x0001a030.l ; call 0001A030 FUN_0001a030
@@ -17398,12 +17398,12 @@
 0001BBC4: move.w #0xfc,D2w
 0001BBC8: move.w #0x2000,D6w
 0001BBCC: lea (0x1dae0).l,A2 ; data 0001dae0
-0001BBD2: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0001BBD2: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0001BBD8: move.w #0xe7,D1w
 0001BBDC: move.w #0xfc,D2w
 0001BBE0: move.w #0x2000,D6w
 0001BBE4: lea (0x1daea).l,A2 ; data 0001daea
-0001BBEA: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0001BBEA: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0001BBF0: bra.w 0x0001bc1e
 0001BBF4: subq.w #0x1,(0x00ffe0ca).l
 0001BBFA: bpl.w 0x0001bc10
@@ -17432,7 +17432,7 @@
 0001BC60: nop
 0001BC62: nop
 0001BC64: nop
-0001BC66: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0001BC66: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0001BC6C: dbf D7w,0x0001bc2a
 0001BC70: rts
 0001BCE8: lea (0xff1580).l,A0 ; data 00ff1580
@@ -17469,7 +17469,7 @@
 0001BD7C: move.w #0x6000,D6w
 0001BD80: add.w D3w,D1w
 0001BD82: add.w D4w,D2w
-0001BD84: jmp 0x00001378.l ; call 00001378 FUN_00001378
+0001BD84: jmp 0x00001378.l ; call 00001378 build_title_sprite_records
 0001BD8A: subq.w #0x1,(0x00ffe052).l
 0001BD90: bmi.w 0x0001bdb8
 0001BD94: subq.w #0x1,(0x00ffe05c).l
@@ -17507,7 +17507,7 @@
 0001BE2A: lea (0x1be3e).l,A2 ; data 0001be3e
 0001BE30: movea.l (0x0,A2,D0w*0x1),A2
 0001BE34: move.w #0x6000,D6w
-0001BE38: jmp 0x00001378.l ; call 00001378 FUN_00001378
+0001BE38: jmp 0x00001378.l ; call 00001378 build_title_sprite_records
 0001BEBA: move.w (0x00ffdf88).l,D0w
 0001BEC0: andi.w #0x7,D0w
 0001BEC4: lsl.w #0x1,D0w
@@ -17532,12 +17532,12 @@
 0001BF12: move.w #0x15e,D1w
 0001BF16: move.w #0x2000,D6w
 0001BF1A: move.l A2,-(SP) ; data Stack[-0x4]
-0001BF1C: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0001BF1C: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0001BF22: movea.l (SP)+,A2
 0001BF24: move.w #0xee,D2w
 0001BF28: move.w #0xe0,D1w
 0001BF2C: move.w #0x2000,D6w
-0001BF30: jmp 0x00001378.l ; call 00001378 FUN_00001378
+0001BF30: jmp 0x00001378.l ; call 00001378 build_title_sprite_records
 0001BF36: bsr.w 0x0001bf5c ; call 0001BF5C FUN_0001bf5c
 0001BF3A: lea (0xff1580).l,A0 ; data 00ff1580
 0001BF40: bclr.b #0x7,(0x12,A0)
@@ -17672,7 +17672,7 @@
 0001C518: move.w (0x10,A1),D2w
 0001C51C: move.w #0x6000,D6w
 0001C520: move.l A2,-(SP) ; data Stack[-0x4]
-0001C522: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0001C522: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0001C528: movea.l (SP)+,A2
 0001C52A: btst.b #0x1,(0x12,A1)
 0001C530: beq.w 0x0001c580
@@ -17694,14 +17694,14 @@
 0001C56E: add.w (0xe,A1),D1w
 0001C572: move.w (0x10,A1),D2w
 0001C576: move.l A2,-(SP) ; data Stack[-0x4]
-0001C578: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0001C578: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0001C57E: movea.l (SP)+,A2
 0001C580: move.w (0xe,A1),D1w
 0001C584: move.w (0x10,A1),D2w
 0001C588: move.w #0x6000,D6w
 0001C58C: movea.l A4,A2
 0001C58E: move.l A2,-(SP) ; data Stack[-0x4]
-0001C590: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0001C590: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0001C596: movea.l (SP)+,A2
 0001C598: btst.b #0x1,(0x12,A1)
 0001C59E: beq.w 0x0001c5c8
@@ -17713,7 +17713,7 @@
 0001C5B6: add.w (0xe,A1),D1w
 0001C5BA: move.w (0x10,A1),D2w
 0001C5BE: move.l A2,-(SP) ; data Stack[-0x4]
-0001C5C0: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0001C5C0: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0001C5C6: movea.l (SP)+,A2
 0001C5C8: tst.w (0x00ffe084).l
 0001C5CE: beq.w 0x0001c5ea
@@ -17759,11 +17759,11 @@
 0001C6A0: rts
 0001C6A2: movem.w {  D3w D2w D1w},-(SP)
 0001C6A6: add.w D3w,D1w
-0001C6A8: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0001C6A8: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0001C6AE: movem.w (SP)+,{  D1 D2 D3}
 0001C6B2: neg.w D3w
 0001C6B4: add.w D3w,D1w
-0001C6B6: jmp 0x00001378.l ; call 00001378 FUN_00001378
+0001C6B6: jmp 0x00001378.l ; call 00001378 build_title_sprite_records
 0001C754: lea (0xff1580).l,A0 ; data 00ff1580
 0001C75A: tst.w (0x00ffe084).l
 0001C760: bne.w 0x0001b5fc
@@ -17850,7 +17850,7 @@
 0001C910: move.w (0x00ffe060).l,D1w
 0001C916: move.w (0x00ffe062).l,D2w
 0001C91C: move.w #0x2000,D6w
-0001C920: jmp 0x00001378.l ; call 00001378 FUN_00001378
+0001C920: jmp 0x00001378.l ; call 00001378 build_title_sprite_records
 0001C9A2: move.w #0x10c0,(0x00ffe06a).l
 0001C9AA: move.w #0xa,(0x00ffe06c).l
 0001C9B2: move.w #0x15,D0w
@@ -17894,7 +17894,7 @@
 0001CA7E: lsr.w #0x4,D2w
 0001CA80: lsr.w #0x4,D1w
 0001CA82: move.w #0x2000,D6w
-0001CA86: jmp 0x00001378.l ; call 00001378 FUN_00001378
+0001CA86: jmp 0x00001378.l ; call 00001378 build_title_sprite_records
 0001CAD4: btst.b #0x6,(0x00ff1592).l
 0001CADC: bne.w 0x0001cd14
 0001CAE0: tst.w (0x00ffe010).l
@@ -18016,7 +18016,7 @@
 0001CC98: movea.l (0x2,A1),A2
 0001CC9C: move.w (0x6,A1),D2w
 0001CCA0: movem.w {  D7w D6w D0w},-(SP)
-0001CCA4: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0001CCA4: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0001CCAA: movem.w (SP)+,{ D0 D6 D7}
 0001CCAE: addq.w #0x8,D0w
 0001CCB0: cmpi.w #0x30,D0w
@@ -18037,7 +18037,7 @@
 0001CCEC: bsr.w 0x0001d048 ; call 0001D048 FUN_0001d048
 0001CCF0: bsr.w 0x0001d0de ; call 0001D0DE FUN_0001d0de
 0001CCF4: move.w #0x6000,D6w
-0001CCF8: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0001CCF8: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0001CCFE: tst.b (0x6,A0)
 0001CD02: bne.w 0x0001cd12
 0001CD06: clr.w (0x00ffe0d6).l
@@ -18102,7 +18102,7 @@
 0001CE0C: lsr.w #0x4,D2w
 0001CE0E: move.w #0x2000,D6w
 0001CE12: move.l A2,-(SP) ; data 0001d952
-0001CE14: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0001CE14: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0001CE1A: movea.l (SP)+,A2
 0001CE1C: tst.b (0x6,A0)
 0001CE20: bne.w 0x0001ce38
@@ -18152,7 +18152,7 @@
 0001CF38: lsr.w #0x4,D2w
 0001CF3A: move.w #0x2000,D6w
 0001CF3E: move.l A2,-(SP) ; data Stack[-0x4]
-0001CF40: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0001CF40: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0001CF46: movea.l (SP)+,A2
 0001CF48: rts
 0001CF4A: addi.w #0x9,(0x00ffe098).l
@@ -19191,7 +19191,7 @@
 0001F3CA: beq.w 0x0001f3d8
 0001F3CE: clr.b (0x00fff10c).l
 0001F3D4: bra.w 0x0001f404
-0001F3D8: bsr.w 0x0001f5a8 ; call 0001F5A8 FUN_0001f5a8
+0001F3D8: bsr.w 0x0001f5a8 ; call 0001F5A8 prepare_mode_text_prompt
 0001F3DC: lea (0xffb740).l,A5 ; data 00ffb740
 0001F3E2: movea.l (A0)+,A1
 0001F3E4: clr.w D1w
@@ -22665,7 +22665,7 @@
 000269EC: move.w (0xe,A1),D1w
 000269F0: move.w (0x10,A1),D2w
 000269F4: move.w #0x6000,D6w
-000269F8: jsr 0x00001378.l ; call 00001378 FUN_00001378
+000269F8: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 000269FE: rts
 00026A00: move.b #-0x1,(0x00fff0b1).l
 00026A08: move.w #0x29,D0w
@@ -23031,7 +23031,7 @@
 0005327C: mulu.w #0x10,D1
 00053280: mulu.w #0x10,D2
 00053284: move.w #0x2000,D6w
-00053288: jsr 0x00001378.l ; call 00001378 FUN_00001378
+00053288: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0005328E: rts
 00053290: lea (0xfffaa4).l,A3 ; data 00fffaa4
 00053296: lea (0xfffb30).l,A4 ; data 00fffb30
@@ -23353,7 +23353,7 @@
 0005383A: mulu.w #0x10,D1
 0005383E: mulu.w #0x10,D2
 00053842: move.w #0x2000,D6w
-00053846: jsr 0x00001378.l ; call 00001378 FUN_00001378
+00053846: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0005384C: subq.w #0x8,A3
 0005384E: clr.b (0x3,A3) ; data fffffffb
 00053852: move.w #0x1,(0x00ffd980).l
@@ -23373,7 +23373,7 @@
 00053A4E: mulu.w #0x10,D1
 00053A52: mulu.w #0x10,D2
 00053A56: move.w #0x2000,D6w
-00053A5A: jsr 0x00001378.l ; call 00001378 FUN_00001378
+00053A5A: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 00053A60: subq.w #0x8,A3
 00053A62: clr.b (0x3,A3) ; data fffffffb
 00053A66: move.w #0x1,(0x00ffd980).l
@@ -26914,7 +26914,7 @@
 00058D4C: lea (0xffd986).l,A3 ; data 00ffd986
 00058D52: lea (0xd2a00).l,A2 ; data 000d2a00
 00058D58: move.w #0x4000,D6w
-00058D5C: jsr 0x00001378.l ; call 00001378 FUN_00001378
+00058D5C: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 00058D62: subq.w #0x8,A3
 00058D64: clr.b (0x3,A3)
 00058D68: move.w #0x1,(0x00ffd980).l
@@ -27823,13 +27823,13 @@
 0005A368: move.w #0x178,D1w
 0005A36C: move.w #0xd1,D2w
 0005A370: move.w #0x2000,D6w
-0005A374: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0005A374: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0005A37A: rts
 0005A37C: movea.l #0x1df1b2,A2
 0005A382: move.w (0x00ffdd46).l,D1w
 0005A388: move.w (0x00ffdd48).l,D2w
 0005A38E: move.w #0x2000,D6w
-0005A392: jmp 0x00001378.l ; call 00001378 FUN_00001378
+0005A392: jmp 0x00001378.l ; call 00001378 build_title_sprite_records
 0005A3B0: clr.w (0x00fff138).l
 0005A3B6: clr.w (0x00fff136).l
 0005A3BC: rts
@@ -27875,7 +27875,7 @@
 0005A470: add.w D3w,D1w
 0005A472: move.w #0x133,D2w
 0005A476: move.w #0x6000,D6w
-0005A47A: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0005A47A: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0005A480: rts
 0005A4B4: clr.w (0x00fff148).l
 0005A4BA: clr.w (0x00fff146).l
@@ -27908,12 +27908,12 @@
 0005A536: move.w #0x183,D1w
 0005A53A: move.w #0xbe,D2w
 0005A53E: move.w #0x6000,D6w
-0005A542: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0005A542: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0005A548: movea.l (0x00fff142).l,A2
 0005A54E: move.w #0x1ab,D1w
 0005A552: move.w #0xd7,D2w
 0005A556: move.w #0x6000,D6w
-0005A55A: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0005A55A: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0005A560: rts
 0005A572: clr.w (0x00fff150).l
 0005A578: move.w #0x6,(0x00fff14e).l
@@ -27941,7 +27941,7 @@
 0005A5EA: move.w (0x00fff152).l,D1w
 0005A5F0: move.w (0x00fff154).l,D2w
 0005A5F6: move.w #0x6000,D6w
-0005A5FA: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0005A5FA: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0005A600: rts
 0005A61A: clr.w (0x00fff15c).l
 0005A620: clr.w (0x00fff15a).l
@@ -27977,7 +27977,7 @@
 0005A6B2: move.w (0x00fff160).l,D2w
 0005A6B8: addi.w #0x18,D2w
 0005A6BC: move.w #0x6000,D6w
-0005A6C0: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0005A6C0: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0005A6C6: rts
 0005A70E: clr.w (0x00fff16a).l
 0005A714: clr.w (0x00fff168).l
@@ -28008,7 +28008,7 @@
 0005A794: move.w (0x00fff16e).l,D2w
 0005A79A: addi.w #0x18,D2w
 0005A79E: move.w #0x6000,D6w
-0005A7A2: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0005A7A2: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0005A7A8: rts
 0005A7EA: clr.w (0x00fff176).l
 0005A7F0: clr.w (0x00fff174).l
@@ -28039,7 +28039,7 @@
 0005A872: move.w (0x00fff17a).l,D2w
 0005A878: addi.w #0x18,D2w
 0005A87C: move.w #0x6000,D6w
-0005A880: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0005A880: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0005A886: rts
 0005A8C8: clr.w (0x00fff182).l
 0005A8CE: clr.w (0x00fff180).l
@@ -28070,7 +28070,7 @@
 0005A942: move.w (0x00fff184).l,D1w
 0005A948: move.w #0x13c,D2w
 0005A94C: move.w #0x6000,D6w
-0005A950: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0005A950: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0005A956: rts
 0005A96A: lea (0x5b9b4).l,A1 ; data 0005b9b4
 0005A970: movea.w #0x2906,A2
@@ -28212,7 +28212,7 @@
 0005AC14: move.w #0xc2,D1w
 0005AC18: move.w #0x13c,D2w
 0005AC1C: move.w #-0x4000,D6w
-0005AC20: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0005AC20: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0005AC26: rts
 0005AC28: clr.w (0x00fff186).l
 0005AC2E: clr.w (0x00fff188).l
@@ -28225,7 +28225,7 @@
 0005AC4E: lsr.w #0x8,D2w
 0005AC50: addi.w #0x123,D2w
 0005AC54: move.w #0x6000,D6w
-0005AC58: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0005AC58: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0005AC5E: addi.w #0x40,(0x00fff186).l
 0005AC66: addi.w #0x18,(0x00fff188).l
 0005AC6E: rts
@@ -28256,7 +28256,7 @@
 0005ACEA: move.w (0x00fff1a8).l,D1w
 0005ACF0: move.w (0x00fff1aa).l,D2w
 0005ACF6: move.w #-0x2000,D6w
-0005ACFA: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0005ACFA: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0005AD00: rts
 0005AD1A: jsr 0x0005b29a.l ; call 0005B29A clear_title_intro_display_buffer
 0005AD20: lea (0x5b528).l,A6 ; data 0005b528
@@ -28448,7 +28448,7 @@
 0005B16C: addi.w #0x1fc,D1w
 0005B170: move.w #0xef,D2w
 0005B174: move.w #0x2000,D6w
-0005B178: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0005B178: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0005B17E: rts
 0005B198: clr.w (0x00fff194).l
 0005B19E: clr.w (0x00fff196).l
@@ -28493,7 +28493,7 @@
 0005B25A: bcc.w 0x0005b264
 0005B25E: movea.l #0x1df3fe,A2
 0005B264: move.w #0x2000,D6w
-0005B268: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0005B268: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0005B26E: rts
 0005B29A: move SR,-(SP) ; data Stack[-0x2]
 0005B29C: move #0x2700,SR
@@ -28856,7 +28856,7 @@
 0005D58E: lea (0x1fea0e).l,A2 ; data 001fea0e
 0005D594: movea.l (0x0,A2,D0w*0x1),A2 ; data 001fea0e
 0005D598: move.w #0x4000,D6w
-0005D59C: jmp 0x00001378.l ; call 00001378 FUN_00001378
+0005D59C: jmp 0x00001378.l ; call 00001378 build_title_sprite_records
 0005D5A2: subq.w #0x1,(0x6,A0)
 0005D5A6: bpl.w 0x0005d5c2
 0005D5AA: move.w #0x14,(0x6,A0)
@@ -28878,7 +28878,7 @@
 0005D5E8: lea (0x1fea2e).l,A2 ; data 001fea2e
 0005D5EE: movea.l (0x0,A2,D0w*0x1),A2 ; data 001fea2e
 0005D5F2: move.w #0x4000,D6w
-0005D5F6: jmp 0x00001378.l ; call 00001378 FUN_00001378
+0005D5F6: jmp 0x00001378.l ; call 00001378 build_title_sprite_records
 0005D5FC: subq.w #0x1,(0x1a,A0)
 0005D600: bpl.w 0x0005d61c
 0005D604: move.w #0xa,(0x1a,A0)
@@ -28901,7 +28901,7 @@
 0005D646: lea (0x1fe9e6).l,A2 ; data 001fe9e6
 0005D64C: movea.l (0x0,A2,D0w*0x1),A2 ; data 001fe9e6
 0005D650: move.w #0x4000,D6w
-0005D654: jmp 0x00001378.l ; call 00001378 FUN_00001378
+0005D654: jmp 0x00001378.l ; call 00001378 build_title_sprite_records
 0005D65A: subq.w #0x1,(0x20,A0)
 0005D65E: bpl.w 0x0005d67a
 0005D662: move.w #0x4,(0x20,A0)
@@ -28925,7 +28925,7 @@
 0005D6A8: lea (0x1fe946).l,A2 ; data 001fe946
 0005D6AE: movea.l (0x0,A2,D0w*0x1),A2 ; data 001fe946
 0005D6B2: move.w #0x4000,D6w
-0005D6B6: jmp 0x00001378.l ; call 00001378 FUN_00001378
+0005D6B6: jmp 0x00001378.l ; call 00001378 build_title_sprite_records
 0005D6BC: jsr 0x00015a8c.l ; call 00015A8C find_first_available_entity_slot
 0005D6C2: bcs.w 0x0005d744
 0005D6C6: lea (0x7361a).l,A0 ; data 0007361a
@@ -29057,12 +29057,12 @@
 0005D950: move.w (0x00ffdd2c).l,D1w
 0005D956: move.w (0x00ffdd2e).l,D2w
 0005D95C: move.w #0x6000,D6w
-0005D960: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0005D960: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0005D966: lea (0x1d50e).l,A2 ; data 0001d50e
 0005D96C: move.w (0x00ffdd2c).l,D1w
 0005D972: move.w (0x00ffdd2e).l,D2w
 0005D978: move.w #0x6000,D6w
-0005D97C: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0005D97C: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0005D982: bsr.w 0x0005d996 ; call 0005D996 advance_pre_title_logo_phase
 0005D986: subq.w #0x8,A3
 0005D988: clr.b (0x3,A3)
@@ -29088,7 +29088,7 @@
 0005D9EA: move.w #0x158,D1w
 0005D9EE: move.w #0x120,D2w
 0005D9F2: move.w #0x2000,D6w
-0005D9F6: jsr 0x00001378.l ; call 00001378 FUN_00001378
+0005D9F6: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0005D9FC: lea (0x5da38).l,A2 ; data 0005da38
 0005DA02: move.w (0x00ffe064).l,D0w
 0005DA08: lsl.w #0x2,D0w
@@ -29096,7 +29096,7 @@
 0005DA0E: move.w #0xd8,D1w
 0005DA12: move.w #0x120,D2w
 0005DA16: move.w #0x2000,D6w
-0005DA1A: jmp 0x00001378.l ; call 00001378 FUN_00001378
+0005DA1A: jmp 0x00001378.l ; call 00001378 build_title_sprite_records
 0005DA50: jsr 0x00000ffe.l ; call 00000FFE clear_and_fill_plane_a
 0005DA56: jsr 0x0000102a.l ; call 0000102A clear_and_fill_plane_b
 0005DA5C: lea (0x5db10).l,A6 ; data 0005db10

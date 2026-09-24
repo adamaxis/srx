@@ -3,7 +3,7 @@
 // Name: FUN_0001aa40
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000013BE FUN_000013be
+//   0x000013BE build_title_sprite_records_with_attribute_offset
 //   0x000061CC append_sprite_record
 //   0x0001A4EA FUN_0001a4ea
 //   0x0001A8F4 FUN_0001a8f4
@@ -57,7 +57,7 @@ void FUN_0001aa40(void)
     if (_DAT_00ffe082 == 0) {
       append_sprite_record();
     }
-    FUN_000013be();
+    build_title_sprite_records_with_attribute_offset();
     FUN_0001ab6e();
     FUN_0001ac6a();
     FUN_0001ad42();
@@ -73,7 +73,7 @@ void FUN_0001aa40(void)
     }
   }
   append_sprite_record();
-  FUN_000013be();
+  build_title_sprite_records_with_attribute_offset();
   if ((_DAT_00ffe084 == 0) && (DAT_00ffe0b6 != 0)) {
     if ((_DAT_00ffe0c8 != 0) && (DAT_00ffe0be = DAT_00ffe056 << 2, 0x6aff < DAT_00ffe0be)) {
       _DAT_00ffe0c8 = 0;
@@ -100,7 +100,7 @@ void FUN_0001aa40(void)
       }
     }
     append_sprite_record();
-    FUN_000013be();
+    build_title_sprite_records_with_attribute_offset();
     return;
   }
   return;

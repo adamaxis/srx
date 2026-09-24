@@ -42,7 +42,7 @@ void FUN_00011506(void)
     DAT_00fff0d1 = '\x03';
   }
   DAT_00ffdd02 = 1;
-  FUN_00001378();
+  build_title_sprite_records();
   _DAT_00ffd980 = 1;
   uVar2 = (DAT_00ffef14 & 2) == 0;
   DAT_00ffef14 = DAT_00ffef14 | 2;

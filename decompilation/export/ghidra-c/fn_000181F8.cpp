@@ -44,7 +44,7 @@ void FUN_000181f8(void)
   render_hud_sprite_stream();
   render_field_hud();
   DAT_00ffdd02 = 1;
-  FUN_00001378();
+  build_title_sprite_records();
   _DAT_00ffd980 = 1;
   DAT_00ffef14 = DAT_00ffef14 | 2;
   _DAT_00fff0d0 = 0;

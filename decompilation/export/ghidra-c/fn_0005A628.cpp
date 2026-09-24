@@ -3,7 +3,7 @@
 // Name: advance_title_intro_targeted_sweep
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 
 
 void advance_title_intro_targeted_sweep(void)
@@ -29,7 +29,7 @@ void advance_title_intro_targeted_sweep(void)
     DAT_00fff15a = DAT_00fff15a + 1;
   }
   DAT_00fff15e = DAT_00fff15e - 9;
-  FUN_00001378();
+  build_title_sprite_records();
   return;
 }
 

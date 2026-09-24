@@ -1245,3 +1245,16 @@ target_link_libraries(shadowrun_ghidra_mode_resource_state_test
     PRIVATE shadowrun_ghidra_mode_resource_state)
 add_test(NAME shadowrun_ghidra_mode_resource_state
          COMMAND shadowrun_ghidra_mode_resource_state_test)
+
+add_library(shadowrun_ghidra_sprite_record_builder STATIC
+    src/sprite_record_builder_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_sprite_record_builder PUBLIC include)
+
+add_executable(shadowrun_ghidra_sprite_record_builder_test
+    tests/sprite_record_builder_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_sprite_record_builder_test
+    PRIVATE shadowrun_ghidra_sprite_record_builder)
+add_test(NAME shadowrun_ghidra_sprite_record_builder
+         COMMAND shadowrun_ghidra_sprite_record_builder_test)

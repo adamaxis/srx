@@ -3,7 +3,7 @@
 // Name: FUN_0000fdfe
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 //   0x0000FDAE FUN_0000fdae
 
 
@@ -26,7 +26,7 @@ void FUN_0000fdfe(void)
       DAT_00fff0db = '\0';
     }
     DAT_00ffdd02 = 1;
-    FUN_00001378();
+    build_title_sprite_records();
     DAT_00ffd989 = 0;
     uVar2 = (ushort)DAT_00fff0d0;
     for (puVar3 = &DAT_00ffd986; puVar3[3] = uVar2 * 0x20 + puVar3[3],

@@ -3,7 +3,7 @@
 // Name: FUN_00004adc
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000013BE FUN_000013be
+//   0x000013BE build_title_sprite_records_with_attribute_offset
 //   0x00005A56 project_entity_screen_position
 //   0x000061A0 append_entity_sprite_record
 
@@ -60,7 +60,7 @@ void FUN_00004adc(void)
     uVar2 = *(ushort *)(iVar9 + 0xe) % 5;
     if (uVar7 == uVar2) {
 LAB_00004b50:
-      FUN_000013be(uVar3,uVar4,uVar5,uVar6,uVar7,iVar11);
+      build_title_sprite_records_with_attribute_offset(uVar3,uVar4,uVar5,uVar6,uVar7,iVar11);
       iVar9 = extraout_A0_00;
     }
     else {

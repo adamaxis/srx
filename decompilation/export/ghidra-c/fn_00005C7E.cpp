@@ -3,7 +3,7 @@
 // Name: FUN_00005c7e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 
 
 void FUN_00005c7e(void)
@@ -16,15 +16,15 @@ void FUN_00005c7e(void)
     sVar1 = *(short *)(in_A0 + 0xa6) + -1;
     if (sVar1 < 0) {
       *(short *)(in_A0 + 0xa6) = sVar1;
-      FUN_00001378();
-      FUN_00001378();
-      FUN_00001378();
-      FUN_00001378();
+      build_title_sprite_records();
+      build_title_sprite_records();
+      build_title_sprite_records();
+      build_title_sprite_records();
       return;
     }
     *(undefined2 *)(in_A0 + 0xa6) = 0;
   }
-  FUN_00001378();
+  build_title_sprite_records();
   return;
 }
 

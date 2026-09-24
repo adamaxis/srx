@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D44 advance_source_prng
-//   0x000013BE FUN_000013be
+//   0x000013BE build_title_sprite_records_with_attribute_offset
 //   0x000061A0 append_entity_sprite_record
 
 
@@ -49,7 +49,7 @@ void FUN_00005494(void)
   if (uVar2 != 0) {
     append_entity_sprite_record();
   }
-  FUN_000013be();
+  build_title_sprite_records_with_attribute_offset();
   return;
 }
 

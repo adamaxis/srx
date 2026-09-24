@@ -3,7 +3,7 @@
 // Name: FUN_00005b98
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 
 
 void FUN_00005b98(void)
@@ -15,7 +15,7 @@ void FUN_00005b98(void)
   if ((*(short *)(in_A0 + 0x38) != 0x2a) && (-1 < (short)(*(short *)(in_A0 + 0x44) + -8))) {
     sVar1 = 0xf;
     do {
-      FUN_00001378();
+      build_title_sprite_records();
       sVar1 = sVar1 + -1;
     } while (sVar1 != -1);
     return;

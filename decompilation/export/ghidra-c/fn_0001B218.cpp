@@ -3,7 +3,7 @@
 // Name: FUN_0001b218
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000013BE FUN_000013be
+//   0x000013BE build_title_sprite_records_with_attribute_offset
 //   0x000061CC append_sprite_record
 
 
@@ -19,7 +19,7 @@ void FUN_0001b218(void)
     }
   }
   append_sprite_record();
-  FUN_000013be();
+  build_title_sprite_records_with_attribute_offset();
   return;
 }
 

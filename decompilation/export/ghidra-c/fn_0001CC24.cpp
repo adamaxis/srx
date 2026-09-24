@@ -3,7 +3,7 @@
 // Name: FUN_0001cc24
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 //   0x00019EA6 FUN_00019ea6
 //   0x0001D048 FUN_0001d048
 //   0x0001D0DE FUN_0001d0de
@@ -52,7 +52,7 @@ void FUN_0001cc24(void)
         *(undefined2 *)((int)register0x0000003c + -8) = uVar3;
         *(ushort *)((int)register0x0000003c + -0xc) = uVar1;
         *(undefined4 *)((int)register0x0000003c + -0x10) = 0x1ccaa;
-        FUN_00001378();
+        build_title_sprite_records();
         uVar1 = *(ushort *)((int)register0x0000003c + -0xc);
         uVar3 = *(undefined2 *)((int)register0x0000003c + -10);
         sVar4 = *(short *)((int)register0x0000003c + -8);

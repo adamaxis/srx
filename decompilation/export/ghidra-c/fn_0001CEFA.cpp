@@ -14,7 +14,7 @@ void FUN_0001cefa(void)
   DAT_00ffe08c = DAT_00ffe08c + -0xe;
   DAT_00ffe08e = DAT_00ffe08e + -0xe;
   FUN_0001cf36();
-  FUN_00001378();
+  build_title_sprite_records();
   return;
 }
 

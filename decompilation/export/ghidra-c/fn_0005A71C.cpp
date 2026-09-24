@@ -3,7 +3,7 @@
 // Name: advance_title_intro_linear_sweep_a
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 
 
 void advance_title_intro_linear_sweep_a(void)
@@ -28,7 +28,7 @@ void advance_title_intro_linear_sweep_a(void)
     DAT_00fff168 = DAT_00fff168 + 1;
   }
   DAT_00fff16c = DAT_00fff16c - 8;
-  FUN_00001378();
+  build_title_sprite_records();
   return;
 }
 

@@ -3,7 +3,7 @@
 // Name: advance_pre_title_logo_phase
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 
 
 void advance_pre_title_logo_phase(void)
@@ -23,8 +23,8 @@ void advance_pre_title_logo_phase(void)
       DAT_00ffe064 = 0;
     }
   }
-  FUN_00001378();
-  FUN_00001378();
+  build_title_sprite_records();
+  build_title_sprite_records();
   return;
 }
 

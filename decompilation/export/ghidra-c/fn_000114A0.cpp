@@ -34,7 +34,7 @@ void FUN_000114a0(void)
     return;
   }
   DAT_00ffdd02 = 1;
-  FUN_00001378();
+  build_title_sprite_records();
   _DAT_00ffd980 = 1;
   uVar2 = (DAT_00ffef14 & 2) == 0;
   DAT_00ffef14 = DAT_00ffef14 | 2;

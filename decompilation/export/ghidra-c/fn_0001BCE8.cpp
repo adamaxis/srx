@@ -3,7 +3,7 @@
 // Name: FUN_0001bce8
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 //   0x0001A106 FUN_0001a106
 
 
@@ -16,7 +16,7 @@ void FUN_0001bce8(void)
     DAT_00ff1594 = DAT_00ff1594 - 1;
     if (-1 < (short)((ushort)DAT_00ff1594 << 8)) {
 LAB_0001bd50:
-      FUN_00001378();
+      build_title_sprite_records();
       return;
     }
     DAT_00ff1594 = 1;
@@ -41,7 +41,7 @@ LAB_0001bd50:
                                                      (int)(short)((0x3c - DAT_00ffe052) * 3 & 0xfe))
                                           * 0x1600) >> 0x10);
     DAT_00ffe054 = DAT_00ffe054 + -10;
-    FUN_00001378();
+    build_title_sprite_records();
     return;
   }
 LAB_0001bdb8:

@@ -3,7 +3,7 @@
 // Name: advance_title_sprite_state
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -21,7 +21,7 @@ void advance_title_sprite_state(void)
     }
   }
   DAT_00ffdd42 = DAT_00ffdd42 + 4;
-  FUN_00001378();
+  build_title_sprite_records();
   _DAT_00ffd980 = 1;
   return;
 }

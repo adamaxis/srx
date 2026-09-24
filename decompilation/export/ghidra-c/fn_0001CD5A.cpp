@@ -3,7 +3,7 @@
 // Name: FUN_0001cd5a
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 //   0x00019F18 FUN_00019f18
 //   0x0001CEFA FUN_0001cefa
 //   0x0001CF4A FUN_0001cf4a
@@ -45,7 +45,8 @@ void FUN_0001cd5a(void)
   }
   DAT_00ff15c6 = DAT_00ff15c6 + -8;
   DAT_00ff15c8 = DAT_00ff15c8 + -0xe;
-  FUN_00001378(*(undefined4 *)((int)ppuVar1 + (int)(short)((short)DAT_00ff15cf << 2)));
+  build_title_sprite_records(*(undefined4 *)((int)ppuVar1 + (int)(short)((short)DAT_00ff15cf << 2)))
+  ;
   if (*(char *)(extraout_A0 + 3) == '\0') {
     DAT_00ff1592 = DAT_00ff1592 & 0xbf;
     _DAT_00ffe0d6 = 0;

@@ -3,7 +3,7 @@
 // Name: advance_title_intro_motion
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001378 FUN_00001378
+//   0x00001378 build_title_sprite_records
 
 
 void advance_title_intro_motion(void)
@@ -29,7 +29,7 @@ void advance_title_intro_motion(void)
     }
   }
   DAT_00fff13a = DAT_00fff13c + DAT_00fff13a;
-  FUN_00001378();
+  build_title_sprite_records();
   return;
 }
 
