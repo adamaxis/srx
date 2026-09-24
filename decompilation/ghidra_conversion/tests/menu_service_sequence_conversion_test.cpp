@@ -170,5 +170,11 @@ int main() {
         return 21;
     }
 
+    render_menu_text_asset(
+        [&panel_events] { panel_events.push_back(31); });
+    if (panel_events != std::vector<int>{26, 27, 28, 29, 30, 31}) {
+        return 22;
+    }
+
     return 0;
 }

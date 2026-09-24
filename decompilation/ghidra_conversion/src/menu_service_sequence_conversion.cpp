@@ -228,4 +228,10 @@ void write_menu_repeated_grid_with_metadata(
     }
 }
 
+void render_menu_text_asset(const std::function<void()>& render_text) {
+    if (render_text) {
+        render_text();
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion

@@ -128,4 +128,7 @@ void write_menu_repeated_grid(const std::function<void()>& write_grid);
 void write_menu_repeated_grid_with_metadata(
     const std::function<void()>& write_grid);
 
+// ROM 0x12CD6: submit one menu text asset.
+void render_menu_text_asset(const std::function<void()>& render_text);
+
 } // namespace shadowrun::ghidra_conversion
