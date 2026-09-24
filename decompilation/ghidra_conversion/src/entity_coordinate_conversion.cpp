@@ -21,4 +21,20 @@ void approach_entity_fixed_point_target(EntityCoordinateTarget& state) {
     state.current = state.target;
 }
 
+void apply_mode_five_boundary_motion(FieldBoundaryMotionState& state,
+                                     const std::uint8_t mode) {
+    if (mode != 5U || state.y <= 0x11FFU || state.y >= 0x1F80U ||
+        state.x <= 0x25FFU) {
+        return;
+    }
+
+    if (state.x < 0x2800U) {
+        state.y = static_cast<std::uint16_t>(state.y - 8U);
+        return;
+    }
+    if (state.x > 0x3BFFU && state.x < 0x3E00U) {
+        state.y = static_cast<std::uint16_t>(state.y + 8U);
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion

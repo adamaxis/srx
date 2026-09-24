@@ -10,7 +10,7 @@
 //   0x0000ACAE FUN_0000acae
 //   0x0000B330 FUN_0000b330
 //   0x0000B49C FUN_0000b49c
-//   0x0000BCAE FUN_0000bcae
+//   0x0000BCAE apply_mode_five_boundary_motion
 //   0x0000EB92 FUN_0000eb92
 //   0x00013874 FUN_00013874
 //   0x00015BB4 FUN_00015bb4
@@ -135,7 +135,7 @@ LAB_0000aa4c:
       }
 LAB_0000aa74:
       if ((*(byte *)(puVar5 + 8) & 4) != 0) {
-        FUN_0000bcae();
+        apply_mode_five_boundary_motion();
         FUN_0000eb92();
         bVar2 = *(byte *)((int)extraout_A0_08 + 0x11);
         *(byte *)((int)extraout_A0_08 + 0x11) = bVar2 & 0xfd;

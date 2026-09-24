@@ -38,5 +38,29 @@ int main() {
         return 4;
     }
 
+    FieldBoundaryMotionState lower_edge{0x2600U, 0x1200U};
+    apply_mode_five_boundary_motion(lower_edge, 5U);
+    if (!expect(lower_edge.y == 0x11F8U)) {
+        return 5;
+    }
+
+    FieldBoundaryMotionState upper_edge{0x3C00U, 0x1F7FU};
+    apply_mode_five_boundary_motion(upper_edge, 5U);
+    if (!expect(upper_edge.y == 0x1F87U)) {
+        return 6;
+    }
+
+    FieldBoundaryMotionState outside_window{0x25FFU, 0x1200U};
+    apply_mode_five_boundary_motion(outside_window, 5U);
+    if (!expect(outside_window.y == 0x1200U)) {
+        return 7;
+    }
+
+    FieldBoundaryMotionState wrong_mode{0x2600U, 0x1200U};
+    apply_mode_five_boundary_motion(wrong_mode, 4U);
+    if (!expect(wrong_mode.y == 0x1200U)) {
+        return 8;
+    }
+
     return 0;
 }

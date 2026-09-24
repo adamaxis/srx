@@ -14,4 +14,14 @@ struct EntityCoordinateTarget {
 // less.
 void approach_entity_fixed_point_target(EntityCoordinateTarget& state);
 
+struct FieldBoundaryMotionState {
+    std::uint16_t x = 0;
+    std::uint16_t y = 0;
+};
+
+// ROM 0xBCAE: apply the mode-5 vertical boundary adjustment used at the two
+// field edges. All source comparisons are unsigned 16-bit coordinate tests.
+void apply_mode_five_boundary_motion(FieldBoundaryMotionState& state,
+                                     std::uint8_t mode);
+
 } // namespace shadowrun::ghidra_conversion

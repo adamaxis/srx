@@ -4284,7 +4284,7 @@
 0000AA70: bsr.w 0x0000ac84 ; call 0000AC84 FUN_0000ac84
 0000AA74: btst.b #0x2,(0x10,A0)
 0000AA7A: beq.w 0x0000aaa0
-0000AA7E: bsr.w 0x0000bcae ; call 0000BCAE FUN_0000bcae
+0000AA7E: bsr.w 0x0000bcae ; call 0000BCAE apply_mode_five_boundary_motion
 0000AA82: jsr 0x0000eb92.l ; call 0000EB92 FUN_0000eb92
 0000AA88: bclr.b #0x1,(0x11,A0)
 0000AA8E: beq.w 0x0000aaa0

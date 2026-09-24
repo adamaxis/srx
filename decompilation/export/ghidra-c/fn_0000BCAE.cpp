@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000BCAE
-// Name: FUN_0000bcae
+// Name: apply_mode_five_boundary_motion
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0000bcae(void)
+void apply_mode_five_boundary_motion(void)
 
 {
   ushort *in_A0;
