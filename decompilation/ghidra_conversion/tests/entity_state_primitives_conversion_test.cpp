@@ -44,5 +44,17 @@ int main() {
         return 5;
     }
 
+    EntityBehaviorRecordState behavior_record{
+        42, 42U, 42U, 42U, 0xFFU,
+        EntityRecordContinuation::BehaviorUpdate};
+    initialize_entity_behavior_record(behavior_record);
+    if (!expect(behavior_record.vertical_offset == -12 &&
+                behavior_record.animation_state == 1U &&
+                behavior_record.behavior_timer == 0x1000U &&
+                behavior_record.step_interval == 0x4000U &&
+                behavior_record.flags == 0x01U)) {
+        return 6;
+    }
+
     return 0;
 }

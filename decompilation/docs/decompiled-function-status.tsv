@@ -91,6 +91,9 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x149C0	obstruction route queue	ghidra_conversion::advance_obstruction_route_queue	shadowrun_native_port	partial		Typed queue cursor, target projection, movement cost, and explicit replan exits
 0x14D58	entity target heading measurement	ghidra_conversion::measure_entity_target_heading_and_distance	shadowrun_native_port	partial		Typed record-to-record heading and distance wrapper
 0x14C7C	entity target motion policy	ghidra_conversion::resolve_entity_target_motion	shadowrun_native_port	partial		Typed entity-type dispatch, distance bands, linked-target gate, and effect allocation
+0x14F26	entity fixed-point terrain probe	ghidra_conversion::probe_entity_world_position	shadowrun_native_port	partial		Typed fixed-point coordinate assembly and terrain-probe boundary
+0x15118	entity behavior record initialization	ghidra_conversion::initialize_entity_behavior_record	shadowrun_native_port	partial		Typed default movement fields and behavior-update continuation
+0x15ABA	entity collision search	ghidra_conversion::find_colliding_entity	shadowrun_native_port	partial		Typed ten-record scan, window filters, collision-mode gate, and source position handoff
 0x14BA6	axis relation update	ghidra_conversion::update_entity_axis_relation_state	shadowrun_native_port	partial		Typed relation flags and explicit route-advance boundary
 0x14902	obstruction grid index	ghidra_conversion::compute_obstruction_grid_index	shadowrun_native_port	partial		Typed world-coordinate to obstruction-grid index conversion
 0x14B4E	obstruction tile projection	ghidra_conversion::decode_obstruction_tile_projection	shadowrun_native_port	partial		Typed packed-tile coordinate decode and relative direction selection

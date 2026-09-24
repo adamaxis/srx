@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -23,5 +24,29 @@ struct FieldBoundaryMotionState {
 // field edges. All source comparisons are unsigned 16-bit coordinate tests.
 void apply_mode_five_boundary_motion(FieldBoundaryMotionState& state,
                                      std::uint8_t mode);
+
+struct EntityFixedPointPosition {
+    std::int32_t world_x = 0;
+    std::int32_t world_y = 0;
+    std::int16_t tile_offset_x = 0;
+    std::int16_t tile_offset_y = 0;
+};
+
+struct EntityWorldProbeResult {
+    std::int32_t world_x = 0;
+    std::int32_t world_y = 0;
+    std::uint16_t terrain_result = 0;
+};
+
+using EntityWorldProbe =
+    std::function<std::uint16_t(std::int32_t world_x,
+                                std::int32_t world_y)>;
+
+// ROM 0x14F26: add signed 8-bit-shifted tile offsets to an entity's fixed
+// point position and pass the resulting host coordinates to the terrain
+// probe. The source preserves the coordinate registers across that call.
+EntityWorldProbeResult probe_entity_world_position(
+    const EntityFixedPointPosition& position,
+    const EntityWorldProbe& probe);
 
 } // namespace shadowrun::ghidra_conversion

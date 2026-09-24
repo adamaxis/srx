@@ -12320,7 +12320,7 @@
 00014DAE: lea (0xff1380).l,A0 ; data 00ff1380
 00014DB4: move.w #0x1a,D7w
 00014DB8: move.w D7w,-(SP) ; data Stack[-0x6]
-00014DBA: bsr.w 0x00014f26 ; call 00014F26 FUN_00014f26
+00014DBA: bsr.w 0x00014f26 ; call 00014F26 probe_entity_world_position
 00014DBE: move.l D5,(A0)
 00014DC0: move.l D6,(0x4,A0)
 00014DC4: swap D5
@@ -12331,7 +12331,7 @@
 00014DD0: tst.w (0x00ffdfe2).l
 00014DD6: beq.w 0x00014dfc
 00014DDA: movem.w {  D7w},-(SP)
-00014DDE: bsr.w 0x00015aba ; call 00015ABA FUN_00015aba
+00014DDE: bsr.w 0x00015aba ; call 00015ABA find_colliding_entity
 00014DE2: movem.w (SP)+,{  D7}
 00014DE6: bcs.w 0x00014dee
 00014DEA: dbf D7w,0x00014db8
@@ -12410,7 +12410,7 @@
 00014F44: jsr 0x0000e7c8.l ; call 0000E7C8 FUN_0000e7c8
 00014F4A: movem.l (SP)+,{  D5 D6}
 00014F4E: rts
-00014F50: bsr.b 0x00014f26 ; call 00014F26 FUN_00014f26
+00014F50: bsr.b 0x00014f26 ; call 00014F26 probe_entity_world_position
 00014F52: clr.w D1w
 00014F54: tst.w D0w
 00014F56: beq.w 0x00014f64
@@ -12423,7 +12423,7 @@
 00014F72: swap D5
 00014F74: swap D6
 00014F76: move.w #0x1,D1w
-00014F7A: bsr.w 0x00015aba ; call 00015ABA FUN_00015aba
+00014F7A: bsr.w 0x00015aba ; call 00015ABA find_colliding_entity
 00014F7E: rts
 00014F80: ori #0x1,CCR
 00014F84: rts
@@ -12455,7 +12455,7 @@
 00014FF6: rts
 00014FF8: movem.l {  A1 A0 D3 D0},-(SP)
 00014FFC: movem.l {  A1 A0},-(SP)
-00015000: bsr.w 0x00015118 ; call 00015118 FUN_00015118
+00015000: bsr.w 0x00015118 ; call 00015118 initialize_entity_behavior_record
 00015004: movem.l (SP)+,{  A0 A1}
 00015008: tst.w (0x00ffdfd8).l
 0001500E: bne.w 0x00015018
@@ -12849,7 +12849,7 @@
 00015670: jsr 0x0001dbaa.l ; call 0001DBAA FUN_0001dbaa
 00015676: move.w #0x4f,D7w
 0001567A: movem.l {  A1 A0},-(SP)
-0001567E: bsr.w 0x00015118 ; call 00015118 FUN_00015118
+0001567E: bsr.w 0x00015118 ; call 00015118 initialize_entity_behavior_record
 00015682: movem.l (SP)+,{  A0 A1}
 00015686: move.l #0x15390,(0x3a,A1) ; data 00015390
 0001568E: move.w #0x2000,(0x2c,A1) ; data 00002000

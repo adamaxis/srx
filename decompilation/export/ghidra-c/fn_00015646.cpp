@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000036FC FUN_000036fc
-//   0x00015118 FUN_00015118
+//   0x00015118 initialize_entity_behavior_record
 //   0x00015A8C find_first_available_entity_slot
 //   0x00015D3C measure_relative_heading_and_distance
 //   0x0001A2CC allocate_first_free_effect_slot
@@ -42,7 +42,7 @@ void FUN_00015646(void)
     find_first_available_entity_slot();
     if (!(bool)uVar8) {
       FUN_0001dbaa();
-      uVar5 = FUN_00015118();
+      uVar5 = initialize_entity_behavior_record();
       *(undefined1 **)(extraout_A1 + 0x1d) = &LAB_00015390;
       extraout_A1[0x16] = 0x2000;
       *extraout_A1 = *extraout_A0;

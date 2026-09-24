@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00015118
-// Name: FUN_00015118
+// Name: initialize_entity_behavior_record
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00015118(void)
+void initialize_entity_behavior_record(void)
 
 {
   short sVar1;

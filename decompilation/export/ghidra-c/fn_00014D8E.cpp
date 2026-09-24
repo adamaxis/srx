@@ -3,9 +3,9 @@
 // Name: FUN_00014d8e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00014F26 FUN_00014f26
+//   0x00014F26 probe_entity_world_position
 //   0x00014FF8 FUN_00014ff8
-//   0x00015ABA FUN_00015aba
+//   0x00015ABA find_colliding_entity
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -33,7 +33,7 @@ void FUN_00014d8e(void)
   do {
     *(short *)((int)puVar4 + -2) = sVar1;
     *(undefined4 *)((int)puVar4 + -6) = 0x14dbe;
-    sVar1 = FUN_00014f26();
+    sVar1 = probe_entity_world_position();
     *extraout_A0 = unaff_D5;
     extraout_A0[1] = unaff_D6;
     unaff_D5 = unaff_D5 << 0x10 | unaff_D5 >> 0x10;
@@ -46,7 +46,7 @@ void FUN_00014d8e(void)
     psVar3 = (short *)((int)puVar4 + -4);
     *psVar3 = *(short *)((int)puVar4 + -2);
     *(undefined4 *)((int)puVar4 + -8) = 0x14de2;
-    FUN_00015aba();
+    find_colliding_entity();
     puVar4 = (undefined4 *)((int)puVar4 + -2);
   } while ((!bVar2) && (sVar1 = *psVar3 + -1, sVar1 != -1));
   _DAT_00ffdfd8 = 0;

@@ -10,6 +10,20 @@ struct EntityReactionState {
     bool reevaluate_collision = false;
 };
 
+enum class EntityRecordContinuation {
+    BehaviorUpdate,
+};
+
+struct EntityBehaviorRecordState {
+    std::int16_t vertical_offset = 0;
+    std::uint16_t animation_state = 0;
+    std::uint16_t behavior_timer = 0;
+    std::uint16_t step_interval = 0;
+    std::uint8_t flags = 0;
+    EntityRecordContinuation continuation =
+        EntityRecordContinuation::BehaviorUpdate;
+};
+
 // ROM 0xA7E4: initialize the sixteen entity references in slot order. The
 // source stores record pointers at a fixed stride; host state keeps stable
 // slot indices instead.
@@ -24,5 +38,9 @@ void schedule_entity_collision_recheck(EntityReactionState& state);
 // eighteen slots and returns 18 as the full-table sentinel.
 std::uint8_t allocate_first_free_effect_slot(
     std::array<std::uint8_t, 18>& slot_state);
+
+// ROM 0x15118: clear a newly allocated entity record's source fields and
+// install the default behavior-update continuation and movement constants.
+void initialize_entity_behavior_record(EntityBehaviorRecordState& state);
 
 } // namespace shadowrun::ghidra_conversion

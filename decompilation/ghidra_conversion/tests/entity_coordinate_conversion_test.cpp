@@ -62,5 +62,24 @@ int main() {
         return 8;
     }
 
+    std::int32_t probed_x = 0;
+    std::int32_t probed_y = 0;
+    const auto probe = probe_entity_world_position(
+        EntityFixedPointPosition{0x00123456,
+                                 static_cast<std::int32_t>(0xFFF00000U),
+                                 2,
+                                 -3},
+        [&probed_x, &probed_y](const std::int32_t x, const std::int32_t y) {
+            probed_x = x;
+            probed_y = y;
+            return static_cast<std::uint16_t>(0x007FU);
+        });
+    if (!expect(probe.world_x == 0x00123656 &&
+                probe.world_y == static_cast<std::int32_t>(0xFFEFFD00U) &&
+                probe.terrain_result == 0x007FU && probed_x == probe.world_x &&
+                probed_y == probe.world_y)) {
+        return 9;
+    }
+
     return 0;
 }

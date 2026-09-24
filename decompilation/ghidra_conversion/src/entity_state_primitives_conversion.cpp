@@ -25,4 +25,14 @@ std::uint8_t allocate_first_free_effect_slot(
     return static_cast<std::uint8_t>(slot_state.size());
 }
 
+void initialize_entity_behavior_record(EntityBehaviorRecordState& state) {
+    state = EntityBehaviorRecordState{
+        static_cast<std::int16_t>(-12),
+        1U,
+        0x1000U,
+        0x4000U,
+        0x01U,
+        EntityRecordContinuation::BehaviorUpdate};
+}
+
 } // namespace shadowrun::ghidra_conversion

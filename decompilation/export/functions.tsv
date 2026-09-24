@@ -400,11 +400,11 @@ entry	name	size	callingConvention	decompileStatus	file
 00014D58	measure_entity_target_heading_and_distance	18	unknown	ok	ghidra-c/fn_00014D58.cpp
 00014D6A	FUN_00014d6a	36	unknown	ok	ghidra-c/fn_00014D6A.cpp
 00014D8E	FUN_00014d8e	124	unknown	ok	ghidra-c/fn_00014D8E.cpp
-00014F26	FUN_00014f26	42	unknown	ok	ghidra-c/fn_00014F26.cpp
+00014F26	probe_entity_world_position	42	unknown	ok	ghidra-c/fn_00014F26.cpp
 00014F50	FUN_00014f50	54	unknown	ok	ghidra-c/fn_00014F50.cpp
 00014FF8	FUN_00014ff8	240	unknown	ok	ghidra-c/fn_00014FF8.cpp
 000150E8	FUN_000150e8	48	unknown	ok	ghidra-c/fn_000150E8.cpp
-00015118	FUN_00015118	54	unknown	ok	ghidra-c/fn_00015118.cpp
+00015118	initialize_entity_behavior_record	54	unknown	ok	ghidra-c/fn_00015118.cpp
 0001514E	FUN_0001514e	428	unknown	ok	ghidra-c/fn_0001514E.cpp
 000152FA	FUN_000152fa	30	unknown	ok	ghidra-c/fn_000152FA.cpp
 00015354	FUN_00015354	60	unknown	ok	ghidra-c/fn_00015354.cpp
@@ -416,7 +416,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00015930	FUN_00015930	78	unknown	ok	ghidra-c/fn_00015930.cpp
 0001597E	FUN_0001597e	206	unknown	ok	ghidra-c/fn_0001597E.cpp
 00015A8C	find_first_available_entity_slot	46	unknown	ok	ghidra-c/fn_00015A8C.cpp
-00015ABA	FUN_00015aba	250	unknown	ok	ghidra-c/fn_00015ABA.cpp
+00015ABA	find_colliding_entity	250	unknown	ok	ghidra-c/fn_00015ABA.cpp
 00015BB4	FUN_00015bb4	2	unknown	ok	ghidra-c/fn_00015BB4.cpp
 00015C58	is_entity_target_within_range	44	unknown	ok	ghidra-c/fn_00015C58.cpp
 00015C84	update_entity_heading_from_linked_target	32	unknown	ok	ghidra-c/fn_00015C84.cpp

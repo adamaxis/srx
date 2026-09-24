@@ -1362,12 +1362,12 @@ caller	caller_name	instruction	text	target	callee	status
 00014C7C	resolve_entity_target_motion	00014D1E	jsr 0x0001a2cc.l	0001A2CC	allocate_first_free_effect_slot	resolved
 00014D58	measure_entity_target_heading_and_distance	00014D64	jmp 0x00015d3c.l	00015D3C	measure_relative_heading_and_distance	resolved
 00014D8E	FUN_00014d8e	00014DA8	bsr.w 0x00014ff8	00014FF8	FUN_00014ff8	resolved
-00014D8E	FUN_00014d8e	00014DBA	bsr.w 0x00014f26	00014F26	FUN_00014f26	resolved
-00014D8E	FUN_00014d8e	00014DDE	bsr.w 0x00015aba	00015ABA	FUN_00015aba	resolved
-00014F26	FUN_00014f26	00014F44	jsr 0x0000e7c8.l	0000E7C8	FUN_0000e7c8	resolved
-00014F50	FUN_00014f50	00014F50	bsr.b 0x00014f26	00014F26	FUN_00014f26	resolved
-00014F50	FUN_00014f50	00014F7A	bsr.w 0x00015aba	00015ABA	FUN_00015aba	resolved
-00014FF8	FUN_00014ff8	00015000	bsr.w 0x00015118	00015118	FUN_00015118	resolved
+00014D8E	FUN_00014d8e	00014DBA	bsr.w 0x00014f26	00014F26	probe_entity_world_position	resolved
+00014D8E	FUN_00014d8e	00014DDE	bsr.w 0x00015aba	00015ABA	find_colliding_entity	resolved
+00014F26	probe_entity_world_position	00014F44	jsr 0x0000e7c8.l	0000E7C8	FUN_0000e7c8	resolved
+00014F50	FUN_00014f50	00014F50	bsr.b 0x00014f26	00014F26	probe_entity_world_position	resolved
+00014F50	FUN_00014f50	00014F7A	bsr.w 0x00015aba	00015ABA	find_colliding_entity	resolved
+00014FF8	FUN_00014ff8	00015000	bsr.w 0x00015118	00015118	initialize_entity_behavior_record	resolved
 00014FF8	FUN_00014ff8	00015012	jsr 0x00055640.l	00055640	FUN_00055640	resolved
 00014FF8	FUN_00014ff8	0001508C	jsr 0x00015d3c.l	00015D3C	measure_relative_heading_and_distance	resolved
 0001514E	FUN_0001514e	000151AC	jsr 0x000038ac.l	000038AC	FUN_000038ac	resolved
@@ -1386,7 +1386,7 @@ caller	caller_name	instruction	text	target	callee	status
 00015646	FUN_00015646	00015658	jsr 0x000036fc.l	000036FC	FUN_000036fc	resolved
 00015646	FUN_00015646	0001565E	bsr.w 0x00015a8c	00015A8C	find_first_available_entity_slot	resolved
 00015646	FUN_00015646	00015670	jsr 0x0001dbaa.l	0001DBAA	FUN_0001dbaa	resolved
-00015646	FUN_00015646	0001567E	bsr.w 0x00015118	00015118	FUN_00015118	resolved
+00015646	FUN_00015646	0001567E	bsr.w 0x00015118	00015118	initialize_entity_behavior_record	resolved
 00015646	FUN_00015646	000156DC	jsr 0x0001a2cc.l	0001A2CC	allocate_first_free_effect_slot	resolved
 00015646	FUN_00015646	000157A4	jsr 0x00055848.l	00055848	FUN_00055848	resolved
 00015646	FUN_00015646	000157C4	jsr 0x00015d3c.l	00015D3C	measure_relative_heading_and_distance	resolved

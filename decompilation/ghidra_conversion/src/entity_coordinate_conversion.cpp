@@ -37,4 +37,14 @@ void apply_mode_five_boundary_motion(FieldBoundaryMotionState& state,
     }
 }
 
+EntityWorldProbeResult probe_entity_world_position(
+    const EntityFixedPointPosition& position,
+    const EntityWorldProbe& probe) {
+    const auto world_x = position.world_x +
+        (static_cast<std::int32_t>(position.tile_offset_x) * 0x100);
+    const auto world_y = position.world_y +
+        (static_cast<std::int32_t>(position.tile_offset_y) * 0x100);
+    return EntityWorldProbeResult{world_x, world_y, probe(world_x, world_y)};
+}
+
 } // namespace shadowrun::ghidra_conversion

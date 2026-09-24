@@ -3,7 +3,7 @@
 // Name: FUN_00014ff8
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00015118 FUN_00015118
+//   0x00015118 initialize_entity_behavior_record
 //   0x00015D3C measure_relative_heading_and_distance
 //   0x00055640 FUN_00055640
 
@@ -22,7 +22,7 @@ void FUN_00014ff8(void)
   short *in_A1;
   short *extraout_A1;
   
-  FUN_00015118();
+  initialize_entity_behavior_record();
   if (_DAT_00ffdfd8 == 0) {
     FUN_00055640();
   }
