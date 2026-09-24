@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00059786
-// Name: FUN_00059786
+// Name: sum_game_save_payload
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-undefined1 FUN_00059786(void)
+undefined1 sum_game_save_payload(void)
 
 {
   undefined1 uVar1;

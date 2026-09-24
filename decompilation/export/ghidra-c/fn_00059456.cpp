@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001502 copy_even_bytes
-//   0x0005961C FUN_0005961c
+//   0x0005961C validate_sram_game_save
 
 
 void FUN_00059456(void)
@@ -13,10 +13,10 @@ void FUN_00059456(void)
   bool bVar1;
   
   bVar1 = false;
-  FUN_0005961c();
+  validate_sram_game_save();
   if (bVar1) {
     bVar1 = false;
-    FUN_0005961c();
+    validate_sram_game_save();
     if (bVar1) {
       return;
     }
@@ -24,7 +24,7 @@ void FUN_00059456(void)
   }
   else {
     bVar1 = false;
-    FUN_0005961c();
+    validate_sram_game_save();
     if (bVar1) {
       copy_even_bytes();
     }

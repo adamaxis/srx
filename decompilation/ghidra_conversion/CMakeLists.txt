@@ -592,6 +592,19 @@ target_link_libraries(shadowrun_ghidra_runner_roster_test
 add_test(NAME shadowrun_ghidra_runner_roster
          COMMAND shadowrun_ghidra_runner_roster_test)
 
+add_library(shadowrun_ghidra_save_validation STATIC
+    src/save_validation_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_save_validation PUBLIC include)
+
+add_executable(shadowrun_ghidra_save_validation_test
+    tests/save_validation_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_save_validation_test
+    PRIVATE shadowrun_ghidra_save_validation)
+add_test(NAME shadowrun_ghidra_save_validation
+         COMMAND shadowrun_ghidra_save_validation_test)
+
 add_library(shadowrun_ghidra_random STATIC
     src/random_conversion.cpp
 )

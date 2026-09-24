@@ -27081,13 +27081,13 @@
 00059388: lea (0xfff1e8).l,A1 ; data 00fff1e8
 0005938E: move.w D5w,D0w
 00059390: move.w #0x7ff,D7w
-00059394: bsr.w 0x000593fc ; call 000593FC FUN_000593fc
+00059394: bsr.w 0x000593fc ; call 000593FC validate_backup_game_save
 00059398: bcc.w 0x000593cc
 0005939C: lea (0xfff1e8).l,A1 ; data 00fff1e8
 000593A2: move.l D5,D0
 000593A4: swap D0
 000593A6: move.w #0x7ff,D7w
-000593AA: bsr.w 0x000593fc ; call 000593FC FUN_000593fc
+000593AA: bsr.w 0x000593fc ; call 000593FC validate_backup_game_save
 000593AE: bcs.w 0x000593c6
 000593B2: move.l #0x8000000,D0
 000593B8: move.w #0x7ff,D7w
@@ -27099,7 +27099,7 @@
 000593D2: move.l D5,D0
 000593D4: swap D0
 000593D6: move.w #0x7ff,D7w
-000593DA: bsr.w 0x0005961c ; call 0005961C FUN_0005961c
+000593DA: bsr.w 0x0005961c ; call 0005961C validate_sram_game_save
 000593DE: bcc.w 0x000593f6
 000593E2: move.l #0x800,D0
 000593E8: move.w #0x7ff,D7w
@@ -27122,7 +27122,7 @@
 00059428: cmpi.b #0x45,D0b
 0005942C: bne.w 0x00059442
 00059430: movea.l #0xfff1fc,A1
-00059436: bsr.w 0x00059786 ; call 00059786 FUN_00059786
+00059436: bsr.w 0x00059786 ; call 00059786 sum_game_save_payload
 0005943A: move.l (A1),D0
 0005943C: cmp.l D6,D0
 0005943E: beq.w 0x00059450
@@ -27141,13 +27141,13 @@
 0005946C: lea (0xffb740).l,A1 ; data 00ffb740
 00059472: move.w D5w,D0w
 00059474: move.w #0x7ff,D7w
-00059478: bsr.w 0x0005961c ; call 0005961C FUN_0005961c
+00059478: bsr.w 0x0005961c ; call 0005961C validate_sram_game_save
 0005947C: bcc.w 0x000594b0
 00059480: lea (0xffb740).l,A1 ; data 00ffb740
 00059486: move.l D5,D0
 00059488: swap D0
 0005948A: move.w #0x7ff,D7w
-0005948E: bsr.w 0x0005961c ; call 0005961C FUN_0005961c
+0005948E: bsr.w 0x0005961c ; call 0005961C validate_sram_game_save
 00059492: bcs.w 0x000594aa
 00059496: move.l #0x8000000,D0
 0005949C: move.w #0x7ff,D7w
@@ -27159,7 +27159,7 @@
 000594B6: move.l D5,D0
 000594B8: swap D0
 000594BA: move.w #0x7ff,D7w
-000594BE: bsr.w 0x0005961c ; call 0005961C FUN_0005961c
+000594BE: bsr.w 0x0005961c ; call 0005961C validate_sram_game_save
 000594C2: bcc.w 0x000594da
 000594C6: move.l #0x800,D0
 000594CC: move.w #0x7ff,D7w
@@ -27243,7 +27243,7 @@
 00059648: cmpi.b #0x45,D0b
 0005964C: bne.w 0x00059662
 00059650: movea.l #0xffb754,A1
-00059656: bsr.w 0x00059786 ; call 00059786 FUN_00059786
+00059656: bsr.w 0x00059786 ; call 00059786 sum_game_save_payload
 0005965A: move.l (A1),D0
 0005965C: cmp.l D6,D0
 0005965E: beq.w 0x00059668

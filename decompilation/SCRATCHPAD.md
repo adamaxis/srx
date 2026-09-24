@@ -557,6 +557,14 @@ same template as primary skips the secondary copy but still runs `0x5966E` and
 applies the final population byte to the last destination. Invalid host table
 indices return a typed result instead of reproducing unchecked source access.
 
+The common save-image validator is also converted. `0x59786` sums the 0x61C
+bytes beginning at extracted offset `0x14`; `0x593FC` and `0x5961C` both
+require the extracted `GAME` signature at offset `0x04` and compare that sum
+with the big-endian longword at offset `0x630`. The native module accepts the
+result of the existing even-byte extraction boundary directly, keeps backup
+and SRAM validation as separate named wrappers, and rejects truncated or
+malformed host buffers without importing the original RAM addresses.
+
 Two fixed-loop leaves are now named and tested as well. `0x33BE` is a 4x4,
 16-call wrapper around the existing source-wrapped transfer boundary, while
 `0x3548` invokes the HUD panel drawing leaf three times. Neither conversion
