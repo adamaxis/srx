@@ -3,7 +3,7 @@
 // Name: FUN_00002900
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001610 FUN_00001610
+//   0x00001610 decode_source_byte_stream
 //   0x0000313A FUN_0000313a
 //   0x00004388 FUN_00004388
 //   0x00004B6C FUN_00004b6c
@@ -66,7 +66,7 @@ void FUN_00002900(void)
   FUN_000164a8();
   FUN_00013874();
   if ((DAT_00ffde22 & 1) != 0) {
-    FUN_00001610();
+    decode_source_byte_stream();
     DAT_00ffddde = &DAT_00ff6700;
     DAT_00ffdde6 = &DAT_00ff6700;
   }

@@ -1667,7 +1667,7 @@
 00002A06: beq.w 0x00002a2c
 00002A0A: movea.l D0,A3
 00002A0C: lea (0xff6700).l,A1 ; data 00ff6700
-00002A12: jsr 0x00001610.l ; call 00001610 FUN_00001610
+00002A12: jsr 0x00001610.l ; call 00001610 decode_source_byte_stream
 00002A18: move.l #0xff6700,(0x00ffddde).l
 00002A22: move.l #0xff6700,(0x00ffdde6).l
 00002A2C: jmp 0x00005b7e.l ; call 00005B7E FUN_00005b7e

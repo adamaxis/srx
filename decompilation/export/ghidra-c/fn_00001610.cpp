@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00001610
-// Name: FUN_00001610
+// Name: decode_source_byte_stream
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-undefined8 FUN_00001610(void)
+undefined8 decode_source_byte_stream(void)
 
 {
   short sVar1;

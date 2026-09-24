@@ -51,6 +51,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0000131CL, "step_palette_transition");
         names.put(0x00001342L, "wait_for_palette_frame");
         names.put(0x00001368L, "copy_target_palette");
+        names.put(0x00001610L, "decode_source_byte_stream");
         names.put(0x0000195CL, "sample_controller_input");
         names.put(0x000019F2L, "read_controller_port");
         names.put(0x00001BACL, "finalize_title_input_sequence");

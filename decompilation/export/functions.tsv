@@ -54,7 +54,7 @@ entry	name	size	callingConvention	decompileStatus	file
 000014CE	FUN_000014ce	26	unknown	ok	ghidra-c/fn_000014CE.cpp
 00001502	FUN_00001502	46	unknown	ok	ghidra-c/fn_00001502.cpp
 00001530	FUN_00001530	224	unknown	ok	ghidra-c/fn_00001530.cpp
-00001610	FUN_00001610	108	unknown	ok	ghidra-c/fn_00001610.cpp
+00001610	decode_source_byte_stream	108	unknown	ok	ghidra-c/fn_00001610.cpp
 0000167C	FUN_0000167c	164	unknown	ok	ghidra-c/fn_0000167C.cpp
 00001728	FUN_00001728	322	unknown	ok	ghidra-c/fn_00001728.cpp
 00001872	FUN_00001872	158	unknown	ok	ghidra-c/fn_00001872.cpp
