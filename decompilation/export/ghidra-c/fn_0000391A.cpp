@@ -3,7 +3,7 @@
 // Name: handle_mode_action_event
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000033AA FUN_000033aa
+//   0x000033AA draw_field_asset_grid
 //   0x0001DC4C FUN_0001dc4c
 //   0x0001E540 FUN_0001e540
 //   0x000530DE service_audio_if_enabled
@@ -19,7 +19,7 @@ void handle_mode_action_event(void)
   DAT_00fff0cc = '\x01';
   service_audio_if_enabled();
   puVar2 = DAT_00fffc04;
-  FUN_000033aa();
+  draw_field_asset_grid();
   puVar3 = DAT_00fffc04;
   if (*(int *)(DAT_00fffc04 + 0x51) != 0) {
     pbVar1 = (byte *)(*(int *)(DAT_00fffc04 + 0x51) + 0x11);
@@ -46,7 +46,7 @@ void handle_mode_action_event(void)
     FUN_0001e540();
   }
   FUN_0001dc4c();
-  FUN_000033aa();
+  draw_field_asset_grid();
   draw_hud_panel_triplet();
   run_entity_animation_triplet();
   return;

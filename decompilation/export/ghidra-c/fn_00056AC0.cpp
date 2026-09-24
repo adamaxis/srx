@@ -19,7 +19,7 @@
 //   0x0000D4C8 FUN_0000d4c8
 //   0x00010BC4 transfer_menu_asset_batch_eight_after_copy
 //   0x00011048 FUN_00011048
-//   0x000110EC FUN_000110ec
+//   0x000110EC draw_menu_hud_panel_variant_b
 //   0x000530DE service_audio_if_enabled
 //   0x000566E2 refresh_mode_resource_metadata
 //   0x000566EC FUN_000566ec
@@ -62,7 +62,7 @@ LAB_00056b66:
   DAT_00fff0b8 = '\0';
   DAT_00fff0c2._0_1_ = -1;
   FUN_000566ec();
-  FUN_000110ec();
+  draw_menu_hud_panel_variant_b();
   do {
     DAT_00fff0d1 = '\0';
     prepare_numeric_menu_block();

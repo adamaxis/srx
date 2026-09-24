@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000F5C write_vdp_word_block_with_source_wrap
 //   0x00001232 write_vdp_grid
-//   0x000033AA FUN_000033aa
+//   0x000033AA draw_field_asset_grid
 
 
 void upload_field_asset_sequence(void)
@@ -14,9 +14,9 @@ void upload_field_asset_sequence(void)
   write_vdp_word_block_with_source_wrap();
   write_vdp_grid();
   write_vdp_grid();
-  FUN_000033aa();
-  FUN_000033aa();
-  FUN_000033aa();
+  draw_field_asset_grid();
+  draw_field_asset_grid();
+  draw_field_asset_grid();
   return;
 }
 

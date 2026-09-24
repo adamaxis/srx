@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E34 reset_vdp_upload_state
-//   0x00011442 FUN_00011442
+//   0x00011442 reset_and_upload_menu_tile_block
 //   0x00011454 reset_menu_upload_cursor_and_upload
 
 
@@ -16,7 +16,7 @@ void FUN_000114a0(void)
   char cVar1;
   undefined1 uVar2;
   
-  cVar1 = FUN_00011442();
+  cVar1 = reset_and_upload_menu_tile_block();
   DAT_00fff0d0 = cVar1 + DAT_00fff0d0;
   if (DAT_00fff0d0 < '\0') {
     DAT_00fff112 = 0xff;
@@ -45,7 +45,7 @@ void FUN_000114a0(void)
     if ((char)(cVar1 + -0x10) < '\0') {
       FUN_00012e9e();
     }
-    FUN_00011abe();
+    prepare_menu_dialog();
     return;
   }
   render_title_text_source();

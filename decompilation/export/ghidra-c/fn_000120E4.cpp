@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000120E4
-// Name: FUN_000120e4
+// Name: render_menu_number
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E9C make_vdp_transfer_command
@@ -9,7 +9,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_000120e4(void)
+void render_menu_number(void)
 
 {
   short sVar1;

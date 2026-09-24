@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00011678
-// Name: FUN_00011678
+// Name: write_menu_grid
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 
 
-void FUN_00011678(void)
+void write_menu_grid(void)
 
 {
   write_vdp_grid();

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000127B0
-// Name: FUN_000127b0
+// Name: refresh_menu_panel
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_title_text_source
@@ -8,7 +8,7 @@
 //   0x000127FC FUN_000127fc
 
 
-void FUN_000127b0(void)
+void refresh_menu_panel(void)
 
 {
   upload_menu_tile_block();

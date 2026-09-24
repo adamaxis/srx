@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001275C
-// Name: FUN_0001275c
+// Name: clear_menu_slot
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003404 upload_field_asset_setup
 
 
-void FUN_0001275c(void)
+void clear_menu_slot(void)
 
 {
   char in_D0b;

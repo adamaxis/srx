@@ -6,8 +6,8 @@
 //   0x0000C0DA render_title_text_source
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x00011352 FUN_00011352
-//   0x00011928 FUN_00011928
-//   0x00011ABE FUN_00011abe
+//   0x00011928 render_menu_row
+//   0x00011ABE prepare_menu_dialog
 //   0x00012C36 FUN_00012c36
 //   0x00012EAE FUN_00012eae
 
@@ -22,7 +22,7 @@ void FUN_000111e8(void)
   int iVar1;
   
   if (DAT_00fff112 == '\0') {
-    FUN_00011928();
+    render_menu_row();
     return;
   }
   DAT_00fff112 = 0;
@@ -61,7 +61,7 @@ LAB_00011312:
   build_grouped_decimal_glyphs();
   build_grouped_decimal_glyphs();
   FUN_00011352();
-  FUN_00011abe();
+  prepare_menu_dialog();
   return;
 }
 

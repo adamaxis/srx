@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00002C6C
-// Name: FUN_00002c6c
+// Name: prepare_field_viewports
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001406 prepare_title_resources
@@ -10,7 +10,7 @@
 //   0x000566C2 FUN_000566c2
 
 
-void FUN_00002c6c(void)
+void prepare_field_viewports(void)
 
 {
   prepare_title_resources();

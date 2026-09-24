@@ -344,7 +344,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x10952	mode display buffer reset	ghidra_conversion::reset_mode_display_buffers	shadowrun_ghidra_mode_display_reset	partial		Typed clear/wait/upload reset order with transfer markers cleared
 0x110BC	menu HUD panel wrapper A	ghidra_conversion::draw_menu_hud_panel_variant_a	shadowrun_ghidra_menu_service_sequence	partial		Typed single HUD-panel submission boundary
 0x110EC	menu HUD panel wrapper B	ghidra_conversion::draw_menu_hud_panel_variant_b	shadowrun_ghidra_menu_service_sequence	partial		Typed single HUD-panel submission boundary
-0x11136	menu tile-row renderer	ghidra_conversion::render_menu_tile_rows	shadowrun_ghidra_menu_service_sequence	partial		Typed seven-pass row clear/write loop with source return value
+0x11136	menu tile-row renderer	ghidra_conversion::render_menu_tile_rows	shadowrun_ghidra_menu_service_sequence	partial		Typed eight-pass row clear/write loop with source return value
 0x11442	menu tile upload reset wrapper	ghidra_conversion::reset_and_upload_menu_tile_block	shadowrun_ghidra_menu_service_sequence	partial		Typed upload-state reset followed by one menu tile block submission
 0x11678	menu grid writer wrapper	ghidra_conversion::write_menu_grid	shadowrun_ghidra_menu_service_sequence	partial		Typed single menu-grid asset submission boundary
 0x116C4	menu grid quad writer	ghidra_conversion::write_menu_grid_quad	shadowrun_ghidra_menu_service_sequence	partial		Typed four-grid loop followed by shared metadata refresh

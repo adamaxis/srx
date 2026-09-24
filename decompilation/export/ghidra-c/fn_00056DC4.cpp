@@ -6,7 +6,7 @@
 //   0x00000D94 wait_for_controller_event
 //   0x0000C0DA render_title_text_source
 //   0x0000C216 build_grouped_decimal_glyphs
-//   0x0001275C FUN_0001275c
+//   0x0001275C clear_menu_slot
 //   0x000575F8 FUN_000575f8
 //   0x00057628 FUN_00057628
 //   0x0005766A FUN_0005766a
@@ -339,7 +339,7 @@ LAB_00056f4a:
         if (bVar2 == *(byte *)(iVar4 + 0x56)) {
           DAT_00fff098 = 0xffff;
         }
-        uVar6 = FUN_0001275c();
+        uVar6 = clear_menu_slot();
       }
       return uVar6;
     }

@@ -41,7 +41,7 @@
 //   0x00010A7E transfer_menu_asset_batch_four_post_prepare
 //   0x00010C96 transfer_menu_asset_batch_eight
 //   0x000110E8 FUN_000110e8
-//   0x000110EC FUN_000110ec
+//   0x000110EC draw_menu_hud_panel_variant_b
 //   0x00011190 FUN_00011190
 //   0x000111D0 upload_menu_tile_block
 //   0x00011454 reset_menu_upload_cursor_and_upload
@@ -49,13 +49,13 @@
 //   0x0001170C FUN_0001170c
 //   0x00011712 FUN_00011712
 //   0x000118C6 cycle_inventory_action_selector
-//   0x00011900 FUN_00011900
-//   0x00011928 FUN_00011928
+//   0x00011900 prepare_menu_row_grid
+//   0x00011928 render_menu_row
 //   0x00012148 read_entity_action_code
 //   0x0001253E FUN_0001253e
 //   0x000125FA FUN_000125fa
-//   0x0001275C FUN_0001275c
-//   0x000127B0 FUN_000127b0
+//   0x0001275C clear_menu_slot
+//   0x000127B0 refresh_menu_panel
 //   0x000129FE FUN_000129fe
 //   0x00012C1E FUN_00012c1e
 //   0x00012C36 FUN_00012c36
@@ -117,7 +117,7 @@ void FUN_00011740(void)
   switch(DAT_00fff0d0) {
   case 2:
     FUN_00012c36();
-    FUN_00011900();
+    prepare_menu_row_grid();
     render_title_text_source();
     build_grouped_decimal_glyphs();
     uVar20 = _DAT_00fff0d0;
@@ -151,7 +151,7 @@ LAB_00011be6:
     uVar19 = 0;
     cVar8 = '\0';
     service_audio_if_enabled();
-    FUN_00012062();
+    refresh_menu_text();
     if ((bool)uVar19 || cVar8 != cVar7) goto LAB_00011c9c;
     _DAT_00fff0d0 = uVar20;
     if (DAT_00fff0d0 == '\x02') {
@@ -161,7 +161,7 @@ LAB_00011be6:
         if (*(char *)(DAT_00fffc04 + 0x27) != '\0') {
           DAT_00fff114 = '\0';
           upload_menu_tile_block();
-          FUN_000127b0();
+          refresh_menu_panel();
           render_title_text_source();
           do {
             while( true ) {
@@ -170,7 +170,7 @@ LAB_00011be6:
               sample_controller_input();
               if (((DAT_00ffdd22._0_1_ & 4) == 0) && ((DAT_00ffdd22._0_1_ & 8) == 0)) break;
               service_audio_if_enabled();
-              FUN_000127b0();
+              refresh_menu_panel();
             }
           } while ((DAT_00ffdd22._0_1_ & 0x40) == 0);
           service_audio_if_enabled();
@@ -222,7 +222,7 @@ LAB_00011be6:
       render_title_text_source();
       _DAT_00ffdd2a = (uint)*(byte *)((int)DAT_00fffc04 + 0x4f);
       build_grouped_decimal_glyphs();
-      FUN_0001209a();
+      advance_menu_text_cursor();
       uVar20 = _DAT_00fff0d0;
       _DAT_00fff0d0 = CONCAT11(2,DAT_00fff0d1);
       upload_menu_tile_block();
@@ -253,10 +253,10 @@ LAB_00011ec4:
            ((DAT_00ffdd22._0_1_ & 0x20) != 0)) {
           service_audio_if_enabled();
           if (DAT_00fff0d0 == '\x02') {
-            FUN_000120e4();
+            render_menu_number();
           }
           else if (DAT_00fff0d0 == '\x03') {
-            FUN_000120e4();
+            render_menu_number();
           }
           else {
             if (DAT_00fff0d0 == '\x04') {
@@ -272,7 +272,7 @@ LAB_00011ec4:
               render_title_text_source();
               goto LAB_00011cb6;
             }
-            FUN_0001209a();
+            advance_menu_text_cursor();
           }
           goto LAB_00011ea4;
         }
@@ -321,7 +321,7 @@ LAB_00011c9c:
 LAB_00011cb6:
     upload_menu_tile_block();
     wait_for_controller_event();
-    FUN_00011928();
+    render_menu_row();
     return;
   case 3:
     _DAT_00fff116 = -1;
@@ -357,7 +357,7 @@ LAB_0000d0d6:
     write_repeated_vdp_grid();
     write_repeated_vdp_grid();
     refresh_mode_resource_metadata();
-    FUN_000110ec();
+    draw_menu_hud_panel_variant_b();
     render_title_text_source();
     render_title_text_source();
     render_title_text_source();
@@ -487,7 +487,7 @@ LAB_0000d4a0:
     } while( true );
   case 4:
     FUN_00012c36();
-    FUN_00011900();
+    prepare_menu_row_grid();
     render_title_text_source();
     sVar11 = DAT_00fffc04[0x48];
     if (sVar11 == 0) {
@@ -504,7 +504,7 @@ LAB_0000d4a0:
       } while (sVar6 != -1);
     }
     wait_for_controller_event();
-    FUN_00011928();
+    render_menu_row();
     return;
   case 5:
     DAT_00fff0db = 0;
@@ -552,13 +552,13 @@ LAB_0000d4a0:
       _DAT_00fff0d0 = uVar20;
       return;
     }
-    FUN_00011900();
+    prepare_menu_row_grid();
     FUN_00012c36();
     render_title_text_source();
     FUN_000106da();
     FUN_000106da();
     wait_for_controller_event();
-    FUN_00011928();
+    render_menu_row();
     return;
   case 6:
     transfer_menu_asset_batch_four_post_prepare();
@@ -607,7 +607,7 @@ LAB_0000c2aa:
     DAT_00fff098 = 0;
     upload_menu_tile_block();
     DAT_00fff114 = '\0';
-    FUN_000127b0();
+    refresh_menu_panel();
     FUN_00012c42();
     read_entity_action_code();
     if (cVar7 == *(char *)(DAT_00fffc04 + 0x2b)) {
@@ -622,13 +622,13 @@ LAB_0000c2aa:
         sample_controller_input();
         if (((DAT_00ffdd22._0_1_ & 4) == 0) && ((DAT_00ffdd22._0_1_ & 8) == 0)) break;
         service_audio_if_enabled();
-        FUN_000127b0();
+        refresh_menu_panel();
       }
     } while (((DAT_00ffdd22._0_1_ & 0x40) == 0) && ((DAT_00ffdd22._0_1_ & 0x10) == 0));
     service_audio_if_enabled();
     if (-1 < DAT_00fff114) {
       read_entity_action_code();
-      FUN_0001275c();
+      clear_menu_slot();
       FUN_00011624();
     }
     return;
@@ -640,12 +640,12 @@ LAB_0000c2aa:
       wait_for_controller_event();
       return;
     }
-    FUN_00011900();
+    prepare_menu_row_grid();
     puVar17 = DAT_00fffc04;
     upload_menu_tile_block();
     do {
       DAT_00fff114 = '\0';
-      FUN_000127b0();
+      refresh_menu_panel();
       puVar4 = DAT_00fffc04;
       DAT_00fff096 = 0;
       puVar14 = puVar17;
@@ -686,7 +686,7 @@ LAB_0001296a:
           sample_controller_input();
           if (((DAT_00ffdd22._0_1_ & 4) == 0) && ((DAT_00ffdd22._0_1_ & 8) == 0)) break;
           service_audio_if_enabled();
-          FUN_000127b0();
+          refresh_menu_panel();
         }
       } while (((DAT_00ffdd22._0_1_ & 0x40) == 0) &&
               (((DAT_00ffdd22._0_1_ & 0x20) == 0 && ((DAT_00ffdd22._0_1_ & 0x10) == 0))));
@@ -696,7 +696,7 @@ LAB_0001296a:
     FUN_00011624();
     FUN_00012c36();
 LAB_000129dc:
-    FUN_00011928();
+    render_menu_row();
     return;
   case 10:
     DAT_00fff112 = 0;
@@ -756,7 +756,7 @@ LAB_000118b6:
   }
   cVar8 = read_entity_action_code();
   if ('\0' < DAT_00fff09f) {
-    FUN_00011900();
+    prepare_menu_row_grid();
     FUN_00012c42();
     DAT_00fff0b9 = '\0';
     puVar16 = &DAT_00fff0ba;
@@ -812,7 +812,7 @@ LAB_000118b6:
               bVar2 = bVar1 - 1;
               *pbVar12 = bVar2;
               if (bVar2 == 0 || SBORROW1(bVar1,'\x01') != (int)((uint)bVar2 << 0x18) < 0) {
-                FUN_0001275c();
+                clear_menu_slot();
                 FUN_00011624();
               }
             }
@@ -842,7 +842,7 @@ joined_r0x00012496:
             bVar2 = bVar1 - 1;
             *pbVar12 = bVar2;
             if (bVar2 == 0 || SBORROW1(bVar1,'\x01') != (int)((uint)bVar2 << 0x18) < 0) {
-              FUN_0001275c();
+              clear_menu_slot();
               FUN_00011624();
               run_entity_animation_triplet();
             }
@@ -853,7 +853,7 @@ joined_r0x00012496:
         }
         if ((DAT_00ffdd22._0_1_ & 0x80) != 0) {
 LAB_00012538:
-          FUN_00011928();
+          render_menu_row();
           return;
         }
       }

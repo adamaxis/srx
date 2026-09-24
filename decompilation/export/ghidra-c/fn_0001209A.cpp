@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x0001209A
-// Name: FUN_0001209a
+// Name: advance_menu_text_cursor
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_title_text_source
 //   0x000110E8 FUN_000110e8
 
 
-void FUN_0001209a(void)
+void advance_menu_text_cursor(void)
 
 {
   short *psVar1;

@@ -6,7 +6,7 @@
 //   0x0000131C step_palette_transition
 //   0x0000286E guard_world_effect_player_spawn
 //   0x00002900 FUN_00002900
-//   0x00002C6C FUN_00002c6c
+//   0x00002C6C prepare_field_viewports
 //   0x0000301E upload_scene_profile_block
 
 
@@ -29,7 +29,7 @@ void advance_field_scene_transition(void)
     if ((DAT_00ffe11a != 0) && (DAT_00ffe11a = 0, DAT_00ffe16e < '\0')) {
       (&DAT_00ff1700)[sVar1] = ((&DAT_00ff1700)[sVar1] & 0xe0) + 1;
     }
-    FUN_00002c6c();
+    prepare_field_viewports();
     upload_scene_profile_block();
     return;
   }
@@ -39,7 +39,7 @@ void advance_field_scene_transition(void)
   FUN_00003074();
   FUN_00002900();
   apply_scene_profile_selection();
-  FUN_00002c6c();
+  prepare_field_viewports();
   upload_scene_profile_block();
   guard_world_effect_player_spawn();
   return;

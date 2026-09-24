@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000028AA
-// Name: FUN_000028aa
+// Name: prepare_field_resources
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000334C upload_field_asset_sequence
@@ -9,7 +9,7 @@
 //   0x0000C0C2 load_title_font
 
 
-void FUN_000028aa(void)
+void prepare_field_resources(void)
 
 {
   upload_field_asset_setup();

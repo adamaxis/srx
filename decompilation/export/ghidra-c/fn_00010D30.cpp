@@ -10,7 +10,7 @@
 //   0x0000391A handle_mode_action_event
 //   0x0000C0C2 load_title_font
 //   0x00010F50 FUN_00010f50
-//   0x000110BC FUN_000110bc
+//   0x000110BC draw_menu_hud_panel_variant_a
 //   0x0001111A FUN_0001111a
 //   0x000111D0 upload_menu_tile_block
 //   0x000111E8 FUN_000111e8
@@ -21,7 +21,7 @@
 //   0x00011624 FUN_00011624
 //   0x0001170C FUN_0001170c
 //   0x00011740 FUN_00011740
-//   0x00011928 FUN_00011928
+//   0x00011928 render_menu_row
 //   0x000530DE service_audio_if_enabled
 //   0x0005670E refresh_mode_palette_data
 
@@ -54,9 +54,9 @@ code_r0x00010d30:
 LAB_00010d90:
   _DAT_00fff0d0 = uVar1;
   DAT_00fff0e0 = 0;
-  FUN_000110bc();
+  draw_menu_hud_panel_variant_a();
   FUN_0001111a();
-  FUN_00011928();
+  render_menu_row();
   FUN_00011624();
   upload_menu_tile_block();
   reset_menu_upload_cursor_and_upload();

@@ -7,7 +7,7 @@
 //   0x00000BF2 latch_controller_events
 //   0x00001232 write_vdp_grid
 //   0x0000195C sample_controller_input
-//   0x00011ABE FUN_00011abe
+//   0x00011ABE prepare_menu_dialog
 //   0x000530DE service_audio_if_enabled
 
 
@@ -43,7 +43,7 @@ undefined8 FUN_000119ce(void)
   uVar4 = 5;
   uVar2 = unaff_D2 & 0xffff0000;
   write_vdp_grid();
-  FUN_00011abe();
+  prepare_menu_dialog();
   uVar1 = extraout_D1;
   uVar5 = extraout_A0;
   uVar6 = extraout_A1;
@@ -59,7 +59,7 @@ LAB_00011a44:
       uVar1 = 1;
 LAB_00011a70:
       service_audio_if_enabled(uVar1);
-      FUN_00011abe();
+      prepare_menu_dialog();
       uVar1 = extraout_D1_00;
       uVar5 = extraout_A0_00;
       uVar6 = extraout_A1_00;

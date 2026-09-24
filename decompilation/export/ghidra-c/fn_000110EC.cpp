@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000110EC
-// Name: FUN_000110ec
+// Name: draw_menu_hud_panel_variant_b
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003648 draw_hud_panel
 
 
-void FUN_000110ec(void)
+void draw_menu_hud_panel_variant_b(void)
 
 {
   draw_hud_panel();
