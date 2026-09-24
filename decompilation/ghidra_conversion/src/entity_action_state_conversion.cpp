@@ -80,4 +80,27 @@ std::uint8_t select_entity_action_lane(
     return lane;
 }
 
+void collect_entity_action_records(
+    const std::vector<EntityActionSourceRecord>& source,
+    EntityActionRecordTable& destination) {
+    destination.selected.clear();
+    destination.special_value = 0U;
+    for (const auto& record : source) {
+        switch (record.code) {
+        case 0U:
+        case 1U:
+        case 7U:
+        case 8U:
+            destination.selected.push_back(record);
+            break;
+        case 11U:
+            destination.special_value = record.value;
+            break;
+        default:
+            break;
+        }
+    }
+    destination.terminated = true;
+}
+
 } // namespace shadowrun::ghidra_conversion

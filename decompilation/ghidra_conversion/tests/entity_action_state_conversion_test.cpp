@@ -54,5 +54,14 @@ int main() {
         select_entity_action_lane({4U, 0U, 0U, true, true}) != 2U) {
         return 6;
     }
+    EntityActionRecordTable records;
+    collect_entity_action_records(
+        {{0U, 1U}, {2U, 2U}, {7U, 3U}, {11U, 9U}, {8U, 4U}}, records);
+    if (records.selected !=
+            std::vector<EntityActionSourceRecord>{{0U, 1U}, {7U, 3U},
+                                                  {8U, 4U}} ||
+        records.special_value != 9U || !records.terminated) {
+        return 7;
+    }
     return 0;
 }

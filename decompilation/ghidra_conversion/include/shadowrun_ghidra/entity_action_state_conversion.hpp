@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <vector>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -53,5 +54,22 @@ struct EntityActionLaneAvailability {
 // their source override flags.
 std::uint8_t select_entity_action_lane(
     const EntityActionLaneAvailability& availability);
+
+struct EntityActionSourceRecord {
+    std::uint8_t code = 0;
+    std::uint8_t value = 0;
+};
+
+struct EntityActionRecordTable {
+    std::vector<EntityActionSourceRecord> selected;
+    std::uint8_t special_value = 0;
+    bool terminated = false;
+};
+
+// ROM 0x13C74: retain only source action codes 0/1/7/8, publish code 11's
+// side value, and close the host table with the source sentinel.
+void collect_entity_action_records(
+    const std::vector<EntityActionSourceRecord>& source,
+    EntityActionRecordTable& destination);
 
 } // namespace shadowrun::ghidra_conversion

@@ -1021,6 +1021,10 @@ publication order as two explicit callbacks.
 The lane selector at `0x13C20` now returns a typed 0/1/2 lane from the source
 occupancy thresholds and signed override conditions.
 
+The action-record collector at `0x13C74` now filters the four retained action
+codes, publishes code 11's side value, and marks the host table terminated
+without exposing the original byte-pointer layout.
+
 The compact row-writer family is now typed as well. `0x1184` emits one masked
 row with optional `0x8F80`/`0x8F02` display-increment controls, `0x11C0`
 repeats a source row at `0x80`-byte destination strides, and `0x11F6`
