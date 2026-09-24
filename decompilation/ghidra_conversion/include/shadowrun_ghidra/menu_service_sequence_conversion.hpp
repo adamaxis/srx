@@ -28,4 +28,8 @@ void write_menu_grid(const std::function<void()>& write_grid);
 void write_menu_grid_quad(const std::function<void()>& write_grid,
                           const std::function<void()>& refresh_metadata);
 
+// ROM 0x11900: prepare the menu row, then submit its repeated grid.
+void prepare_menu_row_grid(const std::function<void()>& prepare_row,
+                           const std::function<void()>& write_repeated_grid);
+
 } // namespace shadowrun::ghidra_conversion

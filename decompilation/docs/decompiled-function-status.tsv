@@ -348,3 +348,4 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x11442	menu tile upload reset wrapper	ghidra_conversion::reset_and_upload_menu_tile_block	shadowrun_ghidra_menu_service_sequence	partial		Typed upload-state reset followed by one menu tile block submission
 0x11678	menu grid writer wrapper	ghidra_conversion::write_menu_grid	shadowrun_ghidra_menu_service_sequence	partial		Typed single menu-grid asset submission boundary
 0x116C4	menu grid quad writer	ghidra_conversion::write_menu_grid_quad	shadowrun_ghidra_menu_service_sequence	partial		Typed four-grid loop followed by shared metadata refresh
+0x11900	menu row grid preparation	ghidra_conversion::prepare_menu_row_grid	shadowrun_ghidra_menu_service_sequence	partial		Typed row preparation followed by repeated-grid submission

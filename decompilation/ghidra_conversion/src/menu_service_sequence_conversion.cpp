@@ -61,4 +61,14 @@ void write_menu_grid_quad(const std::function<void()>& write_grid,
     }
 }
 
+void prepare_menu_row_grid(const std::function<void()>& prepare_row,
+                           const std::function<void()>& write_repeated_grid) {
+    if (prepare_row) {
+        prepare_row();
+    }
+    if (write_repeated_grid) {
+        write_repeated_grid();
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion
