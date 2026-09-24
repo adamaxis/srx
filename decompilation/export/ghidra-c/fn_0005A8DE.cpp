@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005A8DE
-// Name: FUN_0005a8de
+// Name: advance_title_intro_final_projection
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 FUN_00001378
 
 
-void FUN_0005a8de(void)
+void advance_title_intro_final_projection(void)
 
 {
   if (DAT_00fff182 <= DAT_00ffdf88) {

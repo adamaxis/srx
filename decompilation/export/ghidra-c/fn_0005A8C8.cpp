@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005A8C8
-// Name: FUN_0005a8c8
+// Name: reset_title_intro_final_projection
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0005a8c8(void)
+void reset_title_intro_final_projection(void)
 
 {
   DAT_00fff182 = 0;

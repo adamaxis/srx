@@ -7,7 +7,7 @@
 //   0x00000BF2 latch_controller_events
 //   0x00001406 prepare_title_resources
 //   0x0000195C sample_controller_input
-//   0x0005A96A FUN_0005a96a
+//   0x0005A96A render_title_intro_text_batch
 //   0x0005A9E2 FUN_0005a9e2
 //   0x0005B002 FUN_0005b002
 //   0x0005B00A FUN_0005b00a
@@ -51,7 +51,7 @@ void FUN_0005ad1a(void)
     sample_controller_input();
     latch_controller_events();
     if (sVar1 == 0x1e0) {
-      FUN_0005a96a();
+      render_title_intro_text_batch();
     }
     FUN_0005b08e();
     FUN_0005b00a();

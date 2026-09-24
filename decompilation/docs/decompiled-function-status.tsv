@@ -283,3 +283,6 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x5A71C	advance title intro linear sweep A	ghidra_conversion::advance_title_intro_linear_sweep_a	shadowrun_ghidra_title_intro_sweeps	partial		Typed eight-entry decrement-eight sweep with 0x40 cutoff
 0x5A7EA	reset title intro linear sweep B	ghidra_conversion::reset_title_intro_linear_sweep_b	shadowrun_ghidra_title_intro_sweeps	partial		Clears the eight-entry decrement-eleven sweep stage and deadline
 0x5A7F8	advance title intro linear sweep B	ghidra_conversion::advance_title_intro_linear_sweep_b	shadowrun_ghidra_title_intro_sweeps	partial		Typed eight-entry decrement-eleven sweep with 0x40 cutoff
+0x5A8C8	reset title intro final projection	ghidra_conversion::reset_title_intro_final_projection	shadowrun_ghidra_title_intro_final	partial		Clears the three-entry late-intro projection phase and restores the x origin
+0x5A8DE	advance title intro final projection	ghidra_conversion::advance_title_intro_final_projection	shadowrun_ghidra_title_intro_final	partial		Typed six-frame gate, three-entry descriptor timing, and four-word projection advance
+0x5A96A	render title intro text batch	ghidra_conversion::render_title_intro_text_batch	shadowrun_ghidra_title_intro_final	partial		Submits six host text assets at the source destination order and palette mask

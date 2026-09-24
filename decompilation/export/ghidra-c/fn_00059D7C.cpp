@@ -22,7 +22,7 @@
 //   0x0005A61A reset_title_intro_targeted_sweep
 //   0x0005A70E reset_title_intro_linear_sweep_a
 //   0x0005A7EA reset_title_intro_linear_sweep_b
-//   0x0005A8C8 FUN_0005a8c8
+//   0x0005A8C8 reset_title_intro_final_projection
 //   0x0005ADFE FUN_0005adfe
 //   0x0005AE3A FUN_0005ae3a
 //   0x0005AF2A FUN_0005af2a
@@ -86,7 +86,7 @@ void FUN_00059d7c(void)
   reset_title_intro_targeted_sweep();
   reset_title_intro_linear_sweep_a();
   reset_title_intro_linear_sweep_b();
-  FUN_0005a8c8();
+  reset_title_intro_final_projection();
   FUN_0005a1ea();
   sample_controller_input();
   sVar1 = 0x1f0;

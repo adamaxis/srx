@@ -848,9 +848,9 @@ entry	name	size	callingConvention	decompileStatus	file
 0005A71C	advance_title_intro_linear_sweep_a	142	unknown	ok	ghidra-c/fn_0005A71C.cpp
 0005A7EA	reset_title_intro_linear_sweep_b	14	unknown	ok	ghidra-c/fn_0005A7EA.cpp
 0005A7F8	advance_title_intro_linear_sweep_b	144	unknown	ok	ghidra-c/fn_0005A7F8.cpp
-0005A8C8	FUN_0005a8c8	22	unknown	ok	ghidra-c/fn_0005A8C8.cpp
-0005A8DE	FUN_0005a8de	122	unknown	ok	ghidra-c/fn_0005A8DE.cpp
-0005A96A	FUN_0005a96a	120	unknown	ok	ghidra-c/fn_0005A96A.cpp
+0005A8C8	reset_title_intro_final_projection	22	unknown	ok	ghidra-c/fn_0005A8C8.cpp
+0005A8DE	advance_title_intro_final_projection	122	unknown	ok	ghidra-c/fn_0005A8DE.cpp
+0005A96A	render_title_intro_text_batch	120	unknown	ok	ghidra-c/fn_0005A96A.cpp
 0005A9E2	FUN_0005a9e2	60	unknown	ok	ghidra-c/fn_0005A9E2.cpp
 0005AA1E	FUN_0005aa1e	60	unknown	ok	ghidra-c/fn_0005AA1E.cpp
 0005AA5A	FUN_0005aa5a	60	unknown	ok	ghidra-c/fn_0005AA5A.cpp

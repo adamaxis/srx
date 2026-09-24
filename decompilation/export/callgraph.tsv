@@ -1967,7 +1967,7 @@ caller	caller_name	callee	callee_name	call_sites
 00059D7C	FUN_00059d7c	0005A61A	reset_title_intro_targeted_sweep	1
 00059D7C	FUN_00059d7c	0005A70E	reset_title_intro_linear_sweep_a	1
 00059D7C	FUN_00059d7c	0005A7EA	reset_title_intro_linear_sweep_b	1
-00059D7C	FUN_00059d7c	0005A8C8	FUN_0005a8c8	1
+00059D7C	FUN_00059d7c	0005A8C8	reset_title_intro_final_projection	1
 00059D7C	FUN_00059d7c	0005ADFE	FUN_0005adfe	1
 00059D7C	FUN_00059d7c	0005AE3A	FUN_0005ae3a	1
 00059D7C	FUN_00059d7c	0005AF2A	FUN_0005af2a	2
@@ -1988,7 +1988,7 @@ caller	caller_name	callee	callee_name	call_sites
 0005A1EA	FUN_0005a1ea	0005A628	advance_title_intro_targeted_sweep	1
 0005A1EA	FUN_0005a1ea	0005A71C	advance_title_intro_linear_sweep_a	1
 0005A1EA	FUN_0005a1ea	0005A7F8	advance_title_intro_linear_sweep_b	1
-0005A1EA	FUN_0005a1ea	0005A8DE	FUN_0005a8de	1
+0005A1EA	FUN_0005a1ea	0005A8DE	advance_title_intro_final_projection	1
 0005A252	advance_title_intro_persistent_sequence	00001378	FUN_00001378	1
 0005A252	advance_title_intro_persistent_sequence	000530DE	service_audio_if_enabled	1
 0005A252	advance_title_intro_persistent_sequence	0005A582	begin_title_intro_timed_sprites	1
@@ -2002,8 +2002,8 @@ caller	caller_name	callee	callee_name	call_sites
 0005A628	advance_title_intro_targeted_sweep	00001378	FUN_00001378	1
 0005A71C	advance_title_intro_linear_sweep_a	00001378	FUN_00001378	1
 0005A7F8	advance_title_intro_linear_sweep_b	00001378	FUN_00001378	1
-0005A8DE	FUN_0005a8de	00001378	FUN_00001378	1
-0005A96A	FUN_0005a96a	0000C0DA	render_title_text_source	6
+0005A8DE	advance_title_intro_final_projection	00001378	FUN_00001378	1
+0005A96A	render_title_intro_text_batch	0000C0DA	render_title_text_source	6
 0005A9E2	FUN_0005a9e2	0000C0DA	render_title_text_source	3
 0005AA1E	FUN_0005aa1e	0000C0DA	render_title_text_source	3
 0005AA5A	FUN_0005aa5a	0000C0DA	render_title_text_source	3
@@ -2035,7 +2035,7 @@ caller	caller_name	callee	callee_name	call_sites
 0005AD1A	FUN_0005ad1a	00000BF2	latch_controller_events	1
 0005AD1A	FUN_0005ad1a	00001406	prepare_title_resources	1
 0005AD1A	FUN_0005ad1a	0000195C	sample_controller_input	2
-0005AD1A	FUN_0005ad1a	0005A96A	FUN_0005a96a	1
+0005AD1A	FUN_0005ad1a	0005A96A	render_title_intro_text_batch	1
 0005AD1A	FUN_0005ad1a	0005A9E2	FUN_0005a9e2	1
 0005AD1A	FUN_0005ad1a	0005B002	FUN_0005b002	1
 0005AD1A	FUN_0005ad1a	0005B00A	FUN_0005b00a	1

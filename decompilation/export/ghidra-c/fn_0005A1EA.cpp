@@ -10,7 +10,7 @@
 //   0x0005A628 advance_title_intro_targeted_sweep
 //   0x0005A71C advance_title_intro_linear_sweep_a
 //   0x0005A7F8 advance_title_intro_linear_sweep_b
-//   0x0005A8DE FUN_0005a8de
+//   0x0005A8DE advance_title_intro_final_projection
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -26,7 +26,7 @@ void FUN_0005a1ea(void)
   advance_title_intro_targeted_sweep();
   advance_title_intro_linear_sweep_a();
   advance_title_intro_linear_sweep_b();
-  FUN_0005a8de();
+  advance_title_intro_final_projection();
   _DAT_00ffd980 = 0;
   DAT_00ffef14 = DAT_00ffef14 | 2;
   return;

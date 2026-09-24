@@ -991,3 +991,16 @@ target_link_libraries(shadowrun_ghidra_title_intro_sweeps_test
     PRIVATE shadowrun_ghidra_title_intro_sweeps)
 add_test(NAME shadowrun_ghidra_title_intro_sweeps
          COMMAND shadowrun_ghidra_title_intro_sweeps_test)
+
+add_library(shadowrun_ghidra_title_intro_final STATIC
+    src/title_intro_final_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_title_intro_final PUBLIC include)
+
+add_executable(shadowrun_ghidra_title_intro_final_test
+    tests/title_intro_final_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_title_intro_final_test
+    PRIVATE shadowrun_ghidra_title_intro_final)
+add_test(NAME shadowrun_ghidra_title_intro_final
+         COMMAND shadowrun_ghidra_title_intro_final_test)

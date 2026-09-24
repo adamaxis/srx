@@ -27592,7 +27592,7 @@
 00059EFC: jsr 0x0005a61a.l ; call 0005A61A reset_title_intro_targeted_sweep
 00059F02: jsr 0x0005a70e.l ; call 0005A70E reset_title_intro_linear_sweep_a
 00059F08: jsr 0x0005a7ea.l ; call 0005A7EA reset_title_intro_linear_sweep_b
-00059F0E: jsr 0x0005a8c8.l ; call 0005A8C8 FUN_0005a8c8
+00059F0E: jsr 0x0005a8c8.l ; call 0005A8C8 reset_title_intro_final_projection
 00059F14: bsr.w 0x0005a1ea ; call 0005A1EA FUN_0005a1ea
 00059F18: move.w (0x00ffdf88).l,-(SP)
 00059F1E: move.w (SP)+,(0x00ffdf88).l
@@ -27754,7 +27754,7 @@
 0005A214: jsr 0x0005a628.l ; call 0005A628 advance_title_intro_targeted_sweep
 0005A21A: jsr 0x0005a71c.l ; call 0005A71C advance_title_intro_linear_sweep_a
 0005A220: jsr 0x0005a7f8.l ; call 0005A7F8 advance_title_intro_linear_sweep_b
-0005A226: jsr 0x0005a8de.l ; call 0005A8DE FUN_0005a8de
+0005A226: jsr 0x0005a8de.l ; call 0005A8DE advance_title_intro_final_projection
 0005A22C: subq.w #0x8,A3
 0005A22E: move.w #0x1,(0x00ffd980).l
 0005A236: clr.b (0x3,A3)
@@ -28284,7 +28284,7 @@
 0005AD92: cmpi.w #0x1e0,D7w
 0005AD96: bne.w 0x0005ada4
 0005AD9A: move.w D7w,-(SP) ; data 00000528
-0005AD9C: jsr 0x0005a96a.l ; call 0005A96A FUN_0005a96a
+0005AD9C: jsr 0x0005a96a.l ; call 0005A96A render_title_intro_text_batch
 0005ADA2: move.w (SP)+,D7w
 0005ADA4: move.w D7w,-(SP) ; data 00000528
 0005ADA6: jsr 0x0005b08e.l ; call 0005B08E FUN_0005b08e

@@ -586,6 +586,13 @@ uses eight entries, decrement eight, and a `0x40` cutoff; and
 Each continues to project the active descriptor between table deadlines and
 keeps its source-specific coordinates and palette flags in the typed request.
 
+The late three-phase projection and final text batch are now typed. `0x5A8C8`
+resets the projection to x `0x193`; `0x5A8DE` waits until six frames after
+the intro start when a phase is due, then advances x by four and keeps drawing
+between deadlines at y `0x13C`. `0x5A96A` submits six host text handles in
+the source order at `0x2906`, `0x2986`, `0x2A06`, `0x2A86`, `0x2B86`, and
+`0x2C06`, preserving the `0xE000` palette mask.
+
 The runner reset cluster is now typed. `0x59BCC` clears status bits `6` and
 `4` in each of the three live runner records, preserves the source order of
 the preparation (`0x3674`, argument `0x0A`) and finalization (`0x37EC`)
