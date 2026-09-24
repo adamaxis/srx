@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000044BC
-// Name: FUN_000044bc
+// Name: initialize_entity_record_from_template
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D44 advance_source_prng
 
 
-void FUN_000044bc(void)
+void initialize_entity_record_from_template(void)
 
 {
   undefined2 in_D0w;

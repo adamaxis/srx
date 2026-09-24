@@ -3,7 +3,7 @@
 // Name: FUN_00004466
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000044BC FUN_000044bc
+//   0x000044BC initialize_entity_record_from_template
 //   0x0001A2CC allocate_first_free_effect_slot
 //   0x0001A342 find_first_available_world_effect_entity_slot
 
@@ -32,12 +32,12 @@ void FUN_00004466(void)
     unaff_A5 = unaff_A5 + 2;
     if ((uVar1 & 0x80000000) == 0) {
       DAT_00ffdd42 = DAT_00ffdd42 + 0xc0;
-      FUN_000044bc();
+      initialize_entity_record_from_template();
       *(undefined4 *)(extraout_A1_01 + 0xa8) = unaff_A6;
     }
     else {
       DAT_00ffdd42 = 0;
-      FUN_000044bc();
+      initialize_entity_record_from_template();
       *(byte *)(extraout_A1_00 + 0x10) = *(byte *)(extraout_A1_00 + 0x10) | 0x20;
       unaff_A6 = extraout_A1;
     }

@@ -3019,11 +3019,11 @@
 0000448E: beq.w 0x000044a8
 00004492: clr.w (0x00ffdd42).l
 00004498: movea.l A1,A6
-0000449A: bsr.w 0x000044bc ; call 000044BC FUN_000044bc
+0000449A: bsr.w 0x000044bc ; call 000044BC initialize_entity_record_from_template
 0000449E: bset.b #0x5,(0x10,A1)
 000044A4: bra.w 0x000044b8
 000044A8: addi.w #0xc0,(0x00ffdd42).l
-000044B0: bsr.w 0x000044bc ; call 000044BC FUN_000044bc
+000044B0: bsr.w 0x000044bc ; call 000044BC initialize_entity_record_from_template
 000044B4: move.l A6,(0xa8,A1)
 000044B8: bra.b 0x00004466
 000044BA: rts
@@ -18742,11 +18742,11 @@
 0001E10E: beq.w 0x0001e12a
 0001E112: clr.w (0x00ffdd42).l
 0001E118: movea.l A1,A6
-0001E11A: jsr 0x000044bc.l ; call 000044BC FUN_000044bc
+0001E11A: jsr 0x000044bc.l ; call 000044BC initialize_entity_record_from_template
 0001E120: bset.b #0x5,(0x10,A1)
 0001E126: bra.w 0x0001e13c
 0001E12A: addi.w #0xc0,(0x00ffdd42).l
-0001E132: jsr 0x000044bc.l ; call 000044BC FUN_000044bc
+0001E132: jsr 0x000044bc.l ; call 000044BC initialize_entity_record_from_template
 0001E138: move.l A6,(0xa8,A1)
 0001E13C: bset.b #0x1,(0x9e,A1)
 0001E142: movea.l A1,A0
@@ -18823,7 +18823,7 @@
 0001E270: jsr 0x0001a2cc.l ; call 0001A2CC allocate_first_free_effect_slot
 0001E276: bcs.w 0x0001e2b8
 0001E27A: movea.l #0x1e300,A3
-0001E280: jsr 0x000044bc.l ; call 000044BC FUN_000044bc
+0001E280: jsr 0x000044bc.l ; call 000044BC initialize_entity_record_from_template
 0001E286: move.b #0x4,(0x4d,A1)
 0001E28C: bset.b #0x5,(0x10,A1)
 0001E292: movea.l (0x00ffdd4c).l,A4
@@ -18975,7 +18975,7 @@
 0001E4BE: jsr 0x0001a2cc.l ; call 0001A2CC allocate_first_free_effect_slot
 0001E4C4: bcs.w 0x0001e4fe
 0001E4C8: movea.l #0x1e300,A3
-0001E4CE: jsr 0x000044bc.l ; call 000044BC FUN_000044bc
+0001E4CE: jsr 0x000044bc.l ; call 000044BC initialize_entity_record_from_template
 0001E4D4: bset.b #0x7,(0xb0,A1)
 0001E4DA: move.l D4,(0x00fffc3c).l
 0001E4E0: movea.l (0x00fffc04).l,A0

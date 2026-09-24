@@ -552,3 +552,16 @@ target_link_libraries(shadowrun_ghidra_world_effect_test
     PRIVATE shadowrun_ghidra_world_effect)
 add_test(NAME shadowrun_ghidra_world_effect
          COMMAND shadowrun_ghidra_world_effect_test)
+
+add_library(shadowrun_ghidra_entity_template STATIC
+    src/entity_template_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_template PUBLIC include)
+
+add_executable(shadowrun_ghidra_entity_template_test
+    tests/entity_template_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_template_test
+    PRIVATE shadowrun_ghidra_entity_template)
+add_test(NAME shadowrun_ghidra_entity_template
+         COMMAND shadowrun_ghidra_entity_template_test)

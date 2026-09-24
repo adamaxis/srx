@@ -3,7 +3,7 @@
 // Name: spawn_world_effect_from_coordinate_sequence
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000044BC FUN_000044bc
+//   0x000044BC initialize_entity_record_from_template
 //   0x0001A2CC allocate_first_free_effect_slot
 //   0x0001A342 find_first_available_world_effect_entity_slot
 //   0x0001DBAA schedule_world_activity_timeout
@@ -28,7 +28,7 @@ void spawn_world_effect_from_coordinate_sequence(void)
     DAT_00ffdd40 = uVar2;
     allocate_first_free_effect_slot();
     if (!bVar5) {
-      FUN_000044bc();
+      initialize_entity_record_from_template();
       *(undefined1 *)((int)extraout_A1 + 0x4d) = 4;
       *(byte *)(extraout_A1 + 8) = *(byte *)(extraout_A1 + 8) | 0x20;
       psVar4 = DAT_00ffdd4c + 1;

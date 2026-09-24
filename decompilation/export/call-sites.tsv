@@ -304,9 +304,9 @@ caller	caller_name	instruction	text	target	callee	status
 000043B6	FUN_000043b6	00004462	bra.w 0x00004466	00004466	FUN_00004466	resolved
 00004466	FUN_00004466	0000446C	jsr 0x0001a342.l	0001A342	find_first_available_world_effect_entity_slot	resolved
 00004466	FUN_00004466	0000447C	jsr 0x0001a2cc.l	0001A2CC	allocate_first_free_effect_slot	resolved
-00004466	FUN_00004466	0000449A	bsr.w 0x000044bc	000044BC	FUN_000044bc	resolved
-00004466	FUN_00004466	000044B0	bsr.w 0x000044bc	000044BC	FUN_000044bc	resolved
-000044BC	FUN_000044bc	000045C6	jsr 0x00000d44.l	00000D44	advance_source_prng	resolved
+00004466	FUN_00004466	0000449A	bsr.w 0x000044bc	000044BC	initialize_entity_record_from_template	resolved
+00004466	FUN_00004466	000044B0	bsr.w 0x000044bc	000044BC	initialize_entity_record_from_template	resolved
+000044BC	initialize_entity_record_from_template	000045C6	jsr 0x00000d44.l	00000D44	advance_source_prng	resolved
 00004618	FUN_00004618	00004634	bsr.w 0x00005a56	00005A56	project_entity_screen_position	resolved
 00004618	FUN_00004618	00004638	jsr 0x00005fdc.l	00005FDC	advance_entity_animation_accumulator	resolved
 00004618	FUN_00004618	0000463E	jsr 0x0000600e.l	0000600E	FUN_0000600e	resolved
@@ -2050,8 +2050,8 @@ caller	caller_name	instruction	text	target	callee	status
 0001E04A	begin_world_effect_transition	0001E094	bsr.w 0x0001e0dc	0001E0DC	spawn_world_effect_entities	resolved
 0001E0DC	spawn_world_effect_entities	0001E0EC	jsr 0x0001a342.l	0001A342	find_first_available_world_effect_entity_slot	resolved
 0001E0DC	spawn_world_effect_entities	0001E0FC	jsr 0x0001a2cc.l	0001A2CC	allocate_first_free_effect_slot	resolved
-0001E0DC	spawn_world_effect_entities	0001E11A	jsr 0x000044bc.l	000044BC	FUN_000044bc	resolved
-0001E0DC	spawn_world_effect_entities	0001E132	jsr 0x000044bc.l	000044BC	FUN_000044bc	resolved
+0001E0DC	spawn_world_effect_entities	0001E11A	jsr 0x000044bc.l	000044BC	initialize_entity_record_from_template	resolved
+0001E0DC	spawn_world_effect_entities	0001E132	jsr 0x000044bc.l	000044BC	initialize_entity_record_from_template	resolved
 0001E0DC	spawn_world_effect_entities	0001E144	jsr 0x00005a56.l	00005A56	project_entity_screen_position	resolved
 0001E166	FUN_0001e166	0001E1C2	jsr 0x00000d44.l	00000D44	advance_source_prng	resolved
 0001E166	FUN_0001e166	0001E1E2	bra.w 0x0001e1fc	0001E1FC	FUN_0001e1fc	resolved
@@ -2063,7 +2063,7 @@ caller	caller_name	instruction	text	target	callee	status
 0001E216	FUN_0001e216	0001E246	bsr.w 0x0001e25a	0001E25A	spawn_world_effect_from_coordinate_sequence	resolved
 0001E25A	spawn_world_effect_from_coordinate_sequence	0001E260	jsr 0x0001a342.l	0001A342	find_first_available_world_effect_entity_slot	resolved
 0001E25A	spawn_world_effect_from_coordinate_sequence	0001E270	jsr 0x0001a2cc.l	0001A2CC	allocate_first_free_effect_slot	resolved
-0001E25A	spawn_world_effect_from_coordinate_sequence	0001E280	jsr 0x000044bc.l	000044BC	FUN_000044bc	resolved
+0001E25A	spawn_world_effect_from_coordinate_sequence	0001E280	jsr 0x000044bc.l	000044BC	initialize_entity_record_from_template	resolved
 0001E25A	spawn_world_effect_from_coordinate_sequence	0001E2D4	jsr 0x0001dbaa.l	0001DBAA	schedule_world_activity_timeout	resolved
 0001E302	FUN_0001e302	0001E35A	bsr.w 0x0001e41e	0001E41E	FUN_0001e41e	resolved
 0001E302	FUN_0001e302	0001E36A	bsr.w 0x0001e41e	0001E41E	FUN_0001e41e	resolved
@@ -2078,7 +2078,7 @@ caller	caller_name	instruction	text	target	callee	status
 0001E43C	FUN_0001e43c	0001E4A6	bra.w 0x0001e2ec	0001E2EC	FUN_0001e2ec	resolved
 0001E4AC	spawn_world_effect_at_player_position	0001E4AE	jsr 0x0001a342.l	0001A342	find_first_available_world_effect_entity_slot	resolved
 0001E4AC	spawn_world_effect_at_player_position	0001E4BE	jsr 0x0001a2cc.l	0001A2CC	allocate_first_free_effect_slot	resolved
-0001E4AC	spawn_world_effect_at_player_position	0001E4CE	jsr 0x000044bc.l	000044BC	FUN_000044bc	resolved
+0001E4AC	spawn_world_effect_at_player_position	0001E4CE	jsr 0x000044bc.l	000044BC	initialize_entity_record_from_template	resolved
 0001E514	FUN_0001e514	0001E538	jsr 0x0001a304.l	0001A304	FUN_0001a304	resolved
 0001E69C	FUN_0001e69c	0001E6A2	bsr.b 0x0001e68c	0001E68C	FUN_0001e68c	resolved
 0001E69C	FUN_0001e69c	0001E6BC	jsr 0x00000d3a.l	00000D3A	FUN_00000d3a	resolved

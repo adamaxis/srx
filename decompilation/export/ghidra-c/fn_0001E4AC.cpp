@@ -3,7 +3,7 @@
 // Name: spawn_world_effect_at_player_position
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000044BC FUN_000044bc
+//   0x000044BC initialize_entity_record_from_template
 //   0x0001A2CC allocate_first_free_effect_slot
 //   0x0001A342 find_first_available_world_effect_entity_slot
 
@@ -24,7 +24,7 @@ void spawn_world_effect_at_player_position(void)
     DAT_00ffdd40 = uVar2;
     allocate_first_free_effect_slot();
     if (!bVar3) {
-      FUN_000044bc();
+      initialize_entity_record_from_template();
       *(byte *)(extraout_A1 + 0x58) = *(byte *)(extraout_A1 + 0x58) | 0x80;
       psVar1 = DAT_00fffc04;
       DAT_00fffc3c = unaff_A6;
