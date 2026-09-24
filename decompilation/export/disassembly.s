@@ -14396,10 +14396,10 @@
 00017C78: move.w #-0x8000,D1w
 00017C7C: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
 00017C82: rts
-00017C84: bsr.w 0x00017c98 ; call 00017C98 FUN_00017c98
+00017C84: bsr.w 0x00017c98 ; call 00017C98 find_hud_selection_index
 00017C88: move.b D1b,(0x0,A5,D4w*0x1)
 00017C8C: rts
-00017C8E: bsr.w 0x00017c98 ; call 00017C98 FUN_00017c98
+00017C8E: bsr.w 0x00017c98 ; call 00017C98 find_hud_selection_index
 00017C92: cmp.b (0x0,A5,D4w*0x1),D1b
 00017C96: rts
 00017C98: lea (0xfffbbe).l,A6 ; data 00fffbbe

@@ -468,7 +468,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00017C52	FUN_00017c52	50	unknown	ok	ghidra-c/fn_00017C52.cpp
 00017C84	FUN_00017c84	10	unknown	ok	ghidra-c/fn_00017C84.cpp
 00017C8E	FUN_00017c8e	10	unknown	ok	ghidra-c/fn_00017C8E.cpp
-00017C98	FUN_00017c98	32	unknown	ok	ghidra-c/fn_00017C98.cpp
+00017C98	find_hud_selection_index	32	unknown	ok	ghidra-c/fn_00017C98.cpp
 00017CC8	FUN_00017cc8	118	unknown	ok	ghidra-c/fn_00017CC8.cpp
 00017D3E	FUN_00017d3e	36	unknown	ok	ghidra-c/fn_00017D3E.cpp
 00017D72	draw_hud_panel	30	unknown	ok	ghidra-c/fn_00017D72.cpp

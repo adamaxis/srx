@@ -712,6 +712,10 @@ emits exactly its queued count of wrapped-transfer callbacks and clears the
 count afterward; the primary and secondary entry points remain separately
 named in the ledger and exporter.
 
+The `0x17C98` HUD/action lookup is now `find_hud_selection_index`. It scans
+the exact five-byte table used by the adjacent setters/comparators and turns
+the source register-side index into an explicit optional host result.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames

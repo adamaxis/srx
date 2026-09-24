@@ -1362,3 +1362,16 @@ target_link_libraries(shadowrun_ghidra_queued_transfer_flush_test
     PRIVATE shadowrun_ghidra_queued_transfer_flush)
 add_test(NAME shadowrun_ghidra_queued_transfer_flush
          COMMAND shadowrun_ghidra_queued_transfer_flush_test)
+
+add_library(shadowrun_ghidra_hud_selection_lookup STATIC
+    src/hud_selection_lookup_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_hud_selection_lookup PUBLIC include)
+
+add_executable(shadowrun_ghidra_hud_selection_lookup_test
+    tests/hud_selection_lookup_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_hud_selection_lookup_test
+    PRIVATE shadowrun_ghidra_hud_selection_lookup)
+add_test(NAME shadowrun_ghidra_hud_selection_lookup
+         COMMAND shadowrun_ghidra_hud_selection_lookup_test)

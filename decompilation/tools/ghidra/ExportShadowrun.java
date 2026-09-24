@@ -326,6 +326,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00013E8CL, "service_entity_boundary_transition");
         names.put(0x00006148L, "flush_primary_queued_transfers");
         names.put(0x000061F4L, "flush_secondary_queued_transfers");
+        names.put(0x00017C98L, "find_hud_selection_index");
         names.put(0x00001378L, "build_title_sprite_records");
         names.put(0x000013BEL, "build_title_sprite_records_with_attribute_offset");
         names.put(0x00001406L, "prepare_title_resources");

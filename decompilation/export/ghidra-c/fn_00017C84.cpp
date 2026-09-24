@@ -3,7 +3,7 @@
 // Name: FUN_00017c84
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00017C98 FUN_00017c98
+//   0x00017C98 find_hud_selection_index
 
 
 void FUN_00017c84(void)
@@ -13,7 +13,7 @@ void FUN_00017c84(void)
   short unaff_D4w;
   int unaff_A5;
   
-  FUN_00017c98();
+  find_hud_selection_index();
   *(undefined1 *)(unaff_A5 + unaff_D4w) = extraout_D1b;
   return;
 }
