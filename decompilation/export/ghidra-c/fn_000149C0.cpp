@@ -3,7 +3,7 @@
 // Name: FUN_000149c0
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00014756 FUN_00014756
+//   0x00014756 clear_entity_route_flags
 //   0x00014764 FUN_00014764
 //   0x000148AA FUN_000148aa
 //   0x00014902 compute_obstruction_grid_index
@@ -62,7 +62,7 @@ void FUN_000149c0(void)
                 extraout_D1w_00 == sVar1) {
             sVar3 = sVar3 + -1;
             if (sVar3 == -1) {
-              FUN_00014756();
+              clear_entity_route_flags();
               return;
             }
           }

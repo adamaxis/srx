@@ -90,7 +90,7 @@ FUN_000149c0:
                   extraout_D1w_00 == sVar2) {
               sVar4 = sVar4 + -1;
               if (sVar4 == -1) {
-                FUN_00014756();
+                clear_entity_route_flags();
                 return;
               }
             }

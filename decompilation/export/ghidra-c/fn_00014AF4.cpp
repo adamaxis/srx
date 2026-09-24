@@ -3,7 +3,7 @@
 // Name: FUN_00014af4
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00014756 FUN_00014756
+//   0x00014756 clear_entity_route_flags
 //   0x00014800 FUN_00014800
 //   0x00014902 compute_obstruction_grid_index
 
@@ -28,7 +28,7 @@ void FUN_00014af4(void)
     }
     sVar1 = sVar1 + -1;
   } while (sVar1 != -1);
-  FUN_00014756();
+  clear_entity_route_flags();
   return;
 }
 

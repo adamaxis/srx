@@ -381,7 +381,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0001460E	FUN_0001460e	50	unknown	ok	ghidra-c/fn_0001460E.cpp
 00014640	FUN_00014640	38	unknown	ok	ghidra-c/fn_00014640.cpp
 00014682	FUN_00014682	154	unknown	ok	ghidra-c/fn_00014682.cpp
-00014756	FUN_00014756	14	unknown	ok	ghidra-c/fn_00014756.cpp
+00014756	clear_entity_route_flags	14	unknown	ok	ghidra-c/fn_00014756.cpp
 00014764	FUN_00014764	156	unknown	ok	ghidra-c/fn_00014764.cpp
 00014800	FUN_00014800	84	unknown	ok	ghidra-c/fn_00014800.cpp
 00014854	FUN_00014854	86	unknown	ok	ghidra-c/fn_00014854.cpp
@@ -395,7 +395,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00014B4E	decode_obstruction_tile_projection	88	unknown	ok	ghidra-c/fn_00014B4E.cpp
 00014BA6	FUN_00014ba6	136	unknown	ok	ghidra-c/fn_00014BA6.cpp
 00014C2E	derive_entity_axis_relation_flags	40	unknown	ok	ghidra-c/fn_00014C2E.cpp
-00014C56	FUN_00014c56	38	unknown	ok	ghidra-c/fn_00014C56.cpp
+00014C56	project_heading_position	38	unknown	ok	ghidra-c/fn_00014C56.cpp
 00014C7C	FUN_00014c7c	220	unknown	ok	ghidra-c/fn_00014C7C.cpp
 00014D58	FUN_00014d58	18	unknown	ok	ghidra-c/fn_00014D58.cpp
 00014D6A	FUN_00014d6a	36	unknown	ok	ghidra-c/fn_00014D6A.cpp

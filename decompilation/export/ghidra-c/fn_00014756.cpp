@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00014756
-// Name: FUN_00014756
+// Name: clear_entity_route_flags
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00014756(void)
+void clear_entity_route_flags(void)
 
 {
   int in_A0;

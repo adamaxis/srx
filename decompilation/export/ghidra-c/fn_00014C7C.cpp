@@ -3,7 +3,7 @@
 // Name: FUN_00014c7c
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00014C56 FUN_00014c56
+//   0x00014C56 project_heading_position
 //   0x00014D58 FUN_00014d58
 //   0x00015C58 FUN_00015c58
 //   0x00015C84 FUN_00015c84
@@ -33,7 +33,7 @@ void FUN_00014c7c(void)
        (bVar3 = *(ushort *)(in_A0 + 0xe) < 0xe, *(ushort *)(in_A0 + 0xe) == 0xe)) {
       FUN_00014d58();
       DAT_00ffdd48 = *(undefined2 *)(extraout_A0_00 + 0x2e);
-      FUN_00014c56();
+      project_heading_position();
       *(undefined2 *)(extraout_A0_01 + 0x2e) = unaff_D2w;
       bVar4 = 0;
       FUN_00015c84();

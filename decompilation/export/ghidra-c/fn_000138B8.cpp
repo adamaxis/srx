@@ -223,7 +223,7 @@ FUN_000149c0:
               if (extraout_D1w_00 != sVar8) break;
               sVar6 = puVar12[-1] + -1;
               if (sVar6 == -1) {
-                FUN_00014756();
+                clear_entity_route_flags();
                 return;
               }
             }

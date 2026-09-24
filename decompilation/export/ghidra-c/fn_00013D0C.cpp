@@ -179,7 +179,7 @@ FUN_000149c0:
               if (extraout_D1w_00 != sVar2) break;
               uVar5 = uVar5 - 1;
               if (uVar5 == 0xffff) {
-                puVar3 = (ushort *)FUN_00014756();
+                puVar3 = (ushort *)clear_entity_route_flags();
                 return puVar3;
               }
             }

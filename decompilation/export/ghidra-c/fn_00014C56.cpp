@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00014C56
-// Name: FUN_00014c56
+// Name: project_heading_position
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-undefined2 FUN_00014c56(void)
+undefined2 project_heading_position(void)
 
 {
   int in_A0;

@@ -12123,7 +12123,7 @@
 00014AD2: andi.w #0x6,D6w
 00014AD6: andi.w #0x6,D7w
 00014ADA: dbf D0w,0x00014ac0
-00014ADE: bra.w 0x00014756 ; call 00014756 FUN_00014756
+00014ADE: bra.w 0x00014756 ; call 00014756 clear_entity_route_flags
 00014AE2: movea.l A0,A2
 00014AE4: adda.w #0xbc,A2
 00014AE8: clr.w (0xba,A0)
@@ -12151,7 +12151,7 @@
 00014B2C: andi.w #0x6,D6w
 00014B30: andi.w #0x6,D7w
 00014B34: dbf D0w,0x00014b1a
-00014B38: bra.w 0x00014756 ; call 00014756 FUN_00014756
+00014B38: bra.w 0x00014756 ; call 00014756 clear_entity_route_flags
 00014B3C: movea.l A0,A2
 00014B3E: adda.w #0xbc,A2
 00014B42: clr.w (0xba,A0)
@@ -12258,7 +12258,7 @@
 00014CB6: rts
 00014CB8: bsr.w 0x00014d58 ; call 00014D58 FUN_00014d58
 00014CBC: move.w (0x2e,A0),(0x00ffdd48).l
-00014CC4: bsr.b 0x00014c56 ; call 00014C56 FUN_00014c56
+00014CC4: bsr.b 0x00014c56 ; call 00014C56 project_heading_position
 00014CC6: move.w D2w,(0x2e,A0)
 00014CCA: jsr 0x00015c84.l ; call 00015C84 FUN_00015c84
 00014CD0: move SR,-(SP) ; data Stack[-0x2]

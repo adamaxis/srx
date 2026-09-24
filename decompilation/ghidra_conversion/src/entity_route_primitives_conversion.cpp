@@ -2,6 +2,10 @@
 
 namespace shadowrun::ghidra_conversion {
 
+std::uint8_t clear_entity_route_flags(const std::uint8_t movement_flags) {
+    return static_cast<std::uint8_t>(movement_flags & ~0x0AU);
+}
+
 std::uint16_t compute_obstruction_grid_index(
     const std::uint16_t world_x,
     const std::uint16_t world_y) {
@@ -32,6 +36,28 @@ ObstructionTileProjection decode_obstruction_tile_projection(
     }
 
     return ObstructionTileProjection{world_x, world_y, direction};
+}
+
+HeadingProjection project_heading_position(
+    const std::int32_t world_x,
+    const std::int32_t world_y,
+    const std::uint16_t heading) {
+    struct HeadingDelta {
+        std::int16_t x;
+        std::int16_t y;
+    };
+
+    // ROM 0xB2F6, indexed by the top three bits of the heading word.
+    static constexpr HeadingDelta kHeadingDeltas[] = {
+        {0, -128}, {90, -90}, {128, 0}, {90, 90},
+        {0, 128}, {-90, 90}, {-128, 0}, {-90, -90},
+    };
+    const auto heading_index = static_cast<std::size_t>(heading >> 13U);
+    const auto& delta = kHeadingDeltas[heading_index];
+    return HeadingProjection{
+        world_x + delta.x,
+        world_y + delta.y,
+    };
 }
 
 std::uint8_t derive_entity_axis_relation_flags(

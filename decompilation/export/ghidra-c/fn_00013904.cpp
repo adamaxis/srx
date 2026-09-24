@@ -341,7 +341,7 @@ FUN_000149c0:
               if (extraout_D1w_00 != sVar6) break;
               sVar4 = *(short *)((int)register0x0000003c + -2) + -1;
               if (sVar4 == -1) {
-                FUN_00014756();
+                clear_entity_route_flags();
                 return;
               }
             }
