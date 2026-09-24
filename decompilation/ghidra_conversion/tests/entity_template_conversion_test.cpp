@@ -111,5 +111,61 @@ int main() {
         return 3;
     }
 
+    EntityTemplateCoordinatorState coordinator{};
+    coordinator.scene_mode = 2U;
+    coordinator.default_list = {{{}, {0x7000U, 0x7100U}, true, false}};
+    std::vector<char> coordinator_events;
+    process_pending_entity_template_lists(
+        coordinator,
+        [&coordinator_events]() { coordinator_events.push_back('s'); },
+        [&coordinator_events](EntityTemplateCoordinatorState& state) {
+            coordinator_events.push_back('p');
+            state.generated_list =
+                PendingEntityTemplateList{{{{}, {0x1000U, 0x1100U}, true,
+                                             false}},
+                                           std::nullopt};
+        },
+        [&coordinator_events](
+            const std::vector<EntityTemplateSpawnDescriptor>& descriptors) {
+            coordinator_events.push_back(
+                descriptors.size() == 1U &&
+                        descriptors.front().source_position.x == 0x1000U
+                    ? 'g'
+                    : 'd');
+        },
+        [&coordinator_events](const EntityTemplateTimeoutSource source) {
+            coordinator_events.push_back(
+                source == EntityTemplateTimeoutSource::first_event ? 't'
+                                                                    : 'x');
+        });
+    if (!expect(coordinator_events == std::vector<char>{'s', 'p', 'g', 'd'} &&
+                coordinator.generated_list == std::nullopt &&
+                coordinator.selected_list == std::nullopt)) {
+        return 4;
+    }
+
+    coordinator_events.clear();
+    coordinator.selected_list = PendingEntityTemplateList{
+        {{{}, {0x2000U, 0x2100U}, true, false}},
+        EntityTemplateTimeoutSource::second_event};
+    process_pending_entity_template_lists(
+        coordinator, {}, {},
+        [&coordinator_events](
+            const std::vector<EntityTemplateSpawnDescriptor>& descriptors) {
+            coordinator_events.push_back(
+                descriptors.front().source_position.x == 0x2000U ? 'q'
+                                                                  : 'd');
+        },
+        [&coordinator_events](const EntityTemplateTimeoutSource source) {
+            coordinator_events.push_back(
+                source == EntityTemplateTimeoutSource::second_event ? 't'
+                                                                     : 'x');
+        });
+    if (!expect(coordinator_events == std::vector<char>{'t', 'q', 'd'} &&
+                coordinator.world_state == 4U &&
+                coordinator.selected_list == std::nullopt)) {
+        return 5;
+    }
+
     return 0;
 }

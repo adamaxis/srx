@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000043B6
-// Name: FUN_000043b6
+// Name: process_pending_entity_template_lists
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00004466 spawn_entity_template_list
@@ -9,7 +9,7 @@
 //   0x0005BA4C thunk_FUN_0005ba50
 
 
-void FUN_000043b6(void)
+void process_pending_entity_template_lists(void)
 
 {
   if (DAT_00ffe186 == '\x02') {

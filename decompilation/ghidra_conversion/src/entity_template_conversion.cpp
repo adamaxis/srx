@@ -115,4 +115,45 @@ EntityTemplateSpawnResult spawn_entity_template_list(
     return result;
 }
 
+void process_pending_entity_template_lists(
+    EntityTemplateCoordinatorState& state,
+    const EntityTemplateServiceBoundary& service_scene_two,
+    const EntityTemplatePreparationBoundary& prepare_lists,
+    const EntityTemplateListBoundary& spawn_list,
+    const EntityTemplateTimeoutBoundary& schedule_timeout) {
+    if (state.scene_mode == 2U && service_scene_two) {
+        service_scene_two();
+    }
+    if (prepare_lists) {
+        prepare_lists(state);
+    }
+
+    if (state.generated_list.has_value()) {
+        if (spawn_list) {
+            spawn_list(state.generated_list->descriptors);
+        }
+        state.generated_list.reset();
+    }
+
+    if (!state.selected_list.has_value()) {
+        if (spawn_list) {
+            spawn_list(state.default_list);
+        }
+        return;
+    }
+
+    const auto selected = *state.selected_list;
+    if (selected.timeout_source.has_value()) {
+        if (schedule_timeout) {
+            schedule_timeout(*selected.timeout_source);
+        }
+        state.world_state = 4U;
+    }
+    if (spawn_list) {
+        spawn_list(selected.descriptors);
+        spawn_list(state.default_list);
+    }
+    state.selected_list.reset();
+}
+
 } // namespace shadowrun::ghidra_conversion

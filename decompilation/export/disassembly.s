@@ -2969,7 +2969,7 @@
 00004380: move.l (SP)+,D7
 00004382: move.b D7b,(0x8f,A1)
 00004386: rts
-00004388: bsr.w 0x000043b6 ; call 000043B6 FUN_000043b6
+00004388: bsr.w 0x000043b6 ; call 000043B6 process_pending_entity_template_lists
 0000438C: cmpi.b #0x2,(0x00ffe186).l
 00004394: bne.w 0x000043a0
 00004398: move.b #0x6,(0x00ff049d).l

@@ -128,4 +128,41 @@ EntityTemplateSpawnResult spawn_entity_template_list(
     const EntityRecordDefaultFactory& make_default_record,
     const EntityTemplateRecordInitializer& initialize_record);
 
+enum class EntityTemplateTimeoutSource {
+    first_event,
+    second_event,
+};
+
+struct PendingEntityTemplateList {
+    std::vector<EntityTemplateSpawnDescriptor> descriptors;
+    std::optional<EntityTemplateTimeoutSource> timeout_source;
+};
+
+struct EntityTemplateCoordinatorState {
+    std::uint8_t scene_mode = 0;
+    std::uint8_t world_state = 0;
+    std::optional<PendingEntityTemplateList> generated_list;
+    std::optional<PendingEntityTemplateList> selected_list;
+    std::vector<EntityTemplateSpawnDescriptor> default_list;
+};
+
+using EntityTemplatePreparationBoundary =
+    std::function<void(EntityTemplateCoordinatorState&)>;
+using EntityTemplateServiceBoundary = std::function<void()>;
+using EntityTemplateListBoundary =
+    std::function<void(const std::vector<EntityTemplateSpawnDescriptor>&)>;
+using EntityTemplateTimeoutBoundary =
+    std::function<void(EntityTemplateTimeoutSource)>;
+
+// ROM 0x43B6: service the scene-2 boundary, prepare pending lists, drain the
+// generated list, then drain the selected list and the default list in source
+// order. The original pointer identity tests are represented by the typed
+// timeout source on PendingEntityTemplateList.
+void process_pending_entity_template_lists(
+    EntityTemplateCoordinatorState& state,
+    const EntityTemplateServiceBoundary& service_scene_two,
+    const EntityTemplatePreparationBoundary& prepare_lists,
+    const EntityTemplateListBoundary& spawn_list,
+    const EntityTemplateTimeoutBoundary& schedule_timeout);
+
 } // namespace shadowrun::ghidra_conversion
