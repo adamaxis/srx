@@ -217,7 +217,7 @@ FUN_000149c0:
               puVar12[-1] = sVar6;
               puVar12[-0xffffffff00000003] = 1;
               puVar12[-0xffffffff00000002] = 0x4ac6;
-              FUN_00014764();
+              find_alternate_route_tile();
               sVar6 = extraout_D1w_00;
               iVar10 = extraout_A0_14;
               if (extraout_D1w_00 != sVar8) break;

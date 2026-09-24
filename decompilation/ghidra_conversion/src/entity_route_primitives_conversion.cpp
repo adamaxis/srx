@@ -111,6 +111,59 @@ bool can_bypass_obstruction(
     }
 }
 
+std::int32_t find_alternate_route_tile(
+    const std::int32_t starting_tile,
+    const std::uint8_t primary_direction_slot,
+    const std::uint8_t secondary_direction_slot,
+    const std::int32_t maximum_column,
+    const std::int32_t maximum_row,
+    const std::vector<std::uint8_t>& obstruction_map) {
+    static constexpr std::array<std::int16_t, 8> kDirectionSteps{
+        -64, 0, 1, 0, 64, 0, -1, 0};
+    const auto valid_direction = [](const std::uint8_t direction) {
+        return direction <= 6U && (direction & 1U) == 0U;
+    };
+    if (!valid_direction(primary_direction_slot) ||
+        !valid_direction(secondary_direction_slot)) {
+        return starting_tile;
+    }
+
+    const auto in_grid = [maximum_column, maximum_row](
+                             const std::int32_t tile) {
+        return tile >= 0 &&
+            (tile & 0x3FU) <= maximum_column &&
+            (tile >> 6) <= maximum_row;
+    };
+    const auto open = [&obstruction_map](const std::int32_t tile) {
+        return tile >= 0 &&
+            tile < static_cast<std::int32_t>(obstruction_map.size()) &&
+            obstruction_map[static_cast<std::size_t>(tile)] == 0U;
+    };
+
+    auto primary = primary_direction_slot;
+    auto secondary = secondary_direction_slot;
+    auto primary_step = static_cast<std::int32_t>(kDirectionSteps[primary]);
+    auto secondary_step = static_cast<std::int32_t>(kDirectionSteps[secondary]);
+
+    const auto initial_side = starting_tile + secondary_step;
+    if (in_grid(initial_side) && open(initial_side)) {
+        primary = static_cast<std::uint8_t>((primary + 2U) & 0x06U);
+        secondary = static_cast<std::uint8_t>((secondary + 2U) & 0x06U);
+        primary_step = kDirectionSteps[primary];
+        secondary_step = kDirectionSteps[secondary];
+    }
+
+    auto candidate = starting_tile + primary_step;
+    while (in_grid(candidate) && open(candidate)) {
+        if (!open(candidate + secondary_step)) {
+            candidate += primary_step;
+            continue;
+        }
+        return candidate;
+    }
+    return candidate - primary_step;
+}
+
 bool is_obstruction_path_blocked(
     const std::int32_t start_tile,
     const std::int32_t target_tile,

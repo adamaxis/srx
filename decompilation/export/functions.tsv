@@ -382,7 +382,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00014640	FUN_00014640	38	unknown	ok	ghidra-c/fn_00014640.cpp
 00014682	FUN_00014682	154	unknown	ok	ghidra-c/fn_00014682.cpp
 00014756	clear_entity_route_flags	14	unknown	ok	ghidra-c/fn_00014756.cpp
-00014764	FUN_00014764	156	unknown	ok	ghidra-c/fn_00014764.cpp
+00014764	find_alternate_route_tile	156	unknown	ok	ghidra-c/fn_00014764.cpp
 00014800	probe_obstruction_strip	84	unknown	ok	ghidra-c/fn_00014800.cpp
 00014854	can_bypass_obstruction	86	unknown	ok	ghidra-c/fn_00014854.cpp
 000148AA	find_first_occupied_obstruction_tile	32	unknown	ok	ghidra-c/fn_000148AA.cpp

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00014764
-// Name: FUN_00014764
+// Name: find_alternate_route_tile
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00014764(void)
+void find_alternate_route_tile(void)
 
 {
   ushort uVar1;

@@ -87,7 +87,7 @@ FUN_000149c0:
           }
           else {
             sVar4 = 4;
-            while (FUN_00014764(), sVar5 = extraout_D1w_00, iVar7 = extraout_A0_08,
+            while (find_alternate_route_tile(), sVar5 = extraout_D1w_00, iVar7 = extraout_A0_08,
                   extraout_D1w_00 == sVar2) {
               sVar4 = sVar4 + -1;
               if (sVar4 == -1) {

@@ -170,7 +170,7 @@ FUN_000149c0:
               puVar11[-1] = sVar5;
               puVar11[-0xffffffff00000003] = 1;
               puVar11[-0xffffffff00000002] = 0x4ac6;
-              FUN_00014764();
+              find_alternate_route_tile();
               sVar5 = extraout_D1w_00;
               iVar9 = extraout_A0_11;
               if (extraout_D1w_00 != sVar7) break;

@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00014756 clear_entity_route_flags
-//   0x00014764 FUN_00014764
+//   0x00014764 find_alternate_route_tile
 //   0x000148AA find_first_occupied_obstruction_tile
 //   0x00014902 compute_obstruction_grid_index
 //   0x00014914 is_entity_path_blocked
@@ -59,7 +59,7 @@ void FUN_000149c0(void)
         }
         else {
           sVar3 = 4;
-          while (FUN_00014764(), sVar4 = extraout_D1w_00, iVar6 = extraout_A0_05,
+          while (find_alternate_route_tile(), sVar4 = extraout_D1w_00, iVar6 = extraout_A0_05,
                 extraout_D1w_00 == sVar1) {
             sVar3 = sVar3 + -1;
             if (sVar3 == -1) {

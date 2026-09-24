@@ -67,6 +67,33 @@ int main() {
         return 9;
     }
 
+    std::vector<std::uint8_t> alternate_route_map(128, 0U);
+    alternate_route_map[74] = 1U;
+    alternate_route_map[75] = 1U;
+    if (!expect(find_alternate_route_tile(
+                    10, 2, 4, 63, 1, alternate_route_map) == 12)) {
+        return 27;
+    }
+    alternate_route_map[74] = 0U;
+    if (!expect(find_alternate_route_tile(
+                    10, 2, 4, 63, 1, alternate_route_map) == 74)) {
+        return 28;
+    }
+    alternate_route_map[74] = 1U;
+    alternate_route_map[11] = 1U;
+    if (!expect(find_alternate_route_tile(
+                    10, 2, 4, 63, 1, alternate_route_map) == 10)) {
+        return 29;
+    }
+    std::vector<std::uint8_t> boundary_route_map(128, 0U);
+    boundary_route_map[74] = 1U;
+    boundary_route_map[75] = 1U;
+    boundary_route_map[76] = 1U;
+    if (!expect(find_alternate_route_tile(
+                    10, 2, 4, 12, 1, boundary_route_map) == 12)) {
+        return 30;
+    }
+
     std::vector<std::uint8_t> horizontal_path(128, 0U);
     horizontal_path[12] = 1U;
     if (!expect(is_obstruction_path_blocked(10, 13, horizontal_path))) {
@@ -145,16 +172,16 @@ int main() {
     std::vector<std::uint8_t> world_map(256, 0U);
     if (!expect(!is_entity_path_blocked(
                     0x0200U, 0x0100U, 0x0400U, 0x0100U, world_map))) {
-        return 30;
+        return 31;
     }
     const auto target_tile = compute_obstruction_grid_index(0x0400U, 0x0100U);
     if (!expect(target_tile < world_map.size())) {
-        return 31;
+        return 32;
     }
     world_map[target_tile - 1U] = 1U;
     if (!expect(is_entity_path_blocked(
                     0x0200U, 0x0100U, 0x0400U, 0x0100U, world_map))) {
-        return 32;
+        return 33;
     }
 
     const auto no_route_request = update_entity_axis_relation_state(
@@ -162,21 +189,21 @@ int main() {
     if (!expect(no_route_request.axis_flags == 0x00U &&
                 no_route_request.movement_flags == 0x40U &&
                 !no_route_request.route_advance_requested)) {
-        return 33;
+        return 34;
     }
     const auto route_request = update_entity_axis_relation_state(
         10, 20, 20, 30, 0x00U, 0x0000, 0x40U);
     if (!expect(route_request.axis_flags == 0x0CU &&
                 route_request.movement_flags == 0x42U &&
                 route_request.route_advance_requested)) {
-        return 34;
+        return 35;
     }
     const auto inverted_axes = update_entity_axis_relation_state(
         20, 10, 10, 0, 0x03U, 0x0002, 0x00U);
     if (!expect(inverted_axes.axis_flags == 0x0FU &&
                 inverted_axes.movement_flags == 0x00U &&
                 !inverted_axes.route_advance_requested)) {
-        return 35;
+        return 36;
     }
 
     return 0;

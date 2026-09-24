@@ -335,7 +335,7 @@ FUN_000149c0:
             while( true ) {
               *(short *)((int)register0x0000003c + -2) = sVar4;
               *(undefined4 *)((int)register0x0000003c + -6) = 0x14ac6;
-              FUN_00014764();
+              find_alternate_route_tile();
               sVar4 = extraout_D1w_00;
               iVar2 = extraout_A0_19;
               if (extraout_D1w_00 != sVar6) break;

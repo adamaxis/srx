@@ -172,7 +172,7 @@ FUN_000149c0:
           else {
             uVar5 = 4;
             while( true ) {
-              FUN_00014764();
+              find_alternate_route_tile();
               puVar3 = (ushort *)(uint)uVar5;
               sVar6 = extraout_D1w_00;
               iVar8 = extraout_A0_12;

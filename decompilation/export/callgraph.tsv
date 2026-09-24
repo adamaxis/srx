@@ -918,7 +918,7 @@ caller	caller_name	callee	callee_name	call_sites
 00014914	is_entity_path_blocked	00014902	compute_obstruction_grid_index	2
 00014914	is_entity_path_blocked	0001494C	is_obstruction_path_blocked	2
 000149C0	FUN_000149c0	00014756	clear_entity_route_flags	1
-000149C0	FUN_000149c0	00014764	FUN_00014764	1
+000149C0	FUN_000149c0	00014764	find_alternate_route_tile	1
 000149C0	FUN_000149c0	000148AA	find_first_occupied_obstruction_tile	1
 000149C0	FUN_000149c0	00014902	compute_obstruction_grid_index	1
 000149C0	FUN_000149c0	00014914	is_entity_path_blocked	1

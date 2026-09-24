@@ -65,6 +65,17 @@ bool can_bypass_obstruction(
     std::uint8_t secondary_direction_slot,
     const std::vector<std::uint8_t>& obstruction_map);
 
+// ROM 0x14764: accumulate a primary grid step until the primary tile is
+// occupied or its adjacent side becomes open, returning the last candidate
+// selected by the source route search.
+std::int32_t find_alternate_route_tile(
+    std::int32_t starting_tile,
+    std::uint8_t primary_direction_slot,
+    std::uint8_t secondary_direction_slot,
+    std::int32_t maximum_column,
+    std::int32_t maximum_row,
+    const std::vector<std::uint8_t>& obstruction_map);
+
 // ROM 0x1494C: walk the source's horizontal or vertical grid line between
 // two packed obstruction indices and report whether an occupied tile blocks
 // the walk. The packed grid uses six low bits for the column and 0x40 rows.

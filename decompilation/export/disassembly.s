@@ -12114,7 +12114,7 @@
 00014AB8: andi.w #0x6,D7w
 00014ABC: move.w #0x4,D0w
 00014AC0: move.w D0w,-(SP) ; data Stack[-0x2]
-00014AC2: bsr.w 0x00014764 ; call 00014764 FUN_00014764
+00014AC2: bsr.w 0x00014764 ; call 00014764 find_alternate_route_tile
 00014AC6: move.w (SP)+,D0w
 00014AC8: cmp.w D5w,D1w
 00014ACA: bne.w 0x00014ae2
