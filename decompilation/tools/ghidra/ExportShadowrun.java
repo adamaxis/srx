@@ -192,6 +192,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x000028C2L, "reinitialize_field_scene_entry");
         names.put(0x000033BEL, "write_four_by_four_transfer_batch");
         names.put(0x00003548L, "draw_hud_panel_triplet");
+        names.put(0x00002BD2L, "advance_field_scene_transition");
         names.put(0x00000EC0L, "upload_startup_palette");
         names.put(0x00000F1CL, "write_transfer_header");
         names.put(0x00000F3CL, "write_fixed_transfer_pair");

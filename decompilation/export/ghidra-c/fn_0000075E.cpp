@@ -12,7 +12,7 @@
 //   0x00001A9E run_title_loop
 //   0x0000281E initialize_field_scene_entry
 //   0x000028C2 reinitialize_field_scene_entry
-//   0x00002BD2 FUN_00002bd2
+//   0x00002BD2 advance_field_scene_transition
 //   0x00002CE0 FUN_00002ce0
 //   0x00002F32 FUN_00002f32
 //   0x00002FA4 FUN_00002fa4
@@ -237,7 +237,7 @@ LAB_00000a72:
       }
       DAT_00ffe104 = (code *)0x0;
 LAB_00000b9c:
-      FUN_00002bd2();
+      advance_field_scene_transition();
     } while( true );
   }
   step_palette_transition();

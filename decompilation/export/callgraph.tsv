@@ -11,7 +11,7 @@ caller	caller_name	callee	callee_name	call_sites
 0000075E	run_game_loop	00001A9E	run_title_loop	1
 0000075E	run_game_loop	0000281E	initialize_field_scene_entry	1
 0000075E	run_game_loop	000028C2	reinitialize_field_scene_entry	1
-0000075E	run_game_loop	00002BD2	FUN_00002bd2	1
+0000075E	run_game_loop	00002BD2	advance_field_scene_transition	1
 0000075E	run_game_loop	00002CE0	FUN_00002ce0	1
 0000075E	run_game_loop	00002F32	FUN_00002f32	1
 0000075E	run_game_loop	00002FA4	FUN_00002fa4	1
@@ -172,11 +172,11 @@ caller	caller_name	callee	callee_name	call_sites
 00002A44	initialize_field_mode_profile_b	000136DE	initialize_scene_mode_state	1
 00002A44	initialize_field_mode_profile_b	00053126	prepare_mode_entry_service	1
 00002A94	initialize_mode_nine	00053126	prepare_mode_entry_service	1
-00002BD2	FUN_00002bd2	0000131C	step_palette_transition	1
-00002BD2	FUN_00002bd2	0000286E	guard_world_effect_player_spawn	1
-00002BD2	FUN_00002bd2	00002900	FUN_00002900	1
-00002BD2	FUN_00002bd2	00002C6C	FUN_00002c6c	1
-00002BD2	FUN_00002bd2	0000301E	upload_scene_profile_block	1
+00002BD2	advance_field_scene_transition	0000131C	step_palette_transition	1
+00002BD2	advance_field_scene_transition	0000286E	guard_world_effect_player_spawn	1
+00002BD2	advance_field_scene_transition	00002900	FUN_00002900	1
+00002BD2	advance_field_scene_transition	00002C6C	FUN_00002c6c	1
+00002BD2	advance_field_scene_transition	0000301E	upload_scene_profile_block	1
 00002C6C	FUN_00002c6c	00001406	prepare_title_resources	1
 00002C6C	FUN_00002c6c	00002C92	render_normal_field_viewport	1
 00002C6C	FUN_00002c6c	00002CB2	render_alternate_field_viewport	1
@@ -186,7 +186,7 @@ caller	caller_name	callee	callee_name	call_sites
 00002CB2	render_alternate_field_viewport	00003D18	FUN_00003d18	1
 00002CE0	FUN_00002ce0	0001DBAA	schedule_world_activity_timeout	1
 00002CE0	FUN_00002ce0	0001E2EC	FUN_0001e2ec	1
-00002F32	FUN_00002f32	00002BD2	FUN_00002bd2	1
+00002F32	FUN_00002f32	00002BD2	advance_field_scene_transition	1
 00002F32	FUN_00002f32	0000301E	upload_scene_profile_block	1
 00002F32	FUN_00002f32	00003032	scene_uses_alternate_profile	1
 00002F32	FUN_00002f32	0000C7F8	FUN_0000c7f8	1

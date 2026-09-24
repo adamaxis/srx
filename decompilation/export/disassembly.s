@@ -388,7 +388,7 @@
 00000B90: clr.w D0w
 00000B92: jsr 0x000042b0.l ; call 000042B0 initialize_joshua_archetype_selection
 00000B98: bra.w 0x000007f0
-00000B9C: jsr 0x00002bd2.l ; call 00002BD2 FUN_00002bd2
+00000B9C: jsr 0x00002bd2.l ; call 00002BD2 advance_field_scene_transition
 00000BA2: bra.w 0x000008c0
 00000BA6: clr.l (0x00ffe104).l
 00000BAC: bra.w 0x0000078a
@@ -1840,7 +1840,7 @@
 00002F82: move.w (0x00ffdf50).l,(0x00ffddc6).l
 00002F8C: move.w (0x00ffdf52).l,(0x00ffddc8).l
 00002F96: movea.l (0x00ffddfa).l,A6
-00002F9C: bsr.w 0x00002bd2 ; call 00002BD2 FUN_00002bd2
+00002F9C: bsr.w 0x00002bd2 ; call 00002BD2 advance_field_scene_transition
 00002FA0: bsr.w 0x0000301e ; call 0000301E upload_scene_profile_block
 00002FA4: lea (0xff0100).l,A3 ; data 00ff0100
 00002FAA: lea (0xffdf44).l,A4 ; data 00ffdf44

@@ -56,7 +56,7 @@ caller	caller_name	instruction	text	target	callee	status
 0000075E	run_game_loop	00000B7A	jsr 0x00053156.l	00053156	FUN_00053156	resolved
 0000075E	run_game_loop	00000B80	jsr 0x0001dc22.l	0001DC22	FUN_0001dc22	resolved
 0000075E	run_game_loop	00000B92	jsr 0x000042b0.l	000042B0	initialize_joshua_archetype_selection	resolved
-0000075E	run_game_loop	00000B9C	jsr 0x00002bd2.l	00002BD2	FUN_00002bd2	resolved
+0000075E	run_game_loop	00000B9C	jsr 0x00002bd2.l	00002BD2	advance_field_scene_transition	resolved
 00000C24	wait_for_vblank_frames	00000C24	bsr.b 0x00000bd2	00000BD2	wait_for_vblank	resolved
 00000C2C	clear_runtime_memory_and_vdp	00000C6A	jsr 0x00000ec0.l	00000EC0	upload_startup_palette	resolved
 00000C2C	clear_runtime_memory_and_vdp	00000C7A	jsr 0x00000dfc.l	00000DFC	write_repeated_words	resolved
@@ -202,11 +202,11 @@ caller	caller_name	instruction	text	target	callee	status
 00002A44	initialize_field_mode_profile_b	00002A52	jsr 0x00053126.l	00053126	prepare_mode_entry_service	resolved
 00002A44	initialize_field_mode_profile_b	00002A8E	jmp 0x000136de.l	000136DE	initialize_scene_mode_state	resolved
 00002A94	initialize_mode_nine	00002A94	jsr 0x00053126.l	00053126	prepare_mode_entry_service	resolved
-00002BD2	FUN_00002bd2	00002BD2	jsr 0x0000131c.l	0000131C	step_palette_transition	resolved
-00002BD2	FUN_00002bd2	00002C02	bsr.w 0x00002900	00002900	FUN_00002900	resolved
-00002BD2	FUN_00002bd2	00002C06	bsr.w 0x0000286e	0000286E	guard_world_effect_player_spawn	resolved
-00002BD2	FUN_00002bd2	00002C3E	bsr.w 0x00002c6c	00002C6C	FUN_00002c6c	resolved
-00002BD2	FUN_00002bd2	00002C42	bra.w 0x0000301e	0000301E	upload_scene_profile_block	resolved
+00002BD2	advance_field_scene_transition	00002BD2	jsr 0x0000131c.l	0000131C	step_palette_transition	resolved
+00002BD2	advance_field_scene_transition	00002C02	bsr.w 0x00002900	00002900	FUN_00002900	resolved
+00002BD2	advance_field_scene_transition	00002C06	bsr.w 0x0000286e	0000286E	guard_world_effect_player_spawn	resolved
+00002BD2	advance_field_scene_transition	00002C3E	bsr.w 0x00002c6c	00002C6C	FUN_00002c6c	resolved
+00002BD2	advance_field_scene_transition	00002C42	bra.w 0x0000301e	0000301E	upload_scene_profile_block	resolved
 00002C6C	FUN_00002c6c	00002C6C	jsr 0x00001406.l	00001406	prepare_title_resources	resolved
 00002C6C	FUN_00002c6c	00002C72	jsr 0x000566c2.l	000566C2	FUN_000566c2	resolved
 00002C6C	FUN_00002c6c	00002C84	jsr 0x00016afa.l	00016AFA	FUN_00016afa	resolved
@@ -218,7 +218,7 @@ caller	caller_name	instruction	text	target	callee	status
 00002CE0	FUN_00002ce0	00002D36	jsr 0x0001dbaa.l	0001DBAA	schedule_world_activity_timeout	resolved
 00002F32	FUN_00002f32	00002F48	jsr 0x0000c7f8.l	0000C7F8	FUN_0000c7f8	resolved
 00002F32	FUN_00002f32	00002F7E	bsr.w 0x00003032	00003032	scene_uses_alternate_profile	resolved
-00002F32	FUN_00002f32	00002F9C	bsr.w 0x00002bd2	00002BD2	FUN_00002bd2	resolved
+00002F32	FUN_00002f32	00002F9C	bsr.w 0x00002bd2	00002BD2	advance_field_scene_transition	resolved
 00002F32	FUN_00002f32	00002FA0	bsr.w 0x0000301e	0000301E	upload_scene_profile_block	resolved
 00002FA4	FUN_00002fa4	00002FCC	bsr.w 0x00002ff0	00002FF0	find_ready_entity_slot	resolved
 0000301E	upload_scene_profile_block	0000302C	jmp 0x00000f98.l	00000F98	write_vdp_word_block	resolved

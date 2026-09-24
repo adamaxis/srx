@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00002BD2
-// Name: FUN_00002bd2
+// Name: advance_field_scene_transition
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000131C step_palette_transition
@@ -12,7 +12,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00002bd2(void)
+void advance_field_scene_transition(void)
 
 {
   short sVar1;

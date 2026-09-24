@@ -547,6 +547,14 @@ Two fixed-loop leaves are now named and tested as well. `0x33BE` is a 4x4,
 adds an address-based runtime representation; both retain the source call
 counts and order as ordinary host loops.
 
+`0x2BD2` is now represented as a two-branch field-scene transition helper.
+Both paths begin with the palette step. A zero transition marker aligns the
+camera, refreshes scene state, guards world effects, consumes the pending event
+index, updates its counter with `(value & 0xE0) + 1` when the source state is
+negative, then renders/uploads. The other branch clears the palette marker,
+resets the scene markers, refreshes profile and scene state, applies the
+profile, renders/uploads, and finally guards world effects.
+
 The archetype boundary is now explicit. `0x42B0` selects one of the three
 extracted 0x100-byte Joshua templates (Samurai, Decker, or Gator Shaman),
 copies that record into the live Joshua slot, and publishes the source

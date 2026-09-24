@@ -24,7 +24,29 @@ struct FieldSceneEntryCallbacks {
     std::function<void()> render_scene;
     std::function<void()> upload_scene_profile;
     std::function<void()> guard_world_effect;
+    std::function<void()> step_palette_transition;
+    std::function<void(std::uint8_t)> record_pending_event;
 };
+
+struct FieldSceneTransitionState {
+    std::uint16_t palette_transition_marker = 0;
+    std::uint16_t scene_refresh_marker = 0;
+    std::uint16_t pending_scene_marker = 0;
+    std::uint16_t camera_x = 0;
+    std::uint16_t camera_y = 0;
+    std::uint16_t camera_transition_x = 0;
+    std::uint16_t camera_transition_y = 0;
+    std::uint8_t pending_event_index = 0;
+    bool event_state_negative = false;
+};
+
+// ROM 0x2BD2: step the palette transition, then choose the ordinary aligned
+// scene-refresh path or the full profile-refresh path. Pending event counters
+// are supplied as a typed host table.
+void advance_field_scene_transition(
+    FieldSceneTransitionState& state,
+    std::vector<std::uint8_t>& event_counters,
+    const FieldSceneEntryCallbacks& callbacks);
 
 // ROM 0x281E: initialize the field scene, reset its source markers, refresh
 // the scene/profile state, render/upload the profile, then guard world-effect
