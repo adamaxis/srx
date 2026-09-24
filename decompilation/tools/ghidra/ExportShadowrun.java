@@ -120,6 +120,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0000AE5EL, "schedule_entity_collision_recheck");
         names.put(0x0001A2CCL, "allocate_first_free_effect_slot");
         names.put(0x0001582AL, "allocate_first_free_effect_slot_local");
+        names.put(0x00016AFAL, "upload_mode_word_block");
         names.put(0x0001A342L,
                   "find_first_available_world_effect_entity_slot");
         names.put(0x0001DBAAL, "schedule_world_activity_timeout");

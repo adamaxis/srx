@@ -118,6 +118,16 @@ void write_four_by_four_transfer_batch(
     }
 }
 
+void upload_mode_word_block(
+    const std::uint32_t source_address,
+    const std::uint16_t destination_address,
+    const std::vector<std::uint16_t>& words,
+    const std::size_t byte_count,
+    const WordTransferCallbacks& callbacks) {
+    write_vdp_word_block_with_source_wrap(
+        source_address, destination_address, words, byte_count, callbacks);
+}
+
 void upload_scene_profile_block(
     const std::vector<std::uint16_t>& words,
     const WordTransferCallbacks& callbacks) {

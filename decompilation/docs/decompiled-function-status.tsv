@@ -375,3 +375,4 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x15354	entity audio state activation	ghidra_conversion::activate_entity_audio_state	shadowrun_ghidra_audio_service	partial		Typed entity flag/timer/position activation followed by audio service
 0x1562E	entity auxiliary behavior service	ghidra_conversion::service_entity_auxiliary_behavior	shadowrun_ghidra_behavior_animation	partial		Typed auxiliary preparation before entity behavior preparation
 0x1582A	local effect-slot allocator	ghidra_conversion::allocate_first_free_effect_slot_local	shadowrun_ghidra_entity_state_primitives	partial		Typed eighteen-slot local allocator kept distinct from the 0x1A2CC shared entry
+0x16AFA	mode word-block upload wrapper	ghidra_conversion::upload_mode_word_block	shadowrun_graphics	partial		Typed forwarding boundary into the wrapped word-block transfer

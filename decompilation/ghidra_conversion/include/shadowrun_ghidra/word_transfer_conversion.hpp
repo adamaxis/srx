@@ -65,6 +65,14 @@ void write_vdp_word_block_with_source_wrap(
     std::size_t byte_count,
     const WordTransferCallbacks& callbacks);
 
+// ROM 0x16AFA: enter the wrapped word-block transfer boundary.
+void upload_mode_word_block(
+    std::uint32_t source_address,
+    std::uint16_t destination_address,
+    const std::vector<std::uint16_t>& words,
+    std::size_t byte_count,
+    const WordTransferCallbacks& callbacks);
+
 // ROM 0x33BE: repeat the wrapped transfer leaf for a fixed four-by-four
 // source batch, preserving the source's 16-call order.
 void write_four_by_four_transfer_batch(

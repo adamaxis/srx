@@ -144,5 +144,14 @@ int main() {
         return 11;
     }
 
+    commands.clear();
+    words.clear();
+    upload_mode_word_block(0x0000U, 0x6000U, {0x1111U, 0x2222U}, 4U,
+                           row_callbacks);
+    if (commands.size() != 2U || words !=
+            std::vector<std::uint16_t>{0x1111U, 0x2222U}) {
+        return 12;
+    }
+
     return 0;
 }

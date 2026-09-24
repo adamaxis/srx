@@ -1043,6 +1043,10 @@ The six-byte `0x1582A` allocator is now separately named and mapped to the
 same typed eighteen-slot ownership model as its later shared counterpart; the
 two ROM entries are no longer conflated in the ledger.
 
+The final routine in this batch, `0x16AFA`, now forwards typed source,
+destination, word-count, and callback state into the existing wrapped word
+transfer helper.
+
 The compact row-writer family is now typed as well. `0x1184` emits one masked
 row with optional `0x8F80`/`0x8F02` display-increment controls, `0x11C0`
 repeats a source row at `0x80`-byte destination strides, and `0x11F6`
