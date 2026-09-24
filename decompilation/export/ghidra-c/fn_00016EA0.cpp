@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00016EA0
-// Name: FUN_00016ea0
+// Name: fill_terrain_work_region
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00016ea0(void)
+void fill_terrain_work_region(void)
 
 {
   short in_D0w;

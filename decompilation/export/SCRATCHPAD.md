@@ -201,6 +201,7 @@ still has unresolved downstream calls or hardware presentation work.
 | `0x164DC` | `clear_scene_record_transition_words` | Clears the leading transition word in ten scene records. | `ghidra_conversion::clear_scene_record_transition_words()` | partial |
 | `0x16DEE` | `clear_scene_record_pending_flags` | Clears bit 0 in the ten scene-record pending flags. | `ghidra_conversion::clear_scene_record_pending_flags()` | partial |
 | `0x16E08` | `all_scene_record_slots_active` | Tests bit 0 across all ten scene-record slots. | `ghidra_conversion::all_scene_record_slots_active()` | partial |
+| `0x16EA0` | `fill_terrain_work_region` | Fills a bounded rectangular terrain work-map region with value `2`. | `ghidra_conversion::fill_terrain_work_region()` | partial |
 | `0x176EA` | `render_menu_footer` | Copies the footer source block, marks it dirty, refreshes menu metadata, and draws the footer in source order. | `ghidra_conversion::render_menu_footer()` | partial |
 | `0x177A4` | `initialize_menu_slot_states` | Sets status `6` and timer `1` for all five menu slots. | `ghidra_conversion::initialize_menu_slot_states()` | partial |
 | `0x1E4E` | `reveal_title_logo_column` | Consumes one two-byte logo descriptor, requests its column render, and enters the completed-logo state at column `0x25`. | `ghidra_conversion::advance_title_logo_column()`; source blitters and 16-word palette copy remain events | partial |

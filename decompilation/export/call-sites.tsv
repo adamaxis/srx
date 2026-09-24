@@ -1430,7 +1430,7 @@ caller	caller_name	instruction	text	target	callee	status
 00016D8A	FUN_00016d8a	00016D8A	bsr.w 0x00016e08	00016E08	all_scene_record_slots_active	resolved
 00016E30	FUN_00016e30	00016E4E	jsr 0x0001a322.l	0001A322	clear_entity_effect_pending_records	resolved
 00016E30	FUN_00016e30	00016E54	jsr 0x0001a310.l	0001A310	clear_effect_slots	resolved
-00016E5C	FUN_00016e5c	00016E98	bsr.w 0x00016ea0	00016EA0	FUN_00016ea0	resolved
+00016E5C	FUN_00016e5c	00016E98	bsr.w 0x00016ea0	00016EA0	fill_terrain_work_region	resolved
 00016ECA	FUN_00016eca	00016F00	bsr.w 0x00016f14	00016F14	FUN_00016f14	resolved
 00016ECA	FUN_00016eca	00016F06	bsr.w 0x00016f8e	00016F8E	FUN_00016f8e	resolved
 00016F14	FUN_00016f14	00016F1E	bsr.w 0x00016f3c	00016F3C	FUN_00016f3c	resolved

@@ -64,5 +64,19 @@ int main() {
         return 3;
     }
 
+    std::vector<std::uint16_t> work_map(20U, 0U);
+    fill_terrain_work_region(work_map, 5U, 1U, 3U, 2U);
+    if (!expect(work_map[1] == 2U && work_map[2] == 2U &&
+                work_map[3] == 2U && work_map[6] == 2U &&
+                work_map[7] == 2U && work_map[8] == 2U &&
+                work_map[0] == 0U && work_map[9] == 0U)) {
+        return 4;
+    }
+
+    fill_terrain_work_region(work_map, 5U, 19U, 4U, 4U);
+    if (!expect(work_map[19] == 2U)) {
+        return 5;
+    }
+
     return 0;
 }

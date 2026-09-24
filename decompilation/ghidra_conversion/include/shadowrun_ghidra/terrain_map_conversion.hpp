@@ -35,4 +35,13 @@ void replace_nth_terrain_marker(
     std::uint8_t replacement,
     std::uint16_t ordinal);
 
+// ROM 0x16EA0: fill a source rectangular work-map region with terrain value
+// 2. Host indices are expressed in cells and are bounded by the container.
+void fill_terrain_work_region(
+    std::vector<std::uint16_t>& map,
+    std::size_t row_stride,
+    std::size_t start_index,
+    std::size_t width,
+    std::size_t height);
+
 } // namespace shadowrun::ghidra_conversion

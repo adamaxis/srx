@@ -13824,7 +13824,7 @@
 00016E8C: bpl.w 0x00016e94
 00016E90: suba.w #0x1,A4
 00016E94: andi.w #0x7fff,D2w
-00016E98: bsr.w 0x00016ea0 ; call 00016EA0 FUN_00016ea0
+00016E98: bsr.w 0x00016ea0 ; call 00016EA0 fill_terrain_work_region
 00016E9C: bra.b 0x00016e6c
 00016E9E: rts
 00016EA0: lea (0xff4700).l,A2 ; data 00ff4700

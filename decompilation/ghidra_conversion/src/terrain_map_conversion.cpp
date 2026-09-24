@@ -45,4 +45,20 @@ void rebuild_terrain_collision_map(
     post_process(map);
 }
 
+void fill_terrain_work_region(
+    std::vector<std::uint16_t>& map,
+    const std::size_t row_stride,
+    const std::size_t start_index,
+    const std::size_t width,
+    const std::size_t height) {
+    for (std::size_t row = 0; row < height; ++row) {
+        for (std::size_t column = 0; column < width; ++column) {
+            const auto index = start_index + row * row_stride + column;
+            if (index < map.size()) {
+                map[index] = 2U;
+            }
+        }
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion
