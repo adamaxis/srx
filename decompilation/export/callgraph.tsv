@@ -69,7 +69,7 @@ caller	caller_name	callee	callee_name	call_sites
 0000102A	clear_and_fill_plane_b	00001056	clear_vdp_words	1
 00001056	clear_vdp_words	00000E9C	make_vdp_transfer_command	1
 00001070	FUN_00001070	00001872	FUN_00001872	1
-00001080	FUN_00001080	00001910	FUN_00001910	1
+00001080	FUN_00001080	00001910	write_alternating_word_pair	1
 00001184	write_masked_vdp_row	00000E9C	make_vdp_transfer_command	1
 000011C0	write_repeated_vdp_grid	00000E9C	make_vdp_transfer_command	1
 00001232	write_vdp_grid	00000E9C	make_vdp_transfer_command	1

@@ -11,7 +11,7 @@ void Check(void)
 {
   stop();
   stop();
-  FUN_00001910();
+  write_alternating_word_pair();
   return;
 }
 

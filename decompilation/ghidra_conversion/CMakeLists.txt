@@ -1258,3 +1258,16 @@ target_link_libraries(shadowrun_ghidra_sprite_record_builder_test
     PRIVATE shadowrun_ghidra_sprite_record_builder)
 add_test(NAME shadowrun_ghidra_sprite_record_builder
          COMMAND shadowrun_ghidra_sprite_record_builder_test)
+
+add_library(shadowrun_ghidra_alternating_word_transfer STATIC
+    src/alternating_word_transfer_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_alternating_word_transfer PUBLIC include)
+
+add_executable(shadowrun_ghidra_alternating_word_transfer_test
+    tests/alternating_word_transfer_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_alternating_word_transfer_test
+    PRIVATE shadowrun_ghidra_alternating_word_transfer)
+add_test(NAME shadowrun_ghidra_alternating_word_transfer
+         COMMAND shadowrun_ghidra_alternating_word_transfer_test)

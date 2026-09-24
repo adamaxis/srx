@@ -668,6 +668,11 @@ The adjacent `0x1378`/`0x13BE` sprite-list leaves are now represented by
 the source `0x8000` sentinel, apply position and attribute offsets, and assign
 the sequential runtime sprite index without emitting the sentinel record.
 
+The `0x1910` transfer leaf is now `write_alternating_word_pair`: it increments
+the source counter before selecting the odd/even pair, waits for readiness,
+and emits exactly two words through a typed callback. The source control/data
+registers are not carried into the host conversion.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames

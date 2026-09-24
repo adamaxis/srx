@@ -89,7 +89,7 @@ caller	caller_name	instruction	text	target	callee	status
 0000102A	clear_and_fill_plane_b	0000103A	bsr.w 0x00000e9c	00000E9C	make_vdp_transfer_command	resolved
 00001056	clear_vdp_words	0000105A	bsr.w 0x00000e9c	00000E9C	make_vdp_transfer_command	resolved
 00001070	FUN_00001070	00001074	jsr 0x00001872.l	00001872	FUN_00001872	resolved
-00001080	FUN_00001080	00001080	jsr 0x00001910.l	00001910	FUN_00001910	resolved
+00001080	FUN_00001080	00001080	jsr 0x00001910.l	00001910	write_alternating_word_pair	resolved
 00001184	write_masked_vdp_row	000011A2	bsr.w 0x00000e9c	00000E9C	make_vdp_transfer_command	resolved
 000011C0	write_repeated_vdp_grid	000011D4	bsr.w 0x00000e9c	00000E9C	make_vdp_transfer_command	resolved
 00001232	write_vdp_grid	00001246	bsr.w 0x00000e9c	00000E9C	make_vdp_transfer_command	resolved

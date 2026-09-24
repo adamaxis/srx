@@ -3,13 +3,13 @@
 // Name: FUN_00001080
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001910 FUN_00001910
+//   0x00001910 write_alternating_word_pair
 
 
 void FUN_00001080(void)
 
 {
-  FUN_00001910();
+  write_alternating_word_pair();
   return;
 }
 

@@ -58,7 +58,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0000167C	decode_source_coordinate_stream	164	unknown	ok	ghidra-c/fn_0000167C.cpp
 00001728	render_hud_sprite_stream	322	unknown	ok	ghidra-c/fn_00001728.cpp
 00001872	FUN_00001872	158	unknown	ok	ghidra-c/fn_00001872.cpp
-00001910	FUN_00001910	76	unknown	ok	ghidra-c/fn_00001910.cpp
+00001910	write_alternating_word_pair	76	unknown	ok	ghidra-c/fn_00001910.cpp
 0000195C	sample_controller_input	64	unknown	ok	ghidra-c/fn_0000195C.cpp
 000019F2	read_controller_port	86	unknown	ok	ghidra-c/fn_000019F2.cpp
 00001A9E	run_title_loop	270	unknown	ok	ghidra-c/fn_00001A9E.cpp

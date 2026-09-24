@@ -9,7 +9,7 @@
 void HBLANK(void)
 
 {
-  FUN_00001910();
+  write_alternating_word_pair();
   return;
 }
 

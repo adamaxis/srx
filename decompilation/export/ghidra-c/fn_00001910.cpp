@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00001910
-// Name: FUN_00001910
+// Name: write_alternating_word_pair
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-undefined4 FUN_00001910(void)
+undefined4 write_alternating_word_pair(void)
 
 {
   byte bVar1;

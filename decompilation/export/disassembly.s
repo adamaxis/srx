@@ -698,7 +698,7 @@
 00001074: jsr 0x00001872.l ; call 00001872 FUN_00001872
 0000107A: movem.l (SP)+,{ D0 D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 0000107E: rte
-00001080: jsr 0x00001910.l ; call 00001910 FUN_00001910
+00001080: jsr 0x00001910.l ; call 00001910 write_alternating_word_pair
 00001086: rte
 00001088: lea (0xffd87e).l,A0 ; data 00ffd87e
 0000108E: move.w #0x3f,D7w
