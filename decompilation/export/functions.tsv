@@ -881,7 +881,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0005B32C	FUN_0005b32c	56	unknown	ok	ghidra-c/fn_0005B32C.cpp
 0005BA4C	load_scene_resources_thunk	4	unknown	ok	ghidra-c/fn_0005BA4C.cpp
 0005BA50	load_scene_resources	22	unknown	ok	ghidra-c/fn_0005BA50.cpp
-0005BA66	FUN_0005ba66	50	unknown	ok	ghidra-c/fn_0005BA66.cpp
+0005BA66	install_scene_resource_index_entries	50	unknown	ok	ghidra-c/fn_0005BA66.cpp
 0005BA98	select_pending_entity_template_list	44	unknown	ok	ghidra-c/fn_0005BA98.cpp
 0005C8C6	FUN_0005c8c6	52	unknown	ok	ghidra-c/fn_0005C8C6.cpp
 0005D172	FUN_0005d172	16	unknown	ok	ghidra-c/fn_0005D172.cpp

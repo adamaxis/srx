@@ -51,5 +51,17 @@ int main() {
         return 2;
     }
 
+    state.index_entries.clear();
+    install_scene_resource_index_entries(
+        state, 3U,
+        {{{0x4000U, 0x4001U}, {0x5000U, 0x5001U},
+          {0x6000U, 0x6001U}}});
+    if (!expect(state.resource_ready && state.index_entries.size() == 7U &&
+                state.index_entries[0].second == 0x4001U &&
+                state.index_entries[3].second == 0x5001U &&
+                state.index_entries[6].second == 0x6001U)) {
+        return 3;
+    }
+
     return 0;
 }

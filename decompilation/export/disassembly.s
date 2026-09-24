@@ -28716,7 +28716,7 @@
 0005D2D0: bne.w 0x0005d2f0
 0005D2D4: subq.w #0x1,(0x24,A0)
 0005D2D8: bpl.w 0x0005d408
-0005D2DC: jsr 0x0005ba66.l ; call 0005BA66 FUN_0005ba66
+0005D2DC: jsr 0x0005ba66.l ; call 0005BA66 install_scene_resource_index_entries
 0005D2E2: move.w #0x1,(0x22,A0)
 0005D2E8: move.w #0x100,(0x24,A0)
 0005D2EE: bra.b 0x0005d2b4

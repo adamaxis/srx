@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0005BA66
-// Name: FUN_0005ba66
+// Name: install_scene_resource_index_entries
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0005ba66(void)
+void install_scene_resource_index_entries(void)
 
 {
   int iVar1;

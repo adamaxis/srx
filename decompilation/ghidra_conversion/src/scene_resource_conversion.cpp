@@ -2,6 +2,20 @@
 
 namespace shadowrun::ghidra_conversion {
 
+void install_scene_resource_index_entries(
+    SceneResourceLoadState& state,
+    const std::size_t index_stride,
+    const std::array<SceneResourceIndexEntry, 3>& source_entries) {
+    const auto final_index = index_stride * 2U;
+    if (state.index_entries.size() <= final_index) {
+        state.index_entries.resize(final_index + 1U);
+    }
+    state.index_entries[0] = source_entries[0];
+    state.index_entries[index_stride] = source_entries[1];
+    state.index_entries[final_index] = source_entries[2];
+    state.resource_ready = true;
+}
+
 SceneResourceLoadResult load_scene_resources(
     SceneResourceLoadState& state,
     const std::vector<std::uint8_t>& compressed_payload,
@@ -22,14 +36,7 @@ SceneResourceLoadResult load_scene_resources(
         upload_resource(state.decoded_resource);
     }
 
-    const auto final_index = index_stride * 2U;
-    if (state.index_entries.size() <= final_index) {
-        state.index_entries.resize(final_index + 1U);
-    }
-    state.index_entries[0] = source_entries[0];
-    state.index_entries[index_stride] = source_entries[1];
-    state.index_entries[final_index] = source_entries[2];
-    state.resource_ready = true;
+    install_scene_resource_index_entries(state, index_stride, source_entries);
     return SceneResourceLoadResult::loaded;
 }
 

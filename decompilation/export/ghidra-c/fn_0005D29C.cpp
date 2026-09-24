@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00005A56 project_entity_screen_position
 //   0x0001E2E0 FUN_0001e2e0
-//   0x0005BA66 FUN_0005ba66
+//   0x0005BA66 install_scene_resource_index_entries
 //   0x0005D3E6 FUN_0005d3e6
 //   0x0005D416 FUN_0005d416
 //   0x0005D55C FUN_0005d55c
@@ -75,7 +75,7 @@ undefined8 FUN_0005d29c(void)
         FUN_0005d416();
         return CONCAT44(in_D0,in_D1);
       }
-      uVar3 = FUN_0005ba66();
+      uVar3 = install_scene_resource_index_entries();
       *(undefined2 *)(extraout_A0 + 0x22) = 1;
       *(undefined2 *)(extraout_A0 + 0x24) = 0x100;
     }
