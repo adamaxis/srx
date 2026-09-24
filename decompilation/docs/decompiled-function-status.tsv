@@ -338,3 +338,4 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x5AF2A	advance title intro schedule	ghidra_conversion::advance_title_intro_schedule	shadowrun_ghidra_title_intro_schedule	partial		Consumes one timed action entry and preserves the zero-delay terminal marker
 0x1CFC	title resource load sequence	ghidra_conversion::load_title_resources	shadowrun_ghidra_title_resource_sequence	partial		Typed three-stream source-order load with the intervening stream reset and sprite-list preparation
 0x1D58	title sprite-list preparation	ghidra_conversion::prepare_title_sprite_list	shadowrun_ghidra_title_resource_sequence	partial		Typed presentation boundary for the source HUD-sprite list builder
+0x28AA	field resource preparation sequence	ghidra_conversion::prepare_field_resources	shadowrun_ghidra_field_resource_sequence	partial		Typed setup, asset upload, animation refresh, and font-load order

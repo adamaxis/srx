@@ -551,6 +551,11 @@ The `0x1D58` title sprite-list leaf is also represented by a typed callback.
 This preserves the source boundary while leaving sprite extraction and native
 scene choreography outside the decompilation helper.
 
+The field resource wrapper at `0x28AA` now has the same treatment: setup,
+asset-sequence upload, animation refresh, and font loading are named host
+callbacks in source order. It does not reintroduce the original VDP upload
+state machine.
+
 The established word-transfer module now also converts `0xC3B2` as
 `write_single_word`: one typed transfer command followed by one data-word
 callback, with the ordering covered by the existing transfer test.
