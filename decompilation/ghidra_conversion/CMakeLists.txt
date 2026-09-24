@@ -604,3 +604,16 @@ target_link_libraries(shadowrun_ghidra_title_setup_test
     PRIVATE shadowrun_ghidra_title_setup)
 add_test(NAME shadowrun_ghidra_title_setup
          COMMAND shadowrun_ghidra_title_setup_test)
+
+add_library(shadowrun_ghidra_timing STATIC
+    src/timing_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_timing PUBLIC include)
+
+add_executable(shadowrun_ghidra_timing_test
+    tests/timing_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_timing_test
+    PRIVATE shadowrun_ghidra_timing)
+add_test(NAME shadowrun_ghidra_timing
+         COMMAND shadowrun_ghidra_timing_test)

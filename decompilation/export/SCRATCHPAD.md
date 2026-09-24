@@ -40,9 +40,9 @@ still has unresolved downstream calls or hardware presentation work.
 | `0x0236` | `reset_and_enter_boot` | Reset path: initializes VDP/Z80 state, clears display state, selects the region/title path, and transfers to the main coordinator. | `ShadowrunBoot` / `NativePortShell::update_boot` | partial |
 | `0x0330` | reset display block | Emits the five initial VDP register commands, clears the first VRAM word, and establishes the text-write command. | `make_startup_display_plan()` | partial |
 | `0x0436` | `write_startup_text_to_vdp` | Builds the destination command and converts a zero-terminated source string into host glyph indices. | `encode_startup_text()` / `ShadowrunBoot::write_startup_text()` adapter | partial |
-| `0x073A` | `wait_for_vdp_ready` | Delay loop followed by a VDP status-bit wait. | Native frame/presentation boundary; no host busy loop | pending |
+| `0x073A` | `wait_for_vdp_ready` | Coalesces the source's 11 × 4096 startup delay, waits at a typed ready boundary, then applies the 256-iteration settle delay. | `ghidra_conversion::wait_for_vdp_ready()`; no host VDP polling loop | partial |
 | `0x075E` | `run_game_loop` | Main coordinator: initializes session state, dispatches boot/title/field work, samples input, and performs indirect state dispatch. | `NativePortShell::update()` | partial |
-| `0x0BD2` | `wait_for_vblank` | Advances the frame counter and waits for the interrupt-side sample to change. | `NativePortShell::update()` frame tick | pending |
+| `0x0BD2` | `wait_for_vblank` | Advances the frame counter and requests the next interrupt-side sample through a host frame boundary. | `ghidra_conversion::wait_for_vblank()`; presentation timing remains a callback | partial |
 | `0x0BF2` | `latch_controller_events` | Combines the sampled high-byte event words and latches activity and Start state. | `ghidra_conversion::latch_controller_events()`; host input delivery remains separate | partial |
 | `0x0D44` | `advance_source_prng` | Advances the source 32-bit linear-congruential state with multiplier `0x20E5` and increment `1`. | `ghidra_conversion::advance_source_prng()` | partial |
 | `0x0D3A` | `sample_source_random_bound` | Advances the source PRNG and scales its low word by the caller bound using the source multiply/shift operation. | `ghidra_conversion::sample_source_random_bound()` | partial |
@@ -51,7 +51,7 @@ still has unresolved downstream calls or hardware presentation work.
 | `0x1088` | `step_palette_toward_black` | Moves each of the 64 CRAM words one Genesis color component toward black. | `ghidra_conversion::palette_toward_black()` | partial |
 | `0x10D6` | `step_palette_toward_target` | Moves each of the 64 CRAM words one component toward the target palette. | `ghidra_conversion::palette_toward_target()` | partial |
 | `0x131C` | `step_palette_transition` | Runs seventeen palette/update steps, each synchronized to frame/input service. | `ghidra_conversion::run_palette_transition()` | partial |
-| `0x1342` | `wait_for_palette_frame` | Waits for two vblank observations and latches controller events between palette steps. | Explicit conversion boundary; no runtime owner yet | pending |
+| `0x1342` | `wait_for_palette_frame` | Performs source-counter-plus-one vblank/latch iterations, preserving the DBF semantics used by palette steps. | `ghidra_conversion::wait_for_palette_frame()`; vblank and input latching remain callbacks | partial |
 | `0x1358` | `copy_source_word_block` | Copies 32 longwords into the source work block. | `ghidra_conversion::copy_source_word_block()` | partial |
 | `0x1368` | `copy_target_palette` | Copies 32 longwords into the 64-word target palette. | `ghidra_conversion::copy_target_palette()` | partial |
 | `0x14CE` | `extract_even_bytes` | Extracts bytes from every second byte of the source table. | `ghidra_conversion::extract_even_bytes()` | partial |
