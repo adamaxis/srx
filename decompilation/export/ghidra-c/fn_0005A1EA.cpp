@@ -4,8 +4,8 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0005A252 advance_title_intro_persistent_sequence
-//   0x0005A3BE FUN_0005a3be
-//   0x0005A4C2 FUN_0005a4c2
+//   0x0005A3BE advance_title_intro_motion
+//   0x0005A4C2 advance_title_intro_dual_sprites
 //   0x0005A59C FUN_0005a59c
 //   0x0005A628 FUN_0005a628
 //   0x0005A71C FUN_0005a71c
@@ -20,8 +20,8 @@ void FUN_0005a1ea(void)
 {
   DAT_00ffdd02 = 1;
   advance_title_intro_persistent_sequence();
-  FUN_0005a3be();
-  FUN_0005a4c2();
+  advance_title_intro_motion();
+  advance_title_intro_dual_sprites();
   FUN_0005a59c();
   FUN_0005a628();
   FUN_0005a71c();

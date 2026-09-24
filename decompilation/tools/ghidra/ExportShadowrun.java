@@ -203,6 +203,10 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0005A0B2L, "advance_title_intro_sequence");
         names.put(0x0005A244L, "reset_title_intro_persistent_sequence");
         names.put(0x0005A252L, "advance_title_intro_persistent_sequence");
+        names.put(0x0005A3B0L, "reset_title_intro_motion");
+        names.put(0x0005A3BEL, "advance_title_intro_motion");
+        names.put(0x0005A4B4L, "reset_title_intro_dual_sprites");
+        names.put(0x0005A4C2L, "advance_title_intro_dual_sprites");
         names.put(0x00000EC0L, "upload_startup_palette");
         names.put(0x00000F1CL, "write_transfer_header");
         names.put(0x00000F3CL, "write_fixed_transfer_pair");

@@ -565,6 +565,14 @@ stage-four marker and stage-nine anchor, emits its final overlay at stage
 twelve, and redraws the current descriptor at `(0x178, 0xD1)` with palette
 flags `0x2000` on every active call, including the final transition call.
 
+The next motion leaves are converted as a separate module. `0x5A3B0`/`0x5A3BE`
+implement the five-entry timed descriptor table, the nonzero-position sentinel,
+per-call position step, the `0x167` elapsed-frame cutoff, and the high-byte
+scroll adjustment before projection at `(y=0x133, palette=0x6000)`.
+`0x5A4B4`/`0x5A4C2` implement the four-phase/eight-descriptor dual-sprite
+sequence, advancing every six frames and drawing both fixed-position sprites
+on every active call.
+
 The runner reset cluster is now typed. `0x59BCC` clears status bits `6` and
 `4` in each of the three live runner records, preserves the source order of
 the preparation (`0x3674`, argument `0x0A`) and finalization (`0x37EC`)

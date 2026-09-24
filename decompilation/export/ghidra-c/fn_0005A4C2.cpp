@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005A4C2
-// Name: FUN_0005a4c2
+// Name: advance_title_intro_dual_sprites
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 FUN_00001378
 
 
-void FUN_0005a4c2(void)
+void advance_title_intro_dual_sprites(void)
 
 {
   ushort uVar1;

@@ -2781,8 +2781,8 @@ caller	caller_name	instruction	text	target	callee	status
 00059D7C	FUN_00059d7c	00059ED8	jsr 0x00059f7a.l	00059F7A	reset_title_intro_overlay_schedule	resolved
 00059D7C	FUN_00059d7c	00059EDE	jsr 0x0005a0a4.l	0005A0A4	reset_title_intro_sequence	resolved
 00059D7C	FUN_00059d7c	00059EE4	jsr 0x0005a244.l	0005A244	reset_title_intro_persistent_sequence	resolved
-00059D7C	FUN_00059d7c	00059EEA	jsr 0x0005a3b0.l	0005A3B0	FUN_0005a3b0	resolved
-00059D7C	FUN_00059d7c	00059EF0	jsr 0x0005a4b4.l	0005A4B4	FUN_0005a4b4	resolved
+00059D7C	FUN_00059d7c	00059EEA	jsr 0x0005a3b0.l	0005A3B0	reset_title_intro_motion	resolved
+00059D7C	FUN_00059d7c	00059EF0	jsr 0x0005a4b4.l	0005A4B4	reset_title_intro_dual_sprites	resolved
 00059D7C	FUN_00059d7c	00059EF6	jsr 0x0005a572.l	0005A572	FUN_0005a572	resolved
 00059D7C	FUN_00059d7c	00059EFC	jsr 0x0005a61a.l	0005A61A	FUN_0005a61a	resolved
 00059D7C	FUN_00059d7c	00059F02	jsr 0x0005a70e.l	0005A70E	FUN_0005a70e	resolved
@@ -2811,8 +2811,8 @@ caller	caller_name	instruction	text	target	callee	status
 0005A0B2	advance_title_intro_sequence	0005A1AE	jsr 0x0005a582.l	0005A582	FUN_0005a582	resolved
 0005A0B2	advance_title_intro_sequence	0005A1CA	jsr 0x0005b32c.l	0005B32C	FUN_0005b32c	resolved
 0005A1EA	FUN_0005a1ea	0005A1FC	jsr 0x0005a252.l	0005A252	advance_title_intro_persistent_sequence	resolved
-0005A1EA	FUN_0005a1ea	0005A202	jsr 0x0005a3be.l	0005A3BE	FUN_0005a3be	resolved
-0005A1EA	FUN_0005a1ea	0005A208	jsr 0x0005a4c2.l	0005A4C2	FUN_0005a4c2	resolved
+0005A1EA	FUN_0005a1ea	0005A202	jsr 0x0005a3be.l	0005A3BE	advance_title_intro_motion	resolved
+0005A1EA	FUN_0005a1ea	0005A208	jsr 0x0005a4c2.l	0005A4C2	advance_title_intro_dual_sprites	resolved
 0005A1EA	FUN_0005a1ea	0005A20E	jsr 0x0005a59c.l	0005A59C	FUN_0005a59c	resolved
 0005A1EA	FUN_0005a1ea	0005A214	jsr 0x0005a628.l	0005A628	FUN_0005a628	resolved
 0005A1EA	FUN_0005a1ea	0005A21A	jsr 0x0005a71c.l	0005A71C	FUN_0005a71c	resolved
@@ -2825,9 +2825,9 @@ caller	caller_name	instruction	text	target	callee	status
 0005A252	advance_title_intro_persistent_sequence	0005A35C	jsr 0x0005b32c.l	0005B32C	FUN_0005b32c	resolved
 0005A252	advance_title_intro_persistent_sequence	0005A374	jsr 0x00001378.l	00001378	FUN_00001378	resolved
 0005A37C	FUN_0005a37c	0005A392	jmp 0x00001378.l	00001378	FUN_00001378	resolved
-0005A3BE	FUN_0005a3be	0005A47A	jsr 0x00001378.l	00001378	FUN_00001378	resolved
-0005A4C2	FUN_0005a4c2	0005A542	jsr 0x00001378.l	00001378	FUN_00001378	resolved
-0005A4C2	FUN_0005a4c2	0005A55A	jsr 0x00001378.l	00001378	FUN_00001378	resolved
+0005A3BE	advance_title_intro_motion	0005A47A	jsr 0x00001378.l	00001378	FUN_00001378	resolved
+0005A4C2	advance_title_intro_dual_sprites	0005A542	jsr 0x00001378.l	00001378	FUN_00001378	resolved
+0005A4C2	advance_title_intro_dual_sprites	0005A55A	jsr 0x00001378.l	00001378	FUN_00001378	resolved
 0005A59C	FUN_0005a59c	0005A5FA	jsr 0x00001378.l	00001378	FUN_00001378	resolved
 0005A628	FUN_0005a628	0005A6C0	jsr 0x00001378.l	00001378	FUN_00001378	resolved
 0005A71C	FUN_0005a71c	0005A7A2	jsr 0x00001378.l	00001378	FUN_00001378	resolved

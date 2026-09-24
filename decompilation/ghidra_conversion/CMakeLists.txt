@@ -950,3 +950,16 @@ target_link_libraries(shadowrun_ghidra_title_intro_persistent_test
     PRIVATE shadowrun_ghidra_title_intro_persistent)
 add_test(NAME shadowrun_ghidra_title_intro_persistent
          COMMAND shadowrun_ghidra_title_intro_persistent_test)
+
+add_library(shadowrun_ghidra_title_intro_motion STATIC
+    src/title_intro_motion_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_title_intro_motion PUBLIC include)
+
+add_executable(shadowrun_ghidra_title_intro_motion_test
+    tests/title_intro_motion_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_title_intro_motion_test
+    PRIVATE shadowrun_ghidra_title_intro_motion)
+add_test(NAME shadowrun_ghidra_title_intro_motion
+         COMMAND shadowrun_ghidra_title_intro_motion_test)

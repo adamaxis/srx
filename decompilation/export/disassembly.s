@@ -27586,8 +27586,8 @@
 00059ED8: jsr 0x00059f7a.l ; call 00059F7A reset_title_intro_overlay_schedule
 00059EDE: jsr 0x0005a0a4.l ; call 0005A0A4 reset_title_intro_sequence
 00059EE4: jsr 0x0005a244.l ; call 0005A244 reset_title_intro_persistent_sequence
-00059EEA: jsr 0x0005a3b0.l ; call 0005A3B0 FUN_0005a3b0
-00059EF0: jsr 0x0005a4b4.l ; call 0005A4B4 FUN_0005a4b4
+00059EEA: jsr 0x0005a3b0.l ; call 0005A3B0 reset_title_intro_motion
+00059EF0: jsr 0x0005a4b4.l ; call 0005A4B4 reset_title_intro_dual_sprites
 00059EF6: jsr 0x0005a572.l ; call 0005A572 FUN_0005a572
 00059EFC: jsr 0x0005a61a.l ; call 0005A61A FUN_0005a61a
 00059F02: jsr 0x0005a70e.l ; call 0005A70E FUN_0005a70e
@@ -27748,8 +27748,8 @@
 0005A1F2: lea (0xffd986).l,A3 ; data 00ffd986
 0005A1F8: move.w #0x2,D5w
 0005A1FC: jsr 0x0005a252.l ; call 0005A252 advance_title_intro_persistent_sequence
-0005A202: jsr 0x0005a3be.l ; call 0005A3BE FUN_0005a3be
-0005A208: jsr 0x0005a4c2.l ; call 0005A4C2 FUN_0005a4c2
+0005A202: jsr 0x0005a3be.l ; call 0005A3BE advance_title_intro_motion
+0005A208: jsr 0x0005a4c2.l ; call 0005A4C2 advance_title_intro_dual_sprites
 0005A20E: jsr 0x0005a59c.l ; call 0005A59C FUN_0005a59c
 0005A214: jsr 0x0005a628.l ; call 0005A628 FUN_0005a628
 0005A21A: jsr 0x0005a71c.l ; call 0005A71C FUN_0005a71c

@@ -16,8 +16,8 @@
 //   0x0005A1EA FUN_0005a1ea
 //   0x0005A244 reset_title_intro_persistent_sequence
 //   0x0005A37C FUN_0005a37c
-//   0x0005A3B0 FUN_0005a3b0
-//   0x0005A4B4 FUN_0005a4b4
+//   0x0005A3B0 reset_title_intro_motion
+//   0x0005A4B4 reset_title_intro_dual_sprites
 //   0x0005A572 FUN_0005a572
 //   0x0005A61A FUN_0005a61a
 //   0x0005A70E FUN_0005a70e
@@ -80,8 +80,8 @@ void FUN_00059d7c(void)
   reset_title_intro_overlay_schedule();
   reset_title_intro_sequence();
   reset_title_intro_persistent_sequence();
-  FUN_0005a3b0();
-  FUN_0005a4b4();
+  reset_title_intro_motion();
+  reset_title_intro_dual_sprites();
   FUN_0005a572();
   FUN_0005a61a();
   FUN_0005a70e();
