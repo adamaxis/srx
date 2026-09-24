@@ -854,9 +854,9 @@ entry	name	size	callingConvention	decompileStatus	file
 0005A9E2	render_title_intro_middle_text_batch	60	unknown	ok	ghidra-c/fn_0005A9E2.cpp
 0005AA1E	render_title_intro_center_text_batch	60	unknown	ok	ghidra-c/fn_0005AA1E.cpp
 0005AA5A	render_title_intro_stage_text_batch	60	unknown	ok	ghidra-c/fn_0005AA5A.cpp
-0005AA96	FUN_0005aa96	256	unknown	ok	ghidra-c/fn_0005AA96.cpp
+0005AA96	run_title_intro_orchestrator	256	unknown	ok	ghidra-c/fn_0005AA96.cpp
 0005AB96	advance_title_intro_stage_service_steps	60	unknown	ok	ghidra-c/fn_0005AB96.cpp
-0005ABD2	FUN_0005abd2	60	unknown	ok	ghidra-c/fn_0005ABD2.cpp
+0005ABD2	service_title_intro_stage_frame	60	unknown	ok	ghidra-c/fn_0005ABD2.cpp
 0005AC0E	draw_title_intro_stage_base_sprite	26	unknown	ok	ghidra-c/fn_0005AC0E.cpp
 0005AC28	reset_title_intro_stage_projection	14	unknown	ok	ghidra-c/fn_0005AC28.cpp
 0005AC36	advance_title_intro_stage_projection	58	unknown	ok	ghidra-c/fn_0005AC36.cpp
@@ -875,10 +875,10 @@ entry	name	size	callingConvention	decompileStatus	file
 0005B100	advance_title_intro_pulse	128	unknown	ok	ghidra-c/fn_0005B100.cpp
 0005B198	reset_title_intro_landing	30	unknown	ok	ghidra-c/fn_0005B198.cpp
 0005B1B6	advance_title_intro_landing	186	unknown	ok	ghidra-c/fn_0005B1B6.cpp
-0005B29A	FUN_0005b29a	40	unknown	ok	ghidra-c/fn_0005B29A.cpp
+0005B29A	clear_title_intro_display_buffer	40	unknown	ok	ghidra-c/fn_0005B29A.cpp
 0005B2C2	set_title_intro_entity_color_words	32	unknown	ok	ghidra-c/fn_0005B2C2.cpp
 0005B2E2	step_title_intro_entity_color_words	74	unknown	ok	ghidra-c/fn_0005B2E2.cpp
-0005B32C	FUN_0005b32c	56	unknown	ok	ghidra-c/fn_0005B32C.cpp
+0005B32C	fill_title_intro_word_block	56	unknown	ok	ghidra-c/fn_0005B32C.cpp
 0005BA4C	load_scene_resources_thunk	4	unknown	ok	ghidra-c/fn_0005BA4C.cpp
 0005BA50	load_scene_resources	22	unknown	ok	ghidra-c/fn_0005BA50.cpp
 0005BA66	install_scene_resource_index_entries	50	unknown	ok	ghidra-c/fn_0005BA66.cpp

@@ -6,7 +6,7 @@
 //   0x00000F1C write_transfer_header
 //   0x00001728 render_hud_sprite_stream
 //   0x000530DE service_audio_if_enabled
-//   0x0005B32C FUN_0005b32c
+//   0x0005B32C fill_title_intro_word_block
 
 
 void advance_title_intro_overlay(void)
@@ -20,7 +20,7 @@ void advance_title_intro_overlay(void)
       service_audio_if_enabled();
       DAT_00ffdd08 = 0;
       write_transfer_header();
-      FUN_0005b32c();
+      fill_title_intro_word_block();
       render_hud_sprite_stream();
     }
     else {

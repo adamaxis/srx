@@ -565,6 +565,14 @@ and landing state, performs the first animation/text pass, and runs exactly
 `0x1E0`; scroll-fill, transition text, triplet rotation, and sprite drawing
 are explicit callbacks rather than VDP or ROM-address operations.
 
+The secondary-stage `0x5AA96` coordinator is now
+`run_title_intro_orchestrator`. It consumes named host assets for the two
+decoded graphics streams, palette, text, and HUD sprite stream; emits the
+typed 20-word by 13-row fill plan; preserves the palette-fade frame restore;
+and services the stage frame for exactly `0x115` iterations. `0xABD2` is the
+typed timed/base/projected sprite wrapper used by that loop. The shared
+`0x5B29A`/`0x5B32C` leaves now expose clear/fill plans instead of VDP writes.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames

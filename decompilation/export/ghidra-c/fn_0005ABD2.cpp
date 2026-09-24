@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0005ABD2
-// Name: FUN_0005abd2
+// Name: service_title_intro_stage_frame
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0005AC0E draw_title_intro_stage_base_sprite
@@ -10,7 +10,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0005abd2(void)
+void service_title_intro_stage_frame(void)
 
 {
   DAT_00ffdd02 = 1;

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0005AA96
-// Name: FUN_0005aa96
+// Name: run_title_intro_orchestrator
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -16,15 +16,15 @@
 //   0x0000C0C2 load_title_font
 //   0x0005AA5A render_title_intro_stage_text_batch
 //   0x0005AB96 advance_title_intro_stage_service_steps
-//   0x0005ABD2 FUN_0005abd2
+//   0x0005ABD2 service_title_intro_stage_frame
 //   0x0005AC28 reset_title_intro_stage_projection
 //   0x0005AC70 reset_title_intro_stage_timed_sprites
-//   0x0005B32C FUN_0005b32c
+//   0x0005B32C fill_title_intro_word_block
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0005aa96(void)
+void run_title_intro_orchestrator(void)
 
 {
   undefined2 uVar1;
@@ -39,11 +39,11 @@ void FUN_0005aa96(void)
   render_title_intro_stage_text_batch();
   wait_for_vblank();
   copy_target_palette();
-  FUN_0005b32c();
+  fill_title_intro_word_block();
   DAT_00fff11e = DAT_00ffdf88;
   reset_title_intro_stage_projection();
   reset_title_intro_stage_timed_sprites();
-  FUN_0005abd2();
+  service_title_intro_stage_frame();
   wait_for_vblank();
   render_hud_sprite_stream();
   uVar1 = DAT_00ffdf88;
@@ -55,7 +55,7 @@ void FUN_0005aa96(void)
     wait_for_vblank();
     sample_controller_input();
     latch_controller_events();
-    FUN_0005abd2();
+    service_title_intro_stage_frame();
     advance_title_intro_stage_service_steps();
     if (_DAT_00ffddc2 != 0) {
       return;

@@ -15,7 +15,7 @@
 //   0x0005B08E advance_title_intro_triplet
 //   0x0005B0BC service_title_intro_animation
 //   0x0005B198 reset_title_intro_landing
-//   0x0005B29A FUN_0005b29a
+//   0x0005B29A clear_title_intro_display_buffer
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -27,7 +27,7 @@ void run_title_intro_stage_loop(void)
   undefined4 *puVar2;
   undefined4 *puVar3;
   
-  FUN_0005b29a();
+  clear_title_intro_display_buffer();
   prepare_title_resources();
   DAT_00fff11e = DAT_00ffdf88;
   reset_title_intro_scroll_fill();

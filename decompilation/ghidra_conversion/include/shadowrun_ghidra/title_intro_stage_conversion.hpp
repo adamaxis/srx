@@ -65,6 +65,12 @@ struct TitleIntroStageTimedState {
     std::uint16_t y = 0;
 };
 
+struct TitleIntroStageFrameState {
+    std::uint16_t scene_mode = 0;
+    bool entity_record_pending = false;
+    std::uint8_t dirty_flags = 0;
+};
+
 // ROM 0x5AC70: reset the three-entry timed-sprite sequence.
 void reset_title_intro_stage_timed_sprites(TitleIntroStageTimedState& state);
 
@@ -75,6 +81,18 @@ void advance_title_intro_stage_timed_sprites(
     TitleIntroStageTimedState& state,
     const std::array<TitleIntroStageTimedPhase,
                      kTitleIntroStageTimedPhaseCount>& phases,
+    const std::function<void(const TitleIntroStageSpriteRequest&)>& draw_sprite);
+
+// ROM 0x5ABD2: publish stage mode, then draw timed/base/projection sprites in
+// source order and mark the native entity record for presentation.
+void service_title_intro_stage_frame(
+    TitleIntroStageFrameState& frame_state,
+    TitleIntroStageTimedState& timed_state,
+    const std::array<TitleIntroStageTimedPhase,
+                     kTitleIntroStageTimedPhaseCount>& timed_phases,
+    std::uint32_t base_sprite_descriptor,
+    TitleIntroStageProjectionState& projection_state,
+    std::uint32_t projection_sprite_descriptor,
     const std::function<void(const TitleIntroStageSpriteRequest&)>& draw_sprite);
 
 // ROM 0x5AB96: after frame 0xB4, on the source's masked cadence, invoke four

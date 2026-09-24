@@ -240,7 +240,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x5A1EA	intro ambush SAT/map death choreography	decode_genesis_intro_ambush_frames_impl	shadowrun_native_port	defended	visual-regression/intro-hill/intro-1240.bmp; intro-1552.bmp; intro-2512.bmp	Indian body/head pan, runner elimination, and slain Michael handoff
 0x5AF62	intro stage 1 0x1406	decode_genesis_intro_stages	shadowrun_graphics	partial		descriptor 0x5B574
 0x59D7C	intro stage 2 0x1406	decode_genesis_intro_stages	shadowrun_graphics	partial		descriptor 0x5B4A8 + SAT 0x1DF1B2
-0x5AA96	intro tri-vid	decode_genesis_intro_stages	shadowrun_graphics	partial		0x1E620E map + SAT 0x1DF1D6/0x1DF238
+0x5AA96	run title intro orchestrator	ghidra_conversion::run_title_intro_orchestrator	shadowrun_ghidra_title_intro_orchestrator	partial		Preserves secondary resource setup, palette/fill/HUD boundaries, and the 0x115-frame stage loop
 0x5AD1A	run title intro stage loop	ghidra_conversion::run_title_intro_stage_loop	shadowrun_ghidra_title_intro_stage_loop	partial		Preserves stage setup, first-pass helper order, final text at 0x1E0, and the 0x529-frame vblank loop
 0x5B08E	airport helicopter rotor rotation	NativePortShell::render	shadowrun_native_port	defended	visual-regression/intro-hill/intro-3000.bmp; intro-3400.bmp	three-word rotor phase rotation from the source overlay state
 0x5B100	airport helicopter overlay phases	NativePortShell::render	shadowrun_native_port	defended	visual-regression/intro-hill/intro-3000.bmp; intro-3400.bmp	six rotor SAT phases over the continuously scrolled Plane-A craft
@@ -307,5 +307,8 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x5B1B6	advance title intro landing	ghidra_conversion::advance_title_intro_landing	shadowrun_ghidra_title_intro_late	partial		Preserves the 0x226 lead-in, seven movement records, and narrow special-descriptor window
 0x5B2C2	set title intro entity color words	ghidra_conversion::set_title_intro_entity_color_words	shadowrun_ghidra_title_intro_late	partial		Fills one typed entity record's fifteen color words
 0x5B2E2	step title intro entity color words	ghidra_conversion::step_title_intro_entity_color_words	shadowrun_ghidra_title_intro_late	partial		Lowers each active color component by the source 2/0x20/0x200 steps
+0x5ABD2	service title intro stage frame	ghidra_conversion::service_title_intro_stage_frame	shadowrun_ghidra_title_intro_stage	partial		Publishes stage mode and services timed/base/projected sprites in source order
+0x5B29A	clear title intro display buffer	ghidra_conversion::clear_title_intro_display_buffer	shadowrun_ghidra_title_intro_transfer	partial		Converts the 0x400-write display clear into a typed host clear plan
+0x5B32C	fill title intro word block	ghidra_conversion::fill_title_intro_word_block	shadowrun_ghidra_title_intro_transfer	partial		Emits typed repeated fill rows with the source row count and 0x80 stride
 0x5AF2A	advance title intro schedule	ghidra_conversion::advance_title_intro_schedule	shadowrun_ghidra_title_intro_schedule	partial		Consumes one timed action entry and preserves the zero-delay terminal marker
 0x5AF62	run title intro schedule	ghidra_conversion::run_title_intro_schedule	shadowrun_ghidra_title_intro_schedule	partial		Preserves schedule setup, display/resource initialization, and vblank/controller loop order

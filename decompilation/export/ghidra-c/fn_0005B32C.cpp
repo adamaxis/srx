@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005B32C
-// Name: FUN_0005b32c
+// Name: fill_title_intro_word_block
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E9C make_vdp_transfer_command
 
 
-undefined8 FUN_0005b32c(void)
+undefined8 fill_title_intro_word_block(void)
 
 {
   undefined4 in_D0;

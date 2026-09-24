@@ -27505,7 +27505,7 @@
 00059CB8: move.w #0x12,D0w
 00059CBC: jsr 0x000530ea.l ; call 000530EA FUN_000530ea
 00059CC2: clr.w (0x00ffddc2).l
-00059CC8: jsr 0x0005aa96.l ; call 0005AA96 FUN_0005aa96
+00059CC8: jsr 0x0005aa96.l ; call 0005AA96 run_title_intro_orchestrator
 00059CCE: tst.w (0x00ffddc2).l
 00059CD4: bne.w 0x00059cfe
 00059CD8: clr.w (0x00ffddc2).l
@@ -27632,7 +27632,7 @@
 00059FBE: move.w #0x600,D4w
 00059FC2: move.w #0x10,D7w
 00059FC6: move.w #0xf,D1w
-00059FCA: jsr 0x0005b32c.l ; call 0005B32C FUN_0005b32c
+00059FCA: jsr 0x0005b32c.l ; call 0005B32C fill_title_intro_word_block
 00059FD0: lea (0x1e2e3e).l,A1 ; data 001e2e3e
 00059FD6: move.w #0x786,D4w
 00059FDA: move.w #0x13,D7w
@@ -27742,7 +27742,7 @@
 0005A1BE: move.w #0x826,D4w
 0005A1C2: move.w #0xc,D7w
 0005A1C6: move.w #0xb,D1w
-0005A1CA: jsr 0x0005b32c.l ; call 0005B32C FUN_0005b32c
+0005A1CA: jsr 0x0005b32c.l ; call 0005B32C fill_title_intro_word_block
 0005A1D0: rts
 0005A1EA: move.w #0x1,(0x00ffdd02).l
 0005A1F2: lea (0xffd986).l,A3 ; data 00ffd986
@@ -27818,7 +27818,7 @@
 0005A350: move.w #0x3b8,D4w
 0005A354: move.w #0x9,D7w
 0005A358: move.w #0x8,D1w
-0005A35C: jsr 0x0005b32c.l ; call 0005B32C FUN_0005b32c
+0005A35C: jsr 0x0005b32c.l ; call 0005B32C fill_title_intro_word_block
 0005A362: movea.l (0x00fff12a).l,A2
 0005A368: move.w #0x178,D1w
 0005A36C: move.w #0xd1,D2w
@@ -28151,11 +28151,11 @@
 0005AAF4: move.w #0x786,D4w
 0005AAF8: move.w #0x13,D7w
 0005AAFC: move.w #0xc,D1w
-0005AB00: jsr 0x0005b32c.l ; call 0005B32C FUN_0005b32c
+0005AB00: jsr 0x0005b32c.l ; call 0005B32C fill_title_intro_word_block
 0005AB06: move.w (0x00ffdf88).l,(0x00fff11e).l
 0005AB10: jsr 0x0005ac28.l ; call 0005AC28 reset_title_intro_stage_projection
 0005AB16: jsr 0x0005ac70.l ; call 0005AC70 reset_title_intro_stage_timed_sprites
-0005AB1C: bsr.w 0x0005abd2 ; call 0005ABD2 FUN_0005abd2
+0005AB1C: bsr.w 0x0005abd2 ; call 0005ABD2 service_title_intro_stage_frame
 0005AB20: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 0005AB26: lea (0x1e620e).l,A1 ; data 001e620e
 0005AB2C: move.w #0x700,D4w
@@ -28175,7 +28175,7 @@
 0005AB66: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 0005AB6C: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0005AB72: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
-0005AB78: jsr 0x0005abd2.l ; call 0005ABD2 FUN_0005abd2
+0005AB78: jsr 0x0005abd2.l ; call 0005ABD2 service_title_intro_stage_frame
 0005AB7E: jsr 0x0005ab96.l ; call 0005AB96 advance_title_intro_stage_service_steps
 0005AB84: move.w (SP)+,D7w
 0005AB86: tst.w (0x00ffddc2).l
@@ -28258,7 +28258,7 @@
 0005ACF6: move.w #-0x2000,D6w
 0005ACFA: jsr 0x00001378.l ; call 00001378 FUN_00001378
 0005AD00: rts
-0005AD1A: jsr 0x0005b29a.l ; call 0005B29A FUN_0005b29a
+0005AD1A: jsr 0x0005b29a.l ; call 0005B29A clear_title_intro_display_buffer
 0005AD20: lea (0x5b528).l,A6 ; data 0005b528
 0005AD26: jsr 0x00001406.l ; call 00001406 prepare_title_resources
 0005AD2C: move.w (0x00ffdf88).l,(0x00fff11e).l
@@ -28349,7 +28349,7 @@
 0005AF74: clr.w (0x00ffdd0e).l
 0005AF7A: bset.b #0x2,(0x00ffef14).l
 0005AF82: bset.b #0x3,(0x00ffef14).l
-0005AF8A: jsr 0x0005b29a.l ; call 0005B29A FUN_0005b29a
+0005AF8A: jsr 0x0005b29a.l ; call 0005B29A clear_title_intro_display_buffer
 0005AF90: lea (0x5b574).l,A6 ; data 0005b574
 0005AF96: jsr 0x00001406.l ; call 00001406 prepare_title_resources
 0005AF9C: jsr 0x0000c0c2.l ; call 0000C0C2 load_title_font
@@ -28383,7 +28383,7 @@
 0005B02A: move.w #0x74a,D4w
 0005B02E: move.w #0x4,D7w
 0005B032: move.w #0x7,D1w
-0005B036: jsr 0x0005b32c.l ; call 0005B32C FUN_0005b32c
+0005B036: jsr 0x0005b32c.l ; call 0005B32C fill_title_intro_word_block
 0005B03C: move.w #0x1,(0x00fff18a).l
 0005B044: subq.w #0x2,D0w
 0005B046: move.w D0w,(0x00ffdd08).l

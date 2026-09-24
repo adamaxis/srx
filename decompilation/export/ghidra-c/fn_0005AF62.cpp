@@ -9,7 +9,7 @@
 //   0x0000195C sample_controller_input
 //   0x0000C0C2 load_title_font
 //   0x0005AF2A advance_title_intro_schedule
-//   0x0005B29A FUN_0005b29a
+//   0x0005B29A clear_title_intro_display_buffer
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -28,7 +28,7 @@ void run_title_intro_schedule(void)
   DAT_00ffdd0a = 0;
   DAT_00ffdd0e = 0;
   DAT_00ffef14 = DAT_00ffef14 | 0xc;
-  FUN_0005b29a();
+  clear_title_intro_display_buffer();
   prepare_title_resources();
   load_title_font();
   DAT_00ffdd32 = &DAT_0005add0;

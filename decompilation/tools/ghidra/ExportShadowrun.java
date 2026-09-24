@@ -222,7 +222,9 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0005A9E2L, "render_title_intro_middle_text_batch");
         names.put(0x0005AA1EL, "render_title_intro_center_text_batch");
         names.put(0x0005AA5AL, "render_title_intro_stage_text_batch");
+        names.put(0x0005AA96L, "run_title_intro_orchestrator");
         names.put(0x0005AB96L, "advance_title_intro_stage_service_steps");
+        names.put(0x0005ABD2L, "service_title_intro_stage_frame");
         names.put(0x0005AC0EL, "draw_title_intro_stage_base_sprite");
         names.put(0x0005AC28L, "reset_title_intro_stage_projection");
         names.put(0x0005AC36L, "advance_title_intro_stage_projection");
@@ -241,6 +243,8 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0005B100L, "advance_title_intro_pulse");
         names.put(0x0005B198L, "reset_title_intro_landing");
         names.put(0x0005B1B6L, "advance_title_intro_landing");
+        names.put(0x0005B29AL, "clear_title_intro_display_buffer");
+        names.put(0x0005B32CL, "fill_title_intro_word_block");
         names.put(0x0005B2C2L, "set_title_intro_entity_color_words");
         names.put(0x0005B2E2L, "step_title_intro_entity_color_words");
         names.put(0x00000EC0L, "upload_startup_palette");

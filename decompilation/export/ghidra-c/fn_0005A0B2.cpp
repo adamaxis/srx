@@ -8,7 +8,7 @@
 //   0x0005A582 begin_title_intro_timed_sprites
 //   0x0005B2C2 set_title_intro_entity_color_words
 //   0x0005B2E2 step_title_intro_entity_color_words
-//   0x0005B32C FUN_0005b32c
+//   0x0005B32C fill_title_intro_word_block
 
 
 void advance_title_intro_sequence(void)
@@ -38,7 +38,7 @@ void advance_title_intro_sequence(void)
           begin_title_intro_timed_sprites();
         }
         if (0xb < DAT_00fff126) {
-          FUN_0005b32c();
+          fill_title_intro_word_block();
         }
       }
     }

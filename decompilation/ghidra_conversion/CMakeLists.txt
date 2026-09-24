@@ -1058,3 +1058,32 @@ target_link_libraries(shadowrun_ghidra_title_intro_stage_loop_test
     PRIVATE shadowrun_ghidra_title_intro_stage_loop)
 add_test(NAME shadowrun_ghidra_title_intro_stage_loop
          COMMAND shadowrun_ghidra_title_intro_stage_loop_test)
+
+add_library(shadowrun_ghidra_title_intro_transfer STATIC
+    src/title_intro_transfer_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_title_intro_transfer PUBLIC include)
+
+add_executable(shadowrun_ghidra_title_intro_transfer_test
+    tests/title_intro_transfer_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_title_intro_transfer_test
+    PRIVATE shadowrun_ghidra_title_intro_transfer)
+add_test(NAME shadowrun_ghidra_title_intro_transfer
+         COMMAND shadowrun_ghidra_title_intro_transfer_test)
+
+add_library(shadowrun_ghidra_title_intro_orchestrator STATIC
+    src/title_intro_orchestrator_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_title_intro_orchestrator PUBLIC include)
+target_link_libraries(shadowrun_ghidra_title_intro_orchestrator
+    PRIVATE shadowrun_ghidra_title_intro_stage
+            shadowrun_ghidra_title_intro_transfer)
+
+add_executable(shadowrun_ghidra_title_intro_orchestrator_test
+    tests/title_intro_orchestrator_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_title_intro_orchestrator_test
+    PRIVATE shadowrun_ghidra_title_intro_orchestrator)
+add_test(NAME shadowrun_ghidra_title_intro_orchestrator
+         COMMAND shadowrun_ghidra_title_intro_orchestrator_test)

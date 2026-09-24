@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005B29A
-// Name: FUN_0005b29a
+// Name: clear_title_intro_display_buffer
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E9C make_vdp_transfer_command
 
 
-undefined4 FUN_0005b29a(void)
+undefined4 clear_title_intro_display_buffer(void)
 
 {
   short sVar1;

@@ -79,6 +79,27 @@ void advance_title_intro_stage_timed_sprites(
     }
 }
 
+void service_title_intro_stage_frame(
+    TitleIntroStageFrameState& frame_state,
+    TitleIntroStageTimedState& timed_state,
+    const std::array<TitleIntroStageTimedPhase,
+                     kTitleIntroStageTimedPhaseCount>& timed_phases,
+    const std::uint32_t base_sprite_descriptor,
+    TitleIntroStageProjectionState& projection_state,
+    const std::uint32_t projection_sprite_descriptor,
+    const std::function<void(const TitleIntroStageSpriteRequest&)>& draw_sprite) {
+    frame_state.scene_mode = 1U;
+    advance_title_intro_stage_timed_sprites(timed_state, timed_phases,
+                                             draw_sprite);
+    draw_title_intro_stage_base_sprite(base_sprite_descriptor, draw_sprite);
+    advance_title_intro_stage_projection(projection_state,
+                                         projection_sprite_descriptor,
+                                         draw_sprite);
+    frame_state.entity_record_pending = true;
+    frame_state.dirty_flags = static_cast<std::uint8_t>(
+        frame_state.dirty_flags | 0x02U);
+}
+
 bool advance_title_intro_stage_service_steps(
     const std::uint16_t current_frame,
     const std::uint16_t animation_start_frame,
