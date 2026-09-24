@@ -164,5 +164,11 @@ int main() {
         return 20;
     }
 
+    write_menu_repeated_grid_with_metadata(
+        [&panel_events] { panel_events.push_back(30); });
+    if (panel_events != std::vector<int>{26, 27, 28, 29, 30}) {
+        return 21;
+    }
+
     return 0;
 }

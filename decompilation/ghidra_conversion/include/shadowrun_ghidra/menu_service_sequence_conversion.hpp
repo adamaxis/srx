@@ -123,4 +123,9 @@ void prepare_menu_grid_variant_c(const std::function<void()>& prepare_grid);
 // ROM 0x12C56: submit one repeated menu-grid write.
 void write_menu_repeated_grid(const std::function<void()>& write_grid);
 
+// ROM 0x12C5A: submit the repeated-grid write used by the neighboring menu
+// service path.
+void write_menu_repeated_grid_with_metadata(
+    const std::function<void()>& write_grid);
+
 } // namespace shadowrun::ghidra_conversion
