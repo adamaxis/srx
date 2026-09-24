@@ -9,7 +9,7 @@
 //   0x0000AC84 FUN_0000ac84
 //   0x0000ACAE FUN_0000acae
 //   0x0000B330 enter_entity_behavior_transition
-//   0x0000B49C FUN_0000b49c
+//   0x0000B49C resolve_entity_fallback_movement
 //   0x0000BCAE apply_mode_five_boundary_motion
 //   0x0000EB92 FUN_0000eb92
 //   0x00013874 FUN_00013874
@@ -142,7 +142,7 @@ LAB_0000aa74:
         puVar5 = extraout_A0_08;
         if ((bVar2 & 2) != 0) {
           *(undefined4 *)(extraout_A0_08 + 0x6a) = *(undefined4 *)(extraout_A0_08 + 0x1d);
-          *(code **)(extraout_A0_08 + 0x1d) = FUN_0000b49c;
+          *(code **)(extraout_A0_08 + 0x1d) = resolve_entity_fallback_movement;
         }
       }
       *(byte *)((int)puVar5 + 0x11) = *(byte *)((int)puVar5 + 0x11) & 0xfb;

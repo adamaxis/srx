@@ -322,7 +322,7 @@ caller	caller_name	callee	callee_name	call_sites
 0000A8EA	FUN_0000a8ea	0000AC84	FUN_0000ac84	1
 0000A8EA	FUN_0000a8ea	0000ACAE	FUN_0000acae	1
 0000A8EA	FUN_0000a8ea	0000B330	enter_entity_behavior_transition	1
-0000A8EA	FUN_0000a8ea	0000B49C	FUN_0000b49c	1
+0000A8EA	FUN_0000a8ea	0000B49C	resolve_entity_fallback_movement	1
 0000A8EA	FUN_0000a8ea	0000BCAE	apply_mode_five_boundary_motion	1
 0000A8EA	FUN_0000a8ea	0000EB92	FUN_0000eb92	1
 0000A8EA	FUN_0000a8ea	00013874	FUN_00013874	1
@@ -382,7 +382,7 @@ caller	caller_name	callee	callee_name	call_sites
 0000B3FE	set_entity_heading_with_alternate_animation	0000AF6C	reset_entity_animation_state	1
 0000B442	reset_entity_movement_state	0000B48C	evaluate_entity_collision	1
 0000B48C	evaluate_entity_collision	0000E7C8	FUN_0000e7c8	1
-0000B49C	FUN_0000b49c	0000B732	apply_movement_result_policy	3
+0000B49C	resolve_entity_fallback_movement	0000B732	apply_movement_result_policy	3
 0000B732	apply_movement_result_policy	0000B77E	probe_entity_directional_collision	1
 0000B77E	probe_entity_directional_collision	0000B48C	evaluate_entity_collision	1
 0000B7B8	FUN_0000b7b8	0000423C	quantize_field_delta	1

@@ -4294,7 +4294,7 @@
 0000AAA6: movea.l (0x3a,A0),A1
 0000AAAA: move.w (0x16,A0),D0w
 0000AAAE: move.w D0w,-(SP) ; data Stack[-0x4]
-0000AAB0: jsr (A1) ; call 0000B49C FUN_0000b49c
+0000AAB0: jsr (A1) ; call 0000B49C resolve_entity_fallback_movement
 0000AAB2: bsr.w 0x0000ac5e ; call 0000AC5E FUN_0000ac5e
 0000AAB6: move.w (SP)+,D0w
 0000AAB8: cmp.w (0x16,A0),D0w

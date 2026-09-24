@@ -86,6 +86,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0000B330L, "enter_entity_behavior_transition");
         names.put(0x0000B11CL, "synchronize_entity_behavior_spawn");
         names.put(0x0000B1DCL, "configure_entity_target_transition");
+        names.put(0x0000B49CL, "resolve_entity_fallback_movement");
         names.put(0x0000B732L, "apply_movement_result_policy");
         names.put(0x0000B77EL, "probe_entity_directional_collision");
         names.put(0x0000B530L, "approach_entity_fixed_point_target");

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000B49C
-// Name: FUN_0000b49c
+// Name: resolve_entity_fallback_movement
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000B732 apply_movement_result_policy
 
 
-void FUN_0000b49c(void)
+void resolve_entity_fallback_movement(void)
 
 {
   short sVar1;

@@ -200,7 +200,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0000B3FE	set_entity_heading_with_alternate_animation	52	unknown	ok	ghidra-c/fn_0000B3FE.cpp
 0000B442	reset_entity_movement_state	74	unknown	ok	ghidra-c/fn_0000B442.cpp
 0000B48C	evaluate_entity_collision	16	unknown	ok	ghidra-c/fn_0000B48C.cpp
-0000B49C	FUN_0000b49c	148	unknown	ok	ghidra-c/fn_0000B49C.cpp
+0000B49C	resolve_entity_fallback_movement	148	unknown	ok	ghidra-c/fn_0000B49C.cpp
 0000B530	approach_entity_fixed_point_target	58	unknown	ok	ghidra-c/fn_0000B530.cpp
 0000B6E4	select_entity_animation_table	78	unknown	ok	ghidra-c/fn_0000B6E4.cpp
 0000B732	apply_movement_result_policy	76	unknown	ok	ghidra-c/fn_0000B732.cpp
