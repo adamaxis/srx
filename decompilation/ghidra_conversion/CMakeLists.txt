@@ -1427,3 +1427,16 @@ target_link_libraries(shadowrun_ghidra_menu_service_sequence_test
     PRIVATE shadowrun_ghidra_menu_service_sequence)
 add_test(NAME shadowrun_ghidra_menu_service_sequence
          COMMAND shadowrun_ghidra_menu_service_sequence_test)
+
+add_library(shadowrun_ghidra_entity_action_sequence STATIC
+    src/entity_action_sequence_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_action_sequence PUBLIC include)
+
+add_executable(shadowrun_ghidra_entity_action_sequence_test
+    tests/entity_action_sequence_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_action_sequence_test
+    PRIVATE shadowrun_ghidra_entity_action_sequence)
+add_test(NAME shadowrun_ghidra_entity_action_sequence
+         COMMAND shadowrun_ghidra_entity_action_sequence_test)
