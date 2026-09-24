@@ -107,6 +107,57 @@ int main() {
         return 41;
     }
 
+    const auto direct_route = select_obstruction_route(
+        0x0200U,
+        0x0000U,
+        0x0400U,
+        0x0100U,
+        0x00U,
+        [&] {
+            std::vector<std::uint8_t> map(256, 0U);
+            map[130] = 1U;
+            return map;
+        }());
+    if (!expect(direct_route.action == ObstructionRouteAction::direct_step &&
+                direct_route.route_tile == 66 &&
+                direct_route.route_step == 64 &&
+                direct_route.movement_flags == 0x02U)) {
+        return 42;
+    }
+    std::vector<std::uint8_t> bypass_map(128, 0U);
+    bypass_map[66] = 1U;
+    const auto bypass_route = select_obstruction_route(
+        0x0200U, 0x0000U, 0x0400U, 0x0100U, 0x00U, bypass_map);
+    if (!expect(bypass_route.action ==
+                    ObstructionRouteAction::bypass_available)) {
+        return 43;
+    }
+    std::vector<std::uint8_t> retry_map(128, 1U);
+    retry_map[2] = 0U;
+    const auto retry_route = select_obstruction_route(
+        0x0200U, 0x0000U, 0x0400U, 0x0100U, 0x00U, retry_map);
+    if (!expect(retry_route.action ==
+                    ObstructionRouteAction::retry_around_obstruction &&
+                retry_route.movement_flags == 0x0AU)) {
+        return 44;
+    }
+    std::vector<std::uint8_t> blocked_target_map(128, 0U);
+    blocked_target_map[2] = 1U;
+    const auto blocked_target = select_obstruction_route(
+        0x0200U, 0x0000U, 0x0400U, 0x0100U, 0x00U, blocked_target_map);
+    if (!expect(blocked_target.action ==
+                    ObstructionRouteAction::target_blocked &&
+                blocked_target.movement_flags == 0x00U)) {
+        return 45;
+    }
+    const auto already_retrying = select_obstruction_route(
+        0x0200U, 0x0000U, 0x0400U, 0x0100U, 0x08U, blocked_target_map);
+    if (!expect(already_retrying.action ==
+                    ObstructionRouteAction::already_retrying &&
+                already_retrying.movement_flags == 0x0AU)) {
+        return 46;
+    }
+
     std::vector<std::uint8_t> horizontal_path(128, 0U);
     horizontal_path[12] = 1U;
     if (!expect(is_obstruction_path_blocked(10, 13, horizontal_path))) {

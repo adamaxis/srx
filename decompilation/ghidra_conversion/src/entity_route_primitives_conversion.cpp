@@ -1,5 +1,7 @@
 #include "shadowrun_ghidra/entity_route_primitives_conversion.hpp"
 
+#include "shadowrun_ghidra/movement_direction_conversion.hpp"
+
 namespace shadowrun::ghidra_conversion {
 
 std::uint8_t clear_entity_route_flags(const std::uint8_t movement_flags) {
@@ -212,6 +214,85 @@ std::optional<std::int32_t> find_rotating_route_strip_target(
             (secondary_direction + 6U) & 0x06U);
     }
     return std::nullopt;
+}
+
+ObstructionRouteSelection select_obstruction_route(
+    const std::uint16_t entity_x,
+    const std::uint16_t entity_y,
+    const std::uint16_t target_x,
+    const std::uint16_t target_y,
+    const std::uint8_t movement_flags,
+    const std::vector<std::uint8_t>& obstruction_map) {
+    const auto pending_flags = static_cast<std::uint8_t>(
+        movement_flags | 0x02U);
+    if ((movement_flags & 0x08U) != 0U) {
+        return ObstructionRouteSelection{
+            pending_flags,
+            ObstructionRouteAction::already_retrying,
+            0,
+            0,
+            false};
+    }
+
+    const auto directions = choose_dominant_axis_directions(
+        entity_x, entity_y, target_x, target_y);
+    const auto target_tile = static_cast<std::int32_t>(
+        compute_obstruction_grid_index(target_x, target_y));
+    const auto open = [&obstruction_map](const std::int32_t tile) {
+        return tile >= 0 &&
+            tile < static_cast<std::int32_t>(obstruction_map.size()) &&
+            obstruction_map[static_cast<std::size_t>(tile)] == 0U;
+    };
+    if (!open(target_tile)) {
+        return ObstructionRouteSelection{
+            clear_entity_route_flags(pending_flags),
+            ObstructionRouteAction::target_blocked,
+            0,
+            0,
+            false};
+    }
+
+    const auto secondary_step = static_cast<std::int16_t>(
+        std::array<std::int16_t, 8>{-64, 0, 1, 0, 64, 0, -1, 0}[
+            static_cast<std::uint8_t>(directions.secondary)]);
+    auto obstruction_tile = target_tile + secondary_step;
+    if (!open(obstruction_tile)) {
+        obstruction_tile = target_tile;
+    } else {
+        while (open(obstruction_tile)) {
+            obstruction_tile += secondary_step;
+        }
+    }
+
+    if (obstruction_tile != target_tile) {
+        return ObstructionRouteSelection{
+            pending_flags,
+            ObstructionRouteAction::direct_step,
+            target_tile + secondary_step,
+            secondary_step,
+            true};
+    }
+
+    const auto primary_slot = static_cast<std::uint8_t>(
+        directions.primary);
+    const auto secondary_slot = static_cast<std::uint8_t>(
+        directions.secondary);
+    if (!can_bypass_obstruction(
+            target_tile, primary_slot, secondary_slot, obstruction_map)) {
+        return ObstructionRouteSelection{
+            pending_flags,
+            ObstructionRouteAction::bypass_available,
+            0,
+            0,
+            false};
+    }
+
+    return ObstructionRouteSelection{
+        static_cast<std::uint8_t>(pending_flags | 0x08U),
+        ObstructionRouteAction::retry_around_obstruction,
+        0,
+        0,
+        false};
 }
 
 bool is_obstruction_path_blocked(

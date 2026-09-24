@@ -3,7 +3,7 @@
 // Name: update_entity_axis_relation_state
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00014682 FUN_00014682
+//   0x00014682 select_obstruction_route
 
 
 void update_entity_axis_relation_state(void)
@@ -37,7 +37,7 @@ LAB_00014bf4:
     }
   }
   *(byte *)(in_A0 + 0x58) = *(byte *)(in_A0 + 0x58) | 2;
-  FUN_00014682();
+  select_obstruction_route();
   return;
 }
 

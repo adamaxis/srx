@@ -12219,7 +12219,7 @@
 00014C1E: beq.w 0x00014c24
 00014C22: bra.b 0x00014c18
 00014C24: bset.b #0x1,(0xb0,A0)
-00014C2A: bra.w 0x00014682 ; call 00014682 FUN_00014682
+00014C2A: bra.w 0x00014682 ; call 00014682 select_obstruction_route
 00014C2E: move.w (0x96,A0),D0w
 00014C32: move.w (0x98,A0),D1w
 00014C36: clr.b (0xb1,A0)

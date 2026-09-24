@@ -35,6 +35,24 @@ struct EntityAxisUpdate {
     bool route_advance_requested = false;
 };
 
+enum class ObstructionRouteAction {
+    already_retrying,
+    target_blocked,
+    direct_step,
+    bypass_available,
+    retry_around_obstruction,
+    no_obstruction_found,
+};
+
+struct ObstructionRouteSelection {
+    std::uint8_t movement_flags = 0;
+    ObstructionRouteAction action =
+        ObstructionRouteAction::no_obstruction_found;
+    std::int32_t route_tile = 0;
+    std::int16_t route_step = 0;
+    bool has_route_tile = false;
+};
+
 // ROM 0x14756: clear the pending-route and route-retry bits from an entity's
 // movement flags after route selection fails or completes.
 std::uint8_t clear_entity_route_flags(std::uint8_t movement_flags);
@@ -82,6 +100,17 @@ std::optional<std::int32_t> find_rotating_route_strip_target(
     std::uint16_t world_x,
     std::uint16_t world_y,
     std::uint16_t heading,
+    const std::vector<std::uint8_t>& obstruction_map);
+
+// ROM 0x14682: select the understood obstruction-route branch while leaving
+// the source's register-only bypass payload and 0x149C0 replan handoff as
+// explicit action values.
+ObstructionRouteSelection select_obstruction_route(
+    std::uint16_t entity_x,
+    std::uint16_t entity_y,
+    std::uint16_t target_x,
+    std::uint16_t target_y,
+    std::uint8_t movement_flags,
     const std::vector<std::uint8_t>& obstruction_map);
 
 // ROM 0x1494C: walk the source's horizontal or vertical grid line between

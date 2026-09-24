@@ -80,6 +80,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0xAE5E	entity collision recheck scheduling	ghidra_conversion::schedule_entity_collision_recheck	shadowrun_native_port	partial		Typed pending-reaction bit and collision-recheck continuation
 0x1A2CC	first free effect slot	ghidra_conversion::allocate_first_free_effect_slot	shadowrun_native_port	partial		Typed eighteen-slot allocation with full-table sentinel
 0x14756	entity route flag cleanup	ghidra_conversion::clear_entity_route_flags	shadowrun_native_port	partial		Typed movement flag cleanup for completed or failed route selection
+0x14682	obstruction route selection	ghidra_conversion::select_obstruction_route	shadowrun_native_port	partial		Typed route branch policy with explicit bypass and replan boundaries
 0x14764	alternate route tile	ghidra_conversion::find_alternate_route_tile	shadowrun_native_port	partial		Bounded primary accumulation with source side-open stop behavior
 0x14AF4	rotating strip route target	ghidra_conversion::find_rotating_route_strip_target	shadowrun_native_port	partial		Typed five-direction strip retry
 0x148AA	first occupied obstruction tile	ghidra_conversion::find_first_occupied_obstruction_tile	shadowrun_native_port	partial		Bounded typed cardinal scan replacing source obstruction-map pointer walking

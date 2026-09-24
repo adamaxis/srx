@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00014682
-// Name: FUN_00014682
+// Name: select_obstruction_route
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00014854 can_bypass_obstruction
@@ -10,7 +10,7 @@
 //   0x00014AF4 find_rotating_route_strip_target
 
 
-void FUN_00014682(void)
+void select_obstruction_route(void)
 
 {
   short sVar1;

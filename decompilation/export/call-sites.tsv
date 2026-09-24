@@ -1333,11 +1333,11 @@ caller	caller_name	instruction	text	target	callee	status
 000145A2	FUN_000145a2	000145E4	bsr.w 0x00014c2e	00014C2E	derive_entity_axis_relation_flags	resolved
 000145A2	FUN_000145a2	000145F6	jsr 0x00015d3c.l	00015D3C	measure_relative_heading_and_distance	resolved
 0001460E	FUN_0001460e	0001460E	jsr 0x00015ca4.l	00015CA4	compute_diagonal_step_cost	resolved
-00014682	FUN_00014682	000146A6	bsr.w 0x000148d2	000148D2	choose_dominant_axis_directions	resolved
-00014682	FUN_00014682	000146C4	bsr.w 0x000148aa	000148AA	find_first_occupied_obstruction_tile	resolved
-00014682	FUN_00014682	000146EA	bsr.w 0x00014854	00014854	can_bypass_obstruction	resolved
-00014682	FUN_00014682	00014714	bsr.w 0x00014af4	00014AF4	find_rotating_route_strip_target	resolved
-00014682	FUN_00014682	00014718	bra.w 0x000149c0	000149C0	FUN_000149c0	resolved
+00014682	select_obstruction_route	000146A6	bsr.w 0x000148d2	000148D2	choose_dominant_axis_directions	resolved
+00014682	select_obstruction_route	000146C4	bsr.w 0x000148aa	000148AA	find_first_occupied_obstruction_tile	resolved
+00014682	select_obstruction_route	000146EA	bsr.w 0x00014854	00014854	can_bypass_obstruction	resolved
+00014682	select_obstruction_route	00014714	bsr.w 0x00014af4	00014AF4	find_rotating_route_strip_target	resolved
+00014682	select_obstruction_route	00014718	bra.w 0x000149c0	000149C0	FUN_000149c0	resolved
 00014914	is_entity_path_blocked	00014922	bsr.b 0x00014902	00014902	compute_obstruction_grid_index	resolved
 00014914	is_entity_path_blocked	0001492C	bsr.b 0x00014902	00014902	compute_obstruction_grid_index	resolved
 00014914	is_entity_path_blocked	0001492E	bsr.w 0x0001494c	0001494C	is_obstruction_path_blocked	resolved
@@ -1353,7 +1353,7 @@ caller	caller_name	instruction	text	target	callee	status
 00014AF4	find_rotating_route_strip_target	00014B00	bsr.w 0x00014902	00014902	compute_obstruction_grid_index	resolved
 00014AF4	find_rotating_route_strip_target	00014B1C	bsr.w 0x00014800	00014800	probe_obstruction_strip	resolved
 00014AF4	find_rotating_route_strip_target	00014B38	bra.w 0x00014756	00014756	clear_entity_route_flags	resolved
-00014BA6	update_entity_axis_relation_state	00014C2A	bra.w 0x00014682	00014682	FUN_00014682	resolved
+00014BA6	update_entity_axis_relation_state	00014C2A	bra.w 0x00014682	00014682	select_obstruction_route	resolved
 00014C7C	FUN_00014c7c	00014C9E	jsr 0x00015c58.l	00015C58	is_entity_target_within_range	resolved
 00014C7C	FUN_00014c7c	00014CB8	bsr.w 0x00014d58	00014D58	FUN_00014d58	resolved
 00014C7C	FUN_00014c7c	00014CC4	bsr.b 0x00014c56	00014C56	project_heading_position	resolved
