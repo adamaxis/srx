@@ -96,7 +96,9 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x14F50	entity collision recovery	ghidra_conversion::advance_entity_collision_recovery	shadowrun_native_port	partial		Typed terrain retry counter, fixed-point position commit, and collision scan
 0x150E8	entity heading offsets	ghidra_conversion::derive_entity_heading_offsets	shadowrun_native_port	partial		Extracted direction tables and signed scale/shift conversion
 0x14FF8	entity spawn record initialization	ghidra_conversion::initialize_entity_spawn_record	shadowrun_native_port	partial		Typed child seeding, linked heading resolution, placement tables, and heading offsets
+0x1514E	entity spawn cycle	ghidra_conversion::process_entity_spawn_cycle	shadowrun_native_port	partial		Typed global/window gates, paired allocation, resource selection, cloning, and direction animation
 0x15118	entity behavior record initialization	ghidra_conversion::initialize_entity_behavior_record	shadowrun_native_port	partial		Typed default movement fields and behavior-update continuation
+0x152FA	special spawn preparation	ghidra_conversion::prepare_special_spawn_record	shadowrun_native_port	partial		Typed special follow-up state and placed-coordinate preservation
 0x15ABA	entity collision search	ghidra_conversion::find_colliding_entity	shadowrun_native_port	partial		Typed ten-record scan, window filters, collision-mode gate, and source position handoff
 0x14BA6	axis relation update	ghidra_conversion::update_entity_axis_relation_state	shadowrun_native_port	partial		Typed relation flags and explicit route-advance boundary
 0x14902	obstruction grid index	ghidra_conversion::compute_obstruction_grid_index	shadowrun_native_port	partial		Typed world-coordinate to obstruction-grid index conversion

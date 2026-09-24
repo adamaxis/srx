@@ -69,6 +69,16 @@ struct SpawnEntityRecordState {
     std::int16_t heading_offset_y = 0;
     std::uint16_t directional_probe_x = 0;
     std::uint16_t directional_probe_y = 0;
+    std::uint16_t slot_identifier = 0;
+    std::uint8_t lifecycle_state = 0;
+    std::uint16_t saved_position_x = 0;
+    std::uint16_t saved_position_y = 0;
+    std::uint8_t field_0x89 = 0;
+    std::uint8_t field_0x8b = 0;
+    std::uint32_t continuation_address = 0;
+    std::uint8_t source_marker = 0;
+    std::uint16_t animation_resource = 0;
+    std::uint8_t record_flags = 0;
     bool has_parent_link = false;
 };
 
@@ -85,6 +95,61 @@ void initialize_entity_spawn_record(
     bool collision_gate_active,
     std::optional<SpawnEntityLinkedState>& linked_target,
     const SpawnPreparationBoundary& prepare_spawn);
+
+// ROM 0x152FA: put the first spawned record into the special follow-up state,
+// preserving its current position for the later transition.
+void prepare_special_spawn_record(SpawnEntityRecordState& record);
+
+enum class EntitySpawnCycleAction {
+    global_mode_blocked,
+    animation_window_expired,
+    behavior_gate_blocked,
+    no_primary_slot,
+    no_secondary_slot,
+    invalid_source_type,
+    spawned,
+};
+
+struct EntitySpawnCycleState {
+    SpawnEntityParentState parent{};
+    std::optional<SpawnEntityLinkedState> linked_target;
+    std::uint16_t animation_counter = 0;
+    std::uint8_t global_mode = 0;
+    bool collision_gate_active = false;
+    std::uint8_t source_status_flags = 0;
+};
+
+using EntitySpawnCycleGate = std::function<bool()>;
+using EntitySpawnCycleSlotAllocator =
+    std::function<std::optional<std::uint16_t>()>;
+using EntitySpawnCycleEffect = std::function<void()>;
+using EntitySpawnCycleResourceEffect = std::function<void(std::uint16_t)>;
+using EntitySpawnCycleModeEffect = std::function<void(std::uint16_t)>;
+
+struct EntitySpawnCycleResult {
+    EntitySpawnCycleAction action =
+        EntitySpawnCycleAction::global_mode_blocked;
+    std::optional<SpawnEntityRecordState> primary;
+    std::optional<SpawnEntityRecordState> secondary;
+    std::optional<std::uint16_t> primary_slot;
+    std::optional<std::uint16_t> secondary_slot;
+    std::uint16_t selected_resource_id = 0;
+    bool overflow_latch_set = false;
+    bool special_follow_up = false;
+};
+
+// ROM 0x1514E: run the source entity's spawn window. The allocator, world
+// refresh, resource effect, and mode-maintenance calls are explicit host
+// boundaries; the record initialization, clone, placement, and direction
+// selection are represented as typed native state.
+EntitySpawnCycleResult process_entity_spawn_cycle(
+    EntitySpawnCycleState& state,
+    const EntitySpawnCycleGate& behavior_gate,
+    const EntitySpawnCycleSlotAllocator& allocate_slot,
+    const SpawnPreparationBoundary& prepare_spawn,
+    const EntitySpawnCycleEffect& refresh_world,
+    const EntitySpawnCycleResourceEffect& apply_resource_effect,
+    const EntitySpawnCycleModeEffect& apply_mode_maintenance);
 
 void initialize_spawned_behavior_entity(
     SpawnedBehaviorEntity& child,

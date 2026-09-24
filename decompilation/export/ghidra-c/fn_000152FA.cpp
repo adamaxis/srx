@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000152FA
-// Name: FUN_000152fa
+// Name: prepare_special_spawn_record
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_000152fa(void)
+void prepare_special_spawn_record(void)
 
 {
   undefined2 *in_A1;

@@ -3,6 +3,8 @@
 #include "shadowrun_ghidra/entity_coordinate_conversion.hpp"
 #include "shadowrun_ghidra/movement_metric_conversion.hpp"
 
+#include <utility>
+
 namespace shadowrun::ghidra_conversion {
 namespace {
 
@@ -39,6 +41,20 @@ bool signature_changed(
     return before.primary != after.primary ||
            before.secondary != after.secondary;
 }
+
+constexpr std::array<std::uint16_t, 15> kSpawnResourceByType{
+    0x003FU, 0x003FU, 0x003FU, 0x003FU, 0x003FU,
+    0x003FU, 0x003FU, 0x004AU, 0x004AU, 0x004AU,
+    0x003FU, 0x003FU, 0x004AU, 0x004AU, 0x004AU};
+
+// ROM 0x62EC and 0x62FC. The source selects one of these eight-entry
+// direction tables after cloning the primary record.
+constexpr std::array<std::uint16_t, 8> kRegularSpawnAnimations{
+    0x0000U, 0x0004U, 0x0008U, 0x000CU,
+    0x0010U, 0x0014U, 0x0018U, 0x001CU};
+constexpr std::array<std::uint16_t, 8> kSpecialSpawnAnimations{
+    0x0020U, 0x0024U, 0x0028U, 0x002CU,
+    0x0030U, 0x0034U, 0x0038U, 0x003CU};
 
 std::optional<SpawnedBehaviorEntity> spawn_related_child_if_needed(
     EntityTransitionState& entity,
@@ -132,6 +148,124 @@ void initialize_entity_spawn_record(
     const auto heading_offsets = derive_entity_heading_offsets(child.heading);
     child.heading_offset_x = heading_offsets.horizontal;
     child.heading_offset_y = heading_offsets.vertical;
+}
+
+void prepare_special_spawn_record(SpawnEntityRecordState& record) {
+    record.lifecycle_state = 2U;
+    record.saved_position_x = record.position_x;
+    record.saved_position_y = record.position_y;
+    record.field_0x8b = 1U;
+    record.field_0x89 = 0x20U;
+}
+
+EntitySpawnCycleResult process_entity_spawn_cycle(
+    EntitySpawnCycleState& state,
+    const EntitySpawnCycleGate& behavior_gate,
+    const EntitySpawnCycleSlotAllocator& allocate_slot,
+    const SpawnPreparationBoundary& prepare_spawn,
+    const EntitySpawnCycleEffect& refresh_world,
+    const EntitySpawnCycleResourceEffect& apply_resource_effect,
+    const EntitySpawnCycleModeEffect& apply_mode_maintenance) {
+    EntitySpawnCycleResult result{};
+    if (state.global_mode == 3U) {
+        result.action = EntitySpawnCycleAction::global_mode_blocked;
+        return result;
+    }
+
+    if ((state.animation_counter & 0x07FFU) > 0x003CU) {
+        result.action = EntitySpawnCycleAction::animation_window_expired;
+        result.overflow_latch_set = (state.parent.flags & 0x02U) != 0U;
+        return result;
+    }
+
+    if (!behavior_gate || !behavior_gate()) {
+        result.action = EntitySpawnCycleAction::behavior_gate_blocked;
+        return result;
+    }
+
+    if (!allocate_slot) {
+        result.action = EntitySpawnCycleAction::no_primary_slot;
+        return result;
+    }
+    const auto primary_slot = allocate_slot();
+    if (!primary_slot.has_value()) {
+        result.action = EntitySpawnCycleAction::no_primary_slot;
+        return result;
+    }
+
+    if (refresh_world) {
+        refresh_world();
+    }
+
+    SpawnEntityRecordState primary{};
+    initialize_entity_spawn_record(
+        primary,
+        state.parent,
+        *primary_slot,
+        state.collision_gate_active,
+        state.linked_target,
+        prepare_spawn);
+    primary.slot_identifier = *primary_slot;
+    primary.field_0x89 = 0x7FU;
+    primary.field_0x8b = 0U;
+
+    result.special_follow_up =
+        state.parent.field_0x57 >= 8U && state.parent.field_0x57 <= 10U;
+    if (result.special_follow_up) {
+        prepare_special_spawn_record(primary);
+    }
+
+    const auto secondary_slot = allocate_slot();
+    if (!secondary_slot.has_value()) {
+        result.action = EntitySpawnCycleAction::no_secondary_slot;
+        result.primary_slot = primary_slot;
+        result.primary = std::move(primary);
+        return result;
+    }
+
+    const auto source_type = state.parent.field_0x57;
+    if (source_type == 0U || source_type > kSpawnResourceByType.size()) {
+        result.action = EntitySpawnCycleAction::invalid_source_type;
+        result.primary_slot = primary_slot;
+        result.secondary_slot = secondary_slot;
+        result.primary = std::move(primary);
+        return result;
+    }
+
+    result.selected_resource_id = kSpawnResourceByType[source_type - 1U];
+    if (apply_resource_effect) {
+        apply_resource_effect(result.selected_resource_id);
+    }
+
+    const auto source_marker =
+        (state.source_status_flags & 0x06U) != 0U ? 0xFFU : 0U;
+    if (state.global_mode == 2U && source_marker == 0U &&
+        apply_mode_maintenance) {
+        apply_mode_maintenance(*secondary_slot);
+    }
+
+    auto secondary = primary;
+    secondary.position_x = primary.directional_probe_x;
+    secondary.position_y = primary.directional_probe_y;
+    secondary.slot_identifier = *secondary_slot;
+    secondary.record_flags = static_cast<std::uint8_t>(
+        secondary.record_flags | 0x01U);
+    secondary.behavior_defaults.behavior_timer = 0U;
+    secondary.continuation_address = 0x0000AC4EU;
+    secondary.source_marker = static_cast<std::uint8_t>(source_marker);
+    select_animation(
+        secondary.animation_resource,
+        result.special_follow_up ? kSpecialSpawnAnimations
+                                 : kRegularSpawnAnimations,
+        secondary.heading);
+    secondary.lifecycle_state = 0U;
+
+    result.action = EntitySpawnCycleAction::spawned;
+    result.primary_slot = primary_slot;
+    result.secondary_slot = secondary_slot;
+    result.primary = std::move(primary);
+    result.secondary = std::move(secondary);
+    return result;
 }
 
 void initialize_spawned_behavior_entity(

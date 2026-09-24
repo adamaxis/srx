@@ -11,7 +11,7 @@
 //   0x0000B1DC configure_entity_target_transition
 //   0x0000B39A set_entity_heading_with_field_animation
 //   0x0000B3FE set_entity_heading_with_alternate_animation
-//   0x0001514E FUN_0001514e
+//   0x0001514E process_entity_spawn_cycle
 //   0x00015646 FUN_00015646
 //   0x0001DC4C FUN_0001dc4c
 //   0x000530DE FUN_000530de
@@ -95,7 +95,7 @@ void FUN_0000acae(void)
     if ('\x0e' < (char)*(byte *)(in_A0 + 0x57)) {
       return;
     }
-    FUN_0001514e();
+    process_entity_spawn_cycle();
     if (!bVar2) {
       set_entity_heading_with_field_animation();
       return;

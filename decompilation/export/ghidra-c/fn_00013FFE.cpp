@@ -17,7 +17,7 @@
 //   0x00014508 FUN_00014508
 //   0x00014C7C resolve_entity_target_motion
 //   0x00014D8E FUN_00014d8e
-//   0x0001514E FUN_0001514e
+//   0x0001514E process_entity_spawn_cycle
 //   0x00015646 FUN_00015646
 
 
@@ -104,7 +104,7 @@ uint FUN_00013ffe(void)
       }
       _DAT_00ffdfde = 1;
       bVar6 = false;
-      uVar2 = FUN_0001514e();
+      uVar2 = process_entity_spawn_cycle();
       iVar4 = extraout_A0_02;
       if (!bVar6) {
         uVar2 = set_entity_heading_with_field_animation();

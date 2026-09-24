@@ -405,8 +405,8 @@ entry	name	size	callingConvention	decompileStatus	file
 00014FF8	initialize_entity_spawn_record	240	unknown	ok	ghidra-c/fn_00014FF8.cpp
 000150E8	derive_entity_heading_offsets	48	unknown	ok	ghidra-c/fn_000150E8.cpp
 00015118	initialize_entity_behavior_record	54	unknown	ok	ghidra-c/fn_00015118.cpp
-0001514E	FUN_0001514e	428	unknown	ok	ghidra-c/fn_0001514E.cpp
-000152FA	FUN_000152fa	30	unknown	ok	ghidra-c/fn_000152FA.cpp
+0001514E	process_entity_spawn_cycle	428	unknown	ok	ghidra-c/fn_0001514E.cpp
+000152FA	prepare_special_spawn_record	30	unknown	ok	ghidra-c/fn_000152FA.cpp
 00015354	FUN_00015354	60	unknown	ok	ghidra-c/fn_00015354.cpp
 00015554	FUN_00015554	218	unknown	ok	ghidra-c/fn_00015554.cpp
 0001562E	FUN_0001562e	24	unknown	ok	ghidra-c/fn_0001562E.cpp

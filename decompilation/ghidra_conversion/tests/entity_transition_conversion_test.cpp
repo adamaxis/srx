@@ -145,5 +145,73 @@ int main() {
         return 15;
     }
 
+    EntitySpawnCycleState cycle_state{};
+    cycle_state.parent = SpawnEntityParentState{
+        0x1000U, 0x2000U, 0x4000U, 0x08U, 0x01U, 0x08U, 0x22U};
+    cycle_state.animation_counter = 0x0010U;
+    cycle_state.global_mode = 2U;
+    std::vector<char> cycle_events;
+    std::vector<std::uint16_t> available_slots{9U, 10U};
+    const auto cycle = process_entity_spawn_cycle(
+        cycle_state,
+        [&cycle_events]() {
+            cycle_events.push_back('g');
+            return true;
+        },
+        [&available_slots, &cycle_events]() -> std::optional<std::uint16_t> {
+            cycle_events.push_back('a');
+            if (available_slots.empty()) {
+                return std::nullopt;
+            }
+            const auto slot = available_slots.front();
+            available_slots.erase(available_slots.begin());
+            return slot;
+        },
+        [&cycle_events]() { cycle_events.push_back('p'); },
+        [&cycle_events]() { cycle_events.push_back('r'); },
+        [&cycle_events](const std::uint16_t resource_id) {
+            cycle_events.push_back(resource_id == 0x4AU ? 'e' : 'x');
+        },
+        [&cycle_events](const std::uint16_t slot) {
+            cycle_events.push_back(slot == 10U ? 'm' : 'x');
+        });
+    if (expect(cycle.action == EntitySpawnCycleAction::spawned &&
+               cycle.primary.has_value() && cycle.secondary.has_value() &&
+               cycle.primary_slot == 9U && cycle.secondary_slot == 10U &&
+               cycle.selected_resource_id == 0x4AU &&
+               cycle.special_follow_up &&
+               cycle.primary->lifecycle_state == 2U &&
+               cycle.primary->saved_position_x == 0x10B0U &&
+               cycle.primary->field_0x89 == 0x20U &&
+               cycle.primary->field_0x8b == 1U &&
+               cycle.secondary->position_x == 0x1180U &&
+               cycle.secondary->position_y == 0x1FC0U &&
+               cycle.secondary->animation_resource == 0x28U &&
+               cycle.secondary->continuation_address == 0xAC4EU &&
+               cycle.secondary->record_flags == 1U &&
+               cycle_events == std::vector<char>({'g', 'a', 'r', 'p', 'a', 'e', 'm'})) != 0) {
+        return 16;
+    }
+
+    EntitySpawnCycleState expired_state = cycle_state;
+    expired_state.animation_counter = 0x003DU;
+    expired_state.parent.flags = 0x02U;
+    bool gate_called = false;
+    const auto expired = process_entity_spawn_cycle(
+        expired_state,
+        [&gate_called]() {
+            gate_called = true;
+            return true;
+        },
+        {},
+        {},
+        {},
+        {},
+        {});
+    if (expect(expired.action == EntitySpawnCycleAction::animation_window_expired &&
+               expired.overflow_latch_set && !gate_called) != 0) {
+        return 17;
+    }
+
     return 0;
 }

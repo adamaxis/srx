@@ -1,11 +1,11 @@
 // Ghidra headless export
 // Entry: 0x0001514E
-// Name: FUN_0001514e
+// Name: process_entity_spawn_cycle
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000038AC FUN_000038ac
 //   0x00014FF8 initialize_entity_spawn_record
-//   0x000152FA FUN_000152fa
+//   0x000152FA prepare_special_spawn_record
 //   0x00015A8C find_first_available_entity_slot
 //   0x0001DBAA FUN_0001dbaa
 //   0x0001E04A FUN_0001e04a
@@ -14,7 +14,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001514e(void)
+void process_entity_spawn_cycle(void)
 
 {
   uint uVar1;
@@ -54,7 +54,7 @@ void FUN_0001514e(void)
         uVar10 = 0;
         puVar5 = extraout_A1;
         if (_DAT_00ffdd3a != 0) {
-          FUN_000152fa();
+          prepare_special_spawn_record();
           puVar5 = extraout_A1_00;
         }
         uVar1 = find_first_available_entity_slot();

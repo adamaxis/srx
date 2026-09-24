@@ -4475,7 +4475,7 @@
 0000ADE0: beq.w 0x0000ae16
 0000ADE4: cmpi.b #0xe,(0x57,A0)
 0000ADEA: bgt.w 0x0000ae4e
-0000ADEE: jsr 0x0001514e.l ; call 0001514E FUN_0001514e
+0000ADEE: jsr 0x0001514e.l ; call 0001514E process_entity_spawn_cycle
 0000ADF4: bcc.w 0x0000ae1c
 0000ADF8: bsr.w 0x0000aad2 ; call 0000AAD2 FUN_0000aad2
 0000ADFC: bcc.w 0x0000ae40
@@ -11514,7 +11514,7 @@
 0001412E: bne.w 0x00014134
 00014132: rts
 00014134: move.w #0x1,(0x00ffdfde).l
-0001413C: jsr 0x0001514e.l ; call 0001514E FUN_0001514e
+0001413C: jsr 0x0001514e.l ; call 0001514E process_entity_spawn_cycle
 00014142: bcc.w 0x000141e8
 00014146: tst.b (0x4e,A0)
 0001414A: beq.w 0x00014160
@@ -12566,7 +12566,7 @@
 000151D6: clr.b (0x8b,A1)
 000151DA: tst.w (0x00ffdd3a).l
 000151E0: beq.w 0x000151e8
-000151E4: bsr.w 0x000152fa ; call 000152FA FUN_000152fa
+000151E4: bsr.w 0x000152fa ; call 000152FA prepare_special_spawn_record
 000151E8: movea.l A1,A2
 000151EA: bsr.w 0x00015a8c ; call 00015A8C find_first_available_entity_slot
 000151EE: bcs.w 0x000152f4
