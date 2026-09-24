@@ -3,7 +3,7 @@
 // Name: FUN_000060fa
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00003E86 FUN_00003e86
+//   0x00003E86 expand_packed_nibbles
 //   0x00003EFE FUN_00003efe
 
 
@@ -23,7 +23,7 @@ void FUN_000060fa(void)
     in_A0 = extraout_A0;
   }
   if ((*(byte *)(in_A0 + 0x11) & 0x20) != 0) {
-    FUN_00003e86();
+    expand_packed_nibbles();
     in_A0 = extraout_A0_00;
   }
   *(undefined4 *)(in_A0 + 0x22) = *(undefined4 *)(unaff_A2 + 2);

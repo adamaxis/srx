@@ -4037,7 +4037,7 @@
 0000610C: jsr 0x00003efe.l ; call 00003EFE FUN_00003efe
 00006112: btst.b #0x5,(0x11,A0)
 00006118: beq.w 0x00006122
-0000611C: jsr 0x00003e86.l ; call 00003E86 FUN_00003e86
+0000611C: jsr 0x00003e86.l ; call 00003E86 expand_packed_nibbles
 00006122: movea.l (0x2,A2),A5
 00006126: move.l A5,(0x22,A0)
 0000612A: move.w (0x6,A2),D1w

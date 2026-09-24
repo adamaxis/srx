@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00003E86
-// Name: FUN_00003e86
+// Name: expand_packed_nibbles
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00003e86(void)
+void expand_packed_nibbles(void)
 
 {
   short sVar1;

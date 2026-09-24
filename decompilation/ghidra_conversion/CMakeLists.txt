@@ -58,3 +58,16 @@ target_link_libraries(shadowrun_ghidra_source_buffer_test
     PRIVATE shadowrun_ghidra_source_buffer)
 add_test(NAME shadowrun_ghidra_source_buffer
          COMMAND shadowrun_ghidra_source_buffer_test)
+
+add_library(shadowrun_ghidra_packed_data STATIC
+    src/packed_data_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_packed_data PUBLIC include)
+
+add_executable(shadowrun_ghidra_packed_data_test
+    tests/packed_data_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_packed_data_test
+    PRIVATE shadowrun_ghidra_packed_data)
+add_test(NAME shadowrun_ghidra_packed_data
+         COMMAND shadowrun_ghidra_packed_data_test)

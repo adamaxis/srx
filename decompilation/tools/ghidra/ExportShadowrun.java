@@ -56,6 +56,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00001502L, "copy_even_bytes");
         names.put(0x00001610L, "decode_source_byte_stream");
         names.put(0x0000167CL, "decode_source_coordinate_stream");
+        names.put(0x00003E86L, "expand_packed_nibbles");
         names.put(0x0000195CL, "sample_controller_input");
         names.put(0x000019F2L, "read_controller_port");
         names.put(0x00001BACL, "finalize_title_input_sequence");

@@ -122,7 +122,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00003D80	FUN_00003d80	94	unknown	ok	ghidra-c/fn_00003D80.cpp
 00003DDE	FUN_00003dde	54	unknown	ok	ghidra-c/fn_00003DDE.cpp
 00003E14	FUN_00003e14	114	unknown	ok	ghidra-c/fn_00003E14.cpp
-00003E86	FUN_00003e86	86	unknown	ok	ghidra-c/fn_00003E86.cpp
+00003E86	expand_packed_nibbles	86	unknown	ok	ghidra-c/fn_00003E86.cpp
 00003EFE	FUN_00003efe	160	unknown	ok	ghidra-c/fn_00003EFE.cpp
 00003F9E	FUN_00003f9e	58	unknown	ok	ghidra-c/fn_00003F9E.cpp
 00003FD8	FUN_00003fd8	40	unknown	ok	ghidra-c/fn_00003FD8.cpp
