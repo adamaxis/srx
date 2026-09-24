@@ -19,9 +19,9 @@
 //   0x0005A3B0 reset_title_intro_motion
 //   0x0005A4B4 reset_title_intro_dual_sprites
 //   0x0005A572 reset_title_intro_timed_sprites
-//   0x0005A61A FUN_0005a61a
-//   0x0005A70E FUN_0005a70e
-//   0x0005A7EA FUN_0005a7ea
+//   0x0005A61A reset_title_intro_targeted_sweep
+//   0x0005A70E reset_title_intro_linear_sweep_a
+//   0x0005A7EA reset_title_intro_linear_sweep_b
 //   0x0005A8C8 FUN_0005a8c8
 //   0x0005ADFE FUN_0005adfe
 //   0x0005AE3A FUN_0005ae3a
@@ -83,9 +83,9 @@ void FUN_00059d7c(void)
   reset_title_intro_motion();
   reset_title_intro_dual_sprites();
   reset_title_intro_timed_sprites();
-  FUN_0005a61a();
-  FUN_0005a70e();
-  FUN_0005a7ea();
+  reset_title_intro_targeted_sweep();
+  reset_title_intro_linear_sweep_a();
+  reset_title_intro_linear_sweep_b();
   FUN_0005a8c8();
   FUN_0005a1ea();
   sample_controller_input();

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005A61A
-// Name: FUN_0005a61a
+// Name: reset_title_intro_targeted_sweep
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0005a61a(void)
+void reset_title_intro_targeted_sweep(void)
 
 {
   DAT_00fff15c = 0;

@@ -579,6 +579,13 @@ installs its terminal index, `0x5A582` starts it at caller coordinates, and
 project the current descriptor between deadlines. The final descriptor is
 still drawn on the call that reaches the terminal index, matching the source.
 
+The following intro sweep trio is now isolated. `0x5A61A/0x5A628` uses its
+seven-entry table's target x to stop a decrement-nine sweep; `0x5A70E/0x5A71C`
+uses eight entries, decrement eight, and a `0x40` cutoff; and
+`0x5A7EA/0x5A7F8` uses the same eight-entry cadence with decrement eleven.
+Each continues to project the active descriptor between table deadlines and
+keeps its source-specific coordinates and palette flags in the typed request.
+
 The runner reset cluster is now typed. `0x59BCC` clears status bits `6` and
 `4` in each of the three live runner records, preserves the source order of
 the preparation (`0x3674`, argument `0x0A`) and finalization (`0x37EC`)

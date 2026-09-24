@@ -277,3 +277,9 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x5A572	reset title intro timed sprites	ghidra_conversion::reset_title_intro_timed_sprites	shadowrun_ghidra_title_intro_timed_sprites	partial		Installs the terminal six-descriptor index and clears the timed-sprite deadline
 0x5A582	begin title intro timed sprites	ghidra_conversion::begin_title_intro_timed_sprites	shadowrun_ghidra_title_intro_timed_sprites	partial		Starts the six-descriptor sequence at caller-supplied coordinates
 0x5A59C	advance title intro timed sprites	ghidra_conversion::advance_title_intro_timed_sprites	shadowrun_ghidra_title_intro_timed_sprites	partial		Typed eight-frame descriptor cadence, terminal index, and continued current-sprite draw
+0x5A61A	reset title intro targeted sweep	ghidra_conversion::reset_title_intro_targeted_sweep	shadowrun_ghidra_title_intro_sweeps	partial		Clears the seven-entry targeted sweep stage and deadline
+0x5A628	advance title intro targeted sweep	ghidra_conversion::advance_title_intro_targeted_sweep	shadowrun_ghidra_title_intro_sweeps	partial		Typed target-bounded nine-word sweep and positioned sprite projection
+0x5A70E	reset title intro linear sweep A	ghidra_conversion::reset_title_intro_linear_sweep_a	shadowrun_ghidra_title_intro_sweeps	partial		Clears the eight-entry decrement-eight sweep stage and deadline
+0x5A71C	advance title intro linear sweep A	ghidra_conversion::advance_title_intro_linear_sweep_a	shadowrun_ghidra_title_intro_sweeps	partial		Typed eight-entry decrement-eight sweep with 0x40 cutoff
+0x5A7EA	reset title intro linear sweep B	ghidra_conversion::reset_title_intro_linear_sweep_b	shadowrun_ghidra_title_intro_sweeps	partial		Clears the eight-entry decrement-eleven sweep stage and deadline
+0x5A7F8	advance title intro linear sweep B	ghidra_conversion::advance_title_intro_linear_sweep_b	shadowrun_ghidra_title_intro_sweeps	partial		Typed eight-entry decrement-eleven sweep with 0x40 cutoff

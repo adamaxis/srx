@@ -978,3 +978,16 @@ target_link_libraries(shadowrun_ghidra_title_intro_timed_sprites_test
     PRIVATE shadowrun_ghidra_title_intro_timed_sprites)
 add_test(NAME shadowrun_ghidra_title_intro_timed_sprites
          COMMAND shadowrun_ghidra_title_intro_timed_sprites_test)
+
+add_library(shadowrun_ghidra_title_intro_sweeps STATIC
+    src/title_intro_sweeps_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_title_intro_sweeps PUBLIC include)
+
+add_executable(shadowrun_ghidra_title_intro_sweeps_test
+    tests/title_intro_sweeps_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_title_intro_sweeps_test
+    PRIVATE shadowrun_ghidra_title_intro_sweeps)
+add_test(NAME shadowrun_ghidra_title_intro_sweeps
+         COMMAND shadowrun_ghidra_title_intro_sweeps_test)

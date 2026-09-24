@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005A7F8
-// Name: FUN_0005a7f8
+// Name: advance_title_intro_linear_sweep_b
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 FUN_00001378
 
 
-void FUN_0005a7f8(void)
+void advance_title_intro_linear_sweep_b(void)
 
 {
   int iVar1;
