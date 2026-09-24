@@ -5479,7 +5479,7 @@
 0000C29E: move (SP)+,SR
 0000C2A0: movem.l (SP)+,{ D0 D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 0000C2A4: rts
-0000C2A6: bsr.w 0x00010a7e ; call 00010A7E FUN_00010a7e
+0000C2A6: bsr.w 0x00010a7e ; call 00010A7E transfer_menu_asset_batch_four_post_prepare
 0000C2AA: bsr.w 0x0000c3e6 ; call 0000C3E6 FUN_0000c3e6
 0000C2AE: lea (0xc1418).l,A1 ; data 000c1418
 0000C2B4: movea.l #0xc216,A2
@@ -5877,7 +5877,7 @@
 0000D024: move.w #-0x6f00,(0x00c00004).l
 0000D02C: jsr 0x00000ffe.l ; call 00000FFE FUN_00000ffe
 0000D032: jsr 0x0000102a.l ; call 0000102A FUN_0000102a
-0000D038: bsr.w 0x00010c96 ; call 00010C96 FUN_00010c96
+0000D038: bsr.w 0x00010c96 ; call 00010C96 transfer_menu_asset_batch_eight
 0000D03C: lea (0xffd8d4).l,A1 ; data 00ffd8d4
 0000D042: move.w #0x2c2,(A1)
 0000D046: lea (0xffd8f4).l,A1 ; data 00ffd8f4
@@ -8308,7 +8308,7 @@
 0001097C: jsr 0x00000f3c.l ; call 00000F3C FUN_00000f3c
 00010982: rts
 00010984: move.w #-0x7ecc,(0x00c00004).l
-0001098C: bsr.b 0x00010918 ; call 00010918 FUN_00010918
+0001098C: bsr.b 0x00010918 ; call 00010918 prepare_menu_graphics
 0001098E: lea (0xcecd8).l,A1 ; data 000cecd8
 00010994: move.w #-0x2000,D4w
 00010998: move.w #0x13,D7w
@@ -8358,7 +8358,7 @@
 00010A6E: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
 00010A74: move.w #-0x7e8c,(0x00c00004).l
 00010A7C: rts
-00010A7E: bsr.w 0x00010918 ; call 00010918 FUN_00010918
+00010A7E: bsr.w 0x00010918 ; call 00010918 prepare_menu_graphics
 00010A82: move.w #-0x7ecc,(0x00c00004).l
 00010A8A: lea (0xcda0e).l,A1 ; data 000cda0e
 00010A90: move.w #-0x2000,D4w
@@ -8381,7 +8381,7 @@
 00010AE0: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
 00010AE6: move.w #-0x7e8c,(0x00c00004).l
 00010AEE: rts
-00010AF0: bsr.w 0x00010918 ; call 00010918 FUN_00010918
+00010AF0: bsr.w 0x00010918 ; call 00010918 prepare_menu_graphics
 00010AF4: lea (0xcdce6).l,A1 ; data 000cdce6
 00010AFA: move.w #-0x2000,D4w
 00010AFE: move.w #0x21,D7w
@@ -8403,7 +8403,7 @@
 00010B4A: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
 00010B50: move.w #-0x7e8c,(0x00c00004).l
 00010B58: rts
-00010B5A: bsr.w 0x00010918 ; call 00010918 FUN_00010918
+00010B5A: bsr.w 0x00010918 ; call 00010918 prepare_menu_graphics
 00010B5E: lea (0xcdce6).l,A1 ; data 000cdce6
 00010B64: move.w #-0x1ffa,D4w
 00010B68: move.w #0x21,D7w
@@ -8425,7 +8425,7 @@
 00010BB4: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
 00010BBA: move.w #-0x7e8c,(0x00c00004).l
 00010BC2: rts
-00010BC4: bsr.w 0x00010918 ; call 00010918 FUN_00010918
+00010BC4: bsr.w 0x00010918 ; call 00010918 prepare_menu_graphics
 00010BC8: move.l #0xd263c,D0
 00010BCE: move.l #0x9f40,D1
 00010BD4: move.l #0x340,D2
@@ -8467,7 +8467,7 @@
 00010C86: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
 00010C8C: move.w #-0x7e8c,(0x00c00004).l
 00010C94: rts
-00010C96: bsr.w 0x00010918 ; call 00010918 FUN_00010918
+00010C96: bsr.w 0x00010918 ; call 00010918 prepare_menu_graphics
 00010C9A: lea (0xce850).l,A1 ; data 000ce850
 00010CA0: move.w #-0x2000,D4w
 00010CA4: move.w #0x13,D7w
@@ -8607,7 +8607,7 @@
 00010F58: clr.b (0x00fff0d1).l
 00010F5E: clr.w (0x00fff098).l
 00010F64: clr.w (0x00fff0dc).l
-00010F6A: bsr.w 0x00010918 ; call 00010918 FUN_00010918
+00010F6A: bsr.w 0x00010918 ; call 00010918 prepare_menu_graphics
 00010F6E: lea (0xcd598).l,A1 ; data 000cd598
 00010F74: move.w #-0x2000,D4w
 00010F78: move.w #0xb,D7w
@@ -10888,7 +10888,7 @@
 0001369E: jsr 0x0000391a.l ; call 0000391A FUN_0000391a
 000136A4: btst.b #0xf,(0x00ffdd22).l
 000136AC: beq.w 0x000135dc
-000136B0: jsr 0x00010af0.l ; call 00010AF0 FUN_00010af0
+000136B0: jsr 0x00010af0.l ; call 00010AF0 transfer_menu_asset_batch_four
 000136B6: tst.b (0x00fff0e0).l
 000136BC: bne.w 0x000136dc
 000136C0: move.b (0x00fffbf8).l,D0b
@@ -19095,7 +19095,7 @@
 0001F248: move.l A1,-(SP) ; data Stack[-0x8]
 0001F24A: move.w #-0x6f00,(0x00c00004).l
 0001F252: jsr 0x0000c0c2.l ; call 0000C0C2 load_title_font
-0001F258: jsr 0x00010984.l ; call 00010984 FUN_00010984
+0001F258: jsr 0x00010984.l ; call 00010984 transfer_menu_asset_batch_nine_optional
 0001F25E: bsr.w 0x0001f292 ; call 0001F292 FUN_0001f292
 0001F262: movea.l (SP)+,A1
 0001F264: tst.b (0x00fff10c).l
@@ -24951,7 +24951,7 @@
 00056ABE: rts
 00056AC0: clr.b (0x00fff0b1).l
 00056AC6: move.w #-0x6f00,(0x00c00004).l
-00056ACE: jsr 0x00010bc4.l ; call 00010BC4 FUN_00010bc4
+00056ACE: jsr 0x00010bc4.l ; call 00010BC4 transfer_menu_asset_batch_eight_after_copy
 00056AD4: jsr 0x00011048.l ; call 00011048 FUN_00011048
 00056ADA: jsr 0x0005670e.l ; call 0005670E FUN_0005670e
 00056AE0: cmpi.b #0x1,(0x00fff0b7).l
@@ -26929,7 +26929,7 @@
 00059098: jsr 0x000566d8.l ; call 000566D8 FUN_000566d8
 0005909E: lea (0x18ac96).l,A0 ; data 0018ac96
 000590A4: jsr 0x000566e2.l ; call 000566E2 FUN_000566e2
-000590AA: jsr 0x00010b5a.l ; call 00010B5A FUN_00010b5a
+000590AA: jsr 0x00010b5a.l ; call 00010B5A transfer_menu_asset_batch_four
 000590B0: jsr 0x0000c0c2.l ; call 0000C0C2 load_title_font
 000590B6: jsr 0x0000c3e6.l ; call 0000C3E6 FUN_0000c3e6
 000590BC: lea (0x1b6498).l,A1 ; data 001b6498

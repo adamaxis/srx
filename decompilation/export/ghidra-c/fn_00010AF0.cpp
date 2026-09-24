@@ -1,16 +1,16 @@
 // Ghidra headless export
 // Entry: 0x00010AF0
-// Name: FUN_00010af0
+// Name: transfer_menu_asset_batch_four
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 upload_hud_tile_block
-//   0x00010918 FUN_00010918
+//   0x00010918 prepare_menu_graphics
 
 
-void FUN_00010af0(void)
+void transfer_menu_asset_batch_four(void)
 
 {
-  FUN_00010918();
+  prepare_menu_graphics();
   upload_hud_tile_block();
   upload_hud_tile_block();
   upload_hud_tile_block();

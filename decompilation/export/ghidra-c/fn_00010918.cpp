@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00010918
-// Name: FUN_00010918
+// Name: prepare_menu_graphics
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001530 decode_and_upload_source_stream
@@ -8,7 +8,7 @@
 //   0x000566D8 FUN_000566d8
 
 
-void FUN_00010918(void)
+void prepare_menu_graphics(void)
 
 {
   VDP_CTRL = 0x8134;

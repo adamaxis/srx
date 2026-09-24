@@ -12,6 +12,13 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x02A32	field mode profile A	ghidra_conversion::initialize_field_mode	shadowrun_native_port	partial		Shared profile selection, entry-service, seven-byte transient reset, and scene-state initialization converted
 0x02A44	field mode profile B	ghidra_conversion::initialize_field_mode	shadowrun_native_port	partial		Shared profile selection, entry-service, seven-byte transient reset, and scene-state initialization converted
 0x02A94	mode 9 entry	ghidra_conversion::initialize_mode_nine	shadowrun_native_port	partial		Typed mode-9 entry service, pending-resource publication, marker reset, and mode flags converted
+0x10918	menu graphics preparation	ghidra_conversion::prepare_menu_graphics	shadowrun_menu_system	partial		Typed common menu-buffer preparation, metadata copy, and resource upload boundary converted
+0x10984	menu asset batch (9 + optional)	ghidra_conversion::transfer_menu_asset_batch	shadowrun_menu_system	partial		Nine counted tile uploads plus the source conditional tenth block converted
+0x10A7E	menu asset batch (4, repeated command)	ghidra_conversion::transfer_menu_asset_batch	shadowrun_menu_system	partial		Four counted tile uploads with the source post-preparation transfer command converted
+0x10AF0	menu asset batch (4)	ghidra_conversion::transfer_menu_asset_batch	shadowrun_menu_system	partial		Four counted tile uploads and display-command restore converted
+0x10B5A	menu asset batch (4)	ghidra_conversion::transfer_menu_asset_batch	shadowrun_menu_system	partial		Shared four-block menu transfer choreography converted
+0x10BC4	menu asset batch (8, buffer copy)	ghidra_conversion::transfer_menu_asset_batch	shadowrun_menu_system	partial		Buffer-copy hook followed by eight counted tile uploads converted
+0x10C96	menu asset batch (8)	ghidra_conversion::transfer_menu_asset_batch	shadowrun_menu_system	partial		Eight counted tile uploads and display-command restore converted
 0x0BF2	controller event latch	ghidra_conversion::latch_controller_events	shadowrun_boot_sequence	partial		High-byte event combination and activity/Start latches converted in isolated typed state
 0x0D44	source PRNG advance	ghidra_conversion::advance_source_prng	shadowrun_boot_sequence	partial		32-bit modulo-2^32 multiplier/increment converted in isolated typed state
 0x0D3A	bounded source PRNG sample	ghidra_conversion::sample_source_random_bound	shadowrun_native_port	partial		Low-word multiply-and-shift scaling converted without source register state

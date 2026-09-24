@@ -695,3 +695,16 @@ target_link_libraries(shadowrun_ghidra_mode_nine_test
     PRIVATE shadowrun_ghidra_mode_nine)
 add_test(NAME shadowrun_ghidra_mode_nine
          COMMAND shadowrun_ghidra_mode_nine_test)
+
+add_library(shadowrun_ghidra_menu_asset_transfer STATIC
+    src/menu_asset_transfer_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_menu_asset_transfer PUBLIC include)
+
+add_executable(shadowrun_ghidra_menu_asset_transfer_test
+    tests/menu_asset_transfer_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_menu_asset_transfer_test
+    PRIVATE shadowrun_ghidra_menu_asset_transfer)
+add_test(NAME shadowrun_ghidra_menu_asset_transfer
+         COMMAND shadowrun_ghidra_menu_asset_transfer_test)
