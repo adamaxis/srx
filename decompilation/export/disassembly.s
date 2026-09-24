@@ -5241,7 +5241,7 @@
 0000BB52: beq.w 0x0000bb70
 0000BB56: bmi.w 0x0000bb70
 0000BB5A: bra.w 0x0000bb66
-0000BB5E: bsr.w 0x0000bb86 ; call 0000BB86 FUN_0000bb86
+0000BB5E: bsr.w 0x0000bb86 ; call 0000BB86 evaluate_entity_movement_route
 0000BB62: bcc.w 0x0000bbe4
 0000BB66: move.w #-0x1,(0xb8,A0)
 0000BB6C: bra.w 0x0000b442 ; call 0000B442 reset_entity_movement_state

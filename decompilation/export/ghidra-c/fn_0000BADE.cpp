@@ -7,7 +7,7 @@
 //   0x0000B732 apply_movement_result_policy
 //   0x0000B77E probe_entity_directional_collision
 //   0x0000B7B8 FUN_0000b7b8
-//   0x0000BB86 FUN_0000bb86
+//   0x0000BB86 evaluate_entity_movement_route
 //   0x0000BBE4 commit_entity_position
 
 
@@ -40,7 +40,7 @@ void FUN_0000bade(void)
   }
   bVar4 = false;
   if ((*(ushort *)(iVar2 + 0x2e) & 0x3fff) == 0) {
-    FUN_0000bb86();
+    evaluate_entity_movement_route();
     puVar3 = extraout_A0_03;
     if (!bVar4) {
       *(byte *)(extraout_A0_03 + 0x58) = *(byte *)(extraout_A0_03 + 0x58) & 0xfe;

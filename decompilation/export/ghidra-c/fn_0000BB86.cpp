@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000BB86
-// Name: FUN_0000bb86
+// Name: evaluate_entity_movement_route
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000B732 apply_movement_result_policy
 
 
-undefined4 FUN_0000bb86(void)
+undefined4 evaluate_entity_movement_route(void)
 
 {
   char cVar1;

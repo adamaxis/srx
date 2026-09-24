@@ -367,3 +367,18 @@ target_link_libraries(shadowrun_ghidra_movement_fallback_test
     PRIVATE shadowrun_ghidra_movement_fallback)
 add_test(NAME shadowrun_ghidra_movement_fallback
          COMMAND shadowrun_ghidra_movement_fallback_test)
+
+add_library(shadowrun_ghidra_movement_route STATIC
+    src/movement_route_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_movement_route PUBLIC include)
+target_link_libraries(shadowrun_ghidra_movement_route
+    PRIVATE shadowrun_ghidra_movement_probe)
+
+add_executable(shadowrun_ghidra_movement_route_test
+    tests/movement_route_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_movement_route_test
+    PRIVATE shadowrun_ghidra_movement_route)
+add_test(NAME shadowrun_ghidra_movement_route
+         COMMAND shadowrun_ghidra_movement_route_test)
