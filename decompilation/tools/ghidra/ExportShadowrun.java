@@ -188,6 +188,8 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x000039F2L, "refresh_field_animation_assets");
         names.put(0x00002B34L, "apply_scene_profile_selection");
         names.put(0x0000286EL, "guard_world_effect_player_spawn");
+        names.put(0x0000281EL, "initialize_field_scene_entry");
+        names.put(0x000028C2L, "reinitialize_field_scene_entry");
         names.put(0x00000EC0L, "upload_startup_palette");
         names.put(0x00000F1CL, "write_transfer_header");
         names.put(0x00000F3CL, "write_fixed_transfer_pair");

@@ -722,6 +722,19 @@ target_link_libraries(shadowrun_ghidra_entity_combat_test
 add_test(NAME shadowrun_ghidra_entity_combat
          COMMAND shadowrun_ghidra_entity_combat_test)
 
+add_library(shadowrun_ghidra_field_scene_entry STATIC
+    src/field_scene_entry_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_field_scene_entry PUBLIC include)
+
+add_executable(shadowrun_ghidra_field_scene_entry_test
+    tests/field_scene_entry_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_field_scene_entry_test
+    PRIVATE shadowrun_ghidra_field_scene_entry)
+add_test(NAME shadowrun_ghidra_field_scene_entry
+         COMMAND shadowrun_ghidra_field_scene_entry_test)
+
 add_library(shadowrun_ghidra_mode_nine STATIC
     src/mode_nine_conversion.cpp
 )

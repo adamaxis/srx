@@ -10,8 +10,8 @@
 //   0x0000131C step_palette_transition
 //   0x0000195C sample_controller_input
 //   0x00001A9E run_title_loop
-//   0x0000281E FUN_0000281e
-//   0x000028C2 FUN_000028c2
+//   0x0000281E initialize_field_scene_entry
+//   0x000028C2 reinitialize_field_scene_entry
 //   0x00002BD2 FUN_00002bd2
 //   0x00002CE0 FUN_00002ce0
 //   0x00002F32 FUN_00002f32
@@ -119,11 +119,11 @@ LAB_000007f0:
     FUN_0001e68c();
     FUN_000566a2();
     FUN_00026938();
-    FUN_0000281e();
+    initialize_field_scene_entry();
     if (_DAT_00ffe108 != 0) {
       initialize_joshua_archetype_selection();
       FUN_000594e0();
-      FUN_000028c2();
+      reinitialize_field_scene_entry();
       _DAT_00ffe108 = 0;
     }
 LAB_000008c0:

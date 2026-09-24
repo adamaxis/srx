@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000028C2
-// Name: FUN_000028c2
+// Name: reinitialize_field_scene_entry
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000286E guard_world_effect_player_spawn
@@ -12,7 +12,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_000028c2(void)
+void reinitialize_field_scene_entry(void)
 
 {
   _DAT_00ffdf8a = 0xffff;

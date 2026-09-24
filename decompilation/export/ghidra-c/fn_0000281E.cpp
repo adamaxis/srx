@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000281E
-// Name: FUN_0000281e
+// Name: initialize_field_scene_entry
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000286E guard_world_effect_player_spawn
@@ -14,7 +14,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0000281e(void)
+void initialize_field_scene_entry(void)
 
 {
   FUN_000028aa();

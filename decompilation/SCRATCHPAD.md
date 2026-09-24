@@ -570,6 +570,13 @@ effect marker exits immediately; otherwise the source scans thirteen records
 and suppresses a new spawn when one has behavior bit `0` and effect bit `7`.
 Only the no-match path requests the existing player-position spawn helper.
 
+The field entry wrappers are now represented without importing their global
+state machine. `0x281E` preserves the display preparation, marker resets,
+profile refresh, scene refresh, profile application, render, upload, and
+world-effect guard order. `0x28C2` preserves its refresh/guard/display order,
+aligns the camera pair with `0xFF80`, resets both camera-transition markers to
+`0xFFFF`, and then renders/uploads. Each service remains an explicit callback.
+
 `0x176BA` is now `refresh_field_resource_streams`: it submits the source-order
 raw transfer request for destination `0x2360` and `0xA80` bytes, then submits
 the `0x2DE0`-byte compressed-resource request. The requests are typed host

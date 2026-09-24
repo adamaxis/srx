@@ -254,13 +254,13 @@
 00000884: jsr 0x0001e68c.l ; call 0001E68C FUN_0001e68c
 0000088A: jsr 0x000566a2.l ; call 000566A2 FUN_000566a2
 00000890: jsr 0x00026938.l ; call 00026938 FUN_00026938
-00000896: jsr 0x0000281e.l ; call 0000281E FUN_0000281e
+00000896: jsr 0x0000281e.l ; call 0000281E initialize_field_scene_entry
 0000089C: tst.w (0x00ffe108).l
 000008A2: beq.w 0x000008c0
 000008A6: clr.w D0w
 000008A8: jsr 0x000042b0.l ; call 000042B0 initialize_joshua_archetype_selection
 000008AE: jsr 0x000594e0.l ; call 000594E0 FUN_000594e0
-000008B4: jsr 0x000028c2.l ; call 000028C2 FUN_000028c2
+000008B4: jsr 0x000028c2.l ; call 000028C2 reinitialize_field_scene_entry
 000008BA: clr.w (0x00ffe108).l
 000008C0: move.w #0x1e,D7w
 000008C4: clr.w (0x00ffdfe8).l
