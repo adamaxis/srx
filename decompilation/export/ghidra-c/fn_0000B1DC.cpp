@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000ABFC FUN_0000abfc
-//   0x0000AF6C FUN_0000af6c
+//   0x0000AF6C reset_entity_animation_state
 //   0x0000AFF2 FUN_0000aff2
 //   0x00015A8C FUN_00015a8c
 //   0x00015C84 FUN_00015c84
@@ -50,7 +50,7 @@ void FUN_0000b1dc(void)
   }
   *(undefined2 *)(iVar4 + 0x16) = *(undefined2 *)(&DAT_0000c0a2 + (short)((uVar1 & 7) << 1));
   uVar5 = 0;
-  FUN_0000af6c();
+  reset_entity_animation_state();
   FUN_00015c84();
   if ((bool)uVar5) {
     FUN_0001dbaa();

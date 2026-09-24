@@ -4568,7 +4568,7 @@
 0000AF9C: lea (0xc082).l,A1 ; data 0000c082
 0000AFA2: move.w (0x0,A1,D0w*0x1),D1w ; data 0000c082
 0000AFA6: move.w D1w,(0x16,A0)
-0000AFAA: bsr.b 0x0000af6c ; call 0000AF6C FUN_0000af6c
+0000AFAA: bsr.b 0x0000af6c ; call 0000AF6C reset_entity_animation_state
 0000AFAC: rts
 0000AFAE: clr.w D0w
 0000AFB0: bsr.w 0x0000abfc ; call 0000ABFC FUN_0000abfc
@@ -4582,7 +4582,7 @@
 0000AFCE: lea (0xc082).l,A1 ; data 0000c082
 0000AFD4: move.w (0x0,A1,D0w*0x1),D1w ; data 0000c082
 0000AFD8: move.w D1w,(0x16,A0)
-0000AFDC: bsr.b 0x0000af6c ; call 0000AF6C FUN_0000af6c
+0000AFDC: bsr.b 0x0000af6c ; call 0000AF6C reset_entity_animation_state
 0000AFDE: rts
 0000AFE2: clr.w (0x38,A0)
 0000AFE6: move.w (A0),D5w
@@ -4606,7 +4606,7 @@
 0000B028: move.w (0x0,A1,D0w*0x1),D1w ; data 0000c072
 0000B02C: movea.l (SP)+,A1
 0000B02E: move.w D1w,(0x16,A0)
-0000B032: bsr.w 0x0000af6c ; call 0000AF6C FUN_0000af6c
+0000B032: bsr.w 0x0000af6c ; call 0000AF6C reset_entity_animation_state
 0000B036: move.b #0x8,(0xce,A0)
 0000B03C: rts
 0000B07E: subq.b #0x1,(0xce,A0)
@@ -4627,7 +4627,7 @@
 0000B0BC: beq.w 0x0000b330
 0000B0C0: move.l #0xb0d4,(0x3a,A0) ; data 0000b0d4
 0000B0C8: move.w #0xe0,(0x16,A0)
-0000B0CE: bsr.w 0x0000af6c ; call 0000AF6C FUN_0000af6c
+0000B0CE: bsr.w 0x0000af6c ; call 0000AF6C reset_entity_animation_state
 0000B0D2: rts
 0000B0D4: clr.w (0x38,A0)
 0000B0D8: move.w (A0),D5w
@@ -4640,7 +4640,7 @@
 0000B0F4: beq.w 0x0000b330
 0000B0F8: move.l #0xb10c,(0x3a,A0) ; data 0000b10c
 0000B100: move.w #0xe4,(0x16,A0)
-0000B106: bsr.w 0x0000af6c ; call 0000AF6C FUN_0000af6c
+0000B106: bsr.w 0x0000af6c ; call 0000AF6C reset_entity_animation_state
 0000B10A: rts
 0000B10C: clr.w (0x38,A0)
 0000B110: move.w (A0),D5w
@@ -4689,7 +4689,7 @@
 0000B1C8: lea (0xc042).l,A1 ; data 0000c042
 0000B1CE: move.w (0x0,A1,D0w*0x1),D1w ; data 0000c042
 0000B1D2: move.w D1w,(0x16,A0)
-0000B1D6: bsr.w 0x0000af6c ; call 0000AF6C FUN_0000af6c
+0000B1D6: bsr.w 0x0000af6c ; call 0000AF6C reset_entity_animation_state
 0000B1DA: rts
 0000B1DC: move.w #0x1,D0w
 0000B1E0: bsr.w 0x0000abfc ; call 0000ABFC FUN_0000abfc
@@ -4718,7 +4718,7 @@
 0000B23C: lea (0xc0a2).l,A1 ; data 0000c0a2
 0000B242: move.w (0x0,A1,D0w*0x1),D1w ; data 0000c0a2
 0000B246: move.w D1w,(0x16,A0)
-0000B24A: bsr.w 0x0000af6c ; call 0000AF6C FUN_0000af6c
+0000B24A: bsr.w 0x0000af6c ; call 0000AF6C reset_entity_animation_state
 0000B24E: jsr 0x00015c84.l ; call 00015C84 FUN_00015c84
 0000B254: bcc.w 0x0000b2f4
 0000B258: jsr 0x0001dbaa.l ; call 0001DBAA FUN_0001dbaa
@@ -4781,7 +4781,7 @@
 0000B376: lea (0xc0b2).l,A1 ; data 0000c0b2
 0000B37C: move.w (0x0,A1,D0w*0x1),D1w ; data 0000c0b2
 0000B380: move.w D1w,(0x16,A0)
-0000B384: bsr.w 0x0000af6c ; call 0000AF6C FUN_0000af6c
+0000B384: bsr.w 0x0000af6c ; call 0000AF6C reset_entity_animation_state
 0000B388: rts
 0000B38A: clr.w (0x38,A0)
 0000B38E: move.w (A0),D5w
@@ -4809,7 +4809,7 @@
 0000B3DE: bra.w 0x0000b3e4
 0000B3E2: clr.w D0w
 0000B3E4: bsr.w 0x0000abfc ; call 0000ABFC FUN_0000abfc
-0000B3E8: bsr.w 0x0000af6c ; call 0000AF6C FUN_0000af6c
+0000B3E8: bsr.w 0x0000af6c ; call 0000AF6C reset_entity_animation_state
 0000B3EC: rts
 0000B3EE: clr.w (0x38,A0)
 0000B3F2: move.w (A0),D5w
@@ -4826,7 +4826,7 @@
 0000B418: lea (0xc092).l,A1 ; data 0000c092
 0000B41E: move.w (0x0,A1,D0w*0x1),D1w ; data 0000c092
 0000B422: move.w D1w,(0x16,A0)
-0000B426: bsr.w 0x0000af6c ; call 0000AF6C FUN_0000af6c
+0000B426: bsr.w 0x0000af6c ; call 0000AF6C reset_entity_animation_state
 0000B42A: clr.w D0w
 0000B42C: bsr.w 0x0000abfc ; call 0000ABFC FUN_0000abfc
 0000B430: rts

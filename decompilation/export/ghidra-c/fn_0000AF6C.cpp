@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000AF6C
-// Name: FUN_0000af6c
+// Name: reset_entity_animation_state
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0000af6c(void)
+void reset_entity_animation_state(void)
 
 {
   int in_A0;

@@ -76,6 +76,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0000B442L, "reset_entity_movement_state");
         names.put(0x0000B39AL, "set_entity_heading_with_field_animation");
         names.put(0x0000B3FEL, "set_entity_heading_with_alternate_animation");
+        names.put(0x0000AF6CL, "reset_entity_animation_state");
         names.put(0x0000B732L, "apply_movement_result_policy");
         names.put(0x0000B77EL, "probe_entity_directional_collision");
         names.put(0x0000B530L, "approach_entity_fixed_point_target");

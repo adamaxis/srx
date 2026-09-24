@@ -3,7 +3,7 @@
 // Name: FUN_0000aff2
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000AF6C FUN_0000af6c
+//   0x0000AF6C reset_entity_animation_state
 
 
 void FUN_0000aff2(void)
@@ -25,7 +25,7 @@ void FUN_0000aff2(void)
       uVar1 = uVar1 + 1;
     }
     *(undefined2 *)(in_A0 + 0x16) = *(undefined2 *)(&DAT_0000c072 + (short)((uVar1 & 7) << 1));
-    FUN_0000af6c();
+    reset_entity_animation_state();
     *(undefined1 *)(extraout_A0 + 0xce) = 8;
     return;
   }
@@ -41,7 +41,7 @@ void FUN_0000aff2(void)
   }
   *(undefined2 *)(extraout_A0_01 + 0x16) =
        *(undefined2 *)(&DAT_0000c0b2 + (short)((uVar1 & 7) << 1));
-  FUN_0000af6c();
+  reset_entity_animation_state();
   return;
 }
 

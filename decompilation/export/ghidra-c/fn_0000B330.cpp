@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000ABB6 FUN_0000abb6
-//   0x0000AF6C FUN_0000af6c
+//   0x0000AF6C reset_entity_animation_state
 //   0x000530DE FUN_000530de
 
 
@@ -28,7 +28,7 @@ void FUN_0000b330(void)
   }
   *(undefined2 *)(extraout_A0_00 + 0x16) =
        *(undefined2 *)(&DAT_0000c0b2 + (short)((uVar1 & 7) << 1));
-  FUN_0000af6c();
+  reset_entity_animation_state();
   return;
 }
 

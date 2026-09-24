@@ -296,3 +296,16 @@ target_link_libraries(shadowrun_ghidra_heading_animation_test
     PRIVATE shadowrun_ghidra_heading_animation)
 add_test(NAME shadowrun_ghidra_heading_animation
          COMMAND shadowrun_ghidra_heading_animation_test)
+
+add_library(shadowrun_ghidra_animation_reset STATIC
+    src/animation_reset_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_animation_reset PUBLIC include)
+
+add_executable(shadowrun_ghidra_animation_reset_test
+    tests/animation_reset_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_animation_reset_test
+    PRIVATE shadowrun_ghidra_animation_reset)
+add_test(NAME shadowrun_ghidra_animation_reset
+         COMMAND shadowrun_ghidra_animation_reset_test)
