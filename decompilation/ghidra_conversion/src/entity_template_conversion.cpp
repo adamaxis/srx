@@ -156,6 +156,50 @@ void process_pending_entity_template_lists(
     state.selected_list.reset();
 }
 
+EntityTemplatePreparationAction prepare_pending_entity_template_list(
+    EntityTemplatePreparationState& state,
+    const PendingEntityTemplateList& gate_b_fallback,
+    const PendingEntityTemplateList& mode_four_fallback,
+    const EntityTemplateRandomByteBoundary& next_random_byte,
+    const EntityTemplateRandomListBoundary& select_random_list) {
+    const auto install = [&state](const PendingEntityTemplateList& list) {
+        state.generated_list = list;
+        state.generated_header = list.header_value;
+    };
+
+    if (!state.gate_a_closed) {
+        if (!state.gate_b_closed) {
+            if (state.event_phase != 5U || state.world_mode != 2U) {
+                return EntityTemplatePreparationAction::no_list;
+            }
+            if (state.selection_counter == 0U) {
+                const auto random_byte =
+                    next_random_byte ? next_random_byte() : 0U;
+                state.selection_counter = static_cast<std::uint8_t>(
+                    random_byte + 1U);
+            }
+            if (state.expected_context != state.current_context ||
+                state.active_entity_present || !select_random_list) {
+                return EntityTemplatePreparationAction::no_list;
+            }
+            const auto selected = select_random_list();
+            if (!selected.has_value()) {
+                return EntityTemplatePreparationAction::no_list;
+            }
+            install(*selected);
+            return EntityTemplatePreparationAction::random_list;
+        }
+        install(gate_b_fallback);
+        return EntityTemplatePreparationAction::gate_b_fallback;
+    }
+
+    if (state.current_context != 4U) {
+        return EntityTemplatePreparationAction::no_list;
+    }
+    install(mode_four_fallback);
+    return EntityTemplatePreparationAction::mode_four_fallback;
+}
+
 void finalize_pending_entity_template_update(
     EntityTemplateUpdateState& state,
     const std::function<void()>& process_pending_lists) {

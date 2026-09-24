@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00004466 spawn_entity_template_list
-//   0x0000A800 FUN_0000a800
+//   0x0000A800 prepare_pending_entity_template_list
 //   0x0001DBAA schedule_world_activity_timeout
 //   0x0005BA4C thunk_FUN_0005ba50
 
@@ -15,7 +15,7 @@ void process_pending_entity_template_lists(void)
   if (DAT_00ffe186 == '\x02') {
     thunk_FUN_0005ba50();
   }
-  FUN_0000a800();
+  prepare_pending_entity_template_list();
   if (DAT_00ffe124 != 0) {
     spawn_entity_template_list();
     DAT_00ffe124 = 0;

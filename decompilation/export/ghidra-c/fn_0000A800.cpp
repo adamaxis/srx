@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x0000A800
-// Name: FUN_0000a800
+// Name: prepare_pending_entity_template_list
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D3A FUN_00000d3a
 //   0x0005BA98 FUN_0005ba98
 
 
-void FUN_0000a800(void)
+void prepare_pending_entity_template_list(void)
 
 {
   char cVar1;

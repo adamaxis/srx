@@ -2980,7 +2980,7 @@
 000043B6: cmpi.b #0x2,(0x00ffe186).l
 000043BE: bne.w 0x000043c8
 000043C2: jsr 0x0005ba4c.l ; call 0005BA4C thunk_FUN_0005ba50
-000043C8: jsr 0x0000a800.l ; call 0000A800 FUN_0000a800
+000043C8: jsr 0x0000a800.l ; call 0000A800 prepare_pending_entity_template_list
 000043CE: tst.l (0x00ffe124).l
 000043D4: beq.w 0x000043e8
 000043D8: movea.l (0x00ffe124).l,A5

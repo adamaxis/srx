@@ -183,5 +183,44 @@ int main() {
         return 7;
     }
 
+    const PendingEntityTemplateList random_list{
+        {{{}, {0x8000U, 0x8100U}, true, false}}, std::nullopt, 0x12345678U};
+    const PendingEntityTemplateList gate_b_list{
+        {{{}, {0x8200U, 0x8300U}, true, false}}, std::nullopt, 0x22000000U};
+    const PendingEntityTemplateList mode_four_list{
+        {{{}, {0x8400U, 0x8500U}, true, false}}, std::nullopt, 0x44000000U};
+    EntityTemplatePreparationState preparation{
+        false, false, 5U, 2U, 0U, 9U, 9U, false, std::nullopt,
+        std::nullopt};
+    const auto random_action = prepare_pending_entity_template_list(
+        preparation, gate_b_list, mode_four_list,
+        []() { return static_cast<std::uint8_t>(0x10U); },
+        [&random_list]() { return std::optional<PendingEntityTemplateList>{
+                                  random_list}; });
+    if (!expect(random_action == EntityTemplatePreparationAction::random_list &&
+                preparation.selection_counter == 0x11U &&
+                preparation.generated_header == 0x12345678U &&
+                preparation.generated_list.has_value())) {
+        return 8;
+    }
+
+    preparation = EntityTemplatePreparationState{
+        false, true, 0U, 0U, 4U, 0U, 7U, true, std::nullopt, std::nullopt};
+    if (!expect(prepare_pending_entity_template_list(
+                    preparation, gate_b_list, mode_four_list, {}, {}) ==
+                    EntityTemplatePreparationAction::gate_b_fallback &&
+                preparation.generated_header == 0x22000000U)) {
+        return 9;
+    }
+
+    preparation = EntityTemplatePreparationState{
+        true, false, 0U, 0U, 4U, 0U, 4U, true, std::nullopt, std::nullopt};
+    if (!expect(prepare_pending_entity_template_list(
+                    preparation, gate_b_list, mode_four_list, {}, {}) ==
+                    EntityTemplatePreparationAction::mode_four_fallback &&
+                preparation.generated_header == 0x44000000U)) {
+        return 10;
+    }
+
     return 0;
 }

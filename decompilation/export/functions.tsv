@@ -177,7 +177,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0000624C	expand_entity_sprite_descriptor_list	96	unknown	ok	ghidra-c/fn_0000624C.cpp
 0000A7B4	FUN_0000a7b4	48	unknown	ok	ghidra-c/fn_0000A7B4.cpp
 0000A7E4	initialize_entity_slot_order	28	unknown	ok	ghidra-c/fn_0000A7E4.cpp
-0000A800	FUN_0000a800	174	unknown	ok	ghidra-c/fn_0000A800.cpp
+0000A800	prepare_pending_entity_template_list	174	unknown	ok	ghidra-c/fn_0000A800.cpp
 0000A8EA	FUN_0000a8ea	488	unknown	ok	ghidra-c/fn_0000A8EA.cpp
 0000AAD2	FUN_0000aad2	48	unknown	ok	ghidra-c/fn_0000AAD2.cpp
 0000AB02	FUN_0000ab02	180	unknown	ok	ghidra-c/fn_0000AB02.cpp

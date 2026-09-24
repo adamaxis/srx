@@ -136,6 +136,7 @@ enum class EntityTemplateTimeoutSource {
 struct PendingEntityTemplateList {
     std::vector<EntityTemplateSpawnDescriptor> descriptors;
     std::optional<EntityTemplateTimeoutSource> timeout_source;
+    std::uint32_t header_value = 0;
 };
 
 struct EntityTemplateCoordinatorState {
@@ -145,6 +146,40 @@ struct EntityTemplateCoordinatorState {
     std::optional<PendingEntityTemplateList> selected_list;
     std::vector<EntityTemplateSpawnDescriptor> default_list;
 };
+
+struct EntityTemplatePreparationState {
+    bool gate_a_closed = false;
+    bool gate_b_closed = false;
+    std::uint8_t event_phase = 0;
+    std::uint16_t world_mode = 0;
+    std::uint8_t selection_counter = 0;
+    std::uint16_t expected_context = 0;
+    std::uint16_t current_context = 0;
+    bool active_entity_present = false;
+    std::optional<PendingEntityTemplateList> generated_list;
+    std::optional<std::uint32_t> generated_header;
+};
+
+enum class EntityTemplatePreparationAction {
+    no_list,
+    random_list,
+    gate_b_fallback,
+    mode_four_fallback,
+};
+
+using EntityTemplateRandomByteBoundary = std::function<std::uint8_t()>;
+using EntityTemplateRandomListBoundary =
+    std::function<std::optional<PendingEntityTemplateList>()>;
+
+// ROM 0xA800: select a generated or static pending list through the source
+// gate order, update the one-shot selection counter, and expose the selected
+// list/header as typed state.
+EntityTemplatePreparationAction prepare_pending_entity_template_list(
+    EntityTemplatePreparationState& state,
+    const PendingEntityTemplateList& gate_b_fallback,
+    const PendingEntityTemplateList& mode_four_fallback,
+    const EntityTemplateRandomByteBoundary& next_random_byte,
+    const EntityTemplateRandomListBoundary& select_random_list);
 
 using EntityTemplatePreparationBoundary =
     std::function<void(EntityTemplateCoordinatorState&)>;
