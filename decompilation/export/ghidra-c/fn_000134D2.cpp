@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
-//   0x00001530 FUN_00001530
+//   0x00001530 decode_and_upload_source_stream
 //   0x00001728 FUN_00001728
 //   0x0000195C sample_controller_input
 //   0x0000391A FUN_0000391a
@@ -26,7 +26,7 @@ void FUN_000134d2(void)
   short sVar2;
   
   DAT_00fff09c = (&DAT_000d4456)[(short)(ushort)DAT_00fffbf8];
-  FUN_00001530();
+  decode_and_upload_source_stream();
   FUN_00001728();
   wait_for_vblank();
   latch_controller_events();

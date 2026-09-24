@@ -10,7 +10,7 @@
 //   0x0000102A FUN_0000102a
 //   0x000011C0 FUN_000011c0
 //   0x00001358 copy_source_word_block
-//   0x00001530 FUN_00001530
+//   0x00001530 decode_and_upload_source_stream
 //   0x00001728 FUN_00001728
 //   0x0000195C sample_controller_input
 //   0x0000334C FUN_0000334c
@@ -515,7 +515,7 @@ LAB_0000d4a0:
       copy_source_word_block();
       DAT_00ffef14 = DAT_00ffef14 | 1;
       FUN_00000ffe();
-      FUN_00001530();
+      decode_and_upload_source_stream();
       FUN_00001728();
       DAT_00fff10e = &DAT_00fff9fa + (uint)(ushort)DAT_00fffc04[0x50] * 0x11;
       sVar11 = *DAT_00fff10e;

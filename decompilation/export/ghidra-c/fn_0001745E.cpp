@@ -6,7 +6,7 @@
 //   0x00000E34 FUN_00000e34
 //   0x00000FFE FUN_00000ffe
 //   0x0000102A FUN_0000102a
-//   0x00001530 FUN_00001530
+//   0x00001530 decode_and_upload_source_stream
 //   0x00001728 FUN_00001728
 //   0x0000334C FUN_0000334c
 //   0x000033BE FUN_000033be
@@ -86,7 +86,7 @@ void FUN_0001745e(void)
     VDP_CTRL = 0x9100;
     FUN_000176ea();
     FUN_000177cc();
-    FUN_00001530();
+    decode_and_upload_source_stream();
     FUN_00001728();
     FUN_00001728();
     FUN_00017708();

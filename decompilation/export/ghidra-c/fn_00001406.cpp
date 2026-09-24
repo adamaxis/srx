@@ -12,7 +12,7 @@
 //   0x00001232 FUN_00001232
 //   0x0000131C step_palette_transition
 //   0x00001368 copy_target_palette
-//   0x00001530 FUN_00001530
+//   0x00001530 decode_and_upload_source_stream
 //   0x00001728 FUN_00001728
 
 
@@ -44,7 +44,7 @@ void FUN_00001406(void)
     }
     else {
       puVar2 = puVar2 + 3;
-      FUN_00001530();
+      decode_and_upload_source_stream();
     }
   }
   while (uVar1 = *puVar3, uVar1 != 0) {

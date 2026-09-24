@@ -135,6 +135,9 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00004388L, "finalize_pending_entity_template_update");
         names.put(0x0000A800L, "prepare_pending_entity_template_list");
         names.put(0x0005BA98L, "select_pending_entity_template_list");
+        names.put(0x0005BA50L, "load_scene_resources");
+        names.put(0x0005BA4CL, "load_scene_resources_thunk");
+        names.put(0x00001530L, "decode_and_upload_source_stream");
         names.put(0x00014682L, "select_obstruction_route");
         names.put(0x00014756L, "clear_entity_route_flags");
         names.put(0x00014764L, "find_alternate_route_tile");

@@ -3,7 +3,7 @@
 // Name: FUN_0001f292
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001530 FUN_00001530
+//   0x00001530 decode_and_upload_source_stream
 //   0x00001728 FUN_00001728
 //   0x0001F32E FUN_0001f32e
 //   0x0001F34A FUN_0001f34a
@@ -20,7 +20,7 @@ void FUN_0001f292(void)
   }
   FUN_000566e2();
   FUN_000566f6();
-  FUN_00001530();
+  decode_and_upload_source_stream();
   if (DAT_00fff0af < '\0') {
     if (DAT_00fff0ae < '\0') {
       DAT_00fff0ae = '\0';

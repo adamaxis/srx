@@ -1,15 +1,15 @@
 // Ghidra headless export
 // Entry: 0x0005BA50
-// Name: FUN_0005ba50
+// Name: load_scene_resources
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001530 FUN_00001530
+//   0x00001530 decode_and_upload_source_stream
 
 
-void FUN_0005ba50(void)
+void load_scene_resources(void)
 
 {
-  FUN_00001530();
+  decode_and_upload_source_stream();
   return;
 }
 

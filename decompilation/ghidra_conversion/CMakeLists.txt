@@ -578,3 +578,16 @@ target_link_libraries(shadowrun_ghidra_random_test
     PRIVATE shadowrun_ghidra_random)
 add_test(NAME shadowrun_ghidra_random
          COMMAND shadowrun_ghidra_random_test)
+
+add_library(shadowrun_ghidra_scene_resource STATIC
+    src/scene_resource_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_scene_resource PUBLIC include)
+
+add_executable(shadowrun_ghidra_scene_resource_test
+    tests/scene_resource_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_scene_resource_test
+    PRIVATE shadowrun_ghidra_scene_resource)
+add_test(NAME shadowrun_ghidra_scene_resource
+         COMMAND shadowrun_ghidra_scene_resource_test)

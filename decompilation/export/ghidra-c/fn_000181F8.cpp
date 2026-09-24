@@ -39,7 +39,7 @@ void FUN_000181f8(void)
   VDP_CTRL = 0x8134;
   FUN_00000ffe();
   FUN_00000e34();
-  FUN_00001530();
+  decode_and_upload_source_stream();
   FUN_00017f80();
   FUN_00001728();
   FUN_00017708();

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00001530
-// Name: FUN_00001530
+// Name: decode_and_upload_source_stream
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E9C FUN_00000e9c
 
 
-undefined6 FUN_00001530(void)
+undefined6 decode_and_upload_source_stream(void)
 
 {
   ushort uVar1;

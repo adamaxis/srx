@@ -8,7 +8,7 @@
 //   0x00000D94 FUN_00000d94
 //   0x00000E34 FUN_00000e34
 //   0x00000F5C FUN_00000f5c
-//   0x00001530 FUN_00001530
+//   0x00001530 decode_and_upload_source_stream
 //   0x0000195C sample_controller_input
 //   0x0000334C FUN_0000334c
 //   0x00003404 FUN_00003404
@@ -48,7 +48,7 @@ void FUN_00056ac0(void)
   if (DAT_00fff0b7 == '\x02') {
     FUN_000566e2();
     FUN_000566f6();
-    FUN_00001530();
+    decode_and_upload_source_stream();
   }
   FUN_0000c0c2();
   FUN_0000c0da();

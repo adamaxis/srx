@@ -1,15 +1,15 @@
 // Ghidra headless export
 // Entry: 0x0005BA4C
-// Name: thunk_FUN_0005ba50
+// Name: load_scene_resources_thunk
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void thunk_FUN_0005ba50(void)
+void load_scene_resources_thunk(void)
 
 {
-  FUN_00001530();
+  decode_and_upload_source_stream();
   return;
 }
 

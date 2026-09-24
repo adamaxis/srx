@@ -31,6 +31,8 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x4388	pending entity template update finalizer	ghidra_conversion::finalize_pending_entity_template_update	shadowrun_native_port	partial		Typed coordinator call and mode-specific post-update markers
 0xA800	pending entity template preparation	ghidra_conversion::prepare_pending_entity_template_list	shadowrun_native_port	partial		Typed gate order, one-shot random counter, generated-list selection, and static fallback selection
 0x5BA98	pending entity template selector	ghidra_conversion::select_pending_entity_template_list	shadowrun_native_port	partial		Typed scene-relative row and one-based selection lookup
+0x5BA50	scene resource loader	ghidra_conversion::load_scene_resources	shadowrun_graphics	partial		Typed decoded-resource handoff, three-entry stride installation, and explicit presentation upload boundary
+0x1530	compressed stream upload	ghidra_conversion::decode_source_byte_stream	shadowrun_graphics	partial		Source decoder reused as host data; Genesis VDP write remains an explicit boundary
 0x44BC	entity template initialization	ghidra_conversion::initialize_entity_record_from_template	shadowrun_native_port	partial		Typed default-record seed, state/position transfer, variant selection, effect flag, and explicit override boundary
 0x5A56	entity screen projection	ghidra_conversion::project_entity_screen_position	shadowrun_native_port	partial		Typed field/full-screen projection with source rounding and visibility windows
 0x5A62	standard entity screen projection	ghidra_conversion::project_entity_screen_position_standard	shadowrun_native_port	partial		Typed standard field projection with source rounding and visibility window

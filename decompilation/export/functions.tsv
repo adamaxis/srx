@@ -53,7 +53,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00001406	FUN_00001406	200	unknown	ok	ghidra-c/fn_00001406.cpp
 000014CE	extract_even_bytes	26	unknown	ok	ghidra-c/fn_000014CE.cpp
 00001502	copy_even_bytes	46	unknown	ok	ghidra-c/fn_00001502.cpp
-00001530	FUN_00001530	224	unknown	ok	ghidra-c/fn_00001530.cpp
+00001530	decode_and_upload_source_stream	224	unknown	ok	ghidra-c/fn_00001530.cpp
 00001610	decode_source_byte_stream	108	unknown	ok	ghidra-c/fn_00001610.cpp
 0000167C	decode_source_coordinate_stream	164	unknown	ok	ghidra-c/fn_0000167C.cpp
 00001728	FUN_00001728	322	unknown	ok	ghidra-c/fn_00001728.cpp
@@ -879,8 +879,8 @@ entry	name	size	callingConvention	decompileStatus	file
 0005B2C2	FUN_0005b2c2	32	unknown	ok	ghidra-c/fn_0005B2C2.cpp
 0005B2E2	FUN_0005b2e2	74	unknown	ok	ghidra-c/fn_0005B2E2.cpp
 0005B32C	FUN_0005b32c	56	unknown	ok	ghidra-c/fn_0005B32C.cpp
-0005BA4C	thunk_FUN_0005ba50	4	unknown	ok	ghidra-c/fn_0005BA4C.cpp
-0005BA50	FUN_0005ba50	22	unknown	ok	ghidra-c/fn_0005BA50.cpp
+0005BA4C	load_scene_resources_thunk	4	unknown	ok	ghidra-c/fn_0005BA4C.cpp
+0005BA50	load_scene_resources	22	unknown	ok	ghidra-c/fn_0005BA50.cpp
 0005BA66	FUN_0005ba66	50	unknown	ok	ghidra-c/fn_0005BA66.cpp
 0005BA98	select_pending_entity_template_list	44	unknown	ok	ghidra-c/fn_0005BA98.cpp
 0005C8C6	FUN_0005c8c6	52	unknown	ok	ghidra-c/fn_0005C8C6.cpp

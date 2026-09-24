@@ -926,7 +926,7 @@
 0000145E: move.l (A6)+,D1
 00001460: move.l (A6)+,D2
 00001462: move.w D1w,D0w
-00001464: bsr.w 0x00001530 ; call 00001530 FUN_00001530
+00001464: bsr.w 0x00001530 ; call 00001530 decode_and_upload_source_stream
 00001468: bra.b 0x00001444
 0000146A: move.l (A6)+,D1
 0000146C: move.l (A6)+,D2
@@ -1458,17 +1458,17 @@
 00001CFC: lea (0xffbf40).l,A1 ; data 00ffbf40
 00001D02: movea.l #0x1f310e,A3
 00001D08: moveq #0x20,D0
-00001D0A: jsr 0x00001530.l ; call 00001530 FUN_00001530
+00001D0A: jsr 0x00001530.l ; call 00001530 decode_and_upload_source_stream
 00001D10: move.l #0x2090,(0x00fff1e2).l
 00001D1A: move.w #0x0,(0x00fff1e6).l
 00001D22: lea (0xffbf40).l,A1 ; data 00ffbf40
 00001D28: movea.l #0x67cb0,A3
 00001D2E: move.l #0x4b20,D0
-00001D34: jsr 0x00001530.l ; call 00001530 FUN_00001530
+00001D34: jsr 0x00001530.l ; call 00001530 decode_and_upload_source_stream
 00001D3A: lea (0xffbf40).l,A1 ; data 00ffbf40
 00001D40: movea.l #0x6875c,A3
 00001D46: move.l #0x5020,D0
-00001D4C: jsr 0x00001530.l ; call 00001530 FUN_00001530
+00001D4C: jsr 0x00001530.l ; call 00001530 decode_and_upload_source_stream
 00001D52: bsr.w 0x00001d58 ; call 00001D58 FUN_00001d58
 00001D56: rts
 00001D58: lea (0x67df6).l,A1 ; data 00067df6
@@ -1654,7 +1654,7 @@
 000029BC: jsr 0x0000ee10.l ; call 0000EE10 rebuild_terrain_collision_map
 000029C2: cmpi.b #0x2,(0x00ffe186).l
 000029CA: blt.w 0x000029d4
-000029CE: jsr 0x0005ba50.l ; call 0005BA50 FUN_0005ba50
+000029CE: jsr 0x0005ba50.l ; call 0005BA50 load_scene_resources
 000029D4: cmpi.w #0x2,(0x00ffdf40).l
 000029DC: bne.w 0x000029ea
 000029E0: tst.w (0x00ffe118).l
@@ -2979,7 +2979,7 @@
 000043B4: rts
 000043B6: cmpi.b #0x2,(0x00ffe186).l
 000043BE: bne.w 0x000043c8
-000043C2: jsr 0x0005ba4c.l ; call 0005BA4C thunk_FUN_0005ba50
+000043C2: jsr 0x0005ba4c.l ; call 0005BA4C load_scene_resources_thunk
 000043C8: jsr 0x0000a800.l ; call 0000A800 prepare_pending_entity_template_list
 000043CE: tst.l (0x00ffe124).l
 000043D4: beq.w 0x000043e8
@@ -5337,7 +5337,7 @@
 0000C0C2: lea (0xffbf40).l,A1 ; data 00ffbf40
 0000C0C8: movea.l #0xc1064,A3
 0000C0CE: move.l #0xb560,D0
-0000C0D4: jmp 0x00001530.l ; call 00001530 FUN_00001530
+0000C0D4: jmp 0x00001530.l ; call 00001530 decode_and_upload_source_stream
 0000C0DA: movem.l {  A6 A5 A4 A3 A2 A1 A0 D7 D6 D5 D4 D3 D2 D1 D0},-(SP)
 0000C0DE: move SR,-(SP) ; data Stack[-0x3e]
 0000C0E0: move #0x2700,SR
@@ -7495,7 +7495,7 @@
 0000FC28: lea (0xffbf40).l,A1 ; data 00ffbf40
 0000FC2E: movea.l #0xc6714,A3
 0000FC34: move.l #0x16a0,D0
-0000FC3A: jsr 0x00001530.l ; call 00001530 FUN_00001530
+0000FC3A: jsr 0x00001530.l ; call 00001530 decode_and_upload_source_stream
 0000FC40: lea (0xc8108).l,A1 ; data 000c8108
 0000FC46: move.w #-0x2000,D4w
 0000FC4A: move.w #0x21,D7w
@@ -8296,7 +8296,7 @@
 00010938: lea (0xffbf40).l,A1 ; data 00ffbf40
 0001093E: movea.l #0xcab0c,A3
 00010944: move.l #0x1e20,D0
-0001094A: jsr 0x00001530.l ; call 00001530 FUN_00001530
+0001094A: jsr 0x00001530.l ; call 00001530 decode_and_upload_source_stream
 00010950: rts
 00010952: jsr 0x00000ffe.l ; call 00000FFE FUN_00000ffe
 00010958: jsr 0x0000102a.l ; call 0000102A FUN_0000102a
@@ -8673,12 +8673,12 @@
 00011088: lea (0xffbf40).l,A1 ; data 00ffbf40
 0001108E: movea.l #0xc8bb6,A3
 00011094: move.l #0x5c80,D0
-0001109A: jsr 0x00001530.l ; call 00001530 FUN_00001530
+0001109A: jsr 0x00001530.l ; call 00001530 decode_and_upload_source_stream
 000110A0: rts
 000110A2: lea (0xffbf40).l,A1 ; data 00ffbf40
 000110A8: movea.l #0xc9b7c,A3
 000110AE: move.l #0x5c80,D0
-000110B4: jsr 0x00001530.l ; call 00001530 FUN_00001530
+000110B4: jsr 0x00001530.l ; call 00001530 decode_and_upload_source_stream
 000110BA: rts
 000110BC: movea.l (0x00fffc04).l,A0
 000110C2: move.w (0x3e,A0),D5w
@@ -10801,7 +10801,7 @@
 000134E8: lea (0xffbf40).l,A1 ; data 00ffbf40
 000134EE: movea.l #0xd2a2e,A3
 000134F4: move.l #0x6420,D0
-000134FA: jsr 0x00001530.l ; call 00001530 FUN_00001530
+000134FA: jsr 0x00001530.l ; call 00001530 decode_and_upload_source_stream
 00013500: lea (0xd4298).l,A1 ; data 000d4298
 00013506: move.w #-0x1df8,D4w
 0001350A: move.w #0x19,D7w
@@ -13989,7 +13989,7 @@
 0001758E: lea (0xffbf40).l,A1 ; data 00ffbf40
 00017594: movea.l #0xd646a,A3
 0001759A: move.l #0x8160,D0
-000175A0: jsr 0x00001530.l ; call 00001530 FUN_00001530
+000175A0: jsr 0x00001530.l ; call 00001530 decode_and_upload_source_stream
 000175A6: lea (0xd806c).l,A1 ; data 000d806c
 000175AC: move.l #0xe000,D4
 000175B2: move.w #0x27,D7w
@@ -14055,7 +14055,7 @@
 000176D2: lea (0xffbf40).l,A1 ; data 00ffbf40
 000176D8: movea.l #0xdaab8,A3
 000176DE: move.l #0x2de0,D0
-000176E4: jmp 0x00001530.l ; call 00001530 FUN_00001530
+000176E4: jmp 0x00001530.l ; call 00001530 decode_and_upload_source_stream
 000176EA: lea (0xe2e3a).l,A0 ; data 000e2e3a
 000176F0: jsr 0x00001358.l ; call 00001358 copy_source_word_block
 000176F6: bset.b #0x0,(0x00ffef14).l
@@ -14112,11 +14112,11 @@
 000177CC: lea (0xffbf40).l,A1 ; data 00ffbf40
 000177D2: movea.l #0xd86e0,A3
 000177D8: move.l #0x17e0,D0
-000177DE: jsr 0x00001530.l ; call 00001530 FUN_00001530
+000177DE: jsr 0x00001530.l ; call 00001530 decode_and_upload_source_stream
 000177E4: lea (0xffbf40).l,A1 ; data 00ffbf40
 000177EA: movea.l #0xd78aa,A3
 000177F0: move.l #0x580,D0
-000177F6: jmp 0x00001530.l ; call 00001530 FUN_00001530
+000177F6: jmp 0x00001530.l ; call 00001530 decode_and_upload_source_stream
 000177FC: move.w #0x3c,D5w
 00017800: move.w D5w,-(SP) ; data Stack[-0x2]
 00017802: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
@@ -14693,7 +14693,7 @@
 00018266: lea (0xffbf40).l,A1 ; data 00ffbf40
 0001826C: movea.l #0xd9376,A3
 00018272: move.l #0x8160,D0
-00018278: jsr 0x00001530.l ; call 00001530 FUN_00001530
+00018278: jsr 0x00001530.l ; call 00001530 decode_and_upload_source_stream
 0001827E: bsr.w 0x00017f80 ; call 00017F80 FUN_00017f80
 00018282: lea (0xd9c96).l,A1 ; data 000d9c96
 00018288: move.l #0xe000,D4
@@ -14934,7 +14934,7 @@
 00018710: lea (0xffbf40).l,A1 ; data 00ffbf40
 00018716: movea.l #0xd646a,A3
 0001871C: move.l #0x8160,D0
-00018722: jsr 0x00001530.l ; call 00001530 FUN_00001530
+00018722: jsr 0x00001530.l ; call 00001530 decode_and_upload_source_stream
 00018728: jsr 0x00026958.l ; call 00026958 FUN_00026958
 0001872E: lea (0xd806c).l,A1 ; data 000d806c
 00018734: move.l #0xe000,D4
@@ -15298,7 +15298,7 @@
 00019154: lea (0xffbf40).l,A1 ; data 00ffbf40
 0001915A: movea.l #0xd86e0,A3
 00019160: move.l #0x17e0,D0
-00019166: jsr 0x00001530.l ; call 00001530 FUN_00001530
+00019166: jsr 0x00001530.l ; call 00001530 decode_and_upload_source_stream
 0001916C: bsr.w 0x00017708 ; call 00017708 FUN_00017708
 00019170: move.w #-0x7e8c,(0x00c00004).l
 00019178: move.l (SP)+,D0
@@ -19119,7 +19119,7 @@
 0001F2B6: lea (0xffbf40).l,A1 ; data 00ffbf40
 0001F2BC: movea.l (A5)+,A3
 0001F2BE: move.l #0x57a0,D0
-0001F2C4: jsr 0x00001530.l ; call 00001530 FUN_00001530
+0001F2C4: jsr 0x00001530.l ; call 00001530 decode_and_upload_source_stream
 0001F2CA: tst.b (0x00fff0af).l
 0001F2D0: bmi.w 0x0001f2f6
 0001F2D4: movea.l (A5)+,A1
@@ -22636,7 +22636,7 @@
 00026958: lea (0xffbf40).l,A1 ; data 00ffbf40
 0002695E: movea.l #0x14c222,A3
 00026964: move.l #0x8c40,D0
-0002696A: jsr 0x00001530.l ; call 00001530 FUN_00001530
+0002696A: jsr 0x00001530.l ; call 00001530 decode_and_upload_source_stream
 00026970: rts
 00026972: tst.b (0x00fff0d2).l
 00026978: beq.w 0x000269fe
@@ -24969,7 +24969,7 @@
 00056B28: lea (0xffbf40).l,A1 ; data 00ffbf40
 00056B2E: movea.l #0xd86e0,A3
 00056B34: move.l #0x89a0,D0
-00056B3A: jsr 0x00001530.l ; call 00001530 FUN_00001530
+00056B3A: jsr 0x00001530.l ; call 00001530 decode_and_upload_source_stream
 00056B40: jsr 0x0000c0c2.l ; call 0000C0C2 FUN_0000c0c2
 00056B46: clr.l D0
 00056B48: lea (0x1aab50).l,A1 ; data 001aab50
@@ -28138,11 +28138,11 @@
 0005AAA8: lea (0xffbf40).l,A1 ; data 00ffbf40
 0005AAAE: movea.l #0x1e3f38,A3
 0005AAB4: move.l #0x3020,D0
-0005AABA: jsr 0x00001530.l ; call 00001530 FUN_00001530
+0005AABA: jsr 0x00001530.l ; call 00001530 decode_and_upload_source_stream
 0005AAC0: lea (0xffbf40).l,A1 ; data 00ffbf40
 0005AAC6: movea.l #0x1e62be,A3
 0005AACC: move.l #0xc000,D0
-0005AAD2: jsr 0x00001530.l ; call 00001530 FUN_00001530
+0005AAD2: jsr 0x00001530.l ; call 00001530 decode_and_upload_source_stream
 0005AAD8: jsr 0x0000c0c2.l ; call 0000C0C2 FUN_0000c0c2
 0005AADE: bsr.w 0x0005aa5a ; call 0005AA5A FUN_0005aa5a
 0005AAE2: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
@@ -28637,7 +28637,7 @@
 0005BA50: lea (0xffbf40).l,A1 ; data 00ffbf40
 0005BA56: movea.l #0x1ebdee,A3
 0005BA5C: move.w #0x5920,D0w
-0005BA60: jmp 0x00001530.l ; call 00001530 FUN_00001530
+0005BA60: jmp 0x00001530.l ; call 00001530 decode_and_upload_source_stream
 0005BA66: move.w (0x00ffddea).l,D0w
 0005BA6C: lea (0xff2710).l,A1 ; data 00ff2710
 0005BA72: lea (0x1eb3e2).l,A2 ; data 001eb3e2
@@ -29106,7 +29106,7 @@
 0005DA72: lea (0xffbf40).l,A1 ; data 00ffbf40
 0005DA78: movea.l #0x14c222,A3
 0005DA7E: move.l #0x400,D0
-0005DA84: jsr 0x00001530.l ; call 00001530 FUN_00001530
+0005DA84: jsr 0x00001530.l ; call 00001530 decode_and_upload_source_stream
 0005DA8A: bset.b #0x2,(0x00ffef14).l
 0005DA92: bset.b #0x3,(0x00ffef14).l
 0005DA9A: bset.b #0x0,(0x00ffef14).l

@@ -10,7 +10,7 @@
 //   0x0000102A FUN_0000102a
 //   0x000012F6 FUN_000012f6
 //   0x00001368 copy_target_palette
-//   0x00001530 FUN_00001530
+//   0x00001530 decode_and_upload_source_stream
 //   0x00001728 FUN_00001728
 //   0x0000195C sample_controller_input
 //   0x0000C0C2 FUN_0000c0c2
@@ -33,8 +33,8 @@ void FUN_0005aa96(void)
   FUN_00000e34();
   FUN_00000ffe();
   FUN_0000102a();
-  FUN_00001530();
-  FUN_00001530();
+  decode_and_upload_source_stream();
+  decode_and_upload_source_stream();
   FUN_0000c0c2();
   FUN_0005aa5a();
   wait_for_vblank();

@@ -18,7 +18,7 @@
 //   0x0001A322 FUN_0001a322
 //   0x0001E04A begin_world_effect_transition
 //   0x000530EA FUN_000530ea
-//   0x0005BA50 FUN_0005ba50
+//   0x0005BA50 load_scene_resources
 //   0x0005D260 FUN_0005d260
 
 
@@ -60,7 +60,7 @@ void FUN_00002900(void)
   }
   rebuild_terrain_collision_map();
   if ('\x01' < DAT_00ffe186) {
-    FUN_0005ba50();
+    load_scene_resources();
   }
   FUN_000164dc();
   FUN_000164a8();

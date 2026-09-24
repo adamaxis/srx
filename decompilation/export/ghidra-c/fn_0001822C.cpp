@@ -12,7 +12,7 @@
 //   0x00000FFE FUN_00000ffe
 //   0x0000102A FUN_0000102a
 //   0x00001378 FUN_00001378
-//   0x00001530 FUN_00001530
+//   0x00001530 decode_and_upload_source_stream
 //   0x00001728 FUN_00001728
 //   0x0000195C sample_controller_input
 //   0x0000C0DA FUN_0000c0da
@@ -62,7 +62,7 @@ void FUN_0001822c(void)
   VDP_CTRL = 0x8134;
   FUN_00000ffe();
   FUN_00000e34();
-  FUN_00001530();
+  decode_and_upload_source_stream();
   FUN_00017f80();
   FUN_00001728();
   FUN_00017708();
