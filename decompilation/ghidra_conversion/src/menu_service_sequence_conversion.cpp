@@ -194,4 +194,11 @@ void refresh_menu_panel(MenuPanelRefreshState& state,
     }
 }
 
+void prepare_menu_grid_variant_a(
+    const std::function<void()>& prepare_grid) {
+    if (prepare_grid) {
+        prepare_grid();
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion

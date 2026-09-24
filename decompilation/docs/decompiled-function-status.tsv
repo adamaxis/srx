@@ -356,3 +356,4 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x120E4	menu number renderer	ghidra_conversion::render_menu_number	shadowrun_ghidra_menu_service_sequence	partial		Typed marker write, signed cursor update, wrap/clamp rules, and decimal build
 0x1275C	menu slot cleanup	ghidra_conversion::clear_menu_slot	shadowrun_ghidra_menu_service_sequence	partial		Typed low-action asset branch and per-slot pending/active flag cleanup
 0x127B0	menu panel refresh	ghidra_conversion::refresh_menu_panel	shadowrun_ghidra_menu_service_sequence	partial		Typed panel upload, byte toggle, layout update, and text render order
+0x12C1E	menu grid variant A preparation	ghidra_conversion::prepare_menu_grid_variant_a	shadowrun_ghidra_menu_service_sequence	partial		Typed single menu-grid preparation boundary
