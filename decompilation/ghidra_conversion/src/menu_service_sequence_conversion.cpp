@@ -32,4 +32,15 @@ std::uint16_t render_menu_tile_rows(
     return static_cast<std::uint16_t>(last_countdown >> 1U);
 }
 
+void reset_and_upload_menu_tile_block(
+    const std::function<void()>& reset_upload_state,
+    const std::function<void()>& upload_tile_block) {
+    if (reset_upload_state) {
+        reset_upload_state();
+    }
+    if (upload_tile_block) {
+        upload_tile_block();
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion

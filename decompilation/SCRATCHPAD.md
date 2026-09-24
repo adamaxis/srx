@@ -948,6 +948,9 @@ are separate HUD-panel presentation boundaries, while `0x11136` preserves its
 eight clear/write passes and source return value (`0`) through ordinary
 callbacks.
 
+The menu tile upload leaf at `0x11442` now resets the typed upload cursor
+before invoking the menu tile-block asset boundary.
+
 The compact row-writer family is now typed as well. `0x1184` emits one masked
 row with optional `0x8F80`/`0x8F02` display-increment controls, `0x11C0`
 repeats a source row at `0x80`-byte destination strides, and `0x11F6`

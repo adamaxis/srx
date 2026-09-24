@@ -19,5 +19,12 @@ int main() {
         order[14] != 3 || order[15] != 4) {
         return 2;
     }
+
+    order.clear();
+    reset_and_upload_menu_tile_block([&order] { order.push_back(5); },
+                                     [&order] { order.push_back(6); });
+    if (order != std::vector<int>{5, 6}) {
+        return 3;
+    }
     return 0;
 }

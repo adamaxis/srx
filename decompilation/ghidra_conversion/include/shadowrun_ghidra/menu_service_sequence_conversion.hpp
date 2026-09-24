@@ -16,4 +16,9 @@ void draw_menu_hud_panel_variant_b(const std::function<void()>& draw_panel);
 std::uint16_t render_menu_tile_rows(const std::function<void()>& clear_row,
                                     const std::function<void()>& write_row);
 
+// ROM 0x11442: reset the upload cursor before submitting one menu tile block.
+void reset_and_upload_menu_tile_block(
+    const std::function<void()>& reset_upload_state,
+    const std::function<void()>& upload_tile_block);
+
 } // namespace shadowrun::ghidra_conversion
