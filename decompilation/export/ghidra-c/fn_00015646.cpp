@@ -6,7 +6,7 @@
 //   0x000036FC FUN_000036fc
 //   0x00015118 FUN_00015118
 //   0x00015A8C find_first_available_entity_slot
-//   0x00015D3C FUN_00015d3c
+//   0x00015D3C measure_relative_heading_and_distance
 //   0x0001A2CC allocate_first_free_effect_slot
 //   0x0001DBAA FUN_0001dbaa
 //   0x00055848 FUN_00055848
@@ -91,7 +91,7 @@ void FUN_00015646(void)
         *(undefined1 *)((int)extraout_A1_00 + 0x9f) = DAT_00fff0dd;
         uVar3 = unaff_D5w * 0x10 + sVar4;
         uVar6 = sVar7 * 0x10 + sVar2;
-        FUN_00015d3c();
+        measure_relative_heading_and_distance();
         if (0xbdf < uVar6) {
           uVar6 = 0xbe0;
         }

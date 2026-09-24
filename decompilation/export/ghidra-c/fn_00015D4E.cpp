@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00015D4E
-// Name: FUN_00015d4e
+// Name: measure_heading_and_distance
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-uint FUN_00015d4e(void)
+uint measure_heading_and_distance(void)
 
 {
   short sVar1;

@@ -2464,7 +2464,7 @@
 00003BB2: move.w (0x00ffddc8).l,D2w
 00003BB8: move.w (0x00ffdf5c).l,D5w
 00003BBE: move.w (0x00ffdf5e).l,D4w
-00003BC4: jsr 0x00015d3c.l ; call 00015D3C FUN_00015d3c
+00003BC4: jsr 0x00015d3c.l ; call 00015D3C measure_relative_heading_and_distance
 00003BCA: move.w D3w,D4w
 00003BCC: cmpi.w #0x20,D4w
 00003BD0: bcc.w 0x00003bdc
@@ -4510,7 +4510,7 @@
 0000AE86: move.w (0x4,A0),D4w
 0000AE8A: move.w (A1),D3w
 0000AE8C: move.w (0x4,A1),D2w
-0000AE90: jsr 0x00015d3c.l ; call 00015D3C FUN_00015d3c
+0000AE90: jsr 0x00015d3c.l ; call 00015D3C measure_relative_heading_and_distance
 0000AE96: move.w D2w,(0x2e,A0)
 0000AE9A: move.l A0,D0
 0000AE9C: cmp.l D0,D1
@@ -4705,7 +4705,7 @@
 0000B208: move.w (0x4,A0),D4w
 0000B20C: move.w (A2),D3w
 0000B20E: move.w (0x4,A2),D2w
-0000B212: jsr 0x00015d3c.l ; call 00015D3C FUN_00015d3c
+0000B212: jsr 0x00015d3c.l ; call 00015D3C measure_relative_heading_and_distance
 0000B218: move.w D2w,(0x34,A0)
 0000B21C: move.w (0x34,A0),(0x2e,A0)
 0000B222: move.w (0x2e,A0),D0w
@@ -6929,7 +6929,7 @@
 0000EC5C: move.w (0x4,A0),D4w
 0000EC60: move.w (A1),D3w
 0000EC62: move.w (0x4,A1),D2w
-0000EC66: jsr 0x00015d3c.l ; call 00015D3C FUN_00015d3c
+0000EC66: jsr 0x00015d3c.l ; call 00015D3C measure_relative_heading_and_distance
 0000EC6C: movem.w (SP)+,{  D5 D6 D7}
 0000EC70: addi.w #0x4000,D2w
 0000EC74: move.w D2w,(0x92,A1)
@@ -11094,7 +11094,7 @@
 000139FA: move.w (0x4,A0),D4w
 000139FE: move.w (A1),D3w
 00013A00: move.w (0x4,A1),D2w
-00013A04: jsr 0x00015d3c.l ; call 00015D3C FUN_00015d3c
+00013A04: jsr 0x00015d3c.l ; call 00015D3C measure_relative_heading_and_distance
 00013A0A: move.l A1,-(SP) ; data Stack[-0x4]
 00013A0C: bsr.w 0x00013ffe ; call 00013FFE FUN_00013ffe
 00013A10: movea.l (SP)+,A1
@@ -11308,7 +11308,7 @@
 00013D64: move.w (0x4,A0),D4w
 00013D68: move.w (A1),D3w
 00013D6A: move.w (0x4,A1),D2w
-00013D6E: jsr 0x00015d3c.l ; call 00015D3C FUN_00015d3c
+00013D6E: jsr 0x00015d3c.l ; call 00015D3C measure_relative_heading_and_distance
 00013D74: bclr.b #0x4,(0xb0,A0)
 00013D7A: btst.b #0x3,(0x10,A0)
 00013D80: beq.w 0x00013d94
@@ -11406,7 +11406,7 @@
 00013F40: movea.l (0x00fffc04).l,A1
 00013F46: move.w (A1),D3w
 00013F48: move.w (0x4,A1),D2w
-00013F4C: jsr 0x00015d3c.l ; call 00015D3C FUN_00015d3c
+00013F4C: jsr 0x00015d3c.l ; call 00015D3C measure_relative_heading_and_distance
 00013F52: cmpi.w #0x640,D3w
 00013F56: bcc.w 0x000142ae
 00013F5A: move.w (0x16,A0),D0w
@@ -11766,7 +11766,7 @@
 000145EA: move.w (0x4,A0),D4w
 000145EE: move.w (0x96,A0),D3w
 000145F2: move.w (0x98,A0),D2w
-000145F6: jsr 0x00015d3c.l ; call 00015D3C FUN_00015d3c
+000145F6: jsr 0x00015d3c.l ; call 00015D3C measure_relative_heading_and_distance
 000145FC: move.w D2w,(0x34,A0)
 00014600: move.w D3w,(0xc8,A0)
 00014604: move.l #0xb574,(0x3a,A0) ; data 0000b574
@@ -12299,7 +12299,7 @@
 00014D5A: move.w (0x4,A0),D4w
 00014D5E: move.w (A1),D3w
 00014D60: move.w (0x4,A1),D2w
-00014D64: jmp 0x00015d3c.l ; call 00015D3C FUN_00015d3c
+00014D64: jmp 0x00015d3c.l ; call 00015D3C measure_relative_heading_and_distance
 00014D6A: lea (0xd4540).l,A2 ; data 000d4540
 00014D70: tst.b (0x56,A0)
 00014D74: bpl.w 0x00014d7e
@@ -12486,7 +12486,7 @@
 00015082: move.w (0x4,A0),D4w
 00015086: move.w (A2),D3w
 00015088: move.w (0x4,A2),D2w
-0001508C: jsr 0x00015d3c.l ; call 00015D3C FUN_00015d3c
+0001508C: jsr 0x00015d3c.l ; call 00015D3C measure_relative_heading_and_distance
 00015092: move.w D2w,(0x2e,A1)
 00015096: bra.w 0x0001509a
 0001509A: move.w (0x2e,A1),D1w
@@ -12930,7 +12930,7 @@
 000157BC: add.w D6w,D3w
 000157BE: move.w (A0),D5w
 000157C0: move.w (0x4,A0),D4w
-000157C4: jsr 0x00015d3c.l ; call 00015D3C FUN_00015d3c
+000157C4: jsr 0x00015d3c.l ; call 00015D3C measure_relative_heading_and_distance
 000157CA: cmpi.w #0xbe0,D3w
 000157CE: bcs.w 0x000157d6
 000157D2: move.w #0xbe0,D3w
@@ -12981,7 +12981,7 @@
 00015878: move.w (0x4,A0),D4w
 0001587C: move.w (A1),D3w
 0001587E: move.w (0x4,A1),D2w
-00015882: jsr 0x00015d3c.l ; call 00015D3C FUN_00015d3c
+00015882: jsr 0x00015d3c.l ; call 00015D3C measure_relative_heading_and_distance
 00015888: move.w D2w,(0x2e,A0)
 0001588C: bsr.w 0x0001597e ; call 0001597E FUN_0001597e
 00015890: move.b (0x57,A0),D2b
@@ -13220,7 +13220,7 @@
 00015D3C: movem.l {  D1 D0},-(SP)
 00015D40: sub.w D4w,D2w
 00015D42: sub.w D5w,D3w
-00015D44: bsr.w 0x00015d4e ; call 00015D4E FUN_00015d4e
+00015D44: bsr.w 0x00015d4e ; call 00015D4E measure_heading_and_distance
 00015D48: movem.l (SP)+,{ D0 D1}
 00015D4C: rts
 00015D4E: clr.w D0w

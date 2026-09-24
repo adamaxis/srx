@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00015118 FUN_00015118
-//   0x00015D3C FUN_00015d3c
+//   0x00015D3C measure_relative_heading_and_distance
 //   0x00055640 FUN_00055640
 
 
@@ -44,7 +44,7 @@ void FUN_00014ff8(void)
       *(short **)(unaff_D3 + 0xac) = in_A0;
     }
     sVar3 = *(short *)(unaff_D3 + 4);
-    FUN_00015d3c();
+    measure_relative_heading_and_distance();
     extraout_A1[0x17] = sVar3;
     in_A1 = extraout_A1;
   }

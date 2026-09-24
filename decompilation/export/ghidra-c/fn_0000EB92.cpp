@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000D44 advance_source_prng
 //   0x0000ECCC FUN_0000eccc
-//   0x00015D3C FUN_00015d3c
+//   0x00015D3C measure_relative_heading_and_distance
 
 
 void FUN_0000eb92(void)
@@ -55,7 +55,7 @@ joined_r0x0000ec14:
           *(ushort *)((int)register0x0000003c + -0xc) = uVar2;
           uVar1 = puVar4[2];
           *(undefined4 *)((int)register0x0000003c + -0x10) = 0xec6c;
-          FUN_00015d3c();
+          measure_relative_heading_and_distance();
           uVar2 = *(ushort *)((int)register0x0000003c + -0xc);
           uVar3 = *(ushort *)((int)register0x0000003c + -10);
           unaff_D7w = *(undefined2 *)((int)register0x0000003c + -8);

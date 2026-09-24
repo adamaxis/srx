@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x0001033E FUN_0001033e
 //   0x00014D8E FUN_00014d8e
-//   0x00015D3C FUN_00015d3c
+//   0x00015D3C measure_relative_heading_and_distance
 
 
 void FUN_0000ae6e(void)
@@ -23,7 +23,7 @@ void FUN_0000ae6e(void)
   }
   if (*(int *)(in_A0 + 0xa2) != 0) {
     uVar1 = *(undefined2 *)(*(int *)(in_A0 + 0xa2) + 4);
-    FUN_00015d3c();
+    measure_relative_heading_and_distance();
     *(undefined2 *)(extraout_A0 + 0x2e) = uVar1;
     bVar2 = extraout_D1 < extraout_A0;
     if ((extraout_D1 != extraout_A0) && (FUN_00014d8e(), bVar2)) {

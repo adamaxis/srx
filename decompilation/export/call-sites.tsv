@@ -260,7 +260,7 @@ caller	caller_name	instruction	text	target	callee	status
 00003A1C	FUN_00003a1c	00003A4A	jsr 0x00015dcc.l	00015DCC	FUN_00015dcc	resolved
 00003A1C	FUN_00003a1c	00003A78	bsr.w 0x00003a90	00003A90	FUN_00003a90	resolved
 00003A1C	FUN_00003a1c	00003A82	bsr.w 0x00003b1e	00003B1E	FUN_00003b1e	resolved
-00003BAC	FUN_00003bac	00003BC4	jsr 0x00015d3c.l	00015D3C	FUN_00015d3c	resolved
+00003BAC	FUN_00003bac	00003BC4	jsr 0x00015d3c.l	00015D3C	measure_relative_heading_and_distance	resolved
 00003BAC	FUN_00003bac	00003CB2	bsr.w 0x000040e2	000040E2	FUN_000040e2	resolved
 00003BAC	FUN_00003bac	00003D12	bsr.w 0x00004018	00004018	FUN_00004018	resolved
 00003D18	FUN_00003d18	00003D18	bsr.w 0x000041b6	000041B6	fold_field_coordinate	resolved
@@ -421,7 +421,7 @@ caller	caller_name	instruction	text	target	callee	status
 0000ACAE	FUN_0000acae	0000AE0E	bsr.w 0x0000abfc	0000ABFC	update_entity_animation_delay	resolved
 0000ACAE	FUN_0000acae	0000AE16	jmp 0x0000b1dc.l	0000B1DC	configure_entity_target_transition	resolved
 0000ACAE	FUN_0000acae	0000AE20	jmp 0x0000b39a.l	0000B39A	set_entity_heading_with_field_animation	resolved
-0000AE6E	FUN_0000ae6e	0000AE90	jsr 0x00015d3c.l	00015D3C	FUN_00015d3c	resolved
+0000AE6E	FUN_0000ae6e	0000AE90	jsr 0x00015d3c.l	00015D3C	measure_relative_heading_and_distance	resolved
 0000AE6E	FUN_0000ae6e	0000AEA2	jsr 0x00014d8e.l	00014D8E	FUN_00014d8e	resolved
 0000AE6E	FUN_0000ae6e	0000AEB4	jmp 0x0001033e.l	0001033E	FUN_0001033e	resolved
 0000AEBA	FUN_0000aeba	0000AF2C	jsr 0x00001378.l	00001378	FUN_00001378	resolved
@@ -438,7 +438,7 @@ caller	caller_name	instruction	text	target	callee	status
 0000B11C	synchronize_entity_behavior_spawn	0000B1D6	bsr.w 0x0000af6c	0000AF6C	reset_entity_animation_state	resolved
 0000B1DC	configure_entity_target_transition	0000B1E0	bsr.w 0x0000abfc	0000ABFC	update_entity_animation_delay	resolved
 0000B1DC	configure_entity_target_transition	0000B1F6	jsr 0x000530de.l	000530DE	FUN_000530de	resolved
-0000B1DC	configure_entity_target_transition	0000B212	jsr 0x00015d3c.l	00015D3C	FUN_00015d3c	resolved
+0000B1DC	configure_entity_target_transition	0000B212	jsr 0x00015d3c.l	00015D3C	measure_relative_heading_and_distance	resolved
 0000B1DC	configure_entity_target_transition	0000B24A	bsr.w 0x0000af6c	0000AF6C	reset_entity_animation_state	resolved
 0000B1DC	configure_entity_target_transition	0000B24E	jsr 0x00015c84.l	00015C84	FUN_00015c84	resolved
 0000B1DC	configure_entity_target_transition	0000B258	jsr 0x0001dbaa.l	0001DBAA	FUN_0001dbaa	resolved
@@ -602,7 +602,7 @@ caller	caller_name	instruction	text	target	callee	status
 0000EA36	FUN_0000ea36	0000EA96	bsr.w 0x0000ead2	0000EAD2	evaluate_terrain_direction_boundary	resolved
 0000EA36	FUN_0000ea36	0000EABA	bsr.w 0x0000ead2	0000EAD2	evaluate_terrain_direction_boundary	resolved
 0000EAD2	evaluate_terrain_direction_boundary	0000EADA	bsr.w 0x0000edfa	0000EDFA	decode_terrain_tile_window	resolved
-0000EB92	FUN_0000eb92	0000EC66	jsr 0x00015d3c.l	00015D3C	FUN_00015d3c	resolved
+0000EB92	FUN_0000eb92	0000EC66	jsr 0x00015d3c.l	00015D3C	measure_relative_heading_and_distance	resolved
 0000EB92	FUN_0000eb92	0000EC8C	bsr.w 0x0000eccc	0000ECCC	FUN_0000eccc	resolved
 0000EB92	FUN_0000eb92	0000EC90	jsr 0x00000d44.l	00000D44	advance_source_prng	resolved
 0000ECCC	FUN_0000eccc	0000ECFA	jsr 0x0001e2e0.l	0001E2E0	FUN_0001e2e0	resolved
@@ -1262,7 +1262,7 @@ caller	caller_name	instruction	text	target	callee	status
 00013904	FUN_00013904	00013974	jmp 0x0001e514.l	0001E514	FUN_0001e514	resolved
 00013904	FUN_00013904	000139C8	jsr 0x0001dbaa.l	0001DBAA	FUN_0001dbaa	resolved
 00013904	FUN_00013904	000139E0	bsr.w 0x00013ffe	00013FFE	FUN_00013ffe	resolved
-00013904	FUN_00013904	00013A04	jsr 0x00015d3c.l	00015D3C	FUN_00015d3c	resolved
+00013904	FUN_00013904	00013A04	jsr 0x00015d3c.l	00015D3C	measure_relative_heading_and_distance	resolved
 00013904	FUN_00013904	00013A0C	bsr.w 0x00013ffe	00013FFE	FUN_00013ffe	resolved
 00013904	FUN_00013904	00013A1C	bra.w 0x00013d0c	00013D0C	FUN_00013d0c	resolved
 00013904	FUN_00013904	00013A6E	bsr.w 0x00014492	00014492	FUN_00014492	resolved
@@ -1289,7 +1289,7 @@ caller	caller_name	instruction	text	target	callee	status
 00013CDE	FUN_00013cde	00013CEC	jsr 0x00010660.l	00010660	FUN_00010660	resolved
 00013D0C	FUN_00013d0c	00013D4E	bsr.w 0x00013a40	00013A40	FUN_00013a40	resolved
 00013D0C	FUN_00013d0c	00013D52	bra.w 0x000145a2	000145A2	FUN_000145a2	resolved
-00013D0C	FUN_00013d0c	00013D6E	jsr 0x00015d3c.l	00015D3C	FUN_00015d3c	resolved
+00013D0C	FUN_00013d0c	00013D6E	jsr 0x00015d3c.l	00015D3C	measure_relative_heading_and_distance	resolved
 00013D0C	FUN_00013d0c	00013DA0	bsr.w 0x00014d6a	00014D6A	FUN_00014d6a	resolved
 00013D0C	FUN_00013d0c	00013E12	jsr 0x00015dcc.l	00015DCC	FUN_00015dcc	resolved
 00013D0C	FUN_00013d0c	00013E34	bsr.w 0x000144e8	000144E8	FUN_000144e8	resolved
@@ -1331,7 +1331,7 @@ caller	caller_name	instruction	text	target	callee	status
 000145A2	FUN_000145a2	000145C4	bsr.w 0x00014c2e	00014C2E	derive_entity_axis_relation_flags	resolved
 000145A2	FUN_000145a2	000145D6	bsr.w 0x00014ba6	00014BA6	FUN_00014ba6	resolved
 000145A2	FUN_000145a2	000145E4	bsr.w 0x00014c2e	00014C2E	derive_entity_axis_relation_flags	resolved
-000145A2	FUN_000145a2	000145F6	jsr 0x00015d3c.l	00015D3C	FUN_00015d3c	resolved
+000145A2	FUN_000145a2	000145F6	jsr 0x00015d3c.l	00015D3C	measure_relative_heading_and_distance	resolved
 0001460E	FUN_0001460e	0001460E	jsr 0x00015ca4.l	00015CA4	compute_diagonal_step_cost	resolved
 00014682	FUN_00014682	000146A6	bsr.w 0x000148d2	000148D2	choose_dominant_axis_directions	resolved
 00014682	FUN_00014682	000146C4	bsr.w 0x000148aa	000148AA	FUN_000148aa	resolved
@@ -1360,7 +1360,7 @@ caller	caller_name	instruction	text	target	callee	status
 00014C7C	FUN_00014c7c	00014CCA	jsr 0x00015c84.l	00015C84	FUN_00015c84	resolved
 00014C7C	FUN_00014c7c	00014D04	bsr.w 0x00014d58	00014D58	FUN_00014d58	resolved
 00014C7C	FUN_00014c7c	00014D1E	jsr 0x0001a2cc.l	0001A2CC	allocate_first_free_effect_slot	resolved
-00014D58	FUN_00014d58	00014D64	jmp 0x00015d3c.l	00015D3C	FUN_00015d3c	resolved
+00014D58	FUN_00014d58	00014D64	jmp 0x00015d3c.l	00015D3C	measure_relative_heading_and_distance	resolved
 00014D8E	FUN_00014d8e	00014DA8	bsr.w 0x00014ff8	00014FF8	FUN_00014ff8	resolved
 00014D8E	FUN_00014d8e	00014DBA	bsr.w 0x00014f26	00014F26	FUN_00014f26	resolved
 00014D8E	FUN_00014d8e	00014DDE	bsr.w 0x00015aba	00015ABA	FUN_00015aba	resolved
@@ -1369,7 +1369,7 @@ caller	caller_name	instruction	text	target	callee	status
 00014F50	FUN_00014f50	00014F7A	bsr.w 0x00015aba	00015ABA	FUN_00015aba	resolved
 00014FF8	FUN_00014ff8	00015000	bsr.w 0x00015118	00015118	FUN_00015118	resolved
 00014FF8	FUN_00014ff8	00015012	jsr 0x00055640.l	00055640	FUN_00055640	resolved
-00014FF8	FUN_00014ff8	0001508C	jsr 0x00015d3c.l	00015D3C	FUN_00015d3c	resolved
+00014FF8	FUN_00014ff8	0001508C	jsr 0x00015d3c.l	00015D3C	measure_relative_heading_and_distance	resolved
 0001514E	FUN_0001514e	000151AC	jsr 0x000038ac.l	000038AC	FUN_000038ac	resolved
 0001514E	FUN_0001514e	000151B6	bsr.w 0x00015a8c	00015A8C	find_first_available_entity_slot	resolved
 0001514E	FUN_0001514e	000151C6	jsr 0x0001dbaa.l	0001DBAA	FUN_0001dbaa	resolved
@@ -1389,11 +1389,11 @@ caller	caller_name	instruction	text	target	callee	status
 00015646	FUN_00015646	0001567E	bsr.w 0x00015118	00015118	FUN_00015118	resolved
 00015646	FUN_00015646	000156DC	jsr 0x0001a2cc.l	0001A2CC	allocate_first_free_effect_slot	resolved
 00015646	FUN_00015646	000157A4	jsr 0x00055848.l	00055848	FUN_00055848	resolved
-00015646	FUN_00015646	000157C4	jsr 0x00015d3c.l	00015D3C	FUN_00015d3c	resolved
+00015646	FUN_00015646	000157C4	jsr 0x00015d3c.l	00015D3C	measure_relative_heading_and_distance	resolved
 00015830	FUN_00015830	00015850	jmp 0x000049a2.l	000049A2	FUN_000049a2	resolved
 00015830	FUN_00015830	00015862	jsr 0x0001dbaa.l	0001DBAA	FUN_0001dbaa	resolved
 00015830	FUN_00015830	00015868	bsr.b 0x0001582a	0001582A	allocate_first_free_effect_slot	resolved
-00015830	FUN_00015830	00015882	jsr 0x00015d3c.l	00015D3C	FUN_00015d3c	resolved
+00015830	FUN_00015830	00015882	jsr 0x00015d3c.l	00015D3C	measure_relative_heading_and_distance	resolved
 00015830	FUN_00015830	0001588C	bsr.w 0x0001597e	0001597E	FUN_0001597e	resolved
 00015830	FUN_00015830	00015916	jsr 0x000530de.l	000530DE	FUN_000530de	resolved
 00015830	FUN_00015830	00015928	jsr (A2)			indirect/unresolved
@@ -1403,7 +1403,7 @@ caller	caller_name	instruction	text	target	callee	status
 0001597E	FUN_0001597e	000159F2	jsr 0x00015cc0.l	00015CC0	compute_diagonal_step_cost	resolved
 00015C58	FUN_00015c58	00015C6C	bsr.w 0x00014d58	00014D58	FUN_00014d58	resolved
 00015C84	FUN_00015c84	00015C8E	bsr.b 0x00015c58	00015C58	FUN_00015c58	resolved
-00015D3C	FUN_00015d3c	00015D44	bsr.w 0x00015d4e	00015D4E	FUN_00015d4e	resolved
+00015D3C	measure_relative_heading_and_distance	00015D44	bsr.w 0x00015d4e	00015D4E	measure_heading_and_distance	resolved
 00016396	FUN_00016396	00016396	bsr.w 0x000163da	000163DA	FUN_000163da	resolved
 00016396	FUN_00016396	000163B2	jsr 0x00001088.l	00001088	step_palette_toward_black	resolved
 000163DA	FUN_000163da	0001640A	jsr (A1)			indirect/unresolved

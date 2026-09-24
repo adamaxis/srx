@@ -422,8 +422,8 @@ entry	name	size	callingConvention	decompileStatus	file
 00015C84	FUN_00015c84	32	unknown	ok	ghidra-c/fn_00015C84.cpp
 00015CA4	compute_diagonal_step_cost	28	unknown	ok	ghidra-c/fn_00015CA4.cpp
 00015CC0	compute_diagonal_step_cost	36	unknown	ok	ghidra-c/fn_00015CC0.cpp
-00015D3C	FUN_00015d3c	18	unknown	ok	ghidra-c/fn_00015D3C.cpp
-00015D4E	FUN_00015d4e	126	unknown	ok	ghidra-c/fn_00015D4E.cpp
+00015D3C	measure_relative_heading_and_distance	18	unknown	ok	ghidra-c/fn_00015D3C.cpp
+00015D4E	measure_heading_and_distance	126	unknown	ok	ghidra-c/fn_00015D4E.cpp
 00015DCC	FUN_00015dcc	42	unknown	ok	ghidra-c/fn_00015DCC.cpp
 00016396	FUN_00016396	68	unknown	ok	ghidra-c/fn_00016396.cpp
 000163DA	FUN_000163da	64	unknown	ok	ghidra-c/fn_000163DA.cpp

@@ -30,5 +30,32 @@ int main() {
         return 6;
     }
 
+    const auto negative_vertical = measure_heading_and_distance(0, -100);
+    if (!expect(negative_vertical.heading == 0x4000U &&
+                negative_vertical.distance == 100U)) {
+        return 7;
+    }
+    const auto positive_horizontal = measure_heading_and_distance(100, 0);
+    if (!expect(positive_horizontal.heading == 0x8000U &&
+                positive_horizontal.distance == 100U)) {
+        return 8;
+    }
+    const auto southwest = measure_heading_and_distance(-100, 100);
+    if (!expect(southwest.heading == 0xA000U && southwest.distance == 150U)) {
+        return 9;
+    }
+    const auto zero = measure_heading_and_distance(0, 0);
+    if (!expect(zero.heading == 0U && zero.distance == 0U)) {
+        return 10;
+    }
+    const auto relative = measure_relative_heading_and_distance(10, 20, 10, 120);
+    if (!expect(relative.heading == 0xC000U && relative.distance == 100U)) {
+        return 11;
+    }
+    const auto quantized = measure_heading_and_distance(-64, -63);
+    if (!expect(quantized.heading == 0xE100U && quantized.distance == 95U)) {
+        return 12;
+    }
+
     return 0;
 }

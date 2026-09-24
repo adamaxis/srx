@@ -101,6 +101,8 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0000C8B0L, "apply_byte_counter_delta_with_negative_floor");
         names.put(0x00015CA4L, "compute_diagonal_step_cost");
         names.put(0x00015CC0L, "compute_diagonal_step_cost");
+        names.put(0x00015D3CL, "measure_relative_heading_and_distance");
+        names.put(0x00015D4EL, "measure_heading_and_distance");
         names.put(0x000148D2L, "choose_dominant_axis_directions");
         names.put(0x00014C56L, "project_heading_position");
         names.put(0x0000E00AL, "wait_for_controller_event");

@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00004018 FUN_00004018
 //   0x000040E2 FUN_000040e2
-//   0x00015D3C FUN_00015d3c
+//   0x00015D3C measure_relative_heading_and_distance
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -23,7 +23,7 @@ void FUN_00003bac(void)
   uVar3 = DAT_00ffddc8;
   uVar1 = DAT_00ffddc6;
   uStack_4 = 0x3bca;
-  FUN_00015d3c();
+  measure_relative_heading_and_distance();
   if (uVar1 < 0x20) {
     _DAT_00ffdf5a = 0;
     return;

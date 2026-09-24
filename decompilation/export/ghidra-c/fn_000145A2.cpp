@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00014BA6 FUN_00014ba6
 //   0x00014C2E derive_entity_axis_relation_flags
-//   0x00015D3C FUN_00015d3c
+//   0x00015D3C measure_relative_heading_and_distance
 
 
 void FUN_000145a2(void)
@@ -59,7 +59,7 @@ void FUN_000145a2(void)
 LAB_000145e8:
     uVar3 = in_A0[0x4b];
     uVar6 = in_A0[0x4c];
-    FUN_00015d3c();
+    measure_relative_heading_and_distance();
     iVar7 = extraout_A0_02;
   }
   else {

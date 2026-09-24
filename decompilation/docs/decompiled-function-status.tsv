@@ -83,6 +83,8 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x14C56	heading position projection	ghidra_conversion::project_heading_position	shadowrun_native_port	partial		Extracted eight-entry heading vector table applied to typed world coordinates
 0x14C2E	entity axis relation flags	ghidra_conversion::derive_entity_axis_relation_flags	shadowrun_native_port	partial		Typed X/Y no-greater-than target flags
 0x15A8C	first available entity slot	ghidra_conversion::find_first_available_entity_slot	shadowrun_native_port	partial		Typed six-slot scan returning 9..14 or the source sentinel 15
+0x15D3C	relative heading and distance	ghidra_conversion::measure_relative_heading_and_distance	shadowrun_native_port	partial		Typed position delta wrapper for heading and half-major-axis distance
+0x15D4E	heading and distance measurement	ghidra_conversion::measure_heading_and_distance	shadowrun_native_port	partial		Typed extraction of the source heading correction table and half-major-axis distance
 0x195C	controller sampling	ghidra_conversion::derive_controller_sample	shadowrun_boot_sequence	partial		Readable edge conversion is isolated from runtime and emulator
 0x19F2	controller port read	Windows input adapter	shadowrun_native_port	pending		Genesis port phases documented; host device mapping remains separate
 0x1BAC	title input sequence validation	ghidra_conversion::finalize_title_input_sequence	shadowrun_menu_system	partial		Seven-byte match and mismatch reset converted without the FF sentinel

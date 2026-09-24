@@ -11,7 +11,7 @@
 //   0x00013FFE FUN_00013ffe
 //   0x00014492 FUN_00014492
 //   0x00014508 FUN_00014508
-//   0x00015D3C FUN_00015d3c
+//   0x00015D3C measure_relative_heading_and_distance
 //   0x0001DBAA FUN_0001dbaa
 //   0x0001E514 FUN_0001e514
 
@@ -211,7 +211,7 @@ LAB_000139d8:
           }
           else {
             local_4 = 0x13a0a;
-            FUN_00015d3c();
+            measure_relative_heading_and_distance();
             uStack_8 = 0x13a10;
             local_4 = extraout_A1;
             iVar2 = FUN_00013ffe();
@@ -233,7 +233,7 @@ LAB_000139d8:
         uVar3 = *DAT_00fffc04;
         unaff_D2w = DAT_00fffc04[2];
         local_4 = 0x13f52;
-        FUN_00015d3c();
+        measure_relative_heading_and_distance();
         bVar10 = uVar3 < 0x640;
         in_A0 = extraout_A0_05;
         if (bVar10) {
@@ -298,7 +298,7 @@ LAB_000145e8:
     uVar5 = puVar7[0x4b];
     uVar3 = puVar7[0x4c];
     *(undefined4 *)((int)register0x0000003c + -4) = 0x145fc;
-    FUN_00015d3c();
+    measure_relative_heading_and_distance();
     iVar2 = extraout_A0_13;
   }
   else {

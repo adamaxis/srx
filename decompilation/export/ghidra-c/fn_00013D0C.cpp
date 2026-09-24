@@ -7,7 +7,7 @@
 //   0x000144E8 FUN_000144e8
 //   0x000145A2 FUN_000145a2
 //   0x00014D6A FUN_00014d6a
-//   0x00015D3C FUN_00015d3c
+//   0x00015D3C measure_relative_heading_and_distance
 //   0x00015DCC FUN_00015dcc
 
 
@@ -69,7 +69,7 @@ ushort * FUN_00013d0c(void)
   }
   uVar5 = *puVar3;
   uVar7 = puVar3[2];
-  FUN_00015d3c();
+  measure_relative_heading_and_distance();
   *(byte *)(extraout_A0 + 0x58) = *(byte *)(extraout_A0 + 0x58) & 0xef;
   in_A0 = extraout_A0;
   if ((extraout_A0[8] & 0x800) == 0) {
@@ -143,7 +143,7 @@ LAB_00013e40:
 LAB_000145e8:
     uVar5 = puVar3[0x4b];
     uVar7 = puVar3[0x4c];
-    puVar3 = (ushort *)FUN_00015d3c();
+    puVar3 = (ushort *)measure_relative_heading_and_distance();
     iVar8 = extraout_A0_06;
   }
   else {

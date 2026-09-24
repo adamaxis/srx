@@ -1,18 +1,18 @@
 // Ghidra headless export
 // Entry: 0x00015D3C
-// Name: FUN_00015d3c
+// Name: measure_relative_heading_and_distance
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00015D4E FUN_00015d4e
+//   0x00015D4E measure_heading_and_distance
 
 
-undefined8 FUN_00015d3c(void)
+undefined8 measure_relative_heading_and_distance(void)
 
 {
   undefined4 in_D0;
   undefined4 in_D1;
   
-  FUN_00015d4e();
+  measure_heading_and_distance();
   return CONCAT44(in_D0,in_D1);
 }
 

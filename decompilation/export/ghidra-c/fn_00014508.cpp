@@ -129,7 +129,7 @@ LAB_000145e8:
     uVar6 = puVar8[0x4c];
     puVar11[-0xffffffff00000002] = 1;
     puVar11[-0xffffffff00000001] = 0x45fc;
-    FUN_00015d3c();
+    measure_relative_heading_and_distance();
     iVar9 = extraout_A0_05;
   }
   else {

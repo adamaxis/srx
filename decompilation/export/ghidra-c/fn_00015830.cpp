@@ -6,7 +6,7 @@
 //   0x000049A2 FUN_000049a2
 //   0x0001582A allocate_first_free_effect_slot
 //   0x0001597E FUN_0001597e
-//   0x00015D3C FUN_00015d3c
+//   0x00015D3C measure_relative_heading_and_distance
 //   0x0001DBAA FUN_0001dbaa
 //   0x000530DE FUN_000530de
 
@@ -42,7 +42,7 @@ void FUN_00015830(void)
         *(undefined4 *)(extraout_A1 + 0xd8) = extraout_A0;
         uVar5 = CONCAT22(uVar1,in_stack_fffffffa);
         uVar1 = *(undefined2 *)(extraout_A1 + 4);
-        FUN_00015d3c(uVar5,CONCAT22(extraout_D1w,uVar6));
+        measure_relative_heading_and_distance(uVar5,CONCAT22(extraout_D1w,uVar6));
         *(undefined2 *)(extraout_A0_00 + 0x2e) = uVar1;
         FUN_0001597e();
         if (*(char *)(extraout_A0_01 + 0x57) == '\x06') {

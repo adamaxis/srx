@@ -8,7 +8,7 @@
 //   0x0000AFF2 prepare_entity_auxiliary_behavior
 //   0x00015A8C find_first_available_entity_slot
 //   0x00015C84 FUN_00015c84
-//   0x00015D3C FUN_00015d3c
+//   0x00015D3C measure_relative_heading_and_distance
 //   0x0001DBAA FUN_0001dbaa
 //   0x000530DE FUN_000530de
 //   0x00055C76 FUN_00055c76
@@ -38,7 +38,7 @@ void configure_entity_target_transition(void)
   iVar4 = extraout_A0;
   if (*(int *)(extraout_A0 + 0xa2) != 0) {
     uVar2 = *(undefined2 *)(*(int *)(extraout_A0 + 0xa2) + 4);
-    FUN_00015d3c();
+    measure_relative_heading_and_distance();
     *(undefined2 *)(extraout_A0_00 + 0x34) = uVar2;
     iVar4 = extraout_A0_00;
   }

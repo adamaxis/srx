@@ -77,7 +77,7 @@ void FUN_000149c0(void)
       derive_entity_axis_relation_flags();
       uVar2 = *(undefined2 *)(extraout_A0_02 + 0x96);
       uVar5 = *(ushort *)(extraout_A0_02 + 0x98);
-      FUN_00015d3c();
+      measure_relative_heading_and_distance();
       iVar6 = extraout_A0;
       goto LAB_000145fc;
     }

@@ -3,13 +3,13 @@
 // Name: FUN_00014d58
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00015D3C FUN_00015d3c
+//   0x00015D3C measure_relative_heading_and_distance
 
 
 void FUN_00014d58(void)
 
 {
-  FUN_00015d3c();
+  measure_relative_heading_and_distance();
   return;
 }
 

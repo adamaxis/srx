@@ -85,7 +85,7 @@ void FUN_000138b8(void)
   }
   else {
     uStack_4 = 0x13a0a;
-    FUN_00015d3c();
+    measure_relative_heading_and_distance();
     uStack_8 = 0x13a10;
     uStack_4 = extraout_A1;
     iVar3 = FUN_00013ffe();
@@ -176,7 +176,7 @@ LAB_000145e8:
     uVar7 = puVar9[0x4c];
     puVar12[-0xffffffff00000002] = 1;
     puVar12[-0xffffffff00000001] = 0x45fc;
-    FUN_00015d3c();
+    measure_relative_heading_and_distance();
     iVar10 = extraout_A0_08;
   }
   else {
