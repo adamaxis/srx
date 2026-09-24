@@ -1,0 +1,41 @@
+// Ghidra headless export
+// Entry: 0x0005D8BA
+// Name: FUN_0005d8ba
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x0005B2E2 FUN_0005b2e2
+
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_0005d8ba(void)
+
+{
+  short sVar1;
+  
+  DAT_00ffdf90 = DAT_00ffdf90 + -1;
+  if (DAT_00ffdf90 < 0) {
+    DAT_00ffdf90 = 4;
+    DAT_00ffdf92 = DAT_00ffdf92 + 1;
+    if (7 < DAT_00ffdf92) {
+      DAT_00ffdf92 = 0;
+    }
+    sVar1 = DAT_00ffdf92 << 1;
+    _DAT_00ffd884 = *(undefined2 *)((int)&DAT_0005dce6 + (int)sVar1);
+    DAT_00ffd886 = *(undefined2 *)((int)&DAT_0005dce8 + (int)sVar1);
+    DAT_00ffd888 = *(undefined2 *)((int)&DAT_0005dcea + (int)sVar1);
+    DAT_00ffd88a = *(undefined2 *)((int)&DAT_0005dcec + (int)sVar1);
+    DAT_00ffd88c = *(undefined2 *)((int)&DAT_0005dcee + (int)sVar1);
+    DAT_00ffd88e = *(undefined2 *)((int)&DAT_0005dcf0 + (int)sVar1);
+    DAT_00ffd890 = *(undefined2 *)((int)&DAT_0005dcf2 + (int)sVar1);
+    DAT_00ffd892 = *(undefined2 *)((int)&DAT_0005dcf4 + (int)sVar1);
+    DAT_00ffef14 = DAT_00ffef14 | 1;
+  }
+  else if (DAT_00ffdf90 == 2) {
+    FUN_0005b2e2();
+    return;
+  }
+  return;
+}
+
+

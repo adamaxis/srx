@@ -1,9 +1,14 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x00014C7C
+// Ghidra headless export
+// Entry: 0x00014C7C
+// Name: FUN_00014c7c
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x00014C56 FUN_00014c56
+//   0x00014D58 FUN_00014d58
+//   0x00015C58 FUN_00015c58
+//   0x00015C84 FUN_00015c84
+//   0x0001A2CC FUN_0001a2cc
 
-
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
 void FUN_00014c7c(void)
 
@@ -27,12 +32,12 @@ void FUN_00014c7c(void)
     if ((*(short *)(in_A0 + 0xe) == 0xd) ||
        (bVar3 = *(ushort *)(in_A0 + 0xe) < 0xe, *(ushort *)(in_A0 + 0xe) == 0xe)) {
       FUN_00014d58();
-      _DAT_00ffdd48 = *(undefined2 *)(extraout_A0_00 + 0x2e);
+      DAT_00ffdd48 = *(undefined2 *)(extraout_A0_00 + 0x2e);
       FUN_00014c56();
       *(undefined2 *)(extraout_A0_01 + 0x2e) = unaff_D2w;
       bVar4 = 0;
       FUN_00015c84();
-      *(undefined2 *)(extraout_A0_02 + 0x2e) = _DAT_00ffdd48;
+      *(undefined2 *)(extraout_A0_02 + 0x2e) = DAT_00ffdd48;
       if ((bVar4 & 1) != 0) {
         if ((*(short *)(extraout_A0_02 + 0xe) == 0xe) || (*(short *)(extraout_A0_02 + 0x1e) != 2)) {
           *(undefined2 *)(extraout_A0_02 + 0x2e) = unaff_D2w;

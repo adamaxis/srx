@@ -1,9 +1,10 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x0000FEBE
+// Ghidra headless export
+// Entry: 0x0000FEBE
+// Name: FUN_0000febe
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   (none)
 
-
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
 void FUN_0000febe(void)
 
@@ -11,7 +12,7 @@ void FUN_0000febe(void)
   char in_D0b;
   short sVar1;
   
-  sVar1 = *_DAT_00fff10e;
+  sVar1 = *DAT_00fff10e;
   if (DAT_00fff0d1 == '\0') {
     if (-1 < (short)(sVar1 + -7)) {
       sVar1 = 6;

@@ -1,9 +1,10 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x0000EAD2
+// Ghidra headless export
+// Entry: 0x0000EAD2
+// Name: FUN_0000ead2
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x0000EDFA FUN_0000edfa
 
-
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
 void FUN_0000ead2(void)
 
@@ -15,7 +16,7 @@ void FUN_0000ead2(void)
   short unaff_D5w;
   short unaff_D6w;
   
-  sVar1 = _DAT_00ffdfe4;
+  sVar1 = DAT_00ffdfe4;
   uVar2 = FUN_0000edfa();
   uVar2 = uVar2 & 0x38;
   if (uVar2 == 0x20) {

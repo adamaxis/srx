@@ -1,0 +1,50 @@
+// Ghidra headless export
+// Entry: 0x00003E14
+// Name: FUN_00003e14
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x00000E9C FUN_00000e9c
+
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_00003e14(void)
+
+{
+  short sVar1;
+  int iVar2;
+  int extraout_D1;
+  int iVar3;
+  short unaff_D3w;
+  ushort uVar4;
+  short unaff_D7w;
+  int extraout_A0;
+  int extraout_A1;
+  
+  VDP_CTRL = 0x8f80;
+  FUN_00000e9c();
+  iVar2 = (uint)*(ushort *)(extraout_A1 + unaff_D3w) << 5;
+  iVar3 = extraout_D1;
+  do {
+    uVar4 = *(ushort *)(extraout_A0 + iVar3 + iVar2);
+    if ((short)_DAT_00ffdf58 < 0) {
+      uVar4 = uVar4 ^ 0x8000;
+    }
+    else {
+      uVar4 = _DAT_00ffdf58 | uVar4;
+    }
+    VDP_DATA = uVar4;
+    sVar1 = (short)iVar3 + 8;
+    if (0x1e < sVar1) {
+      sVar1 = (short)iVar3 + -0x18;
+      unaff_D3w = DAT_00ffddea + unaff_D3w;
+      iVar2 = (uint)*(ushort *)(extraout_A1 + unaff_D3w) << 5;
+    }
+    iVar3 = CONCAT22((short)((uint)iVar3 >> 0x10),sVar1);
+    unaff_D7w = unaff_D7w + -1;
+  } while (unaff_D7w != -1);
+  VDP_CTRL = 0x8f02;
+  return;
+}
+
+

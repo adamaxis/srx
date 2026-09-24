@@ -1,6 +1,17 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x0001F3C4
+// Ghidra headless export
+// Entry: 0x0001F3C4
+// Name: FUN_0001f3c4
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x00000BD2 FUN_00000bd2
+//   0x00000BF2 FUN_00000bf2
+//   0x00000C24 FUN_00000c24
+//   0x00000D94 FUN_00000d94
+//   0x00001232 FUN_00001232
+//   0x0000195C FUN_0000195c
+//   0x0000C134 FUN_0000c134
+//   0x0000C168 FUN_0000c168
+//   0x0001F5A8 FUN_0001f5a8
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -29,7 +40,7 @@ int * FUN_0001f3c4(void)
     if (*in_A0 < 0) {
       FUN_00000c24();
       FUN_00000d94();
-      return (int *)0xfb;
+      return (int *)((int)&VectorsTable_00000000.Reserv3E + 3);
     }
     FUN_0000c134();
     DAT_00ffb740 = 0xff;
@@ -61,17 +72,17 @@ int * FUN_0001f3c4(void)
         FUN_00000bd2();
         FUN_00000bf2();
         FUN_0000195c();
-        if ((DAT_00ffdd22 & 0x40) != 0) {
+        if ((DAT_00ffdd22._0_1_ & 0x40) != 0) {
           in_A0 = (int *)*extraout_A0_02;
           goto LAB_0001f530;
         }
-        if ((DAT_00ffdd22 & 0x10) == 0) break;
+        if ((DAT_00ffdd22._0_1_ & 0x10) == 0) break;
         if (-1 < _DAT_00fff0d2) {
           in_A0 = (int *)extraout_A0_02[1];
           goto LAB_0001f530;
         }
       }
-    } while (((DAT_00ffdd22 & 0x20) == 0) || (DAT_00fff0d3 < '\0'));
+    } while (((DAT_00ffdd22._0_1_ & 0x20) == 0) || (DAT_00fff0d3 < '\0'));
     in_A0 = (int *)extraout_A0_02[2];
 LAB_0001f530:
     if ((int)in_A0 + -0xfa < 0) {

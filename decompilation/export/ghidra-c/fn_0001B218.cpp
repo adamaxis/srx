@@ -1,19 +1,21 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x0001B218
+// Ghidra headless export
+// Entry: 0x0001B218
+// Name: FUN_0001b218
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x000013BE FUN_000013be
+//   0x000061CC FUN_000061cc
 
-
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
 void FUN_0001b218(void)
 
 {
-  _DAT_00ffe0fa = _DAT_00ffe0fa + -1;
-  if (_DAT_00ffe0fa < 0) {
-    _DAT_00ffe0fa = 3;
-    _DAT_00ffe0f8 = _DAT_00ffe0f8 + 1;
-    if (5 < _DAT_00ffe0f8) {
-      _DAT_00ffe0f8 = 0;
+  DAT_00ffe0fa = DAT_00ffe0fa + -1;
+  if (DAT_00ffe0fa < 0) {
+    DAT_00ffe0fa = 3;
+    DAT_00ffe0f8 = DAT_00ffe0f8 + 1;
+    if (5 < DAT_00ffe0f8) {
+      DAT_00ffe0f8 = 0;
     }
   }
   FUN_000061cc();

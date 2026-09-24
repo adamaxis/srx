@@ -1,0 +1,34 @@
+// Ghidra headless export
+// Entry: 0x00004E86
+// Name: FUN_00004e86
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x000013BE FUN_000013be
+//   0x000061A0 FUN_000061a0
+//   0x0001A304 FUN_0001a304
+
+
+void FUN_00004e86(void)
+
+{
+  char cVar1;
+  int in_A0;
+  int extraout_A0;
+  
+  cVar1 = *(char *)(in_A0 + 2) + -1;
+  *(char *)(in_A0 + 2) = cVar1;
+  if (cVar1 < '\0') {
+    *(undefined1 *)(in_A0 + 2) = 6;
+    *(char *)(in_A0 + 3) = *(char *)(in_A0 + 3) + '\x01';
+    if ('\x03' < *(char *)(in_A0 + 3)) {
+      FUN_0001a304();
+      *(byte *)(extraout_A0 + 0x11) = *(byte *)(extraout_A0 + 0x11) & 0xbf;
+      return;
+    }
+  }
+  FUN_000061a0();
+  FUN_000013be();
+  return;
+}
+
+

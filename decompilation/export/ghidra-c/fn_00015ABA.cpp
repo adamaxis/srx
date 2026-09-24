@@ -1,6 +1,9 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x00015ABA
+// Ghidra headless export
+// Entry: 0x00015ABA
+// Name: FUN_00015aba
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   (none)
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -14,7 +17,7 @@ void FUN_00015aba(void)
   short *in_A0;
   short *psVar2;
   
-  psVar2 = (short *)&DAT_00ff0100;
+  psVar2 = &DAT_00ff0100;
   sVar1 = 9;
   do {
     if (((((*(byte *)(psVar2 + 8) & 1) != 0) && ((*(byte *)(psVar2 + 8) & 0x40) == 0)) &&

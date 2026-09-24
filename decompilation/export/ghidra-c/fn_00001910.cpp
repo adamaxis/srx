@@ -1,25 +1,31 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x00001910
+// Ghidra headless export
+// Entry: 0x00001910
+// Name: FUN_00001910
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   (none)
 
-
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
 undefined4 FUN_00001910(void)
 
 {
+  byte bVar1;
   undefined4 in_D0;
-  undefined1 *puVar1;
+  word *pwVar2;
   
-  _DAT_00c00004 = 0xc05e0000;
-  _DAT_00fff9f0 = _DAT_00fff9f0 + 1;
-  if ((_DAT_00fff9f0 & 1) == 0) {
-    puVar1 = &DAT_00ffd8dc;
+  Ram00c00004 = 0xc05e0000;
+  DAT_00fff9f0 = DAT_00fff9f0 + 1;
+  if ((DAT_00fff9f0 & 1) == 0) {
+    pwVar2 = &DAT_00ffd8dc;
   }
   else {
-    puVar1 = &DAT_00ffd8bc;
+    pwVar2 = &DAT_00ffd8bc;
   }
-  _DAT_00c00000 = *(undefined2 *)(puVar1 + 2);
+  do {
+    bVar1 = VDP_CTRL._1_1_;
+  } while ((bVar1 & 4) == 0);
+  VDP_DATA = *pwVar2;
+  VDP_DATA = pwVar2[1];
   return in_D0;
 }
 

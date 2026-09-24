@@ -1,6 +1,13 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x00002BD2
+// Ghidra headless export
+// Entry: 0x00002BD2
+// Name: FUN_00002bd2
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x0000131C FUN_0000131c
+//   0x0000286E FUN_0000286e
+//   0x00002900 FUN_00002900
+//   0x00002C6C FUN_00002c6c
+//   0x0000301E FUN_0000301e
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -12,14 +19,14 @@ void FUN_00002bd2(void)
   
   FUN_0000131c();
   if (_DAT_00ffdf8e == 0) {
-    _DAT_00ffddc6 = _DAT_00ffddc6 & 0xff80;
-    _DAT_00ffddc8 = _DAT_00ffddc8 & 0xff80;
-    _DAT_00ffdf36 = 0xffff;
-    _DAT_00ffdf38 = 0xffff;
+    DAT_00ffddc6 = DAT_00ffddc6 & 0xff80;
+    DAT_00ffddc8 = DAT_00ffddc8 & 0xff80;
+    DAT_00ffdf36 = 0xffff;
+    DAT_00ffdf38 = 0xffff;
     FUN_00002900();
     FUN_0000286e();
-    sVar1 = _DAT_00ffe11a;
-    if ((_DAT_00ffe11a != 0) && (_DAT_00ffe11a = 0, DAT_00ffe16e < '\0')) {
+    sVar1 = DAT_00ffe11a;
+    if ((DAT_00ffe11a != 0) && (DAT_00ffe11a = 0, DAT_00ffe16e < '\0')) {
       (&DAT_00ff1700)[sVar1] = ((&DAT_00ff1700)[sVar1] & 0xe0) + 1;
     }
     FUN_00002c6c();

@@ -1,9 +1,13 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x0001FD80
+// Ghidra headless export
+// Entry: 0x0001FD80
+// Name: FUN_0001fd80
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x00000D3A FUN_00000d3a
+//   0x0001E1FC FUN_0001e1fc
+//   0x0001F246 FUN_0001f246
+//   0x00059BCC FUN_00059bcc
 
-
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
 void FUN_0001fd80(void)
 
@@ -11,22 +15,22 @@ void FUN_0001fd80(void)
   short sVar1;
   
   if ((DAT_00fffbf8 == '\x06') && (DAT_00fffbf9 == '\0')) {
-    _DAT_00fffc30 = _DAT_00fffc30 & 0xfffffdff;
+    DAT_00fffc30 = DAT_00fffc30 & 0xfffffdff;
     FUN_0001f246();
     return;
   }
   if ((DAT_00fffbf8 == '\a') && (DAT_00fffbf9 == '\0')) {
-    if ((_DAT_00fffc1e & 0x1000000) == 0) {
-      _DAT_00fffc1e = _DAT_00fffc1e | 0x1000000;
+    if ((DAT_00fffc1e & 0x1000000) == 0) {
+      DAT_00fffc1e = DAT_00fffc1e | 0x1000000;
     }
-    else if ((_DAT_00fffc1e & 0x2000000) != 0) {
+    else if ((DAT_00fffc1e & 0x2000000) != 0) {
       FUN_00059bcc();
     }
-code_r0x0001fe7a:
+LAB_0001fe7a:
     FUN_0001f246();
     return;
   }
-  if ((DAT_00fffbf8 == '\t') && (DAT_00fffbf9 == '\0')) goto code_r0x0001fe7a;
+  if ((DAT_00fffbf8 == '\t') && (DAT_00fffbf9 == '\0')) goto LAB_0001fe7a;
   DAT_00fff0d6 = 0;
   if (DAT_00fffbf8 == '\0') {
     if ((((DAT_00fffbf9 == '\x01') || (DAT_00fffbf9 == '\x02')) || (DAT_00fffbf9 == '\x04')) ||

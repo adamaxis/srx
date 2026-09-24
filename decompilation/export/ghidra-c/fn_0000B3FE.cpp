@@ -1,6 +1,10 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x0000B3FE
+// Ghidra headless export
+// Entry: 0x0000B3FE
+// Name: FUN_0000b3fe
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x0000ABFC FUN_0000abfc
+//   0x0000AF6C FUN_0000af6c
 
 
 void FUN_0000b3fe(void)
@@ -16,7 +20,8 @@ void FUN_0000b3fe(void)
   if ((short)uVar1 < 0) {
     uVar1 = uVar1 + 1;
   }
-  *(undefined2 *)(in_A0 + 0x16) = *(undefined2 *)(&DAT_0000c092 + (short)((uVar1 & 7) << 1));
+  *(undefined2 *)(in_A0 + 0x16) =
+       *(undefined2 *)((int)&PTR_DAT_0000c092 + (int)(short)((uVar1 & 7) << 1));
   FUN_0000af6c();
   FUN_0000abfc();
   return;

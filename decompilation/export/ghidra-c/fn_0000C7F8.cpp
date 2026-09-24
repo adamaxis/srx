@@ -1,6 +1,9 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x0000C7F8
+// Ghidra headless export
+// Entry: 0x0000C7F8
+// Name: FUN_0000c7f8
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   (none)
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -9,7 +12,7 @@ void FUN_0000c7f8(void)
 
 {
   uint uVar1;
-  undefined **ppuVar2;
+  undefined *puVar2;
   int extraout_A0;
   int extraout_A0_00;
   
@@ -19,7 +22,7 @@ void FUN_0000c7f8(void)
       DAT_00fffc0c = 0xff;
       FUN_0000c8b0();
       FUN_0001e514();
-      if (extraout_A0 == _DAT_00fffc04) {
+      if (extraout_A0 == DAT_00fffc04) {
         FUN_0000391a();
       }
     }
@@ -27,7 +30,7 @@ void FUN_0000c7f8(void)
       DAT_00fffc0d = 0xff;
       FUN_0000c8b0();
       FUN_0001e514();
-      if (extraout_A0_00 == _DAT_00fffc04) {
+      if (extraout_A0_00 == DAT_00fffc04) {
         FUN_0000391a();
       }
     }
@@ -38,22 +41,22 @@ void FUN_0000c7f8(void)
   DAT_00ffe186 = 0;
   DAT_00ffe182 = 0;
   DAT_00fff10c = 0;
-  if (DAT_00fffbed == '\x05') {
+  if ((char)DAT_00fffbec == '\x05') {
     if (((DAT_00fffc1c & 1) == 0) || ((DAT_00fffc1c & 0x80) != 0)) goto LAB_0000c716;
     DAT_00ffe183 = 0;
-    ppuVar2 = &PTR_DAT_000f3d5c;
+    puVar2 = &DAT_000f3d5c;
 LAB_0000c690:
-    FUN_0001ded8(ppuVar2);
+    FUN_0001ded8(puVar2);
   }
   else {
-    if (DAT_00fffbed == '\x01') {
+    if ((char)DAT_00fffbec == '\x01') {
       if ((DAT_00fffc1c & 1) == 0) goto LAB_0000c716;
-      ppuVar2 = &PTR_DAT_000f359e;
+      puVar2 = &DAT_000f359e;
       goto LAB_0000c690;
     }
-    if (((DAT_00fffbed != '\x02') && (DAT_00fffbed != '\x04')) || ((DAT_00fffc1c & 1) == 0))
-    goto LAB_0000c716;
-    _DAT_00fffc22 = _DAT_00fffc22 & 0xfffffdff;
+    if ((((char)DAT_00fffbec != '\x02') && ((char)DAT_00fffbec != '\x04')) ||
+       ((DAT_00fffc1c & 1) == 0)) goto LAB_0000c716;
+    DAT_00fffc22 = DAT_00fffc22 & 0xfffffdff;
   }
   FUN_0001e68c();
   FUN_0001f246();
@@ -71,15 +74,15 @@ LAB_0000c716:
   if ((char)(DAT_00ff019c + -8) < '\0') {
     DAT_00ff019c = '\b';
   }
-  uVar1 = _DAT_00fffbfe >> 3;
+  uVar1 = DAT_00fffbfe >> 3;
   if (-1 < (int)(uVar1 - 5000)) {
     uVar1 = 5000;
   }
-  _DAT_00fffbfe = _DAT_00fffbfe - uVar1;
+  DAT_00fffbfe = DAT_00fffbfe - uVar1;
   FUN_0001f246();
   FUN_000038fa();
   FUN_0000391a();
-  if ((_DAT_00fffc1e & 1) == 0) {
+  if ((DAT_00fffc1e & 1) == 0) {
     FUN_00002a44();
     return;
   }

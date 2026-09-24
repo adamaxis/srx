@@ -1,0 +1,47 @@
+// Ghidra headless export
+// Entry: 0x0001E166
+// Name: FUN_0001e166
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x00000D44 FUN_00000d44
+//   0x0001E1FC FUN_0001e1fc
+//   0x0001E2E0 FUN_0001e2e0
+//   0x00059986 FUN_00059986
+
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_0001e166(void)
+
+{
+  ushort uVar1;
+  short sVar2;
+  ushort extraout_D1w;
+  undefined4 unaff_A6;
+  
+  if ((((_DAT_00ffdfe8 == 0) && ((*(byte *)(DAT_00fffc04 + 0x11) & 0x80) == 0)) &&
+      (DAT_00ffe18b == '\0')) &&
+     (((DAT_00ffe16f != '\0' || (_DAT_00ffdf84 == 0)) && (DAT_00ffe177 == '\0')))) {
+    if ((DAT_00ffdf88 & 0x3ff) != 10) {
+      return;
+    }
+    uVar1 = FUN_00000d44();
+    if (uVar1 < extraout_D1w) {
+      if (DAT_00ffe16f != '\0') {
+        FUN_0001e1fc();
+        return;
+      }
+      sVar2 = FUN_00059986();
+      if (sVar2 != 0) {
+        _DAT_00ffdd2c = unaff_A6;
+        FUN_0001e2e0();
+        return;
+      }
+      FUN_0001e216();
+      return;
+    }
+  }
+  return;
+}
+
+

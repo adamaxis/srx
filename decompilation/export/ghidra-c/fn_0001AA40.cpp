@@ -1,6 +1,15 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x0001AA40
+// Ghidra headless export
+// Entry: 0x0001AA40
+// Name: FUN_0001aa40
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x000013BE FUN_000013be
+//   0x000061CC FUN_000061cc
+//   0x0001A4EA FUN_0001a4ea
+//   0x0001A8F4 FUN_0001a8f4
+//   0x0001AB6E FUN_0001ab6e
+//   0x0001AC6A FUN_0001ac6a
+//   0x0001AD42 FUN_0001ad42
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -14,12 +23,12 @@ void FUN_0001aa40(void)
   int extraout_A0;
   bool bVar3;
   
-  if (_DAT_00ff164a == 0) {
+  if (DAT_00ff164a == 0) {
     return;
   }
   if (_DAT_00ffe0f2 == 0) {
     if (_DAT_00ffe082 == 0) {
-      if ((_DAT_00ffdf8c == 0) || (_DAT_00ffe0bc != 0)) {
+      if ((_DAT_00ffdf8c == 0) || (DAT_00ffe0bc != 0)) {
         DAT_00ff1642 = DAT_00ff1642 - 1;
         if ((short)((ushort)DAT_00ff1642 << 8) < 0) {
           cVar1 = FUN_0001a4ea();
@@ -59,24 +68,22 @@ void FUN_0001aa40(void)
     DAT_00ff1642 = 5;
     DAT_00ff1643 = DAT_00ff1643 + 1;
     if (5 < DAT_00ff1643) {
-      _DAT_00ffe082 = 0;
-      _DAT_00ffe080 = 1;
-      _DAT_00ff164a = 0;
+      FUN_0001a8f4();
       return;
     }
   }
   FUN_000061cc();
   FUN_000013be();
-  if ((_DAT_00ffe084 == 0) && (_DAT_00ffe0b6 != 0)) {
-    if ((_DAT_00ffe0c8 != 0) && (_DAT_00ffe0be = _DAT_00ffe056 << 2, 0x6aff < _DAT_00ffe0be)) {
+  if ((_DAT_00ffe084 == 0) && (DAT_00ffe0b6 != 0)) {
+    if ((_DAT_00ffe0c8 != 0) && (DAT_00ffe0be = DAT_00ffe056 << 2, 0x6aff < DAT_00ffe0be)) {
       _DAT_00ffe0c8 = 0;
-      _DAT_00ffe0b6 = 0;
+      DAT_00ffe0b6 = 0;
       _DAT_00ffe0f4 = 1;
       FUN_0001a818();
       return;
     }
-    if (_DAT_00ffe0b6 != 1) {
-      _DAT_00ffe0be = _DAT_00ffe0c0 + _DAT_00ffe0be;
+    if (DAT_00ffe0b6 != 1) {
+      DAT_00ffe0be = DAT_00ffe0c0 + DAT_00ffe0be;
       bVar3 = false;
       FUN_0001ac50();
       if (!bVar3) {
@@ -84,12 +91,12 @@ void FUN_0001aa40(void)
         return;
       }
     }
-    _DAT_00ffe0b4 = _DAT_00ffe0b4 + -1;
-    if (_DAT_00ffe0b4 < 0) {
-      _DAT_00ffe0b4 = 8;
-      _DAT_00ffe0b2 = _DAT_00ffe0b2 + 1;
-      if (0x19 < _DAT_00ffe0b2) {
-        _DAT_00ffe0b2 = 0;
+    DAT_00ffe0b4 = DAT_00ffe0b4 + -1;
+    if (DAT_00ffe0b4 < 0) {
+      DAT_00ffe0b4 = 8;
+      DAT_00ffe0b2 = DAT_00ffe0b2 + 1;
+      if (0x19 < DAT_00ffe0b2) {
+        DAT_00ffe0b2 = 0;
       }
     }
     FUN_000061cc();

@@ -1,0 +1,55 @@
+// Ghidra headless export
+// Entry: 0x000114A0
+// Name: FUN_000114a0
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x00000E34 FUN_00000e34
+//   0x00011442 FUN_00011442
+//   0x00011454 FUN_00011454
+
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_000114a0(void)
+
+{
+  char cVar1;
+  undefined1 uVar2;
+  
+  cVar1 = FUN_00011442();
+  DAT_00fff0d0 = cVar1 + DAT_00fff0d0;
+  if (DAT_00fff0d0 < '\0') {
+    DAT_00fff112 = 0xff;
+    DAT_00fff0d0 = '\x06';
+  }
+  if (DAT_00fff0d0 == '\a') {
+    DAT_00fff0d0 = '\0';
+  }
+  if ((DAT_00fff0d0 == '\x02') && (-1 < cVar1)) {
+    DAT_00fff112 = 0xff;
+  }
+  if (-1 < (char)(DAT_00fff0d0 + -2)) {
+    FUN_00000e34();
+    FUN_00011454();
+    return;
+  }
+  DAT_00ffdd02 = 1;
+  FUN_00001378();
+  _DAT_00ffd980 = 1;
+  uVar2 = (DAT_00ffef14 & 2) == 0;
+  DAT_00ffef14 = DAT_00ffef14 | 2;
+  FUN_00012c36();
+  FUN_00012148();
+  if (!(bool)uVar2) {
+    cVar1 = FUN_00012a8c();
+    if ((char)(cVar1 + -0x10) < '\0') {
+      FUN_00012e9e();
+    }
+    FUN_00011abe();
+    return;
+  }
+  FUN_0000c0da();
+  return;
+}
+
+

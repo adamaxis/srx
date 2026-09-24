@@ -1,9 +1,10 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x00005A62
+// Ghidra headless export
+// Entry: 0x00005A62
+// Name: FUN_00005a62
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   (none)
 
-
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
 ushort FUN_00005a62(void)
 
@@ -13,14 +14,14 @@ ushort FUN_00005a62(void)
   short sVar3;
   short *in_A0;
   
-  sVar3 = (short)(*in_A0 - _DAT_00ffddc6) >> 4;
-  if (((ushort)(*in_A0 - _DAT_00ffddc6) >> 3 & 1) != 0) {
+  sVar3 = (short)(*in_A0 - DAT_00ffddc6) >> 4;
+  if (((ushort)(*in_A0 - DAT_00ffddc6) >> 3 & 1) != 0) {
     sVar3 = sVar3 + 1;
   }
   uVar1 = sVar3 + 0x80;
   in_A0[5] = uVar1;
-  sVar3 = (short)(in_A0[2] - _DAT_00ffddc8) >> 4;
-  if (((ushort)(in_A0[2] - _DAT_00ffddc8) >> 3 & 1) != 0) {
+  sVar3 = (short)(in_A0[2] - DAT_00ffddc8) >> 4;
+  if (((ushort)(in_A0[2] - DAT_00ffddc8) >> 3 & 1) != 0) {
     sVar3 = sVar3 + 1;
   }
   uVar2 = in_A0[4] + sVar3 + 0x80;

@@ -1,6 +1,15 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x0001514E
+// Ghidra headless export
+// Entry: 0x0001514E
+// Name: FUN_0001514e
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x000038AC FUN_000038ac
+//   0x00014FF8 FUN_00014ff8
+//   0x000152FA FUN_000152fa
+//   0x00015A8C FUN_00015a8c
+//   0x0001DBAA FUN_0001dbaa
+//   0x0001E04A FUN_0001e04a
+//   0x000530DE FUN_000530de
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -21,7 +30,7 @@ void FUN_0001514e(void)
   undefined2 *puVar5;
   undefined2 *extraout_A1_01;
   undefined2 *puVar6;
-  undefined *puVar7;
+  wchar16 *pwVar7;
   byte *pbVar8;
   bool bVar9;
   undefined1 uVar10;
@@ -50,15 +59,15 @@ void FUN_0001514e(void)
         }
         uVar1 = FUN_00015a8c();
         if (!(bool)uVar10) {
-          DAT_00ffdd6d = 0;
+          DAT_00ffdd6c._1_1_ = 0;
           sVar4 = (short)CONCAT31((int3)(uVar1 >> 8),*(char *)(extraout_A0 + 0x56) + 'n');
           if (((*(byte *)(extraout_A0 + sVar4) & 2) != 0) ||
              ((*(byte *)(extraout_A0 + sVar4) & 4) != 0)) {
-            DAT_00ffdd6d = DAT_ffffffff;
+            DAT_00ffdd6c._1_1_ = DAT_ffffffff;
           }
           FUN_000530de();
           uVar2 = (undefined2)uVar1;
-          if (((_DAT_00ffdf40 == 2) &&
+          if (((DAT_00ffdf40 == 2) &&
               (pbVar8 = (byte *)((short)*(char *)(extraout_A0_00 + 0x56) + extraout_A0_00 + 0x6e),
               (*pbVar8 & 2) == 0)) && ((*pbVar8 & 4) == 0)) {
             FUN_0001e04a(uVar1 & 0xffff,extraout_D1);
@@ -71,23 +80,23 @@ void FUN_0001514e(void)
             puVar6 = puVar6 + 1;
             puVar5 = puVar5 + 1;
           } while (sVar4 != -1);
-          *extraout_A1_01 = _DAT_00ffdd60;
-          extraout_A1_01[2] = _DAT_00ffdd62;
+          *extraout_A1_01 = DAT_00ffdd60;
+          extraout_A1_01[2] = DAT_00ffdd62;
           extraout_A1_01[0x1f] = uVar2;
           *(byte *)((int)extraout_A1_01 + 0x11) = *(byte *)((int)extraout_A1_01 + 0x11) | 1;
           extraout_A1_01[7] = 0;
           *(undefined1 **)(extraout_A1_01 + 0x1d) = &LAB_0000ac4e;
-          *(undefined1 *)(extraout_A1_01 + 0x32) = DAT_00ffdd6d;
+          *(undefined1 *)(extraout_A1_01 + 0x32) = (undefined1)DAT_00ffdd6c;
           *(undefined1 *)((int)extraout_A1_01 + 0x41) = 0;
-          puVar7 = &DAT_000062ec;
+          pwVar7 = L"";
           if (_DAT_00ffdd3a != 0) {
-            puVar7 = &DAT_000062fc;
+            pwVar7 = L" $(,048<";
           }
           uVar3 = (ushort)extraout_A1_01[0x17] >> 0xd;
           if ((extraout_A1_01[0x17] & 0x1000) != 0) {
             uVar3 = uVar3 + 1;
           }
-          extraout_A1_01[0xb] = *(undefined2 *)(puVar7 + (short)((uVar3 & 7) << 1));
+          extraout_A1_01[0xb] = *(undefined2 *)((int)pwVar7 + (int)(short)((uVar3 & 7) << 1));
           return;
         }
       }

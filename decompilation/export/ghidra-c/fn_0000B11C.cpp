@@ -1,6 +1,14 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x0000B11C
+// Ghidra headless export
+// Entry: 0x0000B11C
+// Name: FUN_0000b11c
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x0000ABFC FUN_0000abfc
+//   0x0000AF6C FUN_0000af6c
+//   0x0000AFF2 FUN_0000aff2
+//   0x00015A8C FUN_00015a8c
+//   0x0001DBAA FUN_0001dbaa
+//   0x00055B16 FUN_00055b16
 
 
 void FUN_0000b11c(void)
@@ -48,7 +56,7 @@ void FUN_0000b11c(void)
     uVar2 = uVar2 + 1;
   }
   *(undefined2 *)(extraout_A0_01 + 0x16) =
-       *(undefined2 *)((int)u__DHLPTX__0000c042 + (int)(short)((uVar2 & 7) << 1));
+       *(undefined2 *)((int)L"@DHLPTX\\" + (int)(short)((uVar2 & 7) << 1));
   FUN_0000af6c();
   return;
 }

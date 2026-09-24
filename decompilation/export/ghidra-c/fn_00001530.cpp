@@ -1,9 +1,10 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x00001530
+// Ghidra headless export
+// Entry: 0x00001530
+// Name: FUN_00001530
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x00000E9C FUN_00000e9c
 
-
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
 undefined6 FUN_00001530(void)
 
@@ -30,7 +31,7 @@ undefined6 FUN_00001530(void)
   uVar11 = 0;
   puVar13 = unaff_A3 + 1;
   uVar1 = *unaff_A3;
-  _DAT_00c00004 = 0x8f02;
+  VDP_CTRL = 0x8f02;
   bVar5 = FUN_00000e9c();
   sVar6 = 1;
   uVar8 = uVar1;
@@ -50,13 +51,13 @@ undefined6 FUN_00001530(void)
       unaff_D7 = CONCAT31((int3)(unaff_D7 >> 8),*(byte *)puVar12);
       *(byte *)(extraout_A1 + (short)uVar11) = *(byte *)puVar12;
       uVar11 = uVar11 + 1 & 0x7ff;
-      sVar10 = (short)unaff_D7;
-      if ((uVar8 & 1) != 0) {
-        unaff_D7 = (uint)(ushort)((short)unaff_D7 << 8);
-        sVar10 = _DAT_00c00000;
+      if ((uVar8 & 1) == 0) {
+        VDP_DATA = (word)unaff_D7;
+      }
+      else {
+        unaff_D7 = (uint)(ushort)((word)unaff_D7 << 8);
       }
 joined_r0x00001600:
-      _DAT_00c00000 = sVar10;
       uVar8 = uVar8 - 1;
       if (uVar8 == 0xffff) goto LAB_00001604;
     }
@@ -74,15 +75,14 @@ joined_r0x00001600:
         uVar7 = (uVar7 & 0x7ff) + 1;
         *(undefined1 *)(extraout_A1 + (short)uVar11) = uVar3;
         uVar11 = uVar11 + 1 & 0x7ff;
-        sVar10 = (short)unaff_D7;
-        if ((uVar8 & 1) != 0) {
-          unaff_D7 = (uint)(ushort)((short)unaff_D7 << 8);
-          sVar10 = _DAT_00c00000;
+        if ((uVar8 & 1) == 0) {
+          VDP_DATA = (word)unaff_D7;
         }
-        _DAT_00c00000 = sVar10;
+        else {
+          unaff_D7 = (uint)(ushort)((word)unaff_D7 << 8);
+        }
         sVar9 = sVar9 + -1;
         uVar4 = uVar8 - 1;
-        sVar10 = _DAT_00c00000;
       } while (sVar9 != -1);
       goto joined_r0x00001600;
     }
@@ -94,12 +94,12 @@ joined_r0x00001600:
       unaff_D7 = CONCAT31((int3)(unaff_D7 >> 8),bVar2);
       *(byte *)(extraout_A1 + (short)uVar11) = bVar2;
       uVar11 = uVar11 + 1 & 0x7ff;
-      sVar10 = (short)unaff_D7;
-      if ((uVar7 & 1) != 0) {
-        unaff_D7 = (uint)(ushort)((short)unaff_D7 << 8);
-        sVar10 = _DAT_00c00000;
+      if ((uVar7 & 1) == 0) {
+        VDP_DATA = (word)unaff_D7;
       }
-      _DAT_00c00000 = sVar10;
+      else {
+        unaff_D7 = (uint)(ushort)((word)unaff_D7 << 8);
+      }
       sVar9 = sVar9 + -1;
       uVar8 = uVar7 - 1;
     } while (sVar9 != -1);

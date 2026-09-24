@@ -1,0 +1,55 @@
+// Ghidra headless export
+// Entry: 0x0000557E
+// Name: FUN_0000557e
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x00005622 FUN_00005622
+//   0x0000563E FUN_0000563e
+//   0x00005662 FUN_00005662
+//   0x0000AFF2 FUN_0000aff2
+//   0x0001A304 FUN_0001a304
+
+
+void FUN_0000557e(void)
+
+{
+  short sVar1;
+  int extraout_A0;
+  undefined4 extraout_A0_00;
+  int iVar2;
+  
+  if (-1 < DAT_00ffdff2) {
+    DAT_00ffdff2 = DAT_00ffdff2 + -1;
+    if (-1 < DAT_00ffdff2) {
+      return;
+    }
+    DAT_00ffdff4 = DAT_00ffdff4 + -1;
+  }
+  FUN_00005662();
+  if (*(char *)(extraout_A0 + 0xb2) != '\0') {
+    return;
+  }
+  sVar1 = 8;
+  iVar2 = extraout_A0;
+  do {
+    if (8 < *(short *)(iVar2 + 0x13e)) break;
+    if (((*(char *)(iVar2 + 0x1de) == '\x06') && ((*(byte *)(iVar2 + 0x110) & 1) != 0)) &&
+       ((*(byte *)(iVar2 + 0x110) & 0x40) == 0)) {
+      FUN_0000563e();
+      FUN_0000aff2(extraout_A0_00);
+      return;
+    }
+    sVar1 = sVar1 + -1;
+    iVar2 = iVar2 + 0x100;
+  } while (sVar1 != -1);
+  if (-1 < DAT_00ffdff4) {
+    DAT_00ffdff2 = 0x1e;
+    FUN_0000563e();
+    return;
+  }
+  FUN_0001a304();
+  FUN_00005622();
+  return;
+}
+
+

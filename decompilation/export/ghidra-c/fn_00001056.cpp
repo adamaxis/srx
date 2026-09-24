@@ -1,11 +1,12 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x00001056
+// Ghidra headless export
+// Entry: 0x00001056
+// Name: FUN_00001056
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x00000E9C FUN_00000e9c
 
 
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
-
-void FUN_00001056(void)
+undefined2 FUN_00001056(void)
 
 {
   short sVar1;
@@ -13,10 +14,10 @@ void FUN_00001056(void)
   FUN_00000e9c();
   sVar1 = 0xf;
   do {
-    _DAT_00c00000 = 0;
+    VDP_DATA = 0;
     sVar1 = sVar1 + -1;
   } while (sVar1 != -1);
-  return;
+  return 0;
 }
 
 

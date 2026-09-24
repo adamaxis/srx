@@ -1,0 +1,109 @@
+// Ghidra headless export
+// Entry: 0x00059D7C
+// Name: FUN_00059d7c
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x00000BD2 FUN_00000bd2
+//   0x00000BF2 FUN_00000bf2
+//   0x000012F6 FUN_000012f6
+//   0x00001406 FUN_00001406
+//   0x0000195C FUN_0000195c
+//   0x0000C0C2 FUN_0000c0c2
+//   0x00059F7A FUN_00059f7a
+//   0x00059F8E FUN_00059f8e
+//   0x0005A0A4 FUN_0005a0a4
+//   0x0005A0B2 FUN_0005a0b2
+//   0x0005A1EA FUN_0005a1ea
+//   0x0005A244 FUN_0005a244
+//   0x0005A37C FUN_0005a37c
+//   0x0005A3B0 FUN_0005a3b0
+//   0x0005A4B4 FUN_0005a4b4
+//   0x0005A572 FUN_0005a572
+//   0x0005A61A FUN_0005a61a
+//   0x0005A70E FUN_0005a70e
+//   0x0005A7EA FUN_0005a7ea
+//   0x0005A8C8 FUN_0005a8c8
+//   0x0005ADFE FUN_0005adfe
+//   0x0005AE3A FUN_0005ae3a
+//   0x0005AF2A FUN_0005af2a
+
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_00059d7c(void)
+
+{
+  short sVar1;
+  
+  FUN_0000c0c2();
+  DAT_00ffdd32 = &DAT_0005adf0;
+  DAT_00ffdd36 = DAT_0005adf0;
+  FUN_00001406();
+  DAT_00ffdd08 = -0x40;
+  DAT_00ffdd0c = 0;
+  DAT_00ffdd0a = -0x20;
+  DAT_00ffdd0e = 0;
+  DAT_00ffef14 = DAT_00ffef14 | 0xc;
+  DAT_00ffdd46 = 0x138;
+  DAT_00ffdd48 = 0xf1;
+  DAT_00ffdd02 = 1;
+  FUN_0005a37c();
+  _DAT_00ffd980 = 0;
+  DAT_00ffef14 = DAT_00ffef14 | 2;
+  FUN_000012f6();
+  sVar1 = 0xa0;
+  do {
+    FUN_00000bd2();
+    FUN_0000195c();
+    FUN_00000bf2();
+    FUN_0005af2a();
+    if (DAT_00ffdd08 != 0) {
+      if (DAT_00ffdd46 != 0x178) {
+        DAT_00ffdd46 = DAT_00ffdd46 + 1;
+      }
+      DAT_00ffdd08 = DAT_00ffdd08 + 1;
+      DAT_00ffef14 = DAT_00ffef14 | 4;
+    }
+    if ((DAT_00ffdd0a != 0) && ((DAT_00ffdf88 & 1) == 0)) {
+      if (DAT_00ffdd48 != 0xd1) {
+        DAT_00ffdd48 = DAT_00ffdd48 + -1;
+      }
+      DAT_00ffdd0a = DAT_00ffdd0a + 1;
+      DAT_00ffef14 = DAT_00ffef14 | 8;
+    }
+    DAT_00ffdd02 = 1;
+    FUN_0005a37c();
+    _DAT_00ffd980 = 0;
+    DAT_00ffef14 = DAT_00ffef14 | 2;
+  } while ((_DAT_00ffddc2 == 0) && (sVar1 = sVar1 + -1, sVar1 != -1));
+  DAT_00fff11e = DAT_00ffdf88;
+  FUN_00059f7a();
+  FUN_0005a0a4();
+  FUN_0005a244();
+  FUN_0005a3b0();
+  FUN_0005a4b4();
+  FUN_0005a572();
+  FUN_0005a61a();
+  FUN_0005a70e();
+  FUN_0005a7ea();
+  FUN_0005a8c8();
+  FUN_0005a1ea();
+  FUN_0000195c();
+  sVar1 = 0x1f0;
+  do {
+    FUN_00000bd2();
+    FUN_00059f8e();
+    FUN_0005a0b2();
+    FUN_0000195c();
+    FUN_00000bf2();
+    FUN_0005af2a();
+    FUN_0005a1ea();
+    if (sVar1 == 0x164) {
+      FUN_0005ae3a();
+      FUN_0005adfe();
+    }
+  } while ((_DAT_00ffddc2 == 0) && (sVar1 = sVar1 + -1, sVar1 != -1));
+  return;
+}
+
+

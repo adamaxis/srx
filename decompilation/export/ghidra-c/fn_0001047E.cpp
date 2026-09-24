@@ -1,23 +1,26 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x0001047E
+// Ghidra headless export
+// Entry: 0x0001047E
+// Name: FUN_0001047e
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x00055F02 FUN_00055f02
 
 
 void FUN_0001047e(void)
 
 {
   short sVar1;
-  undefined1 *puVar2;
-  undefined1 *extraout_A0;
+  undefined2 *puVar2;
+  undefined2 *extraout_A0;
   
   puVar2 = &DAT_00ff0100;
   sVar1 = 2;
   do {
-    if (((puVar2[0x10] & 1) != 0) && ((char)puVar2[0x9b] < '\x02')) {
+    if (((*(byte *)(puVar2 + 8) & 1) != 0) && (*(char *)((int)puVar2 + 0x9b) < '\x02')) {
       FUN_00055f02();
       puVar2 = extraout_A0;
     }
-    puVar2 = puVar2 + 0x100;
+    puVar2 = puVar2 + 0x80;
     sVar1 = sVar1 + -1;
   } while (sVar1 != -1);
   return;

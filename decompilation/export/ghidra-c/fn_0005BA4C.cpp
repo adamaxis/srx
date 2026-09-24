@@ -1,6 +1,9 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x0005BA4C
+// Ghidra headless export
+// Entry: 0x0005BA4C
+// Name: thunk_FUN_0005ba50
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   (none)
 
 
 void thunk_FUN_0005ba50(void)

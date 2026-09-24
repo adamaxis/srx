@@ -1,25 +1,28 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x000564D6
+// Ghidra headless export
+// Entry: 0x000564D6
+// Name: FUN_000564d6
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   (none)
 
-
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
 void FUN_000564d6(void)
 
 {
-  short sVar1;
+  char *pcVar1;
+  short sVar2;
   ushort in_D1w;
-  ushort uVar2;
+  ushort uVar3;
   
-  sVar1 = _DAT_00fff118 * 0x14;
-  uVar2 = in_D1w >> 1;
-  if (uVar2 == 0 || (short)in_D1w < 0) {
-    uVar2 = 1;
+  sVar2 = DAT_00fff118 * 0x14;
+  uVar3 = in_D1w >> 1;
+  if (uVar3 == 0 || (short)in_D1w < 0) {
+    uVar3 = 1;
   }
-  *(char *)(sVar1 + 0xff1106) = *(char *)(sVar1 + 0xff1106) - (char)uVar2;
-  if ((char)(*(char *)(sVar1 + 0xff1106) + -2) < '\0') {
-    *(undefined1 *)(sVar1 + 0xff1106) = 2;
+  pcVar1 = (char *)((int)&DAT_00ff1104 + sVar2 + 2);
+  *pcVar1 = *pcVar1 - (char)uVar3;
+  if ((char)(*(char *)((int)&DAT_00ff1104 + sVar2 + 2) + -2) < '\0') {
+    *(undefined1 *)((int)&DAT_00ff1104 + sVar2 + 2) = 2;
   }
   return;
 }

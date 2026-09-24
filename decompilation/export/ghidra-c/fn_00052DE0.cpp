@@ -1,9 +1,10 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x00052DE0
+// Ghidra headless export
+// Entry: 0x00052DE0
+// Name: FUN_00052de0
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x00052DC2 FUN_00052dc2
 
-
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
 void FUN_00052de0(void)
 
@@ -13,7 +14,7 @@ void FUN_00052de0(void)
   undefined1 *puVar3;
   undefined1 *puVar4;
   
-  _DAT_00a11200 = 0x100;
+  IO_Z80RES = 0x100;
   FUN_00052dc2();
   sVar1 = 0x1885;
   puVar3 = &DAT_00026c5e;

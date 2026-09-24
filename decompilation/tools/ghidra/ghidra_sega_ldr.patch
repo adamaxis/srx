@@ -1,0 +1,68 @@
+diff --git a/src/main/java/sega/SegaLoader.java b/src/main/java/sega/SegaLoader.java
+index ad3ad7d..17f9152 100644
+--- a/src/main/java/sega/SegaLoader.java
++++ b/src/main/java/sega/SegaLoader.java
+@@ -75,7 +75,11 @@ public class SegaLoader extends AbstractLibrarySupportLoader {
+ 		BinaryReader reader = new BinaryReader(provider, false);
+ 
+ 		if (reader.readAsciiString(0x100, 4).equals("SEGA")) {
+-			loadSpecs.add(new LoadSpec(this, 0, new LanguageCompilerSpecPair("68000:BE:32:MC68020", "default"), true));
++			// The Genesis main CPU is a Motorola 68000.  The old loader selected
++			// the 68020 language, which permits instructions and semantics that do
++			// not exist on the target hardware and makes the decompilation less
++			// trustworthy.
++			loadSpecs.add(new LoadSpec(this, 0, new LanguageCompilerSpecPair("68000:BE:32:default", "default"), true));
+ 
+ 			if (reader.readAsciiString(0x3c0, 15).equals("MARS CHECK MODE")) {
+ 				loadSpecs.add(new LoadSpec(this, 0, new LanguageCompilerSpecPair("SuperH:BE:32:SH-2", "default"), false));
+@@ -313,7 +317,12 @@ public class SegaLoader extends AbstractLibrarySupportLoader {
+ 			DataUtilities.createData(program, fpa.toAddr(0), vectors.toDataType(), -1, false,
+ 					ClearDataMode.CLEAR_ALL_UNDEFINED_CONFLICT_DATA);
+ 
+-			for (VectorFunc func : vectors.getVectors()) {
++			// Entry 0 is the initial supervisor stack pointer, not executable code.
++			// Treating it as a function creates a bogus function at the stack top and
++			// sends the decompiler into uninitialized RAM.
++			VectorFunc[] vectorEntries = vectors.getVectors();
++			for (int i = 1; i < vectorEntries.length; ++i) {
++				VectorFunc func = vectorEntries[i];
+ 				fpa.createFunction(func.getAddress(), func.getName());
+ 			}
+ 		} catch (CodeUnitInsertionException e) {
+diff --git a/src/main/java/sega/SegmentOptions.java b/src/main/java/sega/SegmentOptions.java
+index 7168b29..c3539ac 100644
+--- a/src/main/java/sega/SegmentOptions.java
++++ b/src/main/java/sega/SegmentOptions.java
+@@ -1,8 +1,5 @@
+ package sega;
+ 
+-import java.util.concurrent.TimeUnit;
+-
+-import docking.widgets.OptionDialog;
+ import ghidra.app.util.importer.MessageLog;
+ import ghidra.app.util.opinion.LoadSpec;
+ import ghidra.program.model.lang.LanguageNotFoundException;
+@@ -19,16 +16,12 @@ public class SegmentOptions {
+ 				languageID,
+ 				this.hasSH2MemoryMap ? "loaded" : "NOT loaded"));
+ 
+-		try {
+-			TimeUnit.SECONDS.sleep(1);
+-		} catch (InterruptedException e) {
+-			log.appendException(e);
+-		}
+-
+-		this.has32XSegments = OptionDialog.YES_OPTION == OptionDialog.showYesNoDialogWithNoAsDefaultButton(null, "Question",
+-				"Create Sega 32X segments?");
+-
+-		this.hasSegaCDSegments = OptionDialog.YES_OPTION == OptionDialog.showYesNoDialogWithNoAsDefaultButton(null, "Question",
+-				"Create Sega CD segment?");
++		// A standard Genesis ROM is the common case, and headless analysis has no
++		// meaningful dialog response.  The previous prompts could silently select
++		// extra 32X/CD address spaces, producing false memory and MARS-header
++		// warnings in automated imports.  Keep this loader deterministic; a future
++		// explicit loader option can opt into the expansion hardware.
++		this.has32XSegments = false;
++		this.hasSegaCDSegments = false;
+ 	}
+ }

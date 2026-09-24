@@ -1,13 +1,19 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x0000DA4A
+// Ghidra headless export
+// Entry: 0x0000DA4A
+// Name: FUN_0000da4a
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x0000C0DA FUN_0000c0da
 
 
-void FUN_0000da4a(void)
+undefined8 FUN_0000da4a(void)
 
 {
-                    /* WARNING: Subroutine does not return */
+  undefined4 in_D0;
+  undefined4 in_D1;
+  
   FUN_0000c0da();
+  return CONCAT44(in_D0,in_D1);
 }
 
 

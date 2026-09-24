@@ -1,6 +1,11 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x00015930
+// Ghidra headless export
+// Entry: 0x00015930
+// Name: FUN_00015930
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x000049A0 FUN_000049a0
+//   0x0001582A thunk_FUN_0001a2cc
+//   0x000530DE FUN_000530de
 
 
 void FUN_00015930(void)
@@ -21,11 +26,11 @@ void FUN_00015930(void)
     *(undefined1 *)(extraout_A1 + 2) = 0;
     *(undefined1 *)(extraout_A1 + 3) = 0;
     sVar2 = 2;
-    if (sRam0000494a != 0) {
+    if (u_44178_0000494a[0] != L'\0') {
       FUN_000530de();
       sVar2 = extraout_D1w_00;
     }
-    (**(code **)((int)&PTR_LAB_00004964 + (int)(short)(sVar2 << 2)))();
+    (**(code **)((int)&PTR_FUN_00004964 + (int)(short)(sVar2 << 2)))();
   }
   return;
 }

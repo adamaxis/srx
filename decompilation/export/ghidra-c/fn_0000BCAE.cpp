@@ -1,16 +1,17 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x0000BCAE
+// Ghidra headless export
+// Entry: 0x0000BCAE
+// Name: FUN_0000bcae
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   (none)
 
-
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
 void FUN_0000bcae(void)
 
 {
   ushort *in_A0;
   
-  if ((((_DAT_00ffddc4 == 5) && (0x11ff < in_A0[2])) && (in_A0[2] < 0x1f80)) && (0x25ff < *in_A0)) {
+  if ((((DAT_00ffddc4 == 5) && (0x11ff < in_A0[2])) && (in_A0[2] < 0x1f80)) && (0x25ff < *in_A0)) {
     if (*in_A0 < 0x2800) {
       in_A0[2] = in_A0[2] - 8;
       return;

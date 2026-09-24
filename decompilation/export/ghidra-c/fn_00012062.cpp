@@ -1,0 +1,24 @@
+// Ghidra headless export
+// Entry: 0x00012062
+// Name: FUN_00012062
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x0000C0DA FUN_0000c0da
+//   0x00012C36 FUN_00012c36
+
+
+void FUN_00012062(void)
+
+{
+  int extraout_A0;
+  
+  if (*(char *)(DAT_00fffc04 + 0x4f) < '\x01') {
+    FUN_00012c36();
+    FUN_0000c0da();
+    FUN_0000c0da();
+    *(undefined1 *)(extraout_A0 + 0x4f) = 0;
+  }
+  return;
+}
+
+

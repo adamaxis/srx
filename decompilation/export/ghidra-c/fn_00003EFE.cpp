@@ -1,9 +1,10 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x00003EFE
+// Ghidra headless export
+// Entry: 0x00003EFE
+// Name: FUN_00003efe
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x00003F9E FUN_00003f9e
 
-
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
 undefined8 FUN_00003efe(void)
 
@@ -28,9 +29,9 @@ undefined8 FUN_00003efe(void)
   short sVar14;
   byte *pbVar13;
   
-  uVar4 = (uint)(ushort)((_DAT_00ffddc6 >> 4) +
+  uVar4 = (uint)(ushort)((DAT_00ffddc6 >> 4) +
                         *(short *)(in_A0 + 10) + *(short *)(unaff_A2 + 8) + -0x80);
-  sVar2 = (_DAT_00ffddc8 >> 4) + *(short *)(in_A0 + 0xc) + *(short *)(unaff_A2 + 10) + -0x80;
+  sVar2 = (DAT_00ffddc8 >> 4) + *(short *)(in_A0 + 0xc) + *(short *)(unaff_A2 + 10) + -0x80;
   uVar6 = *(ushort *)(unaff_A2 + 0xc) >> 2;
   uVar3 = *(ushort *)(unaff_A2 + 0xc) & 3;
   pbVar12 = *(byte **)(unaff_A2 + 2);

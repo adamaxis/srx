@@ -1,9 +1,12 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x0005D416
+// Ghidra headless export
+// Entry: 0x0005D416
+// Name: FUN_0005d416
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x000530DE FUN_000530de
+//   0x000566D8 FUN_000566d8
+//   0x0005D6BC FUN_0005d6bc
 
-
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
 void FUN_0005d416(void)
 
@@ -25,8 +28,8 @@ LAB_0005d516:
   }
   if (*(short *)(in_A0 + 0x24) == 0x18) {
 LAB_0005d506:
-    _DAT_00ffdd08 = _DAT_00ffdd08 + -8;
-    _DAT_00ffdd0c = _DAT_00ffdd0c + -8;
+    DAT_00ffdd08 = DAT_00ffdd08 + -8;
+    DAT_00ffdd0c = DAT_00ffdd0c + -8;
   }
   else {
     if (*(short *)(in_A0 + 0x24) != 0x19) {
@@ -48,8 +51,8 @@ LAB_0005d506:
       }
     }
     FUN_000530de();
-    _DAT_00ffdd08 = _DAT_00ffdd08 + 8;
-    _DAT_00ffdd0c = _DAT_00ffdd0c + 8;
+    DAT_00ffdd08 = DAT_00ffdd08 + 8;
+    DAT_00ffdd0c = DAT_00ffdd0c + 8;
   }
 LAB_0005d522:
   DAT_00ffef14 = DAT_00ffef14 | 0xd;

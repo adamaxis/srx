@@ -1,6 +1,9 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x0001AC50
+// Ghidra headless export
+// Entry: 0x0001AC50
+// Name: FUN_0001ac50
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   (none)
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -14,7 +17,7 @@ void FUN_0001ac50(void)
     return;
   }
   _DAT_00ffe084 = 1;
-  _DAT_00ffe086 = 0;
+  DAT_00ffe086 = 0;
   return;
 }
 

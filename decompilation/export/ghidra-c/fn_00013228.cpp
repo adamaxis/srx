@@ -1,9 +1,13 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x00013228
+// Ghidra headless export
+// Entry: 0x00013228
+// Name: FUN_00013228
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x00001232 FUN_00001232
+//   0x0000C0DA FUN_0000c0da
+//   0x00012148 FUN_00012148
+//   0x00012A54 FUN_00012a54
 
-
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
 undefined8 FUN_00013228(void)
 
@@ -22,7 +26,7 @@ undefined8 FUN_00013228(void)
   int iVar4;
   
   bVar1 = DAT_00fff0d0;
-  cVar2 = *(char *)(_DAT_00fffc04 + 0x66 + (int)(short)(ushort)DAT_00fff0d0);
+  cVar2 = *(char *)(DAT_00fffc04 + 0x66 + (int)(short)(ushort)DAT_00fff0d0);
   FUN_00012a54();
   FUN_00001232();
   if ((char)(cVar2 + -0xd) < '\0') {
@@ -54,13 +58,13 @@ undefined8 FUN_00013228(void)
   }
   if (-1 < (char)(cVar2 + -0xd)) {
     if (((-1 < (char)(cVar2 + -0x14)) && (cVar2 != '\x14')) &&
-       (((char)(cVar2 + -0x18) < '\0' || (-1 < (char)(cVar2 + -0x29))))) {
-      return CONCAT44(in_D0,in_D1);
-    }
+       (((char)(cVar2 + -0x18) < '\0' || (-1 < (char)(cVar2 + -0x29))))) goto LAB_000133a0;
     FUN_00012148();
   }
-                    /* WARNING: Subroutine does not return */
   FUN_0000c0da();
+  FUN_00001232();
+LAB_000133a0:
+  return CONCAT44(in_D0,in_D1);
 }
 
 

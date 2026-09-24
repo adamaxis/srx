@@ -1,31 +1,32 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x00014446
+// Ghidra headless export
+// Entry: 0x00014446
+// Name: FUN_00014446
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   (none)
 
-
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
 void FUN_00014446(void)
 
 {
   short sVar1;
-  undefined1 *puVar2;
+  undefined2 *puVar2;
   undefined4 *puVar3;
   undefined4 *puVar4;
   
   puVar2 = &DAT_00ff0100;
-  _DAT_00ffdfc8 = 0;
+  DAT_00ffdfc8 = 0;
   sVar1 = 2;
-  puVar3 = (undefined4 *)&DAT_00ffdfca;
+  puVar3 = &DAT_00ffdfca;
   do {
     puVar4 = puVar3;
-    if (((((puVar2[0x10] & 1) != 0) && ((puVar2[0x10] & 0x40) == 0)) && ((puVar2[0x10] & 0x10) == 0)
-        ) && (*(short *)(puVar2 + 0xc) != 0)) {
-      _DAT_00ffdfc8 = _DAT_00ffdfc8 + 1;
+    if (((((*(byte *)(puVar2 + 8) & 1) != 0) && ((*(byte *)(puVar2 + 8) & 0x40) == 0)) &&
+        ((*(byte *)(puVar2 + 8) & 0x10) == 0)) && (puVar2[6] != 0)) {
+      DAT_00ffdfc8 = DAT_00ffdfc8 + 1;
       puVar4 = puVar3 + 1;
       *puVar3 = puVar2;
     }
-    puVar2 = puVar2 + 0x100;
+    puVar2 = puVar2 + 0x80;
     sVar1 = sVar1 + -1;
     puVar3 = puVar4;
   } while (sVar1 != -1);

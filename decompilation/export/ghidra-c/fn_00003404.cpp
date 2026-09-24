@@ -1,6 +1,10 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x00003404
+// Ghidra headless export
+// Entry: 0x00003404
+// Name: FUN_00003404
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x00000F5C FUN_00000f5c
+//   0x00003548 FUN_00003548
 
 
 void FUN_00003404(void)

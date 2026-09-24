@@ -1,19 +1,22 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x00016DEE
+// Ghidra headless export
+// Entry: 0x00016DEE
+// Name: FUN_00016dee
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   (none)
 
 
 void FUN_00016dee(void)
 
 {
   short sVar1;
-  int iVar2;
+  undefined2 *puVar2;
   
-  iVar2 = 0xff164c;
+  puVar2 = &DAT_00ff164c;
   sVar1 = 9;
   do {
-    *(byte *)(iVar2 + 0x10) = *(byte *)(iVar2 + 0x10) & 0xfe;
-    iVar2 = iVar2 + 0x12;
+    *(byte *)(puVar2 + 8) = *(byte *)(puVar2 + 8) & 0xfe;
+    puVar2 = puVar2 + 9;
     sVar1 = sVar1 + -1;
   } while (sVar1 != -1);
   return;

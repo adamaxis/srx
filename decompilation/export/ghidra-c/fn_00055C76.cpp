@@ -1,6 +1,17 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x00055C76
+// Ghidra headless export
+// Entry: 0x00055C76
+// Name: FUN_00055c76
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x00000DBA FUN_00000dba
+//   0x00003674 FUN_00003674
+//   0x000037EC FUN_000037ec
+//   0x00055740 FUN_00055740
+//   0x00055786 FUN_00055786
+//   0x00055E62 FUN_00055e62
+//   0x00055EB4 FUN_00055eb4
+//   0x00055ED6 FUN_00055ed6
+//   0x00055F20 FUN_00055f20
 
 
 /* WARNING: Removing unreachable block (ram,0x00055caa) */

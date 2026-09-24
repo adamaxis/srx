@@ -1,9 +1,10 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x0000E8A0
+// Ghidra headless export
+// Entry: 0x0000E8A0
+// Name: FUN_0000e8a0
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   (none)
 
-
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
 byte FUN_0000e8a0(void)
 
@@ -14,52 +15,52 @@ byte FUN_0000e8a0(void)
   ushort unaff_D6w;
   int in_A0;
   
-  DAT_00ffdd28 = 0;
+  DAT_00ffdd28._0_1_ = 0;
   if ((*(byte *)(in_A0 + 0x10) & 4) != 0) {
-    _DAT_00ffdfe4 = ((ushort)(unaff_D5w - 0xc) >> 5) + (unaff_D6w - 7 & 0x7fe0) * 2;
-    DAT_00ffef10 = (&DAT_00ff1700)[_DAT_00ffdfe4];
-    if (DAT_00ffef10 == 0x7f) {
-      DAT_00ffdd28 = DAT_00ffef10;
+    DAT_00ffdfe4 = ((ushort)(unaff_D5w - 0xc) >> 5) + (unaff_D6w - 7 & 0x7fe0) * 2;
+    DAT_00ffef10._0_1_ = (&DAT_00ff1700)[DAT_00ffdfe4];
+    if (DAT_00ffef10._0_1_ == 0x7f) {
+      DAT_00ffdd28._0_1_ = DAT_00ffef10._0_1_;
     }
     sVar1 = ((ushort)(unaff_D5w + 0xc) >> 5) + (unaff_D6w - 7 & 0x7fe0) * 2;
-    DAT_00ffef11 = (&DAT_00ff1700)[sVar1];
-    if (DAT_00ffef11 == 0x7f) {
-      DAT_00ffdd28 = DAT_00ffef11;
+    DAT_00ffef10._1_1_ = (&DAT_00ff1700)[sVar1];
+    if (DAT_00ffef10._1_1_ == 0x7f) {
+      DAT_00ffdd28._0_1_ = DAT_00ffef10._1_1_;
     }
-    bVar2 = DAT_00ffef10;
-    if (DAT_00ffef10 <= DAT_00ffef11) {
-      bVar2 = DAT_00ffef11;
-      _DAT_00ffdfe4 = sVar1;
+    bVar2 = DAT_00ffef10._0_1_;
+    if (DAT_00ffef10._0_1_ <= DAT_00ffef10._1_1_) {
+      bVar2 = DAT_00ffef10._1_1_;
+      DAT_00ffdfe4 = sVar1;
     }
     sVar1 = ((ushort)(unaff_D5w - 0xc) >> 5) + (unaff_D6w + 7 & 0x7fe0) * 2;
-    DAT_00ffef12 = (&DAT_00ff1700)[sVar1];
-    if (DAT_00ffef12 == 0x7f) {
-      DAT_00ffdd28 = DAT_00ffef12;
+    DAT_00ffef10._2_1_ = (&DAT_00ff1700)[sVar1];
+    if (DAT_00ffef10._2_1_ == 0x7f) {
+      DAT_00ffdd28._0_1_ = DAT_00ffef10._2_1_;
     }
-    if (bVar2 <= DAT_00ffef12) {
-      bVar2 = DAT_00ffef12;
-      _DAT_00ffdfe4 = sVar1;
+    if (bVar2 <= DAT_00ffef10._2_1_) {
+      bVar2 = DAT_00ffef10._2_1_;
+      DAT_00ffdfe4 = sVar1;
     }
     sVar1 = ((ushort)(unaff_D5w + 0xc) >> 5) + (unaff_D6w + 7 & 0x7fe0) * 2;
-    DAT_00ffef13 = (&DAT_00ff1700)[sVar1];
-    if (DAT_00ffef13 == 0x7f) {
-      DAT_00ffdd28 = DAT_00ffef13;
+    DAT_00ffef10._3_1_ = (&DAT_00ff1700)[sVar1];
+    if ((byte)DAT_00ffef10 == 0x7f) {
+      DAT_00ffdd28._0_1_ = (byte)DAT_00ffef10;
     }
-    if (bVar2 <= DAT_00ffef13) {
-      bVar2 = DAT_00ffef13;
-      _DAT_00ffdfe4 = sVar1;
+    if (bVar2 <= (byte)DAT_00ffef10) {
+      bVar2 = (byte)DAT_00ffef10;
+      DAT_00ffdfe4 = sVar1;
     }
-    if (DAT_00ffdd28 != 0) {
-      bVar2 = DAT_00ffdd28;
+    if (DAT_00ffdd28._0_1_ != 0) {
+      bVar2 = DAT_00ffdd28._0_1_;
     }
-    uRam00ffdd29 = 0;
+    DAT_00ffdd28._1_1_ = 0;
     return bVar2;
   }
-  _DAT_00ffdfe4 = (unaff_D5w >> 5) + (unaff_D6w & 0x7fe0) * 2;
-  DAT_00ffef10 = (&DAT_00ff1700)[_DAT_00ffdfe4];
-  uRam00ffdd29 = 0;
-  DAT_00ffdd28 = 0;
-  return (&DAT_00ff1700)[_DAT_00ffdfe4];
+  DAT_00ffdfe4 = (unaff_D5w >> 5) + (unaff_D6w & 0x7fe0) * 2;
+  DAT_00ffef10._0_1_ = (&DAT_00ff1700)[DAT_00ffdfe4];
+  DAT_00ffdd28._1_1_ = 0;
+  DAT_00ffdd28._0_1_ = 0;
+  return (&DAT_00ff1700)[DAT_00ffdfe4];
 }
 
 

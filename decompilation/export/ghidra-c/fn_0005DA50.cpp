@@ -1,0 +1,31 @@
+// Ghidra headless export
+// Entry: 0x0005DA50
+// Name: FUN_0005da50
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x00000FFE FUN_00000ffe
+//   0x0000102A FUN_0000102a
+//   0x00001232 FUN_00001232
+//   0x000012F6 FUN_000012f6
+//   0x00001406 FUN_00001406
+//   0x00001530 FUN_00001530
+//   0x000176BA FUN_000176ba
+//   0x0005DAE8 FUN_0005dae8
+
+
+void FUN_0005da50(void)
+
+{
+  FUN_00000ffe();
+  FUN_0000102a();
+  FUN_00001406();
+  FUN_0005dae8();
+  FUN_000176ba();
+  FUN_00001530();
+  DAT_00ffef14 = DAT_00ffef14 | 0xd;
+  FUN_000012f6();
+  FUN_00001232();
+  return;
+}
+
+

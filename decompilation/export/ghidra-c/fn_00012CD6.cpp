@@ -1,13 +1,16 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x00012CD6
+// Ghidra headless export
+// Entry: 0x00012CD6
+// Name: FUN_00012cd6
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x0000C0DA FUN_0000c0da
 
 
 void FUN_00012cd6(void)
 
 {
-                    /* WARNING: Subroutine does not return */
   FUN_0000c0da();
+  return;
 }
 
 

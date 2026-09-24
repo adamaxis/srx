@@ -1,68 +1,59 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x00003DDE
+// Ghidra headless export
+// Entry: 0x00003DDE
+// Name: FUN_00003dde
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x00003E14 FUN_00003e14
+//   0x00003FD8 FUN_00003fd8
 
 
-/* WARNING: Possible PIC construction at 0x00003e04: Changing call to branch */
-/* WARNING: Removing unreachable block (ram,0x00003e08) */
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
 void FUN_00003dde(void)
 
 {
   short sVar1;
-  ushort uVar2;
-  int iVar3;
+  int iVar2;
   int extraout_D1;
-  int iVar4;
+  int iVar3;
   short unaff_D3w;
   ushort unaff_D4w;
-  ushort uVar5;
+  ushort uVar4;
+  short sVar5;
   int extraout_A0;
   int extraout_A1;
-  undefined2 uStack_6;
-  undefined2 uStack_4;
-  ushort uStack_2;
   
-  uStack_4 = 0;
-  uStack_2 = 0x3de2;
   FUN_00003fd8();
-  uVar2 = ((ushort)-((unaff_D4w & 0xf80) - 0x1000) >> 7) - 1;
-  if ((short)uVar2 < 0x1f) {
-    register0x0000003c = (BADSPACEBASE *)&uStack_6;
-    uStack_6 = 0;
-    uStack_4 = 0x3e08;
-    uVar5 = uVar2;
-    uStack_2 = uVar2;
+  uVar4 = (ushort)-((unaff_D4w & 0xf80) - 0x1000) >> 7;
+  if ((short)(uVar4 - 1) < 0x1f) {
+    FUN_00003e14();
+    sVar5 = -(uVar4 - 0x1f);
+    VDP_CTRL = 0x8f80;
+    FUN_00000e9c();
+    iVar2 = (uint)*(ushort *)(extraout_A1 + unaff_D3w) << 5;
+    iVar3 = extraout_D1;
+    do {
+      uVar4 = *(ushort *)(extraout_A0 + iVar3 + iVar2);
+      if ((short)_DAT_00ffdf58 < 0) {
+        uVar4 = uVar4 ^ 0x8000;
+      }
+      else {
+        uVar4 = _DAT_00ffdf58 | uVar4;
+      }
+      VDP_DATA = uVar4;
+      sVar1 = (short)iVar3 + 8;
+      if (0x1e < sVar1) {
+        sVar1 = (short)iVar3 + -0x18;
+        unaff_D3w = DAT_00ffddea + unaff_D3w;
+        iVar2 = (uint)*(ushort *)(extraout_A1 + unaff_D3w) << 5;
+      }
+      iVar3 = CONCAT22((short)((uint)iVar3 >> 0x10),sVar1);
+      sVar5 = sVar5 + -1;
+    } while (sVar5 != -1);
+    VDP_CTRL = 0x8f02;
+    return;
   }
-  else {
-    uVar5 = 0x1f;
-  }
-  *(ushort *)((int)register0x0000003c + -2) =
-       (ushort)(byte)((uVar2 < 0x1f) << 4 | (0x7fff < uVar2) << 3 | (uVar2 == 0) << 2);
-  _DAT_00c00004 = 0x8f80;
-  *(undefined4 *)((int)register0x0000003c + -6) = 0x3e2a;
-  FUN_00000e9c();
-  iVar3 = (uint)*(ushort *)(extraout_A1 + unaff_D3w) << 5;
-  iVar4 = extraout_D1;
-  do {
-    _DAT_00c00000 = *(ushort *)(extraout_A0 + iVar4 + iVar3);
-    if ((short)_DAT_00ffdf58 < 0) {
-      _DAT_00c00000 = _DAT_00c00000 ^ 0x8000;
-    }
-    else {
-      _DAT_00c00000 = _DAT_00ffdf58 | _DAT_00c00000;
-    }
-    sVar1 = (short)iVar4 + 8;
-    if (0x1e < sVar1) {
-      sVar1 = (short)iVar4 + -0x18;
-      unaff_D3w = _DAT_00ffddea + unaff_D3w;
-      iVar3 = (uint)*(ushort *)(extraout_A1 + unaff_D3w) << 5;
-    }
-    iVar4 = CONCAT22((short)((uint)iVar4 >> 0x10),sVar1);
-    uVar5 = uVar5 - 1;
-  } while (uVar5 != 0xffff);
-  _DAT_00c00004 = 0x8f02;
+  FUN_00003e14();
   return;
 }
 

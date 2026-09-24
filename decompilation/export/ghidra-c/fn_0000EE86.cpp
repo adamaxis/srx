@@ -1,9 +1,10 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x0000EE86
+// Ghidra headless export
+// Entry: 0x0000EE86
+// Name: FUN_0000ee86
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   (none)
 
-
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
 void FUN_0000ee86(void)
 
@@ -12,9 +13,9 @@ void FUN_0000ee86(void)
   short sVar2;
   char *pcVar3;
   
-  if ((_DAT_00ffdf40 == 2) &&
-     ((((DAT_00ffe184 != '\0' || (DAT_00ffe187 != '\0')) || (DAT_00fffbed == '\x04')) &&
-      ((_DAT_00ffe12c == _DAT_00fff0c8 && (DAT_00ffe180 == '\0')))))) {
+  if ((DAT_00ffdf40 == 2) &&
+     ((((DAT_00ffe184 != '\0' || (DAT_00ffe187 != '\0')) || ((char)DAT_00fffbec == '\x04')) &&
+      ((DAT_00ffe12c == DAT_00fff0c8 && (DAT_00ffe180 == '\0')))))) {
     sVar1 = (short)DAT_00ffe185;
     do {
       sVar2 = 0xfff;

@@ -1,6 +1,9 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x0001BF5C
+// Ghidra headless export
+// Entry: 0x0001BF5C
+// Name: FUN_0001bf5c
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   (none)
 
 
 void FUN_0001bf5c(void)
@@ -12,7 +15,7 @@ void FUN_0001bf5c(void)
   
   sVar1 = 6;
   puVar2 = &DAT_0001c10a;
-  puVar3 = (undefined2 *)&DAT_00ffd880;
+  puVar3 = (undefined2 *)((int)&DAT_00ffd87e + 2);
   do {
     *puVar3 = *puVar2;
     sVar1 = sVar1 + -1;

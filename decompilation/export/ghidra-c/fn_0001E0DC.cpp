@@ -1,9 +1,13 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x0001E0DC
+// Ghidra headless export
+// Entry: 0x0001E0DC
+// Name: FUN_0001e0dc
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x000044BC FUN_000044bc
+//   0x00005A56 FUN_00005a56
+//   0x0001A2CC FUN_0001a2cc
+//   0x0001A342 FUN_0001a342
 
-
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
 void FUN_0001e0dc(void)
 
@@ -21,10 +25,10 @@ void FUN_0001e0dc(void)
   undefined4 unaff_A6;
   bool bVar7;
   
-  puVar5 = *(uint **)(_DAT_00ffde1e + 0x10);
+  puVar5 = *(uint **)(DAT_00ffde1e + 0x10);
   while ((bVar7 = false, *puVar5 != 0 && (uVar3 = FUN_0001a342(), !bVar7))) {
     bVar7 = false;
-    _DAT_00ffdd40 = uVar3;
+    DAT_00ffdd40 = uVar3;
     FUN_0001a2cc();
     if (bVar7) {
       return;
@@ -34,13 +38,13 @@ void FUN_0001e0dc(void)
     puVar5 = puVar5 + 2;
     uVar2 = *puVar6;
     if ((uVar1 & 0x80000000) == 0) {
-      _DAT_00ffdd42 = _DAT_00ffdd42 + 0xc0;
+      DAT_00ffdd42 = DAT_00ffdd42 + 0xc0;
       FUN_000044bc();
       *(undefined4 *)(extraout_A1_01 + 0xa8) = unaff_A6;
       iVar4 = extraout_A1_01;
     }
     else {
-      _DAT_00ffdd42 = 0;
+      DAT_00ffdd42 = 0;
       FUN_000044bc();
       *(byte *)(extraout_A1_00 + 0x10) = *(byte *)(extraout_A1_00 + 0x10) | 0x20;
       iVar4 = extraout_A1_00;

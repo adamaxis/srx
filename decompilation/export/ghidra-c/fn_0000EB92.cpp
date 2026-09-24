@@ -1,6 +1,11 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x0000EB92
+// Ghidra headless export
+// Entry: 0x0000EB92
+// Name: FUN_0000eb92
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x00000D44 FUN_00000d44
+//   0x0000ECCC FUN_0000eccc
+//   0x00015D3C FUN_00015d3c
 
 
 void FUN_0000eb92(void)

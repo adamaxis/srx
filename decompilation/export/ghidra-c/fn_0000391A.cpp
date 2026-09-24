@@ -1,42 +1,46 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x0000391A
+// Ghidra headless export
+// Entry: 0x0000391A
+// Name: FUN_0000391a
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x000033AA FUN_000033aa
+//   0x0001DC4C FUN_0001dc4c
+//   0x0001E540 FUN_0001e540
+//   0x000530DE FUN_000530de
 
-
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
 void FUN_0000391a(void)
 
 {
   byte *pbVar1;
-  undefined1 *puVar2;
-  undefined1 *puVar3;
+  undefined2 *puVar2;
+  undefined2 *puVar3;
   
   DAT_00fff0cc = '\x01';
   FUN_000530de();
-  puVar2 = _DAT_00fffc04;
+  puVar2 = DAT_00fffc04;
   FUN_000033aa();
-  puVar3 = _DAT_00fffc04;
-  if (*(int *)(_DAT_00fffc04 + 0xa2) != 0) {
-    pbVar1 = (byte *)(*(int *)(_DAT_00fffc04 + 0xa2) + 0x11);
+  puVar3 = DAT_00fffc04;
+  if (*(int *)(DAT_00fffc04 + 0x51) != 0) {
+    pbVar1 = (byte *)(*(int *)(DAT_00fffc04 + 0x51) + 0x11);
     *pbVar1 = *pbVar1 & 0xef;
   }
   do {
-    if (*(short *)(puVar3 + 0x3e) == 2) {
+    if (puVar3[0x1f] == 2) {
       DAT_00fff0cc = DAT_00fff0cc + -1;
-      puVar3[0x10] = puVar3[0x10] & 0xfd;
-      _DAT_00fffc04 = &DAT_00ff0100;
+      *(byte *)(puVar3 + 8) = *(byte *)(puVar3 + 8) & 0xfd;
+      DAT_00fffc04 = &DAT_00ff0100;
       if (DAT_00fff0cc < '\0') break;
     }
     else {
-      puVar3[0x10] = puVar3[0x10] & 0xfd;
-      _DAT_00fffc04 = _DAT_00fffc04 + 0x100;
+      *(byte *)(puVar3 + 8) = *(byte *)(puVar3 + 8) & 0xfd;
+      DAT_00fffc04 = DAT_00fffc04 + 0x80;
     }
-    puVar3 = _DAT_00fffc04;
-    _DAT_00fffc04[0x10] = _DAT_00fffc04[0x10] | 2;
-  } while (((puVar3[0x10] & 1) == 0) ||
-          ((DAT_00fff09d == '\0' && (((puVar3[0x10] & 0x40) != 0 || ((puVar3[0x10] & 0x10) != 0)))))
-          );
+    puVar3 = DAT_00fffc04;
+    *(byte *)(DAT_00fffc04 + 8) = *(byte *)(DAT_00fffc04 + 8) | 2;
+  } while (((*(byte *)(puVar3 + 8) & 1) == 0) ||
+          ((DAT_00fff09d == '\0' &&
+           (((*(byte *)(puVar3 + 8) & 0x40) != 0 || ((*(byte *)(puVar3 + 8) & 0x10) != 0))))));
   DAT_00fff0cc = 0;
   if (puVar3 != puVar2) {
     FUN_0001e540();

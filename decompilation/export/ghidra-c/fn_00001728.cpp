@@ -1,9 +1,10 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x00001728
+// Ghidra headless export
+// Entry: 0x00001728
+// Name: FUN_00001728
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x00000E9C FUN_00000e9c
 
-
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
 void FUN_00001728(void)
 
@@ -59,7 +60,7 @@ void FUN_00001728(void)
           sVar13 = sVar13 + 1;
           if (iVar12 - sVar13 < 0) {
             if (sVar2 < sVar3) {
-              _DAT_00c00000 = unaff_D2w | sVar1 + (ushort)*pbVar9;
+              VDP_DATA = unaff_D2w | sVar1 + (ushort)*pbVar9;
             }
             sVar3 = sVar3 + -1;
             if (sVar3 == -1) {
@@ -84,7 +85,7 @@ void FUN_00001728(void)
           sVar13 = sVar13 + 1;
           if (iVar12 - sVar13 < 0) {
             if (sVar2 < sVar3) {
-              _DAT_00c00000 = unaff_D2w | sVar1 + *(short *)pbVar9;
+              VDP_DATA = unaff_D2w | sVar1 + *(short *)pbVar9;
             }
             sVar3 = sVar3 + -1;
             if (sVar3 == -1) {
@@ -121,7 +122,7 @@ void FUN_00001728(void)
       if (iVar12 - sVar13 < 0) {
         if (sVar2 < sVar3) {
           uVar8 = unaff_D2w | uVar8;
-          _DAT_00c00000 = uVar8;
+          VDP_DATA = uVar8;
         }
         sVar3 = sVar3 + -1;
         if (sVar3 == -1) {

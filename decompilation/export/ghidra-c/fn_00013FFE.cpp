@@ -1,6 +1,24 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x00013FFE
+// Ghidra headless export
+// Entry: 0x00013FFE
+// Name: FUN_00013ffe
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x00003404 FUN_00003404
+//   0x0000ABFC FUN_0000abfc
+//   0x0000AE6E FUN_0000ae6e
+//   0x0000AF7C FUN_0000af7c
+//   0x0000AFAE FUN_0000afae
+//   0x0000B11C FUN_0000b11c
+//   0x0000B1DC FUN_0000b1dc
+//   0x0000B39A FUN_0000b39a
+//   0x0000B3FE FUN_0000b3fe
+//   0x00014226 FUN_00014226
+//   0x00014492 FUN_00014492
+//   0x00014508 FUN_00014508
+//   0x00014C7C FUN_00014c7c
+//   0x00014D8E FUN_00014d8e
+//   0x0001514E FUN_0001514e
+//   0x00015646 FUN_00015646
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -10,7 +28,7 @@ uint FUN_00013ffe(void)
 {
   ushort uVar1;
   uint uVar2;
-  undefined1 *puVar3;
+  undefined2 *puVar3;
   int extraout_A0;
   int extraout_A0_00;
   int extraout_A0_01;
@@ -20,7 +38,7 @@ uint FUN_00013ffe(void)
   undefined1 uVar5;
   bool bVar6;
   
-  _DAT_00ffdfe0 = 0;
+  DAT_00ffdfe0 = 0;
   FUN_00014492();
   uVar2 = *(uint *)(extraout_A0 + 0xa2);
   if (uVar2 == 0) {
@@ -50,7 +68,7 @@ uint FUN_00013ffe(void)
            (((puVar3 = &DAT_00ff0100, DAT_00ffe190 == '\0' ||
              (puVar3 = &DAT_00ff0200, DAT_00ffe190 == '\x01')) ||
             (puVar3 = &DAT_00ff0300, DAT_00ffe190 == '\x02')))) {
-          *(undefined1 **)(extraout_A0_01 + 0xa2) = puVar3;
+          *(undefined2 **)(extraout_A0_01 + 0xa2) = puVar3;
         }
         FUN_0000ae6e();
         if (DAT_00fff0dd == '\0') {
@@ -117,13 +135,13 @@ uint FUN_00013ffe(void)
 LAB_000141a0:
   uVar2 = FUN_00014c7c();
   if (!(bool)uVar5) {
-    _DAT_00ffdfe0 = 2;
+    DAT_00ffdfe0 = 2;
     return uVar2;
   }
   extraout_A0_03[0x4b] = *extraout_A0_03;
   extraout_A0_03[0x4c] = extraout_A0_03[2];
   if ((short)extraout_A0_03[0x6e] < 0) {
-    _DAT_00ffdfe0 = 1;
+    DAT_00ffdfe0 = 1;
     if ((*(byte *)((int)extraout_A0_03 + 0x11) & 0x40) != 0) {
       uVar2 = FUN_0000b11c();
       return uVar2;
@@ -131,7 +149,7 @@ LAB_000141a0:
     uVar2 = FUN_0000b1dc();
     return uVar2;
   }
-  _DAT_00ffdfe0 = 3;
+  DAT_00ffdfe0 = 3;
   uVar1 = extraout_A0_03[0xb];
   if ((short)uVar1 < 0x3d) {
     *(undefined4 *)(extraout_A0_03 + 0x1d) = 0xb45c;

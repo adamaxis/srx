@@ -1,6 +1,9 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x0001582A
+// Ghidra headless export
+// Entry: 0x0001582A
+// Name: thunk_FUN_0001a2cc
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   (none)
 
 
 short thunk_FUN_0001a2cc(void)

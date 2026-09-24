@@ -1,9 +1,10 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x000164A8
+// Ghidra headless export
+// Entry: 0x000164A8
+// Name: FUN_000164a8
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   0x000164F2 FUN_000164f2
 
-
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
 void FUN_000164a8(void)
 
@@ -14,7 +15,7 @@ void FUN_000164a8(void)
   bool bVar4;
   int *piVar3;
   
-  piVar2 = _DAT_00ffde02;
+  piVar2 = DAT_00ffde02;
   while( true ) {
     piVar3 = piVar2 + 1;
     iVar1 = *piVar2;

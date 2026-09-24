@@ -1,16 +1,17 @@
-// Decompiled by Ghidra from Shadowrun Genesis ROM.
-// Evidence baseline only: names, types, hardware effects, and data/code boundaries require review.
-// ROM address: 0x0000423C
+// Ghidra headless export
+// Entry: 0x0000423C
+// Name: FUN_0000423c
+// Decompile status: ok
+// Calls recovered from direct call instructions:
+//   (none)
 
-
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
 short FUN_0000423c(void)
 
 {
   short in_D0w;
   
-  return ((short)(in_D0w - _DAT_00ffddc6) >> 7) << 1;
+  return ((short)(in_D0w - DAT_00ffddc6) >> 7) << 1;
 }
 
 
