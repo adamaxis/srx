@@ -14,7 +14,7 @@
 //   0x0005A0A4 reset_title_intro_sequence
 //   0x0005A0B2 advance_title_intro_sequence
 //   0x0005A1EA FUN_0005a1ea
-//   0x0005A244 FUN_0005a244
+//   0x0005A244 reset_title_intro_persistent_sequence
 //   0x0005A37C FUN_0005a37c
 //   0x0005A3B0 FUN_0005a3b0
 //   0x0005A4B4 FUN_0005a4b4
@@ -79,7 +79,7 @@ void FUN_00059d7c(void)
   DAT_00fff11e = DAT_00ffdf88;
   reset_title_intro_overlay_schedule();
   reset_title_intro_sequence();
-  FUN_0005a244();
+  reset_title_intro_persistent_sequence();
   FUN_0005a3b0();
   FUN_0005a4b4();
   FUN_0005a572();

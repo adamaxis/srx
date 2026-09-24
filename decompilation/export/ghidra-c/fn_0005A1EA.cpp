@@ -3,7 +3,7 @@
 // Name: FUN_0005a1ea
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0005A252 FUN_0005a252
+//   0x0005A252 advance_title_intro_persistent_sequence
 //   0x0005A3BE FUN_0005a3be
 //   0x0005A4C2 FUN_0005a4c2
 //   0x0005A59C FUN_0005a59c
@@ -19,7 +19,7 @@ void FUN_0005a1ea(void)
 
 {
   DAT_00ffdd02 = 1;
-  FUN_0005a252();
+  advance_title_intro_persistent_sequence();
   FUN_0005a3be();
   FUN_0005a4c2();
   FUN_0005a59c();

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0005A252
-// Name: FUN_0005a252
+// Name: advance_title_intro_persistent_sequence
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 FUN_00001378
@@ -11,7 +11,7 @@
 //   0x0005B32C FUN_0005b32c
 
 
-void FUN_0005a252(void)
+void advance_title_intro_persistent_sequence(void)
 
 {
   if (DAT_00fff12e < 0xc) {

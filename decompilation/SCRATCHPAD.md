@@ -558,6 +558,13 @@ source's `+9` frame cadence and `<12` gate are preserved, while every unknown
 graphics/audio leaf is an explicit callback and each descriptor is a host
 asset handle.
 
+The paired persistent intro sequence is now separated and typed. `0x5A244`
+resets its own stage/deadline, while `0x5A252` selects four host descriptors,
+runs the `0x2F` transition and nine-frame repeated stages, publishes the
+stage-four marker and stage-nine anchor, emits its final overlay at stage
+twelve, and redraws the current descriptor at `(0x178, 0xD1)` with palette
+flags `0x2000` on every active call, including the final transition call.
+
 The runner reset cluster is now typed. `0x59BCC` clears status bits `6` and
 `4` in each of the three live runner records, preserves the source order of
 the preparation (`0x3674`, argument `0x0A`) and finalization (`0x37EC`)
