@@ -107,6 +107,9 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x000118C6L, "cycle_inventory_action_selector");
         names.put(0x0000A7E4L, "initialize_entity_slot_order");
         names.put(0x0000AE5EL, "schedule_entity_collision_recheck");
+        names.put(0x00014902L, "compute_obstruction_grid_index");
+        names.put(0x00014C2EL, "derive_entity_axis_relation_flags");
+        names.put(0x00015A8CL, "find_first_available_entity_slot");
         names.put(0x0000B732L, "apply_movement_result_policy");
         names.put(0x0000B77EL, "probe_entity_directional_collision");
         names.put(0x0000B530L, "approach_entity_fixed_point_target");

@@ -6,7 +6,7 @@
 //   0x0000ABFC update_entity_animation_delay
 //   0x0000AF6C reset_entity_animation_state
 //   0x0000AFF2 prepare_entity_auxiliary_behavior
-//   0x00015A8C FUN_00015a8c
+//   0x00015A8C find_first_available_entity_slot
 //   0x00015C84 FUN_00015c84
 //   0x00015D3C FUN_00015d3c
 //   0x0001DBAA FUN_0001dbaa
@@ -65,7 +65,7 @@ void configure_entity_target_transition(void)
        (bVar3 = (byte)((uint)uVar7 >> 0x10), uVar5 = bVar3 < *(byte *)(extraout_A1_00 + 0x9c),
        bVar3 != *(byte *)(extraout_A1_00 + 0x9c))) {
       prepare_entity_auxiliary_behavior(extraout_A0_01,extraout_A1_00);
-      uVar2 = FUN_00015a8c();
+      uVar2 = find_first_available_entity_slot();
       if (!(bool)uVar5) {
         extraout_A1_01[0x1f] = uVar2;
         *(byte *)((int)extraout_A1_01 + 0x11) = *(byte *)((int)extraout_A1_01 + 0x11) | 1;

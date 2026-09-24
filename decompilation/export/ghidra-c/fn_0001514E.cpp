@@ -6,7 +6,7 @@
 //   0x000038AC FUN_000038ac
 //   0x00014FF8 FUN_00014ff8
 //   0x000152FA FUN_000152fa
-//   0x00015A8C FUN_00015a8c
+//   0x00015A8C find_first_available_entity_slot
 //   0x0001DBAA FUN_0001dbaa
 //   0x0001E04A FUN_0001e04a
 //   0x000530DE FUN_000530de
@@ -46,7 +46,7 @@ void FUN_0001514e(void)
     bVar9 = uVar3 == 0x3c;
     if (uVar3 < 0x3d) {
       FUN_000038ac();
-      if ((!bVar9) && (FUN_00015a8c(), !(bool)uVar10)) {
+      if ((!bVar9) && (find_first_available_entity_slot(), !(bool)uVar10)) {
         FUN_0001dbaa();
         FUN_00014ff8();
         *(undefined1 *)((int)extraout_A1 + 0x89) = 0x7f;
@@ -57,7 +57,7 @@ void FUN_0001514e(void)
           FUN_000152fa();
           puVar5 = extraout_A1_00;
         }
-        uVar1 = FUN_00015a8c();
+        uVar1 = find_first_available_entity_slot();
         if (!(bool)uVar10) {
           DAT_00ffdd6c._1_1_ = 0;
           sVar4 = (short)CONCAT31((int3)(uVar1 >> 8),*(char *)(extraout_A0 + 0x56) + 'n');

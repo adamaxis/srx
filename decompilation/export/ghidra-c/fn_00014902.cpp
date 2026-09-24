@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00014902
-// Name: FUN_00014902
+// Name: compute_obstruction_grid_index
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-short FUN_00014902(void)
+short compute_obstruction_grid_index(void)
 
 {
   ushort in_D0w;

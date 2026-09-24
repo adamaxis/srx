@@ -501,3 +501,16 @@ target_link_libraries(shadowrun_ghidra_entity_state_primitives_test
     PRIVATE shadowrun_ghidra_entity_state_primitives)
 add_test(NAME shadowrun_ghidra_entity_state_primitives
          COMMAND shadowrun_ghidra_entity_state_primitives_test)
+
+add_library(shadowrun_ghidra_entity_route_primitives STATIC
+    src/entity_route_primitives_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_route_primitives PUBLIC include)
+
+add_executable(shadowrun_ghidra_entity_route_primitives_test
+    tests/entity_route_primitives_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_route_primitives_test
+    PRIVATE shadowrun_ghidra_entity_route_primitives)
+add_test(NAME shadowrun_ghidra_entity_route_primitives
+         COMMAND shadowrun_ghidra_entity_route_primitives_test)

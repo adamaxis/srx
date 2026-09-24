@@ -6,10 +6,10 @@
 //   0x00014756 FUN_00014756
 //   0x00014764 FUN_00014764
 //   0x000148AA FUN_000148aa
-//   0x00014902 FUN_00014902
+//   0x00014902 compute_obstruction_grid_index
 //   0x00014914 FUN_00014914
 //   0x00014B4E FUN_00014b4e
-//   0x00014C2E FUN_00014c2e
+//   0x00014C2E derive_entity_axis_relation_flags
 //   0x00015CA4 compute_diagonal_step_cost
 
 
@@ -46,7 +46,7 @@ void FUN_000149c0(void)
   if (sVar1 == *psVar7) {
     if (psVar7[1] == -1) {
       if ((in_A0[0x58] & 0x800) != 0) {
-        FUN_00014902();
+        compute_obstruction_grid_index();
         uVar5 = *(ushort *)(extraout_A0_03 + 0x34) >> 0xd & 6;
         if (((&DAT_00ff1700)[(short)(*(short *)(&DAT_000148ca + (short)uVar5) + sVar1)] == '\0') &&
            ((&DAT_00ff1700)
@@ -74,7 +74,7 @@ void FUN_000149c0(void)
       }
       *(byte *)(in_A0 + 0x58) = *(byte *)(in_A0 + 0x58) & 0xfd;
       *(byte *)(in_A0 + 0x58) = *(byte *)(in_A0 + 0x58) & 0xf7;
-      FUN_00014c2e();
+      derive_entity_axis_relation_flags();
       uVar2 = *(undefined2 *)(extraout_A0_02 + 0x96);
       uVar5 = *(ushort *)(extraout_A0_02 + 0x98);
       FUN_00015d3c();

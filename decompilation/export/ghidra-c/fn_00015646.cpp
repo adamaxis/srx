@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x000036FC FUN_000036fc
 //   0x00015118 FUN_00015118
-//   0x00015A8C FUN_00015a8c
+//   0x00015A8C find_first_available_entity_slot
 //   0x00015D3C FUN_00015d3c
 //   0x0001A2CC FUN_0001a2cc
 //   0x0001DBAA FUN_0001dbaa
@@ -39,7 +39,7 @@ void FUN_00015646(void)
   if ((*(ushort *)(in_A0 + 0x16) & 0x7ff) < 0x3d) {
     uVar8 = 0;
     FUN_000036fc();
-    FUN_00015a8c();
+    find_first_available_entity_slot();
     if (!(bool)uVar8) {
       FUN_0001dbaa();
       uVar5 = FUN_00015118();

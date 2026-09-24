@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00015A8C
-// Name: FUN_00015a8c
+// Name: find_first_available_entity_slot
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-short FUN_00015a8c(void)
+short find_first_available_entity_slot(void)
 
 {
   short sVar1;

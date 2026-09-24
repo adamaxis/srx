@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00014756 FUN_00014756
 //   0x00014800 FUN_00014800
-//   0x00014902 FUN_00014902
+//   0x00014902 compute_obstruction_grid_index
 
 
 void FUN_00014af4(void)
@@ -16,7 +16,7 @@ void FUN_00014af4(void)
   short unaff_D5w;
   int extraout_A0;
   
-  FUN_00014902();
+  compute_obstruction_grid_index();
   sVar1 = 4;
   do {
     FUN_00014800();

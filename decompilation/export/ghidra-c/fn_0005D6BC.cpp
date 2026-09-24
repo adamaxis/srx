@@ -3,7 +3,7 @@
 // Name: FUN_0005d6bc
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00015A8C FUN_00015a8c
+//   0x00015A8C find_first_available_entity_slot
 //   0x0001A2CC FUN_0001a2cc
 
 
@@ -21,7 +21,7 @@ void FUN_0005d6bc(void)
   undefined1 in_CF;
   bool bVar5;
   
-  uVar1 = FUN_00015a8c();
+  uVar1 = find_first_available_entity_slot();
   if (!(bool)in_CF) {
     sVar2 = 0x7f;
     puVar3 = &DAT_0007361a;

@@ -285,13 +285,13 @@ LAB_000142ae:
         puVar7 = extraout_A0_11;
         if ((extraout_A0_11[0x58] & 0x200) != 0) goto FUN_000149c0;
         *(undefined4 *)((int)register0x0000003c + -4) = 0x145e8;
-        FUN_00014c2e();
+        derive_entity_axis_relation_flags();
         puVar7 = extraout_A0_12;
       }
     }
     else {
       *(undefined4 *)((int)register0x0000003c + -4) = 0x145c8;
-      FUN_00014c2e();
+      derive_entity_axis_relation_flags();
       puVar7 = extraout_A0_10;
     }
 LAB_000145e8:
@@ -319,7 +319,7 @@ FUN_000149c0:
       if (psVar8[1] == -1) {
         if ((puVar7[0x58] & 0x800) != 0) {
           *(undefined4 *)((int)register0x0000003c + -4) = 0x14a64;
-          FUN_00014902();
+          compute_obstruction_grid_index();
           uVar3 = *(ushort *)(extraout_A0_17 + 0x34) >> 0xd & 6;
           if (((&DAT_00ff1700)[(short)(*(short *)(&DAT_000148ca + (short)uVar3) + sVar6)] == '\0')
              && ((&DAT_00ff1700)
@@ -354,7 +354,7 @@ FUN_000149c0:
         *(byte *)(puVar7 + 0x58) = *(byte *)(puVar7 + 0x58) & 0xfd;
         *(byte *)(puVar7 + 0x58) = *(byte *)(puVar7 + 0x58) & 0xf7;
         *(undefined4 *)((int)register0x0000003c + -4) = 0x14a50;
-        FUN_00014c2e();
+        derive_entity_axis_relation_flags();
         puVar7 = extraout_A0_16;
         goto LAB_000145e8;
       }

@@ -4659,7 +4659,7 @@
 0000B142: movem.l {  A1 A0},-(SP)
 0000B146: exg A0,A1
 0000B148: bsr.w 0x0000aff2 ; call 0000AFF2 prepare_entity_auxiliary_behavior
-0000B14C: jsr 0x00015a8c.l ; call 00015A8C FUN_00015a8c
+0000B14C: jsr 0x00015a8c.l ; call 00015A8C find_first_available_entity_slot
 0000B152: bcs.w 0x0000b194
 0000B156: move.w D0w,(0x3e,A1)
 0000B15A: bset.b #0x0,(0x11,A1)
@@ -4739,7 +4739,7 @@
 0000B29E: movem.l {  A1 A0},-(SP)
 0000B2A2: exg A0,A1
 0000B2A4: bsr.w 0x0000aff2 ; call 0000AFF2 prepare_entity_auxiliary_behavior
-0000B2A8: jsr 0x00015a8c.l ; call 00015A8C FUN_00015a8c
+0000B2A8: jsr 0x00015a8c.l ; call 00015A8C find_first_available_entity_slot
 0000B2AE: bcs.w 0x0000b2f0
 0000B2B2: move.w D0w,(0x3e,A1)
 0000B2B6: bset.b #0x0,(0x11,A1)
@@ -11754,14 +11754,14 @@
 000145B6: bne.w 0x000149c0
 000145BA: bclr.b #0x2,(0xb0,A0)
 000145C0: beq.w 0x000145cc
-000145C4: bsr.w 0x00014c2e ; call 00014C2E FUN_00014c2e
+000145C4: bsr.w 0x00014c2e ; call 00014C2E derive_entity_axis_relation_flags
 000145C8: bra.w 0x000145e8
 000145CC: cmpi.w #0x1000,(0xb8,A0)
 000145D2: beq.w 0x000145e8
 000145D6: bsr.w 0x00014ba6 ; call 00014BA6 FUN_00014ba6
 000145DA: btst.b #0x1,(0xb0,A0)
 000145E0: bne.w 0x000149c0
-000145E4: bsr.w 0x00014c2e ; call 00014C2E FUN_00014c2e
+000145E4: bsr.w 0x00014c2e ; call 00014C2E derive_entity_axis_relation_flags
 000145E8: move.w (A0),D5w
 000145EA: move.w (0x4,A0),D4w
 000145EE: move.w (0x96,A0),D3w
@@ -11986,11 +11986,11 @@
 00014914: lea (0xff1700).l,A4 ; data 00ff1700
 0001491A: move.w (0x96,A0),D0w
 0001491E: move.w (0x98,A0),D1w
-00014922: bsr.b 0x00014902 ; call 00014902 FUN_00014902
+00014922: bsr.b 0x00014902 ; call 00014902 compute_obstruction_grid_index
 00014924: move.w D5w,D4w
 00014926: move.w (A0),D0w
 00014928: move.w (0x4,A0),D1w
-0001492C: bsr.b 0x00014902 ; call 00014902 FUN_00014902
+0001492C: bsr.b 0x00014902 ; call 00014902 compute_obstruction_grid_index
 0001492E: bsr.w 0x0001494c ; call 0001494C FUN_0001494c
 00014932: bcs.w 0x00014946
 00014936: exg D4,D5
@@ -12078,12 +12078,12 @@
 00014A3C: bne.w 0x00014a54
 00014A40: bclr.b #0x1,(0xb0,A0)
 00014A46: bclr.b #0x3,(0xb0,A0)
-00014A4C: bsr.w 0x00014c2e ; call 00014C2E FUN_00014c2e
+00014A4C: bsr.w 0x00014c2e ; call 00014C2E derive_entity_axis_relation_flags
 00014A50: bra.w 0x000145e8
 00014A54: lea (0xff1700).l,A4 ; data 00ff1700
 00014A5A: move.w (A0),D0w
 00014A5C: move.w (0x4,A0),D1w
-00014A60: bsr.w 0x00014902 ; call 00014902 FUN_00014902
+00014A60: bsr.w 0x00014902 ; call 00014902 compute_obstruction_grid_index
 00014A64: move.w (0x34,A0),D6w
 00014A68: rol.w #0x3,D6w
 00014A6A: andi.w #0x6,D6w
@@ -12133,7 +12133,7 @@
 00014AF4: lea (0xff1700).l,A4 ; data 00ff1700
 00014AFA: move.w (A0),D0w
 00014AFC: move.w (0x4,A0),D1w
-00014B00: bsr.w 0x00014902 ; call 00014902 FUN_00014902
+00014B00: bsr.w 0x00014902 ; call 00014902 compute_obstruction_grid_index
 00014B04: move.w (0x34,A0),D6w
 00014B08: rol.w #0x3,D6w
 00014B0A: andi.w #0x6,D6w
@@ -12556,7 +12556,7 @@
 000151A8: bra.w 0x000152f4
 000151AC: jsr 0x000038ac.l ; call 000038AC FUN_000038ac
 000151B2: beq.w 0x000152f4
-000151B6: bsr.w 0x00015a8c ; call 00015A8C FUN_00015a8c
+000151B6: bsr.w 0x00015a8c ; call 00015A8C find_first_available_entity_slot
 000151BA: bcs.w 0x000152f4
 000151BE: move.l (0xa2,A0),D3
 000151C2: beq.w 0x000151c6
@@ -12568,7 +12568,7 @@
 000151E0: beq.w 0x000151e8
 000151E4: bsr.w 0x000152fa ; call 000152FA FUN_000152fa
 000151E8: movea.l A1,A2
-000151EA: bsr.w 0x00015a8c ; call 00015A8C FUN_00015a8c
+000151EA: bsr.w 0x00015a8c ; call 00015A8C find_first_available_entity_slot
 000151EE: bcs.w 0x000152f4
 000151F2: move.w D0w,-(SP) ; data Stack[-0x2]
 000151F4: lea (0x15318).l,A4 ; data 00015318
@@ -12842,7 +12842,7 @@
 00015652: bgt.w 0x00015792
 00015656: moveq #-0x1,D1
 00015658: jsr 0x000036fc.l ; call 000036FC FUN_000036fc
-0001565E: bsr.w 0x00015a8c ; call 00015A8C FUN_00015a8c
+0001565E: bsr.w 0x00015a8c ; call 00015A8C find_first_available_entity_slot
 00015662: bcs.w 0x00015792
 00015666: tst.w (0x00ffdf84).l
 0001566C: bne.w 0x00015670
@@ -28926,7 +28926,7 @@
 0005D6AE: movea.l (0x0,A2,D0w*0x1),A2 ; data 001fe946
 0005D6B2: move.w #0x4000,D6w
 0005D6B6: jmp 0x00001378.l ; call 00001378 FUN_00001378
-0005D6BC: jsr 0x00015a8c.l ; call 00015A8C FUN_00015a8c
+0005D6BC: jsr 0x00015a8c.l ; call 00015A8C find_first_available_entity_slot
 0005D6C2: bcs.w 0x0005d744
 0005D6C6: lea (0x7361a).l,A0 ; data 0007361a
 0005D6CC: move.w #0x7f,D7w

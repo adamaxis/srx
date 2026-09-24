@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00014C2E
-// Name: FUN_00014c2e
+// Name: derive_entity_axis_relation_flags
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00014c2e(void)
+void derive_entity_axis_relation_flags(void)
 
 {
   ushort *in_A0;

@@ -387,14 +387,14 @@ entry	name	size	callingConvention	decompileStatus	file
 00014854	FUN_00014854	86	unknown	ok	ghidra-c/fn_00014854.cpp
 000148AA	FUN_000148aa	32	unknown	ok	ghidra-c/fn_000148AA.cpp
 000148D2	choose_dominant_axis_directions	48	unknown	ok	ghidra-c/fn_000148D2.cpp
-00014902	FUN_00014902	18	unknown	ok	ghidra-c/fn_00014902.cpp
+00014902	compute_obstruction_grid_index	18	unknown	ok	ghidra-c/fn_00014902.cpp
 00014914	FUN_00014914	56	unknown	ok	ghidra-c/fn_00014914.cpp
 0001494C	FUN_0001494c	116	unknown	ok	ghidra-c/fn_0001494C.cpp
 000149C0	FUN_000149c0	308	unknown	ok	ghidra-c/fn_000149C0.cpp
 00014AF4	FUN_00014af4	90	unknown	ok	ghidra-c/fn_00014AF4.cpp
 00014B4E	FUN_00014b4e	88	unknown	ok	ghidra-c/fn_00014B4E.cpp
 00014BA6	FUN_00014ba6	136	unknown	ok	ghidra-c/fn_00014BA6.cpp
-00014C2E	FUN_00014c2e	40	unknown	ok	ghidra-c/fn_00014C2E.cpp
+00014C2E	derive_entity_axis_relation_flags	40	unknown	ok	ghidra-c/fn_00014C2E.cpp
 00014C56	FUN_00014c56	38	unknown	ok	ghidra-c/fn_00014C56.cpp
 00014C7C	FUN_00014c7c	220	unknown	ok	ghidra-c/fn_00014C7C.cpp
 00014D58	FUN_00014d58	18	unknown	ok	ghidra-c/fn_00014D58.cpp
@@ -415,7 +415,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00015830	FUN_00015830	256	unknown	ok	ghidra-c/fn_00015830.cpp
 00015930	FUN_00015930	78	unknown	ok	ghidra-c/fn_00015930.cpp
 0001597E	FUN_0001597e	206	unknown	ok	ghidra-c/fn_0001597E.cpp
-00015A8C	FUN_00015a8c	46	unknown	ok	ghidra-c/fn_00015A8C.cpp
+00015A8C	find_first_available_entity_slot	46	unknown	ok	ghidra-c/fn_00015A8C.cpp
 00015ABA	FUN_00015aba	250	unknown	ok	ghidra-c/fn_00015ABA.cpp
 00015BB4	FUN_00015bb4	2	unknown	ok	ghidra-c/fn_00015BB4.cpp
 00015C58	FUN_00015c58	44	unknown	ok	ghidra-c/fn_00015C58.cpp

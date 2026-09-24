@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00014BA6 FUN_00014ba6
-//   0x00014C2E FUN_00014c2e
+//   0x00014C2E derive_entity_axis_relation_flags
 //   0x00015D3C FUN_00015d3c
 
 
@@ -48,12 +48,12 @@ void FUN_000145a2(void)
         FUN_00014ba6();
         in_A0 = extraout_A0_00;
         if ((extraout_A0_00[0x58] & 0x200) != 0) goto FUN_000149c0;
-        FUN_00014c2e();
+        derive_entity_axis_relation_flags();
         in_A0 = extraout_A0_01;
       }
     }
     else {
-      FUN_00014c2e();
+      derive_entity_axis_relation_flags();
       in_A0 = extraout_A0;
     }
 LAB_000145e8:
@@ -74,7 +74,7 @@ FUN_000149c0:
     if (sVar2 == *psVar8) {
       if (psVar8[1] == -1) {
         if ((in_A0[0x58] & 0x800) != 0) {
-          FUN_00014902();
+          compute_obstruction_grid_index();
           uVar3 = *(ushort *)(extraout_A0_06 + 0x34) >> 0xd & 6;
           if (((&DAT_00ff1700)[(short)(*(short *)(&DAT_000148ca + (short)uVar3) + sVar2)] == '\0')
              && ((&DAT_00ff1700)
@@ -102,7 +102,7 @@ FUN_000149c0:
         }
         *(byte *)(in_A0 + 0x58) = *(byte *)(in_A0 + 0x58) & 0xfd;
         *(byte *)(in_A0 + 0x58) = *(byte *)(in_A0 + 0x58) & 0xf7;
-        FUN_00014c2e();
+        derive_entity_axis_relation_flags();
         in_A0 = extraout_A0_05;
         goto LAB_000145e8;
       }

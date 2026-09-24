@@ -6,7 +6,7 @@
 //   0x0000ABFC update_entity_animation_delay
 //   0x0000AF6C reset_entity_animation_state
 //   0x0000AFF2 prepare_entity_auxiliary_behavior
-//   0x00015A8C FUN_00015a8c
+//   0x00015A8C find_first_available_entity_slot
 //   0x0001DBAA FUN_0001dbaa
 //   0x00055B16 FUN_00055b16
 
@@ -32,7 +32,7 @@ void synchronize_entity_behavior_spawn(void)
   if ((in_stack_fffffffb != *(byte *)(extraout_A1 + 0x4c)) ||
      (uVar3 = bVar4 < *(byte *)(extraout_A1 + 0x9c), bVar4 != *(byte *)(extraout_A1 + 0x9c))) {
     prepare_entity_auxiliary_behavior(extraout_A0,extraout_A1);
-    uVar1 = FUN_00015a8c();
+    uVar1 = find_first_available_entity_slot();
     if (!(bool)uVar3) {
       extraout_A1_00[0x1f] = uVar1;
       *(byte *)((int)extraout_A1_00 + 0x11) = *(byte *)((int)extraout_A1_00 + 0x11) | 1;
