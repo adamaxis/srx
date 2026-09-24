@@ -96,6 +96,13 @@ void assert_cursor_at(const SoftwareScreen& screen, const NativeImage& cursor,
     assert(has_image_pixel(screen, cursor, x, y));
 }
 
+void assert_startup_cursor_at(const SoftwareScreen& screen,
+                              const NativeImage& cursor,
+                              std::int32_t source_x,
+                              std::int32_t source_y) {
+    assert_cursor_at(screen, cursor, source_x, source_y);
+}
+
 void select_field_inventory_slot(NativePortShell& shell, std::size_t slot) {
     assert(slot < 8U);
     while (shell.field_menu_selection() != 0U) {
@@ -273,7 +280,7 @@ void test_startup_behavior_and_rendering(const std::vector<std::uint8_t>& rom,
     assert(shell.start_options_selection() == 0U);
     shell.render(screen);
     assert(has_image_pixel(screen, assets.startup_background, 0, 0));
-    assert_cursor_at(screen, assets.startup_cursor, 104, 80);
+    assert_startup_cursor_at(screen, assets.startup_cursor, 104, 80);
 
     // 0x59092's two choices wrap on the vertical selector. The cursor moves
     // with the selected row, rather than being a checklist rendered by the
@@ -281,7 +288,7 @@ void test_startup_behavior_and_rendering(const std::vector<std::uint8_t>& rom,
     press(shell, Button::Down);
     assert(shell.start_options_selection() == 1U);
     shell.render(screen);
-    assert_cursor_at(screen, assets.startup_cursor, 104, 96);
+    assert_startup_cursor_at(screen, assets.startup_cursor, 104, 96);
     press(shell, Button::Down);
     assert(shell.start_options_selection() == 0U);
     press(shell, Button::Up);
@@ -293,7 +300,7 @@ void test_startup_behavior_and_rendering(const std::vector<std::uint8_t>& rom,
     assert(shell.scene() == NativeScene::SaveLoad);
     assert(shell.save_load_selection() == 0U);
     shell.render(screen);
-    assert_cursor_at(screen, assets.startup_cursor, 136, 112);
+    assert_startup_cursor_at(screen, assets.startup_cursor, 136, 112);
     press(shell, Button::Down);
     assert(shell.save_load_selection() == 1U);
     press(shell, Button::Up);
@@ -315,7 +322,7 @@ void test_startup_behavior_and_rendering(const std::vector<std::uint8_t>& rom,
     assert(has_image_pixel(screen, assets.startup_background, 0, 0));
     assert(has_image_pixel(screen, assets.field_menu_runner_portraits[0],
                            80, 56));
-    assert_cursor_at(screen, assets.startup_cursor, 152, 88);
+    assert_startup_cursor_at(screen, assets.startup_cursor, 152, 88);
     press(shell, Button::Down);
     assert(shell.archetype_selection() == 1U);
     shell.render(screen);
@@ -331,7 +338,7 @@ void test_startup_behavior_and_rendering(const std::vector<std::uint8_t>& rom,
     press(shell, Button::Down);
     assert(shell.archetype_selection() == 2U);
     shell.render(screen);
-    assert_cursor_at(screen, assets.startup_cursor, 152, 120);
+    assert_startup_cursor_at(screen, assets.startup_cursor, 152, 120);
     shell.update(InputState{button_mask(Button::A), button_mask(Button::A)});
     assert(shell.selected_archetype() == 2U);
     assert(shell.scene() == NativeScene::Intro);
@@ -339,6 +346,7 @@ void test_startup_behavior_and_rendering(const std::vector<std::uint8_t>& rom,
     // 0x59C5E is a timed presentation. An empty update advances it, while a
     // Start edge exits through the same field entry boundary.
     const auto intro_frame = shell.intro_frame();
+    shell.update(InputState{});
     shell.update(InputState{});
     assert(shell.intro_frame() == intro_frame + 1U);
     shell.render(screen);
@@ -437,10 +445,12 @@ void test_field_menu_behavior_and_rendering(
     // source 0x11740/0x118C6 table: Equip, Discard, Trade, Cancel, wrapped by
     // Left/Right and confirmed by a second A/B edge.
     // Slot 7 is the source-empty cell in Joshua's startup record. The native
-    // selector is the full yellow cell band, separate from equipment borders.
+    // selector is the extracted command-screen cursor, separate from the
+    // equipment borders; it is a 24x32 corner cursor rather than a host-filled
+    // 32x24 rectangle.
     select_field_inventory_slot(shell, 7U);
     shell.render(screen);
-    assert(screen.pixel(48, 188) == pack({0xFF, 0xD8, 0x00, 0xFF}));
+    assert_cursor_at(screen, assets.field_menu_cursor, 48, 184);
     select_field_inventory_slot(shell, 0U);
     assert(shell.field_inventory_item_code(0U) != 0U);
     shell.render(screen);
@@ -631,9 +641,13 @@ void test_pocket_secretary_menu(const std::vector<std::uint8_t>& rom) {
     assert(shell.pocket_secretary_message_line(1) == "  a cyberdeck!!");
     assert(shell.pocket_secretary_message_line(2) == " Keep looking.");
     shell.render(screen);
+    // Cyberdeck is a child response of Pocket Secretary. B dismisses that
+    // response in place; it must not escape to the field command screen.
+    press(shell, Button::B);
+    assert(shell.pocket_secretary_selection() == 2U);
+    assert(!shell.pocket_secretary_message_visible());
     press(shell, Button::Up);
     assert(shell.pocket_secretary_selection() == 1U);
-    assert(!shell.pocket_secretary_message_visible());
     press(shell, Button::Up);
     assert(shell.pocket_secretary_selection() == 0U);
     for (std::size_t expected = 1U; expected < 5U; ++expected) {
@@ -683,13 +697,9 @@ void test_notebook_tip_filtering(const std::vector<std::uint8_t>& rom) {
     assert(shell.notebook_tip_selection() == 1U);
     press(shell, Button::Up);
     assert(shell.notebook_tip_selection() == 0U);
-    // B follows the source 0x391A switch path and leaves the Tips page open;
-    // with Joshua as the only active runner it is a rejected/sound-only edge.
+    // B is parent navigation from the Tips page. It returns to Notebook and
+    // leaves the Pocket Secretary tree intact; it is not a runner switch.
     press(shell, Button::B);
-    assert(shell.notebook_tips_menu_open());
-    assert(shell.field_runner_switch_attempts() == 1U);
-    assert(shell.field_runner_switch_rejections() == 1U);
-    press(shell, Button::A);
     assert(shell.notebook_menu_open());
     assert(shell.notebook_selection() == 1U);
 }

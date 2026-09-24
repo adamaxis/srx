@@ -26,8 +26,6 @@ using shadowrun::native::NativeScene;
 using shadowrun::native::Rgba8;
 using shadowrun::native::SoftwareScreen;
 using shadowrun::native::button_mask;
-using shadowrun::native::kFieldPlayfieldWidth;
-using shadowrun::native::kFieldHudWidth;
 using shadowrun::native::kScreenHeight;
 using shadowrun::native::kScreenWidth;
 
@@ -208,6 +206,25 @@ SoftwareScreen source_field_menu_reference(const NativePortAssets& assets,
                            assets.field_menu_power_labels[label_index]);
             }
         }
+        const auto is_armor_detail = item_code >= 0x2CU && item_code <= 0x32U;
+        if (is_armor_detail) {
+            // Source 0x115F2 skips the weapon detail helper for armor. The
+            // selected armor page writes the same Wpns/Guns rows as the
+            // source armor overview, using the live armor record's +0x26/+0x25
+            // indexes rather than the selected item's generic damage byte.
+            write_text(112, 80, "Wpns");
+            if (record.weapons_bar_index < assets.field_menu_damage_bars.size()) {
+                const auto& bar = assets.field_menu_damage_bars[
+                    record.weapons_bar_index];
+                expected.blit_rgba(168, 80, bar.width, bar.height, bar.pixels);
+            }
+            write_text(112, 88, "Guns");
+            if (record.guns_bar_index < assets.field_menu_drain_bars.size()) {
+                const auto& bar = assets.field_menu_drain_bars[
+                    record.guns_bar_index];
+                expected.blit_rgba(168, 88, bar.width, bar.height, bar.pixels);
+            }
+        }
         const auto detail_label = include_art
             ? source_item_detail_label_for_test(item_code)
             : std::string_view{};
@@ -332,11 +349,9 @@ SoftwareScreen source_field_menu_reference(const NativePortAssets& assets,
     if (selection < 2U) {
         const auto x = 8 + static_cast<std::int32_t>(selection * 40U);
         const auto y = 112 + static_cast<std::int32_t>(row * 24U);
-        constexpr Rgba8 kInventorySelection{0xFF, 0xD8, 0x00, 0xFF};
-        expected.fill_rect(x, y, 32, 2, kInventorySelection);
-        expected.fill_rect(x, y + 22, 32, 2, kInventorySelection);
-        expected.fill_rect(x, y, 2, 24, kInventorySelection);
-        expected.fill_rect(x + 30, y, 2, 24, kInventorySelection);
+        expected.blit_rgba(x, y, assets.field_menu_cursor.width,
+                           assets.field_menu_cursor.height,
+                           assets.field_menu_cursor.pixels);
         const auto slot = row * 2U + selection;
         if (slot < record.inventory_item_codes.size()) {
             draw_item_detail(record.inventory_item_codes[slot], true);
@@ -385,7 +400,7 @@ void capture_and_compare(const SoftwareScreen& actual,
     for (std::size_t index = 0; index < actual.pixels().size(); ++index) {
         const auto x = static_cast<std::int32_t>(
             index % static_cast<std::size_t>(kScreenWidth));
-        if (x >= kFieldPlayfieldWidth) {
+        if (x >= shadowrun::native::kFieldHudX) {
             diff.pixels[index] = {0, 0, 0, 255};
             continue;
         }
@@ -494,7 +509,7 @@ void require_source_text(const SoftwareScreen& screen, const NativeImage& font,
                     continue;
                 }
                 const auto dest_x = cursor + static_cast<std::int32_t>(x);
-                if (dest_x >= kFieldPlayfieldWidth) {
+                if (dest_x >= shadowrun::native::kFieldHudX) {
                     continue;
                 }
                 ++compared;
@@ -547,18 +562,6 @@ void require_edge_pixels(const SoftwareScreen& screen, const NativeImage& image,
     }
 }
 
-void require_inventory_selection_band(const SoftwareScreen& screen,
-                                      std::int32_t x, std::int32_t y,
-                                      const std::string& label) {
-    constexpr auto expected = static_cast<std::uint32_t>(0xFFD800U);
-    if (screen.pixel(x, y + 2) != expected ||
-        screen.pixel(x + 31, y + 2) != expected ||
-        screen.pixel(x + 2, y) != expected ||
-        screen.pixel(x + 2, y + 23) != expected) {
-        throw std::runtime_error(label + " is missing the yellow selection band");
-    }
-}
-
 bool inside(std::int32_t x, std::int32_t y, std::int32_t left,
             std::int32_t top, std::int32_t width, std::int32_t height) {
     return x >= left && x < left + width && y >= top && y < top + height;
@@ -594,7 +597,8 @@ void require_static_menu_pixels(const SoftwareScreen& actual,
                 inside(x, y, 8, 112, 80, 112) ||
                 inside(x, y, 128, 184, 112, 16) ||
                 inside(x, y, 112, 200, 144, 24) ||
-                inside(x, y, kFieldPlayfieldWidth, 0, kFieldHudWidth,
+                inside(x, y, shadowrun::native::kFieldHudX, 0,
+                       kScreenWidth - shadowrun::native::kFieldHudX,
                        kScreenHeight);
             if (dynamic) {
                 continue;
@@ -810,14 +814,14 @@ void test_field_menu_visual_contract(
                                  "command-tab focus " + std::to_string(focus));
         }
 
-        // Inventory selection uses the full yellow cell band shown by the
-        // native command screen, separate from equipment borders.
+        // Inventory selection uses the source command-screen cursor shown by
+        // the native command screen, separate from equipment borders.
         while (shell.field_menu_selection() != 0U) {
             press(shell, Button::Left);
         }
         shell.render(screen);
-        require_inventory_selection_band(screen, 8, 112,
-                                         "inventory selection at slot 0");
+        require_image_pixels(screen, assets.field_menu_cursor, 8, 112,
+                             "inventory selection at slot 0");
 
         // Each occupied inventory cell also opens the source item-detail
         // page. Verify the exact item art selected by the source item code,
@@ -867,11 +871,6 @@ void test_field_menu_visual_contract(
                         std::to_string(slot) + ", item " +
                         std::to_string(code));
             }
-            require_inventory_selection_band(
-                screen,
-                8 + static_cast<std::int32_t>((slot & 1U) * 40U),
-                112 + static_cast<std::int32_t>((slot / 2U) * 24U),
-                "inventory selection for slot " + std::to_string(slot));
         }
     }
 }

@@ -860,9 +860,9 @@ int main() {
     assert(rom_shell.frame_number() == before_action_frame + 1);
     assert(screen.presented_frames() == 12);
 
-    // The runtime constructor below receives only the host asset pack. This
-    // is the PC-port path: the ROM is used by extraction, not by the native
-    // update/render loop.
+    // The runtime constructor below receives only host-owned native state and
+    // individually extracted assets. The ROM is used by extraction, not by
+    // the native update/render loop.
     auto native_assets = shadowrun::graphics::decode_genesis_native_assets(
         rom);
     assert(native_assets.field_menu_cursor.width == 24);
@@ -874,40 +874,33 @@ int main() {
     assert(native_assets.field_menu_damage_bars[0].width == 56);
     assert(native_assets.field_menu_damage_bars[0].height == 8);
     assert(native_assets.field_menu_power_labels[5] == "Light");
-    const auto pack_path = std::filesystem::temp_directory_path() /
-                           "shadowrun_native_port_runtime_test.srna";
-    shadowrun::graphics::write_native_asset_pack(
-        pack_path.string(), native_assets);
-    auto packed_assets = shadowrun::graphics::read_native_asset_pack(
-        pack_path.string());
-    assert(packed_assets.protagonist_archetype_records[0]
+    assert(native_assets.protagonist_archetype_records[0]
                .attack_bar_indices_by_posture ==
            native_assets.protagonist_archetype_records[0]
                .attack_bar_indices_by_posture);
-    assert(packed_assets.protagonist_archetype_records[0]
+    assert(native_assets.protagonist_archetype_records[0]
                .defense_bar_indices_by_posture ==
            native_assets.protagonist_archetype_records[0]
                .defense_bar_indices_by_posture);
-    NativePortShell pack_shell("SHADOWRUN", std::move(packed_assets));
-    std::filesystem::remove(pack_path);
-    assert(pack_shell.has_assets());
-    assert(pack_shell.has_field_map());
-    assert(pack_shell.has_terrain());
-    assert(pack_shell.has_entity_frame());
-    assert(pack_shell.has_boot());
-    assert(pack_shell.scene() == NativeScene::Bootstrap);
-    SoftwareScreen pack_screen;
-    enter_field_from_start(pack_shell);
-    assert(pack_shell.scene() == NativeScene::Field);
-    assert(pack_shell.field_entity_visible());
-    const auto pack_start_x = pack_shell.marker_x();
-    const auto pack_start_y = pack_shell.marker_y();
-    pack_shell.update(InputState{button_mask(Button::Right), 0});
-    assert(pack_shell.marker_x() == pack_start_x);
-    assert(pack_shell.marker_y() < pack_start_y);
-    assert(pack_shell.field_entity_state_selector() == 0x0060);
-    pack_shell.render(pack_screen);
-    assert(pack_screen.presented_frames() == 1);
+    NativePortShell direct_shell("SHADOWRUN", native_assets);
+    assert(direct_shell.has_assets());
+    assert(direct_shell.has_field_map());
+    assert(direct_shell.has_terrain());
+    assert(direct_shell.has_entity_frame());
+    assert(direct_shell.has_boot());
+    assert(direct_shell.scene() == NativeScene::Bootstrap);
+    SoftwareScreen direct_screen;
+    enter_field_from_start(direct_shell);
+    assert(direct_shell.scene() == NativeScene::Field);
+    assert(direct_shell.field_entity_visible());
+    const auto direct_start_x = direct_shell.marker_x();
+    const auto direct_start_y = direct_shell.marker_y();
+    direct_shell.update(InputState{button_mask(Button::Right), 0});
+    assert(direct_shell.marker_x() == direct_start_x);
+    assert(direct_shell.marker_y() < direct_start_y);
+    assert(direct_shell.field_entity_state_selector() == 0x0060);
+    direct_shell.render(direct_screen);
+    assert(direct_screen.presented_frames() == 1);
 
     // ROM 0x36FC suppresses the separately rendered equipped-item sprite
     // when template byte +0x56 is negative; the projected runner body still

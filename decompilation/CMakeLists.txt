@@ -19,7 +19,7 @@ add_library(shadowrun_port STATIC
     src/compression.cpp
     src/entity_projection.cpp
     src/entity_state.cpp
-    src/graphics.cpp
+    src/graphics_runtime.cpp
     src/intro_scene.cpp
     src/memory_bus.cpp
     src/native_input.cpp
@@ -35,19 +35,13 @@ add_library(shadowrun_port STATIC
     src/z80_transport.cpp
 )
 target_include_directories(shadowrun_port PUBLIC include)
-target_compile_definitions(shadowrun_port PRIVATE
-    SHADOWRUN_GRAPHICS_RUNTIME_ONLY)
-
 # The ROM/tilemap/palette importer is an offline tool boundary.  It remains
 # available to extraction and source-analysis tests, but is not compiled into
 # the native/Qt runtime library.
 add_library(shadowrun_graphics_import STATIC
-    src/graphics.cpp
+    src/graphics_import.cpp
 )
 target_include_directories(shadowrun_graphics_import PUBLIC include)
-target_compile_definitions(shadowrun_graphics_import PRIVATE
-    SHADOWRUN_GRAPHICS_IMPORT_ONLY)
-
 add_executable(shadowrun_boot_reconstruction_test
     tests/boot_reconstruction_test.cpp
 )
@@ -169,7 +163,8 @@ if (EXISTS "${SHADOWRUN_ROM}")
                 "${CMAKE_CURRENT_SOURCE_DIR}/assets"
                 --title-boot-assets
         DEPENDS shadowrun_graphics_extract "${SHADOWRUN_ROM}"
-                "${CMAKE_CURRENT_SOURCE_DIR}/src/graphics.cpp"
+                "${CMAKE_CURRENT_SOURCE_DIR}/src/graphics_import.cpp"
+                "${CMAKE_CURRENT_SOURCE_DIR}/src/graphics_runtime.cpp"
                 "${CMAKE_CURRENT_SOURCE_DIR}/src/graphics_extract.cpp"
         COMMENT "Extracting individual title/boot assets from the US ROM"
         VERBATIM
@@ -182,7 +177,8 @@ if (EXISTS "${SHADOWRUN_ROM}")
                 "${CMAKE_CURRENT_SOURCE_DIR}/assets"
                 --all-assets
         DEPENDS shadowrun_graphics_extract "${SHADOWRUN_ROM}"
-                "${CMAKE_CURRENT_SOURCE_DIR}/src/graphics.cpp"
+                "${CMAKE_CURRENT_SOURCE_DIR}/src/graphics_import.cpp"
+                "${CMAKE_CURRENT_SOURCE_DIR}/src/graphics_runtime.cpp"
                 "${CMAKE_CURRENT_SOURCE_DIR}/src/graphics_extract.cpp"
         COMMENT "Extracting the complete native graphics catalog from the US ROM"
         VERBATIM
@@ -194,16 +190,12 @@ if (EXISTS "${SHADOWRUN_ROM}")
                 "${SHADOWRUN_ROM}"
                 "${CMAKE_CURRENT_SOURCE_DIR}/assets"
                 --all-assets
-        COMMAND "$<TARGET_FILE:shadowrun_audio_extract>"
+        DEPENDS shadowrun_graphics_extract
                 "${SHADOWRUN_ROM}"
-                "${CMAKE_CURRENT_SOURCE_DIR}/assets"
-        DEPENDS shadowrun_graphics_extract shadowrun_audio_extract
-                "${SHADOWRUN_ROM}"
-                "${CMAKE_CURRENT_SOURCE_DIR}/src/graphics.cpp"
+                "${CMAKE_CURRENT_SOURCE_DIR}/src/graphics_import.cpp"
+                "${CMAKE_CURRENT_SOURCE_DIR}/src/graphics_runtime.cpp"
                 "${CMAKE_CURRENT_SOURCE_DIR}/src/graphics_extract.cpp"
-                "${CMAKE_CURRENT_SOURCE_DIR}/src/audio_extract.cpp"
-                "${CMAKE_CURRENT_SOURCE_DIR}/src/audio_extract_main.cpp"
-        COMMENT "Extracting all indexed graphics and Genesis sound resources"
+        COMMENT "Extracting direct graphics assets (audio pending format decode)"
         VERBATIM
     )
 endif()

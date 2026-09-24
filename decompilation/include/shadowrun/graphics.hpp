@@ -31,6 +31,9 @@ struct GenesisGraphicsResource {
     std::string role;
     std::size_t table_offset = 0;
     std::size_t table_index = 0;
+    // Index of the individual SAT entry within the selected list. A resource
+    // is one hardware sprite entry, never a composed SAT-list bitmap.
+    std::size_t sprite_index = 0;
     std::size_t source_offset = 0;
     std::uint16_t attr_or = 0;
     RgbaImage image;
@@ -210,20 +213,13 @@ native::NativeIntroData read_genesis_intro_data(
 
 // Assemble the currently reconstructed native title-to-field data from the
 // ROM into host-owned RGBA/state values. This is the extraction boundary used
-// to build a runtime asset pack; it does not execute ROM code.
+// to build the direct runtime asset directory; it does not execute ROM code.
 native::NativePortAssets decode_genesis_native_assets(
     const std::vector<std::uint8_t>& rom);
 
-// Persist/load the host-only asset pack consumed by NativePortShell. The pack
-// contains RGBA images, terrain/status data, initial field positions, and the
-// reviewed entity/direction state; no 68000 interpreter state is serialized.
-void write_native_asset_pack(const std::string& path,
-                             const native::NativePortAssets& assets);
-native::NativePortAssets read_native_asset_pack(const std::string& path);
-
 // Persist/load the non-graphics native state beside the individually
 // extracted BMP resources. This is deliberately not an image pack: the Qt
-// runtime resolves every image from the asset directory by its named path.
+// runtime resolves every image through the assets/resources.tsv alias table.
 void write_native_asset_state(const std::string& path,
                               const native::NativePortAssets& assets);
 native::NativePortAssets read_native_asset_directory(
@@ -348,7 +344,7 @@ std::vector<RgbaImage> decode_genesis_entity_animation(
 // selected state list supplies one 0x8002 frame descriptor. The kind-3 field
 // table has eight entries, which are returned in the table's original order
 // as ordinary host RGBA images. This is retained as the fallback path for
-// asset packs written before the full walking lists were extracted.
+// older source-analysis data before the full walking lists were extracted.
 std::vector<RgbaImage> decode_genesis_field_entity_animation(
     const std::vector<std::uint8_t>& rom,
     std::size_t entity_record_offset = 0x7291A,

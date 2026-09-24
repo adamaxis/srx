@@ -189,75 +189,372 @@ void IntroScene::render(ScreenWriter& screen) const {
                          scale_rgba(stage.pixels, weight, kFade));
     };
 
+    const auto has_sprite_group = [this](std::string_view role,
+                                         std::size_t table_index) {
+        return std::any_of(
+            assets_.sprites.begin(), assets_.sprites.end(),
+            [role, table_index](const NativeIntroSprite& sprite) {
+                return sprite.role == role &&
+                       sprite.table_index == table_index;
+            });
+    };
+    const auto draw_sprite_group = [&screen](
+                                        const std::vector<NativeIntroSprite>&
+                                            sprites,
+                                        std::string_view role,
+                                        std::size_t table_index,
+                                        std::int32_t x, std::int32_t y) {
+        for (const auto& sprite : sprites) {
+            if (sprite.role != role || sprite.table_index != table_index ||
+                sprite.image.pixels.empty()) {
+                continue;
+            }
+            screen.blit_rgba(
+                x + sprite.draw_offset_x, y + sprite.draw_offset_y,
+                sprite.image.width, sprite.image.height, sprite.image.pixels);
+        }
+    };
+    const auto draw_patch = [&screen](const NativeImage& patch) {
+        if (patch.pixels.empty()) {
+            return;
+        }
+        screen.blit_rgba(patch.origin_x, patch.origin_y, patch.width,
+                         patch.height, patch.pixels);
+    };
+
+    const auto render_ambush = [&](std::size_t relative_frame) {
+        constexpr std::array<std::uint32_t, 4> kMapDelays{{12, 24, 60, 12}};
+        constexpr std::array<std::uint32_t, 4> kActorDelays{{60, 36, 60, 24}};
+        constexpr std::array<std::uint32_t, 5> kMuzzleDelays{{60, 6, 12, 18,
+                                                                60}};
+        constexpr std::array<std::int32_t, 5> kMuzzleX{{1, 0x11A, 0, 0, 1}};
+        constexpr std::array<std::int32_t, 5> kMuzzleVelocity{{0, 4, 6, 8,
+                                                                 0}};
+        constexpr std::array<std::int32_t, 7> kProjectileBY{{0xBB, 0xA3,
+                                                              0x113, 0xE3,
+                                                              0xF8, 0x105,
+                                                              0xBC}};
+        constexpr std::array<std::int32_t, 7> kProjectileBThreshold{{0x40,
+                                                                       0x40,
+                                                                       0x145,
+                                                                       0x183,
+                                                                       0x40,
+                                                                       0x104,
+                                                                       0x40}};
+        constexpr std::array<std::uint32_t, 7> kProjectileBDelays{{0x2A, 0x30,
+                                                                     0x4E, 0x30,
+                                                                     0x6A, 0x2A,
+                                                                     0x3C}};
+        constexpr std::array<std::int32_t, 8> kProjectileCY{{0xAC, 0xE6, 0xBB,
+                                                              0x116, 0xB1, 0x2A,
+                                                              0xAC, 0x16}};
+        constexpr std::array<std::uint32_t, 8> kProjectileCDelays{{0x30, 0x3C,
+                                                                    0x30, 0x3C,
+                                                                    0x30, 0x3C,
+                                                                    0x30, 0x3C}};
+        constexpr std::array<std::int32_t, 8> kProjectileDY{{0x20, 0xD7, 0x94,
+                                                              0xA6, 0x0C, 0xE2,
+                                                              0xC4, 0xF8}};
+        constexpr std::array<std::uint32_t, 8> kProjectileDDelays{{0x36, 0x48,
+                                                                    0x36, 0x48,
+                                                                    0x36, 0x48,
+                                                                    0x36, 0x48}};
+        constexpr std::array<std::uint32_t, 3> kMichaelDelays{{3, 6, 9}};
+
+        std::size_t map_phase = 0;
+        std::array<std::size_t, 4> loaded_patches{};
+        std::size_t loaded_patch_count = 0;
+        std::uint32_t map_next = 0;
+        std::size_t actor_phase = 0;
+        std::uint32_t actor_next = 0;
+        bool actor_loaded = false;
+        std::size_t muzzle_phase = 0;
+        std::size_t muzzle_index = 0;
+        std::int32_t muzzle_x = 0;
+        std::int32_t muzzle_velocity = 0;
+        std::uint32_t muzzle_next = 0;
+        std::size_t flash_phase = 0;
+        std::size_t flash_first = 0;
+        std::size_t flash_second = 1;
+        std::uint32_t flash_next = 0;
+        bool flash_suppressed = false;
+        std::size_t body_phase = 6;
+        std::size_t body_index = 0;
+        std::int32_t body_x = 0;
+        std::int32_t body_y = 0;
+        std::uint32_t body_next = 0;
+        bool body_loaded = false;
+        bool draw_body_this_pass = false;
+        std::size_t projectile_b_phase = 0;
+        std::size_t projectile_b_index = 0;
+        std::int32_t projectile_b_x = 0;
+        std::int32_t projectile_b_y = 0;
+        std::int32_t projectile_b_threshold = 0;
+        std::uint32_t projectile_b_next = 0;
+        std::size_t projectile_c_phase = 0;
+        std::size_t projectile_c_index = 0;
+        std::int32_t projectile_c_x = 0;
+        std::int32_t projectile_c_y = 0;
+        std::uint32_t projectile_c_next = 0;
+        std::size_t projectile_d_phase = 0;
+        std::size_t projectile_d_index = 0;
+        std::int32_t projectile_d_x = 0;
+        std::int32_t projectile_d_y = 0;
+        std::uint32_t projectile_d_next = 0;
+        std::size_t michael_phase = 0;
+        std::size_t michael_index = 0;
+        std::int32_t michael_x = 0x193;
+        std::uint32_t michael_next = 0;
+        bool michael_active = false;
+        bool central_body_removed = false;
+        bool indian_body_removed = false;
+        std::int32_t scroll_fixed = 0;
+
+        const auto start_body = [&](std::int32_t x, std::int32_t y) {
+            body_phase = 0;
+            body_next = 0;
+            body_x = x;
+            body_y = y;
+            body_loaded = false;
+            if (x == 0x13D) {
+                central_body_removed = true;
+            } else if (x == 0x182) {
+                indian_body_removed = true;
+            }
+        };
+
+        for (std::size_t now = 0; now <= relative_frame; ++now) {
+            if (now >= 0x120U && now <= 0x168U) {
+                scroll_fixed += 0xAA;
+            }
+            const auto scroll_x = scroll_fixed >> 8;
+
+            if (map_phase < 0x0CU && now >= map_next) {
+                if (map_phase < 4U) {
+                    loaded_patches[loaded_patch_count++] = map_phase;
+                    map_next = now + kMapDelays[map_phase];
+                    ++map_phase;
+                } else if (map_phase == 4U) {
+                    ++map_phase;
+                    map_next = now + 9U;
+                } else {
+                    map_next = now + 9U;
+                    ++map_phase;
+                    if (map_phase == 9U) {
+                        start_body(0x13D, 0x139);
+                    }
+                }
+            }
+
+            if (actor_phase < 0x0CU && now >= actor_next) {
+                if (actor_phase < 4U) {
+                    actor_next = now + kActorDelays[actor_phase];
+                    ++actor_phase;
+                    actor_loaded = true;
+                } else {
+                    if (actor_phase == 4U) {
+                        flash_suppressed = true;
+                    }
+                    actor_next = now + 9U;
+                    ++actor_phase;
+                    if (actor_phase == 9U) {
+                        start_body(0x182, 0x0E2);
+                    }
+                }
+            }
+
+            if (muzzle_phase < 5U && now >= muzzle_next) {
+                muzzle_index = muzzle_phase;
+                muzzle_x = kMuzzleX[muzzle_phase];
+                muzzle_velocity = kMuzzleVelocity[muzzle_phase];
+                muzzle_next = now + kMuzzleDelays[muzzle_phase];
+                ++muzzle_phase;
+                if (muzzle_phase >= 5U) {
+                    muzzle_phase = now < 0x168U ? 1U : 5U;
+                }
+            }
+
+            if (!flash_suppressed && now >= flash_next) {
+                flash_first = flash_phase;
+                flash_second = (flash_phase + 1U) % 4U;
+                flash_next = now + 6U;
+                flash_phase = (flash_phase + 1U) % 4U;
+            }
+
+            draw_body_this_pass = false;
+            if (body_phase < 6U && now >= body_next) {
+                body_index = body_phase;
+                body_next = now + 8U;
+                ++body_phase;
+                body_loaded = true;
+                draw_body_this_pass = true;
+            }
+            if (body_loaded && body_phase < 6U) {
+                draw_body_this_pass = true;
+            }
+
+            if (projectile_b_phase < 7U && now >= projectile_b_next) {
+                projectile_b_index = projectile_b_phase;
+                projectile_b_y = kProjectileBY[projectile_b_phase];
+                projectile_b_threshold =
+                    kProjectileBThreshold[projectile_b_phase];
+                projectile_b_next = now + kProjectileBDelays[projectile_b_phase];
+                projectile_b_x = 0x200;
+                ++projectile_b_phase;
+            }
+            if (projectile_c_phase < 8U && now >= projectile_c_next) {
+                projectile_c_index = projectile_c_phase;
+                projectile_c_y = kProjectileCY[projectile_c_phase];
+                projectile_c_next = now + kProjectileCDelays[projectile_c_phase];
+                projectile_c_x = 0x200;
+                ++projectile_c_phase;
+            }
+            if (projectile_d_phase < 8U && now >= projectile_d_next) {
+                projectile_d_index = projectile_d_phase;
+                projectile_d_y = kProjectileDY[projectile_d_phase];
+                projectile_d_next = now + kProjectileDDelays[projectile_d_phase];
+                projectile_d_x = 0x200;
+                ++projectile_d_phase;
+            }
+
+            if (now < michael_next) {
+                if (michael_active) {
+                    michael_x += 4;
+                }
+            } else if (now >= 6U && michael_phase < 3U) {
+                michael_index = michael_phase;
+                michael_next = now + kMichaelDelays[michael_phase];
+                ++michael_phase;
+                michael_active = true;
+                michael_x += 4;
+            } else {
+                michael_active = false;
+            }
+
+            if (now != relative_frame) {
+                if (projectile_b_phase != 0U && projectile_b_x >=
+                    projectile_b_threshold) {
+                    projectile_b_x -= 9;
+                }
+                if (projectile_c_phase != 0U && projectile_c_x >= 0x40) {
+                    projectile_c_x -= 8;
+                }
+                if (projectile_d_phase != 0U && projectile_d_x >= 0x40) {
+                    projectile_d_x -= 0x0B;
+                }
+                continue;
+            }
+
+            if (!assets_.stages[1].pixels.empty()) {
+                screen.blit_rgba(0, 0, assets_.stages[1].width,
+                                 assets_.stages[1].height,
+                                 assets_.stages[1].pixels);
+            }
+            for (std::size_t index = 0; index < loaded_patch_count; ++index) {
+                draw_patch(assets_.background_patches[loaded_patches[index]]);
+            }
+            if (central_body_removed) {
+                screen.fill_rect(112, 128, 160, 96,
+                                 {0x00, 0x00, 0x00, 0xFF});
+            }
+            if (indian_body_removed) {
+                screen.fill_rect(224, 56, 80, 72,
+                                 {0x00, 0x00, 0x00, 0xFF});
+            }
+            if (actor_loaded && actor_phase < 4U) {
+                draw_sprite_group(assets_.sprites, "ambush-actor",
+                                  actor_phase - 1U, 0x178, 0x0D1);
+            }
+            if (!flash_suppressed && muzzle_phase < 5U) {
+                muzzle_x += muzzle_velocity;
+                draw_sprite_group(assets_.sprites, "ambush-muzzle", muzzle_index,
+                                  muzzle_x + scroll_x, 0x133);
+            }
+            if (!flash_suppressed) {
+                draw_sprite_group(assets_.sprites, "ambush-flash", flash_first,
+                                  0x183, 0x0BE);
+                draw_sprite_group(assets_.sprites, "ambush-flash", flash_second,
+                                  0x1AB, 0x0D7);
+            }
+            if (draw_body_this_pass) {
+                draw_sprite_group(assets_.sprites, "ambush-body", body_index,
+                                  body_x, body_y);
+            }
+            if (projectile_b_phase != 0U && projectile_b_x >=
+                projectile_b_threshold) {
+                projectile_b_x -= 9;
+                draw_sprite_group(assets_.sprites, "ambush-projectile-b",
+                                  projectile_b_index, projectile_b_x,
+                                  projectile_b_y + 0x18);
+            }
+            if (projectile_c_phase != 0U && projectile_c_x >= 0x40) {
+                projectile_c_x -= 8;
+                draw_sprite_group(assets_.sprites, "ambush-projectile-c",
+                                  projectile_c_index, projectile_c_x,
+                                  projectile_c_y + 0x18);
+            }
+            if (projectile_d_phase != 0U && projectile_d_x >= 0x40) {
+                projectile_d_x -= 0x0B;
+                draw_sprite_group(assets_.sprites, "ambush-projectile-d",
+                                  projectile_d_index, projectile_d_x,
+                                  projectile_d_y + 0x18);
+            }
+            if (michael_active) {
+                draw_sprite_group(assets_.sprites, "ambush-michael",
+                                  michael_index, michael_x, 0x13C);
+            }
+        }
+
+        if (relative_frame >= kAmbushDeathStart &&
+            has_sprite_group("trivid-left", 0U)) {
+            screen.fill_rect(0, 112, 152, 112,
+                             {0x00, 0x00, 0x00, 0xFF});
+            draw_sprite_group(assets_.sprites, "trivid-left", 0U, 0xC2, 0x13C);
+        }
+    };
+
     if (frame_ < kSeattleEnd && !assets_.stages[0].pixels.empty()) {
         blit_faded_stage(assets_.stages[0], fade_weight(0, kSeattleEnd));
     } else if (frame_ < kWildernessEnd &&
                !assets_.stages[1].pixels.empty()) {
-        const NativeImage* plate = &assets_.stages[1];
-        if (frame_ < kWildernessPan &&
-            !assets_.wilderness_pan_frames.empty() &&
-            !assets_.wilderness_pan_frames.front().pixels.empty()) {
-            const auto pan_frame = std::min<std::size_t>(
-                ((frame_ - kSeattleEnd) * assets_.wilderness_pan_frames.size()) /
-                    (kWildernessPan - kSeattleEnd),
-                assets_.wilderness_pan_frames.size() - 1U);
-            plate = &assets_.wilderness_pan_frames[pan_frame];
-        } else if (frame_ >= kWildernessPan && !assets_.ambush_frames.empty()) {
-            const auto ambush_frame = std::min<std::size_t>(
-                frame_ - kWildernessPan, assets_.ambush_frames.size() - 1U);
-            if (!assets_.ambush_frames[ambush_frame].pixels.empty()) {
-                plate = &assets_.ambush_frames[ambush_frame];
-            }
-        }
-        screen.blit_rgba(0, 0, plate->width, plate->height, plate->pixels);
-        if (frame_ >= kWildernessPan + kAmbushDeathStart &&
-            frame_ < kWildernessEnd && !assets_.trivid_slain.pixels.empty()) {
-            screen.fill_rect(0, 112, 152, 112,
-                             {0x00, 0x00, 0x00, 0xFF});
-            screen.blit_rgba(assets_.trivid_slain.origin_x,
-                             assets_.trivid_slain.origin_y,
-                             assets_.trivid_slain.width,
-                             assets_.trivid_slain.height,
-                             assets_.trivid_slain.pixels);
+        if (frame_ < kWildernessPan) {
+            const auto pan_frame = static_cast<std::size_t>(
+                frame_ - kSeattleEnd);
+            const auto plane_a_xscroll =
+                static_cast<std::int32_t>(-0x40 + pan_frame);
+            const auto plane_b_vscroll = static_cast<std::int32_t>(
+                -0x20 + std::min<std::size_t>(pan_frame / 2U, 0x20U));
+            screen.blit_rgba(plane_a_xscroll, -plane_b_vscroll,
+                             assets_.stages[1].width,
+                             assets_.stages[1].height,
+                             assets_.stages[1].pixels);
+            draw_sprite_group(
+                assets_.sprites, "ambush-actor", 0,
+                0x138 + static_cast<std::int32_t>(
+                            std::min<std::size_t>(pan_frame, 0x40U)),
+                0x0F1 - static_cast<std::int32_t>(
+                            std::min<std::size_t>(pan_frame / 2U, 0x20U)));
+        } else {
+            render_ambush(static_cast<std::size_t>(frame_ - kWildernessPan));
         }
     } else if (frame_ < kTrividEnd &&
                (!assets_.trivid_background.pixels.empty() ||
                 !assets_.stages[2].pixels.empty())) {
         if (frame_ < kTrividMapStart) {
-            if (!assets_.trivid_slain.pixels.empty()) {
-                screen.blit_rgba(
-                    assets_.trivid_slain.origin_x,
-                    assets_.trivid_slain.origin_y,
-                    assets_.trivid_slain.width,
-                    assets_.trivid_slain.height,
-                    scale_rgba(assets_.trivid_slain.pixels, kFade, kFade));
-            }
+            draw_sprite_group(assets_.sprites, "trivid-left", 0U, 0xC2, 0x13C);
         } else if (!assets_.trivid_background.pixels.empty()) {
             const auto pass = std::min<std::uint64_t>(
                 frame_ - kTrividMapStart, 0x114U);
-            if (!assets_.trivid_moving.pixels.empty()) {
-                const auto moving_x = static_cast<std::int32_t>(
-                    (pass * 0x40U) >> 8U);
-                const auto moving_y = static_cast<std::int32_t>(
-                    (pass * 0x18U) >> 8U);
-                screen.blit_rgba(
-                    moving_x + assets_.trivid_moving.origin_x,
-                    moving_y + assets_.trivid_moving.origin_y,
-                    assets_.trivid_moving.width,
-                    assets_.trivid_moving.height,
-                    assets_.trivid_moving.pixels);
-            }
+            const auto moving_x = static_cast<std::int32_t>(
+                (pass * 0x40U) >> 8U);
+            const auto moving_y = static_cast<std::int32_t>(
+                (pass * 0x18U) >> 8U);
+            draw_sprite_group(assets_.sprites, "trivid-right", 0U,
+                              0x60 + moving_x, 0x123 + moving_y);
             screen.blit_rgba(0, 0, assets_.trivid_background.width,
                              assets_.trivid_background.height,
                              assets_.trivid_background.pixels);
-            if (!assets_.trivid_slain.pixels.empty()) {
-                screen.blit_rgba(
-                    assets_.trivid_slain.origin_x,
-                    assets_.trivid_slain.origin_y,
-                    assets_.trivid_slain.width,
-                    assets_.trivid_slain.height,
-                    assets_.trivid_slain.pixels);
-            }
+            draw_sprite_group(assets_.sprites, "trivid-left", 0U, 0xC2, 0x13C);
         } else {
             blit_faded_stage(assets_.stages[2], kFade);
         }
@@ -281,19 +578,16 @@ void IntroScene::render(ScreenWriter& screen) const {
                 assets_.aircraft_plane_a.height,
                 assets_.aircraft_plane_a.pixels);
 
-            if (elapsed <= 0xDCU) {
+            if (elapsed <= 0xDCU &&
+                has_sprite_group("helicopter", 0U)) {
                 const auto phase = static_cast<std::size_t>(
-                    (elapsed / 6U) % assets_.heli_frames.size());
-                const auto& overlay = assets_.heli_frames[phase];
-                if (!overlay.pixels.empty()) {
-                    screen.blit_rgba(
-                        -plane_a_scroll + overlay.origin_x, overlay.origin_y,
-                        overlay.width, overlay.height, overlay.pixels);
-                }
+                    (elapsed / 6U) % kNativeIntroHeliFrameCount);
+                draw_sprite_group(assets_.sprites, "helicopter", phase,
+                                  0x1FC - plane_a_scroll, 0xEF);
             }
 
             if (elapsed >= 0x226U &&
-                !assets_.aircraft_movement_frames[0].pixels.empty()) {
+                has_sprite_group("aircraft-movement", 0U)) {
                 std::uint32_t next = 0;
                 std::size_t phase = 0;
                 std::int32_t dx = 0;
@@ -319,22 +613,19 @@ void IntroScene::render(ScreenWriter& screen) const {
                 const auto x = static_cast<std::int32_t>(x_fixed >> 8U);
                 const auto y = static_cast<std::int32_t>(y_fixed >> 8U) + 0x28;
                 const auto movement_index = y >= 0x110 && y < 0x11F ? 1U : 0U;
-                const auto& movement = assets_.aircraft_movement_frames[
-                    movement_index];
-                screen.blit_rgba(
-                    x - 0x90 + movement.origin_x,
-                    y - 0x90 + movement.origin_y,
-                    movement.width, movement.height, movement.pixels);
+                draw_sprite_group(assets_.sprites, "aircraft-movement",
+                                  movement_index, x, y);
             }
-        } else if (frame_ < kAircraftEnd && !assets_.heli_frames[0].pixels.empty()) {
+        } else if (frame_ < kAircraftEnd &&
+                   has_sprite_group("helicopter", 0U)) {
             const auto elapsed = frame_ - kTrividEnd;
             const auto phase = std::min<std::size_t>(
-                (elapsed * assets_.heli_frames.size()) /
+                (elapsed * kNativeIntroHeliFrameCount) /
                     (kAircraftEnd - kTrividEnd),
-                assets_.heli_frames.size() - 1U);
-            const auto& heli = assets_.heli_frames[phase];
+                kNativeIntroHeliFrameCount - 1U);
             screen.clear({0x00, 0x00, 0x00, 0xFF});
-            screen.blit_rgba(0, 0, heli.width, heli.height, heli.pixels);
+            draw_sprite_group(assets_.sprites, "helicopter", phase, 0x1FC,
+                              0xEF);
         } else {
             blit_faded_stage(assets_.stages[3],
                              fade_weight(kTrividEnd, kDuration));

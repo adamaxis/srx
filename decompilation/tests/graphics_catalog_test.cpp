@@ -122,7 +122,7 @@ int main() {
     }
     if (row_count == 0U ||
         listed.find("intro/background-0.bmp") == listed.end() ||
-        listed.find("intro/sprites/ambush-michael-0-44.bmp") == listed.end() ||
+        listed.find("intro/sprites/ambush-michael-0-0.bmp") == listed.end() ||
         listed.find("title/circuit-background-0.bmp") == listed.end() ||
         listed.find("field/map/mode-55.bmp") == listed.end()) {
         return fail("required opening background or sprite resource is absent")
@@ -132,6 +132,16 @@ int main() {
     for (const auto& relative : listed) {
         if (relative.find("title/circuit-light-") == 0U) {
             return fail("legacy circuit-light fragment remains: " + relative)
+                ? 0
+                : 1;
+        }
+        if (relative.find("intro/wilderness-pan-") == 0U ||
+            relative.find("intro/ambush-") == 0U ||
+            relative == "intro/trivid-slain.bmp" ||
+            relative == "intro/trivid-moving.bmp" ||
+            relative.find("intro/helicopter-") == 0U ||
+            relative.find("intro/aircraft-movement-") == 0U) {
+            return fail("full-screen intro storyboard remains: " + relative)
                 ? 0
                 : 1;
         }

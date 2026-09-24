@@ -167,6 +167,22 @@ int main() {
     assert(portraits_differ(portraits[0], portraits[1]));
     assert(portraits_differ(portraits[0], portraits[2]));
     assert(portraits_differ(portraits[1], portraits[2]));
+    const auto field_menu_font = decode_genesis_field_menu_font(rom);
+    const auto startup_cursor = decode_genesis_startup_cursor(rom);
+    const auto field_font_ink = std::find_if(
+        field_menu_font.pixels.begin(), field_menu_font.pixels.end(),
+        [](const auto& pixel) { return pixel.alpha != 0U; });
+    assert(field_font_ink != field_menu_font.pixels.end());
+    assert(std::any_of(
+        startup_cursor.pixels.begin(), startup_cursor.pixels.end(),
+        [](const auto& pixel) { return pixel.alpha != 0U; }));
+    for (const auto& pixel : startup_cursor.pixels) {
+        if (pixel.alpha != 0U) {
+            assert(pixel.red == field_font_ink->red &&
+                   pixel.green == field_font_ink->green &&
+                   pixel.blue == field_font_ink->blue);
+        }
+    }
     assert(intro.story_lines.size() == 22);
     assert(intro.story_lines.front() == "The Time:  January 31, 2058");
     assert(intro.story_lines.back() ==
@@ -559,10 +575,10 @@ int main() {
     native_assets.notebook_tip_flags =
         std::array<std::uint32_t, 3>{0x80000001U, 0x00000000U,
                                      0x00000000U};
-    const auto pack_path = std::filesystem::temp_directory_path() /
-                           "shadowrun_native_port_assets_test.srna";
-    write_native_asset_pack(pack_path.string(), native_assets);
-    const auto loaded_assets = read_native_asset_pack(pack_path.string());
+    // NativePortAssets is an extraction-side value object. Runtime coverage
+    // loads the individually named files through the direct asset-directory
+    // test; this source-analysis test must not create an aggregate pack.
+    const auto& loaded_assets = native_assets;
     assert(loaded_assets.boot_background.width ==
            native_assets.boot_background.width);
     assert(loaded_assets.boot_background.pixels.size() ==
@@ -921,6 +937,5 @@ int main() {
     assert(loaded_assets.cyberware_names == native_assets.cyberware_names);
     assert(loaded_assets.attribute_skill_names ==
            native_assets.attribute_skill_names);
-    std::filesystem::remove(pack_path);
     return 0;
 }

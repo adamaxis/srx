@@ -25,34 +25,15 @@ if (-not (Test-Path -LiteralPath $extractor -PathType Leaf)) {
     throw "Extractor not found: $extractor. Build shadowrun_graphics_extract first."
 }
 
-$folders = @(
-    'title', 'startup', 'game\field', 'game\menu', 'game\items',
-    'matrix\menu', 'audio', 'native'
-)
-foreach ($folder in $folders) {
-    New-Item -ItemType Directory -Force -Path (Join-Path $OutputRoot $folder) | Out-Null
-}
+New-Item -ItemType Directory -Force -Path $OutputRoot | Out-Null
 
-function Invoke-Extraction {
-    param([string[]]$Arguments)
-    & $extractor @Arguments
-    if ($LASTEXITCODE -ne 0) {
-        throw "Asset extraction failed with exit code $LASTEXITCODE."
-    }
+# The importer owns the complete direct-asset tree. It writes individually
+# named host resources and native/state.bin; it must never create an aggregate
+# serializer pack or raw audio-fragment directory.
+& $extractor $rom $OutputRoot --all-assets
+if ($LASTEXITCODE -ne 0) {
+    throw "Direct asset extraction failed with exit code $LASTEXITCODE."
 }
-
-Invoke-Extraction @($rom, (Join-Path $OutputRoot 'title\title-static.bmp'), '--title')
-Invoke-Extraction @($rom, (Join-Path $OutputRoot 'title\title-frame-0.bmp'), '--native-title-frame', '0')
-Invoke-Extraction @($rom, (Join-Path $OutputRoot 'title\title-frame-420.bmp'), '--native-title-frame', '420')
-Invoke-Extraction @($rom, (Join-Path $OutputRoot 'startup\intro.bmp'), '--native-intro')
-Invoke-Extraction @($rom, (Join-Path $OutputRoot 'startup\start-options.bmp'), '--native-start-options')
-Invoke-Extraction @($rom, (Join-Path $OutputRoot 'startup\save-load.bmp'), '--native-save-load')
-Invoke-Extraction @($rom, (Join-Path $OutputRoot 'startup\no-save.bmp'), '--native-no-save')
-Invoke-Extraction @($rom, (Join-Path $OutputRoot 'startup\archetype.bmp'), '--native-archetype')
-Invoke-Extraction @($rom, (Join-Path $OutputRoot 'game\field\field.bmp'), '--native-field')
-Invoke-Extraction @($rom, (Join-Path $OutputRoot 'game\menu\base.bmp'), '--native-field-menu')
-Invoke-Extraction @($rom, (Join-Path $OutputRoot 'game\menu\inventory.bmp'), '--native-field-menu-inventory')
-Invoke-Extraction @($rom, (Join-Path $OutputRoot 'native\shadowrun_native.srna'), '--native-pack')
 
 Write-Host "Extracted Shadowrun assets into $((Resolve-Path -LiteralPath $OutputRoot).Path)"
 Write-Host "Provenance: $(Join-Path $repoRoot 'docs\resource-catalog.tsv')"

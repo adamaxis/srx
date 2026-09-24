@@ -16,7 +16,7 @@ using shadowrun::native::NativeScene;
 using shadowrun::native::SoftwareScreen;
 using shadowrun::native::button_mask;
 
-constexpr const char* kNativePack = SHADOWRUN_NATIVE_PACK;
+constexpr const char* kAssetRoot = SHADOWRUN_ASSET_ROOT;
 
 void press(NativePortShell& shell, Button button) {
     const auto mask = button_mask(button);
@@ -119,13 +119,14 @@ void test_field_menu_does_not_stain_field(NativePortShell& shell,
 } // namespace
 
 int main() {
-    const std::filesystem::path pack(kNativePack);
-    if (!std::filesystem::exists(pack)) {
-        throw std::runtime_error("missing native pack: " + pack.string());
+    const std::filesystem::path asset_root(kAssetRoot);
+    if (!std::filesystem::exists(asset_root / "native" / "state.bin")) {
+        throw std::runtime_error("missing direct asset state: " +
+                                 (asset_root / "native" / "state.bin").string());
     }
     NativePortShell shell(
         "SHADOWRUN",
-        shadowrun::graphics::read_native_asset_pack(pack.string()));
+        shadowrun::graphics::read_native_asset_directory(asset_root.string()));
     const auto artifact_dir =
         std::filesystem::path(SHADOWRUN_VISUAL_ARTIFACT_DIR) / "leftover-clear";
     std::filesystem::create_directories(artifact_dir);

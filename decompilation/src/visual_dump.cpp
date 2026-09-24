@@ -77,7 +77,7 @@ void usage() {
         << "shadowrun_visual_dump <asset-dir> <out-dir> --scene <name> "
            "[--frames 0,90,128,500] [--archetype 0|1|2]\n"
         << "scenes: boot, title, start-options, save-load-empty, archetype, "
-           "intro, intro-ambush-asset, cab-map, field, field-movement, field-menu, "
+           "intro, cab-map, field, field-movement, field-menu, "
            "field-unarmed, "
            "field-action, "
            "pocket-secretary, clips, cyberware, attributes, magic, posture, "
@@ -126,21 +126,6 @@ int main(int argc, char** argv) {
         auto assets = shadowrun::graphics::read_native_asset_directory(
             asset_root.string());
         NativePortShell shell("SHADOWRUN", assets);
-
-        if (scene == "intro-ambush-asset") {
-            for (const auto target : frames) {
-                if (target >= assets.intro_ambush_frames.size()) {
-                    throw std::out_of_range(
-                        "intro ambush asset frame is outside the extracted set");
-                }
-                const auto& image = assets.intro_ambush_frames[target];
-                shadowrun::graphics::write_bmp32(
-                    (out / ("intro-ambush-asset-" +
-                            std::to_string(target) + ".bmp")).string(),
-                    {image.width, image.height, image.pixels});
-            }
-            return 0;
-        }
 
         if (scene == "field-animation-assets") {
             for (std::size_t direction = 0;

@@ -16,15 +16,9 @@ struct IntroSceneAssets {
     std::vector<std::string> story_lines;
     std::array<NativeImage, kNativeIntroStageCount> stages{};
     NativeImage aircraft_plane_a;
-    std::array<NativeImage, kNativeIntroHeliFrameCount> heli_frames{};
-    std::array<NativeImage, kNativeIntroAircraftMovementFrameCount>
-        aircraft_movement_frames{};
     NativeImage trivid_background;
-    NativeImage trivid_slain;
-    NativeImage trivid_moving;
-    std::array<NativeImage, kNativeIntroWildernessPanFrameCount>
-        wilderness_pan_frames{};
-    std::array<NativeImage, kNativeIntroAmbushFrameCount> ambush_frames{};
+    std::vector<NativeIntroSprite> sprites;
+    std::array<NativeImage, 4> background_patches{};
 
     // The scene owns the copy it uses for story text so moving the Qt game
     // object cannot leave a self-referential pointer behind.

@@ -9,6 +9,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 namespace shadowrun::native {
@@ -271,6 +272,20 @@ struct NativeImage {
     std::int16_t origin_y = 0;
 };
 
+// An intro SAT list is an independently extracted transparent sprite. The
+// role/table index identify the source animation choice; draw_offset is the
+// source-list origin to cropped-image offset recorded by the direct-asset
+// importer. Keeping that metadata typed lets the native intro choreograph the
+// sprites without reconstructing VDP state or storing sampled full frames.
+struct NativeIntroSprite {
+    std::string role;
+    std::size_t table_index = 0;
+    std::size_t sprite_index = 0;
+    std::int32_t draw_offset_x = 0;
+    std::int32_t draw_offset_y = 0;
+    NativeImage image;
+};
+
 // One line emitted by the ROM's C0DA text writer. The row is relative to the
 // destination name-table address passed by the caller; preserving it keeps
 // the native startup screens in the source's tile geometry instead of
@@ -445,9 +460,16 @@ NativeCommandBarIndices compute_command_bar_indices(
 
 // Host-owned data required by the current native title-to-field slice. This
 // contains expanded RGBA pixels and typed collision/state data, not Genesis
-// addresses or palette-indexed runtime resources. It can be serialized into
-// a native asset pack and loaded without the ROM present.
+// addresses or palette-indexed runtime resources. The extraction step writes
+// its graphics to named files and its small typed state to native/state.bin.
 struct NativePortAssets {
+    // Every direct image loaded from assets/resources.tsv is available by its
+    // stable alias, for example assets["title.background"]. The typed fields
+    // below remain the native controller's convenient views of those images.
+    std::unordered_map<std::string, NativeImage> resources;
+
+    const NativeImage& operator[](std::string_view alias) const;
+
     NativeImage title_scene;
     // Separate host layers preserve the ROM's title timing: the circuit
     // plane is present first, the logo columns arrive one per title-loop
@@ -573,6 +595,10 @@ struct NativePortAssets {
     // Host RGBA of the four 0x59C5E presentation stages. Text remains a
     // separate C0DA overlay; these are the plane/SAT compositions.
     std::array<NativeImage, kNativeIntroStageCount> intro_stages{};
+    std::vector<NativeIntroSprite> intro_sprites;
+    std::array<NativeImage, 4> intro_background_patches{};
+    // Retained only for legacy pack compatibility. Direct assets and the
+    // native runtime use intro_sprites/intro_background_patches instead.
     std::array<NativeImage, kNativeIntroWildernessPanFrameCount>
         intro_wilderness_pan_frames{};
     std::array<NativeImage, kNativeIntroAmbushFrameCount>

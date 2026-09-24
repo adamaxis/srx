@@ -652,7 +652,7 @@ global bitfield at `FFFC22`, emits the names from the fifteen-entry pointer
 table at `0xC25C4` in descending bit order, or writes the exact empty message
 at `0xC1471` when no bits are set. It then waits through `0xF312` for any
 controller edge and returns to the command loop. The native port has extracted
-the catalog into the host asset pack and covers the empty-catalog path; event
+the catalog into the native state data and covers the empty-catalog path; event
 setters for the persistent bits remain pending.
 
 The Cyberdeck row dispatches to `0x18150`. The first instruction tests
@@ -680,7 +680,7 @@ Notebook dispatches to `0xF236`. Its setup helper `0xF33E` writes the title
 and two ungated rows from `0xC567E`, then appends `Contacts`, `Mr. Johnsons`,
 and `Shadowrunners` only when `FFFC2C`, `FFFC27`, and `FFFC2A` are nonzero.
 The New Game initializer at `0x59C48` stores `0x1C7F` in `FFFC2C`, so a
-fresh post-opening session has Contacts visible; the native asset pack carries
+fresh post-opening session has Contacts visible; the native state data carries
 that initial gate rather than hiding the row.
 The copied action table at `0xC6648` resolves those rows to `0xF2E2`,
 `0xF9A4`, `0xF840`, `0xF416`, and `0xF6DC`; `FFF0B9` is the inclusive
@@ -700,7 +700,7 @@ and tests D7 from 31 down to 0; therefore table entry `n` is enabled by flag
 bit `31-n`. Set pointers are appended to `FFEF56` and use the same
 `FFF0DC`/`C376` cursor family as the other Notebook screens. The native
 extractor resolves all 96 pointers and converts each source `0x80` separator
-to a host newline in asset-pack data. The native Tips screen now preserves the
+to a host newline in native state data. The native Tips screen now preserves the
 three source flag longwords, builds the MSB-first visible page list, writes the
 source page counter boundary from `C663A`, renders the selected entry's source
 lines, and returns on A/C/Start; B follows the already ported `0x391A` runner
@@ -716,7 +716,7 @@ dynamic list: `Mr. Gunderson` (`0xC5728`), `Julius Strouther` (`0xC5755`),
 `Caleb Brightmore` (`0xC5744`). Its selector starts at zero and uses the same
 `C376` bound/cursor family, but A writes the selected entry through a separate
 `C38C` destination; C returns, B calls `0x391A`, and Start continues the loop.
-The five fixed names are now extracted into the organized Notebook asset pack
+The five fixed names are now extracted into the organized Notebook state data
 with their source order preserved. The native list/detail loop and the story
 writers that set `FFFC27` remain pending until the omitted middle block is
 resolved against the bytecode.

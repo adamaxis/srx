@@ -17,9 +17,10 @@ Genesis vector table, decodes the 68000 instruction forms used on the reset
 path, follows direct calls and branches, records absolute hardware references,
 and searches for ROM pointer-table runs and printable strings.
 
-An earlier Ghidra pass is retained in `export-seeded/` as a cross-check only. It
-found 722 function entries and produced a C-like result for each one, but those
-files are not the C++ port and are not treated as authoritative source.
+The single Ghidra export is retained in `export/` with its adjacent
+`export/SCRATCHPAD.md` as a source-analysis reference only. It found 722
+function entries and produced a C-like result for each one, but those files are
+not the C++ port and are not treated as authoritative runtime source.
 
 The direct C++ analyzer writes these reports to `analysis/`:
 
@@ -56,8 +57,8 @@ is never modified. A working copy is present at
 `input/shadowrun_genesis_us.bin` for tools that cannot handle the original
 filename safely.
 
-The old Ghidra snapshot can be regenerated independently if needed, but it is
-not required to build or run the C++ analyzer.
+The one Ghidra export can be regenerated independently when Ghidra is
+available, but it is not required to build or run the C++ analyzer.
 
 ## Native C++ bootstrap
 
@@ -156,8 +157,8 @@ reaction substate, then the `0x167AE` dispatcher indexes the descriptor table
 at `0x172CDC`; Redmond's C0 doorway class selects mode `0x14` (decimal 20).
 That destination uses a raw
 16-bit name-word table at `0x1CD29A`, producing a 1600x960 host interior map
-from 50x30 entries. The `.srna` pack now includes all 56 records from the ROM
-mode pointer table at `0x3232`, with their converted maps, terrain, camera,
+from 50x30 entries. The direct asset tree now includes all 56 records from the
+ROM mode pointer table at `0x3232`, with their converted maps, terrain, camera,
 spawn, and reaction-mode data. This keeps Redmond, empty building interiors,
 and infiltration mission maps available as extracted resources even when the
 current native shell does not yet route to every one. Entry camera/runner
@@ -171,7 +172,7 @@ addresses eight item bytes at entity record `+0x66` as `2*row+selector`.
 Extraction preserves those item and adjacent phase bytes, and converts the
 50 fixed `0x30`-byte records at `0xD4540` into host item names/categories.
 The native command screen can therefore browse the actual initial inventory
-slots from the `.srna` pack without reading the ROM. The reviewed
+slots from the direct asset directory without reading the ROM. The reviewed
 `0x12168` split now preserves the source distinction between possession and
 equipment: weapon/gear and armor have their own mutations, while codes
 `0x14`, `0x16`, and `0x18..0x2B` follow `0x121C0` and display the extracted
@@ -203,7 +204,7 @@ rejects source magic/special codes `0x17..0x2B`, finds the first eligible party
 record with an empty cell, preserves the source Yes/No confirmation semantics,
 reports a full destination inventory, and transfers both possession and the
 source phase byte. Equipped source weapons/armor are cleared as in the source
-record path; the runtime still consumes only the extracted asset pack.
+record path; the runtime still consumes only the individually extracted assets.
 
 Inventory First Aid is now ported from `0x12298`/`0x1253E`. The native action
 path builds the source active-record target list and `CANCEL` row, applies the
@@ -218,7 +219,7 @@ cyberware field and expands the pointer names at `0xD2072` into host strings;
 the initial record therefore shows the recovered `Hand Razors` entry. The
 handler is display-only in the ROM, so Start returns to the command screen and
 there is no invented mutation or selection behavior. These values are carried
-in the current versioned native asset-pack format, which also carries the
+in the current native state file and named asset files, which also carry the
 separate Joshua archetype templates and runtime party records.
 
 The Attributes/Skills command now enters a native two-column view corresponding
@@ -227,8 +228,8 @@ twelve skill bytes at `+0x80..+0x85` and `+0x87..+0x8C`, and the twenty labels
 from the `0xC1A2A` pointer table. The four intervening bytes at `+0x7F`,
 `+0x86`, `+0x8D`, and `+0x8E` are retained as auxiliary state until their
 upgrade/display roles are proven; the unresolved A/B/C mutations remain
-isolated. The expanded data is stored in the current versioned native
-asset-pack format.
+isolated. The expanded data is stored in the current native state file beside
+the named graphics resources.
 
 The Windows frontend preserves the reviewed controller boundary from ROM
 0x195C: the sampled word uses its low byte for held state and its high byte for
@@ -240,7 +241,7 @@ The extracted field template also carries the signed display bytes at
 `+0x56/+0x57`. Native projection preserves the `0x36FC` display gate: a
 negative `+0x56` or the sentinel `0x7F` leaves the entity hidden even when its
 screen projection is in range. These values are included in the current native
-asset-pack format, so the host-only runtime retains the recovered state, inventory,
+state file, so the host-only runtime retains the recovered state, inventory,
 cyberware catalog, clip values, and runner selection flags without
 reading the ROM.
 
@@ -269,16 +270,16 @@ cmake --build 'C:\Github\shadowrun\decompilation\build-debug-verify' --target sh
 ```
 
 The C++ build never runs extraction. Run `tools/extract_assets.ps1` only when
-the reviewed extracted resources need to be regenerated. It writes the
-organized assets under `assets/`, including the runtime pack at
-`assets/native/shadowrun_native.srna`; the native frontend finds that pack from
-the repository or build working directory.
+the reviewed extracted resources need to be regenerated. It writes only the
+individually named runtime assets under `assets/`, the alias manifest at
+`assets/resources.tsv`, and the typed native state at `assets/native/state.bin`;
+it does not create an aggregate pack.
 
-To load an extracted pack explicitly from any working directory:
+To load the extracted directory explicitly from any working directory:
 
 ```powershell
 & 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_native.exe' `
-  'C:\Github\shadowrun\decompilation\assets\native\shadowrun_native.srna'
+  'C:\Github\shadowrun\decompilation\assets'
 ```
 
 The same startup frame can be exported as a diagnostic BMP:
@@ -308,29 +309,6 @@ also be exported directly:
 & 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_graphics_extract.exe' `
   'C:\Github\shadowrun\decompilation\input\shadowrun_genesis_us.bin' `
   'C:\Github\shadowrun\decompilation\build-debug-verify\field_entity_state_2.bmp' --field-entity-state 2
-& 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_graphics_extract.exe' `
-  'C:\Github\shadowrun\decompilation\input\shadowrun_genesis_us.bin' `
-  'C:\Github\shadowrun\decompilation\assets\native\shadowrun_native.srna' --native-pack
-```
-
-The `.srna` pack contains the expanded RGBA title/field/entity images, the
-host terrain grid, initial field positions/camera, item-detail value images,
-and the reviewed native entity/direction state. `shadowrun_native.exe` accepts
-that pack path directly, so the Windows runtime starts without reading the ROM:
-
-The graphics extractor can also render the field from the pack alone. This
-keeps the extraction artifact path identical to what a future SDL/DirectX
-frontend will consume:
-
-```powershell
-& 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_graphics_extract.exe' `
-  'C:\Github\shadowrun\decompilation\assets\native\shadowrun_native.srna' `
-  'C:\Github\shadowrun\decompilation\build-debug-verify\native_field_scene_from_pack.bmp' --native-field-pack
-```
-
-```powershell
-& 'C:\Github\shadowrun\decompilation\build-debug-verify\shadowrun_native.exe' `
-  'C:\Github\shadowrun\decompilation\assets\native\shadowrun_native.srna'
 ```
 
 The dependency-free graphics converter accepts offsets recovered from the ROM
@@ -671,7 +649,7 @@ palette-indexed.
   its base-word token decoder, delta classes, byte/word payload forms, signed
   output skip, row width/mask state, terminator, and per-row command stride.
 - The mode-2 field resource chain is translated into native RGBA in
-  `graphics.cpp`: the raw `0x166B82`/`0x6E20` pattern upload, the compressed
+  `graphics_import.cpp`: the raw `0x166B82`/`0x6E20` pattern upload, the compressed
   `0x170102` 4x4 name-word stamps, and the 60x42 maps at `0x16D9A2` and
   `0x16ED52` are composed without retaining VDP name tables or palette indices
   at runtime. The extraction test covers the first field tile's packed-nibble

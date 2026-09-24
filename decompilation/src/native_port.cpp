@@ -6,9 +6,19 @@
 #include <algorithm>
 #include <array>
 #include <optional>
+#include <stdexcept>
 #include <utility>
 
 namespace shadowrun::native {
+
+const NativeImage& NativePortAssets::operator[](std::string_view alias) const {
+    const auto found = resources.find(std::string(alias));
+    if (found == resources.end()) {
+        throw std::out_of_range("unknown native resource alias: " +
+                                std::string(alias));
+    }
+    return found->second;
+}
 
 namespace {
 
@@ -830,15 +840,9 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     intro_assets.story_lines = std::move(intro_.story_lines);
     intro_assets.stages = std::move(assets.intro_stages);
     intro_assets.aircraft_plane_a = std::move(assets.intro_aircraft_plane_a);
-    intro_assets.heli_frames = std::move(assets.intro_heli_frames);
-    intro_assets.aircraft_movement_frames =
-        std::move(assets.intro_aircraft_movement_frames);
     intro_assets.trivid_background = std::move(assets.intro_trivid_background);
-    intro_assets.trivid_slain = std::move(assets.intro_trivid_slain);
-    intro_assets.trivid_moving = std::move(assets.intro_trivid_moving);
-    intro_assets.wilderness_pan_frames =
-        std::move(assets.intro_wilderness_pan_frames);
-    intro_assets.ambush_frames = std::move(assets.intro_ambush_frames);
+    intro_assets.sprites = std::move(assets.intro_sprites);
+    intro_assets.background_patches = std::move(assets.intro_background_patches);
     intro_assets.font = field_menu_font_;
     intro_scene_ = std::make_unique<IntroScene>(std::move(intro_assets));
     entity_frames_ = std::move(assets.entity_frames);

@@ -45,6 +45,20 @@
       }
     },
     {
+      "name": "qt-release",
+      "displayName": "Release Qt Widgets (MSYS2 UCRT64)",
+      "description": "Release build of the native Qt Widgets frontend using the installed Qt 6 MinGW kit.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-qt-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "C:/msys64/ucrt64/bin/gcc.exe",
+        "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe",
+        "SHADOWRUN_QT_FRONTEND": "ON",
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.9.1/mingw_64"
+      }
+    },
+    {
       "name": "msvc-debug",
       "displayName": "Debug (MSVC)",
       "description": "Debug build using Visual Studio 2022.",
@@ -64,7 +78,7 @@
       "name": "debug-native",
       "displayName": "Build Native (Debug)",
       "configurePreset": "debug",
-      "targets": ["shadowrun_native", "shadowrun_native_pack"]
+      "targets": ["shadowrun_native"]
     },
     {
       "name": "debug-tests",
@@ -80,8 +94,7 @@
         "shadowrun_boot_sequence_test",
         "shadowrun_visual_dump",
         "shadowrun_graphics_extract",
-        "shadowrun_graphics_catalog_test",
-        "shadowrun_native_pack"
+        "shadowrun_graphics_catalog_test"
       ]
     },
     {
@@ -93,13 +106,19 @@
       "name": "debug-qt",
       "displayName": "Build Qt Widgets (Debug)",
       "configurePreset": "qt-debug",
-      "targets": ["shadowrun_qt", "shadowrun_native_pack"]
+      "targets": ["shadowrun_qt"]
+    },
+    {
+      "name": "release-qt",
+      "displayName": "Build Qt Widgets (Release)",
+      "configurePreset": "qt-release",
+      "targets": ["shadowrun_qt"]
     },
     {
       "name": "release-native",
       "displayName": "Build Native (Release)",
       "configurePreset": "release",
-      "targets": ["shadowrun_native", "shadowrun_native_pack"]
+      "targets": ["shadowrun_native"]
     },
     {
       "name": "release-all",

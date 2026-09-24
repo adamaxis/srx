@@ -117,40 +117,42 @@ int main(int argc, char** argv) {
     NativePortShell game("SHADOWRUN");
     bool loaded_assets = false;
     if (argc > 1) {
-        const std::filesystem::path explicit_pack(argv[1]);
-        if (explicit_pack.extension() != ".srna") {
-            std::cerr << "shadowrun_native expects an extracted .srna asset pack; "
+        const std::filesystem::path explicit_root(argv[1]);
+        if (!std::filesystem::is_directory(explicit_root)) {
+            std::cerr << "shadowrun_native expects the extracted assets directory; "
                          "ROM input is accepted only by explicit analysis tools.\n";
             return 1;
         }
         game = NativePortShell(
             "SHADOWRUN",
-            shadowrun::graphics::read_native_asset_pack(explicit_pack.string()));
+            shadowrun::graphics::read_native_asset_directory(
+                explicit_root.string()));
         loaded_assets = true;
     } else if (argc == 1) {
         const auto current = std::filesystem::current_path();
         const std::filesystem::path asset_candidates[] = {
-            current / "assets" / "native" / "shadowrun_native.srna",
-            current / ".." / "assets" / "native" / "shadowrun_native.srna",
-            current / "decompilation" / "assets" / "native" /
-                "shadowrun_native.srna",
-            current / ".." / "decompilation" / "assets" / "native" /
-                "shadowrun_native.srna",
+            current / "assets",
+            current / ".." / "assets",
+            current / "decompilation" / "assets",
+            current / ".." / "decompilation" / "assets",
         };
         for (const auto& candidate : asset_candidates) {
-            if (!std::filesystem::exists(candidate)) {
+            if (!std::filesystem::is_directory(candidate) ||
+                !std::filesystem::is_regular_file(candidate / "native" /
+                                                   "state.bin")) {
                 continue;
             }
             game = NativePortShell(
                 "SHADOWRUN",
-                shadowrun::graphics::read_native_asset_pack(candidate.string()));
+                shadowrun::graphics::read_native_asset_directory(
+                    candidate.string()));
             loaded_assets = true;
             break;
         }
     }
     if (!loaded_assets) {
-        std::cerr << "No extracted assets found. Run tools/extract_assets.ps1 "
-                     "before starting the native frontend.\n";
+        std::cerr << "No direct extracted assets found. Run "
+                     "shadowrun_graphics_extract <rom.bin> <asset-dir> --all-assets.\n";
         return 1;
     }
     WindowContext context{&screen, false};
