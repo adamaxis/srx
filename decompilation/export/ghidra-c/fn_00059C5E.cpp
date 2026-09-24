@@ -10,7 +10,7 @@
 //   0x00059D12 FUN_00059d12
 //   0x00059D7C FUN_00059d7c
 //   0x0005AA96 FUN_0005aa96
-//   0x0005AD1A FUN_0005ad1a
+//   0x0005AD1A run_title_intro_stage_loop
 //   0x0005AF62 run_title_intro_schedule
 
 
@@ -36,7 +36,7 @@ void FUN_00059c5e(void)
       FUN_0005aa96();
       if (_DAT_00ffddc2 == 0) {
         _DAT_00ffddc2 = 0;
-        FUN_0005ad1a();
+        run_title_intro_stage_loop();
         _DAT_00ffddc2 = 0;
         step_palette_transition();
         DAT_00fffbf8 = 2;

@@ -862,7 +862,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0005AC36	advance_title_intro_stage_projection	58	unknown	ok	ghidra-c/fn_0005AC36.cpp
 0005AC70	reset_title_intro_stage_timed_sprites	14	unknown	ok	ghidra-c/fn_0005AC70.cpp
 0005AC7E	advance_title_intro_stage_timed_sprites	132	unknown	ok	ghidra-c/fn_0005AC7E.cpp
-0005AD1A	FUN_0005ad1a	182	unknown	ok	ghidra-c/fn_0005AD1A.cpp
+0005AD1A	run_title_intro_stage_loop	182	unknown	ok	ghidra-c/fn_0005AD1A.cpp
 0005ADFE	render_title_intro_late_text_batch	60	unknown	ok	ghidra-c/fn_0005ADFE.cpp
 0005AE3A	render_title_intro_scroll_text_batch	100	unknown	ok	ghidra-c/fn_0005AE3A.cpp
 0005AF2A	advance_title_intro_schedule	56	unknown	ok	ghidra-c/fn_0005AF2A.cpp

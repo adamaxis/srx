@@ -558,6 +558,13 @@ zero; a newly loaded zero delay remains the source terminal marker. `0x5AF62`
 is a native frame-loop wrapper with explicit display preparation, title-resource
 setup, controller sampling/latching, stop boundary, and action callbacks.
 
+The `0x5AD1A` late-stage coordinator is now `run_title_intro_stage_loop`.
+Its native controller owns the source setup order, initializes the typed pulse
+and landing state, performs the first animation/text pass, and runs exactly
+`0x529` vblank iterations. The final text batch remains pinned to loop frame
+`0x1E0`; scroll-fill, transition text, triplet rotation, and sprite drawing
+are explicit callbacks rather than VDP or ROM-address operations.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames

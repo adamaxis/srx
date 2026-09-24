@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0005AD1A
-// Name: FUN_0005ad1a
+// Name: run_title_intro_stage_loop
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -20,7 +20,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0005ad1a(void)
+void run_title_intro_stage_loop(void)
 
 {
   short sVar1;

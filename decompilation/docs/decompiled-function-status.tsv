@@ -241,7 +241,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x5AF62	intro stage 1 0x1406	decode_genesis_intro_stages	shadowrun_graphics	partial		descriptor 0x5B574
 0x59D7C	intro stage 2 0x1406	decode_genesis_intro_stages	shadowrun_graphics	partial		descriptor 0x5B4A8 + SAT 0x1DF1B2
 0x5AA96	intro tri-vid	decode_genesis_intro_stages	shadowrun_graphics	partial		0x1E620E map + SAT 0x1DF1D6/0x1DF238
-0x5AD1A	intro stage 4 0x1406	decode_genesis_intro_stages	shadowrun_graphics	partial		descriptor 0x5B528
+0x5AD1A	run title intro stage loop	ghidra_conversion::run_title_intro_stage_loop	shadowrun_ghidra_title_intro_stage_loop	partial		Preserves stage setup, first-pass helper order, final text at 0x1E0, and the 0x529-frame vblank loop
 0x5B08E	airport helicopter rotor rotation	NativePortShell::render	shadowrun_native_port	defended	visual-regression/intro-hill/intro-3000.bmp; intro-3400.bmp	three-word rotor phase rotation from the source overlay state
 0x5B100	airport helicopter overlay phases	NativePortShell::render	shadowrun_native_port	defended	visual-regression/intro-hill/intro-3000.bmp; intro-3400.bmp	six rotor SAT phases over the continuously scrolled Plane-A craft
 0x5B1B6	airport landing movement	NativePortShell::render	shadowrun_native_port	defended	visual-regression/intro-hill/intro-3400.bmp	late movement SAT lists remain source-timed

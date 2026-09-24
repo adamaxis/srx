@@ -27509,7 +27509,7 @@
 00059CCE: tst.w (0x00ffddc2).l
 00059CD4: bne.w 0x00059cfe
 00059CD8: clr.w (0x00ffddc2).l
-00059CDE: jsr 0x0005ad1a.l ; call 0005AD1A FUN_0005ad1a
+00059CDE: jsr 0x0005ad1a.l ; call 0005AD1A run_title_intro_stage_loop
 00059CE4: clr.w (0x00ffddc2).l
 00059CEA: jsr 0x0000131c.l ; call 0000131C step_palette_transition
 00059CF0: move.b #0x2,(0x00fffbf8).l
