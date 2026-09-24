@@ -131,6 +131,35 @@ int main() {
         return 1;
     }
 
+    TitleLogoRevealState logo;
+    const auto first_column = advance_title_logo_column(logo);
+    if (!expect(first_column.column_render_requested &&
+                !first_column.completed && first_column.column_index == 0U &&
+                logo.columns_revealed == 1U &&
+                logo.source_descriptor_offset == 2U)) {
+        return 1;
+    }
+    logo.columns_revealed = 0x24U;
+    logo.source_descriptor_offset = 0x48U;
+    const auto completion_column = advance_title_logo_column(logo);
+    if (!expect(completion_column.column_render_requested &&
+                completion_column.completed &&
+                completion_column.completion_palette_copy_requested &&
+                completion_column.column_index == 0x24U &&
+                logo.columns_revealed == kTitleCompletionColumn &&
+                logo.source_descriptor_offset == 0x4AU)) {
+        return 1;
+    }
+    const auto final_column = advance_title_logo_column(logo);
+    if (!expect(final_column.column_render_requested &&
+                !final_column.completed && final_column.column_index == 0x25U &&
+                logo.columns_revealed == kTitleLogoColumnLimit)) {
+        return 1;
+    }
+    if (!expect(!advance_title_logo_column(logo).column_render_requested)) {
+        return 1;
+    }
+
     TitleTextState text{1U, 2};
     if (!expect(advance_title_text_state(text) == TitleTextAction::None &&
                 text.countdown == 1)) {

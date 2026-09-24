@@ -102,6 +102,27 @@ struct TitlePromptSchedule {
 std::optional<TitlePromptVariant> advance_title_prompt_schedule(
     TitlePromptSchedule& schedule);
 
+constexpr std::uint16_t kTitleLogoColumnLimit = 0x0026;
+constexpr std::uint16_t kTitleCompletionColumn = 0x0025;
+constexpr std::uint16_t kTitleCompletionPaletteWordCount = 16;
+
+struct TitleLogoRevealState {
+    std::uint16_t columns_revealed = 0;
+    std::uint16_t source_descriptor_offset = 0;
+};
+
+struct TitleLogoRevealResult {
+    bool column_render_requested = false;
+    bool completed = false;
+    bool completion_palette_copy_requested = false;
+    std::uint16_t column_index = 0;
+};
+
+// ROM 0x1E4E: consume one two-byte logo descriptor and request its render.
+// The source blitters and completion palette copy are represented as events;
+// no ROM pointer or VDP write crosses into this conversion tree.
+TitleLogoRevealResult advance_title_logo_column(TitleLogoRevealState& state);
+
 enum class TitleTextAction {
     None,
     StepPaletteTowardTarget,

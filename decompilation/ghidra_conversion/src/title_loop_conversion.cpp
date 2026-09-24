@@ -162,6 +162,26 @@ std::optional<TitlePromptVariant> advance_title_prompt_schedule(
     return variant;
 }
 
+TitleLogoRevealResult advance_title_logo_column(TitleLogoRevealState& state) {
+    if (state.columns_revealed >= kTitleLogoColumnLimit) {
+        return TitleLogoRevealResult{};
+    }
+
+    const auto column_index = state.columns_revealed;
+    ++state.columns_revealed;
+    state.source_descriptor_offset = static_cast<std::uint16_t>(
+        state.source_descriptor_offset + 2U);
+
+    const bool completed =
+        state.columns_revealed == kTitleCompletionColumn;
+    return TitleLogoRevealResult{
+        true,
+        completed,
+        completed,
+        column_index,
+    };
+}
+
 TitleTextAction advance_title_text_state(TitleTextState& state) {
     if (state.completion_state != 1U) {
         return TitleTextAction::None;
