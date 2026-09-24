@@ -1,0 +1,92 @@
+#pragma once
+
+#include <cstdint>
+#include <functional>
+
+namespace shadowrun::ghidra_conversion {
+
+void write_repeated_menu_grid(const std::function<void()>& write_grid);
+void prepare_menu_grid_then_service(
+    const std::function<void()>& write_grid,
+    const std::function<void()>& service_menu);
+void prepare_grid_then_write(const std::function<void()>& prepare,
+                             const std::function<void()>& write_grid);
+void write_three_grids_then_service(
+    const std::function<void()>& write_grid,
+    const std::function<void()>& service_once);
+
+// ROM 0x104C8: scan six menu slots from slot six down to zero and report the
+// first source-metric match.
+bool find_matching_menu_metric(
+    const std::function<bool(std::int16_t slot)>& matches_slot);
+
+void upload_resource_then_write_two_blocks(
+    const std::function<void()>& upload_resource,
+    const std::function<void()>& write_block);
+void upload_resource_stream(const std::function<void()>& upload_stream);
+void draw_hud_panel_wrapper(const std::function<void()>& draw_panel);
+void render_title_text_source_wrapper(const std::function<void()>& render_text);
+void render_title_text_source_leaf(const std::function<void()>& render_text);
+void render_title_text_source_variant(const std::function<void()>& render_text);
+
+struct EntityAuxiliaryState {
+    std::uint8_t marker = 0;
+};
+
+// ROM 0x125FA: clear the auxiliary entity marker at source offset 0x4E.
+void clear_entity_auxiliary_marker(EntityAuxiliaryState& state);
+
+void write_single_grid(const std::function<void()>& write_grid);
+
+struct ResourceVariantState {
+    bool alternate = false;
+};
+
+// ROM 0x12A54: toggle the selected resource variant only when the input
+// threshold crosses thirteen, then submit one source upload.
+bool update_resource_variant(ResourceVariantState& state,
+                            std::int16_t selection,
+                            const std::function<void()>& upload_stream);
+
+// ROM 0x13CD4: retain the source's bypass for phase one and threshold guard
+// for all other entity phases.
+bool passes_entity_action_threshold(
+    std::int8_t entity_phase,
+    std::int16_t requested_threshold,
+    std::uint8_t current_threshold,
+    const std::function<void()>& sample_threshold);
+
+struct PaletteFadeState {
+    bool active = false;
+    std::int16_t remaining = 0;
+    bool dirty = false;
+    bool completed = false;
+};
+
+struct PaletteFadeCallbacks {
+    std::function<void()> advance_effects;
+    std::function<void()> step_palette_toward_black;
+};
+
+// ROM 0x16396: advance effect records, step the palette on even fade counts,
+// and publish completion when the signed counter expires.
+void advance_palette_fade(PaletteFadeState& state,
+                          const PaletteFadeCallbacks& callbacks);
+
+struct CoordinateProjectionInput {
+    std::uint16_t first_word = 0;
+    std::uint16_t second_word = 0;
+    std::uint16_t orientation = 0;
+};
+
+// ROM 0x1669C / 0x166D0: project a source entity coordinate into a tile-grid
+// offset without exposing packed Genesis records to the host runtime.
+std::int32_t project_entity_x_axis(const CoordinateProjectionInput& input,
+                                   std::int32_t row_stride);
+std::int32_t project_entity_y_axis(const CoordinateProjectionInput& input,
+                                   std::int32_t row_stride);
+
+void draw_hud_panel_forward(const std::function<void()>& draw_panel);
+void draw_hud_footer_forward(const std::function<void()>& draw_footer);
+
+} // namespace shadowrun::ghidra_conversion

@@ -1507,3 +1507,16 @@ target_link_libraries(shadowrun_ghidra_display_service_batch_test
     PRIVATE shadowrun_ghidra_display_service_batch)
 add_test(NAME shadowrun_ghidra_display_service_batch
          COMMAND shadowrun_ghidra_display_service_batch_test)
+
+add_library(shadowrun_ghidra_menu_transfer_batch STATIC
+    src/menu_transfer_batch_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_menu_transfer_batch PUBLIC include)
+
+add_executable(shadowrun_ghidra_menu_transfer_batch_test
+    tests/menu_transfer_batch_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_menu_transfer_batch_test
+    PRIVATE shadowrun_ghidra_menu_transfer_batch)
+add_test(NAME shadowrun_ghidra_menu_transfer_batch
+         COMMAND shadowrun_ghidra_menu_transfer_batch_test)
