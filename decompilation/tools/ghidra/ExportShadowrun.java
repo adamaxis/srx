@@ -66,6 +66,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00005A62L, "project_entity_screen_position_standard");
         names.put(0x00005FDCL, "advance_entity_animation_accumulator");
         names.put(0x0000B530L, "approach_entity_fixed_point_target");
+        names.put(0x0000BBE4L, "commit_entity_position");
         names.put(0x0000BCAEL, "apply_mode_five_boundary_motion");
         names.put(0x0000C134L, "normalize_source_text_line");
         names.put(0x0000195CL, "sample_controller_input");

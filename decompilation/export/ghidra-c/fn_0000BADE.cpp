@@ -8,7 +8,7 @@
 //   0x0000B77E FUN_0000b77e
 //   0x0000B7B8 FUN_0000b7b8
 //   0x0000BB86 FUN_0000bb86
-//   0x0000BBE4 FUN_0000bbe4
+//   0x0000BBE4 commit_entity_position
 
 
 void FUN_0000bade(void)
@@ -35,7 +35,7 @@ void FUN_0000bade(void)
      ((sVar1 < 0 &&
       (FUN_0000b7b8(), iVar2 = extraout_A0_00, (*(byte *)(extraout_A0_00 + 0xb0) & 1) == 0)))) {
     *(undefined2 *)(iVar2 + 0xb8) = 0x1000;
-    FUN_0000bbe4();
+    commit_entity_position();
     return;
   }
   bVar4 = false;
@@ -65,7 +65,7 @@ LAB_0000bb66:
   }
   puVar3[0x1b] = DAT_00ffdf66 << 0xc | DAT_00ffdf66 >> 4;
   *(byte *)((int)puVar3 + 0x11) = *(byte *)((int)puVar3 + 0x11) | 4;
-  FUN_0000bbe4();
+  commit_entity_position();
   return;
 }
 

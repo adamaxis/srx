@@ -149,3 +149,16 @@ target_link_libraries(shadowrun_ghidra_text_line_test
     PRIVATE shadowrun_ghidra_text_line)
 add_test(NAME shadowrun_ghidra_text_line
          COMMAND shadowrun_ghidra_text_line_test)
+
+add_library(shadowrun_ghidra_entity_position STATIC
+    src/entity_position_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_position PUBLIC include)
+
+add_executable(shadowrun_ghidra_entity_position_test
+    tests/entity_position_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_position_test
+    PRIVATE shadowrun_ghidra_entity_position)
+add_test(NAME shadowrun_ghidra_entity_position
+         COMMAND shadowrun_ghidra_entity_position_test)

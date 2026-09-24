@@ -28,6 +28,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x5A62	standard entity screen projection	ghidra_conversion::project_entity_screen_position_standard	shadowrun_native_port	partial		Typed standard field projection with source rounding and visibility window
 0x5FDC	entity animation accumulator	ghidra_conversion::advance_entity_animation_accumulator	shadowrun_native_port	partial		Typed single-period animation step and redraw request
 0xB530	entity fixed-point target approach	ghidra_conversion::approach_entity_fixed_point_target	shadowrun_native_port	partial		Typed 0x800-step movement with one-step target snap
+0xBBE4	entity position commit	ghidra_conversion::commit_entity_position	shadowrun_native_port	partial		Typed position write with pending transition-bit clear
 0xBCAE	mode-5 field boundary motion	ghidra_conversion::apply_mode_five_boundary_motion	shadowrun_native_port	partial		Typed strict-window vertical adjustments at the two field edges
 0xC134	source text line normalization	ghidra_conversion::normalize_source_text_line	shadowrun_native_port	partial		Typed high-bit glyph mapping, terminator detection, and bounded space padding
 0x195C	controller sampling	ghidra_conversion::derive_controller_sample	shadowrun_boot_sequence	partial		Readable edge conversion is isolated from runtime and emulator

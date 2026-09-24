@@ -208,7 +208,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0000B7B8	FUN_0000b7b8	772	unknown	ok	ghidra-c/fn_0000B7B8.cpp
 0000BADE	FUN_0000bade	168	unknown	ok	ghidra-c/fn_0000BADE.cpp
 0000BB86	FUN_0000bb86	94	unknown	ok	ghidra-c/fn_0000BB86.cpp
-0000BBE4	FUN_0000bbe4	18	unknown	ok	ghidra-c/fn_0000BBE4.cpp
+0000BBE4	commit_entity_position	18	unknown	ok	ghidra-c/fn_0000BBE4.cpp
 0000BC36	FUN_0000bc36	120	unknown	ok	ghidra-c/fn_0000BC36.cpp
 0000BCAE	apply_mode_five_boundary_motion	86	unknown	ok	ghidra-c/fn_0000BCAE.cpp
 0000C0C2	FUN_0000c0c2	24	unknown	ok	ghidra-c/fn_0000C0C2.cpp

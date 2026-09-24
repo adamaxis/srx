@@ -5212,7 +5212,7 @@
 0000BAE8: tst.w D0w
 0000BAEA: bne.w 0x0000baf8
 0000BAEE: move.w #0x1000,(0xb8,A0)
-0000BAF4: bra.w 0x0000bbe4 ; call 0000BBE4 FUN_0000bbe4
+0000BAF4: bra.w 0x0000bbe4 ; call 0000BBE4 commit_entity_position
 0000BAF8: tst.w D0w
 0000BAFA: bpl.w 0x0000bb0a
 0000BAFE: bsr.w 0x0000b7b8 ; call 0000B7B8 FUN_0000b7b8
@@ -5249,7 +5249,7 @@
 0000BB76: ror.w #0x4,D1w
 0000BB78: move.w D1w,(0x36,A0)
 0000BB7C: bset.b #0x2,(0x11,A0)
-0000BB82: bra.w 0x0000bbe4 ; call 0000BBE4 FUN_0000bbe4
+0000BB82: bra.w 0x0000bbe4 ; call 0000BBE4 commit_entity_position
 0000BB86: move.w (0x2e,A0),D0w
 0000BB8A: rol.w #0x3,D0w
 0000BB8C: andi.w #0x7,D0w

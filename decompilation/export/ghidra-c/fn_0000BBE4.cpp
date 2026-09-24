@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000BBE4
-// Name: FUN_0000bbe4
+// Name: commit_entity_position
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0000bbe4(void)
+void commit_entity_position(void)
 
 {
   undefined2 unaff_D5w;
