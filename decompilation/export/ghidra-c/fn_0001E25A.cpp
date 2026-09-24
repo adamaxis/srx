@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001E25A
-// Name: FUN_0001e25a
+// Name: spawn_world_effect_from_coordinate_sequence
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000044BC FUN_000044bc
@@ -9,7 +9,7 @@
 //   0x0001DBAA schedule_world_activity_timeout
 
 
-void FUN_0001e25a(void)
+void spawn_world_effect_from_coordinate_sequence(void)
 
 {
   short sVar1;

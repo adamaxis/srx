@@ -1601,7 +1601,7 @@
 0000289A: adda.w #0x100,A1
 0000289E: dbf D7w,0x00002884
 000028A2: movea.l D4,A6
-000028A4: jmp 0x0001e4ac.l ; call 0001E4AC FUN_0001e4ac
+000028A4: jmp 0x0001e4ac.l ; call 0001E4AC spawn_world_effect_at_player_position
 000028AA: jsr 0x00003404.l ; call 00003404 FUN_00003404
 000028B0: jsr 0x0000334c.l ; call 0000334C FUN_0000334c
 000028B6: jsr 0x000039f2.l ; call 000039F2 FUN_000039f2
@@ -18809,7 +18809,7 @@
 0001E23C: move.l (A6)+,D4
 0001E23E: beq.w 0x0001e258
 0001E242: movem.w {  D0w},-(SP)
-0001E246: bsr.w 0x0001e25a ; call 0001E25A FUN_0001e25a
+0001E246: bsr.w 0x0001e25a ; call 0001E25A spawn_world_effect_from_coordinate_sequence
 0001E24A: movem.w (SP)+,{ D0}
 0001E24E: bcs.w 0x0001e258
 0001E252: addq.w #0x1,D0w
@@ -27226,7 +27226,7 @@
 00059604: tst.l (0x00fffc3c).l
 0005960A: beq.w 0x0005961a
 0005960E: lea (0x1d657c).l,A6 ; data 001d657c
-00059614: jsr 0x0001e4ac.l ; call 0001E4AC FUN_0001e4ac
+00059614: jsr 0x0001e4ac.l ; call 0001E4AC spawn_world_effect_at_player_position
 0005961A: rts
 0005961C: jsr 0x000014ce.l ; call 000014CE extract_even_bytes
 00059622: movea.l #0xffb744,A1

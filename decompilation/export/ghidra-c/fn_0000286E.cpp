@@ -3,7 +3,7 @@
 // Name: FUN_0000286e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001E4AC FUN_0001e4ac
+//   0x0001E4AC spawn_world_effect_at_player_position
 
 
 void FUN_0000286e(void)
@@ -21,7 +21,7 @@ void FUN_0000286e(void)
     puVar2 = puVar2 + 0x100;
     sVar1 = sVar1 + -1;
     if (sVar1 == -1) {
-      FUN_0001e4ac();
+      spawn_world_effect_at_player_position();
       return;
     }
   }

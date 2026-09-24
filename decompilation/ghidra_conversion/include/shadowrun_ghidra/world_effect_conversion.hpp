@@ -1,9 +1,11 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <optional>
+#include <utility>
 #include <vector>
 
 namespace shadowrun::ghidra_conversion {
@@ -131,6 +133,57 @@ using WorldEffectEntityInitializer = std::function<WorldEffectEntityRecord(
     const std::optional<std::uint16_t>& parent_entity_slot)>;
 using WorldEffectEntityProjection =
     std::function<bool(WorldEffectEntityRecord& entity)>;
+
+using WorldEffectEntitySlotAllocator =
+    std::function<std::optional<std::uint16_t>()>;
+using WorldEffectRecordBoundary = std::function<void(
+    std::uint16_t entity_slot,
+    std::uint16_t effect_slot,
+    std::uint16_t world_x,
+    std::uint16_t world_y,
+    bool special_record)>;
+
+enum class WorldEffectSingleSpawnAction {
+    spawned,
+    entity_table_full,
+    effect_table_full,
+};
+
+struct WorldEffectSingleSpawnResult {
+    WorldEffectSingleSpawnAction action =
+        WorldEffectSingleSpawnAction::spawned;
+    std::optional<std::uint16_t> entity_slot;
+    std::optional<std::uint16_t> effect_slot;
+    std::uint16_t world_x = 0;
+    std::uint16_t world_y = 0;
+    std::uint8_t active_count = 0;
+};
+
+struct WorldEffectCoordinateSequenceState {
+    std::vector<std::pair<std::uint16_t, std::uint16_t>> coordinates;
+    std::pair<std::uint16_t, std::uint16_t> fallback{0, 0};
+    std::size_t cursor = 0;
+    std::uint8_t active_count = 0;
+};
+
+// ROM 0x1E25A: allocate one effect entity from the current coordinate pair,
+// using the fallback pair when the first coordinate is zero, then arm the
+// world activity timeout.
+WorldEffectSingleSpawnResult spawn_world_effect_from_coordinate_sequence(
+    WorldEffectCoordinateSequenceState& state,
+    const WorldEffectEntitySlotAllocator& allocate_entity_slot,
+    const WorldEffectEntitySlotAllocator& allocate_effect_slot,
+    const WorldEffectRecordBoundary& initialize_record,
+    const WorldEffectBoundary& schedule_timeout);
+
+// ROM 0x1E4AC: allocate one flagged effect entity at the player position
+// plus the source horizontal offset.
+WorldEffectSingleSpawnResult spawn_world_effect_at_player_position(
+    std::uint16_t player_x,
+    std::uint16_t player_y,
+    const WorldEffectEntitySlotAllocator& allocate_entity_slot,
+    const WorldEffectEntitySlotAllocator& allocate_effect_slot,
+    const WorldEffectRecordBoundary& initialize_record);
 
 // ROM 0x1E0DC: walk the active world-effect descriptor list, allocate an
 // entity/effect slot pair, apply the source vertical-origin grouping, mark

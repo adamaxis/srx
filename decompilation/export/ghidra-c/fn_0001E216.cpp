@@ -3,7 +3,7 @@
 // Name: FUN_0001e216
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001E25A FUN_0001e25a
+//   0x0001E25A spawn_world_effect_from_coordinate_sequence
 //   0x0001E302 FUN_0001e302
 //   0x0001E40C FUN_0001e40c
 
@@ -31,7 +31,7 @@ void FUN_0001e216(void)
       psVar3 = (short *)((int)register0x0000003c + -4);
       *psVar3 = sVar1;
       *(undefined4 *)((int)register0x0000003c + -8) = 0x1e24a;
-      FUN_0001e25a();
+      spawn_world_effect_from_coordinate_sequence();
       register0x0000003c = (BADSPACEBASE *)((int)register0x0000003c + -2);
       if (bVar2) {
         return;

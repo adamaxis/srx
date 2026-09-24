@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001E4AC
-// Name: FUN_0001e4ac
+// Name: spawn_world_effect_at_player_position
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000044BC FUN_000044bc
@@ -8,7 +8,7 @@
 //   0x0001A342 find_first_available_world_effect_entity_slot
 
 
-void FUN_0001e4ac(void)
+void spawn_world_effect_at_player_position(void)
 
 {
   short *psVar1;

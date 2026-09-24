@@ -6,7 +6,7 @@
 //   0x00003074 FUN_00003074
 //   0x000042F2 FUN_000042f2
 //   0x0000431C FUN_0000431c
-//   0x0001E4AC FUN_0001e4ac
+//   0x0001E4AC spawn_world_effect_at_player_position
 //   0x0005966E FUN_0005966e
 
 
@@ -69,7 +69,7 @@ void FUN_000594e0(void)
     _DAT_00ff0150 = (undefined2 *)&DAT_0007219a;
   }
   if (DAT_00fffc3c != 0) {
-    FUN_0001e4ac();
+    spawn_world_effect_at_player_position();
   }
   return;
 }

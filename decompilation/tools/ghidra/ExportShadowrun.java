@@ -125,6 +125,8 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0001E04AL, "begin_world_effect_transition");
         names.put(0x0001E0B8L, "promote_entity_effect_flags");
         names.put(0x0001E0DCL, "spawn_world_effect_entities");
+        names.put(0x0001E25AL, "spawn_world_effect_from_coordinate_sequence");
+        names.put(0x0001E4ACL, "spawn_world_effect_at_player_position");
         names.put(0x00014682L, "select_obstruction_route");
         names.put(0x00014756L, "clear_entity_route_flags");
         names.put(0x00014764L, "find_alternate_route_tile");

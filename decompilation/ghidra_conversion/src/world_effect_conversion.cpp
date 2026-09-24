@@ -107,6 +107,101 @@ WorldEffectEntitySpawnResult spawn_world_effect_entities(
     return result;
 }
 
+WorldEffectSingleSpawnResult spawn_world_effect_from_coordinate_sequence(
+    WorldEffectCoordinateSequenceState& state,
+    const WorldEffectEntitySlotAllocator& allocate_entity_slot,
+    const WorldEffectEntitySlotAllocator& allocate_effect_slot,
+    const WorldEffectRecordBoundary& initialize_record,
+    const WorldEffectBoundary& schedule_timeout) {
+    WorldEffectSingleSpawnResult result{};
+    if (!allocate_entity_slot) {
+        result.action = WorldEffectSingleSpawnAction::entity_table_full;
+        return result;
+    }
+    result.entity_slot = allocate_entity_slot();
+    if (!result.entity_slot.has_value()) {
+        result.action = WorldEffectSingleSpawnAction::entity_table_full;
+        return result;
+    }
+    if (!allocate_effect_slot) {
+        result.action = WorldEffectSingleSpawnAction::effect_table_full;
+        return result;
+    }
+    result.effect_slot = allocate_effect_slot();
+    if (!result.effect_slot.has_value()) {
+        result.action = WorldEffectSingleSpawnAction::effect_table_full;
+        return result;
+    }
+
+    const auto read_coordinate = [&state]() {
+        if (state.cursor >= state.coordinates.size()) {
+            return state.fallback;
+        }
+        return state.coordinates[state.cursor++];
+    };
+    auto coordinate = read_coordinate();
+    auto y_coordinate = coordinate;
+    if (coordinate.first == 0U) {
+        coordinate = state.fallback;
+        y_coordinate = state.fallback;
+    } else {
+        y_coordinate = read_coordinate();
+    }
+    result.world_x = coordinate.first;
+    result.world_y = y_coordinate.second;
+    if (initialize_record) {
+        initialize_record(*result.entity_slot,
+                          *result.effect_slot,
+                          result.world_x,
+                          result.world_y,
+                          true);
+    }
+    state.active_count = static_cast<std::uint8_t>(state.active_count + 1U);
+    result.active_count = state.active_count;
+    if (schedule_timeout) {
+        schedule_timeout();
+    }
+    return result;
+}
+
+WorldEffectSingleSpawnResult spawn_world_effect_at_player_position(
+    const std::uint16_t player_x,
+    const std::uint16_t player_y,
+    const WorldEffectEntitySlotAllocator& allocate_entity_slot,
+    const WorldEffectEntitySlotAllocator& allocate_effect_slot,
+    const WorldEffectRecordBoundary& initialize_record) {
+    WorldEffectSingleSpawnResult result{};
+    if (!allocate_entity_slot) {
+        result.action = WorldEffectSingleSpawnAction::entity_table_full;
+        return result;
+    }
+    result.entity_slot = allocate_entity_slot();
+    if (!result.entity_slot.has_value()) {
+        result.action = WorldEffectSingleSpawnAction::entity_table_full;
+        return result;
+    }
+    if (!allocate_effect_slot) {
+        result.action = WorldEffectSingleSpawnAction::effect_table_full;
+        return result;
+    }
+    result.effect_slot = allocate_effect_slot();
+    if (!result.effect_slot.has_value()) {
+        result.action = WorldEffectSingleSpawnAction::effect_table_full;
+        return result;
+    }
+
+    result.world_x = static_cast<std::uint16_t>(player_x + 0x0080U);
+    result.world_y = player_y;
+    if (initialize_record) {
+        initialize_record(*result.entity_slot,
+                          *result.effect_slot,
+                          result.world_x,
+                          result.world_y,
+                          true);
+    }
+    return result;
+}
+
 WorldEffectTransitionAction begin_world_effect_transition(
     WorldEffectTransitionState& state,
     WorldActivityTimeoutState& timeout_state,

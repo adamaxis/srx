@@ -182,6 +182,63 @@ int main() {
         return 11;
     }
 
+    WorldEffectCoordinateSequenceState coordinate_state{
+        {{0U, 0U}, {0x1111U, 0x2222U}}, {0x9000U, 0x9100U}, 0, 0};
+    std::vector<char> coordinate_events;
+    const auto coordinate_spawn = spawn_world_effect_from_coordinate_sequence(
+        coordinate_state,
+        []() { return std::optional<std::uint16_t>{6U}; },
+        []() { return std::optional<std::uint16_t>{3U}; },
+        [&coordinate_events](const std::uint16_t entity_slot,
+                             const std::uint16_t effect_slot,
+                             const std::uint16_t world_x,
+                             const std::uint16_t world_y,
+                             const bool special_record) {
+            coordinate_events.push_back(
+                entity_slot == 6U && effect_slot == 3U &&
+                        world_x == 0x9000U && world_y == 0x9100U &&
+                        special_record
+                    ? 'i'
+                    : 'x');
+        },
+        [&coordinate_events]() { coordinate_events.push_back('t'); });
+    if (expect(coordinate_spawn.action ==
+                   WorldEffectSingleSpawnAction::spawned &&
+               coordinate_spawn.world_x == 0x9000U &&
+               coordinate_spawn.world_y == 0x9100U &&
+               coordinate_spawn.active_count == 1U &&
+               coordinate_events == std::vector<char>({'i', 't'})) != 0) {
+        return 12;
+    }
+
+    std::vector<std::uint16_t> player_slots{8U};
+    const auto player_spawn = spawn_world_effect_at_player_position(
+        0x1000U,
+        0x2000U,
+        [&player_slots]() -> std::optional<std::uint16_t> {
+            if (player_slots.empty()) {
+                return std::nullopt;
+            }
+            const auto slot = player_slots.front();
+            player_slots.clear();
+            return slot;
+        },
+        []() { return std::optional<std::uint16_t>{4U}; },
+        [](const std::uint16_t,
+           const std::uint16_t,
+           const std::uint16_t,
+           const std::uint16_t,
+           const bool special_record) {
+            if (!special_record) {
+                throw 1;
+            }
+        });
+    if (expect(player_spawn.action == WorldEffectSingleSpawnAction::spawned &&
+               player_spawn.world_x == 0x1080U &&
+               player_spawn.world_y == 0x2000U) != 0) {
+        return 13;
+    }
+
     std::array<std::uint8_t, 6> finishing_flags{
         0x02U, 0x00U, 0x06U, 0x01U, 0x04U, 0x00U};
     WorldEffectTriggerState finishing_state{};
@@ -203,7 +260,7 @@ int main() {
                finishing_flags ==
                    std::array<std::uint8_t, 6>{0x06U, 0x00U, 0x06U,
                                                0x01U, 0x04U, 0x00U}) != 0) {
-        return 12;
+        return 14;
     }
 
     WorldEffectTriggerState gated_state{};
@@ -213,7 +270,7 @@ int main() {
                    gated_state, finishing_flags, {}, {}, wrong_mode_timeout,
                    {}, {}, {}, {}) ==
                    WorldEffectTriggerAction::trigger_suppressed) != 0) {
-        return 13;
+        return 15;
     }
 
     WorldEffectTriggerState waiting_state{};
@@ -222,7 +279,7 @@ int main() {
                    waiting_state, finishing_flags, {}, []() { return 0U; },
                    wrong_mode_timeout, {}, {}, {}, {}) ==
                    WorldEffectTriggerAction::cadence_wait) != 0) {
-        return 14;
+        return 16;
     }
 
     WorldEffectTriggerState rejected_state{};
@@ -231,7 +288,7 @@ int main() {
                    rejected_state, finishing_flags, {}, []() { return 0x8000U; },
                    wrong_mode_timeout, {}, {}, {}, {}) ==
                    WorldEffectTriggerAction::random_rejected) != 0) {
-        return 15;
+        return 17;
     }
 
     WorldEffectTriggerState matching_state{};
@@ -258,7 +315,7 @@ int main() {
                matching_state.transition.transition_latched &&
                matching_state.transition.transition_timer == 0x0960U &&
                trigger_events == std::vector<char>({'s', 'c', 'e'})) != 0) {
-        return 16;
+        return 18;
     }
 
     WorldEffectTriggerState outside_state = matching_state;
@@ -270,7 +327,7 @@ int main() {
                    {{0x0008, 0x0014, 0x0010, 0x0028, false}},
                    []() { return 0x0100U; }, matching_timeout, {}, {}, {}, {}) ==
                    WorldEffectTriggerAction::no_matching_region) != 0) {
-        return 17;
+        return 19;
     }
 
     return 0;
