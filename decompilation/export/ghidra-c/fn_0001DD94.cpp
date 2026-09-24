@@ -8,7 +8,7 @@
 //   0x0001DC4C FUN_0001dc4c
 //   0x0001DEA0 FUN_0001dea0
 //   0x0001DF1A FUN_0001df1a
-//   0x0001DFC4 FUN_0001dfc4
+//   0x0001DFC4 advance_world_effect_trigger
 //   0x0001E166 FUN_0001e166
 //   0x0001E2EC FUN_0001e2ec
 //   0x00053126 FUN_00053126
@@ -50,7 +50,7 @@ void FUN_0001dd94(void)
   FUN_0001dea0();
   if (DAT_00ffdf40 == 2) {
     FUN_00016eca();
-    FUN_0001dfc4();
+    advance_world_effect_trigger();
   }
   FUN_0001e166();
   FUN_0001df1a();

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001DFC4
-// Name: FUN_0001dfc4
+// Name: advance_world_effect_trigger
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D44 advance_source_prng
@@ -8,7 +8,7 @@
 //   0x000530D2 FUN_000530d2
 
 
-void FUN_0001dfc4(void)
+void advance_world_effect_trigger(void)
 
 {
   ushort uVar1;

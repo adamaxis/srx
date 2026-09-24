@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <vector>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -35,7 +36,7 @@ enum class WorldEffectTransitionAction {
 struct WorldEffectTransitionState {
     std::uint16_t scene_id = 0;
     std::uint16_t world_mode = 0;
-    std::uint16_t transition_timer = 0;
+    std::int16_t transition_timer = 0;
     bool transition_latched = false;
 };
 
@@ -49,6 +50,50 @@ WorldEffectTransitionAction begin_world_effect_transition(
     WorldEffectTransitionState& state,
     WorldActivityTimeoutState& timeout_state,
     const WorldSoundBoundary& play_sound,
+    const WorldEffectBoundary& clear_pending_flags,
+    const WorldEffectBoundary& process_effect_list);
+
+struct WorldEffectRegion {
+    std::int16_t minimum_x = 0;
+    std::int16_t maximum_x = 0;
+    std::int16_t minimum_y = 0;
+    std::int16_t maximum_y = 0;
+    bool sentinel = false;
+};
+
+struct WorldEffectTriggerState {
+    WorldEffectTransitionState transition{};
+    bool trigger_suppressed = false;
+    std::uint16_t frame_counter = 0;
+    std::uint16_t player_fixed_x = 0;
+    std::uint16_t player_fixed_y = 0;
+};
+
+enum class WorldEffectTriggerAction {
+    no_action,
+    transition_finished,
+    trigger_suppressed,
+    cadence_wait,
+    random_rejected,
+    no_matching_region,
+    timeout_scheduled,
+    transition_already_latched,
+    transition_started,
+};
+
+using WorldRandomBoundary = std::function<std::uint16_t()>;
+
+// ROM 0x1DFC4: finish an expired transition or, on the source cadence,
+// sample the PRNG and scan the bounded effect-region list before delegating
+// to the 0x1E04A transition policy.
+WorldEffectTriggerAction advance_world_effect_trigger(
+    WorldEffectTriggerState& state,
+    std::array<std::uint8_t, 6>& effect_flags,
+    const std::vector<WorldEffectRegion>& regions,
+    const WorldRandomBoundary& next_random,
+    WorldActivityTimeoutState& timeout_state,
+    const WorldSoundBoundary& play_sound,
+    const WorldEffectBoundary& finish_transition_sound,
     const WorldEffectBoundary& clear_pending_flags,
     const WorldEffectBoundary& process_effect_list);
 

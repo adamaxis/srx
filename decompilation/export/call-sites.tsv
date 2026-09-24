@@ -2031,7 +2031,7 @@ caller	caller_name	instruction	text	target	callee	status
 0001DD94	FUN_0001dd94	0001DE4C	jsr 0x0001dc4c.l	0001DC4C	FUN_0001dc4c	resolved
 0001DD94	FUN_0001dd94	0001DE7C	bsr.w 0x0001dea0	0001DEA0	FUN_0001dea0	resolved
 0001DD94	FUN_0001dd94	0001DE8C	jsr 0x00016eca.l	00016ECA	FUN_00016eca	resolved
-0001DD94	FUN_0001dd94	0001DE92	bsr.w 0x0001dfc4	0001DFC4	FUN_0001dfc4	resolved
+0001DD94	FUN_0001dd94	0001DE92	bsr.w 0x0001dfc4	0001DFC4	advance_world_effect_trigger	resolved
 0001DD94	FUN_0001dd94	0001DE96	bsr.w 0x0001e166	0001E166	FUN_0001e166	resolved
 0001DD94	FUN_0001dd94	0001DE9A	bsr.w 0x0001df1a	0001DF1A	FUN_0001df1a	resolved
 0001DEA0	FUN_0001dea0	0001DECA	bsr.w 0x0001e514	0001E514	FUN_0001e514	resolved
@@ -2041,9 +2041,9 @@ caller	caller_name	instruction	text	target	callee	status
 0001DF34	FUN_0001df34	0001DF80	jsr 0x000133a6.l	000133A6	FUN_000133a6	resolved
 0001DF34	FUN_0001df34	0001DF8E	jsr 0x000530de.l	000530DE	FUN_000530de	resolved
 0001DF34	FUN_0001df34	0001DFB0	jsr 0x0001e514.l	0001E514	FUN_0001e514	resolved
-0001DFC4	FUN_0001dfc4	0001DFF8	jsr 0x00000d44.l	00000D44	advance_source_prng	resolved
-0001DFC4	FUN_0001dfc4	0001E0AA	bsr.w 0x0001e0b8	0001E0B8	promote_entity_effect_flags	resolved
-0001DFC4	FUN_0001dfc4	0001E0B2	jmp 0x000530d2.l	000530D2	FUN_000530d2	resolved
+0001DFC4	advance_world_effect_trigger	0001DFF8	jsr 0x00000d44.l	00000D44	advance_source_prng	resolved
+0001DFC4	advance_world_effect_trigger	0001E0AA	bsr.w 0x0001e0b8	0001E0B8	promote_entity_effect_flags	resolved
+0001DFC4	advance_world_effect_trigger	0001E0B2	jmp 0x000530d2.l	000530D2	FUN_000530d2	resolved
 0001E04A	begin_world_effect_transition	0001E056	jsr 0x0001dbaa.l	0001DBAA	schedule_world_activity_timeout	resolved
 0001E04A	begin_world_effect_transition	0001E08A	jsr 0x000530de.l	000530DE	FUN_000530de	resolved
 0001E04A	begin_world_effect_transition	0001E090	bsr.w 0x0001df00	0001DF00	clear_entity_effect_pending_flags	resolved

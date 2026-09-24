@@ -107,5 +107,96 @@ int main() {
         return 9;
     }
 
+    std::array<std::uint8_t, 6> finishing_flags{
+        0x02U, 0x00U, 0x06U, 0x01U, 0x04U, 0x00U};
+    WorldEffectTriggerState finishing_state{};
+    finishing_state.transition.transition_latched = true;
+    finishing_state.transition.transition_timer = 0;
+    bool finish_sound = false;
+    const auto finished = advance_world_effect_trigger(
+        finishing_state,
+        finishing_flags,
+        {},
+        {},
+        wrong_mode_timeout,
+        {},
+        [&finish_sound]() { finish_sound = true; },
+        {},
+        {});
+    if (expect(finished == WorldEffectTriggerAction::transition_finished &&
+               !finishing_state.transition.transition_latched && finish_sound &&
+               finishing_flags ==
+                   std::array<std::uint8_t, 6>{0x06U, 0x00U, 0x06U,
+                                               0x01U, 0x04U, 0x00U}) != 0) {
+        return 10;
+    }
+
+    WorldEffectTriggerState gated_state{};
+    gated_state.frame_counter = 0x000DU;
+    gated_state.trigger_suppressed = true;
+    if (expect(advance_world_effect_trigger(
+                   gated_state, finishing_flags, {}, {}, wrong_mode_timeout,
+                   {}, {}, {}, {}) ==
+                   WorldEffectTriggerAction::trigger_suppressed) != 0) {
+        return 11;
+    }
+
+    WorldEffectTriggerState waiting_state{};
+    waiting_state.frame_counter = 0x000CU;
+    if (expect(advance_world_effect_trigger(
+                   waiting_state, finishing_flags, {}, []() { return 0U; },
+                   wrong_mode_timeout, {}, {}, {}, {}) ==
+                   WorldEffectTriggerAction::cadence_wait) != 0) {
+        return 12;
+    }
+
+    WorldEffectTriggerState rejected_state{};
+    rejected_state.frame_counter = 0x000DU;
+    if (expect(advance_world_effect_trigger(
+                   rejected_state, finishing_flags, {}, []() { return 0x8000U; },
+                   wrong_mode_timeout, {}, {}, {}, {}) ==
+                   WorldEffectTriggerAction::random_rejected) != 0) {
+        return 13;
+    }
+
+    WorldEffectTriggerState matching_state{};
+    matching_state.transition.world_mode = 2U;
+    matching_state.frame_counter = 0x000DU;
+    matching_state.player_fixed_x = 0x0120U;
+    matching_state.player_fixed_y = 0x0220U;
+    WorldActivityTimeoutState matching_timeout{};
+    std::vector<char> trigger_events;
+    const auto started = advance_world_effect_trigger(
+        matching_state,
+        finishing_flags,
+        {{0x0008, 0x0014, 0x0010, 0x0028, false},
+         {0, 0, 0, 0, true}},
+        []() { return 0x0100U; },
+        matching_timeout,
+        [&trigger_events](const std::uint16_t sound_id) {
+            trigger_events.push_back(sound_id == 0x30U ? 's' : 'x');
+        },
+        {},
+        [&trigger_events]() { trigger_events.push_back('c'); },
+        [&trigger_events]() { trigger_events.push_back('e'); });
+    if (expect(started == WorldEffectTriggerAction::transition_started &&
+               matching_state.transition.transition_latched &&
+               matching_state.transition.transition_timer == 0x0960U &&
+               trigger_events == std::vector<char>({'s', 'c', 'e'})) != 0) {
+        return 14;
+    }
+
+    WorldEffectTriggerState outside_state = matching_state;
+    outside_state.transition.transition_latched = false;
+    outside_state.frame_counter = 0x000DU;
+    outside_state.player_fixed_x = 0x0500U;
+    if (expect(advance_world_effect_trigger(
+                   outside_state, finishing_flags,
+                   {{0x0008, 0x0014, 0x0010, 0x0028, false}},
+                   []() { return 0x0100U; }, matching_timeout, {}, {}, {}, {}) ==
+                   WorldEffectTriggerAction::no_matching_region) != 0) {
+        return 15;
+    }
+
     return 0;
 }

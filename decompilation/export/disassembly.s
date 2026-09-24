@@ -18586,7 +18586,7 @@
 0001DE80: cmpi.w #0x2,(0x00ffdf40).l
 0001DE88: bne.w 0x0001de96
 0001DE8C: jsr 0x00016eca.l ; call 00016ECA FUN_00016eca
-0001DE92: bsr.w 0x0001dfc4 ; call 0001DFC4 FUN_0001dfc4
+0001DE92: bsr.w 0x0001dfc4 ; call 0001DFC4 advance_world_effect_trigger
 0001DE96: bsr.w 0x0001e166 ; call 0001E166 FUN_0001e166
 0001DE9A: bsr.w 0x0001df1a ; call 0001DF1A FUN_0001df1a
 0001DE9E: rts

@@ -1466,7 +1466,7 @@ caller	caller_name	callee	callee_name	call_sites
 0001DD94	FUN_0001dd94	0001DC4C	FUN_0001dc4c	1
 0001DD94	FUN_0001dd94	0001DEA0	FUN_0001dea0	1
 0001DD94	FUN_0001dd94	0001DF1A	FUN_0001df1a	1
-0001DD94	FUN_0001dd94	0001DFC4	FUN_0001dfc4	1
+0001DD94	FUN_0001dd94	0001DFC4	advance_world_effect_trigger	1
 0001DD94	FUN_0001dd94	0001E166	FUN_0001e166	1
 0001DD94	FUN_0001dd94	0001E2EC	FUN_0001e2ec	1
 0001DD94	FUN_0001dd94	00053126	FUN_00053126	1
@@ -1476,9 +1476,9 @@ caller	caller_name	callee	callee_name	call_sites
 0001DF34	FUN_0001df34	000133A6	FUN_000133a6	1
 0001DF34	FUN_0001df34	0001E514	FUN_0001e514	1
 0001DF34	FUN_0001df34	000530DE	FUN_000530de	1
-0001DFC4	FUN_0001dfc4	00000D44	advance_source_prng	1
-0001DFC4	FUN_0001dfc4	0001E0B8	promote_entity_effect_flags	1
-0001DFC4	FUN_0001dfc4	000530D2	FUN_000530d2	1
+0001DFC4	advance_world_effect_trigger	00000D44	advance_source_prng	1
+0001DFC4	advance_world_effect_trigger	0001E0B8	promote_entity_effect_flags	1
+0001DFC4	advance_world_effect_trigger	000530D2	FUN_000530d2	1
 0001E04A	begin_world_effect_transition	0001DBAA	schedule_world_activity_timeout	1
 0001E04A	begin_world_effect_transition	0001DF00	clear_entity_effect_pending_flags	1
 0001E04A	begin_world_effect_transition	0001E0DC	FUN_0001e0dc	1

@@ -631,7 +631,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0001DF00	clear_entity_effect_pending_flags	26	unknown	ok	ghidra-c/fn_0001DF00.cpp
 0001DF1A	FUN_0001df1a	26	unknown	ok	ghidra-c/fn_0001DF1A.cpp
 0001DF34	FUN_0001df34	144	unknown	ok	ghidra-c/fn_0001DF34.cpp
-0001DFC4	FUN_0001dfc4	164	unknown	ok	ghidra-c/fn_0001DFC4.cpp
+0001DFC4	advance_world_effect_trigger	164	unknown	ok	ghidra-c/fn_0001DFC4.cpp
 0001E04A	begin_world_effect_transition	80	unknown	ok	ghidra-c/fn_0001E04A.cpp
 0001E0B8	promote_entity_effect_flags	36	unknown	ok	ghidra-c/fn_0001E0B8.cpp
 0001E0DC	FUN_0001e0dc	138	unknown	ok	ghidra-c/fn_0001E0DC.cpp
