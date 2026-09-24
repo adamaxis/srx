@@ -7,7 +7,7 @@
 //   0x000028AA FUN_000028aa
 //   0x00002900 FUN_00002900
 //   0x00002C6C FUN_00002c6c
-//   0x0000301E FUN_0000301e
+//   0x0000301E upload_scene_profile_block
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -24,7 +24,7 @@ void FUN_000028c2(void)
   DAT_00ffdf36 = 0xffff;
   DAT_00ffdf38 = 0xffff;
   FUN_00002c6c();
-  FUN_0000301e();
+  upload_scene_profile_block();
   return;
 }
 

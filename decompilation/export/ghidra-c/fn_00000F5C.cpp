@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00000F5C
-// Name: FUN_00000f5c
+// Name: write_vdp_word_block_with_source_wrap
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000F98 write_vdp_word_block
 
 
-undefined8 FUN_00000f5c(void)
+undefined8 write_vdp_word_block_with_source_wrap(void)
 
 {
   uint in_D0;

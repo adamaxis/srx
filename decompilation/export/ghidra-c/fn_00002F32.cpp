@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00002BD2 FUN_00002bd2
-//   0x0000301E FUN_0000301e
+//   0x0000301E upload_scene_profile_block
 //   0x00003032 scene_uses_alternate_profile
 //   0x0000C7F8 FUN_0000c7f8
 
@@ -39,7 +39,7 @@ uint FUN_00002f32(void)
   DAT_00ffddc6 = DAT_00ffdf50;
   DAT_00ffddc8 = DAT_00ffdf52;
   FUN_00002bd2();
-  FUN_0000301e();
+  upload_scene_profile_block();
   puVar4 = &DAT_00ff0100;
   puVar5 = &DAT_00ffdf44;
   sVar3 = 2;

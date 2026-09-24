@@ -20,6 +20,18 @@ struct VdpUploadState {
     bool transfer_enabled = false;
 };
 
+struct StartupVdpTable {
+    std::array<std::uint16_t, 4> transfer_words{};
+    std::array<std::uint16_t, 14> control_words{};
+};
+
+// ROM 0x0CEC: install the four source transfer words and emit the fourteen
+// startup control words in order.
+void install_startup_vdp_table(
+    StartupVdpTable& state,
+    const std::array<std::uint16_t, 18>& source_words,
+    const RawVdpWriteCallbacks& callbacks);
+
 // ROM 0x0E34: clear the transfer destination's initial data words and reset
 // the source upload cursor/state used by the following upload service.
 void reset_vdp_upload_state(

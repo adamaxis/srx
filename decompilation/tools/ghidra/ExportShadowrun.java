@@ -179,10 +179,12 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00000DFCL, "write_repeated_words");
         names.put(0x00000E18L, "write_word_stream");
         names.put(0x00000E34L, "reset_vdp_upload_state");
+        names.put(0x00000CECL, "install_startup_vdp_table");
         names.put(0x00000EC0L, "upload_startup_palette");
         names.put(0x00000F1CL, "write_transfer_header");
         names.put(0x00000F3CL, "write_fixed_transfer_pair");
         names.put(0x00000F98L, "write_vdp_word_block");
+        names.put(0x00000F5CL, "write_vdp_word_block_with_source_wrap");
         names.put(0x00001056L, "clear_vdp_words");
         names.put(0x00000FFEL, "clear_and_fill_plane_a");
         names.put(0x0000102AL, "clear_and_fill_plane_b");
@@ -196,6 +198,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0000313AL, "copy_terrain_layers");
         names.put(0x00002FF0L, "find_ready_entity_slot");
         names.put(0x00001232L, "write_vdp_grid");
+        names.put(0x0000301EL, "upload_scene_profile_block");
         names.put(0x000176EAL, "render_menu_footer");
         names.put(0x000177A4L, "initialize_menu_slot_states");
         names.put(0x000111D0L, "upload_menu_tile_block");

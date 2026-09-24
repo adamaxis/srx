@@ -3,7 +3,7 @@
 // Name: FUN_0000334c
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000F5C FUN_00000f5c
+//   0x00000F5C write_vdp_word_block_with_source_wrap
 //   0x00001232 write_vdp_grid
 //   0x000033AA FUN_000033aa
 
@@ -11,7 +11,7 @@
 void FUN_0000334c(void)
 
 {
-  FUN_00000f5c();
+  write_vdp_word_block_with_source_wrap();
   write_vdp_grid();
   write_vdp_grid();
   FUN_000033aa();

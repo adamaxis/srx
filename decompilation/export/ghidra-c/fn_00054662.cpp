@@ -7,7 +7,7 @@
 //   0x00000BF2 latch_controller_events
 //   0x00000D94 wait_for_controller_event
 //   0x00000DBA count_thresholded_random_rolls
-//   0x00000F5C FUN_00000f5c
+//   0x00000F5C write_vdp_word_block_with_source_wrap
 //   0x00001232 write_vdp_grid
 //   0x0000195C sample_controller_input
 //   0x0000C0DA render_title_text_source
@@ -59,8 +59,8 @@ LAB_000546cc:
     VDP_CTRL = 0x8134;
     FUN_00010952();
     FUN_000566f6();
-    FUN_00000f5c();
-    FUN_00000f5c();
+    write_vdp_word_block_with_source_wrap();
+    write_vdp_word_block_with_source_wrap();
     sVar6 = 5;
     do {
       write_vdp_grid();

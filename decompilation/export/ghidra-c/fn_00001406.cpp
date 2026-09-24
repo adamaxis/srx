@@ -4,9 +4,9 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
-//   0x00000CEC FUN_00000cec
+//   0x00000CEC install_startup_vdp_table
 //   0x00000E34 reset_vdp_upload_state
-//   0x00000F5C FUN_00000f5c
+//   0x00000F5C write_vdp_word_block_with_source_wrap
 //   0x00000FFE clear_and_fill_plane_a
 //   0x0000102A clear_and_fill_plane_b
 //   0x00001232 write_vdp_grid
@@ -25,7 +25,7 @@ void prepare_title_resources(void)
   uint *puVar3;
   
   step_palette_transition();
-  FUN_00000cec();
+  install_startup_vdp_table();
   clear_and_fill_plane_a();
   clear_and_fill_plane_b();
   reset_vdp_upload_state();
@@ -40,7 +40,7 @@ void prepare_title_resources(void)
     if (*puVar2 == 0) break;
     if ((*puVar2 & 1) == 0) {
       puVar2 = puVar2 + 3;
-      FUN_00000f5c();
+      write_vdp_word_block_with_source_wrap();
     }
     else {
       puVar2 = puVar2 + 3;

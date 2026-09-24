@@ -53,5 +53,31 @@ int main() {
         return 4;
     }
 
+    commands.clear();
+    words.clear();
+    std::vector<std::uint16_t> wrapped_words(8U, 0U);
+    for (std::size_t index = 0; index < wrapped_words.size(); ++index) {
+        wrapped_words[index] = static_cast<std::uint16_t>(index + 1U);
+    }
+    write_vdp_word_block_with_source_wrap(
+        0xFFF8U, 0x2000U, wrapped_words, 16U, callbacks);
+    if (commands.size() != 4U ||
+        commands[0] != make_vdp_transfer_command(0x2000U).low_word ||
+        commands[2] != make_vdp_transfer_command(0x2008U).low_word ||
+        words != wrapped_words) {
+        return 5;
+    }
+
+    commands.clear();
+    words.clear();
+    upload_scene_profile_block(std::vector<std::uint16_t>(160U, 0x55AAU),
+                               callbacks);
+    if (commands.size() != 2U ||
+        commands[0] != make_vdp_transfer_command(0xFE00U).low_word ||
+        words.size() != 160U || words.front() != 0x55AAU ||
+        words.back() != 0x55AAU) {
+        return 6;
+    }
+
     return 0;
 }

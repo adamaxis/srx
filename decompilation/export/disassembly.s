@@ -441,7 +441,7 @@
 00000C80: move.w #0x1,(0x00ffdd02).l
 00000C88: bsr.w 0x00000e34 ; call 00000E34 reset_vdp_upload_state
 00000C8C: lea (0xd14).l,A0
-00000C92: bsr.w 0x00000cec ; call 00000CEC FUN_00000cec
+00000C92: bsr.w 0x00000cec ; call 00000CEC install_startup_vdp_table
 00000C96: move.w #-0x20,D0w
 00000C9A: bsr.w 0x00000e9c ; call 00000E9C make_vdp_transfer_command
 00000C9E: moveq #0x0,D0
@@ -906,7 +906,7 @@
 00001404: bra.b 0x000013be
 00001406: bsr.w 0x0000131c ; call 0000131C step_palette_transition
 0000140A: movea.l (A6)+,A0
-0000140C: jsr 0x00000cec.l ; call 00000CEC FUN_00000cec
+0000140C: jsr 0x00000cec.l ; call 00000CEC install_startup_vdp_table
 00001412: jsr 0x00000ffe.l ; call 00000FFE clear_and_fill_plane_a
 00001418: jsr 0x0000102a.l ; call 0000102A clear_and_fill_plane_b
 0000141E: jsr 0x00000e34.l ; call 00000E34 reset_vdp_upload_state
@@ -930,7 +930,7 @@
 00001468: bra.b 0x00001444
 0000146A: move.l (A6)+,D1
 0000146C: move.l (A6)+,D2
-0000146E: jsr 0x00000f5c.l ; call 00000F5C FUN_00000f5c
+0000146E: jsr 0x00000f5c.l ; call 00000F5C write_vdp_word_block_with_source_wrap
 00001474: bra.b 0x00001444
 00001476: move.l (A6)+,D0
 00001478: beq.w 0x000014a4
@@ -1585,7 +1585,7 @@
 00002856: bsr.w 0x00002b34 ; call 00002B34 FUN_00002b34
 0000285A: movea.l (0x00ffddfa).l,A6
 00002860: bsr.w 0x00002c6c ; call 00002C6C FUN_00002c6c
-00002864: bsr.w 0x0000301e ; call 0000301E FUN_0000301e
+00002864: bsr.w 0x0000301e ; call 0000301E upload_scene_profile_block
 00002868: bsr.w 0x0000286e ; call 0000286E FUN_0000286e
 0000286C: rts
 0000286E: move.l (0x00fffc3c).l,D4
@@ -1616,7 +1616,7 @@
 000028EA: move.w #-0x1,(0x00ffdf38).l
 000028F2: movea.l (0x00ffddfa).l,A6
 000028F8: bsr.w 0x00002c6c ; call 00002C6C FUN_00002c6c
-000028FC: bra.w 0x0000301e ; call 0000301E FUN_0000301e
+000028FC: bra.w 0x0000301e ; call 0000301E upload_scene_profile_block
 00002900: tst.b (0x00ffe172).l
 00002906: beq.w 0x0000291c
 0000290A: clr.b (0x00ffe172).l
@@ -1739,7 +1739,7 @@
 00002C34: move.b D1b,(0x0,A0,D0w*0x1) ; data 00ff1700
 00002C38: movea.l (0x00ffddfa).l,A6
 00002C3E: bsr.w 0x00002c6c ; call 00002C6C FUN_00002c6c
-00002C42: bra.w 0x0000301e ; call 0000301E FUN_0000301e
+00002C42: bra.w 0x0000301e ; call 0000301E upload_scene_profile_block
 00002C6C: jsr 0x00001406.l ; call 00001406 prepare_title_resources
 00002C72: jsr 0x000566c2.l ; call 000566C2 FUN_000566c2
 00002C78: cmpi.w #0x2,(0x00ffdf40).l
@@ -1841,7 +1841,7 @@
 00002F8C: move.w (0x00ffdf52).l,(0x00ffddc8).l
 00002F96: movea.l (0x00ffddfa).l,A6
 00002F9C: bsr.w 0x00002bd2 ; call 00002BD2 FUN_00002bd2
-00002FA0: bsr.w 0x0000301e ; call 0000301E FUN_0000301e
+00002FA0: bsr.w 0x0000301e ; call 0000301E upload_scene_profile_block
 00002FA4: lea (0xff0100).l,A3 ; data 00ff0100
 00002FAA: lea (0xffdf44).l,A4 ; data 00ffdf44
 00002FB0: move.w #0x2,D7w
@@ -1965,7 +1965,7 @@
 0000334C: move.l #0x6a5be,D0
 00003352: move.l #0xdac0,D1
 00003358: move.l #0x4c0,D2
-0000335E: jsr 0x00000f5c.l ; call 00000F5C FUN_00000f5c
+0000335E: jsr 0x00000f5c.l ; call 00000F5C write_vdp_word_block_with_source_wrap
 00003364: move.w #-0xfbc,D4w
 00003368: lea (0x6ace2).l,A1 ; data 0006ace2
 0000336E: move.w #0x5,D7w
@@ -2000,7 +2000,7 @@
 000033E0: move.w (A2)+,D0w
 000033E2: asl.l #0x5,D0
 000033E4: addi.l #0x6acfa,D0
-000033EA: jsr 0x00000f5c.l ; call 00000F5C FUN_00000f5c
+000033EA: jsr 0x00000f5c.l ; call 00000F5C write_vdp_word_block_with_source_wrap
 000033F0: addi.w #0x20,D1w
 000033F4: dbf D6w,0x000033de
 000033F8: addq.w #0x8,A2
@@ -2025,7 +2025,7 @@
 0000343C: move.w (A2)+,D0w
 0000343E: asl.l #0x5,D0
 00003440: addi.l #0x6acfa,D0
-00003446: jsr 0x00000f5c.l ; call 00000F5C FUN_00000f5c
+00003446: jsr 0x00000f5c.l ; call 00000F5C write_vdp_word_block_with_source_wrap
 0000344C: addi.w #0x20,D1w
 00003450: dbf D6w,0x0000343a
 00003454: addq.w #0x8,A2
@@ -2060,7 +2060,7 @@
 000034CC: move.w (A2)+,D0w
 000034CE: asl.l #0x5,D0
 000034D0: addi.l #0xcf97c,D0
-000034D6: jsr 0x00000f5c.l ; call 00000F5C FUN_00000f5c
+000034D6: jsr 0x00000f5c.l ; call 00000F5C write_vdp_word_block_with_source_wrap
 000034DC: addi.w #0x20,D1w
 000034E0: dbf D6w,0x000034ca
 000034E4: adda.l #0x100,A5
@@ -4064,7 +4064,7 @@
 0000617C: move.l (0x48,A0),D0
 00006180: move.w (0x26,A0),D1w
 00006184: move.w (0x28,A0),D2w
-00006188: jsr 0x00000f5c.l ; call 00000F5C FUN_00000f5c
+00006188: jsr 0x00000f5c.l ; call 00000F5C write_vdp_word_block_with_source_wrap
 0000618E: move.l A1,D0
 00006190: addq.b #0x4,D0b
 00006192: movea.l D0,A1
@@ -4102,7 +4102,7 @@
 0000620A: move.l (A1),D0
 0000620C: move.w (0x4,A1),D2w
 00006210: move.w (0x6,A1),D1w
-00006214: jsr 0x00000f5c.l ; call 00000F5C FUN_00000f5c
+00006214: jsr 0x00000f5c.l ; call 00000F5C write_vdp_word_block_with_source_wrap
 0000621A: move.l A1,D0
 0000621C: addq.b #0x8,D0b
 0000621E: movea.l D0,A1
@@ -8429,7 +8429,7 @@
 00010BC8: move.l #0xd263c,D0
 00010BCE: move.l #0x9f40,D1
 00010BD4: move.l #0x340,D2
-00010BDA: jsr 0x00000f5c.l ; call 00000F5C FUN_00000f5c
+00010BDA: jsr 0x00000f5c.l ; call 00000F5C write_vdp_word_block_with_source_wrap
 00010BE0: lea (0xce2a6).l,A1 ; data 000ce2a6
 00010BE6: move.w #-0x2000,D4w
 00010BEA: move.w #0x21,D7w
@@ -8634,7 +8634,7 @@
 00010FDA: move.l #0xcf134,D0
 00010FE0: move.l #0x5a80,D1
 00010FE6: move.l #0x200,D2
-00010FEC: jsr 0x00000f5c.l ; call 00000F5C FUN_00000f5c
+00010FEC: jsr 0x00000f5c.l ; call 00000F5C write_vdp_word_block_with_source_wrap
 00010FF2: rts
 00010FF4: lea (0xff0100).l,A0 ; data 00ff0100
 00010FFA: moveq #0x2,D5
@@ -8651,7 +8651,7 @@
 0001101E: move.w (A2)+,D0w
 00011020: asl.l #0x5,D0
 00011022: addi.l #0x6acfa,D0
-00011028: jsr 0x00000f5c.l ; call 00000F5C FUN_00000f5c
+00011028: jsr 0x00000f5c.l ; call 00000F5C write_vdp_word_block_with_source_wrap
 0001102E: addi.w #0x20,D1w
 00011032: dbf D6w,0x0001101c
 00011036: adda.l #0x100,A0
@@ -8662,11 +8662,11 @@
 0001104C: move.l #0xcf97c,D0
 00011052: move.l #0x7d20,D1
 00011058: move.l #0x1e00,D2
-0001105E: jsr 0x00000f5c.l ; call 00000F5C FUN_00000f5c
+0001105E: jsr 0x00000f5c.l ; call 00000F5C write_vdp_word_block_with_source_wrap
 00011064: move.l #0xd21bc,D0
 0001106A: move.l #0x9b20,D1
 00011070: move.l #0x420,D2
-00011076: jsr 0x00000f5c.l ; call 00000F5C FUN_00000f5c
+00011076: jsr 0x00000f5c.l ; call 00000F5C write_vdp_word_block_with_source_wrap
 0001107C: rts
 0001107E: tst.b (0x00fff100).l
 00011084: bne.w 0x000110a2
@@ -13364,7 +13364,7 @@
 00016498: nop
 0001649A: nop
 0001649C: nop
-0001649E: jsr 0x00000f5c.l ; call 00000F5C FUN_00000f5c
+0001649E: jsr 0x00000f5c.l ; call 00000F5C write_vdp_word_block_with_source_wrap
 000164A4: bra.b 0x0001646c
 000164A6: rts
 000164A8: movea.l (0x00ffde02).l,A2
@@ -13683,7 +13683,7 @@
 00016B0E: move.l (0x0,A3,D5w*0x1),D0 ; data 00016b20
 00016B12: move.w #0x4020,D1w
 00016B16: move.w #0x200,D2w
-00016B1A: jmp 0x00000f5c.l ; call 00000F5C FUN_00000f5c
+00016B1A: jmp 0x00000f5c.l ; call 00000F5C write_vdp_word_block_with_source_wrap
 00016B7C: movea.l (0x00ffde1e).l,A1
 00016B82: move.w (0x14,A1),D0w
 00016B86: move.b D0b,(0x00fffbbc).l
@@ -14051,7 +14051,7 @@
 000176BA: move.l #0xda038,D0
 000176C0: move.l #0x2360,D1
 000176C6: move.l #0xa80,D2
-000176CC: jsr 0x00000f5c.l ; call 00000F5C FUN_00000f5c
+000176CC: jsr 0x00000f5c.l ; call 00000F5C write_vdp_word_block_with_source_wrap
 000176D2: lea (0xffbf40).l,A1 ; data 00ffbf40
 000176D8: movea.l #0xdaab8,A3
 000176DE: move.l #0x2de0,D0
@@ -18278,7 +18278,7 @@
 0001D1DC: move.l (0x00ffdf7e).l,D0
 0001D1E2: move.w (0x00ffdf76).l,D1w
 0001D1E8: move.w (0x00ffe006).l,D2w
-0001D1EE: jmp 0x00000f5c.l ; call 00000F5C FUN_00000f5c
+0001D1EE: jmp 0x00000f5c.l ; call 00000F5C write_vdp_word_block_with_source_wrap
 0001D1F4: subq.w #0x1,(0x00ffe008).l
 0001D1FA: bpl.w 0x0001d216
 0001D1FE: bclr.b #0x4,(0x12,A0)
@@ -19182,7 +19182,7 @@
 0001F3A8: move.w (A2)+,D0w
 0001F3AA: asl.l #0x5,D0
 0001F3AC: addi.l #0x6acfa,D0
-0001F3B2: jsr 0x00000f5c.l ; call 00000F5C FUN_00000f5c
+0001F3B2: jsr 0x00000f5c.l ; call 00000F5C write_vdp_word_block_with_source_wrap
 0001F3B8: addi.w #0x20,D1w
 0001F3BC: dbf D6w,0x0001f3a6
 0001F3C0: movea.l (SP)+,A0
@@ -22673,7 +22673,7 @@
 00026A12: move.l #0x15be02,D0
 00026A18: move.l #0x9620,D1
 00026A1E: move.l #0xa0,D2
-00026A24: jsr 0x00000f5c.l ; call 00000F5C FUN_00000f5c
+00026A24: jsr 0x00000f5c.l ; call 00000F5C write_vdp_word_block_with_source_wrap
 00026A2A: jsr 0x00010952.l ; call 00010952 FUN_00010952
 00026A30: lea (0xe2e3a).l,A0 ; data 000e2e3a
 00026A36: jsr 0x00001358.l ; call 00001358 copy_source_word_block
@@ -23053,7 +23053,7 @@
 000532DE: move.l #0x15beac,D0
 000532E4: move.l #0x17e0,D1
 000532EA: move.l #0x520,D2
-000532F0: jsr 0x00000f5c.l ; call 00000F5C FUN_00000f5c
+000532F0: jsr 0x00000f5c.l ; call 00000F5C write_vdp_word_block_with_source_wrap
 000532F6: lea (0x15c4dc).l,A1 ; data 0015c4dc
 000532FC: move.l #0xe000,D4
 00053302: move.w #0x27,D7w
@@ -23548,11 +23548,11 @@
 00054720: move.l #0x15ff30,D0
 00054726: move.l #0x1c80,D1
 0005472C: move.l #0x5a0,D2
-00054732: jsr 0x00000f5c.l ; call 00000F5C FUN_00000f5c
+00054732: jsr 0x00000f5c.l ; call 00000F5C write_vdp_word_block_with_source_wrap
 00054738: move.l (A5)+,D0 ; data 00166330
 0005473A: move.l #0x2220,D1
 00054740: move.l (A5)+,D2 ; data 00166334
-00054742: jsr 0x00000f5c.l ; call 00000F5C FUN_00000f5c
+00054742: jsr 0x00000f5c.l ; call 00000F5C write_vdp_word_block_with_source_wrap
 00054748: clr.l D1
 0005474A: clr.l D7
 0005474C: move.w #0x5,D6w
@@ -24959,7 +24959,7 @@
 00056AEC: move.l #0xcf97c,D0
 00056AF2: move.l #0x89a0,D1
 00056AF8: move.l #0x5e0,D2
-00056AFE: jsr 0x00000f5c.l ; call 00000F5C FUN_00000f5c
+00056AFE: jsr 0x00000f5c.l ; call 00000F5C write_vdp_word_block_with_source_wrap
 00056B04: cmpi.b #0x2,(0x00fff0b7).l
 00056B0C: bne.w 0x00056b40
 00056B10: lea (0xe2e9a).l,A0 ; data 000e2e9a

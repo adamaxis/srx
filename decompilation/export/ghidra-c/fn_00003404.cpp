@@ -3,7 +3,7 @@
 // Name: FUN_00003404
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000F5C FUN_00000f5c
+//   0x00000F5C write_vdp_word_block_with_source_wrap
 //   0x00003548 FUN_00003548
 
 
@@ -20,14 +20,14 @@ void FUN_00003404(void)
     do {
       sVar2 = 3;
       do {
-        FUN_00000f5c();
+        write_vdp_word_block_with_source_wrap();
         sVar2 = sVar2 + -1;
       } while (sVar2 != -1);
       sVar3 = sVar3 + -1;
     } while (sVar3 != -1);
     sVar3 = 5;
     do {
-      FUN_00000f5c();
+      write_vdp_word_block_with_source_wrap();
       sVar3 = sVar3 + -1;
     } while (sVar3 != -1);
     sVar1 = sVar1 + -1;

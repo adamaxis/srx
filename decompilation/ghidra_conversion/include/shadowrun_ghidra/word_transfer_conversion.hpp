@@ -49,6 +49,21 @@ void write_vdp_word_block(
     std::size_t byte_count,
     const WordTransferCallbacks& callbacks);
 
+// ROM 0x0F5C: split a source block at its 64K source-address boundary before
+// forwarding each portion to the bounded word-block writer.
+void write_vdp_word_block_with_source_wrap(
+    std::uint32_t source_address,
+    std::uint16_t destination_address,
+    const std::vector<std::uint16_t>& words,
+    std::size_t byte_count,
+    const WordTransferCallbacks& callbacks);
+
+// ROM 0x0301E: upload the fixed 0x140-byte scene-profile block at its source
+// destination using the shared bounded transfer operation.
+void upload_scene_profile_block(
+    const std::vector<std::uint16_t>& words,
+    const WordTransferCallbacks& callbacks);
+
 // ROM 0x1232: write a row-major word grid, advancing the destination by
 // 0x80 bytes between rows and applying the source word mask.
 void write_vdp_grid(

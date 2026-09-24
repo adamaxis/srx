@@ -3,13 +3,13 @@
 // Name: FUN_0001d1dc
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000F5C FUN_00000f5c
+//   0x00000F5C write_vdp_word_block_with_source_wrap
 
 
 void FUN_0001d1dc(void)
 
 {
-  FUN_00000f5c();
+  write_vdp_word_block_with_source_wrap();
   return;
 }
 

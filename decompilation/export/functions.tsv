@@ -16,7 +16,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00000BF2	latch_controller_events	50	unknown	ok	ghidra-c/fn_00000BF2.cpp
 00000C24	wait_for_vblank_frames	8	unknown	ok	ghidra-c/fn_00000C24.cpp
 00000C2C	clear_runtime_memory_and_vdp	192	unknown	ok	ghidra-c/fn_00000C2C.cpp
-00000CEC	FUN_00000cec	40	unknown	ok	ghidra-c/fn_00000CEC.cpp
+00000CEC	install_startup_vdp_table	40	unknown	ok	ghidra-c/fn_00000CEC.cpp
 00000D3A	sample_source_random_bound	10	unknown	ok	ghidra-c/fn_00000D3A.cpp
 00000D44	advance_source_prng	22	unknown	ok	ghidra-c/fn_00000D44.cpp
 00000D5A	FUN_00000d5a	58	unknown	ok	ghidra-c/fn_00000D5A.cpp
@@ -30,7 +30,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00000EE6	FUN_00000ee6	54	unknown	ok	ghidra-c/fn_00000EE6.cpp
 00000F1C	write_transfer_header	32	unknown	ok	ghidra-c/fn_00000F1C.cpp
 00000F3C	write_fixed_transfer_pair	32	unknown	ok	ghidra-c/fn_00000F3C.cpp
-00000F5C	FUN_00000f5c	60	unknown	ok	ghidra-c/fn_00000F5C.cpp
+00000F5C	write_vdp_word_block_with_source_wrap	60	unknown	ok	ghidra-c/fn_00000F5C.cpp
 00000F98	write_vdp_word_block	102	unknown	ok	ghidra-c/fn_00000F98.cpp
 00000FFE	clear_and_fill_plane_a	44	unknown	ok	ghidra-c/fn_00000FFE.cpp
 0000102A	clear_and_fill_plane_b	44	unknown	ok	ghidra-c/fn_0000102A.cpp
@@ -92,7 +92,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00002F32	FUN_00002f32	114	unknown	ok	ghidra-c/fn_00002F32.cpp
 00002FA4	FUN_00002fa4	76	unknown	ok	ghidra-c/fn_00002FA4.cpp
 00002FF0	find_ready_entity_slot	46	unknown	ok	ghidra-c/fn_00002FF0.cpp
-0000301E	FUN_0000301e	20	unknown	ok	ghidra-c/fn_0000301E.cpp
+0000301E	upload_scene_profile_block	20	unknown	ok	ghidra-c/fn_0000301E.cpp
 00003032	scene_uses_alternate_profile	66	unknown	ok	ghidra-c/fn_00003032.cpp
 00003074	FUN_00003074	16	unknown	ok	ghidra-c/fn_00003074.cpp
 00003084	run_field_loop	182	unknown	ok	ghidra-c/fn_00003084.cpp

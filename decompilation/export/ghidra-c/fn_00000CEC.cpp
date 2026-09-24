@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00000CEC
-// Name: FUN_00000cec
+// Name: install_startup_vdp_table
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00000cec(void)
+void install_startup_vdp_table(void)
 
 {
   short sVar1;

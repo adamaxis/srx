@@ -24,6 +24,26 @@ int main() {
         return 1;
     }
 
+    StartupVdpTable table{};
+    std::array<std::uint16_t, 18> source_table{};
+    for (std::size_t index = 0; index < source_table.size(); ++index) {
+        source_table[index] = static_cast<std::uint16_t>(0x100U + index);
+    }
+    controls.clear();
+    install_startup_vdp_table(table, source_table,
+                              { [&controls](const std::uint16_t word) {
+                                    controls.push_back(word);
+                                },
+                                {},
+                                {} });
+    if (table.transfer_words[0] != 0x100U ||
+        table.transfer_words[3] != 0x103U ||
+        table.control_words[0] != 0x104U ||
+        table.control_words.back() != 0x111U || controls.size() != 14U ||
+        controls.back() != 0x111U) {
+        return 2;
+    }
+
     std::vector<VdpTransferCommand> commands;
     std::vector<std::uint16_t> words;
     const WordTransferCallbacks transfer_callbacks{
@@ -40,14 +60,14 @@ int main() {
         upload_state.source_stream_cursor != 0U ||
         !upload_state.transfer_enabled || commands.size() != 1U ||
         words != std::vector<std::uint16_t>{0U, 0U, 0U, 0U}) {
-        return 2;
+        return 3;
     }
     commands.clear();
     words.clear();
     write_transfer_header(0x1234U, 0xAAAAU, 0xBBBBU, transfer_callbacks);
     if (commands.size() != 1U || commands[0].low_word != 0x5234U ||
         words != std::vector<std::uint16_t>{0xAAAAU, 0xBBBBU}) {
-        return 3;
+        return 4;
     }
 
     std::uint32_t command_long = 0U;
@@ -60,7 +80,7 @@ int main() {
          [&pair](const std::uint16_t value) { pair.push_back(value); }});
     if (command_long != 0x40000010UL ||
         pair != std::vector<std::uint16_t>{0x1111U, 0x2222U}) {
-        return 4;
+        return 5;
     }
 
     commands.clear();
@@ -71,7 +91,7 @@ int main() {
             make_vdp_transfer_command(0x1FE0U).low_word ||
         commands[1].low_word != make_vdp_transfer_command(0x2000U).low_word ||
         words[16] != 0x07FFU || words.back() != 0x07FFU) {
-        return 5;
+        return 6;
     }
 
     return 0;

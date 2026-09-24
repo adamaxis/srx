@@ -3,7 +3,7 @@
 // Name: FUN_000532bc
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000F5C FUN_00000f5c
+//   0x00000F5C write_vdp_word_block_with_source_wrap
 //   0x00000FFE clear_and_fill_plane_a
 //   0x00001232 write_vdp_grid
 //   0x00001358 copy_source_word_block
@@ -24,7 +24,7 @@ void FUN_000532bc(void)
   clear_and_fill_plane_a();
   copy_source_word_block();
   DAT_00ffef14 = DAT_00ffef14 | 1;
-  FUN_00000f5c();
+  write_vdp_word_block_with_source_wrap();
   write_vdp_grid();
   render_title_text_source();
   FUN_000533ee();

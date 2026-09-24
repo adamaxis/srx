@@ -3,7 +3,7 @@
 // Name: clear_runtime_memory_and_vdp
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000CEC FUN_00000cec
+//   0x00000CEC install_startup_vdp_table
 //   0x00000DFC write_repeated_words
 //   0x00000E34 reset_vdp_upload_state
 //   0x00000E9C make_vdp_transfer_command
@@ -43,7 +43,7 @@ void clear_runtime_memory_and_vdp(void)
   write_repeated_words();
   DAT_00ffdd02 = 1;
   reset_vdp_upload_state();
-  FUN_00000cec();
+  install_startup_vdp_table();
   make_vdp_transfer_command();
   sVar1 = 7;
   do {

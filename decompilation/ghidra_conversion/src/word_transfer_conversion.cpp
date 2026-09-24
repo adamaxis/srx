@@ -65,6 +65,41 @@ void write_vdp_word_block(
     }
 }
 
+void write_vdp_word_block_with_source_wrap(
+    const std::uint32_t source_address,
+    const std::uint16_t destination_address,
+    const std::vector<std::uint16_t>& words,
+    const std::size_t byte_count,
+    const WordTransferCallbacks& callbacks) {
+    const auto source_low = source_address & 0xFFFFU;
+    const auto bytes_until_wrap = 0x10000U - source_low;
+    if (source_low + byte_count <= 0x10000U || bytes_until_wrap == 0U) {
+        write_vdp_word_block(destination_address, words, byte_count, callbacks);
+        return;
+    }
+
+    const auto first_bytes = bytes_until_wrap < byte_count
+                                  ? static_cast<std::size_t>(bytes_until_wrap)
+                                  : byte_count;
+    write_vdp_word_block(destination_address, words, first_bytes, callbacks);
+    const auto first_words = first_bytes / 2U;
+    const auto remaining_bytes = byte_count - first_bytes;
+    if (first_words >= words.size()) {
+        return;
+    }
+    const std::vector<std::uint16_t> remaining_words(
+        words.begin() + static_cast<std::ptrdiff_t>(first_words), words.end());
+    write_vdp_word_block(
+        static_cast<std::uint16_t>(destination_address + first_bytes),
+        remaining_words, remaining_bytes, callbacks);
+}
+
+void upload_scene_profile_block(
+    const std::vector<std::uint16_t>& words,
+    const WordTransferCallbacks& callbacks) {
+    write_vdp_word_block(0xFE00U, words, 0x140U, callbacks);
+}
+
 void write_vdp_grid(
     const std::uint16_t destination_address,
     const std::size_t width,

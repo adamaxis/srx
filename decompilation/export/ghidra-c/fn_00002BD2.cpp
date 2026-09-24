@@ -7,7 +7,7 @@
 //   0x0000286E FUN_0000286e
 //   0x00002900 FUN_00002900
 //   0x00002C6C FUN_00002c6c
-//   0x0000301E FUN_0000301e
+//   0x0000301E upload_scene_profile_block
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -30,7 +30,7 @@ void FUN_00002bd2(void)
       (&DAT_00ff1700)[sVar1] = ((&DAT_00ff1700)[sVar1] & 0xe0) + 1;
     }
     FUN_00002c6c();
-    FUN_0000301e();
+    upload_scene_profile_block();
     return;
   }
   _DAT_00ffdf8e = 0;
@@ -40,7 +40,7 @@ void FUN_00002bd2(void)
   FUN_00002900();
   FUN_00002b34();
   FUN_00002c6c();
-  FUN_0000301e();
+  upload_scene_profile_block();
   FUN_0000286e();
   return;
 }

@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
-//   0x00000F5C FUN_00000f5c
+//   0x00000F5C write_vdp_word_block_with_source_wrap
 //   0x00001358 copy_source_word_block
 //   0x0000195C sample_controller_input
 //   0x00010952 FUN_00010952
@@ -31,7 +31,7 @@ void FUN_00026a00(void)
   
   DAT_00fff0b1 = 0xff;
   service_audio_if_enabled();
-  FUN_00000f5c();
+  write_vdp_word_block_with_source_wrap();
   FUN_00010952();
   copy_source_word_block();
   DAT_00ffef14 = DAT_00ffef14 | 1;

@@ -7,7 +7,7 @@
 //   0x00000BF2 latch_controller_events
 //   0x00000D94 wait_for_controller_event
 //   0x00000E34 reset_vdp_upload_state
-//   0x00000F5C FUN_00000f5c
+//   0x00000F5C write_vdp_word_block_with_source_wrap
 //   0x00001530 decode_and_upload_source_stream
 //   0x0000195C sample_controller_input
 //   0x0000334C FUN_0000334c
@@ -43,7 +43,7 @@ void FUN_00056ac0(void)
   FUN_00011048();
   FUN_0005670e();
   if (DAT_00fff0b7 == '\x01') {
-    FUN_00000f5c();
+    write_vdp_word_block_with_source_wrap();
   }
   if (DAT_00fff0b7 == '\x02') {
     FUN_000566e2();

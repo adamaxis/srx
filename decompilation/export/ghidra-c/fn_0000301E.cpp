@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000301E
-// Name: FUN_0000301e
+// Name: upload_scene_profile_block
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000F98 write_vdp_word_block
 
 
-void FUN_0000301e(void)
+void upload_scene_profile_block(void)
 
 {
   write_vdp_word_block();

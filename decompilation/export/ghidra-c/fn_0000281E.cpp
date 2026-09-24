@@ -8,7 +8,7 @@
 //   0x00002900 FUN_00002900
 //   0x00002B34 FUN_00002b34
 //   0x00002C6C FUN_00002c6c
-//   0x0000301E FUN_0000301e
+//   0x0000301E upload_scene_profile_block
 //   0x00003074 FUN_00003074
 
 
@@ -25,7 +25,7 @@ void FUN_0000281e(void)
   FUN_00002900();
   FUN_00002b34();
   FUN_00002c6c();
-  FUN_0000301e();
+  upload_scene_profile_block();
   FUN_0000286e();
   return;
 }

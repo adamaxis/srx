@@ -2,6 +2,21 @@
 
 namespace shadowrun::ghidra_conversion {
 
+void install_startup_vdp_table(
+    StartupVdpTable& state,
+    const std::array<std::uint16_t, 18>& source_words,
+    const RawVdpWriteCallbacks& callbacks) {
+    for (std::size_t index = 0; index < state.transfer_words.size(); ++index) {
+        state.transfer_words[index] = source_words[index];
+    }
+    for (std::size_t index = 0; index < state.control_words.size(); ++index) {
+        state.control_words[index] = source_words[index + 4U];
+        if (callbacks.write_control_word) {
+            callbacks.write_control_word(state.control_words[index]);
+        }
+    }
+}
+
 void reset_vdp_upload_state(
     VdpUploadState& state,
     const std::uint16_t transfer_address,
