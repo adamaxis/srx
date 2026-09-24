@@ -307,3 +307,5 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x5B1B6	advance title intro landing	ghidra_conversion::advance_title_intro_landing	shadowrun_ghidra_title_intro_late	partial		Preserves the 0x226 lead-in, seven movement records, and narrow special-descriptor window
 0x5B2C2	set title intro entity color words	ghidra_conversion::set_title_intro_entity_color_words	shadowrun_ghidra_title_intro_late	partial		Fills one typed entity record's fifteen color words
 0x5B2E2	step title intro entity color words	ghidra_conversion::step_title_intro_entity_color_words	shadowrun_ghidra_title_intro_late	partial		Lowers each active color component by the source 2/0x20/0x200 steps
+0x5AF2A	advance title intro schedule	ghidra_conversion::advance_title_intro_schedule	shadowrun_ghidra_title_intro_schedule	partial		Consumes one timed action entry and preserves the zero-delay terminal marker
+0x5AF62	run title intro schedule	ghidra_conversion::run_title_intro_schedule	shadowrun_ghidra_title_intro_schedule	partial		Preserves schedule setup, display/resource initialization, and vblank/controller loop order

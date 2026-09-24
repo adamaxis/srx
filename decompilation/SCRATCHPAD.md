@@ -551,6 +551,13 @@ records. The renderer, palette upload, and scene-record operations remain
 callback boundaries; no ROM address or VDP register is required by the host
 model.
 
+The timed title-transition table is now isolated in
+`title_intro_schedule_conversion`. `0x5AF2A` consumes typed delay/action
+records and invokes the next action only after its countdown crosses below
+zero; a newly loaded zero delay remains the source terminal marker. `0x5AF62`
+is a native frame-loop wrapper with explicit display preparation, title-resource
+setup, controller sampling/latching, stop boundary, and action callbacks.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames

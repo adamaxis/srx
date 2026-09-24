@@ -230,6 +230,8 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0005AC7EL, "advance_title_intro_stage_timed_sprites");
         names.put(0x0005ADFEL, "render_title_intro_late_text_batch");
         names.put(0x0005AE3AL, "render_title_intro_scroll_text_batch");
+        names.put(0x0005AF2AL, "advance_title_intro_schedule");
+        names.put(0x0005AF62L, "run_title_intro_schedule");
         names.put(0x0005B002L, "reset_title_intro_scroll_fill");
         names.put(0x0005B00AL, "advance_title_intro_scroll");
         names.put(0x0005B056L, "advance_title_intro_scroll_fade");

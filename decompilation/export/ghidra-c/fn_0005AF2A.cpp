@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005AF2A
-// Name: FUN_0005af2a
+// Name: advance_title_intro_schedule
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0005af2a(void)
+void advance_title_intro_schedule(void)
 
 {
   short *psVar1;

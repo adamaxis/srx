@@ -1030,3 +1030,16 @@ target_link_libraries(shadowrun_ghidra_title_intro_late_test
     PRIVATE shadowrun_ghidra_title_intro_late)
 add_test(NAME shadowrun_ghidra_title_intro_late
          COMMAND shadowrun_ghidra_title_intro_late_test)
+
+add_library(shadowrun_ghidra_title_intro_schedule STATIC
+    src/title_intro_schedule_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_title_intro_schedule PUBLIC include)
+
+add_executable(shadowrun_ghidra_title_intro_schedule_test
+    tests/title_intro_schedule_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_title_intro_schedule_test
+    PRIVATE shadowrun_ghidra_title_intro_schedule)
+add_test(NAME shadowrun_ghidra_title_intro_schedule
+         COMMAND shadowrun_ghidra_title_intro_schedule_test)

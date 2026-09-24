@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0005AF62
-// Name: FUN_0005af62
+// Name: run_title_intro_schedule
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -8,13 +8,13 @@
 //   0x00001406 prepare_title_resources
 //   0x0000195C sample_controller_input
 //   0x0000C0C2 load_title_font
-//   0x0005AF2A FUN_0005af2a
+//   0x0005AF2A advance_title_intro_schedule
 //   0x0005B29A FUN_0005b29a
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0005af62(void)
+void run_title_intro_schedule(void)
 
 {
   short sVar1;
@@ -49,7 +49,7 @@ void FUN_0005af62(void)
     wait_for_vblank();
     sample_controller_input();
     latch_controller_events();
-    FUN_0005af2a();
+    advance_title_intro_schedule();
     if ((bool)uVar4) {
       return;
     }

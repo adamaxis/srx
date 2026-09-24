@@ -11,7 +11,7 @@
 //   0x00059D7C FUN_00059d7c
 //   0x0005AA96 FUN_0005aa96
 //   0x0005AD1A FUN_0005ad1a
-//   0x0005AF62 FUN_0005af62
+//   0x0005AF62 run_title_intro_schedule
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -23,7 +23,7 @@ void FUN_00059c5e(void)
   sample_controller_input();
   _DAT_00ffddc2 = 0;
   FUN_000530ea();
-  FUN_0005af62();
+  run_title_intro_schedule();
   if (_DAT_00ffddc2 == 0) {
     prepare_mode_entry_service();
     FUN_000530ea();

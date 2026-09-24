@@ -27491,7 +27491,7 @@
 00059C6C: clr.w (0x00ffddc2).l
 00059C72: move.w #0x10,D0w
 00059C76: jsr 0x000530ea.l ; call 000530EA FUN_000530ea
-00059C7C: jsr 0x0005af62.l ; call 0005AF62 FUN_0005af62
+00059C7C: jsr 0x0005af62.l ; call 0005AF62 run_title_intro_schedule
 00059C82: tst.w (0x00ffddc2).l
 00059C88: bne.w 0x00059cfe
 00059C8C: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
@@ -27552,7 +27552,7 @@
 00059E1A: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 00059E20: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00059E26: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
-00059E2C: bsr.w 0x0005af2a ; call 0005AF2A FUN_0005af2a
+00059E2C: bsr.w 0x0005af2a ; call 0005AF2A advance_title_intro_schedule
 00059E30: tst.w (0x00ffdd08).l
 00059E36: beq.w 0x00059e5a
 00059E3A: cmpi.w #0x178,(0x00ffdd46).l
@@ -27604,7 +27604,7 @@
 00059F3C: jsr 0x0005a0b2.l ; call 0005A0B2 advance_title_intro_sequence
 00059F42: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00059F48: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
-00059F4E: bsr.w 0x0005af2a ; call 0005AF2A FUN_0005af2a
+00059F4E: bsr.w 0x0005af2a ; call 0005AF2A advance_title_intro_schedule
 00059F52: jsr 0x0005a1ea.l ; call 0005A1EA FUN_0005a1ea
 00059F58: move.w (SP)+,D7w
 00059F5A: cmpi.w #0x164,D7w
@@ -28365,7 +28365,7 @@
 0005AFD8: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 0005AFDE: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0005AFE4: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
-0005AFEA: bsr.w 0x0005af2a ; call 0005AF2A FUN_0005af2a
+0005AFEA: bsr.w 0x0005af2a ; call 0005AF2A advance_title_intro_schedule
 0005AFEE: bcs.w 0x0005b000
 0005AFF2: tst.w (0x00ffddc2).l
 0005AFF8: bne.w 0x0005b000

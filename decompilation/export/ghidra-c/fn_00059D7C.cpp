@@ -25,7 +25,7 @@
 //   0x0005A8C8 reset_title_intro_final_projection
 //   0x0005ADFE render_title_intro_late_text_batch
 //   0x0005AE3A render_title_intro_scroll_text_batch
-//   0x0005AF2A FUN_0005af2a
+//   0x0005AF2A advance_title_intro_schedule
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -56,7 +56,7 @@ void FUN_00059d7c(void)
     wait_for_vblank();
     sample_controller_input();
     latch_controller_events();
-    FUN_0005af2a();
+    advance_title_intro_schedule();
     if (DAT_00ffdd08 != 0) {
       if (DAT_00ffdd46 != 0x178) {
         DAT_00ffdd46 = DAT_00ffdd46 + 1;
@@ -96,7 +96,7 @@ void FUN_00059d7c(void)
     advance_title_intro_sequence();
     sample_controller_input();
     latch_controller_events();
-    FUN_0005af2a();
+    advance_title_intro_schedule();
     FUN_0005a1ea();
     if (sVar1 == 0x164) {
       render_title_intro_scroll_text_batch();
