@@ -39,4 +39,10 @@ void prepare_field_viewports(
     }
 }
 
+void draw_field_asset_grid(const std::function<void()>& draw_grid) {
+    if (draw_grid) {
+        draw_grid();
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion

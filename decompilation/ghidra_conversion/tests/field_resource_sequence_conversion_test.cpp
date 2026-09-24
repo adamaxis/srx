@@ -35,5 +35,10 @@ int main() {
     if (order != std::vector<int>{1, 2, 4, 5}) {
         return 3;
     }
+
+    draw_field_asset_grid([&order] { order.push_back(6); });
+    if (order != std::vector<int>{1, 2, 4, 5, 6}) {
+        return 4;
+    }
     return 0;
 }

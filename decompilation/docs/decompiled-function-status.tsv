@@ -340,3 +340,4 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x1D58	title sprite-list preparation	ghidra_conversion::prepare_title_sprite_list	shadowrun_ghidra_title_resource_sequence	partial		Typed presentation boundary for the source HUD-sprite list builder
 0x28AA	field resource preparation sequence	ghidra_conversion::prepare_field_resources	shadowrun_ghidra_field_resource_sequence	partial		Typed setup, asset upload, animation refresh, and font-load order
 0x2C6C	field viewport preparation sequence	ghidra_conversion::prepare_field_viewports	shadowrun_ghidra_field_resource_sequence	partial		Typed scene preparation, optional mode branch, and normal/alternate viewport order
+0x33AA	field asset grid draw wrapper	ghidra_conversion::draw_field_asset_grid	shadowrun_ghidra_field_resource_sequence	partial		Typed single grid-draw presentation boundary
