@@ -1582,7 +1582,7 @@
 00002838: bsr.w 0x00003074 ; call 00003074 FUN_00003074
 0000283C: bra.w 0x00002852
 00002852: bsr.w 0x00002900 ; call 00002900 FUN_00002900
-00002856: bsr.w 0x00002b34 ; call 00002B34 FUN_00002b34
+00002856: bsr.w 0x00002b34 ; call 00002B34 apply_scene_profile_selection
 0000285A: movea.l (0x00ffddfa).l,A6
 00002860: bsr.w 0x00002c6c ; call 00002C6C FUN_00002c6c
 00002864: bsr.w 0x0000301e ; call 0000301E upload_scene_profile_block

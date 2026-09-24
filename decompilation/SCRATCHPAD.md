@@ -558,6 +558,13 @@ weapon animation leaves three times. `0x39F2` composes the known grid refresh,
 HUD refresh, and that triplet in source order; the individual graphics and
 weapon leaves remain callbacks rather than guessed implementations.
 
+`0x2B34` now has a typed scene-profile model. With no pending profile it
+copies the three default runner positions and camera pair. With a pending
+eight-word profile it consumes the camera pair plus three runner pairs,
+aligns both camera coordinates with `0xFF80`, clears the pending source, and
+sets both source camera-transition markers to `-1`; the host helper represents
+that pending source as an optional value.
+
 `0x176BA` is now `refresh_field_resource_streams`: it submits the source-order
 raw transfer request for destination `0x2360` and `0xA80` bytes, then submits
 the `0x2DE0`-byte compressed-resource request. The requests are typed host

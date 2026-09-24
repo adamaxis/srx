@@ -38,7 +38,7 @@ void FUN_00002bd2(void)
   _DAT_00ffe172 = 0xffff;
   FUN_00003074();
   FUN_00002900();
-  FUN_00002b34();
+  apply_scene_profile_selection();
   FUN_00002c6c();
   upload_scene_profile_block();
   FUN_0000286e();

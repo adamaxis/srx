@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00002B34
-// Name: FUN_00002b34
+// Name: apply_scene_profile_selection
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00002b34(void)
+void apply_scene_profile_selection(void)
 
 {
   ushort *puVar1;

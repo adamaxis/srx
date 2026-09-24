@@ -83,7 +83,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00002A32	initialize_field_mode_profile_a	18	unknown	ok	ghidra-c/fn_00002A32.cpp
 00002A44	initialize_field_mode_profile_b	80	unknown	ok	ghidra-c/fn_00002A44.cpp
 00002A94	initialize_mode_nine	6	unknown	ok	ghidra-c/fn_00002A94.cpp
-00002B34	FUN_00002b34	158	unknown	ok	ghidra-c/fn_00002B34.cpp
+00002B34	apply_scene_profile_selection	158	unknown	ok	ghidra-c/fn_00002B34.cpp
 00002BD2	FUN_00002bd2	116	unknown	ok	ghidra-c/fn_00002BD2.cpp
 00002C6C	FUN_00002c6c	38	unknown	ok	ghidra-c/fn_00002C6C.cpp
 00002C92	render_normal_field_viewport	32	unknown	ok	ghidra-c/fn_00002C92.cpp
