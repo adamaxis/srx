@@ -9,7 +9,7 @@
 //   0x000012F6 advance_title_palette_fade
 //   0x00001406 prepare_title_resources
 //   0x00001530 decode_and_upload_source_stream
-//   0x000176BA FUN_000176ba
+//   0x000176BA refresh_field_resource_streams
 //   0x0005DAE8 FUN_0005dae8
 
 
@@ -20,7 +20,7 @@ void setup_pre_title_resources(void)
   clear_and_fill_plane_b();
   prepare_title_resources();
   FUN_0005dae8();
-  FUN_000176ba();
+  refresh_field_resource_streams();
   decode_and_upload_source_stream();
   DAT_00ffef14 = DAT_00ffef14 | 0xd;
   advance_title_palette_fade();

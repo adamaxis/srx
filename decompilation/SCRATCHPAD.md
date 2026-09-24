@@ -540,3 +540,25 @@ the original pointer arithmetic into host code. `0x0CEC` now installs the
 four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
+
+`0x176BA` is now `refresh_field_resource_streams`: it submits the source-order
+raw transfer request for destination `0x2360` and `0xA80` bytes, then submits
+the `0x2DE0`-byte compressed-resource request. The requests are typed host
+boundaries, so the native runtime can map them to named assets without
+carrying the original ROM pointers or VDP registers.
+
+The transfer library now also covers the shared `0x0F98` and `0x1232` leaves.
+`write_vdp_word_block` emits the requested bounded even-byte word stream after
+one transfer command; `write_vdp_grid` emits each row at the source `0x80`
+byte stride and ORs the caller's tile mask into each word. `0x0E34` is a typed
+upload-state reset that emits the source four-word zero clear and publishes
+the stream cursor/enabled state. The terrain layer copy at `0x0313A` and the
+thirteen-record readiness scan at `0x2FF0` are likewise isolated from runtime
+memory and covered by focused tests.
+
+The next transfer pass adds `0x0F5C` as an explicit source-64K split around
+the `0x0F98` word writer, preserving destination advancement without carrying
+the original pointer arithmetic into host code. `0x0CEC` now installs the
+four-word startup transfer state and emits its fourteen control words, while
+`0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
+block primitive.

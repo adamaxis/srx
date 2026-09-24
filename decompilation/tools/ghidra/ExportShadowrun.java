@@ -199,6 +199,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00002FF0L, "find_ready_entity_slot");
         names.put(0x00001232L, "write_vdp_grid");
         names.put(0x0000301EL, "upload_scene_profile_block");
+        names.put(0x000176BAL, "refresh_field_resource_streams");
         names.put(0x000176EAL, "render_menu_footer");
         names.put(0x000177A4L, "initialize_menu_slot_states");
         names.put(0x000111D0L, "upload_menu_tile_block");

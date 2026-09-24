@@ -14012,7 +14012,7 @@
 000175F2: bsr.w 0x000177a4 ; call 000177A4 initialize_menu_slot_states
 000175F6: bsr.w 0x00019856 ; call 00019856 refresh_field_hud
 000175FA: jsr 0x000033be.l ; call 000033BE FUN_000033be
-00017600: bsr.w 0x000176ba ; call 000176BA FUN_000176ba
+00017600: bsr.w 0x000176ba ; call 000176BA refresh_field_resource_streams
 00017604: jsr 0x0001c4ee.l ; call 0001C4EE FUN_0001c4ee
 0001760A: lea (0xff1580).l,A0 ; data 00ff1580
 00017610: move.w #0x120,(0xe,A0)
@@ -17012,7 +17012,7 @@
 0001B16A: tst.b (0x00fff0b1).l
 0001B170: bne.w 0x0001b1b6
 0001B174: move.w D7w,-(SP) ; data Stack[-0x2]
-0001B176: jsr 0x000176ba.l ; call 000176BA FUN_000176ba
+0001B176: jsr 0x000176ba.l ; call 000176BA refresh_field_resource_streams
 0001B17C: move.w (SP)+,D7w
 0001B17E: tst.w D7w
 0001B180: bne.w 0x0001b188
@@ -29102,7 +29102,7 @@
 0005DA5C: lea (0x5db10).l,A6 ; data 0005db10
 0005DA62: jsr 0x00001406.l ; call 00001406 prepare_title_resources
 0005DA68: bsr.w 0x0005dae8 ; call 0005DAE8 FUN_0005dae8
-0005DA6C: jsr 0x000176ba.l ; call 000176BA FUN_000176ba
+0005DA6C: jsr 0x000176ba.l ; call 000176BA refresh_field_resource_streams
 0005DA72: lea (0xffbf40).l,A1 ; data 00ffbf40
 0005DA78: movea.l #0x14c222,A3
 0005DA7E: move.l #0x400,D0

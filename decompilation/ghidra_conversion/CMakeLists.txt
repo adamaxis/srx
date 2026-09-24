@@ -763,6 +763,19 @@ target_link_libraries(shadowrun_ghidra_startup_vdp_test
 add_test(NAME shadowrun_ghidra_startup_vdp
          COMMAND shadowrun_ghidra_startup_vdp_test)
 
+add_library(shadowrun_ghidra_resource_refresh STATIC
+    src/resource_refresh_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_resource_refresh PUBLIC include)
+
+add_executable(shadowrun_ghidra_resource_refresh_test
+    tests/resource_refresh_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_resource_refresh_test
+    PRIVATE shadowrun_ghidra_resource_refresh)
+add_test(NAME shadowrun_ghidra_resource_refresh
+         COMMAND shadowrun_ghidra_resource_refresh_test)
+
 add_library(shadowrun_ghidra_menu_state STATIC
     src/menu_state_conversion.cpp
 )

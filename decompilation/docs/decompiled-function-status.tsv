@@ -37,6 +37,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x0F5C	wrapped VDP word block	ghidra_conversion::write_vdp_word_block_with_source_wrap	shadowrun_graphics	partial		Typed split at the source 64K boundary with destination advancement
 0x1232	VDP grid writer	ghidra_conversion::write_vdp_grid	shadowrun_graphics	partial		Typed row-major grid stream with 0x80-byte row stride and word mask
 0x0301E	scene profile upload	ghidra_conversion::upload_scene_profile_block	shadowrun_graphics	partial		Fixed 0x140-byte scene-profile upload through the bounded transfer helper
+0x176BA	field resource refresh	ghidra_conversion::refresh_field_resource_streams	shadowrun_graphics	partial		Typed fixed raw-resource request followed by the 0x2DE0-byte compressed-resource request
 0x1056	clear word transfer	ghidra_conversion::clear_vdp_words	shadowrun_graphics	partial		Exact sixteen-word zero transfer converted
 0x0FFE	plane A clear/fill	ghidra_conversion::clear_and_fill_vdp_plane	shadowrun_graphics	partial		Shared typed clear-plus-0x800-word 0x07FF fill conversion
 0x102A	plane B clear/fill	ghidra_conversion::clear_and_fill_vdp_plane	shadowrun_graphics	partial		Shared typed clear-plus-0x800-word 0x07FF fill conversion

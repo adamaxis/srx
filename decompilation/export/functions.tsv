@@ -452,7 +452,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00016FA8	copy_terrain_work_region	44	unknown	ok	ghidra-c/fn_00016FA8.cpp
 000173F2	FUN_000173f2	108	unknown	ok	ghidra-c/fn_000173F2.cpp
 0001745E	FUN_0001745e	604	unknown	ok	ghidra-c/fn_0001745E.cpp
-000176BA	FUN_000176ba	48	unknown	ok	ghidra-c/fn_000176BA.cpp
+000176BA	refresh_field_resource_streams	48	unknown	ok	ghidra-c/fn_000176BA.cpp
 000176EA	render_menu_footer	30	unknown	ok	ghidra-c/fn_000176EA.cpp
 00017708	render_field_hud	156	unknown	ok	ghidra-c/fn_00017708.cpp
 000177A4	initialize_menu_slot_states	40	unknown	ok	ghidra-c/fn_000177A4.cpp

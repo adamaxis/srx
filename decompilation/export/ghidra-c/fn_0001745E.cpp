@@ -12,7 +12,7 @@
 //   0x000033BE FUN_000033be
 //   0x00003404 FUN_00003404
 //   0x000039F2 FUN_000039f2
-//   0x000176BA FUN_000176ba
+//   0x000176BA refresh_field_resource_streams
 //   0x000176EA render_menu_footer
 //   0x00017708 render_field_hud
 //   0x000177A4 initialize_menu_slot_states
@@ -93,7 +93,7 @@ void FUN_0001745e(void)
     initialize_menu_slot_states();
     refresh_field_hud();
     FUN_000033be();
-    FUN_000176ba();
+    refresh_field_resource_streams();
     FUN_0001c4ee();
     DAT_00ff158e = 0x120;
     DAT_00ff1590 = 0x12f;

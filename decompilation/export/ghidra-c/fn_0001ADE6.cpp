@@ -6,7 +6,7 @@
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
 //   0x0000195C sample_controller_input
-//   0x000176BA FUN_000176ba
+//   0x000176BA refresh_field_resource_streams
 //   0x0001789C FUN_0001789c
 //   0x00017FDA FUN_00017fda
 //   0x0001822C FUN_0001822c
@@ -228,7 +228,7 @@ LAB_0001afc0:
       if (DAT_00fff0b1 != '\0') {
         return;
       }
-      FUN_000176ba();
+      refresh_field_resource_streams();
       if (unaff_D7w == 0) {
         return;
       }

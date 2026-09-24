@@ -1457,7 +1457,7 @@ caller	caller_name	instruction	text	target	callee	status
 0001745E	FUN_0001745e	000175F2	bsr.w 0x000177a4	000177A4	initialize_menu_slot_states	resolved
 0001745E	FUN_0001745e	000175F6	bsr.w 0x00019856	00019856	refresh_field_hud	resolved
 0001745E	FUN_0001745e	000175FA	jsr 0x000033be.l	000033BE	FUN_000033be	resolved
-0001745E	FUN_0001745e	00017600	bsr.w 0x000176ba	000176BA	FUN_000176ba	resolved
+0001745E	FUN_0001745e	00017600	bsr.w 0x000176ba	000176BA	refresh_field_resource_streams	resolved
 0001745E	FUN_0001745e	00017604	jsr 0x0001c4ee.l	0001C4EE	FUN_0001c4ee	resolved
 0001745E	FUN_0001745e	0001761C	jsr 0x0001b628.l	0001B628	FUN_0001b628	resolved
 0001745E	FUN_0001745e	0001762E	bsr.w 0x0001789c	0001789C	FUN_0001789c	resolved
@@ -1471,8 +1471,8 @@ caller	caller_name	instruction	text	target	callee	status
 0001745E	FUN_0001745e	000176A6	jsr 0x0000334c.l	0000334C	FUN_0000334c	resolved
 0001745E	FUN_0001745e	000176AC	jsr 0x000039f2.l	000039F2	FUN_000039f2	resolved
 0001745E	FUN_0001745e	000176B2	jsr 0x00053126.l	00053126	prepare_mode_entry_service	resolved
-000176BA	FUN_000176ba	000176CC	jsr 0x00000f5c.l	00000F5C	write_vdp_word_block_with_source_wrap	resolved
-000176BA	FUN_000176ba	000176E4	jmp 0x00001530.l	00001530	decode_and_upload_source_stream	resolved
+000176BA	refresh_field_resource_streams	000176CC	jsr 0x00000f5c.l	00000F5C	write_vdp_word_block_with_source_wrap	resolved
+000176BA	refresh_field_resource_streams	000176E4	jmp 0x00001530.l	00001530	decode_and_upload_source_stream	resolved
 000176EA	render_menu_footer	000176F0	jsr 0x00001358.l	00001358	copy_source_word_block	resolved
 000176EA	render_menu_footer	000176FE	bsr.w 0x00019df2	00019DF2	FUN_00019df2	resolved
 000176EA	render_menu_footer	00017702	bsr.w 0x00017f8e	00017F8E	draw_hud_footer	resolved
@@ -1904,7 +1904,7 @@ caller	caller_name	instruction	text	target	callee	status
 0001ADE6	FUN_0001ade6	0001B15A	jsr 0x000530ea.l	000530EA	FUN_000530ea	resolved
 0001ADE6	FUN_0001ade6	0001B160	bsr.w 0x0001b5a6	0001B5A6	FUN_0001b5a6	resolved
 0001ADE6	FUN_0001ade6	0001B164	jsr 0x0001822c.l	0001822C	FUN_0001822c	resolved
-0001ADE6	FUN_0001ade6	0001B176	jsr 0x000176ba.l	000176BA	FUN_000176ba	resolved
+0001ADE6	FUN_0001ade6	0001B176	jsr 0x000176ba.l	000176BA	refresh_field_resource_streams	resolved
 0001ADE6	FUN_0001ade6	0001B188	bsr.w 0x000186fa	000186FA	FUN_000186fa	resolved
 0001ADE6	FUN_0001ade6	0001B18C	jsr 0x0001789c.l	0001789C	FUN_0001789c	resolved
 0001ADE6	FUN_0001ade6	0001B19A	jsr 0x00053126.l	00053126	prepare_mode_entry_service	resolved
@@ -2985,7 +2985,7 @@ caller	caller_name	instruction	text	target	callee	status
 0005DA50	setup_pre_title_resources	0005DA56	jsr 0x0000102a.l	0000102A	clear_and_fill_plane_b	resolved
 0005DA50	setup_pre_title_resources	0005DA62	jsr 0x00001406.l	00001406	prepare_title_resources	resolved
 0005DA50	setup_pre_title_resources	0005DA68	bsr.w 0x0005dae8	0005DAE8	FUN_0005dae8	resolved
-0005DA50	setup_pre_title_resources	0005DA6C	jsr 0x000176ba.l	000176BA	FUN_000176ba	resolved
+0005DA50	setup_pre_title_resources	0005DA6C	jsr 0x000176ba.l	000176BA	refresh_field_resource_streams	resolved
 0005DA50	setup_pre_title_resources	0005DA84	jsr 0x00001530.l	00001530	decode_and_upload_source_stream	resolved
 0005DA50	setup_pre_title_resources	0005DAA2	jsr 0x000012f6.l	000012F6	advance_title_palette_fade	resolved
 0005DA50	setup_pre_title_resources	0005DABC	jsr 0x00001232.l	00001232	write_vdp_grid	resolved
