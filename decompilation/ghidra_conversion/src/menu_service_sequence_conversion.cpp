@@ -71,4 +71,14 @@ void prepare_menu_row_grid(const std::function<void()>& prepare_row,
     }
 }
 
+void render_menu_row(const std::function<void()>& write_grid,
+                     const std::function<void()>& render_row) {
+    if (write_grid) {
+        write_grid();
+    }
+    if (render_row) {
+        render_row();
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion

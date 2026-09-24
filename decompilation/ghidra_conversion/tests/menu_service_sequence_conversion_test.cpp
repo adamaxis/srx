@@ -45,5 +45,12 @@ int main() {
     if (order != std::vector<int>{10, 11}) {
         return 6;
     }
+
+    order.clear();
+    render_menu_row([&order] { order.push_back(12); },
+                    [&order] { order.push_back(13); });
+    if (order != std::vector<int>{12, 13}) {
+        return 7;
+    }
     return 0;
 }
