@@ -214,3 +214,16 @@ target_link_libraries(shadowrun_ghidra_sprite_record_test
     PRIVATE shadowrun_ghidra_sprite_record)
 add_test(NAME shadowrun_ghidra_sprite_record
          COMMAND shadowrun_ghidra_sprite_record_test)
+
+add_library(shadowrun_ghidra_sprite_expansion STATIC
+    src/sprite_expansion_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_sprite_expansion PUBLIC include)
+
+add_executable(shadowrun_ghidra_sprite_expansion_test
+    tests/sprite_expansion_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_sprite_expansion_test
+    PRIVATE shadowrun_ghidra_sprite_expansion)
+add_test(NAME shadowrun_ghidra_sprite_expansion
+         COMMAND shadowrun_ghidra_sprite_expansion_test)

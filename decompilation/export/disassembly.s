@@ -3197,7 +3197,7 @@
 0000478E: clr.w (0x00ffdfda).l
 00004794: bra.w 0x0000479c
 00004798: bcc.w 0x000047a2
-0000479C: jsr 0x0000622c.l ; call 0000622C FUN_0000622c
+0000479C: jsr 0x0000622c.l ; call 0000622C expand_entity_sprite_descriptors
 000047A2: cmpi.l #0x15390,(0x3a,A0)
 000047AA: bne.w 0x000047e0
 000047AE: tst.w (0x34,A0)
@@ -3208,7 +3208,7 @@
 000047C2: sub.w (0x8,A0),D0w
 000047C6: move.w D0w,(0xc,A0)
 000047CA: move.l #0x959a,(0x12,A0) ; data 0000959a
-000047D2: jsr 0x0000622c.l ; call 0000622C FUN_0000622c
+000047D2: jsr 0x0000622c.l ; call 0000622C expand_entity_sprite_descriptors
 000047D8: move.l (SP)+,(0x12,A0)
 000047DC: move.w (SP)+,(0xc,A0)
 000047E0: move.w #0x1,(0x00ffd980).l
@@ -4114,11 +4114,11 @@
 00006232: move.w (A2),D0w
 00006234: cmpi.w #-0x7ffe,D0w
 00006238: beq.w 0x00006242
-0000623C: bsr.w 0x0000624c ; call 0000624C FUN_0000624c
+0000623C: bsr.w 0x0000624c ; call 0000624C expand_entity_sprite_descriptor_list
 00006240: rts
 00006242: moveq #0x1,D6
 00006244: addq.l #0x8,A2
-00006246: bsr.w 0x0000624c ; call 0000624C FUN_0000624c
+00006246: bsr.w 0x0000624c ; call 0000624C expand_entity_sprite_descriptor_list
 0000624A: rts
 0000624C: move.w (A2)+,D0w
 0000624E: cmpi.w #-0x8000,D0w

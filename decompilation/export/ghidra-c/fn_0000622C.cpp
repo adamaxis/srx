@@ -1,21 +1,21 @@
 // Ghidra headless export
 // Entry: 0x0000622C
-// Name: FUN_0000622c
+// Name: expand_entity_sprite_descriptors
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000624C FUN_0000624c
+//   0x0000624C expand_entity_sprite_descriptor_list
 
 
-void FUN_0000622c(void)
+void expand_entity_sprite_descriptors(void)
 
 {
   int in_A0;
   
   if (**(short **)(in_A0 + 0x12) != -0x7ffe) {
-    FUN_0000624c();
+    expand_entity_sprite_descriptor_list();
     return;
   }
-  FUN_0000624c();
+  expand_entity_sprite_descriptor_list();
   return;
 }
 

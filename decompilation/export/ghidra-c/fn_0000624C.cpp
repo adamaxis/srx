@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000624C
-// Name: FUN_0000624c
+// Name: expand_entity_sprite_descriptor_list
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0000624c(void)
+void expand_entity_sprite_descriptor_list(void)
 
 {
   short sVar1;

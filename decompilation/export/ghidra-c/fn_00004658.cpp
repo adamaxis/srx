@@ -15,7 +15,7 @@
 //   0x00005B1E sort_entity_slots_by_depth
 //   0x00005B98 FUN_00005b98
 //   0x00005C7E FUN_00005c7e
-//   0x0000622C FUN_0000622c
+//   0x0000622C expand_entity_sprite_descriptors
 //   0x0000AEBA FUN_0000aeba
 //   0x0005D29C FUN_0005d29c
 
@@ -94,7 +94,7 @@ void FUN_00004658(void)
         if ((*(undefined1 **)(iVar4 + 0x3a) != &LAB_00015390) || (*(short *)(iVar4 + 0x46) < 0)) {
           if (((*(byte *)(iVar4 + 0x10) & 2) == 0) || (_DAT_00ffdfda == 0)) {
 LAB_0000479c:
-            FUN_0000622c();
+            expand_entity_sprite_descriptors();
             iVar4 = extraout_A0_07;
           }
           else {
@@ -115,7 +115,7 @@ LAB_0000479c:
             uVar1 = *(undefined4 *)(iVar4 + 0x12);
             *(short *)(iVar4 + 0xc) = *(short *)(iVar4 + 0xc) - *(short *)(iVar4 + 8);
             *(undefined **)(iVar4 + 0x12) = &DAT_0000959a;
-            FUN_0000622c();
+            expand_entity_sprite_descriptors();
             *(undefined4 *)(extraout_A0_08 + 0x12) = uVar1;
             *(undefined2 *)(extraout_A0_08 + 0xc) = uVar2;
           }
