@@ -11,4 +11,10 @@ void commit_entity_position(EntityPositionState& state,
     state.y = y;
 }
 
+void copy_entity_anchor_position(
+    EntityAnchorPosition& destination,
+    const EntityAnchorPosition& source) {
+    destination = source;
+}
+
 } // namespace shadowrun::ghidra_conversion

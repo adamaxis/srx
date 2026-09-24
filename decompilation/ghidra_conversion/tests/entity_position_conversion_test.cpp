@@ -24,5 +24,12 @@ int main() {
         return 2;
     }
 
+    EntityAnchorPosition destination{0xFFFFU, 0xEEEEU};
+    const EntityAnchorPosition source{0x1234U, 0x5678U};
+    copy_entity_anchor_position(destination, source);
+    if (!expect(destination.x == source.x && destination.y == source.y)) {
+        return 3;
+    }
+
     return 0;
 }

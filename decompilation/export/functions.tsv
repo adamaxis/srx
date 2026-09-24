@@ -356,7 +356,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00013874	FUN_00013874	68	unknown	ok	ghidra-c/fn_00013874.cpp
 000138B8	FUN_000138b8	76	unknown	ok	ghidra-c/fn_000138B8.cpp
 00013904	FUN_00013904	344	unknown	ok	ghidra-c/fn_00013904.cpp
-00013A40	FUN_00013a40	12	unknown	ok	ghidra-c/fn_00013A40.cpp
+00013A40	copy_entity_anchor_position	12	unknown	ok	ghidra-c/fn_00013A40.cpp
 00013A92	FUN_00013a92	84	unknown	ok	ghidra-c/fn_00013A92.cpp
 00013AE6	FUN_00013ae6	12	unknown	ok	ghidra-c/fn_00013AE6.cpp
 00013AF2	find_first_entity_action_below_threshold	32	unknown	ok	ghidra-c/fn_00013AF2.cpp

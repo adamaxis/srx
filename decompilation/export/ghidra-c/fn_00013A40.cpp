@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00013A40
-// Name: FUN_00013a40
+// Name: copy_entity_anchor_position
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00013a40(void)
+void copy_entity_anchor_position(void)
 
 {
   int in_A0;
