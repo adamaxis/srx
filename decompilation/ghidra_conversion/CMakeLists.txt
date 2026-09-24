@@ -656,3 +656,16 @@ target_link_libraries(shadowrun_ghidra_audio_service_test
     PRIVATE shadowrun_ghidra_audio_service)
 add_test(NAME shadowrun_ghidra_audio_service
          COMMAND shadowrun_ghidra_audio_service_test)
+
+add_library(shadowrun_ghidra_scene_profile STATIC
+    src/scene_profile_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_scene_profile PUBLIC include)
+
+add_executable(shadowrun_ghidra_scene_profile_test
+    tests/scene_profile_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_scene_profile_test
+    PRIVATE shadowrun_ghidra_scene_profile)
+add_test(NAME shadowrun_ghidra_scene_profile
+         COMMAND shadowrun_ghidra_scene_profile_test)

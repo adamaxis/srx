@@ -20,7 +20,7 @@ void FUN_00003074(void)
     FUN_0000c7f8();
   }
   DAT_00fffbf8 = (undefined1)DAT_00ffddc4;
-  sVar1 = FUN_00003032();
+  sVar1 = scene_uses_alternate_profile();
   sVar2 = 0x2f;
   puVar3 = *(undefined2 **)((int)&PTR_DAT_00003232 + (int)(short)(sVar1 << 2));
   puVar4 = &DAT_00ffddc6;

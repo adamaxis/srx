@@ -3,7 +3,7 @@
 // Name: run_field_loop
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00003032 FUN_00003032
+//   0x00003032 scene_uses_alternate_profile
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -17,7 +17,7 @@ void run_field_loop(void)
   undefined2 *puVar4;
   
   DAT_00fffbf8 = (undefined1)DAT_00ffddc4;
-  sVar1 = FUN_00003032();
+  sVar1 = scene_uses_alternate_profile();
   sVar2 = 0x2f;
   puVar3 = *(undefined2 **)((int)&PTR_DAT_00003232 + (int)(short)(sVar1 << 2));
   puVar4 = &DAT_00ffddc6;

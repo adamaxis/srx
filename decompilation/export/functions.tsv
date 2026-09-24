@@ -93,7 +93,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00002FA4	FUN_00002fa4	76	unknown	ok	ghidra-c/fn_00002FA4.cpp
 00002FF0	FUN_00002ff0	46	unknown	ok	ghidra-c/fn_00002FF0.cpp
 0000301E	FUN_0000301e	20	unknown	ok	ghidra-c/fn_0000301E.cpp
-00003032	FUN_00003032	66	unknown	ok	ghidra-c/fn_00003032.cpp
+00003032	scene_uses_alternate_profile	66	unknown	ok	ghidra-c/fn_00003032.cpp
 00003074	FUN_00003074	16	unknown	ok	ghidra-c/fn_00003074.cpp
 00003084	run_field_loop	182	unknown	ok	ghidra-c/fn_00003084.cpp
 0000313A	FUN_0000313a	46	unknown	ok	ghidra-c/fn_0000313A.cpp

@@ -1836,7 +1836,7 @@
 00002F6E: dbf D7w,0x00002f6c
 00002F72: move.w (0x00ffddc4).l,D0w
 00002F78: move.b D0b,(0x00fffbf8).l
-00002F7E: bsr.w 0x00003032 ; call 00003032 FUN_00003032
+00002F7E: bsr.w 0x00003032 ; call 00003032 scene_uses_alternate_profile
 00002F82: move.w (0x00ffdf50).l,(0x00ffddc6).l
 00002F8C: move.w (0x00ffdf52).l,(0x00ffddc8).l
 00002F96: movea.l (0x00ffddfa).l,A6
@@ -1896,7 +1896,7 @@
 0000307E: jsr 0x0000c7f8.l ; call 0000C7F8 FUN_0000c7f8
 00003084: move.w (0x00ffddc4).l,D0w
 0000308A: move.b D0b,(0x00fffbf8).l
-00003090: bsr.b 0x00003032 ; call 00003032 FUN_00003032
+00003090: bsr.b 0x00003032 ; call 00003032 scene_uses_alternate_profile
 00003092: lea (0x3232).l,A0 ; data 00003232
 00003098: lsl.w #0x2,D0w
 0000309A: movea.l (0x0,A0,D0w*0x1),A0 ; data 00003232

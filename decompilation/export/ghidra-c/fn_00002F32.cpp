@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00002BD2 FUN_00002bd2
 //   0x0000301E FUN_0000301e
-//   0x00003032 FUN_00003032
+//   0x00003032 scene_uses_alternate_profile
 //   0x0000C7F8 FUN_0000c7f8
 
 
@@ -35,7 +35,7 @@ uint FUN_00002f32(void)
     puVar5 = puVar5 + 1;
   } while (sVar3 != -1);
   DAT_00fffbf8 = (undefined1)DAT_00ffddc4;
-  FUN_00003032();
+  scene_uses_alternate_profile();
   DAT_00ffddc6 = DAT_00ffdf50;
   DAT_00ffddc8 = DAT_00ffdf52;
   FUN_00002bd2();
