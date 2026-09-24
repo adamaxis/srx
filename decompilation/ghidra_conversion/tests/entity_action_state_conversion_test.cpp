@@ -57,9 +57,10 @@ int main() {
     EntityActionRecordTable records;
     collect_entity_action_records(
         {{0U, 1U}, {2U, 2U}, {7U, 3U}, {11U, 9U}, {8U, 4U}}, records);
-    if (records.selected !=
-            std::vector<EntityActionSourceRecord>{{0U, 1U}, {7U, 3U},
-                                                  {8U, 4U}} ||
+    if (records.selected.size() != 3U ||
+        records.selected[0].code != 0U || records.selected[0].value != 1U ||
+        records.selected[1].code != 7U || records.selected[1].value != 3U ||
+        records.selected[2].code != 8U || records.selected[2].value != 4U ||
         records.special_value != 9U || !records.terminated) {
         return 7;
     }
