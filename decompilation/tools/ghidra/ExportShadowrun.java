@@ -117,7 +117,9 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0001A2CCL, "allocate_first_free_effect_slot");
         names.put(0x00014756L, "clear_entity_route_flags");
         names.put(0x00014902L, "compute_obstruction_grid_index");
+        names.put(0x00014914L, "is_entity_path_blocked");
         names.put(0x00014B4EL, "decode_obstruction_tile_projection");
+        names.put(0x00014BA6L, "update_entity_axis_relation_state");
         names.put(0x00014C2EL, "derive_entity_axis_relation_flags");
         names.put(0x00015A8CL, "find_first_available_entity_slot");
         names.put(0x0000B732L, "apply_movement_result_policy");

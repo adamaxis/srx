@@ -7,7 +7,7 @@
 //   0x00014764 FUN_00014764
 //   0x000148AA find_first_occupied_obstruction_tile
 //   0x00014902 compute_obstruction_grid_index
-//   0x00014914 FUN_00014914
+//   0x00014914 is_entity_path_blocked
 //   0x00014B4E decode_obstruction_tile_projection
 //   0x00014C2E derive_entity_axis_relation_flags
 //   0x00015CA4 compute_diagonal_step_cost
@@ -36,7 +36,8 @@ void FUN_000149c0(void)
   short *psVar7;
   undefined1 in_CF;
   
-  if (((in_A0[0x58] & 0x800) != 0) && (FUN_00014914(), in_A0 = extraout_A0_00, (bool)in_CF)) {
+  if (((in_A0[0x58] & 0x800) != 0) &&
+     (is_entity_path_blocked(), in_A0 = extraout_A0_00, (bool)in_CF)) {
     *(byte *)(extraout_A0_00 + 0x58) = *(byte *)(extraout_A0_00 + 0x58) & 0xfd;
     *(byte *)(extraout_A0_00 + 0x58) = *(byte *)(extraout_A0_00 + 0x58) & 0xf7;
     return;

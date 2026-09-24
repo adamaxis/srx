@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00014BA6
-// Name: FUN_00014ba6
+// Name: update_entity_axis_relation_state
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00014682 FUN_00014682
 
 
-void FUN_00014ba6(void)
+void update_entity_axis_relation_state(void)
 
 {
   ushort uVar1;

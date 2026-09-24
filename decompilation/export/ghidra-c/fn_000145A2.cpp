@@ -3,7 +3,7 @@
 // Name: FUN_000145a2
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00014BA6 FUN_00014ba6
+//   0x00014BA6 update_entity_axis_relation_state
 //   0x00014C2E derive_entity_axis_relation_flags
 //   0x00015D3C measure_relative_heading_and_distance
 
@@ -45,7 +45,7 @@ void FUN_000145a2(void)
     if ((bVar1 & 4) == 0) {
       uVar9 = in_A0[0x5c] < 0x1000;
       if (in_A0[0x5c] != 0x1000) {
-        FUN_00014ba6();
+        update_entity_axis_relation_state();
         in_A0 = extraout_A0_00;
         if ((extraout_A0_00[0x58] & 0x200) != 0) goto FUN_000149c0;
         derive_entity_axis_relation_flags();
@@ -64,7 +64,8 @@ LAB_000145e8:
   }
   else {
 FUN_000149c0:
-    if (((in_A0[0x58] & 0x800) != 0) && (FUN_00014914(), in_A0 = extraout_A0_03, (bool)uVar9)) {
+    if (((in_A0[0x58] & 0x800) != 0) &&
+       (is_entity_path_blocked(), in_A0 = extraout_A0_03, (bool)uVar9)) {
       *(byte *)(extraout_A0_03 + 0x58) = *(byte *)(extraout_A0_03 + 0x58) & 0xfd;
       *(byte *)(extraout_A0_03 + 0x58) = *(byte *)(extraout_A0_03 + 0x58) & 0xf7;
       return;

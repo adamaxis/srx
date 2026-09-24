@@ -142,5 +142,42 @@ int main() {
         return 26;
     }
 
+    std::vector<std::uint8_t> world_map(256, 0U);
+    if (!expect(!is_entity_path_blocked(
+                    0x0200U, 0x0100U, 0x0400U, 0x0100U, world_map))) {
+        return 30;
+    }
+    const auto target_tile = compute_obstruction_grid_index(0x0400U, 0x0100U);
+    if (!expect(target_tile < world_map.size())) {
+        return 31;
+    }
+    world_map[target_tile - 1U] = 1U;
+    if (!expect(is_entity_path_blocked(
+                    0x0200U, 0x0100U, 0x0400U, 0x0100U, world_map))) {
+        return 32;
+    }
+
+    const auto no_route_request = update_entity_axis_relation_state(
+        10, 20, 0, 10, 0x00U, 0x0000, 0x40U);
+    if (!expect(no_route_request.axis_flags == 0x00U &&
+                no_route_request.movement_flags == 0x40U &&
+                !no_route_request.route_advance_requested)) {
+        return 33;
+    }
+    const auto route_request = update_entity_axis_relation_state(
+        10, 20, 20, 30, 0x00U, 0x0000, 0x40U);
+    if (!expect(route_request.axis_flags == 0x0CU &&
+                route_request.movement_flags == 0x42U &&
+                route_request.route_advance_requested)) {
+        return 34;
+    }
+    const auto inverted_axes = update_entity_axis_relation_state(
+        20, 10, 10, 0, 0x03U, 0x0002, 0x00U);
+    if (!expect(inverted_axes.axis_flags == 0x0FU &&
+                inverted_axes.movement_flags == 0x00U &&
+                !inverted_axes.route_advance_requested)) {
+        return 35;
+    }
+
     return 0;
 }

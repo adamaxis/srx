@@ -29,6 +29,12 @@ struct ObstructionTileProjection {
     std::int8_t direction = 0;
 };
 
+struct EntityAxisUpdate {
+    std::uint8_t axis_flags = 0;
+    std::uint8_t movement_flags = 0;
+    bool route_advance_requested = false;
+};
+
 // ROM 0x14756: clear the pending-route and route-retry bits from an entity's
 // movement flags after route selection fails or completes.
 std::uint8_t clear_entity_route_flags(std::uint8_t movement_flags);
@@ -67,6 +73,15 @@ bool is_obstruction_path_blocked(
     std::int32_t target_tile,
     const std::vector<std::uint8_t>& obstruction_map);
 
+// ROM 0x14914: convert entity and target positions to packed grid indices,
+// then check the obstruction line in both source directions.
+bool is_entity_path_blocked(
+    std::uint16_t entity_x,
+    std::uint16_t entity_y,
+    std::uint16_t target_x,
+    std::uint16_t target_y,
+    const std::vector<std::uint8_t>& obstruction_map);
+
 // ROM 0x14902: map world coordinates into the source obstruction-grid index.
 // The source grid uses 0x200 horizontal units and a 0x40-byte row stride.
 std::uint16_t compute_obstruction_grid_index(
@@ -95,6 +110,17 @@ std::uint8_t derive_entity_axis_relation_flags(
     std::uint16_t entity_y,
     std::uint16_t target_x,
     std::uint16_t target_y);
+
+// ROM 0x14BA6: update signed X/Y relation bits and report whether the source
+// would request its unresolved route-advance helper at 0x14682.
+EntityAxisUpdate update_entity_axis_relation_state(
+    std::int32_t entity_x,
+    std::int32_t entity_y,
+    std::int32_t target_x,
+    std::int32_t target_y,
+    std::uint8_t axis_flags,
+    std::int16_t movement_mode,
+    std::uint8_t movement_flags);
 
 // ROM 0x15A8C: return the first available source slot in the six-slot range
 // 9..14, or the one-past-last value 15 when every slot is occupied.

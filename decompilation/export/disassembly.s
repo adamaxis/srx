@@ -11758,7 +11758,7 @@
 000145C8: bra.w 0x000145e8
 000145CC: cmpi.w #0x1000,(0xb8,A0)
 000145D2: beq.w 0x000145e8
-000145D6: bsr.w 0x00014ba6 ; call 00014BA6 FUN_00014ba6
+000145D6: bsr.w 0x00014ba6 ; call 00014BA6 update_entity_axis_relation_state
 000145DA: btst.b #0x1,(0xb0,A0)
 000145E0: bne.w 0x000149c0
 000145E4: bsr.w 0x00014c2e ; call 00014C2E derive_entity_axis_relation_flags
@@ -12040,7 +12040,7 @@
 000149BE: rts
 000149C0: btst.b #0x3,(0xb0,A0)
 000149C6: beq.w 0x000149d2
-000149CA: bsr.w 0x00014914 ; call 00014914 FUN_00014914
+000149CA: bsr.w 0x00014914 ; call 00014914 is_entity_path_blocked
 000149CE: bcs.w 0x00014756
 000149D2: move.w (A0),D0w
 000149D4: move.w (0x4,A0),D1w

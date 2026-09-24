@@ -129,7 +129,7 @@ LAB_00013e40:
     if ((bVar1 & 4) == 0) {
       uVar12 = extraout_A0_02[0x5c] < 0x1000;
       if (extraout_A0_02[0x5c] != 0x1000) {
-        FUN_00014ba6();
+        update_entity_axis_relation_state();
         puVar3 = extraout_A0_04;
         if ((extraout_A0_04[0x58] & 0x200) != 0) goto FUN_000149c0;
         derive_entity_axis_relation_flags();
@@ -149,7 +149,7 @@ LAB_000145e8:
   else {
 FUN_000149c0:
     if (((puVar3[0x58] & 0x800) != 0) &&
-       (puVar4 = (ushort *)FUN_00014914(), puVar3 = extraout_A0_07, (bool)uVar12)) {
+       (puVar4 = (ushort *)is_entity_path_blocked(), puVar3 = extraout_A0_07, (bool)uVar12)) {
       *(byte *)(extraout_A0_07 + 0x58) = *(byte *)(extraout_A0_07 + 0x58) & 0xfd;
       *(byte *)(extraout_A0_07 + 0x58) = *(byte *)(extraout_A0_07 + 0x58) & 0xf7;
       return puVar4;

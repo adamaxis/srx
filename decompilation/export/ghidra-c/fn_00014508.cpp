@@ -109,7 +109,7 @@ void FUN_00014508(void)
       if (extraout_A0_01[0x5c] != 0x1000) {
         puVar11[-0xffffffff00000002] = 1;
         puVar11[-0xffffffff00000001] = 0x45da;
-        FUN_00014ba6();
+        update_entity_axis_relation_state();
         puVar8 = extraout_A0_03;
         if ((extraout_A0_03[0x58] & 0x200) != 0) goto FUN_000149c0;
         puVar11[-0xffffffff00000002] = 1;
@@ -137,7 +137,7 @@ FUN_000149c0:
     if ((puVar8[0x58] & 0x800) != 0) {
       puVar11[-0xffffffff00000002] = 1;
       puVar11[-0xffffffff00000001] = 0x49ce;
-      FUN_00014914();
+      is_entity_path_blocked();
       puVar8 = extraout_A0_06;
       if ((bool)uVar13) {
         *(byte *)(extraout_A0_06 + 0x58) = *(byte *)(extraout_A0_06 + 0x58) & 0xfd;

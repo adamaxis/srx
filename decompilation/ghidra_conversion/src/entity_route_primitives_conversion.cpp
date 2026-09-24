@@ -148,6 +148,21 @@ bool is_obstruction_path_blocked(
     return false;
 }
 
+bool is_entity_path_blocked(
+    const std::uint16_t entity_x,
+    const std::uint16_t entity_y,
+    const std::uint16_t target_x,
+    const std::uint16_t target_y,
+    const std::vector<std::uint8_t>& obstruction_map) {
+    const auto target_tile = compute_obstruction_grid_index(target_x, target_y);
+    const auto entity_tile = compute_obstruction_grid_index(entity_x, entity_y);
+
+    return is_obstruction_path_blocked(
+               target_tile, entity_tile, obstruction_map) ||
+        is_obstruction_path_blocked(
+            entity_tile, target_tile, obstruction_map);
+}
+
 std::uint16_t compute_obstruction_grid_index(
     const std::uint16_t world_x,
     const std::uint16_t world_y) {
@@ -215,6 +230,45 @@ std::uint8_t derive_entity_axis_relation_flags(
         flags = static_cast<std::uint8_t>(flags | 0x02U);
     }
     return flags;
+}
+
+EntityAxisUpdate update_entity_axis_relation_state(
+    const std::int32_t entity_x,
+    const std::int32_t entity_y,
+    const std::int32_t target_x,
+    const std::int32_t target_y,
+    std::uint8_t axis_flags,
+    const std::int16_t movement_mode,
+    std::uint8_t movement_flags) {
+    const auto delta_x = target_x - entity_x;
+    const auto delta_y = target_y - entity_y;
+
+    // Bits 0 and 1 reverse the source's X/Y comparisons. Bits 2 and 3 are
+    // only set by this routine; unrelated flags remain intact.
+    const auto x_points_positive = (axis_flags & 0x01U) == 0U;
+    if ((x_points_positive && delta_x >= 0) ||
+        (!x_points_positive && delta_x < 0)) {
+        axis_flags = static_cast<std::uint8_t>(axis_flags | 0x04U);
+    }
+
+    const auto y_points_positive = (axis_flags & 0x02U) == 0U;
+    if ((y_points_positive && delta_y >= 0) ||
+        (!y_points_positive && delta_y < 0)) {
+        axis_flags = static_cast<std::uint8_t>(axis_flags | 0x08U);
+    }
+
+    if (movement_mode >= 0) {
+        const auto x_relation = (axis_flags & 0x04U) != 0U;
+        const auto y_relation = (axis_flags & 0x08U) != 0U;
+        const auto diagonal_mode = (movement_mode & 0x0002) != 0;
+        if ((!x_relation && (!y_relation || !diagonal_mode)) ||
+            (x_relation && diagonal_mode)) {
+            return EntityAxisUpdate{axis_flags, movement_flags, false};
+        }
+    }
+
+    movement_flags = static_cast<std::uint8_t>(movement_flags | 0x02U);
+    return EntityAxisUpdate{axis_flags, movement_flags, true};
 }
 
 std::uint8_t find_first_available_entity_slot(

@@ -281,7 +281,7 @@ LAB_000142ae:
       uVar11 = puVar7[0x5c] < 0x1000;
       if (puVar7[0x5c] != 0x1000) {
         *(undefined4 *)((int)register0x0000003c + -4) = 0x145da;
-        FUN_00014ba6();
+        update_entity_axis_relation_state();
         puVar7 = extraout_A0_11;
         if ((extraout_A0_11[0x58] & 0x200) != 0) goto FUN_000149c0;
         *(undefined4 *)((int)register0x0000003c + -4) = 0x145e8;
@@ -305,7 +305,7 @@ LAB_000145e8:
 FUN_000149c0:
     if ((puVar7[0x58] & 0x800) != 0) {
       *(undefined4 *)((int)register0x0000003c + -4) = 0x149ce;
-      FUN_00014914();
+      is_entity_path_blocked();
       puVar7 = extraout_A0_14;
       if ((bool)uVar11) {
         *(byte *)(extraout_A0_14 + 0x58) = *(byte *)(extraout_A0_14 + 0x58) & 0xfd;

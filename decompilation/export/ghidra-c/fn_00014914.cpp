@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00014914
-// Name: FUN_00014914
+// Name: is_entity_path_blocked
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00014902 compute_obstruction_grid_index
 //   0x0001494C is_obstruction_path_blocked
 
 
-void FUN_00014914(void)
+void is_entity_path_blocked(void)
 
 {
   undefined1 uVar1;
