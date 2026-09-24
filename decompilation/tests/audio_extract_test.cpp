@@ -1,6 +1,7 @@
 #include "shadowrun/audio_extract.hpp"
 
 #include <fstream>
+#include <filesystem>
 #include <iostream>
 #include <iterator>
 #include <string>
@@ -55,6 +56,35 @@ int main() {
                 return fail("resource bytes are not an exact ROM slice") ? 0 : 1;
             }
         }
+    }
+    const auto analysis_root = std::filesystem::temp_directory_path() /
+                               "shadowrun_audio_source_analysis_test";
+    std::filesystem::remove_all(analysis_root);
+    shadowrun::audio::write_genesis_audio_resources(rom, analysis_root);
+    if (!std::filesystem::is_regular_file(
+            analysis_root / "audio_raw" / "catalog.tsv") ||
+        std::filesystem::exists(analysis_root / "audio") ||
+        std::filesystem::exists(analysis_root / "assets")) {
+        std::filesystem::remove_all(analysis_root);
+        return fail("audio source slices escaped the analysis-only directory")
+            ? 0
+            : 1;
+    }
+    std::filesystem::remove_all(analysis_root);
+    const auto forbidden_root = std::filesystem::temp_directory_path() /
+                                "shadowrun_audio_assets" / "assets";
+    std::filesystem::remove_all(forbidden_root.parent_path());
+    bool rejected_assets_root = false;
+    try {
+        shadowrun::audio::write_genesis_audio_resources(rom, forbidden_root);
+    } catch (const std::invalid_argument&) {
+        rejected_assets_root = true;
+    }
+    std::filesystem::remove_all(forbidden_root.parent_path());
+    if (!rejected_assets_root) {
+        return fail("audio extractor accepted the runtime assets directory")
+            ? 0
+            : 1;
     }
     std::cout << "audio resource slices verified: " << resources.size()
               << "\n";

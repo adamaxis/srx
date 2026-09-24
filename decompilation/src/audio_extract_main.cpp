@@ -22,13 +22,13 @@ std::vector<std::uint8_t> read_file(const std::string& path) {
 
 int main(int argc, char** argv) {
     if (argc != 3) {
-        std::cerr << "usage: shadowrun_audio_extract <rom.bin> <asset-dir>\n";
+        std::cerr << "usage: shadowrun_audio_extract <rom.bin> <analysis-dir>\n";
         return 2;
     }
     try {
         const auto rom = read_file(argv[1]);
         shadowrun::audio::write_genesis_audio_resources(rom, argv[2]);
-        std::cout << "individual Genesis sound resources written to " << argv[2]
+        std::cout << "Genesis sound source-analysis slices written to " << argv[2]
                   << "\n";
         return 0;
     } catch (const std::exception& error) {

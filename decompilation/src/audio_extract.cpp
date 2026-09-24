@@ -66,8 +66,17 @@ std::vector<GenesisAudioBlob> extract_genesis_audio_resources(
 void write_genesis_audio_resources(
     const std::vector<std::uint8_t>& rom,
     const std::filesystem::path& output_root) {
+    if (output_root.filename() == "assets") {
+        throw std::invalid_argument(
+            "audio source extraction cannot write into the runtime assets directory; "
+            "use a separate analysis directory");
+    }
     const auto resources = extract_genesis_audio_resources(rom);
-    const auto audio_root = output_root / "audio";
+    // This is deliberately an analysis artifact, not a runtime asset tree.
+    // The ROM contains a custom Z80 event format; until that driver is traced,
+    // emitting these slices under assets/audio would falsely present them as
+    // playable Windows audio.
+    const auto audio_root = output_root / "audio_raw";
     std::filesystem::create_directories(audio_root);
     std::ofstream catalog(audio_root / "catalog.tsv", std::ios::binary);
     if (!catalog) {
@@ -175,7 +184,9 @@ void write_genesis_audio_resources(
     if (!readme) {
         throw std::runtime_error("cannot create audio resource README");
     }
-    readme << "# Genesis sound resources\n\n"
+    readme << "# Genesis sound source analysis\n\n"
+           << "This directory is an analysis-only holding area, not a native "
+              "runtime asset directory. Do not copy it into decompilation/assets.\n\n"
            << "These files are exact byte slices from the US Genesis ROM. "
               "The game does not contain standard MIDI files: the 68000 "
               "uploads a custom Z80 sound driver at ROM 0x26C5E and passes "
@@ -185,9 +196,9 @@ void write_genesis_audio_resources(
               "event streams, and the descriptor table is split into 22 "
               "records. These include music and effect event data, "
               "but their event encoding is interpreted by the Z80 driver. "
-              "MIDI conversion is intentionally not emitted until that "
-              "format is traced; these raw resources are the authoritative "
-              "input for that next step.\n\n"
+              "They are not WAV, MIDI, or other playable Windows audio. "
+              "A decoder/render step must produce complete Windows-playable "
+              "files before any game runtime can consume them.\n\n"
            << "Extracted " << written_files << " files from " << resources.size()
            << " source blobs ("
            << total_bytes << " bytes).\n";
