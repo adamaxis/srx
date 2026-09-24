@@ -3,7 +3,7 @@
 // Name: FUN_0005d29c
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00005A56 FUN_00005a56
+//   0x00005A56 project_entity_screen_position
 //   0x0001E2E0 FUN_0001e2e0
 //   0x0005BA66 FUN_0005ba66
 //   0x0005D3E6 FUN_0005d3e6
@@ -33,7 +33,7 @@ undefined8 FUN_0005d29c(void)
   if (((DAT_00ffe186 == '\x02') || (uVar3 = CONCAT44(in_D0,in_D1), DAT_00ffe186 == '\x03')) &&
      (uVar3 = CONCAT44(in_D0,in_D1), -1 < DAT_00fff13e._2_2_)) {
     if (DAT_00fff13e._2_2_ == 2) {
-      FUN_00005a56();
+      project_entity_screen_position();
       FUN_0005d55c();
       FUN_0005d65a();
       FUN_0005d5fc();
@@ -83,7 +83,7 @@ undefined8 FUN_0005d29c(void)
       if (((short)DAT_00fff122 < 0) || (DAT_00fff122 < 0x248)) {
         DAT_00fff122 = DAT_00fff122 + 8;
       }
-      FUN_00005a56();
+      project_entity_screen_position();
       FUN_0005d55c();
       FUN_0005d5fc();
       FUN_0005d5a2();

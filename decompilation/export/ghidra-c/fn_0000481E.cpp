@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 FUN_00001378
-//   0x00005A62 FUN_00005a62
+//   0x00005A62 project_entity_screen_position_standard
 
 
 void FUN_0000481e(void)
@@ -19,7 +19,7 @@ void FUN_0000481e(void)
   sVar1 = 9;
   do {
     if (((*(byte *)(puVar2 + 8) & 1) != 0) &&
-       (FUN_00005a62(), puVar2 = extraout_A0, extraout_A0[6] != 0)) {
+       (project_entity_screen_position_standard(), puVar2 = extraout_A0, extraout_A0[6] != 0)) {
       FUN_00001378();
       puVar2 = extraout_A0_00;
     }

@@ -3119,7 +3119,7 @@
 00004626: move.w #0xf,D7w
 0000462A: btst.b #0x0,(0x10,A0)
 00004630: beq.w 0x00004644
-00004634: bsr.w 0x00005a56 ; call 00005A56 FUN_00005a56
+00004634: bsr.w 0x00005a56 ; call 00005A56 project_entity_screen_position
 00004638: jsr 0x00005fdc.l ; call 00005FDC FUN_00005fdc
 0000463E: jsr 0x0000600e.l ; call 0000600E FUN_0000600e
 00004644: adda.w #0x100,A0
@@ -3229,7 +3229,7 @@
 00004824: move.w #0x9,D7w
 00004828: btst.b #0x0,(0x10,A0)
 0000482E: beq.w 0x000048a8
-00004832: bsr.w 0x00005a62 ; call 00005A62 FUN_00005a62
+00004832: bsr.w 0x00005a62 ; call 00005A62 project_entity_screen_position_standard
 00004836: tst.w (0xc,A0)
 0000483A: beq.w 0x000048a8
 0000483E: movea.l #0x48b2,A2
@@ -3335,7 +3335,7 @@
 00004AAA: rts
 00004ADC: subq.w #0x1,(0xe,A0)
 00004AE0: bmi.w 0x00004b6c
-00004AE4: bsr.w 0x00005a56 ; call 00005A56 FUN_00005a56
+00004AE4: bsr.w 0x00005a56 ; call 00005A56 project_entity_screen_position
 00004AE8: lea (0x4acc).l,A2 ; data 00004acc
 00004AEE: move.w (0xe,A0),D0w
 00004AF2: andi.w #0x3,D0w
@@ -18750,7 +18750,7 @@
 0001E138: move.l A6,(0xa8,A1)
 0001E13C: bset.b #0x1,(0x9e,A1)
 0001E142: movea.l A1,A0
-0001E144: jsr 0x00005a56.l ; call 00005A56 FUN_00005a56
+0001E144: jsr 0x00005a56.l ; call 00005A56 project_entity_screen_position
 0001E14A: tst.w (0xc,A0)
 0001E14E: beq.w 0x0001e162
 0001E152: move.w #0x4,(0xe4,A0)
@@ -28725,7 +28725,7 @@
 0005D2F8: cmpi.w #0x248,(0x4,A0)
 0005D2FE: bcc.w 0x0005d306
 0005D302: addq.w #0x8,(0x4,A0)
-0005D306: jsr 0x00005a56.l ; call 00005A56 FUN_00005a56
+0005D306: jsr 0x00005a56.l ; call 00005A56 project_entity_screen_position
 0005D30C: bsr.w 0x0005d55c ; call 0005D55C FUN_0005d55c
 0005D310: bsr.w 0x0005d5fc ; call 0005D5FC FUN_0005d5fc
 0005D314: bsr.w 0x0005d5a2 ; call 0005D5A2 FUN_0005d5a2
@@ -28735,7 +28735,7 @@
 0005D322: move.w #0x2,(0x22,A0)
 0005D328: move.w #0x28,(0x24,A0)
 0005D32E: rts
-0005D330: jsr 0x00005a56.l ; call 00005A56 FUN_00005a56
+0005D330: jsr 0x00005a56.l ; call 00005A56 project_entity_screen_position
 0005D336: bsr.w 0x0005d55c ; call 0005D55C FUN_0005d55c
 0005D33A: bsr.w 0x0005d65a ; call 0005D65A FUN_0005d65a
 0005D33E: bsr.w 0x0005d5fc ; call 0005D5FC FUN_0005d5fc

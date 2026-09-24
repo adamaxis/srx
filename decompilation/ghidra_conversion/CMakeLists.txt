@@ -97,3 +97,16 @@ target_link_libraries(shadowrun_ghidra_entity_timing_test
     PRIVATE shadowrun_ghidra_entity_timing)
 add_test(NAME shadowrun_ghidra_entity_timing
          COMMAND shadowrun_ghidra_entity_timing_test)
+
+add_library(shadowrun_ghidra_entity_projection STATIC
+    src/entity_projection_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_projection PUBLIC include)
+
+add_executable(shadowrun_ghidra_entity_projection_test
+    tests/entity_projection_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_projection_test
+    PRIVATE shadowrun_ghidra_entity_projection)
+add_test(NAME shadowrun_ghidra_entity_projection
+         COMMAND shadowrun_ghidra_entity_projection_test)

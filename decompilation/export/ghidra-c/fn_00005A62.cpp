@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00005A62
-// Name: FUN_00005a62
+// Name: project_entity_screen_position_standard
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-ushort FUN_00005a62(void)
+ushort project_entity_screen_position_standard(void)
 
 {
   ushort uVar1;

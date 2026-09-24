@@ -159,8 +159,8 @@ entry	name	size	callingConvention	decompileStatus	file
 00005662	FUN_00005662	124	unknown	ok	ghidra-c/fn_00005662.cpp
 00005936	FUN_00005936	180	unknown	ok	ghidra-c/fn_00005936.cpp
 000059EA	FUN_000059ea	76	unknown	ok	ghidra-c/fn_000059EA.cpp
-00005A56	FUN_00005a56	100	unknown	ok	ghidra-c/fn_00005A56.cpp
-00005A62	FUN_00005a62	100	unknown	ok	ghidra-c/fn_00005A62.cpp
+00005A56	project_entity_screen_position	100	unknown	ok	ghidra-c/fn_00005A56.cpp
+00005A62	project_entity_screen_position_standard	100	unknown	ok	ghidra-c/fn_00005A62.cpp
 00005B1E	FUN_00005b1e	96	unknown	ok	ghidra-c/fn_00005B1E.cpp
 00005B7E	FUN_00005b7e	26	unknown	ok	ghidra-c/fn_00005B7E.cpp
 00005B98	FUN_00005b98	86	unknown	ok	ghidra-c/fn_00005B98.cpp

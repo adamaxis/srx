@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00004658 FUN_00004658
-//   0x00005A56 FUN_00005a56
+//   0x00005A56 project_entity_screen_position
 //   0x00005FDC FUN_00005fdc
 //   0x0000600E FUN_0000600e
 
@@ -23,7 +23,7 @@ void FUN_00004618(void)
   sVar1 = 0xf;
   do {
     if ((*(byte *)(puVar2 + 8) & 1) != 0) {
-      FUN_00005a56();
+      project_entity_screen_position();
       FUN_00005fdc();
       FUN_0000600e();
       puVar2 = extraout_A0;

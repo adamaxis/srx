@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000013BE FUN_000013be
-//   0x00005A56 FUN_00005a56
+//   0x00005A56 project_entity_screen_position
 //   0x000061A0 FUN_000061a0
 
 
@@ -47,7 +47,7 @@ void FUN_00004adc(void)
     } while (sVar8 != -1);
     return;
   }
-  FUN_00005a56();
+  project_entity_screen_position();
   iVar11 = *(int *)((int)&PTR_DAT_00004acc + (int)(short)((*(ushort *)(extraout_A0 + 0xe) & 3) << 2)
                    ) + 8;
   uVar3 = CONCAT22(extraout_D1u,*(undefined2 *)(extraout_A0 + 10));

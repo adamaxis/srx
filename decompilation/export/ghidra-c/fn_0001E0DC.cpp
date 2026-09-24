@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000044BC FUN_000044bc
-//   0x00005A56 FUN_00005a56
+//   0x00005A56 project_entity_screen_position
 //   0x0001A2CC FUN_0001a2cc
 //   0x0001A342 FUN_0001a342
 
@@ -51,7 +51,7 @@ void FUN_0001e0dc(void)
       unaff_A6 = extraout_A1;
     }
     *(byte *)(iVar4 + 0x9e) = *(byte *)(iVar4 + 0x9e) | 2;
-    FUN_00005a56();
+    project_entity_screen_position();
     if (extraout_A0[6] != 0) {
       extraout_A0[0x72] = 4;
       *extraout_A0 = *(undefined2 *)(uVar2 + 2);
