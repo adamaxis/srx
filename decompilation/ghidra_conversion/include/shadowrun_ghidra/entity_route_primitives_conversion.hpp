@@ -17,6 +17,12 @@ struct ObstructionSearchResult {
     std::int16_t step = 0;
 };
 
+struct ObstructionStripProbe {
+    std::int32_t starting_tile = 0;
+    std::int32_t final_tile = 0;
+    bool left_map = false;
+};
+
 struct ObstructionTileProjection {
     std::uint16_t world_x = 0;
     std::uint16_t world_y = 0;
@@ -33,6 +39,15 @@ std::uint8_t clear_entity_route_flags(std::uint8_t movement_flags);
 std::optional<ObstructionSearchResult> find_first_occupied_obstruction_tile(
     std::int32_t starting_tile,
     std::uint8_t direction_slot,
+    const std::vector<std::uint8_t>& obstruction_map);
+
+// ROM 0x14800: advance through open tiles along a primary direction while
+// the adjacent secondary tile remains occupied. The host reports the source
+// starting/final pair and makes a map-edge exit explicit.
+ObstructionStripProbe probe_obstruction_strip(
+    std::int32_t starting_tile,
+    std::uint8_t primary_direction_slot,
+    std::uint8_t secondary_direction_slot,
     const std::vector<std::uint8_t>& obstruction_map);
 
 // ROM 0x14902: map world coordinates into the source obstruction-grid index.

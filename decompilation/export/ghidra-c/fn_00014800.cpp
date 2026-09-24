@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00014800
-// Name: FUN_00014800
+// Name: probe_obstruction_strip
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00014800(void)
+void probe_obstruction_strip(void)
 
 {
   ushort unaff_D5w;

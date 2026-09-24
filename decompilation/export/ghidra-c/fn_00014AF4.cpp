@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00014756 clear_entity_route_flags
-//   0x00014800 FUN_00014800
+//   0x00014800 probe_obstruction_strip
 //   0x00014902 compute_obstruction_grid_index
 
 
@@ -19,7 +19,7 @@ void FUN_00014af4(void)
   compute_obstruction_grid_index();
   sVar1 = 4;
   do {
-    FUN_00014800();
+    probe_obstruction_strip();
     if (extraout_D1w != unaff_D5w) {
       *(undefined2 *)(extraout_A0 + 0xba) = 0;
       *(short *)(extraout_A0 + 0xbc) = extraout_D1w;

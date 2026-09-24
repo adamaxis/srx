@@ -926,7 +926,7 @@ caller	caller_name	callee	callee_name	call_sites
 000149C0	FUN_000149c0	00014C2E	derive_entity_axis_relation_flags	1
 000149C0	FUN_000149c0	00015CA4	compute_diagonal_step_cost	1
 00014AF4	FUN_00014af4	00014756	clear_entity_route_flags	1
-00014AF4	FUN_00014af4	00014800	FUN_00014800	1
+00014AF4	FUN_00014af4	00014800	probe_obstruction_strip	1
 00014AF4	FUN_00014af4	00014902	compute_obstruction_grid_index	1
 00014BA6	FUN_00014ba6	00014682	FUN_00014682	1
 00014C7C	FUN_00014c7c	00014C56	project_heading_position	1

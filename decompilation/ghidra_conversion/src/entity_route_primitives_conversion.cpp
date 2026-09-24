@@ -30,6 +30,43 @@ std::optional<ObstructionSearchResult> find_first_occupied_obstruction_tile(
     }
 }
 
+ObstructionStripProbe probe_obstruction_strip(
+    const std::int32_t starting_tile,
+    const std::uint8_t primary_direction_slot,
+    const std::uint8_t secondary_direction_slot,
+    const std::vector<std::uint8_t>& obstruction_map) {
+    static constexpr std::array<std::int16_t, 8> kDirectionSteps{
+        -64, 0, 1, 0, 64, 0, -1, 0};
+    const auto valid_direction = [](const std::uint8_t direction) {
+        return direction <= 6U && (direction & 1U) == 0U;
+    };
+    if (!valid_direction(primary_direction_slot) ||
+        !valid_direction(secondary_direction_slot)) {
+        return ObstructionStripProbe{starting_tile, starting_tile, true};
+    }
+
+    const auto primary_step = kDirectionSteps[primary_direction_slot];
+    const auto secondary_step = kDirectionSteps[secondary_direction_slot];
+    auto tile = starting_tile;
+    while (true) {
+        tile += primary_step;
+        if (tile < 0 ||
+            tile >= static_cast<std::int32_t>(obstruction_map.size())) {
+            return ObstructionStripProbe{starting_tile, tile, true};
+        }
+        if (obstruction_map[static_cast<std::size_t>(tile)] != 0U) {
+            return ObstructionStripProbe{starting_tile, tile, false};
+        }
+
+        const auto side_tile = tile + secondary_step;
+        if (side_tile < 0 ||
+            side_tile >= static_cast<std::int32_t>(obstruction_map.size()) ||
+            obstruction_map[static_cast<std::size_t>(side_tile)] == 0U) {
+            return ObstructionStripProbe{starting_tile, tile, false};
+        }
+    }
+}
+
 std::uint16_t compute_obstruction_grid_index(
     const std::uint16_t world_x,
     const std::uint16_t world_y) {

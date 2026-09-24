@@ -105,6 +105,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00015D4EL, "measure_heading_and_distance");
         names.put(0x000148D2L, "choose_dominant_axis_directions");
         names.put(0x000148AAL, "find_first_occupied_obstruction_tile");
+        names.put(0x00014800L, "probe_obstruction_strip");
         names.put(0x00014C56L, "project_heading_position");
         names.put(0x0000E00AL, "wait_for_controller_event");
         names.put(0x0000F312L, "wait_for_controller_event");

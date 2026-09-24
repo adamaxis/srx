@@ -12142,7 +12142,7 @@
 00014B12: andi.w #0x6,D7w
 00014B16: move.w #0x4,D0w
 00014B1A: move.w D0w,-(SP) ; data Stack[-0x2]
-00014B1C: bsr.w 0x00014800 ; call 00014800 FUN_00014800
+00014B1C: bsr.w 0x00014800 ; call 00014800 probe_obstruction_strip
 00014B20: move.w (SP)+,D0w
 00014B22: cmp.w D5w,D1w
 00014B24: bne.w 0x00014b3c
