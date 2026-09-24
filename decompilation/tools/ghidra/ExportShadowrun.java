@@ -321,6 +321,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00001910L, "write_alternating_word_pair");
         names.put(0x00012148L, "read_entity_action_code");
         names.put(0x0000C216L, "build_grouped_decimal_glyphs");
+        names.put(0x0000C406L, "prepare_numeric_menu_block");
         names.put(0x00014446L, "collect_entity_action_candidates");
         names.put(0x00013E9EL, "reposition_entity_at_boundary");
         names.put(0x0001460EL, "apply_close_range_entity_state");

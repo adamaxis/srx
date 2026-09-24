@@ -15,7 +15,7 @@
 //   0x000039F2 refresh_field_animation_assets
 //   0x0000C0C2 load_title_font
 //   0x0000C0DA render_title_text_source
-//   0x0000C406 FUN_0000c406
+//   0x0000C406 prepare_numeric_menu_block
 //   0x0000D4C8 FUN_0000d4c8
 //   0x00010BC4 transfer_menu_asset_batch_eight_after_copy
 //   0x00011048 FUN_00011048
@@ -65,7 +65,7 @@ LAB_00056b66:
   FUN_000110ec();
   do {
     DAT_00fff0d1 = '\0';
-    FUN_0000c406();
+    prepare_numeric_menu_block();
     if ((DAT_00fff0b7 == '\x02') && ((DAT_00ff018f & 1) == 0)) {
       render_title_text_source();
       wait_for_controller_event();

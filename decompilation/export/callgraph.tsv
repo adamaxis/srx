@@ -406,8 +406,8 @@ caller	caller_name	callee	callee_name	call_sites
 0000C376	move_wrapped_menu_cursor	0000C3B2	write_single_word	2
 0000C3B2	write_single_word	00000E9C	make_vdp_transfer_command	1
 0000C3E6	FUN_0000c3e6	00012C5A	FUN_00012c5a	1
-0000C406	FUN_0000c406	00001232	write_vdp_grid	1
-0000C406	FUN_0000c406	0000C216	build_grouped_decimal_glyphs	1
+0000C406	prepare_numeric_menu_block	00001232	write_vdp_grid	1
+0000C406	prepare_numeric_menu_block	0000C216	build_grouped_decimal_glyphs	1
 0000C64C	FUN_0000c64c	00002A32	initialize_field_mode_profile_a	1
 0000C64C	FUN_0000c64c	00002A44	initialize_field_mode_profile_b	1
 0000C64C	FUN_0000c64c	000038FA	run_entity_animation_triplet	1
@@ -1764,7 +1764,7 @@ caller	caller_name	callee	callee_name	call_sites
 00056AC0	FUN_00056ac0	000039F2	refresh_field_animation_assets	1
 00056AC0	FUN_00056ac0	0000C0C2	load_title_font	1
 00056AC0	FUN_00056ac0	0000C0DA	render_title_text_source	3
-00056AC0	FUN_00056ac0	0000C406	FUN_0000c406	1
+00056AC0	FUN_00056ac0	0000C406	prepare_numeric_menu_block	1
 00056AC0	FUN_00056ac0	0000D4C8	FUN_0000d4c8	1
 00056AC0	FUN_00056ac0	00010BC4	transfer_menu_asset_batch_eight_after_copy	1
 00056AC0	FUN_00056ac0	00011048	FUN_00011048	1

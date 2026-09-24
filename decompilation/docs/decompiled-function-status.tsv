@@ -259,6 +259,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x1910	alternating word-pair transfer	ghidra_conversion::write_alternating_word_pair	shadowrun_ghidra_alternating_word_transfer	partial		Typed parity-selected two-word buffer transfer with readiness boundary
 0x12148	entity action-code lookup	ghidra_conversion::read_entity_action_code	shadowrun_ghidra_entity_action_code	partial		Typed byte-wrapped selector lookup at entity record offset 0x66
 0xC216	grouped decimal glyph formatter	ghidra_conversion::build_grouped_decimal_glyphs	shadowrun_ghidra_decimal_glyph	partial		Typed least-significant-first decimal digits with three-digit separator cadence
+0xC406	numeric menu block preparation	ghidra_conversion::prepare_numeric_menu_block	shadowrun_ghidra_decimal_glyph	partial		Typed grid-then-decimal preparation wrapper
 0x14446	entity action candidate scan	ghidra_conversion::collect_entity_action_candidates	shadowrun_ghidra_entity_action_candidate	partial		Typed three-slot status/action filter preserving source order
 0x13E9E	entity boundary reposition	ghidra_conversion::reposition_entity_at_boundary	shadowrun_ghidra_entity_boundary_reposition	partial		Typed one-shot flag gate and signed ±0x2580 boundary placement
 0x1460E	entity close-range state	ghidra_conversion::apply_close_range_entity_state	shadowrun_ghidra_entity_close_range	partial		Typed 0x1E0 threshold and high-bit-preserving state mutation

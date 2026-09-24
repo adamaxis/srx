@@ -688,6 +688,11 @@ least significant digit upward, inserts the source special glyph after every
 three digits, and handles zero as a single digit. The native side receives
 glyph values instead of writing directly to VDP data.
 
+The adjacent `0xC406` wrapper is now explicit as
+`prepare_numeric_menu_block`: it keeps the source grid-write callback before
+the grouped-decimal callback while leaving both presentation operations at
+typed host boundaries.
+
 The `0x14446` scan is now `collect_entity_action_candidates`. It checks the
 three source slots for active bit 0, rejects status bits 6 and 4, requires a
 nonzero action word, and returns the surviving slot indices in scan order.

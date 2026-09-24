@@ -2,6 +2,16 @@
 
 namespace shadowrun::ghidra_conversion {
 
+void prepare_numeric_menu_block(
+    const NumericMenuBlockCallbacks& callbacks) {
+    if (callbacks.write_menu_grid) {
+        callbacks.write_menu_grid();
+    }
+    if (callbacks.build_decimal_glyphs) {
+        callbacks.build_decimal_glyphs();
+    }
+}
+
 std::vector<std::uint8_t> build_grouped_decimal_glyphs(
     std::uint32_t value) {
     std::vector<std::uint8_t> glyphs;

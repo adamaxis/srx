@@ -25008,7 +25008,7 @@
 00056BDE: move.w #0x4000,D2w
 00056BE2: jsr 0x000110ec.l ; call 000110EC FUN_000110ec
 00056BE8: clr.b (0x00fff0d1).l
-00056BEE: jsr 0x0000c406.l ; call 0000C406 FUN_0000c406
+00056BEE: jsr 0x0000c406.l ; call 0000C406 prepare_numeric_menu_block
 00056BF4: cmpi.b #0x2,(0x00fff0b7).l
 00056BFC: bne.w 0x00056c2c
 00056C00: btst.b #0x0,(0x00ff018f).l

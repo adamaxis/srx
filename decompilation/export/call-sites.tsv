@@ -492,8 +492,8 @@ caller	caller_name	instruction	text	target	callee	status
 0000C376	move_wrapped_menu_cursor	0000C3A6	bsr.w 0x0000c3b2	0000C3B2	write_single_word	resolved
 0000C3B2	write_single_word	0000C3D4	jsr 0x00000e9c.l	00000E9C	make_vdp_transfer_command	resolved
 0000C3E6	FUN_0000c3e6	0000C3F0	jsr 0x00012c5a.l	00012C5A	FUN_00012c5a	resolved
-0000C406	FUN_0000c406	0000C41E	jsr 0x00001232.l	00001232	write_vdp_grid	resolved
-0000C406	FUN_0000c406	0000C42E	jsr 0x0000c216.l	0000C216	build_grouped_decimal_glyphs	resolved
+0000C406	prepare_numeric_menu_block	0000C41E	jsr 0x00001232.l	00001232	write_vdp_grid	resolved
+0000C406	prepare_numeric_menu_block	0000C42E	jsr 0x0000c216.l	0000C216	build_grouped_decimal_glyphs	resolved
 0000C436	FUN_0000c436	0000C444	jsr (A0)			indirect/unresolved
 0000C64C	FUN_0000c64c	0000C692	jsr 0x0001ded8.l	0001DED8	FUN_0001ded8	resolved
 0000C64C	FUN_0000c64c	0000C69A	jsr 0x0001e68c.l	0001E68C	FUN_0001e68c	resolved
@@ -2434,7 +2434,7 @@ caller	caller_name	instruction	text	target	callee	status
 00056AC0	FUN_00056ac0	00056B90	jsr 0x00000e34.l	00000E34	reset_vdp_upload_state	resolved
 00056AC0	FUN_00056ac0	00056BCE	jsr 0x000566ec.l	000566EC	FUN_000566ec	resolved
 00056AC0	FUN_00056ac0	00056BE2	jsr 0x000110ec.l	000110EC	FUN_000110ec	resolved
-00056AC0	FUN_00056ac0	00056BEE	jsr 0x0000c406.l	0000C406	FUN_0000c406	resolved
+00056AC0	FUN_00056ac0	00056BEE	jsr 0x0000c406.l	0000C406	prepare_numeric_menu_block	resolved
 00056AC0	FUN_00056ac0	00056C1C	jsr 0x0000c0da.l	0000C0DA	render_title_text_source	resolved
 00056AC0	FUN_00056ac0	00056C22	jsr 0x00000d94.l	00000D94	wait_for_controller_event	resolved
 00056AC0	FUN_00056ac0	00056C40	bsr.w 0x00058d32	00058D32	FUN_00058d32	resolved
