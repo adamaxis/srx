@@ -171,14 +171,14 @@ caller	caller_name	instruction	text	target	callee	status
 0000281E	FUN_0000281e	00002856	bsr.w 0x00002b34	00002B34	apply_scene_profile_selection	resolved
 0000281E	FUN_0000281e	00002860	bsr.w 0x00002c6c	00002C6C	FUN_00002c6c	resolved
 0000281E	FUN_0000281e	00002864	bsr.w 0x0000301e	0000301E	upload_scene_profile_block	resolved
-0000281E	FUN_0000281e	00002868	bsr.w 0x0000286e	0000286E	FUN_0000286e	resolved
-0000286E	FUN_0000286e	000028A4	jmp 0x0001e4ac.l	0001E4AC	spawn_world_effect_at_player_position	resolved
+0000281E	FUN_0000281e	00002868	bsr.w 0x0000286e	0000286E	guard_world_effect_player_spawn	resolved
+0000286E	guard_world_effect_player_spawn	000028A4	jmp 0x0001e4ac.l	0001E4AC	spawn_world_effect_at_player_position	resolved
 000028AA	FUN_000028aa	000028AA	jsr 0x00003404.l	00003404	FUN_00003404	resolved
 000028AA	FUN_000028aa	000028B0	jsr 0x0000334c.l	0000334C	FUN_0000334c	resolved
 000028AA	FUN_000028aa	000028B6	jsr 0x000039f2.l	000039F2	refresh_field_animation_assets	resolved
 000028AA	FUN_000028aa	000028BC	jmp 0x0000c0c2.l	0000C0C2	load_title_font	resolved
 000028C2	FUN_000028c2	000028CA	bsr.w 0x00002900	00002900	FUN_00002900	resolved
-000028C2	FUN_000028c2	000028CE	bsr.b 0x0000286e	0000286E	FUN_0000286e	resolved
+000028C2	FUN_000028c2	000028CE	bsr.b 0x0000286e	0000286E	guard_world_effect_player_spawn	resolved
 000028C2	FUN_000028c2	000028D0	bsr.b 0x000028aa	000028AA	FUN_000028aa	resolved
 000028C2	FUN_000028c2	000028F8	bsr.w 0x00002c6c	00002C6C	FUN_00002c6c	resolved
 000028C2	FUN_000028c2	000028FC	bra.w 0x0000301e	0000301E	upload_scene_profile_block	resolved
@@ -204,7 +204,7 @@ caller	caller_name	instruction	text	target	callee	status
 00002A94	initialize_mode_nine	00002A94	jsr 0x00053126.l	00053126	prepare_mode_entry_service	resolved
 00002BD2	FUN_00002bd2	00002BD2	jsr 0x0000131c.l	0000131C	step_palette_transition	resolved
 00002BD2	FUN_00002bd2	00002C02	bsr.w 0x00002900	00002900	FUN_00002900	resolved
-00002BD2	FUN_00002bd2	00002C06	bsr.w 0x0000286e	0000286E	FUN_0000286e	resolved
+00002BD2	FUN_00002bd2	00002C06	bsr.w 0x0000286e	0000286E	guard_world_effect_player_spawn	resolved
 00002BD2	FUN_00002bd2	00002C3E	bsr.w 0x00002c6c	00002C6C	FUN_00002c6c	resolved
 00002BD2	FUN_00002bd2	00002C42	bra.w 0x0000301e	0000301E	upload_scene_profile_block	resolved
 00002C6C	FUN_00002c6c	00002C6C	jsr 0x00001406.l	00001406	prepare_title_resources	resolved

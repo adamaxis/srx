@@ -1586,7 +1586,7 @@
 0000285A: movea.l (0x00ffddfa).l,A6
 00002860: bsr.w 0x00002c6c ; call 00002C6C FUN_00002c6c
 00002864: bsr.w 0x0000301e ; call 0000301E upload_scene_profile_block
-00002868: bsr.w 0x0000286e ; call 0000286E FUN_0000286e
+00002868: bsr.w 0x0000286e ; call 0000286E guard_world_effect_player_spawn
 0000286C: rts
 0000286E: move.l (0x00fffc3c).l,D4
 00002874: bne.w 0x0000287a
@@ -1608,7 +1608,7 @@
 000028BC: jmp 0x0000c0c2.l ; call 0000C0C2 load_title_font
 000028C2: move.w #-0x1,(0x00ffdf8a).l
 000028CA: bsr.w 0x00002900 ; call 00002900 FUN_00002900
-000028CE: bsr.b 0x0000286e ; call 0000286E FUN_0000286e
+000028CE: bsr.b 0x0000286e ; call 0000286E guard_world_effect_player_spawn
 000028D0: bsr.b 0x000028aa ; call 000028AA FUN_000028aa
 000028D2: andi.w #-0x80,(0x00ffddc6).l
 000028DA: andi.w #-0x80,(0x00ffddc8).l
@@ -1726,7 +1726,7 @@
 00002BF2: move.w #-0x1,(0x00ffdf36).l
 00002BFA: move.w #-0x1,(0x00ffdf38).l
 00002C02: bsr.w 0x00002900 ; call 00002900 FUN_00002900
-00002C06: bsr.w 0x0000286e ; call 0000286E FUN_0000286e
+00002C06: bsr.w 0x0000286e ; call 0000286E guard_world_effect_player_spawn
 00002C0A: move.w (0x00ffe11a).l,D0w
 00002C10: beq.w 0x00002c38
 00002C14: clr.w (0x00ffe11a).l

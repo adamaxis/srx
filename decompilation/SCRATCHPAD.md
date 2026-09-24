@@ -565,6 +565,11 @@ aligns both camera coordinates with `0xFF80`, clears the pending source, and
 sets both source camera-transition markers to `-1`; the host helper represents
 that pending source as an optional value.
 
+`0x286E` is now isolated as the world-effect spawn guard. A clear global
+effect marker exits immediately; otherwise the source scans thirteen records
+and suppresses a new spawn when one has behavior bit `0` and effect bit `7`.
+Only the no-match path requests the existing player-position spawn helper.
+
 `0x176BA` is now `refresh_field_resource_streams`: it submits the source-order
 raw transfer request for destination `0x2360` and `0xA80` bytes, then submits
 the `0x2DE0`-byte compressed-resource request. The requests are typed host

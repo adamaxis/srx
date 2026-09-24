@@ -72,6 +72,25 @@ struct WorldEffectTriggerState {
     std::uint16_t player_fixed_y = 0;
 };
 
+struct WorldEffectGuardEntity {
+    std::uint8_t behavior_flags = 0;
+    std::uint8_t effect_flags = 0;
+};
+
+enum class WorldEffectPlayerSpawnGuardAction {
+    no_pending_effect,
+    existing_effect_found,
+    spawn_requested,
+};
+
+// ROM 0x286E: if the world-effect marker is set, scan the thirteen entity
+// records for the active/effect combination that suppresses another spawn;
+// otherwise invoke the player-position spawn boundary.
+WorldEffectPlayerSpawnGuardAction guard_world_effect_player_spawn(
+    bool world_effect_pending,
+    const std::array<WorldEffectGuardEntity, 13>& entities,
+    const std::function<void()>& spawn_at_player);
+
 enum class WorldEffectTriggerAction {
     no_action,
     transition_finished,

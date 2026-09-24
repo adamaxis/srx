@@ -3,7 +3,7 @@
 // Name: FUN_0000281e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000286E FUN_0000286e
+//   0x0000286E guard_world_effect_player_spawn
 //   0x000028AA FUN_000028aa
 //   0x00002900 FUN_00002900
 //   0x00002B34 apply_scene_profile_selection
@@ -26,7 +26,7 @@ void FUN_0000281e(void)
   apply_scene_profile_selection();
   FUN_00002c6c();
   upload_scene_profile_block();
-  FUN_0000286e();
+  guard_world_effect_player_spawn();
   return;
 }
 

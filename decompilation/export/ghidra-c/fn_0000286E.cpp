@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000286E
-// Name: FUN_0000286e
+// Name: guard_world_effect_player_spawn
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001E4AC spawn_world_effect_at_player_position
 
 
-void FUN_0000286e(void)
+void guard_world_effect_player_spawn(void)
 
 {
   short sVar1;

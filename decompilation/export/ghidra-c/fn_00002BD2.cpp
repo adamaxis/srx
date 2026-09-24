@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000131C step_palette_transition
-//   0x0000286E FUN_0000286e
+//   0x0000286E guard_world_effect_player_spawn
 //   0x00002900 FUN_00002900
 //   0x00002C6C FUN_00002c6c
 //   0x0000301E upload_scene_profile_block
@@ -24,7 +24,7 @@ void FUN_00002bd2(void)
     DAT_00ffdf36 = 0xffff;
     DAT_00ffdf38 = 0xffff;
     FUN_00002900();
-    FUN_0000286e();
+    guard_world_effect_player_spawn();
     sVar1 = DAT_00ffe11a;
     if ((DAT_00ffe11a != 0) && (DAT_00ffe11a = 0, DAT_00ffe16e < '\0')) {
       (&DAT_00ff1700)[sVar1] = ((&DAT_00ff1700)[sVar1] & 0xe0) + 1;
@@ -41,7 +41,7 @@ void FUN_00002bd2(void)
   apply_scene_profile_selection();
   FUN_00002c6c();
   upload_scene_profile_block();
-  FUN_0000286e();
+  guard_world_effect_player_spawn();
   return;
 }
 

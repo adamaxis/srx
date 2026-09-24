@@ -39,6 +39,27 @@ void promote_entity_effect_flags(std::array<std::uint8_t, 6>& effect_flags) {
     }
 }
 
+WorldEffectPlayerSpawnGuardAction guard_world_effect_player_spawn(
+    const bool world_effect_pending,
+    const std::array<WorldEffectGuardEntity, 13>& entities,
+    const std::function<void()>& spawn_at_player) {
+    if (!world_effect_pending) {
+        return WorldEffectPlayerSpawnGuardAction::no_pending_effect;
+    }
+
+    for (const auto& entity : entities) {
+        if ((entity.behavior_flags & 0x01U) != 0U &&
+            (entity.effect_flags & 0x80U) != 0U) {
+            return WorldEffectPlayerSpawnGuardAction::existing_effect_found;
+        }
+    }
+
+    if (spawn_at_player) {
+        spawn_at_player();
+    }
+    return WorldEffectPlayerSpawnGuardAction::spawn_requested;
+}
+
 WorldEffectEntitySpawnResult spawn_world_effect_entities(
     const std::vector<WorldEffectSpawnDescriptor>& descriptors,
     const std::function<std::optional<std::uint16_t>()>& allocate_entity_slot,

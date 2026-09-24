@@ -15,24 +15,52 @@ int expect(const bool condition) {
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
+    std::array<WorldEffectGuardEntity, 13> guard_entities{};
+    bool spawn_requested = false;
+    if (expect(guard_world_effect_player_spawn(
+                   false, guard_entities,
+                   [&spawn_requested] { spawn_requested = true; }) ==
+                   WorldEffectPlayerSpawnGuardAction::no_pending_effect &&
+               !spawn_requested) != 0) {
+        return 1;
+    }
+
+    guard_entities[4] = {0x01U, 0x80U};
+    if (expect(guard_world_effect_player_spawn(
+                   true, guard_entities,
+                   [&spawn_requested] { spawn_requested = true; }) ==
+                   WorldEffectPlayerSpawnGuardAction::existing_effect_found &&
+               !spawn_requested) != 0) {
+        return 2;
+    }
+
+    guard_entities[4] = {0x01U, 0x00U};
+    if (expect(guard_world_effect_player_spawn(
+                   true, guard_entities,
+                   [&spawn_requested] { spawn_requested = true; }) ==
+                   WorldEffectPlayerSpawnGuardAction::spawn_requested &&
+               spawn_requested) != 0) {
+        return 3;
+    }
+
     WorldActivityTimeoutState guarded{0x0036U, false, 0, 0, false};
     if (expect(!schedule_world_activity_timeout(guarded) &&
                guarded.timer_marker == 0 && guarded.timeout == 0) != 0) {
-        return 1;
+        return 4;
     }
 
     WorldActivityTimeoutState short_timeout{0, true, 0, 0, false};
     if (expect(schedule_world_activity_timeout(short_timeout) &&
                short_timeout.timer_marker == -1 &&
                short_timeout.timeout == 0x0078U) != 0) {
-        return 2;
+        return 5;
     }
 
     WorldActivityTimeoutState long_timeout{0, true, 4, 0, true};
     if (expect(schedule_world_activity_timeout(long_timeout) &&
                long_timeout.timer_marker == 4 &&
                long_timeout.timeout == 0x0258U) != 0) {
-        return 3;
+        return 6;
     }
 
     std::array<std::uint8_t, 6> effect_flags{
@@ -41,14 +69,14 @@ int main() {
     if (expect(effect_flags ==
                std::array<std::uint8_t, 6>{0xFEU, 0x00U, 0x00U,
                                            0x02U, 0x04U, 0x06U}) != 0) {
-        return 4;
+        return 7;
     }
 
     promote_entity_effect_flags(effect_flags);
     if (expect(effect_flags ==
                std::array<std::uint8_t, 6>{0xFEU, 0x00U, 0x00U,
                                            0x06U, 0x04U, 0x06U}) != 0) {
-        return 5;
+        return 8;
     }
 
     WorldEffectTransitionState scene_timeout{0x0014U, 2U, 7U, false};
@@ -66,7 +94,7 @@ int main() {
                scene_timeout_state.timer_marker == -1 &&
                scene_timeout_state.timeout == 0x0078U &&
                scene_events.empty()) != 0) {
-        return 6;
+        return 9;
     }
 
     WorldEffectTransitionState start_transition{0, 2U, 0, false};
@@ -84,7 +112,7 @@ int main() {
                start_transition.transition_timer == 0x0960U &&
                start_transition.transition_latched &&
                scene_events == std::vector<char>({'s', 'c', 'e'})) != 0) {
-        return 7;
+        return 10;
     }
 
     scene_events.clear();
@@ -96,7 +124,7 @@ int main() {
         [&scene_events]() { scene_events.push_back('e'); });
     if (expect(latched_action == WorldEffectTransitionAction::already_latched &&
                scene_events.empty()) != 0) {
-        return 8;
+        return 11;
     }
 
     WorldEffectTransitionState wrong_mode{0, 1U, 5U, false};
@@ -104,7 +132,7 @@ int main() {
     if (expect(begin_world_effect_transition(wrong_mode, wrong_mode_timeout, {}, {}, {}) ==
                    WorldEffectTransitionAction::no_action &&
                wrong_mode.transition_timer == 5U) != 0) {
-        return 9;
+        return 12;
     }
 
     if (expect(find_first_available_world_effect_entity_slot(
@@ -113,7 +141,7 @@ int main() {
                find_first_available_world_effect_entity_slot(
                    std::array<std::uint8_t, 7>{1U, 1U, 1U, 1U, 1U, 1U, 1U}) ==
                    10U) != 0) {
-        return 10;
+        return 13;
     }
 
     std::vector<std::uint16_t> effect_entity_slots{3U, 4U, 5U};
@@ -179,7 +207,7 @@ int main() {
                spawned_effects.entities[2].vertical_origin == 0x00C0U &&
                spawned_effects.entities[2].parent_entity_slot == 4U &&
                spawned_effects.final_vertical_origin == 0x00C0) != 0) {
-        return 11;
+        return 14;
     }
 
     WorldEffectCoordinateSequenceState coordinate_state{
@@ -208,7 +236,7 @@ int main() {
                coordinate_spawn.world_y == 0x9100U &&
                coordinate_spawn.active_count == 1U &&
                coordinate_events == std::vector<char>({'i', 't'})) != 0) {
-        return 12;
+        return 15;
     }
 
     std::vector<std::uint16_t> player_slots{8U};
@@ -236,7 +264,7 @@ int main() {
     if (expect(player_spawn.action == WorldEffectSingleSpawnAction::spawned &&
                player_spawn.world_x == 0x1080U &&
                player_spawn.world_y == 0x2000U) != 0) {
-        return 13;
+        return 16;
     }
 
     std::array<std::uint8_t, 6> finishing_flags{
@@ -260,7 +288,7 @@ int main() {
                finishing_flags ==
                    std::array<std::uint8_t, 6>{0x06U, 0x00U, 0x06U,
                                                0x01U, 0x04U, 0x00U}) != 0) {
-        return 14;
+        return 17;
     }
 
     WorldEffectTriggerState gated_state{};
@@ -270,7 +298,7 @@ int main() {
                    gated_state, finishing_flags, {}, {}, wrong_mode_timeout,
                    {}, {}, {}, {}) ==
                    WorldEffectTriggerAction::trigger_suppressed) != 0) {
-        return 15;
+        return 18;
     }
 
     WorldEffectTriggerState waiting_state{};
@@ -279,7 +307,7 @@ int main() {
                    waiting_state, finishing_flags, {}, []() { return 0U; },
                    wrong_mode_timeout, {}, {}, {}, {}) ==
                    WorldEffectTriggerAction::cadence_wait) != 0) {
-        return 16;
+        return 19;
     }
 
     WorldEffectTriggerState rejected_state{};
@@ -288,7 +316,7 @@ int main() {
                    rejected_state, finishing_flags, {}, []() { return 0x8000U; },
                    wrong_mode_timeout, {}, {}, {}, {}) ==
                    WorldEffectTriggerAction::random_rejected) != 0) {
-        return 17;
+        return 20;
     }
 
     WorldEffectTriggerState matching_state{};
@@ -315,7 +343,7 @@ int main() {
                matching_state.transition.transition_latched &&
                matching_state.transition.transition_timer == 0x0960U &&
                trigger_events == std::vector<char>({'s', 'c', 'e'})) != 0) {
-        return 18;
+        return 21;
     }
 
     WorldEffectTriggerState outside_state = matching_state;
