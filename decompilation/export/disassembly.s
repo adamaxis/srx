@@ -363,7 +363,7 @@
 00000B04: bne.w 0x00000b30
 00000B08: btst.b #0xd,(0x00ffdd22).l
 00000B10: beq.w 0x00000b1a
-00000B14: jsr 0x0000391a.l ; call 0000391A FUN_0000391a
+00000B14: jsr 0x0000391a.l ; call 0000391A handle_mode_action_event
 00000B1A: btst.b #0xf,(0x00ffdd22).l
 00000B22: bne.w 0x00000b62
 00000B26: tst.l (0x00ffe104).l
@@ -4222,7 +4222,7 @@
 0000A960: btst.b #0x1,(0x10,A0)
 0000A966: beq.w 0x0000a974
 0000A96A: move.l A0,-(SP) ; data Stack[-0x6]
-0000A96C: jsr 0x0000391a.l ; call 0000391A FUN_0000391a
+0000A96C: jsr 0x0000391a.l ; call 0000391A handle_mode_action_event
 0000A972: movea.l (SP)+,A0
 0000A974: bra.w 0x0000aa74
 0000A978: tst.b (0x4c,A0)
@@ -4233,7 +4233,7 @@
 0000A98E: btst.b #0x1,(0x10,A0)
 0000A994: beq.w 0x0000a9a2
 0000A998: move.l A0,-(SP) ; data Stack[-0x6]
-0000A99A: jsr 0x0000391a.l ; call 0000391A FUN_0000391a
+0000A99A: jsr 0x0000391a.l ; call 0000391A handle_mode_action_event
 0000A9A0: movea.l (SP)+,A0
 0000A9A2: bra.w 0x0000aa74
 0000A9A6: cmpi.l #0xb0d4,(0x3a,A0)
@@ -4253,7 +4253,7 @@
 0000A9EA: btst.b #0x1,(0x10,A0)
 0000A9F0: beq.w 0x0000a9fe
 0000A9F4: move.l A0,-(SP) ; data Stack[-0x6]
-0000A9F6: jsr 0x0000391a.l ; call 0000391A FUN_0000391a
+0000A9F6: jsr 0x0000391a.l ; call 0000391A handle_mode_action_event
 0000A9FC: movea.l (SP)+,A0
 0000A9FE: bra.w 0x0000aa74
 0000AA02: tst.b (0x4c,A0)
@@ -4270,7 +4270,7 @@
 0000AA34: btst.b #0x1,(0x10,A0)
 0000AA3A: beq.w 0x0000aa48
 0000AA3E: move.l A0,-(SP) ; data Stack[-0x6]
-0000AA40: jsr 0x0000391a.l ; call 0000391A FUN_0000391a
+0000AA40: jsr 0x0000391a.l ; call 0000391A handle_mode_action_event
 0000AA46: movea.l (SP)+,A0
 0000AA48: bra.w 0x0000aa74
 0000AA4C: bsr.w 0x0000b330 ; call 0000B330 enter_entity_behavior_transition
@@ -5518,7 +5518,7 @@
 0000C34E: bra.w 0x0000c2aa
 0000C352: btst.b #0xd,(0x00ffdd22).l
 0000C35A: beq.w 0x0000c368
-0000C35E: jsr 0x0000391a.l ; call 0000391A FUN_0000391a
+0000C35E: jsr 0x0000391a.l ; call 0000391A handle_mode_action_event
 0000C364: bra.w 0x0000c2d4
 0000C368: btst.b #0xf,(0x00ffdd22).l
 0000C370: beq.w 0x0000c2d4
@@ -5643,7 +5643,7 @@
 0000C7BA: sub.l D1,(0x00fffbfe).l
 0000C7C0: jsr 0x0001f246.l ; call 0001F246 FUN_0001f246
 0000C7C6: jsr 0x000038fa.l ; call 000038FA run_entity_animation_triplet
-0000C7CC: jsr 0x0000391a.l ; call 0000391A FUN_0000391a
+0000C7CC: jsr 0x0000391a.l ; call 0000391A handle_mode_action_event
 0000C7D2: move.l (0x00fffc1e).l,D0
 0000C7D8: btst.l #0x0,D0
 0000C7DC: beq.w 0x0000c7ec
@@ -5672,7 +5672,7 @@
 0000C846: move.l A0,D0
 0000C848: cmp.l (0x00fffc04).l,D0
 0000C84E: bne.w 0x0000c858
-0000C852: jsr 0x0000391a.l ; call 0000391A FUN_0000391a
+0000C852: jsr 0x0000391a.l ; call 0000391A handle_mode_action_event
 0000C858: lea (0xff0300).l,A0 ; data 00ff0300
 0000C85E: btst.b #0x0,(0x10,A0)
 0000C864: beq.w 0x0000c8a2
@@ -5687,7 +5687,7 @@
 0000C890: move.l A0,D0
 0000C892: cmp.l (0x00fffc04).l,D0
 0000C898: bne.w 0x0000c8a2
-0000C89C: jsr 0x0000391a.l ; call 0000391A FUN_0000391a
+0000C89C: jsr 0x0000391a.l ; call 0000391A handle_mode_action_event
 0000C8A2: jsr 0x00003404.l ; call 00003404 upload_field_asset_setup
 0000C8A8: jsr 0x000038fa.l ; call 000038FA run_entity_animation_triplet
 0000C8AE: rts
@@ -5749,7 +5749,7 @@
 0000C9E6: bra.w 0x0000c936
 0000C9EA: btst.b #0xd,(0x00ffdd22).l
 0000C9F2: beq.w 0x0000c9fe
-0000C9F6: jsr 0x0000391a.l ; call 0000391A FUN_0000391a
+0000C9F6: jsr 0x0000391a.l ; call 0000391A handle_mode_action_event
 0000C9FC: bra.b 0x0000c982
 0000C9FE: btst.b #0xf,(0x00ffdd22).l
 0000CA06: beq.w 0x0000c982
@@ -5864,7 +5864,7 @@
 0000CFE6: bra.w 0x0000cf4e
 0000CFEA: btst.b #0xd,(0x00ffdd22).l
 0000CFF2: beq.b 0x0000cf82
-0000CFF4: jsr 0x0000391a.l ; call 0000391A FUN_0000391a
+0000CFF4: jsr 0x0000391a.l ; call 0000391A handle_mode_action_event
 0000CFFA: bra.b 0x0000cf82
 0000CFFC: rts
 0000CFFE: lea (0xd29d6).l,A0 ; data 000d29d6
@@ -6470,7 +6470,7 @@
 0000E00A: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 0000E010: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 0000E016: jsr 0x0000195c.l ; call 0000195C sample_controller_input
-0000E01C: bsr.w 0x0000e6f4 ; call 0000E6F4 FUN_0000e6f4
+0000E01C: bsr.w 0x0000e6f4 ; call 0000E6F4 service_mode_world_state
 0000E020: move.w (0x00ffdd22).l,D0w
 0000E026: andi.w #-0x100,D0w
 0000E02A: beq.b 0x0000e00a
@@ -7221,7 +7221,7 @@
 0000F5CE: bra.b 0x0000f592
 0000F5D0: btst.b #0xd,(0x00ffdd22).l
 0000F5D8: beq.w 0x0000f5e6
-0000F5DC: jsr 0x0000391a.l ; call 0000391A FUN_0000391a
+0000F5DC: jsr 0x0000391a.l ; call 0000391A handle_mode_action_event
 0000F5E2: bra.w 0x0000f536
 0000F5E6: btst.b #0xf,(0x00ffdd22).l
 0000F5EE: beq.w 0x0000f536
@@ -7350,7 +7350,7 @@
 0000F97E: bra.b 0x0000f918
 0000F980: btst.b #0xd,(0x00ffdd22).l
 0000F988: beq.w 0x0000f996
-0000F98C: jsr 0x0000391a.l ; call 0000391A FUN_0000391a
+0000F98C: jsr 0x0000391a.l ; call 0000391A handle_mode_action_event
 0000F992: bra.w 0x0000f8a0
 0000F996: btst.b #0xf,(0x00ffdd22).l
 0000F99E: beq.w 0x0000f8a0
@@ -7462,7 +7462,7 @@
 0000FB80: bra.b 0x0000fb72
 0000FB82: btst.b #0xd,(0x00ffdd22).l
 0000FB8A: beq.w 0x0000fb98
-0000FB8E: jsr 0x0000391a.l ; call 0000391A FUN_0000391a
+0000FB8E: jsr 0x0000391a.l ; call 0000391A handle_mode_action_event
 0000FB94: bra.w 0x0000fada
 0000FB98: btst.b #0xf,(0x00ffdd22).l
 0000FBA0: beq.w 0x0000fada
@@ -8503,7 +8503,7 @@
 00010D3C: bne.w 0x00010d4a
 00010D40: btst.b #0x4,(0x10,A0)
 00010D46: beq.w 0x00010d50
-00010D4A: jsr 0x0000391a.l ; call 0000391A FUN_0000391a
+00010D4A: jsr 0x0000391a.l ; call 0000391A handle_mode_action_event
 00010D50: move.b #-0x1,(0x00fff09d).l
 00010D58: clr.b (0x00fff0b1).l
 00010D5E: clr.w (0x00fff112).l
@@ -8582,7 +8582,7 @@
 00010ED4: bra.w 0x00010e4e
 00010ED8: btst.b #0xd,(0x00ffdd22).l
 00010EE0: beq.w 0x00010f16
-00010EE4: jsr 0x0000391a.l ; call 0000391A FUN_0000391a
+00010EE4: jsr 0x0000391a.l ; call 0000391A handle_mode_action_event
 00010EEA: jsr 0x00000e34.l ; call 00000E34 reset_vdp_upload_state
 00010EF0: move.b #0x6,(0x00fff0d0).l
 00010EF8: clr.b (0x00fff0d1).l
@@ -8599,7 +8599,7 @@
 00010F2E: bne.w 0x00010f3c
 00010F32: btst.b #0x4,(0x10,A0)
 00010F38: beq.w 0x00010f42
-00010F3C: jsr 0x0000391a.l ; call 0000391A FUN_0000391a
+00010F3C: jsr 0x0000391a.l ; call 0000391A handle_mode_action_event
 00010F42: clr.b (0x00fff09d).l
 00010F48: clr.b (0x00fff0b1).l
 00010F4E: rts
@@ -10816,11 +10816,11 @@
 0001352E: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00013534: tst.b (0x00fff09e).l
 0001353A: bne.w 0x00013542
-0001353E: bsr.w 0x0000e6f4 ; call 0000E6F4 FUN_0000e6f4
+0001353E: bsr.w 0x0000e6f4 ; call 0000E6F4 service_mode_world_state
 00013542: tst.b (0x00ffe18b).l
 00013548: beq.w 0x000135d8
 0001354C: move.b #0x4,(0x00fff09c).l
-00013554: bsr.w 0x00013726 ; call 00013726 FUN_00013726
+00013554: bsr.w 0x00013726 ; call 00013726 render_mode_selection
 00013558: move.w #0x40,D7w
 0001355C: move.w D7w,-(SP) ; data Stack[-0x2]
 0001355E: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
@@ -10828,13 +10828,13 @@
 0001356A: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00013570: tst.b (0x00fff09e).l
 00013576: bne.w 0x0001357e
-0001357A: bsr.w 0x0000e6f4 ; call 0000E6F4 FUN_0000e6f4
+0001357A: bsr.w 0x0000e6f4 ; call 0000E6F4 service_mode_world_state
 0001357E: move.w (SP)+,D7w
 00013580: tst.w (0x00ffddc2).l
 00013586: bne.w 0x000135d0
 0001358A: dbf D7w,0x0001355c
 0001358E: move.b #0x2,(0x00fff09c).l
-00013596: bsr.w 0x00013726 ; call 00013726 FUN_00013726
+00013596: bsr.w 0x00013726 ; call 00013726 render_mode_selection
 0001359A: move.w #0x60,D7w
 0001359E: move.w D7w,-(SP) ; data Stack[-0x2]
 000135A0: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
@@ -10842,20 +10842,20 @@
 000135AC: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 000135B2: tst.b (0x00fff09e).l
 000135B8: bne.w 0x000135c0
-000135BC: bsr.w 0x0000e6f4 ; call 0000E6F4 FUN_0000e6f4
+000135BC: bsr.w 0x0000e6f4 ; call 0000E6F4 service_mode_world_state
 000135C0: move.w (SP)+,D7w
 000135C2: tst.w (0x00ffddc2).l
 000135C8: bne.w 0x000135d0
 000135CC: dbf D7w,0x0001359e
 000135D0: clr.b (0x00fff09e).l
 000135D6: rts
-000135D8: bsr.w 0x00013726 ; call 00013726 FUN_00013726
+000135D8: bsr.w 0x00013726 ; call 00013726 render_mode_selection
 000135DC: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 000135E2: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 000135E8: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 000135EE: tst.b (0x00fff09e).l
 000135F4: bne.w 0x000135fc
-000135F8: bsr.w 0x0000e6f4 ; call 0000E6F4 FUN_0000e6f4
+000135F8: bsr.w 0x0000e6f4 ; call 0000E6F4 service_mode_world_state
 000135FC: btst.b #0x8,(0x00ffdd22).l
 00013604: beq.w 0x0001360c
 00013608: bra.w 0x00013618
@@ -10864,7 +10864,7 @@
 00013618: subq.b #0x1,(0x00fff09c).l
 0001361E: bpl.w 0x0001362a
 00013622: move.b #0x6,(0x00fff09c).l
-0001362A: bsr.w 0x00013726 ; call 00013726 FUN_00013726
+0001362A: bsr.w 0x00013726 ; call 00013726 render_mode_selection
 0001362E: btst.b #0xa,(0x00ffdd22).l
 00013636: beq.w 0x0001363e
 0001363A: bra.w 0x0001364a
@@ -10874,10 +10874,10 @@
 00013650: cmpi.b #0x7,(0x00fff09c).l
 00013658: bmi.w 0x00013662
 0001365C: clr.b (0x00fff09c).l
-00013662: bsr.w 0x00013726 ; call 00013726 FUN_00013726
+00013662: bsr.w 0x00013726 ; call 00013726 render_mode_selection
 00013666: btst.b #0xe,(0x00ffdd22).l
 0001366E: beq.w 0x00013684
-00013672: jsr 0x00020714.l ; call 00020714 FUN_00020714
+00013672: jsr 0x00020714.l ; call 00020714 finalize_mode_exit
 00013678: move.b #-0x1,(0x00fff0dc).l
 00013680: bra.w 0x000136b6
 00013684: btst.b #0xc,(0x00ffdd22).l
@@ -10885,7 +10885,7 @@
 00013690: bra.b 0x00013672
 00013692: btst.b #0xd,(0x00ffdd22).l
 0001369A: beq.w 0x000136a4
-0001369E: jsr 0x0000391a.l ; call 0000391A FUN_0000391a
+0001369E: jsr 0x0000391a.l ; call 0000391A handle_mode_action_event
 000136A4: btst.b #0xf,(0x00ffdd22).l
 000136AC: beq.w 0x000135dc
 000136B0: jsr 0x00010af0.l ; call 00010AF0 transfer_menu_asset_batch_four
@@ -10994,7 +10994,7 @@
 00013834: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 0001383A: tst.b (0x00fff09e).l
 00013840: bne.w 0x00013848
-00013844: bsr.w 0x0000e6f4 ; call 0000E6F4 FUN_0000e6f4
+00013844: bsr.w 0x0000e6f4 ; call 0000E6F4 service_mode_world_state
 00013848: dbf D6w,0x0001382e
 0001384C: movem.l (SP)+,{ D0 D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 00013850: dbf D6w,0x00013752
@@ -27455,7 +27455,7 @@
 00059A76: rts
 00059A78: btst.b #0xd,(0x00ffdd22).l
 00059A80: beq.w 0x00059a8c
-00059A84: jsr 0x0000391a.l ; call 0000391A FUN_0000391a
+00059A84: jsr 0x0000391a.l ; call 0000391A handle_mode_action_event
 00059A8A: bra.b 0x00059a0e
 00059A8C: btst.b #0xf,(0x00ffdd22).l
 00059A94: beq.w 0x00059a0e
@@ -27524,7 +27524,7 @@
 00059D24: jsr 0x00000ffe.l ; call 00000FFE clear_and_fill_plane_a
 00059D2A: jsr 0x000012f6.l ; call 000012F6 advance_title_palette_fade
 00059D30: move.b #0x1,(0x00fff09e).l
-00059D38: jmp 0x000134d2.l ; call 000134D2 FUN_000134d2
+00059D38: jmp 0x000134d2.l ; call 000134D2 run_post_intro_mode
 00059D7C: jsr 0x0000c0c2.l ; call 0000C0C2 load_title_font
 00059D82: move.l #0x5adf0,(0x00ffdd32).l
 00059D8C: move.w (0x0005adf0).l,(0x00ffdd36).l

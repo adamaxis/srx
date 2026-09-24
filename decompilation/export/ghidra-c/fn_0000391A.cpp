@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000391A
-// Name: FUN_0000391a
+// Name: handle_mode_action_event
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000033AA FUN_000033aa
@@ -9,7 +9,7 @@
 //   0x000530DE service_audio_if_enabled
 
 
-void FUN_0000391a(void)
+void handle_mode_action_event(void)
 
 {
   byte *pbVar1;

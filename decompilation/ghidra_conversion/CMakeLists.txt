@@ -1128,3 +1128,16 @@ target_link_libraries(shadowrun_ghidra_title_intro_animation_test
     PRIVATE shadowrun_ghidra_title_intro_animation)
 add_test(NAME shadowrun_ghidra_title_intro_animation
          COMMAND shadowrun_ghidra_title_intro_animation_test)
+
+add_library(shadowrun_ghidra_post_intro_mode STATIC
+    src/post_intro_mode_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_post_intro_mode PUBLIC include)
+
+add_executable(shadowrun_ghidra_post_intro_mode_test
+    tests/post_intro_mode_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_post_intro_mode_test
+    PRIVATE shadowrun_ghidra_post_intro_mode)
+add_test(NAME shadowrun_ghidra_post_intro_mode
+         COMMAND shadowrun_ghidra_post_intro_mode_test)

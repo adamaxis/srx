@@ -6,7 +6,7 @@
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
 //   0x0000195C sample_controller_input
-//   0x0000391A FUN_0000391a
+//   0x0000391A handle_mode_action_event
 //   0x0000C0DA render_title_text_source
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x0000C3E6 FUN_0000c3e6
@@ -40,7 +40,7 @@ void FUN_0000cf38(void)
       }
       if ((DAT_00ffdd22._0_1_ & 0x40) != 0) break;
       if ((DAT_00ffdd22._0_1_ & 0x20) != 0) {
-        FUN_0000391a();
+        handle_mode_action_event();
       }
     }
     FUN_0000c436();

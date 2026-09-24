@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00003404 upload_field_asset_setup
 //   0x000038FA run_entity_animation_triplet
-//   0x0000391A FUN_0000391a
+//   0x0000391A handle_mode_action_event
 //   0x0000C8B0 apply_byte_counter_delta_with_negative_floor
 //   0x0001E514 FUN_0001e514
 //   0x00059798 serialize_runner_record_population
@@ -23,7 +23,7 @@ void FUN_0000c802(void)
     apply_byte_counter_delta_with_negative_floor();
     FUN_0001e514();
     if (extraout_A0 == DAT_00fffc04) {
-      FUN_0000391a();
+      handle_mode_action_event();
     }
   }
   if (((DAT_00ff0310 & 1) != 0) && ((DAT_00ff034c == '\0' || (DAT_00ff039c == '\0')))) {
@@ -31,7 +31,7 @@ void FUN_0000c802(void)
     apply_byte_counter_delta_with_negative_floor();
     FUN_0001e514();
     if (extraout_A0_00 == DAT_00fffc04) {
-      FUN_0000391a();
+      handle_mode_action_event();
     }
   }
   upload_field_asset_setup();

@@ -18,7 +18,7 @@
 //   0x00002FA4 FUN_00002fa4
 //   0x00003084 run_field_loop
 //   0x00003168 FUN_00003168
-//   0x0000391A FUN_0000391a
+//   0x0000391A handle_mode_action_event
 //   0x00003A1C FUN_00003a1c
 //   0x000042B0 initialize_joshua_archetype_selection
 //   0x00004618 FUN_00004618
@@ -216,7 +216,7 @@ LAB_00000a72:
           DAT_00ffef14 = DAT_00ffef14 | 0xe;
         } while (((DAT_00ffe18b != '\0') || (DAT_00ffe166 != 0)) || (_DAT_00ffdfe8 != 0));
         if ((DAT_00ffdd22 & 0x2000) != 0) {
-          FUN_0000391a();
+          handle_mode_action_event();
         }
         if ((DAT_00ffdd22 & 0x8000) != 0) {
           FUN_0005315e();

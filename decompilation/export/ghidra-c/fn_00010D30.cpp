@@ -7,7 +7,7 @@
 //   0x00000BF2 latch_controller_events
 //   0x00000E34 reset_vdp_upload_state
 //   0x0000195C sample_controller_input
-//   0x0000391A FUN_0000391a
+//   0x0000391A handle_mode_action_event
 //   0x0000C0C2 load_title_font
 //   0x00010F50 FUN_00010f50
 //   0x000110BC FUN_000110bc
@@ -38,7 +38,7 @@ code_r0x00010d30:
   _DAT_00fff0d0 = uVar1;
   if (((*(byte *)(DAT_00fffc04 + 0x10) & 0x40) != 0) ||
      ((*(byte *)(DAT_00fffc04 + 0x10) & 0x10) != 0)) {
-    FUN_0000391a();
+    handle_mode_action_event();
   }
   DAT_00fff09d = 0xff;
   DAT_00fff0b1 = '\0';
@@ -81,7 +81,7 @@ LAB_00010e20:
       if ((DAT_00ffdd22._0_1_ & 2) != 0) goto LAB_00010e20;
       if (((DAT_00ffdd22._0_1_ & 0x40) == 0) && ((DAT_00ffdd22._0_1_ & 0x10) == 0)) {
         if ((DAT_00ffdd22._0_1_ & 0x20) != 0) {
-          FUN_0000391a();
+          handle_mode_action_event();
           reset_vdp_upload_state();
           _DAT_00fff0d0 = 0x600;
           FUN_000114a0();
@@ -94,7 +94,7 @@ LAB_00010e20:
 LAB_00010f22:
           if (((*(byte *)(DAT_00fffc04 + 0x10) & 0x40) != 0) ||
              ((*(byte *)(DAT_00fffc04 + 0x10) & 0x10) != 0)) {
-            FUN_0000391a();
+            handle_mode_action_event();
           }
           DAT_00fff09d = 0;
           DAT_00fff0b1 = 0;

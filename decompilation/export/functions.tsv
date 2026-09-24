@@ -111,7 +111,7 @@ entry	name	size	callingConvention	decompileStatus	file
 000037EC	FUN_000037ec	192	unknown	ok	ghidra-c/fn_000037EC.cpp
 000038AC	service_entity_ammo	78	unknown	ok	ghidra-c/fn_000038AC.cpp
 000038FA	run_entity_animation_triplet	32	unknown	ok	ghidra-c/fn_000038FA.cpp
-0000391A	FUN_0000391a	216	unknown	ok	ghidra-c/fn_0000391A.cpp
+0000391A	handle_mode_action_event	216	unknown	ok	ghidra-c/fn_0000391A.cpp
 000039F2	refresh_field_animation_assets	42	unknown	ok	ghidra-c/fn_000039F2.cpp
 00003A1C	FUN_00003a1c	116	unknown	ok	ghidra-c/fn_00003A1C.cpp
 00003A90	FUN_00003a90	142	unknown	ok	ghidra-c/fn_00003A90.cpp
@@ -239,7 +239,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0000DA4A	FUN_0000da4a	32	unknown	ok	ghidra-c/fn_0000DA4A.cpp
 0000E00A	wait_for_controller_event	42	unknown	ok	ghidra-c/fn_0000E00A.cpp
 0000E660	FUN_0000e660	148	unknown	ok	ghidra-c/fn_0000E660.cpp
-0000E6F4	FUN_0000e6f4	212	unknown	ok	ghidra-c/fn_0000E6F4.cpp
+0000E6F4	service_mode_world_state	212	unknown	ok	ghidra-c/fn_0000E6F4.cpp
 0000E7C8	FUN_0000e7c8	216	unknown	ok	ghidra-c/fn_0000E7C8.cpp
 0000E8A0	sample_terrain_collision_tiles	300	unknown	ok	ghidra-c/fn_0000E8A0.cpp
 0000E9EE	contains_terrain_object_bounds	72	unknown	ok	ghidra-c/fn_0000E9EE.cpp
@@ -350,9 +350,9 @@ entry	name	size	callingConvention	decompileStatus	file
 00013228	FUN_00013228	382	unknown	ok	ghidra-c/fn_00013228.cpp
 000133A6	FUN_000133a6	192	unknown	ok	ghidra-c/fn_000133A6.cpp
 00013466	FUN_00013466	108	unknown	ok	ghidra-c/fn_00013466.cpp
-000134D2	FUN_000134d2	524	unknown	ok	ghidra-c/fn_000134D2.cpp
+000134D2	run_post_intro_mode	524	unknown	ok	ghidra-c/fn_000134D2.cpp
 000136DE	initialize_scene_mode_state	72	unknown	ok	ghidra-c/fn_000136DE.cpp
-00013726	FUN_00013726	334	unknown	ok	ghidra-c/fn_00013726.cpp
+00013726	render_mode_selection	334	unknown	ok	ghidra-c/fn_00013726.cpp
 00013874	FUN_00013874	68	unknown	ok	ghidra-c/fn_00013874.cpp
 000138B8	FUN_000138b8	76	unknown	ok	ghidra-c/fn_000138B8.cpp
 00013904	FUN_00013904	344	unknown	ok	ghidra-c/fn_00013904.cpp
@@ -665,7 +665,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0001FA78	FUN_0001fa78	776	unknown	ok	ghidra-c/fn_0001FA78.cpp
 0001FD80	FUN_0001fd80	2228	unknown	ok	ghidra-c/fn_0001FD80.cpp
 00020634	FUN_00020634	224	unknown	ok	ghidra-c/fn_00020634.cpp
-00020714	FUN_00020714	86	unknown	ok	ghidra-c/fn_00020714.cpp
+00020714	finalize_mode_exit	86	unknown	ok	ghidra-c/fn_00020714.cpp
 0002196C	FUN_0002196c	22	unknown	ok	ghidra-c/fn_0002196C.cpp
 00021A4E	FUN_00021a4e	24	unknown	ok	ghidra-c/fn_00021A4E.cpp
 00022874	FUN_00022874	36	unknown	ok	ghidra-c/fn_00022874.cpp

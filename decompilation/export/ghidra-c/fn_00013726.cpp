@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00013726
-// Name: FUN_00013726
+// Name: render_mode_selection
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -8,10 +8,10 @@
 //   0x00000E9C make_vdp_transfer_command
 //   0x0000C0DA render_title_text_source
 //   0x0000C3E6 FUN_0000c3e6
-//   0x0000E6F4 FUN_0000e6f4
+//   0x0000E6F4 service_mode_world_state
 
 
-void FUN_00013726(void)
+void render_mode_selection(void)
 
 {
   word wVar1;
@@ -103,7 +103,7 @@ void FUN_00013726(void)
                       puVar12,unaff_A4,unaff_A5w,unaff_A6w);
       latch_controller_events();
       if (DAT_00fff09e == '\0') {
-        FUN_0000e6f4();
+        service_mode_world_state();
       }
       sVar8 = sVar8 + -1;
     } while (sVar8 != -1);

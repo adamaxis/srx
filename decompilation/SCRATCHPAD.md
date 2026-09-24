@@ -602,6 +602,15 @@ sets the display-dirty bit. The eight child implementations remain typed
 boundaries; this conversion captures the dispatcher rather than duplicating
 the native port's already-defended SAT/map choreography.
 
+The post-intro handoff at `0x134D2` is now `run_post_intro_mode`. Its typed
+state preserves the initial resource/HUD frame, the alternate branch's mode
+`4`/mode `2` selection and exact `0x41`/`0x61` frame windows, the normal
+seven-entry cursor's `0x09`/`0x06` directional wrapping, the `0x50` exit,
+`0x20` action, and `0x80` transfer events, and the final
+`selected_mode != current_mode` scene-transition gate. The source services at
+`0x13726`, `0x20714`, `0x0391A`, and `0x0E6F4` now have reviewed aliases;
+rendering, world updates, and resource transfers remain explicit callbacks.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames

@@ -23,7 +23,7 @@ void FUN_0000c7f8(void)
       apply_byte_counter_delta_with_negative_floor();
       FUN_0001e514();
       if (extraout_A0 == DAT_00fffc04) {
-        FUN_0000391a();
+        handle_mode_action_event();
       }
     }
     if (((DAT_00ff0310 & 1) != 0) && ((DAT_00ff034c == '\0' || (DAT_00ff039c == '\0')))) {
@@ -31,7 +31,7 @@ void FUN_0000c7f8(void)
       apply_byte_counter_delta_with_negative_floor();
       FUN_0001e514();
       if (extraout_A0_00 == DAT_00fffc04) {
-        FUN_0000391a();
+        handle_mode_action_event();
       }
     }
     upload_field_asset_setup();
@@ -81,7 +81,7 @@ LAB_0000c716:
   DAT_00fffbfe = DAT_00fffbfe - uVar1;
   FUN_0001f246();
   run_entity_animation_triplet();
-  FUN_0000391a();
+  handle_mode_action_event();
   if ((DAT_00fffc1e & 1) == 0) {
     initialize_field_mode_profile_b();
     return;

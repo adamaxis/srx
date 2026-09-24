@@ -7,7 +7,7 @@
 //   0x0000102A clear_and_fill_plane_b
 //   0x000012F6 advance_title_palette_fade
 //   0x00001406 prepare_title_resources
-//   0x000134D2 FUN_000134d2
+//   0x000134D2 run_post_intro_mode
 
 
 void enter_post_intro_mode(void)
@@ -18,7 +18,7 @@ void enter_post_intro_mode(void)
   clear_and_fill_plane_a();
   advance_title_palette_fade();
   DAT_00fff09e = 1;
-  FUN_000134d2();
+  run_post_intro_mode();
   return;
 }
 

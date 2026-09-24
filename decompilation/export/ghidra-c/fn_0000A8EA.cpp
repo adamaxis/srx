@@ -3,7 +3,7 @@
 // Name: FUN_0000a8ea
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000391A FUN_0000391a
+//   0x0000391A handle_mode_action_event
 //   0x0000AB02 FUN_0000ab02
 //   0x0000AC5E FUN_0000ac5e
 //   0x0000AC84 FUN_0000ac84
@@ -81,7 +81,7 @@ LAB_0000a9be:
                   FUN_0000ab02();
                   puVar5 = extraout_A0_03;
                   if ((*(byte *)(extraout_A0_03 + 8) & 2) != 0) {
-                    FUN_0000391a();
+                    handle_mode_action_event();
                   }
                   goto LAB_0000aa74;
                 }
@@ -97,7 +97,7 @@ LAB_0000a9be:
                   if (((puVar5[7] != 0xc) || (puVar5[0xb] != 0x80)) &&
                      (FUN_0000ab02(), puVar5 = extraout_A0_04,
                      (*(byte *)(extraout_A0_04 + 8) & 2) != 0)) {
-                    FUN_0000391a();
+                    handle_mode_action_event();
                   }
                   goto LAB_0000aa74;
                 }
@@ -117,7 +117,7 @@ LAB_0000aa4c:
             FUN_0000ab02();
             puVar5 = extraout_A0_00;
             if ((*(byte *)(extraout_A0_00 + 8) & 2) != 0) {
-              FUN_0000391a();
+              handle_mode_action_event();
             }
           }
           else {
@@ -128,7 +128,7 @@ LAB_0000aa4c:
             FUN_0000ab02();
             puVar5 = extraout_A0_01;
             if ((*(byte *)(extraout_A0_01 + 8) & 2) != 0) {
-              FUN_0000391a();
+              handle_mode_action_event();
             }
           }
         }

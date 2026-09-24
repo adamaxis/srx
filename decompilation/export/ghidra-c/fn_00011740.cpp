@@ -19,7 +19,7 @@
 //   0x000036FC FUN_000036fc
 //   0x000037EC FUN_000037ec
 //   0x000038FA run_entity_animation_triplet
-//   0x0000391A FUN_0000391a
+//   0x0000391A handle_mode_action_event
 //   0x000039F2 refresh_field_animation_assets
 //   0x0000C0DA render_title_text_source
 //   0x0000C216 FUN_0000c216
@@ -588,7 +588,7 @@ LAB_0000c2aa:
           }
         }
         else {
-          FUN_0000391a();
+          handle_mode_action_event();
         }
       }
     } while( true );

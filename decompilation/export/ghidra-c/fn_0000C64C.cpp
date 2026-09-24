@@ -6,7 +6,7 @@
 //   0x00002A32 initialize_field_mode_profile_a
 //   0x00002A44 initialize_field_mode_profile_b
 //   0x000038FA run_entity_animation_triplet
-//   0x0000391A FUN_0000391a
+//   0x0000391A handle_mode_action_event
 //   0x0000C802 FUN_0000c802
 //   0x0001DED8 FUN_0001ded8
 //   0x0001E68C FUN_0001e68c
@@ -64,7 +64,7 @@ LAB_0000c716:
   DAT_00fffbfe = DAT_00fffbfe - uVar1;
   FUN_0001f246();
   run_entity_animation_triplet();
-  FUN_0000391a();
+  handle_mode_action_event();
   if ((DAT_00fffc1e & 1) == 0) {
     initialize_field_mode_profile_b();
     return;

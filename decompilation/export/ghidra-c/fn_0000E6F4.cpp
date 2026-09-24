@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x0000E6F4
-// Name: FUN_0000e6f4
+// Name: service_mode_world_state
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
 //   0x00001232 write_vdp_grid
 
 
-void FUN_0000e6f4(void)
+void service_mode_world_state(void)
 
 {
   bool bVar1;
