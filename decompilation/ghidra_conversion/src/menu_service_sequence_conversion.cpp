@@ -81,4 +81,15 @@ void render_menu_row(const std::function<void()>& write_grid,
     }
 }
 
+std::uint64_t prepare_menu_dialog(
+    const std::function<std::uint64_t()>& prepare_dialog,
+    const std::function<void()>& service_dialog) {
+    const auto result = prepare_dialog ? prepare_dialog() : 0U;
+    if (service_dialog) {
+        service_dialog();
+        service_dialog();
+    }
+    return result;
+}
+
 } // namespace shadowrun::ghidra_conversion

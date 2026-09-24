@@ -961,6 +961,9 @@ submission as two explicit host callbacks.
 
 The `0x11928` menu-row wrapper now retains its grid-before-row render order.
 
+The `0x11ABE` dialog wrapper now preserves the preparation result while
+running the shared service exactly twice.
+
 The compact row-writer family is now typed as well. `0x1184` emits one masked
 row with optional `0x8F80`/`0x8F02` display-increment controls, `0x11C0`
 repeats a source row at `0x80`-byte destination strides, and `0x11F6`

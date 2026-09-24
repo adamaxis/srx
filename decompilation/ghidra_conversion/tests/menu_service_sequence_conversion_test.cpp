@@ -52,5 +52,16 @@ int main() {
     if (order != std::vector<int>{12, 13}) {
         return 7;
     }
+
+    order.clear();
+    if (prepare_menu_dialog(
+            [&order] {
+                order.push_back(14);
+                return std::uint64_t{0x12345678U};
+            },
+            [&order] { order.push_back(15); }) != 0x12345678U ||
+        order != std::vector<int>{14, 15, 15}) {
+        return 8;
+    }
     return 0;
 }

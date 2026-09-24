@@ -36,4 +36,10 @@ void prepare_menu_row_grid(const std::function<void()>& prepare_row,
 void render_menu_row(const std::function<void()>& write_grid,
                      const std::function<void()>& render_row);
 
+// ROM 0x11ABE: preserve the preparation result while applying the shared
+// dialog service twice.
+std::uint64_t prepare_menu_dialog(
+    const std::function<std::uint64_t()>& prepare_dialog,
+    const std::function<void()>& service_dialog);
+
 } // namespace shadowrun::ghidra_conversion
