@@ -49,4 +49,16 @@ void write_menu_grid(const std::function<void()>& write_grid) {
     }
 }
 
+void write_menu_grid_quad(const std::function<void()>& write_grid,
+                          const std::function<void()>& refresh_metadata) {
+    for (int index = 0; index < 4; ++index) {
+        if (write_grid) {
+            write_grid();
+        }
+    }
+    if (refresh_metadata) {
+        refresh_metadata();
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion

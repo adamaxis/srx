@@ -24,4 +24,8 @@ void reset_and_upload_menu_tile_block(
 // ROM 0x11678: submit one menu grid asset.
 void write_menu_grid(const std::function<void()>& write_grid);
 
+// ROM 0x116C4: write four menu grids, then refresh the shared menu metadata.
+void write_menu_grid_quad(const std::function<void()>& write_grid,
+                          const std::function<void()>& refresh_metadata);
+
 } // namespace shadowrun::ghidra_conversion

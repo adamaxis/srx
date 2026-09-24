@@ -31,5 +31,12 @@ int main() {
     if (order != std::vector<int>{5, 6, 7}) {
         return 4;
     }
+
+    order.clear();
+    write_menu_grid_quad([&order] { order.push_back(8); },
+                         [&order] { order.push_back(9); });
+    if (order != std::vector<int>{8, 8, 8, 8, 9}) {
+        return 5;
+    }
     return 0;
 }
