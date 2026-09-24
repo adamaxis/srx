@@ -8976,7 +8976,7 @@
 000115D2: move.w #0x1,(0x00ffd980).l
 000115DA: bset.b #0x1,(0x00ffef14).l
 000115E2: bsr.w 0x00012c36 ; call 00012C36 FUN_00012c36
-000115E6: bsr.w 0x00012148 ; call 00012148 FUN_00012148
+000115E6: bsr.w 0x00012148 ; call 00012148 read_entity_action_code
 000115EA: beq.w 0x0001160c
 000115EE: bsr.w 0x00012a8c ; call 00012A8C FUN_00012a8c
 000115F2: cmpi.b #0x10,D0b
@@ -9077,7 +9077,7 @@
 00011766: movea.l (A0),A0 ; data 000d2a0a
 00011768: jmp (A0)
 0001176A: clr.b (0x00fff09f).l
-00011770: bsr.w 0x00012148 ; call 00012148 FUN_00012148
+00011770: bsr.w 0x00012148 ; call 00012148 read_entity_action_code
 00011774: bne.w 0x0001177a
 00011778: rts
 0001177A: move.w (0x00fff0d0).l,-(SP)
@@ -9634,7 +9634,7 @@
 0001215C: add.b (0x00fff0d0).l,D7b
 00012162: move.b (0x66,A0,D7w*0x1),D0b
 00012166: rts
-00012168: bsr.b 0x00012148 ; call 00012148 FUN_00012148
+00012168: bsr.b 0x00012148 ; call 00012148 read_entity_action_code
 0001216A: tst.b (0x00fff09f).l
 00012170: bgt.w 0x00012298
 00012174: cmpi.b #0x14,D0b
@@ -9800,7 +9800,7 @@
 00012432: lea (0xfff0ba).l,A0 ; data 00fff0ba
 00012438: adda.l D0,A0
 0001243A: movea.l (A0),A1
-0001243C: bsr.w 0x00012148 ; call 00012148 FUN_00012148
+0001243C: bsr.w 0x00012148 ; call 00012148 read_entity_action_code
 00012440: subi.w #0x11,D0w
 00012444: bmi.w 0x000124d4
 00012448: beq.w 0x0001247e
@@ -9918,7 +9918,7 @@
 0001262A: addq.w #0x1,D1w
 0001262C: andi.l #0xffff,D1
 00012632: rts
-00012634: bsr.w 0x00012148 ; call 00012148 FUN_00012148
+00012634: bsr.w 0x00012148 ; call 00012148 read_entity_action_code
 00012638: cmpi.w #0x7,D7w
 0001263C: bne.w 0x0001267e
 00012640: cmpi.b #0x29,(0x6d,A0)
@@ -9939,7 +9939,7 @@
 0001268E: clr.b (0x00fff114).l
 00012694: bsr.w 0x000127b0 ; call 000127B0 FUN_000127b0
 00012698: bsr.w 0x00012c42 ; call 00012C42 FUN_00012c42
-0001269C: bsr.w 0x00012148 ; call 00012148 FUN_00012148
+0001269C: bsr.w 0x00012148 ; call 00012148 read_entity_action_code
 000126A0: movea.l (0x00fffc04).l,A0
 000126A6: cmp.b (0x56,A0),D7b
 000126AA: bne.w 0x000126d0
@@ -9971,7 +9971,7 @@
 00012732: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00012738: tst.b (0x00fff114).l
 0001273E: bmi.w 0x0001274e
-00012742: bsr.w 0x00012148 ; call 00012148 FUN_00012148
+00012742: bsr.w 0x00012148 ; call 00012148 read_entity_action_code
 00012746: bsr.w 0x0001275c ; call 0001275C FUN_0001275c
 0001274A: bsr.w 0x00011624 ; call 00011624 FUN_00011624
 0001274E: rts
@@ -10032,7 +10032,7 @@
 0001282A: move.w #0x0,D2w
 0001282E: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00012834: rts
-00012836: bsr.w 0x00012148 ; call 00012148 FUN_00012148
+00012836: bsr.w 0x00012148 ; call 00012148 read_entity_action_code
 0001283A: cmpi.b #0x17,D0b
 0001283E: bmi.w 0x0001286a
 00012842: cmpi.b #0x2c,D0b
@@ -10091,7 +10091,7 @@
 00012938: move.l #0xc928,D4
 0001293E: bsr.w 0x000110e8 ; call 000110E8 FUN_000110e8
 00012942: exg A0,A6
-00012944: bsr.w 0x00012148 ; call 00012148 FUN_00012148
+00012944: bsr.w 0x00012148 ; call 00012148 read_entity_action_code
 00012948: cmp.b (0x56,A0),D7b
 0001294C: bne.w 0x00012966
 00012950: movea.l #0xc620,A2
@@ -10131,7 +10131,7 @@
 000129F0: btst.b #0xc,(0x00ffdd22).l
 000129F8: beq.w 0x0001296a
 000129FC: bra.b 0x000129b2
-000129FE: bsr.w 0x00012148 ; call 00012148 FUN_00012148
+000129FE: bsr.w 0x00012148 ; call 00012148 read_entity_action_code
 00012A02: move.b D0b,(0x66,A6,D5w*0x1)
 00012A06: move.l D0,D1
 00012A08: cmpi.b #0x2c,D1b
@@ -10184,7 +10184,7 @@
 00012ACC: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
 00012AD2: clr.l D3
 00012AD4: move.b (0x24,A4,D0w*0x1),D3b ; data 000d4564
-00012AD8: bsr.w 0x00012148 ; call 00012148 FUN_00012148
+00012AD8: bsr.w 0x00012148 ; call 00012148 read_entity_action_code
 00012ADC: cmpi.b #0xd,D0b
 00012AE0: bpl.w 0x00012b8e
 00012AE4: move.w D7w,D6w
@@ -10240,7 +10240,7 @@
 00012BD4: lea (0xd29ca).l,A1 ; data 000d29ca
 00012BDA: bra.w 0x00012be4
 00012BDE: lea (0xd29d0).l,A1 ; data 000d29d0
-00012BE4: bsr.w 0x00012148 ; call 00012148 FUN_00012148
+00012BE4: bsr.w 0x00012148 ; call 00012148 read_entity_action_code
 00012BE8: move.b (0x6e,A0,D7w*0x1),D3b
 00012BEC: movea.w #-0x3ce4,A2
 00012BF0: move.w #0x4000,D1w
@@ -10314,7 +10314,7 @@
 00012D16: bpl.w 0x00012d74
 00012D1A: clr.l D7
 00012D1C: jsr 0x00055f20.l ; call 00055F20 FUN_00055f20
-00012D22: bsr.w 0x00012148 ; call 00012148 FUN_00012148
+00012D22: bsr.w 0x00012148 ; call 00012148 read_entity_action_code
 00012D26: cmpi.b #0x17,D0b
 00012D2A: bne.w 0x00012d32
 00012D2E: bra.w 0x00012dd2
@@ -10377,7 +10377,7 @@
 00012E0E: bra.w 0x00012e7a
 00012E12: cmpi.b #0x2,(0x00fff0d0).l
 00012E1A: bpl.w 0x00012e36
-00012E1E: bsr.w 0x00012148 ; call 00012148 FUN_00012148
+00012E1E: bsr.w 0x00012148 ; call 00012148 read_entity_action_code
 00012E22: cmpi.b #0x17,D0b
 00012E26: beq.w 0x00012e36
 00012E2A: cmpi.b #0x10,D0b
@@ -10414,7 +10414,7 @@
 00012E98: movem.l (SP)+,{  D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 00012E9C: rts
 00012E9E: movem.l {  A6 A5 A4 A3 A2 A1 A0 D7 D6 D5 D4 D3 D2 D1},-(SP)
-00012EA2: bsr.w 0x00012148 ; call 00012148 FUN_00012148
+00012EA2: bsr.w 0x00012148 ; call 00012148 read_entity_action_code
 00012EA6: move.w D0w,D7w
 00012EA8: subq.w #0x1,D7w
 00012EAA: bra.w 0x00012f50 ; call 00012F50 FUN_00012f50
@@ -10516,7 +10516,7 @@
 00013042: bra.w 0x00013094
 00013046: move.b (0x57,A0),D0b
 0001304A: bra.w 0x00013052
-0001304E: bsr.w 0x00012148 ; call 00012148 FUN_00012148
+0001304E: bsr.w 0x00012148 ; call 00012148 read_entity_action_code
 00013052: clr.l D6
 00013054: subq.w #0x1,D0w
 00013056: bpl.w 0x00013084
@@ -10702,7 +10702,7 @@
 0001335A: lea (0xd29ca).l,A1 ; data 000d29ca
 00013360: bra.w 0x0001336a
 00013364: lea (0xd29d0).l,A1 ; data 000d29d0
-0001336A: bsr.w 0x00012148 ; call 00012148 FUN_00012148
+0001336A: bsr.w 0x00012148 ; call 00012148 read_entity_action_code
 0001336E: move.b (0x6e,A0,D6w*0x1),D3b
 00013372: movea.w #-0x3c6e,A2
 00013376: move.w #0x6000,D1w

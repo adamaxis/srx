@@ -1271,3 +1271,16 @@ target_link_libraries(shadowrun_ghidra_alternating_word_transfer_test
     PRIVATE shadowrun_ghidra_alternating_word_transfer)
 add_test(NAME shadowrun_ghidra_alternating_word_transfer
          COMMAND shadowrun_ghidra_alternating_word_transfer_test)
+
+add_library(shadowrun_ghidra_entity_action_code STATIC
+    src/entity_action_code_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_action_code PUBLIC include)
+
+add_executable(shadowrun_ghidra_entity_action_code_test
+    tests/entity_action_code_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_action_code_test
+    PRIVATE shadowrun_ghidra_entity_action_code)
+add_test(NAME shadowrun_ghidra_entity_action_code
+         COMMAND shadowrun_ghidra_entity_action_code_test)

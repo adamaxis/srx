@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_title_text_source
-//   0x00012148 FUN_00012148
+//   0x00012148 read_entity_action_code
 
 
 void FUN_00013000(void)
@@ -18,7 +18,7 @@ void FUN_00013000(void)
   
   render_title_text_source();
   if ((char)(DAT_00fff0d0 + -2) < '\0') {
-    uVar1 = FUN_00012148();
+    uVar1 = read_entity_action_code();
     iVar4 = extraout_A0;
   }
   else {

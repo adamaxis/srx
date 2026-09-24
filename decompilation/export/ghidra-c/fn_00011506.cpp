@@ -47,7 +47,7 @@ void FUN_00011506(void)
   uVar2 = (DAT_00ffef14 & 2) == 0;
   DAT_00ffef14 = DAT_00ffef14 | 2;
   FUN_00012c36();
-  FUN_00012148();
+  read_entity_action_code();
   if (!(bool)uVar2) {
     cVar1 = FUN_00012a8c();
     if ((char)(cVar1 + -0x10) < '\0') {

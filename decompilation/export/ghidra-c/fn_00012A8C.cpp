@@ -6,7 +6,7 @@
 //   0x00001232 write_vdp_grid
 //   0x0000C0DA render_title_text_source
 //   0x00011352 FUN_00011352
-//   0x00012148 FUN_00012148
+//   0x00012148 read_entity_action_code
 //   0x00012A54 FUN_00012a54
 
 
@@ -31,7 +31,7 @@ undefined4 FUN_00012a8c(void)
     write_vdp_grid();
   }
   render_title_text_source();
-  cVar2 = FUN_00012148();
+  cVar2 = read_entity_action_code();
   if ((char)(cVar2 + -0xd) < '\0') {
     iVar3 = extraout_A0;
     if ((*(byte *)(extraout_A0 + 0x6e + (int)unaff_D7w) & 2) != 0) {
@@ -72,7 +72,7 @@ undefined4 FUN_00012a8c(void)
         return in_D0;
       }
     }
-    FUN_00012148();
+    read_entity_action_code();
   }
   render_title_text_source();
   write_vdp_grid();

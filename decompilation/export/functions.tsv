@@ -324,7 +324,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00012062	FUN_00012062	56	unknown	ok	ghidra-c/fn_00012062.cpp
 0001209A	FUN_0001209a	74	unknown	ok	ghidra-c/fn_0001209A.cpp
 000120E4	FUN_000120e4	100	unknown	ok	ghidra-c/fn_000120E4.cpp
-00012148	FUN_00012148	32	unknown	ok	ghidra-c/fn_00012148.cpp
+00012148	read_entity_action_code	32	unknown	ok	ghidra-c/fn_00012148.cpp
 0001253E	FUN_0001253e	188	unknown	ok	ghidra-c/fn_0001253E.cpp
 000125FA	FUN_000125fa	58	unknown	ok	ghidra-c/fn_000125FA.cpp
 0001275C	FUN_0001275c	84	unknown	ok	ghidra-c/fn_0001275C.cpp

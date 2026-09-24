@@ -673,6 +673,11 @@ the source counter before selecting the odd/even pair, waits for readiness,
 and emits exactly two words through a typed callback. The source control/data
 registers are not carried into the host conversion.
 
+Disassembly inspection resolved `0x12148`: it clears the high index word,
+doubles the selector, adds the base as an 8-bit operation, and reads the byte
+table at entity-record offset `0x66`. `read_entity_action_code` preserves that
+byte wrap while returning an empty optional for a truncated host record.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames

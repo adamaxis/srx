@@ -51,7 +51,7 @@
 //   0x000118C6 cycle_inventory_action_selector
 //   0x00011900 FUN_00011900
 //   0x00011928 FUN_00011928
-//   0x00012148 FUN_00012148
+//   0x00012148 read_entity_action_code
 //   0x0001253E FUN_0001253e
 //   0x000125FA FUN_000125fa
 //   0x0001275C FUN_0001275c
@@ -595,7 +595,7 @@ LAB_0000c2aa:
   case 7:
     break;
   case 8:
-    FUN_00012148();
+    read_entity_action_code();
     if ((unaff_D7w == 7) &&
        (((*(char *)(extraout_A0_05 + 0x6d) == ')' || (*(char *)(extraout_A0_05 + 0x6d) == '*')) ||
         (*(char *)(extraout_A0_05 + 0x6d) == '+')))) {
@@ -609,7 +609,7 @@ LAB_0000c2aa:
     DAT_00fff114 = '\0';
     FUN_000127b0();
     FUN_00012c42();
-    FUN_00012148();
+    read_entity_action_code();
     if (cVar7 == *(char *)(DAT_00fffc04 + 0x2b)) {
       render_title_text_source();
       DAT_00fff098 = 0xffff;
@@ -627,13 +627,13 @@ LAB_0000c2aa:
     } while (((DAT_00ffdd22._0_1_ & 0x40) == 0) && ((DAT_00ffdd22._0_1_ & 0x10) == 0));
     service_audio_if_enabled();
     if (-1 < DAT_00fff114) {
-      FUN_00012148();
+      read_entity_action_code();
       FUN_0001275c();
       FUN_00011624();
     }
     return;
   case 9:
-    cVar7 = FUN_00012148();
+    cVar7 = read_entity_action_code();
     if ((-1 < (char)(cVar7 + -0x17)) && ((char)(cVar7 + -0x2c) < '\0')) {
       FUN_00012c42();
       render_title_text_source();
@@ -664,7 +664,7 @@ LAB_0000c2aa:
           render_title_text_source();
           render_title_text_source();
           FUN_000110e8();
-          FUN_00012148();
+          read_entity_action_code();
           puVar17 = extraout_A0_06;
           if ((char)puVar4 == *(char *)(extraout_A0_07 + 0x56)) {
             render_title_text_source();
@@ -705,7 +705,7 @@ LAB_000129dc:
     DAT_00fff09f = '\0';
     bVar18 = true;
     DAT_00fff0cd = uVar19;
-    cVar7 = FUN_00012148();
+    cVar7 = read_entity_action_code();
     uVar20 = _DAT_00fff0d0;
     if (bVar18) {
       return;
@@ -754,7 +754,7 @@ LAB_000118b6:
       }
     } while( true );
   }
-  cVar8 = FUN_00012148();
+  cVar8 = read_entity_action_code();
   if ('\0' < DAT_00fff09f) {
     FUN_00011900();
     FUN_00012c42();
@@ -802,7 +802,7 @@ LAB_000118b6:
           service_audio_if_enabled();
           FUN_00012c1e();
           if (DAT_00fff0dc == DAT_00fff0b9) goto LAB_00012538;
-          sVar6 = FUN_00012148();
+          sVar6 = read_entity_action_code();
           bVar18 = (int)((uint)(ushort)(sVar6 - 0x11U) << 0x10) < 0;
           if (bVar18) {
             FUN_0001253e();

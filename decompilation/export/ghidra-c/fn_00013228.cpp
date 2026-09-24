@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 //   0x0000C0DA render_title_text_source
-//   0x00012148 FUN_00012148
+//   0x00012148 read_entity_action_code
 //   0x00012A54 FUN_00012a54
 
 
@@ -59,7 +59,7 @@ undefined8 FUN_00013228(void)
   if (-1 < (char)(cVar2 + -0xd)) {
     if (((-1 < (char)(cVar2 + -0x14)) && (cVar2 != '\x14')) &&
        (((char)(cVar2 + -0x18) < '\0' || (-1 < (char)(cVar2 + -0x29))))) goto LAB_000133a0;
-    FUN_00012148();
+    read_entity_action_code();
   }
   render_title_text_source();
   write_vdp_grid();

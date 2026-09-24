@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003404 upload_field_asset_setup
-//   0x00012148 FUN_00012148
+//   0x00012148 read_entity_action_code
 
 
 void FUN_000129fe(void)
@@ -18,7 +18,7 @@ void FUN_000129fe(void)
   int iVar2;
   int unaff_A6;
   
-  cVar1 = FUN_00012148();
+  cVar1 = read_entity_action_code();
   *(char *)(unaff_A6 + 0x66 + (int)unaff_D5w) = cVar1;
   iVar2 = extraout_A0;
   if ((char)(cVar1 + -0x2c) < '\0') {

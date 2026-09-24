@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00012148
-// Name: FUN_00012148
+// Name: read_entity_action_code
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-undefined1 FUN_00012148(void)
+undefined1 read_entity_action_code(void)
 
 {
   return *(undefined1 *)

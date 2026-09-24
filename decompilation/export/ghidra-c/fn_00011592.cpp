@@ -6,7 +6,7 @@
 //   0x00001378 build_title_sprite_records
 //   0x0000C0DA render_title_text_source
 //   0x00011ABE FUN_00011abe
-//   0x00012148 FUN_00012148
+//   0x00012148 read_entity_action_code
 //   0x00012A8C FUN_00012a8c
 //   0x00012C36 FUN_00012c36
 //   0x00012E9E FUN_00012e9e
@@ -26,7 +26,7 @@ void FUN_00011592(void)
   uVar2 = (DAT_00ffef14 & 2) == 0;
   DAT_00ffef14 = DAT_00ffef14 | 2;
   FUN_00012c36();
-  FUN_00012148();
+  read_entity_action_code();
   if (!(bool)uVar2) {
     cVar1 = FUN_00012a8c();
     if ((char)(cVar1 + -0x10) < '\0') {

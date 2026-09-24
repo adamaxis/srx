@@ -317,6 +317,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00001530L, "decode_and_upload_source_stream");
         names.put(0x000012F6L, "advance_title_palette_fade");
         names.put(0x00001910L, "write_alternating_word_pair");
+        names.put(0x00012148L, "read_entity_action_code");
         names.put(0x00001378L, "build_title_sprite_records");
         names.put(0x000013BEL, "build_title_sprite_records_with_attribute_offset");
         names.put(0x00001406L, "prepare_title_resources");
