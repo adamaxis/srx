@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00005B7E
-// Name: FUN_00005b7e
+// Name: mark_entity_slots_for_render
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00005b7e(void)
+void mark_entity_slots_for_render(void)
 
 {
   short sVar1;

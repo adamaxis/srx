@@ -1670,7 +1670,7 @@
 00002A12: jsr 0x00001610.l ; call 00001610 decode_source_byte_stream
 00002A18: move.l #0xff6700,(0x00ffddde).l
 00002A22: move.l #0xff6700,(0x00ffdde6).l
-00002A2C: jmp 0x00005b7e.l ; call 00005B7E FUN_00005b7e
+00002A2C: jmp 0x00005b7e.l ; call 00005B7E mark_entity_slots_for_render
 00002A32: move.l #0x2aea,(0x00ffe114).l
 00002A3C: move.w #0x0,D0w
 00002A40: bra.w 0x00002a52

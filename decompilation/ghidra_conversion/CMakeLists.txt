@@ -175,3 +175,16 @@ target_link_libraries(shadowrun_ghidra_collision_probe_test
     PRIVATE shadowrun_ghidra_collision_probe)
 add_test(NAME shadowrun_ghidra_collision_probe
          COMMAND shadowrun_ghidra_collision_probe_test)
+
+add_library(shadowrun_ghidra_entity_dirty STATIC
+    src/entity_dirty_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_dirty PUBLIC include)
+
+add_executable(shadowrun_ghidra_entity_dirty_test
+    tests/entity_dirty_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_dirty_test
+    PRIVATE shadowrun_ghidra_entity_dirty)
+add_test(NAME shadowrun_ghidra_entity_dirty
+         COMMAND shadowrun_ghidra_entity_dirty_test)

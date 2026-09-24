@@ -7,7 +7,7 @@
 //   0x0000313A FUN_0000313a
 //   0x00004388 FUN_00004388
 //   0x00004B6C FUN_00004b6c
-//   0x00005B7E FUN_00005b7e
+//   0x00005B7E mark_entity_slots_for_render
 //   0x0000EE10 FUN_0000ee10
 //   0x00013874 FUN_00013874
 //   0x000164A8 FUN_000164a8
@@ -70,7 +70,7 @@ void FUN_00002900(void)
     DAT_00ffddde = &DAT_00ff6700;
     DAT_00ffdde6 = &DAT_00ff6700;
   }
-  FUN_00005b7e();
+  mark_entity_slots_for_render();
   return;
 }
 
