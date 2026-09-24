@@ -106,5 +106,27 @@ int main() {
     if (number.cursor != 1 || values != std::vector<std::int16_t>{3, 1}) {
         return 13;
     }
+
+    MenuSlotCleanupState slot;
+    slot.pending_actions[3] = 8;
+    slot.active_slots[3] = 1;
+    std::vector<int> slot_events;
+    clear_menu_slot(slot, 10, 3, true,
+                    [&slot_events] { slot_events.push_back(22); });
+    if (slot.slot_type != 0x7FU || slot.slot_subtype != 0U ||
+        slot.pending_actions[3] != 0U || slot.active_slots[3] != 0U ||
+        slot_events != std::vector<int>{22}) {
+        return 14;
+    }
+
+    slot.action_marker = 5;
+    slot.pending_actions[2] = 1;
+    slot.active_slots[2] = 1;
+    clear_menu_slot(slot, 0x30, 2, false, {});
+    if (slot.action_marker != 0 || slot.pending_actions[2] != 0U ||
+        slot.active_slots[2] != 0U) {
+        return 15;
+    }
+
     return 0;
 }

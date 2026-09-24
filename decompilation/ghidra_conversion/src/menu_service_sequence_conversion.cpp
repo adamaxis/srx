@@ -154,4 +154,28 @@ void render_menu_number(MenuNumberRenderState& state,
     }
 }
 
+void clear_menu_slot(MenuSlotCleanupState& state,
+                     const std::int8_t action,
+                     const std::size_t slot_index,
+                     const bool asset_load_pending,
+                     const std::function<void()>& prepare_assets) {
+    const auto index = slot_index % state.pending_actions.size();
+    if (action < 0x2C) {
+        if (asset_load_pending) {
+            state.slot_type = 0x7FU;
+            state.slot_subtype = 0U;
+            state.action_marker = 0;
+            if (prepare_assets) {
+                prepare_assets();
+            }
+        }
+    } else if (static_cast<std::int8_t>(action - 0x2B) ==
+                   state.action_marker &&
+               state.active_slots[index] != 0U) {
+        state.action_marker = 0;
+    }
+    state.pending_actions[index] = 0U;
+    state.active_slots[index] = 0U;
+}
+
 } // namespace shadowrun::ghidra_conversion

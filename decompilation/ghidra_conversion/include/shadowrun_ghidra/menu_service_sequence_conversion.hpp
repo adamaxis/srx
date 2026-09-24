@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <functional>
 
@@ -81,5 +82,21 @@ struct MenuNumberRenderCallbacks {
 void render_menu_number(MenuNumberRenderState& state,
                         std::int16_t delta,
                         const MenuNumberRenderCallbacks& callbacks);
+
+struct MenuSlotCleanupState {
+    std::uint8_t slot_type = 0;
+    std::uint8_t slot_subtype = 0;
+    std::int8_t action_marker = 0;
+    std::array<std::uint8_t, 8> pending_actions{};
+    std::array<std::uint8_t, 8> active_slots{};
+};
+
+// ROM 0x1275C: clear one menu-slot pair, taking the source low-action asset
+// setup branch when the shared loader sentinel is active.
+void clear_menu_slot(MenuSlotCleanupState& state,
+                     std::int8_t action,
+                     std::size_t slot_index,
+                     bool asset_load_pending,
+                     const std::function<void()>& prepare_assets);
 
 } // namespace shadowrun::ghidra_conversion

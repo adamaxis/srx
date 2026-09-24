@@ -975,6 +975,9 @@ The numeric menu leaf at `0x120E4` now owns a typed cursor/count pair. It keeps
 the source marker write, signed zero/overflow wrap, past-count clamp, and digit
 builder as explicit host operations.
 
+The `0x1275C` menu leaf now clears a bounded slot record and preserves the
+low-action asset-load branch.
+
 The compact row-writer family is now typed as well. `0x1184` emits one masked
 row with optional `0x8F80`/`0x8F02` display-increment controls, `0x11C0`
 repeats a source row at `0x80`-byte destination strides, and `0x11F6`
