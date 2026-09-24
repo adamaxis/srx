@@ -1039,6 +1039,10 @@ and invokes the host audio boundary.
 The `0x1562E` auxiliary behavior wrapper now preserves its two-stage order:
 auxiliary preparation first, then the typed entity behavior preparation.
 
+The six-byte `0x1582A` allocator is now separately named and mapped to the
+same typed eighteen-slot ownership model as its later shared counterpart; the
+two ROM entries are no longer conflated in the ledger.
+
 The compact row-writer family is now typed as well. `0x1184` emits one masked
 row with optional `0x8F80`/`0x8F02` display-increment controls, `0x11C0`
 repeats a source row at `0x80`-byte destination strides, and `0x11F6`

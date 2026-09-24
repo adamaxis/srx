@@ -40,6 +40,11 @@ void schedule_entity_collision_recheck(EntityReactionState& state);
 std::uint8_t allocate_first_free_effect_slot(
     std::array<std::uint8_t, 18>& slot_state);
 
+// ROM 0x1582A: the compact local effect-slot allocator uses the same
+// eighteen-slot host representation as the later shared allocator.
+std::uint8_t allocate_first_free_effect_slot_local(
+    std::array<std::uint8_t, 18>& slot_state);
+
 // ROM 0x1A304: clear one effect-slot occupancy byte. Out-of-range host
 // indices are ignored instead of exposing the source's unchecked pointer.
 void clear_effect_slot(

@@ -25,6 +25,11 @@ std::uint8_t allocate_first_free_effect_slot(
     return static_cast<std::uint8_t>(slot_state.size());
 }
 
+std::uint8_t allocate_first_free_effect_slot_local(
+    std::array<std::uint8_t, 18>& slot_state) {
+    return allocate_first_free_effect_slot(slot_state);
+}
+
 void clear_effect_slot(
     std::array<std::uint8_t, 18>& slot_state,
     const std::size_t slot_index) {

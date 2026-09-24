@@ -45,6 +45,13 @@ int main() {
         return 5;
     }
 
+    std::array<std::uint8_t, 18> local_effects{};
+    local_effects[0] = 1U;
+    if (!expect(allocate_first_free_effect_slot_local(local_effects) == 1U &&
+                local_effects[1] == 1U)) {
+        return 10;
+    }
+
     effects[3] = 1U;
     clear_effect_slot(effects, 3U);
     clear_effect_slot(effects, 99U);
