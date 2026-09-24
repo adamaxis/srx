@@ -21,6 +21,16 @@ int main() {
         [&words](const std::uint16_t word) { words.push_back(word); },
     };
 
+    write_single_word(0x2468U, 0xCAFEU, callbacks);
+    if (commands != std::vector<std::uint16_t>{
+                         make_vdp_transfer_command(0x2468U).low_word,
+                         make_vdp_transfer_command(0x2468U).high_word} ||
+        words != std::vector<std::uint16_t>{0xCAFEU}) {
+        return 2;
+    }
+    commands.clear();
+    words.clear();
+
     write_repeated_words(0x1234U, 0xBEEFU, 3U, callbacks);
     write_word_stream(0x8000U, {1U, 2U, 3U}, callbacks);
     clear_vdp_words(0U, callbacks);
@@ -29,7 +39,7 @@ int main() {
                                                 0x4000U, 0U} ||
         words.size() != 22U || words[0] != 0xBEEFU || words[3] != 1U ||
         words[5] != 3U || words[6] != 0U || words.back() != 0U) {
-        return 2;
+        return 3;
     }
 
     commands.clear();
@@ -38,7 +48,7 @@ int main() {
     if (commands.size() != 2U || commands[0] != 0x4000U ||
         commands[1] != 2U ||
         words != std::vector<std::uint16_t>{10U, 20U, 30U}) {
-        return 3;
+        return 4;
     }
 
     commands.clear();
@@ -50,7 +60,7 @@ int main() {
         commands[2] != make_vdp_transfer_command(0x1080U).low_word ||
         words != std::vector<std::uint16_t>{0x8001U, 0x8002U,
                                              0x8003U, 0x8004U}) {
-        return 4;
+        return 5;
     }
 
     commands.clear();
@@ -65,7 +75,7 @@ int main() {
         commands[0] != make_vdp_transfer_command(0x2000U).low_word ||
         commands[2] != make_vdp_transfer_command(0x2008U).low_word ||
         words != wrapped_words) {
-        return 5;
+        return 6;
     }
 
     commands.clear();
@@ -76,7 +86,7 @@ int main() {
         commands[0] != make_vdp_transfer_command(0xFE00U).low_word ||
         words.size() != 160U || words.front() != 0x55AAU ||
         words.back() != 0x55AAU) {
-        return 6;
+        return 7;
     }
 
     commands.clear();
@@ -96,7 +106,7 @@ int main() {
                                                                         0x4002U,
                                                                         0x4003U} ||
         controls != std::vector<std::uint16_t>{0x8F80U, 0x8F02U}) {
-        return 7;
+        return 8;
     }
 
     commands.clear();
@@ -109,7 +119,7 @@ int main() {
         commands[2] != make_vdp_transfer_command(0x4080U).low_word ||
         words != std::vector<std::uint16_t>{0x2005U, 0x2006U,
                                              0x2005U, 0x2006U}) {
-        return 8;
+        return 9;
     }
 
     commands.clear();
@@ -123,7 +133,7 @@ int main() {
         words != std::vector<std::uint16_t>{0x1007U, 0x1008U,
                                              0x1009U, 0x100AU} ||
         controls != std::vector<std::uint16_t>{0x8F02U}) {
-        return 9;
+        return 10;
     }
 
     std::size_t transfer_blocks = 0U;
@@ -131,7 +141,7 @@ int main() {
         ++transfer_blocks;
     });
     if (transfer_blocks != 16U) {
-        return 10;
+        return 11;
     }
 
     return 0;

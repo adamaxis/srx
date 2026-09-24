@@ -258,6 +258,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00000F3CL, "write_fixed_transfer_pair");
         names.put(0x00000F98L, "write_vdp_word_block");
         names.put(0x00000F5CL, "write_vdp_word_block_with_source_wrap");
+        names.put(0x0000C3B2L, "write_single_word");
         names.put(0x00001184L, "write_masked_vdp_row");
         names.put(0x000011C0L, "write_repeated_vdp_grid");
         names.put(0x000011F6L, "write_linear_vdp_grid");

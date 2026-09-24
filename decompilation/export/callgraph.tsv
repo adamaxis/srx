@@ -403,8 +403,8 @@ caller	caller_name	callee	callee_name	call_sites
 0000C0DA	render_title_text_source	00000E9C	make_vdp_transfer_command	1
 0000C168	FUN_0000c168	00000E9C	make_vdp_transfer_command	1
 0000C216	build_grouped_decimal_glyphs	00000E9C	make_vdp_transfer_command	1
-0000C376	move_wrapped_menu_cursor	0000C3B2	FUN_0000c3b2	2
-0000C3B2	FUN_0000c3b2	00000E9C	make_vdp_transfer_command	1
+0000C376	move_wrapped_menu_cursor	0000C3B2	write_single_word	2
+0000C3B2	write_single_word	00000E9C	make_vdp_transfer_command	1
 0000C3E6	FUN_0000c3e6	00012C5A	FUN_00012c5a	1
 0000C406	FUN_0000c406	00001232	write_vdp_grid	1
 0000C406	FUN_0000c406	0000C216	build_grouped_decimal_glyphs	1

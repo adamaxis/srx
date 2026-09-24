@@ -26,6 +26,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x13A40	entity anchor position copy	ghidra_conversion::copy_entity_anchor_position	shadowrun_native_port	partial		Typed two-word anchor-position copy converted
 0x05622	entity runtime cleanup	ghidra_conversion::clear_entity_runtime_fields	shadowrun_native_port	partial		Typed ten-record transient clear and caller-mask application converted
 0x0E9C	VDP transfer command	ghidra_conversion::make_vdp_transfer_command	shadowrun_graphics	partial		Typed two-word transfer command conversion replaces the source display-control writes
+0xC3B2	single word transfer	ghidra_conversion::write_single_word	shadowrun_graphics	partial		Typed one-command, one-word transfer boundary
 0x0DFC	repeated word transfer	ghidra_conversion::write_repeated_words	shadowrun_graphics	partial		Bounded repeated-word transfer conversion uses an explicit host count
 0x0E18	word stream transfer	ghidra_conversion::write_word_stream	shadowrun_graphics	partial		Bounded ordered word-stream transfer conversion
 0x0CEC	startup VDP table	ghidra_conversion::install_startup_vdp_table	shadowrun_graphics	partial		Typed four-word startup state install and fourteen control-word emission

@@ -9,6 +9,18 @@ VdpTransferCommand make_vdp_transfer_command(
         static_cast<std::uint16_t>(source_address >> 14U)};
 }
 
+void write_single_word(
+    const std::uint16_t destination_address,
+    const std::uint16_t word,
+    const WordTransferCallbacks& callbacks) {
+    if (callbacks.begin_transfer) {
+        callbacks.begin_transfer(make_vdp_transfer_command(destination_address));
+    }
+    if (callbacks.write_word) {
+        callbacks.write_word(word);
+    }
+}
+
 void write_repeated_words(
     const std::uint16_t source_address,
     const std::uint16_t word,

@@ -22,6 +22,12 @@ struct WordTransferCallbacks {
     std::function<void(std::uint16_t)> write_control_word;
 };
 
+// ROM 0xC3B2: emit one transfer command followed by one data word.
+void write_single_word(
+    std::uint16_t destination_address,
+    std::uint16_t word,
+    const WordTransferCallbacks& callbacks);
+
 // ROM 0x0DFC: emit one source word repeatedly. word_count is the host number
 // of writes, replacing the source DBF register convention.
 void write_repeated_words(

@@ -541,6 +541,10 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The established word-transfer module now also converts `0xC3B2` as
+`write_single_word`: one typed transfer command followed by one data-word
+callback, with the ordering covered by the existing transfer test.
+
 The late-intro helper pass is now typed in `title_intro_late_conversion`.
 `0x5A9E2`, `0x5AA1E`, `0x5ADFE`, and `0x5AE3A` are explicit text batches with
 their source destinations and palette masks. The shared transition helpers

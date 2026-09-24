@@ -3,7 +3,7 @@
 // Name: move_wrapped_menu_cursor
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000C3B2 FUN_0000c3b2
+//   0x0000C3B2 write_single_word
 
 
 void move_wrapped_menu_cursor(void)
@@ -14,14 +14,14 @@ void move_wrapped_menu_cursor(void)
   char unaff_D3b;
   bool bVar2;
   
-  FUN_0000c3b2();
+  write_single_word();
   bVar2 = SCARRY1(unaff_D2b,DAT_00fff0dc);
   cVar1 = unaff_D2b + DAT_00fff0dc;
   DAT_00fff0dc = unaff_D3b;
   if ((bVar2 == cVar1 < '\0') && (DAT_00fff0dc = cVar1, (char)(unaff_D3b - cVar1) < '\0')) {
     DAT_00fff0dc = '\0';
   }
-  FUN_0000c3b2();
+  write_single_word();
   DAT_00fff0fc = 0;
   return;
 }

@@ -5524,7 +5524,7 @@
 0000C370: beq.w 0x0000c2d4
 0000C374: rts
 0000C376: move.w #-0x7a55,D1w
-0000C37A: bsr.w 0x0000c3b2 ; call 0000C3B2 FUN_0000c3b2
+0000C37A: bsr.w 0x0000c3b2 ; call 0000C3B2 write_single_word
 0000C37E: add.b D2b,(0x00fff0dc).l
 0000C384: bge.w 0x0000c392
 0000C388: move.b D3b,(0x00fff0dc).l
@@ -5533,7 +5533,7 @@
 0000C398: bpl.w 0x0000c3a2
 0000C39C: clr.b (0x00fff0dc).l
 0000C3A2: move.w #-0x7a01,D1w
-0000C3A6: bsr.w 0x0000c3b2 ; call 0000C3B2 FUN_0000c3b2
+0000C3A6: bsr.w 0x0000c3b2 ; call 0000C3B2 write_single_word
 0000C3AA: clr.b (0x00fff0fc).l
 0000C3B0: rts
 0000C3B2: or.w D4w,D1w
