@@ -19,6 +19,23 @@ struct ControllerSample {
 ControllerSample derive_controller_sample(std::uint8_t current,
                                            std::uint8_t previous);
 
+struct ControllerEventLatchState {
+    std::int16_t activity_timer = 0;
+    bool start_latched = false;
+};
+
+struct ControllerEventLatchResult {
+    std::uint16_t event_bits = 0;
+    bool activity_latched = false;
+    bool start_latched = false;
+};
+
+// ROM 0x0BF2: combine the sampled high-byte event words and latch activity
+// and Start state. The source timer writes are represented as typed state.
+ControllerEventLatchResult latch_controller_events(
+    ControllerEventLatchState& state, std::uint16_t pending_events,
+    std::uint16_t sampled_word);
+
 constexpr std::size_t kPaletteEntryCount = 64;
 constexpr std::size_t kPaletteTransitionPasses = 17;
 using Palette = std::array<std::uint16_t, kPaletteEntryCount>;

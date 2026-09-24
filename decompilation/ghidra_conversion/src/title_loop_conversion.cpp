@@ -9,6 +9,27 @@ ControllerSample derive_controller_sample(std::uint8_t current,
         static_cast<std::uint8_t>((current ^ previous) & current)};
 }
 
+ControllerEventLatchResult latch_controller_events(
+    ControllerEventLatchState& state, std::uint16_t pending_events,
+    std::uint16_t sampled_word) {
+    const auto event_bits = static_cast<std::uint16_t>(
+        (pending_events | sampled_word) & 0xFF00U);
+    if (event_bits == 0U) {
+        return ControllerEventLatchResult{};
+    }
+
+    state.activity_timer = -1;
+    const bool start_latched = (sampled_word & 0x8000U) != 0U;
+    if (start_latched) {
+        state.start_latched = true;
+    }
+    return ControllerEventLatchResult{
+        event_bits,
+        true,
+        start_latched,
+    };
+}
+
 std::uint16_t palette_toward_black(std::uint16_t color) {
     auto component = static_cast<std::uint16_t>(color & 0x000EU);
     if (component != 0) {

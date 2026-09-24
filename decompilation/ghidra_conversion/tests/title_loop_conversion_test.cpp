@@ -22,6 +22,24 @@ int main() {
         return 1;
     }
 
+    ControllerEventLatchState latch;
+    const auto no_event = latch_controller_events(latch, 0U, 0U);
+    if (!expect(no_event.event_bits == 0U &&
+                latch.activity_timer == 0 && !latch.start_latched)) {
+        return 1;
+    }
+    const auto event = latch_controller_events(latch, 0x2000U, 0x0100U);
+    if (!expect(event.event_bits == 0x2100U &&
+                event.activity_latched && !event.start_latched &&
+                latch.activity_timer == -1 && !latch.start_latched)) {
+        return 1;
+    }
+    const auto start = latch_controller_events(latch, 0U, 0x8000U);
+    if (!expect(start.event_bits == 0x8000U && start.start_latched &&
+                latch.start_latched)) {
+        return 1;
+    }
+
     Palette current{};
     Palette target{};
     current.fill(0x0EEE);
