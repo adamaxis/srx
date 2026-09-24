@@ -573,6 +573,12 @@ scroll adjustment before projection at `(y=0x133, palette=0x6000)`.
 sequence, advancing every six frames and drawing both fixed-position sprites
 on every active call.
 
+The six-descriptor timing primitive is now typed separately. `0x5A572`
+installs its terminal index, `0x5A582` starts it at caller coordinates, and
+`0x5A59C` selects a new descriptor every eight frames while continuing to
+project the current descriptor between deadlines. The final descriptor is
+still drawn on the call that reaches the terminal index, matching the source.
+
 The runner reset cluster is now typed. `0x59BCC` clears status bits `6` and
 `4` in each of the three live runner records, preserves the source order of
 the preparation (`0x3674`, argument `0x0A`) and finalization (`0x37EC`)

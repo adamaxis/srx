@@ -27588,7 +27588,7 @@
 00059EE4: jsr 0x0005a244.l ; call 0005A244 reset_title_intro_persistent_sequence
 00059EEA: jsr 0x0005a3b0.l ; call 0005A3B0 reset_title_intro_motion
 00059EF0: jsr 0x0005a4b4.l ; call 0005A4B4 reset_title_intro_dual_sprites
-00059EF6: jsr 0x0005a572.l ; call 0005A572 FUN_0005a572
+00059EF6: jsr 0x0005a572.l ; call 0005A572 reset_title_intro_timed_sprites
 00059EFC: jsr 0x0005a61a.l ; call 0005A61A FUN_0005a61a
 00059F02: jsr 0x0005a70e.l ; call 0005A70E FUN_0005a70e
 00059F08: jsr 0x0005a7ea.l ; call 0005A7EA FUN_0005a7ea
@@ -27736,7 +27736,7 @@
 0005A1A4: bne.b 0x0005a1b4
 0005A1A6: move.w #0x13d,D0w
 0005A1AA: move.w #0x139,D1w
-0005A1AE: jsr 0x0005a582.l ; call 0005A582 FUN_0005a582
+0005A1AE: jsr 0x0005a582.l ; call 0005A582 begin_title_intro_timed_sprites
 0005A1B4: cmpi.w #0xc,(0x00fff126).l
 0005A1BC: bcs.b 0x0005a1d0
 0005A1BE: move.w #0x826,D4w
@@ -27750,7 +27750,7 @@
 0005A1FC: jsr 0x0005a252.l ; call 0005A252 advance_title_intro_persistent_sequence
 0005A202: jsr 0x0005a3be.l ; call 0005A3BE advance_title_intro_motion
 0005A208: jsr 0x0005a4c2.l ; call 0005A4C2 advance_title_intro_dual_sprites
-0005A20E: jsr 0x0005a59c.l ; call 0005A59C FUN_0005a59c
+0005A20E: jsr 0x0005a59c.l ; call 0005A59C advance_title_intro_timed_sprites
 0005A214: jsr 0x0005a628.l ; call 0005A628 FUN_0005a628
 0005A21A: jsr 0x0005a71c.l ; call 0005A71C FUN_0005a71c
 0005A220: jsr 0x0005a7f8.l ; call 0005A7F8 FUN_0005a7f8
@@ -27812,7 +27812,7 @@
 0005A336: bne.b 0x0005a346
 0005A338: move.w #0x182,D0w
 0005A33C: move.w #0xe2,D1w
-0005A340: jsr 0x0005a582.l ; call 0005A582 FUN_0005a582
+0005A340: jsr 0x0005a582.l ; call 0005A582 begin_title_intro_timed_sprites
 0005A346: cmpi.w #0xc,(0x00fff12e).l
 0005A34E: bcs.b 0x0005a362
 0005A350: move.w #0x3b8,D4w

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005A582
-// Name: FUN_0005a582
+// Name: begin_title_intro_timed_sprites
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0005a582(void)
+void begin_title_intro_timed_sprites(void)
 
 {
   undefined2 in_D0w;

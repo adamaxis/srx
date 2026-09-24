@@ -18,7 +18,7 @@
 //   0x0005A37C FUN_0005a37c
 //   0x0005A3B0 reset_title_intro_motion
 //   0x0005A4B4 reset_title_intro_dual_sprites
-//   0x0005A572 FUN_0005a572
+//   0x0005A572 reset_title_intro_timed_sprites
 //   0x0005A61A FUN_0005a61a
 //   0x0005A70E FUN_0005a70e
 //   0x0005A7EA FUN_0005a7ea
@@ -82,7 +82,7 @@ void FUN_00059d7c(void)
   reset_title_intro_persistent_sequence();
   reset_title_intro_motion();
   reset_title_intro_dual_sprites();
-  FUN_0005a572();
+  reset_title_intro_timed_sprites();
   FUN_0005a61a();
   FUN_0005a70e();
   FUN_0005a7ea();

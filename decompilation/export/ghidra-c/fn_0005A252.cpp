@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00001378 FUN_00001378
 //   0x000530DE service_audio_if_enabled
-//   0x0005A582 FUN_0005a582
+//   0x0005A582 begin_title_intro_timed_sprites
 //   0x0005B2C2 FUN_0005b2c2
 //   0x0005B2E2 FUN_0005b2e2
 //   0x0005B32C FUN_0005b32c
@@ -36,7 +36,7 @@ void advance_title_intro_persistent_sequence(void)
           DAT_00fff130 = DAT_00ffdf88 + 9;
           DAT_00fff12e = DAT_00fff12e + 1;
           if (DAT_00fff12e == 9) {
-            FUN_0005a582();
+            begin_title_intro_timed_sprites();
           }
           if (0xb < DAT_00fff12e) {
             FUN_0005b32c();

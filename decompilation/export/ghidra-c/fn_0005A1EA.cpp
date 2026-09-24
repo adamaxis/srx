@@ -6,7 +6,7 @@
 //   0x0005A252 advance_title_intro_persistent_sequence
 //   0x0005A3BE advance_title_intro_motion
 //   0x0005A4C2 advance_title_intro_dual_sprites
-//   0x0005A59C FUN_0005a59c
+//   0x0005A59C advance_title_intro_timed_sprites
 //   0x0005A628 FUN_0005a628
 //   0x0005A71C FUN_0005a71c
 //   0x0005A7F8 FUN_0005a7f8
@@ -22,7 +22,7 @@ void FUN_0005a1ea(void)
   advance_title_intro_persistent_sequence();
   advance_title_intro_motion();
   advance_title_intro_dual_sprites();
-  FUN_0005a59c();
+  advance_title_intro_timed_sprites();
   FUN_0005a628();
   FUN_0005a71c();
   FUN_0005a7f8();

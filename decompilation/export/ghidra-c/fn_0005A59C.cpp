@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005A59C
-// Name: FUN_0005a59c
+// Name: advance_title_intro_timed_sprites
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 FUN_00001378
 
 
-void FUN_0005a59c(void)
+void advance_title_intro_timed_sprites(void)
 
 {
   if (DAT_00fff150 <= DAT_00ffdf88) {

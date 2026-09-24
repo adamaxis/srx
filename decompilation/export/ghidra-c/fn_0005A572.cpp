@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005A572
-// Name: FUN_0005a572
+// Name: reset_title_intro_timed_sprites
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0005a572(void)
+void reset_title_intro_timed_sprites(void)
 
 {
   DAT_00fff150 = 0;
