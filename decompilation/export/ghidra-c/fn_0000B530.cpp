@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000B530
-// Name: FUN_0000b530
+// Name: approach_entity_fixed_point_target
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0000b530(void)
+void approach_entity_fixed_point_target(void)
 
 {
   ushort uVar1;

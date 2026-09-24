@@ -4922,11 +4922,11 @@
 0000B59A: lea (0xbe42).l,A1 ; data 0000be42
 0000B5A0: bra.w 0x0000b678
 0000B5A4: clr.w (0x8,A0)
-0000B5A8: bsr.b 0x0000b530 ; call 0000B530 FUN_0000b530
+0000B5A8: bsr.b 0x0000b530 ; call 0000B530 approach_entity_fixed_point_target
 0000B5AA: lea (0xbe22).l,A1 ; data 0000be22
 0000B5B0: bra.w 0x0000b678
 0000B5B4: move.w #0x1,(0x38,A0)
-0000B5BA: bsr.w 0x0000b530 ; call 0000B530 FUN_0000b530
+0000B5BA: bsr.w 0x0000b530 ; call 0000B530 approach_entity_fixed_point_target
 0000B5BE: move.w (0x2e,A0),D0w
 0000B5C2: rol.w #0x3,D0w
 0000B5C4: andi.w #0x7,D0w
