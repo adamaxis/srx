@@ -222,5 +222,26 @@ int main() {
         return 10;
     }
 
+    const PendingEntityTemplateList first_selection{
+        {{{}, {0x9000U, 0x9100U}, true, false}}, std::nullopt,
+        0x90000000U};
+    const PendingEntityTemplateList second_selection{
+        {{{}, {0x9200U, 0x9300U}, true, false}}, std::nullopt,
+        0x92000000U};
+    const EntityTemplateSelectionTable selection_table{
+        0x0015U, {{first_selection}, {second_selection}}};
+    const auto selected = select_pending_entity_template_list(
+        0x0016U, 1U, selection_table);
+    if (!expect(selected.has_value() && selected->header_value == 0x92000000U &&
+                selected->descriptors.front().source_position.x == 0x9200U &&
+                !select_pending_entity_template_list(0x0014U, 1U,
+                                                     selection_table)
+                     .has_value() &&
+                !select_pending_entity_template_list(0x0015U, 3U,
+                                                     selection_table)
+                     .has_value())) {
+        return 11;
+    }
+
     return 0;
 }

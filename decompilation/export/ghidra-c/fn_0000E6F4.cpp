@@ -3,7 +3,7 @@
 // Name: FUN_0000e6f4
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000D3A FUN_00000d3a
+//   0x00000D3A sample_source_random_bound
 //   0x00001232 FUN_00001232
 
 
@@ -13,16 +13,16 @@ void FUN_0000e6f4(void)
   bool bVar1;
   
   bVar1 = false;
-  FUN_00000d3a();
+  sample_source_random_bound();
   if (bVar1) {
-    FUN_00000d3a();
-    FUN_00000d3a();
-    FUN_00000d3a();
+    sample_source_random_bound();
+    sample_source_random_bound();
+    sample_source_random_bound();
   }
   else {
-    FUN_00000d3a();
-    FUN_00000d3a();
-    FUN_00000d3a();
+    sample_source_random_bound();
+    sample_source_random_bound();
+    sample_source_random_bound();
   }
   FUN_00001232();
   return;

@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000C24 FUN_00000c24
-//   0x00000D3A FUN_00000d3a
+//   0x00000D3A sample_source_random_bound
 //   0x00000D94 FUN_00000d94
 //   0x0000C0DA FUN_0000c0da
 //   0x0001989A FUN_0001989a
@@ -17,7 +17,7 @@ void FUN_00054a8e(void)
 {
   char cVar1;
   
-  cVar1 = FUN_00000d3a();
+  cVar1 = sample_source_random_bound();
   if (DAT_00fff0a8 <= cVar1) {
     return;
   }

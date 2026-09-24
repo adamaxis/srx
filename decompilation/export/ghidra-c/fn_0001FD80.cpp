@@ -3,7 +3,7 @@
 // Name: FUN_0001fd80
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000D3A FUN_00000d3a
+//   0x00000D3A sample_source_random_bound
 //   0x0001E1FC FUN_0001e1fc
 //   0x0001F246 FUN_0001f246
 //   0x00059BCC FUN_00059bcc
@@ -74,7 +74,7 @@ LAB_00020054:
       if (DAT_00fffbf9 == '\x02') goto LAB_0001fed2;
       if (DAT_00fffbf9 == '\0') {
         if (DAT_00fff0d5 == '\0') {
-          sVar1 = FUN_00000d3a();
+          sVar1 = sample_source_random_bound();
           if ((short)(sVar1 + -0x4b) < 0) {
             DAT_00fff0d6 = 0xff;
           }

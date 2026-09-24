@@ -200,6 +200,26 @@ EntityTemplatePreparationAction prepare_pending_entity_template_list(
     return EntityTemplatePreparationAction::mode_four_fallback;
 }
 
+std::optional<PendingEntityTemplateList> select_pending_entity_template_list(
+    const std::uint16_t scene_id,
+    const std::uint8_t selection_counter,
+    const EntityTemplateSelectionTable& table) {
+    if (scene_id < table.first_scene_id || selection_counter == 0U) {
+        return std::nullopt;
+    }
+    const auto scene_index = static_cast<std::size_t>(
+        scene_id - table.first_scene_id);
+    if (scene_index >= table.scene_lists.size()) {
+        return std::nullopt;
+    }
+    const auto list_index = static_cast<std::size_t>(selection_counter - 1U);
+    const auto& row = table.scene_lists[scene_index];
+    if (list_index >= row.size()) {
+        return std::nullopt;
+    }
+    return row[list_index];
+}
+
 void finalize_pending_entity_template_update(
     EntityTemplateUpdateState& state,
     const std::function<void()>& process_pending_lists) {

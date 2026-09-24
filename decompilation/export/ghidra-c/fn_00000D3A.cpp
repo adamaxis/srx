@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00000D3A
-// Name: FUN_00000d3a
+// Name: sample_source_random_bound
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D44 advance_source_prng
 
 
-int FUN_00000d3a(void)
+int sample_source_random_bound(void)
 
 {
   uint uVar1;

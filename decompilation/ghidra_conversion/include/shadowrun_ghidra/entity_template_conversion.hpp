@@ -139,6 +139,18 @@ struct PendingEntityTemplateList {
     std::uint32_t header_value = 0;
 };
 
+struct EntityTemplateSelectionTable {
+    std::uint16_t first_scene_id = 0x0015U;
+    std::vector<std::vector<PendingEntityTemplateList>> scene_lists;
+};
+
+// ROM 0x5BA98: resolve the scene-relative table row and one-based selection
+// counter into a typed pending list. Invalid source indices produce no list.
+std::optional<PendingEntityTemplateList> select_pending_entity_template_list(
+    std::uint16_t scene_id,
+    std::uint8_t selection_counter,
+    const EntityTemplateSelectionTable& table);
+
 struct EntityTemplateCoordinatorState {
     std::uint8_t scene_mode = 0;
     std::uint8_t world_state = 0;

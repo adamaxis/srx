@@ -3,8 +3,8 @@
 // Name: prepare_pending_entity_template_list
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000D3A FUN_00000d3a
-//   0x0005BA98 FUN_0005ba98
+//   0x00000D3A sample_source_random_bound
+//   0x0005BA98 select_pending_entity_template_list
 
 
 void prepare_pending_entity_template_list(void)
@@ -17,11 +17,11 @@ void prepare_pending_entity_template_list(void)
     if (DAT_00ffe182 == '\0') {
       if (((char)DAT_00fffbec == '\x05') && (DAT_00ffdf40 == 2)) {
         if (DAT_00ffe183 == '\0') {
-          cVar1 = FUN_00000d3a();
+          cVar1 = sample_source_random_bound();
           DAT_00ffe183 = cVar1 + '\x01';
         }
         if ((DAT_00ffe12c == DAT_00fff0c8) && (DAT_00fffc3c == 0)) {
-          FUN_0005ba98();
+          select_pending_entity_template_list();
           DAT_00ffe110 = *unaff_A3;
           DAT_00ffe124 = unaff_A3;
         }

@@ -3,7 +3,7 @@
 // Name: FUN_0001d3f4
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000D3A FUN_00000d3a
+//   0x00000D3A sample_source_random_bound
 
 
 uint FUN_0001d3f4(void)
@@ -17,7 +17,7 @@ uint FUN_0001d3f4(void)
   byte bVar5;
   
   iVar1 = *(int *)(&DAT_000f1c5e + (short)(in_D0w << 2));
-  sVar4 = FUN_00000d3a();
+  sVar4 = sample_source_random_bound();
   bVar5 = *(byte *)(iVar1 + 1 + (int)sVar4);
   uVar3 = 0;
   sVar4 = 7;

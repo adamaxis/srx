@@ -46,6 +46,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00000BF2L, "latch_controller_events");
         names.put(0x00000C2CL, "clear_runtime_memory_and_vdp");
         names.put(0x00000D44L, "advance_source_prng");
+        names.put(0x00000D3AL, "sample_source_random_bound");
         names.put(0x00001088L, "step_palette_toward_black");
         names.put(0x000010D6L, "step_palette_toward_target");
         names.put(0x0000131CL, "step_palette_transition");
@@ -132,6 +133,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x000043B6L, "process_pending_entity_template_lists");
         names.put(0x00004388L, "finalize_pending_entity_template_update");
         names.put(0x0000A800L, "prepare_pending_entity_template_list");
+        names.put(0x0005BA98L, "select_pending_entity_template_list");
         names.put(0x00014682L, "select_obstruction_route");
         names.put(0x00014756L, "clear_entity_route_flags");
         names.put(0x00014764L, "find_alternate_route_tile");

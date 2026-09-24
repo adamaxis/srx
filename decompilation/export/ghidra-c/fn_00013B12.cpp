@@ -3,7 +3,7 @@
 // Name: FUN_00013b12
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000D3A FUN_00000d3a
+//   0x00000D3A sample_source_random_bound
 //   0x00003404 FUN_00003404
 //   0x0000ABFC update_entity_animation_delay
 //   0x000125FA FUN_000125fa
@@ -48,7 +48,7 @@ void FUN_00013b12(void)
   }
   if (DAT_00ffdd28 != 0) {
     *(undefined4 *)((int)register0x0000003c + -4) = 0x13b60;
-    sVar2 = FUN_00000d3a();
+    sVar2 = sample_source_random_bound();
     uVar1 = *(undefined1 *)((int)&DAT_00ffdd2a + (short)(sVar2 * 2) + 1);
     bVar5 = false;
     *(short *)((int)register0x0000003c + -4) =

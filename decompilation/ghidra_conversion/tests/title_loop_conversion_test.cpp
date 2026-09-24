@@ -46,6 +46,13 @@ int main() {
                 advance_source_prng(random_state) == 0x20E6U)) {
         return 1;
     }
+    random_state = 0U;
+    if (!expect(sample_source_random_bound(random_state, 0xFFFFU) == 0 &&
+                random_state == 1U &&
+                sample_source_random_bound(random_state, 0xFFFFU) ==
+                    static_cast<std::int16_t>(0x20E5U))) {
+        return 1;
+    }
     random_state = 0xFFFFFFFFU;
     if (!expect(advance_source_prng(random_state) == 0xFFFFDF1CU)) {
         return 1;

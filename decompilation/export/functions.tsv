@@ -17,7 +17,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00000C24	FUN_00000c24	8	unknown	ok	ghidra-c/fn_00000C24.cpp
 00000C2C	clear_runtime_memory_and_vdp	192	unknown	ok	ghidra-c/fn_00000C2C.cpp
 00000CEC	FUN_00000cec	40	unknown	ok	ghidra-c/fn_00000CEC.cpp
-00000D3A	FUN_00000d3a	10	unknown	ok	ghidra-c/fn_00000D3A.cpp
+00000D3A	sample_source_random_bound	10	unknown	ok	ghidra-c/fn_00000D3A.cpp
 00000D44	advance_source_prng	22	unknown	ok	ghidra-c/fn_00000D44.cpp
 00000D5A	FUN_00000d5a	58	unknown	ok	ghidra-c/fn_00000D5A.cpp
 00000D94	FUN_00000d94	38	unknown	ok	ghidra-c/fn_00000D94.cpp
@@ -882,7 +882,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0005BA4C	thunk_FUN_0005ba50	4	unknown	ok	ghidra-c/fn_0005BA4C.cpp
 0005BA50	FUN_0005ba50	22	unknown	ok	ghidra-c/fn_0005BA50.cpp
 0005BA66	FUN_0005ba66	50	unknown	ok	ghidra-c/fn_0005BA66.cpp
-0005BA98	FUN_0005ba98	44	unknown	ok	ghidra-c/fn_0005BA98.cpp
+0005BA98	select_pending_entity_template_list	44	unknown	ok	ghidra-c/fn_0005BA98.cpp
 0005C8C6	FUN_0005c8c6	52	unknown	ok	ghidra-c/fn_0005C8C6.cpp
 0005D172	FUN_0005d172	16	unknown	ok	ghidra-c/fn_0005D172.cpp
 0005D1B4	FUN_0005d1b4	46	unknown	ok	ghidra-c/fn_0005D1B4.cpp

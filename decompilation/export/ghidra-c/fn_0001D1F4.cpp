@@ -3,7 +3,7 @@
 // Name: FUN_0001d1f4
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000D3A FUN_00000d3a
+//   0x00000D3A sample_source_random_bound
 //   0x00000E9C FUN_00000e9c
 //   0x0001A01E FUN_0001a01e
 //   0x0001D1DC FUN_0001d1dc
@@ -28,7 +28,7 @@ void FUN_0001d1f4(void)
     }
     sVar3 = 0x46;
     do {
-      uVar2 = FUN_00000d3a();
+      uVar2 = sample_source_random_bound();
       FUN_00000e9c();
       uVar1 = FUN_0001d3f4();
       Ram00c00000 = *(uint *)(extraout_A1 + (short)(uVar2 & 0xfffc)) & uVar1;

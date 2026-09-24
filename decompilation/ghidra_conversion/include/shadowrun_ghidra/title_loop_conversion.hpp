@@ -40,6 +40,11 @@ ControllerEventLatchResult latch_controller_events(
 // arithmetic intentionally supplies the source's modulo-2^32 wraparound.
 std::uint32_t advance_source_prng(std::uint32_t& state);
 
+// ROM 0x0D3A: advance the source PRNG and scale its low 16 bits into the
+// half-open range [0, bound). The source returns a signed word.
+std::int16_t sample_source_random_bound(std::uint32_t& state,
+                                        std::uint16_t bound);
+
 constexpr std::size_t kPaletteEntryCount = 64;
 constexpr std::size_t kPaletteTransitionPasses = 17;
 using Palette = std::array<std::uint16_t, kPaletteEntryCount>;

@@ -3,7 +3,7 @@
 // Name: FUN_00016b98
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000D3A FUN_00000d3a
+//   0x00000D3A sample_source_random_bound
 //   0x00016D8A FUN_00016d8a
 //   0x00016E08 FUN_00016e08
 
@@ -86,7 +86,7 @@ void FUN_00016b98(void)
       psVar3 = *(short **)((int)&PTR_DAT_00016cc8 + (int)(short)(DAT_00ffddc4 * 4));
     }
   }
-  uVar1 = FUN_00000d3a();
+  uVar1 = sample_source_random_bound();
   do {
     puVar4 = (ushort *)(psVar3 + 1);
     sVar2 = *psVar3;

@@ -35,6 +35,14 @@ std::uint32_t advance_source_prng(std::uint32_t& state) {
     return state;
 }
 
+std::int16_t sample_source_random_bound(std::uint32_t& state,
+                                        const std::uint16_t bound) {
+    const auto low_word =
+        static_cast<std::uint32_t>(advance_source_prng(state) & 0xFFFFU);
+    const auto scaled = (low_word * static_cast<std::uint32_t>(bound)) >> 16U;
+    return static_cast<std::int16_t>(scaled);
+}
+
 std::uint16_t palette_toward_black(std::uint16_t color) {
     auto component = static_cast<std::uint16_t>(color & 0x000EU);
     if (component != 0) {

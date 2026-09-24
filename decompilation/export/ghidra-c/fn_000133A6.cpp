@@ -3,7 +3,7 @@
 // Name: FUN_000133a6
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000D3A FUN_00000d3a
+//   0x00000D3A sample_source_random_bound
 
 
 undefined8 FUN_000133a6(void)
@@ -43,7 +43,7 @@ LAB_00013432:
           *(char *)(iVar4 + 0x66) = (char)in_D0 + '\x01';
           *(undefined1 *)(iVar4 + 0x6e) = 0;
           if (-1 < (short)(uVar1 - 0xc)) {
-            cVar2 = FUN_00000d3a();
+            cVar2 = sample_source_random_bound();
             *(char *)(extraout_A0 + 0x6e) = cVar2 + '\x02';
           }
           goto LAB_0001345e;

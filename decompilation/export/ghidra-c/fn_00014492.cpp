@@ -3,7 +3,7 @@
 // Name: FUN_00014492
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000D3A FUN_00000d3a
+//   0x00000D3A sample_source_random_bound
 //   0x0001DBF0 FUN_0001dbf0
 
 
@@ -37,7 +37,7 @@ void FUN_00014492(void)
       sVar3 = sVar3 + -1;
       piVar4 = piVar4 + 1;
     } while (sVar3 != -1);
-    sVar3 = FUN_00000d3a();
+    sVar3 = sample_source_random_bound();
     *(undefined4 *)(extraout_A0_00 + 0xa2) =
          *(undefined4 *)((int)&DAT_00ffdf96 + (int)(short)(sVar3 << 2));
     return;
@@ -53,7 +53,7 @@ void FUN_00014492(void)
       sVar3 = sVar3 + -1;
       piVar4 = piVar4 + 1;
     } while (sVar3 != -1);
-    sVar3 = FUN_00000d3a();
+    sVar3 = sample_source_random_bound();
     iVar2 = *(int *)((int)&DAT_00ffdfca + (int)(short)(sVar3 << 2));
     *(int *)(extraout_A0_01 + 0xa2) = iVar2;
     if (iVar2 != iVar1) {

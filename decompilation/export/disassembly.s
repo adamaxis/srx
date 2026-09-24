@@ -513,7 +513,7 @@
 00000DC6: clr.b (0x00fff0dd).l
 00000DCC: moveq #0x6,D1
 00000DCE: clr.w D2w
-00000DD0: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+00000DD0: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 00000DD6: addq.w #0x1,D0w
 00000DD8: cmpi.w #0x6,D0w
 00000DDC: bne.w 0x00000de4
@@ -4181,7 +4181,7 @@
 0000A864: tst.b (0x00ffe183).l
 0000A86A: bne.w 0x0000a880
 0000A86E: move.w #0x2,D1w
-0000A872: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+0000A872: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 0000A878: addq.w #0x1,D0w
 0000A87A: move.b D0b,(0x00ffe183).l
 0000A880: move.w (0x00ffe12c).l,D0w
@@ -4189,7 +4189,7 @@
 0000A88C: bne.w 0x0000a8ac
 0000A890: move.l (0x00fffc3c).l,D4
 0000A896: bne.w 0x0000a8ac
-0000A89A: jsr 0x0005ba98.l ; call 0005BA98 FUN_0005ba98
+0000A89A: jsr 0x0005ba98.l ; call 0005BA98 select_pending_entity_template_list
 0000A8A0: move.l A3,(0x00ffe124).l
 0000A8A6: move.l (A3),(0x00ffe110).l
 0000A8AC: rts
@@ -6540,15 +6540,15 @@
 0000E65C: move.l (SP)+,D0
 0000E65E: rts
 0000E660: move.w #0x2,D1w
-0000E664: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+0000E664: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 0000E66A: bne.w 0x0000e6b8
 0000E66E: move.w #0x8,D1w
-0000E672: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+0000E672: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 0000E678: lea (0xc13e8).l,A1 ; data 000c13e8
 0000E67E: lsl.w #0x1,D0w
 0000E680: move.w (0x0,A1,D0w*0x1),D4w ; data 000c13e8
 0000E684: move.w #0x3,D1w
-0000E688: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+0000E688: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 0000E68E: cmpi.w #0x1,D0w
 0000E692: bmi.w 0x0000e6ae
 0000E696: beq.w 0x0000e6a4
@@ -6559,13 +6559,13 @@
 0000E6AE: lea (0xce136).l,A1 ; data 000ce136
 0000E6B4: bra.w 0x0000e6e4
 0000E6B8: move.w #0x4,D1w
-0000E6BC: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+0000E6BC: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 0000E6C2: lea (0xc13f8).l,A1 ; data 000c13f8
 0000E6C8: lsl.w #0x1,D0w
 0000E6CA: move.w (0x0,A1,D0w*0x1),D4w ; data 000c13f8
 0000E6CE: lea (0xce13e).l,A1 ; data 000ce13e
 0000E6D4: move.w #0x4,D1w
-0000E6D8: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+0000E6D8: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 0000E6DE: mulu.w #0x4,D0
 0000E6E2: adda.l D0,A1
 0000E6E4: move.w #0x0,D2w
@@ -6574,10 +6574,10 @@
 0000E6EC: jsr 0x00001232.l ; call 00001232 FUN_00001232
 0000E6F2: rts
 0000E6F4: move.w #0x2,D1w
-0000E6F8: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+0000E6F8: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 0000E6FE: bne.w 0x0000e76e
 0000E702: move.w #0x2,D1w
-0000E706: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+0000E706: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 0000E70C: bne.w 0x0000e71c
 0000E710: lea (0xc13e2).l,A1 ; data 000c13e2
 0000E716: moveq #0x4,D5
@@ -6585,11 +6585,11 @@
 0000E71C: lea (0xc13dc).l,A1 ; data 000c13dc
 0000E722: clr.l D5
 0000E724: move.w #0x3,D1w
-0000E728: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+0000E728: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 0000E72E: lsl.w #0x1,D0w
 0000E730: move.w (0x0,A1,D0w*0x1),D4w
 0000E734: move.w #0x3,D1w
-0000E738: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+0000E738: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 0000E73E: cmpi.w #0x1,D0w
 0000E742: bmi.w 0x0000e75e
 0000E746: beq.w 0x0000e754
@@ -6603,7 +6603,7 @@
 0000E768: adda.l D5,A1
 0000E76A: bra.w 0x0000e7bc
 0000E76E: move.w #0x2,D1w
-0000E772: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+0000E772: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 0000E778: bne.w 0x0000e788
 0000E77C: lea (0xc13d0).l,A1 ; data 000c13d0
 0000E782: clr.l D5
@@ -6611,12 +6611,12 @@
 0000E788: lea (0xc13d6).l,A1 ; data 000c13d6
 0000E78E: moveq #0x2,D5
 0000E790: move.w #0x3,D1w
-0000E794: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+0000E794: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 0000E79A: lsl.w #0x1,D0w
 0000E79C: move.w (0x0,A1,D0w*0x1),D4w
 0000E7A0: lea (0xce13e).l,A1 ; data 000ce13e
 0000E7A6: move.w #0x4,D1w
-0000E7AA: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+0000E7AA: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 0000E7B0: mulu.w #0x4,D0
 0000E7B4: adda.l D0,A1
 0000E7B6: adda.l D5,A1
@@ -10759,7 +10759,7 @@
 00013446: cmpi.w #0xd,D0w
 0001344A: bmi.w 0x0001345e
 0001344E: move.b #0x5,D1b
-00013452: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+00013452: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 00013458: addq.w #0x2,D0w
 0001345A: move.b D0b,(0x6e,A0)
 0001345E: movem.l (SP)+,{ D0 D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
@@ -11171,7 +11171,7 @@
 00013B4E: lea (0xffdd28).l,A3 ; data 00ffdd28
 00013B54: move.w (A3)+,D1w
 00013B56: beq.w 0x00013bb8
-00013B5A: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+00013B5A: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 00013B60: add.w D0w,D0w
 00013B62: move.b (0x0,A3,D0w*0x1),D7b ; data 00ffdd2a
 00013B66: move.b (0x1,A3,D0w*0x1),D4b ; data 00ffdd2b
@@ -11648,7 +11648,7 @@
 00014426: beq.w 0x00014444
 0001442A: dbf D7w,0x00014424
 0001442E: lea (0xffdf96).l,A2 ; data 00ffdf96
-00014434: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+00014434: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 0001443A: lsl.w #0x2,D0w
 0001443C: movea.l (0x0,A2,D0w*0x1),A2 ; data 00ffdf96
 00014440: move.l A2,(0xa2,A0)
@@ -11685,7 +11685,7 @@
 000144BC: beq.w 0x000144e6
 000144C0: dbf D7w,0x000144ba
 000144C4: lea (0xffdfca).l,A2 ; data 00ffdfca
-000144CA: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+000144CA: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 000144D0: lsl.w #0x2,D0w
 000144D2: movea.l (0x0,A2,D0w*0x1),A2 ; data 00ffdfca
 000144D6: move.l A2,(0xa2,A0)
@@ -13628,7 +13628,7 @@
 00016970: movea.l (A1),A1
 00016972: move.w (A1),D1w
 00016974: move.w D1w,(0x00fff0c6).l
-0001697A: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+0001697A: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 00016980: move.w D0w,(0x00ffe12c).l
 00016986: jsr 0x00000d44.l ; call 00000D44 advance_source_prng
 0001698C: andi.w #0x7,D0w
@@ -13736,7 +13736,7 @@
 00016C6A: add.w D0w,D0w
 00016C6C: movea.l (0x0,A2,D0w*0x1),A2 ; data 00016cc8
 00016C70: move.w #0x64,D1w
-00016C74: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+00016C74: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 00016C7A: move.w D0w,D1w
 00016C7C: move.w (A2)+,D0w
 00016C7E: move.w (A2)+,D2w
@@ -14597,15 +14597,15 @@
 00017FE8: bsr.b 0x00017fb4 ; call 00017FB4 FUN_00017fb4
 00017FEA: bra.w 0x00018148
 00017FEE: moveq #0x20,D1
-00017FF0: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+00017FF0: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 00017FF6: tst.w D0w
 00017FF8: bne.w 0x0001814e
 00017FFC: move.w #0x7,(0x00fff106).l
 00018004: moveq #0x9,D1
-00018006: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+00018006: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 0001800C: move.w D0w,(0x00fff09a).l
 00018012: moveq #0x2,D1
-00018014: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+00018014: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 0001801A: tst.w D0w
 0001801C: bne.w 0x00018028
 00018020: addi.w #0x1c,(0x00fff09a).l
@@ -14633,7 +14633,7 @@
 00018096: lea (0xd845a).l,A1 ; data 000d845a
 0001809C: clr.l D1
 0001809E: moveq #0x4,D1
-000180A0: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+000180A0: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 000180A6: move.w D0w,D1w
 000180A8: mulu.w #0x6,D1
 000180AC: adda.l D1,A1
@@ -14651,7 +14651,7 @@
 000180E6: lea (0xd845a).l,A1 ; data 000d845a
 000180EC: clr.l D1
 000180EE: moveq #0x4,D1
-000180F0: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+000180F0: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 000180F6: move.w D0w,D1w
 000180F8: mulu.w #0x6,D1
 000180FC: adda.l D1,A1
@@ -18295,7 +18295,7 @@
 0001D232: movea.l (0x00ffdf7e).l,A1
 0001D238: move.w #0x46,D6w
 0001D23C: move.w (0x00ffe006).l,D1w
-0001D242: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+0001D242: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 0001D248: andi.w #-0x4,D0w
 0001D24C: move.w D0w,D3w
 0001D24E: add.w (0x00ffdf76).l,D0w
@@ -18418,7 +18418,7 @@
 0001D3FC: movea.l (0x0,A5,D0w*0x1),A5 ; data 000f1c5e
 0001D400: clr.w D1w
 0001D402: move.b (A5)+,D1b
-0001D404: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+0001D404: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 0001D40A: move.b (0x0,A5,D0w*0x1),D1b
 0001D40E: clr.l D0
 0001D410: move.w #0x7,D7w
@@ -19007,7 +19007,7 @@
 0001E6AA: lea (0xf3ebc).l,A1 ; data 000f3ebc
 0001E6B0: move.b (0x00fff0ae).l,(0x00fffbec).l
 0001E6BA: moveq #0x8,D1
-0001E6BC: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+0001E6BC: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 0001E6C2: move.b (0x00fff0ae).l,D1b
 0001E6C8: mulu.w #0x30,D1
 0001E6CC: mulu.w #0x6,D0
@@ -19024,7 +19024,7 @@
 0001E6F6: move.w (0x4,A1,D2w*0x1),D1w
 0001E6FA: mulu.w D4w,D1
 0001E6FC: addq.w #0x1,D1w
-0001E6FE: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+0001E6FE: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 0001E704: mulu.w #0x5,D0
 0001E708: add.w (0x2,A1,D2w*0x1),D0w
 0001E70C: move.w D0w,(0x00fffbf4).l
@@ -19968,7 +19968,7 @@
 00020342: lea (0x111656).l,A0 ; data 00111656
 00020348: bra.w 0x0001fed2
 0002034C: move.w #0x64,D1w
-00020350: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+00020350: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 00020356: cmpi.w #0x4b,D0w
 0002035A: bmi.w 0x00020378
 0002035E: lea (0x1d6ed8).l,A6 ; data 001d6ed8
@@ -20691,7 +20691,7 @@
 0002375A: lea (0xff0100).l,A3 ; data 00ff0100
 00023760: move.w #0x2,D7w
 000238EA: move.w #0x64,D1w
-000238EE: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+000238EE: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 000238F4: cmpi.w #0x32,D0w
 000238F8: bpl.w 0x00023904
 000238FC: lea (0x120fc8).l,A0 ; data 00120fc8
@@ -20742,7 +20742,7 @@
 00023BAC: lea (0x1210dc).l,A0 ; data 001210dc
 00023BB2: rts
 00023C38: move.w #0x64,D1w
-00023C3C: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+00023C3C: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 00023C42: cmpi.w #0x32,D0w
 00023C46: bmi.w 0x00023ce0
 00023C4A: lea (0x12115c).l,A0 ; data 0012115c
@@ -20796,7 +20796,7 @@
 00024254: move.b (0x00ff018a).l,D6b
 0002425A: btst.b #0x0,(0x00ff0210).l
 00024392: move.w #0x64,D1w
-00024396: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+00024396: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 0002439C: cmpi.w #0x28,D0w
 000243A0: bmi.w 0x000243ac
 000243A4: lea (0x121268).l,A0 ; data 00121268
@@ -20808,7 +20808,7 @@
 000243C2: lea (0x121270).l,A0 ; data 00121270
 000243C8: rts
 000243CA: move.w #0x64,D1w
-000243CE: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+000243CE: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 000243D4: cmpi.w #0x28,D0w
 000243D8: bmi.w 0x000243e4
 000243DC: lea (0x121268).l,A0 ; data 00121268
@@ -20832,7 +20832,7 @@
 00024456: ori.b #-0x4c,(A2)
 0002445A: rts
 0002451C: move.w #0x64,D1w
-00024520: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+00024520: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 00024526: move.l (0x00fffc22).l,D3
 0002452C: btst.l #0xa,D3
 00024530: beq.w 0x0002454c
@@ -20892,7 +20892,7 @@
 00024798: move.w #-0x1,D1w
 0002479C: jsr 0x0000c134.l ; call 0000C134 normalize_source_text_line
 000247A2: move.w #0x64,D1w
-000247A6: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+000247A6: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 000247AC: cmpi.w #0x46,D0w
 000247B0: bmi.w 0x000247c4
 000247B4: lea (0x11fa04).l,A1 ; data 0011fa04
@@ -23739,7 +23739,7 @@
 00054A86: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
 00054A8C: rts
 00054A8E: moveq #0xa,D1
-00054A90: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+00054A90: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 00054A96: cmp.b (0x00fff0a8).l,D0b
 00054A9C: blt.w 0x00054aa2
 00054AA0: rts
@@ -23949,14 +23949,14 @@
 00055898: move.b (0x00fff0dd).l,D4b
 0005589E: lsr.w #0x1,D4w
 000558A0: moveq #0x6,D1
-000558A2: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+000558A2: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 000558A8: addq.w #0x1,D0w
 000558AA: sub.w D4w,D0w
 000558AC: ble.w 0x000558fe
 000558B0: move.l D0,D4
 000558B2: mulu.w #0xc,D4
 000558B6: moveq #0x3,D1
-000558B8: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+000558B8: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 000558BE: subq.w #0x1,D0w
 000558C0: bmi.w 0x000558ce
 000558C4: beq.w 0x000558d0
@@ -23964,14 +23964,14 @@
 000558CA: bra.w 0x000558d0
 000558CE: sub.w D4w,D5w
 000558D0: moveq #0x3,D1
-000558D2: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+000558D2: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 000558D8: subq.w #0x1,D0w
 000558DA: bmi.w 0x000558fc
 000558DE: bgt.w 0x000558f6
 000558E2: tst.w D5w
 000558E4: bne.w 0x000558fe
 000558E8: moveq #0x2,D1
-000558EA: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+000558EA: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 000558F0: tst.w D0w
 000558F2: beq.w 0x000558fc
 000558F6: move.w D4w,D6w
@@ -27397,10 +27397,10 @@
 0005996C: move.b (A0)+,(0x9d,A1)
 00059970: rts
 00059986: moveq #0x5,D1
-00059988: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+00059988: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 0005998E: move.l D0,D2
 00059990: moveq #0x5,D1
-00059992: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
+00059992: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
 00059998: add.l D2,D0
 0005999A: lea (0x3312).l,A5 ; data 00003312
 000599A0: move.b (0x00fffbf8).l,D1b

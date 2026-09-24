@@ -3,7 +3,7 @@
 // Name: FUN_00000dba
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000D3A FUN_00000d3a
+//   0x00000D3A sample_source_random_bound
 
 
 undefined8 FUN_00000dba(void)
@@ -25,7 +25,7 @@ undefined8 FUN_00000dba(void)
   do {
     sVar2 = 0;
     while( true ) {
-      sVar1 = FUN_00000d3a();
+      sVar1 = sample_source_random_bound();
       if ((short)(sVar1 + 1) != 6) break;
       sVar2 = sVar2 + 6;
     }
