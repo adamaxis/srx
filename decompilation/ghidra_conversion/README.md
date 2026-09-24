@@ -13,7 +13,7 @@ game and the GenesisBus emulator:
 The first slice covers the controller edge expression at `0x195C`, the 64-word
 palette operations at `0x1088`/`0x10D6`/`0x1368`, the seventeen-pass
 transitions at `0x131C`/`0x12F6`, and the title state shared by `0x1A9E`,
-`0x1BAC`, `0x1BEA`, `0x1C1E`, `0x1C6A`, `0x1E4E`, `0x2634`, and `0x26D0`. The `0x1A9E` prompt cadence is typed separately from the unresolved text writer. Vblank
+`0x1BAC`, `0x1BEA`, `0x1C1E`, `0x1C6A`, `0x1E4E`, `0x2634`, and `0x26D0`. The `0x1A9E` prompt cadence and the `0x1C1E`/`0x1C6A` text/sprite leaf state are typed separately from unresolved writers and projection. Vblank
 waits, prompt drawing, resource setup, and unresolved hardware calls remain
 explicit boundaries until their source inputs are understood.
 

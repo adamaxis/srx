@@ -54,8 +54,8 @@ still has unresolved downstream calls or hardware presentation work.
 | `0x19F2` | `read_controller_port` | Selects the controller port, reads both phases, combines the six-button byte, and restores the Z80 bus. | Windows input adapter boundary | pending |
 | `0x1BAC` | `finalize_title_input_sequence` | Recognizes the seven-byte title input sequence or clears the bounded history. | `ghidra_conversion::finalize_title_input_sequence()` | partial |
 | `0x1BEA` | `record_title_input_edge` | Stores up to eight nonzero title-loop edge bytes in the source event buffer. | `ghidra_conversion::record_title_input_edge()` | partial |
-| `0x1C1E` | `advance_title_text_state` | Counts down the completed-logo text delay, then emits the completed title text setup. | `ghidra_conversion::advance_title_reveal()` text state | partial |
-| `0x1C6A` | `advance_title_sprite_state` | Advances the title sprite cadence/phase and rebuilds the SAT projection. | `ghidra_conversion::advance_title_reveal()` sprite state | partial |
+| `0x1C1E` | `advance_title_text_state` | Counts down the completed-logo text delay, steps the target palette every 32 counts, then emits the completed title text setup. | `ghidra_conversion::advance_title_text_state()`; palette/copyright presentation remain boundaries | partial |
+| `0x1C6A` | `advance_title_sprite_state` | Advances the title sprite cadence/phase and requests a SAT projection rebuild. | `ghidra_conversion::advance_title_sprite_state()`; sprite projection remains a presentation boundary | partial |
 | `0x1D7A` | `setup_title_state` | Clears title counters, loads title resources, and initializes title palette/text state. | Explicit conversion boundary; no runtime owner yet | pending |
 | `0x1DCA` | `draw_title_prompt_variant_a` | Dispatches one register-selected title prompt/text record during the blink schedule. | Explicit conversion boundary; source text writer unresolved | pending |
 | `0x1DE0` | `draw_title_prompt_variant_b` | Dispatches the alternate register-selected title prompt/text record during the blink schedule. | Explicit conversion boundary; source text writer unresolved | pending |

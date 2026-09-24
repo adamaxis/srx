@@ -17,8 +17,8 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x1BAC	title input sequence validation	ghidra_conversion::finalize_title_input_sequence	shadowrun_menu_system	partial		Seven-byte match and mismatch reset converted without the FF sentinel
 0x1BEA	title input edge history	ghidra_conversion::record_title_input_edge	shadowrun_menu_system	partial		Bounded eight-entry history is isolated from runtime and emulator
 0x1A9E	title loop	ghidra_conversion::advance_title_prompt_schedule	shadowrun_menu_system	partial		Prompt cadence converted; title draw calls remain explicit boundaries
-0x1C1E	title text state	ghidra_conversion::advance_title_reveal	shadowrun_menu_system	partial		Completion countdown represented in isolated typed state
-0x1C6A	title sprite state	ghidra_conversion::advance_title_reveal	shadowrun_menu_system	partial		Sprite cadence and x advance represented in isolated typed state
+0x1C1E	title text state	ghidra_conversion::advance_title_text_state	shadowrun_menu_system	partial		32-count palette cadence and completion action converted; source writers remain boundaries
+0x1C6A	title sprite state	ghidra_conversion::advance_title_sprite_state	shadowrun_menu_system	partial		Six-phase cadence and projection request converted without source SAT writes
 0x1D7A	title setup	ghidra_conversion	shadowrun_menu_system	pending		Source state boundary documented; resource setup not yet converted
 0x1DE0	title prompt text	ghidra_conversion	shadowrun_menu_system	pending		Source writer call identified; no runtime owner
 0x1DF6	title copyright text	ghidra_conversion	shadowrun_menu_system	pending		Four source writer calls identified; no runtime owner

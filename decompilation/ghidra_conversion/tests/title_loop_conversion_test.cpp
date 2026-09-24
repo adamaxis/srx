@@ -131,6 +131,46 @@ int main() {
         return 1;
     }
 
+    TitleTextState text{1U, 2};
+    if (!expect(advance_title_text_state(text) == TitleTextAction::None &&
+                text.countdown == 1)) {
+        return 1;
+    }
+    if (!expect(advance_title_text_state(text) ==
+                    TitleTextAction::StepPaletteTowardTarget &&
+                text.countdown == 0)) {
+        return 1;
+    }
+    if (!expect(advance_title_text_state(text) ==
+                    TitleTextAction::ShowCopyright &&
+                text.completion_state == 2U)) {
+        return 1;
+    }
+    if (!expect(advance_title_text_state(text) == TitleTextAction::None)) {
+        return 1;
+    }
+
+    TitleSpriteState sprite;
+    const auto first_sprite = advance_title_sprite_state(sprite);
+    if (!expect(first_sprite.phase_changed &&
+                first_sprite.projection_rebuild_requested &&
+                sprite.cadence == 3 && sprite.phase == 1U &&
+                sprite.x == 0x9C)) {
+        return 1;
+    }
+    for (int frame = 0; frame < 4; ++frame) {
+        advance_title_sprite_state(sprite);
+    }
+    if (!expect(sprite.phase == 2U)) {
+        return 1;
+    }
+    sprite.phase = 5U;
+    sprite.cadence = 0;
+    if (!expect(advance_title_sprite_state(sprite).phase_changed &&
+                sprite.phase == 0U)) {
+        return 1;
+    }
+
     TitleAnimationTimer timer;
     if (!expect(advance_title_animation_timer(timer) &&
                 timer.countdown == 4 && timer.animation_offset == 1U)) {

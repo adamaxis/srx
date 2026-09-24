@@ -102,6 +102,36 @@ struct TitlePromptSchedule {
 std::optional<TitlePromptVariant> advance_title_prompt_schedule(
     TitlePromptSchedule& schedule);
 
+enum class TitleTextAction {
+    None,
+    StepPaletteTowardTarget,
+    ShowCopyright,
+};
+
+struct TitleTextState {
+    std::uint16_t completion_state = 0;
+    std::int16_t countdown = 0x5A;
+};
+
+// ROM 0x1C1E: count down the completed-logo text delay. The returned action
+// represents the source palette step or the unresolved copyright/text setup.
+TitleTextAction advance_title_text_state(TitleTextState& state);
+
+struct TitleSpriteState {
+    std::int16_t cadence = 0;
+    std::uint16_t phase = 0;
+    std::int16_t x = 0x98;
+};
+
+struct TitleSpriteAdvanceResult {
+    bool phase_changed = false;
+    bool projection_rebuild_requested = false;
+};
+
+// ROM 0x1C6A: advance the six-phase sprite cadence and request the source
+// sprite-table projection. Projection remains a presentation boundary.
+TitleSpriteAdvanceResult advance_title_sprite_state(TitleSpriteState& state);
+
 struct TitleAnimationTimer {
     std::int16_t countdown = 0;
     std::uint16_t animation_offset = 0;

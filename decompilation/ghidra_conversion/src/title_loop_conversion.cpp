@@ -162,6 +162,37 @@ std::optional<TitlePromptVariant> advance_title_prompt_schedule(
     return variant;
 }
 
+TitleTextAction advance_title_text_state(TitleTextState& state) {
+    if (state.completion_state != 1U) {
+        return TitleTextAction::None;
+    }
+
+    --state.countdown;
+    if (state.countdown < 0) {
+        state.completion_state = 2U;
+        return TitleTextAction::ShowCopyright;
+    }
+    if ((state.countdown & 0x001FU) == 0) {
+        return TitleTextAction::StepPaletteTowardTarget;
+    }
+    return TitleTextAction::None;
+}
+
+TitleSpriteAdvanceResult advance_title_sprite_state(TitleSpriteState& state) {
+    --state.cadence;
+    bool phase_changed = false;
+    if (state.cadence < 0) {
+        state.cadence = 3;
+        ++state.phase;
+        if (state.phase > 5U) {
+            state.phase = 0U;
+        }
+        phase_changed = true;
+    }
+    state.x = static_cast<std::int16_t>(state.x + 4);
+    return TitleSpriteAdvanceResult{phase_changed, true};
+}
+
 bool advance_title_animation_timer(TitleAnimationTimer& timer) {
     --timer.countdown;
     if (timer.countdown >= 0) {
