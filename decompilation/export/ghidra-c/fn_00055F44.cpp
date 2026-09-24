@@ -3,7 +3,7 @@
 // Name: FUN_00055f44
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000D81C FUN_0000d81c
+//   0x0000D81C average_entity_delay_attributes
 
 
 undefined8 FUN_00055f44(void)
@@ -12,7 +12,7 @@ undefined8 FUN_00055f44(void)
   undefined4 in_D0;
   undefined4 in_D1;
   
-  FUN_0000d81c();
+  average_entity_delay_attributes();
   return CONCAT44(in_D0,in_D1);
 }
 

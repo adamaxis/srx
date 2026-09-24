@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003404 FUN_00003404
-//   0x0000ABFC FUN_0000abfc
+//   0x0000ABFC update_entity_animation_delay
 //   0x0000AE6E FUN_0000ae6e
 //   0x0000AF7C FUN_0000af7c
 //   0x0000AFAE FUN_0000afae
@@ -129,7 +129,7 @@ uint FUN_00013ffe(void)
     *(undefined1 *)(iVar4 + 0x57) = 0;
     *(undefined1 *)(iVar4 + 0x56) = 0x7f;
     uVar5 = 0;
-    FUN_0000abfc();
+    update_entity_animation_delay();
     FUN_00003404();
   }
 LAB_000141a0:

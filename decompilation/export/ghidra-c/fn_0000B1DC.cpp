@@ -3,7 +3,7 @@
 // Name: FUN_0000b1dc
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000ABFC FUN_0000abfc
+//   0x0000ABFC update_entity_animation_delay
 //   0x0000AF6C reset_entity_animation_state
 //   0x0000AFF2 FUN_0000aff2
 //   0x00015A8C FUN_00015a8c
@@ -33,7 +33,7 @@ void FUN_0000b1dc(void)
   undefined2 in_stack_fffffffa;
   undefined4 uVar7;
   
-  FUN_0000abfc();
+  update_entity_animation_delay();
   FUN_000530de();
   iVar4 = extraout_A0;
   if (*(int *)(extraout_A0 + 0xa2) != 0) {

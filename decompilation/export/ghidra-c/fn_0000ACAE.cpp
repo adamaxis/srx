@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000AAD2 FUN_0000aad2
-//   0x0000ABFC FUN_0000abfc
+//   0x0000ABFC update_entity_animation_delay
 //   0x0000AE6E FUN_0000ae6e
 //   0x0000AF7C FUN_0000af7c
 //   0x0000AFAE FUN_0000afae
@@ -55,7 +55,7 @@ void FUN_0000acae(void)
     if (_DAT_00ffdfe6 == 0) {
       if ((DAT_00ffdd22 & 0x40) == 0) {
         if (DAT_00ffdd04 == -1) {
-          FUN_0000abfc();
+          update_entity_animation_delay();
           *(char *)(extraout_A0_00 + 0x43) = *(char *)(extraout_A0_00 + 0x43) + '\x01';
           in_A0 = extraout_A0_00;
         }
@@ -104,7 +104,7 @@ void FUN_0000acae(void)
     in_A0 = extraout_A0_01;
     if (!bVar2) goto LAB_0000ae40;
     FUN_000530de();
-    FUN_0000abfc();
+    update_entity_animation_delay();
     in_A0 = extraout_A0_02;
   }
   else if ((DAT_00ffdd22 & 0x4000) != 0) {

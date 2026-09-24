@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000D3A FUN_00000d3a
 //   0x00003404 FUN_00003404
-//   0x0000ABFC FUN_0000abfc
+//   0x0000ABFC update_entity_animation_delay
 //   0x000125FA FUN_000125fa
 //   0x00013C20 FUN_00013c20
 //   0x00013C74 FUN_00013c74
@@ -73,7 +73,7 @@ LAB_00013b7a:
       *(char *)(iVar4 + 0x57) = (char)unaff_D7 + '\x01';
       *(char *)(iVar4 + 0x9d) = (char)unaff_D4;
       *(undefined4 *)((int)register0x0000003c + -4) = 0x13bac;
-      FUN_0000abfc();
+      update_entity_animation_delay();
       *(undefined4 *)((int)register0x0000003c + -4) = 0x13bb2;
       FUN_00003404();
       return;

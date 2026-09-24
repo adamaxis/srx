@@ -3,7 +3,7 @@
 // Name: set_entity_heading_with_field_animation
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000ABFC FUN_0000abfc
+//   0x0000ABFC update_entity_animation_delay
 //   0x0000AF6C reset_entity_animation_state
 
 
@@ -22,7 +22,7 @@ void set_entity_heading_with_field_animation(void)
   }
   *(undefined2 *)(in_A0 + 0x16) =
        *(undefined2 *)((int)L"@DHLPTX\\" + (int)(short)((uVar1 & 7) << 1));
-  FUN_0000abfc();
+  update_entity_animation_delay();
   reset_entity_animation_state();
   return;
 }

@@ -309,3 +309,16 @@ target_link_libraries(shadowrun_ghidra_animation_reset_test
     PRIVATE shadowrun_ghidra_animation_reset)
 add_test(NAME shadowrun_ghidra_animation_reset
          COMMAND shadowrun_ghidra_animation_reset_test)
+
+add_library(shadowrun_ghidra_entity_delay STATIC
+    src/entity_delay_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_delay PUBLIC include)
+
+add_executable(shadowrun_ghidra_entity_delay_test
+    tests/entity_delay_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_delay_test
+    PRIVATE shadowrun_ghidra_entity_delay)
+add_test(NAME shadowrun_ghidra_entity_delay
+         COMMAND shadowrun_ghidra_entity_delay_test)

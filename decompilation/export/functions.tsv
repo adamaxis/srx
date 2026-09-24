@@ -182,7 +182,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0000AAD2	FUN_0000aad2	48	unknown	ok	ghidra-c/fn_0000AAD2.cpp
 0000AB02	FUN_0000ab02	180	unknown	ok	ghidra-c/fn_0000AB02.cpp
 0000ABB6	FUN_0000abb6	70	unknown	ok	ghidra-c/fn_0000ABB6.cpp
-0000ABFC	FUN_0000abfc	82	unknown	ok	ghidra-c/fn_0000ABFC.cpp
+0000ABFC	update_entity_animation_delay	82	unknown	ok	ghidra-c/fn_0000ABFC.cpp
 0000AC5E	FUN_0000ac5e	38	unknown	ok	ghidra-c/fn_0000AC5E.cpp
 0000AC84	FUN_0000ac84	42	unknown	ok	ghidra-c/fn_0000AC84.cpp
 0000ACAE	FUN_0000acae	426	unknown	ok	ghidra-c/fn_0000ACAE.cpp
@@ -233,8 +233,8 @@ entry	name	size	callingConvention	decompileStatus	file
 0000D4C8	FUN_0000d4c8	116	unknown	ok	ghidra-c/fn_0000D4C8.cpp
 0000D53C	FUN_0000d53c	160	unknown	ok	ghidra-c/fn_0000D53C.cpp
 0000D5DC	FUN_0000d5dc	526	unknown	ok	ghidra-c/fn_0000D5DC.cpp
-0000D7EA	FUN_0000d7ea	50	unknown	ok	ghidra-c/fn_0000D7EA.cpp
-0000D81C	FUN_0000d81c	14	unknown	ok	ghidra-c/fn_0000D81C.cpp
+0000D7EA	compute_entity_delay_factor	50	unknown	ok	ghidra-c/fn_0000D7EA.cpp
+0000D81C	average_entity_delay_attributes	14	unknown	ok	ghidra-c/fn_0000D81C.cpp
 0000D82A	FUN_0000d82a	544	unknown	ok	ghidra-c/fn_0000D82A.cpp
 0000DA4A	FUN_0000da4a	32	unknown	ok	ghidra-c/fn_0000DA4A.cpp
 0000E00A	FUN_0000e00a	42	unknown	ok	ghidra-c/fn_0000E00A.cpp

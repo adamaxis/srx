@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000D81C
-// Name: FUN_0000d81c
+// Name: average_entity_delay_attributes
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0000d81c(void)
+void average_entity_delay_attributes(void)
 
 {
   return;

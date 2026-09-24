@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000D7EA
-// Name: FUN_0000d7ea
+// Name: compute_entity_delay_factor
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000D81C FUN_0000d81c
+//   0x0000D81C average_entity_delay_attributes
 
 
-void FUN_0000d7ea(void)
+void compute_entity_delay_factor(void)
 
 {
   uint uVar1;
@@ -22,7 +22,7 @@ void FUN_0000d7ea(void)
     uVar1 = (uint)(ushort)((short)uVar1 + 1);
     sVar2 = sVar2 + -1;
   } while (sVar2 != -1);
-  FUN_0000d81c();
+  average_entity_delay_attributes();
   return;
 }
 

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000ABFC
-// Name: FUN_0000abfc
+// Name: update_entity_animation_delay
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000D7EA FUN_0000d7ea
+//   0x0000D7EA compute_entity_delay_factor
 
 
-void FUN_0000abfc(void)
+void update_entity_animation_delay(void)
 
 {
   short sVar1;
@@ -14,7 +14,7 @@ void FUN_0000abfc(void)
   short sVar2;
   int extraout_A0;
   
-  sVar1 = FUN_0000d7ea();
+  sVar1 = compute_entity_delay_factor();
   sVar2 = extraout_D1w * -4 + 0x6a;
   if (sVar1 != 0) {
     if (sVar1 == 2) {

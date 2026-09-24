@@ -4365,7 +4365,7 @@
 0000ABFA: rts
 0000ABFC: movem.w {  D2w D1w},-(SP)
 0000AC00: addq.w #0x1,D1w
-0000AC02: jsr 0x0000d7ea.l ; call 0000D7EA FUN_0000d7ea
+0000AC02: jsr 0x0000d7ea.l ; call 0000D7EA compute_entity_delay_factor
 0000AC08: mulu.w #0x4,D1
 0000AC0C: move.w #0x6a,D2w
 0000AC10: sub.w D1w,D2w
@@ -4451,7 +4451,7 @@
 0000AD6A: clr.b (0x43,A0)
 0000AD6E: bra.w 0x0000ae26
 0000AD72: move.w #0x1,D0w
-0000AD76: bsr.w 0x0000abfc ; call 0000ABFC FUN_0000abfc
+0000AD76: bsr.w 0x0000abfc ; call 0000ABFC update_entity_animation_delay
 0000AD7A: addq.b #0x1,(0x43,A0)
 0000AD7E: bra.w 0x0000ae26
 0000AD82: clr.b (0x43,A0)
@@ -4482,7 +4482,7 @@
 0000AE00: move.w #0x4b,D0w
 0000AE04: jsr 0x000530de.l ; call 000530DE FUN_000530de
 0000AE0A: move.w #0x0,D0w
-0000AE0E: bsr.w 0x0000abfc ; call 0000ABFC FUN_0000abfc
+0000AE0E: bsr.w 0x0000abfc ; call 0000ABFC update_entity_animation_delay
 0000AE12: bra.w 0x0000ae26
 0000AE16: jmp 0x0000b1dc.l ; call 0000B1DC FUN_0000b1dc
 0000AE1C: move.w (0x2e,A1),D0w
@@ -4557,7 +4557,7 @@
 0000AF76: clr.w (0x1e,A0)
 0000AF7A: rts
 0000AF7C: clr.w D0w
-0000AF7E: bsr.w 0x0000abfc ; call 0000ABFC FUN_0000abfc
+0000AF7E: bsr.w 0x0000abfc ; call 0000ABFC update_entity_animation_delay
 0000AF82: move.l #0xafe0,(0x3a,A0) ; data 0000afe0
 0000AF8A: move.w (0x2e,A0),D0w
 0000AF8E: rol.w #0x3,D0w
@@ -4571,7 +4571,7 @@
 0000AFAA: bsr.b 0x0000af6c ; call 0000AF6C reset_entity_animation_state
 0000AFAC: rts
 0000AFAE: clr.w D0w
-0000AFB0: bsr.w 0x0000abfc ; call 0000ABFC FUN_0000abfc
+0000AFB0: bsr.w 0x0000abfc ; call 0000ABFC update_entity_animation_delay
 0000AFB4: move.l #0xafe2,(0x3a,A0) ; data 0000afe2
 0000AFBC: move.w (0x2e,A0),D0w
 0000AFC0: rol.w #0x3,D0w
@@ -4675,7 +4675,7 @@
 0000B18E: bset.b #0x0,(0x11,A1)
 0000B194: movem.l (SP)+,{  A0 A1}
 0000B198: clr.w D0w
-0000B19A: bsr.w 0x0000abfc ; call 0000ABFC FUN_0000abfc
+0000B19A: bsr.w 0x0000abfc ; call 0000ABFC update_entity_animation_delay
 0000B19E: jsr 0x0001dbaa.l ; call 0001DBAA FUN_0001dbaa
 0000B1A4: move.b #0x6,(0x2,A0)
 0000B1AA: clr.b (0x3,A0)
@@ -4692,7 +4692,7 @@
 0000B1D6: bsr.w 0x0000af6c ; call 0000AF6C reset_entity_animation_state
 0000B1DA: rts
 0000B1DC: move.w #0x1,D0w
-0000B1E0: bsr.w 0x0000abfc ; call 0000ABFC FUN_0000abfc
+0000B1E0: bsr.w 0x0000abfc ; call 0000ABFC update_entity_animation_delay
 0000B1E4: move.w #0x4c,D0w
 0000B1E8: cmpi.w #0xc,(0xe,A0)
 0000B1EE: bne.w 0x0000b1f6
@@ -4808,7 +4808,7 @@
 0000B3DA: move.w #0x1,D0w
 0000B3DE: bra.w 0x0000b3e4
 0000B3E2: clr.w D0w
-0000B3E4: bsr.w 0x0000abfc ; call 0000ABFC FUN_0000abfc
+0000B3E4: bsr.w 0x0000abfc ; call 0000ABFC update_entity_animation_delay
 0000B3E8: bsr.w 0x0000af6c ; call 0000AF6C reset_entity_animation_state
 0000B3EC: rts
 0000B3EE: clr.w (0x38,A0)
@@ -4828,7 +4828,7 @@
 0000B422: move.w D1w,(0x16,A0)
 0000B426: bsr.w 0x0000af6c ; call 0000AF6C reset_entity_animation_state
 0000B42A: clr.w D0w
-0000B42C: bsr.w 0x0000abfc ; call 0000ABFC FUN_0000abfc
+0000B42C: bsr.w 0x0000abfc ; call 0000ABFC update_entity_animation_delay
 0000B430: rts
 0000B432: clr.w (0x38,A0)
 0000B436: move.w (A0),D5w
@@ -6319,7 +6319,7 @@
 0000D804: addq.w #0x1,D2w
 0000D806: dbf D7w,0x0000d7f2
 0000D80A: clr.l D2
-0000D80C: bsr.w 0x0000d81c ; call 0000D81C FUN_0000d81c
+0000D80C: bsr.w 0x0000d81c ; call 0000D81C average_entity_delay_attributes
 0000D810: add.w D2w,D1w
 0000D812: subq.w #0x1,D1w
 0000D814: bpl.w 0x0000d81a
@@ -11190,7 +11190,7 @@
 00013B9C: move.b D7b,(0x57,A0)
 00013BA0: move.b D4b,(0x9d,A0)
 00013BA4: clr.w D0w
-00013BA6: jsr 0x0000abfc.l ; call 0000ABFC FUN_0000abfc
+00013BA6: jsr 0x0000abfc.l ; call 0000ABFC update_entity_animation_delay
 00013BAC: jsr 0x00003404.l ; call 00003404 FUN_00003404
 00013BB2: andi #0x1e,CCR
 00013BB6: rts
@@ -11532,7 +11532,7 @@
 0001417C: move.b #0x0,(0x57,A0)
 00014182: move.b #0x7f,(0x56,A0)
 00014188: clr.w D0w
-0001418A: jsr 0x0000abfc.l ; call 0000ABFC FUN_0000abfc
+0001418A: jsr 0x0000abfc.l ; call 0000ABFC update_entity_animation_delay
 00014190: jsr 0x00003404.l ; call 00003404 FUN_00003404
 00014196: bra.w 0x000141a0
 0001419A: jmp 0x00014226.l ; call 00014226 FUN_00014226
@@ -11581,7 +11581,7 @@
 0001428C: btst.b #0x4,(0x91,A0)
 00014292: beq.w 0x0001429a
 00014296: move.w #0x1,D1w
-0001429A: jsr 0x0000abfc.l ; call 0000ABFC FUN_0000abfc
+0001429A: jsr 0x0000abfc.l ; call 0000ABFC update_entity_animation_delay
 000142A0: subq.b #0x1,(0x4f,A0)
 000142A4: move.b #0x26,D1b
 000142A8: jmp 0x000036fc.l ; call 000036FC FUN_000036fc
@@ -14533,7 +14533,7 @@
 00017EC2: mulu.w #0x4,D1
 00017EC6: add.w D1w,D0w
 00017EC8: movea.l (0x00fffc04).l,A0
-00017ECE: jsr 0x0000d81c.l ; call 0000D81C FUN_0000d81c
+00017ECE: jsr 0x0000d81c.l ; call 0000D81C average_entity_delay_attributes
 00017ED4: add.w D1w,D0w
 00017ED6: move.w #0x1d,D1w
 00017EDA: sub.w D0w,D1w
@@ -24336,7 +24336,7 @@
 00055F44: movem.l {  D7 D5 D4 D3 D2 D1 D0},-(SP)
 00055F48: movea.l (0x00fffc04).l,A0
 00055F4E: move.l D1,-(SP) ; data Stack[-0x20]
-00055F50: jsr 0x0000d81c.l ; call 0000D81C FUN_0000d81c
+00055F50: jsr 0x0000d81c.l ; call 0000D81C average_entity_delay_attributes
 00055F56: move.l D1,D6
 00055F58: move.l (SP)+,D1
 00055F5A: add.b (0x88,A0),D6b

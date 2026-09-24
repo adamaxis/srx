@@ -3,7 +3,7 @@
 // Name: FUN_0000af7c
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000ABFC FUN_0000abfc
+//   0x0000ABFC update_entity_animation_delay
 //   0x0000AF6C reset_entity_animation_state
 
 
@@ -13,7 +13,7 @@ void FUN_0000af7c(void)
   ushort uVar1;
   int extraout_A0;
   
-  FUN_0000abfc();
+  update_entity_animation_delay();
   *(undefined **)(extraout_A0 + 0x3a) = &DAT_0000afe0;
   uVar1 = *(ushort *)(extraout_A0 + 0x2e) << 3 | *(ushort *)(extraout_A0 + 0x2e) >> 0xd;
   if ((short)uVar1 < 0) {

@@ -3,7 +3,7 @@
 // Name: FUN_0000b11c
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000ABFC FUN_0000abfc
+//   0x0000ABFC update_entity_animation_delay
 //   0x0000AF6C reset_entity_animation_state
 //   0x0000AFF2 FUN_0000aff2
 //   0x00015A8C FUN_00015a8c
@@ -46,7 +46,7 @@ void FUN_0000b11c(void)
       *(byte *)((int)extraout_A1_00 + 0x11) = *(byte *)((int)extraout_A1_00 + 0x11) | 1;
     }
   }
-  FUN_0000abfc();
+  update_entity_animation_delay();
   FUN_0001dbaa();
   *(undefined1 *)(extraout_A0_01 + 2) = 6;
   *(undefined1 *)(extraout_A0_01 + 3) = 0;
