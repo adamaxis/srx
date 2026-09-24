@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00001872
-// Name: FUN_00001872
+// Name: service_display_frame
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000EC0 upload_startup_palette
@@ -16,7 +16,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00001872(void)
+void service_display_frame(void)
 
 {
   byte bVar1;

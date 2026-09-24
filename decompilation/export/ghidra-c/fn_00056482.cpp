@@ -3,7 +3,7 @@
 // Name: FUN_00056482
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001A154 FUN_0001a154
+//   0x0001A154 clear_selected_menu_record
 //   0x0001A468 FUN_0001a468
 
 
@@ -21,7 +21,7 @@ void FUN_00056482(void)
   (&DAT_00ff1110)[sVar2] = cVar1;
   if (cVar1 < '\0') {
     (&DAT_00ff1110)[sVar2] = 0;
-    FUN_0001a154();
+    clear_selected_menu_record();
     DAT_00fff0ce = DAT_00fff0ce + -2;
     if (DAT_00fff0ce < '\0') {
       DAT_00fff0ce = '\x0f';

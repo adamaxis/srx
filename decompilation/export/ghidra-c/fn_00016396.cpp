@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00016396
-// Name: FUN_00016396
+// Name: advance_palette_fade
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001088 step_palette_toward_black
@@ -9,7 +9,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-ushort FUN_00016396(void)
+ushort advance_palette_fade(void)
 
 {
   ushort uVar1;

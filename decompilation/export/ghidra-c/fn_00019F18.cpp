@@ -6,7 +6,7 @@
 //   0x00017998 render_menu_text_progression
 //   0x00017C52 render_menu_text_followup
 //   0x00017C84 set_hud_selection_value
-//   0x0001B706 FUN_0001b706
+//   0x0001B706 prepare_menu_offset_once
 //   0x000564D6 FUN_000564d6
 
 
@@ -19,7 +19,7 @@ void FUN_00019f18(void)
     FUN_000564d6();
     render_menu_text_progression();
   }
-  FUN_0001b706();
+  prepare_menu_offset_once();
   return;
 }
 

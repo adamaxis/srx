@@ -3,7 +3,7 @@
 // Name: FUN_000594e0
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00003074 FUN_00003074
+//   0x00003074 prepare_field_scene_buffers
 //   0x000042F2 initialize_primary_roster_template
 //   0x0000431C initialize_secondary_roster_template
 //   0x0001E4AC spawn_world_effect_at_player_position
@@ -32,7 +32,7 @@ void FUN_000594e0(void)
     puVar1 = (undefined2 *)((int)puVar4 + 1);
   } while (sVar2 != -1);
   DAT_00ffddc4 = *(undefined2 *)((int)puVar4 + 1);
-  FUN_00003074();
+  prepare_field_scene_buffers();
   DAT_00ff0110 = 0xf;
   if (-1 < DAT_00fffc0c) {
     initialize_primary_roster_template();

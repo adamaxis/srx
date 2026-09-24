@@ -30,7 +30,7 @@ void prepare_entity_auxiliary_behavior(void)
     return;
   }
   *(byte *)(in_A0 + 0x10) = *(byte *)(in_A0 + 0x10) | 0x40;
-  FUN_0000abb6();
+  arm_controller_activity_delay();
   *(byte *)(extraout_A0_00 + 0x10) = *(byte *)(extraout_A0_00 + 0x10) & 0xbf;
   service_audio_if_enabled();
   *(byte *)(extraout_A0_01 + 0x10) = *(byte *)(extraout_A0_01 + 0x10) | 0x10;

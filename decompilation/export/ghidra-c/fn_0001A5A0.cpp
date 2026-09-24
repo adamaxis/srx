@@ -5,8 +5,8 @@
 // Calls recovered from direct call instructions:
 //   0x000013BE build_title_sprite_records_with_attribute_offset
 //   0x000061CC append_sprite_record
-//   0x0001B654 FUN_0001b654
-//   0x0001B680 FUN_0001b680
+//   0x0001B654 attach_behavior_descriptor_d
+//   0x0001B680 attach_behavior_descriptor_e
 //   0x0001B7D0 FUN_0001b7d0
 //   0x000530EA service_audio_command_frame
 //   0x000562EC FUN_000562ec
@@ -39,12 +39,12 @@ LAB_0001a62a:
 LAB_0001a6e6:
       DAT_00ffe07c = DAT_00ffe07c + -1;
       if (DAT_00ffe07c < 0) {
-        FUN_0001b680();
+        attach_behavior_descriptor_e();
         DAT_00ffe076 = 0;
         return;
       }
       if (_DAT_00ffe0d6 == 0) {
-        FUN_0001b654();
+        attach_behavior_descriptor_d();
         return;
       }
       return;
@@ -98,7 +98,7 @@ LAB_0001a6e6:
 LAB_0001a6f8:
   DAT_00ffe07c = DAT_00ffe07c + -1;
   if (DAT_00ffe07c < 0) {
-    FUN_0001b680();
+    attach_behavior_descriptor_e();
     DAT_00ffe076 = 0;
     return;
   }

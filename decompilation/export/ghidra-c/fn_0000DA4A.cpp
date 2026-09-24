@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000DA4A
-// Name: FUN_0000da4a
+// Name: render_title_text_wrapper
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_title_text_source
 
 
-undefined8 FUN_0000da4a(void)
+undefined8 render_title_text_wrapper(void)
 
 {
   undefined4 in_D0;

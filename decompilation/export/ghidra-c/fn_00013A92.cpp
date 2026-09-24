@@ -6,7 +6,7 @@
 //   0x00013AE6 advance_entity_action_threshold
 //   0x00013B12 FUN_00013b12
 //   0x00013BBA FUN_00013bba
-//   0x00013CD4 guard_entity_action_threshold
+//   0x00013CD4 passes_entity_action_threshold
 
 
 void FUN_00013a92(void)
@@ -20,7 +20,7 @@ void FUN_00013a92(void)
   if (*(char *)(in_A0 + 0x9b) < '\x02') {
     bVar1 = false;
     if ((*(char *)(in_A0 + 0x56) < '\0') && (FUN_00013bba(), in_A0 = extraout_A0, bVar1)) {
-      guard_entity_action_threshold();
+      passes_entity_action_threshold();
       if (!bVar1) {
         return;
       }

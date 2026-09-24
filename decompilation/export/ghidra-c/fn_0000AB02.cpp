@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00016B98 FUN_00016b98
 //   0x0001DBF0 FUN_0001dbf0
-//   0x0001E2EC FUN_0001e2ec
+//   0x0001E2EC begin_world_activity
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -22,14 +22,14 @@ void FUN_0000ab02(void)
   
   if ((*(byte *)(in_A0 + 0xb0) & 0x80) != 0) {
     _DAT_00ffdd2c = &DAT_0001f210;
-    FUN_0001e2ec();
+    begin_world_activity();
   }
   if (((((*(byte *)(in_A0 + 0x10) & 8) == 0) &&
        (FUN_00016b98(), in_A0 = extraout_A0, (*(byte *)(extraout_A0 + 0x9e) & 0x40) != 0)) &&
       (DAT_00ffe177 = DAT_00ffe177 + -1, DAT_00ffe177 == '\0')) &&
      (FUN_0001dbf0(), in_A0 = extraout_A0_00, DAT_00ffe12e != (undefined *)0x0)) {
     _DAT_00ffdd2c = DAT_00ffe12e;
-    FUN_0001e2ec();
+    begin_world_activity();
     DAT_00ffe12e = (undefined *)0x0;
     in_A0 = extraout_A0_01;
   }

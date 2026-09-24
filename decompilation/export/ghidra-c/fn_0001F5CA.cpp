@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C64C FUN_0000c64c
-//   0x0001EEDC FUN_0001eedc
+//   0x0001EEDC dispatch_world_effect
 //   0x0001F65A FUN_0001f65a
 //   0x0001F830 FUN_0001f830
 //   0x0001FA78 FUN_0001fa78
@@ -20,7 +20,7 @@ void FUN_0001f5ca(void)
     FUN_00020634();
     DAT_00fff10c = 0;
     DAT_00fff0cc = '\0';
-    FUN_0001eedc();
+    dispatch_world_effect();
     if ((-1 < DAT_00fff0cc) && (FUN_00053a78(), -1 < DAT_00fff0cc)) {
       FUN_0001f65a();
       FUN_0001f830();

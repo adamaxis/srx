@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000D44 advance_source_prng
 //   0x0001E0B8 promote_entity_effect_flags
-//   0x000530D2 FUN_000530d2
+//   0x000530D2 service_audio_if_enabled_variant
 
 
 void advance_world_effect_trigger(void)
@@ -22,7 +22,7 @@ void advance_world_effect_trigger(void)
       DAT_00ffe16f = '\0';
       promote_entity_effect_flags();
     }
-    FUN_000530d2();
+    service_audio_if_enabled_variant();
     return;
   }
   if (DAT_00ffe170 != '\0') {

@@ -3,7 +3,7 @@
 // Name: FUN_0001a818
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001B680 FUN_0001b680
+//   0x0001B680 attach_behavior_descriptor_e
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -27,7 +27,7 @@ void FUN_0001a818(void)
   DAT_00ffdf76 = 0xd280;
   DAT_00ff1642 = 0;
   DAT_00ff1644 = 7;
-  FUN_0001b680();
+  attach_behavior_descriptor_e();
   return;
 }
 

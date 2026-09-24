@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001B5A6
-// Name: FUN_0001b5a6
+// Name: reset_word_stream_area
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0001b5a6(void)
+void reset_word_stream_area(void)
 
 {
   short sVar1;

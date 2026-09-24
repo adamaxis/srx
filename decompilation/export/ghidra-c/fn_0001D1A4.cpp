@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001D1A4
-// Name: FUN_0001d1a4
+// Name: advance_effect_vertical_position
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0001d1a4(void)
+void advance_effect_vertical_position(void)
 
 {
   int in_A0;

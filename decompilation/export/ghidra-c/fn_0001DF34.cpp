@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000133A6 FUN_000133a6
-//   0x0001E514 FUN_0001e514
+//   0x0001E514 clear_effect_slot_state
 //   0x000530DE service_audio_if_enabled
 
 
@@ -39,7 +39,7 @@ void FUN_0001df34(void)
         if (*(short *)(extraout_A0_00 + 2) != 0x65) {
           return;
         }
-        FUN_0001e514(extraout_A0_00);
+        clear_effect_slot_state(extraout_A0_00);
         return;
       }
     }

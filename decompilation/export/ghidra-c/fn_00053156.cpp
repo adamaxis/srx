@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00053156
-// Name: FUN_00053156
+// Name: service_audio_tick_wrapper
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-undefined8 FUN_00053156(void)
+undefined8 service_audio_tick_wrapper(void)
 
 {
   undefined4 in_D0;

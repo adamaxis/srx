@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001669C
-// Name: FUN_0001669c
+// Name: project_entity_x_axis
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-short FUN_0001669c(void)
+short project_entity_x_axis(void)
 
 {
   ushort uVar1;

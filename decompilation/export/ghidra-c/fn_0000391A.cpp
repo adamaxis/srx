@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x000033AA draw_field_asset_grid
 //   0x0001DC4C FUN_0001dc4c
-//   0x0001E540 FUN_0001e540
+//   0x0001E540 initialize_effect_fade_marker
 //   0x000530DE service_audio_if_enabled
 
 
@@ -43,7 +43,7 @@ void handle_mode_action_event(void)
            (((*(byte *)(puVar3 + 8) & 0x40) != 0 || ((*(byte *)(puVar3 + 8) & 0x10) != 0))))));
   DAT_00fff0cc = 0;
   if (puVar3 != puVar2) {
-    FUN_0001e540();
+    initialize_effect_fade_marker();
   }
   FUN_0001dc4c();
   draw_field_asset_grid();

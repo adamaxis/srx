@@ -3,7 +3,7 @@
 // Name: FUN_0001dea0
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001E514 FUN_0001e514
+//   0x0001E514 clear_effect_slot_state
 
 
 void FUN_0001dea0(void)
@@ -18,7 +18,7 @@ void FUN_0001dea0(void)
   do {
     if ((((*(byte *)(puVar2 + 8) & 0x40) != 0) && ((*(byte *)(puVar2 + 8) & 8) == 0)) &&
        (puVar2[6] == 0)) {
-      FUN_0001e514();
+      clear_effect_slot_state();
       puVar2 = extraout_A0;
     }
     puVar2 = puVar2 + 0x80;

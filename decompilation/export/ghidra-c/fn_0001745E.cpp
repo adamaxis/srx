@@ -22,10 +22,10 @@
 //   0x00017EB4 calculate_menu_delay_offset
 //   0x00019856 refresh_field_hud
 //   0x0001ADE6 FUN_0001ade6
-//   0x0001B5A6 FUN_0001b5a6
-//   0x0001B628 FUN_0001b628
-//   0x0001C4EE FUN_0001c4ee
-//   0x000530D2 FUN_000530d2
+//   0x0001B5A6 reset_word_stream_area
+//   0x0001B628 attach_behavior_descriptor_c
+//   0x0001C4EE copy_eleven_words
+//   0x000530D2 service_audio_if_enabled_variant
 //   0x000530DE service_audio_if_enabled
 //   0x000530EA service_audio_command_frame
 //   0x00053126 prepare_mode_entry_service
@@ -82,7 +82,7 @@ void FUN_0001745e(void)
     clear_and_fill_plane_b();
     reset_vdp_upload_state();
     VDP_CTRL = 0x8b03;
-    FUN_0001b5a6();
+    reset_word_stream_area();
     VDP_CTRL = 0x9100;
     render_menu_footer();
     upload_menu_resource_pair();
@@ -94,17 +94,17 @@ void FUN_0001745e(void)
     refresh_field_hud();
     write_four_by_four_transfer_batch();
     refresh_field_resource_streams();
-    FUN_0001c4ee();
+    copy_eleven_words();
     DAT_00ff158e = 0x120;
     DAT_00ff1590 = 0x12f;
-    FUN_0001b628();
+    attach_behavior_descriptor_c();
     *(undefined1 *)(extraout_A0 + 2) = 0x1e;
     *(undefined1 *)(extraout_A0 + 3) = 0x1e;
     prepare_menu_hud_sequence();
     VDP_CTRL = 0x8174;
     service_audio_if_enabled();
     run_menu_hud_tick_loop();
-    FUN_000530d2();
+    service_audio_if_enabled_variant();
     service_audio_command_frame();
     render_hud_sprite_stream();
     FUN_0001ade6();

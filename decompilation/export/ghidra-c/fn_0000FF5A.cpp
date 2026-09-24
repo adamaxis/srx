@@ -10,7 +10,7 @@
 //   0x00010016 FUN_00010016
 //   0x000102D4 FUN_000102d4
 //   0x00010722 FUN_00010722
-//   0x000125FA FUN_000125fa
+//   0x000125FA clear_entity_auxiliary_marker
 
 
 void FUN_0000ff5a(void)
@@ -25,7 +25,7 @@ void FUN_0000ff5a(void)
   FUN_000102d4();
   iVar1 = DAT_00fffc04;
   if ((-1 < *(char *)(DAT_00fffc04 + 0x56)) && (*(char *)(DAT_00fffc04 + 0x57) != '\0')) {
-    FUN_000125fa();
+    clear_entity_auxiliary_marker();
     *(undefined1 *)(extraout_A0 + 0x4e) = extraout_D1b;
     iVar1 = extraout_A0;
   }

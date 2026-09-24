@@ -6,7 +6,7 @@
 //   0x00000BD2 wait_for_vblank
 //   0x0000131C step_palette_transition
 //   0x0000195C sample_controller_input
-//   0x000530D2 FUN_000530d2
+//   0x000530D2 service_audio_if_enabled_variant
 //   0x000530DE service_audio_if_enabled
 //   0x0005D886 FUN_0005d886
 //   0x0005D8BA step_pre_title_logo_strobe
@@ -43,12 +43,12 @@ LAB_0005d7c8:
       DAT_00ffdd30 = DAT_00ffdd30 + -1;
       if ((DAT_00ffdd30 < 0) && (DAT_00ffdd28 = DAT_00ffdd28 + 1, (DAT_00ffdd28 & 1) == 0)) {
         if (DAT_00ffdd2a < 6) {
-          FUN_000530d2();
+          service_audio_if_enabled_variant();
         }
         DAT_00ffdd2a = DAT_00ffdd2a + -1;
         if (-1 < DAT_00ffdd2a) {
           if (DAT_00ffdd2a == 0) {
-            FUN_000530d2();
+            service_audio_if_enabled_variant();
             DAT_00ffdd3c = 1;
           }
           DAT_00ffdd0a = DAT_00ffdd0a + -1;

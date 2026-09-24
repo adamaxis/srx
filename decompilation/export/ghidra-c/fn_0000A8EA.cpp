@@ -6,7 +6,7 @@
 //   0x0000391A handle_mode_action_event
 //   0x0000AB02 FUN_0000ab02
 //   0x0000AC5E FUN_0000ac5e
-//   0x0000AC84 FUN_0000ac84
+//   0x0000AC84 dispatch_entity_collision_behavior
 //   0x0000ACAE FUN_0000acae
 //   0x0000B330 enter_entity_behavior_transition
 //   0x0000B49C resolve_entity_fallback_movement
@@ -14,7 +14,7 @@
 //   0x0000EB92 FUN_0000eb92
 //   0x00013874 dispatch_entity_action_candidates
 //   0x00015BB4 FUN_00015bb4
-//   0x0001E514 FUN_0001e514
+//   0x0001E514 clear_effect_slot_state
 
 
 void FUN_0000a8ea(void)
@@ -49,7 +49,7 @@ void FUN_0000a8ea(void)
 LAB_0000aa54:
         if ((*(byte *)(puVar5 + 8) & 2) == 0) {
           if ((*(byte *)(puVar5 + 8) & 4) != 0) {
-            FUN_0000ac84();
+            dispatch_entity_collision_behavior();
             puVar5 = extraout_A0_07;
           }
         }
@@ -69,7 +69,7 @@ LAB_0000aa54:
              (*(undefined1 **)(puVar5 + 0x1d) == &LAB_0000b10c)) {
 LAB_0000a9be:
             FUN_0000ab02();
-            FUN_0001e514();
+            clear_effect_slot_state();
             puVar5 = extraout_A0_02;
           }
           else {

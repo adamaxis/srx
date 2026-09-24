@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00052DE0
-// Name: FUN_00052de0
+// Name: initialize_audio_ram
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00052DC2 begin_controller_bus_access
 
 
-void FUN_00052de0(void)
+void initialize_audio_ram(void)
 
 {
   short sVar1;

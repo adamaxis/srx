@@ -6,7 +6,7 @@
 //   0x00017C52 render_menu_text_followup
 //   0x00017C84 set_hud_selection_value
 //   0x00017DB8 advance_hud_footer_offset
-//   0x00019B34 FUN_00019b34
+//   0x00019B34 publish_menu_selection_then_text
 //   0x00019BAE select_hud_mode
 
 
@@ -19,7 +19,7 @@ void FUN_00019cb2(void)
   bool bVar3;
   
   if (DAT_00fff0d3 < '\x01') {
-    FUN_00019b34();
+    publish_menu_selection_then_text();
   }
   else {
     cVar1 = select_hud_mode();
@@ -46,7 +46,7 @@ void FUN_00019cb2(void)
       (&DAT_00fff0e8)[sVar2] = 0;
       *(short *)((int)&DAT_00fff0f2 + (int)(short)(sVar2 << 1)) = extraout_D1w * 10;
       refresh_menu_number_or_grid();
-      FUN_00019762();
+      clear_menu_status_at();
       return;
     }
     sVar2 = sVar2 + -1;

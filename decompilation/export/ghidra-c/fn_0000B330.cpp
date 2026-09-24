@@ -3,7 +3,7 @@
 // Name: enter_entity_behavior_transition
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000ABB6 FUN_0000abb6
+//   0x0000ABB6 arm_controller_activity_delay
 //   0x0000AF6C reset_entity_animation_state
 //   0x000530DE service_audio_if_enabled
 
@@ -17,7 +17,7 @@ void enter_entity_behavior_transition(void)
   int extraout_A0_00;
   
   *(byte *)(in_A0 + 0x10) = *(byte *)(in_A0 + 0x10) | 0x40;
-  FUN_0000abb6();
+  arm_controller_activity_delay();
   *(byte *)(extraout_A0 + 0x10) = *(byte *)(extraout_A0 + 0x10) & 0xbf;
   service_audio_if_enabled();
   *(byte *)(extraout_A0_00 + 0x10) = *(byte *)(extraout_A0_00 + 0x10) | 0x10;

@@ -10,7 +10,7 @@
 //   0x0000C0C2 load_title_font
 //   0x0000C0DA render_title_text_source
 //   0x0000C376 move_wrapped_menu_cursor
-//   0x0000C3E6 FUN_0000c3e6
+//   0x0000C3E6 write_menu_grid_with_metadata
 //   0x00010B5A transfer_menu_asset_batch_four
 //   0x0001F34A prepare_mode_resource_variant_b
 //   0x0001F38A prepare_mode_resource_variant_a
@@ -27,7 +27,7 @@ void FUN_00059092(void)
   transfer_menu_asset_batch_four();
   load_title_font();
   while( true ) {
-    FUN_0000c3e6();
+    write_menu_grid_with_metadata();
     render_title_text_source();
     DAT_00fff0dc = '\0';
     move_wrapped_menu_cursor();
@@ -46,7 +46,7 @@ void FUN_00059092(void)
       return;
     }
   }
-  FUN_0000c3e6();
+  write_menu_grid_with_metadata();
   render_title_text_source();
   DAT_00fff0dc = 0;
   do {

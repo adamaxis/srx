@@ -3,7 +3,7 @@
 // Name: FUN_0001c0c2
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00019DE8 FUN_00019de8
+//   0x00019DE8 run_menu_service_then_prepare
 
 
 void FUN_0001c0c2(void)
@@ -30,7 +30,7 @@ void FUN_0001c0c2(void)
     DAT_00ffef14 = DAT_00ffef14 | 1;
     return;
   }
-  FUN_00019de8();
+  run_menu_service_then_prepare();
   return;
 }
 

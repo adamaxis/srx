@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
 //   0x00019CB2 FUN_00019cb2
-//   0x0001B612 FUN_0001b612
+//   0x0001B612 attach_behavior_descriptor_b
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -20,7 +20,7 @@ void FUN_0001c61c(void)
                           ((int)&PTR_DAT_0001c6d6 + (int)(short)((short)DAT_00ff1593 << 2));
     if ('\x1f' < DAT_00ff1593) {
       DAT_00ff1592 = DAT_00ff1592 & 0xf6;
-      FUN_0001b612();
+      attach_behavior_descriptor_b();
       _DAT_00ffe0d6 = 0;
       FUN_00019cb2();
       return;

@@ -6,7 +6,7 @@
 //   0x000013BE build_title_sprite_records_with_attribute_offset
 //   0x000061CC append_sprite_record
 //   0x0001A818 FUN_0001a818
-//   0x0001AC50 FUN_0001ac50
+//   0x0001AC50 arm_effect_after_threshold
 //   0x000563CC FUN_000563cc
 
 
@@ -30,7 +30,7 @@ void FUN_0001ab6e(void)
   if (DAT_00ffe0b6 != 1) {
     DAT_00ffe0be = DAT_00ffe0c0 + DAT_00ffe0be;
     bVar1 = false;
-    FUN_0001ac50();
+    arm_effect_after_threshold();
     if (!bVar1) {
       FUN_000563cc();
       return;

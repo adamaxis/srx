@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001CBF8
-// Name: FUN_0001cbf8
+// Name: clear_world_effect_work
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001cbf8(void)
+void clear_world_effect_work(void)
 
 {
   short sVar1;

@@ -10,7 +10,7 @@
 //   0x0001DF1A FUN_0001df1a
 //   0x0001DFC4 advance_world_effect_trigger
 //   0x0001E166 FUN_0001e166
-//   0x0001E2EC FUN_0001e2ec
+//   0x0001E2EC begin_world_activity
 //   0x00053126 prepare_mode_entry_service
 
 
@@ -28,7 +28,7 @@ void FUN_0001dd94(void)
   if ((DAT_00ffe166 != 0) && (DAT_00ffe166 = DAT_00ffe166 + -1, DAT_00ffe166 == 0)) {
     prepare_mode_entry_service();
     _DAT_00ffdd2c = FUN_0000c64c;
-    FUN_0001e2ec();
+    begin_world_activity();
   }
   if (DAT_00ffe11c != 0) {
     DAT_00ffe11c = DAT_00ffe11c + -1;

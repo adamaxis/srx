@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D44 advance_source_prng
-//   0x0001B5A6 FUN_0001b5a6
+//   0x0001B5A6 reset_word_stream_area
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -42,7 +42,7 @@ void FUN_0001b302(void)
     return;
   }
   _DAT_00ffe084 = 0;
-  FUN_0001b5a6();
+  reset_word_stream_area();
   return;
 }
 

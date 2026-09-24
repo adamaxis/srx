@@ -21,7 +21,7 @@ void FUN_0000c7f8(void)
     if (((DAT_00ff0210 & 1) != 0) && ((DAT_00ff024c == '\0' || (DAT_00ff029c == '\0')))) {
       DAT_00fffc0c = 0xff;
       apply_byte_counter_delta_with_negative_floor();
-      FUN_0001e514();
+      clear_effect_slot_state();
       if (extraout_A0 == DAT_00fffc04) {
         handle_mode_action_event();
       }
@@ -29,7 +29,7 @@ void FUN_0000c7f8(void)
     if (((DAT_00ff0310 & 1) != 0) && ((DAT_00ff034c == '\0' || (DAT_00ff039c == '\0')))) {
       DAT_00fffc0d = 0xff;
       apply_byte_counter_delta_with_negative_floor();
-      FUN_0001e514();
+      clear_effect_slot_state();
       if (extraout_A0_00 == DAT_00fffc04) {
         handle_mode_action_event();
       }
@@ -58,7 +58,7 @@ LAB_0000c690:
        ((DAT_00fffc1c & 1) == 0)) goto LAB_0000c716;
     DAT_00fffc22 = DAT_00fffc22 & 0xfffffdff;
   }
-  FUN_0001e68c();
+  reset_world_effect_globals();
   run_mode_exit_services();
 LAB_0000c716:
   DAT_00ff024c = 0;

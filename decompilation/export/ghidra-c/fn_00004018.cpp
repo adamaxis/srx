@@ -3,7 +3,7 @@
 // Name: FUN_00004018
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00003D4A FUN_00003d4a
+//   0x00003D4A render_field_tile_column
 //   0x00004000 FUN_00004000
 //   0x00004216 offset_field_coordinate
 
@@ -19,18 +19,18 @@ void FUN_00004018(void)
     if (-1 < (short)((DAT_00ffddc8 >> 4) - 8)) {
       offset_field_coordinate();
       FUN_00004000();
-      FUN_00003d4a();
+      render_field_tile_column();
       _DAT_00ffdf58 = 0x8000;
-      FUN_00003d4a();
+      render_field_tile_column();
       _DAT_00ffdf58 = 0;
     }
   }
   else if ((short)((DAT_00ffddc8 >> 4) + 8) <= DAT_00ffddd0) {
     offset_field_coordinate();
     FUN_00004000();
-    FUN_00003d4a();
+    render_field_tile_column();
     _DAT_00ffdf58 = 0x8000;
-    FUN_00003d4a();
+    render_field_tile_column();
     _DAT_00ffdf58 = 0;
   }
   return;

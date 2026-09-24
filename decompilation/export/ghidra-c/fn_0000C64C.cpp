@@ -9,7 +9,7 @@
 //   0x0000391A handle_mode_action_event
 //   0x0000C802 FUN_0000c802
 //   0x0001DED8 FUN_0001ded8
-//   0x0001E68C FUN_0001e68c
+//   0x0001E68C reset_world_effect_globals
 //   0x0001F246 run_mode_exit_services
 
 
@@ -41,7 +41,7 @@ LAB_0000c690:
        ((DAT_00fffc1c & 1) == 0)) goto LAB_0000c716;
     DAT_00fffc22 = DAT_00fffc22 & 0xfffffdff;
   }
-  FUN_0001e68c();
+  reset_world_effect_globals();
   run_mode_exit_services();
 LAB_0000c716:
   DAT_00ff024c = 0;

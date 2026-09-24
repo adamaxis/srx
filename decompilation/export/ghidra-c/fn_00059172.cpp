@@ -9,7 +9,7 @@
 //   0x0000195C sample_controller_input
 //   0x0000C0DA render_title_text_source
 //   0x0000C376 move_wrapped_menu_cursor
-//   0x0000C3E6 FUN_0000c3e6
+//   0x0000C3E6 write_menu_grid_with_metadata
 //   0x00059360 coordinate_save_load
 
 
@@ -32,7 +32,7 @@ void FUN_00059172(void)
       if (((DAT_00ffdd22._0_1_ & 1) != 0) || ((DAT_00ffdd22._0_1_ & 2) != 0)) break;
       if (((DAT_00ffdd22._0_1_ & 0x40) != 0) ||
          (((DAT_00ffdd22._0_1_ & 0x10) != 0 || ((DAT_00ffdd22._0_1_ & 0x20) != 0)))) {
-        FUN_0000c3e6();
+        write_menu_grid_with_metadata();
         coordinate_save_load();
         if ((bool)uVar1) {
           DAT_00fff0dc = 0xff;

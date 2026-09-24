@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001DBAA schedule_world_activity_timeout
-//   0x0001E2EC FUN_0001e2ec
+//   0x0001E2EC begin_world_activity
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -23,7 +23,7 @@ void FUN_00002ce0(void)
   DAT_00fffc10 = sVar3;
   if ((sVar3 == 0x13) && ((DAT_00fffc1e & 0x100) == 0)) {
     _DAT_00ffdd2c = &UNK_00053ee2;
-    FUN_0001e2ec();
+    begin_world_activity();
     DAT_00ffe120 = &UNK_0001e552;
     sVar1 = schedule_world_activity_timeout();
     sVar2 = extraout_D1w;

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001D1D0
-// Name: FUN_0001d1d0
+// Name: retreat_effect_horizontal_position
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0001d1d0(void)
+void retreat_effect_horizontal_position(void)
 
 {
   ushort *in_A0;

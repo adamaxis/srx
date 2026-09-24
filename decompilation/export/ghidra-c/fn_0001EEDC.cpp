@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001EEDC
-// Name: FUN_0001eedc
+// Name: dispatch_world_effect
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0001eedc(void)
+void dispatch_world_effect(void)
 
 {
   DAT_00fff0d5 = 0;

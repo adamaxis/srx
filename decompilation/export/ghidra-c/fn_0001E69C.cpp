@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
-//   0x0001E68C FUN_0001e68c
+//   0x0001E68C reset_world_effect_globals
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -20,7 +20,7 @@ void FUN_0001e69c(void)
   undefined6 uVar3;
   
   DAT_00fff0b6 = 0;
-  FUN_0001e68c();
+  reset_world_effect_globals();
   DAT_00fffbec._0_1_ = DAT_00fff0ae;
   uVar3 = sample_source_random_bound();
   sVar1 = (short)CONCAT31((int3)((uint6)uVar3 >> 8),DAT_00fff0ae) * 0x30 +

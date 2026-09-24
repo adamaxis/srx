@@ -3,7 +3,7 @@
 // Name: FUN_0001cb20
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001CA00 FUN_0001ca00
+//   0x0001CA00 initialize_world_effect_motion
 //   0x0001CB6A FUN_0001cb6a
 
 
@@ -44,7 +44,7 @@ void FUN_0001cb20(void)
       return;
     }
     if (DAT_00fff0b7 != '\0') {
-      FUN_0001ca00();
+      initialize_world_effect_motion();
       return;
     }
   }

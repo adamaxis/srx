@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00003074
-// Name: FUN_00003074
+// Name: prepare_field_scene_buffers
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C7F8 FUN_0000c7f8
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00003074(void)
+void prepare_field_scene_buffers(void)
 
 {
   short sVar1;

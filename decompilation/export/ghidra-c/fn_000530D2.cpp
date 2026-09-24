@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000530D2
-// Name: FUN_000530d2
+// Name: service_audio_if_enabled_variant
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-undefined8 FUN_000530d2(void)
+undefined8 service_audio_if_enabled_variant(void)
 
 {
   undefined4 in_D0;

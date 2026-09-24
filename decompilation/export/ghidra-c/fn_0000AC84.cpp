@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000AC84
-// Name: FUN_0000ac84
+// Name: dispatch_entity_collision_behavior
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000AE5E schedule_entity_collision_recheck
@@ -8,7 +8,7 @@
 //   0x00013904 FUN_00013904
 
 
-void FUN_0000ac84(void)
+void dispatch_entity_collision_behavior(void)
 
 {
   int in_A0;

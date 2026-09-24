@@ -6,7 +6,7 @@
 //   0x00001232 write_vdp_grid
 //   0x0000C0DA render_title_text_source
 //   0x00012148 read_entity_action_code
-//   0x00012A54 FUN_00012a54
+//   0x00012A54 update_resource_variant
 
 
 undefined8 FUN_00013228(void)
@@ -27,7 +27,7 @@ undefined8 FUN_00013228(void)
   
   bVar1 = DAT_00fff0d0;
   cVar2 = *(char *)(DAT_00fffc04 + 0x66 + (int)(short)(ushort)DAT_00fff0d0);
-  FUN_00012a54();
+  update_resource_variant();
   write_vdp_grid();
   if ((char)(cVar2 + -0xd) < '\0') {
     uVar3 = (ushort)bVar1;

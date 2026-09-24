@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x0001E25A spawn_world_effect_from_coordinate_sequence
 //   0x0001E302 FUN_0001e302
-//   0x0001E40C FUN_0001e40c
+//   0x0001E40C build_world_effect_candidates
 
 
 void FUN_0001e216(void)
@@ -21,7 +21,7 @@ void FUN_0001e216(void)
     FUN_0001e302();
   }
   else {
-    FUN_0001e40c();
+    build_world_effect_candidates();
   }
   if (DAT_00ffdd50 != 0) {
     sVar1 = 0;

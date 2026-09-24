@@ -13,7 +13,7 @@
 //   0x00014508 FUN_00014508
 //   0x00015D3C measure_relative_heading_and_distance
 //   0x0001DBAA schedule_world_activity_timeout
-//   0x0001E514 FUN_0001e514
+//   0x0001E514 clear_effect_slot_state
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -115,7 +115,7 @@ LAB_00013e40:
     return;
   }
   if ((in_A0[6] == 0) && ((in_A0[0x4f] & 0x400) != 0)) {
-    FUN_0001e514();
+    clear_effect_slot_state();
     return;
   }
   if ((in_A0[0x58] & 0x4000) != 0) {

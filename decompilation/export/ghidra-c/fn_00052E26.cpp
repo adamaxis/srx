@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00052E26
-// Name: FUN_00052e26
+// Name: reset_audio_processor
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00052e26(void)
+void reset_audio_processor(void)
 
 {
   int iVar1;

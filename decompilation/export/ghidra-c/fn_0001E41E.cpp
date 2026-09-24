@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001E41E
-// Name: FUN_0001e41e
+// Name: lookup_world_effect_tile
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-undefined1 FUN_0001e41e(void)
+undefined1 lookup_world_effect_tile(void)
 
 {
   ushort unaff_D5w;

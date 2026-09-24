@@ -24,36 +24,36 @@
 //   0x0000C0DA render_title_text_source
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x0000C376 move_wrapped_menu_cursor
-//   0x0000C3E6 FUN_0000c3e6
-//   0x0000C3F8 FUN_0000c3f8
+//   0x0000C3E6 write_menu_grid_with_metadata
+//   0x0000C3F8 render_menu_grid_number_pair
 //   0x0000C436 FUN_0000c436
 //   0x0000D4C8 FUN_0000d4c8
 //   0x0000D53C FUN_0000d53c
 //   0x0000D5DC FUN_0000d5dc
 //   0x0000D82A FUN_0000d82a
-//   0x0000E660 FUN_0000e660
+//   0x0000E660 advance_random_grid_effect
 //   0x0000FDFE FUN_0000fdfe
 //   0x0000FEBE move_selection_column
 //   0x0000FF06 move_selection_row
 //   0x0000FF5A FUN_0000ff5a
 //   0x00010276 FUN_00010276
-//   0x000106DA FUN_000106da
+//   0x000106DA prepare_grid_then_write
 //   0x00010A7E transfer_menu_asset_batch_four_post_prepare
 //   0x00010C96 transfer_menu_asset_batch_eight
-//   0x000110E8 FUN_000110e8
+//   0x000110E8 draw_hud_panel_wrapper
 //   0x000110EC draw_menu_hud_panel_variant_b
 //   0x00011190 FUN_00011190
 //   0x000111D0 upload_menu_tile_block
 //   0x00011454 reset_menu_upload_cursor_and_upload
 //   0x00011624 FUN_00011624
-//   0x0001170C FUN_0001170c
-//   0x00011712 FUN_00011712
+//   0x0001170C render_title_text_source_leaf
+//   0x00011712 render_title_text_source_variant
 //   0x000118C6 cycle_inventory_action_selector
 //   0x00011900 prepare_menu_row_grid
 //   0x00011928 render_menu_row
 //   0x00012148 read_entity_action_code
 //   0x0001253E FUN_0001253e
-//   0x000125FA FUN_000125fa
+//   0x000125FA clear_entity_auxiliary_marker
 //   0x0001275C clear_menu_slot
 //   0x000127B0 refresh_menu_panel
 //   0x000129FE FUN_000129fe
@@ -125,7 +125,7 @@ void FUN_00011740(void)
     upload_menu_tile_block();
     _DAT_00fff116 = 0xffff;
     reset_menu_upload_cursor_and_upload();
-    FUN_00011712();
+    render_title_text_source_variant();
     do {
       while( true ) {
         wait_for_vblank();
@@ -139,7 +139,7 @@ LAB_00011be6:
         cycle_inventory_action_selector();
         _DAT_00fff116 = 0xffff;
         reset_menu_upload_cursor_and_upload();
-        FUN_00011712();
+        render_title_text_source_variant();
       }
       if ((DAT_00ffdd22._0_1_ & 8) != 0) {
         uVar5 = 1;
@@ -228,7 +228,7 @@ LAB_00011be6:
       upload_menu_tile_block();
       _DAT_00fff116 = 0xffff;
       reset_menu_upload_cursor_and_upload();
-      FUN_00011712();
+      render_title_text_source_variant();
 LAB_00011ea4:
       do {
         while( true ) {
@@ -243,7 +243,7 @@ LAB_00011ec4:
           cycle_inventory_action_selector();
           _DAT_00fff116 = 0xffff;
           reset_menu_upload_cursor_and_upload();
-          FUN_00011712();
+          render_title_text_source_variant();
         }
         if ((DAT_00ffdd22._0_1_ & 8) != 0) {
           uVar5 = 1;
@@ -555,17 +555,17 @@ LAB_0000d4a0:
     prepare_menu_row_grid();
     prepare_menu_grid_variant_b();
     render_title_text_source();
-    FUN_000106da();
-    FUN_000106da();
+    prepare_grid_then_write();
+    prepare_grid_then_write();
     wait_for_controller_event();
     render_menu_row();
     return;
   case 6:
     transfer_menu_asset_batch_four_post_prepare();
 LAB_0000c2aa:
-    FUN_0000c3e6();
+    write_menu_grid_with_metadata();
     render_title_text_source();
-    FUN_0000c3f8();
+    render_menu_grid_number_pair();
     DAT_00fff0dc = '\0';
     do {
       move_wrapped_menu_cursor();
@@ -573,7 +573,7 @@ LAB_0000c2aa:
         wait_for_vblank();
         latch_controller_events();
         sample_controller_input();
-        FUN_0000e660();
+        advance_random_grid_effect();
         if (((DAT_00ffdd22._0_1_ & 1) != 0) || ((DAT_00ffdd22._0_1_ & 2) != 0)) break;
         if ((DAT_00ffdd22._0_1_ & 0x40) != 0) {
           FUN_0000c436();
@@ -663,7 +663,7 @@ LAB_0000c2aa:
           prepare_menu_grid_variant_c();
           render_title_text_source();
           render_title_text_source();
-          FUN_000110e8();
+          draw_hud_panel_wrapper();
           read_entity_action_code();
           puVar17 = extraout_A0_06;
           if ((char)puVar4 == *(char *)(extraout_A0_07 + 0x56)) {
@@ -717,7 +717,7 @@ LAB_000129dc:
     upload_menu_tile_block();
     _DAT_00fff116 = 0xffff;
     reset_menu_upload_cursor_and_upload();
-    FUN_00011712();
+    render_title_text_source_variant();
     do {
       while( true ) {
         wait_for_vblank();
@@ -731,7 +731,7 @@ LAB_000117f6:
         cycle_inventory_action_selector();
         _DAT_00fff116 = 0xffff;
         reset_menu_upload_cursor_and_upload();
-        FUN_00011712();
+        render_title_text_source_variant();
       }
       if ((DAT_00ffdd22._0_1_ & 8) != 0) {
         uVar5 = 1;
@@ -749,7 +749,7 @@ LAB_000117f6:
 LAB_000118b6:
         _DAT_00fff0d0 = uVar20;
         upload_menu_tile_block();
-        FUN_0001170c();
+        render_title_text_source_leaf();
         return;
       }
     } while( true );
@@ -790,7 +790,7 @@ LAB_000118b6:
         write_repeated_vdp_grid();
       }
       else {
-        FUN_000110e8();
+        draw_hud_panel_wrapper();
       }
       while( true ) {
         wait_for_vblank();
@@ -896,7 +896,7 @@ LAB_00012236:
     if ((char)(*(char *)(extraout_A0_00 + 0x57) + -0xd) < '\0') {
       if ((int)((uint)(ushort)(*(byte *)(extraout_A0_00 + 0x57) - 1) << 0x10) < 0)
       goto LAB_000121fe;
-      cVar8 = FUN_000125fa();
+      cVar8 = clear_entity_auxiliary_marker();
       iVar13 = extraout_A0_01;
       uVar19 = extraout_D1b_00;
     }

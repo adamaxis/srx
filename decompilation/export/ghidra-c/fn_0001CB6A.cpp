@@ -3,7 +3,7 @@
 // Name: FUN_0001cb6a
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001CBF8 FUN_0001cbf8
+//   0x0001CBF8 clear_world_effect_work
 //   0x000530DE service_audio_if_enabled
 
 
@@ -27,7 +27,7 @@ void FUN_0001cb6a(void)
     puVar4 = &DAT_00ff159e;
   }
   else {
-    FUN_0001cbf8();
+    clear_world_effect_work();
     puVar4 = extraout_A1;
   }
   if (puVar4[6] != '\0') {

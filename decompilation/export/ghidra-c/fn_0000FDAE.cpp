@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000FDAE
-// Name: FUN_0000fdae
+// Name: write_menu_grid_quadruple
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 
 
-void FUN_0000fdae(void)
+void write_menu_grid_quadruple(void)
 
 {
   short sVar1;

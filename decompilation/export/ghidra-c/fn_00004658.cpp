@@ -16,7 +16,7 @@
 //   0x00005B98 FUN_00005b98
 //   0x00005C7E FUN_00005c7e
 //   0x0000622C expand_entity_sprite_descriptors
-//   0x0000AEBA FUN_0000aeba
+//   0x0000AEBA advance_title_sprite_wave
 //   0x0005D29C FUN_0005d29c
 
 
@@ -130,7 +130,7 @@ LAB_0000479c:
         FUN_00004adc();
       }
       if (_DAT_00ffdfea != 0) {
-        FUN_0000aeba();
+        advance_title_sprite_wave();
       }
       FUN_0000481e();
       FUN_0005d29c();

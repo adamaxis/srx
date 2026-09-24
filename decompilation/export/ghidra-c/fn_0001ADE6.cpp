@@ -25,8 +25,8 @@
 //   0x0001B302 FUN_0001b302
 //   0x0001B364 FUN_0001b364
 //   0x0001B45C FUN_0001b45c
-//   0x0001B5A6 FUN_0001b5a6
-//   0x0001B680 FUN_0001b680
+//   0x0001B5A6 reset_word_stream_area
+//   0x0001B680 attach_behavior_descriptor_e
 //   0x0001B87A FUN_0001b87a
 //   0x0001BA6E FUN_0001ba6e
 //   0x0001BB6A FUN_0001bb6a
@@ -67,7 +67,7 @@ void FUN_0001ade6(void)
   
   DAT_00ff1596 = 0x120;
   DAT_00ff1598 = 0xd0;
-  FUN_0001b5a6();
+  reset_word_stream_area();
   _DAT_00ffdf8c = 0;
   _DAT_00ffe080 = 0;
   _DAT_00ffe084 = 0;
@@ -95,7 +95,7 @@ void FUN_0001ade6(void)
   DAT_00ffe16d = '\0';
   FUN_00026958();
   FUN_0001a908();
-  FUN_0001b680();
+  attach_behavior_descriptor_e();
   do {
     wait_for_vblank();
     latch_controller_events();
@@ -223,7 +223,7 @@ LAB_0001afc0:
     if ((_DAT_00ffdf8c == 0) && ((DAT_00ffdd22._0_1_ & 0x80) != 0)) {
       prepare_mode_entry_service();
       service_audio_command_frame();
-      FUN_0001b5a6();
+      reset_word_stream_area();
       FUN_0001822c();
       if (DAT_00fff0b1 != '\0') {
         return;

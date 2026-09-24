@@ -8,7 +8,7 @@
 //   0x00017D90 advance_hud_panel
 //   0x00017DB8 advance_hud_footer_offset
 //   0x00019B40 FUN_00019b40
-//   0x0001A12E FUN_0001a12e
+//   0x0001A12E advance_menu_countdown
 //   0x00055F44 FUN_00055f44
 //   0x000562DE FUN_000562de
 
@@ -35,7 +35,7 @@ void FUN_000562ec(void)
           advance_hud_panel();
           return;
         }
-        FUN_0001a12e();
+        advance_menu_countdown();
         if (((extraout_D1b < '\0') && (advance_hud_footer_offset(), DAT_00fffbca == '\0')) &&
            (((sVar2 = FUN_00019b40(), sVar2 == 3 ||
              (((sVar2 == 0xc || (sVar2 == 0xf)) || (sVar2 == 0x17)))) || (sVar2 == 0x18)))) {

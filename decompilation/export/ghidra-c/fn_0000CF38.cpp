@@ -9,10 +9,10 @@
 //   0x0000391A handle_mode_action_event
 //   0x0000C0DA render_title_text_source
 //   0x0000C376 move_wrapped_menu_cursor
-//   0x0000C3E6 FUN_0000c3e6
+//   0x0000C3E6 write_menu_grid_with_metadata
 //   0x0000C436 FUN_0000c436
-//   0x0000CFFE FUN_0000cffe
-//   0x0000E660 FUN_0000e660
+//   0x0000CFFE prepare_title_mode_display
+//   0x0000E660 advance_random_grid_effect
 //   0x0000EF08 FUN_0000ef08
 //   0x00010952 reset_mode_display_buffers
 
@@ -22,11 +22,11 @@ void FUN_0000cf38(void)
 {
   DAT_00fff10d = 0;
   reset_mode_display_buffers();
-  FUN_0000cffe();
+  prepare_title_mode_display();
   FUN_0000ef08();
   do {
-    FUN_0000cffe();
-    FUN_0000c3e6();
+    prepare_title_mode_display();
+    write_menu_grid_with_metadata();
     render_title_text_source();
     DAT_00fff0dc = '\0';
     move_wrapped_menu_cursor();
@@ -34,7 +34,7 @@ void FUN_0000cf38(void)
       wait_for_vblank();
       latch_controller_events();
       sample_controller_input();
-      FUN_0000e660();
+      advance_random_grid_effect();
       if (((DAT_00ffdd22._0_1_ & 1) != 0) || ((DAT_00ffdd22._0_1_ & 2) != 0)) {
         move_wrapped_menu_cursor();
       }

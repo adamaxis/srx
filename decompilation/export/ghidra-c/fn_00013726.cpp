@@ -7,7 +7,7 @@
 //   0x00000BF2 latch_controller_events
 //   0x00000E9C make_vdp_transfer_command
 //   0x0000C0DA render_title_text_source
-//   0x0000C3E6 FUN_0000c3e6
+//   0x0000C3E6 write_menu_grid_with_metadata
 //   0x0000E6F4 service_mode_world_state
 
 
@@ -50,7 +50,7 @@ void render_mode_selection(void)
   puVar12 = &DAT_000d4536;
   uVar7 = 4;
   do {
-    FUN_0000c3e6();
+    write_menu_grid_with_metadata();
     uVar6 = (uint)*extraout_A0;
     pbVar13 = puVar12 + 1;
     puVar12 = puVar12 + 2;

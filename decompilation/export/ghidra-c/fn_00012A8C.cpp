@@ -7,7 +7,7 @@
 //   0x0000C0DA render_title_text_source
 //   0x00011352 FUN_00011352
 //   0x00012148 read_entity_action_code
-//   0x00012A54 FUN_00012a54
+//   0x00012A54 update_resource_variant
 
 
 undefined4 FUN_00012a8c(void)
@@ -25,7 +25,7 @@ undefined4 FUN_00012a8c(void)
   int extraout_A0_04;
   int iVar3;
   
-  sVar1 = FUN_00012a54();
+  sVar1 = update_resource_variant();
   if (-1 < *(int *)((int)&PTR_DAT_000d455e + (int)(short)((sVar1 + -1) * 0x30))) {
     unaff_D7w = 8;
     write_vdp_grid();

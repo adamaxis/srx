@@ -4,8 +4,8 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D44 advance_source_prng
-//   0x0001E1FC FUN_0001e1fc
-//   0x0001E2E0 FUN_0001e2e0
+//   0x0001E1FC forward_effect_sequence
+//   0x0001E2E0 begin_world_activity_if_idle
 //   0x00059986 select_world_effect_sequence
 
 
@@ -28,13 +28,13 @@ void FUN_0001e166(void)
     uVar1 = advance_source_prng();
     if (uVar1 < extraout_D1w) {
       if (DAT_00ffe16f != '\0') {
-        FUN_0001e1fc();
+        forward_effect_sequence();
         return;
       }
       sVar2 = select_world_effect_sequence();
       if (sVar2 != 0) {
         _DAT_00ffdd2c = unaff_A6;
-        FUN_0001e2e0();
+        begin_world_activity_if_idle();
         return;
       }
       FUN_0001e216();

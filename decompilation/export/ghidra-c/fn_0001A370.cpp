@@ -7,9 +7,9 @@
 //   0x00000E9C make_vdp_transfer_command
 //   0x00017E78 calculate_menu_row_offset
 //   0x0001A538 FUN_0001a538
-//   0x0001A54E FUN_0001a54e
+//   0x0001A54E initialize_effect_defaults
 //   0x0001A818 FUN_0001a818
-//   0x0001A8F4 FUN_0001a8f4
+//   0x0001A8F4 reset_effect_entity
 //   0x0001D3F4 FUN_0001d3f4
 //   0x000561E8 FUN_000561e8
 
@@ -38,7 +38,7 @@ void FUN_0001a370(void)
       DAT_00ff1642 = 2;
       DAT_00ff1644 = DAT_00ff1644 - 1;
       if ((short)((ushort)DAT_00ff1644 << 8) < 0) {
-        FUN_0001a8f4();
+        reset_effect_entity();
         return;
       }
     }
@@ -79,7 +79,7 @@ void FUN_0001a370(void)
           }
         }
         else {
-          FUN_0001a54e();
+          initialize_effect_defaults();
           DAT_00ffe04e = 2;
         }
       }

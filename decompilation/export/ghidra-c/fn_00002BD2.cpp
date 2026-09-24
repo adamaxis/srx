@@ -36,7 +36,7 @@ void advance_field_scene_transition(void)
   _DAT_00ffdf8e = 0;
   _DAT_00ffdf8a = 0xffff;
   _DAT_00ffe172 = 0xffff;
-  FUN_00003074();
+  prepare_field_scene_buffers();
   FUN_00002900();
   apply_scene_profile_selection();
   prepare_field_viewports();

@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x0001B706
-// Name: FUN_0001b706
+// Name: prepare_menu_offset_once
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00017E78 calculate_menu_row_offset
 //   0x0001A908 FUN_0001a908
 
 
-void FUN_0001b706(void)
+void prepare_menu_offset_once(void)
 
 {
   if (DAT_00ffdf84 == '\0') {

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00013CD4
-// Name: guard_entity_action_threshold
+// Name: passes_entity_action_threshold
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void guard_entity_action_threshold(void)
+void passes_entity_action_threshold(void)
 
 {
   short unaff_D2w;

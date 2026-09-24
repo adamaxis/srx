@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x0000E660
-// Name: FUN_0000e660
+// Name: advance_random_grid_effect
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
 //   0x00001232 write_vdp_grid
 
 
-void FUN_0000e660(void)
+void advance_random_grid_effect(void)
 
 {
   bool bVar1;

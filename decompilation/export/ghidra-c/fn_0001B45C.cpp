@@ -5,8 +5,8 @@
 // Calls recovered from direct call instructions:
 //   0x00000D44 advance_source_prng
 //   0x00000E18 write_word_stream
-//   0x00019F78 FUN_00019f78
-//   0x0001B5A6 FUN_0001b5a6
+//   0x00019F78 finalize_menu_slot_code_six
+//   0x0001B5A6 reset_word_stream_area
 
 
 void FUN_0001b45c(void)
@@ -31,8 +31,8 @@ void FUN_0001b45c(void)
     DAT_00ffe16a = DAT_00ffe16a + -1;
     if (DAT_00ffe16a == '\0') {
       *(byte *)(in_A0 + 0x12) = *(byte *)(in_A0 + 0x12) & 0xfb;
-      FUN_00019f78();
-      FUN_0001b5a6();
+      finalize_menu_slot_code_six();
+      reset_word_stream_area();
       return;
     }
   }

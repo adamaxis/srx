@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00019736
-// Name: FUN_00019736
+// Name: clear_ready_menu_slot_timer
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00019736(void)
+void clear_ready_menu_slot_timer(void)
 
 {
   if ((-1 < DAT_00fff10c) && ((&DAT_00fff0ed)[(short)(ushort)DAT_00fff0d4] != '\x06')) {

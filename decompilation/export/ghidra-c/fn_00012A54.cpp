@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00012A54
-// Name: FUN_00012a54
+// Name: update_resource_variant
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001107E FUN_0001107e
+//   0x0001107E upload_resource_stream
 
 
-undefined4 FUN_00012a54(void)
+undefined4 update_resource_variant(void)
 
 {
   undefined4 in_D0;
@@ -23,7 +23,7 @@ undefined4 FUN_00012a54(void)
     }
     DAT_00fff100 = 1;
   }
-  FUN_0001107e();
+  upload_resource_stream();
   return in_D0;
 }
 

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001962A
-// Name: FUN_0001962a
+// Name: apply_menu_slot_command
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0001962a(void)
+void apply_menu_slot_command(void)
 
 {
   ushort uVar1;

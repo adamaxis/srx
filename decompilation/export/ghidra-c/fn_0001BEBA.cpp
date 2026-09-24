@@ -6,7 +6,7 @@
 //   0x00001378 build_title_sprite_records
 //   0x00019D66 FUN_00019d66
 //   0x0001A908 FUN_0001a908
-//   0x0001B612 FUN_0001b612
+//   0x0001B612 attach_behavior_descriptor_b
 //   0x0001BF5C FUN_0001bf5c
 
 
@@ -33,7 +33,7 @@ void FUN_0001beba(void)
   if (DAT_00ffe00c < 0) {
     FUN_0001bf5c();
     DAT_00ff1592 = DAT_00ff1592 & 0x7f;
-    FUN_0001b612();
+    attach_behavior_descriptor_b();
     _DAT_00ffe0d6 = 0;
     FUN_00019d66();
     FUN_0001a908();

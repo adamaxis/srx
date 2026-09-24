@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00003D4A
-// Name: FUN_00003d4a
+// Name: render_field_tile_column
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003D80 FUN_00003d80
@@ -9,7 +9,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00003d4a(void)
+void render_field_tile_column(void)
 
 {
   int iVar1;

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001B612
-// Name: FUN_0001b612
+// Name: attach_behavior_descriptor_b
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001B7D0 FUN_0001b7d0
 
 
-void FUN_0001b612(void)
+void attach_behavior_descriptor_b(void)
 
 {
   int extraout_A0;

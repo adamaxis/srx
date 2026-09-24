@@ -10,9 +10,9 @@
 //   0x0000C0C2 load_title_font
 //   0x0000C0DA render_title_text_source
 //   0x0000C376 move_wrapped_menu_cursor
-//   0x0000C3E6 FUN_0000c3e6
+//   0x0000C3E6 write_menu_grid_with_metadata
 //   0x0000C436 FUN_0000c436
-//   0x0000E660 FUN_0000e660
+//   0x0000E660 advance_random_grid_effect
 //   0x00010952 reset_mode_display_buffers
 //   0x00010A82 FUN_00010a82
 //   0x000566D8 FUN_000566d8
@@ -29,7 +29,7 @@ void FUN_0000c928(void)
     refresh_mode_palette_data();
     FUN_00010a82();
     load_title_font();
-    FUN_0000c3e6();
+    write_menu_grid_with_metadata();
     render_title_text_source();
     DAT_00fff0dc = '\0';
     move_wrapped_menu_cursor();
@@ -37,7 +37,7 @@ void FUN_0000c928(void)
       wait_for_vblank();
       latch_controller_events();
       sample_controller_input();
-      FUN_0000e660();
+      advance_random_grid_effect();
       if (((DAT_00ffdd22._0_1_ & 1) != 0) || ((DAT_00ffdd22._0_1_ & 2) != 0)) {
         move_wrapped_menu_cursor();
       }

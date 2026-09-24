@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 //   0x0001047E FUN_0001047e
-//   0x000104C8 FUN_000104c8
+//   0x000104C8 find_matching_menu_metric
 //   0x00055F02 FUN_00055f02
 //   0x00055F20 FUN_00055f20
 
@@ -20,7 +20,7 @@ void FUN_0001055e(void)
   if (in_D0w == 0) {
     FUN_00055f02();
     FUN_00055f20();
-    FUN_000104c8();
+    find_matching_menu_metric();
     cVar1 = '\0';
   }
   else {

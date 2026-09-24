@@ -3,13 +3,13 @@
 // Name: FUN_00053194
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000530A0 FUN_000530a0
+//   0x000530A0 controller_access_pair
 
 
 void FUN_00053194(void)
 
 {
-  FUN_000530a0(1);
+  controller_access_pair(1);
   return;
 }
 

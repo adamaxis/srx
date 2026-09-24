@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
-//   0x0000FDAE FUN_0000fdae
+//   0x0000FDAE write_menu_grid_quadruple
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -39,7 +39,7 @@ void FUN_0000fdfe(void)
     _DAT_00ffd980 = 1;
     DAT_00ffef14 = DAT_00ffef14 | 2;
   }
-  FUN_0000fdae();
+  write_menu_grid_quadruple();
   return;
 }
 

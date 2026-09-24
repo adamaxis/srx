@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00005A56 project_entity_screen_position
-//   0x0001E2E0 FUN_0001e2e0
+//   0x0001E2E0 begin_world_activity_if_idle
 //   0x0005BA66 install_scene_resource_index_entries
 //   0x0005D3E6 FUN_0005d3e6
 //   0x0005D416 FUN_0005d416
@@ -51,7 +51,7 @@ undefined8 FUN_0005d29c(void)
             *(short *)(extraout_A0_01 + 0x24) = sVar1;
             if (sVar1 < 0) {
               _DAT_00ffdd2c = &UNK_0005bac4;
-              uVar3 = FUN_0001e2e0();
+              uVar3 = begin_world_activity_if_idle();
               return uVar3;
             }
             *(undefined1 *)(extraout_A0_01 + 0x9d) = 1;

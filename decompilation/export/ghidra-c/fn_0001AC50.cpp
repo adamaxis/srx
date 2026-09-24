@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001AC50
-// Name: FUN_0001ac50
+// Name: arm_effect_after_threshold
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001ac50(void)
+void arm_effect_after_threshold(void)
 
 {
   ushort in_D0w;

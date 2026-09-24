@@ -3,8 +3,8 @@
 // Name: FUN_0000eccc
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001E2E0 FUN_0001e2e0
-//   0x0001E2EC FUN_0001e2ec
+//   0x0001E2E0 begin_world_activity_if_idle
+//   0x0001E2EC begin_world_activity
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -30,7 +30,7 @@ void FUN_0000eccc(void)
   }
   if (((bVar1 & 2) != 0) && (_DAT_00ffe128 = iVar2, DAT_00ffe176 == '\0')) {
     _DAT_00ffdd2c = &UNK_00021174;
-    FUN_0001e2e0();
+    begin_world_activity_if_idle();
     in_A0 = extraout_A0;
     in_A1 = extraout_A1;
     if ((short)(DAT_00ffddc4 + -10) == 0) {
@@ -74,7 +74,7 @@ LAB_0000ed3c:
     DAT_00ffe180 = '\0';
     _DAT_00ffdd2c = &UNK_00053c90;
   }
-  FUN_0001e2ec();
+  begin_world_activity();
   return;
 }
 

@@ -3,7 +3,7 @@
 // Name: FUN_00016760
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000166D0 FUN_000166d0
+//   0x000166D0 project_entity_y_axis
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -14,7 +14,7 @@ void FUN_00016760(void)
   short sVar1;
   short *psVar2;
   
-  sVar1 = FUN_000166d0();
+  sVar1 = project_entity_y_axis();
   psVar2 = (short *)((int)&DAT_00ff2700 + (int)DAT_00ffddea + (int)sVar1);
   if (*psVar2 == 0xb) {
     return;

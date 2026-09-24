@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 //   0x0000C0DA render_title_text_source
-//   0x00012A54 FUN_00012a54
+//   0x00012A54 update_resource_variant
 
 
 undefined8 FUN_000130c0(void)
@@ -24,7 +24,7 @@ undefined8 FUN_000130c0(void)
   int iVar2;
   
   cVar1 = *in_A0;
-  FUN_00012a54();
+  update_resource_variant();
   write_vdp_grid();
   if ((char)(cVar1 + -0xc) < '\0') {
     iVar2 = extraout_A0;

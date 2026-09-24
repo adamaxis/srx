@@ -7,7 +7,7 @@
 //   0x0000C0DA render_title_text_source
 //   0x0001055E FUN_0001055e
 //   0x000105E6 FUN_000105e6
-//   0x00010854 FUN_00010854
+//   0x00010854 write_three_grids_then_service
 
 
 void FUN_000107ce(void)
@@ -28,7 +28,7 @@ void FUN_000107ce(void)
   }
   write_vdp_grid();
   render_title_text_source();
-  FUN_00010854();
+  write_three_grids_then_service();
   FUN_000105e6();
   FUN_0001055e();
   FUN_0001055e();

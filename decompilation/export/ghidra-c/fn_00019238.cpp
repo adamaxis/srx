@@ -16,9 +16,9 @@
 //   0x0001952C FUN_0001952c
 //   0x0001957E clear_ready_menu_visual_slots
 //   0x000195D8 FUN_000195d8
-//   0x0001962A FUN_0001962a
+//   0x0001962A apply_menu_slot_command
 //   0x000196F2 rotate_hud_history
-//   0x00019736 FUN_00019736
+//   0x00019736 clear_ready_menu_slot_timer
 
 
 void FUN_00019238(void)
@@ -60,7 +60,7 @@ void FUN_00019238(void)
                (((DAT_00ffdd22._0_1_ & 0x10) != 0 || ((DAT_00ffdd22._0_1_ & 0x20) != 0)))) {
               if (DAT_00fff0dc != '\0') goto LAB_00019428;
               if (DAT_00ffdd50 == 0) goto LAB_00019410;
-              FUN_0001962a();
+              apply_menu_slot_command();
               goto LAB_00019428;
             }
             if ((DAT_00ffdd22._0_1_ & 0x80) != 0) goto LAB_00019428;
@@ -91,7 +91,7 @@ void FUN_00019238(void)
       return;
     }
 LAB_00019410:
-    FUN_00019736();
+    clear_ready_menu_slot_timer();
     FUN_000195d8();
 LAB_00019428:
     write_hud_panel_grid();

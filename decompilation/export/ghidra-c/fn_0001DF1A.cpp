@@ -38,7 +38,7 @@ void FUN_0001df1a(void)
         if (*(short *)(extraout_A0_00 + 2) != 0x65) {
           return;
         }
-        FUN_0001e514(extraout_A0_00);
+        clear_effect_slot_state(extraout_A0_00);
         return;
       }
     }

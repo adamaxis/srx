@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_title_text_source
 //   0x0000C216 build_grouped_decimal_glyphs
-//   0x00010260 FUN_00010260
+//   0x00010260 prepare_menu_grid_then_service
 //   0x000107CE FUN_000107ce
 //   0x0001088C FUN_0001088c
 
@@ -13,7 +13,7 @@
 void FUN_000102d4(void)
 
 {
-  FUN_00010260();
+  prepare_menu_grid_then_service();
   render_title_text_source();
   render_title_text_source();
   render_title_text_source();

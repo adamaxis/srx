@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000CFFE
-// Name: FUN_0000cffe
+// Name: prepare_title_mode_display
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0C2 load_title_font
@@ -9,7 +9,7 @@
 //   0x0005670E refresh_mode_palette_data
 
 
-void FUN_0000cffe(void)
+void prepare_title_mode_display(void)
 
 {
   FUN_000566d8();

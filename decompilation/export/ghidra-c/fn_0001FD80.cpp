@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
-//   0x0001E1FC FUN_0001e1fc
+//   0x0001E1FC forward_effect_sequence
 //   0x0001F246 run_mode_exit_services
 //   0x00059BCC reset_runner_status_triplet
 
@@ -79,7 +79,7 @@ LAB_00020054:
             DAT_00fff0d6 = 0xff;
           }
           else {
-            FUN_0001e1fc();
+            forward_effect_sequence();
           }
         }
         goto LAB_0001fed2;

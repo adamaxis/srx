@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001E68C
-// Name: FUN_0001e68c
+// Name: reset_world_effect_globals
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0001e68c(void)
+void reset_world_effect_globals(void)
 
 {
   DAT_00fffbec = 0xffff;

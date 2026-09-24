@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000104C8
-// Name: FUN_000104c8
+// Name: find_matching_menu_metric
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_000104c8(void)
+void find_matching_menu_metric(void)
 
 {
   short sVar1;

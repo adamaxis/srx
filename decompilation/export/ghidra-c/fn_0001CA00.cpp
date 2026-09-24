@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001CA00
-// Name: FUN_0001ca00
+// Name: initialize_world_effect_motion
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001ca00(void)
+void initialize_world_effect_motion(void)
 
 {
   DAT_00ffe06c = -10;

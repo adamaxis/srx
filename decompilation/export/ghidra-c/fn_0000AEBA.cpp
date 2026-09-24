@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000AEBA
-// Name: FUN_0000aeba
+// Name: advance_title_sprite_wave
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0000aeba(void)
+void advance_title_sprite_wave(void)
 
 {
   uint uVar1;

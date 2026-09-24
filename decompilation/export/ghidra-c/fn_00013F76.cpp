@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00014D8E FUN_00014d8e
 //   0x0001DBAA schedule_world_activity_timeout
-//   0x0001E2E0 FUN_0001e2e0
+//   0x0001E2E0 begin_world_activity_if_idle
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -39,7 +39,7 @@ void FUN_00013f76(void)
             return;
           }
           _DAT_00ffdd2c = &LAB_00020fec;
-          FUN_0001e2e0();
+          begin_world_activity_if_idle();
           iVar2 = extraout_A0_00;
         }
         *(byte *)(iVar2 + 0x9e) = *(byte *)(iVar2 + 0x9e) | 1;

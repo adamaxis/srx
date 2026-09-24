@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00017BC0 refresh_menu_number_or_grid
 //   0x000195AA clear_menu_slot_visual
-//   0x00019762 FUN_00019762
+//   0x00019762 clear_menu_status_at
 
 
 void FUN_00019f7e(void)
@@ -21,7 +21,7 @@ void FUN_00019f7e(void)
       (&DAT_00fff0e8)[sVar1] = 0;
       *(short *)((int)&DAT_00fff0f2 + (int)(short)(sVar1 << 1)) = extraout_D1w * 10;
       refresh_menu_number_or_grid();
-      FUN_00019762();
+      clear_menu_status_at();
       return;
     }
     sVar1 = sVar1 + -1;

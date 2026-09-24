@@ -541,6 +541,33 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The next five conversion slices cover one hundred additional ROM entries. The
+display slice names `0x01070`/`0x01872` as the display-frame service, snapshots
+the field scene/profile buffers at `0x03074`, and expresses the tile row/column
+walk (`0x03D18`, `0x03D4A`, `0x03F9E`) through checked host vectors and callbacks.
+The same slice converts the controller delay gate, entity collision dispatch,
+title sprite wave, and the short title/menu presentation wrappers. It does not
+copy VDP registers or ROM addresses into runtime state.
+
+The menu-transfer slice covers the repeated-grid/resource wrappers from
+`0x10156` through `0x127FC`, the resource variant threshold at `0x12A54`, the
+palette fade at `0x16396`, and the packed-coordinate projections at `0x1669C`
+and `0x166D0`. The menu-slot slice then converts slot-code cleanup, countdown
+expiry, effect defaults, the five behavior descriptor initializers, and the
+selection-record reset as typed state transitions.
+
+The world-effect slice converts the bounded word copies and coordinate clamps,
+the conditional/unconditional activity timers, effect candidate rings, tile
+lookup, effect cleanup, dispatch, and bit publication. The indirect source
+effect table remains an explicit six-handler boundary; it is not guessed or
+recreated as an address-indexed runtime table.
+
+The audio slice converts the controller/audio bus boundaries, bounded audio
+workspace initialization, reset pulse, circular command queue writes, and the
+source begin/flush/append/end sequences. The mode-entry cadence is six ordinary
+host service/wait passes. This is conversion/reference code only; the native
+game and emulator remain unchanged.
+
 The following twenty-entry slice continues directly through the terrain and
 menu/HUD service cluster. `0x16E5C` now walks typed variable-span terrain
 descriptors, while `0x16F8E` resolves negative-mode regions before copying

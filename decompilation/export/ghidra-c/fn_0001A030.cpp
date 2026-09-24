@@ -27,12 +27,12 @@ undefined2 FUN_0001a030(void)
       DAT_00fff0aa = *unaff_A4;
       return uVar1;
     }
-    FUN_0001b706();
+    prepare_menu_offset_once();
     return 0xffff;
   }
   set_hud_selection_value();
   render_menu_text_followup();
-  FUN_0001b706();
+  prepare_menu_offset_once();
   return 0x45;
 }
 

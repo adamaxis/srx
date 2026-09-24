@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00019F78
-// Name: FUN_00019f78
+// Name: finalize_menu_slot_code_six
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00019f78(void)
+void finalize_menu_slot_code_six(void)
 
 {
   short extraout_D1w;
@@ -19,7 +19,7 @@ void FUN_00019f78(void)
       (&DAT_00fff0e8)[sVar1] = 0;
       *(short *)((int)&DAT_00fff0f2 + (int)(short)(sVar1 << 1)) = extraout_D1w * 10;
       refresh_menu_number_or_grid();
-      FUN_00019762();
+      clear_menu_status_at();
       return;
     }
     sVar1 = sVar1 + -1;

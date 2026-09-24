@@ -6,7 +6,7 @@
 //   0x000013BE build_title_sprite_records_with_attribute_offset
 //   0x000061CC append_sprite_record
 //   0x0001A4EA FUN_0001a4ea
-//   0x0001A8F4 FUN_0001a8f4
+//   0x0001A8F4 reset_effect_entity
 //   0x0001AB6E FUN_0001ab6e
 //   0x0001AC6A FUN_0001ac6a
 //   0x0001AD42 FUN_0001ad42
@@ -68,7 +68,7 @@ void FUN_0001aa40(void)
     DAT_00ff1642 = 5;
     DAT_00ff1643 = DAT_00ff1643 + 1;
     if (5 < DAT_00ff1643) {
-      FUN_0001a8f4();
+      reset_effect_entity();
       return;
     }
   }
@@ -85,7 +85,7 @@ void FUN_0001aa40(void)
     if (DAT_00ffe0b6 != 1) {
       DAT_00ffe0be = DAT_00ffe0c0 + DAT_00ffe0be;
       bVar3 = false;
-      FUN_0001ac50();
+      arm_effect_after_threshold();
       if (!bVar3) {
         FUN_000563cc();
         return;

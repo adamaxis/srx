@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
 //   0x00000D44 advance_source_prng
-//   0x00003074 FUN_00003074
+//   0x00003074 prepare_field_scene_buffers
 //   0x00016A26 FUN_00016a26
 //   0x00016AFA upload_mode_word_block
 //   0x00016B7C copy_scene_resource_cursor
@@ -48,7 +48,7 @@ void FUN_000167ae(void)
   snapshot_scene_state();
   _DAT_00ffdf8e = 0xffff;
   DAT_00ffddc4 = sVar5;
-  FUN_00003074();
+  prepare_field_scene_buffers();
   if (0x14 < DAT_00ffddc4) {
     if (DAT_00ffddc4 < 0x2c) {
       DAT_00ffdf40 = 2;

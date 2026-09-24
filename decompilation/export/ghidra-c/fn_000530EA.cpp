@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00052F3C service_audio_command_queue
-//   0x00053112 FUN_00053112
+//   0x00053112 service_audio_command_wrapper
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -17,7 +17,7 @@ undefined8 service_audio_command_frame(void)
   undefined8 uVar1;
   
   if (_DAT_00fffc08 != 0) {
-    uVar1 = FUN_00053112();
+    uVar1 = service_audio_command_wrapper();
     service_audio_command_queue((int)((ulonglong)uVar1 >> 0x20));
     return uVar1;
   }

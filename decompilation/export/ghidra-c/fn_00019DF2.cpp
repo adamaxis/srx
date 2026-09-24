@@ -4,14 +4,14 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00017C3C FUN_00017c3c
-//   0x00019DD8 FUN_00019dd8
+//   0x00019DD8 refresh_mode_metadata_leaf
 
 
 void FUN_00019df2(void)
 
 {
   FUN_00017c3c();
-  FUN_00019dd8();
+  refresh_mode_metadata_leaf();
   return;
 }
 

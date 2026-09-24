@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x0001B5B8
-// Name: FUN_0001b5b8
+// Name: attach_behavior_descriptor_a
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001B7D0 FUN_0001b7d0
 //   0x000530DE service_audio_if_enabled
 
 
-void FUN_0001b5b8(void)
+void attach_behavior_descriptor_a(void)
 
 {
   int extraout_A0;

@@ -4,8 +4,8 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000164F2 entity_table_has_free_slot
-//   0x0001669C FUN_0001669c
-//   0x000166D0 FUN_000166d0
+//   0x0001669C project_entity_x_axis
+//   0x000166D0 project_entity_y_axis
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -37,7 +37,7 @@ void FUN_0001651e(void)
   else if (in_D0w != 0) {
     if (DAT_00ffddc4 == 0x14) {
       *(undefined1 *)(unaff_A2 + DAT_00ffdfe4) = 0;
-      sVar1 = FUN_000166d0();
+      sVar1 = project_entity_y_axis();
       *(undefined2 *)((int)&DAT_00ff2700 + (int)sVar1) = DAT_001cd296;
       *(undefined2 *)((int)DAT_00ffddea + (int)&DAT_00ff2700 + (int)sVar1) = DAT_001cd298;
       _DAT_00ffe100 = 1;
@@ -45,7 +45,7 @@ void FUN_0001651e(void)
     else if (DAT_00ffdf40 == 2) {
       *(undefined1 *)(unaff_A2 + DAT_00ffdfe4) = 0;
       if ((*(ushort *)(in_A0 + 0xc6) & 0xe0) == 0xa0) {
-        sVar1 = FUN_0001669c();
+        sVar1 = project_entity_x_axis();
         puVar2 = (undefined2 *)((int)&DAT_00ff4700 + ((int)sVar1 - (int)DAT_00ffddea));
         *puVar2 = 3;
         sVar1 = DAT_00ffddea;
@@ -55,7 +55,7 @@ void FUN_0001651e(void)
         _DAT_00ffe102 = 1;
       }
       else {
-        sVar1 = FUN_000166d0();
+        sVar1 = project_entity_y_axis();
         *(undefined2 *)((int)&DAT_00ff2700 + (int)sVar1) = 6;
         *(undefined2 *)((int)DAT_00ffddea + (int)&DAT_00ff2700 + (int)sVar1) = 7;
         _DAT_00ffe100 = 1;

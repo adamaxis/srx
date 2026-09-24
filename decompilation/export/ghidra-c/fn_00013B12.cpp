@@ -6,7 +6,7 @@
 //   0x00000D3A sample_source_random_bound
 //   0x00003404 upload_field_asset_setup
 //   0x0000ABFC update_entity_animation_delay
-//   0x000125FA FUN_000125fa
+//   0x000125FA clear_entity_auxiliary_marker
 //   0x00013C20 select_entity_action_lane
 //   0x00013C74 collect_entity_action_records
 //   0x00013CDE guard_entity_action_threshold_variant
@@ -65,7 +65,7 @@ void FUN_00013b12(void)
 LAB_00013b7a:
       if ((*(char *)(iVar4 + 0x57) != '\0') && (*(char *)(iVar4 + 0x57) < '\r')) {
         *(undefined4 *)((int)register0x0000003c + -4) = 0x13b90;
-        FUN_000125fa();
+        clear_entity_auxiliary_marker();
         *(undefined1 *)(extraout_A0_01 + 0x4e) = extraout_D1b;
         iVar4 = extraout_A0_01;
       }

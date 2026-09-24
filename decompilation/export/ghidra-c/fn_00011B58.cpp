@@ -13,7 +13,7 @@
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x000111D0 upload_menu_tile_block
 //   0x00011454 reset_menu_upload_cursor_and_upload
-//   0x00011712 FUN_00011712
+//   0x00011712 render_title_text_source_variant
 //   0x000118C6 cycle_inventory_action_selector
 //   0x00011900 prepare_menu_row_grid
 //   0x00011928 render_menu_row
@@ -54,7 +54,7 @@ void switchD_00011768::caseD_2(void)
   upload_menu_tile_block();
   _DAT_00fff116 = 0xffff;
   reset_menu_upload_cursor_and_upload();
-  FUN_00011712();
+  render_title_text_source_variant();
   do {
     while( true ) {
       wait_for_vblank();
@@ -68,7 +68,7 @@ LAB_00011be6:
       cycle_inventory_action_selector();
       _DAT_00fff116 = 0xffff;
       reset_menu_upload_cursor_and_upload();
-      FUN_00011712();
+      render_title_text_source_variant();
     }
     if ((DAT_00ffdd22._0_1_ & 8) != 0) {
       uVar3 = 1;
@@ -157,7 +157,7 @@ LAB_00011be6:
     upload_menu_tile_block();
     _DAT_00fff116 = 0xffff;
     reset_menu_upload_cursor_and_upload();
-    FUN_00011712();
+    render_title_text_source_variant();
 LAB_00011ea4:
     do {
       while( true ) {
@@ -172,7 +172,7 @@ LAB_00011ec4:
         cycle_inventory_action_selector();
         _DAT_00fff116 = 0xffff;
         reset_menu_upload_cursor_and_upload();
-        FUN_00011712();
+        render_title_text_source_variant();
       }
       if ((DAT_00ffdd22._0_1_ & 8) != 0) {
         uVar3 = 1;

@@ -3,7 +3,7 @@
 // Name: FUN_0001e43c
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001E2EC FUN_0001e2ec
+//   0x0001E2EC begin_world_activity
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -31,7 +31,7 @@ void FUN_0001e43c(void)
       DAT_00ffe181 = 0xff;
 LAB_0001e49c:
       _DAT_00ffdd2c = &UNK_0001f16a;
-      FUN_0001e2ec();
+      begin_world_activity();
       return;
     }
   }

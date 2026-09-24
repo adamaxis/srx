@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x0000C928 FUN_0000c928
 //   0x0001F246 run_mode_exit_services
-//   0x0002196C FUN_0002196c
+//   0x0002196C mark_effect_bit
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -20,7 +20,7 @@ void FUN_0001f830(void)
       if ((DAT_00fffc1e & 0x2000000) == 0) {
         DAT_00fffc34 = DAT_00fffc34 & 0xfffbffff | 0x80000;
         _DAT_00ffdd64 = 0x19;
-        FUN_0002196c();
+        mark_effect_bit();
       }
       else if (((DAT_00fffc1e & 0x20000000) == 0) && ((DAT_00fffc22 & 1) != 0)) {
         DAT_00fffc22 = DAT_00fffc22 & 0xfffffffe;

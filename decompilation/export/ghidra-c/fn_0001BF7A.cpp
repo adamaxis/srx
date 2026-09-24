@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00017C3C FUN_00017c3c
-//   0x0001C012 FUN_0001c012
+//   0x0001C012 copy_seven_words
 
 
 void FUN_0001bf7a(void)
@@ -22,7 +22,7 @@ void FUN_0001bf7a(void)
     else {
       DAT_00fff11e = sVar1;
       FUN_00017c3c();
-      FUN_0001c012();
+      copy_seven_words();
       DAT_00ffef14 = DAT_00ffef14 | 1;
       sVar1 = DAT_00fff11e;
     }

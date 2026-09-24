@@ -3,7 +3,7 @@
 // Name: FUN_00003efe
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00003F9E FUN_00003f9e
+//   0x00003F9E calculate_field_tile_source_offset
 
 
 undefined8 FUN_00003efe(void)
@@ -40,7 +40,7 @@ undefined8 FUN_00003efe(void)
   sVar14 = sVar2;
   do {
     do {
-      FUN_00003f9e(uVar4,sVar14);
+      calculate_field_tile_source_offset(uVar4,sVar14);
       sVar8 = 0x1f;
       pbVar9 = extraout_A1;
       pbVar10 = pbVar11;

@@ -3,7 +3,7 @@
 // Name: FUN_00003560
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00003602 FUN_00003602
+//   0x00003602 run_hud_panel_post_hook
 //   0x00003648 draw_hud_panel
 
 
@@ -28,7 +28,7 @@ void FUN_00003560(void)
     puVar2 = (undefined1 *)0xfc48;
   }
   draw_hud_panel(puVar2,puVar1);
-  FUN_00003602();
+  run_hud_panel_post_hook();
   draw_hud_panel();
   return;
 }

@@ -416,3 +416,103 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x195A6	menu slot pair refresh	ghidra_conversion::refresh_menu_slot_pair	shadowrun_ghidra_menu_hud_service	partial		Typed optional-hook and visual-clear order
 0x195AA	menu visual clear leaf	ghidra_conversion::clear_menu_slot_visual	shadowrun_ghidra_menu_hud_service	partial		Typed visual-clear service boundary
 0x196F2	HUD history rotation	ghidra_conversion::rotate_hud_history	shadowrun_ghidra_menu_hud_service	partial		Typed countdown expiry, four-word history rotation, and dirty publication
+0x1070	display service wrapper	ghidra_conversion::service_display_frame_wrapper	shadowrun_ghidra_display_service_batch	partial		Typed wrapper over the display dirty-bit service
+0x1080	alternating word-pair wrapper	ghidra_conversion::write_alternating_word_pair_wrapper	shadowrun_ghidra_display_service_batch	partial		Explicit host transfer boundary
+0x1872	display frame service	ghidra_conversion::service_display_frame	shadowrun_ghidra_display_service_batch	partial		Typed dirty-bit, viewport, and queued-transfer order
+0x3074	field scene buffer preparation	ghidra_conversion::prepare_field_scene_buffers	shadowrun_ghidra_display_service_batch	partial		Typed profile selection, camera recenter, and layer snapshots
+0x3602	HUD panel post hook	ghidra_conversion::run_hud_panel_post_hook	shadowrun_ghidra_display_service_batch	partial		Explicit empty source hook boundary
+0x3648	HUD panel transfer	ghidra_conversion::write_hud_panel_transfer	shadowrun_ghidra_display_service_batch	partial		Typed incrementing word blocks behind transfer callbacks
+0x3D18	field tile row renderer	ghidra_conversion::render_field_tile_rows	shadowrun_ghidra_display_service_batch	partial		Typed thirty-one-column traversal and fold boundary
+0x3D4A	field tile column renderer	ghidra_conversion::render_field_tile_column	shadowrun_ghidra_display_service_batch	partial		Typed visible-word count, tile-row stride, and palette transform
+0x3F9E	field tile source offset	ghidra_conversion::calculate_field_tile_source_offset	shadowrun_ghidra_display_service_batch	partial		Checked row-table and map-vector tile lookup
+0xABB6	controller activity delay arm	ghidra_conversion::arm_controller_activity_delay	shadowrun_ghidra_display_service_batch	partial		Typed three-record flag gate and 0x3C-frame delay
+0xAC84	entity collision behavior dispatch	ghidra_conversion::dispatch_entity_collision_behavior	shadowrun_ghidra_display_service_batch	partial		Typed behavior branch and optional collision recheck
+0xAEBA	title sprite wave advance	ghidra_conversion::advance_title_sprite_wave	shadowrun_ghidra_display_service_batch	partial		Typed eight-tick cadence and thirty-two independent sprite records
+0xC0C2	title font load	ghidra_conversion::load_title_font	shadowrun_ghidra_display_service_batch	partial		Named source-stream font upload boundary
+0xC3E6	menu grid with metadata	ghidra_conversion::write_menu_grid_with_metadata	shadowrun_ghidra_display_service_batch	partial		Named repeated-grid presentation boundary
+0xC3F8	menu grid number pair	ghidra_conversion::render_menu_grid_number_pair	shadowrun_ghidra_display_service_batch	partial		Typed grid then grouped-glyph order
+0xCFFE	title mode display preparation	ghidra_conversion::prepare_title_mode_display	shadowrun_ghidra_display_service_batch	partial		Typed mode refresh, palette refresh, display prep, and font load
+0xDA4A	title text wrapper	ghidra_conversion::render_title_text_wrapper	shadowrun_ghidra_display_service_batch	partial		Named title-text presentation boundary
+0xE660	random grid effect advance	ghidra_conversion::advance_random_grid_effect	shadowrun_ghidra_display_service_batch	partial		Three random samples followed by one grid submission
+0xF404	menu footer grid	ghidra_conversion::write_menu_footer_grid	shadowrun_ghidra_display_service_batch	partial		Named repeated-grid presentation boundary
+0xFDAE	menu grid quadruple	ghidra_conversion::write_menu_grid_quadruple	shadowrun_ghidra_display_service_batch	partial		Exact four-grid submission loop
+0x10156	repeated menu grid	ghidra_conversion::write_repeated_menu_grid	shadowrun_ghidra_menu_transfer_batch	partial		Named repeated-grid boundary
+0x10260	menu grid then service	ghidra_conversion::prepare_menu_grid_then_service	shadowrun_ghidra_menu_transfer_batch	partial		Typed grid/service order
+0x104C8	matching menu metric scan	ghidra_conversion::find_matching_menu_metric	shadowrun_ghidra_menu_transfer_batch	partial		Reverse six-slot predicate scan
+0x106DA	grid preparation wrapper	ghidra_conversion::prepare_grid_then_write	shadowrun_ghidra_menu_transfer_batch	partial		Typed preparation then grid boundary
+0x10854	three grids then service	ghidra_conversion::write_three_grids_then_service	shadowrun_ghidra_menu_transfer_batch	partial		Exact three-grid and trailing service order
+0x11048	resource then two blocks	ghidra_conversion::upload_resource_then_write_two_blocks	shadowrun_ghidra_menu_transfer_batch	partial		Typed resource upload and paired block order
+0x1107E	resource stream upload	ghidra_conversion::upload_resource_stream	shadowrun_ghidra_menu_transfer_batch	partial		Named source-stream upload boundary
+0x110E8	HUD panel wrapper	ghidra_conversion::draw_hud_panel_wrapper	shadowrun_ghidra_menu_transfer_batch	partial		Named panel presentation boundary
+0x1111A	title text source wrapper	ghidra_conversion::render_title_text_source_wrapper	shadowrun_ghidra_menu_transfer_batch	partial		Named title-text source boundary
+0x1170C	title text source leaf	ghidra_conversion::render_title_text_source_leaf	shadowrun_ghidra_menu_transfer_batch	partial		Named title-text source boundary
+0x11712	title text source variant	ghidra_conversion::render_title_text_source_variant	shadowrun_ghidra_menu_transfer_batch	partial		Named title-text source boundary
+0x125FA	entity auxiliary marker clear	ghidra_conversion::clear_entity_auxiliary_marker	shadowrun_ghidra_menu_transfer_batch	partial		Typed auxiliary marker reset
+0x127FC	single grid writer	ghidra_conversion::write_single_grid	shadowrun_ghidra_menu_transfer_batch	partial		Named one-grid presentation boundary
+0x12A54	resource variant update	ghidra_conversion::update_resource_variant	shadowrun_ghidra_menu_transfer_batch	partial		Typed threshold toggle and upload-on-change
+0x13CD4	entity action threshold guard	ghidra_conversion::passes_entity_action_threshold	shadowrun_ghidra_menu_transfer_batch	partial		Typed phase bypass and signed threshold guard
+0x16396	palette fade advance	ghidra_conversion::advance_palette_fade	shadowrun_ghidra_menu_transfer_batch	partial		Typed effect service, even-step palette fade, and completion
+0x1669C	entity X-axis projection	ghidra_conversion::project_entity_x_axis	shadowrun_ghidra_menu_transfer_batch	partial		Typed packed-coordinate projection
+0x166D0	entity Y-axis projection	ghidra_conversion::project_entity_y_axis	shadowrun_ghidra_menu_transfer_batch	partial		Typed packed-coordinate projection
+0x17D72	HUD panel forwarding wrapper	ghidra_conversion::draw_hud_panel_forward	shadowrun_ghidra_menu_transfer_batch	partial		Explicit forwarding boundary for shared panel renderer
+0x17F8E	HUD footer forwarding wrapper	ghidra_conversion::draw_hud_footer_forward	shadowrun_ghidra_menu_transfer_batch	partial		Explicit forwarding boundary for footer renderer
+0x1962A	menu slot command	ghidra_conversion::apply_menu_slot_command	shadowrun_ghidra_menu_slot_batch	partial		Typed slot-code flag cleanup and three presentation refreshes
+0x19736	ready menu slot timer	ghidra_conversion::clear_ready_menu_slot_timer	shadowrun_ghidra_menu_slot_batch	partial		Typed input gate and timer clear
+0x19762	menu status clear	ghidra_conversion::clear_menu_status_at	shadowrun_ghidra_menu_slot_batch	partial		Typed status clear and grid refresh order
+0x19B34	menu selection then text	ghidra_conversion::publish_menu_selection_then_text	shadowrun_ghidra_menu_slot_batch	partial		Typed selection/text sequence
+0x19DD8	mode metadata leaf	ghidra_conversion::refresh_mode_metadata_leaf	shadowrun_ghidra_menu_slot_batch	partial		Named metadata service boundary
+0x19DE8	menu service then prepare	ghidra_conversion::run_menu_service_then_prepare	shadowrun_ghidra_menu_slot_batch	partial		Typed service and menu preparation order
+0x19F72	menu slot code five	ghidra_conversion::finalize_menu_slot_code	shadowrun_ghidra_menu_slot_batch	partial		Reverse slot scan and visual/value cleanup for code five
+0x19F78	menu slot code six	ghidra_conversion::finalize_menu_slot_code	shadowrun_ghidra_menu_slot_batch	partial		Reverse slot scan and visual/value cleanup for code six
+0x1A01E	menu selection/text variant	ghidra_conversion::publish_menu_selection_then_text	shadowrun_ghidra_menu_slot_batch	partial		Typed selection/text sequence variant
+0x1A12E	menu countdown advance	ghidra_conversion::advance_menu_countdown	shadowrun_ghidra_menu_slot_batch	partial		Typed decrement and expiry boundary
+0x1A154	selected menu record clear	ghidra_conversion::clear_selected_menu_record	shadowrun_ghidra_menu_slot_batch	partial		Typed 0x14-stride record marker clear
+0x1A54E	effect defaults	ghidra_conversion::initialize_effect_defaults	shadowrun_ghidra_menu_slot_batch	partial		Typed effect origin, velocity, lifetime, and palette defaults
+0x1A8F4	effect entity reset	ghidra_conversion::reset_effect_entity	shadowrun_ghidra_menu_slot_batch	partial		Typed effect accumulator and entity reset
+0x1AC50	effect threshold arm	ghidra_conversion::arm_effect_after_threshold	shadowrun_ghidra_menu_slot_batch	partial		Typed 0x7140 threshold gate
+0x1B5A6	word stream area reset	ghidra_conversion::reset_word_stream_area	shadowrun_ghidra_menu_slot_batch	partial		Bounded 0x1C0-word clear and dirty publication
+0x1B5B8	behavior descriptor A	ghidra_conversion::attach_behavior_descriptor_a	shadowrun_ghidra_menu_slot_batch	partial		Typed audio/record initialization and descriptor attachment
+0x1B612	behavior descriptor B	ghidra_conversion::attach_behavior_descriptor_b	shadowrun_ghidra_menu_slot_batch	partial		Typed record initialization and descriptor attachment
+0x1B628	behavior descriptor C	ghidra_conversion::attach_behavior_descriptor_c	shadowrun_ghidra_menu_slot_batch	partial		Typed record initialization and descriptor attachment
+0x1B654	behavior descriptor D	ghidra_conversion::attach_behavior_descriptor_d	shadowrun_ghidra_menu_slot_batch	partial		Typed record initialization and descriptor attachment
+0x1B680	behavior descriptor E	ghidra_conversion::attach_behavior_descriptor_e	shadowrun_ghidra_menu_slot_batch	partial		Typed record initialization and descriptor attachment
+0x1B706	menu offset preparation	ghidra_conversion::prepare_menu_offset_once	shadowrun_ghidra_world_effect_batch	partial		Typed once-only offset calculation and follow-up
+0x1C012	seven-word copy	ghidra_conversion::copy_seven_words	shadowrun_ghidra_world_effect_batch	partial		Bounded seven-word host vector copy
+0x1C4EE	eleven-word copy	ghidra_conversion::copy_eleven_words	shadowrun_ghidra_world_effect_batch	partial		Bounded eleven-word host vector copy
+0x1CA00	world effect motion initialization	ghidra_conversion::initialize_world_effect_motion	shadowrun_ghidra_world_effect_batch	partial		Typed origin, motion, lifetime, and audio setup
+0x1CBF8	world effect work clear	ghidra_conversion::clear_world_effect_work	shadowrun_ghidra_world_effect_batch	partial		Typed inactive-work clear
+0x1D1A4	effect vertical advance	ghidra_conversion::advance_effect_vertical_position	shadowrun_ghidra_world_effect_batch	partial		Bounded two-unit vertical advance
+0x1D1B4	effect vertical retreat	ghidra_conversion::retreat_effect_vertical_position	shadowrun_ghidra_world_effect_batch	partial		Bounded two-unit vertical retreat
+0x1D1C4	effect horizontal advance	ghidra_conversion::advance_effect_horizontal_position	shadowrun_ghidra_world_effect_batch	partial		Bounded two-unit horizontal advance
+0x1D1D0	effect horizontal retreat	ghidra_conversion::retreat_effect_horizontal_position	shadowrun_ghidra_world_effect_batch	partial		Bounded two-unit horizontal retreat
+0x1E1FC	effect sequence forwarder	ghidra_conversion::forward_effect_sequence	shadowrun_ghidra_world_effect_batch	partial		Named effect sequence boundary
+0x1E2E0	conditional world activity start	ghidra_conversion::begin_world_activity_if_idle	shadowrun_ghidra_world_effect_batch	partial		Typed idle gate and 0x3C timeout
+0x1E2EC	world activity start	ghidra_conversion::begin_world_activity	shadowrun_ghidra_world_effect_batch	partial		Typed unconditional 0x3C timeout
+0x1E40C	world effect candidates	ghidra_conversion::build_world_effect_candidates	shadowrun_ghidra_world_effect_batch	partial		Typed two five-candidate rings and validity boundary
+0x1E41E	world effect tile lookup	ghidra_conversion::lookup_world_effect_tile	shadowrun_ghidra_world_effect_batch	partial		Checked compact tile-table lookup
+0x1E514	effect slot clear	ghidra_conversion::clear_effect_slot_state	shadowrun_ghidra_world_effect_batch	partial		Typed effect flag cleanup and slot-clear boundary
+0x1E540	effect fade marker	ghidra_conversion::initialize_effect_fade_marker	shadowrun_ghidra_world_effect_batch	partial		Typed fade sentinel and countdown initialization
+0x1E68C	world effect globals reset	ghidra_conversion::reset_world_effect_globals	shadowrun_ghidra_world_effect_batch	partial		Typed selected-effect and collision marker reset
+0x1EEDC	world effect dispatch	ghidra_conversion::dispatch_world_effect	shadowrun_ghidra_world_effect_batch	partial		Checked six-entry effect dispatch boundary
+0x1F1E0	eight-step counter	ghidra_conversion::advance_eight_step_counter	shadowrun_ghidra_world_effect_batch	partial		Typed increment with source upper clamp
+0x2196C	effect bit marker	ghidra_conversion::mark_effect_bit	shadowrun_ghidra_world_effect_batch	partial		Typed masked bit publication
+0x52DC2	controller bus begin	ghidra_conversion::begin_controller_bus_access	shadowrun_ghidra_audio_command_batch	partial		Explicit host controller bus boundary
+0x52DD6	controller bus end	ghidra_conversion::end_controller_bus_access	shadowrun_ghidra_audio_command_batch	partial		Explicit host controller bus boundary
+0x52DE0	audio RAM initialization	ghidra_conversion::initialize_audio_ram	shadowrun_ghidra_audio_command_batch	partial		Bounded host audio workspace initialization
+0x52E26	audio processor reset	ghidra_conversion::reset_audio_processor	shadowrun_ghidra_audio_command_batch	partial		Typed reset pulse and short-delay sequence
+0x52E4E	audio bus begin	ghidra_conversion::begin_audio_bus_access	shadowrun_ghidra_audio_command_batch	partial		Explicit host audio bus boundary
+0x52E84	audio bus end	ghidra_conversion::end_audio_bus_access	shadowrun_ghidra_audio_command_batch	partial		Explicit host audio bus boundary
+0x52E96	audio command flush	ghidra_conversion::flush_audio_command	shadowrun_ghidra_audio_command_batch	partial		Typed circular command marker and payload write
+0x52EA2	audio command append	ghidra_conversion::append_audio_command	shadowrun_ghidra_audio_command_batch	partial		Typed circular command append
+0x52EB0	audio bus single append	ghidra_conversion::append_one_with_audio_bus	shadowrun_ghidra_audio_command_batch	partial		Typed begin/append/end order
+0x52EC6	audio bus triple append	ghidra_conversion::append_three_with_audio_bus	shadowrun_ghidra_audio_command_batch	partial		Typed begin/three-appends/end order
+0x52F3C	audio command queue service	ghidra_conversion::service_audio_command_queue_batch	shadowrun_ghidra_audio_command_batch	partial		Typed begin/flush/append/end order
+0x52FA0	audio flush with bus	ghidra_conversion::flush_with_audio_bus	shadowrun_ghidra_audio_command_batch	partial		Typed begin/flush/end order
+0x52FD2	audio flush append pair	ghidra_conversion::flush_append_pair	shadowrun_ghidra_audio_command_batch	partial		Typed flush/two-appends/end order
+0x53094	audio bus flush append pair	ghidra_conversion::begin_bus_then_flush_append_pair	shadowrun_ghidra_audio_command_batch	partial		Typed begin then paired queue service
+0x530A0	controller access pair	ghidra_conversion::controller_access_pair	shadowrun_ghidra_audio_command_batch	partial		Typed controller begin/end pair
+0x530D2	audio enabled variant	ghidra_conversion::service_audio_if_enabled_variant	shadowrun_ghidra_audio_command_batch	partial		Typed enable gate over queue service
+0x530EA	audio command frame variant	ghidra_conversion::service_audio_command_frame_variant	shadowrun_ghidra_audio_command_batch	partial		Typed frame preparation and queue service
+0x53112	audio command wrapper	ghidra_conversion::service_audio_command_wrapper	shadowrun_ghidra_audio_command_batch	partial		Named audio queue wrapper
+0x53126	mode entry audio service	ghidra_conversion::prepare_audio_mode_entry	shadowrun_ghidra_audio_command_batch	partial		Typed six-pass wait/service cadence and finalization
+0x53156	audio tick wrapper	ghidra_conversion::service_audio_tick_wrapper	shadowrun_ghidra_audio_command_batch	partial		Named audio tick service boundary

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001E514
-// Name: FUN_0001e514
+// Name: clear_effect_slot_state
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001A304 clear_effect_slot
 
 
-void FUN_0001e514(void)
+void clear_effect_slot_state(void)
 
 {
   byte bVar1;

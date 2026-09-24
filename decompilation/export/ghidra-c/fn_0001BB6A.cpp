@@ -6,7 +6,7 @@
 //   0x00000D44 advance_source_prng
 //   0x00001378 build_title_sprite_records
 //   0x0001A09C FUN_0001a09c
-//   0x0001B680 FUN_0001b680
+//   0x0001B680 attach_behavior_descriptor_e
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -29,7 +29,7 @@ void FUN_0001bb6a(void)
     DAT_00ffe0ca = DAT_00ffe0ca - 1;
     if ((short)DAT_00ffe0ca < 0) {
       DAT_00fff0a1 = DAT_00fff0a1 & 0xfa;
-      FUN_0001b680();
+      attach_behavior_descriptor_e();
       _DAT_00ffe0d6 = 0;
       _DAT_00ffe0f4 = 1;
       FUN_0001a09c();

@@ -1,17 +1,17 @@
 // Ghidra headless export
 // Entry: 0x00053094
-// Name: FUN_00053094
+// Name: begin_bus_then_flush_append_pair
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00052E4E begin_audio_bus_access
-//   0x00052FD2 FUN_00052fd2
+//   0x00052FD2 flush_append_pair
 
 
-void FUN_00053094(void)
+void begin_bus_then_flush_append_pair(void)
 
 {
   begin_audio_bus_access();
-  FUN_00052fd2();
+  flush_append_pair();
   return;
 }
 

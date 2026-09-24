@@ -6,7 +6,7 @@
 //   0x00003674 FUN_00003674
 //   0x000037EC FUN_000037ec
 //   0x0000C0DA render_title_text_source
-//   0x0000C3E6 FUN_0000c3e6
+//   0x0000C3E6 write_menu_grid_with_metadata
 //   0x0000F312 wait_for_controller_event
 
 
@@ -18,7 +18,7 @@ void FUN_0000ef08(void)
   undefined2 *extraout_A0;
   undefined2 *extraout_A0_00;
   
-  FUN_0000c3e6();
+  write_menu_grid_with_metadata();
   puVar2 = &DAT_00ff0100;
   sVar1 = 2;
   do {
