@@ -5,8 +5,8 @@
 // Calls recovered from direct call instructions:
 //   0x00014C56 project_heading_position
 //   0x00014D58 FUN_00014d58
-//   0x00015C58 FUN_00015c58
-//   0x00015C84 FUN_00015c84
+//   0x00015C58 is_entity_target_within_range
+//   0x00015C84 update_entity_heading_from_linked_target
 //   0x0001A2CC allocate_first_free_effect_slot
 
 
@@ -36,7 +36,7 @@ void FUN_00014c7c(void)
       project_heading_position();
       *(undefined2 *)(extraout_A0_01 + 0x2e) = unaff_D2w;
       bVar4 = 0;
-      FUN_00015c84();
+      update_entity_heading_from_linked_target();
       *(undefined2 *)(extraout_A0_02 + 0x2e) = DAT_00ffdd48;
       if ((bVar4 & 1) != 0) {
         if ((*(short *)(extraout_A0_02 + 0xe) == 0xe) || (*(short *)(extraout_A0_02 + 0x1e) != 2)) {
@@ -49,7 +49,7 @@ void FUN_00014c7c(void)
       }
     }
     else {
-      FUN_00015c58();
+      is_entity_target_within_range();
       iVar2 = extraout_A0;
       if (bVar3) goto LAB_00014ca8;
     }

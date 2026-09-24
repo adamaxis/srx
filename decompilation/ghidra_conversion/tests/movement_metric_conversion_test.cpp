@@ -57,5 +57,29 @@ int main() {
         return 12;
     }
 
+    if (!expect(is_entity_target_within_range(
+                    0x01U, 0, 0, 100, 0))) {
+        return 13;
+    }
+    if (!expect(!is_entity_target_within_range(
+                    0x41U, 0, 0, 100, 0) &&
+                !is_entity_target_within_range(
+                    0x00U, 0, 0, 100, 0) &&
+                !is_entity_target_within_range(
+                    0x01U, 0, 0, 0x400, 0))) {
+        return 14;
+    }
+    const auto updated_heading = update_entity_heading_from_linked_target(
+        true, 0x01U, 0xA000U, 0, 0, 100, 0);
+    if (!expect(updated_heading.has_value() &&
+                updated_heading.value() == 0xA000U)) {
+        return 15;
+    }
+    if (!expect(!update_entity_heading_from_linked_target(
+                     false, 0x01U, 0xA000U, 0, 0, 100, 0)
+                     .has_value())) {
+        return 16;
+    }
+
     return 0;
 }

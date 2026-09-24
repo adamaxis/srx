@@ -4719,7 +4719,7 @@
 0000B242: move.w (0x0,A1,D0w*0x1),D1w ; data 0000c0a2
 0000B246: move.w D1w,(0x16,A0)
 0000B24A: bsr.w 0x0000af6c ; call 0000AF6C reset_entity_animation_state
-0000B24E: jsr 0x00015c84.l ; call 00015C84 FUN_00015c84
+0000B24E: jsr 0x00015c84.l ; call 00015C84 update_entity_heading_from_linked_target
 0000B254: bcc.w 0x0000b2f4
 0000B258: jsr 0x0001dbaa.l ; call 0001DBAA FUN_0001dbaa
 0000B25E: move.w #0x4d,D0w
@@ -12249,7 +12249,7 @@
 00014C90: cmpi.w #0xe,(0xe,A0)
 00014C96: beq.w 0x00014cb8
 00014C9A: movea.l (0xa2,A0),A1
-00014C9E: jsr 0x00015c58.l ; call 00015C58 FUN_00015c58
+00014C9E: jsr 0x00015c58.l ; call 00015C58 is_entity_target_within_range
 00014CA4: bcc.w 0x00014cb2
 00014CA8: move.w D2w,(0x34,A0)
 00014CAC: ori #0x1,CCR
@@ -12260,7 +12260,7 @@
 00014CBC: move.w (0x2e,A0),(0x00ffdd48).l
 00014CC4: bsr.b 0x00014c56 ; call 00014C56 project_heading_position
 00014CC6: move.w D2w,(0x2e,A0)
-00014CCA: jsr 0x00015c84.l ; call 00015C84 FUN_00015c84
+00014CCA: jsr 0x00015c84.l ; call 00015C84 update_entity_heading_from_linked_target
 00014CD0: move SR,-(SP) ; data Stack[-0x2]
 00014CD2: move.w (0x00ffdd48).l,(0x2e,A0)
 00014CDA: move (SP)+,SR
@@ -13180,7 +13180,7 @@
 00015C84: move.l (0xa2,A0),D0
 00015C88: beq.w 0x00015c9e
 00015C8C: movea.l D0,A1
-00015C8E: bsr.b 0x00015c58 ; call 00015C58 FUN_00015c58
+00015C8E: bsr.b 0x00015c58 ; call 00015C58 is_entity_target_within_range
 00015C90: bcc.w 0x00015c9e
 00015C94: move.w D2w,(0x34,A0)
 00015C98: ori #0x1,CCR

@@ -7,7 +7,7 @@
 //   0x0000AF6C reset_entity_animation_state
 //   0x0000AFF2 prepare_entity_auxiliary_behavior
 //   0x00015A8C find_first_available_entity_slot
-//   0x00015C84 FUN_00015c84
+//   0x00015C84 update_entity_heading_from_linked_target
 //   0x00015D3C measure_relative_heading_and_distance
 //   0x0001DBAA FUN_0001dbaa
 //   0x000530DE FUN_000530de
@@ -51,7 +51,7 @@ void configure_entity_target_transition(void)
   *(undefined2 *)(iVar4 + 0x16) = *(undefined2 *)(&DAT_0000c0a2 + (short)((uVar1 & 7) << 1));
   uVar5 = 0;
   reset_entity_animation_state();
-  FUN_00015c84();
+  update_entity_heading_from_linked_target();
   if ((bool)uVar5) {
     FUN_0001dbaa();
     uVar2 = 0xb278;

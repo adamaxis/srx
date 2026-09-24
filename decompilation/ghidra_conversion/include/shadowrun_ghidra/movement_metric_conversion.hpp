@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -29,6 +30,26 @@ RelativeHeadingMeasurement measure_heading_and_distance(
 RelativeHeadingMeasurement measure_relative_heading_and_distance(
     std::int32_t origin_x,
     std::int32_t origin_y,
+    std::int32_t target_x,
+    std::int32_t target_y);
+
+// ROM 0x15C58: when the linked target has the source's active flag without
+// its excluded bit, report whether its measured distance is below 0x200.
+bool is_entity_target_within_range(
+    std::uint8_t target_flags,
+    std::int32_t entity_x,
+    std::int32_t entity_y,
+    std::int32_t target_x,
+    std::int32_t target_y);
+
+// ROM 0x15C84: if a linked target exists and passes 0x15C58, return the
+// caller-supplied heading that the source writes to the entity record.
+std::optional<std::uint16_t> update_entity_heading_from_linked_target(
+    bool has_linked_target,
+    std::uint8_t target_flags,
+    std::uint16_t measured_heading,
+    std::int32_t entity_x,
+    std::int32_t entity_y,
     std::int32_t target_x,
     std::int32_t target_y);
 

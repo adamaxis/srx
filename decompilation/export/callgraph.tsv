@@ -368,7 +368,7 @@ caller	caller_name	callee	callee_name	call_sites
 0000B1DC	configure_entity_target_transition	0000AF6C	reset_entity_animation_state	1
 0000B1DC	configure_entity_target_transition	0000AFF2	prepare_entity_auxiliary_behavior	1
 0000B1DC	configure_entity_target_transition	00015A8C	find_first_available_entity_slot	1
-0000B1DC	configure_entity_target_transition	00015C84	FUN_00015c84	1
+0000B1DC	configure_entity_target_transition	00015C84	update_entity_heading_from_linked_target	1
 0000B1DC	configure_entity_target_transition	00015D3C	measure_relative_heading_and_distance	1
 0000B1DC	configure_entity_target_transition	0001DBAA	FUN_0001dbaa	1
 0000B1DC	configure_entity_target_transition	000530DE	FUN_000530de	2
@@ -931,8 +931,8 @@ caller	caller_name	callee	callee_name	call_sites
 00014BA6	update_entity_axis_relation_state	00014682	FUN_00014682	1
 00014C7C	FUN_00014c7c	00014C56	project_heading_position	1
 00014C7C	FUN_00014c7c	00014D58	FUN_00014d58	2
-00014C7C	FUN_00014c7c	00015C58	FUN_00015c58	1
-00014C7C	FUN_00014c7c	00015C84	FUN_00015c84	1
+00014C7C	FUN_00014c7c	00015C58	is_entity_target_within_range	1
+00014C7C	FUN_00014c7c	00015C84	update_entity_heading_from_linked_target	1
 00014C7C	FUN_00014c7c	0001A2CC	allocate_first_free_effect_slot	1
 00014D58	FUN_00014d58	00015D3C	measure_relative_heading_and_distance	1
 00014D8E	FUN_00014d8e	00014F26	FUN_00014f26	1
@@ -972,8 +972,8 @@ caller	caller_name	callee	callee_name	call_sites
 00015930	FUN_00015930	0001582A	allocate_first_free_effect_slot	1
 00015930	FUN_00015930	000530DE	FUN_000530de	1
 0001597E	FUN_0001597e	00015CC0	compute_diagonal_step_cost	1
-00015C58	FUN_00015c58	00014D58	FUN_00014d58	1
-00015C84	FUN_00015c84	00015C58	FUN_00015c58	1
+00015C58	is_entity_target_within_range	00014D58	FUN_00014d58	1
+00015C84	update_entity_heading_from_linked_target	00015C58	is_entity_target_within_range	1
 00015D3C	measure_relative_heading_and_distance	00015D4E	measure_heading_and_distance	1
 00016396	FUN_00016396	00001088	step_palette_toward_black	1
 00016396	FUN_00016396	000163DA	FUN_000163da	1

@@ -140,4 +140,34 @@ RelativeHeadingMeasurement measure_relative_heading_and_distance(
         target_y - origin_y);
 }
 
+bool is_entity_target_within_range(
+    const std::uint8_t target_flags,
+    const std::int32_t entity_x,
+    const std::int32_t entity_y,
+    const std::int32_t target_x,
+    const std::int32_t target_y) {
+    if ((target_flags & 0x01U) == 0U || (target_flags & 0x40U) != 0U) {
+        return false;
+    }
+    return measure_relative_heading_and_distance(
+               entity_x, entity_y, target_x, target_y)
+               .distance < 0x200U;
+}
+
+std::optional<std::uint16_t> update_entity_heading_from_linked_target(
+    const bool has_linked_target,
+    const std::uint8_t target_flags,
+    const std::uint16_t measured_heading,
+    const std::int32_t entity_x,
+    const std::int32_t entity_y,
+    const std::int32_t target_x,
+    const std::int32_t target_y) {
+    if (!has_linked_target ||
+        !is_entity_target_within_range(
+            target_flags, entity_x, entity_y, target_x, target_y)) {
+        return std::nullopt;
+    }
+    return measured_heading;
+}
+
 } // namespace shadowrun::ghidra_conversion
