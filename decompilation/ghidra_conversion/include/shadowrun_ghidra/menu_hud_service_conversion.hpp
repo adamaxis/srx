@@ -153,4 +153,148 @@ void advance_hud_fade_service(
     const std::function<void()>& latch_controller_events,
     const std::function<void()>& step_palette_toward_black);
 
+struct MenuHudTickState {
+    std::uint16_t frames_completed = 0;
+    std::uint8_t dirty_flags = 0;
+    bool controller_tick_ready = false;
+    bool world_tick_ready = false;
+    std::uint8_t selected_row = 0;
+};
+
+struct MenuHudTickCallbacks {
+    std::function<void()> wait_for_vblank;
+    std::function<void()> latch_controller_events;
+    std::function<void()> advance_sprite_audio_pulse;
+    std::function<void()> advance_random_effect;
+    std::function<void()> service_world_tick;
+    std::function<void()> service_optional_effect;
+    std::function<void()> finalize_world;
+    std::function<void()> finalize_input;
+    std::function<void()> render_rows;
+};
+
+// ROM 0x177FC: execute the sixty-frame HUD/menu service cadence and then run
+// the recovered post-loop cleanup in order.
+void run_menu_hud_tick_loop(MenuHudTickState& state,
+                            const MenuHudTickCallbacks& callbacks);
+
+struct MenuTextProgressionCallbacks {
+    std::function<void()> render_title_text;
+    std::function<void()> build_decimal_glyphs;
+};
+
+// ROM 0x17998: reproduce the count-dependent title-text and decimal-glyph
+// progression without carrying the source condition-code frame.
+void render_menu_text_progression(
+    std::int16_t available_count,
+    bool service_blocked,
+    const MenuTextProgressionCallbacks& callbacks);
+
+struct MenuOverlayTimerState {
+    std::uint8_t overlay_phase = 0;
+    std::int8_t countdown = 0;
+    std::uint8_t service_marker = 0;
+    std::int8_t reload_count = 0;
+};
+
+// ROM 0x17EEE: advance the overlay timer and write two grids when its
+// countdown expires.
+bool advance_menu_overlay_timer(
+    MenuOverlayTimerState& state,
+    const std::function<void()>& write_grid);
+
+struct MenuRandomGlitchState {
+    std::int16_t phase = -1;
+    std::int16_t random_offset = 0;
+};
+
+struct MenuRandomGlitchCallbacks {
+    std::function<std::int16_t()> sample_random_bound;
+    std::function<void()> write_repeated_grid;
+    std::function<void()> write_grid;
+    std::function<void()> write_linear_grid;
+};
+
+// ROM 0x17FDA: advance the short random visual-effect sequence and decrement
+// its phase after submitting the selected grid/linear-grid operations.
+void advance_menu_random_glitch(
+    MenuRandomGlitchState& state,
+    const MenuRandomGlitchCallbacks& callbacks);
+
+struct FieldHudAssetState {
+    std::uint8_t selected_row = 0;
+};
+
+struct FieldHudAssetCallbacks {
+    std::function<void()> render_field_hud;
+    std::function<void()> refresh_selection_rows;
+    std::function<void()> upload_source_stream;
+    std::function<void()> prepare_field_effects;
+    std::function<void()> render_hud_sprites;
+};
+
+// ROM 0x186FA: refresh the field HUD, reset its selected row, and submit the
+// source stream/effect/sprite services in source order.
+void refresh_field_hud_assets(FieldHudAssetState& state,
+                              const FieldHudAssetCallbacks& callbacks);
+
+struct HudIndicatorGridState {
+    std::array<std::uint8_t, 12> active_flags{};
+};
+
+// ROM 0x187AA: write active indicator grids followed by four unconditional
+// footer grids.
+void render_hud_indicator_grids(const HudIndicatorGridState& state,
+                                const std::function<void()>& write_grid);
+
+void write_hud_repeated_grid_variant_c(const std::function<void()>& write_grid);
+void write_two_hud_grids(const std::function<void()>& write_grid);
+
+struct MenuDirectionalInputState {
+    std::uint8_t input_bits = 0;
+    std::size_t selected_row = 0;
+    std::array<std::int8_t, 5> row_status{};
+    std::array<std::int8_t, 5> row_timers{};
+};
+
+// ROM 0x19432: on directional input, publish a selection only for eligible
+// rows, then refresh the shared menu state and number/grid branch.
+void handle_menu_directional_input(
+    const MenuDirectionalInputState& state,
+    const std::function<void()>& set_selection,
+    const std::function<void()>& refresh_menu_state,
+    const std::function<void()>& refresh_number_or_grid);
+
+struct HudSelectionRowState {
+    std::int8_t selected_row = 0;
+};
+
+// ROM 0x194AC: apply the signed selection delta with 0..4 wrapping, then
+// submit the panel grid and row renderer.
+void advance_hud_selection_row(
+    HudSelectionRowState& state,
+    std::int8_t delta,
+    const std::function<void()>& write_grid,
+    const std::function<void()>& render_rows);
+
+void write_hud_panel_grid(const std::function<void()>& write_grid);
+
+void reset_menu_visual_slots(const std::function<void()>& reset_five,
+                             const std::function<void()>& reset_twelve);
+void clear_ready_menu_visual_slots(
+    const std::array<std::int8_t, 5>& row_status,
+    const std::function<void(std::size_t row)>& clear_slot);
+void refresh_menu_slot_pair(const std::function<void()>& refresh_pair,
+                            const std::function<void()>& clear_visual);
+void clear_menu_slot_visual(const std::function<void()>& clear_visual);
+
+struct HudHistoryState {
+    std::int8_t countdown = 0;
+    std::array<std::uint16_t, 4> values{};
+    bool dirty = false;
+};
+
+// ROM 0x196F2: rotate the four-word HUD history when its countdown expires.
+void rotate_hud_history(HudHistoryState& state);
+
 } // namespace shadowrun::ghidra_conversion

@@ -161,5 +161,180 @@ int main() {
         return 16;
     }
 
+    MenuHudTickState tick_state{};
+    int tick_waits = 0;
+    int tick_latches = 0;
+    int tick_pulses = 0;
+    int tick_random = 0;
+    int tick_world = 0;
+    int tick_optional = 0;
+    int tick_finalize_world = 0;
+    int tick_finalize_input = 0;
+    int tick_rows = 0;
+    run_menu_hud_tick_loop(
+        tick_state,
+        {[&tick_waits] { ++tick_waits; },
+         [&tick_latches] { ++tick_latches; },
+         [&tick_pulses] { ++tick_pulses; },
+         [&tick_random] { ++tick_random; },
+         [&tick_world] { ++tick_world; },
+         [&tick_optional] { ++tick_optional; },
+         [&tick_finalize_world] { ++tick_finalize_world; },
+         [&tick_finalize_input] { ++tick_finalize_input; },
+         [&tick_rows] { ++tick_rows; }});
+    if (tick_state.frames_completed != 60U || tick_state.selected_row != 0U ||
+        tick_state.dirty_flags != 2U || !tick_state.controller_tick_ready ||
+        !tick_state.world_tick_ready || tick_waits != 60 ||
+        tick_latches != 60 || tick_pulses != 60 || tick_random != 60 ||
+        tick_world != 60 || tick_optional != 60 ||
+        tick_finalize_world != 1 || tick_finalize_input != 1 ||
+        tick_rows != 1) {
+        return 17;
+    }
+
+    std::vector<int> text_events;
+    render_menu_text_progression(
+        2, false,
+        {[&text_events] { text_events.push_back(1); },
+         [&text_events] { text_events.push_back(2); }});
+    if (text_events != std::vector<int>{1, 1, 2, 1, 1}) {
+        return 18;
+    }
+    text_events.clear();
+    render_menu_text_progression(
+        3, false,
+        {[&text_events] { text_events.push_back(1); },
+         [&text_events] { text_events.push_back(2); }});
+    if (text_events != std::vector<int>{1, 1, 1, 2}) {
+        return 19;
+    }
+
+    MenuOverlayTimerState overlay{11U, 0, 0U, 3};
+    int overlay_grids = 0;
+    if (!advance_menu_overlay_timer(overlay,
+                                    [&overlay_grids] { ++overlay_grids; }) ||
+        overlay.overlay_phase != 12U || overlay.countdown != 3 ||
+        overlay_grids != 2 ||
+        advance_menu_overlay_timer(overlay,
+                                   [&overlay_grids] { ++overlay_grids; }) ||
+        overlay.service_marker != 0xFFU || overlay_grids != 2) {
+        return 20;
+    }
+
+    MenuRandomGlitchState glitch{};
+    int random_sample = 0;
+    std::vector<int> glitch_events;
+    advance_menu_random_glitch(
+        glitch,
+        {[&random_sample] {
+             ++random_sample;
+             return static_cast<std::int16_t>(random_sample == 1 ? 0 :
+                                                   (random_sample == 2 ? 3 : 0));
+         },
+         [&glitch_events] { glitch_events.push_back(1); },
+         [&glitch_events] { glitch_events.push_back(2); },
+         [&glitch_events] { glitch_events.push_back(3); }});
+    if (glitch.phase != 6 || glitch.random_offset != 62 ||
+        glitch_events != std::vector<int>{1, 2}) {
+        return 21;
+    }
+    advance_menu_random_glitch(
+        glitch,
+        {{}, [&glitch_events] { glitch_events.push_back(1); },
+         [&glitch_events] { glitch_events.push_back(2); }, {}});
+    if (glitch.phase != 5 ||
+        glitch_events != std::vector<int>{1, 2, 1, 2}) {
+        return 22;
+    }
+
+    FieldHudAssetState field_assets{4U};
+    events.clear();
+    refresh_field_hud_assets(
+        field_assets,
+        {[&events] { events.push_back(1); },
+         [&events] { events.push_back(2); },
+         [&events] { events.push_back(3); },
+         [&events] { events.push_back(4); },
+         [&events] { events.push_back(5); }});
+    if (field_assets.selected_row != 0U ||
+        events != std::vector<int>{1, 2, 3, 4, 5, 5}) {
+        return 23;
+    }
+
+    HudIndicatorGridState indicators{{1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1}};
+    int indicator_writes = 0;
+    render_hud_indicator_grids(indicators,
+                               [&indicator_writes] { ++indicator_writes; });
+    if (indicator_writes != 7) {
+        return 24;
+    }
+    write_hud_repeated_grid_variant_c(
+        [&indicator_writes] { ++indicator_writes; });
+    write_two_hud_grids([&indicator_writes] { ++indicator_writes; });
+    if (indicator_writes != 10) {
+        return 25;
+    }
+
+    MenuDirectionalInputState input{4U, 1U, {0, 0, 0, 0, 0},
+                                    {0, 6, 0, 0, 0}};
+    events.clear();
+    handle_menu_directional_input(
+        input, [&events] { events.push_back(1); },
+        [&events] { events.push_back(2); },
+        [&events] { events.push_back(3); });
+    if (events != std::vector<int>{1, 2, 3}) {
+        return 26;
+    }
+    input.row_status[1] = 3;
+    handle_menu_directional_input(
+        input, [&events] { events.push_back(4); },
+        [&events] { events.push_back(5); },
+        [&events] { events.push_back(6); });
+    if (events != std::vector<int>{1, 2, 3}) {
+        return 27;
+    }
+
+    HudSelectionRowState selection{0};
+    events.clear();
+    advance_hud_selection_row(selection, -1,
+                              [&events] { events.push_back(7); },
+                              [&events] { events.push_back(8); });
+    if (selection.selected_row != 4 || events != std::vector<int>{7, 8}) {
+        return 28;
+    }
+    write_hud_panel_grid([&events] { events.push_back(9); });
+    if (events.back() != 9) {
+        return 29;
+    }
+
+    int reset_five = 0;
+    int reset_twelve = 0;
+    reset_menu_visual_slots([&reset_five] { ++reset_five; },
+                            [&reset_twelve] { ++reset_twelve; });
+    if (reset_five != 5 || reset_twelve != 12) {
+        return 30;
+    }
+    std::vector<std::size_t> cleared;
+    clear_ready_menu_visual_slots(
+        {-1, 0, -1, 2, -1},
+        [&cleared](const std::size_t row) { cleared.push_back(row); });
+    if (cleared != std::vector<std::size_t>{3, 1}) {
+        return 31;
+    }
+    events.clear();
+    refresh_menu_slot_pair([&events] { events.push_back(10); },
+                           [&events] { events.push_back(11); });
+    clear_menu_slot_visual([&events] { events.push_back(12); });
+    if (events != std::vector<int>{10, 11, 12}) {
+        return 32;
+    }
+
+    HudHistoryState history{0, {1, 2, 3, 4}, false};
+    rotate_hud_history(history);
+    if (history.countdown != 4 || !history.dirty ||
+        history.values != std::array<std::uint16_t, 4>{2, 3, 4, 1}) {
+        return 33;
+    }
+
     return 0;
 }

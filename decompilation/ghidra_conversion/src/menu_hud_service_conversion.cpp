@@ -253,4 +253,309 @@ void advance_hud_fade_service(
     }
 }
 
+void run_menu_hud_tick_loop(MenuHudTickState& state,
+                            const MenuHudTickCallbacks& callbacks) {
+    for (std::uint16_t frame = 0; frame < 60U; ++frame) {
+        if (callbacks.wait_for_vblank) {
+            callbacks.wait_for_vblank();
+        }
+        if (callbacks.latch_controller_events) {
+            callbacks.latch_controller_events();
+        }
+        if (callbacks.advance_sprite_audio_pulse) {
+            callbacks.advance_sprite_audio_pulse();
+        }
+        if (callbacks.advance_random_effect) {
+            callbacks.advance_random_effect();
+        }
+        state.controller_tick_ready = true;
+        if (callbacks.service_world_tick) {
+            callbacks.service_world_tick();
+        }
+        if (callbacks.service_optional_effect) {
+            callbacks.service_optional_effect();
+        }
+        state.world_tick_ready = true;
+        state.dirty_flags = static_cast<std::uint8_t>(state.dirty_flags | 2U);
+        ++state.frames_completed;
+    }
+    if (callbacks.finalize_world) {
+        callbacks.finalize_world();
+    }
+    if (callbacks.finalize_input) {
+        callbacks.finalize_input();
+    }
+    state.selected_row = 0;
+    if (callbacks.render_rows) {
+        callbacks.render_rows();
+    }
+}
+
+void render_menu_text_progression(
+    const std::int16_t available_count,
+    const bool service_blocked,
+    const MenuTextProgressionCallbacks& callbacks) {
+    const auto render = [&callbacks] {
+        if (callbacks.render_title_text) {
+            callbacks.render_title_text();
+        }
+    };
+    const auto build = [&callbacks] {
+        if (callbacks.build_decimal_glyphs) {
+            callbacks.build_decimal_glyphs();
+        }
+    };
+
+    render();
+    if (!service_blocked) {
+        render();
+        if (available_count >= 3) {
+            render();
+        }
+        if (available_count >= 2) {
+            build();
+            if (available_count >= 3) {
+                return;
+            }
+        }
+        render();
+    }
+    render();
+}
+
+bool advance_menu_overlay_timer(
+    MenuOverlayTimerState& state,
+    const std::function<void()>& write_grid) {
+    state.service_marker = 0;
+    if (state.overlay_phase == 0x0CU) {
+        state.service_marker = 0xFFU;
+    }
+    state.countdown = static_cast<std::int8_t>(state.countdown - 1);
+    if (state.countdown >= 0 || state.overlay_phase == 0x0CU) {
+        return false;
+    }
+
+    state.countdown = state.reload_count;
+    ++state.overlay_phase;
+    if (write_grid) {
+        write_grid();
+        write_grid();
+    }
+    return true;
+}
+
+void advance_menu_random_glitch(
+    MenuRandomGlitchState& state,
+    const MenuRandomGlitchCallbacks& callbacks) {
+    if (state.phase < 0) {
+        const auto sample = callbacks.sample_random_bound
+                                ? callbacks.sample_random_bound()
+                                : 1;
+        if (sample != 0) {
+            return;
+        }
+        state.phase = 7;
+        state.random_offset = callbacks.sample_random_bound
+                                  ? callbacks.sample_random_bound()
+                                  : 0;
+        const auto second_sample = callbacks.sample_random_bound
+                                       ? callbacks.sample_random_bound()
+                                       : 1;
+        if (second_sample == 0) {
+            state.random_offset = static_cast<std::int16_t>(
+                state.random_offset + 0x1C);
+        }
+        state.random_offset = static_cast<std::int16_t>(
+            state.random_offset * 2);
+    } else if (state.phase < 1) {
+        if (callbacks.write_repeated_grid) {
+            callbacks.write_repeated_grid();
+        }
+        --state.phase;
+        return;
+    }
+
+    if (callbacks.write_repeated_grid) {
+        callbacks.write_repeated_grid();
+    }
+    if (callbacks.write_grid) {
+        callbacks.write_grid();
+    }
+    if (state.phase != 2 && state.phase != 7) {
+        if (callbacks.sample_random_bound) {
+            callbacks.sample_random_bound();
+        }
+        if (callbacks.write_linear_grid) {
+            callbacks.write_linear_grid();
+        }
+        if (state.phase == 4 || state.phase == 5) {
+            if (callbacks.sample_random_bound) {
+                callbacks.sample_random_bound();
+            }
+            if (callbacks.write_linear_grid) {
+                callbacks.write_linear_grid();
+            }
+            if (state.phase == 5 && callbacks.write_grid) {
+                callbacks.write_grid();
+            }
+        }
+    }
+    --state.phase;
+}
+
+void refresh_field_hud_assets(FieldHudAssetState& state,
+                              const FieldHudAssetCallbacks& callbacks) {
+    if (callbacks.render_field_hud) {
+        callbacks.render_field_hud();
+    }
+    state.selected_row = 0;
+    if (callbacks.refresh_selection_rows) {
+        callbacks.refresh_selection_rows();
+    }
+    if (callbacks.upload_source_stream) {
+        callbacks.upload_source_stream();
+    }
+    if (callbacks.prepare_field_effects) {
+        callbacks.prepare_field_effects();
+    }
+    if (callbacks.render_hud_sprites) {
+        callbacks.render_hud_sprites();
+        callbacks.render_hud_sprites();
+    }
+}
+
+void render_hud_indicator_grids(const HudIndicatorGridState& state,
+                                const std::function<void()>& write_grid) {
+    if (!write_grid) {
+        return;
+    }
+    for (const auto active : state.active_flags) {
+        if (active != 0U) {
+            write_grid();
+        }
+    }
+    for (int footer = 0; footer < 4; ++footer) {
+        write_grid();
+    }
+}
+
+void write_hud_repeated_grid_variant_c(
+    const std::function<void()>& write_grid) {
+    write_hud_repeated_grid(write_grid);
+}
+
+void write_two_hud_grids(const std::function<void()>& write_grid) {
+    if (write_grid) {
+        write_grid();
+        write_grid();
+    }
+}
+
+void handle_menu_directional_input(
+    const MenuDirectionalInputState& state,
+    const std::function<void()>& set_selection,
+    const std::function<void()>& refresh_menu_state,
+    const std::function<void()>& refresh_number_or_grid) {
+    if ((state.input_bits & 0x0CU) == 0U || state.selected_row >= 5U) {
+        return;
+    }
+    const auto row = state.selected_row;
+    const auto status = state.row_status[row];
+    const auto timer = state.row_timers[row];
+    const bool eligible = status != 3 && status != 5 && status != 6 &&
+                          status != 7 && timer >= 6;
+    if (!eligible) {
+        return;
+    }
+    if (set_selection) {
+        set_selection();
+    }
+    if (refresh_menu_state) {
+        refresh_menu_state();
+    }
+    if (refresh_number_or_grid) {
+        refresh_number_or_grid();
+    }
+}
+
+void advance_hud_selection_row(
+    HudSelectionRowState& state,
+    const std::int8_t delta,
+    const std::function<void()>& write_grid,
+    const std::function<void()>& render_rows) {
+    const auto next = static_cast<std::int16_t>(state.selected_row) + delta;
+    const auto wrapped = static_cast<std::int16_t>(next % 5);
+    state.selected_row = static_cast<std::int8_t>(wrapped < 0 ? wrapped + 5
+                                                               : wrapped);
+    if (write_grid) {
+        write_grid();
+    }
+    if (render_rows) {
+        render_rows();
+    }
+}
+
+void write_hud_panel_grid(const std::function<void()>& write_grid) {
+    if (write_grid) {
+        write_grid();
+    }
+}
+
+void reset_menu_visual_slots(const std::function<void()>& reset_five,
+                             const std::function<void()>& reset_twelve) {
+    if (reset_five) {
+        for (int count = 0; count < 5; ++count) {
+            reset_five();
+        }
+    }
+    if (reset_twelve) {
+        for (int count = 0; count < 12; ++count) {
+            reset_twelve();
+        }
+    }
+}
+
+void clear_ready_menu_visual_slots(
+    const std::array<std::int8_t, 5>& row_status,
+    const std::function<void(std::size_t row)>& clear_slot) {
+    if (!clear_slot) {
+        return;
+    }
+    for (std::size_t row = row_status.size(); row-- > 0;) {
+        if (row_status[row] >= 0) {
+            clear_slot(row);
+        }
+    }
+}
+
+void refresh_menu_slot_pair(const std::function<void()>& refresh_pair,
+                            const std::function<void()>& clear_visual) {
+    if (refresh_pair) {
+        refresh_pair();
+    }
+    if (clear_visual) {
+        clear_visual();
+    }
+}
+
+void clear_menu_slot_visual(const std::function<void()>& clear_visual) {
+    if (clear_visual) {
+        clear_visual();
+    }
+}
+
+void rotate_hud_history(HudHistoryState& state) {
+    state.countdown = static_cast<std::int8_t>(state.countdown - 1);
+    if (state.countdown >= 0) {
+        return;
+    }
+    state.countdown = 4;
+    const auto first = state.values.front();
+    for (std::size_t index = 0; index + 1U < state.values.size(); ++index) {
+        state.values[index] = state.values[index + 1U];
+    }
+    state.values.back() = first;
+    state.dirty = true;
+}
+
 } // namespace shadowrun::ghidra_conversion
