@@ -12449,7 +12449,7 @@
 00014FDE: bclr.b #0x3,(0x11,A0)
 00014FE4: movea.l A0,A1
 00014FE6: move.w (0x2e,A0),D1w
-00014FEA: bsr.w 0x000150e8 ; call 000150E8 FUN_000150e8
+00014FEA: bsr.w 0x000150e8 ; call 000150E8 derive_entity_heading_offsets
 00014FEE: rts
 00014FF0: bclr.b #0x0,(0x10,A0)
 00014FF6: rts

@@ -94,6 +94,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x14C7C	entity target motion policy	ghidra_conversion::resolve_entity_target_motion	shadowrun_native_port	partial		Typed entity-type dispatch, distance bands, linked-target gate, and effect allocation
 0x14F26	entity fixed-point terrain probe	ghidra_conversion::probe_entity_world_position	shadowrun_native_port	partial		Typed fixed-point coordinate assembly and terrain-probe boundary
 0x14F50	entity collision recovery	ghidra_conversion::advance_entity_collision_recovery	shadowrun_native_port	partial		Typed terrain retry counter, fixed-point position commit, and collision scan
+0x150E8	entity heading offsets	ghidra_conversion::derive_entity_heading_offsets	shadowrun_native_port	partial		Extracted direction tables and signed scale/shift conversion
 0x15118	entity behavior record initialization	ghidra_conversion::initialize_entity_behavior_record	shadowrun_native_port	partial		Typed default movement fields and behavior-update continuation
 0x15ABA	entity collision search	ghidra_conversion::find_colliding_entity	shadowrun_native_port	partial		Typed ten-record scan, window filters, collision-mode gate, and source position handoff
 0x14BA6	axis relation update	ghidra_conversion::update_entity_axis_relation_state	shadowrun_native_port	partial		Typed relation flags and explicit route-advance boundary

@@ -49,4 +49,14 @@ EntityWorldProbeResult probe_entity_world_position(
     const EntityFixedPointPosition& position,
     const EntityWorldProbe& probe);
 
+struct EntityHeadingOffsets {
+    std::int16_t horizontal = 0;
+    std::int16_t vertical = 0;
+};
+
+// ROM 0x150E8: select the two source direction tables from the heading's
+// high byte, scale both signed samples by 0xC/0x10 with an arithmetic shift,
+// and return the offsets stored at record fields 0x4C and 0x4E.
+EntityHeadingOffsets derive_entity_heading_offsets(std::uint16_t heading);
+
 } // namespace shadowrun::ghidra_conversion

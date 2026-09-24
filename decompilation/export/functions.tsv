@@ -403,7 +403,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00014F26	probe_entity_world_position	42	unknown	ok	ghidra-c/fn_00014F26.cpp
 00014F50	advance_entity_collision_recovery	54	unknown	ok	ghidra-c/fn_00014F50.cpp
 00014FF8	FUN_00014ff8	240	unknown	ok	ghidra-c/fn_00014FF8.cpp
-000150E8	FUN_000150e8	48	unknown	ok	ghidra-c/fn_000150E8.cpp
+000150E8	derive_entity_heading_offsets	48	unknown	ok	ghidra-c/fn_000150E8.cpp
 00015118	initialize_entity_behavior_record	54	unknown	ok	ghidra-c/fn_00015118.cpp
 0001514E	FUN_0001514e	428	unknown	ok	ghidra-c/fn_0001514E.cpp
 000152FA	FUN_000152fa	30	unknown	ok	ghidra-c/fn_000152FA.cpp

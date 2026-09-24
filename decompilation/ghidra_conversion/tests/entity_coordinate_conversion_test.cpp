@@ -81,5 +81,18 @@ int main() {
         return 9;
     }
 
+    const auto north = derive_entity_heading_offsets(0x4000U);
+    if (!expect(north.horizontal == 0 && north.vertical == 24575)) {
+        return 10;
+    }
+    const auto diagonal = derive_entity_heading_offsets(0x0200U);
+    if (!expect(diagonal.horizontal == -24546 && diagonal.vertical == 1205)) {
+        return 11;
+    }
+    const auto east = derive_entity_heading_offsets(0x8000U);
+    if (!expect(east.horizontal == 24575 && east.vertical == 0)) {
+        return 12;
+    }
+
     return 0;
 }

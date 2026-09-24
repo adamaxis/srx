@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000150E8
-// Name: FUN_000150e8
+// Name: derive_entity_heading_offsets
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_000150e8(void)
+void derive_entity_heading_offsets(void)
 
 {
   short sVar1;
