@@ -207,6 +207,9 @@ still has unresolved downstream calls or hardware presentation work.
 | `0x16EA0` | `fill_terrain_work_region` | Fills a bounded rectangular terrain work-map region with value `2`. | `ghidra_conversion::fill_terrain_work_region()` | partial |
 | `0x176EA` | `render_menu_footer` | Copies the footer source block, marks it dirty, refreshes menu metadata, and draws the footer in source order. | `ghidra_conversion::render_menu_footer()` | partial |
 | `0x177A4` | `initialize_menu_slot_states` | Sets status `6` and timer `1` for all five menu slots. | `ghidra_conversion::initialize_menu_slot_states()` | partial |
+| `0x111D0` | `upload_menu_tile_block` | Uploads one menu tile block through the presentation boundary. | `ghidra_conversion::upload_menu_tile_block()` | partial |
+| `0x11454` | `reset_menu_upload_cursor_and_upload` | Clears the menu upload cursor and uploads one tile block. | `ghidra_conversion::reset_menu_upload_cursor_and_upload()` | partial |
+| `0x17EE4` | `reset_menu_overlay_and_upload_two` | Clears the menu overlay state and uploads two tile blocks. | `ghidra_conversion::reset_menu_overlay_and_upload_two()` | partial |
 | `0x1E4E` | `reveal_title_logo_column` | Consumes one two-byte logo descriptor, requests its column render, and enters the completed-logo state at column `0x25`. | `ghidra_conversion::advance_title_logo_column()`; source blitters and 16-word palette copy remain events | partial |
 | `0x2634` | `cycle_title_circuit_lights` | Every fifth vblank, selects one of seven eight-word title light palettes. | `ghidra_conversion::advance_title_circuit_lights()`; palette write boundary remains explicit | partial |
 | `0x26D0` | `advance_title_animation_timer` | Advances the title animation timer and sets the source update flag on wrap. | `ghidra_conversion::advance_title_animation_timer()` | partial |

@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00011442 FUN_00011442
-//   0x00011454 FUN_00011454
+//   0x00011454 reset_menu_upload_cursor_and_upload
 //   0x00011592 FUN_00011592
 //   0x000119CE FUN_000119ce
 
@@ -24,7 +24,7 @@ void FUN_00011506(void)
         DAT_00fff115 = 0xff;
         FUN_000119ce();
         DAT_00fff115 = 0;
-        FUN_00011454();
+        reset_menu_upload_cursor_and_upload();
         return;
       }
       DAT_00fff115 = '\0';

@@ -185,6 +185,9 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00016EA0L, "fill_terrain_work_region");
         names.put(0x000176EAL, "render_menu_footer");
         names.put(0x000177A4L, "initialize_menu_slot_states");
+        names.put(0x000111D0L, "upload_menu_tile_block");
+        names.put(0x00011454L, "reset_menu_upload_cursor_and_upload");
+        names.put(0x00017EE4L, "reset_menu_overlay_and_upload_two");
         names.put(0x000136DEL, "initialize_scene_mode_state");
         names.put(0x00053126L, "prepare_mode_entry_service");
         names.put(0x00001530L, "decode_and_upload_source_stream");

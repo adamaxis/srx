@@ -7,7 +7,7 @@
 //   0x00017C52 FUN_00017c52
 //   0x00017C84 FUN_00017c84
 //   0x00017C8E FUN_00017c8e
-//   0x00017EE4 FUN_00017ee4
+//   0x00017EE4 reset_menu_overlay_and_upload_two
 //   0x0001989A FUN_0001989a
 //   0x0001B1C4 FUN_0001b1c4
 
@@ -46,7 +46,7 @@ void FUN_00019976(void)
               DAT_00fff0b7 = 0xff;
             }
             (**(code **)(&DAT_000e2e0a + (short)((short)uVar1 << 2)))();
-            FUN_00017ee4();
+            reset_menu_overlay_and_upload_two();
             if (DAT_00fff0b6 == '\0') {
               bVar4 = false;
               uVar1 = FUN_00017c8e();

@@ -12,9 +12,9 @@
 //   0x00010F50 FUN_00010f50
 //   0x000110BC FUN_000110bc
 //   0x0001111A FUN_0001111a
-//   0x000111D0 FUN_000111d0
+//   0x000111D0 upload_menu_tile_block
 //   0x000111E8 FUN_000111e8
-//   0x00011454 FUN_00011454
+//   0x00011454 reset_menu_upload_cursor_and_upload
 //   0x000114A0 FUN_000114a0
 //   0x00011506 FUN_00011506
 //   0x00011592 FUN_00011592
@@ -58,8 +58,8 @@ LAB_00010d90:
   FUN_0001111a();
   FUN_00011928();
   FUN_00011624();
-  FUN_000111d0();
-  FUN_00011454();
+  upload_menu_tile_block();
+  reset_menu_upload_cursor_and_upload();
   _DAT_00fff112 = CONCAT11(0xff,DAT_00fff112_1);
 LAB_00010e2e:
   do {

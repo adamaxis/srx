@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 
@@ -29,5 +30,28 @@ struct MenuFooterRenderCallbacks {
 void render_menu_footer(
     MenuFooterRenderState& state,
     const MenuFooterRenderCallbacks& callbacks);
+
+struct MenuTileUploadState {
+    std::uint8_t upload_cursor = 0;
+    std::uint8_t overlay_state = 0;
+    std::size_t uploaded_blocks = 0;
+};
+
+using MenuTileUploadBoundary = std::function<void()>;
+
+// ROM 0x111D0: upload one menu tile block.
+void upload_menu_tile_block(
+    MenuTileUploadState& state,
+    const MenuTileUploadBoundary& upload_tile_block);
+
+// ROM 0x11454: reset the menu upload cursor and upload one tile block.
+void reset_menu_upload_cursor_and_upload(
+    MenuTileUploadState& state,
+    const MenuTileUploadBoundary& upload_tile_block);
+
+// ROM 0x17EE4: clear the overlay state and upload two tile blocks.
+void reset_menu_overlay_and_upload_two(
+    MenuTileUploadState& state,
+    const MenuTileUploadBoundary& upload_tile_block);
 
 } // namespace shadowrun::ghidra_conversion

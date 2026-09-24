@@ -24,4 +24,29 @@ void render_menu_footer(
     }
 }
 
+void upload_menu_tile_block(
+    MenuTileUploadState& state,
+    const MenuTileUploadBoundary& upload_tile_block) {
+    if (upload_tile_block) {
+        upload_tile_block();
+    }
+    ++state.uploaded_blocks;
+}
+
+void reset_menu_upload_cursor_and_upload(
+    MenuTileUploadState& state,
+    const MenuTileUploadBoundary& upload_tile_block) {
+    state.upload_cursor = 0U;
+    upload_menu_tile_block(state, upload_tile_block);
+}
+
+void reset_menu_overlay_and_upload_two(
+    MenuTileUploadState& state,
+    const MenuTileUploadBoundary& upload_tile_block) {
+    state.overlay_state = 0U;
+    for (std::size_t block = 0; block < 2U; ++block) {
+        upload_menu_tile_block(state, upload_tile_block);
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion

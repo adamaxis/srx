@@ -300,11 +300,11 @@ entry	name	size	callingConvention	decompileStatus	file
 0001111A	FUN_0001111a	28	unknown	ok	ghidra-c/fn_0001111A.cpp
 00011136	FUN_00011136	90	unknown	ok	ghidra-c/fn_00011136.cpp
 00011190	FUN_00011190	64	unknown	ok	ghidra-c/fn_00011190.cpp
-000111D0	FUN_000111d0	24	unknown	ok	ghidra-c/fn_000111D0.cpp
+000111D0	upload_menu_tile_block	24	unknown	ok	ghidra-c/fn_000111D0.cpp
 000111E8	FUN_000111e8	362	unknown	ok	ghidra-c/fn_000111E8.cpp
 00011352	FUN_00011352	240	unknown	ok	ghidra-c/fn_00011352.cpp
 00011442	FUN_00011442	18	unknown	ok	ghidra-c/fn_00011442.cpp
-00011454	FUN_00011454	76	unknown	ok	ghidra-c/fn_00011454.cpp
+00011454	reset_menu_upload_cursor_and_upload	76	unknown	ok	ghidra-c/fn_00011454.cpp
 000114A0	FUN_000114a0	102	unknown	ok	ghidra-c/fn_000114A0.cpp
 00011506	FUN_00011506	140	unknown	ok	ghidra-c/fn_00011506.cpp
 00011592	FUN_00011592	146	unknown	ok	ghidra-c/fn_00011592.cpp
@@ -477,7 +477,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00017E04	FUN_00017e04	116	unknown	ok	ghidra-c/fn_00017E04.cpp
 00017E78	FUN_00017e78	60	unknown	ok	ghidra-c/fn_00017E78.cpp
 00017EB4	FUN_00017eb4	48	unknown	ok	ghidra-c/fn_00017EB4.cpp
-00017EE4	FUN_00017ee4	10	unknown	ok	ghidra-c/fn_00017EE4.cpp
+00017EE4	reset_menu_overlay_and_upload_two	10	unknown	ok	ghidra-c/fn_00017EE4.cpp
 00017EEE	FUN_00017eee	146	unknown	ok	ghidra-c/fn_00017EEE.cpp
 00017F80	FUN_00017f80	14	unknown	ok	ghidra-c/fn_00017F80.cpp
 00017F8E	draw_hud_footer	38	unknown	ok	ghidra-c/fn_00017F8E.cpp

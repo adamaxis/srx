@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000E34 FUN_00000e34
 //   0x00011442 FUN_00011442
-//   0x00011454 FUN_00011454
+//   0x00011454 reset_menu_upload_cursor_and_upload
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -30,7 +30,7 @@ void FUN_000114a0(void)
   }
   if (-1 < (char)(DAT_00fff0d0 + -2)) {
     FUN_00000e34();
-    FUN_00011454();
+    reset_menu_upload_cursor_and_upload();
     return;
   }
   DAT_00ffdd02 = 1;

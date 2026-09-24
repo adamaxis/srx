@@ -35,6 +35,9 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x16EA0	terrain work-map fill	ghidra_conversion::fill_terrain_work_region	shadowrun_native_port	partial		Bounded rectangular terrain work-map fill with source value 2 converted
 0x176EA	menu footer render	ghidra_conversion::render_menu_footer	shadowrun_menu_system	partial		Typed source-block copy, dirty marker, metadata refresh, and footer draw order converted
 0x177A4	menu slot initialization	ghidra_conversion::initialize_menu_slot_states	shadowrun_menu_system	partial		Five menu slots initialized through one host loop with status 6 and timer 1
+0x111D0	menu tile upload	ghidra_conversion::upload_menu_tile_block	shadowrun_menu_system	partial		Typed single menu tile-block upload boundary converted
+0x11454	menu upload cursor reset	ghidra_conversion::reset_menu_upload_cursor_and_upload	shadowrun_menu_system	partial		Typed upload-cursor reset followed by one tile-block upload converted
+0x17EE4	menu overlay reset	ghidra_conversion::reset_menu_overlay_and_upload_two	shadowrun_menu_system	partial		Typed overlay reset followed by two tile-block uploads converted
 0x0BF2	controller event latch	ghidra_conversion::latch_controller_events	shadowrun_boot_sequence	partial		High-byte event combination and activity/Start latches converted in isolated typed state
 0x0D44	source PRNG advance	ghidra_conversion::advance_source_prng	shadowrun_boot_sequence	partial		32-bit modulo-2^32 multiplier/increment converted in isolated typed state
 0x0D3A	bounded source PRNG sample	ghidra_conversion::sample_source_random_bound	shadowrun_native_port	partial		Low-word multiply-and-shift scaling converted without source register state

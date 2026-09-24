@@ -8520,9 +8520,9 @@
 00010D9E: bsr.w 0x00011928 ; call 00011928 FUN_00011928
 00010DA2: bsr.w 0x00011624 ; call 00011624 FUN_00011624
 00010DA6: movea.l #0xcd2c6,A1
-00010DAC: bsr.w 0x000111d0 ; call 000111D0 FUN_000111d0
+00010DAC: bsr.w 0x000111d0 ; call 000111D0 upload_menu_tile_block
 00010DB0: movea.l #0xcd3f2,A1
-00010DB6: bsr.w 0x00011454 ; call 00011454 FUN_00011454
+00010DB6: bsr.w 0x00011454 ; call 00011454 reset_menu_upload_cursor_and_upload
 00010DBA: move.b #-0x1,(0x00fff112).l
 00010DC2: bra.w 0x00010e2e
 00010DC6: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
@@ -8892,7 +8892,7 @@
 00011440: rts
 00011442: jsr 0x00000e34.l ; call 00000E34 FUN_00000e34
 00011448: lea (0xcd2c6).l,A1 ; data 000cd2c6
-0001144E: bsr.w 0x000111d0 ; call 000111D0 FUN_000111d0
+0001144E: bsr.w 0x000111d0 ; call 000111D0 upload_menu_tile_block
 00011452: rts
 00011454: clr.l D4
 00011456: move.b (0x00fff0d0).l,D4b
@@ -8930,7 +8930,7 @@
 000114F2: bmi.w 0x00011592
 000114F6: jsr 0x00000e34.l ; call 00000E34 FUN_00000e34
 000114FC: movea.l #0xcd3f2,A1
-00011502: bra.w 0x00011454 ; call 00011454 FUN_00011454
+00011502: bra.w 0x00011454 ; call 00011454 reset_menu_upload_cursor_and_upload
 00011506: cmpi.b #0x2,(0x00fff0d0).l
 0001150E: bmi.w 0x00011564
 00011512: clr.l D0
@@ -8950,7 +8950,7 @@
 00011550: bsr.w 0x000119ce ; call 000119CE FUN_000119ce
 00011554: clr.b (0x00fff115).l
 0001155A: movea.l #0xcd3f2,A1
-00011560: bra.w 0x00011454 ; call 00011454 FUN_00011454
+00011560: bra.w 0x00011454 ; call 00011454 reset_menu_upload_cursor_and_upload
 00011564: bsr.w 0x00011442 ; call 00011442 FUN_00011442
 00011568: add.b D0b,(0x00fff0d1).l
 0001156E: bpl.w 0x0001157e
@@ -9088,10 +9088,10 @@
 00011794: bpl.w 0x0001179e
 00011798: move.b D0b,(0x00fff09f).l
 0001179E: lea (0xcd302).l,A1 ; data 000cd302
-000117A4: bsr.w 0x000111d0 ; call 000111D0 FUN_000111d0
+000117A4: bsr.w 0x000111d0 ; call 000111D0 upload_menu_tile_block
 000117A8: movea.l #0xcd41a,A1
 000117AE: move.w #-0x1,(0x00fff116).l
-000117B6: bsr.w 0x00011454 ; call 00011454 FUN_00011454
+000117B6: bsr.w 0x00011454 ; call 00011454 reset_menu_upload_cursor_and_upload
 000117BA: lea (0xd1d94).l,A1 ; data 000d1d94
 000117C0: tst.b (0x00fff09f).l
 000117C6: beq.w 0x000117d0
@@ -9108,11 +9108,11 @@
 000117FC: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00011802: move.l (SP)+,D0
 00011804: lea (0xcd302).l,A1 ; data 000cd302
-0001180A: bsr.w 0x000111d0 ; call 000111D0 FUN_000111d0
+0001180A: bsr.w 0x000111d0 ; call 000111D0 upload_menu_tile_block
 0001180E: bsr.w 0x000118c6 ; call 000118C6 cycle_inventory_action_selector
 00011812: movea.l #0xcd41a,A1
 00011818: move.w #-0x1,(0x00fff116).l
-00011820: bsr.w 0x00011454 ; call 00011454 FUN_00011454
+00011820: bsr.w 0x00011454 ; call 00011454 reset_menu_upload_cursor_and_upload
 00011824: lea (0xd1d94).l,A1 ; data 000d1d94
 0001182A: tst.b (0x00fff09f).l
 00011830: beq.w 0x0001183a
@@ -9146,7 +9146,7 @@
 000118AC: beq.w 0x000117d4
 000118B0: move.w (SP)+,(0x00fff0d0).l
 000118B6: movea.l #0xcd2c6,A1
-000118BC: bsr.w 0x000111d0 ; call 000111D0 FUN_000111d0
+000118BC: bsr.w 0x000111d0 ; call 000111D0 upload_menu_tile_block
 000118C0: bsr.w 0x0001170c ; call 0001170C FUN_0001170c
 000118C4: rts
 000118C6: add.b D0b,(0x00fff0d0).l
@@ -9312,10 +9312,10 @@
 00011B92: move.w (0x00fff0d0).l,-(SP)
 00011B98: move.b #0x2,(0x00fff0d0).l
 00011BA0: lea (0xcd33e).l,A1 ; data 000cd33e
-00011BA6: bsr.w 0x000111d0 ; call 000111D0 FUN_000111d0
+00011BA6: bsr.w 0x000111d0 ; call 000111D0 upload_menu_tile_block
 00011BAA: movea.l #0xcd43a,A1
 00011BB0: move.w #-0x1,(0x00fff116).l
-00011BB8: bsr.w 0x00011454 ; call 00011454 FUN_00011454
+00011BB8: bsr.w 0x00011454 ; call 00011454 reset_menu_upload_cursor_and_upload
 00011BBC: lea (0xd1ddc).l,A1 ; data 000d1ddc
 00011BC2: bsr.w 0x00011712 ; call 00011712 FUN_00011712
 00011BC6: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
@@ -9329,11 +9329,11 @@
 00011BEC: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00011BF2: move.l (SP)+,D0
 00011BF4: lea (0xcd33e).l,A1 ; data 000cd33e
-00011BFA: bsr.w 0x000111d0 ; call 000111D0 FUN_000111d0
+00011BFA: bsr.w 0x000111d0 ; call 000111D0 upload_menu_tile_block
 00011BFE: bsr.w 0x000118c6 ; call 000118C6 cycle_inventory_action_selector
 00011C02: movea.l #0xcd43a,A1
 00011C08: move.w #-0x1,(0x00fff116).l
-00011C10: bsr.w 0x00011454 ; call 00011454 FUN_00011454
+00011C10: bsr.w 0x00011454 ; call 00011454 reset_menu_upload_cursor_and_upload
 00011C14: lea (0xd1ddc).l,A1 ; data 000d1ddc
 00011C1A: bsr.w 0x00011712 ; call 00011712 FUN_00011712
 00011C1E: bra.b 0x00011bc6
@@ -9371,7 +9371,7 @@
 00011CAC: move.w #0x6000,D1w
 00011CB0: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
 00011CB6: lea (0xcd2c6).l,A1 ; data 000cd2c6
-00011CBC: bsr.w 0x000111d0 ; call 000111D0 FUN_000111d0
+00011CBC: bsr.w 0x000111d0 ; call 000111D0 upload_menu_tile_block
 00011CC0: jsr 0x00000d94.l ; call 00000D94 wait_for_controller_event
 00011CC6: bra.w 0x00011928 ; call 00011928 FUN_00011928
 00011CCA: bsr.w 0x00012c36 ; call 00012C36 FUN_00012c36
@@ -9388,7 +9388,7 @@
 00011CFC: beq.w 0x00011d86
 00011D00: clr.b (0x00fff114).l
 00011D06: movea.l #0xcd3b6,A1
-00011D0C: bsr.w 0x000111d0 ; call 000111D0 FUN_000111d0
+00011D0C: bsr.w 0x000111d0 ; call 000111D0 upload_menu_tile_block
 00011D10: bsr.w 0x000127b0 ; call 000127B0 FUN_000127b0
 00011D14: movea.l #0xc49e,A2
 00011D1A: lea (0xd1aff).l,A1 ; data 000d1aff
@@ -9464,10 +9464,10 @@
 00011E70: move.w (0x00fff0d0).l,-(SP)
 00011E76: move.b #0x2,(0x00fff0d0).l
 00011E7E: lea (0xcd37a).l,A1 ; data 000cd37a
-00011E84: bsr.w 0x000111d0 ; call 000111D0 FUN_000111d0
+00011E84: bsr.w 0x000111d0 ; call 000111D0 upload_menu_tile_block
 00011E88: movea.l #0xcd45a,A1
 00011E8E: move.w #-0x1,(0x00fff116).l
-00011E96: bsr.w 0x00011454 ; call 00011454 FUN_00011454
+00011E96: bsr.w 0x00011454 ; call 00011454 reset_menu_upload_cursor_and_upload
 00011E9A: lea (0xd1e24).l,A1 ; data 000d1e24
 00011EA0: bsr.w 0x00011712 ; call 00011712 FUN_00011712
 00011EA4: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
@@ -9481,11 +9481,11 @@
 00011ECA: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00011ED0: move.l (SP)+,D0
 00011ED2: lea (0xcd37a).l,A1 ; data 000cd37a
-00011ED8: bsr.w 0x000111d0 ; call 000111D0 FUN_000111d0
+00011ED8: bsr.w 0x000111d0 ; call 000111D0 upload_menu_tile_block
 00011EDC: bsr.w 0x000118c6 ; call 000118C6 cycle_inventory_action_selector
 00011EE0: movea.l #0xcd45a,A1
 00011EE6: move.w #-0x1,(0x00fff116).l
-00011EEE: bsr.w 0x00011454 ; call 00011454 FUN_00011454
+00011EEE: bsr.w 0x00011454 ; call 00011454 reset_menu_upload_cursor_and_upload
 00011EF2: lea (0xd1e24).l,A1 ; data 000d1e24
 00011EF8: bsr.w 0x00011712 ; call 00011712 FUN_00011712
 00011EFC: bra.b 0x00011ea4
@@ -9935,7 +9935,7 @@
 00012678: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 0001267E: clr.w (0x00fff098).l
 00012684: movea.l #0xcd3b6,A1
-0001268A: bsr.w 0x000111d0 ; call 000111D0 FUN_000111d0
+0001268A: bsr.w 0x000111d0 ; call 000111D0 upload_menu_tile_block
 0001268E: clr.b (0x00fff114).l
 00012694: bsr.w 0x000127b0 ; call 000127B0 FUN_000127b0
 00012698: bsr.w 0x00012c42 ; call 00012C42 FUN_00012c42
@@ -10000,7 +10000,7 @@
 000127AA: clr.b (0x6e,A0,D7w*0x1)
 000127AE: rts
 000127B0: lea (0xcd3b6).l,A1 ; data 000cd3b6
-000127B6: bsr.w 0x000111d0 ; call 000111D0 FUN_000111d0
+000127B6: bsr.w 0x000111d0 ; call 000111D0 upload_menu_tile_block
 000127BA: eori.b #-0x1,(0x00fff114).l
 000127C2: movea.l #0xcd47a,A1
 000127C8: bsr.w 0x000127fc ; call 000127FC FUN_000127fc
@@ -10046,7 +10046,7 @@
 0001286A: bsr.w 0x00011900 ; call 00011900 FUN_00011900
 0001286E: movea.l (0x00fffc04).l,A6
 00012874: movea.l #0xcd3b6,A1
-0001287A: bsr.w 0x000111d0 ; call 000111D0 FUN_000111d0
+0001287A: bsr.w 0x000111d0 ; call 000111D0 upload_menu_tile_block
 0001287E: clr.b (0x00fff114).l
 00012884: bsr.w 0x000127b0 ; call 000127B0 FUN_000127b0
 00012888: clr.w (0x00fff096).l
@@ -15810,7 +15810,7 @@
 00019A12: lea (0xe2e0a).l,A4 ; data 000e2e0a
 00019A18: movea.l (0x0,A4,D0w*0x1),A4 ; data 000e2e0a
 00019A1C: jsr (A4)
-00019A1E: bsr.w 0x00017ee4 ; call 00017EE4 FUN_00017ee4
+00019A1E: bsr.w 0x00017ee4 ; call 00017EE4 reset_menu_overlay_and_upload_two
 00019A22: move.l (SP)+,D0
 00019A24: tst.b (0x00fff0b6).l
 00019A2A: beq.w 0x00019a38

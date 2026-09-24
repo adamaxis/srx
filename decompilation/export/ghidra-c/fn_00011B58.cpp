@@ -11,8 +11,8 @@
 //   0x000036FC FUN_000036fc
 //   0x0000C0DA render_title_text_source
 //   0x0000C216 FUN_0000c216
-//   0x000111D0 FUN_000111d0
-//   0x00011454 FUN_00011454
+//   0x000111D0 upload_menu_tile_block
+//   0x00011454 reset_menu_upload_cursor_and_upload
 //   0x00011712 FUN_00011712
 //   0x000118C6 cycle_inventory_action_selector
 //   0x00011900 FUN_00011900
@@ -51,9 +51,9 @@ void switchD_00011768::caseD_2(void)
   FUN_0000c216();
   uVar2 = _DAT_00fff0d0;
   _DAT_00fff0d0 = CONCAT11(2,DAT_00fff0d1);
-  FUN_000111d0();
+  upload_menu_tile_block();
   _DAT_00fff116 = 0xffff;
-  FUN_00011454();
+  reset_menu_upload_cursor_and_upload();
   FUN_00011712();
   do {
     while( true ) {
@@ -64,10 +64,10 @@ void switchD_00011768::caseD_2(void)
       uVar3 = 0xffff;
 LAB_00011be6:
       service_audio_if_enabled(uVar3);
-      FUN_000111d0();
+      upload_menu_tile_block();
       cycle_inventory_action_selector();
       _DAT_00fff116 = 0xffff;
-      FUN_00011454();
+      reset_menu_upload_cursor_and_upload();
       FUN_00011712();
     }
     if ((DAT_00ffdd22._0_1_ & 8) != 0) {
@@ -89,7 +89,7 @@ LAB_00011be6:
        ((char)(*(char *)(DAT_00fffc04 + 0x57) + -0xd) < '\0')) {
       if (*(char *)(DAT_00fffc04 + 0x4e) != '\0') {
         DAT_00fff114 = '\0';
-        FUN_000111d0();
+        upload_menu_tile_block();
         FUN_000127b0();
         render_title_text_source();
         do {
@@ -154,9 +154,9 @@ LAB_00011be6:
     FUN_0001209a();
     uVar2 = _DAT_00fff0d0;
     _DAT_00fff0d0 = CONCAT11(2,DAT_00fff0d1);
-    FUN_000111d0();
+    upload_menu_tile_block();
     _DAT_00fff116 = 0xffff;
-    FUN_00011454();
+    reset_menu_upload_cursor_and_upload();
     FUN_00011712();
 LAB_00011ea4:
     do {
@@ -168,10 +168,10 @@ LAB_00011ea4:
         uVar3 = 0xffff;
 LAB_00011ec4:
         service_audio_if_enabled(uVar3);
-        FUN_000111d0();
+        upload_menu_tile_block();
         cycle_inventory_action_selector();
         _DAT_00fff116 = 0xffff;
-        FUN_00011454();
+        reset_menu_upload_cursor_and_upload();
         FUN_00011712();
       }
       if ((DAT_00ffdd22._0_1_ & 8) != 0) {
@@ -248,7 +248,7 @@ LAB_00011c9c:
   FUN_00012c36();
   render_title_text_source();
 LAB_00011cb6:
-  FUN_000111d0();
+  upload_menu_tile_block();
   wait_for_controller_event();
   FUN_00011928();
   return;
