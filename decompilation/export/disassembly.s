@@ -11828,7 +11828,7 @@
 000146E2: clr.w (0xba,A0)
 000146E6: rts
 000146E8: move.w D1w,D5w
-000146EA: bsr.w 0x00014854 ; call 00014854 FUN_00014854
+000146EA: bsr.w 0x00014854 ; call 00014854 can_bypass_obstruction
 000146EE: bcs.w 0x0001470e
 000146F2: movea.l A0,A2
 000146F4: adda.w #0xbc,A2

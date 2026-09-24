@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00014854
-// Name: FUN_00014854
+// Name: can_bypass_obstruction
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00014854(void)
+void can_bypass_obstruction(void)
 
 {
   short sVar1;

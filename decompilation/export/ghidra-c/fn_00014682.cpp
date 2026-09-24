@@ -3,7 +3,7 @@
 // Name: FUN_00014682
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00014854 FUN_00014854
+//   0x00014854 can_bypass_obstruction
 //   0x000148AA find_first_occupied_obstruction_tile
 //   0x000148D2 choose_dominant_axis_directions
 //   0x000149C0 FUN_000149c0
@@ -46,7 +46,7 @@ void FUN_00014682(void)
     return;
   }
   bVar4 = false;
-  FUN_00014854();
+  can_bypass_obstruction();
   if (!bVar4) {
     puVar3 = (undefined2 *)((int)*(short *)(extraout_A0_01 + 0xba) + extraout_A0_01 + 0xbc);
     *puVar3 = extraout_D1w_00;

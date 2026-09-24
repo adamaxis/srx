@@ -50,6 +50,15 @@ ObstructionStripProbe probe_obstruction_strip(
     std::uint8_t secondary_direction_slot,
     const std::vector<std::uint8_t>& obstruction_map);
 
+// ROM 0x14854: test the source's alternate-side obstruction path. A true
+// result means the primary and opposite-primary probes are both blocked;
+// false means a clear bypass exists.
+bool can_bypass_obstruction(
+    std::int32_t starting_tile,
+    std::uint8_t primary_direction_slot,
+    std::uint8_t secondary_direction_slot,
+    const std::vector<std::uint8_t>& obstruction_map);
+
 // ROM 0x14902: map world coordinates into the source obstruction-grid index.
 // The source grid uses 0x200 horizontal units and a 0x40-byte row stride.
 std::uint16_t compute_obstruction_grid_index(

@@ -910,7 +910,7 @@ caller	caller_name	callee	callee_name	call_sites
 000145A2	FUN_000145a2	00014C2E	derive_entity_axis_relation_flags	2
 000145A2	FUN_000145a2	00015D3C	measure_relative_heading_and_distance	1
 0001460E	FUN_0001460e	00015CA4	compute_diagonal_step_cost	1
-00014682	FUN_00014682	00014854	FUN_00014854	1
+00014682	FUN_00014682	00014854	can_bypass_obstruction	1
 00014682	FUN_00014682	000148AA	find_first_occupied_obstruction_tile	1
 00014682	FUN_00014682	000148D2	choose_dominant_axis_directions	1
 00014682	FUN_00014682	000149C0	FUN_000149c0	1
