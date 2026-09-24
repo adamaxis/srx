@@ -7,20 +7,20 @@
 //   0x00000FFE FUN_00000ffe
 //   0x0000102A FUN_0000102a
 //   0x00001530 decode_and_upload_source_stream
-//   0x00001728 FUN_00001728
+//   0x00001728 render_hud_sprite_stream
 //   0x0000334C FUN_0000334c
 //   0x000033BE FUN_000033be
 //   0x00003404 FUN_00003404
 //   0x000039F2 FUN_000039f2
 //   0x000176BA FUN_000176ba
 //   0x000176EA FUN_000176ea
-//   0x00017708 FUN_00017708
+//   0x00017708 render_field_hud
 //   0x000177A4 FUN_000177a4
 //   0x000177CC FUN_000177cc
 //   0x000177FC FUN_000177fc
 //   0x0001789C FUN_0001789c
 //   0x00017EB4 FUN_00017eb4
-//   0x00019856 FUN_00019856
+//   0x00019856 refresh_field_hud
 //   0x0001ADE6 FUN_0001ade6
 //   0x0001B5A6 FUN_0001b5a6
 //   0x0001B628 FUN_0001b628
@@ -87,11 +87,11 @@ void FUN_0001745e(void)
     FUN_000176ea();
     FUN_000177cc();
     decode_and_upload_source_stream();
-    FUN_00001728();
-    FUN_00001728();
-    FUN_00017708();
+    render_hud_sprite_stream();
+    render_hud_sprite_stream();
+    render_field_hud();
     FUN_000177a4();
-    FUN_00019856();
+    refresh_field_hud();
     FUN_000033be();
     FUN_000176ba();
     FUN_0001c4ee();
@@ -106,7 +106,7 @@ void FUN_0001745e(void)
     FUN_000177fc();
     FUN_000530d2();
     FUN_000530ea();
-    FUN_00001728();
+    render_hud_sprite_stream();
     FUN_0001ade6();
   } while (DAT_00fff0b1 == '\0');
   VDP_CTRL = 0x8134;

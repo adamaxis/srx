@@ -11,17 +11,17 @@ void FUN_00010984(void)
 {
   VDP_CTRL = 0x8134;
   FUN_00010918();
-  FUN_00001232();
-  FUN_00001232();
-  FUN_00001232();
-  FUN_00001232();
-  FUN_00001232();
-  FUN_00001232();
-  FUN_00001232();
-  FUN_00001232();
-  FUN_00001232();
+  upload_hud_tile_block();
+  upload_hud_tile_block();
+  upload_hud_tile_block();
+  upload_hud_tile_block();
+  upload_hud_tile_block();
+  upload_hud_tile_block();
+  upload_hud_tile_block();
+  upload_hud_tile_block();
+  upload_hud_tile_block();
   if (DAT_00fff0af != '\0') {
-    FUN_00001232();
+    upload_hud_tile_block();
   }
   VDP_CTRL = 0x8174;
   return;

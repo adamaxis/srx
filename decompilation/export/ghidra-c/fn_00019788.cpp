@@ -3,7 +3,7 @@
 // Name: FUN_00019788
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001232 FUN_00001232
+//   0x00001232 upload_hud_tile_block
 //   0x0001792E FUN_0001792e
 //   0x00017C52 FUN_00017c52
 //   0x00017C84 FUN_00017c84
@@ -31,7 +31,7 @@ void FUN_00019788(void)
       do {
         if (*pcVar2 != '\x06') {
           *pcVar2 = *pcVar2 + '\x01';
-          FUN_00001232();
+          upload_hud_tile_block();
           DAT_00ffdd48 = *(undefined2 *)
                           ((int)&DAT_00fff0f2 + (int)(short)((ushort)DAT_00fff108 << 1));
           if (*pcVar2 != '\x06') {

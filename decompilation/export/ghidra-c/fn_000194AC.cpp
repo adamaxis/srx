@@ -3,7 +3,7 @@
 // Name: FUN_000194ac
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001232 FUN_00001232
+//   0x00001232 upload_hud_tile_block
 //   0x0001792E FUN_0001792e
 //   0x00019504 FUN_00019504
 
@@ -21,7 +21,7 @@ void FUN_000194ac(void)
   else if (-1 < (char)(DAT_00fff0d4 - 5)) {
     DAT_00fff0d4 = 0;
   }
-  FUN_00001232();
+  upload_hud_tile_block();
   FUN_0001792e();
   return;
 }

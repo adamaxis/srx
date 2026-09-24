@@ -13,7 +13,7 @@ void FUN_00019736(void)
     return;
   }
   (&DAT_00fff0ed)[(short)(ushort)DAT_00fff0d4] = 0;
-  FUN_00001232();
+  upload_hud_tile_block();
   return;
 }
 

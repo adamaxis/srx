@@ -3,7 +3,7 @@
 // Name: FUN_000587da
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001232 FUN_00001232
+//   0x00001232 upload_hud_tile_block
 //   0x00011190 FUN_00011190
 //   0x0005763C FUN_0005763c
 //   0x00058A2E FUN_00058a2e
@@ -34,7 +34,7 @@ LAB_0005884c:
       if (DAT_00fff0b7 == '\x01') {
         sVar1 = 7;
         do {
-          FUN_00001232();
+          upload_hud_tile_block();
           sVar1 = sVar1 + -1;
         } while (sVar1 != -1);
         return;
@@ -43,7 +43,7 @@ LAB_0005884c:
         if (DAT_00fff0d0 == '\x03') {
           sVar1 = 7;
           do {
-            FUN_00001232();
+            upload_hud_tile_block();
             sVar1 = sVar1 + -1;
           } while (sVar1 != -1);
           return;
@@ -57,11 +57,11 @@ LAB_0005884c:
           sVar2 = 3;
         }
         do {
-          FUN_00001232();
+          upload_hud_tile_block();
           sVar1 = sVar1 + -1;
         } while (sVar1 != -1);
         do {
-          FUN_00001232();
+          upload_hud_tile_block();
           sVar2 = sVar2 + -1;
         } while (sVar2 != -1);
         return;
@@ -69,7 +69,7 @@ LAB_0005884c:
       FUN_0005763c();
       sVar1 = 7;
       do {
-        FUN_00001232();
+        upload_hud_tile_block();
         sVar1 = sVar1 + -1;
       } while (sVar1 != -1);
       return;

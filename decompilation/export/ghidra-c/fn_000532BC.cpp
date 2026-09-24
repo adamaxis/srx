@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000F5C FUN_00000f5c
 //   0x00000FFE FUN_00000ffe
-//   0x00001232 FUN_00001232
+//   0x00001232 upload_hud_tile_block
 //   0x00001358 copy_source_word_block
 //   0x0000C0DA render_title_text_source
 //   0x00053200 FUN_00053200
@@ -25,7 +25,7 @@ void FUN_000532bc(void)
   copy_source_word_block();
   DAT_00ffef14 = DAT_00ffef14 | 1;
   FUN_00000f5c();
-  FUN_00001232();
+  upload_hud_tile_block();
   render_title_text_source();
   FUN_000533ee();
   FUN_0005322c();
@@ -35,7 +35,7 @@ void FUN_000532bc(void)
   do {
     sVar2 = 0xd;
     do {
-      FUN_00001232(iVar1);
+      upload_hud_tile_block(iVar1);
       sVar2 = sVar2 + -1;
     } while (sVar2 != -1);
     iVar1 = iVar1 + 0x100;

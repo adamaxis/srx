@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000F1C FUN_00000f1c
-//   0x00001728 FUN_00001728
+//   0x00001728 render_hud_sprite_stream
 //   0x000530DE FUN_000530de
 //   0x0005B32C FUN_0005b32c
 
@@ -21,7 +21,7 @@ void FUN_00059f8e(void)
       DAT_00ffdd08 = 0;
       FUN_00000f1c();
       FUN_0005b32c();
-      FUN_00001728();
+      render_hud_sprite_stream();
     }
     else {
       if (0x11f < uVar1) {
@@ -32,7 +32,7 @@ void FUN_00059f8e(void)
       if (DAT_00fff122 <= DAT_00ffdf88) {
         DAT_00fff122 = DAT_00ffdf88 +
                        *(short *)((int)&PTR_DAT_0005a084 + (int)(short)(DAT_00fff120 * 6));
-        FUN_00001728();
+        render_hud_sprite_stream();
         DAT_00fff120 = DAT_00fff120 + 1;
         if (5 < DAT_00fff120) {
           DAT_00fff120 = 0;

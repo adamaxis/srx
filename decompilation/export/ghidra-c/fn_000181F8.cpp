@@ -41,8 +41,8 @@ void FUN_000181f8(void)
   FUN_00000e34();
   decode_and_upload_source_stream();
   FUN_00017f80();
-  FUN_00001728();
-  FUN_00017708();
+  render_hud_sprite_stream();
+  render_field_hud();
   DAT_00ffdd02 = 1;
   FUN_00001378();
   _DAT_00ffd980 = 1;
@@ -129,7 +129,7 @@ LAB_0001842e:
                   FUN_00019bf6();
                   count_thresholded_random_rolls();
                   if (DAT_00fff0dd == '\0') {
-                    FUN_00017d90();
+                    advance_hud_panel();
                     FUN_000530de();
                     uVar7 = 0;
                     if (*(char *)(DAT_00fffc04 + 0x4c) != '\0') goto LAB_0001831a;

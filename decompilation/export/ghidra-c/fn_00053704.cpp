@@ -7,7 +7,7 @@
 //   0x00000BF2 latch_controller_events
 //   0x0000195C sample_controller_input
 //   0x000176EA FUN_000176ea
-//   0x00017708 FUN_00017708
+//   0x00017708 render_field_hud
 //   0x000177CC FUN_000177cc
 //   0x000532BC FUN_000532bc
 //   0x000537FA FUN_000537fa
@@ -51,7 +51,7 @@ LAB_000537c6:
         register0x0000003c = (BADSPACEBASE *)&stack0x00000004;
       }
       *(undefined4 *)((int)register0x0000003c + -4) = 0x537b4;
-      FUN_00017708();
+      render_field_hud();
       return 0xffffffff;
     }
     if ((DAT_00ffdd22._0_1_ & 8) != 0) goto LAB_000537c6;

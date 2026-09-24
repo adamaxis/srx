@@ -3,7 +3,7 @@
 // Name: FUN_000105e6
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001232 FUN_00001232
+//   0x00001232 upload_hud_tile_block
 //   0x0000C0DA render_title_text_source
 //   0x00010660 FUN_00010660
 
@@ -23,7 +23,7 @@ void FUN_000105e6(void)
     render_title_text_source();
   }
   else {
-    FUN_00001232();
+    upload_hud_tile_block();
   }
   return;
 }

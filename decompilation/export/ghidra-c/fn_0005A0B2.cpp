@@ -3,7 +3,7 @@
 // Name: FUN_0005a0b2
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001728 FUN_00001728
+//   0x00001728 render_hud_sprite_stream
 //   0x000530DE FUN_000530de
 //   0x0005A582 FUN_0005a582
 //   0x0005B2C2 FUN_0005b2c2
@@ -18,7 +18,7 @@ void FUN_0005a0b2(void)
     if (DAT_00fff126 < 4) {
       DAT_00fff128 = DAT_00ffdf88 +
                      *(short *)((int)&PTR_DAT_0005a1d6 + (int)(short)(DAT_00fff126 * 6));
-      FUN_00001728();
+      render_hud_sprite_stream();
       DAT_00fff126 = DAT_00fff126 + 1;
     }
     else {

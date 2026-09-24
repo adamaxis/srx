@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000011C0 FUN_000011c0
-//   0x00001232 FUN_00001232
+//   0x00001232 upload_hud_tile_block
 //   0x0000C0DA render_title_text_source
 //   0x00017C3C FUN_00017c3c
 //   0x00018A92 FUN_00018a92
@@ -27,8 +27,8 @@ undefined8 FUN_0001a16a(void)
   undefined4 in_D0;
   undefined4 in_D1;
   
-  FUN_00001232();
-  FUN_00001232();
+  upload_hud_tile_block();
+  upload_hud_tile_block();
   if (DAT_00fff0b0 < '\0') {
     FUN_00018a92();
     FUN_000011c0();

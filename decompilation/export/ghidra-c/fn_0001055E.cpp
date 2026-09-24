@@ -3,7 +3,7 @@
 // Name: FUN_0001055e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001232 FUN_00001232
+//   0x00001232 upload_hud_tile_block
 //   0x0001047E FUN_0001047e
 //   0x000104C8 FUN_000104c8
 //   0x00055F02 FUN_00055f02
@@ -27,7 +27,7 @@ void FUN_0001055e(void)
     FUN_0001047e();
     cVar1 = *(char *)(extraout_A0 + 0x7c);
   }
-  while (FUN_00001232(), cVar1 != '\0') {
+  while (upload_hud_tile_block(), cVar1 != '\0') {
     cVar1 = '\0';
   }
   return;

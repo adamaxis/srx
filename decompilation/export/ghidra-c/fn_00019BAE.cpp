@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00019BAE
-// Name: FUN_00019bae
+// Name: select_hud_mode
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-undefined1 FUN_00019bae(void)
+undefined1 select_hud_mode(void)
 
 {
   byte bVar1;

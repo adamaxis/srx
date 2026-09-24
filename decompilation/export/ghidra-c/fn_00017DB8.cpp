@@ -3,7 +3,7 @@
 // Name: FUN_00017db8
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001232 FUN_00001232
+//   0x00001232 upload_hud_tile_block
 //   0x0001792E FUN_0001792e
 
 
@@ -21,7 +21,7 @@ void FUN_00017db8(void)
   else if ('\n' < DAT_00fffbca) {
     DAT_00fffbca = '\n';
   }
-  FUN_00001232();
+  upload_hud_tile_block();
   FUN_0001792e();
   return;
 }

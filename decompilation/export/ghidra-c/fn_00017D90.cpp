@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00017D90
-// Name: FUN_00017d90
+// Name: advance_hud_panel
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00017d90(void)
+void advance_hud_panel(void)
 
 {
   char cVar1;
@@ -24,7 +24,7 @@ void FUN_00017d90(void)
   else if ('\n' < *pcVar3) {
     *pcVar3 = '\n';
   }
-  FUN_00001232();
+  upload_hud_tile_block();
   FUN_0001792e();
   return;
 }

@@ -11,7 +11,7 @@
 //   0x000012F6 advance_title_palette_fade
 //   0x00001368 copy_target_palette
 //   0x00001530 decode_and_upload_source_stream
-//   0x00001728 FUN_00001728
+//   0x00001728 render_hud_sprite_stream
 //   0x0000195C sample_controller_input
 //   0x0000C0C2 load_title_font
 //   0x0005AA5A FUN_0005aa5a
@@ -45,7 +45,7 @@ void FUN_0005aa96(void)
   FUN_0005ac70();
   FUN_0005abd2();
   wait_for_vblank();
-  FUN_00001728();
+  render_hud_sprite_stream();
   uVar1 = DAT_00ffdf88;
   advance_title_palette_fade();
   DAT_00ffdf88 = uVar1;

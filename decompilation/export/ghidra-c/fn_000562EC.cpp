@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000DBA count_thresholded_random_rolls
 //   0x0001792E FUN_0001792e
-//   0x00017D90 FUN_00017d90
+//   0x00017D90 advance_hud_panel
 //   0x00017DB8 FUN_00017db8
 //   0x00019B40 FUN_00019b40
 //   0x0001A12E FUN_0001a12e
@@ -32,7 +32,7 @@ void FUN_000562ec(void)
       if ((char)(DAT_00fffbbf - cVar1) < '\0') {
         sVar2 = FUN_00019b40();
         if (sVar2 == 8) {
-          FUN_00017d90();
+          advance_hud_panel();
           return;
         }
         FUN_0001a12e();

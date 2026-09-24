@@ -13,13 +13,13 @@
 //   0x0000102A FUN_0000102a
 //   0x00001378 FUN_00001378
 //   0x00001530 decode_and_upload_source_stream
-//   0x00001728 FUN_00001728
+//   0x00001728 render_hud_sprite_stream
 //   0x0000195C sample_controller_input
 //   0x0000C0DA render_title_text_source
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x000176EA FUN_000176ea
-//   0x00017708 FUN_00017708
-//   0x00017D90 FUN_00017d90
+//   0x00017708 render_field_hud
+//   0x00017D90 advance_hud_panel
 //   0x00017F80 FUN_00017f80
 //   0x00018776 FUN_00018776
 //   0x000187AA FUN_000187aa
@@ -64,8 +64,8 @@ void FUN_0001822c(void)
   FUN_00000e34();
   decode_and_upload_source_stream();
   FUN_00017f80();
-  FUN_00001728();
-  FUN_00017708();
+  render_hud_sprite_stream();
+  render_field_hud();
   DAT_00ffdd02 = 1;
   FUN_00001378();
   _DAT_00ffd980 = 1;
@@ -152,7 +152,7 @@ LAB_0001842e:
                   FUN_00019bf6();
                   count_thresholded_random_rolls();
                   if (DAT_00fff0dd == '\0') {
-                    FUN_00017d90();
+                    advance_hud_panel();
                     FUN_000530de();
                     uVar7 = 0;
                     if (*(char *)(DAT_00fffc04 + 0x4c) != '\0') goto LAB_0001831a;

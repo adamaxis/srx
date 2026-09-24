@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
-//   0x00001232 FUN_00001232
+//   0x00001232 upload_hud_tile_block
 //   0x0000195C sample_controller_input
 //   0x00011ABE FUN_00011abe
 //   0x000530DE FUN_000530de
@@ -42,7 +42,7 @@ undefined8 FUN_000119ce(void)
   puVar3 = &UNK_0000ca9e;
   uVar4 = 5;
   uVar2 = unaff_D2 & 0xffff0000;
-  FUN_00001232();
+  upload_hud_tile_block();
   FUN_00011abe();
   uVar1 = extraout_D1;
   uVar5 = extraout_A0;
@@ -76,7 +76,7 @@ LAB_00011a5c:
   } while ((DAT_00ffdd22 & 0x8000) == 0);
   DAT_00fff0b1 = 0xff;
 LAB_00011a9a:
-  FUN_00001232();
+  upload_hud_tile_block();
   uVar7 = FUN_00011ae4();
   FUN_00012cee(uVar7,uVar2 & 0xffff0000,unaff_D3,&UNK_0000ca9e,unaff_D5,unaff_D6,5,extraout_A0_01,
                extraout_A1_01,unaff_A2,unaff_A3,unaff_A4,unaff_A5,unaff_A6);

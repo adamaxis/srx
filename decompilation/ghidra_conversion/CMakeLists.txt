@@ -630,3 +630,16 @@ target_link_libraries(shadowrun_ghidra_controller_port_test
     PRIVATE shadowrun_ghidra_controller_port)
 add_test(NAME shadowrun_ghidra_controller_port
          COMMAND shadowrun_ghidra_controller_port_test)
+
+add_library(shadowrun_ghidra_field_hud STATIC
+    src/field_hud_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_field_hud PUBLIC include)
+
+add_executable(shadowrun_ghidra_field_hud_test
+    tests/field_hud_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_field_hud_test
+    PRIVATE shadowrun_ghidra_field_hud)
+add_test(NAME shadowrun_ghidra_field_hud
+         COMMAND shadowrun_ghidra_field_hud_test)

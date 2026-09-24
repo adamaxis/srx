@@ -3,7 +3,7 @@
 // Name: FUN_00058b1e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001232 FUN_00001232
+//   0x00001232 upload_hud_tile_block
 
 
 void FUN_00058b1e(void)
@@ -13,12 +13,12 @@ void FUN_00058b1e(void)
   
   sVar1 = 5;
   do {
-    FUN_00001232();
+    upload_hud_tile_block();
     sVar1 = sVar1 + -1;
   } while (sVar1 != -1);
   sVar1 = 1;
   do {
-    FUN_00001232();
+    upload_hud_tile_block();
     sVar1 = sVar1 + -1;
   } while (sVar1 != -1);
   return;

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00001728
-// Name: FUN_00001728
+// Name: render_hud_sprite_stream
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E9C FUN_00000e9c
 
 
-void FUN_00001728(void)
+void render_hud_sprite_stream(void)
 
 {
   short sVar1;

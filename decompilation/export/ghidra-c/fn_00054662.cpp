@@ -8,7 +8,7 @@
 //   0x00000D94 wait_for_controller_event
 //   0x00000DBA count_thresholded_random_rolls
 //   0x00000F5C FUN_00000f5c
-//   0x00001232 FUN_00001232
+//   0x00001232 upload_hud_tile_block
 //   0x0000195C sample_controller_input
 //   0x0000C0DA render_title_text_source
 //   0x0000C376 move_wrapped_menu_cursor
@@ -63,13 +63,13 @@ LAB_000546cc:
     FUN_00000f5c();
     sVar6 = 5;
     do {
-      FUN_00001232();
+      upload_hud_tile_block();
       sVar6 = sVar6 + -1;
     } while (sVar6 != -1);
-    FUN_00001232();
-    FUN_00001232();
-    FUN_00001232();
-    FUN_00001232();
+    upload_hud_tile_block();
+    upload_hud_tile_block();
+    upload_hud_tile_block();
+    upload_hud_tile_block();
     FUN_000549f6();
     FUN_00017f80();
     VDP_CTRL = 0x8174;

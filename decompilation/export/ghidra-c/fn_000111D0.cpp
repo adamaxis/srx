@@ -3,13 +3,13 @@
 // Name: FUN_000111d0
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001232 FUN_00001232
+//   0x00001232 upload_hud_tile_block
 
 
 void FUN_000111d0(void)
 
 {
-  FUN_00001232();
+  upload_hud_tile_block();
   return;
 }
 

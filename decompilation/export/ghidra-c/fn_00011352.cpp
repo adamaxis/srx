@@ -3,7 +3,7 @@
 // Name: FUN_00011352
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001232 FUN_00001232
+//   0x00001232 upload_hud_tile_block
 //   0x0000C0DA render_title_text_source
 //   0x00055E92 FUN_00055e92
 //   0x00055EB4 FUN_00055eb4
@@ -30,9 +30,9 @@ void FUN_00011352(void)
   render_title_text_source();
   render_title_text_source();
   FUN_00055eb4();
-  FUN_00001232();
+  upload_hud_tile_block();
   FUN_00055e92();
-  FUN_00001232();
+  upload_hud_tile_block();
   if (DAT_00fff0b1 < '\0') {
     DAT_00fff0b1 = '\0';
     *(undefined1 *)(extraout_A0 + 0x76) = DAT_00ffef96;

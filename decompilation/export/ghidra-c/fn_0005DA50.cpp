@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000FFE FUN_00000ffe
 //   0x0000102A FUN_0000102a
-//   0x00001232 FUN_00001232
+//   0x00001232 upload_hud_tile_block
 //   0x000012F6 advance_title_palette_fade
 //   0x00001406 prepare_title_resources
 //   0x00001530 decode_and_upload_source_stream
@@ -24,7 +24,7 @@ void setup_pre_title_resources(void)
   decode_and_upload_source_stream();
   DAT_00ffef14 = DAT_00ffef14 | 0xd;
   advance_title_palette_fade();
-  FUN_00001232();
+  upload_hud_tile_block();
   return;
 }
 

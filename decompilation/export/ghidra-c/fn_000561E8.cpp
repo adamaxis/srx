@@ -4,8 +4,8 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000DBA count_thresholded_random_rolls
-//   0x00017D72 FUN_00017d72
-//   0x00017D90 FUN_00017d90
+//   0x00017D72 draw_hud_panel
+//   0x00017D90 advance_hud_panel
 //   0x00019B40 FUN_00019b40
 //   0x00019BF6 FUN_00019bf6
 //   0x00053216 FUN_00053216
@@ -70,8 +70,8 @@ LAB_00056268:
       count_thresholded_random_rolls();
       sVar4 = FUN_00019b40();
       if (sVar4 == 8) {
-        FUN_00017d72();
-        FUN_00017d90();
+        draw_hud_panel();
+        advance_hud_panel();
       }
       uVar3 = 0;
       DAT_00fff0a4 = DAT_00fff0dd;

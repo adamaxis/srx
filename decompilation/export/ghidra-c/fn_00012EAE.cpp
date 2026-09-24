@@ -30,7 +30,7 @@ void FUN_00012eae(void)
   }
   FUN_00013000();
   render_title_text_source();
-  FUN_00001232();
+  upload_hud_tile_block();
   return;
 }
 

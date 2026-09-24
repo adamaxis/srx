@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00003648
-// Name: FUN_00003648
+// Name: draw_hud_panel
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E9C FUN_00000e9c
 
 
-void FUN_00003648(void)
+void draw_hud_panel(void)
 
 {
   short extraout_D1w;

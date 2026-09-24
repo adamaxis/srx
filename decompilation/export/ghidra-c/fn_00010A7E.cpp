@@ -11,10 +11,10 @@ void FUN_00010a7e(void)
 {
   FUN_00010918();
   VDP_CTRL = 0x8134;
-  FUN_00001232();
-  FUN_00001232();
-  FUN_00001232();
-  FUN_00001232();
+  upload_hud_tile_block();
+  upload_hud_tile_block();
+  upload_hud_tile_block();
+  upload_hud_tile_block();
   VDP_CTRL = 0x8174;
   return;
 }

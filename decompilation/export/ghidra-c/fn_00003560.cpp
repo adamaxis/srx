@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003602 FUN_00003602
-//   0x00003648 FUN_00003648
+//   0x00003648 draw_hud_panel
 
 
 void FUN_00003560(void)
@@ -27,9 +27,9 @@ void FUN_00003560(void)
     puVar1 = &UNK_000086d0;
     puVar2 = (undefined1 *)0xfc48;
   }
-  FUN_00003648(puVar2,puVar1);
+  draw_hud_panel(puVar2,puVar1);
   FUN_00003602();
-  FUN_00003648();
+  draw_hud_panel();
   return;
 }
 

@@ -143,6 +143,15 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00000BB6L, "wait_for_even_frame");
         names.put(0x00052DC2L, "begin_controller_bus_access");
         names.put(0x00052DD6L, "end_controller_bus_access");
+        names.put(0x00001232L, "upload_hud_tile_block");
+        names.put(0x00001728L, "render_hud_sprite_stream");
+        names.put(0x00003648L, "draw_hud_panel");
+        names.put(0x00017D72L, "draw_hud_panel");
+        names.put(0x00017D90L, "advance_hud_panel");
+        names.put(0x00017F8EL, "draw_hud_footer");
+        names.put(0x00019856L, "refresh_field_hud");
+        names.put(0x00019BAEL, "select_hud_mode");
+        names.put(0x00017708L, "render_field_hud");
         names.put(0x00001530L, "decode_and_upload_source_stream");
         names.put(0x000012F6L, "advance_title_palette_fade");
         names.put(0x00001406L, "prepare_title_resources");

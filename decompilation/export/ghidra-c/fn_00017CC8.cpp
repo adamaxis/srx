@@ -3,7 +3,7 @@
 // Name: FUN_00017cc8
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001728 FUN_00001728
+//   0x00001728 render_hud_sprite_stream
 //   0x00017D3E FUN_00017d3e
 
 
@@ -20,7 +20,7 @@ undefined8 FUN_00017cc8(void)
     if ('\x03' < DAT_00fff0df) {
       DAT_00fff0df = '\0';
     }
-    FUN_00001728();
+    render_hud_sprite_stream();
     if (DAT_00fff0df == '\0') {
       FUN_00017d3e();
     }

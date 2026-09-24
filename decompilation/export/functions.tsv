@@ -42,7 +42,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00001184	FUN_00001184	60	unknown	ok	ghidra-c/fn_00001184.cpp
 000011C0	FUN_000011c0	54	unknown	ok	ghidra-c/fn_000011C0.cpp
 000011F6	FUN_000011f6	6	unknown	ok	ghidra-c/fn_000011F6.cpp
-00001232	FUN_00001232	54	unknown	ok	ghidra-c/fn_00001232.cpp
+00001232	upload_hud_tile_block	54	unknown	ok	ghidra-c/fn_00001232.cpp
 000012F6	advance_title_palette_fade	38	unknown	ok	ghidra-c/fn_000012F6.cpp
 0000131C	step_palette_transition	38	unknown	ok	ghidra-c/fn_0000131C.cpp
 00001342	wait_for_palette_frame	22	unknown	ok	ghidra-c/fn_00001342.cpp
@@ -56,7 +56,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00001530	decode_and_upload_source_stream	224	unknown	ok	ghidra-c/fn_00001530.cpp
 00001610	decode_source_byte_stream	108	unknown	ok	ghidra-c/fn_00001610.cpp
 0000167C	decode_source_coordinate_stream	164	unknown	ok	ghidra-c/fn_0000167C.cpp
-00001728	FUN_00001728	322	unknown	ok	ghidra-c/fn_00001728.cpp
+00001728	render_hud_sprite_stream	322	unknown	ok	ghidra-c/fn_00001728.cpp
 00001872	FUN_00001872	158	unknown	ok	ghidra-c/fn_00001872.cpp
 00001910	FUN_00001910	76	unknown	ok	ghidra-c/fn_00001910.cpp
 0000195C	sample_controller_input	64	unknown	ok	ghidra-c/fn_0000195C.cpp
@@ -105,7 +105,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00003548	FUN_00003548	24	unknown	ok	ghidra-c/fn_00003548.cpp
 00003560	FUN_00003560	162	unknown	ok	ghidra-c/fn_00003560.cpp
 00003602	FUN_00003602	70	unknown	ok	ghidra-c/fn_00003602.cpp
-00003648	FUN_00003648	44	unknown	ok	ghidra-c/fn_00003648.cpp
+00003648	draw_hud_panel	44	unknown	ok	ghidra-c/fn_00003648.cpp
 00003674	FUN_00003674	136	unknown	ok	ghidra-c/fn_00003674.cpp
 000036FC	FUN_000036fc	240	unknown	ok	ghidra-c/fn_000036FC.cpp
 000037EC	FUN_000037ec	192	unknown	ok	ghidra-c/fn_000037EC.cpp
@@ -454,7 +454,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0001745E	FUN_0001745e	604	unknown	ok	ghidra-c/fn_0001745E.cpp
 000176BA	FUN_000176ba	48	unknown	ok	ghidra-c/fn_000176BA.cpp
 000176EA	FUN_000176ea	30	unknown	ok	ghidra-c/fn_000176EA.cpp
-00017708	FUN_00017708	156	unknown	ok	ghidra-c/fn_00017708.cpp
+00017708	render_field_hud	156	unknown	ok	ghidra-c/fn_00017708.cpp
 000177A4	FUN_000177a4	40	unknown	ok	ghidra-c/fn_000177A4.cpp
 000177CC	FUN_000177cc	48	unknown	ok	ghidra-c/fn_000177CC.cpp
 000177FC	FUN_000177fc	160	unknown	ok	ghidra-c/fn_000177FC.cpp
@@ -471,8 +471,8 @@ entry	name	size	callingConvention	decompileStatus	file
 00017C98	FUN_00017c98	32	unknown	ok	ghidra-c/fn_00017C98.cpp
 00017CC8	FUN_00017cc8	118	unknown	ok	ghidra-c/fn_00017CC8.cpp
 00017D3E	FUN_00017d3e	36	unknown	ok	ghidra-c/fn_00017D3E.cpp
-00017D72	FUN_00017d72	30	unknown	ok	ghidra-c/fn_00017D72.cpp
-00017D90	FUN_00017d90	40	unknown	ok	ghidra-c/fn_00017D90.cpp
+00017D72	draw_hud_panel	30	unknown	ok	ghidra-c/fn_00017D72.cpp
+00017D90	advance_hud_panel	40	unknown	ok	ghidra-c/fn_00017D90.cpp
 00017DB8	FUN_00017db8	76	unknown	ok	ghidra-c/fn_00017DB8.cpp
 00017E04	FUN_00017e04	116	unknown	ok	ghidra-c/fn_00017E04.cpp
 00017E78	FUN_00017e78	60	unknown	ok	ghidra-c/fn_00017E78.cpp
@@ -480,7 +480,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00017EE4	FUN_00017ee4	10	unknown	ok	ghidra-c/fn_00017EE4.cpp
 00017EEE	FUN_00017eee	146	unknown	ok	ghidra-c/fn_00017EEE.cpp
 00017F80	FUN_00017f80	14	unknown	ok	ghidra-c/fn_00017F80.cpp
-00017F8E	FUN_00017f8e	38	unknown	ok	ghidra-c/fn_00017F8E.cpp
+00017F8E	draw_hud_footer	38	unknown	ok	ghidra-c/fn_00017F8E.cpp
 00017FB4	FUN_00017fb4	38	unknown	ok	ghidra-c/fn_00017FB4.cpp
 00017FDA	FUN_00017fda	374	unknown	ok	ghidra-c/fn_00017FDA.cpp
 000181F8	FUN_000181f8	52	unknown	ok	ghidra-c/fn_000181F8.cpp
@@ -513,13 +513,13 @@ entry	name	size	callingConvention	decompileStatus	file
 00019736	FUN_00019736	44	unknown	ok	ghidra-c/fn_00019736.cpp
 00019762	FUN_00019762	38	unknown	ok	ghidra-c/fn_00019762.cpp
 00019788	FUN_00019788	206	unknown	ok	ghidra-c/fn_00019788.cpp
-00019856	FUN_00019856	68	unknown	ok	ghidra-c/fn_00019856.cpp
+00019856	refresh_field_hud	68	unknown	ok	ghidra-c/fn_00019856.cpp
 0001989A	FUN_0001989a	220	unknown	ok	ghidra-c/fn_0001989A.cpp
 00019976	FUN_00019976	376	unknown	ok	ghidra-c/fn_00019976.cpp
 00019AEE	FUN_00019aee	70	unknown	ok	ghidra-c/fn_00019AEE.cpp
 00019B34	FUN_00019b34	12	unknown	ok	ghidra-c/fn_00019B34.cpp
 00019B40	FUN_00019b40	110	unknown	ok	ghidra-c/fn_00019B40.cpp
-00019BAE	FUN_00019bae	72	unknown	ok	ghidra-c/fn_00019BAE.cpp
+00019BAE	select_hud_mode	72	unknown	ok	ghidra-c/fn_00019BAE.cpp
 00019BF6	FUN_00019bf6	94	unknown	ok	ghidra-c/fn_00019BF6.cpp
 00019C54	FUN_00019c54	8	unknown	ok	ghidra-c/fn_00019C54.cpp
 00019C5C	FUN_00019c5c	16	unknown	ok	ghidra-c/fn_00019C5C.cpp

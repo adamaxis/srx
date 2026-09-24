@@ -3,7 +3,7 @@
 // Name: FUN_0001a030
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00019BAE FUN_00019bae
+//   0x00019BAE select_hud_mode
 //   0x00055FD8 FUN_00055fd8
 
 
@@ -19,7 +19,7 @@ undefined2 FUN_0001a030(void)
   uVar3 = DAT_00ffdf84 < '\0';
   bVar4 = DAT_00ffdf84 == '\0';
   if ((bVar4) &&
-     ((cVar2 = FUN_00019bae(), bVar4 ||
+     ((cVar2 = select_hud_mode(), bVar4 ||
       ((cVar2 != '\x01' && (uVar3 = (char)(cVar2 + -8) < '\0', cVar2 != '\b')))))) {
     FUN_00055fd8();
     if (!(bool)uVar3) {

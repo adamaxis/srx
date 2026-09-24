@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00001232
-// Name: FUN_00001232
+// Name: upload_hud_tile_block
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E9C FUN_00000e9c
 
 
-undefined8 FUN_00001232(void)
+undefined8 upload_hud_tile_block(void)
 
 {
   undefined4 in_D0;

@@ -3,7 +3,7 @@
 // Name: FUN_0001882e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001232 FUN_00001232
+//   0x00001232 upload_hud_tile_block
 //   0x0000C0DA render_title_text_source
 //   0x0000C134 normalize_source_text_line
 //   0x0000C160 FUN_0000c160
@@ -27,8 +27,8 @@ void FUN_0001882e(void)
     render_title_text_source();
     return;
   }
-  FUN_00001232();
-  FUN_00001232();
+  upload_hud_tile_block();
+  upload_hud_tile_block();
   if ((short)(unaff_D7w + -0xc) < 0) {
     FUN_0001a16a();
     FUN_0000c216();

@@ -3,7 +3,7 @@
 // Name: FUN_00057c7a
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001232 FUN_00001232
+//   0x00001232 upload_hud_tile_block
 //   0x0000C0DA render_title_text_source
 //   0x0000C216 FUN_0000c216
 //   0x00013228 FUN_00013228
@@ -49,7 +49,7 @@ void FUN_00057c7a(void)
         render_title_text_source();
         FUN_00057a6e();
         FUN_0000c216();
-        FUN_00001232();
+        upload_hud_tile_block();
         render_title_text_source();
         render_title_text_source();
       }
@@ -62,7 +62,7 @@ void FUN_00057c7a(void)
   else {
     if (DAT_00fff0b7 != '\0') {
       if (DAT_00fff0b7 == '\x01') {
-        FUN_00001232();
+        upload_hud_tile_block();
         render_title_text_source();
         render_title_text_source();
         FUN_00057a6e();
@@ -148,7 +148,7 @@ LAB_0005842a:
         FUN_0000c216();
         FUN_0000c216();
       }
-      FUN_00001232();
+      upload_hud_tile_block();
       if (DAT_00fff0d0 == 0) {
         return;
       }

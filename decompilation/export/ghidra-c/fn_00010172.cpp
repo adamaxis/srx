@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000011C0 FUN_000011c0
-//   0x00001232 FUN_00001232
+//   0x00001232 upload_hud_tile_block
 
 
 undefined8 FUN_00010172(void)
@@ -17,7 +17,7 @@ undefined8 FUN_00010172(void)
   if (-1 < (short)(DAT_00fff096 + -2)) {
     FUN_000011c0();
   }
-  FUN_00001232();
+  upload_hud_tile_block();
   if (DAT_00fff098 != DAT_00fff096) {
     FUN_000011c0();
   }

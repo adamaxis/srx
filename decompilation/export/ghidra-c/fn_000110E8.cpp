@@ -9,7 +9,7 @@
 void FUN_000110e8(void)
 
 {
-  FUN_00003648();
+  draw_hud_panel();
   return;
 }
 

@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001530 decode_and_upload_source_stream
-//   0x00001728 FUN_00001728
+//   0x00001728 render_hud_sprite_stream
 //   0x0001F32E FUN_0001f32e
 //   0x0001F34A FUN_0001f34a
 //   0x0001F38A FUN_0001f38a
@@ -30,7 +30,7 @@ void FUN_0001f292(void)
     DAT_00fff0af = '\0';
   }
   else {
-    FUN_00001728();
+    render_hud_sprite_stream();
   }
   return;
 }

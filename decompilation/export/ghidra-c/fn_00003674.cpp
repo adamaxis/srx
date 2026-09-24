@@ -3,7 +3,7 @@
 // Name: FUN_00003674
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001232 FUN_00001232
+//   0x00001232 upload_hud_tile_block
 
 
 undefined8 FUN_00003674(void)
@@ -28,7 +28,7 @@ undefined8 FUN_00003674(void)
   }
   *(undefined1 *)(in_A0 + 0x4c) = 0;
 LAB_000036e4:
-  FUN_00001232();
+  upload_hud_tile_block();
   return CONCAT44(in_D0,in_D1);
 }
 

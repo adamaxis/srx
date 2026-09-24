@@ -9,11 +9,11 @@
 //   0x00000F5C FUN_00000f5c
 //   0x00000FFE FUN_00000ffe
 //   0x0000102A FUN_0000102a
-//   0x00001232 FUN_00001232
+//   0x00001232 upload_hud_tile_block
 //   0x0000131C step_palette_transition
 //   0x00001368 copy_target_palette
 //   0x00001530 decode_and_upload_source_stream
-//   0x00001728 FUN_00001728
+//   0x00001728 render_hud_sprite_stream
 
 
 void prepare_title_resources(void)
@@ -50,10 +50,10 @@ void prepare_title_resources(void)
   while (uVar1 = *puVar3, uVar1 != 0) {
     puVar3 = (uint *)((int)puVar3 + 0xe);
     if ((uVar1 & 1) == 0) {
-      FUN_00001232();
+      upload_hud_tile_block();
     }
     else {
-      FUN_00001728();
+      render_hud_sprite_stream();
     }
   }
   DAT_00ffef14 = DAT_00ffef14 | 0xd;

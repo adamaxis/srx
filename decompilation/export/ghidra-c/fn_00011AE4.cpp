@@ -3,7 +3,7 @@
 // Name: FUN_00011ae4
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001232 FUN_00001232
+//   0x00001232 upload_hud_tile_block
 //   0x0000C0DA render_title_text_source
 
 
@@ -24,7 +24,7 @@ undefined8 FUN_00011ae4(void)
   else if ('\x04' < *(char *)(iVar2 + 0x4d)) {
     *(undefined1 *)(iVar2 + 0x4d) = 4;
   }
-  FUN_00001232();
+  upload_hud_tile_block();
   render_title_text_source();
   return CONCAT44(in_D0,in_D1);
 }

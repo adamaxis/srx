@@ -10,8 +10,8 @@ void FUN_00017ee4(void)
 
 {
   DAT_00fff0e4 = 0;
-  FUN_00001232();
-  FUN_00001232();
+  upload_hud_tile_block();
+  upload_hud_tile_block();
   return;
 }
 

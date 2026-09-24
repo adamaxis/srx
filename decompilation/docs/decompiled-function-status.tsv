@@ -181,5 +181,5 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x11950	cyberware display	NativePortShell	shadowrun_menu_system	partial		
 0xFBA6	magic	—	—	pending		
 0x1817E	matrix run	—	—	pending		
-0x17708	field HUD	—	—	pending		
+0x17708	field HUD	ghidra_conversion::render_field_hud	—	partial		Typed display/sprite/five-block upload choreography and conditional mode-8 panel path
 0x530DE	Z80/audio	—	—	pending		

@@ -7,7 +7,7 @@
 //   0x00017C84 FUN_00017c84
 //   0x00017DB8 FUN_00017db8
 //   0x00019B34 FUN_00019b34
-//   0x00019BAE FUN_00019bae
+//   0x00019BAE select_hud_mode
 
 
 void FUN_00019cb2(void)
@@ -22,7 +22,7 @@ void FUN_00019cb2(void)
     FUN_00019b34();
   }
   else {
-    cVar1 = FUN_00019bae();
+    cVar1 = select_hud_mode();
     if ((cVar1 == '\b') && (DAT_00ffdf84 != '\0')) {
       bVar3 = SCARRY1(DAT_00fff0d3,DAT_00fffbca);
       DAT_00fffbca = DAT_00fff0d3 + DAT_00fffbca;
