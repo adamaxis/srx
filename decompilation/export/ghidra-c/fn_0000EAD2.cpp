@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000EAD2
-// Name: FUN_0000ead2
+// Name: evaluate_terrain_direction_boundary
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000EDFA FUN_0000edfa
+//   0x0000EDFA decode_terrain_tile_window
 
 
-void FUN_0000ead2(void)
+void evaluate_terrain_direction_boundary(void)
 
 {
   short sVar1;
@@ -17,7 +17,7 @@ void FUN_0000ead2(void)
   short unaff_D6w;
   
   sVar1 = DAT_00ffdfe4;
-  uVar2 = FUN_0000edfa();
+  uVar2 = decode_terrain_tile_window();
   uVar2 = uVar2 & 0x38;
   if (uVar2 == 0x20) {
     if ((ushort)-(extraout_D1w - unaff_D5w) < (ushort)(unaff_D3w - unaff_D6w)) {

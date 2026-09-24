@@ -91,6 +91,8 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0000BADEL, "advance_entity_movement_step");
         names.put(0x0000E8A0L, "sample_terrain_collision_tiles");
         names.put(0x0000E9EEL, "contains_terrain_object_bounds");
+        names.put(0x0000EAD2L, "evaluate_terrain_direction_boundary");
+        names.put(0x0000EDFAL, "decode_terrain_tile_window");
         names.put(0x0000B732L, "apply_movement_result_policy");
         names.put(0x0000B77EL, "probe_entity_directional_collision");
         names.put(0x0000B530L, "approach_entity_fixed_point_target");

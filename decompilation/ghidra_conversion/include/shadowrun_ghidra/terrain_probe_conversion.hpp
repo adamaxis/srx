@@ -41,4 +41,23 @@ bool contains_terrain_object_bounds(
     std::int16_t y,
     const TerrainObjectLookup& object_lookup);
 
+struct TerrainTileWindow {
+    std::uint16_t origin_x = 0;
+    std::uint16_t origin_y = 0;
+    std::uint16_t end_y = 0;
+};
+
+// ROM 0xEDFA: expand the packed terrain tile index into its 32-unit
+// horizontal origin, row origin, and row end.
+TerrainTileWindow decode_terrain_tile_window(std::uint16_t tile_index);
+
+// ROM 0xEAD2: compare a probe point against the decoded tile window using
+// the directional relation encoded in terrain-code bits 0x38. All
+// subtractions and comparisons retain the source unsigned-word behavior.
+bool evaluate_terrain_direction_boundary(
+    std::uint8_t terrain_code,
+    const TerrainTileWindow& window,
+    std::uint16_t x,
+    std::uint16_t y);
+
 } // namespace shadowrun::ghidra_conversion

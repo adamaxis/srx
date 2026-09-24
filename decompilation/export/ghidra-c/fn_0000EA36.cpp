@@ -3,7 +3,7 @@
 // Name: FUN_0000ea36
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000EAD2 FUN_0000ead2
+//   0x0000EAD2 evaluate_terrain_direction_boundary
 
 
 void FUN_0000ea36(void)
@@ -17,7 +17,7 @@ void FUN_0000ea36(void)
   
   if ((DAT_00ffef10 & 0x20) != 0) {
     bVar1 = unaff_D5w < 0xc;
-    FUN_0000ead2();
+    evaluate_terrain_direction_boundary();
     register0x0000003c = (BADSPACEBASE *)auStack_4;
     unaff_D6w = uStack_6;
     if (bVar1) {
@@ -29,7 +29,7 @@ void FUN_0000ea36(void)
     *(ushort *)((int)register0x0000003c + -8) = unaff_D5w;
     bVar1 = 0xfff3 < unaff_D5w;
     *(undefined4 *)((int)register0x0000003c + -0xc) = 0xea76;
-    FUN_0000ead2();
+    evaluate_terrain_direction_boundary();
     unaff_D5w = *(ushort *)((int)register0x0000003c + -8);
     unaff_D6w = *(undefined2 *)((int)register0x0000003c + -6);
     register0x0000003c = (BADSPACEBASE *)((int)register0x0000003c + -4);
@@ -42,7 +42,7 @@ void FUN_0000ea36(void)
     *(ushort *)((int)register0x0000003c + -8) = unaff_D5w;
     bVar1 = unaff_D5w < 0xc;
     *(undefined4 *)((int)register0x0000003c + -0xc) = 0xea9a;
-    FUN_0000ead2();
+    evaluate_terrain_direction_boundary();
     unaff_D5w = *(ushort *)((int)register0x0000003c + -8);
     unaff_D6w = *(undefined2 *)((int)register0x0000003c + -6);
     register0x0000003c = (BADSPACEBASE *)((int)register0x0000003c + -4);
@@ -55,7 +55,7 @@ void FUN_0000ea36(void)
     *(ushort *)((int)register0x0000003c + -8) = unaff_D5w;
     bVar1 = 0xfff3 < unaff_D5w;
     *(undefined4 *)((int)register0x0000003c + -0xc) = 0xeabe;
-    FUN_0000ead2();
+    evaluate_terrain_direction_boundary();
     if (bVar1) {
       return;
     }

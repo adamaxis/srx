@@ -597,11 +597,11 @@ caller	caller_name	instruction	text	target	callee	status
 0000E7C8	FUN_0000e7c8	0000E838	bsr.w 0x0000e8a0	0000E8A0	sample_terrain_collision_tiles	resolved
 0000E7C8	FUN_0000e7c8	0000E87C	bsr.w 0x0000ea36	0000EA36	FUN_0000ea36	resolved
 0000E7C8	FUN_0000e7c8	0000E892	bsr.w 0x0000e9ee	0000E9EE	contains_terrain_object_bounds	resolved
-0000EA36	FUN_0000ea36	0000EA4E	bsr.w 0x0000ead2	0000EAD2	FUN_0000ead2	resolved
-0000EA36	FUN_0000ea36	0000EA72	bsr.w 0x0000ead2	0000EAD2	FUN_0000ead2	resolved
-0000EA36	FUN_0000ea36	0000EA96	bsr.w 0x0000ead2	0000EAD2	FUN_0000ead2	resolved
-0000EA36	FUN_0000ea36	0000EABA	bsr.w 0x0000ead2	0000EAD2	FUN_0000ead2	resolved
-0000EAD2	FUN_0000ead2	0000EADA	bsr.w 0x0000edfa	0000EDFA	FUN_0000edfa	resolved
+0000EA36	FUN_0000ea36	0000EA4E	bsr.w 0x0000ead2	0000EAD2	evaluate_terrain_direction_boundary	resolved
+0000EA36	FUN_0000ea36	0000EA72	bsr.w 0x0000ead2	0000EAD2	evaluate_terrain_direction_boundary	resolved
+0000EA36	FUN_0000ea36	0000EA96	bsr.w 0x0000ead2	0000EAD2	evaluate_terrain_direction_boundary	resolved
+0000EA36	FUN_0000ea36	0000EABA	bsr.w 0x0000ead2	0000EAD2	evaluate_terrain_direction_boundary	resolved
+0000EAD2	evaluate_terrain_direction_boundary	0000EADA	bsr.w 0x0000edfa	0000EDFA	decode_terrain_tile_window	resolved
 0000EB92	FUN_0000eb92	0000EC66	jsr 0x00015d3c.l	00015D3C	FUN_00015d3c	resolved
 0000EB92	FUN_0000eb92	0000EC8C	bsr.w 0x0000eccc	0000ECCC	FUN_0000eccc	resolved
 0000EB92	FUN_0000eb92	0000EC90	jsr 0x00000d44.l	00000D44	advance_source_prng	resolved

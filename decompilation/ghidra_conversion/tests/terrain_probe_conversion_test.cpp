@@ -86,5 +86,22 @@ int main() {
         return 4;
     }
 
+    const auto window = decode_terrain_tile_window(0x0845);
+    if (!expect(window.origin_x == 0x00A0 &&
+                window.origin_y == 0x0420 &&
+                window.end_y == 0x043F)) {
+        return 5;
+    }
+    if (!expect(evaluate_terrain_direction_boundary(
+                    0x20, window, 0x00A1, 0x0425)) ||
+        !expect(!evaluate_terrain_direction_boundary(
+                    0x20, window, 0x00A1, 0x043F)) ||
+        !expect(evaluate_terrain_direction_boundary(
+                    0x28, window, 0x00B0, 0x0420)) ||
+        !expect(!evaluate_terrain_direction_boundary(
+                    0x38, window, 0x00A1, 0x0425))) {
+        return 6;
+    }
+
     return 0;
 }

@@ -6795,7 +6795,7 @@
 0000EA44: movem.w {  D6w D5w},-(SP)
 0000EA48: subq.w #0x7,D6w
 0000EA4A: subi.w #0xc,D5w
-0000EA4E: bsr.w 0x0000ead2 ; call 0000EAD2 FUN_0000ead2
+0000EA4E: bsr.w 0x0000ead2 ; call 0000EAD2 evaluate_terrain_direction_boundary
 0000EA52: movem.w (SP)+,{  D5 D6}
 0000EA56: bcs.w 0x0000eacc
 0000EA5A: move.b (0x00ffef11).l,D0b
@@ -6804,7 +6804,7 @@
 0000EA68: movem.w {  D6w D5w},-(SP)
 0000EA6C: subq.w #0x7,D6w
 0000EA6E: addi.w #0xc,D5w
-0000EA72: bsr.w 0x0000ead2 ; call 0000EAD2 FUN_0000ead2
+0000EA72: bsr.w 0x0000ead2 ; call 0000EAD2 evaluate_terrain_direction_boundary
 0000EA76: movem.w (SP)+,{  D5 D6}
 0000EA7A: bcs.w 0x0000eacc
 0000EA7E: move.b (0x00ffef12).l,D0b
@@ -6813,7 +6813,7 @@
 0000EA8C: movem.w {  D6w D5w},-(SP)
 0000EA90: addq.w #0x7,D6w
 0000EA92: subi.w #0xc,D5w
-0000EA96: bsr.w 0x0000ead2 ; call 0000EAD2 FUN_0000ead2
+0000EA96: bsr.w 0x0000ead2 ; call 0000EAD2 evaluate_terrain_direction_boundary
 0000EA9A: movem.w (SP)+,{  D5 D6}
 0000EA9E: bcs.w 0x0000eacc
 0000EAA2: move.b (0x00ffef13).l,D0b
@@ -6822,7 +6822,7 @@
 0000EAB0: movem.w {  D6w D5w},-(SP)
 0000EAB4: addq.w #0x7,D6w
 0000EAB6: addi.w #0xc,D5w
-0000EABA: bsr.w 0x0000ead2 ; call 0000EAD2 FUN_0000ead2
+0000EABA: bsr.w 0x0000ead2 ; call 0000EAD2 evaluate_terrain_direction_boundary
 0000EABE: movem.w (SP)+,{  D5 D6}
 0000EAC2: bcs.w 0x0000eacc
 0000EAC6: andi #0x1e,CCR
@@ -6831,7 +6831,7 @@
 0000EAD0: rts
 0000EAD2: ext.w D0w
 0000EAD4: move.w (0x00ffdfe4).l,D2w
-0000EADA: bsr.w 0x0000edfa ; call 0000EDFA FUN_0000edfa
+0000EADA: bsr.w 0x0000edfa ; call 0000EDFA decode_terrain_tile_window
 0000EADE: andi.w #0x38,D0w
 0000EAE2: cmpi.w #0x20,D0w
 0000EAE6: beq.w 0x0000eb22

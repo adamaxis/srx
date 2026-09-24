@@ -59,6 +59,8 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0xBCAE	mode-5 field boundary motion	ghidra_conversion::apply_mode_five_boundary_motion	shadowrun_native_port	partial		Typed strict-window vertical adjustments at the two field edges
 0xE8A0	terrain collision tile sampling	ghidra_conversion::sample_terrain_collision_tiles	shadowrun_native_port	partial		Typed center/four-corner terrain lookup with max-code and blocked-tile handling
 0xE9EE	terrain object bounds check	ghidra_conversion::contains_terrain_object_bounds	shadowrun_native_port	partial		Typed signed point-in-object bounds test with injected object lookup
+0xEAD2	terrain direction boundary evaluation	ghidra_conversion::evaluate_terrain_direction_boundary	shadowrun_native_port	partial		Typed terrain-code direction comparison against decoded tile window
+0xEDFA	terrain tile window decode	ghidra_conversion::decode_terrain_tile_window	shadowrun_native_port	partial		Typed packed-index expansion into horizontal and vertical 32-unit bounds
 0xC134	source text line normalization	ghidra_conversion::normalize_source_text_line	shadowrun_native_port	partial		Typed high-bit glyph mapping, terminator detection, and bounded space padding
 0x195C	controller sampling	ghidra_conversion::derive_controller_sample	shadowrun_boot_sequence	partial		Readable edge conversion is isolated from runtime and emulator
 0x19F2	controller port read	Windows input adapter	shadowrun_native_port	pending		Genesis port phases documented; host device mapping remains separate

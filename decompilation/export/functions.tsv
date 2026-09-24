@@ -244,10 +244,10 @@ entry	name	size	callingConvention	decompileStatus	file
 0000E8A0	sample_terrain_collision_tiles	300	unknown	ok	ghidra-c/fn_0000E8A0.cpp
 0000E9EE	contains_terrain_object_bounds	72	unknown	ok	ghidra-c/fn_0000E9EE.cpp
 0000EA36	FUN_0000ea36	156	unknown	ok	ghidra-c/fn_0000EA36.cpp
-0000EAD2	FUN_0000ead2	124	unknown	ok	ghidra-c/fn_0000EAD2.cpp
+0000EAD2	evaluate_terrain_direction_boundary	124	unknown	ok	ghidra-c/fn_0000EAD2.cpp
 0000EB92	FUN_0000eb92	314	unknown	ok	ghidra-c/fn_0000EB92.cpp
 0000ECCC	FUN_0000eccc	302	unknown	ok	ghidra-c/fn_0000ECCC.cpp
-0000EDFA	FUN_0000edfa	22	unknown	ok	ghidra-c/fn_0000EDFA.cpp
+0000EDFA	decode_terrain_tile_window	22	unknown	ok	ghidra-c/fn_0000EDFA.cpp
 0000EE10	FUN_0000ee10	118	unknown	ok	ghidra-c/fn_0000EE10.cpp
 0000EE86	FUN_0000ee86	120	unknown	ok	ghidra-c/fn_0000EE86.cpp
 0000EF08	FUN_0000ef08	172	unknown	ok	ghidra-c/fn_0000EF08.cpp

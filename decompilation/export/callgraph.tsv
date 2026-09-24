@@ -478,8 +478,8 @@ caller	caller_name	callee	callee_name	call_sites
 0000E7C8	FUN_0000e7c8	0000E8A0	sample_terrain_collision_tiles	1
 0000E7C8	FUN_0000e7c8	0000E9EE	contains_terrain_object_bounds	1
 0000E7C8	FUN_0000e7c8	0000EA36	FUN_0000ea36	1
-0000EA36	FUN_0000ea36	0000EAD2	FUN_0000ead2	4
-0000EAD2	FUN_0000ead2	0000EDFA	FUN_0000edfa	1
+0000EA36	FUN_0000ea36	0000EAD2	evaluate_terrain_direction_boundary	4
+0000EAD2	evaluate_terrain_direction_boundary	0000EDFA	decode_terrain_tile_window	1
 0000EB92	FUN_0000eb92	00000D44	advance_source_prng	1
 0000EB92	FUN_0000eb92	0000ECCC	FUN_0000eccc	1
 0000EB92	FUN_0000eb92	00015D3C	FUN_00015d3c	1

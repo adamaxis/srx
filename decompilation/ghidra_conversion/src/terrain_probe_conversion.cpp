@@ -68,4 +68,35 @@ bool contains_terrain_object_bounds(
            y >= object.center_y - 7 && y <= object.center_y + 7;
 }
 
+TerrainTileWindow decode_terrain_tile_window(
+    const std::uint16_t tile_index_value) {
+    const auto row_origin = static_cast<std::uint16_t>(
+        (tile_index_value & static_cast<std::uint16_t>(~0x003FU)) >> 1U);
+    return TerrainTileWindow{
+        static_cast<std::uint16_t>((tile_index_value & 0x003FU) << 5U),
+        row_origin,
+        static_cast<std::uint16_t>(row_origin + 0x001FU)};
+}
+
+bool evaluate_terrain_direction_boundary(
+    const std::uint8_t terrain_code,
+    const TerrainTileWindow& window,
+    const std::uint16_t x,
+    const std::uint16_t y) {
+    const auto x_delta = static_cast<std::uint16_t>(x - window.origin_x);
+    const auto y_delta = static_cast<std::uint16_t>(y - window.origin_y);
+    const auto end_delta = static_cast<std::uint16_t>(window.end_y - y);
+
+    switch (terrain_code & 0x38U) {
+    case 0x20U:
+        return x_delta < end_delta;
+    case 0x28U:
+        return x_delta >= y_delta;
+    case 0x38U:
+        return x_delta >= end_delta;
+    default:
+        return x_delta < y_delta;
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion
