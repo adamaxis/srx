@@ -359,3 +359,4 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x12C1E	menu grid variant A preparation	ghidra_conversion::prepare_menu_grid_variant_a	shadowrun_ghidra_menu_service_sequence	partial		Typed single menu-grid preparation boundary
 0x12C36	menu grid variant B preparation	ghidra_conversion::prepare_menu_grid_variant_b	shadowrun_ghidra_menu_service_sequence	partial		Typed single menu-grid preparation boundary
 0x12C42	menu grid variant C preparation	ghidra_conversion::prepare_menu_grid_variant_c	shadowrun_ghidra_menu_service_sequence	partial		Typed single menu-grid preparation boundary
+0x12C56	menu repeated-grid writer	ghidra_conversion::write_menu_repeated_grid	shadowrun_ghidra_menu_service_sequence	partial		Typed single repeated-grid submission boundary

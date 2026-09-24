@@ -990,6 +990,8 @@ boundary.
 The third sibling, `0x12C42`, is now represented by its own named host
 preparation callback.
 
+`0x12C56` is now a named repeated-grid submission boundary.
+
 The compact row-writer family is now typed as well. `0x1184` emits one masked
 row with optional `0x8F80`/`0x8F02` display-increment controls, `0x11C0`
 repeats a source row at `0x80`-byte destination strides, and `0x11F6`

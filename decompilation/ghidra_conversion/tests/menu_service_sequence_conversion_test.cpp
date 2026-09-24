@@ -158,5 +158,11 @@ int main() {
         return 19;
     }
 
+    write_menu_repeated_grid(
+        [&panel_events] { panel_events.push_back(29); });
+    if (panel_events != std::vector<int>{26, 27, 28, 29}) {
+        return 20;
+    }
+
     return 0;
 }

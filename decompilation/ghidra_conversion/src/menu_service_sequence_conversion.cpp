@@ -215,4 +215,10 @@ void prepare_menu_grid_variant_c(
     }
 }
 
+void write_menu_repeated_grid(const std::function<void()>& write_grid) {
+    if (write_grid) {
+        write_grid();
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion
