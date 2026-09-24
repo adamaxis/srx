@@ -19,6 +19,9 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x1610	compressed byte decode	ghidra_conversion::decode_source_byte_stream	shadowrun_graphics	partial		Literal, repeat, and sliding-window decode converted with bounded host input
 0x167C	coordinate stream decode	ghidra_conversion::decode_source_coordinate_stream	shadowrun_graphics	partial		Signed byte/word offsets and repeated/stepped runs converted with bounded host input
 0x3E86	packed nibble expansion	ghidra_conversion::expand_packed_nibbles	shadowrun_graphics	partial		16-entry nibble lookup transform converted without fixed ROM table dependency
+0x41B6	field coordinate fold	ghidra_conversion::fold_field_coordinate	shadowrun_native_port	partial		High-nibble fold converted as a parameterized 16-bit arithmetic helper
+0x4216	field coordinate offset	ghidra_conversion::offset_field_coordinate	shadowrun_native_port	partial		Eight-unit high-nibble offset converted without source globals
+0x423C	field delta quantization	ghidra_conversion::quantize_field_delta	shadowrun_native_port	partial		Wrapped 16-bit delta quantization converted without runtime address state
 0x195C	controller sampling	ghidra_conversion::derive_controller_sample	shadowrun_boot_sequence	partial		Readable edge conversion is isolated from runtime and emulator
 0x19F2	controller port read	Windows input adapter	shadowrun_native_port	pending		Genesis port phases documented; host device mapping remains separate
 0x1BAC	title input sequence validation	ghidra_conversion::finalize_title_input_sequence	shadowrun_menu_system	partial		Seven-byte match and mismatch reset converted without the FF sentinel

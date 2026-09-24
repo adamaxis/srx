@@ -3,7 +3,7 @@
 // Name: FUN_0000b7b8
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000423C FUN_0000423c
+//   0x0000423C quantize_field_delta
 //   0x0000BC36 FUN_0000bc36
 //   0x0001651E FUN_0001651e
 //   0x00016760 FUN_00016760
@@ -57,7 +57,7 @@ void FUN_0000b7b8(void)
     if (1 < bVar2) {
       FUN_0000bc36();
       *(ushort *)(extraout_A0 + 0xcc) = unaff_D4w << 0xe | unaff_D4w >> 2;
-      FUN_0000423c();
+      quantize_field_delta();
       uVar1 = DAT_00ffdf64;
       *(ushort *)(extraout_A0_00 + 0xc6) = DAT_00ffdf64;
       uVar1 = uVar1 & 0x1f;

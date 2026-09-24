@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00003D4A FUN_00003d4a
 //   0x00004000 FUN_00004000
-//   0x00004216 FUN_00004216
+//   0x00004216 offset_field_coordinate
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -17,7 +17,7 @@ void FUN_00004018(void)
   
   if (in_D0w < 0) {
     if (-1 < (short)((DAT_00ffddc8 >> 4) - 8)) {
-      FUN_00004216();
+      offset_field_coordinate();
       FUN_00004000();
       FUN_00003d4a();
       _DAT_00ffdf58 = 0x8000;
@@ -26,7 +26,7 @@ void FUN_00004018(void)
     }
   }
   else if ((short)((DAT_00ffddc8 >> 4) + 8) <= DAT_00ffddd0) {
-    FUN_00004216();
+    offset_field_coordinate();
     FUN_00004000();
     FUN_00003d4a();
     _DAT_00ffdf58 = 0x8000;

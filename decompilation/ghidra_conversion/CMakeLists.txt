@@ -71,3 +71,16 @@ target_link_libraries(shadowrun_ghidra_packed_data_test
     PRIVATE shadowrun_ghidra_packed_data)
 add_test(NAME shadowrun_ghidra_packed_data
          COMMAND shadowrun_ghidra_packed_data_test)
+
+add_library(shadowrun_ghidra_field_coordinate STATIC
+    src/field_coordinate_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_field_coordinate PUBLIC include)
+
+add_executable(shadowrun_ghidra_field_coordinate_test
+    tests/field_coordinate_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_field_coordinate_test
+    PRIVATE shadowrun_ghidra_field_coordinate)
+add_test(NAME shadowrun_ghidra_field_coordinate
+         COMMAND shadowrun_ghidra_field_coordinate_test)

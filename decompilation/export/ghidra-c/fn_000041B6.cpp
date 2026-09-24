@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000041B6
-// Name: FUN_000041b6
+// Name: fold_field_coordinate
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-ushort FUN_000041b6(void)
+ushort fold_field_coordinate(void)
 
 {
   ushort uVar1;

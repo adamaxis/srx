@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00003D4A FUN_00003d4a
 //   0x00004000 FUN_00004000
-//   0x000041B6 FUN_000041b6
+//   0x000041B6 fold_field_coordinate
 
 
 void FUN_00003d18(void)
@@ -18,7 +18,7 @@ void FUN_00003d18(void)
   ushort uVar3;
   short unaff_D5w;
   
-  FUN_000041b6();
+  fold_field_coordinate();
   sVar1 = FUN_00004000();
   sVar2 = 0x1e;
   uVar3 = unaff_D5w + unaff_D4w;

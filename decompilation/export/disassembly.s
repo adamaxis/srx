@@ -2542,7 +2542,7 @@
 00003D0C: move.w D2w,(0x00ffdf36).l
 00003D12: bsr.w 0x00004018 ; call 00004018 FUN_00004018
 00003D16: rts
-00003D18: bsr.w 0x000041b6 ; call 000041B6 FUN_000041b6
+00003D18: bsr.w 0x000041b6 ; call 000041B6 fold_field_coordinate
 00003D1C: bsr.w 0x00004000 ; call 00004000 FUN_00004000
 00003D20: add.w D5w,D4w
 00003D22: move.w #0x1e,D2w
@@ -2769,7 +2769,7 @@
 00004022: bpl.w 0x0000407e
 00004026: subq.w #0x8,D1w
 00004028: bmi.w 0x0000407c
-0000402C: bsr.w 0x00004216 ; call 00004216 FUN_00004216
+0000402C: bsr.w 0x00004216 ; call 00004216 offset_field_coordinate
 00004030: move.w (0x00ffdd0a).l,D4w
 00004036: subq.w #0x8,D4w
 00004038: bsr.b 0x00004000 ; call 00004000 FUN_00004000
@@ -2789,7 +2789,7 @@
 0000407E: addq.w #0x8,D1w
 00004080: cmp.w (0x00ffddd0).l,D1w
 00004086: bgt.b 0x0000407c
-00004088: bsr.w 0x00004216 ; call 00004216 FUN_00004216
+00004088: bsr.w 0x00004216 ; call 00004216 offset_field_coordinate
 0000408C: addi.w #0xe0,D1w
 00004090: move.w (0x00ffdd0a).l,D4w
 00004096: addi.w #0xe8,D4w
@@ -5086,7 +5086,7 @@
 0000B846: andi.w #-0x200,D1w
 0000B84A: addi.w #-0x190,D1w
 0000B84E: addi.w #0x70,D0w
-0000B852: jsr 0x0000423c.l ; call 0000423C FUN_0000423c
+0000B852: jsr 0x0000423c.l ; call 0000423C quantize_field_delta
 0000B858: move.w (0x00ffdf64).l,D0w
 0000B85E: move.w D0w,(0xc6,A0)
 0000B862: andi.w #0x1f,D0w

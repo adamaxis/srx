@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00004216
-// Name: FUN_00004216
+// Name: offset_field_coordinate
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-short FUN_00004216(void)
+short offset_field_coordinate(void)
 
 {
   short sVar1;
