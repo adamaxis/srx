@@ -216,6 +216,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00059798L, "serialize_runner_record_population");
         names.put(0x00059786L, "sum_game_save_payload");
         names.put(0x000597EEL, "project_live_runner_record_to_compact");
+        names.put(0x00059986L, "select_world_effect_sequence");
         names.put(0x000598B0L, "project_compact_runner_record");
         names.put(0x00001056L, "clear_vdp_words");
         names.put(0x00000FFEL, "clear_and_fill_plane_a");

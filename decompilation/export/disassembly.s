@@ -18786,7 +18786,7 @@
 0001E1DA: lea (0x1e20a).l,A6 ; data 0001e20a
 0001E1E0: clr.w D0w
 0001E1E2: bra.w 0x0001e1fc ; call 0001E1FC FUN_0001e1fc
-0001E1E6: jsr 0x00059986.l ; call 00059986 FUN_00059986
+0001E1E6: jsr 0x00059986.l ; call 00059986 select_world_effect_sequence
 0001E1EC: tst.w D0w
 0001E1EE: beq.w 0x0001e1fc
 0001E1F2: move.l A6,(0x00ffdd2c).l

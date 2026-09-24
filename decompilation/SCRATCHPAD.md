@@ -588,6 +588,12 @@ usable result. The fallback remains a callback because the source's storage
 device and interleaved extraction state are a separate boundary from the
 native save work buffer.
 
+`0x59986` is now a typed world-effect sequence selector. It performs the two
+source-bounded rolls, indexes a nine-column context row, suppresses disabled
+entries, and follows the single enabled-entry indirection. Table entries are
+host handles for extracted effect sequences; no source pointer or ROM address
+is retained in the conversion.
+
 Two fixed-loop leaves are now named and tested as well. `0x33BE` is a 4x4,
 16-call wrapper around the existing source-wrapped transfer boundary, while
 `0x3548` invokes the HUD panel drawing leaf three times. Neither conversion

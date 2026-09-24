@@ -221,6 +221,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x59786	game-save payload checksum	ghidra_conversion::sum_game_save_payload	shadowrun_native_port	partial		Typed unsigned byte sum over the source 0x61C-byte checksum payload
 0x598B0	compact runner record projection	ghidra_conversion::project_compact_runner_record	shadowrun_native_port	partial		Typed 0x4A-byte packed-record to 0x100-byte live-record field projection
 0x597EE	live runner record projection	ghidra_conversion::project_live_runner_record_to_compact	shadowrun_native_port	partial		Typed inverse projection from known live-record ranges into the 0x4A-byte save record
+0x59986	world-effect sequence selection	ghidra_conversion::select_world_effect_sequence	shadowrun_native_port	partial		Typed two-roll row/column selection, enable gate, and one-level sequence indirection
 0x2C92	normal field viewport render	ghidra_conversion::render_normal_field_viewport	shadowrun_native_port	partial		Clears the normal render request and invokes the shared viewport boundary
 0x2CB2	alternate field viewport render	ghidra_conversion::render_alternate_field_viewport	shadowrun_native_port	partial		Clears the alternate request, applies 0x8000 during render, and restores the ordinary mask
 0x38AC	entity ammo service	ghidra_conversion::service_entity_ammo	shadowrun_native_port	partial		Typed no-op, weapon-service boundary, and non-runner ammo decrement branches

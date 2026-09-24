@@ -821,7 +821,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00059798	serialize_runner_record_population	86	unknown	ok	ghidra-c/fn_00059798.cpp
 000597EE	project_live_runner_record_to_compact	194	unknown	ok	ghidra-c/fn_000597EE.cpp
 000598B0	project_compact_runner_record	194	unknown	ok	ghidra-c/fn_000598B0.cpp
-00059986	FUN_00059986	84	unknown	ok	ghidra-c/fn_00059986.cpp
+00059986	select_world_effect_sequence	84	unknown	ok	ghidra-c/fn_00059986.cpp
 00059BCC	FUN_00059bcc	94	unknown	ok	ghidra-c/fn_00059BCC.cpp
 00059C34	FUN_00059c34	20	unknown	ok	ghidra-c/fn_00059C34.cpp
 00059C5E	FUN_00059c5e	180	unknown	ok	ghidra-c/fn_00059C5E.cpp

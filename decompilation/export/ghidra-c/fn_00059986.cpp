@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00059986
-// Name: FUN_00059986
+// Name: select_world_effect_sequence
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
 
 
-undefined1 FUN_00059986(void)
+undefined1 select_world_effect_sequence(void)
 
 {
   short sVar1;

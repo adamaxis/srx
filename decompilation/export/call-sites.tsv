@@ -2055,7 +2055,7 @@ caller	caller_name	instruction	text	target	callee	status
 0001E0DC	spawn_world_effect_entities	0001E144	jsr 0x00005a56.l	00005A56	project_entity_screen_position	resolved
 0001E166	FUN_0001e166	0001E1C2	jsr 0x00000d44.l	00000D44	advance_source_prng	resolved
 0001E166	FUN_0001e166	0001E1E2	bra.w 0x0001e1fc	0001E1FC	FUN_0001e1fc	resolved
-0001E166	FUN_0001e166	0001E1E6	jsr 0x00059986.l	00059986	FUN_00059986	resolved
+0001E166	FUN_0001e166	0001E1E6	jsr 0x00059986.l	00059986	select_world_effect_sequence	resolved
 0001E166	FUN_0001e166	0001E1F8	bra.w 0x0001e2e0	0001E2E0	FUN_0001e2e0	resolved
 0001E1FC	FUN_0001e1fc	0001E200	bsr.w 0x0001e216	0001E216	FUN_0001e216	resolved
 0001E216	FUN_0001e216	0001E21C	bsr.w 0x0001e40c	0001E40C	FUN_0001e40c	resolved
@@ -2745,8 +2745,8 @@ caller	caller_name	instruction	text	target	callee	status
 00059798	serialize_runner_record_population	000597A4	bsr.w 0x000597ee	000597EE	project_live_runner_record_to_compact	resolved
 00059798	serialize_runner_record_population	000597C6	bsr.w 0x000597ee	000597EE	project_live_runner_record_to_compact	resolved
 00059798	serialize_runner_record_population	000597E8	bsr.w 0x000597ee	000597EE	project_live_runner_record_to_compact	resolved
-00059986	FUN_00059986	00059988	jsr 0x00000d3a.l	00000D3A	sample_source_random_bound	resolved
-00059986	FUN_00059986	00059992	jsr 0x00000d3a.l	00000D3A	sample_source_random_bound	resolved
+00059986	select_world_effect_sequence	00059988	jsr 0x00000d3a.l	00000D3A	sample_source_random_bound	resolved
+00059986	select_world_effect_sequence	00059992	jsr 0x00000d3a.l	00000D3A	sample_source_random_bound	resolved
 00059BCC	FUN_00059bcc	00059BE2	jsr 0x00003674.l	00003674	FUN_00003674	resolved
 00059BCC	FUN_00059bcc	00059BE8	jsr 0x000037ec.l	000037EC	FUN_000037ec	resolved
 00059C5E	FUN_00059c5e	00059C66	jsr 0x0000195c.l	0000195C	sample_controller_input	resolved
