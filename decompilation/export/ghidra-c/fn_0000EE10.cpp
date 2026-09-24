@@ -1,14 +1,14 @@
 // Ghidra headless export
 // Entry: 0x0000EE10
-// Name: FUN_0000ee10
+// Name: rebuild_terrain_collision_map
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000EE86 FUN_0000ee86
+//   0x0000EE86 replace_nth_terrain_marker
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0000ee10(void)
+void rebuild_terrain_collision_map(void)
 
 {
   ushort uVar1;
@@ -57,7 +57,7 @@ void FUN_0000ee10(void)
       sVar5 = sVar8;
     } while (uVar7 <= uVar2);
   }
-  FUN_0000ee86();
+  replace_nth_terrain_marker();
   return;
 }
 

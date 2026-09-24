@@ -1651,7 +1651,7 @@
 000029AA: cmpi.w #0x2,(0x00ffdf40).l
 000029B2: bne.w 0x000029bc
 000029B6: jsr 0x00016e5c.l ; call 00016E5C FUN_00016e5c
-000029BC: jsr 0x0000ee10.l ; call 0000EE10 FUN_0000ee10
+000029BC: jsr 0x0000ee10.l ; call 0000EE10 rebuild_terrain_collision_map
 000029C2: cmpi.b #0x2,(0x00ffe186).l
 000029CA: blt.w 0x000029d4
 000029CE: jsr 0x0005ba50.l ; call 0005BA50 FUN_0005ba50
@@ -7027,7 +7027,7 @@
 0000EE3A: lea (0xff1700).l,A0 ; data 00ff1700
 0000EE40: move.w (A1)+,D0w
 0000EE42: bpl.w 0x0000ee4c
-0000EE46: bsr.w 0x0000ee86 ; call 0000EE86 FUN_0000ee86
+0000EE46: bsr.w 0x0000ee86 ; call 0000EE86 replace_nth_terrain_marker
 0000EE4A: rts
 0000EE4C: move.w (A1)+,D4w
 0000EE4E: move.w (A1)+,D1w

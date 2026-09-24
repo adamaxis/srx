@@ -8,7 +8,7 @@
 //   0x00004388 FUN_00004388
 //   0x00004B6C FUN_00004b6c
 //   0x00005B7E mark_entity_slots_for_render
-//   0x0000EE10 FUN_0000ee10
+//   0x0000EE10 rebuild_terrain_collision_map
 //   0x00013874 FUN_00013874
 //   0x000164A8 FUN_000164a8
 //   0x000164DC FUN_000164dc
@@ -58,7 +58,7 @@ void FUN_00002900(void)
       FUN_00016e5c();
     }
   }
-  FUN_0000ee10();
+  rebuild_terrain_collision_map();
   if ('\x01' < DAT_00ffe186) {
     FUN_0005ba50();
   }

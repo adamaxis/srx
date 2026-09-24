@@ -410,3 +410,16 @@ target_link_libraries(shadowrun_ghidra_terrain_probe_test
     PRIVATE shadowrun_ghidra_terrain_probe)
 add_test(NAME shadowrun_ghidra_terrain_probe
          COMMAND shadowrun_ghidra_terrain_probe_test)
+
+add_library(shadowrun_ghidra_terrain_map STATIC
+    src/terrain_map_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_terrain_map PUBLIC include)
+
+add_executable(shadowrun_ghidra_terrain_map_test
+    tests/terrain_map_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_terrain_map_test
+    PRIVATE shadowrun_ghidra_terrain_map)
+add_test(NAME shadowrun_ghidra_terrain_map
+         COMMAND shadowrun_ghidra_terrain_map_test)

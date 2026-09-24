@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000EE86
-// Name: FUN_0000ee86
+// Name: replace_nth_terrain_marker
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0000ee86(void)
+void replace_nth_terrain_marker(void)
 
 {
   short sVar1;
