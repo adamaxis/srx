@@ -8,7 +8,7 @@
 //   0x0001B654 FUN_0001b654
 //   0x0001B680 FUN_0001b680
 //   0x0001B7D0 FUN_0001b7d0
-//   0x000530EA FUN_000530ea
+//   0x000530EA service_audio_command_frame
 //   0x000562EC FUN_000562ec
 //   0x0005668C FUN_0005668c
 
@@ -49,7 +49,7 @@ LAB_0001a6e6:
       }
       return;
     }
-    FUN_000530ea();
+    service_audio_command_frame();
     DAT_00ffe07c = 8;
     DAT_00ffe076 = 3;
     _DAT_00ffe0fc = extraout_D1w;

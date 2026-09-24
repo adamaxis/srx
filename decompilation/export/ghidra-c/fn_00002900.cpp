@@ -17,7 +17,7 @@
 //   0x0001A310 clear_effect_slots
 //   0x0001A322 clear_entity_effect_pending_records
 //   0x0001E04A begin_world_effect_transition
-//   0x000530EA FUN_000530ea
+//   0x000530EA service_audio_command_frame
 //   0x0005BA50 load_scene_resources
 //   0x0005D260 FUN_0005d260
 
@@ -29,7 +29,7 @@ void FUN_00002900(void)
 {
   if (DAT_00ffe172 != '\0') {
     DAT_00ffe172 = '\0';
-    FUN_000530ea();
+    service_audio_command_frame();
   }
   if (_DAT_00ffdf8a != 0) {
     if (DAT_00ffdca0 != 0) {

@@ -1102,3 +1102,16 @@ target_link_libraries(shadowrun_ghidra_title_intro_stage2_test
     PRIVATE shadowrun_ghidra_title_intro_stage2)
 add_test(NAME shadowrun_ghidra_title_intro_stage2
          COMMAND shadowrun_ghidra_title_intro_stage2_test)
+
+add_library(shadowrun_ghidra_title_intro_stages STATIC
+    src/title_intro_stages_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_title_intro_stages PUBLIC include)
+
+add_executable(shadowrun_ghidra_title_intro_stages_test
+    tests/title_intro_stages_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_title_intro_stages_test
+    PRIVATE shadowrun_ghidra_title_intro_stages)
+add_test(NAME shadowrun_ghidra_title_intro_stages
+         COMMAND shadowrun_ghidra_title_intro_stages_test)

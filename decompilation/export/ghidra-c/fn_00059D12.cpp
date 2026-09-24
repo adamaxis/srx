@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00059D12
-// Name: FUN_00059d12
+// Name: enter_post_intro_mode
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000FFE clear_and_fill_plane_a
@@ -10,7 +10,7 @@
 //   0x000134D2 FUN_000134d2
 
 
-void FUN_00059d12(void)
+void enter_post_intro_mode(void)
 
 {
   prepare_title_resources();

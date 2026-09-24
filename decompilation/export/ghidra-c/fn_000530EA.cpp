@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000530EA
-// Name: FUN_000530ea
+// Name: service_audio_command_frame
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00052F3C service_audio_command_queue
@@ -9,7 +9,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-undefined8 FUN_000530ea(void)
+undefined8 service_audio_command_frame(void)
 
 {
   undefined4 in_D0;

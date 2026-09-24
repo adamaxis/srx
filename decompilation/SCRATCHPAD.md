@@ -583,6 +583,17 @@ palette, schedule, sprite, and ambush services are callbacks, so this
 conversion records timing and ordering without importing ROM addresses or
 Genesis memory behavior into the host runtime.
 
+The parent `0x59C5E` dispatcher is now `run_title_intro_stages`. It records
+the source controller marker, clears and tests the shared stop marker around
+the schedule, stage-two, and secondary orchestrator calls, and preserves the
+preparation/audio boundary before each child. The late stage loop is followed
+by the unconditional source marker clear, palette transition, completion mode
+`2`, and `0x59D12` post-intro handoff; the common sample/palette/preparation
+epilogue is retained even when an earlier child stops. `0x530EA` is now named
+as the audio command-frame boundary and `0x59D12` as the post-intro callback;
+the larger mode implementation at `0x134D2` remains intentionally outside
+this slice.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames

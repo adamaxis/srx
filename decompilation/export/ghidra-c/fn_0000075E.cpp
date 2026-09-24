@@ -42,7 +42,7 @@
 //   0x00059092 FUN_00059092
 //   0x00059318 initialize_save_roster_buffer
 //   0x000594E0 FUN_000594e0
-//   0x00059C5E FUN_00059c5e
+//   0x00059C5E run_title_intro_stages
 //   0x0005D746 run_pre_title_sequence
 
 
@@ -91,7 +91,7 @@ void run_game_loop(void)
     FUN_00059092();
     step_palette_transition();
     if (_DAT_00ffe108 == 0) {
-      FUN_00059c5e();
+      run_title_intro_stages();
     }
 LAB_000007f0:
     prepare_mode_entry_service();

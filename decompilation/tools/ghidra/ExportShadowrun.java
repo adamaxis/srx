@@ -158,6 +158,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00052EA2L, "append_audio_command");
         names.put(0x00052F3CL, "service_audio_command_queue");
         names.put(0x000530DEL, "service_audio_if_enabled");
+        names.put(0x000530EAL, "service_audio_command_frame");
         names.put(0x00003032L, "scene_uses_alternate_profile");
         names.put(0x00002A32L, "initialize_field_mode_profile_a");
         names.put(0x00002A44L, "initialize_field_mode_profile_b");
@@ -223,6 +224,8 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0005AA1EL, "render_title_intro_center_text_batch");
         names.put(0x0005AA5AL, "render_title_intro_stage_text_batch");
         names.put(0x0005AA96L, "run_title_intro_orchestrator");
+        names.put(0x00059C5EL, "run_title_intro_stages");
+        names.put(0x00059D12L, "enter_post_intro_mode");
         names.put(0x00059D7CL, "run_title_intro_stage2");
         names.put(0x0005A37CL, "render_title_intro_scene_entities");
         names.put(0x0005AB96L, "advance_title_intro_stage_service_steps");

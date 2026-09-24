@@ -704,7 +704,7 @@ entry	name	size	callingConvention	decompileStatus	file
 000530A0	FUN_000530a0	38	unknown	ok	ghidra-c/fn_000530A0.cpp
 000530D2	FUN_000530d2	12	unknown	ok	ghidra-c/fn_000530D2.cpp
 000530DE	service_audio_if_enabled	12	unknown	ok	ghidra-c/fn_000530DE.cpp
-000530EA	FUN_000530ea	40	unknown	ok	ghidra-c/fn_000530EA.cpp
+000530EA	service_audio_command_frame	40	unknown	ok	ghidra-c/fn_000530EA.cpp
 00053112	FUN_00053112	20	unknown	ok	ghidra-c/fn_00053112.cpp
 00053126	prepare_mode_entry_service	48	unknown	ok	ghidra-c/fn_00053126.cpp
 00053156	FUN_00053156	8	unknown	ok	ghidra-c/fn_00053156.cpp
@@ -824,8 +824,8 @@ entry	name	size	callingConvention	decompileStatus	file
 00059986	select_world_effect_sequence	84	unknown	ok	ghidra-c/fn_00059986.cpp
 00059BCC	reset_runner_status_triplet	94	unknown	ok	ghidra-c/fn_00059BCC.cpp
 00059C34	adjust_runner_source_byte_triplet	20	unknown	ok	ghidra-c/fn_00059C34.cpp
-00059C5E	FUN_00059c5e	180	unknown	ok	ghidra-c/fn_00059C5E.cpp
-00059D12	FUN_00059d12	44	unknown	ok	ghidra-c/fn_00059D12.cpp
+00059C5E	run_title_intro_stages	180	unknown	ok	ghidra-c/fn_00059C5E.cpp
+00059D12	enter_post_intro_mode	44	unknown	ok	ghidra-c/fn_00059D12.cpp
 00059D7C	run_title_intro_stage2	510	unknown	ok	ghidra-c/fn_00059D7C.cpp
 00059F7A	reset_title_intro_overlay_schedule	20	unknown	ok	ghidra-c/fn_00059F7A.cpp
 00059F8E	advance_title_intro_overlay	242	unknown	ok	ghidra-c/fn_00059F8E.cpp

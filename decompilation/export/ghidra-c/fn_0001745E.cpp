@@ -27,7 +27,7 @@
 //   0x0001C4EE FUN_0001c4ee
 //   0x000530D2 FUN_000530d2
 //   0x000530DE service_audio_if_enabled
-//   0x000530EA FUN_000530ea
+//   0x000530EA service_audio_command_frame
 //   0x00053126 prepare_mode_entry_service
 //   0x000531EA FUN_000531ea
 //   0x00053290 FUN_00053290
@@ -105,7 +105,7 @@ void FUN_0001745e(void)
     service_audio_if_enabled();
     FUN_000177fc();
     FUN_000530d2();
-    FUN_000530ea();
+    service_audio_command_frame();
     render_hud_sprite_stream();
     FUN_0001ade6();
   } while (DAT_00fff0b1 == '\0');
