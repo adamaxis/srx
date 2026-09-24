@@ -156,4 +156,18 @@ void process_pending_entity_template_lists(
     state.selected_list.reset();
 }
 
+void finalize_pending_entity_template_update(
+    EntityTemplateUpdateState& state,
+    const std::function<void()>& process_pending_lists) {
+    if (process_pending_lists) {
+        process_pending_lists();
+    }
+    if (state.scene_mode == 2U) {
+        state.alternate_state_marker = 6U;
+    }
+    if (state.scene_mode == 1U) {
+        state.primary_state_marker = 6U;
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion

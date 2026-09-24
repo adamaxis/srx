@@ -154,7 +154,7 @@ caller	caller_name	callee	callee_name	call_sites
 000028C2	FUN_000028c2	0000301E	FUN_0000301e	1
 00002900	FUN_00002900	00001610	decode_source_byte_stream	1
 00002900	FUN_00002900	0000313A	FUN_0000313a	1
-00002900	FUN_00002900	00004388	FUN_00004388	1
+00002900	FUN_00002900	00004388	finalize_pending_entity_template_update	1
 00002900	FUN_00002900	00004B6C	FUN_00004b6c	1
 00002900	FUN_00002900	00005B7E	mark_entity_slots_for_render	1
 00002900	FUN_00002900	0000EE10	rebuild_terrain_collision_map	1
@@ -246,7 +246,7 @@ caller	caller_name	callee	callee_name	call_sites
 000040E2	FUN_000040e2	00004000	FUN_00004000	2
 000040E2	FUN_000040e2	000041F0	FUN_000041f0	2
 0000431C	FUN_0000431c	0005966E	FUN_0005966e	1
-00004388	FUN_00004388	000043B6	process_pending_entity_template_lists	1
+00004388	finalize_pending_entity_template_update	000043B6	process_pending_entity_template_lists	1
 000043B6	process_pending_entity_template_lists	00004466	spawn_entity_template_list	4
 000043B6	process_pending_entity_template_lists	0000A800	FUN_0000a800	1
 000043B6	process_pending_entity_template_lists	0001DBAA	schedule_world_activity_timeout	2

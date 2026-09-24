@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00001610 decode_source_byte_stream
 //   0x0000313A FUN_0000313a
-//   0x00004388 FUN_00004388
+//   0x00004388 finalize_pending_entity_template_update
 //   0x00004B6C FUN_00004b6c
 //   0x00005B7E mark_entity_slots_for_render
 //   0x0000EE10 rebuild_terrain_collision_map
@@ -43,7 +43,7 @@ void FUN_00002900(void)
     FUN_0001a310();
     FUN_0001a322();
     FUN_00016dee();
-    FUN_00004388();
+    finalize_pending_entity_template_update();
     if (DAT_00ffe186 != '\x03') {
       FUN_0005d260();
     }

@@ -167,5 +167,21 @@ int main() {
         return 5;
     }
 
+    EntityTemplateUpdateState update_state{2U, 0U, 0U};
+    bool coordinator_called = false;
+    finalize_pending_entity_template_update(
+        update_state, [&coordinator_called]() { coordinator_called = true; });
+    if (!expect(coordinator_called && update_state.alternate_state_marker == 6U &&
+                update_state.primary_state_marker == 0U)) {
+        return 6;
+    }
+
+    update_state = EntityTemplateUpdateState{1U, 0U, 0U};
+    finalize_pending_entity_template_update(update_state, {});
+    if (!expect(update_state.primary_state_marker == 6U &&
+                update_state.alternate_state_marker == 0U)) {
+        return 7;
+    }
+
     return 0;
 }

@@ -165,4 +165,16 @@ void process_pending_entity_template_lists(
     const EntityTemplateListBoundary& spawn_list,
     const EntityTemplateTimeoutBoundary& schedule_timeout);
 
+struct EntityTemplateUpdateState {
+    std::uint8_t scene_mode = 0;
+    std::uint8_t primary_state_marker = 0;
+    std::uint8_t alternate_state_marker = 0;
+};
+
+// ROM 0x4388: run the pending-list coordinator, then install the source
+// post-update marker for scene modes 2 and 1.
+void finalize_pending_entity_template_update(
+    EntityTemplateUpdateState& state,
+    const std::function<void()>& process_pending_lists);
+
 } // namespace shadowrun::ghidra_conversion
