@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0005B00A
-// Name: FUN_0005b00a
+// Name: advance_title_intro_scroll
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0005B32C FUN_0005b32c
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0005b00a(void)
+void advance_title_intro_scroll(void)
 
 {
   if (-0x201 < DAT_00ffdd08) {

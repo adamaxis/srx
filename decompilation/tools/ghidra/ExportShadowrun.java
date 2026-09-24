@@ -219,6 +219,8 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0005A8C8L, "reset_title_intro_final_projection");
         names.put(0x0005A8DEL, "advance_title_intro_final_projection");
         names.put(0x0005A96AL, "render_title_intro_text_batch");
+        names.put(0x0005A9E2L, "render_title_intro_middle_text_batch");
+        names.put(0x0005AA1EL, "render_title_intro_center_text_batch");
         names.put(0x0005AA5AL, "render_title_intro_stage_text_batch");
         names.put(0x0005AB96L, "advance_title_intro_stage_service_steps");
         names.put(0x0005AC0EL, "draw_title_intro_stage_base_sprite");
@@ -226,6 +228,18 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0005AC36L, "advance_title_intro_stage_projection");
         names.put(0x0005AC70L, "reset_title_intro_stage_timed_sprites");
         names.put(0x0005AC7EL, "advance_title_intro_stage_timed_sprites");
+        names.put(0x0005ADFEL, "render_title_intro_late_text_batch");
+        names.put(0x0005AE3AL, "render_title_intro_scroll_text_batch");
+        names.put(0x0005B002L, "reset_title_intro_scroll_fill");
+        names.put(0x0005B00AL, "advance_title_intro_scroll");
+        names.put(0x0005B056L, "advance_title_intro_scroll_fade");
+        names.put(0x0005B08EL, "advance_title_intro_triplet");
+        names.put(0x0005B0BCL, "service_title_intro_animation");
+        names.put(0x0005B100L, "advance_title_intro_pulse");
+        names.put(0x0005B198L, "reset_title_intro_landing");
+        names.put(0x0005B1B6L, "advance_title_intro_landing");
+        names.put(0x0005B2C2L, "set_title_intro_entity_color_words");
+        names.put(0x0005B2E2L, "step_title_intro_entity_color_words");
         names.put(0x00000EC0L, "upload_startup_palette");
         names.put(0x00000F1CL, "write_transfer_header");
         names.put(0x00000F3CL, "write_fixed_transfer_pair");

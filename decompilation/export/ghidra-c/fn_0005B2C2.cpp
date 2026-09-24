@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005B2C2
-// Name: FUN_0005b2c2
+// Name: set_title_intro_entity_color_words
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0005b2c2(void)
+void set_title_intro_entity_color_words(void)
 
 {
   short in_D0w;

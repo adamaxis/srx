@@ -541,6 +541,16 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The late-intro helper pass is now typed in `title_intro_late_conversion`.
+`0x5A9E2`, `0x5AA1E`, `0x5ADFE`, and `0x5AE3A` are explicit text batches with
+their source destinations and palette masks. The shared transition helpers
+preserve the `-0x190` fill window, `-0x1B0` text trigger, eight-frame triplet
+rotation, six-frame pulse descriptors, and seven-record landing projection.
+The 15-word entity color fill/step operations are also represented as typed
+records. The renderer, palette upload, and scene-record operations remain
+callback boundaries; no ROM address or VDP register is required by the host
+model.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames

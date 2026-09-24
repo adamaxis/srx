@@ -8,13 +8,13 @@
 //   0x00001406 prepare_title_resources
 //   0x0000195C sample_controller_input
 //   0x0005A96A render_title_intro_text_batch
-//   0x0005A9E2 FUN_0005a9e2
-//   0x0005B002 FUN_0005b002
-//   0x0005B00A FUN_0005b00a
-//   0x0005B056 FUN_0005b056
-//   0x0005B08E FUN_0005b08e
-//   0x0005B0BC FUN_0005b0bc
-//   0x0005B198 FUN_0005b198
+//   0x0005A9E2 render_title_intro_middle_text_batch
+//   0x0005B002 reset_title_intro_scroll_fill
+//   0x0005B00A advance_title_intro_scroll
+//   0x0005B056 advance_title_intro_scroll_fade
+//   0x0005B08E advance_title_intro_triplet
+//   0x0005B0BC service_title_intro_animation
+//   0x0005B198 reset_title_intro_landing
 //   0x0005B29A FUN_0005b29a
 
 
@@ -30,10 +30,10 @@ void FUN_0005ad1a(void)
   FUN_0005b29a();
   prepare_title_resources();
   DAT_00fff11e = DAT_00ffdf88;
-  FUN_0005b002();
-  FUN_0005b198();
-  FUN_0005b0bc();
-  FUN_0005a9e2();
+  reset_title_intro_scroll_fill();
+  reset_title_intro_landing();
+  service_title_intro_animation();
+  render_title_intro_middle_text_batch();
   sVar1 = 0x1f;
   puVar2 = &DAT_00ffd8fe;
   puVar3 = &DAT_00ffd87e;
@@ -53,10 +53,10 @@ void FUN_0005ad1a(void)
     if (sVar1 == 0x1e0) {
       render_title_intro_text_batch();
     }
-    FUN_0005b08e();
-    FUN_0005b00a();
-    FUN_0005b056();
-    FUN_0005b0bc();
+    advance_title_intro_triplet();
+    advance_title_intro_scroll();
+    advance_title_intro_scroll_fade();
+    service_title_intro_animation();
   } while ((_DAT_00ffddc2 == 0) && (sVar1 = sVar1 + -1, sVar1 != -1));
   return;
 }

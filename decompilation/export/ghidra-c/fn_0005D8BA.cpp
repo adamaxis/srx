@@ -3,7 +3,7 @@
 // Name: step_pre_title_logo_strobe
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0005B2E2 FUN_0005b2e2
+//   0x0005B2E2 step_title_intro_entity_color_words
 
 
 void step_pre_title_logo_strobe(void)
@@ -30,7 +30,7 @@ void step_pre_title_logo_strobe(void)
     DAT_00ffef14 = DAT_00ffef14 | 1;
   }
   else if (DAT_00ffdf90 == 2) {
-    FUN_0005b2e2();
+    step_title_intro_entity_color_words();
     return;
   }
   return;

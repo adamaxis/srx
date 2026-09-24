@@ -27609,8 +27609,8 @@
 00059F58: move.w (SP)+,D7w
 00059F5A: cmpi.w #0x164,D7w
 00059F5E: bne.w 0x00059f6a
-00059F62: bsr.w 0x0005ae3a ; call 0005AE3A FUN_0005ae3a
-00059F66: bsr.w 0x0005adfe ; call 0005ADFE FUN_0005adfe
+00059F62: bsr.w 0x0005ae3a ; call 0005AE3A render_title_intro_scroll_text_batch
+00059F66: bsr.w 0x0005adfe ; call 0005ADFE render_title_intro_late_text_batch
 00059F6A: tst.w (0x00ffddc2).l
 00059F70: bne.w 0x00059f78
 00059F74: dbf D7w,0x00059f2e
@@ -27717,7 +27717,7 @@
 0005A142: bne.w 0x0005a16e
 0005A146: move.w #0x0,D0w
 0005A14A: move.w #0xeee,D1w
-0005A14E: jsr 0x0005b2c2.l ; call 0005B2C2 FUN_0005b2c2
+0005A14E: jsr 0x0005b2c2.l ; call 0005B2C2 set_title_intro_entity_color_words
 0005A154: addq.w #0x1,(0x00fff126).l
 0005A15A: move.w (0x00ffdf88).l,D0w
 0005A160: addi.w #0x9,D0w
@@ -27727,7 +27727,7 @@
 0005A174: cmp.w (0x00fff128).l,D0w
 0005A17A: bcs.w 0x0005a1d0
 0005A17E: move.w #0x0,D0w
-0005A182: bsr.w 0x0005b2e2 ; call 0005B2E2 FUN_0005b2e2
+0005A182: bsr.w 0x0005b2e2 ; call 0005B2E2 step_title_intro_entity_color_words
 0005A186: move.w (0x00ffdf88).l,D0w
 0005A18C: addi.w #0x9,D0w
 0005A190: move.w D0w,(0x00fff128).l
@@ -27793,7 +27793,7 @@
 0005A2D0: move.w #0x4,(0x00fff146).l
 0005A2D8: move.w #0x1,D0w
 0005A2DC: move.w #0xeee,D1w
-0005A2E0: jsr 0x0005b2c2.l ; call 0005B2C2 FUN_0005b2c2
+0005A2E0: jsr 0x0005b2c2.l ; call 0005B2C2 set_title_intro_entity_color_words
 0005A2E6: addq.w #0x1,(0x00fff12e).l
 0005A2EC: move.w (0x00ffdf88).l,D0w
 0005A2F2: addi.w #0x9,D0w
@@ -27803,7 +27803,7 @@
 0005A306: cmp.w (0x00fff130).l,D0w
 0005A30C: bcs.w 0x0005a362
 0005A310: move.w #0x1,D0w
-0005A314: bsr.w 0x0005b2e2 ; call 0005B2E2 FUN_0005b2e2
+0005A314: bsr.w 0x0005b2e2 ; call 0005B2E2 step_title_intro_entity_color_words
 0005A318: move.w (0x00ffdf88).l,D0w
 0005A31E: addi.w #0x9,D0w
 0005A322: move.w D0w,(0x00fff130).l
@@ -28189,13 +28189,13 @@
 0005ABAA: andi.w #0xb,D0w
 0005ABAE: bne.w 0x0005abd0
 0005ABB2: clr.w D0w
-0005ABB4: bsr.w 0x0005b2e2 ; call 0005B2E2 FUN_0005b2e2
+0005ABB4: bsr.w 0x0005b2e2 ; call 0005B2E2 step_title_intro_entity_color_words
 0005ABB8: move.w #0x1,D0w
-0005ABBC: bsr.w 0x0005b2e2 ; call 0005B2E2 FUN_0005b2e2
+0005ABBC: bsr.w 0x0005b2e2 ; call 0005B2E2 step_title_intro_entity_color_words
 0005ABC0: move.w #0x2,D0w
-0005ABC4: bsr.w 0x0005b2e2 ; call 0005B2E2 FUN_0005b2e2
+0005ABC4: bsr.w 0x0005b2e2 ; call 0005B2E2 step_title_intro_entity_color_words
 0005ABC8: move.w #0x3,D0w
-0005ABCC: bsr.w 0x0005b2e2 ; call 0005B2E2 FUN_0005b2e2
+0005ABCC: bsr.w 0x0005b2e2 ; call 0005B2E2 step_title_intro_entity_color_words
 0005ABD0: rts
 0005ABD2: move.w #0x1,(0x00ffdd02).l
 0005ABDA: lea (0xffd986).l,A3 ; data 00ffd986
@@ -28262,10 +28262,10 @@
 0005AD20: lea (0x5b528).l,A6 ; data 0005b528
 0005AD26: jsr 0x00001406.l ; call 00001406 prepare_title_resources
 0005AD2C: move.w (0x00ffdf88).l,(0x00fff11e).l
-0005AD36: jsr 0x0005b002.l ; call 0005B002 FUN_0005b002
-0005AD3C: jsr 0x0005b198.l ; call 0005B198 FUN_0005b198
-0005AD42: bsr.w 0x0005b0bc ; call 0005B0BC FUN_0005b0bc
-0005AD46: bsr.w 0x0005a9e2 ; call 0005A9E2 FUN_0005a9e2
+0005AD36: jsr 0x0005b002.l ; call 0005B002 reset_title_intro_scroll_fill
+0005AD3C: jsr 0x0005b198.l ; call 0005B198 reset_title_intro_landing
+0005AD42: bsr.w 0x0005b0bc ; call 0005B0BC service_title_intro_animation
+0005AD46: bsr.w 0x0005a9e2 ; call 0005A9E2 render_title_intro_middle_text_batch
 0005AD4A: move.w (0x00ffdf88).l,-(SP)
 0005AD50: lea (0xffd87e).l,A1 ; data 00ffd87e
 0005AD56: lea (0xffd8fe).l,A0 ; data 00ffd8fe
@@ -28287,10 +28287,10 @@
 0005AD9C: jsr 0x0005a96a.l ; call 0005A96A render_title_intro_text_batch
 0005ADA2: move.w (SP)+,D7w
 0005ADA4: move.w D7w,-(SP) ; data 00000528
-0005ADA6: jsr 0x0005b08e.l ; call 0005B08E FUN_0005b08e
-0005ADAC: jsr 0x0005b00a.l ; call 0005B00A FUN_0005b00a
-0005ADB2: jsr 0x0005b056.l ; call 0005B056 FUN_0005b056
-0005ADB8: jsr 0x0005b0bc.l ; call 0005B0BC FUN_0005b0bc
+0005ADA6: jsr 0x0005b08e.l ; call 0005B08E advance_title_intro_triplet
+0005ADAC: jsr 0x0005b00a.l ; call 0005B00A advance_title_intro_scroll
+0005ADB2: jsr 0x0005b056.l ; call 0005B056 advance_title_intro_scroll_fade
+0005ADB8: jsr 0x0005b0bc.l ; call 0005B0BC service_title_intro_animation
 0005ADBE: move.w (SP)+,D7w
 0005ADC0: tst.w (0x00ffddc2).l
 0005ADC6: bne.w 0x0005adce
@@ -28393,7 +28393,7 @@
 0005B05C: cmpi.w #-0x1b0,D0w
 0005B060: bgt.w 0x0005b08c
 0005B064: bne.w 0x0005b06e
-0005B068: jsr 0x0005aa1e.l ; call 0005AA1E FUN_0005aa1e
+0005B068: jsr 0x0005aa1e.l ; call 0005AA1E render_title_intro_center_text_batch
 0005B06E: move.w (0x00ffdd0e).l,D0w
 0005B074: cmpi.w #0x78,D0w
 0005B078: bge.w 0x0005b08c
@@ -28414,8 +28414,8 @@
 0005B0BC: move.w #0x1,(0x00ffdd02).l
 0005B0C4: lea (0xffd986).l,A3 ; data 00ffd986
 0005B0CA: move.w #0x2,D5w
-0005B0CE: jsr 0x0005b100.l ; call 0005B100 FUN_0005b100
-0005B0D4: jsr 0x0005b1b6.l ; call 0005B1B6 FUN_0005b1b6
+0005B0CE: jsr 0x0005b100.l ; call 0005B100 advance_title_intro_pulse
+0005B0D4: jsr 0x0005b1b6.l ; call 0005B1B6 advance_title_intro_landing
 0005B0DA: subq.w #0x8,A3
 0005B0DC: move.w #0x1,(0x00ffd980).l
 0005B0E4: clr.b (0x3,A3)
@@ -29031,7 +29031,7 @@
 0005D8CA: cmpi.w #0x2,(0x00ffdf90).l
 0005D8D2: bne.w 0x0005d936
 0005D8D6: move.w #0x3,D0w
-0005D8DA: jmp 0x0005b2e2.l ; call 0005B2E2 FUN_0005b2e2
+0005D8DA: jmp 0x0005b2e2.l ; call 0005B2E2 step_title_intro_entity_color_words
 0005D8E0: move.w #0x4,(0x00ffdf90).l
 0005D8E8: addq.w #0x1,(0x00ffdf92).l
 0005D8EE: cmpi.w #0x8,(0x00ffdf92).l

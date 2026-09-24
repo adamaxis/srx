@@ -1,20 +1,20 @@
 // Ghidra headless export
 // Entry: 0x0005B0BC
-// Name: FUN_0005b0bc
+// Name: service_title_intro_animation
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0005B100 FUN_0005b100
-//   0x0005B1B6 FUN_0005b1b6
+//   0x0005B100 advance_title_intro_pulse
+//   0x0005B1B6 advance_title_intro_landing
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0005b0bc(void)
+void service_title_intro_animation(void)
 
 {
   DAT_00ffdd02 = 1;
-  FUN_0005b100();
-  FUN_0005b1b6();
+  advance_title_intro_pulse();
+  advance_title_intro_landing();
   _DAT_00ffd980 = 0;
   DAT_00ffef14 = DAT_00ffef14 | 2;
   return;

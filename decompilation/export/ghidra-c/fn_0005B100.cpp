@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005B100
-// Name: FUN_0005b100
+// Name: advance_title_intro_pulse
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 FUN_00001378
 
 
-void FUN_0005b100(void)
+void advance_title_intro_pulse(void)
 
 {
   if (-0x1b9 < DAT_00ffdd08) {

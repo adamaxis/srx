@@ -23,8 +23,8 @@
 //   0x0005A70E reset_title_intro_linear_sweep_a
 //   0x0005A7EA reset_title_intro_linear_sweep_b
 //   0x0005A8C8 reset_title_intro_final_projection
-//   0x0005ADFE FUN_0005adfe
-//   0x0005AE3A FUN_0005ae3a
+//   0x0005ADFE render_title_intro_late_text_batch
+//   0x0005AE3A render_title_intro_scroll_text_batch
 //   0x0005AF2A FUN_0005af2a
 
 
@@ -99,8 +99,8 @@ void FUN_00059d7c(void)
     FUN_0005af2a();
     FUN_0005a1ea();
     if (sVar1 == 0x164) {
-      FUN_0005ae3a();
-      FUN_0005adfe();
+      render_title_intro_scroll_text_batch();
+      render_title_intro_late_text_batch();
     }
   } while ((_DAT_00ffddc2 == 0) && (sVar1 = sVar1 + -1, sVar1 != -1));
   return;

@@ -6,8 +6,8 @@
 //   0x00001728 render_hud_sprite_stream
 //   0x000530DE service_audio_if_enabled
 //   0x0005A582 begin_title_intro_timed_sprites
-//   0x0005B2C2 FUN_0005b2c2
-//   0x0005B2E2 FUN_0005b2e2
+//   0x0005B2C2 set_title_intro_entity_color_words
+//   0x0005B2E2 step_title_intro_entity_color_words
 //   0x0005B32C FUN_0005b32c
 
 
@@ -26,12 +26,12 @@ void advance_title_intro_sequence(void)
         service_audio_if_enabled();
       }
       if (DAT_00fff126 == 4) {
-        FUN_0005b2c2();
+        set_title_intro_entity_color_words();
         DAT_00fff126 = DAT_00fff126 + 1;
         DAT_00fff128 = DAT_00ffdf88 + 9;
       }
       else if (DAT_00fff128 <= DAT_00ffdf88) {
-        FUN_0005b2e2();
+        step_title_intro_entity_color_words();
         DAT_00fff128 = DAT_00ffdf88 + 9;
         DAT_00fff126 = DAT_00fff126 + 1;
         if (DAT_00fff126 == 9) {

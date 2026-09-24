@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005B198
-// Name: FUN_0005b198
+// Name: reset_title_intro_landing
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0005b198(void)
+void reset_title_intro_landing(void)
 
 {
   DAT_00fff194 = 0;

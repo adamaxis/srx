@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005B08E
-// Name: FUN_0005b08e
+// Name: advance_title_intro_triplet
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-ushort FUN_0005b08e(void)
+ushort advance_title_intro_triplet(void)
 
 {
   ushort uVar1;
