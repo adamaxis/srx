@@ -1206,3 +1206,16 @@ target_link_libraries(shadowrun_ghidra_mode_prompt_prepare_test
     PRIVATE shadowrun_ghidra_mode_prompt_prepare)
 add_test(NAME shadowrun_ghidra_mode_prompt_prepare
          COMMAND shadowrun_ghidra_mode_prompt_prepare_test)
+
+add_library(shadowrun_ghidra_mode_optional_resource STATIC
+    src/mode_optional_resource_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_mode_optional_resource PUBLIC include)
+
+add_executable(shadowrun_ghidra_mode_optional_resource_test
+    tests/mode_optional_resource_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_mode_optional_resource_test
+    PRIVATE shadowrun_ghidra_mode_optional_resource)
+add_test(NAME shadowrun_ghidra_mode_optional_resource
+         COMMAND shadowrun_ghidra_mode_optional_resource_test)

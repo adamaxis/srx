@@ -644,6 +644,9 @@ Batch 1 adds `0x1F5A8` as `prepare_mode_text_prompt`, preserving its exact
 two-call preparation wrapper without carrying the underlying source pointer
 or VDP behavior into the host model.
 
+Batch 2 converts `0x1F32E` as `clear_optional_mode_resource`, an explicit
+typed clear of the optional mode-resource marker.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames
