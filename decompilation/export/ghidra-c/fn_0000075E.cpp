@@ -20,7 +20,7 @@
 //   0x00003168 FUN_00003168
 //   0x0000391A FUN_0000391a
 //   0x00003A1C FUN_00003a1c
-//   0x000042B0 FUN_000042b0
+//   0x000042B0 initialize_joshua_archetype_selection
 //   0x00004618 FUN_00004618
 //   0x0000A7B4 FUN_0000a7b4
 //   0x0000A8EA FUN_0000a8ea
@@ -121,7 +121,7 @@ LAB_000007f0:
     FUN_00026938();
     FUN_0000281e();
     if (_DAT_00ffe108 != 0) {
-      FUN_000042b0();
+      initialize_joshua_archetype_selection();
       FUN_000594e0();
       FUN_000028c2();
       _DAT_00ffe108 = 0;
@@ -225,7 +225,7 @@ LAB_00000a72:
           FUN_00053156();
           FUN_0001dc22();
           if (_DAT_00ffe108 == 0) goto LAB_00000b9c;
-          FUN_000042b0();
+          initialize_joshua_archetype_selection();
           goto LAB_000007f0;
         }
       } while (DAT_00ffe104 == (code *)0x0);

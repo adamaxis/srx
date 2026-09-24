@@ -207,7 +207,9 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x59092	start options	NativePortShell::update_start_options	test_startup_behavior_and_rendering; leftover_clear	partial		
 0x59172	save/load empty	NativePortShell::update_save_load	leftover_clear	partial		SRAM restore pending
 0x59248	archetype select	NativePortShell	test_startup_behavior_and_rendering	partial		
-0x42B0	Joshua template copy	NativePortShell	test_startup_behavior_and_rendering	partial		
+0x42B0	Joshua archetype template selection	ghidra_conversion::initialize_joshua_archetype_selection	shadowrun_native_port	partial		Typed extracted-template selection, live Joshua record copy, and source record-selection markers
+0x2C92	normal field viewport render	ghidra_conversion::render_normal_field_viewport	shadowrun_native_port	partial		Clears the normal render request and invokes the shared viewport boundary
+0x2CB2	alternate field viewport render	ghidra_conversion::render_alternate_field_viewport	shadowrun_native_port	partial		Clears the alternate request, applies 0x8000 during render, and restores the ordinary mask
 0x59C5E	intro stages	NativePortShell	test_startup_behavior_and_rendering; shadowrun_graphics	partial	intro-0/160/656/932/1772.bmp	music pending; SAT choreography still setup-time
 0x5A1EA	intro ambush SAT/map death choreography	decode_genesis_intro_ambush_frames_impl	shadowrun_native_port	defended	visual-regression/intro-hill/intro-1240.bmp; intro-1552.bmp; intro-2512.bmp	Indian body/head pan, runner elimination, and slain Michael handoff
 0x5AF62	intro stage 1 0x1406	decode_genesis_intro_stages	shadowrun_graphics	partial		descriptor 0x5B574

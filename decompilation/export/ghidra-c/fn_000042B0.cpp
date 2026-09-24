@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000042B0
-// Name: FUN_000042b0
+// Name: initialize_joshua_archetype_selection
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_000042b0(void)
+void initialize_joshua_archetype_selection(void)
 
 {
   uint in_D0;

@@ -258,7 +258,7 @@
 0000089C: tst.w (0x00ffe108).l
 000008A2: beq.w 0x000008c0
 000008A6: clr.w D0w
-000008A8: jsr 0x000042b0.l ; call 000042B0 FUN_000042b0
+000008A8: jsr 0x000042b0.l ; call 000042B0 initialize_joshua_archetype_selection
 000008AE: jsr 0x000594e0.l ; call 000594E0 FUN_000594e0
 000008B4: jsr 0x000028c2.l ; call 000028C2 FUN_000028c2
 000008BA: clr.w (0x00ffe108).l
@@ -386,7 +386,7 @@
 00000B86: tst.w (0x00ffe108).l
 00000B8C: beq.w 0x00000b9c
 00000B90: clr.w D0w
-00000B92: jsr 0x000042b0.l ; call 000042B0 FUN_000042b0
+00000B92: jsr 0x000042b0.l ; call 000042B0 initialize_joshua_archetype_selection
 00000B98: bra.w 0x000007f0
 00000B9C: jsr 0x00002bd2.l ; call 00002BD2 FUN_00002bd2
 00000BA2: bra.w 0x000008c0
@@ -1280,10 +1280,10 @@
 000018CA: bsr.w 0x00000f3c ; call 00000F3C write_fixed_transfer_pair
 000018CE: tst.w (0x00ffe100).l
 000018D4: beq.w 0x000018de
-000018D8: jsr 0x00002c92.l ; call 00002C92 FUN_00002c92
+000018D8: jsr 0x00002c92.l ; call 00002C92 render_normal_field_viewport
 000018DE: tst.w (0x00ffe102).l
 000018E4: beq.w 0x000018ee
-000018E8: jsr 0x00002cb2.l ; call 00002CB2 FUN_00002cb2
+000018E8: jsr 0x00002cb2.l ; call 00002CB2 render_alternate_field_viewport
 000018EE: tst.w (0x00ffdf2a).l
 000018F4: beq.w 0x000018fe
 000018F8: jsr 0x00006148.l ; call 00006148 FUN_00006148
@@ -1745,8 +1745,8 @@
 00002C78: cmpi.w #0x2,(0x00ffdf40).l
 00002C80: bne.w 0x00002c8a
 00002C84: jsr 0x00016afa.l ; call 00016AFA FUN_00016afa
-00002C8A: bsr.w 0x00002c92 ; call 00002C92 FUN_00002c92
-00002C8E: bra.w 0x00002cb2 ; call 00002CB2 FUN_00002cb2
+00002C8A: bsr.w 0x00002c92 ; call 00002C92 render_normal_field_viewport
+00002C8E: bra.w 0x00002cb2 ; call 00002CB2 render_alternate_field_viewport
 00002C92: clr.w (0x00ffe100).l
 00002C98: move.w (0x00ffdd14).l,D5w
 00002C9E: movea.l (0x00ffddde).l,A0
@@ -27052,7 +27052,7 @@
 00059304: beq.w 0x00059270
 00059308: clr.l D0
 0005930A: move.b (0x00fff0dc).l,D0b
-00059310: jsr 0x000042b0.l ; call 000042B0 FUN_000042b0
+00059310: jsr 0x000042b0.l ; call 000042B0 initialize_joshua_archetype_selection
 00059316: rts
 00059318: lea (0xfff1e8).l,A1 ; data 00fff1e8
 0005931E: lea (0x59972).l,A0 ; data 00059972

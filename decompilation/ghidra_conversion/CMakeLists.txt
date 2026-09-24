@@ -696,6 +696,19 @@ target_link_libraries(shadowrun_ghidra_field_mode_test
 add_test(NAME shadowrun_ghidra_field_mode
          COMMAND shadowrun_ghidra_field_mode_test)
 
+add_library(shadowrun_ghidra_field_viewport STATIC
+    src/field_viewport_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_field_viewport PUBLIC include)
+
+add_executable(shadowrun_ghidra_field_viewport_test
+    tests/field_viewport_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_field_viewport_test
+    PRIVATE shadowrun_ghidra_field_viewport)
+add_test(NAME shadowrun_ghidra_field_viewport
+         COMMAND shadowrun_ghidra_field_viewport_test)
+
 add_library(shadowrun_ghidra_mode_nine STATIC
     src/mode_nine_conversion.cpp
 )

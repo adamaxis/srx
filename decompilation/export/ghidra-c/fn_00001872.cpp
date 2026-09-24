@@ -7,8 +7,8 @@
 //   0x00000EE6 service_pending_vdp_upload
 //   0x00000F1C write_transfer_header
 //   0x00000F3C write_fixed_transfer_pair
-//   0x00002C92 FUN_00002c92
-//   0x00002CB2 FUN_00002cb2
+//   0x00002C92 render_normal_field_viewport
+//   0x00002CB2 render_alternate_field_viewport
 //   0x00006148 FUN_00006148
 //   0x000061F4 FUN_000061f4
 //   0x0005672C FUN_0005672c
@@ -48,10 +48,10 @@ void FUN_00001872(void)
     write_fixed_transfer_pair();
   }
   if (_DAT_00ffe100 != 0) {
-    FUN_00002c92();
+    render_normal_field_viewport();
   }
   if (_DAT_00ffe102 != 0) {
-    FUN_00002cb2();
+    render_alternate_field_viewport();
   }
   if (DAT_00ffdf2a != 0) {
     FUN_00006148();

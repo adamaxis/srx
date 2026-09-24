@@ -6,7 +6,7 @@
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
 //   0x0000195C sample_controller_input
-//   0x000042B0 FUN_000042b0
+//   0x000042B0 initialize_joshua_archetype_selection
 //   0x0000C0C2 load_title_font
 //   0x0000C0DA render_title_text_source
 //   0x0000C376 move_wrapped_menu_cursor
@@ -61,7 +61,7 @@ void FUN_00059092(void)
       if (((DAT_00ffdd22._0_1_ & 1) != 0) || ((DAT_00ffdd22._0_1_ & 2) != 0)) break;
       if (((DAT_00ffdd22._0_1_ & 0x40) != 0) ||
          (((DAT_00ffdd22._0_1_ & 0x10) != 0 || ((DAT_00ffdd22._0_1_ & 0x20) != 0)))) {
-        FUN_000042b0();
+        initialize_joshua_archetype_selection();
         return;
       }
     }

@@ -86,8 +86,8 @@ entry	name	size	callingConvention	decompileStatus	file
 00002B34	FUN_00002b34	158	unknown	ok	ghidra-c/fn_00002B34.cpp
 00002BD2	FUN_00002bd2	116	unknown	ok	ghidra-c/fn_00002BD2.cpp
 00002C6C	FUN_00002c6c	38	unknown	ok	ghidra-c/fn_00002C6C.cpp
-00002C92	FUN_00002c92	32	unknown	ok	ghidra-c/fn_00002C92.cpp
-00002CB2	FUN_00002cb2	46	unknown	ok	ghidra-c/fn_00002CB2.cpp
+00002C92	render_normal_field_viewport	32	unknown	ok	ghidra-c/fn_00002C92.cpp
+00002CB2	render_alternate_field_viewport	46	unknown	ok	ghidra-c/fn_00002CB2.cpp
 00002CE0	FUN_00002ce0	178	unknown	ok	ghidra-c/fn_00002CE0.cpp
 00002F32	FUN_00002f32	114	unknown	ok	ghidra-c/fn_00002F32.cpp
 00002FA4	FUN_00002fa4	76	unknown	ok	ghidra-c/fn_00002FA4.cpp
@@ -133,7 +133,7 @@ entry	name	size	callingConvention	decompileStatus	file
 000041F0	FUN_000041f0	38	unknown	ok	ghidra-c/fn_000041F0.cpp
 00004216	offset_field_coordinate	38	unknown	ok	ghidra-c/fn_00004216.cpp
 0000423C	quantize_field_delta	84	unknown	ok	ghidra-c/fn_0000423C.cpp
-000042B0	FUN_000042b0	54	unknown	ok	ghidra-c/fn_000042B0.cpp
+000042B0	initialize_joshua_archetype_selection	54	unknown	ok	ghidra-c/fn_000042B0.cpp
 000042F2	FUN_000042f2	42	unknown	ok	ghidra-c/fn_000042F2.cpp
 0000431C	FUN_0000431c	108	unknown	ok	ghidra-c/fn_0000431C.cpp
 00004388	finalize_pending_entity_template_update	46	unknown	ok	ghidra-c/fn_00004388.cpp

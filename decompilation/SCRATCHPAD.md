@@ -541,6 +541,15 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The archetype boundary is now explicit. `0x42B0` selects one of the three
+extracted 0x100-byte Joshua templates (Samurai, Decker, or Gator Shaman),
+copies that record into the live Joshua slot, and publishes the source
+selection markers `0`, `1`, and `2` at record offset `+0x3E`. The host helper
+rejects an out-of-range extracted-table index instead of allowing an unchecked
+ROM-table read. The paired `0x2C92`/`0x2CB2` field wrappers are also typed:
+they clear their pending request, invoke the shared viewport renderer, and the
+alternate path brackets that call with the source `0x8000` render mask.
+
 `0x176BA` is now `refresh_field_resource_streams`: it submits the source-order
 raw transfer request for destination `0x2360` and `0xA80` bytes, then submits
 the `0x2DE0`-byte compressed-resource request. The requests are typed host

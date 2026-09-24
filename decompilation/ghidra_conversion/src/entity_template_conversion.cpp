@@ -2,6 +2,19 @@
 
 namespace shadowrun::ghidra_conversion {
 
+std::optional<JoshuaArchetypeSelection> initialize_joshua_archetype_selection(
+    const std::uint16_t selected_index,
+    const std::vector<JoshuaArchetypeTemplate>& templates) {
+    if (selected_index >= templates.size()) {
+        return std::nullopt;
+    }
+
+    JoshuaArchetypeSelection selection{};
+    selection.live_joshua_record = templates[selected_index].record;
+    selection.record_selection_markers = {0U, 1U, 2U};
+    return selection;
+}
+
 EntityRecord initialize_entity_record_from_template(
     const EntityRecordInitialization& initialization,
     const EntityTemplateData& template_data,

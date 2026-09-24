@@ -11,6 +11,23 @@ bool expect(const bool condition) {
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
+    std::vector<JoshuaArchetypeTemplate> archetype_templates(3U);
+    archetype_templates[0].record.fill(0x10U);
+    archetype_templates[1].record.fill(0x20U);
+    archetype_templates[2].record.fill(0x30U);
+    const auto selected_archetype =
+        initialize_joshua_archetype_selection(2U, archetype_templates);
+    if (!expect(selected_archetype.has_value() &&
+                selected_archetype->live_joshua_record[0] == 0x30U &&
+                selected_archetype->live_joshua_record[0xFFU] == 0x30U &&
+                selected_archetype->record_selection_markers ==
+                    std::array<std::uint16_t, 3>{0U, 1U, 2U} &&
+                !initialize_joshua_archetype_selection(3U,
+                                                        archetype_templates)
+                     .has_value())) {
+        return 1;
+    }
+
     EntityTemplateData template_data{};
     template_data.word_00 = 0x1111U;
     template_data.word_02 = 0x2222U;
@@ -56,7 +73,7 @@ int main() {
                 record.template_data.longwords_18_to_27[3] == 0x1C1D1E1FU &&
                 record.random_variant == 0x000BU &&
                 record.effect_flags == 0x03U)) {
-        return 1;
+        return 2;
     }
 
     const auto forced_variant = initialize_entity_record_from_template(
@@ -68,7 +85,7 @@ int main() {
         {});
     if (!expect(forced_variant.random_variant == 0x0028U &&
                 forced_variant.effect_flags == 0U)) {
-        return 2;
+        return 3;
     }
 
     EntityTemplateSpawnState list_state{0xAAAAU, 0xBBBBU, 0x0001U, false,
@@ -108,7 +125,7 @@ int main() {
                 list_result.records[2].vertical_origin == 0U &&
                 list_result.records[2].behavior_flags == 0x25U &&
                 list_result.final_vertical_origin == 0U)) {
-        return 3;
+        return 4;
     }
 
     EntityTemplateCoordinatorState coordinator{};
@@ -141,7 +158,7 @@ int main() {
     if (!expect(coordinator_events == std::vector<char>{'s', 'p', 'g', 'd'} &&
                 coordinator.generated_list == std::nullopt &&
                 coordinator.selected_list == std::nullopt)) {
-        return 4;
+        return 5;
     }
 
     coordinator_events.clear();
@@ -164,7 +181,7 @@ int main() {
     if (!expect(coordinator_events == std::vector<char>{'t', 'q', 'd'} &&
                 coordinator.world_state == 4U &&
                 coordinator.selected_list == std::nullopt)) {
-        return 5;
+        return 6;
     }
 
     EntityTemplateUpdateState update_state{2U, 0U, 0U};
@@ -173,14 +190,14 @@ int main() {
         update_state, [&coordinator_called]() { coordinator_called = true; });
     if (!expect(coordinator_called && update_state.alternate_state_marker == 6U &&
                 update_state.primary_state_marker == 0U)) {
-        return 6;
+        return 7;
     }
 
     update_state = EntityTemplateUpdateState{1U, 0U, 0U};
     finalize_pending_entity_template_update(update_state, {});
     if (!expect(update_state.primary_state_marker == 6U &&
                 update_state.alternate_state_marker == 0U)) {
-        return 7;
+        return 8;
     }
 
     const PendingEntityTemplateList random_list{
@@ -201,7 +218,7 @@ int main() {
                 preparation.selection_counter == 0x11U &&
                 preparation.generated_header == 0x12345678U &&
                 preparation.generated_list.has_value())) {
-        return 8;
+        return 9;
     }
 
     preparation = EntityTemplatePreparationState{
@@ -210,7 +227,7 @@ int main() {
                     preparation, gate_b_list, mode_four_list, {}, {}) ==
                     EntityTemplatePreparationAction::gate_b_fallback &&
                 preparation.generated_header == 0x22000000U)) {
-        return 9;
+        return 10;
     }
 
     preparation = EntityTemplatePreparationState{
@@ -219,7 +236,7 @@ int main() {
                     preparation, gate_b_list, mode_four_list, {}, {}) ==
                     EntityTemplatePreparationAction::mode_four_fallback &&
                 preparation.generated_header == 0x44000000U)) {
-        return 10;
+        return 11;
     }
 
     const PendingEntityTemplateList first_selection{
@@ -240,7 +257,7 @@ int main() {
                 !select_pending_entity_template_list(0x0015U, 3U,
                                                      selection_table)
                      .has_value())) {
-        return 11;
+        return 12;
     }
 
     return 0;

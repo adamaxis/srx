@@ -13,6 +13,29 @@ struct EntityWorldPosition {
     std::uint16_t y = 0;
 };
 
+constexpr std::size_t kRunnerRecordTemplateSize = 0x100U;
+
+// The three records at ROM 0x7291A are complete live-record templates. Their
+// individual fields are intentionally not renamed here: the audited source
+// paths prove the record size and the selection marker at +0x3E, but not every
+// byte's meaning.
+struct JoshuaArchetypeTemplate {
+    std::array<std::uint8_t, kRunnerRecordTemplateSize> record{};
+};
+
+struct JoshuaArchetypeSelection {
+    std::array<std::uint8_t, kRunnerRecordTemplateSize> live_joshua_record{};
+    std::array<std::uint16_t, 3> record_selection_markers{};
+};
+
+// ROM 0x42B0: copy the selected extracted Joshua archetype template into the
+// live record and publish the three record-selection markers. Invalid host
+// indices are rejected instead of reproducing the source's unchecked table
+// access.
+std::optional<JoshuaArchetypeSelection> initialize_joshua_archetype_selection(
+    std::uint16_t selected_index,
+    const std::vector<JoshuaArchetypeTemplate>& templates);
+
 // The source descriptor is a compact entity-template payload. The names of
 // individual template values stay source-oriented until a consuming routine
 // gives them a reliable game-specific meaning; the transfer itself is typed
