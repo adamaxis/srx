@@ -565,6 +565,13 @@ result of the existing even-byte extraction boundary directly, keeps backup
 and SRAM validation as separate named wrappers, and rejects truncated or
 malformed host buffers without importing the original RAM addresses.
 
+`0x59456` now has a native save-slot model as well. It validates both SRAM
+slots, preserves two valid slots, copies the first valid slot into an invalid
+second slot, copies a valid second slot into an invalid first slot, and reports
+when neither slot is usable. The source's interleaved even-byte copy is already
+represented as extracted host vectors at this boundary, so the repair is a
+plain native vector copy rather than a runtime address operation.
+
 Two fixed-loop leaves are now named and tested as well. `0x33BE` is a 4x4,
 16-call wrapper around the existing source-wrapped transfer boundary, while
 `0x3548` invokes the HUD panel drawing leaf three times. Neither conversion

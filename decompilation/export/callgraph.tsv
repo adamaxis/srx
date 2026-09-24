@@ -1914,14 +1914,14 @@ caller	caller_name	callee	callee_name	call_sites
 00059172	FUN_00059172	00059360	FUN_00059360	1
 00059318	FUN_00059318	000597EE	FUN_000597ee	2
 00059360	FUN_00059360	00059372	FUN_00059372	1
-00059360	FUN_00059360	00059456	FUN_00059456	1
+00059360	FUN_00059360	00059456	normalize_sram_save_slots	1
 00059372	FUN_00059372	00001502	copy_even_bytes	2
 00059372	FUN_00059372	000593FC	validate_backup_game_save	2
 00059372	FUN_00059372	0005961C	validate_sram_game_save	1
 000593FC	validate_backup_game_save	000014CE	extract_even_bytes	1
 000593FC	validate_backup_game_save	00059786	sum_game_save_payload	1
-00059456	FUN_00059456	00001502	copy_even_bytes	2
-00059456	FUN_00059456	0005961C	validate_sram_game_save	3
+00059456	normalize_sram_save_slots	00001502	copy_even_bytes	2
+00059456	normalize_sram_save_slots	0005961C	validate_sram_game_save	3
 000594E0	FUN_000594e0	00003074	FUN_00003074	1
 000594E0	FUN_000594e0	000042F2	initialize_primary_roster_template	1
 000594E0	FUN_000594e0	0000431C	initialize_secondary_roster_template	1

@@ -605,6 +605,21 @@ target_link_libraries(shadowrun_ghidra_save_validation_test
 add_test(NAME shadowrun_ghidra_save_validation
          COMMAND shadowrun_ghidra_save_validation_test)
 
+add_library(shadowrun_ghidra_save_slot STATIC
+    src/save_slot_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_save_slot PUBLIC include)
+target_link_libraries(shadowrun_ghidra_save_slot
+    PRIVATE shadowrun_ghidra_save_validation)
+
+add_executable(shadowrun_ghidra_save_slot_test
+    tests/save_slot_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_save_slot_test
+    PRIVATE shadowrun_ghidra_save_slot)
+add_test(NAME shadowrun_ghidra_save_slot
+         COMMAND shadowrun_ghidra_save_slot_test)
+
 add_library(shadowrun_ghidra_random STATIC
     src/random_conversion.cpp
 )

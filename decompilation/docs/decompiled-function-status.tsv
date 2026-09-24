@@ -211,6 +211,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x42F2	primary roster template initialization	ghidra_conversion::initialize_primary_roster_template	shadowrun_native_port	partial		Typed template copy, source metadata words, compact-record refresh, and final +0x8F population byte
 0x431C	secondary roster template initialization	ghidra_conversion::initialize_secondary_roster_template	shadowrun_native_port	partial		Typed duplicate-primary skip, secondary template copy, shared refresh, and final +0x8F population byte
 0x593FC	backup game-save validation	ghidra_conversion::validate_backup_game_save	shadowrun_native_port	partial		Typed GAME signature and 0x61C-byte payload checksum validation after even-byte extraction
+0x59456	SRAM save-slot normalization	ghidra_conversion::normalize_sram_save_slots	shadowrun_native_port	partial		Typed two-slot validation and valid-slot mirroring
 0x5961C	SRAM game-save validation	ghidra_conversion::validate_sram_game_save	shadowrun_native_port	partial		Typed GAME signature and 0x61C-byte payload checksum validation after even-byte extraction
 0x5966E	runner record population	ghidra_conversion::refresh_runner_record_population	shadowrun_native_port	partial		Default/primary/secondary compact-record projection in source order with explicit unavailable-source result
 0x59786	game-save payload checksum	ghidra_conversion::sum_game_save_payload	shadowrun_native_port	partial		Typed unsigned byte sum over the source 0x61C-byte checksum payload
