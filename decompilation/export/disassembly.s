@@ -1635,7 +1635,7 @@
 00002950: jsr 0x0001e04a.l ; call 0001E04A begin_world_effect_transition
 00002956: jsr 0x0001a310.l ; call 0001A310 clear_effect_slots
 0000295C: jsr 0x0001a322.l ; call 0001A322 clear_entity_effect_pending_records
-00002962: jsr 0x00016dee.l ; call 00016DEE FUN_00016dee
+00002962: jsr 0x00016dee.l ; call 00016DEE clear_scene_record_pending_flags
 00002968: jsr 0x00004388.l ; call 00004388 finalize_pending_entity_template_update
 0000296E: cmpi.b #0x3,(0x00ffe186).l
 00002976: bne.w 0x00002986
@@ -1659,7 +1659,7 @@
 000029DC: bne.w 0x000029ea
 000029E0: tst.w (0x00ffe118).l
 000029E6: beq.w 0x000029ea
-000029EA: jsr 0x000164dc.l ; call 000164DC FUN_000164dc
+000029EA: jsr 0x000164dc.l ; call 000164DC clear_scene_record_transition_words
 000029F0: jsr 0x000164a8.l ; call 000164A8 FUN_000164a8
 000029F6: jsr 0x00013874.l ; call 00013874 FUN_00013874
 000029FC: move.l (0x00ffde22).l,D0

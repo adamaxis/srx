@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00016DEE
-// Name: FUN_00016dee
+// Name: clear_scene_record_pending_flags
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00016dee(void)
+void clear_scene_record_pending_flags(void)
 
 {
   short sVar1;

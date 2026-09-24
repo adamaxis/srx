@@ -428,7 +428,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00016396	FUN_00016396	68	unknown	ok	ghidra-c/fn_00016396.cpp
 000163DA	FUN_000163da	64	unknown	ok	ghidra-c/fn_000163DA.cpp
 000164A8	FUN_000164a8	52	unknown	ok	ghidra-c/fn_000164A8.cpp
-000164DC	FUN_000164dc	22	unknown	ok	ghidra-c/fn_000164DC.cpp
+000164DC	clear_scene_record_transition_words	22	unknown	ok	ghidra-c/fn_000164DC.cpp
 000164F2	FUN_000164f2	44	unknown	ok	ghidra-c/fn_000164F2.cpp
 0001651E	FUN_0001651e	348	unknown	ok	ghidra-c/fn_0001651E.cpp
 0001669C	FUN_0001669c	52	unknown	ok	ghidra-c/fn_0001669C.cpp
@@ -440,7 +440,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00016B7C	FUN_00016b7c	28	unknown	ok	ghidra-c/fn_00016B7C.cpp
 00016B98	FUN_00016b98	346	unknown	ok	ghidra-c/fn_00016B98.cpp
 00016D8A	FUN_00016d8a	50	unknown	ok	ghidra-c/fn_00016D8A.cpp
-00016DEE	FUN_00016dee	26	unknown	ok	ghidra-c/fn_00016DEE.cpp
+00016DEE	clear_scene_record_pending_flags	26	unknown	ok	ghidra-c/fn_00016DEE.cpp
 00016E08	FUN_00016e08	40	unknown	ok	ghidra-c/fn_00016E08.cpp
 00016E30	FUN_00016e30	44	unknown	ok	ghidra-c/fn_00016E30.cpp
 00016E5C	FUN_00016e5c	68	unknown	ok	ghidra-c/fn_00016E5C.cpp

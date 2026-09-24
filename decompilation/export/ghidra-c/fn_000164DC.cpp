@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000164DC
-// Name: FUN_000164dc
+// Name: clear_scene_record_transition_words
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_000164dc(void)
+void clear_scene_record_transition_words(void)
 
 {
   short sVar1;
