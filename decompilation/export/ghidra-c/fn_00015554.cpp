@@ -3,7 +3,7 @@
 // Name: FUN_00015554
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001562E FUN_0001562e
+//   0x0001562E service_entity_auxiliary_behavior
 
 
 void FUN_00015554(void)
@@ -35,7 +35,7 @@ void FUN_00015554(void)
             uVar3 = 0;
           }
           if ((uVar3 <= uVar2) && (uVar2 < (ushort)(uVar3 + 0x500))) {
-            FUN_0001562e();
+            service_entity_auxiliary_behavior();
             puVar5 = extraout_A1;
           }
         }
@@ -57,7 +57,7 @@ void FUN_00015554(void)
           uVar3 = 0;
         }
         if ((uVar3 <= uVar2) && (uVar2 < (ushort)(uVar3 + 0x280))) {
-          FUN_0001562e();
+          service_entity_auxiliary_behavior();
           puVar5 = extraout_A1_00;
         }
       }

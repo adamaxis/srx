@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00013C74
-// Name: FUN_00013c74
+// Name: collect_entity_action_records
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00013c74(void)
+void collect_entity_action_records(void)
 
 {
   char cVar1;

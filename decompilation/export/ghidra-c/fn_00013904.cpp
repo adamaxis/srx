@@ -174,7 +174,7 @@ LAB_0001450e:
     bVar10 = false;
     puVar9[-0xffffffff00000002] = 1;
     puVar9[-0xffffffff00000001] = 0x459c;
-    FUN_000144e8();
+    apply_entity_close_range_state();
     puVar7 = extraout_A0_09;
     register0x0000003c = (BADSPACEBASE *)puVar9;
     if (bVar10) {
@@ -251,7 +251,7 @@ LAB_000142ae:
     puVar7 = DAT_00fffc04;
     if ((in_A0[0x4f] & 0x4000) != 0) goto LAB_0001450e;
     local_4 = 0x142ca;
-    FUN_000144e8();
+    apply_entity_close_range_state();
     puVar7 = extraout_A0_06;
     if (bVar10) {
       in_A0 = extraout_A0_06;

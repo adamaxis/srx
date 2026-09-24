@@ -1661,7 +1661,7 @@
 000029E6: beq.w 0x000029ea
 000029EA: jsr 0x000164dc.l ; call 000164DC clear_scene_record_transition_words
 000029F0: jsr 0x000164a8.l ; call 000164A8 FUN_000164a8
-000029F6: jsr 0x00013874.l ; call 00013874 FUN_00013874
+000029F6: jsr 0x00013874.l ; call 00013874 dispatch_entity_action_candidates
 000029FC: move.l (0x00ffde22).l,D0
 00002A02: bclr.l #0x0,D0
 00002A06: beq.w 0x00002a2c
@@ -1744,7 +1744,7 @@
 00002C72: jsr 0x000566c2.l ; call 000566C2 FUN_000566c2
 00002C78: cmpi.w #0x2,(0x00ffdf40).l
 00002C80: bne.w 0x00002c8a
-00002C84: jsr 0x00016afa.l ; call 00016AFA FUN_00016afa
+00002C84: jsr 0x00016afa.l ; call 00016AFA upload_mode_word_block
 00002C8A: bsr.w 0x00002c92 ; call 00002C92 render_normal_field_viewport
 00002C8E: bra.w 0x00002cb2 ; call 00002CB2 render_alternate_field_viewport
 00002C92: clr.w (0x00ffe100).l
@@ -3268,7 +3268,7 @@
 000049B4: movea.l A1,A0
 000049B6: bsr.w 0x00004b6c ; call 00004B6C FUN_00004b6c
 000049BA: movem.l (SP)+,{  A0 A1}
-000049BE: jsr 0x0001582a.l ; call 0001582A allocate_first_free_effect_slot
+000049BE: jsr 0x0001582a.l ; call 0001582A allocate_first_free_effect_slot_local
 000049C4: bcs.w 0x00004aaa
 000049C8: move.w D0w,(0x32,A1)
 000049CC: move.w D1w,(0x2a,A1)
@@ -4193,7 +4193,7 @@
 0000A8A0: move.l A3,(0x00ffe124).l
 0000A8A6: move.l (A3),(0x00ffe110).l
 0000A8AC: rts
-0000A8EA: jsr 0x00013874.l ; call 00013874 FUN_00013874
+0000A8EA: jsr 0x00013874.l ; call 00013874 dispatch_entity_action_candidates
 0000A8F0: lea (0xff0100).l,A0 ; data 00ff0100
 0000A8F6: move.w #0xf,D7w
 0000A8FA: move.w D7w,-(SP) ; data Stack[-0x2]
@@ -5554,7 +5554,7 @@
 0000C3E6: move.l #0xc186,D4
 0000C3EC: moveq #0x14,D1
 0000C3EE: moveq #0x1b,D7
-0000C3F0: jsr 0x00012c5a.l ; call 00012C5A FUN_00012c5a
+0000C3F0: jsr 0x00012c5a.l ; call 00012C5A write_menu_repeated_grid_with_metadata
 0000C3F6: rts
 0000C3F8: move.w #-0x3672,D4w
 0000C3FC: movea.l #0xca2c,A2
@@ -6049,7 +6049,7 @@
 0000D34E: move.l #0xca86,D4
 0000D354: moveq #0x3,D1
 0000D356: moveq #0x21,D7
-0000D358: jsr 0x00012c5a.l ; call 00012C5A FUN_00012c5a
+0000D358: jsr 0x00012c5a.l ; call 00012C5A write_menu_repeated_grid_with_metadata
 0000D35E: tst.b (0x00fff0d0).l
 0000D364: beq.w 0x0000d39a
 0000D368: cmpi.b #0x2,(0x00fff0d1).l
@@ -6125,7 +6125,7 @@
 0000D4C8: move.l #0xc3a4,D4
 0000D4CE: move.w #0x2,D1w
 0000D4D2: move.w #0x3,D7w
-0000D4D6: jsr 0x00012c5a.l ; call 00012C5A FUN_00012c5a
+0000D4D6: jsr 0x00012c5a.l ; call 00012C5A write_menu_repeated_grid_with_metadata
 0000D4DC: movea.l (0x00fffc04).l,A0
 0000D4E2: cmpi.w #0x2,(0x3e,A0)
 0000D4E8: bne.w 0x0000d50c
@@ -6334,7 +6334,7 @@
 0000D830: move.l #0xca86,D4
 0000D836: moveq #0x4,D1
 0000D838: moveq #0x21,D7
-0000D83A: jsr 0x00012c5a.l ; call 00012C5A FUN_00012c5a
+0000D83A: jsr 0x00012c5a.l ; call 00012C5A write_menu_repeated_grid_with_metadata
 0000D840: clr.l D1
 0000D842: clr.l D0
 0000D844: clr.l D3
@@ -7135,7 +7135,7 @@
 0000F404: move.l #0xc306,D4
 0000F40A: moveq #0x10,D1
 0000F40C: moveq #0x1b,D7
-0000F40E: jsr 0x00012c5a.l ; call 00012C5A FUN_00012c5a
+0000F40E: jsr 0x00012c5a.l ; call 00012C5A write_menu_repeated_grid_with_metadata
 0000F414: rts
 0000F416: jsr 0x0000c3e6.l ; call 0000C3E6 FUN_0000c3e6
 0000F41C: lea (0xc56ae).l,A1 ; data 000c56ae
@@ -7472,7 +7472,7 @@
 0000FBB2: cmpi.b #0x2,(0x9b,A0)
 0000FBB8: bmi.w 0x0000fbf4
 0000FBBC: jsr 0x00011900.l ; call 00011900 prepare_menu_row_grid
-0000FBC2: bsr.w 0x00012c36 ; call 00012C36 FUN_00012c36
+0000FBC2: bsr.w 0x00012c36 ; call 00012C36 prepare_menu_grid_variant_b
 0000FBC6: lea (0xc89c0).l,A1 ; data 000c89c0
 0000FBCC: movea.l #0xc31c,A2
 0000FBD2: move.w #0x6000,D1w
@@ -7863,7 +7863,7 @@
 00010260: move.w #-0x3d78,D4w
 00010264: move.w #0x11,D1w
 00010268: move.w #0x1c,D7w
-0001026C: jsr 0x00012c5a.l ; call 00012C5A FUN_00012c5a
+0001026C: jsr 0x00012c5a.l ; call 00012C5A write_menu_repeated_grid_with_metadata
 00010272: bsr.b 0x000101fe ; call 000101FE FUN_000101fe
 00010274: rts
 00010276: bsr.b 0x00010260 ; call 00010260 FUN_00010260
@@ -8761,7 +8761,7 @@
 000111E8: tst.b (0x00fff112).l
 000111EE: beq.w 0x0001134c
 000111F2: clr.b (0x00fff112).l
-000111F8: bsr.w 0x00012c36 ; call 00012C36 FUN_00012c36
+000111F8: bsr.w 0x00012c36 ; call 00012C36 prepare_menu_grid_variant_b
 000111FC: lea (0xd198c).l,A1 ; data 000d198c
 00011202: movea.l #0xc2a0,A2
 00011208: move.w #0x6000,D1w
@@ -8975,13 +8975,13 @@
 000115CE: clr.b (0x3,A3)
 000115D2: move.w #0x1,(0x00ffd980).l
 000115DA: bset.b #0x1,(0x00ffef14).l
-000115E2: bsr.w 0x00012c36 ; call 00012C36 FUN_00012c36
+000115E2: bsr.w 0x00012c36 ; call 00012C36 prepare_menu_grid_variant_b
 000115E6: bsr.w 0x00012148 ; call 00012148 read_entity_action_code
 000115EA: beq.w 0x0001160c
 000115EE: bsr.w 0x00012a8c ; call 00012A8C FUN_00012a8c
 000115F2: cmpi.b #0x10,D0b
 000115F6: bpl.w 0x000115fe
-000115FA: bsr.w 0x00012e9e ; call 00012E9E FUN_00012e9e
+000115FA: bsr.w 0x00012e9e ; call 00012E9E service_entity_action_menu
 000115FE: clr.l D0
 00011600: lea (0xcf384).l,A1 ; data 000cf384
 00011606: bsr.w 0x00011abe ; call 00011ABE prepare_menu_dialog
@@ -9050,7 +9050,7 @@
 000116FA: move.w #-0x377e,D4w
 000116FE: move.w #0x9,D7w
 00011702: move.w #0x9,D1w
-00011706: bsr.w 0x00012c5a ; call 00012C5A FUN_00012c5a
+00011706: bsr.w 0x00012c5a ; call 00012C5A write_menu_repeated_grid_with_metadata
 0001170A: rts
 0001170C: lea (0xd1d3a).l,A1 ; data 000d1d3a
 00011712: movea.l #0xec9c,A2
@@ -9161,7 +9161,7 @@
 000118FE: rts
 00011900: move.l #0xcb18,D4
 00011906: moveq #0x0,D1
-00011908: bsr.w 0x00012c56 ; call 00012C56 FUN_00012c56
+00011908: bsr.w 0x00012c56 ; call 00012C56 write_menu_repeated_grid
 0001190C: lea (0xc1320).l,A1 ; data 000c1320
 00011912: move.l #0xea18,D4
 00011918: moveq #0x14,D7
@@ -9179,7 +9179,7 @@
 00011944: lea (0xcf384).l,A1 ; data 000cf384
 0001194A: bsr.w 0x00011ae4 ; call 00011AE4 FUN_00011ae4
 0001194E: rts
-00011950: bsr.w 0x00012c36 ; call 00012C36 FUN_00012c36
+00011950: bsr.w 0x00012c36 ; call 00012C36 prepare_menu_grid_variant_b
 00011954: bsr.b 0x00011900 ; call 00011900 prepare_menu_row_grid
 00011956: movea.l #0xc1a2,A2
 0001195C: lea (0xd2054).l,A1 ; data 000d2054
@@ -9297,7 +9297,7 @@
 00011B4C: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
 00011B52: movem.l (SP)+,{ D0 D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 00011B56: rts
-00011B58: bsr.w 0x00012c36 ; call 00012C36 FUN_00012c36
+00011B58: bsr.w 0x00012c36 ; call 00012C36 prepare_menu_grid_variant_b
 00011B5C: bsr.w 0x00011900 ; call 00011900 prepare_menu_row_grid
 00011B60: movea.l #0xc2a2,A2
 00011B66: lea (0xd1ae0).l,A1 ; data 000d1ae0
@@ -9365,7 +9365,7 @@
 00011C8E: btst.b #0xd,(0x00ffdd22).l
 00011C96: beq.w 0x00011bc6
 00011C9A: bra.b 0x00011c3c
-00011C9C: bsr.w 0x00012c36 ; call 00012C36 FUN_00012c36
+00011C9C: bsr.w 0x00012c36 ; call 00012C36 prepare_menu_grid_variant_b
 00011CA0: lea (0xd1ed8).l,A1 ; data 000d1ed8
 00011CA6: movea.l #0xc5a0,A2
 00011CAC: move.w #0x6000,D1w
@@ -9374,7 +9374,7 @@
 00011CBC: bsr.w 0x000111d0 ; call 000111D0 upload_menu_tile_block
 00011CC0: jsr 0x00000d94.l ; call 00000D94 wait_for_controller_event
 00011CC6: bra.w 0x00011928 ; call 00011928 render_menu_row
-00011CCA: bsr.w 0x00012c36 ; call 00012C36 FUN_00012c36
+00011CCA: bsr.w 0x00012c36 ; call 00012C36 prepare_menu_grid_variant_b
 00011CCE: movea.l (0x00fffc04).l,A0
 00011CD4: move.b (0x56,A0),D1b
 00011CD8: lsl.b #0x1,D1b
@@ -9423,13 +9423,13 @@
 00011DA6: jsr 0x00003404.l ; call 00003404 upload_field_asset_setup
 00011DAC: moveq #0x26,D1
 00011DAE: jsr 0x000036fc.l ; call 000036FC FUN_000036fc
-00011DB4: bsr.w 0x00012c36 ; call 00012C36 FUN_00012c36
+00011DB4: bsr.w 0x00012c36 ; call 00012C36 prepare_menu_grid_variant_b
 00011DB8: movea.l #0xc51c,A2
 00011DBE: lea (0xd1b27).l,A1 ; data 000d1b27
 00011DC4: move.w #0x6000,D1w
 00011DC8: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
 00011DCE: bra.w 0x00011cb6
-00011DD2: bsr.w 0x00012c36 ; call 00012C36 FUN_00012c36
+00011DD2: bsr.w 0x00012c36 ; call 00012C36 prepare_menu_grid_variant_b
 00011DD6: moveq #0x2,D7
 00011DD8: lea (0xffdd48).l,A1 ; data 00ffdd48
 00011DDE: lea (0xff0100).l,A0 ; data 00ff0100
@@ -9532,13 +9532,13 @@
 00011FB2: move.l (0x00ffdd2a).l,D0
 00011FB8: sub.b D0b,(0x4f,A0)
 00011FBC: add.b D0b,(0x4f,A1)
-00011FC0: bsr.w 0x00012c36 ; call 00012C36 FUN_00012c36
+00011FC0: bsr.w 0x00012c36 ; call 00012C36 prepare_menu_grid_variant_b
 00011FC4: movea.l #0xc51c,A2
 00011FCA: lea (0xd1b78).l,A1 ; data 000d1b78
 00011FD0: move.w #0x6000,D1w
 00011FD4: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
 00011FDA: bra.w 0x00011cb6
-00011FDE: bsr.w 0x00012c36 ; call 00012C36 FUN_00012c36
+00011FDE: bsr.w 0x00012c36 ; call 00012C36 prepare_menu_grid_variant_b
 00011FE2: clr.l D5
 00011FE4: clr.l D6
 00011FE6: moveq #0x2,D7
@@ -9565,7 +9565,7 @@
 00012038: swap D5
 0001203A: adda.l #0x100,A0
 00012040: dbf D7w,0x00012024
-00012044: bsr.w 0x00012c36 ; call 00012C36 FUN_00012c36
+00012044: bsr.w 0x00012c36 ; call 00012C36 prepare_menu_grid_variant_b
 00012048: movea.l #0xc51c,A2
 0001204E: lea (0xd1b78).l,A1 ; data 000d1b78
 00012054: move.w #0x6000,D1w
@@ -9574,7 +9574,7 @@
 00012062: movea.l (0x00fffc04).l,A0
 00012068: tst.b (0x4f,A0)
 0001206C: bgt.w 0x00012098
-00012070: bsr.w 0x00012c36 ; call 00012C36 FUN_00012c36
+00012070: bsr.w 0x00012c36 ; call 00012C36 prepare_menu_grid_variant_b
 00012074: movea.l #0xc51c,A2
 0001207A: lea (0x58,A0),A1
 0001207E: move.w #0x6000,D1w
@@ -9656,7 +9656,7 @@
 000121B4: move.b D0b,(0x76,A0)
 000121B8: move.b D0b,(0x6e,A0,D7w*0x1)
 000121BC: bra.w 0x0001228c
-000121C0: bsr.w 0x00012c42 ; call 00012C42 FUN_00012c42
+000121C0: bsr.w 0x00012c42 ; call 00012C42 prepare_menu_grid_variant_c
 000121C4: movea.l #0xc620,A2
 000121CA: lea (0xd202f).l,A1 ; data 000d202f
 000121D0: move.w #0x6000,D1w
@@ -9712,7 +9712,7 @@
 00012292: bsr.w 0x00011624 ; call 00011624 FUN_00011624
 00012296: rts
 00012298: bsr.w 0x00011900 ; call 00011900 prepare_menu_row_grid
-0001229C: bsr.w 0x00012c42 ; call 00012C42 FUN_00012c42
+0001229C: bsr.w 0x00012c42 ; call 00012C42 prepare_menu_grid_variant_c
 000122A0: clr.b (0x00fff0b9).l
 000122A6: lea (0xfff0ba).l,A4 ; data 00fff0ba
 000122AC: movea.l #0xc5a0,A2
@@ -9791,7 +9791,7 @@
 0001240A: beq.w 0x0001250c
 0001240E: move.w #0x24,D0w
 00012412: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
-00012418: bsr.w 0x00012c1e ; call 00012C1E FUN_00012c1e
+00012418: bsr.w 0x00012c1e ; call 00012C1E prepare_menu_grid_variant_a
 0001241C: clr.l D0
 0001241E: move.b (0x00fff0dc).l,D0b
 00012424: cmp.b (0x00fff0b9).l,D0b
@@ -9927,7 +9927,7 @@
 00012650: beq.w 0x0001265e
 00012654: cmpi.b #0x2b,(0x6d,A0)
 0001265A: bne.w 0x0001267e
-0001265E: bsr.w 0x00012c42 ; call 00012C42 FUN_00012c42
+0001265E: bsr.w 0x00012c42 ; call 00012C42 prepare_menu_grid_variant_c
 00012662: movea.l #0xc620,A2
 00012668: lea (0xd1ffa).l,A1 ; data 000d1ffa
 0001266E: move.w #0x6000,D1w
@@ -9938,7 +9938,7 @@
 0001268A: bsr.w 0x000111d0 ; call 000111D0 upload_menu_tile_block
 0001268E: clr.b (0x00fff114).l
 00012694: bsr.w 0x000127b0 ; call 000127B0 refresh_menu_panel
-00012698: bsr.w 0x00012c42 ; call 00012C42 FUN_00012c42
+00012698: bsr.w 0x00012c42 ; call 00012C42 prepare_menu_grid_variant_c
 0001269C: bsr.w 0x00012148 ; call 00012148 read_entity_action_code
 000126A0: movea.l (0x00fffc04).l,A0
 000126A6: cmp.b (0x56,A0),D7b
@@ -10037,7 +10037,7 @@
 0001283E: bmi.w 0x0001286a
 00012842: cmpi.b #0x2c,D0b
 00012846: bpl.w 0x0001286a
-0001284A: bsr.w 0x00012c42 ; call 00012C42 FUN_00012c42
+0001284A: bsr.w 0x00012c42 ; call 00012C42 prepare_menu_grid_variant_c
 0001284E: movea.l #0xc622,A2
 00012854: lea (0xd2015).l,A1 ; data 000d2015
 0001285A: move.w #0x6000,D1w
@@ -10067,7 +10067,7 @@
 000128C6: beq.w 0x00012908
 000128CA: addq.l #0x1,A0
 000128CC: dbf D6w,0x000128c2
-000128D0: bsr.w 0x00012c42 ; call 00012C42 FUN_00012c42
+000128D0: bsr.w 0x00012c42 ; call 00012C42 prepare_menu_grid_variant_c
 000128D4: movea.l #0xc69e,A2
 000128DA: lea (0x58,A6),A1 ; data 00ff0158
 000128DE: move.w #0x6000,D1w
@@ -10078,7 +10078,7 @@
 000128FA: moveq #0x8,D6
 000128FC: move.w #-0x1,(0x00fff096).l
 00012904: bra.w 0x00012966
-00012908: bsr.w 0x00012c42 ; call 00012C42 FUN_00012c42
+00012908: bsr.w 0x00012c42 ; call 00012C42 prepare_menu_grid_variant_c
 0001290C: movea.l #0xc7a6,A2
 00012912: lea (0xd1d19).l,A1 ; data 000d1d19
 00012918: move.w #0x6000,D1w
@@ -10122,7 +10122,7 @@
 000129CC: bmi.w 0x0001287e
 000129D0: bsr.w 0x000129fe ; call 000129FE FUN_000129fe
 000129D4: bsr.w 0x00011624 ; call 00011624 FUN_00011624
-000129D8: bsr.w 0x00012c36 ; call 00012C36 FUN_00012c36
+000129D8: bsr.w 0x00012c36 ; call 00012C36 prepare_menu_grid_variant_b
 000129DC: bsr.w 0x00011928 ; call 00011928 render_menu_row
 000129E0: rts
 000129E2: btst.b #0xd,(0x00ffdd22).l
@@ -10257,13 +10257,13 @@
 00012C1C: rts
 00012C1E: move.w #-0x3ae8,D4w
 00012C22: move.w #0x7,D1w
-00012C26: bra.w 0x00012c56 ; call 00012C56 FUN_00012c56
+00012C26: bra.w 0x00012c56 ; call 00012C56 write_menu_repeated_grid
 00012C36: move.w #-0x3ee8,D4w
 00012C3A: move.w #0x13,D1w
-00012C3E: bra.w 0x00012c56 ; call 00012C56 FUN_00012c56
+00012C3E: bra.w 0x00012c56 ; call 00012C56 write_menu_repeated_grid
 00012C42: move.w #-0x3ae8,D4w
 00012C46: move.w #0xb,D1w
-00012C4A: bra.w 0x00012c56 ; call 00012C56 FUN_00012c56
+00012C4A: bra.w 0x00012c56 ; call 00012C56 write_menu_repeated_grid
 00012C56: move.w #0x14,D7w
 00012C5A: movem.l {  A1 D2},-(SP)
 00012C5E: move.w #0x6000,D2w
@@ -10305,7 +10305,7 @@
 00012CEE: movem.l {  A6 A5 A4 A3 A2 A1 A0 D7 D6 D5 D4 D3 D2 D1},-(SP)
 00012CF2: move.w #0x0,D1w
 00012CF6: move.w #0x13,D7w
-00012CFA: jsr 0x00012c5a.l ; call 00012C5A FUN_00012c5a
+00012CFA: jsr 0x00012c5a.l ; call 00012C5A write_menu_repeated_grid_with_metadata
 00012D00: jsr 0x00055ed6.l ; call 00055ED6 FUN_00055ed6
 00012D06: clr.l D6
 00012D08: tst.w D0w
@@ -10338,7 +10338,7 @@
 00012D70: bra.w 0x00012dfe
 00012D74: tst.b (0x56,A0)
 00012D78: bpl.w 0x00012dc0
-00012D7C: bsr.w 0x00012fa4 ; call 00012FA4 FUN_00012fa4
+00012D7C: bsr.w 0x00012fa4 ; call 00012FA4 advance_entity_action_menu
 00012D80: jsr 0x00055f02.l ; call 00055F02 FUN_00055f02
 00012D86: clr.l D7
 00012D88: jsr 0x00055f20.l ; call 00055F20 FUN_00055f20
@@ -10371,7 +10371,7 @@
 00012DF2: bmi.w 0x00012dfa
 00012DF6: bra.w 0x00012d46
 00012DFA: bsr.w 0x00012c74 ; call 00012C74 FUN_00012c74
-00012DFE: bsr.w 0x00012cd6 ; call 00012CD6 FUN_00012cd6
+00012DFE: bsr.w 0x00012cd6 ; call 00012CD6 render_menu_text_asset
 00012E02: lea (0xcf3d4).l,A1 ; data 000cf3d4
 00012E08: move.l #0xc6a4,D4
 00012E0E: bra.w 0x00012e7a
@@ -10399,7 +10399,7 @@
 00012E60: bra.w 0x00012e6a
 00012E64: addq.w #0x1,D5w
 00012E66: dbf D7w,0x00012e56
-00012E6A: bsr.w 0x00012cd6 ; call 00012CD6 FUN_00012cd6
+00012E6A: bsr.w 0x00012cd6 ; call 00012CD6 render_menu_text_asset
 00012E6E: lea (0xcf610).l,A1 ; data 000cf610
 00012E74: move.l #0xc724,D4
 00012E7A: subq.w #0x1,D6w
@@ -10417,7 +10417,7 @@
 00012EA2: bsr.w 0x00012148 ; call 00012148 read_entity_action_code
 00012EA6: move.w D0w,D7w
 00012EA8: subq.w #0x1,D7w
-00012EAA: bra.w 0x00012f50 ; call 00012F50 FUN_00012f50
+00012EAA: bra.w 0x00012f50 ; call 00012F50 render_entity_action_menu
 00012EAE: movem.l {  A6 A5 A4 A3 A2 A1 A0 D7 D6 D5 D4 D3 D2 D1},-(SP)
 00012EB2: clr.l D7
 00012EB4: move.b (0x57,A0),D7b
@@ -10448,7 +10448,7 @@
 00012F22: movea.l #0xc538,A2
 00012F28: move.w #0x6000,D1w
 00012F2C: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-00012F32: bsr.w 0x00012fa4 ; call 00012FA4 FUN_00012fa4
+00012F32: bsr.w 0x00012fa4 ; call 00012FA4 advance_entity_action_menu
 00012F36: lea (0xd4ea0).l,A4 ; data 000d4ea0
 00012F3C: clr.l D6
 00012F3E: mulu.w #0x30,D7
@@ -11129,7 +11129,7 @@
 00013AB6: bsr.w 0x00013b12 ; call 00013B12 FUN_00013b12
 00013ABA: bcs.w 0x00013ae6
 00013ABE: rts
-00013AC0: bsr.w 0x00013cd4 ; call 00013CD4 FUN_00013cd4
+00013AC0: bsr.w 0x00013cd4 ; call 00013CD4 guard_entity_action_threshold
 00013AC4: bcc.w 0x00013ae4
 00013AC8: tst.b (0x56,A0)
 00013ACC: bmi.w 0x00013ae0
@@ -11137,10 +11137,10 @@
 00013AD4: beq.w 0x00013ae0
 00013AD8: cmpi.b #0xd,D0b
 00013ADC: blt.w 0x00013ae4
-00013AE0: bsr.w 0x00013ae6 ; call 00013AE6 FUN_00013ae6
+00013AE0: bsr.w 0x00013ae6 ; call 00013AE6 advance_entity_action_threshold
 00013AE4: rts
 00013AE6: bsr.w 0x00013af2 ; call 00013AF2 find_first_entity_action_below_threshold
-00013AEA: jsr 0x00013466.l ; call 00013466 FUN_00013466
+00013AEA: jsr 0x00013466.l ; call 00013466 set_entity_action_state
 00013AF0: rts
 00013AF2: movea.l A0,A2
 00013AF4: adda.w #0x66,A2
@@ -11157,16 +11157,16 @@
 00013B16: mulu.w #0x22,D1
 00013B1A: lea (0xfff9fa).l,A2 ; data 00fff9fa
 00013B20: adda.l D1,A2
-00013B22: bsr.w 0x00013c74 ; call 00013C74 FUN_00013c74
+00013B22: bsr.w 0x00013c74 ; call 00013C74 collect_entity_action_records
 00013B26: tst.w D3w
 00013B28: beq.w 0x00013b4e
 00013B2C: move.b #0xb,D7b
 00013B30: move.b (0x00ffdd66).l,D4b
 00013B36: movem.w {  D7w D4w},-(SP)
-00013B3A: bsr.w 0x00013cde ; call 00013CDE FUN_00013cde
+00013B3A: bsr.w 0x00013cde ; call 00013CDE guard_entity_action_threshold_variant
 00013B3E: movem.w (SP)+,{  D4 D7}
 00013B42: bcs.w 0x00013b4e
-00013B46: bsr.w 0x00013c20 ; call 00013C20 FUN_00013c20
+00013B46: bsr.w 0x00013c20 ; call 00013C20 select_entity_action_lane
 00013B4A: bcs.w 0x00013b7a
 00013B4E: lea (0xffdd28).l,A3 ; data 00ffdd28
 00013B54: move.w (A3)+,D1w
@@ -11176,7 +11176,7 @@
 00013B62: move.b (0x0,A3,D0w*0x1),D7b ; data 00ffdd2a
 00013B66: move.b (0x1,A3,D0w*0x1),D4b ; data 00ffdd2b
 00013B6A: movem.w {  D7w D4w},-(SP)
-00013B6E: bsr.w 0x00013cde ; call 00013CDE FUN_00013cde
+00013B6E: bsr.w 0x00013cde ; call 00013CDE guard_entity_action_threshold_variant
 00013B72: movem.w (SP)+,{  D4 D7}
 00013B76: bcs.w 0x00013bb8
 00013B7A: move.b (0x57,A0),D0b
@@ -11206,17 +11206,17 @@
 00013BDA: beq.w 0x00013bf2
 00013BDE: cmpi.b #0xc,D0b
 00013BE2: bne.w 0x00013c1a
-00013BE6: bsr.w 0x00013c20 ; call 00013C20 FUN_00013c20
+00013BE6: bsr.w 0x00013c20 ; call 00013C20 select_entity_action_lane
 00013BEA: bcc.w 0x00013c1a
 00013BEE: bra.w 0x00013c14
 00013BF2: move.w (0xa0,A0),D1w
 00013BF6: mulu.w #0x22,D1
 00013BFA: lea (0xfff9fa).l,A2 ; data 00fff9fa
 00013C00: adda.l D1,A2
-00013C02: bsr.w 0x00013c74 ; call 00013C74 FUN_00013c74
+00013C02: bsr.w 0x00013c74 ; call 00013C74 collect_entity_action_records
 00013C06: tst.w D3w
 00013C08: beq.w 0x00013c14
-00013C0C: bsr.w 0x00013c20 ; call 00013C20 FUN_00013c20
+00013C0C: bsr.w 0x00013c20 ; call 00013C20 select_entity_action_lane
 00013C10: bcs.w 0x00013c1a
 00013C14: ori #0x1,CCR
 00013C18: rts
@@ -11347,7 +11347,7 @@
 00013E26: bra.w 0x00013e34
 00013E2A: move.w (A1),(0x96,A0)
 00013E2E: move.w (0x4,A1),(0x98,A0)
-00013E34: bsr.w 0x000144e8 ; call 000144E8 FUN_000144e8
+00013E34: bsr.w 0x000144e8 ; call 000144E8 apply_entity_close_range_state
 00013E38: bcc.w 0x000145a2
 00013E3C: clr.b (0xb5,A0)
 00013E40: move.w (0x16,A0),D0w
@@ -11590,7 +11590,7 @@
 000142B8: movea.l (0x00fffc04).l,A1
 000142BE: bra.w 0x0001450e
 000142C2: movea.l (0xa8,A0),A1
-000142C6: bsr.w 0x000144e8 ; call 000144E8 FUN_000144e8
+000142C6: bsr.w 0x000144e8 ; call 000144E8 apply_entity_close_range_state
 000142CA: bcc.w 0x000145a2
 000142CE: btst.b #0x5,(0x10,A0)
 000142D4: bne.w 0x000142dc
@@ -11743,7 +11743,7 @@
 0001458C: move.w (0x4,A1),D6w
 00014590: move.w D5w,(0x96,A0)
 00014594: move.w D6w,(0x98,A0)
-00014598: bsr.w 0x000144e8 ; call 000144E8 FUN_000144e8
+00014598: bsr.w 0x000144e8 ; call 000144E8 apply_entity_close_range_state
 0001459C: bcc.w 0x000145a2
 000145A0: rts
 000145A2: move.w (0x16,A0),D0w
@@ -12681,7 +12681,7 @@
 00015400: rts
 00015402: subq.w #0x1,(0x40,A0)
 00015406: bpl.w 0x00015426
-0001540A: bsr.w 0x00015354 ; call 00015354 FUN_00015354
+0001540A: bsr.w 0x00015354 ; call 00015354 activate_entity_audio_state
 0001540E: rts
 00015410: move.w (0x30,A0),D0w
 00015414: jsr 0x0001a304.l ; call 0001A304 clear_effect_slot
@@ -12798,7 +12798,7 @@
 000155B2: addi.w #0x500,D0w
 000155B6: cmp.w D0w,D6w
 000155B8: bcc.w 0x000155c0
-000155BC: bsr.w 0x0001562e ; call 0001562E FUN_0001562e
+000155BC: bsr.w 0x0001562e ; call 0001562E service_entity_auxiliary_behavior
 000155C0: adda.w #0x100,A1
 000155C4: dbf D7w,0x0001556e
 000155C8: andi #0x1e,CCR
@@ -12825,7 +12825,7 @@
 00015612: addi.w #0x280,D0w
 00015616: cmp.w D0w,D6w
 00015618: bcc.w 0x00015620
-0001561C: bsr.w 0x0001562e ; call 0001562E FUN_0001562e
+0001561C: bsr.w 0x0001562e ; call 0001562E service_entity_auxiliary_behavior
 00015620: adda.w #0x100,A1
 00015624: dbf D7w,0x000155ce
 00015628: andi #0x1e,CCR
@@ -12973,7 +12973,7 @@
 00015858: tst.w (0x00ffdf84).l
 0001585E: bne.w 0x00015862
 00015862: jsr 0x0001dbaa.l ; call 0001DBAA schedule_world_activity_timeout
-00015868: bsr.b 0x0001582a ; call 0001582A allocate_first_free_effect_slot
+00015868: bsr.b 0x0001582a ; call 0001582A allocate_first_free_effect_slot_local
 0001586A: bcs.w 0x0001592e
 0001586E: move.l A0,(0xd8,A1)
 00015872: movem.w {  D1w D0w},-(SP)
@@ -13023,7 +13023,7 @@
 00015928: jsr (A2)
 0001592A: movem.l (SP)+,{  A0 A1}
 0001592E: rts
-00015930: bsr.w 0x0001582a ; call 0001582A allocate_first_free_effect_slot
+00015930: bsr.w 0x0001582a ; call 0001582A allocate_first_free_effect_slot_local
 00015934: bcs.w 0x0001597c
 00015938: move.b #0x2,(0xb2,A1)
 0001593E: move.w D0w,(0x32,A1)
@@ -13648,7 +13648,7 @@
 000169E2: movea.l (0x4,A1),A1
 000169E6: move.l A1,(0x00ffe114).l
 000169EC: bsr.w 0x00016b7c ; call 00016B7C FUN_00016b7c
-000169F0: bsr.w 0x00016afa ; call 00016AFA FUN_00016afa
+000169F0: bsr.w 0x00016afa ; call 00016AFA upload_mode_word_block
 000169F4: bra.w 0x00016a14
 000169F8: cmpi.w #0x38,(0x00ffddc4).l
 00016A00: bge.w 0x00016a10
@@ -13877,7 +13877,7 @@
 00016F3E: addq.w #0x1,D0w
 00016F40: movem.w {  D1w D0w},-(SP)
 00016F44: move.w D2w,D0w
-00016F46: jsr 0x00014640.l ; call 00014640 FUN_00014640
+00016F46: jsr 0x00014640.l ; call 00014640 map_world_delta_to_tile_pair
 00016F4C: movem.w (SP)+,{  D2 D3}
 00016F50: exg D0,D1
 00016F52: addi.w #0x200,D1w
@@ -14376,7 +14376,7 @@
 00017C2A: move.l #0xc086,D4
 00017C30: moveq #0xd,D7
 00017C32: moveq #0x1,D1
-00017C34: jsr 0x00012c5a.l ; call 00012C5A FUN_00012c5a
+00017C34: jsr 0x00012c5a.l ; call 00012C5A write_menu_repeated_grid_with_metadata
 00017C3A: rts
 00017C3C: lea (0xfffb30).l,A4 ; data 00fffb30
 00017C42: move.w (0x00fff102).l,D3w
@@ -19302,11 +19302,11 @@
 0001F5A8: move.l #0xc116,D4
 0001F5AE: moveq #0xe,D1
 0001F5B0: moveq #0x1a,D7
-0001F5B2: jsr 0x00012c5a.l ; call 00012C5A FUN_00012c5a
+0001F5B2: jsr 0x00012c5a.l ; call 00012C5A write_menu_repeated_grid_with_metadata
 0001F5B8: move.l #0xc984,D4
 0001F5BE: moveq #0x8,D1
 0001F5C0: moveq #0x24,D7
-0001F5C2: jsr 0x00012c5a.l ; call 00012C5A FUN_00012c5a
+0001F5C2: jsr 0x00012c5a.l ; call 00012C5A write_menu_repeated_grid_with_metadata
 0001F5C8: rts
 0001F5CA: btst.b #0x6,(0x00ff0110).l
 0001F5D2: bne.w 0x0001f5e2
@@ -20332,7 +20332,7 @@
 00021846: move.l #0xe204,D4
 0002184C: move.w #0x6,D7w
 00021850: move.w #0x8,D1w
-00021854: jsr 0x00012c5a.l ; call 00012C5A FUN_00012c5a
+00021854: jsr 0x00012c5a.l ; call 00012C5A write_menu_repeated_grid_with_metadata
 0002185A: lea (0xf4eb8).l,A0 ; data 000f4eb8
 00021860: rts
 000218B2: lea (0xf5150).l,A0 ; data 000f5150
@@ -23701,7 +23701,7 @@
 000549E4: move.l #0xc312,D4
 000549EA: moveq #0xf,D1
 000549EC: moveq #0x15,D7
-000549EE: jsr 0x00012c5a.l ; call 00012C5A FUN_00012c5a
+000549EE: jsr 0x00012c5a.l ; call 00012C5A write_menu_repeated_grid_with_metadata
 000549F4: rts
 000549F6: lea (0xffd8fc).l,A1 ; data 00ffd8fc
 000549FC: tst.b (0x00fff0a0).l

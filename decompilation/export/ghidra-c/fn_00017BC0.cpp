@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_title_text_source
 //   0x0000C216 build_grouped_decimal_glyphs
-//   0x00012C5A FUN_00012c5a
+//   0x00012C5A write_menu_repeated_grid_with_metadata
 //   0x00017C52 FUN_00017c52
 
 
@@ -18,7 +18,7 @@ void FUN_00017bc0(void)
     FUN_00017c52();
     return;
   }
-  FUN_00012c5a();
+  write_menu_repeated_grid_with_metadata();
   return;
 }
 

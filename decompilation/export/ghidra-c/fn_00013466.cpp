@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00013466
-// Name: FUN_00013466
+// Name: set_entity_action_state
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003404 upload_field_asset_setup
 //   0x000036FC FUN_000036fc
 
 
-void FUN_00013466(void)
+void set_entity_action_state(void)
 
 {
   char in_D0b;

@@ -46,12 +46,12 @@ void FUN_00011506(void)
   _DAT_00ffd980 = 1;
   uVar2 = (DAT_00ffef14 & 2) == 0;
   DAT_00ffef14 = DAT_00ffef14 | 2;
-  FUN_00012c36();
+  prepare_menu_grid_variant_b();
   read_entity_action_code();
   if (!(bool)uVar2) {
     cVar1 = FUN_00012a8c();
     if ((char)(cVar1 + -0x10) < '\0') {
-      FUN_00012e9e();
+      service_entity_action_menu();
     }
     prepare_menu_dialog();
     return;

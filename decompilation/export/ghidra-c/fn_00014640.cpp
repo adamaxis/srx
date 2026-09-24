@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00014640
-// Name: FUN_00014640
+// Name: map_world_delta_to_tile_pair
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-undefined6 FUN_00014640(void)
+undefined6 map_world_delta_to_tile_pair(void)
 
 {
   ushort in_D0w;

@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000049A2 FUN_000049a2
-//   0x0001582A allocate_first_free_effect_slot
+//   0x0001582A allocate_first_free_effect_slot_local
 //   0x0001597E FUN_0001597e
 //   0x00015D3C measure_relative_heading_and_distance
 //   0x0001DBAA schedule_world_activity_timeout
@@ -37,7 +37,7 @@ void FUN_00015830(void)
       uVar4 = 0;
       schedule_world_activity_timeout();
       uVar6 = 0x586a;
-      uVar1 = allocate_first_free_effect_slot();
+      uVar1 = allocate_first_free_effect_slot_local();
       if (!(bool)uVar4) {
         *(undefined4 *)(extraout_A1 + 0xd8) = extraout_A0;
         uVar5 = CONCAT22(uVar1,in_stack_fffffffa);

@@ -3,8 +3,8 @@
 // Name: FUN_00013bba
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00013C20 FUN_00013c20
-//   0x00013C74 FUN_00013c74
+//   0x00013C20 select_entity_action_lane
+//   0x00013C74 collect_entity_action_records
 
 
 void FUN_00013bba(void)
@@ -17,9 +17,9 @@ void FUN_00013bba(void)
   
   bVar1 = *(byte *)(in_A0 + 0x57);
   if ((((bVar1 == 1) || (bVar1 == 2)) || (bVar1 == 8)) || (bVar1 == 9)) {
-    FUN_00013c74();
+    collect_entity_action_records();
     bVar2 = false;
-    if ((unaff_D3w != 0) && (FUN_00013c20(), bVar2)) {
+    if ((unaff_D3w != 0) && (select_entity_action_lane(), bVar2)) {
       return;
     }
   }
@@ -28,7 +28,7 @@ void FUN_00013bba(void)
     if (bVar1 != 0xc) {
       return;
     }
-    FUN_00013c20();
+    select_entity_action_lane();
     if (!bVar2) {
       return;
     }

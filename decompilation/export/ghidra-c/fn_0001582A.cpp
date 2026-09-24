@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001582A
-// Name: allocate_first_free_effect_slot
+// Name: allocate_first_free_effect_slot_local
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-short allocate_first_free_effect_slot(void)
+short allocate_first_free_effect_slot_local(void)
 
 {
   short sVar1;

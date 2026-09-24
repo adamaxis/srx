@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00013874
-// Name: FUN_00013874
+// Name: dispatch_entity_action_candidates
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001438C FUN_0001438c
@@ -9,7 +9,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00013874(void)
+void dispatch_entity_action_candidates(void)
 
 {
   DAT_00ffe175 = 0;

@@ -3,14 +3,14 @@
 // Name: prepare_mode_text_prompt
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00012C5A FUN_00012c5a
+//   0x00012C5A write_menu_repeated_grid_with_metadata
 
 
 void prepare_mode_text_prompt(void)
 
 {
-  FUN_00012c5a();
-  FUN_00012c5a();
+  write_menu_repeated_grid_with_metadata();
+  write_menu_repeated_grid_with_metadata();
   return;
 }
 

@@ -8,7 +8,7 @@
 //   0x00011352 FUN_00011352
 //   0x00011928 render_menu_row
 //   0x00011ABE prepare_menu_dialog
-//   0x00012C36 FUN_00012c36
+//   0x00012C36 prepare_menu_grid_variant_b
 //   0x00012EAE FUN_00012eae
 
 
@@ -26,7 +26,7 @@ void FUN_000111e8(void)
     return;
   }
   DAT_00fff112 = 0;
-  FUN_00012c36();
+  prepare_menu_grid_variant_b();
   render_title_text_source();
   render_title_text_source();
   render_title_text_source();

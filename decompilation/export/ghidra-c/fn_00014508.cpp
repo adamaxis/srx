@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000E7C8 FUN_0000e7c8
-//   0x000144E8 FUN_000144e8
+//   0x000144E8 apply_entity_close_range_state
 //   0x00015DCC FUN_00015dcc
 
 
@@ -92,7 +92,7 @@ void FUN_00014508(void)
   bVar12 = false;
   puVar11[-0xffffffff00000002] = 1;
   puVar11[-0xffffffff00000001] = 0x459c;
-  FUN_000144e8();
+  apply_entity_close_range_state();
   if (bVar12) {
     return;
   }

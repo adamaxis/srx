@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00012FA4
-// Name: FUN_00012fa4
+// Name: advance_entity_action_menu
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
@@ -8,7 +8,7 @@
 //   0x00010660 FUN_00010660
 
 
-void FUN_00012fa4(void)
+void advance_entity_action_menu(void)
 
 {
   ushort uVar1;

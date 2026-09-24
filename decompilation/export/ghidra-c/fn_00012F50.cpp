@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00012F50
-// Name: FUN_00012f50
+// Name: render_entity_action_menu
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
@@ -8,7 +8,7 @@
 //   0x00013000 FUN_00013000
 
 
-void FUN_00012f50(void)
+void render_entity_action_menu(void)
 
 {
   FUN_00013000();

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00013C20
-// Name: FUN_00013c20
+// Name: select_entity_action_lane
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00013c20(void)
+void select_entity_action_lane(void)
 
 {
   undefined1 uVar1;

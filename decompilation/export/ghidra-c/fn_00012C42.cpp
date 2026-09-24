@@ -1,15 +1,15 @@
 // Ghidra headless export
 // Entry: 0x00012C42
-// Name: FUN_00012c42
+// Name: prepare_menu_grid_variant_c
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00012C56 FUN_00012c56
+//   0x00012C56 write_menu_repeated_grid
 
 
-void FUN_00012c42(void)
+void prepare_menu_grid_variant_c(void)
 
 {
-  FUN_00012c56();
+  write_menu_repeated_grid();
   return;
 }
 

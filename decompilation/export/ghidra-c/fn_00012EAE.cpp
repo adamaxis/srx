@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_title_text_source
-//   0x00012FA4 FUN_00012fa4
+//   0x00012FA4 advance_entity_action_menu
 
 
 void FUN_00012eae(void)
@@ -23,7 +23,7 @@ void FUN_00012eae(void)
     if ((char)sVar1 == '\x04') {
       render_title_text_source();
     }
-    FUN_00012fa4();
+    advance_entity_action_menu();
     if ((char)(&DAT_000d4ec5)[(short)(sVar1 * 0x30)] < '\0') {
       return;
     }

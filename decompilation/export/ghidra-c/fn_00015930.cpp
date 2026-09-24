@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000049A0 FUN_000049a0
-//   0x0001582A allocate_first_free_effect_slot
+//   0x0001582A allocate_first_free_effect_slot_local
 //   0x000530DE service_audio_if_enabled
 
 
@@ -18,7 +18,7 @@ void FUN_00015930(void)
   int extraout_A1;
   undefined1 in_CF;
   
-  uVar1 = allocate_first_free_effect_slot();
+  uVar1 = allocate_first_free_effect_slot_local();
   if (!(bool)in_CF) {
     *(undefined1 *)(extraout_A1 + 0xb2) = 2;
     *(undefined2 *)(extraout_A1 + 0x32) = uVar1;

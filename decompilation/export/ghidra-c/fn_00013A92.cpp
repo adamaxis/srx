@@ -3,10 +3,10 @@
 // Name: FUN_00013a92
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00013AE6 FUN_00013ae6
+//   0x00013AE6 advance_entity_action_threshold
 //   0x00013B12 FUN_00013b12
 //   0x00013BBA FUN_00013bba
-//   0x00013CD4 FUN_00013cd4
+//   0x00013CD4 guard_entity_action_threshold
 
 
 void FUN_00013a92(void)
@@ -20,7 +20,7 @@ void FUN_00013a92(void)
   if (*(char *)(in_A0 + 0x9b) < '\x02') {
     bVar1 = false;
     if ((*(char *)(in_A0 + 0x56) < '\0') && (FUN_00013bba(), in_A0 = extraout_A0, bVar1)) {
-      FUN_00013cd4();
+      guard_entity_action_threshold();
       if (!bVar1) {
         return;
       }
@@ -28,7 +28,7 @@ void FUN_00013a92(void)
          (*(char *)(extraout_A0_00 + 0x57) < '\r')) {
         return;
       }
-      FUN_00013ae6();
+      advance_entity_action_threshold();
       return;
     }
     bVar1 = *(byte *)(in_A0 + 0x9c) < 5;
@@ -36,7 +36,7 @@ void FUN_00013a92(void)
       FUN_00013b12();
       if (bVar1) {
         find_first_entity_action_below_threshold();
-        FUN_00013466();
+        set_entity_action_state();
         return;
       }
       return;

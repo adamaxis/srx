@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00013A40 copy_entity_anchor_position
-//   0x000144E8 FUN_000144e8
+//   0x000144E8 apply_entity_close_range_state
 //   0x000145A2 FUN_000145a2
 //   0x00014D6A select_entity_animation_table_row
 //   0x00015D3C measure_relative_heading_and_distance
@@ -104,7 +104,7 @@ LAB_00013db0:
     in_A0[0x4c] = puVar3[2];
   }
   bVar11 = false;
-  FUN_000144e8();
+  apply_entity_close_range_state();
   if (bVar11) {
     *(undefined1 *)((int)extraout_A0_02 + 0xb5) = 0;
     in_A0 = extraout_A0_02;

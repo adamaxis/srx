@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00015354
-// Name: FUN_00015354
+// Name: activate_entity_audio_state
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000530DE service_audio_if_enabled
 
 
-void FUN_00015354(void)
+void activate_entity_audio_state(void)
 
 {
   undefined2 *in_A0;

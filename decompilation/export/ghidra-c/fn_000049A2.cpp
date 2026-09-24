@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00004B6C FUN_00004b6c
 //   0x000061A0 append_entity_sprite_record
-//   0x0001582A allocate_first_free_effect_slot
+//   0x0001582A allocate_first_free_effect_slot_local
 //   0x000530DE service_audio_if_enabled
 
 
@@ -27,7 +27,7 @@ void FUN_000049a2(void)
   if (DAT_00ffdca0 != 0) {
     FUN_00004b6c();
   }
-  uVar3 = allocate_first_free_effect_slot();
+  uVar3 = allocate_first_free_effect_slot_local();
   if (!(bool)uVar7) {
     extraout_A1[0x19] = uVar3;
     extraout_A1[0x15] = extraout_D1w;

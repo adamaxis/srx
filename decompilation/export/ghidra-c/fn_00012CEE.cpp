@@ -6,10 +6,10 @@
 //   0x00001232 write_vdp_grid
 //   0x000104F6 FUN_000104f6
 //   0x00012148 read_entity_action_code
-//   0x00012C5A FUN_00012c5a
+//   0x00012C5A write_menu_repeated_grid_with_metadata
 //   0x00012C74 FUN_00012c74
-//   0x00012CD6 FUN_00012cd6
-//   0x00012FA4 FUN_00012fa4
+//   0x00012CD6 render_menu_text_asset
+//   0x00012FA4 advance_entity_action_menu
 //   0x00055E62 FUN_00055e62
 //   0x00055ED6 FUN_00055ed6
 //   0x00055F02 FUN_00055f02
@@ -33,7 +33,7 @@ void FUN_00012cee(void)
   int extraout_A0_02;
   int extraout_A0_03;
   
-  FUN_00012c5a();
+  write_menu_repeated_grid_with_metadata();
   sVar2 = FUN_00055ed6();
   if (sVar2 == 0) {
     if ((char)(DAT_00fff0d0 + -2) < '\0') {
@@ -53,7 +53,7 @@ void FUN_00012cee(void)
     }
     else {
       if (*(char *)(extraout_A0 + 0x56) < '\0') {
-        FUN_00012fa4();
+        advance_entity_action_menu();
         FUN_00055f02();
         FUN_00055f20();
         FUN_000104f6();
@@ -65,7 +65,7 @@ void FUN_00012cee(void)
         FUN_00012c74();
       }
     }
-    FUN_00012cd6();
+    render_menu_text_asset();
   }
   else {
     if ((((char)(DAT_00fff0d0 + -2) < '\0') && (cVar3 = read_entity_action_code(), cVar3 != '\x17'))
@@ -82,7 +82,7 @@ void FUN_00012cee(void)
       uVar4 = (uint)(ushort)((short)uVar4 + 1);
       sVar2 = sVar2 + -1;
     } while (sVar2 != -1);
-    FUN_00012cd6();
+    render_menu_text_asset();
   }
 LAB_00012e7a:
   write_vdp_grid();

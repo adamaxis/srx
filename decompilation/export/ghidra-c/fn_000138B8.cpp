@@ -139,7 +139,7 @@ void FUN_000138b8(void)
   bVar13 = false;
   puVar12[-0xffffffff00000002] = 1;
   puVar12[-0xffffffff00000001] = 0x459c;
-  FUN_000144e8();
+  apply_entity_close_range_state();
   if (bVar13) {
     return;
   }

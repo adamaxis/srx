@@ -57,10 +57,10 @@
 //   0x0001275C clear_menu_slot
 //   0x000127B0 refresh_menu_panel
 //   0x000129FE FUN_000129fe
-//   0x00012C1E FUN_00012c1e
-//   0x00012C36 FUN_00012c36
-//   0x00012C42 FUN_00012c42
-//   0x00012C5A FUN_00012c5a
+//   0x00012C1E prepare_menu_grid_variant_a
+//   0x00012C36 prepare_menu_grid_variant_b
+//   0x00012C42 prepare_menu_grid_variant_c
+//   0x00012C5A write_menu_repeated_grid_with_metadata
 //   0x000530DE service_audio_if_enabled
 //   0x000566E2 refresh_mode_resource_metadata
 
@@ -116,7 +116,7 @@ void FUN_00011740(void)
                     /* WARNING: Could not find normalized switch variable to match jumptable */
   switch(DAT_00fff0d0) {
   case 2:
-    FUN_00012c36();
+    prepare_menu_grid_variant_b();
     prepare_menu_row_grid();
     render_title_text_source();
     build_grouped_decimal_glyphs();
@@ -155,7 +155,7 @@ LAB_00011be6:
     if ((bool)uVar19 || cVar8 != cVar7) goto LAB_00011c9c;
     _DAT_00fff0d0 = uVar20;
     if (DAT_00fff0d0 == '\x02') {
-      FUN_00012c36();
+      prepare_menu_grid_variant_b();
       if ((-1 < (char)(*(char *)(DAT_00fffc04 + 0x2b) << 1)) &&
          ((char)(*(char *)((int)DAT_00fffc04 + 0x57) + -0xd) < '\0')) {
         if (*(char *)(DAT_00fffc04 + 0x27) != '\0') {
@@ -183,7 +183,7 @@ LAB_00011be6:
         *(byte *)((int)DAT_00fffc04 + 0x4f) = bVar1;
         if ((int)((uint)bVar1 << 0x18) < 0) {
           if (*(char *)((int)DAT_00fffc04 + 0x4f) < '\x01') {
-            FUN_00012c36();
+            prepare_menu_grid_variant_b();
             render_title_text_source();
             render_title_text_source();
             *(undefined1 *)(extraout_A0 + 0x4f) = 0;
@@ -196,13 +196,13 @@ LAB_00011be6:
           upload_field_asset_setup();
         }
         FUN_000036fc();
-        FUN_00012c36();
+        prepare_menu_grid_variant_b();
       }
       render_title_text_source();
       goto LAB_00011cb6;
     }
     if (DAT_00fff0d0 == '\x03') {
-      FUN_00012c36();
+      prepare_menu_grid_variant_b();
       sVar11 = 2;
       puVar17 = &DAT_00ff0100;
       puVar16 = (undefined4 *)&DAT_00ffdd48;
@@ -268,7 +268,7 @@ LAB_00011ec4:
               _DAT_00fff0d0 = uVar20;
               *(char *)((int)DAT_00fffc04 + 0x4f) = *(char *)((int)DAT_00fffc04 + 0x4f) - cVar7;
               *(char *)(iVar13 + 0x4f) = cVar7 + *(char *)(iVar13 + 0x4f);
-              FUN_00012c36();
+              prepare_menu_grid_variant_b();
               render_title_text_source();
               goto LAB_00011cb6;
             }
@@ -279,7 +279,7 @@ LAB_00011ec4:
       } while ((DAT_00ffdd22._0_1_ & 0x80) == 0);
     }
     else if (DAT_00fff0d0 == '\x04') {
-      FUN_00012c36();
+      prepare_menu_grid_variant_b();
       uVar9 = 0;
       uVar10 = 0;
       sVar11 = 2;
@@ -306,7 +306,7 @@ LAB_00011ec4:
             sVar11 = sVar11 + -1;
           } while (sVar11 != -1);
         }
-        FUN_00012c36();
+        prepare_menu_grid_variant_b();
         render_title_text_source();
         goto LAB_00011cb6;
       }
@@ -316,7 +316,7 @@ LAB_00011e14:
     }
 LAB_00011c9c:
     _DAT_00fff0d0 = uVar20;
-    FUN_00012c36();
+    prepare_menu_grid_variant_b();
     render_title_text_source();
 LAB_00011cb6:
     upload_menu_tile_block();
@@ -440,7 +440,7 @@ LAB_0000d4a0:
         else {
           if (_DAT_00fff116 < 0) goto LAB_0000d4a0;
           if (-1 < DAT_00fff0b3) {
-            FUN_00012c5a();
+            write_menu_repeated_grid_with_metadata();
             if ((DAT_00fff0d0 == '\0') || ((DAT_00fff0d1 != '\x02' && (DAT_00fff0d1 != '\x03')))) {
               if (((char)(DAT_00fff0d1 + -4) < '\0') ||
                  (((DAT_00fff0d0 != '\0' || (DAT_00fff0d1 != '\x04')) ||
@@ -486,7 +486,7 @@ LAB_0000d4a0:
       }
     } while( true );
   case 4:
-    FUN_00012c36();
+    prepare_menu_grid_variant_b();
     prepare_menu_row_grid();
     render_title_text_source();
     sVar11 = DAT_00fffc04[0x48];
@@ -553,7 +553,7 @@ LAB_0000d4a0:
       return;
     }
     prepare_menu_row_grid();
-    FUN_00012c36();
+    prepare_menu_grid_variant_b();
     render_title_text_source();
     FUN_000106da();
     FUN_000106da();
@@ -599,7 +599,7 @@ LAB_0000c2aa:
     if ((unaff_D7w == 7) &&
        (((*(char *)(extraout_A0_05 + 0x6d) == ')' || (*(char *)(extraout_A0_05 + 0x6d) == '*')) ||
         (*(char *)(extraout_A0_05 + 0x6d) == '+')))) {
-      FUN_00012c42();
+      prepare_menu_grid_variant_c();
       render_title_text_source();
       wait_for_controller_event();
       return;
@@ -608,7 +608,7 @@ LAB_0000c2aa:
     upload_menu_tile_block();
     DAT_00fff114 = '\0';
     refresh_menu_panel();
-    FUN_00012c42();
+    prepare_menu_grid_variant_c();
     read_entity_action_code();
     if (cVar7 == *(char *)(DAT_00fffc04 + 0x2b)) {
       render_title_text_source();
@@ -635,7 +635,7 @@ LAB_0000c2aa:
   case 9:
     cVar7 = read_entity_action_code();
     if ((-1 < (char)(cVar7 + -0x17)) && ((char)(cVar7 + -0x2c) < '\0')) {
-      FUN_00012c42();
+      prepare_menu_grid_variant_c();
       render_title_text_source();
       wait_for_controller_event();
       return;
@@ -660,7 +660,7 @@ LAB_0000c2aa:
       sVar11 = 7;
       do {
         if (*(char *)(puVar14 + 0x33) == '\0') {
-          FUN_00012c42();
+          prepare_menu_grid_variant_c();
           render_title_text_source();
           render_title_text_source();
           FUN_000110e8();
@@ -674,7 +674,7 @@ LAB_0000c2aa:
         puVar14 = (undefined2 *)((int)puVar14 + 1);
         sVar11 = sVar11 + -1;
       } while (sVar11 != -1);
-      FUN_00012c42();
+      prepare_menu_grid_variant_c();
       render_title_text_source();
       render_title_text_source();
       DAT_00fff096 = -1;
@@ -694,7 +694,7 @@ LAB_0001296a:
     } while ((DAT_00fff096 < 0) || (DAT_00fff114 < '\0'));
     FUN_000129fe();
     FUN_00011624();
-    FUN_00012c36();
+    prepare_menu_grid_variant_b();
 LAB_000129dc:
     render_menu_row();
     return;
@@ -757,7 +757,7 @@ LAB_000118b6:
   cVar8 = read_entity_action_code();
   if ('\0' < DAT_00fff09f) {
     prepare_menu_row_grid();
-    FUN_00012c42();
+    prepare_menu_grid_variant_c();
     DAT_00fff0b9 = '\0';
     puVar16 = &DAT_00fff0ba;
     render_title_text_source();
@@ -800,7 +800,7 @@ LAB_000118b6:
         if (((DAT_00ffdd22._0_1_ & 0x40) != 0) ||
            (((DAT_00ffdd22._0_1_ & 0x10) != 0 || ((DAT_00ffdd22._0_1_ & 0x20) != 0)))) {
           service_audio_if_enabled();
-          FUN_00012c1e();
+          prepare_menu_grid_variant_a();
           if (DAT_00fff0dc == DAT_00fff0b9) goto LAB_00012538;
           sVar6 = read_entity_action_code();
           bVar18 = (int)((uint)(ushort)(sVar6 - 0x11U) << 0x10) < 0;
@@ -861,7 +861,7 @@ LAB_00012538:
   }
   if (((cVar8 == '\x14') || (cVar8 == '\x16')) || (cVar8 == '\x13')) {
 LAB_000121c0:
-    FUN_00012c42();
+    prepare_menu_grid_variant_c();
     render_title_text_source();
     wait_for_controller_event();
     return;

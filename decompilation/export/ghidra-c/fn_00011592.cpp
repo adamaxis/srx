@@ -8,8 +8,8 @@
 //   0x00011ABE prepare_menu_dialog
 //   0x00012148 read_entity_action_code
 //   0x00012A8C FUN_00012a8c
-//   0x00012C36 FUN_00012c36
-//   0x00012E9E FUN_00012e9e
+//   0x00012C36 prepare_menu_grid_variant_b
+//   0x00012E9E service_entity_action_menu
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -25,12 +25,12 @@ void FUN_00011592(void)
   _DAT_00ffd980 = 1;
   uVar2 = (DAT_00ffef14 & 2) == 0;
   DAT_00ffef14 = DAT_00ffef14 | 2;
-  FUN_00012c36();
+  prepare_menu_grid_variant_b();
   read_entity_action_code();
   if (!(bool)uVar2) {
     cVar1 = FUN_00012a8c();
     if ((char)(cVar1 + -0x10) < '\0') {
-      FUN_00012e9e();
+      service_entity_action_menu();
     }
     prepare_menu_dialog();
     return;

@@ -12,7 +12,7 @@
 //   0x0000B49C resolve_entity_fallback_movement
 //   0x0000BCAE apply_mode_five_boundary_motion
 //   0x0000EB92 FUN_0000eb92
-//   0x00013874 FUN_00013874
+//   0x00013874 dispatch_entity_action_candidates
 //   0x00015BB4 FUN_00015bb4
 //   0x0001E514 FUN_0001e514
 
@@ -37,7 +37,7 @@ void FUN_0000a8ea(void)
   undefined2 *extraout_A0_08;
   undefined2 *extraout_A0_09;
   
-  FUN_00013874();
+  dispatch_entity_action_candidates();
   puVar5 = &DAT_00ff0100;
   sVar4 = 0xf;
   do {

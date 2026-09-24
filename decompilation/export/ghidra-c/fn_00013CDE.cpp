@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00013CDE
-// Name: FUN_00013cde
+// Name: guard_entity_action_threshold_variant
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00010660 FUN_00010660
 
 
-void FUN_00013cde(void)
+void guard_entity_action_threshold_variant(void)
 
 {
   short unaff_D2w;

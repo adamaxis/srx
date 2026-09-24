@@ -3,7 +3,7 @@
 // Name: FUN_0000d4c8
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00012C5A FUN_00012c5a
+//   0x00012C5A write_menu_repeated_grid_with_metadata
 
 
 void FUN_0000d4c8(void)
@@ -11,7 +11,7 @@ void FUN_0000d4c8(void)
 {
   undefined2 *puVar1;
   
-  FUN_00012c5a();
+  write_menu_repeated_grid_with_metadata();
   if (DAT_00fffc04[0x1f] == 2) {
     *(byte *)(DAT_00fffc04 + 8) = *(byte *)(DAT_00fffc04 + 8) & 0xfd;
 LAB_0000d4f2:

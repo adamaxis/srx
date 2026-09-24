@@ -7,7 +7,7 @@
 //   0x0000C0DA render_title_text_source
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x0000DA4A FUN_0000da4a
-//   0x00012C5A FUN_00012c5a
+//   0x00012C5A write_menu_repeated_grid_with_metadata
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -31,7 +31,7 @@ void FUN_0000d82a(void)
   undefined8 uVar11;
   
   DAT_00fff0b3 = 0;
-  FUN_00012c5a();
+  write_menu_repeated_grid_with_metadata();
   uVar7 = (ushort)DAT_00fff0d1;
   if ((char)(DAT_00fff0d1 - 4) < '\0') {
     sVar2 = uVar7 + (ushort)DAT_00fff0d0 * 4;
