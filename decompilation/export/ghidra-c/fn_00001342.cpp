@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00001342
-// Name: FUN_00001342
+// Name: wait_for_palette_frame
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
 
 
-void FUN_00001342(void)
+void wait_for_palette_frame(void)
 
 {
   short unaff_D5w;

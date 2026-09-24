@@ -1,6 +1,7 @@
 # CMake/Ninja build products are regenerated per checkout.
 /decompilation/build/
 /decompilation/build-*/
+/decompilation/ghidra_conversion/build/
 
 # Ghidra project databases are large, host-specific working state. The
 # exported listings and C++ evidence under export/ remain versioned.

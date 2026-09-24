@@ -9,7 +9,7 @@
 //   0x00000FFE FUN_00000ffe
 //   0x0000102A FUN_0000102a
 //   0x000012F6 FUN_000012f6
-//   0x00001368 FUN_00001368
+//   0x00001368 copy_target_palette
 //   0x00001530 FUN_00001530
 //   0x00001728 FUN_00001728
 //   0x0000195C sample_controller_input
@@ -38,7 +38,7 @@ void FUN_0005aa96(void)
   FUN_0000c0c2();
   FUN_0005aa5a();
   wait_for_vblank();
-  FUN_00001368();
+  copy_target_palette();
   FUN_0005b32c();
   DAT_00fff11e = DAT_00ffdf88;
   FUN_0005ac28();

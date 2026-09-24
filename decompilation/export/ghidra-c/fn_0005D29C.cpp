@@ -70,8 +70,8 @@ undefined8 FUN_0005d29c(void)
       }
     }
     else if (DAT_00fff13e._2_2_ == 0) {
-      DAT_00fff142 = DAT_00fff142 + -1;
-      if (-1 < DAT_00fff142) {
+      DAT_00fff142._0_2_ = DAT_00fff142._0_2_ + -1;
+      if (-1 < DAT_00fff142._0_2_) {
         FUN_0005d416();
         return CONCAT44(in_D0,in_D1);
       }

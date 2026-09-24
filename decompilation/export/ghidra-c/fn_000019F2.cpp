@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x000019F2
-// Name: FUN_000019f2
+// Name: read_controller_port
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00052DC2 FUN_00052dc2
 //   0x00052DD6 FUN_00052dd6
 
 
-void FUN_000019f2(void)
+void read_controller_port(void)
 
 {
   byte bVar1;

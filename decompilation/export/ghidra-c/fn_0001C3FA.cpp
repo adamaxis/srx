@@ -16,15 +16,15 @@ void FUN_0001c3fa(void)
     return;
   }
   if ((DAT_00ff158c < (char)*DAT_00ff1588) &&
-     (DAT_00ff1582._0_1_ = DAT_00ff1582._0_1_ + -1, DAT_00ff1582._0_1_ < '\0')) {
-    DAT_00ff1582._0_1_ = '\x04';
+     (DAT_00ff1582 = DAT_00ff1582 + -1, DAT_00ff1582 < '\0')) {
+    DAT_00ff1582 = '\x04';
     if ((char)(DAT_00ff158c + '\x01') <= (char)*DAT_00ff1588) {
       DAT_00ff158c = DAT_00ff158c + '\x01';
     }
   }
   if ((DAT_00ff158d < (char)*DAT_00ff1584) &&
-     (DAT_00ff1582._1_1_ = (char)DAT_00ff1582 + -1, (char)DAT_00ff1582 < '\0')) {
-    DAT_00ff1582._1_1_ = '\x04';
+     (DAT_00ff1583 = DAT_00ff1583 + -1, DAT_00ff1583 < '\0')) {
+    DAT_00ff1583 = '\x04';
     if ((char)(DAT_00ff158d + '\x01') <= (char)*DAT_00ff1584) {
       DAT_00ff158d = DAT_00ff158d + '\x01';
     }

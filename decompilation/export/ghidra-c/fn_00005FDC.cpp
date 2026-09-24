@@ -6,15 +6,13 @@
 //   (none)
 
 
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
-
 void FUN_00005fdc(void)
 
 {
   short sVar1;
   int in_A0;
   
-  _DAT_00ffdd3e = *(undefined2 *)(in_A0 + 0x1e);
+  DAT_00ffdd3e = *(undefined2 *)(in_A0 + 0x1e);
   DAT_00ffdd3c = *(short *)(in_A0 + 0x1a);
   sVar1 = *(short *)(in_A0 + 0x18) + DAT_00ffdd3c;
   if (*(short *)(in_A0 + 0x1c) <= sVar1) {

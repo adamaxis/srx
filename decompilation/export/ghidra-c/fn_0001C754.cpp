@@ -26,7 +26,7 @@ void FUN_0001c754(void)
     return;
   }
   if (DAT_00ff1584 == &PTR_DAT_0001c36a) {
-    if ((DAT_00ff158d == '\x03') && ((char)DAT_00ff1582 == '\x03')) {
+    if ((DAT_00ff158d == '\x03') && (DAT_00ff1583 == '\x03')) {
       FUN_0001cb20();
       return;
     }
@@ -35,7 +35,7 @@ void FUN_0001c754(void)
     }
   }
   else if (DAT_00ff1588 == &PTR_DAT_0001c350) {
-    if ((DAT_00ff158c == '\x03') && (DAT_00ff1582._0_1_ == '\x03')) {
+    if ((DAT_00ff158c == '\x03') && (DAT_00ff1582 == '\x03')) {
       FUN_0001cad4();
       return;
     }

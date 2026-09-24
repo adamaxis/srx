@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00001088
-// Name: FUN_00001088
+// Name: step_palette_toward_black
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00001088(void)
+void step_palette_toward_black(void)
 
 {
   ushort uVar1;

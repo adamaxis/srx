@@ -14,8 +14,8 @@ void FUN_0005961c(void)
   int *extraout_A1;
   
   FUN_000014ce();
-  if ((((DAT_00ffb744._0_1_ == 'G') && ((char)DAT_00ffb744 == 'A')) && (DAT_00ffb746._0_1_ == 'M'))
-     && ((char)DAT_00ffb746 == 'E')) {
+  if ((((DAT_00ffb744 == 'G') && (DAT_00ffb745 == 'A')) && (DAT_00ffb746 == 'M')) &&
+     (DAT_00ffb747 == 'E')) {
     FUN_00059786();
     if (*extraout_A1 == unaff_D6) {
       return;

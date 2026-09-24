@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00001368
-// Name: FUN_00001368
+// Name: copy_target_palette
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00001368(void)
+void copy_target_palette(void)
 
 {
   short sVar1;

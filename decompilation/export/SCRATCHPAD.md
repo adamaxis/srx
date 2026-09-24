@@ -12,8 +12,8 @@ lookups at runtime.
 - Ghidra: 11.4.2
 - Loader: patched `lab313ru/ghidra_sega_ldr`, upstream commit `aef1046`
 - Language: `68000:BE:32:default` / compiler `default`
-- Exported functions: 905
-- Resolved direct call sites: 2,976
+- Exported functions: 906
+- Resolved direct call sites: 2,978
 - Unresolved or indirect call sites: 16
 
 Semantic names in `functions.tsv`, `callgraph.tsv`, `call-sites.tsv`,
@@ -45,9 +45,25 @@ still has unresolved downstream calls or hardware presentation work.
 | `0x0BD2` | `wait_for_vblank` | Advances the frame counter and waits for the interrupt-side sample to change. | `NativePortShell::update()` frame tick | pending |
 | `0x0BF2` | `latch_controller_events` | Reads sampled controller flags and latches status/edge state. | `decode_genesis_controller_word()` / `InputState` | partial |
 | `0x0C2C` | `clear_runtime_memory_and_vdp` | Clears or folds work RAM based on the startup sentinel, resets display state, and invokes low-level setup. | Native session initialization; bus transcription remains in `ShadowrunRuntime` | partial |
-| `0x131C` | `step_palette_transition` | Runs seventeen palette/update steps, each synchronized to frame/input service. | `PaletteAnimator` / `NativePortShell` fade state | partial |
-| `0x195C` | `sample_controller_input` | Samples controller words, derives newly asserted bits, and updates decoded directional state. | `decode_genesis_controller_word()` | partial |
-| `0x1A9E` | `run_title_loop` | Title reveal/update loop, Start edge transition, palette fade, and handoff to startup menus. | `NativePortShell::update_title()` | partial |
+| `0x1088` | `step_palette_toward_black` | Moves each of the 64 CRAM words one Genesis color component toward black. | `ghidra_conversion::palette_toward_black()` | partial |
+| `0x10D6` | `step_palette_toward_target` | Moves each of the 64 CRAM words one component toward the target palette. | `ghidra_conversion::palette_toward_target()` | partial |
+| `0x131C` | `step_palette_transition` | Runs seventeen palette/update steps, each synchronized to frame/input service. | `ghidra_conversion::run_palette_transition()` | partial |
+| `0x1342` | `wait_for_palette_frame` | Waits for two vblank observations and latches controller events between palette steps. | Explicit conversion boundary; no runtime owner yet | pending |
+| `0x1368` | `copy_target_palette` | Copies 32 longwords into the 64-word target palette. | `ghidra_conversion::copy_target_palette()` | partial |
+| `0x195C` | `sample_controller_input` | Samples controller words, derives newly asserted bits, and updates decoded directional state. | `ghidra_conversion::derive_controller_sample()` | partial |
+| `0x19F2` | `read_controller_port` | Selects the controller port, reads both phases, combines the six-button byte, and restores the Z80 bus. | Windows input adapter boundary | pending |
+| `0x1BAC` | `finalize_title_input_sequence` | Recognizes the seven-byte title input sequence or clears the bounded history. | `ghidra_conversion::finalize_title_input_sequence()` | partial |
+| `0x1BEA` | `record_title_input_edge` | Stores up to eight nonzero title-loop edge bytes in the source event buffer. | `ghidra_conversion::record_title_input_edge()` | partial |
+| `0x1C1E` | `advance_title_text_state` | Counts down the completed-logo text delay, then emits the completed title text setup. | `ghidra_conversion::advance_title_reveal()` text state | partial |
+| `0x1C6A` | `advance_title_sprite_state` | Advances the title sprite cadence/phase and rebuilds the SAT projection. | `ghidra_conversion::advance_title_reveal()` sprite state | partial |
+| `0x1D7A` | `setup_title_state` | Clears title counters, loads title resources, and initializes title palette/text state. | Explicit conversion boundary; no runtime owner yet | pending |
+| `0x1DCA` | `draw_title_prompt_variant_a` | Dispatches one register-selected title prompt/text record during the blink schedule. | Explicit conversion boundary; source text writer unresolved | pending |
+| `0x1DE0` | `draw_title_prompt_variant_b` | Dispatches the alternate register-selected title prompt/text record during the blink schedule. | Explicit conversion boundary; source text writer unresolved | pending |
+| `0x1DF6` | `draw_title_copyright` | Dispatches the four source copyright text records. | Explicit conversion boundary; source text writer unresolved | pending |
+| `0x1E4E` | `reveal_title_logo_column` | Reveals one 8-pixel logo column and enters the completed-logo state at the source boundary. | `ghidra_conversion::advance_title_reveal()` | partial |
+| `0x2634` | `cycle_title_circuit_lights` | Every fifth vblank, selects one of seven eight-word title light palettes. | `ghidra_conversion::advance_title_circuit_lights()`; palette write boundary remains explicit | partial |
+| `0x26D0` | `advance_title_animation_timer` | Advances the title animation timer and sets the source update flag on wrap. | `ghidra_conversion::advance_title_animation_timer()` | partial |
+| `0x1A9E` | `run_title_loop` | Title reveal/update loop, Start edge transition, palette fade, and handoff to startup menus. | `ghidra_conversion::advance_title_prompt_schedule()` for prompt cadence; draw calls remain explicit boundaries | partial |
 | `0x3084` | `run_field_loop` | Field update loop around movement, entity state, camera, and object output. | `NativePortShell::update()` field branch | partial |
 | `0x5D746` | `run_pre_title_sequence` | Pre-title SEGA sequence: resource setup, rising figure, logo phases, horizontal-scroll noise, and timed fades. | `NativePortShell::update_boot()` | partial |
 | `0x5DA50` | `setup_pre_title_resources` | Loads the pre-title planes, tile data, and source SAT/palette resources. | `decode_genesis_native_assets()` / boot asset catalog | partial |

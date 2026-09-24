@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000010D6
-// Name: FUN_000010d6
+// Name: step_palette_toward_target
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_000010d6(void)
+void step_palette_toward_target(void)
 
 {
   ushort uVar1;

@@ -40,7 +40,7 @@ void FUN_0001cc24(void)
     uVar1 = (short)(char)bVar2 << 3;
     iVar5 = (int)(short)uVar1;
     *(undefined2 *)((int)&DAT_00ffe012 + iVar5) = extraout_D1w;
-    *(undefined4 *)((int)&DAT_00ffe012 + iVar5 + 2) = unaff_A2;
+    *(undefined4 *)((int)&DAT_00ffe014 + iVar5) = unaff_A2;
     *(undefined2 *)((int)&DAT_00ffe018 + iVar5) = unaff_D2w;
     sVar4 = 6;
     uVar3 = 0x6000;

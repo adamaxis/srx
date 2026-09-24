@@ -15,7 +15,7 @@ void FUN_0000ea36(void)
   undefined2 uStack_6;
   undefined1 auStack_4 [4];
   
-  if ((DAT_00ffef10._0_1_ & 0x20) != 0) {
+  if ((DAT_00ffef10 & 0x20) != 0) {
     bVar1 = unaff_D5w < 0xc;
     FUN_0000ead2();
     register0x0000003c = (BADSPACEBASE *)auStack_4;
@@ -24,7 +24,7 @@ void FUN_0000ea36(void)
       return;
     }
   }
-  if ((DAT_00ffef10._1_1_ & 0x20) != 0) {
+  if ((DAT_00ffef11 & 0x20) != 0) {
     *(undefined2 *)((int)register0x0000003c + -4) = unaff_D6w;
     *(ushort *)((int)register0x0000003c + -8) = unaff_D5w;
     bVar1 = 0xfff3 < unaff_D5w;
@@ -37,7 +37,7 @@ void FUN_0000ea36(void)
       return;
     }
   }
-  if ((DAT_00ffef10._2_1_ & 0x20) != 0) {
+  if ((DAT_00ffef12 & 0x20) != 0) {
     *(undefined2 *)((int)register0x0000003c + -4) = unaff_D6w;
     *(ushort *)((int)register0x0000003c + -8) = unaff_D5w;
     bVar1 = unaff_D5w < 0xc;
@@ -50,7 +50,7 @@ void FUN_0000ea36(void)
       return;
     }
   }
-  if (((byte)DAT_00ffef10 & 0x20) != 0) {
+  if ((DAT_00ffef13 & 0x20) != 0) {
     *(undefined2 *)((int)register0x0000003c + -4) = unaff_D6w;
     *(ushort *)((int)register0x0000003c + -8) = unaff_D5w;
     bVar1 = 0xfff3 < unaff_D5w;

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00001D7A
-// Name: FUN_00001d7a
+// Name: setup_title_state
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000012F6 FUN_000012f6
@@ -9,7 +9,7 @@
 //   0x0000C0C2 FUN_0000c0c2
 
 
-void FUN_00001d7a(void)
+void setup_title_state(void)
 
 {
   DAT_00ffdd08 = 0;

@@ -3,7 +3,7 @@
 // Name: sample_controller_input
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000019F2 FUN_000019f2
+//   0x000019F2 read_controller_port
 
 
 void sample_controller_input(void)
@@ -12,7 +12,7 @@ void sample_controller_input(void)
   ushort uVar1;
   ushort uVar2;
   
-  uVar2 = FUN_000019f2();
+  uVar2 = read_controller_port();
   uVar1 = DAT_00ffdd20;
   DAT_00ffdd20 = uVar2 & 0xff;
   DAT_00ffdd22 = DAT_00ffdd20 | ((DAT_00ffdd20 ^ uVar1) & DAT_00ffdd20) << 8;

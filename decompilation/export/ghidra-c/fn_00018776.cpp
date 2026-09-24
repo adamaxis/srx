@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
-//   0x00001088 FUN_00001088
+//   0x00001088 step_palette_toward_black
 
 
 void FUN_00018776(void)
@@ -22,7 +22,7 @@ void FUN_00018776(void)
       latch_controller_events();
       sVar1 = sVar1 + -1;
     } while (sVar1 != -1);
-    FUN_00001088();
+    step_palette_toward_black();
     DAT_00ffef14 = DAT_00ffef14 | 1;
     sVar2 = sVar2 + -1;
   } while (sVar2 != -1);

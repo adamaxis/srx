@@ -26,7 +26,7 @@ void run_pre_title_sequence(void)
   setup_pre_title_resources();
   DAT_00ffe18a = 1;
   DAT_00ffdd2a = 0x41;
-  _DAT_00ffdd2c = 0x119;
+  DAT_00ffdd2c = 0x119;
   DAT_00ffdd2e = 0x1a8;
   DAT_00ffdd3c = 0;
   sVar1 = 0x150;

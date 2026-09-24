@@ -7,9 +7,24 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x0BD2	frame/vblank wait	NativePortShell::update	shadowrun_boot_sequence	pending		Host frame clock is typed; source interrupt boundary still documented
 0x0BF2	controller event latch	decode_genesis_controller_word	shadowrun_boot_sequence	partial		Held/pressed host state verified
 0x0C2C	runtime memory/display initialization	ShadowrunRuntime / native session state	shadowrun_boot_sequence	partial		Native owner split pending; no new runtime ROM lookup
-0x131C	palette transition step	PaletteAnimator / NativePortShell	shadowrun_boot_sequence	partial		Seventeen-step fade cadence recovered
-0x195C	controller sampling	native::InputState	shadowrun_boot_sequence	partial		Controller word and edge-bit conversion recovered
-0x1A9E	title loop	NativePortShell::update_title	shadowrun_menu_system	partial		Title reveal and Start transition owned by typed state
+0x1088	palette step toward black	ghidra_conversion::palette_toward_black	shadowrun_boot_reconstruction	partial		Readable conversion is isolated from runtime and emulator
+0x10D6	palette step toward target	ghidra_conversion::palette_toward_target	shadowrun_boot_reconstruction	partial		Readable conversion is isolated from runtime and emulator
+0x131C	palette transition step	ghidra_conversion::run_palette_transition	shadowrun_boot_sequence	partial		Seventeen-step color loop; vblank boundary remains separate
+0x1342	palette frame wait	NativePortShell update loop	shadowrun_boot_sequence	pending		Two-vblank source wait documented; host timing still separate
+0x1368	target palette copy	ghidra_conversion::copy_target_palette	shadowrun_boot_sequence	partial		Complete 64-word copy is isolated from runtime and emulator
+0x195C	controller sampling	ghidra_conversion::derive_controller_sample	shadowrun_boot_sequence	partial		Readable edge conversion is isolated from runtime and emulator
+0x19F2	controller port read	Windows input adapter	shadowrun_native_port	pending		Genesis port phases documented; host device mapping remains separate
+0x1BAC	title input sequence validation	ghidra_conversion::finalize_title_input_sequence	shadowrun_menu_system	partial		Seven-byte match and mismatch reset converted without the FF sentinel
+0x1BEA	title input edge history	ghidra_conversion::record_title_input_edge	shadowrun_menu_system	partial		Bounded eight-entry history is isolated from runtime and emulator
+0x1A9E	title loop	ghidra_conversion::advance_title_prompt_schedule	shadowrun_menu_system	partial		Prompt cadence converted; title draw calls remain explicit boundaries
+0x1C1E	title text state	ghidra_conversion::advance_title_reveal	shadowrun_menu_system	partial		Completion countdown represented in isolated typed state
+0x1C6A	title sprite state	ghidra_conversion::advance_title_reveal	shadowrun_menu_system	partial		Sprite cadence and x advance represented in isolated typed state
+0x1D7A	title setup	ghidra_conversion	shadowrun_menu_system	pending		Source state boundary documented; resource setup not yet converted
+0x1DE0	title prompt text	ghidra_conversion	shadowrun_menu_system	pending		Source writer call identified; no runtime owner
+0x1DF6	title copyright text	ghidra_conversion	shadowrun_menu_system	pending		Four source writer calls identified; no runtime owner
+0x1E4E	title logo column reveal	ghidra_conversion::advance_title_reveal	shadowrun_menu_system	partial		38-column reveal and completion boundary represented in isolated typed state
+0x2634	title circuit lights	ghidra_conversion::advance_title_circuit_lights	shadowrun_menu_system	partial		Seven-phase cadence converted; source palette write remains explicit
+0x26D0	title animation timer	ghidra_conversion::advance_title_animation_timer	shadowrun_menu_system	partial		Five-frame timer converted; source update flag remains a boundary
 0x5D746	pre-title SEGA / rising SAT	NativePortShell::update_boot	shadowrun_boot_sequence	partial	boot-0/arrived/sega/strobe.bmp	0x5B2E2 guy pal fade still pending
 0x5DA50	pre-title resource setup	decode_genesis_boot_*	shadowrun_boot_sequence	partial		planes 0x1FFA66/0x1FFB66, tiles 0x1FEC46/0x14C222/0xDA038
 0x5DAC4	pre-title HSCROLL noise	NativePortShell::update_boot	shadowrun_boot_sequence	partial		plane-A line scroll 0..31 via 0xD44

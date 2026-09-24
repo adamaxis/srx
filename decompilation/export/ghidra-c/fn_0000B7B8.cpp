@@ -44,14 +44,14 @@ void FUN_0000b7b8(void)
   }
   if (((*(byte *)(in_A0 + 0x10) & 2) != 0) &&
      (((DAT_00ffdf40 == 2 || (DAT_00ffddc4 == 0x14)) || (_DAT_00ffdf84 == 0)))) {
-    bVar2 = DAT_00ffef10._0_1_ < '\0';
-    if (DAT_00ffef10._1_1_ < '\0') {
+    bVar2 = DAT_00ffef10 < '\0';
+    if (DAT_00ffef11 < '\0') {
       bVar2 = bVar2 + 1;
     }
-    if (DAT_00ffef10._2_1_ < '\0') {
+    if (DAT_00ffef12 < '\0') {
       bVar2 = bVar2 + 1;
     }
-    if ((char)DAT_00ffef10 < '\0') {
+    if (DAT_00ffef13 < '\0') {
       bVar2 = bVar2 + 1;
     }
     if (1 < bVar2) {
@@ -128,7 +128,7 @@ void FUN_0000b7b8(void)
               in_A0 = extraout_A0_10;
               goto LAB_0000baae;
             }
-            DAT_00ffef10._0_1_ = -0x58;
+            DAT_00ffef10 = -0x58;
             DAT_00ffdf64 = 0xa8;
             *(undefined2 *)(extraout_A0_00 + 0xc6) = 0xa8;
             uVar1 = 8;

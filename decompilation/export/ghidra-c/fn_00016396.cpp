@@ -3,7 +3,7 @@
 // Name: FUN_00016396
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001088 FUN_00001088
+//   0x00001088 step_palette_toward_black
 //   0x000163DA FUN_000163da
 
 
@@ -18,7 +18,7 @@ ushort FUN_00016396(void)
   if (_DAT_00ffdf3a != 0) {
     uVar1 = DAT_00ffdf3c & 1;
     if (uVar1 == 0) {
-      uVar1 = FUN_00001088();
+      uVar1 = step_palette_toward_black();
       DAT_00ffef14 = DAT_00ffef14 | 1;
     }
     DAT_00ffdf3c = DAT_00ffdf3c - 1;

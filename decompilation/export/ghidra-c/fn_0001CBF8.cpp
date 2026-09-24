@@ -16,7 +16,7 @@ void FUN_0001cbf8(void)
   
   if (DAT_00ff15b8 == '\0') {
     _DAT_00ffe010 = 0;
-    puVar2 = &DAT_00ffe012;
+    puVar2 = (undefined4 *)&DAT_00ffe012;
     sVar1 = 6;
     do {
       *puVar2 = 0;

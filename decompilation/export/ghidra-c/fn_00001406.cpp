@@ -11,7 +11,7 @@
 //   0x0000102A FUN_0000102a
 //   0x00001232 FUN_00001232
 //   0x0000131C step_palette_transition
-//   0x00001368 FUN_00001368
+//   0x00001368 copy_target_palette
 //   0x00001530 FUN_00001530
 //   0x00001728 FUN_00001728
 
@@ -29,7 +29,7 @@ void FUN_00001406(void)
   FUN_00000ffe();
   FUN_0000102a();
   FUN_00000e34();
-  FUN_00001368();
+  copy_target_palette();
   DAT_00ffdd08 = *(undefined2 *)(unaff_A6 + 8);
   DAT_00ffdd0c = *(undefined2 *)(unaff_A6 + 10);
   DAT_00ffdd0a = *(undefined2 *)(unaff_A6 + 0xc);

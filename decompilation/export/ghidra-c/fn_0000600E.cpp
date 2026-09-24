@@ -7,8 +7,6 @@
 //   0x000060FA FUN_000060fa
 
 
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
-
 void FUN_0000600e(void)
 
 {
@@ -65,7 +63,7 @@ void FUN_0000600e(void)
   if ((uVar2 == 0x8002) && ((*(byte *)(in_A0 + 0x11) & 1) != 0)) {
     FUN_000060f4();
     if (!bVar5) {
-      *(undefined2 *)(extraout_A0 + 0x1e) = _DAT_00ffdd3e;
+      *(undefined2 *)(extraout_A0 + 0x1e) = DAT_00ffdd3e;
       *(undefined2 *)(extraout_A0 + 0x1a) = DAT_00ffdd3c;
       return;
     }

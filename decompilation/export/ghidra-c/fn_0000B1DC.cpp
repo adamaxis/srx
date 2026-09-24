@@ -43,7 +43,7 @@ void FUN_0000b1dc(void)
     iVar4 = extraout_A0_00;
   }
   *(undefined2 *)(iVar4 + 0x2e) = *(undefined2 *)(iVar4 + 0x34);
-  *(undefined **)(iVar4 + 0x3a) = &DAT_0000b316;
+  *(undefined1 **)(iVar4 + 0x3a) = &LAB_0000b316;
   uVar1 = *(ushort *)(iVar4 + 0x2e) << 3 | *(ushort *)(iVar4 + 0x2e) >> 0xd;
   if ((short)uVar1 < 0) {
     uVar1 = uVar1 + 1;

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000026D0
-// Name: FUN_000026d0
+// Name: advance_title_animation_timer
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_000026d0(void)
+void advance_title_animation_timer(void)
 
 {
   DAT_00ffdd2e = DAT_00ffdd2e + -1;

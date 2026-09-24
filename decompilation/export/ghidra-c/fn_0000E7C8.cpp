@@ -22,8 +22,8 @@ ushort FUN_0000e7c8(void)
   _DAT_00ffdfe2 = 0;
   if ((((DAT_00ffddd2 <= unaff_D5w >> 4) || (unaff_D5w >> 4 < DAT_00ffddd6)) ||
       (DAT_00ffddd4 <= unaff_D6w >> 4)) || (unaff_D6w >> 4 < DAT_00ffddd8)) {
-    DAT_00ffef10._2_2_ = 0x7f;
-    DAT_00ffef10._0_2_ = 0x7f;
+    _DAT_00ffef12 = 0x7f;
+    _DAT_00ffef10 = 0x7f;
     _DAT_00ffdfe2 = 0;
     _DAT_00ffdf68 = 0xffff;
     return 0x7f;

@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00001E4E
-// Name: FUN_00001e4e
+// Name: reveal_title_logo_column
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000530DE FUN_000530de
 //   0x0005C8C6 FUN_0005c8c6
 
 
-ushort FUN_00001e4e(void)
+ushort reveal_title_logo_column(void)
 
 {
   ushort uVar1;

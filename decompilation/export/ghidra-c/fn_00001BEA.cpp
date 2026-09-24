@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00001BEA
-// Name: FUN_00001bea
+// Name: record_title_input_edge
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00001bea(void)
+void record_title_input_edge(void)
 
 {
   if (((DAT_00ffdd22 & 0x7f00) != 0) && (DAT_00fff101 < 8)) {

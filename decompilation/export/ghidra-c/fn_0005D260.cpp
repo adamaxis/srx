@@ -22,7 +22,7 @@ void FUN_0005d260(void)
   DAT_00fff11e = 0x11c0;
   DAT_00fff122 = 0xfe80;
   DAT_00fff13e._2_2_ = 0xffff;
-  DAT_00fff142 = 0xb4;
+  DAT_00fff142._0_2_ = 0xb4;
   return;
 }
 

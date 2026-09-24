@@ -6,8 +6,6 @@
 //   0x0005B2E2 FUN_0005b2e2
 
 
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
-
 void step_pre_title_logo_strobe(void)
 
 {
@@ -21,7 +19,7 @@ void step_pre_title_logo_strobe(void)
       DAT_00ffdf92 = 0;
     }
     sVar1 = DAT_00ffdf92 << 1;
-    _DAT_00ffd884 = *(undefined2 *)((int)&DAT_0005dce6 + (int)sVar1);
+    DAT_00ffd882._2_2_ = *(undefined2 *)((int)&DAT_0005dce6 + (int)sVar1);
     DAT_00ffd886 = *(undefined2 *)((int)&DAT_0005dce8 + (int)sVar1);
     DAT_00ffd888 = *(undefined2 *)((int)&DAT_0005dcea + (int)sVar1);
     DAT_00ffd88a = *(undefined2 *)((int)&DAT_0005dcec + (int)sVar1);

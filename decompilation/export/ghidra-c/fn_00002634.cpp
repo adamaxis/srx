@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00002634
-// Name: FUN_00002634
+// Name: cycle_title_circuit_lights
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-undefined2 FUN_00002634(void)
+undefined2 cycle_title_circuit_lights(void)
 
 {
   undefined2 in_D0w;

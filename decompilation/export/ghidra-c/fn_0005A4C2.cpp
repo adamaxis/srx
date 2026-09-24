@@ -6,8 +6,6 @@
 //   0x00001378 FUN_00001378
 
 
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
-
 void FUN_0005a4c2(void)
 
 {
@@ -20,7 +18,7 @@ void FUN_0005a4c2(void)
       if (0xf < uVar1) {
         uVar1 = 0;
       }
-      _DAT_00fff142 = *(undefined4 *)((int)&DAT_0005a562 + (int)(short)uVar1);
+      DAT_00fff142 = *(undefined4 *)((int)&DAT_0005a562 + (int)(short)uVar1);
       DAT_00fff148 = DAT_00ffdf88 + 6;
       DAT_00fff146 = DAT_00fff146 + 1;
       if (3 < DAT_00fff146) {
