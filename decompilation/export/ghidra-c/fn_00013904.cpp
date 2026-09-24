@@ -196,7 +196,7 @@ LAB_0001450e:
       if (*(char *)((int)extraout_A0_02 + 0x4d) == '\x04') {
         unaff_D2w = *DAT_00fffc04;
         local_4 = 0x13f24;
-        uVar3 = FUN_00015ca4();
+        uVar3 = compute_diagonal_step_cost();
         bVar10 = uVar3 < 0x500;
         in_A0 = extraout_A0_03;
         if (bVar10) {
@@ -364,7 +364,7 @@ FUN_000149c0:
     FUN_00014b4e();
     *(ushort *)((int)register0x0000003c + -2) = unaff_D2w << 0xd | unaff_D2w >> 3;
     *(undefined4 *)((int)register0x0000003c + -6) = 0x14a2e;
-    uVar5 = FUN_00015ca4();
+    uVar5 = compute_diagonal_step_cost();
     uVar3 = *(ushort *)((int)register0x0000003c + -2);
     iVar2 = extraout_A0_15;
   }

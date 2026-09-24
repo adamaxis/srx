@@ -3,7 +3,7 @@
 // Name: FUN_0001597e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00015CC0 FUN_00015cc0
+//   0x00015CC0 compute_diagonal_step_cost
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -34,7 +34,7 @@ void FUN_0001597e(void)
   sVar3 = 9;
   do {
     if ((((*(byte *)(puVar4 + 8) & 1) != 0) && ((*(byte *)(puVar4 + 8) & 0x40) == 0)) &&
-       (cVar2 = FUN_00015cc0(), puVar4 = extraout_A0, unaff_D3w < 0x500)) {
+       (cVar2 = compute_diagonal_step_cost(), puVar4 = extraout_A0, unaff_D3w < 0x500)) {
       if (cVar2 == '\r') {
         *(byte *)((int)extraout_A0 + 0xdf) = *(byte *)((int)extraout_A0 + 0xdf) | 2;
         *(int *)(extraout_A0 + 0x6c) = in_A0;

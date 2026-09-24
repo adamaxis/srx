@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00015CA4
-// Name: FUN_00015ca4
+// Name: compute_diagonal_step_cost
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
@@ -8,7 +8,7 @@
 
 /* WARNING: Removing unreachable block (ram,0x00015cba) */
 
-undefined4 FUN_00015ca4(void)
+undefined4 compute_diagonal_step_cost(void)
 
 {
   ushort uVar1;

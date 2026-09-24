@@ -10,7 +10,7 @@
 //   0x00014914 FUN_00014914
 //   0x00014B4E FUN_00014b4e
 //   0x00014C2E FUN_00014c2e
-//   0x00015CA4 FUN_00015ca4
+//   0x00015CA4 compute_diagonal_step_cost
 
 
 void FUN_000149c0(void)
@@ -85,7 +85,7 @@ void FUN_000149c0(void)
   }
   FUN_00014b4e();
   uVar5 = unaff_D2w << 0xd | unaff_D2w >> 3;
-  uVar2 = FUN_00015ca4();
+  uVar2 = compute_diagonal_step_cost();
   iVar6 = extraout_A0_01;
 LAB_000145fc:
   *(ushort *)(iVar6 + 0x34) = uVar5;

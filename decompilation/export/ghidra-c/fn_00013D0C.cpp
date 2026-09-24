@@ -199,7 +199,7 @@ FUN_000149c0:
     }
     FUN_00014b4e();
     uVar7 = uVar7 << 0xd | uVar7 >> 3;
-    puVar3 = (ushort *)FUN_00015ca4();
+    puVar3 = (ushort *)compute_diagonal_step_cost();
     uVar5 = (ushort)puVar3;
     iVar8 = extraout_A0_08;
   }

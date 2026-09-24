@@ -3,7 +3,7 @@
 // Name: FUN_0001460e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00015CA4 FUN_00015ca4
+//   0x00015CA4 compute_diagonal_step_cost
 
 
 void FUN_0001460e(void)
@@ -12,7 +12,7 @@ void FUN_0001460e(void)
   ushort uVar1;
   int extraout_A0;
   
-  uVar1 = FUN_00015ca4();
+  uVar1 = compute_diagonal_step_cost();
   if (uVar1 < 0x1e0) {
     *(byte *)(extraout_A0 + 0xb0) = *(byte *)(extraout_A0 + 0xb0) & 0x80;
     *(undefined1 *)(extraout_A0 + 0xb1) = 0;

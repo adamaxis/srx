@@ -99,6 +99,8 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0000FF06L, "move_selection_row");
         names.put(0x0000C376L, "move_wrapped_menu_cursor");
         names.put(0x0000C8B0L, "apply_byte_counter_delta_with_negative_floor");
+        names.put(0x00015CA4L, "compute_diagonal_step_cost");
+        names.put(0x00015CC0L, "compute_diagonal_step_cost");
         names.put(0x0000B732L, "apply_movement_result_policy");
         names.put(0x0000B77EL, "probe_entity_directional_collision");
         names.put(0x0000B530L, "approach_entity_fixed_point_target");

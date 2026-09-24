@@ -110,7 +110,7 @@ FUN_000149c0:
     }
     FUN_00014b4e();
     uVar6 = unaff_D2w << 0xd | unaff_D2w >> 3;
-    uVar3 = FUN_00015ca4();
+    uVar3 = compute_diagonal_step_cost();
     iVar7 = extraout_A0_04;
   }
   *(ushort *)(iVar7 + 0x34) = uVar6;

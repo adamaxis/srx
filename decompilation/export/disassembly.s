@@ -11395,7 +11395,7 @@
 00013F12: movea.l (0x00fffc04).l,A1
 00013F18: move.w (A1),D2w
 00013F1A: move.w (0x4,A1),D3w
-00013F1E: jsr 0x00015ca4.l ; call 00015CA4 FUN_00015ca4
+00013F1E: jsr 0x00015ca4.l ; call 00015CA4 compute_diagonal_step_cost
 00013F24: cmpi.w #0x500,D0w
 00013F28: bcc.w 0x000142ae
 00013F2C: jsr 0x0001dbaa.l ; call 0001DBAA FUN_0001dbaa
@@ -11771,7 +11771,7 @@
 00014600: move.w D3w,(0xc8,A0)
 00014604: move.l #0xb574,(0x3a,A0) ; data 0000b574
 0001460C: rts
-0001460E: jsr 0x00015ca4.l ; call 00015CA4 FUN_00015ca4
+0001460E: jsr 0x00015ca4.l ; call 00015CA4 compute_diagonal_step_cost
 00014614: cmpi.w #0x1e0,D0w
 00014618: bcc.w 0x0001463a
 0001461C: andi.b #-0x80,(0xb0,A0)
@@ -12070,7 +12070,7 @@
 00014A18: move.w (0x4,A0),D1w
 00014A1C: move.w (0x00ffdd2a).l,D2w
 00014A22: move.w (0x00ffdd2c).l,D3w
-00014A28: jsr 0x00015ca4.l ; call 00015CA4 FUN_00015ca4
+00014A28: jsr 0x00015ca4.l ; call 00015CA4 compute_diagonal_step_cost
 00014A2E: move.w (SP)+,D2w
 00014A30: move.w D0w,D3w
 00014A32: bra.w 0x000145fc
@@ -13070,7 +13070,7 @@
 000159E4: beq.w 0x00015a40
 000159E8: btst.b #0x6,(0x10,A0)
 000159EE: bne.w 0x00015a40
-000159F2: jsr 0x00015cc0.l ; call 00015CC0 FUN_00015cc0
+000159F2: jsr 0x00015cc0.l ; call 00015CC0 compute_diagonal_step_cost
 000159F8: cmpi.w #0x500,D3w
 000159FC: bcc.w 0x00015a40
 00015A00: cmpi.b #0xd,D0b

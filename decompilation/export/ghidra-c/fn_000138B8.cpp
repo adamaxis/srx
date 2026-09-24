@@ -249,7 +249,7 @@ FUN_000149c0:
     puVar12[-1] = uVar7 << 0xd | uVar7 >> 3;
     puVar12[-0xffffffff00000003] = 1;
     puVar12[-0xffffffff00000002] = 0x4a2e;
-    uVar5 = FUN_00015ca4();
+    uVar5 = compute_diagonal_step_cost();
     uVar7 = puVar12[-1];
     iVar10 = extraout_A0_10;
   }
