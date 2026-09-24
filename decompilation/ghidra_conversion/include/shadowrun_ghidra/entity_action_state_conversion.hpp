@@ -41,4 +41,17 @@ void advance_entity_action_threshold(
     const std::function<void()>& find_action,
     const std::function<void()>& set_action_state);
 
+struct EntityActionLaneAvailability {
+    std::uint8_t primary_occupancy = 0;
+    std::uint8_t secondary_occupancy = 0;
+    std::uint8_t tertiary_occupancy = 0;
+    bool secondary_override = false;
+    bool tertiary_override = false;
+};
+
+// ROM 0x13C20: choose lane 0, 1, or 2 from the three occupancy checks and
+// their source override flags.
+std::uint8_t select_entity_action_lane(
+    const EntityActionLaneAvailability& availability);
+
 } // namespace shadowrun::ghidra_conversion

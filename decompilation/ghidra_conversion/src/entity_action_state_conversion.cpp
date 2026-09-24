@@ -65,4 +65,19 @@ void advance_entity_action_threshold(
     }
 }
 
+std::uint8_t select_entity_action_lane(
+    const EntityActionLaneAvailability& availability) {
+    std::uint8_t lane = 0U;
+    if (availability.primary_occupancy > 3U &&
+        (availability.secondary_override ||
+         availability.secondary_occupancy > 3U)) {
+        lane = 1U;
+        if (availability.tertiary_override ||
+            availability.tertiary_occupancy > 3U) {
+            lane = 2U;
+        }
+    }
+    return lane;
+}
+
 } // namespace shadowrun::ghidra_conversion

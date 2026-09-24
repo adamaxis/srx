@@ -47,5 +47,12 @@ int main() {
     if (order != std::vector<int>{1, 2, 3, 4, 5, 7, 8, 9, 10}) {
         return 5;
     }
+
+    if (select_entity_action_lane({4U, 4U, 0U, false, false}) != 1U ||
+        select_entity_action_lane({4U, 4U, 4U, false, false}) != 2U ||
+        select_entity_action_lane({2U, 9U, 9U, false, false}) != 0U ||
+        select_entity_action_lane({4U, 0U, 0U, true, true}) != 2U) {
+        return 6;
+    }
     return 0;
 }
