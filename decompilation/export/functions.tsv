@@ -109,10 +109,10 @@ entry	name	size	callingConvention	decompileStatus	file
 00003674	FUN_00003674	136	unknown	ok	ghidra-c/fn_00003674.cpp
 000036FC	FUN_000036fc	240	unknown	ok	ghidra-c/fn_000036FC.cpp
 000037EC	FUN_000037ec	192	unknown	ok	ghidra-c/fn_000037EC.cpp
-000038AC	FUN_000038ac	78	unknown	ok	ghidra-c/fn_000038AC.cpp
-000038FA	FUN_000038fa	32	unknown	ok	ghidra-c/fn_000038FA.cpp
+000038AC	service_entity_ammo	78	unknown	ok	ghidra-c/fn_000038AC.cpp
+000038FA	run_entity_animation_triplet	32	unknown	ok	ghidra-c/fn_000038FA.cpp
 0000391A	FUN_0000391a	216	unknown	ok	ghidra-c/fn_0000391A.cpp
-000039F2	FUN_000039f2	42	unknown	ok	ghidra-c/fn_000039F2.cpp
+000039F2	refresh_field_animation_assets	42	unknown	ok	ghidra-c/fn_000039F2.cpp
 00003A1C	FUN_00003a1c	116	unknown	ok	ghidra-c/fn_00003A1C.cpp
 00003A90	FUN_00003a90	142	unknown	ok	ghidra-c/fn_00003A90.cpp
 00003B1E	FUN_00003b1e	142	unknown	ok	ghidra-c/fn_00003B1E.cpp

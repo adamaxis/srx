@@ -12,7 +12,7 @@
 //   0x0000195C sample_controller_input
 //   0x0000334C FUN_0000334c
 //   0x00003404 FUN_00003404
-//   0x000039F2 FUN_000039f2
+//   0x000039F2 refresh_field_animation_assets
 //   0x0000C0C2 load_title_font
 //   0x0000C0DA render_title_text_source
 //   0x0000C406 FUN_0000c406
@@ -71,7 +71,7 @@ LAB_00056b66:
       wait_for_controller_event();
 LAB_00056da8:
       FUN_0000334c();
-      FUN_000039f2();
+      refresh_field_animation_assets();
       FUN_00003404();
       VDP_CTRL = 0x9191;
       return;

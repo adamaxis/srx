@@ -183,6 +183,9 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00000EE6L, "service_pending_vdp_upload");
         names.put(0x00002C92L, "render_normal_field_viewport");
         names.put(0x00002CB2L, "render_alternate_field_viewport");
+        names.put(0x000038ACL, "service_entity_ammo");
+        names.put(0x000038FAL, "run_entity_animation_triplet");
+        names.put(0x000039F2L, "refresh_field_animation_assets");
         names.put(0x00000EC0L, "upload_startup_palette");
         names.put(0x00000F1CL, "write_transfer_header");
         names.put(0x00000F3CL, "write_fixed_transfer_pair");

@@ -175,7 +175,7 @@ caller	caller_name	instruction	text	target	callee	status
 0000286E	FUN_0000286e	000028A4	jmp 0x0001e4ac.l	0001E4AC	spawn_world_effect_at_player_position	resolved
 000028AA	FUN_000028aa	000028AA	jsr 0x00003404.l	00003404	FUN_00003404	resolved
 000028AA	FUN_000028aa	000028B0	jsr 0x0000334c.l	0000334C	FUN_0000334c	resolved
-000028AA	FUN_000028aa	000028B6	jsr 0x000039f2.l	000039F2	FUN_000039f2	resolved
+000028AA	FUN_000028aa	000028B6	jsr 0x000039f2.l	000039F2	refresh_field_animation_assets	resolved
 000028AA	FUN_000028aa	000028BC	jmp 0x0000c0c2.l	0000C0C2	load_title_font	resolved
 000028C2	FUN_000028c2	000028CA	bsr.w 0x00002900	00002900	FUN_00002900	resolved
 000028C2	FUN_000028c2	000028CE	bsr.b 0x0000286e	0000286E	FUN_0000286e	resolved
@@ -245,17 +245,17 @@ caller	caller_name	instruction	text	target	callee	status
 000036FC	FUN_000036fc	000037E0	jsr 0x00001232.l	00001232	write_vdp_grid	resolved
 000037EC	FUN_000037ec	00003832	bsr.w 0x00003674	00003674	FUN_00003674	resolved
 000037EC	FUN_000037ec	0000389E	jsr 0x00001232.l	00001232	write_vdp_grid	resolved
-000038AC	FUN_000038ac	000038E6	bsr.w 0x000036fc	000036FC	FUN_000036fc	resolved
-000038FA	FUN_000038fa	00003904	bsr.w 0x00003674	00003674	FUN_00003674	resolved
-000038FA	FUN_000038fa	00003908	bsr.w 0x000037ec	000037EC	FUN_000037ec	resolved
-000038FA	FUN_000038fa	0000390C	bsr.w 0x000036fc	000036FC	FUN_000036fc	resolved
+000038AC	service_entity_ammo	000038E6	bsr.w 0x000036fc	000036FC	FUN_000036fc	resolved
+000038FA	run_entity_animation_triplet	00003904	bsr.w 0x00003674	00003674	FUN_00003674	resolved
+000038FA	run_entity_animation_triplet	00003908	bsr.w 0x000037ec	000037EC	FUN_000037ec	resolved
+000038FA	run_entity_animation_triplet	0000390C	bsr.w 0x000036fc	000036FC	FUN_000036fc	resolved
 0000391A	FUN_0000391a	00003926	jsr 0x000530de.l	000530DE	service_audio_if_enabled	resolved
 0000391A	FUN_0000391a	0000394A	bsr.w 0x000033aa	000033AA	FUN_000033aa	resolved
 0000391A	FUN_0000391a	000039E0	jsr 0x0001e540.l	0001E540	FUN_0001e540	resolved
 0000391A	FUN_0000391a	000039EC	jsr 0x0001dc4c.l	0001DC4C	FUN_0001dc4c	resolved
-000039F2	FUN_000039f2	00003A0E	bsr.w 0x000033aa	000033AA	FUN_000033aa	resolved
-000039F2	FUN_000039f2	00003A12	bsr.w 0x00003548	00003548	FUN_00003548	resolved
-000039F2	FUN_000039f2	00003A16	bsr.w 0x000038fa	000038FA	FUN_000038fa	resolved
+000039F2	refresh_field_animation_assets	00003A0E	bsr.w 0x000033aa	000033AA	FUN_000033aa	resolved
+000039F2	refresh_field_animation_assets	00003A12	bsr.w 0x00003548	00003548	FUN_00003548	resolved
+000039F2	refresh_field_animation_assets	00003A16	bsr.w 0x000038fa	000038FA	run_entity_animation_triplet	resolved
 00003A1C	FUN_00003a1c	00003A38	bra.w 0x00003bac	00003BAC	FUN_00003bac	resolved
 00003A1C	FUN_00003a1c	00003A4A	jsr 0x00015dcc.l	00015DCC	FUN_00015dcc	resolved
 00003A1C	FUN_00003a1c	00003A78	bsr.w 0x00003a90	00003A90	FUN_00003a90	resolved
@@ -500,7 +500,7 @@ caller	caller_name	instruction	text	target	callee	status
 0000C64C	FUN_0000c64c	0000C6A6	jsr 0x0001f246.l	0001F246	FUN_0001f246	resolved
 0000C64C	FUN_0000c64c	0000C722	bsr.w 0x0000c802	0000C802	FUN_0000c802	resolved
 0000C64C	FUN_0000c64c	0000C7C0	jsr 0x0001f246.l	0001F246	FUN_0001f246	resolved
-0000C64C	FUN_0000c64c	0000C7C6	jsr 0x000038fa.l	000038FA	FUN_000038fa	resolved
+0000C64C	FUN_0000c64c	0000C7C6	jsr 0x000038fa.l	000038FA	run_entity_animation_triplet	resolved
 0000C64C	FUN_0000c64c	0000C7CC	jsr 0x0000391a.l	0000391A	FUN_0000391a	resolved
 0000C64C	FUN_0000c64c	0000C7E0	jsr 0x00002a32.l	00002A32	initialize_field_mode_profile_a	resolved
 0000C64C	FUN_0000c64c	0000C7EC	jsr 0x00002a44.l	00002A44	initialize_field_mode_profile_b	resolved
@@ -512,7 +512,7 @@ caller	caller_name	instruction	text	target	callee	status
 0000C802	FUN_0000c802	0000C88A	jsr 0x0001e514.l	0001E514	FUN_0001e514	resolved
 0000C802	FUN_0000c802	0000C89C	jsr 0x0000391a.l	0000391A	FUN_0000391a	resolved
 0000C802	FUN_0000c802	0000C8A2	jsr 0x00003404.l	00003404	FUN_00003404	resolved
-0000C802	FUN_0000c802	0000C8A8	jsr 0x000038fa.l	000038FA	FUN_000038fa	resolved
+0000C802	FUN_0000c802	0000C8A8	jsr 0x000038fa.l	000038FA	run_entity_animation_triplet	resolved
 0000C928	FUN_0000c928	0000C928	jsr 0x00010952.l	00010952	FUN_00010952	resolved
 0000C928	FUN_0000c928	0000C93C	jsr 0x000566d8.l	000566D8	FUN_000566d8	resolved
 0000C928	FUN_0000c928	0000C942	jsr 0x0005670e.l	0005670E	FUN_0005670e	resolved
@@ -915,7 +915,7 @@ caller	caller_name	instruction	text	target	callee	status
 00011740	FUN_00011740	0000D4A8	jsr 0x00000ffe.l	00000FFE	clear_and_fill_plane_a	resolved
 00011740	FUN_00011740	0000D4AE	jsr 0x0000102a.l	0000102A	clear_and_fill_plane_b	resolved
 00011740	FUN_00011740	0000D4BA	jsr 0x0000334c.l	0000334C	FUN_0000334c	resolved
-00011740	FUN_00011740	0000D4C0	jsr 0x000039f2.l	000039F2	FUN_000039f2	resolved
+00011740	FUN_00011740	0000D4C0	jsr 0x000039f2.l	000039F2	refresh_field_animation_assets	resolved
 00011740	FUN_00011740	0000FBBC	jsr 0x00011900.l	00011900	FUN_00011900	resolved
 00011740	FUN_00011740	0000FBC2	bsr.w 0x00012c36	00012C36	FUN_00012c36	resolved
 00011740	FUN_00011740	0000FBD6	jsr 0x0000c0da.l	0000C0DA	render_title_text_source	resolved
@@ -991,7 +991,7 @@ caller	caller_name	instruction	text	target	callee	status
 00011740	FUN_00011740	0001248C	jsr 0x000037ec.l	000037EC	FUN_000037ec	resolved
 00011740	FUN_00011740	000124B6	bsr.w 0x0001275c	0001275C	FUN_0001275c	resolved
 00011740	FUN_00011740	000124BA	bsr.w 0x00011624	00011624	FUN_00011624	resolved
-00011740	FUN_00011740	000124BE	jsr 0x000038fa.l	000038FA	FUN_000038fa	resolved
+00011740	FUN_00011740	000124BE	jsr 0x000038fa.l	000038FA	run_entity_animation_triplet	resolved
 00011740	FUN_00011740	000124D4	bsr.w 0x0001253e	0001253E	FUN_0001253e	resolved
 00011740	FUN_00011740	000124E4	bsr.w 0x0001275c	0001275C	FUN_0001275c	resolved
 00011740	FUN_00011740	000124E8	bsr.w 0x00011624	00011624	FUN_00011624	resolved
@@ -1370,7 +1370,7 @@ caller	caller_name	instruction	text	target	callee	status
 00014FF8	initialize_entity_spawn_record	00015000	bsr.w 0x00015118	00015118	initialize_entity_behavior_record	resolved
 00014FF8	initialize_entity_spawn_record	00015012	jsr 0x00055640.l	00055640	FUN_00055640	resolved
 00014FF8	initialize_entity_spawn_record	0001508C	jsr 0x00015d3c.l	00015D3C	measure_relative_heading_and_distance	resolved
-0001514E	process_entity_spawn_cycle	000151AC	jsr 0x000038ac.l	000038AC	FUN_000038ac	resolved
+0001514E	process_entity_spawn_cycle	000151AC	jsr 0x000038ac.l	000038AC	service_entity_ammo	resolved
 0001514E	process_entity_spawn_cycle	000151B6	bsr.w 0x00015a8c	00015A8C	find_first_available_entity_slot	resolved
 0001514E	process_entity_spawn_cycle	000151C6	jsr 0x0001dbaa.l	0001DBAA	schedule_world_activity_timeout	resolved
 0001514E	process_entity_spawn_cycle	000151CC	bsr.w 0x00014ff8	00014FF8	initialize_entity_spawn_record	resolved
@@ -1469,7 +1469,7 @@ caller	caller_name	instruction	text	target	callee	status
 0001745E	FUN_0001745e	00017680	jsr 0x0001ade6.l	0001ADE6	FUN_0001ade6	resolved
 0001745E	FUN_0001745e	000176A0	jsr 0x00003404.l	00003404	FUN_00003404	resolved
 0001745E	FUN_0001745e	000176A6	jsr 0x0000334c.l	0000334C	FUN_0000334c	resolved
-0001745E	FUN_0001745e	000176AC	jsr 0x000039f2.l	000039F2	FUN_000039f2	resolved
+0001745E	FUN_0001745e	000176AC	jsr 0x000039f2.l	000039F2	refresh_field_animation_assets	resolved
 0001745E	FUN_0001745e	000176B2	jsr 0x00053126.l	00053126	prepare_mode_entry_service	resolved
 000176BA	refresh_field_resource_streams	000176CC	jsr 0x00000f5c.l	00000F5C	write_vdp_word_block_with_source_wrap	resolved
 000176BA	refresh_field_resource_streams	000176E4	jmp 0x00001530.l	00001530	decode_and_upload_source_stream	resolved
@@ -2458,7 +2458,7 @@ caller	caller_name	instruction	text	target	callee	status
 00056AC0	FUN_00056ac0	00056D8C	jsr 0x000530de.l	000530DE	service_audio_if_enabled	resolved
 00056AC0	FUN_00056ac0	00056D92	jsr 0x0000d4c8.l	0000D4C8	FUN_0000d4c8	resolved
 00056AC0	FUN_00056ac0	00056DA8	jsr 0x0000334c.l	0000334C	FUN_0000334c	resolved
-00056AC0	FUN_00056ac0	00056DAE	jsr 0x000039f2.l	000039F2	FUN_000039f2	resolved
+00056AC0	FUN_00056ac0	00056DAE	jsr 0x000039f2.l	000039F2	refresh_field_animation_assets	resolved
 00056AC0	FUN_00056ac0	00056DB4	jsr 0x00003404.l	00003404	FUN_00003404	resolved
 00056DC4	FUN_00056dc4	00056E08	bra.w 0x0005766a	0005766A	FUN_0005766a	resolved
 00056DC4	FUN_00056dc4	00056E54	bsr.w 0x0005794e	0005794E	FUN_0005794e	resolved

@@ -48,7 +48,7 @@ void FUN_0000391a(void)
   FUN_0001dc4c();
   FUN_000033aa();
   FUN_00003548();
-  FUN_000038fa();
+  run_entity_animation_triplet();
   return;
 }
 

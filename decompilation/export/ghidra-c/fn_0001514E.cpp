@@ -3,7 +3,7 @@
 // Name: process_entity_spawn_cycle
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000038AC FUN_000038ac
+//   0x000038AC service_entity_ammo
 //   0x00014FF8 initialize_entity_spawn_record
 //   0x000152FA prepare_special_spawn_record
 //   0x00015A8C find_first_available_entity_slot
@@ -45,7 +45,7 @@ void process_entity_spawn_cycle(void)
     uVar10 = uVar3 < 0x3c;
     bVar9 = uVar3 == 0x3c;
     if (uVar3 < 0x3d) {
-      FUN_000038ac();
+      service_entity_ammo();
       if ((!bVar9) && (find_first_available_entity_slot(), !(bool)uVar10)) {
         schedule_world_activity_timeout();
         initialize_entity_spawn_record();

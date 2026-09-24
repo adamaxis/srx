@@ -35,7 +35,7 @@ void FUN_0000c7f8(void)
       }
     }
     FUN_00003404();
-    FUN_000038fa();
+    run_entity_animation_triplet();
     return;
   }
   DAT_00ffe186 = 0;
@@ -80,7 +80,7 @@ LAB_0000c716:
   }
   DAT_00fffbfe = DAT_00fffbfe - uVar1;
   FUN_0001f246();
-  FUN_000038fa();
+  run_entity_animation_triplet();
   FUN_0000391a();
   if ((DAT_00fffc1e & 1) == 0) {
     initialize_field_mode_profile_b();

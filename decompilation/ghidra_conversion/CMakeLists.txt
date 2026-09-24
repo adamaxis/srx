@@ -709,6 +709,19 @@ target_link_libraries(shadowrun_ghidra_field_viewport_test
 add_test(NAME shadowrun_ghidra_field_viewport
          COMMAND shadowrun_ghidra_field_viewport_test)
 
+add_library(shadowrun_ghidra_entity_combat STATIC
+    src/entity_combat_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_combat PUBLIC include)
+
+add_executable(shadowrun_ghidra_entity_combat_test
+    tests/entity_combat_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_combat_test
+    PRIVATE shadowrun_ghidra_entity_combat)
+add_test(NAME shadowrun_ghidra_entity_combat
+         COMMAND shadowrun_ghidra_entity_combat_test)
+
 add_library(shadowrun_ghidra_mode_nine STATIC
     src/mode_nine_conversion.cpp
 )

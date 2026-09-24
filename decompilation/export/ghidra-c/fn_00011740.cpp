@@ -18,9 +18,9 @@
 //   0x00003674 FUN_00003674
 //   0x000036FC FUN_000036fc
 //   0x000037EC FUN_000037ec
-//   0x000038FA FUN_000038fa
+//   0x000038FA run_entity_animation_triplet
 //   0x0000391A FUN_0000391a
-//   0x000039F2 FUN_000039f2
+//   0x000039F2 refresh_field_animation_assets
 //   0x0000C0DA render_title_text_source
 //   0x0000C216 FUN_0000c216
 //   0x0000C376 move_wrapped_menu_cursor
@@ -433,7 +433,7 @@ LAB_0000d4a0:
             clear_and_fill_plane_b();
             _DAT_00fff116 = 0;
             FUN_0000334c();
-            FUN_000039f2();
+            refresh_field_animation_assets();
             return;
           }
         }
@@ -844,7 +844,7 @@ joined_r0x00012496:
             if (bVar2 == 0 || SBORROW1(bVar1,'\x01') != (int)((uint)bVar2 << 0x18) < 0) {
               FUN_0001275c();
               FUN_00011624();
-              FUN_000038fa();
+              run_entity_animation_triplet();
             }
           }
           render_title_text_source();

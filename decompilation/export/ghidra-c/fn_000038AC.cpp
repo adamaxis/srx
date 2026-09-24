@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000038AC
-// Name: FUN_000038ac
+// Name: service_entity_ammo
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000036FC FUN_000036fc
 
 
-void FUN_000038ac(void)
+void service_entity_ammo(void)
 
 {
   int in_A0;

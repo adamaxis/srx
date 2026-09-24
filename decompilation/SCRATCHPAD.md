@@ -550,6 +550,14 @@ ROM-table read. The paired `0x2C92`/`0x2CB2` field wrappers are also typed:
 they clear their pending request, invoke the shared viewport renderer, and the
 alternate path brackets that call with the source `0x8000` render mask.
 
+The adjacent entity animation cluster is now typed. `0x38AC` has three exact
+outcomes: no action when current ammo or equipped item is zero, delegation to
+the unresolved weapon service for record types below `3`, and a one-byte ammo
+decrement for other record types. `0x38FA` runs its primary, secondary, and
+weapon animation leaves three times. `0x39F2` composes the known grid refresh,
+HUD refresh, and that triplet in source order; the individual graphics and
+weapon leaves remain callbacks rather than guessed implementations.
+
 `0x176BA` is now `refresh_field_resource_streams`: it submits the source-order
 raw transfer request for destination `0x2360` and `0xA80` bytes, then submits
 the `0x2DE0`-byte compressed-resource request. The requests are typed host

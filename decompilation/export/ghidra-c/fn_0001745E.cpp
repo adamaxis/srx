@@ -11,7 +11,7 @@
 //   0x0000334C FUN_0000334c
 //   0x000033BE FUN_000033be
 //   0x00003404 FUN_00003404
-//   0x000039F2 FUN_000039f2
+//   0x000039F2 refresh_field_animation_assets
 //   0x000176BA refresh_field_resource_streams
 //   0x000176EA render_menu_footer
 //   0x00017708 render_field_hud
@@ -113,7 +113,7 @@ void FUN_0001745e(void)
   VDP_CTRL = 0x9191;
   FUN_00003404();
   FUN_0000334c();
-  FUN_000039f2();
+  refresh_field_animation_assets();
   prepare_mode_entry_service();
   return;
 }

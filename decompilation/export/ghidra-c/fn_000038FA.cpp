@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000038FA
-// Name: FUN_000038fa
+// Name: run_entity_animation_triplet
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003674 FUN_00003674
@@ -8,7 +8,7 @@
 //   0x000037EC FUN_000037ec
 
 
-void FUN_000038fa(void)
+void run_entity_animation_triplet(void)
 
 {
   short sVar1;

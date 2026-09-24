@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003404 FUN_00003404
-//   0x000038FA FUN_000038fa
+//   0x000038FA run_entity_animation_triplet
 //   0x0000391A FUN_0000391a
 //   0x0000C8B0 apply_byte_counter_delta_with_negative_floor
 //   0x0001E514 FUN_0001e514
@@ -35,7 +35,7 @@ void FUN_0000c802(void)
     }
   }
   FUN_00003404();
-  FUN_000038fa();
+  run_entity_animation_triplet();
   return;
 }
 

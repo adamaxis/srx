@@ -1604,7 +1604,7 @@
 000028A4: jmp 0x0001e4ac.l ; call 0001E4AC spawn_world_effect_at_player_position
 000028AA: jsr 0x00003404.l ; call 00003404 FUN_00003404
 000028B0: jsr 0x0000334c.l ; call 0000334C FUN_0000334c
-000028B6: jsr 0x000039f2.l ; call 000039F2 FUN_000039f2
+000028B6: jsr 0x000039f2.l ; call 000039F2 refresh_field_animation_assets
 000028BC: jmp 0x0000c0c2.l ; call 0000C0C2 load_title_font
 000028C2: move.w #-0x1,(0x00ffdf8a).l
 000028CA: bsr.w 0x00002900 ; call 00002900 FUN_00002900
@@ -2357,7 +2357,7 @@
 00003A0A: addi.w #-0xfbc,D4w
 00003A0E: bsr.w 0x000033aa ; call 000033AA FUN_000033aa
 00003A12: bsr.w 0x00003548 ; call 00003548 FUN_00003548
-00003A16: bsr.w 0x000038fa ; call 000038FA FUN_000038fa
+00003A16: bsr.w 0x000038fa ; call 000038FA run_entity_animation_triplet
 00003A1A: rts
 00003A1C: cmpi.b #0x3,(0x00ffe186).l
 00003A24: bne.w 0x00003a3c
@@ -5642,7 +5642,7 @@
 0000C7B4: move.l #0x1388,D1
 0000C7BA: sub.l D1,(0x00fffbfe).l
 0000C7C0: jsr 0x0001f246.l ; call 0001F246 FUN_0001f246
-0000C7C6: jsr 0x000038fa.l ; call 000038FA FUN_000038fa
+0000C7C6: jsr 0x000038fa.l ; call 000038FA run_entity_animation_triplet
 0000C7CC: jsr 0x0000391a.l ; call 0000391A FUN_0000391a
 0000C7D2: move.l (0x00fffc1e).l,D0
 0000C7D8: btst.l #0x0,D0
@@ -5689,7 +5689,7 @@
 0000C898: bne.w 0x0000c8a2
 0000C89C: jsr 0x0000391a.l ; call 0000391A FUN_0000391a
 0000C8A2: jsr 0x00003404.l ; call 00003404 FUN_00003404
-0000C8A8: jsr 0x000038fa.l ; call 000038FA FUN_000038fa
+0000C8A8: jsr 0x000038fa.l ; call 000038FA run_entity_animation_triplet
 0000C8AE: rts
 0000C8B0: subq.w #0x1,D7w
 0000C8B2: lea (0xfffc12).l,A5 ; data 00fffc12
@@ -5819,7 +5819,7 @@
 0000CDD2: move.b (0x0,A1,D0w*0x1),D0b
 0000CDD6: add.b D0b,(0x4c,A0)
 0000CDDA: move.b #0xa,(0x9c,A0)
-0000CDE0: jsr 0x000038fa.l ; call 000038FA FUN_000038fa
+0000CDE0: jsr 0x000038fa.l ; call 000038FA run_entity_animation_triplet
 0000CDE6: rts
 0000CDE8: btst.b #0xf,(0x00ffdd22).l
 0000CDF0: beq.w 0x0000cd14
@@ -6120,7 +6120,7 @@
 0000D4AE: jsr 0x0000102a.l ; call 0000102A clear_and_fill_plane_b
 0000D4B4: clr.w (0x00fff116).l
 0000D4BA: jsr 0x0000334c.l ; call 0000334C FUN_0000334c
-0000D4C0: jsr 0x000039f2.l ; call 000039F2 FUN_000039f2
+0000D4C0: jsr 0x000039f2.l ; call 000039F2 refresh_field_animation_assets
 0000D4C6: rts
 0000D4C8: move.l #0xc3a4,D4
 0000D4CE: move.w #0x2,D1w
@@ -9830,7 +9830,7 @@
 000124B2: bgt.w 0x000124c4
 000124B6: bsr.w 0x0001275c ; call 0001275C FUN_0001275c
 000124BA: bsr.w 0x00011624 ; call 00011624 FUN_00011624
-000124BE: jsr 0x000038fa.l ; call 000038FA FUN_000038fa
+000124BE: jsr 0x000038fa.l ; call 000038FA run_entity_animation_triplet
 000124C4: movea.l #0xc69c,A2
 000124CA: lea (0xd1f0a).l,A1 ; data 000d1f0a
 000124D0: bra.w 0x000124f8
@@ -12554,7 +12554,7 @@
 0001519C: beq.w 0x000152f4
 000151A0: move.w #-0x1,(0x00ffdfe6).l
 000151A8: bra.w 0x000152f4
-000151AC: jsr 0x000038ac.l ; call 000038AC FUN_000038ac
+000151AC: jsr 0x000038ac.l ; call 000038AC service_entity_ammo
 000151B2: beq.w 0x000152f4
 000151B6: bsr.w 0x00015a8c ; call 00015A8C find_first_available_entity_slot
 000151BA: bcs.w 0x000152f4
@@ -14045,7 +14045,7 @@
 00017698: move.w #-0x6e6f,(0x00c00004).l
 000176A0: jsr 0x00003404.l ; call 00003404 FUN_00003404
 000176A6: jsr 0x0000334c.l ; call 0000334C FUN_0000334c
-000176AC: jsr 0x000039f2.l ; call 000039F2 FUN_000039f2
+000176AC: jsr 0x000039f2.l ; call 000039F2 refresh_field_animation_assets
 000176B2: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
 000176B8: rts
 000176BA: move.l #0xda038,D0
@@ -25095,7 +25095,7 @@
 00056D9C: btst.b #0xf,(0x00ffdd22).l
 00056DA4: beq.w 0x00056c54
 00056DA8: jsr 0x0000334c.l ; call 0000334C FUN_0000334c
-00056DAE: jsr 0x000039f2.l ; call 000039F2 FUN_000039f2
+00056DAE: jsr 0x000039f2.l ; call 000039F2 refresh_field_animation_assets
 00056DB4: jsr 0x00003404.l ; call 00003404 FUN_00003404
 00056DBA: move.w #-0x6e6f,(0x00c00004).l
 00056DC2: rts
