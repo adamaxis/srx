@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00014F26 probe_entity_world_position
-//   0x00014FF8 FUN_00014ff8
+//   0x00014FF8 initialize_entity_spawn_record
 //   0x00015ABA find_colliding_entity
 
 
@@ -27,7 +27,7 @@ void FUN_00014d8e(void)
   _DAT_00ffdfd8 = 0xffff;
   local_4 = 0x14dac;
   _DAT_00ffdd3c = in_A1;
-  FUN_00014ff8();
+  initialize_entity_spawn_record();
   puVar4 = &local_4;
   sVar1 = 0x1a;
   do {

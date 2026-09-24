@@ -100,5 +100,50 @@ int main() {
         return 13;
     }
 
+    SpawnEntityParentState parent{
+        0x1000U, 0x2000U, 0x0000U, 0x08U, 0x12U, 0x03U, 0x44U};
+    SpawnEntityRecordState spawned_record{};
+    bool prepared = false;
+    std::optional<SpawnEntityLinkedState> linked_target =
+        SpawnEntityLinkedState{0x1000U, 0x2100U, 0x01U, false};
+    initialize_entity_spawn_record(
+        spawned_record,
+        parent,
+        0xFFFFU,
+        false,
+        linked_target,
+        [&prepared]() { prepared = true; });
+    if (expect(prepared && linked_target->parent_backlink_set &&
+               spawned_record.behavior_defaults.vertical_offset == -12 &&
+               spawned_record.behavior_defaults.flags == 0x09U &&
+               spawned_record.flags == 0x09U &&
+               spawned_record.position_x == 0x0F50U &&
+               spawned_record.position_y == 0x2000U &&
+               spawned_record.heading == 0xC000U &&
+               spawned_record.source_identifier == 0xFFFFU &&
+               spawned_record.behavior_code == 0x0014U &&
+               spawned_record.directional_probe_x == 0x0E80U &&
+               spawned_record.directional_probe_y == 0x1FC0U &&
+               spawned_record.heading_offset_x == 0 &&
+               spawned_record.heading_offset_y == -24576) != 0) {
+        return 14;
+    }
+
+    std::optional<SpawnEntityLinkedState> inactive_target =
+        SpawnEntityLinkedState{0x3000U, 0x3000U, 0U, false};
+    SpawnEntityRecordState no_link_record{};
+    prepared = false;
+    initialize_entity_spawn_record(
+        no_link_record,
+        parent,
+        7U,
+        true,
+        inactive_target,
+        [&prepared]() { prepared = true; });
+    if (expect(!inactive_target->parent_backlink_set &&
+               no_link_record.heading == parent.heading && !prepared) != 0) {
+        return 15;
+    }
+
     return 0;
 }

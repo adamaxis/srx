@@ -12315,7 +12315,7 @@
 00014D98: move.l D3,(0x00ffdd3c).l
 00014D9E: lea (0xff1380).l,A1 ; data 00ff1380
 00014DA4: move.w #-0x1,D0w
-00014DA8: bsr.w 0x00014ff8 ; call 00014FF8 FUN_00014ff8
+00014DA8: bsr.w 0x00014ff8 ; call 00014FF8 initialize_entity_spawn_record
 00014DAC: move.l A0,-(SP) ; data Stack[-0x4]
 00014DAE: lea (0xff1380).l,A0 ; data 00ff1380
 00014DB4: move.w #0x1a,D7w
@@ -12561,7 +12561,7 @@
 000151BE: move.l (0xa2,A0),D3
 000151C2: beq.w 0x000151c6
 000151C6: jsr 0x0001dbaa.l ; call 0001DBAA FUN_0001dbaa
-000151CC: bsr.w 0x00014ff8 ; call 00014FF8 FUN_00014ff8
+000151CC: bsr.w 0x00014ff8 ; call 00014FF8 initialize_entity_spawn_record
 000151D0: move.b #0x7f,(0x89,A1)
 000151D6: clr.b (0x8b,A1)
 000151DA: tst.w (0x00ffdd3a).l

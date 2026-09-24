@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000038AC FUN_000038ac
-//   0x00014FF8 FUN_00014ff8
+//   0x00014FF8 initialize_entity_spawn_record
 //   0x000152FA FUN_000152fa
 //   0x00015A8C find_first_available_entity_slot
 //   0x0001DBAA FUN_0001dbaa
@@ -48,7 +48,7 @@ void FUN_0001514e(void)
       FUN_000038ac();
       if ((!bVar9) && (find_first_available_entity_slot(), !(bool)uVar10)) {
         FUN_0001dbaa();
-        FUN_00014ff8();
+        initialize_entity_spawn_record();
         *(undefined1 *)((int)extraout_A1 + 0x89) = 0x7f;
         *(undefined1 *)((int)extraout_A1 + 0x8b) = 0;
         uVar10 = 0;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "shadowrun_ghidra/behavior_animation_conversion.hpp"
+#include "shadowrun_ghidra/entity_state_primitives_conversion.hpp"
 
 #include <array>
 #include <cstdint>
@@ -34,6 +35,56 @@ struct ChildAllocation {
 
 using SignatureRefresh = std::function<void(EntityBehaviorSignature&)>;
 using ChildAllocator = std::function<std::optional<ChildAllocation>()>;
+
+struct SpawnEntityParentState {
+    std::uint16_t position_x = 0;
+    std::uint16_t position_y = 0;
+    std::uint16_t heading = 0;
+    std::uint8_t flags = 0;
+    std::uint8_t field_0x56 = 0;
+    std::uint8_t field_0x57 = 0;
+    std::uint8_t field_0x9d = 0;
+};
+
+struct SpawnEntityLinkedState {
+    std::uint16_t position_x = 0;
+    std::uint16_t position_y = 0;
+    std::uint8_t flags = 0;
+    bool parent_backlink_set = false;
+};
+
+struct SpawnEntityRecordState {
+    EntityBehaviorRecordState behavior_defaults{};
+    std::uint16_t position_x = 0;
+    std::uint16_t position_y = 0;
+    std::uint16_t heading = 0;
+    std::uint16_t movement_scale = 0;
+    std::uint16_t source_identifier = 0;
+    std::uint16_t behavior_code = 0;
+    std::uint8_t flags = 0;
+    std::uint8_t field_0x56 = 0;
+    std::uint8_t field_0x57 = 0;
+    std::uint8_t field_0x9d = 0;
+    std::int16_t heading_offset_x = 0;
+    std::int16_t heading_offset_y = 0;
+    std::uint16_t directional_probe_x = 0;
+    std::uint16_t directional_probe_y = 0;
+    bool has_parent_link = false;
+};
+
+using SpawnPreparationBoundary = std::function<void()>;
+
+// ROM 0x14FF8: initialize a newly allocated child record from its parent,
+// optionally resolve a live linked target, apply the source placement tables,
+// and derive its signed heading offsets. Resource allocation and the source
+// global preparation call remain explicit host boundaries.
+void initialize_entity_spawn_record(
+    SpawnEntityRecordState& child,
+    const SpawnEntityParentState& parent,
+    std::uint16_t source_identifier,
+    bool collision_gate_active,
+    std::optional<SpawnEntityLinkedState>& linked_target,
+    const SpawnPreparationBoundary& prepare_spawn);
 
 void initialize_spawned_behavior_entity(
     SpawnedBehaviorEntity& child,

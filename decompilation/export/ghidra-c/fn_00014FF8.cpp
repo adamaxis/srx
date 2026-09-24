@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00014FF8
-// Name: FUN_00014ff8
+// Name: initialize_entity_spawn_record
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00015118 initialize_entity_behavior_record
@@ -10,7 +10,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00014ff8(void)
+void initialize_entity_spawn_record(void)
 
 {
   ushort uVar1;

@@ -345,7 +345,10 @@ add_library(shadowrun_ghidra_entity_transition STATIC
 )
 target_include_directories(shadowrun_ghidra_entity_transition PUBLIC include)
 target_link_libraries(shadowrun_ghidra_entity_transition
-    PRIVATE shadowrun_ghidra_behavior_animation)
+    PRIVATE shadowrun_ghidra_behavior_animation
+            shadowrun_ghidra_entity_coordinate
+            shadowrun_ghidra_entity_state_primitives
+            shadowrun_ghidra_movement_metric)
 
 add_executable(shadowrun_ghidra_entity_transition_test
     tests/entity_transition_conversion_test.cpp
