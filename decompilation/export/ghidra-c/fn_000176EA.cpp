@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000176EA
-// Name: FUN_000176ea
+// Name: render_menu_footer
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001358 copy_source_word_block
@@ -8,7 +8,7 @@
 //   0x00019DF2 FUN_00019df2
 
 
-void FUN_000176ea(void)
+void render_menu_footer(void)
 
 {
   copy_source_word_block();

@@ -1448,13 +1448,13 @@ caller	caller_name	instruction	text	target	callee	status
 0001745E	FUN_0001745e	00017564	jsr 0x0000102a.l	0000102A	FUN_0000102a	resolved
 0001745E	FUN_0001745e	0001756A	jsr 0x00000e34.l	00000E34	FUN_00000e34	resolved
 0001745E	FUN_0001745e	00017578	jsr 0x0001b5a6.l	0001B5A6	FUN_0001b5a6	resolved
-0001745E	FUN_0001745e	00017586	bsr.w 0x000176ea	000176EA	FUN_000176ea	resolved
+0001745E	FUN_0001745e	00017586	bsr.w 0x000176ea	000176EA	render_menu_footer	resolved
 0001745E	FUN_0001745e	0001758A	bsr.w 0x000177cc	000177CC	FUN_000177cc	resolved
 0001745E	FUN_0001745e	000175A0	jsr 0x00001530.l	00001530	decode_and_upload_source_stream	resolved
 0001745E	FUN_0001745e	000175C4	jsr 0x00001728.l	00001728	render_hud_sprite_stream	resolved
 0001745E	FUN_0001745e	000175E8	jsr 0x00001728.l	00001728	render_hud_sprite_stream	resolved
 0001745E	FUN_0001745e	000175EE	bsr.w 0x00017708	00017708	render_field_hud	resolved
-0001745E	FUN_0001745e	000175F2	bsr.w 0x000177a4	000177A4	FUN_000177a4	resolved
+0001745E	FUN_0001745e	000175F2	bsr.w 0x000177a4	000177A4	initialize_menu_slot_states	resolved
 0001745E	FUN_0001745e	000175F6	bsr.w 0x00019856	00019856	refresh_field_hud	resolved
 0001745E	FUN_0001745e	000175FA	jsr 0x000033be.l	000033BE	FUN_000033be	resolved
 0001745E	FUN_0001745e	00017600	bsr.w 0x000176ba	000176BA	FUN_000176ba	resolved
@@ -1473,9 +1473,9 @@ caller	caller_name	instruction	text	target	callee	status
 0001745E	FUN_0001745e	000176B2	jsr 0x00053126.l	00053126	prepare_mode_entry_service	resolved
 000176BA	FUN_000176ba	000176CC	jsr 0x00000f5c.l	00000F5C	FUN_00000f5c	resolved
 000176BA	FUN_000176ba	000176E4	jmp 0x00001530.l	00001530	decode_and_upload_source_stream	resolved
-000176EA	FUN_000176ea	000176F0	jsr 0x00001358.l	00001358	copy_source_word_block	resolved
-000176EA	FUN_000176ea	000176FE	bsr.w 0x00019df2	00019DF2	FUN_00019df2	resolved
-000176EA	FUN_000176ea	00017702	bsr.w 0x00017f8e	00017F8E	draw_hud_footer	resolved
+000176EA	render_menu_footer	000176F0	jsr 0x00001358.l	00001358	copy_source_word_block	resolved
+000176EA	render_menu_footer	000176FE	bsr.w 0x00019df2	00019DF2	FUN_00019df2	resolved
+000176EA	render_menu_footer	00017702	bsr.w 0x00017f8e	00017F8E	draw_hud_footer	resolved
 00017708	render_field_hud	0001772E	jsr 0x00001728.l	00001728	render_hud_sprite_stream	resolved
 00017708	render_field_hud	00017770	jsr 0x00001232.l	00001232	upload_hud_tile_block	resolved
 00017708	render_field_hud	0001777A	bsr.w 0x00019856	00019856	refresh_field_hud	resolved
@@ -1606,7 +1606,7 @@ caller	caller_name	instruction	text	target	callee	status
 0001822C	FUN_0001822c	00018686	jsr 0x0000102a.l	0000102A	FUN_0000102a	resolved
 0001822C	FUN_0001822c	0001869A	jsr 0x00000f1c.l	00000F1C	FUN_00000f1c	resolved
 0001822C	FUN_0001822c	000186A0	jsr 0x00000f3c.l	00000F3C	FUN_00000f3c	resolved
-0001822C	FUN_0001822c	000186A6	bsr.w 0x000176ea	000176EA	FUN_000176ea	resolved
+0001822C	FUN_0001822c	000186A6	bsr.w 0x000176ea	000176EA	render_menu_footer	resolved
 000186FA	FUN_000186fa	000186FA	bsr.w 0x00017708	00017708	render_field_hud	resolved
 000186FA	FUN_000186fa	0001870C	bsr.w 0x000194ac	000194AC	FUN_000194ac	resolved
 000186FA	FUN_000186fa	00018722	jsr 0x00001530.l	00001530	decode_and_upload_source_stream	resolved
@@ -2271,7 +2271,7 @@ caller	caller_name	instruction	text	target	callee	status
 00053704	FUN_00053704	000537AE	jsr 0x00017708.l	00017708	render_field_hud	resolved
 00053704	FUN_00053704	000537C6	bsr.w 0x000537fa	000537FA	FUN_000537fa	resolved
 00053704	FUN_00053704	000537EC	jsr 0x000177cc.l	000177CC	FUN_000177cc	resolved
-00053704	FUN_00053704	000537F2	jsr 0x000176ea.l	000176EA	FUN_000176ea	resolved
+00053704	FUN_00053704	000537F2	jsr 0x000176ea.l	000176EA	render_menu_footer	resolved
 000537FA	FUN_000537fa	000537FC	bsr.w 0x00053248	00053248	FUN_00053248	resolved
 000537FA	FUN_000537fa	00053846	jsr 0x00001378.l	00001378	FUN_00001378	resolved
 00053A24	FUN_00053a24	00053A26	bsr.w 0x00053248	00053248	FUN_00053248	resolved
@@ -2303,7 +2303,7 @@ caller	caller_name	instruction	text	target	callee	status
 00054662	FUN_00054662	00054918	jsr 0x0000c0da.l	0000C0DA	render_title_text_source	resolved
 00054662	FUN_00054662	0005491E	jsr 0x00000d94.l	00000D94	wait_for_controller_event	resolved
 00054662	FUN_00054662	00054960	jsr (A0)			indirect/unresolved
-00054662	FUN_00054662	000549A6	jsr 0x000176ea.l	000176EA	FUN_000176ea	resolved
+00054662	FUN_00054662	000549A6	jsr 0x000176ea.l	000176EA	render_menu_footer	resolved
 00054662	FUN_00054662	000549AC	jsr 0x000177cc.l	000177CC	FUN_000177cc	resolved
 00054662	FUN_00054662	000549BA	jsr 0x0001822c.l	0001822C	FUN_0001822c	resolved
 000549E4	FUN_000549e4	000549EE	jsr 0x00012c5a.l	00012C5A	FUN_00012c5a	resolved

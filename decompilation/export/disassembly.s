@@ -13984,7 +13984,7 @@
 00017570: move.w #-0x74fd,(0x00c00004).l
 00017578: jsr 0x0001b5a6.l ; call 0001B5A6 FUN_0001b5a6
 0001757E: move.w #-0x6f00,(0x00c00004).l
-00017586: bsr.w 0x000176ea ; call 000176EA FUN_000176ea
+00017586: bsr.w 0x000176ea ; call 000176EA render_menu_footer
 0001758A: bsr.w 0x000177cc ; call 000177CC FUN_000177cc
 0001758E: lea (0xffbf40).l,A1 ; data 00ffbf40
 00017594: movea.l #0xd646a,A3
@@ -14009,7 +14009,7 @@
 000175E6: addq.w #0x1,D5w
 000175E8: jsr 0x00001728.l ; call 00001728 render_hud_sprite_stream
 000175EE: bsr.w 0x00017708 ; call 00017708 render_field_hud
-000175F2: bsr.w 0x000177a4 ; call 000177A4 FUN_000177a4
+000175F2: bsr.w 0x000177a4 ; call 000177A4 initialize_menu_slot_states
 000175F6: bsr.w 0x00019856 ; call 00019856 refresh_field_hud
 000175FA: jsr 0x000033be.l ; call 000033BE FUN_000033be
 00017600: bsr.w 0x000176ba ; call 000176BA FUN_000176ba
@@ -14908,7 +14908,7 @@
 00018694: move.l (SP)+,(0x00ffdd08).l
 0001869A: jsr 0x00000f1c.l ; call 00000F1C FUN_00000f1c
 000186A0: jsr 0x00000f3c.l ; call 00000F3C FUN_00000f3c
-000186A6: bsr.w 0x000176ea ; call 000176EA FUN_000176ea
+000186A6: bsr.w 0x000176ea ; call 000176EA render_menu_footer
 000186AA: lea (0xfff0f2).l,A4 ; data 00fff0f2
 000186B0: lea (0xfffbbe).l,A1 ; data 00fffbbe
 000186B6: clr.l D0
@@ -23331,7 +23331,7 @@
 000537E0: bne.w 0x00053712
 000537E4: move.w #-0x7ecc,(0x00c00004).l
 000537EC: jsr 0x000177cc.l ; call 000177CC FUN_000177cc
-000537F2: jsr 0x000176ea.l ; call 000176EA FUN_000176ea
+000537F2: jsr 0x000176ea.l ; call 000176EA render_menu_footer
 000537F8: rts
 000537FA: move.l A1,-(SP) ; data Stack[-0x4]
 000537FC: bsr.w 0x00053248 ; call 00053248 FUN_00053248
@@ -23687,7 +23687,7 @@
 00054994: beq.w 0x00054838
 00054998: move.w #-0x7ecc,(0x00c00004).l
 000549A0: clr.b (0x00fff0b7).l
-000549A6: jsr 0x000176ea.l ; call 000176EA FUN_000176ea
+000549A6: jsr 0x000176ea.l ; call 000176EA render_menu_footer
 000549AC: jsr 0x000177cc.l ; call 000177CC FUN_000177cc
 000549B2: move.w #-0x7e8c,(0x00c00004).l
 000549BA: jsr 0x0001822c.l ; call 0001822C FUN_0001822c

@@ -28,6 +28,8 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x1056	clear word transfer	ghidra_conversion::clear_vdp_words	shadowrun_graphics	partial		Exact sixteen-word zero transfer converted
 0x164DC	scene record transition clear	ghidra_conversion::clear_scene_record_transition_words	shadowrun_native_port	partial		Typed clear of the leading transition word in ten scene records converted
 0x16DEE	scene record pending clear	ghidra_conversion::clear_scene_record_pending_flags	shadowrun_native_port	partial		Typed bit-0 clear across ten scene-record flags converted
+0x176EA	menu footer render	ghidra_conversion::render_menu_footer	shadowrun_menu_system	partial		Typed source-block copy, dirty marker, metadata refresh, and footer draw order converted
+0x177A4	menu slot initialization	ghidra_conversion::initialize_menu_slot_states	shadowrun_menu_system	partial		Five menu slots initialized through one host loop with status 6 and timer 1
 0x0BF2	controller event latch	ghidra_conversion::latch_controller_events	shadowrun_boot_sequence	partial		High-byte event combination and activity/Start latches converted in isolated typed state
 0x0D44	source PRNG advance	ghidra_conversion::advance_source_prng	shadowrun_boot_sequence	partial		32-bit modulo-2^32 multiplier/increment converted in isolated typed state
 0x0D3A	bounded source PRNG sample	ghidra_conversion::sample_source_random_bound	shadowrun_native_port	partial		Low-word multiply-and-shift scaling converted without source register state

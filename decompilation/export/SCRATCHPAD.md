@@ -200,6 +200,8 @@ still has unresolved downstream calls or hardware presentation work.
 | `0x1056` | `clear_vdp_words` | Emits sixteen zero words through the transfer boundary. | `ghidra_conversion::clear_vdp_words()` | partial |
 | `0x164DC` | `clear_scene_record_transition_words` | Clears the leading transition word in ten scene records. | `ghidra_conversion::clear_scene_record_transition_words()` | partial |
 | `0x16DEE` | `clear_scene_record_pending_flags` | Clears bit 0 in the ten scene-record pending flags. | `ghidra_conversion::clear_scene_record_pending_flags()` | partial |
+| `0x176EA` | `render_menu_footer` | Copies the footer source block, marks it dirty, refreshes menu metadata, and draws the footer in source order. | `ghidra_conversion::render_menu_footer()` | partial |
+| `0x177A4` | `initialize_menu_slot_states` | Sets status `6` and timer `1` for all five menu slots. | `ghidra_conversion::initialize_menu_slot_states()` | partial |
 | `0x1E4E` | `reveal_title_logo_column` | Consumes one two-byte logo descriptor, requests its column render, and enters the completed-logo state at column `0x25`. | `ghidra_conversion::advance_title_logo_column()`; source blitters and 16-word palette copy remain events | partial |
 | `0x2634` | `cycle_title_circuit_lights` | Every fifth vblank, selects one of seven eight-word title light palettes. | `ghidra_conversion::advance_title_circuit_lights()`; palette write boundary remains explicit | partial |
 | `0x26D0` | `advance_title_animation_timer` | Advances the title animation timer and sets the source update flag on wrap. | `ghidra_conversion::advance_title_animation_timer()` | partial |

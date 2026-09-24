@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000177A4
-// Name: FUN_000177a4
+// Name: initialize_menu_slot_states
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_000177a4(void)
+void initialize_menu_slot_states(void)
 
 {
   short sVar1;
