@@ -13,5 +13,27 @@ int main() {
     if (order != std::vector<int>{1, 2, 3, 4}) {
         return 1;
     }
+
+    order.clear();
+    prepare_field_viewports({[&order] { order.push_back(1); },
+                             [&order] { order.push_back(2); },
+                             [] { return true; },
+                             [&order] { order.push_back(3); },
+                             [&order] { order.push_back(4); },
+                             [&order] { order.push_back(5); }});
+    if (order != std::vector<int>{1, 2, 3, 4, 5}) {
+        return 2;
+    }
+
+    order.clear();
+    prepare_field_viewports({[&order] { order.push_back(1); },
+                             [&order] { order.push_back(2); },
+                             [] { return false; },
+                             [&order] { order.push_back(3); },
+                             [&order] { order.push_back(4); },
+                             [&order] { order.push_back(5); }});
+    if (order != std::vector<int>{1, 2, 4, 5}) {
+        return 3;
+    }
     return 0;
 }

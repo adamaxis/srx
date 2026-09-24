@@ -556,6 +556,11 @@ asset-sequence upload, animation refresh, and font loading are named host
 callbacks in source order. It does not reintroduce the original VDP upload
 state machine.
 
+The field viewport wrapper at `0x2C6C` now records the scene preparation,
+mode-state refresh, conditional special-effects service, and both viewport
+submissions as typed callbacks. The source's mode flag is represented as a
+boolean host query rather than a raw global address.
+
 The established word-transfer module now also converts `0xC3B2` as
 `write_single_word`: one typed transfer command followed by one data-word
 callback, with the ordering covered by the existing transfer test.

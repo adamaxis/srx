@@ -18,4 +18,25 @@ void prepare_field_resources(
     }
 }
 
+void prepare_field_viewports(
+    const FieldViewportPreparationCallbacks& callbacks) {
+    if (callbacks.prepare_scene_resources) {
+        callbacks.prepare_scene_resources();
+    }
+    if (callbacks.refresh_mode_state) {
+        callbacks.refresh_mode_state();
+    }
+    if (callbacks.special_effects_enabled &&
+        callbacks.special_effects_enabled() &&
+        callbacks.service_special_effects) {
+        callbacks.service_special_effects();
+    }
+    if (callbacks.render_normal_viewport) {
+        callbacks.render_normal_viewport();
+    }
+    if (callbacks.render_alternate_viewport) {
+        callbacks.render_alternate_viewport();
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion
