@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00002A94
-// Name: FUN_00002a94
+// Name: initialize_mode_nine
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00053126 prepare_mode_entry_service
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00002a94(void)
+void initialize_mode_nine(void)
 
 {
   prepare_mode_entry_service();

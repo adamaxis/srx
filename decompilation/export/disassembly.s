@@ -20633,7 +20633,7 @@
 00022A06: lea (0x10a8a0).l,A1 ; data 0010a8a0
 00022A0C: bsr.w 0x00021a4e ; call 00021A4E FUN_00021a4e
 00022A10: bgt.w 0x00022a1a
-00022A14: jsr 0x00002a94.l ; call 00002A94 FUN_00002a94
+00022A14: jsr 0x00002a94.l ; call 00002A94 initialize_mode_nine
 00022A1A: rts
 00022C22: move.l #0xfa0,D1
 00022C28: lea (0x10c854).l,A0 ; data 0010c854
@@ -20964,7 +20964,7 @@
 00024DCA: lea (0x121734).l,A1 ; data 00121734
 00024DD0: bsr.w 0x00021a4e ; call 00021A4E FUN_00021a4e
 00024DD4: bgt.w 0x00024dde
-00024DD8: jsr 0x00002a94.l ; call 00002A94 FUN_00002a94
+00024DD8: jsr 0x00002a94.l ; call 00002A94 initialize_mode_nine
 00024DDE: rts
 00024DFE: move.l (0x00fffc1e).l,D1
 00024E04: btst.l #0x9,D1

@@ -171,7 +171,7 @@ caller	caller_name	callee	callee_name	call_sites
 00002900	FUN_00002900	0005D260	FUN_0005d260	1
 00002A44	initialize_field_mode_profile_b	000136DE	initialize_scene_mode_state	1
 00002A44	initialize_field_mode_profile_b	00053126	prepare_mode_entry_service	1
-00002A94	FUN_00002a94	00053126	prepare_mode_entry_service	1
+00002A94	initialize_mode_nine	00053126	prepare_mode_entry_service	1
 00002BD2	FUN_00002bd2	0000131C	step_palette_transition	1
 00002BD2	FUN_00002bd2	0000286E	FUN_0000286e	1
 00002BD2	FUN_00002bd2	00002900	FUN_00002900	1

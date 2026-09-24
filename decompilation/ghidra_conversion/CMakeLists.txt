@@ -682,3 +682,16 @@ target_link_libraries(shadowrun_ghidra_field_mode_test
     PRIVATE shadowrun_ghidra_field_mode)
 add_test(NAME shadowrun_ghidra_field_mode
          COMMAND shadowrun_ghidra_field_mode_test)
+
+add_library(shadowrun_ghidra_mode_nine STATIC
+    src/mode_nine_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_mode_nine PUBLIC include)
+
+add_executable(shadowrun_ghidra_mode_nine_test
+    tests/mode_nine_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_mode_nine_test
+    PRIVATE shadowrun_ghidra_mode_nine)
+add_test(NAME shadowrun_ghidra_mode_nine
+         COMMAND shadowrun_ghidra_mode_nine_test)

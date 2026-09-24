@@ -11,6 +11,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x03032	scene profile predicate	ghidra_conversion::scene_uses_alternate_profile	shadowrun_native_port	partial		Exact accepted scene-ID ranges 6..9 and 0x2C..0x31 converted as a typed predicate
 0x02A32	field mode profile A	ghidra_conversion::initialize_field_mode	shadowrun_native_port	partial		Shared profile selection, entry-service, seven-byte transient reset, and scene-state initialization converted
 0x02A44	field mode profile B	ghidra_conversion::initialize_field_mode	shadowrun_native_port	partial		Shared profile selection, entry-service, seven-byte transient reset, and scene-state initialization converted
+0x02A94	mode 9 entry	ghidra_conversion::initialize_mode_nine	shadowrun_native_port	partial		Typed mode-9 entry service, pending-resource publication, marker reset, and mode flags converted
 0x0BF2	controller event latch	ghidra_conversion::latch_controller_events	shadowrun_boot_sequence	partial		High-byte event combination and activity/Start latches converted in isolated typed state
 0x0D44	source PRNG advance	ghidra_conversion::advance_source_prng	shadowrun_boot_sequence	partial		32-bit modulo-2^32 multiplier/increment converted in isolated typed state
 0x0D3A	bounded source PRNG sample	ghidra_conversion::sample_source_random_bound	shadowrun_native_port	partial		Low-word multiply-and-shift scaling converted without source register state
