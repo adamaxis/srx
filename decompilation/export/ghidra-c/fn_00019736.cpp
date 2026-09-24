@@ -13,7 +13,7 @@ void FUN_00019736(void)
     return;
   }
   (&DAT_00fff0ed)[(short)(ushort)DAT_00fff0d4] = 0;
-  upload_hud_tile_block();
+  write_vdp_grid();
   return;
 }
 

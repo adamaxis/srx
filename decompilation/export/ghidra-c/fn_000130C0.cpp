@@ -3,7 +3,7 @@
 // Name: FUN_000130c0
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001232 upload_hud_tile_block
+//   0x00001232 write_vdp_grid
 //   0x0000C0DA render_title_text_source
 //   0x00012A54 FUN_00012a54
 
@@ -25,37 +25,37 @@ undefined8 FUN_000130c0(void)
   
   cVar1 = *in_A0;
   FUN_00012a54();
-  upload_hud_tile_block();
+  write_vdp_grid();
   if ((char)(cVar1 + -0xc) < '\0') {
     iVar2 = extraout_A0;
     if ((*(byte *)(extraout_A0 + 1) & 2) != 0) {
-      cVar1 = upload_hud_tile_block();
+      cVar1 = write_vdp_grid();
       iVar2 = extraout_A0_00;
     }
     if ((*(byte *)(iVar2 + 1) & 4) != 0) {
-      cVar1 = upload_hud_tile_block();
+      cVar1 = write_vdp_grid();
       iVar2 = extraout_A0_01;
     }
     if ((*(byte *)(iVar2 + 1) & 1) != 0) {
-      cVar1 = upload_hud_tile_block();
+      cVar1 = write_vdp_grid();
       iVar2 = extraout_A0_02;
     }
     if ((*(byte *)(iVar2 + 1) & 8) != 0) {
-      cVar1 = upload_hud_tile_block();
+      cVar1 = write_vdp_grid();
       iVar2 = extraout_A0_03;
     }
     if ((*(byte *)(iVar2 + 1) & 0x10) != 0) {
-      cVar1 = upload_hud_tile_block();
+      cVar1 = write_vdp_grid();
       iVar2 = extraout_A0_04;
     }
     if ((*(byte *)(iVar2 + 1) & 0x20) != 0) {
-      cVar1 = upload_hud_tile_block();
+      cVar1 = write_vdp_grid();
     }
   }
   if (((((char)(cVar1 + -0xc) < '\0') || ((char)(cVar1 + -0x13) < '\0')) || (cVar1 == '\x13')) ||
      ((-1 < (char)(cVar1 + -0x17) && ((char)(cVar1 + -0x28) < '\0')))) {
     render_title_text_source();
-    upload_hud_tile_block();
+    write_vdp_grid();
   }
   return CONCAT44(in_D0,in_D1);
 }

@@ -524,3 +524,12 @@ at least one slot is free. `0x16E30` copies 0x31 scene-state words before
 calling the two reset boundaries. `0x16FA8` copies a bounded rectangular
 terrain region from the decoded source map into the work map with the source
 row stride. Both are now ordinary typed C++ operations with focused tests.
+
+The transfer library now also covers the shared `0x0F98` and `0x1232` leaves.
+`write_vdp_word_block` emits the requested bounded even-byte word stream after
+one transfer command; `write_vdp_grid` emits each row at the source `0x80`
+byte stride and ORs the caller's tile mask into each word. `0x0E34` is a typed
+upload-state reset that emits the source four-word zero clear and publishes
+the stream cursor/enabled state. The terrain layer copy at `0x0313A` and the
+thirteen-record readiness scan at `0x2FF0` are likewise isolated from runtime
+memory and covered by focused tests.

@@ -9,7 +9,7 @@
 void FUN_0000c3f8(void)
 
 {
-  upload_hud_tile_block();
+  write_vdp_grid();
   FUN_0000c216();
   return;
 }

@@ -3,7 +3,7 @@
 // Name: FUN_00000f5c
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000F98 FUN_00000f98
+//   0x00000F98 write_vdp_word_block
 
 
 undefined8 FUN_00000f5c(void)
@@ -65,8 +65,8 @@ undefined8 FUN_00000f5c(void)
   }
   uStack_8 = (undefined2)((uint)in_D1 >> 0x10);
   uStack_6 = (undefined2)in_D1;
-  FUN_00000f98();
-  FUN_00000f98();
+  write_vdp_word_block();
+  write_vdp_word_block();
   return CONCAT62(CONCAT42(in_D0,uStack_8),uStack_6);
 }
 

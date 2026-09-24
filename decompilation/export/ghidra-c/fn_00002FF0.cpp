@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00002FF0
-// Name: FUN_00002ff0
+// Name: find_ready_entity_slot
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00002ff0(void)
+void find_ready_entity_slot(void)
 
 {
   short sVar1;

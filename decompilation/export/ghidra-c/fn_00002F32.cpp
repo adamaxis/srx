@@ -53,7 +53,7 @@ uint FUN_00002f32(void)
   } while (sVar3 != -1);
   uVar2 = DAT_00fffc3c;
   if (DAT_00fffc3c != 0) {
-    FUN_00002ff0();
+    find_ready_entity_slot();
     uVar2 = (uint)(ushort)(DAT_00ff0100 + 0x80);
     *extraout_A1 = DAT_00ff0100 + 0x80;
     extraout_A1[2] = DAT_00ff0104;

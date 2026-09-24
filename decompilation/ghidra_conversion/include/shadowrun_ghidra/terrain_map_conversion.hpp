@@ -56,4 +56,11 @@ void copy_terrain_work_region(
     std::size_t width,
     std::size_t height);
 
+// ROM 0x0313A: copy a decoded terrain layer into its work buffer. The caller
+// supplies the bounded host containers and source word count.
+void copy_terrain_layer(
+    std::vector<std::uint16_t>& destination,
+    const std::vector<std::uint16_t>& source,
+    std::size_t word_count);
+
 } // namespace shadowrun::ghidra_conversion

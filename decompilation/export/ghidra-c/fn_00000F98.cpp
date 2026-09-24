@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00000F98
-// Name: FUN_00000f98
+// Name: write_vdp_word_block
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E9C make_vdp_transfer_command
 
 
-undefined4 FUN_00000f98(void)
+undefined4 write_vdp_word_block(void)
 
 {
   undefined4 in_D0;

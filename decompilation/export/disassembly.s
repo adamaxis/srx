@@ -439,7 +439,7 @@
 00000C76: move.w #-0x1,D7w
 00000C7A: jsr 0x00000dfc.l ; call 00000DFC write_repeated_words
 00000C80: move.w #0x1,(0x00ffdd02).l
-00000C88: bsr.w 0x00000e34 ; call 00000E34 FUN_00000e34
+00000C88: bsr.w 0x00000e34 ; call 00000E34 reset_vdp_upload_state
 00000C8C: lea (0xd14).l,A0
 00000C92: bsr.w 0x00000cec ; call 00000CEC FUN_00000cec
 00000C96: move.w #-0x20,D0w
@@ -591,9 +591,9 @@
 00000F02: lsl.w #0x3,D2w
 00000F04: move.l #0xffd97e,D0
 00000F0A: move.w (0x00ffdd10).l,D1w
-00000F10: bsr.w 0x00000f98 ; call 00000F98 FUN_00000f98
+00000F10: bsr.w 0x00000f98 ; call 00000F98 write_vdp_word_block
 00000F14: rts
-00000F16: bsr.w 0x00000e34 ; call 00000E34 FUN_00000e34
+00000F16: bsr.w 0x00000e34 ; call 00000E34 reset_vdp_upload_state
 00000F1A: rts
 00000F1C: move.w (0x00ffdd12).l,D0w
 00000F22: bsr.w 0x00000e9c ; call 00000E9C make_vdp_transfer_command
@@ -616,12 +616,12 @@
 00000F7A: move.w D0w,D2w
 00000F7C: neg.w D2w
 00000F7E: move.l D2,D4
-00000F80: bsr.w 0x00000f98 ; call 00000F98 FUN_00000f98
+00000F80: bsr.w 0x00000f98 ; call 00000F98 write_vdp_word_block
 00000F84: movem.l (SP)+,{ D0 D1 D2}
 00000F88: add.l D4,D0
 00000F8A: add.l D4,D1
 00000F8C: sub.w D4w,D2w
-00000F8E: bsr.w 0x00000f98 ; call 00000F98 FUN_00000f98
+00000F8E: bsr.w 0x00000f98 ; call 00000F98 write_vdp_word_block
 00000F92: movem.l (SP)+,{ D0 D1 D2}
 00000F96: rts
 00000F98: move SR,-(SP) ; data Stack[-0x2]
@@ -909,7 +909,7 @@
 0000140C: jsr 0x00000cec.l ; call 00000CEC FUN_00000cec
 00001412: jsr 0x00000ffe.l ; call 00000FFE clear_and_fill_plane_a
 00001418: jsr 0x0000102a.l ; call 0000102A clear_and_fill_plane_b
-0000141E: jsr 0x00000e34.l ; call 00000E34 FUN_00000e34
+0000141E: jsr 0x00000e34.l ; call 00000E34 reset_vdp_upload_state
 00001424: movea.l (A6)+,A0
 00001426: jsr 0x00001368.l ; call 00001368 copy_target_palette
 0000142C: move.w (A6)+,(0x00ffdd08).l
@@ -947,7 +947,7 @@
 00001494: addq.w #0x1,D5w
 00001496: bsr.w 0x00001728 ; call 00001728 render_hud_sprite_stream
 0000149A: bra.b 0x00001476
-0000149C: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0000149C: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000014A2: bra.b 0x00001476
 000014A4: nop
 000014A6: nop
@@ -1372,7 +1372,7 @@
 00001B52: bsr.w 0x00001c6a ; call 00001C6A advance_title_sprite_state
 00001B56: bset.b #0x1,(0x00ffef14).l
 00001B5E: bra.w 0x00001b68
-00001B62: jsr 0x00000e34.l ; call 00000E34 FUN_00000e34
+00001B62: jsr 0x00000e34.l ; call 00000E34 reset_vdp_upload_state
 00001B68: move.w (SP)+,D7w
 00001B6A: cmpi.w #0xc6c,D7w
 00001B6E: bcc.w 0x00001b96
@@ -1647,7 +1647,7 @@
 00002996: clr.b (0x00ffe171).l
 0000299C: clr.w (0x00ffdf8a).l
 000029A2: bra.w 0x000029aa
-000029A6: bsr.w 0x0000313a ; call 0000313A FUN_0000313a
+000029A6: bsr.w 0x0000313a ; call 0000313A copy_terrain_layers
 000029AA: cmpi.w #0x2,(0x00ffdf40).l
 000029B2: bne.w 0x000029bc
 000029B6: jsr 0x00016e5c.l ; call 00016E5C FUN_00016e5c
@@ -1851,7 +1851,7 @@
 00002FBE: dbf D7w,0x00002fb4
 00002FC2: move.l (0x00fffc3c).l,D0
 00002FC8: beq.w 0x00002fe4
-00002FCC: bsr.w 0x00002ff0 ; call 00002FF0 FUN_00002ff0
+00002FCC: bsr.w 0x00002ff0 ; call 00002FF0 find_ready_entity_slot
 00002FD0: lea (0xff0100).l,A0 ; data 00ff0100
 00002FD6: move.w (A0),D0w
 00002FD8: addi.w #0x80,D0w
@@ -1874,7 +1874,7 @@
 0000301E: move.l #0x7371a,D0
 00003024: move.w #-0x200,D1w
 00003028: move.w #0x140,D2w
-0000302C: jmp 0x00000f98.l ; call 00000F98 FUN_00000f98
+0000302C: jmp 0x00000f98.l ; call 00000F98 write_vdp_word_block
 00003032: cmpi.w #0x6,D0w
 00003036: beq.w 0x0000306a
 0000303A: cmpi.w #0x7,D0w
@@ -1971,9 +1971,9 @@
 0000336E: move.w #0x5,D7w
 00003372: move.w #0x1,D1w
 00003376: move.w #0x6000,D2w
-0000337A: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0000337A: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00003380: move.w #-0x2bc,D4w
-00003384: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00003384: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0000338A: move.w #-0xebc,D4w
 0000338E: lea (0x6aa7e).l,A1 ; data 0006aa7e
 00003394: bsr.w 0x000033aa ; call 000033AA FUN_000033aa
@@ -1985,7 +1985,7 @@
 000033AA: move.w #0x5,D7w
 000033AE: move.w #0x7,D1w
 000033B2: move.w #0x6000,D2w
-000033B6: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000033B6: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000033BC: rts
 000033BE: movem.l {  A1 A0 D7 D6 D5 D4 D3 D2 D1 D0},-(SP)
 000033C2: movea.l (0x00fffc04).l,A5
@@ -2171,7 +2171,7 @@
 000036E4: move.w #0x0,D7w
 000036E8: move.w #0x3,D1w
 000036EC: move.w #0x6000,D2w
-000036F0: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000036F0: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000036F6: movem.l (SP)+,{ D0 D1 D2 D3 D4 D5 D6 D7 A0 A1}
 000036FA: rts
 000036FC: movem.l {  A1 A0 D7 D6 D5 D4 D3 D2 D1 D0},-(SP)
@@ -2228,7 +2228,7 @@
 000037D4: move.w #0x1,D7w
 000037D8: move.w #0x0,D1w
 000037DC: move.w #0x6000,D2w
-000037E0: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000037E0: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000037E6: movem.l (SP)+,{ D0 D1 D2 D3 D4 D5 D6 D7 A0 A1}
 000037EA: rts
 000037EC: movem.l {  A1 A0 D7 D6 D5 D4 D3 D2 D0},-(SP)
@@ -2272,7 +2272,7 @@
 00003894: move.l D1,-(SP) ; data Stack[-0x28]
 00003896: move.w #0x0,D1w
 0000389A: move.w #0x6000,D2w
-0000389E: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0000389E: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000038A4: move.l (SP)+,D1
 000038A6: movem.l (SP)+,{ D0 D2 D3 D4 D5 D6 D7 A0 A1}
 000038AA: rts
@@ -5565,7 +5565,7 @@
 0000C416: moveq #0x13,D7
 0000C418: moveq #0x2,D1
 0000C41A: move.w #0x0,D2w
-0000C41E: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0000C41E: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0000C424: move.l (0x00fffbfe).l,D1
 0000C42A: move.w #0x6000,D2w
 0000C42E: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
@@ -5768,7 +5768,7 @@
 0000CCE4: moveq #0x13,D7
 0000CCE6: moveq #0x2,D1
 0000CCE8: move.w #0x0,D2w
-0000CCEC: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0000CCEC: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0000CCF2: movea.l #0xca2c,A2
 0000CCF8: move.l (0x00fffbfe).l,D1
 0000CCFE: move.w #0x6000,D2w
@@ -6571,7 +6571,7 @@
 0000E6E4: move.w #0x0,D2w
 0000E6E8: moveq #0x1,D7
 0000E6EA: moveq #0x0,D1
-0000E6EC: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0000E6EC: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0000E6F2: rts
 0000E6F4: move.w #0x2,D1w
 0000E6F8: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
@@ -6623,7 +6623,7 @@
 0000E7B8: moveq #0x0,D7
 0000E7BA: moveq #0x0,D1
 0000E7BC: move.w #0x0,D2w
-0000E7C0: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0000E7C0: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0000E7C6: rts
 0000E7C8: clr.w (0x00ffdf68).l
 0000E7CE: clr.w (0x00ffdfe2).l
@@ -7592,7 +7592,7 @@
 0000FDCA: moveq #0x1,D6
 0000FDCC: move.l #0xc112,D4
 0000FDD2: movea.l (A2)+,A1
-0000FDD4: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0000FDD4: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0000FDDA: addi.l #0x180,D4
 0000FDE0: dbf D6w,0x0000fdd2
 0000FDE4: moveq #0x0,D7
@@ -7600,7 +7600,7 @@
 0000FDE8: moveq #0x1,D6
 0000FDEA: move.w #-0x3e6e,D4w
 0000FDEE: movea.l (A2)+,A1
-0000FDF0: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0000FDF0: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0000FDF6: addq.l #0x8,D4
 0000FDF8: dbf D6w,0x0000fdee
 0000FDFC: rts
@@ -7818,7 +7818,7 @@
 000101B2: add.w D0w,D4w
 000101B4: move.w #0x1,D7w
 000101B8: movea.l A2,A1
-000101BA: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000101BA: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000101C0: addq.w #0x4,D4w
 000101C2: move.w (0x00fff098).l,D0w
 000101C8: sub.w (0x00fff096).l,D0w
@@ -8076,7 +8076,7 @@
 000105C2: adda.l D6,A1
 000105C4: move.w #0xc,D7w
 000105C8: clr.l D1
-000105CA: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000105CA: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000105D0: tst.w D5w
 000105D2: beq.w 0x000105e2
 000105D6: move.l D5,D6
@@ -8112,7 +8112,7 @@
 0001064C: move.w #0x6,D7w
 00010650: clr.l D1
 00010652: move.w #0x0,D2w
-00010656: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010656: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0001065C: move.l (SP)+,D3
 0001065E: rts
 00010660: move.l D7,-(SP) ; data Stack[-0x4]
@@ -8170,7 +8170,7 @@
 00010712: adda.l D6,A1
 00010714: move.w #0xc,D7w
 00010718: clr.l D1
-0001071A: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0001071A: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010720: rts
 00010722: clr.l D0
 00010724: lea (0xc8600).l,A1 ; data 000c8600
@@ -8225,7 +8225,7 @@
 00010804: move.w #0x7,D7w
 00010808: move.w #0x0,D1w
 0001080C: move.w #0x0,D2w
-00010810: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010810: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010816: lea (0xd1a05).l,A1 ; data 000d1a05
 0001081C: clr.l D0
 0001081E: move.b (0x4d,A0),D0b
@@ -8286,7 +8286,7 @@
 00010906: move.w #0x6,D7w
 0001090A: clr.l D1
 0001090C: move.w #0x0,D2w
-00010910: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010910: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010916: rts
 00010918: move.w #-0x7ecc,(0x00c00004).l
 00010920: bsr.w 0x00010952 ; call 00010952 FUN_00010952
@@ -8301,7 +8301,7 @@
 00010952: jsr 0x00000ffe.l ; call 00000FFE clear_and_fill_plane_a
 00010958: jsr 0x0000102a.l ; call 0000102A clear_and_fill_plane_b
 0001095E: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
-00010964: jsr 0x00000e34.l ; call 00000E34 FUN_00000e34
+00010964: jsr 0x00000e34.l ; call 00000E34 reset_vdp_upload_state
 0001096A: clr.l (0x00ffdd08).l
 00010970: clr.l (0x00ffdd0c).l
 00010976: jsr 0x00000f1c.l ; call 00000F1C write_transfer_header
@@ -8314,48 +8314,48 @@
 00010998: move.w #0x13,D7w
 0001099C: move.w #0x1,D1w
 000109A0: move.w #0x0,D2w
-000109A4: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000109A4: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000109AA: lea (0xced28).l,A1 ; data 000ced28
 000109B0: move.w #-0x1fd8,D4w
-000109B4: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000109B4: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000109BA: lea (0xced78).l,A1 ; data 000ced78
 000109C0: move.w #-0x1f00,D4w
 000109C4: move.w #0x9,D7w
 000109C8: move.w #0xe,D1w
-000109CC: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000109CC: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000109D2: lea (0xceea4).l,A1 ; data 000ceea4
 000109D8: move.w #-0x1eb4,D4w
 000109DC: move.w #0x1,D7w
 000109E0: move.w #0xe,D1w
-000109E4: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000109E4: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000109EA: lea (0xceee0).l,A1 ; data 000ceee0
 000109F0: move.w #-0x1780,D4w
 000109F4: move.w #0x13,D7w
 000109F8: move.w #0x1,D1w
-000109FC: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000109FC: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010A02: lea (0xcef30).l,A1 ; data 000cef30
 00010A08: move.w #-0x1758,D4w
-00010A0C: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010A0C: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010A12: lea (0xcef80).l,A1 ; data 000cef80
 00010A18: move.w #-0x1680,D4w
 00010A1C: move.w #0x0,D7w
 00010A20: move.w #0x8,D1w
-00010A24: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010A24: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010A2A: lea (0xcef92).l,A1 ; data 000cef92
 00010A30: move.w #-0x1632,D4w
-00010A34: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010A34: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010A3A: lea (0xcefa4).l,A1 ; data 000cefa4
 00010A40: move.w #-0x127e,D4w
 00010A44: move.w #0x25,D7w
 00010A48: move.w #0x0,D1w
-00010A4C: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010A4C: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010A52: tst.b (0x00fff0af).l
 00010A58: beq.w 0x00010a74
 00010A5C: lea (0xceff0).l,A1 ; data 000ceff0
 00010A62: move.w #-0x1f00,D4w
 00010A66: move.w #0x9,D7w
 00010A6A: move.w #0xe,D1w
-00010A6E: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010A6E: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010A74: move.w #-0x7e8c,(0x00c00004).l
 00010A7C: rts
 00010A7E: bsr.w 0x00010918 ; call 00010918 prepare_menu_graphics
@@ -8365,20 +8365,20 @@
 00010A94: move.w #0x21,D7w
 00010A98: move.w #0x2,D1w
 00010A9C: move.w #0x0,D2w
-00010AA0: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010AA0: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010AA6: lea (0xcdada).l,A1 ; data 000cdada
 00010AAC: move.w #-0x1e80,D4w
 00010AB0: move.w #0x2,D7w
 00010AB4: move.w #0x14,D1w
-00010AB8: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010AB8: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010ABE: lea (0xcdb58).l,A1 ; data 000cdb58
 00010AC4: move.w #-0x1e42,D4w
-00010AC8: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010AC8: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010ACE: lea (0xcdbd6).l,A1 ; data 000cdbd6
 00010AD4: move.w #-0x1400,D4w
 00010AD8: move.w #0x21,D7w
 00010ADC: move.w #0x3,D1w
-00010AE0: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010AE0: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010AE6: move.w #-0x7e8c,(0x00c00004).l
 00010AEE: rts
 00010AF0: bsr.w 0x00010918 ; call 00010918 prepare_menu_graphics
@@ -8387,20 +8387,20 @@
 00010AFE: move.w #0x21,D7w
 00010B02: move.w #0x3,D1w
 00010B06: move.w #0x0,D2w
-00010B0A: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010B0A: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010B10: lea (0xcddf6).l,A1 ; data 000cddf6
 00010B16: move.w #-0x1e00,D4w
 00010B1A: move.w #0x4,D7w
 00010B1E: move.w #0x10,D1w
-00010B22: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010B22: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010B28: lea (0xcdea0).l,A1 ; data 000cdea0
 00010B2E: move.w #-0x1dc6,D4w
-00010B32: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010B32: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010B38: lea (0xcdf4a).l,A1 ; data 000cdf4a
 00010B3E: move.w #-0x1580,D4w
 00010B42: move.w #0x21,D7w
 00010B46: move.w #0x6,D1w
-00010B4A: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010B4A: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010B50: move.w #-0x7e8c,(0x00c00004).l
 00010B58: rts
 00010B5A: bsr.w 0x00010918 ; call 00010918 prepare_menu_graphics
@@ -8409,20 +8409,20 @@
 00010B68: move.w #0x21,D7w
 00010B6C: move.w #0x3,D1w
 00010B70: move.w #0x0,D2w
-00010B74: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010B74: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010B7A: lea (0xcddf6).l,A1 ; data 000cddf6
 00010B80: move.w #-0x1dfa,D4w
 00010B84: move.w #0x4,D7w
 00010B88: move.w #0x10,D1w
-00010B8C: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010B8C: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010B92: lea (0xcdea0).l,A1 ; data 000cdea0
 00010B98: move.w #-0x1dc0,D4w
-00010B9C: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010B9C: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010BA2: lea (0xcdf4a).l,A1 ; data 000cdf4a
 00010BA8: move.w #-0x157a,D4w
 00010BAC: move.w #0x21,D7w
 00010BB0: move.w #0x6,D1w
-00010BB4: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010BB4: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010BBA: move.w #-0x7e8c,(0x00c00004).l
 00010BC2: rts
 00010BC4: bsr.w 0x00010918 ; call 00010918 prepare_menu_graphics
@@ -8435,36 +8435,36 @@
 00010BEA: move.w #0x21,D7w
 00010BEE: move.w #0x1,D1w
 00010BF2: move.w #0x0,D2w
-00010BF6: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010BF6: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010BFC: lea (0xce32e).l,A1 ; data 000ce32e
 00010C02: move.w #-0x1f00,D4w
 00010C06: move.w #0x1,D7w
 00010C0A: move.w #0xc,D1w
-00010C0E: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010C0E: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010C14: lea (0xce362).l,A1 ; data 000ce362
 00010C1A: move.w #-0x1ebe,D4w
 00010C1E: move.w #0x0,D7w
-00010C22: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010C22: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010C28: lea (0xce37c).l,A1 ; data 000ce37c
 00010C2E: move.w #-0x1880,D4w
 00010C32: move.w #0x21,D7w
-00010C36: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010C36: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010C3C: lea (0xce6f0).l,A1 ; data 000ce6f0
 00010C42: move.w #-0x3fbc,D4w
 00010C46: move.w #0x5,D7w
 00010C4A: move.w #0xd,D1w
-00010C4E: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010C4E: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010C54: lea (0xce798).l,A1 ; data 000ce798
 00010C5A: move.w #-0x18bc,D4w
-00010C5E: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010C5E: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010C64: lea (0xce840).l,A1 ; data 000ce840
 00010C6A: move.w #-0x1d3a,D4w
 00010C6E: move.w #0x3,D7w
 00010C72: move.w #0x0,D1w
-00010C76: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010C76: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010C7C: lea (0xce848).l,A1 ; data 000ce848
 00010C82: move.w #-0x1aba,D4w
-00010C86: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010C86: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010C8C: move.w #-0x7e8c,(0x00c00004).l
 00010C94: rts
 00010C96: bsr.w 0x00010918 ; call 00010918 prepare_menu_graphics
@@ -8473,29 +8473,29 @@
 00010CA4: move.w #0x13,D7w
 00010CA8: move.w #0x6,D1w
 00010CAC: move.w #0x0,D2w
-00010CB0: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010CB0: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010CB6: lea (0xce968).l,A1 ; data 000ce968
 00010CBC: move.w #-0x1fd8,D4w
-00010CC0: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010CC0: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010CC6: lea (0xcea80).l,A1 ; data 000cea80
 00010CCC: move.w #-0x1c80,D4w
 00010CD0: move.w #0x1,D7w
 00010CD4: move.w #0x14,D1w
-00010CD8: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010CD8: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010CDE: lea (0xcead4).l,A1 ; data 000cead4
 00010CE4: move.w #-0x1c34,D4w
-00010CE8: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010CE8: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010CEE: lea (0xceb28).l,A1 ; data 000ceb28
 00010CF4: move.w #-0x1a7c,D4w
 00010CF8: move.w #0x23,D7w
 00010CFC: move.w #0x1,D1w
-00010D00: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010D00: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010D06: lea (0xcebb8).l,A1 ; data 000cebb8
 00010D0C: move.w #-0x167c,D4w
-00010D10: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010D10: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010D16: lea (0xcec48).l,A1 ; data 000cec48
 00010D1C: move.w #-0x12fc,D4w
-00010D20: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010D20: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010D26: move.w #-0x7e8c,(0x00c00004).l
 00010D2E: rts
 00010D30: movea.l (0x00fffc04).l,A0
@@ -8583,7 +8583,7 @@
 00010ED8: btst.b #0xd,(0x00ffdd22).l
 00010EE0: beq.w 0x00010f16
 00010EE4: jsr 0x0000391a.l ; call 0000391A FUN_0000391a
-00010EEA: jsr 0x00000e34.l ; call 00000E34 FUN_00000e34
+00010EEA: jsr 0x00000e34.l ; call 00000E34 reset_vdp_upload_state
 00010EF0: move.b #0x6,(0x00fff0d0).l
 00010EF8: clr.b (0x00fff0d1).l
 00010EFE: clr.l D0
@@ -8613,22 +8613,22 @@
 00010F78: move.w #0xb,D7w
 00010F7C: move.w #0x1b,D1w
 00010F80: move.w #0x0,D2w
-00010F84: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010F84: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010F8A: lea (0xcd838).l,A1 ; data 000cd838
 00010F90: move.w #-0x1fe8,D4w
 00010F94: move.w #0x14,D7w
 00010F98: move.w #0x1,D1w
-00010F9C: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010F9C: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010FA2: lea (0xcd88c).l,A1 ; data 000cd88c
 00010FA8: move.w #-0x1fbe,D4w
 00010FAC: move.w #0x0,D7w
 00010FB0: move.w #0x16,D1w
-00010FB4: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010FB4: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010FBA: lea (0xcd8ba).l,A1 ; data 000cd8ba
 00010FC0: move.w #-0x1468,D4w
 00010FC4: move.w #0x15,D7w
 00010FC8: move.w #0x4,D1w
-00010FCC: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00010FCC: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010FD2: bsr.w 0x00010ff4 ; call 00010FF4 FUN_00010ff4
 00010FD6: bsr.w 0x00011048 ; call 00011048 FUN_00011048
 00010FDA: move.l #0xcf134,D0
@@ -8756,7 +8756,7 @@
 000111D4: move.w #0xe,D7w
 000111D8: move.w #0x1,D1w
 000111DC: move.w #0x0,D2w
-000111E0: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000111E0: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000111E6: rts
 000111E8: tst.b (0x00fff112).l
 000111EE: beq.w 0x0001134c
@@ -8869,7 +8869,7 @@
 000113D2: move.w #0x5,D7w
 000113D6: clr.l D1
 000113D8: move.l #0xc92c,D4
-000113DE: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000113DE: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000113E4: movea.l A0,A1
 000113E6: jsr 0x00055e92.l ; call 00055E92 FUN_00055e92
 000113EC: mulu.w #0xc,D0
@@ -8878,7 +8878,7 @@
 000113F8: move.w #0x5,D7w
 000113FC: clr.l D1
 000113FE: move.l #0xc9ac,D4
-00011404: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00011404: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0001140A: move.l D6,D7
 0001140C: tst.b (0x00fff0b1).l
 00011412: bpl.w 0x0001142c
@@ -8890,7 +8890,7 @@
 00011434: movea.l #0xc8a6,A2
 0001143A: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
 00011440: rts
-00011442: jsr 0x00000e34.l ; call 00000E34 FUN_00000e34
+00011442: jsr 0x00000e34.l ; call 00000E34 reset_vdp_upload_state
 00011448: lea (0xcd2c6).l,A1 ; data 000cd2c6
 0001144E: bsr.w 0x000111d0 ; call 000111D0 upload_menu_tile_block
 00011452: rts
@@ -8911,7 +8911,7 @@
 00011490: moveq #0x1,D7
 00011492: moveq #0x1,D1
 00011494: move.w #0x0,D2w
-00011498: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00011498: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0001149E: rts
 000114A0: bsr.b 0x00011442 ; call 00011442 FUN_00011442
 000114A2: add.b D0b,(0x00fff0d0).l
@@ -8928,7 +8928,7 @@
 000114E2: move.b #-0x1,(0x00fff112).l
 000114EA: cmpi.b #0x2,(0x00fff0d0).l
 000114F2: bmi.w 0x00011592
-000114F6: jsr 0x00000e34.l ; call 00000E34 FUN_00000e34
+000114F6: jsr 0x00000e34.l ; call 00000E34 reset_vdp_upload_state
 000114FC: movea.l #0xcd3f2,A1
 00011502: bra.w 0x00011454 ; call 00011454 reset_menu_upload_cursor_and_upload
 00011506: cmpi.b #0x2,(0x00fff0d0).l
@@ -9034,19 +9034,19 @@
 000116B2: add.w D7w,D4w
 000116B4: move.w #0x4,D7w
 000116B8: move.w #0x3,D1w
-000116BC: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000116BC: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000116C2: rts
 000116C4: lea (0xcd570).l,A1 ; data 000cd570
 000116CA: move.w #-0x18fe,D4w
 000116CE: move.w #0x4,D7w
 000116D2: move.w #0x3,D1w
-000116D6: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000116D6: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000116DC: addi.w #0xa,D4w
-000116E0: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000116E0: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000116E6: addi.w #0x300,D4w
-000116EA: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000116EA: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000116F0: subi.w #0xa,D4w
-000116F4: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000116F4: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000116FA: move.w #-0x377e,D4w
 000116FE: move.w #0x9,D7w
 00011702: move.w #0x9,D1w
@@ -9174,7 +9174,7 @@
 00011934: moveq #0x14,D7
 00011936: moveq #0x2,D1
 00011938: move.w #0x0,D2w
-0001193C: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0001193C: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00011942: clr.l D0
 00011944: lea (0xcf384).l,A1 ; data 000cf384
 0001194A: bsr.w 0x00011ae4 ; call 00011AE4 FUN_00011ae4
@@ -9213,7 +9213,7 @@
 000119D8: move.w #0x5,D7w
 000119DC: move.w #0x0,D1w
 000119E0: move.w #0x0,D2w
-000119E4: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000119E4: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000119EA: clr.l D0
 000119EC: movea.l (0x00fffc04).l,A0
 000119F2: lea (0xcf334).l,A1 ; data 000cf334
@@ -9256,7 +9256,7 @@
 00011AA4: move.w #0x5,D7w
 00011AA8: move.w #0x0,D1w
 00011AAC: move.w #0x0,D2w
-00011AB0: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00011AB0: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00011AB6: clr.l D0
 00011AB8: lea (0xcf384).l,A1 ; data 000cf384
 00011ABE: bsr.w 0x00011ae4 ; call 00011AE4 FUN_00011ae4
@@ -9286,7 +9286,7 @@
 00011B1E: move.w #0x7,D7w
 00011B22: move.w #0x0,D1w
 00011B26: move.w #0x2000,D2w
-00011B2A: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00011B2A: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00011B30: lea (0xd1a05).l,A1 ; data 000d1a05
 00011B36: clr.l D0
 00011B38: move.b (0x4d,A0),D0b
@@ -10030,7 +10030,7 @@
 00012822: move.w #0x1,D7w
 00012826: move.w #0x1,D1w
 0001282A: move.w #0x0,D2w
-0001282E: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0001282E: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00012834: rts
 00012836: bsr.w 0x00012148 ; call 00012148 FUN_00012148
 0001283A: cmpi.b #0x17,D0b
@@ -10177,7 +10177,7 @@
 00012AAC: move.w #0x8,D7w
 00012AB0: move.w #0x4,D1w
 00012AB4: move.w #0x2000,D2w
-00012AB8: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00012AB8: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00012ABE: movea.l #0xc420,A2
 00012AC4: lea (0x0,A4,D0w*0x1),A1
 00012AC8: move.w #0x6000,D1w
@@ -10195,32 +10195,32 @@
 00012AF8: beq.w 0x00012b0c
 00012AFC: lea (0xd25ec).l,A1 ; data 000d25ec
 00012B02: move.w #-0x3e64,D4w
-00012B06: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00012B06: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00012B0C: btst.b #0x2,(0x6e,A0,D6w*0x1)
 00012B12: beq.w 0x00012b26
 00012B16: lea (0xd25fc).l,A1 ; data 000d25fc
 00012B1C: move.w #-0x3e64,D4w
-00012B20: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00012B20: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00012B26: btst.b #0x0,(0x6e,A0,D6w*0x1)
 00012B2C: beq.w 0x00012b40
 00012B30: lea (0xd25dc).l,A1 ; data 000d25dc
 00012B36: move.w #-0x3e4a,D4w
-00012B3A: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00012B3A: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00012B40: btst.b #0x3,(0x6e,A0,D6w*0x1)
 00012B46: beq.w 0x00012b5a
 00012B4A: lea (0xd260c).l,A1 ; data 000d260c
 00012B50: move.w #-0x3e4a,D4w
-00012B54: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00012B54: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00012B5A: btst.b #0x4,(0x6e,A0,D6w*0x1)
 00012B60: beq.w 0x00012b74
 00012B64: lea (0xd261c).l,A1 ; data 000d261c
 00012B6A: move.w #-0x3cca,D4w
-00012B6E: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00012B6E: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00012B74: btst.b #0x5,(0x6e,A0,D6w*0x1)
 00012B7A: beq.w 0x00012b8e
 00012B7E: lea (0xd262c).l,A1 ; data 000d262c
 00012B84: move.w #-0x3cca,D4w
-00012B88: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00012B88: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00012B8E: cmpi.b #0xd,D0b
 00012B92: bmi.w 0x00012bca
 00012B96: cmpi.b #0x14,D0b
@@ -10252,7 +10252,7 @@
 00012C08: move.w #0x1,D7w
 00012C0C: move.w #0x0,D1w
 00012C10: move.w #0x2000,D2w
-00012C14: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00012C14: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00012C1A: move.l (SP)+,D0
 00012C1C: rts
 00012C1E: move.w #-0x3ae8,D4w
@@ -10410,7 +10410,7 @@
 00012E88: move.w #0xc,D7w
 00012E8C: clr.l D1
 00012E8E: move.w #0x2000,D2w
-00012E92: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00012E92: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00012E98: movem.l (SP)+,{  D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 00012E9C: rts
 00012E9E: movem.l {  A6 A5 A4 A3 A2 A1 A0 D7 D6 D5 D4 D3 D2 D1},-(SP)
@@ -10473,7 +10473,7 @@
 00012F8E: move.w #0x2000,D2w
 00012F92: move.w #0x6,D7w
 00012F96: clr.l D1
-00012F98: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00012F98: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00012F9E: movem.l (SP)+,{  D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 00012FA2: rts
 00012FA4: movem.l {  A6 A5 A4 A3 A2 A1 A0 D7 D6 D5 D4 D3 D2 D1},-(SP)
@@ -10496,7 +10496,7 @@
 00012FEA: move.w #0x2000,D2w
 00012FEE: move.w #0x6,D7w
 00012FF2: clr.l D1
-00012FF4: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00012FF4: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00012FFA: movem.l (SP)+,{  D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 00012FFE: rts
 00013000: movem.l {  A6 A5 A4 A3 A2 A1 A0 D7 D6 D5 D4 D3 D2 D1},-(SP)
@@ -10564,7 +10564,7 @@
 000130E4: move.w #0x8,D7w
 000130E8: move.w #0x4,D1w
 000130EC: move.w #0x2000,D2w
-000130F0: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000130F0: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000130F6: clr.l D3
 000130F8: move.b (0x24,A4,D0w*0x1),D3b ; data 000d4564
 000130FC: move.l (SP)+,D0
@@ -10577,32 +10577,32 @@
 00013118: beq.w 0x0001312c
 0001311C: lea (0xd25ec).l,A1 ; data 000d25ec
 00013122: move.w #-0x3dee,D4w
-00013126: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00013126: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0001312C: btst.b #0x2,(0x1,A0)
 00013132: beq.w 0x00013146
 00013136: lea (0xd25fc).l,A1 ; data 000d25fc
 0001313C: move.w #-0x3dee,D4w
-00013140: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00013140: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00013146: btst.b #0x0,(0x1,A0)
 0001314C: beq.w 0x00013160
 00013150: lea (0xd25dc).l,A1 ; data 000d25dc
 00013156: move.w #-0x3dd4,D4w
-0001315A: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0001315A: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00013160: btst.b #0x3,(0x1,A0)
 00013166: beq.w 0x0001317a
 0001316A: lea (0xd260c).l,A1 ; data 000d260c
 00013170: move.w #-0x3dd4,D4w
-00013174: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00013174: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0001317A: btst.b #0x4,(0x1,A0)
 00013180: beq.w 0x00013194
 00013184: lea (0xd261c).l,A1 ; data 000d261c
 0001318A: move.w #-0x3c54,D4w
-0001318E: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0001318E: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00013194: btst.b #0x5,(0x1,A0)
 0001319A: beq.w 0x000131ae
 0001319E: lea (0xd262c).l,A1 ; data 000d262c
 000131A4: move.w #-0x3c54,D4w
-000131A8: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000131A8: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000131AE: cmpi.b #0xc,D0b
 000131B2: bmi.w 0x000131d6
 000131B6: cmpi.b #0x13,D0b
@@ -10629,7 +10629,7 @@
 00013210: move.w #0x1,D7w
 00013214: move.w #0x0,D1w
 00013218: move.w #0x2000,D2w
-0001321C: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0001321C: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00013222: movem.l (SP)+,{ D0 D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 00013226: rts
 00013228: movem.l {  A6 A5 A4 A3 A2 A1 A0 D7 D6 D5 D4 D3 D2 D1 D0},-(SP)
@@ -10648,7 +10648,7 @@
 0001325C: move.w #0x8,D7w
 00013260: move.w #0x4,D1w
 00013264: move.w #0x2000,D2w
-00013268: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00013268: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0001326E: clr.l D3
 00013270: move.b (0x24,A4,D0w*0x1),D3b ; data 000d4564
 00013274: movem.l (SP)+,{ D0 D6}
@@ -10661,32 +10661,32 @@
 00013292: beq.w 0x000132a6
 00013296: lea (0xd25ec).l,A1 ; data 000d25ec
 0001329C: move.w #-0x3dee,D4w
-000132A0: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000132A0: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000132A6: btst.b #0x2,(0x6e,A0,D6w*0x1)
 000132AC: beq.w 0x000132c0
 000132B0: lea (0xd25fc).l,A1 ; data 000d25fc
 000132B6: move.w #-0x3dee,D4w
-000132BA: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000132BA: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000132C0: btst.b #0x0,(0x6e,A0,D6w*0x1)
 000132C6: beq.w 0x000132da
 000132CA: lea (0xd25dc).l,A1 ; data 000d25dc
 000132D0: move.w #-0x3dd4,D4w
-000132D4: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000132D4: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000132DA: btst.b #0x3,(0x6e,A0,D6w*0x1)
 000132E0: beq.w 0x000132f4
 000132E4: lea (0xd260c).l,A1 ; data 000d260c
 000132EA: move.w #-0x3dd4,D4w
-000132EE: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000132EE: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000132F4: btst.b #0x4,(0x6e,A0,D6w*0x1)
 000132FA: beq.w 0x0001330e
 000132FE: lea (0xd261c).l,A1 ; data 000d261c
 00013304: move.w #-0x3c54,D4w
-00013308: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00013308: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0001330E: btst.b #0x5,(0x6e,A0,D6w*0x1)
 00013314: beq.w 0x00013328
 00013318: lea (0xd262c).l,A1 ; data 000d262c
 0001331E: move.w #-0x3c54,D4w
-00013322: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00013322: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00013328: cmpi.b #0xd,D0b
 0001332C: bmi.w 0x00013350
 00013330: cmpi.b #0x14,D0b
@@ -10714,7 +10714,7 @@
 0001338E: move.w #0x1,D7w
 00013392: move.w #0x0,D1w
 00013396: move.w #0x2000,D2w
-0001339A: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0001339A: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000133A0: movem.l (SP)+,{ D0 D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 000133A4: rts
 000133A6: movem.l {  A6 A5 A4 A3 A2 A1 A0 D7 D6 D5 D4 D3 D2 D1 D0},-(SP)
@@ -13980,7 +13980,7 @@
 00017558: clr.b (0x00fff0df).l
 0001755E: jsr 0x00000ffe.l ; call 00000FFE clear_and_fill_plane_a
 00017564: jsr 0x0000102a.l ; call 0000102A clear_and_fill_plane_b
-0001756A: jsr 0x00000e34.l ; call 00000E34 FUN_00000e34
+0001756A: jsr 0x00000e34.l ; call 00000E34 reset_vdp_upload_state
 00017570: move.w #-0x74fd,(0x00c00004).l
 00017578: jsr 0x0001b5a6.l ; call 0001B5A6 FUN_0001b5a6
 0001757E: move.w #-0x6f00,(0x00c00004).l
@@ -14088,7 +14088,7 @@
 00017768: moveq #0x2,D7
 0001776A: moveq #0x1,D1
 0001776C: move.w #0x6000,D2w
-00017770: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00017770: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00017776: dbf D6w,0x0001773e
 0001777A: bsr.w 0x00019856 ; call 00019856 refresh_field_hud
 0001777E: tst.b (0x00ffdf84).l
@@ -14166,25 +14166,25 @@
 000178C8: lea (0xd86c8).l,A1 ; data 000d86c8
 000178CE: moveq #0x0,D7
 000178D0: moveq #0x0,D1
-000178D2: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000178D2: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000178D8: addi.l #0x1e,D4
 000178DE: lea (0xd86ca).l,A1 ; data 000d86ca
-000178E4: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000178E4: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000178EA: addi.l #0x1e2,D4
 000178F0: lea (0xd86cc).l,A1 ; data 000d86cc
 000178F6: moveq #0x1,D7
 000178F8: moveq #0x1,D1
-000178FA: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000178FA: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00017900: addi.l #0x1c,D4
 00017906: lea (0xd86d4).l,A1 ; data 000d86d4
 0001790C: moveq #0x1,D7
 0001790E: moveq #0x1,D1
-00017910: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00017910: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00017916: addi.l #0x72,D4
 0001791C: lea (0xd86dc).l,A1 ; data 000d86dc
 00017922: moveq #0x1,D7
 00017924: moveq #0x0,D1
-00017926: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00017926: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0001792C: rts
 0001792E: move.w #0x4,D3w
 00017932: move.l #0xebc0,D4
@@ -14211,7 +14211,7 @@
 00017980: moveq #0x0,D7
 00017982: moveq #0x3,D1
 00017984: move.l (SP)+,D4
-00017986: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00017986: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0001798C: subi.l #0xc,D4
 00017992: dbf D3w,0x00017938
 00017996: rts
@@ -14481,7 +14481,7 @@
 00017DF0: moveq #0x0,D7
 00017DF2: moveq #0x3,D1
 00017DF4: move.w #0x6000,D2w
-00017DF8: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00017DF8: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00017DFE: bsr.w 0x0001792e ; call 0001792E FUN_0001792e
 00017E02: rts
 00017E04: movem.l {  A3 D7},-(SP)
@@ -14492,7 +14492,7 @@
 00017E1C: move.w #0x4,D7w
 00017E20: move.w #0x0,D1w
 00017E24: move.w #-0x2000,D2w
-00017E28: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00017E28: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00017E2E: lea (0xff1100).l,A3 ; data 00ff1100
 00017E34: move.w (0x00fff118).l,D0w
 00017E3A: mulu.w #0x14,D0
@@ -14503,11 +14503,11 @@
 00017E4E: adda.l D7,A1
 00017E50: move.l #0xc138,D4
 00017E56: moveq #0x6,D7
-00017E58: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00017E58: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00017E5E: lea (0xd8454).l,A1 ; data 000d8454
 00017E64: move.l #0xc146,D4
 00017E6A: moveq #0x1,D7
-00017E6C: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00017E6C: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00017E72: movem.l (SP)+,{  D7 A3}
 00017E76: rts
 00017E78: lea (0xfffbbe).l,A5 ; data 00fffbbe
@@ -14559,7 +14559,7 @@
 00017F46: lea (0xd86bc).l,A1 ; data 000d86bc
 00017F4C: move.w #0x5,D7w
 00017F50: move.w #0x0,D1w
-00017F54: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00017F54: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00017F5A: clr.l D4
 00017F5C: move.b (0x00fff0e4).l,D4b
 00017F62: mulu.w #0x10,D4
@@ -14568,7 +14568,7 @@
 00017F6E: move.l #0xc192,D4
 00017F74: moveq #0x7,D7
 00017F76: moveq #0x0,D1
-00017F78: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00017F78: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00017F7E: rts
 00017F80: lea (0xe2eba).l,A0 ; data 000e2eba
 00017F86: jsr 0x000566e2.l ; call 000566E2 FUN_000566e2
@@ -14625,7 +14625,7 @@
 00018070: clr.w D1w
 00018072: clr.w D7w
 00018074: move.w #0x6000,D2w
-00018078: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00018078: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0001807E: cmpi.w #0x2,(0x00fff106).l
 00018086: beq.w 0x00018148
 0001808A: cmpi.w #0x7,(0x00fff106).l
@@ -14669,7 +14669,7 @@
 00018138: clr.w D1w
 0001813A: move.w #0x2,D7w
 0001813E: move.w #0x6000,D2w
-00018142: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00018142: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00018148: subq.w #0x1,(0x00fff106).l
 0001814E: rts
 000181F8: move.w #-0x7ecc,(0x00c00004).l
@@ -14689,7 +14689,7 @@
 0001824C: jsr 0x00000f3c.l ; call 00000F3C write_fixed_transfer_pair
 00018252: move.w #-0x7ecc,(0x00c00004).l
 0001825A: jsr 0x00000ffe.l ; call 00000FFE clear_and_fill_plane_a
-00018260: jsr 0x00000e34.l ; call 00000E34 FUN_00000e34
+00018260: jsr 0x00000e34.l ; call 00000E34 reset_vdp_upload_state
 00018266: lea (0xffbf40).l,A1 ; data 00ffbf40
 0001826C: movea.l #0xd9376,A3
 00018272: move.l #0x8160,D0
@@ -14900,7 +14900,7 @@
 0001866C: move.w #-0x1,D7w
 00018670: move.w #-0x7ecc,(0x00c00004).l
 00018678: move.l D7,-(SP) ; data Stack[-0xc]
-0001867A: jsr 0x00000e34.l ; call 00000E34 FUN_00000e34
+0001867A: jsr 0x00000e34.l ; call 00000E34 reset_vdp_upload_state
 00018680: jsr 0x00000ffe.l ; call 00000FFE clear_and_fill_plane_a
 00018686: jsr 0x0000102a.l ; call 0000102A clear_and_fill_plane_b
 0001868C: move.l (SP)+,D7
@@ -14978,7 +14978,7 @@
 000187CC: moveq #0xb,D6
 000187CE: tst.b (0xe,A5,D5w*0x1)
 000187D2: beq.w 0x000187dc
-000187D6: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000187D6: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000187DC: addq.w #0x8,D4w
 000187DE: adda.l #0xc,A1
 000187E4: addq.w #0x1,D0w
@@ -14992,7 +14992,7 @@
 000187FA: addq.w #0x1,D5w
 000187FC: dbf D6w,0x000187ce
 00018800: moveq #0x3,D6
-00018802: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00018802: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00018808: addq.w #0x8,D4w
 0001880A: adda.l #0xc,A1
 00018810: addq.w #0x1,D0w
@@ -15026,7 +15026,7 @@
 00018878: moveq #0x2,D7
 0001887A: moveq #0x1,D1
 0001887C: move.w #0x6000,D2w
-00018880: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00018880: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00018886: move.l D6,D7
 00018888: mulu.w #0xc,D7
 0001888C: lea (0xd9ee8).l,A1 ; data 000d9ee8
@@ -15035,7 +15035,7 @@
 0001889A: moveq #0x5,D7
 0001889C: moveq #0x0,D1
 0001889E: move.w #0x2000,D2w
-000188A2: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000188A2: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000188A8: cmpi.w #0xc,D6w
 000188AC: bpl.w 0x000188d0
 000188B0: bsr.w 0x0001a16a ; call 0001A16A FUN_0001a16a
@@ -15119,7 +15119,7 @@
 000189FC: move.w #0x8,D7w
 00018A00: move.w #0x0,D1w
 00018A04: move.w #0x2000,D2w
-00018A08: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00018A08: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00018A0E: move.l (SP)+,D5
 00018A10: btst.b #0x8,(0x00ffdd22).l
 00018A18: beq.w 0x00018a2a
@@ -15140,7 +15140,7 @@
 00018A4C: mulu.w #0x280,D5
 00018A50: move.l #0xe08a,D4
 00018A56: add.l D5,D4
-00018A58: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00018A58: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00018A5E: rts
 00018A92: clr.l D7
 00018A94: move.b (0x00fff0d1).l,D7b
@@ -15489,7 +15489,7 @@
 000194EE: move.w #0x2,D7w
 000194F2: clr.w D1w
 000194F4: move.w #0x6000,D2w
-000194F8: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000194F8: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000194FE: bsr.w 0x0001792e ; call 0001792E FUN_0001792e
 00019502: rts
 00019504: clr.l D4
@@ -15500,7 +15500,7 @@
 0001951A: move.w #0x2,D7w
 0001951E: clr.w D1w
 00019520: move.w #0x6000,D2w
-00019524: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00019524: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0001952A: rts
 0001952C: lea (0xfffbbe).l,A1 ; data 00fffbbe
 00019532: clr.l D1
@@ -15580,7 +15580,7 @@
 00019616: moveq #0x2,D7
 00019618: moveq #0x1,D1
 0001961A: move.w #0x6000,D2w
-0001961E: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0001961E: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00019624: bsr.w 0x0001792e ; call 0001792E FUN_0001792e
 00019628: rts
 0001962A: clr.w D4w
@@ -15622,7 +15622,7 @@
 000196DA: mulu.w #0xc,D4
 000196DE: addi.l #0xed14,D4
 000196E4: clr.w D1w
-000196E6: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000196E6: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000196EC: bsr.w 0x0001792e ; call 0001792E FUN_0001792e
 000196F0: rts
 000196F2: subq.b #0x1,(0x00fff10a).l
@@ -15657,7 +15657,7 @@
 00019776: moveq #0x2,D7
 00019778: moveq #0x0,D1
 0001977A: move.w #0x6000,D2w
-0001977E: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0001977E: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00019784: moveq #-0x1,D4
 00019786: rts
 00019788: subq.b #0x1,(0x00fff0ac).l
@@ -15688,7 +15688,7 @@
 000197F0: move.b (0x00fff108).l,D4b
 000197F6: mulu.w #0xc,D4
 000197FA: addi.l #0xed14,D4
-00019800: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00019800: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00019806: clr.w D4w
 00019808: move.b (0x00fff108).l,D4b
 0001980E: lsl.w #0x1,D4w
@@ -15725,7 +15725,7 @@
 00019880: sub.w D6w,D4w
 00019882: mulu.w #0xc,D4
 00019886: addi.l #0xed14,D4
-0001988C: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0001988C: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00019892: addq.l #0x1,A4
 00019894: dbf D6w,0x0001986e
 00019898: rts
@@ -16188,10 +16188,10 @@
 0001A17A: move.w #0x4,D7w
 0001A17E: move.w #0x0,D1w
 0001A182: move.w #0x2000,D2w
-0001A186: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0001A186: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0001A18C: lea (0xd9ede).l,A1 ; data 000d9ede
 0001A192: move.l #0xc526,D4
-0001A198: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0001A198: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0001A19E: tst.b (0x00fff0b0).l
 0001A1A4: bmi.w 0x0001a1c2
 0001A1A8: lea (0xe4370).l,A1 ; data 000e4370
@@ -19217,7 +19217,7 @@
 0001F43A: move.w #0x1,D7w
 0001F43E: move.w #0x1,D1w
 0001F442: move.w #0x0,D2w
-0001F446: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0001F446: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0001F44C: lea (0xffb740).l,A5 ; data 00ffb740
 0001F452: movea.l (A0)+,A1
 0001F454: move.l A1,D1
@@ -19238,7 +19238,7 @@
 0001F496: move.w #0x1,D7w
 0001F49A: move.w #0x1,D1w
 0001F49E: move.w #0x0,D2w
-0001F4A2: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0001F4A2: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0001F4A8: lea (0xffb740).l,A5 ; data 00ffb740
 0001F4AE: movea.l (A0)+,A1
 0001F4B0: move.l A1,D1
@@ -19258,7 +19258,7 @@
 0001F4F0: move.w #0x1,D7w
 0001F4F4: move.w #0x1,D1w
 0001F4F8: move.w #0x0,D2w
-0001F4FC: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0001F4FC: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0001F502: move.w #0xa,D5w
 0001F506: jsr 0x00000c24.l ; call 00000C24 wait_for_vblank_frames
 0001F50C: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
@@ -22451,7 +22451,7 @@
 000265DA: bra.w 0x000265e4
 000265DE: move.l #0xf00,D2
 000265E4: move.l #0xff8700,D0
-000265EA: jsr 0x00000f98.l ; call 00000F98 FUN_00000f98
+000265EA: jsr 0x00000f98.l ; call 00000F98 write_vdp_word_block
 000265F0: move (SP)+,SR
 000265F2: bsr.w 0x00026610 ; call 00026610 FUN_00026610
 000265F6: bset.b #0x2,(0x00ffef14).l
@@ -22589,7 +22589,7 @@
 00026890: bra.w 0x0002689a
 00026894: move.l #0xf00,D2
 0002689A: move.l #0xff8700,D0
-000268A0: jsr 0x00000f98.l ; call 00000F98 FUN_00000f98
+000268A0: jsr 0x00000f98.l ; call 00000F98 write_vdp_word_block
 000268A6: move (SP)+,SR
 000268A8: movem.l {  A4 D6},-(SP) ; data 0014c1eb
 000268AC: move.w #0x1,(0x00ffdd02).l
@@ -23059,7 +23059,7 @@
 00053302: move.w #0x27,D7w
 00053306: move.w #0x1b,D1w
 0005330A: move.w #0x0,D2w
-0005330E: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0005330E: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00053314: lea (0x15fd36).l,A1 ; data 0015fd36
 0005331A: movea.l #0xc204,A2
 00053320: move.w #0x2000,D1w
@@ -23106,7 +23106,7 @@
 000533C4: movea.l (0x0,A1,D3w*0x1),A1 ; data 0015fc0e
 000533C8: moveq #0x1,D1
 000533CA: moveq #0x1,D7
-000533CC: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000533CC: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000533D2: addq.l #0x4,D4
 000533D4: dbf D5w,0x00053358
 000533D8: move.l (SP)+,D4
@@ -23561,27 +23561,27 @@
 00054754: move.b (A5)+,D7b ; data 0016633e
 00054756: move.b (A5)+,D1b ; data 0016633f
 00054758: move.w #0x6000,D2w
-0005475C: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0005475C: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00054762: dbf D6w,0x00054750
 00054766: lea (0x1604d0).l,A1 ; data 001604d0
 0005476C: move.w #-0x3df2,D4w
 00054770: move.w #0x19,D7w
 00054774: move.w #0x1,D1w
 00054778: move.w #0x6000,D2w
-0005477C: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0005477C: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00054782: lea (0x160538).l,A1 ; data 00160538
 00054788: move.w #-0x3cf0,D4w
 0005478C: move.w #0x0,D7w
 00054790: move.w #0xf,D1w
-00054794: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00054794: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0005479A: lea (0x160558).l,A1 ; data 00160558
 000547A0: move.w #-0x3cc2,D4w
-000547A4: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000547A4: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000547AA: lea (0x160578).l,A1 ; data 00160578
 000547B0: move.w #-0x34f0,D4w
 000547B4: move.w #0x17,D7w
 000547B8: move.w #0x1,D1w
-000547BC: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000547BC: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000547C2: bsr.w 0x000549f6 ; call 000549F6 FUN_000549f6
 000547C6: jsr 0x00017f80.l ; call 00017F80 FUN_00017f80
 000547CC: move.w #-0x7e8c,(0x00c00004).l
@@ -24989,7 +24989,7 @@
 00056B82: lea (0xfff9fa).l,A1 ; data 00fff9fa
 00056B88: adda.l D1,A1
 00056B8A: move.l A1,(0x00fff10e).l
-00056B90: jsr 0x00000e34.l ; call 00000E34 FUN_00000e34
+00056B90: jsr 0x00000e34.l ; call 00000E34 reset_vdp_upload_state
 00056B96: clr.b (0x00fff112).l
 00056B9C: clr.b (0x00fff0d0).l
 00056BA2: clr.b (0x00fff0b8).l
@@ -25067,7 +25067,7 @@
 00056D08: bsr.w 0x00056dc4 ; call 00056DC4 FUN_00056dc4
 00056D0C: tst.b (0x00fff112).l
 00056D12: bmi.w 0x00056c54
-00056D16: jsr 0x00000e34.l ; call 00000E34 FUN_00000e34
+00056D16: jsr 0x00000e34.l ; call 00000E34 reset_vdp_upload_state
 00056D1C: move.b (0x00fff0b8).l,(0x00fff0d0).l
 00056D26: bra.w 0x00056be8
 00056D2A: cmpi.b #0x3,(0x00fff0d0).l
@@ -26081,7 +26081,7 @@
 00057F06: move.w #0x2,D7w
 00057F0A: move.w #0x1,D1w
 00057F0E: move.w #0x2000,D2w
-00057F12: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00057F12: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00057F18: lea (0x1ab4d8).l,A1 ; data 001ab4d8
 00057F1E: movea.l #0xc714,A2
 00057F24: move.w #0x6000,D1w
@@ -26248,7 +26248,7 @@
 000581F2: move.w #0x2,D7w
 000581F6: move.w #0x1,D1w
 000581FA: move.w #0x2000,D2w
-000581FE: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000581FE: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00058204: rts
 00058206: clr.l D0
 00058208: move.b (0x00fff0b6).l,D0b
@@ -26340,7 +26340,7 @@
 0005837C: move.w #0x2,D7w
 00058380: move.w #0x1,D1w
 00058384: move.w #0x2000,D2w
-00058388: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00058388: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0005838E: movea.l (SP)+,A1
 00058390: bra.w 0x000580ec
 00058394: cmpi.b #0x5,(0x00fff0d0).l
@@ -26428,7 +26428,7 @@
 00058520: move.w #0x2,D7w
 00058524: move.w #0x1,D1w
 00058528: move.w #0x2000,D2w
-0005852C: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0005852C: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00058532: movea.l (SP)+,A1
 00058534: tst.b (0x00fff0d0).l
 0005853A: bne.w 0x000580ec
@@ -26506,7 +26506,7 @@
 00058674: move.w #0x3,D7w
 00058678: move.w #0x1,D1w
 0005867C: move.w #0x2000,D2w
-00058680: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00058680: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00058686: lea (0x1ac884).l,A1 ; data 001ac884
 0005868C: move.b (0x00fff0d0).l,D0b
 00058692: lsl.w #0x2,D0w
@@ -26539,7 +26539,7 @@
 00058700: move.w #0x1,D1w
 00058704: move.w #0x2000,D2w
 00058708: move.l #0xc220,D4
-0005870E: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0005870E: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00058714: lea (0x1aace2).l,A1 ; data 001aace2
 0005871A: move.w #0x6000,D1w
 0005871E: movea.l #0xc386,A2
@@ -26665,12 +26665,12 @@
 0005892A: move.w #0x2,D7w
 0005892E: move.w #0x1,D1w
 00058932: move.w #0x2000,D2w
-00058936: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00058936: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0005893C: addq.l #0x8,D4
 0005893E: adda.l #0xc,A1
 00058944: dbf D3w,0x00058936
 00058948: lea (0xcd2ba).l,A1 ; data 000cd2ba
-0005894E: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0005894E: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00058954: addq.l #0x8,D4
 00058956: dbf D5w,0x0005894e
 0005895A: rts
@@ -26680,7 +26680,7 @@
 00058968: move.w #0x2000,D2w
 0005896C: lea (0xd177c).l,A1 ; data 000d177c
 00058972: move.w #0x7,D3w
-00058976: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00058976: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0005897C: addq.l #0x8,D4
 0005897E: adda.l #0xc,A1
 00058984: dbf D3w,0x00058976
@@ -26704,7 +26704,7 @@
 000589C4: lea (0xcd2ba).l,A1 ; data 000cd2ba
 000589CA: bra.w 0x000589d4
 000589CE: lea (0xce29a).l,A1 ; data 000ce29a
-000589D4: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+000589D4: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000589DA: addq.l #0x8,D4
 000589DC: adda.l #0xe,A0
 000589E2: dbf D3w,0x000589bc
@@ -26723,7 +26723,7 @@
 00058A12: lea (0x1ac90c).l,A1 ; data 001ac90c
 00058A18: mulu.w #0xc,D0
 00058A1C: adda.l D0,A1
-00058A1E: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00058A1E: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00058A24: addq.l #0x8,D4
 00058A26: addq.l #0x2,A0
 00058A28: dbf D3w,0x00058a00
@@ -26747,7 +26747,7 @@
 00058A6E: move.w #0x2,D7w
 00058A72: move.w #0x1,D1w
 00058A76: move.w #0x2000,D2w
-00058A7A: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00058A7A: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00058A80: bra.w 0x00058a96
 00058A84: mulu.w #0x30,D0
 00058A88: movea.l (0x1a,A4,D0w*0x1),A1 ; data 000d455a
@@ -26792,13 +26792,13 @@
 00058B2C: move.w #0x1,D1w
 00058B30: move.w #0x4000,D2w
 00058B34: moveq #0x5,D3
-00058B36: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00058B36: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00058B3C: addq.l #0x8,D4
 00058B3E: adda.l #0xc,A1
 00058B44: dbf D3w,0x00058b36
 00058B48: lea (0xcd2ba).l,A1 ; data 000cd2ba
 00058B4E: moveq #0x1,D3
-00058B50: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00058B50: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00058B56: addq.l #0x8,D4
 00058B58: dbf D3w,0x00058b50
 00058B5C: rts
@@ -26819,7 +26819,7 @@
 00058BA2: move.w #0xb,D7w
 00058BA6: move.w #0x1,D1w
 00058BAA: move.w #0x0,D2w
-00058BAE: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00058BAE: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00058BB4: rts
 00058BB6: tst.b (0x00fff0b7).l
 00058BBC: bmi.w 0x00058be0
@@ -26847,7 +26847,7 @@
 00058C20: move.w #0x1,D7w
 00058C24: move.w #0x1,D1w
 00058C28: move.w #0x0,D2w
-00058C2C: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+00058C2C: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00058C32: movea.l A3,A1
 00058C34: clr.l D0
 00058C36: move.b (0x00fff0d0).l,D0b
@@ -26901,7 +26901,7 @@
 00058D18: bsr.w 0x00058b5e ; call 00058B5E FUN_00058b5e
 00058D1C: bsr.w 0x00058d32 ; call 00058D32 FUN_00058d32
 00058D20: rts
-00058D22: jsr 0x00000e34.l ; call 00000E34 FUN_00000e34
+00058D22: jsr 0x00000e34.l ; call 00000E34 reset_vdp_upload_state
 00058D28: bsr.w 0x00058b5e ; call 00058B5E FUN_00058b5e
 00058D2C: bsr.w 0x00058bb6 ; call 00058BB6 FUN_00058bb6
 00058D30: rts
@@ -28132,7 +28132,7 @@
 0005AA88: movea.w #0x2386,A2
 0005AA8C: move.w #-0x8000,D1w
 0005AA90: jmp 0x0000c0da.l ; call 0000C0DA render_title_text_source
-0005AA96: jsr 0x00000e34.l ; call 00000E34 FUN_00000e34
+0005AA96: jsr 0x00000e34.l ; call 00000E34 reset_vdp_upload_state
 0005AA9C: jsr 0x00000ffe.l ; call 00000FFE clear_and_fill_plane_a
 0005AAA2: jsr 0x0000102a.l ; call 0000102A clear_and_fill_plane_b
 0005AAA8: lea (0xffbf40).l,A1 ; data 00ffbf40
@@ -29016,13 +29016,13 @@
 0005D884: rts
 0005D886: jsr 0x00000ffe.l ; call 00000FFE clear_and_fill_plane_a
 0005D88C: jsr 0x0000102a.l ; call 0000102A clear_and_fill_plane_b
-0005D892: jsr 0x00000e34.l ; call 00000E34 FUN_00000e34
+0005D892: jsr 0x00000e34.l ; call 00000E34 reset_vdp_upload_state
 0005D898: moveq #0xf,D7
 0005D89A: moveq #0x4,D1
 0005D89C: move.w #0x4000,D2w
 0005D8A0: move.l #0xe518,D4
 0005D8A6: lea (0x1ffac6).l,A1 ; data 001ffac6
-0005D8AC: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0005D8AC: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0005D8B2: jsr 0x000012f6.l ; call 000012F6 advance_title_palette_fade
 0005D8B8: rts
 0005D8BA: lea (0x5dce6).l,A0 ; data 0005dce6
@@ -29116,7 +29116,7 @@
 0005DAAC: move.w #0x0,D2w
 0005DAB0: move.l #0xe51a,D4
 0005DAB6: lea (0x1ffa66).l,A1 ; data 001ffa66
-0005DABC: jsr 0x00001232.l ; call 00001232 upload_hud_tile_block
+0005DABC: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0005DAC2: rts
 0005DAC4: lea (0xffb740).l,A0 ; data 00ffb740
 0005DACA: move.w #0xdf,D7w

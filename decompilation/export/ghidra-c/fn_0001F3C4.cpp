@@ -7,7 +7,7 @@
 //   0x00000BF2 latch_controller_events
 //   0x00000C24 wait_for_vblank_frames
 //   0x00000D94 wait_for_controller_event
-//   0x00001232 upload_hud_tile_block
+//   0x00001232 write_vdp_grid
 //   0x0000195C sample_controller_input
 //   0x0000C134 normalize_source_text_line
 //   0x0000C168 FUN_0000c168
@@ -45,7 +45,7 @@ int * FUN_0001f3c4(void)
     normalize_source_text_line();
     DAT_00ffb740 = 0xff;
     FUN_0000c168();
-    upload_hud_tile_block();
+    write_vdp_grid();
     if (*extraout_A0_00 == 0) {
       _DAT_00fff0d2 = -1;
     }
@@ -54,7 +54,7 @@ int * FUN_0001f3c4(void)
       normalize_source_text_line();
       DAT_00ffb740 = 0xff;
       FUN_0000c168();
-      upload_hud_tile_block();
+      write_vdp_grid();
       if (*extraout_A0_01 == 0) {
         _DAT_00fff0d2 = CONCAT11(DAT_00fff0d2,0xff);
       }
@@ -63,7 +63,7 @@ int * FUN_0001f3c4(void)
         normalize_source_text_line();
         DAT_00ffb740 = 0xff;
         FUN_0000c168();
-        upload_hud_tile_block();
+        write_vdp_grid();
       }
     }
     wait_for_vblank_frames();

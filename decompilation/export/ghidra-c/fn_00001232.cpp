@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00001232
-// Name: upload_hud_tile_block
+// Name: write_vdp_grid
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E9C make_vdp_transfer_command
 
 
-undefined8 upload_hud_tile_block(void)
+undefined8 write_vdp_grid(void)
 
 {
   undefined4 in_D0;

@@ -3,7 +3,7 @@
 // Name: FUN_00012cee
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001232 upload_hud_tile_block
+//   0x00001232 write_vdp_grid
 //   0x000104F6 FUN_000104f6
 //   0x00012148 FUN_00012148
 //   0x00012C5A FUN_00012c5a
@@ -85,7 +85,7 @@ void FUN_00012cee(void)
     FUN_00012cd6();
   }
 LAB_00012e7a:
-  upload_hud_tile_block();
+  write_vdp_grid();
   return;
 }
 

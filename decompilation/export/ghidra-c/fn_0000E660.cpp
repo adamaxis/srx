@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
-//   0x00001232 upload_hud_tile_block
+//   0x00001232 write_vdp_grid
 
 
 void FUN_0000e660(void)
@@ -22,7 +22,7 @@ void FUN_0000e660(void)
     sample_source_random_bound();
     sample_source_random_bound();
   }
-  upload_hud_tile_block();
+  write_vdp_grid();
   return;
 }
 

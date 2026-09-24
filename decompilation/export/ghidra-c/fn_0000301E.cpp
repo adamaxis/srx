@@ -3,13 +3,13 @@
 // Name: FUN_0000301e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000F98 FUN_00000f98
+//   0x00000F98 write_vdp_word_block
 
 
 void FUN_0000301e(void)
 
 {
-  FUN_00000f98();
+  write_vdp_word_block();
   return;
 }
 

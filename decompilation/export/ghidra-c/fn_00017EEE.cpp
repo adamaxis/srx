@@ -3,7 +3,7 @@
 // Name: FUN_00017eee
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001232 upload_hud_tile_block
+//   0x00001232 write_vdp_grid
 
 
 void FUN_00017eee(void)
@@ -18,8 +18,8 @@ void FUN_00017eee(void)
     if (DAT_00fff0e4 != '\f') {
       DAT_00fff0e4 = DAT_00fff0e4 + '\x01';
     }
-    upload_hud_tile_block();
-    upload_hud_tile_block();
+    write_vdp_grid();
+    write_vdp_grid();
     return;
   }
   return;

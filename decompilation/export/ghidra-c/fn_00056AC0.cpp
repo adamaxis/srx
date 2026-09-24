@@ -6,7 +6,7 @@
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
 //   0x00000D94 wait_for_controller_event
-//   0x00000E34 FUN_00000e34
+//   0x00000E34 reset_vdp_upload_state
 //   0x00000F5C FUN_00000f5c
 //   0x00001530 decode_and_upload_source_stream
 //   0x0000195C sample_controller_input
@@ -56,7 +56,7 @@ LAB_00056b66:
   if (DAT_00fff0b7 == '\0') {
     DAT_00fff10e = &DAT_00fff9fa + (uint)*(ushort *)(DAT_00fffc04 + 0xa0) * 0x11;
   }
-  FUN_00000e34();
+  reset_vdp_upload_state();
   DAT_00fff112 = '\0';
   DAT_00fff0d0 = '\0';
   DAT_00fff0b8 = '\0';
@@ -132,7 +132,7 @@ LAB_00056cd4:
     }
     FUN_00056dc4();
     if (DAT_00fff112 < '\0') goto LAB_00056c54;
-    FUN_00000e34();
+    reset_vdp_upload_state();
     DAT_00fff0d0 = DAT_00fff0b8;
   } while( true );
 }

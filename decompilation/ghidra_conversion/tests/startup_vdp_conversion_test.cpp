@@ -32,10 +32,22 @@ int main() {
         },
         [&words](const std::uint16_t word) { words.push_back(word); },
     };
+    VdpUploadState upload_state{};
+    commands.clear();
+    words.clear();
+    reset_vdp_upload_state(upload_state, 0x2345U, transfer_callbacks);
+    if (upload_state.transfer_address != 0x2345U ||
+        upload_state.source_stream_cursor != 0U ||
+        !upload_state.transfer_enabled || commands.size() != 1U ||
+        words != std::vector<std::uint16_t>{0U, 0U, 0U, 0U}) {
+        return 2;
+    }
+    commands.clear();
+    words.clear();
     write_transfer_header(0x1234U, 0xAAAAU, 0xBBBBU, transfer_callbacks);
     if (commands.size() != 1U || commands[0].low_word != 0x5234U ||
         words != std::vector<std::uint16_t>{0xAAAAU, 0xBBBBU}) {
-        return 2;
+        return 3;
     }
 
     std::uint32_t command_long = 0U;
@@ -48,7 +60,7 @@ int main() {
          [&pair](const std::uint16_t value) { pair.push_back(value); }});
     if (command_long != 0x40000010UL ||
         pair != std::vector<std::uint16_t>{0x1111U, 0x2222U}) {
-        return 3;
+        return 4;
     }
 
     commands.clear();
@@ -59,7 +71,7 @@ int main() {
             make_vdp_transfer_command(0x1FE0U).low_word ||
         commands[1].low_word != make_vdp_transfer_command(0x2000U).low_word ||
         words[16] != 0x07FFU || words.back() != 0x07FFU) {
-        return 4;
+        return 5;
     }
 
     return 0;

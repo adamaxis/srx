@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000313A
-// Name: FUN_0000313a
+// Name: copy_terrain_layers
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0000313a(void)
+void copy_terrain_layers(void)
 
 {
   short sVar1;

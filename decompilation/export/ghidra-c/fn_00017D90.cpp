@@ -24,7 +24,7 @@ void advance_hud_panel(void)
   else if ('\n' < *pcVar3) {
     *pcVar3 = '\n';
   }
-  upload_hud_tile_block();
+  write_vdp_grid();
   FUN_0001792e();
   return;
 }

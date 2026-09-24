@@ -3,7 +3,7 @@
 // Name: FUN_00013228
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001232 upload_hud_tile_block
+//   0x00001232 write_vdp_grid
 //   0x0000C0DA render_title_text_source
 //   0x00012148 FUN_00012148
 //   0x00012A54 FUN_00012a54
@@ -28,32 +28,32 @@ undefined8 FUN_00013228(void)
   bVar1 = DAT_00fff0d0;
   cVar2 = *(char *)(DAT_00fffc04 + 0x66 + (int)(short)(ushort)DAT_00fff0d0);
   FUN_00012a54();
-  upload_hud_tile_block();
+  write_vdp_grid();
   if ((char)(cVar2 + -0xd) < '\0') {
     uVar3 = (ushort)bVar1;
     iVar4 = extraout_A0;
     if ((*(byte *)(extraout_A0 + 0x6e + (int)(short)uVar3) & 2) != 0) {
-      cVar2 = upload_hud_tile_block();
+      cVar2 = write_vdp_grid();
       iVar4 = extraout_A0_00;
     }
     if ((*(byte *)(iVar4 + 0x6e + (int)(short)uVar3) & 4) != 0) {
-      cVar2 = upload_hud_tile_block();
+      cVar2 = write_vdp_grid();
       iVar4 = extraout_A0_01;
     }
     if ((*(byte *)(iVar4 + 0x6e + (int)(short)uVar3) & 1) != 0) {
-      cVar2 = upload_hud_tile_block();
+      cVar2 = write_vdp_grid();
       iVar4 = extraout_A0_02;
     }
     if ((*(byte *)(iVar4 + 0x6e + (int)(short)uVar3) & 8) != 0) {
-      cVar2 = upload_hud_tile_block();
+      cVar2 = write_vdp_grid();
       iVar4 = extraout_A0_03;
     }
     if ((*(byte *)(iVar4 + 0x6e + (int)(short)uVar3) & 0x10) != 0) {
-      cVar2 = upload_hud_tile_block();
+      cVar2 = write_vdp_grid();
       iVar4 = extraout_A0_04;
     }
     if ((*(byte *)(iVar4 + 0x6e + (int)(short)uVar3) & 0x20) != 0) {
-      cVar2 = upload_hud_tile_block();
+      cVar2 = write_vdp_grid();
     }
   }
   if (-1 < (char)(cVar2 + -0xd)) {
@@ -62,7 +62,7 @@ undefined8 FUN_00013228(void)
     FUN_00012148();
   }
   render_title_text_source();
-  upload_hud_tile_block();
+  write_vdp_grid();
 LAB_000133a0:
   return CONCAT44(in_D0,in_D1);
 }

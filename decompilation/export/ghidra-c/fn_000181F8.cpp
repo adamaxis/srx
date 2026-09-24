@@ -38,7 +38,7 @@ void FUN_000181f8(void)
   write_fixed_transfer_pair();
   VDP_CTRL = 0x8134;
   clear_and_fill_plane_a();
-  FUN_00000e34();
+  reset_vdp_upload_state();
   decode_and_upload_source_stream();
   FUN_00017f80();
   render_hud_sprite_stream();
@@ -181,7 +181,7 @@ LAB_0001842e:
   uVar5 = CONCAT22((short)(uVar7 >> 0x10),0xffff);
 LAB_00018670:
   VDP_CTRL = 0x8134;
-  FUN_00000e34(uVar5);
+  reset_vdp_upload_state(uVar5);
   clear_and_fill_plane_a();
   clear_and_fill_plane_b();
   DAT_00fff10c = 0;

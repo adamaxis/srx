@@ -6,7 +6,7 @@
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
 //   0x00000DBA count_thresholded_random_rolls
-//   0x00000E34 FUN_00000e34
+//   0x00000E34 reset_vdp_upload_state
 //   0x00000F1C write_transfer_header
 //   0x00000F3C write_fixed_transfer_pair
 //   0x00000FFE clear_and_fill_plane_a
@@ -61,7 +61,7 @@ void FUN_0001822c(void)
   write_fixed_transfer_pair();
   VDP_CTRL = 0x8134;
   clear_and_fill_plane_a();
-  FUN_00000e34();
+  reset_vdp_upload_state();
   decode_and_upload_source_stream();
   FUN_00017f80();
   render_hud_sprite_stream();
@@ -204,7 +204,7 @@ LAB_0001842e:
   uVar5 = CONCAT22((short)(uVar7 >> 0x10),0xffff);
 LAB_00018670:
   VDP_CTRL = 0x8134;
-  FUN_00000e34(uVar5);
+  reset_vdp_upload_state(uVar5);
   clear_and_fill_plane_a();
   clear_and_fill_plane_b();
   DAT_00fff10c = 0;

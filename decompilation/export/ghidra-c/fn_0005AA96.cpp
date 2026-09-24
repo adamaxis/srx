@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
-//   0x00000E34 FUN_00000e34
+//   0x00000E34 reset_vdp_upload_state
 //   0x00000FFE clear_and_fill_plane_a
 //   0x0000102A clear_and_fill_plane_b
 //   0x000012F6 advance_title_palette_fade
@@ -30,7 +30,7 @@ void FUN_0005aa96(void)
   undefined2 uVar1;
   short sVar2;
   
-  FUN_00000e34();
+  reset_vdp_upload_state();
   clear_and_fill_plane_a();
   clear_and_fill_plane_b();
   decode_and_upload_source_stream();

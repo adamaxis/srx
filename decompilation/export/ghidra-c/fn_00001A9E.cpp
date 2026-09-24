@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
-//   0x00000E34 FUN_00000e34
+//   0x00000E34 reset_vdp_upload_state
 //   0x0000131C step_palette_transition
 //   0x0000195C sample_controller_input
 //   0x00001BAC finalize_title_input_sequence
@@ -61,7 +61,7 @@ void run_title_loop(void)
       DAT_00ffef14 = DAT_00ffef14 | 2;
     }
     else {
-      FUN_00000e34();
+      reset_vdp_upload_state();
     }
     if (uVar1 < 0xc6c) {
       if ((uVar1 & 0x3f) < 10) {

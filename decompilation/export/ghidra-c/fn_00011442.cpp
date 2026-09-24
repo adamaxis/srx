@@ -3,14 +3,14 @@
 // Name: FUN_00011442
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000E34 FUN_00000e34
+//   0x00000E34 reset_vdp_upload_state
 //   0x000111D0 upload_menu_tile_block
 
 
 void FUN_00011442(void)
 
 {
-  FUN_00000e34();
+  reset_vdp_upload_state();
   upload_menu_tile_block();
   return;
 }

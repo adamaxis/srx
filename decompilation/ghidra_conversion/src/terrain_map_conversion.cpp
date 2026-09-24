@@ -83,4 +83,16 @@ void copy_terrain_work_region(
     }
 }
 
+void copy_terrain_layer(
+    std::vector<std::uint16_t>& destination,
+    const std::vector<std::uint16_t>& source,
+    const std::size_t word_count) {
+    const auto count = word_count < source.size() ? word_count : source.size();
+    const auto bounded_count =
+        count < destination.size() ? count : destination.size();
+    for (std::size_t index = 0; index < bounded_count; ++index) {
+        destination[index] = source[index];
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion

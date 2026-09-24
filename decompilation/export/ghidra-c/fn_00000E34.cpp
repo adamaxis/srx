@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00000E34
-// Name: FUN_00000e34
+// Name: reset_vdp_upload_state
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E9C make_vdp_transfer_command
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-undefined2 FUN_00000e34(void)
+undefined2 reset_vdp_upload_state(void)
 
 {
   undefined2 in_D0w;

@@ -2,6 +2,23 @@
 
 namespace shadowrun::ghidra_conversion {
 
+void reset_vdp_upload_state(
+    VdpUploadState& state,
+    const std::uint16_t transfer_address,
+    const WordTransferCallbacks& callbacks) {
+    state.transfer_address = transfer_address;
+    state.source_stream_cursor = 0U;
+    state.transfer_enabled = true;
+    if (callbacks.begin_transfer) {
+        callbacks.begin_transfer(make_vdp_transfer_command(transfer_address));
+    }
+    if (callbacks.write_word) {
+        for (std::size_t word = 0; word < 4U; ++word) {
+            callbacks.write_word(0U);
+        }
+    }
+}
+
 void upload_startup_palette(
     const std::array<std::uint16_t, 64>& words,
     const RawVdpWriteCallbacks& callbacks) {

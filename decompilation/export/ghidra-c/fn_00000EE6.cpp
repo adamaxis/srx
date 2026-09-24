@@ -3,8 +3,8 @@
 // Name: FUN_00000ee6
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000E34 FUN_00000e34
-//   0x00000F98 FUN_00000f98
+//   0x00000E34 reset_vdp_upload_state
+//   0x00000F98 write_vdp_word_block
 
 
 void FUN_00000ee6(void)
@@ -14,10 +14,10 @@ void FUN_00000ee6(void)
     DAT_00ffdbf9 = 0;
   }
   if (DAT_00ffdd02 != 0xffff) {
-    FUN_00000f98();
+    write_vdp_word_block();
     return;
   }
-  FUN_00000e34();
+  reset_vdp_upload_state();
   return;
 }
 

@@ -3,7 +3,7 @@
 // Name: FUN_000037ec
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001232 upload_hud_tile_block
+//   0x00001232 write_vdp_grid
 //   0x00003674 FUN_00003674
 
 
@@ -34,7 +34,7 @@ undefined8 FUN_000037ec(void)
   }
   *(undefined1 *)(in_A0 + 0x9c) = 0;
 LAB_00003890:
-  upload_hud_tile_block();
+  write_vdp_grid();
   return CONCAT44(in_D0,in_D1);
 }
 

@@ -3,7 +3,7 @@
 // Name: FUN_0001745e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000E34 FUN_00000e34
+//   0x00000E34 reset_vdp_upload_state
 //   0x00000FFE clear_and_fill_plane_a
 //   0x0000102A clear_and_fill_plane_b
 //   0x00001530 decode_and_upload_source_stream
@@ -80,7 +80,7 @@ void FUN_0001745e(void)
     DAT_00fff0df = 0;
     clear_and_fill_plane_a();
     clear_and_fill_plane_b();
-    FUN_00000e34();
+    reset_vdp_upload_state();
     VDP_CTRL = 0x8b03;
     FUN_0001b5a6();
     VDP_CTRL = 0x9100;

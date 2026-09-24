@@ -40,4 +40,23 @@ void clear_vdp_words(
     std::uint16_t source_address,
     const WordTransferCallbacks& callbacks);
 
+// ROM 0x0F98: emit a bounded even-byte source block as words after one
+// transfer command. The source uses longword writes internally; the host
+// callback sees the equivalent ordered word stream.
+void write_vdp_word_block(
+    std::uint16_t destination_address,
+    const std::vector<std::uint16_t>& words,
+    std::size_t byte_count,
+    const WordTransferCallbacks& callbacks);
+
+// ROM 0x1232: write a row-major word grid, advancing the destination by
+// 0x80 bytes between rows and applying the source word mask.
+void write_vdp_grid(
+    std::uint16_t destination_address,
+    std::size_t width,
+    std::size_t height,
+    std::uint16_t word_mask,
+    const std::vector<std::uint16_t>& words,
+    const WordTransferCallbacks& callbacks);
+
 } // namespace shadowrun::ghidra_conversion

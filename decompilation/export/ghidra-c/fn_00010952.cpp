@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
-//   0x00000E34 FUN_00000e34
+//   0x00000E34 reset_vdp_upload_state
 //   0x00000F1C write_transfer_header
 //   0x00000F3C write_fixed_transfer_pair
 //   0x00000FFE clear_and_fill_plane_a
@@ -19,7 +19,7 @@ void FUN_00010952(void)
   clear_and_fill_plane_a();
   clear_and_fill_plane_b();
   wait_for_vblank();
-  FUN_00000e34();
+  reset_vdp_upload_state();
   _DAT_00ffdd08 = 0;
   _DAT_00ffdd0c = 0;
   write_transfer_header();

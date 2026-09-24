@@ -12,4 +12,14 @@ bool entity_table_has_free_slot(
     return false;
 }
 
+std::optional<std::size_t> find_ready_entity_slot(
+    const std::array<EntityReadinessState, 13>& entities) {
+    for (std::size_t index = 0; index < entities.size(); ++index) {
+        if (entities[index].active && entities[index].ready) {
+            return index;
+        }
+    }
+    return std::nullopt;
+}
+
 } // namespace shadowrun::ghidra_conversion

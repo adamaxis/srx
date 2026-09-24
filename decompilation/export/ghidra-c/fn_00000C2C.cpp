@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000CEC FUN_00000cec
 //   0x00000DFC write_repeated_words
-//   0x00000E34 FUN_00000e34
+//   0x00000E34 reset_vdp_upload_state
 //   0x00000E9C make_vdp_transfer_command
 //   0x00000EC0 upload_startup_palette
 //   0x000531AA FUN_000531aa
@@ -42,7 +42,7 @@ void clear_runtime_memory_and_vdp(void)
   upload_startup_palette();
   write_repeated_words();
   DAT_00ffdd02 = 1;
-  FUN_00000e34();
+  reset_vdp_upload_state();
   FUN_00000cec();
   make_vdp_transfer_command();
   sVar1 = 7;

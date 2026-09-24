@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000011C0 FUN_000011c0
-//   0x00001232 upload_hud_tile_block
+//   0x00001232 write_vdp_grid
 //   0x0001792E FUN_0001792e
 
 
@@ -30,7 +30,7 @@ void FUN_00019632(void)
   (&DAT_00fffbd8)[unaff_D4w] = 0xff;
   (&DAT_00fff0ed)[unaff_D4w] = 6;
   FUN_000011c0();
-  upload_hud_tile_block();
+  write_vdp_grid();
   FUN_0001792e();
   return;
 }

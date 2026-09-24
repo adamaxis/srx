@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
-//   0x00000F98 FUN_00000f98
+//   0x00000F98 write_vdp_word_block
 //   0x00017CC8 FUN_00017cc8
 //   0x00017FDA FUN_00017fda
 //   0x0001C3FA FUN_0001c3fa
@@ -70,7 +70,7 @@ void FUN_0002679e(void)
     DAT_00ffe1a4 = (*pbVar5 & 0xff0f) + DAT_00ffe1a4;
     DAT_00ffe1ae = &DAT_00ff8700;
     FUN_00024e20();
-    FUN_00000f98();
+    write_vdp_word_block();
     DAT_00ffdd02 = 1;
     FUN_0001c3fa();
     FUN_000268e6();

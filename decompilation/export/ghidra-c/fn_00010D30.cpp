@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
-//   0x00000E34 FUN_00000e34
+//   0x00000E34 reset_vdp_upload_state
 //   0x0000195C sample_controller_input
 //   0x0000391A FUN_0000391a
 //   0x0000C0C2 load_title_font
@@ -82,7 +82,7 @@ LAB_00010e20:
       if (((DAT_00ffdd22._0_1_ & 0x40) == 0) && ((DAT_00ffdd22._0_1_ & 0x10) == 0)) {
         if ((DAT_00ffdd22._0_1_ & 0x20) != 0) {
           FUN_0000391a();
-          FUN_00000e34();
+          reset_vdp_upload_state();
           _DAT_00fff0d0 = 0x600;
           FUN_000114a0();
           DAT_00fff115 = 0xff;

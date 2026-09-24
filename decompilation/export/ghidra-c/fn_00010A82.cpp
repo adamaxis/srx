@@ -3,17 +3,17 @@
 // Name: FUN_00010a82
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001232 upload_hud_tile_block
+//   0x00001232 write_vdp_grid
 
 
 void FUN_00010a82(void)
 
 {
   VDP_CTRL = 0x8134;
-  upload_hud_tile_block();
-  upload_hud_tile_block();
-  upload_hud_tile_block();
-  upload_hud_tile_block();
+  write_vdp_grid();
+  write_vdp_grid();
+  write_vdp_grid();
+  write_vdp_grid();
   VDP_CTRL = 0x8174;
   return;
 }

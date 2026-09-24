@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001610 decode_source_byte_stream
-//   0x0000313A FUN_0000313a
+//   0x0000313A copy_terrain_layers
 //   0x00004388 finalize_pending_entity_template_update
 //   0x00004B6C FUN_00004b6c
 //   0x00005B7E mark_entity_slots_for_render
@@ -48,7 +48,7 @@ void FUN_00002900(void)
       FUN_0005d260();
     }
     if (DAT_00ffe171 == '\0') {
-      FUN_0000313a();
+      copy_terrain_layers();
     }
     else {
       DAT_00ffe171 = '\0';

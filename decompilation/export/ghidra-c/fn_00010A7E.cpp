@@ -11,10 +11,10 @@ void transfer_menu_asset_batch_four_post_prepare(void)
 {
   prepare_menu_graphics();
   VDP_CTRL = 0x8134;
-  upload_hud_tile_block();
-  upload_hud_tile_block();
-  upload_hud_tile_block();
-  upload_hud_tile_block();
+  write_vdp_grid();
+  write_vdp_grid();
+  write_vdp_grid();
+  write_vdp_grid();
   VDP_CTRL = 0x8174;
   return;
 }

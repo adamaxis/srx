@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
 //   0x000011F6 FUN_000011f6
-//   0x00001232 upload_hud_tile_block
+//   0x00001232 write_vdp_grid
 //   0x00017FB4 FUN_00017fb4
 
 
@@ -32,7 +32,7 @@ void FUN_00017fda(void)
     goto LAB_00018148;
   }
   FUN_00017fb4();
-  upload_hud_tile_block();
+  write_vdp_grid();
   if ((DAT_00fff106 != 2) && (DAT_00fff106 != 7)) {
     sample_source_random_bound();
     FUN_000011f6();
@@ -40,7 +40,7 @@ void FUN_00017fda(void)
       sample_source_random_bound();
       FUN_000011f6();
       if (DAT_00fff106 == 5) {
-        upload_hud_tile_block();
+        write_vdp_grid();
       }
     }
   }

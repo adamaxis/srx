@@ -3,7 +3,7 @@
 // Name: FUN_00058a2e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001232 upload_hud_tile_block
+//   0x00001232 write_vdp_grid
 //   0x00011190 FUN_00011190
 
 
@@ -23,7 +23,7 @@ void FUN_00058a2e(void)
       iVar2 = extraout_A0_00;
     }
     else {
-      upload_hud_tile_block();
+      write_vdp_grid();
       iVar2 = extraout_A0;
     }
     in_A0 = (char *)(iVar2 + 3);

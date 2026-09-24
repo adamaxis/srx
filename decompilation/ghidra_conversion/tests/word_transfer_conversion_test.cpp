@@ -32,5 +32,26 @@ int main() {
         return 2;
     }
 
+    commands.clear();
+    words.clear();
+    write_vdp_word_block(0x8000U, {10U, 20U, 30U, 40U}, 6U, callbacks);
+    if (commands.size() != 2U || commands[0] != 0x4000U ||
+        commands[1] != 2U ||
+        words != std::vector<std::uint16_t>{10U, 20U, 30U}) {
+        return 3;
+    }
+
+    commands.clear();
+    words.clear();
+    write_vdp_grid(0x1000U, 2U, 2U, 0x8000U,
+                   {1U, 2U, 3U, 4U}, callbacks);
+    if (commands.size() != 4U ||
+        commands[0] != make_vdp_transfer_command(0x1000U).low_word ||
+        commands[2] != make_vdp_transfer_command(0x1080U).low_word ||
+        words != std::vector<std::uint16_t>{0x8001U, 0x8002U,
+                                             0x8003U, 0x8004U}) {
+        return 4;
+    }
+
     return 0;
 }

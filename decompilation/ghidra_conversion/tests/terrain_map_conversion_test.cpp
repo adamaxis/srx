@@ -90,5 +90,12 @@ int main() {
         return 6;
     }
 
+    std::vector<std::uint16_t> layer_destination(4U, 0U);
+    copy_terrain_layer(layer_destination, source, 4U);
+    if (!expect(layer_destination[0] == 10U &&
+                layer_destination[3] == 13U)) {
+        return 7;
+    }
+
     return 0;
 }

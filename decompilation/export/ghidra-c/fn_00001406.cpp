@@ -5,11 +5,11 @@
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
 //   0x00000CEC FUN_00000cec
-//   0x00000E34 FUN_00000e34
+//   0x00000E34 reset_vdp_upload_state
 //   0x00000F5C FUN_00000f5c
 //   0x00000FFE clear_and_fill_plane_a
 //   0x0000102A clear_and_fill_plane_b
-//   0x00001232 upload_hud_tile_block
+//   0x00001232 write_vdp_grid
 //   0x0000131C step_palette_transition
 //   0x00001368 copy_target_palette
 //   0x00001530 decode_and_upload_source_stream
@@ -28,7 +28,7 @@ void prepare_title_resources(void)
   FUN_00000cec();
   clear_and_fill_plane_a();
   clear_and_fill_plane_b();
-  FUN_00000e34();
+  reset_vdp_upload_state();
   copy_target_palette();
   DAT_00ffdd08 = *(undefined2 *)(unaff_A6 + 8);
   DAT_00ffdd0c = *(undefined2 *)(unaff_A6 + 10);
@@ -50,7 +50,7 @@ void prepare_title_resources(void)
   while (uVar1 = *puVar3, uVar1 != 0) {
     puVar3 = (uint *)((int)puVar3 + 0xe);
     if ((uVar1 & 1) == 0) {
-      upload_hud_tile_block();
+      write_vdp_grid();
     }
     else {
       render_hud_sprite_stream();

@@ -10,8 +10,8 @@ void reset_menu_overlay_and_upload_two(void)
 
 {
   DAT_00fff0e4 = 0;
-  upload_hud_tile_block();
-  upload_hud_tile_block();
+  write_vdp_grid();
+  write_vdp_grid();
   return;
 }
 

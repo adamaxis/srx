@@ -14,6 +14,19 @@ struct RawVdpWriteCallbacks {
     std::function<void(std::uint16_t)> write_data_word;
 };
 
+struct VdpUploadState {
+    std::uint16_t transfer_address = 0;
+    std::uint32_t source_stream_cursor = 0;
+    bool transfer_enabled = false;
+};
+
+// ROM 0x0E34: clear the transfer destination's initial data words and reset
+// the source upload cursor/state used by the following upload service.
+void reset_vdp_upload_state(
+    VdpUploadState& state,
+    std::uint16_t transfer_address,
+    const WordTransferCallbacks& callbacks);
+
 // ROM 0x0EC0: upload the fixed 64-word startup palette table. The source
 // rewrites the destination control word for each entry; the host callback
 // receives that presentation detail without exposing MMIO to game logic.

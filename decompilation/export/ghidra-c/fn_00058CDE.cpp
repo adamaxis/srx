@@ -3,7 +3,7 @@
 // Name: FUN_00058cde
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000E34 FUN_00000e34
+//   0x00000E34 reset_vdp_upload_state
 //   0x00058B5E FUN_00058b5e
 //   0x00058BB6 FUN_00058bb6
 //   0x00058D32 FUN_00058d32
@@ -29,7 +29,7 @@ void FUN_00058cde(void)
     FUN_00058d32();
     return;
   }
-  FUN_00000e34();
+  reset_vdp_upload_state();
   FUN_00058b5e();
   FUN_00058bb6();
   return;

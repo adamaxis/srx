@@ -3,7 +3,7 @@
 // Name: FUN_0000fdae
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001232 upload_hud_tile_block
+//   0x00001232 write_vdp_grid
 
 
 void FUN_0000fdae(void)
@@ -13,12 +13,12 @@ void FUN_0000fdae(void)
   
   sVar1 = 1;
   do {
-    upload_hud_tile_block();
+    write_vdp_grid();
     sVar1 = sVar1 + -1;
   } while (sVar1 != -1);
   sVar1 = 1;
   do {
-    upload_hud_tile_block();
+    write_vdp_grid();
     sVar1 = sVar1 + -1;
   } while (sVar1 != -1);
   return;
