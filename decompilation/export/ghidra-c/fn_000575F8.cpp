@@ -4,14 +4,14 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001952C FUN_0001952c
-//   0x00019558 FUN_00019558
+//   0x00019558 reset_menu_visual_slots
 //   0x00057610 FUN_00057610
 
 
 void FUN_000575f8(void)
 
 {
-  FUN_00019558();
+  reset_menu_visual_slots();
   FUN_00057610();
   FUN_0001952c();
   return;

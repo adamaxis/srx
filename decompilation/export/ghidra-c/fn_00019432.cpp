@@ -1,14 +1,14 @@
 // Ghidra headless export
 // Entry: 0x00019432
-// Name: FUN_00019432
+// Name: handle_menu_directional_input
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00017BC0 refresh_menu_number_or_grid
 //   0x00017C84 set_hud_selection_value
-//   0x000194AC FUN_000194ac
+//   0x000194AC advance_hud_selection_row
 
 
-void FUN_00019432(void)
+void handle_menu_directional_input(void)
 
 {
   ushort uVar1;
@@ -21,7 +21,7 @@ void FUN_00019432(void)
        (-1 < (char)((&DAT_00fff0e8)[(short)uVar1] + -6))) {
       set_hud_selection_value();
     }
-    FUN_000194ac();
+    advance_hud_selection_row();
     refresh_menu_number_or_grid();
   }
   return;

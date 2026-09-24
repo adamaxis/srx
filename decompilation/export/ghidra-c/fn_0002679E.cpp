@@ -7,7 +7,7 @@
 //   0x00000BF2 latch_controller_events
 //   0x00000F98 write_vdp_word_block
 //   0x00017CC8 advance_hud_sprite_audio_pulse
-//   0x00017FDA FUN_00017fda
+//   0x00017FDA advance_menu_random_glitch
 //   0x0001C3FA FUN_0001c3fa
 //   0x00024E20 FUN_00024e20
 //   0x000268E6 FUN_000268e6
@@ -46,7 +46,7 @@ void FUN_0002679e(void)
           wait_for_vblank();
           latch_controller_events();
           advance_hud_sprite_audio_pulse();
-          FUN_00017fda();
+          advance_menu_random_glitch();
           uVar2 = uVar2 - 1;
         } while (uVar2 != 0xffff);
         bVar1 = *pbVar5;

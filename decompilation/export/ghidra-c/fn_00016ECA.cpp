@@ -3,8 +3,8 @@
 // Name: FUN_00016eca
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00016F14 FUN_00016f14
-//   0x00016F8E FUN_00016f8e
+//   0x00016F14 mark_terrain_boundary_for_mode
+//   0x00016F8E copy_terrain_work_region_rows
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -37,11 +37,11 @@ undefined2 FUN_00016eca(void)
         psVar1 = psVar3 + 6;
       }
     }
-    FUN_00016f14();
+    mark_terrain_boundary_for_mode();
     psVar1 = extraout_A1;
     pcVar4 = pcVar5;
   } while (!bVar6);
-  uVar2 = FUN_00016f8e();
+  uVar2 = copy_terrain_work_region_rows();
   _DAT_00ffe102 = 1;
   return uVar2;
 }

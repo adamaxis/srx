@@ -11,8 +11,8 @@
 //   0x0001897C write_hud_repeated_grid_variant_a
 //   0x00018A92 FUN_00018a92
 //   0x0001952C FUN_0001952c
-//   0x0001957E FUN_0001957e
-//   0x000195A6 FUN_000195a6
+//   0x0001957E clear_ready_menu_visual_slots
+//   0x000195A6 refresh_menu_slot_pair
 //   0x0001A16A FUN_0001a16a
 
 
@@ -42,11 +42,11 @@ void FUN_0001882e(void)
   DAT_00ffef96 = 0xff;
   FUN_0000c160();
   if ((short)(unaff_D7w + -0xc) < 0) {
-    FUN_000195a6();
+    refresh_menu_slot_pair();
     build_grouped_decimal_glyphs();
     FUN_0001952c();
     build_grouped_decimal_glyphs();
-    FUN_0001957e();
+    clear_ready_menu_visual_slots();
     build_grouped_decimal_glyphs();
   }
   return;

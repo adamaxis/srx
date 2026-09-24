@@ -140,6 +140,26 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00018776L, "advance_hud_fade_service");
         names.put(0x0001897CL, "write_hud_repeated_grid_variant_a");
         names.put(0x00018998L, "write_hud_repeated_grid_variant_b");
+        names.put(0x00016E5CL, "process_terrain_work_entries");
+        names.put(0x00016F14L, "mark_terrain_boundary_for_mode");
+        names.put(0x00016F3CL, "mark_terrain_boundary_if_inside");
+        names.put(0x00016F8EL, "copy_terrain_work_region_rows");
+        names.put(0x000177FCL, "run_menu_hud_tick_loop");
+        names.put(0x00017998L, "render_menu_text_progression");
+        names.put(0x00017EEEL, "advance_menu_overlay_timer");
+        names.put(0x00017FDAL, "advance_menu_random_glitch");
+        names.put(0x000186FAL, "refresh_field_hud_assets");
+        names.put(0x000187AAL, "render_hud_indicator_grids");
+        names.put(0x000189B4L, "write_hud_repeated_grid_variant_c");
+        names.put(0x000189D8L, "write_two_hud_grids");
+        names.put(0x00019432L, "handle_menu_directional_input");
+        names.put(0x000194ACL, "advance_hud_selection_row");
+        names.put(0x00019504L, "write_hud_panel_grid");
+        names.put(0x00019558L, "reset_menu_visual_slots");
+        names.put(0x0001957EL, "clear_ready_menu_visual_slots");
+        names.put(0x000195A6L, "refresh_menu_slot_pair");
+        names.put(0x000195AAL, "clear_menu_slot_visual");
+        names.put(0x000196F2L, "rotate_hud_history");
         names.put(0x0001A342L,
                   "find_first_available_world_effect_entity_slot");
         names.put(0x0001DBAAL, "schedule_world_activity_timeout");

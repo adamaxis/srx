@@ -8,11 +8,11 @@
 //   0x0000195C sample_controller_input
 //   0x000176BA refresh_field_resource_streams
 //   0x0001789C prepare_menu_hud_sequence
-//   0x00017FDA FUN_00017fda
+//   0x00017FDA advance_menu_random_glitch
 //   0x0001822C FUN_0001822c
-//   0x000186FA FUN_000186fa
+//   0x000186FA refresh_field_hud_assets
 //   0x00018776 advance_hud_fade_service
-//   0x00019432 FUN_00019432
+//   0x00019432 handle_menu_directional_input
 //   0x00019788 FUN_00019788
 //   0x0001A370 FUN_0001a370
 //   0x0001A48A FUN_0001a48a
@@ -100,7 +100,7 @@ void FUN_0001ade6(void)
     wait_for_vblank();
     latch_controller_events();
     sample_controller_input();
-    FUN_00017fda();
+    advance_menu_random_glitch();
     uVar1 = 0;
     if (_DAT_00ffdf8c == 0) {
       uVar1 = 0;
@@ -124,7 +124,7 @@ void FUN_0001ade6(void)
       }
       FUN_00019788();
       FUN_0001c754();
-      FUN_00019432();
+      handle_menu_directional_input();
       FUN_0001a370();
       if (DAT_00fff0b1 < '\0') {
         return;
@@ -232,7 +232,7 @@ LAB_0001afc0:
       if (unaff_D7w == 0) {
         return;
       }
-      FUN_000186fa();
+      refresh_field_hud_assets();
       prepare_menu_hud_sequence();
       VDP_CTRL = 0x8174;
       prepare_mode_entry_service();

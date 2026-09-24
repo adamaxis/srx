@@ -48,12 +48,12 @@ void FUN_000181f8(void)
   _DAT_00ffd980 = 1;
   DAT_00ffef14 = DAT_00ffef14 | 2;
   _DAT_00fff0d0 = 0;
-  FUN_00019504();
-  FUN_000187aa();
+  write_hud_panel_grid();
+  render_hud_indicator_grids();
   DAT_00fff10a = 0;
   DAT_00fff109 = 0;
   DAT_00fff0d1 = 3;
-  FUN_000189d8();
+  write_two_hud_grids();
   VDP_CTRL = 0x8174;
   DAT_00fff0d1 = 0;
   uVar7 = unaff_D7 & 0xffff0000;
@@ -65,9 +65,9 @@ LAB_00018326:
     wait_for_vblank();
     latch_controller_events();
     sample_controller_input();
-    uVar5 = FUN_000196f2();
+    uVar5 = rotate_hud_history();
     if (((DAT_00ffdd22._0_1_ & 1) == 0) && ((DAT_00ffdd22._0_1_ & 2) == 0)) break;
-    uVar5 = FUN_000189d8();
+    uVar5 = write_two_hud_grids();
     DAT_00fff0d1 = (char)uVar5 + DAT_00fff0d1;
     if ((short)((ushort)DAT_00fff0d1 << 8) < 0) {
       DAT_00fff0d1 = 3;
@@ -118,7 +118,7 @@ LAB_0001842e:
               wait_for_vblank();
               latch_controller_events();
               sample_controller_input();
-              FUN_000196f2();
+              rotate_hud_history();
               if (((DAT_00ffdd22._0_1_ & 1) != 0) || ((DAT_00ffdd22._0_1_ & 2) != 0)) break;
               if (((DAT_00ffdd22._0_1_ & 0x40) != 0) ||
                  (((DAT_00ffdd22._0_1_ & 0x10) != 0 || ((DAT_00ffdd22._0_1_ & 0x20) != 0)))) {

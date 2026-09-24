@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00017FDA
-// Name: FUN_00017fda
+// Name: advance_menu_random_glitch
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
@@ -9,7 +9,7 @@
 //   0x00017FB4 write_hud_repeated_grid
 
 
-void FUN_00017fda(void)
+void advance_menu_random_glitch(void)
 
 {
   short sVar1;

@@ -3,7 +3,7 @@
 // Name: FUN_00019d66
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00017998 FUN_00017998
+//   0x00017998 render_menu_text_progression
 //   0x00017A5E FUN_00017a5e
 //   0x00017C52 render_menu_text_followup
 //   0x00017C84 set_hud_selection_value
@@ -26,7 +26,7 @@ void FUN_00019d66(void)
   set_hud_selection_value();
   render_menu_text_followup();
   FUN_00019dac();
-  FUN_00017998();
+  render_menu_text_progression();
   FUN_00017a5e();
   return;
 }

@@ -13,7 +13,7 @@
 //   0x000164A8 FUN_000164a8
 //   0x000164DC clear_scene_record_transition_words
 //   0x00016DEE clear_scene_record_pending_flags
-//   0x00016E5C FUN_00016e5c
+//   0x00016E5C process_terrain_work_entries
 //   0x0001A310 clear_effect_slots
 //   0x0001A322 clear_entity_effect_pending_records
 //   0x0001E04A begin_world_effect_transition
@@ -55,7 +55,7 @@ void FUN_00002900(void)
       _DAT_00ffdf8a = 0;
     }
     if (DAT_00ffdf40 == 2) {
-      FUN_00016e5c();
+      process_terrain_work_entries();
     }
   }
   rebuild_terrain_collision_map();

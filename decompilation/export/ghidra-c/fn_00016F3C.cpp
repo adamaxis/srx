@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00016F3C
-// Name: FUN_00016f3c
+// Name: mark_terrain_boundary_if_inside
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00014640 map_world_delta_to_tile_pair
 
 
-void FUN_00016f3c(void)
+void mark_terrain_boundary_if_inside(void)
 
 {
   short in_D0w;

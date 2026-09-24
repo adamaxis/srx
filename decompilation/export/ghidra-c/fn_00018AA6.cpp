@@ -11,7 +11,7 @@
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x0001882E FUN_0001882e
 //   0x0001897C write_hud_repeated_grid_variant_a
-//   0x000196F2 FUN_000196f2
+//   0x000196F2 rotate_hud_history
 
 
 void FUN_00018aa6(void)
@@ -28,7 +28,7 @@ void FUN_00018aa6(void)
       wait_for_vblank();
       latch_controller_events();
       sample_controller_input();
-      FUN_000196f2();
+      rotate_hud_history();
       if (((DAT_00ffdd22._0_1_ & 1) != 0) || ((DAT_00ffdd22._0_1_ & 2) != 0)) break;
       if (((DAT_00ffdd22._0_1_ & 0x40) != 0) ||
          (((DAT_00ffdd22._0_1_ & 0x10) != 0 || ((DAT_00ffdd22._0_1_ & 0x20) != 0)))) {

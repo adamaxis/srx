@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00016F14
-// Name: FUN_00016f14
+// Name: mark_terrain_boundary_for_mode
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00016F3C FUN_00016f3c
+//   0x00016F3C mark_terrain_boundary_if_inside
 
 
-void FUN_00016f14(void)
+void mark_terrain_boundary_for_mode(void)
 
 {
   short in_D0w;
@@ -21,11 +21,11 @@ void FUN_00016f14(void)
   
   if (unaff_D2w < 0) {
     bVar2 = false;
-    FUN_00016f3c();
+    mark_terrain_boundary_if_inside();
     if (bVar2) {
       return;
     }
-    FUN_00016f3c();
+    mark_terrain_boundary_if_inside();
     return;
   }
   sVar1 = map_world_delta_to_tile_pair();

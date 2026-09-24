@@ -7,7 +7,7 @@
 //   0x0001792E render_menu_hud_rows
 //   0x00017C52 render_menu_text_followup
 //   0x00017C84 set_hud_selection_value
-//   0x00017EEE FUN_00017eee
+//   0x00017EEE advance_menu_overlay_timer
 
 
 void FUN_00019788(void)
@@ -21,7 +21,7 @@ void FUN_00019788(void)
     DAT_00fff0ac = 0x28;
     render_menu_hud_rows();
   }
-  FUN_00017eee();
+  advance_menu_overlay_timer();
   if (DAT_00fff0b8 != '\0') {
     pcVar2 = &DAT_00fff0ed;
     DAT_00ffdd48 = DAT_00ffdd48 + -1;

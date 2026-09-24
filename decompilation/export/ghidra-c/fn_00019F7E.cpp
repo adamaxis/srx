@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00017BC0 refresh_menu_number_or_grid
-//   0x000195AA FUN_000195aa
+//   0x000195AA clear_menu_slot_visual
 //   0x00019762 FUN_00019762
 
 
@@ -17,7 +17,7 @@ void FUN_00019f7e(void)
   sVar1 = 4;
   do {
     if ((&DAT_00fffbd8)[sVar1] == '\a') {
-      FUN_000195aa();
+      clear_menu_slot_visual();
       (&DAT_00fff0e8)[sVar1] = 0;
       *(short *)((int)&DAT_00fff0f2 + (int)(short)(sVar1 << 1)) = extraout_D1w * 10;
       refresh_menu_number_or_grid();

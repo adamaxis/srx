@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00017998
-// Name: FUN_00017998
+// Name: render_menu_text_progression
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_title_text_source
@@ -8,7 +8,7 @@
 //   0x00017C3C FUN_00017c3c
 
 
-void FUN_00017998(void)
+void render_menu_text_progression(void)
 
 {
   short unaff_D3w;

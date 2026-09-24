@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00016E5C
-// Name: FUN_00016e5c
+// Name: process_terrain_work_entries
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00016EA0 fill_terrain_work_region
 
 
-short FUN_00016e5c(void)
+short process_terrain_work_entries(void)
 
 {
   short *psVar1;

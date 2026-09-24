@@ -396,3 +396,23 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x18776	HUD fade service	ghidra_conversion::advance_hud_fade_service	shadowrun_ghidra_menu_hud_service	partial		Typed five-pass, two-vblank palette fade service with dirty publication
 0x1897C	HUD repeated-grid variant A	ghidra_conversion::write_hud_repeated_grid_variant_a	shadowrun_ghidra_menu_hud_service	partial		Typed repeated-grid variant boundary
 0x18998	HUD repeated-grid variant B	ghidra_conversion::write_hud_repeated_grid_variant_b	shadowrun_ghidra_menu_hud_service	partial		Typed repeated-grid variant boundary
+0x16E5C	terrain work-entry processor	ghidra_conversion::process_terrain_work_entries	shadowrun_ghidra_terrain_workflow	partial		Typed variable-span descriptors, status-byte gating, and fill boundary
+0x16F14	terrain boundary mode marker	ghidra_conversion::mark_terrain_boundary_for_mode	shadowrun_ghidra_terrain_workflow	partial		Typed regular/alternate boundary checks for negative-mode flow
+0x16F3C	terrain boundary marker	ghidra_conversion::mark_terrain_boundary_if_inside	shadowrun_ghidra_terrain_workflow	partial		Typed world-delta tile mapping, rectangle containment, and marker publication
+0x16F8E	terrain work-region row copy	ghidra_conversion::copy_terrain_work_region_rows	shadowrun_ghidra_terrain_workflow	partial		Typed negative-mode region resolution and bounded row copy
+0x177FC	menu HUD tick loop	ghidra_conversion::run_menu_hud_tick_loop	shadowrun_ghidra_menu_hud_service	partial		Typed sixty-frame service cadence, dirty flags, and post-loop cleanup
+0x17998	menu text progression	ghidra_conversion::render_menu_text_progression	shadowrun_ghidra_menu_hud_service	partial		Typed count-dependent text and decimal-glyph progression
+0x17EEE	menu overlay timer	ghidra_conversion::advance_menu_overlay_timer	shadowrun_ghidra_menu_hud_service	partial		Typed overlay phase, countdown reload, service marker, and two-grid expiry branch
+0x17FDA	menu random visual effect	ghidra_conversion::advance_menu_random_glitch	shadowrun_ghidra_menu_hud_service	partial		Typed random initialization, phase cadence, repeated-grid, and linear-grid order
+0x186FA	field HUD asset refresh	ghidra_conversion::refresh_field_hud_assets	shadowrun_ghidra_menu_hud_service	partial		Typed field HUD, selection reset, stream/effect service, and double sprite render
+0x187AA	HUD indicator grid renderer	ghidra_conversion::render_hud_indicator_grids	shadowrun_ghidra_menu_hud_service	partial		Typed active-indicator scan followed by four unconditional footer grids
+0x189B4	HUD repeated-grid variant C	ghidra_conversion::write_hud_repeated_grid_variant_c	shadowrun_ghidra_menu_hud_service	partial		Typed repeated-grid presentation boundary
+0x189D8	HUD two-grid writer	ghidra_conversion::write_two_hud_grids	shadowrun_ghidra_menu_hud_service	partial		Typed consecutive two-grid presentation boundary
+0x19432	menu directional input handler	ghidra_conversion::handle_menu_directional_input	shadowrun_ghidra_menu_hud_service	partial		Typed input-bit gate, row eligibility filters, selection publication, and refresh order
+0x194AC	HUD selection row advance	ghidra_conversion::advance_hud_selection_row	shadowrun_ghidra_menu_hud_service	partial		Typed signed row delta, five-row wrapping, grid write, and row render
+0x19504	HUD panel grid writer	ghidra_conversion::write_hud_panel_grid	shadowrun_ghidra_menu_hud_service	partial		Typed single-grid presentation boundary
+0x19558	menu visual slot reset	ghidra_conversion::reset_menu_visual_slots	shadowrun_ghidra_menu_hud_service	partial		Typed five-slot and twelve-slot reset loops
+0x1957E	ready menu visual cleanup	ghidra_conversion::clear_ready_menu_visual_slots	shadowrun_ghidra_menu_hud_service	partial		Typed reverse five-row signed-status cleanup scan
+0x195A6	menu slot pair refresh	ghidra_conversion::refresh_menu_slot_pair	shadowrun_ghidra_menu_hud_service	partial		Typed optional-hook and visual-clear order
+0x195AA	menu visual clear leaf	ghidra_conversion::clear_menu_slot_visual	shadowrun_ghidra_menu_hud_service	partial		Typed visual-clear service boundary
+0x196F2	HUD history rotation	ghidra_conversion::rotate_hud_history	shadowrun_ghidra_menu_hud_service	partial		Typed countdown expiry, four-word history rotation, and dirty publication

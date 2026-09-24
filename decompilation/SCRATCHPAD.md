@@ -541,6 +541,22 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The following twenty-entry slice continues directly through the terrain and
+menu/HUD service cluster. `0x16E5C` now walks typed variable-span terrain
+descriptors, while `0x16F8E` resolves negative-mode regions before copying
+bounded rows. `0x16F3C` maps a world delta into a typed terrain rectangle and
+publishes the source marker; `0x16F14` keeps its regular and alternate checks
+as explicit callback boundaries.
+
+The menu/HUD conversion now covers the sixty-frame service loop at `0x177FC`,
+the count-dependent text progression at `0x17998`, overlay countdown at
+`0x17EEE`, and random visual-effect phases at `0x17FDA`. `0x186FA` and
+`0x187AA` express field-HUD asset refresh and active-indicator grid order.
+The remaining helpers are typed presentation and selection services:
+`0x189B4`, `0x189D8`, `0x19432`, `0x194AC`, `0x19504`, `0x19558`, `0x1957E`,
+`0x195A6`, `0x195AA`, and `0x196F2`. They use host state, bounded arrays, and
+callbacks rather than source addresses or VDP emulation.
+
 The next twenty-entry conversion slice stays on the reference side and does
 not alter the native game or its emulator museum. `0x16B7C` now publishes the
 scene resource cursor fields into typed state, while `0x16D8A` uses an

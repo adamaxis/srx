@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001957E
-// Name: FUN_0001957e
+// Name: clear_ready_menu_visual_slots
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001952C FUN_0001952c
 
 
-void FUN_0001957e(void)
+void clear_ready_menu_visual_slots(void)
 
 {
   short sVar1;

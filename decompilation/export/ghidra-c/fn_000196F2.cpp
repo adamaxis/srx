@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000196F2
-// Name: FUN_000196f2
+// Name: rotate_hud_history
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_000196f2(void)
+void rotate_hud_history(void)
 
 {
   undefined2 uVar1;

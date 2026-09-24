@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00017EEE
-// Name: FUN_00017eee
+// Name: advance_menu_overlay_timer
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 
 
-void FUN_00017eee(void)
+void advance_menu_overlay_timer(void)
 
 {
   DAT_00fff0b8 = 0;

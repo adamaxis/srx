@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000187AA
-// Name: FUN_000187aa
+// Name: render_hud_indicator_grids
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 
 
-void FUN_000187aa(void)
+void render_hud_indicator_grids(void)
 
 {
   short sVar1;

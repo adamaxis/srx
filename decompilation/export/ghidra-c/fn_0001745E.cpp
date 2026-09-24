@@ -17,7 +17,7 @@
 //   0x00017708 render_field_hud
 //   0x000177A4 initialize_menu_slot_states
 //   0x000177CC upload_menu_resource_pair
-//   0x000177FC FUN_000177fc
+//   0x000177FC run_menu_hud_tick_loop
 //   0x0001789C prepare_menu_hud_sequence
 //   0x00017EB4 calculate_menu_delay_offset
 //   0x00019856 refresh_field_hud
@@ -103,7 +103,7 @@ void FUN_0001745e(void)
     prepare_menu_hud_sequence();
     VDP_CTRL = 0x8174;
     service_audio_if_enabled();
-    FUN_000177fc();
+    run_menu_hud_tick_loop();
     FUN_000530d2();
     service_audio_command_frame();
     render_hud_sprite_stream();
