@@ -70,5 +70,21 @@ int main() {
         return 13;
     }
 
+    const auto action_left = cycle_inventory_action_selector(2, -1);
+    if (!expect(action_left.selector == 5 &&
+                action_left.redraw_requested)) {
+        return 14;
+    }
+    const auto action_right = cycle_inventory_action_selector(5, 1);
+    if (!expect(action_right.selector == 2 &&
+                !action_right.redraw_requested)) {
+        return 15;
+    }
+    const auto action_middle = cycle_inventory_action_selector(3, -1);
+    if (!expect(action_middle.selector == 2 &&
+                !action_middle.redraw_requested)) {
+        return 16;
+    }
+
     return 0;
 }

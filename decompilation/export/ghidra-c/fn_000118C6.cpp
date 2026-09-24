@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000118C6
-// Name: FUN_000118c6
+// Name: cycle_inventory_action_selector
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_000118c6(void)
+void cycle_inventory_action_selector(void)
 
 {
   char in_D0b;

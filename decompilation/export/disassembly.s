@@ -9109,7 +9109,7 @@
 00011802: move.l (SP)+,D0
 00011804: lea (0xcd302).l,A1 ; data 000cd302
 0001180A: bsr.w 0x000111d0 ; call 000111D0 FUN_000111d0
-0001180E: bsr.w 0x000118c6 ; call 000118C6 FUN_000118c6
+0001180E: bsr.w 0x000118c6 ; call 000118C6 cycle_inventory_action_selector
 00011812: movea.l #0xcd41a,A1
 00011818: move.w #-0x1,(0x00fff116).l
 00011820: bsr.w 0x00011454 ; call 00011454 FUN_00011454
@@ -9330,7 +9330,7 @@
 00011BF2: move.l (SP)+,D0
 00011BF4: lea (0xcd33e).l,A1 ; data 000cd33e
 00011BFA: bsr.w 0x000111d0 ; call 000111D0 FUN_000111d0
-00011BFE: bsr.w 0x000118c6 ; call 000118C6 FUN_000118c6
+00011BFE: bsr.w 0x000118c6 ; call 000118C6 cycle_inventory_action_selector
 00011C02: movea.l #0xcd43a,A1
 00011C08: move.w #-0x1,(0x00fff116).l
 00011C10: bsr.w 0x00011454 ; call 00011454 FUN_00011454
@@ -9482,7 +9482,7 @@
 00011ED0: move.l (SP)+,D0
 00011ED2: lea (0xcd37a).l,A1 ; data 000cd37a
 00011ED8: bsr.w 0x000111d0 ; call 000111D0 FUN_000111d0
-00011EDC: bsr.w 0x000118c6 ; call 000118C6 FUN_000118c6
+00011EDC: bsr.w 0x000118c6 ; call 000118C6 cycle_inventory_action_selector
 00011EE0: movea.l #0xcd45a,A1
 00011EE6: move.w #-0x1,(0x00fff116).l
 00011EEE: bsr.w 0x00011454 ; call 00011454 FUN_00011454

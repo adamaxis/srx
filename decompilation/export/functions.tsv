@@ -314,7 +314,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0001170C	FUN_0001170c	6	unknown	ok	ghidra-c/fn_0001170C.cpp
 00011712	FUN_00011712	46	unknown	ok	ghidra-c/fn_00011712.cpp
 00011740	FUN_00011740	4174	unknown	ok	ghidra-c/fn_00011740.cpp
-000118C6	FUN_000118c6	58	unknown	ok	ghidra-c/fn_000118C6.cpp
+000118C6	cycle_inventory_action_selector	58	unknown	ok	ghidra-c/fn_000118C6.cpp
 00011900	FUN_00011900	40	unknown	ok	ghidra-c/fn_00011900.cpp
 00011928	FUN_00011928	40	unknown	ok	ghidra-c/fn_00011928.cpp
 000119CE	FUN_000119ce	240	unknown	ok	ghidra-c/fn_000119CE.cpp

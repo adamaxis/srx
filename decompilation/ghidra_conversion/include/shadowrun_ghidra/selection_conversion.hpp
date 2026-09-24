@@ -9,6 +9,11 @@ struct SelectionState {
     std::int8_t row = 0;
 };
 
+struct ActionSelectorUpdate {
+    std::uint8_t selector = 2;
+    bool redraw_requested = false;
+};
+
 // ROM 0xFEBE: move the active column by a signed step, wrapping between zero
 // and the current row's maximum column.
 void move_selection_column(
@@ -32,5 +37,12 @@ std::uint8_t move_wrapped_menu_cursor(
     std::uint8_t current,
     std::int8_t step,
     std::uint8_t maximum);
+
+// ROM 0x118C6: cycle the inventory/clips action selector in the inclusive
+// range 2..5. The source marks a redraw only when a leftward step wraps below
+// the first action.
+ActionSelectorUpdate cycle_inventory_action_selector(
+    std::uint8_t current,
+    std::int8_t step);
 
 } // namespace shadowrun::ghidra_conversion

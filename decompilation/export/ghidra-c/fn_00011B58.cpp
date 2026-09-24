@@ -14,7 +14,7 @@
 //   0x000111D0 FUN_000111d0
 //   0x00011454 FUN_00011454
 //   0x00011712 FUN_00011712
-//   0x000118C6 FUN_000118c6
+//   0x000118C6 cycle_inventory_action_selector
 //   0x00011900 FUN_00011900
 //   0x00011928 FUN_00011928
 //   0x00012062 FUN_00012062
@@ -65,7 +65,7 @@ void switchD_00011768::caseD_2(void)
 LAB_00011be6:
       FUN_000530de(uVar3);
       FUN_000111d0();
-      FUN_000118c6();
+      cycle_inventory_action_selector();
       _DAT_00fff116 = 0xffff;
       FUN_00011454();
       FUN_00011712();
@@ -169,7 +169,7 @@ LAB_00011ea4:
 LAB_00011ec4:
         FUN_000530de(uVar3);
         FUN_000111d0();
-        FUN_000118c6();
+        cycle_inventory_action_selector();
         _DAT_00fff116 = 0xffff;
         FUN_00011454();
         FUN_00011712();

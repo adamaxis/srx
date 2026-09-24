@@ -75,4 +75,18 @@ std::uint8_t move_wrapped_menu_cursor(
     return candidate;
 }
 
+ActionSelectorUpdate cycle_inventory_action_selector(
+    const std::uint8_t current,
+    const std::int8_t step) {
+    const auto candidate = static_cast<std::int16_t>(current) + step;
+    if (candidate < 2) {
+        return ActionSelectorUpdate{5, true};
+    }
+    if (candidate == 6) {
+        return ActionSelectorUpdate{2, false};
+    }
+    return ActionSelectorUpdate{
+        static_cast<std::uint8_t>(candidate), false};
+}
+
 } // namespace shadowrun::ghidra_conversion

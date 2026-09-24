@@ -48,7 +48,7 @@
 //   0x00011624 FUN_00011624
 //   0x0001170C FUN_0001170c
 //   0x00011712 FUN_00011712
-//   0x000118C6 FUN_000118c6
+//   0x000118C6 cycle_inventory_action_selector
 //   0x00011900 FUN_00011900
 //   0x00011928 FUN_00011928
 //   0x00012148 FUN_00012148
@@ -136,7 +136,7 @@ void FUN_00011740(void)
 LAB_00011be6:
         FUN_000530de(uVar5);
         FUN_000111d0();
-        FUN_000118c6();
+        cycle_inventory_action_selector();
         _DAT_00fff116 = 0xffff;
         FUN_00011454();
         FUN_00011712();
@@ -240,7 +240,7 @@ LAB_00011ea4:
 LAB_00011ec4:
           FUN_000530de(uVar5);
           FUN_000111d0();
-          FUN_000118c6();
+          cycle_inventory_action_selector();
           _DAT_00fff116 = 0xffff;
           FUN_00011454();
           FUN_00011712();
@@ -728,7 +728,7 @@ LAB_000129dc:
 LAB_000117f6:
         FUN_000530de(uVar5);
         FUN_000111d0();
-        FUN_000118c6();
+        cycle_inventory_action_selector();
         _DAT_00fff116 = 0xffff;
         FUN_00011454();
         FUN_00011712();

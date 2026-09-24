@@ -73,6 +73,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x148D2	dominant movement directions	ghidra_conversion::choose_dominant_axis_directions	shadowrun_native_port	partial		Typed dominant-axis selection with the source horizontal and vertical direction slots
 0xE00A	controller event wait	ghidra_conversion::wait_for_controller_event	shadowrun_native_port	partial		Typed frame/input/update loop with high-byte event termination and final sample
 0xF312	menu controller event wait	ghidra_conversion::wait_for_controller_event	shadowrun_native_port	partial		Same typed event loop with caller-provided update work
+0x118C6	inventory action selector	ghidra_conversion::cycle_inventory_action_selector	shadowrun_menu_system	partial		Typed 2..5 action wrap with the source underflow redraw request
 0x195C	controller sampling	ghidra_conversion::derive_controller_sample	shadowrun_boot_sequence	partial		Readable edge conversion is isolated from runtime and emulator
 0x19F2	controller port read	Windows input adapter	shadowrun_native_port	pending		Genesis port phases documented; host device mapping remains separate
 0x1BAC	title input sequence validation	ghidra_conversion::finalize_title_input_sequence	shadowrun_menu_system	partial		Seven-byte match and mismatch reset converted without the FF sentinel
