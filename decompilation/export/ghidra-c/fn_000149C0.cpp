@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000149C0
-// Name: FUN_000149c0
+// Name: advance_obstruction_route_queue
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00014756 clear_entity_route_flags
@@ -13,7 +13,7 @@
 //   0x00015CA4 compute_diagonal_step_cost
 
 
-void FUN_000149c0(void)
+void advance_obstruction_route_queue(void)
 
 {
   short sVar1;

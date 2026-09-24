@@ -507,7 +507,8 @@ add_library(shadowrun_ghidra_entity_route_primitives STATIC
 )
 target_include_directories(shadowrun_ghidra_entity_route_primitives PUBLIC include)
 target_link_libraries(shadowrun_ghidra_entity_route_primitives
-    PRIVATE shadowrun_ghidra_movement_direction)
+    PRIVATE shadowrun_ghidra_movement_direction
+            shadowrun_ghidra_movement_metric)
 
 add_executable(shadowrun_ghidra_entity_route_primitives_test
     tests/entity_route_primitives_conversion_test.cpp

@@ -111,7 +111,7 @@ void FUN_00014508(void)
         puVar11[-0xffffffff00000001] = 0x45da;
         update_entity_axis_relation_state();
         puVar8 = extraout_A0_03;
-        if ((extraout_A0_03[0x58] & 0x200) != 0) goto FUN_000149c0;
+        if ((extraout_A0_03[0x58] & 0x200) != 0) goto advance_obstruction_route_queue;
         puVar11[-0xffffffff00000002] = 1;
         puVar11[-0xffffffff00000001] = 0x45e8;
         derive_entity_axis_relation_flags();
@@ -133,7 +133,7 @@ LAB_000145e8:
     iVar9 = extraout_A0_05;
   }
   else {
-FUN_000149c0:
+advance_obstruction_route_queue:
     if ((puVar8[0x58] & 0x800) != 0) {
       puVar11[-0xffffffff00000002] = 1;
       puVar11[-0xffffffff00000001] = 0x49ce;

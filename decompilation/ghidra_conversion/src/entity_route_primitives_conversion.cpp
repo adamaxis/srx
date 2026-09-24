@@ -1,6 +1,7 @@
 #include "shadowrun_ghidra/entity_route_primitives_conversion.hpp"
 
 #include "shadowrun_ghidra/movement_direction_conversion.hpp"
+#include "shadowrun_ghidra/movement_metric_conversion.hpp"
 
 namespace shadowrun::ghidra_conversion {
 
@@ -293,6 +294,88 @@ ObstructionRouteSelection select_obstruction_route(
         0,
         0,
         false};
+}
+
+RouteQueueAdvance advance_obstruction_route_queue(
+    const std::uint16_t entity_x,
+    const std::uint16_t entity_y,
+    const std::uint16_t target_x,
+    const std::uint16_t target_y,
+    const std::uint16_t route_flags,
+    const std::uint8_t movement_flags,
+    RouteQueueState& route,
+    const std::vector<std::uint8_t>& obstruction_map) {
+    const auto cleared_flags = clear_entity_route_flags(movement_flags);
+    if ((route_flags & 0x0800U) != 0U &&
+        is_entity_path_blocked(
+            entity_x, entity_y, target_x, target_y, obstruction_map)) {
+        return RouteQueueAdvance{
+            RouteQueueAction::obstruction_path_blocked,
+            cleared_flags,
+            0,
+            0,
+            0,
+            {},
+            false};
+    }
+
+    const auto current_tile = compute_obstruction_grid_index(
+        entity_x, entity_y);
+    if (route.cursor >= route.tiles.size()) {
+        return RouteQueueAdvance{
+            RouteQueueAction::no_route_entry,
+            movement_flags,
+            0,
+            0,
+            0,
+            {},
+            false};
+    }
+
+    if (current_tile == route.tiles[route.cursor]) {
+        const auto next = route.cursor + 1U;
+        if (next >= route.tiles.size() || route.tiles[next] == 0xFFFFU) {
+            if ((route_flags & 0x0800U) != 0U) {
+                return RouteQueueAdvance{
+                    RouteQueueAction::obstruction_replan_required,
+                    movement_flags,
+                    0,
+                    0,
+                    0,
+                    {},
+                    false};
+            }
+
+            const auto measurement = measure_relative_heading_and_distance(
+                entity_x, entity_y, target_x, target_y);
+            return RouteQueueAdvance{
+                RouteQueueAction::target_reached,
+                cleared_flags,
+                derive_entity_axis_relation_flags(
+                    entity_x, entity_y, target_x, target_y),
+                measurement.heading,
+                measurement.distance,
+                {},
+                false};
+        }
+        route.cursor = next;
+    }
+
+    const auto projection = decode_obstruction_tile_projection(
+        route.tiles[route.cursor], current_tile);
+    const auto measurement = compute_diagonal_step_cost(
+        static_cast<std::int32_t>(entity_x) - projection.world_x,
+        static_cast<std::int32_t>(entity_y) - projection.world_y);
+    const auto heading = static_cast<std::uint16_t>(
+        static_cast<std::uint16_t>(projection.direction) << 13U);
+    return RouteQueueAdvance{
+        RouteQueueAction::advance_to_tile,
+        movement_flags,
+        0,
+        heading,
+        measurement,
+        projection,
+        true};
 }
 
 bool is_obstruction_path_blocked(

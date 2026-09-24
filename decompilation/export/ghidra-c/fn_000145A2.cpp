@@ -47,7 +47,7 @@ void FUN_000145a2(void)
       if (in_A0[0x5c] != 0x1000) {
         update_entity_axis_relation_state();
         in_A0 = extraout_A0_00;
-        if ((extraout_A0_00[0x58] & 0x200) != 0) goto FUN_000149c0;
+        if ((extraout_A0_00[0x58] & 0x200) != 0) goto advance_obstruction_route_queue;
         derive_entity_axis_relation_flags();
         in_A0 = extraout_A0_01;
       }
@@ -63,7 +63,7 @@ LAB_000145e8:
     iVar7 = extraout_A0_02;
   }
   else {
-FUN_000149c0:
+advance_obstruction_route_queue:
     if (((in_A0[0x58] & 0x800) != 0) &&
        (is_entity_path_blocked(), in_A0 = extraout_A0_03, (bool)uVar9)) {
       *(byte *)(extraout_A0_03 + 0x58) = *(byte *)(extraout_A0_03 + 0x58) & 0xfd;

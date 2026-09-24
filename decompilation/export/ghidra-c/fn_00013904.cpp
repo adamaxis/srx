@@ -283,7 +283,7 @@ LAB_000142ae:
         *(undefined4 *)((int)register0x0000003c + -4) = 0x145da;
         update_entity_axis_relation_state();
         puVar7 = extraout_A0_11;
-        if ((extraout_A0_11[0x58] & 0x200) != 0) goto FUN_000149c0;
+        if ((extraout_A0_11[0x58] & 0x200) != 0) goto advance_obstruction_route_queue;
         *(undefined4 *)((int)register0x0000003c + -4) = 0x145e8;
         derive_entity_axis_relation_flags();
         puVar7 = extraout_A0_12;
@@ -302,7 +302,7 @@ LAB_000145e8:
     iVar2 = extraout_A0_13;
   }
   else {
-FUN_000149c0:
+advance_obstruction_route_queue:
     if ((puVar7[0x58] & 0x800) != 0) {
       *(undefined4 *)((int)register0x0000003c + -4) = 0x149ce;
       is_entity_path_blocked();

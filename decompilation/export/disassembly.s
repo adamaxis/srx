@@ -11842,7 +11842,7 @@
 0001470C: rts
 0001470E: bset.b #0x3,(0xb0,A0)
 00014714: bsr.w 0x00014af4 ; call 00014AF4 find_rotating_route_strip_target
-00014718: bra.w 0x000149c0 ; call 000149C0 FUN_000149c0
+00014718: bra.w 0x000149c0 ; call 000149C0 advance_obstruction_route_queue
 00014756: bclr.b #0x1,(0xb0,A0)
 0001475C: bclr.b #0x3,(0xb0,A0)
 00014762: rts

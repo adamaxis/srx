@@ -158,6 +158,69 @@ int main() {
         return 46;
     }
 
+    RouteQueueState queued_route{{1U, 3U, 0xFFFFU}, 0U};
+    const auto queued_step = advance_obstruction_route_queue(
+        0x0200U,
+        0x0100U,
+        0x0400U,
+        0x0100U,
+        0x0000U,
+        0x02U,
+        queued_route,
+        std::vector<std::uint8_t>(128, 0U));
+    if (!expect(queued_step.action == RouteQueueAction::advance_to_tile &&
+                queued_route.cursor == 1U && queued_step.has_target &&
+                queued_step.target.direction == 2 &&
+                queued_step.heading == 0x4000U)) {
+        return 47;
+    }
+    RouteQueueState completed_route{{2U, 0xFFFFU}, 0U};
+    const auto completed = advance_obstruction_route_queue(
+        0x0400U,
+        0x0100U,
+        0x0600U,
+        0x0100U,
+        0x0000U,
+        0x0AU,
+        completed_route,
+        std::vector<std::uint8_t>(128, 0U));
+    if (!expect(completed.action == RouteQueueAction::target_reached &&
+                completed.movement_flags == 0U &&
+                completed.heading == 0x8000U)) {
+        return 48;
+    }
+    std::vector<std::uint8_t> path_blocked_map(128, 0U);
+    path_blocked_map[2] = 1U;
+    RouteQueueState blocked_route_queue{{2U, 0xFFFFU}, 0U};
+    const auto path_blocked = advance_obstruction_route_queue(
+        0x0400U,
+        0x0100U,
+        0x0600U,
+        0x0100U,
+        0x0800U,
+        0x0AU,
+        blocked_route_queue,
+        path_blocked_map);
+    if (!expect(path_blocked.action ==
+                    RouteQueueAction::obstruction_path_blocked &&
+                path_blocked.movement_flags == 0U)) {
+        return 49;
+    }
+    RouteQueueState replan_route{{2U, 0xFFFFU}, 0U};
+    const auto replan = advance_obstruction_route_queue(
+        0x0400U,
+        0x0100U,
+        0x0600U,
+        0x0100U,
+        0x0800U,
+        0x00U,
+        replan_route,
+        std::vector<std::uint8_t>(128, 0U));
+    if (!expect(replan.action ==
+                    RouteQueueAction::obstruction_replan_required)) {
+        return 50;
+    }
+
     std::vector<std::uint8_t> horizontal_path(128, 0U);
     horizontal_path[12] = 1U;
     if (!expect(is_obstruction_path_blocked(10, 13, horizontal_path))) {

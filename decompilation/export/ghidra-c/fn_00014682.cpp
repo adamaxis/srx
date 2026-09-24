@@ -6,7 +6,7 @@
 //   0x00014854 can_bypass_obstruction
 //   0x000148AA find_first_occupied_obstruction_tile
 //   0x000148D2 choose_dominant_axis_directions
-//   0x000149C0 FUN_000149c0
+//   0x000149C0 advance_obstruction_route_queue
 //   0x00014AF4 find_rotating_route_strip_target
 
 
@@ -57,7 +57,7 @@ void select_obstruction_route(void)
   }
   *(byte *)(extraout_A0_01 + 0xb0) = *(byte *)(extraout_A0_01 + 0xb0) | 8;
   find_rotating_route_strip_target();
-  FUN_000149c0();
+  advance_obstruction_route_queue();
   return;
 }
 

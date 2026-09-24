@@ -53,6 +53,29 @@ struct ObstructionRouteSelection {
     bool has_route_tile = false;
 };
 
+struct RouteQueueState {
+    std::vector<std::uint16_t> tiles;
+    std::size_t cursor = 0;
+};
+
+enum class RouteQueueAction {
+    no_route_entry,
+    advance_to_tile,
+    target_reached,
+    obstruction_path_blocked,
+    obstruction_replan_required,
+};
+
+struct RouteQueueAdvance {
+    RouteQueueAction action = RouteQueueAction::no_route_entry;
+    std::uint8_t movement_flags = 0;
+    std::uint8_t axis_flags = 0;
+    std::uint16_t heading = 0;
+    std::uint32_t distance = 0;
+    ObstructionTileProjection target{};
+    bool has_target = false;
+};
+
 // ROM 0x14756: clear the pending-route and route-retry bits from an entity's
 // movement flags after route selection fails or completes.
 std::uint8_t clear_entity_route_flags(std::uint8_t movement_flags);
@@ -111,6 +134,18 @@ ObstructionRouteSelection select_obstruction_route(
     std::uint16_t target_x,
     std::uint16_t target_y,
     std::uint8_t movement_flags,
+    const std::vector<std::uint8_t>& obstruction_map);
+
+// ROM 0x149C0: consume a packed route queue entry, decode its next target,
+// and expose the source's path-blocked/replan exits as typed actions.
+RouteQueueAdvance advance_obstruction_route_queue(
+    std::uint16_t entity_x,
+    std::uint16_t entity_y,
+    std::uint16_t target_x,
+    std::uint16_t target_y,
+    std::uint16_t route_flags,
+    std::uint8_t movement_flags,
+    RouteQueueState& route,
     const std::vector<std::uint8_t>& obstruction_map);
 
 // ROM 0x1494C: walk the source's horizontal or vertical grid line between
