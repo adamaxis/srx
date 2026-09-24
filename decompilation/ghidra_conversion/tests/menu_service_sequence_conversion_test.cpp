@@ -26,5 +26,10 @@ int main() {
     if (order != std::vector<int>{5, 6}) {
         return 3;
     }
+
+    write_menu_grid([&order] { order.push_back(7); });
+    if (order != std::vector<int>{5, 6, 7}) {
+        return 4;
+    }
     return 0;
 }

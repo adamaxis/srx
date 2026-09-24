@@ -21,4 +21,7 @@ void reset_and_upload_menu_tile_block(
     const std::function<void()>& reset_upload_state,
     const std::function<void()>& upload_tile_block);
 
+// ROM 0x11678: submit one menu grid asset.
+void write_menu_grid(const std::function<void()>& write_grid);
+
 } // namespace shadowrun::ghidra_conversion

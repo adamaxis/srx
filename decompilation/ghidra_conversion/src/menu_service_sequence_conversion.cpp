@@ -43,4 +43,10 @@ void reset_and_upload_menu_tile_block(
     }
 }
 
+void write_menu_grid(const std::function<void()>& write_grid) {
+    if (write_grid) {
+        write_grid();
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion
