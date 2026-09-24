@@ -1232,3 +1232,16 @@ target_link_libraries(shadowrun_ghidra_mode_resource_variant_test
     PRIVATE shadowrun_ghidra_mode_resource_variant)
 add_test(NAME shadowrun_ghidra_mode_resource_variant
          COMMAND shadowrun_ghidra_mode_resource_variant_test)
+
+add_library(shadowrun_ghidra_mode_resource_state STATIC
+    src/mode_resource_state_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_mode_resource_state PUBLIC include)
+
+add_executable(shadowrun_ghidra_mode_resource_state_test
+    tests/mode_resource_state_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_mode_resource_state_test
+    PRIVATE shadowrun_ghidra_mode_resource_state)
+add_test(NAME shadowrun_ghidra_mode_resource_state
+         COMMAND shadowrun_ghidra_mode_resource_state_test)

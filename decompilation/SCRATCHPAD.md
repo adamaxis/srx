@@ -653,6 +653,12 @@ resource-state refresh followed by HUD-panel draw order.
 Batch 4 adds the `0x1F38A` variant-A loop to the same typed resource module;
 its exact 80 wrapped word-block transfers are now explicit and tested.
 
+The next resource-state slice converts `0x566E2`, `0x566F6`, and `0x5670E`.
+Their source pointer arithmetic is represented by a 24-word typed store: the
+metadata copy targets words 0-7, the state copy targets words 16-23, and the
+palette copy replaces all 24 words. Each operation marks the store dirty,
+matching the shared source invalidation flag.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames
