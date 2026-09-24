@@ -188,3 +188,16 @@ target_link_libraries(shadowrun_ghidra_entity_dirty_test
     PRIVATE shadowrun_ghidra_entity_dirty)
 add_test(NAME shadowrun_ghidra_entity_dirty
          COMMAND shadowrun_ghidra_entity_dirty_test)
+
+add_library(shadowrun_ghidra_entity_sort STATIC
+    src/entity_sort_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_sort PUBLIC include)
+
+add_executable(shadowrun_ghidra_entity_sort_test
+    tests/entity_sort_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_sort_test
+    PRIVATE shadowrun_ghidra_entity_sort)
+add_test(NAME shadowrun_ghidra_entity_sort
+         COMMAND shadowrun_ghidra_entity_sort_test)

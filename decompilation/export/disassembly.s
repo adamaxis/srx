@@ -3127,7 +3127,7 @@
 0000464C: bsr.w 0x00004658 ; call 00004658 FUN_00004658
 00004650: clr.w (0x00ffde88).l
 00004656: rts
-00004658: bsr.w 0x00005b1e ; call 00005B1E FUN_00005b1e
+00004658: bsr.w 0x00005b1e ; call 00005B1E sort_entity_slots_by_depth
 0000465C: move.w #0x1,(0x00ffdd02).l
 00004664: lea (0xffd986).l,A3 ; data 00ffd986
 0000466A: move.w #0x2,D5w

@@ -12,7 +12,7 @@
 //   0x0000557E FUN_0000557e
 //   0x00005936 FUN_00005936
 //   0x000059EA FUN_000059ea
-//   0x00005B1E FUN_00005b1e
+//   0x00005B1E sort_entity_slots_by_depth
 //   0x00005B98 FUN_00005b98
 //   0x00005C7E FUN_00005c7e
 //   0x0000622C FUN_0000622c
@@ -42,7 +42,7 @@ void FUN_00004658(void)
   int *piVar5;
   bool bVar6;
   
-  FUN_00005b1e();
+  sort_entity_slots_by_depth();
   DAT_00ffdd02 = 1;
   sVar3 = 0xf;
   piVar5 = &DAT_00ffde8a;

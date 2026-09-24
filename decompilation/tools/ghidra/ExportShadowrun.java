@@ -64,6 +64,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00004E64L, "advance_entity_secondary_timer");
         names.put(0x00005A56L, "project_entity_screen_position");
         names.put(0x00005A62L, "project_entity_screen_position_standard");
+        names.put(0x00005B1EL, "sort_entity_slots_by_depth");
         names.put(0x00005B7EL, "mark_entity_slots_for_render");
         names.put(0x00005FDCL, "advance_entity_animation_accumulator");
         names.put(0x0000B530L, "approach_entity_fixed_point_target");

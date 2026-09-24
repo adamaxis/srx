@@ -26,6 +26,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x4E64	entity secondary timer	ghidra_conversion::advance_entity_secondary_timer	shadowrun_native_port	partial		Frame-phase timer and 0x20 expiry flag converted in typed state
 0x5A56	entity screen projection	ghidra_conversion::project_entity_screen_position	shadowrun_native_port	partial		Typed field/full-screen projection with source rounding and visibility windows
 0x5A62	standard entity screen projection	ghidra_conversion::project_entity_screen_position_standard	shadowrun_native_port	partial		Typed standard field projection with source rounding and visibility window
+0x5B1E	entity depth sort	ghidra_conversion::sort_entity_slots_by_depth	shadowrun_native_port	partial		Stable descending effective-depth sort with source hidden-entity masking
 0x5B7E	entity render dirty pass	ghidra_conversion::mark_entity_slots_for_render	shadowrun_native_port	partial		Typed sixteen-slot render-update bit marking
 0x5FDC	entity animation accumulator	ghidra_conversion::advance_entity_animation_accumulator	shadowrun_native_port	partial		Typed single-period animation step and redraw request
 0xB530	entity fixed-point target approach	ghidra_conversion::approach_entity_fixed_point_target	shadowrun_native_port	partial		Typed 0x800-step movement with one-step target snap

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00005B1E
-// Name: FUN_00005b1e
+// Name: sort_entity_slots_by_depth
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00005b1e(void)
+void sort_entity_slots_by_depth(void)
 
 {
   bool bVar1;
