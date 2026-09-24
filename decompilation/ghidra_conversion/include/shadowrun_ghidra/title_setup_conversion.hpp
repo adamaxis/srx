@@ -20,6 +20,16 @@ struct TitleSetupCallbacks {
     std::function<void(std::uint16_t frame_count)> advance_palette_frames;
 };
 
+struct TitlePaletteFadeCallbacks {
+    std::function<void()> wait_for_palette_frame;
+    std::function<void()> step_palette_toward_target;
+    std::function<void()> mark_palette_dirty;
+};
+
+// ROM 0x12F6: perform the source DBF 0x10 palette-fade passes in order.
+std::uint16_t advance_title_palette_fade(
+    const TitlePaletteFadeCallbacks& callbacks);
+
 // ROM 0x1D7A: reset title-owned state, perform the source setup sequence,
 // publish palette bits 0, 2, and 3, then advance the palette for 17 frames.
 // The resource and presentation operations are typed host boundaries; this

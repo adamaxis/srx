@@ -659,6 +659,10 @@ metadata copy targets words 0-7, the state copy targets words 16-23, and the
 palette copy replaces all 24 words. Each operation marks the store dirty,
 matching the shared source invalidation flag.
 
+The title setup module now also owns `0x12F6`: its DBF `0x10` loop is exposed
+as `advance_title_palette_fade`, with the source ordering of frame wait,
+palette-step, and dirty-mark callbacks tested across all 17 passes.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames

@@ -13,6 +13,18 @@ bool expect(const bool condition) {
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
+    std::vector<int> fade_order;
+    if (!expect(advance_title_palette_fade(
+                    {[&fade_order] { fade_order.push_back(1); },
+                     [&fade_order] { fade_order.push_back(2); },
+                     [&fade_order] { fade_order.push_back(3); }}) == 17U &&
+                fade_order.size() == 51U && fade_order[0] == 1 &&
+                fade_order[1] == 2 && fade_order[2] == 3 &&
+                fade_order[48] == 1 && fade_order[49] == 2 &&
+                fade_order[50] == 3)) {
+        return 1;
+    }
+
     TitleSetupState state{{{9U, 8U, 7U, 6U}}, 0x20U};
     std::vector<int> order;
     std::uint16_t palette_frames = 0U;
@@ -32,7 +44,7 @@ int main() {
                 state.palette_flags == 0x2DU && order ==
                     std::vector<int>{1, 2, 3, 4} &&
                 palette_frames == 17U)) {
-        return 1;
+        return 2;
     }
 
     std::vector<TitleTextRenderRequest> requests;
@@ -51,7 +63,7 @@ int main() {
                 requests[5].asset == TitleTextAsset::copyright_line_4 &&
                 requests[5].destination_tile_base == 0xCC84U &&
                 requests[5].palette_flags == 0x2000U)) {
-        return 2;
+        return 3;
     }
 
     return 0;

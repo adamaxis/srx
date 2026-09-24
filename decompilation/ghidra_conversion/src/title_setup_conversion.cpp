@@ -16,6 +16,23 @@ void submit(const TitleTextDrawBoundary& draw_text,
 
 } // namespace
 
+std::uint16_t advance_title_palette_fade(
+    const TitlePaletteFadeCallbacks& callbacks) {
+    constexpr std::uint16_t kFadePassCount = 17U;
+    for (std::uint16_t pass = 0; pass < kFadePassCount; ++pass) {
+        if (callbacks.wait_for_palette_frame) {
+            callbacks.wait_for_palette_frame();
+        }
+        if (callbacks.step_palette_toward_target) {
+            callbacks.step_palette_toward_target();
+        }
+        if (callbacks.mark_palette_dirty) {
+            callbacks.mark_palette_dirty();
+        }
+    }
+    return kFadePassCount;
+}
+
 void setup_title_state(TitleSetupState& state,
                        const TitleSetupCallbacks& callbacks) {
     state.cleared_words.fill(0U);
