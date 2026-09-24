@@ -32,3 +32,16 @@ target_link_libraries(shadowrun_ghidra_compressed_data_test
     PRIVATE shadowrun_ghidra_compressed_data)
 add_test(NAME shadowrun_ghidra_compressed_data
          COMMAND shadowrun_ghidra_compressed_data_test)
+
+add_library(shadowrun_ghidra_coordinate_data STATIC
+    src/coordinate_data_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_coordinate_data PUBLIC include)
+
+add_executable(shadowrun_ghidra_coordinate_data_test
+    tests/coordinate_data_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_coordinate_data_test
+    PRIVATE shadowrun_ghidra_coordinate_data)
+add_test(NAME shadowrun_ghidra_coordinate_data
+         COMMAND shadowrun_ghidra_coordinate_data_test)

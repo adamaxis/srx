@@ -14,6 +14,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x1342	palette frame wait	NativePortShell update loop	shadowrun_boot_sequence	pending		Two-vblank source wait documented; host timing still separate
 0x1368	target palette copy	ghidra_conversion::copy_target_palette	shadowrun_boot_sequence	partial		Complete 64-word copy is isolated from runtime and emulator
 0x1610	compressed byte decode	ghidra_conversion::decode_source_byte_stream	shadowrun_graphics	partial		Literal, repeat, and sliding-window decode converted with bounded host input
+0x167C	coordinate stream decode	ghidra_conversion::decode_source_coordinate_stream	shadowrun_graphics	partial		Signed byte/word offsets and repeated/stepped runs converted with bounded host input
 0x195C	controller sampling	ghidra_conversion::derive_controller_sample	shadowrun_boot_sequence	partial		Readable edge conversion is isolated from runtime and emulator
 0x19F2	controller port read	Windows input adapter	shadowrun_native_port	pending		Genesis port phases documented; host device mapping remains separate
 0x1BAC	title input sequence validation	ghidra_conversion::finalize_title_input_sequence	shadowrun_menu_system	partial		Seven-byte match and mismatch reset converted without the FF sentinel
