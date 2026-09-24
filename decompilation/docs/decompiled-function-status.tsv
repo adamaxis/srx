@@ -187,24 +187,20 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x19F2	controller port read	ghidra_conversion::read_controller_port	shadowrun_native_port	partial		Typed two-phase six-button packing and explicit host bus/input boundaries; Windows binding remains separate
 0x1BAC	title input sequence validation	ghidra_conversion::finalize_title_input_sequence	shadowrun_menu_system	partial		Seven-byte match and mismatch reset converted without the FF sentinel
 0x1BEA	title input edge history	ghidra_conversion::record_title_input_edge	shadowrun_menu_system	partial		Bounded eight-entry history is isolated from runtime and emulator
-0x1A9E	title loop	ghidra_conversion::advance_title_prompt_schedule	shadowrun_menu_system	partial		Prompt cadence converted; title draw calls remain explicit boundaries
+0x1A9E	title loop	ghidra_conversion::advance_title_prompt_schedule; NativePortShell::render	shadowrun_menu_system; shadowrun_visual_dump	partial	dump frames 0/90/128/500	Prompt cadence converted; title draw calls remain explicit boundaries; replace six-frame cycle as claimed title
 0x1C1E	title text state	ghidra_conversion::advance_title_text_state	shadowrun_menu_system	partial		32-count palette cadence and completion action converted; source writers remain boundaries
-0x1C6A	title sprite state	ghidra_conversion::advance_title_sprite_state	shadowrun_menu_system	partial		Six-phase cadence and projection request converted without source SAT writes
+0x1C6A	title sprite state / lists	ghidra_conversion::advance_title_sprite_state; NativePortShell::render	shadowrun_menu_system; shadowrun_visual_dump	partial	SAT origin/clip vs capture	Six-phase cadence and projection request converted without source SAT writes
 0x1D7A	title setup	ghidra_conversion	shadowrun_menu_system	partial		Typed reset, resource-order boundary, palette flag publication, and 17-frame fade conversion
 0x1DE0	title prompt text	ghidra_conversion	shadowrun_menu_system	partial		Typed prompt render request at the source destination; text writer remains an explicit boundary
-0x1DF6	title copyright text	ghidra_conversion	shadowrun_menu_system	partial		Four typed copyright render requests preserve source order and destinations
-0x1E4E	title logo column reveal	ghidra_conversion::advance_title_logo_column	shadowrun_menu_system	partial		38-column progression and completion palette-copy event converted without source blitters
+0x1DF6	title copyright text	ghidra_conversion; NativePortShell::render	shadowrun_menu_system; shadowrun_visual_dump	partial		Four typed copyright render requests preserve source order and destinations
+0x1E4E	title logo column reveal	ghidra_conversion::advance_title_logo_column; NativePortShell::render	shadowrun_menu_system; shadowrun_visual_dump	partial	phase-match against 320x224 capture	38-column progression and completion palette-copy event converted without source blitters
 0x2634	title circuit lights	ghidra_conversion::advance_title_circuit_lights	shadowrun_menu_system	partial		Seven-phase cadence converted; source palette write remains explicit
 0x26D0	title animation timer	ghidra_conversion::advance_title_animation_timer	shadowrun_menu_system	partial		Five-frame timer converted; source update flag remains a boundary
 0x5D746	pre-title SEGA / rising SAT	NativePortShell::update_boot	shadowrun_boot_sequence	partial	boot-0/arrived/sega/strobe.bmp	0x5B2E2 guy pal fade still pending
 0x5DA50	pre-title resource setup	decode_genesis_boot_*	shadowrun_boot_sequence	partial		planes 0x1FFA66/0x1FFB66, tiles 0x1FEC46/0x14C222/0xDA038
 0x5DAC4	pre-title HSCROLL noise	NativePortShell::update_boot	shadowrun_boot_sequence	partial		plane-A line scroll 0..31 via 0xD44
 0x5D8BA	pre-title logo pal strobe	NativePortShell::update_boot	shadowrun_boot_sequence	partial		0x5DCE6 slide into line 0 colors 3..10
-0x1A9E	title loop	NativePortShell::render	shadowrun_menu_system; shadowrun_visual_dump	partial		dump frames 0/90/128/500; replace six-frame cycle as claimed title
-0x1E4E	title logo columns	NativePortShell::render	shadowrun_visual_dump	partial		phase-match against 320x224 capture
-0x1C6A	title sprite lists	NativePortShell::render	shadowrun_visual_dump	partial		SAT origin/clip vs capture
 0x1DCA	PRESS START blink	NativePortShell::render	shadowrun_menu_system	partial		
-0x1DF6	title copyright	NativePortShell::render	shadowrun_visual_dump	partial		
 0x59092	start options	NativePortShell::update_start_options	test_startup_behavior_and_rendering; leftover_clear	partial		
 0x59172	save/load empty	NativePortShell::update_save_load	leftover_clear	partial		SRAM restore pending
 0x59248	archetype select	NativePortShell	test_startup_behavior_and_rendering	partial		
@@ -240,7 +236,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x59C5E	run title intro stages	ghidra_conversion::run_title_intro_stages	shadowrun_ghidra_title_intro_stages	partial	intro-0/160/656/932/1772.bmp	Preserves startup marker, audio/preparation gates, stage stop checks, final palette transition, and post-intro handoff; native SAT choreography remains outside this reference conversion
 0x59D12	enter post-intro mode	callback boundary	shadowrun_ghidra_title_intro_stages	partial		Source-ordered title-resource/plane preparation and handoff into the post-intro mode remain an explicit callback boundary
 0x134D2	run post-intro mode	ghidra_conversion::run_post_intro_mode	shadowrun_ghidra_post_intro_mode	partial		Typed setup, alternate 0x41/0x61-frame branch, six-choice cursor wrapping, action/transfer events, exit marker, and final scene-transition gate
-0x13726	render mode selection	ghidra_conversion::render_mode_selection_panels	shadowrun_ghidra_mode_selection_render	partial		Typed four-panel order, two-vblank service window per panel, and trailing title-text marker
+0x13726	render mode selection / cab destination cursor	ghidra_conversion::render_mode_selection_panels; NativePortShell::render	shadowrun_ghidra_mode_selection_render; shadowrun_native_port	defended	visual-regression/cab-hill/cab-map-0.bmp; cab-map-30.bmp; cab-map-48.bmp	Typed four-panel order and two-vblank service window; five-state Downtown and Redmond zoom records
 0x136DE	initialize scene mode state	ghidra_conversion::initialize_scene_mode_state	shadowrun_ghidra_mode_services	partial		Typed mode-entry result, transient marker clears, camera reset, and mode-six special flags
 0x20714	finalize mode exit	ghidra_conversion::finalize_mode_exit	shadowrun_ghidra_mode_services	partial		Typed exit-service marker clear and explicit 0x1F246 service boundary
 0x0E6F4	service mode world state	ghidra_conversion::service_mode_world_state	shadowrun_ghidra_mode_services	partial		Typed four-sample random refresh followed by the world-grid write boundary
@@ -270,14 +266,13 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x17C84	HUD selection value setter	ghidra_conversion::set_hud_selection_value	shadowrun_ghidra_hud_selection_lookup	partial		Typed selected parallel-value write with no-match rejection
 0x17C8E	HUD selection value matcher	ghidra_conversion::hud_selection_value_matches	shadowrun_ghidra_hud_selection_lookup	partial		Typed selected parallel-value comparison with no-match rejection
 0x5A1EA	advance title intro animation	ghidra_conversion::advance_title_intro_animation	shadowrun_ghidra_title_intro_animation	partial	visual-regression/intro-hill/intro-1240.bmp; intro-1552.bmp; intro-2512.bmp	Typed source-order dispatcher for eight animation services; native ambush SAT/map choreography remains defended separately
-0x5AF62	intro stage 1 0x1406	decode_genesis_intro_stages	shadowrun_graphics	partial		descriptor 0x5B574
+0x5AF62	intro stage 1 / title intro schedule	decode_genesis_intro_stages; ghidra_conversion::run_title_intro_schedule	shadowrun_graphics; shadowrun_ghidra_title_intro_schedule	partial		descriptor 0x5B574; Preserves schedule setup, display/resource initialization, and vblank/controller loop order
 0x59D7C	run title intro stage 2	ghidra_conversion::run_title_intro_stage2	shadowrun_ghidra_title_intro_stage2	partial		0xA1 scene-entry transition, reset order, 0x1F1 layered loop, and 0x164 text-batch trigger; scene entity rendering remains an explicit boundary
 0x5AA96	run title intro orchestrator	ghidra_conversion::run_title_intro_orchestrator	shadowrun_ghidra_title_intro_orchestrator	partial		Preserves secondary resource setup, palette/fill/HUD boundaries, and the 0x115-frame stage loop
 0x5AD1A	run title intro stage loop	ghidra_conversion::run_title_intro_stage_loop	shadowrun_ghidra_title_intro_stage_loop	partial		Preserves stage setup, first-pass helper order, final text at 0x1E0, and the 0x529-frame vblank loop
-0x5B08E	airport helicopter rotor rotation	NativePortShell::render	shadowrun_native_port	defended	visual-regression/intro-hill/intro-3000.bmp; intro-3400.bmp	three-word rotor phase rotation from the source overlay state
-0x5B100	airport helicopter overlay phases	NativePortShell::render	shadowrun_native_port	defended	visual-regression/intro-hill/intro-3000.bmp; intro-3400.bmp	six rotor SAT phases over the continuously scrolled Plane-A craft
-0x5B1B6	airport landing movement	NativePortShell::render	shadowrun_native_port	defended	visual-regression/intro-hill/intro-3400.bmp	late movement SAT lists remain source-timed
-0x13726	cab destination cursor	NativePortShell::render	shadowrun_native_port	defended	visual-regression/cab-hill/cab-map-0.bmp; cab-map-30.bmp; cab-map-48.bmp	five-state Downtown and Redmond zoom records
+0x5B08E	airport helicopter rotor rotation / title intro triplet	NativePortShell::render; ghidra_conversion::advance_title_intro_triplet	shadowrun_native_port; shadowrun_ghidra_title_intro_late	defended	visual-regression/intro-hill/intro-3000.bmp; intro-3400.bmp	Three-word rotor phase rotation from the source overlay state; eight-frame triplet cadence
+0x5B100	airport helicopter overlay phases / title intro pulse	NativePortShell::render; ghidra_conversion::advance_title_intro_pulse	shadowrun_native_port; shadowrun_ghidra_title_intro_late	defended	visual-regression/intro-hill/intro-3000.bmp; intro-3400.bmp	Six rotor SAT phases over the continuously scrolled Plane-A craft; preserves the -0x1B8 gate and fixed y projection
+0x5B1B6	airport landing movement / title intro landing	NativePortShell::render; ghidra_conversion::advance_title_intro_landing	shadowrun_native_port; shadowrun_ghidra_title_intro_late	defended	visual-regression/intro-hill/intro-3400.bmp	Late movement SAT lists remain source-timed; preserves the 0x226 lead-in, seven movement records, and narrow special-descriptor window
 0x3084	field loop	NativePortShell::update	shadowrun_native_port	partial		HUD 0x17708 separate
 0xE7C8	terrain probe	terrain::probe	shadowrun_native_port	partial		
 0x600E	walk animation	NativePortShell::render	shadowrun_native_port	partial		
@@ -333,15 +328,11 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x5B002	reset title intro scroll fill	ghidra_conversion::reset_title_intro_scroll_fill	shadowrun_ghidra_title_intro_late	partial		Clears the one-shot transition fill latch
 0x5B00A	advance title intro scroll	ghidra_conversion::advance_title_intro_scroll	shadowrun_ghidra_title_intro_late	partial		Preserves the -0x200 cutoff, -0x190 fill window, two-word step, and dirty update
 0x5B056	advance title intro scroll fade	ghidra_conversion::advance_title_intro_scroll_fade	shadowrun_ghidra_title_intro_late	partial		Preserves the -0x1B0 text trigger and bounded 0x78 fade counter
-0x5B08E	advance title intro triplet	ghidra_conversion::advance_title_intro_triplet	shadowrun_ghidra_title_intro_late	partial		Rotates the three-word stage triplet on the eight-frame cadence
 0x5B0BC	service title intro animation	ghidra_conversion::service_title_intro_animation	shadowrun_ghidra_title_intro_late	partial		Services pulse then landing animation and publishes native scene-record state
-0x5B100	advance title intro pulse	ghidra_conversion::advance_title_intro_pulse	shadowrun_ghidra_title_intro_late	partial		Preserves the -0x1B8 gate, six-frame descriptor cycle, and fixed y projection
 0x5B198	reset title intro landing	ghidra_conversion::reset_title_intro_landing	shadowrun_ghidra_title_intro_late	partial		Resets the seven-phase landing projection accumulators and deadline
-0x5B1B6	advance title intro landing	ghidra_conversion::advance_title_intro_landing	shadowrun_ghidra_title_intro_late	partial		Preserves the 0x226 lead-in, seven movement records, and narrow special-descriptor window
 0x5B2C2	set title intro entity color words	ghidra_conversion::set_title_intro_entity_color_words	shadowrun_ghidra_title_intro_late	partial		Fills one typed entity record's fifteen color words
 0x5B2E2	step title intro entity color words	ghidra_conversion::step_title_intro_entity_color_words	shadowrun_ghidra_title_intro_late	partial		Lowers each active color component by the source 2/0x20/0x200 steps
 0x5ABD2	service title intro stage frame	ghidra_conversion::service_title_intro_stage_frame	shadowrun_ghidra_title_intro_stage	partial		Publishes stage mode and services timed/base/projected sprites in source order
 0x5B29A	clear title intro display buffer	ghidra_conversion::clear_title_intro_display_buffer	shadowrun_ghidra_title_intro_transfer	partial		Converts the 0x400-write display clear into a typed host clear plan
 0x5B32C	fill title intro word block	ghidra_conversion::fill_title_intro_word_block	shadowrun_ghidra_title_intro_transfer	partial		Emits typed repeated fill rows with the source row count and 0x80 stride
 0x5AF2A	advance title intro schedule	ghidra_conversion::advance_title_intro_schedule	shadowrun_ghidra_title_intro_schedule	partial		Consumes one timed action entry and preserves the zero-delay terminal marker
-0x5AF62	run title intro schedule	ghidra_conversion::run_title_intro_schedule	shadowrun_ghidra_title_intro_schedule	partial		Preserves schedule setup, display/resource initialization, and vblank/controller loop order
