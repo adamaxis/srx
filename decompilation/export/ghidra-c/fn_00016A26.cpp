@@ -3,7 +3,7 @@
 // Name: FUN_00016a26
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001DBAA FUN_0001dbaa
+//   0x0001DBAA schedule_world_activity_timeout
 
 
 void FUN_00016a26(void)
@@ -26,7 +26,7 @@ void FUN_00016a26(void)
   }
   *piVar3 = 0;
   DAT_00ffe120 = &DAT_00ffe132;
-  FUN_0001dbaa();
+  schedule_world_activity_timeout();
   DAT_00ffe162 = (int *)0x0;
   return;
 }

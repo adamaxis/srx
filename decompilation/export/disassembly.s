@@ -1632,7 +1632,7 @@
 00002940: tst.b (0x00ffe191).l
 00002946: beq.w 0x00002956
 0000294A: clr.b (0x00ffe191).l
-00002950: jsr 0x0001e04a.l ; call 0001E04A FUN_0001e04a
+00002950: jsr 0x0001e04a.l ; call 0001E04A begin_world_effect_transition
 00002956: jsr 0x0001a310.l ; call 0001A310 FUN_0001a310
 0000295C: jsr 0x0001a322.l ; call 0001A322 FUN_0001a322
 00002962: jsr 0x00016dee.l ; call 00016DEE FUN_00016dee
@@ -1779,7 +1779,7 @@
 00002D1C: move.l #0x53ee2,(0x00ffdd2c).l
 00002D26: jsr 0x0001e2ec.l ; call 0001E2EC FUN_0001e2ec
 00002D2C: move.l #0x1e552,(0x00ffe120).l
-00002D36: jsr 0x0001dbaa.l ; call 0001DBAA FUN_0001dbaa
+00002D36: jsr 0x0001dbaa.l ; call 0001DBAA schedule_world_activity_timeout
 00002D3C: add.w D2w,D2w
 00002D3E: lea (0x2e42).l,A1 ; data 00002e42
 00002D44: move.w (0x0,A1,D2w*0x1),(0x00ffddc4).l
@@ -2991,13 +2991,13 @@
 000043F2: cmpi.l #0x1e628,(0x00ffe120).l
 000043FC: bne.w 0x0000441c
 00004400: move.l #0x53ffc,(0x00ffe12e).l
-0000440A: jsr 0x0001dbaa.l ; call 0001DBAA FUN_0001dbaa
+0000440A: jsr 0x0001dbaa.l ; call 0001DBAA schedule_world_activity_timeout
 00004410: move.b #0x4,(0x00ffe177).l
 00004418: bra.w 0x00004442
 0000441C: cmpi.l #0x1e5c4,(0x00ffe120).l
 00004426: bne.w 0x00004442
 0000442A: move.l #0x54286,(0x00ffe12e).l
-00004434: jsr 0x0001dbaa.l ; call 0001DBAA FUN_0001dbaa
+00004434: jsr 0x0001dbaa.l ; call 0001DBAA schedule_world_activity_timeout
 0000443A: move.b #0x4,(0x00ffe177).l
 00004442: movea.l (0x00ffe120).l,A5
 00004448: bsr.w 0x00004466 ; call 00004466 FUN_00004466
@@ -4676,7 +4676,7 @@
 0000B194: movem.l (SP)+,{  A0 A1}
 0000B198: clr.w D0w
 0000B19A: bsr.w 0x0000abfc ; call 0000ABFC update_entity_animation_delay
-0000B19E: jsr 0x0001dbaa.l ; call 0001DBAA FUN_0001dbaa
+0000B19E: jsr 0x0001dbaa.l ; call 0001DBAA schedule_world_activity_timeout
 0000B1A4: move.b #0x6,(0x2,A0)
 0000B1AA: clr.b (0x3,A0)
 0000B1AE: move.l #0xb3ee,(0x3a,A0) ; data 0000b3ee
@@ -4721,7 +4721,7 @@
 0000B24A: bsr.w 0x0000af6c ; call 0000AF6C reset_entity_animation_state
 0000B24E: jsr 0x00015c84.l ; call 00015C84 update_entity_heading_from_linked_target
 0000B254: bcc.w 0x0000b2f4
-0000B258: jsr 0x0001dbaa.l ; call 0001DBAA FUN_0001dbaa
+0000B258: jsr 0x0001dbaa.l ; call 0001DBAA schedule_world_activity_timeout
 0000B25E: move.w #0x4d,D0w
 0000B262: btst.b #0x7,(0x00fff9f8).l
 0000B26A: beq.w 0x0000b272
@@ -11080,7 +11080,7 @@
 000139BA: bra.w 0x0001450e
 000139BE: btst.b #0x6,(0x9e,A0)
 000139C4: beq.w 0x000139ce
-000139C8: jsr 0x0001dbaa.l ; call 0001DBAA FUN_0001dbaa
+000139C8: jsr 0x0001dbaa.l ; call 0001DBAA schedule_world_activity_timeout
 000139CE: tst.w (0x00ffdf84).l
 000139D4: beq.w 0x00013ef4
 000139D8: move.l (0xac,A0),D0
@@ -11398,7 +11398,7 @@
 00013F1E: jsr 0x00015ca4.l ; call 00015CA4 compute_diagonal_step_cost
 00013F24: cmpi.w #0x500,D0w
 00013F28: bcc.w 0x000142ae
-00013F2C: jsr 0x0001dbaa.l ; call 0001DBAA FUN_0001dbaa
+00013F2C: jsr 0x0001dbaa.l ; call 0001DBAA schedule_world_activity_timeout
 00013F32: bra.w 0x000139d8
 00013F36: bgt.w 0x000139d8
 00013F3A: move.w (A0),D5w
@@ -11420,7 +11420,7 @@
 00013F7C: bne.w 0x00013fa4
 00013F80: tst.b (0x00ffe16f).l
 00013F86: beq.w 0x00013f90
-00013F8A: jmp 0x0001dbaa.l ; call 0001DBAA FUN_0001dbaa
+00013F8A: jmp 0x0001dbaa.l ; call 0001DBAA schedule_world_activity_timeout
 00013F90: btst.b #0x0,(0x9e,A0)
 00013F96: bne.w 0x00013fa4
 00013F9A: btst.b #0x5,(0x10,A0)
@@ -12560,7 +12560,7 @@
 000151BA: bcs.w 0x000152f4
 000151BE: move.l (0xa2,A0),D3
 000151C2: beq.w 0x000151c6
-000151C6: jsr 0x0001dbaa.l ; call 0001DBAA FUN_0001dbaa
+000151C6: jsr 0x0001dbaa.l ; call 0001DBAA schedule_world_activity_timeout
 000151CC: bsr.w 0x00014ff8 ; call 00014FF8 initialize_entity_spawn_record
 000151D0: move.b #0x7f,(0x89,A1)
 000151D6: clr.b (0x8b,A1)
@@ -12600,7 +12600,7 @@
 00015262: btst.b #0x2,(A3)
 00015266: bne.w 0x00015278
 0001526A: movem.l {  A6 A5 A4 A3 A2 A1 A0 D7 D6 D5 D4 D3 D2 D1 D0},-(SP) ; data 00015336
-0001526E: jsr 0x0001e04a.l ; call 0001E04A FUN_0001e04a
+0001526E: jsr 0x0001e04a.l ; call 0001E04A begin_world_effect_transition
 00015274: movem.l (SP)+,{ D0 D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 00015278: move.w #0x4f,D7w
 0001527C: movem.l {  A2 A1},-(SP)
@@ -12846,7 +12846,7 @@
 00015662: bcs.w 0x00015792
 00015666: tst.w (0x00ffdf84).l
 0001566C: bne.w 0x00015670
-00015670: jsr 0x0001dbaa.l ; call 0001DBAA FUN_0001dbaa
+00015670: jsr 0x0001dbaa.l ; call 0001DBAA schedule_world_activity_timeout
 00015676: move.w #0x4f,D7w
 0001567A: movem.l {  A1 A0},-(SP)
 0001567E: bsr.w 0x00015118 ; call 00015118 initialize_entity_behavior_record
@@ -12972,7 +12972,7 @@
 00015856: movea.l D3,A1
 00015858: tst.w (0x00ffdf84).l
 0001585E: bne.w 0x00015862
-00015862: jsr 0x0001dbaa.l ; call 0001DBAA FUN_0001dbaa
+00015862: jsr 0x0001dbaa.l ; call 0001DBAA schedule_world_activity_timeout
 00015868: bsr.b 0x0001582a ; call 0001582A allocate_first_free_effect_slot
 0001586A: bcs.w 0x0001592e
 0001586E: move.l A0,(0xd8,A1)
@@ -13553,7 +13553,7 @@
 000167EC: move.b (0x0,A1,D0w*0x1),D0b
 000167F0: tst.b (0x00ffe186).l
 000167F6: beq.w 0x00016814
-000167FA: jsr 0x0001dbaa.l ; call 0001DBAA FUN_0001dbaa
+000167FA: jsr 0x0001dbaa.l ; call 0001DBAA schedule_world_activity_timeout
 00016800: move.w #0x36,D0w
 00016804: cmpi.b #0x1,(0x00ffe186).l
 0001680C: beq.w 0x00016814
@@ -13589,7 +13589,7 @@
 000168A4: beq.w 0x0001694c
 000168A8: bclr.l #0x1a,D0
 000168AC: move.l D0,(0x00fffc2c).l
-000168B2: jsr 0x0001dbaa.l ; call 0001DBAA FUN_0001dbaa
+000168B2: jsr 0x0001dbaa.l ; call 0001DBAA schedule_world_activity_timeout
 000168B8: bra.w 0x0001694c
 000168BC: move.l (0x00fffc1e).l,D1
 000168C2: cmpi.w #0xd,(0x00ffddc4).l
@@ -13672,7 +13672,7 @@
 00016A4E: bra.b 0x00016a40
 00016A50: clr.l (A2)
 00016A52: move.l #0xffe132,(0x00ffe120).l
-00016A5C: jsr 0x0001dbaa.l ; call 0001DBAA FUN_0001dbaa
+00016A5C: jsr 0x0001dbaa.l ; call 0001DBAA schedule_world_activity_timeout
 00016A62: clr.l (0x00ffe162).l
 00016A68: rts
 00016AFA: move.w (0x00ffddc4).l,D5w
@@ -18700,7 +18700,7 @@
 0001E048: bra.b 0x0001e022
 0001E04A: cmpi.w #0x14,(0x00ffddc4).l
 0001E052: bne.w 0x0001e060
-0001E056: jsr 0x0001dbaa.l ; call 0001DBAA FUN_0001dbaa
+0001E056: jsr 0x0001dbaa.l ; call 0001DBAA schedule_world_activity_timeout
 0001E05C: bra.w 0x0001e098
 0001E060: cmpi.w #0x2,(0x00ffdf40).l
 0001E068: bne.w 0x0001e098
@@ -18710,13 +18710,13 @@
 0001E07E: move.b #-0x1,(0x00ffe16f).l
 0001E086: move.w #0x30,D0w
 0001E08A: jsr 0x000530de.l ; call 000530DE FUN_000530de
-0001E090: bsr.w 0x0001df00 ; call 0001DF00 FUN_0001df00
+0001E090: bsr.w 0x0001df00 ; call 0001DF00 clear_entity_effect_pending_flags
 0001E094: bsr.w 0x0001e0dc ; call 0001E0DC FUN_0001e0dc
 0001E098: rts
 0001E09A: tst.b (0x00ffe16f).l
 0001E0A0: beq.w 0x0001e0ae
 0001E0A4: clr.b (0x00ffe16f).l
-0001E0AA: bsr.w 0x0001e0b8 ; call 0001E0B8 FUN_0001e0b8
+0001E0AA: bsr.w 0x0001e0b8 ; call 0001E0B8 promote_entity_effect_flags
 0001E0AE: move.w #0x30,D0w
 0001E0B2: jmp 0x000530d2.l ; call 000530D2 FUN_000530d2
 0001E0B8: lea (0xff0400).l,A1 ; data 00ff0400
@@ -18842,7 +18842,7 @@
 0001E2C4: bset.b #0x6,(0x9e,A1)
 0001E2CA: move.w (A1),(0x96,A1)
 0001E2CE: move.w (0x4,A1),(0x98,A1)
-0001E2D4: jsr 0x0001dbaa.l ; call 0001DBAA FUN_0001dbaa
+0001E2D4: jsr 0x0001dbaa.l ; call 0001DBAA schedule_world_activity_timeout
 0001E2DA: andi #0x1e,CCR
 0001E2DE: rts
 0001E2E0: tst.w (0x00ffe11c).l
@@ -20787,7 +20787,7 @@
 0002417E: move.b #0x1,(0x00ffe170).l
 00024186: lea (0x1211e4).l,A0 ; data 001211e4
 0002418C: rts
-0002418E: jsr 0x0001e04a.l ; call 0001E04A FUN_0001e04a
+0002418E: jsr 0x0001e04a.l ; call 0001E04A begin_world_effect_transition
 00024194: lea (0x1211d4).l,A0 ; data 001211d4
 0002419A: rts
 0002419C: lea (0x1211dc).l,A0 ; data 001211dc
@@ -20804,7 +20804,7 @@
 000243AC: lea (0x1d705c).l,A6 ; data 001d705c
 000243B2: move.w #0x1,D0w
 000243B6: jsr 0x0001e1fc.l ; call 0001E1FC FUN_0001e1fc
-000243BC: jsr 0x0001e04a.l ; call 0001E04A FUN_0001e04a
+000243BC: jsr 0x0001e04a.l ; call 0001E04A begin_world_effect_transition
 000243C2: lea (0x121270).l,A0 ; data 00121270
 000243C8: rts
 000243CA: move.w #0x64,D1w
@@ -20816,7 +20816,7 @@
 000243E4: lea (0x1d7064).l,A6 ; data 001d7064
 000243EA: move.w #0x1,D0w
 000243EE: jsr 0x0001e1fc.l ; call 0001E1FC FUN_0001e1fc
-000243F4: jsr 0x0001e04a.l ; call 0001E04A FUN_0001e04a
+000243F4: jsr 0x0001e04a.l ; call 0001E04A begin_world_effect_transition
 000243FA: lea (0x121270).l,A0 ; data 00121270
 00024400: rts
 00024402: lea (0x1d705c).l,A6 ; data 001d705c
@@ -20862,7 +20862,7 @@
 00024608: beq.w 0x00024614
 0002460C: lea (0x1213c4).l,A0 ; data 001213c4
 00024612: rts
-00024614: jsr 0x0001e04a.l ; call 0001E04A FUN_0001e04a
+00024614: jsr 0x0001e04a.l ; call 0001E04A begin_world_effect_transition
 0002461A: lea (0x1213bc).l,A0 ; data 001213bc
 00024620: rts
 00024724: clr.l D6
@@ -20923,19 +20923,19 @@
 0002482E: rts
 00024830: lea (0x1214cc).l,A0 ; data 001214cc
 00024836: rts
-00024838: jsr 0x0001e04a.l ; call 0001E04A FUN_0001e04a
+00024838: jsr 0x0001e04a.l ; call 0001E04A begin_world_effect_transition
 0002483E: lea (0x1214c4).l,A0 ; data 001214c4
 00024844: rts
 00024918: lea (0x1d6fd0).l,A6 ; data 001d6fd0
 0002491E: move.w #0x1,D0w
 00024922: jsr 0x0001e1fc.l ; call 0001E1FC FUN_0001e1fc
-00024928: jsr 0x0001e04a.l ; call 0001E04A FUN_0001e04a
+00024928: jsr 0x0001e04a.l ; call 0001E04A begin_world_effect_transition
 0002492E: lea (0x12156c).l,A0 ; data 0012156c
 00024934: rts
 00024936: lea (0x1d705c).l,A6 ; data 001d705c
 0002493C: move.w #0x1,D0w
 00024940: jsr 0x0001e1fc.l ; call 0001E1FC FUN_0001e1fc
-00024946: jsr 0x0001e04a.l ; call 0001E04A FUN_0001e04a
+00024946: jsr 0x0001e04a.l ; call 0001E04A begin_world_effect_transition
 0002494C: lea (0x12156c).l,A0 ; data 0012156c
 00024952: rts
 00024954: lea (0xf5a78).l,A0 ; data 000f5a78

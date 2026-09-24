@@ -7,7 +7,7 @@
 //   0x0001582A allocate_first_free_effect_slot
 //   0x0001597E FUN_0001597e
 //   0x00015D3C measure_relative_heading_and_distance
-//   0x0001DBAA FUN_0001dbaa
+//   0x0001DBAA schedule_world_activity_timeout
 //   0x000530DE FUN_000530de
 
 
@@ -35,7 +35,7 @@ void FUN_00015830(void)
   if ((*(char *)(in_A0 + 0x57) != '\a') && (*(char *)(in_A0 + 0x57) != '\x0e')) {
     if (*(int *)(in_A0 + 0xa2) != 0) {
       uVar4 = 0;
-      FUN_0001dbaa();
+      schedule_world_activity_timeout();
       uVar6 = 0x586a;
       uVar1 = allocate_first_free_effect_slot();
       if (!(bool)uVar4) {

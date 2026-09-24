@@ -165,7 +165,7 @@ caller	caller_name	callee	callee_name	call_sites
 00002900	FUN_00002900	00016E5C	FUN_00016e5c	1
 00002900	FUN_00002900	0001A310	FUN_0001a310	1
 00002900	FUN_00002900	0001A322	FUN_0001a322	1
-00002900	FUN_00002900	0001E04A	FUN_0001e04a	1
+00002900	FUN_00002900	0001E04A	begin_world_effect_transition	1
 00002900	FUN_00002900	000530EA	FUN_000530ea	1
 00002900	FUN_00002900	0005BA50	FUN_0005ba50	1
 00002900	FUN_00002900	0005D260	FUN_0005d260	1
@@ -184,7 +184,7 @@ caller	caller_name	callee	callee_name	call_sites
 00002C6C	FUN_00002c6c	000566C2	FUN_000566c2	1
 00002C92	FUN_00002c92	00003D18	FUN_00003d18	1
 00002CB2	FUN_00002cb2	00003D18	FUN_00003d18	1
-00002CE0	FUN_00002ce0	0001DBAA	FUN_0001dbaa	1
+00002CE0	FUN_00002ce0	0001DBAA	schedule_world_activity_timeout	1
 00002CE0	FUN_00002ce0	0001E2EC	FUN_0001e2ec	1
 00002F32	FUN_00002f32	00002BD2	FUN_00002bd2	1
 00002F32	FUN_00002f32	0000301E	FUN_0000301e	1
@@ -249,7 +249,7 @@ caller	caller_name	callee	callee_name	call_sites
 00004388	FUN_00004388	000043B6	FUN_000043b6	1
 000043B6	FUN_000043b6	00004466	FUN_00004466	4
 000043B6	FUN_000043b6	0000A800	FUN_0000a800	1
-000043B6	FUN_000043b6	0001DBAA	FUN_0001dbaa	2
+000043B6	FUN_000043b6	0001DBAA	schedule_world_activity_timeout	2
 000043B6	FUN_000043b6	0005BA4C	thunk_FUN_0005ba50	1
 00004466	FUN_00004466	000044BC	FUN_000044bc	2
 00004466	FUN_00004466	0001A2CC	allocate_first_free_effect_slot	1
@@ -362,7 +362,7 @@ caller	caller_name	callee	callee_name	call_sites
 0000B11C	synchronize_entity_behavior_spawn	0000AF6C	reset_entity_animation_state	1
 0000B11C	synchronize_entity_behavior_spawn	0000AFF2	prepare_entity_auxiliary_behavior	1
 0000B11C	synchronize_entity_behavior_spawn	00015A8C	find_first_available_entity_slot	1
-0000B11C	synchronize_entity_behavior_spawn	0001DBAA	FUN_0001dbaa	1
+0000B11C	synchronize_entity_behavior_spawn	0001DBAA	schedule_world_activity_timeout	1
 0000B11C	synchronize_entity_behavior_spawn	00055B16	FUN_00055b16	1
 0000B1DC	configure_entity_target_transition	0000ABFC	update_entity_animation_delay	1
 0000B1DC	configure_entity_target_transition	0000AF6C	reset_entity_animation_state	1
@@ -370,7 +370,7 @@ caller	caller_name	callee	callee_name	call_sites
 0000B1DC	configure_entity_target_transition	00015A8C	find_first_available_entity_slot	1
 0000B1DC	configure_entity_target_transition	00015C84	update_entity_heading_from_linked_target	1
 0000B1DC	configure_entity_target_transition	00015D3C	measure_relative_heading_and_distance	1
-0000B1DC	configure_entity_target_transition	0001DBAA	FUN_0001dbaa	1
+0000B1DC	configure_entity_target_transition	0001DBAA	schedule_world_activity_timeout	1
 0000B1DC	configure_entity_target_transition	000530DE	FUN_000530de	2
 0000B1DC	configure_entity_target_transition	00055C76	FUN_00055c76	1
 0000B330	enter_entity_behavior_transition	0000ABB6	FUN_0000abb6	1
@@ -852,7 +852,7 @@ caller	caller_name	callee	callee_name	call_sites
 00013904	FUN_00013904	00014492	FUN_00014492	1
 00013904	FUN_00013904	00014508	FUN_00014508	1
 00013904	FUN_00013904	00015D3C	measure_relative_heading_and_distance	1
-00013904	FUN_00013904	0001DBAA	FUN_0001dbaa	1
+00013904	FUN_00013904	0001DBAA	schedule_world_activity_timeout	1
 00013904	FUN_00013904	0001E514	FUN_0001e514	1
 00013A92	FUN_00013a92	00013AE6	FUN_00013ae6	1
 00013A92	FUN_00013a92	00013B12	FUN_00013b12	1
@@ -879,7 +879,7 @@ caller	caller_name	callee	callee_name	call_sites
 00013E8C	FUN_00013e8c	00013E9E	FUN_00013e9e	1
 00013E8C	FUN_00013e8c	000145A2	FUN_000145a2	1
 00013F76	FUN_00013f76	00014D8E	FUN_00014d8e	1
-00013F76	FUN_00013f76	0001DBAA	FUN_0001dbaa	1
+00013F76	FUN_00013f76	0001DBAA	schedule_world_activity_timeout	1
 00013F76	FUN_00013f76	0001E2E0	FUN_0001e2e0	1
 00013FFE	FUN_00013ffe	00003404	FUN_00003404	1
 00013FFE	FUN_00013ffe	0000ABFC	update_entity_animation_delay	1
@@ -948,8 +948,8 @@ caller	caller_name	callee	callee_name	call_sites
 0001514E	process_entity_spawn_cycle	00014FF8	initialize_entity_spawn_record	1
 0001514E	process_entity_spawn_cycle	000152FA	prepare_special_spawn_record	1
 0001514E	process_entity_spawn_cycle	00015A8C	find_first_available_entity_slot	2
-0001514E	process_entity_spawn_cycle	0001DBAA	FUN_0001dbaa	1
-0001514E	process_entity_spawn_cycle	0001E04A	FUN_0001e04a	1
+0001514E	process_entity_spawn_cycle	0001DBAA	schedule_world_activity_timeout	1
+0001514E	process_entity_spawn_cycle	0001E04A	begin_world_effect_transition	1
 0001514E	process_entity_spawn_cycle	000530DE	FUN_000530de	1
 00015354	FUN_00015354	000530DE	FUN_000530de	1
 00015554	FUN_00015554	0001562E	FUN_0001562e	2
@@ -960,13 +960,13 @@ caller	caller_name	callee	callee_name	call_sites
 00015646	FUN_00015646	00015A8C	find_first_available_entity_slot	1
 00015646	FUN_00015646	00015D3C	measure_relative_heading_and_distance	1
 00015646	FUN_00015646	0001A2CC	allocate_first_free_effect_slot	1
-00015646	FUN_00015646	0001DBAA	FUN_0001dbaa	1
+00015646	FUN_00015646	0001DBAA	schedule_world_activity_timeout	1
 00015646	FUN_00015646	00055848	FUN_00055848	1
 00015830	FUN_00015830	000049A2	FUN_000049a2	1
 00015830	FUN_00015830	0001582A	allocate_first_free_effect_slot	1
 00015830	FUN_00015830	0001597E	FUN_0001597e	1
 00015830	FUN_00015830	00015D3C	measure_relative_heading_and_distance	1
-00015830	FUN_00015830	0001DBAA	FUN_0001dbaa	1
+00015830	FUN_00015830	0001DBAA	schedule_world_activity_timeout	1
 00015830	FUN_00015830	000530DE	FUN_000530de	1
 00015930	FUN_00015930	000049A0	FUN_000049a0	1
 00015930	FUN_00015930	0001582A	allocate_first_free_effect_slot	1
@@ -989,8 +989,8 @@ caller	caller_name	callee	callee_name	call_sites
 000167AE	FUN_000167ae	00016AFA	FUN_00016afa	1
 000167AE	FUN_000167ae	00016B7C	FUN_00016b7c	1
 000167AE	FUN_000167ae	00016E30	FUN_00016e30	1
-000167AE	FUN_000167ae	0001DBAA	FUN_0001dbaa	2
-00016A26	FUN_00016a26	0001DBAA	FUN_0001dbaa	1
+000167AE	FUN_000167ae	0001DBAA	schedule_world_activity_timeout	2
+00016A26	FUN_00016a26	0001DBAA	schedule_world_activity_timeout	1
 00016AFA	FUN_00016afa	00000F5C	FUN_00000f5c	1
 00016B98	FUN_00016b98	00000D3A	FUN_00000d3a	1
 00016B98	FUN_00016b98	00016D8A	FUN_00016d8a	1
@@ -1477,12 +1477,12 @@ caller	caller_name	callee	callee_name	call_sites
 0001DF34	FUN_0001df34	0001E514	FUN_0001e514	1
 0001DF34	FUN_0001df34	000530DE	FUN_000530de	1
 0001DFC4	FUN_0001dfc4	00000D44	advance_source_prng	1
-0001DFC4	FUN_0001dfc4	0001E0B8	FUN_0001e0b8	1
+0001DFC4	FUN_0001dfc4	0001E0B8	promote_entity_effect_flags	1
 0001DFC4	FUN_0001dfc4	000530D2	FUN_000530d2	1
-0001E04A	FUN_0001e04a	0001DBAA	FUN_0001dbaa	1
-0001E04A	FUN_0001e04a	0001DF00	FUN_0001df00	1
-0001E04A	FUN_0001e04a	0001E0DC	FUN_0001e0dc	1
-0001E04A	FUN_0001e04a	000530DE	FUN_000530de	1
+0001E04A	begin_world_effect_transition	0001DBAA	schedule_world_activity_timeout	1
+0001E04A	begin_world_effect_transition	0001DF00	clear_entity_effect_pending_flags	1
+0001E04A	begin_world_effect_transition	0001E0DC	FUN_0001e0dc	1
+0001E04A	begin_world_effect_transition	000530DE	FUN_000530de	1
 0001E0DC	FUN_0001e0dc	000044BC	FUN_000044bc	2
 0001E0DC	FUN_0001e0dc	00005A56	project_entity_screen_position	1
 0001E0DC	FUN_0001e0dc	0001A2CC	allocate_first_free_effect_slot	1
@@ -1498,7 +1498,7 @@ caller	caller_name	callee	callee_name	call_sites
 0001E25A	FUN_0001e25a	000044BC	FUN_000044bc	1
 0001E25A	FUN_0001e25a	0001A2CC	allocate_first_free_effect_slot	1
 0001E25A	FUN_0001e25a	0001A342	FUN_0001a342	1
-0001E25A	FUN_0001e25a	0001DBAA	FUN_0001dbaa	1
+0001E25A	FUN_0001e25a	0001DBAA	schedule_world_activity_timeout	1
 0001E302	FUN_0001e302	0001E41E	FUN_0001e41e	10
 0001E43C	FUN_0001e43c	0001E2EC	FUN_0001e2ec	1
 0001E4AC	FUN_0001e4ac	000044BC	FUN_000044bc	1

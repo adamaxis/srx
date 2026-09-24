@@ -9,7 +9,7 @@
 //   0x00015A8C find_first_available_entity_slot
 //   0x00015C84 update_entity_heading_from_linked_target
 //   0x00015D3C measure_relative_heading_and_distance
-//   0x0001DBAA FUN_0001dbaa
+//   0x0001DBAA schedule_world_activity_timeout
 //   0x000530DE FUN_000530de
 //   0x00055C76 FUN_00055c76
 
@@ -53,7 +53,7 @@ void configure_entity_target_transition(void)
   reset_entity_animation_state();
   update_entity_heading_from_linked_target();
   if ((bool)uVar5) {
-    FUN_0001dbaa();
+    schedule_world_activity_timeout();
     uVar2 = 0xb278;
     uVar6 = FUN_000530de();
     uVar7 = CONCAT22((short)CONCAT31((int3)((ulonglong)uVar6 >> 0x28),

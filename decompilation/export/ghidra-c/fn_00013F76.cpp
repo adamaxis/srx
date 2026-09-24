@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00014D8E FUN_00014d8e
-//   0x0001DBAA FUN_0001dbaa
+//   0x0001DBAA schedule_world_activity_timeout
 //   0x0001E2E0 FUN_0001e2e0
 
 
@@ -23,7 +23,7 @@ void FUN_00013f76(void)
   if (_DAT_00ffdf84 == 0) {
     bVar3 = false;
     if (DAT_00ffe16f != '\0') {
-      FUN_0001dbaa();
+      schedule_world_activity_timeout();
       return;
     }
     if ((((*(byte *)(in_A0 + 0x9e) & 1) == 0) && ((*(byte *)(in_A0 + 0x10) & 0x20) != 0)) &&

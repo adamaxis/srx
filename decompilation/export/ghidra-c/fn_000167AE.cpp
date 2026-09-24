@@ -10,7 +10,7 @@
 //   0x00016AFA FUN_00016afa
 //   0x00016B7C FUN_00016b7c
 //   0x00016E30 FUN_00016e30
-//   0x0001DBAA FUN_0001dbaa
+//   0x0001DBAA schedule_world_activity_timeout
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -35,7 +35,7 @@ void FUN_000167ae(void)
   DAT_00ffe170 = 0;
   sVar5 = CONCAT11(DAT_00fffbf9 >> 7,*(undefined1 *)(DAT_00ffde14 + (short)DAT_00fffbf9));
   if (DAT_00ffe186 != '\0') {
-    FUN_0001dbaa();
+    schedule_world_activity_timeout();
     sVar5 = 0x36;
     if (DAT_00ffe186 != '\x01') {
       sVar5 = 0x37;
@@ -107,7 +107,7 @@ void FUN_000167ae(void)
       return;
     }
     DAT_00fffc2c = DAT_00fffc2c & 0xfbffffff;
-    FUN_0001dbaa();
+    schedule_world_activity_timeout();
     return;
   }
   if (DAT_00ffddc4 == 0xd) {

@@ -7,7 +7,7 @@
 //   0x0000AF6C reset_entity_animation_state
 //   0x0000AFF2 prepare_entity_auxiliary_behavior
 //   0x00015A8C find_first_available_entity_slot
-//   0x0001DBAA FUN_0001dbaa
+//   0x0001DBAA schedule_world_activity_timeout
 //   0x00055B16 FUN_00055b16
 
 
@@ -47,7 +47,7 @@ void synchronize_entity_behavior_spawn(void)
     }
   }
   update_entity_animation_delay();
-  FUN_0001dbaa();
+  schedule_world_activity_timeout();
   *(undefined1 *)(extraout_A0_01 + 2) = 6;
   *(undefined1 *)(extraout_A0_01 + 3) = 0;
   *(undefined1 **)(extraout_A0_01 + 0x3a) = &LAB_0000b3ee;

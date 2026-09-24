@@ -106,6 +106,10 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x14C56	heading position projection	ghidra_conversion::project_heading_position	shadowrun_native_port	partial		Extracted eight-entry heading vector table applied to typed world coordinates
 0x14C2E	entity axis relation flags	ghidra_conversion::derive_entity_axis_relation_flags	shadowrun_native_port	partial		Typed X/Y no-greater-than target flags
 0x15A8C	first available entity slot	ghidra_conversion::find_first_available_entity_slot	shadowrun_native_port	partial		Typed six-slot scan returning 9..14 or the source sentinel 15
+0x1DBAA	world activity timeout	ghidra_conversion::schedule_world_activity_timeout	shadowrun_native_port	partial		Typed guarded-scene gate and short/long timeout scheduling
+0x1DF00	entity effect pending clear	ghidra_conversion::clear_entity_effect_pending_flags	shadowrun_native_port	partial		Typed six-record bit-0 clear
+0x1E04A	world effect transition	ghidra_conversion::begin_world_effect_transition	shadowrun_native_port	partial		Typed scene/mode gate, transition timer, latch, and explicit effect boundaries
+0x1E0B8	entity effect promotion	ghidra_conversion::promote_entity_effect_flags	shadowrun_native_port	partial		Typed six-record bit-1 to bit-2 promotion
 0x15D3C	relative heading and distance	ghidra_conversion::measure_relative_heading_and_distance	shadowrun_native_port	partial		Typed position delta wrapper for heading and half-major-axis distance
 0x15D4E	heading and distance measurement	ghidra_conversion::measure_heading_and_distance	shadowrun_native_port	partial		Typed extraction of the source heading correction table and half-major-axis distance
 0x195C	controller sampling	ghidra_conversion::derive_controller_sample	shadowrun_boot_sequence	partial		Readable edge conversion is isolated from runtime and emulator

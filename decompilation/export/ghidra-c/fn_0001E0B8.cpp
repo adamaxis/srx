@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001E0B8
-// Name: FUN_0001e0b8
+// Name: promote_entity_effect_flags
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0001e0b8(void)
+void promote_entity_effect_flags(void)
 
 {
   short sVar1;

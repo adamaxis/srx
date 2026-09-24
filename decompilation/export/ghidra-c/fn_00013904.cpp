@@ -12,7 +12,7 @@
 //   0x00014492 FUN_00014492
 //   0x00014508 FUN_00014508
 //   0x00015D3C measure_relative_heading_and_distance
-//   0x0001DBAA FUN_0001dbaa
+//   0x0001DBAA schedule_world_activity_timeout
 //   0x0001E514 FUN_0001e514
 
 
@@ -184,7 +184,7 @@ LAB_0001450e:
   else {
     if ((in_A0[0x4f] & 0x4000) != 0) {
       local_4 = 0x139ce;
-      FUN_0001dbaa();
+      schedule_world_activity_timeout();
       in_A0 = extraout_A0;
     }
     if (_DAT_00ffdf84 != 0) goto LAB_000139d8;
@@ -201,7 +201,7 @@ LAB_0001450e:
         in_A0 = extraout_A0_03;
         if (bVar10) {
           local_4 = 0x13f32;
-          FUN_0001dbaa();
+          schedule_world_activity_timeout();
           in_A0 = extraout_A0_04;
 LAB_000139d8:
           if (*(int *)(in_A0 + 0x56) == 0) {

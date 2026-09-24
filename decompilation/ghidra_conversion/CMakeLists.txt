@@ -539,3 +539,16 @@ target_link_libraries(shadowrun_ghidra_entity_target_motion_test
     PRIVATE shadowrun_ghidra_entity_target_motion)
 add_test(NAME shadowrun_ghidra_entity_target_motion
          COMMAND shadowrun_ghidra_entity_target_motion_test)
+
+add_library(shadowrun_ghidra_world_effect STATIC
+    src/world_effect_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_world_effect PUBLIC include)
+
+add_executable(shadowrun_ghidra_world_effect_test
+    tests/world_effect_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_world_effect_test
+    PRIVATE shadowrun_ghidra_world_effect)
+add_test(NAME shadowrun_ghidra_world_effect
+         COMMAND shadowrun_ghidra_world_effect_test)

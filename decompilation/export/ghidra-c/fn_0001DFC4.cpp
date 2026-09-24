@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D44 advance_source_prng
-//   0x0001E0B8 FUN_0001e0b8
+//   0x0001E0B8 promote_entity_effect_flags
 //   0x000530D2 FUN_000530d2
 
 
@@ -20,7 +20,7 @@ void FUN_0001dfc4(void)
   if ((DAT_00ffe16f != '\0') && (DAT_00ffe11e = DAT_00ffe11e + -1, DAT_00ffe11e < 0)) {
     if (DAT_00ffe16f != '\0') {
       DAT_00ffe16f = '\0';
-      FUN_0001e0b8();
+      promote_entity_effect_flags();
     }
     FUN_000530d2();
     return;
@@ -46,12 +46,12 @@ void FUN_0001dfc4(void)
     } while ((((*DAT_00fffc04 >> 4 <= uVar1) || (*puVar3 < *DAT_00fffc04 >> 4)) ||
              (DAT_00fffc04[2] >> 4 <= *puVar4)) || (*puVar5 < DAT_00fffc04[2] >> 4));
     if (DAT_00ffddc4 == 0x14) {
-      FUN_0001dbaa();
+      schedule_world_activity_timeout();
     }
     else if ((DAT_00ffdf40 == 2) && (DAT_00ffe11e = 0x960, DAT_00ffe16f == '\0')) {
       DAT_00ffe16f = -1;
       FUN_000530de();
-      FUN_0001df00();
+      clear_entity_effect_pending_flags();
       FUN_0001e0dc();
     }
     return;

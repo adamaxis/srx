@@ -8,7 +8,7 @@
 //   0x00015A8C find_first_available_entity_slot
 //   0x00015D3C measure_relative_heading_and_distance
 //   0x0001A2CC allocate_first_free_effect_slot
-//   0x0001DBAA FUN_0001dbaa
+//   0x0001DBAA schedule_world_activity_timeout
 //   0x00055848 FUN_00055848
 
 
@@ -41,7 +41,7 @@ void FUN_00015646(void)
     FUN_000036fc();
     find_first_available_entity_slot();
     if (!(bool)uVar8) {
-      FUN_0001dbaa();
+      schedule_world_activity_timeout();
       uVar5 = initialize_entity_behavior_record();
       *(undefined1 **)(extraout_A1 + 0x1d) = &LAB_00015390;
       extraout_A1[0x16] = 0x2000;

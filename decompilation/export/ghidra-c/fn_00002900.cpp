@@ -16,7 +16,7 @@
 //   0x00016E5C FUN_00016e5c
 //   0x0001A310 FUN_0001a310
 //   0x0001A322 FUN_0001a322
-//   0x0001E04A FUN_0001e04a
+//   0x0001E04A begin_world_effect_transition
 //   0x000530EA FUN_000530ea
 //   0x0005BA50 FUN_0005ba50
 //   0x0005D260 FUN_0005d260
@@ -38,7 +38,7 @@ void FUN_00002900(void)
     DAT_00ffe16f = 0;
     if (DAT_00ffe191 != '\0') {
       DAT_00ffe191 = '\0';
-      FUN_0001e04a();
+      begin_world_effect_transition();
     }
     FUN_0001a310();
     FUN_0001a322();

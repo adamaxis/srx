@@ -3,7 +3,7 @@
 // Name: FUN_00002ce0
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001DBAA FUN_0001dbaa
+//   0x0001DBAA schedule_world_activity_timeout
 //   0x0001E2EC FUN_0001e2ec
 
 
@@ -25,7 +25,7 @@ void FUN_00002ce0(void)
     _DAT_00ffdd2c = &UNK_00053ee2;
     FUN_0001e2ec();
     DAT_00ffe120 = &UNK_0001e552;
-    sVar1 = FUN_0001dbaa();
+    sVar1 = schedule_world_activity_timeout();
     sVar2 = extraout_D1w;
   }
   DAT_00ffddc4 = *(short *)((int)&PTR_DAT_00002e42 + (int)(short)(sVar3 * 2));

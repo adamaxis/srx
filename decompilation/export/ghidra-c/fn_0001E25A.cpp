@@ -6,7 +6,7 @@
 //   0x000044BC FUN_000044bc
 //   0x0001A2CC allocate_first_free_effect_slot
 //   0x0001A342 FUN_0001a342
-//   0x0001DBAA FUN_0001dbaa
+//   0x0001DBAA schedule_world_activity_timeout
 
 
 void FUN_0001e25a(void)
@@ -45,7 +45,7 @@ void FUN_0001e25a(void)
       *(byte *)(extraout_A1 + 0x4f) = *(byte *)(extraout_A1 + 0x4f) | 0x40;
       extraout_A1[0x4b] = *extraout_A1;
       extraout_A1[0x4c] = extraout_A1[2];
-      FUN_0001dbaa();
+      schedule_world_activity_timeout();
       return;
     }
   }
