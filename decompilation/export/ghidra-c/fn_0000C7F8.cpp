@@ -20,7 +20,7 @@ void FUN_0000c7f8(void)
     FUN_00059798();
     if (((DAT_00ff0210 & 1) != 0) && ((DAT_00ff024c == '\0' || (DAT_00ff029c == '\0')))) {
       DAT_00fffc0c = 0xff;
-      FUN_0000c8b0();
+      apply_byte_counter_delta_with_negative_floor();
       FUN_0001e514();
       if (extraout_A0 == DAT_00fffc04) {
         FUN_0000391a();
@@ -28,7 +28,7 @@ void FUN_0000c7f8(void)
     }
     if (((DAT_00ff0310 & 1) != 0) && ((DAT_00ff034c == '\0' || (DAT_00ff039c == '\0')))) {
       DAT_00fffc0d = 0xff;
-      FUN_0000c8b0();
+      apply_byte_counter_delta_with_negative_floor();
       FUN_0001e514();
       if (extraout_A0_00 == DAT_00fffc04) {
         FUN_0000391a();

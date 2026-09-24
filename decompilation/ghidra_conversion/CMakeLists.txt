@@ -436,3 +436,16 @@ target_link_libraries(shadowrun_ghidra_selection_test
     PRIVATE shadowrun_ghidra_selection)
 add_test(NAME shadowrun_ghidra_selection
          COMMAND shadowrun_ghidra_selection_test)
+
+add_library(shadowrun_ghidra_counter STATIC
+    src/counter_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_counter PUBLIC include)
+
+add_executable(shadowrun_ghidra_counter_test
+    tests/counter_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_counter_test
+    PRIVATE shadowrun_ghidra_counter)
+add_test(NAME shadowrun_ghidra_counter
+         COMMAND shadowrun_ghidra_counter_test)

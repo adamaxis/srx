@@ -5507,7 +5507,7 @@
 0000C31C: move.w #0x5,D3w
 0000C320: move.w #-0x3c6e,D7w
 0000C324: move.w #0x6000,D4w
-0000C328: bsr.w 0x0000c376 ; call 0000C376 FUN_0000c376
+0000C328: bsr.w 0x0000c376 ; call 0000C376 move_wrapped_menu_cursor
 0000C32C: bra.b 0x0000c2d4
 0000C32E: btst.b #0xe,(0x00ffdd22).l
 0000C336: beq.w 0x0000c352
@@ -5667,7 +5667,7 @@
 0000C82A: bne.w 0x0000c858
 0000C82E: move.b (0x00fffc0c).l,D7b
 0000C834: move.b #-0x1,(0x00fffc0c).l
-0000C83C: bsr.w 0x0000c8b0 ; call 0000C8B0 FUN_0000c8b0
+0000C83C: bsr.w 0x0000c8b0 ; call 0000C8B0 apply_byte_counter_delta_with_negative_floor
 0000C840: jsr 0x0001e514.l ; call 0001E514 FUN_0001e514
 0000C846: move.l A0,D0
 0000C848: cmp.l (0x00fffc04).l,D0
@@ -5682,7 +5682,7 @@
 0000C874: bne.w 0x0000c8a2
 0000C878: move.b (0x00fffc0d).l,D7b
 0000C87E: move.b #-0x1,(0x00fffc0d).l
-0000C886: bsr.w 0x0000c8b0 ; call 0000C8B0 FUN_0000c8b0
+0000C886: bsr.w 0x0000c8b0 ; call 0000C8B0 apply_byte_counter_delta_with_negative_floor
 0000C88A: jsr 0x0001e514.l ; call 0001E514 FUN_0001e514
 0000C890: move.l A0,D0
 0000C892: cmp.l (0x00fffc04).l,D0
@@ -5724,7 +5724,7 @@
 0000C974: moveq #0x2,D3
 0000C976: move.w #-0x3b70,D7w
 0000C97A: move.w #0x6000,D4w
-0000C97E: bsr.w 0x0000c376 ; call 0000C376 FUN_0000c376
+0000C97E: bsr.w 0x0000c376 ; call 0000C376 move_wrapped_menu_cursor
 0000C982: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 0000C988: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 0000C98E: jsr 0x0000195c.l ; call 0000195C sample_controller_input
@@ -5739,7 +5739,7 @@
 0000C9B8: moveq #0x2,D3
 0000C9BA: move.w #-0x3b70,D7w
 0000C9BE: move.w #0x6000,D4w
-0000C9C2: bsr.w 0x0000c376 ; call 0000C376 FUN_0000c376
+0000C9C2: bsr.w 0x0000c376 ; call 0000C376 move_wrapped_menu_cursor
 0000C9C6: btst.b #0xe,(0x00ffdd22).l
 0000C9CE: beq.w 0x0000c9ea
 0000C9D2: lea (0xc1558).l,A0 ; data 000c1558
@@ -5791,7 +5791,7 @@
 0000CD4C: move.b (0x00fff0b9).l,D3b
 0000CD52: move.l #0xc48c,D7
 0000CD58: move.w #0x6000,D4w
-0000CD5C: bsr.w 0x0000c376 ; call 0000C376 FUN_0000c376
+0000CD5C: bsr.w 0x0000c376 ; call 0000C376 move_wrapped_menu_cursor
 0000CD60: bra.b 0x0000cd14
 0000CD62: btst.b #0xe,(0x00ffdd22).l
 0000CD6A: beq.w 0x0000cde8
@@ -5839,7 +5839,7 @@
 0000CF74: moveq #0x1,D3
 0000CF76: move.w #-0x3b6e,D7w
 0000CF7A: move.w #0x6000,D4w
-0000CF7E: bsr.w 0x0000c376 ; call 0000C376 FUN_0000c376
+0000CF7E: bsr.w 0x0000c376 ; call 0000C376 move_wrapped_menu_cursor
 0000CF82: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 0000CF88: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 0000CF8E: jsr 0x0000195c.l ; call 0000195C sample_controller_input
@@ -5854,7 +5854,7 @@
 0000CFB8: moveq #0x1,D3
 0000CFBA: move.w #-0x3b6e,D7w
 0000CFBE: move.w #0x6000,D4w
-0000CFC2: bsr.w 0x0000c376 ; call 0000C376 FUN_0000c376
+0000CFC2: bsr.w 0x0000c376 ; call 0000C376 move_wrapped_menu_cursor
 0000CFC6: btst.b #0xe,(0x00ffdd22).l
 0000CFCE: beq.w 0x0000cfea
 0000CFD2: lea (0xc14c8).l,A0 ; data 000c14c8
@@ -6168,7 +6168,7 @@
 0000D5A2: moveq #0x1,D3
 0000D5A4: move.l #0xcaae,D7
 0000D5AA: move.w #0x4000,D4w
-0000D5AE: bsr.w 0x0000c376 ; call 0000C376 FUN_0000c376
+0000D5AE: bsr.w 0x0000c376 ; call 0000C376 move_wrapped_menu_cursor
 0000D5B2: bra.b 0x0000d570
 0000D5B4: btst.b #0xe,(0x00ffdd22).l
 0000D5BC: beq.w 0x0000d5c2
@@ -7201,7 +7201,7 @@
 0000F570: move.b (0x00fff0b9).l,D3b
 0000F576: move.w #-0x3c70,D7w
 0000F57A: move.w #0x6000,D4w
-0000F57E: jsr 0x0000c376.l ; call 0000C376 FUN_0000c376
+0000F57E: jsr 0x0000c376.l ; call 0000C376 move_wrapped_menu_cursor
 0000F584: bra.b 0x0000f536
 0000F586: btst.b #0xe,(0x00ffdd22).l
 0000F58E: beq.w 0x0000f5c2
@@ -7321,7 +7321,7 @@
 0000F8FA: subq.w #0x7,D3w
 0000F8FC: move.w #-0x3c70,D7w
 0000F900: move.w #0x6000,D4w
-0000F904: jsr 0x0000c376.l ; call 0000C376 FUN_0000c376
+0000F904: jsr 0x0000c376.l ; call 0000C376 move_wrapped_menu_cursor
 0000F90A: bra.b 0x0000f8a0
 0000F90C: btst.b #0xe,(0x00ffdd22).l
 0000F914: beq.w 0x0000f972
@@ -9768,7 +9768,7 @@
 000123A0: move.l #0xc69e,D7
 000123A6: move.w #0x6000,D4w
 000123AA: move.b #-0x1,(0x00fff0fc).l
-000123B2: bsr.w 0x0000c376 ; call 0000C376 FUN_0000c376
+000123B2: bsr.w 0x0000c376 ; call 0000C376 move_wrapped_menu_cursor
 000123B6: clr.l D0
 000123B8: move.b (0x00fff0dc).l,D0b
 000123BE: cmp.b (0x00fff0b9).l,D0b
@@ -14813,7 +14813,7 @@
 000184D8: move.w #0x1,D3w
 000184DC: move.l #0xc632,D7
 000184E2: move.w #0x0,D4w
-000184E6: jsr 0x0000c376.l ; call 0000C376 FUN_0000c376
+000184E6: jsr 0x0000c376.l ; call 0000C376 move_wrapped_menu_cursor
 000184EC: bra.b 0x000184b2
 000184EE: btst.b #0x9,(0x00ffdd22).l
 000184F6: beq.w 0x000184fe
@@ -15169,7 +15169,7 @@
 00018B04: move.w #0x1,D3w
 00018B08: move.w #-0x3b54,D7w
 00018B0C: move.w #0x0,D4w
-00018B10: jsr 0x0000c376.l ; call 0000C376 FUN_0000c376
+00018B10: jsr 0x0000c376.l ; call 0000C376 move_wrapped_menu_cursor
 00018B16: bra.b 0x00018acc
 00018B18: btst.b #0xe,(0x00ffdd22).l
 00018B20: bne.w 0x00018b3c
@@ -15420,7 +15420,7 @@
 000193AE: moveq #0x1,D3
 000193B0: move.w #-0x374e,D7w
 000193B4: move.w #0x0,D4w
-000193B8: jsr 0x0000c376.l ; call 0000C376 FUN_0000c376
+000193B8: jsr 0x0000c376.l ; call 0000C376 move_wrapped_menu_cursor
 000193BE: bra.b 0x0001938a
 000193C0: btst.b #0x9,(0x00ffdd22).l
 000193C8: beq.w 0x000193d0
@@ -23627,7 +23627,7 @@
 0005488C: move.w (0x4,A0,D5w*0x1),D3w ; data 001664dc
 00054890: move.w #-0x3968,D7w
 00054894: move.w #0x0,D4w
-00054898: jsr 0x0000c376.l ; call 0000C376 FUN_0000c376
+00054898: jsr 0x0000c376.l ; call 0000C376 move_wrapped_menu_cursor
 0005489E: bra.b 0x00054838
 000548A0: btst.b #0xe,(0x00ffdd22).l
 000548A8: beq.w 0x0005496c
@@ -25899,7 +25899,7 @@
 00057BF0: moveq #0x1,D3
 00057BF2: move.l #0xc61c,D7
 00057BF8: move.w #0x6000,D4w
-00057BFC: jsr 0x0000c376.l ; call 0000C376 FUN_0000c376
+00057BFC: jsr 0x0000c376.l ; call 0000C376 move_wrapped_menu_cursor
 00057C02: bra.b 0x00057bc6
 00057C04: btst.b #0x9,(0x00ffdd22).l
 00057C0C: beq.w 0x00057c14
@@ -26941,7 +26941,7 @@
 000590DA: moveq #0x1,D3
 000590DC: move.w #-0x3ae6,D7w
 000590E0: move.w #0x2000,D4w
-000590E4: jsr 0x0000c376.l ; call 0000C376 FUN_0000c376
+000590E4: jsr 0x0000c376.l ; call 0000C376 move_wrapped_menu_cursor
 000590EA: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 000590F0: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 000590F6: jsr 0x0000195c.l ; call 0000195C sample_controller_input
@@ -26955,7 +26955,7 @@
 0005911C: moveq #0x1,D3
 0005911E: move.w #-0x3ae6,D7w
 00059122: move.w #0x2000,D4w
-00059126: jsr 0x0000c376.l ; call 0000C376 FUN_0000c376
+00059126: jsr 0x0000c376.l ; call 0000C376 move_wrapped_menu_cursor
 0005912C: btst.b #0xe,(0x00ffdd22).l
 00059134: beq.w 0x00059154
 00059138: tst.b (0x00fff0dc).l
@@ -26991,7 +26991,7 @@
 000591C6: moveq #0x1,D3
 000591C8: move.w #-0x38de,D7w
 000591CC: move.w #0x2000,D4w
-000591D0: jsr 0x0000c376.l ; call 0000C376 FUN_0000c376
+000591D0: jsr 0x0000c376.l ; call 0000C376 move_wrapped_menu_cursor
 000591D6: bra.b 0x00059194
 000591D8: btst.b #0xe,(0x00ffdd22).l
 000591E0: beq.w 0x000591e8
@@ -27034,7 +27034,7 @@
 000592A2: moveq #0x2,D3
 000592A4: move.w #-0x3a5a,D7w
 000592A8: move.w #0x2000,D4w
-000592AC: jsr 0x0000c376.l ; call 0000C376 FUN_0000c376
+000592AC: jsr 0x0000c376.l ; call 0000C376 move_wrapped_menu_cursor
 000592B2: move.b (0x00fff0dc).l,(0x00fff0ae).l
 000592BC: lea (0x7291a).l,A0 ; data 0007291a
 000592C2: jsr 0x0001f38a.l ; call 0001F38A FUN_0001f38a
@@ -27430,7 +27430,7 @@
 000599FE: moveq #0x7,D3
 00059A00: move.w #-0x3c6e,D7w
 00059A04: move.w #0x6000,D4w
-00059A08: jsr 0x0000c376.l ; call 0000C376 FUN_0000c376
+00059A08: jsr 0x0000c376.l ; call 0000C376 move_wrapped_menu_cursor
 00059A0E: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 00059A14: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 00059A1A: jsr 0x0000195c.l ; call 0000195C sample_controller_input
@@ -27445,7 +27445,7 @@
 00059A46: moveq #0x7,D3
 00059A48: move.w #-0x3c6e,D7w
 00059A4C: move.w #0x6000,D4w
-00059A50: jsr 0x0000c376.l ; call 0000C376 FUN_0000c376
+00059A50: jsr 0x0000c376.l ; call 0000C376 move_wrapped_menu_cursor
 00059A56: bra.b 0x00059a0e
 00059A58: btst.b #0xe,(0x00ffdd22).l
 00059A60: beq.w 0x00059a78

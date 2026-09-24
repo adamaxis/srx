@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000C376
-// Name: FUN_0000c376
+// Name: move_wrapped_menu_cursor
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C3B2 FUN_0000c3b2
 
 
-void FUN_0000c376(void)
+void move_wrapped_menu_cursor(void)
 
 {
   char cVar1;

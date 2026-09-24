@@ -16,7 +16,7 @@
 //   0x00001728 FUN_00001728
 //   0x0000195C sample_controller_input
 //   0x0000C0DA FUN_0000c0da
-//   0x0000C376 FUN_0000c376
+//   0x0000C376 move_wrapped_menu_cursor
 //   0x000176EA FUN_000176ea
 //   0x00017708 FUN_00017708
 //   0x00017D90 FUN_00017d90
@@ -136,7 +136,7 @@ LAB_0001842e:
           FUN_0000c0da();
           DAT_00fff0dc = '\x01';
           do {
-            FUN_0000c376();
+            move_wrapped_menu_cursor();
             while( true ) {
               wait_for_vblank();
               latch_controller_events();

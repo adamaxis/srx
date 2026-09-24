@@ -57,5 +57,18 @@ int main() {
         return 9;
     }
 
+    if (!expect(move_wrapped_menu_cursor(0, -1, 2) == 2)) {
+        return 10;
+    }
+    if (!expect(move_wrapped_menu_cursor(1, 1, 2) == 2)) {
+        return 11;
+    }
+    if (!expect(move_wrapped_menu_cursor(2, 1, 2) == 0)) {
+        return 12;
+    }
+    if (!expect(move_wrapped_menu_cursor(1, 0, 2) == 1)) {
+        return 13;
+    }
+
     return 0;
 }

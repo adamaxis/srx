@@ -23,4 +23,14 @@ void move_selection_row(
     std::int8_t step,
     std::uint8_t available_entries);
 
+// ROM 0xC376: update the shared menu cursor by a signed byte step. The
+// source treats both the candidate and the upper bound as signed bytes when
+// deciding whether to wrap, so the host helper preserves the byte arithmetic
+// while exposing only the state mutation. The paired VDP writes at 0xC3B2
+// remain an explicit presentation boundary.
+std::uint8_t move_wrapped_menu_cursor(
+    std::uint8_t current,
+    std::int8_t step,
+    std::uint8_t maximum);
+
 } // namespace shadowrun::ghidra_conversion

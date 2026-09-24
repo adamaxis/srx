@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000C8B0
-// Name: FUN_0000c8b0
+// Name: apply_byte_counter_delta_with_negative_floor
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0000c8b0(void)
+void apply_byte_counter_delta_with_negative_floor(void)
 
 {
   char cVar1;

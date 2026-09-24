@@ -217,7 +217,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0000C160	FUN_0000c160	8	unknown	ok	ghidra-c/fn_0000C160.cpp
 0000C168	FUN_0000c168	174	unknown	ok	ghidra-c/fn_0000C168.cpp
 0000C216	FUN_0000c216	144	unknown	ok	ghidra-c/fn_0000C216.cpp
-0000C376	FUN_0000c376	60	unknown	ok	ghidra-c/fn_0000C376.cpp
+0000C376	move_wrapped_menu_cursor	60	unknown	ok	ghidra-c/fn_0000C376.cpp
 0000C3B2	FUN_0000c3b2	52	unknown	ok	ghidra-c/fn_0000C3B2.cpp
 0000C3E6	FUN_0000c3e6	18	unknown	ok	ghidra-c/fn_0000C3E6.cpp
 0000C3F8	FUN_0000c3f8	14	unknown	ok	ghidra-c/fn_0000C3F8.cpp
@@ -226,7 +226,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0000C64C	FUN_0000c64c	428	unknown	ok	ghidra-c/fn_0000C64C.cpp
 0000C7F8	FUN_0000c7f8	10	unknown	ok	ghidra-c/fn_0000C7F8.cpp
 0000C802	FUN_0000c802	174	unknown	ok	ghidra-c/fn_0000C802.cpp
-0000C8B0	FUN_0000c8b0	24	unknown	ok	ghidra-c/fn_0000C8B0.cpp
+0000C8B0	apply_byte_counter_delta_with_negative_floor	24	unknown	ok	ghidra-c/fn_0000C8B0.cpp
 0000C928	FUN_0000c928	238	unknown	ok	ghidra-c/fn_0000C928.cpp
 0000CF38	FUN_0000cf38	198	unknown	ok	ghidra-c/fn_0000CF38.cpp
 0000CFFE	FUN_0000cffe	30	unknown	ok	ghidra-c/fn_0000CFFE.cpp

@@ -113,7 +113,7 @@ LAB_0001842e:
           FUN_0000c0da();
           DAT_00fff0dc = '\x01';
           do {
-            FUN_0000c376();
+            move_wrapped_menu_cursor();
             while( true ) {
               wait_for_vblank();
               latch_controller_events();

@@ -9,7 +9,7 @@
 //   0x000042B0 FUN_000042b0
 //   0x0000C0C2 FUN_0000c0c2
 //   0x0000C0DA FUN_0000c0da
-//   0x0000C376 FUN_0000c376
+//   0x0000C376 move_wrapped_menu_cursor
 //   0x0000C3E6 FUN_0000c3e6
 //   0x00010B5A FUN_00010b5a
 //   0x0001F34A FUN_0001f34a
@@ -30,13 +30,13 @@ void FUN_00059092(void)
     FUN_0000c3e6();
     FUN_0000c0da();
     DAT_00fff0dc = '\0';
-    FUN_0000c376();
+    move_wrapped_menu_cursor();
     do {
       wait_for_vblank();
       latch_controller_events();
       sample_controller_input();
       if (((DAT_00ffdd22._0_1_ & 1) != 0) || ((DAT_00ffdd22._0_1_ & 2) != 0)) {
-        FUN_0000c376();
+        move_wrapped_menu_cursor();
       }
     } while ((((DAT_00ffdd22._0_1_ & 0x40) == 0) && ((DAT_00ffdd22._0_1_ & 0x10) == 0)) &&
             ((DAT_00ffdd22._0_1_ & 0x20) == 0));
@@ -50,7 +50,7 @@ void FUN_00059092(void)
   FUN_0000c0da();
   DAT_00fff0dc = 0;
   do {
-    FUN_0000c376();
+    move_wrapped_menu_cursor();
     DAT_00fff0ae = DAT_00fff0dc;
     FUN_0001f38a();
     FUN_0001f34a();

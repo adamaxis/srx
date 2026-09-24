@@ -8,7 +8,7 @@
 //   0x00000D94 FUN_00000d94
 //   0x0000195C sample_controller_input
 //   0x0000C0DA FUN_0000c0da
-//   0x0000C376 FUN_0000c376
+//   0x0000C376 move_wrapped_menu_cursor
 //   0x0000C3E6 FUN_0000c3e6
 //   0x00059360 FUN_00059360
 
@@ -24,7 +24,7 @@ void FUN_00059172(void)
   DAT_00fff0dc = 0;
   do {
     uVar1 = 0;
-    FUN_0000c376();
+    move_wrapped_menu_cursor();
     while( true ) {
       wait_for_vblank();
       latch_controller_events();

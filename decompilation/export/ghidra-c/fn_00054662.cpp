@@ -11,7 +11,7 @@
 //   0x00001232 FUN_00001232
 //   0x0000195C sample_controller_input
 //   0x0000C0DA FUN_0000c0da
-//   0x0000C376 FUN_0000c376
+//   0x0000C376 move_wrapped_menu_cursor
 //   0x00010952 FUN_00010952
 //   0x000176EA FUN_000176ea
 //   0x000177CC FUN_000177cc
@@ -82,7 +82,7 @@ LAB_000546cc:
     FUN_00054a28();
     DAT_00fff0dc = 0;
 LAB_0005488c:
-    FUN_0000c376();
+    move_wrapped_menu_cursor();
     do {
       wait_for_vblank();
       latch_controller_events();

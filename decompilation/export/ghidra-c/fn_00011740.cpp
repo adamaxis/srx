@@ -23,7 +23,7 @@
 //   0x000039F2 FUN_000039f2
 //   0x0000C0DA FUN_0000c0da
 //   0x0000C216 FUN_0000c216
-//   0x0000C376 FUN_0000c376
+//   0x0000C376 move_wrapped_menu_cursor
 //   0x0000C3E6 FUN_0000c3e6
 //   0x0000C3F8 FUN_0000c3f8
 //   0x0000C436 FUN_0000c436
@@ -568,7 +568,7 @@ LAB_0000c2aa:
     FUN_0000c3f8();
     DAT_00fff0dc = '\0';
     do {
-      FUN_0000c376();
+      move_wrapped_menu_cursor();
       while( true ) {
         wait_for_vblank();
         latch_controller_events();
@@ -784,7 +784,7 @@ LAB_000118b6:
       FUN_000530de();
       sVar11 = -0x3962;
       DAT_00fff0fc = 0xff;
-      FUN_0000c376();
+      move_wrapped_menu_cursor();
       if (DAT_00fff0dc == DAT_00fff0b9) {
         sVar11 = 3;
         FUN_000011c0();
