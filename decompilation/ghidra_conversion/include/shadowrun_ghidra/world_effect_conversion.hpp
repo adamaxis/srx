@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <vector>
 
 namespace shadowrun::ghidra_conversion {
@@ -82,6 +83,66 @@ enum class WorldEffectTriggerAction {
 };
 
 using WorldRandomBoundary = std::function<std::uint16_t()>;
+
+// ROM 0x1A342: scan the seven effect-entity slots and return slot 3..9, or
+// the source full-table sentinel 10.
+std::uint16_t find_first_available_world_effect_entity_slot(
+    const std::array<std::uint8_t, 7>& active_flags);
+
+struct WorldEffectSpawnDescriptor {
+    std::uint32_t template_key = 0;
+    std::uint16_t destination_x = 0;
+    std::uint16_t destination_y = 0;
+    bool sentinel = false;
+    bool reset_vertical_origin = false;
+};
+
+struct WorldEffectEntityRecord {
+    std::uint16_t entity_slot = 0;
+    std::uint16_t effect_slot = 0;
+    std::uint16_t vertical_origin = 0;
+    std::optional<std::uint16_t> parent_entity_slot;
+    std::uint16_t world_x = 0;
+    std::uint16_t world_y = 0;
+    std::uint16_t transition_code = 0;
+    bool overlay_flag = false;
+    bool effect_active = false;
+    bool visible = false;
+};
+
+enum class WorldEffectEntitySpawnAction {
+    completed,
+    entity_table_full,
+    effect_table_full,
+};
+
+struct WorldEffectEntitySpawnResult {
+    WorldEffectEntitySpawnAction action =
+        WorldEffectEntitySpawnAction::completed;
+    std::int16_t final_vertical_origin = 0;
+    std::vector<WorldEffectEntityRecord> entities;
+};
+
+using WorldEffectEntityInitializer = std::function<WorldEffectEntityRecord(
+    const WorldEffectSpawnDescriptor& descriptor,
+    std::uint16_t entity_slot,
+    std::uint16_t effect_slot,
+    std::uint16_t vertical_origin,
+    const std::optional<std::uint16_t>& parent_entity_slot)>;
+using WorldEffectEntityProjection =
+    std::function<bool(WorldEffectEntityRecord& entity)>;
+
+// ROM 0x1E0DC: walk the active world-effect descriptor list, allocate an
+// entity/effect slot pair, apply the source vertical-origin grouping, mark
+// the initialized entity for effect processing, project it, and hand off the
+// descriptor coordinates when it is visible. Entity initialization and
+// projection are explicit boundaries for their separate source routines.
+WorldEffectEntitySpawnResult spawn_world_effect_entities(
+    const std::vector<WorldEffectSpawnDescriptor>& descriptors,
+    const std::function<std::optional<std::uint16_t>()>& allocate_entity_slot,
+    const std::function<std::optional<std::uint16_t>()>& allocate_effect_slot,
+    const WorldEffectEntityInitializer& initialize_entity,
+    const WorldEffectEntityProjection& project_entity);
 
 // ROM 0x1DFC4: finish an expired transition or, on the source cadence,
 // sample the PRNG and scan the bounded effect-region list before delegating

@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x000044BC FUN_000044bc
 //   0x0001A2CC allocate_first_free_effect_slot
-//   0x0001A342 FUN_0001a342
+//   0x0001A342 find_first_available_world_effect_entity_slot
 //   0x0001DBAA schedule_world_activity_timeout
 
 
@@ -22,7 +22,7 @@ void FUN_0001e25a(void)
   
   bVar5 = false;
   DAT_00ffdd4c = unaff_A4;
-  uVar2 = FUN_0001a342();
+  uVar2 = find_first_available_world_effect_entity_slot();
   if (!bVar5) {
     bVar5 = false;
     DAT_00ffdd40 = uVar2;

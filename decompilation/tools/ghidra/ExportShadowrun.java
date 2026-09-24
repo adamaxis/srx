@@ -117,11 +117,14 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0000A7E4L, "initialize_entity_slot_order");
         names.put(0x0000AE5EL, "schedule_entity_collision_recheck");
         names.put(0x0001A2CCL, "allocate_first_free_effect_slot");
+        names.put(0x0001A342L,
+                  "find_first_available_world_effect_entity_slot");
         names.put(0x0001DBAAL, "schedule_world_activity_timeout");
         names.put(0x0001DF00L, "clear_entity_effect_pending_flags");
         names.put(0x0001DFC4L, "advance_world_effect_trigger");
         names.put(0x0001E04AL, "begin_world_effect_transition");
         names.put(0x0001E0B8L, "promote_entity_effect_flags");
+        names.put(0x0001E0DCL, "spawn_world_effect_entities");
         names.put(0x00014682L, "select_obstruction_route");
         names.put(0x00014756L, "clear_entity_route_flags");
         names.put(0x00014764L, "find_alternate_route_tile");

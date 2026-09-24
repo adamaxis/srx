@@ -2,6 +2,16 @@
 
 namespace shadowrun::ghidra_conversion {
 
+std::uint16_t find_first_available_world_effect_entity_slot(
+    const std::array<std::uint8_t, 7>& active_flags) {
+    for (std::size_t index = 0; index < active_flags.size(); ++index) {
+        if ((active_flags[index] & 0x01U) == 0U) {
+            return static_cast<std::uint16_t>(index + 3U);
+        }
+    }
+    return 10U;
+}
+
 bool schedule_world_activity_timeout(WorldActivityTimeoutState& state) {
     if (state.scene_id == 0x0036U && !state.scene_ready) {
         return false;
@@ -27,6 +37,74 @@ void promote_entity_effect_flags(std::array<std::uint8_t, 6>& effect_flags) {
             flags = static_cast<std::uint8_t>(flags | 0x04U);
         }
     }
+}
+
+WorldEffectEntitySpawnResult spawn_world_effect_entities(
+    const std::vector<WorldEffectSpawnDescriptor>& descriptors,
+    const std::function<std::optional<std::uint16_t>()>& allocate_entity_slot,
+    const std::function<std::optional<std::uint16_t>()>& allocate_effect_slot,
+    const WorldEffectEntityInitializer& initialize_entity,
+    const WorldEffectEntityProjection& project_entity) {
+    WorldEffectEntitySpawnResult result{};
+    std::int16_t vertical_origin = 0;
+    std::optional<std::uint16_t> previous_entity_slot;
+
+    for (const auto& descriptor : descriptors) {
+        if (descriptor.sentinel) {
+            break;
+        }
+        if (!allocate_entity_slot) {
+            result.action = WorldEffectEntitySpawnAction::entity_table_full;
+            break;
+        }
+        const auto entity_slot = allocate_entity_slot();
+        if (!entity_slot.has_value()) {
+            result.action = WorldEffectEntitySpawnAction::entity_table_full;
+            break;
+        }
+        if (!allocate_effect_slot) {
+            result.action = WorldEffectEntitySpawnAction::effect_table_full;
+            break;
+        }
+        const auto effect_slot = allocate_effect_slot();
+        if (!effect_slot.has_value()) {
+            result.action = WorldEffectEntitySpawnAction::effect_table_full;
+            break;
+        }
+
+        const auto parent_entity_slot =
+            descriptor.reset_vertical_origin ? std::nullopt
+                                             : previous_entity_slot;
+        if (descriptor.reset_vertical_origin) {
+            vertical_origin = 0;
+        } else {
+            vertical_origin = static_cast<std::int16_t>(
+                vertical_origin + 0x00C0);
+        }
+
+        auto entity = initialize_entity(
+            descriptor,
+            *entity_slot,
+            *effect_slot,
+            static_cast<std::uint16_t>(vertical_origin),
+            parent_entity_slot);
+        if (descriptor.reset_vertical_origin) {
+            entity.overlay_flag = true;
+            previous_entity_slot = *entity_slot;
+        }
+        entity.effect_active = true;
+        if (project_entity) {
+            entity.visible = project_entity(entity);
+        }
+        if (entity.visible) {
+            entity.transition_code = 4U;
+            entity.world_x = descriptor.destination_x;
+            entity.world_y = descriptor.destination_y;
+        }
+        result.entities.push_back(entity);
+    }
+    result.final_vertical_origin = vertical_origin;
+    return result;
 }
 
 WorldEffectTransitionAction begin_world_effect_transition(

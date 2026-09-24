@@ -302,7 +302,7 @@ caller	caller_name	instruction	text	target	callee	status
 000043B6	FUN_000043b6	00004448	bsr.w 0x00004466	00004466	FUN_00004466	resolved
 000043B6	FUN_000043b6	00004458	bra.w 0x00004466	00004466	FUN_00004466	resolved
 000043B6	FUN_000043b6	00004462	bra.w 0x00004466	00004466	FUN_00004466	resolved
-00004466	FUN_00004466	0000446C	jsr 0x0001a342.l	0001A342	FUN_0001a342	resolved
+00004466	FUN_00004466	0000446C	jsr 0x0001a342.l	0001A342	find_first_available_world_effect_entity_slot	resolved
 00004466	FUN_00004466	0000447C	jsr 0x0001a2cc.l	0001A2CC	allocate_first_free_effect_slot	resolved
 00004466	FUN_00004466	0000449A	bsr.w 0x000044bc	000044BC	FUN_000044bc	resolved
 00004466	FUN_00004466	000044B0	bsr.w 0x000044bc	000044BC	FUN_000044bc	resolved
@@ -2047,12 +2047,12 @@ caller	caller_name	instruction	text	target	callee	status
 0001E04A	begin_world_effect_transition	0001E056	jsr 0x0001dbaa.l	0001DBAA	schedule_world_activity_timeout	resolved
 0001E04A	begin_world_effect_transition	0001E08A	jsr 0x000530de.l	000530DE	FUN_000530de	resolved
 0001E04A	begin_world_effect_transition	0001E090	bsr.w 0x0001df00	0001DF00	clear_entity_effect_pending_flags	resolved
-0001E04A	begin_world_effect_transition	0001E094	bsr.w 0x0001e0dc	0001E0DC	FUN_0001e0dc	resolved
-0001E0DC	FUN_0001e0dc	0001E0EC	jsr 0x0001a342.l	0001A342	FUN_0001a342	resolved
-0001E0DC	FUN_0001e0dc	0001E0FC	jsr 0x0001a2cc.l	0001A2CC	allocate_first_free_effect_slot	resolved
-0001E0DC	FUN_0001e0dc	0001E11A	jsr 0x000044bc.l	000044BC	FUN_000044bc	resolved
-0001E0DC	FUN_0001e0dc	0001E132	jsr 0x000044bc.l	000044BC	FUN_000044bc	resolved
-0001E0DC	FUN_0001e0dc	0001E144	jsr 0x00005a56.l	00005A56	project_entity_screen_position	resolved
+0001E04A	begin_world_effect_transition	0001E094	bsr.w 0x0001e0dc	0001E0DC	spawn_world_effect_entities	resolved
+0001E0DC	spawn_world_effect_entities	0001E0EC	jsr 0x0001a342.l	0001A342	find_first_available_world_effect_entity_slot	resolved
+0001E0DC	spawn_world_effect_entities	0001E0FC	jsr 0x0001a2cc.l	0001A2CC	allocate_first_free_effect_slot	resolved
+0001E0DC	spawn_world_effect_entities	0001E11A	jsr 0x000044bc.l	000044BC	FUN_000044bc	resolved
+0001E0DC	spawn_world_effect_entities	0001E132	jsr 0x000044bc.l	000044BC	FUN_000044bc	resolved
+0001E0DC	spawn_world_effect_entities	0001E144	jsr 0x00005a56.l	00005A56	project_entity_screen_position	resolved
 0001E166	FUN_0001e166	0001E1C2	jsr 0x00000d44.l	00000D44	advance_source_prng	resolved
 0001E166	FUN_0001e166	0001E1E2	bra.w 0x0001e1fc	0001E1FC	FUN_0001e1fc	resolved
 0001E166	FUN_0001e166	0001E1E6	jsr 0x00059986.l	00059986	FUN_00059986	resolved
@@ -2061,7 +2061,7 @@ caller	caller_name	instruction	text	target	callee	status
 0001E216	FUN_0001e216	0001E21C	bsr.w 0x0001e40c	0001E40C	FUN_0001e40c	resolved
 0001E216	FUN_0001e216	0001E224	bsr.w 0x0001e302	0001E302	FUN_0001e302	resolved
 0001E216	FUN_0001e216	0001E246	bsr.w 0x0001e25a	0001E25A	FUN_0001e25a	resolved
-0001E25A	FUN_0001e25a	0001E260	jsr 0x0001a342.l	0001A342	FUN_0001a342	resolved
+0001E25A	FUN_0001e25a	0001E260	jsr 0x0001a342.l	0001A342	find_first_available_world_effect_entity_slot	resolved
 0001E25A	FUN_0001e25a	0001E270	jsr 0x0001a2cc.l	0001A2CC	allocate_first_free_effect_slot	resolved
 0001E25A	FUN_0001e25a	0001E280	jsr 0x000044bc.l	000044BC	FUN_000044bc	resolved
 0001E25A	FUN_0001e25a	0001E2D4	jsr 0x0001dbaa.l	0001DBAA	schedule_world_activity_timeout	resolved
@@ -2076,7 +2076,7 @@ caller	caller_name	instruction	text	target	callee	status
 0001E302	FUN_0001e302	0001E3EC	bsr.w 0x0001e41e	0001E41E	FUN_0001e41e	resolved
 0001E302	FUN_0001e302	0001E3FC	bsr.w 0x0001e41e	0001E41E	FUN_0001e41e	resolved
 0001E43C	FUN_0001e43c	0001E4A6	bra.w 0x0001e2ec	0001E2EC	FUN_0001e2ec	resolved
-0001E4AC	FUN_0001e4ac	0001E4AE	jsr 0x0001a342.l	0001A342	FUN_0001a342	resolved
+0001E4AC	FUN_0001e4ac	0001E4AE	jsr 0x0001a342.l	0001A342	find_first_available_world_effect_entity_slot	resolved
 0001E4AC	FUN_0001e4ac	0001E4BE	jsr 0x0001a2cc.l	0001A2CC	allocate_first_free_effect_slot	resolved
 0001E4AC	FUN_0001e4ac	0001E4CE	jsr 0x000044bc.l	000044BC	FUN_000044bc	resolved
 0001E514	FUN_0001e514	0001E538	jsr 0x0001a304.l	0001A304	FUN_0001a304	resolved

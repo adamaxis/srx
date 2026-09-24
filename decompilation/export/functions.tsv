@@ -546,7 +546,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0001A304	FUN_0001a304	12	unknown	ok	ghidra-c/fn_0001A304.cpp
 0001A310	FUN_0001a310	18	unknown	ok	ghidra-c/fn_0001A310.cpp
 0001A322	FUN_0001a322	32	unknown	ok	ghidra-c/fn_0001A322.cpp
-0001A342	FUN_0001a342	46	unknown	ok	ghidra-c/fn_0001A342.cpp
+0001A342	find_first_available_world_effect_entity_slot	46	unknown	ok	ghidra-c/fn_0001A342.cpp
 0001A370	FUN_0001a370	350	unknown	ok	ghidra-c/fn_0001A370.cpp
 0001A468	FUN_0001a468	34	unknown	ok	ghidra-c/fn_0001A468.cpp
 0001A48A	FUN_0001a48a	96	unknown	ok	ghidra-c/fn_0001A48A.cpp
@@ -634,7 +634,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0001DFC4	advance_world_effect_trigger	164	unknown	ok	ghidra-c/fn_0001DFC4.cpp
 0001E04A	begin_world_effect_transition	80	unknown	ok	ghidra-c/fn_0001E04A.cpp
 0001E0B8	promote_entity_effect_flags	36	unknown	ok	ghidra-c/fn_0001E0B8.cpp
-0001E0DC	FUN_0001e0dc	138	unknown	ok	ghidra-c/fn_0001E0DC.cpp
+0001E0DC	spawn_world_effect_entities	138	unknown	ok	ghidra-c/fn_0001E0DC.cpp
 0001E166	FUN_0001e166	150	unknown	ok	ghidra-c/fn_0001E166.cpp
 0001E1FC	FUN_0001e1fc	14	unknown	ok	ghidra-c/fn_0001E1FC.cpp
 0001E216	FUN_0001e216	68	unknown	ok	ghidra-c/fn_0001E216.cpp

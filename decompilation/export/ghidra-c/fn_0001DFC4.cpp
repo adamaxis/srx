@@ -52,7 +52,7 @@ void advance_world_effect_trigger(void)
       DAT_00ffe16f = -1;
       FUN_000530de();
       clear_entity_effect_pending_flags();
-      FUN_0001e0dc();
+      spawn_world_effect_entities();
     }
     return;
   }

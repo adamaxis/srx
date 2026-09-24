@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001A342
-// Name: FUN_0001a342
+// Name: find_first_available_world_effect_entity_slot
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-short FUN_0001a342(void)
+short find_first_available_world_effect_entity_slot(void)
 
 {
   short sVar1;

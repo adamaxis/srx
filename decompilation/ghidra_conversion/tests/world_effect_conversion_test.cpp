@@ -107,6 +107,81 @@ int main() {
         return 9;
     }
 
+    if (expect(find_first_available_world_effect_entity_slot(
+                   std::array<std::uint8_t, 7>{1U, 1U, 0U, 1U, 1U, 1U, 1U}) ==
+                   5U &&
+               find_first_available_world_effect_entity_slot(
+                   std::array<std::uint8_t, 7>{1U, 1U, 1U, 1U, 1U, 1U, 1U}) ==
+                   10U) != 0) {
+        return 10;
+    }
+
+    std::vector<std::uint16_t> effect_entity_slots{3U, 4U, 5U};
+    std::vector<std::uint16_t> effect_slots{7U, 8U, 9U};
+    std::vector<std::uint16_t> initialized_templates;
+    const auto spawned_effects = spawn_world_effect_entities(
+        {{1U, 0x1111U, 0x2222U, false, false},
+         {2U, 0x3333U, 0x4444U, false, true},
+         {3U, 0x5555U, 0x6666U, false, false},
+         {0U, 0U, 0U, true, false}},
+        [&effect_entity_slots]() -> std::optional<std::uint16_t> {
+            if (effect_entity_slots.empty()) {
+                return std::nullopt;
+            }
+            const auto slot = effect_entity_slots.front();
+            effect_entity_slots.erase(effect_entity_slots.begin());
+            return slot;
+        },
+        [&effect_slots]() -> std::optional<std::uint16_t> {
+            if (effect_slots.empty()) {
+                return std::nullopt;
+            }
+            const auto slot = effect_slots.front();
+            effect_slots.erase(effect_slots.begin());
+            return slot;
+        },
+        [&initialized_templates](
+            const WorldEffectSpawnDescriptor& descriptor,
+            const std::uint16_t entity_slot,
+            const std::uint16_t effect_slot,
+            const std::uint16_t vertical_origin,
+            const std::optional<std::uint16_t>& parent_slot) {
+            initialized_templates.push_back(
+                static_cast<std::uint16_t>(descriptor.template_key));
+            return WorldEffectEntityRecord{
+                entity_slot,
+                effect_slot,
+                vertical_origin,
+                parent_slot,
+                0x0100U,
+                0x0200U,
+                0U,
+                false,
+                false,
+                false};
+        },
+        [](WorldEffectEntityRecord& entity) {
+            return entity.entity_slot != 4U;
+        });
+    if (expect(spawned_effects.action ==
+                   WorldEffectEntitySpawnAction::completed &&
+               initialized_templates == std::vector<std::uint16_t>{1U, 2U, 3U} &&
+               spawned_effects.entities.size() == 3U &&
+               spawned_effects.entities[0].vertical_origin == 0x00C0U &&
+               !spawned_effects.entities[0].parent_entity_slot.has_value() &&
+               spawned_effects.entities[0].effect_active &&
+               spawned_effects.entities[0].visible &&
+               spawned_effects.entities[0].transition_code == 4U &&
+               spawned_effects.entities[0].world_x == 0x1111U &&
+               spawned_effects.entities[1].vertical_origin == 0U &&
+               spawned_effects.entities[1].overlay_flag &&
+               !spawned_effects.entities[1].visible &&
+               spawned_effects.entities[2].vertical_origin == 0x00C0U &&
+               spawned_effects.entities[2].parent_entity_slot == 4U &&
+               spawned_effects.final_vertical_origin == 0x00C0) != 0) {
+        return 11;
+    }
+
     std::array<std::uint8_t, 6> finishing_flags{
         0x02U, 0x00U, 0x06U, 0x01U, 0x04U, 0x00U};
     WorldEffectTriggerState finishing_state{};
@@ -128,7 +203,7 @@ int main() {
                finishing_flags ==
                    std::array<std::uint8_t, 6>{0x06U, 0x00U, 0x06U,
                                                0x01U, 0x04U, 0x00U}) != 0) {
-        return 10;
+        return 12;
     }
 
     WorldEffectTriggerState gated_state{};
@@ -138,7 +213,7 @@ int main() {
                    gated_state, finishing_flags, {}, {}, wrong_mode_timeout,
                    {}, {}, {}, {}) ==
                    WorldEffectTriggerAction::trigger_suppressed) != 0) {
-        return 11;
+        return 13;
     }
 
     WorldEffectTriggerState waiting_state{};
@@ -147,7 +222,7 @@ int main() {
                    waiting_state, finishing_flags, {}, []() { return 0U; },
                    wrong_mode_timeout, {}, {}, {}, {}) ==
                    WorldEffectTriggerAction::cadence_wait) != 0) {
-        return 12;
+        return 14;
     }
 
     WorldEffectTriggerState rejected_state{};
@@ -156,7 +231,7 @@ int main() {
                    rejected_state, finishing_flags, {}, []() { return 0x8000U; },
                    wrong_mode_timeout, {}, {}, {}, {}) ==
                    WorldEffectTriggerAction::random_rejected) != 0) {
-        return 13;
+        return 15;
     }
 
     WorldEffectTriggerState matching_state{};
@@ -183,7 +258,7 @@ int main() {
                matching_state.transition.transition_latched &&
                matching_state.transition.transition_timer == 0x0960U &&
                trigger_events == std::vector<char>({'s', 'c', 'e'})) != 0) {
-        return 14;
+        return 16;
     }
 
     WorldEffectTriggerState outside_state = matching_state;
@@ -195,7 +270,7 @@ int main() {
                    {{0x0008, 0x0014, 0x0010, 0x0028, false}},
                    []() { return 0x0100U; }, matching_timeout, {}, {}, {}, {}) ==
                    WorldEffectTriggerAction::no_matching_region) != 0) {
-        return 15;
+        return 17;
     }
 
     return 0;

@@ -3008,7 +3008,7 @@
 00004462: bra.w 0x00004466 ; call 00004466 FUN_00004466
 00004466: tst.l (A5)
 00004468: beq.w 0x000044ba
-0000446C: jsr 0x0001a342.l ; call 0001A342 FUN_0001a342
+0000446C: jsr 0x0001a342.l ; call 0001A342 find_first_available_world_effect_entity_slot
 00004472: bcs.w 0x000044ba
 00004476: move.w D0w,(0x00ffdd40).l
 0000447C: jsr 0x0001a2cc.l ; call 0001A2CC allocate_first_free_effect_slot
@@ -18711,7 +18711,7 @@
 0001E086: move.w #0x30,D0w
 0001E08A: jsr 0x000530de.l ; call 000530DE FUN_000530de
 0001E090: bsr.w 0x0001df00 ; call 0001DF00 clear_entity_effect_pending_flags
-0001E094: bsr.w 0x0001e0dc ; call 0001E0DC FUN_0001e0dc
+0001E094: bsr.w 0x0001e0dc ; call 0001E0DC spawn_world_effect_entities
 0001E098: rts
 0001E09A: tst.b (0x00ffe16f).l
 0001E0A0: beq.w 0x0001e0ae
@@ -18731,7 +18731,7 @@
 0001E0E2: movea.l (0x10,A1),A5
 0001E0E6: tst.l (A5)
 0001E0E8: beq.w 0x0001e164
-0001E0EC: jsr 0x0001a342.l ; call 0001A342 FUN_0001a342
+0001E0EC: jsr 0x0001a342.l ; call 0001A342 find_first_available_world_effect_entity_slot
 0001E0F2: bcs.w 0x0001e164
 0001E0F6: move.w D0w,(0x00ffdd40).l
 0001E0FC: jsr 0x0001a2cc.l ; call 0001A2CC allocate_first_free_effect_slot
@@ -18817,7 +18817,7 @@
 0001E256: bra.b 0x0001e236
 0001E258: rts
 0001E25A: move.l A4,(0x00ffdd4c).l
-0001E260: jsr 0x0001a342.l ; call 0001A342 FUN_0001a342
+0001E260: jsr 0x0001a342.l ; call 0001A342 find_first_available_world_effect_entity_slot
 0001E266: bcs.w 0x0001e2b8
 0001E26A: move.w D0w,(0x00ffdd40).l
 0001E270: jsr 0x0001a2cc.l ; call 0001A2CC allocate_first_free_effect_slot
@@ -18969,7 +18969,7 @@
 0001E4A6: bra.w 0x0001e2ec ; call 0001E2EC FUN_0001e2ec
 0001E4AA: rts
 0001E4AC: move.l A6,D4
-0001E4AE: jsr 0x0001a342.l ; call 0001A342 FUN_0001a342
+0001E4AE: jsr 0x0001a342.l ; call 0001A342 find_first_available_world_effect_entity_slot
 0001E4B4: bcs.w 0x0001e4fe
 0001E4B8: move.w D0w,(0x00ffdd40).l
 0001E4BE: jsr 0x0001a2cc.l ; call 0001A2CC allocate_first_free_effect_slot

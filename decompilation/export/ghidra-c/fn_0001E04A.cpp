@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x0001DBAA schedule_world_activity_timeout
 //   0x0001DF00 clear_entity_effect_pending_flags
-//   0x0001E0DC FUN_0001e0dc
+//   0x0001E0DC spawn_world_effect_entities
 //   0x000530DE FUN_000530de
 
 
@@ -19,7 +19,7 @@ void begin_world_effect_transition(void)
     DAT_00ffe16f = -1;
     FUN_000530de();
     clear_entity_effect_pending_flags();
-    FUN_0001e0dc();
+    spawn_world_effect_entities();
   }
   return;
 }
