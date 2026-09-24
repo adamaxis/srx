@@ -174,6 +174,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0001A322L, "clear_entity_effect_pending_records");
         names.put(0x00013AF2L, "find_first_entity_action_below_threshold");
         names.put(0x00013A40L, "copy_entity_anchor_position");
+        names.put(0x00005622L, "clear_entity_runtime_fields");
         names.put(0x00000E9CL, "make_vdp_transfer_command");
         names.put(0x00000DFCL, "write_repeated_words");
         names.put(0x00000E18L, "write_word_stream");

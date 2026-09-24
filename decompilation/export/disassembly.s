@@ -3560,7 +3560,7 @@
 00005444: jsr 0x0001a304.l ; call 0001A304 clear_effect_slot
 0000544A: movea.l (SP)+,A3
 0000544C: move.b #-0x3,D1b
-00005450: bra.w 0x00005622 ; call 00005622 FUN_00005622
+00005450: bra.w 0x00005622 ; call 00005622 clear_entity_runtime_fields
 00005454: move.w #0x1e,(0x00ffdff6).l
 0000545C: movea.l (0x00ffdffa).l,A1
 00005462: bsr.w 0x00005468 ; call 00005468 FUN_00005468
@@ -3666,7 +3666,7 @@
 000055FE: jsr 0x0001a304.l ; call 0001A304 clear_effect_slot
 00005604: movea.l (SP)+,A3
 00005606: move.b #-0x2,D1b
-0000560A: bra.w 0x00005622 ; call 00005622 FUN_00005622
+0000560A: bra.w 0x00005622 ; call 00005622 clear_entity_runtime_fields
 0000560E: move.w #0x1e,(0x00ffdff2).l
 00005616: movea.l (0x00ffdffa).l,A1
 0000561C: bsr.w 0x0000563e ; call 0000563E FUN_0000563e

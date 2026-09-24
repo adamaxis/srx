@@ -56,6 +56,15 @@ std::uint8_t find_first_entity_action_below_threshold(
     return 0U;
 }
 
+void clear_entity_runtime_fields(
+    EntityRuntimeCleanupState& state,
+    const std::uint8_t mask) {
+    state.transient_flags.fill(0U);
+    for (auto& flags : state.masked_flags) {
+        flags = static_cast<std::uint8_t>(flags & mask);
+    }
+}
+
 void initialize_entity_behavior_record(EntityBehaviorRecordState& state) {
     state = EntityBehaviorRecordState{
         static_cast<std::int16_t>(-12),

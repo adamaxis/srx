@@ -345,7 +345,7 @@ caller	caller_name	instruction	text	target	callee	status
 000053C4	FUN_000053c4	00005420	bsr.w 0x00005468	00005468	FUN_00005468	resolved
 000053C4	FUN_000053c4	00005428	bsr.w 0x0000aff2	0000AFF2	prepare_entity_auxiliary_behavior	resolved
 000053C4	FUN_000053c4	00005444	jsr 0x0001a304.l	0001A304	clear_effect_slot	resolved
-000053C4	FUN_000053c4	00005450	bra.w 0x00005622	00005622	FUN_00005622	resolved
+000053C4	FUN_000053c4	00005450	bra.w 0x00005622	00005622	clear_entity_runtime_fields	resolved
 000053C4	FUN_000053c4	00005462	bsr.w 0x00005468	00005468	FUN_00005468	resolved
 00005494	FUN_00005494	000054C4	jsr 0x00000d44.l	00000D44	advance_source_prng	resolved
 00005494	FUN_00005494	00005534	jsr 0x000061a0.l	000061A0	append_entity_sprite_record	resolved
@@ -354,7 +354,7 @@ caller	caller_name	instruction	text	target	callee	status
 0000557E	FUN_0000557e	000055DA	bsr.w 0x0000563e	0000563E	FUN_0000563e	resolved
 0000557E	FUN_0000557e	000055E2	bsr.w 0x0000aff2	0000AFF2	prepare_entity_auxiliary_behavior	resolved
 0000557E	FUN_0000557e	000055FE	jsr 0x0001a304.l	0001A304	clear_effect_slot	resolved
-0000557E	FUN_0000557e	0000560A	bra.w 0x00005622	00005622	FUN_00005622	resolved
+0000557E	FUN_0000557e	0000560A	bra.w 0x00005622	00005622	clear_entity_runtime_fields	resolved
 0000557E	FUN_0000557e	0000561C	bsr.w 0x0000563e	0000563E	FUN_0000563e	resolved
 00005662	FUN_00005662	000056A0	jsr 0x000061a0.l	000061A0	append_entity_sprite_record	resolved
 00005662	FUN_00005662	000056D6	jsr 0x000013be.l	000013BE	FUN_000013be	resolved

@@ -64,6 +64,17 @@ std::uint8_t find_first_entity_action_below_threshold(
     const std::array<std::uint8_t, 8>& action_values,
     std::uint8_t threshold = 0x0DU);
 
+struct EntityRuntimeCleanupState {
+    std::array<std::uint8_t, 10> transient_flags{};
+    std::array<std::uint8_t, 10> masked_flags{};
+};
+
+// ROM 0x05622: clear one transient byte in ten entity records and apply the
+// caller mask to the paired per-record flags.
+void clear_entity_runtime_fields(
+    EntityRuntimeCleanupState& state,
+    std::uint8_t mask);
+
 // ROM 0x15118: clear a newly allocated entity record's source fields and
 // install the default behavior-update continuation and movement constants.
 void initialize_entity_behavior_record(EntityBehaviorRecordState& state);

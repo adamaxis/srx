@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00005622
-// Name: FUN_00005622
+// Name: clear_entity_runtime_fields
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00005622(void)
+void clear_entity_runtime_fields(void)
 
 {
   short sVar1;

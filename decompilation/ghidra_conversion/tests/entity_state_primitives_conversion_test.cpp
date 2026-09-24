@@ -78,6 +78,18 @@ int main() {
         return 9;
     }
 
+    EntityRuntimeCleanupState cleanup{};
+    cleanup.transient_flags.fill(0xFFU);
+    cleanup.masked_flags.fill(0xFFU);
+    clear_entity_runtime_fields(cleanup, 0x5AU);
+    if (!expect(std::all_of(cleanup.transient_flags.begin(),
+                            cleanup.transient_flags.end(),
+                            [](const std::uint8_t value) { return value == 0U; }) &&
+                std::all_of(cleanup.masked_flags.begin(), cleanup.masked_flags.end(),
+                            [](const std::uint8_t value) { return value == 0x5AU; }))) {
+        return 10;
+    }
+
     EntityBehaviorRecordState behavior_record{
         42, 42U, 42U, 42U, 0xFFU,
         EntityRecordContinuation::BehaviorUpdate};
@@ -87,7 +99,7 @@ int main() {
                 behavior_record.behavior_timer == 0x1000U &&
                 behavior_record.step_interval == 0x4000U &&
                 behavior_record.flags == 0x01U)) {
-        return 10;
+        return 11;
     }
 
     return 0;
