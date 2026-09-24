@@ -14435,7 +14435,7 @@
 00017D24: jsr 0x00001728.l ; call 00001728 render_hud_sprite_stream
 00017D2A: tst.b (0x00fff0df).l
 00017D30: bne.w 0x00017d38
-00017D34: bsr.w 0x00017d3e ; call 00017D3E FUN_00017d3e
+00017D34: bsr.w 0x00017d3e ; call 00017D3E advance_audio_service_tick
 00017D38: movem.l (SP)+,{ D0 D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 00017D3C: rts
 00017D3E: addq.b #0x1,(0x00ffe18d).l

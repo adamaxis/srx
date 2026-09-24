@@ -2,6 +2,14 @@
 
 namespace shadowrun::ghidra_conversion {
 
+bool advance_audio_service_tick(
+    AudioServiceTickState& state,
+    const bool audio_enabled,
+    const AudioServiceCallbacks& callbacks) {
+    state.phase = static_cast<std::uint8_t>(state.phase + 1U);
+    return service_audio_if_enabled(audio_enabled, callbacks);
+}
+
 bool service_audio_command_queue(const AudioServiceCallbacks& callbacks) {
     if (!callbacks.begin_bus_access || !callbacks.flush_audio_command ||
         !callbacks.append_audio_command || !callbacks.end_bus_access) {

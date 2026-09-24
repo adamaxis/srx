@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00017D3E
-// Name: FUN_00017d3e
+// Name: advance_audio_service_tick
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000530DE service_audio_if_enabled
 
 
-void FUN_00017d3e(void)
+void advance_audio_service_tick(void)
 
 {
   DAT_00ffe18d = DAT_00ffe18d + '\x01';

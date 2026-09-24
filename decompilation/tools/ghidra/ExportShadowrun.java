@@ -158,6 +158,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00052EA2L, "append_audio_command");
         names.put(0x00052F3CL, "service_audio_command_queue");
         names.put(0x000530DEL, "service_audio_if_enabled");
+        names.put(0x00017D3EL, "advance_audio_service_tick");
         names.put(0x000530EAL, "service_audio_command_frame");
         names.put(0x00003032L, "scene_uses_alternate_profile");
         names.put(0x00002A32L, "initialize_field_mode_profile_a");

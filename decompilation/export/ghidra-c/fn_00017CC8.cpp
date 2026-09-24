@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001728 render_hud_sprite_stream
-//   0x00017D3E FUN_00017d3e
+//   0x00017D3E advance_audio_service_tick
 
 
 undefined8 FUN_00017cc8(void)
@@ -22,7 +22,7 @@ undefined8 FUN_00017cc8(void)
     }
     render_hud_sprite_stream();
     if (DAT_00fff0df == '\0') {
-      FUN_00017d3e();
+      advance_audio_service_tick();
     }
   }
   return CONCAT44(in_D0,in_D1);

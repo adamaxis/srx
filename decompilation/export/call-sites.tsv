@@ -1533,8 +1533,8 @@ caller	caller_name	instruction	text	target	callee	status
 00017C84	FUN_00017c84	00017C84	bsr.w 0x00017c98	00017C98	find_hud_selection_index	resolved
 00017C8E	FUN_00017c8e	00017C8E	bsr.w 0x00017c98	00017C98	find_hud_selection_index	resolved
 00017CC8	FUN_00017cc8	00017D24	jsr 0x00001728.l	00001728	render_hud_sprite_stream	resolved
-00017CC8	FUN_00017cc8	00017D34	bsr.w 0x00017d3e	00017D3E	FUN_00017d3e	resolved
-00017D3E	FUN_00017d3e	00017D5C	jmp 0x000530de.l	000530DE	service_audio_if_enabled	resolved
+00017CC8	FUN_00017cc8	00017D34	bsr.w 0x00017d3e	00017D3E	advance_audio_service_tick	resolved
+00017D3E	advance_audio_service_tick	00017D5C	jmp 0x000530de.l	000530DE	service_audio_if_enabled	resolved
 00017D72	draw_hud_panel	00017D88	jsr 0x00003648.l	00003648	draw_hud_panel	resolved
 00017DB8	FUN_00017db8	00017DF8	jsr 0x00001232.l	00001232	write_vdp_grid	resolved
 00017DB8	FUN_00017db8	00017DFE	bsr.w 0x0001792e	0001792E	FUN_0001792e	resolved

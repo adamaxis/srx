@@ -716,6 +716,10 @@ The `0x17C98` HUD/action lookup is now `find_hud_selection_index`. It scans
 the exact five-byte table used by the adjacent setters/comparators and turns
 the source register-side index into an explicit optional host result.
 
+The existing audio module now also converts `0x17D3E` as
+`advance_audio_service_tick`: it wraps the byte phase counter first, then
+enters the enabled audio-service callback sequence.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames

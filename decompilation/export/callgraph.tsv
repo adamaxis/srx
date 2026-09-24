@@ -1082,8 +1082,8 @@ caller	caller_name	callee	callee_name	call_sites
 00017C84	FUN_00017c84	00017C98	find_hud_selection_index	1
 00017C8E	FUN_00017c8e	00017C98	find_hud_selection_index	1
 00017CC8	FUN_00017cc8	00001728	render_hud_sprite_stream	1
-00017CC8	FUN_00017cc8	00017D3E	FUN_00017d3e	1
-00017D3E	FUN_00017d3e	000530DE	service_audio_if_enabled	1
+00017CC8	FUN_00017cc8	00017D3E	advance_audio_service_tick	1
+00017D3E	advance_audio_service_tick	000530DE	service_audio_if_enabled	1
 00017D72	draw_hud_panel	00003648	draw_hud_panel	1
 00017DB8	FUN_00017db8	00001232	write_vdp_grid	1
 00017DB8	FUN_00017db8	0001792E	FUN_0001792e	1
