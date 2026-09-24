@@ -1337,6 +1337,19 @@ target_link_libraries(shadowrun_ghidra_entity_close_range_test
 add_test(NAME shadowrun_ghidra_entity_close_range
          COMMAND shadowrun_ghidra_entity_close_range_test)
 
+add_library(shadowrun_ghidra_entity_tile_mapping STATIC
+    src/entity_tile_mapping_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_tile_mapping PUBLIC include)
+
+add_executable(shadowrun_ghidra_entity_tile_mapping_test
+    tests/entity_tile_mapping_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_tile_mapping_test
+    PRIVATE shadowrun_ghidra_entity_tile_mapping)
+add_test(NAME shadowrun_ghidra_entity_tile_mapping
+         COMMAND shadowrun_ghidra_entity_tile_mapping_test)
+
 add_library(shadowrun_ghidra_entity_boundary_transition STATIC
     src/entity_boundary_transition_conversion.cpp
 )

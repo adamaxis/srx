@@ -1028,6 +1028,10 @@ without exposing the original byte-pointer layout.
 The `0x144E8` close-range wrapper now points to the typed close-range service
 boundary rather than reproducing the source call frame.
 
+The coordinate helper at `0x14640` now returns a typed quotient/remainder tile
+mapping. A zero map stride is rejected as an invalid host input instead of
+reaching the source division fault.
+
 The compact row-writer family is now typed as well. `0x1184` emits one masked
 row with optional `0x8F80`/`0x8F02` display-increment controls, `0x11C0`
 repeats a source row at `0x80`-byte destination strides, and `0x11F6`
