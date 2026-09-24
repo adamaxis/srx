@@ -7,7 +7,7 @@
 //   0x00000BF2 latch_controller_events
 //   0x0000195C sample_controller_input
 //   0x0000C0DA render_title_text_source
-//   0x0000C216 FUN_0000c216
+//   0x0000C216 build_grouped_decimal_glyphs
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x0001882E FUN_0001882e
 //   0x0001897C FUN_0001897c
@@ -36,15 +36,15 @@ void FUN_00018aa6(void)
           FUN_0001897c();
           render_title_text_source();
           render_title_text_source();
-          FUN_0000c216();
-          FUN_0000c216();
-          FUN_0000c216();
-          FUN_0000c216();
-          FUN_0000c216();
-          FUN_0000c216();
+          build_grouped_decimal_glyphs();
+          build_grouped_decimal_glyphs();
+          build_grouped_decimal_glyphs();
+          build_grouped_decimal_glyphs();
+          build_grouped_decimal_glyphs();
+          build_grouped_decimal_glyphs();
           sVar1 = 3;
           do {
-            FUN_0000c216();
+            build_grouped_decimal_glyphs();
             sVar1 = sVar1 + -1;
           } while (sVar1 != -1);
           return;

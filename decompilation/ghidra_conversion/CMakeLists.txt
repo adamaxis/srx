@@ -1284,3 +1284,16 @@ target_link_libraries(shadowrun_ghidra_entity_action_code_test
     PRIVATE shadowrun_ghidra_entity_action_code)
 add_test(NAME shadowrun_ghidra_entity_action_code
          COMMAND shadowrun_ghidra_entity_action_code_test)
+
+add_library(shadowrun_ghidra_decimal_glyph STATIC
+    src/decimal_glyph_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_decimal_glyph PUBLIC include)
+
+add_executable(shadowrun_ghidra_decimal_glyph_test
+    tests/decimal_glyph_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_decimal_glyph_test
+    PRIVATE shadowrun_ghidra_decimal_glyph)
+add_test(NAME shadowrun_ghidra_decimal_glyph
+         COMMAND shadowrun_ghidra_decimal_glyph_test)

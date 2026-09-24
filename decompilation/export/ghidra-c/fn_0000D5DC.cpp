@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_title_text_source
-//   0x0000C216 FUN_0000c216
+//   0x0000C216 build_grouped_decimal_glyphs
 
 
 void FUN_0000d5dc(void)
@@ -20,15 +20,15 @@ void FUN_0000d5dc(void)
     uVar1 = render_title_text_source();
     if ((ushort)((ushort)DAT_00fff0d1 + (short)CONCAT31((int3)((uint)uVar1 >> 8),DAT_00fff0d0) * 4)
         == 6) {
-      FUN_0000c216();
-      FUN_0000c216();
+      build_grouped_decimal_glyphs();
+      build_grouped_decimal_glyphs();
       goto LAB_0000d71e;
     }
   }
   else {
     render_title_text_source();
   }
-  FUN_0000c216();
+  build_grouped_decimal_glyphs();
 LAB_0000d71e:
   uVar2 = CONCAT22((short)((uint)unaff_D5 >> 0x10),*(undefined2 *)(DAT_00fffc04 + 0x90));
   sVar4 = 3;
@@ -37,8 +37,8 @@ LAB_0000d71e:
     if ((uVar2 & 1 << (uVar3 & 0x1f)) != 0) {
       render_title_text_source();
       render_title_text_source();
-      FUN_0000c216();
-      FUN_0000c216();
+      build_grouped_decimal_glyphs();
+      build_grouped_decimal_glyphs();
       break;
     }
     uVar3 = (uint)(ushort)((short)uVar3 + 1);
@@ -49,7 +49,7 @@ LAB_0000d71e:
   do {
     if ((uVar2 & 1 << (uVar3 & 0x1f)) != 0) {
       render_title_text_source();
-      FUN_0000c216();
+      build_grouped_decimal_glyphs();
       return;
     }
     uVar3 = (uint)(ushort)((short)uVar3 + 1);

@@ -23,7 +23,7 @@ void FUN_00010276(void)
   render_title_text_source();
   FUN_000107ce((unaff_D7 & 0xffff) * 0x30);
   FUN_0001088c();
-  FUN_0000c216();
+  build_grouped_decimal_glyphs();
   return;
 }
 

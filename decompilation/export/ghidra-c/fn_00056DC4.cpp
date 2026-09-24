@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000D94 wait_for_controller_event
 //   0x0000C0DA render_title_text_source
-//   0x0000C216 FUN_0000c216
+//   0x0000C216 build_grouped_decimal_glyphs
 //   0x0001275C FUN_0001275c
 //   0x000575F8 FUN_000575f8
 //   0x00057628 FUN_00057628
@@ -59,8 +59,8 @@ uint FUN_00056dc4(void)
           }
           FUN_00057c46();
           render_title_text_source();
-          FUN_0000c216();
-          FUN_0000c216();
+          build_grouped_decimal_glyphs();
+          build_grouped_decimal_glyphs();
           bVar13 = extraout_D1 - DAT_00fffbfe < 0;
           if (DAT_00fffbfe < extraout_D1) {
             render_title_text_source();
@@ -95,8 +95,8 @@ uint FUN_00056dc4(void)
           if (-1 < DAT_00fff0b3) {
             FUN_00057c46();
             render_title_text_source();
-            FUN_0000c216();
-            FUN_0000c216();
+            build_grouped_decimal_glyphs();
+            build_grouped_decimal_glyphs();
             if (DAT_00fffbfe < extraout_D1_00) {
               render_title_text_source();
               uVar6 = wait_for_controller_event();
@@ -139,7 +139,7 @@ uint FUN_00056dc4(void)
           return uVar6;
         }
         render_title_text_source();
-        FUN_0000c216();
+        build_grouped_decimal_glyphs();
         uVar14 = FUN_00057b8c();
         if (DAT_00fff0dc == '\0') {
           DAT_00fffbfe = DAT_00fffbfe - (int)uVar14;
@@ -215,7 +215,7 @@ uint FUN_00056dc4(void)
         }
         if (((uVar6 & 1 << (DAT_00fff0d5 & 0x1f)) == 0) && (_DAT_00fff0be <= DAT_00fffbfe)) {
           render_title_text_source();
-          FUN_0000c216();
+          build_grouped_decimal_glyphs();
           uVar14 = FUN_00057b8c();
           iVar4 = DAT_00fffc04;
           bVar2 = DAT_00fff0d5;
@@ -326,7 +326,7 @@ LAB_00056f4a:
     }
     if (((bVar2 != 0x29) && (bVar2 != 0x2a)) && (bVar2 != 0x2b)) {
       render_title_text_source();
-      FUN_0000c216();
+      build_grouped_decimal_glyphs();
       uVar6 = FUN_00057b8c();
       iVar4 = DAT_00fffc04;
       bVar2 = DAT_00fff0d0;
@@ -370,7 +370,7 @@ LAB_00056f4a:
       return uVar6;
     }
     render_title_text_source();
-    FUN_0000c216();
+    build_grouped_decimal_glyphs();
     uVar14 = FUN_00057b8c();
     iVar4 = DAT_00fffc04;
     uVar6 = (uint)((ulonglong)uVar14 >> 0x20);

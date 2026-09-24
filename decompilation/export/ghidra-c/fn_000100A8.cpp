@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000011C0 write_repeated_vdp_grid
-//   0x0000C216 FUN_0000c216
+//   0x0000C216 build_grouped_decimal_glyphs
 //   0x00010156 FUN_00010156
 //   0x00010172 FUN_00010172
 //   0x0001055E FUN_0001055e
@@ -28,7 +28,7 @@ void FUN_000100a8(void)
     DAT_00fff096 = 1;
   }
   *(char *)(DAT_00fffc04 + 0x9d) = (char)DAT_00fff096;
-  FUN_0000c216();
+  build_grouped_decimal_glyphs();
   FUN_00010172();
   write_repeated_vdp_grid();
   sVar2 = DAT_00fff098;

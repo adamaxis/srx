@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E9C make_vdp_transfer_command
-//   0x0000C216 FUN_0000c216
+//   0x0000C216 build_grouped_decimal_glyphs
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -27,7 +27,7 @@ void FUN_000120e4(void)
   if (*(char *)(DAT_00fffc04 + 0x4f) < (char)_DAT_00ffdd2a) {
     _DAT_00ffdd2a = 1;
   }
-  FUN_0000c216();
+  build_grouped_decimal_glyphs();
   return;
 }
 

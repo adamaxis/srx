@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000C216
-// Name: FUN_0000c216
+// Name: build_grouped_decimal_glyphs
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E9C make_vdp_transfer_command
@@ -8,7 +8,7 @@
 
 /* WARNING: Removing unreachable block (ram,0x0000c25a) */
 
-undefined8 FUN_0000c216(void)
+undefined8 build_grouped_decimal_glyphs(void)
 
 {
   undefined4 in_D0;

@@ -10,7 +10,7 @@ void FUN_0000c3f8(void)
 
 {
   write_vdp_grid();
-  FUN_0000c216();
+  build_grouped_decimal_glyphs();
   return;
 }
 

@@ -10,7 +10,7 @@
 //   0x00003404 upload_field_asset_setup
 //   0x000036FC FUN_000036fc
 //   0x0000C0DA render_title_text_source
-//   0x0000C216 FUN_0000c216
+//   0x0000C216 build_grouped_decimal_glyphs
 //   0x000111D0 upload_menu_tile_block
 //   0x00011454 reset_menu_upload_cursor_and_upload
 //   0x00011712 FUN_00011712
@@ -48,7 +48,7 @@ void switchD_00011768::caseD_2(void)
   FUN_00012c36();
   FUN_00011900();
   render_title_text_source();
-  FUN_0000c216();
+  build_grouped_decimal_glyphs();
   uVar2 = _DAT_00fff0d0;
   _DAT_00fff0d0 = CONCAT11(2,DAT_00fff0d1);
   upload_menu_tile_block();
@@ -150,7 +150,7 @@ LAB_00011be6:
     DAT_00ffdd28 = 0;
     render_title_text_source();
     _DAT_00ffdd2a = (uint)*(byte *)(DAT_00fffc04 + 0x4f);
-    FUN_0000c216();
+    build_grouped_decimal_glyphs();
     FUN_0001209a();
     uVar2 = _DAT_00fff0d0;
     _DAT_00fff0d0 = CONCAT11(2,DAT_00fff0d1);

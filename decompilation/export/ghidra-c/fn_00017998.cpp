@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_title_text_source
-//   0x0000C216 FUN_0000c216
+//   0x0000C216 build_grouped_decimal_glyphs
 //   0x00017C3C FUN_00017c3c
 
 
@@ -23,7 +23,7 @@ void FUN_00017998(void)
       render_title_text_source();
     }
     if (-1 < (short)(unaff_D3w + -2)) {
-      FUN_0000c216();
+      build_grouped_decimal_glyphs();
       if (-1 < (short)(unaff_D3w + -3)) {
         return;
       }

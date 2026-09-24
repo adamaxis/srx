@@ -678,6 +678,12 @@ doubles the selector, adds the base as an 8-bit operation, and reads the byte
 table at entity-record offset `0x66`. `read_entity_action_code` preserves that
 byte wrap while returning an empty optional for a truncated host record.
 
+The disassembly of `0xC216` is now captured as
+`build_grouped_decimal_glyphs`: it emits the decimal remainder stream from
+least significant digit upward, inserts the source special glyph after every
+three digits, and handles zero as a single digit. The native side receives
+glyph values instead of writing directly to VDP data.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames

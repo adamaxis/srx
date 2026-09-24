@@ -5568,7 +5568,7 @@
 0000C41E: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 0000C424: move.l (0x00fffbfe).l,D1
 0000C42A: move.w #0x6000,D2w
-0000C42E: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0000C42E: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0000C434: rts
 0000C436: clr.l D0
 0000C438: move.b (0x00fff0dc).l,D0b
@@ -5772,7 +5772,7 @@
 0000CCF2: movea.l #0xca2c,A2
 0000CCF8: move.l (0x00fffbfe).l,D1
 0000CCFE: move.w #0x6000,D2w
-0000CD02: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0000CD02: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0000CD08: clr.b (0x00fff0dc).l
 0000CD0E: clr.w D2w
 0000CD10: bra.w 0x0000cd4a
@@ -5960,34 +5960,34 @@
 0000D1AA: move.w #0x6000,D2w
 0000D1AE: moveq #0x3,D7
 0000D1B0: move.b (A0)+,D1b
-0000D1B2: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0000D1B2: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0000D1B8: adda.l #0x80,A2
 0000D1BE: dbf D7w,0x0000d1b0
 0000D1C2: movea.l #0xc3c6,A2
 0000D1C8: moveq #0x1,D7
 0000D1CA: move.b (A0)+,D1b
-0000D1CC: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0000D1CC: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0000D1D2: adda.l #0x80,A2
 0000D1D8: dbf D7w,0x0000d1ca
 0000D1DC: move.b (A0)+,D1b
 0000D1DE: subq.l #0x2,A2
 0000D1E0: move.b (A0)+,D1b
-0000D1E2: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0000D1E2: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0000D1E8: adda.l #0x82,A2
 0000D1EE: move.b (A0)+,D1b
-0000D1F0: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0000D1F0: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0000D1F6: suba.l #0x80,A2
 0000D1FC: addq.l #0x2,A2
 0000D1FE: movea.l (0x00fffc04).l,A0
 0000D204: adda.l #0x8e,A0
 0000D20A: move.b (A0)+,D1b
-0000D20C: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0000D20C: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0000D212: movea.l (0x00fffc04).l,A0
 0000D218: adda.l #0x80,A0
 0000D21E: movea.l #0xc6a2,A2
 0000D224: moveq #0x5,D7
 0000D226: move.b (A0)+,D1b
-0000D228: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0000D228: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0000D22E: adda.l #0x80,A2
 0000D234: dbf D7w,0x0000d226
 0000D238: movea.l (0x00fffc04).l,A0
@@ -5995,7 +5995,7 @@
 0000D244: movea.l #0xc6c6,A2
 0000D24A: moveq #0x5,D7
 0000D24C: move.b (A0)+,D1b
-0000D24E: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0000D24E: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0000D254: adda.l #0x80,A2
 0000D25A: dbf D7w,0x0000d24c
 0000D25E: move.w #0x4000,D1w
@@ -6245,18 +6245,18 @@
 0000D6D8: mulu.w #0x80,D3
 0000D6DC: adda.l D0,A2
 0000D6DE: adda.l D3,A2
-0000D6E0: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0000D6E0: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0000D6E6: bra.w 0x0000d71e
 0000D6EA: movea.l (0x00fffc04).l,A0
 0000D6F0: adda.l #0x7e,A0
 0000D6F6: move.b (A0)+,D1b
 0000D6F8: movea.l #0xc4c4,A2
-0000D6FE: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0000D6FE: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0000D704: movea.l (0x00fffc04).l,A0
 0000D70A: adda.l #0x8e,A0
 0000D710: move.b (A0)+,D1b
 0000D712: movea.l #0xc4c8,A2
-0000D718: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0000D718: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0000D71E: clr.l D1
 0000D720: movea.l (0x00fffc04).l,A0
 0000D726: adda.l #0x90,A0
@@ -6279,11 +6279,11 @@
 0000D76E: add.w D6w,D1w
 0000D770: movea.l #0xc428,A2
 0000D776: move.w #0x6000,D2w
-0000D77A: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0000D77A: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0000D780: move.b (0x2,A0),D1b
 0000D784: add.w D6w,D1w
 0000D786: movea.l #0xc4a8,A2
-0000D78C: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0000D78C: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0000D792: bra.w 0x0000d79c
 0000D796: addq.w #0x1,D6w
 0000D798: dbf D7w,0x0000d732
@@ -6303,7 +6303,7 @@
 0000D7CE: add.w D6w,D1w
 0000D7D0: movea.l #0xc3a8,A2
 0000D7D6: move.w #0x6000,D2w
-0000D7DA: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0000D7DA: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0000D7E0: rts
 0000D7E2: addq.w #0x1,D6w
 0000D7E4: dbf D7w,0x0000d7a0
@@ -6429,10 +6429,10 @@
 0000D9B6: ext.l D1
 0000D9B8: move.w #0x4000,D2w
 0000D9BC: movea.l #0xccbe,A2
-0000D9C2: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0000D9C2: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0000D9C8: move.b (0x00fff0b6).l,D1b
 0000D9CE: movea.l #0xcca8,A2
-0000D9D4: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0000D9D4: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0000D9DA: bra.w 0x0000da00
 0000D9DE: move.b #-0x1,(0x00fff0b3).l
 0000D9E6: move.l A1,-(SP) ; data Stack[-0x4]
@@ -6456,7 +6456,7 @@
 0000DA38: clr.l D1
 0000DA3A: move.b (A0),D1b
 0000DA3C: movea.l #0xca1e,A2
-0000DA42: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0000DA42: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0000DA48: rts
 0000DA4A: movem.l {  A6 A5 A4 A3 A2 A1 A0 D7 D6 D5 D4 D3 D2 D1 D0},-(SP)
 0000DA4E: lea (0xc1b3b).l,A1 ; data 000c1b3b
@@ -7409,11 +7409,11 @@
 0000FA80: move.w #0x1,D1w
 0000FA84: movea.l #0xcbae,A2
 0000FA8A: move.w #0x6000,D2w
-0000FA8E: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0000FA8E: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0000FA94: move.b (0x00fff0b9).l,D1b
 0000FA9A: addq.w #0x1,D1w
 0000FA9C: movea.l #0xcbba,A2
-0000FAA2: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0000FAA2: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0000FAA8: clr.l D2
 0000FAAA: bra.w 0x0000fb12
 0000FAAE: clr.l D1
@@ -7424,7 +7424,7 @@
 0000FAC8: addq.l #0x1,D1
 0000FACA: movea.l #0xcbae,A2
 0000FAD0: move.w #0x6000,D2w
-0000FAD4: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0000FAD4: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0000FADA: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 0000FAE0: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 0000FAE6: jsr 0x0000195c.l ; call 0000195C sample_controller_input
@@ -7768,7 +7768,7 @@
 000100E2: move.b D1b,(0x9d,A0)
 000100E6: move.w #0x0,D2w
 000100EA: movea.l #0xc6b6,A2
-000100F0: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+000100F0: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 000100F6: lea (0xc85a8).l,A2 ; data 000c85a8
 000100FC: bsr.w 0x00010172 ; call 00010172 FUN_00010172
 00010100: move.l #0xc588,D4
@@ -7908,7 +7908,7 @@
 00010326: move.w (0x00fff096).l,D1w
 0001032C: move.w #0x0,D2w
 00010330: movea.l #0xc6b6,A2
-00010336: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00010336: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0001033C: rts
 0001033E: cmpi.b #0x1,(0x9c,A0)
 00010344: bne.w 0x0001035a
@@ -8826,11 +8826,11 @@
 00011314: move.b (0x4c,A0),D1b
 00011318: movea.l #0xc2b4,A2
 0001131E: move.w #0x6000,D2w
-00011322: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00011322: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00011328: clr.l D1
 0001132A: move.b (0x9c,A0),D1b
 0001132E: movea.l #0xc334,A2
-00011334: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00011334: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0001133A: bsr.w 0x00011352 ; call 00011352 FUN_00011352
 0001133E: clr.l D0
 00011340: lea (0xcf384).l,A1 ; data 000cf384
@@ -9308,7 +9308,7 @@
 00011B7E: move.b (0x4f,A0),D1b
 00011B82: movea.l #0xc4b4,A2
 00011B88: move.w #0x6000,D2w
-00011B8C: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00011B8C: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00011B92: move.w (0x00fff0d0).l,-(SP)
 00011B98: move.b #0x2,(0x00fff0d0).l
 00011BA0: lea (0xcd33e).l,A1 ; data 000cd33e
@@ -9459,7 +9459,7 @@
 00011E58: move.b (0x4f,A0),D1b
 00011E5C: move.l D1,(0x00ffdd2a).l
 00011E62: move.w #0x6000,D2w
-00011E66: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00011E66: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00011E6C: bsr.w 0x0001209a ; call 0001209A FUN_0001209a
 00011E70: move.w (0x00fff0d0).l,-(SP)
 00011E76: move.b #0x2,(0x00fff0d0).l
@@ -9624,7 +9624,7 @@
 00012130: move.l D1,(0x00ffdd2a).l
 00012136: movea.l #0xc4b2,A2
 0001213C: move.w #0x6000,D2w
-00012140: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00012140: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00012146: rts
 00012148: movea.l (0x00fffc04).l,A0
 0001214E: clr.l D0
@@ -14248,7 +14248,7 @@
 00017A16: move.b (0x6,A6,D0w*0x1),D1b ; data 00ff1106
 00017A1A: movea.l #0xc0c6,A2
 00017A20: move.w #-0x8000,D2w
-00017A24: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00017A24: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00017A2A: cmpi.w #0x3,D3w
 00017A2E: bmi.w 0x00017a46
 00017A32: rts
@@ -14314,7 +14314,7 @@
 00017B32: bra.w 0x00017b38
 00017B36: addq.w #0x1,D1w
 00017B38: move.w #-0x8000,D2w
-00017B3C: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00017B3C: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00017B42: bra.w 0x00017b52
 00017B46: lea (0xe4402).l,A1 ; data 000e4402
 00017B4C: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
@@ -14342,7 +14342,7 @@
 00017BA0: bra.w 0x00017ba6
 00017BA4: addq.w #0x1,D1w
 00017BA6: move.w #-0x8000,D2w
-00017BAA: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00017BAA: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00017BB0: rts
 00017BB2: lea (0xe4402).l,A1 ; data 000e4402
 00017BB8: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
@@ -14370,7 +14370,7 @@
 00017C12: move.b (0x1a,A6,D3w*0x1),D3b ; data 00fffbd8
 00017C16: move.b (0xe,A6,D3w*0x1),D1b ; data 00fffbcc
 00017C1A: move.w #-0x8000,D2w
-00017C1E: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00017C1E: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00017C24: bsr.w 0x00017c52 ; call 00017C52 FUN_00017c52
 00017C28: rts
 00017C2A: move.l #0xc086,D4
@@ -15044,7 +15044,7 @@
 000188BC: move.b (0xe,A1,D6w*0x1),D1b ; data 00fffbcc
 000188C0: movea.l #0xc1c2,A2
 000188C6: move.w #0x0,D2w
-000188CA: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+000188CA: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 000188D0: lea (0xe31f2).l,A1 ; data 000e31f2
 000188D6: move.l D6,D7
 000188D8: mulu.w #0x4,D7
@@ -15073,15 +15073,15 @@
 0001893E: bsr.w 0x000195a6 ; call 000195A6 FUN_000195a6
 00018942: movea.l #0xc3c0,A2
 00018948: move.w #0x0,D2w
-0001894C: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0001894C: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00018952: lea (0xfffbbe).l,A1 ; data 00fffbbe
 00018958: bsr.w 0x0001952c ; call 0001952C FUN_0001952c
 0001895C: movea.l #0xc2c4,A2
-00018962: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00018962: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00018968: bsr.w 0x0001957e ; call 0001957E FUN_0001957e
 0001896C: move.l D6,D1
 0001896E: movea.l #0xc344,A2
-00018974: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00018974: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0001897A: rts
 0001897C: lea (0xd8454).l,A1 ; data 000d8454
 00018982: move.l #0xc126,D4
@@ -15203,29 +15203,29 @@
 00018BA8: movea.l #0xc346,A2
 00018BAE: move.w #0x0,D2w
 00018BB2: move.b (A0)+,D1b
-00018BB4: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00018BB4: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00018BBA: adda.l #0x80,A2
 00018BC0: move.b (A0)+,D1b
-00018BC2: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00018BC2: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00018BC8: adda.l #0x100,A2
 00018BCE: move.w (A0)+,D1w
-00018BD0: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00018BD0: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00018BD6: adda.l #0x80,A2
 00018BDC: move.w (A0)+,D1w
-00018BDE: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00018BDE: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00018BE4: adda.l #0x80,A2
 00018BEA: clr.l D1
 00018BEC: move.b (A0)+,D1b
-00018BEE: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00018BEE: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00018BF4: adda.l #0x100,A2
 00018BFA: move.b (A0)+,D1b
-00018BFC: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00018BFC: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00018C02: adda.l #0x100,A2
 00018C08: movea.l #0xc7c6,A2
 00018C0E: move.w #0x3,D7w
 00018C12: clr.l D1
 00018C14: move.b (A0)+,D1b
-00018C16: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00018C16: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00018C1C: adda.l #0x80,A2
 00018C22: dbf D7w,0x00018c12
 00018C26: rts
@@ -20169,7 +20169,7 @@
 00020884: adda.l #0x22,A2
 0002088A: clr.l D1
 0002088C: move.b (0x00fff0e0).l,D1b
-00020892: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00020892: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00020898: lea (0xfe5ec).l,A0 ; data 000fe5ec
 0002089E: move.b #-0x1,(0x00fff10c).l
 000208A6: rts
@@ -23736,7 +23736,7 @@
 00054A78: move.b (0x6,A6,D0w*0x1),D1b ; data 00ff1106
 00054A7C: movea.l #0xc52c,A2
 00054A82: move.w #-0x8000,D2w
-00054A86: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00054A86: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00054A8C: rts
 00054A8E: moveq #0xa,D1
 00054A90: jsr 0x00000d3a.l ; call 00000D3A sample_source_random_bound
@@ -25206,7 +25206,7 @@
 00056FB4: move.l (0x00fff0be).l,D1
 00056FBA: movea.l #0xc5b6,A2
 00056FC0: move.w #0x6000,D2w
-00056FC4: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00056FC4: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00056FCA: bsr.w 0x00057b8c ; call 00057B8C FUN_00057b8c
 00056FCE: tst.b (0x00fff0dc).l
 00056FD4: bne.w 0x00057024
@@ -25289,7 +25289,7 @@
 0005715A: move.l (0x00fff0be).l,D1
 00057160: movea.l #0xc5b6,A2
 00057166: move.w #0x6000,D2w
-0005716A: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0005716A: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00057170: bsr.w 0x00057b8c ; call 00057B8C FUN_00057b8c
 00057174: tst.b (0x00fff0dc).l
 0005717A: bne.w 0x000571b0
@@ -25387,7 +25387,7 @@
 0005731E: move.l (0x00fff0be).l,D1
 00057324: movea.l #0xc5b6,A2
 0005732A: move.w #0x6000,D2w
-0005732E: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0005732E: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00057334: bsr.w 0x00057b8c ; call 00057B8C FUN_00057b8c
 00057338: tst.b (0x00fff0dc).l
 0005733E: bne.w 0x000573fa
@@ -25478,7 +25478,7 @@
 000574A8: move.l (0x00fff0be).l,D1
 000574AE: movea.l #0xc5ba,A2
 000574B4: move.w #0x6000,D2w
-000574B8: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+000574B8: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 000574BE: bsr.w 0x00057b8c ; call 00057B8C FUN_00057b8c
 000574C2: tst.b (0x00fff0dc).l
 000574C8: bne.w 0x00057518
@@ -25514,10 +25514,10 @@
 00057556: move.b (0x00fff0d6).l,D1b
 0005755C: movea.l #0xc2a4,A2
 00057562: move.w #0x6000,D2w
-00057566: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00057566: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0005756C: move.l (0x00fff0be).l,D1
 00057572: movea.l #0xc32a,A2
-00057578: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00057578: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0005757E: cmp.l (0x00fffbfe).l,D1
 00057584: ble.w 0x000575a4
 00057588: movea.l #0xc58e,A2
@@ -25631,7 +25631,7 @@
 00057754: move.l (0x00fff0be).l,D1
 0005775A: movea.l #0xc5b4,A2
 00057760: move.w #0x6000,D2w
-00057764: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00057764: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0005776A: bsr.w 0x00057b8c ; call 00057B8C FUN_00057b8c
 0005776E: tst.b (0x00fff0dc).l
 00057774: bne.w 0x000577b8
@@ -25665,10 +25665,10 @@
 000577F6: move.b (0x00fff0d6).l,D1b
 000577FC: movea.l #0xc2a6,A2
 00057802: move.w #0x6000,D2w
-00057806: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00057806: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0005780C: move.l (0x00fff0be).l,D1
 00057812: movea.l #0xc32c,A2
-00057818: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00057818: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0005781E: cmp.l (0x00fffbfe).l,D1
 00057824: ble.w 0x00057844
 00057828: movea.l #0xc58e,A2
@@ -26041,7 +26041,7 @@
 00057E68: addq.w #0x1,D1w
 00057E6A: movea.l #0xc428,A2
 00057E70: move.w #0x6000,D2w
-00057E74: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00057E74: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00057E7A: clr.l D1
 00057E7C: move.l (0x00fff0be).l,D1
 00057E82: move.l A2,-(SP) ; data Stack[-0x8]
@@ -26049,7 +26049,7 @@
 00057E88: movea.l (SP)+,A2
 00057E8A: move.w #0x6000,D2w
 00057E8E: movea.l #0xc734,A2
-00057E94: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00057E94: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00057E9A: lea (0x1aaf40).l,A0 ; data 001aaf40
 00057EA0: clr.l D0
 00057EA2: move.b (0x00fff0b6).l,D0b
@@ -26101,15 +26101,15 @@
 00057F64: bsr.w 0x00057a6e ; call 00057A6E FUN_00057a6e
 00057F68: movea.l #0xc72c,A2
 00057F6E: move.w #0x6000,D2w
-00057F72: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00057F72: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00057F78: movea.l (0x00fffc04).l,A0
 00057F7E: clr.l D1
 00057F80: move.b (0x7e,A0),D1b
 00057F84: movea.l #0xc5ae,A2
-00057F8A: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00057F8A: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00057F90: move.b (0x8e,A0),D1b
 00057F94: movea.l #0xc5b2,A2
-00057F9A: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00057F9A: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00057FA0: move.w (0x90,A0),D7w
 00057FA4: lea (0x1aa8a0).l,A1 ; data 001aa8a0
 00057FAA: clr.l D0
@@ -26133,11 +26133,11 @@
 00057FEA: divu.w #0xa,D0
 00057FEE: move.w D0w,D1w
 00057FF0: movea.l #0xc62e,A2
-00057FF6: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00057FF6: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00057FFC: swap D0
 00057FFE: move.w D0w,D1w
 00058000: movea.l #0xc632,A2
-00058006: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00058006: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0005800C: lea (0x1ac8c0).l,A1 ; data 001ac8c0
 00058012: clr.l D0
 00058014: move.b (0x00fff0d0).l,D0b
@@ -26227,20 +26227,20 @@
 00058190: move.b (0x00fff0d6).l,D1b
 00058196: movea.l #0xc236,A2
 0005819C: move.w #0x6000,D2w
-000581A0: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+000581A0: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 000581A6: move.l D0,D7
 000581A8: bsr.w 0x000575f8 ; call 000575F8 FUN_000575f8
 000581AC: add.w D2w,D6w
 000581AE: move.l D2,D1
 000581B0: movea.l #0xc692,A2
 000581B6: move.w #0x6000,D2w
-000581BA: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+000581BA: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 000581C0: move.l D6,D1
 000581C2: movea.l #0xc6b8,A2
-000581C8: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+000581C8: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 000581CE: move.l (0x00fff0be).l,D1
 000581D4: movea.l #0xc72c,A2
-000581DA: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+000581DA: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 000581E0: lea (0x1ac90c).l,A1 ; data 001ac90c
 000581E6: mulu.w #0xc,D7
 000581EA: adda.l D7,A1
@@ -26282,22 +26282,22 @@
 00058274: move.w #0x6000,D2w
 00058278: move.b (0x6,A0),D1b
 0005827C: movea.l #0xc52a,A2
-00058282: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00058282: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00058288: move.b (0x7,A0),D1b
 0005828C: movea.l #0xc420,A2
-00058292: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00058292: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00058298: move.b (0xc,A0),D1b
 0005829C: movea.l #0xc330,A2
-000582A2: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+000582A2: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 000582A8: move.b (0xd,A0),D1b
 000582AC: movea.l #0xc43e,A2
-000582B2: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+000582B2: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 000582B8: move.w (0x8,A0),D1w
 000582BC: movea.l #0xc230,A2
-000582C2: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+000582C2: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 000582C8: move.w (0xa,A0),D1w
 000582CC: movea.l #0xc2b0,A2
-000582D2: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+000582D2: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 000582D8: move.b (0x00fffbcb).l,D1b
 000582DE: cmp.b (A0),D1b
 000582E0: bmi.w 0x000582ea
@@ -26311,7 +26311,7 @@
 00058300: bsr.w 0x00057b42 ; call 00057B42 FUN_00057b42
 00058304: move.w #0x6000,D2w
 00058308: movea.l #0xc738,A2
-0005830E: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0005830E: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00058314: rts
 00058316: clr.l D0
 00058318: move.b (0x00fff0d0).l,D0b
@@ -26416,10 +26416,10 @@
 000584E2: move.b (0x00fff0d6).l,D1b
 000584E8: movea.l #0xc626,A2
 000584EE: move.w #0x6000,D2w
-000584F2: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+000584F2: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 000584F8: move.l (0x00fff0be).l,D1
 000584FE: movea.l #0xc6ac,A2
-00058504: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00058504: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0005850A: lea (0x1ac9b4).l,A1 ; data 001ac9b4
 00058510: move.b (0x00fff0d0).l,D0b
 00058516: mulu.w #0xc,D0
@@ -26470,7 +26470,7 @@
 000585CC: bsr.w 0x00057af6 ; call 00057AF6 FUN_00057af6
 000585D0: movea.l #0xc736,A2
 000585D6: move.w #0x6000,D2w
-000585DA: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+000585DA: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 000585E0: clr.b (0x00fff0b1).l
 000585E6: movea.l (SP)+,A1
 000585E8: move.w #0x6000,D1w
@@ -26497,7 +26497,7 @@
 0005864A: bsr.w 0x00057a6e ; call 00057A6E FUN_00057a6e
 0005864E: movea.l #0xc72c,A2
 00058654: move.w #0x6000,D2w
-00058658: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+00058658: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0005865E: lea (0xd25dc).l,A1 ; data 000d25dc
 00058664: move.b (0x00fff0d0).l,D0b
 0005866A: mulu.w #0x10,D0
@@ -26549,7 +26549,7 @@
 00058730: bsr.w 0x00057a6e ; call 00057A6E FUN_00057a6e
 00058734: movea.l #0xc730,A2
 0005873A: move.w #0x6000,D2w
-0005873E: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0005873E: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00058744: lea (0x1aacce).l,A1 ; data 001aacce
 0005874A: bra.w 0x000580ec
 0005874E: jsr 0x000130c0.l ; call 000130C0 FUN_000130c0
@@ -26562,7 +26562,7 @@
 0005876E: bsr.w 0x00057a44 ; call 00057A44 FUN_00057a44
 00058772: movea.l #0xc72c,A2
 00058778: move.w #0x6000,D2w
-0005877C: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
+0005877C: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00058782: lea (0xd4540).l,A1 ; data 000d4540
 00058788: adda.l D0,A1
 0005878A: bra.w 0x000585e8

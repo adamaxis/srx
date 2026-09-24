@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 //   0x0000C0DA render_title_text_source
-//   0x0000C216 FUN_0000c216
+//   0x0000C216 build_grouped_decimal_glyphs
 //   0x00013228 FUN_00013228
 //   0x00057610 FUN_00057610
 //   0x00057628 FUN_00057628
@@ -48,7 +48,7 @@ void FUN_00057c7a(void)
       if ((char)(DAT_00fff0d0 - 6) < '\0') {
         render_title_text_source();
         FUN_00057a6e();
-        FUN_0000c216();
+        build_grouped_decimal_glyphs();
         write_vdp_grid();
         render_title_text_source();
         render_title_text_source();
@@ -66,11 +66,11 @@ void FUN_00057c7a(void)
         render_title_text_source();
         render_title_text_source();
         FUN_00057a6e();
-        FUN_0000c216();
-        FUN_0000c216();
-        FUN_0000c216();
-        FUN_0000c216();
-        FUN_0000c216();
+        build_grouped_decimal_glyphs();
+        build_grouped_decimal_glyphs();
+        build_grouped_decimal_glyphs();
+        build_grouped_decimal_glyphs();
+        build_grouped_decimal_glyphs();
         render_title_text_source();
         render_title_text_source();
         goto LAB_0005804a;
@@ -145,8 +145,8 @@ LAB_0005842a:
       render_title_text_source(uVar2);
       if (-1 < DAT_00fff0b3) {
         render_title_text_source(uVar2);
-        FUN_0000c216();
-        FUN_0000c216();
+        build_grouped_decimal_glyphs();
+        build_grouped_decimal_glyphs();
       }
       write_vdp_grid();
       if (DAT_00fff0d0 == 0) {
@@ -178,7 +178,7 @@ LAB_00057d08:
     }
     if (DAT_00fff0b1 == '\0') {
       FUN_00057af6(&DAT_000d4540 + (uVar3 & 0xffff) * 0x30);
-      FUN_0000c216();
+      build_grouped_decimal_glyphs();
     }
     DAT_00fff0b1 = '\0';
 LAB_000585e8:

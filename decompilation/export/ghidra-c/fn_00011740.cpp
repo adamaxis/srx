@@ -22,7 +22,7 @@
 //   0x0000391A handle_mode_action_event
 //   0x000039F2 refresh_field_animation_assets
 //   0x0000C0DA render_title_text_source
-//   0x0000C216 FUN_0000c216
+//   0x0000C216 build_grouped_decimal_glyphs
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x0000C3E6 FUN_0000c3e6
 //   0x0000C3F8 FUN_0000c3f8
@@ -119,7 +119,7 @@ void FUN_00011740(void)
     FUN_00012c36();
     FUN_00011900();
     render_title_text_source();
-    FUN_0000c216();
+    build_grouped_decimal_glyphs();
     uVar20 = _DAT_00fff0d0;
     _DAT_00fff0d0 = CONCAT11(2,DAT_00fff0d1);
     upload_menu_tile_block();
@@ -221,7 +221,7 @@ LAB_00011be6:
       DAT_00ffdd28 = 0;
       render_title_text_source();
       _DAT_00ffdd2a = (uint)*(byte *)((int)DAT_00fffc04 + 0x4f);
-      FUN_0000c216();
+      build_grouped_decimal_glyphs();
       FUN_0001209a();
       uVar20 = _DAT_00fff0d0;
       _DAT_00fff0d0 = CONCAT11(2,DAT_00fff0d1);
@@ -363,25 +363,25 @@ LAB_0000d0d6:
     render_title_text_source();
     sVar11 = 3;
     do {
-      FUN_0000c216();
+      build_grouped_decimal_glyphs();
       sVar11 = sVar11 + -1;
     } while (sVar11 != -1);
     sVar11 = 1;
     do {
-      FUN_0000c216();
+      build_grouped_decimal_glyphs();
       sVar11 = sVar11 + -1;
     } while (sVar11 != -1);
-    FUN_0000c216();
-    FUN_0000c216();
-    FUN_0000c216();
+    build_grouped_decimal_glyphs();
+    build_grouped_decimal_glyphs();
+    build_grouped_decimal_glyphs();
     sVar11 = 5;
     do {
-      FUN_0000c216();
+      build_grouped_decimal_glyphs();
       sVar11 = sVar11 + -1;
     } while (sVar11 != -1);
     sVar11 = 5;
     do {
-      FUN_0000c216();
+      build_grouped_decimal_glyphs();
       sVar11 = sVar11 + -1;
     } while (sVar11 != -1);
 LAB_0000d25e:

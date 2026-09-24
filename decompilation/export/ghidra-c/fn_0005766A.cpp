@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000D94 wait_for_controller_event
 //   0x0000C0DA render_title_text_source
-//   0x0000C216 FUN_0000c216
+//   0x0000C216 build_grouped_decimal_glyphs
 //   0x00057B8C FUN_00057b8c
 //   0x00057C46 FUN_00057c46
 
@@ -38,7 +38,7 @@ LAB_0005770c:
       }
       _DAT_00fff0be = (uint)*(ushort *)(&DAT_001ac8e0 + (uint)DAT_00fff0d0 * 2);
       render_title_text_source();
-      FUN_0000c216();
+      build_grouped_decimal_glyphs();
       FUN_00057b8c();
       if (DAT_00fff0dc == '\0') {
         DAT_00fffbfe = DAT_00fffbfe - extraout_D1;

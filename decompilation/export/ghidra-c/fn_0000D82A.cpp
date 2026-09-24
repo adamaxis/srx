@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x000011C0 write_repeated_vdp_grid
 //   0x0000C0DA render_title_text_source
-//   0x0000C216 FUN_0000c216
+//   0x0000C216 build_grouped_decimal_glyphs
 //   0x0000DA4A FUN_0000da4a
 //   0x00012C5A FUN_00012c5a
 
@@ -92,12 +92,12 @@ LAB_0000d9a4:
   DAT_00fff0b8 = cVar1;
   DAT_00fff0b6 = DAT_00fff0b6 + '\x01';
   DAT_00fff0b7 = (undefined1)uVar3;
-  FUN_0000c216();
-  FUN_0000c216();
+  build_grouped_decimal_glyphs();
+  build_grouped_decimal_glyphs();
 LAB_0000da00:
   render_title_text_source();
   write_repeated_vdp_grid();
-  FUN_0000c216();
+  build_grouped_decimal_glyphs();
   return;
 }
 

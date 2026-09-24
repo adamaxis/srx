@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_title_text_source
-//   0x0000C216 FUN_0000c216
+//   0x0000C216 build_grouped_decimal_glyphs
 //   0x00011190 FUN_00011190
 //   0x00057A6E FUN_00057a6e
 
@@ -41,9 +41,9 @@ void FUN_00057d7e(void)
 LAB_00057e38:
     render_title_text_source();
     render_title_text_source();
-    FUN_0000c216();
+    build_grouped_decimal_glyphs();
     FUN_00057a6e(0xc428);
-    FUN_0000c216();
+    build_grouped_decimal_glyphs();
 LAB_00057e9a:
     FUN_00011190();
   }

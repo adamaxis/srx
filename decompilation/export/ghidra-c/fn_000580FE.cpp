@@ -7,7 +7,7 @@
 //   0x0000C0DA render_title_text_source
 //   0x0000C134 normalize_source_text_line
 //   0x0000C168 FUN_0000c168
-//   0x0000C216 FUN_0000c216
+//   0x0000C216 build_grouped_decimal_glyphs
 //   0x000575F8 FUN_000575f8
 
 
@@ -21,11 +21,11 @@ void FUN_000580fe(void)
     render_title_text_source();
     render_title_text_source();
     render_title_text_source();
-    FUN_0000c216();
+    build_grouped_decimal_glyphs();
     FUN_000575f8();
-    FUN_0000c216();
-    FUN_0000c216();
-    FUN_0000c216();
+    build_grouped_decimal_glyphs();
+    build_grouped_decimal_glyphs();
+    build_grouped_decimal_glyphs();
   }
   else {
     render_title_text_source();

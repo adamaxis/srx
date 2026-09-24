@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_title_text_source
-//   0x0000C216 FUN_0000c216
+//   0x0000C216 build_grouped_decimal_glyphs
 //   0x00017C3C FUN_00017c3c
 //   0x00017E04 FUN_00017e04
 //   0x00019DAC FUN_00019dac
@@ -43,12 +43,12 @@ void FUN_00017a5e(void)
           render_title_text_source();
         }
         else {
-          FUN_0000c216();
+          build_grouped_decimal_glyphs();
         }
         if (-1 < *(char *)((int)&PTR_DAT_000e31a7 + iVar3 + 1)) {
           render_title_text_source();
           if (-1 < (short)(unaff_D3w + -2)) {
-            FUN_0000c216();
+            build_grouped_decimal_glyphs();
             return;
           }
           render_title_text_source();

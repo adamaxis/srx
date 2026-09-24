@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_title_text_source
-//   0x0000C216 FUN_0000c216
+//   0x0000C216 build_grouped_decimal_glyphs
 //   0x00011352 FUN_00011352
 //   0x00011928 FUN_00011928
 //   0x00011ABE FUN_00011abe
@@ -58,8 +58,8 @@ LAB_00011304:
   }
   FUN_00012eae();
 LAB_00011312:
-  FUN_0000c216();
-  FUN_0000c216();
+  build_grouped_decimal_glyphs();
+  build_grouped_decimal_glyphs();
   FUN_00011352();
   FUN_00011abe();
   return;

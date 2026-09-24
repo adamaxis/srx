@@ -216,7 +216,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0000C134	normalize_source_text_line	44	unknown	ok	ghidra-c/fn_0000C134.cpp
 0000C160	FUN_0000c160	8	unknown	ok	ghidra-c/fn_0000C160.cpp
 0000C168	FUN_0000c168	174	unknown	ok	ghidra-c/fn_0000C168.cpp
-0000C216	FUN_0000c216	144	unknown	ok	ghidra-c/fn_0000C216.cpp
+0000C216	build_grouped_decimal_glyphs	144	unknown	ok	ghidra-c/fn_0000C216.cpp
 0000C376	move_wrapped_menu_cursor	60	unknown	ok	ghidra-c/fn_0000C376.cpp
 0000C3B2	FUN_0000c3b2	52	unknown	ok	ghidra-c/fn_0000C3B2.cpp
 0000C3E6	FUN_0000c3e6	18	unknown	ok	ghidra-c/fn_0000C3E6.cpp
