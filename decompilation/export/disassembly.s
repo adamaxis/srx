@@ -27593,7 +27593,7 @@
 00059F02: jsr 0x0005a70e.l ; call 0005A70E reset_title_intro_linear_sweep_a
 00059F08: jsr 0x0005a7ea.l ; call 0005A7EA reset_title_intro_linear_sweep_b
 00059F0E: jsr 0x0005a8c8.l ; call 0005A8C8 reset_title_intro_final_projection
-00059F14: bsr.w 0x0005a1ea ; call 0005A1EA FUN_0005a1ea
+00059F14: bsr.w 0x0005a1ea ; call 0005A1EA advance_title_intro_animation
 00059F18: move.w (0x00ffdf88).l,-(SP)
 00059F1E: move.w (SP)+,(0x00ffdf88).l
 00059F24: jsr 0x0000195c.l ; call 0000195C sample_controller_input
@@ -27605,7 +27605,7 @@
 00059F42: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00059F48: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 00059F4E: bsr.w 0x0005af2a ; call 0005AF2A advance_title_intro_schedule
-00059F52: jsr 0x0005a1ea.l ; call 0005A1EA FUN_0005a1ea
+00059F52: jsr 0x0005a1ea.l ; call 0005A1EA advance_title_intro_animation
 00059F58: move.w (SP)+,D7w
 00059F5A: cmpi.w #0x164,D7w
 00059F5E: bne.w 0x00059f6a

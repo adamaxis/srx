@@ -594,6 +594,14 @@ as the audio command-frame boundary and `0x59D12` as the post-intro callback;
 the larger mode implementation at `0x134D2` remains intentionally outside
 this slice.
 
+The `0x5A1EA` ambush-loop service is now `advance_title_intro_animation`.
+Each pass sets the source animation marker, invokes persistent sequence,
+motion, dual-sprite, timed-sprite, targeted-sweep, both linear-sweep, and
+final-projection services in order, clears the transient scene marker, and
+sets the display-dirty bit. The eight child implementations remain typed
+boundaries; this conversion captures the dispatcher rather than duplicating
+the native port's already-defended SAT/map choreography.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0005A1EA
-// Name: FUN_0005a1ea
+// Name: advance_title_intro_animation
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0005A252 advance_title_intro_persistent_sequence
@@ -15,7 +15,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0005a1ea(void)
+void advance_title_intro_animation(void)
 
 {
   DAT_00ffdd02 = 1;

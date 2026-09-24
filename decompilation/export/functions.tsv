@@ -831,7 +831,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00059F8E	advance_title_intro_overlay	242	unknown	ok	ghidra-c/fn_00059F8E.cpp
 0005A0A4	reset_title_intro_sequence	14	unknown	ok	ghidra-c/fn_0005A0A4.cpp
 0005A0B2	advance_title_intro_sequence	288	unknown	ok	ghidra-c/fn_0005A0B2.cpp
-0005A1EA	FUN_0005a1ea	90	unknown	ok	ghidra-c/fn_0005A1EA.cpp
+0005A1EA	advance_title_intro_animation	90	unknown	ok	ghidra-c/fn_0005A1EA.cpp
 0005A244	reset_title_intro_persistent_sequence	14	unknown	ok	ghidra-c/fn_0005A244.cpp
 0005A252	advance_title_intro_persistent_sequence	298	unknown	ok	ghidra-c/fn_0005A252.cpp
 0005A37C	render_title_intro_scene_entities	28	unknown	ok	ghidra-c/fn_0005A37C.cpp

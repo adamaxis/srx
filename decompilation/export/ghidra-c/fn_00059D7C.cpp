@@ -13,7 +13,7 @@
 //   0x00059F8E advance_title_intro_overlay
 //   0x0005A0A4 reset_title_intro_sequence
 //   0x0005A0B2 advance_title_intro_sequence
-//   0x0005A1EA FUN_0005a1ea
+//   0x0005A1EA advance_title_intro_animation
 //   0x0005A244 reset_title_intro_persistent_sequence
 //   0x0005A37C render_title_intro_scene_entities
 //   0x0005A3B0 reset_title_intro_motion
@@ -87,7 +87,7 @@ void run_title_intro_stage2(void)
   reset_title_intro_linear_sweep_a();
   reset_title_intro_linear_sweep_b();
   reset_title_intro_final_projection();
-  FUN_0005a1ea();
+  advance_title_intro_animation();
   sample_controller_input();
   sVar1 = 0x1f0;
   do {
@@ -97,7 +97,7 @@ void run_title_intro_stage2(void)
     sample_controller_input();
     latch_controller_events();
     advance_title_intro_schedule();
-    FUN_0005a1ea();
+    advance_title_intro_animation();
     if (sVar1 == 0x164) {
       render_title_intro_scroll_text_batch();
       render_title_intro_late_text_batch();
