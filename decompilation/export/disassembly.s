@@ -11815,7 +11815,7 @@
 000146B8: tst.b (0x0,A4,D5w*0x1) ; data 00ff1700
 000146BC: bne.w 0x00014756
 000146C0: clr.w (0xba,A0)
-000146C4: bsr.w 0x000148aa ; call 000148AA FUN_000148aa
+000146C4: bsr.w 0x000148aa ; call 000148AA find_first_occupied_obstruction_tile
 000146C8: cmp.w D5w,D1w
 000146CA: beq.w 0x000146e8
 000146CE: movea.l A0,A2
@@ -12107,7 +12107,7 @@
 00014AA2: tst.b (0x0,A4,D1w*0x1) ; data 00ff1700
 00014AA6: bne.w 0x00014ab4
 00014AAA: move.w D6w,D7w
-00014AAC: bsr.w 0x000148aa ; call 000148AA FUN_000148aa
+00014AAC: bsr.w 0x000148aa ; call 000148AA find_first_occupied_obstruction_tile
 00014AB0: bra.w 0x00014ae2
 00014AB4: move.w D6w,D7w
 00014AB6: addq.w #0x2,D7w

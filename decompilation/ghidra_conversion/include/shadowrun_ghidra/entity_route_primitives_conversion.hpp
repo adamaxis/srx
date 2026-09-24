@@ -2,12 +2,19 @@
 
 #include <array>
 #include <cstdint>
+#include <optional>
+#include <vector>
 
 namespace shadowrun::ghidra_conversion {
 
 struct HeadingProjection {
     std::int32_t world_x = 0;
     std::int32_t world_y = 0;
+};
+
+struct ObstructionSearchResult {
+    std::int32_t tile_index = 0;
+    std::int16_t step = 0;
 };
 
 struct ObstructionTileProjection {
@@ -19,6 +26,14 @@ struct ObstructionTileProjection {
 // ROM 0x14756: clear the pending-route and route-retry bits from an entity's
 // movement flags after route selection fails or completes.
 std::uint8_t clear_entity_route_flags(std::uint8_t movement_flags);
+
+// ROM 0x148AA: walk in one of the four cardinal obstruction-map directions
+// until a nonzero tile is found. The bounded host form returns no result at a
+// map edge instead of allowing the source pointer walk to escape its table.
+std::optional<ObstructionSearchResult> find_first_occupied_obstruction_tile(
+    std::int32_t starting_tile,
+    std::uint8_t direction_slot,
+    const std::vector<std::uint8_t>& obstruction_map);
 
 // ROM 0x14902: map world coordinates into the source obstruction-grid index.
 // The source grid uses 0x200 horizontal units and a 0x40-byte row stride.

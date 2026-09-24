@@ -80,7 +80,7 @@ FUN_000149c0:
              && ((&DAT_00ff1700)
                  [(short)(*(short *)(&DAT_000148ca + (short)(uVar3 + 2 & 6)) +
                          *(short *)(&DAT_000148ca + (short)(uVar3 + 4 & 6)) + sVar2)] == '\0')) {
-            FUN_000148aa();
+            find_first_occupied_obstruction_tile();
             sVar5 = extraout_D1w;
             iVar7 = extraout_A0_07;
           }

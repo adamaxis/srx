@@ -326,7 +326,7 @@ FUN_000149c0:
                  [(short)(*(short *)(&DAT_000148ca + (short)(uVar3 + 2 & 6)) +
                          *(short *)(&DAT_000148ca + (short)(uVar3 + 4 & 6)) + sVar6)] == '\0')) {
             *(undefined4 *)((int)register0x0000003c + -4) = 0x14ab0;
-            FUN_000148aa();
+            find_first_occupied_obstruction_tile();
             sVar4 = extraout_D1w;
             iVar2 = extraout_A0_18;
           }

@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00014854 FUN_00014854
-//   0x000148AA FUN_000148aa
+//   0x000148AA find_first_occupied_obstruction_tile
 //   0x000148D2 choose_dominant_axis_directions
 //   0x000149C0 FUN_000149c0
 //   0x00014AF4 FUN_00014af4
@@ -37,7 +37,7 @@ void FUN_00014682(void)
     return;
   }
   *(undefined2 *)(extraout_A0 + 0xba) = 0;
-  sVar1 = FUN_000148aa();
+  sVar1 = find_first_occupied_obstruction_tile();
   if (extraout_D1w != unaff_D5w) {
     psVar2 = (short *)((int)*(short *)(extraout_A0_00 + 0xba) + extraout_A0_00 + 0xbc);
     *psVar2 = unaff_D5w + sVar1;

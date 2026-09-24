@@ -6,6 +6,30 @@ std::uint8_t clear_entity_route_flags(const std::uint8_t movement_flags) {
     return static_cast<std::uint8_t>(movement_flags & ~0x0AU);
 }
 
+std::optional<ObstructionSearchResult> find_first_occupied_obstruction_tile(
+    const std::int32_t starting_tile,
+    const std::uint8_t direction_slot,
+    const std::vector<std::uint8_t>& obstruction_map) {
+    static constexpr std::array<std::int16_t, 8> kDirectionSteps{
+        -64, 0, 1, 0, 64, 0, -1, 0};
+    if (direction_slot > 6U || (direction_slot & 1U) != 0U) {
+        return std::nullopt;
+    }
+
+    const auto step = kDirectionSteps[direction_slot];
+    auto tile = starting_tile;
+    while (true) {
+        tile += step;
+        if (tile < 0 ||
+            tile >= static_cast<std::int32_t>(obstruction_map.size())) {
+            return std::nullopt;
+        }
+        if (obstruction_map[static_cast<std::size_t>(tile)] != 0U) {
+            return ObstructionSearchResult{tile, step};
+        }
+    }
+}
+
 std::uint16_t compute_obstruction_grid_index(
     const std::uint16_t world_x,
     const std::uint16_t world_y) {

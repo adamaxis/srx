@@ -78,6 +78,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0xAE5E	entity collision recheck scheduling	ghidra_conversion::schedule_entity_collision_recheck	shadowrun_native_port	partial		Typed pending-reaction bit and collision-recheck continuation
 0x1A2CC	first free effect slot	ghidra_conversion::allocate_first_free_effect_slot	shadowrun_native_port	partial		Typed eighteen-slot allocation with full-table sentinel
 0x14756	entity route flag cleanup	ghidra_conversion::clear_entity_route_flags	shadowrun_native_port	partial		Typed movement flag cleanup for completed or failed route selection
+0x148AA	first occupied obstruction tile	ghidra_conversion::find_first_occupied_obstruction_tile	shadowrun_native_port	partial		Bounded typed cardinal scan replacing source obstruction-map pointer walking
 0x14902	obstruction grid index	ghidra_conversion::compute_obstruction_grid_index	shadowrun_native_port	partial		Typed world-coordinate to obstruction-grid index conversion
 0x14B4E	obstruction tile projection	ghidra_conversion::decode_obstruction_tile_projection	shadowrun_native_port	partial		Typed packed-tile coordinate decode and relative direction selection
 0x14C56	heading position projection	ghidra_conversion::project_heading_position	shadowrun_native_port	partial		Extracted eight-entry heading vector table applied to typed world coordinates

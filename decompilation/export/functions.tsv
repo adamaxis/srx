@@ -385,7 +385,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00014764	FUN_00014764	156	unknown	ok	ghidra-c/fn_00014764.cpp
 00014800	FUN_00014800	84	unknown	ok	ghidra-c/fn_00014800.cpp
 00014854	FUN_00014854	86	unknown	ok	ghidra-c/fn_00014854.cpp
-000148AA	FUN_000148aa	32	unknown	ok	ghidra-c/fn_000148AA.cpp
+000148AA	find_first_occupied_obstruction_tile	32	unknown	ok	ghidra-c/fn_000148AA.cpp
 000148D2	choose_dominant_axis_directions	48	unknown	ok	ghidra-c/fn_000148D2.cpp
 00014902	compute_obstruction_grid_index	18	unknown	ok	ghidra-c/fn_00014902.cpp
 00014914	FUN_00014914	56	unknown	ok	ghidra-c/fn_00014914.cpp

@@ -160,7 +160,7 @@ FUN_000149c0:
                          *(short *)(&DAT_000148ca + (short)(uVar6 + 4 & 6)) + sVar7)] == '\0')) {
             puVar11[-0xffffffff00000002] = 1;
             puVar11[-0xffffffff00000001] = 0x4ab0;
-            FUN_000148aa();
+            find_first_occupied_obstruction_tile();
             sVar5 = extraout_D1w;
             iVar9 = extraout_A0_10;
           }

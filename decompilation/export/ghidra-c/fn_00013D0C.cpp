@@ -165,7 +165,7 @@ FUN_000149c0:
              && ((&DAT_00ff1700)
                  [(short)(*(short *)(&DAT_000148ca + (short)(uVar5 + 2 & 6)) +
                          *(short *)(&DAT_000148ca + (short)(uVar5 + 4 & 6)) + sVar2)] == '\0')) {
-            puVar3 = (ushort *)FUN_000148aa();
+            puVar3 = (ushort *)find_first_occupied_obstruction_tile();
             sVar6 = extraout_D1w;
             iVar8 = extraout_A0_11;
           }

@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00014756 clear_entity_route_flags
 //   0x00014764 FUN_00014764
-//   0x000148AA FUN_000148aa
+//   0x000148AA find_first_occupied_obstruction_tile
 //   0x00014902 compute_obstruction_grid_index
 //   0x00014914 FUN_00014914
 //   0x00014B4E decode_obstruction_tile_projection
@@ -52,7 +52,7 @@ void FUN_000149c0(void)
            ((&DAT_00ff1700)
             [(short)(*(short *)(&DAT_000148ca + (short)(uVar5 + 2 & 6)) +
                     *(short *)(&DAT_000148ca + (short)(uVar5 + 4 & 6)) + sVar1)] == '\0')) {
-          FUN_000148aa();
+          find_first_occupied_obstruction_tile();
           sVar4 = extraout_D1w;
           iVar6 = extraout_A0_04;
         }

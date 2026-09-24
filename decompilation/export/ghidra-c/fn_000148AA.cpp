@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000148AA
-// Name: FUN_000148aa
+// Name: find_first_occupied_obstruction_tile
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-short FUN_000148aa(void)
+short find_first_occupied_obstruction_tile(void)
 
 {
   short unaff_D5w;
