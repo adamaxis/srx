@@ -5077,7 +5077,7 @@
 0000B82A: addq.w #0x1,D0w
 0000B82C: cmpi.w #0x2,D0w
 0000B830: blt.w 0x0000baae
-0000B834: bsr.w 0x0000bc36 ; call 0000BC36 FUN_0000bc36
+0000B834: bsr.w 0x0000bc36 ; call 0000BC36 build_collision_probe_points
 0000B838: ror.w #0x2,D4w
 0000B83A: move.w D4w,(0xcc,A0)
 0000B83E: move.w D5w,D0w

@@ -67,6 +67,7 @@ still has unresolved downstream calls or hardware presentation work.
 | `0x5FDC` | `advance_entity_animation_accumulator` | Adds one animation increment, advances one frame on a period crossing, and marks the entity for redraw. | `ghidra_conversion::advance_entity_animation_accumulator()` | partial |
 | `0xB530` | `approach_entity_fixed_point_target` | Moves a fixed-point entity coordinate by one `0x800` step or snaps it when the remaining distance is at most one step. | `ghidra_conversion::approach_entity_fixed_point_target()` | partial |
 | `0xBBE4` | `commit_entity_position` | Writes an entity position and clears its pending transition bit. | `ghidra_conversion::commit_entity_position()` | partial |
+| `0xBC36` | `build_collision_probe_points` | Expands three typed collision probe offsets and snapshots the camera words unless the source mode gate is active. | `ghidra_conversion::build_collision_probe_points()` | partial |
 | `0xBCAE` | `apply_mode_five_boundary_motion` | Applies the mode-5 vertical adjustment in the source's strict coordinate windows at the two field edges. | `ghidra_conversion::apply_mode_five_boundary_motion()` | partial |
 | `0xC134` | `normalize_source_text_line` | Maps source high-bit glyph markers, stops on the line terminator range, and pads the remaining line width. | `ghidra_conversion::normalize_source_text_line()` | partial |
 | `0x195C` | `sample_controller_input` | Samples controller words, derives newly asserted bits, and updates decoded directional state. | `ghidra_conversion::derive_controller_sample()` | partial |

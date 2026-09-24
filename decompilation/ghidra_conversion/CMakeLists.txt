@@ -162,3 +162,16 @@ target_link_libraries(shadowrun_ghidra_entity_position_test
     PRIVATE shadowrun_ghidra_entity_position)
 add_test(NAME shadowrun_ghidra_entity_position
          COMMAND shadowrun_ghidra_entity_position_test)
+
+add_library(shadowrun_ghidra_collision_probe STATIC
+    src/collision_probe_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_collision_probe PUBLIC include)
+
+add_executable(shadowrun_ghidra_collision_probe_test
+    tests/collision_probe_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_collision_probe_test
+    PRIVATE shadowrun_ghidra_collision_probe)
+add_test(NAME shadowrun_ghidra_collision_probe
+         COMMAND shadowrun_ghidra_collision_probe_test)

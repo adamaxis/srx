@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000423C quantize_field_delta
-//   0x0000BC36 FUN_0000bc36
+//   0x0000BC36 build_collision_probe_points
 //   0x0001651E FUN_0001651e
 //   0x00016760 FUN_00016760
 //   0x0001E2E0 FUN_0001e2e0
@@ -55,7 +55,7 @@ void FUN_0000b7b8(void)
       bVar2 = bVar2 + 1;
     }
     if (1 < bVar2) {
-      FUN_0000bc36();
+      build_collision_probe_points();
       *(ushort *)(extraout_A0 + 0xcc) = unaff_D4w << 0xe | unaff_D4w >> 2;
       quantize_field_delta();
       uVar1 = DAT_00ffdf64;

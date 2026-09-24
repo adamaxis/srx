@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000BC36
-// Name: FUN_0000bc36
+// Name: build_collision_probe_points
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0000bc36(void)
+void build_collision_probe_points(void)
 
 {
   short sVar1;
