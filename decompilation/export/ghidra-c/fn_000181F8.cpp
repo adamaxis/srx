@@ -127,7 +127,7 @@ LAB_0001842e:
                 sVar8 = FUN_00019b40();
                 if ((sVar8 == 8) && (DAT_00ffdf84 != '\0')) {
                   FUN_00019bf6();
-                  FUN_00000dba();
+                  count_thresholded_random_rolls();
                   if (DAT_00fff0dd == '\0') {
                     FUN_00017d90();
                     FUN_000530de();
@@ -135,7 +135,7 @@ LAB_0001842e:
                     if (*(char *)(DAT_00fffc04 + 0x4c) != '\0') goto LAB_0001831a;
                   }
                   else {
-                    FUN_00000dba();
+                    count_thresholded_random_rolls();
                     if (DAT_00fff0dd == '\0') {
                       cVar1 = *(char *)(extraout_A1 + 0x9c);
                       cVar2 = cVar1 + -3;

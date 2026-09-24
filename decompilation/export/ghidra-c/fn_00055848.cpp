@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
-//   0x00000DBA FUN_00000dba
+//   0x00000DBA count_thresholded_random_rolls
 //   0x00055740 FUN_00055740
 //   0x00055786 FUN_00055786
 //   0x00055ED6 FUN_00055ed6
@@ -23,7 +23,7 @@ short FUN_00055848(void)
   FUN_00055f20();
   FUN_00055740();
   FUN_00055786();
-  FUN_00000dba();
+  count_thresholded_random_rolls();
   bVar1 = DAT_00fff0dd >> 1;
   sVar2 = sample_source_random_bound();
   sVar3 = (sVar2 + 1) - (ushort)bVar1;

@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D5A FUN_00000d5a
-//   0x00000DBA FUN_00000dba
+//   0x00000DBA count_thresholded_random_rolls
 //   0x000037EC FUN_000037ec
 //   0x000104F6 FUN_000104f6
 //   0x00010660 FUN_00010660
@@ -50,7 +50,7 @@ void FUN_0001033e(void)
   FUN_00055740();
   FUN_00055786();
   FUN_00000d5a();
-  FUN_00000dba();
+  count_thresholded_random_rolls();
   cVar6 = DAT_00fff0dd;
   *(char *)(extraout_A0 + 0x9f) = DAT_00fff0dd;
   if (cVar6 != '\0') {

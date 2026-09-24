@@ -3,7 +3,7 @@
 // Name: FUN_0001253e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000DBA FUN_00000dba
+//   0x00000DBA count_thresholded_random_rolls
 //   0x00003674 FUN_00003674
 //   0x000037EC FUN_000037ec
 
@@ -17,7 +17,7 @@ void FUN_0001253e(void)
   if ((*(char *)(in_A1 + 0x4c) == '\n') && (*(char *)(in_A1 + 0x9c) == '\n')) {
     return;
   }
-  FUN_00000dba();
+  count_thresholded_random_rolls();
   FUN_00003674();
   FUN_000037ec();
   *(byte *)(extraout_A0 + 0x10) = *(byte *)(extraout_A0 + 0x10) & 0xbf;

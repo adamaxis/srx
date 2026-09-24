@@ -9,7 +9,7 @@
 void FUN_00024252(void)
 
 {
-  FUN_00000dba();
+  count_thresholded_random_rolls();
   return;
 }
 

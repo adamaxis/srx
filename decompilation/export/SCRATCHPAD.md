@@ -46,6 +46,7 @@ still has unresolved downstream calls or hardware presentation work.
 | `0x0BF2` | `latch_controller_events` | Combines the sampled high-byte event words and latches activity and Start state. | `ghidra_conversion::latch_controller_events()`; host input delivery remains separate | partial |
 | `0x0D44` | `advance_source_prng` | Advances the source 32-bit linear-congruential state with multiplier `0x20E5` and increment `1`. | `ghidra_conversion::advance_source_prng()` | partial |
 | `0x0D3A` | `sample_source_random_bound` | Advances the source PRNG and scales its low word by the caller bound using the source multiply/shift operation. | `ghidra_conversion::sample_source_random_bound()` | partial |
+| `0x0DBA` | `count_thresholded_random_rolls` | Performs the source repeated six-sided roll, accumulates face-6 retries, compares against the threshold, and counts qualifying trials. | `ghidra_conversion::count_thresholded_random_rolls()` | partial |
 | `0x0C2C` | `clear_runtime_memory_and_vdp` | Clears or folds work RAM based on the startup sentinel, resets display state, and invokes low-level setup. | Native session initialization; bus transcription remains in `ShadowrunRuntime` | partial |
 | `0x1088` | `step_palette_toward_black` | Moves each of the 64 CRAM words one Genesis color component toward black. | `ghidra_conversion::palette_toward_black()` | partial |
 | `0x10D6` | `step_palette_toward_target` | Moves each of the 64 CRAM words one component toward the target palette. | `ghidra_conversion::palette_toward_target()` | partial |

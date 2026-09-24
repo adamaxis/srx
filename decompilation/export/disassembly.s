@@ -7936,7 +7936,7 @@
 000103A0: cmpi.w #0x2,D4w
 000103A4: bpl.w 0x000103ac
 000103A8: move.w #0x2,D4w
-000103AC: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+000103AC: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 000103B2: move.b (0x00fff0dd).l,(0x9f,A0)
 000103BA: bne.w 0x000103d8
 000103BE: rts
@@ -9884,7 +9884,7 @@
 000125A6: cmpi.w #0x2,D4w
 000125AA: bpl.w 0x000125b2
 000125AE: move.w #0x2,D4w
-000125B2: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+000125B2: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 000125B8: clr.l D1
 000125BA: move.b (0x00fff0dd).l,D1b
 000125C0: bgt.w 0x000125c8
@@ -14841,7 +14841,7 @@
 0001855A: clr.l D6
 0001855C: movea.l (0x00fffc04).l,A1
 00018562: move.b (0x7c,A1),D6b
-00018566: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+00018566: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 0001856C: tst.b (0x00fff0dd).l
 00018572: bne.w 0x0001859c
 00018576: lsr.w #0x1,D4w
@@ -14857,7 +14857,7 @@
 0001859C: move.w #0x5,D4w
 000185A0: clr.l D6
 000185A2: move.b (0x77,A1),D6b
-000185A6: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+000185A6: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 000185AC: tst.b (0x00fff0dd).l
 000185B2: bne.w 0x000185ce
 000185B6: subq.b #0x3,(0x9c,A1)
@@ -20590,7 +20590,7 @@
 00022758: jsr 0x00055f20.l ; call 00055F20 FUN_00055f20
 0002275E: jsr 0x00012c74.l ; call 00012C74 FUN_00012c74
 00022764: move.w #0x6,D4w
-00022768: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+00022768: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 0002276E: cmpi.b #0x3,(0x00fff0dd).l
 00022776: bpl.w 0x000227a8
 0002277A: lea (0x1d6fec).l,A6 ; data 001d6fec
@@ -20718,7 +20718,7 @@
 00023B0C: clr.l D6
 00023B0E: move.b (0x00ff0177).l,D6b
 00023B14: move.w #0x6,D4w
-00023B18: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+00023B18: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 00023B1E: cmpi.b #0x2,(0x00fff0dd).l
 00023B26: bpl.w 0x00023b48
 00023B2A: lea (0x1d6db2).l,A6 ; data 001d6db2
@@ -20734,7 +20734,7 @@
 00023B88: clr.l D6
 00023B8A: move.b (0x00ff0177).l,D6b
 00023B90: move.w #0x6,D4w
-00023B94: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+00023B94: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 00023B9A: tst.b (0x00fff0dd).l
 00023BA0: beq.w 0x00023bac
 00023BA4: lea (0x121100).l,A0 ; data 00121100
@@ -20857,7 +20857,7 @@
 0002457A: rts
 000245F4: bsr.w 0x00023750 ; call 00023750 FUN_00023750
 000245F8: move.w #0x8,D4w
-000245FC: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+000245FC: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 00024602: tst.b (0x00fff0dd).l
 00024608: beq.w 0x00024614
 0002460C: lea (0x1213c4).l,A0 ; data 001213c4
@@ -20868,7 +20868,7 @@
 00024724: clr.l D6
 00024726: move.b (0x00ff017a).l,D6b
 0002472C: move.w #0x6,D4w
-00024730: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+00024730: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 00024736: cmpi.b #0x1,(0x00fff0dd).l
 0002473E: bmi.w 0x0002478c
 00024742: beq.w 0x00024784
@@ -20904,7 +20904,7 @@
 000247D0: clr.l D6
 000247D2: move.b (0x00ff0188).l,D6b
 000247D8: move.w #0x5,D4w
-000247DC: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+000247DC: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 000247E2: cmpi.b #0x1,(0x00fff0dd).l
 000247EA: bmi.w 0x00024838
 000247EE: beq.w 0x00024830
@@ -23651,7 +23651,7 @@
 000548E8: sub.b D4b,D6b
 000548EA: ble.w 0x00054902
 000548EE: move.b (0x6,A1,D1w*0x1),D4b ; data 00ff1106
-000548F2: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+000548F2: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 000548F8: tst.b (0x00fff0dd).l
 000548FE: bgt.w 0x0005492e
 00054902: jsr 0x000549e4.l ; call 000549E4 FUN_000549e4
@@ -23808,7 +23808,7 @@
 00055698: cmpi.w #0x2,D4w
 0005569C: bpl.w 0x000556a4
 000556A0: move.w #0x2,D4w
-000556A4: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+000556A4: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 000556AA: lea (0x9f).w,A4
 000556AE: adda.l A0,A4
 000556B0: move.b (0x00fff0dd).l,(A4)
@@ -23890,7 +23890,7 @@
 000557CC: add.b (0x77,A0),D6b
 000557D0: bra.w 0x000557d8
 000557D4: add.b (0x7c,A0),D6b
-000557D8: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+000557D8: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 000557DE: sub.b (0x00fff0dd).l,D0b
 000557E4: bgt.w 0x000557ee
 000557E8: clr.l D0
@@ -23942,7 +23942,7 @@
 00055880: cmpi.w #0x2,D4w
 00055884: bpl.w 0x0005588c
 00055888: move.w #0x2,D4w
-0005588C: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+0005588C: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 00055892: clr.l D4
 00055894: clr.l D5
 00055896: clr.l D6
@@ -24031,7 +24031,7 @@
 000559BC: cmpi.w #0x2,D4w
 000559C0: bpl.w 0x000559c8
 000559C4: move.w #0x2,D4w
-000559C8: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+000559C8: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 000559CE: clr.l D6
 000559D0: move.b (0x9f,A0),D6b
 000559D4: sub.b (0x00fff0dd).l,D6b
@@ -24113,7 +24113,7 @@
 00055B2E: cmpi.w #0x2,D4w
 00055B32: bpl.w 0x00055b3a
 00055B36: move.w #0x2,D4w
-00055B3A: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+00055B3A: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 00055B40: move.b (0x00fff0dd).l,(0x9f,A0)
 00055B48: move.b #0x6,(0x9d,A0)
 00055B4E: move.w #0x2,D5w
@@ -24141,7 +24141,7 @@
 00055CA2: cmpi.w #0x2,D4w
 00055CA6: bpl.w 0x00055cae
 00055CAA: move.w #0x2,D4w
-00055CAE: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+00055CAE: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 00055CB4: move.b (0x00fff0dd).l,D5b
 00055CBA: beq.w 0x00055e46
 00055CBE: addq.w #0x3,D5w
@@ -24170,7 +24170,7 @@
 00055D0A: cmpi.w #0x2,D4w
 00055D0E: bpl.w 0x00055d16
 00055D12: move.w #0x2,D4w
-00055D16: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+00055D16: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 00055D1C: sub.b (0x00fff0dd).l,D5b
 00055D22: ble.w 0x00055e46
 00055D26: move.b (0x79,A0),D4b
@@ -24208,7 +24208,7 @@
 00055D86: cmpi.w #0x2,D4w
 00055D8A: bpl.w 0x00055d92
 00055D8E: move.w #0x2,D4w
-00055D92: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+00055D92: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 00055D98: sub.b (0x00fff0dd).l,D5b
 00055D9E: ble.w 0x00055e46
 00055DA2: move.w (0x90,A0),D0w
@@ -24402,7 +24402,7 @@
 00056088: cmpi.w #0x2,D4w
 0005608C: bpl.w 0x00056092
 00056090: moveq #0x2,D4
-00056092: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+00056092: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 00056098: move.b (A4),D4b
 0005609A: sub.b (0x00fff0dd).l,D4b
 000560A0: move.b D4b,(A4)
@@ -24420,7 +24420,7 @@
 000560D2: cmpi.w #0x2,D4w
 000560D6: bpl.w 0x000560de
 000560DA: move.w #0x2,D4w
-000560DE: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+000560DE: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 000560E4: subq.b #0x1,(0x00fff0dd).l
 000560EA: bmi.w 0x00056112
 000560EE: moveq #0xa,D0
@@ -24448,7 +24448,7 @@
 00056150: cmpi.w #0x2,D4w
 00056154: bpl.w 0x0005615c
 00056158: move.w #0x2,D4w
-0005615C: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+0005615C: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 00056162: move.b (0x00fff0dd).l,D5b
 00056168: move.w #-0x1,D1w
 0005616C: bsr.w 0x00055f44 ; call 00055F44 FUN_00055f44
@@ -24462,7 +24462,7 @@
 0005618E: cmpi.w #0x2,D4w
 00056192: bpl.w 0x0005619a
 00056196: move.w #0x2,D4w
-0005619A: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+0005619A: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 000561A0: sub.b (0x00fff0dd).l,D5b
 000561A6: ble.w 0x000561bc
 000561AA: moveq #0x1,D1
@@ -24518,7 +24518,7 @@
 00056288: cmpi.w #0x2,D4w
 0005628C: bpl.w 0x00056294
 00056290: move.w #0x2,D4w
-00056294: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+00056294: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 0005629A: jsr 0x00019b40.l ; call 00019B40 FUN_00019b40
 000562A0: cmpi.w #0x8,D0w
 000562A4: bne.w 0x000562b6
@@ -24552,7 +24552,7 @@
 00056318: cmpi.w #0x2,D4w
 0005631C: bpl.w 0x00056324
 00056320: move.w #0x2,D4w
-00056324: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+00056324: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 0005632A: move.b (0x00fff0a4).l,D4b
 00056330: sub.b (0x00fff0dd).l,D4b
 00056336: beq.w 0x000563c4
@@ -24600,7 +24600,7 @@
 000563EC: cmpi.w #0x2,D4w
 000563F0: bpl.w 0x000563f8
 000563F4: move.w #0x2,D4w
-000563F8: jsr 0x00000dba.l ; call 00000DBA FUN_00000dba
+000563F8: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 000563FE: move.b (0x00fff0dd).l,D4b
 00056404: beq.w 0x0005642e
 00056408: sub.b (0x1,A0),D4b

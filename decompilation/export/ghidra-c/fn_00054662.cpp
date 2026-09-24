@@ -6,7 +6,7 @@
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
 //   0x00000D94 FUN_00000d94
-//   0x00000DBA FUN_00000dba
+//   0x00000DBA count_thresholded_random_rolls
 //   0x00000F5C FUN_00000f5c
 //   0x00001232 FUN_00001232
 //   0x0000195C sample_controller_input
@@ -98,7 +98,7 @@ LAB_0005488c:
         cVar2 = *(char *)((int)&DAT_00ff1104 + (short)(DAT_00fff118 * 0x14) + 1) + -1;
         bVar3 = (char)sVar6 - cVar2;
         if ((bVar3 == 0 || SBORROW1((char)sVar6,cVar2) != (short)((ushort)bVar3 << 8) < 0) ||
-           (FUN_00000dba(), DAT_00fff0dd < '\x01')) {
+           (count_thresholded_random_rolls(), DAT_00fff0dd < '\x01')) {
           FUN_000549e4();
           FUN_0000c0da();
           FUN_00000d94();

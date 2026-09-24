@@ -3,7 +3,7 @@
 // Name: FUN_00055786
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000DBA FUN_00000dba
+//   0x00000DBA count_thresholded_random_rolls
 //   0x0001047E FUN_0001047e
 //   0x00055828 FUN_00055828
 
@@ -30,7 +30,7 @@ void FUN_00055786(void)
   if ((short)(*(short *)(iVar1 + 0x3e) + -3) < 0) {
     FUN_0001047e();
   }
-  FUN_00000dba();
+  count_thresholded_random_rolls();
   return;
 }
 

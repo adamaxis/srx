@@ -50,7 +50,7 @@ void FUN_00055900(void)
     uVar3 = (uint)(ushort)((short)uVar3 + 1);
     sVar6 = sVar6 + -1;
   } while (sVar6 != -1);
-  FUN_00000dba();
+  count_thresholded_random_rolls();
   bVar2 = *(char *)(extraout_A0_00 + 0x9f) - DAT_00fff0dd;
   if ((short)((ushort)bVar2 << 8) < 0) {
     bVar1 = bVar2 + (char)sVar4;

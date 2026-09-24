@@ -3,7 +3,7 @@
 // Name: FUN_000559bc
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000DBA FUN_00000dba
+//   0x00000DBA count_thresholded_random_rolls
 //   0x00003674 FUN_00003674
 //   0x000037EC FUN_000037ec
 //   0x00055E62 FUN_00055e62
@@ -27,7 +27,7 @@ void FUN_000559bc(void)
   undefined1 uVar6;
   char cVar7;
   
-  FUN_00000dba();
+  count_thresholded_random_rolls();
   bVar2 = *(char *)(extraout_A0 + 0x9f) - DAT_00fff0dd;
   if ((char)bVar2 < '\0') {
     bVar1 = bVar2 + (char)unaff_D5w;

@@ -3,7 +3,7 @@
 // Name: FUN_000562ec
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000DBA FUN_00000dba
+//   0x00000DBA count_thresholded_random_rolls
 //   0x0001792E FUN_0001792e
 //   0x00017D90 FUN_00017d90
 //   0x00017DB8 FUN_00017db8
@@ -25,7 +25,7 @@ void FUN_000562ec(void)
   
   FUN_00055f44();
   FUN_000562de();
-  FUN_00000dba();
+  count_thresholded_random_rolls();
   cVar1 = DAT_00fff0a4 - DAT_00fff0dd;
   if (cVar1 != '\0') {
     if (cVar1 != '\0' && DAT_00fff0dd <= DAT_00fff0a4) {
@@ -40,7 +40,7 @@ void FUN_000562ec(void)
            (((sVar2 = FUN_00019b40(), sVar2 == 3 ||
              (((sVar2 == 0xc || (sVar2 == 0xf)) || (sVar2 == 0x17)))) || (sVar2 == 0x18)))) {
           FUN_00019bf6();
-          FUN_00000dba();
+          count_thresholded_random_rolls();
           if ((DAT_00fff0dd != '\0') &&
              (cVar1 = DAT_00fff0dd - extraout_A0[1], cVar1 != '\0' && extraout_A0[1] <= DAT_00fff0dd
              )) {

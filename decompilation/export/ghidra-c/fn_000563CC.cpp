@@ -3,7 +3,7 @@
 // Name: FUN_000563cc
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000DBA FUN_00000dba
+//   0x00000DBA count_thresholded_random_rolls
 //   0x00019BF6 FUN_00019bf6
 //   0x0001B1FC FUN_0001b1fc
 
@@ -15,7 +15,7 @@ void FUN_000563cc(void)
   char *extraout_A0;
   
   FUN_00019bf6();
-  FUN_00000dba();
+  count_thresholded_random_rolls();
   if ((DAT_00fff0dd != '\0') &&
      (cVar1 = DAT_00fff0dd - extraout_A0[1], cVar1 != '\0' && extraout_A0[1] <= DAT_00fff0dd)) {
     cVar1 = *extraout_A0 - cVar1;

@@ -47,6 +47,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00000C2CL, "clear_runtime_memory_and_vdp");
         names.put(0x00000D44L, "advance_source_prng");
         names.put(0x00000D3AL, "sample_source_random_bound");
+        names.put(0x00000DBAL, "count_thresholded_random_rolls");
         names.put(0x00001088L, "step_palette_toward_black");
         names.put(0x000010D6L, "step_palette_toward_target");
         names.put(0x0000131CL, "step_palette_transition");

@@ -3,7 +3,7 @@
 // Name: FUN_000561e8
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000DBA FUN_00000dba
+//   0x00000DBA count_thresholded_random_rolls
 //   0x00017D72 FUN_00017d72
 //   0x00017D90 FUN_00017d90
 //   0x00019B40 FUN_00019b40
@@ -42,7 +42,7 @@ LAB_000560aa:
       else {
         FUN_00019bf6();
         FUN_000562d4();
-        FUN_00000dba();
+        count_thresholded_random_rolls();
         DAT_00fff0dd = DAT_00fff0dd + -1;
         if (-1 < DAT_00fff0dd) {
           DAT_00fff0e7 = '\n' - DAT_00fff0dd;
@@ -67,7 +67,7 @@ LAB_000560aa:
 LAB_00056268:
       FUN_00019bf6();
       FUN_000562d4();
-      FUN_00000dba();
+      count_thresholded_random_rolls();
       sVar4 = FUN_00019b40();
       if (sVar4 == 8) {
         FUN_00017d72();
@@ -86,11 +86,11 @@ LAB_00056268:
   if (DAT_00fff0a3 < '\0') {
     FUN_00019bf6();
     FUN_000562de();
-    FUN_00000dba();
+    count_thresholded_random_rolls();
     cVar1 = DAT_00fff0dd;
     FUN_00055f44();
     FUN_000562de();
-    FUN_00000dba();
+    count_thresholded_random_rolls();
     if ((DAT_00fff0dd < cVar1) && (FUN_0001989a(), uVar2 = extraout_D0u, DAT_00fff0b1 < '\0'))
     goto LAB_000561e2;
     FUN_00017a5e();

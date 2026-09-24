@@ -21,7 +21,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00000D44	advance_source_prng	22	unknown	ok	ghidra-c/fn_00000D44.cpp
 00000D5A	FUN_00000d5a	58	unknown	ok	ghidra-c/fn_00000D5A.cpp
 00000D94	FUN_00000d94	38	unknown	ok	ghidra-c/fn_00000D94.cpp
-00000DBA	FUN_00000dba	66	unknown	ok	ghidra-c/fn_00000DBA.cpp
+00000DBA	count_thresholded_random_rolls	66	unknown	ok	ghidra-c/fn_00000DBA.cpp
 00000DFC	FUN_00000dfc	28	unknown	ok	ghidra-c/fn_00000DFC.cpp
 00000E18	FUN_00000e18	28	unknown	ok	ghidra-c/fn_00000E18.cpp
 00000E34	FUN_00000e34	72	unknown	ok	ghidra-c/fn_00000E34.cpp

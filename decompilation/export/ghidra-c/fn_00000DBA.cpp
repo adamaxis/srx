@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00000DBA
-// Name: FUN_00000dba
+// Name: count_thresholded_random_rolls
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
 
 
-undefined8 FUN_00000dba(void)
+undefined8 count_thresholded_random_rolls(void)
 
 {
   undefined4 in_D0;

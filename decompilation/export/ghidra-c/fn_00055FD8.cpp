@@ -28,7 +28,7 @@ void FUN_00055fd8(void)
   }
   if ((char)(*(char *)((int)&DAT_00ff1104 + (short)(DAT_00fff118 * 0x14) + 1) + -1) < (char)sVar2) {
     FUN_000562de();
-    FUN_00000dba();
+    count_thresholded_random_rolls();
   }
   cVar1 = DAT_00fff0dd;
   pcVar3 = (char *)(DAT_00fffc04 + 0x9f);

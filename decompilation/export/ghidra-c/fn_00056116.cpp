@@ -3,7 +3,7 @@
 // Name: FUN_00056116
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000DBA FUN_00000dba
+//   0x00000DBA count_thresholded_random_rolls
 //   0x00017A5E FUN_00017a5e
 //   0x0001989A FUN_0001989a
 //   0x00019BF6 FUN_00019bf6
@@ -26,11 +26,11 @@ undefined4 FUN_00056116(void)
   if (DAT_00fff0a3 < '\0') {
     FUN_00019bf6();
     FUN_000562de();
-    FUN_00000dba();
+    count_thresholded_random_rolls();
     cVar1 = DAT_00fff0dd;
     FUN_00055f44();
     FUN_000562de();
-    FUN_00000dba();
+    count_thresholded_random_rolls();
     if ((DAT_00fff0dd < cVar1) && (FUN_0001989a(), uVar2 = extraout_D0u, DAT_00fff0b1 < '\0'))
     goto LAB_000561e2;
     FUN_00017a5e();

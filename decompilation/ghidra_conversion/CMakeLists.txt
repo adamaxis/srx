@@ -565,3 +565,16 @@ target_link_libraries(shadowrun_ghidra_entity_template_test
     PRIVATE shadowrun_ghidra_entity_template)
 add_test(NAME shadowrun_ghidra_entity_template
          COMMAND shadowrun_ghidra_entity_template_test)
+
+add_library(shadowrun_ghidra_random STATIC
+    src/random_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_random PUBLIC include)
+
+add_executable(shadowrun_ghidra_random_test
+    tests/random_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_random_test
+    PRIVATE shadowrun_ghidra_random)
+add_test(NAME shadowrun_ghidra_random
+         COMMAND shadowrun_ghidra_random_test)

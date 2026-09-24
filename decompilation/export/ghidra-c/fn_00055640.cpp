@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D5A FUN_00000d5a
-//   0x00000DBA FUN_00000dba
+//   0x00000DBA count_thresholded_random_rolls
 //   0x00012C74 FUN_00012c74
 //   0x000556C6 FUN_000556c6
 //   0x00055740 FUN_00055740
@@ -27,7 +27,7 @@ undefined2 FUN_00055640(void)
   FUN_00055786();
   FUN_000556c6();
   FUN_00000d5a();
-  FUN_00000dba();
+  count_thresholded_random_rolls();
   *(undefined1 *)(extraout_A0 + 0x9f) = DAT_00fff0dd;
   *(undefined1 *)(extraout_A1 + 0x9f) = DAT_00fff0dd;
   return in_D0w;
