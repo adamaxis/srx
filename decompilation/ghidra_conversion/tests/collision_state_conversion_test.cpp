@@ -67,5 +67,62 @@ int main() {
         return 4;
     }
 
+    EntityCollisionRecoveryState recovery{
+        EntityFixedPointPosition{0x10000000, 0x20000000, 1, 0}, 2};
+    const auto recovered = advance_entity_collision_recovery(
+        recovery,
+        false,
+        [](const std::int32_t x, const std::int32_t y) {
+            if (x != 0x10000100 || y != 0x20000000) {
+                return static_cast<std::uint16_t>(0x0001U);
+            }
+            return static_cast<std::uint16_t>(0U);
+        },
+        EntityCollisionSearchContext{
+            0U, 0U, 0x08U, false, false, std::nullopt},
+        std::vector<CollisionCandidate>{
+            {0x1000U, 0x2000U, 0x01U, true, 0U, 0U}});
+    if (expect(recovered.action ==
+                   EntityCollisionRecoveryAction::collision_search &&
+               recovered.collision_search.has_value() &&
+               recovered.collision_search->candidate_index.has_value() &&
+               recovered.collision_search->candidate_index.value() == 0U &&
+               recovery.retry_counter == 1 &&
+               recovery.position.world_x == 0x10000100) != 0) {
+        return 5;
+    }
+
+    EntityCollisionRecoveryState exhausted{
+        EntityFixedPointPosition{0U, 0U, 0, 0}, 0};
+    const auto exhausted_result = advance_entity_collision_recovery(
+        exhausted,
+        false,
+        [](const std::int32_t, const std::int32_t) {
+            return static_cast<std::uint16_t>(0U);
+        },
+        EntityCollisionSearchContext{},
+        {});
+    if (expect(exhausted_result.action ==
+                   EntityCollisionRecoveryAction::retry_exhausted &&
+               exhausted.retry_counter == -1) != 0) {
+        return 6;
+    }
+
+    EntityCollisionRecoveryState terrain_blocked{
+        EntityFixedPointPosition{0U, 0U, 0, 0}, 2};
+    const auto terrain_result = advance_entity_collision_recovery(
+        terrain_blocked,
+        false,
+        [](const std::int32_t, const std::int32_t) {
+            return static_cast<std::uint16_t>(0x0001U);
+        },
+        EntityCollisionSearchContext{},
+        {});
+    if (expect(terrain_result.action ==
+                   EntityCollisionRecoveryAction::terrain_probe_blocked &&
+               terrain_blocked.retry_counter == 2) != 0) {
+        return 7;
+    }
+
     return 0;
 }

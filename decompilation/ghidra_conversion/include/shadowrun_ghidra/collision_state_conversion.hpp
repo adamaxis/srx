@@ -1,5 +1,7 @@
 #pragma once
 
+#include "shadowrun_ghidra/entity_coordinate_conversion.hpp"
+
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -59,6 +61,37 @@ struct EntityCollisionSearchResult {
 // source-override exits are represented as ordinary typed policy fields.
 EntityCollisionSearchResult find_colliding_entity(
     const EntityCollisionSearchContext& context,
+    const std::vector<CollisionCandidate>& candidates);
+
+struct EntityCollisionRecoveryState {
+    EntityFixedPointPosition position{};
+    std::int16_t retry_counter = 0;
+};
+
+enum class EntityCollisionRecoveryAction {
+    terrain_probe_blocked,
+    retry_exhausted,
+    collision_search,
+};
+
+struct EntityCollisionRecoveryResult {
+    EntityCollisionRecoveryAction action =
+        EntityCollisionRecoveryAction::terrain_probe_blocked;
+    std::uint16_t terrain_result = 0;
+    std::int32_t probed_world_x = 0;
+    std::int32_t probed_world_y = 0;
+    std::optional<EntityCollisionSearchResult> collision_search;
+};
+
+// ROM 0x14F50: retry the fixed-point terrain position while the source
+// terrain result is empty or its boundary flag is active, decrement the
+// bounded retry counter, commit the probed position, and run the typed
+// collision scan. The source carry/exhaustion branch is an explicit action.
+EntityCollisionRecoveryResult advance_entity_collision_recovery(
+    EntityCollisionRecoveryState& state,
+    bool terrain_boundary_active,
+    const EntityWorldProbe& terrain_probe,
+    EntityCollisionSearchContext collision_context,
     const std::vector<CollisionCandidate>& candidates);
 
 } // namespace shadowrun::ghidra_conversion

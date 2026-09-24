@@ -79,4 +79,48 @@ EntityCollisionSearchResult find_colliding_entity(
     return result;
 }
 
+namespace {
+
+std::uint16_t fixed_point_integer_word(const std::int32_t value) {
+    return static_cast<std::uint16_t>(
+        static_cast<std::uint32_t>(value) >> 16U);
+}
+
+} // namespace
+
+EntityCollisionRecoveryResult advance_entity_collision_recovery(
+    EntityCollisionRecoveryState& state,
+    const bool terrain_boundary_active,
+    const EntityWorldProbe& terrain_probe,
+    EntityCollisionSearchContext collision_context,
+    const std::vector<CollisionCandidate>& candidates) {
+    const auto probe = probe_entity_world_position(
+        state.position, terrain_probe);
+    EntityCollisionRecoveryResult result{
+        EntityCollisionRecoveryAction::terrain_probe_blocked,
+        probe.terrain_result,
+        probe.world_x,
+        probe.world_y,
+        std::nullopt};
+
+    if (probe.terrain_result != 0U && !terrain_boundary_active) {
+        return result;
+    }
+
+    --state.retry_counter;
+    if (state.retry_counter < 0) {
+        result.action = EntityCollisionRecoveryAction::retry_exhausted;
+        return result;
+    }
+
+    state.position.world_x = probe.world_x;
+    state.position.world_y = probe.world_y;
+    collision_context.probe_x = fixed_point_integer_word(probe.world_x);
+    collision_context.probe_y = fixed_point_integer_word(probe.world_y);
+    result.action = EntityCollisionRecoveryAction::collision_search;
+    result.collision_search = find_colliding_entity(
+        collision_context, candidates);
+    return result;
+}
+
 } // namespace shadowrun::ghidra_conversion

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00014F50
-// Name: FUN_00014f50
+// Name: advance_entity_collision_recovery
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00014F26 probe_entity_world_position
@@ -9,7 +9,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00014f50(void)
+void advance_entity_collision_recovery(void)
 
 {
   char cVar1;

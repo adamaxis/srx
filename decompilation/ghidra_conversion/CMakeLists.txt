@@ -258,6 +258,8 @@ add_library(shadowrun_ghidra_collision_state STATIC
     src/collision_state_conversion.cpp
 )
 target_include_directories(shadowrun_ghidra_collision_state PUBLIC include)
+target_link_libraries(shadowrun_ghidra_collision_state
+    PRIVATE shadowrun_ghidra_entity_coordinate)
 
 add_executable(shadowrun_ghidra_collision_state_test
     tests/collision_state_conversion_test.cpp

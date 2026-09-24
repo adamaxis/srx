@@ -1365,8 +1365,8 @@ caller	caller_name	instruction	text	target	callee	status
 00014D8E	FUN_00014d8e	00014DBA	bsr.w 0x00014f26	00014F26	probe_entity_world_position	resolved
 00014D8E	FUN_00014d8e	00014DDE	bsr.w 0x00015aba	00015ABA	find_colliding_entity	resolved
 00014F26	probe_entity_world_position	00014F44	jsr 0x0000e7c8.l	0000E7C8	FUN_0000e7c8	resolved
-00014F50	FUN_00014f50	00014F50	bsr.b 0x00014f26	00014F26	probe_entity_world_position	resolved
-00014F50	FUN_00014f50	00014F7A	bsr.w 0x00015aba	00015ABA	find_colliding_entity	resolved
+00014F50	advance_entity_collision_recovery	00014F50	bsr.b 0x00014f26	00014F26	probe_entity_world_position	resolved
+00014F50	advance_entity_collision_recovery	00014F7A	bsr.w 0x00015aba	00015ABA	find_colliding_entity	resolved
 00014FF8	FUN_00014ff8	00015000	bsr.w 0x00015118	00015118	initialize_entity_behavior_record	resolved
 00014FF8	FUN_00014ff8	00015012	jsr 0x00055640.l	00055640	FUN_00055640	resolved
 00014FF8	FUN_00014ff8	0001508C	jsr 0x00015d3c.l	00015D3C	measure_relative_heading_and_distance	resolved

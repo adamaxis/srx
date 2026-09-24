@@ -12347,7 +12347,7 @@
 00014E10: bne.w 0x00014f1c
 00014E14: move.w #0x3,D7w
 00014E18: move.w D7w,(0x00ffdd50).l
-00014E1E: bsr.w 0x00014f50 ; call 00014F50 FUN_00014f50
+00014E1E: bsr.w 0x00014f50 ; call 00014F50 advance_entity_collision_recovery
 00014E22: bcs.w 0x00014e32
 00014E26: move.w (0x00ffdd50).l,D7w
 00014E2C: dbf D7w,0x00014e18

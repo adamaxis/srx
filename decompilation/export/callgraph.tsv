@@ -939,8 +939,8 @@ caller	caller_name	callee	callee_name	call_sites
 00014D8E	FUN_00014d8e	00014FF8	FUN_00014ff8	1
 00014D8E	FUN_00014d8e	00015ABA	find_colliding_entity	1
 00014F26	probe_entity_world_position	0000E7C8	FUN_0000e7c8	1
-00014F50	FUN_00014f50	00014F26	probe_entity_world_position	1
-00014F50	FUN_00014f50	00015ABA	find_colliding_entity	1
+00014F50	advance_entity_collision_recovery	00014F26	probe_entity_world_position	1
+00014F50	advance_entity_collision_recovery	00015ABA	find_colliding_entity	1
 00014FF8	FUN_00014ff8	00015118	initialize_entity_behavior_record	1
 00014FF8	FUN_00014ff8	00015D3C	measure_relative_heading_and_distance	1
 00014FF8	FUN_00014ff8	00055640	FUN_00055640	1

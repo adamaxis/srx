@@ -401,7 +401,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00014D6A	select_entity_animation_table_row	36	unknown	ok	ghidra-c/fn_00014D6A.cpp
 00014D8E	FUN_00014d8e	124	unknown	ok	ghidra-c/fn_00014D8E.cpp
 00014F26	probe_entity_world_position	42	unknown	ok	ghidra-c/fn_00014F26.cpp
-00014F50	FUN_00014f50	54	unknown	ok	ghidra-c/fn_00014F50.cpp
+00014F50	advance_entity_collision_recovery	54	unknown	ok	ghidra-c/fn_00014F50.cpp
 00014FF8	FUN_00014ff8	240	unknown	ok	ghidra-c/fn_00014FF8.cpp
 000150E8	FUN_000150e8	48	unknown	ok	ghidra-c/fn_000150E8.cpp
 00015118	initialize_entity_behavior_record	54	unknown	ok	ghidra-c/fn_00015118.cpp
