@@ -4975,7 +4975,7 @@
 0000B68A: lea (0xc022).l,A1 ; data 0000c022
 0000B690: move.w (A0),-(SP)
 0000B692: move.w (0x4,A0),-(SP)
-0000B696: bsr.w 0x0000bade ; call 0000BADE FUN_0000bade
+0000B696: bsr.w 0x0000bade ; call 0000BADE advance_entity_movement_step
 0000B69A: move.w (SP)+,D1w
 0000B69C: move.w (SP)+,D0w
 0000B69E: cmpi.w #0xd,(0xe,A0)
@@ -5206,7 +5206,7 @@
 0000BAD2: addq.w #0x1,D0w
 0000BAD4: andi.w #0x7,D0w
 0000BAD8: lsl.w #0x1,D0w
-0000BADA: bra.w 0x0000bade ; call 0000BADE FUN_0000bade
+0000BADA: bra.w 0x0000bade ; call 0000BADE advance_entity_movement_step
 0000BADE: move.w (0x4,A1),(0xca,A0)
 0000BAE4: bsr.w 0x0000b77e ; call 0000B77E probe_entity_directional_collision
 0000BAE8: tst.w D0w

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000BADE
-// Name: FUN_0000bade
+// Name: advance_entity_movement_step
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000B442 reset_entity_movement_state
@@ -11,7 +11,7 @@
 //   0x0000BBE4 commit_entity_position
 
 
-void FUN_0000bade(void)
+void advance_entity_movement_step(void)
 
 {
   short sVar1;
