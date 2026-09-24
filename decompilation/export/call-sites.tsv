@@ -2779,7 +2779,7 @@ caller	caller_name	instruction	text	target	callee	status
 00059D7C	FUN_00059d7c	00059E2C	bsr.w 0x0005af2a	0005AF2A	FUN_0005af2a	resolved
 00059D7C	FUN_00059d7c	00059EA4	bsr.w 0x0005a37c	0005A37C	FUN_0005a37c	resolved
 00059D7C	FUN_00059d7c	00059ED8	jsr 0x00059f7a.l	00059F7A	reset_title_intro_overlay_schedule	resolved
-00059D7C	FUN_00059d7c	00059EDE	jsr 0x0005a0a4.l	0005A0A4	FUN_0005a0a4	resolved
+00059D7C	FUN_00059d7c	00059EDE	jsr 0x0005a0a4.l	0005A0A4	reset_title_intro_sequence	resolved
 00059D7C	FUN_00059d7c	00059EE4	jsr 0x0005a244.l	0005A244	FUN_0005a244	resolved
 00059D7C	FUN_00059d7c	00059EEA	jsr 0x0005a3b0.l	0005A3B0	FUN_0005a3b0	resolved
 00059D7C	FUN_00059d7c	00059EF0	jsr 0x0005a4b4.l	0005A4B4	FUN_0005a4b4	resolved
@@ -2792,7 +2792,7 @@ caller	caller_name	instruction	text	target	callee	status
 00059D7C	FUN_00059d7c	00059F24	jsr 0x0000195c.l	0000195C	sample_controller_input	resolved
 00059D7C	FUN_00059d7c	00059F30	jsr 0x00000bd2.l	00000BD2	wait_for_vblank	resolved
 00059D7C	FUN_00059d7c	00059F36	jsr 0x00059f8e.l	00059F8E	advance_title_intro_overlay	resolved
-00059D7C	FUN_00059d7c	00059F3C	jsr 0x0005a0b2.l	0005A0B2	FUN_0005a0b2	resolved
+00059D7C	FUN_00059d7c	00059F3C	jsr 0x0005a0b2.l	0005A0B2	advance_title_intro_sequence	resolved
 00059D7C	FUN_00059d7c	00059F42	jsr 0x0000195c.l	0000195C	sample_controller_input	resolved
 00059D7C	FUN_00059d7c	00059F48	jsr 0x00000bf2.l	00000BF2	latch_controller_events	resolved
 00059D7C	FUN_00059d7c	00059F4E	bsr.w 0x0005af2a	0005AF2A	FUN_0005af2a	resolved
@@ -2804,12 +2804,12 @@ caller	caller_name	instruction	text	target	callee	status
 00059F8E	advance_title_intro_overlay	00059FCA	jsr 0x0005b32c.l	0005B32C	FUN_0005b32c	resolved
 00059F8E	advance_title_intro_overlay	00059FEC	jsr 0x00001728.l	00001728	render_hud_sprite_stream	resolved
 00059F8E	advance_title_intro_overlay	0005A060	jsr 0x00001728.l	00001728	render_hud_sprite_stream	resolved
-0005A0B2	FUN_0005a0b2	0005A114	jsr 0x00001728.l	00001728	render_hud_sprite_stream	resolved
-0005A0B2	FUN_0005a0b2	0005A134	jsr 0x000530de.l	000530DE	service_audio_if_enabled	resolved
-0005A0B2	FUN_0005a0b2	0005A14E	jsr 0x0005b2c2.l	0005B2C2	FUN_0005b2c2	resolved
-0005A0B2	FUN_0005a0b2	0005A182	bsr.w 0x0005b2e2	0005B2E2	FUN_0005b2e2	resolved
-0005A0B2	FUN_0005a0b2	0005A1AE	jsr 0x0005a582.l	0005A582	FUN_0005a582	resolved
-0005A0B2	FUN_0005a0b2	0005A1CA	jsr 0x0005b32c.l	0005B32C	FUN_0005b32c	resolved
+0005A0B2	advance_title_intro_sequence	0005A114	jsr 0x00001728.l	00001728	render_hud_sprite_stream	resolved
+0005A0B2	advance_title_intro_sequence	0005A134	jsr 0x000530de.l	000530DE	service_audio_if_enabled	resolved
+0005A0B2	advance_title_intro_sequence	0005A14E	jsr 0x0005b2c2.l	0005B2C2	FUN_0005b2c2	resolved
+0005A0B2	advance_title_intro_sequence	0005A182	bsr.w 0x0005b2e2	0005B2E2	FUN_0005b2e2	resolved
+0005A0B2	advance_title_intro_sequence	0005A1AE	jsr 0x0005a582.l	0005A582	FUN_0005a582	resolved
+0005A0B2	advance_title_intro_sequence	0005A1CA	jsr 0x0005b32c.l	0005B32C	FUN_0005b32c	resolved
 0005A1EA	FUN_0005a1ea	0005A1FC	jsr 0x0005a252.l	0005A252	FUN_0005a252	resolved
 0005A1EA	FUN_0005a1ea	0005A202	jsr 0x0005a3be.l	0005A3BE	FUN_0005a3be	resolved
 0005A1EA	FUN_0005a1ea	0005A208	jsr 0x0005a4c2.l	0005A4C2	FUN_0005a4c2	resolved

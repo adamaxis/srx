@@ -11,8 +11,8 @@
 //   0x0000C0C2 load_title_font
 //   0x00059F7A reset_title_intro_overlay_schedule
 //   0x00059F8E advance_title_intro_overlay
-//   0x0005A0A4 FUN_0005a0a4
-//   0x0005A0B2 FUN_0005a0b2
+//   0x0005A0A4 reset_title_intro_sequence
+//   0x0005A0B2 advance_title_intro_sequence
 //   0x0005A1EA FUN_0005a1ea
 //   0x0005A244 FUN_0005a244
 //   0x0005A37C FUN_0005a37c
@@ -78,7 +78,7 @@ void FUN_00059d7c(void)
   } while ((_DAT_00ffddc2 == 0) && (sVar1 = sVar1 + -1, sVar1 != -1));
   DAT_00fff11e = DAT_00ffdf88;
   reset_title_intro_overlay_schedule();
-  FUN_0005a0a4();
+  reset_title_intro_sequence();
   FUN_0005a244();
   FUN_0005a3b0();
   FUN_0005a4b4();
@@ -93,7 +93,7 @@ void FUN_00059d7c(void)
   do {
     wait_for_vblank();
     advance_title_intro_overlay();
-    FUN_0005a0b2();
+    advance_title_intro_sequence();
     sample_controller_input();
     latch_controller_events();
     FUN_0005af2a();

@@ -922,3 +922,18 @@ target_link_libraries(shadowrun_ghidra_title_intro_overlay_test
     PRIVATE shadowrun_ghidra_title_intro_overlay)
 add_test(NAME shadowrun_ghidra_title_intro_overlay
          COMMAND shadowrun_ghidra_title_intro_overlay_test)
+
+add_library(shadowrun_ghidra_title_intro_sequence STATIC
+    src/title_intro_sequence_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_title_intro_sequence PUBLIC include)
+target_link_libraries(shadowrun_ghidra_title_intro_sequence
+    PRIVATE shadowrun_ghidra_title_intro_overlay)
+
+add_executable(shadowrun_ghidra_title_intro_sequence_test
+    tests/title_intro_sequence_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_title_intro_sequence_test
+    PRIVATE shadowrun_ghidra_title_intro_sequence)
+add_test(NAME shadowrun_ghidra_title_intro_sequence
+         COMMAND shadowrun_ghidra_title_intro_sequence_test)

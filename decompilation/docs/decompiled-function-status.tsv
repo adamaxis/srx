@@ -266,3 +266,5 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x59C34	adjust three runner source bytes	ghidra_conversion::adjust_runner_source_byte_triplet	shadowrun_ghidra_runner_status	partial		Adds one caller byte to the three source fields with explicit eight-bit wraparound
 0x59F7A	reset title intro overlay schedule	ghidra_conversion::reset_title_intro_overlay_schedule	shadowrun_ghidra_title_intro_overlay	partial		Clears the six-phase overlay deadline, phase index, and scroll accumulator
 0x59F8E	advance title intro overlay	ghidra_conversion::advance_title_intro_overlay	shadowrun_ghidra_title_intro_overlay	partial		Typed elapsed-frame gate, six-phase schedule, scroll step, and final overlay callback order
+0x5A0A4	reset title intro sequence	ghidra_conversion::reset_title_intro_sequence	shadowrun_ghidra_title_intro_sequence	partial		Clears the second intro sequence stage and next-event deadline
+0x5A0B2	advance title intro sequence	ghidra_conversion::advance_title_intro_sequence	shadowrun_ghidra_title_intro_sequence	partial		Typed four-entry lead-in, stage-four transition, repeated steps, anchor, and final overlay order

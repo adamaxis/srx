@@ -550,6 +550,14 @@ and frame `0x168` emits the audio/transfer-header/transition-sprite/final
 overlay sequence. The phase and final descriptors are host asset handles
 provided by the caller; no source pointer or VDP register enters the model.
 
+The following four-entry intro sequence is now typed too. `0x5A0A4` resets
+its stage and deadline. `0x5A0B2` renders four scheduled sprite descriptors,
+then emits the `0x46` audio/stage-four transition, four repeated stage steps,
+the stage-nine anchor update, and the final overlay at stage twelve. The
+source's `+9` frame cadence and `<12` gate are preserved, while every unknown
+graphics/audio leaf is an explicit callback and each descriptor is a host
+asset handle.
+
 The runner reset cluster is now typed. `0x59BCC` clears status bits `6` and
 `4` in each of the three live runner records, preserves the source order of
 the preparation (`0x3674`, argument `0x0A`) and finalization (`0x37EC`)
