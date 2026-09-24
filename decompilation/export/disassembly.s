@@ -6649,7 +6649,7 @@
 0000E826: move.w #0x7f,(0x00ffef10).l
 0000E82E: move.w #0x7f,(0x00ffef12).l
 0000E836: rts
-0000E838: bsr.w 0x0000e8a0 ; call 0000E8A0 FUN_0000e8a0
+0000E838: bsr.w 0x0000e8a0 ; call 0000E8A0 sample_terrain_collision_tiles
 0000E83C: ext.w D0w
 0000E83E: move.w D0w,(0x00ffdf64).l
 0000E844: beq.b 0x0000e836
@@ -6675,7 +6675,7 @@
 0000E88A: nop
 0000E88C: move.w #0x7f,D0w
 0000E890: rts
-0000E892: bsr.w 0x0000e9ee ; call 0000E9EE FUN_0000e9ee
+0000E892: bsr.w 0x0000e9ee ; call 0000E9EE contains_terrain_object_bounds
 0000E896: bcc.w 0x0000e89c
 0000E89A: bra.b 0x0000e88c
 0000E89C: clr.w D0w

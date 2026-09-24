@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000E8A0
-// Name: FUN_0000e8a0
+// Name: sample_terrain_collision_tiles
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-byte FUN_0000e8a0(void)
+byte sample_terrain_collision_tiles(void)
 
 {
   short sVar1;

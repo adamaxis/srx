@@ -397,3 +397,16 @@ target_link_libraries(shadowrun_ghidra_movement_step_test
     PRIVATE shadowrun_ghidra_movement_step)
 add_test(NAME shadowrun_ghidra_movement_step
          COMMAND shadowrun_ghidra_movement_step_test)
+
+add_library(shadowrun_ghidra_terrain_probe STATIC
+    src/terrain_probe_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_terrain_probe PUBLIC include)
+
+add_executable(shadowrun_ghidra_terrain_probe_test
+    tests/terrain_probe_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_terrain_probe_test
+    PRIVATE shadowrun_ghidra_terrain_probe)
+add_test(NAME shadowrun_ghidra_terrain_probe
+         COMMAND shadowrun_ghidra_terrain_probe_test)

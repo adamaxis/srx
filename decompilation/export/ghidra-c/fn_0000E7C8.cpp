@@ -3,8 +3,8 @@
 // Name: FUN_0000e7c8
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000E8A0 FUN_0000e8a0
-//   0x0000E9EE FUN_0000e9ee
+//   0x0000E8A0 sample_terrain_collision_tiles
+//   0x0000E9EE contains_terrain_object_bounds
 //   0x0000EA36 FUN_0000ea36
 
 
@@ -28,7 +28,7 @@ ushort FUN_0000e7c8(void)
     _DAT_00ffdf68 = 0xffff;
     return 0x7f;
   }
-  cVar1 = FUN_0000e8a0();
+  cVar1 = sample_terrain_collision_tiles();
   DAT_00ffdf64 = (ushort)cVar1;
   if (DAT_00ffdf64 == 0) {
     return 0;
@@ -40,7 +40,7 @@ ushort FUN_0000e7c8(void)
     }
     if ((DAT_00ffdf64 & 0x40) == 0) {
       if ((DAT_00ffdf64 & 0x20) == 0) {
-        FUN_0000e9ee();
+        contains_terrain_object_bounds();
         if (!bVar2) {
           return 0;
         }

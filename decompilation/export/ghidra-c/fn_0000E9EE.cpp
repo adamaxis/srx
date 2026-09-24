@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000E9EE
-// Name: FUN_0000e9ee
+// Name: contains_terrain_object_bounds
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0000e9ee(void)
+void contains_terrain_object_bounds(void)
 
 {
   undefined4 uVar1;
