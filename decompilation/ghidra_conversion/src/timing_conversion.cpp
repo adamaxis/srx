@@ -2,6 +2,17 @@
 
 namespace shadowrun::ghidra_conversion {
 
+bool wait_for_even_frame(
+    EvenFrameState& state,
+    const NextEvenFrameBoundary& next_even_frame) {
+    if (!next_even_frame) {
+        return false;
+    }
+    state.observed_even_frame = next_even_frame(state.observed_even_frame) &
+                                ~1U;
+    return true;
+}
+
 void wait_for_vdp_ready(const VdpReadyCallbacks& callbacks) {
     if (callbacks.warmup_delay) {
         callbacks.warmup_delay(11U * 4096U);

@@ -4,6 +4,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x0436	startup text transfer	encode_startup_text	shadowrun_boot_reconstruction	partial		Typed StartupTextTransfer; VDP adapter verified
 0x073A	VDP-ready wait	NativePortShell::update	shadowrun_boot_reconstruction	partial		Typed 45056-cycle warm-up, ready boundary, and 256-cycle settle conversion; no host busy loop
 0x075E	main coordinator	NativePortShell::update	shadowrun_boot_sequence	partial		Semantic call labels installed; indirect dispatch remains unresolved
+0x0BB6	even-frame wait	ghidra_conversion::wait_for_even_frame	shadowrun_boot_sequence	partial		Typed changed-even-frame boundary preserves the source low-bit mask
 0x0BD2	frame/vblank wait	NativePortShell::update	shadowrun_boot_sequence	partial		Typed frame counter and next-vblank boundary conversion; source equality spin removed from host model
 0x0C24	finite vblank wait	ghidra_conversion::wait_for_vblank_frames	shadowrun_boot_sequence	partial		Typed DBF count-plus-one vblank wait
 0x0D94	controller event wait	ghidra_conversion::wait_for_controller_event	shadowrun_boot_sequence	partial		Typed vblank/latch/sample loop with source high-byte event gate and final sample

@@ -22,6 +22,18 @@ struct VblankFrameState {
     std::uint16_t observed_sample = 0;
 };
 
+struct EvenFrameState {
+    std::uint32_t observed_even_frame = 0;
+};
+
+using NextEvenFrameBoundary =
+    std::function<std::uint32_t(std::uint32_t previous_even_frame)>;
+
+// ROM 0x0BB6: wait for the next changed value after clearing the frame
+// counter's low bit.
+bool wait_for_even_frame(EvenFrameState& state,
+                         const NextEvenFrameBoundary& next_even_frame);
+
 using NextVblankBoundary =
     std::function<std::uint16_t(std::uint16_t previous_sample)>;
 

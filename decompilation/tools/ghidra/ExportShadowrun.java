@@ -140,6 +140,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0005BA66L, "install_scene_resource_index_entries");
         names.put(0x00000C24L, "wait_for_vblank_frames");
         names.put(0x00000D94L, "wait_for_controller_event");
+        names.put(0x00000BB6L, "wait_for_even_frame");
         names.put(0x00001530L, "decode_and_upload_source_stream");
         names.put(0x000012F6L, "advance_title_palette_fade");
         names.put(0x00001406L, "prepare_title_resources");

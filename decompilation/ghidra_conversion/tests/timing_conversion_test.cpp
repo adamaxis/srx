@@ -31,6 +31,15 @@ int main() {
         return 1;
     }
 
+    EvenFrameState even_frame{4U};
+    if (!expect(wait_for_even_frame(
+                    even_frame, [](const std::uint32_t previous) {
+                        return previous + 3U;
+                    }) &&
+                even_frame.observed_even_frame == 6U)) {
+        return 2;
+    }
+
     VblankFrameState state{0U, 10U};
     const auto waited = wait_for_vblank(
         state, [](const std::uint16_t previous) {
@@ -38,7 +47,7 @@ int main() {
         });
     if (!expect(waited && state.frame_count == 1U &&
                 state.observed_sample == 11U)) {
-        return 2;
+        return 3;
     }
 
     if (!expect(wait_for_vblank_frames(
@@ -47,7 +56,7 @@ int main() {
                         return static_cast<std::uint16_t>(previous + 1U);
                     }) == 2U &&
                 state.frame_count == 3U && state.observed_sample == 13U)) {
-        return 3;
+        return 4;
     }
 
     std::vector<int> controller_order;
@@ -69,7 +78,7 @@ int main() {
     if (!expect(controller_iterations == 2U && sample_index == 3U &&
                 controller_order == std::vector<int>{1, 2, 3, 1, 2, 3,
                                                       3})) {
-        return 4;
+        return 5;
     }
 
     std::vector<int> palette_order;
@@ -83,12 +92,12 @@ int main() {
     if (!expect(iterations == 2U && state.frame_count == 7U &&
                 state.observed_sample == 17U &&
                 palette_order == std::vector<int>{1, 2, 1, 2})) {
-        return 5;
+        return 6;
     }
 
     if (!expect(wait_for_palette_frame(state, 0U, {}, {}) == 1U &&
                 state.frame_count == 8U)) {
-        return 6;
+        return 7;
     }
 
     return 0;

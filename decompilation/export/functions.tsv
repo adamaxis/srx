@@ -11,7 +11,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00000436	write_startup_text_to_vdp	54	unknown	ok	ghidra-c/fn_00000436.cpp
 0000073A	wait_for_vdp_ready	36	unknown	ok	ghidra-c/fn_0000073A.cpp
 0000075E	run_game_loop	1106	unknown	ok	ghidra-c/fn_0000075E.cpp
-00000BB6	FUN_00000bb6	28	unknown	ok	ghidra-c/fn_00000BB6.cpp
+00000BB6	wait_for_even_frame	28	unknown	ok	ghidra-c/fn_00000BB6.cpp
 00000BD2	wait_for_vblank	32	unknown	ok	ghidra-c/fn_00000BD2.cpp
 00000BF2	latch_controller_events	50	unknown	ok	ghidra-c/fn_00000BF2.cpp
 00000C24	wait_for_vblank_frames	8	unknown	ok	ghidra-c/fn_00000C24.cpp

@@ -392,7 +392,7 @@
 00000BA2: bra.w 0x000008c0
 00000BA6: clr.l (0x00ffe104).l
 00000BAC: bra.w 0x0000078a
-00000BB0: bsr.w 0x00000bb6 ; call 00000BB6 FUN_00000bb6
+00000BB0: bsr.w 0x00000bb6 ; call 00000BB6 wait_for_even_frame
 00000BB4: rts
 00000BB6: move.l (0x00fff9ec).l,D7
 00000BBC: andi.l #-0x2,D7

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00000BB6
-// Name: FUN_00000bb6
+// Name: wait_for_even_frame
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00000bb6(void)
+void wait_for_even_frame(void)
 
 {
   do {
