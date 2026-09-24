@@ -26,6 +26,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x4E64	entity secondary timer	ghidra_conversion::advance_entity_secondary_timer	shadowrun_native_port	partial		Frame-phase timer and 0x20 expiry flag converted in typed state
 0x5A56	entity screen projection	ghidra_conversion::project_entity_screen_position	shadowrun_native_port	partial		Typed field/full-screen projection with source rounding and visibility windows
 0x5A62	standard entity screen projection	ghidra_conversion::project_entity_screen_position_standard	shadowrun_native_port	partial		Typed standard field projection with source rounding and visibility window
+0x5FDC	entity animation accumulator	ghidra_conversion::advance_entity_animation_accumulator	shadowrun_native_port	partial		Typed single-period animation step and redraw request
 0x195C	controller sampling	ghidra_conversion::derive_controller_sample	shadowrun_boot_sequence	partial		Readable edge conversion is isolated from runtime and emulator
 0x19F2	controller port read	Windows input adapter	shadowrun_native_port	pending		Genesis port phases documented; host device mapping remains separate
 0x1BAC	title input sequence validation	ghidra_conversion::finalize_title_input_sequence	shadowrun_menu_system	partial		Seven-byte match and mismatch reset converted without the FF sentinel

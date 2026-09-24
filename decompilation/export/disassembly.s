@@ -3120,7 +3120,7 @@
 0000462A: btst.b #0x0,(0x10,A0)
 00004630: beq.w 0x00004644
 00004634: bsr.w 0x00005a56 ; call 00005A56 project_entity_screen_position
-00004638: jsr 0x00005fdc.l ; call 00005FDC FUN_00005fdc
+00004638: jsr 0x00005fdc.l ; call 00005FDC advance_entity_animation_accumulator
 0000463E: jsr 0x0000600e.l ; call 0000600E FUN_0000600e
 00004644: adda.w #0x100,A0
 00004648: dbf D7w,0x0000462a

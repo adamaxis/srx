@@ -110,3 +110,16 @@ target_link_libraries(shadowrun_ghidra_entity_projection_test
     PRIVATE shadowrun_ghidra_entity_projection)
 add_test(NAME shadowrun_ghidra_entity_projection
          COMMAND shadowrun_ghidra_entity_projection_test)
+
+add_library(shadowrun_ghidra_entity_animation STATIC
+    src/entity_animation_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_animation PUBLIC include)
+
+add_executable(shadowrun_ghidra_entity_animation_test
+    tests/entity_animation_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_animation_test
+    PRIVATE shadowrun_ghidra_entity_animation)
+add_test(NAME shadowrun_ghidra_entity_animation
+         COMMAND shadowrun_ghidra_entity_animation_test)

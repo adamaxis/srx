@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00004658 FUN_00004658
 //   0x00005A56 project_entity_screen_position
-//   0x00005FDC FUN_00005fdc
+//   0x00005FDC advance_entity_animation_accumulator
 //   0x0000600E FUN_0000600e
 
 
@@ -24,7 +24,7 @@ void FUN_00004618(void)
   do {
     if ((*(byte *)(puVar2 + 8) & 1) != 0) {
       project_entity_screen_position();
-      FUN_00005fdc();
+      advance_entity_animation_accumulator();
       FUN_0000600e();
       puVar2 = extraout_A0;
     }

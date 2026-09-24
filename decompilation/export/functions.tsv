@@ -165,7 +165,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00005B7E	FUN_00005b7e	26	unknown	ok	ghidra-c/fn_00005B7E.cpp
 00005B98	FUN_00005b98	86	unknown	ok	ghidra-c/fn_00005B98.cpp
 00005C7E	FUN_00005c7e	260	unknown	ok	ghidra-c/fn_00005C7E.cpp
-00005FDC	FUN_00005fdc	50	unknown	ok	ghidra-c/fn_00005FDC.cpp
+00005FDC	advance_entity_animation_accumulator	50	unknown	ok	ghidra-c/fn_00005FDC.cpp
 0000600E	FUN_0000600e	230	unknown	ok	ghidra-c/fn_0000600E.cpp
 000060F4	FUN_000060f4	6	unknown	ok	ghidra-c/fn_000060F4.cpp
 000060FA	FUN_000060fa	78	unknown	ok	ghidra-c/fn_000060FA.cpp

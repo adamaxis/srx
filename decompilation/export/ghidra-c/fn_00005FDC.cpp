@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00005FDC
-// Name: FUN_00005fdc
+// Name: advance_entity_animation_accumulator
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00005fdc(void)
+void advance_entity_animation_accumulator(void)
 
 {
   short sVar1;
