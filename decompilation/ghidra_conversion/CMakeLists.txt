@@ -1466,3 +1466,16 @@ target_link_libraries(shadowrun_ghidra_entity_action_state_test
     PRIVATE shadowrun_ghidra_entity_action_state)
 add_test(NAME shadowrun_ghidra_entity_action_state
          COMMAND shadowrun_ghidra_entity_action_state_test)
+
+add_library(shadowrun_ghidra_menu_hud_service STATIC
+    src/menu_hud_service_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_menu_hud_service PUBLIC include)
+
+add_executable(shadowrun_ghidra_menu_hud_service_test
+    tests/menu_hud_service_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_menu_hud_service_test
+    PRIVATE shadowrun_ghidra_menu_hud_service)
+add_test(NAME shadowrun_ghidra_menu_hud_service
+         COMMAND shadowrun_ghidra_menu_hud_service_test)
