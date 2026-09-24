@@ -12,7 +12,7 @@
 //   0x0000195C sample_controller_input
 //   0x0000C0DA render_title_text_source
 //   0x0000C376 move_wrapped_menu_cursor
-//   0x00010952 FUN_00010952
+//   0x00010952 reset_mode_display_buffers
 //   0x000176EA render_menu_footer
 //   0x000177CC FUN_000177cc
 //   0x00017F80 FUN_00017f80
@@ -57,7 +57,7 @@ undefined4 FUN_00054662(void)
 LAB_000546cc:
   do {
     VDP_CTRL = 0x8134;
-    FUN_00010952();
+    reset_mode_display_buffers();
     FUN_000566f6();
     write_vdp_word_block_with_source_wrap();
     write_vdp_word_block_with_source_wrap();

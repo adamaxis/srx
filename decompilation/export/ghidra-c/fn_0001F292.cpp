@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001F292
-// Name: FUN_0001f292
+// Name: prepare_mode_exit_resources
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001530 decode_and_upload_source_stream
@@ -12,7 +12,7 @@
 //   0x000566F6 FUN_000566f6
 
 
-void FUN_0001f292(void)
+void prepare_mode_exit_resources(void)
 
 {
   if (DAT_00fff0b5 != '\0') {

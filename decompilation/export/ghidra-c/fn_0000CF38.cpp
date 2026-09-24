@@ -14,14 +14,14 @@
 //   0x0000CFFE FUN_0000cffe
 //   0x0000E660 FUN_0000e660
 //   0x0000EF08 FUN_0000ef08
-//   0x00010952 FUN_00010952
+//   0x00010952 reset_mode_display_buffers
 
 
 void FUN_0000cf38(void)
 
 {
   DAT_00fff10d = 0;
-  FUN_00010952();
+  reset_mode_display_buffers();
   FUN_0000cffe();
   FUN_0000ef08();
   do {

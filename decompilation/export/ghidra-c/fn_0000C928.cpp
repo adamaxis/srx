@@ -13,20 +13,20 @@
 //   0x0000C3E6 FUN_0000c3e6
 //   0x0000C436 FUN_0000c436
 //   0x0000E660 FUN_0000e660
-//   0x00010952 FUN_00010952
+//   0x00010952 reset_mode_display_buffers
 //   0x00010A82 FUN_00010a82
 //   0x000566D8 FUN_000566d8
-//   0x0005670E FUN_0005670e
+//   0x0005670E refresh_mode_palette_data
 
 
 void FUN_0000c928(void)
 
 {
-  FUN_00010952();
+  reset_mode_display_buffers();
   DAT_00fff0b7 = 1;
   do {
     FUN_000566d8();
-    FUN_0005670e();
+    refresh_mode_palette_data();
     FUN_00010a82();
     load_title_font();
     FUN_0000c3e6();

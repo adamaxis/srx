@@ -24,7 +24,7 @@
 //   0x000566E2 FUN_000566e2
 //   0x000566EC FUN_000566ec
 //   0x000566F6 FUN_000566f6
-//   0x0005670E FUN_0005670e
+//   0x0005670E refresh_mode_palette_data
 //   0x00056DC4 FUN_00056dc4
 //   0x000587DA FUN_000587da
 //   0x00058B5E FUN_00058b5e
@@ -41,7 +41,7 @@ void FUN_00056ac0(void)
   VDP_CTRL = 0x9100;
   transfer_menu_asset_batch_eight_after_copy();
   FUN_00011048();
-  FUN_0005670e();
+  refresh_mode_palette_data();
   if (DAT_00fff0b7 == '\x01') {
     write_vdp_word_block_with_source_wrap();
   }

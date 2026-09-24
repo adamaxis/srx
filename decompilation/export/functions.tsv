@@ -280,7 +280,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00010854	FUN_00010854	56	unknown	ok	ghidra-c/fn_00010854.cpp
 0001088C	FUN_0001088c	140	unknown	ok	ghidra-c/fn_0001088C.cpp
 00010918	prepare_menu_graphics	58	unknown	ok	ghidra-c/fn_00010918.cpp
-00010952	FUN_00010952	50	unknown	ok	ghidra-c/fn_00010952.cpp
+00010952	reset_mode_display_buffers	50	unknown	ok	ghidra-c/fn_00010952.cpp
 00010984	transfer_menu_asset_batch_nine_optional	10	unknown	ok	ghidra-c/fn_00010984.cpp
 0001098E	FUN_0001098e	240	unknown	ok	ghidra-c/fn_0001098E.cpp
 00010A7E	transfer_menu_asset_batch_four_post_prepare	4	unknown	ok	ghidra-c/fn_00010A7E.cpp
@@ -652,12 +652,12 @@ entry	name	size	callingConvention	decompileStatus	file
 0001E69C	FUN_0001e69c	144	unknown	ok	ghidra-c/fn_0001E69C.cpp
 0001EEDC	FUN_0001eedc	80	unknown	ok	ghidra-c/fn_0001EEDC.cpp
 0001F1E0	FUN_0001f1e0	14	unknown	ok	ghidra-c/fn_0001F1E0.cpp
-0001F246	FUN_0001f246	76	unknown	ok	ghidra-c/fn_0001F246.cpp
-0001F292	FUN_0001f292	156	unknown	ok	ghidra-c/fn_0001F292.cpp
+0001F246	run_mode_exit_services	76	unknown	ok	ghidra-c/fn_0001F246.cpp
+0001F292	prepare_mode_exit_resources	156	unknown	ok	ghidra-c/fn_0001F292.cpp
 0001F32E	FUN_0001f32e	28	unknown	ok	ghidra-c/fn_0001F32E.cpp
 0001F34A	FUN_0001f34a	64	unknown	ok	ghidra-c/fn_0001F34A.cpp
 0001F38A	FUN_0001f38a	58	unknown	ok	ghidra-c/fn_0001F38A.cpp
-0001F3C4	FUN_0001f3c4	484	unknown	ok	ghidra-c/fn_0001F3C4.cpp
+0001F3C4	run_mode_text_prompt	484	unknown	ok	ghidra-c/fn_0001F3C4.cpp
 0001F5A8	FUN_0001f5a8	34	unknown	ok	ghidra-c/fn_0001F5A8.cpp
 0001F5CA	FUN_0001f5ca	144	unknown	ok	ghidra-c/fn_0001F5CA.cpp
 0001F65A	FUN_0001f65a	470	unknown	ok	ghidra-c/fn_0001F65A.cpp
@@ -768,7 +768,7 @@ entry	name	size	callingConvention	decompileStatus	file
 000566E2	FUN_000566e2	10	unknown	ok	ghidra-c/fn_000566E2.cpp
 000566EC	FUN_000566ec	10	unknown	ok	ghidra-c/fn_000566EC.cpp
 000566F6	FUN_000566f6	24	unknown	ok	ghidra-c/fn_000566F6.cpp
-0005670E	FUN_0005670e	30	unknown	ok	ghidra-c/fn_0005670E.cpp
+0005670E	refresh_mode_palette_data	30	unknown	ok	ghidra-c/fn_0005670E.cpp
 0005672C	FUN_0005672c	916	unknown	ok	ghidra-c/fn_0005672C.cpp
 00056AC0	FUN_00056ac0	772	unknown	ok	ghidra-c/fn_00056AC0.cpp
 00056DC4	FUN_00056dc4	2432	unknown	ok	ghidra-c/fn_00056DC4.cpp

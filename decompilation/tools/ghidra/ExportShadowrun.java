@@ -297,6 +297,11 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00011454L, "reset_menu_upload_cursor_and_upload");
         names.put(0x00017EE4L, "reset_menu_overlay_and_upload_two");
         names.put(0x000136DEL, "initialize_scene_mode_state");
+        names.put(0x0001F246L, "run_mode_exit_services");
+        names.put(0x0001F292L, "prepare_mode_exit_resources");
+        names.put(0x00010952L, "reset_mode_display_buffers");
+        names.put(0x0001F3C4L, "run_mode_text_prompt");
+        names.put(0x0005670EL, "refresh_mode_palette_data");
         names.put(0x000134D2L, "run_post_intro_mode");
         names.put(0x00013726L, "render_mode_selection");
         names.put(0x00020714L, "finalize_mode_exit");

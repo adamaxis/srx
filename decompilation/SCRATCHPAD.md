@@ -626,6 +626,14 @@ random samples and then requests the world-grid write. None of these leaves
 imports the source address space; their generator, transfer, and exit work
 remain callbacks.
 
+The `0x1F246` mode-exit coordinator is now `run_mode_exit_services`. It
+preserves display commands `0x9100` and `0x9191`, font and optional-menu setup,
+the conditional pending-dispatch call, marker clear, prompt flow, display
+buffer reset, and palette refresh order. The child routines are named in the
+Ghidra export as `prepare_mode_exit_resources`, `run_mode_text_prompt`,
+`reset_mode_display_buffers`, and `refresh_mode_palette_data`; their transfer
+and prompt details remain explicit boundaries.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames

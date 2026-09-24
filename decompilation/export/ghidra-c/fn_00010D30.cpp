@@ -23,7 +23,7 @@
 //   0x00011740 FUN_00011740
 //   0x00011928 FUN_00011928
 //   0x000530DE service_audio_if_enabled
-//   0x0005670E FUN_0005670e
+//   0x0005670E refresh_mode_palette_data
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -47,7 +47,7 @@ code_r0x00010d30:
   DAT_00fff0e7 = 0;
   DAT_00fff100 = 0;
   FUN_00010f50();
-  FUN_0005670e();
+  refresh_mode_palette_data();
   load_title_font();
   VDP_CTRL = 0x8174;
   uVar1 = _DAT_00fff0d0;

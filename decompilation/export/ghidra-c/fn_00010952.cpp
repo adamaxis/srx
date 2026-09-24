@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00010952
-// Name: FUN_00010952
+// Name: reset_mode_display_buffers
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -13,7 +13,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00010952(void)
+void reset_mode_display_buffers(void)
 
 {
   clear_and_fill_plane_a();

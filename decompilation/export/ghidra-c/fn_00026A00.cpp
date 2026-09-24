@@ -8,7 +8,7 @@
 //   0x00000F5C write_vdp_word_block_with_source_wrap
 //   0x00001358 copy_source_word_block
 //   0x0000195C sample_controller_input
-//   0x00010952 FUN_00010952
+//   0x00010952 reset_mode_display_buffers
 //   0x00026BFE FUN_00026bfe
 //   0x00026C26 FUN_00026c26
 //   0x000530DE service_audio_if_enabled
@@ -32,7 +32,7 @@ void FUN_00026a00(void)
   DAT_00fff0b1 = 0xff;
   service_audio_if_enabled();
   write_vdp_word_block_with_source_wrap();
-  FUN_00010952();
+  reset_mode_display_buffers();
   copy_source_word_block();
   DAT_00ffef14 = DAT_00ffef14 | 1;
   uVar2 = 0x6000;

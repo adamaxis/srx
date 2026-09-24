@@ -10,7 +10,7 @@
 //   0x0000C802 FUN_0000c802
 //   0x0001DED8 FUN_0001ded8
 //   0x0001E68C FUN_0001e68c
-//   0x0001F246 FUN_0001f246
+//   0x0001F246 run_mode_exit_services
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -42,7 +42,7 @@ LAB_0000c690:
     DAT_00fffc22 = DAT_00fffc22 & 0xfffffdff;
   }
   FUN_0001e68c();
-  FUN_0001f246();
+  run_mode_exit_services();
 LAB_0000c716:
   DAT_00ff024c = 0;
   DAT_00ff034c = 0;
@@ -62,7 +62,7 @@ LAB_0000c716:
     uVar1 = 5000;
   }
   DAT_00fffbfe = DAT_00fffbfe - uVar1;
-  FUN_0001f246();
+  run_mode_exit_services();
   run_entity_animation_triplet();
   handle_mode_action_event();
   if ((DAT_00fffc1e & 1) == 0) {

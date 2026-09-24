@@ -5592,7 +5592,7 @@
 0000C698: movea.l (SP)+,A0
 0000C69A: jsr 0x0001e68c.l ; call 0001E68C FUN_0001e68c
 0000C6A0: lea (0x1220b4).l,A5 ; data 001220b4
-0000C6A6: jsr 0x0001f246.l ; call 0001F246 FUN_0001f246
+0000C6A6: jsr 0x0001f246.l ; call 0001F246 run_mode_exit_services
 0000C6AC: bra.w 0x0000c716
 0000C6B0: cmpi.b #0x1,(0x00fffbed).l
 0000C6B8: bne.w 0x0000c6d0
@@ -5641,7 +5641,7 @@
 0000C7B0: bmi.w 0x0000c7ba
 0000C7B4: move.l #0x1388,D1
 0000C7BA: sub.l D1,(0x00fffbfe).l
-0000C7C0: jsr 0x0001f246.l ; call 0001F246 FUN_0001f246
+0000C7C0: jsr 0x0001f246.l ; call 0001F246 run_mode_exit_services
 0000C7C6: jsr 0x000038fa.l ; call 000038FA run_entity_animation_triplet
 0000C7CC: jsr 0x0000391a.l ; call 0000391A handle_mode_action_event
 0000C7D2: move.l (0x00fffc1e).l,D0
@@ -5707,11 +5707,11 @@
 0000C918: adda.l #0x100,A2
 0000C91E: dbf D7w,0x0000c904
 0000C922: jmp 0x0000f312.l ; call 0000F312 wait_for_controller_event
-0000C928: jsr 0x00010952.l ; call 00010952 FUN_00010952
+0000C928: jsr 0x00010952.l ; call 00010952 reset_mode_display_buffers
 0000C92E: move.b #0x1,(0x00fff0b7).l
 0000C936: lea (0xd29d6).l,A0 ; data 000d29d6
 0000C93C: jsr 0x000566d8.l ; call 000566D8 FUN_000566d8
-0000C942: jsr 0x0005670e.l ; call 0005670E FUN_0005670e
+0000C942: jsr 0x0005670e.l ; call 0005670E refresh_mode_palette_data
 0000C948: bsr.w 0x00010a82 ; call 00010A82 FUN_00010a82
 0000C94C: jsr 0x0000c0c2.l ; call 0000C0C2 load_title_font
 0000C952: bsr.w 0x0000c3e6 ; call 0000C3E6 FUN_0000c3e6
@@ -5825,7 +5825,7 @@
 0000CDF0: beq.w 0x0000cd14
 0000CDF4: rts
 0000CF38: clr.b (0x00fff10d).l
-0000CF3E: jsr 0x00010952.l ; call 00010952 FUN_00010952
+0000CF3E: jsr 0x00010952.l ; call 00010952 reset_mode_display_buffers
 0000CF44: bsr.w 0x0000cffe ; call 0000CFFE FUN_0000cffe
 0000CF48: jsr 0x0000ef08.l ; call 0000EF08 FUN_0000ef08
 0000CF4E: bsr.w 0x0000cffe ; call 0000CFFE FUN_0000cffe
@@ -5869,7 +5869,7 @@
 0000CFFC: rts
 0000CFFE: lea (0xd29d6).l,A0 ; data 000d29d6
 0000D004: jsr 0x000566d8.l ; call 000566D8 FUN_000566d8
-0000D00A: jsr 0x0005670e.l ; call 0005670E FUN_0005670e
+0000D00A: jsr 0x0005670e.l ; call 0005670E refresh_mode_palette_data
 0000D010: bsr.w 0x00010a82 ; call 00010A82 FUN_00010a82
 0000D014: jsr 0x0000c0c2.l ; call 0000C0C2 load_title_font
 0000D01A: rts
@@ -6534,7 +6534,7 @@
 0000E60C: movea.l (0x2,A1),A0
 0000E610: bra.w 0x0000e618
 0000E618: movea.l (0xa,A1),A5
-0000E61C: jsr 0x0001f246.l ; call 0001F246 FUN_0001f246
+0000E61C: jsr 0x0001f246.l ; call 0001F246 run_mode_exit_services
 0000E622: bra.w 0x0000e65a
 0000E65A: move.l (SP)+,D0
 0000E65C: move.l (SP)+,D0
@@ -8289,7 +8289,7 @@
 00010910: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00010916: rts
 00010918: move.w #-0x7ecc,(0x00c00004).l
-00010920: bsr.w 0x00010952 ; call 00010952 FUN_00010952
+00010920: bsr.w 0x00010952 ; call 00010952 reset_mode_display_buffers
 00010924: lea (0xd29d6).l,A0 ; data 000d29d6
 0001092A: jsr 0x000566d8.l ; call 000566D8 FUN_000566d8
 00010930: bset.b #0x0,(0x00ffef14).l
@@ -8511,7 +8511,7 @@
 00010D6C: clr.b (0x00fff0e7).l
 00010D72: clr.b (0x00fff100).l
 00010D78: bsr.w 0x00010f50 ; call 00010F50 FUN_00010f50
-00010D7C: jsr 0x0005670e.l ; call 0005670E FUN_0005670e
+00010D7C: jsr 0x0005670e.l ; call 0005670E refresh_mode_palette_data
 00010D82: jsr 0x0000c0c2.l ; call 0000C0C2 load_title_font
 00010D88: move.w #-0x7e8c,(0x00c00004).l
 00010D90: clr.b (0x00fff0e0).l
@@ -19089,23 +19089,23 @@
 0001F1E6: cmpi.b #0x9,(0x00fffbfb).l
 0001F232: lea (0xf359e).l,A0 ; data 000f359e
 0001F238: lea (0x1220b4).l,A5 ; data 001220b4
-0001F23E: jsr 0x0001f246.l ; call 0001F246 FUN_0001f246
+0001F23E: jsr 0x0001f246.l ; call 0001F246 run_mode_exit_services
 0001F244: rts
 0001F246: move.l A0,-(SP) ; data Stack[-0x4]
 0001F248: move.l A1,-(SP) ; data Stack[-0x8]
 0001F24A: move.w #-0x6f00,(0x00c00004).l
 0001F252: jsr 0x0000c0c2.l ; call 0000C0C2 load_title_font
 0001F258: jsr 0x00010984.l ; call 00010984 transfer_menu_asset_batch_nine_optional
-0001F25E: bsr.w 0x0001f292 ; call 0001F292 FUN_0001f292
+0001F25E: bsr.w 0x0001f292 ; call 0001F292 prepare_mode_exit_resources
 0001F262: movea.l (SP)+,A1
 0001F264: tst.b (0x00fff10c).l
 0001F26A: beq.w 0x0001f270
 0001F26E: jsr (A1)
 0001F270: movea.l (SP)+,A0
 0001F272: clr.b (0x00fff10c).l
-0001F278: bsr.w 0x0001f3c4 ; call 0001F3C4 FUN_0001f3c4
-0001F27C: jsr 0x00010952.l ; call 00010952 FUN_00010952
-0001F282: jsr 0x0005670e.l ; call 0005670E FUN_0005670e
+0001F278: bsr.w 0x0001f3c4 ; call 0001F3C4 run_mode_text_prompt
+0001F27C: jsr 0x00010952.l ; call 00010952 reset_mode_display_buffers
+0001F282: jsr 0x0005670e.l ; call 0005670E refresh_mode_palette_data
 0001F288: move.w #-0x6e6f,(0x00c00004).l
 0001F290: rts
 0001F292: move.l D6,-(SP) ; data Stack[-0x4]
@@ -19421,7 +19421,7 @@
 0001F806: lea (0xf4a90).l,A0 ; data 000f4a90
 0001F80C: bra.w 0x0001f816
 0001F810: lea (0xf4a60).l,A0 ; data 000f4a60
-0001F816: bsr.w 0x0001f246 ; call 0001F246 FUN_0001f246
+0001F816: bsr.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 0001F81A: tst.b (0x00fff10d).l
 0001F820: bpl.w 0x0001f82a
 0001F824: jsr 0x0000cf38.l ; call 0000CF38 FUN_0000cf38
@@ -19532,7 +19532,7 @@
 0001FA46: bra.w 0x0001fa50
 0001FA4A: lea (0x110eca).l,A0 ; data 00110eca
 0001FA50: clr.b (0x00fff0d5).l
-0001FA56: bsr.w 0x0001f246 ; call 0001F246 FUN_0001f246
+0001FA56: bsr.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 0001FA5A: tst.b (0x00fff0d5).l
 0001FA60: bne.w 0x0001fa6a
 0001FA64: move.w #-0x1,D6w
@@ -19555,7 +19555,7 @@
 0001FABE: lea (0x11166e).l,A0 ; data 0011166e
 0001FAC4: bra.w 0x0001fd7a
 0001FAC8: lea (0x110dd2).l,A0 ; data 00110dd2
-0001FACE: bsr.w 0x0001f246 ; call 0001F246 FUN_0001f246
+0001FACE: bsr.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 0001FAD2: bra.w 0x0001fd6e
 0001FAD6: cmpi.b #0x1,(0x00fffbf8).l
 0001FADE: bne.w 0x0001fba2
@@ -19572,7 +19572,7 @@
 0001FB1A: bra.w 0x0001fd7a
 0001FB1E: clr.b (0x00fff112).l
 0001FB24: lea (0x11864a).l,A0 ; data 0011864a
-0001FB2A: bsr.w 0x0001f246 ; call 0001F246 FUN_0001f246
+0001FB2A: bsr.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 0001FB2E: tst.b (0x00fff112).l
 0001FB34: beq.w 0x0001fd74
 0001FB38: bmi.w 0x0001fb48
@@ -19671,7 +19671,7 @@
 0001FD3A: lea (0x111876).l,A0 ; data 00111876
 0001FD40: bra.w 0x0001fd4a
 0001FD44: lea (0x111892).l,A0 ; data 00111892
-0001FD4A: bsr.w 0x0001f246 ; call 0001F246 FUN_0001f246
+0001FD4A: bsr.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 0001FD4E: tst.b (0x00fff112).l
 0001FD54: beq.w 0x0001fd74
 0001FD58: clr.b (0x00fff112).l
@@ -19680,7 +19680,7 @@
 0001FD6E: jsr 0x00056ac0.l ; call 00056AC0 FUN_00056ac0
 0001FD74: move.w #-0x1,D6w
 0001FD78: rts
-0001FD7A: bsr.w 0x0001f246 ; call 0001F246 FUN_0001f246
+0001FD7A: bsr.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 0001FD7E: bra.b 0x0001fd74
 0001FD80: cmpi.b #0x6,(0x00fffbf8).l
 0001FD88: bne.w 0x0001fdbe
@@ -19691,7 +19691,7 @@
 0001FDA2: move.l D3,(0x00fffc30).l
 0001FDA8: lea (0xf4b4c).l,A0 ; data 000f4b4c
 0001FDAE: lea (0x121e14).l,A5 ; data 00121e14
-0001FDB4: bsr.w 0x0001f246 ; call 0001F246 FUN_0001f246
+0001FDB4: bsr.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 0001FDB8: move.w #-0x1,D6w
 0001FDBC: rts
 0001FDBE: cmpi.b #0x7,(0x00fffbf8).l
@@ -19731,7 +19731,7 @@
 0001FE6A: bra.w 0x0001fe74
 0001FE6E: lea (0x11b5d8).l,A0 ; data 0011b5d8
 0001FE74: lea (0x122024).l,A5 ; data 00122024
-0001FE7A: jsr 0x0001f246.l ; call 0001F246 FUN_0001f246
+0001FE7A: jsr 0x0001f246.l ; call 0001F246 run_mode_exit_services
 0001FE80: move.w #-0x1,D6w
 0001FE84: rts
 0001FE86: clr.b (0x00fff0d6).l
@@ -19748,7 +19748,7 @@
 0001FEC2: lea (0x110aba).l,A0 ; data 00110aba
 0001FEC8: bra.w 0x0001fed2
 0001FECC: lea (0x110a96).l,A0 ; data 00110a96
-0001FED2: jsr 0x0001f246.l ; call 0001F246 FUN_0001f246
+0001FED2: jsr 0x0001f246.l ; call 0001F246 run_mode_exit_services
 0001FED8: clr.b (0x00fff0d5).l
 0001FEDE: tst.b (0x00fff0d6).l
 0001FEE4: bmi.w 0x0001feec
@@ -20164,7 +20164,7 @@
 00020752: lea (0xfe5d4).l,A0 ; data 000fe5d4
 00020758: lea (0x121f10).l,A5 ; data 00121f10
 0002075E: move.b #0x0,(0x00fff10c).l
-00020766: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+00020766: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 00020882: mulu.w (A2)+,D0
 00020884: adda.l #0x22,A2
 0002088A: clr.l D1
@@ -20177,116 +20177,116 @@
 00020A02: lea (0x121e20).l,A5 ; data 00121e20
 00020A08: lea (0x105370).l,A0 ; data 00105370
 00020A0E: bra.w 0x00020c8a
-00020C8A: bsr.w 0x0001f246 ; call 0001F246 FUN_0001f246
+00020C8A: bsr.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 00020C8E: rts
 00020D00: move.b #0x15,(0x0,A5,D0w*0x1)
 00020D06: lea (0x12cc28).l,A0 ; data 0012cc28
 00020D0C: bra.w 0x00020e32
 00020E32: move.b #0x0,(0x00fff10c).l
 00020E3A: move.b #-0x1,(0x00fff0b5).l
-00020E42: bsr.w 0x0001f246 ; call 0001F246 FUN_0001f246
+00020E42: bsr.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 00020E46: rts
 00020EFA: lea (0x120e0c).l,A0 ; data 00120e0c
 00020F00: lea (0x1220b4).l,A5 ; data 001220b4
 00020F06: move.b #0x0,(0x00fff10c).l
-00020F0E: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+00020F0E: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 00020F12: lea (0x120e54).l,A0 ; data 00120e54
 00020F18: lea (0x122084).l,A5 ; data 00122084
 00020F1E: move.b #0x0,(0x00fff10c).l
-00020F26: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+00020F26: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 00020F2A: lea (0x120f00).l,A0 ; data 00120f00
 00020F30: lea (0x121df0).l,A5 ; data 00121df0
 00020F36: move.b #0x0,(0x00fff10c).l
-00020F3E: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+00020F3E: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 00020F42: lea (0x120f6c).l,A0 ; data 00120f6c
 00020F48: lea (0x1220b4).l,A5 ; data 001220b4
 00020F4E: move.b #0x0,(0x00fff10c).l
-00020F56: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+00020F56: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 00020F5A: lea (0x120fac).l,A0 ; data 00120fac
 00020F60: lea (0x121f40).l,A5 ; data 00121f40
 00020F66: move.b #0x0,(0x00fff10c).l
-00020F6E: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+00020F6E: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 00020F72: lea (0x121004).l,A0 ; data 00121004
 00020F78: lea (0x121f40).l,A5 ; data 00121f40
 00020F7E: move.b #0x0,(0x00fff10c).l
-00020F86: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+00020F86: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 00020F8A: lea (0x121078).l,A0 ; data 00121078
 00020F90: lea (0x12203c).l,A5 ; data 0012203c
 00020F96: move.b #0x0,(0x00fff10c).l
-00020F9E: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+00020F9E: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 00020FA2: lea (0x121108).l,A0 ; data 00121108
 00020FA8: lea (0x12203c).l,A5 ; data 0012203c
 00020FAE: move.b #0x0,(0x00fff10c).l
-00020FB6: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+00020FB6: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 00020FBA: lea (0x1211bc).l,A0 ; data 001211bc
 00020FC0: move.b #0x0,(0x00fff10c).l
 00020FC8: move.b #-0x1,(0x00fff0b5).l
-00020FD0: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+00020FD0: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 00020FD4: lea (0x1211f4).l,A0 ; data 001211f4
 00020FDA: lea (0x121f34).l,A5 ; data 00121f34
 00020FE0: move.b #0x0,(0x00fff10c).l
-00020FE8: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+00020FE8: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 00020FEC: lea (0x121238).l,A0 ; data 00121238
 00020FF2: lea (0x122030).l,A5 ; data 00122030
 00020FF8: move.b #0x0,(0x00fff10c).l
-00021000: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+00021000: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 00021004: lea (0x12130c).l,A0 ; data 0012130c
 0002100A: move.b #0x0,(0x00fff10c).l
 00021012: move.b #-0x1,(0x00fff0b5).l
-0002101A: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+0002101A: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 0002101E: lea (0x121330).l,A0 ; data 00121330
 00021024: lea (0x121e5c).l,A5 ; data 00121e5c
 0002102A: move.b #0x0,(0x00fff10c).l
-00021032: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+00021032: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 00021036: lea (0x121384).l,A0 ; data 00121384
 0002103C: move.b #0x0,(0x00fff10c).l
 00021044: move.b #-0x1,(0x00fff0b5).l
-0002104C: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+0002104C: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 00021050: lea (0x1213a8).l,A0 ; data 001213a8
 00021056: move.b #0x0,(0x00fff10c).l
 0002105E: move.b #-0x1,(0x00fff0b5).l
-00021066: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+00021066: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 0002106A: lea (0x1213cc).l,A0 ; data 001213cc
 00021070: lea (0x122048).l,A5 ; data 00122048
 00021076: move.b #0x0,(0x00fff10c).l
-0002107E: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+0002107E: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 00021082: lea (0x121414).l,A0 ; data 00121414
 00021088: lea (0x121f94).l,A5 ; data 00121f94
 0002108E: move.b #0x0,(0x00fff10c).l
-00021096: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+00021096: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 0002109A: lea (0x1214ac).l,A0 ; data 001214ac
 000210A0: move.b #0x0,(0x00fff10c).l
 000210A8: move.b #-0x1,(0x00fff0b5).l
-000210B0: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+000210B0: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 000210B4: lea (0x1214f4).l,A0 ; data 001214f4
 000210BA: lea (0x121e2c).l,A5 ; data 00121e2c
 000210C0: move.b #0x0,(0x00fff10c).l
-000210C8: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+000210C8: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 000210CC: lea (0x121558).l,A0 ; data 00121558
 000210D2: lea (0x12206c).l,A5 ; data 0012206c
 000210D8: move.b #0x0,(0x00fff10c).l
-000210E0: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+000210E0: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 000210E4: lea (0x121574).l,A0 ; data 00121574
 000210EA: lea (0x12206c).l,A5 ; data 0012206c
 000210F0: move.b #0x0,(0x00fff10c).l
-000210F8: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+000210F8: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 00021112: roxl.b D0,D4b
 00021114: lea (0x121588).l,A0 ; data 00121588
 0002111A: lea (0x121e20).l,A5 ; data 00121e20
 00021120: move.b #0x0,(0x00fff10c).l
-00021128: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+00021128: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 0002112C: lea (0x121604).l,A0 ; data 00121604
 00021132: lea (0x12203c).l,A5 ; data 0012203c
 00021138: move.b #0x0,(0x00fff10c).l
-00021140: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+00021140: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 00021144: lea (0x121688).l,A0 ; data 00121688
 0002114A: lea (0x121e08).l,A5 ; data 00121e08
 00021150: move.b #0x0,(0x00fff10c).l
-00021158: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+00021158: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 0002115C: lea (0x120e30).l,A0 ; data 00120e30
 00021162: lea (0x121e20).l,A5 ; data 00121e20
 00021168: move.b #0x0,(0x00fff10c).l
-00021170: bra.w 0x0001f246 ; call 0001F246 FUN_0001f246
+00021170: bra.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 000213CA: move.l (0x00fffc30).l,D1
 000213D0: bset.l #0x1,D1
 000213D4: move.l D1,(0x00fffc30).l
@@ -20346,7 +20346,7 @@
 000218DA: lea (0xf4bd0).l,A0 ; data 000f4bd0
 000218E0: bra.w 0x0002196c ; call 0002196C FUN_0002196c
 000218E4: lea (0x121e08).l,A5 ; data 00121e08
-000218EA: bsr.w 0x0001f292 ; call 0001F292 FUN_0001f292
+000218EA: bsr.w 0x0001f292 ; call 0001F292 prepare_mode_exit_resources
 000218EE: lea (0xf50e4).l,A0 ; data 000f50e4
 000218F4: bra.w 0x0002196c ; call 0002196C FUN_0002196c
 000218F8: lea (0xf51a8).l,A0 ; data 000f51a8
@@ -20360,15 +20360,15 @@
 0002198A: lea (0x1118ca).l,A0 ; data 001118ca
 00021990: rts
 000219A4: lea (0x121e14).l,A5 ; data 00121e14
-000219AA: bsr.w 0x0001f292 ; call 0001F292 FUN_0001f292
+000219AA: bsr.w 0x0001f292 ; call 0001F292 prepare_mode_exit_resources
 000219AE: lea (0xf4fc8).l,A0 ; data 000f4fc8
 000219B4: rts
 000219B6: lea (0x121e98).l,A5 ; data 00121e98
-000219BC: bsr.w 0x0001f292 ; call 0001F292 FUN_0001f292
+000219BC: bsr.w 0x0001f292 ; call 0001F292 prepare_mode_exit_resources
 000219C0: lea (0xf48f4).l,A0 ; data 000f48f4
 000219C6: rts
 000219C8: lea (0x121e68).l,A5 ; data 00121e68
-000219CE: bsr.w 0x0001f292 ; call 0001F292 FUN_0001f292
+000219CE: bsr.w 0x0001f292 ; call 0001F292 prepare_mode_exit_resources
 000219D2: lea (0xf48e0).l,A0 ; data 000f48e0
 000219D8: rts
 000219DA: move.b #-0x1,(0x00fff112).l
@@ -20397,7 +20397,7 @@
 00021BF0: move.w #0x1,D0w
 00021BF4: jsr 0x0001e1fc.l ; call 0001E1FC FUN_0001e1fc
 00021BFA: lea (0x12206c).l,A5 ; data 0012206c
-00021C00: bsr.w 0x0001f292 ; call 0001F292 FUN_0001f292
+00021C00: bsr.w 0x0001f292 ; call 0001F292 prepare_mode_exit_resources
 00021C04: lea (0xf546c).l,A0 ; data 000f546c
 00021C0A: rts
 00021CAA: move.l (0x00fffc1e).l,D1
@@ -20441,23 +20441,23 @@
 00021E84: jsr 0x000136de.l ; call 000136DE initialize_scene_mode_state
 00021E8A: rts
 00021E8C: lea (0x122024).l,A5 ; data 00122024
-00021E92: bsr.w 0x0001f292 ; call 0001F292 FUN_0001f292
+00021E92: bsr.w 0x0001f292 ; call 0001F292 prepare_mode_exit_resources
 00021E96: lea (0x11b6d4).l,A0 ; data 0011b6d4
 00021E9C: rts
 00021E9E: lea (0x122024).l,A5 ; data 00122024
-00021EA4: bsr.w 0x0001f292 ; call 0001F292 FUN_0001f292
+00021EA4: bsr.w 0x0001f292 ; call 0001F292 prepare_mode_exit_resources
 00021EA8: lea (0x11b6ec).l,A0 ; data 0011b6ec
 00021EAE: rts
 00021EE8: move.b #0x1,(0x00fff0d5).l
 00021EF0: lea (0x111916).l,A0 ; data 00111916
 00021EF6: rts
 00021F6E: lea (0x121e14).l,A5 ; data 00121e14
-00021F74: bsr.w 0x0001f292 ; call 0001F292 FUN_0001f292
+00021F74: bsr.w 0x0001f292 ; call 0001F292 prepare_mode_exit_resources
 00021F78: lea (0xf50f8).l,A0 ; data 000f50f8
 00021F7E: rts
 00021FB8: jsr 0x0001098e.l ; call 0001098E FUN_0001098e
 00021FBE: lea (0x121e08).l,A5 ; data 00121e08
-00021FC4: bsr.w 0x0001f292 ; call 0001F292 FUN_0001f292
+00021FC4: bsr.w 0x0001f292 ; call 0001F292 prepare_mode_exit_resources
 00021FC8: lea (0x11b7b4).l,A0 ; data 0011b7b4
 00021FCE: rts
 00021FF2: move.l (0x00fffc34).l,D1
@@ -20465,7 +20465,7 @@
 00021FFC: bset.l #0x6,D1
 00022000: move.l D1,(0x00fffc34).l
 00022006: lea (0x121e74).l,A5 ; data 00121e74
-0002200C: bsr.w 0x0001f292 ; call 0001F292 FUN_0001f292
+0002200C: bsr.w 0x0001f292 ; call 0001F292 prepare_mode_exit_resources
 00022010: lea (0xf58ac).l,A0 ; data 000f58ac
 00022016: rts
 00022100: ori.b #0x30,D5b
@@ -20475,11 +20475,11 @@
 0002210E: move.l (SP)+,D0
 00022110: rts
 00022112: lea (0x12206c).l,A5 ; data 0012206c
-00022118: bsr.w 0x0001f292 ; call 0001F292 FUN_0001f292
+00022118: bsr.w 0x0001f292 ; call 0001F292 prepare_mode_exit_resources
 0002211C: lea (0xf4fa0).l,A0 ; data 000f4fa0
 00022122: rts
 00022126: ori.b #0x7c,(A2)
-0002212A: bsr.w 0x0001f292 ; call 0001F292 FUN_0001f292
+0002212A: bsr.w 0x0001f292 ; call 0001F292 prepare_mode_exit_resources
 0002212E: lea (0xf4fb4).l,A0 ; data 000f4fb4
 00022134: rts
 000221BA: move.l #0x5dc,D1
@@ -20527,7 +20527,7 @@
 00022478: bne.w 0x000224a2
 0002247C: move.l #0x1e5c4,(0x00ffe120).l
 00022486: lea (0x121e2c).l,A5 ; data 00121e2c
-0002248C: bsr.w 0x0001f292 ; call 0001F292 FUN_0001f292
+0002248C: bsr.w 0x0001f292 ; call 0001F292 prepare_mode_exit_resources
 00022490: lea (0x110b22).l,A0 ; data 00110b22
 00022496: move.b #-0x1,(0x00fff0cc).l
 0002249E: clr.w D6w
@@ -20550,7 +20550,7 @@
 000224E8: bne.w 0x00022510
 000224EC: move.l #0x1e5c4,(0x00ffe120).l
 000224F6: lea (0x121e2c).l,A5 ; data 00121e2c
-000224FC: bsr.w 0x0001f292 ; call 0001F292 FUN_0001f292
+000224FC: bsr.w 0x0001f292 ; call 0001F292 prepare_mode_exit_resources
 00022500: lea (0x110b22).l,A0 ; data 00110b22
 00022506: move.b #-0x1,(0x00fff0cc).l
 0002250E: clr.w D6w
@@ -22674,7 +22674,7 @@
 00026A18: move.l #0x9620,D1
 00026A1E: move.l #0xa0,D2
 00026A24: jsr 0x00000f5c.l ; call 00000F5C write_vdp_word_block_with_source_wrap
-00026A2A: jsr 0x00010952.l ; call 00010952 FUN_00010952
+00026A2A: jsr 0x00010952.l ; call 00010952 reset_mode_display_buffers
 00026A30: lea (0xe2e3a).l,A0 ; data 000e2e3a
 00026A36: jsr 0x00001358.l ; call 00001358 copy_source_word_block
 00026A3C: bset.b #0x0,(0x00ffef14).l
@@ -23409,7 +23409,7 @@
 00053B48: lea (0xf49e8).l,A0 ; data 000f49e8
 00053B4E: lea (0x121fb8).l,A5 ; data 00121fb8
 00053B54: move.b #0x1e,(0x00fff10d).l
-00053B5C: jsr 0x0001f246.l ; call 0001F246 FUN_0001f246
+00053B5C: jsr 0x0001f246.l ; call 0001F246 run_mode_exit_services
 00053B62: tst.b (0x00fff10d).l
 00053B68: bpl.w 0x00053b72
 00053B6C: jsr 0x0000cf38.l ; call 0000CF38 FUN_0000cf38
@@ -23429,7 +23429,7 @@
 000540B0: move.b #-0x1,(0x00ffe184).l
 000540B8: lea (0x110a2a).l,A0 ; data 00110a2a
 000540BE: lea (0x121e2c).l,A5 ; data 00121e2c
-000540C4: jsr 0x0001f246.l ; call 0001F246 FUN_0001f246
+000540C4: jsr 0x0001f246.l ; call 0001F246 run_mode_exit_services
 000540CA: move.b #-0x1,(0x00fff0cc).l
 000540D2: clr.w D6w
 000540D4: rts
@@ -23447,7 +23447,7 @@
 0005418C: move.b #-0x1,(0x00ffe187).l
 00054194: lea (0x11b7f4).l,A0 ; data 0011b7f4
 0005419A: lea (0x122090).l,A5 ; data 00122090
-000541A0: jsr 0x0001f246.l ; call 0001F246 FUN_0001f246
+000541A0: jsr 0x0001f246.l ; call 0001F246 run_mode_exit_services
 000541A6: move.b #-0x1,(0x00fff0cc).l
 000541AE: clr.w D6w
 000541B0: rts
@@ -23463,7 +23463,7 @@
 00054250: bne.w 0x00054284
 00054254: lea (0x1111de).l,A0 ; data 001111de
 0005425A: lea (0x121fc4).l,A5 ; data 00121fc4
-00054260: jsr 0x0001f246.l ; call 0001F246 FUN_0001f246
+00054260: jsr 0x0001f246.l ; call 0001F246 run_mode_exit_services
 00054266: move.l (0x00fffc30).l,D3
 0005426C: bclr.l #0x1a,D3
 00054270: bset.l #0x1b,D3
@@ -23488,7 +23488,7 @@
 00054348: btst.l #0x12,D1
 0005434C: bne.w 0x00054390
 00054350: lea (0xf4db8).l,A0 ; data 000f4db8
-00054356: jsr 0x0001f246.l ; call 0001F246 FUN_0001f246
+00054356: jsr 0x0001f246.l ; call 0001F246 run_mode_exit_services
 0005435C: jsr 0x0002196c.l ; call 0002196C FUN_0002196c
 00054362: move.l (0x00fffc22).l,D0
 00054368: bclr.l #0x6,D0
@@ -23501,7 +23501,7 @@
 0005438A: move.w #-0x1,D6w
 0005438E: rts
 00054390: lea (0xf4dcc).l,A0 ; data 000f4dcc
-00054396: jsr 0x0001f246.l ; call 0001F246 FUN_0001f246
+00054396: jsr 0x0001f246.l ; call 0001F246 run_mode_exit_services
 0005439C: move.w #-0x1,D6w
 000543A0: rts
 00054662: move.b #-0x1,(0x00fff0b7).l
@@ -23525,7 +23525,7 @@
 000546BE: clr.b (0x00fff0a8).l
 000546C4: move.w #-0x7500,(0x00c00004).l
 000546CC: move.w #-0x7ecc,(0x00c00004).l
-000546D4: jsr 0x00010952.l ; call 00010952 FUN_00010952
+000546D4: jsr 0x00010952.l ; call 00010952 reset_mode_display_buffers
 000546DA: lea (0x166330).l,A5 ; data 00166330
 000546E0: lea (0xff1100).l,A6 ; data 00ff1100
 000546E6: move.w (0x00fff118).l,D0w
@@ -24953,7 +24953,7 @@
 00056AC6: move.w #-0x6f00,(0x00c00004).l
 00056ACE: jsr 0x00010bc4.l ; call 00010BC4 transfer_menu_asset_batch_eight_after_copy
 00056AD4: jsr 0x00011048.l ; call 00011048 FUN_00011048
-00056ADA: jsr 0x0005670e.l ; call 0005670E FUN_0005670e
+00056ADA: jsr 0x0005670e.l ; call 0005670E refresh_mode_palette_data
 00056AE0: cmpi.b #0x1,(0x00fff0b7).l
 00056AE8: bne.w 0x00056b04
 00056AEC: move.l #0xcf97c,D0

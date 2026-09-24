@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005670E
-// Name: FUN_0005670e
+// Name: refresh_mode_palette_data
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0005670e(void)
+void refresh_mode_palette_data(void)
 
 {
   short sVar1;

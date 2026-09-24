@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C928 FUN_0000c928
-//   0x0001F246 FUN_0001f246
+//   0x0001F246 run_mode_exit_services
 //   0x0002196C FUN_0002196c
 
 
@@ -47,7 +47,7 @@ void FUN_0001f830(void)
     DAT_00fff0b6 = 10;
   }
   DAT_00fff0d5 = '\0';
-  FUN_0001f246();
+  run_mode_exit_services();
   if (DAT_00fff0d5 != '\0') {
     DAT_00fff0d5 = 0;
     FUN_0000c928();

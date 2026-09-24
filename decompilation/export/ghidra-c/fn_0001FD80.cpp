@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
 //   0x0001E1FC FUN_0001e1fc
-//   0x0001F246 FUN_0001f246
+//   0x0001F246 run_mode_exit_services
 //   0x00059BCC reset_runner_status_triplet
 
 
@@ -16,7 +16,7 @@ void FUN_0001fd80(void)
   
   if ((DAT_00fffbf8 == '\x06') && (DAT_00fffbf9 == '\0')) {
     DAT_00fffc30 = DAT_00fffc30 & 0xfffffdff;
-    FUN_0001f246();
+    run_mode_exit_services();
     return;
   }
   if ((DAT_00fffbf8 == '\a') && (DAT_00fffbf9 == '\0')) {
@@ -27,7 +27,7 @@ void FUN_0001fd80(void)
       reset_runner_status_triplet();
     }
 LAB_0001fe7a:
-    FUN_0001f246();
+    run_mode_exit_services();
     return;
   }
   if ((DAT_00fffbf8 == '\t') && (DAT_00fffbf9 == '\0')) goto LAB_0001fe7a;
@@ -109,7 +109,7 @@ LAB_00020054:
     }
   }
 LAB_0001fed2:
-  FUN_0001f246();
+  run_mode_exit_services();
   DAT_00fff0d5 = 0;
   return;
 }

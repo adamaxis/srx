@@ -3,7 +3,7 @@
 // Name: FUN_0001fa78
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001F246 FUN_0001f246
+//   0x0001F246 run_mode_exit_services
 //   0x00056AC0 FUN_00056ac0
 
 
@@ -22,7 +22,7 @@ void FUN_0001fa78(void)
         DAT_00fff0b6 = 2;
         if (DAT_00fff0d5 != '\0') goto LAB_0001fd7a;
         DAT_00fff112 = '\0';
-        FUN_0001f246();
+        run_mode_exit_services();
         if (DAT_00fff112 == '\0') {
           return;
         }
@@ -50,7 +50,7 @@ LAB_0001fce6:
       }
       if (DAT_00fff0d5 != '\0') goto LAB_0001fd7a;
       DAT_00fff112 = '\0';
-      FUN_0001f246();
+      run_mode_exit_services();
       if (DAT_00fff112 == '\0') {
         return;
       }
@@ -80,10 +80,10 @@ LAB_0001fce6:
 joined_r0x0001fb7c:
   if (DAT_00fff0d5 != '\0') {
 LAB_0001fd7a:
-    FUN_0001f246();
+    run_mode_exit_services();
     return;
   }
-  FUN_0001f246();
+  run_mode_exit_services();
 LAB_0001fd6e:
   FUN_00056ac0();
   return;

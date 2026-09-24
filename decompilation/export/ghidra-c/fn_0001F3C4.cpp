@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001F3C4
-// Name: FUN_0001f3c4
+// Name: run_mode_text_prompt
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -16,7 +16,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-int * FUN_0001f3c4(void)
+int * run_mode_text_prompt(void)
 
 {
   int *in_A0;
