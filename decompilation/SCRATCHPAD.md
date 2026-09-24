@@ -1001,6 +1001,9 @@ The entity-action menu sequence at `0x12E9E` is now isolated in its own
 conversion module: action read precedes the menu service, with both expressed
 as host callbacks.
 
+`0x12F50` now preserves the entity-action menu update, text render, and grid
+submission order in the same isolated module.
+
 The compact row-writer family is now typed as well. `0x1184` emits one masked
 row with optional `0x8F80`/`0x8F02` display-increment controls, `0x11C0`
 repeats a source row at `0x80`-byte destination strides, and `0x11F6`

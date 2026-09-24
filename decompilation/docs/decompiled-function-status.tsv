@@ -363,3 +363,4 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x12C5A	menu repeated-grid metadata writer	ghidra_conversion::write_menu_repeated_grid_with_metadata	shadowrun_ghidra_menu_service_sequence	partial		Typed repeated-grid submission boundary for the adjacent metadata path
 0x12CD6	menu text asset renderer	ghidra_conversion::render_menu_text_asset	shadowrun_ghidra_menu_service_sequence	partial		Typed single menu-text presentation boundary
 0x12E9E	entity action menu service	ghidra_conversion::service_entity_action_menu	shadowrun_ghidra_entity_action_sequence	partial		Typed action read followed by menu/render service
+0x12F50	entity action menu renderer	ghidra_conversion::render_entity_action_menu	shadowrun_ghidra_entity_action_sequence	partial		Typed menu update, text render, and grid submission order
