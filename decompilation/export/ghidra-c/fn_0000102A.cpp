@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x0000102A
-// Name: FUN_0000102a
+// Name: clear_and_fill_plane_b
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E9C make_vdp_transfer_command
 //   0x00001056 clear_vdp_words
 
 
-undefined4 FUN_0000102a(void)
+undefined4 clear_and_fill_plane_b(void)
 
 {
   short sVar1;

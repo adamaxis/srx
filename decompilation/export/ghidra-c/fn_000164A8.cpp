@@ -3,7 +3,7 @@
 // Name: FUN_000164a8
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000164F2 FUN_000164f2
+//   0x000164F2 entity_table_has_free_slot
 
 
 void FUN_000164a8(void)
@@ -23,7 +23,7 @@ void FUN_000164a8(void)
     if (iVar1 == 0) {
       return;
     }
-    FUN_000164f2();
+    entity_table_has_free_slot();
     if (bVar4) break;
     *extraout_A0 = 0xffff;
     *(int *)(extraout_A0 + 2) = iVar1;

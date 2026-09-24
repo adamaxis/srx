@@ -433,7 +433,7 @@
 00000C5E: movea.l #0xff0000,A0
 00000C64: move.b D0b,(A0)+
 00000C66: dbf D7w,0x00000c64
-00000C6A: jsr 0x00000ec0.l ; call 00000EC0 FUN_00000ec0
+00000C6A: jsr 0x00000ec0.l ; call 00000EC0 upload_startup_palette
 00000C70: move.w #0x21,D2w
 00000C74: clr.l D0
 00000C76: move.w #-0x1,D7w
@@ -907,8 +907,8 @@
 00001406: bsr.w 0x0000131c ; call 0000131C step_palette_transition
 0000140A: movea.l (A6)+,A0
 0000140C: jsr 0x00000cec.l ; call 00000CEC FUN_00000cec
-00001412: jsr 0x00000ffe.l ; call 00000FFE FUN_00000ffe
-00001418: jsr 0x0000102a.l ; call 0000102A FUN_0000102a
+00001412: jsr 0x00000ffe.l ; call 00000FFE clear_and_fill_plane_a
+00001418: jsr 0x0000102a.l ; call 0000102A clear_and_fill_plane_b
 0000141E: jsr 0x00000e34.l ; call 00000E34 FUN_00000e34
 00001424: movea.l (A6)+,A0
 00001426: jsr 0x00001368.l ; call 00001368 copy_target_palette
@@ -1268,16 +1268,16 @@
 0000188C: move.w #0x1,(0x00ffdd02).l
 00001894: bclr.b #0x0,(0x00ffef14).l
 0000189C: beq.b 0x000018a2
-0000189E: bsr.w 0x00000ec0 ; call 00000EC0 FUN_00000ec0
+0000189E: bsr.w 0x00000ec0 ; call 00000EC0 upload_startup_palette
 000018A2: tst.w (0x00ffdfe8).l
 000018A8: bne.w 0x000018b2
 000018AC: jsr 0x0005672c.l ; call 0005672C FUN_0005672c
 000018B2: bclr.b #0x2,(0x00ffef14).l
 000018BA: beq.b 0x000018c0
-000018BC: bsr.w 0x00000f1c ; call 00000F1C FUN_00000f1c
+000018BC: bsr.w 0x00000f1c ; call 00000F1C write_transfer_header
 000018C0: bclr.b #0x3,(0x00ffef14).l
 000018C8: beq.b 0x000018ce
-000018CA: bsr.w 0x00000f3c ; call 00000F3C FUN_00000f3c
+000018CA: bsr.w 0x00000f3c ; call 00000F3C write_fixed_transfer_pair
 000018CE: tst.w (0x00ffe100).l
 000018D4: beq.w 0x000018de
 000018D8: jsr 0x00002c92.l ; call 00002C92 FUN_00002c92
@@ -5875,8 +5875,8 @@
 0000D01A: rts
 0000D01C: move.w #-0x1,(0x00fff116).l
 0000D024: move.w #-0x6f00,(0x00c00004).l
-0000D02C: jsr 0x00000ffe.l ; call 00000FFE FUN_00000ffe
-0000D032: jsr 0x0000102a.l ; call 0000102A FUN_0000102a
+0000D02C: jsr 0x00000ffe.l ; call 00000FFE clear_and_fill_plane_a
+0000D032: jsr 0x0000102a.l ; call 0000102A clear_and_fill_plane_b
 0000D038: bsr.w 0x00010c96 ; call 00010C96 transfer_menu_asset_batch_eight
 0000D03C: lea (0xffd8d4).l,A1 ; data 00ffd8d4
 0000D042: move.w #0x2c2,(A1)
@@ -6116,8 +6116,8 @@
 0000D494: btst.b #0xf,(0x00ffdd22).l
 0000D49C: beq.w 0x0000d26a
 0000D4A0: move.w #-0x6e6f,(0x00c00004).l
-0000D4A8: jsr 0x00000ffe.l ; call 00000FFE FUN_00000ffe
-0000D4AE: jsr 0x0000102a.l ; call 0000102A FUN_0000102a
+0000D4A8: jsr 0x00000ffe.l ; call 00000FFE clear_and_fill_plane_a
+0000D4AE: jsr 0x0000102a.l ; call 0000102A clear_and_fill_plane_b
 0000D4B4: clr.w (0x00fff116).l
 0000D4BA: jsr 0x0000334c.l ; call 0000334C FUN_0000334c
 0000D4C0: jsr 0x000039f2.l ; call 000039F2 FUN_000039f2
@@ -7491,7 +7491,7 @@
 0000FC0E: lea (0xc8a60).l,A0 ; data 000c8a60
 0000FC14: jsr 0x00001358.l ; call 00001358 copy_source_word_block
 0000FC1A: bset.b #0x0,(0x00ffef14).l
-0000FC22: jsr 0x00000ffe.l ; call 00000FFE FUN_00000ffe
+0000FC22: jsr 0x00000ffe.l ; call 00000FFE clear_and_fill_plane_a
 0000FC28: lea (0xffbf40).l,A1 ; data 00ffbf40
 0000FC2E: movea.l #0xc6714,A3
 0000FC34: move.l #0x16a0,D0
@@ -8298,14 +8298,14 @@
 00010944: move.l #0x1e20,D0
 0001094A: jsr 0x00001530.l ; call 00001530 decode_and_upload_source_stream
 00010950: rts
-00010952: jsr 0x00000ffe.l ; call 00000FFE FUN_00000ffe
-00010958: jsr 0x0000102a.l ; call 0000102A FUN_0000102a
+00010952: jsr 0x00000ffe.l ; call 00000FFE clear_and_fill_plane_a
+00010958: jsr 0x0000102a.l ; call 0000102A clear_and_fill_plane_b
 0001095E: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 00010964: jsr 0x00000e34.l ; call 00000E34 FUN_00000e34
 0001096A: clr.l (0x00ffdd08).l
 00010970: clr.l (0x00ffdd0c).l
-00010976: jsr 0x00000f1c.l ; call 00000F1C FUN_00000f1c
-0001097C: jsr 0x00000f3c.l ; call 00000F3C FUN_00000f3c
+00010976: jsr 0x00000f1c.l ; call 00000F1C write_transfer_header
+0001097C: jsr 0x00000f3c.l ; call 00000F3C write_fixed_transfer_pair
 00010982: rts
 00010984: move.w #-0x7ecc,(0x00c00004).l
 0001098C: bsr.b 0x00010918 ; call 00010918 prepare_menu_graphics
@@ -13370,7 +13370,7 @@
 000164A8: movea.l (0x00ffde02).l,A2
 000164AE: move.l (A2)+,D5
 000164B0: beq.w 0x000164da
-000164B4: bsr.w 0x000164f2 ; call 000164F2 FUN_000164f2
+000164B4: bsr.w 0x000164f2 ; call 000164F2 entity_table_has_free_slot
 000164B8: bcs.w 0x000164da
 000164BC: move.w #-0x1,(A0)
 000164C0: move.l D5,(0x4,A0)
@@ -13464,7 +13464,7 @@
 00016638: cmpi.w #0xc0,D1w
 0001663C: bne.w 0x0001666e
 00016640: movem.l {  A0 D6 D5},-(SP)
-00016644: bsr.w 0x000164f2 ; call 000164F2 FUN_000164f2
+00016644: bsr.w 0x000164f2 ; call 000164F2 entity_table_has_free_slot
 00016648: move.w #-0x1,(A0)
 0001664C: add.w (0x00ffdd16).l,D4w
 00016652: move.w D4w,(0x6,A0)
@@ -13563,7 +13563,7 @@
 0001681E: bsr.w 0x00016a26 ; call 00016A26 FUN_00016a26
 00016822: move.w #0xf,D0w
 00016826: move.w D0w,-(SP) ; data Stack[-0x2]
-00016828: bsr.w 0x00016e30 ; call 00016E30 FUN_00016e30
+00016828: bsr.w 0x00016e30 ; call 00016E30 snapshot_scene_state
 0001682C: move.w #-0x1,(0x00ffdf8e).l
 00016834: move.w (SP)+,(0x00ffddc4).l
 0001683A: jsr 0x00003074.l ; call 00003074 FUN_00003074
@@ -13906,7 +13906,7 @@
 00016F94: tst.w D2w
 00016F96: bpl.w 0x00016fa8
 00016F9A: andi.w #0x7fff,D2w
-00016F9E: bsr.w 0x00016fa8 ; call 00016FA8 FUN_00016fa8
+00016F9E: bsr.w 0x00016fa8 ; call 00016FA8 copy_terrain_work_region
 00016FA2: move.w (A1)+,D0w
 00016FA4: move.w (A1)+,D1w
 00016FA6: move.w (A1),D2w
@@ -13978,8 +13978,8 @@
 0001754A: clr.b (0x00fff0e1).l
 00017550: move.b #0x5,(0x00fff0de).l
 00017558: clr.b (0x00fff0df).l
-0001755E: jsr 0x00000ffe.l ; call 00000FFE FUN_00000ffe
-00017564: jsr 0x0000102a.l ; call 0000102A FUN_0000102a
+0001755E: jsr 0x00000ffe.l ; call 00000FFE clear_and_fill_plane_a
+00017564: jsr 0x0000102a.l ; call 0000102A clear_and_fill_plane_b
 0001756A: jsr 0x00000e34.l ; call 00000E34 FUN_00000e34
 00017570: move.w #-0x74fd,(0x00c00004).l
 00017578: jsr 0x0001b5a6.l ; call 0001B5A6 FUN_0001b5a6
@@ -14685,10 +14685,10 @@
 00018234: clr.b (0x00fff0b1).l
 0001823A: move.l (0x00ffdd08).l,-(SP)
 00018240: clr.l (0x00ffdd08).l
-00018246: jsr 0x00000f1c.l ; call 00000F1C FUN_00000f1c
-0001824C: jsr 0x00000f3c.l ; call 00000F3C FUN_00000f3c
+00018246: jsr 0x00000f1c.l ; call 00000F1C write_transfer_header
+0001824C: jsr 0x00000f3c.l ; call 00000F3C write_fixed_transfer_pair
 00018252: move.w #-0x7ecc,(0x00c00004).l
-0001825A: jsr 0x00000ffe.l ; call 00000FFE FUN_00000ffe
+0001825A: jsr 0x00000ffe.l ; call 00000FFE clear_and_fill_plane_a
 00018260: jsr 0x00000e34.l ; call 00000E34 FUN_00000e34
 00018266: lea (0xffbf40).l,A1 ; data 00ffbf40
 0001826C: movea.l #0xd9376,A3
@@ -14901,13 +14901,13 @@
 00018670: move.w #-0x7ecc,(0x00c00004).l
 00018678: move.l D7,-(SP) ; data Stack[-0xc]
 0001867A: jsr 0x00000e34.l ; call 00000E34 FUN_00000e34
-00018680: jsr 0x00000ffe.l ; call 00000FFE FUN_00000ffe
-00018686: jsr 0x0000102a.l ; call 0000102A FUN_0000102a
+00018680: jsr 0x00000ffe.l ; call 00000FFE clear_and_fill_plane_a
+00018686: jsr 0x0000102a.l ; call 0000102A clear_and_fill_plane_b
 0001868C: move.l (SP)+,D7
 0001868E: clr.b (0x00fff10c).l
 00018694: move.l (SP)+,(0x00ffdd08).l
-0001869A: jsr 0x00000f1c.l ; call 00000F1C FUN_00000f1c
-000186A0: jsr 0x00000f3c.l ; call 00000F3C FUN_00000f3c
+0001869A: jsr 0x00000f1c.l ; call 00000F1C write_transfer_header
+000186A0: jsr 0x00000f3c.l ; call 00000F3C write_fixed_transfer_pair
 000186A6: bsr.w 0x000176ea ; call 000176EA render_menu_footer
 000186AA: lea (0xfff0f2).l,A4 ; data 00fff0f2
 000186B0: lea (0xfffbbe).l,A1 ; data 00fffbbe
@@ -23046,7 +23046,7 @@
 000532B6: dbf D7w,0x000532b0
 000532BA: rts
 000532BC: move.w #-0x7ecc,(0x00c00004).l
-000532C4: jsr 0x00000ffe.l ; call 00000FFE FUN_00000ffe
+000532C4: jsr 0x00000ffe.l ; call 00000FFE clear_and_fill_plane_a
 000532CA: lea (0x15fcb6).l,A0 ; data 0015fcb6
 000532D0: jsr 0x00001358.l ; call 00001358 copy_source_word_block
 000532D6: bset.b #0x0,(0x00ffef14).l
@@ -27520,8 +27520,8 @@
 00059D10: rts
 00059D12: lea (0x59d3e).l,A6 ; data 00059d3e
 00059D18: jsr 0x00001406.l ; call 00001406 prepare_title_resources
-00059D1E: jsr 0x0000102a.l ; call 0000102A FUN_0000102a
-00059D24: jsr 0x00000ffe.l ; call 00000FFE FUN_00000ffe
+00059D1E: jsr 0x0000102a.l ; call 0000102A clear_and_fill_plane_b
+00059D24: jsr 0x00000ffe.l ; call 00000FFE clear_and_fill_plane_a
 00059D2A: jsr 0x000012f6.l ; call 000012F6 advance_title_palette_fade
 00059D30: move.b #0x1,(0x00fff09e).l
 00059D38: jmp 0x000134d2.l ; call 000134D2 FUN_000134d2
@@ -27628,7 +27628,7 @@
 00059FA6: move.w #0x2e,D0w
 00059FAA: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00059FB0: move.w #0x0,(0x00ffdd08).l
-00059FB8: jsr 0x00000f1c.l ; call 00000F1C FUN_00000f1c
+00059FB8: jsr 0x00000f1c.l ; call 00000F1C write_transfer_header
 00059FBE: move.w #0x600,D4w
 00059FC2: move.w #0x10,D7w
 00059FC6: move.w #0xf,D1w
@@ -28133,8 +28133,8 @@
 0005AA8C: move.w #-0x8000,D1w
 0005AA90: jmp 0x0000c0da.l ; call 0000C0DA render_title_text_source
 0005AA96: jsr 0x00000e34.l ; call 00000E34 FUN_00000e34
-0005AA9C: jsr 0x00000ffe.l ; call 00000FFE FUN_00000ffe
-0005AAA2: jsr 0x0000102a.l ; call 0000102A FUN_0000102a
+0005AA9C: jsr 0x00000ffe.l ; call 00000FFE clear_and_fill_plane_a
+0005AAA2: jsr 0x0000102a.l ; call 0000102A clear_and_fill_plane_b
 0005AAA8: lea (0xffbf40).l,A1 ; data 00ffbf40
 0005AAAE: movea.l #0x1e3f38,A3
 0005AAB4: move.l #0x3020,D0
@@ -28559,7 +28559,7 @@
 0005B38A: moveq #0x4,D6
 0005B38C: move SR,-(SP)
 0005B38E: move #0x2700,SR
-0005B392: jsr 0x00000ffe.l ; call 00000FFE FUN_00000ffe
+0005B392: jsr 0x00000ffe.l ; call 00000FFE clear_and_fill_plane_a
 0005B398: lea (0x1df468).l,A1 ; data 001df468
 0005B39E: move.l #0x40e,D4
 0005B3A4: clr.l D1
@@ -29014,8 +29014,8 @@
 0005D878: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0005D87E: jsr 0x0000131c.l ; call 0000131C step_palette_transition
 0005D884: rts
-0005D886: jsr 0x00000ffe.l ; call 00000FFE FUN_00000ffe
-0005D88C: jsr 0x0000102a.l ; call 0000102A FUN_0000102a
+0005D886: jsr 0x00000ffe.l ; call 00000FFE clear_and_fill_plane_a
+0005D88C: jsr 0x0000102a.l ; call 0000102A clear_and_fill_plane_b
 0005D892: jsr 0x00000e34.l ; call 00000E34 FUN_00000e34
 0005D898: moveq #0xf,D7
 0005D89A: moveq #0x4,D1
@@ -29097,8 +29097,8 @@
 0005DA12: move.w #0x120,D2w
 0005DA16: move.w #0x2000,D6w
 0005DA1A: jmp 0x00001378.l ; call 00001378 FUN_00001378
-0005DA50: jsr 0x00000ffe.l ; call 00000FFE FUN_00000ffe
-0005DA56: jsr 0x0000102a.l ; call 0000102A FUN_0000102a
+0005DA50: jsr 0x00000ffe.l ; call 00000FFE clear_and_fill_plane_a
+0005DA56: jsr 0x0000102a.l ; call 0000102A clear_and_fill_plane_b
 0005DA5C: lea (0x5db10).l,A6 ; data 0005db10
 0005DA62: jsr 0x00001406.l ; call 00001406 prepare_title_resources
 0005DA68: bsr.w 0x0005dae8 ; call 0005DAE8 FUN_0005dae8

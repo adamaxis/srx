@@ -44,4 +44,16 @@ void fill_terrain_work_region(
     std::size_t width,
     std::size_t height);
 
+// ROM 0x16FA8: copy a rectangular region from the decoded terrain source
+// into the work map. Both buffers use the source row stride; bounds checks
+// make the host operation safe for partial decoded resources.
+void copy_terrain_work_region(
+    std::vector<std::uint16_t>& destination,
+    const std::vector<std::uint16_t>& source,
+    std::size_t row_stride,
+    std::size_t source_index,
+    std::size_t destination_index,
+    std::size_t width,
+    std::size_t height);
+
 } // namespace shadowrun::ghidra_conversion

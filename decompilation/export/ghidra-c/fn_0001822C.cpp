@@ -7,10 +7,10 @@
 //   0x00000BF2 latch_controller_events
 //   0x00000DBA count_thresholded_random_rolls
 //   0x00000E34 FUN_00000e34
-//   0x00000F1C FUN_00000f1c
-//   0x00000F3C FUN_00000f3c
-//   0x00000FFE FUN_00000ffe
-//   0x0000102A FUN_0000102a
+//   0x00000F1C write_transfer_header
+//   0x00000F3C write_fixed_transfer_pair
+//   0x00000FFE clear_and_fill_plane_a
+//   0x0000102A clear_and_fill_plane_b
 //   0x00001378 FUN_00001378
 //   0x00001530 decode_and_upload_source_stream
 //   0x00001728 render_hud_sprite_stream
@@ -57,10 +57,10 @@ void FUN_0001822c(void)
   uVar3 = _DAT_00ffdd08;
   DAT_00fff0b1 = 0;
   _DAT_00ffdd08 = 0;
-  FUN_00000f1c();
-  FUN_00000f3c();
+  write_transfer_header();
+  write_fixed_transfer_pair();
   VDP_CTRL = 0x8134;
-  FUN_00000ffe();
+  clear_and_fill_plane_a();
   FUN_00000e34();
   decode_and_upload_source_stream();
   FUN_00017f80();
@@ -205,13 +205,13 @@ LAB_0001842e:
 LAB_00018670:
   VDP_CTRL = 0x8134;
   FUN_00000e34(uVar5);
-  FUN_00000ffe();
-  FUN_0000102a();
+  clear_and_fill_plane_a();
+  clear_and_fill_plane_b();
   DAT_00fff10c = 0;
 LAB_00018694:
   _DAT_00ffdd08 = uVar3;
-  FUN_00000f1c();
-  FUN_00000f3c();
+  write_transfer_header();
+  write_fixed_transfer_pair();
   render_menu_footer();
   uVar7 = 0;
   DAT_00fff108 = '\0';

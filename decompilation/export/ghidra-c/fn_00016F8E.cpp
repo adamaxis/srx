@@ -3,7 +3,7 @@
 // Name: FUN_00016f8e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00016FA8 FUN_00016fa8
+//   0x00016FA8 copy_terrain_work_region
 
 
 void FUN_00016f8e(void)
@@ -22,7 +22,7 @@ void FUN_00016f8e(void)
   sVar3 = in_A1[1];
   sVar4 = in_A1[2];
   if (sVar4 < 0) {
-    FUN_00016fa8();
+    copy_terrain_work_region();
     sVar2 = *extraout_A1;
     sVar3 = extraout_A1[1];
     sVar4 = extraout_A1[2];

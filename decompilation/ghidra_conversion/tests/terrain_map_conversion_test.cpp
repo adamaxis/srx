@@ -78,5 +78,17 @@ int main() {
         return 5;
     }
 
+    std::vector<std::uint16_t> source(20U, 0U);
+    for (std::size_t index = 0; index < source.size(); ++index) {
+        source[index] = static_cast<std::uint16_t>(index + 10U);
+    }
+    std::vector<std::uint16_t> destination(20U, 0U);
+    copy_terrain_work_region(destination, source, 5U, 1U, 6U, 3U, 2U);
+    if (!expect(destination[6] == 11U && destination[7] == 12U &&
+                destination[8] == 13U && destination[11] == 16U &&
+                destination[12] == 17U && destination[13] == 18U)) {
+        return 6;
+    }
+
     return 0;
 }

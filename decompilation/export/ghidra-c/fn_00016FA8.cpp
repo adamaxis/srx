@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00016FA8
-// Name: FUN_00016fa8
+// Name: copy_terrain_work_region
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00016fa8(void)
+void copy_terrain_work_region(void)
 
 {
   int iVar1;

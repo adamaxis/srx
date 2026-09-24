@@ -61,4 +61,26 @@ void fill_terrain_work_region(
     }
 }
 
+void copy_terrain_work_region(
+    std::vector<std::uint16_t>& destination,
+    const std::vector<std::uint16_t>& source,
+    const std::size_t row_stride,
+    const std::size_t source_index,
+    const std::size_t destination_index,
+    const std::size_t width,
+    const std::size_t height) {
+    for (std::size_t row = 0; row < height; ++row) {
+        for (std::size_t column = 0; column < width; ++column) {
+            const auto source_offset =
+                source_index + row * row_stride + column;
+            const auto destination_offset =
+                destination_index + row * row_stride + column;
+            if (source_offset < source.size() &&
+                destination_offset < destination.size()) {
+                destination[destination_offset] = source[source_offset];
+            }
+        }
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion

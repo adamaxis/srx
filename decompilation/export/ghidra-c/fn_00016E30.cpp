@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00016E30
-// Name: FUN_00016e30
+// Name: snapshot_scene_state
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001A310 clear_effect_slots
@@ -9,7 +9,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00016e30(void)
+void snapshot_scene_state(void)
 
 {
   short sVar1;

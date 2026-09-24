@@ -6,8 +6,8 @@
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
 //   0x00000E34 FUN_00000e34
-//   0x00000FFE FUN_00000ffe
-//   0x0000102A FUN_0000102a
+//   0x00000FFE clear_and_fill_plane_a
+//   0x0000102A clear_and_fill_plane_b
 //   0x000012F6 advance_title_palette_fade
 //   0x00001368 copy_target_palette
 //   0x00001530 decode_and_upload_source_stream
@@ -31,8 +31,8 @@ void FUN_0005aa96(void)
   short sVar2;
   
   FUN_00000e34();
-  FUN_00000ffe();
-  FUN_0000102a();
+  clear_and_fill_plane_a();
+  clear_and_fill_plane_b();
   decode_and_upload_source_stream();
   decode_and_upload_source_stream();
   load_title_font();

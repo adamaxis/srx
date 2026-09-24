@@ -28,11 +28,19 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x0E9C	VDP transfer command	ghidra_conversion::make_vdp_transfer_command	shadowrun_graphics	partial		Typed two-word transfer command conversion replaces the source display-control writes
 0x0DFC	repeated word transfer	ghidra_conversion::write_repeated_words	shadowrun_graphics	partial		Bounded repeated-word transfer conversion uses an explicit host count
 0x0E18	word stream transfer	ghidra_conversion::write_word_stream	shadowrun_graphics	partial		Bounded ordered word-stream transfer conversion
+0x0EC0	startup palette upload	ghidra_conversion::upload_startup_palette	shadowrun_graphics	partial		Typed 64-word palette upload with explicit control/data callbacks
+0x0F1C	transfer header write	ghidra_conversion::write_transfer_header	shadowrun_graphics	partial		Typed transfer command followed by the source two-word header
+0x0F3C	fixed transfer pair	ghidra_conversion::write_fixed_transfer_pair	shadowrun_graphics	partial		Typed fixed incrementing-write command and two-word data emission
 0x1056	clear word transfer	ghidra_conversion::clear_vdp_words	shadowrun_graphics	partial		Exact sixteen-word zero transfer converted
+0x0FFE	plane A clear/fill	ghidra_conversion::clear_and_fill_vdp_plane	shadowrun_graphics	partial		Shared typed clear-plus-0x800-word 0x07FF fill conversion
+0x102A	plane B clear/fill	ghidra_conversion::clear_and_fill_vdp_plane	shadowrun_graphics	partial		Shared typed clear-plus-0x800-word 0x07FF fill conversion
 0x164DC	scene record transition clear	ghidra_conversion::clear_scene_record_transition_words	shadowrun_native_port	partial		Typed clear of the leading transition word in ten scene records converted
 0x16DEE	scene record pending clear	ghidra_conversion::clear_scene_record_pending_flags	shadowrun_native_port	partial		Typed bit-0 clear across ten scene-record flags converted
 0x16E08	scene record activity predicate	ghidra_conversion::all_scene_record_slots_active	shadowrun_native_port	partial		Typed all-ten slot bit-0 activity predicate converted
+0x164F2	entity table capacity predicate	ghidra_conversion::entity_table_has_free_slot	shadowrun_native_port	partial		Typed ten-slot leading-word capacity check replacing the source carry flag
+0x16E30	scene state snapshot	ghidra_conversion::snapshot_scene_state	shadowrun_native_port	partial		Typed 0x31-word snapshot followed by pending-record and effect-slot reset boundaries
 0x16EA0	terrain work-map fill	ghidra_conversion::fill_terrain_work_region	shadowrun_native_port	partial		Bounded rectangular terrain work-map fill with source value 2 converted
+0x16FA8	terrain work-map copy	ghidra_conversion::copy_terrain_work_region	shadowrun_native_port	partial		Bounded rectangular copy from decoded terrain source using the source row stride
 0x176EA	menu footer render	ghidra_conversion::render_menu_footer	shadowrun_menu_system	partial		Typed source-block copy, dirty marker, metadata refresh, and footer draw order converted
 0x177A4	menu slot initialization	ghidra_conversion::initialize_menu_slot_states	shadowrun_menu_system	partial		Five menu slots initialized through one host loop with status 6 and timer 1
 0x111D0	menu tile upload	ghidra_conversion::upload_menu_tile_block	shadowrun_menu_system	partial		Typed single menu tile-block upload boundary converted

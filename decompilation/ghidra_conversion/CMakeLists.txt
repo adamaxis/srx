@@ -429,6 +429,19 @@ target_link_libraries(shadowrun_ghidra_terrain_map_test
 add_test(NAME shadowrun_ghidra_terrain_map
          COMMAND shadowrun_ghidra_terrain_map_test)
 
+add_library(shadowrun_ghidra_entity_table STATIC
+    src/entity_table_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_table PUBLIC include)
+
+add_executable(shadowrun_ghidra_entity_table_test
+    tests/entity_table_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_table_test
+    PRIVATE shadowrun_ghidra_entity_table)
+add_test(NAME shadowrun_ghidra_entity_table
+         COMMAND shadowrun_ghidra_entity_table_test)
+
 add_library(shadowrun_ghidra_selection STATIC
     src/selection_conversion.cpp
 )
@@ -734,6 +747,21 @@ target_link_libraries(shadowrun_ghidra_scene_record_reset_test
     PRIVATE shadowrun_ghidra_scene_record_reset)
 add_test(NAME shadowrun_ghidra_scene_record_reset
          COMMAND shadowrun_ghidra_scene_record_reset_test)
+
+add_library(shadowrun_ghidra_startup_vdp STATIC
+    src/startup_vdp_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_startup_vdp PUBLIC include)
+target_link_libraries(shadowrun_ghidra_startup_vdp
+    PRIVATE shadowrun_ghidra_word_transfer)
+
+add_executable(shadowrun_ghidra_startup_vdp_test
+    tests/startup_vdp_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_startup_vdp_test
+    PRIVATE shadowrun_ghidra_startup_vdp)
+add_test(NAME shadowrun_ghidra_startup_vdp
+         COMMAND shadowrun_ghidra_startup_vdp_test)
 
 add_library(shadowrun_ghidra_menu_state STATIC
     src/menu_state_conversion.cpp

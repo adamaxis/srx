@@ -4,8 +4,8 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E34 FUN_00000e34
-//   0x00000FFE FUN_00000ffe
-//   0x0000102A FUN_0000102a
+//   0x00000FFE clear_and_fill_plane_a
+//   0x0000102A clear_and_fill_plane_b
 //   0x00001530 decode_and_upload_source_stream
 //   0x00001728 render_hud_sprite_stream
 //   0x0000334C FUN_0000334c
@@ -78,8 +78,8 @@ void FUN_0001745e(void)
     DAT_00fff0e1 = 0;
     DAT_00fff0de = 5;
     DAT_00fff0df = 0;
-    FUN_00000ffe();
-    FUN_0000102a();
+    clear_and_fill_plane_a();
+    clear_and_fill_plane_b();
     FUN_00000e34();
     VDP_CTRL = 0x8b03;
     FUN_0001b5a6();

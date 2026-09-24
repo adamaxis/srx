@@ -7,8 +7,8 @@
 //   0x00000CEC FUN_00000cec
 //   0x00000E34 FUN_00000e34
 //   0x00000F5C FUN_00000f5c
-//   0x00000FFE FUN_00000ffe
-//   0x0000102A FUN_0000102a
+//   0x00000FFE clear_and_fill_plane_a
+//   0x0000102A clear_and_fill_plane_b
 //   0x00001232 upload_hud_tile_block
 //   0x0000131C step_palette_transition
 //   0x00001368 copy_target_palette
@@ -26,8 +26,8 @@ void prepare_title_resources(void)
   
   step_palette_transition();
   FUN_00000cec();
-  FUN_00000ffe();
-  FUN_0000102a();
+  clear_and_fill_plane_a();
+  clear_and_fill_plane_b();
   FUN_00000e34();
   copy_target_palette();
   DAT_00ffdd08 = *(undefined2 *)(unaff_A6 + 8);

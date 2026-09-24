@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000F5C FUN_00000f5c
-//   0x00000FFE FUN_00000ffe
+//   0x00000FFE clear_and_fill_plane_a
 //   0x00001232 upload_hud_tile_block
 //   0x00001358 copy_source_word_block
 //   0x0000C0DA render_title_text_source
@@ -21,7 +21,7 @@ void FUN_000532bc(void)
   short sVar3;
   
   VDP_CTRL = 0x8134;
-  FUN_00000ffe();
+  clear_and_fill_plane_a();
   copy_source_word_block();
   DAT_00ffef14 = DAT_00ffef14 | 1;
   FUN_00000f5c();

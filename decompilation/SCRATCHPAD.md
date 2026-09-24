@@ -505,3 +505,22 @@ post-incremented bytes at `FFD86C`, modeled by `clear_indexed_object_state`.
   its observable behavior is checked in an emulator.
 - Treat data/code boundaries and inferred types as hypotheses until cross-checked
   by references, execution traces, or known Genesis formats.
+
+## Recent compact-helper conversions
+
+The early graphics helpers at `0x0EC0`, `0x0F1C`, and `0x0F3C` are now typed
+host transfers. `0x0EC0` emits exactly 64 startup-palette words with the
+source's per-entry control writes. `0x0F1C` builds the normal transfer command
+and emits its two-word header, while `0x0F3C` emits the fixed
+`0x40000010` incrementing-write command and its two words. `0x0FFE` and
+`0x102A` share `clear_and_fill_vdp_plane`: the source first clears sixteen
+words at the preceding address, then writes 1024 repeated longword values,
+represented as 2048 typed `0x07FF` words. These routines use callbacks only
+for presentation/output; no VDP register or ROM address is runtime state.
+
+`0x164F2` is the entity-table capacity predicate hidden by Ghidra's condition
+code output. It scans ten record-leading occupancy words and reports whether
+at least one slot is free. `0x16E30` copies 0x31 scene-state words before
+calling the two reset boundaries. `0x16FA8` copies a bounded rectangular
+terrain region from the decoded source map into the work map with the source
+row stride. Both are now ordinary typed C++ operations with focused tests.

@@ -3,10 +3,10 @@
 // Name: FUN_00001872
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000EC0 FUN_00000ec0
+//   0x00000EC0 upload_startup_palette
 //   0x00000EE6 FUN_00000ee6
-//   0x00000F1C FUN_00000f1c
-//   0x00000F3C FUN_00000f3c
+//   0x00000F1C write_transfer_header
+//   0x00000F3C write_fixed_transfer_pair
 //   0x00002C92 FUN_00002c92
 //   0x00002CB2 FUN_00002cb2
 //   0x00006148 FUN_00006148
@@ -32,7 +32,7 @@ void FUN_00001872(void)
   bVar1 = DAT_00ffef14 & 1;
   DAT_00ffef14 = DAT_00ffef14 & 0xfe;
   if (bVar1 != 0) {
-    FUN_00000ec0();
+    upload_startup_palette();
   }
   if (_DAT_00ffdfe8 == 0) {
     FUN_0005672c();
@@ -40,12 +40,12 @@ void FUN_00001872(void)
   bVar1 = DAT_00ffef14 & 4;
   DAT_00ffef14 = DAT_00ffef14 & 0xfb;
   if (bVar1 != 0) {
-    FUN_00000f1c();
+    write_transfer_header();
   }
   bVar1 = DAT_00ffef14 & 8;
   DAT_00ffef14 = DAT_00ffef14 & 0xf7;
   if (bVar1 != 0) {
-    FUN_00000f3c();
+    write_fixed_transfer_pair();
   }
   if (_DAT_00ffe100 != 0) {
     FUN_00002c92();

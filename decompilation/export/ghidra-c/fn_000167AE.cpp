@@ -9,7 +9,7 @@
 //   0x00016A26 FUN_00016a26
 //   0x00016AFA FUN_00016afa
 //   0x00016B7C FUN_00016b7c
-//   0x00016E30 FUN_00016e30
+//   0x00016E30 snapshot_scene_state
 //   0x0001DBAA schedule_world_activity_timeout
 
 
@@ -45,7 +45,7 @@ void FUN_000167ae(void)
     FUN_00016a26();
     sVar5 = 0xf;
   }
-  FUN_00016e30();
+  snapshot_scene_state();
   _DAT_00ffdf8e = 0xffff;
   DAT_00ffddc4 = sVar5;
   FUN_00003074();

@@ -6,8 +6,8 @@
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
 //   0x00000D94 wait_for_controller_event
-//   0x00000FFE FUN_00000ffe
-//   0x0000102A FUN_0000102a
+//   0x00000FFE clear_and_fill_plane_a
+//   0x0000102A clear_and_fill_plane_b
 //   0x000011C0 FUN_000011c0
 //   0x00001358 copy_source_word_block
 //   0x00001530 decode_and_upload_source_stream
@@ -326,8 +326,8 @@ LAB_00011cb6:
   case 3:
     _DAT_00fff116 = -1;
     VDP_CTRL = 0x9100;
-    FUN_00000ffe();
-    FUN_0000102a();
+    clear_and_fill_plane_a();
+    clear_and_fill_plane_b();
     transfer_menu_asset_batch_eight();
     DAT_00ffd8d4 = 0x2c2;
     DAT_00ffd8f4 = 0x60;
@@ -429,8 +429,8 @@ LAB_0000d25e:
           if ((DAT_00ffdd22._0_1_ & 0x80) != 0) {
 LAB_0000d4a0:
             VDP_CTRL = 0x9191;
-            FUN_00000ffe();
-            FUN_0000102a();
+            clear_and_fill_plane_a();
+            clear_and_fill_plane_b();
             _DAT_00fff116 = 0;
             FUN_0000334c();
             FUN_000039f2();
@@ -514,7 +514,7 @@ LAB_0000d4a0:
       _DAT_00fff0d0 = 0;
       copy_source_word_block();
       DAT_00ffef14 = DAT_00ffef14 | 1;
-      FUN_00000ffe();
+      clear_and_fill_plane_a();
       decode_and_upload_source_stream();
       render_hud_sprite_stream();
       DAT_00fff10e = &DAT_00fff9fa + (uint)(ushort)DAT_00fffc04[0x50] * 0x11;

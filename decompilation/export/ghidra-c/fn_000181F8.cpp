@@ -34,10 +34,10 @@ void FUN_000181f8(void)
   DAT_00fffbca = 10;
   DAT_00fff0b1 = 0;
   _DAT_00ffdd08 = 0;
-  FUN_00000f1c();
-  FUN_00000f3c();
+  write_transfer_header();
+  write_fixed_transfer_pair();
   VDP_CTRL = 0x8134;
-  FUN_00000ffe();
+  clear_and_fill_plane_a();
   FUN_00000e34();
   decode_and_upload_source_stream();
   FUN_00017f80();
@@ -182,13 +182,13 @@ LAB_0001842e:
 LAB_00018670:
   VDP_CTRL = 0x8134;
   FUN_00000e34(uVar5);
-  FUN_00000ffe();
-  FUN_0000102a();
+  clear_and_fill_plane_a();
+  clear_and_fill_plane_b();
   DAT_00fff10c = 0;
 LAB_00018694:
   _DAT_00ffdd08 = uVar3;
-  FUN_00000f1c();
-  FUN_00000f3c();
+  write_transfer_header();
+  write_fixed_transfer_pair();
   render_menu_footer();
   uVar7 = 0;
   DAT_00fff108 = '\0';

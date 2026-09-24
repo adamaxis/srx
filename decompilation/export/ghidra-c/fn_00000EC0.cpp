@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00000EC0
-// Name: FUN_00000ec0
+// Name: upload_startup_palette
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00000ec0(void)
+void upload_startup_palette(void)
 
 {
   char cVar1;

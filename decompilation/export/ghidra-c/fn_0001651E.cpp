@@ -3,7 +3,7 @@
 // Name: FUN_0001651e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000164F2 FUN_000164f2
+//   0x000164F2 entity_table_has_free_slot
 //   0x0001669C FUN_0001669c
 //   0x000166D0 FUN_000166d0
 
@@ -26,7 +26,7 @@ void FUN_0001651e(void)
       DAT_00ffe114 = &UNK_0001667a;
     }
     if ((*(ushort *)(in_A0 + 0xc6) & 0xe0) == 0xc0) {
-      FUN_000164f2();
+      entity_table_has_free_slot();
       *extraout_A0 = 0xffff;
       extraout_A0[3] = DAT_00ffdd16 + unaff_D4w;
       extraout_A0[6] = 3;
