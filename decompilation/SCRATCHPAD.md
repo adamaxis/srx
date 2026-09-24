@@ -640,6 +640,10 @@ negative asset-mode path that clamps its cursor and runs both resource
 variants, and the ordinary HUD path. The resource and HUD implementations are
 still host callbacks; no source pointer or VDP state entered the conversion.
 
+Batch 1 adds `0x1F5A8` as `prepare_mode_text_prompt`, preserving its exact
+two-call preparation wrapper without carrying the underlying source pointer
+or VDP behavior into the host model.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames

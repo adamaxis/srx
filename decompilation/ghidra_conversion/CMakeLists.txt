@@ -1193,3 +1193,16 @@ target_link_libraries(shadowrun_ghidra_mode_exit_resources_test
     PRIVATE shadowrun_ghidra_mode_exit_resources)
 add_test(NAME shadowrun_ghidra_mode_exit_resources
          COMMAND shadowrun_ghidra_mode_exit_resources_test)
+
+add_library(shadowrun_ghidra_mode_prompt_prepare STATIC
+    src/mode_prompt_prepare_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_mode_prompt_prepare PUBLIC include)
+
+add_executable(shadowrun_ghidra_mode_prompt_prepare_test
+    tests/mode_prompt_prepare_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_mode_prompt_prepare_test
+    PRIVATE shadowrun_ghidra_mode_prompt_prepare)
+add_test(NAME shadowrun_ghidra_mode_prompt_prepare
+         COMMAND shadowrun_ghidra_mode_prompt_prepare_test)
