@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005AC7E
-// Name: FUN_0005ac7e
+// Name: advance_title_intro_stage_timed_sprites
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 FUN_00001378
 
 
-void FUN_0005ac7e(void)
+void advance_title_intro_stage_timed_sprites(void)
 
 {
   int iVar1;

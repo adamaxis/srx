@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005AB96
-// Name: FUN_0005ab96
+// Name: advance_title_intro_stage_service_steps
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0005B2E2 FUN_0005b2e2
 
 
-ushort FUN_0005ab96(void)
+ushort advance_title_intro_stage_service_steps(void)
 
 {
   ushort uVar1;

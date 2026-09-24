@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005AC36
-// Name: FUN_0005ac36
+// Name: advance_title_intro_stage_projection
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 FUN_00001378
 
 
-void FUN_0005ac36(void)
+void advance_title_intro_stage_projection(void)
 
 {
   FUN_00001378();

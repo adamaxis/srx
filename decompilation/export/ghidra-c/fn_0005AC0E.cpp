@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005AC0E
-// Name: FUN_0005ac0e
+// Name: draw_title_intro_stage_base_sprite
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 FUN_00001378
 
 
-void FUN_0005ac0e(void)
+void draw_title_intro_stage_base_sprite(void)
 
 {
   FUN_00001378();

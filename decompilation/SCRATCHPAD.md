@@ -593,6 +593,14 @@ between deadlines at y `0x13C`. `0x5A96A` submits six host text handles in
 the source order at `0x2906`, `0x2986`, `0x2A06`, `0x2A86`, `0x2B86`, and
 `0x2C06`, preserving the `0xE000` palette mask.
 
+The next intro-stage helper cluster is now typed. `0x5AA5A` submits three
+secondary-stage text assets at `0x2186`, `0x2286`, and `0x2386`. The
+`0x5AC28`/`0x5AC36` projection resets and draws the moving sprite from the
+accumulator high bytes, while `0x5AC0E` covers the fixed sprite. The
+`0x5AC70`/`0x5AC7E` sequence preserves its `0x3C` start gate, six-frame
+descriptor cadence, and `0xE000` palette. `0x5AB96` retains the post-`0xB4`
+masked cadence and four ordered service steps.
+
 The runner reset cluster is now typed. `0x59BCC` clears status bits `6` and
 `4` in each of the three live runner records, preserves the source order of
 the preparation (`0x3674`, argument `0x0A`) and finalization (`0x37EC`)

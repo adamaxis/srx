@@ -28144,7 +28144,7 @@
 0005AACC: move.l #0xc000,D0
 0005AAD2: jsr 0x00001530.l ; call 00001530 decode_and_upload_source_stream
 0005AAD8: jsr 0x0000c0c2.l ; call 0000C0C2 load_title_font
-0005AADE: bsr.w 0x0005aa5a ; call 0005AA5A FUN_0005aa5a
+0005AADE: bsr.w 0x0005aa5a ; call 0005AA5A render_title_intro_stage_text_batch
 0005AAE2: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 0005AAE8: lea (0x5b632).l,A0 ; data 0005b632
 0005AAEE: jsr 0x00001368.l ; call 00001368 copy_target_palette
@@ -28153,8 +28153,8 @@
 0005AAFC: move.w #0xc,D1w
 0005AB00: jsr 0x0005b32c.l ; call 0005B32C FUN_0005b32c
 0005AB06: move.w (0x00ffdf88).l,(0x00fff11e).l
-0005AB10: jsr 0x0005ac28.l ; call 0005AC28 FUN_0005ac28
-0005AB16: jsr 0x0005ac70.l ; call 0005AC70 FUN_0005ac70
+0005AB10: jsr 0x0005ac28.l ; call 0005AC28 reset_title_intro_stage_projection
+0005AB16: jsr 0x0005ac70.l ; call 0005AC70 reset_title_intro_stage_timed_sprites
 0005AB1C: bsr.w 0x0005abd2 ; call 0005ABD2 FUN_0005abd2
 0005AB20: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 0005AB26: lea (0x1e620e).l,A1 ; data 001e620e
@@ -28176,7 +28176,7 @@
 0005AB6C: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0005AB72: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 0005AB78: jsr 0x0005abd2.l ; call 0005ABD2 FUN_0005abd2
-0005AB7E: jsr 0x0005ab96.l ; call 0005AB96 FUN_0005ab96
+0005AB7E: jsr 0x0005ab96.l ; call 0005AB96 advance_title_intro_stage_service_steps
 0005AB84: move.w (SP)+,D7w
 0005AB86: tst.w (0x00ffddc2).l
 0005AB8C: bne.w 0x0005ab94
@@ -28200,9 +28200,9 @@
 0005ABD2: move.w #0x1,(0x00ffdd02).l
 0005ABDA: lea (0xffd986).l,A3 ; data 00ffd986
 0005ABE0: move.w #0x2,D5w
-0005ABE4: jsr 0x0005ac7e.l ; call 0005AC7E FUN_0005ac7e
-0005ABEA: jsr 0x0005ac0e.l ; call 0005AC0E FUN_0005ac0e
-0005ABF0: jsr 0x0005ac36.l ; call 0005AC36 FUN_0005ac36
+0005ABE4: jsr 0x0005ac7e.l ; call 0005AC7E advance_title_intro_stage_timed_sprites
+0005ABEA: jsr 0x0005ac0e.l ; call 0005AC0E draw_title_intro_stage_base_sprite
+0005ABF0: jsr 0x0005ac36.l ; call 0005AC36 advance_title_intro_stage_projection
 0005ABF6: subq.w #0x8,A3
 0005ABF8: move.w #0x1,(0x00ffd980).l
 0005AC00: clr.b (0x3,A3)

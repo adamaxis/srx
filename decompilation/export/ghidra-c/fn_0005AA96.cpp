@@ -14,11 +14,11 @@
 //   0x00001728 render_hud_sprite_stream
 //   0x0000195C sample_controller_input
 //   0x0000C0C2 load_title_font
-//   0x0005AA5A FUN_0005aa5a
-//   0x0005AB96 FUN_0005ab96
+//   0x0005AA5A render_title_intro_stage_text_batch
+//   0x0005AB96 advance_title_intro_stage_service_steps
 //   0x0005ABD2 FUN_0005abd2
-//   0x0005AC28 FUN_0005ac28
-//   0x0005AC70 FUN_0005ac70
+//   0x0005AC28 reset_title_intro_stage_projection
+//   0x0005AC70 reset_title_intro_stage_timed_sprites
 //   0x0005B32C FUN_0005b32c
 
 
@@ -36,13 +36,13 @@ void FUN_0005aa96(void)
   decode_and_upload_source_stream();
   decode_and_upload_source_stream();
   load_title_font();
-  FUN_0005aa5a();
+  render_title_intro_stage_text_batch();
   wait_for_vblank();
   copy_target_palette();
   FUN_0005b32c();
   DAT_00fff11e = DAT_00ffdf88;
-  FUN_0005ac28();
-  FUN_0005ac70();
+  reset_title_intro_stage_projection();
+  reset_title_intro_stage_timed_sprites();
   FUN_0005abd2();
   wait_for_vblank();
   render_hud_sprite_stream();
@@ -56,7 +56,7 @@ void FUN_0005aa96(void)
     sample_controller_input();
     latch_controller_events();
     FUN_0005abd2();
-    FUN_0005ab96();
+    advance_title_intro_stage_service_steps();
     if (_DAT_00ffddc2 != 0) {
       return;
     }
