@@ -411,7 +411,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00015554	FUN_00015554	218	unknown	ok	ghidra-c/fn_00015554.cpp
 0001562E	FUN_0001562e	24	unknown	ok	ghidra-c/fn_0001562E.cpp
 00015646	FUN_00015646	484	unknown	ok	ghidra-c/fn_00015646.cpp
-0001582A	thunk_FUN_0001a2cc	6	unknown	ok	ghidra-c/fn_0001582A.cpp
+0001582A	allocate_first_free_effect_slot	6	unknown	ok	ghidra-c/fn_0001582A.cpp
 00015830	FUN_00015830	256	unknown	ok	ghidra-c/fn_00015830.cpp
 00015930	FUN_00015930	78	unknown	ok	ghidra-c/fn_00015930.cpp
 0001597E	FUN_0001597e	206	unknown	ok	ghidra-c/fn_0001597E.cpp
@@ -542,7 +542,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0001A12E	FUN_0001a12e	38	unknown	ok	ghidra-c/fn_0001A12E.cpp
 0001A154	FUN_0001a154	22	unknown	ok	ghidra-c/fn_0001A154.cpp
 0001A16A	FUN_0001a16a	354	unknown	ok	ghidra-c/fn_0001A16A.cpp
-0001A2CC	FUN_0001a2cc	56	unknown	ok	ghidra-c/fn_0001A2CC.cpp
+0001A2CC	allocate_first_free_effect_slot	56	unknown	ok	ghidra-c/fn_0001A2CC.cpp
 0001A304	FUN_0001a304	12	unknown	ok	ghidra-c/fn_0001A304.cpp
 0001A310	FUN_0001a310	18	unknown	ok	ghidra-c/fn_0001A310.cpp
 0001A322	FUN_0001a322	32	unknown	ok	ghidra-c/fn_0001A322.cpp

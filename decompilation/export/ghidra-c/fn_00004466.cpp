@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000044BC FUN_000044bc
-//   0x0001A2CC FUN_0001a2cc
+//   0x0001A2CC allocate_first_free_effect_slot
 //   0x0001A342 FUN_0001a342
 
 
@@ -23,7 +23,7 @@ void FUN_00004466(void)
   while ((bVar3 = false, *unaff_A5 != 0 && (uVar2 = FUN_0001a342(), !bVar3))) {
     bVar3 = false;
     DAT_00ffdd40 = uVar2;
-    FUN_0001a2cc();
+    allocate_first_free_effect_slot();
     if (bVar3) {
       return;
     }

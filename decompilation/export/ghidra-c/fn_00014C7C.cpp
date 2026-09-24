@@ -7,7 +7,7 @@
 //   0x00014D58 FUN_00014d58
 //   0x00015C58 FUN_00015c58
 //   0x00015C84 FUN_00015c84
-//   0x0001A2CC FUN_0001a2cc
+//   0x0001A2CC allocate_first_free_effect_slot
 
 
 void FUN_00014c7c(void)
@@ -60,7 +60,7 @@ void FUN_00014c7c(void)
   if (unaff_D3w < 0x300) {
     bVar3 = false;
     if (*(short *)(extraout_A0_03 + 0xdc) < 0) {
-      uVar1 = FUN_0001a2cc();
+      uVar1 = allocate_first_free_effect_slot();
       if (bVar3) {
         return;
       }

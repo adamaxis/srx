@@ -3011,7 +3011,7 @@
 0000446C: jsr 0x0001a342.l ; call 0001A342 FUN_0001a342
 00004472: bcs.w 0x000044ba
 00004476: move.w D0w,(0x00ffdd40).l
-0000447C: jsr 0x0001a2cc.l ; call 0001A2CC FUN_0001a2cc
+0000447C: jsr 0x0001a2cc.l ; call 0001A2CC allocate_first_free_effect_slot
 00004482: bcs.w 0x000044ba
 00004486: move.l (A5)+,D4
 00004488: movea.l (A5)+,A3
@@ -3268,7 +3268,7 @@
 000049B4: movea.l A1,A0
 000049B6: bsr.w 0x00004b6c ; call 00004B6C FUN_00004b6c
 000049BA: movem.l (SP)+,{  A0 A1}
-000049BE: jsr 0x0001582a.l ; call 0001582A thunk_FUN_0001a2cc
+000049BE: jsr 0x0001582a.l ; call 0001582A allocate_first_free_effect_slot
 000049C4: bcs.w 0x00004aaa
 000049C8: move.w D0w,(0x32,A1)
 000049CC: move.w D1w,(0x2a,A1)
@@ -12281,7 +12281,7 @@
 00014D14: bmi.w 0x00014d1a
 00014D18: bra.b 0x00014ca8
 00014D1A: movem.l {  D2},-(SP)
-00014D1E: jsr 0x0001a2cc.l ; call 0001A2CC FUN_0001a2cc
+00014D1E: jsr 0x0001a2cc.l ; call 0001A2CC allocate_first_free_effect_slot
 00014D24: movem.l (SP)+,{  D2}
 00014D28: bcs.b 0x00014cb2
 00014D2A: move.w D0w,(0x32,A0)
@@ -12866,7 +12866,7 @@
 000156CA: move.w #0x2,(0xe,A1)
 000156D0: move.w #0xb4,(0x40,A1)
 000156D6: move.w #0x0,(0x16,A1)
-000156DC: jsr 0x0001a2cc.l ; call 0001A2CC FUN_0001a2cc
+000156DC: jsr 0x0001a2cc.l ; call 0001A2CC allocate_first_free_effect_slot
 000156E2: bcc.w 0x000156ee
 000156E6: clr.b (0x10,A1)
 000156EA: bra.w 0x00015792
@@ -12973,7 +12973,7 @@
 00015858: tst.w (0x00ffdf84).l
 0001585E: bne.w 0x00015862
 00015862: jsr 0x0001dbaa.l ; call 0001DBAA FUN_0001dbaa
-00015868: bsr.b 0x0001582a ; call 0001582A thunk_FUN_0001a2cc
+00015868: bsr.b 0x0001582a ; call 0001582A allocate_first_free_effect_slot
 0001586A: bcs.w 0x0001592e
 0001586E: move.l A0,(0xd8,A1)
 00015872: movem.w {  D1w D0w},-(SP)
@@ -13023,7 +13023,7 @@
 00015928: jsr (A2)
 0001592A: movem.l (SP)+,{  A0 A1}
 0001592E: rts
-00015930: bsr.w 0x0001582a ; call 0001582A thunk_FUN_0001a2cc
+00015930: bsr.w 0x0001582a ; call 0001582A allocate_first_free_effect_slot
 00015934: bcs.w 0x0001597c
 00015938: move.b #0x2,(0xb2,A1)
 0001593E: move.w D0w,(0x32,A1)
@@ -18734,7 +18734,7 @@
 0001E0EC: jsr 0x0001a342.l ; call 0001A342 FUN_0001a342
 0001E0F2: bcs.w 0x0001e164
 0001E0F6: move.w D0w,(0x00ffdd40).l
-0001E0FC: jsr 0x0001a2cc.l ; call 0001A2CC FUN_0001a2cc
+0001E0FC: jsr 0x0001a2cc.l ; call 0001A2CC allocate_first_free_effect_slot
 0001E102: bcs.w 0x0001e164
 0001E106: move.l (A5)+,D4
 0001E108: movea.l (A5)+,A3
@@ -18820,7 +18820,7 @@
 0001E260: jsr 0x0001a342.l ; call 0001A342 FUN_0001a342
 0001E266: bcs.w 0x0001e2b8
 0001E26A: move.w D0w,(0x00ffdd40).l
-0001E270: jsr 0x0001a2cc.l ; call 0001A2CC FUN_0001a2cc
+0001E270: jsr 0x0001a2cc.l ; call 0001A2CC allocate_first_free_effect_slot
 0001E276: bcs.w 0x0001e2b8
 0001E27A: movea.l #0x1e300,A3
 0001E280: jsr 0x000044bc.l ; call 000044BC FUN_000044bc
@@ -18972,7 +18972,7 @@
 0001E4AE: jsr 0x0001a342.l ; call 0001A342 FUN_0001a342
 0001E4B4: bcs.w 0x0001e4fe
 0001E4B8: move.w D0w,(0x00ffdd40).l
-0001E4BE: jsr 0x0001a2cc.l ; call 0001A2CC FUN_0001a2cc
+0001E4BE: jsr 0x0001a2cc.l ; call 0001A2CC allocate_first_free_effect_slot
 0001E4C4: bcs.w 0x0001e4fe
 0001E4C8: movea.l #0x1e300,A3
 0001E4CE: jsr 0x000044bc.l ; call 000044BC FUN_000044bc
@@ -28946,7 +28946,7 @@
 0005D70E: move.b #0x3,(0x41,A1)
 0005D714: clr.w (0x44,A1)
 0005D718: move.w #-0x1,(0x46,A1)
-0005D71E: jsr 0x0001a2cc.l ; call 0001A2CC FUN_0001a2cc
+0005D71E: jsr 0x0001a2cc.l ; call 0001A2CC allocate_first_free_effect_slot
 0005D724: bcc.w 0x0005d732
 0005D728: bclr.b #0x0,(0x10,A1)
 0005D72E: bra.w 0x0005d744

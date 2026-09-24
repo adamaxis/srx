@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000049A0 FUN_000049a0
-//   0x0001582A thunk_FUN_0001a2cc
+//   0x0001582A allocate_first_free_effect_slot
 //   0x000530DE FUN_000530de
 
 
@@ -18,7 +18,7 @@ void FUN_00015930(void)
   int extraout_A1;
   undefined1 in_CF;
   
-  uVar1 = thunk_FUN_0001a2cc();
+  uVar1 = allocate_first_free_effect_slot();
   if (!(bool)in_CF) {
     *(undefined1 *)(extraout_A1 + 0xb2) = 2;
     *(undefined2 *)(extraout_A1 + 0x32) = uVar1;

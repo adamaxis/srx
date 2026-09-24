@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001582A
-// Name: thunk_FUN_0001a2cc
+// Name: allocate_first_free_effect_slot
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-short thunk_FUN_0001a2cc(void)
+short allocate_first_free_effect_slot(void)
 
 {
   short sVar1;

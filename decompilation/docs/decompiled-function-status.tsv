@@ -76,6 +76,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x118C6	inventory action selector	ghidra_conversion::cycle_inventory_action_selector	shadowrun_menu_system	partial		Typed 2..5 action wrap with the source underflow redraw request
 0xA7E4	entity slot order initialization	ghidra_conversion::initialize_entity_slot_order	shadowrun_native_port	partial		Typed sixteen-slot initialization replacing source record-pointer arithmetic
 0xAE5E	entity collision recheck scheduling	ghidra_conversion::schedule_entity_collision_recheck	shadowrun_native_port	partial		Typed pending-reaction bit and collision-recheck continuation
+0x1A2CC	first free effect slot	ghidra_conversion::allocate_first_free_effect_slot	shadowrun_native_port	partial		Typed eighteen-slot allocation with full-table sentinel
 0x14756	entity route flag cleanup	ghidra_conversion::clear_entity_route_flags	shadowrun_native_port	partial		Typed movement flag cleanup for completed or failed route selection
 0x14902	obstruction grid index	ghidra_conversion::compute_obstruction_grid_index	shadowrun_native_port	partial		Typed world-coordinate to obstruction-grid index conversion
 0x14B4E	obstruction tile projection	ghidra_conversion::decode_obstruction_tile_projection	shadowrun_native_port	partial		Typed packed-tile coordinate decode and relative direction selection

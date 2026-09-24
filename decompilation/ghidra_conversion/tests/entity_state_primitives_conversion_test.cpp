@@ -33,5 +33,16 @@ int main() {
         return 3;
     }
 
+    std::array<std::uint8_t, 18> effects{};
+    effects.fill(1U);
+    effects[7] = 0U;
+    if (!expect(allocate_first_free_effect_slot(effects) == 7U &&
+                effects[7] == 1U)) {
+        return 4;
+    }
+    if (!expect(allocate_first_free_effect_slot(effects) == 18U)) {
+        return 5;
+    }
+
     return 0;
 }

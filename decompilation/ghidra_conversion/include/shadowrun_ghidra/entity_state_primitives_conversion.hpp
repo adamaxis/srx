@@ -20,4 +20,9 @@ void initialize_entity_slot_order(
 // collision-recheck continuation.
 void schedule_entity_collision_recheck(EntityReactionState& state);
 
+// ROM 0x1A2CC: claim the first free byte-sized effect slot. The source scans
+// eighteen slots and returns 18 as the full-table sentinel.
+std::uint8_t allocate_first_free_effect_slot(
+    std::array<std::uint8_t, 18>& slot_state);
+
 } // namespace shadowrun::ghidra_conversion

@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x000044BC FUN_000044bc
 //   0x00005A56 project_entity_screen_position
-//   0x0001A2CC FUN_0001a2cc
+//   0x0001A2CC allocate_first_free_effect_slot
 //   0x0001A342 FUN_0001a342
 
 
@@ -29,7 +29,7 @@ void FUN_0001e0dc(void)
   while ((bVar7 = false, *puVar5 != 0 && (uVar3 = FUN_0001a342(), !bVar7))) {
     bVar7 = false;
     DAT_00ffdd40 = uVar3;
-    FUN_0001a2cc();
+    allocate_first_free_effect_slot();
     if (bVar7) {
       return;
     }

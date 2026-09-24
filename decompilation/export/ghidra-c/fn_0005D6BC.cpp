@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00015A8C find_first_available_entity_slot
-//   0x0001A2CC FUN_0001a2cc
+//   0x0001A2CC allocate_first_free_effect_slot
 
 
 void FUN_0005d6bc(void)
@@ -45,7 +45,7 @@ void FUN_0005d6bc(void)
     extraout_A1[0x22] = 0;
     extraout_A1[0x23] = 0xffff;
     bVar5 = false;
-    uVar1 = FUN_0001a2cc();
+    uVar1 = allocate_first_free_effect_slot();
     if (bVar5) {
       *(byte *)(extraout_A1_00 + 0x10) = *(byte *)(extraout_A1_00 + 0x10) & 0xfe;
     }

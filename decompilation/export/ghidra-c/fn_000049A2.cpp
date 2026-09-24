@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00004B6C FUN_00004b6c
 //   0x000061A0 append_entity_sprite_record
-//   0x0001582A thunk_FUN_0001a2cc
+//   0x0001582A allocate_first_free_effect_slot
 //   0x000530DE FUN_000530de
 
 
@@ -27,7 +27,7 @@ void FUN_000049a2(void)
   if (DAT_00ffdca0 != 0) {
     FUN_00004b6c();
   }
-  uVar3 = thunk_FUN_0001a2cc();
+  uVar3 = allocate_first_free_effect_slot();
   if (!(bool)uVar7) {
     extraout_A1[0x19] = uVar3;
     extraout_A1[0x15] = extraout_D1w;

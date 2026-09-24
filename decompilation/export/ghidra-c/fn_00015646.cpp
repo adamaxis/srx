@@ -7,7 +7,7 @@
 //   0x00015118 FUN_00015118
 //   0x00015A8C find_first_available_entity_slot
 //   0x00015D3C FUN_00015d3c
-//   0x0001A2CC FUN_0001a2cc
+//   0x0001A2CC allocate_first_free_effect_slot
 //   0x0001DBAA FUN_0001dbaa
 //   0x00055848 FUN_00055848
 
@@ -59,7 +59,7 @@ void FUN_00015646(void)
       extraout_A1[0x20] = 0xb4;
       extraout_A1[0xb] = 0;
       bVar9 = false;
-      uVar10 = FUN_0001a2cc();
+      uVar10 = allocate_first_free_effect_slot();
       if (!bVar9) {
         extraout_A1_00[0x18] = (short)((uint6)uVar10 >> 0x20);
         extraout_A1_00[0x10] = (short)uVar10;

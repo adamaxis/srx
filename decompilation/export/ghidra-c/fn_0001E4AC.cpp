@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000044BC FUN_000044bc
-//   0x0001A2CC FUN_0001a2cc
+//   0x0001A2CC allocate_first_free_effect_slot
 //   0x0001A342 FUN_0001a342
 
 
@@ -22,7 +22,7 @@ void FUN_0001e4ac(void)
   if (!bVar3) {
     bVar3 = false;
     DAT_00ffdd40 = uVar2;
-    FUN_0001a2cc();
+    allocate_first_free_effect_slot();
     if (!bVar3) {
       FUN_000044bc();
       *(byte *)(extraout_A1 + 0x58) = *(byte *)(extraout_A1 + 0x58) | 0x80;
