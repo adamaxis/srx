@@ -1401,3 +1401,16 @@ target_link_libraries(shadowrun_ghidra_field_resource_sequence_test
     PRIVATE shadowrun_ghidra_field_resource_sequence)
 add_test(NAME shadowrun_ghidra_field_resource_sequence
          COMMAND shadowrun_ghidra_field_resource_sequence_test)
+
+add_library(shadowrun_ghidra_mode_display_reset STATIC
+    src/mode_display_reset_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_mode_display_reset PUBLIC include)
+
+add_executable(shadowrun_ghidra_mode_display_reset_test
+    tests/mode_display_reset_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_mode_display_reset_test
+    PRIVATE shadowrun_ghidra_mode_display_reset)
+add_test(NAME shadowrun_ghidra_mode_display_reset
+         COMMAND shadowrun_ghidra_mode_display_reset_test)

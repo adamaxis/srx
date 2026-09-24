@@ -341,3 +341,4 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x28AA	field resource preparation sequence	ghidra_conversion::prepare_field_resources	shadowrun_ghidra_field_resource_sequence	partial		Typed setup, asset upload, animation refresh, and font-load order
 0x2C6C	field viewport preparation sequence	ghidra_conversion::prepare_field_viewports	shadowrun_ghidra_field_resource_sequence	partial		Typed scene preparation, optional mode branch, and normal/alternate viewport order
 0x33AA	field asset grid draw wrapper	ghidra_conversion::draw_field_asset_grid	shadowrun_ghidra_field_resource_sequence	partial		Typed single grid-draw presentation boundary
+0x10952	mode display buffer reset	ghidra_conversion::reset_mode_display_buffers	shadowrun_ghidra_mode_display_reset	partial		Typed clear/wait/upload reset order with transfer markers cleared

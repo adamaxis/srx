@@ -565,6 +565,10 @@ The thin `0x33AA` field-grid wrapper is now a named host presentation
 boundary. It invokes one grid draw callback and does not expose the source VDP
 writer to the native conversion layer.
 
+`0x10952` is now a typed mode-display reset. It clears both planes, waits for
+the frame boundary, resets upload state and the two transfer markers, then
+restores the fixed transfer setup. The markers are ordinary host state.
+
 The established word-transfer module now also converts `0xC3B2` as
 `write_single_word`: one typed transfer command followed by one data-word
 callback, with the ordering covered by the existing transfer test.
