@@ -31,4 +31,27 @@ void apply_scene_profile_selection(
     pending_profile.reset();
 }
 
+void copy_scene_resource_cursor(
+    SceneResourceCursorState& state,
+    const SceneResourceProfileFields& source) {
+    state.cursor = source.cursor;
+    state.resource_index = source.resource_index;
+}
+
+bool spawn_scene_record_offset(
+    SceneRecordPlacement& destination,
+    const SceneRecordPlacement& source,
+    const std::int16_t kind,
+    const std::function<bool()>& all_slots_active) {
+    if (all_slots_active && all_slots_active()) {
+        return false;
+    }
+
+    destination.x = static_cast<std::int16_t>(source.x + 0x80);
+    destination.y = static_cast<std::int16_t>(source.y + 0x80);
+    destination.flags = static_cast<std::uint8_t>(destination.flags | 1U);
+    destination.kind = kind;
+    return true;
+}
+
 } // namespace shadowrun::ghidra_conversion

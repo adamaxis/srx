@@ -48,5 +48,28 @@ int main() {
         return 3;
     }
 
+    SceneResourceCursorState cursor{0, 0};
+    copy_scene_resource_cursor(cursor, SceneResourceProfileFields{-3, 0x4567U});
+    if (!expect(cursor.cursor == -3 && cursor.resource_index == 0x4567U)) {
+        return 4;
+    }
+
+    SceneRecordPlacement source_record{0x0100, -0x20, 0, 0};
+    SceneRecordPlacement destination_record{0, 0, 0, 0x04U};
+    if (!expect(spawn_scene_record_offset(
+                    destination_record, source_record, 7,
+                    [] { return false; }) &&
+                destination_record.x == 0x0180 &&
+                destination_record.y == 0x0060 &&
+                destination_record.kind == 7 &&
+                destination_record.flags == 0x05U)) {
+        return 5;
+    }
+    if (!expect(!spawn_scene_record_offset(
+                    destination_record, source_record, 9,
+                    [] { return true; }))) {
+        return 6;
+    }
+
     return 0;
 }
