@@ -237,7 +237,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0000D81C	average_entity_delay_attributes	14	unknown	ok	ghidra-c/fn_0000D81C.cpp
 0000D82A	FUN_0000d82a	544	unknown	ok	ghidra-c/fn_0000D82A.cpp
 0000DA4A	FUN_0000da4a	32	unknown	ok	ghidra-c/fn_0000DA4A.cpp
-0000E00A	FUN_0000e00a	42	unknown	ok	ghidra-c/fn_0000E00A.cpp
+0000E00A	wait_for_controller_event	42	unknown	ok	ghidra-c/fn_0000E00A.cpp
 0000E660	FUN_0000e660	148	unknown	ok	ghidra-c/fn_0000E660.cpp
 0000E6F4	FUN_0000e6f4	212	unknown	ok	ghidra-c/fn_0000E6F4.cpp
 0000E7C8	FUN_0000e7c8	216	unknown	ok	ghidra-c/fn_0000E7C8.cpp
@@ -251,7 +251,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0000EE10	rebuild_terrain_collision_map	118	unknown	ok	ghidra-c/fn_0000EE10.cpp
 0000EE86	replace_nth_terrain_marker	120	unknown	ok	ghidra-c/fn_0000EE86.cpp
 0000EF08	FUN_0000ef08	172	unknown	ok	ghidra-c/fn_0000EF08.cpp
-0000F312	FUN_0000f312	44	unknown	ok	ghidra-c/fn_0000F312.cpp
+0000F312	wait_for_controller_event	44	unknown	ok	ghidra-c/fn_0000F312.cpp
 0000F404	FUN_0000f404	18	unknown	ok	ghidra-c/fn_0000F404.cpp
 0000F5F4	FUN_0000f5f4	232	unknown	ok	ghidra-c/fn_0000F5F4.cpp
 0000FDAE	FUN_0000fdae	80	unknown	ok	ghidra-c/fn_0000FDAE.cpp

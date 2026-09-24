@@ -5706,7 +5706,7 @@
 0000C912: jsr 0x0000c0da.l ; call 0000C0DA FUN_0000c0da
 0000C918: adda.l #0x100,A2
 0000C91E: dbf D7w,0x0000c904
-0000C922: jmp 0x0000f312.l ; call 0000F312 FUN_0000f312
+0000C922: jmp 0x0000f312.l ; call 0000F312 wait_for_controller_event
 0000C928: jsr 0x00010952.l ; call 00010952 FUN_00010952
 0000C92E: move.b #0x1,(0x00fff0b7).l
 0000C936: lea (0xd29d6).l,A0 ; data 000d29d6
@@ -5807,7 +5807,7 @@
 0000CD96: movea.l #0xc50e,A2
 0000CD9C: move.w #0x6000,D1w
 0000CDA0: jsr 0x0000c0da.l ; call 0000C0DA FUN_0000c0da
-0000CDA6: jmp 0x0000f312.l ; call 0000F312 FUN_0000f312
+0000CDA6: jmp 0x0000f312.l ; call 0000F312 wait_for_controller_event
 0000CDAC: sub.l D0,(0x00fffbfe).l
 0000CDB2: movea.l (0x00fffc04).l,A0
 0000CDB8: move.b #0xa,(0x4c,A0)
@@ -6480,7 +6480,7 @@
 0000E056: movea.l #0xc58c,A2
 0000E05C: move.w #0x6000,D1w
 0000E060: jsr 0x0000c0da.l ; call 0000C0DA FUN_0000c0da
-0000E066: bra.b 0x0000e00a ; call 0000E00A FUN_0000e00a
+0000E066: bra.b 0x0000e00a ; call 0000E00A wait_for_controller_event
 0000E3E0: cmpi.w #0x7,D7w
 0000E3E4: bmi.w 0x0000e3f8
 0000E3E8: move.w #0x6,D7w
@@ -6511,7 +6511,7 @@
 0000E464: jsr 0x0000c0da.l ; call 0000C0DA FUN_0000c0da
 0000E46A: move.w #0x1b,D0w
 0000E46E: jsr 0x000530de.l ; call 000530DE FUN_000530de
-0000E474: bsr.w 0x0000e00a ; call 0000E00A FUN_0000e00a
+0000E474: bsr.w 0x0000e00a ; call 0000E00A wait_for_controller_event
 0000E478: rts
 0000E47A: move.w #0x1a,D0w
 0000E47E: jsr 0x000530de.l ; call 000530DE FUN_000530de
@@ -7115,8 +7115,8 @@
 0000EF9E: lea (0xc265e).l,A1 ; data 000c265e
 0000EFA4: move.w #0x6000,D1w
 0000EFA8: jsr 0x0000c0da.l ; call 0000C0DA FUN_0000c0da
-0000EFAE: jmp 0x0000f312.l ; call 0000F312 FUN_0000f312
-0000EFE0: jmp 0x0000f312.l ; call 0000F312 FUN_0000f312
+0000EFAE: jmp 0x0000f312.l ; call 0000F312 wait_for_controller_event
+0000EFE0: jmp 0x0000f312.l ; call 0000F312 wait_for_controller_event
 0000F300: sne -(SP)
 0000F302: movea.l #0xc30c,A2
 0000F308: move.w #0x6000,D1w
@@ -7214,7 +7214,7 @@
 0000F5AA: movea.l #0xc38c,A2
 0000F5B0: move.w #0x6000,D1w
 0000F5B4: jsr 0x0000c0da.l ; call 0000C0DA FUN_0000c0da
-0000F5BA: bsr.w 0x0000f312 ; call 0000F312 FUN_0000f312
+0000F5BA: bsr.w 0x0000f312 ; call 0000F312 wait_for_controller_event
 0000F5BE: bra.w 0x0000f416
 0000F5C2: btst.b #0xc,(0x00ffdd22).l
 0000F5CA: beq.w 0x0000f5d0
@@ -7343,7 +7343,7 @@
 0000F95A: movea.l #0xc38a,A2
 0000F960: move.w #0x6000,D1w
 0000F964: jsr 0x0000c0da.l ; call 0000C0DA FUN_0000c0da
-0000F96A: bsr.w 0x0000f312 ; call 0000F312 FUN_0000f312
+0000F96A: bsr.w 0x0000f312 ; call 0000F312 wait_for_controller_event
 0000F96E: bra.w 0x0000f846
 0000F972: btst.b #0xc,(0x00ffdd22).l
 0000F97A: beq.w 0x0000f980

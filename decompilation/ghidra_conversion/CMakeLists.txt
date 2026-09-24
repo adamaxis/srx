@@ -475,3 +475,16 @@ target_link_libraries(shadowrun_ghidra_movement_direction_test
     PRIVATE shadowrun_ghidra_movement_direction)
 add_test(NAME shadowrun_ghidra_movement_direction
          COMMAND shadowrun_ghidra_movement_direction_test)
+
+add_library(shadowrun_ghidra_controller_wait STATIC
+    src/controller_wait_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_controller_wait PUBLIC include)
+
+add_executable(shadowrun_ghidra_controller_wait_test
+    tests/controller_wait_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_controller_wait_test
+    PRIVATE shadowrun_ghidra_controller_wait)
+add_test(NAME shadowrun_ghidra_controller_wait
+         COMMAND shadowrun_ghidra_controller_wait_test)

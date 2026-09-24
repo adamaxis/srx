@@ -102,6 +102,8 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00015CA4L, "compute_diagonal_step_cost");
         names.put(0x00015CC0L, "compute_diagonal_step_cost");
         names.put(0x000148D2L, "choose_dominant_axis_directions");
+        names.put(0x0000E00AL, "wait_for_controller_event");
+        names.put(0x0000F312L, "wait_for_controller_event");
         names.put(0x0000B732L, "apply_movement_result_policy");
         names.put(0x0000B77EL, "probe_entity_directional_collision");
         names.put(0x0000B530L, "approach_entity_fixed_point_target");

@@ -7,7 +7,7 @@
 //   0x000037EC FUN_000037ec
 //   0x0000C0DA FUN_0000c0da
 //   0x0000C3E6 FUN_0000c3e6
-//   0x0000F312 FUN_0000f312
+//   0x0000F312 wait_for_controller_event
 
 
 void FUN_0000ef08(void)
@@ -41,7 +41,7 @@ void FUN_0000ef08(void)
     sVar1 = sVar1 + -1;
   } while (sVar1 != -1);
   FUN_0000c0da();
-  FUN_0000f312();
+  wait_for_controller_event();
   return;
 }
 
