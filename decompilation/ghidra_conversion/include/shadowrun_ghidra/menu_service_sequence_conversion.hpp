@@ -53,4 +53,17 @@ bool refresh_menu_text(
     const std::function<void()>& prepare_text,
     const std::function<void()>& render_text);
 
+struct MenuTextCursorState {
+    std::int8_t selector = 0;
+    std::int16_t primary_marker = 0;
+    std::int16_t secondary_marker = 0;
+};
+
+// ROM 0x1209A: alternate the two text slots until one is available, then
+// render through the text boundary and run the cursor-service leaf.
+void advance_menu_text_cursor(
+    MenuTextCursorState& state,
+    const std::function<void()>& render_text,
+    const std::function<void()>& service_cursor);
+
 } // namespace shadowrun::ghidra_conversion

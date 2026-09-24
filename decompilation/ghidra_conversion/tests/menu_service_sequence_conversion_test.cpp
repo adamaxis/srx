@@ -78,5 +78,13 @@ int main() {
                          [&order] { order.push_back(19); })) {
         return 10;
     }
+
+    MenuTextCursorState cursor{0, -1, 3};
+    order.clear();
+    advance_menu_text_cursor(cursor, [&order] { order.push_back(20); },
+                             [&order] { order.push_back(21); });
+    if (cursor.selector != 0 || order != std::vector<int>{20, 21}) {
+        return 11;
+    }
     return 0;
 }

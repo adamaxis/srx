@@ -110,4 +110,27 @@ bool refresh_menu_text(
     return true;
 }
 
+void advance_menu_text_cursor(
+    MenuTextCursorState& state,
+    const std::function<void()>& render_text,
+    const std::function<void()>& service_cursor) {
+    std::int16_t* selected_marker = nullptr;
+    do {
+        if (state.selector == 0) {
+            state.selector = -1;
+            selected_marker = &state.primary_marker;
+        } else {
+            state.selector = 0;
+            selected_marker = &state.secondary_marker;
+        }
+    } while (*selected_marker < 0);
+
+    if (render_text) {
+        render_text();
+    }
+    if (service_cursor) {
+        service_cursor();
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion
