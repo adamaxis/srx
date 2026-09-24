@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001438C FUN_0001438c
-//   0x00014446 FUN_00014446
+//   0x00014446 collect_entity_action_candidates
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -18,12 +18,12 @@ void FUN_00013874(void)
       FUN_0001438c();
     }
     else if ((DAT_00ffdf88 & 0x3f) == 0xf) {
-      FUN_00014446();
+      collect_entity_action_candidates();
     }
   }
   else {
     FUN_0001438c();
-    FUN_00014446();
+    collect_entity_action_candidates();
   }
   return;
 }

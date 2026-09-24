@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00014446
-// Name: FUN_00014446
+// Name: collect_entity_action_candidates
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00014446(void)
+void collect_entity_action_candidates(void)
 
 {
   short sVar1;

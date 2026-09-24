@@ -684,6 +684,10 @@ least significant digit upward, inserts the source special glyph after every
 three digits, and handles zero as a single digit. The native side receives
 glyph values instead of writing directly to VDP data.
 
+The `0x14446` scan is now `collect_entity_action_candidates`. It checks the
+three source slots for active bit 0, rejects status bits 6 and 4, requires a
+nonzero action word, and returns the surviving slot indices in scan order.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames

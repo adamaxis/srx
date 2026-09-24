@@ -11009,7 +11009,7 @@
 0001387A: tst.w (0x00ffdfe8).l
 00013880: beq.w 0x00013890
 00013884: bsr.w 0x0001438c ; call 0001438C FUN_0001438c
-00013888: bsr.w 0x00014446 ; call 00014446 FUN_00014446
+00013888: bsr.w 0x00014446 ; call 00014446 collect_entity_action_candidates
 0001388C: bra.w 0x000138b6
 00013890: move.w (0x00ffdf88).l,D0w
 00013896: andi.w #0x3f,D0w
@@ -11019,7 +11019,7 @@
 000138A6: bra.w 0x000138b6
 000138AA: cmpi.w #0xf,D0w
 000138AE: bne.w 0x000138b6
-000138B2: bsr.w 0x00014446 ; call 00014446 FUN_00014446
+000138B2: bsr.w 0x00014446 ; call 00014446 collect_entity_action_candidates
 000138B6: rts
 000138B8: subq.w #0x1,(0xb6,A0)
 000138BC: bmi.w 0x000138c2
