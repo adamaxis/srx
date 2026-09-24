@@ -1,22 +1,22 @@
 // Ghidra headless export
 // Entry: 0x0000075E
-// Name: FUN_0000075e
+// Name: run_game_loop
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000BD2 FUN_00000bd2
-//   0x00000BF2 FUN_00000bf2
-//   0x00000C2C FUN_00000c2c
+//   0x00000BD2 wait_for_vblank
+//   0x00000BF2 latch_controller_events
+//   0x00000C2C clear_runtime_memory_and_vdp
 //   0x000012F6 FUN_000012f6
-//   0x0000131C FUN_0000131c
-//   0x0000195C FUN_0000195c
-//   0x00001A9E FUN_00001a9e
+//   0x0000131C step_palette_transition
+//   0x0000195C sample_controller_input
+//   0x00001A9E run_title_loop
 //   0x0000281E FUN_0000281e
 //   0x000028C2 FUN_000028c2
 //   0x00002BD2 FUN_00002bd2
 //   0x00002CE0 FUN_00002ce0
 //   0x00002F32 FUN_00002f32
 //   0x00002FA4 FUN_00002fa4
-//   0x00003084 FUN_00003084
+//   0x00003084 run_field_loop
 //   0x00003168 FUN_00003168
 //   0x0000391A FUN_0000391a
 //   0x00003A1C FUN_00003a1c
@@ -43,12 +43,12 @@
 //   0x00059318 FUN_00059318
 //   0x000594E0 FUN_000594e0
 //   0x00059C5E FUN_00059c5e
-//   0x0005D746 FUN_0005d746
+//   0x0005D746 run_pre_title_sequence
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0000075e(void)
+void run_game_loop(void)
 
 {
   char cVar1;
@@ -75,8 +75,8 @@ void FUN_0000075e(void)
   byte *pbVar16;
   undefined4 *puVar19;
   
-  FUN_00000c2c();
-  FUN_0005d746();
+  clear_runtime_memory_and_vdp();
+  run_pre_title_sequence();
   if (DAT_00fff9e8 != 0x12345678) {
     DAT_00fff9e8 = 0x12345678;
   }
@@ -84,12 +84,12 @@ void FUN_0000075e(void)
   _DAT_00fffc08 = 1;
   _DAT_00fffc0a = 1;
   _DAT_00ffdfe8 = 0xffff;
-  FUN_00001a9e();
+  run_title_loop();
   FUN_00053126();
   if (_DAT_00ffddc0 != 0) {
     FUN_00059318();
     FUN_00059092();
-    FUN_0000131c();
+    step_palette_transition();
     if (_DAT_00ffe108 == 0) {
       FUN_00059c5e();
     }
@@ -112,7 +112,7 @@ LAB_000007f0:
     DAT_00fffc30 = 1;
     DAT_00ffddc4 = 2;
     DAT_00fffbf8 = 2;
-    FUN_00003084();
+    run_field_loop();
     _DAT_00ffdfe8 = 0xffff;
     DAT_00fff0a0 = 0xff;
     FUN_0000a7b4();
@@ -142,17 +142,17 @@ LAB_000008c0:
         DAT_00ffef14 = DAT_00ffef14 | 0xe;
         sVar13 = sVar13 + -1;
       } while (sVar13 != -1);
-      FUN_00000bd2();
+      wait_for_vblank();
       _DAT_00ffdfe8 = 0xffff;
       FUN_000012f6();
       DAT_00ffe18a = 0;
-      FUN_0000195c();
-      FUN_0000195c();
+      sample_controller_input();
+      sample_controller_input();
       _DAT_00ffdfe6 = 0;
       _DAT_00ffdfe8 = 0;
       do {
         do {
-          FUN_00000bd2();
+          wait_for_vblank();
           if (_DAT_00ffdf3e != 0) {
             DAT_00ffe172 = 0xff;
             _DAT_00ffdf3e = 0;
@@ -206,8 +206,8 @@ LAB_00000a72:
             _DAT_00ffdf42 = 0;
             goto LAB_000008c0;
           }
-          FUN_00000bf2();
-          FUN_0000195c();
+          latch_controller_events();
+          sample_controller_input();
           FUN_0000a8ea();
           FUN_00003a1c();
           FUN_00004618();
@@ -240,7 +240,7 @@ LAB_00000b9c:
       FUN_00002bd2();
     } while( true );
   }
-  FUN_0000131c();
+  step_palette_transition();
   puVar7 = PTR_VDP_CTRL_000002da;
   puVar6 = PTR_VDP_DATA_000002d6;
   puVar5 = PTR_IO_Z80RES_000002d2;
@@ -294,8 +294,8 @@ LAB_00000b9c:
           sVar13 = sVar13 + -1;
           puVar20 = puVar20 + 1;
         } while (sVar13 != -1);
-        FUN_0000073a();
-        FUN_0000075e();
+        wait_for_vdp_ready();
+        run_game_loop();
         return;
       }
       pcVar14 = pcVar14 + 1;
@@ -335,20 +335,20 @@ LAB_00000b9c:
       } while (sVar8 != -1);
       sVar13 = sVar13 + -1;
     } while (sVar13 != -1);
-    FUN_00000436();
+    write_startup_text_to_vdp();
     for (pcVar14 = GameHeader_00000100.Notes + 0x34; *pcVar14 != ' '; pcVar14 = pcVar14 + 1) {
       for (puVar17 = &DAT_00000470; (char)*puVar17 != '\0'; puVar17 = puVar17 + 3) {
         if ((char)*puVar17 == *pcVar14) {
           if ((pcVar14[1] == ' ') && (pcVar14 != GameHeader_00000100.Notes + 0x34)) {
-            FUN_00000436();
+            write_startup_text_to_vdp();
           }
-          FUN_00000436();
+          write_startup_text_to_vdp();
           pcVar14 = extraout_A1;
           break;
         }
       }
     }
-    FUN_00000436();
+    write_startup_text_to_vdp();
   }
   do {
                     /* WARNING: Do nothing block with infinite loop */

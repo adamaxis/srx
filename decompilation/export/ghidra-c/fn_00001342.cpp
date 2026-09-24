@@ -3,8 +3,8 @@
 // Name: FUN_00001342
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000BD2 FUN_00000bd2
-//   0x00000BF2 FUN_00000bf2
+//   0x00000BD2 wait_for_vblank
+//   0x00000BF2 latch_controller_events
 
 
 void FUN_00001342(void)
@@ -13,8 +13,8 @@ void FUN_00001342(void)
   short unaff_D5w;
   
   do {
-    FUN_00000bd2();
-    FUN_00000bf2();
+    wait_for_vblank();
+    latch_controller_events();
     unaff_D5w = unaff_D5w + -1;
   } while (unaff_D5w != -1);
   return;

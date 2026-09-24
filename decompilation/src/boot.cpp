@@ -4,46 +4,61 @@
 
 namespace shadowrun {
 
-RegionProbe ShadowrunBoot::read_region() const {
-    const auto raw = bus_.read8(genesis::kIoVersion);
-    return RegionProbe{raw, static_cast<std::uint8_t>((raw >> 6U) & 0x03U)};
-}
-
-void ShadowrunBoot::initialise_display() const {
-    // 0x374..0x384 in the ROM. These are VDP register command words, not
-    // ordinary palette or tile data. The following long control write and
-    // VRAM write are the next two operations in the same reset path.
-    constexpr std::array<std::uint16_t, 5> kInitialVdpRegisters{
-        0x8164, 0x8230, 0x8C81, 0x8F02, 0x9001
+RegionProbe decode_region_value(std::uint8_t raw_io_value) {
+    return RegionProbe{
+        raw_io_value,
+        static_cast<std::uint8_t>((raw_io_value >> 6U) & 0x03U),
     };
-    for (const auto command : kInitialVdpRegisters) {
-        bus_.write16(genesis::kVdpControl, command);
-    }
-    bus_.write32(genesis::kVdpControl, 0xC0020000U);
-    bus_.write16(genesis::kVdpData, 0x0EEEU);
-    bus_.write32(genesis::kVdpControl, 0x40000000U);
 }
 
-void ShadowrunBoot::write_startup_text(std::uint8_t column, std::uint8_t row,
-                                       std::string_view text) const {
-    // 0x436 constructs:
-    //   0x40000003 | (row << 23) | (column << 17)
-    // and sends it to the VDP control port. This is the Genesis VRAM write
-    // command used by the startup/region text path.
-    const auto command = 0x40000003U |
+StartupDisplayPlan make_startup_display_plan() {
+    return StartupDisplayPlan{
+        {0x8164, 0x8230, 0x8C81, 0x8F02, 0x9001},
+        0xC0020000U,
+        0x0EEEU,
+        0x40000000U,
+    };
+}
+
+StartupTextTransfer encode_startup_text(
+    std::uint8_t column, std::uint8_t row,
+    std::string_view text) {
+    StartupTextTransfer result{};
+    // 0x0436: (row << 23) | (column << 17) | 0x40000003.
+    result.vdp_command = 0x40000003U |
         (static_cast<std::uint32_t>(row) << 23U) |
         (static_cast<std::uint32_t>(column) << 17U);
-    bus_.write32(genesis::kVdpControl, command);
-
     for (const auto character : text) {
         if (character == '\0') {
             break;
         }
-        const auto encoded = static_cast<std::uint16_t>(
-            static_cast<unsigned char>(character) >= 0x20U
-                ? static_cast<unsigned char>(character) - 0x20U
-                : 0U);
-        bus_.write16(genesis::kVdpData, encoded);
+        const auto byte = static_cast<unsigned char>(character);
+        result.glyph_indices.push_back(
+            static_cast<std::uint16_t>(byte >= 0x20U ? byte - 0x20U : 0U));
+    }
+    return result;
+}
+
+RegionProbe ShadowrunBoot::read_region() const {
+    return decode_region_value(bus_.read8(genesis::kIoVersion));
+}
+
+void ShadowrunBoot::initialise_display() const {
+    const auto plan = make_startup_display_plan();
+    for (const auto command : plan.register_commands) {
+        bus_.write16(genesis::kVdpControl, command);
+    }
+    bus_.write32(genesis::kVdpControl, plan.clear_vram_command);
+    bus_.write16(genesis::kVdpData, plan.clear_vram_word);
+    bus_.write32(genesis::kVdpControl, plan.text_vram_command);
+}
+
+void ShadowrunBoot::write_startup_text(std::uint8_t column, std::uint8_t row,
+                                       std::string_view text) const {
+    const auto transfer = encode_startup_text(column, row, text);
+    bus_.write32(genesis::kVdpControl, transfer.vdp_command);
+    for (const auto glyph : transfer.glyph_indices) {
+        bus_.write16(genesis::kVdpData, glyph);
     }
 }
 

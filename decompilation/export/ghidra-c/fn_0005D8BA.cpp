@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0005D8BA
-// Name: FUN_0005d8ba
+// Name: step_pre_title_logo_strobe
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0005B2E2 FUN_0005b2e2
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0005d8ba(void)
+void step_pre_title_logo_strobe(void)
 
 {
   short sVar1;

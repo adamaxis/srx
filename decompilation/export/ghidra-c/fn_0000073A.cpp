@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000073A
-// Name: FUN_0000073a
+// Name: wait_for_vdp_ready
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0000073a(void)
+void wait_for_vdp_ready(void)
 
 {
   byte bVar1;

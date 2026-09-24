@@ -3,14 +3,14 @@
 // Name: FUN_00001406
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000BD2 FUN_00000bd2
+//   0x00000BD2 wait_for_vblank
 //   0x00000CEC FUN_00000cec
 //   0x00000E34 FUN_00000e34
 //   0x00000F5C FUN_00000f5c
 //   0x00000FFE FUN_00000ffe
 //   0x0000102A FUN_0000102a
 //   0x00001232 FUN_00001232
-//   0x0000131C FUN_0000131c
+//   0x0000131C step_palette_transition
 //   0x00001368 FUN_00001368
 //   0x00001530 FUN_00001530
 //   0x00001728 FUN_00001728
@@ -24,7 +24,7 @@ void FUN_00001406(void)
   uint *puVar2;
   uint *puVar3;
   
-  FUN_0000131c();
+  step_palette_transition();
   FUN_00000cec();
   FUN_00000ffe();
   FUN_0000102a();
@@ -57,7 +57,7 @@ void FUN_00001406(void)
     }
   }
   DAT_00ffef14 = DAT_00ffef14 | 0xd;
-  FUN_00000bd2();
+  wait_for_vblank();
   return;
 }
 

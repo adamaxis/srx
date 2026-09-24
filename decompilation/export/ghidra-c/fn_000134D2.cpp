@@ -3,11 +3,11 @@
 // Name: FUN_000134d2
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000BD2 FUN_00000bd2
-//   0x00000BF2 FUN_00000bf2
+//   0x00000BD2 wait_for_vblank
+//   0x00000BF2 latch_controller_events
 //   0x00001530 FUN_00001530
 //   0x00001728 FUN_00001728
-//   0x0000195C FUN_0000195c
+//   0x0000195C sample_controller_input
 //   0x0000391A FUN_0000391a
 //   0x0000E6F4 FUN_0000e6f4
 //   0x00010AF0 FUN_00010af0
@@ -28,9 +28,9 @@ void FUN_000134d2(void)
   DAT_00fff09c = (&DAT_000d4456)[(short)(ushort)DAT_00fffbf8];
   FUN_00001530();
   FUN_00001728();
-  FUN_00000bd2();
-  FUN_00000bf2();
-  FUN_0000195c();
+  wait_for_vblank();
+  latch_controller_events();
+  sample_controller_input();
   if (DAT_00fff09e == '\0') {
     FUN_0000e6f4();
   }
@@ -39,9 +39,9 @@ void FUN_000134d2(void)
     FUN_00013726();
     sVar2 = 0x40;
     while( true ) {
-      FUN_00000bd2();
-      FUN_00000bf2();
-      FUN_0000195c();
+      wait_for_vblank();
+      latch_controller_events();
+      sample_controller_input();
       if (DAT_00fff09e == '\0') {
         FUN_0000e6f4();
       }
@@ -52,9 +52,9 @@ void FUN_000134d2(void)
         FUN_00013726();
         sVar2 = 0x60;
         do {
-          FUN_00000bd2();
-          FUN_00000bf2();
-          FUN_0000195c();
+          wait_for_vblank();
+          latch_controller_events();
+          sample_controller_input();
           if (DAT_00fff09e == '\0') {
             FUN_0000e6f4();
           }
@@ -68,9 +68,9 @@ void FUN_000134d2(void)
   }
   FUN_00013726();
   while( true ) {
-    FUN_00000bd2();
-    FUN_00000bf2();
-    FUN_0000195c();
+    wait_for_vblank();
+    latch_controller_events();
+    sample_controller_input();
     if (DAT_00fff09e == '\0') {
       FUN_0000e6f4();
     }

@@ -3,8 +3,8 @@
 // Name: FUN_00011740
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000BD2 FUN_00000bd2
-//   0x00000BF2 FUN_00000bf2
+//   0x00000BD2 wait_for_vblank
+//   0x00000BF2 latch_controller_events
 //   0x00000D94 FUN_00000d94
 //   0x00000FFE FUN_00000ffe
 //   0x0000102A FUN_0000102a
@@ -12,7 +12,7 @@
 //   0x00001358 FUN_00001358
 //   0x00001530 FUN_00001530
 //   0x00001728 FUN_00001728
-//   0x0000195C FUN_0000195c
+//   0x0000195C sample_controller_input
 //   0x0000334C FUN_0000334c
 //   0x00003404 FUN_00003404
 //   0x00003674 FUN_00003674
@@ -128,9 +128,9 @@ void FUN_00011740(void)
     FUN_00011712();
     do {
       while( true ) {
-        FUN_00000bd2();
-        FUN_00000bf2();
-        FUN_0000195c();
+        wait_for_vblank();
+        latch_controller_events();
+        sample_controller_input();
         if ((DAT_00ffdd22._0_1_ & 4) == 0) break;
         uVar5 = 0xffff;
 LAB_00011be6:
@@ -165,9 +165,9 @@ LAB_00011be6:
           FUN_0000c0da();
           do {
             while( true ) {
-              FUN_00000bd2();
-              FUN_00000bf2();
-              FUN_0000195c();
+              wait_for_vblank();
+              latch_controller_events();
+              sample_controller_input();
               if (((DAT_00ffdd22._0_1_ & 4) == 0) && ((DAT_00ffdd22._0_1_ & 8) == 0)) break;
               FUN_000530de();
               FUN_000127b0();
@@ -232,9 +232,9 @@ LAB_00011be6:
 LAB_00011ea4:
       do {
         while( true ) {
-          FUN_00000bd2();
-          FUN_00000bf2();
-          FUN_0000195c();
+          wait_for_vblank();
+          latch_controller_events();
+          sample_controller_input();
           if ((DAT_00ffdd22._0_1_ & 4) == 0) break;
           uVar5 = 0xffff;
 LAB_00011ec4:
@@ -389,9 +389,9 @@ LAB_0000d25e:
       FUN_0000d5dc();
       FUN_0000d82a();
       while( true ) {
-        FUN_00000bd2();
-        FUN_00000bf2();
-        FUN_0000195c();
+        wait_for_vblank();
+        latch_controller_events();
+        sample_controller_input();
         if ((DAT_00ffdd22._0_1_ & 4) != 0) break;
         if ((DAT_00ffdd22._0_1_ & 8) != 0) {
           FUN_0000d5dc();
@@ -530,9 +530,9 @@ LAB_0000d4a0:
           while( true ) {
             while( true ) {
               FUN_0000fdfe();
-              FUN_00000bd2();
-              FUN_00000bf2();
-              FUN_0000195c();
+              wait_for_vblank();
+              latch_controller_events();
+              sample_controller_input();
               if (((DAT_00ffdd22._0_1_ & 4) == 0) && ((DAT_00ffdd22._0_1_ & 8) == 0)) break;
               FUN_0000febe();
               FUN_00010276();
@@ -570,9 +570,9 @@ LAB_0000c2aa:
     do {
       FUN_0000c376();
       while( true ) {
-        FUN_00000bd2();
-        FUN_00000bf2();
-        FUN_0000195c();
+        wait_for_vblank();
+        latch_controller_events();
+        sample_controller_input();
         FUN_0000e660();
         if (((DAT_00ffdd22._0_1_ & 1) != 0) || ((DAT_00ffdd22._0_1_ & 2) != 0)) break;
         if ((DAT_00ffdd22._0_1_ & 0x40) != 0) {
@@ -617,9 +617,9 @@ LAB_0000c2aa:
     FUN_0000c0da();
     do {
       while( true ) {
-        FUN_00000bd2();
-        FUN_00000bf2();
-        FUN_0000195c();
+        wait_for_vblank();
+        latch_controller_events();
+        sample_controller_input();
         if (((DAT_00ffdd22._0_1_ & 4) == 0) && ((DAT_00ffdd22._0_1_ & 8) == 0)) break;
         FUN_000530de();
         FUN_000127b0();
@@ -681,9 +681,9 @@ LAB_0000c2aa:
 LAB_0001296a:
       do {
         while( true ) {
-          FUN_00000bd2();
-          FUN_00000bf2();
-          FUN_0000195c();
+          wait_for_vblank();
+          latch_controller_events();
+          sample_controller_input();
           if (((DAT_00ffdd22._0_1_ & 4) == 0) && ((DAT_00ffdd22._0_1_ & 8) == 0)) break;
           FUN_000530de();
           FUN_000127b0();
@@ -720,9 +720,9 @@ LAB_000129dc:
     FUN_00011712();
     do {
       while( true ) {
-        FUN_00000bd2();
-        FUN_00000bf2();
-        FUN_0000195c();
+        wait_for_vblank();
+        latch_controller_events();
+        sample_controller_input();
         if ((DAT_00ffdd22._0_1_ & 4) == 0) break;
         uVar5 = 0xffff;
 LAB_000117f6:
@@ -793,9 +793,9 @@ LAB_000118b6:
         FUN_000110e8();
       }
       while( true ) {
-        FUN_00000bd2();
-        FUN_00000bf2();
-        FUN_0000195c();
+        wait_for_vblank();
+        latch_controller_events();
+        sample_controller_input();
         if (((DAT_00ffdd22._0_1_ & 1) != 0) || ((DAT_00ffdd22._0_1_ & 2) != 0)) break;
         if (((DAT_00ffdd22._0_1_ & 0x40) != 0) ||
            (((DAT_00ffdd22._0_1_ & 0x10) != 0 || ((DAT_00ffdd22._0_1_ & 0x20) != 0)))) {

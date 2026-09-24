@@ -3,7 +3,7 @@
 // Name: FUN_00002bd2
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000131C FUN_0000131c
+//   0x0000131C step_palette_transition
 //   0x0000286E FUN_0000286e
 //   0x00002900 FUN_00002900
 //   0x00002C6C FUN_00002c6c
@@ -17,7 +17,7 @@ void FUN_00002bd2(void)
 {
   short sVar1;
   
-  FUN_0000131c();
+  step_palette_transition();
   if (_DAT_00ffdf8e == 0) {
     DAT_00ffddc6 = DAT_00ffddc6 & 0xff80;
     DAT_00ffddc8 = DAT_00ffddc8 & 0xff80;

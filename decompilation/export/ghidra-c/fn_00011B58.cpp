@@ -3,10 +3,10 @@
 // Name: caseD_2
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000BD2 FUN_00000bd2
-//   0x00000BF2 FUN_00000bf2
+//   0x00000BD2 wait_for_vblank
+//   0x00000BF2 latch_controller_events
 //   0x00000D94 FUN_00000d94
-//   0x0000195C FUN_0000195c
+//   0x0000195C sample_controller_input
 //   0x00003404 FUN_00003404
 //   0x000036FC FUN_000036fc
 //   0x0000C0DA FUN_0000c0da
@@ -57,9 +57,9 @@ void switchD_00011768::caseD_2(void)
   FUN_00011712();
   do {
     while( true ) {
-      FUN_00000bd2();
-      FUN_00000bf2();
-      FUN_0000195c();
+      wait_for_vblank();
+      latch_controller_events();
+      sample_controller_input();
       if ((DAT_00ffdd22._0_1_ & 4) == 0) break;
       uVar3 = 0xffff;
 LAB_00011be6:
@@ -94,9 +94,9 @@ LAB_00011be6:
         FUN_0000c0da();
         do {
           while( true ) {
-            FUN_00000bd2();
-            FUN_00000bf2();
-            FUN_0000195c();
+            wait_for_vblank();
+            latch_controller_events();
+            sample_controller_input();
             if (((DAT_00ffdd22._0_1_ & 4) == 0) && ((DAT_00ffdd22._0_1_ & 8) == 0)) break;
             FUN_000530de();
             FUN_000127b0();
@@ -161,9 +161,9 @@ LAB_00011be6:
 LAB_00011ea4:
     do {
       while( true ) {
-        FUN_00000bd2();
-        FUN_00000bf2();
-        FUN_0000195c();
+        wait_for_vblank();
+        latch_controller_events();
+        sample_controller_input();
         if ((DAT_00ffdd22._0_1_ & 4) == 0) break;
         uVar3 = 0xffff;
 LAB_00011ec4:

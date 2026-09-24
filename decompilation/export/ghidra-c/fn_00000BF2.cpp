@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00000BF2
-// Name: FUN_00000bf2
+// Name: latch_controller_events
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-ushort FUN_00000bf2(void)
+ushort latch_controller_events(void)
 
 {
   ushort uVar1;

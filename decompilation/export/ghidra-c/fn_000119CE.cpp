@@ -3,10 +3,10 @@
 // Name: FUN_000119ce
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000BD2 FUN_00000bd2
-//   0x00000BF2 FUN_00000bf2
+//   0x00000BD2 wait_for_vblank
+//   0x00000BF2 latch_controller_events
 //   0x00001232 FUN_00001232
-//   0x0000195C FUN_0000195c
+//   0x0000195C sample_controller_input
 //   0x00011ABE FUN_00011abe
 //   0x000530DE FUN_000530de
 
@@ -49,10 +49,10 @@ undefined8 FUN_000119ce(void)
   uVar6 = extraout_A1;
   do {
     while( true ) {
-      FUN_00000bd2(uVar1,uVar2,unaff_D3,puVar3,unaff_D5,unaff_D6,uVar4,uVar5,uVar6,unaff_A2,unaff_A3
-                   ,unaff_A4,unaff_A5,unaff_A6);
-      FUN_00000bf2();
-      FUN_0000195c();
+      wait_for_vblank(uVar1,uVar2,unaff_D3,puVar3,unaff_D5,unaff_D6,uVar4,uVar5,uVar6,unaff_A2,
+                      unaff_A3,unaff_A4,unaff_A5,unaff_A6);
+      latch_controller_events();
+      sample_controller_input();
       if (((DAT_00ffdd22 & 0x200) != 0) && ((DAT_00ffdd22 & 8) == 0)) break;
 LAB_00011a44:
       if ((DAT_00ffdd22 & 0x800) == 0) goto LAB_00011a5c;

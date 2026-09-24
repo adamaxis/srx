@@ -1,9 +1,9 @@
 # Shadowrun Genesis Ghidra scratchpad
 
 This directory is the single checked-in Ghidra decompilation export for the US
-Genesis ROM. It is a source-analysis reference only. The native port must use
-typed modern C++ state and ordinary host rendering; it must not embed a 68000
-interpreter, VDP emulation, ROM-address reads, or decompiler-shaped bytecode.
+Genesis ROM. It is source-analysis evidence. Native code uses typed host state
+and direct assets; it does not execute this decompilation or perform ROM/RAM
+lookups at runtime.
 
 ## Regeneration record
 
@@ -16,48 +16,62 @@ interpreter, VDP emulation, ROM-address reads, or decompiler-shaped bytecode.
 - Resolved direct call sites: 2,976
 - Unresolved or indirect call sites: 16
 
-The loader patch is recorded in `../tools/ghidra/ghidra_sega_ldr.patch`. The
-headless exporter is `../tools/ghidra/ExportShadowrun.java`. There is no second
-checked-in Ghidra project or versioned export directory.
+Semantic names in `functions.tsv`, `callgraph.tsv`, `call-sites.tsv`,
+`disassembly.s`, and the generated C files come from the reviewed-name table in
+`../tools/ghidra/ExportShadowrun.java`. Unreviewed functions intentionally
+retain Ghidra's `FUN_<address>` name.
 
 ## Export files
 
-- `functions.tsv`: one row for every Ghidra function and its generated C file.
-- `callgraph.tsv`: aggregate caller-to-callee edges for resolved direct calls.
-- `call-sites.tsv`: every direct call plus every unresolved/indirect call site.
-- `disassembly.s`: disassembly with resolved call comments such as
-  `; call 00000436 FUN_00000436`.
-- `ghidra-c/fn_*.cpp`: individual decompiler output, with the recovered direct
-  callees repeated in each file header.
+- `functions.tsv`: one row per function and generated C file.
+- `callgraph.tsv`: resolved caller/callee edges with call-site counts.
+- `call-sites.tsv`: every direct call plus every unresolved/indirect call.
+- `disassembly.s`: instructions with resolved call comments.
+- `ghidra-c/fn_*.cpp`: individual decompiler output with annotated callees.
 
-## Initial function notes
+## Reviewed function map
 
-These are deliberately source-derived working labels, not claims that the
-native runtime should copy the decompiler's types or address model.
+The native owner names below are the target C++ vocabulary. A `partial` entry
+means the source behavior is understood enough to structure the host state but
+still has unresolved downstream calls or hardware presentation work.
 
-| ROM entry | Behavior recovered | Native C++ owner | Verification | Status |
+| ROM entry | Ghidra name | Behavior recovered | Native C++ owner | Status |
 | --- | --- | --- | --- | --- |
-| `0x00000236` `Reset` | Reset/boot path. Initializes VDP/Z80 state, clears VRAM regions, selects the boot/title path from hardware/header state, then enters the main coordinator. | Not assigned | ROM trace and generated `fn_00000236.cpp`; direct callees are `0x436`, `0x73A`, `0x75E`. | partial |
-| `0x00000436` | Provisional VDP text/data transfer helper: forms a VDP command and streams bytes from an address register until a terminator while writing the destination port. | Not assigned | Generated `fn_00000436.cpp`; four call sites from `Reset`. | pending |
-| `0x0000073A` | Timing helper: performs a delay loop and waits for a VDP status bit before returning. | Not assigned | Generated `fn_0000073A.cpp`; called by `Reset`. | pending |
-| `0x0000075E` | Main runtime coordinator. Initializes persistent RAM flags, runs the repeated update/input/dispatch loop, and contains indirect dispatch through `A1`. | Not assigned | Generated `fn_0000075E.cpp`; 41 resolved direct edges and one indirect site at `0x0B42`. | partial |
-| `0x00000BD2` | Frame/tick boundary helper: increments a counter and waits until the sampled timing value changes. | Not assigned | Generated `fn_00000BD2.cpp`; called throughout the main loop. | pending |
-| `0x00000BF2` | Reads controller/status bits and records pending/edge flags in the shared input state. | Not assigned | Generated `fn_00000BF2.cpp`; called by the main coordinator and transition paths. | pending |
-| `0x00000C2C` | Clears or folds the work RAM depending on the runtime sentinel, resets display state, clears VDP state, and invokes the low-level initialization helpers. | Not assigned | Generated `fn_00000C2C.cpp`; called first by `0x75E`. | pending |
-| `0x0000131C` | Repeats the low-level update pair 17 times and raises the associated update flag. | Not assigned | Generated `fn_0000131C.cpp`; called by boot and multiple runtime paths. | pending |
-| `0x0000195C` | Samples the controller helper, stores the current low-byte input value, derives changed/edge bits, and updates a lookup-derived state value. | Not assigned | Generated `fn_0000195C.cpp`; called repeatedly by the main loop. | pending |
-| `0x00001A9E` | Initializes transition/timing state, runs a bounded update loop with input and state helpers, and exits through cleanup/transition code. | Not assigned | Generated `fn_00001A9E.cpp`; called from `0x75E`. | pending |
-| `0x0005D746` | Bounded timed-scene/controller routine with state-position counters, frame ticking, and periodic update/cleanup calls. Exact scene identity remains open. | Not assigned | Generated `fn_0005D746.cpp`; called from `0x75E`. | pending |
+| `0x0236` | `reset_and_enter_boot` | Reset path: initializes VDP/Z80 state, clears display state, selects the region/title path, and transfers to the main coordinator. | `ShadowrunBoot` / `NativePortShell::update_boot` | partial |
+| `0x0330` | reset display block | Emits the five initial VDP register commands, clears the first VRAM word, and establishes the text-write command. | `make_startup_display_plan()` | partial |
+| `0x0436` | `write_startup_text_to_vdp` | Builds the destination command and converts a zero-terminated source string into host glyph indices. | `encode_startup_text()` / `ShadowrunBoot::write_startup_text()` adapter | partial |
+| `0x073A` | `wait_for_vdp_ready` | Delay loop followed by a VDP status-bit wait. | Native frame/presentation boundary; no host busy loop | pending |
+| `0x075E` | `run_game_loop` | Main coordinator: initializes session state, dispatches boot/title/field work, samples input, and performs indirect state dispatch. | `NativePortShell::update()` | partial |
+| `0x0BD2` | `wait_for_vblank` | Advances the frame counter and waits for the interrupt-side sample to change. | `NativePortShell::update()` frame tick | pending |
+| `0x0BF2` | `latch_controller_events` | Reads sampled controller flags and latches status/edge state. | `decode_genesis_controller_word()` / `InputState` | partial |
+| `0x0C2C` | `clear_runtime_memory_and_vdp` | Clears or folds work RAM based on the startup sentinel, resets display state, and invokes low-level setup. | Native session initialization; bus transcription remains in `ShadowrunRuntime` | partial |
+| `0x131C` | `step_palette_transition` | Runs seventeen palette/update steps, each synchronized to frame/input service. | `PaletteAnimator` / `NativePortShell` fade state | partial |
+| `0x195C` | `sample_controller_input` | Samples controller words, derives newly asserted bits, and updates decoded directional state. | `decode_genesis_controller_word()` | partial |
+| `0x1A9E` | `run_title_loop` | Title reveal/update loop, Start edge transition, palette fade, and handoff to startup menus. | `NativePortShell::update_title()` | partial |
+| `0x3084` | `run_field_loop` | Field update loop around movement, entity state, camera, and object output. | `NativePortShell::update()` field branch | partial |
+| `0x5D746` | `run_pre_title_sequence` | Pre-title SEGA sequence: resource setup, rising figure, logo phases, horizontal-scroll noise, and timed fades. | `NativePortShell::update_boot()` | partial |
+| `0x5DA50` | `setup_pre_title_resources` | Loads the pre-title planes, tile data, and source SAT/palette resources. | `decode_genesis_native_assets()` / boot asset catalog | partial |
+| `0x5DAC4` | `fill_boot_horizontal_scroll` | Generates one horizontal-scroll word per visible line from the source PRNG. | `NativePortShell::update_boot()` | partial |
+| `0x5D8BA` | `step_pre_title_logo_strobe` | Advances the pre-title logo palette strobe and figure fade cadence. | `NativePortShell::update_boot()` | partial |
+| `0x5D938` | `advance_pre_title_animation` | Updates the pre-title SAT/timer state around the logo phase. | `NativePortShell::update_boot()` | partial |
+| `0x5D996` | `advance_pre_title_logo_phase` | Advances the timed SEGA logo phase and its completion gate. | `NativePortShell::update_boot()` | partial |
+
+## Initial coherent C++ conversions
+
+`0x0330` and `0x0436` are no longer represented only as bus traces. The
+native layer now exposes `StartupDisplayPlan` and `StartupTextTransfer` in
+`../include/shadowrun/boot.hpp`; `boot.cpp` implements the transformations as
+ordinary C++ data construction. `ShadowrunBoot` retains a narrow bus adapter
+for source-verification tests, while the host result is independent of Genesis
+addressed memory.
 
 ## Call annotation policy
 
-Direct calls are annotated mechanically with the target address and current
-Ghidra symbol. Indirect calls stay explicit and are not guessed into a native
-function name. The current unresolved sites are recorded in `call-sites.tsv`
-at `0x0B42`, `0x4658`, `0xC444`, `0x11884`, `0x15928`, `0x1640A`, `0x19A1C`,
-`0x1B892`, `0x1E728`, `0x1EF28`, `0x1F26E`, `0x1F58A`, `0x24E32`, `0x53AA4`,
-`0x54960`, and `0x5AF48`. Resolve these only when ROM/data-flow evidence
-identifies the target; do not replace them with guessed aliases.
+Direct calls are annotated with the target address and reviewed symbol.
+Indirect calls remain explicit and are not guessed. Current unresolved sites
+are recorded in `call-sites.tsv` at `0x0B42`, `0x4658`, `0xC444`, `0x11884`,
+`0x15928`, `0x1640A`, `0x19A1C`, `0x1B892`, `0x1E728`, `0x1EF28`, `0x1F26E`,
+`0x1F58A`, `0x24E32`, `0x53AA4`, `0x54960`, and `0x5AF48`.
 
-The Ghidra project used for regeneration is the existing `../ShadowRunGenesis.rep`.
-Do not create versioned or parallel decompilation directories.
+Resolve these only when ROM/data-flow evidence identifies the target. Do not
+replace them with guessed aliases.

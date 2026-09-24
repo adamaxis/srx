@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00000436
-// Name: FUN_00000436
+// Name: write_startup_text_to_vdp
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00000436(void)
+void write_startup_text_to_vdp(void)
 
 {
   byte in_D0b;

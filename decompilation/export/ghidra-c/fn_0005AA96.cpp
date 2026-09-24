@@ -3,8 +3,8 @@
 // Name: FUN_0005aa96
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000BD2 FUN_00000bd2
-//   0x00000BF2 FUN_00000bf2
+//   0x00000BD2 wait_for_vblank
+//   0x00000BF2 latch_controller_events
 //   0x00000E34 FUN_00000e34
 //   0x00000FFE FUN_00000ffe
 //   0x0000102A FUN_0000102a
@@ -12,7 +12,7 @@
 //   0x00001368 FUN_00001368
 //   0x00001530 FUN_00001530
 //   0x00001728 FUN_00001728
-//   0x0000195C FUN_0000195c
+//   0x0000195C sample_controller_input
 //   0x0000C0C2 FUN_0000c0c2
 //   0x0005AA5A FUN_0005aa5a
 //   0x0005AB96 FUN_0005ab96
@@ -37,24 +37,24 @@ void FUN_0005aa96(void)
   FUN_00001530();
   FUN_0000c0c2();
   FUN_0005aa5a();
-  FUN_00000bd2();
+  wait_for_vblank();
   FUN_00001368();
   FUN_0005b32c();
   DAT_00fff11e = DAT_00ffdf88;
   FUN_0005ac28();
   FUN_0005ac70();
   FUN_0005abd2();
-  FUN_00000bd2();
+  wait_for_vblank();
   FUN_00001728();
   uVar1 = DAT_00ffdf88;
   FUN_000012f6();
   DAT_00ffdf88 = uVar1;
-  FUN_0000195c();
+  sample_controller_input();
   sVar2 = 0x114;
   do {
-    FUN_00000bd2();
-    FUN_0000195c();
-    FUN_00000bf2();
+    wait_for_vblank();
+    sample_controller_input();
+    latch_controller_events();
     FUN_0005abd2();
     FUN_0005ab96();
     if (_DAT_00ffddc2 != 0) {

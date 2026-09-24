@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x0005DAC4
-// Name: FUN_0005dac4
+// Name: fill_boot_horizontal_scroll
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D44 FUN_00000d44
 //   0x0005DAFC FUN_0005dafc
 
 
-void FUN_0005dac4(void)
+void fill_boot_horizontal_scroll(void)
 
 {
   ushort uVar1;

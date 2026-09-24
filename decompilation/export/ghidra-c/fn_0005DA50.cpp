@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0005DA50
-// Name: FUN_0005da50
+// Name: setup_pre_title_resources
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000FFE FUN_00000ffe
@@ -13,7 +13,7 @@
 //   0x0005DAE8 FUN_0005dae8
 
 
-void FUN_0005da50(void)
+void setup_pre_title_resources(void)
 
 {
   FUN_00000ffe();

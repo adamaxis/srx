@@ -3,7 +3,7 @@
 // Name: FUN_00010952
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000BD2 FUN_00000bd2
+//   0x00000BD2 wait_for_vblank
 //   0x00000E34 FUN_00000e34
 //   0x00000F1C FUN_00000f1c
 //   0x00000F3C FUN_00000f3c
@@ -18,7 +18,7 @@ void FUN_00010952(void)
 {
   FUN_00000ffe();
   FUN_0000102a();
-  FUN_00000bd2();
+  wait_for_vblank();
   FUN_00000e34();
   _DAT_00ffdd08 = 0;
   _DAT_00ffdd0c = 0;

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00003084
-// Name: FUN_00003084
+// Name: run_field_loop
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003032 FUN_00003032
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00003084(void)
+void run_field_loop(void)
 
 {
   short sVar1;

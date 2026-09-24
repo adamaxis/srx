@@ -104,7 +104,7 @@
 000003CC: move.b #0x8,D1b
 000003D0: lea (0xb2,PC),A0 ; data 00000484
 000003D4: move.b (A0)+,D0b
-000003D6: bsr.w 0x00000436 ; call 00000436 FUN_00000436
+000003D6: bsr.w 0x00000436 ; call 00000436 write_startup_text_to_vdp
 000003DA: lea (0x1f0).l,A1
 000003E0: cmpi.b #0x20,(A1)
 000003E4: beq.b 0x00000428
@@ -121,12 +121,12 @@
 00000404: lea (0x9b,PC),A0 ; data 000004a1
 00000408: move.b (A0)+,D0b
 0000040A: addq.w #0x1,D1w
-0000040C: bsr.w 0x00000436 ; call 00000436 FUN_00000436
+0000040C: bsr.w 0x00000436 ; call 00000436 write_startup_text_to_vdp
 00000410: lea (0x5a,PC),A0 ; data 0000046c
 00000414: adda.l (A2)+,A0
 00000416: move.b (A0)+,D0b
 00000418: addq.w #0x1,D1w
-0000041A: bsr.w 0x00000436 ; call 00000436 FUN_00000436
+0000041A: bsr.w 0x00000436 ; call 00000436 write_startup_text_to_vdp
 0000041E: bra.b 0x00000424
 00000420: addq.l #0x4,A2
 00000422: bra.b 0x000003ea
@@ -135,7 +135,7 @@
 00000428: lea (0x7a,PC),A0 ; data 000004a4
 0000042C: move.b (A0)+,D0b
 0000042E: addq.w #0x1,D1w
-00000430: bsr.w 0x00000436 ; call 00000436 FUN_00000436
+00000430: bsr.w 0x00000436 ; call 00000436 write_startup_text_to_vdp
 00000434: bra.b 0x00000434
 00000436: move.b D1b,D2b
 00000438: andi.l #0xff,D2
@@ -193,8 +193,8 @@
 00000724: dbf D5w,0x00000720
 00000728: move #0x2700,SR
 0000072C: moveq #0xa,D6
-0000072E: jsr 0x0000073a.l ; call 0000073A FUN_0000073a
-00000734: jmp 0x0000075e.l ; call 0000075E FUN_0000075e
+0000072E: jsr 0x0000073a.l ; call 0000073A wait_for_vdp_ready
+00000734: jmp 0x0000075e.l ; call 0000075E run_game_loop
 0000073A: move.w #0xfff,D7w
 0000073E: nop
 00000740: dbf D7w,0x0000073e
@@ -205,27 +205,27 @@
 00000756: nop
 00000758: dbf D7w,0x00000756
 0000075C: rts
-0000075E: jsr 0x00000c2c.l ; call 00000C2C FUN_00000c2c
+0000075E: jsr 0x00000c2c.l ; call 00000C2C clear_runtime_memory_and_vdp
 00000764: move #0x2300,SR
-00000768: jsr 0x0005d746.l ; call 0005D746 FUN_0005d746
+00000768: jsr 0x0005d746.l ; call 0005D746 run_pre_title_sequence
 0000076E: cmpi.l #0x12345678,(0x00fff9e8).l
 00000778: beq.w 0x00000786
 0000077C: move.l #0x12345678,(0x00fff9e8).l
 00000786: bra.w 0x00000796
-0000078A: jsr 0x0000131c.l ; call 0000131C FUN_0000131c
+0000078A: jsr 0x0000131c.l ; call 0000131C step_palette_transition
 00000790: jmp 0x000002c2.l
 00000796: move.l (0x00fff9ec).l,D0
 0000079C: add.w D0w,(0x00fff9f8).l
 000007A2: move.w #0x1,(0x00fffc08).l
 000007AA: move.w #0x1,(0x00fffc0a).l
 000007B2: move.w #-0x1,(0x00ffdfe8).l
-000007BA: jsr 0x00001a9e.l ; call 00001A9E FUN_00001a9e
+000007BA: jsr 0x00001a9e.l ; call 00001A9E run_title_loop
 000007C0: jsr 0x00053126.l ; call 00053126 FUN_00053126
 000007C6: tst.w (0x00ffddc0).l
 000007CC: beq.b 0x0000078a
 000007CE: jsr 0x00059318.l ; call 00059318 FUN_00059318
 000007D4: jsr 0x00059092.l ; call 00059092 FUN_00059092
-000007DA: jsr 0x0000131c.l ; call 0000131C FUN_0000131c
+000007DA: jsr 0x0000131c.l ; call 0000131C step_palette_transition
 000007E0: tst.w (0x00ffe108).l
 000007E6: bne.w 0x000007f0
 000007EA: jsr 0x00059c5e.l ; call 00059C5E FUN_00059c5e
@@ -247,7 +247,7 @@
 0000084E: move.l #0x1,(0x00fffc30).l
 00000858: move.w #0x2,(0x00ffddc4).l
 00000860: move.b #0x2,(0x00fffbf8).l
-00000868: jsr 0x00003084.l ; call 00003084 FUN_00003084
+00000868: jsr 0x00003084.l ; call 00003084 run_field_loop
 0000086E: move.w #-0x1,(0x00ffdfe8).l
 00000876: move.b #-0x1,(0x00fff0a0).l
 0000087E: jsr 0x0000a7b4.l ; call 0000A7B4 FUN_0000a7b4
@@ -278,15 +278,15 @@
 00000912: bset.b #0x3,(0x00ffef14).l
 0000091A: move.w (SP)+,D7w
 0000091C: dbf D7w,0x000008ee
-00000920: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
+00000920: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 00000926: move.w #-0x1,(0x00ffdfe8).l
 0000092E: jsr 0x000012f6.l ; call 000012F6 FUN_000012f6
 00000934: clr.b (0x00ffe18a).l
-0000093A: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
-00000940: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+0000093A: jsr 0x0000195c.l ; call 0000195C sample_controller_input
+00000940: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00000946: clr.w (0x00ffdfe6).l
 0000094C: clr.w (0x00ffdfe8).l
-00000952: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
+00000952: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 00000958: nop
 0000095A: nop
 0000095C: nop
@@ -345,8 +345,8 @@
 00000A98: jsr 0x00002f32.l ; call 00002F32 FUN_00002f32
 00000A9E: clr.w (0x00ffdf42).l
 00000AA4: bra.w 0x00000ba2
-00000AA8: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-00000AAE: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00000AA8: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+00000AAE: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00000AB4: jsr 0x0000a8ea.l ; call 0000A8EA FUN_0000a8ea
 00000ABA: jsr 0x00003a1c.l ; call 00003A1C FUN_00003a1c
 00000AC0: jsr 0x00004618.l ; call 00004618 FUN_00004618
@@ -415,7 +415,7 @@
 00000C16: beq.w 0x00000c22
 00000C1A: move.w #-0x1,(0x00ffddc2).l
 00000C22: rts
-00000C24: bsr.b 0x00000bd2 ; call 00000BD2 FUN_00000bd2
+00000C24: bsr.b 0x00000bd2 ; call 00000BD2 wait_for_vblank
 00000C26: dbf D5w,0x00000c24
 00000C2A: rts
 00000C2C: cmpi.l #0x12345678,(0x00fff9e8).l
@@ -498,13 +498,13 @@
 00000D8E: rts
 00000D90: addq.w #0x2,D4w
 00000D92: rts
-00000D94: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00000D9A: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-00000DA0: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00000D94: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00000D9A: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+00000DA0: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00000DA6: move.w (0x00ffdd22).l,D0w
 00000DAC: andi.w #-0x100,D0w
 00000DB0: beq.b 0x00000d94
-00000DB2: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00000DB2: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00000DB8: rts
 00000DBA: movem.l {  D4 D3 D2 D1 D0},-(SP)
 00000DBE: subq.w #0x1,D6w
@@ -846,8 +846,8 @@
 0000133C: dbf D6w,0x00001320
 00001340: rts
 00001342: move.w D5w,-(SP) ; data Stack[-0x2]
-00001344: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-0000134A: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
+00001344: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+0000134A: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 00001350: move.w (SP)+,D5w
 00001352: dbf D5w,0x00001342
 00001356: rts
@@ -904,7 +904,7 @@
 000013F4: move.l A3,(0x00ffdd18).l
 000013FA: move.w (0x00ffdd02).l,(0x00ffdd1c).l
 00001404: bra.b 0x000013be
-00001406: bsr.w 0x0000131c ; call 0000131C FUN_0000131c
+00001406: bsr.w 0x0000131c ; call 0000131C step_palette_transition
 0000140A: movea.l (A6)+,A0
 0000140C: jsr 0x00000cec.l ; call 00000CEC FUN_00000cec
 00001412: jsr 0x00000ffe.l ; call 00000FFE FUN_00000ffe
@@ -958,7 +958,7 @@
 000014C2: nop
 000014C4: nop
 000014C6: nop
-000014C8: jmp 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
+000014C8: jmp 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 000014CE: movea.l #0x200000,A0
 000014D4: add.w D0w,D0w
 000014D6: adda.w D0w,A0
@@ -1342,7 +1342,7 @@
 00001AA4: bsr.w 0x00001d7a ; call 00001D7A FUN_00001d7a
 00001AA8: move.w #0x0,(0x00ffe00a).l
 00001AB0: move.w (0x00ffe00a).l,(0x00ffdd0e).l
-00001ABA: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00001ABA: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00001AC0: clr.w (0x00ffddc2).l
 00001AC6: move.w #0x5a,(0x00ffdd2c).l
 00001ACE: clr.w (0x00ffdd2e).l
@@ -1354,13 +1354,13 @@
 00001AF6: clr.w (0x00ffdd46).l
 00001AFC: move.w #0xe10,D7w
 00001B00: move.w D7w,-(SP) ; data Stack[-0x2]
-00001B02: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
+00001B02: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 00001B08: bsr.w 0x00001c1e ; call 00001C1E FUN_00001c1e
 00001B0C: bsr.w 0x00002634 ; call 00002634 FUN_00002634
 00001B10: bsr.w 0x000026d0 ; call 000026D0 FUN_000026d0
-00001B14: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00001B14: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00001B1A: bsr.w 0x00001bea ; call 00001BEA FUN_00001bea
-00001B1E: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
+00001B1E: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 00001B24: subq.w #0x1,(0x00ffdd2c).l
 00001B2A: bpl.w 0x00001b62
 00001B2E: cmpi.w #0x25,(0x00fff1e6).l
@@ -1386,8 +1386,8 @@
 00001B8C: tst.w (0x00ffddc2).l
 00001B92: bne.w 0x00001b9a
 00001B96: dbf D7w,0x00001b00
-00001B9A: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
-00001BA0: jsr 0x0000131c.l ; call 0000131C FUN_0000131c
+00001B9A: jsr 0x0000195c.l ; call 0000195C sample_controller_input
+00001BA0: jsr 0x0000131c.l ; call 0000131C step_palette_transition
 00001BA6: bsr.w 0x00001bac ; call 00001BAC FUN_00001bac
 00001BAA: rts
 00001BAC: move.b (0x00fff101).l,D0b
@@ -1718,7 +1718,7 @@
 00002BCA: move.w (A1)+,(A0)
 00002BCC: move.w (A1)+,(0x4,A0)
 00002BD0: rts
-00002BD2: jsr 0x0000131c.l ; call 0000131C FUN_0000131c
+00002BD2: jsr 0x0000131c.l ; call 0000131C step_palette_transition
 00002BD8: tst.w (0x00ffdf8e).l
 00002BDE: bne.w 0x00002822
 00002BE2: andi.w #-0x80,(0x00ffddc6).l
@@ -5473,9 +5473,9 @@
 0000C2C8: clr.b (0x00fff0dc).l
 0000C2CE: clr.w D2w
 0000C2D0: bra.w 0x0000c30a
-0000C2D4: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-0000C2DA: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-0000C2E0: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+0000C2D4: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+0000C2DA: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+0000C2E0: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0000C2E6: bsr.w 0x0000e660 ; call 0000E660 FUN_0000e660
 0000C2EA: btst.b #0x8,(0x00ffdd22).l
 0000C2F2: beq.w 0x0000c2fc
@@ -5709,9 +5709,9 @@
 0000C976: move.w #-0x3b70,D7w
 0000C97A: move.w #0x6000,D4w
 0000C97E: bsr.w 0x0000c376 ; call 0000C376 FUN_0000c376
-0000C982: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-0000C988: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-0000C98E: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+0000C982: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+0000C988: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+0000C98E: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0000C994: bsr.w 0x0000e660 ; call 0000E660 FUN_0000e660
 0000C998: btst.b #0x8,(0x00ffdd22).l
 0000C9A0: beq.w 0x0000c9aa
@@ -5760,9 +5760,9 @@
 0000CD08: clr.b (0x00fff0dc).l
 0000CD0E: clr.w D2w
 0000CD10: bra.w 0x0000cd4a
-0000CD14: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-0000CD1A: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-0000CD20: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+0000CD14: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+0000CD1A: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+0000CD20: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0000CD26: bsr.w 0x0000e660 ; call 0000E660 FUN_0000e660
 0000CD2A: btst.b #0x8,(0x00ffdd22).l
 0000CD32: beq.w 0x0000cd3c
@@ -5824,9 +5824,9 @@
 0000CF76: move.w #-0x3b6e,D7w
 0000CF7A: move.w #0x6000,D4w
 0000CF7E: bsr.w 0x0000c376 ; call 0000C376 FUN_0000c376
-0000CF82: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-0000CF88: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-0000CF8E: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+0000CF82: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+0000CF88: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+0000CF8E: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0000CF94: bsr.w 0x0000e660 ; call 0000E660 FUN_0000e660
 0000CF98: btst.b #0x8,(0x00ffdd22).l
 0000CFA0: beq.w 0x0000cfaa
@@ -5985,9 +5985,9 @@
 0000D25E: move.w #0x4000,D1w
 0000D262: bsr.w 0x0000d5dc ; call 0000D5DC FUN_0000d5dc
 0000D266: bsr.w 0x0000d82a ; call 0000D82A FUN_0000d82a
-0000D26A: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-0000D270: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-0000D276: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+0000D26A: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+0000D270: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+0000D276: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0000D27C: btst.b #0xa,(0x00ffdd22).l
 0000D284: beq.w 0x0000d2a0
 0000D288: move.w #0x6000,D1w
@@ -6139,9 +6139,9 @@
 0000D564: jsr 0x0000c0da.l ; call 0000C0DA FUN_0000c0da
 0000D56A: clr.l D2
 0000D56C: bra.w 0x0000d5a2
-0000D570: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-0000D576: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-0000D57C: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+0000D570: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+0000D576: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+0000D57C: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0000D582: btst.b #0x8,(0x00ffdd22).l
 0000D58A: beq.w 0x0000d594
 0000D58E: moveq #-0x1,D2
@@ -6451,14 +6451,14 @@
 0000DA68: rts
 0000DFF0: bsr.w 0x0000c436 ; call 0000C436 FUN_0000c436
 0000DFF4: rts
-0000E00A: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-0000E010: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-0000E016: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+0000E00A: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+0000E010: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+0000E016: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0000E01C: bsr.w 0x0000e6f4 ; call 0000E6F4 FUN_0000e6f4
 0000E020: move.w (0x00ffdd22).l,D0w
 0000E026: andi.w #-0x100,D0w
 0000E02A: beq.b 0x0000e00a
-0000E02C: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+0000E02C: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0000E032: rts
 0000E050: lea (0xc176e).l,A1 ; data 000c176e
 0000E056: movea.l #0xc58c,A2
@@ -7105,14 +7105,14 @@
 0000F302: movea.l #0xc30c,A2
 0000F308: move.w #0x6000,D1w
 0000F30C: jsr 0x0000c0da.l ; call 0000C0DA FUN_0000c0da
-0000F312: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-0000F318: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-0000F31E: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+0000F312: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+0000F318: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+0000F31E: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0000F324: jsr 0x0000e660.l ; call 0000E660 FUN_0000e660
 0000F32A: move.w (0x00ffdd22).l,D0w
 0000F330: andi.w #-0x100,D0w
 0000F334: beq.b 0x0000f312
-0000F336: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+0000F336: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0000F33C: rts
 0000F400: move.l (A4)+,(A3)+
 0000F402: rts
@@ -7170,9 +7170,9 @@
 0000F52A: clr.b (0x00fff0dc).l
 0000F530: clr.w D2w
 0000F532: bra.w 0x0000f56e
-0000F536: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-0000F53C: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-0000F542: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+0000F536: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+0000F53C: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+0000F542: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0000F548: jsr 0x0000e660.l ; call 0000E660 FUN_0000e660
 0000F54E: btst.b #0x8,(0x00ffdd22).l
 0000F556: beq.w 0x0000f560
@@ -7283,9 +7283,9 @@
 0000F894: clr.b (0x00fff0dc).l
 0000F89A: clr.w D2w
 0000F89C: bra.w 0x0000f8d8
-0000F8A0: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-0000F8A6: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-0000F8AC: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+0000F8A0: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+0000F8A6: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+0000F8AC: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0000F8B2: jsr 0x0000e660.l ; call 0000E660 FUN_0000e660
 0000F8B8: btst.b #0x8,(0x00ffdd22).l
 0000F8C0: beq.w 0x0000f8ca
@@ -7409,9 +7409,9 @@
 0000FACA: movea.l #0xcbae,A2
 0000FAD0: move.w #0x6000,D2w
 0000FAD4: jsr 0x0000c216.l ; call 0000C216 FUN_0000c216
-0000FADA: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-0000FAE0: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-0000FAE6: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+0000FADA: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+0000FAE0: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+0000FAE6: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0000FAEC: jsr 0x0000e660.l ; call 0000E660 FUN_0000e660
 0000FAF2: btst.b #0xa,(0x00ffdd22).l
 0000FAFA: beq.w 0x0000fb04
@@ -7524,9 +7524,9 @@
 0000FCDE: bsr.w 0x00010276 ; call 00010276 FUN_00010276
 0000FCE2: move.w #-0x7e8c,(0x00c00004).l
 0000FCEA: jsr 0x0000fdfe.l ; call 0000FDFE FUN_0000fdfe
-0000FCF0: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-0000FCF6: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-0000FCFC: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+0000FCF0: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+0000FCF6: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+0000FCFC: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0000FD02: btst.b #0xa,(0x00ffdd22).l
 0000FD0A: beq.w 0x0000fd14
 0000FD0E: moveq #-0x1,D0
@@ -7713,9 +7713,9 @@
 00010016: lea (0xc85a8).l,A2 ; data 000c85a8
 0001001C: bsr.w 0x00010172 ; call 00010172 FUN_00010172
 00010020: jsr 0x0000fdfe.l ; call 0000FDFE FUN_0000fdfe
-00010026: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-0001002C: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-00010032: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00010026: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+0001002C: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+00010032: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00010038: btst.b #0xb,(0x00ffdd22).l
 00010040: beq.w 0x0001004c
 00010044: move.w #0x1,D1w
@@ -8159,9 +8159,9 @@
 00010722: clr.l D0
 00010724: lea (0xc8600).l,A1 ; data 000c8600
 0001072A: bsr.w 0x000107ce ; call 000107CE FUN_000107ce
-0001072E: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00010734: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-0001073A: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+0001072E: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00010734: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+0001073A: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00010740: jsr 0x0000fdfe.l ; call 0000FDFE FUN_0000fdfe
 00010746: btst.b #0x8,(0x00ffdd22).l
 0001074E: beq.w 0x00010760
@@ -8284,7 +8284,7 @@
 00010950: rts
 00010952: jsr 0x00000ffe.l ; call 00000FFE FUN_00000ffe
 00010958: jsr 0x0000102a.l ; call 0000102A FUN_0000102a
-0001095E: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
+0001095E: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 00010964: jsr 0x00000e34.l ; call 00000E34 FUN_00000e34
 0001096A: clr.l (0x00ffdd08).l
 00010970: clr.l (0x00ffdd0c).l
@@ -8509,9 +8509,9 @@
 00010DB6: bsr.w 0x00011454 ; call 00011454 FUN_00011454
 00010DBA: move.b #-0x1,(0x00fff112).l
 00010DC2: bra.w 0x00010e2e
-00010DC6: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00010DCC: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-00010DD2: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00010DC6: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00010DCC: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+00010DD2: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00010DD8: btst.b #0xa,(0x00ffdd22).l
 00010DE0: beq.w 0x00010dea
 00010DE4: moveq #-0x1,D0
@@ -9081,9 +9081,9 @@
 000117C6: beq.w 0x000117d0
 000117CA: lea (0xd1e6c).l,A1 ; data 000d1e6c
 000117D0: bsr.w 0x00011712 ; call 00011712 FUN_00011712
-000117D4: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-000117DA: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-000117E0: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+000117D4: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+000117DA: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+000117E0: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 000117E6: btst.b #0xa,(0x00ffdd22).l
 000117EE: beq.w 0x00011840
 000117F2: move.w #-0x1,D0w
@@ -9203,9 +9203,9 @@
 000119F2: lea (0xcf334).l,A1 ; data 000cf334
 000119F8: bsr.w 0x00011abe ; call 00011ABE FUN_00011abe
 000119FC: movem.l {  A6 A5 A4 A3 A2 A1 A0 D7 D6 D5 D4 D3 D2 D1},-(SP)
-00011A00: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00011A06: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-00011A0C: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00011A00: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00011A06: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+00011A0C: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00011A12: movem.l (SP)+,{  D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 00011A16: btst.b #0x9,(0x00ffdd22).l
 00011A1E: beq.w 0x00011a44
@@ -9302,9 +9302,9 @@
 00011BB8: bsr.w 0x00011454 ; call 00011454 FUN_00011454
 00011BBC: lea (0xd1ddc).l,A1 ; data 000d1ddc
 00011BC2: bsr.w 0x00011712 ; call 00011712 FUN_00011712
-00011BC6: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00011BCC: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-00011BD2: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00011BC6: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00011BCC: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+00011BD2: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00011BD8: btst.b #0xa,(0x00ffdd22).l
 00011BE0: beq.w 0x00011c20
 00011BE4: moveq #-0x1,D0
@@ -9378,9 +9378,9 @@
 00011D1A: lea (0xd1aff).l,A1 ; data 000d1aff
 00011D20: move.w #0x6000,D1w
 00011D24: jsr 0x0000c0da.l ; call 0000C0DA FUN_0000c0da
-00011D2A: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00011D30: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-00011D36: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00011D2A: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00011D30: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+00011D36: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00011D3C: btst.b #0xa,(0x00ffdd22).l
 00011D44: beq.w 0x00011d58
 00011D48: move.w #0x25,D0w
@@ -9454,9 +9454,9 @@
 00011E96: bsr.w 0x00011454 ; call 00011454 FUN_00011454
 00011E9A: lea (0xd1e24).l,A1 ; data 000d1e24
 00011EA0: bsr.w 0x00011712 ; call 00011712 FUN_00011712
-00011EA4: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00011EAA: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-00011EB0: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00011EA4: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00011EAA: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+00011EB0: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00011EB6: btst.b #0xa,(0x00ffdd22).l
 00011EBE: beq.w 0x00011efe
 00011EC2: moveq #-0x1,D0
@@ -9735,9 +9735,9 @@
 00012350: clr.b (0x00fff0dc).l
 00012356: clr.w D2w
 00012358: bra.w 0x0001238e
-0001235C: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00012362: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-00012368: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+0001235C: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00012362: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+00012368: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0001236E: btst.b #0x8,(0x00ffdd22).l
 00012376: beq.w 0x00012380
 0001237A: moveq #-0x1,D2
@@ -9937,9 +9937,9 @@
 000126D6: lea (0xd1cd3).l,A1 ; data 000d1cd3
 000126DC: move.w #0x6000,D1w
 000126E0: jsr 0x0000c0da.l ; call 0000C0DA FUN_0000c0da
-000126E6: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-000126EC: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-000126F2: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+000126E6: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+000126EC: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+000126F2: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 000126F8: btst.b #0xa,(0x00ffdd22).l
 00012700: beq.w 0x00012714
 00012704: move.w #0x25,D0w
@@ -10084,9 +10084,9 @@
 00012960: jsr 0x0000c0da.l ; call 0000C0DA FUN_0000c0da
 00012966: moveq #0x7,D5
 00012968: sub.w D6w,D5w
-0001296A: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00012970: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-00012976: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+0001296A: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00012970: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+00012976: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0001297C: btst.b #0xa,(0x00ffdd22).l
 00012984: beq.w 0x00012998
 00012988: move.w #0x25,D0w
@@ -10795,9 +10795,9 @@
 00013518: move.w D7w,D5w
 0001351A: addq.w #0x1,D5w
 0001351C: jsr 0x00001728.l ; call 00001728 FUN_00001728
-00013522: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00013528: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-0001352E: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00013522: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00013528: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+0001352E: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00013534: tst.b (0x00fff09e).l
 0001353A: bne.w 0x00013542
 0001353E: bsr.w 0x0000e6f4 ; call 0000E6F4 FUN_0000e6f4
@@ -10807,9 +10807,9 @@
 00013554: bsr.w 0x00013726 ; call 00013726 FUN_00013726
 00013558: move.w #0x40,D7w
 0001355C: move.w D7w,-(SP) ; data Stack[-0x2]
-0001355E: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00013564: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-0001356A: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+0001355E: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00013564: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+0001356A: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00013570: tst.b (0x00fff09e).l
 00013576: bne.w 0x0001357e
 0001357A: bsr.w 0x0000e6f4 ; call 0000E6F4 FUN_0000e6f4
@@ -10821,9 +10821,9 @@
 00013596: bsr.w 0x00013726 ; call 00013726 FUN_00013726
 0001359A: move.w #0x60,D7w
 0001359E: move.w D7w,-(SP) ; data Stack[-0x2]
-000135A0: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-000135A6: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-000135AC: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+000135A0: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+000135A6: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+000135AC: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 000135B2: tst.b (0x00fff09e).l
 000135B8: bne.w 0x000135c0
 000135BC: bsr.w 0x0000e6f4 ; call 0000E6F4 FUN_0000e6f4
@@ -10834,9 +10834,9 @@
 000135D0: clr.b (0x00fff09e).l
 000135D6: rts
 000135D8: bsr.w 0x00013726 ; call 00013726 FUN_00013726
-000135DC: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-000135E2: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-000135E8: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+000135DC: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+000135E2: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+000135E8: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 000135EE: tst.b (0x00fff09e).l
 000135F4: bne.w 0x000135fc
 000135F8: bsr.w 0x0000e6f4 ; call 0000E6F4 FUN_0000e6f4
@@ -10974,8 +10974,8 @@
 00013826: move (SP)+,SR
 00013828: movem.l {  A6 A5 A4 A3 A2 A1 A0 D7 D6 D5 D4 D3 D2 D1 D0},-(SP) ; data 000d4538
 0001382C: moveq #0x1,D6
-0001382E: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00013834: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
+0001382E: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00013834: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 0001383A: tst.b (0x00fff09e).l
 00013840: bne.w 0x00013848
 00013844: bsr.w 0x0000e6f4 ; call 0000E6F4 FUN_0000e6f4
@@ -14103,8 +14103,8 @@
 000177F6: jmp 0x00001530.l ; call 00001530 FUN_00001530
 000177FC: move.w #0x3c,D5w
 00017800: move.w D5w,-(SP) ; data Stack[-0x2]
-00017802: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00017808: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
+00017802: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00017808: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 0001780E: bsr.w 0x00017cc8 ; call 00017CC8 FUN_00017cc8
 00017812: bsr.w 0x00017fda ; call 00017FDA FUN_00017fda
 00017816: move.w #0x1,(0x00ffdd02).l
@@ -14712,9 +14712,9 @@
 00018314: clr.b (0x00fff0d1).l
 0001831A: bsr.w 0x0001882e ; call 0001882E FUN_0001882e
 0001831E: move.b #-0x1,(0x00fff10c).l
-00018326: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-0001832C: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-00018332: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00018326: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+0001832C: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+00018332: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00018338: bsr.w 0x000196f2 ; call 000196F2 FUN_000196f2
 0001833C: btst.b #0x8,(0x00ffdd22).l
 00018344: beq.w 0x00018394
@@ -14787,9 +14787,9 @@
 000184A4: clr.w D2w
 000184A6: move.b #0x1,(0x00fff0dc).l
 000184AE: bra.w 0x000184d8
-000184B2: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-000184B8: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-000184BE: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+000184B2: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+000184B8: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+000184BE: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 000184C4: bsr.w 0x000196f2 ; call 000196F2 FUN_000196f2
 000184C8: btst.b #0x8,(0x00ffdd22).l
 000184D0: beq.w 0x000184ee
@@ -14942,8 +14942,8 @@
 0001877A: move.w D6w,-(SP) ; data Stack[-0x2]
 0001877C: move.w #0x1,D5w
 00018780: move.w D5w,-(SP) ; data Stack[-0x4]
-00018782: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00018788: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
+00018782: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00018788: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 0001878E: move.w (SP)+,D5w
 00018790: dbf D5w,0x00018780
 00018794: jsr 0x00001088.l ; call 00001088 FUN_00001088
@@ -15139,9 +15139,9 @@
 00018AC0: jsr 0x0000c0da.l ; call 0000C0DA FUN_0000c0da
 00018AC6: clr.l D2
 00018AC8: bra.w 0x00018b04
-00018ACC: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00018AD2: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-00018AD8: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00018ACC: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00018AD2: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+00018AD8: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00018ADE: bsr.w 0x000196f2 ; call 000196F2 FUN_000196f2
 00018AE2: btst.b #0x8,(0x00ffdd22).l
 00018AEA: beq.w 0x00018af4
@@ -15270,9 +15270,9 @@
 00018FFE: jsr 0x0000c0da.l ; call 0000C0DA FUN_0000c0da
 00019004: rts
 00019116: jsr 0x000532bc.l ; call 000532BC FUN_000532bc
-0001911C: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00019122: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-00019128: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+0001911C: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00019122: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+00019128: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0001912E: btst.b #0xf,(0x00ffdd22).l
 00019136: beq.b 0x0001911c
 00019138: move.w #-0x7ecc,(0x00c00004).l
@@ -15304,9 +15304,9 @@
 000191C0: jsr 0x000532bc.l ; call 000532BC FUN_000532bc
 000191C6: lea (0xff1100).l,A1 ; data 00ff1100
 000191CC: jsr 0x00053a24.l ; call 00053A24 FUN_00053a24
-000191D2: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-000191D8: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-000191DE: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+000191D2: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+000191D8: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+000191DE: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 000191E4: btst.b #0xe,(0x00ffdd22).l
 000191EC: bne.w 0x00019208
 000191F0: btst.b #0xc,(0x00ffdd22).l
@@ -15394,9 +15394,9 @@
 0001937E: jsr 0x0000c0da.l ; call 0000C0DA FUN_0000c0da
 00019384: clr.w D2w
 00019386: bra.w 0x000193ae
-0001938A: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00019390: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-00019396: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+0001938A: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00019390: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+00019396: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0001939C: bsr.w 0x000196f2 ; call 000196F2 FUN_000196f2
 000193A0: btst.b #0x8,(0x00ffdd22).l
 000193A8: beq.w 0x000193c0
@@ -16564,7 +16564,7 @@
 0001A8AE: subq.b #0x1,(0x6,A0)
 0001A8B2: bpl.w 0x0001a8ba
 0001A8B6: bra.w 0x0001a8f4 ; call 0001A8F4 FUN_0001a8f4
-0001A8BA: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
+0001A8BA: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 0001A8C0: lea (0xc00000).l,A4 ; data 00c00000
 0001A8C6: move.w (0x00ffdf76).l,D0w
 0001A8CC: movea.l (0x00ffdf7e).l,A1
@@ -16855,9 +16855,9 @@
 0001AE9C: jsr 0x0001a908.l ; call 0001A908 FUN_0001a908
 0001AEA2: lea (0xff1580).l,A0 ; data 00ff1580
 0001AEA8: bsr.w 0x0001b680 ; call 0001B680 FUN_0001b680
-0001AEAC: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-0001AEB2: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-0001AEB8: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+0001AEAC: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+0001AEB2: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+0001AEB8: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0001AEBE: jsr 0x00017fda.l ; call 00017FDA FUN_00017fda
 0001AEC4: tst.w (0x00ffdf8c).l
 0001AECA: bne.w 0x0001aedc
@@ -19245,10 +19245,10 @@
 0001F4FC: jsr 0x00001232.l ; call 00001232 FUN_00001232
 0001F502: move.w #0xa,D5w
 0001F506: jsr 0x00000c24.l ; call 00000C24 FUN_00000c24
-0001F50C: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-0001F512: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
+0001F50C: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+0001F512: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 0001F518: move.l A0,-(SP) ; data Stack[-0x4]
-0001F51A: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+0001F51A: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0001F520: movea.l (SP)+,A0
 0001F522: btst.b #0xe,(0x00ffdd22).l
 0001F52A: beq.w 0x0001f540
@@ -22396,8 +22396,8 @@
 00026542: cmpi.b #-0x1,D6b
 00026546: beq.w 0x0002660e
 0002654A: moveq #0x2,D5
-0002654C: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00026552: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
+0002654C: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00026552: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 00026558: jsr 0x00017cc8.l ; call 00017CC8 FUN_00017cc8
 0002655E: jsr 0x00017fda.l ; call 00017FDA FUN_00017fda
 00026564: dbf D5w,0x0002654c
@@ -22530,8 +22530,8 @@
 000267EA: clr.w D6w
 000267EC: move.b (A5)+,D6b
 000267EE: moveq #0x2,D5
-000267F0: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-000267F6: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
+000267F0: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+000267F6: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 000267FC: jsr 0x00017cc8.l ; call 00017CC8 FUN_00017cc8
 00026802: jsr 0x00017fda.l ; call 00017FDA FUN_00017fda
 00026808: dbf D5w,0x000267f0
@@ -22681,9 +22681,9 @@
 00026A98: move.l #0xdfa8,D6
 00026A9E: move.l #0xeea8,D7
 00026AA4: movem.l {  D7 D6 D5 D4 D3 D2 D1},-(SP) ; data 0000dfa8
-00026AA8: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00026AAE: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-00026AB4: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00026AA8: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00026AAE: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+00026AB4: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00026ABA: movem.l (SP)+,{  D1 D2 D3 D4 D5 D6 D7}
 00026ABE: lea (0x15beaa).l,A1 ; data 0015beaa
 00026AC4: addq.l #0x2,D4
@@ -22703,9 +22703,9 @@
 00026AFC: dbf D1w,0x00026aa4
 00026B00: moveq #0x5,D1
 00026B02: movem.l {  D5 D4 D3 D2 D1},-(SP)
-00026B06: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00026B0C: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-00026B12: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00026B06: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00026B0C: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+00026B12: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00026B18: movem.l (SP)+,{  D1 D2 D3 D4 D5}
 00026B1C: lea (0x15beaa).l,A1 ; data 0015beaa
 00026B22: addq.l #0x2,D4
@@ -22722,36 +22722,36 @@
 00026B4E: move.w #0x0,D3w
 00026B52: jsr 0x00026bfe.l ; call 00026BFE FUN_00026bfe
 00026B58: moveq #0xa,D5
-00026B5A: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00026B60: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-00026B66: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00026B5A: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00026B60: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+00026B66: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00026B6C: dbf D5w,0x00026b5a
 00026B70: lea (0x15bea2).l,A1 ; data 0015bea2
 00026B76: move.l #0xe728,D0
 00026B7C: move.w #0x0,D3w
 00026B80: jsr 0x00026bfe.l ; call 00026BFE FUN_00026bfe
 00026B86: moveq #0x5,D5
-00026B88: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00026B8E: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-00026B94: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00026B88: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00026B8E: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+00026B94: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00026B9A: dbf D5w,0x00026b88
 00026B9E: lea (0x15bea4).l,A1 ; data 0015bea4
 00026BA4: move.l #0xe728,D0
 00026BAA: move.w #0x0,D3w
 00026BAE: jsr 0x00026bfe.l ; call 00026BFE FUN_00026bfe
 00026BB4: moveq #0x5,D5
-00026BB6: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00026BBC: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-00026BC2: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00026BB6: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00026BBC: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+00026BC2: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00026BC8: dbf D5w,0x00026bb6
 00026BCC: lea (0x15beaa).l,A1 ; data 0015beaa
 00026BD2: move.l #0xe728,D0
 00026BD8: move.w #0x0,D3w
 00026BDC: jsr 0x00026bfe.l ; call 00026BFE FUN_00026bfe
 00026BE2: moveq #0xa,D5
-00026BE4: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00026BEA: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-00026BF0: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00026BE4: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00026BEA: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+00026BF0: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00026BF6: dbf D5w,0x00026be4
 00026BFA: clr.w D7w
 00026BFC: rts
@@ -23269,9 +23269,9 @@
 00053704: bsr.w 0x000532bc ; call 000532BC FUN_000532bc
 00053708: lea (0xff1100).l,A1 ; data 00ff1100
 0005370E: bsr.w 0x000537fa ; call 000537FA FUN_000537fa
-00053712: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00053718: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-0005371E: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00053712: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00053718: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+0005371E: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00053724: btst.b #0xa,(0x00ffdd22).l
 0005372C: beq.w 0x0005375e
 00053730: subq.l #0x1,A1
@@ -23590,9 +23590,9 @@
 0005482C: clr.b (0x00fff0dc).l
 00054832: clr.w D2w
 00054834: bra.w 0x0005488c
-00054838: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-0005483E: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-00054844: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00054838: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+0005483E: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+00054844: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0005484A: btst.b #0x8,(0x00ffdd22).l
 00054852: beq.w 0x0005485c
 00054856: moveq #-0x1,D2
@@ -25011,9 +25011,9 @@
 00056C48: bsr.w 0x00058b5e ; call 00058B5E FUN_00058b5e
 00056C4C: bsr.w 0x00058bb6 ; call 00058BB6 FUN_00058bb6
 00056C50: bsr.w 0x000587da ; call 000587DA FUN_000587da
-00056C54: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00056C5A: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-00056C60: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00056C54: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00056C5A: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+00056C60: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00056C66: btst.b #0xa,(0x00ffdd22).l
 00056C6E: beq.w 0x00056c82
 00056C72: move.w #0x25,D0w
@@ -25872,9 +25872,9 @@
 00057BB8: clr.w D2w
 00057BBA: move.b #0x1,(0x00fff0dc).l
 00057BC2: bra.w 0x00057be6
-00057BC6: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00057BCC: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-00057BD2: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00057BC6: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00057BCC: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+00057BD2: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00057BD8: btst.b #0x8,(0x00ffdd22).l
 00057BE0: beq.w 0x00057c04
 00057BE4: moveq #-0x1,D2
@@ -26926,9 +26926,9 @@
 000590DC: move.w #-0x3ae6,D7w
 000590E0: move.w #0x2000,D4w
 000590E4: jsr 0x0000c376.l ; call 0000C376 FUN_0000c376
-000590EA: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-000590F0: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-000590F6: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+000590EA: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+000590F0: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+000590F6: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 000590FC: btst.b #0x8,(0x00ffdd22).l
 00059104: beq.w 0x0005910e
 00059108: moveq #-0x1,D2
@@ -26962,9 +26962,9 @@
 00059188: clr.b (0x00fff0dc).l
 0005918E: clr.w D2w
 00059190: bra.w 0x000591c6
-00059194: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-0005919A: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-000591A0: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00059194: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+0005919A: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+000591A0: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 000591A6: btst.b #0x8,(0x00ffdd22).l
 000591AE: beq.w 0x000591b8
 000591B2: moveq #-0x1,D2
@@ -27005,9 +27005,9 @@
 00059264: clr.b (0x00fff0dc).l
 0005926A: clr.w D2w
 0005926C: bra.w 0x000592a2
-00059270: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00059276: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-0005927C: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00059270: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00059276: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+0005927C: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00059282: btst.b #0x8,(0x00ffdd22).l
 0005928A: beq.w 0x00059294
 0005928E: moveq #-0x1,D2
@@ -27415,9 +27415,9 @@
 00059A00: move.w #-0x3c6e,D7w
 00059A04: move.w #0x6000,D4w
 00059A08: jsr 0x0000c376.l ; call 0000C376 FUN_0000c376
-00059A0E: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00059A14: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
-00059A1A: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00059A0E: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00059A14: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
+00059A1A: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00059A20: jsr 0x0000e660.l ; call 0000E660 FUN_0000e660
 00059A26: btst.b #0x8,(0x00ffdd22).l
 00059A2E: beq.w 0x00059a38
@@ -27471,7 +27471,7 @@
 00059C54: move.b #-0x1,(0x00ffe168).l
 00059C5C: rts
 00059C5E: move.b #-0x1,(0x00ffe18b).l
-00059C66: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00059C66: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00059C6C: clr.w (0x00ffddc2).l
 00059C72: move.w #0x10,D0w
 00059C76: jsr 0x000530ea.l ; call 000530EA FUN_000530ea
@@ -27495,11 +27495,11 @@
 00059CD8: clr.w (0x00ffddc2).l
 00059CDE: jsr 0x0005ad1a.l ; call 0005AD1A FUN_0005ad1a
 00059CE4: clr.w (0x00ffddc2).l
-00059CEA: jsr 0x0000131c.l ; call 0000131C FUN_0000131c
+00059CEA: jsr 0x0000131c.l ; call 0000131C step_palette_transition
 00059CF0: move.b #0x2,(0x00fffbf8).l
 00059CF8: jsr 0x00059d12.l ; call 00059D12 FUN_00059d12
-00059CFE: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
-00059D04: jsr 0x0000131c.l ; call 0000131C FUN_0000131c
+00059CFE: jsr 0x0000195c.l ; call 0000195C sample_controller_input
+00059D04: jsr 0x0000131c.l ; call 0000131C step_palette_transition
 00059D0A: jsr 0x00053126.l ; call 00053126 FUN_00053126
 00059D10: rts
 00059D12: lea (0x59d3e).l,A6 ; data 00059d3e
@@ -27533,9 +27533,9 @@
 00059E0E: jsr 0x000012f6.l ; call 000012F6 FUN_000012f6
 00059E14: move.w #0xa0,D7w
 00059E18: move.w D7w,-(SP) ; data Stack[-0x2]
-00059E1A: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-00059E20: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
-00059E26: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
+00059E1A: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+00059E20: jsr 0x0000195c.l ; call 0000195C sample_controller_input
+00059E26: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 00059E2C: bsr.w 0x0005af2a ; call 0005AF2A FUN_0005af2a
 00059E30: tst.w (0x00ffdd08).l
 00059E36: beq.w 0x00059e5a
@@ -27580,14 +27580,14 @@
 00059F14: bsr.w 0x0005a1ea ; call 0005A1EA FUN_0005a1ea
 00059F18: move.w (0x00ffdf88).l,-(SP)
 00059F1E: move.w (SP)+,(0x00ffdf88).l
-00059F24: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+00059F24: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00059F2A: move.w #0x1f0,D7w
 00059F2E: move.w D7w,-(SP) ; data Stack[-0x2]
-00059F30: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
+00059F30: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 00059F36: jsr 0x00059f8e.l ; call 00059F8E FUN_00059f8e
 00059F3C: jsr 0x0005a0b2.l ; call 0005A0B2 FUN_0005a0b2
-00059F42: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
-00059F48: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
+00059F42: jsr 0x0000195c.l ; call 0000195C sample_controller_input
+00059F48: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 00059F4E: bsr.w 0x0005af2a ; call 0005AF2A FUN_0005af2a
 00059F52: jsr 0x0005a1ea.l ; call 0005A1EA FUN_0005a1ea
 00059F58: move.w (SP)+,D7w
@@ -28129,7 +28129,7 @@
 0005AAD2: jsr 0x00001530.l ; call 00001530 FUN_00001530
 0005AAD8: jsr 0x0000c0c2.l ; call 0000C0C2 FUN_0000c0c2
 0005AADE: bsr.w 0x0005aa5a ; call 0005AA5A FUN_0005aa5a
-0005AAE2: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
+0005AAE2: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 0005AAE8: lea (0x5b632).l,A0 ; data 0005b632
 0005AAEE: jsr 0x00001368.l ; call 00001368 FUN_00001368
 0005AAF4: move.w #0x786,D4w
@@ -28140,7 +28140,7 @@
 0005AB10: jsr 0x0005ac28.l ; call 0005AC28 FUN_0005ac28
 0005AB16: jsr 0x0005ac70.l ; call 0005AC70 FUN_0005ac70
 0005AB1C: bsr.w 0x0005abd2 ; call 0005ABD2 FUN_0005abd2
-0005AB20: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
+0005AB20: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 0005AB26: lea (0x1e620e).l,A1 ; data 001e620e
 0005AB2C: move.w #0x700,D4w
 0005AB30: move.w #0x27,D7w
@@ -28153,12 +28153,12 @@
 0005AB48: move.w (0x00ffdf88).l,-(SP)
 0005AB4E: jsr 0x000012f6.l ; call 000012F6 FUN_000012f6
 0005AB54: move.w (SP)+,(0x00ffdf88).l
-0005AB5A: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+0005AB5A: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0005AB60: move.w #0x114,D7w
 0005AB64: move.w D7w,-(SP) ; data Stack[-0x2]
-0005AB66: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-0005AB6C: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
-0005AB72: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
+0005AB66: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+0005AB6C: jsr 0x0000195c.l ; call 0000195C sample_controller_input
+0005AB72: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 0005AB78: jsr 0x0005abd2.l ; call 0005ABD2 FUN_0005abd2
 0005AB7E: jsr 0x0005ab96.l ; call 0005AB96 FUN_0005ab96
 0005AB84: move.w (SP)+,D7w
@@ -28258,12 +28258,12 @@
 0005AD60: dbf D0w,0x0005ad5e
 0005AD64: bset.b #0x0,(0x00ffef14).l
 0005AD6C: move.w (SP)+,(0x00ffdf88).l
-0005AD72: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
+0005AD72: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 0005AD78: move.w #0x528,D7w
 0005AD7C: move.w D7w,-(SP) ; data 00000528
-0005AD7E: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-0005AD84: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
-0005AD8A: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
+0005AD7E: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+0005AD84: jsr 0x0000195c.l ; call 0000195C sample_controller_input
+0005AD8A: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 0005AD90: move.w (SP)+,D7w
 0005AD92: cmpi.w #0x1e0,D7w
 0005AD96: bne.w 0x0005ada4
@@ -28345,10 +28345,10 @@
 0005AFC4: move.l (A0)+,(A1)+
 0005AFC6: dbf D0w,0x0005afc4
 0005AFCA: bset.b #0x0,(0x00ffef14).l
-0005AFD2: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
-0005AFD8: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-0005AFDE: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
-0005AFE4: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
+0005AFD2: jsr 0x0000195c.l ; call 0000195C sample_controller_input
+0005AFD8: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+0005AFDE: jsr 0x0000195c.l ; call 0000195C sample_controller_input
+0005AFE4: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 0005AFEA: bsr.w 0x0005af2a ; call 0005AF2A FUN_0005af2a
 0005AFEE: bcs.w 0x0005b000
 0005AFF2: tst.w (0x00ffddc2).l
@@ -28611,8 +28611,8 @@
 0005B460: move (SP)+,SR
 0005B462: movem.l {  A6 A5 A4 A3 A2 A1 A0 D7 D6 D5 D4 D3 D2 D1 D0},-(SP) ; data 0005b366
 0005B466: moveq #0x1,D6
-0005B468: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
-0005B46E: jsr 0x00000bf2.l ; call 00000BF2 FUN_00000bf2
+0005B468: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
+0005B46E: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 0005B474: dbf D6w,0x0005b468
 0005B478: movem.l (SP)+,{ D0 D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 0005B47C: dbf D6w,0x0005b38c
@@ -28940,7 +28940,7 @@
 0005D73E: move.w #0x2a,(0x38,A1)
 0005D744: rts
 0005D746: move.w #0x1,(0x00fffc0a).l
-0005D74E: bsr.w 0x0005da50 ; call 0005DA50 FUN_0005da50
+0005D74E: bsr.w 0x0005da50 ; call 0005DA50 setup_pre_title_resources
 0005D752: move.b #0x1,(0x00ffe18a).l
 0005D75A: move.w #0x41,(0x00ffdd2a).l
 0005D762: move.w #0x119,(0x00ffdd2c).l
@@ -28949,12 +28949,12 @@
 0005D778: move.w #0x150,D7w
 0005D77C: move.w #0x9,(0x00ffdf92).l
 0005D784: move.w D7w,-(SP) ; data Stack[-0x2]
-0005D786: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
+0005D786: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 0005D78C: tst.w (0x00ffdd3c).l
 0005D792: beq.w 0x0005d79a
-0005D796: bsr.w 0x0005d8ba ; call 0005D8BA FUN_0005d8ba
-0005D79A: bsr.w 0x0005dac4 ; call 0005DAC4 FUN_0005dac4
-0005D79E: bsr.w 0x0005d938 ; call 0005D938 FUN_0005d938
+0005D796: bsr.w 0x0005d8ba ; call 0005D8BA step_pre_title_logo_strobe
+0005D79A: bsr.w 0x0005dac4 ; call 0005DAC4 fill_boot_horizontal_scroll
+0005D79E: bsr.w 0x0005d938 ; call 0005D938 advance_pre_title_animation
 0005D7A2: cmpi.w #0x160,(0x00ffdd2e).l
 0005D7AA: beq.w 0x0005d7c8
 0005D7AE: subq.w #0x1,(0x00ffdd2e).l
@@ -28987,16 +28987,16 @@
 0005D848: bset.b #0x2,(0x00ffef14).l
 0005D850: move.w (SP)+,D7w
 0005D852: dbf D7w,0x0005d784
-0005D856: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
-0005D85C: jsr 0x0000131c.l ; call 0000131C FUN_0000131c
+0005D856: jsr 0x0000195c.l ; call 0000195C sample_controller_input
+0005D85C: jsr 0x0000131c.l ; call 0000131C step_palette_transition
 0005D862: bsr.w 0x0005d886 ; call 0005D886 FUN_0005d886
 0005D866: move.w #0x78,D7w
 0005D86A: move.w D7w,-(SP) ; data Stack[-0x2]
-0005D86C: jsr 0x00000bd2.l ; call 00000BD2 FUN_00000bd2
+0005D86C: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 0005D872: move.w (SP)+,D7w
 0005D874: dbf D7w,0x0005d86a
-0005D878: jsr 0x0000195c.l ; call 0000195C FUN_0000195c
-0005D87E: jsr 0x0000131c.l ; call 0000131C FUN_0000131c
+0005D878: jsr 0x0000195c.l ; call 0000195C sample_controller_input
+0005D87E: jsr 0x0000131c.l ; call 0000131C step_palette_transition
 0005D884: rts
 0005D886: jsr 0x00000ffe.l ; call 00000FFE FUN_00000ffe
 0005D88C: jsr 0x0000102a.l ; call 0000102A FUN_0000102a
@@ -29047,7 +29047,7 @@
 0005D972: move.w (0x00ffdd2e).l,D2w
 0005D978: move.w #0x6000,D6w
 0005D97C: jsr 0x00001378.l ; call 00001378 FUN_00001378
-0005D982: bsr.w 0x0005d996 ; call 0005D996 FUN_0005d996
+0005D982: bsr.w 0x0005d996 ; call 0005D996 advance_pre_title_logo_phase
 0005D986: subq.w #0x8,A3
 0005D988: clr.b (0x3,A3)
 0005D98C: move.w #0x1,(0x00ffd980).l

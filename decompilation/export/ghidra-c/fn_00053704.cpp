@@ -3,9 +3,9 @@
 // Name: FUN_00053704
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000BD2 FUN_00000bd2
-//   0x00000BF2 FUN_00000bf2
-//   0x0000195C FUN_0000195c
+//   0x00000BD2 wait_for_vblank
+//   0x00000BF2 latch_controller_events
+//   0x0000195C sample_controller_input
 //   0x000176EA FUN_000176ea
 //   0x00017708 FUN_00017708
 //   0x000177CC FUN_000177cc
@@ -25,9 +25,9 @@ undefined4 FUN_00053704(void)
   FUN_000537fa();
   do {
     while( true ) {
-      FUN_00000bd2();
-      FUN_00000bf2();
-      FUN_0000195c();
+      wait_for_vblank();
+      latch_controller_events();
+      sample_controller_input();
       if ((DAT_00ffdd22._0_1_ & 4) == 0) break;
       if (extraout_A1 + -0xff1101 < 0) {
         iVar3 = 0xff1107;

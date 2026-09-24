@@ -2,8 +2,10 @@
 
 #include "shadowrun/genesis_bus.hpp"
 
+#include <array>
 #include <cstdint>
 #include <string_view>
+#include <vector>
 
 namespace shadowrun {
 
@@ -26,6 +28,29 @@ struct RegionProbe {
     std::uint8_t raw_io_value = 0;
     std::uint8_t region_index = 0;
 };
+
+// Native result of the reset display block around ROM 0x0330. The renderer or
+// host window can consume this directly; the GenesisBus adapter below exists
+// only for source verification tests.
+struct StartupDisplayPlan {
+    std::array<std::uint16_t, 5> register_commands{};
+    std::uint32_t clear_vram_command = 0;
+    std::uint16_t clear_vram_word = 0;
+    std::uint32_t text_vram_command = 0;
+};
+
+// Native result of ROM 0x0436. The original's A0 pointer and VDP writes become
+// ordinary host data: one destination command and one glyph-index sequence.
+struct StartupTextTransfer {
+    std::uint32_t vdp_command = 0;
+    std::vector<std::uint16_t> glyph_indices;
+};
+
+RegionProbe decode_region_value(std::uint8_t raw_io_value);
+StartupDisplayPlan make_startup_display_plan();
+StartupTextTransfer encode_startup_text(std::uint8_t column,
+                                        std::uint8_t row,
+                                        std::string_view zero_terminated_text);
 
 class ShadowrunBoot {
 public:

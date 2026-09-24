@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00001A9E
-// Name: FUN_00001a9e
+// Name: run_title_loop
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000BD2 FUN_00000bd2
-//   0x00000BF2 FUN_00000bf2
+//   0x00000BD2 wait_for_vblank
+//   0x00000BF2 latch_controller_events
 //   0x00000E34 FUN_00000e34
-//   0x0000131C FUN_0000131c
-//   0x0000195C FUN_0000195c
+//   0x0000131C step_palette_transition
+//   0x0000195C sample_controller_input
 //   0x00001BAC FUN_00001bac
 //   0x00001BEA FUN_00001bea
 //   0x00001C1E FUN_00001c1e
@@ -22,7 +22,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00001a9e(void)
+void run_title_loop(void)
 
 {
   ushort uVar1;
@@ -31,7 +31,7 @@ void FUN_00001a9e(void)
   FUN_00001d7a();
   DAT_00ffe00a = 0;
   DAT_00ffdd0e = 0;
-  FUN_0000195c();
+  sample_controller_input();
   _DAT_00ffddc2 = 0;
   _DAT_00ffdd2c = 0x5a;
   DAT_00ffdd2e = 0;
@@ -43,13 +43,13 @@ void FUN_00001a9e(void)
   DAT_00ffdd46 = 0;
   uVar1 = 0xe10;
   do {
-    FUN_00000bd2();
+    wait_for_vblank();
     FUN_00001c1e();
     FUN_00002634();
     FUN_000026d0();
-    FUN_0000195c();
+    sample_controller_input();
     FUN_00001bea();
-    FUN_00000bf2();
+    latch_controller_events();
     _DAT_00ffdd2c = _DAT_00ffdd2c + -1;
     if ((_DAT_00ffdd2c < 0) && (DAT_00fff1e6 < 0x26)) {
       DAT_00ffdd40 = DAT_00ffdd40 + -1;
@@ -74,8 +74,8 @@ void FUN_00001a9e(void)
     }
     uVar1 = uVar1 - 1;
   } while (uVar1 != 0xffff);
-  FUN_0000195c();
-  FUN_0000131c();
+  sample_controller_input();
+  step_palette_transition();
   FUN_00001bac();
   return;
 }

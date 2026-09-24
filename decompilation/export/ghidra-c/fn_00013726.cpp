@@ -3,8 +3,8 @@
 // Name: FUN_00013726
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000BD2 FUN_00000bd2
-//   0x00000BF2 FUN_00000bf2
+//   0x00000BD2 wait_for_vblank
+//   0x00000BF2 latch_controller_events
 //   0x00000E9C FUN_00000e9c
 //   0x0000C0DA FUN_0000c0da
 //   0x0000C3E6 FUN_0000c3e6
@@ -99,9 +99,9 @@ void FUN_00013726(void)
     uVar14 = extraout_D1;
     uVar16 = extraout_A0_00;
     do {
-      FUN_00000bd2(uVar3,uVar14,uVar4,iVar5,uVar15,uVar6,uVar7,unaff_D7,uVar16,pwVar17,pwVar11,
-                   puVar12,unaff_A4,unaff_A5w,unaff_A6w);
-      FUN_00000bf2();
+      wait_for_vblank(uVar3,uVar14,uVar4,iVar5,uVar15,uVar6,uVar7,unaff_D7,uVar16,pwVar17,pwVar11,
+                      puVar12,unaff_A4,unaff_A5w,unaff_A6w);
+      latch_controller_events();
       if (DAT_00fff09e == '\0') {
         FUN_0000e6f4();
       }

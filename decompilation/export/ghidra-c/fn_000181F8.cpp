@@ -62,9 +62,9 @@ LAB_0001831a:
   DAT_00fff10c = 0xff;
 LAB_00018326:
   while( true ) {
-    FUN_00000bd2();
-    FUN_00000bf2();
-    FUN_0000195c();
+    wait_for_vblank();
+    latch_controller_events();
+    sample_controller_input();
     uVar5 = FUN_000196f2();
     if (((DAT_00ffdd22._0_1_ & 1) == 0) && ((DAT_00ffdd22._0_1_ & 2) == 0)) break;
     uVar5 = FUN_000189d8();
@@ -115,9 +115,9 @@ LAB_0001842e:
           do {
             FUN_0000c376();
             while( true ) {
-              FUN_00000bd2();
-              FUN_00000bf2();
-              FUN_0000195c();
+              wait_for_vblank();
+              latch_controller_events();
+              sample_controller_input();
               FUN_000196f2();
               if (((DAT_00ffdd22._0_1_ & 1) != 0) || ((DAT_00ffdd22._0_1_ & 2) != 0)) break;
               if (((DAT_00ffdd22._0_1_ & 0x40) != 0) ||

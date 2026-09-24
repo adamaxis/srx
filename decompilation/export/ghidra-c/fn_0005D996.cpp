@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005D996
-// Name: FUN_0005d996
+// Name: advance_pre_title_logo_phase
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 FUN_00001378
 
 
-void FUN_0005d996(void)
+void advance_pre_title_logo_phase(void)
 
 {
   if (-1 < DAT_00ffdd30) {

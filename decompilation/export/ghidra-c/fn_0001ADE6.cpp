@@ -3,9 +3,9 @@
 // Name: FUN_0001ade6
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000BD2 FUN_00000bd2
-//   0x00000BF2 FUN_00000bf2
-//   0x0000195C FUN_0000195c
+//   0x00000BD2 wait_for_vblank
+//   0x00000BF2 latch_controller_events
+//   0x0000195C sample_controller_input
 //   0x000176BA FUN_000176ba
 //   0x0001789C FUN_0001789c
 //   0x00017FDA FUN_00017fda
@@ -97,9 +97,9 @@ void FUN_0001ade6(void)
   FUN_0001a908();
   FUN_0001b680();
   do {
-    FUN_00000bd2();
-    FUN_00000bf2();
-    FUN_0000195c();
+    wait_for_vblank();
+    latch_controller_events();
+    sample_controller_input();
     FUN_00017fda();
     uVar1 = 0;
     if (_DAT_00ffdf8c == 0) {

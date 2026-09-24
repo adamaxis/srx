@@ -3,10 +3,10 @@
 // Name: FUN_00010d30
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000BD2 FUN_00000bd2
-//   0x00000BF2 FUN_00000bf2
+//   0x00000BD2 wait_for_vblank
+//   0x00000BF2 latch_controller_events
 //   0x00000E34 FUN_00000e34
-//   0x0000195C FUN_0000195c
+//   0x0000195C sample_controller_input
 //   0x0000391A FUN_0000391a
 //   0x0000C0C2 FUN_0000c0c2
 //   0x00010F50 FUN_00010f50
@@ -67,9 +67,9 @@ LAB_00010e2e:
     FUN_0001170c();
     FUN_000111e8();
     while( true ) {
-      FUN_00000bd2();
-      FUN_00000bf2();
-      FUN_0000195c();
+      wait_for_vblank();
+      latch_controller_events();
+      sample_controller_input();
       if ((DAT_00ffdd22._0_1_ & 4) != 0) break;
       if ((DAT_00ffdd22._0_1_ & 1) != 0) {
 LAB_00010e20:

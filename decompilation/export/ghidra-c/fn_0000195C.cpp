@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000195C
-// Name: FUN_0000195c
+// Name: sample_controller_input
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000019F2 FUN_000019f2
 
 
-void FUN_0000195c(void)
+void sample_controller_input(void)
 
 {
   ushort uVar1;

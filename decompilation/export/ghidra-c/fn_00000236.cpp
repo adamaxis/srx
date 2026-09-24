@@ -1,14 +1,14 @@
 // Ghidra headless export
 // Entry: 0x00000236
-// Name: Reset
+// Name: reset_and_enter_boot
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000436 FUN_00000436
-//   0x0000073A FUN_0000073a
-//   0x0000075E FUN_0000075e
+//   0x00000436 write_startup_text_to_vdp
+//   0x0000073A wait_for_vdp_ready
+//   0x0000075E run_game_loop
 
 
-void Reset(void)
+void reset_and_enter_boot(void)
 
 {
   char cVar1;
@@ -168,8 +168,8 @@ void Reset(void)
           sVar16 = sVar16 + -1;
           puVar23 = puVar23 + 1;
         } while (sVar16 != -1);
-        FUN_0000073a();
-        FUN_0000075e();
+        wait_for_vdp_ready();
+        run_game_loop();
         return;
       }
       pcVar18 = pcVar18 + 1;
@@ -209,20 +209,20 @@ void Reset(void)
       } while (sVar11 != -1);
       sVar16 = sVar16 + -1;
     } while (sVar16 != -1);
-    FUN_00000436();
+    write_startup_text_to_vdp();
     for (pcVar18 = GameHeader_00000100.Notes + 0x34; *pcVar18 != ' '; pcVar18 = pcVar18 + 1) {
       for (puVar21 = &DAT_00000470; (char)*puVar21 != '\0'; puVar21 = puVar21 + 3) {
         if ((char)*puVar21 == *pcVar18) {
           if ((pcVar18[1] == ' ') && (pcVar18 != GameHeader_00000100.Notes + 0x34)) {
-            FUN_00000436();
+            write_startup_text_to_vdp();
           }
-          FUN_00000436();
+          write_startup_text_to_vdp();
           pcVar18 = extraout_A1;
           break;
         }
       }
     }
-    FUN_00000436();
+    write_startup_text_to_vdp();
   }
   do {
                     /* WARNING: Do nothing block with infinite loop */

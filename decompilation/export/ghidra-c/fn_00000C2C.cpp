@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00000C2C
-// Name: FUN_00000c2c
+// Name: clear_runtime_memory_and_vdp
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000CEC FUN_00000cec
@@ -11,7 +11,7 @@
 //   0x000531AA FUN_000531aa
 
 
-void FUN_00000c2c(void)
+void clear_runtime_memory_and_vdp(void)
 
 {
   int in_D1;

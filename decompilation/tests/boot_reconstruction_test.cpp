@@ -62,6 +62,23 @@ public:
 } // namespace
 
 int main() {
+    const auto decoded_region = shadowrun::decode_region_value(0xC0);
+    assert(decoded_region.raw_io_value == 0xC0);
+    assert(decoded_region.region_index == 3);
+
+    const auto display_plan = shadowrun::make_startup_display_plan();
+    assert(display_plan.register_commands[0] == 0x8164);
+    assert(display_plan.register_commands[4] == 0x9001);
+    assert(display_plan.clear_vram_command == 0xC0020000U);
+    assert(display_plan.clear_vram_word == 0x0EEEU);
+    assert(display_plan.text_vram_command == 0x40000000U);
+
+    const auto text_transfer = shadowrun::encode_startup_text(
+        2, 1, std::string_view("AB\0ignored"));
+    assert(text_transfer.vdp_command == 0x40840003U);
+    assert((text_transfer.glyph_indices ==
+            std::vector<std::uint16_t>{0x21, 0x22}));
+
     TraceBus bus;
     shadowrun::ShadowrunBoot boot(bus);
 

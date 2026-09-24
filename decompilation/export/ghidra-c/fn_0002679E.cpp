@@ -3,8 +3,8 @@
 // Name: FUN_0002679e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000BD2 FUN_00000bd2
-//   0x00000BF2 FUN_00000bf2
+//   0x00000BD2 wait_for_vblank
+//   0x00000BF2 latch_controller_events
 //   0x00000F98 FUN_00000f98
 //   0x00017CC8 FUN_00017cc8
 //   0x00017FDA FUN_00017fda
@@ -43,8 +43,8 @@ void FUN_0002679e(void)
     while( true ) {
       while( true ) {
         do {
-          FUN_00000bd2();
-          FUN_00000bf2();
+          wait_for_vblank();
+          latch_controller_events();
           FUN_00017cc8();
           FUN_00017fda();
           uVar2 = uVar2 - 1;

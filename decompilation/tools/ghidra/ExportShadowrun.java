@@ -25,9 +25,50 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 
+import ghidra.program.model.symbol.SourceType;
+
 public class ExportShadowrun extends GhidraScript {
+    // Reviewed names are deliberately kept here, beside the export logic, so
+    // every generated artifact uses the same vocabulary.  An address without
+    // enough evidence remains Ghidra's FUN_<address> name until it is
+    // understood and recorded in the scratchpad.
+    private static Map<Long, String> reviewedNames() {
+        Map<Long, String> names = new LinkedHashMap<>();
+        names.put(0x00000236L, "reset_and_enter_boot");
+        names.put(0x00000436L, "write_startup_text_to_vdp");
+        names.put(0x0000073AL, "wait_for_vdp_ready");
+        names.put(0x0000075EL, "run_game_loop");
+        names.put(0x00000BD2L, "wait_for_vblank");
+        names.put(0x00000BF2L, "latch_controller_events");
+        names.put(0x00000C2CL, "clear_runtime_memory_and_vdp");
+        names.put(0x0000131CL, "step_palette_transition");
+        names.put(0x0000195CL, "sample_controller_input");
+        names.put(0x00001A9EL, "run_title_loop");
+        names.put(0x00003084L, "run_field_loop");
+        names.put(0x00005D746L, "run_pre_title_sequence");
+        names.put(0x00005DA50L, "setup_pre_title_resources");
+        names.put(0x00005DAC4L, "fill_boot_horizontal_scroll");
+        names.put(0x00005D8BAL, "step_pre_title_logo_strobe");
+        names.put(0x00005D938L, "advance_pre_title_animation");
+        names.put(0x00005D996L, "advance_pre_title_logo_phase");
+        return names;
+    }
+
+    private static void applyReviewedNames(Program program) throws Exception {
+        for (Map.Entry<Long, String> entry : reviewedNames().entrySet()) {
+            Address address = program.getAddressFactory().getDefaultAddressSpace()
+                .getAddress(entry.getKey());
+            Function function = program.getFunctionManager().getFunctionAt(address);
+            if (function != null && !entry.getValue().equals(function.getName())) {
+                function.setName(entry.getValue(), SourceType.USER_DEFINED);
+            }
+        }
+    }
+
     private static String hex(Address address) {
         return String.format("%08X", address.getOffset());
     }
@@ -130,6 +171,7 @@ public class ExportShadowrun extends GhidraScript {
         Path output = Paths.get(scriptArguments[0]).toAbsolutePath().normalize();
         Files.createDirectories(output.resolve("ghidra-c"));
         Program program = currentProgram;
+        applyReviewedNames(program);
         FunctionManager functions = program.getFunctionManager();
         List<Function> entries = new ArrayList<>();
         for (Function function : functions.getFunctions(true)) {

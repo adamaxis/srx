@@ -3,8 +3,8 @@
 // Name: FUN_00059c5e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000131C FUN_0000131c
-//   0x0000195C FUN_0000195c
+//   0x0000131C step_palette_transition
+//   0x0000195C sample_controller_input
 //   0x000530EA FUN_000530ea
 //   0x00053126 FUN_00053126
 //   0x00059D12 FUN_00059d12
@@ -20,7 +20,7 @@ void FUN_00059c5e(void)
 
 {
   DAT_00ffe18b = 0xff;
-  FUN_0000195c();
+  sample_controller_input();
   _DAT_00ffddc2 = 0;
   FUN_000530ea();
   FUN_0005af62();
@@ -38,14 +38,14 @@ void FUN_00059c5e(void)
         _DAT_00ffddc2 = 0;
         FUN_0005ad1a();
         _DAT_00ffddc2 = 0;
-        FUN_0000131c();
+        step_palette_transition();
         DAT_00fffbf8 = 2;
         FUN_00059d12();
       }
     }
   }
-  FUN_0000195c();
-  FUN_0000131c();
+  sample_controller_input();
+  step_palette_transition();
   FUN_00053126();
   return;
 }

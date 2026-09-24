@@ -3,10 +3,10 @@
 // Name: FUN_0005af62
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000BD2 FUN_00000bd2
-//   0x00000BF2 FUN_00000bf2
+//   0x00000BD2 wait_for_vblank
+//   0x00000BF2 latch_controller_events
 //   0x00001406 FUN_00001406
-//   0x0000195C FUN_0000195c
+//   0x0000195C sample_controller_input
 //   0x0000C0C2 FUN_0000c0c2
 //   0x0005AF2A FUN_0005af2a
 //   0x0005B29A FUN_0005b29a
@@ -44,11 +44,11 @@ void FUN_0005af62(void)
     puVar3 = puVar3 + 1;
   } while (sVar1 != -1);
   DAT_00ffef14 = DAT_00ffef14 | 1;
-  FUN_0000195c();
+  sample_controller_input();
   while( true ) {
-    FUN_00000bd2();
-    FUN_0000195c();
-    FUN_00000bf2();
+    wait_for_vblank();
+    sample_controller_input();
+    latch_controller_events();
     FUN_0005af2a();
     if ((bool)uVar4) {
       return;

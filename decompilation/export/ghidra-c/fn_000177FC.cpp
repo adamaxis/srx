@@ -3,8 +3,8 @@
 // Name: FUN_000177fc
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000BD2 FUN_00000bd2
-//   0x00000BF2 FUN_00000bf2
+//   0x00000BD2 wait_for_vblank
+//   0x00000BF2 latch_controller_events
 //   0x00017CC8 FUN_00017cc8
 //   0x00017FDA FUN_00017fda
 //   0x000194AC FUN_000194ac
@@ -23,8 +23,8 @@ void FUN_000177fc(void)
   
   sVar1 = 0x3c;
   do {
-    FUN_00000bd2();
-    FUN_00000bf2();
+    wait_for_vblank();
+    latch_controller_events();
     FUN_00017cc8();
     FUN_00017fda();
     DAT_00ffdd02 = 1;

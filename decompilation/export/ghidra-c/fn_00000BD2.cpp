@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00000BD2
-// Name: FUN_00000bd2
+// Name: wait_for_vblank
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00000bd2(void)
+void wait_for_vblank(void)
 
 {
   DAT_00ffdf88 = DAT_00ffdf88 + 1;

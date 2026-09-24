@@ -3,12 +3,12 @@
 // Name: FUN_0001f3c4
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000BD2 FUN_00000bd2
-//   0x00000BF2 FUN_00000bf2
+//   0x00000BD2 wait_for_vblank
+//   0x00000BF2 latch_controller_events
 //   0x00000C24 FUN_00000c24
 //   0x00000D94 FUN_00000d94
 //   0x00001232 FUN_00001232
-//   0x0000195C FUN_0000195c
+//   0x0000195C sample_controller_input
 //   0x0000C134 FUN_0000c134
 //   0x0000C168 FUN_0000c168
 //   0x0001F5A8 FUN_0001f5a8
@@ -69,9 +69,9 @@ int * FUN_0001f3c4(void)
     FUN_00000c24();
     do {
       while( true ) {
-        FUN_00000bd2();
-        FUN_00000bf2();
-        FUN_0000195c();
+        wait_for_vblank();
+        latch_controller_events();
+        sample_controller_input();
         if ((DAT_00ffdd22._0_1_ & 0x40) != 0) {
           in_A0 = (int *)*extraout_A0_02;
           goto LAB_0001f530;

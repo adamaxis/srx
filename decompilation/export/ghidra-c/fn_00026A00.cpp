@@ -3,11 +3,11 @@
 // Name: FUN_00026a00
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000BD2 FUN_00000bd2
-//   0x00000BF2 FUN_00000bf2
+//   0x00000BD2 wait_for_vblank
+//   0x00000BF2 latch_controller_events
 //   0x00000F5C FUN_00000f5c
 //   0x00001358 FUN_00001358
-//   0x0000195C FUN_0000195c
+//   0x0000195C sample_controller_input
 //   0x00010952 FUN_00010952
 //   0x00026BFE FUN_00026bfe
 //   0x00026C26 FUN_00026c26
@@ -46,10 +46,10 @@ void FUN_00026a00(void)
   ppuVar6 = &PTR_DAT_0000dfa8;
   iVar7 = 0xeea8;
   do {
-    FUN_00000bd2(sVar1,uVar2,uVar3,iVar4,iVar5,ppuVar6,iVar7);
+    wait_for_vblank(sVar1,uVar2,uVar3,iVar4,iVar5,ppuVar6,iVar7);
     uVar8 = (undefined2)((uint)uVar2 >> 0x10);
-    FUN_00000bf2();
-    FUN_0000195c();
+    latch_controller_events();
+    sample_controller_input();
     iVar4 = iVar4 + 2;
     uVar3 = uVar3 & 0xffff0000;
     uVar2 = CONCAT22(uVar8,0x6000);
@@ -64,10 +64,10 @@ void FUN_00026a00(void)
   } while (sVar1 != -1);
   sVar1 = 5;
   do {
-    FUN_00000bd2(sVar1,uVar2,uVar3,iVar4,iVar5);
+    wait_for_vblank(sVar1,uVar2,uVar3,iVar4,iVar5);
     uVar8 = (undefined2)((uint)uVar2 >> 0x10);
-    FUN_00000bf2();
-    FUN_0000195c();
+    latch_controller_events();
+    sample_controller_input();
     iVar4 = iVar4 + 2;
     uVar3 = uVar3 & 0xffff0000;
     uVar2 = CONCAT22(uVar8,0x6000);
@@ -79,33 +79,33 @@ void FUN_00026a00(void)
   FUN_00026bfe();
   sVar1 = 10;
   do {
-    FUN_00000bd2();
-    FUN_00000bf2();
-    FUN_0000195c();
+    wait_for_vblank();
+    latch_controller_events();
+    sample_controller_input();
     sVar1 = sVar1 + -1;
   } while (sVar1 != -1);
   FUN_00026bfe();
   sVar1 = 5;
   do {
-    FUN_00000bd2();
-    FUN_00000bf2();
-    FUN_0000195c();
+    wait_for_vblank();
+    latch_controller_events();
+    sample_controller_input();
     sVar1 = sVar1 + -1;
   } while (sVar1 != -1);
   FUN_00026bfe();
   sVar1 = 5;
   do {
-    FUN_00000bd2();
-    FUN_00000bf2();
-    FUN_0000195c();
+    wait_for_vblank();
+    latch_controller_events();
+    sample_controller_input();
     sVar1 = sVar1 + -1;
   } while (sVar1 != -1);
   FUN_00026bfe();
   sVar1 = 10;
   do {
-    FUN_00000bd2();
-    FUN_00000bf2();
-    FUN_0000195c();
+    wait_for_vblank();
+    latch_controller_events();
+    sample_controller_input();
     sVar1 = sVar1 + -1;
   } while (sVar1 != -1);
   return;

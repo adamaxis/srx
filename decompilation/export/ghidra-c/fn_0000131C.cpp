@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x0000131C
-// Name: FUN_0000131c
+// Name: step_palette_transition
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001088 FUN_00001088
 //   0x00001342 FUN_00001342
 
 
-void FUN_0000131c(void)
+void step_palette_transition(void)
 
 {
   short sVar1;

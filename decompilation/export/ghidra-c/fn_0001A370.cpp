@@ -3,7 +3,7 @@
 // Name: FUN_0001a370
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000BD2 FUN_00000bd2
+//   0x00000BD2 wait_for_vblank
 //   0x00000E9C FUN_00000e9c
 //   0x00017E78 FUN_00017e78
 //   0x0001A538 FUN_0001a538
@@ -42,7 +42,7 @@ void FUN_0001a370(void)
         return;
       }
     }
-    FUN_00000bd2();
+    wait_for_vblank();
     FUN_00000e9c();
     sVar3 = 0x1ff;
     do {
