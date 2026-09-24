@@ -721,6 +721,10 @@ The `0x17C98` HUD/action lookup is now `find_hud_selection_index`. It scans
 the exact five-byte table used by the adjacent setters/comparators and turns
 the source register-side index into an explicit optional host result.
 
+The neighboring `0x17C84`/`0x17C8E` leaves now use the same typed selector to
+set or compare a parallel five-byte value table. Missing codes are explicit
+no-ops/false results rather than writes through the source post-scan index.
+
 The existing audio module now also converts `0x17D3E` as
 `advance_audio_service_tick`: it wraps the byte phase counter first, then
 enters the enabled audio-service callback sequence.

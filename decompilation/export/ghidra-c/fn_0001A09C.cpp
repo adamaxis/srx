@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00017C52 FUN_00017c52
-//   0x00017C84 FUN_00017c84
+//   0x00017C84 set_hud_selection_value
 //   0x0001A154 FUN_0001a154
 
 
@@ -14,7 +14,7 @@ void FUN_0001a09c(void)
   if ('\0' < DAT_00fff0aa) {
     FUN_0001a154();
   }
-  FUN_00017c84();
+  set_hud_selection_value();
   FUN_00017c52();
   return;
 }

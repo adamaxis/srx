@@ -5,8 +5,8 @@
 // Calls recovered from direct call instructions:
 //   0x0001792E FUN_0001792e
 //   0x00017C52 FUN_00017c52
-//   0x00017C84 FUN_00017c84
-//   0x00017C8E FUN_00017c8e
+//   0x00017C84 set_hud_selection_value
+//   0x00017C8E hud_selection_value_matches
 //   0x00017EE4 reset_menu_overlay_and_upload_two
 //   0x0001989A FUN_0001989a
 //   0x0001B1C4 FUN_0001b1c4
@@ -23,16 +23,16 @@ void FUN_00019976(void)
   if (((&DAT_00fffbd8)[(short)(ushort)DAT_00fff0d4] != -1) &&
      (-1 < (char)((&DAT_00fff0ed)[(short)(ushort)DAT_00fff0d4] + -6))) {
     bVar4 = false;
-    FUN_00017c8e();
+    hud_selection_value_matches();
     if (!bVar4) {
       bVar4 = false;
-      FUN_00017c8e();
+      hud_selection_value_matches();
       if (!bVar4) {
         bVar4 = false;
-        FUN_00017c8e();
+        hud_selection_value_matches();
         if (!bVar4) {
           bVar4 = false;
-          uVar1 = FUN_00017c8e();
+          uVar1 = hud_selection_value_matches();
           if ((!bVar4) && (DAT_00fff0e4 == '\f')) {
             if ((DAT_00ffdd22._0_1_ & 0x40) == 0) {
               if ((DAT_00ffdd22._0_1_ & 0x10) == 0) {
@@ -49,15 +49,15 @@ void FUN_00019976(void)
             reset_menu_overlay_and_upload_two();
             if (DAT_00fff0b6 == '\0') {
               bVar4 = false;
-              uVar1 = FUN_00017c8e();
+              uVar1 = hud_selection_value_matches();
               if (!bVar4) {
                 bVar4 = false;
-                FUN_00017c8e();
+                hud_selection_value_matches();
                 if (!bVar4) {
                   bVar4 = false;
-                  FUN_00017c8e();
+                  hud_selection_value_matches();
                   if (!bVar4) {
-                    FUN_00017c84();
+                    set_hud_selection_value();
                     FUN_00017c52();
                   }
                 }

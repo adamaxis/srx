@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00017C8E
-// Name: FUN_00017c8e
+// Name: hud_selection_value_matches
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00017C98 find_hud_selection_index
 
 
-void FUN_00017c8e(void)
+void hud_selection_value_matches(void)
 
 {
   find_hud_selection_index();

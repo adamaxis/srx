@@ -6,7 +6,7 @@
 //   0x00001232 write_vdp_grid
 //   0x0001792E FUN_0001792e
 //   0x00017C52 FUN_00017c52
-//   0x00017C84 FUN_00017c84
+//   0x00017C84 set_hud_selection_value
 //   0x00017EEE FUN_00017eee
 
 
@@ -37,7 +37,7 @@ void FUN_00019788(void)
           if (*pcVar2 != '\x06') {
             return;
           }
-          FUN_00017c84();
+          set_hud_selection_value();
           FUN_00017c52();
           return;
         }

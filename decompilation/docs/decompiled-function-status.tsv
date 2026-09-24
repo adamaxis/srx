@@ -267,6 +267,8 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x6148	primary queued transfer flush	ghidra_conversion::flush_primary_queued_transfers	shadowrun_ghidra_queued_transfer_flush	partial		Typed count-bounded wrapped-transfer flush and queue reset
 0x61F4	secondary queued transfer flush	ghidra_conversion::flush_secondary_queued_transfers	shadowrun_ghidra_queued_transfer_flush	partial		Typed count-bounded wrapped-transfer flush and queue reset
 0x17C98	HUD selection lookup	ghidra_conversion::find_hud_selection_index	shadowrun_ghidra_hud_selection_lookup	partial		Typed five-entry byte-code lookup with explicit no-match result
+0x17C84	HUD selection value setter	ghidra_conversion::set_hud_selection_value	shadowrun_ghidra_hud_selection_lookup	partial		Typed selected parallel-value write with no-match rejection
+0x17C8E	HUD selection value matcher	ghidra_conversion::hud_selection_value_matches	shadowrun_ghidra_hud_selection_lookup	partial		Typed selected parallel-value comparison with no-match rejection
 0x5A1EA	advance title intro animation	ghidra_conversion::advance_title_intro_animation	shadowrun_ghidra_title_intro_animation	partial	visual-regression/intro-hill/intro-1240.bmp; intro-1552.bmp; intro-2512.bmp	Typed source-order dispatcher for eight animation services; native ambush SAT/map choreography remains defended separately
 0x5AF62	intro stage 1 0x1406	decode_genesis_intro_stages	shadowrun_graphics	partial		descriptor 0x5B574
 0x59D7C	run title intro stage 2	ghidra_conversion::run_title_intro_stage2	shadowrun_ghidra_title_intro_stage2	partial		0xA1 scene-entry transition, reset order, 0x1F1 layered loop, and 0x164 text-batch trigger; scene entity rendering remains an explicit boundary

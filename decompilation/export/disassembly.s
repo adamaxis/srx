@@ -15469,7 +15469,7 @@
 00019494: bmi.w 0x000194a2
 00019498: move.b (0x1a,A6,D0w*0x1),D0b ; data 00fffbd8
 0001949C: moveq #0x1,D1
-0001949E: bsr.w 0x00017c84 ; call 00017C84 FUN_00017c84
+0001949E: bsr.w 0x00017c84 ; call 00017C84 set_hud_selection_value
 000194A2: bsr.w 0x000194ac ; call 000194AC FUN_000194ac
 000194A6: bsr.w 0x00017bc0 ; call 00017BC0 FUN_00017bc0
 000194AA: rts
@@ -15701,7 +15701,7 @@
 0001982E: move.b (0x00fff108).l,D0b
 00019834: move.b (0x1a,A0,D0w*0x1),D0b
 00019838: moveq #0x1,D1
-0001983A: bsr.w 0x00017c84 ; call 00017C84 FUN_00017c84
+0001983A: bsr.w 0x00017c84 ; call 00017C84 set_hud_selection_value
 0001983E: bsr.w 0x00017c52 ; call 00017C52 FUN_00017c52
 00019842: bra.w 0x00019854
 00019846: addq.l #0x1,A0
@@ -15783,16 +15783,16 @@
 00019998: cmpi.b #0x6,(0x0,A4,D4w*0x1) ; data 00fff0ed
 0001999E: bmi.w 0x00019a8a
 000199A2: moveq #0x2,D1
-000199A4: bsr.w 0x00017c8e ; call 00017C8E FUN_00017c8e
+000199A4: bsr.w 0x00017c8e ; call 00017C8E hud_selection_value_matches
 000199A8: beq.w 0x00019a8a
 000199AC: moveq #0x3,D1
-000199AE: bsr.w 0x00017c8e ; call 00017C8E FUN_00017c8e
+000199AE: bsr.w 0x00017c8e ; call 00017C8E hud_selection_value_matches
 000199B2: beq.w 0x00019a8a
 000199B6: moveq #0x4,D1
-000199B8: bsr.w 0x00017c8e ; call 00017C8E FUN_00017c8e
+000199B8: bsr.w 0x00017c8e ; call 00017C8E hud_selection_value_matches
 000199BC: beq.w 0x00019a8a
 000199C0: moveq #0x5,D1
-000199C2: bsr.w 0x00017c8e ; call 00017C8E FUN_00017c8e
+000199C2: bsr.w 0x00017c8e ; call 00017C8E hud_selection_value_matches
 000199C6: beq.w 0x00019a8a
 000199CA: cmpi.b #0xc,(0x00fff0e4).l
 000199D2: bne.w 0x00019a8a
@@ -15817,13 +15817,13 @@
 00019A2E: clr.b (0x00fff0b6).l
 00019A34: bra.w 0x00019a92
 00019A38: moveq #0x7,D1
-00019A3A: bsr.w 0x00017c8e ; call 00017C8E FUN_00017c8e
+00019A3A: bsr.w 0x00017c8e ; call 00017C8E hud_selection_value_matches
 00019A3E: beq.w 0x00019a92
 00019A42: moveq #0xc,D1
-00019A44: bsr.w 0x00017c8e ; call 00017C8E FUN_00017c8e
+00019A44: bsr.w 0x00017c8e ; call 00017C8E hud_selection_value_matches
 00019A48: beq.w 0x00019a8a
 00019A4C: moveq #0xb,D1
-00019A4E: bsr.w 0x00017c8e ; call 00017C8E FUN_00017c8e
+00019A4E: bsr.w 0x00017c8e ; call 00017C8E hud_selection_value_matches
 00019A52: beq.w 0x00019a8a
 00019A56: cmpi.w #0x3,D0w
 00019A5A: bmi.w 0x00019a7a
@@ -15838,7 +15838,7 @@
 00019A7A: moveq #0x3,D1
 00019A7C: bra.w 0x00019a82
 00019A80: moveq #0x2,D1
-00019A82: bsr.w 0x00017c84 ; call 00017C84 FUN_00017c84
+00019A82: bsr.w 0x00017c84 ; call 00017C84 set_hud_selection_value
 00019A86: bsr.w 0x00017c52 ; call 00017C52 FUN_00017c52
 00019A8A: jsr 0x0001792e.l ; call 0001792E FUN_0001792e
 00019A90: rts
@@ -15880,7 +15880,7 @@
 00019B2C: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 00019B32: rts
 00019B34: moveq #0x7,D1
-00019B36: bsr.w 0x00017c84 ; call 00017C84 FUN_00017c84
+00019B36: bsr.w 0x00017c84 ; call 00017C84 set_hud_selection_value
 00019B3A: bsr.w 0x00017c52 ; call 00017C52 FUN_00017c52
 00019B3E: rts
 00019B40: lea (0xe31a7).l,A5 ; data 000e31a7
@@ -15991,7 +15991,7 @@
 00019D10: bsr.w 0x00017db8 ; call 00017DB8 FUN_00017db8
 00019D14: moveq #0x4,D0
 00019D16: moveq #0x6,D1
-00019D18: bsr.w 0x00017c84 ; call 00017C84 FUN_00017c84
+00019D18: bsr.w 0x00017c84 ; call 00017C84 set_hud_selection_value
 00019D1C: bsr.w 0x00017c52 ; call 00017C52 FUN_00017c52
 00019D20: moveq #0x4,D7
 00019D22: bra.w 0x00019f80
@@ -16002,12 +16002,12 @@
 00019D78: bgt.w 0x00019d94
 00019D7C: clr.b (0x0,A5,D3w*0x1) ; data 00fffb30
 00019D80: moveq #0xa,D1
-00019D82: bsr.w 0x00017c84 ; call 00017C84 FUN_00017c84
+00019D82: bsr.w 0x00017c84 ; call 00017C84 set_hud_selection_value
 00019D86: bsr.w 0x00017c52 ; call 00017C52 FUN_00017c52
 00019D8A: bsr.w 0x00017e04 ; call 00017E04 FUN_00017e04
 00019D8E: jmp 0x0001b706.l ; call 0001B706 FUN_0001b706
 00019D94: moveq #0x6,D1
-00019D96: bsr.w 0x00017c84 ; call 00017C84 FUN_00017c84
+00019D96: bsr.w 0x00017c84 ; call 00017C84 set_hud_selection_value
 00019D9A: bsr.w 0x00017c52 ; call 00017C52 FUN_00017c52
 00019D9E: bsr.w 0x00019dac ; call 00019DAC FUN_00019dac
 00019DA2: bsr.w 0x00017998 ; call 00017998 FUN_00017998
@@ -16052,7 +16052,7 @@
 00019E4E: moveq #0x8,D1
 00019E50: bra.w 0x00019e56
 00019E54: moveq #0x9,D1
-00019E56: bsr.w 0x00017c84 ; call 00017C84 FUN_00017c84
+00019E56: bsr.w 0x00017c84 ; call 00017C84 set_hud_selection_value
 00019E5A: bsr.w 0x00017c52 ; call 00017C52 FUN_00017c52
 00019E5E: move.b (0x00fff0d5).l,D1b
 00019E64: ble.w 0x00019e78
@@ -16073,7 +16073,7 @@
 00019EC2: moveq #0x8,D1
 00019EC4: bra.w 0x00019eca
 00019EC8: moveq #0x9,D1
-00019ECA: bsr.w 0x00017c84 ; call 00017C84 FUN_00017c84
+00019ECA: bsr.w 0x00017c84 ; call 00017C84 set_hud_selection_value
 00019ECE: bsr.w 0x00017c52 ; call 00017C52 FUN_00017c52
 00019ED2: move.b (0x00fff0d6).l,D1b
 00019ED8: ble.w 0x00019ef4
@@ -16098,7 +16098,7 @@
 00019F36: move.w #0x8,D1w
 00019F3A: bra.w 0x00019f42
 00019F3E: move.w #0x9,D1w
-00019F42: bsr.w 0x00017c84 ; call 00017C84 FUN_00017c84
+00019F42: bsr.w 0x00017c84 ; call 00017C84 set_hud_selection_value
 00019F46: bsr.w 0x00017c52 ; call 00017C52 FUN_00017c52
 00019F4A: clr.l D1
 00019F4C: move.b (0x00fff0d7).l,D1b
@@ -16135,7 +16135,7 @@
 00019FCE: rts
 0001A01E: move.w #0xa,D1w
 0001A022: move.w #0x8,D0w
-0001A026: bsr.w 0x00017c84 ; call 00017C84 FUN_00017c84
+0001A026: bsr.w 0x00017c84 ; call 00017C84 set_hud_selection_value
 0001A02A: bsr.w 0x00017c52 ; call 00017C52 FUN_00017c52
 0001A02E: rts
 0001A030: tst.b (0x00ffdf84).l
@@ -16151,7 +16151,7 @@
 0001A0AE: bsr.w 0x0001a154 ; call 0001A154 FUN_0001a154
 0001A0B2: move.w #0x6,D1w
 0001A0B6: move.w #0x9,D0w
-0001A0BA: bsr.w 0x00017c84 ; call 00017C84 FUN_00017c84
+0001A0BA: bsr.w 0x00017c84 ; call 00017C84 set_hud_selection_value
 0001A0BE: bsr.w 0x00017c52 ; call 00017C52 FUN_00017c52
 0001A0C2: rts
 0001A100: ori.b #0x45,D4b
@@ -16164,7 +16164,7 @@
 0001A11C: bsr.w 0x0001a154 ; call 0001A154 FUN_0001a154
 0001A120: moveq #0x6,D1
 0001A122: moveq #0xa,D0
-0001A124: bsr.w 0x00017c84 ; call 00017C84 FUN_00017c84
+0001A124: bsr.w 0x00017c84 ; call 00017C84 set_hud_selection_value
 0001A128: bsr.w 0x00017c52 ; call 00017C52 FUN_00017c52
 0001A12C: rts
 0001A12E: tst.b (0x00fff0d2).l

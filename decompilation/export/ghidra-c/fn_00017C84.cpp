@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00017C84
-// Name: FUN_00017c84
+// Name: set_hud_selection_value
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00017C98 find_hud_selection_index
 
 
-void FUN_00017c84(void)
+void set_hud_selection_value(void)
 
 {
   undefined1 extraout_D1b;

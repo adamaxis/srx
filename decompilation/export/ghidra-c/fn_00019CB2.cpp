@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00017C52 FUN_00017c52
-//   0x00017C84 FUN_00017c84
+//   0x00017C84 set_hud_selection_value
 //   0x00017DB8 FUN_00017db8
 //   0x00019B34 FUN_00019b34
 //   0x00019BAE select_hud_mode
@@ -36,7 +36,7 @@ void FUN_00019cb2(void)
     else {
       FUN_00017db8();
     }
-    FUN_00017c84();
+    set_hud_selection_value();
     FUN_00017c52();
   }
   sVar2 = 4;

@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00017BC0 FUN_00017bc0
-//   0x00017C84 FUN_00017c84
+//   0x00017C84 set_hud_selection_value
 //   0x000194AC FUN_000194ac
 
 
@@ -19,7 +19,7 @@ void FUN_00019432(void)
         ((((&DAT_00fffbd8)[(short)uVar1] != '\x05' && ((&DAT_00fffbd8)[(short)uVar1] != '\x06')) &&
          ((&DAT_00fffbd8)[(short)uVar1] != '\a')))) &&
        (-1 < (char)((&DAT_00fff0e8)[(short)uVar1] + -6))) {
-      FUN_00017c84();
+      set_hud_selection_value();
     }
     FUN_000194ac();
     FUN_00017bc0();

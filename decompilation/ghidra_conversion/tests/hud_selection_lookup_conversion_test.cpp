@@ -17,5 +17,14 @@ int main() {
         return 2;
     }
 
+    HudSelectionState state{entries, {0U, 0U, 0U, 0U, 0U}};
+    if (!set_hud_selection_value(state, 0x34U, 0xABU) ||
+        state.values[2] != 0xABU ||
+        !hud_selection_value_matches(state, 0x34U, 0xABU) ||
+        hud_selection_value_matches(state, 0x34U, 0xCDU) ||
+        set_hud_selection_value(state, 0x99U, 0x11U)) {
+        return 3;
+    }
+
     return 0;
 }
