@@ -1154,3 +1154,16 @@ target_link_libraries(shadowrun_ghidra_mode_selection_render_test
     PRIVATE shadowrun_ghidra_mode_selection_render)
 add_test(NAME shadowrun_ghidra_mode_selection_render
          COMMAND shadowrun_ghidra_mode_selection_render_test)
+
+add_library(shadowrun_ghidra_mode_services STATIC
+    src/mode_services_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_mode_services PUBLIC include)
+
+add_executable(shadowrun_ghidra_mode_services_test
+    tests/mode_services_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_mode_services_test
+    PRIVATE shadowrun_ghidra_mode_services)
+add_test(NAME shadowrun_ghidra_mode_services
+         COMMAND shadowrun_ghidra_mode_services_test)

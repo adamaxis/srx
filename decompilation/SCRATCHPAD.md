@@ -618,6 +618,14 @@ title-text render, and the final text marker read. The panel transfer and
 text leaves remain callbacks because their source-specific data tables are
 presentation inputs, not runtime memory that belongs in this conversion.
 
+The small mode-service leaves are now typed in `mode_services_conversion`.
+`0x136DE` installs the mode-entry result, clears the scene/camera markers, and
+publishes the mode-six flags. `0x20714` clears its exit-service marker before
+calling the explicit `0x1F246` boundary. `0x0E6F4` performs the source's four
+random samples and then requests the world-grid write. None of these leaves
+imports the source address space; their generator, transfer, and exit work
+remain callbacks.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames
