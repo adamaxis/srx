@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00004E38
-// Name: FUN_00004e38
+// Name: advance_entity_primary_timer
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-ushort FUN_00004e38(void)
+ushort advance_entity_primary_timer(void)
 
 {
   char cVar1;

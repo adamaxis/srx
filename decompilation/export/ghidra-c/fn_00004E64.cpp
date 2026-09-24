@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00004E64
-// Name: FUN_00004e64
+// Name: advance_entity_secondary_timer
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-ushort FUN_00004e64(void)
+ushort advance_entity_secondary_timer(void)
 
 {
   char cVar1;

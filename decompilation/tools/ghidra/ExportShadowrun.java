@@ -60,6 +60,8 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x000041B6L, "fold_field_coordinate");
         names.put(0x00004216L, "offset_field_coordinate");
         names.put(0x0000423CL, "quantize_field_delta");
+        names.put(0x00004E38L, "advance_entity_primary_timer");
+        names.put(0x00004E64L, "advance_entity_secondary_timer");
         names.put(0x0000195CL, "sample_controller_input");
         names.put(0x000019F2L, "read_controller_port");
         names.put(0x00001BACL, "finalize_title_input_sequence");

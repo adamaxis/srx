@@ -3164,10 +3164,10 @@
 000046F6: jsr (A1)
 000046F8: btst.b #0x5,(0x11,A0)
 000046FE: beq.w 0x00004706
-00004702: bsr.w 0x00004e64 ; call 00004E64 FUN_00004e64
+00004702: bsr.w 0x00004e64 ; call 00004E64 advance_entity_secondary_timer
 00004706: btst.b #0x7,(0x11,A0)
 0000470C: beq.w 0x00004714
-00004710: bsr.w 0x00004e38 ; call 00004E38 FUN_00004e38
+00004710: bsr.w 0x00004e38 ; call 00004E38 advance_entity_primary_timer
 00004714: btst.b #0x4,(0x11,A0)
 0000471A: beq.w 0x0000472e
 0000471E: move.w (0x16,A0),D0w

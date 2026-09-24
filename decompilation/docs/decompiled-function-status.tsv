@@ -22,6 +22,8 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x41B6	field coordinate fold	ghidra_conversion::fold_field_coordinate	shadowrun_native_port	partial		High-nibble fold converted as a parameterized 16-bit arithmetic helper
 0x4216	field coordinate offset	ghidra_conversion::offset_field_coordinate	shadowrun_native_port	partial		Eight-unit high-nibble offset converted without source globals
 0x423C	field delta quantization	ghidra_conversion::quantize_field_delta	shadowrun_native_port	partial		Wrapped 16-bit delta quantization converted without runtime address state
+0x4E38	entity primary timer	ghidra_conversion::advance_entity_primary_timer	shadowrun_native_port	partial		Frame-phase timer and 0x40 bypass/0x80 expiry flag converted in typed state
+0x4E64	entity secondary timer	ghidra_conversion::advance_entity_secondary_timer	shadowrun_native_port	partial		Frame-phase timer and 0x20 expiry flag converted in typed state
 0x195C	controller sampling	ghidra_conversion::derive_controller_sample	shadowrun_boot_sequence	partial		Readable edge conversion is isolated from runtime and emulator
 0x19F2	controller port read	Windows input adapter	shadowrun_native_port	pending		Genesis port phases documented; host device mapping remains separate
 0x1BAC	title input sequence validation	ghidra_conversion::finalize_title_input_sequence	shadowrun_menu_system	partial		Seven-byte match and mismatch reset converted without the FF sentinel

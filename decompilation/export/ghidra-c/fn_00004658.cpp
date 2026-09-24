@@ -5,8 +5,8 @@
 // Calls recovered from direct call instructions:
 //   0x0000481E FUN_0000481e
 //   0x00004ADC FUN_00004adc
-//   0x00004E38 FUN_00004e38
-//   0x00004E64 FUN_00004e64
+//   0x00004E38 advance_entity_primary_timer
+//   0x00004E64 advance_entity_secondary_timer
 //   0x00004E86 FUN_00004e86
 //   0x000053C4 FUN_000053c4
 //   0x0000557E FUN_0000557e
@@ -72,11 +72,11 @@ void FUN_00004658(void)
           iVar4 = extraout_A0_01;
         }
         if ((*(byte *)(iVar4 + 0x11) & 0x20) != 0) {
-          FUN_00004e64();
+          advance_entity_secondary_timer();
           iVar4 = extraout_A0_02;
         }
         if ((*(byte *)(iVar4 + 0x11) & 0x80) != 0) {
-          FUN_00004e38();
+          advance_entity_primary_timer();
           iVar4 = extraout_A0_03;
         }
         if ((*(byte *)(iVar4 + 0x11) & 0x10) != 0) {

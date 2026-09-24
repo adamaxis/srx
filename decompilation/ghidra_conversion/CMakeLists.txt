@@ -84,3 +84,16 @@ target_link_libraries(shadowrun_ghidra_field_coordinate_test
     PRIVATE shadowrun_ghidra_field_coordinate)
 add_test(NAME shadowrun_ghidra_field_coordinate
          COMMAND shadowrun_ghidra_field_coordinate_test)
+
+add_library(shadowrun_ghidra_entity_timing STATIC
+    src/entity_timing_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_timing PUBLIC include)
+
+add_executable(shadowrun_ghidra_entity_timing_test
+    tests/entity_timing_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_timing_test
+    PRIVATE shadowrun_ghidra_entity_timing)
+add_test(NAME shadowrun_ghidra_entity_timing
+         COMMAND shadowrun_ghidra_entity_timing_test)

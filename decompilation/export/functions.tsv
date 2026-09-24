@@ -147,8 +147,8 @@ entry	name	size	callingConvention	decompileStatus	file
 000049A2	FUN_000049a2	266	unknown	ok	ghidra-c/fn_000049A2.cpp
 00004ADC	FUN_00004adc	144	unknown	ok	ghidra-c/fn_00004ADC.cpp
 00004B6C	FUN_00004b6c	68	unknown	ok	ghidra-c/fn_00004B6C.cpp
-00004E38	FUN_00004e38	44	unknown	ok	ghidra-c/fn_00004E38.cpp
-00004E64	FUN_00004e64	34	unknown	ok	ghidra-c/fn_00004E64.cpp
+00004E38	advance_entity_primary_timer	44	unknown	ok	ghidra-c/fn_00004E38.cpp
+00004E64	advance_entity_secondary_timer	34	unknown	ok	ghidra-c/fn_00004E64.cpp
 00004E86	FUN_00004e86	156	unknown	ok	ghidra-c/fn_00004E86.cpp
 000053C4	FUN_000053c4	164	unknown	ok	ghidra-c/fn_000053C4.cpp
 00005468	FUN_00005468	44	unknown	ok	ghidra-c/fn_00005468.cpp
