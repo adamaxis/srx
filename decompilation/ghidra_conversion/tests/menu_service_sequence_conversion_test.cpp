@@ -15,8 +15,8 @@ int main() {
     order.clear();
     if (render_menu_tile_rows([&order] { order.push_back(3); },
                               [&order] { order.push_back(4); }) != 0U ||
-        order.size() != 14U || order[0] != 3 || order[1] != 4 ||
-        order[12] != 3 || order[13] != 4) {
+        order.size() != 16U || order[0] != 3 || order[1] != 4 ||
+        order[14] != 3 || order[15] != 4) {
         return 2;
     }
     return 0;

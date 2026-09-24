@@ -945,7 +945,7 @@ carrying the original ROM pointers or VDP registers.
 
 The first menu service leaves are now named and typed. `0x110BC` and `0x110EC`
 are separate HUD-panel presentation boundaries, while `0x11136` preserves its
-seven clear/write passes and source return value (`0`) through ordinary
+eight clear/write passes and source return value (`0`) through ordinary
 callbacks.
 
 The compact row-writer family is now typed as well. `0x1184` emits one masked
