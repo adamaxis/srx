@@ -18,4 +18,10 @@ void load_title_resources(const TitleResourceLoadCallbacks& callbacks) {
     }
 }
 
+void prepare_title_sprite_list(const std::function<void()>& prepare_sprites) {
+    if (prepare_sprites) {
+        prepare_sprites();
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion

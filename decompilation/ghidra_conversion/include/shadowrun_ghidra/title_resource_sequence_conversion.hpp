@@ -19,4 +19,8 @@ struct TitleResourceLoadCallbacks {
 // build the title sprite list.
 void load_title_resources(const TitleResourceLoadCallbacks& callbacks);
 
+// ROM 0x1D58: keep the sprite-list construction as an explicit presentation
+// boundary instead of baking its source renderer into the host runtime.
+void prepare_title_sprite_list(const std::function<void()>& prepare_sprites);
+
 } // namespace shadowrun::ghidra_conversion

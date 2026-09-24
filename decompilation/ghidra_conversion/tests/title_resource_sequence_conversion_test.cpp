@@ -18,5 +18,10 @@ int main() {
     if (order != std::vector<int>{1, 1, 1}) {
         return 2;
     }
+
+    prepare_title_sprite_list([&order] { order.push_back(4); });
+    if (order != std::vector<int>{1, 1, 1, 4}) {
+        return 3;
+    }
     return 0;
 }
