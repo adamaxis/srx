@@ -27583,7 +27583,7 @@
 00059EC6: bne.w 0x00059ece
 00059ECA: dbf D7w,0x00059e18
 00059ECE: move.w (0x00ffdf88).l,(0x00fff11e).l
-00059ED8: jsr 0x00059f7a.l ; call 00059F7A FUN_00059f7a
+00059ED8: jsr 0x00059f7a.l ; call 00059F7A reset_title_intro_overlay_schedule
 00059EDE: jsr 0x0005a0a4.l ; call 0005A0A4 FUN_0005a0a4
 00059EE4: jsr 0x0005a244.l ; call 0005A244 FUN_0005a244
 00059EEA: jsr 0x0005a3b0.l ; call 0005A3B0 FUN_0005a3b0
@@ -27600,7 +27600,7 @@
 00059F2A: move.w #0x1f0,D7w
 00059F2E: move.w D7w,-(SP) ; data Stack[-0x2]
 00059F30: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
-00059F36: jsr 0x00059f8e.l ; call 00059F8E FUN_00059f8e
+00059F36: jsr 0x00059f8e.l ; call 00059F8E advance_title_intro_overlay
 00059F3C: jsr 0x0005a0b2.l ; call 0005A0B2 FUN_0005a0b2
 00059F42: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00059F48: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events

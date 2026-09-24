@@ -909,3 +909,16 @@ target_link_libraries(shadowrun_ghidra_runner_status_test
     PRIVATE shadowrun_ghidra_runner_status)
 add_test(NAME shadowrun_ghidra_runner_status
          COMMAND shadowrun_ghidra_runner_status_test)
+
+add_library(shadowrun_ghidra_title_intro_overlay STATIC
+    src/title_intro_overlay_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_title_intro_overlay PUBLIC include)
+
+add_executable(shadowrun_ghidra_title_intro_overlay_test
+    tests/title_intro_overlay_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_title_intro_overlay_test
+    PRIVATE shadowrun_ghidra_title_intro_overlay)
+add_test(NAME shadowrun_ghidra_title_intro_overlay
+         COMMAND shadowrun_ghidra_title_intro_overlay_test)

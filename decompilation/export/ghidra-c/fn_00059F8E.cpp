@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00059F8E
-// Name: FUN_00059f8e
+// Name: advance_title_intro_overlay
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000F1C write_transfer_header
@@ -9,7 +9,7 @@
 //   0x0005B32C FUN_0005b32c
 
 
-void FUN_00059f8e(void)
+void advance_title_intro_overlay(void)
 
 {
   ushort uVar1;

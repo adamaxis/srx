@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00059F7A
-// Name: FUN_00059f7a
+// Name: reset_title_intro_overlay_schedule
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00059f7a(void)
+void reset_title_intro_overlay_schedule(void)
 
 {
   DAT_00fff122 = 0;

@@ -541,6 +541,15 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
+the post-title overlay's next-frame deadline, six-phase index, and scroll
+accumulator. `0x59F8E` advances that schedule only through elapsed frames
+`0..0x168`: from `0x120` onward it applies the `0xAA` scroll step and marks
+the display dirty, phase descriptors are selected in a six-entry cyclic table,
+and frame `0x168` emits the audio/transfer-header/transition-sprite/final
+overlay sequence. The phase and final descriptors are host asset handles
+provided by the caller; no source pointer or VDP register enters the model.
+
 The runner reset cluster is now typed. `0x59BCC` clears status bits `6` and
 `4` in each of the three live runner records, preserves the source order of
 the preparation (`0x3674`, argument `0x0A`) and finalization (`0x37EC`)

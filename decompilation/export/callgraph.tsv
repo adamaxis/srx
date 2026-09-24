@@ -1954,8 +1954,8 @@ caller	caller_name	callee	callee_name	call_sites
 00059D7C	FUN_00059d7c	00001406	prepare_title_resources	1
 00059D7C	FUN_00059d7c	0000195C	sample_controller_input	3
 00059D7C	FUN_00059d7c	0000C0C2	load_title_font	1
-00059D7C	FUN_00059d7c	00059F7A	FUN_00059f7a	1
-00059D7C	FUN_00059d7c	00059F8E	FUN_00059f8e	1
+00059D7C	FUN_00059d7c	00059F7A	reset_title_intro_overlay_schedule	1
+00059D7C	FUN_00059d7c	00059F8E	advance_title_intro_overlay	1
 00059D7C	FUN_00059d7c	0005A0A4	FUN_0005a0a4	1
 00059D7C	FUN_00059d7c	0005A0B2	FUN_0005a0b2	1
 00059D7C	FUN_00059d7c	0005A1EA	FUN_0005a1ea	2
@@ -1971,10 +1971,10 @@ caller	caller_name	callee	callee_name	call_sites
 00059D7C	FUN_00059d7c	0005ADFE	FUN_0005adfe	1
 00059D7C	FUN_00059d7c	0005AE3A	FUN_0005ae3a	1
 00059D7C	FUN_00059d7c	0005AF2A	FUN_0005af2a	2
-00059F8E	FUN_00059f8e	00000F1C	write_transfer_header	1
-00059F8E	FUN_00059f8e	00001728	render_hud_sprite_stream	2
-00059F8E	FUN_00059f8e	000530DE	service_audio_if_enabled	1
-00059F8E	FUN_00059f8e	0005B32C	FUN_0005b32c	1
+00059F8E	advance_title_intro_overlay	00000F1C	write_transfer_header	1
+00059F8E	advance_title_intro_overlay	00001728	render_hud_sprite_stream	2
+00059F8E	advance_title_intro_overlay	000530DE	service_audio_if_enabled	1
+00059F8E	advance_title_intro_overlay	0005B32C	FUN_0005b32c	1
 0005A0B2	FUN_0005a0b2	00001728	render_hud_sprite_stream	1
 0005A0B2	FUN_0005a0b2	000530DE	service_audio_if_enabled	1
 0005A0B2	FUN_0005a0b2	0005A582	FUN_0005a582	1

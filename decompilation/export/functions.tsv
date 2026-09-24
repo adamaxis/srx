@@ -827,8 +827,8 @@ entry	name	size	callingConvention	decompileStatus	file
 00059C5E	FUN_00059c5e	180	unknown	ok	ghidra-c/fn_00059C5E.cpp
 00059D12	FUN_00059d12	44	unknown	ok	ghidra-c/fn_00059D12.cpp
 00059D7C	FUN_00059d7c	510	unknown	ok	ghidra-c/fn_00059D7C.cpp
-00059F7A	FUN_00059f7a	20	unknown	ok	ghidra-c/fn_00059F7A.cpp
-00059F8E	FUN_00059f8e	242	unknown	ok	ghidra-c/fn_00059F8E.cpp
+00059F7A	reset_title_intro_overlay_schedule	20	unknown	ok	ghidra-c/fn_00059F7A.cpp
+00059F8E	advance_title_intro_overlay	242	unknown	ok	ghidra-c/fn_00059F8E.cpp
 0005A0A4	FUN_0005a0a4	14	unknown	ok	ghidra-c/fn_0005A0A4.cpp
 0005A0B2	FUN_0005a0b2	288	unknown	ok	ghidra-c/fn_0005A0B2.cpp
 0005A1EA	FUN_0005a1ea	90	unknown	ok	ghidra-c/fn_0005A1EA.cpp

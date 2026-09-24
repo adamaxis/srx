@@ -264,3 +264,5 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x530DE	Z80/audio	ghidra_conversion::service_audio_if_enabled	—	partial		Typed audio-enable gate and source queue-service ordering; host audio backend remains separate
 0x59BCC	reset three live runner status records	ghidra_conversion::reset_runner_status_triplet	shadowrun_ghidra_runner_status	partial		Clears source status bits, preserves preparation/finalization boundaries, then seeds both ten-frame timers
 0x59C34	adjust three runner source bytes	ghidra_conversion::adjust_runner_source_byte_triplet	shadowrun_ghidra_runner_status	partial		Adds one caller byte to the three source fields with explicit eight-bit wraparound
+0x59F7A	reset title intro overlay schedule	ghidra_conversion::reset_title_intro_overlay_schedule	shadowrun_ghidra_title_intro_overlay	partial		Clears the six-phase overlay deadline, phase index, and scroll accumulator
+0x59F8E	advance title intro overlay	ghidra_conversion::advance_title_intro_overlay	shadowrun_ghidra_title_intro_overlay	partial		Typed elapsed-frame gate, six-phase schedule, scroll step, and final overlay callback order
