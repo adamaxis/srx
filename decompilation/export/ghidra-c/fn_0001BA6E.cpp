@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000013BE FUN_000013be
-//   0x000061CC FUN_000061cc
+//   0x000061CC append_sprite_record
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -21,7 +21,7 @@ void FUN_0001ba6e(void)
       return;
     }
   }
-  FUN_000061cc();
+  append_sprite_record();
   FUN_000013be();
   return;
 }

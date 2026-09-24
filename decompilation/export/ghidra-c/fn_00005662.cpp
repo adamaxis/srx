@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000013BE FUN_000013be
-//   0x000061A0 FUN_000061a0
+//   0x000061A0 append_entity_sprite_record
 
 
 void FUN_00005662(void)
@@ -26,7 +26,7 @@ void FUN_00005662(void)
     return;
   }
   if (bVar2) {
-    FUN_000061a0();
+    append_entity_sprite_record();
   }
   FUN_000013be();
   return;

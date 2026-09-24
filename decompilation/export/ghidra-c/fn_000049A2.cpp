@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00004B6C FUN_00004b6c
-//   0x000061A0 FUN_000061a0
+//   0x000061A0 append_entity_sprite_record
 //   0x0001582A thunk_FUN_0001a2cc
 //   0x000530DE FUN_000530de
 
@@ -56,7 +56,7 @@ void FUN_000049a2(void)
       psVar5 = psVar5 + 1;
       puVar6 = (ushort *)((int)puVar6 + 1);
     } while (sVar4 != -1);
-    FUN_000061a0(extraout_A0,extraout_A1);
+    append_entity_sprite_record(extraout_A0,extraout_A1);
     FUN_000530de();
   }
   return;

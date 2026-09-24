@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000013BE FUN_000013be
-//   0x000061CC FUN_000061cc
+//   0x000061CC append_sprite_record
 //   0x0001B654 FUN_0001b654
 //   0x0001B680 FUN_0001b680
 //   0x0001B7D0 FUN_0001b7d0
@@ -25,7 +25,7 @@ void FUN_0001a5a0(void)
 LAB_0001a64c:
     DAT_00ffe07c = DAT_00ffe07c + -1;
     if (-1 < DAT_00ffe07c) {
-      FUN_000061cc();
+      append_sprite_record();
       DAT_00ffe078 = DAT_00ffe078 + -6;
       DAT_00ffe07a = DAT_00ffe07a + 0x1a;
 LAB_0001a62a:
@@ -68,14 +68,14 @@ LAB_0001a6e6:
         DAT_00ffe076 = 0;
         return;
       }
-      FUN_000061cc();
+      append_sprite_record();
       DAT_00ffe078 = DAT_00ffe078 + -2;
       DAT_00ffe07a = DAT_00ffe07a + -0xe;
       goto LAB_0001a62a;
     }
     DAT_00ffe07c = DAT_00ffe07c + -1;
     if (-1 < DAT_00ffe07c) {
-      FUN_000061cc();
+      append_sprite_record();
       DAT_00ffe078 = DAT_00ffe078 + 6;
       DAT_00ffe07a = DAT_00ffe07a + -2;
       goto LAB_0001a62a;

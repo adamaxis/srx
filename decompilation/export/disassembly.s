@@ -3328,7 +3328,7 @@
 00004A8A: movem.l {  A1 A0},-(SP)
 00004A8E: movea.l A1,A0
 00004A90: lea (0x5802).l,A2 ; data 00005802
-00004A96: jsr 0x000061a0.l ; call 000061A0 FUN_000061a0
+00004A96: jsr 0x000061a0.l ; call 000061A0 append_entity_sprite_record
 00004A9C: movem.l (SP)+,{  A0 A1}
 00004AA0: move.w #0x3b,D0w
 00004AA4: jsr 0x000530de.l ; call 000530DE FUN_000530de
@@ -3370,7 +3370,7 @@
 00004B56: movem.l (SP)+,{  D1 D2 D4 D6 D7 A2}
 00004B5A: dbf D7w,0x00004b24
 00004B5E: lea (0x5802).l,A2 ; data 00005802
-00004B64: jsr 0x000061a0.l ; call 000061A0 FUN_000061a0
+00004B64: jsr 0x000061a0.l ; call 000061A0 append_entity_sprite_record
 00004B6A: rts
 00004B6C: clr.w (0x2,A0)
 00004B70: move.w (0x32,A0),D0w
@@ -3504,7 +3504,7 @@
 00004EF0: nop
 00004EF2: nop
 00004EF4: nop
-00004EF6: jsr 0x000061a0.l ; call 000061A0 FUN_000061a0
+00004EF6: jsr 0x000061a0.l ; call 000061A0 append_entity_sprite_record
 00004EFC: adda.w #0x8,A2
 00004F00: move.w (0xa,A0),D1w
 00004F04: move.w (0xc,A0),D2w
@@ -3612,7 +3612,7 @@
 0000552A: movea.l (0x0,A2,D0w*0x1),A2
 0000552E: tst.w D1w
 00005530: beq.w 0x0000553a
-00005534: jsr 0x000061a0.l ; call 000061A0 FUN_000061a0
+00005534: jsr 0x000061a0.l ; call 000061A0 append_entity_sprite_record
 0000553A: adda.w #0x8,A2
 0000553E: move.w (0xa,A0),D1w
 00005542: move.w (0xc,A0),D2w
@@ -3702,7 +3702,7 @@
 00005696: movea.l (0x0,A2,D0w*0x1),A2 ; data 0000584a
 0000569A: tst.w D1w
 0000569C: beq.w 0x000056a6
-000056A0: jsr 0x000061a0.l ; call 000061A0 FUN_000061a0
+000056A0: jsr 0x000061a0.l ; call 000061A0 append_entity_sprite_record
 000056A6: adda.w #0x8,A2
 000056AA: move.w (0xa,A0),D1w
 000056AE: move.w (0xc,A0),D2w
@@ -16381,7 +16381,7 @@
 0001A4BE: lea (0xf1bb2).l,A2 ; data 000f1bb2
 0001A4C4: movea.l (0x0,A2,D0w*0x1),A2 ; data 000f1bb2
 0001A4C8: move.w #0x7da,D0w
-0001A4CC: jsr 0x000061cc.l ; call 000061CC FUN_000061cc
+0001A4CC: jsr 0x000061cc.l ; call 000061CC append_sprite_record
 0001A4D2: move.w #0x120,D1w
 0001A4D6: move.w #0xd0,D2w
 0001A4DA: move.w #0x2000,D6w
@@ -16439,7 +16439,7 @@
 0001A60C: lsl.w #0x2,D0w
 0001A60E: movea.l (0x0,A2,D0w*0x1),A2 ; data 000f1aee
 0001A612: move.w #0x6e0,D0w
-0001A616: jsr 0x000061cc.l ; call 000061CC FUN_000061cc
+0001A616: jsr 0x000061cc.l ; call 000061CC append_sprite_record
 0001A61C: addq.w #0x6,(0x00ffe078).l
 0001A622: addi.w #-0x2,(0x00ffe07a).l
 0001A62A: move.w (0x00ffe078).l,D1w
@@ -16505,7 +16505,7 @@
 0001A74C: lsl.w #0x2,D0w
 0001A74E: movea.l (0x0,A2,D0w*0x1),A2 ; data 000f1aee
 0001A752: move.w #0x6e0,D0w
-0001A756: jsr 0x000061cc.l ; call 000061CC FUN_000061cc
+0001A756: jsr 0x000061cc.l ; call 000061CC append_sprite_record
 0001A75C: addi.w #-0x6,(0x00ffe078).l
 0001A764: addi.w #0x1a,(0x00ffe07a).l
 0001A76C: bra.w 0x0001a62a
@@ -16521,7 +16521,7 @@
 0001A79A: lsl.w #0x2,D0w
 0001A79C: movea.l (0x0,A2,D0w*0x1),A2 ; data 000f1aee
 0001A7A0: move.w #0x6e0,D0w
-0001A7A4: jsr 0x000061cc.l ; call 000061CC FUN_000061cc
+0001A7A4: jsr 0x000061cc.l ; call 000061CC append_sprite_record
 0001A7AA: addi.w #-0x2,(0x00ffe078).l
 0001A7B2: addi.w #-0xe,(0x00ffe07a).l
 0001A7BA: bra.w 0x0001a62a
@@ -16533,7 +16533,7 @@
 0001A7D2: lsl.w #0x2,D0w
 0001A7D4: movea.l (0x0,A2,D0w*0x1),A2 ; data 000f1aee
 0001A7D8: move.w #0x6e0,D0w
-0001A7DC: jsr 0x000061cc.l ; call 000061CC FUN_000061cc
+0001A7DC: jsr 0x000061cc.l ; call 000061CC append_sprite_record
 0001A7E2: addi.w #0x60,(0x00ffe07a).l
 0001A7EA: move.w (0x00ffe078).l,D1w
 0001A7F0: move.w (0x00ffe07a).l,D2w
@@ -16680,7 +16680,7 @@
 0001AAE0: tst.w (0x00ffe082).l
 0001AAE6: bne.w 0x0001aaf4
 0001AAEA: move.w #0x694,D0w
-0001AAEE: jsr 0x000061cc.l ; call 000061CC FUN_000061cc
+0001AAEE: jsr 0x000061cc.l ; call 000061CC append_sprite_record
 0001AAF4: move.w #0x2000,D6w
 0001AAF8: move.w (A0),D1w
 0001AAFA: move.w (0x2,A0),D2w
@@ -16704,7 +16704,7 @@
 0001AB42: lea (0xf1c46).l,A2 ; data 000f1c46
 0001AB48: movea.l (0x0,A2,D0w*0x1),A2 ; data 000f1c46
 0001AB4C: move.w #0x694,D0w
-0001AB50: jsr 0x000061cc.l ; call 000061CC FUN_000061cc
+0001AB50: jsr 0x000061cc.l ; call 000061CC append_sprite_record
 0001AB56: move.w #0x2000,D6w
 0001AB5A: move.w (A0),D1w
 0001AB5C: move.w (0x2,A0),D2w
@@ -16747,7 +16747,7 @@
 0001AC1E: lea (0xf1bde).l,A2 ; data 000f1bde
 0001AC24: movea.l (0x0,A2,D0w*0x1),A2
 0001AC28: move.w #0x7a8,D0w
-0001AC2C: jsr 0x000061cc.l ; call 000061CC FUN_000061cc
+0001AC2C: jsr 0x000061cc.l ; call 000061CC append_sprite_record
 0001AC32: move.w #0xb9,D2w
 0001AC36: move.w (0x00ffe0be).l,D1w
 0001AC3C: lsr.w #0x6,D1w
@@ -16795,7 +16795,7 @@
 0001AD10: lea (0xf1bce).l,A2 ; data 000f1bce
 0001AD16: movea.l (0x0,A2,D0w*0x1),A2
 0001AD1A: move.w #0x7a8,D0w
-0001AD1E: jsr 0x000061cc.l ; call 000061CC FUN_000061cc
+0001AD1E: jsr 0x000061cc.l ; call 000061CC append_sprite_record
 0001AD24: move.w #0xb9,D2w
 0001AD28: move.w (0x00ffe0ba).l,D1w
 0001AD2E: lsr.w #0x6,D1w
@@ -16825,7 +16825,7 @@
 0001ADA6: lea (0xf1bbe).l,A2 ; data 000f1bbe
 0001ADAC: movea.l (0x0,A2,D0w*0x1),A2
 0001ADB0: move.w #0x7a8,D0w
-0001ADB4: jsr 0x000061cc.l ; call 000061CC FUN_000061cc
+0001ADB4: jsr 0x000061cc.l ; call 000061CC append_sprite_record
 0001ADBA: move.w #0xd0,D2w
 0001ADBE: move.w (0x00ffe0c6).l,D1w
 0001ADC4: lsr.w #0x4,D1w
@@ -17054,7 +17054,7 @@
 0001B24A: lea (0x1db92).l,A2 ; data 0001db92
 0001B250: movea.l (0x0,A2,D0w*0x1),A2
 0001B254: move.w #0x6e0,D0w
-0001B258: jsr 0x000061cc.l ; call 000061CC FUN_000061cc
+0001B258: jsr 0x000061cc.l ; call 000061CC append_sprite_record
 0001B25E: move.w #0x10d,D1w
 0001B262: move.w #0x12e,D2w
 0001B266: move.w #0x2000,D6w
@@ -17127,7 +17127,7 @@
 0001B3A0: lea (0x1daf4).l,A2 ; data 0001daf4
 0001B3A6: movea.l (0x0,A2,D0w*0x1),A2
 0001B3AA: move.w #0x780,D0w
-0001B3AE: jsr 0x000061cc.l ; call 000061CC FUN_000061cc
+0001B3AE: jsr 0x000061cc.l ; call 000061CC append_sprite_record
 0001B3B4: move.w #0xf8,D1w
 0001B3B8: move.w #0xe4,D2w
 0001B3BC: move.w #0x6000,D6w
@@ -17149,7 +17149,7 @@
 0001B402: lea (0xea490).l,A2 ; data 000ea490
 0001B408: movea.l (0x0,A2,D0w*0x1),A2
 0001B40C: move.w #0x7c0,D0w
-0001B410: jsr 0x000061cc.l ; call 000061CC FUN_000061cc
+0001B410: jsr 0x000061cc.l ; call 000061CC append_sprite_record
 0001B416: move.w #0xe2,D1w
 0001B41A: move.w #0x114,D2w
 0001B41E: move.w #0x6000,D6w
@@ -17354,7 +17354,7 @@
 0001BAA2: lea (0x1d970).l,A2 ; data 0001d970
 0001BAA8: movea.l (0x0,A2,D0w*0x1),A2 ; data 0001d970
 0001BAAC: move.w #0x780,D0w
-0001BAB0: jsr 0x000061cc.l ; call 000061CC FUN_000061cc
+0001BAB0: jsr 0x000061cc.l ; call 000061CC append_sprite_record
 0001BAB6: move.w (0x00ffe04a).l,D1w
 0001BABC: move.w (0x00ffe04c).l,D2w
 0001BAC2: move.w #0x6000,D6w

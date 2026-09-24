@@ -201,3 +201,16 @@ target_link_libraries(shadowrun_ghidra_entity_sort_test
     PRIVATE shadowrun_ghidra_entity_sort)
 add_test(NAME shadowrun_ghidra_entity_sort
          COMMAND shadowrun_ghidra_entity_sort_test)
+
+add_library(shadowrun_ghidra_sprite_record STATIC
+    src/sprite_record_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_sprite_record PUBLIC include)
+
+add_executable(shadowrun_ghidra_sprite_record_test
+    tests/sprite_record_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_sprite_record_test
+    PRIVATE shadowrun_ghidra_sprite_record)
+add_test(NAME shadowrun_ghidra_sprite_record
+         COMMAND shadowrun_ghidra_sprite_record_test)

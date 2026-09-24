@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000061A0
-// Name: FUN_000061a0
+// Name: append_entity_sprite_record
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_000061a0(void)
+void append_entity_sprite_record(void)
 
 {
   undefined4 *puVar1;

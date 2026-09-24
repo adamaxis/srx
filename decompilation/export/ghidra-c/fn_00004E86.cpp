@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000013BE FUN_000013be
-//   0x000061A0 FUN_000061a0
+//   0x000061A0 append_entity_sprite_record
 //   0x0001A304 FUN_0001a304
 
 
@@ -26,7 +26,7 @@ void FUN_00004e86(void)
       return;
     }
   }
-  FUN_000061a0();
+  append_entity_sprite_record();
   FUN_000013be();
   return;
 }

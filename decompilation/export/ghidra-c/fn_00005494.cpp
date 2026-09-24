@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000D44 advance_source_prng
 //   0x000013BE FUN_000013be
-//   0x000061A0 FUN_000061a0
+//   0x000061A0 append_entity_sprite_record
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -47,7 +47,7 @@ void FUN_00005494(void)
     *(undefined1 *)(extraout_A0 + 2) = 5;
   }
   if (uVar2 != 0) {
-    FUN_000061a0();
+    append_entity_sprite_record();
   }
   FUN_000013be();
   return;

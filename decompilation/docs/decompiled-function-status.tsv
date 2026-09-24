@@ -29,6 +29,8 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x5B1E	entity depth sort	ghidra_conversion::sort_entity_slots_by_depth	shadowrun_native_port	partial		Stable descending effective-depth sort with source hidden-entity masking
 0x5B7E	entity render dirty pass	ghidra_conversion::mark_entity_slots_for_render	shadowrun_native_port	partial		Typed sixteen-slot render-update bit marking
 0x5FDC	entity animation accumulator	ghidra_conversion::advance_entity_animation_accumulator	shadowrun_native_port	partial		Typed single-period animation step and redraw request
+0x61A0	entity sprite record append	ghidra_conversion::append_entity_sprite_record	shadowrun_native_port	partial		Typed eight-byte sprite-record append with frame tile shift
+0x61CC	sprite record append	ghidra_conversion::append_sprite_record	shadowrun_native_port	partial		Typed eight-byte sprite-record append with caller tile shift
 0xB530	entity fixed-point target approach	ghidra_conversion::approach_entity_fixed_point_target	shadowrun_native_port	partial		Typed 0x800-step movement with one-step target snap
 0xBBE4	entity position commit	ghidra_conversion::commit_entity_position	shadowrun_native_port	partial		Typed position write with pending transition-bit clear
 0xBC36	collision probe point preparation	ghidra_conversion::build_collision_probe_points	shadowrun_native_port	partial		Typed three-point offset expansion with source mode gate and camera snapshot

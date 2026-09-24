@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x000013BE FUN_000013be
 //   0x00005A56 project_entity_screen_position
-//   0x000061A0 FUN_000061a0
+//   0x000061A0 append_entity_sprite_record
 
 
 void FUN_00004adc(void)
@@ -72,7 +72,7 @@ LAB_00004b50:
     }
     uVar7 = uVar7 - 1;
     if (uVar7 == 0xffff) {
-      FUN_000061a0();
+      append_entity_sprite_record();
       return;
     }
   } while( true );

@@ -67,6 +67,8 @@ still has unresolved downstream calls or hardware presentation work.
 | `0x5B1E` | `sort_entity_slots_by_depth` | Stably sorts the sixteen entity slots by descending effective depth, treating source `0x10`/`0x40` entities as depth zero. | `ghidra_conversion::sort_entity_slots_by_depth()` | partial |
 | `0x5B7E` | `mark_entity_slots_for_render` | Sets the render-update bit on all sixteen entity slots. | `ghidra_conversion::mark_entity_slots_for_render()` | partial |
 | `0x5FDC` | `advance_entity_animation_accumulator` | Adds one animation increment, advances one frame on a period crossing, and marks the entity for redraw. | `ghidra_conversion::advance_entity_animation_accumulator()` | partial |
+| `0x61A0` | `append_entity_sprite_record` | Appends the source pointer, attribute word, and frame-derived tile offset as one typed sprite record. | `ghidra_conversion::append_entity_sprite_record()` | partial |
+| `0x61CC` | `append_sprite_record` | Appends the source pointer, attribute word, and caller-derived tile offset as one typed sprite record. | `ghidra_conversion::append_sprite_record()` | partial |
 | `0xB530` | `approach_entity_fixed_point_target` | Moves a fixed-point entity coordinate by one `0x800` step or snaps it when the remaining distance is at most one step. | `ghidra_conversion::approach_entity_fixed_point_target()` | partial |
 | `0xBBE4` | `commit_entity_position` | Writes an entity position and clears its pending transition bit. | `ghidra_conversion::commit_entity_position()` | partial |
 | `0xBC36` | `build_collision_probe_points` | Expands three typed collision probe offsets and snapshots the camera words unless the source mode gate is active. | `ghidra_conversion::build_collision_probe_points()` | partial |
