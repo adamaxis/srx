@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00000E9C
-// Name: FUN_00000e9c
+// Name: make_vdp_transfer_command
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00000e9c(void)
+void make_vdp_transfer_command(void)
 
 {
   ushort in_D0w;

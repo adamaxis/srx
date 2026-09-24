@@ -437,13 +437,13 @@
 00000C70: move.w #0x21,D2w
 00000C74: clr.l D0
 00000C76: move.w #-0x1,D7w
-00000C7A: jsr 0x00000dfc.l ; call 00000DFC FUN_00000dfc
+00000C7A: jsr 0x00000dfc.l ; call 00000DFC write_repeated_words
 00000C80: move.w #0x1,(0x00ffdd02).l
 00000C88: bsr.w 0x00000e34 ; call 00000E34 FUN_00000e34
 00000C8C: lea (0xd14).l,A0
 00000C92: bsr.w 0x00000cec ; call 00000CEC FUN_00000cec
 00000C96: move.w #-0x20,D0w
-00000C9A: bsr.w 0x00000e9c ; call 00000E9C FUN_00000e9c
+00000C9A: bsr.w 0x00000e9c ; call 00000E9C make_vdp_transfer_command
 00000C9E: moveq #0x0,D0
 00000CA0: move.w #0x7,D1w
 00000CA4: move.l D0,(0x00c00000).l
@@ -528,7 +528,7 @@
 00000DFA: rts
 00000DFC: move SR,-(SP) ; data Stack[-0x2]
 00000DFE: move #0x2700,SR
-00000E02: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+00000E02: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 00000E08: lea (0xc00000).l,A2 ; data 00c00000
 00000E0E: move.w D2w,(A2)
 00000E10: dbf D7w,0x00000e0e
@@ -536,7 +536,7 @@
 00000E16: rts
 00000E18: move SR,-(SP) ; data Stack[-0x2]
 00000E1A: move #0x2700,SR
-00000E1E: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+00000E1E: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 00000E24: lea (0xc00000).l,A2 ; data 00c00000
 00000E2A: move.w (A0)+,(A2)
 00000E2C: dbf D7w,0x00000e2a
@@ -546,7 +546,7 @@
 00000E36: move #0x2700,SR
 00000E3A: move.w D0w,-(SP) ; data Stack[-0x4]
 00000E3C: move.w (0x00ffdd10).l,D0w
-00000E42: bsr.w 0x00000e9c ; call 00000E9C FUN_00000e9c
+00000E42: bsr.w 0x00000e9c ; call 00000E9C make_vdp_transfer_command
 00000E46: move.l #0x0,(0x00c00000).l
 00000E50: move.l #0x0,(0x00c00000).l
 00000E5A: move.l #0xffd986,(0x00ffdd18).l
@@ -596,7 +596,7 @@
 00000F16: bsr.w 0x00000e34 ; call 00000E34 FUN_00000e34
 00000F1A: rts
 00000F1C: move.w (0x00ffdd12).l,D0w
-00000F22: bsr.w 0x00000e9c ; call 00000E9C FUN_00000e9c
+00000F22: bsr.w 0x00000e9c ; call 00000E9C make_vdp_transfer_command
 00000F26: move.w (0x00ffdd08).l,(0x00c00000).l
 00000F30: move.w (0x00ffdd0c).l,(0x00c00000).l
 00000F3A: rts
@@ -630,7 +630,7 @@
 00000FA2: lea (0xc00000).l,A1 ; data 00c00000
 00000FA8: movea.l D0,A0
 00000FAA: move.l D1,D0
-00000FAC: bsr.w 0x00000e9c ; call 00000E9C FUN_00000e9c
+00000FAC: bsr.w 0x00000e9c ; call 00000E9C make_vdp_transfer_command
 00000FB0: move.w D2w,D0w
 00000FB2: lsr.w #0x6,D0w
 00000FB4: subq.w #0x1,D0w
@@ -667,9 +667,9 @@
 00000FFC: rts
 00000FFE: move SR,-(SP) ; data Stack[-0x2]
 00001000: move #0x2700,SR
-00001004: bsr.w 0x00001056 ; call 00001056 FUN_00001056
+00001004: bsr.w 0x00001056 ; call 00001056 clear_vdp_words
 00001008: move.w (0x00ffdd16).l,D0w
-0000100E: bsr.w 0x00000e9c ; call 00000E9C FUN_00000e9c
+0000100E: bsr.w 0x00000e9c ; call 00000E9C make_vdp_transfer_command
 00001012: move.l #0x7ff07ff,D0
 00001018: move.w #0x3ff,D2w
 0000101C: move.l D0,(0x00c00000).l
@@ -678,9 +678,9 @@
 00001028: rts
 0000102A: move SR,-(SP) ; data Stack[-0x2]
 0000102C: move #0x2700,SR
-00001030: bsr.w 0x00001056 ; call 00001056 FUN_00001056
+00001030: bsr.w 0x00001056 ; call 00001056 clear_vdp_words
 00001034: move.w (0x00ffdd14).l,D0w
-0000103A: bsr.w 0x00000e9c ; call 00000E9C FUN_00000e9c
+0000103A: bsr.w 0x00000e9c ; call 00000E9C make_vdp_transfer_command
 0000103E: move.l #0x7ff07ff,D0
 00001044: move.w #0x3ff,D1w
 00001048: move.l D0,(0x00c00000).l
@@ -688,7 +688,7 @@
 00001052: move (SP)+,SR
 00001054: rts
 00001056: move.w #-0x20,D0w
-0000105A: bsr.w 0x00000e9c ; call 00000E9C FUN_00000e9c
+0000105A: bsr.w 0x00000e9c ; call 00000E9C make_vdp_transfer_command
 0000105E: clr.w D0w
 00001060: move.w #0xf,D1w
 00001064: move.w D0w,(0x00c00000).l
@@ -766,7 +766,7 @@
 00001190: beq.w 0x0000119c
 00001194: move.w #-0x7080,(0x00c00004).l
 0000119C: lea (0xc00000).l,A0 ; data 00c00000
-000011A2: bsr.w 0x00000e9c ; call 00000E9C FUN_00000e9c
+000011A2: bsr.w 0x00000e9c ; call 00000E9C make_vdp_transfer_command
 000011A6: move.w (A1)+,D0w
 000011A8: or.w D2w,D0w
 000011AA: move.w D0w,(A0)
@@ -781,7 +781,7 @@
 000011CA: lea (0xc00000).l,A2 ; data 00c00000
 000011D0: move.l D4,D0
 000011D2: move.w D7w,D3w
-000011D4: bsr.w 0x00000e9c ; call 00000E9C FUN_00000e9c
+000011D4: bsr.w 0x00000e9c ; call 00000E9C make_vdp_transfer_command
 000011D8: move.w (A1),D0w
 000011DA: or.w D2w,D0w
 000011DC: move.w D0w,(A2)
@@ -795,7 +795,7 @@
 000011F4: rts
 000011F6: move SR,-(SP) ; data Stack[-0x2]
 000011F8: move #0x2700,SR
-0000120E: bsr.w 0x00000e9c ; call 00000E9C FUN_00000e9c
+0000120E: bsr.w 0x00000e9c ; call 00000E9C make_vdp_transfer_command
 00001212: move.w (A1)+,D0w
 00001214: or.w D2w,D0w
 00001216: move.w D0w,(A0)
@@ -813,7 +813,7 @@
 0000123C: lea (0xc00000).l,A2 ; data 00c00000
 00001242: move.l D4,D0
 00001244: move.w D7w,D3w
-00001246: bsr.w 0x00000e9c ; call 00000E9C FUN_00000e9c
+00001246: bsr.w 0x00000e9c ; call 00000E9C make_vdp_transfer_command
 0000124A: move.w (A1)+,D0w
 0000124C: or.w D2w,D0w
 0000124E: move.w D0w,(A2)
@@ -988,7 +988,7 @@
 0000153A: move SR,-(SP) ; data Stack[-0x24]
 0000153C: move #0x2700,SR
 00001540: move.w #-0x70fe,(0x00c00004).l
-00001548: bsr.w 0x00000e9c ; call 00000E9C FUN_00000e9c
+00001548: bsr.w 0x00000e9c ; call 00000E9C make_vdp_transfer_command
 0000154C: moveq #0x1,D1
 0000154E: subq.w #0x1,D1w
 00001550: bne.b 0x00001556
@@ -1165,7 +1165,7 @@
 00001742: move.l D4,-(SP) ; data Stack[-0x6]
 00001744: move.w D7w,-(SP) ; data Stack[-0x8]
 00001746: move.l D4,D0
-00001748: bsr.w 0x00000e9c ; call 00000E9C FUN_00000e9c
+00001748: bsr.w 0x00000e9c ; call 00000E9C make_vdp_transfer_command
 0000174C: move.w D7w,D0w
 0000174E: sub.w D5w,D7w
 00001750: movea.w #0x0,A4
@@ -1201,7 +1201,7 @@
 000017B6: move.l (0x2,SP),D0
 000017BA: addi.l #0x80,D0
 000017C0: move.l D0,(0x2,SP)
-000017C4: bsr.w 0x00000e9c ; call 00000E9C FUN_00000e9c
+000017C4: bsr.w 0x00000e9c ; call 00000E9C make_vdp_transfer_command
 000017C8: move.w (SP),D0w ; data Stack[-0x8]
 000017CA: subq.b #0x1,D4b
 000017CC: bgt.b 0x00001790
@@ -1224,7 +1224,7 @@
 000017FA: move.l (0x2,SP),D0
 000017FE: addi.l #0x80,D0
 00001804: move.l D0,(0x2,SP)
-00001808: bsr.w 0x00000e9c ; call 00000E9C FUN_00000e9c
+00001808: bsr.w 0x00000e9c ; call 00000E9C make_vdp_transfer_command
 0000180C: move.w (SP),D0w ; data Stack[-0x8]
 0000180E: subq.b #0x1,D4b
 00001810: bgt.b 0x000017d4
@@ -1250,7 +1250,7 @@
 0000184C: move.l (0x2,SP),D0
 00001850: addi.l #0x80,D0
 00001856: move.l D0,(0x2,SP)
-0000185A: bsr.w 0x00000e9c ; call 00000E9C FUN_00000e9c
+0000185A: bsr.w 0x00000e9c ; call 00000E9C make_vdp_transfer_command
 0000185E: move.w (SP),D0w ; data Stack[-0x8]
 00001860: add.w D3w,D5w
 00001862: subq.b #0x1,D4b
@@ -2134,7 +2134,7 @@
 00003654: move.w D7w,D3w
 00003656: or.w D2w,D5w
 00003658: move.l D4,D0
-0000365A: bsr.w 0x00000e9c ; call 00000E9C FUN_00000e9c
+0000365A: bsr.w 0x00000e9c ; call 00000E9C make_vdp_transfer_command
 0000365E: move.w D5w,(A2)
 00003660: addq.w #0x1,D5w
 00003662: dbf D7w,0x0000365e
@@ -2577,7 +2577,7 @@
 00003D80: move SR,-(SP) ; data Stack[-0x2]
 00003D82: move #0x2700,SR
 00003D86: move.w D4w,D0w
-00003D88: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+00003D88: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 00003D8E: lea (0xc00000).l,A2 ; data 00c00000
 00003D94: clr.l D0
 00003D96: move.w (0x0,A1,D3w*0x1),D0w
@@ -2624,7 +2624,7 @@
 00003E16: move #0x2700,SR
 00003E1A: move.w D4w,D0w
 00003E1C: move.w #-0x7080,(0x00c00004).l
-00003E24: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+00003E24: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 00003E2A: lea (0xc00000).l,A2 ; data 00c00000
 00003E30: clr.l D0
 00003E32: move.w (0x0,A1,D3w*0x1),D0w
@@ -5343,7 +5343,7 @@
 0000C0E0: move #0x2700,SR
 0000C0E4: lea (0xc1320).l,A0 ; data 000c1320
 0000C0EA: move.l A2,D0
-0000C0EC: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+0000C0EC: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 0000C0F2: lea (0xc00000).l,A3 ; data 00c00000
 0000C0F8: clr.w D0w
 0000C0FA: move.b (A1)+,D0b
@@ -5392,7 +5392,7 @@
 0000C188: bra.w 0x0000c192
 0000C18C: lea (0xffb740).l,A1 ; data 00ffb740
 0000C192: move.l A2,D0
-0000C194: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+0000C194: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 0000C19A: lea (0xc00000).l,A3 ; data 00c00000
 0000C1A0: movea.l A1,A4
 0000C1A2: clr.l D0
@@ -5442,7 +5442,7 @@
 0000C226: moveq #0x10,D5
 0000C228: moveq #0x4,D4
 0000C22A: move.l A2,D0
-0000C22C: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+0000C22C: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 0000C232: lea (0xc00000).l,A3 ; data 00c00000
 0000C238: clr.l D0
 0000C23A: clr.l D3
@@ -5546,7 +5546,7 @@
 0000C3CC: add.w D7w,D0w
 0000C3CE: move SR,-(SP) ; data Stack[-0x2]
 0000C3D0: move #0x2700,SR
-0000C3D4: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+0000C3D4: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 0000C3DA: lea (0xc00000).l,A0 ; data 00c00000
 0000C3E0: move.w D1w,(A0)
 0000C3E2: move (SP)+,SR
@@ -8740,7 +8740,7 @@
 000111A0: move.l D4,D0
 000111A2: move.w #0x1,D1w
 000111A6: move.w #0x2,D7w
-000111AA: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+000111AA: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 000111B0: move.w (A1)+,D0w
 000111B2: addi.w #0x3e9,D0w
 000111B6: or.w D6w,D0w
@@ -9608,7 +9608,7 @@
 000120F2: lea (0xc00000).l,A4 ; data 00c00000
 000120F8: lea (0xc1320).l,A5 ; data 000c1320
 000120FE: move.w D4w,D0w
-00012100: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+00012100: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 00012106: move.w (A5),D0w
 00012108: ori.w #0x6000,D0w
 0001210C: move.w D0w,(A4)
@@ -10933,7 +10933,7 @@
 00013774: move.b (A3)+,D2b
 00013776: move.l D4,D0
 00013778: add.l D5,D0
-0001377A: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+0001377A: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 00013780: move.w (A1)+,D0w
 00013782: ori.w #0x0,D0w
 00013786: move.w D0w,(A2)
@@ -10949,7 +10949,7 @@
 000137A6: move.l D4,D0
 000137A8: add.l D5,D0
 000137AA: addi.l #0x80,D0
-000137B0: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+000137B0: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 000137B6: move.w (A1)+,D0w
 000137B8: ori.w #0x0,D0w
 000137BC: move.w D2w,D7w
@@ -10962,7 +10962,7 @@
 000137D0: addq.l #0x2,D3
 000137D2: mulu.w #0x2,D3
 000137D6: add.l D3,D0
-000137D8: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+000137D8: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 000137DE: move.w (A1)+,D0w
 000137E0: ori.w #0x0,D0w
 000137E4: move.w D2w,D7w
@@ -10975,7 +10975,7 @@
 000137FA: addq.l #0x2,D3
 000137FC: mulu.w #0x80,D3
 00013800: add.l D3,D0
-00013802: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+00013802: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 00013808: move.w (A1)+,D0w
 0001380A: ori.w #0x0,D0w
 0001380E: move.w D0w,(A2)
@@ -16584,7 +16584,7 @@
 0001A8C0: lea (0xc00000).l,A4 ; data 00c00000
 0001A8C6: move.w (0x00ffdf76).l,D0w
 0001A8CC: movea.l (0x00ffdf7e).l,A1
-0001A8D2: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+0001A8D2: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 0001A8D8: move.w #0x1ff,D6w
 0001A8DC: move.b (0x6,A0),D0b
 0001A8E0: ext.w D0w
@@ -17249,7 +17249,7 @@
 0001B56E: lea (0xffcb40).l,A0 ; data 00ffcb40
 0001B574: move.w #0x1bf,D7w
 0001B578: moveq #0x0,D0
-0001B57A: jsr 0x00000e18.l ; call 00000E18 FUN_00000e18
+0001B57A: jsr 0x00000e18.l ; call 00000E18 write_word_stream
 0001B580: bset.b #0x3,(0x00ffef14).l
 0001B588: bset.b #0x2,(0x00ffef14).l
 0001B590: rts
@@ -18301,7 +18301,7 @@
 0001D24E: add.w (0x00ffdf76).l,D0w
 0001D254: move SR,-(SP) ; data Stack[-0x2]
 0001D256: move #0x2700,SR
-0001D25A: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+0001D25A: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 0001D260: move (SP)+,SR
 0001D262: move.w #0x5,D0w
 0001D266: bsr.w 0x0001d3f4 ; call 0001D3F4 FUN_0001d3f4
@@ -18389,7 +18389,7 @@
 0001D3AC: move.w D0w,-(SP) ; data Stack[-0x2]
 0001D3AE: move SR,-(SP) ; data Stack[-0x4]
 0001D3B0: move #0x2700,SR
-0001D3B4: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+0001D3B4: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 0001D3BA: move (SP)+,SR
 0001D3BC: move.w D7w,D0w
 0001D3BE: lsr.w #0x2,D0w
@@ -22775,7 +22775,7 @@
 00026C02: move SR,-(SP) ; data Stack[-0x12]
 00026C04: move #0x2700,SR
 00026C08: lea (0xc00000).l,A0 ; data 00c00000
-00026C0E: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+00026C0E: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 00026C14: move.w (A1),D0w
 00026C16: or.w D2w,D0w
 00026C18: move.w D0w,(A0)
@@ -22788,7 +22788,7 @@
 00026C2C: move #0x2700,SR
 00026C30: move.w #-0x7080,(0x00c00004).l
 00026C38: lea (0xc00000).l,A0 ; data 00c00000
-00026C3E: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+00026C3E: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 00026C44: move.w (A1),D0w
 00026C46: or.w D2w,D0w
 00026C48: move.w D0w,(A0)
@@ -28498,7 +28498,7 @@
 0005B29A: move SR,-(SP) ; data Stack[-0x2]
 0005B29C: move #0x2700,SR
 0005B2A0: move.w #0x3000,D0w
-0005B2A4: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+0005B2A4: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 0005B2AA: move.l #0x7ff07ff,D0
 0005B2B0: move.w #0x3ff,D1w
 0005B2B4: move.l D0,(0x00c00000).l
@@ -28543,7 +28543,7 @@
 0005B33C: move.l D4,D0
 0005B33E: move.w D7w,D3w
 0005B340: move.w #0x7ff,D2w
-0005B344: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+0005B344: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 0005B34A: move.w D2w,(A2)
 0005B34C: dbf D7w,0x0005b34a
 0005B350: addi.w #0x80,D4w
@@ -28570,7 +28570,7 @@
 0005B3AE: move.b (A3)+,D2b
 0005B3B0: move.l D4,D0
 0005B3B2: add.l D5,D0
-0005B3B4: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+0005B3B4: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 0005B3BA: move.w (A1)+,D0w
 0005B3BC: ori.w #0x0,D0w
 0005B3C0: move.w D0w,(A2)
@@ -28586,7 +28586,7 @@
 0005B3E0: move.l D4,D0
 0005B3E2: add.l D5,D0
 0005B3E4: addi.l #0x80,D0
-0005B3EA: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+0005B3EA: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 0005B3F0: move.w (A1)+,D0w
 0005B3F2: ori.w #0x0,D0w
 0005B3F6: move.w D2w,D7w
@@ -28599,7 +28599,7 @@
 0005B40A: addq.l #0x2,D3
 0005B40C: mulu.w #0x2,D3
 0005B410: add.l D3,D0
-0005B412: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+0005B412: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 0005B418: move.w (A1)+,D0w
 0005B41A: ori.w #0x0,D0w
 0005B41E: move.w D2w,D7w
@@ -28612,7 +28612,7 @@
 0005B434: addq.l #0x2,D3
 0005B436: mulu.w #0x80,D3
 0005B43A: add.l D3,D0
-0005B43C: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+0005B43C: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 0005B442: move.w (A1)+,D0w
 0005B444: ori.w #0x0,D0w
 0005B448: move.w D0w,(A2)
@@ -28670,7 +28670,7 @@
 0005C8D0: lea (0xc00000).l,A2 ; data 00c00000
 0005C8D6: move.l D4,D0
 0005C8D8: lsl.w #0x1,D7w
-0005C8DA: jsr 0x00000e9c.l ; call 00000E9C FUN_00000e9c
+0005C8DA: jsr 0x00000e9c.l ; call 00000E9C make_vdp_transfer_command
 0005C8E0: move.w (A1)+,D0w
 0005C8E2: or.w D2w,D0w
 0005C8E4: move.w D0w,(A2)
@@ -29135,7 +29135,7 @@
 0005DAFC: lea (0xffb740).l,A0 ; data 00ffb740
 0005DB02: move.w #0x1bf,D7w
 0005DB06: moveq #0x0,D0
-0005DB08: jsr 0x00000e18.l ; call 00000E18 FUN_00000e18
+0005DB08: jsr 0x00000e18.l ; call 00000E18 write_word_stream
 0005DB0E: rts
 000FF990: rts
 00103C22: rts

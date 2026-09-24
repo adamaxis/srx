@@ -1,17 +1,17 @@
 // Ghidra headless export
 // Entry: 0x00001056
-// Name: FUN_00001056
+// Name: clear_vdp_words
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000E9C FUN_00000e9c
+//   0x00000E9C make_vdp_transfer_command
 
 
-undefined2 FUN_00001056(void)
+undefined2 clear_vdp_words(void)
 
 {
   short sVar1;
   
-  FUN_00000e9c();
+  make_vdp_transfer_command();
   sVar1 = 0xf;
   do {
     VDP_DATA = 0;

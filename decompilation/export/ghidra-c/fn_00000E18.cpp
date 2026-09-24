@@ -1,19 +1,19 @@
 // Ghidra headless export
 // Entry: 0x00000E18
-// Name: FUN_00000e18
+// Name: write_word_stream
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000E9C FUN_00000e9c
+//   0x00000E9C make_vdp_transfer_command
 
 
-void FUN_00000e18(void)
+void write_word_stream(void)
 
 {
   short unaff_D7w;
   word *extraout_A0;
   word *pwVar1;
   
-  FUN_00000e9c();
+  make_vdp_transfer_command();
   pwVar1 = extraout_A0;
   do {
     VDP_DATA = *pwVar1;

@@ -172,6 +172,10 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0001A304L, "clear_effect_slot");
         names.put(0x0001A310L, "clear_effect_slots");
         names.put(0x0001A322L, "clear_entity_effect_pending_records");
+        names.put(0x00000E9CL, "make_vdp_transfer_command");
+        names.put(0x00000DFCL, "write_repeated_words");
+        names.put(0x00000E18L, "write_word_stream");
+        names.put(0x00001056L, "clear_vdp_words");
         names.put(0x000136DEL, "initialize_scene_mode_state");
         names.put(0x00053126L, "prepare_mode_entry_service");
         names.put(0x00001530L, "decode_and_upload_source_stream");

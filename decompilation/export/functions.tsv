@@ -22,10 +22,10 @@ entry	name	size	callingConvention	decompileStatus	file
 00000D5A	FUN_00000d5a	58	unknown	ok	ghidra-c/fn_00000D5A.cpp
 00000D94	wait_for_controller_event	38	unknown	ok	ghidra-c/fn_00000D94.cpp
 00000DBA	count_thresholded_random_rolls	66	unknown	ok	ghidra-c/fn_00000DBA.cpp
-00000DFC	FUN_00000dfc	28	unknown	ok	ghidra-c/fn_00000DFC.cpp
-00000E18	FUN_00000e18	28	unknown	ok	ghidra-c/fn_00000E18.cpp
+00000DFC	write_repeated_words	28	unknown	ok	ghidra-c/fn_00000DFC.cpp
+00000E18	write_word_stream	28	unknown	ok	ghidra-c/fn_00000E18.cpp
 00000E34	FUN_00000e34	72	unknown	ok	ghidra-c/fn_00000E34.cpp
-00000E9C	FUN_00000e9c	36	unknown	ok	ghidra-c/fn_00000E9C.cpp
+00000E9C	make_vdp_transfer_command	36	unknown	ok	ghidra-c/fn_00000E9C.cpp
 00000EC0	FUN_00000ec0	38	unknown	ok	ghidra-c/fn_00000EC0.cpp
 00000EE6	FUN_00000ee6	54	unknown	ok	ghidra-c/fn_00000EE6.cpp
 00000F1C	FUN_00000f1c	32	unknown	ok	ghidra-c/fn_00000F1C.cpp
@@ -34,7 +34,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00000F98	FUN_00000f98	102	unknown	ok	ghidra-c/fn_00000F98.cpp
 00000FFE	FUN_00000ffe	44	unknown	ok	ghidra-c/fn_00000FFE.cpp
 0000102A	FUN_0000102a	44	unknown	ok	ghidra-c/fn_0000102A.cpp
-00001056	FUN_00001056	26	unknown	ok	ghidra-c/fn_00001056.cpp
+00001056	clear_vdp_words	26	unknown	ok	ghidra-c/fn_00001056.cpp
 00001070	FUN_00001070	16	unknown	ok	ghidra-c/fn_00001070.cpp
 00001080	FUN_00001080	8	unknown	ok	ghidra-c/fn_00001080.cpp
 00001088	step_palette_toward_black	78	unknown	ok	ghidra-c/fn_00001088.cpp
