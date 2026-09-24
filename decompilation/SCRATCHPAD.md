@@ -971,6 +971,10 @@ render twice and clear the field.
 The `0x1209A` cursor service now alternates typed primary/secondary markers
 until a non-negative slot is available, then submits text and cursor service.
 
+The numeric menu leaf at `0x120E4` now owns a typed cursor/count pair. It keeps
+the source marker write, signed zero/overflow wrap, past-count clamp, and digit
+builder as explicit host operations.
+
 The compact row-writer family is now typed as well. `0x1184` emits one masked
 row with optional `0x8F80`/`0x8F02` display-increment controls, `0x11C0`
 repeats a source row at `0x80`-byte destination strides, and `0x11F6`

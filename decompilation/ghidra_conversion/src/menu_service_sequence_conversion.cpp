@@ -133,4 +133,25 @@ void advance_menu_text_cursor(
     }
 }
 
+void render_menu_number(MenuNumberRenderState& state,
+                        const std::int16_t delta,
+                        const MenuNumberRenderCallbacks& callbacks) {
+    if (callbacks.write_number_word) {
+        callbacks.write_number_word(0x6000U);
+    }
+
+    const auto sum = static_cast<std::int32_t>(state.cursor) + delta;
+    const bool overflow = sum > 0x7FFF || sum < -0x8000;
+    state.cursor = static_cast<std::int16_t>(sum);
+    if (state.cursor == 0 || overflow) {
+        state.cursor = static_cast<std::int16_t>(state.available_count);
+    }
+    if (static_cast<std::int16_t>(state.available_count) < state.cursor) {
+        state.cursor = 1;
+    }
+    if (callbacks.build_decimal_glyphs) {
+        callbacks.build_decimal_glyphs(state.cursor);
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion

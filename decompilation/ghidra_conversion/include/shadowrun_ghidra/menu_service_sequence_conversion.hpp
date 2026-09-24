@@ -66,4 +66,20 @@ void advance_menu_text_cursor(
     const std::function<void()>& render_text,
     const std::function<void()>& service_cursor);
 
+struct MenuNumberRenderState {
+    std::int16_t cursor = 0;
+    std::uint8_t available_count = 0;
+};
+
+struct MenuNumberRenderCallbacks {
+    std::function<void(std::uint16_t word)> write_number_word;
+    std::function<void(std::int16_t value)> build_decimal_glyphs;
+};
+
+// ROM 0x120E4: write the number marker, advance the signed cursor with the
+// source zero/overflow wrap rules, clamp past-count values, and build digits.
+void render_menu_number(MenuNumberRenderState& state,
+                        std::int16_t delta,
+                        const MenuNumberRenderCallbacks& callbacks);
+
 } // namespace shadowrun::ghidra_conversion

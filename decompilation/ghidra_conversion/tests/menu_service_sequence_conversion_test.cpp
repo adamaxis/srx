@@ -86,5 +86,25 @@ int main() {
     if (cursor.selector != 0 || order != std::vector<int>{20, 21}) {
         return 11;
     }
+
+    MenuNumberRenderState number{2, 5};
+    std::vector<std::int16_t> values;
+    std::uint16_t marker = 0;
+    render_menu_number(number, 1,
+                       {[&marker](const std::uint16_t word) { marker = word; },
+                        [&values](const std::int16_t value) {
+                            values.push_back(value);
+                        }});
+    if (marker != 0x6000U || number.cursor != 3 ||
+        values != std::vector<std::int16_t>{3}) {
+        return 12;
+    }
+
+    render_menu_number(number, 3, {{}, [&values](const std::int16_t value) {
+                                       values.push_back(value);
+                                   }});
+    if (number.cursor != 1 || values != std::vector<std::int16_t>{3, 1}) {
+        return 13;
+    }
     return 0;
 }
