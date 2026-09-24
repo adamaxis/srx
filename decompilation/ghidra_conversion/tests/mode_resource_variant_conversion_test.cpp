@@ -12,5 +12,10 @@ int main() {
         order != std::vector<int>{1, 2}) {
         return 1;
     }
+    int transfers = 0;
+    prepare_mode_resource_variant_a(state, [&] { ++transfers; });
+    if (state.wrapped_transfer_count != 0x50U || transfers != 0x50) {
+        return 2;
+    }
     return 0;
 }

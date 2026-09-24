@@ -16,4 +16,9 @@ void prepare_mode_resource_variant_b(
     const std::function<void()>& refresh_resource_state,
     const std::function<void()>& draw_hud_panel);
 
+// ROM 0x1F38A: issue 80 repeated source-wrapped word-block transfers.
+void prepare_mode_resource_variant_a(
+    ModeResourceVariantState& state,
+    const std::function<void()>& write_wrapped_word_block);
+
 } // namespace shadowrun::ghidra_conversion
