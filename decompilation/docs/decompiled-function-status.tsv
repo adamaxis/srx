@@ -35,6 +35,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x624C	entity sprite descriptor list expansion	ghidra_conversion::expand_entity_sprite_descriptors	shadowrun_native_port	partial		Typed bounded descriptor-list projection and output record generation
 0xB530	entity fixed-point target approach	ghidra_conversion::approach_entity_fixed_point_target	shadowrun_native_port	partial		Typed 0x800-step movement with one-step target snap
 0xB6E4	entity animation table selection	ghidra_conversion::select_entity_animation_table	shadowrun_native_port	partial		Disassembly-derived metric bands and special high-metric table selection; Ghidra C body is incomplete
+0xB442	entity movement recovery	ghidra_conversion::reset_entity_movement_state	shadowrun_native_port	partial		Typed blocked-state reset, desired-heading restore, direction animation refresh, and current-position collision recheck
 0xB48C	entity collision state evaluation	ghidra_conversion::evaluate_entity_collision	shadowrun_native_port	partial		Typed candidate-coordinate collision boundary with packed entity collision-state update
 0xB732	movement result policy	ghidra_conversion::apply_movement_result_policy	shadowrun_native_port	partial		Typed field-transition and scene-specific normalization of directional collision results
 0xB77E	directional movement collision probe	ghidra_conversion::probe_entity_directional_collision	shadowrun_native_port	partial		Typed eight-way candidate-position probe with source direction slot and flag-gated blocked result

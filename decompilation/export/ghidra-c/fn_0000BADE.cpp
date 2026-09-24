@@ -3,7 +3,7 @@
 // Name: FUN_0000bade
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000B442 FUN_0000b442
+//   0x0000B442 reset_entity_movement_state
 //   0x0000B732 apply_movement_result_policy
 //   0x0000B77E probe_entity_directional_collision
 //   0x0000B7B8 FUN_0000b7b8
@@ -50,7 +50,7 @@ void FUN_0000bade(void)
     }
 LAB_0000bb66:
     puVar3[0x5c] = 0xffff;
-    FUN_0000b442();
+    reset_entity_movement_state();
     return;
   }
   DAT_00ffdd3c = *(ushort *)(iVar2 + 0x2e) >> 0xd & 6;

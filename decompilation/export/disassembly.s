@@ -4984,7 +4984,7 @@
 0000B6AA: bne.w 0x0000b6ba
 0000B6AE: cmp.w (0x4,A0),D1w
 0000B6B2: bne.w 0x0000b6ba
-0000B6B6: bra.w 0x0000b442 ; call 0000B442 FUN_0000b442
+0000B6B6: bra.w 0x0000b442 ; call 0000B442 reset_entity_movement_state
 0000B6BA: move.w (0x2e,A0),D0w
 0000B6BE: btst.b #0x2,(0x11,A0)
 0000B6C4: beq.w 0x0000b6cc
@@ -5244,7 +5244,7 @@
 0000BB5E: bsr.w 0x0000bb86 ; call 0000BB86 FUN_0000bb86
 0000BB62: bcc.w 0x0000bbe4
 0000BB66: move.w #-0x1,(0xb8,A0)
-0000BB6C: bra.w 0x0000b442 ; call 0000B442 FUN_0000b442
+0000BB6C: bra.w 0x0000b442 ; call 0000B442 reset_entity_movement_state
 0000BB70: move.w (0x00ffdf66).l,D1w
 0000BB76: ror.w #0x4,D1w
 0000BB78: move.w D1w,(0x36,A0)

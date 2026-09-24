@@ -380,7 +380,7 @@ caller	caller_name	callee	callee_name	call_sites
 0000B39A	FUN_0000b39a	0000AF6C	FUN_0000af6c	1
 0000B3FE	FUN_0000b3fe	0000ABFC	FUN_0000abfc	1
 0000B3FE	FUN_0000b3fe	0000AF6C	FUN_0000af6c	1
-0000B442	FUN_0000b442	0000B48C	evaluate_entity_collision	1
+0000B442	reset_entity_movement_state	0000B48C	evaluate_entity_collision	1
 0000B48C	evaluate_entity_collision	0000E7C8	FUN_0000e7c8	1
 0000B49C	FUN_0000b49c	0000B732	apply_movement_result_policy	3
 0000B732	apply_movement_result_policy	0000B77E	probe_entity_directional_collision	1
@@ -392,7 +392,7 @@ caller	caller_name	callee	callee_name	call_sites
 0000B7B8	FUN_0000b7b8	0001E2E0	FUN_0001e2e0	8
 0000B7B8	FUN_0000b7b8	0001E2EC	FUN_0001e2ec	2
 0000B7B8	FUN_0000b7b8	00053126	FUN_00053126	1
-0000BADE	FUN_0000bade	0000B442	FUN_0000b442	1
+0000BADE	FUN_0000bade	0000B442	reset_entity_movement_state	1
 0000BADE	FUN_0000bade	0000B732	apply_movement_result_policy	2
 0000BADE	FUN_0000bade	0000B77E	probe_entity_directional_collision	1
 0000BADE	FUN_0000bade	0000B7B8	FUN_0000b7b8	1

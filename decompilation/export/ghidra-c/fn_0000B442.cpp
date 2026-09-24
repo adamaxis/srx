@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000B442
-// Name: FUN_0000b442
+// Name: reset_entity_movement_state
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000B48C evaluate_entity_collision
 
 
-void FUN_0000b442(void)
+void reset_entity_movement_state(void)
 
 {
   ushort uVar1;
