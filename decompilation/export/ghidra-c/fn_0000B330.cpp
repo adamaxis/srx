@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000B330
-// Name: FUN_0000b330
+// Name: enter_entity_behavior_transition
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000ABB6 FUN_0000abb6
@@ -8,7 +8,7 @@
 //   0x000530DE FUN_000530de
 
 
-void FUN_0000b330(void)
+void enter_entity_behavior_transition(void)
 
 {
   ushort uVar1;

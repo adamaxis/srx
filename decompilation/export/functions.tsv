@@ -190,12 +190,12 @@ entry	name	size	callingConvention	decompileStatus	file
 0000AE6E	FUN_0000ae6e	76	unknown	ok	ghidra-c/fn_0000AE6E.cpp
 0000AEBA	FUN_0000aeba	132	unknown	ok	ghidra-c/fn_0000AEBA.cpp
 0000AF6C	reset_entity_animation_state	16	unknown	ok	ghidra-c/fn_0000AF6C.cpp
-0000AF7C	FUN_0000af7c	50	unknown	ok	ghidra-c/fn_0000AF7C.cpp
-0000AFAE	FUN_0000afae	50	unknown	ok	ghidra-c/fn_0000AFAE.cpp
-0000AFF2	FUN_0000aff2	76	unknown	ok	ghidra-c/fn_0000AFF2.cpp
+0000AF7C	prepare_entity_delayed_animation_primary	50	unknown	ok	ghidra-c/fn_0000AF7C.cpp
+0000AFAE	prepare_entity_delayed_animation_alternate	50	unknown	ok	ghidra-c/fn_0000AFAE.cpp
+0000AFF2	prepare_entity_auxiliary_behavior	76	unknown	ok	ghidra-c/fn_0000AFF2.cpp
 0000B11C	FUN_0000b11c	192	unknown	ok	ghidra-c/fn_0000B11C.cpp
 0000B1DC	FUN_0000b1dc	282	unknown	ok	ghidra-c/fn_0000B1DC.cpp
-0000B330	FUN_0000b330	90	unknown	ok	ghidra-c/fn_0000B330.cpp
+0000B330	enter_entity_behavior_transition	90	unknown	ok	ghidra-c/fn_0000B330.cpp
 0000B39A	set_entity_heading_with_field_animation	84	unknown	ok	ghidra-c/fn_0000B39A.cpp
 0000B3FE	set_entity_heading_with_alternate_animation	52	unknown	ok	ghidra-c/fn_0000B3FE.cpp
 0000B442	reset_entity_movement_state	74	unknown	ok	ghidra-c/fn_0000B442.cpp

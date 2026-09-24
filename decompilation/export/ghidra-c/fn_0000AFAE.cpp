@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x0000AFAE
-// Name: FUN_0000afae
+// Name: prepare_entity_delayed_animation_alternate
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000ABFC update_entity_animation_delay
 //   0x0000AF6C reset_entity_animation_state
 
 
-void FUN_0000afae(void)
+void prepare_entity_delayed_animation_alternate(void)
 
 {
   ushort uVar1;

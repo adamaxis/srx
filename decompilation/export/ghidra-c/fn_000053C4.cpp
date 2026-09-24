@@ -6,7 +6,7 @@
 //   0x00005468 FUN_00005468
 //   0x00005494 FUN_00005494
 //   0x00005622 FUN_00005622
-//   0x0000AFF2 FUN_0000aff2
+//   0x0000AFF2 prepare_entity_auxiliary_behavior
 //   0x0001A304 FUN_0001a304
 
 
@@ -36,7 +36,7 @@ void FUN_000053c4(void)
     if (((*(char *)(iVar2 + 0x1de) == '\r') && ((*(byte *)(iVar2 + 0x110) & 1) != 0)) &&
        ((*(byte *)(iVar2 + 0x110) & 0x40) == 0)) {
       FUN_00005468();
-      FUN_0000aff2(extraout_A0_00);
+      prepare_entity_auxiliary_behavior(extraout_A0_00);
       return;
     }
     sVar1 = sVar1 + -1;

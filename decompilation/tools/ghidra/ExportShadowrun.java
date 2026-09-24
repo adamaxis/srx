@@ -80,6 +80,10 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0000ABFCL, "update_entity_animation_delay");
         names.put(0x0000D7EAL, "compute_entity_delay_factor");
         names.put(0x0000D81CL, "average_entity_delay_attributes");
+        names.put(0x0000AF7CL, "prepare_entity_delayed_animation_primary");
+        names.put(0x0000AFAEL, "prepare_entity_delayed_animation_alternate");
+        names.put(0x0000AFF2L, "prepare_entity_auxiliary_behavior");
+        names.put(0x0000B330L, "enter_entity_behavior_transition");
         names.put(0x0000B732L, "apply_movement_result_policy");
         names.put(0x0000B77EL, "probe_entity_directional_collision");
         names.put(0x0000B530L, "approach_entity_fixed_point_target");

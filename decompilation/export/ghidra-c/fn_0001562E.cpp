@@ -3,7 +3,7 @@
 // Name: FUN_0001562e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000AFF2 FUN_0000aff2
+//   0x0000AFF2 prepare_entity_auxiliary_behavior
 //   0x00055900 FUN_00055900
 
 
@@ -11,7 +11,7 @@ void FUN_0001562e(void)
 
 {
   FUN_00055900();
-  FUN_0000aff2();
+  prepare_entity_auxiliary_behavior();
   return;
 }
 

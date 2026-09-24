@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x0000ABFC update_entity_animation_delay
 //   0x0000AF6C reset_entity_animation_state
-//   0x0000AFF2 FUN_0000aff2
+//   0x0000AFF2 prepare_entity_auxiliary_behavior
 //   0x00015A8C FUN_00015a8c
 //   0x00015C84 FUN_00015c84
 //   0x00015D3C FUN_00015d3c
@@ -64,7 +64,7 @@ void FUN_0000b1dc(void)
     if (((byte)uVar7 != *(byte *)(extraout_A1_00 + 0x4c)) ||
        (bVar3 = (byte)((uint)uVar7 >> 0x10), uVar5 = bVar3 < *(byte *)(extraout_A1_00 + 0x9c),
        bVar3 != *(byte *)(extraout_A1_00 + 0x9c))) {
-      FUN_0000aff2(extraout_A0_01,extraout_A1_00);
+      prepare_entity_auxiliary_behavior(extraout_A0_01,extraout_A1_00);
       uVar2 = FUN_00015a8c();
       if (!(bool)uVar5) {
         extraout_A1_01[0x1f] = uVar2;

@@ -6,8 +6,8 @@
 //   0x00003404 FUN_00003404
 //   0x0000ABFC update_entity_animation_delay
 //   0x0000AE6E FUN_0000ae6e
-//   0x0000AF7C FUN_0000af7c
-//   0x0000AFAE FUN_0000afae
+//   0x0000AF7C prepare_entity_delayed_animation_primary
+//   0x0000AFAE prepare_entity_delayed_animation_alternate
 //   0x0000B11C FUN_0000b11c
 //   0x0000B1DC FUN_0000b1dc
 //   0x0000B39A set_entity_heading_with_field_animation
@@ -72,10 +72,10 @@ uint FUN_00013ffe(void)
         }
         FUN_0000ae6e();
         if (DAT_00fff0dd == '\0') {
-          uVar2 = FUN_0000af7c();
+          uVar2 = prepare_entity_delayed_animation_primary();
           return uVar2;
         }
-        uVar2 = FUN_0000afae();
+        uVar2 = prepare_entity_delayed_animation_alternate();
         return uVar2;
       }
       if (('\f' < *(char *)(extraout_A0 + 0x57)) &&

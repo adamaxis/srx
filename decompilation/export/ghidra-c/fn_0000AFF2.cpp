@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000AFF2
-// Name: FUN_0000aff2
+// Name: prepare_entity_auxiliary_behavior
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000AF6C reset_entity_animation_state
 
 
-void FUN_0000aff2(void)
+void prepare_entity_auxiliary_behavior(void)
 
 {
   ushort uVar1;

@@ -3549,7 +3549,7 @@
 00005420: bsr.w 0x00005468 ; call 00005468 FUN_00005468
 00005424: move.l A0,-(SP) ; data Stack[-0x4]
 00005426: movea.l A1,A0
-00005428: bsr.w 0x0000aff2 ; call 0000AFF2 FUN_0000aff2
+00005428: bsr.w 0x0000aff2 ; call 0000AFF2 prepare_entity_auxiliary_behavior
 0000542C: movea.l (SP)+,A0
 0000542E: rts
 00005430: dbf D0w,0x000053f4
@@ -3655,7 +3655,7 @@
 000055DA: bsr.w 0x0000563e ; call 0000563E FUN_0000563e
 000055DE: move.l A0,-(SP) ; data Stack[-0x4]
 000055E0: movea.l A1,A0
-000055E2: bsr.w 0x0000aff2 ; call 0000AFF2 FUN_0000aff2
+000055E2: bsr.w 0x0000aff2 ; call 0000AFF2 prepare_entity_auxiliary_behavior
 000055E6: movea.l (SP)+,A0
 000055E8: rts
 000055EA: dbf D0w,0x000055ae
@@ -4273,7 +4273,7 @@
 0000AA40: jsr 0x0000391a.l ; call 0000391A FUN_0000391a
 0000AA46: movea.l (SP)+,A0
 0000AA48: bra.w 0x0000aa74
-0000AA4C: bsr.w 0x0000b330 ; call 0000B330 FUN_0000b330
+0000AA4C: bsr.w 0x0000b330 ; call 0000B330 enter_entity_behavior_transition
 0000AA50: bra.w 0x0000aa74
 0000AA54: btst.b #0x1,(0x10,A0)
 0000AA5A: beq.w 0x0000aa66
@@ -4460,8 +4460,8 @@
 0000AD8E: jsr 0x0000ae6e.l ; call 0000AE6E FUN_0000ae6e
 0000AD94: tst.b (0x00fff0dd).l
 0000AD9A: beq.w 0x0000ada4
-0000AD9E: jmp 0x0000afae.l ; call 0000AFAE FUN_0000afae
-0000ADA4: jmp 0x0000af7c.l ; call 0000AF7C FUN_0000af7c
+0000AD9E: jmp 0x0000afae.l ; call 0000AFAE prepare_entity_delayed_animation_alternate
+0000ADA4: jmp 0x0000af7c.l ; call 0000AF7C prepare_entity_delayed_animation_primary
 0000ADAA: cmpi.b #0xd,(0x57,A0)
 0000ADB0: blt.w 0x0000addc
 0000ADB4: cmpi.b #0x10,(0x57,A0)
@@ -4658,7 +4658,7 @@
 0000B13E: beq.w 0x0000b198
 0000B142: movem.l {  A1 A0},-(SP)
 0000B146: exg A0,A1
-0000B148: bsr.w 0x0000aff2 ; call 0000AFF2 FUN_0000aff2
+0000B148: bsr.w 0x0000aff2 ; call 0000AFF2 prepare_entity_auxiliary_behavior
 0000B14C: jsr 0x00015a8c.l ; call 00015A8C FUN_00015a8c
 0000B152: bcs.w 0x0000b194
 0000B156: move.w D0w,(0x3e,A1)
@@ -4738,7 +4738,7 @@
 0000B29A: beq.w 0x0000b2f4
 0000B29E: movem.l {  A1 A0},-(SP)
 0000B2A2: exg A0,A1
-0000B2A4: bsr.w 0x0000aff2 ; call 0000AFF2 FUN_0000aff2
+0000B2A4: bsr.w 0x0000aff2 ; call 0000AFF2 prepare_entity_auxiliary_behavior
 0000B2A8: jsr 0x00015a8c.l ; call 00015A8C FUN_00015a8c
 0000B2AE: bcs.w 0x0000b2f0
 0000B2B2: move.w D0w,(0x3e,A1)
@@ -6525,7 +6525,7 @@
 0000E4AC: movea.l (0x00fffc04).l,A0
 0000E4B2: tst.b (0x4c,A0)
 0000E4B6: bne.w 0x0000e4c0
-0000E4BA: jsr 0x0000b330.l ; call 0000B330 FUN_0000b330
+0000E4BA: jsr 0x0000b330.l ; call 0000B330 enter_entity_behavior_transition
 0000E4C0: clr.b (0x00fff0b1).l
 0000E4C6: rts
 0000E600: beq.w 0x0000e60c
@@ -11115,8 +11115,8 @@
 00013A72: jsr 0x0000ae6e.l ; call 0000AE6E FUN_0000ae6e
 00013A78: tst.b (0x00fff0dd).l
 00013A7E: beq.w 0x00013a88
-00013A82: jmp 0x0000afae.l ; call 0000AFAE FUN_0000afae
-00013A88: jmp 0x0000af7c.l ; call 0000AF7C FUN_0000af7c
+00013A82: jmp 0x0000afae.l ; call 0000AFAE prepare_entity_delayed_animation_alternate
+00013A88: jmp 0x0000af7c.l ; call 0000AF7C prepare_entity_delayed_animation_primary
 00013A8E: bra.w 0x00013e40
 00013A92: cmpi.b #0x2,(0x9b,A0)
 00013A98: bge.w 0x00013ae4
@@ -11505,8 +11505,8 @@
 00014100: jsr 0x0000ae6e.l ; call 0000AE6E FUN_0000ae6e
 00014106: tst.b (0x00fff0dd).l
 0001410C: beq.w 0x00014116
-00014110: jmp 0x0000afae.l ; call 0000AFAE FUN_0000afae
-00014116: jmp 0x0000af7c.l ; call 0000AF7C FUN_0000af7c
+00014110: jmp 0x0000afae.l ; call 0000AFAE prepare_entity_delayed_animation_alternate
+00014116: jmp 0x0000af7c.l ; call 0000AF7C prepare_entity_delayed_animation_primary
 0001411C: rts
 0001411E: tst.b (0x00ffe186).l
 00014124: bne.w 0x00014134
@@ -12391,7 +12391,7 @@
 00014EC8: jsr 0x000530de.l ; call 000530DE FUN_000530de
 00014ECE: bra.w 0x00014eda
 00014ED2: movea.l A1,A0
-00014ED4: jsr 0x0000aff2.l ; call 0000AFF2 FUN_0000aff2
+00014ED4: jsr 0x0000aff2.l ; call 0000AFF2 prepare_entity_auxiliary_behavior
 00014EDA: rts
 00014F1C: tst.w (0x16,A0)
 00014F20: bmi.w 0x00014f86
@@ -12833,7 +12833,7 @@
 0001562E: movem.l {  A1 A0 D7 D6 D5},-(SP)
 00015632: jsr 0x00055900.l ; call 00055900 FUN_00055900
 00015638: movea.l A1,A0
-0001563A: jsr 0x0000aff2.l ; call 0000AFF2 FUN_0000aff2
+0001563A: jsr 0x0000aff2.l ; call 0000AFF2 prepare_entity_auxiliary_behavior
 00015640: movem.l (SP)+,{  D5 D6 D7 A0 A1}
 00015644: rts
 00015646: move.w (0x16,A0),D0w
@@ -28776,7 +28776,7 @@
 0005D3EC: movem.l {  A6 A5 A4 A3 A2 A1 A0 D7 D6 D5 D4 D3 D2 D1 D0},-(SP)
 0005D3F0: jsr 0x00015930.l ; call 00015930 FUN_00015930
 0005D3F6: lea (0xff0400).l,A0 ; data 00ff0400
-0005D3FC: jsr 0x0000aff2.l ; call 0000AFF2 FUN_0000aff2
+0005D3FC: jsr 0x0000aff2.l ; call 0000AFF2 prepare_entity_auxiliary_behavior
 0005D402: movem.l (SP)+,{ D0 D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 0005D406: rts
 0005D408: movem.l {  A6 A5 A4 A3 A2 A1 A0 D7 D6 D5 D4 D3 D2 D1 D0},-(SP) ; data 00fff11e

@@ -8,7 +8,7 @@
 //   0x0000AC5E FUN_0000ac5e
 //   0x0000AC84 FUN_0000ac84
 //   0x0000ACAE FUN_0000acae
-//   0x0000B330 FUN_0000b330
+//   0x0000B330 enter_entity_behavior_transition
 //   0x0000B49C FUN_0000b49c
 //   0x0000BCAE apply_mode_five_boundary_motion
 //   0x0000EB92 FUN_0000eb92
@@ -105,7 +105,7 @@ LAB_0000a9be:
               }
             }
 LAB_0000aa4c:
-            FUN_0000b330();
+            enter_entity_behavior_transition();
             puVar5 = extraout_A0_05;
           }
         }

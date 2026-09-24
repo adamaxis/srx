@@ -3,7 +3,7 @@
 // Name: FUN_0005d3e6
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000AFF2 FUN_0000aff2
+//   0x0000AFF2 prepare_entity_auxiliary_behavior
 //   0x00015930 FUN_00015930
 
 
@@ -16,7 +16,7 @@ undefined8 FUN_0005d3e6(void)
   
   *(byte *)(in_A1 + 0x11) = *(byte *)(in_A1 + 0x11) | 1;
   FUN_00015930();
-  FUN_0000aff2();
+  prepare_entity_auxiliary_behavior();
   return CONCAT44(in_D0,in_D1);
 }
 

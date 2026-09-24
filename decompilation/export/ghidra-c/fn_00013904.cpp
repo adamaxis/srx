@@ -4,8 +4,8 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000AE6E FUN_0000ae6e
-//   0x0000AF7C FUN_0000af7c
-//   0x0000AFAE FUN_0000afae
+//   0x0000AF7C prepare_entity_delayed_animation_primary
+//   0x0000AFAE prepare_entity_delayed_animation_alternate
 //   0x00013D0C FUN_00013d0c
 //   0x00013E8C FUN_00013e8c
 //   0x00013FFE FUN_00013ffe
@@ -89,10 +89,10 @@ void FUN_00013904(void)
       local_4 = 0x13a78;
       FUN_0000ae6e();
       if (DAT_00fff0dd == '\0') {
-        FUN_0000af7c();
+        prepare_entity_delayed_animation_primary();
         return;
       }
-      FUN_0000afae();
+      prepare_entity_delayed_animation_alternate();
       return;
     }
 LAB_00013e40:
