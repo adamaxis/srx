@@ -33,7 +33,7 @@
 //   0x00019B40 FUN_00019b40
 //   0x00019BF6 FUN_00019bf6
 //   0x00026A00 FUN_00026a00
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -153,7 +153,7 @@ LAB_0001842e:
                   count_thresholded_random_rolls();
                   if (DAT_00fff0dd == '\0') {
                     advance_hud_panel();
-                    FUN_000530de();
+                    service_audio_if_enabled();
                     uVar7 = 0;
                     if (*(char *)(DAT_00fffc04 + 0x4c) != '\0') goto LAB_0001831a;
                   }
@@ -166,7 +166,7 @@ LAB_0001842e:
                       if (cVar2 == '\0' || cVar1 < '\x03') {
                         *(undefined1 *)(extraout_A1 + 0x9c) = 1;
                       }
-                      FUN_000530de();
+                      service_audio_if_enabled();
                     }
                   }
                 }

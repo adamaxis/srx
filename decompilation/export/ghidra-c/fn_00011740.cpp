@@ -61,7 +61,7 @@
 //   0x00012C36 FUN_00012c36
 //   0x00012C42 FUN_00012c42
 //   0x00012C5A FUN_00012c5a
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 //   0x000566E2 FUN_000566e2
 
 
@@ -134,7 +134,7 @@ void FUN_00011740(void)
         if ((DAT_00ffdd22._0_1_ & 4) == 0) break;
         uVar5 = 0xffff;
 LAB_00011be6:
-        FUN_000530de(uVar5);
+        service_audio_if_enabled(uVar5);
         FUN_000111d0();
         cycle_inventory_action_selector();
         _DAT_00fff116 = 0xffff;
@@ -150,7 +150,7 @@ LAB_00011be6:
     cVar7 = '\0';
     uVar19 = 0;
     cVar8 = '\0';
-    FUN_000530de();
+    service_audio_if_enabled();
     FUN_00012062();
     if ((bool)uVar19 || cVar8 != cVar7) goto LAB_00011c9c;
     _DAT_00fff0d0 = uVar20;
@@ -169,11 +169,11 @@ LAB_00011be6:
               latch_controller_events();
               sample_controller_input();
               if (((DAT_00ffdd22._0_1_ & 4) == 0) && ((DAT_00ffdd22._0_1_ & 8) == 0)) break;
-              FUN_000530de();
+              service_audio_if_enabled();
               FUN_000127b0();
             }
           } while ((DAT_00ffdd22._0_1_ & 0x40) == 0);
-          FUN_000530de();
+          service_audio_if_enabled();
           if (DAT_00fff114 < '\0') {
             return;
           }
@@ -238,7 +238,7 @@ LAB_00011ea4:
           if ((DAT_00ffdd22._0_1_ & 4) == 0) break;
           uVar5 = 0xffff;
 LAB_00011ec4:
-          FUN_000530de(uVar5);
+          service_audio_if_enabled(uVar5);
           FUN_000111d0();
           cycle_inventory_action_selector();
           _DAT_00fff116 = 0xffff;
@@ -251,7 +251,7 @@ LAB_00011ec4:
         }
         if ((((DAT_00ffdd22._0_1_ & 0x40) != 0) || ((DAT_00ffdd22._0_1_ & 0x10) != 0)) ||
            ((DAT_00ffdd22._0_1_ & 0x20) != 0)) {
-          FUN_000530de();
+          service_audio_if_enabled();
           if (DAT_00fff0d0 == '\x02') {
             FUN_000120e4();
           }
@@ -621,11 +621,11 @@ LAB_0000c2aa:
         latch_controller_events();
         sample_controller_input();
         if (((DAT_00ffdd22._0_1_ & 4) == 0) && ((DAT_00ffdd22._0_1_ & 8) == 0)) break;
-        FUN_000530de();
+        service_audio_if_enabled();
         FUN_000127b0();
       }
     } while (((DAT_00ffdd22._0_1_ & 0x40) == 0) && ((DAT_00ffdd22._0_1_ & 0x10) == 0));
-    FUN_000530de();
+    service_audio_if_enabled();
     if (-1 < DAT_00fff114) {
       FUN_00012148();
       FUN_0001275c();
@@ -685,12 +685,12 @@ LAB_0001296a:
           latch_controller_events();
           sample_controller_input();
           if (((DAT_00ffdd22._0_1_ & 4) == 0) && ((DAT_00ffdd22._0_1_ & 8) == 0)) break;
-          FUN_000530de();
+          service_audio_if_enabled();
           FUN_000127b0();
         }
       } while (((DAT_00ffdd22._0_1_ & 0x40) == 0) &&
               (((DAT_00ffdd22._0_1_ & 0x20) == 0 && ((DAT_00ffdd22._0_1_ & 0x10) == 0))));
-      FUN_000530de();
+      service_audio_if_enabled();
     } while ((DAT_00fff096 < 0) || (DAT_00fff114 < '\0'));
     FUN_000129fe();
     FUN_00011624();
@@ -726,7 +726,7 @@ LAB_000129dc:
         if ((DAT_00ffdd22._0_1_ & 4) == 0) break;
         uVar5 = 0xffff;
 LAB_000117f6:
-        FUN_000530de(uVar5);
+        service_audio_if_enabled(uVar5);
         FUN_000111d0();
         cycle_inventory_action_selector();
         _DAT_00fff116 = 0xffff;
@@ -738,7 +738,7 @@ LAB_000117f6:
         goto LAB_000117f6;
       }
       if (((DAT_00ffdd22._0_1_ & 0x40) != 0) || ((DAT_00ffdd22._0_1_ & 0x10) != 0)) {
-        FUN_000530de();
+        service_audio_if_enabled();
         uVar10 = _DAT_00fff0d0 >> 8;
         _DAT_00fff0d0 = uVar20;
         (**(code **)((int)&PTR_caseD_7_000d2a1e + (uint)(ushort)((uVar10 - 2) * 4)))();
@@ -781,7 +781,7 @@ LAB_000118b6:
     render_title_text_source();
     DAT_00fff0dc = '\0';
     do {
-      FUN_000530de();
+      service_audio_if_enabled();
       sVar11 = -0x3962;
       DAT_00fff0fc = 0xff;
       move_wrapped_menu_cursor();
@@ -799,7 +799,7 @@ LAB_000118b6:
         if (((DAT_00ffdd22._0_1_ & 1) != 0) || ((DAT_00ffdd22._0_1_ & 2) != 0)) break;
         if (((DAT_00ffdd22._0_1_ & 0x40) != 0) ||
            (((DAT_00ffdd22._0_1_ & 0x10) != 0 || ((DAT_00ffdd22._0_1_ & 0x20) != 0)))) {
-          FUN_000530de();
+          service_audio_if_enabled();
           FUN_00012c1e();
           if (DAT_00fff0dc == DAT_00fff0b9) goto LAB_00012538;
           sVar6 = FUN_00012148();

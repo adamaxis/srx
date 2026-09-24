@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00052E96
-// Name: FUN_00052e96
+// Name: flush_audio_command
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00052e96(void)
+void flush_audio_command(void)
 
 {
   byte bVar1;

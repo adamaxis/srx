@@ -6,7 +6,7 @@
 //   0x00019976 FUN_00019976
 //   0x0001CAD4 FUN_0001cad4
 //   0x0001CB20 FUN_0001cb20
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */

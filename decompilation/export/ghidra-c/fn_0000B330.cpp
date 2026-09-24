@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x0000ABB6 FUN_0000abb6
 //   0x0000AF6C reset_entity_animation_state
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 
 
 void enter_entity_behavior_transition(void)
@@ -19,7 +19,7 @@ void enter_entity_behavior_transition(void)
   *(byte *)(in_A0 + 0x10) = *(byte *)(in_A0 + 0x10) | 0x40;
   FUN_0000abb6();
   *(byte *)(extraout_A0 + 0x10) = *(byte *)(extraout_A0 + 0x10) & 0xbf;
-  FUN_000530de();
+  service_audio_if_enabled();
   *(byte *)(extraout_A0_00 + 0x10) = *(byte *)(extraout_A0_00 + 0x10) | 0x10;
   *(undefined1 **)(extraout_A0_00 + 0x3a) = &LAB_0000b38a;
   uVar1 = *(ushort *)(extraout_A0_00 + 0x2e) << 3 | *(ushort *)(extraout_A0_00 + 0x2e) >> 0xd;

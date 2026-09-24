@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00052E4E
-// Name: FUN_00052e4e
+// Name: begin_audio_bus_access
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00052e4e(void)
+void begin_audio_bus_access(void)
 
 {
   byte bVar1;

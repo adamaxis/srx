@@ -182,4 +182,4 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0xFBA6	magic	—	—	pending		
 0x1817E	matrix run	—	—	pending		
 0x17708	field HUD	ghidra_conversion::render_field_hud	—	partial		Typed display/sprite/five-block upload choreography and conditional mode-8 panel path
-0x530DE	Z80/audio	—	—	pending		
+0x530DE	Z80/audio	ghidra_conversion::service_audio_if_enabled	—	partial		Typed audio-enable gate and source queue-service ordering; host audio backend remains separate

@@ -10,7 +10,7 @@
 //   0x00015C84 update_entity_heading_from_linked_target
 //   0x00015D3C measure_relative_heading_and_distance
 //   0x0001DBAA schedule_world_activity_timeout
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 //   0x00055C76 FUN_00055c76
 
 
@@ -34,7 +34,7 @@ void configure_entity_target_transition(void)
   undefined4 uVar7;
   
   update_entity_animation_delay();
-  FUN_000530de();
+  service_audio_if_enabled();
   iVar4 = extraout_A0;
   if (*(int *)(extraout_A0 + 0xa2) != 0) {
     uVar2 = *(undefined2 *)(*(int *)(extraout_A0 + 0xa2) + 4);
@@ -55,7 +55,7 @@ void configure_entity_target_transition(void)
   if ((bool)uVar5) {
     schedule_world_activity_timeout();
     uVar2 = 0xb278;
-    uVar6 = FUN_000530de();
+    uVar6 = service_audio_if_enabled();
     uVar7 = CONCAT22((short)CONCAT31((int3)((ulonglong)uVar6 >> 0x28),
                                      *(undefined1 *)(extraout_A1 + 0x9c)),in_stack_fffffffa);
     FUN_00055c76(uVar7,CONCAT22((short)CONCAT31((int3)((ulonglong)uVar6 >> 8),

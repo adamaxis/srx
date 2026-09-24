@@ -50,7 +50,7 @@
 //   0x00026958 FUN_00026958
 //   0x00026972 FUN_00026972
 //   0x00026A00 FUN_00026a00
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 //   0x000530EA FUN_000530ea
 //   0x00053126 FUN_00053126
 //   0x00053704 FUN_00053704
@@ -130,7 +130,7 @@ void FUN_0001ade6(void)
         return;
       }
       if ((DAT_00ffe16d != '\0') && (DAT_00ffe16d = DAT_00ffe16d + -1, DAT_00ffe16d == '\0')) {
-        FUN_000530de();
+        service_audio_if_enabled();
       }
       if (DAT_00ffe0aa == 0) goto LAB_0001afc0;
       FUN_0001c0c2();

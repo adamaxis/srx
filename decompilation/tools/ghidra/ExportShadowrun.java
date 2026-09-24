@@ -152,6 +152,12 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00019856L, "refresh_field_hud");
         names.put(0x00019BAEL, "select_hud_mode");
         names.put(0x00017708L, "render_field_hud");
+        names.put(0x00052E4EL, "begin_audio_bus_access");
+        names.put(0x00052E84L, "end_audio_bus_access");
+        names.put(0x00052E96L, "flush_audio_command");
+        names.put(0x00052EA2L, "append_audio_command");
+        names.put(0x00052F3CL, "service_audio_command_queue");
+        names.put(0x000530DEL, "service_audio_if_enabled");
         names.put(0x00001530L, "decode_and_upload_source_stream");
         names.put(0x000012F6L, "advance_title_palette_fade");
         names.put(0x00001406L, "prepare_title_resources");

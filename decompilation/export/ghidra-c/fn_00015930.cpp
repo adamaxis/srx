@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x000049A0 FUN_000049a0
 //   0x0001582A allocate_first_free_effect_slot
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 
 
 void FUN_00015930(void)
@@ -27,7 +27,7 @@ void FUN_00015930(void)
     *(undefined1 *)(extraout_A1 + 3) = 0;
     sVar2 = 2;
     if (u_44178_0000494a[0] != L'\0') {
-      FUN_000530de();
+      service_audio_if_enabled();
       sVar2 = extraout_D1w_00;
     }
     (**(code **)((int)&PTR_FUN_00004964 + (int)(short)(sVar2 << 2)))();

@@ -22,7 +22,7 @@
 //   0x000120E4 FUN_000120e4
 //   0x000127B0 FUN_000127b0
 //   0x00012C36 FUN_00012c36
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -63,7 +63,7 @@ void switchD_00011768::caseD_2(void)
       if ((DAT_00ffdd22._0_1_ & 4) == 0) break;
       uVar3 = 0xffff;
 LAB_00011be6:
-      FUN_000530de(uVar3);
+      service_audio_if_enabled(uVar3);
       FUN_000111d0();
       cycle_inventory_action_selector();
       _DAT_00fff116 = 0xffff;
@@ -79,7 +79,7 @@ LAB_00011be6:
   cVar11 = '\0';
   uVar12 = 0;
   cVar13 = '\0';
-  FUN_000530de();
+  service_audio_if_enabled();
   FUN_00012062();
   if ((bool)uVar12 || cVar13 != cVar11) goto LAB_00011c9c;
   _DAT_00fff0d0 = uVar2;
@@ -98,11 +98,11 @@ LAB_00011be6:
             latch_controller_events();
             sample_controller_input();
             if (((DAT_00ffdd22._0_1_ & 4) == 0) && ((DAT_00ffdd22._0_1_ & 8) == 0)) break;
-            FUN_000530de();
+            service_audio_if_enabled();
             FUN_000127b0();
           }
         } while ((DAT_00ffdd22._0_1_ & 0x40) == 0);
-        FUN_000530de();
+        service_audio_if_enabled();
         if (DAT_00fff114 < '\0') {
           return;
         }
@@ -167,7 +167,7 @@ LAB_00011ea4:
         if ((DAT_00ffdd22._0_1_ & 4) == 0) break;
         uVar3 = 0xffff;
 LAB_00011ec4:
-        FUN_000530de(uVar3);
+        service_audio_if_enabled(uVar3);
         FUN_000111d0();
         cycle_inventory_action_selector();
         _DAT_00fff116 = 0xffff;
@@ -180,7 +180,7 @@ LAB_00011ec4:
       }
       if ((((DAT_00ffdd22._0_1_ & 0x40) != 0) || ((DAT_00ffdd22._0_1_ & 0x10) != 0)) ||
          ((DAT_00ffdd22._0_1_ & 0x20) != 0)) {
-        FUN_000530de();
+        service_audio_if_enabled();
         if (DAT_00fff0d0 == '\x02') {
           FUN_000120e4();
         }

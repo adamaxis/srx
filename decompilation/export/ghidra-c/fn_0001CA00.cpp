@@ -13,7 +13,7 @@ void FUN_0001ca00(void)
 {
   DAT_00ffe06c = -10;
   DAT_00ffe06a = 0x1340;
-  FUN_000530de();
+  service_audio_if_enabled();
   DAT_00ffe068 = 0x1020;
   _DAT_00ffe06e = 0xffff;
   DAT_00ffe070 = 0x1e;

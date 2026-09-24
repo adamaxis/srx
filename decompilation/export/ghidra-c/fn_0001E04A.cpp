@@ -6,7 +6,7 @@
 //   0x0001DBAA schedule_world_activity_timeout
 //   0x0001DF00 clear_entity_effect_pending_flags
 //   0x0001E0DC spawn_world_effect_entities
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 
 
 void begin_world_effect_transition(void)
@@ -17,7 +17,7 @@ void begin_world_effect_transition(void)
   }
   else if ((DAT_00ffdf40 == 2) && (DAT_00ffe11e = 0x960, DAT_00ffe16f == '\0')) {
     DAT_00ffe16f = -1;
-    FUN_000530de();
+    service_audio_if_enabled();
     clear_entity_effect_pending_flags();
     spawn_world_effect_entities();
   }

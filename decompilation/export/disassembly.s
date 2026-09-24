@@ -1521,7 +1521,7 @@
 00001E54: andi.w #0x1,D0w
 00001E58: bne.w 0x00001e66
 00001E5C: move.w #0x5d,D0w
-00001E60: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00001E60: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00001E66: movea.l (0x00fff1e2).l,A1
 00001E6C: move.w (0x00fff1e6).l,D4w
 00001E72: cmpi.w #0x26,D4w
@@ -2308,7 +2308,7 @@
 00003918: rts
 0000391A: move.b #0x1,(0x00fff0cc).l
 00003922: move.w #0x25,D0w
-00003926: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00003926: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0000392C: movea.l #0x6aa7e,A1
 00003932: movea.l (0x00fffc04).l,A0
 00003938: move.l A0,D5
@@ -3331,7 +3331,7 @@
 00004A96: jsr 0x000061a0.l ; call 000061A0 append_entity_sprite_record
 00004A9C: movem.l (SP)+,{  A0 A1}
 00004AA0: move.w #0x3b,D0w
-00004AA4: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00004AA4: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00004AAA: rts
 00004ADC: subq.w #0x1,(0xe,A0)
 00004AE0: bmi.w 0x00004b6c
@@ -4480,7 +4480,7 @@
 0000ADF8: bsr.w 0x0000aad2 ; call 0000AAD2 FUN_0000aad2
 0000ADFC: bcc.w 0x0000ae40
 0000AE00: move.w #0x4b,D0w
-0000AE04: jsr 0x000530de.l ; call 000530DE FUN_000530de
+0000AE04: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0000AE0A: move.w #0x0,D0w
 0000AE0E: bsr.w 0x0000abfc ; call 0000ABFC update_entity_animation_delay
 0000AE12: bra.w 0x0000ae26
@@ -4615,7 +4615,7 @@
 0000B08A: add.w D0w,D0w
 0000B08C: lea (0xb03e).l,A2 ; data 0000b03e
 0000B092: move.w (0x0,A2,D0w*0x1),D0w ; data 0000b03e
-0000B096: jsr 0x000530de.l ; call 000530DE FUN_000530de
+0000B096: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0000B09C: clr.w (0x38,A0)
 0000B0A0: move.w (A0),D5w
 0000B0A2: move.w (0x4,A0),D6w
@@ -4697,7 +4697,7 @@
 0000B1E8: cmpi.w #0xc,(0xe,A0)
 0000B1EE: bne.w 0x0000b1f6
 0000B1F2: move.w #0x55,D0w
-0000B1F6: jsr 0x000530de.l ; call 000530DE FUN_000530de
+0000B1F6: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0000B1FC: move.l (0xa2,A0),D3
 0000B200: beq.w 0x0000b21c
 0000B204: movea.l D3,A2
@@ -4726,7 +4726,7 @@
 0000B262: btst.b #0x7,(0x00fff9f8).l
 0000B26A: beq.w 0x0000b272
 0000B26E: move.w #0x4e,D0w
-0000B272: jsr 0x000530de.l ; call 000530DE FUN_000530de
+0000B272: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0000B278: move.b (0x4c,A1),D1b
 0000B27C: move.b (0x9c,A1),D0b
 0000B280: movem.w {  D1w D0w},-(SP)
@@ -4769,7 +4769,7 @@
 0000B344: add.w D0w,D0w
 0000B346: lea (0xb05e).l,A2 ; data 0000b05e
 0000B34C: move.w (0x0,A2,D0w*0x1),D0w ; data 0000b05e
-0000B350: jsr 0x000530de.l ; call 000530DE FUN_000530de
+0000B350: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0000B356: bset.b #0x4,(0x10,A0)
 0000B35C: move.w (0x2e,A0),D0w
 0000B360: move.l #0xb38a,(0x3a,A0) ; data 0000b38a
@@ -6510,11 +6510,11 @@
 0000E460: move.w #0x6000,D1w
 0000E464: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
 0000E46A: move.w #0x1b,D0w
-0000E46E: jsr 0x000530de.l ; call 000530DE FUN_000530de
+0000E46E: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0000E474: bsr.w 0x0000e00a ; call 0000E00A wait_for_controller_event
 0000E478: rts
 0000E47A: move.w #0x1a,D0w
-0000E47E: jsr 0x000530de.l ; call 000530DE FUN_000530de
+0000E47E: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0000E484: move.w #0x14,D5w
 0000E488: jsr 0x00000c24.l ; call 00000C24 wait_for_vblank_frames
 0000E48E: jsr 0x000181f8.l ; call 000181F8 FUN_000181f8
@@ -8548,14 +8548,14 @@
 00010E24: tst.b (0x00fff0b1).l
 00010E2A: bne.w 0x00010f22
 00010E2E: move.w #0x25,D0w
-00010E32: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00010E32: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00010E38: bsr.w 0x0001170c ; call 0001170C FUN_0001170c
 00010E3C: bsr.w 0x000111e8 ; call 000111E8 FUN_000111e8
 00010E40: bra.b 0x00010dc6
 00010E42: btst.b #0xe,(0x00ffdd22).l
 00010E4A: beq.w 0x00010ec8
 00010E4E: move.w #0x24,D0w
-00010E52: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00010E52: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00010E58: move.w (0x00fff0d0).l,-(SP)
 00010E5E: bsr.w 0x00011740 ; call 00011740 FUN_00011740
 00010E62: move.w (SP)+,(0x00fff0d0).l
@@ -9105,7 +9105,7 @@
 000117F2: move.w #-0x1,D0w
 000117F6: move.l D0,-(SP) ; data Stack[-0x6]
 000117F8: move.w #0x25,D0w
-000117FC: jsr 0x000530de.l ; call 000530DE FUN_000530de
+000117FC: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00011802: move.l (SP)+,D0
 00011804: lea (0xcd302).l,A1 ; data 000cd302
 0001180A: bsr.w 0x000111d0 ; call 000111D0 FUN_000111d0
@@ -9126,7 +9126,7 @@
 00011852: btst.b #0xe,(0x00ffdd22).l
 0001185A: beq.w 0x0001188a
 0001185E: move.w #0x24,D0w
-00011862: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00011862: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00011868: clr.l D1
 0001186A: move.b (0x00fff0d0).l,D1b
 00011870: move.w (SP)+,(0x00fff0d0).l
@@ -9244,7 +9244,7 @@
 00011A6A: lea (0xcf334).l,A1 ; data 000cf334
 00011A70: move.l D0,-(SP) ; data Stack[-0x4]
 00011A72: move.w #0x25,D0w
-00011A76: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00011A76: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00011A7C: move.l (SP)+,D0
 00011A7E: bsr.w 0x00011abe ; call 00011ABE FUN_00011abe
 00011A82: bra.w 0x000119fc
@@ -9326,7 +9326,7 @@
 00011BE4: moveq #-0x1,D0
 00011BE6: move.l D0,-(SP) ; data Stack[-0x6]
 00011BE8: move.w #0x25,D0w
-00011BEC: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00011BEC: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00011BF2: move.l (SP)+,D0
 00011BF4: lea (0xcd33e).l,A1 ; data 000cd33e
 00011BFA: bsr.w 0x000111d0 ; call 000111D0 FUN_000111d0
@@ -9344,7 +9344,7 @@
 00011C30: btst.b #0xe,(0x00ffdd22).l
 00011C38: beq.w 0x00011c80
 00011C3C: move.w #0x24,D0w
-00011C40: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00011C40: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00011C46: bsr.w 0x00012062 ; call 00012062 FUN_00012062
 00011C4A: bgt.w 0x00011c58
 00011C4E: move.w (SP)+,(0x00fff0d0).l
@@ -9400,7 +9400,7 @@
 00011D3C: btst.b #0xa,(0x00ffdd22).l
 00011D44: beq.w 0x00011d58
 00011D48: move.w #0x25,D0w
-00011D4C: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00011D4C: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00011D52: bsr.w 0x000127b0 ; call 000127B0 FUN_000127b0
 00011D56: bra.b 0x00011d2a
 00011D58: btst.b #0xb,(0x00ffdd22).l
@@ -9409,7 +9409,7 @@
 00011D66: btst.b #0xe,(0x00ffdd22).l
 00011D6E: beq.b 0x00011d2a
 00011D70: move.w #0x24,D0w
-00011D74: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00011D74: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00011D7A: tst.b (0x00fff114).l
 00011D80: bpl.w 0x00011d86
 00011D84: rts
@@ -9478,7 +9478,7 @@
 00011EC2: moveq #-0x1,D0
 00011EC4: move.l D0,-(SP) ; data Stack[-0x6]
 00011EC6: move.w #0x25,D0w
-00011ECA: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00011ECA: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00011ED0: move.l (SP)+,D0
 00011ED2: lea (0xcd37a).l,A1 ; data 000cd37a
 00011ED8: bsr.w 0x000111d0 ; call 000111D0 FUN_000111d0
@@ -9496,7 +9496,7 @@
 00011F0E: btst.b #0xe,(0x00ffdd22).l
 00011F16: beq.w 0x00011f5e
 00011F1A: move.w #0x24,D0w
-00011F1E: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00011F1E: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00011F24: clr.l D1
 00011F26: move.b (0x00fff0d0).l,D1b
 00011F2C: subq.w #0x2,D1w
@@ -9762,7 +9762,7 @@
 00012388: beq.w 0x00012402
 0001238C: moveq #0x1,D2
 0001238E: move.w #0x25,D0w
-00012392: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00012392: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00012398: clr.w D3w
 0001239A: move.b (0x00fff0b9).l,D3b
 000123A0: move.l #0xc69e,D7
@@ -9790,7 +9790,7 @@
 00012402: btst.b #0xe,(0x00ffdd22).l
 0001240A: beq.w 0x0001250c
 0001240E: move.w #0x24,D0w
-00012412: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00012412: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00012418: bsr.w 0x00012c1e ; call 00012C1E FUN_00012c1e
 0001241C: clr.l D0
 0001241E: move.b (0x00fff0dc).l,D0b
@@ -9959,7 +9959,7 @@
 000126F8: btst.b #0xa,(0x00ffdd22).l
 00012700: beq.w 0x00012714
 00012704: move.w #0x25,D0w
-00012708: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00012708: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0001270E: bsr.w 0x000127b0 ; call 000127B0 FUN_000127b0
 00012712: bra.b 0x000126e6
 00012714: btst.b #0xb,(0x00ffdd22).l
@@ -9968,7 +9968,7 @@
 00012722: btst.b #0xe,(0x00ffdd22).l
 0001272A: beq.w 0x00012750
 0001272E: move.w #0x24,D0w
-00012732: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00012732: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00012738: tst.b (0x00fff114).l
 0001273E: bmi.w 0x0001274e
 00012742: bsr.w 0x00012148 ; call 00012148 FUN_00012148
@@ -10106,7 +10106,7 @@
 0001297C: btst.b #0xa,(0x00ffdd22).l
 00012984: beq.w 0x00012998
 00012988: move.w #0x25,D0w
-0001298C: jsr 0x000530de.l ; call 000530DE FUN_000530de
+0001298C: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00012992: bsr.w 0x000127b0 ; call 000127B0 FUN_000127b0
 00012996: bra.b 0x0001296a
 00012998: btst.b #0xb,(0x00ffdd22).l
@@ -10115,7 +10115,7 @@
 000129A6: btst.b #0xe,(0x00ffdd22).l
 000129AE: beq.w 0x000129e2
 000129B2: move.w #0x24,D0w
-000129B6: jsr 0x000530de.l ; call 000530DE FUN_000530de
+000129B6: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 000129BC: tst.w (0x00fff096).l
 000129C2: bmi.w 0x0001287e
 000129C6: tst.b (0x00fff114).l
@@ -11554,7 +11554,7 @@
 000141EC: jmp 0x0000b39a.l ; call 0000B39A set_entity_heading_with_field_animation
 00014220: jmp 0x0000b11c.l ; call 0000B11C synchronize_entity_behavior_spawn
 00014226: move.w #0x4b,D0w
-0001422A: jsr 0x000530de.l ; call 000530DE FUN_000530de
+0001422A: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00014230: move.b (0x57,A0),D0b
 00014234: subq.b #0x1,D0b
 00014236: ext.w D0w
@@ -12363,7 +12363,7 @@
 00014E5A: tst.w D1w
 00014E5C: bne.w 0x00014e6e
 00014E60: move.w #0x3c,D0w
-00014E64: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00014E64: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00014E6A: bra.w 0x00014eda
 00014E6E: move.w (A1),(A0)
 00014E70: move.w (0x4,A1),D1w
@@ -12388,7 +12388,7 @@
 00014EBA: move.w #0x10,(0x16,A0)
 00014EC0: bra.w 0x00014ed2
 00014EC4: move.w #0x3c,D0w
-00014EC8: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00014EC8: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00014ECE: bra.w 0x00014eda
 00014ED2: movea.l A1,A0
 00014ED4: jsr 0x0000aff2.l ; call 0000AFF2 prepare_entity_auxiliary_behavior
@@ -12586,7 +12586,7 @@
 00015230: ext.w D0w
 00015232: lsl.w #0x1,D0w
 00015234: move.w (0x0,A4,D0w*0x1),D0w ; data 00015336
-00015238: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00015238: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0001523E: move.w (SP)+,D0w
 00015240: cmpi.w #0x2,(0x00ffdf40).l
 00015248: bne.w 0x00015278
@@ -12647,7 +12647,7 @@
 0001537A: move.w (0x4,A0),(0x6,A0)
 00015380: clr.w (0x44,A0)
 00015384: move.w #0x2c,D0w
-00015388: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00015388: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0001538E: rts
 00015390: btst.b #0x7,(0x10,A0)
 00015396: beq.w 0x000153f8
@@ -13016,7 +13016,7 @@
 00015908: lea (0x4946).l,A2 ; data 00004946
 0001590E: move.w (0x0,A2,D0w*0x1),D0w ; data 00004946
 00015912: beq.w 0x0001591c
-00015916: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00015916: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0001591C: lsl.w #0x2,D1w
 0001591E: lea (0x4964).l,A2 ; data 00004964
 00015924: movea.l (0x0,A2,D1w*0x1),A2 ; data 00004964
@@ -13038,7 +13038,7 @@
 0001595A: lea (0x4946).l,A2 ; data 00004946
 00015960: move.w (0x0,A2,D0w*0x1),D0w
 00015964: beq.w 0x0001596e
-00015968: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00015968: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0001596E: lsl.w #0x2,D1w
 00015970: lea (0x4964).l,A2 ; data 00004964
 00015976: movea.l (0x0,A2,D1w*0x1),A2 ; data 00004964
@@ -14023,7 +14023,7 @@
 0001762E: bsr.w 0x0001789c ; call 0001789C FUN_0001789c
 00017632: move.w #-0x7e8c,(0x00c00004).l
 0001763A: move.w #0x5b,D0w
-0001763E: jsr 0x000530de.l ; call 000530DE FUN_000530de
+0001763E: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00017644: bsr.w 0x000177fc ; call 000177FC FUN_000177fc
 00017648: move.w #0x5b,D0w
 0001764C: jsr 0x000530d2.l ; call 000530D2 FUN_000530d2
@@ -14445,7 +14445,7 @@
 00017D50: add.w D0w,D0w
 00017D52: lea (0x17d62).l,A0 ; data 00017d62
 00017D58: move.w (0x0,A0,D0w*0x1),D0w ; data 00017d62
-00017D5C: jmp 0x000530de.l ; call 000530DE FUN_000530de
+00017D5C: jmp 0x000530de.l ; call 000530DE service_audio_if_enabled
 00017D72: move.w #-0x7fe4,D5w
 00017D76: move.l #0xeb84,D4
 00017D7C: move.w #0x3,D7w
@@ -14849,7 +14849,7 @@
 0001857A: neg.w D1w
 0001857C: bsr.w 0x00017d90 ; call 00017D90 advance_hud_panel
 00018580: move.w #0x18,D0w
-00018584: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00018584: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0001858A: movea.l (0x00fffc04).l,A1
 00018590: tst.b (0x4c,A1)
 00018594: beq.w 0x000185ce
@@ -14864,7 +14864,7 @@
 000185BA: bgt.w 0x000185c4
 000185BE: move.b #0x1,(0x9c,A1)
 000185C4: move.w #0x18,D0w
-000185C8: jsr 0x000530de.l ; call 000530DE FUN_000530de
+000185C8: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 000185CE: move.b #-0x1,(0x00fff0dc).l
 000185D6: clr.l D7
 000185D8: bsr.w 0x00018776 ; call 00018776 FUN_00018776
@@ -15770,7 +15770,7 @@
 00019960: tst.b (0x00fff0a0).l
 00019966: beq.w 0x0001996e
 0001996A: move.w #0x52,D0w
-0001996E: jsr 0x000530de.l ; call 000530DE FUN_000530de
+0001996E: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00019974: rts
 00019976: lea (0xfff0ed).l,A4 ; data 00fff0ed
 0001997C: lea (0xfffbbe).l,A6 ; data 00fffbbe
@@ -16921,7 +16921,7 @@
 0001AF9A: tst.b (0x00ffe18e).l
 0001AFA0: bne.w 0x0001afa8
 0001AFA4: move.w #0x1b,D0w
-0001AFA8: jsr 0x000530de.l ; call 000530DE FUN_000530de
+0001AFA8: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0001AFAE: tst.w (0x00ffe0aa).l
 0001AFB4: beq.w 0x0001afc0
 0001AFB8: bsr.w 0x0001c0c2 ; call 0001C0C2 FUN_0001c0c2
@@ -17259,7 +17259,7 @@
 0001B5B2: dbf D7w,0x0001b5b0
 0001B5B6: bra.b 0x0001b56e
 0001B5B8: move.w #0x2b,D0w
-0001B5BC: jsr 0x000530de.l ; call 000530DE FUN_000530de
+0001B5BC: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0001B5C2: lea (0xff1580).l,A0 ; data 00ff1580
 0001B5C8: bsr.w 0x0001b7d0 ; call 0001B7D0 FUN_0001b7d0
 0001B5CC: move.l #0x1c330,(0x8,A0) ; data 0001c330
@@ -17333,7 +17333,7 @@
 0001B998: rts
 0001B99A: move.w #0x4,(0x00ffe04e).l
 0001B9A2: move.w #0x2a,D0w
-0001B9A6: jsr 0x000530de.l ; call 000530DE FUN_000530de
+0001B9A6: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0001B9AC: rts
 0001B9AE: subq.w #0x3,(0x00ffe04a).l
 0001B9B4: cmpi.w #0xb0,(0x00ffe04a).l
@@ -17806,7 +17806,7 @@
 0001C81A: move.w #0x10c,(0x00ffe060).l
 0001C822: clr.b (0xc,A0)
 0001C826: move.w #0x16,D0w
-0001C82A: jsr 0x000530de.l ; call 000530DE FUN_000530de
+0001C82A: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0001C830: move.w #0x102,(0x00ffe062).l
 0001C838: move.w #-0x1,(0x00ffe05e).l
 0001C840: clr.w (0x00ffe064).l
@@ -17854,7 +17854,7 @@
 0001C9A2: move.w #0x10c0,(0x00ffe06a).l
 0001C9AA: move.w #0xa,(0x00ffe06c).l
 0001C9B2: move.w #0x15,D0w
-0001C9B6: jsr 0x000530de.l ; call 000530DE FUN_000530de
+0001C9B6: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0001C9BC: move.w #0x1020,(0x00ffe068).l
 0001C9C4: move.w #-0x1,(0x00ffe06e).l
 0001C9CC: move.w #0x1e,(0x00ffe070).l
@@ -17938,7 +17938,7 @@
 0001CB86: beq.w 0x0001cb8c
 0001CB8A: rts
 0001CB8C: move.w #0x17,D0w
-0001CB90: jsr 0x000530de.l ; call 000530DE FUN_000530de
+0001CB90: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0001CB96: move.w D1w,(0x12,A1)
 0001CB9A: move.b #-0x1,(0x6,A1)
 0001CBA0: clr.b (0xa,A1)
@@ -18647,7 +18647,7 @@
 0001DF80: jsr 0x000133a6.l ; call 000133A6 FUN_000133a6
 0001DF86: bmi.w 0x0001dfba
 0001DF8A: move.w #0x24,D0w
-0001DF8E: jsr 0x000530de.l ; call 000530DE FUN_000530de
+0001DF8E: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0001DF94: bclr.b #0x0,(0x10,A0)
 0001DF9A: cmpi.w #0x65,(0x2,A0)
 0001DFA0: bne.w 0x0001dfc2
@@ -18709,7 +18709,7 @@
 0001E07A: bne.w 0x0001e098
 0001E07E: move.b #-0x1,(0x00ffe16f).l
 0001E086: move.w #0x30,D0w
-0001E08A: jsr 0x000530de.l ; call 000530DE FUN_000530de
+0001E08A: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0001E090: bsr.w 0x0001df00 ; call 0001DF00 clear_entity_effect_pending_flags
 0001E094: bsr.w 0x0001e0dc ; call 0001E0DC spawn_world_effect_entities
 0001E098: rts
@@ -22669,7 +22669,7 @@
 000269FE: rts
 00026A00: move.b #-0x1,(0x00fff0b1).l
 00026A08: move.w #0x29,D0w
-00026A0C: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00026A0C: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00026A12: move.l #0x15be02,D0
 00026A18: move.l #0x9620,D1
 00026A1E: move.l #0xa0,D2
@@ -22859,18 +22859,18 @@
 00052EA8: andi.b #0x3f,D1b
 00052EAC: move.b D1b,(A0)
 00052EAE: rts
-00052EB0: jsr 0x00052e4e.l ; call 00052E4E FUN_00052e4e
+00052EB0: jsr 0x00052e4e.l ; call 00052E4E begin_audio_bus_access
 00052EB6: move.l (0x8,A6),D0
-00052EBA: jsr 0x00052ea2.l ; call 00052EA2 FUN_00052ea2
-00052EC0: jmp 0x00052e84.l ; call 00052E84 FUN_00052e84
-00052EC6: jsr 0x00052e4e.l ; call 00052E4E FUN_00052e4e
+00052EBA: jsr 0x00052ea2.l ; call 00052EA2 append_audio_command
+00052EC0: jmp 0x00052e84.l ; call 00052E84 end_audio_bus_access
+00052EC6: jsr 0x00052e4e.l ; call 00052E4E begin_audio_bus_access
 00052ECC: move.l (0x8,A6),D0
-00052ED0: jsr 0x00052ea2.l ; call 00052EA2 FUN_00052ea2
+00052ED0: jsr 0x00052ea2.l ; call 00052EA2 append_audio_command
 00052ED6: asr.l #0x8,D0
-00052ED8: jsr 0x00052ea2.l ; call 00052EA2 FUN_00052ea2
+00052ED8: jsr 0x00052ea2.l ; call 00052EA2 append_audio_command
 00052EDE: asr.l #0x8,D0
-00052EE0: jsr 0x00052ea2.l ; call 00052EA2 FUN_00052ea2
-00052EE6: jmp 0x00052e84.l ; call 00052E84 FUN_00052e84
+00052EE0: jsr 0x00052ea2.l ; call 00052EA2 append_audio_command
+00052EE6: jmp 0x00052e84.l ; call 00052E84 end_audio_bus_access
 00052EEC: link.w A6,0x0
 00052EF0: jsr 0x00052de0.l ; call 00052DE0 FUN_00052de0
 00052EF6: jsr 0x00052e26.l ; call 00052E26 FUN_00052e26
@@ -22890,29 +22890,29 @@
 00052F32: jsr 0x00052ec6.l ; call 00052EC6 FUN_00052ec6
 00052F38: unlk A6
 00052F3A: rts
-00052F3C: jsr 0x00052e4e.l ; call 00052E4E FUN_00052e4e
+00052F3C: jsr 0x00052e4e.l ; call 00052E4E begin_audio_bus_access
 00052F42: moveq #0x10,D0
-00052F44: jsr 0x00052e96.l ; call 00052E96 FUN_00052e96
+00052F44: jsr 0x00052e96.l ; call 00052E96 flush_audio_command
 00052F4A: move.l (0x8,A6),D0
-00052F4E: jsr 0x00052ea2.l ; call 00052EA2 FUN_00052ea2
-00052F54: jmp 0x00052e84.l ; call 00052E84 FUN_00052e84
-00052F5A: jsr 0x00052e4e.l ; call 00052E4E FUN_00052e4e
+00052F4E: jsr 0x00052ea2.l ; call 00052EA2 append_audio_command
+00052F54: jmp 0x00052e84.l ; call 00052E84 end_audio_bus_access
+00052F5A: jsr 0x00052e4e.l ; call 00052E4E begin_audio_bus_access
 00052F60: moveq #0x12,D0
 00052F62: bra.b 0x00052f44
-00052F6E: jsr 0x00052e4e.l ; call 00052E4E FUN_00052e4e
+00052F6E: jsr 0x00052e4e.l ; call 00052E4E begin_audio_bus_access
 00052F74: moveq #0x20,D0
 00052F76: bra.b 0x00052f44
-00052FA0: jsr 0x00052e4e.l ; call 00052E4E FUN_00052e4e
+00052FA0: jsr 0x00052e4e.l ; call 00052E4E begin_audio_bus_access
 00052FA6: moveq #0x16,D0
-00052FA8: jsr 0x00052e96.l ; call 00052E96 FUN_00052e96
-00052FAE: jmp 0x00052e84.l ; call 00052E84 FUN_00052e84
-00052FD2: jsr 0x00052e96.l ; call 00052E96 FUN_00052e96
+00052FA8: jsr 0x00052e96.l ; call 00052E96 flush_audio_command
+00052FAE: jmp 0x00052e84.l ; call 00052E84 end_audio_bus_access
+00052FD2: jsr 0x00052e96.l ; call 00052E96 flush_audio_command
 00052FD8: move.l (0x8,A6),D0
-00052FDC: jsr 0x00052ea2.l ; call 00052EA2 FUN_00052ea2
+00052FDC: jsr 0x00052ea2.l ; call 00052EA2 append_audio_command
 00052FE2: move.l (0xc,A6),D0
-00052FE6: jsr 0x00052ea2.l ; call 00052EA2 FUN_00052ea2
-00052FEC: jmp 0x00052e84.l ; call 00052E84 FUN_00052e84
-00053094: jsr 0x00052e4e.l ; call 00052E4E FUN_00052e4e
+00052FE6: jsr 0x00052ea2.l ; call 00052EA2 append_audio_command
+00052FEC: jmp 0x00052e84.l ; call 00052E84 end_audio_bus_access
+00053094: jsr 0x00052e4e.l ; call 00052E4E begin_audio_bus_access
 0005309A: moveq #0x1b,D0
 0005309C: bra.w 0x00052fd2 ; call 00052FD2 FUN_00052fd2
 000530A0: move SR,-(SP) ; data Stack[-0x2]
@@ -22938,7 +22938,7 @@
 000530FC: rts
 000530FE: movem.l {  A6 A5 A4 A3 A2 A1 A0 D7 D6 D5 D4 D3 D2 D1 D0},-(SP)
 00053102: move.l D0,-(SP) ; data Stack[-0x40]
-00053104: jsr 0x00052f3c.l ; call 00052F3C FUN_00052f3c
+00053104: jsr 0x00052f3c.l ; call 00052F3C service_audio_command_queue
 0005310A: addq.w #0x4,SP
 0005310C: movem.l (SP)+,{ D0 D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 00053110: rts
@@ -25033,26 +25033,26 @@
 00056C66: btst.b #0xa,(0x00ffdd22).l
 00056C6E: beq.w 0x00056c82
 00056C72: move.w #0x25,D0w
-00056C76: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00056C76: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00056C7C: moveq #-0x1,D0
 00056C7E: bra.w 0x00056cb6
 00056C82: btst.b #0x8,(0x00ffdd22).l
 00056C8A: beq.w 0x00056c9e
 00056C8E: move.w #0x25,D0w
-00056C92: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00056C92: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00056C98: moveq #-0x1,D0
 00056C9A: bra.w 0x00056cd4
 00056C9E: btst.b #0xb,(0x00ffdd22).l
 00056CA6: beq.w 0x00056cbc
 00056CAA: move.w #0x25,D0w
-00056CAE: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00056CAE: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00056CB4: moveq #0x1,D0
 00056CB6: bsr.w 0x00058c54 ; call 00058C54 FUN_00058c54
 00056CBA: bra.b 0x00056c54
 00056CBC: btst.b #0x9,(0x00ffdd22).l
 00056CC4: beq.w 0x00056ce8
 00056CC8: move.w #0x25,D0w
-00056CCC: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00056CCC: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00056CD2: moveq #0x1,D0
 00056CD4: cmpi.b #0x1,(0x00fff0b7).l
 00056CDC: beq.w 0x00056c54
@@ -25061,7 +25061,7 @@
 00056CE8: btst.b #0xe,(0x00ffdd22).l
 00056CF0: beq.w 0x00056d6c
 00056CF4: move.w #0x24,D0w
-00056CF8: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00056CF8: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00056CFE: tst.b (0x00fff0d1).l
 00056D04: beq.w 0x00056d2a
 00056D08: bsr.w 0x00056dc4 ; call 00056DC4 FUN_00056dc4
@@ -25089,7 +25089,7 @@
 00056D7C: btst.b #0xd,(0x00ffdd22).l
 00056D84: beq.w 0x00056d9c
 00056D88: move.w #0x24,D0w
-00056D8C: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00056D8C: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00056D92: jsr 0x0000d4c8.l ; call 0000D4C8 FUN_0000d4c8
 00056D98: bra.w 0x00056b66
 00056D9C: btst.b #0xf,(0x00ffdd22).l
@@ -25895,7 +25895,7 @@
 00057BE0: beq.w 0x00057c04
 00057BE4: moveq #-0x1,D2
 00057BE6: move.w #0x25,D0w
-00057BEA: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00057BEA: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00057BF0: moveq #0x1,D3
 00057BF2: move.l #0xc61c,D7
 00057BF8: move.w #0x6000,D4w
@@ -25910,7 +25910,7 @@
 00057C20: btst.b #0xc,(0x00ffdd22).l
 00057C28: beq.b 0x00057bc6
 00057C2A: move.w #0x24,D0w
-00057C2E: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00057C2E: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00057C34: movem.l (SP)+,{ D0 D1 D6 A0}
 00057C38: rts
 00057C3A: move.l #0xc604,D4
@@ -27626,7 +27626,7 @@
 00059FA0: bhi.w 0x0005a07e
 00059FA4: bne.b 0x00059ff6
 00059FA6: move.w #0x2e,D0w
-00059FAA: jsr 0x000530de.l ; call 000530DE FUN_000530de
+00059FAA: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00059FB0: move.w #0x0,(0x00ffdd08).l
 00059FB8: jsr 0x00000f1c.l ; call 00000F1C FUN_00000f1c
 00059FBE: move.w #0x600,D4w
@@ -27712,7 +27712,7 @@
 0005A124: cmpi.w #0x4,(0x00fff126).l
 0005A12C: bne.w 0x0005a13a
 0005A130: move.w #0x46,D0w
-0005A134: jsr 0x000530de.l ; call 000530DE FUN_000530de
+0005A134: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0005A13A: cmpi.w #0x4,(0x00fff126).l
 0005A142: bne.w 0x0005a16e
 0005A146: move.w #0x0,D0w
@@ -27787,7 +27787,7 @@
 0005A2AE: cmpi.w #0x4,(0x00fff12e).l
 0005A2B6: bne.w 0x0005a2c4
 0005A2BA: move.w #0x2f,D0w
-0005A2BE: jsr 0x000530de.l ; call 000530DE FUN_000530de
+0005A2BE: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0005A2C4: cmpi.w #0x4,(0x00fff12e).l
 0005A2CC: bne.w 0x0005a300
 0005A2D0: move.w #0x4,(0x00fff146).l
@@ -28823,11 +28823,11 @@
 0005D4D0: jsr 0x000566d8.l ; call 000566D8 FUN_000566d8
 0005D4D6: bra.w 0x0005d522
 0005D4DA: move.w #0x2c,D0w
-0005D4DE: jsr 0x000530de.l ; call 000530DE FUN_000530de
+0005D4DE: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0005D4E4: bsr.w 0x0005d6bc ; call 0005D6BC FUN_0005d6bc
 0005D4E8: bra.w 0x0005d522
 0005D4EC: move.w #0x39,D0w
-0005D4F0: jsr 0x000530de.l ; call 000530DE FUN_000530de
+0005D4F0: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0005D4F6: addq.w #0x8,(0x00ffdd08).l
 0005D4FC: addq.w #0x8,(0x00ffdd0c).l
 0005D502: bra.w 0x0005d522
@@ -28997,7 +28997,7 @@
 0005D822: cmpi.w #0x5,(0x00ffdd2a).l
 0005D82A: blt.w 0x0005d838
 0005D82E: move.w #0x5c,D0w
-0005D832: jsr 0x000530de.l ; call 000530DE FUN_000530de
+0005D832: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0005D838: bset.b #0x1,(0x00ffef14).l
 0005D840: bset.b #0x3,(0x00ffef14).l
 0005D848: bset.b #0x2,(0x00ffef14).l

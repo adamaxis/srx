@@ -3,7 +3,7 @@
 // Name: FUN_0001c9a2
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -13,7 +13,7 @@ void FUN_0001c9a2(void)
 {
   DAT_00ffe06a = 0x10c0;
   DAT_00ffe06c = 10;
-  FUN_000530de();
+  service_audio_if_enabled();
   DAT_00ffe068 = 0x1020;
   _DAT_00ffe06e = 0xffff;
   DAT_00ffe070 = 0x1e;

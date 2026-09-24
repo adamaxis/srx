@@ -3,7 +3,7 @@
 // Name: FUN_000530ea
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00052F3C FUN_00052f3c
+//   0x00052F3C service_audio_command_queue
 //   0x00053112 FUN_00053112
 
 
@@ -18,7 +18,7 @@ undefined8 FUN_000530ea(void)
   
   if (_DAT_00fffc08 != 0) {
     uVar1 = FUN_00053112();
-    FUN_00052f3c((int)((ulonglong)uVar1 >> 0x20));
+    service_audio_command_queue((int)((ulonglong)uVar1 >> 0x20));
     return uVar1;
   }
   return CONCAT44(in_D0,in_D1);

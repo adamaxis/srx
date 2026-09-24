@@ -3,7 +3,7 @@
 // Name: FUN_00015354
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 
 
 void FUN_00015354(void)
@@ -20,7 +20,7 @@ void FUN_00015354(void)
   in_A0[1] = *in_A0;
   in_A0[3] = in_A0[2];
   in_A0[0x22] = 0;
-  FUN_000530de();
+  service_audio_if_enabled();
   return;
 }
 

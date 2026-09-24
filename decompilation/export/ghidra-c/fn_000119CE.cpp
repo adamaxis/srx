@@ -8,7 +8,7 @@
 //   0x00001232 upload_hud_tile_block
 //   0x0000195C sample_controller_input
 //   0x00011ABE FUN_00011abe
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 
 
 undefined8 FUN_000119ce(void)
@@ -58,7 +58,7 @@ LAB_00011a44:
       if ((DAT_00ffdd22 & 0x800) == 0) goto LAB_00011a5c;
       uVar1 = 1;
 LAB_00011a70:
-      FUN_000530de(uVar1);
+      service_audio_if_enabled(uVar1);
       FUN_00011abe();
       uVar1 = extraout_D1_00;
       uVar5 = extraout_A0_00;

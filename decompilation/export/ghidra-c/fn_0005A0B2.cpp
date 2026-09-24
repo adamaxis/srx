@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001728 render_hud_sprite_stream
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 //   0x0005A582 FUN_0005a582
 //   0x0005B2C2 FUN_0005b2c2
 //   0x0005B2E2 FUN_0005b2e2
@@ -23,7 +23,7 @@ void FUN_0005a0b2(void)
     }
     else {
       if (DAT_00fff126 == 4) {
-        FUN_000530de();
+        service_audio_if_enabled();
       }
       if (DAT_00fff126 == 4) {
         FUN_0005b2c2();

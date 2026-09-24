@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x000036FC FUN_000036fc
 //   0x0000ABFC update_entity_animation_delay
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 
 
 void FUN_00014226(void)
@@ -13,7 +13,7 @@ void FUN_00014226(void)
 {
   int extraout_A0;
   
-  FUN_000530de();
+  service_audio_if_enabled();
   update_entity_animation_delay();
   *(char *)(extraout_A0 + 0x4f) = *(char *)(extraout_A0 + 0x4f) + -1;
   FUN_000036fc();

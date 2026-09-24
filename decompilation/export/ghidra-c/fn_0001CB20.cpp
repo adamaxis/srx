@@ -36,7 +36,7 @@ void FUN_0001cb20(void)
       DAT_00ffe060 = 0x134;
       *(undefined **)(in_A0 + 4) = &UNK_0001c27c;
       *(undefined1 *)(in_A0 + 0xd) = 0;
-      FUN_000530de();
+      service_audio_if_enabled();
       DAT_00ffe062 = 0x102;
       _DAT_00ffe05e = 0xffff;
       DAT_00ffe064 = 0;

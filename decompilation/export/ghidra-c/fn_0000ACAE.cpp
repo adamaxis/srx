@@ -14,7 +14,7 @@
 //   0x0001514E process_entity_spawn_cycle
 //   0x00015646 FUN_00015646
 //   0x0001DC4C FUN_0001dc4c
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -103,7 +103,7 @@ void FUN_0000acae(void)
     FUN_0000aad2();
     in_A0 = extraout_A0_01;
     if (!bVar2) goto LAB_0000ae40;
-    FUN_000530de();
+    service_audio_if_enabled();
     update_entity_animation_delay();
     in_A0 = extraout_A0_02;
   }

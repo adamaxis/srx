@@ -50,7 +50,7 @@ void advance_world_effect_trigger(void)
     }
     else if ((DAT_00ffdf40 == 2) && (DAT_00ffe11e = 0x960, DAT_00ffe16f == '\0')) {
       DAT_00ffe16f = -1;
-      FUN_000530de();
+      service_audio_if_enabled();
       clear_entity_effect_pending_flags();
       spawn_world_effect_entities();
     }

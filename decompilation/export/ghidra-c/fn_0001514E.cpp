@@ -9,7 +9,7 @@
 //   0x00015A8C find_first_available_entity_slot
 //   0x0001DBAA schedule_world_activity_timeout
 //   0x0001E04A begin_world_effect_transition
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -65,7 +65,7 @@ void process_entity_spawn_cycle(void)
              ((*(byte *)(extraout_A0 + sVar4) & 4) != 0)) {
             DAT_00ffdd6c._1_1_ = DAT_ffffffff;
           }
-          FUN_000530de();
+          service_audio_if_enabled();
           uVar2 = (undefined2)uVar1;
           if (((DAT_00ffdf40 == 2) &&
               (pbVar8 = (byte *)((short)*(char *)(extraout_A0_00 + 0x56) + extraout_A0_00 + 0x6e),

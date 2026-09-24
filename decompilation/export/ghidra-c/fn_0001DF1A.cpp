@@ -33,7 +33,7 @@ void FUN_0001df1a(void)
       uVar2 = extraout_D1w;
       psVar4 = extraout_A0;
       if (!bVar5) {
-        FUN_000530de();
+        service_audio_if_enabled();
         *(byte *)(extraout_A0_00 + 0x10) = *(byte *)(extraout_A0_00 + 0x10) & 0xfe;
         if (*(short *)(extraout_A0_00 + 2) != 0x65) {
           return;

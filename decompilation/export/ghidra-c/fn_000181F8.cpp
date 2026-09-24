@@ -130,7 +130,7 @@ LAB_0001842e:
                   count_thresholded_random_rolls();
                   if (DAT_00fff0dd == '\0') {
                     advance_hud_panel();
-                    FUN_000530de();
+                    service_audio_if_enabled();
                     uVar7 = 0;
                     if (*(char *)(DAT_00fffc04 + 0x4c) != '\0') goto LAB_0001831a;
                   }
@@ -143,7 +143,7 @@ LAB_0001842e:
                       if (cVar2 == '\0' || cVar1 < '\x03') {
                         *(undefined1 *)(extraout_A1 + 0x9c) = 1;
                       }
-                      FUN_000530de();
+                      service_audio_if_enabled();
                     }
                   }
                 }

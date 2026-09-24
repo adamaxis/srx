@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 FUN_00001378
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 //   0x0005A582 FUN_0005a582
 //   0x0005B2C2 FUN_0005b2c2
 //   0x0005B2E2 FUN_0005b2e2
@@ -23,7 +23,7 @@ void FUN_0005a252(void)
       }
       else {
         if (DAT_00fff12e == 4) {
-          FUN_000530de();
+          service_audio_if_enabled();
         }
         if (DAT_00fff12e == 4) {
           DAT_00fff146 = 4;

@@ -26,7 +26,7 @@
 //   0x0001B628 FUN_0001b628
 //   0x0001C4EE FUN_0001c4ee
 //   0x000530D2 FUN_000530d2
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 //   0x000530EA FUN_000530ea
 //   0x00053126 FUN_00053126
 //   0x000531EA FUN_000531ea
@@ -102,7 +102,7 @@ void FUN_0001745e(void)
     *(undefined1 *)(extraout_A0 + 3) = 0x1e;
     FUN_0001789c();
     VDP_CTRL = 0x8174;
-    FUN_000530de();
+    service_audio_if_enabled();
     FUN_000177fc();
     FUN_000530d2();
     FUN_000530ea();

@@ -22,7 +22,7 @@
 //   0x0001170C FUN_0001170c
 //   0x00011740 FUN_00011740
 //   0x00011928 FUN_00011928
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 //   0x0005670E FUN_0005670e
 
 
@@ -63,7 +63,7 @@ LAB_00010d90:
   _DAT_00fff112 = CONCAT11(0xff,DAT_00fff112_1);
 LAB_00010e2e:
   do {
-    FUN_000530de();
+    service_audio_if_enabled();
     FUN_0001170c();
     FUN_000111e8();
     while( true ) {
@@ -102,7 +102,7 @@ LAB_00010f22:
         }
       }
       else {
-        FUN_000530de();
+        service_audio_if_enabled();
         uVar1 = _DAT_00fff0d0;
         FUN_00011740();
         DAT_00fff0d0 = SUB21(uVar1,1);

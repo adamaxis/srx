@@ -8,7 +8,7 @@
 //   0x0001597E FUN_0001597e
 //   0x00015D3C measure_relative_heading_and_distance
 //   0x0001DBAA schedule_world_activity_timeout
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -65,7 +65,7 @@ void FUN_00015830(void)
         *(undefined1 *)(iVar3 + 3) = 0;
         sVar2 = (short)*(char *)(extraout_A0_01 + 0x57);
         if (*(short *)(&DAT_00004946 + (short)(sVar2 << 1)) != 0) {
-          FUN_000530de(extraout_A0_01,iVar3);
+          service_audio_if_enabled(extraout_A0_01,iVar3);
           sVar2 = extraout_D1w_00;
         }
         (**(code **)((int)&PTR_FUN_00004964 + (int)(short)(sVar2 << 2)))();

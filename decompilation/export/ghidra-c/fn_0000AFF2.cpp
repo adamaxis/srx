@@ -32,7 +32,7 @@ void prepare_entity_auxiliary_behavior(void)
   *(byte *)(in_A0 + 0x10) = *(byte *)(in_A0 + 0x10) | 0x40;
   FUN_0000abb6();
   *(byte *)(extraout_A0_00 + 0x10) = *(byte *)(extraout_A0_00 + 0x10) & 0xbf;
-  FUN_000530de();
+  service_audio_if_enabled();
   *(byte *)(extraout_A0_01 + 0x10) = *(byte *)(extraout_A0_01 + 0x10) | 0x10;
   *(undefined1 **)(extraout_A0_01 + 0x3a) = &LAB_0000b38a;
   uVar1 = *(ushort *)(extraout_A0_01 + 0x2e) << 3 | *(ushort *)(extraout_A0_01 + 0x2e) >> 0xd;

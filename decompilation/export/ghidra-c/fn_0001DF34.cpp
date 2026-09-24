@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x000133A6 FUN_000133a6
 //   0x0001E514 FUN_0001e514
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 
 
 void FUN_0001df34(void)
@@ -34,7 +34,7 @@ void FUN_0001df34(void)
       uVar2 = extraout_D1w;
       psVar4 = extraout_A0;
       if (!bVar5) {
-        FUN_000530de();
+        service_audio_if_enabled();
         *(byte *)(extraout_A0_00 + 0x10) = *(byte *)(extraout_A0_00 + 0x10) & 0xfe;
         if (*(short *)(extraout_A0_00 + 2) != 0x65) {
           return;

@@ -643,3 +643,16 @@ target_link_libraries(shadowrun_ghidra_field_hud_test
     PRIVATE shadowrun_ghidra_field_hud)
 add_test(NAME shadowrun_ghidra_field_hud
          COMMAND shadowrun_ghidra_field_hud_test)
+
+add_library(shadowrun_ghidra_audio_service STATIC
+    src/audio_service_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_audio_service PUBLIC include)
+
+add_executable(shadowrun_ghidra_audio_service_test
+    tests/audio_service_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_audio_service_test
+    PRIVATE shadowrun_ghidra_audio_service)
+add_test(NAME shadowrun_ghidra_audio_service
+         COMMAND shadowrun_ghidra_audio_service_test)

@@ -11,7 +11,7 @@
 //   0x00010952 FUN_00010952
 //   0x00026BFE FUN_00026bfe
 //   0x00026C26 FUN_00026c26
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 
 
 void FUN_00026a00(void)
@@ -30,7 +30,7 @@ void FUN_00026a00(void)
   undefined2 uVar8;
   
   DAT_00fff0b1 = 0xff;
-  FUN_000530de();
+  service_audio_if_enabled();
   FUN_00000f5c();
   FUN_00010952();
   copy_source_word_block();

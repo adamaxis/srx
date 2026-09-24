@@ -3,7 +3,7 @@
 // Name: reveal_title_logo_column
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 //   0x0005C8C6 FUN_0005c8c6
 
 
@@ -17,7 +17,7 @@ ushort reveal_title_logo_column(void)
   
   uVar1 = DAT_00fff1e6 & 1;
   if (uVar1 == 0) {
-    uVar1 = FUN_000530de();
+    uVar1 = service_audio_if_enabled();
   }
   if (DAT_00fff1e6 < 0x26) {
     uVar1 = FUN_0005c8c6();

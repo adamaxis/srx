@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001CBF8 FUN_0001cbf8
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -33,7 +33,7 @@ void FUN_0001cb6a(void)
   if (puVar4[6] != '\0') {
     return;
   }
-  FUN_000530de();
+  service_audio_if_enabled();
   *(undefined2 *)(extraout_A1_00 + 0x12) = extraout_D1w;
   *(undefined1 *)(extraout_A1_00 + 6) = 0xff;
   *(undefined1 *)(extraout_A1_00 + 10) = 0;

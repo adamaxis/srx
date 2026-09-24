@@ -6,7 +6,7 @@
 //   0x00004B6C FUN_00004b6c
 //   0x000061A0 append_entity_sprite_record
 //   0x0001582A allocate_first_free_effect_slot
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 
 
 void FUN_000049a2(void)
@@ -57,7 +57,7 @@ void FUN_000049a2(void)
       puVar6 = (ushort *)((int)puVar6 + 1);
     } while (sVar4 != -1);
     append_entity_sprite_record(extraout_A0,extraout_A1);
-    FUN_000530de();
+    service_audio_if_enabled();
   }
   return;
 }

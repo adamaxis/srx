@@ -3,14 +3,14 @@
 // Name: FUN_00017d3e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 
 
 void FUN_00017d3e(void)
 
 {
   DAT_00ffe18d = DAT_00ffe18d + '\x01';
-  FUN_000530de();
+  service_audio_if_enabled();
   return;
 }
 

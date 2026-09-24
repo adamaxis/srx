@@ -6,7 +6,7 @@
 //   0x000033AA FUN_000033aa
 //   0x0001DC4C FUN_0001dc4c
 //   0x0001E540 FUN_0001e540
-//   0x000530DE FUN_000530de
+//   0x000530DE service_audio_if_enabled
 
 
 void FUN_0000391a(void)
@@ -17,7 +17,7 @@ void FUN_0000391a(void)
   undefined2 *puVar3;
   
   DAT_00fff0cc = '\x01';
-  FUN_000530de();
+  service_audio_if_enabled();
   puVar2 = DAT_00fffc04;
   FUN_000033aa();
   puVar3 = DAT_00fffc04;
