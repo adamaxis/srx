@@ -213,7 +213,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0000BCAE	apply_mode_five_boundary_motion	86	unknown	ok	ghidra-c/fn_0000BCAE.cpp
 0000C0C2	FUN_0000c0c2	24	unknown	ok	ghidra-c/fn_0000C0C2.cpp
 0000C0DA	FUN_0000c0da	90	unknown	ok	ghidra-c/fn_0000C0DA.cpp
-0000C134	FUN_0000c134	44	unknown	ok	ghidra-c/fn_0000C134.cpp
+0000C134	normalize_source_text_line	44	unknown	ok	ghidra-c/fn_0000C134.cpp
 0000C160	FUN_0000c160	8	unknown	ok	ghidra-c/fn_0000C160.cpp
 0000C168	FUN_0000c168	174	unknown	ok	ghidra-c/fn_0000C168.cpp
 0000C216	FUN_0000c216	144	unknown	ok	ghidra-c/fn_0000C216.cpp

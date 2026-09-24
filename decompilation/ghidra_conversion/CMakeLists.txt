@@ -136,3 +136,16 @@ target_link_libraries(shadowrun_ghidra_entity_coordinate_test
     PRIVATE shadowrun_ghidra_entity_coordinate)
 add_test(NAME shadowrun_ghidra_entity_coordinate
          COMMAND shadowrun_ghidra_entity_coordinate_test)
+
+add_library(shadowrun_ghidra_text_line STATIC
+    src/text_line_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_text_line PUBLIC include)
+
+add_executable(shadowrun_ghidra_text_line_test
+    tests/text_line_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_text_line_test
+    PRIVATE shadowrun_ghidra_text_line)
+add_test(NAME shadowrun_ghidra_text_line
+         COMMAND shadowrun_ghidra_text_line_test)

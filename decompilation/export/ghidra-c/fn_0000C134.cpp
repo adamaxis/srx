@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000C134
-// Name: FUN_0000c134
+// Name: normalize_source_text_line
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-undefined4 FUN_0000c134(void)
+undefined4 normalize_source_text_line(void)
 
 {
   undefined4 in_D0;

@@ -9,7 +9,7 @@
 //   0x00000D94 FUN_00000d94
 //   0x00001232 FUN_00001232
 //   0x0000195C sample_controller_input
-//   0x0000C134 FUN_0000c134
+//   0x0000C134 normalize_source_text_line
 //   0x0000C168 FUN_0000c168
 //   0x0001F5A8 FUN_0001f5a8
 
@@ -29,7 +29,7 @@ int * FUN_0001f3c4(void)
   do {
     if (DAT_00fff10c == '\0') {
       FUN_0001f5a8();
-      FUN_0000c134();
+      normalize_source_text_line();
       DAT_00ffb740 = 0xff;
       FUN_0000c168();
       in_A0 = extraout_A0;
@@ -42,7 +42,7 @@ int * FUN_0001f3c4(void)
       FUN_00000d94();
       return (int *)((int)&VectorsTable_00000000.Reserv3E + 3);
     }
-    FUN_0000c134();
+    normalize_source_text_line();
     DAT_00ffb740 = 0xff;
     FUN_0000c168();
     FUN_00001232();
@@ -51,7 +51,7 @@ int * FUN_0001f3c4(void)
     }
     else {
       _DAT_00fff0d2 = 0;
-      FUN_0000c134();
+      normalize_source_text_line();
       DAT_00ffb740 = 0xff;
       FUN_0000c168();
       FUN_00001232();
@@ -60,7 +60,7 @@ int * FUN_0001f3c4(void)
       }
       else {
         _DAT_00fff0d2 = (ushort)DAT_00fff0d2 << 8;
-        FUN_0000c134();
+        normalize_source_text_line();
         DAT_00ffb740 = 0xff;
         FUN_0000c168();
         FUN_00001232();

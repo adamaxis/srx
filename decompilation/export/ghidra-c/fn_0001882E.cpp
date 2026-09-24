@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00001232 FUN_00001232
 //   0x0000C0DA FUN_0000c0da
-//   0x0000C134 FUN_0000c134
+//   0x0000C134 normalize_source_text_line
 //   0x0000C160 FUN_0000c160
 //   0x0000C216 FUN_0000c216
 //   0x0001897C FUN_0001897c
@@ -33,11 +33,11 @@ void FUN_0001882e(void)
     FUN_0001a16a();
     FUN_0000c216();
   }
-  FUN_0000c134();
+  normalize_source_text_line();
   DAT_00ffef96 = 0xff;
   if ((short)(unaff_D7w + -0xc) < 0) {
     FUN_0000c160();
-    FUN_0000c134();
+    normalize_source_text_line();
   }
   DAT_00ffef96 = 0xff;
   FUN_0000c160();

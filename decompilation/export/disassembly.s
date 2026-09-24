@@ -15052,7 +15052,7 @@
 000188DE: movea.l (A1),A1 ; data 000e31f2
 000188E0: lea (0xffef96).l,A5 ; data 00ffef96
 000188E6: clr.w D1w
-000188E8: jsr 0x0000c134.l ; call 0000C134 FUN_0000c134
+000188E8: jsr 0x0000c134.l ; call 0000C134 normalize_source_text_line
 000188EE: move.b #-0x1,(A5)
 000188F2: move.w #0x12,D1w
 000188F6: move.w #0x0,D2w
@@ -15063,7 +15063,7 @@
 0001890E: lea (0xe38c6).l,A1 ; data 000e38c6
 00018914: lea (0xffef96).l,A5 ; data 00ffef96
 0001891A: clr.w D1w
-0001891C: jsr 0x0000c134.l ; call 0000C134 FUN_0000c134
+0001891C: jsr 0x0000c134.l ; call 0000C134 normalize_source_text_line
 00018922: move.b #-0x1,(A5)
 00018926: movea.l #0xc2a6,A2
 0001892C: move.w #0x14,D1w
@@ -19039,17 +19039,17 @@
 0001E78C: lea (0xffb740).l,A5 ; data 00ffb740
 0001E792: lea (0xf2520).l,A1 ; data 000f2520
 0001E798: clr.w D1w
-0001E79A: jsr 0x0000c134.l ; call 0000C134 FUN_0000c134
+0001E79A: jsr 0x0000c134.l ; call 0000C134 normalize_source_text_line
 0001E7A0: clr.l D0
 0001E7A2: move.b (0x00fffbee).l,D0b
 0001E7A8: lsl.w #0x2,D0w
 0001E7AA: lea (0xf1e58).l,A1 ; data 000f1e58
 0001E7B0: movea.l (0x0,A1,D0w*0x1),A1 ; data 000f1e58
 0001E7B4: moveq #0x1,D1
-0001E7B6: jsr 0x0000c134.l ; call 0000C134 FUN_0000c134
+0001E7B6: jsr 0x0000c134.l ; call 0000C134 normalize_source_text_line
 0001E7BC: lea (0xf2549).l,A1 ; data 000f2549
 0001E7C2: clr.w D1w
-0001E7C4: jsr 0x0000c134.l ; call 0000C134 FUN_0000c134
+0001E7C4: jsr 0x0000c134.l ; call 0000C134 normalize_source_text_line
 0001E7CA: move.b #-0x1,(A5)
 0001E7CE: rts
 0001EEDC: clr.b (0x00fff0d5).l
@@ -19195,7 +19195,7 @@
 0001F3DC: lea (0xffb740).l,A5 ; data 00ffb740
 0001F3E2: movea.l (A0)+,A1
 0001F3E4: clr.w D1w
-0001F3E6: jsr 0x0000c134.l ; call 0000C134 FUN_0000c134
+0001F3E6: jsr 0x0000c134.l ; call 0000C134 normalize_source_text_line
 0001F3EC: move.b #-0x1,(A5)
 0001F3F0: movea.l #0xc116,A2
 0001F3F6: move.w #0x1b,D1w
@@ -19206,7 +19206,7 @@
 0001F40C: move.l A1,D1
 0001F40E: bmi.w 0x0001f592
 0001F412: clr.w D1w
-0001F414: jsr 0x0000c134.l ; call 0000C134 FUN_0000c134
+0001F414: jsr 0x0000c134.l ; call 0000C134 normalize_source_text_line
 0001F41A: move.b #-0x1,(A5)
 0001F41E: movea.l #0xc98c,A2
 0001F424: moveq #0x22,D1
@@ -19227,7 +19227,7 @@
 0001F464: bra.w 0x0001f502
 0001F468: clr.w (0x00fff0d2).l
 0001F46E: clr.w D1w
-0001F470: jsr 0x0000c134.l ; call 0000C134 FUN_0000c134
+0001F470: jsr 0x0000c134.l ; call 0000C134 normalize_source_text_line
 0001F476: move.b #-0x1,(A5)
 0001F47A: movea.l #0xcb0c,A2
 0001F480: moveq #0x22,D1
@@ -19247,7 +19247,7 @@
 0001F4BE: bra.w 0x0001f502
 0001F4C2: clr.b (0x00fff0d3).l
 0001F4C8: clr.w D1w
-0001F4CA: jsr 0x0000c134.l ; call 0000C134 FUN_0000c134
+0001F4CA: jsr 0x0000c134.l ; call 0000C134 normalize_source_text_line
 0001F4D0: move.b #-0x1,(A5)
 0001F4D4: movea.l #0xcc8c,A2
 0001F4DA: moveq #0x22,D1
@@ -20875,13 +20875,13 @@
 00024746: lea (0x11fa8d).l,A1 ; data 0011fa8d
 0002474C: lea (0xffb740).l,A5 ; data 00ffb740
 00024752: move.w #-0x1,D1w
-00024756: jsr 0x0000c134.l ; call 0000C134 FUN_0000c134
+00024756: jsr 0x0000c134.l ; call 0000C134 normalize_source_text_line
 0002475C: lea (0x121494).l,A1 ; data 00121494
 00024762: move.w (0x00ffe12c).l,D4w
 00024768: lsl.w #0x2,D4w
 0002476A: movea.l (0x0,A1,D4w*0x1),A1 ; data 00121494
 0002476E: move.w #-0x1,D1w
-00024772: jsr 0x0000c134.l ; call 0000C134 FUN_0000c134
+00024772: jsr 0x0000c134.l ; call 0000C134 normalize_source_text_line
 00024778: move.b #-0x1,(A5)
 0002477C: lea (0x11cd92).l,A0 ; data 0011cd92
 00024782: rts
@@ -20890,14 +20890,14 @@
 0002478C: lea (0x11fa04).l,A1 ; data 0011fa04
 00024792: lea (0xffb740).l,A5 ; data 00ffb740
 00024798: move.w #-0x1,D1w
-0002479C: jsr 0x0000c134.l ; call 0000C134 FUN_0000c134
+0002479C: jsr 0x0000c134.l ; call 0000C134 normalize_source_text_line
 000247A2: move.w #0x64,D1w
 000247A6: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
 000247AC: cmpi.w #0x46,D0w
 000247B0: bmi.w 0x000247c4
 000247B4: lea (0x11fa04).l,A1 ; data 0011fa04
 000247BA: move.w #-0x1,D1w
-000247BE: jsr 0x0000c134.l ; call 0000C134 FUN_0000c134
+000247BE: jsr 0x0000c134.l ; call 0000C134 normalize_source_text_line
 000247C4: move.b #-0x1,(A5)
 000247C8: lea (0x11cd92).l,A0 ; data 0011cd92
 000247CE: rts
@@ -20911,13 +20911,13 @@
 000247F2: lea (0x11fdae).l,A1 ; data 0011fdae
 000247F8: lea (0xffb740).l,A5 ; data 00ffb740
 000247FE: move.w #-0x1,D1w
-00024802: jsr 0x0000c134.l ; call 0000C134 FUN_0000c134
+00024802: jsr 0x0000c134.l ; call 0000C134 normalize_source_text_line
 00024808: lea (0x1214dc).l,A1 ; data 001214dc
 0002480E: move.w (0x00ffe12c).l,D4w
 00024814: lsl.w #0x2,D4w
 00024816: movea.l (0x0,A1,D4w*0x1),A1 ; data 001214dc
 0002481A: move.w #-0x1,D1w
-0002481E: jsr 0x0000c134.l ; call 0000C134 FUN_0000c134
+0002481E: jsr 0x0000c134.l ; call 0000C134 normalize_source_text_line
 00024824: move.b #-0x1,(A5)
 00024828: lea (0x11cd92).l,A0 ; data 0011cd92
 0002482E: rts
@@ -26201,7 +26201,7 @@
 00058108: movea.l (0x0,A5,D7w*0x1),A1 ; data 000e31f2
 0005810C: lea (0xffb740).l,A5 ; data 00ffb740
 00058112: clr.w D1w
-00058114: jsr 0x0000c134.l ; call 0000C134 FUN_0000c134
+00058114: jsr 0x0000c134.l ; call 0000C134 normalize_source_text_line
 0005811A: move.b #-0x1,(A5)
 0005811E: move.w #0x1e,D1w
 00058122: move.w #0x6000,D2w
