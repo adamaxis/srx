@@ -128,5 +128,16 @@ int main() {
         return 15;
     }
 
+    MenuPanelRefreshState panel{0x12U};
+    std::vector<int> panel_events;
+    refresh_menu_panel(panel,
+                       [&panel_events] { panel_events.push_back(23); },
+                       [&panel_events] { panel_events.push_back(24); },
+                       [&panel_events] { panel_events.push_back(25); });
+    if (panel.toggle != 0xEDU ||
+        panel_events != std::vector<int>{23, 24, 25}) {
+        return 16;
+    }
+
     return 0;
 }

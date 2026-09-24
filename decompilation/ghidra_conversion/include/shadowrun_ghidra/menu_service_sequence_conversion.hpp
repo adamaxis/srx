@@ -99,4 +99,15 @@ void clear_menu_slot(MenuSlotCleanupState& state,
                      bool asset_load_pending,
                      const std::function<void()>& prepare_assets);
 
+struct MenuPanelRefreshState {
+    std::uint8_t toggle = 0;
+};
+
+// ROM 0x127B0: upload the panel, flip its byte toggle, update its layout, and
+// submit the text render in source order.
+void refresh_menu_panel(MenuPanelRefreshState& state,
+                        const std::function<void()>& upload_panel,
+                        const std::function<void()>& update_layout,
+                        const std::function<void()>& render_text);
+
 } // namespace shadowrun::ghidra_conversion

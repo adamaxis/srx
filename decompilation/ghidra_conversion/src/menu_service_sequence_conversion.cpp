@@ -178,4 +178,20 @@ void clear_menu_slot(MenuSlotCleanupState& state,
     state.active_slots[index] = 0U;
 }
 
+void refresh_menu_panel(MenuPanelRefreshState& state,
+                        const std::function<void()>& upload_panel,
+                        const std::function<void()>& update_layout,
+                        const std::function<void()>& render_text) {
+    if (upload_panel) {
+        upload_panel();
+    }
+    state.toggle = static_cast<std::uint8_t>(state.toggle ^ 0xFFU);
+    if (update_layout) {
+        update_layout();
+    }
+    if (render_text) {
+        render_text();
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion

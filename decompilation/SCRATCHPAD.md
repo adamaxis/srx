@@ -978,6 +978,9 @@ builder as explicit host operations.
 The `0x1275C` menu leaf now clears a bounded slot record and preserves the
 low-action asset-load branch.
 
+The final planned menu leaf, `0x127B0`, now keeps panel upload, byte-toggle,
+layout update, and text render in source order through typed host callbacks.
+
 The compact row-writer family is now typed as well. `0x1184` emits one masked
 row with optional `0x8F80`/`0x8F02` display-increment controls, `0x11C0`
 repeats a source row at `0x80`-byte destination strides, and `0x11F6`
