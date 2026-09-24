@@ -69,6 +69,15 @@ int main() {
         return 8;
     }
 
+    if (!expect(find_first_entity_action_below_threshold(
+                    {0x15U, 0x12U, 0x0CU, 0x04U, 0x01U, 0x00U, 0x00U,
+                     0x00U}) == 0x0CU &&
+                find_first_entity_action_below_threshold(
+                    {0x15U, 0x12U, 0x0DU, 0x20U, 0xFFU, 0x20U, 0x20U,
+                     0x20U}) == 0U)) {
+        return 9;
+    }
+
     EntityBehaviorRecordState behavior_record{
         42, 42U, 42U, 42U, 0xFFU,
         EntityRecordContinuation::BehaviorUpdate};
@@ -78,7 +87,7 @@ int main() {
                 behavior_record.behavior_timer == 0x1000U &&
                 behavior_record.step_interval == 0x4000U &&
                 behavior_record.flags == 0x01U)) {
-        return 9;
+        return 10;
     }
 
     return 0;

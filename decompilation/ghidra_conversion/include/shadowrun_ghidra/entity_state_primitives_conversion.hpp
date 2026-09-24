@@ -58,6 +58,12 @@ struct EntityEffectPendingTableState {
 // entity records used by the effect update pass.
 void clear_entity_effect_pending_records(EntityEffectPendingTableState& state);
 
+// ROM 0x13AF2: scan the eight-byte entity action/item area and return the
+// first value below the source threshold, or zero when no value qualifies.
+std::uint8_t find_first_entity_action_below_threshold(
+    const std::array<std::uint8_t, 8>& action_values,
+    std::uint8_t threshold = 0x0DU);
+
 // ROM 0x15118: clear a newly allocated entity record's source fields and
 // install the default behavior-update continuation and movement constants.
 void initialize_entity_behavior_record(EntityBehaviorRecordState& state);

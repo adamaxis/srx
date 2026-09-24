@@ -11139,7 +11139,7 @@
 00013ADC: blt.w 0x00013ae4
 00013AE0: bsr.w 0x00013ae6 ; call 00013AE6 FUN_00013ae6
 00013AE4: rts
-00013AE6: bsr.w 0x00013af2 ; call 00013AF2 FUN_00013af2
+00013AE6: bsr.w 0x00013af2 ; call 00013AF2 find_first_entity_action_below_threshold
 00013AEA: jsr 0x00013466.l ; call 00013466 FUN_00013466
 00013AF0: rts
 00013AF2: movea.l A0,A2

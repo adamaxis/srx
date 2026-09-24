@@ -45,6 +45,17 @@ void clear_entity_effect_pending_records(
     }
 }
 
+std::uint8_t find_first_entity_action_below_threshold(
+    const std::array<std::uint8_t, 8>& action_values,
+    const std::uint8_t threshold) {
+    for (const auto value : action_values) {
+        if (value < threshold) {
+            return value;
+        }
+    }
+    return 0U;
+}
+
 void initialize_entity_behavior_record(EntityBehaviorRecordState& state) {
     state = EntityBehaviorRecordState{
         static_cast<std::int16_t>(-12),

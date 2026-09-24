@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00013AF2
-// Name: FUN_00013af2
+// Name: find_first_entity_action_below_threshold
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-short FUN_00013af2(void)
+short find_first_entity_action_below_threshold(void)
 
 {
   short in_D0w;

@@ -22,6 +22,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x1A304	effect slot clear	ghidra_conversion::clear_effect_slot	shadowrun_native_port	partial		Typed bounded clear of one effect-slot occupancy byte converted
 0x1A310	effect slot table clear	ghidra_conversion::clear_effect_slots	shadowrun_native_port	partial		Typed clear of all eighteen effect-slot occupancy bytes converted
 0x1A322	entity effect pending clear	ghidra_conversion::clear_entity_effect_pending_records	shadowrun_native_port	partial		Global marker reset and thirteen entity pending-flag clears converted
+0x13AF2	entity action threshold scan	ghidra_conversion::find_first_entity_action_below_threshold	shadowrun_native_port	partial		Typed eight-byte first-below-threshold scan converted without source record addressing
 0x0E9C	VDP transfer command	ghidra_conversion::make_vdp_transfer_command	shadowrun_graphics	partial		Typed two-word transfer command conversion replaces the source display-control writes
 0x0DFC	repeated word transfer	ghidra_conversion::write_repeated_words	shadowrun_graphics	partial		Bounded repeated-word transfer conversion uses an explicit host count
 0x0E18	word stream transfer	ghidra_conversion::write_word_stream	shadowrun_graphics	partial		Bounded ordered word-stream transfer conversion

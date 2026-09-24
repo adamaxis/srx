@@ -194,6 +194,7 @@ still has unresolved downstream calls or hardware presentation work.
 | `0x1A304` | `clear_effect_slot` | Clears one of the eighteen effect-slot occupancy bytes. | `ghidra_conversion::clear_effect_slot()` | partial |
 | `0x1A310` | `clear_effect_slots` | Clears all eighteen effect-slot occupancy bytes. | `ghidra_conversion::clear_effect_slots()` | partial |
 | `0x1A322` | `clear_entity_effect_pending_records` | Clears the global effect marker and bit 0 across thirteen source entity records. | `ghidra_conversion::clear_entity_effect_pending_records()` | partial |
+| `0x13AF2` | `find_first_entity_action_below_threshold` | Scans eight entity action/item bytes for the first value below `0x0D`, returning zero when none qualifies. | `ghidra_conversion::find_first_entity_action_below_threshold()` | partial |
 | `0x0E9C` | `make_vdp_transfer_command` | Splits a source transfer address into the two display-control words used by the Genesis transfer boundary. | `ghidra_conversion::make_vdp_transfer_command()` | partial |
 | `0x0DFC` | `write_repeated_words` | Emits one word for an explicit host count through the transfer boundary. | `ghidra_conversion::write_repeated_words()` | partial |
 | `0x0E18` | `write_word_stream` | Emits a bounded ordered source word stream through the transfer boundary. | `ghidra_conversion::write_word_stream()` | partial |
