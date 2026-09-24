@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 FUN_00001232
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 //   0x0000C134 normalize_source_text_line
 //   0x0000C160 FUN_0000c160
 //   0x0000C216 FUN_0000c216
@@ -24,7 +24,7 @@ void FUN_0001882e(void)
   FUN_0001897c();
   FUN_00018a92();
   if ((unaff_D7w < 0xc) && ((char)(&DAT_00fffbcc)[unaff_D7w] < '\x01')) {
-    FUN_0000c0da();
+    render_title_text_source();
     return;
   }
   FUN_00001232();

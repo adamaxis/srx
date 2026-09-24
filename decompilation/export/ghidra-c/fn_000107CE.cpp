@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 FUN_00001232
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 //   0x0001055E FUN_0001055e
 //   0x000105E6 FUN_000105e6
 //   0x00010854 FUN_00010854
@@ -27,7 +27,7 @@ void FUN_000107ce(void)
     *(undefined1 *)(iVar2 + 0x4d) = 4;
   }
   FUN_00001232();
-  FUN_0000c0da();
+  render_title_text_source();
   FUN_00010854();
   FUN_000105e6();
   FUN_0001055e();

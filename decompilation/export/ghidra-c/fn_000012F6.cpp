@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x000012F6
-// Name: FUN_000012f6
+// Name: advance_title_palette_fade
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000010D6 step_palette_toward_target
 //   0x00001342 wait_for_palette_frame
 
 
-void FUN_000012f6(void)
+void advance_title_palette_fade(void)
 
 {
   short sVar1;

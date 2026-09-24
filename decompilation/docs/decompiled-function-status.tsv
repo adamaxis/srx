@@ -134,9 +134,9 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x1A9E	title loop	ghidra_conversion::advance_title_prompt_schedule	shadowrun_menu_system	partial		Prompt cadence converted; title draw calls remain explicit boundaries
 0x1C1E	title text state	ghidra_conversion::advance_title_text_state	shadowrun_menu_system	partial		32-count palette cadence and completion action converted; source writers remain boundaries
 0x1C6A	title sprite state	ghidra_conversion::advance_title_sprite_state	shadowrun_menu_system	partial		Six-phase cadence and projection request converted without source SAT writes
-0x1D7A	title setup	ghidra_conversion	shadowrun_menu_system	pending		Source state boundary documented; resource setup not yet converted
-0x1DE0	title prompt text	ghidra_conversion	shadowrun_menu_system	pending		Source writer call identified; no runtime owner
-0x1DF6	title copyright text	ghidra_conversion	shadowrun_menu_system	pending		Four source writer calls identified; no runtime owner
+0x1D7A	title setup	ghidra_conversion	shadowrun_menu_system	partial		Typed reset, resource-order boundary, palette flag publication, and 17-frame fade conversion
+0x1DE0	title prompt text	ghidra_conversion	shadowrun_menu_system	partial		Typed prompt render request at the source destination; text writer remains an explicit boundary
+0x1DF6	title copyright text	ghidra_conversion	shadowrun_menu_system	partial		Four typed copyright render requests preserve source order and destinations
 0x1E4E	title logo column reveal	ghidra_conversion::advance_title_logo_column	shadowrun_menu_system	partial		38-column progression and completion palette-copy event converted without source blitters
 0x2634	title circuit lights	ghidra_conversion::advance_title_circuit_lights	shadowrun_menu_system	partial		Seven-phase cadence converted; source palette write remains explicit
 0x26D0	title animation timer	ghidra_conversion::advance_title_animation_timer	shadowrun_menu_system	partial		Five-frame timer converted; source update flag remains a boundary

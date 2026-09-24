@@ -6,7 +6,7 @@
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
 //   0x0000195C sample_controller_input
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 //   0x0000C216 FUN_0000c216
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x0001882E FUN_0001882e
@@ -21,7 +21,7 @@ void FUN_00018aa6(void)
   
   DAT_00fff0dc = '\0';
   FUN_0001897c();
-  FUN_0000c0da();
+  render_title_text_source();
   do {
     move_wrapped_menu_cursor();
     while( true ) {
@@ -34,8 +34,8 @@ void FUN_00018aa6(void)
          (((DAT_00ffdd22._0_1_ & 0x10) != 0 || ((DAT_00ffdd22._0_1_ & 0x20) != 0)))) {
         if (DAT_00fff0dc == '\0') {
           FUN_0001897c();
-          FUN_0000c0da();
-          FUN_0000c0da();
+          render_title_text_source();
+          render_title_text_source();
           FUN_0000c216();
           FUN_0000c216();
           FUN_0000c216();
@@ -50,24 +50,24 @@ void FUN_00018aa6(void)
           return;
         }
         FUN_0001897c();
-        FUN_0000c0da();
+        render_title_text_source();
         if (DAT_00fff0e3 < '\0') {
-          FUN_0000c0da();
+          render_title_text_source();
           if (DAT_00fffbf2 < '\0') {
-            FUN_0000c0da();
+            render_title_text_source();
           }
           else {
-            FUN_0000c0da();
+            render_title_text_source();
           }
-          FUN_0000c0da();
-          FUN_0000c0da();
+          render_title_text_source();
+          render_title_text_source();
           return;
         }
         if (DAT_00fff0e3 < '\x01') {
-          FUN_0000c0da();
+          render_title_text_source();
           return;
         }
-        FUN_0000c0da();
+        render_title_text_source();
         return;
       }
       if ((DAT_00ffdd22._0_1_ & 0x80) != 0) {

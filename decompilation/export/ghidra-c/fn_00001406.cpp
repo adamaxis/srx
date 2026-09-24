@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00001406
-// Name: FUN_00001406
+// Name: prepare_title_resources
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -16,7 +16,7 @@
 //   0x00001728 FUN_00001728
 
 
-void FUN_00001406(void)
+void prepare_title_resources(void)
 
 {
   uint uVar1;

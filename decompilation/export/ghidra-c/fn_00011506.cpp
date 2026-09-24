@@ -56,7 +56,7 @@ void FUN_00011506(void)
     FUN_00011abe();
     return;
   }
-  FUN_0000c0da();
+  render_title_text_source();
   return;
 }
 

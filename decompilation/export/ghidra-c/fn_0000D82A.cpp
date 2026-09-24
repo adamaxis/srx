@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000011C0 FUN_000011c0
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 //   0x0000C216 FUN_0000c216
 //   0x0000DA4A FUN_0000da4a
 //   0x00012C5A FUN_00012c5a
@@ -44,7 +44,7 @@ void FUN_0000d82a(void)
         extraout_D1b) {
 LAB_0000d9de:
       DAT_00fff0b3 = 0xff;
-      FUN_0000c0da(uVar10);
+      render_title_text_source(uVar10);
       goto LAB_0000da00;
     }
   }
@@ -95,7 +95,7 @@ LAB_0000d9a4:
   FUN_0000c216();
   FUN_0000c216();
 LAB_0000da00:
-  FUN_0000c0da();
+  render_title_text_source();
   FUN_000011c0();
   FUN_0000c216();
   return;

@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
-//   0x00001406 FUN_00001406
+//   0x00001406 prepare_title_resources
 //   0x0000195C sample_controller_input
 //   0x0005A96A FUN_0005a96a
 //   0x0005A9E2 FUN_0005a9e2
@@ -28,7 +28,7 @@ void FUN_0005ad1a(void)
   undefined4 *puVar3;
   
   FUN_0005b29a();
-  FUN_00001406();
+  prepare_title_resources();
   DAT_00fff11e = DAT_00ffdf88;
   FUN_0005b002();
   FUN_0005b198();

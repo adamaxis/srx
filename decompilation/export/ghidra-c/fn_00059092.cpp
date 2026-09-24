@@ -7,8 +7,8 @@
 //   0x00000BF2 latch_controller_events
 //   0x0000195C sample_controller_input
 //   0x000042B0 FUN_000042b0
-//   0x0000C0C2 FUN_0000c0c2
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0C2 load_title_font
+//   0x0000C0DA render_title_text_source
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x0000C3E6 FUN_0000c3e6
 //   0x00010B5A FUN_00010b5a
@@ -25,10 +25,10 @@ void FUN_00059092(void)
   FUN_000566d8();
   FUN_000566e2();
   FUN_00010b5a();
-  FUN_0000c0c2();
+  load_title_font();
   while( true ) {
     FUN_0000c3e6();
-    FUN_0000c0da();
+    render_title_text_source();
     DAT_00fff0dc = '\0';
     move_wrapped_menu_cursor();
     do {
@@ -47,7 +47,7 @@ void FUN_00059092(void)
     }
   }
   FUN_0000c3e6();
-  FUN_0000c0da();
+  render_title_text_source();
   DAT_00fff0dc = 0;
   do {
     move_wrapped_menu_cursor();

@@ -107,10 +107,10 @@ LAB_0001842e:
           FUN_0001897c();
           sVar8 = FUN_00019b40();
           if ((sVar8 == 8) && (DAT_00ffdf84 != '\0')) {
-            FUN_0000c0da();
+            render_title_text_source();
           }
-          FUN_0000c0da();
-          FUN_0000c0da();
+          render_title_text_source();
+          render_title_text_source();
           DAT_00fff0dc = '\x01';
           do {
             move_wrapped_menu_cursor();

@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 FUN_00001232
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 //   0x00055E92 FUN_00055e92
 //   0x00055EB4 FUN_00055eb4
 
@@ -24,11 +24,11 @@ void FUN_00011352(void)
     *(char *)(in_A0 + 0x6e + (int)unaff_D7w) = in_D0b + -0x2b;
   }
   else if (*(char *)(in_A0 + 0x76) == '\0') {
-    FUN_0000c0da();
+    render_title_text_source();
     return;
   }
-  FUN_0000c0da();
-  FUN_0000c0da();
+  render_title_text_source();
+  render_title_text_source();
   FUN_00055eb4();
   FUN_00001232();
   FUN_00055e92();

@@ -7,7 +7,7 @@
 //   0x00000BF2 latch_controller_events
 //   0x0000195C sample_controller_input
 //   0x0000391A FUN_0000391a
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x0000C3E6 FUN_0000c3e6
 //   0x0000C436 FUN_0000c436
@@ -27,7 +27,7 @@ void FUN_0000cf38(void)
   do {
     FUN_0000cffe();
     FUN_0000c3e6();
-    FUN_0000c0da();
+    render_title_text_source();
     DAT_00fff0dc = '\0';
     move_wrapped_menu_cursor();
     while( true ) {

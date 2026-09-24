@@ -48,7 +48,7 @@ void FUN_000114a0(void)
     FUN_00011abe();
     return;
   }
-  FUN_0000c0da();
+  render_title_text_source();
   return;
 }
 

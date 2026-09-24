@@ -6,7 +6,7 @@
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
 //   0x0000195C sample_controller_input
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x0001882E FUN_0001882e
 //   0x00018998 FUN_00018998
@@ -41,13 +41,13 @@ void FUN_00019238(void)
     do {
       if ((char)unaff_D7w == puVar2[0x1a]) {
         DAT_00fff0d4 = '\x04' - (char)sVar1;
-        FUN_0000c0da();
-        FUN_0000c0da();
-        FUN_0000c0da();
+        render_title_text_source();
+        render_title_text_source();
+        render_title_text_source();
         DAT_00ffdd50 = -1;
         DAT_00fff0dc = '\x01';
         FUN_000194ac();
-        FUN_0000c0da();
+        render_title_text_source();
         do {
           move_wrapped_menu_cursor();
           while( true ) {
@@ -76,8 +76,8 @@ void FUN_00019238(void)
       puVar2 = puVar2 + 1;
       sVar1 = sVar1 + -1;
       if (sVar1 == -1) {
-        FUN_0000c0da();
-        FUN_0000c0da();
+        render_title_text_source();
+        render_title_text_source();
         return;
       }
     }
@@ -86,8 +86,8 @@ void FUN_00019238(void)
     FUN_00018a92();
     FUN_0001952c();
     if ((short)(unaff_D6w - extraout_D1w) < 0) {
-      FUN_0000c0da();
-      FUN_0000c0da();
+      render_title_text_source();
+      render_title_text_source();
       return;
     }
 LAB_00019410:

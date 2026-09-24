@@ -3,13 +3,13 @@
 // Name: FUN_00012cd6
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 
 
 void FUN_00012cd6(void)
 
 {
-  FUN_0000c0da();
+  render_title_text_source();
   return;
 }
 

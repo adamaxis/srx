@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x000011C0 FUN_000011c0
 //   0x00001232 FUN_00001232
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 
 
 void FUN_0001088c(void)
@@ -20,7 +20,7 @@ void FUN_0001088c(void)
     FUN_000011c0();
     return;
   }
-  FUN_0000c0da();
+  render_title_text_source();
   FUN_00001232();
   return;
 }

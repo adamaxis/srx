@@ -13,8 +13,8 @@
 //   0x0000334C FUN_0000334c
 //   0x00003404 FUN_00003404
 //   0x000039F2 FUN_000039f2
-//   0x0000C0C2 FUN_0000c0c2
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0C2 load_title_font
+//   0x0000C0DA render_title_text_source
 //   0x0000C406 FUN_0000c406
 //   0x0000D4C8 FUN_0000d4c8
 //   0x00010BC4 FUN_00010bc4
@@ -50,8 +50,8 @@ void FUN_00056ac0(void)
     FUN_000566f6();
     decode_and_upload_source_stream();
   }
-  FUN_0000c0c2();
-  FUN_0000c0da();
+  load_title_font();
+  render_title_text_source();
 LAB_00056b66:
   if (DAT_00fff0b7 == '\0') {
     DAT_00fff10e = &DAT_00fff9fa + (uint)*(ushort *)(DAT_00fffc04 + 0xa0) * 0x11;
@@ -67,7 +67,7 @@ LAB_00056b66:
     DAT_00fff0d1 = '\0';
     FUN_0000c406();
     if ((DAT_00fff0b7 == '\x02') && ((DAT_00ff018f & 1) == 0)) {
-      FUN_0000c0da();
+      render_title_text_source();
       FUN_00000d94();
 LAB_00056da8:
       FUN_0000334c();
@@ -123,7 +123,7 @@ LAB_00056cd4:
     FUN_000530de();
     if (DAT_00fff0d1 == '\0') {
       if (((DAT_00fff0d0 == '\x03') && (DAT_00fff0b7 < '\0')) && (DAT_00fff0c2._0_1_ < '\0')) {
-        FUN_0000c0da();
+        render_title_text_source();
       }
       else {
         FUN_000587da();

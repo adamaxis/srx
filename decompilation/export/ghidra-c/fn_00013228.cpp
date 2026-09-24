@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 FUN_00001232
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 //   0x00012148 FUN_00012148
 //   0x00012A54 FUN_00012a54
 
@@ -61,7 +61,7 @@ undefined8 FUN_00013228(void)
        (((char)(cVar2 + -0x18) < '\0' || (-1 < (char)(cVar2 + -0x29))))) goto LAB_000133a0;
     FUN_00012148();
   }
-  FUN_0000c0da();
+  render_title_text_source();
   FUN_00001232();
 LAB_000133a0:
   return CONCAT44(in_D0,in_D1);

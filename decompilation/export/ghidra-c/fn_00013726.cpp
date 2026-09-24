@@ -6,7 +6,7 @@
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
 //   0x00000E9C FUN_00000e9c
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 //   0x0000C3E6 FUN_0000c3e6
 //   0x0000E6F4 FUN_0000e6f4
 
@@ -110,7 +110,7 @@ void FUN_00013726(void)
     uVar9 = (short)uVar7 - 1;
     uVar7 = (uint)uVar9;
   } while (uVar9 != 0xffff);
-  FUN_0000c0da();
+  render_title_text_source();
   DAT_00fff0e0 = *(undefined1 *)(extraout_A1_03 + 0x13);
   return;
 }

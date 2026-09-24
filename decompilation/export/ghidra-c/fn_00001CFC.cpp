@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00001CFC
-// Name: FUN_00001cfc
+// Name: load_title_resources
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001530 decode_and_upload_source_stream
-//   0x00001D58 FUN_00001d58
+//   0x00001D58 prepare_title_sprite_list
 
 
-void FUN_00001cfc(void)
+void load_title_resources(void)
 
 {
   decode_and_upload_source_stream();
@@ -15,7 +15,7 @@ void FUN_00001cfc(void)
   DAT_00fff1e6 = 0;
   decode_and_upload_source_stream();
   decode_and_upload_source_stream();
-  FUN_00001d58();
+  prepare_title_sprite_list();
   return;
 }
 

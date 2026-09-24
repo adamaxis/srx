@@ -7,7 +7,7 @@
 //   0x00000FFE FUN_00000ffe
 //   0x0000102A FUN_0000102a
 //   0x00001232 FUN_00001232
-//   0x000012F6 FUN_000012f6
+//   0x000012F6 advance_title_palette_fade
 
 
 void FUN_0005d886(void)
@@ -17,7 +17,7 @@ void FUN_0005d886(void)
   FUN_0000102a();
   FUN_00000e34();
   FUN_00001232();
-  FUN_000012f6();
+  advance_title_palette_fade();
   return;
 }
 

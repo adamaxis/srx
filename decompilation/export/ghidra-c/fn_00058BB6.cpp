@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 FUN_00001232
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 
 
 void FUN_00058bb6(void)
@@ -12,7 +12,7 @@ void FUN_00058bb6(void)
 {
   if (((DAT_00fff0b7 < '\0') || (DAT_00fff0b7 == '\0')) || (DAT_00fff0b7 != '\x01')) {
     FUN_00001232();
-    FUN_0000c0da();
+    render_title_text_source();
   }
   return;
 }

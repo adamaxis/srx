@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D94 FUN_00000d94
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 //   0x0000C216 FUN_0000c216
 //   0x00057B8C FUN_00057b8c
 //   0x00057C46 FUN_00057c46
@@ -32,12 +32,12 @@ void FUN_0005766a(void)
     else if (DAT_00fffbc2 < (short)((ushort)DAT_00fffbbe * 0x50)) {
 LAB_0005770c:
       if (DAT_00fffbfe < (int)(uint)*(ushort *)(&DAT_001ac8e0 + (uint)DAT_00fff0d0 * 2)) {
-        FUN_0000c0da();
+        render_title_text_source();
         FUN_00000d94();
         return;
       }
       _DAT_00fff0be = (uint)*(ushort *)(&DAT_001ac8e0 + (uint)DAT_00fff0d0 * 2);
-      FUN_0000c0da();
+      render_title_text_source();
       FUN_0000c216();
       FUN_00057b8c();
       if (DAT_00fff0dc == '\0') {
@@ -60,7 +60,7 @@ LAB_0005770c:
     }
   }
   else if ((char)(DAT_00fffbc5 + -3) < '\0') goto LAB_0005770c;
-  FUN_0000c0da();
+  render_title_text_source();
   FUN_00000d94();
   return;
 }

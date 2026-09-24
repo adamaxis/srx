@@ -138,6 +138,12 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0005BA50L, "load_scene_resources");
         names.put(0x0005BA4CL, "load_scene_resources_thunk");
         names.put(0x00001530L, "decode_and_upload_source_stream");
+        names.put(0x000012F6L, "advance_title_palette_fade");
+        names.put(0x00001406L, "prepare_title_resources");
+        names.put(0x00001CFCL, "load_title_resources");
+        names.put(0x00001D58L, "prepare_title_sprite_list");
+        names.put(0x0000C0C2L, "load_title_font");
+        names.put(0x0000C0DAL, "render_title_text_source");
         names.put(0x00014682L, "select_obstruction_route");
         names.put(0x00014756L, "clear_entity_route_flags");
         names.put(0x00014764L, "find_alternate_route_tile");

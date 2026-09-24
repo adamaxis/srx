@@ -9,7 +9,7 @@
 void FUN_0001170c(void)
 
 {
-  FUN_0000c0da();
+  render_title_text_source();
   return;
 }
 

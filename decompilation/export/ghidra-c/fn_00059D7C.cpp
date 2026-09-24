@@ -5,10 +5,10 @@
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
-//   0x000012F6 FUN_000012f6
-//   0x00001406 FUN_00001406
+//   0x000012F6 advance_title_palette_fade
+//   0x00001406 prepare_title_resources
 //   0x0000195C sample_controller_input
-//   0x0000C0C2 FUN_0000c0c2
+//   0x0000C0C2 load_title_font
 //   0x00059F7A FUN_00059f7a
 //   0x00059F8E FUN_00059f8e
 //   0x0005A0A4 FUN_0005a0a4
@@ -35,10 +35,10 @@ void FUN_00059d7c(void)
 {
   short sVar1;
   
-  FUN_0000c0c2();
+  load_title_font();
   DAT_00ffdd32 = &DAT_0005adf0;
   DAT_00ffdd36 = DAT_0005adf0;
-  FUN_00001406();
+  prepare_title_resources();
   DAT_00ffdd08 = -0x40;
   DAT_00ffdd0c = 0;
   DAT_00ffdd0a = -0x20;
@@ -50,7 +50,7 @@ void FUN_00059d7c(void)
   FUN_0005a37c();
   _DAT_00ffd980 = 0;
   DAT_00ffef14 = DAT_00ffef14 | 2;
-  FUN_000012f6();
+  advance_title_palette_fade();
   sVar1 = 0xa0;
   do {
     wait_for_vblank();

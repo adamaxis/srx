@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 FUN_00001232
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 //   0x00010660 FUN_00010660
 
 
@@ -20,7 +20,7 @@ void FUN_000105e6(void)
   cVar3 = '\0';
   FUN_00010660();
   if (bVar2 || cVar3 != cVar1) {
-    FUN_0000c0da();
+    render_title_text_source();
   }
   else {
     FUN_00001232();

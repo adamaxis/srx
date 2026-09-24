@@ -3,7 +3,7 @@
 // Name: FUN_0001209a
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 //   0x000110E8 FUN_000110e8
 
 
@@ -22,7 +22,7 @@ void FUN_0001209a(void)
       psVar1 = (short *)&DAT_00ffdd4c;
     }
   } while (*psVar1 < 0);
-  FUN_0000c0da();
+  render_title_text_source();
   FUN_000110e8();
   return;
 }

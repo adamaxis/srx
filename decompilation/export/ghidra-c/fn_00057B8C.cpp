@@ -6,7 +6,7 @@
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
 //   0x0000195C sample_controller_input
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x000530DE FUN_000530de
 
@@ -17,8 +17,8 @@ undefined8 FUN_00057b8c(void)
   undefined4 in_D0;
   undefined4 in_D1;
   
-  FUN_0000c0da();
-  FUN_0000c0da();
+  render_title_text_source();
+  render_title_text_source();
   DAT_00fff0dc = 1;
   do {
     FUN_000530de();

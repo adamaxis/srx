@@ -8,12 +8,12 @@
 //   0x00000E34 FUN_00000e34
 //   0x00000FFE FUN_00000ffe
 //   0x0000102A FUN_0000102a
-//   0x000012F6 FUN_000012f6
+//   0x000012F6 advance_title_palette_fade
 //   0x00001368 copy_target_palette
 //   0x00001530 decode_and_upload_source_stream
 //   0x00001728 FUN_00001728
 //   0x0000195C sample_controller_input
-//   0x0000C0C2 FUN_0000c0c2
+//   0x0000C0C2 load_title_font
 //   0x0005AA5A FUN_0005aa5a
 //   0x0005AB96 FUN_0005ab96
 //   0x0005ABD2 FUN_0005abd2
@@ -35,7 +35,7 @@ void FUN_0005aa96(void)
   FUN_0000102a();
   decode_and_upload_source_stream();
   decode_and_upload_source_stream();
-  FUN_0000c0c2();
+  load_title_font();
   FUN_0005aa5a();
   wait_for_vblank();
   copy_target_palette();
@@ -47,7 +47,7 @@ void FUN_0005aa96(void)
   wait_for_vblank();
   FUN_00001728();
   uVar1 = DAT_00ffdf88;
-  FUN_000012f6();
+  advance_title_palette_fade();
   DAT_00ffdf88 = uVar1;
   sample_controller_input();
   sVar2 = 0x114;

@@ -9,7 +9,7 @@
 //   0x0000195C sample_controller_input
 //   0x00003404 FUN_00003404
 //   0x000036FC FUN_000036fc
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 //   0x0000C216 FUN_0000c216
 //   0x000111D0 FUN_000111d0
 //   0x00011454 FUN_00011454
@@ -47,7 +47,7 @@ void switchD_00011768::caseD_2(void)
   
   FUN_00012c36();
   FUN_00011900();
-  FUN_0000c0da();
+  render_title_text_source();
   FUN_0000c216();
   uVar2 = _DAT_00fff0d0;
   _DAT_00fff0d0 = CONCAT11(2,DAT_00fff0d1);
@@ -91,7 +91,7 @@ LAB_00011be6:
         DAT_00fff114 = '\0';
         FUN_000111d0();
         FUN_000127b0();
-        FUN_0000c0da();
+        render_title_text_source();
         do {
           while( true ) {
             wait_for_vblank();
@@ -113,8 +113,8 @@ LAB_00011be6:
       if ((short)((ushort)bVar1 << 8) < 0) {
         if (*(char *)(DAT_00fffc04 + 0x4f) < '\x01') {
           FUN_00012c36();
-          FUN_0000c0da();
-          FUN_0000c0da();
+          render_title_text_source();
+          render_title_text_source();
           *(undefined1 *)(extraout_A0 + 0x4f) = 0;
         }
         return;
@@ -127,7 +127,7 @@ LAB_00011be6:
       FUN_000036fc();
       FUN_00012c36();
     }
-    FUN_0000c0da();
+    render_title_text_source();
     goto LAB_00011cb6;
   }
   if (DAT_00fff0d0 == '\x03') {
@@ -148,7 +148,7 @@ LAB_00011be6:
     *puVar9 = 0xffffffff;
     if (_DAT_00ffdd48 < 0) goto LAB_00011e14;
     DAT_00ffdd28 = 0;
-    FUN_0000c0da();
+    render_title_text_source();
     _DAT_00ffdd2a = (uint)*(byte *)(DAT_00fffc04 + 0x4f);
     FUN_0000c216();
     FUN_0001209a();
@@ -198,7 +198,7 @@ LAB_00011ec4:
             *(char *)(DAT_00fffc04 + 0x4f) = *(char *)(DAT_00fffc04 + 0x4f) - cVar11;
             *(char *)(iVar10 + 0x4f) = cVar11 + *(char *)(iVar10 + 0x4f);
             FUN_00012c36();
-            FUN_0000c0da();
+            render_title_text_source();
             goto LAB_00011cb6;
           }
           FUN_0001209a();
@@ -236,17 +236,17 @@ LAB_00011ec4:
         } while (sVar6 != -1);
       }
       FUN_00012c36();
-      FUN_0000c0da();
+      render_title_text_source();
       goto LAB_00011cb6;
     }
 LAB_00011e14:
-    FUN_0000c0da();
+    render_title_text_source();
     goto LAB_00011cb6;
   }
 LAB_00011c9c:
   _DAT_00fff0d0 = uVar2;
   FUN_00012c36();
-  FUN_0000c0da();
+  render_title_text_source();
 LAB_00011cb6:
   FUN_000111d0();
   FUN_00000d94();

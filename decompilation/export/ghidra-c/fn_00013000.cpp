@@ -3,7 +3,7 @@
 // Name: FUN_00013000
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 //   0x00012148 FUN_00012148
 
 
@@ -16,7 +16,7 @@ void FUN_00013000(void)
   int extraout_A0;
   int iVar4;
   
-  FUN_0000c0da();
+  render_title_text_source();
   if ((char)(DAT_00fff0d0 + -2) < '\0') {
     uVar1 = FUN_00012148();
     iVar4 = extraout_A0;
@@ -37,7 +37,7 @@ void FUN_00013000(void)
     } while (sVar3 != -1);
   }
 LAB_00013094:
-  FUN_0000c0da();
+  render_title_text_source();
   return;
 }
 

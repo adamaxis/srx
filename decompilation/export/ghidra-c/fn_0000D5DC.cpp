@@ -3,7 +3,7 @@
 // Name: FUN_0000d5dc
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 //   0x0000C216 FUN_0000c216
 
 
@@ -17,7 +17,7 @@ void FUN_0000d5dc(void)
   short sVar4;
   
   if ((char)(DAT_00fff0d1 - 4) < '\0') {
-    uVar1 = FUN_0000c0da();
+    uVar1 = render_title_text_source();
     if ((ushort)((ushort)DAT_00fff0d1 + (short)CONCAT31((int3)((uint)uVar1 >> 8),DAT_00fff0d0) * 4)
         == 6) {
       FUN_0000c216();
@@ -26,7 +26,7 @@ void FUN_0000d5dc(void)
     }
   }
   else {
-    FUN_0000c0da();
+    render_title_text_source();
   }
   FUN_0000c216();
 LAB_0000d71e:
@@ -35,8 +35,8 @@ LAB_0000d71e:
   uVar3 = 5;
   do {
     if ((uVar2 & 1 << (uVar3 & 0x1f)) != 0) {
-      FUN_0000c0da();
-      FUN_0000c0da();
+      render_title_text_source();
+      render_title_text_source();
       FUN_0000c216();
       FUN_0000c216();
       break;
@@ -48,7 +48,7 @@ LAB_0000d71e:
   uVar3 = 9;
   do {
     if ((uVar2 & 1 << (uVar3 & 0x1f)) != 0) {
-      FUN_0000c0da();
+      render_title_text_source();
       FUN_0000c216();
       return;
     }

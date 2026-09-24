@@ -591,3 +591,16 @@ target_link_libraries(shadowrun_ghidra_scene_resource_test
     PRIVATE shadowrun_ghidra_scene_resource)
 add_test(NAME shadowrun_ghidra_scene_resource
          COMMAND shadowrun_ghidra_scene_resource_test)
+
+add_library(shadowrun_ghidra_title_setup STATIC
+    src/title_setup_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_title_setup PUBLIC include)
+
+add_executable(shadowrun_ghidra_title_setup_test
+    tests/title_setup_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_title_setup_test
+    PRIVATE shadowrun_ghidra_title_setup)
+add_test(NAME shadowrun_ghidra_title_setup
+         COMMAND shadowrun_ghidra_title_setup_test)

@@ -6,7 +6,7 @@
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
 //   0x00000C2C clear_runtime_memory_and_vdp
-//   0x000012F6 FUN_000012f6
+//   0x000012F6 advance_title_palette_fade
 //   0x0000131C step_palette_transition
 //   0x0000195C sample_controller_input
 //   0x00001A9E run_title_loop
@@ -144,7 +144,7 @@ LAB_000008c0:
       } while (sVar13 != -1);
       wait_for_vblank();
       _DAT_00ffdfe8 = 0xffff;
-      FUN_000012f6();
+      advance_title_palette_fade();
       DAT_00ffe18a = 0;
       sample_controller_input();
       sample_controller_input();

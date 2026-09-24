@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000C24 FUN_00000c24
 //   0x00000D94 FUN_00000d94
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 //   0x00018776 FUN_00018776
 //   0x00026A00 FUN_00026a00
 //   0x000530DE FUN_000530de
@@ -26,14 +26,14 @@ void FUN_0001989a(void)
       if (DAT_00fff0a6 != '\0') {
         FUN_00018776();
         FUN_00026a00();
-        FUN_0000c0da();
+        render_title_text_source();
         FUN_00000c24();
         FUN_00000d94();
         return;
       }
     }
   }
-  if ((-1 < DAT_00fff0a6) && (FUN_0000c0da(), DAT_00ffe189 != DAT_00fff0a0)) {
+  if ((-1 < DAT_00fff0a6) && (render_title_text_source(), DAT_00ffe189 != DAT_00fff0a0)) {
     DAT_00ffe189 = DAT_00fff0a0;
     FUN_000530de();
   }

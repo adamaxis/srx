@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000C0DA
-// Name: FUN_0000c0da
+// Name: render_title_text_source
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E9C FUN_00000e9c
 
 
-undefined8 FUN_0000c0da(void)
+undefined8 render_title_text_source(void)
 
 {
   byte bVar1;

@@ -8,7 +8,7 @@
 //   0x00000E34 FUN_00000e34
 //   0x0000195C sample_controller_input
 //   0x0000391A FUN_0000391a
-//   0x0000C0C2 FUN_0000c0c2
+//   0x0000C0C2 load_title_font
 //   0x00010F50 FUN_00010f50
 //   0x000110BC FUN_000110bc
 //   0x0001111A FUN_0001111a
@@ -48,7 +48,7 @@ code_r0x00010d30:
   DAT_00fff100 = 0;
   FUN_00010f50();
   FUN_0005670e();
-  FUN_0000c0c2();
+  load_title_font();
   VDP_CTRL = 0x8174;
   uVar1 = _DAT_00fff0d0;
 LAB_00010d90:

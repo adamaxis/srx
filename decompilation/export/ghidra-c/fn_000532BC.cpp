@@ -7,7 +7,7 @@
 //   0x00000FFE FUN_00000ffe
 //   0x00001232 FUN_00001232
 //   0x00001358 copy_source_word_block
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 //   0x00053200 FUN_00053200
 //   0x0005322C FUN_0005322c
 //   0x000533EE FUN_000533ee
@@ -26,7 +26,7 @@ void FUN_000532bc(void)
   DAT_00ffef14 = DAT_00ffef14 | 1;
   FUN_00000f5c();
   FUN_00001232();
-  FUN_0000c0da();
+  render_title_text_source();
   FUN_000533ee();
   FUN_0005322c();
   FUN_00053200();

@@ -15,7 +15,7 @@
 //   0x00001530 decode_and_upload_source_stream
 //   0x00001728 FUN_00001728
 //   0x0000195C sample_controller_input
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x000176EA FUN_000176ea
 //   0x00017708 FUN_00017708
@@ -130,10 +130,10 @@ LAB_0001842e:
           FUN_0001897c();
           sVar8 = FUN_00019b40();
           if ((sVar8 == 8) && (DAT_00ffdf84 != '\0')) {
-            FUN_0000c0da();
+            render_title_text_source();
           }
-          FUN_0000c0da();
-          FUN_0000c0da();
+          render_title_text_source();
+          render_title_text_source();
           DAT_00fff0dc = '\x01';
           do {
             move_wrapped_menu_cursor();

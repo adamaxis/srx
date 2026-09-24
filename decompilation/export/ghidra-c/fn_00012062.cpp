@@ -3,7 +3,7 @@
 // Name: FUN_00012062
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 //   0x00012C36 FUN_00012c36
 
 
@@ -14,8 +14,8 @@ void FUN_00012062(void)
   
   if (*(char *)(DAT_00fffc04 + 0x4f) < '\x01') {
     FUN_00012c36();
-    FUN_0000c0da();
-    FUN_0000c0da();
+    render_title_text_source();
+    render_title_text_source();
     *(undefined1 *)(extraout_A0 + 0x4f) = 0;
   }
   return;

@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 FUN_00001232
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 
 
 void FUN_00058316(void)
@@ -13,11 +13,11 @@ void FUN_00058316(void)
   undefined4 extraout_A1;
   
   if ((short)(DAT_00fff0d0 - 4) < 0) {
-    FUN_0000c0da();
-    FUN_0000c0da();
+    render_title_text_source();
+    render_title_text_source();
     FUN_00001232(extraout_A1);
   }
-  FUN_0000c0da();
+  render_title_text_source();
   return;
 }
 

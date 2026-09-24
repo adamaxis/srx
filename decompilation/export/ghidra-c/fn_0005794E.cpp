@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D94 FUN_00000d94
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 //   0x00057A44 FUN_00057a44
 //   0x00057A6E FUN_00057a6e
 //   0x00057B8C FUN_00057b8c
@@ -42,7 +42,7 @@ void FUN_0005794e(void)
       iVar3 = iVar3 + 1;
       sVar2 = sVar2 + -1;
       if (sVar2 == -1) {
-        FUN_0000c0da();
+        render_title_text_source();
         FUN_00000d94();
         return;
       }
@@ -53,7 +53,7 @@ void FUN_0005794e(void)
   }
   if (DAT_00fffbfe < iVar3) {
 LAB_000579dc:
-    FUN_0000c0da();
+    render_title_text_source();
     FUN_00000d94();
     return;
   }

@@ -6,7 +6,7 @@
 //   0x00000C24 FUN_00000c24
 //   0x00000D3A sample_source_random_bound
 //   0x00000D94 FUN_00000d94
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 //   0x0001989A FUN_0001989a
 //   0x000549E4 FUN_000549e4
 //   0x000549F6 FUN_000549f6
@@ -25,7 +25,7 @@ void FUN_00054a8e(void)
   FUN_0001989a();
   if (DAT_00fff0b1 == '\0') {
     FUN_000549f6();
-    FUN_0000c0da();
+    render_title_text_source();
     FUN_00000c24();
     FUN_00000d94();
   }

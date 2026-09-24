@@ -10,7 +10,7 @@
 //   0x00000F5C FUN_00000f5c
 //   0x00001232 FUN_00001232
 //   0x0000195C sample_controller_input
-//   0x0000C0DA FUN_0000c0da
+//   0x0000C0DA render_title_text_source
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x00010952 FUN_00010952
 //   0x000176EA FUN_000176ea
@@ -77,8 +77,8 @@ LAB_000546cc:
     if (DAT_00fff0b1 < '\0') {
       return 0;
     }
-    FUN_0000c0da();
-    FUN_0000c0da();
+    render_title_text_source();
+    render_title_text_source();
     FUN_00054a28();
     DAT_00fff0dc = 0;
 LAB_0005488c:
@@ -100,7 +100,7 @@ LAB_0005488c:
         if ((bVar3 == 0 || SBORROW1((char)sVar6,cVar2) != (short)((ushort)bVar3 << 8) < 0) ||
            (count_thresholded_random_rolls(), DAT_00fff0dd < '\x01')) {
           FUN_000549e4();
-          FUN_0000c0da();
+          render_title_text_source();
           FUN_00000d94();
           DAT_00fff0a8 = DAT_00fff0a8 + '\x01';
         }
