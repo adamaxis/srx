@@ -3,7 +3,7 @@
 // Name: FUN_0000a7b4
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000A7E4 FUN_0000a7e4
+//   0x0000A7E4 initialize_entity_slot_order
 
 
 void FUN_0000a7b4(void)
@@ -14,7 +14,7 @@ void FUN_0000a7b4(void)
   DAT_00ffdf2a = 0;
   DAT_00ffdf32 = 0xff1480;
   DAT_00ffdf30 = 0;
-  FUN_0000a7e4();
+  initialize_entity_slot_order();
   return;
 }
 

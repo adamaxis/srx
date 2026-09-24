@@ -4151,7 +4151,7 @@
 0000A7C8: clr.w (0x00ffdf2a).l
 0000A7CE: move.l #0xff1480,(0x00ffdf32).l
 0000A7D8: clr.w (0x00ffdf30).l
-0000A7DE: bsr.w 0x0000a7e4 ; call 0000A7E4 FUN_0000a7e4
+0000A7DE: bsr.w 0x0000a7e4 ; call 0000A7E4 initialize_entity_slot_order
 0000A7E2: rts
 0000A7E4: lea (0xff0100).l,A1 ; data 00ff0100
 0000A7EA: lea (0xffde8a).l,A0 ; data 00ffde8a
@@ -4408,7 +4408,7 @@
 0000AC98: jsr 0x00013904.l ; call 00013904 FUN_00013904
 0000AC9E: tst.b (0x00ffe18a).l
 0000ACA4: beq.w 0x0000acac
-0000ACA8: bsr.w 0x0000ae5e ; call 0000AE5E FUN_0000ae5e
+0000ACA8: bsr.w 0x0000ae5e ; call 0000AE5E schedule_entity_collision_recheck
 0000ACAC: rts
 0000ACAE: tst.b (0x00ffe18a).l
 0000ACB4: bne.w 0x0000ae40

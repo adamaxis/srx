@@ -176,7 +176,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0000622C	expand_entity_sprite_descriptors	32	unknown	ok	ghidra-c/fn_0000622C.cpp
 0000624C	expand_entity_sprite_descriptor_list	96	unknown	ok	ghidra-c/fn_0000624C.cpp
 0000A7B4	FUN_0000a7b4	48	unknown	ok	ghidra-c/fn_0000A7B4.cpp
-0000A7E4	FUN_0000a7e4	28	unknown	ok	ghidra-c/fn_0000A7E4.cpp
+0000A7E4	initialize_entity_slot_order	28	unknown	ok	ghidra-c/fn_0000A7E4.cpp
 0000A800	FUN_0000a800	174	unknown	ok	ghidra-c/fn_0000A800.cpp
 0000A8EA	FUN_0000a8ea	488	unknown	ok	ghidra-c/fn_0000A8EA.cpp
 0000AAD2	FUN_0000aad2	48	unknown	ok	ghidra-c/fn_0000AAD2.cpp
@@ -186,7 +186,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0000AC5E	FUN_0000ac5e	38	unknown	ok	ghidra-c/fn_0000AC5E.cpp
 0000AC84	FUN_0000ac84	42	unknown	ok	ghidra-c/fn_0000AC84.cpp
 0000ACAE	FUN_0000acae	426	unknown	ok	ghidra-c/fn_0000ACAE.cpp
-0000AE5E	FUN_0000ae5e	16	unknown	ok	ghidra-c/fn_0000AE5E.cpp
+0000AE5E	schedule_entity_collision_recheck	16	unknown	ok	ghidra-c/fn_0000AE5E.cpp
 0000AE6E	FUN_0000ae6e	76	unknown	ok	ghidra-c/fn_0000AE6E.cpp
 0000AEBA	FUN_0000aeba	132	unknown	ok	ghidra-c/fn_0000AEBA.cpp
 0000AF6C	reset_entity_animation_state	16	unknown	ok	ghidra-c/fn_0000AF6C.cpp

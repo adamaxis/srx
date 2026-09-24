@@ -488,3 +488,16 @@ target_link_libraries(shadowrun_ghidra_controller_wait_test
     PRIVATE shadowrun_ghidra_controller_wait)
 add_test(NAME shadowrun_ghidra_controller_wait
          COMMAND shadowrun_ghidra_controller_wait_test)
+
+add_library(shadowrun_ghidra_entity_state_primitives STATIC
+    src/entity_state_primitives_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_state_primitives PUBLIC include)
+
+add_executable(shadowrun_ghidra_entity_state_primitives_test
+    tests/entity_state_primitives_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_state_primitives_test
+    PRIVATE shadowrun_ghidra_entity_state_primitives)
+add_test(NAME shadowrun_ghidra_entity_state_primitives
+         COMMAND shadowrun_ghidra_entity_state_primitives_test)

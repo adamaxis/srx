@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000AE5E
-// Name: FUN_0000ae5e
+// Name: schedule_entity_collision_recheck
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0000ae5e(void)
+void schedule_entity_collision_recheck(void)
 
 {
   int in_A0;

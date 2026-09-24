@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000A7E4
-// Name: FUN_0000a7e4
+// Name: initialize_entity_slot_order
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0000a7e4(void)
+void initialize_entity_slot_order(void)
 
 {
   short sVar1;

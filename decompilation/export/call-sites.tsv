@@ -376,7 +376,7 @@ caller	caller_name	instruction	text	target	callee	status
 000061F4	FUN_000061f4	00006214	jsr 0x00000f5c.l	00000F5C	FUN_00000f5c	resolved
 0000622C	expand_entity_sprite_descriptors	0000623C	bsr.w 0x0000624c	0000624C	expand_entity_sprite_descriptor_list	resolved
 0000622C	expand_entity_sprite_descriptors	00006246	bsr.w 0x0000624c	0000624C	expand_entity_sprite_descriptor_list	resolved
-0000A7B4	FUN_0000a7b4	0000A7DE	bsr.w 0x0000a7e4	0000A7E4	FUN_0000a7e4	resolved
+0000A7B4	FUN_0000a7b4	0000A7DE	bsr.w 0x0000a7e4	0000A7E4	initialize_entity_slot_order	resolved
 0000A800	FUN_0000a800	0000A872	jsr 0x00000d3a.l	00000D3A	FUN_00000d3a	resolved
 0000A800	FUN_0000a800	0000A89A	jsr 0x0005ba98.l	0005BA98	FUN_0005ba98	resolved
 0000A8EA	FUN_0000a8ea	0000A8EA	jsr 0x00013874.l	00013874	FUN_00013874	resolved
@@ -407,7 +407,7 @@ caller	caller_name	instruction	text	target	callee	status
 0000AC5E	FUN_0000ac5e	0000AC7E	bsr.w 0x0000b7b8	0000B7B8	FUN_0000b7b8	resolved
 0000AC84	FUN_0000ac84	0000AC8E	jsr 0x000138b8.l	000138B8	FUN_000138b8	resolved
 0000AC84	FUN_0000ac84	0000AC98	jsr 0x00013904.l	00013904	FUN_00013904	resolved
-0000AC84	FUN_0000ac84	0000ACA8	bsr.w 0x0000ae5e	0000AE5E	FUN_0000ae5e	resolved
+0000AC84	FUN_0000ac84	0000ACA8	bsr.w 0x0000ae5e	0000AE5E	schedule_entity_collision_recheck	resolved
 0000ACAE	FUN_0000acae	0000AD14	jsr 0x0001dc4c.l	0001DC4C	FUN_0001dc4c	resolved
 0000ACAE	FUN_0000acae	0000AD76	bsr.w 0x0000abfc	0000ABFC	update_entity_animation_delay	resolved
 0000ACAE	FUN_0000acae	0000AD8E	jsr 0x0000ae6e.l	0000AE6E	FUN_0000ae6e	resolved
