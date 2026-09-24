@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00014AF4
-// Name: FUN_00014af4
+// Name: find_rotating_route_strip_target
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00014756 clear_entity_route_flags
@@ -8,7 +8,7 @@
 //   0x00014902 compute_obstruction_grid_index
 
 
-void FUN_00014af4(void)
+void find_rotating_route_strip_target(void)
 
 {
   short sVar1;

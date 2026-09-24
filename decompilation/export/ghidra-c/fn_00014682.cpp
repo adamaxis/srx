@@ -7,7 +7,7 @@
 //   0x000148AA find_first_occupied_obstruction_tile
 //   0x000148D2 choose_dominant_axis_directions
 //   0x000149C0 FUN_000149c0
-//   0x00014AF4 FUN_00014af4
+//   0x00014AF4 find_rotating_route_strip_target
 
 
 void FUN_00014682(void)
@@ -56,7 +56,7 @@ void FUN_00014682(void)
     return;
   }
   *(byte *)(extraout_A0_01 + 0xb0) = *(byte *)(extraout_A0_01 + 0xb0) | 8;
-  FUN_00014af4();
+  find_rotating_route_strip_target();
   FUN_000149c0();
   return;
 }

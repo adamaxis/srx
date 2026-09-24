@@ -76,6 +76,14 @@ std::int32_t find_alternate_route_tile(
     std::int32_t maximum_row,
     const std::vector<std::uint8_t>& obstruction_map);
 
+// ROM 0x14AF4: try the source strip probe in five rotated cardinal
+// directions and return the first non-current route tile.
+std::optional<std::int32_t> find_rotating_route_strip_target(
+    std::uint16_t world_x,
+    std::uint16_t world_y,
+    std::uint16_t heading,
+    const std::vector<std::uint8_t>& obstruction_map);
+
 // ROM 0x1494C: walk the source's horizontal or vertical grid line between
 // two packed obstruction indices and report whether an occupied tile blocks
 // the walk. The packed grid uses six low bits for the column and 0x40 rows.

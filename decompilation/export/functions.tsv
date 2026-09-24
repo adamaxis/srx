@@ -391,7 +391,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00014914	is_entity_path_blocked	56	unknown	ok	ghidra-c/fn_00014914.cpp
 0001494C	is_obstruction_path_blocked	116	unknown	ok	ghidra-c/fn_0001494C.cpp
 000149C0	FUN_000149c0	308	unknown	ok	ghidra-c/fn_000149C0.cpp
-00014AF4	FUN_00014af4	90	unknown	ok	ghidra-c/fn_00014AF4.cpp
+00014AF4	find_rotating_route_strip_target	90	unknown	ok	ghidra-c/fn_00014AF4.cpp
 00014B4E	decode_obstruction_tile_projection	88	unknown	ok	ghidra-c/fn_00014B4E.cpp
 00014BA6	update_entity_axis_relation_state	136	unknown	ok	ghidra-c/fn_00014BA6.cpp
 00014C2E	derive_entity_axis_relation_flags	40	unknown	ok	ghidra-c/fn_00014C2E.cpp

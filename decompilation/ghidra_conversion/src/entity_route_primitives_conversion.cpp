@@ -164,6 +164,56 @@ std::int32_t find_alternate_route_tile(
     return candidate - primary_step;
 }
 
+std::optional<std::int32_t> find_rotating_route_strip_target(
+    const std::uint16_t world_x,
+    const std::uint16_t world_y,
+    const std::uint16_t heading,
+    const std::vector<std::uint8_t>& obstruction_map) {
+    static constexpr std::array<std::int16_t, 8> kDirectionSteps{
+        -64, 0, 1, 0, 64, 0, -1, 0};
+    const auto starting_tile = static_cast<std::int32_t>(
+        compute_obstruction_grid_index(world_x, world_y));
+    auto primary_direction = static_cast<std::uint8_t>(
+        ((static_cast<std::uint32_t>(heading) << 3U) |
+         (static_cast<std::uint32_t>(heading) >> 13U)) &
+        0x06U);
+    auto secondary_direction = static_cast<std::uint8_t>(
+        (primary_direction + 2U) & 0x06U);
+
+    const auto open = [&obstruction_map](const std::int32_t tile) {
+        return tile >= 0 &&
+            tile < static_cast<std::int32_t>(obstruction_map.size()) &&
+            obstruction_map[static_cast<std::size_t>(tile)] == 0U;
+    };
+    const auto probe = [&](const std::uint8_t primary,
+                           const std::uint8_t secondary) {
+        const auto primary_step = static_cast<std::int32_t>(
+            kDirectionSteps[primary]);
+        const auto secondary_step = static_cast<std::int32_t>(
+            kDirectionSteps[secondary]);
+        auto candidate = starting_tile + primary_step;
+        while (open(candidate)) {
+            if (open(candidate + secondary_step)) {
+                return candidate;
+            }
+            candidate += primary_step;
+        }
+        return candidate - primary_step;
+    };
+
+    for (int attempt = 0; attempt < 5; ++attempt) {
+        const auto candidate = probe(primary_direction, secondary_direction);
+        if (candidate != starting_tile) {
+            return candidate;
+        }
+        primary_direction = static_cast<std::uint8_t>(
+            (primary_direction + 6U) & 0x06U);
+        secondary_direction = static_cast<std::uint8_t>(
+            (secondary_direction + 6U) & 0x06U);
+    }
+    return std::nullopt;
+}
+
 bool is_obstruction_path_blocked(
     const std::int32_t start_tile,
     const std::int32_t target_tile,

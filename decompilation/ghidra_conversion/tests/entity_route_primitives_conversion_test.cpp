@@ -94,6 +94,19 @@ int main() {
         return 30;
     }
 
+    const auto strip_target = find_rotating_route_strip_target(
+        0x0200U, 0x0100U, 0x4000U, std::vector<std::uint8_t>(128, 0U));
+    if (!expect(strip_target.has_value() && strip_target.value() == 2)) {
+        return 40;
+    }
+    std::vector<std::uint8_t> fully_blocked_strip(128, 1U);
+    fully_blocked_strip[1] = 0U;
+    if (!expect(!find_rotating_route_strip_target(
+                     0x0200U, 0x0100U, 0x4000U, fully_blocked_strip)
+                     .has_value())) {
+        return 41;
+    }
+
     std::vector<std::uint8_t> horizontal_path(128, 0U);
     horizontal_path[12] = 1U;
     if (!expect(is_obstruction_path_blocked(10, 13, horizontal_path))) {

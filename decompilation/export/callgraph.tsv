@@ -914,7 +914,7 @@ caller	caller_name	callee	callee_name	call_sites
 00014682	FUN_00014682	000148AA	find_first_occupied_obstruction_tile	1
 00014682	FUN_00014682	000148D2	choose_dominant_axis_directions	1
 00014682	FUN_00014682	000149C0	FUN_000149c0	1
-00014682	FUN_00014682	00014AF4	FUN_00014af4	1
+00014682	FUN_00014682	00014AF4	find_rotating_route_strip_target	1
 00014914	is_entity_path_blocked	00014902	compute_obstruction_grid_index	2
 00014914	is_entity_path_blocked	0001494C	is_obstruction_path_blocked	2
 000149C0	FUN_000149c0	00014756	clear_entity_route_flags	1
@@ -925,9 +925,9 @@ caller	caller_name	callee	callee_name	call_sites
 000149C0	FUN_000149c0	00014B4E	decode_obstruction_tile_projection	1
 000149C0	FUN_000149c0	00014C2E	derive_entity_axis_relation_flags	1
 000149C0	FUN_000149c0	00015CA4	compute_diagonal_step_cost	1
-00014AF4	FUN_00014af4	00014756	clear_entity_route_flags	1
-00014AF4	FUN_00014af4	00014800	probe_obstruction_strip	1
-00014AF4	FUN_00014af4	00014902	compute_obstruction_grid_index	1
+00014AF4	find_rotating_route_strip_target	00014756	clear_entity_route_flags	1
+00014AF4	find_rotating_route_strip_target	00014800	probe_obstruction_strip	1
+00014AF4	find_rotating_route_strip_target	00014902	compute_obstruction_grid_index	1
 00014BA6	update_entity_axis_relation_state	00014682	FUN_00014682	1
 00014C7C	FUN_00014c7c	00014C56	project_heading_position	1
 00014C7C	FUN_00014c7c	00014D58	FUN_00014d58	2
