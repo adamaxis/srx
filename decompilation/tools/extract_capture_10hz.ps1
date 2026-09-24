@@ -9,7 +9,7 @@ param(
 $Root = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 if (-not $Webm) { $Webm = Join-Path $Root "screen-capture.webm" }
 if (-not $OutDir) {
-    $OutDir = Join-Path $Root "decompilation\build-debug\visual-regression\ffmpeg-10hz"
+    $OutDir = Join-Path $Root "decompilation\webm_ffmpeg_microframes"
 }
 $Ffmpeg = Join-Path $PSScriptRoot "ffmpeg\ffmpeg-9.0.1-essentials_build\bin\ffmpeg.exe"
 if (-not (Test-Path $Ffmpeg)) {
