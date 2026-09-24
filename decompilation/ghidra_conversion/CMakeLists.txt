@@ -253,3 +253,16 @@ target_link_libraries(shadowrun_ghidra_movement_probe_test
     PRIVATE shadowrun_ghidra_movement_probe)
 add_test(NAME shadowrun_ghidra_movement_probe
          COMMAND shadowrun_ghidra_movement_probe_test)
+
+add_library(shadowrun_ghidra_collision_state STATIC
+    src/collision_state_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_collision_state PUBLIC include)
+
+add_executable(shadowrun_ghidra_collision_state_test
+    tests/collision_state_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_collision_state_test
+    PRIVATE shadowrun_ghidra_collision_state)
+add_test(NAME shadowrun_ghidra_collision_state
+         COMMAND shadowrun_ghidra_collision_state_test)

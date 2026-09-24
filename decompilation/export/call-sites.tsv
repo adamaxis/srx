@@ -453,13 +453,13 @@ caller	caller_name	instruction	text	target	callee	status
 0000B39A	FUN_0000b39a	0000B3E8	bsr.w 0x0000af6c	0000AF6C	FUN_0000af6c	resolved
 0000B3FE	FUN_0000b3fe	0000B426	bsr.w 0x0000af6c	0000AF6C	FUN_0000af6c	resolved
 0000B3FE	FUN_0000b3fe	0000B42C	bsr.w 0x0000abfc	0000ABFC	FUN_0000abfc	resolved
-0000B442	FUN_0000b442	0000B486	bsr.w 0x0000b48c	0000B48C	FUN_0000b48c	resolved
-0000B48C	FUN_0000b48c	0000B48C	jsr 0x0000e7c8.l	0000E7C8	FUN_0000e7c8	resolved
+0000B442	FUN_0000b442	0000B486	bsr.w 0x0000b48c	0000B48C	evaluate_entity_collision	resolved
+0000B48C	evaluate_entity_collision	0000B48C	jsr 0x0000e7c8.l	0000E7C8	FUN_0000e7c8	resolved
 0000B49C	FUN_0000b49c	0000B4D2	bsr.w 0x0000b732	0000B732	apply_movement_result_policy	resolved
 0000B49C	FUN_0000b49c	0000B4F6	bsr.w 0x0000b732	0000B732	apply_movement_result_policy	resolved
 0000B49C	FUN_0000b49c	0000B514	bsr.w 0x0000b732	0000B732	apply_movement_result_policy	resolved
 0000B732	apply_movement_result_policy	0000B732	bsr.w 0x0000b77e	0000B77E	probe_entity_directional_collision	resolved
-0000B77E	probe_entity_directional_collision	0000B79A	bsr.w 0x0000b48c	0000B48C	FUN_0000b48c	resolved
+0000B77E	probe_entity_directional_collision	0000B79A	bsr.w 0x0000b48c	0000B48C	evaluate_entity_collision	resolved
 0000B7B8	FUN_0000b7b8	0000B834	bsr.w 0x0000bc36	0000BC36	build_collision_probe_points	resolved
 0000B7B8	FUN_0000b7b8	0000B852	jsr 0x0000423c.l	0000423C	quantize_field_delta	resolved
 0000B7B8	FUN_0000b7b8	0000B878	jsr 0x0001e2e0.l	0001E2E0	FUN_0001e2e0	resolved

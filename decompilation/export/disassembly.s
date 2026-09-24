@@ -4587,7 +4587,7 @@
 0000AFE2: clr.w (0x38,A0)
 0000AFE6: move.w (A0),D5w
 0000AFE8: move.w (0x4,A0),D6w
-0000AFEC: bsr.w 0x0000b48c ; call 0000B48C FUN_0000b48c
+0000AFEC: bsr.w 0x0000b48c ; call 0000B48C evaluate_entity_collision
 0000AFF0: rts
 0000AFF2: btst.b #0x4,(0x10,A0)
 0000AFF8: beq.w 0x0000affe
@@ -4619,7 +4619,7 @@
 0000B09C: clr.w (0x38,A0)
 0000B0A0: move.w (A0),D5w
 0000B0A2: move.w (0x4,A0),D6w
-0000B0A6: bsr.w 0x0000b48c ; call 0000B48C FUN_0000b48c
+0000B0A6: bsr.w 0x0000b48c ; call 0000B48C evaluate_entity_collision
 0000B0AA: rts
 0000B0AC: btst.b #0x3,(0x10,A0)
 0000B0B2: bne.w 0x0000b330
@@ -4632,7 +4632,7 @@
 0000B0D4: clr.w (0x38,A0)
 0000B0D8: move.w (A0),D5w
 0000B0DA: move.w (0x4,A0),D6w
-0000B0DE: bsr.w 0x0000b48c ; call 0000B48C FUN_0000b48c
+0000B0DE: bsr.w 0x0000b48c ; call 0000B48C evaluate_entity_collision
 0000B0E2: rts
 0000B0E4: btst.b #0x3,(0x10,A0)
 0000B0EA: bne.w 0x0000b330
@@ -4645,7 +4645,7 @@
 0000B10C: clr.w (0x38,A0)
 0000B110: move.w (A0),D5w
 0000B112: move.w (0x4,A0),D6w
-0000B116: bsr.w 0x0000b48c ; call 0000B48C FUN_0000b48c
+0000B116: bsr.w 0x0000b48c ; call 0000B48C evaluate_entity_collision
 0000B11A: rts
 0000B11C: move.b (0x4c,A1),D1b
 0000B120: move.b (0x9c,A1),D0b
@@ -4760,7 +4760,7 @@
 0000B320: clr.w (0x38,A0)
 0000B324: move.w (A0),D5w
 0000B326: move.w (0x4,A0),D6w
-0000B32A: bsr.w 0x0000b48c ; call 0000B48C FUN_0000b48c
+0000B32A: bsr.w 0x0000b48c ; call 0000B48C evaluate_entity_collision
 0000B32E: rts
 0000B330: bset.b #0x6,(0x10,A0)
 0000B336: bsr.w 0x0000abb6 ; call 0000ABB6 FUN_0000abb6
@@ -4786,7 +4786,7 @@
 0000B38A: clr.w (0x38,A0)
 0000B38E: move.w (A0),D5w
 0000B390: move.w (0x4,A0),D6w
-0000B394: bsr.w 0x0000b48c ; call 0000B48C FUN_0000b48c
+0000B394: bsr.w 0x0000b48c ; call 0000B48C evaluate_entity_collision
 0000B398: rts
 0000B39A: move.w D0w,(0x2e,A0)
 0000B39E: move.l #0xb3ee,(0x3a,A0) ; data 0000b3ee
@@ -4814,7 +4814,7 @@
 0000B3EE: clr.w (0x38,A0)
 0000B3F2: move.w (A0),D5w
 0000B3F4: move.w (0x4,A0),D6w
-0000B3F8: bsr.w 0x0000b48c ; call 0000B48C FUN_0000b48c
+0000B3F8: bsr.w 0x0000b48c ; call 0000B48C evaluate_entity_collision
 0000B3FC: rts
 0000B3FE: move.w D0w,(0x2e,A0)
 0000B402: move.l #0xb432,(0x3a,A0) ; data 0000b432
@@ -4833,7 +4833,7 @@
 0000B432: clr.w (0x38,A0)
 0000B436: move.w (A0),D5w
 0000B438: move.w (0x4,A0),D6w
-0000B43C: bsr.w 0x0000b48c ; call 0000B48C FUN_0000b48c
+0000B43C: bsr.w 0x0000b48c ; call 0000B48C evaluate_entity_collision
 0000B440: rts
 0000B442: bclr.b #0x1,(0xb0,A0)
 0000B448: move.w (0x34,A0),(0x2e,A0)
@@ -4851,7 +4851,7 @@
 0000B47C: move.w D1w,(0x16,A0)
 0000B480: move.w (A0),D5w
 0000B482: move.w (0x4,A0),D6w
-0000B486: bsr.w 0x0000b48c ; call 0000B48C FUN_0000b48c
+0000B486: bsr.w 0x0000b48c ; call 0000B48C evaluate_entity_collision
 0000B48A: rts
 0000B48C: jsr 0x0000e7c8.l ; call 0000E7C8 FUN_0000e7c8
 0000B492: move.l (0x00ffef10).l,(0xd0,A0)
@@ -5041,7 +5041,7 @@
 0000B78E: move.w (0x0,A1,D0w*0x1),D6w
 0000B792: add.w (0x4,A0),D6w
 0000B796: movem.w {  D6w D5w},-(SP)
-0000B79A: bsr.w 0x0000b48c ; call 0000B48C FUN_0000b48c
+0000B79A: bsr.w 0x0000b48c ; call 0000B48C evaluate_entity_collision
 0000B79E: movem.w (SP)+,{  D5 D6}
 0000B7A2: tst.w D0w
 0000B7A4: bpl.w 0x0000b7b6

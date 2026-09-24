@@ -3,7 +3,7 @@
 // Name: FUN_0000b442
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000B48C FUN_0000b48c
+//   0x0000B48C evaluate_entity_collision
 
 
 void FUN_0000b442(void)
@@ -23,7 +23,7 @@ void FUN_0000b442(void)
   }
   *(undefined2 *)(in_A0 + 0x16) =
        *(undefined2 *)((int)L"@DHLPTX\\" + (short)((uVar1 & 7) << 1) + 0x10);
-  FUN_0000b48c();
+  evaluate_entity_collision();
   return;
 }
 
