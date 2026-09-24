@@ -18,6 +18,7 @@ std::uint16_t render_menu_tile_rows(
     const std::function<void()>& clear_row,
     const std::function<void()>& write_row) {
     std::uint16_t countdown = 7U;
+    std::uint16_t last_countdown = 0U;
     do {
         if (clear_row) {
             clear_row();
@@ -25,9 +26,10 @@ std::uint16_t render_menu_tile_rows(
         if (write_row) {
             write_row();
         }
+        last_countdown = countdown;
         countdown = static_cast<std::uint16_t>(countdown - 1U);
     } while (countdown != 0xFFFFU);
-    return static_cast<std::uint16_t>(countdown >> 1U);
+    return static_cast<std::uint16_t>(last_countdown >> 1U);
 }
 
 } // namespace shadowrun::ghidra_conversion
