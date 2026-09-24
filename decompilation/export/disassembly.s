@@ -27498,7 +27498,7 @@
 00059C92: move.w #0x11,D0w
 00059C96: jsr 0x000530ea.l ; call 000530EA FUN_000530ea
 00059C9C: clr.w (0x00ffddc2).l
-00059CA2: jsr 0x00059d7c.l ; call 00059D7C FUN_00059d7c
+00059CA2: jsr 0x00059d7c.l ; call 00059D7C run_title_intro_stage2
 00059CA8: tst.w (0x00ffddc2).l
 00059CAE: bne.w 0x00059cfe
 00059CB2: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
@@ -27541,7 +27541,7 @@
 00059DE2: move.w #0x1,(0x00ffdd02).l
 00059DEA: lea (0xffd986).l,A3 ; data 00ffd986
 00059DF0: move.w #0x2,D5w
-00059DF4: bsr.w 0x0005a37c ; call 0005A37C FUN_0005a37c
+00059DF4: bsr.w 0x0005a37c ; call 0005A37C render_title_intro_scene_entities
 00059DF8: subq.w #0x8,A3
 00059DFA: move.w #0x1,(0x00ffd980).l
 00059E02: clr.b (0x3,A3)
@@ -27573,7 +27573,7 @@
 00059E92: move.w #0x1,(0x00ffdd02).l
 00059E9A: lea (0xffd986).l,A3 ; data 00ffd986
 00059EA0: move.w #0x2,D5w
-00059EA4: bsr.w 0x0005a37c ; call 0005A37C FUN_0005a37c
+00059EA4: bsr.w 0x0005a37c ; call 0005A37C render_title_intro_scene_entities
 00059EA8: subq.w #0x8,A3
 00059EAA: move.w #0x1,(0x00ffd980).l
 00059EB2: clr.b (0x3,A3)

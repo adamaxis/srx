@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00059D7C
-// Name: FUN_00059d7c
+// Name: run_title_intro_stage2
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -15,7 +15,7 @@
 //   0x0005A0B2 advance_title_intro_sequence
 //   0x0005A1EA FUN_0005a1ea
 //   0x0005A244 reset_title_intro_persistent_sequence
-//   0x0005A37C FUN_0005a37c
+//   0x0005A37C render_title_intro_scene_entities
 //   0x0005A3B0 reset_title_intro_motion
 //   0x0005A4B4 reset_title_intro_dual_sprites
 //   0x0005A572 reset_title_intro_timed_sprites
@@ -30,7 +30,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00059d7c(void)
+void run_title_intro_stage2(void)
 
 {
   short sVar1;
@@ -47,7 +47,7 @@ void FUN_00059d7c(void)
   DAT_00ffdd46 = 0x138;
   DAT_00ffdd48 = 0xf1;
   DAT_00ffdd02 = 1;
-  FUN_0005a37c();
+  render_title_intro_scene_entities();
   _DAT_00ffd980 = 0;
   DAT_00ffef14 = DAT_00ffef14 | 2;
   advance_title_palette_fade();
@@ -72,7 +72,7 @@ void FUN_00059d7c(void)
       DAT_00ffef14 = DAT_00ffef14 | 8;
     }
     DAT_00ffdd02 = 1;
-    FUN_0005a37c();
+    render_title_intro_scene_entities();
     _DAT_00ffd980 = 0;
     DAT_00ffef14 = DAT_00ffef14 | 2;
   } while ((_DAT_00ffddc2 == 0) && (sVar1 = sVar1 + -1, sVar1 != -1));

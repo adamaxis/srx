@@ -826,7 +826,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00059C34	adjust_runner_source_byte_triplet	20	unknown	ok	ghidra-c/fn_00059C34.cpp
 00059C5E	FUN_00059c5e	180	unknown	ok	ghidra-c/fn_00059C5E.cpp
 00059D12	FUN_00059d12	44	unknown	ok	ghidra-c/fn_00059D12.cpp
-00059D7C	FUN_00059d7c	510	unknown	ok	ghidra-c/fn_00059D7C.cpp
+00059D7C	run_title_intro_stage2	510	unknown	ok	ghidra-c/fn_00059D7C.cpp
 00059F7A	reset_title_intro_overlay_schedule	20	unknown	ok	ghidra-c/fn_00059F7A.cpp
 00059F8E	advance_title_intro_overlay	242	unknown	ok	ghidra-c/fn_00059F8E.cpp
 0005A0A4	reset_title_intro_sequence	14	unknown	ok	ghidra-c/fn_0005A0A4.cpp
@@ -834,7 +834,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0005A1EA	FUN_0005a1ea	90	unknown	ok	ghidra-c/fn_0005A1EA.cpp
 0005A244	reset_title_intro_persistent_sequence	14	unknown	ok	ghidra-c/fn_0005A244.cpp
 0005A252	advance_title_intro_persistent_sequence	298	unknown	ok	ghidra-c/fn_0005A252.cpp
-0005A37C	FUN_0005a37c	28	unknown	ok	ghidra-c/fn_0005A37C.cpp
+0005A37C	render_title_intro_scene_entities	28	unknown	ok	ghidra-c/fn_0005A37C.cpp
 0005A3B0	reset_title_intro_motion	14	unknown	ok	ghidra-c/fn_0005A3B0.cpp
 0005A3BE	advance_title_intro_motion	196	unknown	ok	ghidra-c/fn_0005A3BE.cpp
 0005A4B4	reset_title_intro_dual_sprites	14	unknown	ok	ghidra-c/fn_0005A4B4.cpp

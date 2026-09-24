@@ -569,9 +569,19 @@ The secondary-stage `0x5AA96` coordinator is now
 `run_title_intro_orchestrator`. It consumes named host assets for the two
 decoded graphics streams, palette, text, and HUD sprite stream; emits the
 typed 20-word by 13-row fill plan; preserves the palette-fade frame restore;
-and services the stage frame for exactly `0x115` iterations. `0xABD2` is the
+and services the stage frame for exactly `0x115` iterations. `0x5ABD2` is the
 typed timed/base/projected sprite wrapper used by that loop. The shared
 `0x5B29A`/`0x5B32C` leaves now expose clear/fill plans instead of VDP writes.
+
+The `0x59D7C` stage-two coordinator is now `run_title_intro_stage2`. Its
+native state preserves the initial `-0x40`/`-0x20` scene-entry offsets, the
+`0xA1` transition frames, the source-ordered reset of the ten intro helpers,
+ambush initialization, and the `0x1F1` layered scene loop. The late text
+batches are triggered at loop frame `0x164`, while scene-entity rendering is
+kept as the explicit `0x5A37C` presentation boundary. Vblank, controller,
+palette, schedule, sprite, and ambush services are callbacks, so this
+conversion records timing and ordering without importing ROM addresses or
+Genesis memory behavior into the host runtime.
 
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll

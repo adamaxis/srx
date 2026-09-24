@@ -223,6 +223,8 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0005AA1EL, "render_title_intro_center_text_batch");
         names.put(0x0005AA5AL, "render_title_intro_stage_text_batch");
         names.put(0x0005AA96L, "run_title_intro_orchestrator");
+        names.put(0x00059D7CL, "run_title_intro_stage2");
+        names.put(0x0005A37CL, "render_title_intro_scene_entities");
         names.put(0x0005AB96L, "advance_title_intro_stage_service_steps");
         names.put(0x0005ABD2L, "service_title_intro_stage_frame");
         names.put(0x0005AC0EL, "draw_title_intro_stage_base_sprite");

@@ -1087,3 +1087,18 @@ target_link_libraries(shadowrun_ghidra_title_intro_orchestrator_test
     PRIVATE shadowrun_ghidra_title_intro_orchestrator)
 add_test(NAME shadowrun_ghidra_title_intro_orchestrator
          COMMAND shadowrun_ghidra_title_intro_orchestrator_test)
+
+add_library(shadowrun_ghidra_title_intro_stage2 STATIC
+    src/title_intro_stage2_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_title_intro_stage2 PUBLIC include)
+target_link_libraries(shadowrun_ghidra_title_intro_stage2
+    PRIVATE shadowrun_ghidra_title_intro_schedule)
+
+add_executable(shadowrun_ghidra_title_intro_stage2_test
+    tests/title_intro_stage2_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_title_intro_stage2_test
+    PRIVATE shadowrun_ghidra_title_intro_stage2)
+add_test(NAME shadowrun_ghidra_title_intro_stage2
+         COMMAND shadowrun_ghidra_title_intro_stage2_test)
