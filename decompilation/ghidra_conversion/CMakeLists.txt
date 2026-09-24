@@ -337,3 +337,18 @@ target_link_libraries(shadowrun_ghidra_behavior_animation_test
     PRIVATE shadowrun_ghidra_behavior_animation)
 add_test(NAME shadowrun_ghidra_behavior_animation
          COMMAND shadowrun_ghidra_behavior_animation_test)
+
+add_library(shadowrun_ghidra_entity_transition STATIC
+    src/entity_transition_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_transition PUBLIC include)
+target_link_libraries(shadowrun_ghidra_entity_transition
+    PRIVATE shadowrun_ghidra_behavior_animation)
+
+add_executable(shadowrun_ghidra_entity_transition_test
+    tests/entity_transition_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_transition_test
+    PRIVATE shadowrun_ghidra_entity_transition)
+add_test(NAME shadowrun_ghidra_entity_transition
+         COMMAND shadowrun_ghidra_entity_transition_test)

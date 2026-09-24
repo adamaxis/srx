@@ -4484,7 +4484,7 @@
 0000AE0A: move.w #0x0,D0w
 0000AE0E: bsr.w 0x0000abfc ; call 0000ABFC update_entity_animation_delay
 0000AE12: bra.w 0x0000ae26
-0000AE16: jmp 0x0000b1dc.l ; call 0000B1DC FUN_0000b1dc
+0000AE16: jmp 0x0000b1dc.l ; call 0000B1DC configure_entity_target_transition
 0000AE1C: move.w (0x2e,A1),D0w
 0000AE20: jmp 0x0000b39a.l ; call 0000B39A set_entity_heading_with_field_animation
 0000AE26: move.w (0x00ffdd04).l,D0w
@@ -11547,12 +11547,12 @@
 000141C6: move.w #0x1,(0x00ffdfe0).l
 000141CE: btst.b #0x6,(0x11,A0)
 000141D4: bne.w 0x00014220
-000141D8: jmp 0x0000b1dc.l ; call 0000B1DC FUN_0000b1dc
+000141D8: jmp 0x0000b1dc.l ; call 0000B1DC configure_entity_target_transition
 000141DE: move.w #0x2,(0x00ffdfe0).l
 000141E6: rts
 000141E8: move.w (0x2e,A1),D0w
 000141EC: jmp 0x0000b39a.l ; call 0000B39A set_entity_heading_with_field_animation
-00014220: jmp 0x0000b11c.l ; call 0000B11C FUN_0000b11c
+00014220: jmp 0x0000b11c.l ; call 0000B11C synchronize_entity_behavior_spawn
 00014226: move.w #0x4b,D0w
 0001422A: jsr 0x000530de.l ; call 000530DE FUN_000530de
 00014230: move.b (0x57,A0),D0b

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000B11C
-// Name: FUN_0000b11c
+// Name: synchronize_entity_behavior_spawn
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000ABFC update_entity_animation_delay
@@ -11,7 +11,7 @@
 //   0x00055B16 FUN_00055b16
 
 
-void FUN_0000b11c(void)
+void synchronize_entity_behavior_spawn(void)
 
 {
   undefined2 uVar1;

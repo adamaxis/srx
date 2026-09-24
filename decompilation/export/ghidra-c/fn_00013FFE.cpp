@@ -8,8 +8,8 @@
 //   0x0000AE6E FUN_0000ae6e
 //   0x0000AF7C prepare_entity_delayed_animation_primary
 //   0x0000AFAE prepare_entity_delayed_animation_alternate
-//   0x0000B11C FUN_0000b11c
-//   0x0000B1DC FUN_0000b1dc
+//   0x0000B11C synchronize_entity_behavior_spawn
+//   0x0000B1DC configure_entity_target_transition
 //   0x0000B39A set_entity_heading_with_field_animation
 //   0x0000B3FE set_entity_heading_with_alternate_animation
 //   0x00014226 FUN_00014226
@@ -143,10 +143,10 @@ LAB_000141a0:
   if ((short)extraout_A0_03[0x6e] < 0) {
     DAT_00ffdfe0 = 1;
     if ((*(byte *)((int)extraout_A0_03 + 0x11) & 0x40) != 0) {
-      uVar2 = FUN_0000b11c();
+      uVar2 = synchronize_entity_behavior_spawn();
       return uVar2;
     }
-    uVar2 = FUN_0000b1dc();
+    uVar2 = configure_entity_target_transition();
     return uVar2;
   }
   DAT_00ffdfe0 = 3;

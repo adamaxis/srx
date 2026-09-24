@@ -8,7 +8,7 @@
 //   0x0000AE6E FUN_0000ae6e
 //   0x0000AF7C prepare_entity_delayed_animation_primary
 //   0x0000AFAE prepare_entity_delayed_animation_alternate
-//   0x0000B1DC FUN_0000b1dc
+//   0x0000B1DC configure_entity_target_transition
 //   0x0000B39A set_entity_heading_with_field_animation
 //   0x0000B3FE set_entity_heading_with_alternate_animation
 //   0x0001514E FUN_0001514e
@@ -88,7 +88,7 @@ void FUN_0000acae(void)
       return;
     }
     if (*(char *)(in_A0 + 0x57) == '\0') {
-      FUN_0000b1dc();
+      configure_entity_target_transition();
       return;
     }
     bVar2 = *(byte *)(in_A0 + 0x57) < 0xe;

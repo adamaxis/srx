@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000B1DC
-// Name: FUN_0000b1dc
+// Name: configure_entity_target_transition
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000ABFC update_entity_animation_delay
@@ -14,7 +14,7 @@
 //   0x00055C76 FUN_00055c76
 
 
-void FUN_0000b1dc(void)
+void configure_entity_target_transition(void)
 
 {
   ushort uVar1;
