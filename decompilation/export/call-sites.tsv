@@ -10,7 +10,7 @@ caller	caller_name	instruction	text	target	callee	status
 0000075E	run_game_loop	0000078A	jsr 0x0000131c.l	0000131C	step_palette_transition	resolved
 0000075E	run_game_loop	000007BA	jsr 0x00001a9e.l	00001A9E	run_title_loop	resolved
 0000075E	run_game_loop	000007C0	jsr 0x00053126.l	00053126	prepare_mode_entry_service	resolved
-0000075E	run_game_loop	000007CE	jsr 0x00059318.l	00059318	FUN_00059318	resolved
+0000075E	run_game_loop	000007CE	jsr 0x00059318.l	00059318	initialize_save_roster_buffer	resolved
 0000075E	run_game_loop	000007D4	jsr 0x00059092.l	00059092	FUN_00059092	resolved
 0000075E	run_game_loop	000007DA	jsr 0x0000131c.l	0000131C	step_palette_transition	resolved
 0000075E	run_game_loop	000007EA	jsr 0x00059c5e.l	00059C5E	FUN_00059c5e	resolved
@@ -504,7 +504,7 @@ caller	caller_name	instruction	text	target	callee	status
 0000C64C	FUN_0000c64c	0000C7CC	jsr 0x0000391a.l	0000391A	FUN_0000391a	resolved
 0000C64C	FUN_0000c64c	0000C7E0	jsr 0x00002a32.l	00002A32	initialize_field_mode_profile_a	resolved
 0000C64C	FUN_0000c64c	0000C7EC	jsr 0x00002a44.l	00002A44	initialize_field_mode_profile_b	resolved
-0000C802	FUN_0000c802	0000C802	jsr 0x00059798.l	00059798	FUN_00059798	resolved
+0000C802	FUN_0000c802	0000C802	jsr 0x00059798.l	00059798	serialize_runner_record_population	resolved
 0000C802	FUN_0000c802	0000C83C	bsr.w 0x0000c8b0	0000C8B0	apply_byte_counter_delta_with_negative_floor	resolved
 0000C802	FUN_0000c802	0000C840	jsr 0x0001e514.l	0001E514	FUN_0001e514	resolved
 0000C802	FUN_0000c802	0000C852	jsr 0x0000391a.l	0000391A	FUN_0000391a	resolved
@@ -2716,8 +2716,8 @@ caller	caller_name	instruction	text	target	callee	status
 00059172	FUN_00059172	00059208	jsr 0x00059360.l	00059360	FUN_00059360	resolved
 00059172	FUN_00059172	0005923C	jsr 0x0000c0da.l	0000C0DA	render_title_text_source	resolved
 00059172	FUN_00059172	00059242	jmp 0x00000d94.l	00000D94	wait_for_controller_event	resolved
-00059318	FUN_00059318	00059334	bsr.w 0x000597ee	000597EE	FUN_000597ee	resolved
-00059318	FUN_00059318	00059342	bsr.w 0x000597ee	000597EE	FUN_000597ee	resolved
+00059318	initialize_save_roster_buffer	00059334	bsr.w 0x000597ee	000597EE	project_live_runner_record_to_compact	resolved
+00059318	initialize_save_roster_buffer	00059342	bsr.w 0x000597ee	000597EE	project_live_runner_record_to_compact	resolved
 00059360	FUN_00059360	00059360	bsr.w 0x00059456	00059456	normalize_sram_save_slots	resolved
 00059360	FUN_00059360	00059368	bsr.w 0x00059372	00059372	FUN_00059372	resolved
 00059372	FUN_00059372	00059394	bsr.w 0x000593fc	000593FC	validate_backup_game_save	resolved
@@ -2742,9 +2742,9 @@ caller	caller_name	instruction	text	target	callee	status
 0005966E	refresh_runner_record_population	0005967A	bsr.w 0x000598b0	000598B0	project_compact_runner_record	resolved
 0005966E	refresh_runner_record_population	0005969C	bsr.w 0x000598b0	000598B0	project_compact_runner_record	resolved
 0005966E	refresh_runner_record_population	000596BE	bsr.w 0x000598b0	000598B0	project_compact_runner_record	resolved
-00059798	FUN_00059798	000597A4	bsr.w 0x000597ee	000597EE	FUN_000597ee	resolved
-00059798	FUN_00059798	000597C6	bsr.w 0x000597ee	000597EE	FUN_000597ee	resolved
-00059798	FUN_00059798	000597E8	bsr.w 0x000597ee	000597EE	FUN_000597ee	resolved
+00059798	serialize_runner_record_population	000597A4	bsr.w 0x000597ee	000597EE	project_live_runner_record_to_compact	resolved
+00059798	serialize_runner_record_population	000597C6	bsr.w 0x000597ee	000597EE	project_live_runner_record_to_compact	resolved
+00059798	serialize_runner_record_population	000597E8	bsr.w 0x000597ee	000597EE	project_live_runner_record_to_compact	resolved
 00059986	FUN_00059986	00059988	jsr 0x00000d3a.l	00000D3A	sample_source_random_bound	resolved
 00059986	FUN_00059986	00059992	jsr 0x00000d3a.l	00000D3A	sample_source_random_bound	resolved
 00059BCC	FUN_00059bcc	00059BE2	jsr 0x00003674.l	00003674	FUN_00003674	resolved

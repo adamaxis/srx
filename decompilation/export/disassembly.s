@@ -223,7 +223,7 @@
 000007C0: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
 000007C6: tst.w (0x00ffddc0).l
 000007CC: beq.b 0x0000078a
-000007CE: jsr 0x00059318.l ; call 00059318 FUN_00059318
+000007CE: jsr 0x00059318.l ; call 00059318 initialize_save_roster_buffer
 000007D4: jsr 0x00059092.l ; call 00059092 FUN_00059092
 000007DA: jsr 0x0000131c.l ; call 0000131C step_palette_transition
 000007E0: tst.w (0x00ffe108).l
@@ -5655,7 +5655,7 @@
 0000C7F6: rts
 0000C7F8: tst.b (0x00ff014c).l
 0000C7FE: beq.w 0x0000c64c
-0000C802: jsr 0x00059798.l ; call 00059798 FUN_00059798
+0000C802: jsr 0x00059798.l ; call 00059798 serialize_runner_record_population
 0000C808: clr.l D7
 0000C80A: move.w #-0x2,D6w
 0000C80E: lea (0xff0200).l,A0 ; data 00ff0200
@@ -27060,10 +27060,10 @@
 00059328: move.b (A0)+,(A1)+
 0005932A: dbf D7w,0x00059328
 0005932E: lea (0x7291a).l,A0 ; data 0007291a
-00059334: bsr.w 0x000597ee ; call 000597EE FUN_000597ee
+00059334: bsr.w 0x000597ee ; call 000597EE project_live_runner_record_to_compact
 00059338: lea (0x72c1a).l,A0 ; data 00072c1a
 0005933E: move.w #0xb,D7w
-00059342: bsr.w 0x000597ee ; call 000597EE FUN_000597ee
+00059342: bsr.w 0x000597ee ; call 000597EE project_live_runner_record_to_compact
 00059346: adda.w #0x100,A0
 0005934A: dbf D7w,0x00059342
 0005934E: move.b #-0x1,(0x00fffc0c).l
@@ -27280,7 +27280,7 @@
 00059796: rts
 00059798: movea.l #0xfff1fc,A1
 0005979E: lea (0xff0100).l,A0 ; data 00ff0100
-000597A4: bsr.w 0x000597ee ; call 000597EE FUN_000597ee
+000597A4: bsr.w 0x000597ee ; call 000597EE project_live_runner_record_to_compact
 000597A8: clr.l D0
 000597AA: move.b (0x00fffc0c).l,D0b
 000597B0: bmi.w 0x000597ca
@@ -27288,7 +27288,7 @@
 000597BA: mulu.w #0x4a,D0
 000597BE: adda.w D0w,A1
 000597C0: movea.l #0xff0200,A0
-000597C6: bsr.w 0x000597ee ; call 000597EE FUN_000597ee
+000597C6: bsr.w 0x000597ee ; call 000597EE project_live_runner_record_to_compact
 000597CA: clr.l D0
 000597CC: move.b (0x00fffc0d).l,D0b
 000597D2: bmi.w 0x000597ec
@@ -27296,7 +27296,7 @@
 000597DC: mulu.w #0x4a,D0
 000597E0: adda.w D0w,A1
 000597E2: movea.l #0xff0300,A0
-000597E8: bsr.w 0x000597ee ; call 000597EE FUN_000597ee
+000597E8: bsr.w 0x000597ee ; call 000597EE project_live_runner_record_to_compact
 000597EC: rts
 000597EE: move.w (0xe,A0),(A1)+
 000597F2: move.w (0x2c,A0),(A1)+

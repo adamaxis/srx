@@ -572,6 +572,14 @@ when neither slot is usable. The source's interleaved even-byte copy is already
 represented as extracted host vectors at this boundary, so the repair is a
 plain native vector copy rather than a runtime address operation.
 
+The save-record direction is now covered too. `0x597EE` is the inverse field
+projection from a live 0x100-byte runner record to a compact 0x4A-byte save
+record, and `0x59798` applies it to the default, primary, and secondary
+records in source order. `0x59318` seeds a typed save buffer with its fixed
+0x14-byte header, thirteen compact records (Joshua plus twelve roster
+templates), and the two inactive selection markers. These are extracted-data
+operations; they do not introduce runtime ROM or RAM addressing.
+
 Two fixed-loop leaves are now named and tested as well. `0x33BE` is a 4x4,
 16-call wrapper around the existing source-wrapped transfer boundary, while
 `0x3548` invokes the HUD panel drawing leaf three times. Neither conversion

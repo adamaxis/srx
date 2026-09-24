@@ -8,7 +8,7 @@
 //   0x0000391A FUN_0000391a
 //   0x0000C8B0 apply_byte_counter_delta_with_negative_floor
 //   0x0001E514 FUN_0001e514
-//   0x00059798 FUN_00059798
+//   0x00059798 serialize_runner_record_population
 
 
 void FUN_0000c802(void)
@@ -17,7 +17,7 @@ void FUN_0000c802(void)
   int extraout_A0;
   int extraout_A0_00;
   
-  FUN_00059798();
+  serialize_runner_record_population();
   if (((DAT_00ff0210 & 1) != 0) && ((DAT_00ff024c == '\0' || (DAT_00ff029c == '\0')))) {
     DAT_00fffc0c = 0xff;
     apply_byte_counter_delta_with_negative_floor();

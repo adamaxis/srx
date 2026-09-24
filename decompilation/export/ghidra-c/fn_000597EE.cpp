@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000597EE
-// Name: FUN_000597ee
+// Name: project_live_runner_record_to_compact
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_000597ee(void)
+void project_live_runner_record_to_compact(void)
 
 {
   int in_A0;

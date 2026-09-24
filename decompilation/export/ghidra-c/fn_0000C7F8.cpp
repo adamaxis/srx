@@ -17,7 +17,7 @@ void FUN_0000c7f8(void)
   int extraout_A0_00;
   
   if (DAT_00ff014c != '\0') {
-    FUN_00059798();
+    serialize_runner_record_population();
     if (((DAT_00ff0210 & 1) != 0) && ((DAT_00ff024c == '\0' || (DAT_00ff029c == '\0')))) {
       DAT_00fffc0c = 0xff;
       apply_byte_counter_delta_with_negative_floor();

@@ -4,12 +4,14 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <vector>
 
 namespace shadowrun::ghidra_conversion {
 
 constexpr std::size_t kCompactRunnerRecordSize = 0x4AU;
 constexpr std::size_t kLiveRunnerRecordSize = 0x100U;
+constexpr std::size_t kSaveRosterTemplateCount = 13U;
 
 // The roster source records are 0x4A-byte packed records.  Their complete
 // meaning is not established yet, so the conversion keeps their bytes intact
@@ -27,6 +29,11 @@ struct LiveRunnerRecord {
 // opaque fields remain opaque until another consumer proves their meaning.
 void project_compact_runner_record(const CompactRunnerRecord& source,
                                    LiveRunnerRecord& destination);
+
+// ROM 0x597EE: project the known live-record ranges back into the compact
+// save-record layout. This is the inverse of the 0x598B0 field map.
+void project_live_runner_record_to_compact(
+    const LiveRunnerRecord& source, CompactRunnerRecord& destination);
 
 enum class RunnerRecordDestination {
     default_record,
@@ -69,9 +76,43 @@ RunnerRecordPopulationResult refresh_runner_record_population(
     const std::vector<CompactRunnerRecord>& compact_records,
     const RunnerRecordProjectionBoundary& project_record = {});
 
+enum class RunnerRecordSaveAction {
+    completed,
+    no_destination_records,
+    destination_record_unavailable,
+};
+
+struct RunnerRecordSaveResult {
+    RunnerRecordSaveAction action =
+        RunnerRecordSaveAction::no_destination_records;
+    RunnerRecordDestination last_destination =
+        RunnerRecordDestination::default_record;
+};
+
+// ROM 0x59798: write the default compact record, then active primary and
+// secondary records, into the source-style save-record table.
+RunnerRecordSaveResult serialize_runner_record_population(
+    const RunnerRosterState& state,
+    std::vector<CompactRunnerRecord>& compact_records);
+
 struct RunnerRosterTemplate {
     std::array<std::uint8_t, kLiveRunnerRecordSize> record{};
 };
+
+struct SaveRosterBuffer {
+    std::array<std::uint8_t, 0x14U> header{};
+    std::vector<CompactRunnerRecord> compact_records;
+    std::uint8_t primary_marker = 0xFFU;
+    std::uint8_t secondary_marker = 0xFFU;
+};
+
+// ROM 0x59318: seed the save work buffer's fixed header and compact records
+// from one Joshua template plus the twelve recruited-roster templates, then
+// clear the two selection markers.
+std::optional<SaveRosterBuffer> initialize_save_roster_buffer(
+    const std::array<std::uint8_t, 0x14U>& header,
+    const std::array<RunnerRosterTemplate, kSaveRosterTemplateCount>&
+        templates);
 
 enum class RunnerRosterTemplateAction {
     loaded,

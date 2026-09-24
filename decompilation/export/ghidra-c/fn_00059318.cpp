@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00059318
-// Name: FUN_00059318
+// Name: initialize_save_roster_buffer
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000597EE FUN_000597ee
+//   0x000597EE project_live_runner_record_to_compact
 
 
-void FUN_00059318(void)
+void initialize_save_roster_buffer(void)
 
 {
   short sVar1;
@@ -22,10 +22,10 @@ void FUN_00059318(void)
     puVar2 = puVar2 + 1;
     puVar3 = puVar3 + 1;
   } while (sVar1 != -1);
-  FUN_000597ee();
+  project_live_runner_record_to_compact();
   sVar1 = 0xb;
   do {
-    FUN_000597ee();
+    project_live_runner_record_to_compact();
     sVar1 = sVar1 + -1;
   } while (sVar1 != -1);
   DAT_00fffc0c = 0xff;

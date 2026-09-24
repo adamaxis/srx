@@ -809,7 +809,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00058D7E	FUN_00058d7e	22	unknown	ok	ghidra-c/fn_00058D7E.cpp
 00059092	FUN_00059092	432	unknown	ok	ghidra-c/fn_00059092.cpp
 00059172	FUN_00059172	214	unknown	ok	ghidra-c/fn_00059172.cpp
-00059318	FUN_00059318	72	unknown	ok	ghidra-c/fn_00059318.cpp
+00059318	initialize_save_roster_buffer	72	unknown	ok	ghidra-c/fn_00059318.cpp
 00059360	FUN_00059360	18	unknown	ok	ghidra-c/fn_00059360.cpp
 00059372	FUN_00059372	138	unknown	ok	ghidra-c/fn_00059372.cpp
 000593FC	validate_backup_game_save	90	unknown	ok	ghidra-c/fn_000593FC.cpp
@@ -818,8 +818,8 @@ entry	name	size	callingConvention	decompileStatus	file
 0005961C	validate_sram_game_save	82	unknown	ok	ghidra-c/fn_0005961C.cpp
 0005966E	refresh_runner_record_population	86	unknown	ok	ghidra-c/fn_0005966E.cpp
 00059786	sum_game_save_payload	18	unknown	ok	ghidra-c/fn_00059786.cpp
-00059798	FUN_00059798	86	unknown	ok	ghidra-c/fn_00059798.cpp
-000597EE	FUN_000597ee	194	unknown	ok	ghidra-c/fn_000597EE.cpp
+00059798	serialize_runner_record_population	86	unknown	ok	ghidra-c/fn_00059798.cpp
+000597EE	project_live_runner_record_to_compact	194	unknown	ok	ghidra-c/fn_000597EE.cpp
 000598B0	project_compact_runner_record	194	unknown	ok	ghidra-c/fn_000598B0.cpp
 00059986	FUN_00059986	84	unknown	ok	ghidra-c/fn_00059986.cpp
 00059BCC	FUN_00059bcc	94	unknown	ok	ghidra-c/fn_00059BCC.cpp

@@ -61,6 +61,12 @@ int main() {
         return 1;
     }
 
+    CompactRunnerRecord reverse_projected{};
+    project_live_runner_record_to_compact(projected, reverse_projected);
+    if (!expect(reverse_projected.bytes == primary_source.bytes)) {
+        return 2;
+    }
+
     RunnerRosterState state{};
     state.primary_marker = 1U;
     state.secondary_marker = 2U;
@@ -72,7 +78,7 @@ int main() {
                 state.default_record.bytes[0x00U] == 0x00U &&
                 state.primary_record.bytes[0x66U] == 0x58U &&
                 state.secondary_record.bytes[0x66U] == 0x98U)) {
-        return 2;
+        return 3;
     }
 
     std::vector<RunnerRosterTemplate> templates(3U);
@@ -91,7 +97,7 @@ int main() {
                 read_big_endian_word(state.primary_record, 0x26U) == 0x320U &&
                 state.primary_record.bytes[0x8FU] == 0xA1U &&
                 state.default_record.bytes[0x66U] == 0x18U)) {
-        return 3;
+        return 4;
     }
 
     const auto duplicate = initialize_secondary_roster_template(
@@ -101,7 +107,7 @@ int main() {
                 state.secondary_marker == 0xFFU &&
                 state.primary_record.bytes[0x8FU] == 0xB2U &&
                 state.secondary_record.bytes[0x00U] == 0x00U)) {
-        return 4;
+        return 5;
     }
 
     const auto secondary = initialize_secondary_roster_template(
@@ -113,7 +119,7 @@ int main() {
                 read_big_endian_word(state.secondary_record, 0x20U) == 0x31U &&
                 read_big_endian_word(state.secondary_record, 0x26U) == 0x620U &&
                 state.secondary_record.bytes[0x8FU] == 0xC3U)) {
-        return 5;
+        return 6;
     }
 
     if (!expect(initialize_primary_roster_template(
@@ -123,8 +129,46 @@ int main() {
                 initialize_secondary_roster_template(
                     0x00FFU, templates, 0U, state, compact_records)
                     .action ==
-                    RunnerRosterTemplateAction::invalid_template_index)) {
-        return 6;
+                RunnerRosterTemplateAction::invalid_template_index)) {
+        return 7;
+    }
+
+    std::vector<CompactRunnerRecord> serialized_records(4U);
+    state.default_record = projected;
+    state.primary_record = projected;
+    state.secondary_record = projected;
+    state.primary_marker = 1U;
+    state.secondary_marker = 3U;
+    const auto serialized =
+        serialize_runner_record_population(state, serialized_records);
+    if (!expect(serialized.action == RunnerRecordSaveAction::completed &&
+                serialized.last_destination ==
+                    RunnerRecordDestination::secondary_record &&
+                serialized_records[0].bytes == reverse_projected.bytes &&
+                serialized_records[1].bytes == reverse_projected.bytes &&
+                serialized_records[3].bytes == reverse_projected.bytes)) {
+        return 8;
+    }
+
+    std::array<std::uint8_t, 0x14U> header{};
+    header.fill(0x5AU);
+    std::array<RunnerRosterTemplate, kSaveRosterTemplateCount>
+        save_templates{};
+    for (std::size_t index = 0; index < save_templates.size(); ++index) {
+        save_templates[index].record.fill(
+            static_cast<std::uint8_t>(0x10U + index));
+    }
+    const auto save_buffer =
+        initialize_save_roster_buffer(header, save_templates);
+    if (!expect(save_buffer.has_value() &&
+                save_buffer->header[0U] == 0x5AU &&
+                save_buffer->compact_records.size() ==
+                    kSaveRosterTemplateCount &&
+                save_buffer->primary_marker == 0xFFU &&
+                save_buffer->secondary_marker == 0xFFU &&
+                save_buffer->compact_records[4U].bytes[0U] == 0x14U &&
+                save_buffer->compact_records[4U].bytes[0x28U] == 0x14U)) {
+        return 9;
     }
 
     return 0;

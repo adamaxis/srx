@@ -39,7 +39,7 @@ caller	caller_name	callee	callee_name	call_sites
 0000075E	run_game_loop	00053290	FUN_00053290	1
 0000075E	run_game_loop	000566A2	FUN_000566a2	1
 0000075E	run_game_loop	00059092	FUN_00059092	1
-0000075E	run_game_loop	00059318	FUN_00059318	1
+0000075E	run_game_loop	00059318	initialize_save_roster_buffer	1
 0000075E	run_game_loop	000594E0	FUN_000594e0	1
 0000075E	run_game_loop	00059C5E	FUN_00059c5e	1
 0000075E	run_game_loop	0005D746	run_pre_title_sequence	1
@@ -421,7 +421,7 @@ caller	caller_name	callee	callee_name	call_sites
 0000C802	FUN_0000c802	0000391A	FUN_0000391a	2
 0000C802	FUN_0000c802	0000C8B0	apply_byte_counter_delta_with_negative_floor	2
 0000C802	FUN_0000c802	0001E514	FUN_0001e514	2
-0000C802	FUN_0000c802	00059798	FUN_00059798	1
+0000C802	FUN_0000c802	00059798	serialize_runner_record_population	1
 0000C928	FUN_0000c928	00000BD2	wait_for_vblank	1
 0000C928	FUN_0000c928	00000BF2	latch_controller_events	1
 0000C928	FUN_0000c928	0000195C	sample_controller_input	1
@@ -1912,7 +1912,7 @@ caller	caller_name	callee	callee_name	call_sites
 00059172	FUN_00059172	0000C376	move_wrapped_menu_cursor	1
 00059172	FUN_00059172	0000C3E6	FUN_0000c3e6	1
 00059172	FUN_00059172	00059360	FUN_00059360	1
-00059318	FUN_00059318	000597EE	FUN_000597ee	2
+00059318	initialize_save_roster_buffer	000597EE	project_live_runner_record_to_compact	2
 00059360	FUN_00059360	00059372	FUN_00059372	1
 00059360	FUN_00059360	00059456	normalize_sram_save_slots	1
 00059372	FUN_00059372	00001502	copy_even_bytes	2
@@ -1930,7 +1930,7 @@ caller	caller_name	callee	callee_name	call_sites
 0005961C	validate_sram_game_save	000014CE	extract_even_bytes	1
 0005961C	validate_sram_game_save	00059786	sum_game_save_payload	1
 0005966E	refresh_runner_record_population	000598B0	project_compact_runner_record	3
-00059798	FUN_00059798	000597EE	FUN_000597ee	3
+00059798	serialize_runner_record_population	000597EE	project_live_runner_record_to_compact	3
 00059986	FUN_00059986	00000D3A	sample_source_random_bound	2
 00059BCC	FUN_00059bcc	00003674	FUN_00003674	1
 00059BCC	FUN_00059bcc	000037EC	FUN_000037ec	1
