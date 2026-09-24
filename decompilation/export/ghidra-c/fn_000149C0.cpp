@@ -8,7 +8,7 @@
 //   0x000148AA FUN_000148aa
 //   0x00014902 compute_obstruction_grid_index
 //   0x00014914 FUN_00014914
-//   0x00014B4E FUN_00014b4e
+//   0x00014B4E decode_obstruction_tile_projection
 //   0x00014C2E derive_entity_axis_relation_flags
 //   0x00015CA4 compute_diagonal_step_cost
 
@@ -83,7 +83,7 @@ void FUN_000149c0(void)
     }
     in_A0[0x5d] = in_A0[0x5d] + 2;
   }
-  FUN_00014b4e();
+  decode_obstruction_tile_projection();
   uVar5 = unaff_D2w << 0xd | unaff_D2w >> 3;
   uVar2 = compute_diagonal_step_cost();
   iVar6 = extraout_A0_01;

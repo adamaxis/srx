@@ -392,7 +392,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0001494C	FUN_0001494c	116	unknown	ok	ghidra-c/fn_0001494C.cpp
 000149C0	FUN_000149c0	308	unknown	ok	ghidra-c/fn_000149C0.cpp
 00014AF4	FUN_00014af4	90	unknown	ok	ghidra-c/fn_00014AF4.cpp
-00014B4E	FUN_00014b4e	88	unknown	ok	ghidra-c/fn_00014B4E.cpp
+00014B4E	decode_obstruction_tile_projection	88	unknown	ok	ghidra-c/fn_00014B4E.cpp
 00014BA6	FUN_00014ba6	136	unknown	ok	ghidra-c/fn_00014BA6.cpp
 00014C2E	derive_entity_axis_relation_flags	40	unknown	ok	ghidra-c/fn_00014C2E.cpp
 00014C56	FUN_00014c56	38	unknown	ok	ghidra-c/fn_00014C56.cpp

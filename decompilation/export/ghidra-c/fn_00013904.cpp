@@ -361,7 +361,7 @@ FUN_000149c0:
       puVar7[0x5d] = puVar7[0x5d] + 2;
     }
     *(undefined4 *)((int)register0x0000003c + -4) = 0x14a12;
-    FUN_00014b4e();
+    decode_obstruction_tile_projection();
     *(ushort *)((int)register0x0000003c + -2) = unaff_D2w << 0xd | unaff_D2w >> 3;
     *(undefined4 *)((int)register0x0000003c + -6) = 0x14a2e;
     uVar5 = compute_diagonal_step_cost();

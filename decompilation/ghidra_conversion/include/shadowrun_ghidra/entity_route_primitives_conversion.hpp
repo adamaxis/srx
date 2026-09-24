@@ -5,11 +5,24 @@
 
 namespace shadowrun::ghidra_conversion {
 
+struct ObstructionTileProjection {
+    std::uint16_t world_x = 0;
+    std::uint16_t world_y = 0;
+    std::int8_t direction = 0;
+};
+
 // ROM 0x14902: map world coordinates into the source obstruction-grid index.
 // The source grid uses 0x200 horizontal units and a 0x40-byte row stride.
 std::uint16_t compute_obstruction_grid_index(
     std::uint16_t world_x,
     std::uint16_t world_y);
+
+// ROM 0x14B4E: decode the packed tile coordinate and select the direction
+// from that tile toward the reference tile. Horizontal slots are 2/6 and
+// vertical slots are 4/0 for negative/positive relative movement.
+ObstructionTileProjection decode_obstruction_tile_projection(
+    std::uint16_t packed_tile,
+    std::uint16_t reference_tile);
 
 // ROM 0x14C2E: set bit 0 when X is no greater than its target and bit 1 when
 // Y is no greater than its target.

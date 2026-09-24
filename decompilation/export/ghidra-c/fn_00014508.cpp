@@ -198,7 +198,7 @@ FUN_000149c0:
     }
     puVar11[-0xffffffff00000002] = 1;
     puVar11[-0xffffffff00000001] = 0x4a12;
-    FUN_00014b4e();
+    decode_obstruction_tile_projection();
     puVar11[-1] = uVar6 << 0xd | uVar6 >> 3;
     puVar11[-0xffffffff00000003] = 1;
     puVar11[-0xffffffff00000002] = 0x4a2e;

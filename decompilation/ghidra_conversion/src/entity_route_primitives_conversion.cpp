@@ -10,6 +10,30 @@ std::uint16_t compute_obstruction_grid_index(
     return static_cast<std::uint16_t>(row_offset + (world_x >> 9U));
 }
 
+ObstructionTileProjection decode_obstruction_tile_projection(
+    const std::uint16_t packed_tile,
+    const std::uint16_t reference_tile) {
+    const auto world_x = static_cast<std::uint16_t>(
+        ((packed_tile & 0x003FU) << 9U) + 0x0100U);
+    const auto world_y = static_cast<std::uint16_t>(
+        (((packed_tile >> 6U) << 9U) | (packed_tile >> 13U)) + 0x0100U);
+
+    std::int8_t direction = 0;
+    if ((packed_tile & 0xFFC0U) != (reference_tile & 0xFFC0U)) {
+        direction = (reference_tile & 0xFFC0U) <
+                (packed_tile & 0xFFC0U)
+            ? 4
+            : 0;
+    } else {
+        direction = (reference_tile & 0x003FU) <
+                (packed_tile & 0x003FU)
+            ? 2
+            : 6;
+    }
+
+    return ObstructionTileProjection{world_x, world_y, direction};
+}
+
 std::uint8_t derive_entity_axis_relation_flags(
     const std::uint16_t entity_x,
     const std::uint16_t entity_y,

@@ -108,7 +108,7 @@ FUN_000149c0:
       }
       in_A0[0x5d] = in_A0[0x5d] + 2;
     }
-    FUN_00014b4e();
+    decode_obstruction_tile_projection();
     uVar6 = unaff_D2w << 0xd | unaff_D2w >> 3;
     uVar3 = compute_diagonal_step_cost();
     iVar7 = extraout_A0_04;

@@ -197,7 +197,7 @@ FUN_000149c0:
       }
       puVar3[0x5d] = puVar3[0x5d] + 2;
     }
-    FUN_00014b4e();
+    decode_obstruction_tile_projection();
     uVar7 = uVar7 << 0xd | uVar7 >> 3;
     puVar3 = (ushort *)compute_diagonal_step_cost();
     uVar5 = (ushort)puVar3;

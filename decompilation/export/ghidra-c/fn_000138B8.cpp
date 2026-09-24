@@ -245,7 +245,7 @@ FUN_000149c0:
     }
     puVar12[-0xffffffff00000002] = 1;
     puVar12[-0xffffffff00000001] = 0x4a12;
-    FUN_00014b4e();
+    decode_obstruction_tile_projection();
     puVar12[-1] = uVar7 << 0xd | uVar7 >> 3;
     puVar12[-0xffffffff00000003] = 1;
     puVar12[-0xffffffff00000002] = 0x4a2e;

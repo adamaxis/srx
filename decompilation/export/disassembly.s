@@ -12063,7 +12063,7 @@
 00014A04: beq.w 0x00014a36
 00014A08: move.w (A2),D0w
 00014A0A: addq.w #0x2,(0xba,A0)
-00014A0E: bsr.w 0x00014b4e ; call 00014B4E FUN_00014b4e
+00014A0E: bsr.w 0x00014b4e ; call 00014B4E decode_obstruction_tile_projection
 00014A12: ror.w #0x3,D2w
 00014A14: move.w D2w,-(SP) ; data Stack[-0x2]
 00014A16: move.w (A0),D0w

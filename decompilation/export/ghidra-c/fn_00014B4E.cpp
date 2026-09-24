@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00014B4E
-// Name: FUN_00014b4e
+// Name: decode_obstruction_tile_projection
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00014b4e(void)
+void decode_obstruction_tile_projection(void)
 
 {
   ushort in_D0w;
