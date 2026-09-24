@@ -580,6 +580,14 @@ records in source order. `0x59318` seeds a typed save buffer with its fixed
 templates), and the two inactive selection markers. These are extracted-data
 operations; they do not introduce runtime ROM or RAM addressing.
 
+The save/load wrapper pair is now typed. `0x59372` tries the primary backup
+slot, then the secondary slot and repairs the primary when the secondary is
+the only valid copy; if both fail it calls an explicit SRAM fallback boundary.
+`0x59360` runs that loader only after the two-slot SRAM preparation reports a
+usable result. The fallback remains a callback because the source's storage
+device and interleaved extraction state are a separate boundary from the
+native save work buffer.
+
 Two fixed-loop leaves are now named and tested as well. `0x33BE` is a 4x4,
 16-call wrapper around the existing source-wrapped transfer boundary, while
 `0x3548` invokes the HUD panel drawing leaf three times. Neither conversion

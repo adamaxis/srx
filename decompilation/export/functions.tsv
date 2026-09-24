@@ -810,8 +810,8 @@ entry	name	size	callingConvention	decompileStatus	file
 00059092	FUN_00059092	432	unknown	ok	ghidra-c/fn_00059092.cpp
 00059172	FUN_00059172	214	unknown	ok	ghidra-c/fn_00059172.cpp
 00059318	initialize_save_roster_buffer	72	unknown	ok	ghidra-c/fn_00059318.cpp
-00059360	FUN_00059360	18	unknown	ok	ghidra-c/fn_00059360.cpp
-00059372	FUN_00059372	138	unknown	ok	ghidra-c/fn_00059372.cpp
+00059360	coordinate_save_load	18	unknown	ok	ghidra-c/fn_00059360.cpp
+00059372	load_save_work_buffer	138	unknown	ok	ghidra-c/fn_00059372.cpp
 000593FC	validate_backup_game_save	90	unknown	ok	ghidra-c/fn_000593FC.cpp
 00059456	normalize_sram_save_slots	138	unknown	ok	ghidra-c/fn_00059456.cpp
 000594E0	FUN_000594e0	316	unknown	ok	ghidra-c/fn_000594E0.cpp

@@ -620,6 +620,21 @@ target_link_libraries(shadowrun_ghidra_save_slot_test
 add_test(NAME shadowrun_ghidra_save_slot
          COMMAND shadowrun_ghidra_save_slot_test)
 
+add_library(shadowrun_ghidra_save_restore STATIC
+    src/save_restore_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_save_restore PUBLIC include)
+target_link_libraries(shadowrun_ghidra_save_restore
+    PRIVATE shadowrun_ghidra_save_slot)
+
+add_executable(shadowrun_ghidra_save_restore_test
+    tests/save_restore_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_save_restore_test
+    PRIVATE shadowrun_ghidra_save_restore)
+add_test(NAME shadowrun_ghidra_save_restore
+         COMMAND shadowrun_ghidra_save_restore_test)
+
 add_library(shadowrun_ghidra_random STATIC
     src/random_conversion.cpp
 )

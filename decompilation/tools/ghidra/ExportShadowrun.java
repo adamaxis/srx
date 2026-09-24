@@ -208,6 +208,8 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0000431CL, "initialize_secondary_roster_template");
         names.put(0x000593FCL, "validate_backup_game_save");
         names.put(0x00059318L, "initialize_save_roster_buffer");
+        names.put(0x00059360L, "coordinate_save_load");
+        names.put(0x00059372L, "load_save_work_buffer");
         names.put(0x0005961CL, "validate_sram_game_save");
         names.put(0x00059456L, "normalize_sram_save_slots");
         names.put(0x0005966EL, "refresh_runner_record_population");

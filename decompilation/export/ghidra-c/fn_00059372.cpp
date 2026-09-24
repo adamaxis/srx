@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00059372
-// Name: FUN_00059372
+// Name: load_save_work_buffer
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001502 copy_even_bytes
@@ -8,7 +8,7 @@
 //   0x0005961C validate_sram_game_save
 
 
-void FUN_00059372(void)
+void load_save_work_buffer(void)
 
 {
   bool bVar1;
