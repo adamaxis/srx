@@ -16,4 +16,8 @@ void clear_scene_record_transition_words(SceneRecordResetState& state);
 // ROM 0x16DEE: clear bit 0 in the ten scene-record pending flags.
 void clear_scene_record_pending_flags(SceneRecordResetState& state);
 
+// ROM 0x16E08: report whether bit 0 is set for all ten scene-record slots.
+bool all_scene_record_slots_active(
+    const std::array<std::uint8_t, 10>& active_flags);
+
 } // namespace shadowrun::ghidra_conversion

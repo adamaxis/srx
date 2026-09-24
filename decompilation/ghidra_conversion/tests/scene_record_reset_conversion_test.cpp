@@ -20,5 +20,15 @@ int main() {
             return 2;
         }
     }
+
+    std::array<std::uint8_t, 10> active_flags{};
+    active_flags.fill(1U);
+    if (!all_scene_record_slots_active(active_flags)) {
+        return 3;
+    }
+    active_flags[6] = 0U;
+    if (all_scene_record_slots_active(active_flags)) {
+        return 4;
+    }
     return 0;
 }

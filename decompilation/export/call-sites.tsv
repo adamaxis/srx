@@ -1424,10 +1424,10 @@ caller	caller_name	instruction	text	target	callee	status
 000167AE	FUN_000167ae	000169F0	bsr.w 0x00016afa	00016AFA	FUN_00016afa	resolved
 00016A26	FUN_00016a26	00016A5C	jsr 0x0001dbaa.l	0001DBAA	schedule_world_activity_timeout	resolved
 00016AFA	FUN_00016afa	00016B1A	jmp 0x00000f5c.l	00000F5C	FUN_00000f5c	resolved
-00016B98	FUN_00016b98	00016C0A	bsr.w 0x00016e08	00016E08	FUN_00016e08	resolved
+00016B98	FUN_00016b98	00016C0A	bsr.w 0x00016e08	00016E08	all_scene_record_slots_active	resolved
 00016B98	FUN_00016b98	00016C74	jsr 0x00000d3a.l	00000D3A	sample_source_random_bound	resolved
 00016B98	FUN_00016b98	00016D64	bsr.w 0x00016d8a	00016D8A	FUN_00016d8a	resolved
-00016D8A	FUN_00016d8a	00016D8A	bsr.w 0x00016e08	00016E08	FUN_00016e08	resolved
+00016D8A	FUN_00016d8a	00016D8A	bsr.w 0x00016e08	00016E08	all_scene_record_slots_active	resolved
 00016E30	FUN_00016e30	00016E4E	jsr 0x0001a322.l	0001A322	clear_entity_effect_pending_records	resolved
 00016E30	FUN_00016e30	00016E54	jsr 0x0001a310.l	0001A310	clear_effect_slots	resolved
 00016E5C	FUN_00016e5c	00016E98	bsr.w 0x00016ea0	00016EA0	FUN_00016ea0	resolved

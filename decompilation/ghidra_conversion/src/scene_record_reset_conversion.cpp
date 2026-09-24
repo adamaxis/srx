@@ -12,4 +12,14 @@ void clear_scene_record_pending_flags(SceneRecordResetState& state) {
     }
 }
 
+bool all_scene_record_slots_active(
+    const std::array<std::uint8_t, 10>& active_flags) {
+    for (const auto flags : active_flags) {
+        if ((flags & 0x01U) == 0U) {
+            return false;
+        }
+    }
+    return true;
+}
+
 } // namespace shadowrun::ghidra_conversion

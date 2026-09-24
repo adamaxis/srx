@@ -13712,7 +13712,7 @@
 00016BFC: beq.w 0x00016cc6
 00016C00: tst.w (0x00fffc0e).l
 00016C06: bne.w 0x00016cc6
-00016C0A: bsr.w 0x00016e08 ; call 00016E08 FUN_00016e08
+00016C0A: bsr.w 0x00016e08 ; call 00016E08 all_scene_record_slots_active
 00016C0E: bcs.w 0x00016cc6
 00016C12: move.w (A0),D0w
 00016C14: addi.w #0x80,D0w
@@ -13768,7 +13768,7 @@
 00016D7C: move.l #0x49a0,(0x3a,A0) ; data 000049a0
 00016D84: rts
 00016D86: move.w #0x64,D6w
-00016D8A: bsr.w 0x00016e08 ; call 00016E08 FUN_00016e08
+00016D8A: bsr.w 0x00016e08 ; call 00016E08 all_scene_record_slots_active
 00016D8E: bcc.w 0x00016d98
 00016D92: ori #0x1,CCR
 00016D96: rts

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00016E08
-// Name: FUN_00016e08
+// Name: all_scene_record_slots_active
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00016e08(void)
+void all_scene_record_slots_active(void)
 
 {
   short sVar1;

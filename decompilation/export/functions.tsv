@@ -441,7 +441,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00016B98	FUN_00016b98	346	unknown	ok	ghidra-c/fn_00016B98.cpp
 00016D8A	FUN_00016d8a	50	unknown	ok	ghidra-c/fn_00016D8A.cpp
 00016DEE	clear_scene_record_pending_flags	26	unknown	ok	ghidra-c/fn_00016DEE.cpp
-00016E08	FUN_00016e08	40	unknown	ok	ghidra-c/fn_00016E08.cpp
+00016E08	all_scene_record_slots_active	40	unknown	ok	ghidra-c/fn_00016E08.cpp
 00016E30	FUN_00016e30	44	unknown	ok	ghidra-c/fn_00016E30.cpp
 00016E5C	FUN_00016e5c	68	unknown	ok	ghidra-c/fn_00016E5C.cpp
 00016EA0	FUN_00016ea0	40	unknown	ok	ghidra-c/fn_00016EA0.cpp
