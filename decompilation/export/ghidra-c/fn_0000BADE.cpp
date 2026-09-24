@@ -4,8 +4,8 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000B442 FUN_0000b442
-//   0x0000B732 FUN_0000b732
-//   0x0000B77E FUN_0000b77e
+//   0x0000B732 apply_movement_result_policy
+//   0x0000B77E probe_entity_directional_collision
 //   0x0000B7B8 FUN_0000b7b8
 //   0x0000BB86 FUN_0000bb86
 //   0x0000BBE4 commit_entity_position
@@ -29,7 +29,7 @@ void FUN_0000bade(void)
   bool bVar4;
   
   *(undefined2 *)(in_A0 + 0xca) = *(undefined2 *)(in_A1 + 4);
-  sVar1 = FUN_0000b77e();
+  sVar1 = probe_entity_directional_collision();
   iVar2 = extraout_A0;
   if ((sVar1 == 0) ||
      ((sVar1 < 0 &&
@@ -55,11 +55,11 @@ LAB_0000bb66:
   }
   DAT_00ffdd3c = *(ushort *)(iVar2 + 0x2e) >> 0xd & 6;
   *(ushort *)(iVar2 + 0xb8) = DAT_00ffdd3c;
-  sVar1 = FUN_0000b732();
+  sVar1 = apply_movement_result_policy();
   puVar3 = extraout_A0_01;
   if ((sVar1 != 0) && (-1 < sVar1)) {
     extraout_A0_01[0x5c] = DAT_00ffdd3c;
-    sVar1 = FUN_0000b732();
+    sVar1 = apply_movement_result_policy();
     puVar3 = extraout_A0_02;
     if ((sVar1 != 0) && (-1 < sVar1)) goto LAB_0000bb66;
   }

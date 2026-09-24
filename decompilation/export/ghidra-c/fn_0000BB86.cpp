@@ -3,7 +3,7 @@
 // Name: FUN_0000bb86
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000B732 FUN_0000b732
+//   0x0000B732 apply_movement_result_policy
 
 
 undefined4 FUN_0000bb86(void)
@@ -25,7 +25,7 @@ undefined4 FUN_0000bb86(void)
       return CONCAT31((int3)(CONCAT22((short)(uVar2 >> 0x10),sVar4) >> 8),cVar1);
     }
   }
-  uVar3 = FUN_0000b732();
+  uVar3 = apply_movement_result_policy();
   if (((short)uVar3 != 0) && (-1 < (short)uVar3)) {
     return uVar3;
   }

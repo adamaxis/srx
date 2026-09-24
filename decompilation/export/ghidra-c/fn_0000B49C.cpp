@@ -3,7 +3,7 @@
 // Name: FUN_0000b49c
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000B732 FUN_0000b732
+//   0x0000B732 apply_movement_result_policy
 
 
 void FUN_0000b49c(void)
@@ -21,14 +21,14 @@ void FUN_0000b49c(void)
   if (*(short *)(in_A0 + 0x38) == 0) {
     *(undefined2 *)(in_A0 + 0x38) = 1;
   }
-  sVar1 = FUN_0000b732();
+  sVar1 = apply_movement_result_policy();
   puVar2 = extraout_A0;
   if ((sVar1 != 0) && (-1 < sVar1)) {
     extraout_A0[0x1c] = 2;
-    sVar1 = FUN_0000b732();
+    sVar1 = apply_movement_result_policy();
     puVar2 = extraout_A0_00;
     if ((-1 < sVar1) && (sVar1 != 0)) {
-      sVar1 = FUN_0000b732();
+      sVar1 = apply_movement_result_policy();
       puVar2 = extraout_A0_01;
       if ((sVar1 != 0) || (-1 < sVar1)) goto LAB_0000b528;
     }

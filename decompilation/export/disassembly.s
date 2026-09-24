@@ -4869,7 +4869,7 @@
 0000B4CA: rol.w #0x3,D0w
 0000B4CC: andi.w #0x7,D0w
 0000B4D0: lsl.w #0x1,D0w
-0000B4D2: bsr.w 0x0000b732 ; call 0000B732 FUN_0000b732
+0000B4D2: bsr.w 0x0000b732 ; call 0000B732 apply_movement_result_policy
 0000B4D6: tst.w D0w
 0000B4D8: beq.w 0x0000b522
 0000B4DC: bmi.w 0x0000b522
@@ -4879,7 +4879,7 @@
 0000B4EE: rol.w #0x3,D0w
 0000B4F0: andi.w #0x7,D0w
 0000B4F4: lsl.w #0x1,D0w
-0000B4F6: bsr.w 0x0000b732 ; call 0000B732 FUN_0000b732
+0000B4F6: bsr.w 0x0000b732 ; call 0000B732 apply_movement_result_policy
 0000B4FA: tst.w D0w
 0000B4FC: bmi.w 0x0000b522
 0000B500: beq.w 0x0000b522
@@ -4888,7 +4888,7 @@
 0000B50C: rol.w #0x3,D0w
 0000B50E: andi.w #0x7,D0w
 0000B512: lsl.w #0x1,D0w
-0000B514: bsr.w 0x0000b732 ; call 0000B732 FUN_0000b732
+0000B514: bsr.w 0x0000b732 ; call 0000B732 apply_movement_result_policy
 0000B518: tst.w D0w
 0000B51A: bne.w 0x0000b528
 0000B51E: bpl.w 0x0000b528
@@ -5013,7 +5013,7 @@
 0000B726: bcc.w 0x0000b730
 0000B72A: lea (0xbdd2).l,A1 ; data 0000bdd2
 0000B730: rts
-0000B732: bsr.w 0x0000b77e ; call 0000B77E FUN_0000b77e
+0000B732: bsr.w 0x0000b77e ; call 0000B77E probe_entity_directional_collision
 0000B736: tst.w D0w
 0000B738: bmi.w 0x0000b73e
 0000B73C: rts
@@ -5208,7 +5208,7 @@
 0000BAD8: lsl.w #0x1,D0w
 0000BADA: bra.w 0x0000bade ; call 0000BADE FUN_0000bade
 0000BADE: move.w (0x4,A1),(0xca,A0)
-0000BAE4: bsr.w 0x0000b77e ; call 0000B77E FUN_0000b77e
+0000BAE4: bsr.w 0x0000b77e ; call 0000B77E probe_entity_directional_collision
 0000BAE8: tst.w D0w
 0000BAEA: bne.w 0x0000baf8
 0000BAEE: move.w #0x1000,(0xb8,A0)
@@ -5227,7 +5227,7 @@
 0000BB20: move.w D0w,(0x00ffdd3c).l
 0000BB26: move.w D0w,(0xb8,A0)
 0000BB2A: lsl.w #0x1,D0w
-0000BB2C: bsr.w 0x0000b732 ; call 0000B732 FUN_0000b732
+0000BB2C: bsr.w 0x0000b732 ; call 0000B732 apply_movement_result_policy
 0000BB30: tst.w D0w
 0000BB32: beq.w 0x0000bb70
 0000BB36: bmi.w 0x0000bb70
@@ -5236,7 +5236,7 @@
 0000BB44: addq.w #0x2,D0w
 0000BB46: andi.w #0x7,D0w
 0000BB4A: lsl.w #0x1,D0w
-0000BB4C: bsr.w 0x0000b732 ; call 0000B732 FUN_0000b732
+0000BB4C: bsr.w 0x0000b732 ; call 0000B732 apply_movement_result_policy
 0000BB50: tst.w D0w
 0000BB52: beq.w 0x0000bb70
 0000BB56: bmi.w 0x0000bb70
@@ -5271,7 +5271,7 @@
 0000BBC2: adda.w #0x2,A2
 0000BBC6: move.w (A2),D0w
 0000BBC8: lsl.w #0x1,D0w
-0000BBCA: bsr.w 0x0000b732 ; call 0000B732 FUN_0000b732
+0000BBCA: bsr.w 0x0000b732 ; call 0000B732 apply_movement_result_policy
 0000BBCE: tst.w D0w
 0000BBD0: beq.w 0x0000bbd8
 0000BBD4: bpl.w 0x0000bbde

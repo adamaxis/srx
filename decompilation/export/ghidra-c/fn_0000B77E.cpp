@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000B77E
-// Name: FUN_0000b77e
+// Name: probe_entity_directional_collision
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000B48C FUN_0000b48c
 
 
-short FUN_0000b77e(void)
+short probe_entity_directional_collision(void)
 
 {
   undefined2 in_D0w;

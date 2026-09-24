@@ -240,3 +240,16 @@ target_link_libraries(shadowrun_ghidra_animation_table_test
     PRIVATE shadowrun_ghidra_animation_table)
 add_test(NAME shadowrun_ghidra_animation_table
          COMMAND shadowrun_ghidra_animation_table_test)
+
+add_library(shadowrun_ghidra_movement_probe STATIC
+    src/movement_probe_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_movement_probe PUBLIC include)
+
+add_executable(shadowrun_ghidra_movement_probe_test
+    tests/movement_probe_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_movement_probe_test
+    PRIVATE shadowrun_ghidra_movement_probe)
+add_test(NAME shadowrun_ghidra_movement_probe
+         COMMAND shadowrun_ghidra_movement_probe_test)
