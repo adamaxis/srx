@@ -378,7 +378,7 @@ entry	name	size	callingConvention	decompileStatus	file
 000144E8	FUN_000144e8	18	unknown	ok	ghidra-c/fn_000144E8.cpp
 00014508	FUN_00014508	154	unknown	ok	ghidra-c/fn_00014508.cpp
 000145A2	FUN_000145a2	108	unknown	ok	ghidra-c/fn_000145A2.cpp
-0001460E	FUN_0001460e	50	unknown	ok	ghidra-c/fn_0001460E.cpp
+0001460E	apply_close_range_entity_state	50	unknown	ok	ghidra-c/fn_0001460E.cpp
 00014640	FUN_00014640	38	unknown	ok	ghidra-c/fn_00014640.cpp
 00014682	select_obstruction_route	154	unknown	ok	ghidra-c/fn_00014682.cpp
 00014756	clear_entity_route_flags	14	unknown	ok	ghidra-c/fn_00014756.cpp

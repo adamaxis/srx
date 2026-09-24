@@ -1323,7 +1323,7 @@ caller	caller_name	instruction	text	target	callee	status
 00014492	FUN_00014492	0001440C	jsr 0x0001dbf0.l	0001DBF0	FUN_0001dbf0	resolved
 00014492	FUN_00014492	00014434	jsr 0x00000d3a.l	00000D3A	sample_source_random_bound	resolved
 00014492	FUN_00014492	000144CA	jsr 0x00000d3a.l	00000D3A	sample_source_random_bound	resolved
-000144E8	FUN_000144e8	000144F6	bra.w 0x0001460e	0001460E	FUN_0001460e	resolved
+000144E8	FUN_000144e8	000144F6	bra.w 0x0001460e	0001460E	apply_close_range_entity_state	resolved
 00014508	FUN_00014508	0001453C	bsr.w 0x00015dcc	00015DCC	FUN_00015dcc	resolved
 00014508	FUN_00014508	00014550	jsr 0x0000e7c8.l	0000E7C8	FUN_0000e7c8	resolved
 00014508	FUN_00014508	00014576	jsr 0x0000e7c8.l	0000E7C8	FUN_0000e7c8	resolved
@@ -1332,7 +1332,7 @@ caller	caller_name	instruction	text	target	callee	status
 000145A2	FUN_000145a2	000145D6	bsr.w 0x00014ba6	00014BA6	update_entity_axis_relation_state	resolved
 000145A2	FUN_000145a2	000145E4	bsr.w 0x00014c2e	00014C2E	derive_entity_axis_relation_flags	resolved
 000145A2	FUN_000145a2	000145F6	jsr 0x00015d3c.l	00015D3C	measure_relative_heading_and_distance	resolved
-0001460E	FUN_0001460e	0001460E	jsr 0x00015ca4.l	00015CA4	compute_diagonal_step_cost	resolved
+0001460E	apply_close_range_entity_state	0001460E	jsr 0x00015ca4.l	00015CA4	compute_diagonal_step_cost	resolved
 00014682	select_obstruction_route	000146A6	bsr.w 0x000148d2	000148D2	choose_dominant_axis_directions	resolved
 00014682	select_obstruction_route	000146C4	bsr.w 0x000148aa	000148AA	find_first_occupied_obstruction_tile	resolved
 00014682	select_obstruction_route	000146EA	bsr.w 0x00014854	00014854	can_bypass_obstruction	resolved

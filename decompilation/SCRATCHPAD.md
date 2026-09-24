@@ -693,6 +693,11 @@ an already-set bit 6, publishes that one-shot bit, compares each camera
 midpoint against its 0xA00-offset origin, and places the entity by the exact
 signed 0x2580 step on each axis.
 
+The `0x1460E` state leaf is now `apply_close_range_entity_state`. At distance
+below `0x1E0`, it preserves only the source high flag bit, sets bit 2, clears
+the secondary state byte, and installs continuation `0xB45C`; the boundary is
+tested as a no-op.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames

@@ -3,13 +3,13 @@
 // Name: FUN_000144e8
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001460E FUN_0001460e
+//   0x0001460E apply_close_range_entity_state
 
 
 void FUN_000144e8(void)
 
 {
-  FUN_0001460e();
+  apply_close_range_entity_state();
   return;
 }
 

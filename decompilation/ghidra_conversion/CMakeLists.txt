@@ -1323,3 +1323,16 @@ target_link_libraries(shadowrun_ghidra_entity_boundary_reposition_test
     PRIVATE shadowrun_ghidra_entity_boundary_reposition)
 add_test(NAME shadowrun_ghidra_entity_boundary_reposition
          COMMAND shadowrun_ghidra_entity_boundary_reposition_test)
+
+add_library(shadowrun_ghidra_entity_close_range STATIC
+    src/entity_close_range_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_close_range PUBLIC include)
+
+add_executable(shadowrun_ghidra_entity_close_range_test
+    tests/entity_close_range_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_close_range_test
+    PRIVATE shadowrun_ghidra_entity_close_range)
+add_test(NAME shadowrun_ghidra_entity_close_range
+         COMMAND shadowrun_ghidra_entity_close_range_test)

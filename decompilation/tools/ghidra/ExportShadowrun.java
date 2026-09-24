@@ -321,6 +321,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0000C216L, "build_grouped_decimal_glyphs");
         names.put(0x00014446L, "collect_entity_action_candidates");
         names.put(0x00013E9EL, "reposition_entity_at_boundary");
+        names.put(0x0001460EL, "apply_close_range_entity_state");
         names.put(0x00001378L, "build_title_sprite_records");
         names.put(0x000013BEL, "build_title_sprite_records_with_attribute_offset");
         names.put(0x00001406L, "prepare_title_resources");

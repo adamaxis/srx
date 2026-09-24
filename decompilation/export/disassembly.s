@@ -11697,7 +11697,7 @@
 000144EA: move.w (0x4,A0),D1w
 000144EE: move.w (0x96,A0),D2w
 000144F2: move.w (0x98,A0),D3w
-000144F6: bra.w 0x0001460e ; call 0001460E FUN_0001460e
+000144F6: bra.w 0x0001460e ; call 0001460E apply_close_range_entity_state
 000144FA: move.l (0xa2,A0),D3
 000144FE: beq.w 0x00014508
 00014502: movea.l D3,A1

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001460E
-// Name: FUN_0001460e
+// Name: apply_close_range_entity_state
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00015CA4 compute_diagonal_step_cost
 
 
-void FUN_0001460e(void)
+void apply_close_range_entity_state(void)
 
 {
   ushort uVar1;
