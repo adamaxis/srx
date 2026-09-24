@@ -34,6 +34,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x622C	entity sprite descriptor expansion	ghidra_conversion::expand_entity_sprite_descriptors	shadowrun_native_port	partial		Typed marker-aware descriptor expansion with sequence and tile state
 0x624C	entity sprite descriptor list expansion	ghidra_conversion::expand_entity_sprite_descriptors	shadowrun_native_port	partial		Typed bounded descriptor-list projection and output record generation
 0xB530	entity fixed-point target approach	ghidra_conversion::approach_entity_fixed_point_target	shadowrun_native_port	partial		Typed 0x800-step movement with one-step target snap
+0xB6E4	entity animation table selection	ghidra_conversion::select_entity_animation_table	shadowrun_native_port	partial		Disassembly-derived metric bands and special high-metric table selection; Ghidra C body is incomplete
 0xBBE4	entity position commit	ghidra_conversion::commit_entity_position	shadowrun_native_port	partial		Typed position write with pending transition-bit clear
 0xBC36	collision probe point preparation	ghidra_conversion::build_collision_probe_points	shadowrun_native_port	partial		Typed three-point offset expansion with source mode gate and camera snapshot
 0xBCAE	mode-5 field boundary motion	ghidra_conversion::apply_mode_five_boundary_motion	shadowrun_native_port	partial		Typed strict-window vertical adjustments at the two field edges

@@ -4966,7 +4966,7 @@
 0000B666: btst.b #0x1,(0x10,A0)
 0000B66C: bne.w 0x0000b678
 0000B670: move.w D0w,-(SP)
-0000B672: bsr.w 0x0000b6e4 ; call 0000B6E4 FUN_0000b6e4
+0000B672: bsr.w 0x0000b6e4 ; call 0000B6E4 select_entity_animation_table
 0000B676: move.w (SP)+,D0w
 0000B678: btst.b #0x3,(0x10,A0)
 0000B67E: beq.w 0x0000b690

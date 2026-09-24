@@ -227,3 +227,16 @@ target_link_libraries(shadowrun_ghidra_sprite_expansion_test
     PRIVATE shadowrun_ghidra_sprite_expansion)
 add_test(NAME shadowrun_ghidra_sprite_expansion
          COMMAND shadowrun_ghidra_sprite_expansion_test)
+
+add_library(shadowrun_ghidra_animation_table STATIC
+    src/animation_table_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_animation_table PUBLIC include)
+
+add_executable(shadowrun_ghidra_animation_table_test
+    tests/animation_table_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_animation_table_test
+    PRIVATE shadowrun_ghidra_animation_table)
+add_test(NAME shadowrun_ghidra_animation_table
+         COMMAND shadowrun_ghidra_animation_table_test)
