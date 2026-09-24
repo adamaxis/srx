@@ -541,6 +541,22 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The recruited-roster helper cluster is now converted in its own module. `0x598B0`
+is the common packed-record projection: it maps the source 0x4A-byte record into
+the live 0x100-byte record's known field ranges while preserving opaque bytes.
+`0x5966E` projects the default record first, then the active primary and
+secondary selections, and reports which typed destination was last populated;
+the native code does not carry the original A0/A1 pointers.
+
+`0x42F2` now loads a primary roster template from an extracted table, writes the
+source-proven metadata words `+0x3E=1`, `+0x20=0x19`, and `+0x26=0x320`, runs
+the common population path, and applies the caller byte to `+0x8F`. `0x431C`
+does the corresponding secondary setup with `+0x3E=2`, `+0x20=0x31`, and
+`+0x26=0x620`. Its low-byte duplicate comparison is preserved: selecting the
+same template as primary skips the secondary copy but still runs `0x5966E` and
+applies the final population byte to the last destination. Invalid host table
+indices return a typed result instead of reproducing unchecked source access.
+
 Two fixed-loop leaves are now named and tested as well. `0x33BE` is a 4x4,
 16-call wrapper around the existing source-wrapped transfer boundary, while
 `0x3548` invokes the HUD panel drawing leaf three times. Neither conversion

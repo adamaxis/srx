@@ -2965,7 +2965,7 @@
 00004370: move.w D2w,(0x20,A1)
 00004374: move.w D3w,(0x26,A1)
 00004378: move.l D7,-(SP) ; data Stack[-0x4]
-0000437A: jsr 0x0005966e.l ; call 0005966E FUN_0005966e
+0000437A: jsr 0x0005966e.l ; call 0005966E refresh_runner_record_population
 00004380: move.l (SP)+,D7
 00004382: move.b D7b,(0x8f,A1)
 00004386: rts
@@ -27184,13 +27184,13 @@
 00059522: clr.w D7w
 00059524: ext.w D0w
 00059526: subq.w #0x1,D0w
-00059528: jsr 0x000042f2.l ; call 000042F2 FUN_000042f2
+00059528: jsr 0x000042f2.l ; call 000042F2 initialize_primary_roster_template
 0005952E: move.b (0x00fffc0d).l,D0b
 00059534: bmi.w 0x00059544
 00059538: clr.w D7w
 0005953A: ext.w D0w
 0005953C: subq.w #0x1,D0w
-0005953E: jsr 0x0000431c.l ; call 0000431C FUN_0000431c
+0005953E: jsr 0x0000431c.l ; call 0000431C initialize_secondary_roster_template
 00059544: movea.l (SP)+,A1
 00059546: move.w (A1)+,(0x00ffddc6).l
 0005954C: move.w (A1)+,(0x00ffddc8).l
@@ -27200,7 +27200,7 @@
 00059564: move.w (A1)+,(0x00ff0204).l
 0005956A: move.w (A1)+,(0x00ff0300).l
 00059570: move.w (A1)+,(0x00ff0304).l
-00059576: bsr.w 0x0005966e ; call 0005966E FUN_0005966e
+00059576: bsr.w 0x0005966e ; call 0005966E refresh_runner_record_population
 0005957A: move.b (0x00fffc0c).l,D0b
 00059580: bmi.w 0x00059590
 00059584: move.b #0xd,(0x00ff0210).l
@@ -27253,7 +27253,7 @@
 0005966C: rts
 0005966E: movea.l #0xfff1fc,A0
 00059674: lea (0xff0100).l,A1 ; data 00ff0100
-0005967A: bsr.w 0x000598b0 ; call 000598B0 FUN_000598b0
+0005967A: bsr.w 0x000598b0 ; call 000598B0 project_compact_runner_record
 0005967E: clr.l D0
 00059680: move.b (0x00fffc0c).l,D0b
 00059686: bmi.w 0x000596a0
@@ -27261,7 +27261,7 @@
 00059690: mulu.w #0x4a,D0
 00059694: adda.w D0w,A0
 00059696: movea.l #0xff0200,A1
-0005969C: bsr.w 0x000598b0 ; call 000598B0 FUN_000598b0
+0005969C: bsr.w 0x000598b0 ; call 000598B0 project_compact_runner_record
 000596A0: clr.l D0
 000596A2: move.b (0x00fffc0d).l,D0b
 000596A8: bmi.w 0x000596c2
@@ -27269,7 +27269,7 @@
 000596B2: mulu.w #0x4a,D0
 000596B6: adda.w D0w,A0
 000596B8: movea.l #0xff0300,A1
-000596BE: bsr.w 0x000598b0 ; call 000598B0 FUN_000598b0
+000596BE: bsr.w 0x000598b0 ; call 000598B0 project_compact_runner_record
 000596C2: rts
 00059786: clr.l D6
 00059788: move.w #0x61b,D7w

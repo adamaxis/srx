@@ -579,6 +579,19 @@ target_link_libraries(shadowrun_ghidra_entity_template_test
 add_test(NAME shadowrun_ghidra_entity_template
          COMMAND shadowrun_ghidra_entity_template_test)
 
+add_library(shadowrun_ghidra_runner_roster STATIC
+    src/runner_roster_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_runner_roster PUBLIC include)
+
+add_executable(shadowrun_ghidra_runner_roster_test
+    tests/runner_roster_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_runner_roster_test
+    PRIVATE shadowrun_ghidra_runner_roster)
+add_test(NAME shadowrun_ghidra_runner_roster
+         COMMAND shadowrun_ghidra_runner_roster_test)
+
 add_library(shadowrun_ghidra_random STATIC
     src/random_conversion.cpp
 )

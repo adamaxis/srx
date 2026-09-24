@@ -1,23 +1,23 @@
 // Ghidra headless export
 // Entry: 0x0005966E
-// Name: FUN_0005966e
+// Name: refresh_runner_record_population
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000598B0 FUN_000598b0
+//   0x000598B0 project_compact_runner_record
 
 
-uint FUN_0005966e(void)
+uint refresh_runner_record_population(void)
 
 {
   uint uVar1;
   
-  FUN_000598b0();
+  project_compact_runner_record();
   if (-1 < DAT_00fffc0c) {
-    FUN_000598b0();
+    project_compact_runner_record();
   }
   uVar1 = (uint)DAT_00fffc0d;
   if (-1 < (char)DAT_00fffc0d) {
-    uVar1 = FUN_000598b0();
+    uVar1 = project_compact_runner_record();
   }
   return uVar1;
 }

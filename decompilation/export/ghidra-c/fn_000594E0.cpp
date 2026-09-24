@@ -4,10 +4,10 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003074 FUN_00003074
-//   0x000042F2 FUN_000042f2
-//   0x0000431C FUN_0000431c
+//   0x000042F2 initialize_primary_roster_template
+//   0x0000431C initialize_secondary_roster_template
 //   0x0001E4AC spawn_world_effect_at_player_position
-//   0x0005966E FUN_0005966e
+//   0x0005966E refresh_runner_record_population
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -35,10 +35,10 @@ void FUN_000594e0(void)
   FUN_00003074();
   DAT_00ff0110 = 0xf;
   if (-1 < DAT_00fffc0c) {
-    FUN_000042f2();
+    initialize_primary_roster_template();
   }
   if (-1 < DAT_00fffc0d) {
-    FUN_0000431c();
+    initialize_secondary_roster_template();
   }
   DAT_00ffddc6 = *(undefined2 *)((int)puVar4 + 3);
   DAT_00ffddc8 = *(undefined2 *)((int)puVar4 + 5);
@@ -48,7 +48,7 @@ void FUN_000594e0(void)
   DAT_00ff0204 = *(undefined2 *)((int)puVar4 + 0xd);
   DAT_00ff0300 = *(undefined2 *)((int)puVar4 + 0xf);
   DAT_00ff0304 = *(undefined2 *)((int)puVar4 + 0x11);
-  FUN_0005966e();
+  refresh_runner_record_population();
   if (DAT_00fffc0c < '\0') {
     DAT_00ff0210 = 0;
   }

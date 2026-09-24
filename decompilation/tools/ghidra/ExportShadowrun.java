@@ -204,6 +204,10 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x000011C0L, "write_repeated_vdp_grid");
         names.put(0x000011F6L, "write_linear_vdp_grid");
         names.put(0x000042B0L, "initialize_joshua_archetype_selection");
+        names.put(0x000042F2L, "initialize_primary_roster_template");
+        names.put(0x0000431CL, "initialize_secondary_roster_template");
+        names.put(0x0005966EL, "refresh_runner_record_population");
+        names.put(0x000598B0L, "project_compact_runner_record");
         names.put(0x00001056L, "clear_vdp_words");
         names.put(0x00000FFEL, "clear_and_fill_plane_a");
         names.put(0x0000102AL, "clear_and_fill_plane_b");

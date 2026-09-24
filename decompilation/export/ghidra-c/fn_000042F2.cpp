@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000042F2
-// Name: FUN_000042f2
+// Name: initialize_primary_roster_template
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_000042f2(void)
+void initialize_primary_roster_template(void)
 
 {
   undefined4 *puVar1;
@@ -31,7 +31,7 @@ void FUN_000042f2(void)
   *(undefined2 *)((int)puVar4 + -0xbe) = 1;
   *(undefined2 *)(puVar4 + -0x37) = 0x19;
   *(undefined2 *)((int)puVar4 + -0xd6) = 800;
-  FUN_0005966e();
+  refresh_runner_record_population();
   *(undefined1 *)(extraout_A1 + 0x8f) = unaff_D7b;
   return;
 }

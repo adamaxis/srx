@@ -134,8 +134,8 @@ entry	name	size	callingConvention	decompileStatus	file
 00004216	offset_field_coordinate	38	unknown	ok	ghidra-c/fn_00004216.cpp
 0000423C	quantize_field_delta	84	unknown	ok	ghidra-c/fn_0000423C.cpp
 000042B0	initialize_joshua_archetype_selection	54	unknown	ok	ghidra-c/fn_000042B0.cpp
-000042F2	FUN_000042f2	42	unknown	ok	ghidra-c/fn_000042F2.cpp
-0000431C	FUN_0000431c	108	unknown	ok	ghidra-c/fn_0000431C.cpp
+000042F2	initialize_primary_roster_template	42	unknown	ok	ghidra-c/fn_000042F2.cpp
+0000431C	initialize_secondary_roster_template	108	unknown	ok	ghidra-c/fn_0000431C.cpp
 00004388	finalize_pending_entity_template_update	46	unknown	ok	ghidra-c/fn_00004388.cpp
 000043B6	process_pending_entity_template_lists	176	unknown	ok	ghidra-c/fn_000043B6.cpp
 00004466	spawn_entity_template_list	86	unknown	ok	ghidra-c/fn_00004466.cpp
@@ -816,11 +816,11 @@ entry	name	size	callingConvention	decompileStatus	file
 00059456	FUN_00059456	138	unknown	ok	ghidra-c/fn_00059456.cpp
 000594E0	FUN_000594e0	316	unknown	ok	ghidra-c/fn_000594E0.cpp
 0005961C	FUN_0005961c	82	unknown	ok	ghidra-c/fn_0005961C.cpp
-0005966E	FUN_0005966e	86	unknown	ok	ghidra-c/fn_0005966E.cpp
+0005966E	refresh_runner_record_population	86	unknown	ok	ghidra-c/fn_0005966E.cpp
 00059786	FUN_00059786	18	unknown	ok	ghidra-c/fn_00059786.cpp
 00059798	FUN_00059798	86	unknown	ok	ghidra-c/fn_00059798.cpp
 000597EE	FUN_000597ee	194	unknown	ok	ghidra-c/fn_000597EE.cpp
-000598B0	FUN_000598b0	194	unknown	ok	ghidra-c/fn_000598B0.cpp
+000598B0	project_compact_runner_record	194	unknown	ok	ghidra-c/fn_000598B0.cpp
 00059986	FUN_00059986	84	unknown	ok	ghidra-c/fn_00059986.cpp
 00059BCC	FUN_00059bcc	94	unknown	ok	ghidra-c/fn_00059BCC.cpp
 00059C34	FUN_00059c34	20	unknown	ok	ghidra-c/fn_00059C34.cpp
