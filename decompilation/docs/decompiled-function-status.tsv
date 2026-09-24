@@ -81,6 +81,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x148AA	first occupied obstruction tile	ghidra_conversion::find_first_occupied_obstruction_tile	shadowrun_native_port	partial		Bounded typed cardinal scan replacing source obstruction-map pointer walking
 0x14800	obstruction strip probe	ghidra_conversion::probe_obstruction_strip	shadowrun_native_port	partial		Typed primary/secondary obstruction scan with explicit map-edge result
 0x14854	obstruction bypass test	ghidra_conversion::can_bypass_obstruction	shadowrun_native_port	partial		Typed primary/opposite-primary obstruction route test
+0x1494C	obstruction path test	ghidra_conversion::is_obstruction_path_blocked	shadowrun_native_port	partial		Typed packed-grid line walk with source traversal behavior
 0x14902	obstruction grid index	ghidra_conversion::compute_obstruction_grid_index	shadowrun_native_port	partial		Typed world-coordinate to obstruction-grid index conversion
 0x14B4E	obstruction tile projection	ghidra_conversion::decode_obstruction_tile_projection	shadowrun_native_port	partial		Typed packed-tile coordinate decode and relative direction selection
 0x14C56	heading position projection	ghidra_conversion::project_heading_position	shadowrun_native_port	partial		Extracted eight-entry heading vector table applied to typed world coordinates

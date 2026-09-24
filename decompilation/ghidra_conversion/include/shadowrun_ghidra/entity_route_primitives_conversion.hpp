@@ -59,6 +59,14 @@ bool can_bypass_obstruction(
     std::uint8_t secondary_direction_slot,
     const std::vector<std::uint8_t>& obstruction_map);
 
+// ROM 0x1494C: walk the source's horizontal or vertical grid line between
+// two packed obstruction indices and report whether an occupied tile blocks
+// the walk. The packed grid uses six low bits for the column and 0x40 rows.
+bool is_obstruction_path_blocked(
+    std::int32_t start_tile,
+    std::int32_t target_tile,
+    const std::vector<std::uint8_t>& obstruction_map);
+
 // ROM 0x14902: map world coordinates into the source obstruction-grid index.
 // The source grid uses 0x200 horizontal units and a 0x40-byte row stride.
 std::uint16_t compute_obstruction_grid_index(

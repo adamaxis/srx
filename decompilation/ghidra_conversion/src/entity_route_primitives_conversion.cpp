@@ -111,6 +111,43 @@ bool can_bypass_obstruction(
     }
 }
 
+bool is_obstruction_path_blocked(
+    const std::int32_t start_tile,
+    const std::int32_t target_tile,
+    const std::vector<std::uint8_t>& obstruction_map) {
+    const auto occupied = [&obstruction_map](const std::int32_t tile) {
+        return tile < 0 ||
+            tile >= static_cast<std::int32_t>(obstruction_map.size()) ||
+            obstruction_map[static_cast<std::size_t>(tile)] != 0U;
+    };
+
+    if ((target_tile & 0x003FU) == (start_tile & 0x003FU)) {
+        auto tile = target_tile;
+        const auto target_row = target_tile & 0xFFC0;
+        const auto start_row = start_tile & 0xFFC0;
+        const auto row_step = start_row < target_row ? -0x40 : 0x40;
+        while ((tile & 0xFFC0) != start_row) {
+            tile += row_step;
+            if (occupied(tile)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    auto tile = start_tile;
+    const auto target_column = target_tile & 0x003FU;
+    const auto column_step =
+        (start_tile & 0x003FU) < target_column ? 1 : -1;
+    while ((tile & 0x003FU) != target_column) {
+        tile += column_step;
+        if (occupied(tile)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 std::uint16_t compute_obstruction_grid_index(
     const std::uint16_t world_x,
     const std::uint16_t world_y) {

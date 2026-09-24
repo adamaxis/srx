@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001494C
-// Name: FUN_0001494c
+// Name: is_obstruction_path_blocked
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0001494c(void)
+void is_obstruction_path_blocked(void)
 
 {
   ushort uVar1;

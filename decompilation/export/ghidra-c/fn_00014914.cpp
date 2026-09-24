@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00014902 compute_obstruction_grid_index
-//   0x0001494C FUN_0001494c
+//   0x0001494C is_obstruction_path_blocked
 
 
 void FUN_00014914(void)
@@ -15,9 +15,9 @@ void FUN_00014914(void)
   compute_obstruction_grid_index();
   uVar1 = 0;
   compute_obstruction_grid_index();
-  FUN_0001494c();
+  is_obstruction_path_blocked();
   if (!(bool)uVar1) {
-    FUN_0001494c();
+    is_obstruction_path_blocked();
     if (!(bool)uVar1) {
       return;
     }

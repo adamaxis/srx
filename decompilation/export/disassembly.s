@@ -11991,10 +11991,10 @@
 00014926: move.w (A0),D0w
 00014928: move.w (0x4,A0),D1w
 0001492C: bsr.b 0x00014902 ; call 00014902 compute_obstruction_grid_index
-0001492E: bsr.w 0x0001494c ; call 0001494C FUN_0001494c
+0001492E: bsr.w 0x0001494c ; call 0001494C is_obstruction_path_blocked
 00014932: bcs.w 0x00014946
 00014936: exg D4,D5
-00014938: bsr.w 0x0001494c ; call 0001494C FUN_0001494c
+00014938: bsr.w 0x0001494c ; call 0001494C is_obstruction_path_blocked
 0001493C: bcs.w 0x00014946
 00014940: andi #0x1e,CCR
 00014944: rts
