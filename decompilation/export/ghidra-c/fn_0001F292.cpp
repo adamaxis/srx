@@ -5,28 +5,28 @@
 // Calls recovered from direct call instructions:
 //   0x00001530 decode_and_upload_source_stream
 //   0x00001728 render_hud_sprite_stream
-//   0x0001F32E FUN_0001f32e
-//   0x0001F34A FUN_0001f34a
-//   0x0001F38A FUN_0001f38a
-//   0x000566E2 FUN_000566e2
-//   0x000566F6 FUN_000566f6
+//   0x0001F32E prepare_optional_mode_resource
+//   0x0001F34A prepare_mode_resource_variant_b
+//   0x0001F38A prepare_mode_resource_variant_a
+//   0x000566E2 refresh_mode_resource_metadata
+//   0x000566F6 refresh_mode_resource_state
 
 
 void prepare_mode_exit_resources(void)
 
 {
   if (DAT_00fff0b5 != '\0') {
-    FUN_0001f32e();
+    prepare_optional_mode_resource();
   }
-  FUN_000566e2();
-  FUN_000566f6();
+  refresh_mode_resource_metadata();
+  refresh_mode_resource_state();
   decode_and_upload_source_stream();
   if (DAT_00fff0af < '\0') {
     if (DAT_00fff0ae < '\0') {
       DAT_00fff0ae = '\0';
     }
-    FUN_0001f38a();
-    FUN_0001f34a();
+    prepare_mode_resource_variant_a();
+    prepare_mode_resource_variant_b();
     DAT_00fff0af = '\0';
   }
   else {

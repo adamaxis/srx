@@ -12,10 +12,10 @@
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x0000C3E6 FUN_0000c3e6
 //   0x00010B5A transfer_menu_asset_batch_four
-//   0x0001F34A FUN_0001f34a
-//   0x0001F38A FUN_0001f38a
+//   0x0001F34A prepare_mode_resource_variant_b
+//   0x0001F38A prepare_mode_resource_variant_a
 //   0x000566D8 FUN_000566d8
-//   0x000566E2 FUN_000566e2
+//   0x000566E2 refresh_mode_resource_metadata
 //   0x00059172 FUN_00059172
 
 
@@ -23,7 +23,7 @@ void FUN_00059092(void)
 
 {
   FUN_000566d8();
-  FUN_000566e2();
+  refresh_mode_resource_metadata();
   transfer_menu_asset_batch_four();
   load_title_font();
   while( true ) {
@@ -52,8 +52,8 @@ void FUN_00059092(void)
   do {
     move_wrapped_menu_cursor();
     DAT_00fff0ae = DAT_00fff0dc;
-    FUN_0001f38a();
-    FUN_0001f34a();
+    prepare_mode_resource_variant_a();
+    prepare_mode_resource_variant_b();
     while( true ) {
       wait_for_vblank();
       latch_controller_events();

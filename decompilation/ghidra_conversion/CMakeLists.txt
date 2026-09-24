@@ -1180,3 +1180,16 @@ target_link_libraries(shadowrun_ghidra_mode_exit_test
     PRIVATE shadowrun_ghidra_mode_exit)
 add_test(NAME shadowrun_ghidra_mode_exit
          COMMAND shadowrun_ghidra_mode_exit_test)
+
+add_library(shadowrun_ghidra_mode_exit_resources STATIC
+    src/mode_exit_resources_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_mode_exit_resources PUBLIC include)
+
+add_executable(shadowrun_ghidra_mode_exit_resources_test
+    tests/mode_exit_resources_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_mode_exit_resources_test
+    PRIVATE shadowrun_ghidra_mode_exit_resources)
+add_test(NAME shadowrun_ghidra_mode_exit_resources
+         COMMAND shadowrun_ghidra_mode_exit_resources_test)

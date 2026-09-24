@@ -5927,7 +5927,7 @@
 0000D10E: lsl.w #0x2,D2w
 0000D110: lea (0x18acb6).l,A0 ; data 0018acb6
 0000D116: movea.l (0x0,A0,D2w*0x1),A0 ; data 0018acb6
-0000D11A: jsr 0x000566e2.l ; call 000566E2 FUN_000566e2
+0000D11A: jsr 0x000566e2.l ; call 000566E2 refresh_mode_resource_metadata
 0000D120: movea.l (0x00fffc04).l,A0
 0000D126: move.l #0xe132,D4
 0000D12C: move.w #0x2000,D2w
@@ -14571,7 +14571,7 @@
 00017F78: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 00017F7E: rts
 00017F80: lea (0xe2eba).l,A0 ; data 000e2eba
-00017F86: jsr 0x000566e2.l ; call 000566E2 FUN_000566e2
+00017F86: jsr 0x000566e2.l ; call 000566E2 refresh_mode_resource_metadata
 00017F8C: rts
 00017F8E: clr.l D0
 00017F90: movea.l (0x00fffc04).l,A1
@@ -19111,11 +19111,11 @@
 0001F292: move.l D6,-(SP) ; data Stack[-0x4]
 0001F294: tst.b (0x00fff0b5).l
 0001F29A: beq.w 0x0001f2a2
-0001F29E: bsr.w 0x0001f32e ; call 0001F32E FUN_0001f32e
+0001F29E: bsr.w 0x0001f32e ; call 0001F32E prepare_optional_mode_resource
 0001F2A2: lea (0x12cc30).l,A0 ; data 0012cc30
-0001F2A8: jsr 0x000566e2.l ; call 000566E2 FUN_000566e2
+0001F2A8: jsr 0x000566e2.l ; call 000566E2 refresh_mode_resource_metadata
 0001F2AE: movea.l (A5)+,A0
-0001F2B0: jsr 0x000566f6.l ; call 000566F6 FUN_000566f6
+0001F2B0: jsr 0x000566f6.l ; call 000566F6 refresh_mode_resource_state
 0001F2B6: lea (0xffbf40).l,A1 ; data 00ffbf40
 0001F2BC: movea.l (A5)+,A3
 0001F2BE: move.l #0x57a0,D0
@@ -19138,9 +19138,9 @@
 0001F306: bra.w 0x0001f316
 0001F30A: lea (0xff0100).l,A0 ; data 00ff0100
 0001F310: clr.b (0x00fff0ae).l
-0001F316: bsr.w 0x0001f38a ; call 0001F38A FUN_0001f38a
+0001F316: bsr.w 0x0001f38a ; call 0001F38A prepare_mode_resource_variant_a
 0001F31A: move.l #0xe202,D4
-0001F320: bsr.w 0x0001f34a ; call 0001F34A FUN_0001f34a
+0001F320: bsr.w 0x0001f34a ; call 0001F34A prepare_mode_resource_variant_b
 0001F324: clr.b (0x00fff0af).l
 0001F32A: move.l (SP)+,D6
 0001F32C: rts
@@ -19161,7 +19161,7 @@
 0001F362: lsl.w #0x2,D2w
 0001F364: lea (0x18acb6).l,A0 ; data 0018acb6
 0001F36A: movea.l (0x0,A0,D2w*0x1),A0 ; data 0018acb6
-0001F36E: jsr 0x000566f6.l ; call 000566F6 FUN_000566f6
+0001F36E: jsr 0x000566f6.l ; call 000566F6 refresh_mode_resource_state
 0001F374: move.w #0x6000,D2w
 0001F378: moveq #0x1,D5
 0001F37A: move.w #0x7,D7w
@@ -23544,7 +23544,7 @@
 00054710: lea (0x166448).l,A0 ; data 00166448
 00054716: adda.l D2,A0
 00054718: movea.l (A0),A0 ; data 00166448
-0005471A: jsr 0x000566f6.l ; call 000566F6 FUN_000566f6
+0005471A: jsr 0x000566f6.l ; call 000566F6 refresh_mode_resource_state
 00054720: move.l #0x15ff30,D0
 00054726: move.l #0x1c80,D1
 0005472C: move.l #0x5a0,D2
@@ -24963,9 +24963,9 @@
 00056B04: cmpi.b #0x2,(0x00fff0b7).l
 00056B0C: bne.w 0x00056b40
 00056B10: lea (0xe2e9a).l,A0 ; data 000e2e9a
-00056B16: jsr 0x000566e2.l ; call 000566E2 FUN_000566e2
+00056B16: jsr 0x000566e2.l ; call 000566E2 refresh_mode_resource_metadata
 00056B1C: lea (0x1ac8ec).l,A0 ; data 001ac8ec
-00056B22: jsr 0x000566f6.l ; call 000566F6 FUN_000566f6
+00056B22: jsr 0x000566f6.l ; call 000566F6 refresh_mode_resource_state
 00056B28: lea (0xffbf40).l,A1 ; data 00ffbf40
 00056B2E: movea.l #0xd86e0,A3
 00056B34: move.l #0x89a0,D0
@@ -26928,7 +26928,7 @@
 00059092: lea (0xd29d6).l,A0 ; data 000d29d6
 00059098: jsr 0x000566d8.l ; call 000566D8 FUN_000566d8
 0005909E: lea (0x18ac96).l,A0 ; data 0018ac96
-000590A4: jsr 0x000566e2.l ; call 000566E2 FUN_000566e2
+000590A4: jsr 0x000566e2.l ; call 000566E2 refresh_mode_resource_metadata
 000590AA: jsr 0x00010b5a.l ; call 00010B5A transfer_menu_asset_batch_four
 000590B0: jsr 0x0000c0c2.l ; call 0000C0C2 load_title_font
 000590B6: jsr 0x0000c3e6.l ; call 0000C3E6 FUN_0000c3e6
@@ -27037,10 +27037,10 @@
 000592AC: jsr 0x0000c376.l ; call 0000C376 move_wrapped_menu_cursor
 000592B2: move.b (0x00fff0dc).l,(0x00fff0ae).l
 000592BC: lea (0x7291a).l,A0 ; data 0007291a
-000592C2: jsr 0x0001f38a.l ; call 0001F38A FUN_0001f38a
+000592C2: jsr 0x0001f38a.l ; call 0001F38A prepare_mode_resource_variant_a
 000592C8: lea (0x7291a).l,A0 ; data 0007291a
 000592CE: move.l #0xc410,D4
-000592D4: jsr 0x0001f34a.l ; call 0001F34A FUN_0001f34a
+000592D4: jsr 0x0001f34a.l ; call 0001F34A prepare_mode_resource_variant_b
 000592DA: bra.b 0x00059270
 000592DC: btst.b #0xe,(0x00ffdd22).l
 000592E4: beq.w 0x000592ec

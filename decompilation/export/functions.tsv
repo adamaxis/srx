@@ -654,9 +654,9 @@ entry	name	size	callingConvention	decompileStatus	file
 0001F1E0	FUN_0001f1e0	14	unknown	ok	ghidra-c/fn_0001F1E0.cpp
 0001F246	run_mode_exit_services	76	unknown	ok	ghidra-c/fn_0001F246.cpp
 0001F292	prepare_mode_exit_resources	156	unknown	ok	ghidra-c/fn_0001F292.cpp
-0001F32E	FUN_0001f32e	28	unknown	ok	ghidra-c/fn_0001F32E.cpp
-0001F34A	FUN_0001f34a	64	unknown	ok	ghidra-c/fn_0001F34A.cpp
-0001F38A	FUN_0001f38a	58	unknown	ok	ghidra-c/fn_0001F38A.cpp
+0001F32E	prepare_optional_mode_resource	28	unknown	ok	ghidra-c/fn_0001F32E.cpp
+0001F34A	prepare_mode_resource_variant_b	64	unknown	ok	ghidra-c/fn_0001F34A.cpp
+0001F38A	prepare_mode_resource_variant_a	58	unknown	ok	ghidra-c/fn_0001F38A.cpp
 0001F3C4	run_mode_text_prompt	484	unknown	ok	ghidra-c/fn_0001F3C4.cpp
 0001F5A8	FUN_0001f5a8	34	unknown	ok	ghidra-c/fn_0001F5A8.cpp
 0001F5CA	FUN_0001f5ca	144	unknown	ok	ghidra-c/fn_0001F5CA.cpp
@@ -765,9 +765,9 @@ entry	name	size	callingConvention	decompileStatus	file
 000566A2	FUN_000566a2	32	unknown	ok	ghidra-c/fn_000566A2.cpp
 000566C2	FUN_000566c2	22	unknown	ok	ghidra-c/fn_000566C2.cpp
 000566D8	FUN_000566d8	10	unknown	ok	ghidra-c/fn_000566D8.cpp
-000566E2	FUN_000566e2	10	unknown	ok	ghidra-c/fn_000566E2.cpp
+000566E2	refresh_mode_resource_metadata	10	unknown	ok	ghidra-c/fn_000566E2.cpp
 000566EC	FUN_000566ec	10	unknown	ok	ghidra-c/fn_000566EC.cpp
-000566F6	FUN_000566f6	24	unknown	ok	ghidra-c/fn_000566F6.cpp
+000566F6	refresh_mode_resource_state	24	unknown	ok	ghidra-c/fn_000566F6.cpp
 0005670E	refresh_mode_palette_data	30	unknown	ok	ghidra-c/fn_0005670E.cpp
 0005672C	FUN_0005672c	916	unknown	ok	ghidra-c/fn_0005672C.cpp
 00056AC0	FUN_00056ac0	772	unknown	ok	ghidra-c/fn_00056AC0.cpp

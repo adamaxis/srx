@@ -21,9 +21,9 @@
 //   0x00011048 FUN_00011048
 //   0x000110EC FUN_000110ec
 //   0x000530DE service_audio_if_enabled
-//   0x000566E2 FUN_000566e2
+//   0x000566E2 refresh_mode_resource_metadata
 //   0x000566EC FUN_000566ec
-//   0x000566F6 FUN_000566f6
+//   0x000566F6 refresh_mode_resource_state
 //   0x0005670E refresh_mode_palette_data
 //   0x00056DC4 FUN_00056dc4
 //   0x000587DA FUN_000587da
@@ -46,8 +46,8 @@ void FUN_00056ac0(void)
     write_vdp_word_block_with_source_wrap();
   }
   if (DAT_00fff0b7 == '\x02') {
-    FUN_000566e2();
-    FUN_000566f6();
+    refresh_mode_resource_metadata();
+    refresh_mode_resource_state();
     decode_and_upload_source_stream();
   }
   load_title_font();

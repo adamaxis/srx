@@ -884,7 +884,7 @@ caller	caller_name	instruction	text	target	callee	status
 00011740	FUN_00011740	0000D0C0	jsr 0x0000c0da.l	0000C0DA	render_title_text_source	resolved
 00011740	FUN_00011740	0000D0EA	jsr 0x000011c0.l	000011C0	write_repeated_vdp_grid	resolved
 00011740	FUN_00011740	0000D0F6	jsr 0x000011c0.l	000011C0	write_repeated_vdp_grid	resolved
-00011740	FUN_00011740	0000D11A	jsr 0x000566e2.l	000566E2	FUN_000566e2	resolved
+00011740	FUN_00011740	0000D11A	jsr 0x000566e2.l	000566E2	refresh_mode_resource_metadata	resolved
 00011740	FUN_00011740	0000D130	bsr.w 0x000110ec	000110EC	FUN_000110ec	resolved
 00011740	FUN_00011740	0000D142	jsr 0x0000c0da.l	0000C0DA	render_title_text_source	resolved
 00011740	FUN_00011740	0000D16A	jsr 0x0000c0da.l	0000C0DA	render_title_text_source	resolved
@@ -1545,7 +1545,7 @@ caller	caller_name	instruction	text	target	callee	status
 00017EB4	FUN_00017eb4	00017ECE	jsr 0x0000d81c.l	0000D81C	average_entity_delay_attributes	resolved
 00017EEE	FUN_00017eee	00017F54	jsr 0x00001232.l	00001232	write_vdp_grid	resolved
 00017EEE	FUN_00017eee	00017F78	jsr 0x00001232.l	00001232	write_vdp_grid	resolved
-00017F80	FUN_00017f80	00017F86	jsr 0x000566e2.l	000566E2	FUN_000566e2	resolved
+00017F80	FUN_00017f80	00017F86	jsr 0x000566e2.l	000566E2	refresh_mode_resource_metadata	resolved
 00017F8E	draw_hud_footer	00017FAC	jsr 0x000566ec.l	000566EC	FUN_000566ec	resolved
 00017FB4	FUN_00017fb4	00017FD2	jsr 0x000011c0.l	000011C0	write_repeated_vdp_grid	resolved
 00017FDA	FUN_00017fda	00017FE8	bsr.b 0x00017fb4	00017FB4	FUN_00017fb4	resolved
@@ -2092,16 +2092,16 @@ caller	caller_name	instruction	text	target	callee	status
 0001F246	run_mode_exit_services	0001F278	bsr.w 0x0001f3c4	0001F3C4	run_mode_text_prompt	resolved
 0001F246	run_mode_exit_services	0001F27C	jsr 0x00010952.l	00010952	reset_mode_display_buffers	resolved
 0001F246	run_mode_exit_services	0001F282	jsr 0x0005670e.l	0005670E	refresh_mode_palette_data	resolved
-0001F292	prepare_mode_exit_resources	0001F29E	bsr.w 0x0001f32e	0001F32E	FUN_0001f32e	resolved
-0001F292	prepare_mode_exit_resources	0001F2A8	jsr 0x000566e2.l	000566E2	FUN_000566e2	resolved
-0001F292	prepare_mode_exit_resources	0001F2B0	jsr 0x000566f6.l	000566F6	FUN_000566f6	resolved
+0001F292	prepare_mode_exit_resources	0001F29E	bsr.w 0x0001f32e	0001F32E	prepare_optional_mode_resource	resolved
+0001F292	prepare_mode_exit_resources	0001F2A8	jsr 0x000566e2.l	000566E2	refresh_mode_resource_metadata	resolved
+0001F292	prepare_mode_exit_resources	0001F2B0	jsr 0x000566f6.l	000566F6	refresh_mode_resource_state	resolved
 0001F292	prepare_mode_exit_resources	0001F2C4	jsr 0x00001530.l	00001530	decode_and_upload_source_stream	resolved
 0001F292	prepare_mode_exit_resources	0001F2EC	jsr 0x00001728.l	00001728	render_hud_sprite_stream	resolved
-0001F292	prepare_mode_exit_resources	0001F316	bsr.w 0x0001f38a	0001F38A	FUN_0001f38a	resolved
-0001F292	prepare_mode_exit_resources	0001F320	bsr.w 0x0001f34a	0001F34A	FUN_0001f34a	resolved
-0001F34A	FUN_0001f34a	0001F36E	jsr 0x000566f6.l	000566F6	FUN_000566f6	resolved
-0001F34A	FUN_0001f34a	0001F382	jsr 0x00003648.l	00003648	draw_hud_panel	resolved
-0001F38A	FUN_0001f38a	0001F3B2	jsr 0x00000f5c.l	00000F5C	write_vdp_word_block_with_source_wrap	resolved
+0001F292	prepare_mode_exit_resources	0001F316	bsr.w 0x0001f38a	0001F38A	prepare_mode_resource_variant_a	resolved
+0001F292	prepare_mode_exit_resources	0001F320	bsr.w 0x0001f34a	0001F34A	prepare_mode_resource_variant_b	resolved
+0001F34A	prepare_mode_resource_variant_b	0001F36E	jsr 0x000566f6.l	000566F6	refresh_mode_resource_state	resolved
+0001F34A	prepare_mode_resource_variant_b	0001F382	jsr 0x00003648.l	00003648	draw_hud_panel	resolved
+0001F38A	prepare_mode_resource_variant_a	0001F3B2	jsr 0x00000f5c.l	00000F5C	write_vdp_word_block_with_source_wrap	resolved
 0001F3C4	run_mode_text_prompt	0001F3D8	bsr.w 0x0001f5a8	0001F5A8	FUN_0001f5a8	resolved
 0001F3C4	run_mode_text_prompt	0001F3E6	jsr 0x0000c134.l	0000C134	normalize_source_text_line	resolved
 0001F3C4	run_mode_text_prompt	0001F3FE	jsr 0x0000c168.l	0000C168	FUN_0000c168	resolved
@@ -2279,7 +2279,7 @@ caller	caller_name	instruction	text	target	callee	status
 00053A78	FUN_00053a78	00053AA4	jsr (A1)			indirect/unresolved
 00054662	FUN_00054662	000546B0	jsr 0x000532a8.l	000532A8	FUN_000532a8	resolved
 00054662	FUN_00054662	000546D4	jsr 0x00010952.l	00010952	reset_mode_display_buffers	resolved
-00054662	FUN_00054662	0005471A	jsr 0x000566f6.l	000566F6	FUN_000566f6	resolved
+00054662	FUN_00054662	0005471A	jsr 0x000566f6.l	000566F6	refresh_mode_resource_state	resolved
 00054662	FUN_00054662	00054732	jsr 0x00000f5c.l	00000F5C	write_vdp_word_block_with_source_wrap	resolved
 00054662	FUN_00054662	00054742	jsr 0x00000f5c.l	00000F5C	write_vdp_word_block_with_source_wrap	resolved
 00054662	FUN_00054662	0005475C	jsr 0x00001232.l	00001232	write_vdp_grid	resolved
@@ -2426,8 +2426,8 @@ caller	caller_name	instruction	text	target	callee	status
 00056AC0	FUN_00056ac0	00056AD4	jsr 0x00011048.l	00011048	FUN_00011048	resolved
 00056AC0	FUN_00056ac0	00056ADA	jsr 0x0005670e.l	0005670E	refresh_mode_palette_data	resolved
 00056AC0	FUN_00056ac0	00056AFE	jsr 0x00000f5c.l	00000F5C	write_vdp_word_block_with_source_wrap	resolved
-00056AC0	FUN_00056ac0	00056B16	jsr 0x000566e2.l	000566E2	FUN_000566e2	resolved
-00056AC0	FUN_00056ac0	00056B22	jsr 0x000566f6.l	000566F6	FUN_000566f6	resolved
+00056AC0	FUN_00056ac0	00056B16	jsr 0x000566e2.l	000566E2	refresh_mode_resource_metadata	resolved
+00056AC0	FUN_00056ac0	00056B22	jsr 0x000566f6.l	000566F6	refresh_mode_resource_state	resolved
 00056AC0	FUN_00056ac0	00056B3A	jsr 0x00001530.l	00001530	decode_and_upload_source_stream	resolved
 00056AC0	FUN_00056ac0	00056B40	jsr 0x0000c0c2.l	0000C0C2	load_title_font	resolved
 00056AC0	FUN_00056ac0	00056B60	jsr 0x0000c0da.l	0000C0DA	render_title_text_source	resolved
@@ -2687,7 +2687,7 @@ caller	caller_name	instruction	text	target	callee	status
 00058D32	FUN_00058d32	00058D5C	jsr 0x00001378.l	00001378	FUN_00001378	resolved
 00058D32	FUN_00058d32	00058D78	bsr.w 0x00057c7a	00057C7A	FUN_00057c7a	resolved
 00059092	FUN_00059092	00059098	jsr 0x000566d8.l	000566D8	FUN_000566d8	resolved
-00059092	FUN_00059092	000590A4	jsr 0x000566e2.l	000566E2	FUN_000566e2	resolved
+00059092	FUN_00059092	000590A4	jsr 0x000566e2.l	000566E2	refresh_mode_resource_metadata	resolved
 00059092	FUN_00059092	000590AA	jsr 0x00010b5a.l	00010B5A	transfer_menu_asset_batch_four	resolved
 00059092	FUN_00059092	000590B0	jsr 0x0000c0c2.l	0000C0C2	load_title_font	resolved
 00059092	FUN_00059092	000590B6	jsr 0x0000c3e6.l	0000C3E6	FUN_0000c3e6	resolved
@@ -2704,8 +2704,8 @@ caller	caller_name	instruction	text	target	callee	status
 00059092	FUN_00059092	00059276	jsr 0x00000bf2.l	00000BF2	latch_controller_events	resolved
 00059092	FUN_00059092	0005927C	jsr 0x0000195c.l	0000195C	sample_controller_input	resolved
 00059092	FUN_00059092	000592AC	jsr 0x0000c376.l	0000C376	move_wrapped_menu_cursor	resolved
-00059092	FUN_00059092	000592C2	jsr 0x0001f38a.l	0001F38A	FUN_0001f38a	resolved
-00059092	FUN_00059092	000592D4	jsr 0x0001f34a.l	0001F34A	FUN_0001f34a	resolved
+00059092	FUN_00059092	000592C2	jsr 0x0001f38a.l	0001F38A	prepare_mode_resource_variant_a	resolved
+00059092	FUN_00059092	000592D4	jsr 0x0001f34a.l	0001F34A	prepare_mode_resource_variant_b	resolved
 00059092	FUN_00059092	00059310	jsr 0x000042b0.l	000042B0	initialize_joshua_archetype_selection	resolved
 00059172	FUN_00059172	00059182	jsr 0x0000c0da.l	0000C0DA	render_title_text_source	resolved
 00059172	FUN_00059172	00059194	jsr 0x00000bd2.l	00000BD2	wait_for_vblank	resolved

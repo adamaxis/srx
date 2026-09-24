@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000566F6
-// Name: FUN_000566f6
+// Name: refresh_mode_resource_state
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_000566f6(void)
+void refresh_mode_resource_state(void)
 
 {
   short sVar1;

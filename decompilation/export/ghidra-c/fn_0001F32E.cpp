@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001F32E
-// Name: FUN_0001f32e
+// Name: prepare_optional_mode_resource
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0001f32e(void)
+void prepare_optional_mode_resource(void)
 
 {
   DAT_00fff0b5 = 0;

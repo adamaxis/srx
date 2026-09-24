@@ -62,7 +62,7 @@
 //   0x00012C42 FUN_00012c42
 //   0x00012C5A FUN_00012c5a
 //   0x000530DE service_audio_if_enabled
-//   0x000566E2 FUN_000566e2
+//   0x000566E2 refresh_mode_resource_metadata
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -356,7 +356,7 @@ LAB_00011cb6:
 LAB_0000d0d6:
     write_repeated_vdp_grid();
     write_repeated_vdp_grid();
-    FUN_000566e2();
+    refresh_mode_resource_metadata();
     FUN_000110ec();
     render_title_text_source();
     render_title_text_source();

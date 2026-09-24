@@ -23,7 +23,7 @@
 //   0x00054A28 FUN_00054a28
 //   0x00054A8E FUN_00054a8e
 //   0x00055F44 FUN_00055f44
-//   0x000566F6 FUN_000566f6
+//   0x000566F6 refresh_mode_resource_state
 
 
 /* WARNING: Removing unreachable block (ram,0x000548c4) */
@@ -58,7 +58,7 @@ LAB_000546cc:
   do {
     VDP_CTRL = 0x8134;
     reset_mode_display_buffers();
-    FUN_000566f6();
+    refresh_mode_resource_state();
     write_vdp_word_block_with_source_wrap();
     write_vdp_word_block_with_source_wrap();
     sVar6 = 5;
