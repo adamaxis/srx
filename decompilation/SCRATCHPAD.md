@@ -611,6 +611,13 @@ seven-entry cursor's `0x09`/`0x06` directional wrapping, the `0x50` exit,
 `0x13726`, `0x20714`, `0x0391A`, and `0x0E6F4` now have reviewed aliases;
 rendering, world updates, and resource transfers remain explicit callbacks.
 
+The `0x13726` mode-selection renderer is now
+`render_mode_selection_panels`. It preserves the four source panel passes,
+the two vblank/latch/world-service passes after each upload, the trailing
+title-text render, and the final text marker read. The panel transfer and
+text leaves remain callbacks because their source-specific data tables are
+presentation inputs, not runtime memory that belongs in this conversion.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames

@@ -1141,3 +1141,16 @@ target_link_libraries(shadowrun_ghidra_post_intro_mode_test
     PRIVATE shadowrun_ghidra_post_intro_mode)
 add_test(NAME shadowrun_ghidra_post_intro_mode
          COMMAND shadowrun_ghidra_post_intro_mode_test)
+
+add_library(shadowrun_ghidra_mode_selection_render STATIC
+    src/mode_selection_render_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_mode_selection_render PUBLIC include)
+
+add_executable(shadowrun_ghidra_mode_selection_render_test
+    tests/mode_selection_render_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_mode_selection_render_test
+    PRIVATE shadowrun_ghidra_mode_selection_render)
+add_test(NAME shadowrun_ghidra_mode_selection_render
+         COMMAND shadowrun_ghidra_mode_selection_render_test)
