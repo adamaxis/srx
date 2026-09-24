@@ -10,8 +10,8 @@
 //   0x0000AFAE FUN_0000afae
 //   0x0000B11C FUN_0000b11c
 //   0x0000B1DC FUN_0000b1dc
-//   0x0000B39A FUN_0000b39a
-//   0x0000B3FE FUN_0000b3fe
+//   0x0000B39A set_entity_heading_with_field_animation
+//   0x0000B3FE set_entity_heading_with_alternate_animation
 //   0x00014226 FUN_00014226
 //   0x00014492 FUN_00014492
 //   0x00014508 FUN_00014508
@@ -87,7 +87,7 @@ uint FUN_00013ffe(void)
         }
         uVar2 = FUN_00015646();
         if (!bVar6) {
-          uVar2 = FUN_0000b3fe();
+          uVar2 = set_entity_heading_with_alternate_animation();
           return uVar2;
         }
         return uVar2;
@@ -107,7 +107,7 @@ uint FUN_00013ffe(void)
       uVar2 = FUN_0001514e();
       iVar4 = extraout_A0_02;
       if (!bVar6) {
-        uVar2 = FUN_0000b39a();
+        uVar2 = set_entity_heading_with_field_animation();
         return uVar2;
       }
     }

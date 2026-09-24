@@ -196,8 +196,8 @@ entry	name	size	callingConvention	decompileStatus	file
 0000B11C	FUN_0000b11c	192	unknown	ok	ghidra-c/fn_0000B11C.cpp
 0000B1DC	FUN_0000b1dc	282	unknown	ok	ghidra-c/fn_0000B1DC.cpp
 0000B330	FUN_0000b330	90	unknown	ok	ghidra-c/fn_0000B330.cpp
-0000B39A	FUN_0000b39a	84	unknown	ok	ghidra-c/fn_0000B39A.cpp
-0000B3FE	FUN_0000b3fe	52	unknown	ok	ghidra-c/fn_0000B3FE.cpp
+0000B39A	set_entity_heading_with_field_animation	84	unknown	ok	ghidra-c/fn_0000B39A.cpp
+0000B3FE	set_entity_heading_with_alternate_animation	52	unknown	ok	ghidra-c/fn_0000B3FE.cpp
 0000B442	reset_entity_movement_state	74	unknown	ok	ghidra-c/fn_0000B442.cpp
 0000B48C	evaluate_entity_collision	16	unknown	ok	ghidra-c/fn_0000B48C.cpp
 0000B49C	FUN_0000b49c	148	unknown	ok	ghidra-c/fn_0000B49C.cpp

@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x0000B3FE
-// Name: FUN_0000b3fe
+// Name: set_entity_heading_with_alternate_animation
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000ABFC FUN_0000abfc
 //   0x0000AF6C FUN_0000af6c
 
 
-void FUN_0000b3fe(void)
+void set_entity_heading_with_alternate_animation(void)
 
 {
   ushort in_D0w;

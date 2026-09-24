@@ -4470,7 +4470,7 @@
 0000ADC4: bcc.w 0x0000add2
 0000ADC8: bra.w 0x0000ae4e
 0000ADD2: move.w (0x2e,A1),D0w
-0000ADD6: jmp 0x0000b3fe.l ; call 0000B3FE FUN_0000b3fe
+0000ADD6: jmp 0x0000b3fe.l ; call 0000B3FE set_entity_heading_with_alternate_animation
 0000ADDC: tst.b (0x57,A0)
 0000ADE0: beq.w 0x0000ae16
 0000ADE4: cmpi.b #0xe,(0x57,A0)
@@ -4486,7 +4486,7 @@
 0000AE12: bra.w 0x0000ae26
 0000AE16: jmp 0x0000b1dc.l ; call 0000B1DC FUN_0000b1dc
 0000AE1C: move.w (0x2e,A1),D0w
-0000AE20: jmp 0x0000b39a.l ; call 0000B39A FUN_0000b39a
+0000AE20: jmp 0x0000b39a.l ; call 0000B39A set_entity_heading_with_field_animation
 0000AE26: move.w (0x00ffdd04).l,D0w
 0000AE2C: cmpi.w #-0x1,D0w
 0000AE30: bne.w 0x0000ae50
@@ -11481,7 +11481,7 @@
 00014090: bcc.w 0x00014096
 00014094: rts
 00014096: move.w (0x2e,A1),D0w
-0001409A: jmp 0x0000b3fe.l ; call 0000B3FE FUN_0000b3fe
+0001409A: jmp 0x0000b3fe.l ; call 0000B3FE set_entity_heading_with_alternate_animation
 000140A0: cmpi.b #0x4,(0x57,A0)
 000140A6: beq.w 0x0001411c
 000140AA: cmpi.b #0xb,(0x57,A0)
@@ -11551,7 +11551,7 @@
 000141DE: move.w #0x2,(0x00ffdfe0).l
 000141E6: rts
 000141E8: move.w (0x2e,A1),D0w
-000141EC: jmp 0x0000b39a.l ; call 0000B39A FUN_0000b39a
+000141EC: jmp 0x0000b39a.l ; call 0000B39A set_entity_heading_with_field_animation
 00014220: jmp 0x0000b11c.l ; call 0000B11C FUN_0000b11c
 00014226: move.w #0x4b,D0w
 0001422A: jsr 0x000530de.l ; call 000530DE FUN_000530de

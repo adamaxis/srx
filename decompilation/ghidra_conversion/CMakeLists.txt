@@ -281,3 +281,18 @@ target_link_libraries(shadowrun_ghidra_movement_state_test
     PRIVATE shadowrun_ghidra_movement_state)
 add_test(NAME shadowrun_ghidra_movement_state
          COMMAND shadowrun_ghidra_movement_state_test)
+
+add_library(shadowrun_ghidra_heading_animation STATIC
+    src/heading_animation_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_heading_animation PUBLIC include)
+target_link_libraries(shadowrun_ghidra_heading_animation
+    PRIVATE shadowrun_ghidra_movement_state)
+
+add_executable(shadowrun_ghidra_heading_animation_test
+    tests/heading_animation_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_heading_animation_test
+    PRIVATE shadowrun_ghidra_heading_animation)
+add_test(NAME shadowrun_ghidra_heading_animation
+         COMMAND shadowrun_ghidra_heading_animation_test)

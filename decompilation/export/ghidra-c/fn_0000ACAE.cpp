@@ -9,8 +9,8 @@
 //   0x0000AF7C FUN_0000af7c
 //   0x0000AFAE FUN_0000afae
 //   0x0000B1DC FUN_0000b1dc
-//   0x0000B39A FUN_0000b39a
-//   0x0000B3FE FUN_0000b3fe
+//   0x0000B39A set_entity_heading_with_field_animation
+//   0x0000B3FE set_entity_heading_with_alternate_animation
 //   0x0001514E FUN_0001514e
 //   0x00015646 FUN_00015646
 //   0x0001DC4C FUN_0001dc4c
@@ -84,7 +84,7 @@ void FUN_0000acae(void)
       if (bVar2) {
         return;
       }
-      FUN_0000b3fe();
+      set_entity_heading_with_alternate_animation();
       return;
     }
     if (*(char *)(in_A0 + 0x57) == '\0') {
@@ -97,7 +97,7 @@ void FUN_0000acae(void)
     }
     FUN_0001514e();
     if (!bVar2) {
-      FUN_0000b39a();
+      set_entity_heading_with_field_animation();
       return;
     }
     FUN_0000aad2();
