@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
-//   0x00000D94 FUN_00000d94
+//   0x00000D94 wait_for_controller_event
 //   0x00000DBA count_thresholded_random_rolls
 //   0x00000F5C FUN_00000f5c
 //   0x00001232 FUN_00001232
@@ -101,7 +101,7 @@ LAB_0005488c:
            (count_thresholded_random_rolls(), DAT_00fff0dd < '\x01')) {
           FUN_000549e4();
           render_title_text_source();
-          FUN_00000d94();
+          wait_for_controller_event();
           DAT_00fff0a8 = DAT_00fff0a8 + '\x01';
         }
         else {

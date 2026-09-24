@@ -24,6 +24,38 @@ bool wait_for_vblank(VblankFrameState& state,
     return true;
 }
 
+std::uint32_t wait_for_vblank_frames(
+    VblankFrameState& state,
+    const std::uint16_t source_counter,
+    const NextVblankBoundary& next_vblank) {
+    const auto iterations = static_cast<std::uint32_t>(source_counter) + 1U;
+    for (std::uint32_t iteration = 0; iteration < iterations; ++iteration) {
+        wait_for_vblank(state, next_vblank);
+    }
+    return iterations;
+}
+
+std::uint32_t wait_for_controller_event(
+    VblankFrameState& state,
+    const ControllerWaitCallbacks& callbacks) {
+    if (!callbacks.next_vblank || !callbacks.latch_controller_events ||
+        !callbacks.sample_controller_input) {
+        return 0U;
+    }
+
+    std::uint32_t iterations = 0U;
+    std::uint16_t event_word = 0U;
+    do {
+        wait_for_vblank(state, callbacks.next_vblank);
+        callbacks.latch_controller_events();
+        event_word = callbacks.sample_controller_input();
+        ++iterations;
+    } while ((event_word & 0xFF00U) == 0U);
+
+    callbacks.sample_controller_input();
+    return iterations;
+}
+
 std::uint32_t wait_for_palette_frame(
     VblankFrameState& state,
     const std::uint16_t source_counter,

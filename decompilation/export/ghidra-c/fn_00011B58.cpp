@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
-//   0x00000D94 FUN_00000d94
+//   0x00000D94 wait_for_controller_event
 //   0x0000195C sample_controller_input
 //   0x00003404 FUN_00003404
 //   0x000036FC FUN_000036fc
@@ -249,7 +249,7 @@ LAB_00011c9c:
   render_title_text_source();
 LAB_00011cb6:
   FUN_000111d0();
-  FUN_00000d94();
+  wait_for_controller_event();
   FUN_00011928();
   return;
 }

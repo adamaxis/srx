@@ -6516,7 +6516,7 @@
 0000E47A: move.w #0x1a,D0w
 0000E47E: jsr 0x000530de.l ; call 000530DE FUN_000530de
 0000E484: move.w #0x14,D5w
-0000E488: jsr 0x00000c24.l ; call 00000C24 FUN_00000c24
+0000E488: jsr 0x00000c24.l ; call 00000C24 wait_for_vblank_frames
 0000E48E: jsr 0x000181f8.l ; call 000181F8 FUN_000181f8
 0000E494: tst.b (0x00fff0b1).l
 0000E49A: bne.w 0x0000e4c0
@@ -7481,7 +7481,7 @@
 0000FBDE: bsr.w 0x000106da ; call 000106DA FUN_000106da
 0000FBE2: moveq #-0x1,D2
 0000FBE4: bsr.w 0x000106da ; call 000106DA FUN_000106da
-0000FBE8: jsr 0x00000d94.l ; call 00000D94 FUN_00000d94
+0000FBE8: jsr 0x00000d94.l ; call 00000D94 wait_for_controller_event
 0000FBEE: jmp 0x00011928.l ; call 00011928 FUN_00011928
 0000FBF4: tst.b (0x7f,A0)
 0000FBF8: beq.b 0x0000fbbc
@@ -9205,7 +9205,7 @@
 000119B0: movea.l #0xc328,A2
 000119B6: lea (0xd206b).l,A1 ; data 000d206b
 000119BC: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-000119C2: jsr 0x00000d94.l ; call 00000D94 FUN_00000d94
+000119C2: jsr 0x00000d94.l ; call 00000D94 wait_for_controller_event
 000119C8: bsr.w 0x00011928 ; call 00011928 FUN_00011928
 000119CC: rts
 000119CE: lea (0xcd514).l,A1 ; data 000cd514
@@ -9372,7 +9372,7 @@
 00011CB0: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
 00011CB6: lea (0xcd2c6).l,A1 ; data 000cd2c6
 00011CBC: bsr.w 0x000111d0 ; call 000111D0 FUN_000111d0
-00011CC0: jsr 0x00000d94.l ; call 00000D94 FUN_00000d94
+00011CC0: jsr 0x00000d94.l ; call 00000D94 wait_for_controller_event
 00011CC6: bra.w 0x00011928 ; call 00011928 FUN_00011928
 00011CCA: bsr.w 0x00012c36 ; call 00012C36 FUN_00012c36
 00011CCE: movea.l (0x00fffc04).l,A0
@@ -9661,7 +9661,7 @@
 000121CA: lea (0xd202f).l,A1 ; data 000d202f
 000121D0: move.w #0x6000,D1w
 000121D4: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-000121DA: jmp 0x00000d94.l ; call 00000D94 FUN_00000d94
+000121DA: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 000121E0: tst.b (0x56,A0)
 000121E4: bmi.w 0x000121fe
 000121E8: cmpi.b #0xd,(0x57,A0)
@@ -9844,7 +9844,7 @@
 000124F2: lea (0xd1f1b).l,A1 ; data 000d1f1b
 000124F8: move.w #0x6000,D1w
 000124FC: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-00012502: jsr 0x00000d94.l ; call 00000D94 FUN_00000d94
+00012502: jsr 0x00000d94.l ; call 00000D94 wait_for_controller_event
 00012508: bra.w 0x00012538
 0001250C: btst.b #0xc,(0x00ffdd22).l
 00012514: beq.w 0x0001251c
@@ -9932,7 +9932,7 @@
 00012668: lea (0xd1ffa).l,A1 ; data 000d1ffa
 0001266E: move.w #0x6000,D1w
 00012672: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-00012678: jmp 0x00000d94.l ; call 00000D94 FUN_00000d94
+00012678: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 0001267E: clr.w (0x00fff098).l
 00012684: movea.l #0xcd3b6,A1
 0001268A: bsr.w 0x000111d0 ; call 000111D0 FUN_000111d0
@@ -10042,7 +10042,7 @@
 00012854: lea (0xd2015).l,A1 ; data 000d2015
 0001285A: move.w #0x6000,D1w
 0001285E: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-00012864: jmp 0x00000d94.l ; call 00000D94 FUN_00000d94
+00012864: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 0001286A: bsr.w 0x00011900 ; call 00011900 FUN_00011900
 0001286E: movea.l (0x00fffc04).l,A6
 00012874: movea.l #0xcd3b6,A1
@@ -15746,8 +15746,8 @@
 000198E8: lea (0x166a75).l,A1 ; data 00166a75
 000198EE: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
 000198F4: move.w #0x1e,D5w
-000198F8: jsr 0x00000c24.l ; call 00000C24 FUN_00000c24
-000198FE: jmp 0x00000d94.l ; call 00000D94 FUN_00000d94
+000198F8: jsr 0x00000c24.l ; call 00000C24 wait_for_vblank_frames
+000198FE: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 00019904: tst.b (0x00fff0a6).l
 0001990A: bmi.w 0x00019974
 0001990E: clr.l D1
@@ -19260,7 +19260,7 @@
 0001F4F8: move.w #0x0,D2w
 0001F4FC: jsr 0x00001232.l ; call 00001232 FUN_00001232
 0001F502: move.w #0xa,D5w
-0001F506: jsr 0x00000c24.l ; call 00000C24 FUN_00000c24
+0001F506: jsr 0x00000c24.l ; call 00000C24 wait_for_vblank_frames
 0001F50C: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 0001F512: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 0001F518: move.l A0,-(SP) ; data Stack[-0x4]
@@ -19295,8 +19295,8 @@
 0001F58C: bra.w 0x0001f3c4
 0001F590: rts
 0001F592: move.w #0x1e,D5w
-0001F596: jsr 0x00000c24.l ; call 00000C24 FUN_00000c24
-0001F59C: jsr 0x00000d94.l ; call 00000D94 FUN_00000d94
+0001F596: jsr 0x00000c24.l ; call 00000C24 wait_for_vblank_frames
+0001F59C: jsr 0x00000d94.l ; call 00000D94 wait_for_controller_event
 0001F5A2: move.w #0xfb,D0w
 0001F5A6: rts
 0001F5A8: move.l #0xc116,D4
@@ -22954,7 +22954,7 @@
 00053130: addi.b #0x14,D0b
 00053134: bsr.w 0x0005315e ; call 0005315E FUN_0005315e
 00053138: move.w #0x2,D5w
-0005313C: jsr 0x00000c24.l ; call 00000C24 FUN_00000c24
+0005313C: jsr 0x00000c24.l ; call 00000C24 wait_for_vblank_frames
 00053142: dbf D6w,0x00053130
 00053146: jsr 0x00052fa0.l ; call 00052FA0 FUN_00052fa0
 0005314C: bsr.w 0x00053156 ; call 00053156 FUN_00053156
@@ -23659,7 +23659,7 @@
 0005490E: movea.l #0xc598,A2
 00054914: move.w #0x0,D1w
 00054918: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-0005491E: jsr 0x00000d94.l ; call 00000D94 FUN_00000d94
+0005491E: jsr 0x00000d94.l ; call 00000D94 wait_for_controller_event
 00054924: addq.b #0x1,(0x00fff0a8).l
 0005492A: bra.w 0x000546cc
 0005492E: lea (0x1664d8).l,A0 ; data 001664d8
@@ -23754,8 +23754,8 @@
 00054AC8: lea (0x1669e8).l,A1 ; data 001669e8
 00054ACE: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
 00054AD4: move.w #0x19,D5w
-00054AD8: jsr 0x00000c24.l ; call 00000C24 FUN_00000c24
-00054ADE: jsr 0x00000d94.l ; call 00000D94 FUN_00000d94
+00054AD8: jsr 0x00000c24.l ; call 00000C24 wait_for_vblank_frames
+00054ADE: jsr 0x00000d94.l ; call 00000D94 wait_for_controller_event
 00054AE4: jmp 0x000549e4.l ; call 000549E4 FUN_000549e4
 00054AEA: jsr 0x000549e4.l ; call 000549E4 FUN_000549e4
 00054AF0: movea.l #0xc518,A2
@@ -23766,10 +23766,10 @@
 00054B0C: lea (0x1666a8).l,A1 ; data 001666a8
 00054B12: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
 00054B18: bsr.w 0x000549f6 ; call 000549F6 FUN_000549f6
-00054B1C: jmp 0x00000d94.l ; call 00000D94 FUN_00000d94
+00054B1C: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 00054B22: lea (0x1666dd).l,A1 ; data 001666dd
 00054B28: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-00054B2E: jmp 0x00000d94.l ; call 00000D94 FUN_00000d94
+00054B2E: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 00054BCC: move.l (SP)+,D0
 00054BCE: clr.l D0
 00054BD0: rts
@@ -23783,7 +23783,7 @@
 00055026: movea.l #0xc89a,A2
 0005502C: move.w #0x0,D1w
 00055030: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-00055036: jmp 0x00000d94.l ; call 00000D94 FUN_00000d94
+00055036: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 00055640: move.w D0w,-(SP) ; data Stack[-0x2]
 00055642: bsr.w 0x00055ed6 ; call 00055ED6 FUN_00055ed6
 00055646: clr.w D7w
@@ -25017,7 +25017,7 @@
 00056C12: lea (0x1aa3b4).l,A1 ; data 001aa3b4
 00056C18: move.w #0x6000,D1w
 00056C1C: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-00056C22: jsr 0x00000d94.l ; call 00000D94 FUN_00000d94
+00056C22: jsr 0x00000d94.l ; call 00000D94 wait_for_controller_event
 00056C28: bra.w 0x00056da8
 00056C2C: cmpi.b #0x1,(0x00fff0b7).l
 00056C34: bne.w 0x00056c48
@@ -25139,7 +25139,7 @@
 00056E80: lea (0x1aa42c).l,A1 ; data 001aa42c
 00056E86: move.w #0x6000,D1w
 00056E8A: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-00056E90: jmp 0x00000d94.l ; call 00000D94 FUN_00000d94
+00056E90: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 00056E96: subq.w #0x3,D0w
 00056E98: cmpi.b #0x1,(0x00fff0b8).l
 00056EA0: beq.w 0x00056eb0
@@ -25171,7 +25171,7 @@
 00056F0E: lea (0x1aa587).l,A1 ; data 001aa587
 00056F14: move.w #0x6000,D1w
 00056F18: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-00056F1E: jmp 0x00000d94.l ; call 00000D94 FUN_00000d94
+00056F1E: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 00056F24: sub.l D1,(0x00fffbfe).l
 00056F2A: movea.l (0x00fff0c2).l,A1
 00056F30: tst.b (0x1,A1)
@@ -25199,7 +25199,7 @@
 00056F8A: movea.l #0xc60c,A2
 00056F90: lea (0x1aa3dd).l,A1 ; data 001aa3dd
 00056F96: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-00056F9C: jmp 0x00000d94.l ; call 00000D94 FUN_00000d94
+00056F9C: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 00056FA2: lea (0x1aa72b).l,A1 ; data 001aa72b
 00056FA8: movea.l #0xc58e,A2
 00056FAE: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
@@ -25274,7 +25274,7 @@
 00057108: lea (0x1aa6b2).l,A1 ; data 001aa6b2
 0005710E: move.w #0x6000,D1w
 00057112: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-00057118: jmp 0x00000d94.l ; call 00000D94 FUN_00000d94
+00057118: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 0005711E: movea.l #0xc58e,A2
 00057124: move.l (0x00fff0be).l,D1
 0005712A: cmp.l (0x00fffbfe).l,D1
@@ -25282,7 +25282,7 @@
 00057134: lea (0x1aa587).l,A1 ; data 001aa587
 0005713A: move.w #0x6000,D1w
 0005713E: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-00057144: jmp 0x00000d94.l ; call 00000D94 FUN_00000d94
+00057144: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 0005714A: lea (0x1aa758).l,A1 ; data 001aa758
 00057150: move.w #0x6000,D1w
 00057154: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
@@ -25379,7 +25379,7 @@
 000572F2: lea (0x1aa587).l,A1 ; data 001aa587
 000572F8: move.w #0x6000,D1w
 000572FC: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-00057302: jmp 0x00000d94.l ; call 00000D94 FUN_00000d94
+00057302: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 00057308: movea.l #0xc58c,A2
 0005730E: lea (0x1aa76f).l,A1 ; data 001aa76f
 00057314: move.w #0x6000,D1w
@@ -25462,7 +25462,7 @@
 00057450: lea (0x1aa836).l,A1 ; data 001aa836
 00057456: move.w #0x6000,D1w
 0005745A: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-00057460: jmp 0x00000d94.l ; call 00000D94 FUN_00000d94
+00057460: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 00057466: move.l (0x00fff0be).l,D1
 0005746C: cmp.l (0x00fffbfe).l,D1
 00057472: ble.w 0x00057492
@@ -25470,7 +25470,7 @@
 0005747C: lea (0x1aa587).l,A1 ; data 001aa587
 00057482: move.w #0x6000,D1w
 00057486: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-0005748C: jmp 0x00000d94.l ; call 00000D94 FUN_00000d94
+0005748C: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 00057492: movea.l #0xc58a,A2
 00057498: lea (0x1aa81b).l,A1 ; data 001aa81b
 0005749E: move.w #0x6000,D1w
@@ -25524,14 +25524,14 @@
 0005758E: lea (0x1aa587).l,A1 ; data 001aa587
 00057594: move.w #0x6000,D1w
 00057598: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-0005759E: jmp 0x00000d94.l ; call 00000D94 FUN_00000d94
+0005759E: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 000575A4: bsr.w 0x000575f8 ; call 000575F8 FUN_000575f8
 000575A8: bpl.w 0x000575c8
 000575AC: movea.l #0xc588,A2
 000575B2: lea (0x1aa3f5).l,A1 ; data 001aa3f5
 000575B8: move.w #0x6000,D1w
 000575BC: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-000575C2: jmp 0x00000d94.l ; call 00000D94 FUN_00000d94
+000575C2: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 000575C8: bsr.w 0x00057b8c ; call 00057B8C FUN_00057b8c
 000575CC: tst.b (0x00fff0dc).l
 000575D2: bne.w 0x000575f6
@@ -25605,7 +25605,7 @@
 000576DE: lea (0x1aa4dd).l,A1 ; data 001aa4dd
 000576E4: move.w #0x6000,D1w
 000576E8: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-000576EE: jmp 0x00000d94.l ; call 00000D94 FUN_00000d94
+000576EE: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 000576F4: mulu.w #0x28,D0
 000576F8: cmp.w (0x2,A0),D0w
 000576FC: ble.b 0x000576be
@@ -25622,7 +25622,7 @@
 00057722: lea (0x1aa587).l,A1 ; data 001aa587
 00057728: move.w #0x6000,D1w
 0005772C: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-00057732: jmp 0x00000d94.l ; call 00000D94 FUN_00000d94
+00057732: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 00057738: move.l D1,(0x00fff0be).l
 0005773E: movea.l #0xc58e,A2
 00057744: lea (0x1aa742).l,A1 ; data 001aa742
@@ -25675,7 +25675,7 @@
 0005782E: lea (0x1aa587).l,A1 ; data 001aa587
 00057834: move.w #0x6000,D1w
 00057838: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-0005783E: jmp 0x00000d94.l ; call 00000D94 FUN_00000d94
+0005783E: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 00057844: bsr.w 0x00057b8c ; call 00057B8C FUN_00057b8c
 00057848: tst.b (0x00fff0dc).l
 0005784E: bne.w 0x00057874
@@ -25722,7 +25722,7 @@
 000578F6: lea (0x1aa612).l,A1 ; data 001aa612
 000578FC: move.w #0x6000,D1w
 00057900: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-00057906: jmp 0x00000d94.l ; call 00000D94 FUN_00000d94
+00057906: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 0005790C: move.b (0x00fff0d0).l,(0x00fff0c2).l
 00057916: lea (0xd4540).l,A4 ; data 000d4540
 0005791C: subq.w #0x1,D0w
@@ -25734,7 +25734,7 @@
 00057936: movea.l #0xc614,A2
 0005793C: lea (0x1aa63d).l,A1 ; data 001aa63d
 00057942: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-00057948: jmp 0x00000d94.l ; call 00000D94 FUN_00000d94
+00057948: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 0005794E: mulu.w #0x18,D0
 00057952: adda.l D0,A0
 00057954: clr.l D0
@@ -25762,7 +25762,7 @@
 000579A8: lea (0x1aa3c2).l,A1 ; data 001aa3c2
 000579AE: move.w #0x6000,D1w
 000579B2: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-000579B8: jmp 0x00000d94.l ; call 00000D94 FUN_00000d94
+000579B8: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 000579BE: subq.w #0x7,D6w
 000579C0: neg.w D6w
 000579C2: bsr.w 0x00057a44 ; call 00057A44 FUN_00057a44
@@ -25772,7 +25772,7 @@
 000579D6: lea (0x1aa587).l,A1 ; data 001aa587
 000579DC: move.w #0x6000,D1w
 000579E0: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-000579E6: jmp 0x00000d94.l ; call 00000D94 FUN_00000d94
+000579E6: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 000579EC: bsr.w 0x00057b8c ; call 00057B8C FUN_00057b8c
 000579F0: tst.b (0x00fff0dc).l
 000579F6: bne.w 0x00057a42
@@ -27012,7 +27012,7 @@
 00059232: movea.l #0xc492,A2
 00059238: move.w #0x2000,D1w
 0005923C: jsr 0x0000c0da.l ; call 0000C0DA render_title_text_source
-00059242: jmp 0x00000d94.l ; call 00000D94 FUN_00000d94
+00059242: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 00059248: jsr 0x0000c3e6.l ; call 0000C3E6 FUN_0000c3e6
 0005924E: lea (0x1b64cf).l,A1 ; data 001b64cf
 00059254: movea.l #0xc3a6,A2

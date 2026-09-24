@@ -5,8 +5,8 @@
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
-//   0x00000C24 FUN_00000c24
-//   0x00000D94 FUN_00000d94
+//   0x00000C24 wait_for_vblank_frames
+//   0x00000D94 wait_for_controller_event
 //   0x00001232 FUN_00001232
 //   0x0000195C sample_controller_input
 //   0x0000C134 normalize_source_text_line
@@ -38,8 +38,8 @@ int * FUN_0001f3c4(void)
       DAT_00fff10c = '\0';
     }
     if (*in_A0 < 0) {
-      FUN_00000c24();
-      FUN_00000d94();
+      wait_for_vblank_frames();
+      wait_for_controller_event();
       return (int *)((int)&VectorsTable_00000000.Reserv3E + 3);
     }
     normalize_source_text_line();
@@ -66,7 +66,7 @@ int * FUN_0001f3c4(void)
         FUN_00001232();
       }
     }
-    FUN_00000c24();
+    wait_for_vblank_frames();
     do {
       while( true ) {
         wait_for_vblank();

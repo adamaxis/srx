@@ -14,13 +14,13 @@ entry	name	size	callingConvention	decompileStatus	file
 00000BB6	FUN_00000bb6	28	unknown	ok	ghidra-c/fn_00000BB6.cpp
 00000BD2	wait_for_vblank	32	unknown	ok	ghidra-c/fn_00000BD2.cpp
 00000BF2	latch_controller_events	50	unknown	ok	ghidra-c/fn_00000BF2.cpp
-00000C24	FUN_00000c24	8	unknown	ok	ghidra-c/fn_00000C24.cpp
+00000C24	wait_for_vblank_frames	8	unknown	ok	ghidra-c/fn_00000C24.cpp
 00000C2C	clear_runtime_memory_and_vdp	192	unknown	ok	ghidra-c/fn_00000C2C.cpp
 00000CEC	FUN_00000cec	40	unknown	ok	ghidra-c/fn_00000CEC.cpp
 00000D3A	sample_source_random_bound	10	unknown	ok	ghidra-c/fn_00000D3A.cpp
 00000D44	advance_source_prng	22	unknown	ok	ghidra-c/fn_00000D44.cpp
 00000D5A	FUN_00000d5a	58	unknown	ok	ghidra-c/fn_00000D5A.cpp
-00000D94	FUN_00000d94	38	unknown	ok	ghidra-c/fn_00000D94.cpp
+00000D94	wait_for_controller_event	38	unknown	ok	ghidra-c/fn_00000D94.cpp
 00000DBA	count_thresholded_random_rolls	66	unknown	ok	ghidra-c/fn_00000DBA.cpp
 00000DFC	FUN_00000dfc	28	unknown	ok	ghidra-c/fn_00000DFC.cpp
 00000E18	FUN_00000e18	28	unknown	ok	ghidra-c/fn_00000E18.cpp

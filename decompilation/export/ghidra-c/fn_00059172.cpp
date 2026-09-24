@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
-//   0x00000D94 FUN_00000d94
+//   0x00000D94 wait_for_controller_event
 //   0x0000195C sample_controller_input
 //   0x0000C0DA render_title_text_source
 //   0x0000C376 move_wrapped_menu_cursor
@@ -41,7 +41,7 @@ void FUN_00059172(void)
           _DAT_00ffe108 = 0xffff;
         }
         render_title_text_source();
-        FUN_00000d94();
+        wait_for_controller_event();
         return;
       }
     }

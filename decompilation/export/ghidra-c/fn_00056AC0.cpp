@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
-//   0x00000D94 FUN_00000d94
+//   0x00000D94 wait_for_controller_event
 //   0x00000E34 FUN_00000e34
 //   0x00000F5C FUN_00000f5c
 //   0x00001530 decode_and_upload_source_stream
@@ -68,7 +68,7 @@ LAB_00056b66:
     FUN_0000c406();
     if ((DAT_00fff0b7 == '\x02') && ((DAT_00ff018f & 1) == 0)) {
       render_title_text_source();
-      FUN_00000d94();
+      wait_for_controller_event();
 LAB_00056da8:
       FUN_0000334c();
       FUN_000039f2();

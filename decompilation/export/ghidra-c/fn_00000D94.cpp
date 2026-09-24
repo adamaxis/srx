@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00000D94
-// Name: FUN_00000d94
+// Name: wait_for_controller_event
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -8,7 +8,7 @@
 //   0x0000195C sample_controller_input
 
 
-void FUN_00000d94(void)
+void wait_for_controller_event(void)
 
 {
   do {

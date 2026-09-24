@@ -30,7 +30,25 @@ using NextVblankBoundary =
 bool wait_for_vblank(VblankFrameState& state,
                      const NextVblankBoundary& next_vblank);
 
+// ROM 0x0C24: repeat the vblank wait source_counter + 1 times.
+std::uint32_t wait_for_vblank_frames(
+    VblankFrameState& state,
+    std::uint16_t source_counter,
+    const NextVblankBoundary& next_vblank);
+
 using ControllerLatchBoundary = std::function<void()>;
+
+struct ControllerWaitCallbacks {
+    NextVblankBoundary next_vblank;
+    ControllerLatchBoundary latch_controller_events;
+    std::function<std::uint16_t()> sample_controller_input;
+};
+
+// ROM 0x0D94: wait/latch/sample until the sampled event word has a high-byte
+// event, then perform one final sample as the source does.
+std::uint32_t wait_for_controller_event(
+    VblankFrameState& state,
+    const ControllerWaitCallbacks& callbacks);
 
 // ROM 0x1342: the source uses DBF, so a starting counter N performs N + 1
 // vblank/latch iterations. Returns the number of iterations performed.

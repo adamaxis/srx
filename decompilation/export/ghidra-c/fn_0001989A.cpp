@@ -3,8 +3,8 @@
 // Name: FUN_0001989a
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000C24 FUN_00000c24
-//   0x00000D94 FUN_00000d94
+//   0x00000C24 wait_for_vblank_frames
+//   0x00000D94 wait_for_controller_event
 //   0x0000C0DA render_title_text_source
 //   0x00018776 FUN_00018776
 //   0x00026A00 FUN_00026a00
@@ -27,8 +27,8 @@ void FUN_0001989a(void)
         FUN_00018776();
         FUN_00026a00();
         render_title_text_source();
-        FUN_00000c24();
-        FUN_00000d94();
+        wait_for_vblank_frames();
+        wait_for_controller_event();
         return;
       }
     }

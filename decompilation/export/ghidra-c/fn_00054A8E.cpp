@@ -3,9 +3,9 @@
 // Name: FUN_00054a8e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000C24 FUN_00000c24
+//   0x00000C24 wait_for_vblank_frames
 //   0x00000D3A sample_source_random_bound
-//   0x00000D94 FUN_00000d94
+//   0x00000D94 wait_for_controller_event
 //   0x0000C0DA render_title_text_source
 //   0x0001989A FUN_0001989a
 //   0x000549E4 FUN_000549e4
@@ -26,8 +26,8 @@ void FUN_00054a8e(void)
   if (DAT_00fff0b1 == '\0') {
     FUN_000549f6();
     render_title_text_source();
-    FUN_00000c24();
-    FUN_00000d94();
+    wait_for_vblank_frames();
+    wait_for_controller_event();
   }
   FUN_000549e4();
   return;

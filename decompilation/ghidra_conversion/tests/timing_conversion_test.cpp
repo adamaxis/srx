@@ -41,6 +41,37 @@ int main() {
         return 2;
     }
 
+    if (!expect(wait_for_vblank_frames(
+                    state, 1U,
+                    [](const std::uint16_t previous) {
+                        return static_cast<std::uint16_t>(previous + 1U);
+                    }) == 2U &&
+                state.frame_count == 3U && state.observed_sample == 13U)) {
+        return 3;
+    }
+
+    std::vector<int> controller_order;
+    std::vector<std::uint16_t> samples{0x0001U, 0x1200U, 0x00FFU};
+    std::size_t sample_index = 0U;
+    const auto controller_iterations = wait_for_controller_event(
+        state,
+        {
+            [&controller_order](const std::uint16_t previous) {
+                controller_order.push_back(1);
+                return static_cast<std::uint16_t>(previous + 1U);
+            },
+            [&controller_order] { controller_order.push_back(2); },
+            [&controller_order, &samples, &sample_index] {
+                controller_order.push_back(3);
+                return samples[sample_index++];
+            },
+        });
+    if (!expect(controller_iterations == 2U && sample_index == 3U &&
+                controller_order == std::vector<int>{1, 2, 3, 1, 2, 3,
+                                                      3})) {
+        return 4;
+    }
+
     std::vector<int> palette_order;
     const auto iterations = wait_for_palette_frame(
         state, 1U,
@@ -49,15 +80,15 @@ int main() {
             return static_cast<std::uint16_t>(previous + 1U);
         },
         [&palette_order] { palette_order.push_back(2); });
-    if (!expect(iterations == 2U && state.frame_count == 3U &&
-                state.observed_sample == 13U &&
+    if (!expect(iterations == 2U && state.frame_count == 7U &&
+                state.observed_sample == 17U &&
                 palette_order == std::vector<int>{1, 2, 1, 2})) {
-        return 3;
+        return 5;
     }
 
     if (!expect(wait_for_palette_frame(state, 0U, {}, {}) == 1U &&
-                state.frame_count == 4U)) {
-        return 4;
+                state.frame_count == 8U)) {
+        return 6;
     }
 
     return 0;

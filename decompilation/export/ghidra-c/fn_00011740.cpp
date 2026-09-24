@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
-//   0x00000D94 FUN_00000d94
+//   0x00000D94 wait_for_controller_event
 //   0x00000FFE FUN_00000ffe
 //   0x0000102A FUN_0000102a
 //   0x000011C0 FUN_000011c0
@@ -320,7 +320,7 @@ LAB_00011c9c:
     render_title_text_source();
 LAB_00011cb6:
     FUN_000111d0();
-    FUN_00000d94();
+    wait_for_controller_event();
     FUN_00011928();
     return;
   case 3:
@@ -503,7 +503,7 @@ LAB_0000d4a0:
         sVar6 = sVar6 + -1;
       } while (sVar6 != -1);
     }
-    FUN_00000d94();
+    wait_for_controller_event();
     FUN_00011928();
     return;
   case 5:
@@ -557,7 +557,7 @@ LAB_0000d4a0:
     render_title_text_source();
     FUN_000106da();
     FUN_000106da();
-    FUN_00000d94();
+    wait_for_controller_event();
     FUN_00011928();
     return;
   case 6:
@@ -601,7 +601,7 @@ LAB_0000c2aa:
         (*(char *)(extraout_A0_05 + 0x6d) == '+')))) {
       FUN_00012c42();
       render_title_text_source();
-      FUN_00000d94();
+      wait_for_controller_event();
       return;
     }
     DAT_00fff098 = 0;
@@ -637,7 +637,7 @@ LAB_0000c2aa:
     if ((-1 < (char)(cVar7 + -0x17)) && ((char)(cVar7 + -0x2c) < '\0')) {
       FUN_00012c42();
       render_title_text_source();
-      FUN_00000d94();
+      wait_for_controller_event();
       return;
     }
     FUN_00011900();
@@ -848,7 +848,7 @@ joined_r0x00012496:
             }
           }
           render_title_text_source();
-          FUN_00000d94();
+          wait_for_controller_event();
           goto LAB_00012538;
         }
         if ((DAT_00ffdd22._0_1_ & 0x80) != 0) {
@@ -863,7 +863,7 @@ LAB_00012538:
 LAB_000121c0:
     FUN_00012c42();
     render_title_text_source();
-    FUN_00000d94();
+    wait_for_controller_event();
     return;
   }
   if (-1 < (char)(cVar8 + -0x18)) {

@@ -3,7 +3,7 @@
 // Name: FUN_00056dc4
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000D94 FUN_00000d94
+//   0x00000D94 wait_for_controller_event
 //   0x0000C0DA render_title_text_source
 //   0x0000C216 FUN_0000c216
 //   0x0001275C FUN_0001275c
@@ -64,13 +64,13 @@ uint FUN_00056dc4(void)
           bVar13 = extraout_D1 - DAT_00fffbfe < 0;
           if (DAT_00fffbfe < extraout_D1) {
             render_title_text_source();
-            uVar6 = FUN_00000d94();
+            uVar6 = wait_for_controller_event();
             return uVar6;
           }
           FUN_000575f8();
           if (bVar13) {
             render_title_text_source();
-            uVar6 = FUN_00000d94();
+            uVar6 = wait_for_controller_event();
             return uVar6;
           }
           uVar6 = FUN_00057b8c();
@@ -99,7 +99,7 @@ uint FUN_00056dc4(void)
             FUN_0000c216();
             if (DAT_00fffbfe < extraout_D1_00) {
               render_title_text_source();
-              uVar6 = FUN_00000d94();
+              uVar6 = wait_for_controller_event();
               return uVar6;
             }
             uVar14 = FUN_00057b8c();
@@ -130,12 +130,12 @@ uint FUN_00056dc4(void)
         }
         if (-1 < (char)(DAT_00fffbcb - (&DAT_001ab196)[(int)sVar10 + (uint)uVar8 * 0x70])) {
           render_title_text_source();
-          uVar6 = FUN_00000d94();
+          uVar6 = wait_for_controller_event();
           return uVar6;
         }
         if (DAT_00fffbfe < _DAT_00fff0be) {
           render_title_text_source();
-          uVar6 = FUN_00000d94();
+          uVar6 = wait_for_controller_event();
           return uVar6;
         }
         render_title_text_source();
@@ -259,14 +259,14 @@ uint FUN_00056dc4(void)
       }
 LAB_000572f8:
       render_title_text_source();
-      uVar6 = FUN_00000d94();
+      uVar6 = wait_for_controller_event();
       return uVar6;
     }
     if (DAT_00fff0b8 == '\x03') goto LAB_00056f4a;
     if (-1 < (char)(*(char *)(DAT_00fffc04 + 0x9b) + -2)) {
       FUN_00057c46();
       render_title_text_source();
-      uVar6 = FUN_00000d94();
+      uVar6 = wait_for_controller_event();
       return uVar6;
     }
     if ((DAT_00fff0b8 != '\x01') && ((char)(DAT_00fff0b8 + -1) < '\0')) {
@@ -279,7 +279,7 @@ LAB_000572f8:
         if (DAT_00fffbfe < _DAT_00fff0be) {
           FUN_00057c46();
           render_title_text_source();
-          uVar6 = FUN_00000d94();
+          uVar6 = wait_for_controller_event();
           return uVar6;
         }
         DAT_00fffbfe = DAT_00fffbfe - _DAT_00fff0be;
@@ -308,13 +308,13 @@ LAB_00056e54:
       }
       if (-1 < (char)(bVar2 - 0xb)) {
         render_title_text_source();
-        uVar6 = FUN_00000d94();
+        uVar6 = wait_for_controller_event();
         return uVar6;
       }
       DAT_00fff0c2 = (undefined1 *)CONCAT13(DAT_00fff0d0,DAT_00fff0c2._1_3_);
       render_title_text_source();
       render_title_text_source();
-      uVar6 = FUN_00000d94();
+      uVar6 = wait_for_controller_event();
       return uVar6;
     }
 LAB_00056f4a:
@@ -344,7 +344,7 @@ LAB_00056f4a:
       return uVar6;
     }
     render_title_text_source();
-    uVar6 = FUN_00000d94();
+    uVar6 = wait_for_controller_event();
     return uVar6;
   }
   FUN_00057c66();
@@ -366,7 +366,7 @@ LAB_00056f4a:
   if ((DAT_00fff0d0 != 3) || ((*(byte *)(DAT_00fffc04 + 0x6e + (int)sVar10) & 1) == 0)) {
     if (DAT_00fffbfe < _DAT_00fff0be) {
       render_title_text_source();
-      uVar6 = FUN_00000d94();
+      uVar6 = wait_for_controller_event();
       return uVar6;
     }
     render_title_text_source();
@@ -389,7 +389,7 @@ LAB_00056f4a:
   }
 LAB_0005710e:
   render_title_text_source();
-  uVar6 = FUN_00000d94();
+  uVar6 = wait_for_controller_event();
   return uVar6;
 }
 
