@@ -3,7 +3,7 @@
 // Name: FUN_00019432
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00017BC0 FUN_00017bc0
+//   0x00017BC0 refresh_menu_number_or_grid
 //   0x00017C84 set_hud_selection_value
 //   0x000194AC FUN_000194ac
 
@@ -22,7 +22,7 @@ void FUN_00019432(void)
       set_hud_selection_value();
     }
     FUN_000194ac();
-    FUN_00017bc0();
+    refresh_menu_number_or_grid();
   }
   return;
 }

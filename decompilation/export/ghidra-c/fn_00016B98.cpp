@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
-//   0x00016D8A FUN_00016d8a
+//   0x00016D8A spawn_scene_record_offset
 //   0x00016E08 all_scene_record_slots_active
 
 
@@ -50,7 +50,7 @@ void FUN_00016b98(void)
         return;
       }
       bVar5 = false;
-      FUN_00016d8a();
+      spawn_scene_record_offset();
       if (!bVar5) {
         *(short *)(extraout_A1_01 + 6) = (short)extraout_A0_01;
         *(undefined2 *)(extraout_A0_01 + 0x16) = 0x80;

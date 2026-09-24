@@ -6,7 +6,7 @@
 //   0x0000C0DA render_title_text_source
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x00017C3C FUN_00017c3c
-//   0x00017E04 FUN_00017e04
+//   0x00017E04 refresh_hud_grid_if_ready
 //   0x00019DAC FUN_00019dac
 
 
@@ -34,7 +34,7 @@ void FUN_00017a5e(void)
     bVar5 = cVar2 == '\0';
     if (('\0' < cVar2) && (FUN_00017c3c(), !bVar5 && cVar6 == cVar4)) {
       if (DAT_00ffdf84 != '\0') {
-        FUN_00017e04();
+        refresh_hud_grid_if_ready();
       }
       iVar3 = (uint)bVar1 * 2;
       if (-1 < *(char *)((int)&PTR_DAT_000e31a7 + iVar3)) {

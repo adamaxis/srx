@@ -30,7 +30,7 @@ void FUN_0001962a(void)
   (&DAT_00fff0ed)[(short)uVar1] = 6;
   write_repeated_vdp_grid();
   write_vdp_grid();
-  FUN_0001792e();
+  render_menu_hud_rows();
   return;
 }
 

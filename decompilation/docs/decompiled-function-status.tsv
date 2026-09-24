@@ -376,3 +376,23 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x1562E	entity auxiliary behavior service	ghidra_conversion::service_entity_auxiliary_behavior	shadowrun_ghidra_behavior_animation	partial		Typed auxiliary preparation before entity behavior preparation
 0x1582A	local effect-slot allocator	ghidra_conversion::allocate_first_free_effect_slot_local	shadowrun_ghidra_entity_state_primitives	partial		Typed eighteen-slot local allocator kept distinct from the 0x1A2CC shared entry
 0x16AFA	mode word-block upload wrapper	ghidra_conversion::upload_mode_word_block	shadowrun_graphics	partial		Typed forwarding boundary into the wrapped word-block transfer
+0x16B7C	scene resource cursor copy	ghidra_conversion::copy_scene_resource_cursor	shadowrun_ghidra_scene_profile	partial		Typed publication of the scene profile cursor and resource index
+0x16D8A	scene record offset spawn	ghidra_conversion::spawn_scene_record_offset	shadowrun_ghidra_scene_profile	partial		Typed slot-availability boundary, coordinate offset, active flag, and kind publication
+0x173F2	menu mode resource preparation	ghidra_conversion::prepare_menu_mode_resources	shadowrun_ghidra_menu_hud_service	partial		Typed mode marker, temporary upload state, title-resource preparation, and transition gate
+0x177CC	menu resource pair upload	ghidra_conversion::upload_menu_resource_pair	shadowrun_ghidra_menu_hud_service	partial		Typed double source-stream upload boundary
+0x1789C	menu HUD preparation sequence	ghidra_conversion::prepare_menu_hud_sequence	shadowrun_ghidra_menu_hud_service	partial		Typed two-grid and four-service call order
+0x178C8	menu HUD grid batch	ghidra_conversion::write_menu_hud_grid_batch	shadowrun_ghidra_menu_hud_service	partial		Typed five-grid write batch
+0x1792E	menu HUD row renderer	ghidra_conversion::render_menu_hud_rows	shadowrun_ghidra_menu_hud_service	partial		Typed rows 4..0, source offsets, signed status gate, and grid writes
+0x17BC0	menu number or grid refresh	ghidra_conversion::refresh_menu_number_or_grid	shadowrun_ghidra_menu_hud_service	partial		Typed signed-row branch between text/number work and repeated grid fallback
+0x17C52	menu text followup	ghidra_conversion::render_menu_text_followup	shadowrun_ghidra_menu_hud_service	partial		Typed title-text render boundary
+0x17CC8	HUD sprite/audio pulse	ghidra_conversion::advance_hud_sprite_audio_pulse	shadowrun_ghidra_menu_hud_service	partial		Typed countdown, four-phase sprite cadence, and phase-zero audio service
+0x17D90	HUD panel offset advance	ghidra_conversion::advance_hud_panel_offset	shadowrun_ghidra_menu_hud_service	partial		Typed signed offset normalization, ten-unit clamp, grid refresh, and row service
+0x17DB8	HUD footer offset advance	ghidra_conversion::advance_hud_footer_offset	shadowrun_ghidra_menu_hud_service	partial		Typed footer offset normalization and shared refresh order
+0x17E04	HUD grid readiness refresh	ghidra_conversion::refresh_hud_grid_if_ready	shadowrun_ghidra_menu_hud_service	partial		Typed source-flag predicate and three-grid draw branch
+0x17E78	menu row offset calculation	ghidra_conversion::calculate_menu_row_offset	shadowrun_ghidra_menu_hud_service	partial		Typed stride-table lookup, mode adjustment, and host bounds result
+0x17EB4	menu delay offset calculation	ghidra_conversion::calculate_menu_delay_offset	shadowrun_ghidra_menu_hud_service	partial		Typed average-delay components and signed 0x1D subtraction
+0x17F80	mode metadata refresh wrapper	ghidra_conversion::refresh_mode_metadata_wrapper	shadowrun_ghidra_menu_hud_service	partial		Typed boundary for shared mode metadata refresh
+0x17FB4	HUD repeated-grid wrapper	ghidra_conversion::write_hud_repeated_grid	shadowrun_ghidra_menu_hud_service	partial		Typed repeated-grid presentation boundary
+0x18776	HUD fade service	ghidra_conversion::advance_hud_fade_service	shadowrun_ghidra_menu_hud_service	partial		Typed five-pass, two-vblank palette fade service with dirty publication
+0x1897C	HUD repeated-grid variant A	ghidra_conversion::write_hud_repeated_grid_variant_a	shadowrun_ghidra_menu_hud_service	partial		Typed repeated-grid variant boundary
+0x18998	HUD repeated-grid variant B	ghidra_conversion::write_hud_repeated_grid_variant_b	shadowrun_ghidra_menu_hud_service	partial		Typed repeated-grid variant boundary

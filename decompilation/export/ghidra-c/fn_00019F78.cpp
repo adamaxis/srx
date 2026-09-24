@@ -18,7 +18,7 @@ void FUN_00019f78(void)
       FUN_000195aa();
       (&DAT_00fff0e8)[sVar1] = 0;
       *(short *)((int)&DAT_00fff0f2 + (int)(short)(sVar1 << 1)) = extraout_D1w * 10;
-      FUN_00017bc0();
+      refresh_menu_number_or_grid();
       FUN_00019762();
       return;
     }

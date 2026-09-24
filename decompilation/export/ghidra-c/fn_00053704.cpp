@@ -8,7 +8,7 @@
 //   0x0000195C sample_controller_input
 //   0x000176EA render_menu_footer
 //   0x00017708 render_field_hud
-//   0x000177CC FUN_000177cc
+//   0x000177CC upload_menu_resource_pair
 //   0x000532BC FUN_000532bc
 //   0x000537FA FUN_000537fa
 
@@ -57,7 +57,7 @@ LAB_000537c6:
     if ((DAT_00ffdd22._0_1_ & 8) != 0) goto LAB_000537c6;
     if (((DAT_00ffdd22._0_1_ & 0x80) != 0) && (DAT_00fff0a9 == '\0')) {
       VDP_CTRL = 0x8134;
-      FUN_000177cc();
+      upload_menu_resource_pair();
       uVar1 = render_menu_footer();
       return uVar1;
     }

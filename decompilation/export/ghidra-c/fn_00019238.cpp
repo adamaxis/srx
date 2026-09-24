@@ -9,7 +9,7 @@
 //   0x0000C0DA render_title_text_source
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x0001882E FUN_0001882e
-//   0x00018998 FUN_00018998
+//   0x00018998 write_hud_repeated_grid_variant_b
 //   0x00018A92 FUN_00018a92
 //   0x000194AC FUN_000194ac
 //   0x00019504 FUN_00019504
@@ -34,7 +34,7 @@ void FUN_00019238(void)
   if ((&DAT_00fffbcc)[unaff_D7w] != '\0') {
     DAT_00ffdd50 = 0;
     DAT_00fff0dc = '\0';
-    FUN_00018998();
+    write_hud_repeated_grid_variant_b();
     FUN_00018a92();
     puVar2 = &DAT_00fffbbe;
     sVar1 = 4;

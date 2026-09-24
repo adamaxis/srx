@@ -541,6 +541,25 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The next twenty-entry conversion slice stays on the reference side and does
+not alter the native game or its emulator museum. `0x16B7C` now publishes the
+scene resource cursor fields into typed state, while `0x16D8A` uses an
+explicit slot-availability boundary before offsetting and activating a scene
+record. The menu/HUD cluster is represented in
+`ghidra_conversion/menu_hud_service_conversion`: `0x173F2` preserves the
+temporary marker/preparation order, `0x177CC` submits its source stream twice,
+and `0x1789C`/`0x178C8`/`0x1792E` express the recovered grid and row-service
+orders without VDP address arithmetic.
+
+The same module converts the signed-row branch at `0x17BC0`, its text leaf at
+`0x17C52`, the four-phase sprite/audio pulse at `0x17CC8`, panel/footer offset
+normalization at `0x17D90`/`0x17DB8`, and the three-grid readiness branch at
+`0x17E04`. `0x17E78` now has a bounded stride-table lookup, `0x17EB4`
+publishes the typed average-delay subtraction, and `0x17F80`/`0x17FB4` plus
+`0x1897C`/`0x18998` are explicit service boundaries. Finally, `0x18776`
+performs five two-vblank fade passes with typed dirty publication. The new
+module has a focused test; the full conversion suite is now 110/110.
+
 The title resource loader at `0x1CFC` is now a typed host sequence. It submits
 the decoded-resource boundary three times, resets the host resource cursor
 between the first and second submissions, and then prepares the title sprite

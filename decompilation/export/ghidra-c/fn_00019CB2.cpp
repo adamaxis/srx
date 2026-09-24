@@ -3,9 +3,9 @@
 // Name: FUN_00019cb2
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00017C52 FUN_00017c52
+//   0x00017C52 render_menu_text_followup
 //   0x00017C84 set_hud_selection_value
-//   0x00017DB8 FUN_00017db8
+//   0x00017DB8 advance_hud_footer_offset
 //   0x00019B34 FUN_00019b34
 //   0x00019BAE select_hud_mode
 
@@ -34,10 +34,10 @@ void FUN_00019cb2(void)
       }
     }
     else {
-      FUN_00017db8();
+      advance_hud_footer_offset();
     }
     set_hud_selection_value();
-    FUN_00017c52();
+    render_menu_text_followup();
   }
   sVar2 = 4;
   do {
@@ -45,7 +45,7 @@ void FUN_00019cb2(void)
       FUN_000195aa();
       (&DAT_00fff0e8)[sVar2] = 0;
       *(short *)((int)&DAT_00fff0f2 + (int)(short)(sVar2 << 1)) = extraout_D1w * 10;
-      FUN_00017bc0();
+      refresh_menu_number_or_grid();
       FUN_00019762();
       return;
     }

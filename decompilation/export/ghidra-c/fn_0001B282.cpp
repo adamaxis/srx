@@ -4,8 +4,8 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
-//   0x0001792E FUN_0001792e
-//   0x00017BC0 FUN_00017bc0
+//   0x0001792E render_menu_hud_rows
+//   0x00017BC0 refresh_menu_number_or_grid
 //   0x00019632 FUN_00019632
 //   0x00019AEE FUN_00019aee
 //   0x0001A908 FUN_0001a908
@@ -22,12 +22,12 @@ void FUN_0001b282(void)
     DAT_00ffe0dc = DAT_00ffe0dc + 1;
     if (DAT_00ffe0dc == 6) {
       FUN_00019632();
-      FUN_00017bc0();
+      refresh_menu_number_or_grid();
     }
     if (0xb < DAT_00ffe0dc) {
       FUN_00019aee();
       _DAT_00ffe0de = 0;
-      FUN_0001792e();
+      render_menu_hud_rows();
       FUN_0001a908();
       return;
     }

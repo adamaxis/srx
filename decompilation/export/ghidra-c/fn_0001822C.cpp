@@ -20,11 +20,11 @@
 //   0x000176EA render_menu_footer
 //   0x00017708 render_field_hud
 //   0x00017D90 advance_hud_panel
-//   0x00017F80 FUN_00017f80
-//   0x00018776 FUN_00018776
+//   0x00017F80 refresh_mode_metadata_wrapper
+//   0x00018776 advance_hud_fade_service
 //   0x000187AA FUN_000187aa
 //   0x0001882E FUN_0001882e
-//   0x0001897C FUN_0001897c
+//   0x0001897C write_hud_repeated_grid_variant_a
 //   0x000189D8 FUN_000189d8
 //   0x00018AA6 FUN_00018aa6
 //   0x00019238 FUN_00019238
@@ -63,7 +63,7 @@ void FUN_0001822c(void)
   clear_and_fill_plane_a();
   reset_vdp_upload_state();
   decode_and_upload_source_stream();
-  FUN_00017f80();
+  refresh_mode_metadata_wrapper();
   render_hud_sprite_stream();
   render_field_hud();
   DAT_00ffdd02 = 1;
@@ -127,7 +127,7 @@ LAB_0001842e:
     if (DAT_00fff0d1 == 3) {
       if (DAT_00fff0d0 == 3) {
         if (DAT_00fff0b0 != '\0') {
-          FUN_0001897c();
+          write_hud_repeated_grid_variant_a();
           sVar8 = FUN_00019b40();
           if ((sVar8 == 8) && (DAT_00ffdf84 != '\0')) {
             render_title_text_source();
@@ -171,7 +171,7 @@ LAB_0001842e:
                   }
                 }
                 DAT_00fff0dc = -1;
-                FUN_00018776();
+                advance_hud_fade_service();
                 FUN_00026a00();
                 goto LAB_00018694;
               }

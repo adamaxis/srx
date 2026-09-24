@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x000173F2
-// Name: FUN_000173f2
+// Name: prepare_menu_mode_resources
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001406 prepare_title_resources
 //   0x0001745E FUN_0001745e
 
 
-void FUN_000173f2(void)
+void prepare_menu_mode_resources(void)
 
 {
   if (DAT_00ffe16f == '\0') {

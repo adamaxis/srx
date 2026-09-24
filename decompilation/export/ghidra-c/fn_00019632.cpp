@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x000011C0 write_repeated_vdp_grid
 //   0x00001232 write_vdp_grid
-//   0x0001792E FUN_0001792e
+//   0x0001792E render_menu_hud_rows
 
 
 void FUN_00019632(void)
@@ -31,7 +31,7 @@ void FUN_00019632(void)
   (&DAT_00fff0ed)[unaff_D4w] = 6;
   write_repeated_vdp_grid();
   write_vdp_grid();
-  FUN_0001792e();
+  render_menu_hud_rows();
   return;
 }
 

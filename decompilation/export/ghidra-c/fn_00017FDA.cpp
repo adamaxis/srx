@@ -6,7 +6,7 @@
 //   0x00000D3A sample_source_random_bound
 //   0x000011F6 write_linear_vdp_grid
 //   0x00001232 write_vdp_grid
-//   0x00017FB4 FUN_00017fb4
+//   0x00017FB4 write_hud_repeated_grid
 
 
 void FUN_00017fda(void)
@@ -28,10 +28,10 @@ void FUN_00017fda(void)
     DAT_00fff09a = DAT_00fff09a * 2;
   }
   else if (DAT_00fff106 < 1) {
-    FUN_00017fb4();
+    write_hud_repeated_grid();
     goto LAB_00018148;
   }
-  FUN_00017fb4();
+  write_hud_repeated_grid();
   write_vdp_grid();
   if ((DAT_00fff106 != 2) && (DAT_00fff106 != 7)) {
     sample_source_random_bound();

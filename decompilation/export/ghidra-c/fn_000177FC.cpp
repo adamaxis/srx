@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
-//   0x00017CC8 FUN_00017cc8
+//   0x00017CC8 advance_hud_sprite_audio_pulse
 //   0x00017FDA FUN_00017fda
 //   0x000194AC FUN_000194ac
 //   0x0001C3FA FUN_0001c3fa
@@ -25,7 +25,7 @@ void FUN_000177fc(void)
   do {
     wait_for_vblank();
     latch_controller_events();
-    FUN_00017cc8();
+    advance_hud_sprite_audio_pulse();
     FUN_00017fda();
     DAT_00ffdd02 = 1;
     FUN_0001c3fa();

@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
 //   0x00000E9C make_vdp_transfer_command
-//   0x00017E78 FUN_00017e78
+//   0x00017E78 calculate_menu_row_offset
 //   0x0001A538 FUN_0001a538
 //   0x0001A54E FUN_0001a54e
 //   0x0001A818 FUN_0001a818
@@ -56,11 +56,11 @@ void FUN_0001a370(void)
   if (!bVar4) {
     if (((DAT_00ffdf84 != '\0') && (DAT_00ffe076 == 0)) &&
        (DAT_00ffe074 = DAT_00ffe074 + -1, DAT_00ffe074 < 0)) {
-      DAT_00ffe074 = FUN_00017e78();
+      DAT_00ffe074 = calculate_menu_row_offset();
       _DAT_00ffe07e = FUN_000561e8();
       if (-1 < _DAT_00ffe07e) {
         if (_DAT_00ffe07e == 2) {
-          uVar1 = FUN_00017e78();
+          uVar1 = calculate_menu_row_offset();
           DAT_00ffe0c4 = (undefined2)(0xa00 / (uVar1 & 0xffff));
           _DAT_00ffe0c2 = 1;
           DAT_00ffe0c6 = 0x11f0;

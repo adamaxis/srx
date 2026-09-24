@@ -3,8 +3,8 @@
 // Name: FUN_00019976
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001792E FUN_0001792e
-//   0x00017C52 FUN_00017c52
+//   0x0001792E render_menu_hud_rows
+//   0x00017C52 render_menu_text_followup
 //   0x00017C84 set_hud_selection_value
 //   0x00017C8E hud_selection_value_matches
 //   0x00017EE4 reset_menu_overlay_and_upload_two
@@ -58,7 +58,7 @@ void FUN_00019976(void)
                   hud_selection_value_matches();
                   if (!bVar4) {
                     set_hud_selection_value();
-                    FUN_00017c52();
+                    render_menu_text_followup();
                   }
                 }
                 goto LAB_00019a8a;
@@ -87,7 +87,7 @@ void FUN_00019976(void)
     }
   }
 LAB_00019a8a:
-  FUN_0001792e();
+  render_menu_hud_rows();
   return;
 }
 

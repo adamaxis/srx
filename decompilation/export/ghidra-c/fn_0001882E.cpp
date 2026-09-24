@@ -8,7 +8,7 @@
 //   0x0000C134 normalize_source_text_line
 //   0x0000C160 FUN_0000c160
 //   0x0000C216 build_grouped_decimal_glyphs
-//   0x0001897C FUN_0001897c
+//   0x0001897C write_hud_repeated_grid_variant_a
 //   0x00018A92 FUN_00018a92
 //   0x0001952C FUN_0001952c
 //   0x0001957E FUN_0001957e
@@ -21,7 +21,7 @@ void FUN_0001882e(void)
 {
   short unaff_D7w;
   
-  FUN_0001897c();
+  write_hud_repeated_grid_variant_a();
   FUN_00018a92();
   if ((unaff_D7w < 0xc) && ((char)(&DAT_00fffbcc)[unaff_D7w] < '\x01')) {
     render_title_text_source();

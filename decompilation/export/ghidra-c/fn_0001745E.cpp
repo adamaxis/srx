@@ -16,10 +16,10 @@
 //   0x000176EA render_menu_footer
 //   0x00017708 render_field_hud
 //   0x000177A4 initialize_menu_slot_states
-//   0x000177CC FUN_000177cc
+//   0x000177CC upload_menu_resource_pair
 //   0x000177FC FUN_000177fc
-//   0x0001789C FUN_0001789c
-//   0x00017EB4 FUN_00017eb4
+//   0x0001789C prepare_menu_hud_sequence
+//   0x00017EB4 calculate_menu_delay_offset
 //   0x00019856 refresh_field_hud
 //   0x0001ADE6 FUN_0001ade6
 //   0x0001B5A6 FUN_0001b5a6
@@ -53,7 +53,7 @@ void FUN_0001745e(void)
   }
   DAT_00ffdd48 = 0;
   FUN_000531ea();
-  FUN_00017eb4();
+  calculate_menu_delay_offset();
   DAT_00fff0d2 = 0;
   do {
     VDP_CTRL = 0x8134;
@@ -85,7 +85,7 @@ void FUN_0001745e(void)
     FUN_0001b5a6();
     VDP_CTRL = 0x9100;
     render_menu_footer();
-    FUN_000177cc();
+    upload_menu_resource_pair();
     decode_and_upload_source_stream();
     render_hud_sprite_stream();
     render_hud_sprite_stream();
@@ -100,7 +100,7 @@ void FUN_0001745e(void)
     FUN_0001b628();
     *(undefined1 *)(extraout_A0 + 2) = 0x1e;
     *(undefined1 *)(extraout_A0 + 3) = 0x1e;
-    FUN_0001789c();
+    prepare_menu_hud_sequence();
     VDP_CTRL = 0x8174;
     service_audio_if_enabled();
     FUN_000177fc();

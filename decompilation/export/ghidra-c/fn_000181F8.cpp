@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001358 copy_source_word_block
-//   0x000177CC FUN_000177cc
+//   0x000177CC upload_menu_resource_pair
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -28,7 +28,7 @@ void FUN_000181f8(void)
   VDP_CTRL = 0x9100;
   copy_source_word_block();
   DAT_00ffef14 = DAT_00ffef14 | 1;
-  FUN_000177cc();
+  upload_menu_resource_pair();
   uVar4 = DAT_00fff0b7;
   uVar3 = _DAT_00ffdd08;
   DAT_00fffbca = 10;
@@ -40,7 +40,7 @@ void FUN_000181f8(void)
   clear_and_fill_plane_a();
   reset_vdp_upload_state();
   decode_and_upload_source_stream();
-  FUN_00017f80();
+  refresh_mode_metadata_wrapper();
   render_hud_sprite_stream();
   render_field_hud();
   DAT_00ffdd02 = 1;
@@ -104,7 +104,7 @@ LAB_0001842e:
     if (DAT_00fff0d1 == 3) {
       if (DAT_00fff0d0 == 3) {
         if (DAT_00fff0b0 != '\0') {
-          FUN_0001897c();
+          write_hud_repeated_grid_variant_a();
           sVar8 = FUN_00019b40();
           if ((sVar8 == 8) && (DAT_00ffdf84 != '\0')) {
             render_title_text_source();
@@ -148,7 +148,7 @@ LAB_0001842e:
                   }
                 }
                 DAT_00fff0dc = -1;
-                FUN_00018776();
+                advance_hud_fade_service();
                 FUN_00026a00();
                 goto LAB_00018694;
               }

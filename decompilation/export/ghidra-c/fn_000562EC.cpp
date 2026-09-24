@@ -4,9 +4,9 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000DBA count_thresholded_random_rolls
-//   0x0001792E FUN_0001792e
+//   0x0001792E render_menu_hud_rows
 //   0x00017D90 advance_hud_panel
-//   0x00017DB8 FUN_00017db8
+//   0x00017DB8 advance_hud_footer_offset
 //   0x00019B40 FUN_00019b40
 //   0x0001A12E FUN_0001a12e
 //   0x00055F44 FUN_00055f44
@@ -36,7 +36,7 @@ void FUN_000562ec(void)
           return;
         }
         FUN_0001a12e();
-        if (((extraout_D1b < '\0') && (FUN_00017db8(), DAT_00fffbca == '\0')) &&
+        if (((extraout_D1b < '\0') && (advance_hud_footer_offset(), DAT_00fffbca == '\0')) &&
            (((sVar2 = FUN_00019b40(), sVar2 == 3 ||
              (((sVar2 == 0xc || (sVar2 == 0xf)) || (sVar2 == 0x17)))) || (sVar2 == 0x18)))) {
           FUN_00019bf6();
@@ -63,7 +63,7 @@ void FUN_000562ec(void)
       _DAT_00ffe07e = 1;
     }
   }
-  FUN_0001792e();
+  render_menu_hud_rows();
   return;
 }
 

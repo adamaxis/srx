@@ -25,7 +25,7 @@ void advance_hud_panel(void)
     *pcVar3 = '\n';
   }
   write_vdp_grid();
-  FUN_0001792e();
+  render_menu_hud_rows();
   return;
 }
 

@@ -31,7 +31,7 @@ undefined2 FUN_0001a030(void)
     return 0xffff;
   }
   set_hud_selection_value();
-  FUN_00017c52();
+  render_menu_text_followup();
   FUN_0001b706();
   return 0x45;
 }

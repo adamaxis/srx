@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
-//   0x00017DB8 FUN_00017db8
+//   0x00017DB8 advance_hud_footer_offset
 
 
 void refresh_field_hud(void)
@@ -12,7 +12,7 @@ void refresh_field_hud(void)
 {
   short sVar1;
   
-  FUN_00017db8();
+  advance_hud_footer_offset();
   sVar1 = 4;
   do {
     write_vdp_grid();

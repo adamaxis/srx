@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00016D8A
-// Name: FUN_00016d8a
+// Name: spawn_scene_record_offset
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00016E08 all_scene_record_slots_active
 
 
-void FUN_00016d8a(void)
+void spawn_scene_record_offset(void)
 
 {
   short unaff_D6w;

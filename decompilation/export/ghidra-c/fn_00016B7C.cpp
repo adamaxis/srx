@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00016B7C
-// Name: FUN_00016b7c
+// Name: copy_scene_resource_cursor
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00016b7c(void)
+void copy_scene_resource_cursor(void)
 
 {
   DAT_00fffbbc = (char)*(undefined2 *)(DAT_00ffde1e + 0x14);

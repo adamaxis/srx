@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
-//   0x0001792E FUN_0001792e
+//   0x0001792E render_menu_hud_rows
 //   0x00019504 FUN_00019504
 
 
@@ -22,7 +22,7 @@ void FUN_000194ac(void)
     DAT_00fff0d4 = 0;
   }
   write_vdp_grid();
-  FUN_0001792e();
+  render_menu_hud_rows();
   return;
 }
 

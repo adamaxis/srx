@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00017FB4
-// Name: FUN_00017fb4
+// Name: write_hud_repeated_grid
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000011C0 write_repeated_vdp_grid
 
 
-void FUN_00017fb4(void)
+void write_hud_repeated_grid(void)
 
 {
   write_repeated_vdp_grid();

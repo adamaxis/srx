@@ -4,8 +4,8 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
-//   0x0001792E FUN_0001792e
-//   0x00017C52 FUN_00017c52
+//   0x0001792E render_menu_hud_rows
+//   0x00017C52 render_menu_text_followup
 //   0x00017C84 set_hud_selection_value
 //   0x00017EEE FUN_00017eee
 
@@ -19,7 +19,7 @@ void FUN_00019788(void)
   DAT_00fff0ac = DAT_00fff0ac - 1;
   if ((short)((ushort)DAT_00fff0ac << 8) < 0) {
     DAT_00fff0ac = 0x28;
-    FUN_0001792e();
+    render_menu_hud_rows();
   }
   FUN_00017eee();
   if (DAT_00fff0b8 != '\0') {
@@ -38,7 +38,7 @@ void FUN_00019788(void)
             return;
           }
           set_hud_selection_value();
-          FUN_00017c52();
+          render_menu_text_followup();
           return;
         }
         pcVar2 = pcVar2 + 1;

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001792E
-// Name: FUN_0001792e
+// Name: render_menu_hud_rows
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
@@ -8,7 +8,7 @@
 //   0x00056506 FUN_00056506
 
 
-void FUN_0001792e(void)
+void render_menu_hud_rows(void)
 
 {
   short sVar1;

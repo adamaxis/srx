@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00017DB8
-// Name: FUN_00017db8
+// Name: advance_hud_footer_offset
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
-//   0x0001792E FUN_0001792e
+//   0x0001792E render_menu_hud_rows
 
 
-void FUN_00017db8(void)
+void advance_hud_footer_offset(void)
 
 {
   char in_D1b;
@@ -22,7 +22,7 @@ void FUN_00017db8(void)
     DAT_00fffbca = '\n';
   }
   write_vdp_grid();
-  FUN_0001792e();
+  render_menu_hud_rows();
   return;
 }
 

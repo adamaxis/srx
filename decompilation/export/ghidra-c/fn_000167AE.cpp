@@ -8,7 +8,7 @@
 //   0x00003074 FUN_00003074
 //   0x00016A26 FUN_00016a26
 //   0x00016AFA upload_mode_word_block
-//   0x00016B7C FUN_00016b7c
+//   0x00016B7C copy_scene_resource_cursor
 //   0x00016E30 snapshot_scene_state
 //   0x0001DBAA schedule_world_activity_timeout
 
@@ -69,7 +69,7 @@ void FUN_000167ae(void)
         DAT_00ffe12c = 4;
       }
       DAT_00ffe114 = DAT_00ffde1e[1];
-      FUN_00016b7c();
+      copy_scene_resource_cursor();
       upload_mode_word_block();
     }
     else if (DAT_00ffddc4 < 0x38) {

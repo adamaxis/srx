@@ -7,11 +7,11 @@
 //   0x00000BF2 latch_controller_events
 //   0x0000195C sample_controller_input
 //   0x000176BA refresh_field_resource_streams
-//   0x0001789C FUN_0001789c
+//   0x0001789C prepare_menu_hud_sequence
 //   0x00017FDA FUN_00017fda
 //   0x0001822C FUN_0001822c
 //   0x000186FA FUN_000186fa
-//   0x00018776 FUN_00018776
+//   0x00018776 advance_hud_fade_service
 //   0x00019432 FUN_00019432
 //   0x00019788 FUN_00019788
 //   0x0001A370 FUN_0001a370
@@ -117,7 +117,7 @@ void FUN_0001ade6(void)
       else {
         FUN_0001b302();
         if (_DAT_00ffe084 == 0) {
-          FUN_00018776();
+          advance_hud_fade_service();
           FUN_00026a00();
           return;
         }
@@ -233,7 +233,7 @@ LAB_0001afc0:
         return;
       }
       FUN_000186fa();
-      FUN_0001789c();
+      prepare_menu_hud_sequence();
       VDP_CTRL = 0x8174;
       prepare_mode_entry_service();
       service_audio_command_frame();

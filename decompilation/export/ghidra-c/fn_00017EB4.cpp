@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00017EB4
-// Name: FUN_00017eb4
+// Name: calculate_menu_delay_offset
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000D81C average_entity_delay_attributes
 
 
-void FUN_00017eb4(void)
+void calculate_menu_delay_offset(void)
 
 {
   char cVar1;

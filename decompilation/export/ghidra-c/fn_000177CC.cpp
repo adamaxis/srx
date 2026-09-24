@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000177CC
-// Name: FUN_000177cc
+// Name: upload_menu_resource_pair
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001530 decode_and_upload_source_stream
 
 
-void FUN_000177cc(void)
+void upload_menu_resource_pair(void)
 
 {
   decode_and_upload_source_stream();

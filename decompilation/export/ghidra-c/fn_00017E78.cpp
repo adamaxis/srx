@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00017E78
-// Name: FUN_00017e78
+// Name: calculate_menu_row_offset
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-int FUN_00017e78(void)
+int calculate_menu_row_offset(void)
 
 {
   ushort uVar1;

@@ -121,6 +121,25 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0001A2CCL, "allocate_first_free_effect_slot");
         names.put(0x0001582AL, "allocate_first_free_effect_slot_local");
         names.put(0x00016AFAL, "upload_mode_word_block");
+        names.put(0x00016B7CL, "copy_scene_resource_cursor");
+        names.put(0x00016D8AL, "spawn_scene_record_offset");
+        names.put(0x000173F2L, "prepare_menu_mode_resources");
+        names.put(0x000177CCL, "upload_menu_resource_pair");
+        names.put(0x0001789CL, "prepare_menu_hud_sequence");
+        names.put(0x000178C8L, "write_menu_hud_grid_batch");
+        names.put(0x0001792EL, "render_menu_hud_rows");
+        names.put(0x00017BC0L, "refresh_menu_number_or_grid");
+        names.put(0x00017C52L, "render_menu_text_followup");
+        names.put(0x00017CC8L, "advance_hud_sprite_audio_pulse");
+        names.put(0x00017DB8L, "advance_hud_footer_offset");
+        names.put(0x00017E04L, "refresh_hud_grid_if_ready");
+        names.put(0x00017E78L, "calculate_menu_row_offset");
+        names.put(0x00017EB4L, "calculate_menu_delay_offset");
+        names.put(0x00017F80L, "refresh_mode_metadata_wrapper");
+        names.put(0x00017FB4L, "write_hud_repeated_grid");
+        names.put(0x00018776L, "advance_hud_fade_service");
+        names.put(0x0001897CL, "write_hud_repeated_grid_variant_a");
+        names.put(0x00018998L, "write_hud_repeated_grid_variant_b");
         names.put(0x0001A342L,
                   "find_first_available_world_effect_entity_slot");
         names.put(0x0001DBAAL, "schedule_world_activity_timeout");

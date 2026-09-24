@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
-//   0x0001792E FUN_0001792e
+//   0x0001792E render_menu_hud_rows
 //   0x000195A6 FUN_000195a6
 
 
@@ -22,7 +22,7 @@ void FUN_000195d8(void)
   (&DAT_00fff0e8)[(short)uVar1] = 0;
   *(short *)((int)&DAT_00fff0f2 + (int)(short)(uVar1 << 1)) = extraout_D1w * 10;
   write_vdp_grid();
-  FUN_0001792e();
+  render_menu_hud_rows();
   return;
 }
 

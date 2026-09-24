@@ -14,8 +14,8 @@
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x00010952 reset_mode_display_buffers
 //   0x000176EA render_menu_footer
-//   0x000177CC FUN_000177cc
-//   0x00017F80 FUN_00017f80
+//   0x000177CC upload_menu_resource_pair
+//   0x00017F80 refresh_mode_metadata_wrapper
 //   0x0001822C FUN_0001822c
 //   0x000532A8 FUN_000532a8
 //   0x000549E4 FUN_000549e4
@@ -71,7 +71,7 @@ LAB_000546cc:
     write_vdp_grid();
     write_vdp_grid();
     FUN_000549f6();
-    FUN_00017f80();
+    refresh_mode_metadata_wrapper();
     VDP_CTRL = 0x8174;
     FUN_00054a8e();
     if (DAT_00fff0b1 < '\0') {
@@ -117,7 +117,7 @@ LAB_0005488c:
     VDP_CTRL = 0x8134;
     DAT_00fff0b7 = 0;
     render_menu_footer();
-    FUN_000177cc();
+    upload_menu_resource_pair();
     VDP_CTRL = 0x8174;
     FUN_0001822c();
     sVar6 = 4;

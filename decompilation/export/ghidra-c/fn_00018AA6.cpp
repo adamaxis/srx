@@ -10,7 +10,7 @@
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x0001882E FUN_0001882e
-//   0x0001897C FUN_0001897c
+//   0x0001897C write_hud_repeated_grid_variant_a
 //   0x000196F2 FUN_000196f2
 
 
@@ -20,7 +20,7 @@ void FUN_00018aa6(void)
   short sVar1;
   
   DAT_00fff0dc = '\0';
-  FUN_0001897c();
+  write_hud_repeated_grid_variant_a();
   render_title_text_source();
   do {
     move_wrapped_menu_cursor();
@@ -33,7 +33,7 @@ void FUN_00018aa6(void)
       if (((DAT_00ffdd22._0_1_ & 0x40) != 0) ||
          (((DAT_00ffdd22._0_1_ & 0x10) != 0 || ((DAT_00ffdd22._0_1_ & 0x20) != 0)))) {
         if (DAT_00fff0dc == '\0') {
-          FUN_0001897c();
+          write_hud_repeated_grid_variant_a();
           render_title_text_source();
           render_title_text_source();
           build_grouped_decimal_glyphs();
@@ -49,7 +49,7 @@ void FUN_00018aa6(void)
           } while (sVar1 != -1);
           return;
         }
-        FUN_0001897c();
+        write_hud_repeated_grid_variant_a();
         render_title_text_source();
         if (DAT_00fff0e3 < '\0') {
           render_title_text_source();
