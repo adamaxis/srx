@@ -3,7 +3,7 @@
 // Name: FUN_00013ffe
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00003404 FUN_00003404
+//   0x00003404 upload_field_asset_setup
 //   0x0000ABFC update_entity_animation_delay
 //   0x0000AE6E FUN_0000ae6e
 //   0x0000AF7C prepare_entity_delayed_animation_primary
@@ -130,7 +130,7 @@ uint FUN_00013ffe(void)
     *(undefined1 *)(iVar4 + 0x56) = 0x7f;
     uVar5 = 0;
     update_entity_animation_delay();
-    FUN_00003404();
+    upload_field_asset_setup();
   }
 LAB_000141a0:
   uVar2 = resolve_entity_target_motion();

@@ -7,7 +7,7 @@
 //   0x00000BF2 latch_controller_events
 //   0x00000D94 wait_for_controller_event
 //   0x0000195C sample_controller_input
-//   0x00003404 FUN_00003404
+//   0x00003404 upload_field_asset_setup
 //   0x000036FC FUN_000036fc
 //   0x0000C0DA render_title_text_source
 //   0x0000C216 FUN_0000c216
@@ -122,7 +122,7 @@ LAB_00011be6:
       if (*(char *)(iVar10 + 0x56) < '\0') {
         *(undefined1 *)(iVar10 + 0x56) = 0x7f;
         *(undefined1 *)(iVar10 + 0x57) = 0;
-        FUN_00003404();
+        upload_field_asset_setup();
       }
       FUN_000036fc();
       FUN_00012c36();

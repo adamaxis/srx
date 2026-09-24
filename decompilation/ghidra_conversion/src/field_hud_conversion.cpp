@@ -2,6 +2,32 @@
 
 namespace shadowrun::ghidra_conversion {
 
+void upload_field_asset_sequence(
+    const FieldHudAssetTransferCallbacks& callbacks) {
+    if (callbacks.write_wrapped_transfer) {
+        callbacks.write_wrapped_transfer();
+    }
+    if (callbacks.write_grid) {
+        for (int grid = 0; grid < 5; ++grid) {
+            callbacks.write_grid();
+        }
+    }
+}
+
+void upload_field_asset_setup(
+    const FieldHudAssetTransferCallbacks& callbacks) {
+    if (callbacks.write_wrapped_transfer) {
+        for (int group = 0; group < 2; ++group) {
+            for (int transfer = 0; transfer < 14; ++transfer) {
+                callbacks.write_wrapped_transfer();
+            }
+        }
+    }
+    if (callbacks.draw_hud_panel_triplet) {
+        callbacks.draw_hud_panel_triplet();
+    }
+}
+
 FieldHudRenderResult render_field_hud(
     const bool mode_panel_enabled,
     const FieldHudRenderCallbacks& callbacks) {

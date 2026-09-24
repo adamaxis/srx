@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
-//   0x00003404 FUN_00003404
+//   0x00003404 upload_field_asset_setup
 
 
 undefined8 FUN_000036fc(void)
@@ -46,7 +46,7 @@ undefined8 FUN_000036fc(void)
         *(undefined1 *)(in_A0 + 0x66 + (int)(short)uVar5) = 0;
         *(undefined1 *)(in_A0 + 0x56) = 0x7f;
         *(undefined1 *)(in_A0 + 0x57) = 0;
-        FUN_00003404();
+        upload_field_asset_setup();
       }
     }
   }

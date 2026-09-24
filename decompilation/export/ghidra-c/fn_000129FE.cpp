@@ -3,7 +3,7 @@
 // Name: FUN_000129fe
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00003404 FUN_00003404
+//   0x00003404 upload_field_asset_setup
 //   0x00012148 FUN_00012148
 
 
@@ -27,7 +27,7 @@ void FUN_000129fe(void)
     if ((char)unaff_D7w == *(char *)(extraout_A0 + 0x56)) {
       *(undefined1 *)(extraout_A0 + 0x56) = 0x7f;
       *(undefined1 *)(extraout_A0 + 0x57) = 0;
-      FUN_00003404();
+      upload_field_asset_setup();
       iVar2 = extraout_A0_00;
     }
   }

@@ -3,7 +3,7 @@
 // Name: FUN_0000ff5a
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00003404 FUN_00003404
+//   0x00003404 upload_field_asset_setup
 //   0x00003548 draw_hud_panel_triplet
 //   0x000036FC FUN_000036fc
 //   0x000037EC FUN_000037ec
@@ -38,7 +38,7 @@ void FUN_0000ff5a(void)
        ((DAT_00ffdd22._0_1_ & 0x40) != 0)) break;
   }
   *(undefined1 *)(DAT_00fffc04 + 0x56) = 0xff;
-  FUN_00003404();
+  upload_field_asset_setup();
   draw_hud_panel_triplet();
   FUN_000037ec();
   FUN_000036fc();

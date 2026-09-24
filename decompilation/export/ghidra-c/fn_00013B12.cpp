@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
-//   0x00003404 FUN_00003404
+//   0x00003404 upload_field_asset_setup
 //   0x0000ABFC update_entity_animation_delay
 //   0x000125FA FUN_000125fa
 //   0x00013C20 FUN_00013c20
@@ -75,7 +75,7 @@ LAB_00013b7a:
       *(undefined4 *)((int)register0x0000003c + -4) = 0x13bac;
       update_entity_animation_delay();
       *(undefined4 *)((int)register0x0000003c + -4) = 0x13bb2;
-      FUN_00003404();
+      upload_field_asset_setup();
       return;
     }
   }

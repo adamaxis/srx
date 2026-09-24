@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00003404
-// Name: FUN_00003404
+// Name: upload_field_asset_setup
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000F5C write_vdp_word_block_with_source_wrap
 //   0x00003548 draw_hud_panel_triplet
 
 
-void FUN_00003404(void)
+void upload_field_asset_setup(void)
 
 {
   short sVar1;

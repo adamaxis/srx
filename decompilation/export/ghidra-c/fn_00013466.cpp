@@ -3,7 +3,7 @@
 // Name: FUN_00013466
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00003404 FUN_00003404
+//   0x00003404 upload_field_asset_setup
 //   0x000036FC FUN_000036fc
 
 
@@ -28,7 +28,7 @@ void FUN_00013466(void)
     }
   }
   FUN_000036fc();
-  FUN_00003404();
+  upload_field_asset_setup();
   return;
 }
 

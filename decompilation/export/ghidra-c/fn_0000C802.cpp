@@ -3,7 +3,7 @@
 // Name: FUN_0000c802
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00003404 FUN_00003404
+//   0x00003404 upload_field_asset_setup
 //   0x000038FA run_entity_animation_triplet
 //   0x0000391A FUN_0000391a
 //   0x0000C8B0 apply_byte_counter_delta_with_negative_floor
@@ -34,7 +34,7 @@ void FUN_0000c802(void)
       FUN_0000391a();
     }
   }
-  FUN_00003404();
+  upload_field_asset_setup();
   run_entity_animation_triplet();
   return;
 }

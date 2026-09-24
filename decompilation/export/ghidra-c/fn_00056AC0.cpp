@@ -10,8 +10,8 @@
 //   0x00000F5C write_vdp_word_block_with_source_wrap
 //   0x00001530 decode_and_upload_source_stream
 //   0x0000195C sample_controller_input
-//   0x0000334C FUN_0000334c
-//   0x00003404 FUN_00003404
+//   0x0000334C upload_field_asset_sequence
+//   0x00003404 upload_field_asset_setup
 //   0x000039F2 refresh_field_animation_assets
 //   0x0000C0C2 load_title_font
 //   0x0000C0DA render_title_text_source
@@ -70,9 +70,9 @@ LAB_00056b66:
       render_title_text_source();
       wait_for_controller_event();
 LAB_00056da8:
-      FUN_0000334c();
+      upload_field_asset_sequence();
       refresh_field_animation_assets();
-      FUN_00003404();
+      upload_field_asset_setup();
       VDP_CTRL = 0x9191;
       return;
     }

@@ -67,5 +67,24 @@ int main() {
         return 3;
     }
 
+    std::vector<char> asset_order;
+    upload_field_asset_sequence({
+        [&asset_order] { asset_order.push_back('w'); },
+        [&asset_order] { asset_order.push_back('g'); },
+        {}});
+    if (!expect(asset_order == std::vector<char>{'w', 'g', 'g', 'g', 'g', 'g'})) {
+        return 4;
+    }
+
+    int wrapped_transfers = 0;
+    int panel_triplets = 0;
+    upload_field_asset_setup({
+        [&wrapped_transfers] { ++wrapped_transfers; },
+        {},
+        [&panel_triplets] { ++panel_triplets; }});
+    if (!expect(wrapped_transfers == 28 && panel_triplets == 1)) {
+        return 5;
+    }
+
     return 0;
 }

@@ -98,10 +98,10 @@ entry	name	size	callingConvention	decompileStatus	file
 00003084	run_field_loop	182	unknown	ok	ghidra-c/fn_00003084.cpp
 0000313A	copy_terrain_layers	46	unknown	ok	ghidra-c/fn_0000313A.cpp
 00003168	FUN_00003168	138	unknown	ok	ghidra-c/fn_00003168.cpp
-0000334C	FUN_0000334c	94	unknown	ok	ghidra-c/fn_0000334C.cpp
+0000334C	upload_field_asset_sequence	94	unknown	ok	ghidra-c/fn_0000334C.cpp
 000033AA	FUN_000033aa	20	unknown	ok	ghidra-c/fn_000033AA.cpp
 000033BE	write_four_by_four_transfer_batch	70	unknown	ok	ghidra-c/fn_000033BE.cpp
-00003404	FUN_00003404	244	unknown	ok	ghidra-c/fn_00003404.cpp
+00003404	upload_field_asset_setup	244	unknown	ok	ghidra-c/fn_00003404.cpp
 00003548	draw_hud_panel_triplet	24	unknown	ok	ghidra-c/fn_00003548.cpp
 00003560	FUN_00003560	162	unknown	ok	ghidra-c/fn_00003560.cpp
 00003602	FUN_00003602	70	unknown	ok	ghidra-c/fn_00003602.cpp

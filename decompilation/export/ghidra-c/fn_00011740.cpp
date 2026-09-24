@@ -13,8 +13,8 @@
 //   0x00001530 decode_and_upload_source_stream
 //   0x00001728 render_hud_sprite_stream
 //   0x0000195C sample_controller_input
-//   0x0000334C FUN_0000334c
-//   0x00003404 FUN_00003404
+//   0x0000334C upload_field_asset_sequence
+//   0x00003404 upload_field_asset_setup
 //   0x00003674 FUN_00003674
 //   0x000036FC FUN_000036fc
 //   0x000037EC FUN_000037ec
@@ -193,7 +193,7 @@ LAB_00011be6:
         if (*(char *)(puVar17 + 0x2b) < '\0') {
           *(undefined1 *)(puVar17 + 0x2b) = 0x7f;
           *(undefined1 *)((int)puVar17 + 0x57) = 0;
-          FUN_00003404();
+          upload_field_asset_setup();
         }
         FUN_000036fc();
         FUN_00012c36();
@@ -432,7 +432,7 @@ LAB_0000d4a0:
             clear_and_fill_plane_a();
             clear_and_fill_plane_b();
             _DAT_00fff116 = 0;
-            FUN_0000334c();
+            upload_field_asset_sequence();
             refresh_field_animation_assets();
             return;
           }
@@ -909,7 +909,7 @@ LAB_00012236:
   }
   FUN_000036fc();
 LAB_0001228c:
-  FUN_00003404();
+  upload_field_asset_setup();
   FUN_00011624();
   return;
 }

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000334C
-// Name: FUN_0000334c
+// Name: upload_field_asset_sequence
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000F5C write_vdp_word_block_with_source_wrap
@@ -8,7 +8,7 @@
 //   0x000033AA FUN_000033aa
 
 
-void FUN_0000334c(void)
+void upload_field_asset_sequence(void)
 
 {
   write_vdp_word_block_with_source_wrap();

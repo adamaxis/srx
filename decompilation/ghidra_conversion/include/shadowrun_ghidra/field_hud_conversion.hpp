@@ -21,6 +21,21 @@ struct FieldHudRenderResult {
     bool mode_panel_rendered = false;
 };
 
+struct FieldHudAssetTransferCallbacks {
+    std::function<void()> write_wrapped_transfer;
+    std::function<void()> write_grid;
+    std::function<void()> draw_hud_panel_triplet;
+};
+
+// ROM 0x334C: emit one wrapped transfer followed by five grid writes.
+void upload_field_asset_sequence(
+    const FieldHudAssetTransferCallbacks& callbacks);
+
+// ROM 0x3404: emit two groups of fourteen wrapped transfers, then draw the
+// three HUD panels.
+void upload_field_asset_setup(
+    const FieldHudAssetTransferCallbacks& callbacks);
+
 // ROM 0x17708: perform the field HUD render choreography. The source writes
 // VDP state, streams five tile blocks, and enters the extra panel path only
 // when the HUD flag is set and the selected mode is 8; host presentation is

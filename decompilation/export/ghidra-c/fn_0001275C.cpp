@@ -3,7 +3,7 @@
 // Name: FUN_0001275c
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00003404 FUN_00003404
+//   0x00003404 upload_field_asset_setup
 
 
 void FUN_0001275c(void)
@@ -19,7 +19,7 @@ void FUN_0001275c(void)
       *(undefined1 *)(in_A0 + 0x56) = 0x7f;
       *(undefined1 *)(in_A0 + 0x57) = 0;
       *(undefined1 *)(in_A0 + 0x4e) = 0;
-      FUN_00003404();
+      upload_field_asset_setup();
       in_A0 = extraout_A0;
     }
   }

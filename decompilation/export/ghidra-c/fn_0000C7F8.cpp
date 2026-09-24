@@ -34,7 +34,7 @@ void FUN_0000c7f8(void)
         FUN_0000391a();
       }
     }
-    FUN_00003404();
+    upload_field_asset_setup();
     run_entity_animation_triplet();
     return;
   }

@@ -1602,8 +1602,8 @@
 0000289E: dbf D7w,0x00002884
 000028A2: movea.l D4,A6
 000028A4: jmp 0x0001e4ac.l ; call 0001E4AC spawn_world_effect_at_player_position
-000028AA: jsr 0x00003404.l ; call 00003404 FUN_00003404
-000028B0: jsr 0x0000334c.l ; call 0000334C FUN_0000334c
+000028AA: jsr 0x00003404.l ; call 00003404 upload_field_asset_setup
+000028B0: jsr 0x0000334c.l ; call 0000334C upload_field_asset_sequence
 000028B6: jsr 0x000039f2.l ; call 000039F2 refresh_field_animation_assets
 000028BC: jmp 0x0000c0c2.l ; call 0000C0C2 load_title_font
 000028C2: move.w #-0x1,(0x00ffdf8a).l
@@ -2203,7 +2203,7 @@
 00003770: clr.b (0x66,A0,D5w*0x1)
 00003774: move.b #0x7f,(0x56,A0)
 0000377A: clr.b (0x57,A0)
-0000377E: bsr.w 0x00003404 ; call 00003404 FUN_00003404
+0000377E: bsr.w 0x00003404 ; call 00003404 upload_field_asset_setup
 00003782: bra.w 0x0000379a
 00003786: move.b (0x6e,A0,D5w*0x1),D2b
 0000378A: bra.w 0x000037ca
@@ -5688,7 +5688,7 @@
 0000C892: cmp.l (0x00fffc04).l,D0
 0000C898: bne.w 0x0000c8a2
 0000C89C: jsr 0x0000391a.l ; call 0000391A FUN_0000391a
-0000C8A2: jsr 0x00003404.l ; call 00003404 FUN_00003404
+0000C8A2: jsr 0x00003404.l ; call 00003404 upload_field_asset_setup
 0000C8A8: jsr 0x000038fa.l ; call 000038FA run_entity_animation_triplet
 0000C8AE: rts
 0000C8B0: subq.w #0x1,D7w
@@ -6119,7 +6119,7 @@
 0000D4A8: jsr 0x00000ffe.l ; call 00000FFE clear_and_fill_plane_a
 0000D4AE: jsr 0x0000102a.l ; call 0000102A clear_and_fill_plane_b
 0000D4B4: clr.w (0x00fff116).l
-0000D4BA: jsr 0x0000334c.l ; call 0000334C FUN_0000334c
+0000D4BA: jsr 0x0000334c.l ; call 0000334C upload_field_asset_sequence
 0000D4C0: jsr 0x000039f2.l ; call 000039F2 refresh_field_animation_assets
 0000D4C6: rts
 0000D4C8: move.l #0xc3a4,D4
@@ -7708,7 +7708,7 @@
 0000FFB2: beq.w 0x0000ffe8
 0000FFB6: movea.l (0x00fffc04).l,A0
 0000FFBC: move.b #-0x1,(0x56,A0)
-0000FFC2: jsr 0x00003404.l ; call 00003404 FUN_00003404
+0000FFC2: jsr 0x00003404.l ; call 00003404 upload_field_asset_setup
 0000FFC8: jsr 0x00003548.l ; call 00003548 draw_hud_panel_triplet
 0000FFCE: clr.w D1w
 0000FFD0: jsr 0x000037ec.l ; call 000037EC FUN_000037ec
@@ -9420,7 +9420,7 @@
 00011D98: bpl.w 0x00011dac
 00011D9C: move.b #0x7f,(0x56,A0)
 00011DA2: clr.b (0x57,A0)
-00011DA6: jsr 0x00003404.l ; call 00003404 FUN_00003404
+00011DA6: jsr 0x00003404.l ; call 00003404 upload_field_asset_setup
 00011DAC: moveq #0x26,D1
 00011DAE: jsr 0x000036fc.l ; call 000036FC FUN_000036fc
 00011DB4: bsr.w 0x00012c36 ; call 00012C36 FUN_00012c36
@@ -9708,7 +9708,7 @@
 00012280: bmi.w 0x00012286
 00012284: addq.w #0x1,D1w
 00012286: jsr 0x000036fc.l ; call 000036FC FUN_000036fc
-0001228C: jsr 0x00003404.l ; call 00003404 FUN_00003404
+0001228C: jsr 0x00003404.l ; call 00003404 upload_field_asset_setup
 00012292: bsr.w 0x00011624 ; call 00011624 FUN_00011624
 00012296: rts
 00012298: bsr.w 0x00011900 ; call 00011900 FUN_00011900
@@ -9994,7 +9994,7 @@
 00012794: clr.b (0x57,A0)
 00012798: clr.b (0x4e,A0)
 0001279C: move.l D7,-(SP) ; data Stack[-0x4]
-0001279E: jsr 0x00003404.l ; call 00003404 FUN_00003404
+0001279E: jsr 0x00003404.l ; call 00003404 upload_field_asset_setup
 000127A4: move.l (SP)+,D7
 000127A6: clr.b (0x66,A0,D7w*0x1)
 000127AA: clr.b (0x6e,A0,D7w*0x1)
@@ -10149,7 +10149,7 @@
 00012A3A: bne.w 0x00012a4e
 00012A3E: move.b #0x7f,(0x56,A0)
 00012A44: clr.b (0x57,A0)
-00012A48: jsr 0x00003404.l ; call 00003404 FUN_00003404
+00012A48: jsr 0x00003404.l ; call 00003404 upload_field_asset_setup
 00012A4E: clr.b (0x66,A0,D7w*0x1)
 00012A52: rts
 00012A54: move.l D0,-(SP) ; data Stack[-0x4]
@@ -10792,7 +10792,7 @@
 000134BE: bmi.w 0x000134c4
 000134C2: addq.w #0x1,D1w
 000134C4: jsr 0x000036fc.l ; call 000036FC FUN_000036fc
-000134CA: jsr 0x00003404.l ; call 00003404 FUN_00003404
+000134CA: jsr 0x00003404.l ; call 00003404 upload_field_asset_setup
 000134D0: rts
 000134D2: clr.l D0
 000134D4: move.b (0x00fffbf8).l,D0b
@@ -11191,7 +11191,7 @@
 00013BA0: move.b D4b,(0x9d,A0)
 00013BA4: clr.w D0w
 00013BA6: jsr 0x0000abfc.l ; call 0000ABFC update_entity_animation_delay
-00013BAC: jsr 0x00003404.l ; call 00003404 FUN_00003404
+00013BAC: jsr 0x00003404.l ; call 00003404 upload_field_asset_setup
 00013BB2: andi #0x1e,CCR
 00013BB6: rts
 00013BB8: rts
@@ -11533,7 +11533,7 @@
 00014182: move.b #0x7f,(0x56,A0)
 00014188: clr.w D0w
 0001418A: jsr 0x0000abfc.l ; call 0000ABFC update_entity_animation_delay
-00014190: jsr 0x00003404.l ; call 00003404 FUN_00003404
+00014190: jsr 0x00003404.l ; call 00003404 upload_field_asset_setup
 00014196: bra.w 0x000141a0
 0001419A: jmp 0x00014226.l ; call 00014226 FUN_00014226
 000141A0: bsr.w 0x00014c7c ; call 00014C7C resolve_entity_target_motion
@@ -14043,8 +14043,8 @@
 0001768C: beq.w 0x000174c6
 00017690: move.w #-0x7ecc,(0x00c00004).l
 00017698: move.w #-0x6e6f,(0x00c00004).l
-000176A0: jsr 0x00003404.l ; call 00003404 FUN_00003404
-000176A6: jsr 0x0000334c.l ; call 0000334C FUN_0000334c
+000176A0: jsr 0x00003404.l ; call 00003404 upload_field_asset_setup
+000176A6: jsr 0x0000334c.l ; call 0000334C upload_field_asset_sequence
 000176AC: jsr 0x000039f2.l ; call 000039F2 refresh_field_animation_assets
 000176B2: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
 000176B8: rts
@@ -25094,9 +25094,9 @@
 00056D98: bra.w 0x00056b66
 00056D9C: btst.b #0xf,(0x00ffdd22).l
 00056DA4: beq.w 0x00056c54
-00056DA8: jsr 0x0000334c.l ; call 0000334C FUN_0000334c
+00056DA8: jsr 0x0000334c.l ; call 0000334C upload_field_asset_sequence
 00056DAE: jsr 0x000039f2.l ; call 000039F2 refresh_field_animation_assets
-00056DB4: jsr 0x00003404.l ; call 00003404 FUN_00003404
+00056DB4: jsr 0x00003404.l ; call 00003404 upload_field_asset_setup
 00056DBA: move.w #-0x6e6f,(0x00c00004).l
 00056DC2: rts
 00056DC4: clr.b (0x00fff112).l

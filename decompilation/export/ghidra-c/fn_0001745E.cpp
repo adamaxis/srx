@@ -8,9 +8,9 @@
 //   0x0000102A clear_and_fill_plane_b
 //   0x00001530 decode_and_upload_source_stream
 //   0x00001728 render_hud_sprite_stream
-//   0x0000334C FUN_0000334c
+//   0x0000334C upload_field_asset_sequence
 //   0x000033BE write_four_by_four_transfer_batch
-//   0x00003404 FUN_00003404
+//   0x00003404 upload_field_asset_setup
 //   0x000039F2 refresh_field_animation_assets
 //   0x000176BA refresh_field_resource_streams
 //   0x000176EA render_menu_footer
@@ -111,8 +111,8 @@ void FUN_0001745e(void)
   } while (DAT_00fff0b1 == '\0');
   VDP_CTRL = 0x8134;
   VDP_CTRL = 0x9191;
-  FUN_00003404();
-  FUN_0000334c();
+  upload_field_asset_setup();
+  upload_field_asset_sequence();
   refresh_field_animation_assets();
   prepare_mode_entry_service();
   return;

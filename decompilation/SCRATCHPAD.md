@@ -555,6 +555,13 @@ negative, then renders/uploads. The other branch clears the palette marker,
 resets the scene markers, refreshes profile and scene state, applies the
 profile, renders/uploads, and finally guards world effects.
 
+The graphics setup batches at `0x334C` and `0x3404` are now explicit host
+loops. The first preserves one wrapped transfer plus five grid writes. The
+second preserves two groups of fourteen wrapped transfers and then invokes
+the already-typed HUD panel triplet. Their individual transfer leaves remain
+callbacks, so no Genesis register or ROM-address machinery entered the
+conversion layer.
+
 The archetype boundary is now explicit. `0x42B0` selects one of the three
 extracted 0x100-byte Joshua templates (Samurai, Decker, or Gator Shaman),
 copies that record into the live Joshua slot, and publishes the source
