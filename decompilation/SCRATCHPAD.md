@@ -647,6 +647,9 @@ or VDP behavior into the host model.
 Batch 2 converts `0x1F32E` as `clear_optional_mode_resource`, an explicit
 typed clear of the optional mode-resource marker.
 
+Batch 3 converts `0x1F34A` as `prepare_mode_resource_variant_b`, retaining its
+resource-state refresh followed by HUD-panel draw order.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames
