@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00059BCC
-// Name: FUN_00059bcc
+// Name: reset_runner_status_triplet
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003674 FUN_00003674
 //   0x000037EC FUN_000037ec
 
 
-void FUN_00059bcc(void)
+void reset_runner_status_triplet(void)
 
 {
   short sVar1;

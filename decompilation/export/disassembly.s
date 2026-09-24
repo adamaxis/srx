@@ -19710,7 +19710,7 @@
 0001FE02: bne.w 0x0001fe10
 0001FE06: lea (0x11b7e4).l,A0 ; data 0011b7e4
 0001FE0C: bra.w 0x0001fe7a
-0001FE10: jsr 0x00059bcc.l ; call 00059BCC FUN_00059bcc
+0001FE10: jsr 0x00059bcc.l ; call 00059BCC reset_runner_status_triplet
 0001FE16: lea (0x11b7ec).l,A0 ; data 0011b7ec
 0001FE1C: bra.w 0x0001fe7a
 0001FE20: cmpi.b #0x9,(0x00fffbf8).l
@@ -20340,7 +20340,7 @@
 000218BC: lea (0xf4ea4).l,A0 ; data 000f4ea4
 000218C2: bra.w 0x0002196c ; call 0002196C FUN_0002196c
 000218C6: move.w #0x1,D0w
-000218CA: jsr 0x00059c34.l ; call 00059C34 FUN_00059c34
+000218CA: jsr 0x00059c34.l ; call 00059C34 adjust_runner_source_byte_triplet
 000218D0: lea (0xf5064).l,A0 ; data 000f5064
 000218D6: bra.w 0x0002196c ; call 0002196C FUN_0002196c
 000218DA: lea (0xf4bd0).l,A0 ; data 000f4bd0
@@ -20415,7 +20415,7 @@
 00021CDC: lea (0x11b680).l,A0 ; data 0011b680
 00021CE2: rts
 00021E08: move.w #0x2,D0w
-00021E0C: jsr 0x00059c34.l ; call 00059C34 FUN_00059c34
+00021E0C: jsr 0x00059c34.l ; call 00059C34 adjust_runner_source_byte_triplet
 00021E12: move.l (0x00fffc30).l,D1
 00021E18: bclr.l #0x17,D1
 00021E1C: bclr.l #0x1c,D1
@@ -28688,7 +28688,7 @@
 0005D1BA: move.w #0x0,D0w
 0005D1BE: jsr 0x000530ea.l ; call 000530EA FUN_000530ea
 0005D1C4: move.w #0x3,D0w
-0005D1C8: jsr 0x00059c34.l ; call 00059C34 FUN_00059c34
+0005D1C8: jsr 0x00059c34.l ; call 00059C34 adjust_runner_source_byte_triplet
 0005D1CE: move.w #0xc,(0x00fff0be).l
 0005D1D6: lea (0x110b3e).l,A5 ; data 00110b3e
 0005D1DC: lea (0x1fe6f4).l,A6 ; data 001fe6f4

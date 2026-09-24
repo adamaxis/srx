@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00059C34
-// Name: FUN_00059c34
+// Name: adjust_runner_source_byte_triplet
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00059c34(void)
+void adjust_runner_source_byte_triplet(void)
 
 {
   char in_D0b;

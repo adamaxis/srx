@@ -12,7 +12,7 @@ void FUN_0005d172(void)
 {
   prepare_mode_entry_service();
   FUN_000530ea();
-  FUN_00059c34();
+  adjust_runner_source_byte_triplet();
   DAT_00fff0be = 7;
   func_0x0005d1f6();
   prepare_mode_entry_service();

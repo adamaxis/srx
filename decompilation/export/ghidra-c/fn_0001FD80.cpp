@@ -6,7 +6,7 @@
 //   0x00000D3A sample_source_random_bound
 //   0x0001E1FC FUN_0001e1fc
 //   0x0001F246 FUN_0001f246
-//   0x00059BCC FUN_00059bcc
+//   0x00059BCC reset_runner_status_triplet
 
 
 void FUN_0001fd80(void)
@@ -24,7 +24,7 @@ void FUN_0001fd80(void)
       DAT_00fffc1e = DAT_00fffc1e | 0x1000000;
     }
     else if ((DAT_00fffc1e & 0x2000000) != 0) {
-      FUN_00059bcc();
+      reset_runner_status_triplet();
     }
 LAB_0001fe7a:
     FUN_0001f246();

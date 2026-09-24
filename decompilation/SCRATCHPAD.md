@@ -541,6 +541,16 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The runner reset cluster is now typed. `0x59BCC` clears status bits `6` and
+`4` in each of the three live runner records, preserves the source order of
+the preparation (`0x3674`, argument `0x0A`) and finalization (`0x37EC`)
+boundaries, then seeds the record-relative `+0x4C` and `+0x9C` timers to ten.
+The source service calls remain callbacks because their broader record effects
+are not yet established. `0x59C34` is the matching three-record byte adjuster:
+the caller's byte is added to offset `+0x8D` in each record with native
+eight-bit wraparound. Neither conversion carries the original `0xFF0100`
+address or register state into the host model.
+
 The recruited-roster helper cluster is now converted in its own module. `0x598B0`
 is the common packed-record projection: it maps the source 0x4A-byte record into
 the live 0x100-byte record's known field ranges while preserving opaque bytes.

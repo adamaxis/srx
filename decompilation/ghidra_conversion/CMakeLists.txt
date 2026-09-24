@@ -896,3 +896,16 @@ target_link_libraries(shadowrun_ghidra_menu_state_test
     PRIVATE shadowrun_ghidra_menu_state)
 add_test(NAME shadowrun_ghidra_menu_state
          COMMAND shadowrun_ghidra_menu_state_test)
+
+add_library(shadowrun_ghidra_runner_status STATIC
+    src/runner_status_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_runner_status PUBLIC include)
+
+add_executable(shadowrun_ghidra_runner_status_test
+    tests/runner_status_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_runner_status_test
+    PRIVATE shadowrun_ghidra_runner_status)
+add_test(NAME shadowrun_ghidra_runner_status
+         COMMAND shadowrun_ghidra_runner_status_test)
