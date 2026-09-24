@@ -24,6 +24,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x423C	field delta quantization	ghidra_conversion::quantize_field_delta	shadowrun_native_port	partial		Wrapped 16-bit delta quantization converted without runtime address state
 0x4E38	entity primary timer	ghidra_conversion::advance_entity_primary_timer	shadowrun_native_port	partial		Frame-phase timer and 0x40 bypass/0x80 expiry flag converted in typed state
 0x4E64	entity secondary timer	ghidra_conversion::advance_entity_secondary_timer	shadowrun_native_port	partial		Frame-phase timer and 0x20 expiry flag converted in typed state
+0x4466	entity template list spawn	ghidra_conversion::spawn_entity_template_list	shadowrun_native_port	partial		Typed terminated-list walk, paired allocation, root/child vertical grouping, root marking, and child linkage
 0x44BC	entity template initialization	ghidra_conversion::initialize_entity_record_from_template	shadowrun_native_port	partial		Typed default-record seed, state/position transfer, variant selection, effect flag, and explicit override boundary
 0x5A56	entity screen projection	ghidra_conversion::project_entity_screen_position	shadowrun_native_port	partial		Typed field/full-screen projection with source rounding and visibility windows
 0x5A62	standard entity screen projection	ghidra_conversion::project_entity_screen_position_standard	shadowrun_native_port	partial		Typed standard field projection with source rounding and visibility window

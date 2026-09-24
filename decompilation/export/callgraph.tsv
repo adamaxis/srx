@@ -247,13 +247,13 @@ caller	caller_name	callee	callee_name	call_sites
 000040E2	FUN_000040e2	000041F0	FUN_000041f0	2
 0000431C	FUN_0000431c	0005966E	FUN_0005966e	1
 00004388	FUN_00004388	000043B6	FUN_000043b6	1
-000043B6	FUN_000043b6	00004466	FUN_00004466	4
+000043B6	FUN_000043b6	00004466	spawn_entity_template_list	4
 000043B6	FUN_000043b6	0000A800	FUN_0000a800	1
 000043B6	FUN_000043b6	0001DBAA	schedule_world_activity_timeout	2
 000043B6	FUN_000043b6	0005BA4C	thunk_FUN_0005ba50	1
-00004466	FUN_00004466	000044BC	initialize_entity_record_from_template	2
-00004466	FUN_00004466	0001A2CC	allocate_first_free_effect_slot	1
-00004466	FUN_00004466	0001A342	find_first_available_world_effect_entity_slot	1
+00004466	spawn_entity_template_list	000044BC	initialize_entity_record_from_template	2
+00004466	spawn_entity_template_list	0001A2CC	allocate_first_free_effect_slot	1
+00004466	spawn_entity_template_list	0001A342	find_first_available_world_effect_entity_slot	1
 000044BC	initialize_entity_record_from_template	00000D44	advance_source_prng	1
 00004618	FUN_00004618	00004658	FUN_00004658	1
 00004618	FUN_00004618	00005A56	project_entity_screen_position	1

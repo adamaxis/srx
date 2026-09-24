@@ -71,5 +71,45 @@ int main() {
         return 2;
     }
 
+    EntityTemplateSpawnState list_state{0xAAAAU, 0xBBBBU, 0x0001U, false,
+                                        0x0040U, std::nullopt};
+    std::vector<std::uint16_t> initialized_slots;
+    std::uint16_t next_entity_slot = 3U;
+    std::uint16_t next_effect_slot = 7U;
+    const auto list_result = spawn_entity_template_list(
+        {{{}, {0x0100U, 0x0200U}, true, false},
+         {{}, {0x0300U, 0x0400U}, false, false},
+        {{}, {0x0500U, 0x0600U}, true, false},
+         {{}, {}, false, true}},
+        list_state,
+        [&next_entity_slot]() {
+            return std::optional<std::uint16_t>{next_entity_slot++};
+        },
+        [&next_effect_slot]() {
+            return std::optional<std::uint16_t>{next_effect_slot++};
+        },
+        {},
+        [&initialized_slots](const EntityRecordInitialization& initialization,
+                             const EntityTemplateData&) {
+            initialized_slots.push_back(initialization.entity_slot);
+            EntityRecord record{};
+            record.entity_slot = initialization.entity_slot;
+            record.behavior_flags = 0x05U;
+            return record;
+        });
+    if (!expect(list_result.action == EntityTemplateSpawnAction::completed &&
+                initialized_slots == std::vector<std::uint16_t>{3U, 4U, 5U} &&
+                list_result.records.size() == 3U &&
+                list_result.records[0].vertical_origin == 0U &&
+                list_result.records[0].behavior_flags == 0x25U &&
+                !list_result.records[0].linked_root_entity_slot.has_value() &&
+                list_result.records[1].vertical_origin == 0x00C0U &&
+                list_result.records[1].linked_root_entity_slot == 3U &&
+                list_result.records[2].vertical_origin == 0U &&
+                list_result.records[2].behavior_flags == 0x25U &&
+                list_result.final_vertical_origin == 0U)) {
+        return 3;
+    }
+
     return 0;
 }

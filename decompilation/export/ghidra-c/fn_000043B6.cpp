@@ -3,7 +3,7 @@
 // Name: FUN_000043b6
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00004466 FUN_00004466
+//   0x00004466 spawn_entity_template_list
 //   0x0000A800 FUN_0000a800
 //   0x0001DBAA schedule_world_activity_timeout
 //   0x0005BA4C thunk_FUN_0005ba50
@@ -17,7 +17,7 @@ void FUN_000043b6(void)
   }
   FUN_0000a800();
   if (DAT_00ffe124 != 0) {
-    FUN_00004466();
+    spawn_entity_template_list();
     DAT_00ffe124 = 0;
   }
   if (DAT_00ffe120 != (undefined *)0x0) {
@@ -31,12 +31,12 @@ void FUN_000043b6(void)
       schedule_world_activity_timeout();
       DAT_00ffe177 = 4;
     }
-    FUN_00004466();
+    spawn_entity_template_list();
     DAT_00ffe120 = (undefined *)0x0;
-    FUN_00004466();
+    spawn_entity_template_list();
     return;
   }
-  FUN_00004466();
+  spawn_entity_template_list();
   return;
 }
 

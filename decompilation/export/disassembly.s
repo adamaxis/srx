@@ -2984,7 +2984,7 @@
 000043CE: tst.l (0x00ffe124).l
 000043D4: beq.w 0x000043e8
 000043D8: movea.l (0x00ffe124).l,A5
-000043DE: bsr.w 0x00004466 ; call 00004466 FUN_00004466
+000043DE: bsr.w 0x00004466 ; call 00004466 spawn_entity_template_list
 000043E2: clr.l (0x00ffe124).l
 000043E8: tst.l (0x00ffe120).l
 000043EE: beq.w 0x0000445c
@@ -3000,12 +3000,12 @@
 00004434: jsr 0x0001dbaa.l ; call 0001DBAA schedule_world_activity_timeout
 0000443A: move.b #0x4,(0x00ffe177).l
 00004442: movea.l (0x00ffe120).l,A5
-00004448: bsr.w 0x00004466 ; call 00004466 FUN_00004466
+00004448: bsr.w 0x00004466 ; call 00004466 spawn_entity_template_list
 0000444C: clr.l (0x00ffe120).l
 00004452: movea.l (0x00ffddf0).l,A5
-00004458: bra.w 0x00004466 ; call 00004466 FUN_00004466
+00004458: bra.w 0x00004466 ; call 00004466 spawn_entity_template_list
 0000445C: movea.l (0x00ffddf0).l,A5
-00004462: bra.w 0x00004466 ; call 00004466 FUN_00004466
+00004462: bra.w 0x00004466 ; call 00004466 spawn_entity_template_list
 00004466: tst.l (A5)
 00004468: beq.w 0x000044ba
 0000446C: jsr 0x0001a342.l ; call 0001A342 find_first_available_world_effect_entity_slot

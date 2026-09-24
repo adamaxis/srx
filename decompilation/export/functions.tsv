@@ -138,7 +138,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0000431C	FUN_0000431c	108	unknown	ok	ghidra-c/fn_0000431C.cpp
 00004388	FUN_00004388	46	unknown	ok	ghidra-c/fn_00004388.cpp
 000043B6	FUN_000043b6	176	unknown	ok	ghidra-c/fn_000043B6.cpp
-00004466	FUN_00004466	86	unknown	ok	ghidra-c/fn_00004466.cpp
+00004466	spawn_entity_template_list	86	unknown	ok	ghidra-c/fn_00004466.cpp
 000044BC	initialize_entity_record_from_template	348	unknown	ok	ghidra-c/fn_000044BC.cpp
 00004618	FUN_00004618	64	unknown	ok	ghidra-c/fn_00004618.cpp
 00004658	FUN_00004658	454	unknown	ok	ghidra-c/fn_00004658.cpp

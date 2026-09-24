@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <vector>
 
 namespace shadowrun::ghidra_conversion {
@@ -35,6 +36,7 @@ struct EntityTemplateData {
 
 struct EntityRecord {
     std::uint16_t entity_slot = 0;
+    std::uint16_t effect_slot = 0;
     std::uint8_t behavior_flags = 0;
     std::uint16_t state_word = 0;
     std::uint16_t auxiliary_word = 0;
@@ -42,6 +44,7 @@ struct EntityRecord {
     EntityWorldPosition source_position{};
     EntityWorldPosition world_position{};
     EntityWorldPosition base_position{};
+    std::optional<std::uint16_t> linked_root_entity_slot;
     EntityTemplateData template_data{};
     std::uint16_t random_variant = 0;
     std::uint8_t effect_flags = 0;
@@ -65,6 +68,8 @@ struct EntityRecordInitialization {
 };
 
 using EntityRecordDefaultFactory = std::function<EntityRecord()>;
+using EntityRecordSlotAllocator =
+    std::function<std::optional<std::uint16_t>()>;
 using EntityRecordRandomBoundary = std::function<std::uint16_t()>;
 using EntityRecordOverrideBoundary =
     std::function<void(EntityRecord&, const EntityRecordOverride&)>;
@@ -79,5 +84,48 @@ EntityRecord initialize_entity_record_from_template(
     const EntityRecordDefaultFactory& make_default_record,
     const EntityRecordRandomBoundary& next_random,
     const EntityRecordOverrideBoundary& apply_override);
+
+struct EntityTemplateSpawnDescriptor {
+    EntityTemplateData template_data{};
+    EntityWorldPosition source_position{};
+    bool root_record = false;
+    bool sentinel = false;
+};
+
+struct EntityTemplateSpawnState {
+    std::uint16_t state_word = 0;
+    std::uint16_t auxiliary_word = 0;
+    std::uint16_t scene_id = 0;
+    bool special_state_active = false;
+    std::uint16_t vertical_origin = 0;
+    std::optional<std::uint16_t> root_entity_slot;
+};
+
+enum class EntityTemplateSpawnAction {
+    completed,
+    entity_table_full,
+    effect_table_full,
+};
+
+struct EntityTemplateSpawnResult {
+    EntityTemplateSpawnAction action = EntityTemplateSpawnAction::completed;
+    std::uint16_t final_vertical_origin = 0;
+    std::vector<EntityRecord> records;
+};
+
+using EntityTemplateRecordInitializer = std::function<EntityRecord(
+    const EntityRecordInitialization&, const EntityTemplateData&)>;
+
+// ROM 0x4466: consume the terminated template list, allocate the paired
+// entity/effect slots, group child records by a 0xC0 vertical step, mark each
+// root record, and link children to that root. Allocation and record creation
+// remain explicit host boundaries.
+EntityTemplateSpawnResult spawn_entity_template_list(
+    const std::vector<EntityTemplateSpawnDescriptor>& descriptors,
+    EntityTemplateSpawnState& state,
+    const EntityRecordSlotAllocator& allocate_entity_slot,
+    const EntityRecordSlotAllocator& allocate_effect_slot,
+    const EntityRecordDefaultFactory& make_default_record,
+    const EntityTemplateRecordInitializer& initialize_record);
 
 } // namespace shadowrun::ghidra_conversion

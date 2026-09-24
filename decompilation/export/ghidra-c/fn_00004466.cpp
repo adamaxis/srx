@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00004466
-// Name: FUN_00004466
+// Name: spawn_entity_template_list
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000044BC initialize_entity_record_from_template
@@ -8,7 +8,7 @@
 //   0x0001A342 find_first_available_world_effect_entity_slot
 
 
-void FUN_00004466(void)
+void spawn_entity_template_list(void)
 
 {
   uint uVar1;
