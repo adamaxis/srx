@@ -1,6 +1,7 @@
 #include "shadowrun_ghidra/entity_state_primitives_conversion.hpp"
 
 #include <array>
+#include <algorithm>
 
 namespace {
 
@@ -44,6 +45,30 @@ int main() {
         return 5;
     }
 
+    effects[3] = 1U;
+    clear_effect_slot(effects, 3U);
+    clear_effect_slot(effects, 99U);
+    if (!expect(effects[3] == 0U && effects[4] == 1U)) {
+        return 6;
+    }
+    clear_effect_slots(effects);
+    if (!expect(std::all_of(effects.begin(), effects.end(),
+                            [](const std::uint8_t value) { return value == 0U; }))) {
+        return 7;
+    }
+
+    EntityEffectPendingTableState pending{true, {0x01U, 0x02U, 0x03U,
+                                                  0x04U, 0x05U, 0x06U,
+                                                  0x07U, 0x08U, 0x09U,
+                                                  0x0AU, 0x0BU, 0x0CU,
+                                                  0x0DU}};
+    clear_entity_effect_pending_records(pending);
+    if (!expect(!pending.global_marker && pending.pending_flags[0] == 0U &&
+                pending.pending_flags[1] == 0x02U &&
+                pending.pending_flags[12] == 0x0CU)) {
+        return 8;
+    }
+
     EntityBehaviorRecordState behavior_record{
         42, 42U, 42U, 42U, 0xFFU,
         EntityRecordContinuation::BehaviorUpdate};
@@ -53,7 +78,7 @@ int main() {
                 behavior_record.behavior_timer == 0x1000U &&
                 behavior_record.step_interval == 0x4000U &&
                 behavior_record.flags == 0x01U)) {
-        return 6;
+        return 9;
     }
 
     return 0;

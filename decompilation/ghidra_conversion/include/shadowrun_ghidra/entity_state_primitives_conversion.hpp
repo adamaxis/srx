@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 
 namespace shadowrun::ghidra_conversion {
@@ -38,6 +39,24 @@ void schedule_entity_collision_recheck(EntityReactionState& state);
 // eighteen slots and returns 18 as the full-table sentinel.
 std::uint8_t allocate_first_free_effect_slot(
     std::array<std::uint8_t, 18>& slot_state);
+
+// ROM 0x1A304: clear one effect-slot occupancy byte. Out-of-range host
+// indices are ignored instead of exposing the source's unchecked pointer.
+void clear_effect_slot(
+    std::array<std::uint8_t, 18>& slot_state,
+    std::size_t slot_index);
+
+// ROM 0x1A310: clear the complete eighteen-slot effect table.
+void clear_effect_slots(std::array<std::uint8_t, 18>& slot_state);
+
+struct EntityEffectPendingTableState {
+    bool global_marker = false;
+    std::array<std::uint8_t, 13> pending_flags{};
+};
+
+// ROM 0x1A322: clear the global marker and bit 0 in the thirteen source
+// entity records used by the effect update pass.
+void clear_entity_effect_pending_records(EntityEffectPendingTableState& state);
 
 // ROM 0x15118: clear a newly allocated entity record's source fields and
 // install the default behavior-update continuation and movement constants.

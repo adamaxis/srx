@@ -25,6 +25,26 @@ std::uint8_t allocate_first_free_effect_slot(
     return static_cast<std::uint8_t>(slot_state.size());
 }
 
+void clear_effect_slot(
+    std::array<std::uint8_t, 18>& slot_state,
+    const std::size_t slot_index) {
+    if (slot_index < slot_state.size()) {
+        slot_state[slot_index] = 0U;
+    }
+}
+
+void clear_effect_slots(std::array<std::uint8_t, 18>& slot_state) {
+    slot_state.fill(0U);
+}
+
+void clear_entity_effect_pending_records(
+    EntityEffectPendingTableState& state) {
+    state.global_marker = false;
+    for (auto& flags : state.pending_flags) {
+        flags = static_cast<std::uint8_t>(flags & 0xFEU);
+    }
+}
+
 void initialize_entity_behavior_record(EntityBehaviorRecordState& state) {
     state = EntityBehaviorRecordState{
         static_cast<std::int16_t>(-12),

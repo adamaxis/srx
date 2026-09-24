@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001A310
-// Name: FUN_0001a310
+// Name: clear_effect_slots
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0001a310(void)
+void clear_effect_slots(void)
 
 {
   short sVar1;

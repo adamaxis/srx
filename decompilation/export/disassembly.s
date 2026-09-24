@@ -1633,8 +1633,8 @@
 00002946: beq.w 0x00002956
 0000294A: clr.b (0x00ffe191).l
 00002950: jsr 0x0001e04a.l ; call 0001E04A begin_world_effect_transition
-00002956: jsr 0x0001a310.l ; call 0001A310 FUN_0001a310
-0000295C: jsr 0x0001a322.l ; call 0001A322 FUN_0001a322
+00002956: jsr 0x0001a310.l ; call 0001A310 clear_effect_slots
+0000295C: jsr 0x0001a322.l ; call 0001A322 clear_entity_effect_pending_records
 00002962: jsr 0x00016dee.l ; call 00016DEE FUN_00016dee
 00002968: jsr 0x00004388.l ; call 00004388 finalize_pending_entity_template_update
 0000296E: cmpi.b #0x3,(0x00ffe186).l
@@ -3375,7 +3375,7 @@
 00004B6C: clr.w (0x2,A0)
 00004B70: move.w (0x32,A0),D0w
 00004B74: move.l A3,-(SP) ; data Stack[-0x4]
-00004B76: jsr 0x0001a304.l ; call 0001A304 FUN_0001a304
+00004B76: jsr 0x0001a304.l ; call 0001A304 clear_effect_slot
 00004B7C: movea.l (SP)+,A3
 00004B7E: lea (0x4bb0).l,A2 ; data 00004bb0
 00004B84: move.w (0x6,A0),D0w
@@ -3481,7 +3481,7 @@
 00004EA6: blt.w 0x00004ec0
 00004EAA: move.w (0x32,A0),D0w
 00004EAE: move.l A3,-(SP) ; data Stack[-0x4]
-00004EB0: jsr 0x0001a304.l ; call 0001A304 FUN_0001a304
+00004EB0: jsr 0x0001a304.l ; call 0001A304 clear_effect_slot
 00004EB6: movea.l (SP)+,A3
 00004EB8: bclr.b #0x6,(0x11,A0)
 00004EBE: rts
@@ -3557,7 +3557,7 @@
 0000543A: bpl.w 0x00005454
 0000543E: move.w (0x32,A0),D0w
 00005442: move.l A3,-(SP) ; data Stack[-0x4]
-00005444: jsr 0x0001a304.l ; call 0001A304 FUN_0001a304
+00005444: jsr 0x0001a304.l ; call 0001A304 clear_effect_slot
 0000544A: movea.l (SP)+,A3
 0000544C: move.b #-0x3,D1b
 00005450: bra.w 0x00005622 ; call 00005622 FUN_00005622
@@ -3663,7 +3663,7 @@
 000055F4: bpl.w 0x0000560e
 000055F8: move.w (0x32,A0),D0w
 000055FC: move.l A3,-(SP) ; data Stack[-0x4]
-000055FE: jsr 0x0001a304.l ; call 0001A304 FUN_0001a304
+000055FE: jsr 0x0001a304.l ; call 0001A304 clear_effect_slot
 00005604: movea.l (SP)+,A3
 00005606: move.b #-0x2,D1b
 0000560A: bra.w 0x00005622 ; call 00005622 FUN_00005622
@@ -12684,7 +12684,7 @@
 0001540A: bsr.w 0x00015354 ; call 00015354 FUN_00015354
 0001540E: rts
 00015410: move.w (0x30,A0),D0w
-00015414: jsr 0x0001a304.l ; call 0001A304 FUN_0001a304
+00015414: jsr 0x0001a304.l ; call 0001A304 clear_effect_slot
 0001541A: bclr.b #0x0,(0x10,A0)
 00015420: bsr.w 0x00015554 ; call 00015554 FUN_00015554
 00015424: rts
@@ -12740,7 +12740,7 @@
 000154D2: tst.w (0x00ffdf40).l
 000154D8: bne.w 0x000154f8
 000154DC: move.w (0x30,A0),D0w
-000154E0: jsr 0x0001a304.l ; call 0001A304 FUN_0001a304
+000154E0: jsr 0x0001a304.l ; call 0001A304 clear_effect_slot
 000154E6: bclr.b #0x0,(0x10,A0)
 000154EC: rts
 000154EE: tst.w (0x00ffdf68).l
@@ -13804,8 +13804,8 @@
 00016E44: move.w #0x30,D7w
 00016E48: move.w (A0)+,(A1)+
 00016E4A: dbf D7w,0x00016e48
-00016E4E: jsr 0x0001a322.l ; call 0001A322 FUN_0001a322
-00016E54: jsr 0x0001a310.l ; call 0001A310 FUN_0001a310
+00016E4E: jsr 0x0001a322.l ; call 0001A322 clear_entity_effect_pending_records
+00016E54: jsr 0x0001a310.l ; call 0001A310 clear_effect_slots
 00016E5A: rts
 00016E5C: lea (0xffb700).l,A4 ; data 00ffb700
 00016E62: movea.l (0x00ffde1e).l,A1
@@ -18993,7 +18993,7 @@
 0001E52A: btst.b #0x3,(0x10,A0)
 0001E530: bne.w 0x0001e53e
 0001E534: move.w (0x30,A0),D0w
-0001E538: jsr 0x0001a304.l ; call 0001A304 FUN_0001a304
+0001E538: jsr 0x0001a304.l ; call 0001A304 clear_effect_slot
 0001E53E: rts
 0001E540: move.w #-0x1,(0x00ffdfda).l
 0001E548: move.w #0x3,(0x00ffdfdc).l

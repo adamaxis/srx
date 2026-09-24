@@ -185,8 +185,8 @@ caller	caller_name	instruction	text	target	callee	status
 00002900	FUN_00002900	00002916	jsr 0x000530ea.l	000530EA	FUN_000530ea	resolved
 00002900	FUN_00002900	00002934	jsr 0x00004b6c.l	00004B6C	FUN_00004b6c	resolved
 00002900	FUN_00002900	00002950	jsr 0x0001e04a.l	0001E04A	begin_world_effect_transition	resolved
-00002900	FUN_00002900	00002956	jsr 0x0001a310.l	0001A310	FUN_0001a310	resolved
-00002900	FUN_00002900	0000295C	jsr 0x0001a322.l	0001A322	FUN_0001a322	resolved
+00002900	FUN_00002900	00002956	jsr 0x0001a310.l	0001A310	clear_effect_slots	resolved
+00002900	FUN_00002900	0000295C	jsr 0x0001a322.l	0001A322	clear_entity_effect_pending_records	resolved
 00002900	FUN_00002900	00002962	jsr 0x00016dee.l	00016DEE	FUN_00016dee	resolved
 00002900	FUN_00002900	00002968	jsr 0x00004388.l	00004388	finalize_pending_entity_template_update	resolved
 00002900	FUN_00002900	00002986	jsr 0x0005d260.l	0005D260	FUN_0005d260	resolved
@@ -337,14 +337,14 @@ caller	caller_name	instruction	text	target	callee	status
 00004ADC	FUN_00004adc	00004AE4	bsr.w 0x00005a56	00005A56	project_entity_screen_position	resolved
 00004ADC	FUN_00004adc	00004B50	jsr 0x000013be.l	000013BE	FUN_000013be	resolved
 00004ADC	FUN_00004adc	00004B64	jsr 0x000061a0.l	000061A0	append_entity_sprite_record	resolved
-00004B6C	FUN_00004b6c	00004B76	jsr 0x0001a304.l	0001A304	FUN_0001a304	resolved
-00004E86	FUN_00004e86	00004EB0	jsr 0x0001a304.l	0001A304	FUN_0001a304	resolved
+00004B6C	FUN_00004b6c	00004B76	jsr 0x0001a304.l	0001A304	clear_effect_slot	resolved
+00004E86	FUN_00004e86	00004EB0	jsr 0x0001a304.l	0001A304	clear_effect_slot	resolved
 00004E86	FUN_00004e86	00004EF6	jsr 0x000061a0.l	000061A0	append_entity_sprite_record	resolved
 00004E86	FUN_00004e86	00004F1C	jmp 0x000013be.l	000013BE	FUN_000013be	resolved
 000053C4	FUN_000053c4	000053E0	bsr.w 0x00005494	00005494	FUN_00005494	resolved
 000053C4	FUN_000053c4	00005420	bsr.w 0x00005468	00005468	FUN_00005468	resolved
 000053C4	FUN_000053c4	00005428	bsr.w 0x0000aff2	0000AFF2	prepare_entity_auxiliary_behavior	resolved
-000053C4	FUN_000053c4	00005444	jsr 0x0001a304.l	0001A304	FUN_0001a304	resolved
+000053C4	FUN_000053c4	00005444	jsr 0x0001a304.l	0001A304	clear_effect_slot	resolved
 000053C4	FUN_000053c4	00005450	bra.w 0x00005622	00005622	FUN_00005622	resolved
 000053C4	FUN_000053c4	00005462	bsr.w 0x00005468	00005468	FUN_00005468	resolved
 00005494	FUN_00005494	000054C4	jsr 0x00000d44.l	00000D44	advance_source_prng	resolved
@@ -353,7 +353,7 @@ caller	caller_name	instruction	text	target	callee	status
 0000557E	FUN_0000557e	0000559A	bsr.w 0x00005662	00005662	FUN_00005662	resolved
 0000557E	FUN_0000557e	000055DA	bsr.w 0x0000563e	0000563E	FUN_0000563e	resolved
 0000557E	FUN_0000557e	000055E2	bsr.w 0x0000aff2	0000AFF2	prepare_entity_auxiliary_behavior	resolved
-0000557E	FUN_0000557e	000055FE	jsr 0x0001a304.l	0001A304	FUN_0001a304	resolved
+0000557E	FUN_0000557e	000055FE	jsr 0x0001a304.l	0001A304	clear_effect_slot	resolved
 0000557E	FUN_0000557e	0000560A	bra.w 0x00005622	00005622	FUN_00005622	resolved
 0000557E	FUN_0000557e	0000561C	bsr.w 0x0000563e	0000563E	FUN_0000563e	resolved
 00005662	FUN_00005662	000056A0	jsr 0x000061a0.l	000061A0	append_entity_sprite_record	resolved
@@ -1428,8 +1428,8 @@ caller	caller_name	instruction	text	target	callee	status
 00016B98	FUN_00016b98	00016C74	jsr 0x00000d3a.l	00000D3A	sample_source_random_bound	resolved
 00016B98	FUN_00016b98	00016D64	bsr.w 0x00016d8a	00016D8A	FUN_00016d8a	resolved
 00016D8A	FUN_00016d8a	00016D8A	bsr.w 0x00016e08	00016E08	FUN_00016e08	resolved
-00016E30	FUN_00016e30	00016E4E	jsr 0x0001a322.l	0001A322	FUN_0001a322	resolved
-00016E30	FUN_00016e30	00016E54	jsr 0x0001a310.l	0001A310	FUN_0001a310	resolved
+00016E30	FUN_00016e30	00016E4E	jsr 0x0001a322.l	0001A322	clear_entity_effect_pending_records	resolved
+00016E30	FUN_00016e30	00016E54	jsr 0x0001a310.l	0001A310	clear_effect_slots	resolved
 00016E5C	FUN_00016e5c	00016E98	bsr.w 0x00016ea0	00016EA0	FUN_00016ea0	resolved
 00016ECA	FUN_00016eca	00016F00	bsr.w 0x00016f14	00016F14	FUN_00016f14	resolved
 00016ECA	FUN_00016eca	00016F06	bsr.w 0x00016f8e	00016F8E	FUN_00016f8e	resolved
@@ -2079,7 +2079,7 @@ caller	caller_name	instruction	text	target	callee	status
 0001E4AC	spawn_world_effect_at_player_position	0001E4AE	jsr 0x0001a342.l	0001A342	find_first_available_world_effect_entity_slot	resolved
 0001E4AC	spawn_world_effect_at_player_position	0001E4BE	jsr 0x0001a2cc.l	0001A2CC	allocate_first_free_effect_slot	resolved
 0001E4AC	spawn_world_effect_at_player_position	0001E4CE	jsr 0x000044bc.l	000044BC	initialize_entity_record_from_template	resolved
-0001E514	FUN_0001e514	0001E538	jsr 0x0001a304.l	0001A304	FUN_0001a304	resolved
+0001E514	FUN_0001e514	0001E538	jsr 0x0001a304.l	0001A304	clear_effect_slot	resolved
 0001E69C	FUN_0001e69c	0001E6A2	bsr.b 0x0001e68c	0001E68C	FUN_0001e68c	resolved
 0001E69C	FUN_0001e69c	0001E6BC	jsr 0x00000d3a.l	00000D3A	sample_source_random_bound	resolved
 0001E69C	FUN_0001e69c	0001E6FE	jsr 0x00000d3a.l	00000D3A	sample_source_random_bound	resolved

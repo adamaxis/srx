@@ -543,9 +543,9 @@ entry	name	size	callingConvention	decompileStatus	file
 0001A154	FUN_0001a154	22	unknown	ok	ghidra-c/fn_0001A154.cpp
 0001A16A	FUN_0001a16a	354	unknown	ok	ghidra-c/fn_0001A16A.cpp
 0001A2CC	allocate_first_free_effect_slot	56	unknown	ok	ghidra-c/fn_0001A2CC.cpp
-0001A304	FUN_0001a304	12	unknown	ok	ghidra-c/fn_0001A304.cpp
-0001A310	FUN_0001a310	18	unknown	ok	ghidra-c/fn_0001A310.cpp
-0001A322	FUN_0001a322	32	unknown	ok	ghidra-c/fn_0001A322.cpp
+0001A304	clear_effect_slot	12	unknown	ok	ghidra-c/fn_0001A304.cpp
+0001A310	clear_effect_slots	18	unknown	ok	ghidra-c/fn_0001A310.cpp
+0001A322	clear_entity_effect_pending_records	32	unknown	ok	ghidra-c/fn_0001A322.cpp
 0001A342	find_first_available_world_effect_entity_slot	46	unknown	ok	ghidra-c/fn_0001A342.cpp
 0001A370	FUN_0001a370	350	unknown	ok	ghidra-c/fn_0001A370.cpp
 0001A468	FUN_0001a468	34	unknown	ok	ghidra-c/fn_0001A468.cpp

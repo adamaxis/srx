@@ -169,6 +169,9 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00010B5AL, "transfer_menu_asset_batch_four");
         names.put(0x00010BC4L, "transfer_menu_asset_batch_eight_after_copy");
         names.put(0x00010C96L, "transfer_menu_asset_batch_eight");
+        names.put(0x0001A304L, "clear_effect_slot");
+        names.put(0x0001A310L, "clear_effect_slots");
+        names.put(0x0001A322L, "clear_entity_effect_pending_records");
         names.put(0x000136DEL, "initialize_scene_mode_state");
         names.put(0x00053126L, "prepare_mode_entry_service");
         names.put(0x00001530L, "decode_and_upload_source_stream");

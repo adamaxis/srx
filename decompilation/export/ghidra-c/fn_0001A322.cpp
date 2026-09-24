@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001A322
-// Name: FUN_0001a322
+// Name: clear_entity_effect_pending_records
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0001a322(void)
+void clear_entity_effect_pending_records(void)
 
 {
   short sVar1;
