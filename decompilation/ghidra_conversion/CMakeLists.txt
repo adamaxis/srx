@@ -1494,3 +1494,16 @@ target_link_libraries(shadowrun_ghidra_terrain_workflow_test
     PRIVATE shadowrun_ghidra_terrain_workflow)
 add_test(NAME shadowrun_ghidra_terrain_workflow
          COMMAND shadowrun_ghidra_terrain_workflow_test)
+
+add_library(shadowrun_ghidra_display_service_batch STATIC
+    src/display_service_batch_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_display_service_batch PUBLIC include)
+
+add_executable(shadowrun_ghidra_display_service_batch_test
+    tests/display_service_batch_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_display_service_batch_test
+    PRIVATE shadowrun_ghidra_display_service_batch)
+add_test(NAME shadowrun_ghidra_display_service_batch
+         COMMAND shadowrun_ghidra_display_service_batch_test)
