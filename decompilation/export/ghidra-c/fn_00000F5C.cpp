@@ -22,7 +22,7 @@ undefined8 FUN_00000f5c(void)
   undefined2 uStack_6;
   
   if (((in_D0 ^ in_D0 + unaff_D2w) & 0x10000) == 0) {
-    FUN_00000e9c();
+    make_vdp_transfer_command();
     sVar1 = (unaff_D2w >> 6) - 1;
     puVar3 = extraout_A0;
     if (-1 < sVar1) {

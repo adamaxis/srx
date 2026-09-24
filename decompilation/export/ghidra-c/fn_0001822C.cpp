@@ -17,7 +17,7 @@
 //   0x0000195C sample_controller_input
 //   0x0000C0DA render_title_text_source
 //   0x0000C376 move_wrapped_menu_cursor
-//   0x000176EA FUN_000176ea
+//   0x000176EA render_menu_footer
 //   0x00017708 render_field_hud
 //   0x00017D90 advance_hud_panel
 //   0x00017F80 FUN_00017f80
@@ -212,7 +212,7 @@ LAB_00018694:
   _DAT_00ffdd08 = uVar3;
   FUN_00000f1c();
   FUN_00000f3c();
-  FUN_000176ea();
+  render_menu_footer();
   uVar7 = 0;
   DAT_00fff108 = '\0';
   sVar8 = 4;

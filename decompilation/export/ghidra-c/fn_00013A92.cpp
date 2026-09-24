@@ -35,7 +35,7 @@ void FUN_00013a92(void)
     if ('\x04' < (char)*(byte *)(in_A0 + 0x9c)) {
       FUN_00013b12();
       if (bVar1) {
-        FUN_00013af2();
+        find_first_entity_action_below_threshold();
         FUN_00013466();
         return;
       }

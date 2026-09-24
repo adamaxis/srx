@@ -3,13 +3,13 @@
 // Name: FUN_0005dafc
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000E18 FUN_00000e18
+//   0x00000E18 write_word_stream
 
 
 void FUN_0005dafc(void)
 
 {
-  FUN_00000e18();
+  write_word_stream();
   return;
 }
 

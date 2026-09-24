@@ -33,7 +33,7 @@ void FUN_00004adc(void)
   *(short *)(in_A0 + 0xe) = sVar1;
   if (sVar1 < 0) {
     *(undefined2 *)(in_A0 + 2) = 0;
-    FUN_0001a304();
+    clear_effect_slot();
     sVar1 = *(short *)(extraout_A0_01 + 0x34);
     sVar8 = 4;
     puVar10 = (undefined1 *)(extraout_A0_01 + 0x36);

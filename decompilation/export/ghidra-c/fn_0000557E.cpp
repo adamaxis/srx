@@ -3,11 +3,11 @@
 // Name: FUN_0000557e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00005622 FUN_00005622
+//   0x00005622 clear_entity_runtime_fields
 //   0x0000563E FUN_0000563e
 //   0x00005662 FUN_00005662
 //   0x0000AFF2 prepare_entity_auxiliary_behavior
-//   0x0001A304 FUN_0001a304
+//   0x0001A304 clear_effect_slot
 
 
 void FUN_0000557e(void)
@@ -47,8 +47,8 @@ void FUN_0000557e(void)
     FUN_0000563e();
     return;
   }
-  FUN_0001a304();
-  FUN_00005622();
+  clear_effect_slot();
+  clear_entity_runtime_fields();
   return;
 }
 

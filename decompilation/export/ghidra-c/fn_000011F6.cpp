@@ -20,7 +20,7 @@ short FUN_000011f6(void)
   
   VDP_CTRL = 0x8f80;
   do {
-    FUN_00000e9c();
+    make_vdp_transfer_command();
     sVar1 = unaff_D7w;
     puVar2 = extraout_A1;
     do {

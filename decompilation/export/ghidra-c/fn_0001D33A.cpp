@@ -3,7 +3,7 @@
 // Name: FUN_0001d33a
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000E9C FUN_00000e9c
+//   0x00000E9C make_vdp_transfer_command
 //   0x0001D3F4 FUN_0001d3f4
 
 
@@ -58,7 +58,7 @@ void FUN_0001d33a(void)
         *(ushort *)(puVar13 + -4) =
              (ushort)(byte)(bVar17 << 4 | (sVar7 < 0) << 3 | (sVar7 == 0) << 2);
         *(undefined4 *)(puVar13 + -8) = 0x1d3ba;
-        FUN_00000e9c();
+        make_vdp_transfer_command();
         *(short *)(puVar13 + -6) = sVar11;
         psVar18 = (short *)(puVar13 + -10);
         *psVar18 = extraout_D1w;

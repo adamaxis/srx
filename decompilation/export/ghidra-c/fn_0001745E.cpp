@@ -13,9 +13,9 @@
 //   0x00003404 FUN_00003404
 //   0x000039F2 FUN_000039f2
 //   0x000176BA FUN_000176ba
-//   0x000176EA FUN_000176ea
+//   0x000176EA render_menu_footer
 //   0x00017708 render_field_hud
-//   0x000177A4 FUN_000177a4
+//   0x000177A4 initialize_menu_slot_states
 //   0x000177CC FUN_000177cc
 //   0x000177FC FUN_000177fc
 //   0x0001789C FUN_0001789c
@@ -84,13 +84,13 @@ void FUN_0001745e(void)
     VDP_CTRL = 0x8b03;
     FUN_0001b5a6();
     VDP_CTRL = 0x9100;
-    FUN_000176ea();
+    render_menu_footer();
     FUN_000177cc();
     decode_and_upload_source_stream();
     render_hud_sprite_stream();
     render_hud_sprite_stream();
     render_field_hud();
-    FUN_000177a4();
+    initialize_menu_slot_states();
     refresh_field_hud();
     FUN_000033be();
     FUN_000176ba();

@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
-//   0x00000E9C FUN_00000e9c
+//   0x00000E9C make_vdp_transfer_command
 //   0x0000C0DA render_title_text_source
 //   0x0000C3E6 FUN_0000c3e6
 //   0x0000E6F4 FUN_0000e6f4
@@ -56,7 +56,7 @@ void FUN_00013726(void)
     puVar12 = puVar12 + 2;
     bVar2 = *pbVar13;
     uVar4 = (uint)bVar2;
-    FUN_00000e9c();
+    make_vdp_transfer_command();
     *pwVar11 = *extraout_A1;
     wVar1 = extraout_A1[1];
     sVar8 = extraout_D1w;
@@ -66,7 +66,7 @@ void FUN_00013726(void)
     } while (sVar8 != -1);
     *pwVar11 = extraout_A1[2];
     VDP_CTRL = 0x8f80;
-    FUN_00000e9c();
+    make_vdp_transfer_command();
     wVar1 = *extraout_A1_00;
     uVar10 = (ushort)bVar2;
     uVar9 = uVar10;
@@ -74,7 +74,7 @@ void FUN_00013726(void)
       *pwVar11 = wVar1;
       uVar9 = uVar9 - 1;
     } while (uVar9 != 0xffff);
-    FUN_00000e9c();
+    make_vdp_transfer_command();
     wVar1 = *extraout_A1_01;
     do {
       *pwVar11 = wVar1;
@@ -82,7 +82,7 @@ void FUN_00013726(void)
     } while (uVar10 != 0xffff);
     VDP_CTRL = 0x8f02;
     iVar5 = (uVar4 + 2) * 0x80;
-    FUN_00000e9c();
+    make_vdp_transfer_command();
     *pwVar11 = *extraout_A1_02;
     wVar1 = extraout_A1_02[1];
     unaff_D7 = CONCAT22((short)((uint)unaff_D7 >> 0x10),(short)extraout_D1);

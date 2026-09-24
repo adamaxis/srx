@@ -3,7 +3,7 @@
 // Name: FUN_00004b6c
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001A304 FUN_0001a304
+//   0x0001A304 clear_effect_slot
 
 
 void FUN_00004b6c(void)
@@ -17,7 +17,7 @@ void FUN_00004b6c(void)
   short *psVar4;
   
   *(undefined2 *)(in_A0 + 2) = 0;
-  FUN_0001a304();
+  clear_effect_slot();
   sVar1 = *(short *)(extraout_A0 + 0x34);
   sVar2 = 4;
   puVar3 = (undefined1 *)(extraout_A0 + 0x36);

@@ -10,7 +10,7 @@
 //   0x0000195C sample_controller_input
 //   0x0000391A FUN_0000391a
 //   0x0000E6F4 FUN_0000e6f4
-//   0x00010AF0 FUN_00010af0
+//   0x00010AF0 transfer_menu_asset_batch_four
 //   0x000136DE initialize_scene_mode_state
 //   0x00013726 FUN_00013726
 //   0x00020714 FUN_00020714
@@ -94,7 +94,7 @@ void FUN_000134d2(void)
       FUN_0000391a();
     }
     if ((DAT_00ffdd22._0_1_ & 0x80) != 0) {
-      FUN_00010af0();
+      transfer_menu_asset_batch_four();
 LAB_000136b6:
       if ((DAT_00fff0e0 == '\0') && ((char)DAT_00fffbf8 != DAT_00ffddc4)) {
         initialize_scene_mode_state();

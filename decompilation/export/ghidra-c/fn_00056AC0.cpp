@@ -17,7 +17,7 @@
 //   0x0000C0DA render_title_text_source
 //   0x0000C406 FUN_0000c406
 //   0x0000D4C8 FUN_0000d4c8
-//   0x00010BC4 FUN_00010bc4
+//   0x00010BC4 transfer_menu_asset_batch_eight_after_copy
 //   0x00011048 FUN_00011048
 //   0x000110EC FUN_000110ec
 //   0x000530DE service_audio_if_enabled
@@ -39,7 +39,7 @@ void FUN_00056ac0(void)
 {
   DAT_00fff0b1 = 0;
   VDP_CTRL = 0x9100;
-  FUN_00010bc4();
+  transfer_menu_asset_batch_eight_after_copy();
   FUN_00011048();
   FUN_0005670e();
   if (DAT_00fff0b7 == '\x01') {

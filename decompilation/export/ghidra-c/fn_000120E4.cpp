@@ -3,7 +3,7 @@
 // Name: FUN_000120e4
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000E9C FUN_00000e9c
+//   0x00000E9C make_vdp_transfer_command
 //   0x0000C216 FUN_0000c216
 
 
@@ -16,7 +16,7 @@ void FUN_000120e4(void)
   short sVar2;
   short unaff_D2w;
   
-  FUN_00000e9c();
+  make_vdp_transfer_command();
   VDP_DATA = DAT_000c1320 | 0x6000;
   sVar2 = (short)_DAT_00ffdd2a;
   sVar1 = unaff_D2w + sVar2;

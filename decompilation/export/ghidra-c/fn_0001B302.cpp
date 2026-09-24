@@ -37,7 +37,7 @@ void FUN_0001b302(void)
       extraout_A0[3] = uVar3 + extraout_A0[3];
       sVar4 = sVar4 + -1;
     } while (sVar4 != -1);
-    FUN_00000e18();
+    write_word_stream();
     DAT_00ffef14 = DAT_00ffef14 | 0xc;
     return;
   }

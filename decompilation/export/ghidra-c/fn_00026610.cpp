@@ -22,7 +22,7 @@ void FUN_00026610(void)
   }
   wVar1 = 0x393;
   do {
-    FUN_00000e9c();
+    make_vdp_transfer_command();
     do {
       VDP_DATA = wVar1;
       wVar1 = wVar1 + 1;

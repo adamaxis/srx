@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D44 advance_source_prng
-//   0x00000E18 FUN_00000e18
+//   0x00000E18 write_word_stream
 //   0x00019F78 FUN_00019f78
 //   0x0001B5A6 FUN_0001b5a6
 
@@ -100,7 +100,7 @@ void FUN_0001b45c(void)
     sVar8 = sVar8 + -1;
     sVar7 = sVar4;
   } while (sVar8 != -1);
-  FUN_00000e18();
+  write_word_stream();
   DAT_00ffef14 = DAT_00ffef14 | 0xc;
   return;
 }

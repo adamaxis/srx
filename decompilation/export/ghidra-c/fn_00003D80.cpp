@@ -3,7 +3,7 @@
 // Name: FUN_00003d80
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000E9C FUN_00000e9c
+//   0x00000E9C make_vdp_transfer_command
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -20,7 +20,7 @@ void FUN_00003d80(void)
   int extraout_A0;
   int extraout_A1;
   
-  FUN_00000e9c();
+  make_vdp_transfer_command();
   iVar1 = (uint)*(ushort *)(extraout_A1 + unaff_D3w) << 5;
   iVar2 = extraout_D1;
   do {

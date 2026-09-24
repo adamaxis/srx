@@ -3,7 +3,7 @@
 // Name: FUN_00016d8a
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00016E08 FUN_00016e08
+//   0x00016E08 all_scene_record_slots_active
 
 
 void FUN_00016d8a(void)
@@ -14,7 +14,7 @@ void FUN_00016d8a(void)
   short *extraout_A1;
   undefined1 in_CF;
   
-  FUN_00016e08();
+  all_scene_record_slots_active();
   if ((bool)in_CF) {
     return;
   }

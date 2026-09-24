@@ -11,7 +11,7 @@
 //   0x0000C0DA render_title_text_source
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x0000C3E6 FUN_0000c3e6
-//   0x00010B5A FUN_00010b5a
+//   0x00010B5A transfer_menu_asset_batch_four
 //   0x0001F34A FUN_0001f34a
 //   0x0001F38A FUN_0001f38a
 //   0x000566D8 FUN_000566d8
@@ -24,7 +24,7 @@ void FUN_00059092(void)
 {
   FUN_000566d8();
   FUN_000566e2();
-  FUN_00010b5a();
+  transfer_menu_asset_batch_four();
   load_title_font();
   while( true ) {
     FUN_0000c3e6();

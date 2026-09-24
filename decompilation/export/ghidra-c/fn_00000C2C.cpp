@@ -4,9 +4,9 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000CEC FUN_00000cec
-//   0x00000DFC FUN_00000dfc
+//   0x00000DFC write_repeated_words
 //   0x00000E34 FUN_00000e34
-//   0x00000E9C FUN_00000e9c
+//   0x00000E9C make_vdp_transfer_command
 //   0x00000EC0 FUN_00000ec0
 //   0x000531AA FUN_000531aa
 
@@ -40,11 +40,11 @@ void clear_runtime_memory_and_vdp(void)
     DAT_00fff9f8 = (undefined2)in_D1;
   }
   FUN_00000ec0();
-  FUN_00000dfc();
+  write_repeated_words();
   DAT_00ffdd02 = 1;
   FUN_00000e34();
   FUN_00000cec();
-  FUN_00000e9c();
+  make_vdp_transfer_command();
   sVar1 = 7;
   do {
     Ram00c00000 = 0;

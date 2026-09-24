@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x000013BE FUN_000013be
 //   0x000061A0 append_entity_sprite_record
-//   0x0001A304 FUN_0001a304
+//   0x0001A304 clear_effect_slot
 
 
 void FUN_00004e86(void)
@@ -21,7 +21,7 @@ void FUN_00004e86(void)
     *(undefined1 *)(in_A0 + 2) = 6;
     *(char *)(in_A0 + 3) = *(char *)(in_A0 + 3) + '\x01';
     if ('\x03' < *(char *)(in_A0 + 3)) {
-      FUN_0001a304();
+      clear_effect_slot();
       *(byte *)(extraout_A0 + 0x11) = *(byte *)(extraout_A0 + 0x11) & 0xbf;
       return;
     }

@@ -19,7 +19,7 @@ void FUN_0001b5a6(void)
     sVar1 = sVar1 + -1;
     puVar2 = puVar2 + 1;
   } while (sVar1 != -1);
-  FUN_00000e18();
+  write_word_stream();
   DAT_00ffef14 = DAT_00ffef14 | 0xc;
   return;
 }

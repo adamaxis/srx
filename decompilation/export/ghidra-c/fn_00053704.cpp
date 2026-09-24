@@ -6,7 +6,7 @@
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
 //   0x0000195C sample_controller_input
-//   0x000176EA FUN_000176ea
+//   0x000176EA render_menu_footer
 //   0x00017708 render_field_hud
 //   0x000177CC FUN_000177cc
 //   0x000532BC FUN_000532bc
@@ -58,7 +58,7 @@ LAB_000537c6:
     if (((DAT_00ffdd22._0_1_ & 0x80) != 0) && (DAT_00fff0a9 == '\0')) {
       VDP_CTRL = 0x8134;
       FUN_000177cc();
-      uVar1 = FUN_000176ea();
+      uVar1 = render_menu_footer();
       return uVar1;
     }
   } while( true );

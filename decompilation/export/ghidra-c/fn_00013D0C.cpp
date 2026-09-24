@@ -3,7 +3,7 @@
 // Name: FUN_00013d0c
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00013A40 FUN_00013a40
+//   0x00013A40 copy_entity_anchor_position
 //   0x000144E8 FUN_000144e8
 //   0x000145A2 FUN_000145a2
 //   0x00014D6A select_entity_animation_table_row
@@ -59,7 +59,7 @@ ushort * FUN_00013d0c(void)
     if (*(ushort **)(in_A0 + 0x51) == (ushort *)0x0) {
       return *(ushort **)(in_A0 + 0x51);
     }
-    FUN_00013a40();
+    copy_entity_anchor_position();
     puVar3 = (ushort *)FUN_000145a2();
     return puVar3;
   }

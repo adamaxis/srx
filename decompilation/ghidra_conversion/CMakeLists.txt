@@ -708,3 +708,42 @@ target_link_libraries(shadowrun_ghidra_menu_asset_transfer_test
     PRIVATE shadowrun_ghidra_menu_asset_transfer)
 add_test(NAME shadowrun_ghidra_menu_asset_transfer
          COMMAND shadowrun_ghidra_menu_asset_transfer_test)
+
+add_library(shadowrun_ghidra_word_transfer STATIC
+    src/word_transfer_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_word_transfer PUBLIC include)
+
+add_executable(shadowrun_ghidra_word_transfer_test
+    tests/word_transfer_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_word_transfer_test
+    PRIVATE shadowrun_ghidra_word_transfer)
+add_test(NAME shadowrun_ghidra_word_transfer
+         COMMAND shadowrun_ghidra_word_transfer_test)
+
+add_library(shadowrun_ghidra_scene_record_reset STATIC
+    src/scene_record_reset_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_scene_record_reset PUBLIC include)
+
+add_executable(shadowrun_ghidra_scene_record_reset_test
+    tests/scene_record_reset_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_scene_record_reset_test
+    PRIVATE shadowrun_ghidra_scene_record_reset)
+add_test(NAME shadowrun_ghidra_scene_record_reset
+         COMMAND shadowrun_ghidra_scene_record_reset_test)
+
+add_library(shadowrun_ghidra_menu_state STATIC
+    src/menu_state_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_menu_state PUBLIC include)
+
+add_executable(shadowrun_ghidra_menu_state_test
+    tests/menu_state_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_menu_state_test
+    PRIVATE shadowrun_ghidra_menu_state)
+add_test(NAME shadowrun_ghidra_menu_state
+         COMMAND shadowrun_ghidra_menu_state_test)

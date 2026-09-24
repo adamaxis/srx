@@ -3,7 +3,7 @@
 // Name: decode_and_upload_source_stream
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000E9C FUN_00000e9c
+//   0x00000E9C make_vdp_transfer_command
 
 
 undefined6 decode_and_upload_source_stream(void)
@@ -32,7 +32,7 @@ undefined6 decode_and_upload_source_stream(void)
   puVar13 = unaff_A3 + 1;
   uVar1 = *unaff_A3;
   VDP_CTRL = 0x8f02;
-  bVar5 = FUN_00000e9c();
+  bVar5 = make_vdp_transfer_command();
   sVar6 = 1;
   uVar8 = uVar1;
   do {

@@ -3,7 +3,7 @@
 // Name: upload_hud_tile_block
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000E9C FUN_00000e9c
+//   0x00000E9C make_vdp_transfer_command
 
 
 undefined8 upload_hud_tile_block(void)
@@ -19,7 +19,7 @@ undefined8 upload_hud_tile_block(void)
   ushort *puVar2;
   
   do {
-    FUN_00000e9c();
+    make_vdp_transfer_command();
     puVar2 = extraout_A1;
     sVar1 = unaff_D7w;
     do {

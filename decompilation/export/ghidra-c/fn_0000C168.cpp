@@ -3,7 +3,7 @@
 // Name: FUN_0000c168
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000E9C FUN_00000e9c
+//   0x00000E9C make_vdp_transfer_command
 
 
 undefined8 FUN_0000c168(void)
@@ -23,7 +23,7 @@ undefined8 FUN_0000c168(void)
   byte *pbVar6;
   
   do {
-    FUN_00000e9c();
+    make_vdp_transfer_command();
     sVar3 = 0;
     pbVar6 = extraout_A1;
     sVar2 = sVar3;

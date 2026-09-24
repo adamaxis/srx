@@ -11,11 +11,11 @@
 //   0x0000EE10 rebuild_terrain_collision_map
 //   0x00013874 FUN_00013874
 //   0x000164A8 FUN_000164a8
-//   0x000164DC FUN_000164dc
-//   0x00016DEE FUN_00016dee
+//   0x000164DC clear_scene_record_transition_words
+//   0x00016DEE clear_scene_record_pending_flags
 //   0x00016E5C FUN_00016e5c
-//   0x0001A310 FUN_0001a310
-//   0x0001A322 FUN_0001a322
+//   0x0001A310 clear_effect_slots
+//   0x0001A322 clear_entity_effect_pending_records
 //   0x0001E04A begin_world_effect_transition
 //   0x000530EA FUN_000530ea
 //   0x0005BA50 load_scene_resources
@@ -40,9 +40,9 @@ void FUN_00002900(void)
       DAT_00ffe191 = '\0';
       begin_world_effect_transition();
     }
-    FUN_0001a310();
-    FUN_0001a322();
-    FUN_00016dee();
+    clear_effect_slots();
+    clear_entity_effect_pending_records();
+    clear_scene_record_pending_flags();
     finalize_pending_entity_template_update();
     if (DAT_00ffe186 != '\x03') {
       FUN_0005d260();
@@ -62,7 +62,7 @@ void FUN_00002900(void)
   if ('\x01' < DAT_00ffe186) {
     load_scene_resources();
   }
-  FUN_000164dc();
+  clear_scene_record_transition_words();
   FUN_000164a8();
   FUN_00013874();
   if ((DAT_00ffde22 & 1) != 0) {

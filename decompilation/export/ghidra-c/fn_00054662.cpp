@@ -13,7 +13,7 @@
 //   0x0000C0DA render_title_text_source
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x00010952 FUN_00010952
-//   0x000176EA FUN_000176ea
+//   0x000176EA render_menu_footer
 //   0x000177CC FUN_000177cc
 //   0x00017F80 FUN_00017f80
 //   0x0001822C FUN_0001822c
@@ -116,7 +116,7 @@ LAB_0005488c:
     } while ((DAT_00ffdd22._0_1_ & 0x80) == 0);
     VDP_CTRL = 0x8134;
     DAT_00fff0b7 = 0;
-    FUN_000176ea();
+    render_menu_footer();
     FUN_000177cc();
     VDP_CTRL = 0x8174;
     FUN_0001822c();

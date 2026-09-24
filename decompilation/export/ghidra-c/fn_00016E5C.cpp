@@ -3,7 +3,7 @@
 // Name: FUN_00016e5c
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00016EA0 FUN_00016ea0
+//   0x00016EA0 fill_terrain_work_region
 
 
 short FUN_00016e5c(void)
@@ -23,7 +23,7 @@ short FUN_00016e5c(void)
       if (psVar2[2] < 0) {
         pcVar4 = pcVar3;
       }
-      FUN_00016ea0();
+      fill_terrain_work_region();
       psVar1 = extraout_A1;
       pcVar3 = pcVar4;
     }

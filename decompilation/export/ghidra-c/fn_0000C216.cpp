@@ -3,7 +3,7 @@
 // Name: FUN_0000c216
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000E9C FUN_00000e9c
+//   0x00000E9C make_vdp_transfer_command
 
 
 /* WARNING: Removing unreachable block (ram,0x0000c25a) */
@@ -23,7 +23,7 @@ undefined8 FUN_0000c216(void)
   
   sVar4 = 4;
   do {
-    FUN_00000e9c();
+    make_vdp_transfer_command();
     sVar4 = sVar4 + -1;
     if (sVar4 == 0) {
       sVar2 = 0x18;

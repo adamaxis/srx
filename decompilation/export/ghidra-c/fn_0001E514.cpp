@@ -3,7 +3,7 @@
 // Name: FUN_0001e514
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001A304 FUN_0001a304
+//   0x0001A304 clear_effect_slot
 
 
 void FUN_0001e514(void)
@@ -19,7 +19,7 @@ void FUN_0001e514(void)
   }
   *(byte *)(in_A0 + 0x10) = *(byte *)(in_A0 + 0x10) & 0xfe;
   if ((*(byte *)(in_A0 + 0x10) & 8) == 0) {
-    FUN_0001a304();
+    clear_effect_slot();
   }
   return;
 }

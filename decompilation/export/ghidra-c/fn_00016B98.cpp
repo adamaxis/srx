@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
 //   0x00016D8A FUN_00016d8a
-//   0x00016E08 FUN_00016e08
+//   0x00016E08 all_scene_record_slots_active
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -35,7 +35,7 @@ void FUN_00016b98(void)
         return;
       }
       bVar5 = false;
-      FUN_00016e08();
+      all_scene_record_slots_active();
       if (!bVar5) {
         *extraout_A1_02 = *extraout_A0_02 + 0x80;
         extraout_A1_02[2] = extraout_A0_02[2] + 0x80;
@@ -70,7 +70,7 @@ void FUN_00016b98(void)
       return;
     }
   }
-  FUN_00016e08();
+  all_scene_record_slots_active();
   if (bVar5) {
     return;
   }

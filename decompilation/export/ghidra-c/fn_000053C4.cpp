@@ -5,9 +5,9 @@
 // Calls recovered from direct call instructions:
 //   0x00005468 FUN_00005468
 //   0x00005494 FUN_00005494
-//   0x00005622 FUN_00005622
+//   0x00005622 clear_entity_runtime_fields
 //   0x0000AFF2 prepare_entity_auxiliary_behavior
-//   0x0001A304 FUN_0001a304
+//   0x0001A304 clear_effect_slot
 
 
 void FUN_000053c4(void)
@@ -47,8 +47,8 @@ void FUN_000053c4(void)
     FUN_00005468();
     return;
   }
-  FUN_0001a304();
-  FUN_00005622();
+  clear_effect_slot();
+  clear_entity_runtime_fields();
   return;
 }
 

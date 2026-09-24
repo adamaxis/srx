@@ -3,7 +3,7 @@
 // Name: render_title_text_source
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000E9C FUN_00000e9c
+//   0x00000E9C make_vdp_transfer_command
 
 
 undefined8 render_title_text_source(void)
@@ -19,7 +19,7 @@ undefined8 render_title_text_source(void)
   byte *pbVar3;
   
   do {
-    FUN_00000e9c();
+    make_vdp_transfer_command();
     pbVar3 = extraout_A1;
     while( true ) {
       bVar1 = *pbVar3;

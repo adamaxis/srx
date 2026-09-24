@@ -3,7 +3,7 @@
 // Name: draw_hud_panel
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000E9C FUN_00000e9c
+//   0x00000E9C make_vdp_transfer_command
 
 
 void draw_hud_panel(void)
@@ -18,7 +18,7 @@ void draw_hud_panel(void)
   
   uVar1 = unaff_D2w | unaff_D5w;
   do {
-    FUN_00000e9c();
+    make_vdp_transfer_command();
     sVar2 = unaff_D7w;
     do {
       VDP_DATA = uVar1;

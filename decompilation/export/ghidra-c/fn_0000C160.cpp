@@ -26,7 +26,7 @@ undefined8 FUN_0000c160(void)
   
   DAT_00fff0b2 = 1;
   do {
-    FUN_00000e9c();
+    make_vdp_transfer_command();
     sVar3 = 0;
     pbVar6 = extraout_A1;
     sVar2 = sVar3;

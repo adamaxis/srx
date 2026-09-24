@@ -3,7 +3,7 @@
 // Name: FUN_00000f98
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000E9C FUN_00000e9c
+//   0x00000E9C make_vdp_transfer_command
 
 
 undefined4 FUN_00000f98(void)
@@ -17,7 +17,7 @@ undefined4 FUN_00000f98(void)
   undefined4 *puVar3;
   undefined4 *extraout_A1;
   
-  FUN_00000e9c();
+  make_vdp_transfer_command();
   sVar1 = (unaff_D2w >> 6) - 1;
   puVar3 = extraout_A0;
   if (-1 < sVar1) {

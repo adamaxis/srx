@@ -3,8 +3,8 @@
 // Name: FUN_00016e30
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001A310 FUN_0001a310
-//   0x0001A322 FUN_0001a322
+//   0x0001A310 clear_effect_slots
+//   0x0001A322 clear_entity_effect_pending_records
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -26,8 +26,8 @@ void FUN_00016e30(void)
     puVar2 = puVar2 + 1;
     puVar3 = puVar3 + 1;
   } while (sVar1 != -1);
-  FUN_0001a322();
-  FUN_0001a310();
+  clear_entity_effect_pending_records();
+  clear_effect_slots();
   return;
 }
 

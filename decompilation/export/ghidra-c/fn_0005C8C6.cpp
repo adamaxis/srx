@@ -3,7 +3,7 @@
 // Name: FUN_0005c8c6
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000E9C FUN_00000e9c
+//   0x00000E9C make_vdp_transfer_command
 
 
 undefined8 FUN_0005c8c6(void)
@@ -16,7 +16,7 @@ undefined8 FUN_0005c8c6(void)
   ushort *extraout_A1;
   
   do {
-    FUN_00000e9c();
+    make_vdp_transfer_command();
     VDP_DATA = unaff_D2w | *extraout_A1;
   } while (extraout_D1w != 0);
   return CONCAT44(in_D0,in_D1);

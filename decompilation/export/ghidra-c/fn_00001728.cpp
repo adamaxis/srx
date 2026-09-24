@@ -3,7 +3,7 @@
 // Name: render_hud_sprite_stream
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000E9C FUN_00000e9c
+//   0x00000E9C make_vdp_transfer_command
 
 
 void render_hud_sprite_stream(void)
@@ -38,7 +38,7 @@ void render_hud_sprite_stream(void)
   bool bVar14;
   
   sVar1 = *in_A1;
-  FUN_00000e9c();
+  make_vdp_transfer_command();
   sVar2 = unaff_D7w - unaff_D5w;
   sVar13 = 0;
   iVar12 = (int)unaff_D3w;
@@ -67,7 +67,7 @@ void render_hud_sprite_stream(void)
               if ((short)(sVar4 + -1) < 0) {
                 return;
               }
-              FUN_00000e9c();
+              make_vdp_transfer_command();
               sVar4 = extraout_D1w_00;
               pbVar11 = extraout_A1_00;
               sVar3 = unaff_D7w;
@@ -92,7 +92,7 @@ void render_hud_sprite_stream(void)
               if ((short)(sVar4 + -1) < 0) {
                 return;
               }
-              FUN_00000e9c();
+              make_vdp_transfer_command();
               sVar4 = extraout_D1w_01;
               pbVar11 = extraout_A1_01;
               sVar3 = unaff_D7w;
@@ -129,7 +129,7 @@ void render_hud_sprite_stream(void)
           if ((short)(sVar4 + -1) < 0) {
             return;
           }
-          FUN_00000e9c();
+          make_vdp_transfer_command();
           sVar4 = extraout_D1w_02;
           pbVar11 = extraout_A1_02;
           sVar3 = unaff_D7w;

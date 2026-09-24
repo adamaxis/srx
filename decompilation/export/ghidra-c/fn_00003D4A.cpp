@@ -27,7 +27,7 @@ void FUN_00003d4a(void)
   if ((short)(uVar3 - 1) < 0x2b) {
     FUN_00003d80();
     sVar4 = -(uVar3 - 0x2b);
-    FUN_00000e9c();
+    make_vdp_transfer_command();
     iVar1 = (uint)*(ushort *)(extraout_A1 + unaff_D3w) << 5;
     iVar2 = extraout_D1;
     do {

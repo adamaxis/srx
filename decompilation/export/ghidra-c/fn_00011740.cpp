@@ -38,8 +38,8 @@
 //   0x0000FF5A FUN_0000ff5a
 //   0x00010276 FUN_00010276
 //   0x000106DA FUN_000106da
-//   0x00010A7E FUN_00010a7e
-//   0x00010C96 FUN_00010c96
+//   0x00010A7E transfer_menu_asset_batch_four_post_prepare
+//   0x00010C96 transfer_menu_asset_batch_eight
 //   0x000110E8 FUN_000110e8
 //   0x000110EC FUN_000110ec
 //   0x00011190 FUN_00011190
@@ -328,7 +328,7 @@ LAB_00011cb6:
     VDP_CTRL = 0x9100;
     FUN_00000ffe();
     FUN_0000102a();
-    FUN_00010c96();
+    transfer_menu_asset_batch_eight();
     DAT_00ffd8d4 = 0x2c2;
     DAT_00ffd8f4 = 0x60;
     DAT_00ffef14 = DAT_00ffef14 | 1;
@@ -561,7 +561,7 @@ LAB_0000d4a0:
     FUN_00011928();
     return;
   case 6:
-    FUN_00010a7e();
+    transfer_menu_asset_batch_four_post_prepare();
 LAB_0000c2aa:
     FUN_0000c3e6();
     render_title_text_source();

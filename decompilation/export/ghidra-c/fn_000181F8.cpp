@@ -189,7 +189,7 @@ LAB_00018694:
   _DAT_00ffdd08 = uVar3;
   FUN_00000f1c();
   FUN_00000f3c();
-  FUN_000176ea();
+  render_menu_footer();
   uVar7 = 0;
   DAT_00fff108 = '\0';
   sVar8 = 4;

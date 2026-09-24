@@ -29,7 +29,7 @@ void FUN_00003dde(void)
     FUN_00003e14();
     sVar5 = -(uVar4 - 0x1f);
     VDP_CTRL = 0x8f80;
-    FUN_00000e9c();
+    make_vdp_transfer_command();
     iVar2 = (uint)*(ushort *)(extraout_A1 + unaff_D3w) << 5;
     iVar3 = extraout_D1;
     do {
