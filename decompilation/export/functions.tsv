@@ -368,7 +368,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00013CDE	FUN_00013cde	46	unknown	ok	ghidra-c/fn_00013CDE.cpp
 00013D0C	FUN_00013d0c	292	unknown	ok	ghidra-c/fn_00013D0C.cpp
 00013E8C	FUN_00013e8c	18	unknown	ok	ghidra-c/fn_00013E8C.cpp
-00013E9E	FUN_00013e9e	86	unknown	ok	ghidra-c/fn_00013E9E.cpp
+00013E9E	reposition_entity_at_boundary	86	unknown	ok	ghidra-c/fn_00013E9E.cpp
 00013F76	FUN_00013f76	136	unknown	ok	ghidra-c/fn_00013F76.cpp
 00013FFE	FUN_00013ffe	506	unknown	ok	ghidra-c/fn_00013FFE.cpp
 00014226	FUN_00014226	136	unknown	ok	ghidra-c/fn_00014226.cpp

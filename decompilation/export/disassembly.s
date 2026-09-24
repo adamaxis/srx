@@ -11359,7 +11359,7 @@
 00013E8C: tst.w (0xc,A0)
 00013E90: bne.w 0x00013e96
 00013E94: bra.b 0x00013e40
-00013E96: bsr.w 0x00013e9e ; call 00013E9E FUN_00013e9e
+00013E96: bsr.w 0x00013e9e ; call 00013E9E reposition_entity_at_boundary
 00013E9A: bra.w 0x000145a2 ; call 000145A2 FUN_000145a2
 00013E9E: bset.b #0x6,(0xb0,A0)
 00013EA4: beq.w 0x00013eaa

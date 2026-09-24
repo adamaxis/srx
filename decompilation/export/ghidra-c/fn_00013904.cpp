@@ -121,7 +121,7 @@ LAB_00013e40:
   if ((in_A0[0x58] & 0x4000) != 0) {
     if (in_A0[6] != 0) {
       local_4 = 0x13e9a;
-      FUN_00013e9e();
+      reposition_entity_at_boundary();
       FUN_000145a2();
       return;
     }

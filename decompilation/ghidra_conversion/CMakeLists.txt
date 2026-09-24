@@ -1310,3 +1310,16 @@ target_link_libraries(shadowrun_ghidra_entity_action_candidate_test
     PRIVATE shadowrun_ghidra_entity_action_candidate)
 add_test(NAME shadowrun_ghidra_entity_action_candidate
          COMMAND shadowrun_ghidra_entity_action_candidate_test)
+
+add_library(shadowrun_ghidra_entity_boundary_reposition STATIC
+    src/entity_boundary_reposition_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_boundary_reposition PUBLIC include)
+
+add_executable(shadowrun_ghidra_entity_boundary_reposition_test
+    tests/entity_boundary_reposition_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_boundary_reposition_test
+    PRIVATE shadowrun_ghidra_entity_boundary_reposition)
+add_test(NAME shadowrun_ghidra_entity_boundary_reposition
+         COMMAND shadowrun_ghidra_entity_boundary_reposition_test)

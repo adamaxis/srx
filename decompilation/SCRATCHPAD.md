@@ -688,6 +688,11 @@ The `0x14446` scan is now `collect_entity_action_candidates`. It checks the
 three source slots for active bit 0, rejects status bits 6 and 4, requires a
 nonzero action word, and returns the surviving slot indices in scan order.
 
+The `0x13E9E` entity leaf is now `reposition_entity_at_boundary`: it rejects
+an already-set bit 6, publishes that one-shot bit, compares each camera
+midpoint against its 0xA00-offset origin, and places the entity by the exact
+signed 0x2580 step on each axis.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames

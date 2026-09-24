@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00013E9E
-// Name: FUN_00013e9e
+// Name: reposition_entity_at_boundary
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00013e9e(void)
+void reposition_entity_at_boundary(void)
 
 {
   byte bVar1;

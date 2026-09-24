@@ -1293,7 +1293,7 @@ caller	caller_name	instruction	text	target	callee	status
 00013D0C	FUN_00013d0c	00013DA0	bsr.w 0x00014d6a	00014D6A	select_entity_animation_table_row	resolved
 00013D0C	FUN_00013d0c	00013E12	jsr 0x00015dcc.l	00015DCC	FUN_00015dcc	resolved
 00013D0C	FUN_00013d0c	00013E34	bsr.w 0x000144e8	000144E8	FUN_000144e8	resolved
-00013E8C	FUN_00013e8c	00013E96	bsr.w 0x00013e9e	00013E9E	FUN_00013e9e	resolved
+00013E8C	FUN_00013e8c	00013E96	bsr.w 0x00013e9e	00013E9E	reposition_entity_at_boundary	resolved
 00013E8C	FUN_00013e8c	00013E9A	bra.w 0x000145a2	000145A2	FUN_000145a2	resolved
 00013F76	FUN_00013f76	00013F8A	jmp 0x0001dbaa.l	0001DBAA	schedule_world_activity_timeout	resolved
 00013F76	FUN_00013f76	00013FAC	jsr 0x00014d8e.l	00014D8E	FUN_00014d8e	resolved
