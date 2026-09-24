@@ -1414,3 +1414,16 @@ target_link_libraries(shadowrun_ghidra_mode_display_reset_test
     PRIVATE shadowrun_ghidra_mode_display_reset)
 add_test(NAME shadowrun_ghidra_mode_display_reset
          COMMAND shadowrun_ghidra_mode_display_reset_test)
+
+add_library(shadowrun_ghidra_menu_service_sequence STATIC
+    src/menu_service_sequence_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_menu_service_sequence PUBLIC include)
+
+add_executable(shadowrun_ghidra_menu_service_sequence_test
+    tests/menu_service_sequence_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_menu_service_sequence_test
+    PRIVATE shadowrun_ghidra_menu_service_sequence)
+add_test(NAME shadowrun_ghidra_menu_service_sequence
+         COMMAND shadowrun_ghidra_menu_service_sequence_test)

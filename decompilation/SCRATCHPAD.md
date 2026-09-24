@@ -943,6 +943,10 @@ the `0x2DE0`-byte compressed-resource request. The requests are typed host
 boundaries, so the native runtime can map them to named assets without
 carrying the original ROM pointers or VDP registers.
 
+The first menu service leaves are now named and typed. `0x110BC` and `0x110EC`
+are separate HUD-panel presentation boundaries, while `0x11136` preserves its
+seven clear/write passes and source return value through ordinary callbacks.
+
 The compact row-writer family is now typed as well. `0x1184` emits one masked
 row with optional `0x8F80`/`0x8F02` display-increment controls, `0x11C0`
 repeats a source row at `0x80`-byte destination strides, and `0x11F6`

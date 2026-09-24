@@ -342,3 +342,6 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x2C6C	field viewport preparation sequence	ghidra_conversion::prepare_field_viewports	shadowrun_ghidra_field_resource_sequence	partial		Typed scene preparation, optional mode branch, and normal/alternate viewport order
 0x33AA	field asset grid draw wrapper	ghidra_conversion::draw_field_asset_grid	shadowrun_ghidra_field_resource_sequence	partial		Typed single grid-draw presentation boundary
 0x10952	mode display buffer reset	ghidra_conversion::reset_mode_display_buffers	shadowrun_ghidra_mode_display_reset	partial		Typed clear/wait/upload reset order with transfer markers cleared
+0x110BC	menu HUD panel wrapper A	ghidra_conversion::draw_menu_hud_panel_variant_a	shadowrun_ghidra_menu_service_sequence	partial		Typed single HUD-panel submission boundary
+0x110EC	menu HUD panel wrapper B	ghidra_conversion::draw_menu_hud_panel_variant_b	shadowrun_ghidra_menu_service_sequence	partial		Typed single HUD-panel submission boundary
+0x11136	menu tile-row renderer	ghidra_conversion::render_menu_tile_rows	shadowrun_ghidra_menu_service_sequence	partial		Typed seven-pass row clear/write loop with source return value
