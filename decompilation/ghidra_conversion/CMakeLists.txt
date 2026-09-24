@@ -1546,3 +1546,16 @@ target_link_libraries(shadowrun_ghidra_world_effect_batch_test
     PRIVATE shadowrun_ghidra_world_effect_batch)
 add_test(NAME shadowrun_ghidra_world_effect_batch
          COMMAND shadowrun_ghidra_world_effect_batch_test)
+
+add_library(shadowrun_ghidra_audio_command_batch STATIC
+    src/audio_command_batch_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_audio_command_batch PUBLIC include)
+
+add_executable(shadowrun_ghidra_audio_command_batch_test
+    tests/audio_command_batch_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_audio_command_batch_test
+    PRIVATE shadowrun_ghidra_audio_command_batch)
+add_test(NAME shadowrun_ghidra_audio_command_batch
+         COMMAND shadowrun_ghidra_audio_command_batch_test)
