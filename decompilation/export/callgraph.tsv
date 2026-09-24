@@ -847,7 +847,7 @@ caller	caller_name	callee	callee_name	call_sites
 00013904	FUN_00013904	0000AF7C	prepare_entity_delayed_animation_primary	1
 00013904	FUN_00013904	0000AFAE	prepare_entity_delayed_animation_alternate	1
 00013904	FUN_00013904	00013D0C	FUN_00013d0c	1
-00013904	FUN_00013904	00013E8C	FUN_00013e8c	1
+00013904	FUN_00013904	00013E8C	service_entity_boundary_transition	1
 00013904	FUN_00013904	00013FFE	FUN_00013ffe	2
 00013904	FUN_00013904	00014492	FUN_00014492	1
 00013904	FUN_00013904	00014508	FUN_00014508	1
@@ -876,8 +876,8 @@ caller	caller_name	callee	callee_name	call_sites
 00013D0C	FUN_00013d0c	00014D6A	select_entity_animation_table_row	1
 00013D0C	FUN_00013d0c	00015D3C	measure_relative_heading_and_distance	1
 00013D0C	FUN_00013d0c	00015DCC	FUN_00015dcc	1
-00013E8C	FUN_00013e8c	00013E9E	reposition_entity_at_boundary	1
-00013E8C	FUN_00013e8c	000145A2	FUN_000145a2	1
+00013E8C	service_entity_boundary_transition	00013E9E	reposition_entity_at_boundary	1
+00013E8C	service_entity_boundary_transition	000145A2	FUN_000145a2	1
 00013F76	FUN_00013f76	00014D8E	FUN_00014d8e	1
 00013F76	FUN_00013f76	0001DBAA	schedule_world_activity_timeout	1
 00013F76	FUN_00013f76	0001E2E0	FUN_0001e2e0	1

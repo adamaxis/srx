@@ -7,7 +7,7 @@
 //   0x0000AF7C prepare_entity_delayed_animation_primary
 //   0x0000AFAE prepare_entity_delayed_animation_alternate
 //   0x00013D0C FUN_00013d0c
-//   0x00013E8C FUN_00013e8c
+//   0x00013E8C service_entity_boundary_transition
 //   0x00013FFE FUN_00013ffe
 //   0x00014492 FUN_00014492
 //   0x00014508 FUN_00014508
@@ -111,7 +111,7 @@ LAB_00013e40:
     return;
   }
   if (((in_A0[0x4f] & 0x2000) != 0) && (_DAT_00ffdf84 != 0)) {
-    FUN_00013e8c();
+    service_entity_boundary_transition();
     return;
   }
   if ((in_A0[6] == 0) && ((in_A0[0x4f] & 0x400) != 0)) {

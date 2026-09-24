@@ -1258,7 +1258,7 @@ caller	caller_name	instruction	text	target	callee	status
 000138B8	FUN_000138b8	000138EE	bsr.w 0x00014508	00014508	FUN_00014508	resolved
 000138B8	FUN_000138b8	000138FC	bsr.w 0x00013a92	00013A92	FUN_00013a92	resolved
 00013904	FUN_00013904	00013934	bra.w 0x00014508	00014508	FUN_00014508	resolved
-00013904	FUN_00013904	0001395E	bra.w 0x00013e8c	00013E8C	FUN_00013e8c	resolved
+00013904	FUN_00013904	0001395E	bra.w 0x00013e8c	00013E8C	service_entity_boundary_transition	resolved
 00013904	FUN_00013904	00013974	jmp 0x0001e514.l	0001E514	FUN_0001e514	resolved
 00013904	FUN_00013904	000139C8	jsr 0x0001dbaa.l	0001DBAA	schedule_world_activity_timeout	resolved
 00013904	FUN_00013904	000139E0	bsr.w 0x00013ffe	00013FFE	FUN_00013ffe	resolved
@@ -1293,8 +1293,8 @@ caller	caller_name	instruction	text	target	callee	status
 00013D0C	FUN_00013d0c	00013DA0	bsr.w 0x00014d6a	00014D6A	select_entity_animation_table_row	resolved
 00013D0C	FUN_00013d0c	00013E12	jsr 0x00015dcc.l	00015DCC	FUN_00015dcc	resolved
 00013D0C	FUN_00013d0c	00013E34	bsr.w 0x000144e8	000144E8	FUN_000144e8	resolved
-00013E8C	FUN_00013e8c	00013E96	bsr.w 0x00013e9e	00013E9E	reposition_entity_at_boundary	resolved
-00013E8C	FUN_00013e8c	00013E9A	bra.w 0x000145a2	000145A2	FUN_000145a2	resolved
+00013E8C	service_entity_boundary_transition	00013E96	bsr.w 0x00013e9e	00013E9E	reposition_entity_at_boundary	resolved
+00013E8C	service_entity_boundary_transition	00013E9A	bra.w 0x000145a2	000145A2	FUN_000145a2	resolved
 00013F76	FUN_00013f76	00013F8A	jmp 0x0001dbaa.l	0001DBAA	schedule_world_activity_timeout	resolved
 00013F76	FUN_00013f76	00013FAC	jsr 0x00014d8e.l	00014D8E	FUN_00014d8e	resolved
 00013F76	FUN_00013f76	00013FF0	jsr 0x0001e2e0.l	0001E2E0	FUN_0001e2e0	resolved

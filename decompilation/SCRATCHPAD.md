@@ -702,6 +702,11 @@ below `0x1E0`, it preserves only the source high flag bit, sets bit 2, clears
 the secondary state byte, and installs continuation `0xB45C`; the boundary is
 tested as a no-op.
 
+The `0x13E8C` coordinator now uses typed callbacks for its unresolved linked
+record follow-up. It preserves the source order of reposition then service;
+the no-link branch installs continuation `0xB45C` only for timer values through
+`0x3C`.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames

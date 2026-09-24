@@ -11058,7 +11058,7 @@
 00013950: beq.w 0x00013962
 00013954: tst.w (0x00ffdf84).l
 0001395A: beq.w 0x00013962
-0001395E: bra.w 0x00013e8c ; call 00013E8C FUN_00013e8c
+0001395E: bra.w 0x00013e8c ; call 00013E8C service_entity_boundary_transition
 00013962: tst.w (0xc,A0)
 00013966: bne.w 0x0001397a
 0001396A: btst.b #0x2,(0x9e,A0)

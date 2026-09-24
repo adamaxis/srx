@@ -1336,3 +1336,16 @@ target_link_libraries(shadowrun_ghidra_entity_close_range_test
     PRIVATE shadowrun_ghidra_entity_close_range)
 add_test(NAME shadowrun_ghidra_entity_close_range
          COMMAND shadowrun_ghidra_entity_close_range_test)
+
+add_library(shadowrun_ghidra_entity_boundary_transition STATIC
+    src/entity_boundary_transition_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_boundary_transition PUBLIC include)
+
+add_executable(shadowrun_ghidra_entity_boundary_transition_test
+    tests/entity_boundary_transition_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_boundary_transition_test
+    PRIVATE shadowrun_ghidra_entity_boundary_transition)
+add_test(NAME shadowrun_ghidra_entity_boundary_transition
+         COMMAND shadowrun_ghidra_entity_boundary_transition_test)
