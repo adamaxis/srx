@@ -11805,7 +11805,7 @@
 0001469A: move.w (0x4,A0),D1w
 0001469E: move.w (0x96,A0),D2w
 000146A2: move.w (0x98,A0),D3w
-000146A6: bsr.w 0x000148d2 ; call 000148D2 FUN_000148d2
+000146A6: bsr.w 0x000148d2 ; call 000148D2 choose_dominant_axis_directions
 000146AA: lsr.w #0x4,D2w
 000146AC: lsr.w #0x4,D3w
 000146AE: lsl.w #0x1,D3w

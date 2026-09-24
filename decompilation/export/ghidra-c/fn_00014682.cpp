@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00014854 FUN_00014854
 //   0x000148AA FUN_000148aa
-//   0x000148D2 FUN_000148d2
+//   0x000148D2 choose_dominant_axis_directions
 //   0x000149C0 FUN_000149c0
 //   0x00014AF4 FUN_00014af4
 
@@ -30,7 +30,7 @@ void FUN_00014682(void)
   if ((*(byte *)(in_A0 + 0xb0) & 8) != 0) {
     return;
   }
-  FUN_000148d2();
+  choose_dominant_axis_directions();
   if ((&DAT_00ff1700)[unaff_D5w] != '\0') {
     *(byte *)(extraout_A0 + 0xb0) = *(byte *)(extraout_A0 + 0xb0) & 0xfd;
     *(byte *)(extraout_A0 + 0xb0) = *(byte *)(extraout_A0 + 0xb0) & 0xf7;

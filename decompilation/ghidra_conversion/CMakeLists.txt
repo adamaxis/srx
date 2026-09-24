@@ -462,3 +462,16 @@ target_link_libraries(shadowrun_ghidra_movement_metric_test
     PRIVATE shadowrun_ghidra_movement_metric)
 add_test(NAME shadowrun_ghidra_movement_metric
          COMMAND shadowrun_ghidra_movement_metric_test)
+
+add_library(shadowrun_ghidra_movement_direction STATIC
+    src/movement_direction_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_movement_direction PUBLIC include)
+
+add_executable(shadowrun_ghidra_movement_direction_test
+    tests/movement_direction_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_movement_direction_test
+    PRIVATE shadowrun_ghidra_movement_direction)
+add_test(NAME shadowrun_ghidra_movement_direction
+         COMMAND shadowrun_ghidra_movement_direction_test)

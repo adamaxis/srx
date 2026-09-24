@@ -386,7 +386,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00014800	FUN_00014800	84	unknown	ok	ghidra-c/fn_00014800.cpp
 00014854	FUN_00014854	86	unknown	ok	ghidra-c/fn_00014854.cpp
 000148AA	FUN_000148aa	32	unknown	ok	ghidra-c/fn_000148AA.cpp
-000148D2	FUN_000148d2	48	unknown	ok	ghidra-c/fn_000148D2.cpp
+000148D2	choose_dominant_axis_directions	48	unknown	ok	ghidra-c/fn_000148D2.cpp
 00014902	FUN_00014902	18	unknown	ok	ghidra-c/fn_00014902.cpp
 00014914	FUN_00014914	56	unknown	ok	ghidra-c/fn_00014914.cpp
 0001494C	FUN_0001494c	116	unknown	ok	ghidra-c/fn_0001494C.cpp

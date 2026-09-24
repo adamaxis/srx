@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000148D2
-// Name: FUN_000148d2
+// Name: choose_dominant_axis_directions
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-undefined4 FUN_000148d2(void)
+undefined4 choose_dominant_axis_directions(void)
 
 {
   ushort in_D0w;
