@@ -33,8 +33,8 @@
 //   0x0000D82A FUN_0000d82a
 //   0x0000E660 FUN_0000e660
 //   0x0000FDFE FUN_0000fdfe
-//   0x0000FEBE FUN_0000febe
-//   0x0000FF06 FUN_0000ff06
+//   0x0000FEBE move_selection_column
+//   0x0000FF06 move_selection_row
 //   0x0000FF5A FUN_0000ff5a
 //   0x00010276 FUN_00010276
 //   0x000106DA FUN_000106da
@@ -534,12 +534,12 @@ LAB_0000d4a0:
               latch_controller_events();
               sample_controller_input();
               if (((DAT_00ffdd22._0_1_ & 4) == 0) && ((DAT_00ffdd22._0_1_ & 8) == 0)) break;
-              FUN_0000febe();
+              move_selection_column();
               FUN_00010276();
               DAT_00fff0da = 0;
             }
             if (((DAT_00ffdd22._0_1_ & 1) == 0) && ((DAT_00ffdd22._0_1_ & 2) == 0)) break;
-            FUN_0000ff06();
+            move_selection_row();
             FUN_00010276();
             DAT_00fff0da = 0;
           }

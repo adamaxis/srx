@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000FF06
-// Name: FUN_0000ff06
+// Name: move_selection_row
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0000ff06(void)
+void move_selection_row(void)
 
 {
   char in_D0b;

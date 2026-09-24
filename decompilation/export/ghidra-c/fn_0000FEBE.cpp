@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000FEBE
-// Name: FUN_0000febe
+// Name: move_selection_column
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0000febe(void)
+void move_selection_column(void)
 
 {
   char in_D0b;

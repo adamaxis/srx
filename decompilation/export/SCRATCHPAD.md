@@ -101,6 +101,8 @@ still has unresolved downstream calls or hardware presentation work.
 | `0xEDFA` | `decode_terrain_tile_window` | Expands the packed terrain tile index into its horizontal origin, row origin, and 32-unit row end. | `ghidra_conversion::decode_terrain_tile_window()` | partial |
 | `0xEE10` | `rebuild_terrain_collision_map` | Clears the bounded 64x64 terrain map, rasterizes inclusive 32-unit rectangle records, and invokes the explicit post-processing boundary. | `ghidra_conversion::rebuild_terrain_collision_map()` | partial |
 | `0xEE86` | `replace_nth_terrain_marker` | Replaces the requested zero-based occurrence of a terrain marker, matching the source's first-marker behavior for ordinal zero. | `ghidra_conversion::replace_nth_terrain_marker()` | partial |
+| `0xFEBE` | `move_selection_column` | Moves the active column by a signed step and wraps within the source row's available range. | `ghidra_conversion::move_selection_column()` | partial |
+| `0xFF06` | `move_selection_row` | Changes the two-row selection mode only when at least seven entries exist and clears it when the active column is unavailable. | `ghidra_conversion::move_selection_row()` | partial |
 | `0xC134` | `normalize_source_text_line` | Maps source high-bit glyph markers, stops on the line terminator range, and pads the remaining line width. | `ghidra_conversion::normalize_source_text_line()` | partial |
 | `0x195C` | `sample_controller_input` | Samples controller words, derives newly asserted bits, and updates decoded directional state. | `ghidra_conversion::derive_controller_sample()` | partial |
 | `0x19F2` | `read_controller_port` | Selects the controller port, reads both phases, combines the six-button byte, and restores the Z80 bus. | Windows input adapter boundary | pending |

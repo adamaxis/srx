@@ -7550,7 +7550,7 @@
 0000FD14: btst.b #0xb,(0x00ffdd22).l
 0000FD1C: beq.w 0x0000fd32
 0000FD20: moveq #0x1,D0
-0000FD22: bsr.w 0x0000febe ; call 0000FEBE FUN_0000febe
+0000FD22: bsr.w 0x0000febe ; call 0000FEBE move_selection_column
 0000FD26: bsr.w 0x00010276 ; call 00010276 FUN_00010276
 0000FD2A: clr.b (0x00fff0da).l
 0000FD30: bra.b 0x0000fcea
@@ -7561,7 +7561,7 @@
 0000FD44: btst.b #0x9,(0x00ffdd22).l
 0000FD4C: beq.w 0x0000fd62
 0000FD50: moveq #0x1,D0
-0000FD52: bsr.w 0x0000ff06 ; call 0000FF06 FUN_0000ff06
+0000FD52: bsr.w 0x0000ff06 ; call 0000FF06 move_selection_row
 0000FD56: bsr.w 0x00010276 ; call 00010276 FUN_00010276
 0000FD5A: clr.b (0x00fff0da).l
 0000FD60: bra.b 0x0000fcea

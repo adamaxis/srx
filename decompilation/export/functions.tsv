@@ -256,8 +256,8 @@ entry	name	size	callingConvention	decompileStatus	file
 0000F5F4	FUN_0000f5f4	232	unknown	ok	ghidra-c/fn_0000F5F4.cpp
 0000FDAE	FUN_0000fdae	80	unknown	ok	ghidra-c/fn_0000FDAE.cpp
 0000FDFE	FUN_0000fdfe	192	unknown	ok	ghidra-c/fn_0000FDFE.cpp
-0000FEBE	FUN_0000febe	72	unknown	ok	ghidra-c/fn_0000FEBE.cpp
-0000FF06	FUN_0000ff06	84	unknown	ok	ghidra-c/fn_0000FF06.cpp
+0000FEBE	move_selection_column	72	unknown	ok	ghidra-c/fn_0000FEBE.cpp
+0000FF06	move_selection_row	84	unknown	ok	ghidra-c/fn_0000FF06.cpp
 0000FF5A	FUN_0000ff5a	188	unknown	ok	ghidra-c/fn_0000FF5A.cpp
 00010016	FUN_00010016	146	unknown	ok	ghidra-c/fn_00010016.cpp
 000100A8	FUN_000100a8	174	unknown	ok	ghidra-c/fn_000100A8.cpp

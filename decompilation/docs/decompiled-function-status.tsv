@@ -63,6 +63,8 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0xEDFA	terrain tile window decode	ghidra_conversion::decode_terrain_tile_window	shadowrun_native_port	partial		Typed packed-index expansion into horizontal and vertical 32-unit bounds
 0xEE10	terrain collision map rebuild	ghidra_conversion::rebuild_terrain_collision_map	shadowrun_native_port	partial		Typed 64x64 map clear, bounded rectangle rasterization, and post-process boundary
 0xEE86	terrain marker replacement	ghidra_conversion::replace_nth_terrain_marker	shadowrun_native_port	partial		Typed zero-based marker occurrence replacement
+0xFEBE	selection column movement	ghidra_conversion::move_selection_column	shadowrun_native_port	partial		Typed row-aware column wrapping
+0xFF06	selection row movement	ghidra_conversion::move_selection_row	shadowrun_native_port	partial		Typed two-row availability and column-validity reset
 0xC134	source text line normalization	ghidra_conversion::normalize_source_text_line	shadowrun_native_port	partial		Typed high-bit glyph mapping, terminator detection, and bounded space padding
 0x195C	controller sampling	ghidra_conversion::derive_controller_sample	shadowrun_boot_sequence	partial		Readable edge conversion is isolated from runtime and emulator
 0x19F2	controller port read	Windows input adapter	shadowrun_native_port	pending		Genesis port phases documented; host device mapping remains separate
