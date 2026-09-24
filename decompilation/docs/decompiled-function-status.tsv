@@ -365,3 +365,4 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x12E9E	entity action menu service	ghidra_conversion::service_entity_action_menu	shadowrun_ghidra_entity_action_sequence	partial		Typed action read followed by menu/render service
 0x12F50	entity action menu renderer	ghidra_conversion::render_entity_action_menu	shadowrun_ghidra_entity_action_sequence	partial		Typed menu update, text render, and grid submission order
 0x12FA4	entity action menu advance	ghidra_conversion::advance_entity_action_menu	shadowrun_ghidra_entity_action_sequence	partial		Typed text/service order and greater-than-one action grid branch
+0x13466	entity action state setter	ghidra_conversion::set_entity_action_state	shadowrun_ghidra_entity_action_state	partial		Typed action/state publication, reset-marker handling, and asset refresh

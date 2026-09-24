@@ -1007,6 +1007,10 @@ submission order in the same isolated module.
 The `0x12FA4` action-menu advance now renders and services every pass, while
 retaining the source's grid write only when more than one action remains.
 
+The action-state setter at `0x13466` is now native-shaped: it publishes typed
+action/state fields, clears only the source branch's reset markers, and keeps
+the action-service and asset-refresh boundaries explicit.
+
 The compact row-writer family is now typed as well. `0x1184` emits one masked
 row with optional `0x8F80`/`0x8F02` display-increment controls, `0x11C0`
 repeats a source row at `0x80`-byte destination strides, and `0x11F6`
