@@ -984,6 +984,9 @@ layout update, and text render in source order through typed host callbacks.
 The next menu helper pass begins at `0x12C1E`, represented as a named grid
 preparation boundary; its sibling wrappers will follow the same typed path.
 
+`0x12C36` is now the independently named second menu-grid preparation
+boundary.
+
 The compact row-writer family is now typed as well. `0x1184` emits one masked
 row with optional `0x8F80`/`0x8F02` display-increment controls, `0x11C0`
 repeats a source row at `0x80`-byte destination strides, and `0x11F6`

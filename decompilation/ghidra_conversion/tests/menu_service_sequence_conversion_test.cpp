@@ -146,5 +146,11 @@ int main() {
         return 17;
     }
 
+    prepare_menu_grid_variant_b(
+        [&panel_events] { panel_events.push_back(27); });
+    if (panel_events != std::vector<int>{26, 27}) {
+        return 18;
+    }
+
     return 0;
 }

@@ -114,4 +114,7 @@ void refresh_menu_panel(MenuPanelRefreshState& state,
 // ROM 0x12C1E: prepare one menu grid variant.
 void prepare_menu_grid_variant_a(const std::function<void()>& prepare_grid);
 
+// ROM 0x12C36: prepare the second menu grid variant.
+void prepare_menu_grid_variant_b(const std::function<void()>& prepare_grid);
+
 } // namespace shadowrun::ghidra_conversion

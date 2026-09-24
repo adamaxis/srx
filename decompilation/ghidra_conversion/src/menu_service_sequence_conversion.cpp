@@ -201,4 +201,11 @@ void prepare_menu_grid_variant_a(
     }
 }
 
+void prepare_menu_grid_variant_b(
+    const std::function<void()>& prepare_grid) {
+    if (prepare_grid) {
+        prepare_grid();
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion
