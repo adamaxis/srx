@@ -3,15 +3,15 @@
 // Name: FUN_000530a0
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00052DC2 FUN_00052dc2
-//   0x00052DD6 FUN_00052dd6
+//   0x00052DC2 begin_controller_bus_access
+//   0x00052DD6 end_controller_bus_access
 
 
 void FUN_000530a0(void)
 
 {
-  FUN_00052dc2();
-  FUN_00052dd6();
+  begin_controller_bus_access();
+  end_controller_bus_access();
   return;
 }
 

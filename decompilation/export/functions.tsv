@@ -684,8 +684,8 @@ entry	name	size	callingConvention	decompileStatus	file
 00026A00	FUN_00026a00	510	unknown	ok	ghidra-c/fn_00026A00.cpp
 00026BFE	FUN_00026bfe	40	unknown	ok	ghidra-c/fn_00026BFE.cpp
 00026C26	FUN_00026c26	56	unknown	ok	ghidra-c/fn_00026C26.cpp
-00052DC2	FUN_00052dc2	20	unknown	ok	ghidra-c/fn_00052DC2.cpp
-00052DD6	FUN_00052dd6	10	unknown	ok	ghidra-c/fn_00052DD6.cpp
+00052DC2	begin_controller_bus_access	20	unknown	ok	ghidra-c/fn_00052DC2.cpp
+00052DD6	end_controller_bus_access	10	unknown	ok	ghidra-c/fn_00052DD6.cpp
 00052DE0	FUN_00052de0	70	unknown	ok	ghidra-c/fn_00052DE0.cpp
 00052E26	FUN_00052e26	40	unknown	ok	ghidra-c/fn_00052E26.cpp
 00052E4E	FUN_00052e4e	54	unknown	ok	ghidra-c/fn_00052E4E.cpp

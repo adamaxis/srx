@@ -3,7 +3,7 @@
 // Name: FUN_00052de0
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00052DC2 FUN_00052dc2
+//   0x00052DC2 begin_controller_bus_access
 
 
 void FUN_00052de0(void)
@@ -15,7 +15,7 @@ void FUN_00052de0(void)
   undefined1 *puVar4;
   
   IO_Z80RES = 0x100;
-  FUN_00052dc2();
+  begin_controller_bus_access();
   sVar1 = 0x1885;
   puVar3 = &DAT_00026c5e;
   puVar2 = &DAT_00a00000;

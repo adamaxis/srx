@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00052DC2
-// Name: FUN_00052dc2
+// Name: begin_controller_bus_access
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00052dc2(void)
+void begin_controller_bus_access(void)
 
 {
   byte bVar1;

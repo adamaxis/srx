@@ -617,3 +617,16 @@ target_link_libraries(shadowrun_ghidra_timing_test
     PRIVATE shadowrun_ghidra_timing)
 add_test(NAME shadowrun_ghidra_timing
          COMMAND shadowrun_ghidra_timing_test)
+
+add_library(shadowrun_ghidra_controller_port STATIC
+    src/controller_port_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_controller_port PUBLIC include)
+
+add_executable(shadowrun_ghidra_controller_port_test
+    tests/controller_port_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_controller_port_test
+    PRIVATE shadowrun_ghidra_controller_port)
+add_test(NAME shadowrun_ghidra_controller_port
+         COMMAND shadowrun_ghidra_controller_port_test)

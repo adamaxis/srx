@@ -125,8 +125,8 @@ caller	caller_name	instruction	text	target	callee	status
 00001872	FUN_00001872	000018F8	jsr 0x00006148.l	00006148	FUN_00006148	resolved
 00001872	FUN_00001872	00001908	jsr 0x000061f4.l	000061F4	FUN_000061f4	resolved
 0000195C	sample_controller_input	0000195C	bsr.w 0x000019f2	000019F2	read_controller_port	resolved
-000019F2	read_controller_port	000019F2	jsr 0x00052dc2.l	00052DC2	FUN_00052dc2	resolved
-000019F2	read_controller_port	00001A40	jsr 0x00052dd6.l	00052DD6	FUN_00052dd6	resolved
+000019F2	read_controller_port	000019F2	jsr 0x00052dc2.l	00052DC2	begin_controller_bus_access	resolved
+000019F2	read_controller_port	00001A40	jsr 0x00052dd6.l	00052DD6	end_controller_bus_access	resolved
 00001A9E	run_title_loop	00001AA4	bsr.w 0x00001d7a	00001D7A	setup_title_state	resolved
 00001A9E	run_title_loop	00001ABA	jsr 0x0000195c.l	0000195C	sample_controller_input	resolved
 00001A9E	run_title_loop	00001B02	jsr 0x00000bd2.l	00000BD2	wait_for_vblank	resolved
@@ -2200,7 +2200,7 @@ caller	caller_name	instruction	text	target	callee	status
 00026A00	FUN_00026a00	00026BF0	jsr 0x0000195c.l	0000195C	sample_controller_input	resolved
 00026BFE	FUN_00026bfe	00026C0E	jsr 0x00000e9c.l	00000E9C	FUN_00000e9c	resolved
 00026C26	FUN_00026c26	00026C3E	jsr 0x00000e9c.l	00000E9C	FUN_00000e9c	resolved
-00052DE0	FUN_00052de0	00052DF0	jsr 0x00052dc2.l	00052DC2	FUN_00052dc2	resolved
+00052DE0	FUN_00052de0	00052DF0	jsr 0x00052dc2.l	00052DC2	begin_controller_bus_access	resolved
 00052EB0	FUN_00052eb0	00052EB0	jsr 0x00052e4e.l	00052E4E	FUN_00052e4e	resolved
 00052EB0	FUN_00052eb0	00052EBA	jsr 0x00052ea2.l	00052EA2	FUN_00052ea2	resolved
 00052EB0	FUN_00052eb0	00052EC0	jmp 0x00052e84.l	00052E84	FUN_00052e84	resolved
@@ -2232,8 +2232,8 @@ caller	caller_name	instruction	text	target	callee	status
 00052FD2	FUN_00052fd2	00052FEC	jmp 0x00052e84.l	00052E84	FUN_00052e84	resolved
 00053094	FUN_00053094	00053094	jsr 0x00052e4e.l	00052E4E	FUN_00052e4e	resolved
 00053094	FUN_00053094	0005309C	bra.w 0x00052fd2	00052FD2	FUN_00052fd2	resolved
-000530A0	FUN_000530a0	000530A6	jsr 0x00052dc2.l	00052DC2	FUN_00052dc2	resolved
-000530A0	FUN_000530a0	000530BC	jsr 0x00052dd6.l	00052DD6	FUN_00052dd6	resolved
+000530A0	FUN_000530a0	000530A6	jsr 0x00052dc2.l	00052DC2	begin_controller_bus_access	resolved
+000530A0	FUN_000530a0	000530BC	jsr 0x00052dd6.l	00052DD6	end_controller_bus_access	resolved
 000530EA	FUN_000530ea	000530F4	bsr.w 0x00053112	00053112	FUN_00053112	resolved
 000530EA	FUN_000530ea	00053104	jsr 0x00052f3c.l	00052F3C	FUN_00052f3c	resolved
 00053112	FUN_00053112	00053118	jsr 0x00052f5a.l	00052F5A	FUN_00052f5a	resolved

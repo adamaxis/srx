@@ -132,7 +132,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x15D3C	relative heading and distance	ghidra_conversion::measure_relative_heading_and_distance	shadowrun_native_port	partial		Typed position delta wrapper for heading and half-major-axis distance
 0x15D4E	heading and distance measurement	ghidra_conversion::measure_heading_and_distance	shadowrun_native_port	partial		Typed extraction of the source heading correction table and half-major-axis distance
 0x195C	controller sampling	ghidra_conversion::derive_controller_sample	shadowrun_boot_sequence	partial		Readable edge conversion is isolated from runtime and emulator
-0x19F2	controller port read	Windows input adapter	shadowrun_native_port	pending		Genesis port phases documented; host device mapping remains separate
+0x19F2	controller port read	ghidra_conversion::read_controller_port	shadowrun_native_port	partial		Typed two-phase six-button packing and explicit host bus/input boundaries; Windows binding remains separate
 0x1BAC	title input sequence validation	ghidra_conversion::finalize_title_input_sequence	shadowrun_menu_system	partial		Seven-byte match and mismatch reset converted without the FF sentinel
 0x1BEA	title input edge history	ghidra_conversion::record_title_input_edge	shadowrun_menu_system	partial		Bounded eight-entry history is isolated from runtime and emulator
 0x1A9E	title loop	ghidra_conversion::advance_title_prompt_schedule	shadowrun_menu_system	partial		Prompt cadence converted; title draw calls remain explicit boundaries

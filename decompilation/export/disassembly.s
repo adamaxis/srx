@@ -1320,7 +1320,7 @@
 0000198E: move.w (0x0,A0,D0w*0x1),(0x00ffdd04).l
 00001996: bra.w 0x000019d0
 000019D0: rts
-000019F2: jsr 0x00052dc2.l ; call 00052DC2 FUN_00052dc2
+000019F2: jsr 0x00052dc2.l ; call 00052DC2 begin_controller_bus_access
 000019F8: move.b #0x40,(0x00a10009).l
 00001A00: move.b #0x0,(0x00a10003).l
 00001A08: move.w #0xa,D1w
@@ -1336,7 +1336,7 @@
 00001A36: or.b D1b,D0b
 00001A38: not.b D0b
 00001A3A: move.b D0b,(0x00ffef0e).l
-00001A40: jsr 0x00052dd6.l ; call 00052DD6 FUN_00052dd6
+00001A40: jsr 0x00052dd6.l ; call 00052DD6 end_controller_bus_access
 00001A46: rts
 00001A9E: clr.b (0x00fff101).l
 00001AA4: bsr.w 0x00001d7a ; call 00001D7A setup_title_state
@@ -22807,7 +22807,7 @@
 00052DE2: move SR,-(SP) ; data Stack[-0x6]
 00052DE4: ori #0x700,SR
 00052DE8: move.w #0x100,(0x00a11200).l
-00052DF0: jsr 0x00052dc2.l ; call 00052DC2 FUN_00052dc2
+00052DF0: jsr 0x00052dc2.l ; call 00052DC2 begin_controller_bus_access
 00052DF6: lea (0x26c5e).l,A0 ; data 00026c5e
 00052DFC: lea (0x284e4).l,A1 ; data 000284e4
 00052E02: move.l A1,D0
@@ -22917,12 +22917,12 @@
 0005309C: bra.w 0x00052fd2 ; call 00052FD2 FUN_00052fd2
 000530A0: move SR,-(SP) ; data Stack[-0x2]
 000530A2: ori #0x700,SR
-000530A6: jsr 0x00052dc2.l ; call 00052DC2 FUN_00052dc2
+000530A6: jsr 0x00052dc2.l ; call 00052DC2 begin_controller_bus_access
 000530AC: moveq #0x0,D0
 000530AE: move.b (0x9,SP),D0b
 000530B2: lea (0xa01b22).l,A0 ; data 00a01b22
 000530B8: move.b (0x0,A0,D0w*0x1),D0b ; data 00a01b22
-000530BC: jsr 0x00052dd6.l ; call 00052DD6 FUN_00052dd6
+000530BC: jsr 0x00052dd6.l ; call 00052DD6 end_controller_bus_access
 000530C2: move (SP)+,SR
 000530C4: rts
 000530D2: tst.w (0x00fffc0a).l
