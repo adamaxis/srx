@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -15,5 +16,8 @@ struct EntityCloseRangeState {
 bool apply_close_range_entity_state(
     EntityCloseRangeState& state,
     std::uint16_t distance);
+
+// ROM 0x144E8: enter the shared close-range state service boundary.
+void apply_entity_close_range_state(const std::function<void()>& apply_state);
 
 } // namespace shadowrun::ghidra_conversion

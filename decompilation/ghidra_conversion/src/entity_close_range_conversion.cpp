@@ -16,4 +16,11 @@ bool apply_close_range_entity_state(
     return true;
 }
 
+void apply_entity_close_range_state(
+    const std::function<void()>& apply_state) {
+    if (apply_state) {
+        apply_state();
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion

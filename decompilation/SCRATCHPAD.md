@@ -1025,6 +1025,9 @@ The action-record collector at `0x13C74` now filters the four retained action
 codes, publishes code 11's side value, and marks the host table terminated
 without exposing the original byte-pointer layout.
 
+The `0x144E8` close-range wrapper now points to the typed close-range service
+boundary rather than reproducing the source call frame.
+
 The compact row-writer family is now typed as well. `0x1184` emits one masked
 row with optional `0x8F80`/`0x8F02` display-increment controls, `0x11C0`
 repeats a source row at `0x80`-byte destination strides, and `0x11F6`

@@ -20,5 +20,11 @@ int main() {
         return 2;
     }
 
+    bool called = false;
+    apply_entity_close_range_state([&called] { called = true; });
+    if (!called) {
+        return 3;
+    }
+
     return 0;
 }
