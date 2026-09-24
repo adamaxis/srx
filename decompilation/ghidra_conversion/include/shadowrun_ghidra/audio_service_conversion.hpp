@@ -32,4 +32,22 @@ bool service_audio_command_queue(const AudioServiceCallbacks& callbacks);
 bool service_audio_if_enabled(bool audio_enabled,
                               const AudioServiceCallbacks& callbacks);
 
+struct EntityAudioState {
+    std::uint8_t flags = 0;
+    std::uint8_t behavior_variant = 0;
+    std::uint8_t update_marker = 0;
+    std::uint16_t behavior_timer = 0;
+    std::uint16_t current_x = 0;
+    std::uint16_t current_y = 0;
+    std::uint16_t destination_x = 0;
+    std::uint16_t destination_y = 0;
+    std::uint16_t effect_word = 0;
+};
+
+// ROM 0x15354: arm an entity's audio/action record and invoke the audio
+// service boundary after copying its current position.
+void activate_entity_audio_state(
+    EntityAudioState& state,
+    const std::function<void()>& service_audio);
+
 } // namespace shadowrun::ghidra_conversion

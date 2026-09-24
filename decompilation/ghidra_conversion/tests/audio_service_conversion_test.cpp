@@ -44,5 +44,17 @@ int main() {
         return 3;
     }
 
+    EntityAudioState entity{0x01U, 0x0EU, 9U, 0U, 0x1234U, 0x5678U,
+                            0U, 0U, 0xFFFFU};
+    bool serviced = false;
+    activate_entity_audio_state(entity,
+                                [&serviced] { serviced = true; });
+    if (entity.flags != 0x81U || entity.behavior_timer != 0x10U ||
+        entity.update_marker != 0U || entity.destination_x != 0x1234U ||
+        entity.destination_y != 0x5678U || entity.effect_word != 0U ||
+        !serviced) {
+        return 4;
+    }
+
     return 0;
 }

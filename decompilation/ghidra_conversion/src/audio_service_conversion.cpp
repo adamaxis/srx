@@ -29,4 +29,19 @@ bool service_audio_if_enabled(
     return audio_enabled && service_audio_command_queue(callbacks);
 }
 
+void activate_entity_audio_state(
+    EntityAudioState& state,
+    const std::function<void()>& service_audio) {
+    state.flags = static_cast<std::uint8_t>(state.flags | 0x80U);
+    state.behavior_timer =
+        state.behavior_variant == 0x0EU ? 0x0010U : 0x000CU;
+    state.update_marker = 0U;
+    state.destination_x = state.current_x;
+    state.destination_y = state.current_y;
+    state.effect_word = 0U;
+    if (service_audio) {
+        service_audio();
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion
