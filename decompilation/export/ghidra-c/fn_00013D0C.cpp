@@ -6,7 +6,7 @@
 //   0x00013A40 FUN_00013a40
 //   0x000144E8 FUN_000144e8
 //   0x000145A2 FUN_000145a2
-//   0x00014D6A FUN_00014d6a
+//   0x00014D6A select_entity_animation_table_row
 //   0x00015D3C measure_relative_heading_and_distance
 //   0x00015DCC FUN_00015dcc
 
@@ -75,7 +75,7 @@ ushort * FUN_00013d0c(void)
   if ((extraout_A0[8] & 0x800) == 0) {
     if (*(char *)((int)extraout_A0 + 0xb5) != '\0') {
       *(char *)((int)extraout_A0 + 0xb5) = *(char *)((int)extraout_A0 + 0xb5) + -1;
-      FUN_00014d6a();
+      select_entity_animation_table_row();
       bVar1 = *(byte *)(unaff_A2 + 0x27);
       puVar10 = &DAT_00013e7c;
       in_A0 = extraout_A0_00;

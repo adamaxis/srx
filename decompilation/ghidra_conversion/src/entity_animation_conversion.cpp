@@ -16,4 +16,14 @@ void advance_entity_animation_accumulator(EntityAnimationState& state) {
     state.accumulator = static_cast<std::int16_t>(accumulated);
 }
 
+EntityAnimationTableSelection select_entity_animation_table_row(
+    const std::int8_t entity_variant,
+    const std::uint8_t animation_id) {
+    const auto zero_based_id = static_cast<std::uint16_t>(animation_id) - 1U;
+    return EntityAnimationTableSelection{
+        entity_variant < 0 ? EntityAnimationTableBank::Alternate
+                           : EntityAnimationTableBank::Standard,
+        static_cast<std::uint16_t>(zero_based_id * 0x30U)};
+}
+
 } // namespace shadowrun::ghidra_conversion

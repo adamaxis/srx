@@ -126,6 +126,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x000149C0L, "advance_obstruction_route_queue");
         names.put(0x00014C7CL, "resolve_entity_target_motion");
         names.put(0x00014D58L, "measure_entity_target_heading_and_distance");
+        names.put(0x00014D6AL, "select_entity_animation_table_row");
         names.put(0x00014F26L, "probe_entity_world_position");
         names.put(0x00015118L, "initialize_entity_behavior_record");
         names.put(0x00015ABAL, "find_colliding_entity");

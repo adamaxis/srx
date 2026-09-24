@@ -34,5 +34,20 @@ int main() {
         return 3;
     }
 
+    const auto standard = select_entity_animation_table_row(0, 3U);
+    if (!expect(standard.bank == EntityAnimationTableBank::Standard &&
+                standard.row_byte_offset == 0x60U)) {
+        return 4;
+    }
+    const auto alternate = select_entity_animation_table_row(-1, 1U);
+    if (!expect(alternate.bank == EntityAnimationTableBank::Alternate &&
+                alternate.row_byte_offset == 0U)) {
+        return 5;
+    }
+    const auto zero_id = select_entity_animation_table_row(0, 0U);
+    if (!expect(zero_id.row_byte_offset == 0xFFD0U)) {
+        return 6;
+    }
+
     return 0;
 }

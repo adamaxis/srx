@@ -11319,7 +11319,7 @@
 00013D94: tst.b (0xb5,A0)
 00013D98: beq.w 0x00013dca
 00013D9C: subq.b #0x1,(0xb5,A0)
-00013DA0: bsr.w 0x00014d6a ; call 00014D6A FUN_00014d6a
+00013DA0: bsr.w 0x00014d6a ; call 00014D6A select_entity_animation_table_row
 00013DA4: clr.w D1w
 00013DA6: move.b (0x27,A2),D1b
 00013DAA: lea (0x13e7c).l,A4 ; data 00013e7c

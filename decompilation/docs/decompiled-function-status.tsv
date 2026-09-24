@@ -90,6 +90,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x14914	entity obstruction path test	ghidra_conversion::is_entity_path_blocked	shadowrun_native_port	partial		Bidirectional packed-grid path check
 0x149C0	obstruction route queue	ghidra_conversion::advance_obstruction_route_queue	shadowrun_native_port	partial		Typed queue cursor, target projection, movement cost, and explicit replan exits
 0x14D58	entity target heading measurement	ghidra_conversion::measure_entity_target_heading_and_distance	shadowrun_native_port	partial		Typed record-to-record heading and distance wrapper
+0x14D6A	entity animation table selector	ghidra_conversion::select_entity_animation_table_row	shadowrun_native_port	partial		Typed signed-bank selection and one-based row offset
 0x14C7C	entity target motion policy	ghidra_conversion::resolve_entity_target_motion	shadowrun_native_port	partial		Typed entity-type dispatch, distance bands, linked-target gate, and effect allocation
 0x14F26	entity fixed-point terrain probe	ghidra_conversion::probe_entity_world_position	shadowrun_native_port	partial		Typed fixed-point coordinate assembly and terrain-probe boundary
 0x15118	entity behavior record initialization	ghidra_conversion::initialize_entity_behavior_record	shadowrun_native_port	partial		Typed default movement fields and behavior-update continuation

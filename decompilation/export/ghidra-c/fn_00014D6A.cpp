@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00014D6A
-// Name: FUN_00014d6a
+// Name: select_entity_animation_table_row
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00014d6a(void)
+void select_entity_animation_table_row(void)
 
 {
   return;
