@@ -396,8 +396,8 @@ entry	name	size	callingConvention	decompileStatus	file
 00014BA6	update_entity_axis_relation_state	136	unknown	ok	ghidra-c/fn_00014BA6.cpp
 00014C2E	derive_entity_axis_relation_flags	40	unknown	ok	ghidra-c/fn_00014C2E.cpp
 00014C56	project_heading_position	38	unknown	ok	ghidra-c/fn_00014C56.cpp
-00014C7C	FUN_00014c7c	220	unknown	ok	ghidra-c/fn_00014C7C.cpp
-00014D58	FUN_00014d58	18	unknown	ok	ghidra-c/fn_00014D58.cpp
+00014C7C	resolve_entity_target_motion	220	unknown	ok	ghidra-c/fn_00014C7C.cpp
+00014D58	measure_entity_target_heading_and_distance	18	unknown	ok	ghidra-c/fn_00014D58.cpp
 00014D6A	FUN_00014d6a	36	unknown	ok	ghidra-c/fn_00014D6A.cpp
 00014D8E	FUN_00014d8e	124	unknown	ok	ghidra-c/fn_00014D8E.cpp
 00014F26	FUN_00014f26	42	unknown	ok	ghidra-c/fn_00014F26.cpp

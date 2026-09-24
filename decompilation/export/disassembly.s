@@ -11536,7 +11536,7 @@
 00014190: jsr 0x00003404.l ; call 00003404 FUN_00003404
 00014196: bra.w 0x000141a0
 0001419A: jmp 0x00014226.l ; call 00014226 FUN_00014226
-000141A0: bsr.w 0x00014c7c ; call 00014C7C FUN_00014c7c
+000141A0: bsr.w 0x00014c7c ; call 00014C7C resolve_entity_target_motion
 000141A4: bcc.w 0x000141de
 000141A8: move.w (A0),(0x96,A0)
 000141AC: move.w (0x4,A0),(0x98,A0)
@@ -12256,7 +12256,7 @@
 00014CB0: rts
 00014CB2: andi #0x1e,CCR
 00014CB6: rts
-00014CB8: bsr.w 0x00014d58 ; call 00014D58 FUN_00014d58
+00014CB8: bsr.w 0x00014d58 ; call 00014D58 measure_entity_target_heading_and_distance
 00014CBC: move.w (0x2e,A0),(0x00ffdd48).l
 00014CC4: bsr.b 0x00014c56 ; call 00014C56 project_heading_position
 00014CC6: move.w D2w,(0x2e,A0)
@@ -12274,7 +12274,7 @@
 00014CFA: move.w D2w,(0x2e,A0)
 00014CFE: move.w D2w,(0x34,A0)
 00014D02: bra.b 0x00014ca8
-00014D04: bsr.w 0x00014d58 ; call 00014D58 FUN_00014d58
+00014D04: bsr.w 0x00014d58 ; call 00014D58 measure_entity_target_heading_and_distance
 00014D08: cmpi.w #0x300,D3w
 00014D0C: bcc.w 0x00014d44
 00014D10: tst.w (0xdc,A0)
@@ -13170,7 +13170,7 @@
 00015C5E: beq.w 0x00015c7e
 00015C62: btst.b #0x6,(0x10,A1)
 00015C68: bne.w 0x00015c7e
-00015C6C: bsr.w 0x00014d58 ; call 00014D58 FUN_00014d58
+00015C6C: bsr.w 0x00014d58 ; call 00014D58 measure_entity_target_heading_and_distance
 00015C70: cmpi.w #0x200,D3w
 00015C74: bcc.w 0x00015c7e
 00015C78: ori #0x1,CCR

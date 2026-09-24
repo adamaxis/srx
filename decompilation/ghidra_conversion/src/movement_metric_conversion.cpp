@@ -140,6 +140,15 @@ RelativeHeadingMeasurement measure_relative_heading_and_distance(
         target_y - origin_y);
 }
 
+RelativeHeadingMeasurement measure_entity_target_heading_and_distance(
+    const std::uint16_t entity_x,
+    const std::uint16_t entity_y,
+    const std::uint16_t target_x,
+    const std::uint16_t target_y) {
+    return measure_relative_heading_and_distance(
+        entity_x, entity_y, target_x, target_y);
+}
+
 bool is_entity_target_within_range(
     const std::uint8_t target_flags,
     const std::int32_t entity_x,

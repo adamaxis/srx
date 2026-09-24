@@ -52,6 +52,12 @@ int main() {
     if (!expect(relative.heading == 0xC000U && relative.distance == 100U)) {
         return 11;
     }
+    const auto entity_target = measure_entity_target_heading_and_distance(
+        0x0100U, 0x0200U, 0x0100U, 0x0264U);
+    if (!expect(entity_target.heading == 0xC000U &&
+                entity_target.distance == 100U)) {
+        return 17;
+    }
     const auto quantized = measure_heading_and_distance(-64, -63);
     if (!expect(quantized.heading == 0xE100U && quantized.distance == 95U)) {
         return 12;

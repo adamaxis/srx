@@ -33,6 +33,14 @@ RelativeHeadingMeasurement measure_relative_heading_and_distance(
     std::int32_t target_x,
     std::int32_t target_y);
 
+// ROM 0x14D58: load two entity records' world positions, preserve the
+// caller's unrelated registers, and return their relative heading/distance.
+RelativeHeadingMeasurement measure_entity_target_heading_and_distance(
+    std::uint16_t entity_x,
+    std::uint16_t entity_y,
+    std::uint16_t target_x,
+    std::uint16_t target_y);
+
 // ROM 0x15C58: when the linked target has the source's active flag without
 // its excluded bit, report whether its measured distance is below 0x200.
 bool is_entity_target_within_range(

@@ -15,7 +15,7 @@
 //   0x00014226 FUN_00014226
 //   0x00014492 FUN_00014492
 //   0x00014508 FUN_00014508
-//   0x00014C7C FUN_00014c7c
+//   0x00014C7C resolve_entity_target_motion
 //   0x00014D8E FUN_00014d8e
 //   0x0001514E FUN_0001514e
 //   0x00015646 FUN_00015646
@@ -133,7 +133,7 @@ uint FUN_00013ffe(void)
     FUN_00003404();
   }
 LAB_000141a0:
-  uVar2 = FUN_00014c7c();
+  uVar2 = resolve_entity_target_motion();
   if (!(bool)uVar5) {
     DAT_00ffdfe0 = 2;
     return uVar2;

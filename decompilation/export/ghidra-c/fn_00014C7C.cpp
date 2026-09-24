@@ -1,16 +1,16 @@
 // Ghidra headless export
 // Entry: 0x00014C7C
-// Name: FUN_00014c7c
+// Name: resolve_entity_target_motion
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00014C56 project_heading_position
-//   0x00014D58 FUN_00014d58
+//   0x00014D58 measure_entity_target_heading_and_distance
 //   0x00015C58 is_entity_target_within_range
 //   0x00015C84 update_entity_heading_from_linked_target
 //   0x0001A2CC allocate_first_free_effect_slot
 
 
-void FUN_00014c7c(void)
+void resolve_entity_target_motion(void)
 
 {
   undefined2 uVar1;
@@ -31,7 +31,7 @@ void FUN_00014c7c(void)
   if (*(short *)(in_A0 + 0xe) != 0xc) {
     if ((*(short *)(in_A0 + 0xe) == 0xd) ||
        (bVar3 = *(ushort *)(in_A0 + 0xe) < 0xe, *(ushort *)(in_A0 + 0xe) == 0xe)) {
-      FUN_00014d58();
+      measure_entity_target_heading_and_distance();
       DAT_00ffdd48 = *(undefined2 *)(extraout_A0_00 + 0x2e);
       project_heading_position();
       *(undefined2 *)(extraout_A0_01 + 0x2e) = unaff_D2w;
@@ -55,7 +55,7 @@ void FUN_00014c7c(void)
     }
     return;
   }
-  FUN_00014d58();
+  measure_entity_target_heading_and_distance();
   iVar2 = extraout_A0_03;
   if (unaff_D3w < 0x300) {
     bVar3 = false;
