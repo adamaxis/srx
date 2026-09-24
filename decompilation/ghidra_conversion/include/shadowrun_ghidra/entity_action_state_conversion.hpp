@@ -22,4 +22,17 @@ void set_entity_action_state(
     const std::function<void()>& service_action,
     const std::function<void()>& prepare_assets);
 
+struct EntityActionCandidateDispatchState {
+    std::uint8_t service_marker = 0;
+    std::uint8_t action_flags = 0;
+    bool alternate_mode = false;
+};
+
+// ROM 0x13874: clear the service marker and dispatch candidate collection
+// according to the source mode/low-six-bit action flags.
+void dispatch_entity_action_candidates(
+    EntityActionCandidateDispatchState& state,
+    const std::function<void()>& dispatch_primary,
+    const std::function<void()>& dispatch_secondary);
+
 } // namespace shadowrun::ghidra_conversion

@@ -24,5 +24,22 @@ int main() {
         order != std::vector<int>{1, 2, 3, 4}) {
         return 2;
     }
+
+    EntityActionCandidateDispatchState dispatch{9U, 0x4BU, false};
+    dispatch_entity_action_candidates(
+        dispatch, [&order] { order.push_back(5); },
+        [&order] { order.push_back(6); });
+    if (dispatch.service_marker != 0U ||
+        order != std::vector<int>{1, 2, 3, 4, 5}) {
+        return 3;
+    }
+
+    dispatch.alternate_mode = true;
+    dispatch_entity_action_candidates(
+        dispatch, [&order] { order.push_back(7); },
+        [&order] { order.push_back(8); });
+    if (order != std::vector<int>{1, 2, 3, 4, 5, 7, 8}) {
+        return 4;
+    }
     return 0;
 }

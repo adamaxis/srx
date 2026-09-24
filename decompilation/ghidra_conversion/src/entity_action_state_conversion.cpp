@@ -29,4 +29,29 @@ void set_entity_action_state(
     }
 }
 
+void dispatch_entity_action_candidates(
+    EntityActionCandidateDispatchState& state,
+    const std::function<void()>& dispatch_primary,
+    const std::function<void()>& dispatch_secondary) {
+    state.service_marker = 0U;
+    if (state.alternate_mode) {
+        if (dispatch_primary) {
+            dispatch_primary();
+        }
+        if (dispatch_secondary) {
+            dispatch_secondary();
+        }
+        return;
+    }
+
+    const auto action_class = static_cast<std::uint8_t>(state.action_flags & 0x3FU);
+    if (action_class == 0x0BU) {
+        if (dispatch_primary) {
+            dispatch_primary();
+        }
+    } else if (action_class == 0x0FU && dispatch_secondary) {
+        dispatch_secondary();
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion
