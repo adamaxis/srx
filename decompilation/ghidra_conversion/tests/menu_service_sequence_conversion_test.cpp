@@ -63,5 +63,20 @@ int main() {
         order != std::vector<int>{14, 15, 15}) {
         return 8;
     }
+
+    MenuTextRefreshState text_state{-1};
+    order.clear();
+    if (!refresh_menu_text(text_state,
+                           [&order] { order.push_back(16); },
+                           [&order] { order.push_back(17); }) ||
+        text_state.pending_text_count != 0 ||
+        order != std::vector<int>{16, 17, 17}) {
+        return 9;
+    }
+    text_state.pending_text_count = 1;
+    if (refresh_menu_text(text_state, [&order] { order.push_back(18); },
+                         [&order] { order.push_back(19); })) {
+        return 10;
+    }
     return 0;
 }

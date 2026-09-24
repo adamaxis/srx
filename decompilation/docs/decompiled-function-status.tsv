@@ -351,3 +351,4 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x11900	menu row grid preparation	ghidra_conversion::prepare_menu_row_grid	shadowrun_ghidra_menu_service_sequence	partial		Typed row preparation followed by repeated-grid submission
 0x11928	menu row render sequence	ghidra_conversion::render_menu_row	shadowrun_ghidra_menu_service_sequence	partial		Typed grid submission followed by row rendering
 0x11ABE	menu dialog preparation	ghidra_conversion::prepare_menu_dialog	shadowrun_ghidra_menu_service_sequence	partial		Typed result-preserving dialog preparation with two service passes
+0x12062	menu text refresh	ghidra_conversion::refresh_menu_text	shadowrun_ghidra_menu_service_sequence	partial		Typed pending-count guard, preparation, double render, and count clear

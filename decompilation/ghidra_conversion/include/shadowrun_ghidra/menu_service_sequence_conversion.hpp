@@ -42,4 +42,15 @@ std::uint64_t prepare_menu_dialog(
     const std::function<std::uint64_t()>& prepare_dialog,
     const std::function<void()>& service_dialog);
 
+struct MenuTextRefreshState {
+    std::int8_t pending_text_count = 0;
+};
+
+// ROM 0x12062: when no text is pending, prepare and render the text twice,
+// then clear the pending count.
+bool refresh_menu_text(
+    MenuTextRefreshState& state,
+    const std::function<void()>& prepare_text,
+    const std::function<void()>& render_text);
+
 } // namespace shadowrun::ghidra_conversion

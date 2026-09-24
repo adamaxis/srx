@@ -92,4 +92,22 @@ std::uint64_t prepare_menu_dialog(
     return result;
 }
 
+bool refresh_menu_text(
+    MenuTextRefreshState& state,
+    const std::function<void()>& prepare_text,
+    const std::function<void()>& render_text) {
+    if (state.pending_text_count >= 1) {
+        return false;
+    }
+    if (prepare_text) {
+        prepare_text();
+    }
+    if (render_text) {
+        render_text();
+        render_text();
+    }
+    state.pending_text_count = 0;
+    return true;
+}
+
 } // namespace shadowrun::ghidra_conversion
