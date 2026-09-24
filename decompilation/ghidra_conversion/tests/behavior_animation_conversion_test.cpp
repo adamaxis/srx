@@ -102,5 +102,13 @@ int main() {
         return 1;
     }
 
+    std::vector<int> service_order;
+    service_entity_auxiliary_behavior(
+        [&service_order] { service_order.push_back(1); },
+        [&service_order] { service_order.push_back(2); });
+    if (service_order != std::vector<int>({1, 2})) {
+        return 1;
+    }
+
     return 0;
 }

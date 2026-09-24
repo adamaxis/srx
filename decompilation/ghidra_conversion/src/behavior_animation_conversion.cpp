@@ -96,4 +96,15 @@ void enter_entity_behavior_transition(
     reset_entity_animation_state(state.animation);
 }
 
+void service_entity_auxiliary_behavior(
+    const EntityBehaviorEffect& prepare_auxiliary_assets,
+    const EntityBehaviorEffect& prepare_behavior) {
+    if (prepare_auxiliary_assets) {
+        prepare_auxiliary_assets();
+    }
+    if (prepare_behavior) {
+        prepare_behavior();
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion

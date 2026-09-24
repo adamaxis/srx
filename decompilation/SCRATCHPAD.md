@@ -1036,6 +1036,9 @@ The entity audio/action leaf at `0x15354` now arms typed flags and timers,
 copies the current position into the destination pair, clears its effect word,
 and invokes the host audio boundary.
 
+The `0x1562E` auxiliary behavior wrapper now preserves its two-stage order:
+auxiliary preparation first, then the typed entity behavior preparation.
+
 The compact row-writer family is now typed as well. `0x1184` emits one masked
 row with optional `0x8F80`/`0x8F02` display-increment controls, `0x11C0`
 repeats a source row at `0x80`-byte destination strides, and `0x11F6`

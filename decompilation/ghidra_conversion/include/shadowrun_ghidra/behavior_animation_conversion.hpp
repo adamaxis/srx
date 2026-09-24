@@ -74,4 +74,10 @@ void enter_entity_behavior_transition(
     const EntityBehaviorEffect& controller_effect,
     const EntityBehaviorAction& behavior_action);
 
+// ROM 0x1562E: run the auxiliary preparation boundary before the already
+// typed entity-behavior preparation boundary.
+void service_entity_auxiliary_behavior(
+    const EntityBehaviorEffect& prepare_auxiliary_assets,
+    const EntityBehaviorEffect& prepare_behavior);
+
 } // namespace shadowrun::ghidra_conversion
