@@ -18,7 +18,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00000C2C	clear_runtime_memory_and_vdp	192	unknown	ok	ghidra-c/fn_00000C2C.cpp
 00000CEC	FUN_00000cec	40	unknown	ok	ghidra-c/fn_00000CEC.cpp
 00000D3A	FUN_00000d3a	10	unknown	ok	ghidra-c/fn_00000D3A.cpp
-00000D44	FUN_00000d44	22	unknown	ok	ghidra-c/fn_00000D44.cpp
+00000D44	advance_source_prng	22	unknown	ok	ghidra-c/fn_00000D44.cpp
 00000D5A	FUN_00000d5a	58	unknown	ok	ghidra-c/fn_00000D5A.cpp
 00000D94	FUN_00000d94	38	unknown	ok	ghidra-c/fn_00000D94.cpp
 00000DBA	FUN_00000dba	66	unknown	ok	ghidra-c/fn_00000DBA.cpp

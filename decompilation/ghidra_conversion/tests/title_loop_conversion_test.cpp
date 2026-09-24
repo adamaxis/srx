@@ -40,6 +40,17 @@ int main() {
         return 1;
     }
 
+    std::uint32_t random_state = 0U;
+    if (!expect(advance_source_prng(random_state) == 1U &&
+                random_state == 1U &&
+                advance_source_prng(random_state) == 0x20E6U)) {
+        return 1;
+    }
+    random_state = 0xFFFFFFFFU;
+    if (!expect(advance_source_prng(random_state) == 0xFFFFDF1CU)) {
+        return 1;
+    }
+
     Palette current{};
     Palette target{};
     current.fill(0x0EEE);

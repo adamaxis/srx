@@ -3,7 +3,7 @@
 // Name: FUN_0001dfc4
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000D44 FUN_00000d44
+//   0x00000D44 advance_source_prng
 //   0x0001E0B8 FUN_0001e0b8
 //   0x000530D2 FUN_000530d2
 
@@ -29,7 +29,7 @@ void FUN_0001dfc4(void)
     return;
   }
   if ((DAT_00ffdf88 & 0x3f) == 0xd) {
-    uVar1 = FUN_00000d44();
+    uVar1 = advance_source_prng();
     if (0x7fff < uVar1) {
       return;
     }

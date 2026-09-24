@@ -30,6 +30,11 @@ ControllerEventLatchResult latch_controller_events(
     };
 }
 
+std::uint32_t advance_source_prng(std::uint32_t& state) {
+    state = state * 0x20E5U + 1U;
+    return state;
+}
+
 std::uint16_t palette_toward_black(std::uint16_t color) {
     auto component = static_cast<std::uint16_t>(color & 0x000EU);
     if (component != 0) {

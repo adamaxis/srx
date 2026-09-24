@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D3A FUN_00000d3a
-//   0x00000D44 FUN_00000d44
+//   0x00000D44 advance_source_prng
 //   0x00003074 FUN_00003074
 //   0x00016A26 FUN_00016a26
 //   0x00016AFA FUN_00016afa
@@ -55,7 +55,7 @@ void FUN_000167ae(void)
       DAT_00fff0c8 = 0;
       _DAT_00fff0c6 = *(undefined2 *)*DAT_00ffde1e;
       DAT_00ffe12c = FUN_00000d3a();
-      bVar4 = FUN_00000d44();
+      bVar4 = advance_source_prng();
       DAT_00ffe185 = bVar4 & 7;
       if (DAT_00ffe184 != '\0') {
         DAT_00ffe12c = 5;

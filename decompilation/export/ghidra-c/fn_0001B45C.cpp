@@ -3,7 +3,7 @@
 // Name: FUN_0001b45c
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000D44 FUN_00000d44
+//   0x00000D44 advance_source_prng
 //   0x00000E18 FUN_00000e18
 //   0x00019F78 FUN_00019f78
 //   0x0001B5A6 FUN_0001b5a6
@@ -37,8 +37,8 @@ void FUN_0001b45c(void)
     }
   }
   sVar7 = 0xaf;
-  uVar2 = FUN_00000d44();
-  uVar3 = FUN_00000d44();
+  uVar2 = advance_source_prng();
+  uVar3 = advance_source_prng();
   uVar5 = CONCAT22(uVar2,uVar3);
   sVar6 = *(short *)(&DAT_0001b592 + (short)((short)(char)(DAT_00ffe16a + '\x01') << 1));
   psVar9 = extraout_A1;
@@ -67,8 +67,8 @@ void FUN_0001b45c(void)
     sVar8 = sVar4;
   } while (sVar7 != -1);
   sVar8 = 200;
-  uVar2 = FUN_00000d44();
-  uVar3 = FUN_00000d44();
+  uVar2 = advance_source_prng();
+  uVar3 = advance_source_prng();
   uVar5 = CONCAT22(uVar2,uVar3);
   sVar6 = (short)DAT_00ffe16a;
   if (2 < sVar6) {

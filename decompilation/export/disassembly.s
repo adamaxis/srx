@@ -469,7 +469,7 @@
 00000D34: sub.b D1b,D0b
 00000D36: subx.b D0b,D0b
 00000D38: sub.b D0b,D1b
-00000D3A: bsr.b 0x00000d44 ; call 00000D44 FUN_00000d44
+00000D3A: bsr.b 0x00000d44 ; call 00000D44 advance_source_prng
 00000D3C: mulu.w D1w,D0
 00000D3E: swap D0
 00000D40: ext.l D0
@@ -3094,7 +3094,7 @@
 000045BA: move.b (A0)+,(0x8f,A1)
 000045BE: move.b (A0),(0x9d,A1)
 000045C2: move.w D0w,(0x30,A1)
-000045C6: jsr 0x00000d44.l ; call 00000D44 FUN_00000d44
+000045C6: jsr 0x00000d44.l ; call 00000D44 advance_source_prng
 000045CC: andi.w #0xf,D0w
 000045D0: cmpi.w #0x37,(0x00ffddc4).l
 000045D8: bne.w 0x000045e0
@@ -3585,7 +3585,7 @@
 000054B6: blt.w 0x00005510
 000054BA: subq.w #0x1,(0x00ffe004).l
 000054C0: bmi.w 0x0000550a
-000054C4: jsr 0x00000d44.l ; call 00000D44 FUN_00000d44
+000054C4: jsr 0x00000d44.l ; call 00000D44 advance_source_prng
 000054CA: move.w D0w,(0x00ffe002).l
 000054D0: move.w D0w,D1w
 000054D2: andi.w #0x7,D0w
@@ -6938,7 +6938,7 @@
 0000EC80: move.w (0x38,A0),(0x94,A1)
 0000EC86: move.w (0x38,A1),(0x94,A0)
 0000EC8C: bsr.w 0x0000eccc ; call 0000ECCC FUN_0000eccc
-0000EC90: jsr 0x00000d44.l ; call 00000D44 FUN_00000d44
+0000EC90: jsr 0x00000d44.l ; call 00000D44 advance_source_prng
 0000EC96: move.w D0w,D1w
 0000EC98: andi.w #0x7000,D1w
 0000EC9C: bne.w 0x0000ecbc
@@ -12656,7 +12656,7 @@
 000153A2: bpl.w 0x000153f6
 000153A6: subq.b #0x1,(0x41,A0)
 000153AA: bmi.w 0x00015410
-000153AE: jsr 0x00000d44.l ; call 00000D44 FUN_00000d44
+000153AE: jsr 0x00000d44.l ; call 00000D44 advance_source_prng
 000153B4: move.w D0w,D1w
 000153B6: andi.w #0x7f,D1w
 000153BA: btst.l #0x0,D1
@@ -13630,7 +13630,7 @@
 00016974: move.w D1w,(0x00fff0c6).l
 0001697A: jsr 0x00000d3a.l ; call 00000D3A FUN_00000d3a
 00016980: move.w D0w,(0x00ffe12c).l
-00016986: jsr 0x00000d44.l ; call 00000D44 FUN_00000d44
+00016986: jsr 0x00000d44.l ; call 00000D44 advance_source_prng
 0001698C: andi.w #0x7,D0w
 00016990: move.b D0b,(0x00ffe185).l
 00016996: tst.b (0x00ffe184).l
@@ -17093,7 +17093,7 @@
 0001B320: rts
 0001B322: lea (0xffcb40).l,A0 ; data 00ffcb40
 0001B328: move.w #0x57,D7w
-0001B32C: jsr 0x00000d44.l ; call 00000D44 FUN_00000d44
+0001B32C: jsr 0x00000d44.l ; call 00000D44 advance_source_prng
 0001B332: move.w D0w,D1w
 0001B334: andi.w #0x1f,D0w
 0001B338: btst.l #0x7,D1
@@ -17176,9 +17176,9 @@
 0001B484: bra.w 0x0001b5a6 ; call 0001B5A6 FUN_0001b5a6
 0001B488: lea (0xffcb42).l,A1 ; data 00ffcb42
 0001B48E: move.w #0xaf,D7w
-0001B492: jsr 0x00000d44.l ; call 00000D44 FUN_00000d44
+0001B492: jsr 0x00000d44.l ; call 00000D44 advance_source_prng
 0001B498: move.w D0w,D2w
-0001B49A: jsr 0x00000d44.l ; call 00000D44 FUN_00000d44
+0001B49A: jsr 0x00000d44.l ; call 00000D44 advance_source_prng
 0001B4A0: swap D2
 0001B4A2: move.w D0w,D2w
 0001B4A4: clr.w D0w
@@ -17211,9 +17211,9 @@
 0001B4F2: dbf D7w,0x0001b4be
 0001B4F6: lea (0xffcb40).l,A1 ; data 00ffcb40
 0001B4FC: move.w #0xc8,D7w
-0001B500: jsr 0x00000d44.l ; call 00000D44 FUN_00000d44
+0001B500: jsr 0x00000d44.l ; call 00000D44 advance_source_prng
 0001B506: move.w D0w,D2w
-0001B508: jsr 0x00000d44.l ; call 00000D44 FUN_00000d44
+0001B508: jsr 0x00000d44.l ; call 00000D44 advance_source_prng
 0001B50E: swap D2
 0001B510: move.w D0w,D2w
 0001B512: clr.w D0w
@@ -17410,7 +17410,7 @@
 0001BBFE: bset.b #0x2,(0x00fff0a1).l
 0001BC06: move.w #0x3c,(0x00ffe0ca).l
 0001BC0E: rts
-0001BC10: jsr 0x00000d44.l ; call 00000D44 FUN_00000d44
+0001BC10: jsr 0x00000d44.l ; call 00000D44 advance_source_prng
 0001BC16: move.w D0w,D4w
 0001BC18: move.w D4w,(0x00ffe0ce).l
 0001BC1E: move.w #0xd8,D1w
@@ -18672,7 +18672,7 @@
 0001DFEE: cmpi.w #0xd,D0w
 0001DFF2: beq.w 0x0001dff8
 0001DFF6: rts
-0001DFF8: jsr 0x00000d44.l ; call 00000D44 FUN_00000d44
+0001DFF8: jsr 0x00000d44.l ; call 00000D44 advance_source_prng
 0001DFFE: cmpi.w #-0x8000,D0w
 0001E002: bcs.w 0x0001e008
 0001E006: rts
@@ -18777,7 +18777,7 @@
 0001E1B6: beq.w 0x0001e1bc
 0001E1BA: rts
 0001E1BC: move.w (0x00ffde18).l,D1w
-0001E1C2: jsr 0x00000d44.l ; call 00000D44 FUN_00000d44
+0001E1C2: jsr 0x00000d44.l ; call 00000D44 advance_source_prng
 0001E1C8: cmp.w D1w,D0w
 0001E1CA: bcs.w 0x0001e1d0
 0001E1CE: rts
@@ -29120,7 +29120,7 @@
 0005DAC2: rts
 0005DAC4: lea (0xffb740).l,A0 ; data 00ffb740
 0005DACA: move.w #0xdf,D7w
-0005DACE: jsr 0x00000d44.l ; call 00000D44 FUN_00000d44
+0005DACE: jsr 0x00000d44.l ; call 00000D44 advance_source_prng
 0005DAD4: lsr.w #0x5,D0w
 0005DAD6: andi.w #0x1f,D0w
 0005DADA: move.w D0w,(A0)

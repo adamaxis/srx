@@ -3,7 +3,7 @@
 // Name: FUN_00005494
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000D44 FUN_00000d44
+//   0x00000D44 advance_source_prng
 //   0x000013BE FUN_000013be
 //   0x000061A0 FUN_000061a0
 
@@ -33,7 +33,7 @@ void FUN_00005494(void)
       *(undefined1 *)(in_A0 + 0xb2) = 0;
       return;
     }
-    _DAT_00ffe002 = FUN_00000d44();
+    _DAT_00ffe002 = advance_source_prng();
     DAT_00ffdffe = _DAT_00ffe002 & 7;
     if ((_DAT_00ffe002 & 2) != 0) {
       DAT_00ffdffe = -DAT_00ffdffe;

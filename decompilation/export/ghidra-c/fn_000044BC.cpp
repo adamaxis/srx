@@ -3,7 +3,7 @@
 // Name: FUN_000044bc
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000D44 FUN_00000d44
+//   0x00000D44 advance_source_prng
 
 
 void FUN_000044bc(void)
@@ -91,7 +91,7 @@ void FUN_000044bc(void)
   *(undefined1 *)((int)in_A1 + 0x8f) = *(undefined1 *)(unaff_D4 + 0x24);
   *(undefined1 *)((int)in_A1 + 0x9d) = *(undefined1 *)((int)unaff_D4 + 0x49);
   in_A1[0x18] = in_D0w;
-  uVar1 = FUN_00000d44();
+  uVar1 = advance_source_prng();
   uVar1 = uVar1 & 0xf;
   if (DAT_00ffddc4 == 0x37) {
     uVar1 = 0x28;

@@ -36,6 +36,10 @@ ControllerEventLatchResult latch_controller_events(
     ControllerEventLatchState& state, std::uint16_t pending_events,
     std::uint16_t sampled_word);
 
+// ROM 0x0D44: advance the source 32-bit linear-congruential state. Unsigned
+// arithmetic intentionally supplies the source's modulo-2^32 wraparound.
+std::uint32_t advance_source_prng(std::uint32_t& state);
+
 constexpr std::size_t kPaletteEntryCount = 64;
 constexpr std::size_t kPaletteTransitionPasses = 17;
 using Palette = std::array<std::uint16_t, kPaletteEntryCount>;

@@ -3,7 +3,7 @@
 // Name: FUN_0000eb92
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000D44 FUN_00000d44
+//   0x00000D44 advance_source_prng
 //   0x0000ECCC FUN_0000eccc
 //   0x00015D3C FUN_00015d3c
 
@@ -67,7 +67,7 @@ joined_r0x0000ec14:
           *(undefined4 *)((int)register0x0000003c + -10) = 0xec90;
           FUN_0000eccc();
           *(undefined4 *)((int)register0x0000003c + -10) = 0xec96;
-          uVar1 = FUN_00000d44();
+          uVar1 = advance_source_prng();
           in_A0 = extraout_A0_00;
           puVar4 = extraout_A1_00;
           register0x0000003c = (BADSPACEBASE *)puVar5;
