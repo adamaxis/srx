@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00001358
-// Name: FUN_00001358
+// Name: copy_source_word_block
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00001358(void)
+void copy_source_word_block(void)
 
 {
   short sVar1;

@@ -6,7 +6,7 @@
 //   0x00000F5C FUN_00000f5c
 //   0x00000FFE FUN_00000ffe
 //   0x00001232 FUN_00001232
-//   0x00001358 FUN_00001358
+//   0x00001358 copy_source_word_block
 //   0x0000C0DA FUN_0000c0da
 //   0x00053200 FUN_00053200
 //   0x0005322C FUN_0005322c
@@ -22,7 +22,7 @@ void FUN_000532bc(void)
   
   VDP_CTRL = 0x8134;
   FUN_00000ffe();
-  FUN_00001358();
+  copy_source_word_block();
   DAT_00ffef14 = DAT_00ffef14 | 1;
   FUN_00000f5c();
   FUN_00001232();

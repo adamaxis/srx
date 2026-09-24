@@ -9,7 +9,7 @@
 //   0x00000FFE FUN_00000ffe
 //   0x0000102A FUN_0000102a
 //   0x000011C0 FUN_000011c0
-//   0x00001358 FUN_00001358
+//   0x00001358 copy_source_word_block
 //   0x00001530 FUN_00001530
 //   0x00001728 FUN_00001728
 //   0x0000195C sample_controller_input
@@ -512,7 +512,7 @@ LAB_0000d4a0:
        (*(char *)((int)DAT_00fffc04 + 0x7f) != '\0')) {
       VDP_CTRL = 0x8134;
       _DAT_00fff0d0 = 0;
-      FUN_00001358();
+      copy_source_word_block();
       DAT_00ffef14 = DAT_00ffef14 | 1;
       FUN_00000ffe();
       FUN_00001530();

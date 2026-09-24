@@ -7489,7 +7489,7 @@
 0000FC02: move.w (0x00fff0d0).l,-(SP)
 0000FC08: clr.w (0x00fff0d0).l
 0000FC0E: lea (0xc8a60).l,A0 ; data 000c8a60
-0000FC14: jsr 0x00001358.l ; call 00001358 FUN_00001358
+0000FC14: jsr 0x00001358.l ; call 00001358 copy_source_word_block
 0000FC1A: bset.b #0x0,(0x00ffef14).l
 0000FC22: jsr 0x00000ffe.l ; call 00000FFE FUN_00000ffe
 0000FC28: lea (0xffbf40).l,A1 ; data 00ffbf40
@@ -14057,7 +14057,7 @@
 000176DE: move.l #0x2de0,D0
 000176E4: jmp 0x00001530.l ; call 00001530 FUN_00001530
 000176EA: lea (0xe2e3a).l,A0 ; data 000e2e3a
-000176F0: jsr 0x00001358.l ; call 00001358 FUN_00001358
+000176F0: jsr 0x00001358.l ; call 00001358 copy_source_word_block
 000176F6: bset.b #0x0,(0x00ffef14).l
 000176FE: bsr.w 0x00019df2 ; call 00019DF2 FUN_00019df2
 00017702: bsr.w 0x00017f8e ; call 00017F8E FUN_00017f8e
@@ -14675,7 +14675,7 @@
 000181F8: move.w #-0x7ecc,(0x00c00004).l
 00018200: move.w #-0x6f00,(0x00c00004).l
 00018208: lea (0xe2e3a).l,A0 ; data 000e2e3a
-0001820E: jsr 0x00001358.l ; call 00001358 FUN_00001358
+0001820E: jsr 0x00001358.l ; call 00001358 copy_source_word_block
 00018214: bset.b #0x0,(0x00ffef14).l
 0001821C: bsr.w 0x000177cc ; call 000177CC FUN_000177cc
 00018220: lea (0xfffbbe).l,A0 ; data 00fffbbe
@@ -15293,7 +15293,7 @@
 00019136: beq.b 0x0001911c
 00019138: move.w #-0x7ecc,(0x00c00004).l
 00019140: lea (0xe2e3a).l,A0 ; data 000e2e3a
-00019146: jsr 0x00001358.l ; call 00001358 FUN_00001358
+00019146: jsr 0x00001358.l ; call 00001358 copy_source_word_block
 0001914C: bset.b #0x0,(0x00ffef14).l
 00019154: lea (0xffbf40).l,A1 ; data 00ffbf40
 0001915A: movea.l #0xd86e0,A3
@@ -22676,7 +22676,7 @@
 00026A24: jsr 0x00000f5c.l ; call 00000F5C FUN_00000f5c
 00026A2A: jsr 0x00010952.l ; call 00010952 FUN_00010952
 00026A30: lea (0xe2e3a).l,A0 ; data 000e2e3a
-00026A36: jsr 0x00001358.l ; call 00001358 FUN_00001358
+00026A36: jsr 0x00001358.l ; call 00001358 copy_source_word_block
 00026A3C: bset.b #0x0,(0x00ffef14).l
 00026A44: lea (0x15bea6).l,A1 ; data 0015bea6
 00026A4A: move.l #0xe700,D0
@@ -23048,7 +23048,7 @@
 000532BC: move.w #-0x7ecc,(0x00c00004).l
 000532C4: jsr 0x00000ffe.l ; call 00000FFE FUN_00000ffe
 000532CA: lea (0x15fcb6).l,A0 ; data 0015fcb6
-000532D0: jsr 0x00001358.l ; call 00001358 FUN_00001358
+000532D0: jsr 0x00001358.l ; call 00001358 copy_source_word_block
 000532D6: bset.b #0x0,(0x00ffef14).l
 000532DE: move.l #0x15beac,D0
 000532E4: move.l #0x17e0,D1
@@ -27091,7 +27091,7 @@
 000593AE: bcs.w 0x000593c6
 000593B2: move.l #0x8000000,D0
 000593B8: move.w #0x7ff,D7w
-000593BC: jsr 0x00001502.l ; call 00001502 FUN_00001502
+000593BC: jsr 0x00001502.l ; call 00001502 copy_even_bytes
 000593C2: bra.w 0x000593f6
 000593C6: ori #0x1,CCR
 000593CA: rts
@@ -27103,11 +27103,11 @@
 000593DE: bcc.w 0x000593f6
 000593E2: move.l #0x800,D0
 000593E8: move.w #0x7ff,D7w
-000593EC: jsr 0x00001502.l ; call 00001502 FUN_00001502
+000593EC: jsr 0x00001502.l ; call 00001502 copy_even_bytes
 000593F2: bra.w 0x000593f6
 000593F6: andi #0x1e,CCR
 000593FA: rts
-000593FC: jsr 0x000014ce.l ; call 000014CE FUN_000014ce
+000593FC: jsr 0x000014ce.l ; call 000014CE extract_even_bytes
 00059402: movea.l #0xfff1ec,A1
 00059408: move.b (A1)+,D0b
 0005940A: cmpi.b #0x47,D0b
@@ -27151,7 +27151,7 @@
 00059492: bcs.w 0x000594aa
 00059496: move.l #0x8000000,D0
 0005949C: move.w #0x7ff,D7w
-000594A0: jsr 0x00001502.l ; call 00001502 FUN_00001502
+000594A0: jsr 0x00001502.l ; call 00001502 copy_even_bytes
 000594A6: bra.w 0x000594da
 000594AA: ori #0x1,CCR
 000594AE: rts
@@ -27163,7 +27163,7 @@
 000594C2: bcc.w 0x000594da
 000594C6: move.l #0x800,D0
 000594CC: move.w #0x7ff,D7w
-000594D0: jsr 0x00001502.l ; call 00001502 FUN_00001502
+000594D0: jsr 0x00001502.l ; call 00001502 copy_even_bytes
 000594D6: bra.w 0x000594da
 000594DA: andi #0x1e,CCR
 000594DE: rts
@@ -27228,7 +27228,7 @@
 0005960E: lea (0x1d657c).l,A6 ; data 001d657c
 00059614: jsr 0x0001e4ac.l ; call 0001E4AC FUN_0001e4ac
 0005961A: rts
-0005961C: jsr 0x000014ce.l ; call 000014CE FUN_000014ce
+0005961C: jsr 0x000014ce.l ; call 000014CE extract_even_bytes
 00059622: movea.l #0xffb744,A1
 00059628: move.b (A1)+,D0b
 0005962A: cmpi.b #0x47,D0b

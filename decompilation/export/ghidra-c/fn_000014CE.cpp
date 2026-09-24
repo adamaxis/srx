@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000014CE
-// Name: FUN_000014ce
+// Name: extract_even_bytes
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_000014ce(void)
+void extract_even_bytes(void)
 
 {
   short in_D0w;

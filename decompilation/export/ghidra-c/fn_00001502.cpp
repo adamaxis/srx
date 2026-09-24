@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00001502
-// Name: FUN_00001502
+// Name: copy_even_bytes
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00001502(void)
+void copy_even_bytes(void)
 
 {
   undefined4 in_D0;

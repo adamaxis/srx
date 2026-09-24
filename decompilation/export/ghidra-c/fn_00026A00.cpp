@@ -6,7 +6,7 @@
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
 //   0x00000F5C FUN_00000f5c
-//   0x00001358 FUN_00001358
+//   0x00001358 copy_source_word_block
 //   0x0000195C sample_controller_input
 //   0x00010952 FUN_00010952
 //   0x00026BFE FUN_00026bfe
@@ -33,7 +33,7 @@ void FUN_00026a00(void)
   FUN_000530de();
   FUN_00000f5c();
   FUN_00010952();
-  FUN_00001358();
+  copy_source_word_block();
   DAT_00ffef14 = DAT_00ffef14 | 1;
   uVar2 = 0x6000;
   FUN_00026bfe();

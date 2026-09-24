@@ -12,7 +12,10 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x10D6	palette step toward target	ghidra_conversion::palette_toward_target	shadowrun_boot_reconstruction	partial		Readable conversion is isolated from runtime and emulator
 0x131C	palette transition step	ghidra_conversion::run_palette_transition	shadowrun_boot_sequence	partial		Seventeen-step color loop; vblank boundary remains separate
 0x1342	palette frame wait	NativePortShell update loop	shadowrun_boot_sequence	pending		Two-vblank source wait documented; host timing still separate
+0x1358	source word block copy	ghidra_conversion::copy_source_word_block	shadowrun_boot_sequence	partial		32-longword source work-block copy converted in isolated typed state
 0x1368	target palette copy	ghidra_conversion::copy_target_palette	shadowrun_boot_sequence	partial		Complete 64-word copy is isolated from runtime and emulator
+0x14CE	even-byte extraction	ghidra_conversion::extract_even_bytes	shadowrun_graphics	partial		Bounded every-second-byte extraction converted from source table addressing
+0x1502	even-byte copy	ghidra_conversion::copy_even_bytes	shadowrun_graphics	partial		Forward ordered every-second-byte table copy converted with bounds checks
 0x1610	compressed byte decode	ghidra_conversion::decode_source_byte_stream	shadowrun_graphics	partial		Literal, repeat, and sliding-window decode converted with bounded host input
 0x167C	coordinate stream decode	ghidra_conversion::decode_source_coordinate_stream	shadowrun_graphics	partial		Signed byte/word offsets and repeated/stepped runs converted with bounded host input
 0x195C	controller sampling	ghidra_conversion::derive_controller_sample	shadowrun_boot_sequence	partial		Readable edge conversion is isolated from runtime and emulator

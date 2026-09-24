@@ -46,13 +46,13 @@ entry	name	size	callingConvention	decompileStatus	file
 000012F6	FUN_000012f6	38	unknown	ok	ghidra-c/fn_000012F6.cpp
 0000131C	step_palette_transition	38	unknown	ok	ghidra-c/fn_0000131C.cpp
 00001342	wait_for_palette_frame	22	unknown	ok	ghidra-c/fn_00001342.cpp
-00001358	FUN_00001358	16	unknown	ok	ghidra-c/fn_00001358.cpp
+00001358	copy_source_word_block	16	unknown	ok	ghidra-c/fn_00001358.cpp
 00001368	copy_target_palette	16	unknown	ok	ghidra-c/fn_00001368.cpp
 00001378	FUN_00001378	70	unknown	ok	ghidra-c/fn_00001378.cpp
 000013BE	FUN_000013be	72	unknown	ok	ghidra-c/fn_000013BE.cpp
 00001406	FUN_00001406	200	unknown	ok	ghidra-c/fn_00001406.cpp
-000014CE	FUN_000014ce	26	unknown	ok	ghidra-c/fn_000014CE.cpp
-00001502	FUN_00001502	46	unknown	ok	ghidra-c/fn_00001502.cpp
+000014CE	extract_even_bytes	26	unknown	ok	ghidra-c/fn_000014CE.cpp
+00001502	copy_even_bytes	46	unknown	ok	ghidra-c/fn_00001502.cpp
 00001530	FUN_00001530	224	unknown	ok	ghidra-c/fn_00001530.cpp
 00001610	decode_source_byte_stream	108	unknown	ok	ghidra-c/fn_00001610.cpp
 0000167C	decode_source_coordinate_stream	164	unknown	ok	ghidra-c/fn_0000167C.cpp

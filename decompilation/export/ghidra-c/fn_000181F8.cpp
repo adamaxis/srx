@@ -3,7 +3,7 @@
 // Name: FUN_000181f8
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00001358 FUN_00001358
+//   0x00001358 copy_source_word_block
 //   0x000177CC FUN_000177cc
 
 
@@ -26,7 +26,7 @@ void FUN_000181f8(void)
   
   VDP_CTRL = 0x8134;
   VDP_CTRL = 0x9100;
-  FUN_00001358();
+  copy_source_word_block();
   DAT_00ffef14 = DAT_00ffef14 | 1;
   FUN_000177cc();
   uVar4 = DAT_00fff0b7;
