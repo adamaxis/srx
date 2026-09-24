@@ -669,3 +669,16 @@ target_link_libraries(shadowrun_ghidra_scene_profile_test
     PRIVATE shadowrun_ghidra_scene_profile)
 add_test(NAME shadowrun_ghidra_scene_profile
          COMMAND shadowrun_ghidra_scene_profile_test)
+
+add_library(shadowrun_ghidra_field_mode STATIC
+    src/field_mode_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_field_mode PUBLIC include)
+
+add_executable(shadowrun_ghidra_field_mode_test
+    tests/field_mode_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_field_mode_test
+    PRIVATE shadowrun_ghidra_field_mode)
+add_test(NAME shadowrun_ghidra_field_mode
+         COMMAND shadowrun_ghidra_field_mode_test)

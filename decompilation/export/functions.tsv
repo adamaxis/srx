@@ -80,8 +80,8 @@ entry	name	size	callingConvention	decompileStatus	file
 000028AA	FUN_000028aa	24	unknown	ok	ghidra-c/fn_000028AA.cpp
 000028C2	FUN_000028c2	62	unknown	ok	ghidra-c/fn_000028C2.cpp
 00002900	FUN_00002900	306	unknown	ok	ghidra-c/fn_00002900.cpp
-00002A32	FUN_00002a32	18	unknown	ok	ghidra-c/fn_00002A32.cpp
-00002A44	FUN_00002a44	80	unknown	ok	ghidra-c/fn_00002A44.cpp
+00002A32	initialize_field_mode_profile_a	18	unknown	ok	ghidra-c/fn_00002A32.cpp
+00002A44	initialize_field_mode_profile_b	80	unknown	ok	ghidra-c/fn_00002A44.cpp
 00002A94	FUN_00002a94	6	unknown	ok	ghidra-c/fn_00002A94.cpp
 00002B34	FUN_00002b34	158	unknown	ok	ghidra-c/fn_00002B34.cpp
 00002BD2	FUN_00002bd2	116	unknown	ok	ghidra-c/fn_00002BD2.cpp
@@ -351,7 +351,7 @@ entry	name	size	callingConvention	decompileStatus	file
 000133A6	FUN_000133a6	192	unknown	ok	ghidra-c/fn_000133A6.cpp
 00013466	FUN_00013466	108	unknown	ok	ghidra-c/fn_00013466.cpp
 000134D2	FUN_000134d2	524	unknown	ok	ghidra-c/fn_000134D2.cpp
-000136DE	FUN_000136de	72	unknown	ok	ghidra-c/fn_000136DE.cpp
+000136DE	initialize_scene_mode_state	72	unknown	ok	ghidra-c/fn_000136DE.cpp
 00013726	FUN_00013726	334	unknown	ok	ghidra-c/fn_00013726.cpp
 00013874	FUN_00013874	68	unknown	ok	ghidra-c/fn_00013874.cpp
 000138B8	FUN_000138b8	76	unknown	ok	ghidra-c/fn_000138B8.cpp
@@ -706,7 +706,7 @@ entry	name	size	callingConvention	decompileStatus	file
 000530DE	service_audio_if_enabled	12	unknown	ok	ghidra-c/fn_000530DE.cpp
 000530EA	FUN_000530ea	40	unknown	ok	ghidra-c/fn_000530EA.cpp
 00053112	FUN_00053112	20	unknown	ok	ghidra-c/fn_00053112.cpp
-00053126	FUN_00053126	48	unknown	ok	ghidra-c/fn_00053126.cpp
+00053126	prepare_mode_entry_service	48	unknown	ok	ghidra-c/fn_00053126.cpp
 00053156	FUN_00053156	8	unknown	ok	ghidra-c/fn_00053156.cpp
 0005315E	FUN_0005315e	20	unknown	ok	ghidra-c/fn_0005315E.cpp
 00053172	FUN_00053172	28	unknown	ok	ghidra-c/fn_00053172.cpp

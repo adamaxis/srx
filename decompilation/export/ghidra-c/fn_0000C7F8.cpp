@@ -83,10 +83,10 @@ LAB_0000c716:
   FUN_000038fa();
   FUN_0000391a();
   if ((DAT_00fffc1e & 1) == 0) {
-    FUN_00002a44();
+    initialize_field_mode_profile_b();
     return;
   }
-  FUN_00002a32();
+  initialize_field_mode_profile_a();
   return;
 }
 

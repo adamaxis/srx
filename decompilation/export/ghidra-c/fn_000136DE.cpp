@@ -1,17 +1,17 @@
 // Ghidra headless export
 // Entry: 0x000136DE
-// Name: FUN_000136de
+// Name: initialize_scene_mode_state
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00053126 FUN_00053126
+//   0x00053126 prepare_mode_entry_service
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_000136de(void)
+void initialize_scene_mode_state(void)
 
 {
-  DAT_00ffddc4 = FUN_00053126();
+  DAT_00ffddc4 = prepare_mode_entry_service();
   DAT_00ffdf40 = 0;
   DAT_00fff0a0 = 0xff;
   _DAT_00ffdf8e = 0xffff;

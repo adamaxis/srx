@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00053126
-// Name: FUN_00053126
+// Name: prepare_mode_entry_service
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000C24 wait_for_vblank_frames
@@ -9,7 +9,7 @@
 //   0x0005315E FUN_0005315e
 
 
-undefined8 FUN_00053126(void)
+undefined8 prepare_mode_entry_service(void)
 
 {
   undefined4 in_D0;

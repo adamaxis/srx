@@ -9,7 +9,7 @@
 //   0x00016760 FUN_00016760
 //   0x0001E2E0 FUN_0001e2e0
 //   0x0001E2EC FUN_0001e2ec
-//   0x00053126 FUN_00053126
+//   0x00053126 prepare_mode_entry_service
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -151,7 +151,7 @@ void FUN_0000b7b8(void)
             }
           }
           else {
-            FUN_00053126();
+            prepare_mode_entry_service();
             _DAT_00ffdd2c = FUN_0000c64c;
             FUN_0001e2ec();
             in_A0 = extraout_A0_11;

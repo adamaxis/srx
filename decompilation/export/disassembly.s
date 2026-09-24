@@ -220,7 +220,7 @@
 000007AA: move.w #0x1,(0x00fffc0a).l
 000007B2: move.w #-0x1,(0x00ffdfe8).l
 000007BA: jsr 0x00001a9e.l ; call 00001A9E run_title_loop
-000007C0: jsr 0x00053126.l ; call 00053126 FUN_00053126
+000007C0: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
 000007C6: tst.w (0x00ffddc0).l
 000007CC: beq.b 0x0000078a
 000007CE: jsr 0x00059318.l ; call 00059318 FUN_00059318
@@ -229,7 +229,7 @@
 000007E0: tst.w (0x00ffe108).l
 000007E6: bne.w 0x000007f0
 000007EA: jsr 0x00059c5e.l ; call 00059C5E FUN_00059c5e
-000007F0: jsr 0x00053126.l ; call 00053126 FUN_00053126
+000007F0: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
 000007F6: jsr 0x00053290.l ; call 00053290 FUN_00053290
 000007FC: move.l #0x14,(0x00fffbfe).l
 00000806: clr.l (0x00fffc12).l
@@ -294,7 +294,7 @@
 00000964: beq.w 0x00000a68
 00000968: move.b #-0x1,(0x00ffe172).l
 00000970: clr.w (0x00ffdf3e).l
-00000976: jsr 0x00053126.l ; call 00053126 FUN_00053126
+00000976: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
 0000097C: tst.b (0x00ffe186).l
 00000982: beq.w 0x00000992
 00000986: move.b #0x2,(0x00ffe186).l
@@ -1676,7 +1676,7 @@
 00002A40: bra.w 0x00002a52
 00002A44: move.l #0x2b24,(0x00ffe114).l
 00002A4E: move.w #0x2,D0w
-00002A52: jsr 0x00053126.l ; call 00053126 FUN_00053126
+00002A52: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
 00002A58: clr.l (0x00ffe12e).l
 00002A5E: clr.b (0x00ffe18f).l
 00002A64: clr.b (0x00ffe180).l
@@ -1686,8 +1686,8 @@
 00002A7C: clr.b (0x00ffe18f).l
 00002A82: clr.b (0x00ffe183).l
 00002A88: clr.w (0x00ffdf84).l
-00002A8E: jmp 0x000136de.l ; call 000136DE FUN_000136de
-00002A94: jsr 0x00053126.l ; call 00053126 FUN_00053126
+00002A8E: jmp 0x000136de.l ; call 000136DE initialize_scene_mode_state
+00002A94: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
 00002B34: tst.l (0x00ffe114).l
 00002B3A: bne.w 0x00002b78
 00002B3E: lea (0xff0100).l,A0 ; data 00ff0100
@@ -5170,7 +5170,7 @@
 0000BA10: bne.w 0x0000ba20
 0000BA14: btst.b #0x4,(0x00ff0110).l
 0000BA1C: beq.w 0x0000ba3a
-0000BA20: jsr 0x00053126.l ; call 00053126 FUN_00053126
+0000BA20: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
 0000BA26: move.l #0xc64c,(0x00ffdd2c).l
 0000BA30: jsr 0x0001e2ec.l ; call 0001E2EC FUN_0001e2ec
 0000BA36: bra.w 0x0000baae
@@ -5647,10 +5647,10 @@
 0000C7D2: move.l (0x00fffc1e).l,D0
 0000C7D8: btst.l #0x0,D0
 0000C7DC: beq.w 0x0000c7ec
-0000C7E0: jsr 0x00002a32.l ; call 00002A32 FUN_00002a32
+0000C7E0: jsr 0x00002a32.l ; call 00002A32 initialize_field_mode_profile_a
 0000C7E6: move.w #-0x1,D6w
 0000C7EA: rts
-0000C7EC: jsr 0x00002a44.l ; call 00002A44 FUN_00002a44
+0000C7EC: jsr 0x00002a44.l ; call 00002A44 initialize_field_mode_profile_b
 0000C7F2: move.w #-0x1,D6w
 0000C7F6: rts
 0000C7F8: tst.b (0x00ff014c).l
@@ -10895,10 +10895,10 @@
 000136C6: ext.w D0w
 000136C8: cmp.w (0x00ffddc4).l,D0w
 000136CE: beq.w 0x000136dc
-000136D2: bsr.w 0x000136de ; call 000136DE FUN_000136de
-000136D6: jsr 0x00053126.l ; call 00053126 FUN_00053126
+000136D2: bsr.w 0x000136de ; call 000136DE initialize_scene_mode_state
+000136D6: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
 000136DC: rts
-000136DE: jsr 0x00053126.l ; call 00053126 FUN_00053126
+000136DE: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
 000136E4: clr.w (0x00ffdf40).l
 000136EA: move.b #-0x1,(0x00fff0a0).l
 000136F2: move.w #-0x1,(0x00ffdf8e).l
@@ -13971,7 +13971,7 @@
 0001751A: tst.w (0x00ffdf40).l
 00017520: beq.w 0x0001752c
 00017524: move.b #-0x1,(0x00ffe171).l
-0001752C: jsr 0x00053126.l ; call 00053126 FUN_00053126
+0001752C: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
 00017532: move.w #-0x1,(0x00ffe172).l
 0001753A: move.w #-0x1,(0x00ffdf8a).l
 00017542: move.w #-0x1,(0x00fff106).l
@@ -14046,7 +14046,7 @@
 000176A0: jsr 0x00003404.l ; call 00003404 FUN_00003404
 000176A6: jsr 0x0000334c.l ; call 0000334C FUN_0000334c
 000176AC: jsr 0x000039f2.l ; call 000039F2 FUN_000039f2
-000176B2: jsr 0x00053126.l ; call 00053126 FUN_00053126
+000176B2: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
 000176B8: rts
 000176BA: move.l #0xda038,D0
 000176C0: move.l #0x2360,D1
@@ -16884,7 +16884,7 @@
 0001AEE0: bcs.w 0x0001aee8
 0001AEE4: bra.w 0x0001afc0
 0001AEE8: clr.w (0x00ffdf8c).l
-0001AEEE: jsr 0x00053126.l ; call 00053126 FUN_00053126
+0001AEEE: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
 0001AEF4: move.w #0x5,D0w
 0001AEF8: jsr 0x000530ea.l ; call 000530EA FUN_000530ea
 0001AEFE: tst.b (0x00fff0a9).l
@@ -16892,7 +16892,7 @@
 0001AF08: jsr 0x00053704.l ; call 00053704 FUN_00053704
 0001AF0E: bra.w 0x0001af18
 0001AF12: jsr 0x00054662.l ; call 00054662 FUN_00054662
-0001AF18: jsr 0x00053126.l ; call 00053126 FUN_00053126
+0001AF18: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
 0001AF1E: bra.w 0x0001b1b6
 0001AF22: tst.w (0x00ffe084).l
 0001AF28: beq.w 0x0001af3e
@@ -17004,7 +17004,7 @@
 0001B140: bne.w 0x0001b1aa
 0001B144: btst.b #0xf,(0x00ffdd22).l
 0001B14C: beq.w 0x0001b1aa
-0001B150: jsr 0x00053126.l ; call 00053126 FUN_00053126
+0001B150: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
 0001B156: move.w #0x4,D0w
 0001B15A: jsr 0x000530ea.l ; call 000530EA FUN_000530ea
 0001B160: bsr.w 0x0001b5a6 ; call 0001B5A6 FUN_0001b5a6
@@ -17020,7 +17020,7 @@
 0001B188: bsr.w 0x000186fa ; call 000186FA FUN_000186fa
 0001B18C: jsr 0x0001789c.l ; call 0001789C FUN_0001789c
 0001B192: move.w #-0x7e8c,(0x00c00004).l
-0001B19A: jsr 0x00053126.l ; call 00053126 FUN_00053126
+0001B19A: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
 0001B1A0: move.w #0x3,D0w
 0001B1A4: jsr 0x000530ea.l ; call 000530EA FUN_000530ea
 0001B1AA: bset.b #0x1,(0x00ffef14).l
@@ -18549,7 +18549,7 @@
 0001DDCC: beq.w 0x0001ddf0
 0001DDD0: subq.w #0x1,(0x00ffe166).l
 0001DDD6: bne.w 0x0001ddf0
-0001DDDA: jsr 0x00053126.l ; call 00053126 FUN_00053126
+0001DDDA: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
 0001DDE0: move.l #0xc64c,(0x00ffdd2c).l
 0001DDEA: jsr 0x0001e2ec.l ; call 0001E2EC FUN_0001e2ec
 0001DDF0: tst.w (0x00ffe11c).l
@@ -20438,7 +20438,7 @@
 00021E78: bsr.w 0x00021a4e ; call 00021A4E FUN_00021a4e
 00021E7C: bgt.w 0x00021e8a
 00021E80: move.w #0x6,D0w
-00021E84: jsr 0x000136de.l ; call 000136DE FUN_000136de
+00021E84: jsr 0x000136de.l ; call 000136DE initialize_scene_mode_state
 00021E8A: rts
 00021E8C: lea (0x122024).l,A5 ; data 00122024
 00021E92: bsr.w 0x0001f292 ; call 0001F292 FUN_0001f292
@@ -27494,14 +27494,14 @@
 00059C7C: jsr 0x0005af62.l ; call 0005AF62 FUN_0005af62
 00059C82: tst.w (0x00ffddc2).l
 00059C88: bne.w 0x00059cfe
-00059C8C: jsr 0x00053126.l ; call 00053126 FUN_00053126
+00059C8C: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
 00059C92: move.w #0x11,D0w
 00059C96: jsr 0x000530ea.l ; call 000530EA FUN_000530ea
 00059C9C: clr.w (0x00ffddc2).l
 00059CA2: jsr 0x00059d7c.l ; call 00059D7C FUN_00059d7c
 00059CA8: tst.w (0x00ffddc2).l
 00059CAE: bne.w 0x00059cfe
-00059CB2: jsr 0x00053126.l ; call 00053126 FUN_00053126
+00059CB2: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
 00059CB8: move.w #0x12,D0w
 00059CBC: jsr 0x000530ea.l ; call 000530EA FUN_000530ea
 00059CC2: clr.w (0x00ffddc2).l
@@ -27516,7 +27516,7 @@
 00059CF8: jsr 0x00059d12.l ; call 00059D12 FUN_00059d12
 00059CFE: jsr 0x0000195c.l ; call 0000195C sample_controller_input
 00059D04: jsr 0x0000131c.l ; call 0000131C step_palette_transition
-00059D0A: jsr 0x00053126.l ; call 00053126 FUN_00053126
+00059D0A: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
 00059D10: rts
 00059D12: lea (0x59d3e).l,A6 ; data 00059d3e
 00059D18: jsr 0x00001406.l ; call 00001406 prepare_title_resources
@@ -28681,10 +28681,10 @@
 0005C8F2: move (SP)+,SR
 0005C8F4: movem.l (SP)+,{ D0 D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 0005C8F8: rts
-0005D172: jsr 0x00053126.l ; call 00053126 FUN_00053126
+0005D172: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
 0005D178: move.w #0x0,D0w
 0005D17C: jsr 0x000530ea.l ; call 000530EA FUN_000530ea
-0005D1B4: jsr 0x00053126.l ; call 00053126 FUN_00053126
+0005D1B4: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
 0005D1BA: move.w #0x0,D0w
 0005D1BE: jsr 0x000530ea.l ; call 000530EA FUN_000530ea
 0005D1C4: move.w #0x3,D0w

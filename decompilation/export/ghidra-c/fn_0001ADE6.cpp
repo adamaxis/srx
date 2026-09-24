@@ -52,7 +52,7 @@
 //   0x00026A00 FUN_00026a00
 //   0x000530DE service_audio_if_enabled
 //   0x000530EA FUN_000530ea
-//   0x00053126 FUN_00053126
+//   0x00053126 prepare_mode_entry_service
 //   0x00053704 FUN_00053704
 //   0x00054662 FUN_00054662
 
@@ -140,7 +140,7 @@ LAB_0001aedc:
       FUN_0001d2e6();
       if ((bool)uVar1) {
         _DAT_00ffdf8c = 0;
-        FUN_00053126();
+        prepare_mode_entry_service();
         FUN_000530ea();
         if (DAT_00fff0a9 == '\0') {
           FUN_00054662();
@@ -148,7 +148,7 @@ LAB_0001aedc:
         else {
           FUN_00053704();
         }
-        FUN_00053126();
+        prepare_mode_entry_service();
         return;
       }
 LAB_0001afc0:
@@ -221,7 +221,7 @@ LAB_0001afc0:
     FUN_000268e6();
     _DAT_00ffd980 = 1;
     if ((_DAT_00ffdf8c == 0) && ((DAT_00ffdd22._0_1_ & 0x80) != 0)) {
-      FUN_00053126();
+      prepare_mode_entry_service();
       FUN_000530ea();
       FUN_0001b5a6();
       FUN_0001822c();
@@ -235,7 +235,7 @@ LAB_0001afc0:
       FUN_000186fa();
       FUN_0001789c();
       VDP_CTRL = 0x8174;
-      FUN_00053126();
+      prepare_mode_entry_service();
       FUN_000530ea();
     }
     DAT_00ffef14 = DAT_00ffef14 | 2;

@@ -3,7 +3,7 @@
 // Name: FUN_00002a94
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00053126 FUN_00053126
+//   0x00053126 prepare_mode_entry_service
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -11,7 +11,7 @@
 void FUN_00002a94(void)
 
 {
-  FUN_00053126();
+  prepare_mode_entry_service();
   DAT_00ffe114 = &DAT_00002ada;
   DAT_00ffddc4 = 9;
   DAT_00ffdf40 = 0;

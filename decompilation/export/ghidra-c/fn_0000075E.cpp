@@ -34,7 +34,7 @@
 //   0x0001E68C FUN_0001e68c
 //   0x0001F5CA FUN_0001f5ca
 //   0x00026938 FUN_00026938
-//   0x00053126 FUN_00053126
+//   0x00053126 prepare_mode_entry_service
 //   0x00053156 FUN_00053156
 //   0x0005315E FUN_0005315e
 //   0x00053290 FUN_00053290
@@ -85,7 +85,7 @@ void run_game_loop(void)
   _DAT_00fffc0a = 1;
   _DAT_00ffdfe8 = 0xffff;
   run_title_loop();
-  FUN_00053126();
+  prepare_mode_entry_service();
   if (_DAT_00ffddc0 != 0) {
     FUN_00059318();
     FUN_00059092();
@@ -94,7 +94,7 @@ void run_game_loop(void)
       FUN_00059c5e();
     }
 LAB_000007f0:
-    FUN_00053126();
+    prepare_mode_entry_service();
     FUN_00053290();
     DAT_00fffbfe = 0x14;
     _DAT_00fffc12 = 0;
@@ -156,7 +156,7 @@ LAB_000008c0:
           if (_DAT_00ffdf3e != 0) {
             DAT_00ffe172 = 0xff;
             _DAT_00ffdf3e = 0;
-            FUN_00053126();
+            prepare_mode_entry_service();
             if (DAT_00ffe186 == '\0') {
               bVar21 = false;
               if (DAT_00ffdf40 != 0) goto LAB_00000a72;

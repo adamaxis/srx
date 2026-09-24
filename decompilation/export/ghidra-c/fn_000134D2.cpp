@@ -11,10 +11,10 @@
 //   0x0000391A FUN_0000391a
 //   0x0000E6F4 FUN_0000e6f4
 //   0x00010AF0 FUN_00010af0
-//   0x000136DE FUN_000136de
+//   0x000136DE initialize_scene_mode_state
 //   0x00013726 FUN_00013726
 //   0x00020714 FUN_00020714
-//   0x00053126 FUN_00053126
+//   0x00053126 prepare_mode_entry_service
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -97,8 +97,8 @@ void FUN_000134d2(void)
       FUN_00010af0();
 LAB_000136b6:
       if ((DAT_00fff0e0 == '\0') && ((char)DAT_00fffbf8 != DAT_00ffddc4)) {
-        FUN_000136de();
-        FUN_00053126();
+        initialize_scene_mode_state();
+        prepare_mode_entry_service();
       }
       return;
     }

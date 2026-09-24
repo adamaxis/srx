@@ -11,7 +11,7 @@
 //   0x0001DFC4 advance_world_effect_trigger
 //   0x0001E166 FUN_0001e166
 //   0x0001E2EC FUN_0001e2ec
-//   0x00053126 FUN_00053126
+//   0x00053126 prepare_mode_entry_service
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -26,7 +26,7 @@ void FUN_0001dd94(void)
     DAT_00ffe186 = '\x03';
   }
   if ((DAT_00ffe166 != 0) && (DAT_00ffe166 = DAT_00ffe166 + -1, DAT_00ffe166 == 0)) {
-    FUN_00053126();
+    prepare_mode_entry_service();
     _DAT_00ffdd2c = FUN_0000c64c;
     FUN_0001e2ec();
   }
