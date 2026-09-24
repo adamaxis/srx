@@ -1349,3 +1349,16 @@ target_link_libraries(shadowrun_ghidra_entity_boundary_transition_test
     PRIVATE shadowrun_ghidra_entity_boundary_transition)
 add_test(NAME shadowrun_ghidra_entity_boundary_transition
          COMMAND shadowrun_ghidra_entity_boundary_transition_test)
+
+add_library(shadowrun_ghidra_queued_transfer_flush STATIC
+    src/queued_transfer_flush_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_queued_transfer_flush PUBLIC include)
+
+add_executable(shadowrun_ghidra_queued_transfer_flush_test
+    tests/queued_transfer_flush_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_queued_transfer_flush_test
+    PRIVATE shadowrun_ghidra_queued_transfer_flush)
+add_test(NAME shadowrun_ghidra_queued_transfer_flush
+         COMMAND shadowrun_ghidra_queued_transfer_flush_test)

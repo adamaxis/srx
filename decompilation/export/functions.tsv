@@ -169,10 +169,10 @@ entry	name	size	callingConvention	decompileStatus	file
 0000600E	FUN_0000600e	230	unknown	ok	ghidra-c/fn_0000600E.cpp
 000060F4	FUN_000060f4	6	unknown	ok	ghidra-c/fn_000060F4.cpp
 000060FA	FUN_000060fa	78	unknown	ok	ghidra-c/fn_000060FA.cpp
-00006148	FUN_00006148	88	unknown	ok	ghidra-c/fn_00006148.cpp
+00006148	flush_primary_queued_transfers	88	unknown	ok	ghidra-c/fn_00006148.cpp
 000061A0	append_entity_sprite_record	44	unknown	ok	ghidra-c/fn_000061A0.cpp
 000061CC	append_sprite_record	40	unknown	ok	ghidra-c/fn_000061CC.cpp
-000061F4	FUN_000061f4	56	unknown	ok	ghidra-c/fn_000061F4.cpp
+000061F4	flush_secondary_queued_transfers	56	unknown	ok	ghidra-c/fn_000061F4.cpp
 0000622C	expand_entity_sprite_descriptors	32	unknown	ok	ghidra-c/fn_0000622C.cpp
 0000624C	expand_entity_sprite_descriptor_list	96	unknown	ok	ghidra-c/fn_0000624C.cpp
 0000A7B4	FUN_0000a7b4	48	unknown	ok	ghidra-c/fn_0000A7B4.cpp

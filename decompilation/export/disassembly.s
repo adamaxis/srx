@@ -1286,10 +1286,10 @@
 000018E8: jsr 0x00002cb2.l ; call 00002CB2 render_alternate_field_viewport
 000018EE: tst.w (0x00ffdf2a).l
 000018F4: beq.w 0x000018fe
-000018F8: jsr 0x00006148.l ; call 00006148 FUN_00006148
+000018F8: jsr 0x00006148.l ; call 00006148 flush_primary_queued_transfers
 000018FE: tst.w (0x00ffdf30).l
 00001904: beq.w 0x0000190e
-00001908: jsr 0x000061f4.l ; call 000061F4 FUN_000061f4
+00001908: jsr 0x000061f4.l ; call 000061F4 flush_secondary_queued_transfers
 0000190E: rts
 00001910: movem.l {  A0 D0},-(SP)
 00001914: move.l #-0x3fa20000,(0x00c00004).l

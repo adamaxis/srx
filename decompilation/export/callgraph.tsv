@@ -98,8 +98,8 @@ caller	caller_name	callee	callee_name	call_sites
 00001872	FUN_00001872	00000F3C	write_fixed_transfer_pair	1
 00001872	FUN_00001872	00002C92	render_normal_field_viewport	1
 00001872	FUN_00001872	00002CB2	render_alternate_field_viewport	1
-00001872	FUN_00001872	00006148	FUN_00006148	1
-00001872	FUN_00001872	000061F4	FUN_000061f4	1
+00001872	FUN_00001872	00006148	flush_primary_queued_transfers	1
+00001872	FUN_00001872	000061F4	flush_secondary_queued_transfers	1
 00001872	FUN_00001872	0005672C	FUN_0005672c	1
 0000195C	sample_controller_input	000019F2	read_controller_port	1
 000019F2	read_controller_port	00052DC2	begin_controller_bus_access	1
@@ -310,8 +310,8 @@ caller	caller_name	callee	callee_name	call_sites
 0000600E	FUN_0000600e	000060FA	FUN_000060fa	1
 000060FA	FUN_000060fa	00003E86	expand_packed_nibbles	1
 000060FA	FUN_000060fa	00003EFE	FUN_00003efe	1
-00006148	FUN_00006148	00000F5C	write_vdp_word_block_with_source_wrap	1
-000061F4	FUN_000061f4	00000F5C	write_vdp_word_block_with_source_wrap	1
+00006148	flush_primary_queued_transfers	00000F5C	write_vdp_word_block_with_source_wrap	1
+000061F4	flush_secondary_queued_transfers	00000F5C	write_vdp_word_block_with_source_wrap	1
 0000622C	expand_entity_sprite_descriptors	0000624C	expand_entity_sprite_descriptor_list	2
 0000A7B4	FUN_0000a7b4	0000A7E4	initialize_entity_slot_order	1
 0000A800	prepare_pending_entity_template_list	00000D3A	sample_source_random_bound	1

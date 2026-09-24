@@ -9,8 +9,8 @@
 //   0x00000F3C write_fixed_transfer_pair
 //   0x00002C92 render_normal_field_viewport
 //   0x00002CB2 render_alternate_field_viewport
-//   0x00006148 FUN_00006148
-//   0x000061F4 FUN_000061f4
+//   0x00006148 flush_primary_queued_transfers
+//   0x000061F4 flush_secondary_queued_transfers
 //   0x0005672C FUN_0005672c
 
 
@@ -54,10 +54,10 @@ void FUN_00001872(void)
     render_alternate_field_viewport();
   }
   if (DAT_00ffdf2a != 0) {
-    FUN_00006148();
+    flush_primary_queued_transfers();
   }
   if (DAT_00ffdf30 != 0) {
-    FUN_000061f4();
+    flush_secondary_queued_transfers();
   }
   return;
 }

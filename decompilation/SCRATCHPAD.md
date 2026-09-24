@@ -707,6 +707,11 @@ record follow-up. It preserves the source order of reposition then service;
 the no-link branch installs continuation `0xB45C` only for timer values through
 `0x3C`.
 
+The paired `0x6148`/`0x61F4` queue leaves now share a typed flush helper. Each
+emits exactly its queued count of wrapped-transfer callbacks and clears the
+count afterward; the primary and secondary entry points remain separately
+named in the ledger and exporter.
+
 The adjacent title-overlay pair is now readable as well. `0x59F7A` resets
 the post-title overlay's next-frame deadline, six-phase index, and scroll
 accumulator. `0x59F8E` advances that schedule only through elapsed frames
