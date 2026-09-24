@@ -541,6 +541,12 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+Two fixed-loop leaves are now named and tested as well. `0x33BE` is a 4x4,
+16-call wrapper around the existing source-wrapped transfer boundary, while
+`0x3548` invokes the HUD panel drawing leaf three times. Neither conversion
+adds an address-based runtime representation; both retain the source call
+counts and order as ordinary host loops.
+
 The archetype boundary is now explicit. `0x42B0` selects one of the three
 extracted 0x100-byte Joshua templates (Samurai, Decker, or Gator Shaman),
 copies that record into the live Joshua slot, and publishes the source

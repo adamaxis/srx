@@ -59,6 +59,11 @@ void write_vdp_word_block_with_source_wrap(
     std::size_t byte_count,
     const WordTransferCallbacks& callbacks);
 
+// ROM 0x33BE: repeat the wrapped transfer leaf for a fixed four-by-four
+// source batch, preserving the source's 16-call order.
+void write_four_by_four_transfer_batch(
+    const std::function<void()>& write_wrapped_block);
+
 // ROM 0x0301E: upload the fixed 0x140-byte scene-profile block at its source
 // destination using the shared bounded transfer operation.
 void upload_scene_profile_block(

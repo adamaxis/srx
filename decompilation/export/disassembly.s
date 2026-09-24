@@ -2066,7 +2066,7 @@
 000034E4: adda.l #0x100,A5
 000034EA: dbf D5w,0x00003418
 000034EE: movem.l (SP)+,{ D0 D1 D2 D3 D4 D5 D6 D7 A0 A1}
-000034F2: bsr.w 0x00003548 ; call 00003548 FUN_00003548
+000034F2: bsr.w 0x00003548 ; call 00003548 draw_hud_panel_triplet
 000034F6: rts
 00003548: movem.l {  A1 A0 D7 D6 D5 D4 D3 D2 D1 D0},-(SP)
 0000354C: moveq #0x2,D0
@@ -2356,7 +2356,7 @@
 00003A06: addi.w #0x100,D4w
 00003A0A: addi.w #-0xfbc,D4w
 00003A0E: bsr.w 0x000033aa ; call 000033AA FUN_000033aa
-00003A12: bsr.w 0x00003548 ; call 00003548 FUN_00003548
+00003A12: bsr.w 0x00003548 ; call 00003548 draw_hud_panel_triplet
 00003A16: bsr.w 0x000038fa ; call 000038FA run_entity_animation_triplet
 00003A1A: rts
 00003A1C: cmpi.b #0x3,(0x00ffe186).l
@@ -7709,7 +7709,7 @@
 0000FFB6: movea.l (0x00fffc04).l,A0
 0000FFBC: move.b #-0x1,(0x56,A0)
 0000FFC2: jsr 0x00003404.l ; call 00003404 FUN_00003404
-0000FFC8: jsr 0x00003548.l ; call 00003548 FUN_00003548
+0000FFC8: jsr 0x00003548.l ; call 00003548 draw_hud_panel_triplet
 0000FFCE: clr.w D1w
 0000FFD0: jsr 0x000037ec.l ; call 000037EC FUN_000037ec
 0000FFD6: jsr 0x000036fc.l ; call 000036FC FUN_000036fc
@@ -14011,7 +14011,7 @@
 000175EE: bsr.w 0x00017708 ; call 00017708 render_field_hud
 000175F2: bsr.w 0x000177a4 ; call 000177A4 initialize_menu_slot_states
 000175F6: bsr.w 0x00019856 ; call 00019856 refresh_field_hud
-000175FA: jsr 0x000033be.l ; call 000033BE FUN_000033be
+000175FA: jsr 0x000033be.l ; call 000033BE write_four_by_four_transfer_batch
 00017600: bsr.w 0x000176ba ; call 000176BA refresh_field_resource_streams
 00017604: jsr 0x0001c4ee.l ; call 0001C4EE FUN_0001c4ee
 0001760A: lea (0xff1580).l,A0 ; data 00ff1580

@@ -198,10 +198,10 @@ caller	caller_name	callee	callee_name	call_sites
 0000334C	FUN_0000334c	00001232	write_vdp_grid	2
 0000334C	FUN_0000334c	000033AA	FUN_000033aa	3
 000033AA	FUN_000033aa	00001232	write_vdp_grid	1
-000033BE	FUN_000033be	00000F5C	write_vdp_word_block_with_source_wrap	1
+000033BE	write_four_by_four_transfer_batch	00000F5C	write_vdp_word_block_with_source_wrap	1
 00003404	FUN_00003404	00000F5C	write_vdp_word_block_with_source_wrap	2
-00003404	FUN_00003404	00003548	FUN_00003548	1
-00003548	FUN_00003548	00003560	FUN_00003560	1
+00003404	FUN_00003404	00003548	draw_hud_panel_triplet	1
+00003548	draw_hud_panel_triplet	00003560	FUN_00003560	1
 00003560	FUN_00003560	00003602	FUN_00003602	1
 00003560	FUN_00003560	00003648	draw_hud_panel	2
 00003648	draw_hud_panel	00000E9C	make_vdp_transfer_command	1
@@ -219,7 +219,7 @@ caller	caller_name	callee	callee_name	call_sites
 0000391A	FUN_0000391a	0001E540	FUN_0001e540	1
 0000391A	FUN_0000391a	000530DE	service_audio_if_enabled	1
 000039F2	refresh_field_animation_assets	000033AA	FUN_000033aa	1
-000039F2	refresh_field_animation_assets	00003548	FUN_00003548	1
+000039F2	refresh_field_animation_assets	00003548	draw_hud_panel_triplet	1
 000039F2	refresh_field_animation_assets	000038FA	run_entity_animation_triplet	1
 00003A1C	FUN_00003a1c	00003A90	FUN_00003a90	1
 00003A1C	FUN_00003a1c	00003B1E	FUN_00003b1e	1
@@ -501,7 +501,7 @@ caller	caller_name	callee	callee_name	call_sites
 0000FDFE	FUN_0000fdfe	00001378	FUN_00001378	1
 0000FDFE	FUN_0000fdfe	0000FDAE	FUN_0000fdae	1
 0000FF5A	FUN_0000ff5a	00003404	FUN_00003404	1
-0000FF5A	FUN_0000ff5a	00003548	FUN_00003548	1
+0000FF5A	FUN_0000ff5a	00003548	draw_hud_panel_triplet	1
 0000FF5A	FUN_0000ff5a	000036FC	FUN_000036fc	1
 0000FF5A	FUN_0000ff5a	000037EC	FUN_000037ec	1
 0000FF5A	FUN_0000ff5a	00010016	FUN_00010016	1
@@ -1012,7 +1012,7 @@ caller	caller_name	callee	callee_name	call_sites
 0001745E	FUN_0001745e	00001530	decode_and_upload_source_stream	1
 0001745E	FUN_0001745e	00001728	render_hud_sprite_stream	3
 0001745E	FUN_0001745e	0000334C	FUN_0000334c	1
-0001745E	FUN_0001745e	000033BE	FUN_000033be	1
+0001745E	FUN_0001745e	000033BE	write_four_by_four_transfer_batch	1
 0001745E	FUN_0001745e	00003404	FUN_00003404	1
 0001745E	FUN_0001745e	000039F2	refresh_field_animation_assets	1
 0001745E	FUN_0001745e	000176BA	refresh_field_resource_streams	1

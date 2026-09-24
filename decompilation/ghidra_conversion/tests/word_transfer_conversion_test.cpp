@@ -126,5 +126,13 @@ int main() {
         return 9;
     }
 
+    std::size_t transfer_blocks = 0U;
+    write_four_by_four_transfer_batch([&transfer_blocks] {
+        ++transfer_blocks;
+    });
+    if (transfer_blocks != 16U) {
+        return 10;
+    }
+
     return 0;
 }

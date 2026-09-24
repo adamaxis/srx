@@ -38,4 +38,13 @@ FieldHudRenderResult render_field_hud(
     return result;
 }
 
+void draw_hud_panel_triplet(const std::function<void()>& draw_panel) {
+    if (!draw_panel) {
+        return;
+    }
+    for (int pass = 0; pass < 3; ++pass) {
+        draw_panel();
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion

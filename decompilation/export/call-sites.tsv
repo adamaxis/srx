@@ -231,11 +231,11 @@ caller	caller_name	instruction	text	target	callee	status
 0000334C	FUN_0000334c	0000339C	bsr.w 0x000033aa	000033AA	FUN_000033aa	resolved
 0000334C	FUN_0000334c	000033A4	bsr.w 0x000033aa	000033AA	FUN_000033aa	resolved
 000033AA	FUN_000033aa	000033B6	jsr 0x00001232.l	00001232	write_vdp_grid	resolved
-000033BE	FUN_000033be	000033EA	jsr 0x00000f5c.l	00000F5C	write_vdp_word_block_with_source_wrap	resolved
+000033BE	write_four_by_four_transfer_batch	000033EA	jsr 0x00000f5c.l	00000F5C	write_vdp_word_block_with_source_wrap	resolved
 00003404	FUN_00003404	00003446	jsr 0x00000f5c.l	00000F5C	write_vdp_word_block_with_source_wrap	resolved
 00003404	FUN_00003404	000034D6	jsr 0x00000f5c.l	00000F5C	write_vdp_word_block_with_source_wrap	resolved
-00003404	FUN_00003404	000034F2	bsr.w 0x00003548	00003548	FUN_00003548	resolved
-00003548	FUN_00003548	00003550	bsr.w 0x00003560	00003560	FUN_00003560	resolved
+00003404	FUN_00003404	000034F2	bsr.w 0x00003548	00003548	draw_hud_panel_triplet	resolved
+00003548	draw_hud_panel_triplet	00003550	bsr.w 0x00003560	00003560	FUN_00003560	resolved
 00003560	FUN_00003560	000035E8	bsr.w 0x00003648	00003648	draw_hud_panel	resolved
 00003560	FUN_00003560	000035F8	bsr.w 0x00003602	00003602	FUN_00003602	resolved
 00003560	FUN_00003560	000035FC	bsr.w 0x00003648	00003648	draw_hud_panel	resolved
@@ -254,7 +254,7 @@ caller	caller_name	instruction	text	target	callee	status
 0000391A	FUN_0000391a	000039E0	jsr 0x0001e540.l	0001E540	FUN_0001e540	resolved
 0000391A	FUN_0000391a	000039EC	jsr 0x0001dc4c.l	0001DC4C	FUN_0001dc4c	resolved
 000039F2	refresh_field_animation_assets	00003A0E	bsr.w 0x000033aa	000033AA	FUN_000033aa	resolved
-000039F2	refresh_field_animation_assets	00003A12	bsr.w 0x00003548	00003548	FUN_00003548	resolved
+000039F2	refresh_field_animation_assets	00003A12	bsr.w 0x00003548	00003548	draw_hud_panel_triplet	resolved
 000039F2	refresh_field_animation_assets	00003A16	bsr.w 0x000038fa	000038FA	run_entity_animation_triplet	resolved
 00003A1C	FUN_00003a1c	00003A38	bra.w 0x00003bac	00003BAC	FUN_00003bac	resolved
 00003A1C	FUN_00003a1c	00003A4A	jsr 0x00015dcc.l	00015DCC	FUN_00015dcc	resolved
@@ -631,7 +631,7 @@ caller	caller_name	instruction	text	target	callee	status
 0000FF5A	FUN_0000ff5a	0000FF74	jsr 0x000125fa.l	000125FA	FUN_000125fa	resolved
 0000FF5A	FUN_0000ff5a	0000FF86	bsr.w 0x00010016	00010016	FUN_00010016	resolved
 0000FF5A	FUN_0000ff5a	0000FFC2	jsr 0x00003404.l	00003404	FUN_00003404	resolved
-0000FF5A	FUN_0000ff5a	0000FFC8	jsr 0x00003548.l	00003548	FUN_00003548	resolved
+0000FF5A	FUN_0000ff5a	0000FFC8	jsr 0x00003548.l	00003548	draw_hud_panel_triplet	resolved
 0000FF5A	FUN_0000ff5a	0000FFD0	jsr 0x000037ec.l	000037EC	FUN_000037ec	resolved
 0000FF5A	FUN_0000ff5a	0000FFD6	jsr 0x000036fc.l	000036FC	FUN_000036fc	resolved
 0000FF5A	FUN_0000ff5a	0000FFE8	bsr.w 0x00010722	00010722	FUN_00010722	resolved
@@ -1456,7 +1456,7 @@ caller	caller_name	instruction	text	target	callee	status
 0001745E	FUN_0001745e	000175EE	bsr.w 0x00017708	00017708	render_field_hud	resolved
 0001745E	FUN_0001745e	000175F2	bsr.w 0x000177a4	000177A4	initialize_menu_slot_states	resolved
 0001745E	FUN_0001745e	000175F6	bsr.w 0x00019856	00019856	refresh_field_hud	resolved
-0001745E	FUN_0001745e	000175FA	jsr 0x000033be.l	000033BE	FUN_000033be	resolved
+0001745E	FUN_0001745e	000175FA	jsr 0x000033be.l	000033BE	write_four_by_four_transfer_batch	resolved
 0001745E	FUN_0001745e	00017600	bsr.w 0x000176ba	000176BA	refresh_field_resource_streams	resolved
 0001745E	FUN_0001745e	00017604	jsr 0x0001c4ee.l	0001C4EE	FUN_0001c4ee	resolved
 0001745E	FUN_0001745e	0001761C	jsr 0x0001b628.l	0001B628	FUN_0001b628	resolved

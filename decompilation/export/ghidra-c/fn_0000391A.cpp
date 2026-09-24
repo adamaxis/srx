@@ -47,7 +47,7 @@ void FUN_0000391a(void)
   }
   FUN_0001dc4c();
   FUN_000033aa();
-  FUN_00003548();
+  draw_hud_panel_triplet();
   run_entity_animation_triplet();
   return;
 }

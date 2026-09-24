@@ -9,7 +9,7 @@
 //   0x00001530 decode_and_upload_source_stream
 //   0x00001728 render_hud_sprite_stream
 //   0x0000334C FUN_0000334c
-//   0x000033BE FUN_000033be
+//   0x000033BE write_four_by_four_transfer_batch
 //   0x00003404 FUN_00003404
 //   0x000039F2 refresh_field_animation_assets
 //   0x000176BA refresh_field_resource_streams
@@ -92,7 +92,7 @@ void FUN_0001745e(void)
     render_field_hud();
     initialize_menu_slot_states();
     refresh_field_hud();
-    FUN_000033be();
+    write_four_by_four_transfer_batch();
     refresh_field_resource_streams();
     FUN_0001c4ee();
     DAT_00ff158e = 0x120;

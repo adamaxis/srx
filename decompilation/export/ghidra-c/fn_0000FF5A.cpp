@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003404 FUN_00003404
-//   0x00003548 FUN_00003548
+//   0x00003548 draw_hud_panel_triplet
 //   0x000036FC FUN_000036fc
 //   0x000037EC FUN_000037ec
 //   0x00010016 FUN_00010016
@@ -39,7 +39,7 @@ void FUN_0000ff5a(void)
   }
   *(undefined1 *)(DAT_00fffc04 + 0x56) = 0xff;
   FUN_00003404();
-  FUN_00003548();
+  draw_hud_panel_triplet();
   FUN_000037ec();
   FUN_000036fc();
   *(char *)(extraout_A0_00 + 0x9d) = (char)DAT_00fff096;

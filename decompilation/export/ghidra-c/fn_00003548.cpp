@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00003548
-// Name: FUN_00003548
+// Name: draw_hud_panel_triplet
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003560 FUN_00003560
 
 
-undefined8 FUN_00003548(void)
+undefined8 draw_hud_panel_triplet(void)
 
 {
   undefined4 in_D0;

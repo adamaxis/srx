@@ -217,6 +217,8 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x286E	world effect player spawn guard	ghidra_conversion::guard_world_effect_player_spawn	shadowrun_native_port	partial		Typed pending-marker gate, thirteen-record active/effect scan, and explicit player-spawn boundary
 0x281E	field scene entry initialization	ghidra_conversion::initialize_field_scene_entry	shadowrun_native_port	partial		Typed source marker reset and display/profile/scene/render/upload/guard order
 0x28C2	field scene reinitialization	ghidra_conversion::reinitialize_field_scene_entry	shadowrun_native_port	partial		Typed refresh/guard/display order, camera alignment, transition reset, and render/upload order
+0x33BE	four-by-four transfer batch	ghidra_conversion::write_four_by_four_transfer_batch	shadowrun_native_port	partial		Typed fixed 16-call wrapper around the source wrapped-transfer leaf
+0x3548	HUD panel triplet	ghidra_conversion::draw_hud_panel_triplet	shadowrun_native_port	partial		Typed fixed three-call wrapper around the source HUD panel leaf
 0x59C5E	intro stages	NativePortShell	test_startup_behavior_and_rendering; shadowrun_graphics	partial	intro-0/160/656/932/1772.bmp	music pending; SAT choreography still setup-time
 0x5A1EA	intro ambush SAT/map death choreography	decode_genesis_intro_ambush_frames_impl	shadowrun_native_port	defended	visual-regression/intro-hill/intro-1240.bmp; intro-1552.bmp; intro-2512.bmp	Indian body/head pan, runner elimination, and slain Michael handoff
 0x5AF62	intro stage 1 0x1406	decode_genesis_intro_stages	shadowrun_graphics	partial		descriptor 0x5B574

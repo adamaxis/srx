@@ -61,5 +61,11 @@ int main() {
         return 2;
     }
 
+    int panel_draws = 0;
+    draw_hud_panel_triplet([&panel_draws] { ++panel_draws; });
+    if (!expect(panel_draws == 3)) {
+        return 3;
+    }
+
     return 0;
 }

@@ -29,4 +29,7 @@ FieldHudRenderResult render_field_hud(
     bool mode_panel_enabled,
     const FieldHudRenderCallbacks& callbacks);
 
+// ROM 0x3548: invoke the source HUD-panel drawing leaf three times.
+void draw_hud_panel_triplet(const std::function<void()>& draw_panel);
+
 } // namespace shadowrun::ghidra_conversion

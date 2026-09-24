@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000F5C write_vdp_word_block_with_source_wrap
-//   0x00003548 FUN_00003548
+//   0x00003548 draw_hud_panel_triplet
 
 
 void FUN_00003404(void)
@@ -32,7 +32,7 @@ void FUN_00003404(void)
     } while (sVar3 != -1);
     sVar1 = sVar1 + -1;
   } while (sVar1 != -1);
-  FUN_00003548();
+  draw_hud_panel_triplet();
   return;
 }
 

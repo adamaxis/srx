@@ -94,6 +94,18 @@ void write_vdp_word_block_with_source_wrap(
         remaining_words, remaining_bytes, callbacks);
 }
 
+void write_four_by_four_transfer_batch(
+    const std::function<void()>& write_wrapped_block) {
+    if (!write_wrapped_block) {
+        return;
+    }
+    for (std::size_t row = 0; row < 4U; ++row) {
+        for (std::size_t column = 0; column < 4U; ++column) {
+            write_wrapped_block();
+        }
+    }
+}
+
 void upload_scene_profile_block(
     const std::vector<std::uint16_t>& words,
     const WordTransferCallbacks& callbacks) {

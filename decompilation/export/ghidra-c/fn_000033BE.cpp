@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000033BE
-// Name: FUN_000033be
+// Name: write_four_by_four_transfer_batch
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000F5C write_vdp_word_block_with_source_wrap
 
 
-undefined8 FUN_000033be(void)
+undefined8 write_four_by_four_transfer_batch(void)
 
 {
   undefined4 in_D0;
