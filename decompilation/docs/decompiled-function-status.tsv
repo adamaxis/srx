@@ -336,3 +336,4 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x5B29A	clear title intro display buffer	ghidra_conversion::clear_title_intro_display_buffer	shadowrun_ghidra_title_intro_transfer	partial		Converts the 0x400-write display clear into a typed host clear plan
 0x5B32C	fill title intro word block	ghidra_conversion::fill_title_intro_word_block	shadowrun_ghidra_title_intro_transfer	partial		Emits typed repeated fill rows with the source row count and 0x80 stride
 0x5AF2A	advance title intro schedule	ghidra_conversion::advance_title_intro_schedule	shadowrun_ghidra_title_intro_schedule	partial		Consumes one timed action entry and preserves the zero-delay terminal marker
+0x1CFC	title resource load sequence	ghidra_conversion::load_title_resources	shadowrun_ghidra_title_resource_sequence	partial		Typed three-stream source-order load with the intervening stream reset and sprite-list preparation

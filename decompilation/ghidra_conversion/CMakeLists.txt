@@ -1375,3 +1375,16 @@ target_link_libraries(shadowrun_ghidra_hud_selection_lookup_test
     PRIVATE shadowrun_ghidra_hud_selection_lookup)
 add_test(NAME shadowrun_ghidra_hud_selection_lookup
          COMMAND shadowrun_ghidra_hud_selection_lookup_test)
+
+add_library(shadowrun_ghidra_title_resource_sequence STATIC
+    src/title_resource_sequence_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_title_resource_sequence PUBLIC include)
+
+add_executable(shadowrun_ghidra_title_resource_sequence_test
+    tests/title_resource_sequence_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_title_resource_sequence_test
+    PRIVATE shadowrun_ghidra_title_resource_sequence)
+add_test(NAME shadowrun_ghidra_title_resource_sequence
+         COMMAND shadowrun_ghidra_title_resource_sequence_test)

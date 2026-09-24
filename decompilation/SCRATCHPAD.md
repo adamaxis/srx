@@ -541,6 +541,12 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The title resource loader at `0x1CFC` is now a typed host sequence. It submits
+the decoded-resource boundary three times, resets the host resource cursor
+between the first and second submissions, and then prepares the title sprite
+list. The conversion carries no ROM pointer or VDP state; each submission is
+an asset-selection callback.
+
 The established word-transfer module now also converts `0xC3B2` as
 `write_single_word`: one typed transfer command followed by one data-word
 callback, with the ordering covered by the existing transfer test.
