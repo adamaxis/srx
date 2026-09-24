@@ -44,71 +44,193 @@ startup/font.bmp	sprite	0	0	128	48	0xC1320	extracted
 startup/cursor.bmp	sprite	4	0	4	7	0xD29F6	extracted
 intro/aircraft-plane-a.bmp	sprite	0	0	216	64	0x5B528/0x5B7D8	extracted
 intro/trivid-background.bmp	background	0	0	320	224	0x5AA96	extracted
-intro/trivid-slain.bmp	sprite	51	148	52	43	0x5ABD2	extracted
-intro/trivid-moving.bmp	sprite	6	155	253	14	0x5AC36	extracted
-intro/helicopter-0.bmp	sprite	292	106	190	5	0x5B180[0]	extracted
-intro/helicopter-1.bmp	sprite	289	107	195	4	0x5B180[1]	extracted
-intro/helicopter-2.bmp	sprite	293	106	155	5	0x5B180[2]	extracted
-intro/helicopter-3.bmp	sprite	311	106	162	5	0x5B180[3]	extracted
-intro/helicopter-4.bmp	sprite	298	106	150	5	0x5B180[4]	extracted
-intro/helicopter-5.bmp	sprite	302	107	142	4	0x5B180[5]	extracted
-intro/aircraft-movement-0.bmp	sprite	3	8	24	8	0x5B270[0]	extracted
-intro/aircraft-movement-1.bmp	sprite	3	5	23	13	0x5B270[1]	extracted
 intro/background-0.bmp	background	0	0	320	224	0x59C5E	extracted
 intro/background-1.bmp	background	0	0	320	224	0x59C5E	extracted
 intro/background-2.bmp	background	0	0	320	224	0x59C5E	extracted
 intro/background-3.bmp	background	0	0	320	224	0x59C5E	extracted
-intro/sprites/trivid-left-0-0.bmp	sprite	113	88	52	43	table=0x1df1d6 index=0 source=0x1df1d6 attr=0xc000	extracted
-intro/sprites/trivid-right-0-1.bmp	sprite	120	120	299	14	table=0x1df238 index=0 source=0x1df238 attr=0x6000	extracted
-intro/sprites/ambush-actor-0-2.bmp	sprite	129	113	18	16	table=0x5a398 index=0 source=0x1df1b2 attr=0x2000	extracted
-intro/sprites/ambush-actor-1-3.bmp	sprite	128	113	18	15	table=0x5a398 index=1 source=0x1df1c4 attr=0x2000	extracted
-intro/sprites/ambush-actor-2-4.bmp	sprite	129	113	18	16	table=0x5a398 index=2 source=0x1df1b2 attr=0x2000	extracted
-intro/sprites/ambush-actor-3-5.bmp	sprite	128	113	18	15	table=0x5a398 index=3 source=0x1df1c4 attr=0x2000	extracted
-intro/sprites/ambush-muzzle-0-6.bmp	sprite	112	125	32	8	table=0x5a482 index=0 source=0x1df0cc attr=0x6000	extracted
-intro/sprites/ambush-muzzle-1-7.bmp	sprite	112	126	32	5	table=0x5a482 index=1 source=0x1df0d6 attr=0x6000	extracted
-intro/sprites/ambush-muzzle-2-8.bmp	sprite	112	126	32	5	table=0x5a482 index=2 source=0x1df0d6 attr=0x6000	extracted
-intro/sprites/ambush-muzzle-3-9.bmp	sprite	112	126	32	5	table=0x5a482 index=3 source=0x1df0d6 attr=0x6000	extracted
-intro/sprites/ambush-muzzle-4-10.bmp	sprite	112	126	32	5	table=0x5a482 index=4 source=0x1df0d6 attr=0x6000	extracted
-intro/sprites/ambush-flash-0-11.bmp	sprite	122	123	13	11	table=0x5a562 index=0 source=0x1df182 attr=0x6000	extracted
-intro/sprites/ambush-flash-1-12.bmp	sprite	122	123	14	12	table=0x5a562 index=1 source=0x1df18c attr=0x6000	extracted
-intro/sprites/ambush-flash-2-13.bmp	sprite	121	120	14	14	table=0x5a562 index=2 source=0x1df19e attr=0x6000	extracted
-intro/sprites/ambush-flash-3-14.bmp	sprite	125	123	8	10	table=0x5a562 index=3 source=0x1df1a8 attr=0x6000	extracted
-intro/sprites/ambush-body-0-15.bmp	sprite	117	112	24	31	table=0x5a602 index=0 source=0x1def28 attr=0x6000	extracted
-intro/sprites/ambush-body-1-16.bmp	sprite	108	104	42	46	table=0x5a602 index=1 source=0x1def32 attr=0x6000	extracted
-intro/sprites/ambush-body-2-17.bmp	sprite	110	103	41	51	table=0x5a602 index=2 source=0x1def8c attr=0x6000	extracted
-intro/sprites/ambush-body-3-18.bmp	sprite	103	99	53	55	table=0x5a602 index=3 source=0x1defc6 attr=0x6000	extracted
-intro/sprites/ambush-body-4-19.bmp	sprite	101	99	60	60	table=0x5a602 index=4 source=0x1df010 attr=0x6000	extracted
-intro/sprites/ambush-body-5-20.bmp	sprite	94	92	71	70	table=0x5a602 index=5 source=0x1df06a attr=0x6000	extracted
-intro/sprites/ambush-projectile-b-0-21.bmp	sprite	112	126	64	69	table=0x5a6c8 index=0 source=0x1df0ea attr=0x6000	extracted
-intro/sprites/ambush-projectile-b-1-22.bmp	sprite	112	94	96	45	table=0x5a6c8 index=1 source=0x1df0fc attr=0x6000	extracted
-intro/sprites/ambush-projectile-b-2-23.bmp	sprite	112	126	32	5	table=0x5a6c8 index=2 source=0x1df0e0 attr=0x6000	extracted
-intro/sprites/ambush-projectile-b-3-24.bmp	sprite	112	126	32	5	table=0x5a6c8 index=3 source=0x1df0e0 attr=0x6000	extracted
-intro/sprites/ambush-projectile-b-4-25.bmp	sprite	112	94	96	45	table=0x5a6c8 index=4 source=0x1df0fc attr=0x6000	extracted
-intro/sprites/ambush-projectile-b-5-26.bmp	sprite	112	126	32	5	table=0x5a6c8 index=5 source=0x1df0e0 attr=0x6000	extracted
-intro/sprites/ambush-projectile-b-6-27.bmp	sprite	112	110	88	21	table=0x5a6c8 index=6 source=0x1df130 attr=0x6000	extracted
-intro/sprites/ambush-projectile-c-0-28.bmp	sprite	113	125	47	7	table=0x5a7aa index=0 source=0x1df170 attr=0x6000	extracted
-intro/sprites/ambush-projectile-c-1-29.bmp	sprite	112	110	88	21	table=0x5a7aa index=1 source=0x1df130 attr=0x6000	extracted
-intro/sprites/ambush-projectile-c-2-30.bmp	sprite	112	126	80	21	table=0x5a7aa index=2 source=0x1df11e attr=0x6000	extracted
-intro/sprites/ambush-projectile-c-3-31.bmp	sprite	113	125	47	7	table=0x5a7aa index=3 source=0x1df170 attr=0x6000	extracted
-intro/sprites/ambush-projectile-c-4-32.bmp	sprite	112	126	64	69	table=0x5a7aa index=4 source=0x1df0ea attr=0x6000	extracted
-intro/sprites/ambush-projectile-c-5-33.bmp	sprite	113	125	47	7	table=0x5a7aa index=5 source=0x1df170 attr=0x6000	extracted
-intro/sprites/ambush-projectile-c-6-34.bmp	sprite	112	94	96	45	table=0x5a7aa index=6 source=0x1df0fc attr=0x6000	extracted
-intro/sprites/ambush-projectile-c-7-35.bmp	sprite	112	126	32	5	table=0x5a7aa index=7 source=0x1df0e0 attr=0x6000	extracted
-intro/sprites/ambush-projectile-d-0-36.bmp	sprite	112	126	64	69	table=0x5a888 index=0 source=0x1df0ea attr=0x6000	extracted
-intro/sprites/ambush-projectile-d-1-37.bmp	sprite	113	125	47	7	table=0x5a888 index=1 source=0x1df170 attr=0x6000	extracted
-intro/sprites/ambush-projectile-d-2-38.bmp	sprite	112	126	80	21	table=0x5a888 index=2 source=0x1df11e attr=0x6000	extracted
-intro/sprites/ambush-projectile-d-3-39.bmp	sprite	112	94	96	45	table=0x5a888 index=3 source=0x1df0fc attr=0x6000	extracted
-intro/sprites/ambush-projectile-d-4-40.bmp	sprite	112	110	88	21	table=0x5a888 index=4 source=0x1df130 attr=0x6000	extracted
-intro/sprites/ambush-projectile-d-5-41.bmp	sprite	112	126	32	5	table=0x5a888 index=5 source=0x1df0e0 attr=0x6000	extracted
-intro/sprites/ambush-projectile-d-6-42.bmp	sprite	113	125	47	7	table=0x5a888 index=6 source=0x1df170 attr=0x6000	extracted
-intro/sprites/ambush-projectile-d-7-43.bmp	sprite	112	126	80	21	table=0x5a888 index=7 source=0x1df11e attr=0x6000	extracted
-intro/sprites/ambush-michael-0-44.bmp	sprite	109	124	34	8	table=0x5a958 index=0 source=0x1df142 attr=0x6000	extracted
-intro/sprites/ambush-michael-1-45.bmp	sprite	96	125	47	7	table=0x5a958 index=1 source=0x1df154 attr=0x6000	extracted
-intro/sprites/ambush-michael-2-46.bmp	sprite	115	125	28	6	table=0x5a958 index=2 source=0x1df166 attr=0x6000	extracted
-intro/background-patch-0.bmp	background	152	128	104	96	table=0x5a1d2 index=0 source=0x1e2eba attr=0x0	extracted
-intro/background-patch-1.bmp	background	152	128	104	96	table=0x5a1d2 index=1 source=0x1e2f04 attr=0x0	extracted
-intro/background-patch-2.bmp	background	152	128	104	96	table=0x5a1d2 index=2 source=0x1e2f6c attr=0x0	extracted
-intro/background-patch-3.bmp	background	152	128	104	96	table=0x5a1d2 index=3 source=0x1e2eba attr=0x0	extracted
+intro/sprites/trivid-left-0-0.bmp	sprite	113	91	32	8	table=0x1df1d6 index=0 sprite=0 source=0x1df1d6 attr=0xc000	extracted
+intro/sprites/trivid-left-0-1.bmp	sprite	114	99	31	32	table=0x1df1d6 index=0 sprite=1 source=0x1df1de attr=0xc000	extracted
+intro/sprites/trivid-left-0-2.bmp	sprite	140	88	8	3	table=0x1df1d6 index=0 sprite=2 source=0x1df1e6 attr=0xc000	extracted
+intro/sprites/trivid-left-0-3.bmp	sprite	145	91	8	32	table=0x1df1d6 index=0 sprite=3 source=0x1df1ee attr=0xc000	extracted
+intro/sprites/trivid-left-0-4.bmp	sprite	145	123	20	8	table=0x1df1d6 index=0 sprite=4 source=0x1df1f6 attr=0xc000	extracted
+intro/sprites/trivid-left-0-5.bmp	sprite	153	100	2	7	table=0x1df1d6 index=0 sprite=5 source=0x1df1fe attr=0xc000	extracted
+intro/sprites/trivid-left-0-6.bmp	sprite	153	116	12	7	table=0x1df1d6 index=0 sprite=6 source=0x1df206 attr=0xc000	extracted
+intro/sprites/trivid-right-0-0.bmp	sprite	120	122	19	12	table=0x1df238 index=0 sprite=0 source=0x1df238 attr=0x6000	extracted
+intro/sprites/trivid-right-0-1.bmp	sprite	141	120	11	13	table=0x1df238 index=0 sprite=1 source=0x1df240 attr=0x6000	extracted
+intro/sprites/trivid-right-0-2.bmp	sprite	166	126	11	4	table=0x1df238 index=0 sprite=2 source=0x1df248 attr=0x6000	extracted
+intro/sprites/trivid-right-0-3.bmp	sprite	203	122	19	12	table=0x1df238 index=0 sprite=3 source=0x1df250 attr=0x6000	extracted
+intro/sprites/trivid-right-0-4.bmp	sprite	221	120	11	13	table=0x1df238 index=0 sprite=4 source=0x1df258 attr=0x6000	extracted
+intro/sprites/trivid-right-0-5.bmp	sprite	248	126	11	4	table=0x1df238 index=0 sprite=5 source=0x1df260 attr=0x6000	extracted
+intro/sprites/trivid-right-0-6.bmp	sprite	265	127	23	2	table=0x1df238 index=0 sprite=6 source=0x1df268 attr=0x6000	extracted
+intro/sprites/trivid-right-0-7.bmp	sprite	298	122	19	12	table=0x1df238 index=0 sprite=7 source=0x1df270 attr=0x6000	extracted
+intro/sprites/trivid-right-0-8.bmp	sprite	311	126	11	4	table=0x1df238 index=0 sprite=8 source=0x1df278 attr=0x6000	extracted
+intro/sprites/trivid-right-0-9.bmp	sprite	328	127	23	2	table=0x1df238 index=0 sprite=9 source=0x1df280 attr=0x6000	extracted
+intro/sprites/trivid-right-0-10.bmp	sprite	364	122	19	12	table=0x1df238 index=0 sprite=10 source=0x1df288 attr=0x6000	extracted
+intro/sprites/trivid-right-0-11.bmp	sprite	381	120	11	13	table=0x1df238 index=0 sprite=11 source=0x1df290 attr=0x6000	extracted
+intro/sprites/trivid-right-0-12.bmp	sprite	408	126	11	4	table=0x1df238 index=0 sprite=12 source=0x1df298 attr=0x6000	extracted
+intro/sprites/ambush-actor-0-0.bmp	sprite	134	113	13	8	table=0x5a398 index=0 sprite=0 source=0x1df1b2 attr=0x2000	extracted
+intro/sprites/ambush-actor-0-1.bmp	sprite	129	121	18	8	table=0x5a398 index=0 sprite=1 source=0x1df1ba attr=0x2000	extracted
+intro/sprites/ambush-actor-1-0.bmp	sprite	133	113	13	8	table=0x5a398 index=1 sprite=0 source=0x1df1c4 attr=0x2000	extracted
+intro/sprites/ambush-actor-1-1.bmp	sprite	128	121	18	7	table=0x5a398 index=1 sprite=1 source=0x1df1cc attr=0x2000	extracted
+intro/sprites/ambush-actor-2-0.bmp	sprite	134	113	13	8	table=0x5a398 index=2 sprite=0 source=0x1df1b2 attr=0x2000	extracted
+intro/sprites/ambush-actor-2-1.bmp	sprite	129	121	18	8	table=0x5a398 index=2 sprite=1 source=0x1df1ba attr=0x2000	extracted
+intro/sprites/ambush-actor-3-0.bmp	sprite	133	113	13	8	table=0x5a398 index=3 sprite=0 source=0x1df1c4 attr=0x2000	extracted
+intro/sprites/ambush-actor-3-1.bmp	sprite	128	121	18	7	table=0x5a398 index=3 sprite=1 source=0x1df1cc attr=0x2000	extracted
+intro/sprites/ambush-muzzle-0-0.bmp	sprite	112	125	32	8	table=0x5a482 index=0 sprite=0 source=0x1df0cc attr=0x6000	extracted
+intro/sprites/ambush-muzzle-1-0.bmp	sprite	112	126	32	5	table=0x5a482 index=1 sprite=0 source=0x1df0d6 attr=0x6000	extracted
+intro/sprites/ambush-muzzle-2-0.bmp	sprite	112	126	32	5	table=0x5a482 index=2 sprite=0 source=0x1df0d6 attr=0x6000	extracted
+intro/sprites/ambush-muzzle-3-0.bmp	sprite	112	126	32	5	table=0x5a482 index=3 sprite=0 source=0x1df0d6 attr=0x6000	extracted
+intro/sprites/ambush-muzzle-4-0.bmp	sprite	112	126	32	5	table=0x5a482 index=4 sprite=0 source=0x1df0d6 attr=0x6000	extracted
+intro/sprites/ambush-flash-0-0.bmp	sprite	122	123	13	11	table=0x5a562 index=0 sprite=0 source=0x1df182 attr=0x6000	extracted
+intro/sprites/ambush-flash-1-0.bmp	sprite	122	123	14	8	table=0x5a562 index=1 sprite=0 source=0x1df18c attr=0x6000	extracted
+intro/sprites/ambush-flash-1-1.bmp	sprite	125	131	10	4	table=0x5a562 index=1 sprite=1 source=0x1df194 attr=0x6000	extracted
+intro/sprites/ambush-flash-2-0.bmp	sprite	121	120	14	14	table=0x5a562 index=2 sprite=0 source=0x1df19e attr=0x6000	extracted
+intro/sprites/ambush-flash-3-0.bmp	sprite	125	123	8	10	table=0x5a562 index=3 sprite=0 source=0x1df1a8 attr=0x6000	extracted
+intro/sprites/ambush-body-0-0.bmp	sprite	117	112	24	31	table=0x5a602 index=0 sprite=0 source=0x1def28 attr=0x6000	extracted
+intro/sprites/ambush-body-1-0.bmp	sprite	111	104	32	8	table=0x5a602 index=1 sprite=0 source=0x1def32 attr=0x6000	extracted
+intro/sprites/ambush-body-1-1.bmp	sprite	143	110	5	8	table=0x5a602 index=1 sprite=1 source=0x1def3a attr=0x6000	extracted
+intro/sprites/ambush-body-1-2.bmp	sprite	110	112	32	8	table=0x5a602 index=1 sprite=2 source=0x1def42 attr=0x6000	extracted
+intro/sprites/ambush-body-1-3.bmp	sprite	142	112	6	8	table=0x5a602 index=1 sprite=3 source=0x1def4a attr=0x6000	extracted
+intro/sprites/ambush-body-1-4.bmp	sprite	109	120	32	8	table=0x5a602 index=1 sprite=4 source=0x1def52 attr=0x6000	extracted
+intro/sprites/ambush-body-1-5.bmp	sprite	141	120	9	8	table=0x5a602 index=1 sprite=5 source=0x1def5a attr=0x6000	extracted
+intro/sprites/ambush-body-1-6.bmp	sprite	108	128	32	8	table=0x5a602 index=1 sprite=6 source=0x1def62 attr=0x6000	extracted
+intro/sprites/ambush-body-1-7.bmp	sprite	140	128	10	8	table=0x5a602 index=1 sprite=7 source=0x1def6a attr=0x6000	extracted
+intro/sprites/ambush-body-1-8.bmp	sprite	109	136	32	8	table=0x5a602 index=1 sprite=8 source=0x1def72 attr=0x6000	extracted
+intro/sprites/ambush-body-1-9.bmp	sprite	141	136	9	8	table=0x5a602 index=1 sprite=9 source=0x1def7a attr=0x6000	extracted
+intro/sprites/ambush-body-1-10.bmp	sprite	111	144	32	6	table=0x5a602 index=1 sprite=10 source=0x1def82 attr=0x6000	extracted
+intro/sprites/ambush-body-2-0.bmp	sprite	111	103	31	7	table=0x5a602 index=2 sprite=0 source=0x1def8c attr=0x6000	extracted
+intro/sprites/ambush-body-2-1.bmp	sprite	143	106	1	4	table=0x5a602 index=2 sprite=1 source=0x1def94 attr=0x6000	extracted
+intro/sprites/ambush-body-2-2.bmp	sprite	110	110	32	32	table=0x5a602 index=2 sprite=2 source=0x1def9c attr=0x6000	extracted
+intro/sprites/ambush-body-2-3.bmp	sprite	142	111	8	30	table=0x5a602 index=2 sprite=3 source=0x1defa4 attr=0x6000	extracted
+intro/sprites/ambush-body-2-4.bmp	sprite	150	128	1	5	table=0x5a602 index=2 sprite=4 source=0x1defac attr=0x6000	extracted
+intro/sprites/ambush-body-2-5.bmp	sprite	110	142	31	8	table=0x5a602 index=2 sprite=5 source=0x1defb4 attr=0x6000	extracted
+intro/sprites/ambush-body-2-6.bmp	sprite	126	150	20	4	table=0x5a602 index=2 sprite=6 source=0x1defbc attr=0x6000	extracted
+intro/sprites/ambush-body-3-0.bmp	sprite	103	124	16	24	table=0x5a602 index=3 sprite=0 source=0x1defc6 attr=0x6000	extracted
+intro/sprites/ambush-body-3-1.bmp	sprite	119	132	16	22	table=0x5a602 index=3 sprite=1 source=0x1defce attr=0x6000	extracted
+intro/sprites/ambush-body-3-2.bmp	sprite	107	99	24	24	table=0x5a602 index=3 sprite=2 source=0x1defd6 attr=0x6000	extracted
+intro/sprites/ambush-body-3-3.bmp	sprite	131	107	8	13	table=0x5a602 index=3 sprite=3 source=0x1defde attr=0x6000	extracted
+intro/sprites/ambush-body-3-4.bmp	sprite	135	109	18	16	table=0x5a602 index=3 sprite=4 source=0x1defe6 attr=0x6000	extracted
+intro/sprites/ambush-body-3-5.bmp	sprite	135	133	21	8	table=0x5a602 index=3 sprite=5 source=0x1defee attr=0x6000	extracted
+intro/sprites/ambush-body-3-6.bmp	sprite	143	125	13	8	table=0x5a602 index=3 sprite=6 source=0x1deff6 attr=0x6000	extracted
+intro/sprites/ambush-body-3-7.bmp	sprite	135	141	8	13	table=0x5a602 index=3 sprite=7 source=0x1deffe attr=0x6000	extracted
+intro/sprites/ambush-body-3-8.bmp	sprite	143	141	8	5	table=0x5a602 index=3 sprite=8 source=0x1df006 attr=0x6000	extracted
+intro/sprites/ambush-body-4-0.bmp	sprite	101	117	16	32	table=0x5a602 index=4 sprite=0 source=0x1df010 attr=0x6000	extracted
+intro/sprites/ambush-body-4-1.bmp	sprite	117	143	15	6	table=0x5a602 index=4 sprite=1 source=0x1df018 attr=0x6000	extracted
+intro/sprites/ambush-body-4-2.bmp	sprite	104	99	16	24	table=0x5a602 index=4 sprite=2 source=0x1df020 attr=0x6000	extracted
+intro/sprites/ambush-body-4-3.bmp	sprite	120	100	16	13	table=0x5a602 index=4 sprite=3 source=0x1df028 attr=0x6000	extracted
+intro/sprites/ambush-body-4-4.bmp	sprite	111	145	32	8	table=0x5a602 index=4 sprite=4 source=0x1df030 attr=0x6000	extracted
+intro/sprites/ambush-body-4-5.bmp	sprite	123	153	20	6	table=0x5a602 index=4 sprite=5 source=0x1df038 attr=0x6000	extracted
+intro/sprites/ambush-body-4-6.bmp	sprite	136	107	20	8	table=0x5a602 index=4 sprite=6 source=0x1df040 attr=0x6000	extracted
+intro/sprites/ambush-body-4-7.bmp	sprite	144	115	16	24	table=0x5a602 index=4 sprite=7 source=0x1df048 attr=0x6000	extracted
+intro/sprites/ambush-body-4-8.bmp	sprite	160	132	1	5	table=0x5a602 index=4 sprite=8 source=0x1df050 attr=0x6000	extracted
+intro/sprites/ambush-body-4-9.bmp	sprite	138	139	16	16	table=0x5a602 index=4 sprite=9 source=0x1df058 attr=0x6000	extracted
+intro/sprites/ambush-body-4-10.bmp	sprite	154	139	6	8	table=0x5a602 index=4 sprite=10 source=0x1df060 attr=0x6000	extracted
+intro/sprites/ambush-body-5-0.bmp	sprite	94	118	24	32	table=0x5a602 index=5 sprite=0 source=0x1df06a attr=0x6000	extracted
+intro/sprites/ambush-body-5-1.bmp	sprite	118	144	8	6	table=0x5a602 index=5 sprite=1 source=0x1df072 attr=0x6000	extracted
+intro/sprites/ambush-body-5-2.bmp	sprite	101	92	16	32	table=0x5a602 index=5 sprite=2 source=0x1df07a attr=0x6000	extracted
+intro/sprites/ambush-body-5-3.bmp	sprite	117	93	16	14	table=0x5a602 index=5 sprite=3 source=0x1df082 attr=0x6000	extracted
+intro/sprites/ambush-body-5-4.bmp	sprite	102	150	32	8	table=0x5a602 index=5 sprite=4 source=0x1df08a attr=0x6000	extracted
+intro/sprites/ambush-body-5-5.bmp	sprite	124	158	10	4	table=0x5a602 index=5 sprite=5 source=0x1df092 attr=0x6000	extracted
+intro/sprites/ambush-body-5-6.bmp	sprite	133	96	24	16	table=0x5a602 index=5 sprite=6 source=0x1df09a attr=0x6000	extracted
+intro/sprites/ambush-body-5-7.bmp	sprite	143	112	19	16	table=0x5a602 index=5 sprite=7 source=0x1df0a2 attr=0x6000	extracted
+intro/sprites/ambush-body-5-8.bmp	sprite	157	109	3	3	table=0x5a602 index=5 sprite=8 source=0x1df0aa attr=0x6000	extracted
+intro/sprites/ambush-body-5-9.bmp	sprite	134	142	16	18	table=0x5a602 index=5 sprite=9 source=0x1df0b2 attr=0x6000	extracted
+intro/sprites/ambush-body-5-10.bmp	sprite	150	128	15	24	table=0x5a602 index=5 sprite=10 source=0x1df0ba attr=0x6000	extracted
+intro/sprites/ambush-body-5-11.bmp	sprite	134	160	5	1	table=0x5a602 index=5 sprite=11 source=0x1df0c2 attr=0x6000	extracted
+intro/sprites/ambush-projectile-b-0-0.bmp	sprite	112	126	32	5	table=0x5a6c8 index=0 sprite=0 source=0x1df0ea attr=0x6000	extracted
+intro/sprites/ambush-projectile-b-0-1.bmp	sprite	144	190	32	5	table=0x5a6c8 index=0 sprite=1 source=0x1df0f2 attr=0x6000	extracted
+intro/sprites/ambush-projectile-b-1-0.bmp	sprite	112	126	32	5	table=0x5a6c8 index=1 sprite=0 source=0x1df0fc attr=0x6000	extracted
+intro/sprites/ambush-projectile-b-1-1.bmp	sprite	144	110	32	5	table=0x5a6c8 index=1 sprite=1 source=0x1df104 attr=0x6000	extracted
+intro/sprites/ambush-projectile-b-1-2.bmp	sprite	176	94	32	5	table=0x5a6c8 index=1 sprite=2 source=0x1df10c attr=0x6000	extracted
+intro/sprites/ambush-projectile-b-1-3.bmp	sprite	168	134	32	5	table=0x5a6c8 index=1 sprite=3 source=0x1df114 attr=0x6000	extracted
+intro/sprites/ambush-projectile-b-2-0.bmp	sprite	112	126	32	5	table=0x5a6c8 index=2 sprite=0 source=0x1df0e0 attr=0x6000	extracted
+intro/sprites/ambush-projectile-b-3-0.bmp	sprite	112	126	32	5	table=0x5a6c8 index=3 sprite=0 source=0x1df0e0 attr=0x6000	extracted
+intro/sprites/ambush-projectile-b-4-0.bmp	sprite	112	126	32	5	table=0x5a6c8 index=4 sprite=0 source=0x1df0fc attr=0x6000	extracted
+intro/sprites/ambush-projectile-b-4-1.bmp	sprite	144	110	32	5	table=0x5a6c8 index=4 sprite=1 source=0x1df104 attr=0x6000	extracted
+intro/sprites/ambush-projectile-b-4-2.bmp	sprite	176	94	32	5	table=0x5a6c8 index=4 sprite=2 source=0x1df10c attr=0x6000	extracted
+intro/sprites/ambush-projectile-b-4-3.bmp	sprite	168	134	32	5	table=0x5a6c8 index=4 sprite=3 source=0x1df114 attr=0x6000	extracted
+intro/sprites/ambush-projectile-b-5-0.bmp	sprite	112	126	32	5	table=0x5a6c8 index=5 sprite=0 source=0x1df0e0 attr=0x6000	extracted
+intro/sprites/ambush-projectile-b-6-0.bmp	sprite	112	126	32	5	table=0x5a6c8 index=6 sprite=0 source=0x1df130 attr=0x6000	extracted
+intro/sprites/ambush-projectile-b-6-1.bmp	sprite	168	110	32	5	table=0x5a6c8 index=6 sprite=1 source=0x1df138 attr=0x6000	extracted
+intro/sprites/ambush-projectile-c-0-0.bmp	sprite	128	125	32	7	table=0x5a7aa index=0 sprite=0 source=0x1df170 attr=0x6000	extracted
+intro/sprites/ambush-projectile-c-0-1.bmp	sprite	113	125	15	7	table=0x5a7aa index=0 sprite=1 source=0x1df178 attr=0x6000	extracted
+intro/sprites/ambush-projectile-c-1-0.bmp	sprite	112	126	32	5	table=0x5a7aa index=1 sprite=0 source=0x1df130 attr=0x6000	extracted
+intro/sprites/ambush-projectile-c-1-1.bmp	sprite	168	110	32	5	table=0x5a7aa index=1 sprite=1 source=0x1df138 attr=0x6000	extracted
+intro/sprites/ambush-projectile-c-2-0.bmp	sprite	112	126	32	5	table=0x5a7aa index=2 sprite=0 source=0x1df11e attr=0x6000	extracted
+intro/sprites/ambush-projectile-c-2-1.bmp	sprite	160	142	32	5	table=0x5a7aa index=2 sprite=1 source=0x1df126 attr=0x6000	extracted
+intro/sprites/ambush-projectile-c-3-0.bmp	sprite	128	125	32	7	table=0x5a7aa index=3 sprite=0 source=0x1df170 attr=0x6000	extracted
+intro/sprites/ambush-projectile-c-3-1.bmp	sprite	113	125	15	7	table=0x5a7aa index=3 sprite=1 source=0x1df178 attr=0x6000	extracted
+intro/sprites/ambush-projectile-c-4-0.bmp	sprite	112	126	32	5	table=0x5a7aa index=4 sprite=0 source=0x1df0ea attr=0x6000	extracted
+intro/sprites/ambush-projectile-c-4-1.bmp	sprite	144	190	32	5	table=0x5a7aa index=4 sprite=1 source=0x1df0f2 attr=0x6000	extracted
+intro/sprites/ambush-projectile-c-5-0.bmp	sprite	128	125	32	7	table=0x5a7aa index=5 sprite=0 source=0x1df170 attr=0x6000	extracted
+intro/sprites/ambush-projectile-c-5-1.bmp	sprite	113	125	15	7	table=0x5a7aa index=5 sprite=1 source=0x1df178 attr=0x6000	extracted
+intro/sprites/ambush-projectile-c-6-0.bmp	sprite	112	126	32	5	table=0x5a7aa index=6 sprite=0 source=0x1df0fc attr=0x6000	extracted
+intro/sprites/ambush-projectile-c-6-1.bmp	sprite	144	110	32	5	table=0x5a7aa index=6 sprite=1 source=0x1df104 attr=0x6000	extracted
+intro/sprites/ambush-projectile-c-6-2.bmp	sprite	176	94	32	5	table=0x5a7aa index=6 sprite=2 source=0x1df10c attr=0x6000	extracted
+intro/sprites/ambush-projectile-c-6-3.bmp	sprite	168	134	32	5	table=0x5a7aa index=6 sprite=3 source=0x1df114 attr=0x6000	extracted
+intro/sprites/ambush-projectile-c-7-0.bmp	sprite	112	126	32	5	table=0x5a7aa index=7 sprite=0 source=0x1df0e0 attr=0x6000	extracted
+intro/sprites/ambush-projectile-d-0-0.bmp	sprite	112	126	32	5	table=0x5a888 index=0 sprite=0 source=0x1df0ea attr=0x6000	extracted
+intro/sprites/ambush-projectile-d-0-1.bmp	sprite	144	190	32	5	table=0x5a888 index=0 sprite=1 source=0x1df0f2 attr=0x6000	extracted
+intro/sprites/ambush-projectile-d-1-0.bmp	sprite	128	125	32	7	table=0x5a888 index=1 sprite=0 source=0x1df170 attr=0x6000	extracted
+intro/sprites/ambush-projectile-d-1-1.bmp	sprite	113	125	15	7	table=0x5a888 index=1 sprite=1 source=0x1df178 attr=0x6000	extracted
+intro/sprites/ambush-projectile-d-2-0.bmp	sprite	112	126	32	5	table=0x5a888 index=2 sprite=0 source=0x1df11e attr=0x6000	extracted
+intro/sprites/ambush-projectile-d-2-1.bmp	sprite	160	142	32	5	table=0x5a888 index=2 sprite=1 source=0x1df126 attr=0x6000	extracted
+intro/sprites/ambush-projectile-d-3-0.bmp	sprite	112	126	32	5	table=0x5a888 index=3 sprite=0 source=0x1df0fc attr=0x6000	extracted
+intro/sprites/ambush-projectile-d-3-1.bmp	sprite	144	110	32	5	table=0x5a888 index=3 sprite=1 source=0x1df104 attr=0x6000	extracted
+intro/sprites/ambush-projectile-d-3-2.bmp	sprite	176	94	32	5	table=0x5a888 index=3 sprite=2 source=0x1df10c attr=0x6000	extracted
+intro/sprites/ambush-projectile-d-3-3.bmp	sprite	168	134	32	5	table=0x5a888 index=3 sprite=3 source=0x1df114 attr=0x6000	extracted
+intro/sprites/ambush-projectile-d-4-0.bmp	sprite	112	126	32	5	table=0x5a888 index=4 sprite=0 source=0x1df130 attr=0x6000	extracted
+intro/sprites/ambush-projectile-d-4-1.bmp	sprite	168	110	32	5	table=0x5a888 index=4 sprite=1 source=0x1df138 attr=0x6000	extracted
+intro/sprites/ambush-projectile-d-5-0.bmp	sprite	112	126	32	5	table=0x5a888 index=5 sprite=0 source=0x1df0e0 attr=0x6000	extracted
+intro/sprites/ambush-projectile-d-6-0.bmp	sprite	128	125	32	7	table=0x5a888 index=6 sprite=0 source=0x1df170 attr=0x6000	extracted
+intro/sprites/ambush-projectile-d-6-1.bmp	sprite	113	125	15	7	table=0x5a888 index=6 sprite=1 source=0x1df178 attr=0x6000	extracted
+intro/sprites/ambush-projectile-d-7-0.bmp	sprite	112	126	32	5	table=0x5a888 index=7 sprite=0 source=0x1df11e attr=0x6000	extracted
+intro/sprites/ambush-projectile-d-7-1.bmp	sprite	160	142	32	5	table=0x5a888 index=7 sprite=1 source=0x1df126 attr=0x6000	extracted
+intro/sprites/ambush-michael-0-0.bmp	sprite	109	124	32	8	table=0x5a958 index=0 sprite=0 source=0x1df142 attr=0x6000	extracted
+intro/sprites/ambush-michael-0-1.bmp	sprite	141	128	2	1	table=0x5a958 index=0 sprite=1 source=0x1df14a attr=0x6000	extracted
+intro/sprites/ambush-michael-1-0.bmp	sprite	96	125	32	7	table=0x5a958 index=1 sprite=0 source=0x1df154 attr=0x6000	extracted
+intro/sprites/ambush-michael-1-1.bmp	sprite	128	125	15	7	table=0x5a958 index=1 sprite=1 source=0x1df15c attr=0x6000	extracted
+intro/sprites/ambush-michael-2-0.bmp	sprite	115	125	28	6	table=0x5a958 index=2 sprite=0 source=0x1df166 attr=0x6000	extracted
+intro/sprites/helicopter-0-0.bmp	sprite	40	124	32	2	table=0x5b180 index=0 sprite=0 source=0x1df2d8 attr=0x2000	extracted
+intro/sprites/helicopter-0-1.bmp	sprite	72	124	32	1	table=0x5b180 index=0 sprite=1 source=0x1df2e0 attr=0x2000	extracted
+intro/sprites/helicopter-0-2.bmp	sprite	104	123	32	5	table=0x5b180 index=0 sprite=2 source=0x1df2e8 attr=0x2000	extracted
+intro/sprites/helicopter-0-3.bmp	sprite	136	124	32	3	table=0x5b180 index=0 sprite=3 source=0x1df2f0 attr=0x2000	extracted
+intro/sprites/helicopter-0-4.bmp	sprite	168	124	32	2	table=0x5b180 index=0 sprite=4 source=0x1df2f8 attr=0x2000	extracted
+intro/sprites/helicopter-0-5.bmp	sprite	200	124	30	2	table=0x5b180 index=0 sprite=5 source=0x1df300 attr=0x2000	extracted
+intro/sprites/helicopter-1-0.bmp	sprite	37	124	32	2	table=0x5b180 index=1 sprite=0 source=0x1df30a attr=0x2000	extracted
+intro/sprites/helicopter-1-1.bmp	sprite	69	124	32	2	table=0x5b180 index=1 sprite=1 source=0x1df312 attr=0x2000	extracted
+intro/sprites/helicopter-1-2.bmp	sprite	101	124	32	4	table=0x5b180 index=1 sprite=2 source=0x1df31a attr=0x2000	extracted
+intro/sprites/helicopter-1-3.bmp	sprite	133	124	32	4	table=0x5b180 index=1 sprite=3 source=0x1df322 attr=0x2000	extracted
+intro/sprites/helicopter-1-4.bmp	sprite	165	124	32	2	table=0x5b180 index=1 sprite=4 source=0x1df32a attr=0x2000	extracted
+intro/sprites/helicopter-1-5.bmp	sprite	197	124	32	2	table=0x5b180 index=1 sprite=5 source=0x1df332 attr=0x2000	extracted
+intro/sprites/helicopter-1-6.bmp	sprite	229	124	3	1	table=0x5b180 index=1 sprite=6 source=0x1df33a attr=0x2000	extracted
+intro/sprites/helicopter-2-0.bmp	sprite	41	124	32	1	table=0x5b180 index=2 sprite=0 source=0x1df344 attr=0x2000	extracted
+intro/sprites/helicopter-2-1.bmp	sprite	73	123	32	3	table=0x5b180 index=2 sprite=1 source=0x1df34c attr=0x2000	extracted
+intro/sprites/helicopter-2-2.bmp	sprite	105	123	32	5	table=0x5b180 index=2 sprite=2 source=0x1df354 attr=0x2000	extracted
+intro/sprites/helicopter-2-3.bmp	sprite	137	124	32	2	table=0x5b180 index=2 sprite=3 source=0x1df35c attr=0x2000	extracted
+intro/sprites/helicopter-2-4.bmp	sprite	169	124	27	1	table=0x5b180 index=2 sprite=4 source=0x1df364 attr=0x2000	extracted
+intro/sprites/helicopter-3-0.bmp	sprite	59	123	32	2	table=0x5b180 index=3 sprite=0 source=0x1df36e attr=0x2000	extracted
+intro/sprites/helicopter-3-1.bmp	sprite	91	123	32	4	table=0x5b180 index=3 sprite=1 source=0x1df376 attr=0x2000	extracted
+intro/sprites/helicopter-3-2.bmp	sprite	123	124	32	4	table=0x5b180 index=3 sprite=2 source=0x1df37e attr=0x2000	extracted
+intro/sprites/helicopter-3-3.bmp	sprite	155	124	32	2	table=0x5b180 index=3 sprite=3 source=0x1df386 attr=0x2000	extracted
+intro/sprites/helicopter-3-4.bmp	sprite	187	123	32	2	table=0x5b180 index=3 sprite=4 source=0x1df38e attr=0x2000	extracted
+intro/sprites/helicopter-3-5.bmp	sprite	219	123	2	1	table=0x5b180 index=3 sprite=5 source=0x1df396 attr=0x2000	extracted
+intro/sprites/helicopter-4-0.bmp	sprite	46	124	32	1	table=0x5b180 index=4 sprite=0 source=0x1df3a0 attr=0x2000	extracted
+intro/sprites/helicopter-4-1.bmp	sprite	78	124	32	1	table=0x5b180 index=4 sprite=1 source=0x1df3a8 attr=0x2000	extracted
+intro/sprites/helicopter-4-2.bmp	sprite	110	123	32	5	table=0x5b180 index=4 sprite=2 source=0x1df3b0 attr=0x2000	extracted
+intro/sprites/helicopter-4-3.bmp	sprite	142	124	32	2	table=0x5b180 index=4 sprite=3 source=0x1df3b8 attr=0x2000	extracted
+intro/sprites/helicopter-4-4.bmp	sprite	174	124	22	1	table=0x5b180 index=4 sprite=4 source=0x1df3c0 attr=0x2000	extracted
+intro/sprites/helicopter-5-0.bmp	sprite	50	124	32	1	table=0x5b180 index=5 sprite=0 source=0x1df3ca attr=0x2000	extracted
+intro/sprites/helicopter-5-1.bmp	sprite	82	124	32	1	table=0x5b180 index=5 sprite=1 source=0x1df3d2 attr=0x2000	extracted
+intro/sprites/helicopter-5-2.bmp	sprite	114	124	32	4	table=0x5b180 index=5 sprite=2 source=0x1df3da attr=0x2000	extracted
+intro/sprites/helicopter-5-3.bmp	sprite	146	124	32	2	table=0x5b180 index=5 sprite=3 source=0x1df3e2 attr=0x2000	extracted
+intro/sprites/helicopter-5-4.bmp	sprite	178	124	14	1	table=0x5b180 index=5 sprite=4 source=0x1df3ea attr=0x2000	extracted
+intro/sprites/aircraft-movement-0-0.bmp	sprite	115	120	24	8	table=0x1df3f4 index=0 sprite=0 source=0x1df3f4 attr=0x2000	extracted
+intro/sprites/aircraft-movement-1-0.bmp	sprite	115	117	23	13	table=0x1df3f4 index=1 sprite=0 source=0x1df3fe attr=0x2000	extracted
+intro/background-patch-0.bmp	background	152	128	104	96	table=0x5a1d2 index=0 sprite=0 source=0x1e2eba attr=0x0	extracted
+intro/background-patch-1.bmp	background	152	128	104	96	table=0x5a1d2 index=1 sprite=0 source=0x1e2f04 attr=0x0	extracted
+intro/background-patch-2.bmp	background	152	128	104	96	table=0x5a1d2 index=2 sprite=0 source=0x1e2f6c attr=0x0	extracted
+intro/background-patch-3.bmp	background	152	128	104	96	table=0x5a1d2 index=3 sprite=0 source=0x1e2eba attr=0x0	extracted
 intro/cab-map.bmp	background	0	0	320	224	0x134D2/0xD2A2E	extracted
 field/hud/background.bmp	background	0	0	320	224	0x334C/0x39F2	extracted
 field/hud/face-0.bmp	sprite	0	0	32	32	0x3404[0]	extracted
@@ -762,50 +884,26 @@ field/map/mode-53.bmp	background	0	0	960	768	mode resource catalog	extracted
 field/map/mode-54.bmp	background	0	0	320	1344	mode resource catalog	extracted
 field/map/mode-55.bmp	background	0	0	512	288	mode resource catalog	extracted
 field/entities/idle-0.bmp	sprite	0	0	24	31	0x5A62/0x5FDC	extracted
-field/entities/idle-gray-0.bmp	sprite	0	0	24	31	baked grayscale	extracted
 field/entities/idle-1.bmp	sprite	0	0	22	30	0x5A62/0x5FDC	extracted
-field/entities/idle-gray-1.bmp	sprite	0	0	22	30	baked grayscale	extracted
 field/entities/idle-2.bmp	sprite	0	2	15	30	0x5A62/0x5FDC	extracted
-field/entities/idle-gray-2.bmp	sprite	0	2	15	30	baked grayscale	extracted
 field/entities/idle-3.bmp	sprite	0	0	19	31	0x5A62/0x5FDC	extracted
-field/entities/idle-gray-3.bmp	sprite	0	0	19	31	baked grayscale	extracted
 field/entities/idle-4.bmp	sprite	0	0	27	30	0x5A62/0x5FDC	extracted
-field/entities/idle-gray-4.bmp	sprite	0	0	27	30	baked grayscale	extracted
 field/entities/idle-5.bmp	sprite	0	0	19	31	0x5A62/0x5FDC	extracted
-field/entities/idle-gray-5.bmp	sprite	0	0	19	31	baked grayscale	extracted
 field/entities/idle-6.bmp	sprite	0	2	15	30	0x5A62/0x5FDC	extracted
-field/entities/idle-gray-6.bmp	sprite	0	2	15	30	baked grayscale	extracted
 field/entities/idle-7.bmp	sprite	0	0	22	30	0x5A62/0x5FDC	extracted
-field/entities/idle-gray-7.bmp	sprite	0	0	22	30	baked grayscale	extracted
 field/entities/walk-0-0.bmp	sprite	0	4	21	27	0x5A62/0x5FDC	extracted
 field/entities/walk-0-1.bmp	sprite	0	1	22	29	0x5A62/0x5FDC	extracted
-field/entities/walk-gray-0-0.bmp	sprite	0	4	21	27	baked grayscale	extracted
-field/entities/walk-gray-0-1.bmp	sprite	0	1	22	29	baked grayscale	extracted
 field/entities/walk-1-0.bmp	sprite	0	2	23	29	0x5A62/0x5FDC	extracted
 field/entities/walk-1-1.bmp	sprite	0	0	22	32	0x5A62/0x5FDC	extracted
-field/entities/walk-gray-1-0.bmp	sprite	0	2	23	29	baked grayscale	extracted
-field/entities/walk-gray-1-1.bmp	sprite	0	0	22	32	baked grayscale	extracted
 field/entities/walk-2-0.bmp	sprite	0	1	16	30	0x5A62/0x5FDC	extracted
 field/entities/walk-2-1.bmp	sprite	0	0	19	31	0x5A62/0x5FDC	extracted
-field/entities/walk-gray-2-0.bmp	sprite	0	1	16	30	baked grayscale	extracted
-field/entities/walk-gray-2-1.bmp	sprite	0	0	19	31	baked grayscale	extracted
 field/entities/walk-3-0.bmp	sprite	0	1	19	31	0x5A62/0x5FDC	extracted
 field/entities/walk-3-1.bmp	sprite	0	2	21	30	0x5A62/0x5FDC	extracted
-field/entities/walk-gray-3-0.bmp	sprite	0	1	19	31	baked grayscale	extracted
-field/entities/walk-gray-3-1.bmp	sprite	0	2	21	30	baked grayscale	extracted
 field/entities/walk-4-0.bmp	sprite	0	1	24	30	0x5A62/0x5FDC	extracted
 field/entities/walk-4-1.bmp	sprite	0	1	24	30	0x5A62/0x5FDC	extracted
-field/entities/walk-gray-4-0.bmp	sprite	0	1	24	30	baked grayscale	extracted
-field/entities/walk-gray-4-1.bmp	sprite	0	1	24	30	baked grayscale	extracted
 field/entities/walk-5-0.bmp	sprite	0	1	19	31	0x5A62/0x5FDC	extracted
 field/entities/walk-5-1.bmp	sprite	0	2	21	30	0x5A62/0x5FDC	extracted
-field/entities/walk-gray-5-0.bmp	sprite	0	1	19	31	baked grayscale	extracted
-field/entities/walk-gray-5-1.bmp	sprite	0	2	21	30	baked grayscale	extracted
 field/entities/walk-6-0.bmp	sprite	0	1	16	30	0x5A62/0x5FDC	extracted
 field/entities/walk-6-1.bmp	sprite	0	0	19	31	0x5A62/0x5FDC	extracted
-field/entities/walk-gray-6-0.bmp	sprite	0	1	16	30	baked grayscale	extracted
-field/entities/walk-gray-6-1.bmp	sprite	0	0	19	31	baked grayscale	extracted
 field/entities/walk-7-0.bmp	sprite	0	2	23	29	0x5A62/0x5FDC	extracted
 field/entities/walk-7-1.bmp	sprite	0	0	22	32	0x5A62/0x5FDC	extracted
-field/entities/walk-gray-7-0.bmp	sprite	0	2	23	29	baked grayscale	extracted
-field/entities/walk-gray-7-1.bmp	sprite	0	0	22	32	baked grayscale	extracted
