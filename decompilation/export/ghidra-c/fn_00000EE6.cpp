@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00000EE6
-// Name: FUN_00000ee6
+// Name: service_pending_vdp_upload
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E34 reset_vdp_upload_state
 //   0x00000F98 write_vdp_word_block
 
 
-void FUN_00000ee6(void)
+void service_pending_vdp_upload(void)
 
 {
   if (0x4f < DAT_00ffdd02) {

@@ -9,7 +9,7 @@
 void FUN_00057c5e(void)
 
 {
-  FUN_000011c0();
+  write_repeated_vdp_grid();
   return;
 }
 

@@ -3,7 +3,7 @@
 // Name: FUN_0000d82a
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000011C0 FUN_000011c0
+//   0x000011C0 write_repeated_vdp_grid
 //   0x0000C0DA render_title_text_source
 //   0x0000C216 FUN_0000c216
 //   0x0000DA4A FUN_0000da4a
@@ -96,7 +96,7 @@ LAB_0000d9a4:
   FUN_0000c216();
 LAB_0000da00:
   render_title_text_source();
-  FUN_000011c0();
+  write_repeated_vdp_grid();
   FUN_0000c216();
   return;
 }

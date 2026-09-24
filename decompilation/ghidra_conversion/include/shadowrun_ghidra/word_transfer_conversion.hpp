@@ -19,6 +19,7 @@ VdpTransferCommand make_vdp_transfer_command(std::uint16_t source_address);
 struct WordTransferCallbacks {
     std::function<void(const VdpTransferCommand&)> begin_transfer;
     std::function<void(std::uint16_t)> write_word;
+    std::function<void(std::uint16_t)> write_control_word;
 };
 
 // ROM 0x0DFC: emit one source word repeatedly. word_count is the host number
@@ -67,6 +68,35 @@ void upload_scene_profile_block(
 // ROM 0x1232: write a row-major word grid, advancing the destination by
 // 0x80 bytes between rows and applying the source word mask.
 void write_vdp_grid(
+    std::uint16_t destination_address,
+    std::size_t width,
+    std::size_t height,
+    std::uint16_t word_mask,
+    const std::vector<std::uint16_t>& words,
+    const WordTransferCallbacks& callbacks);
+
+// ROM 0x01184: write one masked row, optionally bracketing it with the
+// source's display-increment control words.
+void write_masked_vdp_row(
+    std::uint16_t destination_address,
+    std::size_t width,
+    std::uint16_t word_mask,
+    const std::vector<std::uint16_t>& words,
+    bool configure_display_increment,
+    const WordTransferCallbacks& callbacks);
+
+// ROM 0x011C0: repeat one masked source row at 0x80-byte destination strides.
+void write_repeated_vdp_grid(
+    std::uint16_t destination_address,
+    std::size_t width,
+    std::size_t height,
+    std::uint16_t word_mask,
+    const std::vector<std::uint16_t>& row_words,
+    const WordTransferCallbacks& callbacks);
+
+// ROM 0x011F6: consume a row-major source stream while advancing each row's
+// destination by two bytes.
+void write_linear_vdp_grid(
     std::uint16_t destination_address,
     std::size_t width,
     std::size_t height,

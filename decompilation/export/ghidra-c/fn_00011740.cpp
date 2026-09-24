@@ -8,7 +8,7 @@
 //   0x00000D94 wait_for_controller_event
 //   0x00000FFE clear_and_fill_plane_a
 //   0x0000102A clear_and_fill_plane_b
-//   0x000011C0 FUN_000011c0
+//   0x000011C0 write_repeated_vdp_grid
 //   0x00001358 copy_source_word_block
 //   0x00001530 decode_and_upload_source_stream
 //   0x00001728 render_hud_sprite_stream
@@ -354,8 +354,8 @@ LAB_00011cb6:
     } while (sVar11 != -1);
     _DAT_00fff0d0 = 0;
 LAB_0000d0d6:
-    FUN_000011c0();
-    FUN_000011c0();
+    write_repeated_vdp_grid();
+    write_repeated_vdp_grid();
     FUN_000566e2();
     FUN_000110ec();
     render_title_text_source();
@@ -787,7 +787,7 @@ LAB_000118b6:
       move_wrapped_menu_cursor();
       if (DAT_00fff0dc == DAT_00fff0b9) {
         sVar11 = 3;
-        FUN_000011c0();
+        write_repeated_vdp_grid();
       }
       else {
         FUN_000110e8();

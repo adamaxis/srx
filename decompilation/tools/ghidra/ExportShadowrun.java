@@ -180,11 +180,15 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00000E18L, "write_word_stream");
         names.put(0x00000E34L, "reset_vdp_upload_state");
         names.put(0x00000CECL, "install_startup_vdp_table");
+        names.put(0x00000EE6L, "service_pending_vdp_upload");
         names.put(0x00000EC0L, "upload_startup_palette");
         names.put(0x00000F1CL, "write_transfer_header");
         names.put(0x00000F3CL, "write_fixed_transfer_pair");
         names.put(0x00000F98L, "write_vdp_word_block");
         names.put(0x00000F5CL, "write_vdp_word_block_with_source_wrap");
+        names.put(0x00001184L, "write_masked_vdp_row");
+        names.put(0x000011C0L, "write_repeated_vdp_grid");
+        names.put(0x000011F6L, "write_linear_vdp_grid");
         names.put(0x00001056L, "clear_vdp_words");
         names.put(0x00000FFEL, "clear_and_fill_plane_a");
         names.put(0x0000102AL, "clear_and_fill_plane_b");

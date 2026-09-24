@@ -27,7 +27,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00000E34	reset_vdp_upload_state	72	unknown	ok	ghidra-c/fn_00000E34.cpp
 00000E9C	make_vdp_transfer_command	36	unknown	ok	ghidra-c/fn_00000E9C.cpp
 00000EC0	upload_startup_palette	38	unknown	ok	ghidra-c/fn_00000EC0.cpp
-00000EE6	FUN_00000ee6	54	unknown	ok	ghidra-c/fn_00000EE6.cpp
+00000EE6	service_pending_vdp_upload	54	unknown	ok	ghidra-c/fn_00000EE6.cpp
 00000F1C	write_transfer_header	32	unknown	ok	ghidra-c/fn_00000F1C.cpp
 00000F3C	write_fixed_transfer_pair	32	unknown	ok	ghidra-c/fn_00000F3C.cpp
 00000F5C	write_vdp_word_block_with_source_wrap	60	unknown	ok	ghidra-c/fn_00000F5C.cpp
@@ -39,9 +39,9 @@ entry	name	size	callingConvention	decompileStatus	file
 00001080	FUN_00001080	8	unknown	ok	ghidra-c/fn_00001080.cpp
 00001088	step_palette_toward_black	78	unknown	ok	ghidra-c/fn_00001088.cpp
 000010D6	step_palette_toward_target	108	unknown	ok	ghidra-c/fn_000010D6.cpp
-00001184	FUN_00001184	60	unknown	ok	ghidra-c/fn_00001184.cpp
-000011C0	FUN_000011c0	54	unknown	ok	ghidra-c/fn_000011C0.cpp
-000011F6	FUN_000011f6	6	unknown	ok	ghidra-c/fn_000011F6.cpp
+00001184	write_masked_vdp_row	60	unknown	ok	ghidra-c/fn_00001184.cpp
+000011C0	write_repeated_vdp_grid	54	unknown	ok	ghidra-c/fn_000011C0.cpp
+000011F6	write_linear_vdp_grid	6	unknown	ok	ghidra-c/fn_000011F6.cpp
 00001232	write_vdp_grid	54	unknown	ok	ghidra-c/fn_00001232.cpp
 000012F6	advance_title_palette_fade	38	unknown	ok	ghidra-c/fn_000012F6.cpp
 0000131C	step_palette_transition	38	unknown	ok	ghidra-c/fn_0000131C.cpp

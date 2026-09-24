@@ -1264,7 +1264,7 @@
 00001878: clr.w (0x00fff9f0).l
 0000187E: bclr.b #0x1,(0x00ffef14).l
 00001886: beq.b 0x00001894
-00001888: bsr.w 0x00000ee6 ; call 00000EE6 FUN_00000ee6
+00001888: bsr.w 0x00000ee6 ; call 00000EE6 service_pending_vdp_upload
 0000188C: move.w #0x1,(0x00ffdd02).l
 00001894: bclr.b #0x0,(0x00ffef14).l
 0000189C: beq.b 0x000018a2
@@ -5916,9 +5916,9 @@
 0000D0E2: moveq #0x1,D7
 0000D0E4: moveq #0x5,D1
 0000D0E6: move.w #0x4000,D2w
-0000D0EA: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+0000D0EA: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 0000D0F0: move.l #0xc6c4,D4
-0000D0F6: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+0000D0F6: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 0000D0FC: clr.l D2
 0000D0FE: movea.l (0x00fffc04).l,A0
 0000D104: move.w (0x2c,A0),D2w
@@ -6450,7 +6450,7 @@
 0000DA1E: moveq #0x2,D7
 0000DA20: moveq #0x0,D1
 0000DA22: move.w #0x4000,D2w
-0000DA26: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+0000DA26: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 0000DA2C: movea.l (0x00fffc04).l,A0
 0000DA32: adda.l #0x8d,A0
 0000DA38: clr.l D1
@@ -7776,7 +7776,7 @@
 0001010C: move.w #0x0,D2w
 00010110: moveq #0xf,D7
 00010112: clr.l D1
-00010114: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+00010114: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 0001011A: moveq #0x0,D0
 0001011C: move.l (0x00fff096).l,-(SP)
 00010122: bsr.w 0x0001055e ; call 0001055E FUN_0001055e
@@ -7797,7 +7797,7 @@
 00010162: clr.l D1
 00010164: moveq #0x9,D7
 00010166: move.w #0x0,D2w
-0001016A: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+0001016A: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 00010170: rts
 00010172: movem.l {  A6 A5 A4 A3 A2 A1 A0 D7 D6 D5 D4 D3 D2 D1 D0},-(SP)
 00010176: move.l #0xc728,D4
@@ -7805,14 +7805,14 @@
 00010180: clr.l D1
 00010182: clr.l D7
 00010184: lea (0xc85a2).l,A1 ; data 000c85a2
-0001018A: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+0001018A: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 00010190: addq.w #0x2,D4w
 00010192: move.w (0x00fff096).l,D0w
 00010198: subq.w #0x2,D0w
 0001019A: bmi.w 0x000101b4
 0001019E: move.w D0w,D7w
 000101A0: lea (0xc85a6).l,A1 ; data 000c85a6
-000101A6: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+000101A6: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 000101AC: addq.w #0x1,D0w
 000101AE: mulu.w #0x2,D0
 000101B2: add.w D0w,D4w
@@ -7826,13 +7826,13 @@
 000101D2: subq.w #0x1,D0w
 000101D4: move.w D0w,D7w
 000101D6: lea (0xc85a6).l,A1 ; data 000c85a6
-000101DC: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+000101DC: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 000101E2: addq.w #0x1,D0w
 000101E4: mulu.w #0x2,D0
 000101E8: add.w D0w,D4w
 000101EA: clr.l D7
 000101EC: lea (0xc85a4).l,A1 ; data 000c85a4
-000101F2: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+000101F2: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 000101F8: movem.l (SP)+,{ D0 D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 000101FC: rts
 000101FE: clr.l D7
@@ -8247,11 +8247,11 @@
 00010860: move.w #0x0,D2w
 00010864: moveq #0xd,D7
 00010866: clr.l D1
-00010868: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+00010868: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 0001086E: move.l #0xc808,D4
-00010874: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+00010874: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 0001087A: move.l #0xc908,D4
-00010880: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+00010880: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 00010886: bsr.w 0x00010156 ; call 00010156 FUN_00010156
 0001088A: rts
 0001088C: clr.l D7
@@ -8273,7 +8273,7 @@
 000108CE: move.w #0x0,D2w
 000108D2: moveq #0x5,D7
 000108D4: clr.l D1
-000108D6: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+000108D6: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 000108DC: rts
 000108DE: lea (0xc8a32).l,A1 ; data 000c8a32
 000108E4: movea.l #0xc528,A2
@@ -9167,7 +9167,7 @@
 00011918: moveq #0x14,D7
 0001191A: moveq #0x2,D1
 0001191C: move.w #0x0,D2w
-00011920: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+00011920: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 00011926: rts
 00011928: lea (0xcd48a).l,A1 ; data 000cd48a
 0001192E: move.l #0xea18,D4
@@ -9778,7 +9778,7 @@
 000123D4: moveq #0x3,D7
 000123D6: moveq #0x3,D1
 000123D8: move.w #0x0,D2w
-000123DC: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+000123DC: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 000123E2: bra.w 0x0001235c
 000123E6: mulu.w #0x4,D0
 000123EA: lea (0xfff0ba).l,A0 ; data 00fff0ba
@@ -10268,7 +10268,7 @@
 00012C5A: movem.l {  A1 D2},-(SP)
 00012C5E: move.w #0x6000,D2w
 00012C62: lea (0xc1320).l,A1 ; data 000c1320
-00012C68: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+00012C68: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 00012C6E: movem.l (SP)+,{  D2 A1}
 00012C72: rts
 00012C74: clr.l D0
@@ -14589,7 +14589,7 @@
 00017FC6: move.w #0x7,D1w
 00017FCA: move.w #0x2,D7w
 00017FCE: move.w #0x6000,D2w
-00017FD2: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+00017FD2: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 00017FD8: rts
 00017FDA: tst.w (0x00fff106).l
 00017FE0: bmi.w 0x00017fee
@@ -14642,7 +14642,7 @@
 000180BA: move.w #0x2,D7w
 000180BE: clr.w D1w
 000180C0: move.w #0x6000,D2w
-000180C4: jsr 0x000011f6.l ; call 000011F6 FUN_000011f6
+000180C4: jsr 0x000011f6.l ; call 000011F6 write_linear_vdp_grid
 000180CA: cmpi.w #0x4,(0x00fff106).l
 000180D2: bne.w 0x000180da
 000180D6: bra.w 0x000180e6
@@ -14660,7 +14660,7 @@
 0001810A: move.w #0x2,D7w
 0001810E: clr.w D1w
 00018110: move.w #0x6000,D2w
-00018114: jsr 0x000011f6.l ; call 000011F6 FUN_000011f6
+00018114: jsr 0x000011f6.l ; call 000011F6 write_linear_vdp_grid
 0001811A: cmpi.w #0x5,(0x00fff106).l
 00018122: bne.w 0x00018148
 00018126: lea (0xd844e).l,A1 ; data 000d844e
@@ -15088,14 +15088,14 @@
 00018988: moveq #0x12,D7
 0001898A: moveq #0x11,D1
 0001898C: move.w #0x6000,D2w
-00018990: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+00018990: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 00018996: rts
 00018998: lea (0xd8454).l,A1 ; data 000d8454
 0001899E: move.l #0xc628,D4
 000189A4: moveq #0x12,D7
 000189A6: moveq #0x8,D1
 000189A8: move.w #0x6000,D2w
-000189AC: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+000189AC: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 000189B2: rts
 000189B4: movem.l {  D7 D4},-(SP)
 000189B8: lea (0xd8454).l,A1 ; data 000d8454
@@ -15103,7 +15103,7 @@
 000189C4: moveq #0x12,D7
 000189C6: moveq #0xa,D1
 000189C8: move.w #0x6000,D2w
-000189CC: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+000189CC: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 000189D2: movem.l (SP)+,{  D4 D7}
 000189D6: rts
 000189D8: clr.l D5
@@ -15310,7 +15310,7 @@
 00019196: moveq #0x12,D7
 00019198: moveq #0xe,D1
 0001919A: move.w #0x6000,D2w
-0001919E: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+0001919E: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 000191A4: bsr.w 0x0001897c ; call 0001897C FUN_0001897c
 000191A8: lea (0xe4011).l,A1 ; data 000e4011
 000191AE: move.w #0x0,D1w
@@ -15612,7 +15612,7 @@
 000196B2: move.w #0x6000,D2w
 000196B6: mulu.w #0xc,D4
 000196BA: addi.w #-0x146c,D4w
-000196BE: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+000196BE: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 000196C4: lea (0xd84d6).l,A1 ; data 000d84d6
 000196CA: moveq #0x6,D4
 000196CC: mulu.w #0x6,D4
@@ -15877,7 +15877,7 @@
 00019B20: move.w #-0x8000,D2w
 00019B24: move.w #0x0,D1w
 00019B28: move.w #0xd,D7w
-00019B2C: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+00019B2C: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 00019B32: rts
 00019B34: moveq #0x7,D1
 00019B36: bsr.w 0x00017c84 ; call 00017C84 FUN_00017c84
@@ -16241,7 +16241,7 @@
 0001A25C: subq.w #0x1,D7w
 0001A25E: bpl.w 0x0001a264
 0001A262: clr.l D7
-0001A264: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+0001A264: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 0001A26A: tst.b D5b
 0001A26C: bmi.w 0x0001a28e
 0001A270: bsr.w 0x00017c3c ; call 00017C3C FUN_00017c3c
@@ -16251,7 +16251,7 @@
 0001A280: mulu.w #0x2,D7
 0001A284: add.l D7,D4
 0001A286: move.w D5w,D7w
-0001A288: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+0001A288: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 0001A28E: move.w #-0x1,D1w
 0001A292: jsr 0x00055f44.l ; call 00055F44 FUN_00055f44
 0001A298: add.b (0x00fffbbe).l,D6b
@@ -16265,7 +16265,7 @@
 0001A2B8: subq.w #0x1,D7w
 0001A2BA: bpl.w 0x0001a2c0
 0001A2BE: clr.l D7
-0001A2C0: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+0001A2C0: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 0001A2C6: movem.l (SP)+,{ D0 D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 0001A2CA: rts
 0001A2CC: lea (0xffd86c).l,A3 ; data 00ffd86c
@@ -25927,7 +25927,7 @@
 00057C66: lea (0xc1320).l,A1 ; data 000c1320
 00057C6C: moveq #0x1e,D7
 00057C6E: move.w #0x0,D2w
-00057C72: jsr 0x000011c0.l ; call 000011C0 FUN_000011c0
+00057C72: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 00057C78: rts
 00057C7A: bsr.b 0x00057c46 ; call 00057C46 FUN_00057c46
 00057C7C: bsr.b 0x00057c52 ; call 00057C52 FUN_00057c52

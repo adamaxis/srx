@@ -547,6 +547,13 @@ the `0x2DE0`-byte compressed-resource request. The requests are typed host
 boundaries, so the native runtime can map them to named assets without
 carrying the original ROM pointers or VDP registers.
 
+The compact row-writer family is now typed as well. `0x1184` emits one masked
+row with optional `0x8F80`/`0x8F02` display-increment controls, `0x11C0`
+repeats a source row at `0x80`-byte destination strides, and `0x11F6`
+consumes a row-major source stream with two-byte row advancement. `0x0EE6`
+dispatches pending uploads by the source count sentinel and preserves the
+large-transfer flag clear.
+
 The transfer library now also covers the shared `0x0F98` and `0x1232` leaves.
 `write_vdp_word_block` emits the requested bounded even-byte word stream after
 one transfer command; `write_vdp_grid` emits each row at the source `0x80`

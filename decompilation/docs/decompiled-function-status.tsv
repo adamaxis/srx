@@ -30,11 +30,15 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x0E18	word stream transfer	ghidra_conversion::write_word_stream	shadowrun_graphics	partial		Bounded ordered word-stream transfer conversion
 0x0CEC	startup VDP table	ghidra_conversion::install_startup_vdp_table	shadowrun_graphics	partial		Typed four-word startup state install and fourteen control-word emission
 0x0E34	VDP upload reset	ghidra_conversion::reset_vdp_upload_state	shadowrun_graphics	partial		Typed transfer address, four-word clear, stream cursor, and enabled-state reset
+0x0EE6	pending VDP upload dispatch	ghidra_conversion::service_pending_vdp_upload	shadowrun_graphics	partial		Typed large-transfer flag clear and stream-versus-sentinel dispatch
 0x0EC0	startup palette upload	ghidra_conversion::upload_startup_palette	shadowrun_graphics	partial		Typed 64-word palette upload with explicit control/data callbacks
 0x0F1C	transfer header write	ghidra_conversion::write_transfer_header	shadowrun_graphics	partial		Typed transfer command followed by the source two-word header
 0x0F3C	fixed transfer pair	ghidra_conversion::write_fixed_transfer_pair	shadowrun_graphics	partial		Typed fixed incrementing-write command and two-word data emission
 0x0F98	bounded VDP word block	ghidra_conversion::write_vdp_word_block	shadowrun_graphics	partial		Typed even-byte bounded word stream after one transfer command
 0x0F5C	wrapped VDP word block	ghidra_conversion::write_vdp_word_block_with_source_wrap	shadowrun_graphics	partial		Typed split at the source 64K boundary with destination advancement
+0x01184	masked VDP row	ghidra_conversion::write_masked_vdp_row	shadowrun_graphics	partial		Typed one-row masked upload with optional display-increment controls
+0x011C0	repeated VDP grid	ghidra_conversion::write_repeated_vdp_grid	shadowrun_graphics	partial		Typed repeated source row at 0x80-byte destination strides
+0x011F6	linear VDP grid	ghidra_conversion::write_linear_vdp_grid	shadowrun_graphics	partial		Typed row-major upload with two-byte destination row advancement
 0x1232	VDP grid writer	ghidra_conversion::write_vdp_grid	shadowrun_graphics	partial		Typed row-major grid stream with 0x80-byte row stride and word mask
 0x0301E	scene profile upload	ghidra_conversion::upload_scene_profile_block	shadowrun_graphics	partial		Fixed 0x140-byte scene-profile upload through the bounded transfer helper
 0x176BA	field resource refresh	ghidra_conversion::refresh_field_resource_streams	shadowrun_graphics	partial		Typed fixed raw-resource request followed by the 0x2DE0-byte compressed-resource request

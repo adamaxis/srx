@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000011F6
-// Name: FUN_000011f6
+// Name: write_linear_vdp_grid
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-short FUN_000011f6(void)
+short write_linear_vdp_grid(void)
 
 {
   short extraout_D1w;

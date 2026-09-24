@@ -25,6 +25,25 @@ struct StartupVdpTable {
     std::array<std::uint16_t, 14> control_words{};
 };
 
+struct PendingVdpUploadState {
+    std::uint16_t transfer_count = 0;
+    std::uint8_t source_flag = 0;
+};
+
+enum class PendingVdpUploadAction {
+    stream_block,
+    reset_upload,
+};
+
+using VdpUploadBoundary = std::function<void()>;
+
+// ROM 0x0EE6: clear the source flag for large transfers, then dispatch either
+// the bounded stream writer or the upload-state reset for the sentinel count.
+PendingVdpUploadAction service_pending_vdp_upload(
+    PendingVdpUploadState& state,
+    const VdpUploadBoundary& write_block,
+    const VdpUploadBoundary& reset_upload);
+
 // ROM 0x0CEC: install the four source transfer words and emit the fourteen
 // startup control words in order.
 void install_startup_vdp_table(

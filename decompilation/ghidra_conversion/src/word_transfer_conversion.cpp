@@ -127,4 +127,74 @@ void write_vdp_grid(
     }
 }
 
+void write_masked_vdp_row(
+    const std::uint16_t destination_address,
+    const std::size_t width,
+    const std::uint16_t word_mask,
+    const std::vector<std::uint16_t>& words,
+    const bool configure_display_increment,
+    const WordTransferCallbacks& callbacks) {
+    if (configure_display_increment && callbacks.write_control_word) {
+        callbacks.write_control_word(0x8F80U);
+    }
+    if (callbacks.begin_transfer) {
+        callbacks.begin_transfer(make_vdp_transfer_command(destination_address));
+    }
+    if (callbacks.write_word) {
+        const auto count = width < words.size() ? width : words.size();
+        for (std::size_t index = 0; index < count; ++index) {
+            callbacks.write_word(static_cast<std::uint16_t>(
+                words[index] | word_mask));
+        }
+    }
+    if (configure_display_increment && callbacks.write_control_word) {
+        callbacks.write_control_word(0x8F02U);
+    }
+}
+
+void write_repeated_vdp_grid(
+    const std::uint16_t destination_address,
+    const std::size_t width,
+    const std::size_t height,
+    const std::uint16_t word_mask,
+    const std::vector<std::uint16_t>& row_words,
+    const WordTransferCallbacks& callbacks) {
+    for (std::size_t row = 0; row < height; ++row) {
+        const auto row_address = static_cast<std::uint16_t>(
+            destination_address + row * 0x80U);
+        write_masked_vdp_row(row_address, width, word_mask, row_words, false,
+                             callbacks);
+    }
+}
+
+void write_linear_vdp_grid(
+    const std::uint16_t destination_address,
+    const std::size_t width,
+    const std::size_t height,
+    const std::uint16_t word_mask,
+    const std::vector<std::uint16_t>& words,
+    const WordTransferCallbacks& callbacks) {
+    std::size_t source_index = 0;
+    for (std::size_t row = 0; row < height; ++row) {
+        const auto row_address = static_cast<std::uint16_t>(
+            destination_address + row * 2U);
+        if (callbacks.begin_transfer) {
+            callbacks.begin_transfer(make_vdp_transfer_command(row_address));
+        }
+        for (std::size_t column = 0; column < width; ++column) {
+            if (source_index >= words.size()) {
+                return;
+            }
+            if (callbacks.write_word) {
+                callbacks.write_word(static_cast<std::uint16_t>(
+                    words[source_index] | word_mask));
+            }
+            ++source_index;
+        }
+    }
+    if (callbacks.write_control_word) {
+        callbacks.write_control_word(0x8F02U);
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion

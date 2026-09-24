@@ -2,6 +2,25 @@
 
 namespace shadowrun::ghidra_conversion {
 
+PendingVdpUploadAction service_pending_vdp_upload(
+    PendingVdpUploadState& state,
+    const VdpUploadBoundary& write_block,
+    const VdpUploadBoundary& reset_upload) {
+    if (state.transfer_count > 0x4FU) {
+        state.source_flag = 0U;
+    }
+    if (state.transfer_count != 0xFFFFU) {
+        if (write_block) {
+            write_block();
+        }
+        return PendingVdpUploadAction::stream_block;
+    }
+    if (reset_upload) {
+        reset_upload();
+    }
+    return PendingVdpUploadAction::reset_upload;
+}
+
 void install_startup_vdp_table(
     StartupVdpTable& state,
     const std::array<std::uint16_t, 18>& source_words,

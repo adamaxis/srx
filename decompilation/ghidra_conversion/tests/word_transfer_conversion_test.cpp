@@ -79,5 +79,52 @@ int main() {
         return 6;
     }
 
+    commands.clear();
+    words.clear();
+    std::vector<std::uint16_t> controls;
+    const WordTransferCallbacks row_callbacks{
+        [&commands](const VdpTransferCommand& transfer) {
+            commands.push_back(transfer.low_word);
+            commands.push_back(transfer.high_word);
+        },
+        [&words](const std::uint16_t word) { words.push_back(word); },
+        [&controls](const std::uint16_t word) { controls.push_back(word); },
+    };
+    write_masked_vdp_row(0x3000U, 3U, 0x4000U, {1U, 2U, 3U, 4U}, true,
+                         row_callbacks);
+    if (commands.size() != 2U || words != std::vector<std::uint16_t>{0x4001U,
+                                                                        0x4002U,
+                                                                        0x4003U} ||
+        controls != std::vector<std::uint16_t>{0x8F80U, 0x8F02U}) {
+        return 7;
+    }
+
+    commands.clear();
+    words.clear();
+    controls.clear();
+    write_repeated_vdp_grid(0x4000U, 2U, 2U, 0x2000U, {5U, 6U},
+                            row_callbacks);
+    if (commands.size() != 4U ||
+        commands[0] != make_vdp_transfer_command(0x4000U).low_word ||
+        commands[2] != make_vdp_transfer_command(0x4080U).low_word ||
+        words != std::vector<std::uint16_t>{0x2005U, 0x2006U,
+                                             0x2005U, 0x2006U}) {
+        return 8;
+    }
+
+    commands.clear();
+    words.clear();
+    controls.clear();
+    write_linear_vdp_grid(0x5000U, 2U, 2U, 0x1000U,
+                          {7U, 8U, 9U, 10U}, row_callbacks);
+    if (commands.size() != 4U ||
+        commands[0] != make_vdp_transfer_command(0x5000U).low_word ||
+        commands[2] != make_vdp_transfer_command(0x5002U).low_word ||
+        words != std::vector<std::uint16_t>{0x1007U, 0x1008U,
+                                             0x1009U, 0x100AU} ||
+        controls != std::vector<std::uint16_t>{0x8F02U}) {
+        return 9;
+    }
+
     return 0;
 }

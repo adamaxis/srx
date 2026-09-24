@@ -28,7 +28,7 @@ void FUN_0001962a(void)
   }
   (&DAT_00fffbd8)[(short)uVar1] = 0xff;
   (&DAT_00fff0ed)[(short)uVar1] = 6;
-  FUN_000011c0();
+  write_repeated_vdp_grid();
   write_vdp_grid();
   FUN_0001792e();
   return;
