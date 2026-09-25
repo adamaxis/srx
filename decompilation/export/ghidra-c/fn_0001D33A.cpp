@@ -1,91 +1,50 @@
 // Ghidra headless export
 // Entry: 0x0001D33A
-// Name: convert_world_routine_0x0001d33a
-// Decompile status: ok
+// Name: render_world_sequence_tile_rows
+// Decompile status: source-shaped annotation
+//
+// The native conversion emits host tile writes through callbacks. It keeps
+// the source row window, record visibility test, logical source/destination
+// offsets, plane count, and random mask cadence without using a Genesis VDP.
+//
 // Calls recovered from direct call instructions:
-//   0x00000E9C make_vdp_transfer_command
-//   0x0001D3F4 expand_random_nibble_mask
+//   0x00000E9C make_vdp_transfer_command -> begin_row_transfer boundary
+//   0x0001D3F4 expand_random_nibble_mask -> mask callback
 
-
-void convert_world_routine_0x0001d33a(void)
-
+void render_world_sequence_tile_rows(void)
 {
-  ushort uVar1;
-  short sVar2;
-  ushort uVar3;
-  ushort uVar4;
-  ushort uVar6;
-  short sVar7;
-  uint uVar5;
-  short extraout_D1w;
-  ushort uVar8;
-  short sVar9;
-  ushort uVar10;
-  short sVar11;
-  int iVar12;
-  uint *extraout_A0;
-  int in_A1;
-  int extraout_A1;
-  int unaff_A2;
-  undefined1 *puVar13;
-  undefined1 *puVar14;
-  undefined1 *puVar16;
-  bool bVar17;
-  short *psVar18;
-  short *psVar19;
-  undefined1 *puVar15;
-  
-  uVar1 = DAT_00ffdf72 + *(short *)(unaff_A2 + 2);
-  sVar2 = (*(ushort *)(unaff_A2 + 4) & 3) + 1;
-  uVar10 = sVar2 * 8;
-  sVar11 = 0x1f;
-  uVar8 = DAT_00ffdf70;
-  puVar13 = (undefined1 *)register0x0000003c;
-  do {
-    uVar4 = uVar8 - uVar1;
-    puVar16 = puVar13;
-    if (((uVar1 <= uVar8) && (uVar10 != uVar4)) && (uVar4 <= uVar10)) {
-      uVar3 = *(ushort *)(unaff_A2 + 6) & 0x7ff;
-      uVar6 = uVar3 * 0x20;
-      iVar12 = (short)((uVar3 - DAT_00ffdf74) * 0x20) + in_A1;
-      uVar3 = *(ushort *)(unaff_A2 + 4) >> 2 & 3;
-      *(ushort *)(puVar13 + -2) = uVar3;
-      sVar9 = sVar2 * 0x20;
-      bVar17 = CARRY2(uVar4 * 4,uVar6);
-      sVar7 = uVar4 * 4 + uVar6;
-      do {
-        *(short *)(puVar13 + -2) = sVar7;
-        *(ushort *)(puVar13 + -4) =
-             (ushort)(byte)(bVar17 << 4 | (sVar7 < 0) << 3 | (sVar7 == 0) << 2);
-        *(undefined4 *)(puVar13 + -8) = 0x1d3ba;
-        make_vdp_transfer_command();
-        *(short *)(puVar13 + -6) = sVar11;
-        psVar18 = (short *)(puVar13 + -10);
-        *psVar18 = extraout_D1w;
-        *(undefined4 *)(puVar13 + -0xe) = 0x1d3cc;
-        uVar5 = expand_random_nibble_mask();
-        Ram00c00000 = *extraout_A0 & uVar5;
-        sVar11 = *(short *)(puVar13 + -8);
-        psVar19 = (short *)(puVar13 + -6);
-        puVar14 = puVar13 + -4;
-        puVar15 = puVar13 + -4;
-        puVar13 = puVar13 + -4;
-        sVar7 = sVar9 + *psVar19;
-        bVar17 = (uint)((int)sVar9 + (int)extraout_A0) <
-                 (uint)((short)((uVar3 + 1) * 4 * uVar10) + iVar12);
-        in_A1 = extraout_A1;
-        puVar16 = puVar14;
-        if (!bVar17) break;
-        puVar16 = puVar15;
-      } while (*psVar18 != 0);
+  // A2 is one eight-byte sequence record:
+  //   +0x02 signed vertical offset, +0x04 layout flags, +0x06 tile index.
+  // FFDF70 is the first row in the current source window; FFDF72 and FFDF74
+  // provide the vertical cursor and horizontal source origin.
+  for (uint16_t record_row = 0; record_row < 0x20; ++record_row) {
+    const uint16_t visible_row = FFDF70 + record_row;
+    const uint16_t record_start = FFDF72 + record->vertical_offset;
+    const uint16_t row_width = ((record->layout_flags & 3) + 1) * 8;
+    if (visible_row < record_start ||
+        visible_row - record_start >= row_width) {
+      continue;
     }
-    uVar8 = uVar8 + 1;
-    sVar11 = sVar11 + -1;
-    puVar13 = puVar16;
-    if (sVar11 == -1) {
-      return;
+
+    const uint16_t row_delta = visible_row - record_start;
+    const uint16_t tile_index = record->tile_index & 0x7FF;
+    const int32_t horizontal_delta =
+        static_cast<int16_t>(tile_index - FFDF74);
+    const uint16_t plane_count = ((record->layout_flags >> 2) & 3) + 1;
+    begin_row_transfer(tile_index * 0x20 + row_delta * 4);
+
+    const uint16_t mask_selector =
+        7 - ((0x1F - record_row) >> 2);
+    const uint32_t nibble_mask = expand_random_nibble_mask(mask_selector);
+    for (uint16_t plane = 0; plane < plane_count; ++plane) {
+      const int32_t source_byte_offset =
+          horizontal_delta * 0x20 + row_delta * 4 +
+          plane * row_width * 4;
+      const uint16_t destination_word =
+          tile_index * 0x20 + row_delta * 4 +
+          plane * row_width * 4;
+      const uint32_t source_word = read_source_word(source_byte_offset);
+      write_word(destination_word, source_word & nibble_mask);
     }
-  } while( true );
+  }
 }
-
-

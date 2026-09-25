@@ -1181,6 +1181,14 @@ positive, and negative result variants, preserves the `(1,1)` world-flag
 override, and preserves the negative `(4,0)` resource-profile change. The
 exit-service and post-service display refresh remain explicit callbacks.
 
+The `0x1D33A` world-sequence renderer is now
+`render_world_sequence_tile_rows`. It walks the source's 32-row window for
+each eight-byte sequence record, keeps the signed vertical and horizontal
+offset arithmetic, expands the packed layout into row width and plane count,
+selects the eight-nibble mask cadence, and emits masked host tile writes.
+`make_vdp_transfer_command` and the source word store are callbacks; no VDP
+register or source buffer address is part of the native routine.
+
 Batch 2 converts `0x1F32E` as `clear_optional_mode_resource`, an explicit
 typed clear of the optional mode-resource marker.
 

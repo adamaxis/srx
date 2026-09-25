@@ -18334,7 +18334,7 @@
 0001D2F2: move.w (A2),D0w
 0001D2F4: cmpi.w #-0x8000,D0w
 0001D2F8: beq.w 0x0001d306
-0001D2FC: bsr.w 0x0001d33a ; call 0001D33A convert_world_routine_0x0001d33a
+0001D2FC: bsr.w 0x0001d33a ; call 0001D33A render_world_sequence_tile_rows
 0001D300: adda.w #0x8,A2
 0001D304: bra.b 0x0001d2f2
 0001D306: subq.w #0x1,(0x00ffdf82).l

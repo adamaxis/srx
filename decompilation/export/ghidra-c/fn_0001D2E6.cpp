@@ -3,7 +3,7 @@
 // Name: advance_world_sequence
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001D33A convert_world_routine_0x0001d33a
+//   0x0001D33A render_world_sequence_tile_rows
 
 
 void advance_world_sequence(void)
@@ -12,7 +12,7 @@ void advance_world_sequence(void)
   short *psVar1;
   
   for (psVar1 = DAT_00ffdf7a; *psVar1 != -0x8000; psVar1 = psVar1 + 4) {
-    convert_world_routine_0x0001d33a();
+    render_world_sequence_tile_rows();
   }
   DAT_00ffdf82 = DAT_00ffdf82 + -1;
   if (DAT_00ffdf82 < 0) {
@@ -24,5 +24,4 @@ void advance_world_sequence(void)
   }
   return;
 }
-
 

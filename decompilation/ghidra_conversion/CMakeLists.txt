@@ -1517,6 +1517,19 @@ target_link_libraries(shadowrun_ghidra_field_exit_prompt_test
 add_test(NAME shadowrun_ghidra_field_exit_prompt
          COMMAND shadowrun_ghidra_field_exit_prompt_test)
 
+add_library(shadowrun_ghidra_world_sequence_tile_render STATIC
+    src/world_sequence_tile_render_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_world_sequence_tile_render PUBLIC include)
+
+add_executable(shadowrun_ghidra_world_sequence_tile_render_test
+    tests/world_sequence_tile_render_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_world_sequence_tile_render_test
+    PRIVATE shadowrun_ghidra_world_sequence_tile_render)
+add_test(NAME shadowrun_ghidra_world_sequence_tile_render
+         COMMAND shadowrun_ghidra_world_sequence_tile_render_test)
+
 add_library(shadowrun_ghidra_mode_optional_resource STATIC
     src/mode_optional_resource_conversion.cpp
 )
