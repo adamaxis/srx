@@ -41,4 +41,21 @@ MatrixStorageCapacity calculate_matrix_storage_capacity(
     return result;
 }
 
+MatrixDataFileList collect_matrix_storage_datafiles(
+    const std::array<MatrixDataFileRecord, 5>& records) {
+    MatrixDataFileList result{};
+    for (std::size_t slot = records.size(); slot-- > 0;) {
+        const auto& record = records[slot];
+        if (record.type < 0) {
+            continue;
+        }
+        result.entries[result.count] = MatrixDataFileEntry{
+            static_cast<std::uint8_t>(slot), record.type, record.usage,
+            static_cast<std::uint8_t>(result.count)};
+        ++result.count;
+    }
+    result.has_entries = result.count != 0U;
+    return result;
+}
+
 } // namespace shadowrun::ghidra_conversion

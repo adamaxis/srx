@@ -45,5 +45,25 @@ int main() {
     if (!expect(exhausted.available_memory == -1)) {
         return 4;
     }
+
+    const auto datafiles = collect_matrix_storage_datafiles(
+        std::array<MatrixDataFileRecord, 5>{
+            MatrixDataFileRecord{3, 7}, MatrixDataFileRecord{-1, 0},
+            MatrixDataFileRecord{1, 2}, MatrixDataFileRecord{-1, 0},
+            MatrixDataFileRecord{5, 9}});
+    if (!expect(datafiles.has_entries && datafiles.count == 3U &&
+                datafiles.entries[0].slot == 4U &&
+                datafiles.entries[0].type == 5 &&
+                datafiles.entries[0].usage == 9U &&
+                datafiles.entries[0].display_row == 0U &&
+                datafiles.entries[1].slot == 2U &&
+                datafiles.entries[2].slot == 0U)) {
+        return 5;
+    }
+    const auto empty = collect_matrix_storage_datafiles(
+        std::array<MatrixDataFileRecord, 5>{});
+    if (!expect(!empty.has_entries && empty.count == 0U)) {
+        return 6;
+    }
     return 0;
 }

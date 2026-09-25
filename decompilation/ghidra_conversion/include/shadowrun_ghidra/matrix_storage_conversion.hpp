@@ -23,6 +23,27 @@ struct MatrixStorageCapacity {
     std::int32_t available_memory = 0;
 };
 
+// The storage screen's five datafile records are addressed through a compact
+// source slot table. The signed type is the source +0x1F presence marker and
+// usage is the source +0x20 byte consumed by 0x1954A.
+struct MatrixDataFileRecord {
+    std::int8_t type = -1;
+    std::uint8_t usage = 0;
+};
+
+struct MatrixDataFileEntry {
+    std::uint8_t slot = 0;
+    std::int8_t type = -1;
+    std::uint8_t usage = 0;
+    std::uint8_t display_row = 0;
+};
+
+struct MatrixDataFileList {
+    std::array<MatrixDataFileEntry, 5> entries{};
+    std::size_t count = 0;
+    bool has_entries = false;
+};
+
 // ROM E2DF2: the twelve Matrix program footprints used by 0x1952C. Keeping
 // this table named makes the source-derived record layout visible without
 // making the runtime depend on a ROM address.
@@ -41,5 +62,10 @@ std::uint32_t matrix_program_storage_usage(const MatrixStorageUsage& usage,
 // loaded slots and installed available programs from total storage.
 MatrixStorageCapacity calculate_matrix_storage_capacity(
     const MatrixStorageUsage& usage);
+
+// ROM 0x18F5E: walk the five storage records from slot 4 down to slot 0,
+// retaining occupied entries and their source display order.
+MatrixDataFileList collect_matrix_storage_datafiles(
+    const std::array<MatrixDataFileRecord, 5>& records);
 
 } // namespace shadowrun::ghidra_conversion

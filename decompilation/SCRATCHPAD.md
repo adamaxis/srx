@@ -580,8 +580,10 @@ one of twelve availability flags by its E2DF2 footprint. The new
 `matrix_storage_conversion` module loops those exact fields and exposes
 `calculate_matrix_storage_capacity`, which reproduces `0x19558`'s total-minus-
 loaded-minus-installed calculation for the storage screen at `0x18D1A`.
-The datafile selection and rendering path remains an explicit next boundary;
-this slice changes only the proven record arithmetic.
+It also exposes the `0x18F5E` reverse five-slot datafile walk as a bounded
+`MatrixDataFileList`, retaining the signed type/presence field, usage byte,
+source slot, and display row. Slot selection and text rendering remain
+explicit boundaries.
 
 The first executable portion of the Matrix loop at `0x1822C` is now separated
 from the native runtime in `matrix_loop_conversion`. Its setup preserves the

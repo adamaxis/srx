@@ -762,7 +762,9 @@ The storage screen path at `0x18D1A` now has its first concrete record math:
 the twelve availability flags by the source E2DF2 footprint table, and
 `0x19558` subtracts both totals from the Matrix's total memory word. The new
 `matrix_storage_conversion` module returns those values as ordinary host
-integers; its datafile selection/rendering branches are still unresolved.
+integers. The same module now models the `0x18F5E` reverse five-slot datafile
+walk, preserving each occupied record's signed type, usage byte, source slot,
+and display order; only slot selection and text rendering remain unresolved.
 The Matrix state table, program actions, and rendered resources inside the
 loop must still be recovered before claiming the Matrix panel complete. Until
 then the Matrix hill remains `PENDING`, rather than represented by a generic
