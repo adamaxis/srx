@@ -156,10 +156,10 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00019432L, "handle_menu_directional_input");
         names.put(0x000194ACL, "advance_hud_selection_row");
         names.put(0x00019504L, "write_hud_panel_grid");
-        names.put(0x00019558L, "reset_menu_visual_slots");
-        names.put(0x0001957EL, "clear_ready_menu_visual_slots");
-        names.put(0x000195A6L, "refresh_menu_slot_pair");
-        names.put(0x000195AAL, "clear_menu_slot_visual");
+        names.put(0x00019558L, "calculate_matrix_storage_capacity");
+        names.put(0x0001957EL, "calculate_loaded_program_capacity");
+        names.put(0x000195A6L, "calculate_selected_matrix_program_load_steps");
+        names.put(0x000195AAL, "calculate_matrix_program_load_steps");
         names.put(0x000196F2L, "rotate_hud_history");
         names.put(0x0001A342L,
                   "find_first_available_world_effect_entity_slot");
@@ -578,9 +578,9 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00016760L, "mark_projected_terrain_cell");
         names.put(0x00016A26L, "publish_world_activity_descriptors");
         names.put(0x00016ECAL, "process_terrain_work_batch");
-        names.put(0x000195D8L, "refresh_menu_slot_visual");
+        names.put(0x000195D8L, "refresh_matrix_program_slot");
         names.put(0x00019AEEL, "refresh_mode_glyph");
-        names.put(0x00019BF6L, "pass_through_value");
+        names.put(0x00019BF6L, "select_hud_mode_auxiliary_value");
         names.put(0x00019D66L, "run_menu_slot_service");
         names.put(0x00019DACL, "merge_menu_pending_flags");
         names.put(0x00019DF2L, "run_menu_metadata_service");
@@ -729,7 +729,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00019BF6L, "select_hud_mode_auxiliary_value");
         names.put(0x00019C54L, "read_selected_matrix_program_availability");
         names.put(0x00019C5CL, "read_matrix_program_availability_for_slot");
-        names.put(0x00019CB2L, "convert_world_routine_0x00019cb2");
+        names.put(0x00019CB2L, "run_menu_selection_code_four");
         names.put(0x0001A16AL, "convert_world_routine_0x0001a16a");
         names.put(0x0001A370L, "convert_world_routine_0x0001a370");
         names.put(0x0001A4EAL, "convert_world_routine_0x0001a4ea");
