@@ -574,6 +574,13 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The `0x2679E` world-entry loop is now `run_world_entry_sequence`. It consumes
+an extracted command/delay stream, preserves the three-cycle timing cadence,
+handles signed origin corrections and delayed horizontal/vertical pairs, and
+publishes each completed frame through dispatch, transfer, title-layer, and
+world-sprite callbacks in source order. Malformed host streams return an
+explicit invalid result instead of walking past their data.
+
 The `0x1FA78` mode-service selector is now `select_field_mode_service`. It
 models the seven scene/submode routes, their menu mode/result fields, signed
 alternate prompt variants, and the special `FFF112` service-result handshake

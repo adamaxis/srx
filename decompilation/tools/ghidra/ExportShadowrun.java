@@ -781,7 +781,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0001FD80L, "finalize_field_mode_exit");
         names.put(0x00020634L, "select_mode_entry_resource");
         names.put(0x000266E4L, "initialize_world_tile_buffers");
-        names.put(0x0002679EL, "convert_world_routine_0x0002679e");
+        names.put(0x0002679EL, "run_world_entry_sequence");
         names.put(0x00026972L, "refresh_title_sprite_records");
         names.put(0x00026A00L, "convert_world_routine_0x00026a00");
         names.put(0x000532BCL, "convert_audio_routine_0x000532bc");

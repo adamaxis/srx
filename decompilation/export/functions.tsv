@@ -679,7 +679,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00026610	write_sequential_asset_grid	2	unknown	ok	ghidra-c/fn_00026610.cpp
 00026696	copy_tile_blocks	78	unknown	ok	ghidra-c/fn_00026696.cpp
 000266E4	initialize_world_tile_buffers	186	unknown	ok	ghidra-c/fn_000266E4.cpp
-0002679E	convert_world_routine_0x0002679e	326	unknown	ok	ghidra-c/fn_0002679E.cpp
+0002679E	run_world_entry_sequence	326	unknown	ok	ghidra-c/fn_0002679E.cpp
 000268E6	append_world_sprite_records	82	unknown	ok	ghidra-c/fn_000268E6.cpp
 00026938	copy_two_word_rows	32	unknown	ok	ghidra-c/fn_00026938.cpp
 00026958	upload_decoded_source_stream	26	unknown	ok	ghidra-c/fn_00026958.cpp

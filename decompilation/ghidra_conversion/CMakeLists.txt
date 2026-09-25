@@ -1617,6 +1617,18 @@ target_link_libraries(shadowrun_ghidra_world_tile_setup_test PRIVATE
 add_test(NAME shadowrun_ghidra_world_tile_setup
     COMMAND shadowrun_ghidra_world_tile_setup_test)
 
+add_library(shadowrun_ghidra_world_entry_sequence STATIC
+    src/world_entry_sequence_conversion.cpp)
+target_include_directories(shadowrun_ghidra_world_entry_sequence PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+add_executable(shadowrun_ghidra_world_entry_sequence_test
+    tests/world_entry_sequence_conversion_test.cpp)
+target_link_libraries(shadowrun_ghidra_world_entry_sequence_test PRIVATE
+    shadowrun_ghidra_world_entry_sequence)
+add_test(NAME shadowrun_ghidra_world_entry_sequence
+    COMMAND shadowrun_ghidra_world_entry_sequence_test)
+
 add_library(shadowrun_ghidra_mode_optional_resource STATIC
     src/mode_optional_resource_conversion.cpp
 )
