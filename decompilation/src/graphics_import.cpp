@@ -348,6 +348,9 @@ std::string read_genesis_menu_text(const std::vector<std::uint8_t>& rom,
     value.reserve(length);
     for (std::size_t index = 0; index < length; ++index) {
         const auto byte = rom[offset + index];
+        if (byte == 0xFFU) {
+            break;
+        }
         if (byte == 0x80U) {
             continue;
         }
@@ -466,6 +469,9 @@ GenesisFieldEntityTemplate read_genesis_field_entity_template(
         "Genesis field entity template flags are truncated");
     GenesisFieldEntityTemplate result;
     result.record_offset = record_offset;
+    result.display_name = read_genesis_menu_text(
+        rom, record_offset + 0x58U, 16U,
+        "Genesis field entity template name is truncated");
     result.projection_word_08 = read_rom_u16(
         rom, record_offset + 0x08U,
         "Genesis field entity template projection is truncated");
@@ -536,6 +542,27 @@ GenesisFieldEntityTemplate read_genesis_field_entity_template(
     for (std::size_t index = 0; index < auxiliary_offsets.size(); ++index) {
         result.attribute_skill_auxiliary[index] =
             rom[record_offset + auxiliary_offsets[index]];
+    }
+    return result;
+}
+
+std::vector<GenesisFieldEntityTemplate> read_genesis_recruited_roster(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kRosterStart = 0x72C1AU;
+    constexpr std::size_t kRosterStride = 0x100U;
+    constexpr std::size_t kRosterScanLimit = 0x10U;
+
+    std::vector<GenesisFieldEntityTemplate> result;
+    result.reserve(kRosterScanLimit);
+    for (std::size_t index = 0; index < kRosterScanLimit; ++index) {
+        const auto record = read_genesis_field_entity_template(
+            rom, kRosterStart + index * kRosterStride);
+        // The source table ends with a zero-kind template after Stark. Its
+        // unused name bytes are not a selectable runner.
+        if (record.kind == 0U) {
+            break;
+        }
+        result.push_back(record);
     }
     return result;
 }
@@ -1187,6 +1214,15 @@ native::NativePortAssets decode_genesis_native_assets(
         destination.skill_values = source.skill_values;
         destination.attribute_skill_auxiliary = source.attribute_skill_auxiliary;
     };
+    const auto recruited_roster = read_genesis_recruited_roster(rom);
+    assets.recruited_runner_templates.reserve(recruited_roster.size());
+    for (std::size_t index = 0; index < recruited_roster.size(); ++index) {
+        native::NativeRunnerTemplate candidate;
+        candidate.source_index = index;
+        candidate.display_name = recruited_roster[index].display_name;
+        copy_entity_data(recruited_roster[index], candidate.record);
+        assets.recruited_runner_templates.push_back(std::move(candidate));
+    }
     assets.inventory_items = read_genesis_inventory_catalog(rom);
     std::array<GenesisFieldEntityTemplate, 3> hud_records{};
     for (std::size_t index = 0;
@@ -1338,7 +1374,7 @@ void write_native_asset_state(const std::string& path,
         throw std::runtime_error("cannot create native asset state: " + path);
     }
     output.write("SRNS", 4);
-    write_u16(output, 2);
+    write_u16(output, 3);
     write_u16(output, 0);
 
     write_native_terrain_state(output, assets.field_terrain);
@@ -1353,6 +1389,17 @@ void write_native_asset_state(const std::string& path,
     }
     for (const auto& entity : assets.field_entity_records) {
         write_native_field_entity_state(output, entity);
+    }
+    if (assets.recruited_runner_templates.size() > 0xFFFFFFFFU) {
+        throw std::invalid_argument(
+            "native state has too many recruited runner templates");
+    }
+    write_u32(output, static_cast<std::uint32_t>(
+        assets.recruited_runner_templates.size()));
+    for (const auto& candidate : assets.recruited_runner_templates) {
+        write_pack_string(output, candidate.display_name,
+                          "native state recruited runner name is too long");
+        write_native_field_entity_state(output, candidate.record);
     }
     for (const auto& item : assets.inventory_items) {
         output.put(static_cast<char>(item.code));

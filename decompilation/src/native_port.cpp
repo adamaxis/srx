@@ -863,6 +863,8 @@ NativePortShell::NativePortShell(std::string title, NativePortAssets assets)
     notebook_mr_johnson_names_ = std::move(assets.notebook_mr_johnson_names);
     protagonist_archetype_records_ =
         std::move(assets.protagonist_archetype_records);
+    recruited_runner_templates_ =
+        std::move(assets.recruited_runner_templates);
     field_initial_records_ = assets.initial_field_records;
     field_records_ = field_initial_records_;
     field_terrain_ = std::move(assets.field_terrain);

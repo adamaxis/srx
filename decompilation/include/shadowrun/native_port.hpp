@@ -444,6 +444,15 @@ struct NativeFieldEntity {
         attribute_skill_auxiliary{};
 };
 
+// A source roster candidate is not an active party slot. It is a complete
+// extracted runner template plus the source name used when the event system
+// later installs it into one of the three live party records.
+struct NativeRunnerTemplate {
+    std::size_t source_index = 0;
+    std::string display_name;
+    NativeFieldEntity record;
+};
+
 struct NativeCommandBarIndices {
     std::uint8_t attack = 0;
     std::uint8_t defense = 0;
@@ -631,6 +640,9 @@ struct NativePortAssets {
     // Runtime party slots. New Game populates slot zero with Joshua and
     // leaves the other slots inactive until recruited records are recovered.
     std::array<NativeFieldEntity, 3> field_entity_records{};
+    // ROM 0x72C1A recruited templates. These remain candidate data until a
+    // source-authenticated recruitment event installs one into a live slot.
+    std::vector<NativeRunnerTemplate> recruited_runner_templates;
     std::array<NativeInventoryItem, kNativeInventoryItemCount>
         inventory_items{};
     std::array<std::string, kNativeCyberwareCount> cyberware_names{};
@@ -835,6 +847,15 @@ public:
     const NativeImage& field_menu_defense_bar_asset(std::size_t index) const;
     const NativeImage& field_menu_cursor_asset() const { return field_menu_cursor_; }
     std::string_view field_menu_runner_name(std::size_t index) const;
+    std::size_t recruited_runner_template_count() const {
+        return recruited_runner_templates_.size();
+    }
+    const NativeRunnerTemplate* recruited_runner_template(
+        std::size_t index) const {
+        return index < recruited_runner_templates_.size()
+            ? &recruited_runner_templates_[index]
+            : nullptr;
+    }
     std::string_view field_menu_status_name(std::size_t index) const;
     const NativeInventoryItem* field_menu_item(std::uint8_t code) const;
     std::string_view field_menu_power_label(std::size_t index) const;
@@ -1380,6 +1401,7 @@ private:
         protagonist_archetype_records_{};
     std::array<NativeFieldEntity, 3> field_entity_records_{};
     std::array<NativeFieldEntity, 3> field_initial_entity_records_{};
+    std::vector<NativeRunnerTemplate> recruited_runner_templates_;
     // ROM starts a controlled record on its one-frame directional state. The
     // multi-frame state list is selected only while the movement state is
     // active; keeping that distinction prevents an idle runner from showing

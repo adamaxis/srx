@@ -219,7 +219,8 @@ native::NativePortAssets read_native_asset_directory(const std::string& root) {
     input.read(magic, sizeof(magic));
     const auto version = read_pack_u16(
         input, "native asset state version is truncated");
-    if (!input || std::string(magic, sizeof(magic)) != "SRNS" || version != 2U) {
+    if (!input || std::string(magic, sizeof(magic)) != "SRNS" ||
+        (version != 2U && version != 3U)) {
         throw std::runtime_error("invalid direct native asset state header");
     }
     (void)read_pack_u16(input, "native asset state header is truncated");
@@ -239,6 +240,23 @@ native::NativePortAssets read_native_asset_directory(const std::string& root) {
     }
     for (auto& entity : assets.field_entity_records) {
         entity = read_native_field_entity_state(input);
+    }
+    if (version >= 3U) {
+        const auto roster_count = static_cast<std::size_t>(read_pack_u32(
+            input, "native asset state recruited roster count is truncated"));
+        if (roster_count > 32U) {
+            throw std::runtime_error(
+                "native asset state has too many recruited templates");
+        }
+        assets.recruited_runner_templates.reserve(roster_count);
+        for (std::size_t index = 0; index < roster_count; ++index) {
+            native::NativeRunnerTemplate candidate;
+            candidate.source_index = index;
+            candidate.display_name = read_pack_string(
+                input, "native asset state recruited runner name is truncated");
+            candidate.record = read_native_field_entity_state(input);
+            assets.recruited_runner_templates.push_back(std::move(candidate));
+        }
     }
     for (auto& item : assets.inventory_items) {
         item.code = read_pack_u8(input, "native asset state item is truncated");

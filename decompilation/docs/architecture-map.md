@@ -129,7 +129,7 @@ runtime manifest.
 The already-confirmed extraction families include:
 
 - runner/archetype templates at `0x7291A`, with `0x100`-byte records, and the
-  recruited roster table beginning at `0x72C1A`;
+  ten named recruited templates at `0x72C1A` (terminated by a zero-kind record);
 - the live runner record fields consumed by the inventory, posture, HUD,
   attributes, skills, cyberware, and combat-bar routines;
 - 50 inventory/equipment records at `0xD4540`, with a `0x30`-byte stride;

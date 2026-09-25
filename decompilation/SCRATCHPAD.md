@@ -560,6 +560,15 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The recruited roster data path is now explicit. ROM `0x72C1A` contains ten
+named `0x100`-byte templates: Ricky, Winston Marrs, Trent, Petr Uvehr,
+Walking Bear, Phantom, Two Fists, Freya, Rianna, and Stark. The next
+zero-kind template is the table terminator. `read_genesis_recruited_roster` extracts the
+complete reviewed record fields, including possession/equipment, attributes,
+skills, cyberware, posture, ammunition, and source name. Native assets expose
+these as `NativeRunnerTemplate` candidates while leaving the live three-slot
+party unchanged; recruitment event writers still need their own ROM trace.
+
 ## Second 100-function conversion pass
 
 The second 100-entry pass is complete in five committed slices. It remains

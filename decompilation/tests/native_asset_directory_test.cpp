@@ -45,6 +45,14 @@ int main() {
         const std::filesystem::path root(SHADOWRUN_ASSET_ROOT);
         const auto assets = shadowrun::graphics::read_native_asset_directory(
             root.string());
+        require(assets.recruited_runner_templates.size() == 10U,
+                "direct state lost recruited roster templates");
+        require(assets.recruited_runner_templates[0].display_name == "Ricky" &&
+                    assets.recruited_runner_templates[9].display_name == "Stark",
+                "direct state lost recruited roster names");
+        require(assets.recruited_runner_templates[0]
+                        .record.inventory_item_codes[1] == 0x2DU,
+                "direct state lost recruited runner inventory");
 
         std::ifstream manifest(root / "resources.tsv", std::ios::binary);
         require(static_cast<bool>(manifest), "missing resources.tsv");

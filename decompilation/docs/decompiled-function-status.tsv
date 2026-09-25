@@ -276,7 +276,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x3084	field loop	NativePortShell::update	shadowrun_native_port	partial		HUD 0x17708 separate
 0xE7C8	terrain probe	terrain::probe	shadowrun_native_port	partial		
 0x600E	walk animation	NativePortShell::render	shadowrun_native_port	partial		
-0x391A	runner switch	NativePortShell::update	shadowrun_native_port	partial		recruited roster pending
+0x391A	runner switch	NativePortShell::update	shadowrun_native_port	partial		ten recruited templates are extracted; event-owned installation and active roster state remain pending
 0x172CDC	mode-2 events	NativePortShell::update	shadowrun_native_port motel tuple	partial		do not fall through to mode 0x1A
 0x20E48	Stoker dialog	NativePortShell::open_stoker_motel_dialog	shadowrun_native_port	partial		lift to shared dialog scene
 0x10F50	command overview	NativePortShell::render_field_menu	shadowrun_menu_visual_regression	partial	same-source (not a golden)	swap expected to 320x224 capture

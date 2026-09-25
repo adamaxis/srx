@@ -865,6 +865,15 @@ int main() {
     // the native update/render loop.
     auto native_assets = shadowrun::graphics::decode_genesis_native_assets(
         rom);
+    assert(native_assets.recruited_runner_templates.size() == 10);
+    assert(native_assets.recruited_runner_templates[0].display_name ==
+           "Ricky");
+    assert(native_assets.recruited_runner_templates[9].display_name ==
+           "Stark");
+    assert(native_assets.recruited_runner_templates[0].record.active_item_code ==
+           1U);
+    assert(native_assets.recruited_runner_templates[3].record.cyberware_flags ==
+           1U);
     assert(native_assets.field_menu_cursor.width == 24);
     assert(native_assets.field_menu_cursor.height == 32);
     assert(native_assets.field_menu_selected_cells[0].width == 40);
@@ -884,6 +893,11 @@ int main() {
                .defense_bar_indices_by_posture);
     NativePortShell direct_shell("SHADOWRUN", native_assets);
     assert(direct_shell.has_assets());
+    assert(direct_shell.recruited_runner_template_count() == 10);
+    const auto* ricky = direct_shell.recruited_runner_template(0);
+    assert(ricky != nullptr && ricky->display_name == "Ricky" &&
+           ricky->record.inventory_item_codes[1] == 0x2D);
+    assert(direct_shell.recruited_runner_template(10) == nullptr);
     assert(direct_shell.has_field_map());
     assert(direct_shell.has_terrain());
     assert(direct_shell.has_entity_frame());

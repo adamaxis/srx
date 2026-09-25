@@ -61,6 +61,10 @@ enum class GenesisMetatileEncoding {
 // establish them; the rest of the template remains untyped until recovered.
 struct GenesisFieldEntityTemplate {
     std::size_t record_offset = 0;
+    // The 16-byte source name at +0x58 is part of the roster/template
+    // record. It is extracted here so recruited templates do not disappear
+    // behind an anonymous numeric index.
+    std::string display_name;
     std::uint16_t projection_word_08 = 0;
     std::uint16_t kind = 0;
     // ROM 0x391A reads the entity-record type at +0x3E. This is distinct
@@ -152,6 +156,12 @@ using GenesisTerrainMap = terrain::Map;
 GenesisFieldEntityTemplate read_genesis_field_entity_template(
     const std::vector<std::uint8_t>& rom,
     std::size_t record_offset = 0x7291A);
+
+// ROM 0x72C1A contains the ten named recruited-runner templates. The
+// zero-kind record immediately following Stark is the source terminator; it
+// is not a party member and must not be exposed as one.
+std::vector<GenesisFieldEntityTemplate> read_genesis_recruited_roster(
+    const std::vector<std::uint8_t>& rom);
 
 // Read the 50 fixed-size item records at ROM 0xD4540. The native runtime uses
 // these expanded names to present the item codes stored in +0x66 without

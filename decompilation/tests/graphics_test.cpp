@@ -106,6 +106,21 @@ int main() {
                                          1, 1}));
     assert((entity_template.attribute_skill_auxiliary ==
             std::array<std::uint8_t, 4>{0, 0, 0, 9}));
+    const auto recruited_roster = read_genesis_recruited_roster(rom);
+    assert(recruited_roster.size() == 10);
+    assert(recruited_roster[0].record_offset == 0x72C1A);
+    assert(recruited_roster[0].display_name == "Ricky");
+    assert(recruited_roster[1].display_name == "Winston Marrs");
+    assert(recruited_roster[3].display_name == "Petr Uvehr");
+    assert(recruited_roster[4].display_name == "Walking Bear");
+    assert(recruited_roster[9].display_name == "Stark");
+    assert(recruited_roster[0].record_type == 3);
+    assert(recruited_roster[0].active_item_code == 1);
+    assert((recruited_roster[0].inventory_item_codes ==
+            std::array<std::uint8_t, 8>{1, 0x2D, 0x11, 0x12, 0x13, 0, 0,
+                                        0x29}));
+    assert(recruited_roster[3].cyberware_flags == 1);
+    assert(recruited_roster[9].cyberware_flags == 0x282A);
     const auto inventory_catalog = read_genesis_inventory_catalog(rom);
     assert(inventory_catalog.size() == 50);
     assert(inventory_catalog[1].code == 2);

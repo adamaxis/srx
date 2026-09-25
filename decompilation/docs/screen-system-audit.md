@@ -472,8 +472,13 @@ behavior:
 - Unequipping no longer removes the projected runner body. The item sprite
   selection path and the body projection path are separate source effects;
   the native fallback marker is not a character sprite.
+- The recruited template table at `0x72C1A` is now extracted as ten complete
+  named `0x100`-byte runner records. The following zero-kind record is treated as
+  the source terminator. These are candidate templates only; New Game still
+  starts with Joshua, and the event-owned recruitment/installation state is
+  not invented until its writers are traced.
 
 These are correction slices, not a completion claim. The right-hand party
-status/sidebar layer, recruited roster, source submenu layouts, animated
+status/sidebar layer, recruited roster activation, source submenu layouts, animated
 opening artwork/music, valid SRAM load, and the remaining item-action branches
 still require their own source traces and focused comparisons.
