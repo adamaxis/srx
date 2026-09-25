@@ -580,6 +580,19 @@ The next Matrix/menu service batch is isolated in `matrix_menu_service_conversio
 `0x1989A` normalizes the signed HUD variant, preserves the high-side completion fade/world-effect/wait sequence, and publishes audio only when the normalized variant differs from the source's last-published value. All three are reference-only typed C++ with callbacks for presentation, audio, and waits.
 The runner-record helpers at `0x1A4EA` and `0x1A538` are now converted in the same record-access module. The first reads record `+0x10` through the proven ROM `0x1A50E` signed delta table; the second tests record `+0x0F` as a nonzero active-effect marker. The table lookup returns an explicit no-result for an invalid host index rather than exposing source pointer arithmetic.
 
+The adjacent title/world-effect setup pair at `0x1A818` and `0x1A908` is now
+converted as `world_effect_mode_conversion`, still outside the native runtime.
+`0x1A818` is the descriptor-transition starter: its `FFE0D4` completion gate
+is explicit, it resets `FFE076`, marks `FFE082`, stages the six-frame loading
+state when `FFE0F4` is clear, or reads the selected `FF163E+5` descriptor token,
+writes the source `0xD280` behavior position, and attaches state `7`. `0x1A908`
+now exposes mode selection, the fixed negative-mode descriptor at ROM `0x1AA10`,
+the `0x45` exit sentinel, and the one-shot `0x47C0`/`0x4800` setup for modes 6
+and 7. The descriptor pointer table at `0x1A9CE` remains a typed callback until
+its records are independently named. The shared `FF163E` work record documents
+the source overlap where `FF1643` is a phase in one path and a descriptor index
+in the other; no source-address interpreter was added.
+
 The program-slot branch at `0x19238` is now typed as real Matrix outcomes:
 already loaded, no available slot, insufficient memory, or ready to install.
 The source's two-entry Yes/No prompt is also converted; Yes reaches the

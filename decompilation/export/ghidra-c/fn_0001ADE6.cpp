@@ -18,8 +18,8 @@
 //   0x0001A48A advance_title_animation_cycle
 //   0x0001A5A0 convert_world_routine_0x0001a5a0
 //   0x0001A7BE append_title_vertical_sprite
-//   0x0001A908 convert_world_routine_0x0001a908
-//   0x0001AA40 convert_world_routine_0x0001aa40
+//   0x0001A908 initialize_world_effect_mode
+//   0x0001AA40 tick_world_effect_animation
 //   0x0001B218 advance_title_phase_cycle
 //   0x0001B282 convert_world_routine_0x0001b282
 //   0x0001B302 advance_title_jitter
@@ -94,7 +94,7 @@ void convert_world_routine_0x0001ade6(void)
   DAT_00ffe189 = DAT_00fff0a0;
   DAT_00ffe16d = '\0';
   upload_decoded_source_stream();
-  convert_world_routine_0x0001a908();
+  initialize_world_effect_mode();
   attach_behavior_descriptor_e();
   do {
     wait_for_vblank();
@@ -216,7 +216,7 @@ LAB_0001afc0:
       convert_world_routine_0x0001b364();
     }
     if (_DAT_00ffe080 == 0) {
-      convert_world_routine_0x0001aa40();
+  tick_world_effect_animation();
     }
     append_world_sprite_records();
     _DAT_00ffd980 = 1;
@@ -241,5 +241,4 @@ LAB_0001afc0:
     DAT_00ffef14 = DAT_00ffef14 | 2;
   } while( true );
 }
-
 

@@ -79,7 +79,7 @@ void convert_world_routine_0x0001aa40(void)
       _DAT_00ffe0c8 = 0;
       DAT_00ffe0b6 = 0;
       _DAT_00ffe0f4 = 1;
-      convert_world_routine_0x0001a818();
+      begin_world_effect_descriptor_transition();
       return;
     }
     if (DAT_00ffe0b6 != 1) {
@@ -105,5 +105,4 @@ void convert_world_routine_0x0001aa40(void)
   }
   return;
 }
-
 

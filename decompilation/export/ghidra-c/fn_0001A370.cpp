@@ -8,7 +8,7 @@
 //   0x00017E78 calculate_menu_row_offset
 //   0x0001A538 convert_world_routine_0x0001a538
 //   0x0001A54E initialize_effect_defaults
-//   0x0001A818 convert_world_routine_0x0001a818
+//   0x0001A818 begin_world_effect_descriptor_transition
 //   0x0001A8F4 reset_effect_entity
 //   0x0001D3F4 expand_random_nibble_mask
 //   0x000561E8 convert_intro_routine_0x000561e8
@@ -86,8 +86,7 @@ void convert_world_routine_0x0001a370(void)
     }
     return;
   }
-  convert_world_routine_0x0001a818();
+  begin_world_effect_descriptor_transition();
   return;
 }
-
 

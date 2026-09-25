@@ -8,7 +8,7 @@
 //   0x00017BC0 refresh_menu_number_or_grid
 //   0x00019632 convert_world_routine_0x00019632
 //   0x00019AEE refresh_mode_glyph
-//   0x0001A908 convert_world_routine_0x0001a908
+//   0x0001A908 initialize_world_effect_mode
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -28,12 +28,11 @@ void convert_world_routine_0x0001b282(void)
       refresh_mode_glyph();
       _DAT_00ffe0de = 0;
       render_menu_hud_rows();
-      convert_world_routine_0x0001a908();
+      initialize_world_effect_mode();
       return;
     }
   }
   build_title_sprite_records();
   return;
 }
-
 

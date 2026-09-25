@@ -100,7 +100,7 @@ LAB_00056268:
       uVar2 = extraout_D0u_00;
     }
     else {
-      convert_world_routine_0x0001a908();
+      initialize_world_effect_mode();
       uVar2 = extraout_D0u_01;
     }
   }
@@ -118,5 +118,4 @@ LAB_00056268:
 LAB_000561e2:
   return CONCAT22(uVar2,0xffff);
 }
-
 

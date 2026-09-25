@@ -16319,7 +16319,7 @@
 0001A386: bne.w 0x0001a88e
 0001A38A: bsr.w 0x0001a538 ; call 0001A538 convert_world_routine_0x0001a538
 0001A38E: bne.w 0x0001a396
-0001A392: bra.w 0x0001a818 ; call 0001A818 convert_world_routine_0x0001a818
+0001A392: bra.w 0x0001a818 ; call 0001A818 begin_world_effect_descriptor_transition
 0001A396: tst.b (0x00ffdf84).l
 0001A39C: beq.w 0x0001a466
 0001A3A0: tst.w (0x00ffe076).l
@@ -16726,7 +16726,7 @@
 0001ABA8: clr.w (0x00ffe0c8).l
 0001ABAE: clr.w (0x00ffe0b6).l
 0001ABB4: move.w #0x1,(0x00ffe0f4).l
-0001ABBC: bra.w 0x0001a818 ; call 0001A818 convert_world_routine_0x0001a818
+0001ABBC: bra.w 0x0001a818 ; call 0001A818 begin_world_effect_descriptor_transition
 0001ABC0: cmpi.w #0x1,(0x00ffe0b6).l
 0001ABC8: beq.w 0x0001abec
 0001ABCC: move.w (0x00ffe0c0).l,D0w
@@ -16776,7 +16776,7 @@
 0001ACA4: clr.w (0x00ffe0b8).l
 0001ACAA: clr.w (0x00ffe0c8).l
 0001ACB0: move.w #0x1,(0x00ffe0f4).l
-0001ACB8: bra.w 0x0001a818 ; call 0001A818 convert_world_routine_0x0001a818
+0001ACB8: bra.w 0x0001a818 ; call 0001A818 begin_world_effect_descriptor_transition
 0001ACBC: cmpi.w #0x1,(0x00ffe0b8).l
 0001ACC4: beq.w 0x0001acde
 0001ACC8: move.w (0x00ffe0c0).l,D0w
@@ -16868,7 +16868,7 @@
 0001AE8A: move.b D0b,(0x00ffe189).l
 0001AE90: clr.b (0x00ffe16d).l
 0001AE96: jsr 0x00026958.l ; call 00026958 upload_decoded_source_stream
-0001AE9C: jsr 0x0001a908.l ; call 0001A908 convert_world_routine_0x0001a908
+0001AE9C: jsr 0x0001a908.l ; call 0001A908 initialize_world_effect_mode
 0001AEA2: lea (0xff1580).l,A0 ; data 00ff1580
 0001AEA8: bsr.w 0x0001b680 ; call 0001B680 attach_behavior_descriptor_e
 0001AEAC: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
@@ -17036,7 +17036,7 @@
 0001B1E6: lea (0x1b278).l,A1 ; data 0001b278
 0001B1EC: lsl.w #0x1,D2w
 0001B1EE: move.w (0x0,A1,D2w*0x1),(0x00ffe0d8).l
-0001B1F6: jmp 0x0001a908.l ; call 0001A908 convert_world_routine_0x0001a908
+0001B1F6: jmp 0x0001a908.l ; call 0001A908 initialize_world_effect_mode
 0001B1FC: clr.w (0x00ffe076).l
 0001B202: move.w #0x1,(0x00ffe0f6).l
 0001B20A: clr.w (0x00ffe0fa).l
@@ -17075,7 +17075,7 @@
 0001B2C4: jsr 0x00019aee.l ; call 00019AEE refresh_mode_glyph
 0001B2CA: clr.w (0x00ffe0de).l
 0001B2D0: jsr 0x0001792e.l ; call 0001792E render_menu_hud_rows
-0001B2D6: jmp 0x0001a908.l ; call 0001A908 convert_world_routine_0x0001a908
+0001B2D6: jmp 0x0001a908.l ; call 0001A908 initialize_world_effect_mode
 0001B2DC: move.w (0x00ffe0dc).l,D0w
 0001B2E2: lsl.w #0x2,D0w
 0001B2E4: lea (0x1db1c).l,A2 ; data 0001db1c
@@ -17292,7 +17292,7 @@
 0001B714: move.b #-0x1,(0x00ffdf84).l
 0001B71C: jsr 0x00017e78.l ; call 00017E78 calculate_menu_row_offset
 0001B722: move.w D0w,(0x00ffe074).l
-0001B728: jsr 0x0001a908.l ; call 0001A908 convert_world_routine_0x0001a908
+0001B728: jsr 0x0001a908.l ; call 0001A908 initialize_world_effect_mode
 0001B72E: movem.l (SP)+,{ D0 D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 0001B732: rts
 0001B7D0: lea (0xff1580).l,A0 ; data 00ff1580
@@ -17544,7 +17544,7 @@
 0001BF46: bsr.w 0x0001b612 ; call 0001B612 attach_behavior_descriptor_b
 0001BF4A: clr.w (0x00ffe0d6).l
 0001BF50: jsr 0x00019d66.l ; call 00019D66 run_menu_slot_service
-0001BF56: jmp 0x0001a908.l ; call 0001A908 convert_world_routine_0x0001a908
+0001BF56: jmp 0x0001a908.l ; call 0001A908 initialize_world_effect_mode
 0001BF5C: lea (0x1c10a).l,A0 ; data 0001c10a
 0001BF62: lea (0xffd880).l,A1 ; data 00ffd880
 0001BF68: moveq #0x6,D0
@@ -24472,7 +24472,7 @@
 000561BC: jsr 0x00017a5e.l ; call 00017A5E convert_world_routine_0x00017a5e
 000561C2: tst.b (0x00fff0a0).l
 000561C8: ble.w 0x000561d6
-000561CC: jsr 0x0001a908.l ; call 0001A908 convert_world_routine_0x0001a908
+000561CC: jsr 0x0001a908.l ; call 0001A908 initialize_world_effect_mode
 000561D2: bra.w 0x000561dc
 000561D6: clr.b (0x00ffdf84).l
 000561DC: clr.b (0x00fff0a3).l

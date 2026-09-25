@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
 //   0x00019D66 run_menu_slot_service
-//   0x0001A908 convert_world_routine_0x0001a908
+//   0x0001A908 initialize_world_effect_mode
 //   0x0001B612 attach_behavior_descriptor_b
 //   0x0001BF5C copy_title_profile
 
@@ -36,7 +36,7 @@ void convert_world_routine_0x0001beba(void)
     attach_behavior_descriptor_b();
     _DAT_00ffe0d6 = 0;
     run_menu_slot_service();
-    convert_world_routine_0x0001a908();
+  initialize_world_effect_mode();
     return;
   }
   build_title_sprite_records
@@ -44,5 +44,4 @@ void convert_world_routine_0x0001beba(void)
   build_title_sprite_records();
   return;
 }
-
 

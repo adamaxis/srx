@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x000013BE build_title_sprite_records_with_attribute_offset
 //   0x000061CC append_sprite_record
-//   0x0001A818 convert_world_routine_0x0001a818
+//   0x0001A818 begin_world_effect_descriptor_transition
 //   0x0001AC50 arm_effect_after_threshold
 //   0x000563CC convert_intro_routine_0x000563cc
 
@@ -24,7 +24,7 @@ void convert_world_routine_0x0001ab6e(void)
     _DAT_00ffe0c8 = 0;
     DAT_00ffe0b6 = 0;
     _DAT_00ffe0f4 = 1;
-    convert_world_routine_0x0001a818();
+    begin_world_effect_descriptor_transition();
     return;
   }
   if (DAT_00ffe0b6 != 1) {
@@ -48,5 +48,4 @@ void convert_world_routine_0x0001ab6e(void)
   build_title_sprite_records_with_attribute_offset();
   return;
 }
-
 

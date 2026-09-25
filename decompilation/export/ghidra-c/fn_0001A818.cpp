@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001A818
-// Name: convert_world_routine_0x0001a818
+// Name: begin_world_effect_descriptor_transition
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001B680 attach_behavior_descriptor_e
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_world_routine_0x0001a818(void)
+void begin_world_effect_descriptor_transition(void)
 
 {
   if (_DAT_00ffe0d4 != 0) {
@@ -30,5 +30,4 @@ void convert_world_routine_0x0001a818(void)
   attach_behavior_descriptor_e();
   return;
 }
-
 

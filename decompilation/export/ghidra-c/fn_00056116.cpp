@@ -7,7 +7,7 @@
 //   0x00017A5E convert_world_routine_0x00017a5e
 //   0x0001989A convert_world_routine_0x0001989a
 //   0x00019BF6 pass_through_value
-//   0x0001A908 convert_world_routine_0x0001a908
+//   0x0001A908 initialize_world_effect_mode
 //   0x00055F44 convert_intro_routine_0x00055f44
 //   0x000562DE convert_intro_routine_0x000562de
 
@@ -40,7 +40,7 @@ undefined4 convert_intro_routine_0x00056116(void)
       uVar2 = extraout_D0u_00;
     }
     else {
-      convert_world_routine_0x0001a908();
+      initialize_world_effect_mode();
       uVar2 = extraout_D0u_01;
     }
   }
@@ -55,5 +55,4 @@ undefined4 convert_intro_routine_0x00056116(void)
 LAB_000561e2:
   return CONCAT22(uVar2,0xffff);
 }
-
 

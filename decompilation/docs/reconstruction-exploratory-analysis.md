@@ -1000,3 +1000,13 @@ The next three Matrix/menu leaves are now typed in `matrix_menu_service_conversi
 `0x19788` decrements the unsigned overlay countdown, services the overlay timer, then advances only the first non-complete one of five visual slot states when the signed inter-step delay expires; completion publishes the selected slot and renders its text.
 `0x1989A` normalizes the signed HUD variant to `-1`, `0`, or `1`, exposes the upward completion fade/world-effect/vblank/controller sequence, and publishes audio only when the source's last-published variant changes. These callbacks are source-service boundaries and are not linked to the emulator or native renderer.
 The paired runner-record leaves are now no longer generic: `0x1A4EA` reads record `+0x10` and returns the signed table value from ROM `0x1A50E` (`100, 20, 10, 9, ... -2`), while `0x1A538` tests record `+0x0F` as the active-effect marker. Both are exposed through the existing typed record-access module with explicit invalid-index handling for host callers.
+
+The next title/world-effect pair is also no longer generic. `0x1A818` starts
+the descriptor transition, choosing between its six-frame loading path and the
+active descriptor-token path; its source word `0xD280` is recorded as such
+rather than using the stale unsigned Ghidra rendering. `0x1A908` selects the
+effect mode, handles the fixed negative descriptor and the `0x45` termination
+sentinel, arms modes 6 and 7 once, and initializes the shared work record at
+`FF163E`. The ROM descriptor table remains an explicit data-resolution boundary,
+which keeps this conversion useful without turning source pointers into native
+runtime address arithmetic.

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001A908
-// Name: convert_world_routine_0x0001a908
+// Name: initialize_world_effect_mode
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00019B40 convert_world_routine_0x00019b40
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_world_routine_0x0001a908(void)
+void initialize_world_effect_mode(void)
 
 {
   short sVar1;
@@ -49,5 +49,4 @@ void convert_world_routine_0x0001a908(void)
   DAT_00ff1640 = 0xd0;
   return;
 }
-
 
