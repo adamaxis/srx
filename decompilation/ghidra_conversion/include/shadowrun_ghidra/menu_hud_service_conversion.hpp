@@ -79,6 +79,40 @@ bool refresh_menu_number_or_grid(
     const MenuNumberOrGridState& state,
     const MenuNumberOrGridCallbacks& callbacks);
 
+struct MenuEntryRenderState {
+    std::int8_t entry_marker = 0;
+    std::int8_t entry_status = 0;
+    std::int16_t available_count = 0;
+    std::uint8_t pending_flags = 0;
+};
+
+struct MenuEntryRenderCallbacks {
+    std::function<void()> merge_pending_flags;
+    std::function<void()> refresh_hud_grid;
+    std::function<void()> advance_entry_state;
+    std::function<void()> render_title_text;
+    std::function<void()> build_grouped_decimal_glyphs;
+};
+
+enum class MenuEntryRenderAction {
+    pending,
+    text_only,
+    text_and_number,
+};
+
+// ROM 0x17A5E: process one menu entry's signed marker/status pair and submit
+// the recovered title-text/decimal-glyph sequence. The negative marker path
+// merges pending flags and sets bit 6; the positive path may refresh the HUD.
+MenuEntryRenderAction render_menu_entry(
+    MenuEntryRenderState& state,
+    bool hud_grid_dirty,
+    bool text_variant_available,
+    bool number_variant_available,
+    const MenuEntryRenderCallbacks& callbacks);
+
+// ROM 0x17C3C: an intentionally empty intermediate service boundary.
+void advance_menu_entry_intermediate_service();
+
 // ROM 0x17C52: render one title-text source through the host text boundary.
 void render_menu_text_followup(const std::function<void()>& render_title_text);
 

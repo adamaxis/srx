@@ -104,6 +104,57 @@ bool refresh_menu_number_or_grid(
     return false;
 }
 
+MenuEntryRenderAction render_menu_entry(
+    MenuEntryRenderState& state,
+    const bool hud_grid_dirty,
+    const bool text_variant_available,
+    const bool number_variant_available,
+    const MenuEntryRenderCallbacks& callbacks) {
+    const auto call = [](const std::function<void()>& callback) {
+        if (callback) {
+            callback();
+        }
+    };
+
+    if (state.entry_marker < 0) {
+        call(callbacks.merge_pending_flags);
+        state.pending_flags = static_cast<std::uint8_t>(
+            state.pending_flags | 0x40U);
+        return MenuEntryRenderAction::pending;
+    }
+
+    if (state.entry_status > 0) {
+        call(callbacks.advance_entry_state);
+        if (hud_grid_dirty) {
+            call(callbacks.refresh_hud_grid);
+        }
+        if (text_variant_available) {
+            call(callbacks.render_title_text);
+            if (state.available_count < 2) {
+                call(callbacks.render_title_text);
+            } else {
+                call(callbacks.build_grouped_decimal_glyphs);
+            }
+            if (number_variant_available) {
+                call(callbacks.render_title_text);
+                if (state.available_count >= 2) {
+                    call(callbacks.build_grouped_decimal_glyphs);
+                } else {
+                    call(callbacks.render_title_text);
+                }
+            }
+        }
+        return number_variant_available
+                   ? MenuEntryRenderAction::text_and_number
+                   : MenuEntryRenderAction::text_only;
+    }
+
+    call(callbacks.render_title_text);
+    return MenuEntryRenderAction::text_only;
+}
+
+void advance_menu_entry_intermediate_service() {}
+
 void render_menu_text_followup(
     const std::function<void()>& render_title_text) {
     if (render_title_text) {

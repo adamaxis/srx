@@ -575,6 +575,13 @@ sequence preserves the source order from plane clears through HUD/resource
 services and the final field-asset refresh, while leaving each concrete host
 service independently replaceable.
 
+The menu-entry pair is concrete as well. `0x17A5E` now handles the negative
+entry marker by merging pending flags and setting bit `0x40`; positive entries
+advance their state, optionally refresh the HUD, and follow the recovered
+title-text/decimal-glyph order based on the available count and variant flags.
+`0x17C3C` is explicitly recorded as the empty intermediate service observed in
+the source rather than being mislabeled as an unknown world routine.
+
 The save-to-field restore routine at `0x594E0` is now a concrete conversion in
 `ghidra_conversion/save_field_restore_conversion`. It copies the `0x248`-byte
 field payload from the save-work image's source offset `0x3D6`, reads the

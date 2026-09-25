@@ -7,6 +7,44 @@
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
+    MenuEntryRenderState pending{};
+    pending.entry_marker = -1;
+    int pending_merges = 0;
+    const auto pending_action = render_menu_entry(
+        pending, false, false, false,
+        {[&] { ++pending_merges; }, {}, {}, {}, {}});
+    if (pending_action != MenuEntryRenderAction::pending ||
+        pending.pending_flags != 0x40U || pending_merges != 1) {
+        return 100;
+    }
+
+    MenuEntryRenderState positive{};
+    positive.entry_status = 1;
+    positive.available_count = 3;
+    std::vector<int> entry_calls;
+    const auto positive_action = render_menu_entry(
+        positive, true, true, true,
+        {[&] { entry_calls.push_back(1); },
+         [&] { entry_calls.push_back(2); },
+         [&] { entry_calls.push_back(3); },
+         [&] { entry_calls.push_back(4); },
+         [&] { entry_calls.push_back(5); }});
+    if (positive_action != MenuEntryRenderAction::text_and_number ||
+        entry_calls != std::vector<int>{3, 2, 4, 5, 4, 5}) {
+        return 101;
+    }
+
+    MenuEntryRenderState zero_status{};
+    int zero_text_calls = 0;
+    if (render_menu_entry(
+            zero_status, true, false, false,
+            {{}, {}, {}, [&] { ++zero_text_calls; }, {}}) !=
+            MenuEntryRenderAction::text_only ||
+        zero_text_calls != 1) {
+        return 102;
+    }
+    advance_menu_entry_intermediate_service();
+
     MenuModeResourceState mode{};
     std::vector<int> events;
     prepare_menu_mode_resources(
