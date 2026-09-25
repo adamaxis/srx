@@ -594,6 +594,16 @@ The adjacent leaves are now named by proven behavior: `0x54A28` is
 conversion batch because their callers and effects are mode-presentation
 operations, not audio services.
 
+The field-mode selector leaves at `0x58B5E`, `0x58BB6`, `0x58C54`, `0x58CDE`,
+and `0x58D32` are now converted in `field_mode_navigation_conversion`. The
+normal and alternate panel redraws preserve their separate grid/text passes;
+the primary cursor uses the source result-dependent bounds `0..3`, `0..5`, or
+`0..7`; the panel cursor clamps to `0..1` and resets the primary cursor; and
+the alternate path publishes the source sprite-list/display dirty markers.
+The resource-table selection and sprite-service internals remain callbacks,
+but the cursor mutations and presentation order are no longer generic intro
+labels or raw global writes.
+
 The runner-selection family is now native-shaped. `0x532BC` is
 `initialize_runner_selection_screen`: it exposes the background asset setup,
 header/animation preparation, and exact 10-by-14 grid request sequence.

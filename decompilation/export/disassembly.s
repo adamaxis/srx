@@ -25022,10 +25022,10 @@
 00056C2C: cmpi.b #0x1,(0x00fff0b7).l
 00056C34: bne.w 0x00056c48
 00056C38: move.b #0x1,(0x00fff0d1).l
-00056C40: bsr.w 0x00058d32 ; call 00058D32 convert_intro_routine_0x00058d32
+00056C40: bsr.w 0x00058d32 ; call 00058D32 refresh_field_mode_selection_sprites
 00056C44: bra.w 0x00056c50
-00056C48: bsr.w 0x00058b5e ; call 00058B5E convert_intro_routine_0x00058b5e
-00056C4C: bsr.w 0x00058bb6 ; call 00058BB6 convert_intro_routine_0x00058bb6
+00056C48: bsr.w 0x00058b5e ; call 00058B5E refresh_field_mode_panel_grid
+00056C4C: bsr.w 0x00058bb6 ; call 00058BB6 render_field_mode_selection
 00056C50: bsr.w 0x000587da ; call 000587DA convert_intro_routine_0x000587da
 00056C54: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 00056C5A: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
@@ -25047,7 +25047,7 @@
 00056CAA: move.w #0x25,D0w
 00056CAE: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 00056CB4: moveq #0x1,D0
-00056CB6: bsr.w 0x00058c54 ; call 00058C54 convert_intro_routine_0x00058c54
+00056CB6: bsr.w 0x00058c54 ; call 00058C54 advance_field_mode_primary_cursor
 00056CBA: bra.b 0x00056c54
 00056CBC: btst.b #0x9,(0x00ffdd22).l
 00056CC4: beq.w 0x00056ce8
@@ -25056,7 +25056,7 @@
 00056CD2: moveq #0x1,D0
 00056CD4: cmpi.b #0x1,(0x00fff0b7).l
 00056CDC: beq.w 0x00056c54
-00056CE0: bsr.w 0x00058cde ; call 00058CDE convert_intro_routine_0x00058cde
+00056CE0: bsr.w 0x00058cde ; call 00058CDE advance_field_mode_panel_cursor
 00056CE4: bra.w 0x00056c54
 00056CE8: btst.b #0xe,(0x00ffdd22).l
 00056CF0: beq.w 0x00056d6c
@@ -26882,10 +26882,10 @@
 00058CC2: rts
 00058CC4: tst.b (0x00fff0d1).l
 00058CCA: beq.w 0x00058cd4
-00058CCE: bsr.w 0x00058d32 ; call 00058D32 convert_intro_routine_0x00058d32
+00058CCE: bsr.w 0x00058d32 ; call 00058D32 refresh_field_mode_selection_sprites
 00058CD2: rts
-00058CD4: bsr.w 0x00058b5e ; call 00058B5E convert_intro_routine_0x00058b5e
-00058CD8: bsr.w 0x00058bb6 ; call 00058BB6 convert_intro_routine_0x00058bb6
+00058CD4: bsr.w 0x00058b5e ; call 00058B5E refresh_field_mode_panel_grid
+00058CD8: bsr.w 0x00058bb6 ; call 00058BB6 render_field_mode_selection
 00058CDC: rts
 00058CDE: add.b D0b,(0x00fff0d1).l
 00058CE4: bpl.w 0x00058cf2
@@ -26898,14 +26898,14 @@
 00058D08: clr.b (0x00fff0d0).l
 00058D0E: tst.b (0x00fff0d1).l
 00058D14: beq.w 0x00058d22
-00058D18: bsr.w 0x00058b5e ; call 00058B5E convert_intro_routine_0x00058b5e
-00058D1C: bsr.w 0x00058d32 ; call 00058D32 convert_intro_routine_0x00058d32
+00058D18: bsr.w 0x00058b5e ; call 00058B5E refresh_field_mode_panel_grid
+00058D1C: bsr.w 0x00058d32 ; call 00058D32 refresh_field_mode_selection_sprites
 00058D20: rts
 00058D22: jsr 0x00000e34.l ; call 00000E34 reset_vdp_upload_state
-00058D28: bsr.w 0x00058b5e ; call 00058B5E convert_intro_routine_0x00058b5e
-00058D2C: bsr.w 0x00058bb6 ; call 00058BB6 convert_intro_routine_0x00058bb6
+00058D28: bsr.w 0x00058b5e ; call 00058B5E refresh_field_mode_panel_grid
+00058D2C: bsr.w 0x00058bb6 ; call 00058BB6 render_field_mode_selection
 00058D30: rts
-00058D32: clr.l D1
+00058D32: clr.l D1 ; refresh_field_mode_selection_sprites
 00058D34: move.b (0x00fff0d0).l,D1b
 00058D3A: mulu.w #0x20,D1
 00058D3E: clr.l D2

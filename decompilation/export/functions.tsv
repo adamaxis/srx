@@ -804,11 +804,11 @@ entry	name	size	callingConvention	decompileStatus	file
 00058A2E	convert_intro_routine_0x00058a2e	118	unknown	ok	ghidra-c/fn_00058A2E.cpp
 00058AA4	convert_intro_routine_0x00058aa4	122	unknown	ok	ghidra-c/fn_00058AA4.cpp
 00058B1E	convert_intro_routine_0x00058b1e	64	unknown	ok	ghidra-c/fn_00058B1E.cpp
-00058B5E	convert_intro_routine_0x00058b5e	88	unknown	ok	ghidra-c/fn_00058B5E.cpp
-00058BB6	convert_intro_routine_0x00058bb6	158	unknown	ok	ghidra-c/fn_00058BB6.cpp
-00058C54	convert_intro_routine_0x00058c54	138	unknown	ok	ghidra-c/fn_00058C54.cpp
-00058CDE	convert_intro_routine_0x00058cde	84	unknown	ok	ghidra-c/fn_00058CDE.cpp
-00058D32	convert_intro_routine_0x00058d32	76	unknown	ok	ghidra-c/fn_00058D32.cpp
+00058B5E	refresh_field_mode_panel_grid	88	unknown	ok	ghidra-c/fn_00058B5E.cpp
+00058BB6	render_field_mode_selection	158	unknown	ok	ghidra-c/fn_00058BB6.cpp
+00058C54	advance_field_mode_primary_cursor	138	unknown	ok	ghidra-c/fn_00058C54.cpp
+00058CDE	advance_field_mode_panel_cursor	84	unknown	ok	ghidra-c/fn_00058CDE.cpp
+00058D32	refresh_field_mode_selection_sprites	76	unknown	ok	ghidra-c/fn_00058D32.cpp
 00058D7E	convert_intro_routine_0x00058d7e	22	unknown	ok	ghidra-c/fn_00058D7E.cpp
 00059092	run_start_options	432	unknown	ok	ghidra-c/fn_00059092.cpp
 00059172	run_save_load	214	unknown	ok	ghidra-c/fn_00059172.cpp

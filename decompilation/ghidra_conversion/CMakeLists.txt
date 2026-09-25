@@ -2415,3 +2415,16 @@ target_link_libraries(shadowrun_ghidra_mode_action_loop_test
     PRIVATE shadowrun_ghidra_mode_action_loop)
 add_test(NAME shadowrun_ghidra_mode_action_loop
          COMMAND shadowrun_ghidra_mode_action_loop_test)
+
+add_library(shadowrun_ghidra_field_mode_navigation STATIC
+    src/field_mode_navigation_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_field_mode_navigation PUBLIC include)
+
+add_executable(shadowrun_ghidra_field_mode_navigation_test
+    tests/field_mode_navigation_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_field_mode_navigation_test
+    PRIVATE shadowrun_ghidra_field_mode_navigation)
+add_test(NAME shadowrun_ghidra_field_mode_navigation
+         COMMAND shadowrun_ghidra_field_mode_navigation_test)
