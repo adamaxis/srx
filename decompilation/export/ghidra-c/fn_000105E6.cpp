@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x00010660 FUN_00010660
 
 
@@ -20,7 +20,7 @@ void FUN_000105e6(void)
   cVar3 = '\0';
   FUN_00010660();
   if (bVar2 || cVar3 != cVar1) {
-    render_title_text_source();
+    render_encoded_title_text();
   }
   else {
     write_vdp_grid();

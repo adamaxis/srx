@@ -3,7 +3,7 @@
 // Name: service_audio_command_wrapper
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00052F5A FUN_00052f5a
+//   0x00052F5A run_audio_bus_transaction
 
 
 undefined8 service_audio_command_wrapper(void)
@@ -12,7 +12,7 @@ undefined8 service_audio_command_wrapper(void)
   undefined4 in_D0;
   undefined4 in_D1;
   
-  FUN_00052f5a();
+  run_audio_bus_transaction();
   return CONCAT44(in_D0,in_D1);
 }
 

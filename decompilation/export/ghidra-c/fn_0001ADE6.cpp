@@ -15,39 +15,39 @@
 //   0x00019432 handle_menu_directional_input
 //   0x00019788 FUN_00019788
 //   0x0001A370 FUN_0001a370
-//   0x0001A48A FUN_0001a48a
+//   0x0001A48A advance_title_animation_cycle
 //   0x0001A5A0 FUN_0001a5a0
-//   0x0001A7BE FUN_0001a7be
+//   0x0001A7BE append_title_vertical_sprite
 //   0x0001A908 FUN_0001a908
 //   0x0001AA40 FUN_0001aa40
-//   0x0001B218 FUN_0001b218
+//   0x0001B218 advance_title_phase_cycle
 //   0x0001B282 FUN_0001b282
-//   0x0001B302 FUN_0001b302
+//   0x0001B302 advance_title_jitter
 //   0x0001B364 FUN_0001b364
 //   0x0001B45C FUN_0001b45c
 //   0x0001B5A6 reset_word_stream_area
 //   0x0001B680 attach_behavior_descriptor_e
-//   0x0001B87A FUN_0001b87a
+//   0x0001B87A dispatch_title_phase_handler
 //   0x0001BA6E FUN_0001ba6e
 //   0x0001BB6A FUN_0001bb6a
 //   0x0001BCE8 FUN_0001bce8
 //   0x0001BEBA FUN_0001beba
 //   0x0001BF7A FUN_0001bf7a
-//   0x0001C0C2 FUN_0001c0c2
-//   0x0001C1F6 FUN_0001c1f6
+//   0x0001C0C2 advance_alternating_profile
+//   0x0001C1F6 advance_audio_menu_countdown
 //   0x0001C3FA FUN_0001c3fa
 //   0x0001C61C FUN_0001c61c
 //   0x0001C754 FUN_0001c754
 //   0x0001C866 FUN_0001c866
 //   0x0001CA12 FUN_0001ca12
 //   0x0001CC24 FUN_0001cc24
-//   0x0001CCDC FUN_0001ccdc
+//   0x0001CCDC update_persistent_title_effect
 //   0x0001CD5A FUN_0001cd5a
 //   0x0001D1F4 FUN_0001d1f4
 //   0x0001D280 FUN_0001d280
-//   0x0001D2E6 FUN_0001d2e6
-//   0x000268E6 FUN_000268e6
-//   0x00026958 FUN_00026958
+//   0x0001D2E6 advance_world_sequence
+//   0x000268E6 append_world_sprite_records
+//   0x00026958 upload_decoded_source_stream
 //   0x00026972 FUN_00026972
 //   0x00026A00 FUN_00026a00
 //   0x000530DE service_audio_if_enabled
@@ -93,7 +93,7 @@ void FUN_0001ade6(void)
   DAT_00ff15a4 = 0;
   DAT_00ffe189 = DAT_00fff0a0;
   DAT_00ffe16d = '\0';
-  FUN_00026958();
+  upload_decoded_source_stream();
   FUN_0001a908();
   attach_behavior_descriptor_e();
   do {
@@ -115,7 +115,7 @@ void FUN_0001ade6(void)
         }
       }
       else {
-        FUN_0001b302();
+        advance_title_jitter();
         if (_DAT_00ffe084 == 0) {
           advance_hud_fade_service();
           FUN_00026a00();
@@ -133,11 +133,11 @@ void FUN_0001ade6(void)
         service_audio_if_enabled();
       }
       if (DAT_00ffe0aa == 0) goto LAB_0001afc0;
-      FUN_0001c0c2();
+      advance_alternating_profile();
     }
     else {
 LAB_0001aedc:
-      FUN_0001d2e6();
+      advance_world_sequence();
       if ((bool)uVar1) {
         _DAT_00ffdf8c = 0;
         prepare_mode_entry_service();
@@ -157,10 +157,10 @@ LAB_0001afc0:
     DAT_00ffdd02 = 1;
     if (_DAT_00ffdf8c == 0) {
       if (DAT_00ffe076 == 4) {
-        FUN_0001a7be();
+        append_title_vertical_sprite();
       }
       if (_DAT_00ffe0f6 != 0) {
-        FUN_0001b218();
+        advance_title_phase_cycle();
       }
       FUN_00026972();
       FUN_0001c3fa();
@@ -168,7 +168,7 @@ LAB_0001afc0:
         FUN_0001c61c();
       }
       if ((DAT_00ff1592 & 2) != 0) {
-        FUN_0001c1f6();
+        advance_audio_menu_countdown();
       }
       if ((DAT_00ff1592 & 4) != 0) {
         FUN_0001b45c();
@@ -180,7 +180,7 @@ LAB_0001afc0:
         FUN_0001cd5a();
       }
       if ((DAT_00ff1592 & 0x20) != 0) {
-        FUN_0001b87a();
+        dispatch_title_phase_handler();
       }
       if (_DAT_00ffe0ac != 0) {
         FUN_0001ba6e();
@@ -204,12 +204,12 @@ LAB_0001afc0:
         FUN_0001a5a0();
       }
       if (_DAT_00ffe0d4 != 0) {
-        FUN_0001a48a();
+        advance_title_animation_cycle();
       }
       if (_DAT_00ffe0de != 0) {
         FUN_0001b282();
       }
-      FUN_0001ccdc();
+      update_persistent_title_effect();
       FUN_0001cc24();
     }
     else {
@@ -218,7 +218,7 @@ LAB_0001afc0:
     if (_DAT_00ffe080 == 0) {
       FUN_0001aa40();
     }
-    FUN_000268e6();
+    append_world_sprite_records();
     _DAT_00ffd980 = 1;
     if ((_DAT_00ffdf8c == 0) && ((DAT_00ffdd22._0_1_ & 0x80) != 0)) {
       prepare_mode_entry_service();

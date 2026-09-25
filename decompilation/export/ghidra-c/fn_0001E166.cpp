@@ -37,7 +37,7 @@ void FUN_0001e166(void)
         begin_world_activity_if_idle();
         return;
       }
-      FUN_0001e216();
+      spawn_world_effect_sequence();
       return;
     }
   }

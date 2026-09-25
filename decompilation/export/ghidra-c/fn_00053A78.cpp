@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00053A78
-// Name: FUN_00053a78
+// Name: run_indexed_title_services
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00053a78(void)
+void run_indexed_title_services(void)
 
 {
   int iVar1;

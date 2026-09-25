@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00003DDE
-// Name: FUN_00003dde
+// Name: emit_field_tile_row_words
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003E14 FUN_00003e14
@@ -9,7 +9,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00003dde(void)
+void emit_field_tile_row_words(void)
 
 {
   short sVar1;

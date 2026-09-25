@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00005468
-// Name: FUN_00005468
+// Name: clone_entity_spawn_variant_a
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00005468(void)
+void clone_entity_spawn_variant_a(void)
 
 {
   int in_A0;

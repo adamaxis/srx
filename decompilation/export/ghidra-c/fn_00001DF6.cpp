@@ -3,16 +3,16 @@
 // Name: draw_title_copyright
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 
 
 void draw_title_copyright(void)
 
 {
-  render_title_text_source();
-  render_title_text_source();
-  render_title_text_source();
-  render_title_text_source();
+  render_encoded_title_text();
+  render_encoded_title_text();
+  render_encoded_title_text();
+  render_encoded_title_text();
   return;
 }
 

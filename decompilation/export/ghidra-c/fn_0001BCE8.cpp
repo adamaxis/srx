@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
-//   0x0001A106 FUN_0001a106
+//   0x0001A106 refresh_menu_selection_or_prepare
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -50,7 +50,7 @@ LAB_0001bdb8:
   if (_DAT_00ffe0c8 != 0) {
     _DAT_00ffe0f4 = 1;
   }
-  FUN_0001a106();
+  refresh_menu_selection_or_prepare();
   return;
 }
 

@@ -9,7 +9,7 @@
 //   0x000125FA clear_entity_auxiliary_marker
 //   0x00013C20 select_entity_action_lane
 //   0x00013C74 collect_entity_action_records
-//   0x00013CDE guard_entity_action_threshold_variant
+//   0x00013CDE pass_entity_action_threshold_variant
 
 
 void FUN_00013b12(void)
@@ -36,7 +36,7 @@ void FUN_00013b12(void)
     uVar3 = CONCAT31((int3)((uint)unaff_D4 >> 8),DAT_00ffdd66._0_1_);
     bVar5 = false;
     uStack_4 = CONCAT22((short)CONCAT31((int3)((uint)unaff_D7 >> 8),0xb),uStack_4._2_2_);
-    guard_entity_action_threshold_variant();
+    pass_entity_action_threshold_variant();
     unaff_D4 = (int)(short)uVar3;
     unaff_D7 = (int)sStack_6;
     register0x0000003c = (BADSPACEBASE *)&uStack_4;
@@ -56,7 +56,7 @@ void FUN_00013b12(void)
                          *(undefined1 *)((int)&DAT_00ffdd2a + (int)(short)(sVar2 * 2)));
     *(short *)((int)register0x0000003c + -8) = (short)CONCAT31((int3)((uint)unaff_D4 >> 8),uVar1);
     *(undefined4 *)((int)register0x0000003c + -0xc) = 0x13b72;
-    guard_entity_action_threshold_variant();
+    pass_entity_action_threshold_variant();
     unaff_D4 = (int)*(short *)((int)register0x0000003c + -8);
     unaff_D7 = (int)*(short *)((int)register0x0000003c + -6);
     register0x0000003c = (BADSPACEBASE *)((int)register0x0000003c + -4);

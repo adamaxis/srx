@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000164A8
-// Name: FUN_000164a8
+// Name: populate_entity_table
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000164F2 entity_table_has_free_slot
 
 
-void FUN_000164a8(void)
+void populate_entity_table(void)
 
 {
   int iVar1;

@@ -3,7 +3,7 @@
 // Name: FUN_00013000
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x00012148 read_entity_action_code
 
 
@@ -16,7 +16,7 @@ void FUN_00013000(void)
   int extraout_A0;
   int iVar4;
   
-  render_title_text_source();
+  render_encoded_title_text();
   if ((char)(DAT_00fff0d0 + -2) < '\0') {
     uVar1 = read_entity_action_code();
     iVar4 = extraout_A0;
@@ -37,7 +37,7 @@ void FUN_00013000(void)
     } while (sVar3 != -1);
   }
 LAB_00013094:
-  render_title_text_source();
+  render_encoded_title_text();
   return;
 }
 

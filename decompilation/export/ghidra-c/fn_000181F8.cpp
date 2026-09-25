@@ -107,10 +107,10 @@ LAB_0001842e:
           write_hud_repeated_grid_variant_a();
           sVar8 = FUN_00019b40();
           if ((sVar8 == 8) && (DAT_00ffdf84 != '\0')) {
-            render_title_text_source();
+            render_encoded_title_text();
           }
-          render_title_text_source();
-          render_title_text_source();
+          render_encoded_title_text();
+          render_encoded_title_text();
           DAT_00fff0dc = '\x01';
           do {
             move_wrapped_menu_cursor();
@@ -126,7 +126,7 @@ LAB_0001842e:
                 if (DAT_00fff0dc != '\0') goto LAB_0001831a;
                 sVar8 = FUN_00019b40();
                 if ((sVar8 == 8) && (DAT_00ffdf84 != '\0')) {
-                  FUN_00019bf6();
+                  pass_through_value();
                   count_thresholded_random_rolls();
                   if (DAT_00fff0dd == '\0') {
                     advance_hud_panel();

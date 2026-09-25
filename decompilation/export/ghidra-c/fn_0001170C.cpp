@@ -9,7 +9,7 @@
 void render_title_text_source_leaf(void)
 
 {
-  render_title_text_source();
+  render_encoded_title_text();
   return;
 }
 

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00010FF4
-// Name: FUN_00010ff4
+// Name: write_repeated_asset_batch
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000F5C write_vdp_word_block_with_source_wrap
 
 
-void FUN_00010ff4(void)
+void write_repeated_asset_batch(void)
 
 {
   short sVar1;

@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
-//   0x0001047E FUN_0001047e
+//   0x0001047E refresh_ready_entity_animations
 //   0x000104C8 find_matching_menu_metric
 //   0x00055F02 FUN_00055f02
 //   0x00055F20 FUN_00055f20
@@ -24,7 +24,7 @@ void FUN_0001055e(void)
     cVar1 = '\0';
   }
   else {
-    FUN_0001047e();
+    refresh_ready_entity_animations();
     cVar1 = *(char *)(extraout_A0 + 0x7c);
   }
   while (write_vdp_grid(), cVar1 != '\0') {

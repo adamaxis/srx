@@ -12,7 +12,7 @@ undefined8 service_audio_tick_wrapper(void)
   undefined4 in_D0;
   undefined4 in_D1;
   
-  FUN_00052f6e(0);
+  run_audio_transaction_wrapper(0);
   return CONCAT44(in_D0,in_D1);
 }
 

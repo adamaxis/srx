@@ -10,16 +10,16 @@
 //   0x00000F5C write_vdp_word_block_with_source_wrap
 //   0x00001232 write_vdp_grid
 //   0x0000195C sample_controller_input
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x00010952 reset_mode_display_buffers
 //   0x000176EA render_menu_footer
 //   0x000177CC upload_menu_resource_pair
 //   0x00017F80 refresh_mode_metadata_wrapper
 //   0x0001822C FUN_0001822c
-//   0x000532A8 FUN_000532a8
-//   0x000549E4 FUN_000549e4
-//   0x000549F6 FUN_000549f6
+//   0x000532A8 fill_audio_menu_sentinel
+//   0x000549E4 write_menu_repeated_grid_service
+//   0x000549F6 select_display_status
 //   0x00054A28 FUN_00054a28
 //   0x00054A8E FUN_00054a8e
 //   0x00055F44 FUN_00055f44
@@ -49,7 +49,7 @@ undefined4 FUN_00054662(void)
   pbVar1 = (byte *)((int)&DAT_00fffb30 + (int)sVar6);
   *pbVar1 = *(byte *)((int)&DAT_00ff1104 + sVar5 + 1) | *pbVar1;
   if (*(char *)((int)&DAT_00ff1100 + (int)sVar5) == '\x01') {
-    FUN_000532a8();
+    fill_audio_menu_sentinel();
   }
   DAT_00fff0a6 = 0xff;
   DAT_00fff0a8 = '\0';
@@ -70,15 +70,15 @@ LAB_000546cc:
     write_vdp_grid();
     write_vdp_grid();
     write_vdp_grid();
-    FUN_000549f6();
+    select_display_status();
     refresh_mode_metadata_wrapper();
     VDP_CTRL = 0x8174;
     FUN_00054a8e();
     if (DAT_00fff0b1 < '\0') {
       return 0;
     }
-    render_title_text_source();
-    render_title_text_source();
+    render_encoded_title_text();
+    render_encoded_title_text();
     FUN_00054a28();
     DAT_00fff0dc = 0;
 LAB_0005488c:
@@ -99,8 +99,8 @@ LAB_0005488c:
         bVar3 = (char)sVar6 - cVar2;
         if ((bVar3 == 0 || SBORROW1((char)sVar6,cVar2) != (short)((ushort)bVar3 << 8) < 0) ||
            (count_thresholded_random_rolls(), DAT_00fff0dd < '\x01')) {
-          FUN_000549e4();
-          render_title_text_source();
+          write_menu_repeated_grid_service();
+          render_encoded_title_text();
           wait_for_controller_event();
           DAT_00fff0a8 = DAT_00fff0a8 + '\x01';
         }

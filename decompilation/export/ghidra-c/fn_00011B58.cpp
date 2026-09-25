@@ -9,7 +9,7 @@
 //   0x0000195C sample_controller_input
 //   0x00003404 upload_field_asset_setup
 //   0x000036FC FUN_000036fc
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x000111D0 upload_menu_tile_block
 //   0x00011454 reset_menu_upload_cursor_and_upload
@@ -47,7 +47,7 @@ void switchD_00011768::caseD_2(void)
   
   prepare_menu_grid_variant_b();
   prepare_menu_row_grid();
-  render_title_text_source();
+  render_encoded_title_text();
   build_grouped_decimal_glyphs();
   uVar2 = _DAT_00fff0d0;
   _DAT_00fff0d0 = CONCAT11(2,DAT_00fff0d1);
@@ -91,7 +91,7 @@ LAB_00011be6:
         DAT_00fff114 = '\0';
         upload_menu_tile_block();
         refresh_menu_panel();
-        render_title_text_source();
+        render_encoded_title_text();
         do {
           while( true ) {
             wait_for_vblank();
@@ -113,8 +113,8 @@ LAB_00011be6:
       if ((short)((ushort)bVar1 << 8) < 0) {
         if (*(char *)(DAT_00fffc04 + 0x4f) < '\x01') {
           prepare_menu_grid_variant_b();
-          render_title_text_source();
-          render_title_text_source();
+          render_encoded_title_text();
+          render_encoded_title_text();
           *(undefined1 *)(extraout_A0 + 0x4f) = 0;
         }
         return;
@@ -127,7 +127,7 @@ LAB_00011be6:
       FUN_000036fc();
       prepare_menu_grid_variant_b();
     }
-    render_title_text_source();
+    render_encoded_title_text();
     goto LAB_00011cb6;
   }
   if (DAT_00fff0d0 == '\x03') {
@@ -148,7 +148,7 @@ LAB_00011be6:
     *puVar9 = 0xffffffff;
     if (_DAT_00ffdd48 < 0) goto LAB_00011e14;
     DAT_00ffdd28 = 0;
-    render_title_text_source();
+    render_encoded_title_text();
     _DAT_00ffdd2a = (uint)*(byte *)(DAT_00fffc04 + 0x4f);
     build_grouped_decimal_glyphs();
     advance_menu_text_cursor();
@@ -198,7 +198,7 @@ LAB_00011ec4:
             *(char *)(DAT_00fffc04 + 0x4f) = *(char *)(DAT_00fffc04 + 0x4f) - cVar11;
             *(char *)(iVar10 + 0x4f) = cVar11 + *(char *)(iVar10 + 0x4f);
             prepare_menu_grid_variant_b();
-            render_title_text_source();
+            render_encoded_title_text();
             goto LAB_00011cb6;
           }
           advance_menu_text_cursor();
@@ -236,17 +236,17 @@ LAB_00011ec4:
         } while (sVar6 != -1);
       }
       prepare_menu_grid_variant_b();
-      render_title_text_source();
+      render_encoded_title_text();
       goto LAB_00011cb6;
     }
 LAB_00011e14:
-    render_title_text_source();
+    render_encoded_title_text();
     goto LAB_00011cb6;
   }
 LAB_00011c9c:
   _DAT_00fff0d0 = uVar2;
   prepare_menu_grid_variant_b();
-  render_title_text_source();
+  render_encoded_title_text();
 LAB_00011cb6:
   upload_menu_tile_block();
   wait_for_controller_event();

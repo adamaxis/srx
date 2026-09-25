@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00016ECA
-// Name: FUN_00016eca
+// Name: process_terrain_work_batch
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00016F14 mark_terrain_boundary_for_mode
@@ -9,7 +9,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-undefined2 FUN_00016eca(void)
+undefined2 process_terrain_work_batch(void)
 
 {
   short *psVar1;

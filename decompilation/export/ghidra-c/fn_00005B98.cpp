@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00005B98
-// Name: FUN_00005b98
+// Name: emit_title_sprite_burst
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
 
 
-void FUN_00005b98(void)
+void emit_title_sprite_burst(void)
 
 {
   short sVar1;

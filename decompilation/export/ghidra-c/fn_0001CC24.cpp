@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
-//   0x00019EA6 FUN_00019ea6
+//   0x00019EA6 run_menu_selection_variant
 //   0x0001D048 FUN_0001d048
 //   0x0001D0DE FUN_0001d0de
 
@@ -69,7 +69,7 @@ void FUN_0001cc24(void)
     if (*(char *)(iVar5 + 6) == '\0') {
       _DAT_00ffe0d6 = 0;
       *(undefined4 *)((int)register0x0000003c + -4) = 0x1ccda;
-      FUN_00019ea6();
+      run_menu_selection_variant();
     }
     return;
   }

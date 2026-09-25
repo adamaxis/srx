@@ -3,7 +3,7 @@
 // Name: FUN_00013904
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000AE6E FUN_0000ae6e
+//   0x0000AE6E update_entity_target_heading
 //   0x0000AF7C prepare_entity_delayed_animation_primary
 //   0x0000AFAE prepare_entity_delayed_animation_alternate
 //   0x00013D0C FUN_00013d0c
@@ -87,7 +87,7 @@ void FUN_00013904(void)
       local_4 = 0x13a72;
       FUN_00014492();
       local_4 = 0x13a78;
-      FUN_0000ae6e();
+      update_entity_target_heading();
       if (DAT_00fff0dd == '\0') {
         prepare_entity_delayed_animation_primary();
         return;

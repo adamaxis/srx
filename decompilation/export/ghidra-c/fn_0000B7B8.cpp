@@ -6,7 +6,7 @@
 //   0x0000423C quantize_field_delta
 //   0x0000BC36 build_collision_probe_points
 //   0x0001651E FUN_0001651e
-//   0x00016760 FUN_00016760
+//   0x00016760 mark_projected_terrain_cell
 //   0x0001E2E0 begin_world_activity_if_idle
 //   0x0001E2EC begin_world_activity
 //   0x00053126 prepare_mode_entry_service
@@ -100,7 +100,7 @@ void FUN_0000b7b8(void)
             DAT_00ffe178 = 1;
             bVar3 = false;
           }
-          FUN_00016760();
+          mark_projected_terrain_cell();
           in_A0 = extraout_A0_06;
           if (bVar3) {
             _DAT_00ffdd2c = (code *)&UNK_00020c90;

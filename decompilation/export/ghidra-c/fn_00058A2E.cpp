@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
-//   0x00011190 FUN_00011190
+//   0x00011190 transfer_menu_glyph_triple
 
 
 void FUN_00058a2e(void)
@@ -19,7 +19,7 @@ void FUN_00058a2e(void)
   sVar1 = 7;
   do {
     if ((*in_A0 < '\0') || (*in_A0 != 'E')) {
-      FUN_00011190();
+      transfer_menu_glyph_triple();
       iVar2 = extraout_A0_00;
     }
     else {

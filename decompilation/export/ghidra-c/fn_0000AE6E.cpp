@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000AE6E
-// Name: FUN_0000ae6e
+// Name: update_entity_target_heading
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001033E FUN_0001033e
@@ -8,7 +8,7 @@
 //   0x00015D3C measure_relative_heading_and_distance
 
 
-void FUN_0000ae6e(void)
+void update_entity_target_heading(void)
 
 {
   undefined2 uVar1;

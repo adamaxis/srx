@@ -15,29 +15,29 @@
 //   0x00002BD2 advance_field_scene_transition
 //   0x00002CE0 FUN_00002ce0
 //   0x00002F32 FUN_00002f32
-//   0x00002FA4 FUN_00002fa4
+//   0x00002FA4 snapshot_entity_anchors
 //   0x00003084 run_field_loop
 //   0x00003168 FUN_00003168
 //   0x0000391A handle_mode_action_event
 //   0x00003A1C FUN_00003a1c
 //   0x000042B0 initialize_joshua_archetype_selection
-//   0x00004618 FUN_00004618
-//   0x0000A7B4 FUN_0000a7b4
+//   0x00004618 update_entity_render_pass
+//   0x0000A7B4 initialize_entity_runtime
 //   0x0000A8EA FUN_0000a8ea
 //   0x00010D30 FUN_00010d30
 //   0x00016396 advance_palette_fade
 //   0x000167AE FUN_000167ae
-//   0x0001DC22 FUN_0001dc22
+//   0x0001DC22 select_next_entity
 //   0x0001DD94 FUN_0001dd94
 //   0x0001E2EC begin_world_activity
 //   0x0001E43C FUN_0001e43c
 //   0x0001E68C reset_world_effect_globals
 //   0x0001F5CA FUN_0001f5ca
-//   0x00026938 FUN_00026938
+//   0x00026938 copy_two_word_rows
 //   0x00053126 prepare_mode_entry_service
 //   0x00053156 service_audio_tick_wrapper
-//   0x0005315E FUN_0005315e
-//   0x00053290 FUN_00053290
+//   0x0005315E run_fixed_audio_transaction_wrapper
+//   0x00053290 reset_audio_menu_arrays
 //   0x000566A2 FUN_000566a2
 //   0x00059092 FUN_00059092
 //   0x00059318 initialize_save_roster_buffer
@@ -95,7 +95,7 @@ void run_game_loop(void)
     }
 LAB_000007f0:
     prepare_mode_entry_service();
-    FUN_00053290();
+    reset_audio_menu_arrays();
     DAT_00fffbfe = 0x14;
     _DAT_00fffc12 = 0;
     _DAT_00fffc16 = 0;
@@ -115,10 +115,10 @@ LAB_000007f0:
     run_field_loop();
     _DAT_00ffdfe8 = 0xffff;
     DAT_00fff0a0 = 0xff;
-    FUN_0000a7b4();
+    initialize_entity_runtime();
     reset_world_effect_globals();
     FUN_000566a2();
-    FUN_00026938();
+    copy_two_word_rows();
     initialize_field_scene_entry();
     if (_DAT_00ffe108 != 0) {
       initialize_joshua_archetype_selection();
@@ -138,7 +138,7 @@ LAB_000008c0:
       do {
         FUN_0000a8ea();
         FUN_00003a1c();
-        FUN_00004618();
+        update_entity_render_pass();
         DAT_00ffef14 = DAT_00ffef14 | 0xe;
         sVar13 = sVar13 + -1;
       } while (sVar13 != -1);
@@ -172,7 +172,7 @@ LAB_000008c0:
                   _DAT_00ff032e = 0x8000;
                   _DAT_00ff0334 = 0x8000;
                   _DAT_00ffdfe8 = 0xffff;
-                  FUN_00002fa4();
+                  snapshot_entity_anchors();
                   goto LAB_00000b9c;
                 }
                 if ((DAT_00ffddc4 != 4) || (DAT_00fffbf9 != 6)) {
@@ -210,7 +210,7 @@ LAB_00000a72:
           sample_controller_input();
           FUN_0000a8ea();
           FUN_00003a1c();
-          FUN_00004618();
+          update_entity_render_pass();
           advance_palette_fade();
           FUN_0001dd94();
           DAT_00ffef14 = DAT_00ffef14 | 0xe;
@@ -219,11 +219,11 @@ LAB_00000a72:
           handle_mode_action_event();
         }
         if ((DAT_00ffdd22 & 0x8000) != 0) {
-          FUN_0005315e();
+          run_fixed_audio_transaction_wrapper();
           _DAT_00ffdfe8 = 0xffff;
           FUN_00010d30();
           service_audio_tick_wrapper();
-          FUN_0001dc22();
+          select_next_entity();
           if (_DAT_00ffe108 == 0) goto LAB_00000b9c;
           initialize_joshua_archetype_selection();
           goto LAB_000007f0;

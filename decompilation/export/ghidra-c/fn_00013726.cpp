@@ -6,7 +6,7 @@
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
 //   0x00000E9C make_vdp_transfer_command
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x0000C3E6 write_menu_grid_with_metadata
 //   0x0000E6F4 service_mode_world_state
 
@@ -110,7 +110,7 @@ void render_mode_selection(void)
     uVar9 = (short)uVar7 - 1;
     uVar7 = (uint)uVar9;
   } while (uVar9 != 0xffff);
-  render_title_text_source();
+  render_encoded_title_text();
   DAT_00fff0e0 = *(undefined1 *)(extraout_A1_03 + 0x13);
   return;
 }

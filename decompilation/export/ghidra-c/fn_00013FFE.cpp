@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00003404 upload_field_asset_setup
 //   0x0000ABFC update_entity_animation_delay
-//   0x0000AE6E FUN_0000ae6e
+//   0x0000AE6E update_entity_target_heading
 //   0x0000AF7C prepare_entity_delayed_animation_primary
 //   0x0000AFAE prepare_entity_delayed_animation_alternate
 //   0x0000B11C synchronize_entity_behavior_spawn
@@ -70,7 +70,7 @@ uint FUN_00013ffe(void)
             (puVar3 = &DAT_00ff0300, DAT_00ffe190 == '\x02')))) {
           *(undefined2 **)(extraout_A0_01 + 0xa2) = puVar3;
         }
-        FUN_0000ae6e();
+        update_entity_target_heading();
         if (DAT_00fff0dd == '\0') {
           uVar2 = prepare_entity_delayed_animation_primary();
           return uVar2;

@@ -8,7 +8,7 @@
 //   0x000038FA run_entity_animation_triplet
 //   0x0000391A handle_mode_action_event
 //   0x0000C802 FUN_0000c802
-//   0x0001DED8 FUN_0001ded8
+//   0x0001DED8 clear_high_effect_slots
 //   0x0001E68C reset_world_effect_globals
 //   0x0001F246 run_mode_exit_services
 
@@ -29,7 +29,7 @@ void FUN_0000c64c(void)
     DAT_00ffe183 = 0;
     puVar2 = &DAT_000f3d5c;
 LAB_0000c690:
-    FUN_0001ded8(puVar2);
+    clear_high_effect_slots(puVar2);
   }
   else {
     if ((char)DAT_00fffbec == '\x01') {

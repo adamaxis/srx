@@ -541,6 +541,29 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+## Second 100-function conversion pass
+
+The second 100-entry pass is complete in five committed slices. It remains
+strictly under `decompilation/ghidra_conversion`; no emulator or native game
+source was changed. The new modules cover field/entity rendering, menu and
+HUD state, title/effect animation, world/resource helpers, and audio/service
+boundaries. Indirect calls are represented as checked host callback vectors,
+and address arithmetic is retained only as provenance constants or typed
+stride/limit data.
+
+The five implementation commits are `d091e4b4f3`, `0cc1db6407`,
+`036f8f8971`, `add84ebe35`, and `d01230cab6`. Their focused tests bring the
+conversion suite to 121 passing tests. The status ledger now contains 617 ROM
+entries plus its header: 610 partial, 4 defended, 1 ported, and 2 pending.
+
+The 100 new aliases are also registered in `tools/ghidra/ExportShadowrun.java`
+so the next canonical export writes readable names into the sole Ghidra
+output. The two source no-op audio hooks at `0x53200` and `0x53216` are kept
+as explicitly named empty hooks rather than being confused with missing
+analysis. None of these conversion slices are runtime wiring; a workable
+native hill still requires a traced screen/system, typed engine ownership,
+regression test, and CLI image dump.
+
 The next five conversion slices cover one hundred additional ROM entries. The
 display slice names `0x01070`/`0x01872` as the display-frame service, snapshots
 the field scene/profile buffers at `0x03074`, and expresses the tile row/column

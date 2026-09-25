@@ -7,9 +7,9 @@
 //   0x00000FFE clear_and_fill_plane_a
 //   0x00001232 write_vdp_grid
 //   0x00001358 copy_source_word_block
-//   0x0000C0DA render_title_text_source
-//   0x00053200 FUN_00053200
-//   0x0005322C FUN_0005322c
+//   0x0000C0DA render_encoded_title_text
+//   0x00053200 audio_noop_hook_a
+//   0x0005322C prepare_audio_title
 //   0x000533EE FUN_000533ee
 
 
@@ -26,10 +26,10 @@ void FUN_000532bc(void)
   DAT_00ffef14 = DAT_00ffef14 | 1;
   write_vdp_word_block_with_source_wrap();
   write_vdp_grid();
-  render_title_text_source();
+  render_encoded_title_text();
   FUN_000533ee();
-  FUN_0005322c();
-  FUN_00053200();
+  prepare_audio_title();
+  audio_noop_hook_a();
   iVar1 = 0xc190;
   sVar3 = 9;
   do {

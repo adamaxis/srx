@@ -15,7 +15,7 @@
 //   0x00001530 decode_and_upload_source_stream
 //   0x00001728 render_hud_sprite_stream
 //   0x0000195C sample_controller_input
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x000176EA render_menu_footer
 //   0x00017708 render_field_hud
@@ -31,7 +31,7 @@
 //   0x00019504 write_hud_panel_grid
 //   0x000196F2 rotate_hud_history
 //   0x00019B40 FUN_00019b40
-//   0x00019BF6 FUN_00019bf6
+//   0x00019BF6 pass_through_value
 //   0x00026A00 FUN_00026a00
 //   0x000530DE service_audio_if_enabled
 
@@ -130,10 +130,10 @@ LAB_0001842e:
           write_hud_repeated_grid_variant_a();
           sVar8 = FUN_00019b40();
           if ((sVar8 == 8) && (DAT_00ffdf84 != '\0')) {
-            render_title_text_source();
+            render_encoded_title_text();
           }
-          render_title_text_source();
-          render_title_text_source();
+          render_encoded_title_text();
+          render_encoded_title_text();
           DAT_00fff0dc = '\x01';
           do {
             move_wrapped_menu_cursor();
@@ -149,7 +149,7 @@ LAB_0001842e:
                 if (DAT_00fff0dc != '\0') goto LAB_0001831a;
                 sVar8 = FUN_00019b40();
                 if ((sVar8 == 8) && (DAT_00ffdf84 != '\0')) {
-                  FUN_00019bf6();
+                  pass_through_value();
                   count_thresholded_random_rolls();
                   if (DAT_00fff0dd == '\0') {
                     advance_hud_panel();

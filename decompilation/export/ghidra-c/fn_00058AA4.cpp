@@ -3,8 +3,8 @@
 // Name: FUN_00058aa4
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000C0DA render_title_text_source
-//   0x00011190 FUN_00011190
+//   0x0000C0DA render_encoded_title_text
+//   0x00011190 transfer_menu_glyph_triple
 
 
 void FUN_00058aa4(void)
@@ -14,11 +14,11 @@ void FUN_00058aa4(void)
   
   sVar1 = 7;
   do {
-    FUN_00011190();
+    transfer_menu_glyph_triple();
     sVar1 = sVar1 + -1;
   } while (sVar1 != -1);
   if (DAT_00fff0b8 == '\x04') {
-    render_title_text_source();
+    render_encoded_title_text();
   }
   return;
 }

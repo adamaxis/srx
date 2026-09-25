@@ -6,7 +6,7 @@
 //   0x00000D3A sample_source_random_bound
 //   0x00000D44 advance_source_prng
 //   0x00003074 prepare_field_scene_buffers
-//   0x00016A26 FUN_00016a26
+//   0x00016A26 publish_world_activity_descriptors
 //   0x00016AFA upload_mode_word_block
 //   0x00016B7C copy_scene_resource_cursor
 //   0x00016E30 snapshot_scene_state
@@ -42,7 +42,7 @@ void FUN_000167ae(void)
     }
   }
   if (DAT_00ffe162 != 0) {
-    FUN_00016a26();
+    publish_world_activity_descriptors();
     sVar5 = 0xf;
   }
   snapshot_scene_state();

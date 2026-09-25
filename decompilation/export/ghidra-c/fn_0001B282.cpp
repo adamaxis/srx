@@ -7,7 +7,7 @@
 //   0x0001792E render_menu_hud_rows
 //   0x00017BC0 refresh_menu_number_or_grid
 //   0x00019632 FUN_00019632
-//   0x00019AEE FUN_00019aee
+//   0x00019AEE refresh_mode_glyph
 //   0x0001A908 FUN_0001a908
 
 
@@ -25,7 +25,7 @@ void FUN_0001b282(void)
       refresh_menu_number_or_grid();
     }
     if (0xb < DAT_00ffe0dc) {
-      FUN_00019aee();
+      refresh_mode_glyph();
       _DAT_00ffe0de = 0;
       render_menu_hud_rows();
       FUN_0001a908();

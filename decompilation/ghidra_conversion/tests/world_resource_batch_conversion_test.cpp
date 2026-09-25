@@ -80,7 +80,7 @@ int main() {
     std::vector<std::uint16_t> rows(4);
     copy_two_word_rows({1, 2, 3, 4}, rows, 2, 2, 2);
     assert(rows == std::vector<std::uint16_t>({1, 2, 3, 4}));
-    decode_and_upload_source_stream([&] { ++calls; });
+    upload_decoded_source_stream([&] { ++calls; });
     assert(calls > 10);
     return 0;
 }

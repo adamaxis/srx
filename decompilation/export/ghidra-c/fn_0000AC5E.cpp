@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000AC5E
-// Name: FUN_0000ac5e
+// Name: clear_entity_effect_if_forced
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000B7B8 FUN_0000b7b8
 
 
-void FUN_0000ac5e(void)
+void clear_entity_effect_if_forced(void)
 
 {
   byte bVar1;

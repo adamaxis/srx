@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000163DA
-// Name: FUN_000163da
+// Name: service_active_effect_slots
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_000163da(void)
+void service_active_effect_slots(void)
 
 {
   undefined4 in_D1;

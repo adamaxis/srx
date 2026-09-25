@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001D3F4
-// Name: FUN_0001d3f4
+// Name: expand_random_nibble_mask
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
 
 
-uint FUN_0001d3f4(void)
+uint expand_random_nibble_mask(void)
 
 {
   int iVar1;

@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x00012148 read_entity_action_code
 //   0x00012A54 update_resource_variant
 
@@ -61,7 +61,7 @@ undefined8 FUN_00013228(void)
        (((char)(cVar2 + -0x18) < '\0' || (-1 < (char)(cVar2 + -0x29))))) goto LAB_000133a0;
     read_entity_action_code();
   }
-  render_title_text_source();
+  render_encoded_title_text();
   write_vdp_grid();
 LAB_000133a0:
   return CONCAT44(in_D0,in_D1);

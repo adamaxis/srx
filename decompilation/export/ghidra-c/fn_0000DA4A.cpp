@@ -3,7 +3,7 @@
 // Name: render_title_text_wrapper
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 
 
 undefined8 render_title_text_wrapper(void)
@@ -12,7 +12,7 @@ undefined8 render_title_text_wrapper(void)
   undefined4 in_D0;
   undefined4 in_D1;
   
-  render_title_text_source();
+  render_encoded_title_text();
   return CONCAT44(in_D0,in_D1);
 }
 

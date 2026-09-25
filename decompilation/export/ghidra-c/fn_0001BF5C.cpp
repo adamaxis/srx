@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001BF5C
-// Name: FUN_0001bf5c
+// Name: copy_title_profile
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0001bf5c(void)
+void copy_title_profile(void)
 
 {
   short sVar1;

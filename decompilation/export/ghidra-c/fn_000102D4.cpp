@@ -3,7 +3,7 @@
 // Name: FUN_000102d4
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x00010260 prepare_menu_grid_then_service
 //   0x000107CE FUN_000107ce
@@ -14,9 +14,9 @@ void FUN_000102d4(void)
 
 {
   prepare_menu_grid_then_service();
-  render_title_text_source();
-  render_title_text_source();
-  render_title_text_source();
+  render_encoded_title_text();
+  render_encoded_title_text();
+  render_encoded_title_text();
   FUN_000107ce();
   FUN_0001088c();
   build_grouped_decimal_glyphs();

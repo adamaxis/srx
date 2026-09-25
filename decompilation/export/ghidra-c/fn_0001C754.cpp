@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00019976 FUN_00019976
-//   0x0001CAD4 FUN_0001cad4
+//   0x0001CAD4 update_interaction_state
 //   0x0001CB20 FUN_0001cb20
 //   0x000530DE service_audio_if_enabled
 
@@ -36,7 +36,7 @@ void FUN_0001c754(void)
   }
   else if (DAT_00ff1588 == &PTR_DAT_0001c350) {
     if ((DAT_00ff158c == '\x03') && (DAT_00ff1582 == '\x03')) {
-      FUN_0001cad4();
+      update_interaction_state();
       return;
     }
     if (DAT_00ff158c != '\x05') {

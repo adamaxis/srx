@@ -3,11 +3,11 @@
 // Name: FUN_00017a5e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x00017C3C FUN_00017c3c
 //   0x00017E04 refresh_hud_grid_if_ready
-//   0x00019DAC FUN_00019dac
+//   0x00019DAC merge_menu_pending_flags
 
 
 void FUN_00017a5e(void)
@@ -23,7 +23,7 @@ void FUN_00017a5e(void)
   
   bVar1 = (&DAT_00ff1113)[(short)(DAT_00fff118 * 0x14)];
   if ((char)bVar1 < '\0') {
-    FUN_00019dac();
+    merge_menu_pending_flags();
     *(byte *)((int)&DAT_00fffb30 + (int)DAT_00fff102) =
          *(byte *)((int)&DAT_00fffb30 + (int)DAT_00fff102) | 0x40;
   }
@@ -38,26 +38,26 @@ void FUN_00017a5e(void)
       }
       iVar3 = (uint)bVar1 * 2;
       if (-1 < *(char *)((int)&PTR_DAT_000e31a7 + iVar3)) {
-        render_title_text_source();
+        render_encoded_title_text();
         if ((short)(unaff_D3w + -2) < 0) {
-          render_title_text_source();
+          render_encoded_title_text();
         }
         else {
           build_grouped_decimal_glyphs();
         }
         if (-1 < *(char *)((int)&PTR_DAT_000e31a7 + iVar3 + 1)) {
-          render_title_text_source();
+          render_encoded_title_text();
           if (-1 < (short)(unaff_D3w + -2)) {
             build_grouped_decimal_glyphs();
             return;
           }
-          render_title_text_source();
+          render_encoded_title_text();
         }
       }
       return;
     }
   }
-  render_title_text_source();
+  render_encoded_title_text();
   return;
 }
 

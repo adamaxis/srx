@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
-//   0x0001A570 FUN_0001a570
+//   0x0001A570 build_title_sprites_twice
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -36,7 +36,7 @@ void FUN_0001c506(void)
     build_title_sprite_records(unaff_A4);
   }
   if ((_DAT_00ffe084 != 0) && (7 < (DAT_00ffdf88 & 0xf))) {
-    FUN_0001a570();
+    build_title_sprites_twice();
   }
   return;
 }

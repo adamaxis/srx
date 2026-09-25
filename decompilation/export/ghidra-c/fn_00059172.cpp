@@ -7,7 +7,7 @@
 //   0x00000BF2 latch_controller_events
 //   0x00000D94 wait_for_controller_event
 //   0x0000195C sample_controller_input
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x0000C3E6 write_menu_grid_with_metadata
 //   0x00059360 coordinate_save_load
@@ -20,7 +20,7 @@ void FUN_00059172(void)
 {
   undefined1 uVar1;
   
-  render_title_text_source();
+  render_encoded_title_text();
   DAT_00fff0dc = 0;
   do {
     uVar1 = 0;
@@ -40,7 +40,7 @@ void FUN_00059172(void)
         else {
           _DAT_00ffe108 = 0xffff;
         }
-        render_title_text_source();
+        render_encoded_title_text();
         wait_for_controller_event();
         return;
       }

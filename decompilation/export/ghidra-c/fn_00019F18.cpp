@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00019F18
-// Name: FUN_00019f18
+// Name: run_menu_progression_variant
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00017998 render_menu_text_progression
@@ -10,7 +10,7 @@
 //   0x000564D6 FUN_000564d6
 
 
-void FUN_00019f18(void)
+void run_menu_progression_variant(void)
 
 {
   set_hud_selection_value();

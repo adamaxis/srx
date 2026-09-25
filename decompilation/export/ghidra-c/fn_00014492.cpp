@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
-//   0x0001DBF0 FUN_0001dbf0
+//   0x0001DBF0 reset_entity_service_records
 
 
 void FUN_00014492(void)
@@ -22,7 +22,7 @@ void FUN_00014492(void)
   if ((*(byte *)(in_A0 + 0x10) & 8) != 0) {
     if (DAT_00ffdf94 == 0) {
       if (DAT_00ffe162._0_1_ == '\0') {
-        FUN_0001dbf0();
+        reset_entity_service_records();
         in_A0 = extraout_A0;
       }
       *(undefined4 *)(in_A0 + 0xa2) = 0;

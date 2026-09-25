@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00053290
-// Name: FUN_00053290
+// Name: reset_audio_menu_arrays
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00053290(void)
+void reset_audio_menu_arrays(void)
 
 {
   short sVar1;

@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x00055E92 FUN_00055e92
 //   0x00055EB4 FUN_00055eb4
 
@@ -24,11 +24,11 @@ void FUN_00011352(void)
     *(char *)(in_A0 + 0x6e + (int)unaff_D7w) = in_D0b + -0x2b;
   }
   else if (*(char *)(in_A0 + 0x76) == '\0') {
-    render_title_text_source();
+    render_encoded_title_text();
     return;
   }
-  render_title_text_source();
-  render_title_text_source();
+  render_encoded_title_text();
+  render_encoded_title_text();
   FUN_00055eb4();
   write_vdp_grid();
   FUN_00055e92();

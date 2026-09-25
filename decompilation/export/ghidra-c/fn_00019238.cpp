@@ -6,7 +6,7 @@
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
 //   0x0000195C sample_controller_input
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x0001882E FUN_0001882e
 //   0x00018998 write_hud_repeated_grid_variant_b
@@ -15,7 +15,7 @@
 //   0x00019504 write_hud_panel_grid
 //   0x0001952C FUN_0001952c
 //   0x0001957E clear_ready_menu_visual_slots
-//   0x000195D8 FUN_000195d8
+//   0x000195D8 refresh_menu_slot_visual
 //   0x0001962A apply_menu_slot_command
 //   0x000196F2 rotate_hud_history
 //   0x00019736 clear_ready_menu_slot_timer
@@ -41,13 +41,13 @@ void FUN_00019238(void)
     do {
       if ((char)unaff_D7w == puVar2[0x1a]) {
         DAT_00fff0d4 = '\x04' - (char)sVar1;
-        render_title_text_source();
-        render_title_text_source();
-        render_title_text_source();
+        render_encoded_title_text();
+        render_encoded_title_text();
+        render_encoded_title_text();
         DAT_00ffdd50 = -1;
         DAT_00fff0dc = '\x01';
         advance_hud_selection_row();
-        render_title_text_source();
+        render_encoded_title_text();
         do {
           move_wrapped_menu_cursor();
           while( true ) {
@@ -76,8 +76,8 @@ void FUN_00019238(void)
       puVar2 = puVar2 + 1;
       sVar1 = sVar1 + -1;
       if (sVar1 == -1) {
-        render_title_text_source();
-        render_title_text_source();
+        render_encoded_title_text();
+        render_encoded_title_text();
         return;
       }
     }
@@ -86,13 +86,13 @@ void FUN_00019238(void)
     FUN_00018a92();
     FUN_0001952c();
     if ((short)(unaff_D6w - extraout_D1w) < 0) {
-      render_title_text_source();
-      render_title_text_source();
+      render_encoded_title_text();
+      render_encoded_title_text();
       return;
     }
 LAB_00019410:
     clear_ready_menu_slot_timer();
-    FUN_000195d8();
+    refresh_menu_slot_visual();
 LAB_00019428:
     write_hud_panel_grid();
     FUN_0001882e();

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00026C26
-// Name: FUN_00026c26
+// Name: write_masked_transfer_with_display_control
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E9C make_vdp_transfer_command
 
 
-undefined8 FUN_00026c26(void)
+undefined8 write_masked_transfer_with_display_control(void)
 
 {
   undefined4 in_D0;

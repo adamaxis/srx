@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x00011352 FUN_00011352
 //   0x00012148 read_entity_action_code
 //   0x00012A54 update_resource_variant
@@ -30,7 +30,7 @@ undefined4 FUN_00012a8c(void)
     unaff_D7w = 8;
     write_vdp_grid();
   }
-  render_title_text_source();
+  render_encoded_title_text();
   cVar2 = read_entity_action_code();
   if ((char)(cVar2 + -0xd) < '\0') {
     iVar3 = extraout_A0;
@@ -74,7 +74,7 @@ undefined4 FUN_00012a8c(void)
     }
     read_entity_action_code();
   }
-  render_title_text_source();
+  render_encoded_title_text();
   write_vdp_grid();
   return in_D0;
 }

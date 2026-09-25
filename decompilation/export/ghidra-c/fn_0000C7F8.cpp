@@ -46,7 +46,7 @@ void FUN_0000c7f8(void)
     DAT_00ffe183 = 0;
     puVar2 = &DAT_000f3d5c;
 LAB_0000c690:
-    FUN_0001ded8(puVar2);
+    clear_high_effect_slots(puVar2);
   }
   else {
     if ((char)DAT_00fffbec == '\x01') {

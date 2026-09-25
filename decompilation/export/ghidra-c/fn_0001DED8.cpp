@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001DED8
-// Name: FUN_0001ded8
+// Name: clear_high_effect_slots
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001E514 clear_effect_slot_state
 
 
-void FUN_0001ded8(void)
+void clear_high_effect_slots(void)
 
 {
   short sVar1;

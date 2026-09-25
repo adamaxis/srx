@@ -17,7 +17,7 @@ undefined8 service_audio_if_enabled_variant(void)
   if (_DAT_00fffc0a == 0) {
     return CONCAT44(in_D0,in_D1);
   }
-  FUN_00052f5a();
+  run_audio_bus_transaction();
   return CONCAT44(in_D0,in_D1);
 }
 

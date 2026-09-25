@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000DBA count_thresholded_random_rolls
-//   0x0001047E FUN_0001047e
+//   0x0001047E refresh_ready_entity_animations
 //   0x00055828 FUN_00055828
 
 
@@ -28,7 +28,7 @@ void FUN_00055786(void)
     iVar1 = extraout_A0;
   }
   if ((short)(*(short *)(iVar1 + 0x3e) + -3) < 0) {
-    FUN_0001047e();
+    refresh_ready_entity_animations();
   }
   count_thresholded_random_rolls();
   return;

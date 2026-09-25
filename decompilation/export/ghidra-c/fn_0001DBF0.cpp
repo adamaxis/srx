@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001DBF0
-// Name: FUN_0001dbf0
+// Name: reset_entity_service_records
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001dbf0(void)
+void reset_entity_service_records(void)
 
 {
   short sVar1;

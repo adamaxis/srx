@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001DF1A
-// Name: FUN_0001df1a
+// Name: resolve_nearby_effects
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001DF34 FUN_0001df34
 
 
-void FUN_0001df1a(void)
+void resolve_nearby_effects(void)
 
 {
   ushort uVar1;

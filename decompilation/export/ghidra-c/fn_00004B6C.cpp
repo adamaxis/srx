@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00004B6C
-// Name: FUN_00004b6c
+// Name: reset_effect_record
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001A304 clear_effect_slot
 
 
-void FUN_00004b6c(void)
+void reset_effect_record(void)
 
 {
   short sVar1;

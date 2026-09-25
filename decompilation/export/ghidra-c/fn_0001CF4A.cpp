@@ -3,7 +3,7 @@
 // Name: FUN_0001cf4a
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001CF36 FUN_0001cf36
+//   0x0001CF36 build_title_sprites
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -33,12 +33,12 @@ void FUN_0001cf4a(void)
     DAT_00ffe0a2 = DAT_00ffe0a2 + -0x18;
     DAT_00ffe0a6 = DAT_00ffe0a6 + -4;
   }
-  FUN_0001cf36();
-  FUN_0001cf36();
-  FUN_0001cf36();
-  FUN_0001cf36();
-  FUN_0001cf36();
-  FUN_0001cf36();
+  build_title_sprites();
+  build_title_sprites();
+  build_title_sprites();
+  build_title_sprites();
+  build_title_sprites();
+  build_title_sprites();
   return;
 }
 

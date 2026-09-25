@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00019F7E
-// Name: FUN_00019f7e
+// Name: clear_first_ready_menu_slot
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00017BC0 refresh_menu_number_or_grid
@@ -8,7 +8,7 @@
 //   0x00019762 clear_menu_status_at
 
 
-void FUN_00019f7e(void)
+void clear_first_ready_menu_slot(void)
 
 {
   short extraout_D1w;

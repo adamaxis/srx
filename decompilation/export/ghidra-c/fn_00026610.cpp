@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00026610
-// Name: FUN_00026610
+// Name: write_sequential_asset_grid
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00026610(void)
+void write_sequential_asset_grid(void)
 
 {
   short extraout_D1w;

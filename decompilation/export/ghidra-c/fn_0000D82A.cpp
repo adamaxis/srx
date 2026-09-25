@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000011C0 write_repeated_vdp_grid
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x0000DA4A render_title_text_wrapper
 //   0x00012C5A write_menu_repeated_grid_with_metadata
@@ -44,7 +44,7 @@ void FUN_0000d82a(void)
         extraout_D1b) {
 LAB_0000d9de:
       DAT_00fff0b3 = 0xff;
-      render_title_text_source(uVar10);
+      render_encoded_title_text(uVar10);
       goto LAB_0000da00;
     }
   }
@@ -95,7 +95,7 @@ LAB_0000d9a4:
   build_grouped_decimal_glyphs();
   build_grouped_decimal_glyphs();
 LAB_0000da00:
-  render_title_text_source();
+  render_encoded_title_text();
   write_repeated_vdp_grid();
   build_grouped_decimal_glyphs();
   return;

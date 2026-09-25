@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001DEA0
-// Name: FUN_0001dea0
+// Name: clear_inactive_entity_effects
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001E514 clear_effect_slot_state
 
 
-void FUN_0001dea0(void)
+void clear_inactive_entity_effects(void)
 
 {
   short sVar1;

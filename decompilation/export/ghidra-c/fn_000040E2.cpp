@@ -3,7 +3,7 @@
 // Name: FUN_000040e2
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00003DDE FUN_00003dde
+//   0x00003DDE emit_field_tile_row_words
 //   0x00004000 FUN_00004000
 //   0x000041F0 FUN_000041f0
 
@@ -22,9 +22,9 @@ short FUN_000040e2(void)
       FUN_000041f0();
       sVar1 = DAT_00ffdd08 + -0x148;
       FUN_00004000();
-      FUN_00003dde();
+      emit_field_tile_row_words();
       _DAT_00ffdf58 = 0x8000;
-      sVar1 = FUN_00003dde(sVar1);
+      sVar1 = emit_field_tile_row_words(sVar1);
       _DAT_00ffdf58 = 0;
     }
   }
@@ -34,9 +34,9 @@ short FUN_000040e2(void)
       FUN_000041f0();
       sVar1 = DAT_00ffdd08 + 8;
       FUN_00004000();
-      FUN_00003dde();
+      emit_field_tile_row_words();
       _DAT_00ffdf58 = 0x8000;
-      sVar1 = FUN_00003dde(sVar1);
+      sVar1 = emit_field_tile_row_words(sVar1);
       _DAT_00ffdf58 = 0;
     }
   }

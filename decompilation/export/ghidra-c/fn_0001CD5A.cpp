@@ -4,8 +4,8 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
-//   0x00019F18 FUN_00019f18
-//   0x0001CEFA FUN_0001cefa
+//   0x00019F18 run_menu_progression_variant
+//   0x0001CEFA advance_title_effect_position
 //   0x0001CF4A FUN_0001cf4a
 
 
@@ -50,7 +50,7 @@ void FUN_0001cd5a(void)
   if (*(char *)(extraout_A0 + 3) == '\0') {
     DAT_00ff1592 = DAT_00ff1592 & 0xbf;
     _DAT_00ffe0d6 = 0;
-    FUN_00019f18();
+    run_menu_progression_variant();
     return;
   }
   if (*(char *)(extraout_A0 + 2) == '\0') {
@@ -79,7 +79,7 @@ void FUN_0001cd5a(void)
     if (*(char *)((int)extraout_A0 + 5) != '\x01') {
       FUN_0001cf4a();
     }
-    FUN_0001cefa();
+    advance_title_effect_position();
   }
   return;
 }

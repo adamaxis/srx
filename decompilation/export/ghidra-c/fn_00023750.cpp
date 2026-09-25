@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00023750
-// Name: FUN_00023750
+// Name: count_active_entities
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-char FUN_00023750(void)
+char count_active_entities(void)
 
 {
   char cVar1;

@@ -1,19 +1,19 @@
 // Ghidra headless export
 // Entry: 0x0005322C
-// Name: FUN_0005322c
+// Name: prepare_audio_title
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00053248 FUN_00053248
+//   0x00053248 build_title_sprite_once
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0005322c(void)
+void prepare_audio_title(void)
 
 {
   int unaff_A3;
   
-  FUN_00053248();
+  build_title_sprite_once();
   *(undefined1 *)(unaff_A3 + -5) = 0;
   _DAT_00ffd980 = 1;
   DAT_00ffef14 = DAT_00ffef14 | 2;

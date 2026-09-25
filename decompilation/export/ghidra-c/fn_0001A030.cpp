@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x0001A030
-// Name: FUN_0001a030
+// Name: select_menu_entry
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00019BAE select_hud_mode
 //   0x00055FD8 FUN_00055fd8
 
 
-undefined2 FUN_0001a030(void)
+undefined2 select_menu_entry(void)
 
 {
   char cVar2;

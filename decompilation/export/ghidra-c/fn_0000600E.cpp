@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000060F4 FUN_000060f4
-//   0x000060FA FUN_000060fa
+//   0x000060FA append_entity_render_sprite
 
 
 void FUN_0000600e(void)
@@ -68,7 +68,7 @@ void FUN_0000600e(void)
       return;
     }
     *(byte *)(extraout_A0 + 0x11) = *(byte *)(extraout_A0 + 0x11) & 0xfe;
-    FUN_000060fa();
+    append_entity_render_sprite();
     in_A0 = extraout_A0_00;
   }
   *(ushort **)(in_A0 + 0x12) = puVar1;

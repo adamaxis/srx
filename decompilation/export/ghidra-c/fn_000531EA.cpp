@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000531EA
-// Name: FUN_000531ea
+// Name: copy_audio_state
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00053216 FUN_00053216
+//   0x00053216 audio_noop_hook_b
 
 
-void FUN_000531ea(void)
+void copy_audio_state(void)
 
 {
   short sVar1;
@@ -14,7 +14,7 @@ void FUN_000531ea(void)
   undefined4 *puVar2;
   undefined4 *puVar3;
   
-  FUN_00053216();
+  audio_noop_hook_b();
   sVar1 = 0x9f;
   puVar2 = extraout_A0;
   puVar3 = &DAT_00ff1100;

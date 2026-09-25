@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001E216
-// Name: FUN_0001e216
+// Name: spawn_world_effect_sequence
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001E25A spawn_world_effect_from_coordinate_sequence
@@ -8,7 +8,7 @@
 //   0x0001E40C build_world_effect_candidates
 
 
-void FUN_0001e216(void)
+void spawn_world_effect_sequence(void)
 
 {
   short in_D0w;

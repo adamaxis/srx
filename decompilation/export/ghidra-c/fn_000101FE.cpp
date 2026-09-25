@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000101FE
-// Name: FUN_000101fe
+// Name: select_menu_value
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_000101fe(void)
+void select_menu_value(void)
 
 {
   short sVar1;

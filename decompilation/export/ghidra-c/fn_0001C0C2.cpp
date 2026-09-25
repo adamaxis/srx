@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001C0C2
-// Name: FUN_0001c0c2
+// Name: advance_alternating_profile
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00019DE8 run_menu_service_then_prepare
 
 
-void FUN_0001c0c2(void)
+void advance_alternating_profile(void)
 
 {
   short sVar1;

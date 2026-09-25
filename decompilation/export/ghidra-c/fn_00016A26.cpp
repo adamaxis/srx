@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00016A26
-// Name: FUN_00016a26
+// Name: publish_world_activity_descriptors
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001DBAA schedule_world_activity_timeout
 
 
-void FUN_00016a26(void)
+void publish_world_activity_descriptors(void)
 
 {
   int *piVar1;

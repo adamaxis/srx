@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000532A8
-// Name: FUN_000532a8
+// Name: fill_audio_menu_sentinel
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_000532a8(void)
+void fill_audio_menu_sentinel(void)
 
 {
   short sVar1;

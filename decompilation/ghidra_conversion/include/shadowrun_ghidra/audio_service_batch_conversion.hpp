@@ -77,7 +77,7 @@ std::size_t run_indexed_title_services(
     std::vector<std::function<bool(std::size_t)>>& handlers,
     const std::function<void(std::size_t)>& publish_index);
 
-void write_menu_repeated_grid(const std::function<void()>& write_grid);
+void write_menu_repeated_grid_service(const std::function<void()>& write_grid);
 
 std::uint8_t select_display_status(std::int8_t display_mode);
 

@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x000060FA
-// Name: FUN_000060fa
+// Name: append_entity_render_sprite
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003E86 expand_packed_nibbles
 //   0x00003EFE FUN_00003efe
 
 
-void FUN_000060fa(void)
+void append_entity_render_sprite(void)
 
 {
   int in_A0;

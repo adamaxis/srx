@@ -10,7 +10,7 @@
 //   0x0001FA78 FUN_0001fa78
 //   0x0001FD80 FUN_0001fd80
 //   0x00020634 FUN_00020634
-//   0x00053A78 FUN_00053a78
+//   0x00053A78 run_indexed_title_services
 
 
 void FUN_0001f5ca(void)
@@ -21,7 +21,7 @@ void FUN_0001f5ca(void)
     DAT_00fff10c = 0;
     DAT_00fff0cc = '\0';
     dispatch_world_effect();
-    if ((-1 < DAT_00fff0cc) && (FUN_00053a78(), -1 < DAT_00fff0cc)) {
+    if ((-1 < DAT_00fff0cc) && (run_indexed_title_services(), -1 < DAT_00fff0cc)) {
       FUN_0001f65a();
       FUN_0001f830();
       FUN_0001fa78();

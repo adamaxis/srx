@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00026696
-// Name: FUN_00026696
+// Name: copy_tile_blocks
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00026696(void)
+void copy_tile_blocks(void)
 
 {
   ushort uVar1;

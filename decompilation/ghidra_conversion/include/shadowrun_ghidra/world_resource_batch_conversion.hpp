@@ -157,6 +157,6 @@ void copy_two_word_rows(const std::vector<std::uint16_t>& source,
                         std::size_t source_stride,
                         std::size_t destination_stride);
 
-void decode_and_upload_source_stream(const std::function<void()>& decode_upload);
+void upload_decoded_source_stream(const std::function<void()>& decode_upload);
 
 } // namespace shadowrun::ghidra_conversion

@@ -9,7 +9,7 @@
 //   0x00017C8E hud_selection_value_matches
 //   0x00017EE4 reset_menu_overlay_and_upload_two
 //   0x0001989A FUN_0001989a
-//   0x0001B1C4 FUN_0001b1c4
+//   0x0001B1C4 initialize_world_effect_seed
 
 
 void FUN_00019976(void)
@@ -78,7 +78,7 @@ void FUN_00019976(void)
               }
               DAT_00fff0a0 = 1;
               FUN_0001989a(uVar1,uVar3);
-              FUN_0001b1c4();
+              initialize_world_effect_seed();
               return;
             }
           }

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000C160
-// Name: FUN_0000c160
+// Name: render_wrapped_text
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
@@ -8,7 +8,7 @@
 
 /* WARNING: Removing unreachable block (ram,0x0000c18c) */
 
-undefined8 FUN_0000c160(void)
+undefined8 render_wrapped_text(void)
 
 {
   byte bVar1;

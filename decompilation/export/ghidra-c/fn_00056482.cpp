@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001A154 clear_selected_menu_record
-//   0x0001A468 FUN_0001a468
+//   0x0001A468 initialize_audio_frame
 
 
 void FUN_00056482(void)
@@ -14,7 +14,7 @@ void FUN_00056482(void)
   short sVar2;
   char extraout_D1b;
   
-  FUN_0001a468();
+  initialize_audio_frame();
   DAT_00fff0a3 = 0;
   sVar2 = DAT_00fff118 * 0x14;
   cVar1 = (&DAT_00ff1110)[sVar2] - extraout_D1b;

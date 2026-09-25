@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000195D8
-// Name: FUN_000195d8
+// Name: refresh_menu_slot_visual
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
@@ -8,7 +8,7 @@
 //   0x000195A6 refresh_menu_slot_pair
 
 
-void FUN_000195d8(void)
+void refresh_menu_slot_visual(void)
 
 {
   short extraout_D1w;

@@ -3,9 +3,9 @@
 // Name: FUN_00057d7e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
-//   0x00011190 FUN_00011190
+//   0x00011190 transfer_menu_glyph_triple
 //   0x00057A6E FUN_00057a6e
 
 
@@ -19,8 +19,8 @@ void FUN_00057d7e(void)
   int extraout_A0;
   
   if ((char)(*(char *)(DAT_00fffc04 + 0x9b) + -2) < '\0') {
-    render_title_text_source();
-    render_title_text_source();
+    render_encoded_title_text();
+    render_encoded_title_text();
     DAT_00fff0c2 = DAT_00fff10e + 1;
     sVar1 = *DAT_00fff10e;
     do {
@@ -31,7 +31,7 @@ void FUN_00057d7e(void)
                (uint)(ushort)((byte)*DAT_00fff0c2 + 1) * (uint)*(ushort *)(extraout_A0 + 2);
           goto LAB_00057e38;
         }
-        render_title_text_source();
+        render_encoded_title_text();
         goto LAB_00057e9a;
       }
       DAT_00fff0c2 = DAT_00fff0c2 + 1;
@@ -39,16 +39,16 @@ void FUN_00057d7e(void)
     } while (sVar1 != -1);
     _DAT_00fff0be = (uint)*(ushort *)(extraout_A0 + 2);
 LAB_00057e38:
-    render_title_text_source();
-    render_title_text_source();
+    render_encoded_title_text();
+    render_encoded_title_text();
     build_grouped_decimal_glyphs();
     FUN_00057a6e(0xc428);
     build_grouped_decimal_glyphs();
 LAB_00057e9a:
-    FUN_00011190();
+    transfer_menu_glyph_triple();
   }
   else {
-    render_title_text_source();
+    render_encoded_title_text();
   }
   return;
 }

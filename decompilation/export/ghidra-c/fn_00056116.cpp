@@ -6,7 +6,7 @@
 //   0x00000DBA count_thresholded_random_rolls
 //   0x00017A5E FUN_00017a5e
 //   0x0001989A FUN_0001989a
-//   0x00019BF6 FUN_00019bf6
+//   0x00019BF6 pass_through_value
 //   0x0001A908 FUN_0001a908
 //   0x00055F44 FUN_00055f44
 //   0x000562DE FUN_000562de
@@ -24,7 +24,7 @@ undefined4 FUN_00056116(void)
   
   uVar2 = (undefined2)((uint)in_D0 >> 0x10);
   if (DAT_00fff0a3 < '\0') {
-    FUN_00019bf6();
+    pass_through_value();
     FUN_000562de();
     count_thresholded_random_rolls();
     cVar1 = DAT_00fff0dd;

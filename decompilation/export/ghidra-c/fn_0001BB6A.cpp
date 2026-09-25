@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000D44 advance_source_prng
 //   0x00001378 build_title_sprite_records
-//   0x0001A09C FUN_0001a09c
+//   0x0001A09C refresh_menu_selection_after_clear
 //   0x0001B680 attach_behavior_descriptor_e
 
 
@@ -32,7 +32,7 @@ void FUN_0001bb6a(void)
       attach_behavior_descriptor_e();
       _DAT_00ffe0d6 = 0;
       _DAT_00ffe0f4 = 1;
-      FUN_0001a09c();
+      refresh_menu_selection_after_clear();
       return;
     }
     if (3 < (DAT_00ffe0ca & 7)) {

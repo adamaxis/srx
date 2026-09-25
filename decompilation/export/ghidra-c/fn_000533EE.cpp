@@ -3,7 +3,7 @@
 // Name: FUN_000533ee
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00053200 FUN_00053200
+//   0x00053200 audio_noop_hook_a
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -25,7 +25,7 @@ void FUN_000533ee(void)
   undefined4 *extraout_A1_01;
   char *pcVar6;
   
-  FUN_00053200();
+  audio_noop_hook_a();
   iVar2 = (uint)*(byte *)((int)&DAT_00ff1104 + (int)(short)(DAT_00fff118 * 0x14)) * 0xe;
   DAT_00fff102 = (short)CONCAT31((int3)((uint)iVar2 >> 8),
                                  *(char *)((int)&DAT_00ff1100 + (short)(DAT_00fff118 * 0x14) + 3) +

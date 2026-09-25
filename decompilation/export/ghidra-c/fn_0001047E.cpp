@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001047E
-// Name: FUN_0001047e
+// Name: refresh_ready_entity_animations
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00055F02 FUN_00055f02
 
 
-void FUN_0001047e(void)
+void refresh_ready_entity_animations(void)
 
 {
   short sVar1;

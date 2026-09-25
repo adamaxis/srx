@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00053200
-// Name: FUN_00053200
+// Name: audio_noop_hook_a
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00053200(void)
+void audio_noop_hook_a(void)
 
 {
   return;

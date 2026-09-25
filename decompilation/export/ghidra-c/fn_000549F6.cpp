@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000549F6
-// Name: FUN_000549f6
+// Name: select_display_status
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_000549f6(void)
+void select_display_status(void)
 
 {
   if (DAT_00fff0a0 == '\0') {

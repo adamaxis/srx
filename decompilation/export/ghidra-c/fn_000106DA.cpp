@@ -4,13 +4,13 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
-//   0x0001047E FUN_0001047e
+//   0x0001047E refresh_ready_entity_animations
 
 
 void prepare_grid_then_write(void)
 
 {
-  FUN_0001047e();
+  refresh_ready_entity_animations();
   write_vdp_grid();
   return;
 }

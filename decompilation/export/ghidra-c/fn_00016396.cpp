@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001088 step_palette_toward_black
-//   0x000163DA FUN_000163da
+//   0x000163DA service_active_effect_slots
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -14,7 +14,7 @@ ushort advance_palette_fade(void)
 {
   ushort uVar1;
   
-  uVar1 = FUN_000163da();
+  uVar1 = service_active_effect_slots();
   if (_DAT_00ffdf3a != 0) {
     uVar1 = DAT_00ffdf3c & 1;
     if (uVar1 == 0) {

@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E9C make_vdp_transfer_command
-//   0x0001D3F4 FUN_0001d3f4
+//   0x0001D3F4 expand_random_nibble_mask
 
 
 void FUN_0001d33a(void)
@@ -63,7 +63,7 @@ void FUN_0001d33a(void)
         psVar18 = (short *)(puVar13 + -10);
         *psVar18 = extraout_D1w;
         *(undefined4 *)(puVar13 + -0xe) = 0x1d3cc;
-        uVar5 = FUN_0001d3f4();
+        uVar5 = expand_random_nibble_mask();
         Ram00c00000 = *extraout_A0 & uVar5;
         sVar11 = *(short *)(puVar13 + -8);
         psVar19 = (short *)(puVar13 + -6);

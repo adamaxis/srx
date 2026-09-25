@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001D2E6
-// Name: FUN_0001d2e6
+// Name: advance_world_sequence
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001D33A FUN_0001d33a
 
 
-void FUN_0001d2e6(void)
+void advance_world_sequence(void)
 
 {
   short *psVar1;

@@ -6,16 +6,16 @@
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
 //   0x0000195C sample_controller_input
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x0000C376 move_wrapped_menu_cursor
 
 
 void FUN_0000d53c(void)
 
 {
-  render_title_text_source();
+  render_encoded_title_text();
   DAT_00fff0dc = 0;
-  render_title_text_source();
+  render_encoded_title_text();
   do {
     move_wrapped_menu_cursor();
     while( true ) {

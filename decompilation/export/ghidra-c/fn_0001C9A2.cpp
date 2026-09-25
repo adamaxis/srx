@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001C9A2
-// Name: FUN_0001c9a2
+// Name: initialize_effect_motion_seed
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000530DE service_audio_if_enabled
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001c9a2(void)
+void initialize_effect_motion_seed(void)
 
 {
   DAT_00ffe06a = 0x10c0;

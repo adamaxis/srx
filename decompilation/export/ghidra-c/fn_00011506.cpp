@@ -56,7 +56,7 @@ void FUN_00011506(void)
     prepare_menu_dialog();
     return;
   }
-  render_title_text_source();
+  render_encoded_title_text();
   return;
 }
 

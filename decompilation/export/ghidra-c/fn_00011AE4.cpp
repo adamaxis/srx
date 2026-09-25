@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 
 
 undefined8 FUN_00011ae4(void)
@@ -25,7 +25,7 @@ undefined8 FUN_00011ae4(void)
     *(undefined1 *)(iVar2 + 0x4d) = 4;
   }
   write_vdp_grid();
-  render_title_text_source();
+  render_encoded_title_text();
   return CONCAT44(in_D0,in_D1);
 }
 

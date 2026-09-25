@@ -29,8 +29,8 @@
 //   0x000530DE service_audio_if_enabled
 //   0x000530EA service_audio_command_frame
 //   0x00053126 prepare_mode_entry_service
-//   0x000531EA FUN_000531ea
-//   0x00053290 FUN_00053290
+//   0x000531EA copy_audio_state
+//   0x00053290 reset_audio_menu_arrays
 //   0x000533EE FUN_000533ee
 
 
@@ -48,11 +48,11 @@ void FUN_0001745e(void)
   DAT_00fff0b1 = '\0';
   DAT_00fff11a = 0xffff;
   if (DAT_00fffbbc != DAT_00fffbbd) {
-    FUN_00053290();
+    reset_audio_menu_arrays();
     DAT_00fffbbd = DAT_00fffbbc;
   }
   DAT_00ffdd48 = 0;
-  FUN_000531ea();
+  copy_audio_state();
   calculate_menu_delay_offset();
   DAT_00fff0d2 = 0;
   do {

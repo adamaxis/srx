@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x0000391A handle_mode_action_event
 //   0x0000AB02 FUN_0000ab02
-//   0x0000AC5E FUN_0000ac5e
+//   0x0000AC5E clear_entity_effect_if_forced
 //   0x0000AC84 dispatch_entity_collision_behavior
 //   0x0000ACAE FUN_0000acae
 //   0x0000B330 enter_entity_behavior_transition
@@ -148,7 +148,7 @@ LAB_0000aa74:
       *(byte *)((int)puVar5 + 0x11) = *(byte *)((int)puVar5 + 0x11) & 0xfb;
       sVar1 = puVar5[0xb];
       (**(code **)(puVar5 + 0x1d))();
-      FUN_0000ac5e();
+      clear_entity_effect_if_forced();
       puVar5 = extraout_A0_09;
       if (sVar1 != extraout_A0_09[0xb]) {
         *(byte *)((int)extraout_A0_09 + 0x11) = *(byte *)((int)extraout_A0_09 + 0x11) | 1;

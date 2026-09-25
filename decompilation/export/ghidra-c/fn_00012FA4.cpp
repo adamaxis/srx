@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x00010660 FUN_00010660
 
 
@@ -17,7 +17,7 @@ void advance_entity_action_menu(void)
   bool bVar3;
   char cVar4;
   
-  render_title_text_source();
+  render_encoded_title_text();
   uVar1 = (ushort)*(byte *)(extraout_A0 + 0x57);
   cVar4 = SBORROW2(uVar1,1);
   cVar2 = (short)(uVar1 - 1) < 0;

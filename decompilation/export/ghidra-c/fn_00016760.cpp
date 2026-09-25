@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00016760
-// Name: FUN_00016760
+// Name: mark_projected_terrain_cell
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000166D0 project_entity_y_axis
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00016760(void)
+void mark_projected_terrain_cell(void)
 
 {
   short sVar1;

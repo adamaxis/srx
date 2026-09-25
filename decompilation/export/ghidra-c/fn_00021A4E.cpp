@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00021A4E
-// Name: FUN_00021a4e
+// Name: subtract_resource_clamped
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00021a4e(void)
+void subtract_resource_clamped(void)
 
 {
   int in_D1;

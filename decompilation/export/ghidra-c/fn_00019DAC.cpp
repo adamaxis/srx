@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00019DAC
-// Name: FUN_00019dac
+// Name: merge_menu_pending_flags
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00019dac(void)
+void merge_menu_pending_flags(void)
 
 {
   *(byte *)((int)&DAT_00fffb30 + (int)DAT_00fff102) =

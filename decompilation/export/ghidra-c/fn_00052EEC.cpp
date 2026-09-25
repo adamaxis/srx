@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00052EEC
-// Name: FUN_00052eec
+// Name: initialize_audio_sequence
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00052DE0 initialize_audio_ram
@@ -9,7 +9,8 @@
 //   0x00052EC6 append_three_with_audio_bus
 
 
-void FUN_00052eec(undefined4 param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4)
+void initialize_audio_sequence
+               (undefined4 param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4)
 
 {
   initialize_audio_ram();

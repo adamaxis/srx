@@ -138,7 +138,7 @@ std::size_t run_indexed_title_services(
     return ran;
 }
 
-void write_menu_repeated_grid(const std::function<void()>& write_grid) {
+void write_menu_repeated_grid_service(const std::function<void()>& write_grid) {
     call_once(write_grid);
 }
 

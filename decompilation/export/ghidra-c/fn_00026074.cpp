@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00026074
-// Name: FUN_00026074
+// Name: clear_grid_segments
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00026074(void)
+void clear_grid_segments(void)
 
 {
   short sVar1;

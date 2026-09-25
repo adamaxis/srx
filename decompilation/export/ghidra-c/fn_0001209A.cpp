@@ -3,7 +3,7 @@
 // Name: advance_menu_text_cursor
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x000110E8 draw_hud_panel_wrapper
 
 
@@ -22,7 +22,7 @@ void advance_menu_text_cursor(void)
       psVar1 = (short *)&DAT_00ffdd4c;
     }
   } while (*psVar1 < 0);
-  render_title_text_source();
+  render_encoded_title_text();
   draw_hud_panel_wrapper();
   return;
 }

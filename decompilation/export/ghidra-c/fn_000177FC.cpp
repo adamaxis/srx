@@ -11,7 +11,7 @@
 //   0x0001C3FA FUN_0001c3fa
 //   0x000266E4 FUN_000266e4
 //   0x0002679E FUN_0002679e
-//   0x000268E6 FUN_000268e6
+//   0x000268E6 append_world_sprite_records
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -30,7 +30,7 @@ void run_menu_hud_tick_loop(void)
     DAT_00ffdd02 = 1;
     FUN_0001c3fa();
     if (DAT_00fff0e1 != '\0') {
-      FUN_000268e6();
+      append_world_sprite_records();
     }
     _DAT_00ffd980 = 1;
     DAT_00ffef14 = DAT_00ffef14 | 2;

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00022874
-// Name: FUN_00022874
+// Name: run_fixed_delay
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00022874(void)
+void run_fixed_delay(void)
 
 {
   short sVar1;

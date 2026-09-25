@@ -6,7 +6,7 @@
 //   0x00000F5C write_vdp_word_block_with_source_wrap
 //   0x00001232 write_vdp_grid
 //   0x00010918 prepare_menu_graphics
-//   0x00010FF4 FUN_00010ff4
+//   0x00010FF4 write_repeated_asset_batch
 //   0x00011048 upload_resource_then_write_two_blocks
 
 
@@ -24,7 +24,7 @@ void FUN_00010f50(void)
   write_vdp_grid();
   write_vdp_grid();
   write_vdp_grid();
-  FUN_00010ff4();
+  write_repeated_asset_batch();
   upload_resource_then_write_two_blocks();
   write_vdp_word_block_with_source_wrap();
   return;

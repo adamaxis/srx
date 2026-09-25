@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00026938
-// Name: FUN_00026938
+// Name: copy_two_word_rows
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00026938(void)
+void copy_two_word_rows(void)
 
 {
   short sVar1;

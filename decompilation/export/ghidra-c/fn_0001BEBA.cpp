@@ -4,10 +4,10 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
-//   0x00019D66 FUN_00019d66
+//   0x00019D66 run_menu_slot_service
 //   0x0001A908 FUN_0001a908
 //   0x0001B612 attach_behavior_descriptor_b
-//   0x0001BF5C FUN_0001bf5c
+//   0x0001BF5C copy_title_profile
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -31,11 +31,11 @@ void FUN_0001beba(void)
   DAT_00ffef14 = DAT_00ffef14 | 1;
   DAT_00ffe00c = DAT_00ffe00c + -1;
   if (DAT_00ffe00c < 0) {
-    FUN_0001bf5c();
+    copy_title_profile();
     DAT_00ff1592 = DAT_00ff1592 & 0x7f;
     attach_behavior_descriptor_b();
     _DAT_00ffe0d6 = 0;
-    FUN_00019d66();
+    run_menu_slot_service();
     FUN_0001a908();
     return;
   }

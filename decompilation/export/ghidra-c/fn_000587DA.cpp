@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
-//   0x00011190 FUN_00011190
+//   0x00011190 transfer_menu_glyph_triple
 //   0x0005763C FUN_0005763c
 //   0x00058A2E FUN_00058a2e
 //   0x00058AA4 FUN_00058aa4
@@ -78,7 +78,7 @@ LAB_0005884c:
       if ((char)(DAT_00fff0d0 + -1) < '\0') {
         sVar1 = 7;
         do {
-          FUN_00011190();
+          transfer_menu_glyph_triple();
           sVar1 = sVar1 + -1;
         } while (sVar1 != -1);
         return;

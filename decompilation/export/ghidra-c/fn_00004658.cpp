@@ -11,9 +11,9 @@
 //   0x000053C4 FUN_000053c4
 //   0x0000557E FUN_0000557e
 //   0x00005936 FUN_00005936
-//   0x000059EA FUN_000059ea
+//   0x000059EA advance_title_sprite_timer
 //   0x00005B1E sort_entity_slots_by_depth
-//   0x00005B98 FUN_00005b98
+//   0x00005B98 emit_title_sprite_burst
 //   0x00005C7E FUN_00005c7e
 //   0x0000622C expand_entity_sprite_descriptors
 //   0x0000AEBA advance_title_sprite_wave
@@ -64,7 +64,7 @@ void FUN_00004658(void)
         }
         else if ((*(short *)(iVar4 + 0xe) == 0xf) &&
                 (*(undefined **)(iVar4 + 0x3a) != &DAT_0000afe0)) {
-          FUN_000059ea();
+          advance_title_sprite_timer();
           iVar4 = extraout_A0_00;
         }
         if (*(char *)(iVar4 + 0xb2) != '\0') {
@@ -88,7 +88,7 @@ void FUN_00004658(void)
           iVar4 = extraout_A0_05;
         }
         if ((*(byte *)(iVar4 + 0x10) & 0x80) != 0) {
-          FUN_00005b98();
+          emit_title_sprite_burst();
           iVar4 = extraout_A0_06;
         }
         if ((*(undefined1 **)(iVar4 + 0x3a) != &LAB_00015390) || (*(short *)(iVar4 + 0x46) < 0)) {

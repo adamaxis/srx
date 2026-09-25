@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001A468
-// Name: FUN_0001a468
+// Name: initialize_audio_frame
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000530EA service_audio_command_frame
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001a468(void)
+void initialize_audio_frame(void)
 
 {
   DAT_00ffe0d0 = 0;

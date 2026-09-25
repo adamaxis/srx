@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00003674 FUN_00003674
 //   0x000037EC FUN_000037ec
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x0000C3E6 write_menu_grid_with_metadata
 //   0x0000F312 wait_for_controller_event
 
@@ -26,8 +26,8 @@ void FUN_0000ef08(void)
       if (((short)(*(byte *)(puVar2 + 0x26) - 5) < 0) && ((short)(*(byte *)(puVar2 + 0x26) - 3) < 0)
          ) {
         FUN_000037ec();
-        render_title_text_source();
-        render_title_text_source();
+        render_encoded_title_text();
+        render_encoded_title_text();
         puVar2 = extraout_A0;
       }
       else {
@@ -40,7 +40,7 @@ void FUN_0000ef08(void)
     puVar2 = puVar2 + 0x80;
     sVar1 = sVar1 + -1;
   } while (sVar1 != -1);
-  render_title_text_source();
+  render_encoded_title_text();
   wait_for_controller_event();
   return;
 }

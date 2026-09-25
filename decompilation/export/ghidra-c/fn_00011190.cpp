@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00011190
-// Name: FUN_00011190
+// Name: transfer_menu_glyph_triple
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E9C make_vdp_transfer_command
 
 
-undefined8 FUN_00011190(void)
+undefined8 transfer_menu_glyph_triple(void)
 
 {
   undefined4 in_D0;

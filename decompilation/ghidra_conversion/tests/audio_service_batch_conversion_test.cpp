@@ -62,7 +62,7 @@ int main() {
            2);
     assert(indexes.size() == 23 && indexes.back() == 22);
     int grids = 0;
-    write_menu_repeated_grid([&] { ++grids; });
+    write_menu_repeated_grid_service([&] { ++grids; });
     assert(grids == 1);
     assert(select_display_status(0) == 0xCC && select_display_status(-1) == 0xC0 &&
            select_display_status(1) == 0x0C);

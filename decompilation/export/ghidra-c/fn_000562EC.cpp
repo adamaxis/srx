@@ -39,7 +39,7 @@ void FUN_000562ec(void)
         if (((extraout_D1b < '\0') && (advance_hud_footer_offset(), DAT_00fffbca == '\0')) &&
            (((sVar2 = FUN_00019b40(), sVar2 == 3 ||
              (((sVar2 == 0xc || (sVar2 == 0xf)) || (sVar2 == 0x17)))) || (sVar2 == 0x18)))) {
-          FUN_00019bf6();
+          pass_through_value();
           count_thresholded_random_rolls();
           if ((DAT_00fff0dd != '\0') &&
              (cVar1 = DAT_00fff0dd - extraout_A0[1], cVar1 != '\0' && extraout_A0[1] <= DAT_00fff0dd
@@ -53,7 +53,7 @@ void FUN_000562ec(void)
             if (extraout_A0[7] != '\0') {
               extraout_A0[7] = extraout_A0[7] + -1;
             }
-            FUN_0001b1fc();
+            reset_title_transition();
           }
           return;
         }

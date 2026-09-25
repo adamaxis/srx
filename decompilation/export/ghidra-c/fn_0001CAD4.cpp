@@ -1,15 +1,15 @@
 // Ghidra headless export
 // Entry: 0x0001CAD4
-// Name: FUN_0001cad4
+// Name: update_interaction_state
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001C9A2 FUN_0001c9a2
+//   0x0001C9A2 initialize_effect_motion_seed
 //   0x0001CB6A FUN_0001cb6a
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001cad4(void)
+void update_interaction_state(void)
 
 {
   int in_A0;
@@ -44,7 +44,7 @@ void FUN_0001cad4(void)
       return;
     }
     if (DAT_00fff0b7 != '\0') {
-      FUN_0001c9a2();
+      initialize_effect_motion_seed();
       return;
     }
   }

@@ -7,8 +7,8 @@
 //   0x00017D72 draw_hud_panel
 //   0x00017D90 advance_hud_panel
 //   0x00019B40 FUN_00019b40
-//   0x00019BF6 FUN_00019bf6
-//   0x00053216 FUN_00053216
+//   0x00019BF6 pass_through_value
+//   0x00053216 audio_noop_hook_b
 //   0x00056116 FUN_00056116
 //   0x000562D4 FUN_000562d4
 
@@ -26,7 +26,7 @@ undefined4 FUN_000561e8(void)
   short sVar4;
   int extraout_A0;
   
-  FUN_00053216();
+  audio_noop_hook_b();
   sVar4 = DAT_00fff118 * 0x14;
   if (*(char *)(extraout_A0 + 0x10 + (int)sVar4) != (&DAT_00ff1110)[sVar4]) {
     (&DAT_00ff1110)[sVar4] = (&DAT_00ff1110)[sVar4] + '\x01';
@@ -40,7 +40,7 @@ LAB_000560aa:
         DAT_00fff0e7 = DAT_00fff0e7 + -1;
       }
       else {
-        FUN_00019bf6();
+        pass_through_value();
         FUN_000562d4();
         count_thresholded_random_rolls();
         DAT_00fff0dd = DAT_00fff0dd + -1;
@@ -65,7 +65,7 @@ LAB_000560aa:
         return uVar3;
       }
 LAB_00056268:
-      FUN_00019bf6();
+      pass_through_value();
       FUN_000562d4();
       count_thresholded_random_rolls();
       sVar4 = FUN_00019b40();
@@ -84,7 +84,7 @@ LAB_00056268:
     if (-1 < (char)(cVar1 + -0x15)) goto LAB_00056268;
   }
   if (DAT_00fff0a3 < '\0') {
-    FUN_00019bf6();
+    pass_through_value();
     FUN_000562de();
     count_thresholded_random_rolls();
     cVar1 = DAT_00fff0dd;

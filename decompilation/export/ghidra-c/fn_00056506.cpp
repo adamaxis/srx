@@ -3,7 +3,7 @@
 // Name: FUN_00056506
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00019BF6 FUN_00019bf6
+//   0x00019BF6 pass_through_value
 //   0x00019C5C FUN_00019c5c
 //   0x00055F44 FUN_00055f44
 //   0x000562DE FUN_000562de
@@ -66,7 +66,7 @@ void FUN_00056506(void)
     uVar5 = (ushort)DAT_00fffbc9;
   }
   else {
-    FUN_00019bf6();
+    pass_through_value();
     if ((char)(*(char *)(extraout_A0_00 + 0x1a + (int)unaff_D3w) + -4) < '\0') {
       uVar5 = (ushort)DAT_00fffbc7;
     }

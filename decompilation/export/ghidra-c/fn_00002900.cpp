@@ -6,11 +6,11 @@
 //   0x00001610 decode_source_byte_stream
 //   0x0000313A copy_terrain_layers
 //   0x00004388 finalize_pending_entity_template_update
-//   0x00004B6C FUN_00004b6c
+//   0x00004B6C reset_effect_record
 //   0x00005B7E mark_entity_slots_for_render
 //   0x0000EE10 rebuild_terrain_collision_map
 //   0x00013874 dispatch_entity_action_candidates
-//   0x000164A8 FUN_000164a8
+//   0x000164A8 populate_entity_table
 //   0x000164DC clear_scene_record_transition_words
 //   0x00016DEE clear_scene_record_pending_flags
 //   0x00016E5C process_terrain_work_entries
@@ -33,7 +33,7 @@ void FUN_00002900(void)
   }
   if (_DAT_00ffdf8a != 0) {
     if (DAT_00ffdca0 != 0) {
-      FUN_00004b6c();
+      reset_effect_record();
     }
     DAT_00ffe16f = 0;
     if (DAT_00ffe191 != '\0') {
@@ -63,7 +63,7 @@ void FUN_00002900(void)
     load_scene_resources();
   }
   clear_scene_record_transition_words();
-  FUN_000164a8();
+  populate_entity_table();
   dispatch_entity_action_candidates();
   if ((DAT_00ffde22 & 1) != 0) {
     decode_source_byte_stream();

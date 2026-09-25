@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x000011C0 write_repeated_vdp_grid
 //   0x00001232 write_vdp_grid
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x00017C3C FUN_00017c3c
 //   0x00018A92 FUN_00018a92
 //   0x00055F44 FUN_00055f44
@@ -36,7 +36,7 @@ undefined8 FUN_0001a16a(void)
     write_repeated_vdp_grid();
   }
   else {
-    render_title_text_source();
+    render_encoded_title_text();
   }
   return CONCAT44(in_D0,in_D1);
 }

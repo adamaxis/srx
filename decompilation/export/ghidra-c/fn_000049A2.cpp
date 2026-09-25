@@ -3,7 +3,7 @@
 // Name: FUN_000049a2
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00004B6C FUN_00004b6c
+//   0x00004B6C reset_effect_record
 //   0x000061A0 append_entity_sprite_record
 //   0x0001582A allocate_first_free_effect_slot_local
 //   0x000530DE service_audio_if_enabled
@@ -25,7 +25,7 @@ void FUN_000049a2(void)
   
   uVar7 = 0;
   if (DAT_00ffdca0 != 0) {
-    FUN_00004b6c();
+    reset_effect_record();
   }
   uVar3 = allocate_first_free_effect_slot_local();
   if (!(bool)uVar7) {

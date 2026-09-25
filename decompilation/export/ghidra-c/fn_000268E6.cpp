@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000268E6
-// Name: FUN_000268e6
+// Name: append_world_sprite_records
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_000268e6(void)
+void append_world_sprite_records(void)
 
 {
   char unaff_D5b;

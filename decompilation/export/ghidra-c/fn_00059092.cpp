@@ -8,7 +8,7 @@
 //   0x0000195C sample_controller_input
 //   0x000042B0 initialize_joshua_archetype_selection
 //   0x0000C0C2 load_title_font
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x0000C3E6 write_menu_grid_with_metadata
 //   0x00010B5A transfer_menu_asset_batch_four
@@ -28,7 +28,7 @@ void FUN_00059092(void)
   load_title_font();
   while( true ) {
     write_menu_grid_with_metadata();
-    render_title_text_source();
+    render_encoded_title_text();
     DAT_00fff0dc = '\0';
     move_wrapped_menu_cursor();
     do {
@@ -47,7 +47,7 @@ void FUN_00059092(void)
     }
   }
   write_menu_grid_with_metadata();
-  render_title_text_source();
+  render_encoded_title_text();
   DAT_00fff0dc = 0;
   do {
     move_wrapped_menu_cursor();

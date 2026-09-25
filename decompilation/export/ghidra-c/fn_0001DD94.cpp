@@ -3,11 +3,11 @@
 // Name: FUN_0001dd94
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00016ECA FUN_00016eca
-//   0x0001DBF0 FUN_0001dbf0
+//   0x00016ECA process_terrain_work_batch
+//   0x0001DBF0 reset_entity_service_records
 //   0x0001DC4C FUN_0001dc4c
-//   0x0001DEA0 FUN_0001dea0
-//   0x0001DF1A FUN_0001df1a
+//   0x0001DEA0 clear_inactive_entity_effects
+//   0x0001DF1A resolve_nearby_effects
 //   0x0001DFC4 advance_world_effect_trigger
 //   0x0001E166 FUN_0001e166
 //   0x0001E2EC begin_world_activity
@@ -36,7 +36,7 @@ void FUN_0001dd94(void)
   if (_DAT_00ffdf84 != 0) {
     if (((DAT_00ffe186 == '\0') && (DAT_00ffe16f == '\0')) &&
        ((DAT_00ffddc4 != 0x14 && (DAT_00ffdf86 = DAT_00ffdf86 + -1, DAT_00ffdf86 < 0)))) {
-      FUN_0001dbf0();
+      reset_entity_service_records();
     }
     else {
       iVar1 = *(int *)(DAT_00fffc04 + 0xa2);
@@ -47,13 +47,13 @@ void FUN_0001dd94(void)
       }
     }
   }
-  FUN_0001dea0();
+  clear_inactive_entity_effects();
   if (DAT_00ffdf40 == 2) {
-    FUN_00016eca();
+    process_terrain_work_batch();
     advance_world_effect_trigger();
   }
   FUN_0001e166();
-  FUN_0001df1a();
+  resolve_nearby_effects();
   return;
 }
 

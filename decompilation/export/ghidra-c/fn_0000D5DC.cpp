@@ -3,7 +3,7 @@
 // Name: FUN_0000d5dc
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
 
 
@@ -17,7 +17,7 @@ void FUN_0000d5dc(void)
   short sVar4;
   
   if ((char)(DAT_00fff0d1 - 4) < '\0') {
-    uVar1 = render_title_text_source();
+    uVar1 = render_encoded_title_text();
     if ((ushort)((ushort)DAT_00fff0d1 + (short)CONCAT31((int3)((uint)uVar1 >> 8),DAT_00fff0d0) * 4)
         == 6) {
       build_grouped_decimal_glyphs();
@@ -26,7 +26,7 @@ void FUN_0000d5dc(void)
     }
   }
   else {
-    render_title_text_source();
+    render_encoded_title_text();
   }
   build_grouped_decimal_glyphs();
 LAB_0000d71e:
@@ -35,8 +35,8 @@ LAB_0000d71e:
   uVar3 = 5;
   do {
     if ((uVar2 & 1 << (uVar3 & 0x1f)) != 0) {
-      render_title_text_source();
-      render_title_text_source();
+      render_encoded_title_text();
+      render_encoded_title_text();
       build_grouped_decimal_glyphs();
       build_grouped_decimal_glyphs();
       break;
@@ -48,7 +48,7 @@ LAB_0000d71e:
   uVar3 = 9;
   do {
     if ((uVar2 & 1 << (uVar3 & 0x1f)) != 0) {
-      render_title_text_source();
+      render_encoded_title_text();
       build_grouped_decimal_glyphs();
       return;
     }

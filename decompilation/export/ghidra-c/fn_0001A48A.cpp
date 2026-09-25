@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001A48A
-// Name: FUN_0001a48a
+// Name: advance_title_animation_cycle
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000013BE build_title_sprite_records_with_attribute_offset
@@ -9,7 +9,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001a48a(void)
+void advance_title_animation_cycle(void)
 
 {
   DAT_00ffe0d2 = DAT_00ffe0d2 + -1;

@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x00012A54 update_resource_variant
 
 
@@ -54,7 +54,7 @@ undefined8 FUN_000130c0(void)
   }
   if (((((char)(cVar1 + -0xc) < '\0') || ((char)(cVar1 + -0x13) < '\0')) || (cVar1 == '\x13')) ||
      ((-1 < (char)(cVar1 + -0x17) && ((char)(cVar1 + -0x28) < '\0')))) {
-    render_title_text_source();
+    render_encoded_title_text();
     write_vdp_grid();
   }
   return CONCAT44(in_D0,in_D1);

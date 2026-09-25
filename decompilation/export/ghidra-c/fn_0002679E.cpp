@@ -9,8 +9,8 @@
 //   0x00017CC8 advance_hud_sprite_audio_pulse
 //   0x00017FDA advance_menu_random_glitch
 //   0x0001C3FA FUN_0001c3fa
-//   0x00024E20 FUN_00024e20
-//   0x000268E6 FUN_000268e6
+//   0x00024E20 dispatch_indexed_handler
+//   0x000268E6 append_world_sprite_records
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -69,11 +69,11 @@ void FUN_0002679e(void)
     }
     DAT_00ffe1a4 = (*pbVar5 & 0xff0f) + DAT_00ffe1a4;
     DAT_00ffe1ae = &DAT_00ff8700;
-    FUN_00024e20();
+    dispatch_indexed_handler();
     write_vdp_word_block();
     DAT_00ffdd02 = 1;
     FUN_0001c3fa();
-    FUN_000268e6();
+    append_world_sprite_records();
     _DAT_00ffd980 = 1;
     DAT_00ffef14 = DAT_00ffef14 | 2;
     uVar3 = uVar3 - 1;

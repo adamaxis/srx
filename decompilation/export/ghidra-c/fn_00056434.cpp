@@ -3,7 +3,7 @@
 // Name: FUN_00056434
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001A468 FUN_0001a468
+//   0x0001A468 initialize_audio_frame
 
 
 void FUN_00056434(void)
@@ -14,7 +14,7 @@ void FUN_00056434(void)
   short sVar3;
   char extraout_D1b;
   
-  FUN_0001a468();
+  initialize_audio_frame();
   DAT_00fff0a3 = 0;
   sVar3 = DAT_00fff118 * 0x14;
   cVar1 = (&DAT_00ff110f)[sVar3];

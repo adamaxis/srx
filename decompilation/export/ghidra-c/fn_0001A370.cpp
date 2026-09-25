@@ -10,7 +10,7 @@
 //   0x0001A54E initialize_effect_defaults
 //   0x0001A818 FUN_0001a818
 //   0x0001A8F4 reset_effect_entity
-//   0x0001D3F4 FUN_0001d3f4
+//   0x0001D3F4 expand_random_nibble_mask
 //   0x000561E8 FUN_000561e8
 
 
@@ -46,7 +46,7 @@ void FUN_0001a370(void)
     make_vdp_transfer_command();
     sVar3 = 0x1ff;
     do {
-      uVar1 = FUN_0001d3f4();
+      uVar1 = expand_random_nibble_mask();
       Ram00c00000 = *extraout_A1 & uVar1;
       sVar3 = sVar3 + -1;
     } while (sVar3 != -1);

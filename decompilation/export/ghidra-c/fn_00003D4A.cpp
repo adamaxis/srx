@@ -3,7 +3,7 @@
 // Name: render_field_tile_column
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00003D80 FUN_00003d80
+//   0x00003D80 emit_field_tile_column_words
 //   0x00003FD8 FUN_00003fd8
 
 
@@ -25,7 +25,7 @@ void render_field_tile_column(void)
   FUN_00003fd8();
   uVar3 = (ushort)-((unaff_D4w & 0x7f) - 0x80) >> 1;
   if ((short)(uVar3 - 1) < 0x2b) {
-    FUN_00003d80();
+    emit_field_tile_column_words();
     sVar4 = -(uVar3 - 0x2b);
     make_vdp_transfer_command();
     iVar1 = (uint)*(ushort *)(extraout_A1 + unaff_D3w) << 5;
@@ -50,7 +50,7 @@ void render_field_tile_column(void)
     } while (sVar4 != -1);
     return;
   }
-  FUN_00003d80();
+  emit_field_tile_column_words();
   return;
 }
 

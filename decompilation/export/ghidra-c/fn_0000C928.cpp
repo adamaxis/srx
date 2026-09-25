@@ -8,10 +8,10 @@
 //   0x0000195C sample_controller_input
 //   0x0000391A handle_mode_action_event
 //   0x0000C0C2 load_title_font
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x0000C3E6 write_menu_grid_with_metadata
-//   0x0000C436 FUN_0000c436
+//   0x0000C436 dispatch_menu_handler
 //   0x0000E660 advance_random_grid_effect
 //   0x00010952 reset_mode_display_buffers
 //   0x00010A82 FUN_00010a82
@@ -30,7 +30,7 @@ void FUN_0000c928(void)
     FUN_00010a82();
     load_title_font();
     write_menu_grid_with_metadata();
-    render_title_text_source();
+    render_encoded_title_text();
     DAT_00fff0dc = '\0';
     move_wrapped_menu_cursor();
     while( true ) {
@@ -52,7 +52,7 @@ void FUN_0000c928(void)
         handle_mode_action_event();
       }
     }
-    FUN_0000c436();
+    dispatch_menu_handler();
     if (DAT_00fff0dc < '\0') {
       DAT_00fff0dc = 0;
       return;

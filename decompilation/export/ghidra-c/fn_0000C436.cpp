@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000C436
-// Name: FUN_0000c436
+// Name: dispatch_menu_handler
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0000c436(void)
+void dispatch_menu_handler(void)
 
 {
   int in_A0;

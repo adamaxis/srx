@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001B302
-// Name: FUN_0001b302
+// Name: advance_title_jitter
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D44 advance_source_prng
@@ -9,7 +9,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001b302(void)
+void advance_title_jitter(void)
 
 {
   ushort uVar1;

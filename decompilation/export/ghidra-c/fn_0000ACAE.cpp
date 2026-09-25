@@ -3,9 +3,9 @@
 // Name: FUN_0000acae
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000AAD2 FUN_0000aad2
+//   0x0000AAD2 dispatch_player_action_if_ready
 //   0x0000ABFC update_entity_animation_delay
-//   0x0000AE6E FUN_0000ae6e
+//   0x0000AE6E update_entity_target_heading
 //   0x0000AF7C prepare_entity_delayed_animation_primary
 //   0x0000AFAE prepare_entity_delayed_animation_alternate
 //   0x0000B1DC configure_entity_target_transition
@@ -70,7 +70,7 @@ void FUN_0000acae(void)
     }
     *(undefined1 *)(in_A0 + 0x43) = 0;
     if (*(char *)(in_A0 + 0x56) < '\0') {
-      FUN_0000ae6e();
+      update_entity_target_heading();
       if (DAT_00fff0dd != '\0') {
         prepare_entity_delayed_animation_alternate();
         return;
@@ -100,7 +100,7 @@ void FUN_0000acae(void)
       set_entity_heading_with_field_animation();
       return;
     }
-    FUN_0000aad2();
+    dispatch_player_action_if_ready();
     in_A0 = extraout_A0_01;
     if (!bVar2) goto LAB_0000ae40;
     service_audio_if_enabled();

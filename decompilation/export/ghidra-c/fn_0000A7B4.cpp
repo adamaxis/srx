@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000A7B4
-// Name: FUN_0000a7b4
+// Name: initialize_entity_runtime
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000A7E4 initialize_entity_slot_order
 
 
-void FUN_0000a7b4(void)
+void initialize_entity_runtime(void)
 
 {
   DAT_00fffc04 = &DAT_00ff0100;

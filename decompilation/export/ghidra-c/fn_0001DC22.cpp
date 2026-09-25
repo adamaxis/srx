@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001DC22
-// Name: FUN_0001dc22
+// Name: select_next_entity
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
@@ -8,7 +8,7 @@
 
 /* WARNING: Removing unreachable block (ram,0x0001dcb4) */
 
-undefined2 * FUN_0001dc22(void)
+undefined2 * select_next_entity(void)
 
 {
   char cVar1;

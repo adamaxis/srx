@@ -8,7 +8,7 @@
 //   0x00000E34 reset_vdp_upload_state
 //   0x00000E9C make_vdp_transfer_command
 //   0x00000EC0 upload_startup_palette
-//   0x000531AA FUN_000531aa
+//   0x000531AA initialize_title_audio_assets
 
 
 void clear_runtime_memory_and_vdp(void)
@@ -52,11 +52,11 @@ void clear_runtime_memory_and_vdp(void)
   } while (sVar1 != -1);
   Ram00c00004 = 0x40000010;
   Ram00c00000 = 0;
-  FUN_000531aa();
-  FUN_000531aa();
-  FUN_000531aa();
-  FUN_000531aa();
-  FUN_000531aa();
+  initialize_title_audio_assets();
+  initialize_title_audio_assets();
+  initialize_title_audio_assets();
+  initialize_title_audio_assets();
+  initialize_title_audio_assets();
   return;
 }
 

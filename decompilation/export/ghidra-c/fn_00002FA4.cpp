@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00002FA4
-// Name: FUN_00002fa4
+// Name: snapshot_entity_anchors
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00002FF0 find_ready_entity_slot
 
 
-uint FUN_00002fa4(void)
+uint snapshot_entity_anchors(void)
 
 {
   ushort *puVar1;

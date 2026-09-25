@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00019EA6
-// Name: FUN_00019ea6
+// Name: run_menu_selection_variant
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00017C52 render_menu_text_followup
@@ -9,7 +9,7 @@
 //   0x00056482 FUN_00056482
 
 
-void FUN_00019ea6(void)
+void run_menu_selection_variant(void)
 
 {
   set_hud_selection_value();

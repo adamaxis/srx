@@ -14,7 +14,7 @@
 //   0x00003404 upload_field_asset_setup
 //   0x000039F2 refresh_field_animation_assets
 //   0x0000C0C2 load_title_font
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x0000C406 prepare_numeric_menu_block
 //   0x0000D4C8 FUN_0000d4c8
 //   0x00010BC4 transfer_menu_asset_batch_eight_after_copy
@@ -51,7 +51,7 @@ void FUN_00056ac0(void)
     decode_and_upload_source_stream();
   }
   load_title_font();
-  render_title_text_source();
+  render_encoded_title_text();
 LAB_00056b66:
   if (DAT_00fff0b7 == '\0') {
     DAT_00fff10e = &DAT_00fff9fa + (uint)*(ushort *)(DAT_00fffc04 + 0xa0) * 0x11;
@@ -67,7 +67,7 @@ LAB_00056b66:
     DAT_00fff0d1 = '\0';
     prepare_numeric_menu_block();
     if ((DAT_00fff0b7 == '\x02') && ((DAT_00ff018f & 1) == 0)) {
-      render_title_text_source();
+      render_encoded_title_text();
       wait_for_controller_event();
 LAB_00056da8:
       upload_field_asset_sequence();
@@ -123,7 +123,7 @@ LAB_00056cd4:
     service_audio_if_enabled();
     if (DAT_00fff0d1 == '\0') {
       if (((DAT_00fff0d0 == '\x03') && (DAT_00fff0b7 < '\0')) && (DAT_00fff0c2._0_1_ < '\0')) {
-        render_title_text_source();
+        render_encoded_title_text();
       }
       else {
         FUN_000587da();

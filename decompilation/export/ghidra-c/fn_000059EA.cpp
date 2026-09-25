@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000059EA
-// Name: FUN_000059ea
+// Name: advance_title_sprite_timer
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
 
 
-void FUN_000059ea(void)
+void advance_title_sprite_timer(void)
 
 {
   char cVar1;

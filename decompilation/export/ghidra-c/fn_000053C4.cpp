@@ -3,7 +3,7 @@
 // Name: FUN_000053c4
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00005468 FUN_00005468
+//   0x00005468 clone_entity_spawn_variant_a
 //   0x00005494 FUN_00005494
 //   0x00005622 clear_entity_runtime_fields
 //   0x0000AFF2 prepare_entity_auxiliary_behavior
@@ -35,7 +35,7 @@ void FUN_000053c4(void)
     if (8 < *(short *)(iVar2 + 0x13e)) break;
     if (((*(char *)(iVar2 + 0x1de) == '\r') && ((*(byte *)(iVar2 + 0x110) & 1) != 0)) &&
        ((*(byte *)(iVar2 + 0x110) & 0x40) == 0)) {
-      FUN_00005468();
+      clone_entity_spawn_variant_a();
       prepare_entity_auxiliary_behavior(extraout_A0_00);
       return;
     }
@@ -44,7 +44,7 @@ void FUN_000053c4(void)
   } while (sVar1 != -1);
   if (-1 < DAT_00ffdff8) {
     DAT_00ffdff6 = 0x1e;
-    FUN_00005468();
+    clone_entity_spawn_variant_a();
     return;
   }
   clear_effect_slot();

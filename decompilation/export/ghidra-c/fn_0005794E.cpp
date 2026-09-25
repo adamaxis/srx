@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D94 wait_for_controller_event
-//   0x0000C0DA render_title_text_source
+//   0x0000C0DA render_encoded_title_text
 //   0x00057A44 FUN_00057a44
 //   0x00057A6E FUN_00057a6e
 //   0x00057B8C FUN_00057b8c
@@ -42,7 +42,7 @@ void FUN_0005794e(void)
       iVar3 = iVar3 + 1;
       sVar2 = sVar2 + -1;
       if (sVar2 == -1) {
-        render_title_text_source();
+        render_encoded_title_text();
         wait_for_controller_event();
         return;
       }
@@ -53,7 +53,7 @@ void FUN_0005794e(void)
   }
   if (DAT_00fffbfe < iVar3) {
 LAB_000579dc:
-    render_title_text_source();
+    render_encoded_title_text();
     wait_for_controller_event();
     return;
   }
