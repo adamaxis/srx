@@ -103,6 +103,34 @@ void begin_world_activity(WorldActivityState& state,
     state.source_value = source_value;
 }
 
+WorldActivityRequestAction handle_world_activity_request(
+    WorldActivityRequestState& state,
+    const std::vector<WorldActivityRequestRecord>& records,
+    const std::function<void()>& begin_activity) {
+    state.reset_a = 0U;
+    state.reset_b = 0U;
+    state.reset_c = 0U;
+    state.reset_d = 0U;
+    if (!state.request_pending) {
+        return WorldActivityRequestAction::no_request;
+    }
+
+    state.request_pending = false;
+    state.availability = -1;
+    const auto count = std::min<std::size_t>(13U, records.size());
+    for (std::size_t index = 0; index < count; ++index) {
+        if (records[index].active && records[index].high_effect) {
+            state.availability = 0;
+            break;
+        }
+    }
+    state.activity_handler_token = 0x0001F16AU;
+    if (begin_activity) {
+        begin_activity();
+    }
+    return WorldActivityRequestAction::activity_started;
+}
+
 void build_world_effect_candidates(
     WorldEffectCandidateState& state,
     const std::int16_t first_x,

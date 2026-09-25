@@ -647,7 +647,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0001E302	convert_world_routine_0x0001e302	266	unknown	ok	ghidra-c/fn_0001E302.cpp
 0001E40C	build_world_effect_candidates	18	unknown	ok	ghidra-c/fn_0001E40C.cpp
 0001E41E	lookup_world_effect_tile	30	unknown	ok	ghidra-c/fn_0001E41E.cpp
-0001E43C	convert_world_routine_0x0001e43c	112	unknown	ok	ghidra-c/fn_0001E43C.cpp
+0001E43C	handle_world_activity_request	112	unknown	ok	ghidra-c/fn_0001E43C.cpp
 0001E4AC	spawn_world_effect_at_player_position	84	unknown	ok	ghidra-c/fn_0001E4AC.cpp
 0001E514	clear_effect_slot_state	44	unknown	ok	ghidra-c/fn_0001E514.cpp
 0001E540	initialize_effect_fade_marker	18	unknown	ok	ghidra-c/fn_0001E540.cpp

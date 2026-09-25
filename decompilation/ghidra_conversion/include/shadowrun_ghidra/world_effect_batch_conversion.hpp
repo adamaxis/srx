@@ -63,6 +63,34 @@ bool begin_world_activity_if_idle(WorldActivityState& state,
                                   std::uint16_t source_value);
 void begin_world_activity(WorldActivityState& state, std::uint16_t source_value);
 
+struct WorldActivityRequestRecord {
+    bool active = false;      // record +0x10 bit 0
+    bool high_effect = false; // record +0xB0 bit 7
+};
+
+struct WorldActivityRequestState {
+    bool request_pending = false; // FFE183
+    std::uint8_t reset_a = 0;     // FFE180
+    std::uint8_t reset_b = 0;     // FFE182
+    std::uint8_t reset_c = 0;     // FFE184
+    std::uint8_t reset_d = 0;     // FFE187
+    std::int8_t availability = 0; // FFE181
+    std::uint32_t activity_handler_token = 0; // FFDD2C
+};
+
+enum class WorldActivityRequestAction {
+    no_request,
+    activity_started,
+};
+
+// ROM 0x1E43C: clear the request-side fields, scan the thirteen effect
+// records for an active high-effect entry, then begin activity through the
+// source handler boundary.
+WorldActivityRequestAction handle_world_activity_request(
+    WorldActivityRequestState& state,
+    const std::vector<WorldActivityRequestRecord>& records,
+    const std::function<void()>& begin_activity);
+
 struct WorldEffectCandidateState {
     std::vector<std::pair<std::int16_t, std::int16_t>> candidates;
 };

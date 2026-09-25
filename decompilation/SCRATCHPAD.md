@@ -600,6 +600,10 @@ pass, and completion/menu transition.
 tokens, row range, destination, and initial counters feed the already-typed
 sentinel-bounded `0x1D2E6` advance routine.
 
+`0x1E43C` is now `handle_world_activity_request`, preserving the request
+reset, thirteen-record scan, availability marker, activity handler token, and
+world-activity transition boundary.
+
 The paired layer entries `0x1C3FA`/`0x1C506` are now separated into
 `advance_title_sprite_layers` and `render_title_sprite_layers`. Their phase
 timers, alternate source pointers, two base sprites, optional status overlays,

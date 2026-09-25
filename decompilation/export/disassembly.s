@@ -341,7 +341,7 @@
 00000A7C: clr.b (0x00ffe18f).l
 00000A82: bset.b #0x7,(0x00fffc1c).l
 00000A8A: move.w #-0x1,(0x00ffdfe8).l
-00000A92: jsr 0x0001e43c.l ; call 0001E43C convert_world_routine_0x0001e43c
+00000A92: jsr 0x0001e43c.l ; call 0001E43C handle_world_activity_request
 00000A98: jsr 0x00002f32.l ; call 00002F32 initialize_field_scene_state
 00000A9E: clr.w (0x00ffdf42).l
 00000AA4: bra.w 0x00000ba2

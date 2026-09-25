@@ -40,7 +40,7 @@ caller	caller_name	instruction	text	target	callee	status
 0000075E	run_game_loop	00000A28	jsr 0x00002ce0.l	00002CE0	advance_field_mode_transition	resolved
 0000075E	run_game_loop	00000A32	jsr 0x000167ae.l	000167AE	convert_world_routine_0x000167ae	resolved
 0000075E	run_game_loop	00000A4E	jsr 0x0001e2ec.l	0001E2EC	begin_world_activity	resolved
-0000075E	run_game_loop	00000A92	jsr 0x0001e43c.l	0001E43C	convert_world_routine_0x0001e43c	resolved
+0000075E	run_game_loop	00000A92	jsr 0x0001e43c.l	0001E43C	handle_world_activity_request	resolved
 0000075E	run_game_loop	00000A98	jsr 0x00002f32.l	00002F32	initialize_field_scene_state	resolved
 0000075E	run_game_loop	00000AA8	jsr 0x00000bf2.l	00000BF2	latch_controller_events	resolved
 0000075E	run_game_loop	00000AAE	jsr 0x0000195c.l	0000195C	sample_controller_input	resolved
@@ -2075,7 +2075,7 @@ caller	caller_name	instruction	text	target	callee	status
 0001E302	convert_world_routine_0x0001e302	0001E3DC	bsr.w 0x0001e41e	0001E41E	lookup_world_effect_tile	resolved
 0001E302	convert_world_routine_0x0001e302	0001E3EC	bsr.w 0x0001e41e	0001E41E	lookup_world_effect_tile	resolved
 0001E302	convert_world_routine_0x0001e302	0001E3FC	bsr.w 0x0001e41e	0001E41E	lookup_world_effect_tile	resolved
-0001E43C	convert_world_routine_0x0001e43c	0001E4A6	bra.w 0x0001e2ec	0001E2EC	begin_world_activity	resolved
+0001E43C	handle_world_activity_request	0001E4A6	bra.w 0x0001e2ec	0001E2EC	begin_world_activity	resolved
 0001E4AC	spawn_world_effect_at_player_position	0001E4AE	jsr 0x0001a342.l	0001A342	find_first_available_world_effect_entity_slot	resolved
 0001E4AC	spawn_world_effect_at_player_position	0001E4BE	jsr 0x0001a2cc.l	0001A2CC	allocate_first_free_effect_slot	resolved
 0001E4AC	spawn_world_effect_at_player_position	0001E4CE	jsr 0x000044bc.l	000044BC	initialize_entity_record_from_template	resolved

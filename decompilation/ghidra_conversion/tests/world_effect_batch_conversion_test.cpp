@@ -62,6 +62,26 @@ int main() {
         return 9;
     }
 
+    WorldActivityRequestState activity_request{};
+    activity_request.request_pending = true;
+    activity_request.reset_a = 4U;
+    activity_request.reset_b = 5U;
+    activity_request.reset_c = 6U;
+    activity_request.reset_d = 7U;
+    int activity_starts = 0;
+    const std::vector<WorldActivityRequestRecord> request_records =
+        {{false, false}, {true, false}, {true, true}};
+    if (handle_world_activity_request(
+            activity_request, request_records, [&] { ++activity_starts; }) !=
+            WorldActivityRequestAction::activity_started ||
+        activity_request.request_pending || activity_request.availability != 0 ||
+        activity_request.activity_handler_token != 0x1F16AU ||
+        activity_request.reset_a != 0U || activity_request.reset_b != 0U ||
+        activity_request.reset_c != 0U || activity_request.reset_d != 0U ||
+        activity_starts != 1) {
+        return 10;
+    }
+
     WorldEffectCandidateState candidates;
     build_world_effect_candidates(candidates, 10, 20, 30, 40, {});
     if (candidates.candidates.size() != 10 || candidates.candidates[0] !=
