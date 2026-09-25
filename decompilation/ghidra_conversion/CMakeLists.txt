@@ -1543,6 +1543,19 @@ target_link_libraries(shadowrun_ghidra_attributes_skills_menu_test
 add_test(NAME shadowrun_ghidra_attributes_skills_menu
          COMMAND shadowrun_ghidra_attributes_skills_menu_test)
 
+add_library(shadowrun_ghidra_magic_menu STATIC
+    src/magic_menu_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_magic_menu PUBLIC include)
+
+add_executable(shadowrun_ghidra_magic_menu_test
+    tests/magic_menu_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_magic_menu_test
+    PRIVATE shadowrun_ghidra_magic_menu)
+add_test(NAME shadowrun_ghidra_magic_menu
+         COMMAND shadowrun_ghidra_magic_menu_test)
+
 add_library(shadowrun_ghidra_entity_action_sequence STATIC
     src/entity_action_sequence_conversion.cpp
 )

@@ -631,7 +631,8 @@ mutation/effect paths remain `PENDING`.
 ### Magic: `0xFBA6`
 
 The Magic command first checks the runner class at `+0x9B`; the ordinary magic
-branch requires a class value of at least 2. It then enters the source magic
+branch requires a class value below 2 and a nonzero magic/resource byte at
+`+0x7F`. It then enters the source magic
 panel through `0x11900`/`0x12C36`, with its own spell cursor and panel state
 (`FFF10E` is part of that state). Magic is therefore not an alias for the
 cyberware panel and must not be enabled merely because the command selector
@@ -845,7 +846,7 @@ entry command, loop/stop condition, action sounds, and exit command.
 | equipment | audited path | possession/equipment distinction and major dispatch branches identified |
 | posture | partial | normal calculation branch translated/tested; special/combat consumers pending |
 | clips/attributes/cyberware | partial | panel sources identified; action/effect mutations pending |
-| Magic | pending | spell-specific action paths and transitions incomplete |
+| Magic | partial | class/resource gate and two-row cursor bounds translated; spell-specific action paths and transitions incomplete |
 | Pocket Secretary | partial | five-row field-mode menu and Save/Load entry translated; row effects and restricted-mode gates pending |
 | Matrix | pending | state-specific action paths and transitions incomplete |
 | combat | pending | posture consumers, actions, damage, AI, and result presentation incomplete |

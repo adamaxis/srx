@@ -287,7 +287,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0xC2A6	pocket secretary	NativePortShell::update_pocket_secretary_menu	shadowrun_menu_system	partial		Matrix 0x1817E pending
 0xD01C	attributes/skills menu entry	ghidra_conversion::move_attribute_skill_cursor / build_attributes_and_skills_grid	shadowrun_ghidra_attributes_skills_menu	partial		Typed two-column/ten-row source layout, record-byte mapping, live-record gate, class gate, and cursor bounds are converted; mutation dispatch and presentation callbacks remain
 0x11950	cyberware menu entry	ghidra_conversion::run_cyberware_menu	shadowrun_ghidra_menu_service_sequence	partial		Typed +0x90 fifteen-bit installed-entry enumeration, panel preparation, input wait, and row render order
-0xFBA6	magic	—	—	pending		
+0xFBA6	magic	ghidra_conversion::select_magic_menu_path / move_magic_selection_column / move_magic_selection_row	shadowrun_ghidra_magic_menu	partial		Exact class/resource gate and two-row spell cursor bounds are converted; spell table presentation and equipment-use side effects remain
 0x1817E	matrix run	—	—	pending		
 0x17708	field HUD	ghidra_conversion::render_field_hud	—	partial		Typed display/sprite/five-block upload choreography and conditional mode-8 panel path
 0x530DE	Z80/audio	ghidra_conversion::service_audio_if_enabled	—	partial		Typed audio-enable gate and source queue-service ordering; host audio backend remains separate

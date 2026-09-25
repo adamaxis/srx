@@ -39,6 +39,9 @@ struct RunnerRecordFields {
     std::uint8_t ammo_clips = 0;
     std::uint8_t equipped_armor_index = 0;
     std::uint16_t cyberware_flags = 0;
+    // ROM 0xFBA6 indexes the magic/spell table with the big-endian word at
+    // record +0xA0.
+    std::uint16_t magic_table_index = 0;
 
     std::array<std::uint8_t, kRunnerRecordInventorySlots>
         inventory_item_codes{};
@@ -54,6 +57,7 @@ struct RunnerRecordFields {
 //   0x044BC initializes the live record from an archetype/template.
 //   0x0D82A reads +0x77 and +0x9A/+0x9B for the Attributes/Skills view.
 //   0x0D5DC reads +0x90 for installed cyberware.
+//   0x0FBA6 reads +0x7F and the big-endian +0xA0 spell-table selector.
 //   0x107CE mutates +0x4D (posture).
 //   0x11740, 0x11B58, 0x12A8C, and 0x12CEE read equipment, inventory,
 //       ammunition, armor, skills, and cyberware to select source branches.

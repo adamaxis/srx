@@ -33,6 +33,7 @@ int main() {
                 fields.ammo_clips == 0x4FU &&
                 fields.equipped_armor_index == 0x76U &&
                 fields.cyberware_flags == 0x9091U &&
+                fields.magic_table_index == 0xA0A1U &&
                 fields.inventory_item_codes[0] == 0x66U &&
                 fields.inventory_item_codes[7] == 0x6DU &&
                 fields.inventory_phase_bytes[0] == 0x6EU &&
@@ -55,6 +56,7 @@ int main() {
     changed.attributes[2] = 0x55U;
     changed.skills[8] = 0x66U;
     changed.cyberware_flags = 0x0123U;
+    changed.magic_table_index = 0x4567U;
 
     LiveRunnerRecord destination{};
     destination.bytes.fill(0xEEU);
@@ -71,6 +73,8 @@ int main() {
                 destination.bytes[0x89U] == 0x66U &&
                 destination.bytes[0x90U] == 0x01U &&
                 destination.bytes[0x91U] == 0x23U &&
+                destination.bytes[0xA0U] == 0x45U &&
+                destination.bytes[0xA1U] == 0x67U &&
                 destination.bytes[0x05U] == 0xEEU)) {
         return 2;
     }

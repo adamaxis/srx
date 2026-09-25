@@ -586,6 +586,15 @@ The conversion remains reference-only and does not link into the emulator or
 native runtime; mutation dispatch and source text/presentation callbacks are
 still open boundaries.
 
+The Magic entry at `0xFBA6` now has a typed source gate. The ROM takes the
+spell-panel path only when record `+0x9B < 2` and its magic/resource byte at
+`+0x7F` is nonzero; the three archetype templates confirm Shaman=`1`/`6`,
+Samurai=`2`/`0`, and Decker=`3`/`0`. The record model now also exposes the
+big-endian spell-table selector at `+0xA0`. The `0xFEBE` column helper and
+`0xFF06` row helper preserve the source count-dependent two-row bounds and
+fallback-to-row-zero behavior. Spell-name/value rendering and the equipment
+selection/use path remain explicit unresolved boundaries.
+
 The leaf routines behind the terrain/scene boundary are concrete now.
 `0x16EA0` fills a bounded work-map rectangle with terrain value `2`,
 `0x16FA8` copies a bounded source rectangle using its row stride, and

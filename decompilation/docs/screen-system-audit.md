@@ -274,7 +274,7 @@ at `0xD2A0A` routes the five non-inventory commands as follows:
 | 2 | Clips | `0x11B58` | native selector, ammunition gate, and return path |
 | 3 | Attributes/Skills | `0xD01C` | native read-only two-column view |
 | 4 | Cyberware | `0x11950` | native installed-bit display |
-| 5 | Magic | `0xFBA6` | source handler still to be decoded |
+| 5 | Magic | `0xFBA6` | source class/resource gate and cursor bounds converted; spell state/use path remains |
 | 6 | Pocket Secretary | `0xC2A6` | source handler still to be decoded |
 
 The second indirect table at `0xD2A1E` is the selected-inventory action
@@ -392,7 +392,7 @@ of a port.
 | Cyberware | `0x11950` | Partial | Installed-bit display is present; mutation flows are pending |
 | Runner switching | `0x391A` | Partial | No-eligible-runner behavior is covered; recruited roster is pending |
 | Pocket Secretary / Notebook | `0xC2A6`, `0xC3E6`, `0xC376`, `0xC8C8`, `0xF236`, `0xF2E2`, `0xF312`, `0x18150`, `0xC448` | Partial | Source five-row order, cursor wrap, caller-specific Save/Load return, Notebook base labels and no-current-run response, Group Items catalog/empty path, any-edge return, Cyberdeck no-deck feedback, and active-runner Dismiss path are present; Tips & Clues, conditional Notebook screens, deck-present Matrix path, and restricted-mode gates remain |
-| Magic | `0xFBA6` | Pending | Handler and spell state are pending |
+| Magic | `0xFBA6` | Partial | Source class/resource gate and two-row spell cursor bounds are converted; spell state/presentation and use side effects remain |
 | Matrix/cyberdeck | source deck/program loop | Pending | Separate from Magic and command overview |
 | Field combat | source target/action loops | Pending | Posture consumers, damage, ammo/spell drain, and animation are pending |
 
