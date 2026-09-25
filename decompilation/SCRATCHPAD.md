@@ -603,6 +603,11 @@ pull-the-plug confirmation only when that gate is active. The indirect column
 handlers are still unresolved and remain callbacks/boundaries rather than
 invented implementations.
 
+The `0x19238` Matrix program-storage scan is now typed. It checks all five
+slot bytes for the selected program first, falls back to the first negative
+free slot when the program is not loaded, and reports a full five-slot
+table without fabricating a load or execute operation.
+
 The Attributes/Skills screen is now separated into a typed record/layout
 conversion. `0x0D82A` maps the twenty source label slots into two columns of
 ten rows: attributes use live-record bytes `+0x77..+0x7E`, skills use

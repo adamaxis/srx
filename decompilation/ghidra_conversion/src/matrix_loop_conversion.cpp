@@ -46,6 +46,23 @@ bool matrix_program_uses_runner_details(const std::uint8_t program_index) {
     return program_index < 12U;
 }
 
+MatrixProgramSlotSelection select_matrix_program_slot(
+    const std::uint8_t program_index,
+    const std::array<std::int8_t, 5>& slot_programs) {
+    for (std::uint8_t slot = 0; slot < slot_programs.size(); ++slot) {
+        if (slot_programs[slot] ==
+            static_cast<std::int8_t>(program_index)) {
+            return MatrixProgramSlotSelection{slot, true, true};
+        }
+    }
+    for (std::uint8_t slot = 0; slot < slot_programs.size(); ++slot) {
+        if (slot_programs[slot] < 0) {
+            return MatrixProgramSlotSelection{slot, true, false};
+        }
+    }
+    return MatrixProgramSlotSelection{};
+}
+
 void apply_matrix_action_input(MatrixActionState& state,
                                const std::uint16_t input_events) {
     // The source tests bit 14 first, then bits 12 and 13, and only checks the

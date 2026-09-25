@@ -747,6 +747,11 @@ rows 0..2 enter the program-slot path, row 3/column 2 is blocked without an
 active FFF0B0 run, and row 3/column 3 becomes the pull-the-plug confirmation
 only when that run gate is active. The four indirect column handlers remain
 explicit boundaries until their targets are traced.
+The `0x19238` program-slot path now exposes its record lookup: it searches
+the five source slot bytes for an exact selected-program match, otherwise
+chooses the first negative/free slot, and reports no available slot when all
+five are unavailable. The subsequent load/execute and visual-refresh paths
+remain separate boundaries.
 The Matrix state table, program actions, and rendered resources inside the
 loop must still be recovered before claiming the Matrix panel complete. Until
 then the Matrix hill remains `PENDING`, rather than represented by a generic

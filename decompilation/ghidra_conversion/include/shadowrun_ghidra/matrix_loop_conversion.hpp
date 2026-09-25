@@ -30,6 +30,18 @@ bool matrix_program_is_available(
 // before their description is rendered.
 bool matrix_program_uses_runner_details(std::uint8_t program_index);
 
+struct MatrixProgramSlotSelection {
+    std::uint8_t slot = 0;
+    bool slot_available = false;
+    bool program_already_loaded = false;
+};
+
+// ROM 0x19238: scan the five FFFBD8 slot bytes for the selected program; if
+// it is not loaded, select the first negative/free slot instead.
+MatrixProgramSlotSelection select_matrix_program_slot(
+    std::uint8_t program_index,
+    const std::array<std::int8_t, 5>& slot_programs);
+
 // These are the controller-event bits tested by 0x1822C after the common
 // input latch/sample path has completed.
 enum MatrixInput : std::uint16_t {
