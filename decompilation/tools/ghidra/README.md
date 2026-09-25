@@ -15,7 +15,10 @@ The patch makes the loader suitable for this headless, standard-Genesis import:
 
 Build and install the patched plugin with Gradle and the local Ghidra install,
 then let the loader auto-detect the ROM. The checked-in export script writes a
-single flat export containing `functions.tsv`, `callgraph.tsv`,
+single canonical export containing `functions.tsv`, `callgraph.tsv`,
 `call-sites.tsv`, annotated `disassembly.s`, and one `ghidra-c/fn_*.cpp` per
-function. Its output is source-analysis evidence only; the native port does not
-consume the decompiler output at runtime.
+active function. Entries listed in `docs/completed-ghidra-functions.tsv` are
+written under the flat `ghidra-c/completed/` folder instead. This is an
+organization boundary inside the one export, not a second decompilation or a
+versioned copy. Its output is source-analysis evidence only; the native port
+does not consume the decompiler output at runtime.

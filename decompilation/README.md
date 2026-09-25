@@ -58,7 +58,11 @@ is never modified. A working copy is present at
 filename safely.
 
 The one Ghidra export can be regenerated independently when Ghidra is
-available, but it is not required to build or run the C++ analyzer.
+available, but it is not required to build or run the C++ analyzer. Fully
+converted and independently verified entries are listed in
+`docs/completed-ghidra-functions.tsv` and kept under
+`export/ghidra-c/completed/`; all other function exports remain in the active
+flat `export/ghidra-c/` folder.
 
 ## Native C++ bootstrap
 

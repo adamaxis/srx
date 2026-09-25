@@ -1,0 +1,6 @@
+# Fully converted and independently verified Ghidra entries.
+# entry	native_owner	verification
+0x13726	ghidra_conversion::render_mode_selection_panels; NativePortShell::render	shadowrun_ghidra_mode_selection_render; shadowrun_native_port
+0x5B08E	ghidra_conversion::advance_title_intro_triplet; NativePortShell::render	shadowrun_ghidra_title_intro_late; visual-regression/intro-hill
+0x5B100	ghidra_conversion::advance_title_intro_pulse; NativePortShell::render	shadowrun_ghidra_title_intro_late; visual-regression/intro-hill
+0x5B1B6	ghidra_conversion::advance_title_intro_landing; NativePortShell::render	shadowrun_ghidra_title_intro_late; visual-regression/intro-hill

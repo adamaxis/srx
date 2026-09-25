@@ -339,6 +339,7 @@ decompilation/tools/ghidra/
   ExportShadowrun.java       one canonical naming/export script
 decompilation/export/
   functions.tsv, callgraph.tsv, call-sites.tsv, ghidra-c/, SCRATCHPAD.md
+  ghidra-c/completed/ (only fully converted and independently verified exports)
 decompilation/ghidra_conversion/
   typed source-understanding tests and conversion contracts only
 decompilation/src/graphics_import.cpp
@@ -369,7 +370,7 @@ retaining non-function ROM anchors used by the native audit. The conversion
 tests now group some leaf entries into typed subsystem contracts. That does
 **not** mean the game is fully playable or every hill is defended: the ledger
 currently has 907 `partial`, four `defended`, one `ported`, and five `pending`
-rows, and 258 exported names remain generic pending stronger evidence.
+rows, and 260 exported names remain generic pending stronger evidence.
 
 The realistic native source count is therefore roughly a dozen ownership
 areas, not 900 files:

@@ -1013,6 +1013,42 @@ public class ExportShadowrun extends GhidraScript {
         return String.format("fn_%08X.cpp", function.getEntryPoint().getOffset());
     }
 
+    private static Set<Long> completedEntries(Path output) throws IOException {
+        Set<Long> entries = new HashSet<>();
+        Path parent = output.getParent();
+        Path manifest = (parent == null ? output : parent)
+            .resolve("docs")
+            .resolve("completed-ghidra-functions.tsv");
+        if (!Files.isRegularFile(manifest)) {
+            return entries;
+        }
+        for (String line : Files.readAllLines(manifest, StandardCharsets.UTF_8)) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                continue;
+            }
+            String token = trimmed.split("\\t", 2)[0].trim();
+            if (token.startsWith("0x") || token.startsWith("0X")) {
+                token = token.substring(2);
+            }
+            try {
+                entries.add(Long.parseLong(token, 16));
+            } catch (NumberFormatException ignored) {
+                // Keep malformed manifest rows from preventing source export.
+            }
+        }
+        return entries;
+    }
+
+    private static String relativeFunctionPath(Function function,
+                                                Set<Long> completedEntries) {
+        String directory = completedEntries.contains(
+                function.getEntryPoint().getOffset())
+                ? "ghidra-c/completed/"
+                : "ghidra-c/";
+        return directory + fileName(function);
+    }
+
     private static List<Function> calledFunctions(Function function,
                                                    TaskMonitor monitor) throws Exception {
         Set<Function> called = new HashSet<>();
@@ -1059,7 +1095,8 @@ public class ExportShadowrun extends GhidraScript {
 
     private static void writeFunction(Program program, Function function,
                                       List<Function> calls, DecompInterface decompiler,
-                                      Path output, TaskMonitor monitor) throws IOException {
+                                      Path output, Set<Long> completedEntries,
+                                      TaskMonitor monitor) throws IOException {
         DecompileResults result = decompiler.decompileFunction(function, 120, monitor);
         String body;
         String status;
@@ -1071,7 +1108,8 @@ public class ExportShadowrun extends GhidraScript {
             status = "failed";
         }
 
-        Path file = output.resolve("ghidra-c").resolve(fileName(function));
+        Path file = output.resolve(relativeFunctionPath(function, completedEntries));
+        Files.createDirectories(file.getParent());
         try (BufferedWriter writer = Files.newBufferedWriter(file,
                 StandardCharsets.UTF_8)) {
             writer.write("// Ghidra headless export\n");
@@ -1101,7 +1139,11 @@ public class ExportShadowrun extends GhidraScript {
         }
 
         Path output = Paths.get(scriptArguments[0]).toAbsolutePath().normalize();
+        Set<Long> completedEntryOffsets = completedEntries(output);
         Files.createDirectories(output.resolve("ghidra-c"));
+        if (!completedEntryOffsets.isEmpty()) {
+            Files.createDirectories(output.resolve("ghidra-c/completed"));
+        }
         Program program = currentProgram;
         ensureReviewedInlineFunctions(program);
         applyReviewedNames(program);
@@ -1142,7 +1184,8 @@ public class ExportShadowrun extends GhidraScript {
             for (Function function : entries) {
                 monitor.checkCanceled();
                 List<Function> calls = calledFunctions(function, monitor);
-                writeFunction(program, function, calls, decompiler, output, monitor);
+                writeFunction(program, function, calls, decompiler, output,
+                              completedEntryOffsets, monitor);
                 long size = function.getBody().getNumAddresses();
                 String status = "unknown";
                 DecompileResults check = decompiler.decompileFunction(function, 1, monitor);
@@ -1152,7 +1195,9 @@ public class ExportShadowrun extends GhidraScript {
                 functionTable.write(hex(function.getEntryPoint()) + "\t" +
                                    clean(function.getName()) + "\t" + size + "\t" +
                                    clean(function.getCallingConventionName()) + "\t" +
-                                   status + "\tghidra-c/" + fileName(function) + "\n");
+                                   status + "\t" +
+                                   relativeFunctionPath(function, completedEntryOffsets) +
+                                   "\n");
                 for (Function callee : calls) {
                     int sites = 0;
                     for (Address address : function.getBody().getAddresses(true)) {

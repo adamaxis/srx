@@ -478,6 +478,10 @@ not a final name.
 - Build a typed RAM map from reads/writes, starting with the `0xFFDDxx`,
   `0xFFDFxx`, `0xFFF9xx`, and `0xFFFCxx` clusters.
 - Keep generated `ghidra-c/` output separate from manually reviewed C++.
+- Keep fully converted and independently verified exports in the flat
+  `ghidra-c/completed/` folder; the tracked completion manifest is
+  `docs/completed-ghidra-functions.tsv`. Do not move merely renamed or
+  partially tested entries there.
 - Use `analysis/pointer_tables.tsv` and `analysis/direct_references.tsv` to
   promote only referenced tables into typed C++ data structures.
 - `analysis/verified_tables.tsv` now records the byte-checked reset bootstrap,
