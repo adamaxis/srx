@@ -55,5 +55,33 @@ int main() {
         return 9;
     }
 
+    std::vector<std::uint8_t> spell_table{
+        0x00U, 0x02U, // two entries
+        0x01U, 0x09U, // code 1, source table parameter 9
+        0x03U, 0x04U, // code 3, source table parameter 4
+    };
+    std::vector<std::uint8_t> spell_records(4U * kMagicSpellRecordSize, 0U);
+    spell_records[1U * kMagicSpellRecordSize + 0x25U] = 0x02U;
+    spell_records[3U * kMagicSpellRecordSize + 0x25U] = 0xFFU;
+    const auto available = select_magic_spell(
+        spell_table, {0U, 0U}, spell_records);
+    if (!expect(available.has_value() && available->table_entry_index == 0U &&
+                available->spell_code == 1U &&
+                available->table_parameter == 9U &&
+                available->availability_byte == 2 &&
+                available->availability == MagicSpellAvailability::available)) {
+        return 10;
+    }
+    const auto unavailable = select_magic_spell(
+        spell_table, {1U, 0U}, spell_records);
+    if (!expect(unavailable.has_value() && unavailable->spell_code == 3U &&
+                unavailable->availability_byte == -1 &&
+                unavailable->availability ==
+                    MagicSpellAvailability::unavailable &&
+                !select_magic_spell(spell_table, {2U, 0U}, spell_records)
+                     .has_value())) {
+        return 11;
+    }
+
     return 0;
 }

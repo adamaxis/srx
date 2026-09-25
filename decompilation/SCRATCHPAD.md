@@ -1094,6 +1094,15 @@ big-endian spell-table selector at `+0xA0`. The `0xFEBE` column helper and
 fallback-to-row-zero behavior. Spell-name/value rendering and the equipment
 selection/use path remain explicit unresolved boundaries.
 
+The next Magic leaf is no longer opaque bookkeeping. `0xFC68..0xFC7C` selects
+the active runner's table from `FFF9FA` using the big-endian `+0xA0` index;
+the table is a word count followed by two-byte entries laid out seven per
+row. `0x1088C` uses each entry's high byte as the `0xD4EA0` spell-record code,
+retains the low byte as the source force/value parameter, and treats signed
+record byte `+0x25` as the availability gate. `magic_menu_conversion` now
+returns that typed selection and distinguishes available from unavailable
+spells. The later target/effect application path remains a separate boundary.
+
 The Matrix entry at `0x1817E` is an inline branch of `0x18150`, not a missing
 standalone Ghidra function. The ROM bytes now have a typed conversion that
 preserves its exact shell: display preparation, copy of source block `0xE2E3A`,

@@ -67,4 +67,55 @@ MagicMenuSelection move_magic_selection_row(
     return selection;
 }
 
+std::optional<std::int8_t> read_magic_spell_availability(
+    const std::vector<std::uint8_t>& spell_records,
+    const std::uint8_t spell_code) {
+    const auto record_offset = static_cast<std::size_t>(spell_code) *
+                               kMagicSpellRecordSize;
+    constexpr std::size_t kAvailabilityOffset = 0x25U;
+    if (record_offset + kAvailabilityOffset >= spell_records.size()) {
+        return std::nullopt;
+    }
+    return static_cast<std::int8_t>(spell_records[record_offset +
+                                                  kAvailabilityOffset]);
+}
+
+std::optional<MagicSpellSelection> select_magic_spell(
+    const std::vector<std::uint8_t>& spell_table,
+    const MagicMenuSelection selection,
+    const std::vector<std::uint8_t>& spell_records) {
+    if (spell_table.size() < 2U || selection.row > 1U ||
+        selection.column >= 7U) {
+        return std::nullopt;
+    }
+    const auto count = static_cast<std::uint16_t>(
+        (static_cast<std::uint16_t>(spell_table[0]) << 8U) |
+        spell_table[1]);
+    const auto entry_index = static_cast<std::uint16_t>(
+        static_cast<std::uint16_t>(selection.row) * 7U + selection.column);
+    if (entry_index >= count) {
+        return std::nullopt;
+    }
+    const auto entry_offset = static_cast<std::size_t>(2U) +
+                              static_cast<std::size_t>(entry_index) * 2U;
+    if (entry_offset + 1U >= spell_table.size()) {
+        return std::nullopt;
+    }
+
+    const auto availability =
+        read_magic_spell_availability(spell_records, spell_table[entry_offset]);
+    if (!availability.has_value()) {
+        return std::nullopt;
+    }
+    MagicSpellSelection result{};
+    result.table_entry_index = entry_index;
+    result.spell_code = spell_table[entry_offset];
+    result.table_parameter = spell_table[entry_offset + 1U];
+    result.availability_byte = *availability;
+    result.availability = *availability >= 0
+                              ? MagicSpellAvailability::available
+                              : MagicSpellAvailability::unavailable;
+    return result;
+}
+
 } // namespace shadowrun::ghidra_conversion

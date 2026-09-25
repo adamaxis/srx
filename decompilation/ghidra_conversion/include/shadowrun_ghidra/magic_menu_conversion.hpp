@@ -3,6 +3,8 @@
 #include "shadowrun_ghidra/runner_record_access_conversion.hpp"
 
 #include <cstdint>
+#include <optional>
+#include <vector>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -15,6 +17,23 @@ enum class MagicMenuPath {
 struct MagicMenuSelection {
     std::uint8_t column = 0;
     std::uint8_t row = 0;
+};
+
+constexpr std::size_t kMagicSpellRecordSize = 0x30U;
+
+enum class MagicSpellAvailability {
+    available,
+    unavailable,
+};
+
+struct MagicSpellSelection {
+    std::uint16_t table_entry_index = 0;
+    std::uint8_t spell_code = 0;
+    // The low byte of the table word is consumed by the source force/value
+    // selection path and must not be discarded as padding.
+    std::uint8_t table_parameter = 0;
+    std::int8_t availability_byte = -1;
+    MagicSpellAvailability availability = MagicSpellAvailability::unavailable;
 };
 
 // ROM 0xFBA6 takes the spell panel only for the source magic-capable class
@@ -35,5 +54,21 @@ MagicMenuSelection move_magic_selection_column(
 MagicMenuSelection move_magic_selection_row(
     MagicMenuSelection selection, std::int8_t delta,
     std::uint16_t first_entry_count);
+
+// ROM 0xFC68..0xFC7C selects the runner's table from FFF9FA using the
+// big-endian +0xA0 table index. Each table begins with a word count followed
+// by two-byte entries; 0x1088C uses the entry high byte as a D4EA0 spell
+// record index and gates the detail panel on record byte +0x25.
+std::optional<MagicSpellSelection> select_magic_spell(
+    const std::vector<std::uint8_t>& spell_table,
+    MagicMenuSelection selection,
+    const std::vector<std::uint8_t>& spell_records);
+
+// Read the source signed availability byte directly from one 0x30-byte spell
+// record. This is an offline/reference conversion helper; the runtime does
+// not carry the ROM catalog or perform address arithmetic.
+std::optional<std::int8_t> read_magic_spell_availability(
+    const std::vector<std::uint8_t>& spell_records,
+    std::uint8_t spell_code);
 
 } // namespace shadowrun::ghidra_conversion
