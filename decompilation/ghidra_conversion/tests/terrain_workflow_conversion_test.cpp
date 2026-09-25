@@ -22,6 +22,27 @@ int main() {
         return 1;
     }
 
+    TerrainWorkDispatchState batch_dispatch{};
+    const std::vector<TerrainWorkEntry> batch_entries{
+        {1, 1, 0, 1}, {2, 2, 0, 1}, {0, 0, 0, 1}};
+    std::vector<std::size_t> marked;
+    std::vector<std::size_t> copied;
+    const auto batch_result = process_terrain_work_batch(
+        batch_dispatch, batch_entries, {0, 0},
+        [&marked](const TerrainWorkEntry& entry, const std::size_t index) {
+            marked.push_back(index);
+            return entry.width == 2U;
+        },
+        [&copied](const TerrainWorkEntry& entry) {
+            copied.push_back(entry.width);
+        });
+    if (!batch_result.copied || !batch_result.map_dirty ||
+        marked != std::vector<std::size_t>{0, 1} ||
+        copied != std::vector<std::size_t>{2U} ||
+        batch_dispatch.entry_index != 1U) {
+        return 2;
+    }
+
     std::vector<std::uint16_t> source(20U);
     for (std::size_t index = 0; index < source.size(); ++index) {
         source[index] = static_cast<std::uint16_t>(index + 10U);

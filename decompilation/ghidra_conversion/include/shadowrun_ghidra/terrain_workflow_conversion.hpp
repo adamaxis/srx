@@ -33,6 +33,25 @@ std::uint16_t process_terrain_work_entries(
     const std::vector<std::uint8_t>& status_bytes,
     const TerrainWorkFillBoundary& fill_entry);
 
+struct TerrainWorkBatchResult {
+    bool terminated = false;
+    bool copied = false;
+    bool map_dirty = false;
+};
+
+using TerrainBoundaryMarkBoundary =
+    std::function<bool(const TerrainWorkEntry&, std::size_t status_index)>;
+using TerrainWorkCopyBoundary = std::function<void(const TerrainWorkEntry&)>;
+
+// ROM 0x16ECA: scan pending work entries, apply the boundary predicate, copy
+// the first accepted region, and publish the work-map dirty transition.
+TerrainWorkBatchResult process_terrain_work_batch(
+    TerrainWorkDispatchState& state,
+    const std::vector<TerrainWorkEntry>& entries,
+    const std::vector<std::uint8_t>& status_bytes,
+    const TerrainBoundaryMarkBoundary& mark_boundary,
+    const TerrainWorkCopyBoundary& copy_region);
+
 struct TerrainWorkRegionRequest {
     std::size_t width = 0;
     std::size_t height = 0;

@@ -69,6 +69,45 @@ std::uint16_t process_terrain_work_entries(
     return 0U;
 }
 
+TerrainWorkBatchResult process_terrain_work_batch(
+    TerrainWorkDispatchState& state,
+    const std::vector<TerrainWorkEntry>& entries,
+    const std::vector<std::uint8_t>& status_bytes,
+    const TerrainBoundaryMarkBoundary& mark_boundary,
+    const TerrainWorkCopyBoundary& copy_region) {
+    TerrainWorkBatchResult result{};
+    while (state.entry_index < entries.size()) {
+        const auto& entry = entries[state.entry_index];
+        if (entry.width == 0U) {
+            result.terminated = true;
+            return result;
+        }
+
+        const auto status = state.status_index < status_bytes.size()
+                                ? status_bytes[state.status_index]
+                                : 0U;
+        const auto span = entry.descriptor_span == 0U
+                              ? 1U
+                              : entry.descriptor_span;
+        if (status == 0U && mark_boundary &&
+            mark_boundary(entry, state.status_index)) {
+            if (copy_region) {
+                copy_region(entry);
+            }
+            result.copied = true;
+            result.map_dirty = true;
+            return result;
+        }
+
+        state.entry_index += span;
+        if (entry.region_offset >= 0) {
+            ++state.status_index;
+        }
+    }
+    result.terminated = true;
+    return result;
+}
+
 void copy_terrain_work_region_rows(
     std::vector<std::uint16_t>& destination,
     const std::vector<std::uint16_t>& source,

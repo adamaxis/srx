@@ -545,7 +545,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x164A8	entity descriptor table population	ghidra_conversion::populate_entity_table	shadowrun_ghidra_field_menu_state_batch	partial		Descriptor pairs become typed entity records
 0x16760	projected terrain cell mark	ghidra_conversion::mark_projected_terrain_cell	shadowrun_ghidra_field_menu_state_batch	partial		Projection callback marks terrain word 0x000B and dirty state
 0x16A26	world activity descriptor publish	ghidra_conversion::publish_world_activity_descriptors	shadowrun_ghidra_field_menu_state_batch	partial		Publishes six-byte-spaced descriptors and clears source list
-0x16ECA	terrain work batch	ghidra_conversion::process_terrain_work_batch	shadowrun_ghidra_field_menu_state_batch	partial		Typed boundary processing and alternate-region copy boundary
+0x16ECA	terrain work batch	ghidra_conversion::process_terrain_work_batch	shadowrun_ghidra_terrain_workflow	partial		Typed pending-entry scan, boundary acceptance, first-region copy, and dirty transition
 0x195D8	menu slot visual refresh	ghidra_conversion::refresh_menu_slot_visual	shadowrun_ghidra_field_menu_state_batch	partial		Slot status/pending/offset updates with display callbacks
 0x19856	field HUD refresh	ghidra_conversion::refresh_field_hud	shadowrun_ghidra_field_menu_state_batch	partial		Footer advance followed by five grid writes
 0x19AEE	mode glyph refresh	ghidra_conversion::refresh_mode_glyph	shadowrun_ghidra_field_menu_state_batch	partial		Typed mode remap and grid write boundary

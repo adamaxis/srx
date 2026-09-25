@@ -582,6 +582,12 @@ title-text/decimal-glyph order based on the available count and variant flags.
 `0x17C3C` is explicitly recorded as the empty intermediate service observed in
 the source rather than being mislabeled as an unknown world routine.
 
+The terrain batch wrapper `0x16ECA` now scans the same variable-span work
+descriptors as the leaf routines, invokes the boundary predicate only for
+clear status entries, copies the first accepted region, and returns an
+explicit dirty transition. It no longer depends on the decompiler's hidden
+condition-code output or on the original work-map addresses.
+
 The save-to-field restore routine at `0x594E0` is now a concrete conversion in
 `ghidra_conversion/save_field_restore_conversion`. It copies the `0x248`-byte
 field payload from the save-work image's source offset `0x3D6`, reads the
