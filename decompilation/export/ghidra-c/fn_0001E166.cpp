@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001E166
-// Name: convert_world_routine_0x0001e166
+// Name: trigger_world_effect_sequence
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D44 advance_source_prng
@@ -11,7 +11,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_world_routine_0x0001e166(void)
+void trigger_world_effect_sequence(void)
 
 {
   ushort uVar1;
@@ -43,5 +43,4 @@ void convert_world_routine_0x0001e166(void)
   }
   return;
 }
-
 

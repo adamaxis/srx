@@ -18587,7 +18587,7 @@
 0001DE88: bne.w 0x0001de96
 0001DE8C: jsr 0x00016eca.l ; call 00016ECA process_terrain_work_batch
 0001DE92: bsr.w 0x0001dfc4 ; call 0001DFC4 advance_world_effect_trigger
-0001DE96: bsr.w 0x0001e166 ; call 0001E166 convert_world_routine_0x0001e166
+0001DE96: bsr.w 0x0001e166 ; call 0001E166 trigger_world_effect_sequence
 0001DE9A: bsr.w 0x0001df1a ; call 0001DF1A resolve_nearby_effects
 0001DE9E: rts
 0001DEA0: lea (0xff0100).l,A0 ; data 00ff0100

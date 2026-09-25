@@ -1065,6 +1065,12 @@ side fields, consumes the pending flag, scans at most the source's thirteen
 effect records for the active/high-effect combination, publishes availability
 as `0` or `-1`, installs handler token `0x1F16A`, and begins world activity.
 
+`0x1E166` is now `trigger_world_effect_sequence`. Its native gate preserves
+the current-entity protection bit, activity/placement locks, sequence-mode
+override, and the exact `FFDF88 & 0x3FF == 10` cadence. A successful random
+threshold selects the source's forward-existing-sequence, begin-activity, or
+spawn-new-sequence branch.
+
 `0x1CB20` is now `advance_world_effect_activation`. Its typed state preserves
 the bit-6 secondary-record seed (`0x1400/0x1070`, `-8/-14`, and the source
 timers), the negative setup-marker path (`0x134`/`0x102`, behavior token

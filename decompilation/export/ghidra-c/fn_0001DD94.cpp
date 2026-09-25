@@ -9,7 +9,7 @@
 //   0x0001DEA0 clear_inactive_entity_effects
 //   0x0001DF1A resolve_nearby_effects
 //   0x0001DFC4 advance_world_effect_trigger
-//   0x0001E166 convert_world_routine_0x0001e166
+//   0x0001E166 trigger_world_effect_sequence
 //   0x0001E2EC begin_world_activity
 //   0x00053126 prepare_mode_entry_service
 
@@ -52,9 +52,8 @@ void convert_world_routine_0x0001dd94(void)
     process_terrain_work_batch();
     advance_world_effect_trigger();
   }
-  convert_world_routine_0x0001e166();
+  trigger_world_effect_sequence();
   resolve_nearby_effects();
   return;
 }
-
 

@@ -604,6 +604,10 @@ sentinel-bounded `0x1D2E6` advance routine.
 reset, thirteen-record scan, availability marker, activity handler token, and
 world-activity transition boundary.
 
+`0x1E166` is now `trigger_world_effect_sequence`, with the source eligibility
+predicates, 0x3FF timing gate, random threshold, and three world-event
+outcomes represented as typed callbacks.
+
 The paired layer entries `0x1C3FA`/`0x1C506` are now separated into
 `advance_title_sprite_layers` and `render_title_sprite_layers`. Their phase
 timers, alternate source pointers, two base sprites, optional status overlays,

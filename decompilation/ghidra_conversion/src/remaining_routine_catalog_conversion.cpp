@@ -161,7 +161,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x0001DC4CU, "convert_world_routine_0x0001dc4c", RoutineFamily::world, 328U},
     {0x0001DD94U, "convert_world_routine_0x0001dd94", RoutineFamily::world, 268U},
     {0x0001DF34U, "convert_world_routine_0x0001df34", RoutineFamily::world, 144U},
-    {0x0001E166U, "convert_world_routine_0x0001e166", RoutineFamily::world, 150U},
+    {0x0001E166U, "trigger_world_effect_sequence", RoutineFamily::world, 150U},
     {0x0001E302U, "convert_world_routine_0x0001e302", RoutineFamily::world, 266U},
     {0x0001E43CU, "handle_world_activity_request", RoutineFamily::world, 112U},
     {0x0001E69CU, "convert_world_routine_0x0001e69c", RoutineFamily::world, 144U},
