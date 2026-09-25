@@ -1112,6 +1112,12 @@ raises force, `0x0400` lowers it, and `0x0200`, `0x4000`, `0x1000`, or
 `0x2000` finish the loop. All adjustments use the same inclusive clamp, so
 the host state cannot diverge at the force edges; VDP redraws remain outside
 this state conversion.
+
+The Cyberware screen at `0x11950` is now a concrete menu model: a zero
+`+0x90` bitfield selects the no-cyberware message, while a nonzero field scans
+bits `0..14` into ascending visible rows. Bit 15 affects the source's empty
+versus nonempty branch but has no row of its own. The text assets and common
+menu-row input service remain separate.
 The posture companion at `0x10722` is also now explicit: source `0x0800`
 and `0x0400` adjust posture by `+1`/`-1` through the existing `0..4` clamp;
 `0x0100`, `0x4000`, and `0x1000` finish the sub-loop, while other input is a
