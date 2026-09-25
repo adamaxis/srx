@@ -65,6 +65,48 @@ int main() {
         return 3;
     }
 
+    TitleBurstAnimationState burst{};
+    burst.frame_countdown = 0U;
+    burst.position_x = 0x004AU;
+    burst.position_y = 0x004CU;
+    int burst_appends = 0;
+    int burst_builds = 0;
+    int burst_finished = 0;
+    TitleBurstAnimationCallbacks burst_callbacks{};
+    burst_callbacks.resolve_sprite_data =
+        [](const std::uint32_t table, const std::uint16_t phase)
+        -> std::optional<std::uint32_t> {
+        return table + phase + 8U;
+    };
+    burst_callbacks.append_sprite_record = [&](const std::uint16_t key) {
+        burst_appends += key == 0x0780U ? 1 : 100;
+    };
+    burst_callbacks.build_sprite = [&](const TitleBurstSpriteBuild& build) {
+        if (build.source_table_token != 0x1D970U || build.phase != 1U ||
+            build.x != 0x004AU || build.y != 0x004CU ||
+            build.build_flags != 0x6000U ||
+            build.sprite_data_token != 0x1D979U) {
+            burst_builds += 100;
+        } else {
+            ++burst_builds;
+        }
+    };
+    burst_callbacks.clear_completion_marker = [&] { ++burst_finished; };
+    if (advance_title_burst_animation(burst, burst_callbacks) !=
+            TitleBurstAnimationAction::rendered ||
+        burst.phase != 1U || burst.frame_countdown != 4U ||
+        burst_appends != 1 || burst_builds != 1 || burst_finished != 0) {
+        return 4;
+    }
+    burst.phase = 3U;
+    burst.frame_countdown = 0U;
+    if (advance_title_burst_animation(burst, burst_callbacks) !=
+            TitleBurstAnimationAction::completed ||
+        burst.phase != 4U || burst_appends != 1 || burst_builds != 1 ||
+        burst_finished != 1) {
+        return 5;
+    }
+
     TitleNoiseState noise{};
     noise.frame_countdown = 1U;
     noise.frame_reload = 4U;
@@ -83,7 +125,7 @@ int main() {
             TitleNoiseAction::updated ||
         random_calls != 4 || writes != 1 || noise.dirty_flags != 0x0CU ||
         noise.frame_countdown != 0U) {
-        return 4;
+        return 6;
     }
 
     TitleNoiseState finish{};
@@ -100,7 +142,7 @@ int main() {
     if (advance_title_noise_stream(finish, noise_callbacks) !=
             TitleNoiseAction::finalized ||
         (finish.record_flags & 0x04U) != 0U || finished != 2) {
-        return 5;
+        return 7;
     }
     return 0;
 }

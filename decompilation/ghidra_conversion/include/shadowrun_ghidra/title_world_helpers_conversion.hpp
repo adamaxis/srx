@@ -81,6 +81,47 @@ TitleFigureAnimationAction advance_title_figure_animation(
     TitleFigureAnimationState& state,
     const TitleFigureAnimationCallbacks& callbacks);
 
+struct TitleBurstAnimationState {
+    std::uint16_t frame_countdown = 0; // FFE0B0
+    std::uint16_t phase = 0;            // FFE0AE
+    std::uint16_t position_x = 0;       // FFE04A
+    std::uint16_t position_y = 0;       // FFE04C
+};
+
+struct TitleBurstSpriteBuild {
+    std::uint32_t source_table_token = 0x0001D970U;
+    std::uint16_t phase = 0;
+    std::uint16_t sprite_key = 0x0780U;
+    std::uint16_t x = 0;
+    std::uint16_t y = 0;
+    std::uint16_t build_flags = 0x6000U;
+    std::uint32_t sprite_data_token = 0;
+};
+
+struct TitleBurstAnimationCallbacks {
+    // The source indexes the five-entry pointer table at ROM 0x1D970 and
+    // passes the selected entry plus eight bytes to the sprite builder.
+    std::function<std::optional<std::uint32_t>(
+        std::uint32_t source_table_token, std::uint16_t phase)>
+        resolve_sprite_data;
+    std::function<void(std::uint16_t sprite_key)> append_sprite_record;
+    std::function<void(const TitleBurstSpriteBuild&)> build_sprite;
+    std::function<void()> clear_completion_marker;
+};
+
+enum class TitleBurstAnimationAction {
+    rendered,
+    completed,
+    sprite_data_unresolved,
+};
+
+// ROM 0x1BA6E: run the four-frame title burst, appending sprite key 0x780
+// at the shared title position. Phase four is the terminal path: it clears
+// the source completion marker and emits no sprite for that tick.
+TitleBurstAnimationAction advance_title_burst_animation(
+    TitleBurstAnimationState& state,
+    const TitleBurstAnimationCallbacks& callbacks);
+
 struct TitleNoiseState {
     std::uint16_t frame_countdown = 0; // FFE0E8
     std::uint16_t frame_reload = 0;    // FFE0E6

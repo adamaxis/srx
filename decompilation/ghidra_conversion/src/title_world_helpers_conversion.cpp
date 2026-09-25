@@ -156,6 +156,38 @@ TitleFigureAnimationAction advance_title_figure_animation(
     return TitleFigureAnimationAction::rendered;
 }
 
+TitleBurstAnimationAction advance_title_burst_animation(
+    TitleBurstAnimationState& state,
+    const TitleBurstAnimationCallbacks& callbacks) {
+    if (decrement_word_until_negative(state.frame_countdown)) {
+        state.frame_countdown = 4U;
+        ++state.phase;
+        if (state.phase >= 4U) {
+            if (callbacks.clear_completion_marker) {
+                callbacks.clear_completion_marker();
+            }
+            return TitleBurstAnimationAction::completed;
+        }
+    }
+
+    if (callbacks.append_sprite_record) {
+        callbacks.append_sprite_record(0x0780U);
+    }
+    const auto token = callbacks.resolve_sprite_data
+                           ? callbacks.resolve_sprite_data(0x0001D970U,
+                                                            state.phase)
+                           : std::nullopt;
+    if (!token.has_value()) {
+        return TitleBurstAnimationAction::sprite_data_unresolved;
+    }
+    if (callbacks.build_sprite) {
+        callbacks.build_sprite(TitleBurstSpriteBuild{
+            0x0001D970U, state.phase, 0x0780U, state.position_x,
+            state.position_y, 0x6000U, *token});
+    }
+    return TitleBurstAnimationAction::rendered;
+}
+
 TitleNoiseAction advance_title_noise_stream(
     TitleNoiseState& state,
     const TitleNoiseCallbacks& callbacks) {

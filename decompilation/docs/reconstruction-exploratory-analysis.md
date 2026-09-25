@@ -1001,6 +1001,8 @@ The next three Matrix/menu leaves are now typed in `matrix_menu_service_conversi
 `0x1989A` normalizes the signed HUD variant to `-1`, `0`, or `1`, exposes the upward completion fade/world-effect/vblank/controller sequence, and publishes audio only when the source's last-published variant changes. These callbacks are source-service boundaries and are not linked to the emulator or native renderer.
 The paired runner-record leaves are now no longer generic: `0x1A4EA` selects the compact timing record at `FF1100 + (FFF118 * 0x14)`, reads its `+0x10`, and returns the signed table value from ROM `0x1A50E` (`100, 20, 10, 9, ... -2`), while `0x1A538` tests the same selected record's `+0x0F` as the active-effect marker. They are deliberately separate from the 0x100-byte live runner record model and are exposed through the typed record-access module with explicit invalid-index handling for host callers.
 
+`0x1BA6E` is now identified as the four-frame title burst animation called from the larger title/world sequence at `0x1ADE6`. It advances the shared `FFE0B0`/`FFE0AE` countdown and phase, appends sprite key `0x780`, resolves the phase entry from the ROM `0x1D970` table, and builds it at the shared `FFE04A`/`FFE04C` position with attributes `0x6000`. Phase four is terminal and clears the source completion marker without emitting another sprite; the native conversion leaves the sprite-data boundary explicit.
+
 The next title/world-effect pair is also no longer generic. `0x1A818` starts
 the descriptor transition, choosing between its six-frame loading path and the
 active descriptor-token path; its source word `0xD280` is recorded as such

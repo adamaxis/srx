@@ -580,6 +580,11 @@ record: both select `FF1100 + (FFF118 * 0x14)`, with `0x1A4EA` reading byte
 `+0x10` for the signed animation-delta table and `0x1A538` testing byte `+0x0F`.
 The conversion now models that compact current-record roster explicitly and
 rejects an out-of-range host selection. The full 148-test suite remains green.
+
+`0x1BA6E` is now converted as `advance_title_burst_animation`. Its source
+four-frame countdown, terminal phase, `0x1D970` phase table, sprite key
+`0x780`, shared title position, `0x6000` attributes, append/build order, and
+completion-marker callback are represented in the title-world helper module.
 The selected Matrix program-action service at `0x19976` is now separate as `matrix_program_action_conversion`. It rejects empty/loading slots and active values `2..5`, requires overlay stage `0x0C`, preserves `FFDD22` bit-14/bit-12 action-mode priority, dispatches the selected program through an explicit unresolved table callback, and resets the overlay. The normal program-code mapping publishes `3`, `5`, `2`, or `4` exactly as the source branches. Selection `7` preserves the runner `+0x13` parity split, availability clear for even fields, HUD variant publication, and seed-mode `4`/`5` transition into the existing effect boundary.
 The next Matrix/menu service batch is isolated in `matrix_menu_service_conversion`.
 `0x19632` clears one loaded program slot, applies the source code-specific flag/status cleanup, stores the empty code and visual state, and submits the repeated-grid, grid, and row refreshes in source order.

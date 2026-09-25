@@ -137,7 +137,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x0001B364U, "advance_title_figure_animation", RoutineFamily::world, 248U},
     {0x0001B45CU, "advance_title_noise_stream", RoutineFamily::world, 310U},
     {0x0001B7D0U, "initialize_behavior_record", RoutineFamily::world, 28U},
-    {0x0001BA6EU, "convert_world_routine_0x0001ba6e", RoutineFamily::world, 102U},
+    {0x0001BA6EU, "advance_title_burst_animation", RoutineFamily::world, 102U},
     {0x0001BB6AU, "convert_world_routine_0x0001bb6a", RoutineFamily::world, 264U},
     {0x0001BCE8U, "convert_world_routine_0x0001bce8", RoutineFamily::world, 342U},
     {0x0001BEBAU, "convert_world_routine_0x0001beba", RoutineFamily::world, 162U},

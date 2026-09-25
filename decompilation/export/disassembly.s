@@ -16965,7 +16965,7 @@
 0001B080: bsr.w 0x0001b87a ; call 0001B87A dispatch_title_phase_handler
 0001B084: tst.w (0x00ffe0ac).l
 0001B08A: beq.w 0x0001b092
-0001B08E: bsr.w 0x0001ba6e ; call 0001BA6E convert_world_routine_0x0001ba6e
+0001B08E: bsr.w 0x0001ba6e ; call 0001BA6E advance_title_burst_animation
 0001B092: btst.b #0x0,(0x00fff0a1).l
 0001B09A: beq.w 0x0001b0a2
 0001B09E: bsr.w 0x0001bb6a ; call 0001BB6A convert_world_routine_0x0001bb6a

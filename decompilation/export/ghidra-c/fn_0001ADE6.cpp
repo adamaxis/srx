@@ -28,7 +28,7 @@
 //   0x0001B5A6 reset_word_stream_area
 //   0x0001B680 attach_behavior_descriptor_e
 //   0x0001B87A dispatch_title_phase_handler
-//   0x0001BA6E convert_world_routine_0x0001ba6e
+//   0x0001BA6E advance_title_burst_animation
 //   0x0001BB6A convert_world_routine_0x0001bb6a
 //   0x0001BCE8 convert_world_routine_0x0001bce8
 //   0x0001BEBA convert_world_routine_0x0001beba
@@ -183,7 +183,7 @@ LAB_0001afc0:
         dispatch_title_phase_handler();
       }
       if (_DAT_00ffe0ac != 0) {
-        convert_world_routine_0x0001ba6e();
+        advance_title_burst_animation();
       }
       if ((DAT_00fff0a1 & 1) != 0) {
         convert_world_routine_0x0001bb6a();
