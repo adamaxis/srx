@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <vector>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -13,6 +14,7 @@ constexpr std::size_t kRunnerRecordInventorySlots = 8U;
 constexpr std::size_t kRunnerRecordAttributeCount = 8U;
 constexpr std::size_t kRunnerRecordSkillCount = 12U;
 constexpr std::size_t kRunnerRecordAuxiliaryCount = 4U;
+constexpr std::size_t kRunnerTimingRecordSize = 0x14U;
 
 // The source keeps a live runner in a 0x100-byte record. These are the
 // fields already proven by the ROM consumers; bytes not represented here are
@@ -72,12 +74,25 @@ RunnerRecordFields read_runner_record_fields(const LiveRunnerRecord& record);
 void write_runner_record_fields(const RunnerRecordFields& fields,
                                 LiveRunnerRecord& destination);
 
-// ROM 0x1A4EA: use runner record +0x10 as an index into the signed animation
-// delta table at ROM 0x1A50E. Invalid host indexes are explicit no-results.
-std::optional<std::int16_t> lookup_runner_animation_delta(
-    const LiveRunnerRecord& record);
+// The world-effect animation routines use a different, compact roster than
+// the 0x100-byte live runner record above. ROM 0x1A4EA and 0x1A538 select
+// FF1100 + (FFF118 * 0x14), then read +0x10/+0x0F respectively.
+struct CurrentRunnerTimingRecord {
+    std::array<std::uint8_t, kRunnerTimingRecordSize> bytes{};
+};
 
-// ROM 0x1A538: test the current runner record's +0x0F effect marker.
-bool runner_record_has_active_effect(const LiveRunnerRecord& record);
+struct RunnerTimingRosterState {
+    std::vector<CurrentRunnerTimingRecord> records;
+    std::uint16_t current_index = 0;
+};
+
+// ROM 0x1A4EA: use the selected compact record's +0x10 as an index into the
+// signed animation delta table at ROM 0x1A50E. Invalid host indexes and an
+// out-of-range current record are explicit no-results.
+std::optional<std::int16_t> lookup_runner_animation_delta(
+    const RunnerTimingRosterState& roster);
+
+// ROM 0x1A538: test the selected compact record's +0x0F effect marker.
+bool runner_record_has_active_effect(const RunnerTimingRosterState& roster);
 
 } // namespace shadowrun::ghidra_conversion

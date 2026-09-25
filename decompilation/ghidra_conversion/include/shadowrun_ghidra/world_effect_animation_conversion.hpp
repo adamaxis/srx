@@ -30,7 +30,8 @@ struct WorldEffectAnimationSpriteBuild {
 
 struct WorldEffectAnimationCallbacks {
     // ROM 0x1A4EA returns the signed timing delta for the currently selected
-    // runner record. The current-record lookup is a separate record hill.
+    // compact timing-roster record. The current-record lookup is a separate
+    // record hill.
     std::function<std::optional<std::int16_t>()> read_runner_animation_delta;
     // Resolve the selected source table entry and its +8 sprite payload as a
     // host token. The transition table is ROM 0xF1C46; normal tables come from

@@ -128,18 +128,25 @@ void write_runner_record_fields(const RunnerRecordFields& fields,
 }
 
 std::optional<std::int16_t> lookup_runner_animation_delta(
-    const LiveRunnerRecord& record) {
+    const RunnerTimingRosterState& roster) {
     static constexpr std::array<std::int16_t, 16> kAnimationDeltas{
         100, 20, 10, 9, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, -1, -2};
-    const auto index = static_cast<std::size_t>(record.bytes[0x10U]);
+    const auto record_index = static_cast<std::size_t>(roster.current_index);
+    if (record_index >= roster.records.size()) {
+        return std::nullopt;
+    }
+    const auto index = static_cast<std::size_t>(
+        roster.records[record_index].bytes[0x10U]);
     if (index >= kAnimationDeltas.size()) {
         return std::nullopt;
     }
     return kAnimationDeltas[index];
 }
 
-bool runner_record_has_active_effect(const LiveRunnerRecord& record) {
-    return record.bytes[0x0FU] != 0U;
+bool runner_record_has_active_effect(const RunnerTimingRosterState& roster) {
+    const auto record_index = static_cast<std::size_t>(roster.current_index);
+    return record_index < roster.records.size() &&
+           roster.records[record_index].bytes[0x0FU] != 0U;
 }
 
 } // namespace shadowrun::ghidra_conversion

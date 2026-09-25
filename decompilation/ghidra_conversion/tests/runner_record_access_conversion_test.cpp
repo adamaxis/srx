@@ -79,20 +79,27 @@ int main() {
         return 2;
     }
 
-    LiveRunnerRecord animation{};
-    animation.bytes[0x10U] = 0U;
-    if (!lookup_runner_animation_delta(animation).has_value() ||
-        *lookup_runner_animation_delta(animation) != 100) {
+    RunnerTimingRosterState timing_roster{};
+    timing_roster.records.resize(2U);
+    timing_roster.current_index = 1U;
+    timing_roster.records[1U].bytes[0x10U] = 0U;
+    if (!lookup_runner_animation_delta(timing_roster).has_value() ||
+        *lookup_runner_animation_delta(timing_roster) != 100) {
         return 3;
     }
-    animation.bytes[0x10U] = 14U;
-    if (!lookup_runner_animation_delta(animation).has_value() ||
-        *lookup_runner_animation_delta(animation) != -1) {
+    timing_roster.records[1U].bytes[0x10U] = 14U;
+    if (!lookup_runner_animation_delta(timing_roster).has_value() ||
+        *lookup_runner_animation_delta(timing_roster) != -1) {
         return 4;
     }
-    animation.bytes[0x0FU] = 1U;
-    if (!runner_record_has_active_effect(animation)) {
+    timing_roster.records[1U].bytes[0x0FU] = 1U;
+    if (!runner_record_has_active_effect(timing_roster)) {
         return 5;
+    }
+    timing_roster.current_index = 2U;
+    if (lookup_runner_animation_delta(timing_roster).has_value() ||
+        runner_record_has_active_effect(timing_roster)) {
+        return 6;
     }
 
     return 0;

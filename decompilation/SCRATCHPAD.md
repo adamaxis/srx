@@ -573,6 +573,13 @@ the original pointer arithmetic into host code. `0x0CEC` now installs the
 four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
+
+The runner animation timing leaves at `0x1A4EA` and `0x1A538` were corrected
+against the ROM disassembly. They do not read the 0x100-byte live runner
+record: both select `FF1100 + (FFF118 * 0x14)`, with `0x1A4EA` reading byte
+`+0x10` for the signed animation-delta table and `0x1A538` testing byte `+0x0F`.
+The conversion now models that compact current-record roster explicitly and
+rejects an out-of-range host selection. The full 148-test suite remains green.
 The selected Matrix program-action service at `0x19976` is now separate as `matrix_program_action_conversion`. It rejects empty/loading slots and active values `2..5`, requires overlay stage `0x0C`, preserves `FFDD22` bit-14/bit-12 action-mode priority, dispatches the selected program through an explicit unresolved table callback, and resets the overlay. The normal program-code mapping publishes `3`, `5`, `2`, or `4` exactly as the source branches. Selection `7` preserves the runner `+0x13` parity split, availability clear for even fields, HUD variant publication, and seed-mode `4`/`5` transition into the existing effect boundary.
 The next Matrix/menu service batch is isolated in `matrix_menu_service_conversion`.
 `0x19632` clears one loaded program slot, applies the source code-specific flag/status cleanup, stores the empty code and visual state, and submits the repeated-grid, grid, and row refreshes in source order.
