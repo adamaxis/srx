@@ -1,48 +1,38 @@
 // Ghidra headless export
 // Entry: 0x000266E4
-// Name: convert_world_routine_0x000266e4
-// Decompile status: ok
+// Name: initialize_world_tile_buffers
+// Decompile status: source-shaped annotation
+//
+// Native conversion: ghidra_conversion::initialize_world_tile_buffers.
+// The selected resource record and the primary/secondary buffer dispatches
+// are host callbacks. The old A5/A6 pointer frame is not part of the runtime.
+//
 // Calls recovered from direct call instructions:
 //   0x00024E20 dispatch_indexed_handler
 //   0x00026696 copy_tile_blocks
 
-
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
-
-void convert_world_routine_0x000266e4(void)
-
+void initialize_world_tile_buffers(void)
 {
-  undefined2 *unaff_A5;
-  
   dispatch_indexed_handler();
-  DAT_00ffe192 = *unaff_A5;
-  DAT_00ffe19a = *unaff_A5;
-  DAT_00ffe194 = unaff_A5[1];
-  DAT_00ffe19c = unaff_A5[1];
-  if (*(char *)((int)&DAT_00ff1100 + (int)(short)(DAT_00fff118 * 0x14)) == '\0') {
-    DAT_00ffe19e = 0xe;
-    DAT_00ffe1a0 = 8;
+  FFE192 = FFE19A = *selected_resource_record;
+  FFE194 = FFE19C = selected_resource_record[1];
+  if (scene_record_is_compact == 0) {
+    FFE19E = 0x0E;
+    FFE1A0 = 8;
+  } else {
+    FFE19E = 0x0C;
+    FFE1A0 = 10;
   }
-  else {
-    DAT_00ffe19e = 0xc;
-    DAT_00ffe1a0 = 10;
-  }
-  DAT_00ffe196 = 0;
-  DAT_00ffe198 = 0;
-  DAT_00ffe1a2 = 0;
-  DAT_00ffe1a4 = 0;
-  DAT_00ffe1a8 = 1;
-  DAT_00ffe1a6 = 1;
+  FFE196 = 0;
+  FFE198 = 0;
+  FFE1A2 = 0;
+  FFE1A4 = 0;
+  FFE1A8 = 1;
+  FFE1A6 = 1;
   copy_tile_blocks();
-  DAT_00ffe1aa = &DAT_00ff8700;
-  DAT_00ffe1ae = &DAT_00ff9700;
-  dispatch_indexed_handler();
-  DAT_00ffe1ae = &DAT_00ffb740;
-  dispatch_indexed_handler();
-  _DAT_00ffb740 = _DAT_00ffb740 + -1;
-  DAT_00ffdd28 = 0x11e;
-  DAT_00ffdd2a = 0xe4;
-  return;
+  dispatch_indexed_handler(primary_tile_buffer);
+  dispatch_indexed_handler(secondary_tile_buffer);
+  --FFB740;
+  FFDD28 = 0x11E;
+  FFDD2A = 0xE4;
 }
-
-

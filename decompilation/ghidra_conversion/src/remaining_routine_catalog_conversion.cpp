@@ -172,7 +172,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x0001FA78U, "select_field_mode_service", RoutineFamily::world, 776U},
     {0x0001FD80U, "finalize_field_mode_exit", RoutineFamily::world, 2228U},
     {0x00020634U, "select_mode_entry_resource", RoutineFamily::world, 224U},
-    {0x000266E4U, "convert_world_routine_0x000266e4", RoutineFamily::world, 186U},
+    {0x000266E4U, "initialize_world_tile_buffers", RoutineFamily::world, 186U},
     {0x0002679EU, "convert_world_routine_0x0002679e", RoutineFamily::world, 326U},
     {0x00026972U, "refresh_title_sprite_records", RoutineFamily::world, 142U},
     {0x00026A00U, "convert_world_routine_0x00026a00", RoutineFamily::world, 510U},

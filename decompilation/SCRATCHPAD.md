@@ -598,6 +598,12 @@ decrements the pending animation countdown, defers only while the source
 low-two-bit render phase is above one, clears an expired pending marker, and
 then invokes the existing host sprite-record builder.
 
+The `0x266E4` world setup is now `initialize_world_tile_buffers`. It exposes
+the selected resource record, the source's 14x8 versus 12x10 layout branch,
+zeroed tile accumulators, unit tile steps, the copy/primary/secondary buffer
+sequence, pending-buffer decrement, and reset world origin as typed native
+state and callbacks.
+
 `0x1CA12` is now `advance_world_effect_motion`, preserving the negative-
 countdown finalizer, direction-dependent source-table callback, fixed Y
 subtraction, shifted sprite placement, and menu-service boundary.

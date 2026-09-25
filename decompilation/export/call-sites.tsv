@@ -2149,10 +2149,10 @@ caller	caller_name	instruction	text	target	callee	status
 0001FD80	finalize_field_mode_exit	00020368	jsr 0x0001e1fc.l	0001E1FC	forward_effect_sequence	resolved
 00020714	finalize_mode_exit	00020766	bra.w 0x0001f246	0001F246	run_mode_exit_services	resolved
 00024E20	dispatch_indexed_handler	00024E32	jsr (A0)			indirect/unresolved
-000266E4	convert_world_routine_0x000266e4	000266E6	jsr 0x00024e20.l	00024E20	dispatch_indexed_handler	resolved
-000266E4	convert_world_routine_0x000266e4	00026758	bsr.w 0x00026696	00026696	copy_tile_blocks	resolved
-000266E4	convert_world_routine_0x000266e4	0002676E	jsr 0x00024e20.l	00024E20	dispatch_indexed_handler	resolved
-000266E4	convert_world_routine_0x000266e4	0002677E	jsr 0x00024e20.l	00024E20	dispatch_indexed_handler	resolved
+000266E4	initialize_world_tile_buffers	000266E6	jsr 0x00024e20.l	00024E20	dispatch_indexed_handler	resolved
+000266E4	initialize_world_tile_buffers	00026758	bsr.w 0x00026696	00026696	copy_tile_blocks	resolved
+000266E4	initialize_world_tile_buffers	0002676E	jsr 0x00024e20.l	00024E20	dispatch_indexed_handler	resolved
+000266E4	initialize_world_tile_buffers	0002677E	jsr 0x00024e20.l	00024E20	dispatch_indexed_handler	resolved
 0002679E	convert_world_routine_0x0002679e	000267F0	jsr 0x00000bd2.l	00000BD2	wait_for_vblank	resolved
 0002679E	convert_world_routine_0x0002679e	000267F6	jsr 0x00000bf2.l	00000BF2	latch_controller_events	resolved
 0002679E	convert_world_routine_0x0002679e	000267FC	jsr 0x00017cc8.l	00017CC8	advance_hud_sprite_audio_pulse	resolved
