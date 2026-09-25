@@ -16891,7 +16891,7 @@
 0001AF04: beq.w 0x0001af12
 0001AF08: jsr 0x00053704.l ; call 00053704 run_runner_selection_screen
 0001AF0E: bra.w 0x0001af18
-0001AF12: jsr 0x00054662.l ; call 00054662 convert_graphics_routine_0x00054662
+0001AF12: jsr 0x00054662.l ; call 00054662 run_mode_action_loop
 0001AF18: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
 0001AF1E: bra.w 0x0001b1b6
 0001AF22: tst.w (0x00ffe084).l
@@ -23520,7 +23520,7 @@
 000546A2: or.b D0b,(0x0,A5,D3w*0x1) ; data 00fffb30
 000546A6: cmpi.b #0x1,(0x0,A1,D1w*0x1) ; data 00ff1100
 000546AC: bne.w 0x000546b6
-000546B0: jsr 0x000532a8.l ; call 000532A8 fill_audio_menu_sentinel
+000546B0: jsr 0x000532a8.l ; call 000532A8 fill_mode_auxiliary_sentinel
 000546B6: move.b #-0x1,(0x00fff0a6).l
 000546BE: clr.b (0x00fff0a8).l
 000546C4: move.w #-0x7500,(0x00c00004).l
@@ -23582,10 +23582,10 @@
 000547B4: move.w #0x17,D7w
 000547B8: move.w #0x1,D1w
 000547BC: jsr 0x00001232.l ; call 00001232 write_vdp_grid
-000547C2: bsr.w 0x000549f6 ; call 000549F6 select_display_status
+000547C2: bsr.w 0x000549f6 ; call 000549F6 select_mode_display_status
 000547C6: jsr 0x00017f80.l ; call 00017F80 refresh_mode_metadata_wrapper
 000547CC: move.w #-0x7e8c,(0x00c00004).l
-000547D4: bsr.w 0x00054a8e ; call 00054A8E convert_graphics_routine_0x00054a8e
+000547D4: bsr.w 0x00054a8e ; call 00054A8E advance_random_mode_event
 000547D8: tst.b (0x00fff0b1).l
 000547DE: bmi.w 0x00054bcc
 000547E2: lea (0xff1100).l,A1 ; data 00ff1100
@@ -23602,7 +23602,7 @@
 00054816: lea (0x166696).l,A1 ; data 00166696
 0005481C: movea.l #0xc596,A2
 00054822: jsr 0x0000c0da.l ; call 0000C0DA render_encoded_title_text
-00054828: bsr.w 0x00054a28 ; call 00054A28 convert_graphics_routine_0x00054a28
+00054828: bsr.w 0x00054a28 ; call 00054A28 render_mode_status_summary
 0005482C: clr.b (0x00fff0dc).l
 00054832: clr.w D2w
 00054834: bra.w 0x0005488c
@@ -23654,7 +23654,7 @@
 000548F2: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 000548F8: tst.b (0x00fff0dd).l
 000548FE: bgt.w 0x0005492e
-00054902: jsr 0x000549e4.l ; call 000549E4 write_menu_repeated_grid_service
+00054902: jsr 0x000549e4.l ; call 000549E4 write_mode_repeated_grid_service
 00054908: lea (0x166aa5).l,A1 ; data 00166aa5
 0005490E: movea.l #0xc598,A2
 00054914: move.w #0x0,D1w
@@ -23748,7 +23748,7 @@
 00054AAA: jsr 0x0001989a.l ; call 0001989A convert_world_routine_0x0001989a
 00054AB0: tst.b (0x00fff0b1).l
 00054AB6: bne.w 0x00054ae4
-00054ABA: bsr.w 0x000549f6 ; call 000549F6 select_display_status
+00054ABA: bsr.w 0x000549f6 ; call 000549F6 select_mode_display_status
 00054ABE: move.w #-0x8000,D1w
 00054AC2: movea.l #0xc496,A2
 00054AC8: lea (0x1669e8).l,A1 ; data 001669e8
@@ -23756,8 +23756,8 @@
 00054AD4: move.w #0x19,D5w
 00054AD8: jsr 0x00000c24.l ; call 00000C24 wait_for_vblank_frames
 00054ADE: jsr 0x00000d94.l ; call 00000D94 wait_for_controller_event
-00054AE4: jmp 0x000549e4.l ; call 000549E4 write_menu_repeated_grid_service
-00054AEA: jsr 0x000549e4.l ; call 000549E4 write_menu_repeated_grid_service
+00054AE4: jmp 0x000549e4.l ; call 000549E4 write_mode_repeated_grid_service
+00054AEA: jsr 0x000549e4.l ; call 000549E4 write_mode_repeated_grid_service
 00054AF0: movea.l #0xc518,A2
 00054AF6: move.w #0x0,D1w
 00054AFA: tst.b (0x00fff0a0).l
@@ -23765,7 +23765,7 @@
 00054B04: move.b #-0x1,(0x00fff0a0).l
 00054B0C: lea (0x1666a8).l,A1 ; data 001666a8
 00054B12: jsr 0x0000c0da.l ; call 0000C0DA render_encoded_title_text
-00054B18: bsr.w 0x000549f6 ; call 000549F6 select_display_status
+00054B18: bsr.w 0x000549f6 ; call 000549F6 select_mode_display_status
 00054B1C: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 00054B22: lea (0x1666dd).l,A1 ; data 001666dd
 00054B28: jsr 0x0000c0da.l ; call 0000C0DA render_encoded_title_text
@@ -23775,7 +23775,7 @@
 00054BD0: rts
 00055000: beq.w 0x00055020
 00055004: clr.b (0x00fff0ae).l
-0005500A: jsr 0x000549e4.l ; call 000549E4 write_menu_repeated_grid_service
+0005500A: jsr 0x000549e4.l ; call 000549E4 write_mode_repeated_grid_service
 00055010: lea (0x1667dd).l,A1 ; data 001667dd
 00055016: movea.l #0xc59a,A2
 0005501C: bra.w 0x0005502c

@@ -721,7 +721,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0005322C	prepare_audio_title	10	unknown	ok	ghidra-c/fn_0005322C.cpp
 00053248	build_title_sprite_once	72	unknown	ok	ghidra-c/fn_00053248.cpp
 00053290	reset_audio_menu_arrays	24	unknown	ok	ghidra-c/fn_00053290.cpp
-000532A8	fill_audio_menu_sentinel	20	unknown	ok	ghidra-c/fn_000532A8.cpp
+000532A8	fill_mode_auxiliary_sentinel	20	unknown	ok	ghidra-c/fn_000532A8.cpp
 000532BC	initialize_runner_selection_screen	306	unknown	ok	ghidra-c/fn_000532BC.cpp
 000533EE	initialize_runner_animation_grid	70	unknown	ok	ghidra-c/fn_000533EE.cpp
 00053434	expand_runner_animation_grid	720	unknown	ok	ghidra-c/fn_00053434.cpp
@@ -729,11 +729,11 @@ entry	name	size	callingConvention	decompileStatus	file
 000537FA	refresh_runner_selection_sprites	106	unknown	ok	ghidra-c/fn_000537FA.cpp
 00053A24	begin_title_audio_sequence	84	unknown	ok	ghidra-c/fn_00053A24.cpp
 00053A78	run_indexed_title_services	62	unknown	ok	ghidra-c/fn_00053A78.cpp
-00054662	convert_graphics_routine_0x00054662	904	unknown	ok	ghidra-c/fn_00054662.cpp
-000549E4	write_menu_repeated_grid_service	18	unknown	ok	ghidra-c/fn_000549E4.cpp
-000549F6	select_display_status	50	unknown	ok	ghidra-c/fn_000549F6.cpp
-00054A28	convert_graphics_routine_0x00054a28	102	unknown	ok	ghidra-c/fn_00054A28.cpp
-00054A8E	convert_graphics_routine_0x00054a8e	92	unknown	ok	ghidra-c/fn_00054A8E.cpp
+00054662	run_mode_action_loop	904	unknown	ok	ghidra-c/fn_00054662.cpp
+000549E4	write_mode_repeated_grid_service	18	unknown	ok	ghidra-c/fn_000549E4.cpp
+000549F6	select_mode_display_status	50	unknown	ok	ghidra-c/fn_000549F6.cpp
+00054A28	render_mode_status_summary	102	unknown	ok	ghidra-c/fn_00054A28.cpp
+00054A8E	advance_random_mode_event	92	unknown	ok	ghidra-c/fn_00054A8E.cpp
 00055640	convert_intro_routine_0x00055640	134	unknown	ok	ghidra-c/fn_00055640.cpp
 000556C6	convert_intro_routine_0x000556c6	122	unknown	ok	ghidra-c/fn_000556C6.cpp
 00055740	convert_intro_routine_0x00055740	70	unknown	ok	ghidra-c/fn_00055740.cpp

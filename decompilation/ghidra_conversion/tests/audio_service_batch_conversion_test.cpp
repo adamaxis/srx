@@ -48,8 +48,6 @@ int main() {
     std::vector<std::int32_t> first{1}, second{2};
     reset_audio_menu_arrays(first, second);
     assert(first.size() == 35 && first[0] == 0);
-    fill_audio_menu_sentinel(first);
-    assert(first.size() == 35 && first[0] == -1);
     begin_title_audio_sequence(prep, {}, {});
 
     std::vector<std::size_t> indexes;
@@ -59,10 +57,5 @@ int main() {
     assert(run_indexed_title_services(handlers, [&](std::size_t index) { indexes.push_back(index); }) ==
            2);
     assert(indexes.size() == 23 && indexes.back() == 22);
-    int grids = 0;
-    write_menu_repeated_grid_service([&] { ++grids; });
-    assert(grids == 1);
-    assert(select_display_status(0) == 0xCC && select_display_status(-1) == 0xC0 &&
-           select_display_status(1) == 0x0C);
     return 0;
 }

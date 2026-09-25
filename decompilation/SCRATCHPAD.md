@@ -574,6 +574,26 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The mode-entry branch from `0x1ADE6` is no longer cataloged as a generic
+graphics routine. `0x54662` is the mode-action loop reached when the alternate
+runner presenter flag is clear: it initializes the selected compact mode
+record's flags, performs two wrapped resource transfers plus ten grid writes
+per redraw, applies the `0x54A8E` random-event gate, renders the two status
+fields and grouped decimal data, handles directional/action/Start edges, and
+hands Start to the `0x1822C` Matrix program loop. The native conversion is in
+`mode_action_loop_conversion`, with typed input, record, redraw, event, and
+Matrix callbacks. The indirect handler table indexed by record kind and cursor
+remains an explicit unresolved callback; no fake generic action implementation
+was inserted.
+
+The adjacent leaves are now named by proven behavior: `0x54A28` is
+`render_mode_status_summary`, `0x54A8E` is `advance_random_mode_event`,
+`0x532A8` is `fill_mode_auxiliary_sentinel`, `0x549E4` is
+`write_mode_repeated_grid_service`, and `0x549F6` is
+`select_mode_display_status`. The last three were removed from the audio
+conversion batch because their callers and effects are mode-presentation
+operations, not audio services.
+
 The runner-selection family is now native-shaped. `0x532BC` is
 `initialize_runner_selection_screen`: it exposes the background asset setup,
 header/animation preparation, and exact 10-by-14 grid request sequence.

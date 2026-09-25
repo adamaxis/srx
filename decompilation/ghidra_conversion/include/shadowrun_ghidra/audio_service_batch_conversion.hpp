@@ -65,7 +65,6 @@ void build_title_sprite_once(const std::function<void()>& build_sprites);
 
 void reset_audio_menu_arrays(std::vector<std::int32_t>& first,
                              std::vector<std::int32_t>& second);
-void fill_audio_menu_sentinel(std::vector<std::int32_t>& values);
 
 void begin_title_audio_sequence(AudioTitlePreparationState& state,
                                 const std::function<void()>& prepare_sprites,
@@ -74,9 +73,5 @@ void begin_title_audio_sequence(AudioTitlePreparationState& state,
 std::size_t run_indexed_title_services(
     std::vector<std::function<bool(std::size_t)>>& handlers,
     const std::function<void(std::size_t)>& publish_index);
-
-void write_menu_repeated_grid_service(const std::function<void()>& write_grid);
-
-std::uint8_t select_display_status(std::int8_t display_mode);
 
 } // namespace shadowrun::ghidra_conversion

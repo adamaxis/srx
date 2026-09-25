@@ -107,10 +107,6 @@ void reset_audio_menu_arrays(std::vector<std::int32_t>& first,
     second.assign(35U, 0);
 }
 
-void fill_audio_menu_sentinel(std::vector<std::int32_t>& values) {
-    values.assign(35U, -1);
-}
-
 void begin_title_audio_sequence(AudioTitlePreparationState& state,
                                 const std::function<void()>& prepare_sprites,
                                 const std::function<void()>& build_sprites) {
@@ -134,20 +130,6 @@ std::size_t run_indexed_title_services(
         }
     }
     return ran;
-}
-
-void write_menu_repeated_grid_service(const std::function<void()>& write_grid) {
-    call_once(write_grid);
-}
-
-std::uint8_t select_display_status(const std::int8_t display_mode) {
-    if (display_mode == 0) {
-        return 0xCCU;
-    }
-    if (display_mode < 0) {
-        return 0xC0U;
-    }
-    return 0x0CU;
 }
 
 } // namespace shadowrun::ghidra_conversion

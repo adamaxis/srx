@@ -2402,3 +2402,16 @@ target_link_libraries(shadowrun_ghidra_runner_animation_grid_test
     PRIVATE shadowrun_ghidra_runner_animation_grid)
 add_test(NAME shadowrun_ghidra_runner_animation_grid
          COMMAND shadowrun_ghidra_runner_animation_grid_test)
+
+add_library(shadowrun_ghidra_mode_action_loop STATIC
+    src/mode_action_loop_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_mode_action_loop PUBLIC include)
+
+add_executable(shadowrun_ghidra_mode_action_loop_test
+    tests/mode_action_loop_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_mode_action_loop_test
+    PRIVATE shadowrun_ghidra_mode_action_loop)
+add_test(NAME shadowrun_ghidra_mode_action_loop
+         COMMAND shadowrun_ghidra_mode_action_loop_test)

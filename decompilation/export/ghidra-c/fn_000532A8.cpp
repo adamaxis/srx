@@ -1,25 +1,9 @@
 // Ghidra headless export
 // Entry: 0x000532A8
-// Name: fill_audio_menu_sentinel
-// Decompile status: ok
-// Calls recovered from direct call instructions:
-//   (none)
-
-
-void fill_audio_menu_sentinel(void)
-
-{
-  short sVar1;
-  undefined4 *puVar2;
-  
-  sVar1 = 0x22;
-  puVar2 = &DAT_00fffaa4;
-  do {
-    *puVar2 = 0xffffffff;
-    sVar1 = sVar1 + -1;
-    puVar2 = puVar2 + 1;
-  } while (sVar1 != -1);
-  return;
-}
-
-
+// Name: fill_mode_auxiliary_sentinel
+// Decompile status: source-shaped annotation
+//
+// Native conversion: ghidra_conversion::fill_mode_auxiliary_sentinel.
+// The routine fills 35 consecutive longwords at the selected mode's
+// auxiliary buffer with 0xFFFFFFFF. The old audio-menu label was not part of
+// the proven behavior and has been removed.

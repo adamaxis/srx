@@ -789,9 +789,9 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00053434L, "expand_runner_animation_grid");
         names.put(0x00053704L, "run_runner_selection_screen");
         names.put(0x000537FAL, "refresh_runner_selection_sprites");
-        names.put(0x00054662L, "convert_graphics_routine_0x00054662");
-        names.put(0x00054A28L, "convert_graphics_routine_0x00054a28");
-        names.put(0x00054A8EL, "convert_graphics_routine_0x00054a8e");
+        names.put(0x00054662L, "run_mode_action_loop");
+        names.put(0x00054A28L, "render_mode_status_summary");
+        names.put(0x00054A8EL, "advance_random_mode_event");
         names.put(0x00055640L, "convert_intro_routine_0x00055640");
         names.put(0x000556C6L, "convert_intro_routine_0x000556c6");
         names.put(0x00055740L, "convert_intro_routine_0x00055740");
@@ -951,11 +951,11 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0005322CL, "prepare_audio_title");
         names.put(0x00053248L, "build_title_sprite_once");
         names.put(0x00053290L, "reset_audio_menu_arrays");
-        names.put(0x000532A8L, "fill_audio_menu_sentinel");
+        names.put(0x000532A8L, "fill_mode_auxiliary_sentinel");
         names.put(0x00053A24L, "begin_title_audio_sequence");
         names.put(0x00053A78L, "run_indexed_title_services");
-        names.put(0x000549E4L, "write_menu_repeated_grid_service");
-        names.put(0x000549F6L, "select_display_status");
+        names.put(0x000549E4L, "write_mode_repeated_grid_service");
+        names.put(0x000549F6L, "select_mode_display_status");
         return names;
     }
 
