@@ -131,4 +131,24 @@ void write_menu_repeated_grid_with_metadata(
 // ROM 0x12CD6: submit one menu text asset.
 void render_menu_text_asset(const std::function<void()>& render_text);
 
+struct CyberwareMenuState {
+    // Source 0x11950 consumes bits 14..0; bit 15 belongs to a separate
+    // record concern and is intentionally not treated as an installed entry.
+    std::uint16_t installed_flags = 0;
+    std::uint16_t rendered_entries = 0;
+};
+
+struct CyberwareMenuCallbacks {
+    std::function<void()> prepare_grid_variant_b;
+    std::function<void()> prepare_row_grid;
+    std::function<void()> render_title_text;
+    std::function<void()> wait_for_controller_event;
+    std::function<void()> render_menu_row;
+};
+
+// ROM 0x11950: prepare the cyberware panel, render its installed fifteen-bit
+// entries in ascending bit order, then wait for input and render the row.
+std::uint16_t run_cyberware_menu(CyberwareMenuState& state,
+                                 const CyberwareMenuCallbacks& callbacks);
+
 } // namespace shadowrun::ghidra_conversion

@@ -234,4 +234,36 @@ void render_menu_text_asset(const std::function<void()>& render_text) {
     }
 }
 
+std::uint16_t run_cyberware_menu(
+    CyberwareMenuState& state,
+    const CyberwareMenuCallbacks& callbacks) {
+    if (callbacks.prepare_grid_variant_b) {
+        callbacks.prepare_grid_variant_b();
+    }
+    if (callbacks.prepare_row_grid) {
+        callbacks.prepare_row_grid();
+    }
+
+    state.rendered_entries = 0U;
+    if (callbacks.render_title_text) {
+        callbacks.render_title_text();
+    }
+    for (std::uint16_t bit = 0U; bit < 15U; ++bit) {
+        if ((state.installed_flags & (std::uint16_t{1U} << bit)) == 0U) {
+            continue;
+        }
+        if (callbacks.render_title_text) {
+            callbacks.render_title_text();
+        }
+        ++state.rendered_entries;
+    }
+    if (callbacks.wait_for_controller_event) {
+        callbacks.wait_for_controller_event();
+    }
+    if (callbacks.render_menu_row) {
+        callbacks.render_menu_row();
+    }
+    return state.rendered_entries;
+}
+
 } // namespace shadowrun::ghidra_conversion

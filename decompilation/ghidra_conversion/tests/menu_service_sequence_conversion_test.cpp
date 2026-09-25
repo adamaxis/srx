@@ -5,6 +5,32 @@
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
+    CyberwareMenuState cyberware{static_cast<std::uint16_t>(
+                                    (1U << 0U) | (1U << 2U) | (1U << 14U) |
+                                    (1U << 15U)),
+                                0U};
+    std::vector<int> cyberware_order;
+    if (run_cyberware_menu(
+            cyberware,
+            {[&] { cyberware_order.push_back(1); },
+             [&] { cyberware_order.push_back(2); },
+             [&] { cyberware_order.push_back(3); },
+             [&] { cyberware_order.push_back(4); },
+             [&] { cyberware_order.push_back(5); }}) != 3U ||
+        cyberware.rendered_entries != 3U ||
+        cyberware_order != std::vector<int>{1, 2, 3, 3, 3, 3, 4, 5}) {
+        return 100;
+    }
+
+    CyberwareMenuState empty_cyberware{};
+    int empty_titles = 0;
+    if (run_cyberware_menu(
+            empty_cyberware,
+            {{}, {}, [&] { ++empty_titles; }, {}, {}}) != 0U ||
+        empty_titles != 1) {
+        return 101;
+    }
+
     std::vector<int> order;
     draw_menu_hud_panel_variant_a([&order] { order.push_back(1); });
     draw_menu_hud_panel_variant_b([&order] { order.push_back(2); });

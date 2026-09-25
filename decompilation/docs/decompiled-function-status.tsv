@@ -286,7 +286,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x11B58	clips menu	NativePortShell::update_clips_menu	shadowrun_menu_system	partial		panel art pending
 0xC2A6	pocket secretary	NativePortShell::update_pocket_secretary_menu	shadowrun_menu_system	partial		Matrix 0x1817E pending
 0xD01C	attributes/skills menu entry	—	—	pending		Standalone Ghidra entry now exported; typed record read is exposed separately, screen choreography remains to be converted
-0x11950	cyberware menu entry	—	—	pending		Standalone Ghidra entry now exported; typed cyberware read is exposed separately, screen choreography remains to be converted
+0x11950	cyberware menu entry	ghidra_conversion::run_cyberware_menu	shadowrun_ghidra_menu_service_sequence	partial		Typed +0x90 fifteen-bit installed-entry enumeration, panel preparation, input wait, and row render order
 0xFBA6	magic	—	—	pending		
 0x1817E	matrix run	—	—	pending		
 0x17708	field HUD	ghidra_conversion::render_field_hud	—	partial		Typed display/sprite/five-block upload choreography and conditional mode-8 panel path

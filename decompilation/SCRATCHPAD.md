@@ -484,6 +484,10 @@ not a final name.
   partially tested entries there.
 - Use `analysis/pointer_tables.tsv` and `analysis/direct_references.tsv` to
   promote only referenced tables into typed C++ data structures.
+- `0x11950` now consumes the typed runner-record cyberware field: it ignores
+  the separate bit-15 concern, enumerates installed bits 14..0 in source order,
+  and preserves the panel/row/input choreography in
+  `menu_service_sequence_conversion`.
 - `analysis/verified_tables.tsv` now records the byte-checked reset bootstrap,
   region selector/header field, and 19-word VDP configuration table anchors.
 - `analysis/indirect_control_flow.tsv` records register-indirect `JSR/JMP`
