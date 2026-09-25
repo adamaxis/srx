@@ -47,10 +47,10 @@ FieldActionApplicationResult apply_selected_field_action(
         return FieldActionApplicationResult::insufficient_funds;
     }
 
-    const auto chosen_cost = callbacks.choose_purchase_cost
-                                 ? callbacks.choose_purchase_cost(preview_cost)
-                                 : std::optional<std::uint32_t>(preview_cost);
-    if (!chosen_cost.has_value()) {
+    const bool confirmed = callbacks.confirm_purchase
+                               ? callbacks.confirm_purchase()
+                               : true;
+    if (!confirmed) {
         return FieldActionApplicationResult::cancelled;
     }
 
@@ -76,7 +76,7 @@ FieldActionApplicationResult apply_selected_field_action(
         state.runner.companion_values[inventory_slot] = record.value;
     }
 
-    state.funds -= *chosen_cost;
+    state.funds -= preview_cost;
     return FieldActionApplicationResult::applied;
 }
 

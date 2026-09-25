@@ -25207,7 +25207,7 @@
 00056FBA: movea.l #0xc5b6,A2
 00056FC0: move.w #0x6000,D2w
 00056FC4: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
-00056FCA: bsr.w 0x00057b8c ; call 00057B8C run_field_action_quantity_chooser
+00056FCA: bsr.w 0x00057b8c ; call 00057B8C run_menu_confirmation_prompt
 00056FCE: tst.b (0x00fff0dc).l
 00056FD4: bne.w 0x00057024
 00056FD8: move.l (0x00fff0be).l,D1
@@ -25290,7 +25290,7 @@
 00057160: movea.l #0xc5b6,A2
 00057166: move.w #0x6000,D2w
 0005716A: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
-00057170: bsr.w 0x00057b8c ; call 00057B8C run_field_action_quantity_chooser
+00057170: bsr.w 0x00057b8c ; call 00057B8C run_menu_confirmation_prompt
 00057174: tst.b (0x00fff0dc).l
 0005717A: bne.w 0x000571b0
 0005717E: sub.l D1,(0x00fffbfe).l
@@ -25388,7 +25388,7 @@
 00057324: movea.l #0xc5b6,A2
 0005732A: move.w #0x6000,D2w
 0005732E: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
-00057334: bsr.w 0x00057b8c ; call 00057B8C run_field_action_quantity_chooser
+00057334: bsr.w 0x00057b8c ; call 00057B8C run_menu_confirmation_prompt
 00057338: tst.b (0x00fff0dc).l
 0005733E: bne.w 0x000573fa
 00057342: move.l D1,-(SP) ; data Stack[-0x4]
@@ -25479,7 +25479,7 @@
 000574AE: movea.l #0xc5ba,A2
 000574B4: move.w #0x6000,D2w
 000574B8: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
-000574BE: bsr.w 0x00057b8c ; call 00057B8C run_field_action_quantity_chooser
+000574BE: bsr.w 0x00057b8c ; call 00057B8C run_menu_confirmation_prompt
 000574C2: tst.b (0x00fff0dc).l
 000574C8: bne.w 0x00057518
 000574CC: sub.l D1,(0x00fffbfe).l
@@ -25532,7 +25532,7 @@
 000575B8: move.w #0x6000,D1w
 000575BC: jsr 0x0000c0da.l ; call 0000C0DA render_encoded_title_text
 000575C2: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
-000575C8: bsr.w 0x00057b8c ; call 00057B8C run_field_action_quantity_chooser
+000575C8: bsr.w 0x00057b8c ; call 00057B8C run_menu_confirmation_prompt
 000575CC: tst.b (0x00fff0dc).l
 000575D2: bne.w 0x000575f6
 000575D6: move.l (0x00fff0be).l,D1
@@ -25632,7 +25632,7 @@
 0005775A: movea.l #0xc5b4,A2
 00057760: move.w #0x6000,D2w
 00057764: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
-0005776A: bsr.w 0x00057b8c ; call 00057B8C run_field_action_quantity_chooser
+0005776A: bsr.w 0x00057b8c ; call 00057B8C run_menu_confirmation_prompt
 0005776E: tst.b (0x00fff0dc).l
 00057774: bne.w 0x000577b8
 00057778: sub.l D1,(0x00fffbfe).l
@@ -25676,7 +25676,7 @@
 00057834: move.w #0x6000,D1w
 00057838: jsr 0x0000c0da.l ; call 0000C0DA render_encoded_title_text
 0005783E: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
-00057844: bsr.w 0x00057b8c ; call 00057B8C run_field_action_quantity_chooser
+00057844: bsr.w 0x00057b8c ; call 00057B8C run_menu_confirmation_prompt
 00057848: tst.b (0x00fff0dc).l
 0005784E: bne.w 0x00057874
 00057852: sub.l D1,(0x00fffbfe).l
@@ -25773,7 +25773,7 @@
 000579DC: move.w #0x6000,D1w
 000579E0: jsr 0x0000c0da.l ; call 0000C0DA render_encoded_title_text
 000579E6: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
-000579EC: bsr.w 0x00057b8c ; call 00057B8C run_field_action_quantity_chooser
+000579EC: bsr.w 0x00057b8c ; call 00057B8C run_menu_confirmation_prompt
 000579F0: tst.b (0x00fff0dc).l
 000579F6: bne.w 0x00057a42
 000579FA: movea.l (0x00fffc04).l,A1

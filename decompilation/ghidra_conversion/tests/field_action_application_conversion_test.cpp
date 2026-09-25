@@ -25,10 +25,7 @@ int main() {
         [&] { ++no_slot_messages; },
         [&] { ++insufficient_messages; },
         [&] { ++limit_messages; },
-        [&](const std::uint32_t preview) {
-            return std::optional<std::uint32_t>(preview > 10U ? preview - 10U
-                                                               : preview);
-        },
+        [] { return true; },
     };
 
     const FieldActionCostRecord ordinary{3U, 0x5AU, 0U};
@@ -38,7 +35,7 @@ int main() {
                     FieldActionApplicationResult::applied &&
                 state.runner.action_codes[0] == 4U &&
                 state.runner.companion_values[0] == 0x5AU &&
-                state.funds == 910U && detail_refreshes == 1)) {
+                state.funds == 900U && detail_refreshes == 1)) {
         return 1;
     }
 
@@ -79,9 +76,7 @@ int main() {
     cancelled.funds = 1000U;
     const FieldActionApplicationCallbacks cancel_callbacks{
         {}, {}, {}, {},
-        [](const std::uint32_t) -> std::optional<std::uint32_t> {
-            return std::nullopt;
-        },
+        [] { return false; },
     };
     if (!expect(apply_selected_field_action(
                     ordinary, context, cancelled,

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00057B8C
-// Name: run_field_action_quantity_chooser
+// Name: run_menu_confirmation_prompt
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -10,18 +10,18 @@
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x000530DE service_audio_if_enabled
 //
-// This is the quantity/cost prompt entered after an action has passed the
-// affordability check. FFF0DC is initialized to the active prompt state;
-// movement runs through the common bounded cursor helper and the routine
-// exits on the source confirm/cancel edge bits.
+// This is the two-option confirmation prompt entered after an action has
+// passed the affordability check. FFF0DC is initialized to option 1;
+// movement runs through the common bounded 0/1 cursor helper and the routine
+// exits on either source confirm/cancel edge bit.
 
-undefined8 run_field_action_quantity_chooser(void)
+undefined8 run_menu_confirmation_prompt(void)
 {
   undefined4 in_D0;
   undefined4 in_D1;
 
-  render_encoded_title_text(); // quantity prompt label
-  render_encoded_title_text(); // quantity value
+  render_encoded_title_text(); // confirmation prompt label
+  render_encoded_title_text(); // confirmation choice
   DAT_00fff0dc = 1;
   do {
     service_audio_if_enabled();
@@ -32,7 +32,7 @@ undefined8 run_field_action_quantity_chooser(void)
       sample_controller_input();
       if ((DAT_00ffdd22 & 0x0100) != 0 ||
           (DAT_00ffdd22 & 0x0200) != 0) {
-        break; // Up/down movement: redraw and continue polling
+        break; // Move the bounded 0/1 confirmation option and redraw
       }
       if ((DAT_00ffdd22 & 0x4000) != 0 ||
           (DAT_00ffdd22 & 0x1000) != 0) {

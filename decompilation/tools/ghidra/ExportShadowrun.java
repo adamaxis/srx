@@ -842,7 +842,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00057AF6L, "apply_runner_cost_surcharge");
         names.put(0x00057B04L, "calculate_runner_cost_adjustment");
         names.put(0x00057B42L, "apply_large_field_action_cost_discount");
-        names.put(0x00057B8CL, "run_field_action_quantity_chooser");
+        names.put(0x00057B8CL, "run_menu_confirmation_prompt");
         names.put(0x00057C3AL, "convert_intro_routine_0x00057c3a");
         names.put(0x00057C46L, "convert_intro_routine_0x00057c46");
         names.put(0x00057C52L, "convert_intro_routine_0x00057c52");

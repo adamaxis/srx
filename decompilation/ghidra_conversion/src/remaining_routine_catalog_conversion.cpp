@@ -234,7 +234,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00057AF6U, "apply_runner_cost_surcharge", RoutineFamily::menu, 14U},
     {0x00057B04U, "calculate_runner_cost_adjustment", RoutineFamily::menu, 62U},
     {0x00057B42U, "apply_large_field_action_cost_discount", RoutineFamily::menu, 74U},
-    {0x00057B8CU, "run_field_action_quantity_chooser", RoutineFamily::menu, 174U},
+    {0x00057B8CU, "run_menu_confirmation_prompt", RoutineFamily::menu, 174U},
     {0x00057C3AU, "convert_intro_routine_0x00057c3a", RoutineFamily::intro, 12U},
     {0x00057C46U, "convert_intro_routine_0x00057c46", RoutineFamily::intro, 12U},
     {0x00057C52U, "convert_intro_routine_0x00057c52", RoutineFamily::intro, 12U},

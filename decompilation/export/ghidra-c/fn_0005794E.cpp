@@ -7,7 +7,7 @@
 //   0x0000C0DA render_encoded_title_text
 //   0x00057A44 calculate_field_action_record_cost
 //   0x00057A6E apply_field_action_cost_discounts
-//   0x00057B8C run_field_action_quantity_chooser
+//   0x00057B8C run_menu_confirmation_prompt
 //   0x00057C5E refresh_field_action_detail_panel
 //
 // A0 is the selected action-record table base and D0 is the source record
@@ -52,7 +52,7 @@ void apply_selected_field_action(void)
     return;
   }
 
-  run_field_action_quantity_chooser();
+  run_menu_confirmation_prompt();
   if (DAT_00fff0dc != 0) {
     return; // cancel path leaves runner state and funds untouched
   }

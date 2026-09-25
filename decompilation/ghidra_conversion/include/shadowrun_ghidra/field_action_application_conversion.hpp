@@ -39,11 +39,11 @@ struct FieldActionApplicationCallbacks {
     std::function<void()> show_insufficient_funds;
     std::function<void()> show_special_action_limit;
 
-    // 0x57B8C is an interactive quantity/cost chooser.  Returning no value
-    // is the source cancel path.  An absent callback accepts the preview cost
-    // so the behavior can be used by a non-interactive host controller.
-    std::function<std::optional<std::uint32_t>(std::uint32_t preview_cost)>
-        choose_purchase_cost;
+    // 0x57B8C is a two-option confirmation prompt around the cost. The ROM
+    // restores the original cost register; it does not calculate a new price.
+    // An absent callback accepts the preview so a non-interactive host can
+    // exercise the state transition without a UI.
+    std::function<bool()> confirm_purchase;
 };
 
 // ROM 0x5794E.  Apply one selected field-menu action to the active runner.
