@@ -1040,6 +1040,13 @@ the `0x1D134`/`0x1D11C`/`0x1D128` source table from the record variant and
 returns shifted host coordinates; neither helper exposes a ROM-backed runtime
 memory model.
 
+`0x1CB6A` is now `spawn_world_effect_record`. It chooses the normal or cleared
+work record, issues audio command `0x17` through a callback, marks the record
+active, seeds its source variant and timers, and derives the signed 60-step
+fixed-point velocity from the offset source position to the destination
+record. The native model exposes those record fields directly instead of
+recreating the original address-selected A1 record.
+
 The next title/world-effect pair is also no longer generic. `0x1A818` starts
 the descriptor transition, choosing between its six-frame loading path and the
 active descriptor-token path; its source word `0xD280` is recorded as such

@@ -87,5 +87,36 @@ int main() {
         phase_seen != 1U) {
         return 3;
     }
+
+    WorldEffectSpawnState spawn{};
+    spawn.work_record_selected = true;
+    spawn.source_x = 100;
+    spawn.source_y = 200;
+    spawn.destination_x = 300;
+    spawn.destination_y = 400;
+    int clears = 0;
+    int audio = 0;
+    WorldEffectSpawnCallbacks spawn_callbacks{};
+    spawn_callbacks.clear_work_record = [&] { ++clears; };
+    spawn_callbacks.play_effect_audio = [&] {
+        ++audio;
+        return static_cast<std::int16_t>(7);
+    };
+    if (spawn_world_effect_record(spawn, spawn_callbacks) !=
+            WorldEffectSpawnAction::spawned ||
+        spawn.record.active != 0xFFU || spawn.record.direction != 7 ||
+        spawn.record.target_x != 0x0840 ||
+        spawn.record.position_y != 0x0A00 ||
+        spawn.record.velocity_x != 44 || spawn.record.velocity_y != 64 ||
+        spawn.record.lifetime != 0x3CU || clears != 1 || audio != 1) {
+        return 4;
+    }
+
+    spawn.record.active = 0xFFU;
+    if (spawn_world_effect_record(spawn, spawn_callbacks) !=
+            WorldEffectSpawnAction::record_already_active || clears != 1 ||
+        audio != 1) {
+        return 5;
+    }
     return 0;
 }

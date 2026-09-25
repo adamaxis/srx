@@ -584,6 +584,10 @@ motion, direction mirror, and three-phase animation counter. `0x1D0DE` is now
 `resolve_world_effect_sprite`, selecting the three source-table families and
 returning shifted host coordinates through an explicit asset callback.
 
+`0x1CB6A` is now `spawn_world_effect_record`: its typed state captures the
+normal/work-record choice, audio command boundary, active marker, source
+offsets, destination coordinates, and 60-step fixed-point velocity setup.
+
 The paired layer entries `0x1C3FA`/`0x1C506` are now separated into
 `advance_title_sprite_layers` and `render_title_sprite_layers`. Their phase
 timers, alternate source pointers, two base sprites, optional status overlays,

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001CB6A
-// Name: convert_world_routine_0x0001cb6a
+// Name: spawn_world_effect_record
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001CBF8 clear_world_effect_work
@@ -9,7 +9,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_world_routine_0x0001cb6a(void)
+void spawn_world_effect_record(void)
 
 {
   short sVar1;
@@ -50,5 +50,4 @@ void convert_world_routine_0x0001cb6a(void)
   *(undefined1 *)(extraout_A1_00 + 0xb) = 0x3c;
   return;
 }
-
 

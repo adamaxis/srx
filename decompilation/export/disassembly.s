@@ -17923,7 +17923,7 @@
 0001CB48: move.w #0x20,D5w
 0001CB4C: move.w #-0x28,D6w
 0001CB50: clr.w D1w
-0001CB52: bsr.w 0x0001cb6a ; call 0001CB6A convert_world_routine_0x0001cb6a
+0001CB52: bsr.w 0x0001cb6a ; call 0001CB6A spawn_world_effect_record
 0001CB56: tst.w (0x00ffe0e2).l
 0001CB5C: bne.w 0x0001cb62
 0001CB60: rts

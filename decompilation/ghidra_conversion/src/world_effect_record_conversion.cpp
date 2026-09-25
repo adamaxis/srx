@@ -75,4 +75,47 @@ std::optional<WorldEffectSpriteSource> resolve_world_effect_sprite(
             static_cast<std::uint16_t>(state.position_y) >> 4U)};
 }
 
+WorldEffectSpawnAction spawn_world_effect_record(
+    WorldEffectSpawnState& state,
+    const WorldEffectSpawnCallbacks& callbacks) {
+    if (state.work_record_selected) {
+        if (callbacks.clear_work_record) {
+            callbacks.clear_work_record();
+        }
+        state.work_record_selected = false;
+    }
+    if (state.record.active != 0U) {
+        return WorldEffectSpawnAction::record_already_active;
+    }
+
+    state.record.direction = callbacks.play_effect_audio
+                                 ? callbacks.play_effect_audio()
+                                 : 0;
+    state.record.active = 0xFFU;
+    state.record.phase_delay = 0U;
+    state.record.animation_phase = 0U;
+    state.record.source_variant = 0U;
+    state.record.frame_delay = 0x14U;
+
+    const auto start_x = static_cast<std::int32_t>(state.source_x) +
+                         static_cast<std::int32_t>(state.offset_x);
+    const auto start_y = static_cast<std::int32_t>(state.source_y) +
+                         static_cast<std::int32_t>(state.offset_y);
+    const auto start_x_fixed = start_x * 0x10;
+    const auto start_y_fixed = start_y * 0x10;
+    state.record.target_x = static_cast<std::int16_t>(start_x_fixed);
+    state.record.position_y = static_cast<std::int16_t>(start_y_fixed);
+
+    const auto destination_x_fixed =
+        static_cast<std::int32_t>(state.destination_x) * 0x10;
+    const auto destination_y_fixed =
+        static_cast<std::int32_t>(state.destination_y) * 0x10;
+    state.record.velocity_x = static_cast<std::int16_t>(
+        (destination_x_fixed - start_x_fixed) / 0x3C);
+    state.record.velocity_y = static_cast<std::int16_t>(
+        (destination_y_fixed - start_y_fixed) / 0x3C);
+    state.record.lifetime = 0x3CU;
+    return WorldEffectSpawnAction::spawned;
+}
+
 } // namespace shadowrun::ghidra_conversion

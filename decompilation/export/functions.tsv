@@ -604,7 +604,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0001CA12	advance_world_effect_motion	122	unknown	ok	ghidra-c/fn_0001CA12.cpp
 0001CAD4	update_interaction_state	76	unknown	ok	ghidra-c/fn_0001CAD4.cpp
 0001CB20	convert_world_routine_0x0001cb20	144	unknown	ok	ghidra-c/fn_0001CB20.cpp
-0001CB6A	convert_world_routine_0x0001cb6a	142	unknown	ok	ghidra-c/fn_0001CB6A.cpp
+0001CB6A	spawn_world_effect_record	142	unknown	ok	ghidra-c/fn_0001CB6A.cpp
 0001CBF8	clear_world_effect_work	44	unknown	ok	ghidra-c/fn_0001CBF8.cpp
 0001CC24	convert_world_routine_0x0001cc24	184	unknown	ok	ghidra-c/fn_0001CC24.cpp
 0001CCDC	update_persistent_title_effect	56	unknown	ok	ghidra-c/fn_0001CCDC.cpp

@@ -62,4 +62,35 @@ std::optional<WorldEffectSpriteSource> resolve_world_effect_sprite(
     const WorldEffectRecordState& state,
     const WorldEffectSpriteCallbacks& callbacks);
 
+struct WorldEffectSpawnState {
+    bool work_record_selected = false; // FFE010 != 0 selects FF15B2
+    std::int16_t source_x = 0;          // source record +0x0E
+    std::int16_t source_y = 0;          // source record +0x10
+    std::int16_t destination_x = 0;     // FF1596
+    std::int16_t destination_y = 0;     // FF1598
+    std::int16_t offset_x = 0x20;       // caller D5
+    std::int16_t offset_y = -0x28;      // caller D6
+    WorldEffectRecordState record{};
+};
+
+struct WorldEffectSpawnCallbacks {
+    // 0x1CBF8 is kept as a host-state boundary; its typed implementation
+    // clears the seven work packets when the source record permits it.
+    std::function<void()> clear_work_record;
+    // ROM 0x530DE is invoked with audio command 0x17. The returned D1 word
+    // becomes the record's direction flag.
+    std::function<std::int16_t()> play_effect_audio;
+};
+
+enum class WorldEffectSpawnAction {
+    spawned,
+    record_already_active,
+};
+
+// ROM 0x1CB6A: choose the normal/work record, initialize the effect audio and
+// motion fields, and derive 60-step fixed-point velocity toward the target.
+WorldEffectSpawnAction spawn_world_effect_record(
+    WorldEffectSpawnState& state,
+    const WorldEffectSpawnCallbacks& callbacks);
+
 } // namespace shadowrun::ghidra_conversion
