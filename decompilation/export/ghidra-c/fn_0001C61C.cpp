@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001C61C
-// Name: convert_world_routine_0x0001c61c
+// Name: advance_title_sweep_animation
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
@@ -10,7 +10,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_world_routine_0x0001c61c(void)
+void advance_title_sweep_animation(void)
 
 {
   DAT_00ff1594 = DAT_00ff1594 + -1;
@@ -33,5 +33,4 @@ void convert_world_routine_0x0001c61c(void)
   build_title_sprite_records();
   return;
 }
-
 

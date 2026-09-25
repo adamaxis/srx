@@ -1009,6 +1009,8 @@ The adjacent title profile pair is now typed. `0x1BEBA` copies the source profil
 
 `0x1BCE8` is now `advance_title_profile_motion`. The conversion separates the 13-frame profile phase selected from the `0x1BE4E` records from the later 60-step movement path. The movement path preserves the source `0x15E56` easing lookup, signed fixed-point scaling, `0x1BE3E` four-frame sprite selection, the `0x0F` secondary countdown, and the two finalization entry points that clear `FFE058`/`FFE0D6` and conditionally publish `FFE0F4` before the menu refresh boundary.
 
+`0x1C61C` is now `advance_title_sweep_animation`. It decrements the record's byte delay, advances through the 32 entries at `0x1C6D4`, resolves the sprite pointer from `0x1C6BC`, and emits the same sprite at `base_x + offset` and `base_x - offset` with attributes `0x6000`. Source bit 3 suppresses the pair without suppressing timing; phase `0x20` clears bits 0 and 3, attaches behavior B, clears `FFE0D6`, and returns through the menu/title boundary.
+
 The next title/world-effect pair is also no longer generic. `0x1A818` starts
 the descriptor transition, choosing between its six-frame loading path and the
 active descriptor-token path; its source word `0xD280` is recorded as such

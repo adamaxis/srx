@@ -657,6 +657,19 @@ target_link_libraries(shadowrun_ghidra_title_profile_motion_test
 add_test(NAME shadowrun_ghidra_title_profile_motion
          COMMAND shadowrun_ghidra_title_profile_motion_test)
 
+add_library(shadowrun_ghidra_title_sweep_animation STATIC
+    src/title_sweep_animation_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_title_sweep_animation PUBLIC include)
+
+add_executable(shadowrun_ghidra_title_sweep_animation_test
+    tests/title_sweep_animation_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_title_sweep_animation_test
+    PRIVATE shadowrun_ghidra_title_sweep_animation)
+add_test(NAME shadowrun_ghidra_title_sweep_animation
+         COMMAND shadowrun_ghidra_title_sweep_animation_test)
+
 add_library(shadowrun_ghidra_entity_template STATIC
     src/entity_template_conversion.cpp
 )

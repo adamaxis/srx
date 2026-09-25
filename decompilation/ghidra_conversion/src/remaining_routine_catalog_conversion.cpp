@@ -144,7 +144,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x0001BF7AU, "advance_profile_copy_timer", RoutineFamily::world, 130U},
     {0x0001C3FAU, "convert_world_routine_0x0001c3fa", RoutineFamily::world, 152U},
     {0x0001C506U, "convert_world_routine_0x0001c506", RoutineFamily::world, 230U},
-    {0x0001C61CU, "convert_world_routine_0x0001c61c", RoutineFamily::world, 160U},
+    {0x0001C61CU, "advance_title_sweep_animation", RoutineFamily::world, 160U},
     {0x0001C754U, "convert_world_routine_0x0001c754", RoutineFamily::world, 274U},
     {0x0001C866U, "convert_world_routine_0x0001c866", RoutineFamily::world, 192U},
     {0x0001CA12U, "convert_world_routine_0x0001ca12", RoutineFamily::world, 122U},

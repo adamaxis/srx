@@ -36,7 +36,7 @@
 //   0x0001C0C2 advance_alternating_profile
 //   0x0001C1F6 advance_audio_menu_countdown
 //   0x0001C3FA convert_world_routine_0x0001c3fa
-//   0x0001C61C convert_world_routine_0x0001c61c
+//   0x0001C61C advance_title_sweep_animation
 //   0x0001C754 convert_world_routine_0x0001c754
 //   0x0001C866 convert_world_routine_0x0001c866
 //   0x0001CA12 convert_world_routine_0x0001ca12
@@ -165,7 +165,7 @@ LAB_0001afc0:
       convert_world_routine_0x00026972();
       convert_world_routine_0x0001c3fa();
       if ((DAT_00ff1592 & 1) != 0) {
-        convert_world_routine_0x0001c61c();
+        advance_title_sweep_animation();
       }
       if ((DAT_00ff1592 & 2) != 0) {
         advance_audio_menu_countdown();

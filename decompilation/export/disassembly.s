@@ -16944,7 +16944,7 @@
 0001B00E: bsr.w 0x0001c3fa ; call 0001C3FA convert_world_routine_0x0001c3fa
 0001B012: btst.b #0x0,(0x00ff1592).l
 0001B01A: beq.w 0x0001b022
-0001B01E: bsr.w 0x0001c61c ; call 0001C61C convert_world_routine_0x0001c61c
+0001B01E: bsr.w 0x0001c61c ; call 0001C61C advance_title_sweep_animation
 0001B022: btst.b #0x1,(0x00ff1592).l
 0001B02A: beq.w 0x0001b032
 0001B02E: bsr.w 0x0001c1f6 ; call 0001C1F6 advance_audio_menu_countdown

@@ -579,6 +579,10 @@ phase, movement countdown/easing boundary, moving X/Y state, secondary phase,
 and source finalization flags into a separate module; both profile and moving
 sprite data remain callback-resolved rather than becoming runtime ROM pointers.
 
+`0x1C61C` is now `advance_title_sweep_animation`, with the 32-phase delay
+table, signed paired X offsets, bit-3 suppression gate, and behavior/menu
+finalizer represented as typed state and callbacks.
+
 `0x1BCE8` is now `advance_title_profile_motion`. It carries the typed profile
 phase, movement countdown/easing boundary, moving X/Y state, secondary phase,
 and source finalization flags into a separate module; both profile and moving
