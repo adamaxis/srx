@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000D82A
-// Name: convert_graphics_routine_0x0000d82a
+// Name: render_attributes_and_skills
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000011C0 write_repeated_vdp_grid
@@ -12,7 +12,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_graphics_routine_0x0000d82a(void)
+void render_attributes_and_skills(void)
 
 {
   char cVar1;

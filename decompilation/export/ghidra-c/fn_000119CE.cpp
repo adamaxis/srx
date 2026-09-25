@@ -78,10 +78,10 @@ LAB_00011a5c:
 LAB_00011a9a:
   write_vdp_grid();
   uVar7 = convert_menu_routine_0x00011ae4();
-  convert_menu_routine_0x00012cee
+  update_equipment_combat_bars
             (uVar7,uVar2 & 0xffff0000,unaff_D3,&UNK_0000ca9e,unaff_D5,unaff_D6,5,extraout_A0_01,
              extraout_A1_01,unaff_A2,unaff_A3,unaff_A4,unaff_A5,unaff_A6);
-  convert_menu_routine_0x00012cee();
+  update_equipment_combat_bars();
   return uVar7;
 }
 

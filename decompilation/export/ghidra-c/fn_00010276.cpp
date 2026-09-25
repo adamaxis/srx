@@ -21,7 +21,7 @@ void run_menu_text_display_sequence(void)
   render_encoded_title_text();
   render_encoded_title_text();
   render_encoded_title_text();
-  convert_menu_routine_0x000107ce((unaff_D7 & 0xffff) * 0x30);
+  adjust_runner_posture((unaff_D7 & 0xffff) * 0x30);
   convert_menu_routine_0x0001088c();
   build_grouped_decimal_glyphs();
   return;

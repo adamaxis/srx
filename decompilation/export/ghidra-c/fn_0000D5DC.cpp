@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x0000D5DC
-// Name: convert_graphics_routine_0x0000d5dc
+// Name: render_cyberware_detail
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
 
 
-void convert_graphics_routine_0x0000d5dc(void)
+void render_cyberware_detail(void)
 
 {
   undefined4 uVar1;

@@ -31,6 +31,47 @@ are named explicitly as vector, renderer, terrain, menu, or save boundaries.
 - `disassembly.s`: instructions with resolved call comments.
 - `ghidra-c/fn_*.cpp`: individual decompiler output with annotated callees.
 
+## Runner record field access
+
+The live runner record is a 0x100-byte source structure. Direct field access is
+now exposed in the separate conversion-only `runner_record_access_conversion`
+library. `read_runner_record_fields()` and
+`write_runner_record_fields()` preserve the source big-endian layout and only
+touch fields with confirmed consumers; the remaining bytes stay opaque.
+
+| Source path | Confirmed field use |
+| --- | --- |
+| `0x044BC` `initialize_entity_record_from_template` | copies the template and initializes posture, ammunition, equipment, attributes, skills, and archetype/status fields |
+| `0x036FC` `advance_entity_asset_meter` | updates weapon ammunition or inventory phase bytes and clears exhausted equipment |
+| `0x038AC` `service_entity_ammo` | services the equipped weapon's ammunition/clip state |
+| `0x0D82A` `render_attributes_and_skills` | reads `+0x77..+0x8C`, race `+0x9A`, and class/archetype `+0x9B` for the command display |
+| `0x0D5DC` `render_cyberware_detail` | reads the installed-cyberware bitfield at `+0x90` |
+| `0x107CE` `adjust_runner_posture` | clamps the five-state posture byte at `+0x4D` |
+| `0x11740` `run_inventory_actions` | dispatches inventory cell bytes, phase bytes, equipped slot/item, armor, clips, and action branches |
+| `0x11B58` clips case | reads `+0x4E/+0x4F` and performs reload, trade, and distribution actions |
+| `0x12CEE` `update_equipment_combat_bars` | selects the equipped item/cyberware branch used for attack/defense bars |
+| `0x597EE` / `0x598B0` | projects confirmed live-record fields to and from compact save records |
+
+The concrete field-consuming operations are in the separate
+`shadowrun_ghidra_runner_record_operations` library:
+
+| Source entry | Converted operation | Fields exposed |
+| --- | --- | --- |
+| `0x0D82A` | `read_attributes_and_skills()` | race, archetype, `+0x77..+0x8C` |
+| `0x0D5DC`, `0x11950` | `read_cyberware_detail()` | all sixteen bits at `+0x90` |
+| `0x036FC` | `advance_entity_asset_meter()` | flags, equipped slot/item, ammo, inventory code/phase |
+| `0x038AC` | `service_entity_ammo()` | record type, equipped item, ammo; delegates to `0x036FC` |
+| `0x107CE` | `adjust_runner_posture()` | posture `+0x4D` |
+
+These are state operations derived from the source routines, not bookkeeping
+labels and not emulator hooks. The VDP/menu calls around the original
+mutations remain outside the typed operations.
+
+The importer has a separate ROM-only reader at
+`src/graphics_import.cpp::read_genesis_field_entity_template()`. That reader
+feeds extracted host assets/state; it is not the game runtime and is not a
+replacement for the source-function conversion above.
+
 ## Reviewed function map
 
 The native owner names below are the target C++ vocabulary. A `partial` entry

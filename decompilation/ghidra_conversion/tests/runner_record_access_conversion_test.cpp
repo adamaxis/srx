@@ -1,0 +1,79 @@
+#include "shadowrun_ghidra/runner_record_access_conversion.hpp"
+
+namespace {
+
+bool expect(const bool condition) { return condition; }
+
+} // namespace
+
+int main() {
+    using namespace shadowrun::ghidra_conversion;
+
+    LiveRunnerRecord source{};
+    for (std::size_t index = 0; index < source.bytes.size(); ++index) {
+        source.bytes[index] = static_cast<std::uint8_t>(index);
+    }
+
+    const auto fields = read_runner_record_fields(source);
+    if (!expect(fields.projection_word_08 == 0x0809U &&
+                fields.kind == 0x0E0FU && fields.flags == 0x1011U &&
+                fields.state_pointer == 0x12131415U &&
+                fields.state_selector == 0x1617U &&
+                fields.timing_multiplier == 0x1819U &&
+                fields.timing_accumulator == 0x1A1BU &&
+                fields.timing_threshold == 0x1C1DU &&
+                fields.state_index == 0x1E1FU &&
+                fields.record_type == 0x3E3FU && fields.race_index == 0x00U &&
+                fields.archetype_index == 0x9BU &&
+                fields.physical_value == 0x4CU &&
+                fields.mental_value == 0x9CU &&
+                fields.equipped_inventory_slot == 0x56 &&
+                fields.equipped_item_code == 0x57U &&
+                fields.posture == 0x4DU && fields.ammo_rounds == 0x4EU &&
+                fields.ammo_clips == 0x4FU &&
+                fields.equipped_armor_index == 0x76U &&
+                fields.cyberware_flags == 0x9091U &&
+                fields.inventory_item_codes[0] == 0x66U &&
+                fields.inventory_item_codes[7] == 0x6DU &&
+                fields.inventory_phase_bytes[0] == 0x6EU &&
+                fields.inventory_phase_bytes[7] == 0x75U &&
+                fields.attributes[0] == 0x77U && fields.attributes[7] == 0x7EU &&
+                fields.skills[0] == 0x80U && fields.skills[5] == 0x85U &&
+                fields.skills[6] == 0x87U && fields.skills[11] == 0x8CU &&
+                fields.auxiliary[0] == 0x7FU && fields.auxiliary[1] == 0x86U &&
+                fields.auxiliary[2] == 0x8DU && fields.auxiliary[3] == 0x8EU)) {
+        return 1;
+    }
+
+    auto changed = fields;
+    changed.projection_word_08 = 0xA1B2U;
+    changed.state_pointer = 0xC3D4E5F6U;
+    changed.equipped_inventory_slot = -1;
+    changed.posture = 4U;
+    changed.inventory_item_codes[3] = 0x2AU;
+    changed.inventory_phase_bytes[3] = 0x09U;
+    changed.attributes[2] = 0x55U;
+    changed.skills[8] = 0x66U;
+    changed.cyberware_flags = 0x0123U;
+
+    LiveRunnerRecord destination{};
+    destination.bytes.fill(0xEEU);
+    write_runner_record_fields(changed, destination);
+    if (!expect(destination.bytes[0x08U] == 0xA1U &&
+                destination.bytes[0x09U] == 0xB2U &&
+                destination.bytes[0x12U] == 0xC3U &&
+                destination.bytes[0x15U] == 0xF6U &&
+                destination.bytes[0x56U] == 0xFFU &&
+                destination.bytes[0x4DU] == 4U &&
+                destination.bytes[0x69U] == 0x2AU &&
+                destination.bytes[0x71U] == 0x09U &&
+                destination.bytes[0x79U] == 0x55U &&
+                destination.bytes[0x89U] == 0x66U &&
+                destination.bytes[0x90U] == 0x01U &&
+                destination.bytes[0x91U] == 0x23U &&
+                destination.bytes[0x05U] == 0xEEU)) {
+        return 2;
+    }
+
+    return 0;
+}

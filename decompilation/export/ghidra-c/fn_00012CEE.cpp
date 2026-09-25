@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00012CEE
-// Name: convert_menu_routine_0x00012cee
+// Name: update_equipment_combat_bars
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
@@ -19,7 +19,7 @@
 /* WARNING: Removing unreachable block (ram,0x00012ddc) */
 /* WARNING: Removing unreachable block (ram,0x00012d50) */
 
-void convert_menu_routine_0x00012cee(void)
+void update_equipment_combat_bars(void)
 
 {
   undefined1 uVar1;

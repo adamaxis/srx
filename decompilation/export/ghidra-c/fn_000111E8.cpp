@@ -1,18 +1,18 @@
 // Ghidra headless export
 // Entry: 0x000111E8
-// Name: convert_menu_routine_0x000111e8
+// Name: render_equipment_details
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
-//   0x00011352 convert_menu_routine_0x00011352
+//   0x00011352 apply_armor_selection
 //   0x00011928 render_menu_row
 //   0x00011ABE prepare_menu_dialog
 //   0x00012C36 prepare_menu_grid_variant_b
 //   0x00012EAE convert_menu_routine_0x00012eae
 
 
-void convert_menu_routine_0x000111e8(void)
+void render_equipment_details(void)
 
 {
   int extraout_A0;
@@ -60,7 +60,7 @@ LAB_00011304:
 LAB_00011312:
   build_grouped_decimal_glyphs();
   build_grouped_decimal_glyphs();
-  convert_menu_routine_0x00011352();
+  apply_armor_selection();
   prepare_menu_dialog();
   return;
 }

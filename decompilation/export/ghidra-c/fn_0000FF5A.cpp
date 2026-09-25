@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000FF5A
-// Name: convert_graphics_routine_0x0000ff5a
+// Name: run_equipment_selection
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003404 upload_field_asset_setup
@@ -13,7 +13,7 @@
 //   0x000125FA clear_entity_auxiliary_marker
 
 
-void convert_graphics_routine_0x0000ff5a(void)
+void run_equipment_selection(void)
 
 {
   undefined1 extraout_D1b;

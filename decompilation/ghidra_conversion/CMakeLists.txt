@@ -592,6 +592,36 @@ target_link_libraries(shadowrun_ghidra_runner_roster_test
 add_test(NAME shadowrun_ghidra_runner_roster
          COMMAND shadowrun_ghidra_runner_roster_test)
 
+add_library(shadowrun_ghidra_runner_record_access STATIC
+    src/runner_record_access_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_runner_record_access PUBLIC include)
+target_link_libraries(shadowrun_ghidra_runner_record_access
+    PUBLIC shadowrun_ghidra_runner_roster)
+
+add_executable(shadowrun_ghidra_runner_record_access_test
+    tests/runner_record_access_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_runner_record_access_test
+    PRIVATE shadowrun_ghidra_runner_record_access)
+add_test(NAME shadowrun_ghidra_runner_record_access
+         COMMAND shadowrun_ghidra_runner_record_access_test)
+
+add_library(shadowrun_ghidra_runner_record_operations STATIC
+    src/runner_record_operations_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_runner_record_operations PUBLIC include)
+target_link_libraries(shadowrun_ghidra_runner_record_operations
+    PUBLIC shadowrun_ghidra_runner_record_access)
+
+add_executable(shadowrun_ghidra_runner_record_operations_test
+    tests/runner_record_operations_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_runner_record_operations_test
+    PRIVATE shadowrun_ghidra_runner_record_operations)
+add_test(NAME shadowrun_ghidra_runner_record_operations
+         COMMAND shadowrun_ghidra_runner_record_operations_test)
+
 add_library(shadowrun_ghidra_save_validation STATIC
     src/save_validation_conversion.cpp
 )

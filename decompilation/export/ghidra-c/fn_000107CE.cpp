@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000107CE
-// Name: convert_menu_routine_0x000107ce
+// Name: adjust_runner_posture
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
@@ -10,7 +10,7 @@
 //   0x00010854 write_three_grids_then_service
 
 
-void convert_menu_routine_0x000107ce(void)
+void adjust_runner_posture(void)
 
 {
   char cVar1;

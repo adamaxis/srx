@@ -4,4 +4,4 @@ Compiler: default
 Image base: 00000000
 Max address: ffffffff
 Processor: 68000
-Function count: 906
+Function count: 909

@@ -41,7 +41,7 @@ void convert_menu_routine_0x000114a0(void)
   prepare_menu_grid_variant_b();
   read_entity_action_code();
   if (!(bool)uVar2) {
-    cVar1 = convert_menu_routine_0x00012a8c();
+    cVar1 = render_item_action_details();
     if ((char)(cVar1 + -0x10) < '\0') {
       service_entity_action_menu();
     }

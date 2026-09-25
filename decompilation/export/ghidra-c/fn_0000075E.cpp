@@ -24,7 +24,7 @@
 //   0x00004618 update_entity_render_pass
 //   0x0000A7B4 initialize_entity_runtime
 //   0x0000A8EA convert_graphics_routine_0x0000a8ea
-//   0x00010D30 convert_menu_routine_0x00010d30
+//   0x00010D30 run_command_overview
 //   0x00016396 advance_palette_fade
 //   0x000167AE convert_world_routine_0x000167ae
 //   0x0001DC22 select_next_entity
@@ -221,7 +221,7 @@ LAB_00000a72:
         if ((DAT_00ffdd22 & 0x8000) != 0) {
           run_fixed_audio_transaction_wrapper();
           _DAT_00ffdfe8 = 0xffff;
-          convert_menu_routine_0x00010d30();
+          run_command_overview();
           service_audio_tick_wrapper();
           select_next_entity();
           if (_DAT_00ffe108 == 0) goto LAB_00000b9c;

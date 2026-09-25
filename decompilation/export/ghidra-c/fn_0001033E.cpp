@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001033E
-// Name: convert_menu_routine_0x0001033e
+// Name: resolve_first_aid_item_use
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D5A guard_entity_phase_window
@@ -17,7 +17,7 @@
 
 /* WARNING: Removing unreachable block (ram,0x000103a8) */
 
-void convert_menu_routine_0x0001033e(void)
+void resolve_first_aid_item_use(void)
 
 {
   byte *pbVar1;

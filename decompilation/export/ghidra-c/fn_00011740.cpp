@@ -6,46 +6,25 @@
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
 //   0x00000D94 wait_for_controller_event
-//   0x00000FFE clear_and_fill_plane_a
-//   0x0000102A clear_and_fill_plane_b
 //   0x000011C0 write_repeated_vdp_grid
-//   0x00001358 copy_source_word_block
-//   0x00001530 decode_and_upload_source_stream
-//   0x00001728 render_hud_sprite_stream
 //   0x0000195C sample_controller_input
-//   0x0000334C upload_field_asset_sequence
 //   0x00003404 upload_field_asset_setup
 //   0x00003674 advance_entity_delay_meter
 //   0x000036FC advance_entity_asset_meter
 //   0x000037EC advance_entity_behavior_meter
 //   0x000038FA run_entity_animation_triplet
 //   0x0000391A handle_mode_action_event
-//   0x000039F2 refresh_field_animation_assets
 //   0x0000C0DA render_encoded_title_text
-//   0x0000C216 build_grouped_decimal_glyphs
 //   0x0000C376 move_wrapped_menu_cursor
 //   0x0000C3E6 write_menu_grid_with_metadata
 //   0x0000C3F8 render_menu_grid_number_pair
 //   0x0000C436 dispatch_menu_handler
-//   0x0000D4C8 convert_graphics_routine_0x0000d4c8
-//   0x0000D53C convert_graphics_routine_0x0000d53c
-//   0x0000D5DC convert_graphics_routine_0x0000d5dc
-//   0x0000D82A convert_graphics_routine_0x0000d82a
 //   0x0000E660 advance_random_grid_effect
-//   0x0000FDFE convert_graphics_routine_0x0000fdfe
-//   0x0000FEBE move_selection_column
-//   0x0000FF06 move_selection_row
-//   0x0000FF5A convert_graphics_routine_0x0000ff5a
-//   0x00010276 run_menu_text_display_sequence
-//   0x000106DA prepare_grid_then_write
 //   0x00010A7E transfer_menu_asset_batch_four_post_prepare
-//   0x00010C96 transfer_menu_asset_batch_eight
 //   0x000110E8 draw_hud_panel_wrapper
-//   0x000110EC draw_menu_hud_panel_variant_b
-//   0x00011190 transfer_menu_glyph_triple
 //   0x000111D0 upload_menu_tile_block
 //   0x00011454 reset_menu_upload_cursor_and_upload
-//   0x00011624 convert_menu_routine_0x00011624
+//   0x00011624 render_equipment_highlights
 //   0x0001170C render_title_text_source_leaf
 //   0x00011712 render_title_text_source_variant
 //   0x000118C6 cycle_inventory_action_selector
@@ -60,9 +39,7 @@
 //   0x00012C1E prepare_menu_grid_variant_a
 //   0x00012C36 prepare_menu_grid_variant_b
 //   0x00012C42 prepare_menu_grid_variant_c
-//   0x00012C5A write_menu_repeated_grid_with_metadata
 //   0x000530DE service_audio_if_enabled
-//   0x000566E2 refresh_mode_resource_metadata
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -386,15 +363,15 @@ LAB_0000d0d6:
     } while (sVar11 != -1);
 LAB_0000d25e:
     do {
-      convert_graphics_routine_0x0000d5dc();
-      convert_graphics_routine_0x0000d82a();
+      render_cyberware_detail();
+      render_attributes_and_skills();
       while( true ) {
         wait_for_vblank();
         latch_controller_events();
         sample_controller_input();
         if ((DAT_00ffdd22._0_1_ & 4) != 0) break;
         if ((DAT_00ffdd22._0_1_ & 8) != 0) {
-          convert_graphics_routine_0x0000d5dc();
+          render_cyberware_detail();
           bVar18 = DAT_00fff0d0 == '\0';
           if (bVar18) {
             _DAT_00fff0d0 = CONCAT11(1,DAT_00fff0d1);
@@ -402,7 +379,7 @@ LAB_0000d25e:
           goto LAB_0000d25e;
         }
         if ((DAT_00ffdd22._0_1_ & 1) != 0) {
-          convert_graphics_routine_0x0000d5dc();
+          render_cyberware_detail();
           bVar1 = DAT_00fff0d1 - 1;
           _DAT_00fff0d0 = CONCAT11(DAT_00fff0d0,bVar1);
           if ((int)((uint)bVar1 << 0x18) < 0) {
@@ -411,7 +388,7 @@ LAB_0000d25e:
           goto LAB_0000d25e;
         }
         if ((DAT_00ffdd22._0_1_ & 2) != 0) {
-          convert_graphics_routine_0x0000d5dc();
+          render_cyberware_detail();
           uVar10 = _DAT_00fff0d0;
           cVar7 = DAT_00fff0d1 + '\x01';
           _DAT_00fff0d0 = CONCAT11(DAT_00fff0d0,cVar7);
@@ -422,7 +399,7 @@ LAB_0000d25e:
         }
         if (((DAT_00ffdd22._0_1_ & 0x40) == 0) && ((DAT_00ffdd22._0_1_ & 0x10) == 0)) {
           if ((DAT_00ffdd22._0_1_ & 0x20) != 0) {
-            convert_graphics_routine_0x0000d5dc();
+            render_cyberware_detail();
             convert_graphics_routine_0x0000d4c8();
             goto LAB_0000d0d6;
           }
@@ -479,7 +456,7 @@ LAB_0000d4a0:
           }
         }
       }
-      convert_graphics_routine_0x0000d5dc();
+      render_cyberware_detail();
       bVar18 = DAT_00fff0d0 != '\0';
       if (bVar18) {
         _DAT_00fff0d0 = _DAT_00fff0d0 & 0xff;
@@ -545,7 +522,7 @@ LAB_0000d4a0:
           }
           if ((((DAT_00ffdd22._0_1_ & 0x20) == 0) && ((DAT_00ffdd22._0_1_ & 0x10) == 0)) &&
              ((DAT_00ffdd22._0_1_ & 0x40) == 0)) break;
-          convert_graphics_routine_0x0000ff5a();
+          run_equipment_selection();
           run_menu_text_display_sequence();
         }
       } while ((DAT_00ffdd22._0_1_ & 0x80) == 0);
@@ -629,7 +606,7 @@ LAB_0000c2aa:
     if (-1 < DAT_00fff114) {
       read_entity_action_code();
       clear_menu_slot();
-      convert_menu_routine_0x00011624();
+      render_equipment_highlights();
     }
     return;
   case 9:
@@ -693,7 +670,7 @@ LAB_0001296a:
       service_audio_if_enabled();
     } while ((DAT_00fff096 < 0) || (DAT_00fff114 < '\0'));
     convert_menu_routine_0x000129fe();
-    convert_menu_routine_0x00011624();
+    render_equipment_highlights();
     prepare_menu_grid_variant_b();
 LAB_000129dc:
     render_menu_row();
@@ -813,7 +790,7 @@ LAB_000118b6:
               *pbVar12 = bVar2;
               if (bVar2 == 0 || SBORROW1(bVar1,'\x01') != (int)((uint)bVar2 << 0x18) < 0) {
                 clear_menu_slot();
-                convert_menu_routine_0x00011624();
+                render_equipment_highlights();
               }
             }
           }
@@ -843,7 +820,7 @@ joined_r0x00012496:
             *pbVar12 = bVar2;
             if (bVar2 == 0 || SBORROW1(bVar1,'\x01') != (int)((uint)bVar2 << 0x18) < 0) {
               clear_menu_slot();
-              convert_menu_routine_0x00011624();
+              render_equipment_highlights();
               run_entity_animation_triplet();
             }
           }
@@ -910,7 +887,7 @@ LAB_00012236:
   advance_entity_asset_meter();
 LAB_0001228c:
   upload_field_asset_setup();
-  convert_menu_routine_0x00011624();
+  render_equipment_highlights();
   return;
 }
 

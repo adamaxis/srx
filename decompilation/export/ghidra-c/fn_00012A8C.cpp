@@ -1,16 +1,16 @@
 // Ghidra headless export
 // Entry: 0x00012A8C
-// Name: convert_menu_routine_0x00012a8c
+// Name: render_item_action_details
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 //   0x0000C0DA render_encoded_title_text
-//   0x00011352 convert_menu_routine_0x00011352
+//   0x00011352 apply_armor_selection
 //   0x00012148 read_entity_action_code
 //   0x00012A54 update_resource_variant
 
 
-undefined4 convert_menu_routine_0x00012a8c(void)
+undefined4 render_item_action_details(void)
 
 {
   undefined4 in_D0;
@@ -68,7 +68,7 @@ undefined4 convert_menu_routine_0x00012a8c(void)
           return in_D0;
         }
         DAT_00fff0b1 = 0xff;
-        convert_menu_routine_0x00011352();
+        apply_armor_selection();
         return in_D0;
       }
     }

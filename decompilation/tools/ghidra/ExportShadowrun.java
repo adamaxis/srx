@@ -5,6 +5,7 @@ import ghidra.app.decompiler.DecompInterface;
 import ghidra.app.decompiler.DecompileResults;
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.address.Address;
+import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionManager;
 import ghidra.program.model.listing.Instruction;
@@ -634,43 +635,46 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0000CF38L, "convert_graphics_routine_0x0000cf38");
         names.put(0x0000D4C8L, "convert_graphics_routine_0x0000d4c8");
         names.put(0x0000D53CL, "convert_graphics_routine_0x0000d53c");
-        names.put(0x0000D5DCL, "convert_graphics_routine_0x0000d5dc");
-        names.put(0x0000D82AL, "convert_graphics_routine_0x0000d82a");
+        names.put(0x0000D01CL, "run_attributes_and_skills_menu");
+        names.put(0x0000D5DCL, "render_cyberware_detail");
+        names.put(0x0000D82AL, "render_attributes_and_skills");
         names.put(0x0000EA36L, "convert_graphics_routine_0x0000ea36");
         names.put(0x0000EB92L, "convert_graphics_routine_0x0000eb92");
         names.put(0x0000ECCCL, "convert_graphics_routine_0x0000eccc");
         names.put(0x0000EF08L, "convert_graphics_routine_0x0000ef08");
         names.put(0x0000F5F4L, "convert_graphics_routine_0x0000f5f4");
         names.put(0x0000FDFEL, "convert_graphics_routine_0x0000fdfe");
-        names.put(0x0000FF5AL, "convert_graphics_routine_0x0000ff5a");
+        names.put(0x0000FF5AL, "run_equipment_selection");
         names.put(0x00010016L, "convert_menu_routine_0x00010016");
         names.put(0x000100A8L, "convert_menu_routine_0x000100a8");
         names.put(0x00010172L, "convert_menu_routine_0x00010172");
         names.put(0x000102D4L, "convert_menu_routine_0x000102d4");
-        names.put(0x0001033EL, "convert_menu_routine_0x0001033e");
+        names.put(0x0001033EL, "resolve_first_aid_item_use");
         names.put(0x000104F6L, "convert_menu_routine_0x000104f6");
         names.put(0x0001055EL, "convert_menu_routine_0x0001055e");
         names.put(0x000105E6L, "convert_menu_routine_0x000105e6");
         names.put(0x00010660L, "convert_menu_routine_0x00010660");
         names.put(0x00010722L, "convert_menu_routine_0x00010722");
-        names.put(0x000107CEL, "convert_menu_routine_0x000107ce");
+        names.put(0x000107CEL, "adjust_runner_posture");
+        names.put(0x0000FBA6L, "run_magic_menu");
         names.put(0x0001088CL, "convert_menu_routine_0x0001088c");
         names.put(0x0001098EL, "convert_menu_routine_0x0001098e");
         names.put(0x00010A82L, "convert_menu_routine_0x00010a82");
-        names.put(0x00010D30L, "convert_menu_routine_0x00010d30");
-        names.put(0x000111E8L, "convert_menu_routine_0x000111e8");
-        names.put(0x00011352L, "convert_menu_routine_0x00011352");
+        names.put(0x00010D30L, "run_command_overview");
+        names.put(0x000111E8L, "render_equipment_details");
+        names.put(0x00011352L, "apply_armor_selection");
         names.put(0x000114A0L, "convert_menu_routine_0x000114a0");
         names.put(0x00011506L, "convert_menu_routine_0x00011506");
         names.put(0x00011592L, "convert_menu_routine_0x00011592");
-        names.put(0x00011624L, "convert_menu_routine_0x00011624");
+        names.put(0x00011624L, "render_equipment_highlights");
+        names.put(0x00011950L, "run_cyberware_menu");
         names.put(0x000119CEL, "convert_menu_routine_0x000119ce");
         names.put(0x00011AE4L, "convert_menu_routine_0x00011ae4");
         names.put(0x0001253EL, "convert_menu_routine_0x0001253e");
         names.put(0x000129FEL, "convert_menu_routine_0x000129fe");
-        names.put(0x00012A8CL, "convert_menu_routine_0x00012a8c");
+        names.put(0x00012A8CL, "render_item_action_details");
         names.put(0x00012C74L, "convert_menu_routine_0x00012c74");
-        names.put(0x00012CEEL, "convert_menu_routine_0x00012cee");
+        names.put(0x00012CEEL, "update_equipment_combat_bars");
         names.put(0x00012EAEL, "convert_menu_routine_0x00012eae");
         names.put(0x00013000L, "convert_menu_routine_0x00013000");
         names.put(0x000130C0L, "convert_menu_routine_0x000130c0");
@@ -949,6 +953,43 @@ public class ExportShadowrun extends GhidraScript {
         return names;
     }
 
+    private void ensureReviewedInlineFunction(Program program,
+                                              long startOffset,
+                                              long endExclusive,
+                                              String name) throws Exception {
+        Address start = program.getAddressFactory().getDefaultAddressSpace()
+            .getAddress(startOffset);
+        Address end = program.getAddressFactory().getDefaultAddressSpace()
+            .getAddress(endExclusive - 1L);
+        FunctionManager manager = program.getFunctionManager();
+        Function function = manager.getFunctionAt(start);
+        Function containing = manager.getFunctionContaining(start);
+        if (function == null) {
+            if (containing != null) {
+                AddressSet containingBody = new AddressSet(containing.getBody());
+                containingBody.delete(start, end);
+                containing.setBody(containingBody);
+            }
+            function = manager.createFunction(name, start,
+                new AddressSet(start, end), SourceType.USER_DEFINED);
+        } else if (!name.equals(function.getName())) {
+            function.setName(name, SourceType.USER_DEFINED);
+        }
+    }
+
+    private void ensureReviewedInlineFunctions(Program program)
+            throws Exception {
+        // These are entry blocks that Ghidra left inline in their callers.
+        // They are real screen loops in the ROM and must be exported as
+        // functions so the conversion can name and implement them directly.
+        ensureReviewedInlineFunction(program, 0x0000D01CL, 0x0000D4C8L,
+                                     "run_attributes_and_skills_menu");
+        ensureReviewedInlineFunction(program, 0x0000FBA6L, 0x0000FDAEL,
+                                     "run_magic_menu");
+        ensureReviewedInlineFunction(program, 0x00011950L, 0x000119CEL,
+                                     "run_cyberware_menu");
+    }
+
     private static void applyReviewedNames(Program program) throws Exception {
         for (Map.Entry<Long, String> entry : reviewedNames().entrySet()) {
             Address address = program.getAddressFactory().getDefaultAddressSpace()
@@ -1062,6 +1103,7 @@ public class ExportShadowrun extends GhidraScript {
         Path output = Paths.get(scriptArguments[0]).toAbsolutePath().normalize();
         Files.createDirectories(output.resolve("ghidra-c"));
         Program program = currentProgram;
+        ensureReviewedInlineFunctions(program);
         applyReviewedNames(program);
         FunctionManager functions = program.getFunctionManager();
         List<Function> entries = new ArrayList<>();

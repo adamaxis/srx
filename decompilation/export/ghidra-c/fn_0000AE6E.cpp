@@ -3,7 +3,7 @@
 // Name: update_entity_target_heading
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001033E convert_menu_routine_0x0001033e
+//   0x0001033E resolve_first_aid_item_use
 //   0x00014D8E convert_entity_routine_0x00014d8e
 //   0x00015D3C measure_relative_heading_and_distance
 
@@ -31,7 +31,7 @@ void update_entity_target_heading(void)
       return;
     }
   }
-  convert_menu_routine_0x0001033e();
+  resolve_first_aid_item_use();
   return;
 }
 
