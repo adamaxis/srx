@@ -616,3 +616,17 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x53A78	indexed title service loop	ghidra_conversion::run_indexed_title_services	shadowrun_ghidra_audio_service_batch	partial		Bounded 23-entry service dispatch
 0x549E4	repeated menu grid write	ghidra_conversion::write_menu_repeated_grid_service	shadowrun_ghidra_audio_service_batch	partial		Named repeated-grid presentation boundary
 0x549F6	display status selection	ghidra_conversion::select_display_status	shadowrun_ghidra_audio_service_batch	partial		Typed display-mode status selection and dirty flag
+0x0D5A	entity phase guard	ghidra_conversion::guard_entity_phase_window	shadowrun_ghidra_remaining_field	partial		Explicit source no-op boundary; no runtime assertion or hidden side effect
+0x1406	title resource preparation	ghidra_conversion::prepare_title_resources	shadowrun_ghidra_remaining_field	partial		Typed terminated resource and seven-word sprite descriptor plan
+0x1728	HUD sprite stream	ghidra_conversion::render_hud_sprite_stream	shadowrun_ghidra_remaining_field	partial		Bounded control/run stream decoder with palette and row-wrap callbacks
+0x2CE0	field mode transition	ghidra_conversion::advance_field_mode_transition	shadowrun_ghidra_remaining_field	partial		Typed mode-table transition, world-activity gate, resource and coordinate selection
+0x2F32	field scene initialization	ghidra_conversion::initialize_field_scene_state	shadowrun_ghidra_remaining_field	partial		Profile copy, camera initialization, ready-entity handoff, and eight-word pending position consume
+0x3168	field scene variant toggle	ghidra_conversion::toggle_field_scene_variant	shadowrun_ghidra_remaining_field	partial		Mode-0x10 variant selection and pending-position publication
+0x3560	HUD panel variant refresh	ghidra_conversion::refresh_hud_panel_variant	shadowrun_ghidra_remaining_field	partial		Source panel selection, post hook, and repeated draw order
+0x3674	entity delay meter	ghidra_conversion::advance_entity_delay_meter	shadowrun_ghidra_remaining_field	partial		Flag-gated signed meter update with source ten-unit saturation
+0x36FC	entity asset meter	ghidra_conversion::advance_entity_asset_meter	shadowrun_ghidra_remaining_field	partial		Mode-banded asset counter update, cap table, reload boundary, and grid write
+0x37EC	entity behavior meter	ghidra_conversion::advance_entity_behavior_meter	shadowrun_ghidra_remaining_field	partial		Active-flag behavior counter update with source saturation and grid boundary
+0x3A1C	field camera update	ghidra_conversion::update_field_camera	shadowrun_ghidra_remaining_field	partial		Bounded camera movement, 0x80 alignment edge notifications, and state-3 reset
+0x3A90	camera delta policy	ghidra_conversion::accept_camera_delta	shadowrun_ghidra_remaining_field	partial		Typed distance-band and direction acceptance policy
+0x3EFE	field tile sample decode	ghidra_conversion::decode_field_tile_sample	shadowrun_ghidra_remaining_field	partial		Source-offset calculation plus 32-byte nibble-mask extraction
+0x4018	field tile edge render	ghidra_conversion::render_field_tile_edge	shadowrun_ghidra_remaining_field	partial		Host tile-word edge stream with source palette/flip semantics

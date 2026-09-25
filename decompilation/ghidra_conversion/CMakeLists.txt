@@ -1624,3 +1624,16 @@ target_link_libraries(shadowrun_ghidra_audio_service_batch_test
     PRIVATE shadowrun_ghidra_audio_service_batch)
 add_test(NAME shadowrun_ghidra_audio_service_batch
          COMMAND shadowrun_ghidra_audio_service_batch_test)
+
+add_library(shadowrun_ghidra_remaining_field STATIC
+    src/remaining_field_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_remaining_field PUBLIC include)
+
+add_executable(shadowrun_ghidra_remaining_field_test
+    tests/remaining_field_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_remaining_field_test
+    PRIVATE shadowrun_ghidra_remaining_field)
+add_test(NAME shadowrun_ghidra_remaining_field
+         COMMAND shadowrun_ghidra_remaining_field_test)

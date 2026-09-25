@@ -587,6 +587,18 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00019EA6L, "run_menu_selection_variant");
         names.put(0x00019F18L, "run_menu_progression_variant");
         names.put(0x00019F7EL, "clear_first_ready_menu_slot");
+        names.put(0x00000D5AL, "guard_entity_phase_window");
+        names.put(0x00002CE0L, "advance_field_mode_transition");
+        names.put(0x00002F32L, "initialize_field_scene_state");
+        names.put(0x00003168L, "toggle_field_scene_variant");
+        names.put(0x00003560L, "refresh_hud_panel_variant");
+        names.put(0x00003674L, "advance_entity_delay_meter");
+        names.put(0x000036FCL, "advance_entity_asset_meter");
+        names.put(0x000037ECL, "advance_entity_behavior_meter");
+        names.put(0x00003A1CL, "update_field_camera");
+        names.put(0x00003A90L, "accept_camera_delta");
+        names.put(0x00003EFEL, "decode_field_tile_sample");
+        names.put(0x00004018L, "render_field_tile_edge");
         names.put(0x0001A030L, "select_menu_entry");
         names.put(0x0001A09CL, "refresh_menu_selection_after_clear");
         names.put(0x0001A106L, "refresh_menu_selection_or_prepare");
