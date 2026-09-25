@@ -37,10 +37,37 @@ enum MatrixInput : std::uint16_t {
     move_down = 1U << 9,
     move_left = 1U << 10,
     move_right = 1U << 11,
-    cancel = 1U << 12,
-    confirm = 1U << 13,
-    exit = 1U << 14,
+    set_overlay_marker_zero = 1U << 12,
+    set_overlay_marker_one = 1U << 13,
+    set_overlay_marker_special = 1U << 14,
+    leave_matrix = 1U << 15,
 };
+
+struct MatrixActionState {
+    // FFF0B7 is written with one of these three values before the source
+    // action branch at 0x1842E is entered.
+    std::uint8_t overlay_marker = 0;
+    bool action_requested = false;
+    bool exit_requested = false;
+};
+
+// ROM 0x18630..0x1866C: apply the action/exit bits in source priority. This
+// does not name the physical Genesis buttons; it records their proven state
+// effect instead.
+void apply_matrix_action_input(MatrixActionState& state,
+                               std::uint16_t input_events);
+
+enum class MatrixActionRoute {
+    no_action,
+    program_slot_menu,
+    column_action_dispatch,
+    disconnect_confirmation,
+};
+
+// ROM 0x1842E..0x18628: choose the next source branch after an action is
+// requested. `matrix_run_active` is the source FFF0B0 gate.
+MatrixActionRoute choose_matrix_action_route(
+    std::uint8_t row, std::uint8_t column, bool matrix_run_active);
 
 // ROM 0x1822C writes the row highlight at 0x94 + row * 0x28 and the column
 // highlight at 0x8C + column * 0x20.  These helpers expose the source result

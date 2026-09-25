@@ -53,10 +53,44 @@ int main() {
         return 5;
     }
     cursor.redraw_requested = false;
-    update_matrix_cursor(cursor, confirm);
+    update_matrix_cursor(cursor, set_overlay_marker_one);
     if (!expect(cursor.row == 3 && cursor.column == 3 &&
                 !cursor.redraw_requested)) {
         return 6;
+    }
+
+    MatrixActionState action{};
+    apply_matrix_action_input(action, set_overlay_marker_one);
+    if (!expect(action.overlay_marker == 1U && action.action_requested &&
+                !action.exit_requested)) {
+        return 7;
+    }
+    action = {};
+    apply_matrix_action_input(action, set_overlay_marker_special |
+                                         set_overlay_marker_zero |
+                                         leave_matrix);
+    if (!expect(action.overlay_marker == 0xFFU && action.action_requested &&
+                !action.exit_requested)) {
+        return 8;
+    }
+    action = {};
+    apply_matrix_action_input(action, leave_matrix);
+    if (!expect(!action.action_requested && action.exit_requested)) {
+        return 9;
+    }
+    if (!expect(choose_matrix_action_route(0, 0, false) ==
+                    MatrixActionRoute::program_slot_menu &&
+                choose_matrix_action_route(2, 3, false) ==
+                    MatrixActionRoute::program_slot_menu &&
+                choose_matrix_action_route(3, 2, false) ==
+                    MatrixActionRoute::no_action &&
+                choose_matrix_action_route(3, 2, true) ==
+                    MatrixActionRoute::column_action_dispatch &&
+                choose_matrix_action_route(3, 3, false) ==
+                    MatrixActionRoute::no_action &&
+                choose_matrix_action_route(3, 3, true) ==
+                    MatrixActionRoute::disconnect_confirmation)) {
+        return 10;
     }
 
     MatrixLoopState state{};
@@ -100,7 +134,7 @@ int main() {
                 events[9] == "title-sprites" && events[10] == "display:33140" &&
                 events[13] == "two-grids" && events[14] == "display:33140" &&
                 events[15] == "matrix-panel")) {
-        return 7;
+        return 11;
     }
 
     return 0;

@@ -46,6 +46,40 @@ bool matrix_program_uses_runner_details(const std::uint8_t program_index) {
     return program_index < 12U;
 }
 
+void apply_matrix_action_input(MatrixActionState& state,
+                               const std::uint16_t input_events) {
+    // The source tests bit 14 first, then bits 12 and 13, and only checks the
+    // bit-15 exit branch when none of those action modes was selected.
+    if ((input_events & set_overlay_marker_special) != 0U) {
+        state.overlay_marker = 0xFFU;
+        state.action_requested = true;
+    } else if ((input_events & set_overlay_marker_zero) != 0U) {
+        state.overlay_marker = 0;
+        state.action_requested = true;
+    } else if ((input_events & set_overlay_marker_one) != 0U) {
+        state.overlay_marker = 1U;
+        state.action_requested = true;
+    } else if ((input_events & leave_matrix) != 0U) {
+        state.exit_requested = true;
+    }
+}
+
+MatrixActionRoute choose_matrix_action_route(
+    const std::uint8_t row, const std::uint8_t column,
+    const bool matrix_run_active) {
+    if (row != 3U) {
+        return MatrixActionRoute::program_slot_menu;
+    }
+    if (column == 3U) {
+        return matrix_run_active ? MatrixActionRoute::disconnect_confirmation
+                                 : MatrixActionRoute::no_action;
+    }
+    if (column == 2U && !matrix_run_active) {
+        return MatrixActionRoute::no_action;
+    }
+    return MatrixActionRoute::column_action_dispatch;
+}
+
 void update_matrix_cursor(MatrixCursorState& state,
                           const std::uint16_t input_events) {
     // 0x1833C gives vertical movement priority over horizontal movement.

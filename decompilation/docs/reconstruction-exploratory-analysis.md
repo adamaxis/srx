@@ -741,6 +741,12 @@ the original FFF0D0/FFF0D1 addresses to host code.
 The `0x1882E` panel path now has the corresponding typed gate: indices 0..11
 are available only when their FFFBCC flag is nonzero, while indices 12..15
 bypass that table; only the first twelve enter the runner-detail/stat branch.
+The inline action branch at `0x18408` is also separated: source action bits
+write the three proven `FFF0B7` modes in priority order, bit 15 exits Matrix,
+rows 0..2 enter the program-slot path, row 3/column 2 is blocked without an
+active FFF0B0 run, and row 3/column 3 becomes the pull-the-plug confirmation
+only when that run gate is active. The four indirect column handlers remain
+explicit boundaries until their targets are traced.
 The Matrix state table, program actions, and rendered resources inside the
 loop must still be recovered before claiming the Matrix panel complete. Until
 then the Matrix hill remains `PENDING`, rather than represented by a generic

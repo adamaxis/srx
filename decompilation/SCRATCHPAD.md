@@ -595,6 +595,14 @@ The `0x1882E` Matrix panel selection gate is now typed as well. Program keys
 are not gated. The first twelve keys take the runner-detail/stat preparation,
 while the four extended keys go directly to their description path.
 
+The inline action branch at `0x18408` is now typed as Matrix action state and
+route selection. Source priority is special marker (`0xFF`), marker zero,
+marker one, then exit; row 0..2 routes to the program-slot path, row 3 /
+column 2 is gated by active `FFF0B0`, and row 3 / column 3 routes to the
+pull-the-plug confirmation only when that gate is active. The indirect column
+handlers are still unresolved and remain callbacks/boundaries rather than
+invented implementations.
+
 The Attributes/Skills screen is now separated into a typed record/layout
 conversion. `0x0D82A` maps the twenty source label slots into two columns of
 ten rows: attributes use live-record bytes `+0x77..+0x7E`, skills use
