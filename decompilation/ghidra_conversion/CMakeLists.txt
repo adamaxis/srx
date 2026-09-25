@@ -1504,6 +1504,19 @@ target_link_libraries(shadowrun_ghidra_mode_text_prompt_test
 add_test(NAME shadowrun_ghidra_mode_text_prompt
          COMMAND shadowrun_ghidra_mode_text_prompt_test)
 
+add_library(shadowrun_ghidra_field_exit_prompt STATIC
+    src/field_exit_prompt_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_field_exit_prompt PUBLIC include)
+
+add_executable(shadowrun_ghidra_field_exit_prompt_test
+    tests/field_exit_prompt_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_field_exit_prompt_test
+    PRIVATE shadowrun_ghidra_field_exit_prompt)
+add_test(NAME shadowrun_ghidra_field_exit_prompt
+         COMMAND shadowrun_ghidra_field_exit_prompt_test)
+
 add_library(shadowrun_ghidra_mode_optional_resource STATIC
     src/mode_optional_resource_conversion.cpp
 )

@@ -1174,6 +1174,13 @@ callback and return to the prompt; commands at or above `0xFA` return to the
 caller. A negative first-option entry waits thirty frames and returns `0xFB`.
 The native module has no VDP, ROM pointer, or runtime emulator dependency.
 
+The `0x1F65A` field-exit branch table is now `select_field_exit_prompt`.
+It recognizes the five source scene/submode pairs `(0,3)`, `(1,1)`, `(2,2)`,
+`(3,1)`, and `(4,0)`, selects symbolic prompt/profile aliases for default,
+positive, and negative result variants, preserves the `(1,1)` world-flag
+override, and preserves the negative `(4,0)` resource-profile change. The
+exit-service and post-service display refresh remain explicit callbacks.
+
 Batch 2 converts `0x1F32E` as `clear_optional_mode_resource`, an explicit
 typed clear of the optional mode-resource marker.
 

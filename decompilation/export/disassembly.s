@@ -19327,7 +19327,7 @@
 0001F61A: bmi.w 0x0001f652
 0001F61E: tst.b (0x00fff0cc).l
 0001F624: bmi.w 0x0001f652
-0001F628: jsr 0x0001f65a.l ; call 0001F65A convert_world_routine_0x0001f65a
+0001F628: jsr 0x0001f65a.l ; call 0001F65A select_field_exit_prompt
 0001F62E: tst.w D6w
 0001F630: bmi.w 0x0001f652
 0001F634: jsr 0x0001f830.l ; call 0001F830 convert_world_routine_0x0001f830
