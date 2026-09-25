@@ -1112,6 +1112,11 @@ raises force, `0x0400` lowers it, and `0x0200`, `0x4000`, `0x1000`, or
 `0x2000` finish the loop. All adjustments use the same inclusive clamp, so
 the host state cannot diverge at the force edges; VDP redraws remain outside
 this state conversion.
+The posture companion at `0x10722` is also now explicit: source `0x0800`
+and `0x0400` adjust posture by `+1`/`-1` through the existing `0..4` clamp;
+`0x0100`, `0x4000`, and `0x1000` finish the sub-loop, while other input is a
+wait/no-op step. This captures the actual input ordering without importing
+the source redraw/vblank service.
 
 The Matrix entry at `0x1817E` is an inline branch of `0x18150`, not a missing
 standalone Ghidra function. The ROM bytes now have a typed conversion that

@@ -67,5 +67,26 @@ int main() {
         return 5;
     }
 
+    record.posture = 2U;
+    if (!expect(apply_runner_posture_input(record, 0x0800U) ==
+                    RunnerPostureLoopResult::adjusted &&
+                record.posture == 3U &&
+                apply_runner_posture_input(record, 0x0400U) ==
+                    RunnerPostureLoopResult::adjusted &&
+                record.posture == 2U &&
+                apply_runner_posture_input(record, 0x0400U) ==
+                    RunnerPostureLoopResult::adjusted &&
+                apply_runner_posture_input(record, 0x0400U) ==
+                    RunnerPostureLoopResult::adjusted &&
+                record.posture == 0U &&
+                apply_runner_posture_input(record, 0x0100U) ==
+                    RunnerPostureLoopResult::finished &&
+                apply_runner_posture_input(record, 0x4000U) ==
+                    RunnerPostureLoopResult::finished &&
+                apply_runner_posture_input(record, 0U) ==
+                    RunnerPostureLoopResult::waiting)) {
+        return 6;
+    }
+
     return 0;
 }

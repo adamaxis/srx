@@ -53,4 +53,16 @@ RunnerAssetOperationResult service_entity_ammo(
 std::uint8_t adjust_runner_posture(RunnerRecordFields& record,
                                    std::int8_t delta);
 
+enum class RunnerPostureLoopResult {
+    waiting,
+    adjusted,
+    finished,
+};
+
+// ROM 0x10722: the posture sub-loop gives up/down priority to posture
+// mutation, while the source confirm/cancel masks finish the loop. Rendering
+// and vblank service remain outside this state conversion.
+RunnerPostureLoopResult apply_runner_posture_input(
+    RunnerRecordFields& record, std::uint16_t input);
+
 } // namespace shadowrun::ghidra_conversion

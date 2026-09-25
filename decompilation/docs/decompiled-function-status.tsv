@@ -304,6 +304,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x100A8	magic force clamp	ghidra_conversion::clamp_magic_force	shadowrun_ghidra_magic_menu	partial		Force movement clamps the selected value to one through the selected table parameter
 0xFF5A	magic action preparation	ghidra_conversion::prepare_magic_action	shadowrun_ghidra_magic_menu	partial		Unavailable-spell gate, spell item-code publication, +0x9D force write, conditional +0x4E reload, and 0x125FA marker boundary
 0x10016	magic force input loop	ghidra_conversion::apply_magic_force_input	shadowrun_ghidra_magic_menu	partial		Source raise/lower input masks, shared 1..parameter clamp, and confirm/cancel exit masks converted; redraw service remains separate
+0x10722	posture input loop	ghidra_conversion::apply_runner_posture_input	shadowrun_ghidra_runner_record_operations	partial		Source posture up/down masks, clamp-backed mutation, and finish masks converted; redraw/vblank loop remains separate
 0x1817E	matrix run entry shell	ghidra_conversion::enter_matrix_screen	shadowrun_ghidra_matrix_entry	partial		Inline deck-present entry/return choreography, resource sources, ten-slot initialization, and 0x1822C loop boundary are converted; Matrix program state remains
 0x17708	field HUD	ghidra_conversion::render_field_hud	—	partial		Typed display/sprite/five-block upload choreography and conditional mode-8 panel path
 0x530DE	Z80/audio	ghidra_conversion::service_audio_if_enabled	—	partial		Typed audio-enable gate and source queue-service ordering; host audio backend remains separate

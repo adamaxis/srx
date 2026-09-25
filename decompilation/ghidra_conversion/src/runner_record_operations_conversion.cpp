@@ -91,4 +91,29 @@ std::uint8_t adjust_runner_posture(RunnerRecordFields& record,
     return record.posture;
 }
 
+RunnerPostureLoopResult apply_runner_posture_input(
+    RunnerRecordFields& record, const std::uint16_t input) {
+    constexpr std::uint16_t kFinishImmediately = 0x0100U;
+    constexpr std::uint16_t kRaisePosture = 0x0800U;
+    constexpr std::uint16_t kLowerPosture = 0x0400U;
+    constexpr std::uint16_t kFinishPosture = 0x4000U | 0x1000U;
+    if ((input & kFinishImmediately) != 0U) {
+        adjust_runner_posture(record, 0);
+        return RunnerPostureLoopResult::finished;
+    }
+    if ((input & kRaisePosture) != 0U) {
+        adjust_runner_posture(record, 1);
+        return RunnerPostureLoopResult::adjusted;
+    }
+    if ((input & kLowerPosture) != 0U) {
+        adjust_runner_posture(record, -1);
+        return RunnerPostureLoopResult::adjusted;
+    }
+    if ((input & kFinishPosture) != 0U) {
+        adjust_runner_posture(record, 0);
+        return RunnerPostureLoopResult::finished;
+    }
+    return RunnerPostureLoopResult::waiting;
+}
+
 } // namespace shadowrun::ghidra_conversion
