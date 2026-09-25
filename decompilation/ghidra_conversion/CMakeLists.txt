@@ -618,6 +618,19 @@ target_link_libraries(shadowrun_ghidra_title_world_helpers_test
 add_test(NAME shadowrun_ghidra_title_world_helpers
          COMMAND shadowrun_ghidra_title_world_helpers_test)
 
+add_library(shadowrun_ghidra_title_profile_transition STATIC
+    src/title_profile_transition_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_title_profile_transition PUBLIC include)
+
+add_executable(shadowrun_ghidra_title_profile_transition_test
+    tests/title_profile_transition_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_title_profile_transition_test
+    PRIVATE shadowrun_ghidra_title_profile_transition)
+add_test(NAME shadowrun_ghidra_title_profile_transition
+         COMMAND shadowrun_ghidra_title_profile_transition_test)
+
 add_library(shadowrun_ghidra_entity_template STATIC
     src/entity_template_conversion.cpp
 )

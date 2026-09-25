@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x0001BF7A
-// Name: convert_world_routine_0x0001bf7a
+// Name: advance_profile_copy_timer
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00017C3C convert_world_routine_0x00017c3c
 //   0x0001C012 copy_seven_words
 
 
-void convert_world_routine_0x0001bf7a(void)
+void advance_profile_copy_timer(void)
 
 {
   short sVar1;
@@ -30,5 +30,4 @@ void convert_world_routine_0x0001bf7a(void)
   DAT_00fff11e = sVar1;
   return;
 }
-
 

@@ -16926,7 +16926,7 @@
 0001AFB4: beq.w 0x0001afc0
 0001AFB8: bsr.w 0x0001c0c2 ; call 0001C0C2 advance_alternating_profile
 0001AFBC: bra.w 0x0001afc4
-0001AFC0: bsr.w 0x0001bf7a ; call 0001BF7A convert_world_routine_0x0001bf7a
+0001AFC0: bsr.w 0x0001bf7a ; call 0001BF7A advance_profile_copy_timer
 0001AFC4: move.w #0x1,(0x00ffdd02).l
 0001AFCC: lea (0xffd986).l,A3 ; data 00ffd986
 0001AFD2: move.w #0x2,D5w
@@ -16972,7 +16972,7 @@
 0001B0A2: btst.b #0x7,(0x00ff1592).l
 0001B0AA: beq.w 0x0001b0b8
 0001B0AE: lea (0xff1580).l,A0 ; data 00ff1580
-0001B0B4: bsr.w 0x0001beba ; call 0001BEBA convert_world_routine_0x0001beba
+0001B0B4: bsr.w 0x0001beba ; call 0001BEBA advance_title_profile_transition
 0001B0B8: tst.w (0x00ffe058).l
 0001B0BE: beq.w 0x0001b0c6
 0001B0C2: bsr.w 0x0001bce8 ; call 0001BCE8 convert_world_routine_0x0001bce8

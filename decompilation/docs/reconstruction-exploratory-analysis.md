@@ -1003,6 +1003,8 @@ The paired runner-record leaves are now no longer generic: `0x1A4EA` selects the
 
 `0x1BA6E` is now identified as the four-frame title burst animation called from the larger title/world sequence at `0x1ADE6`. It advances the shared `FFE0B0`/`FFE0AE` countdown and phase, appends sprite key `0x780`, resolves the phase entry from the ROM `0x1D970` table, and builds it at the shared `FFE04A`/`FFE04C` position with attributes `0x6000`. Phase four is terminal and clears the source completion marker without emitting another sprite; the native conversion leaves the sprite-data boundary explicit.
 
+The adjacent title profile pair is now typed. `0x1BEBA` copies the source profile destination's dirty bit, selects the four-entry sprite source at `0x1C136` from the signed countdown, builds the two `0x15E`/`0xE0` sprites at `y=0xEE`, and on expiry runs `copy_title_profile`, behavior attachment, menu service, and world-effect initialization in source order. `0x1BF7A` is the separate signed timer service: values through `-8` select the seven-word profile offset, while values below `-8` reload from the current compact record's signed `+0x06` through ROM `0x1BFFC`. The source eligibility helper remains a callback boundary.
+
 The next title/world-effect pair is also no longer generic. `0x1A818` starts
 the descriptor transition, choosing between its six-frame loading path and the
 active descriptor-token path; its source word `0xD280` is recorded as such

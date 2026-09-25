@@ -31,8 +31,8 @@
 //   0x0001BA6E advance_title_burst_animation
 //   0x0001BB6A convert_world_routine_0x0001bb6a
 //   0x0001BCE8 convert_world_routine_0x0001bce8
-//   0x0001BEBA convert_world_routine_0x0001beba
-//   0x0001BF7A convert_world_routine_0x0001bf7a
+//   0x0001BEBA advance_title_profile_transition
+//   0x0001BF7A advance_profile_copy_timer
 //   0x0001C0C2 advance_alternating_profile
 //   0x0001C1F6 advance_audio_menu_countdown
 //   0x0001C3FA convert_world_routine_0x0001c3fa
@@ -152,7 +152,7 @@ LAB_0001aedc:
         return;
       }
 LAB_0001afc0:
-      convert_world_routine_0x0001bf7a();
+        advance_profile_copy_timer();
     }
     DAT_00ffdd02 = 1;
     if (_DAT_00ffdf8c == 0) {
@@ -189,7 +189,7 @@ LAB_0001afc0:
         convert_world_routine_0x0001bb6a();
       }
       if ((DAT_00ff1592 & 0x80) != 0) {
-        convert_world_routine_0x0001beba();
+        advance_title_profile_transition();
       }
       if (DAT_00ffe058 != 0) {
         convert_world_routine_0x0001bce8();
