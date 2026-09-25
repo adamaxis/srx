@@ -488,6 +488,12 @@ not a final name.
   the separate bit-15 concern, enumerates installed bits 14..0 in source order,
   and preserves the panel/row/input choreography in
   `menu_service_sequence_conversion`.
+- `0x12CEE` now has a separate typed normal-path conversion in
+  `equipment_combat_bar_conversion`: it reads the attribute/skill/inventory/
+  cyberware fields, applies the source posture penalty and skill merge, maps
+  values to the extracted 23-strip range, and gates defense on the selected
+  item. The negative `+0x56` special-item branch remains an explicit
+  unsupported result until its source helper path is resolved.
 - `analysis/verified_tables.tsv` now records the byte-checked reset bootstrap,
   region selector/header field, and 19-word VDP configuration table anchors.
 - `analysis/indirect_control_flow.tsv` records register-indirect `JSR/JMP`

@@ -1516,6 +1516,18 @@ target_link_libraries(shadowrun_ghidra_menu_service_sequence_test
 add_test(NAME shadowrun_ghidra_menu_service_sequence
          COMMAND shadowrun_ghidra_menu_service_sequence_test)
 
+add_library(shadowrun_ghidra_equipment_combat_bar STATIC
+    src/equipment_combat_bar_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_equipment_combat_bar PUBLIC include)
+add_executable(shadowrun_ghidra_equipment_combat_bar_test
+    tests/equipment_combat_bar_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_equipment_combat_bar_test
+    PRIVATE shadowrun_ghidra_equipment_combat_bar)
+add_test(NAME shadowrun_ghidra_equipment_combat_bar
+         COMMAND shadowrun_ghidra_equipment_combat_bar_test)
+
 add_library(shadowrun_ghidra_entity_action_sequence STATIC
     src/entity_action_sequence_conversion.cpp
 )
