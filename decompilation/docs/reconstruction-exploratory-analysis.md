@@ -735,6 +735,9 @@ module: it preserves the source upload/HUD callback order, performs the
 source row-3 staging write before clearing the live selection to column 0 /
 row 0, and translates row/column moves to ordinary host coordinates
 (`0x94 + row * 0x28` and `0x8C + column * 0x20`).
+The adjacent `0x18A92` leaf is now named as the Matrix program-key helper:
+it linearizes the selected row/column as `row * 4 + column`, without exposing
+the original FFF0D0/FFF0D1 addresses to host code.
 The Matrix state table, program actions, and rendered resources inside the
 loop must still be recovered before claiming the Matrix panel complete. Until
 then the Matrix hill remains `PENDING`, rather than represented by a generic

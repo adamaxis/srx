@@ -15,6 +15,10 @@ struct MatrixCursorState {
     bool redraw_requested = false;
 };
 
+// ROM 0x18A92: convert the two byte selections at FFF0D1/FFF0D0 into the
+// linear Matrix program slot used by the panel/resource helpers.
+std::uint8_t matrix_program_index(std::uint8_t row, std::uint8_t column);
+
 // These are the controller-event bits tested by 0x1822C after the common
 // input latch/sample path has completed.
 enum MatrixInput : std::uint16_t {

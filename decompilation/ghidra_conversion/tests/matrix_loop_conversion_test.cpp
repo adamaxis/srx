@@ -13,32 +13,38 @@ bool expect(const bool condition) { return condition; }
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
+    if (!expect(matrix_program_index(0, 0) == 0 &&
+                matrix_program_index(1, 2) == 6 &&
+                matrix_program_index(3, 3) == 15)) {
+        return 1;
+    }
+
     MatrixCursorState cursor{};
     cursor.row = 3;
     update_matrix_cursor(cursor, move_up);
     if (!expect(cursor.row == 2 && cursor.column == 0 &&
                 cursor.row_marker == 0xE4 && cursor.column_marker == 0x8C &&
                 cursor.redraw_requested)) {
-        return 1;
+        return 2;
     }
     cursor.redraw_requested = false;
     update_matrix_cursor(cursor, move_left);
     if (!expect(cursor.column == 3 && cursor.column_marker == 0xEC &&
                 cursor.redraw_requested)) {
-        return 2;
+        return 3;
     }
     cursor.redraw_requested = false;
     update_matrix_cursor(cursor, move_down | move_right);
     if (!expect(cursor.row == 3 && cursor.column == 3 &&
                 cursor.row_marker == 0x10C && cursor.column_marker == 0xEC &&
                 cursor.redraw_requested)) {
-        return 3;
+        return 4;
     }
     cursor.redraw_requested = false;
     update_matrix_cursor(cursor, confirm);
     if (!expect(cursor.row == 3 && cursor.column == 3 &&
                 !cursor.redraw_requested)) {
-        return 4;
+        return 5;
     }
 
     MatrixLoopState state{};
@@ -82,7 +88,7 @@ int main() {
                 events[9] == "title-sprites" && events[10] == "display:33140" &&
                 events[13] == "two-grids" && events[14] == "display:33140" &&
                 events[15] == "matrix-panel")) {
-        return 5;
+        return 6;
     }
 
     return 0;

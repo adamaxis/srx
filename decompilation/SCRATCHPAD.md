@@ -586,6 +586,10 @@ highlight positions are exposed as `0x94 + row * 0x28` and
 Confirm/cancel/program actions remain intentionally unresolved callbacks; this
 slice does not claim that the Matrix program loop is complete.
 
+The adjacent `0x18A92` leaf is now converted as `matrix_program_index`.
+It is the source's direct `row * 4 + column` linearization, producing the
+0..15 Matrix program key used by the surrounding resource and action paths.
+
 The Attributes/Skills screen is now separated into a typed record/layout
 conversion. `0x0D82A` maps the twenty source label slots into two columns of
 ten rows: attributes use live-record bytes `+0x77..+0x7E`, skills use

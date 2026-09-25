@@ -30,6 +30,11 @@ void refresh_cursor_markers(MatrixCursorState& cursor) {
 
 } // namespace
 
+std::uint8_t matrix_program_index(const std::uint8_t row,
+                                  const std::uint8_t column) {
+    return static_cast<std::uint8_t>(row * 4U + column);
+}
+
 void update_matrix_cursor(MatrixCursorState& state,
                           const std::uint16_t input_events) {
     // 0x1833C gives vertical movement priority over horizontal movement.
