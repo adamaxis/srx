@@ -1,17 +1,17 @@
 // Ghidra headless export
 // Entry: 0x0001CC24
-// Name: FUN_0001cc24
+// Name: convert_world_routine_0x0001cc24
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
 //   0x00019EA6 run_menu_selection_variant
-//   0x0001D048 FUN_0001d048
-//   0x0001D0DE FUN_0001d0de
+//   0x0001D048 convert_world_routine_0x0001d048
+//   0x0001D0DE convert_world_routine_0x0001d0de
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001cc24(void)
+void convert_world_routine_0x0001cc24(void)
 
 {
   byte bVar2;
@@ -27,8 +27,8 @@ void FUN_0001cc24(void)
   undefined4 unaff_A2;
   
   if (DAT_00ff15b8 != '\0') {
-    FUN_0001d048();
-    FUN_0001d0de();
+    convert_world_routine_0x0001d048();
+    convert_world_routine_0x0001d0de();
     bVar2 = *(byte *)(extraout_A0 + 8);
     if ((DAT_00ffdf88 & 3) == 0) {
       bVar2 = bVar2 + 1;

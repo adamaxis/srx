@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005D5FC
-// Name: FUN_0005d5fc
+// Name: convert_intro_routine_0x0005d5fc
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
 
 
-void FUN_0005d5fc(void)
+void convert_intro_routine_0x0005d5fc(void)
 
 {
   short sVar1;

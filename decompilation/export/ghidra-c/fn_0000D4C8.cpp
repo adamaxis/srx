@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000D4C8
-// Name: FUN_0000d4c8
+// Name: convert_graphics_routine_0x0000d4c8
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00012C5A write_menu_repeated_grid_with_metadata
 
 
-void FUN_0000d4c8(void)
+void convert_graphics_routine_0x0000d4c8(void)
 
 {
   undefined2 *puVar1;

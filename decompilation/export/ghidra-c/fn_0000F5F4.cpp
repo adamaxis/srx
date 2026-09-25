@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000F5F4
-// Name: FUN_0000f5f4
+// Name: convert_graphics_routine_0x0000f5f4
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_encoded_title_text
 
 
-void FUN_0000f5f4(void)
+void convert_graphics_routine_0x0000f5f4(void)
 
 {
   uint in_D0;

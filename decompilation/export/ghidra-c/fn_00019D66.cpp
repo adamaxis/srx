@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00017998 render_menu_text_progression
-//   0x00017A5E FUN_00017a5e
+//   0x00017A5E convert_world_routine_0x00017a5e
 //   0x00017C52 render_menu_text_followup
 //   0x00017C84 set_hud_selection_value
 //   0x00017E04 refresh_hud_grid_if_ready
@@ -27,7 +27,7 @@ void run_menu_slot_service(void)
   render_menu_text_followup();
   merge_menu_pending_flags();
   render_menu_text_progression();
-  FUN_00017a5e();
+  convert_world_routine_0x00017a5e();
   return;
 }
 

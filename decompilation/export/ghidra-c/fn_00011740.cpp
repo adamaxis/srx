@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00011740
-// Name: FUN_00011740
+// Name: run_inventory_actions
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -15,9 +15,9 @@
 //   0x0000195C sample_controller_input
 //   0x0000334C upload_field_asset_sequence
 //   0x00003404 upload_field_asset_setup
-//   0x00003674 FUN_00003674
-//   0x000036FC FUN_000036fc
-//   0x000037EC FUN_000037ec
+//   0x00003674 advance_entity_delay_meter
+//   0x000036FC advance_entity_asset_meter
+//   0x000037EC advance_entity_behavior_meter
 //   0x000038FA run_entity_animation_triplet
 //   0x0000391A handle_mode_action_event
 //   0x000039F2 refresh_field_animation_assets
@@ -27,15 +27,15 @@
 //   0x0000C3E6 write_menu_grid_with_metadata
 //   0x0000C3F8 render_menu_grid_number_pair
 //   0x0000C436 dispatch_menu_handler
-//   0x0000D4C8 FUN_0000d4c8
-//   0x0000D53C FUN_0000d53c
-//   0x0000D5DC FUN_0000d5dc
-//   0x0000D82A FUN_0000d82a
+//   0x0000D4C8 convert_graphics_routine_0x0000d4c8
+//   0x0000D53C convert_graphics_routine_0x0000d53c
+//   0x0000D5DC convert_graphics_routine_0x0000d5dc
+//   0x0000D82A convert_graphics_routine_0x0000d82a
 //   0x0000E660 advance_random_grid_effect
-//   0x0000FDFE FUN_0000fdfe
+//   0x0000FDFE convert_graphics_routine_0x0000fdfe
 //   0x0000FEBE move_selection_column
 //   0x0000FF06 move_selection_row
-//   0x0000FF5A FUN_0000ff5a
+//   0x0000FF5A convert_graphics_routine_0x0000ff5a
 //   0x00010276 run_menu_text_display_sequence
 //   0x000106DA prepare_grid_then_write
 //   0x00010A7E transfer_menu_asset_batch_four_post_prepare
@@ -45,18 +45,18 @@
 //   0x00011190 transfer_menu_glyph_triple
 //   0x000111D0 upload_menu_tile_block
 //   0x00011454 reset_menu_upload_cursor_and_upload
-//   0x00011624 FUN_00011624
+//   0x00011624 convert_menu_routine_0x00011624
 //   0x0001170C render_title_text_source_leaf
 //   0x00011712 render_title_text_source_variant
 //   0x000118C6 cycle_inventory_action_selector
 //   0x00011900 prepare_menu_row_grid
 //   0x00011928 render_menu_row
 //   0x00012148 read_entity_action_code
-//   0x0001253E FUN_0001253e
+//   0x0001253E convert_menu_routine_0x0001253e
 //   0x000125FA clear_entity_auxiliary_marker
 //   0x0001275C clear_menu_slot
 //   0x000127B0 refresh_menu_panel
-//   0x000129FE FUN_000129fe
+//   0x000129FE convert_menu_routine_0x000129fe
 //   0x00012C1E prepare_menu_grid_variant_a
 //   0x00012C36 prepare_menu_grid_variant_b
 //   0x00012C42 prepare_menu_grid_variant_c
@@ -67,7 +67,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00011740(void)
+void run_inventory_actions(void)
 
 {
   byte bVar1;
@@ -195,7 +195,7 @@ LAB_00011be6:
           *(undefined1 *)((int)puVar17 + 0x57) = 0;
           upload_field_asset_setup();
         }
-        FUN_000036fc();
+        advance_entity_asset_meter();
         prepare_menu_grid_variant_b();
       }
       render_encoded_title_text();
@@ -386,15 +386,15 @@ LAB_0000d0d6:
     } while (sVar11 != -1);
 LAB_0000d25e:
     do {
-      FUN_0000d5dc();
-      FUN_0000d82a();
+      convert_graphics_routine_0x0000d5dc();
+      convert_graphics_routine_0x0000d82a();
       while( true ) {
         wait_for_vblank();
         latch_controller_events();
         sample_controller_input();
         if ((DAT_00ffdd22._0_1_ & 4) != 0) break;
         if ((DAT_00ffdd22._0_1_ & 8) != 0) {
-          FUN_0000d5dc();
+          convert_graphics_routine_0x0000d5dc();
           bVar18 = DAT_00fff0d0 == '\0';
           if (bVar18) {
             _DAT_00fff0d0 = CONCAT11(1,DAT_00fff0d1);
@@ -402,7 +402,7 @@ LAB_0000d25e:
           goto LAB_0000d25e;
         }
         if ((DAT_00ffdd22._0_1_ & 1) != 0) {
-          FUN_0000d5dc();
+          convert_graphics_routine_0x0000d5dc();
           bVar1 = DAT_00fff0d1 - 1;
           _DAT_00fff0d0 = CONCAT11(DAT_00fff0d0,bVar1);
           if ((int)((uint)bVar1 << 0x18) < 0) {
@@ -411,7 +411,7 @@ LAB_0000d25e:
           goto LAB_0000d25e;
         }
         if ((DAT_00ffdd22._0_1_ & 2) != 0) {
-          FUN_0000d5dc();
+          convert_graphics_routine_0x0000d5dc();
           uVar10 = _DAT_00fff0d0;
           cVar7 = DAT_00fff0d1 + '\x01';
           _DAT_00fff0d0 = CONCAT11(DAT_00fff0d0,cVar7);
@@ -422,8 +422,8 @@ LAB_0000d25e:
         }
         if (((DAT_00ffdd22._0_1_ & 0x40) == 0) && ((DAT_00ffdd22._0_1_ & 0x10) == 0)) {
           if ((DAT_00ffdd22._0_1_ & 0x20) != 0) {
-            FUN_0000d5dc();
-            FUN_0000d4c8();
+            convert_graphics_routine_0x0000d5dc();
+            convert_graphics_routine_0x0000d4c8();
             goto LAB_0000d0d6;
           }
           if ((DAT_00ffdd22._0_1_ & 0x80) != 0) {
@@ -450,7 +450,7 @@ LAB_0000d4a0:
                 if (-1 < (int)((uint)uVar10 << 0x10)) {
                   uVar20 = (undefined2)((uint)pbVar12 >> 0x10);
                   local_2 = SUB42(pbVar12,0);
-                  FUN_0000d53c();
+                  convert_graphics_routine_0x0000d53c();
                   if (DAT_00fff0dc == '\0') {
                     *(char *)CONCAT22(uVar20,local_2) = (char)uVar10;
                     sVar11 = CONCAT11((char)(uVar10 >> 8),DAT_00fff0b7);
@@ -479,7 +479,7 @@ LAB_0000d4a0:
           }
         }
       }
-      FUN_0000d5dc();
+      convert_graphics_routine_0x0000d5dc();
       bVar18 = DAT_00fff0d0 != '\0';
       if (bVar18) {
         _DAT_00fff0d0 = _DAT_00fff0d0 & 0xff;
@@ -529,7 +529,7 @@ LAB_0000d4a0:
         while( true ) {
           while( true ) {
             while( true ) {
-              FUN_0000fdfe();
+              convert_graphics_routine_0x0000fdfe();
               wait_for_vblank();
               latch_controller_events();
               sample_controller_input();
@@ -545,7 +545,7 @@ LAB_0000d4a0:
           }
           if ((((DAT_00ffdd22._0_1_ & 0x20) == 0) && ((DAT_00ffdd22._0_1_ & 0x10) == 0)) &&
              ((DAT_00ffdd22._0_1_ & 0x40) == 0)) break;
-          FUN_0000ff5a();
+          convert_graphics_routine_0x0000ff5a();
           run_menu_text_display_sequence();
         }
       } while ((DAT_00ffdd22._0_1_ & 0x80) == 0);
@@ -629,7 +629,7 @@ LAB_0000c2aa:
     if (-1 < DAT_00fff114) {
       read_entity_action_code();
       clear_menu_slot();
-      FUN_00011624();
+      convert_menu_routine_0x00011624();
     }
     return;
   case 9:
@@ -692,8 +692,8 @@ LAB_0001296a:
               (((DAT_00ffdd22._0_1_ & 0x20) == 0 && ((DAT_00ffdd22._0_1_ & 0x10) == 0))));
       service_audio_if_enabled();
     } while ((DAT_00fff096 < 0) || (DAT_00fff114 < '\0'));
-    FUN_000129fe();
-    FUN_00011624();
+    convert_menu_routine_0x000129fe();
+    convert_menu_routine_0x00011624();
     prepare_menu_grid_variant_b();
 LAB_000129dc:
     render_menu_row();
@@ -805,7 +805,7 @@ LAB_000118b6:
           sVar6 = read_entity_action_code();
           bVar18 = (int)((uint)(ushort)(sVar6 - 0x11U) << 0x10) < 0;
           if (bVar18) {
-            FUN_0001253e();
+            convert_menu_routine_0x0001253e();
             if (!bVar18) {
               pbVar12 = (byte *)(extraout_A0_04 + 0x6e + (int)sVar11);
               bVar1 = *pbVar12;
@@ -813,13 +813,13 @@ LAB_000118b6:
               *pbVar12 = bVar2;
               if (bVar2 == 0 || SBORROW1(bVar1,'\x01') != (int)((uint)bVar2 << 0x18) < 0) {
                 clear_menu_slot();
-                FUN_00011624();
+                convert_menu_routine_0x00011624();
               }
             }
           }
           else if ((ushort)(sVar6 - 0x11U) == 0) {
             if (*(char *)(extraout_A1 + 0x9c) != '\n') {
-              FUN_000037ec();
+              advance_entity_behavior_meter();
               cVar7 = *(char *)(extraout_A0_03 + 0x4c);
               iVar13 = extraout_A0_03;
               iVar3 = extraout_A1_01;
@@ -827,7 +827,7 @@ LAB_000118b6:
             }
           }
           else if (*(char *)(extraout_A1 + 0x4c) != '\n') {
-            FUN_00003674();
+            advance_entity_delay_meter();
             cVar7 = *(char *)(extraout_A0_02 + 0x9c);
             iVar13 = extraout_A0_02;
             iVar3 = extraout_A1_00;
@@ -843,7 +843,7 @@ joined_r0x00012496:
             *pbVar12 = bVar2;
             if (bVar2 == 0 || SBORROW1(bVar1,'\x01') != (int)((uint)bVar2 << 0x18) < 0) {
               clear_menu_slot();
-              FUN_00011624();
+              convert_menu_routine_0x00011624();
               run_entity_animation_triplet();
             }
           }
@@ -907,10 +907,10 @@ LAB_00012236:
     *(undefined1 *)(iVar13 + 0x56) = 0x7f;
     *(undefined1 *)(iVar13 + 0x57) = 0;
   }
-  FUN_000036fc();
+  advance_entity_asset_meter();
 LAB_0001228c:
   upload_field_asset_setup();
-  FUN_00011624();
+  convert_menu_routine_0x00011624();
   return;
 }
 

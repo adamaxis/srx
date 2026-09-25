@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001E43C
-// Name: FUN_0001e43c
+// Name: convert_world_routine_0x0001e43c
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001E2EC begin_world_activity
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001e43c(void)
+void convert_world_routine_0x0001e43c(void)
 
 {
   short sVar1;

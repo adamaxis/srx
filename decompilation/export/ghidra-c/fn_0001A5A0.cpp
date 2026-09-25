@@ -1,21 +1,21 @@
 // Ghidra headless export
 // Entry: 0x0001A5A0
-// Name: FUN_0001a5a0
+// Name: convert_world_routine_0x0001a5a0
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000013BE build_title_sprite_records_with_attribute_offset
 //   0x000061CC append_sprite_record
 //   0x0001B654 attach_behavior_descriptor_d
 //   0x0001B680 attach_behavior_descriptor_e
-//   0x0001B7D0 FUN_0001b7d0
+//   0x0001B7D0 convert_world_routine_0x0001b7d0
 //   0x000530EA service_audio_command_frame
-//   0x000562EC FUN_000562ec
-//   0x0005668C FUN_0005668c
+//   0x000562EC convert_intro_routine_0x000562ec
+//   0x0005668C convert_intro_routine_0x0005668c
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001a5a0(void)
+void convert_world_routine_0x0001a5a0(void)
 
 {
   short extraout_D1w;
@@ -32,7 +32,7 @@ LAB_0001a62a:
       build_title_sprite_records_with_attribute_offset();
       return;
     }
-    FUN_000562ec();
+    convert_intro_routine_0x000562ec();
     if (_DAT_00ffe07e != 0) {
       DAT_00ffe07c = 0x10;
       DAT_00ffe076 = 4;
@@ -64,7 +64,7 @@ LAB_0001a6e6:
     if (DAT_00ffe076 == 6) {
       DAT_00ffe07c = DAT_00ffe07c + -1;
       if (DAT_00ffe07c < 0) {
-        FUN_0005668c();
+        convert_intro_routine_0x0005668c();
         DAT_00ffe076 = 0;
         return;
       }
@@ -103,7 +103,7 @@ LAB_0001a6f8:
     return;
   }
   if (_DAT_00ffe0d6 == 0) {
-    FUN_0001b7d0();
+    convert_world_routine_0x0001b7d0();
     *(undefined **)(extraout_A0 + 8) = &DAT_0001c2ae;
     *(undefined **)(extraout_A0 + 4) = &DAT_0001c2a8;
     return;

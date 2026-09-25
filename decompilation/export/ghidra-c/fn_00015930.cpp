@@ -1,14 +1,14 @@
 // Ghidra headless export
 // Entry: 0x00015930
-// Name: FUN_00015930
+// Name: convert_entity_routine_0x00015930
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000049A0 FUN_000049a0
+//   0x000049A0 convert_field_routine_0x000049a0
 //   0x0001582A allocate_first_free_effect_slot_local
 //   0x000530DE service_audio_if_enabled
 
 
-void FUN_00015930(void)
+void convert_entity_routine_0x00015930(void)
 
 {
   undefined2 uVar1;
@@ -30,7 +30,7 @@ void FUN_00015930(void)
       service_audio_if_enabled();
       sVar2 = extraout_D1w_00;
     }
-    (**(code **)((int)&PTR_FUN_00004964 + (int)(short)(sVar2 << 2)))();
+    (**(code **)((int)&PTR_convert_field_routine_0x000049a0_00004964 + (int)(short)(sVar2 << 2)))();
   }
   return;
 }

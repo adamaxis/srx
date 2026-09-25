@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000130C0
-// Name: FUN_000130c0
+// Name: convert_menu_routine_0x000130c0
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
@@ -8,7 +8,7 @@
 //   0x00012A54 update_resource_variant
 
 
-undefined8 FUN_000130c0(void)
+undefined8 convert_menu_routine_0x000130c0(void)
 
 {
   undefined4 in_D0;

@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00019BAE select_hud_mode
-//   0x00055FD8 FUN_00055fd8
+//   0x00055FD8 convert_intro_routine_0x00055fd8
 
 
 undefined2 select_menu_entry(void)
@@ -21,7 +21,7 @@ undefined2 select_menu_entry(void)
   if ((bVar4) &&
      ((cVar2 = select_hud_mode(), bVar4 ||
       ((cVar2 != '\x01' && (uVar3 = (char)(cVar2 + -8) < '\0', cVar2 != '\b')))))) {
-    FUN_00055fd8();
+    convert_intro_routine_0x00055fd8();
     if (!(bool)uVar3) {
       uVar1 = func_0x00056050();
       DAT_00fff0aa = *unaff_A4;

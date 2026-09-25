@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001D1F4
-// Name: FUN_0001d1f4
+// Name: convert_world_routine_0x0001d1f4
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
@@ -12,7 +12,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001d1f4(void)
+void convert_world_routine_0x0001d1f4(void)
 
 {
   ushort uVar2;

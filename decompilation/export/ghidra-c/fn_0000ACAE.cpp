@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000ACAE
-// Name: FUN_0000acae
+// Name: convert_graphics_routine_0x0000acae
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000AAD2 dispatch_player_action_if_ready
@@ -12,14 +12,14 @@
 //   0x0000B39A set_entity_heading_with_field_animation
 //   0x0000B3FE set_entity_heading_with_alternate_animation
 //   0x0001514E process_entity_spawn_cycle
-//   0x00015646 FUN_00015646
-//   0x0001DC4C FUN_0001dc4c
+//   0x00015646 convert_entity_routine_0x00015646
+//   0x0001DC4C convert_world_routine_0x0001dc4c
 //   0x000530DE service_audio_if_enabled
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0000acae(void)
+void convert_graphics_routine_0x0000acae(void)
 
 {
   short sVar1;
@@ -48,7 +48,7 @@ void FUN_0000acae(void)
     goto LAB_0000ae50;
   }
   if ((DAT_00ffdd22 & 0x1000) != 0) {
-    FUN_0001dc4c();
+    convert_world_routine_0x0001dc4c();
     in_A0 = extraout_A0;
   }
   if (*(short *)(in_A0 + 0xdc) < 0) {
@@ -80,7 +80,7 @@ void FUN_0000acae(void)
     }
     if (('\f' < *(char *)(in_A0 + 0x57)) &&
        (bVar2 = *(byte *)(in_A0 + 0x57) < 0x10, (char)(*(byte *)(in_A0 + 0x57) - 0x10) < '\0')) {
-      FUN_00015646();
+      convert_entity_routine_0x00015646();
       if (bVar2) {
         return;
       }

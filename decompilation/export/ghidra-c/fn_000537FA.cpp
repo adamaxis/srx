@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000537FA
-// Name: FUN_000537fa
+// Name: convert_audio_routine_0x000537fa
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
@@ -9,7 +9,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_000537fa(void)
+void convert_audio_routine_0x000537fa(void)
 
 {
   undefined4 *in_A1;

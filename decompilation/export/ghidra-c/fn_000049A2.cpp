@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000049A2
-// Name: FUN_000049a2
+// Name: convert_field_routine_0x000049a2
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00004B6C reset_effect_record
@@ -9,7 +9,7 @@
 //   0x000530DE service_audio_if_enabled
 
 
-void FUN_000049a2(void)
+void convert_field_routine_0x000049a2(void)
 
 {
   ushort uVar1;

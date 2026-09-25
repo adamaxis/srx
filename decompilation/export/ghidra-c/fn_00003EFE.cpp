@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00003EFE
-// Name: FUN_00003efe
+// Name: decode_field_tile_sample
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003F9E calculate_field_tile_source_offset
 
 
-undefined8 FUN_00003efe(void)
+undefined8 decode_field_tile_sample(void)
 
 {
   byte bVar1;

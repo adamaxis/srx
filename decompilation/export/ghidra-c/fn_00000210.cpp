@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00000210
-// Name: InvOpCode
+// Name: convert_interrupt_routine_0x00000210
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void InvOpCode(void)
+void convert_interrupt_routine_0x00000210(void)
 
 {
   stop();

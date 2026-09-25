@@ -1,25 +1,25 @@
 // Ghidra headless export
 // Entry: 0x00012CEE
-// Name: FUN_00012cee
+// Name: convert_menu_routine_0x00012cee
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
-//   0x000104F6 FUN_000104f6
+//   0x000104F6 convert_menu_routine_0x000104f6
 //   0x00012148 read_entity_action_code
 //   0x00012C5A write_menu_repeated_grid_with_metadata
-//   0x00012C74 FUN_00012c74
+//   0x00012C74 convert_menu_routine_0x00012c74
 //   0x00012CD6 render_menu_text_asset
 //   0x00012FA4 advance_entity_action_menu
-//   0x00055E62 FUN_00055e62
-//   0x00055ED6 FUN_00055ed6
-//   0x00055F02 FUN_00055f02
-//   0x00055F20 FUN_00055f20
+//   0x00055E62 convert_intro_routine_0x00055e62
+//   0x00055ED6 convert_intro_routine_0x00055ed6
+//   0x00055F02 convert_intro_routine_0x00055f02
+//   0x00055F20 convert_intro_routine_0x00055f20
 
 
 /* WARNING: Removing unreachable block (ram,0x00012ddc) */
 /* WARNING: Removing unreachable block (ram,0x00012d50) */
 
-void FUN_00012cee(void)
+void convert_menu_routine_0x00012cee(void)
 
 {
   undefined1 uVar1;
@@ -34,16 +34,16 @@ void FUN_00012cee(void)
   int extraout_A0_03;
   
   write_menu_repeated_grid_with_metadata();
-  sVar2 = FUN_00055ed6();
+  sVar2 = convert_intro_routine_0x00055ed6();
   if (sVar2 == 0) {
     if ((char)(DAT_00fff0d0 + -2) < '\0') {
-      FUN_00055f20();
+      convert_intro_routine_0x00055f20();
       cVar3 = read_entity_action_code();
       if (cVar3 != '\x17') {
         if ((char)(cVar3 + -0xd) < '\0') {
           uVar1 = *(undefined1 *)(extraout_A0_00 + 0x57);
           *(char *)(extraout_A0_00 + 0x57) = cVar3;
-          FUN_00012c74();
+          convert_menu_routine_0x00012c74();
           *(undefined1 *)(extraout_A0_01 + 0x57) = uVar1;
         }
         else if (-1 < (char)(cVar3 + -0x10)) {
@@ -54,15 +54,15 @@ void FUN_00012cee(void)
     else {
       if (*(char *)(extraout_A0 + 0x56) < '\0') {
         advance_entity_action_menu();
-        FUN_00055f02();
-        FUN_00055f20();
-        FUN_000104f6();
+        convert_intro_routine_0x00055f02();
+        convert_intro_routine_0x00055f20();
+        convert_menu_routine_0x000104f6();
         goto LAB_00012e7a;
       }
-      FUN_00055f20();
+      convert_intro_routine_0x00055f20();
       if ((*(char *)(extraout_A0_02 + 0x56) != '\x7f') &&
          ((char)(*(char *)(extraout_A0_02 + 0x57) + -0xd) < '\0')) {
-        FUN_00012c74();
+        convert_menu_routine_0x00012c74();
       }
     }
     render_menu_text_asset();
@@ -72,8 +72,8 @@ void FUN_00012cee(void)
        && (-1 < (char)(cVar3 + -0x10))) {
       return;
     }
-    FUN_00055f20();
-    FUN_00055e62();
+    convert_intro_routine_0x00055f20();
+    convert_intro_routine_0x00055e62();
     sVar2 = 2;
     uVar4 = 9;
     do {

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000114A0
-// Name: FUN_000114a0
+// Name: convert_menu_routine_0x000114a0
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E34 reset_vdp_upload_state
@@ -10,7 +10,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_000114a0(void)
+void convert_menu_routine_0x000114a0(void)
 
 {
   char cVar1;
@@ -41,7 +41,7 @@ void FUN_000114a0(void)
   prepare_menu_grid_variant_b();
   read_entity_action_code();
   if (!(bool)uVar2) {
-    cVar1 = FUN_00012a8c();
+    cVar1 = convert_menu_routine_0x00012a8c();
     if ((char)(cVar1 + -0x10) < '\0') {
       service_entity_action_menu();
     }

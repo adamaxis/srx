@@ -3,13 +3,13 @@
 // Name: refresh_mode_metadata_leaf
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000566D8 FUN_000566d8
+//   0x000566D8 convert_intro_routine_0x000566d8
 
 
 void refresh_mode_metadata_leaf(void)
 
 {
-  FUN_000566d8();
+  convert_intro_routine_0x000566d8();
   return;
 }
 

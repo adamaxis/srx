@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00059092
-// Name: FUN_00059092
+// Name: run_start_options
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -14,15 +14,15 @@
 //   0x00010B5A transfer_menu_asset_batch_four
 //   0x0001F34A prepare_mode_resource_variant_b
 //   0x0001F38A prepare_mode_resource_variant_a
-//   0x000566D8 FUN_000566d8
+//   0x000566D8 convert_intro_routine_0x000566d8
 //   0x000566E2 refresh_mode_resource_metadata
-//   0x00059172 FUN_00059172
+//   0x00059172 run_save_load
 
 
-void FUN_00059092(void)
+void run_start_options(void)
 
 {
-  FUN_000566d8();
+  convert_intro_routine_0x000566d8();
   refresh_mode_resource_metadata();
   transfer_menu_asset_batch_four();
   load_title_font();
@@ -41,7 +41,7 @@ void FUN_00059092(void)
     } while ((((DAT_00ffdd22._0_1_ & 0x40) == 0) && ((DAT_00ffdd22._0_1_ & 0x10) == 0)) &&
             ((DAT_00ffdd22._0_1_ & 0x20) == 0));
     if (DAT_00fff0dc == '\0') break;
-    FUN_00059172();
+    run_save_load();
     if (-1 < DAT_00fff0dc) {
       return;
     }

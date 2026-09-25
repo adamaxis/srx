@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00002900
-// Name: FUN_00002900
+// Name: convert_field_routine_0x00002900
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001610 decode_source_byte_stream
@@ -19,12 +19,12 @@
 //   0x0001E04A begin_world_effect_transition
 //   0x000530EA service_audio_command_frame
 //   0x0005BA50 load_scene_resources
-//   0x0005D260 FUN_0005d260
+//   0x0005D260 convert_intro_routine_0x0005d260
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00002900(void)
+void convert_field_routine_0x00002900(void)
 
 {
   if (DAT_00ffe172 != '\0') {
@@ -45,7 +45,7 @@ void FUN_00002900(void)
     clear_scene_record_pending_flags();
     finalize_pending_entity_template_update();
     if (DAT_00ffe186 != '\x03') {
-      FUN_0005d260();
+      convert_intro_routine_0x0005d260();
     }
     if (DAT_00ffe171 == '\0') {
       copy_terrain_layers();

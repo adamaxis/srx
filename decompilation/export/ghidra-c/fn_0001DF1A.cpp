@@ -3,7 +3,7 @@
 // Name: resolve_nearby_effects
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001DF34 FUN_0001df34
+//   0x0001DF34 convert_world_routine_0x0001df34
 
 
 void resolve_nearby_effects(void)
@@ -18,8 +18,8 @@ void resolve_nearby_effects(void)
   int extraout_A0_00;
   bool bVar5;
   
-  FUN_0001df34();
-  FUN_0001df34();
+  convert_world_routine_0x0001df34();
+  convert_world_routine_0x0001df34();
   psVar4 = &DAT_00ff164c;
   sVar3 = 9;
   uVar1 = DAT_00ff0300;
@@ -29,7 +29,7 @@ void resolve_nearby_effects(void)
         (uVar1 <= (ushort)(*psVar4 + 0x100U))) &&
        (((ushort)(psVar4[2] - 0x100U) < uVar2 && (uVar2 <= (ushort)(psVar4[2] + 0x100U))))) {
       bVar5 = psVar4[1] < 0;
-      uVar1 = FUN_000133a6();
+      uVar1 = convert_menu_routine_0x000133a6();
       uVar2 = extraout_D1w;
       psVar4 = extraout_A0;
       if (!bVar5) {

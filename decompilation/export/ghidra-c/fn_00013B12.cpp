@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00013B12
-// Name: FUN_00013b12
+// Name: convert_menu_routine_0x00013b12
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
@@ -12,7 +12,7 @@
 //   0x00013CDE pass_entity_action_threshold_variant
 
 
-void FUN_00013b12(void)
+void convert_menu_routine_0x00013b12(void)
 
 {
   undefined1 uVar1;

@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00013000
-// Name: FUN_00013000
+// Name: convert_menu_routine_0x00013000
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_encoded_title_text
 //   0x00012148 read_entity_action_code
 
 
-void FUN_00013000(void)
+void convert_menu_routine_0x00013000(void)
 
 {
   uint uVar1;

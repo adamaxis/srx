@@ -1,17 +1,17 @@
 // Ghidra headless export
 // Entry: 0x00002F32
-// Name: FUN_00002f32
+// Name: initialize_field_scene_state
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00002BD2 advance_field_scene_transition
 //   0x0000301E upload_scene_profile_block
 //   0x00003032 scene_uses_alternate_profile
-//   0x0000C7F8 FUN_0000c7f8
+//   0x0000C7F8 convert_graphics_routine_0x0000c7f8
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-uint FUN_00002f32(void)
+uint initialize_field_scene_state(void)
 
 {
   ushort *puVar1;
@@ -22,7 +22,7 @@ uint FUN_00002f32(void)
   undefined2 *puVar5;
   undefined2 *puVar6;
   
-  FUN_0000c7f8();
+  convert_graphics_routine_0x0000c7f8();
   DAT_00ffdf40 = 0;
   _DAT_00ffdf8a = 0xffff;
   sVar3 = 0x30;

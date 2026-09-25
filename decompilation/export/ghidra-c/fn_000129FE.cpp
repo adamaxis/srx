@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x000129FE
-// Name: FUN_000129fe
+// Name: convert_menu_routine_0x000129fe
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003404 upload_field_asset_setup
 //   0x00012148 read_entity_action_code
 
 
-void FUN_000129fe(void)
+void convert_menu_routine_0x000129fe(void)
 
 {
   char cVar1;

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001D048
-// Name: FUN_0001d048
+// Name: convert_world_routine_0x0001d048
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0001d048(void)
+void convert_world_routine_0x0001d048(void)
 
 {
   short sVar1;

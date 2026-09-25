@@ -1,22 +1,22 @@
 // Ghidra headless export
 // Entry: 0x0001A370
-// Name: FUN_0001a370
+// Name: convert_world_routine_0x0001a370
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
 //   0x00000E9C make_vdp_transfer_command
 //   0x00017E78 calculate_menu_row_offset
-//   0x0001A538 FUN_0001a538
+//   0x0001A538 convert_world_routine_0x0001a538
 //   0x0001A54E initialize_effect_defaults
-//   0x0001A818 FUN_0001a818
+//   0x0001A818 convert_world_routine_0x0001a818
 //   0x0001A8F4 reset_effect_entity
 //   0x0001D3F4 expand_random_nibble_mask
-//   0x000561E8 FUN_000561e8
+//   0x000561E8 convert_intro_routine_0x000561e8
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001a370(void)
+void convert_world_routine_0x0001a370(void)
 
 {
   ushort uVar2;
@@ -52,12 +52,12 @@ void FUN_0001a370(void)
     } while (sVar3 != -1);
     return;
   }
-  FUN_0001a538();
+  convert_world_routine_0x0001a538();
   if (!bVar4) {
     if (((DAT_00ffdf84 != '\0') && (DAT_00ffe076 == 0)) &&
        (DAT_00ffe074 = DAT_00ffe074 + -1, DAT_00ffe074 < 0)) {
       DAT_00ffe074 = calculate_menu_row_offset();
-      _DAT_00ffe07e = FUN_000561e8();
+      _DAT_00ffe07e = convert_intro_routine_0x000561e8();
       if (-1 < _DAT_00ffe07e) {
         if (_DAT_00ffe07e == 2) {
           uVar1 = calculate_menu_row_offset();
@@ -86,7 +86,7 @@ void FUN_0001a370(void)
     }
     return;
   }
-  FUN_0001a818();
+  convert_world_routine_0x0001a818();
   return;
 }
 

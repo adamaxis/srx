@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005DAE8
-// Name: FUN_0005dae8
+// Name: convert_intro_routine_0x0005dae8
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0005DAFC FUN_0005dafc
+//   0x0005DAFC convert_intro_routine_0x0005dafc
 
 
-void FUN_0005dae8(void)
+void convert_intro_routine_0x0005dae8(void)
 
 {
   short sVar1;
@@ -19,7 +19,7 @@ void FUN_0005dae8(void)
     sVar1 = sVar1 + -1;
     puVar2 = puVar2 + 1;
   } while (sVar1 != -1);
-  FUN_0005dafc();
+  convert_intro_routine_0x0005dafc();
   return;
 }
 

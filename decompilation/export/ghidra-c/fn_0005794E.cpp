@@ -1,17 +1,17 @@
 // Ghidra headless export
 // Entry: 0x0005794E
-// Name: FUN_0005794e
+// Name: convert_intro_routine_0x0005794e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D94 wait_for_controller_event
 //   0x0000C0DA render_encoded_title_text
-//   0x00057A44 FUN_00057a44
-//   0x00057A6E FUN_00057a6e
-//   0x00057B8C FUN_00057b8c
-//   0x00057C5E FUN_00057c5e
+//   0x00057A44 convert_intro_routine_0x00057a44
+//   0x00057A6E convert_intro_routine_0x00057a6e
+//   0x00057B8C convert_intro_routine_0x00057b8c
+//   0x00057C5E convert_intro_routine_0x00057c5e
 
 
-void FUN_0005794e(void)
+void convert_intro_routine_0x0005794e(void)
 
 {
   char *pcVar1;
@@ -30,9 +30,9 @@ void FUN_0005794e(void)
     DAT_00fff112 = 0xff;
     return;
   }
-  FUN_00057c5e();
+  convert_intro_routine_0x00057c5e();
   if (*extraout_A0 == 'E') {
-    FUN_00057a6e();
+    convert_intro_routine_0x00057a6e();
     iVar3 = extraout_D1;
   }
   else {
@@ -48,7 +48,7 @@ void FUN_0005794e(void)
       }
     }
     unaff_D6w = -(sVar2 + -7);
-    FUN_00057a44();
+    convert_intro_routine_0x00057a44();
     iVar3 = extraout_D1_00;
   }
   if (DAT_00fffbfe < iVar3) {
@@ -57,14 +57,14 @@ LAB_000579dc:
     wait_for_controller_event();
     return;
   }
-  FUN_00057b8c();
+  convert_intro_routine_0x00057b8c();
   iVar3 = DAT_00fffc04;
   if (DAT_00fff0dc == '\0') {
     if (*extraout_A0_00 == 'E') {
       *(char *)(DAT_00fffc04 + 0x4f) = *(char *)(DAT_00fffc04 + 0x4f) + '\x01';
       if (-1 < (char)(*(char *)(iVar3 + 0x4f) + -0x15)) {
         *(undefined1 *)(iVar3 + 0x4f) = 0x14;
-        FUN_00057c5e();
+        convert_intro_routine_0x00057c5e();
         goto LAB_000579dc;
       }
     }

@@ -12,7 +12,7 @@ void merge_menu_pending_flags(void)
   *(byte *)((int)&DAT_00fffb30 + (int)DAT_00fff102) =
        *(byte *)((int)&DAT_00ff1104 + (short)(DAT_00fff118 * 0x14) + 1) |
        *(byte *)((int)&DAT_00fffb30 + (int)DAT_00fff102);
-  FUN_000566d8();
+  convert_intro_routine_0x000566d8();
   return;
 }
 

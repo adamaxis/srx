@@ -587,6 +587,12 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00019EA6L, "run_menu_selection_variant");
         names.put(0x00019F18L, "run_menu_progression_variant");
         names.put(0x00019F7EL, "clear_first_ready_menu_slot");
+        names.put(0x0000600EL, "advance_entity_sprite_descriptor");
+        names.put(0x0000E7C8L, "evaluate_terrain_collision");
+        names.put(0x00010F50L, "prepare_command_overview");
+        names.put(0x00011740L, "run_inventory_actions");
+        names.put(0x00059092L, "run_start_options");
+        names.put(0x00059172L, "run_save_load");
         names.put(0x00000200L, "convert_interrupt_routine_0x00000200");
         names.put(0x00000208L, "convert_interrupt_routine_0x00000208");
         names.put(0x00000210L, "convert_interrupt_routine_0x00000210");

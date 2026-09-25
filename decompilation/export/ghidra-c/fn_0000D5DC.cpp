@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x0000D5DC
-// Name: FUN_0000d5dc
+// Name: convert_graphics_routine_0x0000d5dc
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
 
 
-void FUN_0000d5dc(void)
+void convert_graphics_routine_0x0000d5dc(void)
 
 {
   undefined4 uVar1;

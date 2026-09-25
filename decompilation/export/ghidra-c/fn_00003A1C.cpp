@@ -1,17 +1,17 @@
 // Ghidra headless export
 // Entry: 0x00003A1C
-// Name: FUN_00003a1c
+// Name: update_field_camera
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00003A90 FUN_00003a90
-//   0x00003B1E FUN_00003b1e
-//   0x00003BAC FUN_00003bac
-//   0x00015DCC FUN_00015dcc
+//   0x00003A90 accept_camera_delta
+//   0x00003B1E convert_field_routine_0x00003b1e
+//   0x00003BAC convert_field_routine_0x00003bac
+//   0x00015DCC convert_entity_routine_0x00015dcc
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00003a1c(void)
+void update_field_camera(void)
 
 {
   ushort uVar1;
@@ -26,21 +26,21 @@ void FUN_00003a1c(void)
   if (DAT_00ffe186 == '\x03') {
     DAT_00ffdf5e = 0;
     DAT_00ffdf5c = 0x600;
-    FUN_00003bac();
+    convert_field_routine_0x00003bac();
     return;
   }
   sVar2 = *(short *)(DAT_00fffc04 + 0x2e);
   uStack_4 = 0x3a50;
-  FUN_00015dcc();
+  convert_entity_routine_0x00015dcc();
   uVar3 = *(short *)(extraout_A0 + 4) + sVar2;
   if ((short)uVar3 < 0) {
     uVar3 = 0;
   }
   uStack_4 = 0x3a7c;
-  FUN_00003a90();
+  accept_camera_delta();
   uStack_4 = 0x3a86;
   DAT_00ffe173 = extraout_D1b;
-  FUN_00003b1e();
+  convert_field_routine_0x00003b1e();
   DAT_00ffe174 = (undefined1)uVar3;
   if (_DAT_00ffe100 != 0) {
     return;
@@ -64,7 +64,7 @@ void FUN_00003a1c(void)
     if (uVar1 != DAT_00ffdf38) {
       uStack_4 = CONCAT22(uVar3,uStack_4._2_2_);
       DAT_00ffdf38 = uVar1;
-      FUN_000040e2();
+      convert_field_routine_0x000040e2();
       register0x0000003c = (BADSPACEBASE *)auStack_6;
       uVar3 = uVar1;
     }
@@ -86,7 +86,7 @@ LAB_00003cba:
     if ((DAT_00ffddc8 & 0xff80) != DAT_00ffdf36) {
       *(undefined4 *)((int)register0x0000003c + -4) = 0x3d16;
       DAT_00ffdf36 = DAT_00ffddc8 & 0xff80;
-      FUN_00004018();
+      render_field_tile_edge();
     }
   }
   return;

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00005936
-// Name: FUN_00005936
+// Name: convert_graphics_routine_0x00005936
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
 
 
-void FUN_00005936(void)
+void convert_graphics_routine_0x00005936(void)
 
 {
   byte bVar1;

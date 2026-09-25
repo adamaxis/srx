@@ -1,16 +1,16 @@
 // Ghidra headless export
 // Entry: 0x0000557E
-// Name: FUN_0000557e
+// Name: convert_graphics_routine_0x0000557e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00005622 clear_entity_runtime_fields
 //   0x0000563E clone_entity_spawn_variant_b
-//   0x00005662 FUN_00005662
+//   0x00005662 convert_graphics_routine_0x00005662
 //   0x0000AFF2 prepare_entity_auxiliary_behavior
 //   0x0001A304 clear_effect_slot
 
 
-void FUN_0000557e(void)
+void convert_graphics_routine_0x0000557e(void)
 
 {
   short sVar1;
@@ -25,7 +25,7 @@ void FUN_0000557e(void)
     }
     DAT_00ffdff4 = DAT_00ffdff4 + -1;
   }
-  FUN_00005662();
+  convert_graphics_routine_0x00005662();
   if (*(char *)(extraout_A0 + 0xb2) != '\0') {
     return;
   }

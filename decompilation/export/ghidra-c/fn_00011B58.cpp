@@ -8,7 +8,7 @@
 //   0x00000D94 wait_for_controller_event
 //   0x0000195C sample_controller_input
 //   0x00003404 upload_field_asset_setup
-//   0x000036FC FUN_000036fc
+//   0x000036FC advance_entity_asset_meter
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x000111D0 upload_menu_tile_block
@@ -124,7 +124,7 @@ LAB_00011be6:
         *(undefined1 *)(iVar10 + 0x57) = 0;
         upload_field_asset_setup();
       }
-      FUN_000036fc();
+      advance_entity_asset_meter();
       prepare_menu_grid_variant_b();
     }
     render_encoded_title_text();

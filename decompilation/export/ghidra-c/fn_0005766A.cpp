@@ -1,18 +1,18 @@
 // Ghidra headless export
 // Entry: 0x0005766A
-// Name: FUN_0005766a
+// Name: convert_intro_routine_0x0005766a
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D94 wait_for_controller_event
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
-//   0x00057B8C FUN_00057b8c
-//   0x00057C46 FUN_00057c46
+//   0x00057B8C convert_intro_routine_0x00057b8c
+//   0x00057C46 convert_intro_routine_0x00057c46
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0005766a(void)
+void convert_intro_routine_0x0005766a(void)
 
 {
   int extraout_D1;
@@ -21,7 +21,7 @@ void FUN_0005766a(void)
     DAT_00fff112 = 0xff;
     return;
   }
-  FUN_00057c46();
+  convert_intro_routine_0x00057c46();
   if (DAT_00fff0d0 == 2) {
     if (DAT_00fffbc4 < (char)(DAT_00fffbbe * '\n')) goto LAB_0005770c;
   }
@@ -39,7 +39,7 @@ LAB_0005770c:
       _DAT_00fff0be = (uint)*(ushort *)(&DAT_001ac8e0 + (uint)DAT_00fff0d0 * 2);
       render_encoded_title_text();
       build_grouped_decimal_glyphs();
-      FUN_00057b8c();
+      convert_intro_routine_0x00057b8c();
       if (DAT_00fff0dc == '\0') {
         DAT_00fffbfe = DAT_00fffbfe - extraout_D1;
         if (DAT_00fff0d0 == 0) {

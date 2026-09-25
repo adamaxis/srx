@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00015554
-// Name: FUN_00015554
+// Name: convert_entity_routine_0x00015554
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001562E service_entity_auxiliary_behavior
 
 
-void FUN_00015554(void)
+void convert_entity_routine_0x00015554(void)
 
 {
   ushort uVar1;

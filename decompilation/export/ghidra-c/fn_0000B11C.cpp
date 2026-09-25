@@ -8,7 +8,7 @@
 //   0x0000AFF2 prepare_entity_auxiliary_behavior
 //   0x00015A8C find_first_available_entity_slot
 //   0x0001DBAA schedule_world_activity_timeout
-//   0x00055B16 FUN_00055b16
+//   0x00055B16 convert_intro_routine_0x00055b16
 
 
 void synchronize_entity_behavior_spawn(void)
@@ -27,7 +27,7 @@ void synchronize_entity_behavior_spawn(void)
   byte in_stack_fffffffb;
   
   bVar4 = *(byte *)(in_A1 + 0x9c);
-  FUN_00055b16();
+  convert_intro_routine_0x00055b16();
   uVar3 = in_stack_fffffffb < *(byte *)(extraout_A1 + 0x4c);
   if ((in_stack_fffffffb != *(byte *)(extraout_A1 + 0x4c)) ||
      (uVar3 = bVar4 < *(byte *)(extraout_A1 + 0x9c), bVar4 != *(byte *)(extraout_A1 + 0x9c))) {

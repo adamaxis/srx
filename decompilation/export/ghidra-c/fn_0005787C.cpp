@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0005787C
-// Name: FUN_0005787c
+// Name: convert_intro_routine_0x0005787c
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0005787c(void)
+void convert_intro_routine_0x0005787c(void)
 
 {
   int iVar1;

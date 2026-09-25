@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00003560
-// Name: FUN_00003560
+// Name: refresh_hud_panel_variant
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003602 run_hud_panel_post_hook
 //   0x00003648 draw_hud_panel
 
 
-void FUN_00003560(void)
+void refresh_hud_panel_variant(void)
 
 {
   short in_D0w;

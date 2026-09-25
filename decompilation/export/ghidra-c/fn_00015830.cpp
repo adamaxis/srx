@@ -1,11 +1,11 @@
 // Ghidra headless export
 // Entry: 0x00015830
-// Name: FUN_00015830
+// Name: convert_entity_routine_0x00015830
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000049A2 FUN_000049a2
+//   0x000049A2 convert_field_routine_0x000049a2
 //   0x0001582A allocate_first_free_effect_slot_local
-//   0x0001597E FUN_0001597e
+//   0x0001597E convert_entity_routine_0x0001597e
 //   0x00015D3C measure_relative_heading_and_distance
 //   0x0001DBAA schedule_world_activity_timeout
 //   0x000530DE service_audio_if_enabled
@@ -13,7 +13,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00015830(void)
+void convert_entity_routine_0x00015830(void)
 
 {
   undefined2 uVar1;
@@ -44,7 +44,7 @@ void FUN_00015830(void)
         uVar1 = *(undefined2 *)(extraout_A1 + 4);
         measure_relative_heading_and_distance(uVar5,CONCAT22(extraout_D1w,uVar6));
         *(undefined2 *)(extraout_A0_00 + 0x2e) = uVar1;
-        FUN_0001597e();
+        convert_entity_routine_0x0001597e();
         if (*(char *)(extraout_A0_01 + 0x57) == '\x06') {
           DAT_00ffdff2 = 0;
           DAT_00ffdff4 = (short)*(char *)(extraout_A0_01 + 0x9d);
@@ -68,12 +68,13 @@ void FUN_00015830(void)
           service_audio_if_enabled(extraout_A0_01,iVar3);
           sVar2 = extraout_D1w_00;
         }
-        (**(code **)((int)&PTR_FUN_00004964 + (int)(short)(sVar2 << 2)))();
+        (**(code **)((int)&PTR_convert_field_routine_0x000049a0_00004964 + (int)(short)(sVar2 << 2))
+        )();
       }
     }
     return;
   }
-  FUN_000049a2();
+  convert_field_routine_0x000049a2();
   return;
 }
 

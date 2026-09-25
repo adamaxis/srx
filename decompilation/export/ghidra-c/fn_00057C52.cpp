@@ -1,15 +1,15 @@
 // Ghidra headless export
 // Entry: 0x00057C52
-// Name: FUN_00057c52
+// Name: convert_intro_routine_0x00057c52
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00057C66 FUN_00057c66
+//   0x00057C66 convert_intro_routine_0x00057c66
 
 
-void FUN_00057c52(void)
+void convert_intro_routine_0x00057c52(void)
 
 {
-  FUN_00057c66();
+  convert_intro_routine_0x00057c66();
   return;
 }
 

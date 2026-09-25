@@ -1,26 +1,26 @@
 // Ghidra headless export
 // Entry: 0x00056DC4
-// Name: FUN_00056dc4
+// Name: convert_intro_routine_0x00056dc4
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D94 wait_for_controller_event
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x0001275C clear_menu_slot
-//   0x000575F8 FUN_000575f8
-//   0x00057628 FUN_00057628
-//   0x0005766A FUN_0005766a
-//   0x0005794E FUN_0005794e
-//   0x00057B8C FUN_00057b8c
-//   0x00057C46 FUN_00057c46
-//   0x00057C5E FUN_00057c5e
-//   0x00057C66 FUN_00057c66
-//   0x00058D7E FUN_00058d7e
+//   0x000575F8 convert_intro_routine_0x000575f8
+//   0x00057628 convert_intro_routine_0x00057628
+//   0x0005766A convert_intro_routine_0x0005766a
+//   0x0005794E convert_intro_routine_0x0005794e
+//   0x00057B8C convert_intro_routine_0x00057b8c
+//   0x00057C46 convert_intro_routine_0x00057c46
+//   0x00057C5E convert_intro_routine_0x00057c5e
+//   0x00057C66 convert_intro_routine_0x00057c66
+//   0x00058D7E convert_intro_routine_0x00058d7e
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-uint FUN_00056dc4(void)
+uint convert_intro_routine_0x00056dc4(void)
 
 {
   byte *pbVar1;
@@ -52,12 +52,12 @@ uint FUN_00056dc4(void)
     if (DAT_00fff0b7 != '\0') {
       if (DAT_00fff0b7 != '\x01') {
         if ((char)(DAT_00fff0b8 + -3) < '\0') {
-          if ((-1 < (char)(DAT_00fff0d6 + -9)) || (uVar6 = FUN_00057628(), *extraout_A0_00 < '\0'))
-          {
+          if ((-1 < (char)(DAT_00fff0d6 + -9)) ||
+             (uVar6 = convert_intro_routine_0x00057628(), *extraout_A0_00 < '\0')) {
             DAT_00fff112 = 0xff;
             return uVar6;
           }
-          FUN_00057c46();
+          convert_intro_routine_0x00057c46();
           render_encoded_title_text();
           build_grouped_decimal_glyphs();
           build_grouped_decimal_glyphs();
@@ -67,25 +67,25 @@ uint FUN_00056dc4(void)
             uVar6 = wait_for_controller_event();
             return uVar6;
           }
-          FUN_000575f8();
+          convert_intro_routine_0x000575f8();
           if (bVar13) {
             render_encoded_title_text();
             uVar6 = wait_for_controller_event();
             return uVar6;
           }
-          uVar6 = FUN_00057b8c();
+          uVar6 = convert_intro_routine_0x00057b8c();
           if (DAT_00fff0dc == '\0') {
             DAT_00fffbfe = DAT_00fffbfe - _DAT_00fff0be;
-            FUN_00057628();
+            convert_intro_routine_0x00057628();
             bVar2 = *extraout_A0_01;
-            uVar6 = FUN_00058d7e();
+            uVar6 = convert_intro_routine_0x00058d7e();
             *(char *)(unaff_A3 + 0xe + (int)(short)(ushort)bVar2) = DAT_00fff0d6;
           }
           return uVar6;
         }
         if (DAT_00fff0b8 != '\x03') {
           if (DAT_00fff0b8 != '\x05') {
-            uVar6 = FUN_0005766a();
+            uVar6 = convert_intro_routine_0x0005766a();
             return uVar6;
           }
           if (-1 < (char)(DAT_00fff0d0 - 5)) {
@@ -93,7 +93,7 @@ uint FUN_00056dc4(void)
             return uVar6;
           }
           if (-1 < DAT_00fff0b3) {
-            FUN_00057c46();
+            convert_intro_routine_0x00057c46();
             render_encoded_title_text();
             build_grouped_decimal_glyphs();
             build_grouped_decimal_glyphs();
@@ -102,7 +102,7 @@ uint FUN_00056dc4(void)
               uVar6 = wait_for_controller_event();
               return uVar6;
             }
-            uVar14 = FUN_00057b8c();
+            uVar14 = convert_intro_routine_0x00057b8c();
             uVar6 = (uint)((ulonglong)uVar14 >> 0x20);
             if (DAT_00fff0dc == '\0') {
               DAT_00fffbfe = DAT_00fffbfe - (int)uVar14;
@@ -118,7 +118,7 @@ uint FUN_00056dc4(void)
           DAT_00fff0b3 = 0;
           return uVar6;
         }
-        FUN_00057c46();
+        convert_intro_routine_0x00057c46();
         uVar8 = DAT_00fff0b6 - 6;
         if (uVar8 != 0) {
           uVar8 = 1;
@@ -140,7 +140,7 @@ uint FUN_00056dc4(void)
         }
         render_encoded_title_text();
         build_grouped_decimal_glyphs();
-        uVar14 = FUN_00057b8c();
+        uVar14 = convert_intro_routine_0x00057b8c();
         if (DAT_00fff0dc == '\0') {
           DAT_00fffbfe = DAT_00fffbfe - (int)uVar14;
           sVar10 = (short)((ulonglong)uVar14 >> 0x20);
@@ -158,7 +158,7 @@ uint FUN_00056dc4(void)
         }
         return (uint)((ulonglong)uVar14 >> 0x20);
       }
-      FUN_00057c46();
+      convert_intro_routine_0x00057c46();
       _DAT_00ffef96 = 0;
       uVar6 = CONCAT22(extraout_D0u,*(ushort *)(DAT_00fffc04 + 0x90));
       DAT_00fff0d5 = DAT_00fff0d0;
@@ -216,7 +216,7 @@ uint FUN_00056dc4(void)
         if (((uVar6 & 1 << (DAT_00fff0d5 & 0x1f)) == 0) && (_DAT_00fff0be <= DAT_00fffbfe)) {
           render_encoded_title_text();
           build_grouped_decimal_glyphs();
-          uVar14 = FUN_00057b8c();
+          uVar14 = convert_intro_routine_0x00057b8c();
           iVar4 = DAT_00fffc04;
           bVar2 = DAT_00fff0d5;
           uVar6 = (uint)((ulonglong)uVar14 >> 0x20);
@@ -230,7 +230,7 @@ uint FUN_00056dc4(void)
               uVar6 = (uint)(ushort)((short)uVar6 + 1);
             }
             if ((char)uVar6 < '\x01') {
-              FUN_00057c46();
+              convert_intro_routine_0x00057c46();
               goto LAB_000572f8;
             }
             *(char *)(DAT_00fffc04 + 0x7e) = (char)(uVar6 / 10);
@@ -264,7 +264,7 @@ LAB_000572f8:
     }
     if (DAT_00fff0b8 == '\x03') goto LAB_00056f4a;
     if (-1 < (char)(*(char *)(DAT_00fffc04 + 0x9b) + -2)) {
-      FUN_00057c46();
+      convert_intro_routine_0x00057c46();
       render_encoded_title_text();
       uVar6 = wait_for_controller_event();
       return uVar6;
@@ -277,7 +277,7 @@ LAB_000572f8:
       }
       if (DAT_00fff0c2[1] != '\x06') {
         if (DAT_00fffbfe < _DAT_00fff0be) {
-          FUN_00057c46();
+          convert_intro_routine_0x00057c46();
           render_encoded_title_text();
           uVar6 = wait_for_controller_event();
           return uVar6;
@@ -293,14 +293,14 @@ LAB_000572f8:
       return uVar6;
     }
 LAB_00056e54:
-    uVar6 = FUN_0005794e();
+    uVar6 = convert_intro_routine_0x0005794e();
     return uVar6;
   }
   if (((DAT_00fff0b8 == '\0') || ((char)(DAT_00fff0b8 + -2) < '\0')) || (DAT_00fff0b8 == '\x02'))
   goto LAB_00056e54;
   if (-1 < (char)(DAT_00fff0b8 + -4)) {
     if (DAT_00fff0b8 == '\x04') {
-      FUN_00057c5e();
+      convert_intro_routine_0x00057c5e();
       bVar2 = *(byte *)(DAT_00fffc04 + 0x66 + (int)(short)(ushort)DAT_00fff0d0);
       if ((char)bVar2 < '\x01') {
         DAT_00fff112 = 0xff;
@@ -318,7 +318,7 @@ LAB_00056e54:
       return uVar6;
     }
 LAB_00056f4a:
-    FUN_00057c5e();
+    convert_intro_routine_0x00057c5e();
     bVar2 = *(byte *)(DAT_00fffc04 + 0x66 + (int)(short)(ushort)DAT_00fff0d0);
     if ((char)bVar2 < '\x01') {
       DAT_00fff112 = 0xff;
@@ -327,7 +327,7 @@ LAB_00056f4a:
     if (((bVar2 != 0x29) && (bVar2 != 0x2a)) && (bVar2 != 0x2b)) {
       render_encoded_title_text();
       build_grouped_decimal_glyphs();
-      uVar6 = FUN_00057b8c();
+      uVar6 = convert_intro_routine_0x00057b8c();
       iVar4 = DAT_00fffc04;
       bVar2 = DAT_00fff0d0;
       if (DAT_00fff0dc == '\0') {
@@ -347,7 +347,7 @@ LAB_00056f4a:
     uVar6 = wait_for_controller_event();
     return uVar6;
   }
-  FUN_00057c66();
+  convert_intro_routine_0x00057c66();
   if (-1 < (char)(DAT_00fff0d0 - 6)) {
     DAT_00fff112 = 0xff;
     return (uint)DAT_00fff0b6 * 0x10;
@@ -371,7 +371,7 @@ LAB_00056f4a:
     }
     render_encoded_title_text();
     build_grouped_decimal_glyphs();
-    uVar14 = FUN_00057b8c();
+    uVar14 = convert_intro_routine_0x00057b8c();
     iVar4 = DAT_00fffc04;
     uVar6 = (uint)((ulonglong)uVar14 >> 0x20);
     if (DAT_00fff0dc == '\0') {

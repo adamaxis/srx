@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001AD42
-// Name: FUN_0001ad42
+// Name: convert_world_routine_0x0001ad42
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000013BE build_title_sprite_records_with_attribute_offset
@@ -9,7 +9,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001ad42(void)
+void convert_world_routine_0x0001ad42(void)
 
 {
   if ((_DAT_00ffe084 != 0) || (_DAT_00ffe0c2 == 0)) {

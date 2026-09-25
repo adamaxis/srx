@@ -1,14 +1,14 @@
 // Ghidra headless export
 // Entry: 0x0000EB92
-// Name: FUN_0000eb92
+// Name: convert_graphics_routine_0x0000eb92
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D44 advance_source_prng
-//   0x0000ECCC FUN_0000eccc
+//   0x0000ECCC convert_graphics_routine_0x0000eccc
 //   0x00015D3C measure_relative_heading_and_distance
 
 
-void FUN_0000eb92(void)
+void convert_graphics_routine_0x0000eb92(void)
 
 {
   ushort uVar1;
@@ -65,7 +65,7 @@ joined_r0x0000ec14:
           *(undefined2 *)(extraout_A1 + 0x94) = *(undefined2 *)(extraout_A0 + 0x38);
           *(undefined2 *)(extraout_A0 + 0x94) = *(undefined2 *)(extraout_A1 + 0x38);
           *(undefined4 *)((int)register0x0000003c + -10) = 0xec90;
-          FUN_0000eccc();
+          convert_graphics_routine_0x0000eccc();
           *(undefined4 *)((int)register0x0000003c + -10) = 0xec96;
           uVar1 = advance_source_prng();
           in_A0 = extraout_A0_00;

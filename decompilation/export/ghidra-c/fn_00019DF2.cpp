@@ -3,14 +3,14 @@
 // Name: run_menu_metadata_service
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00017C3C FUN_00017c3c
+//   0x00017C3C convert_world_routine_0x00017c3c
 //   0x00019DD8 refresh_mode_metadata_leaf
 
 
 void run_menu_metadata_service(void)
 
 {
-  FUN_00017c3c();
+  convert_world_routine_0x00017c3c();
   refresh_mode_metadata_leaf();
   return;
 }

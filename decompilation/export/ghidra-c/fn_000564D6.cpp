@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000564D6
-// Name: FUN_000564d6
+// Name: convert_intro_routine_0x000564d6
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_000564d6(void)
+void convert_intro_routine_0x000564d6(void)
 
 {
   char *pcVar1;

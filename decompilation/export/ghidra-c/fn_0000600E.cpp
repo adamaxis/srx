@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x0000600E
-// Name: FUN_0000600e
+// Name: advance_entity_sprite_descriptor
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000060F4 FUN_000060f4
+//   0x000060F4 convert_graphics_routine_0x000060f4
 //   0x000060FA append_entity_render_sprite
 
 
-void FUN_0000600e(void)
+void advance_entity_sprite_descriptor(void)
 
 {
   ushort *puVar1;
@@ -61,7 +61,7 @@ void FUN_0000600e(void)
   uVar2 = *puVar1;
   bVar5 = uVar2 < 0x8002;
   if ((uVar2 == 0x8002) && ((*(byte *)(in_A0 + 0x11) & 1) != 0)) {
-    FUN_000060f4();
+    convert_graphics_routine_0x000060f4();
     if (!bVar5) {
       *(undefined2 *)(extraout_A0 + 0x1e) = DAT_00ffdd3e;
       *(undefined2 *)(extraout_A0 + 0x1a) = DAT_00ffdd3c;

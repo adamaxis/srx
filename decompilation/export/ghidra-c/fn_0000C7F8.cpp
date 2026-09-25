@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000C7F8
-// Name: FUN_0000c7f8
+// Name: convert_graphics_routine_0x0000c7f8
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0000c7f8(void)
+void convert_graphics_routine_0x0000c7f8(void)
 
 {
   uint uVar1;
@@ -63,7 +63,7 @@ LAB_0000c690:
 LAB_0000c716:
   DAT_00ff024c = 0;
   DAT_00ff034c = 0;
-  FUN_0000c802();
+  convert_graphics_routine_0x0000c802();
   DAT_00ff0110 = DAT_00ff0110 & 0xaf;
   DAT_00ff0110 = DAT_00ff0110 | 1;
   DAT_00ff0111 = DAT_00ff0111 & 0xbf;

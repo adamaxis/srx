@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000594E0
-// Name: FUN_000594e0
+// Name: convert_save_routine_0x000594e0
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003074 prepare_field_scene_buffers
@@ -12,7 +12,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_000594e0(void)
+void convert_save_routine_0x000594e0(void)
 
 {
   undefined2 *puVar1;

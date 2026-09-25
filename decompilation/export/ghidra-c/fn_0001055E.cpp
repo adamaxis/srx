@@ -1,16 +1,16 @@
 // Ghidra headless export
 // Entry: 0x0001055E
-// Name: FUN_0001055e
+// Name: convert_menu_routine_0x0001055e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 //   0x0001047E refresh_ready_entity_animations
 //   0x000104C8 find_matching_menu_metric
-//   0x00055F02 FUN_00055f02
-//   0x00055F20 FUN_00055f20
+//   0x00055F02 convert_intro_routine_0x00055f02
+//   0x00055F20 convert_intro_routine_0x00055f20
 
 
-void FUN_0001055e(void)
+void convert_menu_routine_0x0001055e(void)
 
 {
   short in_D0w;
@@ -18,8 +18,8 @@ void FUN_0001055e(void)
   int extraout_A0;
   
   if (in_D0w == 0) {
-    FUN_00055f02();
-    FUN_00055f20();
+    convert_intro_routine_0x00055f02();
+    convert_intro_routine_0x00055f20();
     find_matching_menu_metric();
     cVar1 = '\0';
   }

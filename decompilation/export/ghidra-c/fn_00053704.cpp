@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00053704
-// Name: FUN_00053704
+// Name: convert_audio_routine_0x00053704
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -9,11 +9,11 @@
 //   0x000176EA render_menu_footer
 //   0x00017708 render_field_hud
 //   0x000177CC upload_menu_resource_pair
-//   0x000532BC FUN_000532bc
-//   0x000537FA FUN_000537fa
+//   0x000532BC convert_audio_routine_0x000532bc
+//   0x000537FA convert_audio_routine_0x000537fa
 
 
-undefined4 FUN_00053704(void)
+undefined4 convert_audio_routine_0x00053704(void)
 
 {
   undefined4 uVar1;
@@ -21,8 +21,8 @@ undefined4 FUN_00053704(void)
   int extraout_A1;
   int iVar3;
   
-  FUN_000532bc();
-  FUN_000537fa();
+  convert_audio_routine_0x000532bc();
+  convert_audio_routine_0x000537fa();
   do {
     while( true ) {
       wait_for_vblank();
@@ -40,7 +40,7 @@ undefined4 FUN_00053704(void)
       }
       else {
 LAB_000537c6:
-        FUN_000537fa();
+        convert_audio_routine_0x000537fa();
       }
     }
     if ((((DAT_00ffdd22._0_1_ & 0x40) != 0) || ((DAT_00ffdd22._0_1_ & 0x10) != 0)) ||

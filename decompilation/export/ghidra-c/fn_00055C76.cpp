@@ -1,23 +1,23 @@
 // Ghidra headless export
 // Entry: 0x00055C76
-// Name: FUN_00055c76
+// Name: convert_intro_routine_0x00055c76
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000DBA count_thresholded_random_rolls
-//   0x00003674 FUN_00003674
-//   0x000037EC FUN_000037ec
-//   0x00055740 FUN_00055740
-//   0x00055786 FUN_00055786
-//   0x00055E62 FUN_00055e62
-//   0x00055EB4 FUN_00055eb4
-//   0x00055ED6 FUN_00055ed6
-//   0x00055F20 FUN_00055f20
+//   0x00003674 advance_entity_delay_meter
+//   0x000037EC advance_entity_behavior_meter
+//   0x00055740 convert_intro_routine_0x00055740
+//   0x00055786 convert_intro_routine_0x00055786
+//   0x00055E62 convert_intro_routine_0x00055e62
+//   0x00055EB4 convert_intro_routine_0x00055eb4
+//   0x00055ED6 convert_intro_routine_0x00055ed6
+//   0x00055F20 convert_intro_routine_0x00055f20
 
 
 /* WARNING: Removing unreachable block (ram,0x00055caa) */
 /* WARNING: Removing unreachable block (ram,0x00055d12) */
 
-void FUN_00055c76(void)
+void convert_intro_routine_0x00055c76(void)
 
 {
   byte bVar1;
@@ -35,10 +35,10 @@ void FUN_00055c76(void)
   bool bVar6;
   char cVar7;
   
-  FUN_00055ed6();
-  FUN_00055f20();
-  FUN_00055740();
-  FUN_00055786();
+  convert_intro_routine_0x00055ed6();
+  convert_intro_routine_0x00055f20();
+  convert_intro_routine_0x00055740();
+  convert_intro_routine_0x00055786();
   count_thresholded_random_rolls();
   sVar4 = CONCAT11((char)((ushort)unaff_D5w >> 8),DAT_00fff0dd);
   if (DAT_00fff0dd == '\0') {
@@ -48,18 +48,18 @@ void FUN_00055c76(void)
   sVar4 = sVar4 + 3;
   cVar5 = sVar4 < 0;
   bVar6 = sVar4 == 0;
-  FUN_00055eb4();
+  convert_intro_routine_0x00055eb4();
   if (bVar6 || cVar7 != cVar5) {
     return;
   }
-  FUN_00055e62();
+  convert_intro_routine_0x00055e62();
   if (bVar6 || cVar7 != cVar5) {
     return;
   }
-  FUN_00055ed6();
-  FUN_00055f20();
-  FUN_00055740();
-  FUN_00055786();
+  convert_intro_routine_0x00055ed6();
+  convert_intro_routine_0x00055f20();
+  convert_intro_routine_0x00055740();
+  convert_intro_routine_0x00055786();
   count_thresholded_random_rolls();
   bVar1 = (char)sVar4 - DAT_00fff0dd;
   if (bVar1 == 0 || SBORROW1((char)sVar4,DAT_00fff0dd) != (short)((ushort)bVar1 << 8) < 0) {
@@ -73,9 +73,9 @@ void FUN_00055c76(void)
     uVar3 = (uint)(ushort)((short)uVar3 + 1);
     sVar4 = sVar4 + -1;
   } while (sVar4 != -1);
-  FUN_00055ed6();
-  FUN_00055f20();
-  FUN_00055786();
+  convert_intro_routine_0x00055ed6();
+  convert_intro_routine_0x00055f20();
+  convert_intro_routine_0x00055786();
   sVar4 = 2;
   uVar3 = 9;
   do {
@@ -96,7 +96,7 @@ void FUN_00055c76(void)
         if (DAT_00ffe186 == '\x03') {
           return;
         }
-        FUN_000037ec();
+        advance_entity_behavior_meter();
         return;
       }
       if (*(char *)(extraout_A1 + 0x9a) < '\0') {
@@ -120,7 +120,7 @@ void FUN_00055c76(void)
     if (DAT_00ffe186 == '\x03') {
       return;
     }
-    FUN_00003674();
+    advance_entity_delay_meter();
     return;
   }
   if (*(char *)(extraout_A1 + 0x9a) < '\0') {

@@ -1,18 +1,18 @@
 // Ghidra headless export
 // Entry: 0x0001C3FA
-// Name: FUN_0001c3fa
+// Name: convert_world_routine_0x0001c3fa
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001C506 FUN_0001c506
+//   0x0001C506 convert_world_routine_0x0001c506
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001c3fa(void)
+void convert_world_routine_0x0001c3fa(void)
 
 {
   if (_DAT_00ffdf8c != 0) {
-    FUN_0001c506();
+    convert_world_routine_0x0001c506();
     return;
   }
   if ((DAT_00ff158c < (char)*DAT_00ff1588) &&
@@ -29,7 +29,7 @@ void FUN_0001c3fa(void)
       DAT_00ff158d = DAT_00ff158d + '\x01';
     }
   }
-  FUN_0001c506();
+  convert_world_routine_0x0001c506();
   return;
 }
 

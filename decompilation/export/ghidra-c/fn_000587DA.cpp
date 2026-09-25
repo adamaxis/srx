@@ -1,17 +1,17 @@
 // Ghidra headless export
 // Entry: 0x000587DA
-// Name: FUN_000587da
+// Name: convert_intro_routine_0x000587da
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 //   0x00011190 transfer_menu_glyph_triple
-//   0x0005763C FUN_0005763c
-//   0x00058A2E FUN_00058a2e
-//   0x00058AA4 FUN_00058aa4
-//   0x00058B1E FUN_00058b1e
+//   0x0005763C convert_intro_routine_0x0005763c
+//   0x00058A2E convert_intro_routine_0x00058a2e
+//   0x00058AA4 convert_intro_routine_0x00058aa4
+//   0x00058B1E convert_intro_routine_0x00058b1e
 
 
-void FUN_000587da(void)
+void convert_intro_routine_0x000587da(void)
 
 {
   short sVar1;
@@ -21,11 +21,11 @@ void FUN_000587da(void)
   if (DAT_00fff0b7 < '\0') {
     if (((DAT_00fff0d0 != '\0') && (-1 < (char)(DAT_00fff0d0 + -2))) && (DAT_00fff0d0 != '\x02')) {
       if (DAT_00fff0d0 == '\x03') {
-        FUN_00058b1e();
+        convert_intro_routine_0x00058b1e();
         return;
       }
 LAB_0005884c:
-      FUN_00058aa4();
+      convert_intro_routine_0x00058aa4();
       return;
     }
   }
@@ -66,7 +66,7 @@ LAB_0005884c:
         } while (sVar2 != -1);
         return;
       }
-      FUN_0005763c();
+      convert_intro_routine_0x0005763c();
       sVar1 = 7;
       do {
         write_vdp_grid();
@@ -86,7 +86,7 @@ LAB_0005884c:
       if (DAT_00fff0d0 == '\x03') goto LAB_0005884c;
     }
   }
-  FUN_00058a2e();
+  convert_intro_routine_0x00058a2e();
   return;
 }
 

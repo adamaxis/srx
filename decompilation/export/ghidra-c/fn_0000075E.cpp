@@ -13,35 +13,35 @@
 //   0x0000281E initialize_field_scene_entry
 //   0x000028C2 reinitialize_field_scene_entry
 //   0x00002BD2 advance_field_scene_transition
-//   0x00002CE0 FUN_00002ce0
-//   0x00002F32 FUN_00002f32
+//   0x00002CE0 advance_field_mode_transition
+//   0x00002F32 initialize_field_scene_state
 //   0x00002FA4 snapshot_entity_anchors
 //   0x00003084 run_field_loop
-//   0x00003168 FUN_00003168
+//   0x00003168 toggle_field_scene_variant
 //   0x0000391A handle_mode_action_event
-//   0x00003A1C FUN_00003a1c
+//   0x00003A1C update_field_camera
 //   0x000042B0 initialize_joshua_archetype_selection
 //   0x00004618 update_entity_render_pass
 //   0x0000A7B4 initialize_entity_runtime
-//   0x0000A8EA FUN_0000a8ea
-//   0x00010D30 FUN_00010d30
+//   0x0000A8EA convert_graphics_routine_0x0000a8ea
+//   0x00010D30 convert_menu_routine_0x00010d30
 //   0x00016396 advance_palette_fade
-//   0x000167AE FUN_000167ae
+//   0x000167AE convert_world_routine_0x000167ae
 //   0x0001DC22 select_next_entity
-//   0x0001DD94 FUN_0001dd94
+//   0x0001DD94 convert_world_routine_0x0001dd94
 //   0x0001E2EC begin_world_activity
-//   0x0001E43C FUN_0001e43c
+//   0x0001E43C convert_world_routine_0x0001e43c
 //   0x0001E68C reset_world_effect_globals
-//   0x0001F5CA FUN_0001f5ca
+//   0x0001F5CA convert_world_routine_0x0001f5ca
 //   0x00026938 copy_two_word_rows
 //   0x00053126 prepare_mode_entry_service
 //   0x00053156 service_audio_tick_wrapper
 //   0x0005315E run_fixed_audio_transaction_wrapper
 //   0x00053290 reset_audio_menu_arrays
-//   0x000566A2 FUN_000566a2
-//   0x00059092 FUN_00059092
+//   0x000566A2 convert_intro_routine_0x000566a2
+//   0x00059092 run_start_options
 //   0x00059318 initialize_save_roster_buffer
-//   0x000594E0 FUN_000594e0
+//   0x000594E0 convert_save_routine_0x000594e0
 //   0x00059C5E run_title_intro_stages
 //   0x0005D746 run_pre_title_sequence
 
@@ -88,7 +88,7 @@ void run_game_loop(void)
   prepare_mode_entry_service();
   if (_DAT_00ffddc0 != 0) {
     initialize_save_roster_buffer();
-    FUN_00059092();
+    run_start_options();
     step_palette_transition();
     if (_DAT_00ffe108 == 0) {
       run_title_intro_stages();
@@ -117,12 +117,12 @@ LAB_000007f0:
     DAT_00fff0a0 = 0xff;
     initialize_entity_runtime();
     reset_world_effect_globals();
-    FUN_000566a2();
+    convert_intro_routine_0x000566a2();
     copy_two_word_rows();
     initialize_field_scene_entry();
     if (_DAT_00ffe108 != 0) {
       initialize_joshua_archetype_selection();
-      FUN_000594e0();
+      convert_save_routine_0x000594e0();
       reinitialize_field_scene_entry();
       _DAT_00ffe108 = 0;
     }
@@ -136,8 +136,8 @@ LAB_000008c0:
       DAT_00ffdd04 = 0xffff;
       _DAT_00ffdd06 = 0xffff;
       do {
-        FUN_0000a8ea();
-        FUN_00003a1c();
+        convert_graphics_routine_0x0000a8ea();
+        update_field_camera();
         update_entity_render_pass();
         DAT_00ffef14 = DAT_00ffef14 | 0xe;
         sVar13 = sVar13 + -1;
@@ -160,9 +160,9 @@ LAB_000008c0:
             if (DAT_00ffe186 == '\0') {
               bVar21 = false;
               if (DAT_00ffdf40 != 0) goto LAB_00000a72;
-              FUN_00003168();
+              toggle_field_scene_variant();
               if (!bVar21) {
-                FUN_0001f5ca();
+                convert_world_routine_0x0001f5ca();
                 DAT_00ffe18b = '\0';
                 if (unaff_D6w != 0) {
                   _DAT_00ff012e = 0x8000;
@@ -177,14 +177,14 @@ LAB_000008c0:
                 }
                 if ((DAT_00ffddc4 != 4) || (DAT_00fffbf9 != 6)) {
                   if ((_DAT_00fffc0e == 0) || (DAT_00fffbf9 < 8)) goto LAB_00000a32;
-                  FUN_00002ce0();
+                  advance_field_mode_transition();
                 }
               }
             }
             else {
               DAT_00ffe186 = '\x02';
 LAB_00000a32:
-              FUN_000167ae();
+              convert_world_routine_0x000167ae();
               if (DAT_00ffddc4 == 0x37) {
                 _DAT_00ffdd2c = &UNK_00020938;
                 begin_world_activity();
@@ -201,18 +201,18 @@ LAB_00000a72:
               _DAT_00fffc1a = _DAT_00fffc1a | 0x8000;
             }
             _DAT_00ffdfe8 = 0xffff;
-            FUN_0001e43c();
-            FUN_00002f32();
+            convert_world_routine_0x0001e43c();
+            initialize_field_scene_state();
             _DAT_00ffdf42 = 0;
             goto LAB_000008c0;
           }
           latch_controller_events();
           sample_controller_input();
-          FUN_0000a8ea();
-          FUN_00003a1c();
+          convert_graphics_routine_0x0000a8ea();
+          update_field_camera();
           update_entity_render_pass();
           advance_palette_fade();
-          FUN_0001dd94();
+          convert_world_routine_0x0001dd94();
           DAT_00ffef14 = DAT_00ffef14 | 0xe;
         } while (((DAT_00ffe18b != '\0') || (DAT_00ffe166 != 0)) || (_DAT_00ffdfe8 != 0));
         if ((DAT_00ffdd22 & 0x2000) != 0) {
@@ -221,7 +221,7 @@ LAB_00000a72:
         if ((DAT_00ffdd22 & 0x8000) != 0) {
           run_fixed_audio_transaction_wrapper();
           _DAT_00ffdfe8 = 0xffff;
-          FUN_00010d30();
+          convert_menu_routine_0x00010d30();
           service_audio_tick_wrapper();
           select_next_entity();
           if (_DAT_00ffe108 == 0) goto LAB_00000b9c;

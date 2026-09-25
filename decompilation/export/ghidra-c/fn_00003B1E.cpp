@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00003B1E
-// Name: FUN_00003b1e
+// Name: convert_field_routine_0x00003b1e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00003b1e(void)
+void convert_field_routine_0x00003b1e(void)
 
 {
   ushort uVar1;

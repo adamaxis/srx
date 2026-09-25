@@ -1,17 +1,17 @@
 // Ghidra headless export
 // Entry: 0x00057D7E
-// Name: FUN_00057d7e
+// Name: convert_intro_routine_0x00057d7e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x00011190 transfer_menu_glyph_triple
-//   0x00057A6E FUN_00057a6e
+//   0x00057A6E convert_intro_routine_0x00057a6e
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00057d7e(void)
+void convert_intro_routine_0x00057d7e(void)
 
 {
   short sVar1;
@@ -42,7 +42,7 @@ LAB_00057e38:
     render_encoded_title_text();
     render_encoded_title_text();
     build_grouped_decimal_glyphs();
-    FUN_00057a6e(0xc428);
+    convert_intro_routine_0x00057a6e(0xc428);
     build_grouped_decimal_glyphs();
 LAB_00057e9a:
     transfer_menu_glyph_triple();

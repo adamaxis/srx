@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001088C
-// Name: FUN_0001088c
+// Name: convert_menu_routine_0x0001088c
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000011C0 write_repeated_vdp_grid
@@ -8,7 +8,7 @@
 //   0x0000C0DA render_encoded_title_text
 
 
-void FUN_0001088c(void)
+void convert_menu_routine_0x0001088c(void)
 
 {
   if ((char)(&DAT_000d4ec5)

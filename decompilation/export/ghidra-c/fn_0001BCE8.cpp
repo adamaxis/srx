@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001BCE8
-// Name: FUN_0001bce8
+// Name: convert_world_routine_0x0001bce8
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
@@ -9,7 +9,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001bce8(void)
+void convert_world_routine_0x0001bce8(void)
 
 {
   if (DAT_00ffe058 == 1) {

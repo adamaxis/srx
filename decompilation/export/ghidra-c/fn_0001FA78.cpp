@@ -1,15 +1,15 @@
 // Ghidra headless export
 // Entry: 0x0001FA78
-// Name: FUN_0001fa78
+// Name: convert_world_routine_0x0001fa78
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001F246 run_mode_exit_services
-//   0x00056AC0 FUN_00056ac0
+//   0x00056AC0 convert_intro_routine_0x00056ac0
 
 
 /* WARNING: Type propagation algorithm not settling */
 
-void FUN_0001fa78(void)
+void convert_world_routine_0x0001fa78(void)
 
 {
   if ((DAT_00fffbf8 == '\x02') && (DAT_00fffbf9 == '\v')) {
@@ -85,7 +85,7 @@ LAB_0001fd7a:
   }
   run_mode_exit_services();
 LAB_0001fd6e:
-  FUN_00056ac0();
+  convert_intro_routine_0x00056ac0();
   return;
 }
 

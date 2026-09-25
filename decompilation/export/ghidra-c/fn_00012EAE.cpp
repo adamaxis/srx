@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00012EAE
-// Name: FUN_00012eae
+// Name: convert_menu_routine_0x00012eae
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_encoded_title_text
 //   0x00012FA4 advance_entity_action_menu
 
 
-void FUN_00012eae(void)
+void convert_menu_routine_0x00012eae(void)
 
 {
   short sVar1;
@@ -28,7 +28,7 @@ void FUN_00012eae(void)
       return;
     }
   }
-  FUN_00013000();
+  convert_menu_routine_0x00013000();
   render_encoded_title_text();
   write_vdp_grid();
   return;

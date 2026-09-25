@@ -3,13 +3,13 @@
 // Name: draw_hud_footer
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000566EC FUN_000566ec
+//   0x000566EC convert_intro_routine_0x000566ec
 
 
 void draw_hud_footer(void)
 
 {
-  FUN_000566ec();
+  convert_intro_routine_0x000566ec();
   return;
 }
 

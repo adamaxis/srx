@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000EA36
-// Name: FUN_0000ea36
+// Name: convert_graphics_routine_0x0000ea36
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000EAD2 evaluate_terrain_direction_boundary
 
 
-void FUN_0000ea36(void)
+void convert_graphics_routine_0x0000ea36(void)
 
 {
   ushort unaff_D5w;

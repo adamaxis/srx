@@ -1,14 +1,14 @@
 // Ghidra headless export
 // Entry: 0x00014508
-// Name: FUN_00014508
+// Name: convert_entity_routine_0x00014508
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000E7C8 FUN_0000e7c8
+//   0x0000E7C8 evaluate_terrain_collision
 //   0x000144E8 apply_entity_close_range_state
-//   0x00015DCC FUN_00015dcc
+//   0x00015DCC convert_entity_routine_0x00015dcc
 
 
-void FUN_00014508(void)
+void convert_entity_routine_0x00014508(void)
 
 {
   byte bVar1;
@@ -60,13 +60,13 @@ void FUN_00014508(void)
     sVar5 = *(short *)(DAT_00fffc04 + 0x2e) + 0x6000;
   }
   uStack_4 = 0x14540;
-  FUN_00015dcc();
+  convert_entity_routine_0x00015dcc();
   sStack_8 = *extraout_A1 + 0xe0;
   uStack_4 = CONCAT22(sVar5 + extraout_A1[2],uStack_4._2_2_);
   local_14 = 0xe0;
   sStack_10 = sVar5;
   sStack_c = sVar7;
-  sVar3 = FUN_0000e7c8();
+  sVar3 = evaluate_terrain_collision();
   sVar2 = sStack_10;
   puVar11 = (ushort *)auStack_a;
   iVar9 = extraout_A0;
@@ -77,7 +77,7 @@ void FUN_00014508(void)
     uVar6 = -local_14;
     sStack_e = extraout_A1_00[2] - sStack_12;
     sStack_12 = uVar6 + *extraout_A1_00;
-    sVar3 = FUN_0000e7c8();
+    sVar3 = evaluate_terrain_collision();
     sVar7 = 1;
     puVar11 = &local_14;
     iVar9 = extraout_A0_00;

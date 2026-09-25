@@ -1,14 +1,14 @@
 // Ghidra headless export
 // Entry: 0x0001A908
-// Name: FUN_0001a908
+// Name: convert_world_routine_0x0001a908
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00019B40 FUN_00019b40
+//   0x00019B40 convert_world_routine_0x00019b40
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001a908(void)
+void convert_world_routine_0x0001a908(void)
 
 {
   short sVar1;
@@ -17,7 +17,7 @@ void FUN_0001a908(void)
   DAT_00ff164a = 1;
   sVar1 = DAT_00ffe0e0;
   if (_DAT_00ffe0de == 0) {
-    sVar1 = FUN_00019b40();
+    sVar1 = convert_world_routine_0x00019b40();
   }
   DAT_00ffe0bc = sVar1;
   if (sVar1 < 0) {

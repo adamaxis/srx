@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00054662
-// Name: FUN_00054662
+// Name: convert_graphics_routine_0x00054662
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -16,19 +16,19 @@
 //   0x000176EA render_menu_footer
 //   0x000177CC upload_menu_resource_pair
 //   0x00017F80 refresh_mode_metadata_wrapper
-//   0x0001822C FUN_0001822c
+//   0x0001822C convert_world_routine_0x0001822c
 //   0x000532A8 fill_audio_menu_sentinel
 //   0x000549E4 write_menu_repeated_grid_service
 //   0x000549F6 select_display_status
-//   0x00054A28 FUN_00054a28
-//   0x00054A8E FUN_00054a8e
-//   0x00055F44 FUN_00055f44
+//   0x00054A28 convert_graphics_routine_0x00054a28
+//   0x00054A8E convert_graphics_routine_0x00054a8e
+//   0x00055F44 convert_intro_routine_0x00055f44
 //   0x000566F6 refresh_mode_resource_state
 
 
 /* WARNING: Removing unreachable block (ram,0x000548c4) */
 
-undefined4 FUN_00054662(void)
+undefined4 convert_graphics_routine_0x00054662(void)
 
 {
   byte *pbVar1;
@@ -73,13 +73,13 @@ LAB_000546cc:
     select_display_status();
     refresh_mode_metadata_wrapper();
     VDP_CTRL = 0x8174;
-    FUN_00054a8e();
+    convert_graphics_routine_0x00054a8e();
     if (DAT_00fff0b1 < '\0') {
       return 0;
     }
     render_encoded_title_text();
     render_encoded_title_text();
-    FUN_00054a28();
+    convert_graphics_routine_0x00054a28();
     DAT_00fff0dc = 0;
 LAB_0005488c:
     move_wrapped_menu_cursor();
@@ -90,7 +90,7 @@ LAB_0005488c:
       if (((DAT_00ffdd22._0_1_ & 1) != 0) || ((DAT_00ffdd22._0_1_ & 2) != 0)) goto LAB_0005488c;
       if (((DAT_00ffdd22._0_1_ & 0x40) != 0) ||
          (((DAT_00ffdd22._0_1_ & 0x10) != 0 || ((DAT_00ffdd22._0_1_ & 0x20) != 0)))) {
-        FUN_00055f44();
+        convert_intro_routine_0x00055f44();
         sVar6 = *(byte *)(DAT_00fffc04 + 0x88) - 1;
         if (sVar6 == 0) {
           sVar6 = 1;
@@ -119,7 +119,7 @@ LAB_0005488c:
     render_menu_footer();
     upload_menu_resource_pair();
     VDP_CTRL = 0x8174;
-    FUN_0001822c();
+    convert_world_routine_0x0001822c();
     sVar6 = 4;
     do {
       (&DAT_00fff0ed)[sVar6] = 6;

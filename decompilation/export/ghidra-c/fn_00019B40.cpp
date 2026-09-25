@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00019B40
-// Name: FUN_00019b40
+// Name: convert_world_routine_0x00019b40
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00017C3C FUN_00017c3c
+//   0x00017C3C convert_world_routine_0x00017c3c
 
 
-uint FUN_00019b40(void)
+uint convert_world_routine_0x00019b40(void)
 
 {
   uint uVar1;
@@ -22,7 +22,7 @@ uint FUN_00019b40(void)
     cVar3 = DAT_00ffdf84 < '\0';
     bVar4 = DAT_00ffdf84 == '\0';
     if (!(bool)cVar3) {
-      uVar1 = FUN_00017c3c();
+      uVar1 = convert_world_routine_0x00017c3c();
       if (bVar4 || cVar5 != cVar3) {
         return 0xffffffff;
       }

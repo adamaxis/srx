@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000FDFE
-// Name: FUN_0000fdfe
+// Name: convert_graphics_routine_0x0000fdfe
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
@@ -9,7 +9,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0000fdfe(void)
+void convert_graphics_routine_0x0000fdfe(void)
 
 {
   char cVar1;

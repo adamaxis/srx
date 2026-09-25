@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000532BC
-// Name: FUN_000532bc
+// Name: convert_audio_routine_0x000532bc
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000F5C write_vdp_word_block_with_source_wrap
@@ -10,10 +10,10 @@
 //   0x0000C0DA render_encoded_title_text
 //   0x00053200 audio_noop_hook_a
 //   0x0005322C prepare_audio_title
-//   0x000533EE FUN_000533ee
+//   0x000533EE convert_audio_routine_0x000533ee
 
 
-void FUN_000532bc(void)
+void convert_audio_routine_0x000532bc(void)
 
 {
   int iVar1;
@@ -27,7 +27,7 @@ void FUN_000532bc(void)
   write_vdp_word_block_with_source_wrap();
   write_vdp_grid();
   render_encoded_title_text();
-  FUN_000533ee();
+  convert_audio_routine_0x000533ee();
   prepare_audio_title();
   audio_noop_hook_a();
   iVar1 = 0xc190;

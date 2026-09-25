@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00010F50
-// Name: FUN_00010f50
+// Name: prepare_command_overview
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000F5C write_vdp_word_block_with_source_wrap
@@ -12,7 +12,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00010f50(void)
+void prepare_command_overview(void)
 
 {
   DAT_00fff0d0 = 6;

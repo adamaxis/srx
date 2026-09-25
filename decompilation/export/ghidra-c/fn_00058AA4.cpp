@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00058AA4
-// Name: FUN_00058aa4
+// Name: convert_intro_routine_0x00058aa4
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_encoded_title_text
 //   0x00011190 transfer_menu_glyph_triple
 
 
-void FUN_00058aa4(void)
+void convert_intro_routine_0x00058aa4(void)
 
 {
   short sVar1;

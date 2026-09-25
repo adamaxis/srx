@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000C928
-// Name: FUN_0000c928
+// Name: convert_graphics_routine_0x0000c928
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -14,20 +14,20 @@
 //   0x0000C436 dispatch_menu_handler
 //   0x0000E660 advance_random_grid_effect
 //   0x00010952 reset_mode_display_buffers
-//   0x00010A82 FUN_00010a82
-//   0x000566D8 FUN_000566d8
+//   0x00010A82 convert_menu_routine_0x00010a82
+//   0x000566D8 convert_intro_routine_0x000566d8
 //   0x0005670E refresh_mode_palette_data
 
 
-void FUN_0000c928(void)
+void convert_graphics_routine_0x0000c928(void)
 
 {
   reset_mode_display_buffers();
   DAT_00fff0b7 = 1;
   do {
-    FUN_000566d8();
+    convert_intro_routine_0x000566d8();
     refresh_mode_palette_data();
-    FUN_00010a82();
+    convert_menu_routine_0x00010a82();
     load_title_font();
     write_menu_grid_with_metadata();
     render_encoded_title_text();

@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x0000C64C
-// Name: FUN_0000c64c
+// Name: convert_graphics_routine_0x0000c64c
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00002A32 initialize_field_mode_profile_a
 //   0x00002A44 initialize_field_mode_profile_b
 //   0x000038FA run_entity_animation_triplet
 //   0x0000391A handle_mode_action_event
-//   0x0000C802 FUN_0000c802
+//   0x0000C802 convert_graphics_routine_0x0000c802
 //   0x0001DED8 clear_high_effect_slots
 //   0x0001E68C reset_world_effect_globals
 //   0x0001F246 run_mode_exit_services
@@ -15,7 +15,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0000c64c(void)
+void convert_graphics_routine_0x0000c64c(void)
 
 {
   uint uVar1;
@@ -46,7 +46,7 @@ LAB_0000c690:
 LAB_0000c716:
   DAT_00ff024c = 0;
   DAT_00ff034c = 0;
-  FUN_0000c802();
+  convert_graphics_routine_0x0000c802();
   DAT_00ff0110 = DAT_00ff0110 & 0xaf;
   DAT_00ff0110 = DAT_00ff0110 | 1;
   DAT_00ff0111 = DAT_00ff0111 & 0xbf;

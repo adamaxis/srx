@@ -1,20 +1,20 @@
 // Ghidra headless export
 // Entry: 0x00015646
-// Name: FUN_00015646
+// Name: convert_entity_routine_0x00015646
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000036FC FUN_000036fc
+//   0x000036FC advance_entity_asset_meter
 //   0x00015118 initialize_entity_behavior_record
 //   0x00015A8C find_first_available_entity_slot
 //   0x00015D3C measure_relative_heading_and_distance
 //   0x0001A2CC allocate_first_free_effect_slot
 //   0x0001DBAA schedule_world_activity_timeout
-//   0x00055848 FUN_00055848
+//   0x00055848 convert_intro_routine_0x00055848
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00015646(void)
+void convert_entity_routine_0x00015646(void)
 
 {
   short *psVar1;
@@ -38,7 +38,7 @@ void FUN_00015646(void)
   
   if ((*(ushort *)(in_A0 + 0x16) & 0x7ff) < 0x3d) {
     uVar8 = 0;
-    FUN_000036fc();
+    advance_entity_asset_meter();
     find_first_available_entity_slot();
     if (!(bool)uVar8) {
       schedule_world_activity_timeout();
@@ -87,7 +87,7 @@ void FUN_00015646(void)
         }
         sVar2 = *psVar1;
         sVar4 = psVar1[2];
-        FUN_00055848(psVar1,uVar3);
+        convert_intro_routine_0x00055848(psVar1,uVar3);
         *(undefined1 *)((int)extraout_A1_00 + 0x9f) = DAT_00fff0dd;
         uVar3 = unaff_D5w * 0x10 + sVar4;
         uVar6 = sVar7 * 0x10 + sVar2;

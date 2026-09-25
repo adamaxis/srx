@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003404 upload_field_asset_setup
-//   0x000036FC FUN_000036fc
+//   0x000036FC advance_entity_asset_meter
 
 
 void set_entity_action_state(void)
@@ -27,7 +27,7 @@ void set_entity_action_state(void)
       *(undefined1 *)(in_A0 + 0x9d) = 0;
     }
   }
-  FUN_000036fc();
+  advance_entity_asset_meter();
   upload_field_asset_setup();
   return;
 }

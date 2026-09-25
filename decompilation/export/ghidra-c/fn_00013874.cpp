@@ -3,7 +3,7 @@
 // Name: dispatch_entity_action_candidates
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001438C FUN_0001438c
+//   0x0001438C convert_entity_routine_0x0001438c
 //   0x00014446 collect_entity_action_candidates
 
 
@@ -15,14 +15,14 @@ void dispatch_entity_action_candidates(void)
   DAT_00ffe175 = 0;
   if (_DAT_00ffdfe8 == 0) {
     if ((DAT_00ffdf88 & 0x3f) == 0xb) {
-      FUN_0001438c();
+      convert_entity_routine_0x0001438c();
     }
     else if ((DAT_00ffdf88 & 0x3f) == 0xf) {
       collect_entity_action_candidates();
     }
   }
   else {
-    FUN_0001438c();
+    convert_entity_routine_0x0001438c();
     collect_entity_action_candidates();
   }
   return;

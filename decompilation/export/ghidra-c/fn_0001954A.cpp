@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001954A
-// Name: FUN_0001954a
+// Name: convert_world_routine_0x0001954a
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_0001954a(void)
+void convert_world_routine_0x0001954a(void)
 
 {
   return;

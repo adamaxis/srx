@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00014D8E
-// Name: FUN_00014d8e
+// Name: convert_entity_routine_0x00014d8e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00014F26 probe_entity_world_position
@@ -10,7 +10,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00014d8e(void)
+void convert_entity_routine_0x00014d8e(void)
 
 {
   short sVar1;

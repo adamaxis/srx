@@ -1,16 +1,16 @@
 // Ghidra headless export
 // Entry: 0x0001C61C
-// Name: FUN_0001c61c
+// Name: convert_world_routine_0x0001c61c
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
-//   0x00019CB2 FUN_00019cb2
+//   0x00019CB2 convert_world_routine_0x00019cb2
 //   0x0001B612 attach_behavior_descriptor_b
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001c61c(void)
+void convert_world_routine_0x0001c61c(void)
 
 {
   DAT_00ff1594 = DAT_00ff1594 + -1;
@@ -22,7 +22,7 @@ void FUN_0001c61c(void)
       DAT_00ff1592 = DAT_00ff1592 & 0xf6;
       attach_behavior_descriptor_b();
       _DAT_00ffe0d6 = 0;
-      FUN_00019cb2();
+      convert_world_routine_0x00019cb2();
       return;
     }
   }

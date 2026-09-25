@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00018AA6
-// Name: FUN_00018aa6
+// Name: convert_world_routine_0x00018aa6
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -9,12 +9,12 @@
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x0000C376 move_wrapped_menu_cursor
-//   0x0001882E FUN_0001882e
+//   0x0001882E convert_world_routine_0x0001882e
 //   0x0001897C write_hud_repeated_grid_variant_a
 //   0x000196F2 rotate_hud_history
 
 
-void FUN_00018aa6(void)
+void convert_world_routine_0x00018aa6(void)
 
 {
   short sVar1;
@@ -71,7 +71,7 @@ void FUN_00018aa6(void)
         return;
       }
       if ((DAT_00ffdd22._0_1_ & 0x80) != 0) {
-        FUN_0001882e();
+        convert_world_routine_0x0001882e();
         return;
       }
     }

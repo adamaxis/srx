@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00013FFE
-// Name: FUN_00013ffe
+// Name: convert_menu_routine_0x00013ffe
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003404 upload_field_asset_setup
@@ -12,18 +12,18 @@
 //   0x0000B1DC configure_entity_target_transition
 //   0x0000B39A set_entity_heading_with_field_animation
 //   0x0000B3FE set_entity_heading_with_alternate_animation
-//   0x00014226 FUN_00014226
-//   0x00014492 FUN_00014492
-//   0x00014508 FUN_00014508
+//   0x00014226 convert_entity_routine_0x00014226
+//   0x00014492 convert_entity_routine_0x00014492
+//   0x00014508 convert_entity_routine_0x00014508
 //   0x00014C7C resolve_entity_target_motion
-//   0x00014D8E FUN_00014d8e
+//   0x00014D8E convert_entity_routine_0x00014d8e
 //   0x0001514E process_entity_spawn_cycle
-//   0x00015646 FUN_00015646
+//   0x00015646 convert_entity_routine_0x00015646
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-uint FUN_00013ffe(void)
+uint convert_menu_routine_0x00013ffe(void)
 
 {
   ushort uVar1;
@@ -39,13 +39,13 @@ uint FUN_00013ffe(void)
   bool bVar6;
   
   DAT_00ffdfe0 = 0;
-  FUN_00014492();
+  convert_entity_routine_0x00014492();
   uVar2 = *(uint *)(extraout_A0 + 0xa2);
   if (uVar2 == 0) {
     if ((*(byte *)(extraout_A0 + 0x10) & 8) == 0) {
       return uVar2;
     }
-    uVar2 = FUN_00014508();
+    uVar2 = convert_entity_routine_0x00014508();
     return uVar2;
   }
   uVar5 = 0;
@@ -60,7 +60,7 @@ uint FUN_00013ffe(void)
            (bVar6 = *(byte *)(extraout_A0 + 0x57) < 0xb, *(byte *)(extraout_A0 + 0x57) == 0xb)) {
           return uVar2;
         }
-        FUN_00014d8e();
+        convert_entity_routine_0x00014d8e();
         if (bVar6) {
           return 0x12345678;
         }
@@ -81,11 +81,11 @@ uint FUN_00013ffe(void)
       if (('\f' < *(char *)(extraout_A0 + 0x57)) &&
          (bVar6 = *(byte *)(extraout_A0 + 0x57) < 0x10, (char)*(byte *)(extraout_A0 + 0x57) < '\x10'
          )) {
-        FUN_00014d8e();
+        convert_entity_routine_0x00014d8e();
         if (bVar6) {
           return 0x12345678;
         }
-        uVar2 = FUN_00015646();
+        uVar2 = convert_entity_routine_0x00015646();
         if (!bVar6) {
           uVar2 = set_entity_heading_with_alternate_animation();
           return uVar2;
@@ -94,7 +94,7 @@ uint FUN_00013ffe(void)
       }
       uVar5 = false;
       if (*(char *)(extraout_A0 + 0x57) == '\0') goto LAB_000141a0;
-      uVar2 = FUN_00014d8e();
+      uVar2 = convert_entity_routine_0x00014d8e();
       if ((bool)uVar5) {
         _DAT_00ffdfde = 0;
         return 0x12345678;
@@ -113,7 +113,7 @@ uint FUN_00013ffe(void)
     }
     bVar6 = false;
     if (*(char *)(iVar4 + 0x4e) != '\0') {
-      uVar2 = FUN_00014d8e();
+      uVar2 = convert_entity_routine_0x00014d8e();
       if (bVar6) {
         uVar2 = 0x12345678;
       }
@@ -121,7 +121,7 @@ uint FUN_00013ffe(void)
     }
     if (((*(byte *)(iVar4 + 0x10) & 8) != 0) && (*(char *)(iVar4 + 0x4f) != '\0')) {
       if (*(short *)(iVar4 + 0xdc) < 0) {
-        uVar2 = FUN_00014226();
+        uVar2 = convert_entity_routine_0x00014226();
         return uVar2;
       }
       return uVar2;

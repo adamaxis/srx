@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001597E
-// Name: FUN_0001597e
+// Name: convert_entity_routine_0x0001597e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00015CC0 compute_diagonal_step_cost
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001597e(void)
+void convert_entity_routine_0x0001597e(void)
 
 {
   bool bVar1;

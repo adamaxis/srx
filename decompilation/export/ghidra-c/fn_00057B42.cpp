@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00057B42
-// Name: FUN_00057b42
+// Name: convert_intro_routine_0x00057b42
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00057b42(void)
+void convert_intro_routine_0x00057b42(void)
 
 {
   byte bVar1;

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0002679E
-// Name: FUN_0002679e
+// Name: convert_world_routine_0x0002679e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -8,14 +8,14 @@
 //   0x00000F98 write_vdp_word_block
 //   0x00017CC8 advance_hud_sprite_audio_pulse
 //   0x00017FDA advance_menu_random_glitch
-//   0x0001C3FA FUN_0001c3fa
+//   0x0001C3FA convert_world_routine_0x0001c3fa
 //   0x00024E20 dispatch_indexed_handler
 //   0x000268E6 append_world_sprite_records
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0002679e(void)
+void convert_world_routine_0x0002679e(void)
 
 {
   byte bVar1;
@@ -72,7 +72,7 @@ void FUN_0002679e(void)
     dispatch_indexed_handler();
     write_vdp_word_block();
     DAT_00ffdd02 = 1;
-    FUN_0001c3fa();
+    convert_world_routine_0x0001c3fa();
     append_world_sprite_records();
     _DAT_00ffd980 = 1;
     DAT_00ffef14 = DAT_00ffef14 | 2;

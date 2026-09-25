@@ -1,14 +1,14 @@
 // Ghidra headless export
 // Entry: 0x0001DF34
-// Name: FUN_0001df34
+// Name: convert_world_routine_0x0001df34
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000133A6 FUN_000133a6
+//   0x000133A6 convert_menu_routine_0x000133a6
 //   0x0001E514 clear_effect_slot_state
 //   0x000530DE service_audio_if_enabled
 
 
-void FUN_0001df34(void)
+void convert_world_routine_0x0001df34(void)
 
 {
   ushort uVar1;
@@ -30,7 +30,7 @@ void FUN_0001df34(void)
         (uVar1 <= (ushort)(*psVar4 + 0x100U))) &&
        (((ushort)(psVar4[2] - 0x100U) < uVar2 && (uVar2 <= (ushort)(psVar4[2] + 0x100U))))) {
       bVar5 = psVar4[1] < 0;
-      uVar1 = FUN_000133a6();
+      uVar1 = convert_menu_routine_0x000133a6();
       uVar2 = extraout_D1w;
       psVar4 = extraout_A0;
       if (!bVar5) {

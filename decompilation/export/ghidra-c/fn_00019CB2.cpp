@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00019CB2
-// Name: FUN_00019cb2
+// Name: convert_world_routine_0x00019cb2
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00017C52 render_menu_text_followup
@@ -10,7 +10,7 @@
 //   0x00019BAE select_hud_mode
 
 
-void FUN_00019cb2(void)
+void convert_world_routine_0x00019cb2(void)
 
 {
   char cVar1;

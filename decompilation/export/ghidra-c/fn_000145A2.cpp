@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000145A2
-// Name: FUN_000145a2
+// Name: convert_entity_routine_0x000145a2
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00014BA6 update_entity_axis_relation_state
@@ -8,7 +8,7 @@
 //   0x00015D3C measure_relative_heading_and_distance
 
 
-void FUN_000145a2(void)
+void convert_entity_routine_0x000145a2(void)
 
 {
   byte bVar1;

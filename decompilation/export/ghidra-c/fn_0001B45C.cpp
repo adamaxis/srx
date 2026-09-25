@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001B45C
-// Name: FUN_0001b45c
+// Name: convert_world_routine_0x0001b45c
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D44 advance_source_prng
@@ -9,7 +9,7 @@
 //   0x0001B5A6 reset_word_stream_area
 
 
-void FUN_0001b45c(void)
+void convert_world_routine_0x0001b45c(void)
 
 {
   int iVar1;

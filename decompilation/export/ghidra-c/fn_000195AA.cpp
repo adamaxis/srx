@@ -3,13 +3,13 @@
 // Name: clear_menu_slot_visual
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001952C FUN_0001952c
+//   0x0001952C convert_world_routine_0x0001952c
 
 
 void clear_menu_slot_visual(void)
 
 {
-  FUN_0001952c();
+  convert_world_routine_0x0001952c();
   return;
 }
 

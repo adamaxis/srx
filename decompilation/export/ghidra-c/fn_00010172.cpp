@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00010172
-// Name: FUN_00010172
+// Name: convert_menu_routine_0x00010172
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000011C0 write_repeated_vdp_grid
 //   0x00001232 write_vdp_grid
 
 
-undefined8 FUN_00010172(void)
+undefined8 convert_menu_routine_0x00010172(void)
 
 {
   undefined4 in_D0;

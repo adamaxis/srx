@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001745E
-// Name: FUN_0001745e
+// Name: convert_world_routine_0x0001745e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E34 reset_vdp_upload_state
@@ -21,7 +21,7 @@
 //   0x0001789C prepare_menu_hud_sequence
 //   0x00017EB4 calculate_menu_delay_offset
 //   0x00019856 refresh_field_hud
-//   0x0001ADE6 FUN_0001ade6
+//   0x0001ADE6 convert_world_routine_0x0001ade6
 //   0x0001B5A6 reset_word_stream_area
 //   0x0001B628 attach_behavior_descriptor_c
 //   0x0001C4EE copy_eleven_words
@@ -31,12 +31,12 @@
 //   0x00053126 prepare_mode_entry_service
 //   0x000531EA copy_audio_state
 //   0x00053290 reset_audio_menu_arrays
-//   0x000533EE FUN_000533ee
+//   0x000533EE convert_audio_routine_0x000533ee
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001745e(void)
+void convert_world_routine_0x0001745e(void)
 
 {
   int extraout_A0;
@@ -67,7 +67,7 @@ void FUN_0001745e(void)
     DAT_00fff0a3 = 1;
     DAT_00fff0e4 = 0xc;
     DAT_00fff0ac = 0x28;
-    FUN_000533ee();
+    convert_audio_routine_0x000533ee();
     if (DAT_00ffdf40 != 0) {
       DAT_00ffe171 = 0xff;
     }
@@ -107,7 +107,7 @@ void FUN_0001745e(void)
     service_audio_if_enabled_variant();
     service_audio_command_frame();
     render_hud_sprite_stream();
-    FUN_0001ade6();
+    convert_world_routine_0x0001ade6();
   } while (DAT_00fff0b1 == '\0');
   VDP_CTRL = 0x8134;
   VDP_CTRL = 0x9191;

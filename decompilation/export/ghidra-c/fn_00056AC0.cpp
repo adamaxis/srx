@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00056AC0
-// Name: FUN_00056ac0
+// Name: convert_intro_routine_0x00056ac0
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -16,25 +16,25 @@
 //   0x0000C0C2 load_title_font
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C406 prepare_numeric_menu_block
-//   0x0000D4C8 FUN_0000d4c8
+//   0x0000D4C8 convert_graphics_routine_0x0000d4c8
 //   0x00010BC4 transfer_menu_asset_batch_eight_after_copy
 //   0x00011048 upload_resource_then_write_two_blocks
 //   0x000110EC draw_menu_hud_panel_variant_b
 //   0x000530DE service_audio_if_enabled
 //   0x000566E2 refresh_mode_resource_metadata
-//   0x000566EC FUN_000566ec
+//   0x000566EC convert_intro_routine_0x000566ec
 //   0x000566F6 refresh_mode_resource_state
 //   0x0005670E refresh_mode_palette_data
-//   0x00056DC4 FUN_00056dc4
-//   0x000587DA FUN_000587da
-//   0x00058B5E FUN_00058b5e
-//   0x00058BB6 FUN_00058bb6
-//   0x00058C54 FUN_00058c54
-//   0x00058CDE FUN_00058cde
-//   0x00058D32 FUN_00058d32
+//   0x00056DC4 convert_intro_routine_0x00056dc4
+//   0x000587DA convert_intro_routine_0x000587da
+//   0x00058B5E convert_intro_routine_0x00058b5e
+//   0x00058BB6 convert_intro_routine_0x00058bb6
+//   0x00058C54 convert_intro_routine_0x00058c54
+//   0x00058CDE convert_intro_routine_0x00058cde
+//   0x00058D32 convert_intro_routine_0x00058d32
 
 
-void FUN_00056ac0(void)
+void convert_intro_routine_0x00056ac0(void)
 
 {
   DAT_00fff0b1 = 0;
@@ -61,7 +61,7 @@ LAB_00056b66:
   DAT_00fff0d0 = '\0';
   DAT_00fff0b8 = '\0';
   DAT_00fff0c2._0_1_ = -1;
-  FUN_000566ec();
+  convert_intro_routine_0x000566ec();
   draw_menu_hud_panel_variant_b();
   do {
     DAT_00fff0d1 = '\0';
@@ -78,13 +78,13 @@ LAB_00056da8:
     }
     if (DAT_00fff0b7 == '\x01') {
       DAT_00fff0d1 = '\x01';
-      FUN_00058d32();
+      convert_intro_routine_0x00058d32();
     }
     else {
-      FUN_00058b5e();
-      FUN_00058bb6();
+      convert_intro_routine_0x00058b5e();
+      convert_intro_routine_0x00058bb6();
     }
-    FUN_000587da();
+    convert_intro_routine_0x000587da();
 LAB_00056c54:
     while( true ) {
       wait_for_vblank();
@@ -93,13 +93,13 @@ LAB_00056c54:
       if ((DAT_00ffdd22._0_1_ & 4) == 0) break;
       service_audio_if_enabled();
 LAB_00056cb6:
-      FUN_00058c54();
+      convert_intro_routine_0x00058c54();
     }
     if ((DAT_00ffdd22._0_1_ & 1) != 0) {
       service_audio_if_enabled();
 LAB_00056cd4:
       if (DAT_00fff0b7 != '\x01') {
-        FUN_00058cde();
+        convert_intro_routine_0x00058cde();
       }
       goto LAB_00056c54;
     }
@@ -114,7 +114,7 @@ LAB_00056cd4:
     if (((DAT_00ffdd22._0_1_ & 0x40) == 0) && ((DAT_00ffdd22._0_1_ & 0x10) == 0)) {
       if ((DAT_00ffdd22._0_1_ & 0x20) != 0) {
         service_audio_if_enabled();
-        FUN_0000d4c8();
+        convert_graphics_routine_0x0000d4c8();
         goto LAB_00056b66;
       }
       if ((DAT_00ffdd22._0_1_ & 0x80) != 0) goto LAB_00056da8;
@@ -126,11 +126,11 @@ LAB_00056cd4:
         render_encoded_title_text();
       }
       else {
-        FUN_000587da();
+        convert_intro_routine_0x000587da();
       }
       goto LAB_00056c54;
     }
-    FUN_00056dc4();
+    convert_intro_routine_0x00056dc4();
     if (DAT_00fff112 < '\0') goto LAB_00056c54;
     reset_vdp_upload_state();
     DAT_00fff0d0 = DAT_00fff0b8;

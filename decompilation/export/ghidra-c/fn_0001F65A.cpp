@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x0001F65A
-// Name: FUN_0001f65a
+// Name: convert_world_routine_0x0001f65a
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000CF38 FUN_0000cf38
+//   0x0000CF38 convert_graphics_routine_0x0000cf38
 //   0x0001F246 run_mode_exit_services
 
 
-void FUN_0001f65a(void)
+void convert_world_routine_0x0001f65a(void)
 
 {
   if ((DAT_00fffbf8 == '\0') && (DAT_00fffbf9 == '\x03')) {
@@ -33,7 +33,7 @@ void FUN_0001f65a(void)
   }
   run_mode_exit_services();
   if (DAT_00fff10d < '\0') {
-    FUN_0000cf38();
+    convert_graphics_routine_0x0000cf38();
   }
   return;
 }

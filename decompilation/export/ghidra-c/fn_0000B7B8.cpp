@@ -1,11 +1,11 @@
 // Ghidra headless export
 // Entry: 0x0000B7B8
-// Name: FUN_0000b7b8
+// Name: convert_graphics_routine_0x0000b7b8
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000423C quantize_field_delta
 //   0x0000BC36 build_collision_probe_points
-//   0x0001651E FUN_0001651e
+//   0x0001651E convert_world_routine_0x0001651e
 //   0x00016760 mark_projected_terrain_cell
 //   0x0001E2E0 begin_world_activity_if_idle
 //   0x0001E2EC begin_world_activity
@@ -14,7 +14,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0000b7b8(void)
+void convert_graphics_routine_0x0000b7b8(void)
 
 {
   ushort uVar1;
@@ -139,7 +139,7 @@ void FUN_0000b7b8(void)
             if (((((DAT_00ffdf40 == 0) || (bVar3 = DAT_00ffddc4 < 0x14, DAT_00ffddc4 == 0x14)) ||
                  (bVar3 = DAT_00ffdf40 < 2, DAT_00ffdf40 != 2)) || (bVar3 = false, uVar1 != 0)) ||
                ((_DAT_00ffdf84 == 0 && (bVar3 = false, DAT_00ffe16f == '\0')))) {
-              FUN_0001651e();
+              convert_world_routine_0x0001651e();
               if (bVar3) {
                 _DAT_00ffdf3a = 0xffff;
                 DAT_00ffdf3c = 0x10;
@@ -152,7 +152,7 @@ void FUN_0000b7b8(void)
           }
           else {
             prepare_mode_entry_service();
-            _DAT_00ffdd2c = FUN_0000c64c;
+            _DAT_00ffdd2c = convert_graphics_routine_0x0000c64c;
             begin_world_activity();
             in_A0 = extraout_A0_11;
           }

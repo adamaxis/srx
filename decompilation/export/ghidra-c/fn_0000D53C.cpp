@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000D53C
-// Name: FUN_0000d53c
+// Name: convert_graphics_routine_0x0000d53c
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -10,7 +10,7 @@
 //   0x0000C376 move_wrapped_menu_cursor
 
 
-void FUN_0000d53c(void)
+void convert_graphics_routine_0x0000d53c(void)
 
 {
   render_encoded_title_text();

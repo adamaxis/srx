@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00000208
-// Name: AdrErr
+// Name: convert_interrupt_routine_0x00000208
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void AdrErr(void)
+void convert_interrupt_routine_0x00000208(void)
 
 {
   stop();

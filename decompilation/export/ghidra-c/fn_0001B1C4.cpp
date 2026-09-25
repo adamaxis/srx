@@ -3,7 +3,7 @@
 // Name: initialize_world_effect_seed
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001A908 FUN_0001a908
+//   0x0001A908 convert_world_routine_0x0001a908
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -20,7 +20,7 @@ void initialize_world_effect_seed(void)
   DAT_00ffe0d8 = *(undefined2 *)(&DAT_0001b278 + (short)(unaff_D2w << 1));
   DAT_00ffe0e0 = in_D1w;
   DAT_00ffe0e4 = unaff_D2w;
-  FUN_0001a908();
+  convert_world_routine_0x0001a908();
   return;
 }
 

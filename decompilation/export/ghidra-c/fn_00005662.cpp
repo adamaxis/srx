@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00005662
-// Name: FUN_00005662
+// Name: convert_graphics_routine_0x00005662
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000013BE build_title_sprite_records_with_attribute_offset
 //   0x000061A0 append_entity_sprite_record
 
 
-void FUN_00005662(void)
+void convert_graphics_routine_0x00005662(void)
 
 {
   byte bVar1;

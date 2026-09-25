@@ -1,19 +1,19 @@
 // Ghidra headless export
 // Entry: 0x000559BC
-// Name: FUN_000559bc
+// Name: convert_intro_routine_0x000559bc
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000DBA count_thresholded_random_rolls
-//   0x00003674 FUN_00003674
-//   0x000037EC FUN_000037ec
-//   0x00055E62 FUN_00055e62
-//   0x00055E92 FUN_00055e92
-//   0x00055EB4 FUN_00055eb4
+//   0x00003674 advance_entity_delay_meter
+//   0x000037EC advance_entity_behavior_meter
+//   0x00055E62 convert_intro_routine_0x00055e62
+//   0x00055E92 convert_intro_routine_0x00055e92
+//   0x00055EB4 convert_intro_routine_0x00055eb4
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_000559bc(void)
+void convert_intro_routine_0x000559bc(void)
 
 {
   byte bVar1;
@@ -46,25 +46,26 @@ void FUN_000559bc(void)
   cVar5 = _DAT_00fff112 < 0;
   uVar6 = _DAT_00fff112 == 0;
   if ((bool)uVar6) {
-    FUN_00055e92();
+    convert_intro_routine_0x00055e92();
     if ((bool)uVar6 || cVar7 != cVar5) {
       return;
     }
   }
-  else if ((_DAT_00fff112 < 1) && (FUN_00055eb4(), (bool)uVar6 || cVar7 != cVar5)) {
+  else if ((_DAT_00fff112 < 1) &&
+          (convert_intro_routine_0x00055eb4(), (bool)uVar6 || cVar7 != cVar5)) {
     return;
   }
-  FUN_00055e62();
+  convert_intro_routine_0x00055e62();
   if (!(bool)uVar6 && cVar7 == cVar5) {
     cVar5 = -(char)uVar4;
     if ((short)(*(short *)(extraout_A1 + 0x3e) + -3) < 0) {
       if (DAT_00ffe186 != '\x03') {
         if (DAT_00fff0cc == '\0') {
-          FUN_00003674();
+          advance_entity_delay_meter();
           return;
         }
         DAT_00fff0cc = 0;
-        FUN_000037ec();
+        advance_entity_behavior_meter();
         return;
       }
     }

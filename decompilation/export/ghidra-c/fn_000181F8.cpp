@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000181F8
-// Name: FUN_000181f8
+// Name: convert_world_routine_0x000181f8
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001358 copy_source_word_block
@@ -9,7 +9,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_000181f8(void)
+void convert_world_routine_0x000181f8(void)
 
 {
   char cVar1;
@@ -58,7 +58,7 @@ void FUN_000181f8(void)
   DAT_00fff0d1 = 0;
   uVar7 = unaff_D7 & 0xffff0000;
 LAB_0001831a:
-  FUN_0001882e();
+  convert_world_routine_0x0001882e();
   DAT_00fff10c = 0xff;
 LAB_00018326:
   while( true ) {
@@ -80,7 +80,7 @@ LAB_00018326:
 LAB_000183e0:
     DAT_00ffd98c = (short)CONCAT31((int3)(uVar6 >> 8),DAT_00fff0d0) * 0x20 + 0x8c;
     DAT_00ffef14 = DAT_00ffef14 | 2;
-    FUN_0001882e();
+    convert_world_routine_0x0001882e();
   }
   if ((DAT_00ffdd22._0_1_ & 4) != 0) {
     uVar6 = 0xffff;
@@ -105,7 +105,7 @@ LAB_0001842e:
       if (DAT_00fff0d0 == 3) {
         if (DAT_00fff0b0 != '\0') {
           write_hud_repeated_grid_variant_a();
-          sVar8 = FUN_00019b40();
+          sVar8 = convert_world_routine_0x00019b40();
           if ((sVar8 == 8) && (DAT_00ffdf84 != '\0')) {
             render_encoded_title_text();
           }
@@ -124,7 +124,7 @@ LAB_0001842e:
                  (((DAT_00ffdd22._0_1_ & 0x10) != 0 || ((DAT_00ffdd22._0_1_ & 0x20) != 0)))) {
                 uVar7 = 0;
                 if (DAT_00fff0dc != '\0') goto LAB_0001831a;
-                sVar8 = FUN_00019b40();
+                sVar8 = convert_world_routine_0x00019b40();
                 if ((sVar8 == 8) && (DAT_00ffdf84 != '\0')) {
                   pass_through_value();
                   count_thresholded_random_rolls();
@@ -149,7 +149,7 @@ LAB_0001842e:
                 }
                 DAT_00fff0dc = -1;
                 advance_hud_fade_service();
-                FUN_00026a00();
+                convert_world_routine_0x00026a00();
                 goto LAB_00018694;
               }
             }
@@ -165,7 +165,7 @@ LAB_0001842e:
       }
     }
     else {
-      FUN_00019238();
+      convert_world_routine_0x00019238();
     }
     goto LAB_00018326;
   }

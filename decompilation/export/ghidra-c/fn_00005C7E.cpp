@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00005C7E
-// Name: FUN_00005c7e
+// Name: convert_graphics_routine_0x00005c7e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
 
 
-void FUN_00005c7e(void)
+void convert_graphics_routine_0x00005c7e(void)
 
 {
   short sVar1;

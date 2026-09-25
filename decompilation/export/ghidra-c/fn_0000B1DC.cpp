@@ -11,7 +11,7 @@
 //   0x00015D3C measure_relative_heading_and_distance
 //   0x0001DBAA schedule_world_activity_timeout
 //   0x000530DE service_audio_if_enabled
-//   0x00055C76 FUN_00055c76
+//   0x00055C76 convert_intro_routine_0x00055c76
 
 
 void configure_entity_target_transition(void)
@@ -58,8 +58,9 @@ void configure_entity_target_transition(void)
     uVar6 = service_audio_if_enabled();
     uVar7 = CONCAT22((short)CONCAT31((int3)((ulonglong)uVar6 >> 0x28),
                                      *(undefined1 *)(extraout_A1 + 0x9c)),in_stack_fffffffa);
-    FUN_00055c76(uVar7,CONCAT22((short)CONCAT31((int3)((ulonglong)uVar6 >> 8),
-                                                *(undefined1 *)(extraout_A1 + 0x4c)),uVar2));
+    convert_intro_routine_0x00055c76
+              (uVar7,CONCAT22((short)CONCAT31((int3)((ulonglong)uVar6 >> 8),
+                                              *(undefined1 *)(extraout_A1 + 0x4c)),uVar2));
     uVar5 = (byte)uVar7 < *(byte *)(extraout_A1_00 + 0x4c);
     if (((byte)uVar7 != *(byte *)(extraout_A1_00 + 0x4c)) ||
        (bVar3 = (byte)((uint)uVar7 >> 0x10), uVar5 = bVar3 < *(byte *)(extraout_A1_00 + 0x9c),

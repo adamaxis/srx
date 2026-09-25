@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00000220
-// Name: Check
+// Name: convert_interrupt_routine_0x00000220
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void Check(void)
+void convert_interrupt_routine_0x00000220(void)
 
 {
   stop();

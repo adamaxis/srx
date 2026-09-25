@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00020634
-// Name: FUN_00020634
+// Name: convert_world_routine_0x00020634
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00020634(void)
+void convert_world_routine_0x00020634(void)
 
 {
   if (DAT_00fffbf8 == '\0') {

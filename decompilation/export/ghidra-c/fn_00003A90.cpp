@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00003A90
-// Name: FUN_00003a90
+// Name: accept_camera_delta
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00003a90(void)
+void accept_camera_delta(void)
 
 {
   ushort uVar1;

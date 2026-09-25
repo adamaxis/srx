@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001DC4C
-// Name: FUN_0001dc4c
+// Name: convert_world_routine_0x0001dc4c
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-undefined2 * FUN_0001dc4c(void)
+undefined2 * convert_world_routine_0x0001dc4c(void)
 
 {
   char cVar1;

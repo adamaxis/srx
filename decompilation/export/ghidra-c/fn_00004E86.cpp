@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00004E86
-// Name: FUN_00004e86
+// Name: convert_field_routine_0x00004e86
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000013BE build_title_sprite_records_with_attribute_offset
@@ -8,7 +8,7 @@
 //   0x0001A304 clear_effect_slot
 
 
-void FUN_00004e86(void)
+void convert_field_routine_0x00004e86(void)
 
 {
   char cVar1;

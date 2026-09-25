@@ -11,7 +11,7 @@
 //   0x00002CB2 render_alternate_field_viewport
 //   0x00006148 flush_primary_queued_transfers
 //   0x000061F4 flush_secondary_queued_transfers
-//   0x0005672C FUN_0005672c
+//   0x0005672C convert_intro_routine_0x0005672c
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -35,7 +35,7 @@ void service_display_frame(void)
     upload_startup_palette();
   }
   if (_DAT_00ffdfe8 == 0) {
-    FUN_0005672c();
+    convert_intro_routine_0x0005672c();
   }
   bVar1 = DAT_00ffef14 & 4;
   DAT_00ffef14 = DAT_00ffef14 & 0xfb;

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001FD80
-// Name: FUN_0001fd80
+// Name: convert_world_routine_0x0001fd80
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
@@ -9,7 +9,7 @@
 //   0x00059BCC reset_runner_status_triplet
 
 
-void FUN_0001fd80(void)
+void convert_world_routine_0x0001fd80(void)
 
 {
   short sVar1;

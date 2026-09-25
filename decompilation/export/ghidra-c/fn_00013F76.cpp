@@ -1,16 +1,16 @@
 // Ghidra headless export
 // Entry: 0x00013F76
-// Name: FUN_00013f76
+// Name: convert_menu_routine_0x00013f76
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00014D8E FUN_00014d8e
+//   0x00014D8E convert_entity_routine_0x00014d8e
 //   0x0001DBAA schedule_world_activity_timeout
 //   0x0001E2E0 begin_world_activity_if_idle
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00013f76(void)
+void convert_menu_routine_0x00013f76(void)
 
 {
   ushort uVar1;
@@ -27,7 +27,7 @@ void FUN_00013f76(void)
       return;
     }
     if ((((*(byte *)(in_A0 + 0x9e) & 1) == 0) && ((*(byte *)(in_A0 + 0x10) & 0x20) != 0)) &&
-       (FUN_00014d8e(), !bVar3)) {
+       (convert_entity_routine_0x00014d8e(), !bVar3)) {
       uVar1 = *(short *)(extraout_A0 + 0x2e) - DAT_00ff13ae;
       if ((short)uVar1 < 0) {
         uVar1 = -uVar1;

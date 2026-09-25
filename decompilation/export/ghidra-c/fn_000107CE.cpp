@@ -1,16 +1,16 @@
 // Ghidra headless export
 // Entry: 0x000107CE
-// Name: FUN_000107ce
+// Name: convert_menu_routine_0x000107ce
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 //   0x0000C0DA render_encoded_title_text
-//   0x0001055E FUN_0001055e
-//   0x000105E6 FUN_000105e6
+//   0x0001055E convert_menu_routine_0x0001055e
+//   0x000105E6 convert_menu_routine_0x000105e6
 //   0x00010854 write_three_grids_then_service
 
 
-void FUN_000107ce(void)
+void convert_menu_routine_0x000107ce(void)
 
 {
   char cVar1;
@@ -29,9 +29,9 @@ void FUN_000107ce(void)
   write_vdp_grid();
   render_encoded_title_text();
   write_three_grids_then_service();
-  FUN_000105e6();
-  FUN_0001055e();
-  FUN_0001055e();
+  convert_menu_routine_0x000105e6();
+  convert_menu_routine_0x0001055e();
+  convert_menu_routine_0x0001055e();
   return;
 }
 

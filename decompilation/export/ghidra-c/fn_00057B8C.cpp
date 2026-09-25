@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00057B8C
-// Name: FUN_00057b8c
+// Name: convert_intro_routine_0x00057b8c
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -11,7 +11,7 @@
 //   0x000530DE service_audio_if_enabled
 
 
-undefined8 FUN_00057b8c(void)
+undefined8 convert_intro_routine_0x00057b8c(void)
 
 {
   undefined4 in_D0;

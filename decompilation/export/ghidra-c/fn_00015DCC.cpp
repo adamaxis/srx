@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00015DCC
-// Name: FUN_00015dcc
+// Name: convert_entity_routine_0x00015dcc
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00015dcc(void)
+void convert_entity_routine_0x00015dcc(void)
 
 {
   short unaff_D3w;

@@ -1,20 +1,20 @@
 // Ghidra headless export
 // Entry: 0x0001AA40
-// Name: FUN_0001aa40
+// Name: convert_world_routine_0x0001aa40
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000013BE build_title_sprite_records_with_attribute_offset
 //   0x000061CC append_sprite_record
-//   0x0001A4EA FUN_0001a4ea
+//   0x0001A4EA convert_world_routine_0x0001a4ea
 //   0x0001A8F4 reset_effect_entity
-//   0x0001AB6E FUN_0001ab6e
-//   0x0001AC6A FUN_0001ac6a
-//   0x0001AD42 FUN_0001ad42
+//   0x0001AB6E convert_world_routine_0x0001ab6e
+//   0x0001AC6A convert_world_routine_0x0001ac6a
+//   0x0001AD42 convert_world_routine_0x0001ad42
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001aa40(void)
+void convert_world_routine_0x0001aa40(void)
 
 {
   char cVar1;
@@ -31,7 +31,7 @@ void FUN_0001aa40(void)
       if ((_DAT_00ffdf8c == 0) || (DAT_00ffe0bc != 0)) {
         DAT_00ff1642 = DAT_00ff1642 - 1;
         if ((short)((ushort)DAT_00ff1642 << 8) < 0) {
-          cVar1 = FUN_0001a4ea();
+          cVar1 = convert_world_routine_0x0001a4ea();
           bVar2 = extraout_D1b + cVar1;
           if ((short)((ushort)bVar2 << 8) < 0) {
             bVar2 = 0;
@@ -58,9 +58,9 @@ void FUN_0001aa40(void)
       append_sprite_record();
     }
     build_title_sprite_records_with_attribute_offset();
-    FUN_0001ab6e();
-    FUN_0001ac6a();
-    FUN_0001ad42();
+    convert_world_routine_0x0001ab6e();
+    convert_world_routine_0x0001ac6a();
+    convert_world_routine_0x0001ad42();
     return;
   }
   DAT_00ff1642 = DAT_00ff1642 - 1;
@@ -79,7 +79,7 @@ void FUN_0001aa40(void)
       _DAT_00ffe0c8 = 0;
       DAT_00ffe0b6 = 0;
       _DAT_00ffe0f4 = 1;
-      FUN_0001a818();
+      convert_world_routine_0x0001a818();
       return;
     }
     if (DAT_00ffe0b6 != 1) {
@@ -87,7 +87,7 @@ void FUN_0001aa40(void)
       bVar3 = false;
       arm_effect_after_threshold();
       if (!bVar3) {
-        FUN_000563cc();
+        convert_intro_routine_0x000563cc();
         return;
       }
     }

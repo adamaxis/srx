@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000033AA draw_field_asset_grid
-//   0x0001DC4C FUN_0001dc4c
+//   0x0001DC4C convert_world_routine_0x0001dc4c
 //   0x0001E540 initialize_effect_fade_marker
 //   0x000530DE service_audio_if_enabled
 
@@ -45,7 +45,7 @@ void handle_mode_action_event(void)
   if (puVar3 != puVar2) {
     initialize_effect_fade_marker();
   }
-  FUN_0001dc4c();
+  convert_world_routine_0x0001dc4c();
   draw_field_asset_grid();
   draw_hud_panel_triplet();
   run_entity_animation_triplet();

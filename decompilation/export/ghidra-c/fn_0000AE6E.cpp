@@ -3,8 +3,8 @@
 // Name: update_entity_target_heading
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001033E FUN_0001033e
-//   0x00014D8E FUN_00014d8e
+//   0x0001033E convert_menu_routine_0x0001033e
+//   0x00014D8E convert_entity_routine_0x00014d8e
 //   0x00015D3C measure_relative_heading_and_distance
 
 
@@ -26,12 +26,12 @@ void update_entity_target_heading(void)
     measure_relative_heading_and_distance();
     *(undefined2 *)(extraout_A0 + 0x2e) = uVar1;
     bVar2 = extraout_D1 < extraout_A0;
-    if ((extraout_D1 != extraout_A0) && (FUN_00014d8e(), bVar2)) {
+    if ((extraout_D1 != extraout_A0) && (convert_entity_routine_0x00014d8e(), bVar2)) {
       DAT_00fff0dd = 0;
       return;
     }
   }
-  FUN_0001033e();
+  convert_menu_routine_0x0001033e();
   return;
 }
 

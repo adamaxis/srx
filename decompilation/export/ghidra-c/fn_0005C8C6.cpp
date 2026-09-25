@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005C8C6
-// Name: FUN_0005c8c6
+// Name: convert_intro_routine_0x0005c8c6
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E9C make_vdp_transfer_command
 
 
-undefined8 FUN_0005c8c6(void)
+undefined8 convert_intro_routine_0x0005c8c6(void)
 
 {
   undefined4 in_D0;

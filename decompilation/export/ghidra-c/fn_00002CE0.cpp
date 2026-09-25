@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00002CE0
-// Name: FUN_00002ce0
+// Name: advance_field_mode_transition
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001DBAA schedule_world_activity_timeout
@@ -9,7 +9,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00002ce0(void)
+void advance_field_mode_transition(void)
 
 {
   short sVar1;

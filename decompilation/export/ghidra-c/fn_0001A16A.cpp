@@ -1,14 +1,14 @@
 // Ghidra headless export
 // Entry: 0x0001A16A
-// Name: FUN_0001a16a
+// Name: convert_world_routine_0x0001a16a
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000011C0 write_repeated_vdp_grid
 //   0x00001232 write_vdp_grid
 //   0x0000C0DA render_encoded_title_text
-//   0x00017C3C FUN_00017c3c
-//   0x00018A92 FUN_00018a92
-//   0x00055F44 FUN_00055f44
+//   0x00017C3C convert_world_routine_0x00017c3c
+//   0x00018A92 convert_world_routine_0x00018a92
+//   0x00055F44 convert_intro_routine_0x00055f44
 
 
 /* WARNING: Removing unreachable block (ram,0x0001a1d2) */
@@ -21,7 +21,7 @@
 /* WARNING: Removing unreachable block (ram,0x0001a270) */
 /* WARNING: Removing unreachable block (ram,0x0001a278) */
 
-undefined8 FUN_0001a16a(void)
+undefined8 convert_world_routine_0x0001a16a(void)
 
 {
   undefined4 in_D0;
@@ -30,9 +30,9 @@ undefined8 FUN_0001a16a(void)
   write_vdp_grid();
   write_vdp_grid();
   if (DAT_00fff0b0 < '\0') {
-    FUN_00018a92();
+    convert_world_routine_0x00018a92();
     write_repeated_vdp_grid();
-    FUN_00055f44();
+    convert_intro_routine_0x00055f44();
     write_repeated_vdp_grid();
   }
   else {

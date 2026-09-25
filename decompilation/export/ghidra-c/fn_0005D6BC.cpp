@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x0005D6BC
-// Name: FUN_0005d6bc
+// Name: convert_intro_routine_0x0005d6bc
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00015A8C find_first_available_entity_slot
 //   0x0001A2CC allocate_first_free_effect_slot
 
 
-void FUN_0005d6bc(void)
+void convert_intro_routine_0x0005d6bc(void)
 
 {
   undefined2 uVar1;

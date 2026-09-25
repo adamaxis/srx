@@ -3,7 +3,7 @@
 // Name: clear_ready_menu_visual_slots
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001952C FUN_0001952c
+//   0x0001952C convert_world_routine_0x0001952c
 
 
 void clear_ready_menu_visual_slots(void)
@@ -17,7 +17,7 @@ void clear_ready_menu_visual_slots(void)
   sVar1 = 4;
   do {
     if (-1 < (char)puVar2[sVar1 + 0x1a]) {
-      FUN_0001952c();
+      convert_world_routine_0x0001952c();
       puVar2 = extraout_A1;
     }
     sVar1 = sVar1 + -1;

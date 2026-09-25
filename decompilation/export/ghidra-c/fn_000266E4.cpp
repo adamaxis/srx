@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000266E4
-// Name: FUN_000266e4
+// Name: convert_world_routine_0x000266e4
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00024E20 dispatch_indexed_handler
@@ -9,7 +9,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_000266e4(void)
+void convert_world_routine_0x000266e4(void)
 
 {
   undefined2 *unaff_A5;

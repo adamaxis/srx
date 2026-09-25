@@ -1,17 +1,17 @@
 // Ghidra headless export
 // Entry: 0x00055948
-// Name: FUN_00055948
+// Name: convert_intro_routine_0x00055948
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00055786 FUN_00055786
-//   0x000559BC FUN_000559bc
-//   0x00055ED6 FUN_00055ed6
-//   0x00055F20 FUN_00055f20
+//   0x00055786 convert_intro_routine_0x00055786
+//   0x000559BC convert_intro_routine_0x000559bc
+//   0x00055ED6 convert_intro_routine_0x00055ed6
+//   0x00055F20 convert_intro_routine_0x00055f20
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00055948(void)
+void convert_intro_routine_0x00055948(void)
 
 {
   byte bVar1;
@@ -33,14 +33,14 @@ void FUN_00055948(void)
   bVar3 = -(&DAT_00166ad4)
            [(short)(ushort)(byte)(&DAT_000d4565)[(short)((*(byte *)(in_A0 + 0x57) - 1) * 0x30)]];
   _DAT_00fff112 = 0;
-  FUN_00055ed6();
-  FUN_00055f20();
-  FUN_00055786();
+  convert_intro_routine_0x00055ed6();
+  convert_intro_routine_0x00055f20();
+  convert_intro_routine_0x00055786();
   sVar6 = 2;
   uVar4 = 9;
   do {
     if ((CONCAT22(extraout_D0u,*(undefined2 *)(extraout_A0 + 0x90)) & 1 << (uVar4 & 0x1f)) != 0) {
-      FUN_000559bc();
+      convert_intro_routine_0x000559bc();
       return;
     }
     uVar4 = (uint)(ushort)((short)uVar4 + 1);
@@ -65,25 +65,26 @@ void FUN_00055948(void)
   cVar7 = _DAT_00fff112 < 0;
   uVar8 = _DAT_00fff112 == 0;
   if ((bool)uVar8) {
-    FUN_00055e92();
+    convert_intro_routine_0x00055e92();
     if ((bool)uVar8 || cVar9 != cVar7) {
       return;
     }
   }
-  else if ((_DAT_00fff112 < 1) && (FUN_00055eb4(), (bool)uVar8 || cVar9 != cVar7)) {
+  else if ((_DAT_00fff112 < 1) &&
+          (convert_intro_routine_0x00055eb4(), (bool)uVar8 || cVar9 != cVar7)) {
     return;
   }
-  FUN_00055e62();
+  convert_intro_routine_0x00055e62();
   if (!(bool)uVar8 && cVar9 == cVar7) {
     cVar7 = -(char)uVar5;
     if ((short)(*(short *)(extraout_A1 + 0x3e) + -3) < 0) {
       if (DAT_00ffe186 != '\x03') {
         if (DAT_00fff0cc != '\0') {
           DAT_00fff0cc = 0;
-          FUN_000037ec();
+          advance_entity_behavior_meter();
           return;
         }
-        FUN_00003674();
+        advance_entity_delay_meter();
         return;
       }
     }

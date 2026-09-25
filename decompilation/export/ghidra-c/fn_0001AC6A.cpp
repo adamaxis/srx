@@ -1,17 +1,17 @@
 // Ghidra headless export
 // Entry: 0x0001AC6A
-// Name: FUN_0001ac6a
+// Name: convert_world_routine_0x0001ac6a
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000013BE build_title_sprite_records_with_attribute_offset
 //   0x000061CC append_sprite_record
-//   0x0001A818 FUN_0001a818
+//   0x0001A818 convert_world_routine_0x0001a818
 //   0x0001AC50 arm_effect_after_threshold
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001ac6a(void)
+void convert_world_routine_0x0001ac6a(void)
 
 {
   if ((_DAT_00ffe084 != 0) || (DAT_00ffe0b8 == 0)) {
@@ -21,7 +21,7 @@ void FUN_0001ac6a(void)
     DAT_00ffe0b8 = 0;
     _DAT_00ffe0c8 = 0;
     _DAT_00ffe0f4 = 1;
-    FUN_0001a818();
+    convert_world_routine_0x0001a818();
     return;
   }
   if (DAT_00ffe0b8 != 1) {

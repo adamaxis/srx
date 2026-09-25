@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00011624
-// Name: FUN_00011624
+// Name: convert_menu_routine_0x00011624
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00011136 render_menu_tile_rows
@@ -8,7 +8,7 @@
 //   0x000116C4 write_menu_grid_quad
 
 
-undefined2 FUN_00011624(void)
+undefined2 convert_menu_routine_0x00011624(void)
 
 {
   undefined2 uVar1;

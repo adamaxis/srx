@@ -1,19 +1,19 @@
 // Ghidra headless export
 // Entry: 0x000561E8
-// Name: FUN_000561e8
+// Name: convert_intro_routine_0x000561e8
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000DBA count_thresholded_random_rolls
 //   0x00017D72 draw_hud_panel
 //   0x00017D90 advance_hud_panel
-//   0x00019B40 FUN_00019b40
+//   0x00019B40 convert_world_routine_0x00019b40
 //   0x00019BF6 pass_through_value
 //   0x00053216 audio_noop_hook_b
-//   0x00056116 FUN_00056116
-//   0x000562D4 FUN_000562d4
+//   0x00056116 convert_intro_routine_0x00056116
+//   0x000562D4 convert_intro_routine_0x000562d4
 
 
-undefined4 FUN_000561e8(void)
+undefined4 convert_intro_routine_0x000561e8(void)
 
 {
   char cVar1;
@@ -41,7 +41,7 @@ LAB_000560aa:
       }
       else {
         pass_through_value();
-        FUN_000562d4();
+        convert_intro_routine_0x000562d4();
         count_thresholded_random_rolls();
         DAT_00fff0dd = DAT_00fff0dd + -1;
         if (-1 < DAT_00fff0dd) {
@@ -54,21 +54,21 @@ LAB_000560aa:
     }
     if ((char)(cVar1 + -0xb) < '\0') {
       if (DAT_00fff0a0 < '\x01') {
-        uVar3 = FUN_00056116();
+        uVar3 = convert_intro_routine_0x00056116();
         return uVar3;
       }
       goto LAB_000560aa;
     }
     if ((char)(cVar1 + -0x11) < '\0') {
       if (DAT_00fff0a0 < '\x01') {
-        uVar3 = FUN_00056116();
+        uVar3 = convert_intro_routine_0x00056116();
         return uVar3;
       }
 LAB_00056268:
       pass_through_value();
-      FUN_000562d4();
+      convert_intro_routine_0x000562d4();
       count_thresholded_random_rolls();
-      sVar4 = FUN_00019b40();
+      sVar4 = convert_world_routine_0x00019b40();
       if (sVar4 == 8) {
         draw_hud_panel();
         advance_hud_panel();
@@ -85,21 +85,22 @@ LAB_00056268:
   }
   if (DAT_00fff0a3 < '\0') {
     pass_through_value();
-    FUN_000562de();
+    convert_intro_routine_0x000562de();
     count_thresholded_random_rolls();
     cVar1 = DAT_00fff0dd;
-    FUN_00055f44();
-    FUN_000562de();
+    convert_intro_routine_0x00055f44();
+    convert_intro_routine_0x000562de();
     count_thresholded_random_rolls();
-    if ((DAT_00fff0dd < cVar1) && (FUN_0001989a(), uVar2 = extraout_D0u, DAT_00fff0b1 < '\0'))
+    if ((DAT_00fff0dd < cVar1) &&
+       (convert_world_routine_0x0001989a(), uVar2 = extraout_D0u, DAT_00fff0b1 < '\0'))
     goto LAB_000561e2;
-    FUN_00017a5e();
+    convert_world_routine_0x00017a5e();
     if (DAT_00fff0a0 < '\x01') {
       DAT_00ffdf84 = 0;
       uVar2 = extraout_D0u_00;
     }
     else {
-      FUN_0001a908();
+      convert_world_routine_0x0001a908();
       uVar2 = extraout_D0u_01;
     }
   }

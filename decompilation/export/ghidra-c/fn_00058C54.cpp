@@ -1,14 +1,14 @@
 // Ghidra headless export
 // Entry: 0x00058C54
-// Name: FUN_00058c54
+// Name: convert_intro_routine_0x00058c54
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00058B5E FUN_00058b5e
-//   0x00058BB6 FUN_00058bb6
-//   0x00058D32 FUN_00058d32
+//   0x00058B5E convert_intro_routine_0x00058b5e
+//   0x00058BB6 convert_intro_routine_0x00058bb6
+//   0x00058D32 convert_intro_routine_0x00058d32
 
 
-void FUN_00058c54(void)
+void convert_intro_routine_0x00058c54(void)
 
 {
   char in_D0b;
@@ -42,11 +42,11 @@ void FUN_00058c54(void)
   }
   DAT_00fff0d0 = in_D0b + DAT_00fff0d0;
   if (DAT_00fff0d1 != '\0') {
-    FUN_00058d32();
+    convert_intro_routine_0x00058d32();
     return;
   }
-  FUN_00058b5e();
-  FUN_00058bb6();
+  convert_intro_routine_0x00058b5e();
+  convert_intro_routine_0x00058bb6();
   return;
 }
 

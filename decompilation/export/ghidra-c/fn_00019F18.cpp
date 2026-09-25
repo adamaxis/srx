@@ -7,7 +7,7 @@
 //   0x00017C52 render_menu_text_followup
 //   0x00017C84 set_hud_selection_value
 //   0x0001B706 prepare_menu_offset_once
-//   0x000564D6 FUN_000564d6
+//   0x000564D6 convert_intro_routine_0x000564d6
 
 
 void run_menu_progression_variant(void)
@@ -16,7 +16,7 @@ void run_menu_progression_variant(void)
   set_hud_selection_value();
   render_menu_text_followup();
   if ('\0' < DAT_00fff0d7) {
-    FUN_000564d6();
+    convert_intro_routine_0x000564d6();
     render_menu_text_progression();
   }
   prepare_menu_offset_once();

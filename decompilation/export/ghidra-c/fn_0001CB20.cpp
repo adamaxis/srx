@@ -1,15 +1,15 @@
 // Ghidra headless export
 // Entry: 0x0001CB20
-// Name: FUN_0001cb20
+// Name: convert_world_routine_0x0001cb20
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001CA00 initialize_world_effect_motion
-//   0x0001CB6A FUN_0001cb6a
+//   0x0001CB6A convert_world_routine_0x0001cb6a
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001cb20(void)
+void convert_world_routine_0x0001cb20(void)
 
 {
   int in_A0;
@@ -48,7 +48,7 @@ void FUN_0001cb20(void)
       return;
     }
   }
-  FUN_0001cb6a();
+  convert_world_routine_0x0001cb6a();
   if (_DAT_00ffe0e2 == 0) {
     return;
   }

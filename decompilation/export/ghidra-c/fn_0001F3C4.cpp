@@ -10,7 +10,7 @@
 //   0x00001232 write_vdp_grid
 //   0x0000195C sample_controller_input
 //   0x0000C134 normalize_source_text_line
-//   0x0000C168 FUN_0000c168
+//   0x0000C168 convert_graphics_routine_0x0000c168
 //   0x0001F5A8 prepare_mode_text_prompt
 
 
@@ -31,7 +31,7 @@ int * run_mode_text_prompt(void)
       prepare_mode_text_prompt();
       normalize_source_text_line();
       DAT_00ffb740 = 0xff;
-      FUN_0000c168();
+      convert_graphics_routine_0x0000c168();
       in_A0 = extraout_A0;
     }
     else {
@@ -44,7 +44,7 @@ int * run_mode_text_prompt(void)
     }
     normalize_source_text_line();
     DAT_00ffb740 = 0xff;
-    FUN_0000c168();
+    convert_graphics_routine_0x0000c168();
     write_vdp_grid();
     if (*extraout_A0_00 == 0) {
       _DAT_00fff0d2 = -1;
@@ -53,7 +53,7 @@ int * run_mode_text_prompt(void)
       _DAT_00fff0d2 = 0;
       normalize_source_text_line();
       DAT_00ffb740 = 0xff;
-      FUN_0000c168();
+      convert_graphics_routine_0x0000c168();
       write_vdp_grid();
       if (*extraout_A0_01 == 0) {
         _DAT_00fff0d2 = CONCAT11(DAT_00fff0d2,0xff);
@@ -62,7 +62,7 @@ int * run_mode_text_prompt(void)
         _DAT_00fff0d2 = (ushort)DAT_00fff0d2 << 8;
         normalize_source_text_line();
         DAT_00ffb740 = 0xff;
-        FUN_0000c168();
+        convert_graphics_routine_0x0000c168();
         write_vdp_grid();
       }
     }

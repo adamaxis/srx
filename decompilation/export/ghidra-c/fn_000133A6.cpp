@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000133A6
-// Name: FUN_000133a6
+// Name: convert_menu_routine_0x000133a6
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
 
 
-undefined8 FUN_000133a6(void)
+undefined8 convert_menu_routine_0x000133a6(void)
 
 {
   undefined4 in_D0;

@@ -3,14 +3,14 @@
 // Name: refresh_menu_slot_pair
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00018A92 FUN_00018a92
+//   0x00018A92 convert_world_routine_0x00018a92
 
 
 void refresh_menu_slot_pair(void)
 
 {
-  FUN_00018a92();
-  FUN_0001952c();
+  convert_world_routine_0x00018a92();
+  convert_world_routine_0x0001952c();
   return;
 }
 

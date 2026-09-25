@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00055900
-// Name: FUN_00055900
+// Name: convert_intro_routine_0x00055900
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00055900(void)
+void convert_intro_routine_0x00055900(void)
 
 {
   byte bVar1;
@@ -37,14 +37,14 @@ void FUN_00055900(void)
     sVar4 = 6;
   }
   _DAT_00fff112 = -1;
-  FUN_00055ed6();
-  FUN_00055f20();
-  FUN_00055786();
+  convert_intro_routine_0x00055ed6();
+  convert_intro_routine_0x00055f20();
+  convert_intro_routine_0x00055786();
   sVar6 = 2;
   uVar3 = 9;
   do {
     if ((CONCAT22(extraout_D0u,*(undefined2 *)(extraout_A0 + 0x90)) & 1 << (uVar3 & 0x1f)) != 0) {
-      FUN_000559bc();
+      convert_intro_routine_0x000559bc();
       return;
     }
     uVar3 = (uint)(ushort)((short)uVar3 + 1);
@@ -69,25 +69,26 @@ void FUN_00055900(void)
   cVar7 = _DAT_00fff112 < 0;
   uVar8 = _DAT_00fff112 == 0;
   if ((bool)uVar8) {
-    FUN_00055e92();
+    convert_intro_routine_0x00055e92();
     if ((bool)uVar8 || cVar9 != cVar7) {
       return;
     }
   }
-  else if ((_DAT_00fff112 < 1) && (FUN_00055eb4(), (bool)uVar8 || cVar9 != cVar7)) {
+  else if ((_DAT_00fff112 < 1) &&
+          (convert_intro_routine_0x00055eb4(), (bool)uVar8 || cVar9 != cVar7)) {
     return;
   }
-  FUN_00055e62();
+  convert_intro_routine_0x00055e62();
   if (!(bool)uVar8 && cVar9 == cVar7) {
     cVar7 = -(char)uVar5;
     if ((short)(*(short *)(extraout_A1 + 0x3e) + -3) < 0) {
       if (DAT_00ffe186 != '\x03') {
         if (DAT_00fff0cc != '\0') {
           DAT_00fff0cc = 0;
-          FUN_000037ec();
+          advance_entity_behavior_meter();
           return;
         }
-        FUN_00003674();
+        advance_entity_delay_meter();
         return;
       }
     }

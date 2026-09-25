@@ -1,16 +1,16 @@
 // Ghidra headless export
 // Entry: 0x00003BAC
-// Name: FUN_00003bac
+// Name: convert_field_routine_0x00003bac
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00004018 FUN_00004018
-//   0x000040E2 FUN_000040e2
+//   0x00004018 render_field_tile_edge
+//   0x000040E2 convert_field_routine_0x000040e2
 //   0x00015D3C measure_relative_heading_and_distance
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00003bac(void)
+void convert_field_routine_0x00003bac(void)
 
 {
   ushort uVar1;
@@ -58,7 +58,7 @@ void FUN_00003bac(void)
     if (uVar1 != DAT_00ffdf38) {
       uStack_4 = CONCAT22(uVar3,uStack_4._2_2_);
       DAT_00ffdf38 = uVar1;
-      FUN_000040e2();
+      convert_field_routine_0x000040e2();
       register0x0000003c = (BADSPACEBASE *)auStack_6;
       uVar3 = uVar1;
     }
@@ -80,7 +80,7 @@ LAB_00003cba:
     if ((DAT_00ffddc8 & 0xff80) != DAT_00ffdf36) {
       *(undefined4 *)((int)register0x0000003c + -4) = 0x3d16;
       DAT_00ffdf36 = DAT_00ffddc8 & 0xff80;
-      FUN_00004018();
+      render_field_tile_edge();
     }
   }
   return;

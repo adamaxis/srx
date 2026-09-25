@@ -1,23 +1,23 @@
 // Ghidra headless export
 // Entry: 0x0001033E
-// Name: FUN_0001033e
+// Name: convert_menu_routine_0x0001033e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00000D5A FUN_00000d5a
+//   0x00000D5A guard_entity_phase_window
 //   0x00000DBA count_thresholded_random_rolls
-//   0x000037EC FUN_000037ec
-//   0x000104F6 FUN_000104f6
-//   0x00010660 FUN_00010660
-//   0x00015830 FUN_00015830
-//   0x00055740 FUN_00055740
-//   0x00055786 FUN_00055786
-//   0x00055F02 FUN_00055f02
-//   0x00055F20 FUN_00055f20
+//   0x000037EC advance_entity_behavior_meter
+//   0x000104F6 convert_menu_routine_0x000104f6
+//   0x00010660 convert_menu_routine_0x00010660
+//   0x00015830 convert_entity_routine_0x00015830
+//   0x00055740 convert_intro_routine_0x00055740
+//   0x00055786 convert_intro_routine_0x00055786
+//   0x00055F02 convert_intro_routine_0x00055f02
+//   0x00055F20 convert_intro_routine_0x00055f20
 
 
 /* WARNING: Removing unreachable block (ram,0x000103a8) */
 
-void FUN_0001033e(void)
+void convert_menu_routine_0x0001033e(void)
 
 {
   byte *pbVar1;
@@ -44,17 +44,17 @@ void FUN_0001033e(void)
     }
     return;
   }
-  FUN_00055f02();
-  FUN_00055f20();
-  FUN_000104f6();
-  FUN_00055740();
-  FUN_00055786();
-  FUN_00000d5a();
+  convert_intro_routine_0x00055f02();
+  convert_intro_routine_0x00055f20();
+  convert_menu_routine_0x000104f6();
+  convert_intro_routine_0x00055740();
+  convert_intro_routine_0x00055786();
+  guard_entity_phase_window();
   count_thresholded_random_rolls();
   cVar6 = DAT_00fff0dd;
   *(char *)(extraout_A0 + 0x9f) = DAT_00fff0dd;
   if (cVar6 != '\0') {
-    FUN_00015830();
+    convert_entity_routine_0x00015830();
     iVar5 = DAT_00fff10e;
     sVar4 = *(byte *)(extraout_A0_00 + 0x57) - 1;
     if (sVar4 == 5) {
@@ -78,7 +78,7 @@ void FUN_0001033e(void)
         cVar8 = false;
       }
     }
-    FUN_00010660();
+    convert_menu_routine_0x00010660();
     iVar5 = extraout_A0_01;
     if (bVar7 || cVar8 != cVar6) goto LAB_0001046e;
     sVar4 = 6;
@@ -103,7 +103,7 @@ void FUN_0001033e(void)
       sVar4 = sVar4 + -1;
     } while (sVar4 != -1);
     do {
-      FUN_000037ec();
+      advance_entity_behavior_meter();
       iVar5 = extraout_A0_02;
 LAB_0001046e:
     } while (*(char *)(iVar5 + 0x9c) == '\0');

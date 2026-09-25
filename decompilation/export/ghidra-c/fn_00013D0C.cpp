@@ -1,19 +1,19 @@
 // Ghidra headless export
 // Entry: 0x00013D0C
-// Name: FUN_00013d0c
+// Name: convert_menu_routine_0x00013d0c
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00013A40 copy_entity_anchor_position
 //   0x000144E8 apply_entity_close_range_state
-//   0x000145A2 FUN_000145a2
+//   0x000145A2 convert_entity_routine_0x000145a2
 //   0x00014D6A select_entity_animation_table_row
 //   0x00015D3C measure_relative_heading_and_distance
-//   0x00015DCC FUN_00015dcc
+//   0x00015DCC convert_entity_routine_0x00015dcc
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-ushort * FUN_00013d0c(void)
+ushort * convert_menu_routine_0x00013d0c(void)
 
 {
   byte bVar1;
@@ -60,7 +60,7 @@ ushort * FUN_00013d0c(void)
       return *(ushort **)(in_A0 + 0x51);
     }
     copy_entity_anchor_position();
-    puVar3 = (ushort *)FUN_000145a2();
+    puVar3 = (ushort *)convert_entity_routine_0x000145a2();
     return puVar3;
   }
   puVar3 = *(ushort **)(in_A0 + 0x51);
@@ -85,7 +85,7 @@ ushort * FUN_00013d0c(void)
 LAB_00013dca:
     *(byte *)(in_A0 + 0x58) = *(byte *)(in_A0 + 0x58) | 0x10;
     if (_DAT_00ffdfde != 0) goto LAB_00013e40;
-    FUN_00015dcc();
+    convert_entity_routine_0x00015dcc();
     uVar7 = extraout_A0_01[2] + uVar7 + 0x4000;
     extraout_A0_01[0x4b] = *extraout_A0_01 + uVar5 * 2;
     extraout_A0_01[0x4c] = uVar7;

@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00014492
-// Name: FUN_00014492
+// Name: convert_entity_routine_0x00014492
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
 //   0x0001DBF0 reset_entity_service_records
 
 
-void FUN_00014492(void)
+void convert_entity_routine_0x00014492(void)
 
 {
   int iVar1;

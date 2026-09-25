@@ -1,16 +1,16 @@
 // Ghidra headless export
 // Entry: 0x0001F830
-// Name: FUN_0001f830
+// Name: convert_world_routine_0x0001f830
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000C928 FUN_0000c928
+//   0x0000C928 convert_graphics_routine_0x0000c928
 //   0x0001F246 run_mode_exit_services
 //   0x0002196C mark_effect_bit
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001f830(void)
+void convert_world_routine_0x0001f830(void)
 
 {
   if ((DAT_00fffbf8 == '\0') && (DAT_00fffbf9 == '\0')) {
@@ -50,7 +50,7 @@ void FUN_0001f830(void)
   run_mode_exit_services();
   if (DAT_00fff0d5 != '\0') {
     DAT_00fff0d5 = 0;
-    FUN_0000c928();
+    convert_graphics_routine_0x0000c928();
     return;
   }
   return;

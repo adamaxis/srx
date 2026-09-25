@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001E302
-// Name: FUN_0001e302
+// Name: convert_world_routine_0x0001e302
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001E41E lookup_world_effect_tile
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_0001e302(void)
+void convert_world_routine_0x0001e302(void)
 
 {
   ushort uVar1;

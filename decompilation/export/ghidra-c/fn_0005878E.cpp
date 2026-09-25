@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005878E
-// Name: FUN_0005878e
+// Name: convert_intro_routine_0x0005878e
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_encoded_title_text
 
 
-void FUN_0005878e(void)
+void convert_intro_routine_0x0005878e(void)
 
 {
   short in_D0w;

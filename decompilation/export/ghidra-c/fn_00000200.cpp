@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00000200
-// Name: BusErr
+// Name: convert_interrupt_routine_0x00000200
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void BusErr(void)
+void convert_interrupt_routine_0x00000200(void)
 
 {
   stop();

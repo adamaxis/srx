@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00056434
-// Name: FUN_00056434
+// Name: convert_intro_routine_0x00056434
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001A468 initialize_audio_frame
 
 
-void FUN_00056434(void)
+void convert_intro_routine_0x00056434(void)
 
 {
   char cVar1;

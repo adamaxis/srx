@@ -3,8 +3,8 @@
 // Name: reset_menu_visual_slots
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001952C FUN_0001952c
-//   0x0001954A FUN_0001954a
+//   0x0001952C convert_world_routine_0x0001952c
+//   0x0001954A convert_world_routine_0x0001954a
 
 
 void reset_menu_visual_slots(void)
@@ -14,12 +14,12 @@ void reset_menu_visual_slots(void)
   
   sVar1 = 4;
   do {
-    FUN_0001954a();
+    convert_world_routine_0x0001954a();
     sVar1 = sVar1 + -1;
   } while (sVar1 != -1);
   sVar1 = 0xb;
   do {
-    FUN_0001952c();
+    convert_world_routine_0x0001952c();
     sVar1 = sVar1 + -1;
   } while (sVar1 != -1);
   return;

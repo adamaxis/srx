@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003D4A render_field_tile_column
-//   0x00004000 FUN_00004000
+//   0x00004000 convert_field_routine_0x00004000
 //   0x000041B6 fold_field_coordinate
 
 
@@ -19,7 +19,7 @@ void render_field_tile_rows(void)
   short unaff_D5w;
   
   fold_field_coordinate();
-  sVar1 = FUN_00004000();
+  sVar1 = convert_field_routine_0x00004000();
   sVar2 = 0x1e;
   uVar3 = unaff_D5w + unaff_D4w;
   do {

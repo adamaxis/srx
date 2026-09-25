@@ -1,14 +1,14 @@
 // Ghidra headless export
 // Entry: 0x00053434
-// Name: FUN_00053434
+// Name: convert_audio_routine_0x00053434
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00053434 FUN_00053434
+//   0x00053434 convert_audio_routine_0x00053434
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00053434(void)
+void convert_audio_routine_0x00053434(void)
 
 {
   short sVar1;
@@ -34,7 +34,7 @@ void FUN_00053434(void)
           *(undefined1 *)(in_A1 + sVar1) = 0xff;
           uVar2 = _DAT_00fffbfc;
           _DAT_00fffbfc = 0x800;
-          FUN_00053434();
+          convert_audio_routine_0x00053434();
           DAT_00fff104 = DAT_00fff104 + 0xe;
           in_A0 = extraout_A0;
           in_A1 = extraout_A1;
@@ -72,7 +72,7 @@ void FUN_00053434(void)
           *(undefined1 *)(in_A1 + sVar1) = 0xff;
           uVar2 = _DAT_00fffbfc;
           _DAT_00fffbfc = 0x1000;
-          FUN_00053434();
+          convert_audio_routine_0x00053434();
           DAT_00fff104 = DAT_00fff104 + -1;
           in_A0 = extraout_A0_00;
           in_A1 = extraout_A1_00;
@@ -108,7 +108,7 @@ void FUN_00053434(void)
           *(undefined1 *)(in_A1 + sVar1) = 0xff;
           uVar2 = _DAT_00fffbfc;
           _DAT_00fffbfc = 0x200;
-          FUN_00053434();
+          convert_audio_routine_0x00053434();
           DAT_00fff104 = DAT_00fff104 + -0xe;
           in_A0 = extraout_A0_01;
           in_A1 = extraout_A1_01;
@@ -164,7 +164,7 @@ void FUN_00053434(void)
         *(undefined1 *)(in_A1 + sVar1) = 0xff;
         uVar2 = _DAT_00fffbfc;
         _DAT_00fffbfc = 0x400;
-        FUN_00053434();
+        convert_audio_routine_0x00053434();
         _DAT_00fffbfc = uVar2;
         DAT_00fff104 = DAT_00fff104 + 1;
         return;

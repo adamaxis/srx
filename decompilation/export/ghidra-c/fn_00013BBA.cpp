@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00013BBA
-// Name: FUN_00013bba
+// Name: convert_menu_routine_0x00013bba
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00013C20 select_entity_action_lane
 //   0x00013C74 collect_entity_action_records
 
 
-void FUN_00013bba(void)
+void convert_menu_routine_0x00013bba(void)
 
 {
   byte bVar1;

@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x000037EC
-// Name: FUN_000037ec
+// Name: advance_entity_behavior_meter
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
-//   0x00003674 FUN_00003674
+//   0x00003674 advance_entity_delay_meter
 
 
-undefined8 FUN_000037ec(void)
+undefined8 advance_entity_behavior_meter(void)
 
 {
   char cVar1;
@@ -28,7 +28,7 @@ undefined8 FUN_000037ec(void)
       }
       goto LAB_00003890;
     }
-    FUN_00003674();
+    advance_entity_delay_meter();
     in_D1 = extraout_D1;
     in_A0 = extraout_A0;
   }

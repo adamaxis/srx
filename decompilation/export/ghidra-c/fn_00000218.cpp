@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00000218
-// Name: DivBy0
+// Name: convert_interrupt_routine_0x00000218
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void DivBy0(void)
+void convert_interrupt_routine_0x00000218(void)
 
 {
   stop();

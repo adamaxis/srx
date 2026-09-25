@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00026A00
-// Name: FUN_00026a00
+// Name: convert_world_routine_0x00026a00
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -14,7 +14,7 @@
 //   0x000530DE service_audio_if_enabled
 
 
-void FUN_00026a00(void)
+void convert_world_routine_0x00026a00(void)
 
 {
   short extraout_D1w;

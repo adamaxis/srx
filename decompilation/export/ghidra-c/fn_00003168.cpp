@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00003168
-// Name: FUN_00003168
+// Name: toggle_field_scene_variant
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00003168(void)
+void toggle_field_scene_variant(void)
 
 {
   if (DAT_00fffbf9 == '\x10') {

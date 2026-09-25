@@ -1,15 +1,15 @@
 // Ghidra headless export
 // Entry: 0x00011352
-// Name: FUN_00011352
+// Name: convert_menu_routine_0x00011352
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 //   0x0000C0DA render_encoded_title_text
-//   0x00055E92 FUN_00055e92
-//   0x00055EB4 FUN_00055eb4
+//   0x00055E92 convert_intro_routine_0x00055e92
+//   0x00055EB4 convert_intro_routine_0x00055eb4
 
 
-void FUN_00011352(void)
+void convert_menu_routine_0x00011352(void)
 
 {
   char in_D0b;
@@ -29,9 +29,9 @@ void FUN_00011352(void)
   }
   render_encoded_title_text();
   render_encoded_title_text();
-  FUN_00055eb4();
+  convert_intro_routine_0x00055eb4();
   write_vdp_grid();
-  FUN_00055e92();
+  convert_intro_routine_0x00055e92();
   write_vdp_grid();
   if (DAT_00fff0b1 < '\0') {
     DAT_00fff0b1 = '\0';

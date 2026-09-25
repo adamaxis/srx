@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00059172
-// Name: FUN_00059172
+// Name: run_save_load
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -15,7 +15,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00059172(void)
+void run_save_load(void)
 
 {
   undefined1 uVar1;

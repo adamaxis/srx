@@ -1,20 +1,20 @@
 // Ghidra headless export
 // Entry: 0x00011592
-// Name: FUN_00011592
+// Name: convert_menu_routine_0x00011592
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
 //   0x0000C0DA render_encoded_title_text
 //   0x00011ABE prepare_menu_dialog
 //   0x00012148 read_entity_action_code
-//   0x00012A8C FUN_00012a8c
+//   0x00012A8C convert_menu_routine_0x00012a8c
 //   0x00012C36 prepare_menu_grid_variant_b
 //   0x00012E9E service_entity_action_menu
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00011592(void)
+void convert_menu_routine_0x00011592(void)
 
 {
   char cVar1;
@@ -28,7 +28,7 @@ void FUN_00011592(void)
   prepare_menu_grid_variant_b();
   read_entity_action_code();
   if (!(bool)uVar2) {
-    cVar1 = FUN_00012a8c();
+    cVar1 = convert_menu_routine_0x00012a8c();
     if ((char)(cVar1 + -0x10) < '\0') {
       service_entity_action_menu();
     }

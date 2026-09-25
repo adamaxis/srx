@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00003674
-// Name: FUN_00003674
+// Name: advance_entity_delay_meter
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 
 
-undefined8 FUN_00003674(void)
+undefined8 advance_entity_delay_meter(void)
 
 {
   char cVar1;

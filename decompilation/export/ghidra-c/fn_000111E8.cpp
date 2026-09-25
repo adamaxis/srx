@@ -1,18 +1,18 @@
 // Ghidra headless export
 // Entry: 0x000111E8
-// Name: FUN_000111e8
+// Name: convert_menu_routine_0x000111e8
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
-//   0x00011352 FUN_00011352
+//   0x00011352 convert_menu_routine_0x00011352
 //   0x00011928 render_menu_row
 //   0x00011ABE prepare_menu_dialog
 //   0x00012C36 prepare_menu_grid_variant_b
-//   0x00012EAE FUN_00012eae
+//   0x00012EAE convert_menu_routine_0x00012eae
 
 
-void FUN_000111e8(void)
+void convert_menu_routine_0x000111e8(void)
 
 {
   int extraout_A0;
@@ -56,11 +56,11 @@ LAB_00011304:
     }
     render_encoded_title_text();
   }
-  FUN_00012eae();
+  convert_menu_routine_0x00012eae();
 LAB_00011312:
   build_grouped_decimal_glyphs();
   build_grouped_decimal_glyphs();
-  FUN_00011352();
+  convert_menu_routine_0x00011352();
   prepare_menu_dialog();
   return;
 }

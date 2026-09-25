@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000C168
-// Name: FUN_0000c168
+// Name: convert_graphics_routine_0x0000c168
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E9C make_vdp_transfer_command
 
 
-undefined8 FUN_0000c168(void)
+undefined8 convert_graphics_routine_0x0000c168(void)
 
 {
   byte bVar1;

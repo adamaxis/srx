@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x000036FC
-// Name: FUN_000036fc
+// Name: advance_entity_asset_meter
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 //   0x00003404 upload_field_asset_setup
 
 
-undefined8 FUN_000036fc(void)
+undefined8 advance_entity_asset_meter(void)
 
 {
   char *pcVar1;

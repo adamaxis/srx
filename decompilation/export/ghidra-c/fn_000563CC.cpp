@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000563CC
-// Name: FUN_000563cc
+// Name: convert_intro_routine_0x000563cc
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000DBA count_thresholded_random_rolls
@@ -8,7 +8,7 @@
 //   0x0001B1FC reset_title_transition
 
 
-void FUN_000563cc(void)
+void convert_intro_routine_0x000563cc(void)
 
 {
   char cVar1;

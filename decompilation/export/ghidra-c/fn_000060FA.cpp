@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003E86 expand_packed_nibbles
-//   0x00003EFE FUN_00003efe
+//   0x00003EFE decode_field_tile_sample
 
 
 void append_entity_render_sprite(void)
@@ -19,7 +19,7 @@ void append_entity_render_sprite(void)
     if (*(short *)(in_A0 + 0xc) == 0) {
       return;
     }
-    FUN_00003efe();
+    decode_field_tile_sample();
     in_A0 = extraout_A0;
   }
   if ((*(byte *)(in_A0 + 0x11) & 0x20) != 0) {

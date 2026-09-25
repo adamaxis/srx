@@ -1,16 +1,16 @@
 // Ghidra headless export
 // Entry: 0x0000E7C8
-// Name: FUN_0000e7c8
+// Name: evaluate_terrain_collision
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000E8A0 sample_terrain_collision_tiles
 //   0x0000E9EE contains_terrain_object_bounds
-//   0x0000EA36 FUN_0000ea36
+//   0x0000EA36 convert_graphics_routine_0x0000ea36
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-ushort FUN_0000e7c8(void)
+ushort evaluate_terrain_collision(void)
 
 {
   char cVar1;
@@ -59,7 +59,7 @@ ushort FUN_0000e7c8(void)
         return 0x7f;
       }
     }
-    FUN_0000ea36();
+    convert_graphics_routine_0x0000ea36();
     if (bVar2) {
       return 0x7f;
     }

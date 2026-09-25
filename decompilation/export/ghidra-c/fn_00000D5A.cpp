@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00000D5A
-// Name: FUN_00000d5a
+// Name: guard_entity_phase_window
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void FUN_00000d5a(void)
+void guard_entity_phase_window(void)
 
 {
   int in_A0;

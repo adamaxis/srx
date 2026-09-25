@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000C802
-// Name: FUN_0000c802
+// Name: convert_graphics_routine_0x0000c802
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003404 upload_field_asset_setup
@@ -11,7 +11,7 @@
 //   0x00059798 serialize_runner_record_population
 
 
-void FUN_0000c802(void)
+void convert_graphics_routine_0x0000c802(void)
 
 {
   int extraout_A0;

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00003E14
-// Name: FUN_00003e14
+// Name: convert_field_routine_0x00003e14
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E9C make_vdp_transfer_command
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_00003e14(void)
+void convert_field_routine_0x00003e14(void)
 
 {
   short sVar1;

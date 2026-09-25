@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x0001D33A
-// Name: FUN_0001d33a
+// Name: convert_world_routine_0x0001d33a
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E9C make_vdp_transfer_command
 //   0x0001D3F4 expand_random_nibble_mask
 
 
-void FUN_0001d33a(void)
+void convert_world_routine_0x0001d33a(void)
 
 {
   ushort uVar1;

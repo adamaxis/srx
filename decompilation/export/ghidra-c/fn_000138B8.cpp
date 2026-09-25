@@ -1,15 +1,15 @@
 // Ghidra headless export
 // Entry: 0x000138B8
-// Name: FUN_000138b8
+// Name: convert_menu_routine_0x000138b8
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00013A92 FUN_00013a92
-//   0x00014508 FUN_00014508
+//   0x00013A92 convert_menu_routine_0x00013a92
+//   0x00014508 convert_entity_routine_0x00014508
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void FUN_000138b8(void)
+void convert_menu_routine_0x000138b8(void)
 
 {
   byte bVar1;
@@ -70,17 +70,17 @@ void FUN_000138b8(void)
   *(undefined2 *)(in_A0 + 0xb6) = 0x14;
   if ((*(char *)(in_A0 + 0x4d) == '\0') || (_DAT_00ffdf84 == 0)) {
     uStack_4 = 0x138f2;
-    FUN_00014508();
+    convert_entity_routine_0x00014508();
     return;
   }
   if (*(short *)(in_A0 + 0xdc) < 0) {
     uStack_4 = 0x13900;
-    FUN_00013a92();
+    convert_menu_routine_0x00013a92();
     in_A0 = extraout_A0;
   }
   if (*(int *)(in_A0 + 0xac) == 0) {
     uStack_4 = 0x139e4;
-    iVar3 = FUN_00013ffe();
+    iVar3 = convert_menu_routine_0x00013ffe();
     iVar10 = extraout_A0_00;
   }
   else {
@@ -88,11 +88,11 @@ void FUN_000138b8(void)
     measure_relative_heading_and_distance();
     uStack_8 = 0x13a10;
     uStack_4 = extraout_A1;
-    iVar3 = FUN_00013ffe();
+    iVar3 = convert_menu_routine_0x00013ffe();
     iVar10 = extraout_A0_01;
   }
   if (iVar3 != 0x12345678) {
-    FUN_00013d0c();
+    convert_menu_routine_0x00013d0c();
     return;
   }
   iVar3 = DAT_00fffc04;
@@ -107,13 +107,13 @@ void FUN_000138b8(void)
     sVar6 = *(short *)(iVar3 + 0x2e) + 0x6000;
   }
   uStack_4 = 0x14540;
-  FUN_00015dcc();
+  convert_entity_routine_0x00015dcc();
   uStack_4 = CONCAT22(sVar6 + extraout_A1_00[2],uStack_4._2_2_);
   uStack_8 = CONCAT22(*extraout_A1_00 + 0xe0,uStack_8._2_2_);
   uStack_14 = 0xe0;
   sStack_10 = sVar6;
   sStack_c = sVar8;
-  sVar4 = FUN_0000e7c8();
+  sVar4 = evaluate_terrain_collision();
   sVar2 = sStack_10;
   puVar12 = (ushort *)auStack_a;
   iVar10 = extraout_A0_02;
@@ -124,7 +124,7 @@ void FUN_000138b8(void)
     uVar7 = -uStack_14;
     sStack_e = extraout_A1_01[2] - sStack_12;
     sStack_12 = uVar7 + *extraout_A1_01;
-    sVar4 = FUN_0000e7c8();
+    sVar4 = evaluate_terrain_collision();
     sVar8 = 1;
     puVar12 = &uStack_14;
     iVar10 = extraout_A0_03;

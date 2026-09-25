@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00055FD8
-// Name: FUN_00055fd8
+// Name: convert_intro_routine_0x00055fd8
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00019C54 FUN_00019c54
-//   0x00055F44 FUN_00055f44
+//   0x00019C54 convert_world_routine_0x00019c54
+//   0x00055F44 convert_intro_routine_0x00055f44
 
 
-void FUN_00055fd8(void)
+void convert_intro_routine_0x00055fd8(void)
 
 {
   char cVar1;
@@ -17,8 +17,8 @@ void FUN_00055fd8(void)
   char *pcVar3;
   
   DAT_00fff0dd = '\0';
-  FUN_00055f44();
-  FUN_00019c54();
+  convert_intro_routine_0x00055f44();
+  convert_world_routine_0x00019c54();
   if ((short)(unaff_D7w - unaff_D6w) < 0) {
     unaff_D6w = unaff_D7w;
   }
@@ -27,7 +27,7 @@ void FUN_00055fd8(void)
     sVar2 = 1;
   }
   if ((char)(*(char *)((int)&DAT_00ff1104 + (short)(DAT_00fff118 * 0x14) + 1) + -1) < (char)sVar2) {
-    FUN_000562de();
+    convert_intro_routine_0x000562de();
     count_thresholded_random_rolls();
   }
   cVar1 = DAT_00fff0dd;

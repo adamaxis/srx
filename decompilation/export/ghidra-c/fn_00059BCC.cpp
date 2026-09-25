@@ -3,8 +3,8 @@
 // Name: reset_runner_status_triplet
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00003674 FUN_00003674
-//   0x000037EC FUN_000037ec
+//   0x00003674 advance_entity_delay_meter
+//   0x000037EC advance_entity_behavior_meter
 
 
 void reset_runner_status_triplet(void)
@@ -19,8 +19,8 @@ void reset_runner_status_triplet(void)
   do {
     *(byte *)(puVar2 + 8) = *(byte *)(puVar2 + 8) & 0xbf;
     *(byte *)(puVar2 + 8) = *(byte *)(puVar2 + 8) & 0xef;
-    FUN_00003674();
-    FUN_000037ec();
+    advance_entity_delay_meter();
+    advance_entity_behavior_meter();
     puVar2 = (undefined2 *)(extraout_A0 + 0x100);
     sVar1 = sVar1 + -1;
   } while (sVar1 != -1);

@@ -1,15 +1,15 @@
 // Ghidra headless export
 // Entry: 0x00058CDE
-// Name: FUN_00058cde
+// Name: convert_intro_routine_0x00058cde
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E34 reset_vdp_upload_state
-//   0x00058B5E FUN_00058b5e
-//   0x00058BB6 FUN_00058bb6
-//   0x00058D32 FUN_00058d32
+//   0x00058B5E convert_intro_routine_0x00058b5e
+//   0x00058BB6 convert_intro_routine_0x00058bb6
+//   0x00058D32 convert_intro_routine_0x00058d32
 
 
-void FUN_00058cde(void)
+void convert_intro_routine_0x00058cde(void)
 
 {
   char in_D0b;
@@ -25,13 +25,13 @@ void FUN_00058cde(void)
   }
   DAT_00fff0d0 = 0;
   if (DAT_00fff0d1 != '\0') {
-    FUN_00058b5e();
-    FUN_00058d32();
+    convert_intro_routine_0x00058b5e();
+    convert_intro_routine_0x00058d32();
     return;
   }
   reset_vdp_upload_state();
-  FUN_00058b5e();
-  FUN_00058bb6();
+  convert_intro_routine_0x00058b5e();
+  convert_intro_routine_0x00058bb6();
   return;
 }
 
