@@ -6,6 +6,9 @@ The native runtime consumes these individually named BMPs and native/state.bin a
 
 Audio is emitted here only as complete Windows-playable WAV files under
 `audio/`. The offline Z80/VGM extraction sources and intermediate event data
-remain outside this runtime asset tree. Use `resources.tsv` for stable aliases,
+remain outside this runtime asset tree. Verified repeating audio uses
+`audio/loop-points.tsv` for exact PCM frame boundaries. Use `resources.tsv` for stable aliases,
 such as `assets.audio_path("audio.intro.title.stage-1")`; do not add raw ROM
-slices or split event fragments here.
+slices or split event fragments here. A missing loop-point entry is
+intentional: the native player must not guess a repeat boundary from an
+internal channel restart.

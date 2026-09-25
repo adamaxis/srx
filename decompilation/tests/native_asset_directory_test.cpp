@@ -110,6 +110,19 @@ int main() {
                 "unexpected number of extracted audio resources");
         require(audio_count == assets.audio_resources.size(),
                 "manifest audio rows and loaded resources differ");
+        require(assets.audio_loop_points.size() == 11U,
+                "unexpected number of source-verified audio loops");
+        const auto title_loop =
+            assets.audio_loop("audio.music.resource.000");
+        require(title_loop.has_value() && title_loop->start_frame == 1785366U &&
+                    title_loop->end_frame == 3562596U &&
+                    title_loop->sample_rate == 44100U,
+                "audio loop points were not loaded exactly");
+        for (const auto resource : {"005", "014", "015", "040"}) {
+            require(!assets.audio_loop("audio.music.resource." +
+                                       std::string(resource)).has_value(),
+                    "unverified audio restart was incorrectly marked loopable");
+        }
         require(!std::filesystem::exists(
                     root / "field" / "entities" / "idle-gray-0.bmp"),
                 "unused grayscale resource still present");

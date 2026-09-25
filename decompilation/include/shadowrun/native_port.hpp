@@ -468,6 +468,12 @@ NativeCommandBarIndices compute_command_bar_indices(
     std::uint8_t posture, std::uint8_t command_selector = 6,
     std::uint8_t command_row = 0);
 
+struct NativeAudioLoop {
+    std::size_t start_frame = 0;
+    std::size_t end_frame = 0;
+    std::uint32_t sample_rate = 0;
+};
+
 // Host-owned data required by the current native title-to-field slice. This
 // contains expanded RGBA pixels and typed collision/state data, not Genesis
 // addresses or palette-indexed runtime resources. The extraction step writes
@@ -482,9 +488,15 @@ struct NativePortAssets {
     // graphics asset object.  The manifest gives each file the same stable
     // alias namespace; audio_path() is the native playback boundary.
     std::unordered_map<std::string, std::filesystem::path> audio_resources;
+    // Only source-verified repeating resources have entries here. A missing
+    // entry means the host must treat the WAV as a finite/persistent clip and
+    // use gameplay lifetime control rather than guessing a loop boundary.
+    std::unordered_map<std::string, NativeAudioLoop> audio_loop_points;
 
     const NativeImage& operator[](std::string_view alias) const;
     const std::filesystem::path& audio_path(std::string_view alias) const;
+    std::optional<NativeAudioLoop> audio_loop(
+        std::string_view alias) const;
 
     NativeImage title_scene;
     // Separate host layers preserve the ROM's title timing: the circuit

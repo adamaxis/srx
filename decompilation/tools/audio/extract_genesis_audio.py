@@ -71,6 +71,10 @@ class GenesisSoundMachine:
         self.ticks = 0
         self.writes: list[ChipWrite] = []
         self.loop_start_ticks: int | None = None
+        # Keep every qualifying return per source stream.  The first return
+        # from one channel is only evidence; the asset pass decides whether
+        # successive returns form a synchronized whole-track boundary.
+        self.stream_restart_ticks: dict[int, list[int]] = {}
         self._stream_start_bytes: dict[int, int] = {}
         self._ym_register = [0, 0]
         driver = rom[ROM_DRIVER_BEGIN:ROM_DRIVER_END]
@@ -133,11 +137,14 @@ class GenesisSoundMachine:
             # return to the current channel's original base, with its original
             # marker after the first source second, is the meaningful song
             # restart; short one-shot effects must not be mislabeled loops.
-            if (self.loop_start_ticks is None and
-                    self.ticks >= STREAM_LOOP_MIN_TICKS and
+            if (self.ticks >= STREAM_LOOP_MIN_TICKS and
                     address == stream_base and
                     stream_byte == self._stream_start_bytes.get(stream_base)):
-                self.loop_start_ticks = self.ticks
+                restarts = self.stream_restart_ticks.setdefault(stream_base, [])
+                if not restarts or restarts[-1] != self.ticks:
+                    restarts.append(self.ticks)
+                    if self.loop_start_ticks is None:
+                        self.loop_start_ticks = self.ticks
         if address >= 0x8000:
             rom_address = self.bank * 0x8000 + address - 0x8000
             return self.rom[rom_address] if rom_address < len(self.rom) else 0xFF
@@ -286,7 +293,12 @@ def main() -> int:
         )
         loop_seconds = (trace.loop_start_ticks / Z80_TICKS_PER_FRAME / 60
                         if trace.loop_start_ticks is not None else None)
-        suffix = (f", loop at {loop_seconds:.3f}s"
+        loop_samples = (round(trace.loop_start_ticks * VGM_RATE /
+                               (Z80_TICKS_PER_FRAME * 60))
+                        if trace.loop_start_ticks is not None else None)
+        restart_count = sum(len(points) for points in trace.stream_restart_ticks.values())
+        suffix = (f", first stream restart at {loop_seconds:.6f}s ({loop_samples} samples), "
+                  f"{restart_count} source restart(s) recorded"
                   if loop_seconds is not None else ", one-shot/no loop seen")
         print(f"track-{track_id:03d}: {len(writes)} chip writes{suffix}")
     return 0

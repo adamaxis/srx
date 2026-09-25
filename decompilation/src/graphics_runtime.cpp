@@ -422,6 +422,50 @@ native::NativePortAssets read_native_asset_directory(const std::string& root) {
                                      path.string() + ": " + error.what());
         }
     }
+    const auto loop_points_path = asset_root / "audio" / "loop-points.tsv";
+    if (std::filesystem::is_regular_file(loop_points_path)) {
+        std::ifstream loop_input(loop_points_path, std::ios::binary);
+        std::string loop_line;
+        if (!std::getline(loop_input, loop_line) ||
+            loop_line !=
+                "alias\tloop_start_frame\tloop_end_frame\tsample_rate\tsource_start_ticks\tsource_end_ticks") {
+            throw std::runtime_error("invalid direct audio loop-point header: " +
+                                     loop_points_path.string());
+        }
+        while (std::getline(loop_input, loop_line)) {
+            if (loop_line.empty() || loop_line.front() == '#') {
+                continue;
+            }
+            const auto fields = split_manifest_line(loop_line);
+            if (fields.size() != 6U || fields[0].empty()) {
+                throw std::runtime_error(
+                    "invalid direct audio loop-point row: " + loop_line);
+            }
+            if (assets.audio_resources.find(fields[0]) ==
+                assets.audio_resources.end()) {
+                throw std::runtime_error(
+                    "audio loop-point alias is not an audio resource: " +
+                    fields[0]);
+            }
+            try {
+                const native::NativeAudioLoop loop{
+                    std::stoull(fields[1]), std::stoull(fields[2]),
+                    static_cast<std::uint32_t>(std::stoul(fields[3]))};
+                (void)std::stoull(fields[4]);
+                (void)std::stoull(fields[5]);
+                if (loop.end_frame <= loop.start_frame ||
+                    loop.sample_rate == 0U ||
+                    !assets.audio_loop_points.emplace(fields[0], loop).second) {
+                    throw std::runtime_error(
+                        "audio loop-point range is invalid or duplicated");
+                }
+            } catch (const std::exception& error) {
+                throw std::runtime_error(
+                    "invalid direct audio loop-point row: " + loop_line +
+                    ": " + error.what());
+            }
+        }
+    }
     const auto load = [&assets](const std::string& relative) {
         try {
             return assets[resources::alias_for_path(relative)];

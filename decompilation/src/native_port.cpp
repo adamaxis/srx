@@ -30,6 +30,15 @@ const std::filesystem::path& NativePortAssets::audio_path(
     return found->second;
 }
 
+std::optional<NativeAudioLoop> NativePortAssets::audio_loop(
+    std::string_view alias) const {
+    const auto found = audio_loop_points.find(std::string(alias));
+    if (found == audio_loop_points.end()) {
+        return std::nullopt;
+    }
+    return found->second;
+}
+
 namespace {
 
 using Glyph = std::array<std::uint8_t, 7>;
