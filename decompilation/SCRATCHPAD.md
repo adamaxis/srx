@@ -1196,6 +1196,13 @@ effect marker `0x19`, clears the alternate-result marker before the exit
 service, and refreshes the mode display only when that service returns a
 nonzero result.
 
+The `0x1F5CA` coordinator is now `run_field_exit_orchestrator`. It gates the
+two controller-owned graphics paths, clears the source transient markers,
+runs world preparation, world-effect dispatch, and indexed title services,
+then invokes the four scene-specific exit policies in order. Each stage is a
+typed callback with the source early-abort result; the native coordinator
+clears the service marker on every exit path.
+
 Batch 2 converts `0x1F32E` as `clear_optional_mode_resource`, an explicit
 typed clear of the optional mode-resource marker.
 

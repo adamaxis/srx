@@ -166,7 +166,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x0001E43CU, "handle_world_activity_request", RoutineFamily::world, 112U},
     {0x0001E69CU, "initialize_world_effect_selection", RoutineFamily::world, 144U},
     {0x0001F3C4U, "run_mode_text_prompt", RoutineFamily::world, 484U},
-    {0x0001F5CAU, "convert_world_routine_0x0001f5ca", RoutineFamily::world, 144U},
+    {0x0001F5CAU, "run_field_exit_orchestrator", RoutineFamily::world, 144U},
     {0x0001F65AU, "select_field_exit_prompt", RoutineFamily::world, 470U},
     {0x0001F830U, "prepare_field_mode_exit", RoutineFamily::world, 584U},
     {0x0001FA78U, "convert_world_routine_0x0001fa78", RoutineFamily::world, 776U},

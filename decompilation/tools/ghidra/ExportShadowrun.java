@@ -774,7 +774,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0001E302L, "build_world_effect_edge_candidates");
         names.put(0x0001E43CL, "handle_world_activity_request");
         names.put(0x0001E69CL, "initialize_world_effect_selection");
-        names.put(0x0001F5CAL, "convert_world_routine_0x0001f5ca");
+        names.put(0x0001F5CAL, "run_field_exit_orchestrator");
         names.put(0x0001F65AL, "select_field_exit_prompt");
         names.put(0x0001F830L, "prepare_field_mode_exit");
         names.put(0x0001FA78L, "convert_world_routine_0x0001fa78");
