@@ -2488,3 +2488,14 @@ target_link_libraries(shadowrun_ghidra_menu_confirmation_test
     PRIVATE shadowrun_ghidra_menu_confirmation)
 add_test(NAME shadowrun_ghidra_menu_confirmation
          COMMAND shadowrun_ghidra_menu_confirmation_test)
+
+add_library(shadowrun_ghidra_field_resource_purchase STATIC
+    src/field_resource_purchase_conversion.cpp)
+target_include_directories(shadowrun_ghidra_field_resource_purchase PUBLIC include)
+
+add_executable(shadowrun_ghidra_field_resource_purchase_test
+    tests/field_resource_purchase_conversion_test.cpp)
+target_link_libraries(shadowrun_ghidra_field_resource_purchase_test
+    PRIVATE shadowrun_ghidra_field_resource_purchase)
+add_test(NAME shadowrun_ghidra_field_resource_purchase
+         COMMAND shadowrun_ghidra_field_resource_purchase_test)

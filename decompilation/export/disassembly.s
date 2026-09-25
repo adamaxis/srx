@@ -25112,7 +25112,7 @@
 00056DF8: beq.w 0x000573fc
 00056DFC: cmpi.b #0x5,(0x00fff0b8).l
 00056E04: beq.w 0x000577ba
-00056E08: bra.w 0x0005766a ; call 0005766A convert_intro_routine_0x0005766a
+00056E08: bra.w 0x0005766a ; call 0005766A apply_field_resource_purchase
 00056E0C: tst.b (0x00fff0b8).l
 00056E12: beq.w 0x00056e3a
 00056E16: cmpi.b #0x2,(0x00fff0b8).l

@@ -1,27 +1,27 @@
 // Ghidra headless export
 // Entry: 0x0005766A
-// Name: convert_intro_routine_0x0005766a
+// Name: apply_field_resource_purchase
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D94 wait_for_controller_event
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x00057B8C run_menu_confirmation_prompt
-//   0x00057C46 convert_intro_routine_0x00057c46
+//   0x00057C46 refresh_field_action_detail_panel
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_intro_routine_0x0005766a(void)
+void apply_field_resource_purchase(void)
 
 {
   int extraout_D1;
-  
+
   if (-1 < (char)(DAT_00fff0d0 - 4)) {
     DAT_00fff112 = 0xff;
     return;
   }
-  convert_intro_routine_0x00057c46();
+  refresh_field_action_detail_panel();
   if (DAT_00fff0d0 == 2) {
     if (DAT_00fffbc4 < (char)(DAT_00fffbbe * '\n')) goto LAB_0005770c;
   }
@@ -64,4 +64,3 @@ LAB_0005770c:
   wait_for_controller_event();
   return;
 }
-

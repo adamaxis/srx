@@ -834,7 +834,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00057610L, "convert_intro_routine_0x00057610");
         names.put(0x00057628L, "select_menu_resource_entry");
         names.put(0x0005763CL, "select_menu_resource");
-        names.put(0x0005766AL, "convert_intro_routine_0x0005766a");
+        names.put(0x0005766AL, "apply_field_resource_purchase");
         names.put(0x0005787CL, "calculate_field_action_quantity_cost");
         names.put(0x0005794EL, "apply_selected_field_action");
         names.put(0x00057A44L, "calculate_field_action_record_cost");

@@ -9,7 +9,7 @@
 //   0x0001275C clear_menu_slot
 //   0x000575F8 convert_intro_routine_0x000575f8
 //   0x00057628 select_menu_resource_entry
-//   0x0005766A convert_intro_routine_0x0005766a
+//   0x0005766A apply_field_resource_purchase
 //   0x0005794E apply_selected_field_action
 //   0x00057B8C run_menu_confirmation_prompt
 //   0x00057C46 convert_intro_routine_0x00057c46
@@ -85,7 +85,7 @@ uint convert_intro_routine_0x00056dc4(void)
         }
         if (DAT_00fff0b8 != '\x03') {
           if (DAT_00fff0b8 != '\x05') {
-            uVar6 = convert_intro_routine_0x0005766a();
+            uVar6 = apply_field_resource_purchase();
             return uVar6;
           }
           if (-1 < (char)(DAT_00fff0d0 - 5)) {

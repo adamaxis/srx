@@ -420,6 +420,31 @@ the conversion does not emulate its VDP writes. `0x57C5E` is labeled
 `refresh_field_action_detail_panel` and is the five-row repeated grid at
 origin `0xC484`.
 
+## Field-service resource purchase conversion: 0x5766A
+
+`0x5766A` is a field-service purchase/threshold routine reached from the
+action handler at `0x56DC4` when the selected service is outside the separate
+record-action branches. It was incorrectly classified as an intro routine.
+The new `shadowrun_ghidra_field_resource_purchase` library represents its
+state in `field_resource_purchase_conversion.*`:
+
+* Categories 0, 1, and 2 compare their progress counters at `FFFBC0`,
+  `FFFBC2`, and `FFFBC4` against requested quantity at `FFFBBE` scaled by
+  `0x28`, `0x50`, and `0x0A`. Category 3 has a fixed satisfied/limit boundary
+  at three units in `FFFBC5`.
+* A satisfied category takes the category-specific message path and waits;
+  it does not charge the player. Category 3 uses a distinct limit message.
+* An unsatisfied category reads its word cost from `0x1AC8E0[cursor]`, rejects
+  insufficient funds, publishes the preview cost, and enters the shared
+  `0x57B8C` confirmation prompt.
+* An accepted purchase deducts the table cost and increments the selected
+  progress counter by 10, 25, 5, or 1. Cancellation leaves funds and
+  progress unchanged while preserving the published preview cost.
+
+The native model deliberately leaves the exact UI text/category labels at the
+data/UI boundary. The ROM proves the four distinct counter/cost behaviors;
+it does not justify inventing user-facing names from the generic Ghidra output.
+
 ## Call annotation policy
 
 Direct calls are annotated with the target address and reviewed symbol.

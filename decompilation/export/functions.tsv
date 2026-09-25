@@ -779,7 +779,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00057610	convert_intro_routine_0x00057610	24	unknown	ok	ghidra-c/fn_00057610.cpp
 00057628	select_menu_resource_entry	20	unknown	ok	ghidra-c/fn_00057628.cpp
 0005763C	select_menu_resource	46	unknown	ok	ghidra-c/fn_0005763C.cpp
-0005766A	convert_intro_routine_0x0005766a	336	unknown	ok	ghidra-c/fn_0005766A.cpp
+0005766A	apply_field_resource_purchase	336	unknown	ok	ghidra-c/fn_0005766A.cpp
 0005787C	calculate_field_action_quantity_cost	72	unknown	ok	ghidra-c/fn_0005787C.cpp
 0005794E	apply_selected_field_action	246	unknown	ok	ghidra-c/fn_0005794E.cpp
 00057A44	calculate_field_action_record_cost	42	unknown	ok	ghidra-c/fn_00057A44.cpp
