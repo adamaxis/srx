@@ -1679,6 +1679,19 @@ target_link_libraries(shadowrun_ghidra_matrix_menu_service_test
 add_test(NAME shadowrun_ghidra_matrix_menu_service
          COMMAND shadowrun_ghidra_matrix_menu_service_test)
 
+add_library(shadowrun_ghidra_matrix_program_action STATIC
+    src/matrix_program_action_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_matrix_program_action PUBLIC include)
+
+add_executable(shadowrun_ghidra_matrix_program_action_test
+    tests/matrix_program_action_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_matrix_program_action_test
+    PRIVATE shadowrun_ghidra_matrix_program_action)
+add_test(NAME shadowrun_ghidra_matrix_program_action
+         COMMAND shadowrun_ghidra_matrix_program_action_test)
+
 add_library(shadowrun_ghidra_hud_mode STATIC
     src/hud_mode_conversion.cpp
 )

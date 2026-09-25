@@ -994,6 +994,7 @@ No later item should be used to mask an earlier unresolved transition. When a
 source path is unknown, the code and this document must label it `PENDING` and
 capture the missing evidence needed to close it.
 Matrix/menu service leaves converted.
+The selected-program action service at `0x19976` is now typed as well. It rejects empty or still-loading slots and the source's active selection values `2..5`, requires overlay stage `0x0C`, derives action mode with `FFDD22` bit-14 then bit-12 priority, dispatches through the unresolved program-code table, and resets the overlay. Normal program codes publish the exact next selection value (`<3` -> `3`, `<8` -> `5`, code `11` -> `2`, otherwise `4`). Selection `7` enters the runner-record parity path: even record fields clear the program availability flag and use seed mode `5`, odd fields use seed mode `4`; both set the HUD variant and initialize the world-effect seed through explicit callbacks.
 The next three Matrix/menu leaves are now typed in `matrix_menu_service_conversion`.
 `0x19632` clears one loaded slot using the source program-code-specific flag cleanup, writes the empty program/status values, and preserves the repeated-grid/grid/row refresh order.
 `0x19788` decrements the unsigned overlay countdown, services the overlay timer, then advances only the first non-complete one of five visual slot states when the signed inter-step delay expires; completion publishes the selected slot and renders its text.

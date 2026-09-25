@@ -573,6 +573,7 @@ the original pointer arithmetic into host code. `0x0CEC` now installs the
 four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
+The selected Matrix program-action service at `0x19976` is now separate as `matrix_program_action_conversion`. It rejects empty/loading slots and active values `2..5`, requires overlay stage `0x0C`, preserves `FFDD22` bit-14/bit-12 action-mode priority, dispatches the selected program through an explicit unresolved table callback, and resets the overlay. The normal program-code mapping publishes `3`, `5`, `2`, or `4` exactly as the source branches. Selection `7` preserves the runner `+0x13` parity split, availability clear for even fields, HUD variant publication, and seed-mode `4`/`5` transition into the existing effect boundary.
 The next Matrix/menu service batch is isolated in `matrix_menu_service_conversion`.
 `0x19632` clears one loaded program slot, applies the source code-specific flag/status cleanup, stores the empty code and visual state, and submits the repeated-grid, grid, and row refreshes in source order.
 `0x19788` models the unsigned overlay countdown wrap, the unconditional overlay-timer service, the signed five-slot progression delay, and the first-incomplete-slot grid/completion publication.

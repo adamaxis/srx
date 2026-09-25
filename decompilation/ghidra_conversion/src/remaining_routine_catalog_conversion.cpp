@@ -116,7 +116,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00019632U, "clear_matrix_program_slot", RoutineFamily::world, 192U},
     {0x00019788U, "advance_matrix_program_loading", RoutineFamily::world, 206U},
     {0x0001989AU, "update_hud_mode_transition", RoutineFamily::world, 220U},
-    {0x00019976U, "convert_world_routine_0x00019976", RoutineFamily::world, 376U},
+    {0x00019976U, "service_matrix_program_action", RoutineFamily::world, 376U},
     {0x00019B40U, "convert_world_routine_0x00019b40", RoutineFamily::world, 110U},
     {0x00019C54U, "convert_world_routine_0x00019c54", RoutineFamily::world, 8U},
     {0x00019C5CU, "convert_world_routine_0x00019c5c", RoutineFamily::world, 16U},

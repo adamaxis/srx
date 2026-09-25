@@ -518,7 +518,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00019788	advance_matrix_program_loading	206	unknown	ok	ghidra-c/fn_00019788.cpp
 00019856	refresh_field_hud	68	unknown	ok	ghidra-c/fn_00019856.cpp
 0001989A	update_hud_mode_transition	220	unknown	ok	ghidra-c/fn_0001989A.cpp
-00019976	convert_world_routine_0x00019976	376	unknown	ok	ghidra-c/fn_00019976.cpp
+00019976	service_matrix_program_action	376	unknown	ok	ghidra-c/fn_00019976.cpp
 00019AEE	refresh_mode_glyph	70	unknown	ok	ghidra-c/fn_00019AEE.cpp
 00019B34	publish_menu_selection_then_text	12	unknown	ok	ghidra-c/fn_00019B34.cpp
 00019B40	select_run_hud_mode	110	unknown	ok	ghidra-c/fn_00019B40.cpp
