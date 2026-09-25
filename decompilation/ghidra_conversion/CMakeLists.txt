@@ -631,6 +631,19 @@ target_link_libraries(shadowrun_ghidra_title_profile_transition_test
 add_test(NAME shadowrun_ghidra_title_profile_transition
          COMMAND shadowrun_ghidra_title_profile_transition_test)
 
+add_library(shadowrun_ghidra_title_noise_effect STATIC
+    src/title_noise_effect_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_title_noise_effect PUBLIC include)
+
+add_executable(shadowrun_ghidra_title_noise_effect_test
+    tests/title_noise_effect_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_title_noise_effect_test
+    PRIVATE shadowrun_ghidra_title_noise_effect)
+add_test(NAME shadowrun_ghidra_title_noise_effect
+         COMMAND shadowrun_ghidra_title_noise_effect_test)
+
 add_library(shadowrun_ghidra_entity_template STATIC
     src/entity_template_conversion.cpp
 )

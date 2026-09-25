@@ -1005,6 +1005,8 @@ The paired runner-record leaves are now no longer generic: `0x1A4EA` selects the
 
 The adjacent title profile pair is now typed. `0x1BEBA` copies the source profile destination's dirty bit, selects the four-entry sprite source at `0x1C136` from the signed countdown, builds the two `0x15E`/`0xE0` sprites at `y=0xEE`, and on expiry runs `copy_title_profile`, behavior attachment, menu service, and world-effect initialization in source order. `0x1BF7A` is the separate signed timer service: values through `-8` select the seven-word profile offset, while values below `-8` reload from the current compact record's signed `+0x06` through ROM `0x1BFFC`. The source eligibility helper remains a callback boundary.
 
+`0x1BB6A` is now `advance_title_noise_effect`. Its bit-2 active branch decrements `FFE0CA`, renders only when the low three bits are at least four, and finalizes by clearing source bits 2 and 0 before the behavior/menu callbacks. Its inactive branch arms bit 2 with a `0x3C` countdown at expiry; otherwise it consumes one source PRNG word, performs the exact two 16-bit rotates used by the ROM selector, and emits seven `0xE8,0xEC` sprites from the four source tables at `0x1DAB8`/`0x1DAC2`/`0x1DACC`/`0x1DAD6`.
+
 The next title/world-effect pair is also no longer generic. `0x1A818` starts
 the descriptor transition, choosing between its six-frame loading path and the
 active descriptor-token path; its source word `0xD280` is recorded as such

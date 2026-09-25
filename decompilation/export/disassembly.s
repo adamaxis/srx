@@ -16968,7 +16968,7 @@
 0001B08E: bsr.w 0x0001ba6e ; call 0001BA6E advance_title_burst_animation
 0001B092: btst.b #0x0,(0x00fff0a1).l
 0001B09A: beq.w 0x0001b0a2
-0001B09E: bsr.w 0x0001bb6a ; call 0001BB6A convert_world_routine_0x0001bb6a
+0001B09E: bsr.w 0x0001bb6a ; call 0001BB6A advance_title_noise_effect
 0001B0A2: btst.b #0x7,(0x00ff1592).l
 0001B0AA: beq.w 0x0001b0b8
 0001B0AE: lea (0xff1580).l,A0 ; data 00ff1580

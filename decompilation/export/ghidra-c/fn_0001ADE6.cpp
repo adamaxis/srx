@@ -29,7 +29,7 @@
 //   0x0001B680 attach_behavior_descriptor_e
 //   0x0001B87A dispatch_title_phase_handler
 //   0x0001BA6E advance_title_burst_animation
-//   0x0001BB6A convert_world_routine_0x0001bb6a
+//   0x0001BB6A advance_title_noise_effect
 //   0x0001BCE8 convert_world_routine_0x0001bce8
 //   0x0001BEBA advance_title_profile_transition
 //   0x0001BF7A advance_profile_copy_timer
@@ -186,7 +186,7 @@ LAB_0001afc0:
         advance_title_burst_animation();
       }
       if ((DAT_00fff0a1 & 1) != 0) {
-        convert_world_routine_0x0001bb6a();
+        advance_title_noise_effect();
       }
       if ((DAT_00ff1592 & 0x80) != 0) {
         advance_title_profile_transition();

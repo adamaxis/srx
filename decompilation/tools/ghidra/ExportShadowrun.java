@@ -747,7 +747,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0001B45CL, "advance_title_noise_stream");
         names.put(0x0001B7D0L, "initialize_behavior_record");
         names.put(0x0001BA6EL, "advance_title_burst_animation");
-        names.put(0x0001BB6AL, "convert_world_routine_0x0001bb6a");
+        names.put(0x0001BB6AL, "advance_title_noise_effect");
         names.put(0x0001BCE8L, "convert_world_routine_0x0001bce8");
         names.put(0x0001BEBAL, "advance_title_profile_transition");
         names.put(0x0001BF7AL, "advance_profile_copy_timer");
