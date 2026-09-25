@@ -1585,3 +1585,16 @@ target_link_libraries(shadowrun_ghidra_field_menu_state_batch_test
     PRIVATE shadowrun_ghidra_field_menu_state_batch)
 add_test(NAME shadowrun_ghidra_field_menu_state_batch
          COMMAND shadowrun_ghidra_field_menu_state_batch_test)
+
+add_library(shadowrun_ghidra_title_effect_animation_batch STATIC
+    src/title_effect_animation_batch_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_title_effect_animation_batch PUBLIC include)
+
+add_executable(shadowrun_ghidra_title_effect_animation_batch_test
+    tests/title_effect_animation_batch_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_title_effect_animation_batch_test
+    PRIVATE shadowrun_ghidra_title_effect_animation_batch)
+add_test(NAME shadowrun_ghidra_title_effect_animation_batch
+         COMMAND shadowrun_ghidra_title_effect_animation_batch_test)
