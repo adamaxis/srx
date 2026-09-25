@@ -1,92 +1,71 @@
 // Ghidra headless export
 // Entry: 0x0001FA78
-// Name: convert_world_routine_0x0001fa78
-// Decompile status: ok
+// Name: select_field_mode_service
+// Decompile status: source-shaped annotation
+//
+// The native conversion is ghidra_conversion::select_field_mode_service. The
+// source route table is preserved as scene/submode cases, menu fields, signed
+// prompt variants, and the FFF112 service-result handshake.
+//
 // Calls recovered from direct call instructions:
 //   0x0001F246 run_mode_exit_services
-//   0x00056AC0 convert_intro_routine_0x00056ac0
+//   0x00056AC0 run_field_intro_stage
 
-
-/* WARNING: Type propagation algorithm not settling */
-
-void convert_world_routine_0x0001fa78(void)
-
+void select_field_mode_service(void)
 {
-  if ((DAT_00fffbf8 == '\x02') && (DAT_00fffbf9 == '\v')) {
+  // Each matched branch installs A5/A0 source resources, represented by a
+  // native profile and prompt-variant alias in the conversion.
+  if (DAT_00fffbf8 == 2 && DAT_00fffbf9 == 0x0B) {
     DAT_00fff0b6 = 1;
-    DAT_00fff0b7 = 0xff;
+    DAT_00fff0b7 = -1;
+  }
+  else if (DAT_00fffbf8 == 1 && DAT_00fffbf9 == 5) {
+    DAT_00fff0b6 = 2;
+    if (DAT_00fff0d5 != 0) {
+      run_mode_exit_services();
+      return;
+    }
+    DAT_00fff112 = 0;
+    run_mode_exit_services();
+    if (DAT_00fff112 == 0) return;
+    DAT_00fff0b7 = ((signed char)DAT_00fff112 < 0) ? -1 : 2;
+    run_field_intro_stage();
+    return;
+  }
+  else if (DAT_00fffbf8 == 1 && DAT_00fffbf9 == 3) {
+    DAT_00fff0b6 = 4;
+    DAT_00fff0b7 = 0;
+  }
+  else if (DAT_00fffbf8 == 5 && DAT_00fffbf9 >= 2 &&
+           DAT_00fffbf9 <= 5) {
+    DAT_00fff0b6 = menu_mode_for_scene_five_submode();
+    DAT_00fff0b7 = menu_result_for_scene_five_submode();
+  }
+  else if (DAT_00fffbf8 == 4 && DAT_00fffbf9 == 3) {
+    DAT_00fff0b6 = 3;
+    DAT_00fff0b7 = 0;
+    if (DAT_00fff0d5 == 0) {
+      DAT_00fff112 = 0;
+      run_mode_exit_services();
+      if (DAT_00fff112 == 0) return;
+      DAT_00fff0b7 = ((signed char)DAT_00fff112 < 0) ? -1 : 2;
+      run_field_intro_stage();
+      return;
+    }
+    run_mode_exit_services();
+    return;
   }
   else {
-    if (DAT_00fffbf8 == '\x01') {
-      if (DAT_00fffbf9 == '\x05') {
-        DAT_00fff0b6 = 2;
-        if (DAT_00fff0d5 != '\0') goto LAB_0001fd7a;
-        DAT_00fff112 = '\0';
-        run_mode_exit_services();
-        if (DAT_00fff112 == '\0') {
-          return;
-        }
-        if (DAT_00fff112 < '\0') {
-          DAT_00fff0b7 = 0xff;
-        }
-        else {
-          DAT_00fff0b7 = 2;
-        }
-        goto LAB_0001fd6e;
-      }
-      if (DAT_00fffbf9 == '\x03') {
-        DAT_00fff0b6 = 4;
-        DAT_00fff0b7 = 0;
-        goto joined_r0x0001fb7c;
-      }
-    }
-    if (DAT_00fffbf8 != '\x05') {
-LAB_0001fce6:
-      if (DAT_00fffbf8 != '\x04') {
-        return;
-      }
-      if (DAT_00fffbf9 != '\x03') {
-        return;
-      }
-      if (DAT_00fff0d5 != '\0') goto LAB_0001fd7a;
-      DAT_00fff112 = '\0';
-      run_mode_exit_services();
-      if (DAT_00fff112 == '\0') {
-        return;
-      }
-      DAT_00fff112 = '\0';
-      DAT_00fff0b6 = 3;
-      DAT_00fff0b7 = 0;
-      goto LAB_0001fd6e;
-    }
-    if (DAT_00fffbf9 == '\x02') {
-      DAT_00fff0b6 = 7;
-      DAT_00fff0b7 = 1;
-    }
-    else if (DAT_00fffbf9 == '\x03') {
-      DAT_00fff0b6 = 5;
-      DAT_00fff0b7 = 0;
-    }
-    else if (DAT_00fffbf9 == '\x04') {
-      DAT_00fff0b6 = 6;
-      DAT_00fff0b7 = 2;
-    }
-    else {
-      if (DAT_00fffbf9 != '\x05') goto LAB_0001fce6;
-      DAT_00fff0b6 = 0;
-      DAT_00fff0b7 = 0xff;
-    }
+    return;
   }
-joined_r0x0001fb7c:
-  if (DAT_00fff0d5 != '\0') {
-LAB_0001fd7a:
+
+  // Shared scene-five/scene-two-eleven/scene-one-three flow: nonzero
+  // alternate results only present the selected prompt; the default variant
+  // proceeds into the intro stage after mode-exit services.
+  if (DAT_00fff0d5 != 0) {
     run_mode_exit_services();
     return;
   }
   run_mode_exit_services();
-LAB_0001fd6e:
-  convert_intro_routine_0x00056ac0();
-  return;
+  run_field_intro_stage();
 }
-
-

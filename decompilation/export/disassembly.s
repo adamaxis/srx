@@ -19333,7 +19333,7 @@
 0001F634: jsr 0x0001f830.l ; call 0001F830 prepare_field_mode_exit
 0001F63A: tst.w D6w
 0001F63C: bmi.w 0x0001f652
-0001F640: jsr 0x0001fa78.l ; call 0001FA78 convert_world_routine_0x0001fa78
+0001F640: jsr 0x0001fa78.l ; call 0001FA78 select_field_mode_service
 0001F646: tst.w D6w
 0001F648: bmi.w 0x0001f652
 0001F64C: jsr 0x0001fd80.l ; call 0001FD80 convert_world_routine_0x0001fd80

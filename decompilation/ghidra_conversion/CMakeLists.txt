@@ -1556,6 +1556,19 @@ target_link_libraries(shadowrun_ghidra_field_exit_orchestrator_test
 add_test(NAME shadowrun_ghidra_field_exit_orchestrator
          COMMAND shadowrun_ghidra_field_exit_orchestrator_test)
 
+add_library(shadowrun_ghidra_field_mode_service STATIC
+    src/field_mode_service_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_field_mode_service PUBLIC include)
+
+add_executable(shadowrun_ghidra_field_mode_service_test
+    tests/field_mode_service_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_field_mode_service_test
+    PRIVATE shadowrun_ghidra_field_mode_service)
+add_test(NAME shadowrun_ghidra_field_mode_service
+         COMMAND shadowrun_ghidra_field_mode_service_test)
+
 add_library(shadowrun_ghidra_mode_optional_resource STATIC
     src/mode_optional_resource_conversion.cpp
 )

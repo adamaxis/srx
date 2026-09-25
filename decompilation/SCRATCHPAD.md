@@ -574,6 +574,12 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The `0x1FA78` mode-service selector is now `select_field_mode_service`. It
+models the seven scene/submode routes, their menu mode/result fields, signed
+alternate prompt variants, and the special `FFF112` service-result handshake
+used by `(1,5)` and `(4,3)`. Default routes enter the intro-stage callback;
+nonzero alternate-result routes perform service only, matching the source.
+
 `0x1CA12` is now `advance_world_effect_motion`, preserving the negative-
 countdown finalizer, direction-dependent source-table callback, fixed Y
 subtraction, shifted sprite placement, and menu-service boundary.
