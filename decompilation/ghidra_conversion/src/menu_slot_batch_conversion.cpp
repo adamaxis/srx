@@ -114,6 +114,75 @@ bool finalize_menu_slot_code(MenuSlotCommandState& state,
     return false;
 }
 
+bool run_menu_selection_code_four(
+    MenuSelectionCodeFourState& state,
+    const bool source_gate_is_nonzero,
+    const std::int16_t refresh_value,
+    const MenuSelectionCodeFourCallbacks& callbacks) {
+    if (state.selection_delta < 1) {
+        if (callbacks.publish_default_selection_and_text) {
+            callbacks.publish_default_selection_and_text();
+        }
+    } else {
+        const auto mode = callbacks.select_hud_mode
+                               ? callbacks.select_hud_mode()
+                               : static_cast<std::uint8_t>(0xFFU);
+        if (mode == 8U && source_gate_is_nonzero) {
+            const auto sum = static_cast<std::int16_t>(state.footer_offset) +
+                             state.selection_delta;
+            const bool overflow = sum > 127 || sum < -128;
+            const auto wrapped = static_cast<std::int8_t>(sum);
+            if (wrapped == 0 || overflow != (wrapped < 0)) {
+                state.footer_offset = 0;
+            } else if (wrapped > 10) {
+                state.footer_offset = 10;
+            } else {
+                state.footer_offset = wrapped;
+            }
+        } else {
+            const auto sum = static_cast<std::int16_t>(state.footer_offset) +
+                             state.selection_delta;
+            const bool overflow = sum > 127 || sum < -128;
+            const auto wrapped = static_cast<std::int8_t>(sum);
+            if (wrapped == 0 || overflow != (wrapped < 0)) {
+                state.footer_offset = 0;
+            } else if (wrapped > 10) {
+                state.footer_offset = 10;
+            } else {
+                state.footer_offset = wrapped;
+            }
+            if (callbacks.write_footer_grid) {
+                callbacks.write_footer_grid();
+            }
+            if (callbacks.render_footer_rows) {
+                callbacks.render_footer_rows();
+            }
+        }
+        if (callbacks.publish_fixed_selection_and_text) {
+            callbacks.publish_fixed_selection_and_text();
+        }
+    }
+
+    for (std::size_t slot = state.slot_codes.size(); slot-- > 0U;) {
+        if (state.slot_codes[slot] != 4U) {
+            continue;
+        }
+        if (callbacks.clear_visual) {
+            callbacks.clear_visual(slot);
+        }
+        state.pending_values[slot] = 0U;
+        state.offsets[slot] = static_cast<std::int16_t>(refresh_value * 10);
+        if (callbacks.refresh_number_or_grid) {
+            callbacks.refresh_number_or_grid(slot);
+        }
+        if (callbacks.clear_status) {
+            callbacks.clear_status(slot);
+        }
+        return true;
+    }
+    return false;
+}
+
 bool advance_menu_countdown(MenuCountdownState& state,
                             const std::function<void()>& on_expiry) {
     if (state.countdown == 0) {

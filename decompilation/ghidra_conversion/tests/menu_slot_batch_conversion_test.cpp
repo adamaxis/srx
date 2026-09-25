@@ -48,33 +48,77 @@ int main() {
         finalized != 3) {
         return 4;
     }
+
+    MenuSelectionCodeFourState code_four{};
+    code_four.selection_delta = 2;
+    code_four.footer_offset = 9;
+    code_four.slot_codes = {0, 4, 0, 4, 0};
+    std::vector<int> code_four_events;
+    if (!run_menu_selection_code_four(
+            code_four, true, 3,
+            {[&] {
+                 code_four_events.push_back(1);
+                 return static_cast<std::uint8_t>(8U);
+             },
+             [&] { code_four_events.push_back(2); },
+             [&] { code_four_events.push_back(3); },
+             [&] { code_four_events.push_back(4); },
+             [&] { code_four_events.push_back(5); },
+             [&](const std::size_t slot) {
+                 code_four_events.push_back(static_cast<int>(10 + slot));
+             },
+             [&](const std::size_t slot) {
+                 code_four_events.push_back(static_cast<int>(20 + slot));
+             },
+             [&](const std::size_t slot) {
+                 code_four_events.push_back(static_cast<int>(30 + slot));
+             }}) ||
+        code_four.footer_offset != 10 || code_four.pending_values[3] != 0U ||
+        code_four.offsets[3] != 30 ||
+        code_four_events != std::vector<int>{1, 3, 13, 23, 33}) {
+        return 5;
+    }
+    code_four = {};
+    code_four.selection_delta = 1;
+    code_four.slot_codes = {0, 0, 0, 0, 0};
+    if (run_menu_selection_code_four(
+            code_four, false, 0,
+            {[&] { return static_cast<std::uint8_t>(2U); },
+             [&] { code_four_events.push_back(40); },
+             [&] { code_four_events.push_back(41); },
+             [&] { code_four_events.push_back(42); },
+             [&] { code_four_events.push_back(43); },
+             {}, {}, {}}) ||
+         code_four_events.back() != 41) {
+        return 6;
+    }
     MenuCountdownState countdown{2};
     int expiries = 0;
     if (advance_menu_countdown(countdown, [&] { ++expiries; }) ||
         !advance_menu_countdown(countdown, [&] { ++expiries; }) || expiries != 1) {
-        return 5;
+        return 7;
     }
 
     std::vector<std::uint8_t> records(0x28U, 1U);
     clear_selected_menu_record(records, 1);
     if (records[0x14] != 0 || records[0] != 1) {
-        return 6;
+        return 8;
     }
 
     EffectDefaultsState defaults{};
     initialize_effect_defaults(defaults);
     if (!defaults.active || defaults.origin_x != 0x1200 ||
         defaults.origin_y != 0x0D00 || defaults.lifetime != -1) {
-        return 7;
+        return 9;
     }
     EffectEntityResetState reset{false, 4, 8};
     reset_effect_entity(reset);
     if (!reset.active || reset.accumulator != 0 || reset.entity_value != 0) {
-        return 8;
+        return 10;
     }
     if (arm_effect_after_threshold(defaults, 0x713F) ||
         !arm_effect_after_threshold(defaults, 0x7140)) {
-        return 9;
+        return 11;
     }
 
     WordStreamResetState stream{{1, 2}, 0};
@@ -82,7 +126,7 @@ int main() {
     reset_word_stream_area(stream, [&] { ++stream_writes; });
     if (stream.words.size() != 0x1C0U || stream.words.front() != 0 ||
         stream_writes != 1 || stream.dirty_flags != 0x0C) {
-        return 10;
+        return 12;
     }
 
     BehaviorRecordState behavior{};
@@ -92,18 +136,18 @@ int main() {
     if (audio != 1 || initialized != 1 || behavior.width != 4 ||
         behavior.update_descriptor != 0x1C33A ||
         behavior.draw_descriptor != 0x1C330) {
-        return 11;
+        return 13;
     }
     attach_behavior_descriptor_b(behavior, {});
     if (behavior.update_descriptor != 0x1C29E) {
-        return 12;
+        return 14;
     }
     attach_behavior_descriptor_c(behavior, {});
     attach_behavior_descriptor_d(behavior, {});
     attach_behavior_descriptor_e(behavior, {});
     if (behavior.update_descriptor != 0x1C34A ||
         behavior.draw_descriptor != 0x1C344) {
-        return 13;
+        return 15;
     }
     return 0;
 }

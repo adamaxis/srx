@@ -526,7 +526,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00019BF6	pass_through_value	94	unknown	ok	ghidra-c/fn_00019BF6.cpp
 00019C54	read_selected_matrix_program_availability	8	unknown	ok	ghidra-c/fn_00019C54.cpp
 00019C5C	read_matrix_program_availability_for_slot	16	unknown	ok	ghidra-c/fn_00019C5C.cpp
-00019CB2	convert_world_routine_0x00019cb2	116	unknown	ok	ghidra-c/fn_00019CB2.cpp
+00019CB2	run_menu_selection_code_four	116	unknown	ok	ghidra-c/fn_00019CB2.cpp
 00019D66	run_menu_slot_service	70	unknown	ok	ghidra-c/fn_00019D66.cpp
 00019DAC	merge_menu_pending_flags	44	unknown	ok	ghidra-c/fn_00019DAC.cpp
 00019DD8	refresh_mode_metadata_leaf	16	unknown	ok	ghidra-c/fn_00019DD8.cpp

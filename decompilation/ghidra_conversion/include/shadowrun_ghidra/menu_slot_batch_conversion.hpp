@@ -56,6 +56,37 @@ bool finalize_menu_slot_code(MenuSlotCommandState& state,
                              std::int16_t value,
                              const MenuSlotFinalizeCallbacks& callbacks);
 
+struct MenuSelectionCodeFourState {
+    // FFF0D3 / FFFBCA: signed selection delta and bounded footer offset.
+    std::int8_t selection_delta = 0;
+    std::int8_t footer_offset = 0;
+    std::array<std::uint8_t, 5> slot_codes{};
+    std::array<std::uint8_t, 5> pending_values{};
+    std::array<std::int16_t, 5> offsets{};
+};
+
+struct MenuSelectionCodeFourCallbacks {
+    // 0x19BAE and 0x19B34/0x17C52 remain typed call boundaries.
+    std::function<std::uint8_t()> select_hud_mode;
+    std::function<void()> publish_default_selection_and_text;
+    std::function<void()> publish_fixed_selection_and_text;
+    std::function<void()> write_footer_grid;
+    std::function<void()> render_footer_rows;
+    std::function<void(std::size_t)> clear_visual;
+    std::function<void(std::size_t)> refresh_number_or_grid;
+    std::function<void(std::size_t)> clear_status;
+};
+
+// ROM 0x19CB2: service the signed menu selection, then enter the shared
+// reverse scan used to clear slot code 4. `refresh_value` is the D1 result
+// published by the existing selection-index boundary before it is scaled by
+// ten for the slot offset.
+bool run_menu_selection_code_four(
+    MenuSelectionCodeFourState& state,
+    bool source_gate_is_nonzero,
+    std::int16_t refresh_value,
+    const MenuSelectionCodeFourCallbacks& callbacks);
+
 struct MenuCountdownState {
     std::int8_t countdown = 0;
 };
