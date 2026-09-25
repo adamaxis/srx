@@ -595,8 +595,10 @@ explicit boundaries.
 The adjacent Matrix utility routine at `0x19018` now has its real menu logic:
 the shared two-entry cursor selects Show Map or Retreat, and the Retreat path
 is redirected to the source combat warning when `FFDF84` is active. The map
-transition and the deeper retreat-node routine at `0x19180` remain explicit
-boundaries until their node state is traced.
+transition is still a presentation boundary. The deeper `0x19180` path now
+uses a typed current/previous node pair: negative previous-node state returns
+the JACK OUT warning, while an action swaps the node ids and publishes the
+retreat transition marker; bit 15 returns to Matrix.
 
 The first executable portion of the Matrix loop at `0x1822C` is now separated
 from the native runtime in `matrix_loop_conversion`. Its setup preserves the

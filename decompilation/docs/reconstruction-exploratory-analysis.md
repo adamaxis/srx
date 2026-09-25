@@ -775,8 +775,11 @@ and display order; only slot selection and text rendering remain unresolved.
 The utility handler at `0x19018` now has a named two-entry selector: source
 selection zero dispatches “Show Map,” while selection one dispatches “Retreat”
 unless `FFDF84` reports combat, in which case it takes the explicit “Retreat
-not possible during combat!” branch. The deeper map/retreat node routine at
-`0x19180` remains separate pending its node-record meaning.
+not possible during combat!” branch. The deeper `0x19180` routine is now
+typed as a node transition: `FFF118` is the current node, `FFF11A` is the
+previous node, a negative previous node takes the JACK OUT warning, and an
+action swaps the two node ids while publishing the transition marker. Bit 15
+remains the return-to-Matrix route.
 The Matrix state table, program actions, and rendered resources inside the
 loop must still be recovered before claiming the Matrix panel complete. Until
 then the Matrix hill remains `PENDING`, rather than represented by a generic
