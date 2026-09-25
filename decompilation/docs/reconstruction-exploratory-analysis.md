@@ -777,8 +777,10 @@ to Delete File, Upload File, Crash System, or Download File. The remaining
 text/number placement and underlying deck-stat field reads stay presentation
 boundaries.
 The storage screen path at `0x18D1A` now has its first concrete record math:
-`0x1954A` reads the five loaded-slot usage bytes, `0x1952C` multiplies each of
-the twelve availability flags by the source E2DF2 footprint table, and
+`0x1954A` reads the five loaded-slot usage bytes, `0x1952C` loads each of the
+twelve availability flags, and its `0x19538` arithmetic tail squares the flag
+before applying the source E2DF2 footprint table. Normal flags are 0/1, but
+the native conversion preserves the source operation, and
 `0x19558` subtracts both totals from the Matrix's total memory word. The new
 `matrix_storage_conversion` module returns those values as ordinary host
 integers. The same module now models the `0x18F5E` reverse five-slot datafile

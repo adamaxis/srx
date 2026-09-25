@@ -64,6 +64,12 @@ std::uint8_t matrix_loaded_slot_usage(const MatrixStorageUsage& usage,
                                       std::size_t slot);
 
 // ROM 0x1952C: multiply a program's availability flag by its source footprint.
+// The 0x19538 arithmetic tail squares the flag before applying the footprint;
+// normal source flags are 0/1, but the host model preserves that operation.
+std::uint32_t matrix_program_storage_weight(std::uint8_t availability,
+                                             std::uint8_t footprint);
+
+// ROM 0x1952C -> 0x19538: load the selected flag and apply the source weight.
 std::uint32_t matrix_program_storage_usage(const MatrixStorageUsage& usage,
                                            std::size_t program);
 

@@ -587,8 +587,9 @@ to Delete File, Upload File, Crash System, or Download File. Text placement
 and deck-stat field rendering remain separate presentation boundaries.
 
 The Matrix storage branch is no longer a generic catalog label. The source
-`0x1954A` reads one of five loaded-slot usage bytes, and `0x1952C` multiplies
-one of twelve availability flags by its E2DF2 footprint. The new
+`0x1954A` reads one of five loaded-slot usage bytes, and `0x1952C` loads one of
+twelve availability flags before its `0x19538` arithmetic tail squares the
+flag and applies its E2DF2 footprint. Normal flags are 0/1, but the new
 `matrix_storage_conversion` module loops those exact fields and exposes
 `calculate_matrix_storage_capacity`, which reproduces `0x19558`'s total-minus-
 loaded-minus-installed calculation for the storage screen at `0x18D1A`.

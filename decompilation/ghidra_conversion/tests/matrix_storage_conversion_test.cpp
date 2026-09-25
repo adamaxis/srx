@@ -27,7 +27,8 @@ int main() {
     if (!expect(matrix_program_storage_usage(usage, 0U) == 2U &&
                 matrix_program_storage_usage(usage, 2U) == 4U &&
                 matrix_program_storage_usage(usage, 11U) == 3U &&
-                matrix_program_storage_usage(usage, 12U) == 0U)) {
+                matrix_program_storage_usage(usage, 12U) == 0U &&
+                matrix_program_storage_weight(2U, 4U) == 16U)) {
         return 2;
     }
 
@@ -46,6 +47,8 @@ int main() {
         return 4;
     }
 
+    usage.availability_flags = {1U, 0U, 1U, 0U, 1U, 0U,
+                                0U, 1U, 0U, 0U, 0U, 1U};
     usage.loaded_program_memory = 20U;
     const auto loaded_capacity = calculate_loaded_program_capacity(
         usage, std::array<std::int8_t, 5>{0, -1, 2, 11, -1});
