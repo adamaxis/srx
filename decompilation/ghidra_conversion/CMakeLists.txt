@@ -1528,6 +1528,21 @@ target_link_libraries(shadowrun_ghidra_equipment_combat_bar_test
 add_test(NAME shadowrun_ghidra_equipment_combat_bar
          COMMAND shadowrun_ghidra_equipment_combat_bar_test)
 
+add_library(shadowrun_ghidra_attributes_skills_menu STATIC
+    src/attributes_skills_menu_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_attributes_skills_menu PUBLIC include)
+target_link_libraries(shadowrun_ghidra_attributes_skills_menu
+    PRIVATE shadowrun_ghidra_runner_record_operations)
+
+add_executable(shadowrun_ghidra_attributes_skills_menu_test
+    tests/attributes_skills_menu_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_attributes_skills_menu_test
+    PRIVATE shadowrun_ghidra_attributes_skills_menu)
+add_test(NAME shadowrun_ghidra_attributes_skills_menu
+         COMMAND shadowrun_ghidra_attributes_skills_menu_test)
+
 add_library(shadowrun_ghidra_entity_action_sequence STATIC
     src/entity_action_sequence_conversion.cpp
 )

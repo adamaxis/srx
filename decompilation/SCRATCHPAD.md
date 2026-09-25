@@ -574,6 +574,18 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The Attributes/Skills screen is now separated into a typed record/layout
+conversion. `0x0D82A` maps the twenty source label slots into two columns of
+ten rows: attributes use live-record bytes `+0x77..+0x7E`, skills use
+`+0x80..+0x85` and `+0x87..+0x8C`, and every cell carries its source label index,
+record offset, and raw value. The `+0x9B >= 2` first-skill class gate and the
+no-live-record gate remain explicit cell states instead of being guessed away.
+`0x0D01C` cursor movement is represented as ordinary bounded host state: left
+and right select columns `0`/`1`, while up and down clamp the row to `0..9`.
+The conversion remains reference-only and does not link into the emulator or
+native runtime; mutation dispatch and source text/presentation callbacks are
+still open boundaries.
+
 The leaf routines behind the terrain/scene boundary are concrete now.
 `0x16EA0` fills a bounded work-map rectangle with terrain value `2`,
 `0x16FA8` copies a bounded source rectangle using its row stride, and
