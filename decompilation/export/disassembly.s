@@ -16687,9 +16687,9 @@
 0001AAFE: move.w #0x694,D4w
 0001AB02: adda.w #0x8,A2
 0001AB06: jsr 0x000013be.l ; call 000013BE build_title_sprite_records_with_attribute_offset
-0001AB0C: bsr.w 0x0001ab6e ; call 0001AB6E convert_world_routine_0x0001ab6e
-0001AB10: bsr.w 0x0001ac6a ; call 0001AC6A convert_world_routine_0x0001ac6a
-0001AB14: bsr.w 0x0001ad42 ; call 0001AD42 convert_world_routine_0x0001ad42
+0001AB0C: bsr.w 0x0001ab6e ; call 0001AB6E advance_primary_world_effect_overlay
+0001AB10: bsr.w 0x0001ac6a ; call 0001AC6A advance_secondary_world_effect_overlay
+0001AB14: bsr.w 0x0001ad42 ; call 0001AD42 advance_background_world_effect_overlay
 0001AB18: rts
 0001AB1A: subq.b #0x1,(0x4,A0)
 0001AB1E: bpl.w 0x0001ab3a

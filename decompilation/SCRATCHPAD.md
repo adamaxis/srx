@@ -593,6 +593,19 @@ its records are independently named. The shared `FF163E` work record documents
 the source overlap where `FF1643` is a phase in one path and a descriptor index
 in the other; no source-address interpreter was added.
 
+The three effect-update leaves immediately following that setup are now
+converted as `world_effect_overlay_conversion`. `0x1AB6E` advances the primary
+overlay, preserves the exact `FFE0B6 == 1` branch, applies the `0x6B00`
+descriptor-transition cutoff, threshold/intro carry decision, nine-frame
+cadence, and the `0xF1BDE` phase table. `0x1AC6A` does the corresponding
+secondary overlay using `FFE0B8`, the `0xF1BCE` table, and the seven-frame/four-
+phase cadence; its threshold carry is intentionally not a branch in the ROM.
+`0x1AD42` advances the background overlay from `0xF1BBE`, clears `FFE0C2` when
+the intro marker is clear, and uses the four-frame/four-phase cadence. Sprite
+table reads and title-sprite construction are explicit callbacks, while the
+conversion records the source keys (`0x7A8`, attributes `0xB9`/`0xD0`, and
+position shifts) instead of reproducing ROM address arithmetic.
+
 The program-slot branch at `0x19238` is now typed as real Matrix outcomes:
 already loaded, no available slot, insufficient memory, or ready to install.
 The source's two-entry Yes/No prompt is also converted; Yes reaches the

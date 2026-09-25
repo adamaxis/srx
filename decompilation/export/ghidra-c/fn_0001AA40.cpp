@@ -7,9 +7,9 @@
 //   0x000061CC append_sprite_record
 //   0x0001A4EA convert_world_routine_0x0001a4ea
 //   0x0001A8F4 reset_effect_entity
-//   0x0001AB6E convert_world_routine_0x0001ab6e
-//   0x0001AC6A convert_world_routine_0x0001ac6a
-//   0x0001AD42 convert_world_routine_0x0001ad42
+//   0x0001AB6E advance_primary_world_effect_overlay
+//   0x0001AC6A advance_secondary_world_effect_overlay
+//   0x0001AD42 advance_background_world_effect_overlay
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -58,9 +58,9 @@ void convert_world_routine_0x0001aa40(void)
       append_sprite_record();
     }
     build_title_sprite_records_with_attribute_offset();
-    convert_world_routine_0x0001ab6e();
-    convert_world_routine_0x0001ac6a();
-    convert_world_routine_0x0001ad42();
+    advance_primary_world_effect_overlay();
+    advance_secondary_world_effect_overlay();
+    advance_background_world_effect_overlay();
     return;
   }
   DAT_00ff1642 = DAT_00ff1642 - 1;

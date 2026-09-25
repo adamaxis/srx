@@ -563,10 +563,10 @@ entry	name	size	callingConvention	decompileStatus	file
 0001A8F4	reset_effect_entity	20	unknown	ok	ghidra-c/fn_0001A8F4.cpp
 0001A908	initialize_world_effect_mode	198	unknown	ok	ghidra-c/fn_0001A908.cpp
 0001AA40	convert_world_routine_0x0001aa40	302	unknown	ok	ghidra-c/fn_0001AA40.cpp
-0001AB6E	convert_world_routine_0x0001ab6e	226	unknown	ok	ghidra-c/fn_0001AB6E.cpp
+0001AB6E	advance_primary_world_effect_overlay	226	unknown	ok	ghidra-c/fn_0001AB6E.cpp
 0001AC50	arm_effect_after_threshold	26	unknown	ok	ghidra-c/fn_0001AC50.cpp
-0001AC6A	convert_world_routine_0x0001ac6a	216	unknown	ok	ghidra-c/fn_0001AC6A.cpp
-0001AD42	convert_world_routine_0x0001ad42	164	unknown	ok	ghidra-c/fn_0001AD42.cpp
+0001AC6A	advance_secondary_world_effect_overlay	216	unknown	ok	ghidra-c/fn_0001AC6A.cpp
+0001AD42	advance_background_world_effect_overlay	164	unknown	ok	ghidra-c/fn_0001AD42.cpp
 0001ADE6	convert_world_routine_0x0001ade6	990	unknown	ok	ghidra-c/fn_0001ADE6.cpp
 0001B1C4	initialize_world_effect_seed	56	unknown	ok	ghidra-c/fn_0001B1C4.cpp
 0001B1FC	reset_title_transition	28	unknown	ok	ghidra-c/fn_0001B1FC.cpp

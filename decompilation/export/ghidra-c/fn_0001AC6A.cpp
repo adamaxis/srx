@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001AC6A
-// Name: convert_world_routine_0x0001ac6a
+// Name: advance_secondary_world_effect_overlay
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000013BE build_title_sprite_records_with_attribute_offset
@@ -11,7 +11,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_world_routine_0x0001ac6a(void)
+void advance_secondary_world_effect_overlay(void)
 
 {
   if ((_DAT_00ffe084 != 0) || (DAT_00ffe0b8 == 0)) {

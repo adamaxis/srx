@@ -1010,3 +1010,11 @@ sentinel, arms modes 6 and 7 once, and initializes the shared work record at
 `FF163E`. The ROM descriptor table remains an explicit data-resolution boundary,
 which keeps this conversion useful without turning source pointers into native
 runtime address arithmetic.
+
+The three following overlay leaves are now typed as well. `0x1AB6E` and
+`0x1AC6A` are the primary and secondary moving overlays, including their
+source-exact flag equality checks, threshold behavior, transition cutoff, and
+different cadence limits. `0x1AD42` is the background overlay with the intro
+marker gate and its separate position shift. Their phase-table selections are
+callbacks returning host data tokens; the conversion does not make the native
+runtime decode or dereference the Genesis tables.

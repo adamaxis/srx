@@ -579,6 +579,19 @@ target_link_libraries(shadowrun_ghidra_world_effect_mode_test
 add_test(NAME shadowrun_ghidra_world_effect_mode
          COMMAND shadowrun_ghidra_world_effect_mode_test)
 
+add_library(shadowrun_ghidra_world_effect_overlay STATIC
+    src/world_effect_overlay_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_world_effect_overlay PUBLIC include)
+
+add_executable(shadowrun_ghidra_world_effect_overlay_test
+    tests/world_effect_overlay_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_world_effect_overlay_test
+    PRIVATE shadowrun_ghidra_world_effect_overlay)
+add_test(NAME shadowrun_ghidra_world_effect_overlay
+         COMMAND shadowrun_ghidra_world_effect_overlay_test)
+
 add_library(shadowrun_ghidra_entity_template STATIC
     src/entity_template_conversion.cpp
 )
