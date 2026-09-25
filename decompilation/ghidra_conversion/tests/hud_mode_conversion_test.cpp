@@ -58,5 +58,25 @@ int main() {
         return 5;
     }
 
+    const std::vector<HudModeAuxiliaryRecord> auxiliary_records{
+        {8, 4}, {8, 9}, {2, 12}};
+    const auto unchanged = select_hud_mode_auxiliary_value(
+        0x1234U, auxiliary_records, 0U, -1);
+    const auto alternate_auxiliary = select_hud_mode_auxiliary_value(
+        0x1234U, auxiliary_records, 0U, 1);
+    const auto ordinary_auxiliary = select_hud_mode_auxiliary_value(
+        0x1234U, auxiliary_records, 1U, 0);
+    const auto missing_auxiliary = select_hud_mode_auxiliary_value(
+        0x1234U, std::vector<HudModeAuxiliaryRecord>{{8, 3}}, 0U, 1);
+    if (!expect(unchanged.valid && unchanged.preserved_value == 0x1234U &&
+                unchanged.source_index == 0U &&
+                unchanged.adjusted_auxiliary_value == 4U &&
+                alternate_auxiliary.valid && alternate_auxiliary.source_index == 1U &&
+                alternate_auxiliary.adjusted_auxiliary_value == 11U &&
+                ordinary_auxiliary.adjusted_auxiliary_value == 10U &&
+                !missing_auxiliary.valid)) {
+        return 6;
+    }
+
     return 0;
 }

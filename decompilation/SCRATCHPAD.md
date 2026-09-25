@@ -660,6 +660,10 @@ only to mode codes 7..16. The larger `0x19B40` path now preserves its record
 eligibility and FFDF84 branch: negative gate state uses the record mode, while
 other states require a positive `0x17C3C` resolver result before the same table
 lookup. That resolver remains an explicit source boundary.
+The old identity label at `0x19BF6` was disproven by the instruction trace.
+The routine preserves incoming D0, selects the current or mode-7..16 adjacent
+record's `+0x11` value, and applies the signed FFF0A0 variant adjustment; both
+outputs are now typed.
 
 The adjacent `0x19C54` leaf follows the selected slot through its loaded
 program code and reads the corresponding FFBCC availability byte. The apparent

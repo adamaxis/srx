@@ -523,7 +523,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00019B34	publish_menu_selection_then_text	12	unknown	ok	ghidra-c/fn_00019B34.cpp
 00019B40	select_run_hud_mode	110	unknown	ok	ghidra-c/fn_00019B40.cpp
 00019BAE	select_hud_mode	72	unknown	ok	ghidra-c/fn_00019BAE.cpp
-00019BF6	pass_through_value	94	unknown	ok	ghidra-c/fn_00019BF6.cpp
+00019BF6	select_hud_mode_auxiliary_value	94	unknown	ok	ghidra-c/fn_00019BF6.cpp
 00019C54	read_selected_matrix_program_availability	8	unknown	ok	ghidra-c/fn_00019C54.cpp
 00019C5C	read_matrix_program_availability_for_slot	16	unknown	ok	ghidra-c/fn_00019C5C.cpp
 00019CB2	run_menu_selection_code_four	116	unknown	ok	ghidra-c/fn_00019CB2.cpp

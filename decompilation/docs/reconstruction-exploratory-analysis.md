@@ -765,6 +765,10 @@ second table entry only for codes 7..16. The larger `0x19B40` wrapper now
 applies the record eligibility gate, uses the record mode when `FFDF84` is
 negative, and otherwise requires a positive `0x17C3C` result before the same
 table lookup; that resolver remains an explicit boundary.
+The old identity label at `0x19BF6` was also disproven. The source preserves
+its incoming value in D0 while selecting the current or adjacent record's
+`+0x11` field and adding one or two according to the signed `FFF0A0` variant;
+the bounded host conversion now exposes both results.
 The adjacent `0x19C54` leaf is also no longer treated as two empty exported
 functions: it follows the selected slot through its loaded program code and
 reads that program's availability byte. `0x19C5C` is an interior instruction

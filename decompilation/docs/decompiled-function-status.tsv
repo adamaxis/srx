@@ -550,7 +550,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x19856	field HUD refresh	ghidra_conversion::refresh_field_hud	shadowrun_ghidra_field_menu_state_batch	partial		Footer advance followed by five grid writes
 0x19AEE	mode glyph refresh	ghidra_conversion::refresh_mode_glyph	shadowrun_ghidra_field_menu_state_batch	partial		Typed mode remap and grid write boundary
 0x19BAE	HUD mode selection	ghidra_conversion::select_hud_mode	shadowrun_ghidra_field_menu_state_batch	partial		Checked display-mode table selection
-0x19BF6	menu value pass-through	ghidra_conversion::pass_through_value	shadowrun_ghidra_field_menu_state_batch	partial		Explicit identity boundary for unresolved source value
+0x19BF6	HUD mode auxiliary value	ghidra_conversion::select_hud_mode_auxiliary_value	shadowrun_ghidra_hud_mode	partial		Preserved incoming value, mode-code 7..16 adjacent-record selection, and signed variant adjustment converted
 0x19D66	menu slot service	ghidra_conversion::run_menu_slot_service	shadowrun_ghidra_field_menu_state_batch	partial		Selection/text service with pending auxiliary branch
 0x19DAC	menu pending flag merge	ghidra_conversion::merge_menu_pending_flags	shadowrun_ghidra_field_menu_state_batch	partial		ORs source flags and services display
 0x19DF2	menu metadata service	ghidra_conversion::run_menu_metadata_service	shadowrun_ghidra_field_menu_state_batch	partial		Typed metadata and offset preparation sequence

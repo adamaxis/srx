@@ -1,5 +1,7 @@
 #include "shadowrun_ghidra/hud_mode_conversion.hpp"
 
+#include <cstddef>
+
 namespace shadowrun::ghidra_conversion {
 
 bool hud_mode_record_is_eligible(const HudModeRecordFields& record) {
@@ -44,6 +46,35 @@ HudModeSelection select_run_hud_mode(
     return select_hud_mode(
         {1U, static_cast<std::int8_t>(mode_code)}, alternate_mode,
         mode_table);
+}
+
+HudModeAuxiliarySelection select_hud_mode_auxiliary_value(
+    const std::uint32_t preserved_value,
+    const std::vector<HudModeAuxiliaryRecord>& records,
+    const std::size_t record_index,
+    const std::int8_t mode_variant) {
+    if (record_index >= records.size()) {
+        return {false, preserved_value, 0, record_index};
+    }
+
+    const auto& current = records[record_index];
+    auto selected_index = record_index;
+    if (mode_variant > 0 && current.mode_code >= 7 &&
+        current.mode_code < 17) {
+        ++selected_index;
+        if (selected_index >= records.size()) {
+            return {false, preserved_value, 0, selected_index};
+        }
+    }
+
+    auto adjusted = static_cast<std::uint16_t>(
+        records[selected_index].auxiliary_value);
+    if (mode_variant == 0) {
+        adjusted = static_cast<std::uint16_t>(adjusted + 1U);
+    } else if (mode_variant > 0) {
+        adjusted = static_cast<std::uint16_t>(adjusted + 2U);
+    }
+    return {true, preserved_value, adjusted, selected_index};
 }
 
 } // namespace shadowrun::ghidra_conversion

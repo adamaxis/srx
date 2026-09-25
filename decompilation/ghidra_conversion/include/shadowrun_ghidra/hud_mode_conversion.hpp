@@ -1,8 +1,10 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <vector>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -36,6 +38,28 @@ struct HudModeRunCallbacks {
     // negative. Its internal rule calculation remains a separate boundary.
     std::function<int()> resolve_active_run_mode;
 };
+
+struct HudModeAuxiliaryRecord {
+    // Source record offsets +0x13 and +0x11 used by 0x19BF6.
+    std::int8_t mode_code = -1;
+    std::uint8_t auxiliary_value = 0;
+};
+
+struct HudModeAuxiliarySelection {
+    bool valid = false;
+    std::uint32_t preserved_value = 0;
+    std::uint16_t adjusted_auxiliary_value = 0;
+    std::size_t source_index = 0;
+};
+
+// ROM 0x19BF6: preserve the incoming D0 value while selecting the +0x11
+// auxiliary field from the current/next record and applying FFF0A0's
+// signed variant adjustment.
+HudModeAuxiliarySelection select_hud_mode_auxiliary_value(
+    std::uint32_t preserved_value,
+    const std::vector<HudModeAuxiliaryRecord>& records,
+    std::size_t record_index,
+    std::int8_t mode_variant);
 
 // ROM 0x19B40: select the mode-table value for the current run record. A
 // negative FFDF84 byte uses the record's +0x13 mode directly; otherwise the
