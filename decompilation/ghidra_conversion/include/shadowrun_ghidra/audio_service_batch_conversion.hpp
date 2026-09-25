@@ -3,8 +3,6 @@
 #include <array>
 #include <cstdint>
 #include <functional>
-#include <optional>
-#include <string>
 #include <vector>
 
 namespace shadowrun::ghidra_conversion {
@@ -54,31 +52,6 @@ void initialize_title_audio_assets(
 void copy_audio_state(const std::vector<std::uint32_t>& source,
                      std::vector<std::uint32_t>& destination,
                      std::size_t count);
-
-enum class AudioStreamBank {
-    primary,
-    secondary,
-};
-
-struct AudioStreamTableEntry {
-    std::string primary_alias;
-    std::string secondary_alias;
-};
-
-struct AudioStreamSelection {
-    std::uint8_t table_index = 0;
-    AudioStreamBank bank = AudioStreamBank::primary;
-    std::string alias;
-};
-
-// ROM 0x53200 / 0x53216: select the primary or secondary host audio asset
-// from the immutable source table entry chosen by the current audio resource.
-std::optional<AudioStreamSelection> select_audio_primary_stream(
-    const std::vector<AudioStreamTableEntry>& table,
-    std::uint8_t table_index);
-std::optional<AudioStreamSelection> select_audio_secondary_stream(
-    const std::vector<AudioStreamTableEntry>& table,
-    std::uint8_t table_index);
 
 struct AudioTitlePreparationState {
     std::uint8_t scratch = 0;

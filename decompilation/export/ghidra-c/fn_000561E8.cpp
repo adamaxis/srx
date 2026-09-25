@@ -8,7 +8,7 @@
 //   0x00017D90 advance_hud_panel
 //   0x00019B40 convert_world_routine_0x00019b40
 //   0x00019BF6 pass_through_value
-//   0x00053216 select_audio_secondary_stream
+//   0x00053216 select_secondary_runner_record_table
 //   0x00056116 convert_intro_routine_0x00056116
 //   0x000562D4 convert_intro_routine_0x000562d4
 
@@ -26,7 +26,7 @@ undefined4 convert_intro_routine_0x000561e8(void)
   short sVar4;
   int extraout_A0;
   
-  select_audio_secondary_stream();
+  select_secondary_runner_record_table();
   sVar4 = DAT_00fff118 * 0x14;
   if (*(char *)(extraout_A0 + 0x10 + (int)sVar4) != (&DAT_00ff1110)[sVar4]) {
     (&DAT_00ff1110)[sVar4] = (&DAT_00ff1110)[sVar4] + '\x01';

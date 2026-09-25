@@ -34,7 +34,7 @@ int main() {
         [&] { order.emplace_back("header"); },
         [&] { order.emplace_back("animation"); },
         [&] { order.emplace_back("build-once"); },
-        [&] { order.emplace_back("audio"); },
+        [&] { order.emplace_back("record-table"); },
         [&](const RunnerSpriteBuildRequest& request) { sprites.push_back(request); },
         [](const std::int16_t) {
             return std::optional<RunnerSpriteSource>{{0, 3, -2}};
@@ -61,7 +61,7 @@ int main() {
                 state.active_runner == 1 &&
                 order == std::vector<std::string>{"clear", "copy", "upload",
                                                   "header", "animation", "build-once",
-                                                  "audio", "build-once", "build-once"} &&
+                                                  "record-table", "build-once", "build-once"} &&
                 grids.size() == 141U && grids.front().initial &&
                 grids.back().row == 9U && grids.back().column == 13U &&
                 sprites.size() == 2U && sprites.back().origin_x == 48 &&

@@ -22993,7 +22993,7 @@
 000531C2: jsr 0x00052eec.l ; call 00052EEC initialize_audio_sequence
 000531C8: adda.w #0x10,SP
 000531CC: jmp 0x00052fa0.l ; call 00052FA0 flush_with_audio_bus
-000531EA: bsr.w 0x00053216 ; call 00053216 select_audio_secondary_stream
+000531EA: bsr.w 0x00053216 ; call 00053216 select_secondary_runner_record_table
 000531EE: lea (0xff1100).l,A1 ; data 00ff1100
 000531F4: move.w #0x9f,D7w
 000531F8: move.l (A0)+,(A1)+
@@ -23066,7 +23066,7 @@
 00053324: jsr 0x0000c0da.l ; call 0000C0DA render_encoded_title_text
 0005332A: bsr.w 0x000533ee ; call 000533EE convert_audio_routine_0x000533ee
 0005332E: jsr 0x0005322c.l ; call 0005322C prepare_audio_title
-00053334: bsr.w 0x00053200 ; call 00053200 select_audio_primary_stream
+00053334: bsr.w 0x00053200 ; call 00053200 select_primary_runner_record_table
 00053338: lea (0xfffaa4).l,A3 ; data 00fffaa4
 0005333E: lea (0xfffb30).l,A4 ; data 00fffb30
 00053344: move.l #0xc190,D4
@@ -23114,7 +23114,7 @@
 000533E0: dbf D6w,0x00053352
 000533E4: move.w #-0x7e8c,(0x00c00004).l
 000533EC: rts
-000533EE: bsr.w 0x00053200 ; call 00053200 select_audio_primary_stream
+000533EE: bsr.w 0x00053200 ; call 00053200 select_primary_runner_record_table
 000533F2: lea (0xff1100).l,A1 ; data 00ff1100
 000533F8: clr.l D0
 000533FA: move.w (0x00fff118).l,D0w
@@ -24478,7 +24478,7 @@
 000561DC: clr.b (0x00fff0a3).l
 000561E2: move.w #-0x1,D0w
 000561E6: rts
-000561E8: jsr 0x00053216.l ; call 00053216 select_audio_secondary_stream
+000561E8: jsr 0x00053216.l ; call 00053216 select_secondary_runner_record_table
 000561EE: lea (0xfffbbe).l,A5 ; data 00fffbbe
 000561F4: lea (0xff1100).l,A1 ; data 00ff1100
 000561FA: move.w (0x00fff118).l,D1w

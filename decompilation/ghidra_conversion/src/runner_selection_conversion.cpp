@@ -31,7 +31,7 @@ void initialize_runner_selection_screen(
     call_once(callbacks.render_header_text);
     call_once(callbacks.update_runner_animation);
     call_once(callbacks.build_sprite_records_once);
-    call_once(callbacks.select_audio_primary_stream);
+    call_once(callbacks.select_primary_runner_record_table);
 
     if (callbacks.render_grid) {
         for (std::uint8_t row = 0; row < 10U; ++row) {

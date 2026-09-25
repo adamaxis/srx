@@ -2376,3 +2376,16 @@ target_link_libraries(shadowrun_ghidra_runner_selection_test
     PRIVATE shadowrun_ghidra_runner_selection)
 add_test(NAME shadowrun_ghidra_runner_selection
          COMMAND shadowrun_ghidra_runner_selection_test)
+
+add_library(shadowrun_ghidra_runner_record_selection STATIC
+    src/runner_record_selection_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_runner_record_selection PUBLIC include)
+
+add_executable(shadowrun_ghidra_runner_record_selection_test
+    tests/runner_record_selection_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_runner_record_selection_test
+    PRIVATE shadowrun_ghidra_runner_record_selection)
+add_test(NAME shadowrun_ghidra_runner_record_selection
+         COMMAND shadowrun_ghidra_runner_record_selection_test)

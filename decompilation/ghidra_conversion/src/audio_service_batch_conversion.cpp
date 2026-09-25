@@ -90,26 +90,6 @@ void copy_audio_state(const std::vector<std::uint32_t>& source,
     std::copy_n(source.begin(), std::min(count, source.size()), destination.begin());
 }
 
-std::optional<AudioStreamSelection> select_audio_primary_stream(
-    const std::vector<AudioStreamTableEntry>& table,
-    const std::uint8_t table_index) {
-    if (table_index >= table.size() || table[table_index].primary_alias.empty()) {
-        return std::nullopt;
-    }
-    return AudioStreamSelection{
-        table_index, AudioStreamBank::primary, table[table_index].primary_alias};
-}
-
-std::optional<AudioStreamSelection> select_audio_secondary_stream(
-    const std::vector<AudioStreamTableEntry>& table,
-    const std::uint8_t table_index) {
-    if (table_index >= table.size() || table[table_index].secondary_alias.empty()) {
-        return std::nullopt;
-    }
-    return AudioStreamSelection{
-        table_index, AudioStreamBank::secondary, table[table_index].secondary_alias};
-}
-
 void prepare_audio_title(AudioTitlePreparationState& state,
                          const std::function<void()>& prepare_sprites) {
     state.scratch = 0;

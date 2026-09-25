@@ -3,7 +3,7 @@
 // Name: copy_audio_state
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00053216 select_audio_secondary_stream
+//   0x00053216 select_secondary_runner_record_table
 
 
 void copy_audio_state(void)
@@ -14,7 +14,7 @@ void copy_audio_state(void)
   undefined4 *puVar2;
   undefined4 *puVar3;
   
-  select_audio_secondary_stream();
+  select_secondary_runner_record_table();
   sVar1 = 0x9f;
   puVar2 = extraout_A0;
   puVar3 = &DAT_00ff1100;

@@ -946,8 +946,8 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00053194L, "run_controller_access");
         names.put(0x000531AAL, "initialize_title_audio_assets");
         names.put(0x000531EAL, "copy_audio_state");
-        names.put(0x00053200L, "select_audio_primary_stream");
-        names.put(0x00053216L, "select_audio_secondary_stream");
+        names.put(0x00053200L, "select_primary_runner_record_table");
+        names.put(0x00053216L, "select_secondary_runner_record_table");
         names.put(0x0005322CL, "prepare_audio_title");
         names.put(0x00053248L, "build_title_sprite_once");
         names.put(0x00053290L, "reset_audio_menu_arrays");
