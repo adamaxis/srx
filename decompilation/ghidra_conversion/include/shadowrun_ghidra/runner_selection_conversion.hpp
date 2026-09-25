@@ -40,7 +40,7 @@ struct RunnerSelectionScreenCallbacks {
     std::function<void()> render_header_text;
     std::function<void()> update_runner_animation;
     std::function<void()> build_sprite_records_once;
-    std::function<void()> service_noop_boundary;
+    std::function<void()> select_audio_primary_stream;
     std::function<void(const RunnerSpriteBuildRequest&)> build_runner_sprites;
 
     std::function<std::optional<RunnerSpriteSource>(std::int16_t)>

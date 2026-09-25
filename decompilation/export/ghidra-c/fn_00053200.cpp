@@ -1,15 +1,16 @@
 // Ghidra headless export
 // Entry: 0x00053200
-// Name: audio_noop_hook_a
-// Decompile status: ok
-// Calls recovered from direct call instructions:
-//   (none)
+// Name: select_audio_primary_stream
+// Decompile status: source-shaped annotation
+//
+// Native conversion: ghidra_conversion::select_audio_primary_stream.
+// The source indexes the immutable audio-resource table at 0x15DB48 using
+// the current resource id and returns that entry's primary stream. The host
+// returns a named Windows-playable asset alias instead of a ROM pointer.
+//
+// Calls recovered from direct call instructions: none.
 
-
-void audio_noop_hook_a(void)
-
+AudioStreamSelection select_audio_primary_stream(std::uint8_t resource_id)
 {
-  return;
+  return audio_resources[resource_id].primary;
 }
-
-

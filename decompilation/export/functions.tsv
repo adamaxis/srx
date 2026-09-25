@@ -716,8 +716,8 @@ entry	name	size	callingConvention	decompileStatus	file
 00053194	run_controller_access	22	unknown	ok	ghidra-c/fn_00053194.cpp
 000531AA	initialize_title_audio_assets	40	unknown	ok	ghidra-c/fn_000531AA.cpp
 000531EA	copy_audio_state	22	unknown	ok	ghidra-c/fn_000531EA.cpp
-00053200	audio_noop_hook_a	22	unknown	ok	ghidra-c/fn_00053200.cpp
-00053216	audio_noop_hook_b	22	unknown	ok	ghidra-c/fn_00053216.cpp
+00053200	select_audio_primary_stream	22	unknown	ok	ghidra-c/fn_00053200.cpp
+00053216	select_audio_secondary_stream	22	unknown	ok	ghidra-c/fn_00053216.cpp
 0005322C	prepare_audio_title	10	unknown	ok	ghidra-c/fn_0005322C.cpp
 00053248	build_title_sprite_once	72	unknown	ok	ghidra-c/fn_00053248.cpp
 00053290	reset_audio_menu_arrays	24	unknown	ok	ghidra-c/fn_00053290.cpp

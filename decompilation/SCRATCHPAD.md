@@ -585,6 +585,14 @@ is preserved for previous, confirm, next, and menu-return actions, while
 roster movement, HUD redraw, assets, and input are native callbacks. The
 conversion contains no Genesis bus or address arithmetic.
 
+The former `audio_noop_hook_a/b` labels at `0x53200`/`0x53216` were verified
+against the ROM and corrected. They index the immutable `0x15DB48` audio
+resource table and return the primary/secondary stream pointers used by the
+following sequence code. The native conversion now returns named asset
+aliases (`AudioStreamSelection`) for those two banks, so the host audio layer
+can play complete Windows-supported files instead of inheriting the old
+pointer/no-op fiction.
+
 The `0x2679E` world-entry loop is now `run_world_entry_sequence`. It consumes
 an extracted command/delay stream, preserves the three-cycle timing cadence,
 handles signed origin corrections and delayed horizontal/vertical pairs, and

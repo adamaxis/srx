@@ -16,7 +16,7 @@
 //   0x00001232 write_vdp_grid
 //   0x00001358 copy_source_word_block
 //   0x0000C0DA render_encoded_title_text
-//   0x00053200 audio_noop_hook_a
+//   0x00053200 select_audio_primary_stream
 //   0x0005322C prepare_audio_title
 //   0x000533EE convert_audio_routine_0x000533ee
 

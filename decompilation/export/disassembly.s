@@ -15285,7 +15285,7 @@
 00018FFA: ori.b #0x2c,D0b
 00018FFE: jsr 0x0000c0da.l ; call 0000C0DA render_encoded_title_text
 00019004: rts
-00019116: jsr 0x000532bc.l ; call 000532BC convert_audio_routine_0x000532bc
+00019116: jsr 0x000532bc.l ; call 000532BC initialize_runner_selection_screen
 0001911C: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 00019122: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 00019128: jsr 0x0000195c.l ; call 0000195C sample_controller_input
@@ -15317,7 +15317,7 @@
 000191B2: movea.l #0xc2a6,A2
 000191B8: jsr 0x0000c0da.l ; call 0000C0DA render_encoded_title_text
 000191BE: rts
-000191C0: jsr 0x000532bc.l ; call 000532BC convert_audio_routine_0x000532bc
+000191C0: jsr 0x000532bc.l ; call 000532BC initialize_runner_selection_screen
 000191C6: lea (0xff1100).l,A1 ; data 00ff1100
 000191CC: jsr 0x00053a24.l ; call 00053A24 begin_title_audio_sequence
 000191D2: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
@@ -16889,7 +16889,7 @@
 0001AEF8: jsr 0x000530ea.l ; call 000530EA service_audio_command_frame
 0001AEFE: tst.b (0x00fff0a9).l
 0001AF04: beq.w 0x0001af12
-0001AF08: jsr 0x00053704.l ; call 00053704 convert_audio_routine_0x00053704
+0001AF08: jsr 0x00053704.l ; call 00053704 run_runner_selection_screen
 0001AF0E: bra.w 0x0001af18
 0001AF12: jsr 0x00054662.l ; call 00054662 convert_graphics_routine_0x00054662
 0001AF18: jsr 0x00053126.l ; call 00053126 prepare_mode_entry_service
@@ -22993,7 +22993,7 @@
 000531C2: jsr 0x00052eec.l ; call 00052EEC initialize_audio_sequence
 000531C8: adda.w #0x10,SP
 000531CC: jmp 0x00052fa0.l ; call 00052FA0 flush_with_audio_bus
-000531EA: bsr.w 0x00053216 ; call 00053216 audio_noop_hook_b
+000531EA: bsr.w 0x00053216 ; call 00053216 select_audio_secondary_stream
 000531EE: lea (0xff1100).l,A1 ; data 00ff1100
 000531F4: move.w #0x9f,D7w
 000531F8: move.l (A0)+,(A1)+
@@ -23066,7 +23066,7 @@
 00053324: jsr 0x0000c0da.l ; call 0000C0DA render_encoded_title_text
 0005332A: bsr.w 0x000533ee ; call 000533EE convert_audio_routine_0x000533ee
 0005332E: jsr 0x0005322c.l ; call 0005322C prepare_audio_title
-00053334: bsr.w 0x00053200 ; call 00053200 audio_noop_hook_a
+00053334: bsr.w 0x00053200 ; call 00053200 select_audio_primary_stream
 00053338: lea (0xfffaa4).l,A3 ; data 00fffaa4
 0005333E: lea (0xfffb30).l,A4 ; data 00fffb30
 00053344: move.l #0xc190,D4
@@ -23114,7 +23114,7 @@
 000533E0: dbf D6w,0x00053352
 000533E4: move.w #-0x7e8c,(0x00c00004).l
 000533EC: rts
-000533EE: bsr.w 0x00053200 ; call 00053200 audio_noop_hook_a
+000533EE: bsr.w 0x00053200 ; call 00053200 select_audio_primary_stream
 000533F2: lea (0xff1100).l,A1 ; data 00ff1100
 000533F8: clr.l D0
 000533FA: move.w (0x00fff118).l,D0w
@@ -23282,9 +23282,9 @@
 000536F6: move.b #-0x1,(0x0,A1,D0w*0x1)
 000536FC: addq.w #0x1,(0x00fff104).l
 00053702: rts
-00053704: bsr.w 0x000532bc ; call 000532BC convert_audio_routine_0x000532bc
+00053704: bsr.w 0x000532bc ; call 000532BC initialize_runner_selection_screen
 00053708: lea (0xff1100).l,A1 ; data 00ff1100
-0005370E: bsr.w 0x000537fa ; call 000537FA convert_audio_routine_0x000537fa
+0005370E: bsr.w 0x000537fa ; call 000537FA refresh_runner_selection_sprites
 00053712: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 00053718: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 0005371E: jsr 0x0000195c.l ; call 0000195C sample_controller_input
@@ -23323,7 +23323,7 @@
 000537B8: btst.b #0xb,(0x00ffdd22).l
 000537C0: beq.w 0x000537ce
 000537C4: addq.l #0x1,A1
-000537C6: bsr.w 0x000537fa ; call 000537FA convert_audio_routine_0x000537fa
+000537C6: bsr.w 0x000537fa ; call 000537FA refresh_runner_selection_sprites
 000537CA: bra.w 0x00053712
 000537CE: btst.b #0xf,(0x00ffdd22).l
 000537D6: beq.w 0x00053712
@@ -24478,7 +24478,7 @@
 000561DC: clr.b (0x00fff0a3).l
 000561E2: move.w #-0x1,D0w
 000561E6: rts
-000561E8: jsr 0x00053216.l ; call 00053216 audio_noop_hook_b
+000561E8: jsr 0x00053216.l ; call 00053216 select_audio_secondary_stream
 000561EE: lea (0xfffbbe).l,A5 ; data 00fffbbe
 000561F4: lea (0xff1100).l,A1 ; data 00ff1100
 000561FA: move.w (0x00fff118).l,D1w

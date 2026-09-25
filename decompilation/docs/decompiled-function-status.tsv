@@ -608,8 +608,8 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x53194	controller access	ghidra_conversion::run_controller_access	shadowrun_ghidra_audio_service_batch	partial		Typed constant controller access boundary
 0x531AA	title audio asset initialization	ghidra_conversion::initialize_title_audio_assets	shadowrun_ghidra_audio_service_batch	partial		Asset command initialization followed by audio flush
 0x531EA	audio state snapshot	ghidra_conversion::copy_audio_state	shadowrun_ghidra_audio_service_batch	partial		Bounded host audio state copy
-0x53200	audio no-op hook A	ghidra_conversion::audio_noop_hook	shadowrun_ghidra_audio_service_batch	partial		Explicitly preserved empty source hook
-0x53216	audio no-op hook B	ghidra_conversion::audio_noop_hook	shadowrun_ghidra_audio_service_batch	partial		Explicitly preserved empty source hook
+0x53200	Primary audio stream selector	ghidra_conversion::select_audio_primary_stream	shadowrun_ghidra_audio_service_batch	partial	Typed primary stream alias lookup from the immutable audio-resource table
+0x53216	Secondary audio stream selector	ghidra_conversion::select_audio_secondary_stream	shadowrun_ghidra_audio_service_batch	partial	Typed secondary stream alias lookup from the immutable audio-resource table
 0x5322C	audio title preparation	ghidra_conversion::prepare_audio_title	shadowrun_ghidra_audio_service_batch	partial		Sprite preparation and dirty-flag publication
 0x53248	title sprite build service	ghidra_conversion::build_title_sprite_once	shadowrun_ghidra_audio_service_batch	partial		Named title sprite build boundary
 0x53290	audio menu array reset	ghidra_conversion::reset_audio_menu_arrays	shadowrun_ghidra_audio_service_batch	partial		Clears paired 35-entry host arrays

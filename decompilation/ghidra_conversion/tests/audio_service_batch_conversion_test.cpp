@@ -41,7 +41,18 @@ int main() {
     std::vector<std::uint32_t> snapshot;
     copy_audio_state({1, 2}, snapshot, 4);
     assert(snapshot == std::vector<std::uint32_t>({1, 2, 0, 0}));
-    audio_noop_hook();
+    const std::vector<AudioStreamTableEntry> audio_table{
+        {"music/title.ogg", "music/title-secondary.ogg"},
+        {"music/field.ogg", ""},
+    };
+    const auto primary = select_audio_primary_stream(audio_table, 1);
+    const auto secondary = select_audio_secondary_stream(audio_table, 0);
+    if (!primary || primary->alias != "music/field.ogg" ||
+        primary->bank != AudioStreamBank::primary || !secondary ||
+        secondary->alias != "music/title-secondary.ogg" ||
+        select_audio_secondary_stream(audio_table, 1)) {
+        return 10;
+    }
 
     AudioTitlePreparationState prep{};
     prepare_audio_title(prep, [&] { ++begins; });

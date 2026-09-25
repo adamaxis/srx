@@ -53,7 +53,7 @@
 //   0x000530DE service_audio_if_enabled
 //   0x000530EA service_audio_command_frame
 //   0x00053126 prepare_mode_entry_service
-//   0x00053704 convert_audio_routine_0x00053704
+//   0x00053704 run_runner_selection_screen
 //   0x00054662 convert_graphics_routine_0x00054662
 
 
@@ -146,7 +146,7 @@ LAB_0001aedc:
           convert_graphics_routine_0x00054662();
         }
         else {
-          convert_audio_routine_0x00053704();
+          run_runner_selection_screen();
         }
         prepare_mode_entry_service();
         return;

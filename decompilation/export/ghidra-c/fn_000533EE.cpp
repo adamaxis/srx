@@ -3,7 +3,7 @@
 // Name: convert_audio_routine_0x000533ee
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00053200 audio_noop_hook_a
+//   0x00053200 select_audio_primary_stream
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -25,7 +25,7 @@ void convert_audio_routine_0x000533ee(void)
   undefined4 *extraout_A1_01;
   char *pcVar6;
   
-  audio_noop_hook_a();
+  select_audio_primary_stream();
   iVar2 = (uint)*(byte *)((int)&DAT_00ff1104 + (int)(short)(DAT_00fff118 * 0x14)) * 0xe;
   DAT_00fff102 = (short)CONCAT31((int3)((uint)iVar2 >> 8),
                                  *(char *)((int)&DAT_00ff1100 + (short)(DAT_00fff118 * 0x14) + 3) +
@@ -186,5 +186,4 @@ LAB_000534e8:
   }
   return;
 }
-
 

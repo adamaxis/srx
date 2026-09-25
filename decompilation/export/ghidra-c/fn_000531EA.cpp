@@ -3,7 +3,7 @@
 // Name: copy_audio_state
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00053216 audio_noop_hook_b
+//   0x00053216 select_audio_secondary_stream
 
 
 void copy_audio_state(void)
@@ -14,7 +14,7 @@ void copy_audio_state(void)
   undefined4 *puVar2;
   undefined4 *puVar3;
   
-  audio_noop_hook_b();
+  select_audio_secondary_stream();
   sVar1 = 0x9f;
   puVar2 = extraout_A0;
   puVar3 = &DAT_00ff1100;
@@ -26,5 +26,4 @@ void copy_audio_state(void)
   } while (sVar1 != -1);
   return;
 }
-
 
