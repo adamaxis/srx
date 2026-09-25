@@ -11,6 +11,7 @@ int main() {
 
     RunnerRecordFields record{};
     record.archetype_index = 2U;
+    record.species_index = 4U;
     record.attributes = {10U, 11U, 12U, 13U, 14U, 15U, 16U, 17U};
     record.skills = {20U, 21U, 22U, 23U, 24U, 25U,
                     26U, 27U, 28U, 29U, 30U, 31U};
@@ -77,6 +78,54 @@ int main() {
     if (!expect(cursor.column == 1U && cursor.row == 9U &&
                 &selected_attribute_skill_cell(grid, cursor) == &grid[1][9])) {
         return 8;
+    }
+
+    RunnerRecordFields upgrade{};
+    upgrade.species_index = 4U;
+    upgrade.attributes[0] = 3U;
+    upgrade.auxiliary[2] = 10U;
+    const auto attribute_preview =
+        preview_attribute_skill_upgrade(upgrade, {0U, 0U});
+    if (!expect(attribute_preview.status ==
+                    AttributeSkillUpgradeStatus::available &&
+                attribute_preview.next_value == 4U &&
+                attribute_preview.karma_cost == 8U &&
+                apply_attribute_skill_upgrade(upgrade, {0U, 0U}, false) ==
+                    AttributeSkillUpgradeResult::confirmation_required &&
+                apply_attribute_skill_upgrade(upgrade, {0U, 0U}, true) ==
+                    AttributeSkillUpgradeResult::upgraded &&
+                upgrade.attributes[0] == 4U && upgrade.auxiliary[2] == 2U)) {
+        return 9;
+    }
+
+    upgrade.attributes[6] = 0U;
+    if (!expect(preview_attribute_skill_upgrade(upgrade, {1U, 2U}).status ==
+                AttributeSkillUpgradeStatus::attribute_not_upgradeable)) {
+        return 10;
+    }
+
+    RunnerRecordFields skill_upgrade{};
+    skill_upgrade.species_index = 4U;
+    skill_upgrade.archetype_index = 1U;
+    skill_upgrade.skills[1] = 3U;
+    skill_upgrade.skills[2] = 0U;
+    skill_upgrade.auxiliary[2] = 6U;
+    const auto skill_preview =
+        preview_attribute_skill_upgrade(skill_upgrade, {0U, 6U});
+    if (!expect(skill_preview.status ==
+                    AttributeSkillUpgradeStatus::available &&
+                skill_preview.next_value == 4U &&
+                skill_preview.karma_cost == 6U &&
+                apply_attribute_skill_upgrade(skill_upgrade, {0U, 6U}, true) ==
+                    AttributeSkillUpgradeResult::upgraded &&
+                skill_upgrade.skills[2] == 4U && skill_upgrade.auxiliary[2] == 0U)) {
+        return 11;
+    }
+
+    skill_upgrade.archetype_index = 2U;
+    if (!expect(preview_attribute_skill_upgrade(skill_upgrade, {0U, 4U}).status ==
+                AttributeSkillUpgradeStatus::class_restricted)) {
+        return 12;
     }
 
     return 0;

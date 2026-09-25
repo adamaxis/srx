@@ -48,6 +48,7 @@ RunnerRecordFields read_runner_record_fields(const LiveRunnerRecord& record) {
     fields.record_type = read_be16(record, 0x3EU);
 
     fields.race_index = record.bytes[0x00U];
+    fields.species_index = record.bytes[0x9AU];
     fields.archetype_index = record.bytes[0x9BU];
     fields.physical_value = record.bytes[0x4CU];
     fields.mental_value = record.bytes[0x9CU];
@@ -95,6 +96,7 @@ void write_runner_record_fields(const RunnerRecordFields& fields,
     write_be16(destination, 0x3EU, fields.record_type);
 
     destination.bytes[0x00U] = fields.race_index;
+    destination.bytes[0x9AU] = fields.species_index;
     destination.bytes[0x9BU] = fields.archetype_index;
     destination.bytes[0x4CU] = fields.physical_value;
     destination.bytes[0x9CU] = fields.mental_value;

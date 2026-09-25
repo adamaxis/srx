@@ -11,6 +11,7 @@ int main() {
 
     RunnerRecordFields record{};
     record.race_index = 2U;
+    record.species_index = 4U;
     record.archetype_index = 5U;
     record.attributes[3] = 17U;
     record.skills[8] = 23U;
@@ -18,6 +19,7 @@ int main() {
 
     const auto attributes = read_attributes_and_skills(record);
     if (!expect(attributes.race_index == 2U &&
+                attributes.species_index == 4U &&
                 attributes.archetype_index == 5U &&
                 attributes.attributes[3] == 17U && attributes.skills[8] == 23U)) {
         return 1;

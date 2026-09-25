@@ -244,14 +244,20 @@ remains separate work.
 
 ### Attributes/Skills (`0xD01C`)
 
-This is a display loop over the source attribute/skill tables and the active
-record's value bytes. It has a two-column cursor and row movement. The source
-also contains upgrade/mutation branches whose A/B/C semantics are not yet
-fully traced.
+This is a two-column attribute/skill view over the active record, but it is
+also a real Karma upgrade screen. The cursor selects one of eight attributes
+or twelve skills. A valid selection computes a next value and source cost;
+the confirmation branch writes the selected record byte and consumes the
+record's available Karma at `+0x8D`.
 
-Native status: source names, values, auxiliary bytes, two-column navigation,
-and read-only rendering are implemented. Mutation behavior is intentionally
-disabled until those branches are traced.
+Native conversion status: source names, values, auxiliary bytes, two-column
+navigation, species limits, class gating, cost formulas, confirmation, and
+record mutation are implemented in `attributes_skills_menu_conversion`.
+Presentation text and the surrounding VDP callbacks remain separate. The
+species limit rows are the five six-byte records at `0xC22A6`; attributes 6
+and 7 are display-only in the upgrade path. The skill branch retains the
+source distinction between 2x costs and the left-column middle-skill 1.5x
+cost path, including its linked-skill zero-value dependency.
 
 ### Cyberware (`0x11950`)
 

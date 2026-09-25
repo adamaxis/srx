@@ -32,6 +32,10 @@ struct RunnerRecordFields {
     std::uint16_t record_type = 0;
 
     std::uint8_t race_index = 0;
+    // Source +0x9A. The Attributes/Skills upgrade table at ROM 0xC22A6
+    // indexes this species/race value separately from the record header byte
+    // at +0x00.
+    std::uint8_t species_index = 0;
     std::uint8_t archetype_index = 0;
     std::uint8_t physical_value = 0;
     std::uint8_t mental_value = 0;

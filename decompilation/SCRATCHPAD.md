@@ -1074,9 +1074,16 @@ record offset, and raw value. The `+0x9B >= 2` first-skill class gate and the
 no-live-record gate remain explicit cell states instead of being guessed away.
 `0x0D01C` cursor movement is represented as ordinary bounded host state: left
 and right select columns `0`/`1`, while up and down clamp the row to `0..9`.
-The conversion remains reference-only and does not link into the emulator or
-native runtime; mutation dispatch and source text/presentation callbacks are
-still open boundaries.
+The mutation branch is now source-backed as well. `+0x8D` is the available
+Karma byte; attribute limits are the five six-byte species rows at `0xC22A6`,
+attributes 0..5 cost twice their next value, and non-upgradeable attributes
+6..7 are rejected. The skill branch preserves the source class restriction,
+the 2x skill-cost paths, and the left-column middle-skill 1.5x path that uses
+the linked second-skill value when the selected value is zero. A confirmed
+`0x0D3EA` upgrade subtracts the computed Karma and writes the selected value;
+the isolated C++ conversion leaves the prompt/text callbacks outside the
+record mutation. Source `+0x9A` is now exposed as `species_index` rather than
+being confused with the record header byte at `+0x00`.
 
 The Magic entry at `0xFBA6` now has a typed source gate. The ROM takes the
 spell-panel path only when record `+0x9B < 2` and its magic/resource byte at

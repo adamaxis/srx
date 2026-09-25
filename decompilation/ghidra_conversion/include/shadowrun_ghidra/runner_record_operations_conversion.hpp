@@ -19,6 +19,7 @@ enum class RunnerAssetOperationResult {
 // the Attributes/Skills view. Drawing text remains a separate concern.
 struct AttributeSkillValues {
     std::uint8_t race_index = 0;
+    std::uint8_t species_index = 0;
     std::uint8_t archetype_index = 0;
     std::array<std::uint8_t, kRunnerRecordAttributeCount> attributes{};
     std::array<std::uint8_t, kRunnerRecordSkillCount> skills{};

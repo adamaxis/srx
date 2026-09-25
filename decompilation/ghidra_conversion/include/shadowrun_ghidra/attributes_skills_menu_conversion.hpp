@@ -21,6 +21,37 @@ enum class AttributeSkillCellState {
     class_restricted,
 };
 
+enum class AttributeSkillUpgradeStatus {
+    available,
+    invalid_selection,
+    attribute_not_upgradeable,
+    unknown_species,
+    class_restricted,
+    at_limit,
+};
+
+struct AttributeSkillUpgradePreview {
+    AttributeSkillUpgradeStatus status =
+        AttributeSkillUpgradeStatus::invalid_selection;
+    AttributeSkillSection section = AttributeSkillSection::attribute;
+    std::uint8_t value_index = 0;
+    std::uint16_t record_offset = 0;
+    std::uint8_t current_value = 0;
+    std::uint8_t next_value = 0;
+    std::uint16_t karma_cost = 0;
+};
+
+enum class AttributeSkillUpgradeResult {
+    upgraded,
+    confirmation_required,
+    insufficient_karma,
+    invalid_selection,
+    attribute_not_upgradeable,
+    unknown_species,
+    class_restricted,
+    at_limit,
+};
+
 struct AttributeSkillCursor {
     std::uint8_t column = 0;
     std::uint8_t row = 0;
@@ -67,5 +98,17 @@ const AttributeSkillCell& selected_attribute_skill_cell(
 // does not wrap a column or row at the edge.
 AttributeSkillCursor move_attribute_skill_cursor(
     AttributeSkillCursor cursor, bool left, bool right, bool up, bool down);
+
+// ROM 0x0D82A computes the next value/cost shown beside the selected cell.
+// Attribute limits are the five six-byte species rows at 0xC22A6. The
+// available Karma byte is the source record's +0x8D auxiliary byte.
+AttributeSkillUpgradePreview preview_attribute_skill_upgrade(
+    const RunnerRecordFields& record, AttributeSkillCursor cursor);
+
+// ROM 0x0D3EA applies the confirmed upgrade: subtract the previewed Karma
+// cost from +0x8D and write the next value to the selected +0x77..+0x8C
+// record field. `confirmed=false` represents the still-open Upgrade? prompt.
+AttributeSkillUpgradeResult apply_attribute_skill_upgrade(
+    RunnerRecordFields& record, AttributeSkillCursor cursor, bool confirmed);
 
 } // namespace shadowrun::ghidra_conversion

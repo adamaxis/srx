@@ -8,6 +8,7 @@ AttributeSkillValues read_attributes_and_skills(
     const RunnerRecordFields& record) {
     AttributeSkillValues result{};
     result.race_index = record.race_index;
+    result.species_index = record.species_index;
     result.archetype_index = record.archetype_index;
     result.attributes = record.attributes;
     result.skills = record.skills;
