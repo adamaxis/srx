@@ -10,8 +10,28 @@ namespace shadowrun::ghidra_conversion {
 // ROM 0x110BC: menu path A submits one HUD-panel draw operation.
 void draw_menu_hud_panel_variant_a(const std::function<void()>& draw_panel);
 
-// ROM 0x110EC: menu path B submits one HUD-panel draw operation.
-void draw_menu_hud_panel_variant_b(const std::function<void()>& draw_panel);
+struct ActiveRunnerHudPanelInput {
+    // Source active record +0x3E. The three source ranges select the panel's
+    // tile origin; this is a panel-layout discriminator, not a menu ID.
+    std::int16_t panel_variant = 0;
+    // Source active record +0x2C, passed as the panel draw's D2 parameter.
+    std::uint16_t field_parameter = 0;
+};
+
+struct ActiveRunnerHudPanelPlan {
+    std::int16_t tile_origin = 0;
+    std::uint16_t field_parameter = 0;
+    std::uint8_t rows = 4;
+    std::uint8_t words_per_row = 4;
+};
+
+// ROM 0x110EC: choose the active runner HUD panel tile origin from +0x3E,
+// pass +0x2C through as the field parameter, and submit a 4x4 panel. The
+// attributes/skills, field-service, and inventory/action paths own the
+// surrounding menu state and share this panel layout.
+void draw_active_runner_hud_panel(
+    const ActiveRunnerHudPanelInput& input,
+    const std::function<void(const ActiveRunnerHudPanelPlan&)>& draw_panel);
 
 // ROM 0x11136: repeat the menu row transfer seven times and return the final
 // source countdown value (the source returns three after the loop).

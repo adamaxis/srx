@@ -334,7 +334,7 @@ LAB_0000d0d6:
     write_repeated_vdp_grid();
     write_repeated_vdp_grid();
     refresh_mode_resource_metadata();
-    draw_menu_hud_panel_variant_b();
+    draw_active_runner_hud_panel();
     render_encoded_title_text();
     render_encoded_title_text();
     render_encoded_title_text();
@@ -890,5 +890,4 @@ LAB_0001228c:
   render_equipment_highlights();
   return;
 }
-
 

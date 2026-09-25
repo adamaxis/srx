@@ -18,7 +18,7 @@
 //   0x0000D5DC render_cyberware_detail
 //   0x0000D82A render_attributes_and_skills
 //   0x00010C96 transfer_menu_asset_batch_eight
-//   0x000110EC draw_menu_hud_panel_variant_b
+//   0x000110EC draw_active_runner_hud_panel
 //   0x00012C5A write_menu_repeated_grid_with_metadata
 //   0x000566E2 refresh_mode_resource_metadata
 
@@ -69,7 +69,7 @@ LAB_0000d0d6:
   write_repeated_vdp_grid();
   write_repeated_vdp_grid();
   refresh_mode_resource_metadata();
-  draw_menu_hud_panel_variant_b();
+  draw_active_runner_hud_panel();
   render_encoded_title_text();
   render_encoded_title_text();
   render_encoded_title_text();
@@ -196,5 +196,4 @@ LAB_0000d4a0:
     }
   } while( true );
 }
-
 

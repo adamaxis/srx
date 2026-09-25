@@ -8,9 +8,18 @@ void draw_menu_hud_panel_variant_a(const std::function<void()>& draw_panel) {
     }
 }
 
-void draw_menu_hud_panel_variant_b(const std::function<void()>& draw_panel) {
+void draw_active_runner_hud_panel(
+    const ActiveRunnerHudPanelInput& input,
+    const std::function<void(const ActiveRunnerHudPanelPlan&)>& draw_panel) {
     if (draw_panel) {
-        draw_panel();
+        ActiveRunnerHudPanelPlan plan;
+        plan.field_parameter = input.field_parameter;
+        plan.tile_origin = input.panel_variant > 1
+                               ? static_cast<std::int16_t>(-0x7940)
+                               : input.panel_variant == 1
+                                     ? static_cast<std::int16_t>(-0x7956)
+                                     : static_cast<std::int16_t>(-0x796C);
+        draw_panel(plan);
     }
 }
 

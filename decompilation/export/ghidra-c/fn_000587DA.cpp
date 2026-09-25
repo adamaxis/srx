@@ -1,17 +1,22 @@
 // Ghidra headless export
 // Entry: 0x000587DA
-// Name: convert_intro_routine_0x000587da
-// Decompile status: ok
+// Name: render_field_mode_selection_presentation
+// Decompile status: source-shaped annotation
+//
+// The native conversion is
+// ghidra_conversion::render_field_mode_selection_presentation(). It preserves
+// the signed mode-result branches, saved cursor, grid/glyph batch counts, and
+// the typed selection-record boundary without retaining VDP or ROM pointers.
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 //   0x00011190 transfer_menu_glyph_triple
-//   0x0005763C convert_intro_routine_0x0005763c
-//   0x00058A2E convert_intro_routine_0x00058a2e
-//   0x00058AA4 convert_intro_routine_0x00058aa4
-//   0x00058B1E convert_intro_routine_0x00058b1e
+//   0x0005763C select_menu_resource
+//   0x00058A2E render_alternating_field_mode_records
+//   0x00058AA4 render_field_mode_glyph_row
+//   0x00058B1E render_field_mode_grid_pair_batches
 
 
-void convert_intro_routine_0x000587da(void)
+void render_field_mode_selection_presentation(void)
 
 {
   short sVar1;
@@ -21,11 +26,11 @@ void convert_intro_routine_0x000587da(void)
   if (DAT_00fff0b7 < '\0') {
     if (((DAT_00fff0d0 != '\0') && (-1 < (char)(DAT_00fff0d0 + -2))) && (DAT_00fff0d0 != '\x02')) {
       if (DAT_00fff0d0 == '\x03') {
-        convert_intro_routine_0x00058b1e();
+        render_field_mode_grid_pair_batches();
         return;
       }
 LAB_0005884c:
-      convert_intro_routine_0x00058aa4();
+      render_field_mode_glyph_row();
       return;
     }
   }
@@ -66,7 +71,7 @@ LAB_0005884c:
         } while (sVar2 != -1);
         return;
       }
-      convert_intro_routine_0x0005763c();
+      select_menu_resource();
       sVar1 = 7;
       do {
         write_vdp_grid();
@@ -86,8 +91,7 @@ LAB_0005884c:
       if (DAT_00fff0d0 == '\x03') goto LAB_0005884c;
     }
   }
-  convert_intro_routine_0x00058a2e();
+  render_alternating_field_mode_records();
   return;
 }
-
 

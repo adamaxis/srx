@@ -1,13 +1,17 @@
 // Ghidra headless export
 // Entry: 0x00058A2E
-// Name: convert_intro_routine_0x00058a2e
-// Decompile status: ok
+// Name: render_alternating_field_mode_records
+// Decompile status: source-shaped annotation
+//
+// The native conversion is
+// ghidra_conversion::render_alternating_field_mode_records(). The source
+// three-byte A0 records are represented by eight typed leading markers.
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 //   0x00011190 transfer_menu_glyph_triple
 
 
-void convert_intro_routine_0x00058a2e(void)
+void render_alternating_field_mode_records(void)
 
 {
   short sVar1;
@@ -31,5 +35,4 @@ void convert_intro_routine_0x00058a2e(void)
   } while (sVar1 != -1);
   return;
 }
-
 

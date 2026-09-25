@@ -8,7 +8,7 @@
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x0001275C clear_menu_slot
 //   0x000575F8 convert_intro_routine_0x000575f8
-//   0x00057628 convert_intro_routine_0x00057628
+//   0x00057628 select_menu_resource_entry
 //   0x0005766A convert_intro_routine_0x0005766a
 //   0x0005794E convert_intro_routine_0x0005794e
 //   0x00057B8C convert_intro_routine_0x00057b8c
@@ -53,7 +53,7 @@ uint convert_intro_routine_0x00056dc4(void)
       if (DAT_00fff0b7 != '\x01') {
         if ((char)(DAT_00fff0b8 + -3) < '\0') {
           if ((-1 < (char)(DAT_00fff0d6 + -9)) ||
-             (uVar6 = convert_intro_routine_0x00057628(), *extraout_A0_00 < '\0')) {
+             (uVar6 = select_menu_resource_entry(), *extraout_A0_00 < '\0')) {
             DAT_00fff112 = 0xff;
             return uVar6;
           }
@@ -76,7 +76,7 @@ uint convert_intro_routine_0x00056dc4(void)
           uVar6 = convert_intro_routine_0x00057b8c();
           if (DAT_00fff0dc == '\0') {
             DAT_00fffbfe = DAT_00fffbfe - _DAT_00fff0be;
-            convert_intro_routine_0x00057628();
+            select_menu_resource_entry();
             bVar2 = *extraout_A0_01;
             uVar6 = convert_intro_routine_0x00058d7e();
             *(char *)(unaff_A3 + 0xe + (int)(short)(ushort)bVar2) = DAT_00fff0d6;
@@ -392,5 +392,4 @@ LAB_0005710e:
   uVar6 = wait_for_controller_event();
   return uVar6;
 }
-
 

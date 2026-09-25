@@ -20,10 +20,13 @@ enum class FieldModeServiceInput : std::uint16_t {
     return_to_field = 0x0080U,
 };
 
-// The source helper at 0x566EC copies exactly eight longwords into the field
-// mode panel staging area and publishes the display dirty flag.  The host
-// representation is an ordinary typed snapshot instead of an A0/DAT address.
-void copy_field_mode_panel_snapshot(
+// The source helper at 0x566EC copies exactly eight longwords (sixteen CRAM
+// colors) into palette bank 2, the colors 32..47 portion of the full palette
+// upload buffer, and publishes the display dirty flag.  The caller chooses
+// the source bank from the active runner/entity record's +0x2C
+// position/state-derived selector.  The host representation is an ordinary
+// typed palette bank instead of an A0/DAT address.
+void copy_field_mode_palette_bank(
     const std::array<std::uint32_t, 8>& source,
     std::array<std::uint32_t, 8>& destination,
     std::uint8_t& display_dirty_flags);
@@ -33,7 +36,7 @@ struct FieldModeServiceState {
     std::int8_t service_result = 0; // FFF112
     std::int8_t selection_marker = -1; // low byte of FFF0C2
     bool has_deck = false; // source condition is FF018F bit 0 clear
-    std::array<std::uint32_t, 8> panel_snapshot{}; // FFD8BE staging words
+    std::array<std::uint32_t, 8> palette_bank_words{}; // CRAM colors 32..47
     bool returned_to_field = false;
 };
 
@@ -50,7 +53,7 @@ struct FieldModeServiceCallbacks {
     std::function<void()> render_encoded_text;
     std::function<void()> select_numeric_menu_table;
     std::function<void()> reset_upload_state;
-    std::function<std::array<std::uint32_t, 8>()> read_panel_snapshot;
+    std::function<std::array<std::uint32_t, 8>()> read_mode_palette_bank;
     std::function<void()> draw_menu_panel;
     std::function<void()> prepare_numeric_menu_block;
     std::function<void()> wait_for_controller_event;
@@ -61,8 +64,9 @@ struct FieldModeServiceCallbacks {
     std::function<void()> refresh_field_animation_assets;
     std::function<void()> upload_field_asset_setup;
 
-    // 0x587DA is still an unresolved presentation boundary. It receives the
-    // typed state after the source has saved the current primary selection.
+    // 0x587DA is the converted selection-presentation module. It receives the
+    // typed state after the source has saved the current primary selection;
+    // the callback keeps the source record table and host renderer separate.
     std::function<void(FieldModeServiceState&)> render_selection_presentation;
 
     FieldModeNavigationCallbacks navigation_callbacks;

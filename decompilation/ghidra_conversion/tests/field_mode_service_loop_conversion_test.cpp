@@ -19,7 +19,7 @@ int main() {
     std::array<std::uint32_t, 8> source{1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U};
     std::array<std::uint32_t, 8> destination{};
     std::uint8_t dirty_flags = 0x04U;
-    copy_field_mode_panel_snapshot(source, destination, dirty_flags);
+    copy_field_mode_palette_bank(source, destination, dirty_flags);
     if (!expect(destination == source && dirty_flags == 0x05U)) {
         return 1;
     }
@@ -82,7 +82,7 @@ int main() {
                     FieldModeServiceLoopAction::returned_to_field &&
                 normal.returned_to_field && normal.navigation.primary_cursor == 0 &&
                 normal.navigation.panel_cursor == 0 && restart_calls == 1 &&
-                selection_renders == 2 && normal.panel_snapshot == source &&
+                selection_renders == 2 && normal.palette_bank_words == source &&
                 normal.navigation.display_dirty_flags == 1U && actions == 0)) {
         return 2;
     }

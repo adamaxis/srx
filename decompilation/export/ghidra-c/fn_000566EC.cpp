@@ -1,18 +1,19 @@
 // Ghidra headless export
 // Entry: 0x000566EC
-// Name: copy_field_mode_panel_snapshot
+// Name: copy_field_mode_palette_bank
 // Decompile status: source-shaped annotation
 //
 // The native conversion is
-// ghidra_conversion::copy_field_mode_panel_snapshot. It copies the eight
-// longwords selected by the caller into the field-mode panel staging record
-// and ORs the display dirty flag. The native routine uses typed arrays rather
-// than the source A0/DAT addresses.
+// ghidra_conversion::copy_field_mode_palette_bank. It copies eight longwords
+// (sixteen CRAM colors) selected by the caller into FFD8BE, the colors 32..47
+// portion of the full palette upload buffer, and ORs FFEF14 bit 0 so the next
+// display service uploads the changed palette. The native routine uses typed
+// arrays rather than the source A0/DAT addresses.
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void copy_field_mode_panel_snapshot(void)
+void copy_field_mode_palette_bank(void)
 
 {
   short sVar1;

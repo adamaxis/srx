@@ -280,9 +280,25 @@ addressed memory.
 Its source-derived flow is now represented by
 `ghidra_conversion::run_field_mode_service()` in the separate conversion
 library. The conversion preserves the initial resource/palette setup, the
-mode-result-specific resource branches, the eight-longword panel snapshot at
-`0x566EC`, the numeric-menu setup, result-1 sprite-panel path, normal grid/text
-path, and the vblank/latch/input precedence:
+mode-result-specific resource branches, the numeric-menu setup, result-1
+sprite-panel path, normal grid/text path, and the vblank/latch/input
+precedence. The old “panel snapshot” label for `0x566EC` was wrong:
+
+* `0x566EC` copies eight longwords (sixteen CRAM colors) into `FFD8BE`, which
+  is palette bank 2, colors 32..47 of the 64-word palette upload buffer. It
+  then sets `FFEF14` bit 0, publishing that a subsequent palette service must
+  upload the changed full palette.
+* `0x56AC0` derives the bank selector from the active runner/entity record at
+  `FFFC04`: it reads record `+0x2C`, divides by `0x2000`, subtracts one, and
+  indexes the ROM palette-source table at `0x18ACB6` before calling `0x566EC`.
+  The exact physical interpretation of record `+0x2C` is still a data-table
+  investigation, but its role in this call is proven: it chooses the active
+  field/HUD palette bank.
+* `0x17F8E` (`draw_hud_footer`) reaches the same helper after selecting a
+  bank from the active record. Thus this is shared palette publication for
+  field/HUD presentation, not a copy of panel geometry or menu state.
+
+The service's source-derived flow is:
 
 1. primary decrement (`0x04`), panel decrement (`0x01`), primary increment
    (`0x08`), and panel increment (`0x02`) are processed in source order;
@@ -291,12 +307,49 @@ path, and the vblank/latch/input precedence:
 4. return (`0x80`) restores the field asset sequence, animation assets, and
    field setup before returning.
 
-`0x56DC4` remains an explicit typed action-handler callback, and `0x587DA`
-remains an explicit typed selection-presentation callback. Neither unresolved
-routine is copied into the native runtime. The focused test
-`shadowrun_ghidra_field_mode_service_loop` covers the snapshot dirty flag,
-normal navigation/restart/return path, alternate-panel retry path, and the
-result-2 no-deck return path.
+`0x56DC4` remains an explicit typed action-handler callback. `0x587DA` is now
+converted in `shadowrun_ghidra_field_mode_selection_presentation` and is no
+longer described as an anonymous renderer:
+
+* It first saves the primary cursor (`FFF0D0`) into `FFF0B8`.
+* A negative service result dispatches cursor 3 to a six-grid/two-grid batch,
+  cursors 4+ to eight glyph-triple submissions (with the result-selection-4
+  text pass), and lower cursors to the eight three-byte records at the selected
+  source table. Each record uses a glyph triple unless its leading marker is
+  exactly `E`, in which case it writes one grid. The marker's game-facing
+  label is not invented yet; the branch itself is directly traced.
+* A result of 1 writes eight grids. Other positive results use cursor 3 for
+  eight grids, cursor 5 for a five-plus-three split, and other cursors 3/4 for
+  four-plus-four. Cursors below 3 first use `0x5763C`: `FFF0B6 == 6` selects
+  one menu-resource record table and every other menu mode selects the other,
+  then `FFF0B8` chooses a record at a `0x10` stride. The presentation then
+  writes eight grids. The related `0x57628` helper adds `FFF0D0 * 2` bytes to
+  that record for action-path word access; it is also used by the field-action
+  and matrix/program-storage code, so the native abstraction is a shared menu
+  resource selector rather than a field-only offset helper.
+* A zero result uses the glyph row for cursors 0 and 3, otherwise the
+  alternating record path.
+
+The focused tests `shadowrun_ghidra_field_mode_service_loop` and
+`shadowrun_ghidra_field_mode_selection_presentation` cover the palette dirty
+publication, service-loop input precedence, and every presentation branch.
+
+## Shared active-runner HUD panel: 0x110BC / 0x110E8 / 0x110EC
+
+`0x110EC` is not meaningfully “menu HUD panel wrapper B.” Its body prepares
+the common active-runner HUD panel draw and then calls `0x03648`:
+
+* The active record's `+0x3E` value selects one of three tile origins (`-0x796C`,
+  `-0x7956`, or `-0x7940`).
+* Its `+0x2C` value is passed as the panel's second draw parameter.
+* The draw submits four rows of four words through the shared HUD-panel leaf.
+
+The callers identify where the resulting panel is used: `0x0D01C` is the
+attributes-and-skills menu, `0x56AC0` is the field-mode service menu, and the
+`0x110E8` entry is reached from the inventory/action controller at `0x11740`.
+So the useful native abstraction is a shared active-runner HUD panel layout,
+with the caller supplying the surrounding menu state; it is not three
+different “variant B” menus.
 
 ## Call annotation policy
 

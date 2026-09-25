@@ -1,16 +1,15 @@
 // Ghidra headless export
 // Entry: 0x00057628
-// Name: convert_intro_routine_0x00057628
+// Name: select_menu_resource_entry
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0005763C convert_intro_routine_0x0005763c
+//   0x0005763C select_menu_resource
 
 
-int convert_intro_routine_0x00057628(void)
+int select_menu_resource_entry(void)
 
 {
-  convert_intro_routine_0x0005763c();
+  select_menu_resource();
   return (uint)DAT_00fff0d0 * 2;
 }
-
 

@@ -25,14 +25,14 @@
 //   0x0000D4C8 convert_graphics_routine_0x0000d4c8
 //   0x00010BC4 transfer_menu_asset_batch_eight_after_copy
 //   0x00011048 upload_resource_then_write_two_blocks
-//   0x000110EC draw_menu_hud_panel_variant_b
+//   0x000110EC draw_active_runner_hud_panel
 //   0x000530DE service_audio_if_enabled
 //   0x000566E2 refresh_mode_resource_metadata
-//   0x000566EC copy_field_mode_panel_snapshot
+//   0x000566EC copy_field_mode_palette_bank
 //   0x000566F6 refresh_mode_resource_state
 //   0x0005670E refresh_mode_palette_data
 //   0x00056DC4 convert_intro_routine_0x00056dc4
-//   0x000587DA convert_intro_routine_0x000587da
+//   0x000587DA render_field_mode_selection_presentation
 //   0x00058B5E refresh_field_mode_panel_grid
 //   0x00058BB6 render_field_mode_selection
 //   0x00058C54 advance_field_mode_primary_cursor
@@ -67,8 +67,8 @@ LAB_00056b66:
   DAT_00fff0d0 = '\0';
   DAT_00fff0b8 = '\0';
   DAT_00fff0c2._0_1_ = -1;
-  copy_field_mode_panel_snapshot();
-  draw_menu_hud_panel_variant_b();
+  copy_field_mode_palette_bank();
+  draw_active_runner_hud_panel();
   do {
     DAT_00fff0d1 = '\0';
     prepare_numeric_menu_block();
@@ -90,7 +90,7 @@ LAB_00056da8:
       refresh_field_mode_panel_grid();
       render_field_mode_selection();
     }
-    convert_intro_routine_0x000587da();
+    render_field_mode_selection_presentation();
 LAB_00056c54:
     while( true ) {
       wait_for_vblank();
@@ -132,7 +132,7 @@ LAB_00056cd4:
         render_encoded_title_text();
       }
       else {
-        convert_intro_routine_0x000587da();
+        render_field_mode_selection_presentation();
       }
       goto LAB_00056c54;
     }

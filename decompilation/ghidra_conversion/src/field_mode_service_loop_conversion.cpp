@@ -42,7 +42,7 @@ bool has_action_input(const std::uint16_t input) {
 
 } // namespace
 
-void copy_field_mode_panel_snapshot(
+void copy_field_mode_palette_bank(
     const std::array<std::uint32_t, 8>& source,
     std::array<std::uint32_t, 8>& destination,
     std::uint8_t& display_dirty_flags) {
@@ -79,9 +79,9 @@ FieldModeServiceLoopAction run_field_mode_service(
         state.navigation.primary_cursor = 0;
         state.navigation.saved_selection = 0;
         state.selection_marker = -1;
-        if (callbacks.read_panel_snapshot) {
-            copy_field_mode_panel_snapshot(callbacks.read_panel_snapshot(),
-                                            state.panel_snapshot,
+        if (callbacks.read_mode_palette_bank) {
+            copy_field_mode_palette_bank(callbacks.read_mode_palette_bank(),
+                                            state.palette_bank_words,
                                             state.navigation.display_dirty_flags);
         }
         call_if_present(callbacks.draw_menu_panel);

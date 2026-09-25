@@ -298,7 +298,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0001107E	upload_resource_stream	62	unknown	ok	ghidra-c/fn_0001107E.cpp
 000110BC	draw_menu_hud_panel_variant_a	44	unknown	ok	ghidra-c/fn_000110BC.cpp
 000110E8	draw_hud_panel_wrapper	4	unknown	ok	ghidra-c/fn_000110E8.cpp
-000110EC	draw_menu_hud_panel_variant_b	46	unknown	ok	ghidra-c/fn_000110EC.cpp
+000110EC	draw_active_runner_hud_panel	46	unknown	ok	ghidra-c/fn_000110EC.cpp
 0001111A	render_title_text_source_wrapper	28	unknown	ok	ghidra-c/fn_0001111A.cpp
 00011136	render_menu_tile_rows	90	unknown	ok	ghidra-c/fn_00011136.cpp
 00011190	transfer_menu_glyph_triple	64	unknown	ok	ghidra-c/fn_00011190.cpp
@@ -769,7 +769,7 @@ entry	name	size	callingConvention	decompileStatus	file
 000566C2	convert_intro_routine_0x000566c2	22	unknown	ok	ghidra-c/fn_000566C2.cpp
 000566D8	convert_intro_routine_0x000566d8	10	unknown	ok	ghidra-c/fn_000566D8.cpp
 000566E2	refresh_mode_resource_metadata	10	unknown	ok	ghidra-c/fn_000566E2.cpp
-000566EC	copy_field_mode_panel_snapshot	10	unknown	ok	ghidra-c/fn_000566EC.cpp
+000566EC	copy_field_mode_palette_bank	10	unknown	ok	ghidra-c/fn_000566EC.cpp
 000566F6	refresh_mode_resource_state	24	unknown	ok	ghidra-c/fn_000566F6.cpp
 0005670E	refresh_mode_palette_data	30	unknown	ok	ghidra-c/fn_0005670E.cpp
 0005672C	convert_intro_routine_0x0005672c	916	unknown	ok	ghidra-c/fn_0005672C.cpp
@@ -777,8 +777,8 @@ entry	name	size	callingConvention	decompileStatus	file
 00056DC4	convert_intro_routine_0x00056dc4	2432	unknown	ok	ghidra-c/fn_00056DC4.cpp
 000575F8	convert_intro_routine_0x000575f8	24	unknown	ok	ghidra-c/fn_000575F8.cpp
 00057610	convert_intro_routine_0x00057610	24	unknown	ok	ghidra-c/fn_00057610.cpp
-00057628	convert_intro_routine_0x00057628	20	unknown	ok	ghidra-c/fn_00057628.cpp
-0005763C	convert_intro_routine_0x0005763c	46	unknown	ok	ghidra-c/fn_0005763C.cpp
+00057628	select_menu_resource_entry	20	unknown	ok	ghidra-c/fn_00057628.cpp
+0005763C	select_menu_resource	46	unknown	ok	ghidra-c/fn_0005763C.cpp
 0005766A	convert_intro_routine_0x0005766a	336	unknown	ok	ghidra-c/fn_0005766A.cpp
 0005787C	convert_intro_routine_0x0005787c	72	unknown	ok	ghidra-c/fn_0005787C.cpp
 0005794E	convert_intro_routine_0x0005794e	246	unknown	ok	ghidra-c/fn_0005794E.cpp
@@ -800,10 +800,10 @@ entry	name	size	callingConvention	decompileStatus	file
 00058316	convert_intro_routine_0x00058316	126	unknown	ok	ghidra-c/fn_00058316.cpp
 000586CA	convert_intro_routine_0x000586ca	196	unknown	ok	ghidra-c/fn_000586CA.cpp
 0005878E	convert_intro_routine_0x0005878e	76	unknown	ok	ghidra-c/fn_0005878E.cpp
-000587DA	convert_intro_routine_0x000587da	596	unknown	ok	ghidra-c/fn_000587DA.cpp
-00058A2E	convert_intro_routine_0x00058a2e	118	unknown	ok	ghidra-c/fn_00058A2E.cpp
-00058AA4	convert_intro_routine_0x00058aa4	122	unknown	ok	ghidra-c/fn_00058AA4.cpp
-00058B1E	convert_intro_routine_0x00058b1e	64	unknown	ok	ghidra-c/fn_00058B1E.cpp
+000587DA	render_field_mode_selection_presentation	596	unknown	ok	ghidra-c/fn_000587DA.cpp
+00058A2E	render_alternating_field_mode_records	118	unknown	ok	ghidra-c/fn_00058A2E.cpp
+00058AA4	render_field_mode_glyph_row	122	unknown	ok	ghidra-c/fn_00058AA4.cpp
+00058B1E	render_field_mode_grid_pair_batches	64	unknown	ok	ghidra-c/fn_00058B1E.cpp
 00058B5E	refresh_field_mode_panel_grid	88	unknown	ok	ghidra-c/fn_00058B5E.cpp
 00058BB6	render_field_mode_selection	158	unknown	ok	ghidra-c/fn_00058BB6.cpp
 00058C54	advance_field_mode_primary_cursor	138	unknown	ok	ghidra-c/fn_00058C54.cpp

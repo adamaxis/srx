@@ -33,9 +33,27 @@ int main() {
 
     std::vector<int> order;
     draw_menu_hud_panel_variant_a([&order] { order.push_back(1); });
-    draw_menu_hud_panel_variant_b([&order] { order.push_back(2); });
-    if (order != std::vector<int>{1, 2}) {
+    ActiveRunnerHudPanelPlan panel_plan;
+    draw_active_runner_hud_panel(
+        ActiveRunnerHudPanelInput{2, 0x1234U},
+        [&](const ActiveRunnerHudPanelPlan& plan) { panel_plan = plan; order.push_back(2); });
+    if (order != std::vector<int>{1, 2} || panel_plan.tile_origin != -0x7940 ||
+        panel_plan.field_parameter != 0x1234U || panel_plan.rows != 4 ||
+        panel_plan.words_per_row != 4) {
         return 1;
+    }
+
+    draw_active_runner_hud_panel(
+        ActiveRunnerHudPanelInput{0, 0},
+        [&](const ActiveRunnerHudPanelPlan& plan) { panel_plan = plan; });
+    if (panel_plan.tile_origin != -0x796C) {
+        return 23;
+    }
+    draw_active_runner_hud_panel(
+        ActiveRunnerHudPanelInput{1, 0},
+        [&](const ActiveRunnerHudPanelPlan& plan) { panel_plan = plan; });
+    if (panel_plan.tile_origin != -0x7956) {
+        return 24;
     }
 
     order.clear();

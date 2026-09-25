@@ -2441,3 +2441,15 @@ target_link_libraries(shadowrun_ghidra_field_mode_service_loop_test
     PRIVATE shadowrun_ghidra_field_mode_service_loop)
 add_test(NAME shadowrun_ghidra_field_mode_service_loop
          COMMAND shadowrun_ghidra_field_mode_service_loop_test)
+
+add_library(shadowrun_ghidra_field_mode_selection_presentation STATIC
+    src/field_mode_selection_presentation_conversion.cpp)
+target_include_directories(shadowrun_ghidra_field_mode_selection_presentation
+    PUBLIC include)
+
+add_executable(shadowrun_ghidra_field_mode_selection_presentation_test
+    tests/field_mode_selection_presentation_conversion_test.cpp)
+target_link_libraries(shadowrun_ghidra_field_mode_selection_presentation_test
+    PRIVATE shadowrun_ghidra_field_mode_selection_presentation)
+add_test(NAME shadowrun_ghidra_field_mode_selection_presentation
+         COMMAND shadowrun_ghidra_field_mode_selection_presentation_test)

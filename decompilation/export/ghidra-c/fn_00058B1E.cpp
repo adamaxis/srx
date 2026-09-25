@@ -1,12 +1,16 @@
 // Ghidra headless export
 // Entry: 0x00058B1E
-// Name: convert_intro_routine_0x00058b1e
-// Decompile status: ok
+// Name: render_field_mode_grid_pair_batches
+// Decompile status: source-shaped annotation
+//
+// The native conversion is
+// ghidra_conversion::render_field_mode_grid_pair_batches(). It preserves the
+// six-grid then two-grid source batch boundary.
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 
 
-void convert_intro_routine_0x00058b1e(void)
+void render_field_mode_grid_pair_batches(void)
 
 {
   short sVar1;
@@ -23,5 +27,4 @@ void convert_intro_routine_0x00058b1e(void)
   } while (sVar1 != -1);
   return;
 }
-
 

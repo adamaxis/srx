@@ -8,7 +8,7 @@
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x00013228 convert_menu_routine_0x00013228
 //   0x00057610 convert_intro_routine_0x00057610
-//   0x00057628 convert_intro_routine_0x00057628
+//   0x00057628 select_menu_resource_entry
 //   0x0005787C convert_intro_routine_0x0005787c
 //   0x00057A6E convert_intro_routine_0x00057a6e
 //   0x00057AF6 convert_intro_routine_0x00057af6
@@ -76,7 +76,7 @@ void convert_intro_routine_0x00057c7a(void)
         goto LAB_0005804a;
       }
       if ((char)(DAT_00fff0b8 + -3) < '\0') {
-        convert_intro_routine_0x00057628();
+        select_menu_resource_entry();
         DAT_00fff0d6 = (&DAT_00fffbcc)[(short)(ushort)*extraout_A0] + 1;
         convert_intro_routine_0x00057610();
         if ((int)(((extraout_D1 & 0xffff) * (uint)DAT_00fff0d6 & 0xffff) * 0x1e + -0x10000) < 0) {
@@ -190,5 +190,4 @@ LAB_0005804a:
   render_encoded_title_text();
   return;
 }
-
 
