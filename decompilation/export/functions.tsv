@@ -664,7 +664,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0001F5A8	prepare_mode_text_prompt	34	unknown	ok	ghidra-c/fn_0001F5A8.cpp
 0001F5CA	convert_world_routine_0x0001f5ca	144	unknown	ok	ghidra-c/fn_0001F5CA.cpp
 0001F65A	select_field_exit_prompt	470	unknown	ok	ghidra-c/fn_0001F65A.cpp
-0001F830	convert_world_routine_0x0001f830	584	unknown	ok	ghidra-c/fn_0001F830.cpp
+0001F830	prepare_field_mode_exit	584	unknown	ok	ghidra-c/fn_0001F830.cpp
 0001FA78	convert_world_routine_0x0001fa78	776	unknown	ok	ghidra-c/fn_0001FA78.cpp
 0001FD80	convert_world_routine_0x0001fd80	2228	unknown	ok	ghidra-c/fn_0001FD80.cpp
 00020634	convert_world_routine_0x00020634	224	unknown	ok	ghidra-c/fn_00020634.cpp

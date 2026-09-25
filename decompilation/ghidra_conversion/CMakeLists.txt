@@ -1530,6 +1530,19 @@ target_link_libraries(shadowrun_ghidra_world_sequence_tile_render_test
 add_test(NAME shadowrun_ghidra_world_sequence_tile_render
          COMMAND shadowrun_ghidra_world_sequence_tile_render_test)
 
+add_library(shadowrun_ghidra_field_mode_exit STATIC
+    src/field_mode_exit_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_field_mode_exit PUBLIC include)
+
+add_executable(shadowrun_ghidra_field_mode_exit_test
+    tests/field_mode_exit_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_field_mode_exit_test
+    PRIVATE shadowrun_ghidra_field_mode_exit)
+add_test(NAME shadowrun_ghidra_field_mode_exit
+         COMMAND shadowrun_ghidra_field_mode_exit_test)
+
 add_library(shadowrun_ghidra_mode_optional_resource STATIC
     src/mode_optional_resource_conversion.cpp
 )

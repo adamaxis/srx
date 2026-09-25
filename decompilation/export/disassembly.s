@@ -19330,7 +19330,7 @@
 0001F628: jsr 0x0001f65a.l ; call 0001F65A select_field_exit_prompt
 0001F62E: tst.w D6w
 0001F630: bmi.w 0x0001f652
-0001F634: jsr 0x0001f830.l ; call 0001F830 convert_world_routine_0x0001f830
+0001F634: jsr 0x0001f830.l ; call 0001F830 prepare_field_mode_exit
 0001F63A: tst.w D6w
 0001F63C: bmi.w 0x0001f652
 0001F640: jsr 0x0001fa78.l ; call 0001FA78 convert_world_routine_0x0001fa78

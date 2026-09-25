@@ -1189,6 +1189,13 @@ selects the eight-nibble mask cadence, and emits masked host tile writes.
 `make_vdp_transfer_command` and the source word store are callbacks; no VDP
 register or source buffer address is part of the native routine.
 
+The `0x1F830` field-mode exit policy is now `prepare_field_mode_exit`. It
+recognizes the four supported scene/submode routes, selects menu modes 11, 8,
+9, and 10, preserves the guarded `(0,0)` world-state mutation paths including
+effect marker `0x19`, clears the alternate-result marker before the exit
+service, and refreshes the mode display only when that service returns a
+nonzero result.
+
 Batch 2 converts `0x1F32E` as `clear_optional_mode_resource`, an explicit
 typed clear of the optional mode-resource marker.
 
