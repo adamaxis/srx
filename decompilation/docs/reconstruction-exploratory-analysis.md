@@ -772,6 +772,11 @@ the twelve availability flags by the source E2DF2 footprint table, and
 integers. The same module now models the `0x18F5E` reverse five-slot datafile
 walk, preserving each occupied record's signed type, usage byte, source slot,
 and display order; only slot selection and text rendering remain unresolved.
+The utility handler at `0x19018` now has a named two-entry selector: source
+selection zero dispatches “Show Map,” while selection one dispatches “Retreat”
+unless `FFDF84` reports combat, in which case it takes the explicit “Retreat
+not possible during combat!” branch. The deeper map/retreat node routine at
+`0x19180` remains separate pending its node-record meaning.
 The Matrix state table, program actions, and rendered resources inside the
 loop must still be recovered before claiming the Matrix panel complete. Until
 then the Matrix hill remains `PENDING`, rather than represented by a generic

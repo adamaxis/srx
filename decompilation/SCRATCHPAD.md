@@ -592,6 +592,12 @@ It also exposes the `0x18F5E` reverse five-slot datafile walk as a bounded
 source slot, and display row. Slot selection and text rendering remain
 explicit boundaries.
 
+The adjacent Matrix utility routine at `0x19018` now has its real menu logic:
+the shared two-entry cursor selects Show Map or Retreat, and the Retreat path
+is redirected to the source combat warning when `FFDF84` is active. The map
+transition and the deeper retreat-node routine at `0x19180` remain explicit
+boundaries until their node state is traced.
+
 The first executable portion of the Matrix loop at `0x1822C` is now separated
 from the native runtime in `matrix_loop_conversion`. Its setup preserves the
 source callback order for transfer preparation, Plane A clearing, the D9376
