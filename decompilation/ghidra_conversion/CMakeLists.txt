@@ -7,6 +7,19 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 enable_testing()
 
+add_library(shadowrun_ghidra_clips_menu STATIC
+    src/clips_menu_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_clips_menu PUBLIC include)
+
+add_executable(shadowrun_ghidra_clips_menu_test
+    tests/clips_menu_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_clips_menu_test
+    PRIVATE shadowrun_ghidra_clips_menu)
+add_test(NAME shadowrun_ghidra_clips_menu
+         COMMAND shadowrun_ghidra_clips_menu_test)
+
 add_library(shadowrun_ghidra_inventory_action STATIC
     src/inventory_action_conversion.cpp
 )

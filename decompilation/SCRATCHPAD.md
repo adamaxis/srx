@@ -608,6 +608,34 @@ equipped weapon or armor state. Focused tests cover the cell mapping, action
 loop, branch boundaries, ammo scaling, armor toggle, protected discard, and
 trade transfer.
 
+## Clips command conversion
+
+The `0x11B58` Clips command is now represented in the separate
+`clips_menu_conversion` library. Its top-level source selectors remain
+`2=Reload`, `3=Trade`, `4=Distribute`, and `5=Cancel`; the shared selector
+helper wraps only that inclusive range.
+
+The source `0x12062` gate is typed as a real state result: a zero `+0x4F`
+clip count produces `out_of_ammo_clips` before any command-specific mutation.
+Reload then rejects an absent equipped item or an equipped item code `>=0x0D`
+as `item_does_not_use_clips`. When ammunition remains, the first activation
+returns `confirmation_required`; the confirmed path decrements one clip and
+adds the source `0x26` load increment, clamped to the extracted item capacity.
+
+The nested trade table is intentionally not treated as the top-level table.
+Within `0x11E7E..0x11F90`, selector `2` increases quantity, `3` decreases
+quantity, `4` transfers clips, and `5` changes recipient. Quantity wraps
+between one and the source's complete `+0x4F` count. Recipient construction
+matches `0x11DD2`: active bit 0 is required, the source record is excluded,
+and bit 1 excludes the record from clip trade.
+
+`0x11FDE/0x12014` distribution is also typed separately. It requires at
+least two active records, writes the quotient to each active record, and adds
+the byte remainder only to records carrying source flag bit 1. All mutations
+operate on `RunnerRecordFields`; no VDP, ROM address, or emulator state is
+introduced. Tests cover the gates, reload confirmation/capacity, recipient
+filter, nested selector meanings, quantity wrap, transfer, and distribution.
+
 ## 2026-09-25 audio duration correction
 
 The first committed audio pass was wrong: the VGM trace window was allowed to
