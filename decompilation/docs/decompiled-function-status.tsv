@@ -284,11 +284,11 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x036FC	entity asset meter advance	ghidra_conversion::advance_entity_asset_meter	shadowrun_ghidra_runner_record_operations	partial		Typed ammunition and inventory-phase mutation with explicit item limit and equipment-clear result
 0x038AC	entity ammunition service	ghidra_conversion::service_entity_ammo	shadowrun_ghidra_runner_record_operations	partial		Typed record-type branch and delegation to the asset-meter operation
 0x11B58	clips menu	NativePortShell::update_clips_menu	shadowrun_menu_system	partial		panel art pending
-0xC2A6	pocket secretary	NativePortShell::update_pocket_secretary_menu	shadowrun_menu_system	partial		Matrix 0x1817E pending
+0xC2A6	pocket secretary	NativePortShell::update_pocket_secretary_menu	shadowrun_menu_system	partial		Matrix entry shell is source-traced; deck-present Matrix loop remains separate
 0xD01C	attributes/skills menu entry	ghidra_conversion::move_attribute_skill_cursor / build_attributes_and_skills_grid	shadowrun_ghidra_attributes_skills_menu	partial		Typed two-column/ten-row source layout, record-byte mapping, live-record gate, class gate, and cursor bounds are converted; mutation dispatch and presentation callbacks remain
 0x11950	cyberware menu entry	ghidra_conversion::run_cyberware_menu	shadowrun_ghidra_menu_service_sequence	partial		Typed +0x90 fifteen-bit installed-entry enumeration, panel preparation, input wait, and row render order
 0xFBA6	magic	ghidra_conversion::select_magic_menu_path / move_magic_selection_column / move_magic_selection_row	shadowrun_ghidra_magic_menu	partial		Exact class/resource gate and two-row spell cursor bounds are converted; spell table presentation and equipment-use side effects remain
-0x1817E	matrix run	—	—	pending		
+0x1817E	matrix run entry shell	ghidra_conversion::enter_matrix_screen	shadowrun_ghidra_matrix_entry	partial		Inline deck-present entry/return choreography, resource sources, ten-slot initialization, and 0x1822C loop boundary are converted; Matrix program state remains
 0x17708	field HUD	ghidra_conversion::render_field_hud	—	partial		Typed display/sprite/five-block upload choreography and conditional mode-8 panel path
 0x530DE	Z80/audio	ghidra_conversion::service_audio_if_enabled	—	partial		Typed audio-enable gate and source queue-service ordering; host audio backend remains separate
 0x17D3E	audio service phase tick	ghidra_conversion::advance_audio_service_tick	shadowrun_ghidra_audio_service	partial		Typed byte phase increment before enabled audio service

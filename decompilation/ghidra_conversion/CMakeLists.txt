@@ -1556,6 +1556,19 @@ target_link_libraries(shadowrun_ghidra_magic_menu_test
 add_test(NAME shadowrun_ghidra_magic_menu
          COMMAND shadowrun_ghidra_magic_menu_test)
 
+add_library(shadowrun_ghidra_matrix_entry STATIC
+    src/matrix_entry_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_matrix_entry PUBLIC include)
+
+add_executable(shadowrun_ghidra_matrix_entry_test
+    tests/matrix_entry_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_matrix_entry_test
+    PRIVATE shadowrun_ghidra_matrix_entry)
+add_test(NAME shadowrun_ghidra_matrix_entry
+         COMMAND shadowrun_ghidra_matrix_entry_test)
+
 add_library(shadowrun_ghidra_entity_action_sequence STATIC
     src/entity_action_sequence_conversion.cpp
 )

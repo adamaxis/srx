@@ -662,9 +662,12 @@ calls `0xC3E6`, passes `0xE43D1` to `0xC0DA` with destination `0xC40E`, and
 returns to the Pocket Secretary loop. The three fixed source strings are:
 `" You do not have"`, `"  a cyberdeck!!"`, and `" Keep looking."`. The native
 port extracts those lines and keeps the Pocket Secretary open while displaying
-them. The branch beginning at `0x1817E` initializes the actual deck/Matrix
-screen and remains a separate audit target; a generic Matrix placeholder is
-not an acceptable substitute.
+them. The inline branch beginning at `0x1817E` is now source-traced as the
+deck-present entry shell: it prepares/copies the Matrix resource block at
+`0xE2E3A`, establishes ten menu slots, enters `0x1822C`, then refreshes the
+mode data/palette and restores field resources. The `0x1822C` deck/program loop
+and its state tables remain a separate audit target; a generic Matrix
+placeholder is not an acceptable substitute.
 
 Dismiss Runner dispatches to `0xC448`. It writes the fixed lines at `0xC1499`
 (`Dismiss`), `0xC14A4` (`Who??`), and `0xC14BD` (`Abort`), then checks the
@@ -725,10 +728,12 @@ resolved against the bytecode.
 ### Matrix
 
 Matrix is a separate state family from Magic and from the command overview.
-The current native port has no authority to claim a Matrix panel is complete.
-The state table, entry/exit transitions, cursor rules, and rendered resources
-must be recovered before implementing it. Until then Matrix is explicitly
-`PENDING`, rather than represented by a generic screen.
+The deck-present entry/return shell at `0x1817E` is now converted, including
+its source resource addresses and `0x1822C` loop boundary. The Matrix state
+table, program actions, cursor rules, and rendered resources inside the loop
+must still be recovered before claiming the Matrix panel complete. Until then
+the Matrix hill remains `PENDING`, rather than represented by a generic
+screen.
 
 ## 10. Interaction, story, shops, and combat
 

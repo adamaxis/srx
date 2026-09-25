@@ -595,6 +595,15 @@ big-endian spell-table selector at `+0xA0`. The `0xFEBE` column helper and
 fallback-to-row-zero behavior. Spell-name/value rendering and the equipment
 selection/use path remain explicit unresolved boundaries.
 
+The Matrix entry at `0x1817E` is an inline branch of `0x18150`, not a missing
+standalone Ghidra function. The ROM bytes now have a typed conversion that
+preserves its exact shell: display preparation, copy of source block `0xE2E3A`,
+dirty-bit publication, menu-resource pair upload, `FFFBCA=10`, entry into the
+larger `0x1822C` Matrix loop, metadata refresh from `0xD29D6`, palette refresh,
+field-asset upload, field-animation refresh, and the final mode return. The
+actual deck/program loop remains a separate boundary and is not replaced by a
+generic Matrix screen.
+
 The leaf routines behind the terrain/scene boundary are concrete now.
 `0x16EA0` fills a bounded work-map rectangle with terrain value `2`,
 `0x16FA8` copies a bounded source rectangle using its row stride, and
