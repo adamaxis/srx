@@ -29,6 +29,14 @@ Z80_CONSUMER_INDEX = 0x37
 Z80_TICKS_PER_FRAME = 100_000
 VGM_RATE = 44_100
 TRACK_COUNT = 0xBC // 2
+# The uploaded driver fetches one decoded event byte through 0x041A.  The
+# current channel's stream base is held at 0x0454/0x0455; a later fetch from
+# that channel's original base is a source loop boundary, not a renderer
+# timeout.  Watching the current base matters because different resources use
+# different channel streams to carry the first complete repeat.
+STREAM_FETCH_PC = 0x041A
+STREAM_DATA_BASE = 0x1D80
+STREAM_LOOP_MIN_TICKS = 60 * Z80_TICKS_PER_FRAME
 
 
 @dataclass(frozen=True)
@@ -62,6 +70,8 @@ class GenesisSoundMachine:
         self.bank = 0
         self.ticks = 0
         self.writes: list[ChipWrite] = []
+        self.loop_start_ticks: int | None = None
+        self._stream_start_bytes: dict[int, int] = {}
         self._ym_register = [0, 0]
         driver = rom[ROM_DRIVER_BEGIN:ROM_DRIVER_END]
         self.machine.set_memory_block(0, driver)
@@ -109,6 +119,25 @@ class GenesisSoundMachine:
         self._queue_bytes(bytes(queue))
 
     def _read(self, address: int) -> int:
+        if (self.machine.pc == STREAM_FETCH_PC and
+                address >= STREAM_DATA_BASE):
+            stream_base = (
+                self.machine.memory[0x454]
+                | (self.machine.memory[0x455] << 8)
+            )
+            stream_byte = self.machine.memory[address]
+            if address == stream_base and stream_base not in self._stream_start_bytes:
+                self._stream_start_bytes[stream_base] = stream_byte
+            # Startup copies/initializes the first stream more than once.
+            # The driver also jumps to internal subphrases within a stream. A
+            # return to the current channel's original base, with its original
+            # marker after the first source second, is the meaningful song
+            # restart; short one-shot effects must not be mislabeled loops.
+            if (self.loop_start_ticks is None and
+                    self.ticks >= STREAM_LOOP_MIN_TICKS and
+                    address == stream_base and
+                    stream_byte == self._stream_start_bytes.get(stream_base)):
+                self.loop_start_ticks = self.ticks
         if address >= 0x8000:
             rom_address = self.bank * 0x8000 + address - 0x8000
             return self.rom[rom_address] if rom_address < len(self.rom) else 0xFF
@@ -241,7 +270,10 @@ def main() -> int:
         "--sequence", default="0x10", type=parse_sequence,
         help="comma-separated Z80 command opcodes, each given the resource id",
     )
-    parser.add_argument("--seconds", type=float, default=8.0)
+    parser.add_argument(
+        "--seconds", type=float, default=60.0,
+        help="maximum trace duration; use a long window so source loops can be found",
+    )
     args = parser.parse_args()
     rom = args.rom.read_bytes()
     for track_id in args.ids:
@@ -252,7 +284,11 @@ def main() -> int:
             writes,
             trace.ticks,
         )
-        print(f"track-{track_id:03d}: {len(writes)} chip writes")
+        loop_seconds = (trace.loop_start_ticks / Z80_TICKS_PER_FRAME / 60
+                        if trace.loop_start_ticks is not None else None)
+        suffix = (f", loop at {loop_seconds:.3f}s"
+                  if loop_seconds is not None else ", one-shot/no loop seen")
+        print(f"track-{track_id:03d}: {len(writes)} chip writes{suffix}")
     return 0
 
 

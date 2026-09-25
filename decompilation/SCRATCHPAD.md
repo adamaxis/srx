@@ -574,6 +574,33 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+## 2026-09-25 audio duration correction
+
+The first committed audio pass was wrong: the VGM trace window was allowed to
+become the WAV length, producing eight-second music previews and four-second
+title/effect files. The corrected offline pass remains separate from the
+native runtime and now treats the trace window only as an observation limit.
+
+The Z80 driver fetches event bytes through `0x041A`, with the active channel's
+stream base in `0x0454/0x0455`. The extractor watches every channel's original
+stream base, not just the first `0x1D80` stream, and records the first complete
+source restart after startup. The regenerated looped resources use those
+restart boundaries: resources `000`-`009`, `011`, `014`, `015`, `019`, and `040`
+now range from their measured source loop lengths instead of eight seconds.
+
+Standalone one-shot resources are rendered through their final traced chip
+event plus a two-second release tail. The VGM renderer is given extra time and
+the PCM is cropped afterward to the measured endpoint because its duration
+argument is coarser than the source tick boundary. This keeps the resulting
+Windows-playable WAVs complete without retaining temporary VGM files in
+`assets/`.
+
+Resources `012`, `013`, and `048` remain active throughout a ten-minute probe
+without an observed stop or repeat boundary. They are retained as ten-minute
+persistent streams rather than being silently reduced to short previews; the
+native audio service will need to apply the source command's explicit lifetime
+when those resources are wired to gameplay.
+
 ## 2026-09-25 audio extraction pass
 
 The complete ROM sound-resource pass is now separated from the native runtime.
