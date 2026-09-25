@@ -18,8 +18,10 @@ lookups at runtime.
 
 Semantic names in `functions.tsv`, `callgraph.tsv`, `call-sites.tsv`,
 `disassembly.s`, and the generated C files come from the reviewed-name table in
-`../tools/ghidra/ExportShadowrun.java`. Unreviewed functions intentionally
-retain Ghidra's `FUN_<address>` name.
+`../tools/ghidra/ExportShadowrun.java`. The current pass has reviewed all 906
+exported functions; no generated `FUN_<address>` names remain. The six
+hardware-vector entries and the six largest/previously native-owned entries
+are named explicitly as vector, renderer, terrain, menu, or save boundaries.
 
 ## Export files
 

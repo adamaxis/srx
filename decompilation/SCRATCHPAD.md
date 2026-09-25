@@ -2,6 +2,25 @@
 
 ## Current handoff
 
+Latest handoff, 2026-09-24: the canonical Ghidra pass reports 906 functions,
+2,978 resolved direct call sites, and 16 unresolved/indirect call sites. Every
+exported function now has a reviewed semantic name and every exported address
+is represented in `docs/decompiled-function-status.tsv`; nine additional
+non-function ROM anchors remain in that ledger because native screen audits
+refer to them. The Ghidra export is still reference evidence only.
+
+The remaining-entry conversion pass added typed source-analysis contracts in
+`ghidra_conversion/` for field/resource/camera work, the world/entity frame
+service, effect lifetimes, and the remaining subsystem families. This is not a
+runtime dependency and does not change the emulator/native path. Conversion
+tests currently pass 124/124. The next native work is still hill-based: the
+ledger contains 908 partial, four defended, one ported, and two pending rows.
+
+The architecture target is recorded in
+`docs/architecture-map.md`: one native session/controller/state graph, field
+world, entities/effects, menus, intro choreography, renderer, audio service,
+and persistence, with extraction and Ghidra kept outside the runtime.
+
 Input: `C:\Github\shadowrun\Shadow Run (U) [!].bin`
 
 Working copy: `input/shadowrun_genesis_us.bin`

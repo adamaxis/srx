@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x0000286E guard_world_effect_player_spawn
 //   0x000028AA prepare_field_resources
-//   0x00002900 convert_field_routine_0x00002900
+//   0x00002900 run_world_frame_services
 //   0x00002B34 apply_scene_profile_selection
 //   0x00002C6C prepare_field_viewports
 //   0x0000301E upload_scene_profile_block
@@ -22,7 +22,7 @@ void initialize_field_scene_entry(void)
   _DAT_00ffdf8a = 0xffff;
   _DAT_00ffe172 = 0xffff;
   prepare_field_scene_buffers();
-  convert_field_routine_0x00002900();
+  run_world_frame_services();
   apply_scene_profile_selection();
   prepare_field_viewports();
   upload_scene_profile_block();

@@ -1,16 +1,16 @@
 // Ghidra headless export
 // Entry: 0x000053C4
-// Name: convert_graphics_routine_0x000053c4
+// Name: run_effect_variant_a
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00005468 clone_entity_spawn_variant_a
-//   0x00005494 convert_graphics_routine_0x00005494
+//   0x00005494 advance_jitter_effect
 //   0x00005622 clear_entity_runtime_fields
 //   0x0000AFF2 prepare_entity_auxiliary_behavior
 //   0x0001A304 clear_effect_slot
 
 
-void convert_graphics_routine_0x000053c4(void)
+void run_effect_variant_a(void)
 
 {
   short sVar1;
@@ -25,7 +25,7 @@ void convert_graphics_routine_0x000053c4(void)
     }
     DAT_00ffdff8 = DAT_00ffdff8 + -1;
   }
-  convert_graphics_routine_0x00005494();
+  advance_jitter_effect();
   if (*(char *)(extraout_A0 + 0xb2) != '\0') {
     return;
   }

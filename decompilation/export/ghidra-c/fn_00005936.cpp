@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00005936
-// Name: convert_graphics_routine_0x00005936
+// Name: advance_entity_animation_effect
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
 
 
-void convert_graphics_routine_0x00005936(void)
+void advance_entity_animation_effect(void)
 
 {
   byte bVar1;

@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x0000481E
-// Name: convert_field_routine_0x0000481e
+// Name: refresh_projected_entity_sprites
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
 //   0x00005A62 project_entity_screen_position_standard
 
 
-void convert_field_routine_0x0000481e(void)
+void refresh_projected_entity_sprites(void)
 
 {
   short sVar1;

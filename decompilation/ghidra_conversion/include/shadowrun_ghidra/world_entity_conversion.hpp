@@ -1,0 +1,168 @@
+#pragma once
+
+#include <array>
+#include <cstdint>
+#include <functional>
+
+namespace shadowrun::ghidra_conversion {
+
+struct WorldFrameState {
+    bool audio_pending = false;
+    bool world_dirty = false;
+    bool effect_record_active = false;
+    bool effect_transition_pending = false;
+    bool terrain_copy_pending = false;
+    bool terrain_mode_active = false;
+    bool compressed_entity_data_pending = false;
+    std::uint8_t scene_state = 0;
+};
+
+struct WorldFrameCallbacks {
+    std::function<void()> service_audio;
+    std::function<void()> reset_effect_record;
+    std::function<void()> begin_effect_transition;
+    std::function<void()> clear_effect_slots;
+    std::function<void()> clear_entity_effects;
+    std::function<void()> clear_scene_pending;
+    std::function<void()> finalize_entity_templates;
+    std::function<void()> service_scene_effect;
+    std::function<void()> copy_terrain_layers;
+    std::function<void()> process_terrain_entries;
+    std::function<void()> rebuild_collision_map;
+    std::function<void()> load_scene_resources;
+    std::function<void()> clear_scene_transitions;
+    std::function<void()> populate_entities;
+    std::function<void()> dispatch_entity_actions;
+    std::function<void()> decode_entity_data;
+    std::function<void()> mark_entities_for_render;
+};
+
+// ROM 0x02900: one world/entity frame-service pass in source order.
+void run_world_frame_services(WorldFrameState& state,
+                              const WorldFrameCallbacks& callbacks);
+
+struct EntityFrameRecord {
+    bool active = false;
+    std::uint8_t behavior = 0;
+    std::uint8_t flags = 0;
+    std::uint8_t mode = 0;
+    std::int16_t timer = 0;
+    std::int16_t coordinate = 0;
+    bool special_descriptor = false;
+};
+
+struct EntityFrameCallbacks {
+    std::function<void(std::array<EntityFrameRecord, 16>&)> sort_by_depth;
+    std::function<void(EntityFrameRecord&)> behavior_six;
+    std::function<void(EntityFrameRecord&)> behavior_thirteen;
+    std::function<void(EntityFrameRecord&)> behavior_table;
+    std::function<void(EntityFrameRecord&)> secondary_timer;
+    std::function<void(EntityFrameRecord&)> primary_timer;
+    std::function<void(EntityFrameRecord&)> delayed_effect;
+    std::function<void(EntityFrameRecord&)> animated_effect;
+    std::function<void(EntityFrameRecord&)> sprite_burst;
+    std::function<void(EntityFrameRecord&)> expand_sprites;
+    std::function<void()> finish_effect;
+    std::function<void()> finish_wave;
+    std::function<void()> finish_post_state;
+};
+
+// ROM 0x04658: update the sixteen active entity slots and finish the shared
+// effect/object passes without carrying source record pointers into runtime.
+void update_entity_frame(std::array<EntityFrameRecord, 16>& entities,
+                         const EntityFrameCallbacks& callbacks);
+
+void refresh_projected_entity_sprites(
+    const std::array<EntityFrameRecord, 16>& entities,
+    const std::function<void(const EntityFrameRecord&)>& project_entity,
+    const std::function<void(const EntityFrameRecord&)>& build_sprite);
+
+struct EffectSlotState {
+    bool active = false;
+    std::uint16_t tile_index = 0;
+    std::uint16_t source_entity = 0;
+    std::uint8_t variant = 0;
+    std::int16_t countdown = 0;
+    std::uint8_t phase = 0;
+    std::array<std::uint8_t, 4> restored_tiles{};
+};
+
+struct EntityEffectSource {
+    std::uint16_t x = 0;
+    std::uint16_t y = 0;
+    std::uint16_t heading = 0;
+    std::uint8_t item_code = 0;
+};
+
+void spawn_entity_effect(
+    EffectSlotState& effect,
+    const EntityEffectSource& source,
+    std::uint16_t slot_index,
+    const std::function<std::uint16_t(std::uint16_t, std::uint16_t)>&
+        project_tile,
+    const std::function<void(const EffectSlotState&)>& append_sprite,
+    const std::function<void()>& service_audio);
+
+void advance_entity_effect_timer(
+    EffectSlotState& effect,
+    const std::function<void()>& clear_slot,
+    const std::function<void()>& restore_tiles,
+    const std::function<void()>& project_entity,
+    const std::function<void(std::uint8_t)>& build_sprite_records,
+    const std::function<void(const EffectSlotState&)>& append_sprite);
+
+struct EffectAnimationState {
+    std::int16_t countdown = 0;
+    std::uint8_t phase = 0;
+    std::uint8_t phase_limit = 3;
+    std::int16_t lifetime = 0;
+    bool active = true;
+};
+
+bool advance_effect_animation(
+    EffectAnimationState& state,
+    const std::function<void()>& clear_slot,
+    const std::function<void()>& append_sprite,
+    const std::function<void()>& build_sprite_records);
+bool advance_effect_animation_variant(
+    EffectAnimationState& state,
+    const std::function<void()>& clear_slot,
+    const std::function<void()>& append_sprite,
+    const std::function<void()>& build_sprite_records);
+
+void run_effect_variant_a(
+    EffectSlotState& effect,
+    const std::function<void()>& clone_variant,
+    const std::function<void()>& prepare_auxiliary,
+    const std::function<void()>& clear_slot);
+void run_effect_variant_b(
+    EffectSlotState& effect,
+    const std::function<void()>& clone_variant,
+    const std::function<void()>& prepare_auxiliary,
+    const std::function<void()>& clear_slot);
+void advance_entity_animation_effect(
+    EffectAnimationState& state,
+    const std::function<void()>& build_special_sprite,
+    const std::function<void()>& build_sprite_records);
+void refresh_delayed_effect_sprites(
+    EffectSlotState& effect,
+    const std::function<void()>& build_sprite_records,
+    const std::function<void()>& append_sprite);
+void noop_sprite_descriptor_hook();
+
+struct JitterEffectState {
+    EffectAnimationState animation;
+    std::int16_t remaining = 0;
+    std::int16_t offset_x = 0;
+    std::int16_t offset_y = 0;
+    std::uint32_t random_state = 0;
+    std::uint8_t behavior = 1;
+};
+
+void advance_jitter_effect(
+    JitterEffectState& state,
+    const std::function<std::uint32_t(std::uint32_t&)>& next_random,
+    const std::function<void()>& append_sprite,
+    const std::function<void()>& build_sprite_records);
+
+} // namespace shadowrun::ghidra_conversion

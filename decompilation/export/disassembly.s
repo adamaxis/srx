@@ -1581,7 +1581,7 @@
 00002830: move.w #-0x1,(0x00ffe172).l
 00002838: bsr.w 0x00003074 ; call 00003074 prepare_field_scene_buffers
 0000283C: bra.w 0x00002852
-00002852: bsr.w 0x00002900 ; call 00002900 convert_field_routine_0x00002900
+00002852: bsr.w 0x00002900 ; call 00002900 run_world_frame_services
 00002856: bsr.w 0x00002b34 ; call 00002B34 apply_scene_profile_selection
 0000285A: movea.l (0x00ffddfa).l,A6
 00002860: bsr.w 0x00002c6c ; call 00002C6C prepare_field_viewports
@@ -1607,7 +1607,7 @@
 000028B6: jsr 0x000039f2.l ; call 000039F2 refresh_field_animation_assets
 000028BC: jmp 0x0000c0c2.l ; call 0000C0C2 load_title_font
 000028C2: move.w #-0x1,(0x00ffdf8a).l
-000028CA: bsr.w 0x00002900 ; call 00002900 convert_field_routine_0x00002900
+000028CA: bsr.w 0x00002900 ; call 00002900 run_world_frame_services
 000028CE: bsr.b 0x0000286e ; call 0000286E guard_world_effect_player_spawn
 000028D0: bsr.b 0x000028aa ; call 000028AA prepare_field_resources
 000028D2: andi.w #-0x80,(0x00ffddc6).l
@@ -1725,7 +1725,7 @@
 00002BEA: andi.w #-0x80,(0x00ffddc8).l
 00002BF2: move.w #-0x1,(0x00ffdf36).l
 00002BFA: move.w #-0x1,(0x00ffdf38).l
-00002C02: bsr.w 0x00002900 ; call 00002900 convert_field_routine_0x00002900
+00002C02: bsr.w 0x00002900 ; call 00002900 run_world_frame_services
 00002C06: bsr.w 0x0000286e ; call 0000286E guard_world_effect_player_spawn
 00002C0A: move.w (0x00ffe11a).l,D0w
 00002C10: beq.w 0x00002c38
@@ -3124,7 +3124,7 @@
 0000463E: jsr 0x0000600e.l ; call 0000600E advance_entity_sprite_descriptor
 00004644: adda.w #0x100,A0
 00004648: dbf D7w,0x0000462a
-0000464C: bsr.w 0x00004658 ; call 00004658 convert_field_routine_0x00004658
+0000464C: bsr.w 0x00004658 ; call 00004658 update_entity_frame
 00004650: clr.w (0x00ffde88).l
 00004656: rts
 00004658: bsr.w 0x00005b1e ; call 00005B1E sort_entity_slots_by_depth
@@ -3140,15 +3140,15 @@
 00004688: bne.w 0x000046b0
 0000468C: cmpi.b #0x6,(0xb2,A0)
 00004692: bne.w 0x0000469e
-00004696: bsr.w 0x0000557e ; call 0000557E convert_graphics_routine_0x0000557e
+00004696: bsr.w 0x0000557e ; call 0000557E run_effect_variant_b
 0000469A: bra.w 0x000047e8
 0000469E: cmpi.b #0xd,(0xb2,A0)
 000046A4: bne.w 0x000047e8
-000046A8: bsr.w 0x000053c4 ; call 000053C4 convert_graphics_routine_0x000053c4
+000046A8: bsr.w 0x000053c4 ; call 000053C4 run_effect_variant_a
 000046AC: bra.w 0x000047e8
 000046B0: cmpi.l #0xafe2,(0x3a,A0)
 000046B8: bne.w 0x000046c6
-000046BC: jsr 0x00005936.l ; call 00005936 convert_graphics_routine_0x00005936
+000046BC: jsr 0x00005936.l ; call 00005936 advance_entity_animation_effect
 000046C2: bra.w 0x000046e0
 000046C6: cmpi.w #0xf,(0xe,A0)
 000046CC: bne.w 0x000046e0
@@ -3173,10 +3173,10 @@
 0000471E: move.w (0x16,A0),D0w
 00004722: andi.w #0x7ff,D0w
 00004726: cmpi.w #0x3c,D0w
-0000472A: bsr.w 0x00005c7e ; call 00005C7E convert_graphics_routine_0x00005c7e
+0000472A: bsr.w 0x00005c7e ; call 00005C7E refresh_delayed_effect_sprites
 0000472E: btst.b #0x6,(0x11,A0)
 00004734: beq.w 0x0000473c
-00004738: bsr.w 0x00004e86 ; call 00004E86 convert_field_routine_0x00004e86
+00004738: bsr.w 0x00004e86 ; call 00004E86 advance_effect_animation
 0000473C: btst.b #0x7,(0x10,A0)
 00004742: beq.w 0x0000474a
 00004746: bsr.w 0x00005b98 ; call 00005B98 emit_title_sprite_burst
@@ -3216,11 +3216,11 @@
 000047EC: lea (0xffdc9e).l,A0 ; data 00ffdc9e
 000047F2: tst.w (0x2,A0)
 000047F6: beq.w 0x000047fe
-000047FA: bsr.w 0x00004adc ; call 00004ADC convert_field_routine_0x00004adc
+000047FA: bsr.w 0x00004adc ; call 00004ADC advance_entity_effect_timer
 000047FE: tst.w (0x00ffdfea).l
 00004804: beq.w 0x0000480c
 00004808: bsr.w 0x0000aeba ; call 0000AEBA advance_title_sprite_wave
-0000480C: bsr.w 0x0000481e ; call 0000481E convert_field_routine_0x0000481e
+0000480C: bsr.w 0x0000481e ; call 0000481E refresh_projected_entity_sprites
 00004810: jsr 0x0005d29c.l ; call 0005D29C convert_intro_routine_0x0005d29c
 00004816: subq.w #0x8,A3
 00004818: clr.b (0x3,A3)
@@ -3531,7 +3531,7 @@
 000053D4: bmi.w 0x000053da
 000053D8: rts
 000053DA: subq.w #0x1,(0x00ffdff8).l
-000053E0: bsr.w 0x00005494 ; call 00005494 convert_graphics_routine_0x00005494
+000053E0: bsr.w 0x00005494 ; call 00005494 advance_jitter_effect
 000053E4: tst.b (0xb2,A0)
 000053E8: beq.w 0x000053ee
 000053EC: rts
@@ -3637,7 +3637,7 @@
 0000558E: bmi.w 0x00005594
 00005592: rts
 00005594: subq.w #0x1,(0x00ffdff4).l
-0000559A: bsr.w 0x00005662 ; call 00005662 convert_graphics_routine_0x00005662
+0000559A: bsr.w 0x00005662 ; call 00005662 advance_effect_animation_variant
 0000559E: tst.b (0xb2,A0)
 000055A2: beq.w 0x000055a8
 000055A6: rts
@@ -4018,7 +4018,7 @@
 000060B8: bne.w 0x000060ee
 000060BC: btst.b #0x0,(0x11,A0)
 000060C2: beq.w 0x000060ee
-000060C6: bsr.w 0x000060f4 ; call 000060F4 convert_graphics_routine_0x000060f4
+000060C6: bsr.w 0x000060f4 ; call 000060F4 noop_sprite_descriptor_hook
 000060CA: bcc.w 0x000060dc
 000060CE: bclr.b #0x0,(0x11,A0)
 000060D4: bsr.w 0x000060fa ; call 000060FA append_entity_render_sprite
@@ -12968,7 +12968,7 @@
 00015844: move.l (0xa2,A0),D3
 00015848: bne.w 0x00015856
 0001584C: bra.w 0x0001592e
-00015850: jmp 0x000049a2.l ; call 000049A2 convert_field_routine_0x000049a2
+00015850: jmp 0x000049a2.l ; call 000049A2 spawn_entity_effect
 00015856: movea.l D3,A1
 00015858: tst.w (0x00ffdf84).l
 0001585E: bne.w 0x00015862

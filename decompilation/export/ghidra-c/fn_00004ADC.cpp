@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00004ADC
-// Name: convert_field_routine_0x00004adc
+// Name: advance_entity_effect_timer
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000013BE build_title_sprite_records_with_attribute_offset
@@ -8,7 +8,7 @@
 //   0x000061A0 append_entity_sprite_record
 
 
-void convert_field_routine_0x00004adc(void)
+void advance_entity_effect_timer(void)
 
 {
   short sVar1;

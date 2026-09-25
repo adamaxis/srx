@@ -3,7 +3,7 @@
 // Name: convert_entity_routine_0x00015830
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000049A2 convert_field_routine_0x000049a2
+//   0x000049A2 spawn_entity_effect
 //   0x0001582A allocate_first_free_effect_slot_local
 //   0x0001597E convert_entity_routine_0x0001597e
 //   0x00015D3C measure_relative_heading_and_distance
@@ -74,7 +74,7 @@ void convert_entity_routine_0x00015830(void)
     }
     return;
   }
-  convert_field_routine_0x000049a2();
+  spawn_entity_effect();
   return;
 }
 

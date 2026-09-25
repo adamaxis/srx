@@ -1650,3 +1650,16 @@ target_link_libraries(shadowrun_ghidra_remaining_routine_catalog_test
     PRIVATE shadowrun_ghidra_remaining_routine_catalog)
 add_test(NAME shadowrun_ghidra_remaining_routine_catalog
          COMMAND shadowrun_ghidra_remaining_routine_catalog_test)
+
+add_library(shadowrun_ghidra_world_entity STATIC
+    src/world_entity_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_world_entity PUBLIC include)
+
+add_executable(shadowrun_ghidra_world_entity_test
+    tests/world_entity_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_world_entity_test
+    PRIVATE shadowrun_ghidra_world_entity)
+add_test(NAME shadowrun_ghidra_world_entity
+         COMMAND shadowrun_ghidra_world_entity_test)

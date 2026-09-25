@@ -3,7 +3,7 @@
 // Name: update_entity_render_pass
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00004658 convert_field_routine_0x00004658
+//   0x00004658 update_entity_frame
 //   0x00005A56 project_entity_screen_position
 //   0x00005FDC advance_entity_animation_accumulator
 //   0x0000600E advance_entity_sprite_descriptor
@@ -31,7 +31,7 @@ void update_entity_render_pass(void)
     puVar2 = puVar2 + 0x80;
     sVar1 = sVar1 + -1;
   } while (sVar1 != -1);
-  convert_field_routine_0x00004658();
+  update_entity_frame();
   _DAT_00ffde88 = 0;
   return;
 }

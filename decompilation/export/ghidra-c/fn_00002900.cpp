@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00002900
-// Name: convert_field_routine_0x00002900
+// Name: run_world_frame_services
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001610 decode_source_byte_stream
@@ -24,7 +24,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_field_routine_0x00002900(void)
+void run_world_frame_services(void)
 
 {
   if (DAT_00ffe172 != '\0') {

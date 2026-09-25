@@ -1,20 +1,20 @@
 // Ghidra headless export
 // Entry: 0x00004658
-// Name: convert_field_routine_0x00004658
+// Name: update_entity_frame
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000481E convert_field_routine_0x0000481e
-//   0x00004ADC convert_field_routine_0x00004adc
+//   0x0000481E refresh_projected_entity_sprites
+//   0x00004ADC advance_entity_effect_timer
 //   0x00004E38 advance_entity_primary_timer
 //   0x00004E64 advance_entity_secondary_timer
-//   0x00004E86 convert_field_routine_0x00004e86
-//   0x000053C4 convert_graphics_routine_0x000053c4
-//   0x0000557E convert_graphics_routine_0x0000557e
-//   0x00005936 convert_graphics_routine_0x00005936
+//   0x00004E86 advance_effect_animation
+//   0x000053C4 run_effect_variant_a
+//   0x0000557E run_effect_variant_b
+//   0x00005936 advance_entity_animation_effect
 //   0x000059EA advance_title_sprite_timer
 //   0x00005B1E sort_entity_slots_by_depth
 //   0x00005B98 emit_title_sprite_burst
-//   0x00005C7E convert_graphics_routine_0x00005c7e
+//   0x00005C7E refresh_delayed_effect_sprites
 //   0x0000622C expand_entity_sprite_descriptors
 //   0x0000AEBA advance_title_sprite_wave
 //   0x0005D29C convert_intro_routine_0x0005d29c
@@ -22,7 +22,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_field_routine_0x00004658(void)
+void update_entity_frame(void)
 
 {
   undefined4 uVar1;
@@ -51,15 +51,15 @@ void convert_field_routine_0x00004658(void)
     if ((*(byte *)(iVar4 + 0x10) & 1) != 0) {
       if (*(short *)(iVar4 + 0xc) == 0) {
         if (*(char *)(iVar4 + 0xb2) == '\x06') {
-          convert_graphics_routine_0x0000557e();
+          run_effect_variant_b();
         }
         else if (*(char *)(iVar4 + 0xb2) == '\r') {
-          convert_graphics_routine_0x000053c4();
+          run_effect_variant_a();
         }
       }
       else {
         if (*(undefined1 **)(iVar4 + 0x3a) == &LAB_0000afe2) {
-          convert_graphics_routine_0x00005936();
+          advance_entity_animation_effect();
           iVar4 = extraout_A0;
         }
         else if ((*(short *)(iVar4 + 0xe) == 0xf) &&
@@ -80,11 +80,11 @@ void convert_field_routine_0x00004658(void)
           iVar4 = extraout_A0_03;
         }
         if ((*(byte *)(iVar4 + 0x11) & 0x10) != 0) {
-          convert_graphics_routine_0x00005c7e();
+          refresh_delayed_effect_sprites();
           iVar4 = extraout_A0_04;
         }
         if ((*(byte *)(iVar4 + 0x11) & 0x40) != 0) {
-          convert_field_routine_0x00004e86();
+          advance_effect_animation();
           iVar4 = extraout_A0_05;
         }
         if ((*(byte *)(iVar4 + 0x10) & 0x80) != 0) {
@@ -127,12 +127,12 @@ LAB_0000479c:
     piVar5 = piVar5 + 1;
     if (sVar3 == -1) {
       if (DAT_00ffdca0 != 0) {
-        convert_field_routine_0x00004adc();
+        advance_entity_effect_timer();
       }
       if (_DAT_00ffdfea != 0) {
         advance_title_sprite_wave();
       }
-      convert_field_routine_0x0000481e();
+      refresh_projected_entity_sprites();
       convert_intro_routine_0x0005d29c();
       _DAT_00ffd980 = _DAT_00ffd980 & 0xff00;
       return;

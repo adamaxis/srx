@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00005C7E
-// Name: convert_graphics_routine_0x00005c7e
+// Name: refresh_delayed_effect_sprites
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
 
 
-void convert_graphics_routine_0x00005c7e(void)
+void refresh_delayed_effect_sprites(void)
 
 {
   short sVar1;

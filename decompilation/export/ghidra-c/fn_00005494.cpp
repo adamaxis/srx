@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00005494
-// Name: convert_graphics_routine_0x00005494
+// Name: advance_jitter_effect
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D44 advance_source_prng
@@ -10,7 +10,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_graphics_routine_0x00005494(void)
+void advance_jitter_effect(void)
 
 {
   byte bVar1;
