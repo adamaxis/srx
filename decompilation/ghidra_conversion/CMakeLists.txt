@@ -1581,6 +1581,18 @@ target_link_libraries(shadowrun_ghidra_field_mode_finalizer_test PRIVATE
 add_test(NAME shadowrun_ghidra_field_mode_finalizer
     COMMAND shadowrun_ghidra_field_mode_finalizer_test)
 
+add_library(shadowrun_ghidra_mode_entry_resource STATIC
+    src/mode_entry_resource_conversion.cpp)
+target_include_directories(shadowrun_ghidra_mode_entry_resource PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+add_executable(shadowrun_ghidra_mode_entry_resource_test
+    tests/mode_entry_resource_conversion_test.cpp)
+target_link_libraries(shadowrun_ghidra_mode_entry_resource_test PRIVATE
+    shadowrun_ghidra_mode_entry_resource)
+add_test(NAME shadowrun_ghidra_mode_entry_resource
+    COMMAND shadowrun_ghidra_mode_entry_resource_test)
+
 add_library(shadowrun_ghidra_mode_optional_resource STATIC
     src/mode_optional_resource_conversion.cpp
 )

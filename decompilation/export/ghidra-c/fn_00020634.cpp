@@ -1,54 +1,30 @@
 // Ghidra headless export
 // Entry: 0x00020634
-// Name: convert_world_routine_0x00020634
-// Decompile status: ok
-// Calls recovered from direct call instructions:
-//   (none)
+// Name: select_mode_entry_resource
+// Decompile status: source-shaped annotation
+//
+// Native conversion: ghidra_conversion::select_mode_entry_resource.
+// The byte written to FFF0B4 is a host mode-resource profile. The subsequent
+// resource service uses it to choose one of five host data profiles; it is
+// not a request to reproduce the original pointer table at runtime.
 
-
-void convert_world_routine_0x00020634(void)
-
+void select_mode_entry_resource(void)
 {
-  if (DAT_00fffbf8 == '\0') {
-    if (DAT_00fffbf9 == '\x04') {
-      DAT_00fff0b4 = 2;
-      return;
-    }
-    if (DAT_00fffbf9 == '\x05') {
-      DAT_00fff0b4 = 1;
-      return;
-    }
-  }
-  else if (DAT_00fffbf8 == '\x03') {
-    if (DAT_00fffbf9 == '\x02') {
-      DAT_00fff0b4 = 1;
-      return;
-    }
-    if (DAT_00fffbf9 == '\x03') {
-      DAT_00fff0b4 = 2;
-      return;
-    }
-    if (DAT_00fffbf9 == '\x06') {
-      DAT_00fff0b4 = 0;
-      return;
-    }
-  }
-  else if (DAT_00fffbf8 == '\x01') {
-    if (DAT_00fffbf9 == '\x02') {
-      DAT_00fff0b4 = 4;
-      return;
-    }
-  }
-  else if (DAT_00fffbf8 == '\x02') {
-    if (DAT_00fffbf9 == '\0') {
-      DAT_00fff0b4 = 0;
-      return;
-    }
-  }
-  else if (DAT_00fffbf8 == '\x05') {
+  if ((DAT_00fffbf8 == 0) && (DAT_00fffbf9 == 4)) {
+    DAT_00fff0b4 = 2;
+  } else if ((DAT_00fffbf8 == 0) && (DAT_00fffbf9 == 5)) {
+    DAT_00fff0b4 = 1;
+  } else if ((DAT_00fffbf8 == 3) && (DAT_00fffbf9 == 2)) {
+    DAT_00fff0b4 = 1;
+  } else if ((DAT_00fffbf8 == 3) && (DAT_00fffbf9 == 3)) {
+    DAT_00fff0b4 = 2;
+  } else if ((DAT_00fffbf8 == 3) && (DAT_00fffbf9 == 6)) {
+    DAT_00fff0b4 = 0;
+  } else if ((DAT_00fffbf8 == 1) && (DAT_00fffbf9 == 2)) {
+    DAT_00fff0b4 = 4;
+  } else if ((DAT_00fffbf8 == 2) && (DAT_00fffbf9 == 0)) {
+    DAT_00fff0b4 = 0;
+  } else if (DAT_00fffbf8 == 5) {
     DAT_00fff0b4 = 3;
   }
-  return;
 }
-
-

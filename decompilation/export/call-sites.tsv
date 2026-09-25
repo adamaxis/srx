@@ -2124,7 +2124,7 @@ caller	caller_name	instruction	text	target	callee	status
 0001F5A8	prepare_mode_text_prompt	0001F5B2	jsr 0x00012c5a.l	00012C5A	write_menu_repeated_grid_with_metadata	resolved
 0001F5A8	prepare_mode_text_prompt	0001F5C2	jsr 0x00012c5a.l	00012C5A	write_menu_repeated_grid_with_metadata	resolved
 0001F5CA	run_field_exit_orchestrator	0001F5E2	jmp 0x0000c64c.l	0000C64C	convert_graphics_routine_0x0000c64c	resolved
-0001F5CA	run_field_exit_orchestrator	0001F5E8	bsr.w 0x00020634	00020634	convert_world_routine_0x00020634	resolved
+0001F5CA	run_field_exit_orchestrator	0001F5E8	bsr.w 0x00020634	00020634	select_mode_entry_resource	resolved
 0001F5CA	run_field_exit_orchestrator	0001F5FC	jsr 0x0001eedc.l	0001EEDC	dispatch_world_effect	resolved
 0001F5CA	run_field_exit_orchestrator	0001F612	jsr 0x00053a78.l	00053A78	run_indexed_title_services	resolved
 0001F5CA	run_field_exit_orchestrator	0001F628	jsr 0x0001f65a.l	0001F65A	select_field_exit_prompt	resolved

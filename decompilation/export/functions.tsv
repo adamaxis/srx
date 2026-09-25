@@ -667,7 +667,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0001F830	prepare_field_mode_exit	584	unknown	ok	ghidra-c/fn_0001F830.cpp
 0001FA78	select_field_mode_service	776	unknown	ok	ghidra-c/fn_0001FA78.cpp
 0001FD80	finalize_field_mode_exit	2228	unknown	ok	ghidra-c/fn_0001FD80.cpp
-00020634	convert_world_routine_0x00020634	224	unknown	ok	ghidra-c/fn_00020634.cpp
+00020634	select_mode_entry_resource	224	unknown	ok	ghidra-c/fn_00020634.cpp
 00020714	finalize_mode_exit	86	unknown	ok	ghidra-c/fn_00020714.cpp
 0002196C	mark_effect_bit	22	unknown	ok	ghidra-c/fn_0002196C.cpp
 00021A4E	subtract_resource_clamped	24	unknown	ok	ghidra-c/fn_00021A4E.cpp

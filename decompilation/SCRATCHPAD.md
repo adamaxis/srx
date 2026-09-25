@@ -588,6 +588,11 @@ and the final mode-service callback. The original A0/A5 resource pointers are
 represented by host-facing route/profile identifiers; the source addresses
 remain provenance only in the Ghidra export.
 
+The `0x20634` selector is now `select_mode_entry_resource`. It maps the
+source's seven exact scene/submode cases into five typed host resource
+profiles, preserves the scene-5 any-submode case, and intentionally leaves
+the existing selection unchanged for all other routes.
+
 `0x1CA12` is now `advance_world_effect_motion`, preserving the negative-
 countdown finalizer, direction-dependent source-table callback, fixed Y
 subtraction, shifted sprite placement, and menu-service boundary.
