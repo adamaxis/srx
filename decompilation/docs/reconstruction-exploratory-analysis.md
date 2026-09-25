@@ -757,6 +757,12 @@ Matrix UI: a selected 0x14-byte record is eligible only when `+0x0F` is
 positive and signed `+0x13` is nonnegative; alternate mode interleaves a
 second table entry only for codes 7..16. The unresolved `0x17C3C` adjustment
 used by the larger `0x19B40` wrapper remains an explicit boundary.
+The storage screen path at `0x18D1A` now has its first concrete record math:
+`0x1954A` reads the five loaded-slot usage bytes, `0x1952C` multiplies each of
+the twelve availability flags by the source E2DF2 footprint table, and
+`0x19558` subtracts both totals from the Matrix's total memory word. The new
+`matrix_storage_conversion` module returns those values as ordinary host
+integers; its datafile selection/rendering branches are still unresolved.
 The Matrix state table, program actions, and rendered resources inside the
 loop must still be recovered before claiming the Matrix panel complete. Until
 then the Matrix hill remains `PENDING`, rather than represented by a generic

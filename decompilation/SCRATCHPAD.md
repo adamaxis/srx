@@ -574,6 +574,15 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The Matrix storage branch is no longer a generic catalog label. The source
+`0x1954A` reads one of five loaded-slot usage bytes, and `0x1952C` multiplies
+one of twelve availability flags by its E2DF2 footprint. The new
+`matrix_storage_conversion` module loops those exact fields and exposes
+`calculate_matrix_storage_capacity`, which reproduces `0x19558`'s total-minus-
+loaded-minus-installed calculation for the storage screen at `0x18D1A`.
+The datafile selection and rendering path remains an explicit next boundary;
+this slice changes only the proven record arithmetic.
+
 The first executable portion of the Matrix loop at `0x1822C` is now separated
 from the native runtime in `matrix_loop_conversion`. Its setup preserves the
 source callback order for transfer preparation, Plane A clearing, the D9376
