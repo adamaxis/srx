@@ -1629,6 +1629,18 @@ target_link_libraries(shadowrun_ghidra_world_entry_sequence_test PRIVATE
 add_test(NAME shadowrun_ghidra_world_entry_sequence
     COMMAND shadowrun_ghidra_world_entry_sequence_test)
 
+add_library(shadowrun_ghidra_display_transition STATIC
+    src/display_transition_conversion.cpp)
+target_include_directories(shadowrun_ghidra_display_transition PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+add_executable(shadowrun_ghidra_display_transition_test
+    tests/display_transition_conversion_test.cpp)
+target_link_libraries(shadowrun_ghidra_display_transition_test PRIVATE
+    shadowrun_ghidra_display_transition)
+add_test(NAME shadowrun_ghidra_display_transition
+    COMMAND shadowrun_ghidra_display_transition_test)
+
 add_library(shadowrun_ghidra_mode_optional_resource STATIC
     src/mode_optional_resource_conversion.cpp
 )

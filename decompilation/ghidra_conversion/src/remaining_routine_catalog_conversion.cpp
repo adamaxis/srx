@@ -175,7 +175,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x000266E4U, "initialize_world_tile_buffers", RoutineFamily::world, 186U},
     {0x0002679EU, "run_world_entry_sequence", RoutineFamily::world, 326U},
     {0x00026972U, "refresh_title_sprite_records", RoutineFamily::world, 142U},
-    {0x00026A00U, "convert_world_routine_0x00026a00", RoutineFamily::world, 510U},
+    {0x00026A00U, "run_display_transition", RoutineFamily::world, 510U},
     {0x000532BCU, "convert_audio_routine_0x000532bc", RoutineFamily::audio, 306U},
     {0x000533EEU, "convert_audio_routine_0x000533ee", RoutineFamily::audio, 70U},
     {0x00053434U, "convert_audio_routine_0x00053434", RoutineFamily::audio, 720U},

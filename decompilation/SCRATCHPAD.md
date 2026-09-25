@@ -581,6 +581,12 @@ publishes each completed frame through dispatch, transfer, title-layer, and
 world-sprite callbacks in source order. Malformed host streams return an
 explicit invalid result instead of walking past their data.
 
+The `0x26A00` display-transition routine is now `run_display_transition`.
+It exposes the audio marker, initial asset/reset sequence, named masked
+transfer targets, exact 14-step and 6-step loops, and the final 11/6/6/11
+input-sampling tail as host choreography. The native path has no VDP address
+arithmetic; extracted assets and transfer presentation are callbacks.
+
 The `0x1FA78` mode-service selector is now `select_field_mode_service`. It
 models the seven scene/submode routes, their menu mode/result fields, signed
 alternate prompt variants, and the special `FFF112` service-result handshake
