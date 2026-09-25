@@ -5757,7 +5757,7 @@
 0000CA10: move.w #-0x1,D6w
 0000CA14: rts
 0000CA16: move.b #0x1,(0x00fff0b7).l
-0000CA1E: jsr 0x00056ac0.l ; call 00056AC0 convert_intro_routine_0x00056ac0
+0000CA1E: jsr 0x00056ac0.l ; call 00056AC0 run_field_mode_service
 0000CA24: move.b #-0x1,(0x00fff0dc).l
 0000CA2C: rts
 0000CCCC: ori.b #0x12,D0b
@@ -14581,7 +14581,7 @@
 00017FA0: lsl.w #0x2,D0w
 00017FA2: lea (0x18acb6).l,A0 ; data 0018acb6
 00017FA8: movea.l (0x0,A0,D0w*0x1),A0 ; data 0018acb6
-00017FAC: jsr 0x000566ec.l ; call 000566EC convert_intro_routine_0x000566ec
+00017FAC: jsr 0x000566ec.l ; call 000566EC copy_field_mode_panel_snapshot
 00017FB2: rts
 00017FB4: lea (0xd8454).l,A1 ; data 000d8454
 00017FBA: move.l #0xc300,D4
@@ -19677,7 +19677,7 @@
 0001FD58: clr.b (0x00fff112).l
 0001FD5E: move.b #0x3,(0x00fff0b6).l
 0001FD66: move.b #0x0,(0x00fff0b7).l
-0001FD6E: jsr 0x00056ac0.l ; call 00056AC0 convert_intro_routine_0x00056ac0
+0001FD6E: jsr 0x00056ac0.l ; call 00056AC0 run_field_mode_service
 0001FD74: move.w #-0x1,D6w
 0001FD78: rts
 0001FD7A: bsr.w 0x0001f246 ; call 0001F246 run_mode_exit_services
@@ -25002,7 +25002,7 @@
 00056BC2: lsl.w #0x2,D2w
 00056BC4: lea (0x18acb6).l,A0 ; data 0018acb6
 00056BCA: movea.l (0x0,A0,D2w*0x1),A0 ; data 0018acb6
-00056BCE: jsr 0x000566ec.l ; call 000566EC convert_intro_routine_0x000566ec
+00056BCE: jsr 0x000566ec.l ; call 000566EC copy_field_mode_panel_snapshot
 00056BD4: movea.l (0x00fffc04).l,A0
 00056BDA: move.w #-0x1cba,D4w
 00056BDE: move.w #0x4000,D2w

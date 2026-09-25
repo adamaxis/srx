@@ -826,9 +826,9 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x000566A2L, "convert_intro_routine_0x000566a2");
         names.put(0x000566C2L, "convert_intro_routine_0x000566c2");
         names.put(0x000566D8L, "convert_intro_routine_0x000566d8");
-        names.put(0x000566ECL, "convert_intro_routine_0x000566ec");
+        names.put(0x000566ECL, "copy_field_mode_panel_snapshot");
         names.put(0x0005672CL, "convert_intro_routine_0x0005672c");
-        names.put(0x00056AC0L, "convert_intro_routine_0x00056ac0");
+        names.put(0x00056AC0L, "run_field_mode_service");
         names.put(0x00056DC4L, "convert_intro_routine_0x00056dc4");
         names.put(0x000575F8L, "convert_intro_routine_0x000575f8");
         names.put(0x00057610L, "convert_intro_routine_0x00057610");

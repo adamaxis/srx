@@ -1,12 +1,18 @@
 // Ghidra headless export
 // Entry: 0x000566EC
-// Name: convert_intro_routine_0x000566ec
-// Decompile status: ok
+// Name: copy_field_mode_panel_snapshot
+// Decompile status: source-shaped annotation
+//
+// The native conversion is
+// ghidra_conversion::copy_field_mode_panel_snapshot. It copies the eight
+// longwords selected by the caller into the field-mode panel staging record
+// and ORs the display dirty flag. The native routine uses typed arrays rather
+// than the source A0/DAT addresses.
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_intro_routine_0x000566ec(void)
+void copy_field_mode_panel_snapshot(void)
 
 {
   short sVar1;
@@ -24,5 +30,4 @@ void convert_intro_routine_0x000566ec(void)
   DAT_00ffef14 = DAT_00ffef14 | 1;
   return;
 }
-
 

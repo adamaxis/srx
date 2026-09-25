@@ -274,6 +274,30 @@ ordinary C++ data construction. `ShadowrunBoot` retains a narrow bus adapter
 for source-verification tests, while the host result is independent of Genesis
 addressed memory.
 
+## Field mode service conversion: 0x56AC0 / 0x566EC
+
+`0x56AC0` is the outer field-mode service controller, not an intro routine.
+Its source-derived flow is now represented by
+`ghidra_conversion::run_field_mode_service()` in the separate conversion
+library. The conversion preserves the initial resource/palette setup, the
+mode-result-specific resource branches, the eight-longword panel snapshot at
+`0x566EC`, the numeric-menu setup, result-1 sprite-panel path, normal grid/text
+path, and the vblank/latch/input precedence:
+
+1. primary decrement (`0x04`), panel decrement (`0x01`), primary increment
+   (`0x08`), and panel increment (`0x02`) are processed in source order;
+2. confirm (`0x40` or `0x10`) is handled after navigation;
+3. restart (`0x20`) re-enters setup through the graphics-service boundary;
+4. return (`0x80`) restores the field asset sequence, animation assets, and
+   field setup before returning.
+
+`0x56DC4` remains an explicit typed action-handler callback, and `0x587DA`
+remains an explicit typed selection-presentation callback. Neither unresolved
+routine is copied into the native runtime. The focused test
+`shadowrun_ghidra_field_mode_service_loop` covers the snapshot dirty flag,
+normal navigation/restart/return path, alternate-panel retry path, and the
+result-2 no-deck return path.
+
 ## Call annotation policy
 
 Direct calls are annotated with the target address and reviewed symbol.

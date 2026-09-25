@@ -3,14 +3,13 @@
 // Name: draw_hud_footer
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000566EC convert_intro_routine_0x000566ec
+//   0x000566EC copy_field_mode_panel_snapshot
 
 
 void draw_hud_footer(void)
 
 {
-  convert_intro_routine_0x000566ec();
+  copy_field_mode_panel_snapshot();
   return;
 }
-
 

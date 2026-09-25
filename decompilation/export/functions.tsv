@@ -769,11 +769,11 @@ entry	name	size	callingConvention	decompileStatus	file
 000566C2	convert_intro_routine_0x000566c2	22	unknown	ok	ghidra-c/fn_000566C2.cpp
 000566D8	convert_intro_routine_0x000566d8	10	unknown	ok	ghidra-c/fn_000566D8.cpp
 000566E2	refresh_mode_resource_metadata	10	unknown	ok	ghidra-c/fn_000566E2.cpp
-000566EC	convert_intro_routine_0x000566ec	10	unknown	ok	ghidra-c/fn_000566EC.cpp
+000566EC	copy_field_mode_panel_snapshot	10	unknown	ok	ghidra-c/fn_000566EC.cpp
 000566F6	refresh_mode_resource_state	24	unknown	ok	ghidra-c/fn_000566F6.cpp
 0005670E	refresh_mode_palette_data	30	unknown	ok	ghidra-c/fn_0005670E.cpp
 0005672C	convert_intro_routine_0x0005672c	916	unknown	ok	ghidra-c/fn_0005672C.cpp
-00056AC0	convert_intro_routine_0x00056ac0	772	unknown	ok	ghidra-c/fn_00056AC0.cpp
+00056AC0	run_field_mode_service	772	unknown	ok	ghidra-c/fn_00056AC0.cpp
 00056DC4	convert_intro_routine_0x00056dc4	2432	unknown	ok	ghidra-c/fn_00056DC4.cpp
 000575F8	convert_intro_routine_0x000575f8	24	unknown	ok	ghidra-c/fn_000575F8.cpp
 00057610	convert_intro_routine_0x00057610	24	unknown	ok	ghidra-c/fn_00057610.cpp

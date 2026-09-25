@@ -1,7 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00056AC0
-// Name: convert_intro_routine_0x00056ac0
-// Decompile status: ok
+// Name: run_field_mode_service
+// Decompile status: source-shaped annotation
+//
+// The native conversion is ghidra_conversion::run_field_mode_service. It
+// preserves the field-service setup, panel selection, controller precedence,
+// restart/return paths, and the explicit 0x56DC4 action-handler boundary.
+// Genesis VDP writes, ROM pointers, and controller globals are represented by
+// typed host callbacks in the conversion module.
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
@@ -22,7 +28,7 @@
 //   0x000110EC draw_menu_hud_panel_variant_b
 //   0x000530DE service_audio_if_enabled
 //   0x000566E2 refresh_mode_resource_metadata
-//   0x000566EC convert_intro_routine_0x000566ec
+//   0x000566EC copy_field_mode_panel_snapshot
 //   0x000566F6 refresh_mode_resource_state
 //   0x0005670E refresh_mode_palette_data
 //   0x00056DC4 convert_intro_routine_0x00056dc4
@@ -34,7 +40,7 @@
 //   0x00058D32 refresh_field_mode_selection_sprites
 
 
-void convert_intro_routine_0x00056ac0(void)
+void run_field_mode_service(void)
 
 {
   DAT_00fff0b1 = 0;
@@ -61,7 +67,7 @@ LAB_00056b66:
   DAT_00fff0d0 = '\0';
   DAT_00fff0b8 = '\0';
   DAT_00fff0c2._0_1_ = -1;
-  convert_intro_routine_0x000566ec();
+  copy_field_mode_panel_snapshot();
   draw_menu_hud_panel_variant_b();
   do {
     DAT_00fff0d1 = '\0';
