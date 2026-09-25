@@ -18799,7 +18799,7 @@
 0001E218: beq.w 0x0001e224
 0001E21C: bsr.w 0x0001e40c ; call 0001E40C build_world_effect_candidates
 0001E220: bra.w 0x0001e228
-0001E224: bsr.w 0x0001e302 ; call 0001E302 convert_world_routine_0x0001e302
+0001E224: bsr.w 0x0001e302 ; call 0001E302 build_world_effect_edge_candidates
 0001E228: lea (0xffdd50).l,A4 ; data 00ffdd50
 0001E22E: tst.w (A4)
 0001E230: beq.w 0x0001e258

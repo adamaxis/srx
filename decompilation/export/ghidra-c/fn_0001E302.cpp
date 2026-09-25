@@ -1,120 +1,60 @@
 // Ghidra headless export
 // Entry: 0x0001E302
-// Name: convert_world_routine_0x0001e302
+// Name: build_world_effect_edge_candidates
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001E41E lookup_world_effect_tile
+//   0x0001E41E lookup_world_effect_tile (ten edge-coordinate probes)
 
+/*
+ * The source builds two five-point rings at the map edge selected from the
+ * current world origin. A zero result from lookup_world_effect_tile means
+ * that the coordinate is available for a world effect. The native conversion
+ * is in ghidra_conversion/world_effect_edge_conversion.cpp; this file keeps
+ * the original RAM-backed evidence readable and auditable.
+ */
 
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
-
-void convert_world_routine_0x0001e302(void)
-
+void build_world_effect_edge_candidates(void)
 {
-  ushort uVar1;
-  ushort uVar2;
-  ushort extraout_D1w;
-  short sVar3;
-  short sVar4;
-  short *psVar5;
-  short *psVar6;
-  bool bVar7;
-  
-  psVar5 = &DAT_00ffdd50;
-  sVar3 = 0xbe0;
-  sVar4 = 0x8c0;
-  if ((ushort)(DAT_00ffddce >> 1) < (ushort)(DAT_00ffddc6 + 0xa00U)) {
-    sVar3 = -0xbe0;
+  short x_step;
+  short y_step;
+  ushort x_anchor;
+  ushort y_anchor;
+  ushort x;
+  ushort y;
+  short offset;
+  short *out;
+
+  out = &DAT_00ffdd50;
+  x_step = 0xbe0;
+  y_step = 0x8c0;
+  x_anchor = DAT_00ffddc6 + 0xa00U;
+  y_anchor = DAT_00ffddc8 + 0x700U;
+  if ((ushort)(DAT_00ffddce >> 1) < x_anchor) {
+    x_step = -0xbe0;
   }
-  uVar1 = DAT_00ffddc8 + 0x700;
-  if (DAT_00ffddd0 >> 1 < uVar1) {
-    sVar4 = -0x8c0;
+  if ((ushort)(DAT_00ffddd0 >> 1) < y_anchor) {
+    y_step = -0x8c0;
   }
-  sVar3 = (sVar3 + DAT_00ffddc6 + 0xa00U & 0xfe00) + 0x100;
-  uVar2 = uVar1 & 0xfe00;
-  bVar7 = (ushort)(uVar2 + 0x100) == 0;
-  lookup_world_effect_tile();
-  if (bVar7) {
-    psVar5 = &DAT_00ffdd54;
-    DAT_00ffdd50 = sVar3;
-    _DAT_00ffdd52 = uVar2 + 0x100;
+
+  x = (x_anchor + x_step & 0xfe00) + 0x100;
+  y = (y_anchor & 0xfe00) + 0x100;
+  for (offset = 0; offset < 5; ++offset) {
+    static const short ring_offsets[5] = {0, 0x200, 0x400, -0x200, -0x400};
+    const ushort candidate_y = y + ring_offsets[offset];
+    if (lookup_world_effect_tile(x, candidate_y) == 0) {
+      *out++ = x;
+      *out++ = candidate_y;
+    }
   }
-  bVar7 = (ushort)(uVar2 + 0x300) == 0;
-  lookup_world_effect_tile();
-  if (bVar7) {
-    psVar6 = psVar5 + 1;
-    *psVar5 = sVar3;
-    psVar5 = psVar5 + 2;
-    *psVar6 = uVar2 + 0x300;
+
+  y = (y_anchor + y_step & 0xfe00) + 0x100;
+  for (offset = 0; offset < 5; ++offset) {
+    static const short ring_offsets[5] = {0, 0x200, 0x400, -0x200, -0x400};
+    const ushort candidate_x = x + ring_offsets[offset];
+    if (lookup_world_effect_tile(candidate_x, y) == 0) {
+      *out++ = candidate_x;
+      *out++ = y;
+    }
   }
-  bVar7 = (ushort)(uVar2 + 0x500) == 0;
-  lookup_world_effect_tile();
-  if (bVar7) {
-    psVar6 = psVar5 + 1;
-    *psVar5 = sVar3;
-    psVar5 = psVar5 + 2;
-    *psVar6 = uVar2 + 0x500;
-  }
-  bVar7 = (ushort)(uVar2 - 0x100) == 0;
-  lookup_world_effect_tile();
-  if (bVar7) {
-    psVar6 = psVar5 + 1;
-    *psVar5 = sVar3;
-    psVar5 = psVar5 + 2;
-    *psVar6 = uVar2 - 0x100;
-  }
-  bVar7 = (ushort)(uVar2 - 0x300) == 0;
-  lookup_world_effect_tile();
-  if (bVar7) {
-    psVar6 = psVar5 + 1;
-    *psVar5 = sVar3;
-    psVar5 = psVar5 + 2;
-    *psVar6 = uVar2 - 0x300;
-  }
-  uVar2 = extraout_D1w & 0xfe00;
-  sVar3 = (sVar4 + uVar1 & 0xfe00) + 0x100;
-  bVar7 = sVar3 == 0;
-  lookup_world_effect_tile();
-  if (bVar7) {
-    psVar6 = psVar5 + 1;
-    *psVar5 = uVar2 + 0x100;
-    psVar5 = psVar5 + 2;
-    *psVar6 = sVar3;
-  }
-  bVar7 = (ushort)(uVar2 + 0x300) == 0;
-  lookup_world_effect_tile();
-  if (bVar7) {
-    psVar6 = psVar5 + 1;
-    *psVar5 = uVar2 + 0x300;
-    psVar5 = psVar5 + 2;
-    *psVar6 = sVar3;
-  }
-  bVar7 = (ushort)(uVar2 + 0x500) == 0;
-  lookup_world_effect_tile();
-  if (bVar7) {
-    psVar6 = psVar5 + 1;
-    *psVar5 = uVar2 + 0x500;
-    psVar5 = psVar5 + 2;
-    *psVar6 = sVar3;
-  }
-  bVar7 = (ushort)(uVar2 - 0x100) == 0;
-  lookup_world_effect_tile();
-  if (bVar7) {
-    psVar6 = psVar5 + 1;
-    *psVar5 = uVar2 - 0x100;
-    psVar5 = psVar5 + 2;
-    *psVar6 = sVar3;
-  }
-  bVar7 = (ushort)(uVar2 - 0x300) == 0;
-  lookup_world_effect_tile();
-  if (bVar7) {
-    psVar6 = psVar5 + 1;
-    *psVar5 = uVar2 - 0x300;
-    psVar5 = psVar5 + 2;
-    *psVar6 = sVar3;
-  }
-  *psVar5 = 0;
-  return;
+  *out = 0;
 }
-
-

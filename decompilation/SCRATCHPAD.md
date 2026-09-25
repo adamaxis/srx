@@ -608,6 +608,12 @@ world-activity transition boundary.
 predicates, 0x3FF timing gate, random threshold, and three world-event
 outcomes represented as typed callbacks.
 
+`0x1E302` is now `build_world_effect_edge_candidates`. It selects the edge
+opposite the current world origin, aligns the two five-coordinate rings using
+the source's 16-bit arithmetic, probes `0x1E41E` ten times, and retains only
+coordinates whose compact world-tile lookup returns zero. The native boundary
+uses a typed optional tile callback; it does not read ROM or Genesis RAM.
+
 The paired layer entries `0x1C3FA`/`0x1C506` are now separated into
 `advance_title_sprite_layers` and `render_title_sprite_layers`. Their phase
 timers, alternate source pointers, two base sprites, optional status overlays,

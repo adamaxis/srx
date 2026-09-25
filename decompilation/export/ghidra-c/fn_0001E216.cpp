@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001E25A spawn_world_effect_from_coordinate_sequence
-//   0x0001E302 convert_world_routine_0x0001e302
+//   0x0001E302 build_world_effect_edge_candidates
 //   0x0001E40C build_world_effect_candidates
 
 
@@ -18,7 +18,7 @@ void spawn_world_effect_sequence(void)
   short *psVar3;
   
   if (in_D0w == 0) {
-    convert_world_routine_0x0001e302();
+    build_world_effect_edge_candidates();
   }
   else {
     build_world_effect_candidates();
@@ -42,5 +42,4 @@ void spawn_world_effect_sequence(void)
   }
   return;
 }
-
 
