@@ -14126,7 +14126,7 @@
 00017816: move.w #0x1,(0x00ffdd02).l
 0001781E: lea (0xffd986).l,A3 ; data 00ffd986
 00017824: move.w #0x2,D5w
-00017828: bsr.w 0x0001c3fa ; call 0001C3FA convert_world_routine_0x0001c3fa
+00017828: bsr.w 0x0001c3fa ; call 0001C3FA advance_title_sprite_layers
 0001782C: tst.b (0x00fff0e1).l
 00017832: beq.w 0x0001783c
 00017836: jsr 0x000268e6.l ; call 000268E6 append_world_sprite_records
@@ -16941,7 +16941,7 @@
 0001B000: beq.w 0x0001b008
 0001B004: bsr.w 0x0001b218 ; call 0001B218 advance_title_phase_cycle
 0001B008: jsr 0x00026972.l ; call 00026972 convert_world_routine_0x00026972
-0001B00E: bsr.w 0x0001c3fa ; call 0001C3FA convert_world_routine_0x0001c3fa
+0001B00E: bsr.w 0x0001c3fa ; call 0001C3FA advance_title_sprite_layers
 0001B012: btst.b #0x0,(0x00ff1592).l
 0001B01A: beq.w 0x0001b022
 0001B01E: bsr.w 0x0001c61c ; call 0001C61C advance_title_sweep_animation
@@ -17111,7 +17111,7 @@
 0001B35A: add.w D1w,(A0)+
 0001B35C: dbf D7w,0x0001b32c
 0001B360: bra.w 0x0001b56e
-0001B364: bsr.w 0x0001c3fa ; call 0001C3FA convert_world_routine_0x0001c3fa
+0001B364: bsr.w 0x0001c3fa ; call 0001C3FA advance_title_sprite_layers
 0001B368: subq.w #0x1,(0x00ffe0b0).l
 0001B36E: bpl.w 0x0001b392
 0001B372: move.w #0x0,(0x00ffe0b0).l
@@ -17620,7 +17620,7 @@
 0001C400: beq.w 0x0001c414
 0001C404: movea.l #0x1d452,A4
 0001C40A: movea.l #0x1d428,A2
-0001C410: bra.w 0x0001c506 ; call 0001C506 convert_world_routine_0x0001c506
+0001C410: bra.w 0x0001c506 ; call 0001C506 render_title_sprite_layers
 0001C414: lea (0xff1580).l,A0 ; data 00ff1580
 0001C41A: movea.l (0x8,A0),A1
 0001C41E: move.w (A1)+,D4w
@@ -17656,7 +17656,7 @@
 0001C486: ext.w D0w
 0001C488: lsl.w #0x2,D0w
 0001C48A: movea.l (0x0,A1,D0w*0x1),A4
-0001C48E: bra.w 0x0001c506 ; call 0001C506 convert_world_routine_0x0001c506
+0001C48E: bra.w 0x0001c506 ; call 0001C506 render_title_sprite_layers
 0001C4EE: lea (0xff1580).l,A1 ; data 00ff1580
 0001C4F4: lea (0x1c4da).l,A0 ; data 0001c4da
 0001C4FA: move.w #0xa,D7w
@@ -22595,7 +22595,7 @@
 000268AC: move.w #0x1,(0x00ffdd02).l
 000268B4: lea (0xffd986).l,A3 ; data 00ffd986
 000268BA: moveq #0x2,D5
-000268BC: jsr 0x0001c3fa.l ; call 0001C3FA convert_world_routine_0x0001c3fa
+000268BC: jsr 0x0001c3fa.l ; call 0001C3FA advance_title_sprite_layers
 000268C2: bsr.w 0x000268e6 ; call 000268E6 append_world_sprite_records
 000268C6: subq.w #0x8,A3
 000268C8: clr.b (0x3,A3)

@@ -8,7 +8,7 @@
 //   0x00000F98 write_vdp_word_block
 //   0x00017CC8 advance_hud_sprite_audio_pulse
 //   0x00017FDA advance_menu_random_glitch
-//   0x0001C3FA convert_world_routine_0x0001c3fa
+//   0x0001C3FA advance_title_sprite_layers
 //   0x00024E20 dispatch_indexed_handler
 //   0x000268E6 append_world_sprite_records
 
@@ -72,7 +72,7 @@ void convert_world_routine_0x0002679e(void)
     dispatch_indexed_handler();
     write_vdp_word_block();
     DAT_00ffdd02 = 1;
-    convert_world_routine_0x0001c3fa();
+    advance_title_sprite_layers();
     append_world_sprite_records();
     _DAT_00ffd980 = 1;
     DAT_00ffef14 = DAT_00ffef14 | 2;
@@ -80,5 +80,4 @@ void convert_world_routine_0x0002679e(void)
   } while (uVar3 != 0xffff);
   return;
 }
-
 

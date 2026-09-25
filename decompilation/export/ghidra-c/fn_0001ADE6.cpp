@@ -35,7 +35,7 @@
 //   0x0001BF7A advance_profile_copy_timer
 //   0x0001C0C2 advance_alternating_profile
 //   0x0001C1F6 advance_audio_menu_countdown
-//   0x0001C3FA convert_world_routine_0x0001c3fa
+//   0x0001C3FA advance_title_sprite_layers
 //   0x0001C61C advance_title_sweep_animation
 //   0x0001C754 convert_world_routine_0x0001c754
 //   0x0001C866 convert_world_routine_0x0001c866
@@ -163,7 +163,7 @@ LAB_0001afc0:
         advance_title_phase_cycle();
       }
       convert_world_routine_0x00026972();
-      convert_world_routine_0x0001c3fa();
+      advance_title_sprite_layers();
       if ((DAT_00ff1592 & 1) != 0) {
         advance_title_sweep_animation();
       }

@@ -670,6 +670,19 @@ target_link_libraries(shadowrun_ghidra_title_sweep_animation_test
 add_test(NAME shadowrun_ghidra_title_sweep_animation
          COMMAND shadowrun_ghidra_title_sweep_animation_test)
 
+add_library(shadowrun_ghidra_title_sprite_layers STATIC
+    src/title_sprite_layers_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_title_sprite_layers PUBLIC include)
+
+add_executable(shadowrun_ghidra_title_sprite_layers_test
+    tests/title_sprite_layers_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_title_sprite_layers_test
+    PRIVATE shadowrun_ghidra_title_sprite_layers)
+add_test(NAME shadowrun_ghidra_title_sprite_layers
+         COMMAND shadowrun_ghidra_title_sprite_layers_test)
+
 add_library(shadowrun_ghidra_entity_template STATIC
     src/entity_template_conversion.cpp
 )

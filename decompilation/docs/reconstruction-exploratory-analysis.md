@@ -1011,6 +1011,13 @@ The adjacent title profile pair is now typed. `0x1BEBA` copies the source profil
 
 `0x1C61C` is now `advance_title_sweep_animation`. It decrements the record's byte delay, advances through the 32 entries at `0x1C6D4`, resolves the sprite pointer from `0x1C6BC`, and emits the same sprite at `base_x + offset` and `base_x - offset` with attributes `0x6000`. Source bit 3 suppresses the pair without suppressing timing; phase `0x20` clears bits 0 and 3, attaches behavior B, clears `FFE0D6`, and returns through the menu/title boundary.
 
+The paired title-layer path at `0x1C3FA`/`0x1C506` is now typed. The outer
+routine updates the two source phase/delay pairs or selects fixed sources
+`0x1D428`/`0x1D452`; the renderer emits both layers at the record position,
+optionally applies the four-way status offset table at `0x1C5EC` to both
+layers, and invokes the source double-build gate only when `FFE084` is nonzero
+and the low selector nibble is at least eight.
+
 The next title/world-effect pair is also no longer generic. `0x1A818` starts
 the descriptor transition, choosing between its six-frame loading path and the
 active descriptor-token path; its source word `0xD280` is recorded as such

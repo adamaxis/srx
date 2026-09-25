@@ -574,6 +574,12 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The paired layer entries `0x1C3FA`/`0x1C506` are now separated into
+`advance_title_sprite_layers` and `render_title_sprite_layers`. Their phase
+timers, alternate source pointers, two base sprites, optional status overlays,
+and late double-build gate are represented without retaining Genesis pointer
+arithmetic in runtime code.
+
 `0x1BCE8` is now `advance_title_profile_motion`. It carries the typed profile
 phase, movement countdown/easing boundary, moving X/Y state, secondary phase,
 and source finalization flags into a separate module; both profile and moving

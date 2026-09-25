@@ -593,9 +593,9 @@ entry	name	size	callingConvention	decompileStatus	file
 0001C012	copy_seven_words	16	unknown	ok	ghidra-c/fn_0001C012.cpp
 0001C0C2	advance_alternating_profile	72	unknown	ok	ghidra-c/fn_0001C0C2.cpp
 0001C1F6	advance_audio_menu_countdown	52	unknown	ok	ghidra-c/fn_0001C1F6.cpp
-0001C3FA	convert_world_routine_0x0001c3fa	152	unknown	ok	ghidra-c/fn_0001C3FA.cpp
+0001C3FA	advance_title_sprite_layers	152	unknown	ok	ghidra-c/fn_0001C3FA.cpp
 0001C4EE	copy_eleven_words	24	unknown	ok	ghidra-c/fn_0001C4EE.cpp
-0001C506	convert_world_routine_0x0001c506	230	unknown	ok	ghidra-c/fn_0001C506.cpp
+0001C506	render_title_sprite_layers	230	unknown	ok	ghidra-c/fn_0001C506.cpp
 0001C61C	advance_title_sweep_animation	160	unknown	ok	ghidra-c/fn_0001C61C.cpp
 0001C754	convert_world_routine_0x0001c754	274	unknown	ok	ghidra-c/fn_0001C754.cpp
 0001C866	convert_world_routine_0x0001c866	192	unknown	ok	ghidra-c/fn_0001C866.cpp

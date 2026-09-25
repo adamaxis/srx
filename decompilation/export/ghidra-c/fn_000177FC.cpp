@@ -8,7 +8,7 @@
 //   0x00017CC8 advance_hud_sprite_audio_pulse
 //   0x00017FDA advance_menu_random_glitch
 //   0x000194AC advance_hud_selection_row
-//   0x0001C3FA convert_world_routine_0x0001c3fa
+//   0x0001C3FA advance_title_sprite_layers
 //   0x000266E4 convert_world_routine_0x000266e4
 //   0x0002679E convert_world_routine_0x0002679e
 //   0x000268E6 append_world_sprite_records
@@ -28,7 +28,7 @@ void run_menu_hud_tick_loop(void)
     advance_hud_sprite_audio_pulse();
     advance_menu_random_glitch();
     DAT_00ffdd02 = 1;
-    convert_world_routine_0x0001c3fa();
+    advance_title_sprite_layers();
     if (DAT_00fff0e1 != '\0') {
       append_world_sprite_records();
     }
@@ -42,5 +42,4 @@ void run_menu_hud_tick_loop(void)
   advance_hud_selection_row();
   return;
 }
-
 

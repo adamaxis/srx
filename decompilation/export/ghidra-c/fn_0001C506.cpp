@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001C506
-// Name: convert_world_routine_0x0001c506
+// Name: render_title_sprite_layers
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
@@ -9,7 +9,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_world_routine_0x0001c506(void)
+void render_title_sprite_layers(void)
 
 {
   ushort uVar1;
@@ -40,5 +40,4 @@ void convert_world_routine_0x0001c506(void)
   }
   return;
 }
-
 

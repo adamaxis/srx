@@ -1,18 +1,18 @@
 // Ghidra headless export
 // Entry: 0x0001C3FA
-// Name: convert_world_routine_0x0001c3fa
+// Name: advance_title_sprite_layers
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001C506 convert_world_routine_0x0001c506
+//   0x0001C506 render_title_sprite_layers
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_world_routine_0x0001c3fa(void)
+void advance_title_sprite_layers(void)
 
 {
   if (_DAT_00ffdf8c != 0) {
-    convert_world_routine_0x0001c506();
+    render_title_sprite_layers();
     return;
   }
   if ((DAT_00ff158c < (char)*DAT_00ff1588) &&
@@ -29,8 +29,7 @@ void convert_world_routine_0x0001c3fa(void)
       DAT_00ff158d = DAT_00ff158d + '\x01';
     }
   }
-  convert_world_routine_0x0001c506();
+  render_title_sprite_layers();
   return;
 }
-
 

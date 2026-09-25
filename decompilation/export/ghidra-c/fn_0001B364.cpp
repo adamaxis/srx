@@ -5,13 +5,13 @@
 // Calls recovered from direct call instructions:
 //   0x000013BE build_title_sprite_records_with_attribute_offset
 //   0x000061CC append_sprite_record
-//   0x0001C3FA convert_world_routine_0x0001c3fa
+//   0x0001C3FA advance_title_sprite_layers
 
 
 void advance_title_figure_animation(void)
 
 {
-  convert_world_routine_0x0001c3fa();
+  advance_title_sprite_layers();
   DAT_00ffe0b0 = DAT_00ffe0b0 + -1;
   if (DAT_00ffe0b0 < 0) {
     DAT_00ffe0b0 = 0;
