@@ -16662,7 +16662,7 @@
 0001AAA0: subq.b #0x1,(0x4,A0)
 0001AAA4: bpl.w 0x0001aad0
 0001AAA8: move.b (0x6,A0),D0b
-0001AAAC: bsr.w 0x0001a4ea ; call 0001A4EA convert_world_routine_0x0001a4ea
+0001AAAC: bsr.w 0x0001a4ea ; call 0001A4EA lookup_runner_animation_delta
 0001AAB0: add.b D1b,D0b
 0001AAB2: bpl.w 0x0001aab8
 0001AAB6: clr.b D0b
@@ -16995,7 +16995,7 @@
 0001B112: bsr.w 0x0001cc24 ; call 0001CC24 convert_world_routine_0x0001cc24
 0001B116: tst.w (0x00ffe080).l
 0001B11C: bne.w 0x0001b126
-0001B120: jsr 0x0001aa40.l ; call 0001AA40 convert_world_routine_0x0001aa40
+0001B120: jsr 0x0001aa40.l ; call 0001AA40 tick_world_effect_animation
 0001B126: jsr 0x000268e6.l ; call 000268E6 append_world_sprite_records
 0001B12C: subq.w #0x8,A3
 0001B12E: clr.b (0x3,A3)

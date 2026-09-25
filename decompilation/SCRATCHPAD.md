@@ -606,6 +606,18 @@ table reads and title-sprite construction are explicit callbacks, while the
 conversion records the source keys (`0x7A8`, attributes `0xB9`/`0xD0`, and
 position shifts) instead of reproducing ROM address arithmetic.
 
+`0x1AA40` is now converted as `tick_world_effect_animation`. The typed tick
+keeps the source's three-way split visible: descriptor loading/transition uses
+the six-step `0xF1C46` table and resets the effect entity after phase six;
+normal animation either uses the current runner timing delta or the fixed
+descriptor-state cadence when `FFDF8C != 0 && FFE0BC == 0`; then it builds the
+descriptor sprite and advances the primary, secondary, and background overlays
+in source order. The source `0x694` sprite key, `FF163E` coordinates, and
+`0x2000` build flags are typed, while runner timing and both sprite-table
+lookups remain explicit host callbacks. This corrects the old Ghidra output's
+unresolved D-register/A-register values without making those registers part of
+the host runtime.
+
 The program-slot branch at `0x19238` is now typed as real Matrix outcomes:
 already loaded, no available slot, insufficient memory, or ready to install.
 The source's two-entry Yes/No prompt is also converted; Yes reaches the

@@ -1018,3 +1018,11 @@ different cadence limits. `0x1AD42` is the background overlay with the intro
 marker gate and its separate position shift. Their phase-table selections are
 callbacks returning host data tokens; the conversion does not make the native
 runtime decode or dereference the Genesis tables.
+
+The larger `0x1AA40` leaf is now named `tick_world_effect_animation` and
+converted separately. Its normal path chooses runner-derived timing versus the
+fixed descriptor-state cadence, its loading/transition path uses the six-phase
+`0xF1C46` sequence and reset boundary, and its final order is sprite build then
+the three overlay updates. The decompiler's indeterminate D1/A0 values are
+represented as explicit timing and sprite-data callbacks rather than guessed
+register state.

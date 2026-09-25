@@ -1,11 +1,11 @@
 // Ghidra headless export
 // Entry: 0x0001AA40
-// Name: convert_world_routine_0x0001aa40
+// Name: tick_world_effect_animation
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000013BE build_title_sprite_records_with_attribute_offset
 //   0x000061CC append_sprite_record
-//   0x0001A4EA convert_world_routine_0x0001a4ea
+//   0x0001A4EA lookup_runner_animation_delta
 //   0x0001A8F4 reset_effect_entity
 //   0x0001AB6E advance_primary_world_effect_overlay
 //   0x0001AC6A advance_secondary_world_effect_overlay
@@ -14,7 +14,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_world_routine_0x0001aa40(void)
+void tick_world_effect_animation(void)
 
 {
   char cVar1;
