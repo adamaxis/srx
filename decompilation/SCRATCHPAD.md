@@ -574,6 +574,17 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The runner-selection family is now native-shaped. `0x532BC` is
+`initialize_runner_selection_screen`: it exposes the background asset setup,
+header/animation preparation, and exact 10-by-14 grid request sequence.
+`0x537FA` is `refresh_runner_selection_sprites`, which resolves a typed
+selected-runner record, scales its two source origin bytes by `0x10`, and
+rebuilds the sprite records with the `0x2000` animation seed.
+`0x53704` is `run_runner_selection_screen`: its source edge-event precedence
+is preserved for previous, confirm, next, and menu-return actions, while
+roster movement, HUD redraw, assets, and input are native callbacks. The
+conversion contains no Genesis bus or address arithmetic.
+
 The `0x2679E` world-entry loop is now `run_world_entry_sequence`. It consumes
 an extracted command/delay stream, preserves the three-cycle timing cadence,
 handles signed origin corrections and delayed horizontal/vertical pairs, and

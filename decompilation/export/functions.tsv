@@ -722,11 +722,11 @@ entry	name	size	callingConvention	decompileStatus	file
 00053248	build_title_sprite_once	72	unknown	ok	ghidra-c/fn_00053248.cpp
 00053290	reset_audio_menu_arrays	24	unknown	ok	ghidra-c/fn_00053290.cpp
 000532A8	fill_audio_menu_sentinel	20	unknown	ok	ghidra-c/fn_000532A8.cpp
-000532BC	convert_audio_routine_0x000532bc	306	unknown	ok	ghidra-c/fn_000532BC.cpp
+000532BC	initialize_runner_selection_screen	306	unknown	ok	ghidra-c/fn_000532BC.cpp
 000533EE	convert_audio_routine_0x000533ee	70	unknown	ok	ghidra-c/fn_000533EE.cpp
 00053434	convert_audio_routine_0x00053434	720	unknown	ok	ghidra-c/fn_00053434.cpp
-00053704	convert_audio_routine_0x00053704	246	unknown	ok	ghidra-c/fn_00053704.cpp
-000537FA	convert_audio_routine_0x000537fa	106	unknown	ok	ghidra-c/fn_000537FA.cpp
+00053704	run_runner_selection_screen	246	unknown	ok	ghidra-c/fn_00053704.cpp
+000537FA	refresh_runner_selection_sprites	106	unknown	ok	ghidra-c/fn_000537FA.cpp
 00053A24	begin_title_audio_sequence	84	unknown	ok	ghidra-c/fn_00053A24.cpp
 00053A78	run_indexed_title_services	62	unknown	ok	ghidra-c/fn_00053A78.cpp
 00054662	convert_graphics_routine_0x00054662	904	unknown	ok	ghidra-c/fn_00054662.cpp

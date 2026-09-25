@@ -2363,3 +2363,16 @@ target_link_libraries(shadowrun_ghidra_world_mode_routine_test
     PRIVATE shadowrun_ghidra_world_mode_routine)
 add_test(NAME shadowrun_ghidra_world_mode_routine
          COMMAND shadowrun_ghidra_world_mode_routine_test)
+
+add_library(shadowrun_ghidra_runner_selection STATIC
+    src/runner_selection_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_runner_selection PUBLIC include)
+
+add_executable(shadowrun_ghidra_runner_selection_test
+    tests/runner_selection_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_runner_selection_test
+    PRIVATE shadowrun_ghidra_runner_selection)
+add_test(NAME shadowrun_ghidra_runner_selection
+         COMMAND shadowrun_ghidra_runner_selection_test)

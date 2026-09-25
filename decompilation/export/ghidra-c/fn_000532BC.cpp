@@ -1,7 +1,15 @@
 // Ghidra headless export
 // Entry: 0x000532BC
-// Name: convert_audio_routine_0x000532bc
-// Decompile status: ok
+// Name: initialize_runner_selection_screen
+// Decompile status: source-shaped annotation
+//
+// Native conversion: ghidra_conversion::initialize_runner_selection_screen.
+// The original screen setup is retained as ordered host presentation work:
+// clear/copy/upload the background asset, render the header, update the
+// selected-runner animation, build sprite records, and issue the 10-by-14
+// grid requests. Genesis VDP control words and source pointers are not part
+// of the native path.
+//
 // Calls recovered from direct call instructions:
 //   0x00000F5C write_vdp_word_block_with_source_wrap
 //   0x00000FFE clear_and_fill_plane_a
@@ -12,37 +20,19 @@
 //   0x0005322C prepare_audio_title
 //   0x000533EE convert_audio_routine_0x000533ee
 
-
-void convert_audio_routine_0x000532bc(void)
-
+void initialize_runner_selection_screen(void)
 {
-  int iVar1;
-  short sVar2;
-  short sVar3;
-  
-  VDP_CTRL = 0x8134;
-  clear_and_fill_plane_a();
-  copy_source_word_block();
-  DAT_00ffef14 = DAT_00ffef14 | 1;
-  write_vdp_word_block_with_source_wrap();
-  write_vdp_grid();
-  render_encoded_title_text();
-  convert_audio_routine_0x000533ee();
-  prepare_audio_title();
-  audio_noop_hook_a();
-  iVar1 = 0xc190;
-  sVar3 = 9;
-  do {
-    sVar2 = 0xd;
-    do {
-      write_vdp_grid(iVar1);
-      sVar2 = sVar2 + -1;
-    } while (sVar2 != -1);
-    iVar1 = iVar1 + 0x100;
-    sVar3 = sVar3 + -1;
-  } while (sVar3 != -1);
-  VDP_CTRL = 0x8174;
-  return;
+  clear_runner_selection_background();
+  copy_runner_selection_background_asset();
+  upload_runner_selection_background_asset();
+  render_runner_selection_initial_grid();
+  render_runner_selection_header_text();
+  update_runner_selection_animation();
+  build_runner_selection_sprite_records_once();
+  service_runner_selection_boundary();
+  for (int row = 0; row < 10; ++row) {
+    for (int column = 0; column < 14; ++column) {
+      render_runner_selection_grid_cell(row, column);
+    }
+  }
 }
-
-
