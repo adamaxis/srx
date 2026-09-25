@@ -580,6 +580,10 @@ timers, alternate source pointers, two base sprites, optional status overlays,
 and late double-build gate are represented without retaining Genesis pointer
 arithmetic in runtime code.
 
+`0x1C866` is now `advance_title_effect_motion`: its four-tick frame cadence,
+mode/position source-table boundary, twelve-frame completion, and correct
+`0x1C288`/`0x1C28E` source reset are captured in a separate typed module.
+
 `0x1BCE8` is now `advance_title_profile_motion`. It carries the typed profile
 phase, movement countdown/easing boundary, moving X/Y state, secondary phase,
 and source finalization flags into a separate module; both profile and moving

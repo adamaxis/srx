@@ -146,7 +146,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x0001C506U, "render_title_sprite_layers", RoutineFamily::world, 230U},
     {0x0001C61CU, "advance_title_sweep_animation", RoutineFamily::world, 160U},
     {0x0001C754U, "convert_world_routine_0x0001c754", RoutineFamily::world, 274U},
-    {0x0001C866U, "convert_world_routine_0x0001c866", RoutineFamily::world, 192U},
+    {0x0001C866U, "advance_title_effect_motion", RoutineFamily::world, 192U},
     {0x0001CA12U, "convert_world_routine_0x0001ca12", RoutineFamily::world, 122U},
     {0x0001CB20U, "convert_world_routine_0x0001cb20", RoutineFamily::world, 144U},
     {0x0001CB6AU, "convert_world_routine_0x0001cb6a", RoutineFamily::world, 142U},

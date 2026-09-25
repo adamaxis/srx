@@ -1018,6 +1018,13 @@ optionally applies the four-way status offset table at `0x1C5EC` to both
 layers, and invokes the source double-build gate only when `FFE084` is nonzero
 and the low selector nibble is at least eight.
 
+`0x1C866` is now `advance_title_effect_motion`. It decrements `FFE066` at a
+four-tick cadence, advances twelve frames, resolves the sprite source from the
+mode/position split between `0x1C926` and `0x1C956`, and builds at the current
+`FFE060`/`FFE062` position with attributes `0x2000`. At frame twelve it
+installs `0x1C288` or `0x1C28E` into the correct record slot based on the
+`0x120` position boundary, clears `FFE0D6`/`FFE05E`, and services the menu.
+
 The next title/world-effect pair is also no longer generic. `0x1A818` starts
 the descriptor transition, choosing between its six-frame loading path and the
 active descriptor-token path; its source word `0xD280` is recorded as such
