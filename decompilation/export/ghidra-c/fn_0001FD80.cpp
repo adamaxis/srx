@@ -1,117 +1,72 @@
 // Ghidra headless export
 // Entry: 0x0001FD80
-// Name: convert_world_routine_0x0001fd80
-// Decompile status: ok
+// Name: finalize_field_mode_exit
+// Decompile status: source-shaped annotation
+//
+// Native conversion: ghidra_conversion::finalize_field_mode_exit.
+// This is the final scene/submode policy reached by the field-exit
+// orchestrator when the earlier specialized selectors did not claim the
+// current route. The original A0/A5 pointers are host resource selections in
+// the native conversion; they are not runtime ROM addresses.
+//
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
 //   0x0001E1FC forward_effect_sequence
 //   0x0001F246 run_mode_exit_services
 //   0x00059BCC reset_runner_status_triplet
 
-
-void convert_world_routine_0x0001fd80(void)
-
+void finalize_field_mode_exit(void)
 {
-  short sVar1;
-  
-  if ((DAT_00fffbf8 == '\x06') && (DAT_00fffbf9 == '\0')) {
-    DAT_00fffc30 = DAT_00fffc30 & 0xfffffdff;
+  // Scene 6/0 clears mode bit 9 before the service. Scene 7/0 performs the
+  // first/pending/completed visit branch and may reset the three runner
+  // status records. Scene 9/0 selects its visit message from world/status
+  // flags. Each is a handled route.
+  if ((DAT_00fffbf8 == 6) && (DAT_00fffbf9 == 0)) {
+    DAT_00fffc30 &= ~0x00000200u;
     run_mode_exit_services();
     return;
   }
-  if ((DAT_00fffbf8 == '\a') && (DAT_00fffbf9 == '\0')) {
-    if ((DAT_00fffc1e & 0x1000000) == 0) {
-      DAT_00fffc1e = DAT_00fffc1e | 0x1000000;
-    }
-    else if ((DAT_00fffc1e & 0x2000000) != 0) {
+  if ((DAT_00fffbf8 == 7) && (DAT_00fffbf9 == 0)) {
+    if ((DAT_00fffc1e & 0x01000000u) == 0) {
+      DAT_00fffc1e |= 0x01000000u;
+    } else if ((DAT_00fffc1e & 0x02000000u) != 0) {
       reset_runner_status_triplet();
     }
-LAB_0001fe7a:
     run_mode_exit_services();
     return;
   }
-  if ((DAT_00fffbf8 == '\t') && (DAT_00fffbf9 == '\0')) goto LAB_0001fe7a;
-  DAT_00fff0d6 = 0;
-  if (DAT_00fffbf8 == '\0') {
-    if ((((DAT_00fffbf9 == '\x01') || (DAT_00fffbf9 == '\x02')) || (DAT_00fffbf9 == '\x04')) ||
-       (DAT_00fffbf9 == '\x05')) goto LAB_0001fed2;
-    if (DAT_00fffbf9 == '\x06') {
-      if (DAT_00fff0d5 == '\0') {
-        DAT_00fff0d6 = 0xff;
-      }
-      goto LAB_0001fed2;
-    }
-    if (DAT_00fffbf9 == '\a') goto LAB_0001fed2;
-    if ((DAT_00fffbf9 != '\b') && (DAT_00fffbf9 != '\t')) goto LAB_00020054;
-LAB_0002003c:
-    DAT_00fff0d6 = 0xff;
+  if ((DAT_00fffbf8 == 9) && (DAT_00fffbf9 == 0)) {
+    run_mode_exit_services();
+    return;
   }
-  else {
-LAB_00020054:
-    if (DAT_00fffbf8 == '\x04') {
-      if (DAT_00fffbf9 == '\x01') {
-        if (DAT_00fff0d5 == '\0') {
-          DAT_00fff0d6 = 0xff;
-        }
-        goto LAB_0001fed2;
-      }
-      if ((DAT_00fffbf9 == '\x02') || (DAT_00fffbf9 == '\x05')) goto LAB_0001fed2;
-    }
-    if (DAT_00fffbf8 == '\x03') {
-      if ((((DAT_00fffbf9 == '\0') || (DAT_00fffbf9 == '\x02')) || (DAT_00fffbf9 == '\x03')) ||
-         (DAT_00fffbf9 == '\x04')) goto LAB_0001fed2;
-      if (DAT_00fffbf9 == '\x05') {
-        if (DAT_00fff0d5 == '\0') {
-          DAT_00fff0d6 = 0xff;
-        }
-        goto LAB_0001fed2;
-      }
-      if (DAT_00fffbf9 == '\x06') goto LAB_0001fed2;
-      if (((DAT_00fffbf9 == '\a') || (DAT_00fffbf9 == '\b')) || (DAT_00fffbf9 == '\t'))
-      goto LAB_0002003c;
-    }
-    if (DAT_00fffbf8 == '\x01') {
-      if (DAT_00fffbf9 == '\x02') goto LAB_0001fed2;
-      if (DAT_00fffbf9 == '\0') {
-        if (DAT_00fff0d5 == '\0') {
-          sVar1 = sample_source_random_bound();
-          if ((short)(sVar1 + -0x4b) < 0) {
-            DAT_00fff0d6 = 0xff;
-          }
-          else {
-            forward_effect_sequence();
-          }
-        }
-        goto LAB_0001fed2;
-      }
-      if ((DAT_00fffbf9 == '\x04') || (DAT_00fffbf9 == '\t')) goto LAB_0001fed2;
-      if ((DAT_00fffbf9 == '\b') || (DAT_00fffbf9 == '\n')) goto LAB_0002003c;
-    }
-    if (DAT_00fffbf8 == '\x02') {
-      if ((DAT_00fffbf9 == '\0') || (DAT_00fffbf9 == '\x03')) goto LAB_0001fed2;
-      if (DAT_00fffbf9 == '\x04') {
-        if (DAT_00fff0d5 == '\0') {
-          DAT_00fff0d6 = 0xff;
-        }
-        goto LAB_0001fed2;
-      }
-      if (DAT_00fffbf9 == '\x05') {
-        if (DAT_00fff0d5 == '\0') {
-          DAT_00fff0d6 = 0xff;
-        }
-        goto LAB_0001fed2;
-      }
-      if ((DAT_00fffbf9 == '\a') || (DAT_00fffbf9 == '\t')) goto LAB_0001fed2;
-      if ((DAT_00fffbf9 == '\b') || (DAT_00fffbf9 == '\n')) goto LAB_0002003c;
-    }
-    if ((DAT_00fffbf8 != '\x05') || ((DAT_00fffbf9 != '\x01' && (DAT_00fffbf9 != '\x06')))) {
+
+  // The remaining routes select a named resource profile and a signed
+  // alternate/default message. Default routes that set FFF0D6 to -1 retain
+  // that status; all generic routes clear the alternate-result marker after
+  // the shared service boundary.
+  switch (DAT_00fffbf8) {
+    case 0:
+      // 1,2,4,5,6,7,8,9
+      break;
+    case 1:
+      // 0,2,4,8,9,10
+      break;
+    case 2:
+      // 0,3,4,5,7,8,9,10
+      break;
+    case 3:
+      // 0,2,3,4,5,6,7,8,9
+      break;
+    case 4:
+      // 1,2,5
+      break;
+    case 5:
+      // 1,6
+      break;
+    default:
       return;
-    }
   }
-LAB_0001fed2:
+
   run_mode_exit_services();
   DAT_00fff0d5 = 0;
-  return;
 }
-
-

@@ -1567,7 +1567,19 @@ add_executable(shadowrun_ghidra_field_mode_service_test
 target_link_libraries(shadowrun_ghidra_field_mode_service_test
     PRIVATE shadowrun_ghidra_field_mode_service)
 add_test(NAME shadowrun_ghidra_field_mode_service
-         COMMAND shadowrun_ghidra_field_mode_service_test)
+    COMMAND shadowrun_ghidra_field_mode_service_test)
+
+add_library(shadowrun_ghidra_field_mode_finalizer STATIC
+    src/field_mode_finalizer_conversion.cpp)
+target_include_directories(shadowrun_ghidra_field_mode_finalizer PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+add_executable(shadowrun_ghidra_field_mode_finalizer_test
+    tests/field_mode_finalizer_conversion_test.cpp)
+target_link_libraries(shadowrun_ghidra_field_mode_finalizer_test PRIVATE
+    shadowrun_ghidra_field_mode_finalizer)
+add_test(NAME shadowrun_ghidra_field_mode_finalizer
+    COMMAND shadowrun_ghidra_field_mode_finalizer_test)
 
 add_library(shadowrun_ghidra_mode_optional_resource STATIC
     src/mode_optional_resource_conversion.cpp

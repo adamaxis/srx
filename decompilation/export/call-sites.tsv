@@ -2130,7 +2130,7 @@ caller	caller_name	instruction	text	target	callee	status
 0001F5CA	run_field_exit_orchestrator	0001F628	jsr 0x0001f65a.l	0001F65A	select_field_exit_prompt	resolved
 0001F5CA	run_field_exit_orchestrator	0001F634	jsr 0x0001f830.l	0001F830	prepare_field_mode_exit	resolved
 0001F5CA	run_field_exit_orchestrator	0001F640	jsr 0x0001fa78.l	0001FA78	select_field_mode_service	resolved
-0001F5CA	run_field_exit_orchestrator	0001F64C	jsr 0x0001fd80.l	0001FD80	convert_world_routine_0x0001fd80	resolved
+0001F5CA	run_field_exit_orchestrator	0001F64C	jsr 0x0001fd80.l	0001FD80	finalize_field_mode_exit	resolved
 0001F65A	select_field_exit_prompt	0001F816	bsr.w 0x0001f246	0001F246	run_mode_exit_services	resolved
 0001F65A	select_field_exit_prompt	0001F824	jsr 0x0000cf38.l	0000CF38	convert_graphics_routine_0x0000cf38	resolved
 0001F830	prepare_field_mode_exit	0001F8CC	bsr.w 0x0002196c	0002196C	mark_effect_bit	resolved
@@ -2141,12 +2141,12 @@ caller	caller_name	instruction	text	target	callee	status
 0001FA78	select_field_mode_service	0001FD4A	bsr.w 0x0001f246	0001F246	run_mode_exit_services	resolved
 0001FA78	select_field_mode_service	0001FD6E	jsr 0x00056ac0.l	00056AC0	convert_intro_routine_0x00056ac0	resolved
 0001FA78	select_field_mode_service	0001FD7A	bsr.w 0x0001f246	0001F246	run_mode_exit_services	resolved
-0001FD80	convert_world_routine_0x0001fd80	0001FDB4	bsr.w 0x0001f246	0001F246	run_mode_exit_services	resolved
-0001FD80	convert_world_routine_0x0001fd80	0001FE10	jsr 0x00059bcc.l	00059BCC	reset_runner_status_triplet	resolved
-0001FD80	convert_world_routine_0x0001fd80	0001FE7A	jsr 0x0001f246.l	0001F246	run_mode_exit_services	resolved
-0001FD80	convert_world_routine_0x0001fd80	0001FED2	jsr 0x0001f246.l	0001F246	run_mode_exit_services	resolved
-0001FD80	convert_world_routine_0x0001fd80	00020350	jsr 0x00000d3a.l	00000D3A	sample_source_random_bound	resolved
-0001FD80	convert_world_routine_0x0001fd80	00020368	jsr 0x0001e1fc.l	0001E1FC	forward_effect_sequence	resolved
+0001FD80	finalize_field_mode_exit	0001FDB4	bsr.w 0x0001f246	0001F246	run_mode_exit_services	resolved
+0001FD80	finalize_field_mode_exit	0001FE10	jsr 0x00059bcc.l	00059BCC	reset_runner_status_triplet	resolved
+0001FD80	finalize_field_mode_exit	0001FE7A	jsr 0x0001f246.l	0001F246	run_mode_exit_services	resolved
+0001FD80	finalize_field_mode_exit	0001FED2	jsr 0x0001f246.l	0001F246	run_mode_exit_services	resolved
+0001FD80	finalize_field_mode_exit	00020350	jsr 0x00000d3a.l	00000D3A	sample_source_random_bound	resolved
+0001FD80	finalize_field_mode_exit	00020368	jsr 0x0001e1fc.l	0001E1FC	forward_effect_sequence	resolved
 00020714	finalize_mode_exit	00020766	bra.w 0x0001f246	0001F246	run_mode_exit_services	resolved
 00024E20	dispatch_indexed_handler	00024E32	jsr (A0)			indirect/unresolved
 000266E4	convert_world_routine_0x000266e4	000266E6	jsr 0x00024e20.l	00024E20	dispatch_indexed_handler	resolved

@@ -580,6 +580,14 @@ alternate prompt variants, and the special `FFF112` service-result handshake
 used by `(1,5)` and `(4,3)`. Default routes enter the intro-stage callback;
 nonzero alternate-result routes perform service only, matching the source.
 
+The `0x1FD80` fallback is now `finalize_field_mode_exit`. It is a typed
+scene/submode policy rather than a pointer walk: it covers the scene 6/7/9
+visit routes, mode/world/status flag mutations, the shared signed-message
+variants, the scene 1 random effect branch, the runner-status reset boundary,
+and the final mode-service callback. The original A0/A5 resource pointers are
+represented by host-facing route/profile identifiers; the source addresses
+remain provenance only in the Ghidra export.
+
 `0x1CA12` is now `advance_world_effect_motion`, preserving the negative-
 countdown finalizer, direction-dependent source-table callback, fixed Y
 subtraction, shifted sprite placement, and menu-service boundary.
