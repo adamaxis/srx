@@ -578,6 +578,7 @@ The next Matrix/menu service batch is isolated in `matrix_menu_service_conversio
 `0x19632` clears one loaded program slot, applies the source code-specific flag/status cleanup, stores the empty code and visual state, and submits the repeated-grid, grid, and row refreshes in source order.
 `0x19788` models the unsigned overlay countdown wrap, the unconditional overlay-timer service, the signed five-slot progression delay, and the first-incomplete-slot grid/completion publication.
 `0x1989A` normalizes the signed HUD variant, preserves the high-side completion fade/world-effect/wait sequence, and publishes audio only when the normalized variant differs from the source's last-published value. All three are reference-only typed C++ with callbacks for presentation, audio, and waits.
+The runner-record helpers at `0x1A4EA` and `0x1A538` are now converted in the same record-access module. The first reads record `+0x10` through the proven ROM `0x1A50E` signed delta table; the second tests record `+0x0F` as a nonzero active-effect marker. The table lookup returns an explicit no-result for an invalid host index rather than exposing source pointer arithmetic.
 
 The program-slot branch at `0x19238` is now typed as real Matrix outcomes:
 already loaded, no available slot, insufficient memory, or ready to install.

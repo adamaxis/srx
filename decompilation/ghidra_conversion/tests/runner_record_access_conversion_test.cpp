@@ -79,5 +79,21 @@ int main() {
         return 2;
     }
 
+    LiveRunnerRecord animation{};
+    animation.bytes[0x10U] = 0U;
+    if (!lookup_runner_animation_delta(animation).has_value() ||
+        *lookup_runner_animation_delta(animation) != 100) {
+        return 3;
+    }
+    animation.bytes[0x10U] = 14U;
+    if (!lookup_runner_animation_delta(animation).has_value() ||
+        *lookup_runner_animation_delta(animation) != -1) {
+        return 4;
+    }
+    animation.bytes[0x0FU] = 1U;
+    if (!runner_record_has_active_effect(animation)) {
+        return 5;
+    }
+
     return 0;
 }

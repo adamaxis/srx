@@ -5,6 +5,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -70,5 +71,13 @@ RunnerRecordFields read_runner_record_fields(const LiveRunnerRecord& record);
 // silently inventing a complete schema.
 void write_runner_record_fields(const RunnerRecordFields& fields,
                                 LiveRunnerRecord& destination);
+
+// ROM 0x1A4EA: use runner record +0x10 as an index into the signed animation
+// delta table at ROM 0x1A50E. Invalid host indexes are explicit no-results.
+std::optional<std::int16_t> lookup_runner_animation_delta(
+    const LiveRunnerRecord& record);
+
+// ROM 0x1A538: test the current runner record's +0x0F effect marker.
+bool runner_record_has_active_effect(const LiveRunnerRecord& record);
 
 } // namespace shadowrun::ghidra_conversion

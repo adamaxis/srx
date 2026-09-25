@@ -553,8 +553,8 @@ entry	name	size	callingConvention	decompileStatus	file
 0001A370	convert_world_routine_0x0001a370	350	unknown	ok	ghidra-c/fn_0001A370.cpp
 0001A468	initialize_audio_frame	34	unknown	ok	ghidra-c/fn_0001A468.cpp
 0001A48A	advance_title_animation_cycle	96	unknown	ok	ghidra-c/fn_0001A48A.cpp
-0001A4EA	convert_world_routine_0x0001a4ea	36	unknown	ok	ghidra-c/fn_0001A4EA.cpp
-0001A538	convert_world_routine_0x0001a538	22	unknown	ok	ghidra-c/fn_0001A538.cpp
+0001A4EA	lookup_runner_animation_delta	36	unknown	ok	ghidra-c/fn_0001A4EA.cpp
+0001A538	runner_record_has_active_effect	22	unknown	ok	ghidra-c/fn_0001A538.cpp
 0001A54E	initialize_effect_defaults	34	unknown	ok	ghidra-c/fn_0001A54E.cpp
 0001A570	build_title_sprites_twice	48	unknown	ok	ghidra-c/fn_0001A570.cpp
 0001A5A0	convert_world_routine_0x0001a5a0	568	unknown	ok	ghidra-c/fn_0001A5A0.cpp
