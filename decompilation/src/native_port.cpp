@@ -20,6 +20,16 @@ const NativeImage& NativePortAssets::operator[](std::string_view alias) const {
     return found->second;
 }
 
+const std::filesystem::path& NativePortAssets::audio_path(
+    std::string_view alias) const {
+    const auto found = audio_resources.find(std::string(alias));
+    if (found == audio_resources.end()) {
+        throw std::out_of_range("unknown native audio resource alias: " +
+                                std::string(alias));
+    }
+    return found->second;
+}
+
 namespace {
 
 using Glyph = std::array<std::uint8_t, 7>;

@@ -133,7 +133,8 @@ std::vector<ResourceManifestEntry> read_resource_manifest(
         }
         const auto fields = split_manifest_line(line);
         if (fields.size() != 5U || fields[0].empty() || fields[1].empty() ||
-            (fields[2] != "image" && fields[2] != "state")) {
+            (fields[2] != "image" && fields[2] != "audio" &&
+             fields[2] != "state")) {
             throw std::runtime_error("invalid direct resource manifest row: " +
                                      line);
         }
@@ -381,13 +382,32 @@ native::NativePortAssets read_native_asset_directory(const std::string& root) {
     }
     assets.entity_frames.resize(entity_count);
 
-    // The manifest is the complete runtime image list. Load it once; the
-    // controller below only resolves stable aliases from this table.
+    // The manifest is the complete direct asset list. Images are decoded into
+    // native pixels; audio remains a Windows-playable file path so playback
+    // can use a host audio API without carrying the Genesis driver into the
+    // runtime.
     for (const auto& entry : manifest_entries) {
-        if (entry.kind != "image") {
+        if (entry.kind == "state") {
             continue;
         }
         const auto path = asset_root / entry.relative_path;
+        if (entry.kind == "audio") {
+            if (!std::filesystem::is_regular_file(path) ||
+                path.extension() != ".wav") {
+                throw std::runtime_error(
+                    "cannot load direct audio resource " + path.string() +
+                    ": expected a regular .wav file");
+            }
+            if (!assets.audio_resources.emplace(entry.alias, path).second) {
+                throw std::runtime_error("duplicate loaded audio alias: " +
+                                         entry.alias);
+            }
+            continue;
+        }
+        if (entry.kind != "image") {
+            throw std::runtime_error("unsupported direct resource kind: " +
+                                     entry.kind);
+        }
         try {
             const auto decoded = read_bmp32(path.string());
             native::NativeImage image{

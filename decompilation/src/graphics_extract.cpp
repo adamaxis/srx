@@ -299,9 +299,10 @@ void write_asset_readme(const std::filesystem::path& root) {
               "items/first-aid, items/miscellaneous, items/magic, and items/armor. "
               "Separately traced cinematic resources belong under movies/<scene>; "
               "they must not be mixed into intro or field assets.\n\n"
-           << "Genesis audio is not emitted here until its Z80 event format is "
-              "decoded into complete usable files. Raw ROM slices and split "
-              "event fragments are analysis inputs, not runtime assets.\n";
+           << "Complete Windows-playable audio is imported separately by the "
+              "offline Z80/VGM extraction tool into assets/audio. Raw ROM "
+              "slices and split event fragments remain analysis inputs, not "
+              "runtime assets.\n";
 }
 
 void write_runtime_resource_manifest(const std::filesystem::path& root) {

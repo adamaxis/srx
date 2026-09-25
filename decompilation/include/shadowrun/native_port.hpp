@@ -5,6 +5,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <string>
@@ -477,7 +478,13 @@ struct NativePortAssets {
     // below remain the native controller's convenient views of those images.
     std::unordered_map<std::string, NativeImage> resources;
 
+    // Audio is kept as a direct host file path rather than decoded into the
+    // graphics asset object.  The manifest gives each file the same stable
+    // alias namespace; audio_path() is the native playback boundary.
+    std::unordered_map<std::string, std::filesystem::path> audio_resources;
+
     const NativeImage& operator[](std::string_view alias) const;
+    const std::filesystem::path& audio_path(std::string_view alias) const;
 
     NativeImage title_scene;
     // Separate host layers preserve the ROM's title timing: the circuit

@@ -934,7 +934,7 @@ entry command, loop/stop condition, action sounds, and exit command.
 | Pocket Secretary | partial | five-row field-mode menu and Save/Load entry translated; row effects and restricted-mode gates pending |
 | Matrix | pending | state-specific action paths and transitions incomplete |
 | combat | pending | posture consumers, actions, damage, AI, and result presentation incomplete |
-| audio | partial | command boundary/ring identified; source timing and asset mapping pending |
+| audio | partial | command boundary/ring and ROM bank window traced; 65 complete WAV assets extracted from the 94-entry table-2 resource set; screen-specific playback wiring remains |
 
 ## 14. Rejected shortcuts
 

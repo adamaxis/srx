@@ -63,6 +63,7 @@ int main() {
                 "invalid resources.tsv header");
 
         std::size_t image_count = 0;
+        std::size_t audio_count = 0;
         std::size_t state_count = 0;
         while (std::getline(manifest, line)) {
             if (line.empty() || line.front() == '#') {
@@ -83,6 +84,16 @@ int main() {
             if (kind == "image") {
                 require_image(assets[alias], alias);
                 ++image_count;
+            } else if (kind == "audio") {
+                require(std::filesystem::path(relative_path).extension() ==
+                            ".wav",
+                        "audio resource is not a WAV: " + relative_path);
+                require(assets.audio_resources.find(alias) !=
+                            assets.audio_resources.end(),
+                        "audio manifest alias was not loaded: " + alias);
+                require(assets.audio_path(alias) == root / relative_path,
+                        "audio alias resolved to the wrong path: " + alias);
+                ++audio_count;
             } else if (kind == "state") {
                 require(alias == "state", "unexpected state alias");
                 ++state_count;
@@ -95,6 +106,10 @@ int main() {
         require(state_count == 1U, "resources.tsv must contain one state row");
         require(image_count == assets.resources.size(),
                 "manifest image rows and loaded resources differ");
+        require(audio_count == 65U,
+                "unexpected number of extracted audio resources");
+        require(audio_count == assets.audio_resources.size(),
+                "manifest audio rows and loaded resources differ");
         require(!std::filesystem::exists(
                     root / "field" / "entities" / "idle-gray-0.bmp"),
                 "unused grayscale resource still present");

@@ -195,7 +195,7 @@ if (EXISTS "${SHADOWRUN_ROM}")
                 "${CMAKE_CURRENT_SOURCE_DIR}/src/graphics_import.cpp"
                 "${CMAKE_CURRENT_SOURCE_DIR}/src/graphics_runtime.cpp"
                 "${CMAKE_CURRENT_SOURCE_DIR}/src/graphics_extract.cpp"
-        COMMENT "Extracting direct graphics assets (audio pending format decode)"
+        COMMENT "Extracting direct graphics assets; audio is a separate offline Z80/VGM import"
         VERBATIM
     )
 endif()

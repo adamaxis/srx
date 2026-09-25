@@ -574,6 +574,30 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+## 2026-09-25 audio extraction pass
+
+The complete ROM sound-resource pass is now separated from the native runtime.
+The relevant 68000 setup at `0x531AA` queues the four initializer pointers
+`0x284E4`, `0x29595`, `0x29609`, and `0x311BF` through the Z80 ring at `0x1B40`.
+The table-2 resource list contains 94 slots. Title stages use the paired
+command sequence `FF 12 id` followed by `FF 10 id`; treating a stage as a
+single `FF 10` command loses the source driver's reset/play behavior.
+
+The offline extractor in `tools/audio/extract_genesis_audio.py` boots the
+uploaded sound driver, applies the Genesis serial bank-register rule at Z80
+port `0x6000` (`bank = (bank >> 1) | ((value & 1) << 8)`), and records YM2612
+and SN76489 writes. It writes temporary VGM, which is rendered to 44.1 kHz
+16-bit stereo PCM WAV outside the repository asset tree. This is extraction
+evidence only; the game runtime has no Z80, VGM, ROM-address, or chip-driver
+dependency.
+
+The resulting direct asset catalog contains 65 non-silent WAVs under
+`assets/audio/music`, `intro`, `menu`, `field`, and `sound-effects`. The other
+29 of the 94 table slots were verified silent/no-op under the traced command
+sequence and are omitted rather than represented by empty files. Their stable
+aliases are in `assets/resources.tsv`; native code resolves them through
+`NativePortAssets::audio_path()`.
+
 The mode-entry branch from `0x1ADE6` is no longer cataloged as a generic
 graphics routine. `0x54662` is the mode-action loop reached when the alternate
 runner presenter flag is clear: it initializes the selected compact mode

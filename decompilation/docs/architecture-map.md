@@ -274,7 +274,7 @@ The runtime uses one flat, human-maintained resource list with aliases:
 assets["title.logo"];
 assets["intro.helicopter"];
 assets["field.entity.walk.0.1"];
-assets["audio.title"];
+assets.audio_path("audio.intro.title.stage-1");
 ```
 
 The manifest is the complete runtime allowlist for host resources. It should
@@ -286,9 +286,11 @@ smuggled into this image/audio manifest.
 
 `assets/resources.tsv` is the runtime manifest and alias table. `manifest.tsv`
 and `catalog.tsv` are extraction/audit metadata and must not become additional
-runtime authorities. The next cleanup is data quality: late-ammo assets, all
-moving intro sprites, and complete Windows-playable audio must be corrected at
-the extractor/source-data boundary, not hidden by runtime fallbacks.
+runtime authorities. The next cleanup is data quality: late-ammo assets and
+all moving intro sprites must be corrected at the extractor/source-data
+boundary, not hidden by runtime fallbacks. Complete audio now follows the same
+boundary: WAV files are direct runtime assets, while Z80/VGM intermediates
+remain offline-only.
 
 ### Native image and effect model
 
