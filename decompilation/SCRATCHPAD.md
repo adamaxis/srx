@@ -628,10 +628,12 @@ The adjacent `0x18A92` leaf is now converted as `matrix_program_index`.
 It is the source's direct `row * 4 + column` linearization, producing the
 0..15 Matrix program key used by the surrounding resource and action paths.
 
-The `0x1882E` Matrix panel selection gate is now typed as well. Program keys
-0..11 consult the twelve source availability bytes at FFFBCC; keys 12..15
-are not gated. The first twelve keys take the runner-detail/stat preparation,
-while the four extended keys go directly to their description path.
+The `0x1882E` Matrix panel renderer is now typed as well. It writes the common
+header, returns through the unavailable-message branch for locked keys 0..11,
+and otherwise renders icon/detail resources followed by two description
+passes. The first twelve keys also prepare and render runner-only statistics;
+keys 12..15 bypass that path. Resource presentation remains a callback
+boundary.
 
 The inline action branch at `0x18408` is now typed as Matrix action state and
 route selection. Source priority is special marker (`0xFF`), marker zero,

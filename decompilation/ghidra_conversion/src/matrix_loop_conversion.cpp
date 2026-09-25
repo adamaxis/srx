@@ -46,6 +46,43 @@ bool matrix_program_uses_runner_details(const std::uint8_t program_index) {
     return program_index < 12U;
 }
 
+bool render_matrix_panel(
+    const std::uint8_t program_index,
+    const std::array<std::uint8_t, 12>& availability_flags,
+    const MatrixPanelRenderCallbacks& callbacks) {
+    if (callbacks.write_panel_header) {
+        callbacks.write_panel_header();
+    }
+
+    if (!matrix_program_is_available(program_index, availability_flags)) {
+        if (callbacks.render_unavailable_message) {
+            callbacks.render_unavailable_message();
+        }
+        return false;
+    }
+
+    if (callbacks.render_program_icon) {
+        callbacks.render_program_icon(program_index);
+    }
+    if (callbacks.render_program_detail) {
+        callbacks.render_program_detail(program_index);
+    }
+
+    if (matrix_program_uses_runner_details(program_index) &&
+        callbacks.prepare_runner_details) {
+        callbacks.prepare_runner_details(program_index);
+    }
+    if (callbacks.render_description_line) {
+        callbacks.render_description_line(program_index);
+        callbacks.render_description_line(program_index);
+    }
+    if (matrix_program_uses_runner_details(program_index) &&
+        callbacks.render_runner_statistics) {
+        callbacks.render_runner_statistics(program_index);
+    }
+    return true;
+}
+
 MatrixProgramSlotSelection select_matrix_program_slot(
     const std::uint8_t program_index,
     const std::array<std::int8_t, 5>& slot_programs) {

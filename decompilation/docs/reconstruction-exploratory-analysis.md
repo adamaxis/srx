@@ -738,9 +738,12 @@ row 0, and translates row/column moves to ordinary host coordinates
 The adjacent `0x18A92` leaf is now named as the Matrix program-key helper:
 it linearizes the selected row/column as `row * 4 + column`, without exposing
 the original FFF0D0/FFF0D1 addresses to host code.
-The `0x1882E` panel path now has the corresponding typed gate: indices 0..11
-are available only when their FFFBCC flag is nonzero, while indices 12..15
-bypass that table; only the first twelve enter the runner-detail/stat branch.
+The `0x1882E` panel path now has its source-controlled render order: the common
+header is written first; an unavailable index 0..11 renders only the locked
+message and returns; available entries render their icon and detail resources,
+run two description passes, and add runner-only statistics for indices 0..11.
+Indices 12..15 bypass the availability table and runner-stat path. The actual
+resource presentation remains a callback boundary.
 The inline action branch at `0x18408` is also separated: source action bits
 write the three proven `FFF0B7` modes in priority order, bit 15 exits Matrix,
 rows 0..2 enter the program-slot path, row 3/column 2 is blocked without an

@@ -21,6 +21,8 @@ int main() {
     }
     const std::array<std::uint8_t, 12> availability{1, 0, 0, 0, 0, 0,
                                                      0, 0, 0, 0, 0, 0};
+    auto available = availability;
+    available[4] = 1;
     if (!expect(matrix_program_is_available(0, availability) &&
                 !matrix_program_is_available(1, availability) &&
                 matrix_program_is_available(12, availability) &&
@@ -29,6 +31,49 @@ int main() {
                 matrix_program_uses_runner_details(11) &&
                 !matrix_program_uses_runner_details(12))) {
         return 2;
+    }
+
+    std::vector<std::string> panel_events;
+    if (!expect(!render_matrix_panel(
+                    1, availability,
+                    {[&] { panel_events.emplace_back("header"); },
+                     [&] { panel_events.emplace_back("unavailable"); },
+                     [&](const std::uint8_t) { panel_events.emplace_back("icon"); },
+                     [&](const std::uint8_t) { panel_events.emplace_back("detail"); },
+                     [&](const std::uint8_t) { panel_events.emplace_back("prepare"); },
+                     [&](const std::uint8_t) { panel_events.emplace_back("line"); },
+                     [&](const std::uint8_t) { panel_events.emplace_back("stats"); }}) &&
+                panel_events == std::vector<std::string>{"header", "unavailable"})) {
+        return 3;
+    }
+    panel_events.clear();
+    if (!expect(render_matrix_panel(
+                    4, available,
+                    {[&] { panel_events.emplace_back("header"); },
+                     [&] { panel_events.emplace_back("unavailable"); },
+                     [&](const std::uint8_t) { panel_events.emplace_back("icon"); },
+                     [&](const std::uint8_t) { panel_events.emplace_back("detail"); },
+                     [&](const std::uint8_t) { panel_events.emplace_back("prepare"); },
+                     [&](const std::uint8_t) { panel_events.emplace_back("line"); },
+                     [&](const std::uint8_t) { panel_events.emplace_back("stats"); }}) &&
+                panel_events == std::vector<std::string>{"header", "icon", "detail",
+                                                          "prepare", "line", "line",
+                                                          "stats"})) {
+        return 4;
+    }
+    panel_events.clear();
+    if (!expect(render_matrix_panel(
+                    12, availability,
+                    {[&] { panel_events.emplace_back("header"); },
+                     [&] { panel_events.emplace_back("unavailable"); },
+                     [&](const std::uint8_t) { panel_events.emplace_back("icon"); },
+                     [&](const std::uint8_t) { panel_events.emplace_back("detail"); },
+                     [&](const std::uint8_t) { panel_events.emplace_back("prepare"); },
+                     [&](const std::uint8_t) { panel_events.emplace_back("line"); },
+                     [&](const std::uint8_t) { panel_events.emplace_back("stats"); }}) &&
+                panel_events == std::vector<std::string>{"header", "icon", "detail",
+                                                          "line", "line"})) {
+        return 5;
     }
     const std::array<std::int8_t, 5> loaded_slots{2, -1, 7, -1, -1};
     const auto loaded = select_matrix_program_slot(7, loaded_slots);
@@ -39,7 +84,7 @@ int main() {
                 loaded.program_already_loaded && free_slot.slot == 1 &&
                 free_slot.slot_available && !free_slot.program_already_loaded &&
                 !full.slot_available)) {
-        return 3;
+        return 6;
     }
 
     MatrixCursorState cursor{};
@@ -48,33 +93,33 @@ int main() {
     if (!expect(cursor.row == 2 && cursor.column == 0 &&
                 cursor.row_marker == 0xE4 && cursor.column_marker == 0x8C &&
                 cursor.redraw_requested)) {
-        return 4;
+        return 7;
     }
     cursor.redraw_requested = false;
     update_matrix_cursor(cursor, move_left);
     if (!expect(cursor.column == 3 && cursor.column_marker == 0xEC &&
                 cursor.redraw_requested)) {
-        return 5;
+        return 8;
     }
     cursor.redraw_requested = false;
     update_matrix_cursor(cursor, move_down | move_right);
     if (!expect(cursor.row == 3 && cursor.column == 3 &&
                 cursor.row_marker == 0x10C && cursor.column_marker == 0xEC &&
                 cursor.redraw_requested)) {
-        return 6;
+        return 9;
     }
     cursor.redraw_requested = false;
     update_matrix_cursor(cursor, set_overlay_marker_one);
     if (!expect(cursor.row == 3 && cursor.column == 3 &&
                 !cursor.redraw_requested)) {
-        return 7;
+        return 10;
     }
 
     MatrixActionState action{};
     apply_matrix_action_input(action, set_overlay_marker_one);
     if (!expect(action.overlay_marker == 1U && action.action_requested &&
                 !action.exit_requested)) {
-        return 8;
+        return 11;
     }
     action = {};
     apply_matrix_action_input(action, set_overlay_marker_special |
@@ -82,12 +127,12 @@ int main() {
                                          leave_matrix);
     if (!expect(action.overlay_marker == 0xFFU && action.action_requested &&
                 !action.exit_requested)) {
-        return 9;
+        return 12;
     }
     action = {};
     apply_matrix_action_input(action, leave_matrix);
     if (!expect(!action.action_requested && action.exit_requested)) {
-        return 10;
+        return 13;
     }
     if (!expect(choose_matrix_action_route(0, 0, false) ==
                     MatrixActionRoute::program_slot_menu &&
@@ -101,7 +146,7 @@ int main() {
                     MatrixActionRoute::no_action &&
                 choose_matrix_action_route(3, 3, true) ==
                     MatrixActionRoute::disconnect_confirmation)) {
-        return 11;
+        return 14;
     }
 
     MatrixLoopState state{};
@@ -145,7 +190,7 @@ int main() {
                 events[9] == "title-sprites" && events[10] == "display:33140" &&
                 events[13] == "two-grids" && events[14] == "display:33140" &&
                 events[15] == "matrix-panel")) {
-        return 12;
+        return 15;
     }
 
     return 0;

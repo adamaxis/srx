@@ -30,6 +30,31 @@ bool matrix_program_is_available(
 // before their description is rendered.
 bool matrix_program_uses_runner_details(std::uint8_t program_index);
 
+struct MatrixPanelRenderCallbacks {
+    // 0x1882E always lays down the common Matrix panel header first.
+    std::function<void()> write_panel_header;
+    // A program in slots 0..11 with a zero FFBCC availability byte stops
+    // after this message; no program resources are drawn in that case.
+    std::function<void()> render_unavailable_message;
+    std::function<void(std::uint8_t program_index)> render_program_icon;
+    std::function<void(std::uint8_t program_index)> render_program_detail;
+    // 0x1A16A prepares the runner-specific value before the two description
+    // passes. Its source meaning remains a separate conversion boundary.
+    std::function<void(std::uint8_t program_index)> prepare_runner_details;
+    std::function<void(std::uint8_t program_index)> render_description_line;
+    // The source computes and renders three runner-only values after the
+    // description: load timing, program footprint, and loaded capacity.
+    std::function<void(std::uint8_t program_index)> render_runner_statistics;
+};
+
+// ROM 0x1882E: redraw the selected Matrix program panel. This expresses the
+// source branch and ordering with host callbacks; it does not reproduce VDP
+// grids or ROM-address arithmetic in the native runtime.
+bool render_matrix_panel(
+    std::uint8_t program_index,
+    const std::array<std::uint8_t, 12>& availability_flags,
+    const MatrixPanelRenderCallbacks& callbacks);
+
 struct MatrixProgramSlotSelection {
     std::uint8_t slot = 0;
     bool slot_available = false;
