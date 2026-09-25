@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001B364
-// Name: convert_world_routine_0x0001b364
+// Name: advance_title_figure_animation
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000013BE build_title_sprite_records_with_attribute_offset
@@ -8,7 +8,7 @@
 //   0x0001C3FA convert_world_routine_0x0001c3fa
 
 
-void convert_world_routine_0x0001b364(void)
+void advance_title_figure_animation(void)
 
 {
   convert_world_routine_0x0001c3fa();
@@ -28,5 +28,4 @@ void convert_world_routine_0x0001b364(void)
   build_title_sprite_records_with_attribute_offset();
   return;
 }
-
 

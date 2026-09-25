@@ -1026,3 +1026,10 @@ fixed descriptor-state cadence, its loading/transition path uses the six-phase
 the three overlay updates. The decompiler's indeterminate D1/A0 values are
 represented as explicit timing and sprite-data callbacks rather than guessed
 register state.
+
+The next compact group is also named and typed: `0x1B282` is the Matrix
+program-transition stage loop, `0x1B364` is the four-table title-figure pass,
+and `0x1B45C` is the PRNG-driven paired word-stream animation. The latter's
+two loop lengths and ROM limit table are preserved as data behavior, while
+stream writing and menu finalization remain explicit callbacks. `0x1B7D0` now
+uses the existing behavior-record initializer name everywhere in the export.

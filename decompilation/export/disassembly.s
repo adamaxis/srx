@@ -16932,7 +16932,7 @@
 0001AFD2: move.w #0x2,D5w
 0001AFD6: tst.w (0x00ffdf8c).l
 0001AFDC: beq.w 0x0001afe8
-0001AFE0: bsr.w 0x0001b364 ; call 0001B364 convert_world_routine_0x0001b364
+0001AFE0: bsr.w 0x0001b364 ; call 0001B364 advance_title_figure_animation
 0001AFE4: bra.w 0x0001b116
 0001AFE8: cmpi.w #0x4,(0x00ffe076).l
 0001AFF0: bne.w 0x0001affa
@@ -16950,7 +16950,7 @@
 0001B02E: bsr.w 0x0001c1f6 ; call 0001C1F6 advance_audio_menu_countdown
 0001B032: btst.b #0x2,(0x00ff1592).l
 0001B03A: beq.w 0x0001b042
-0001B03E: bsr.w 0x0001b45c ; call 0001B45C convert_world_routine_0x0001b45c
+0001B03E: bsr.w 0x0001b45c ; call 0001B45C advance_title_noise_stream
 0001B042: btst.b #0x4,(0x00ff1592).l
 0001B04A: beq.w 0x0001b058
 0001B04E: lea (0xff1580).l,A0 ; data 00ff1580
@@ -16990,7 +16990,7 @@
 0001B0FA: jsr 0x0001a48a.l ; call 0001A48A advance_title_animation_cycle
 0001B100: tst.w (0x00ffe0de).l
 0001B106: beq.w 0x0001b10e
-0001B10A: bsr.w 0x0001b282 ; call 0001B282 convert_world_routine_0x0001b282
+0001B10A: bsr.w 0x0001b282 ; call 0001B282 advance_matrix_program_transition
 0001B10E: bsr.w 0x0001ccdc ; call 0001CCDC update_persistent_title_effect
 0001B112: bsr.w 0x0001cc24 ; call 0001CC24 convert_world_routine_0x0001cc24
 0001B116: tst.w (0x00ffe080).l
@@ -17261,28 +17261,28 @@
 0001B5B8: move.w #0x2b,D0w
 0001B5BC: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0001B5C2: lea (0xff1580).l,A0 ; data 00ff1580
-0001B5C8: bsr.w 0x0001b7d0 ; call 0001B7D0 convert_world_routine_0x0001b7d0
+0001B5C8: bsr.w 0x0001b7d0 ; call 0001B7D0 initialize_behavior_record
 0001B5CC: move.l #0x1c330,(0x8,A0) ; data 0001c330
 0001B5D4: move.l #0x1c33a,(0x4,A0) ; data 0001c33a
 0001B5DC: rts
 0001B5DE: bra.w 0x0001b654 ; call 0001B654 attach_behavior_descriptor_d
-0001B5FC: bsr.w 0x0001b7d0 ; call 0001B7D0 convert_world_routine_0x0001b7d0
+0001B5FC: bsr.w 0x0001b7d0 ; call 0001B7D0 initialize_behavior_record
 0001B600: move.l #0x1c2ae,(0x8,A0) ; data 0001c2ae
 0001B608: move.l #0x1c2a8,(0x4,A0) ; data 0001c2a8
 0001B610: rts
-0001B612: bsr.w 0x0001b7d0 ; call 0001B7D0 convert_world_routine_0x0001b7d0
+0001B612: bsr.w 0x0001b7d0 ; call 0001B7D0 initialize_behavior_record
 0001B616: move.l #0x1c294,(0x8,A0) ; data 0001c294
 0001B61E: move.l #0x1c29e,(0x4,A0) ; data 0001c29e
 0001B626: rts
-0001B628: bsr.w 0x0001b7d0 ; call 0001B7D0 convert_world_routine_0x0001b7d0
+0001B628: bsr.w 0x0001b7d0 ; call 0001B7D0 initialize_behavior_record
 0001B62C: move.l #0x1c2c8,(0x8,A0) ; data 0001c2c8
 0001B634: move.l #0x1c2d2,(0x4,A0) ; data 0001c2d2
 0001B63C: rts
-0001B654: bsr.w 0x0001b7d0 ; call 0001B7D0 convert_world_routine_0x0001b7d0
+0001B654: bsr.w 0x0001b7d0 ; call 0001B7D0 initialize_behavior_record
 0001B658: move.l #0x1c318,(0x8,A0) ; data 0001c318
 0001B660: move.l #0x1c31e,(0x4,A0) ; data 0001c31e
 0001B668: rts
-0001B680: bsr.w 0x0001b7d0 ; call 0001B7D0 convert_world_routine_0x0001b7d0
+0001B680: bsr.w 0x0001b7d0 ; call 0001B7D0 initialize_behavior_record
 0001B684: move.l #0x1c344,(0x8,A0) ; data 0001c344
 0001B68C: move.l #0x1c34a,(0x4,A0) ; data 0001c34a
 0001B694: rts

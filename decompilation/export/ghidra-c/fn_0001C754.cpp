@@ -17,7 +17,7 @@ void convert_world_routine_0x0001c754(void)
   int extraout_A0;
   
   if (_DAT_00ffe084 != 0) {
-    convert_world_routine_0x0001b7d0();
+    initialize_behavior_record();
     *(undefined **)(extraout_A0 + 8) = &DAT_0001c2ae;
     *(undefined **)(extraout_A0 + 4) = &DAT_0001c2a8;
     return;
@@ -51,5 +51,4 @@ void convert_world_routine_0x0001c754(void)
   }
   return;
 }
-
 

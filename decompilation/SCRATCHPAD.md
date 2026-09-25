@@ -618,6 +618,20 @@ lookups remain explicit host callbacks. This corrects the old Ghidra output's
 unresolved D-register/A-register values without making those registers part of
 the host runtime.
 
+The compact title/world helpers are now converted in one
+`title_world_helpers_conversion` module. `0x1B282` is the Matrix transition
+counter: it reloads every `0x0C` frames, clears the selected program at stage 6,
+and finishes at stage `0x0C` by refreshing the HUD and returning to mode
+initialization. `0x1B364` advances the support animation and emits the four
+phase-selected figure sprite records from ROM tables `0x1DAF4`, `0x1DB08`,
+`0xEA490`, and `0xEA4A4`, preserving the `0x780`/`0x7C0` keys and source
+placements. `0x1B45C` is the two-wave title stream update: 176 entries from
+FFCB42 and 201 from FF CB40, PRNG-rotated sign bits, and the ROM `0x1B592`
+limit table. Finalization clears the behavior-record bit, finishes menu code
+six, resets the stream, and otherwise writes it with FFEF14 bits 2/3 set.
+`0x1B7D0` is now consistently named as the existing typed
+`initialize_behavior_record` leaf.
+
 The program-slot branch at `0x19238` is now typed as real Matrix outcomes:
 already loaded, no available slot, insufficient memory, or ready to install.
 The source's two-entry Yes/No prompt is also converted; Yes reaches the

@@ -571,10 +571,10 @@ entry	name	size	callingConvention	decompileStatus	file
 0001B1C4	initialize_world_effect_seed	56	unknown	ok	ghidra-c/fn_0001B1C4.cpp
 0001B1FC	reset_title_transition	28	unknown	ok	ghidra-c/fn_0001B1FC.cpp
 0001B218	advance_title_phase_cycle	94	unknown	ok	ghidra-c/fn_0001B218.cpp
-0001B282	convert_world_routine_0x0001b282	128	unknown	ok	ghidra-c/fn_0001B282.cpp
+0001B282	advance_matrix_program_transition	128	unknown	ok	ghidra-c/fn_0001B282.cpp
 0001B302	advance_title_jitter	98	unknown	ok	ghidra-c/fn_0001B302.cpp
-0001B364	convert_world_routine_0x0001b364	248	unknown	ok	ghidra-c/fn_0001B364.cpp
-0001B45C	convert_world_routine_0x0001b45c	310	unknown	ok	ghidra-c/fn_0001B45C.cpp
+0001B364	advance_title_figure_animation	248	unknown	ok	ghidra-c/fn_0001B364.cpp
+0001B45C	advance_title_noise_stream	310	unknown	ok	ghidra-c/fn_0001B45C.cpp
 0001B5A6	reset_word_stream_area	18	unknown	ok	ghidra-c/fn_0001B5A6.cpp
 0001B5B8	attach_behavior_descriptor_a	38	unknown	ok	ghidra-c/fn_0001B5B8.cpp
 0001B612	attach_behavior_descriptor_b	22	unknown	ok	ghidra-c/fn_0001B612.cpp
@@ -582,7 +582,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0001B654	attach_behavior_descriptor_d	22	unknown	ok	ghidra-c/fn_0001B654.cpp
 0001B680	attach_behavior_descriptor_e	22	unknown	ok	ghidra-c/fn_0001B680.cpp
 0001B706	prepare_menu_offset_once	46	unknown	ok	ghidra-c/fn_0001B706.cpp
-0001B7D0	convert_world_routine_0x0001b7d0	28	unknown	ok	ghidra-c/fn_0001B7D0.cpp
+0001B7D0	initialize_behavior_record	28	unknown	ok	ghidra-c/fn_0001B7D0.cpp
 0001B87A	dispatch_title_phase_handler	66	unknown	ok	ghidra-c/fn_0001B87A.cpp
 0001BA6E	convert_world_routine_0x0001ba6e	102	unknown	ok	ghidra-c/fn_0001BA6E.cpp
 0001BB6A	convert_world_routine_0x0001bb6a	264	unknown	ok	ghidra-c/fn_0001BB6A.cpp

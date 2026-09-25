@@ -7,7 +7,7 @@
 //   0x000061CC append_sprite_record
 //   0x0001B654 attach_behavior_descriptor_d
 //   0x0001B680 attach_behavior_descriptor_e
-//   0x0001B7D0 convert_world_routine_0x0001b7d0
+//   0x0001B7D0 initialize_behavior_record
 //   0x000530EA service_audio_command_frame
 //   0x000562EC convert_intro_routine_0x000562ec
 //   0x0005668C convert_intro_routine_0x0005668c
@@ -103,12 +103,11 @@ LAB_0001a6f8:
     return;
   }
   if (_DAT_00ffe0d6 == 0) {
-    convert_world_routine_0x0001b7d0();
+    initialize_behavior_record();
     *(undefined **)(extraout_A0 + 8) = &DAT_0001c2ae;
     *(undefined **)(extraout_A0 + 4) = &DAT_0001c2a8;
     return;
   }
   return;
 }
-
 

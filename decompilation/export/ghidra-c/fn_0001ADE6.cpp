@@ -21,10 +21,10 @@
 //   0x0001A908 initialize_world_effect_mode
 //   0x0001AA40 tick_world_effect_animation
 //   0x0001B218 advance_title_phase_cycle
-//   0x0001B282 convert_world_routine_0x0001b282
+//   0x0001B282 advance_matrix_program_transition
 //   0x0001B302 advance_title_jitter
-//   0x0001B364 convert_world_routine_0x0001b364
-//   0x0001B45C convert_world_routine_0x0001b45c
+//   0x0001B364 advance_title_figure_animation
+//   0x0001B45C advance_title_noise_stream
 //   0x0001B5A6 reset_word_stream_area
 //   0x0001B680 attach_behavior_descriptor_e
 //   0x0001B87A dispatch_title_phase_handler
@@ -171,7 +171,7 @@ LAB_0001afc0:
         advance_audio_menu_countdown();
       }
       if ((DAT_00ff1592 & 4) != 0) {
-        convert_world_routine_0x0001b45c();
+        advance_title_noise_stream();
       }
       if ((DAT_00ff1592 & 0x10) != 0) {
         convert_world_routine_0x0001d1f4();
@@ -207,13 +207,13 @@ LAB_0001afc0:
         advance_title_animation_cycle();
       }
       if (_DAT_00ffe0de != 0) {
-        convert_world_routine_0x0001b282();
+      advance_matrix_program_transition();
       }
       update_persistent_title_effect();
       convert_world_routine_0x0001cc24();
     }
     else {
-      convert_world_routine_0x0001b364();
+      advance_title_figure_animation();
     }
     if (_DAT_00ffe080 == 0) {
   tick_world_effect_animation();

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001B45C
-// Name: convert_world_routine_0x0001b45c
+// Name: advance_title_noise_stream
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D44 advance_source_prng
@@ -9,7 +9,7 @@
 //   0x0001B5A6 reset_word_stream_area
 
 
-void convert_world_routine_0x0001b45c(void)
+void advance_title_noise_stream(void)
 
 {
   int iVar1;
@@ -104,5 +104,4 @@ void convert_world_routine_0x0001b45c(void)
   DAT_00ffef14 = DAT_00ffef14 | 0xc;
   return;
 }
-
 

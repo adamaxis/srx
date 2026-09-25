@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001B282
-// Name: convert_world_routine_0x0001b282
+// Name: advance_matrix_program_transition
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
@@ -13,7 +13,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_world_routine_0x0001b282(void)
+void advance_matrix_program_transition(void)
 
 {
   DAT_00ffe0da = DAT_00ffe0da + -1;

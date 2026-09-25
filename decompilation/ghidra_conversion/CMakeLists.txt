@@ -605,6 +605,19 @@ target_link_libraries(shadowrun_ghidra_world_effect_animation_test
 add_test(NAME shadowrun_ghidra_world_effect_animation
          COMMAND shadowrun_ghidra_world_effect_animation_test)
 
+add_library(shadowrun_ghidra_title_world_helpers STATIC
+    src/title_world_helpers_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_title_world_helpers PUBLIC include)
+
+add_executable(shadowrun_ghidra_title_world_helpers_test
+    tests/title_world_helpers_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_title_world_helpers_test
+    PRIVATE shadowrun_ghidra_title_world_helpers)
+add_test(NAME shadowrun_ghidra_title_world_helpers
+         COMMAND shadowrun_ghidra_title_world_helpers_test)
+
 add_library(shadowrun_ghidra_entity_template STATIC
     src/entity_template_conversion.cpp
 )
