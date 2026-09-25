@@ -1101,7 +1101,12 @@ row. `0x1088C` uses each entry's high byte as the `0xD4EA0` spell-record code,
 retains the low byte as the source force/value parameter, and treats signed
 record byte `+0x25` as the availability gate. `magic_menu_conversion` now
 returns that typed selection and distinguishes available from unavailable
-spells. The later target/effect application path remains a separate boundary.
+spells. `0x100A8` now has a typed force clamp: the selected value stays in
+the inclusive range `1..table_parameter`, and the result is published to
+record `+0x9D`. The `0xFF5A` preparation boundary now publishes the source
+spell item code (`spell_code + 1`), reloads the ordinary equipped-item value
+only when the source had an active item, and records the selected force. The
+target/effect application loop at `0x10016` remains a separate boundary.
 
 The Matrix entry at `0x1817E` is an inline branch of `0x18150`, not a missing
 standalone Ghidra function. The ROM bytes now have a typed conversion that

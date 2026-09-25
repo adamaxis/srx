@@ -39,6 +39,9 @@ struct RunnerRecordFields {
     std::uint8_t archetype_index = 0;
     std::uint8_t physical_value = 0;
     std::uint8_t mental_value = 0;
+    // Source +0x9D. Magic force selection publishes the selected force here
+    // before the target/effect path begins.
+    std::uint8_t magic_force = 0;
     std::int8_t equipped_inventory_slot = -1;
     std::uint8_t equipped_item_code = 0;
     std::uint8_t posture = 0;

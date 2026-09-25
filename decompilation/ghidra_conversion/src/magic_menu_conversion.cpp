@@ -118,4 +118,40 @@ std::optional<MagicSpellSelection> select_magic_spell(
     return result;
 }
 
+std::uint8_t clamp_magic_force(const std::uint8_t current,
+                               const std::int8_t delta,
+                               const std::uint8_t table_parameter) {
+    auto next = static_cast<std::int16_t>(current) + delta;
+    if (next > static_cast<std::int16_t>(table_parameter)) {
+        next = table_parameter;
+    }
+    if (next < 1) {
+        next = 1;
+    }
+    return static_cast<std::uint8_t>(next);
+}
+
+MagicActionPreparation prepare_magic_action(
+    RunnerRecordFields& record, const MagicSpellSelection& selection,
+    const std::uint8_t force) {
+    MagicActionPreparation result{};
+    if (selection.availability != MagicSpellAvailability::available) {
+        return result;
+    }
+
+    result.result = MagicActionResult::prepared;
+    result.spell_item_code = static_cast<std::uint8_t>(
+        static_cast<unsigned>(selection.spell_code) + 1U);
+    result.force = clamp_magic_force(force, 0, selection.table_parameter);
+    result.clear_active_item_marker =
+        record.equipped_inventory_slot >= 0 &&
+        record.equipped_item_code != 0U;
+    if (result.clear_active_item_marker) {
+        record.ammo_rounds = result.force;
+    }
+    record.equipped_item_code = result.spell_item_code;
+    record.magic_force = result.force;
+    return result;
+}
+
 } // namespace shadowrun::ghidra_conversion

@@ -83,5 +83,29 @@ int main() {
         return 11;
     }
 
+    if (!expect(clamp_magic_force(1U, -1, 9U) == 1U &&
+                clamp_magic_force(8U, 1, 9U) == 9U &&
+                clamp_magic_force(3U, -1, 9U) == 2U)) {
+        return 12;
+    }
+    RunnerRecordFields action_record{};
+    action_record.equipped_inventory_slot = 2;
+    action_record.equipped_item_code = 7U;
+    const auto preparation = prepare_magic_action(
+        action_record, *available, 4U);
+    if (!expect(preparation.result == MagicActionResult::prepared &&
+                preparation.spell_item_code == 2U && preparation.force == 4U &&
+                preparation.clear_active_item_marker &&
+                action_record.equipped_item_code == 2U &&
+                action_record.ammo_rounds == 4U &&
+                action_record.magic_force == 4U)) {
+        return 13;
+    }
+    const auto rejected = prepare_magic_action(action_record, *unavailable, 4U);
+    if (!expect(rejected.result == MagicActionResult::unavailable_spell &&
+                action_record.equipped_item_code == 2U)) {
+        return 14;
+    }
+
     return 0;
 }

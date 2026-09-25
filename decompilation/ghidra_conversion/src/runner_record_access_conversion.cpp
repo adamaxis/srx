@@ -52,6 +52,7 @@ RunnerRecordFields read_runner_record_fields(const LiveRunnerRecord& record) {
     fields.archetype_index = record.bytes[0x9BU];
     fields.physical_value = record.bytes[0x4CU];
     fields.mental_value = record.bytes[0x9CU];
+    fields.magic_force = record.bytes[0x9DU];
     fields.equipped_inventory_slot =
         static_cast<std::int8_t>(record.bytes[0x56U]);
     fields.equipped_item_code = record.bytes[0x57U];
@@ -100,6 +101,7 @@ void write_runner_record_fields(const RunnerRecordFields& fields,
     destination.bytes[0x9BU] = fields.archetype_index;
     destination.bytes[0x4CU] = fields.physical_value;
     destination.bytes[0x9CU] = fields.mental_value;
+    destination.bytes[0x9DU] = fields.magic_force;
     destination.bytes[0x56U] =
         static_cast<std::uint8_t>(fields.equipped_inventory_slot);
     destination.bytes[0x57U] = fields.equipped_item_code;

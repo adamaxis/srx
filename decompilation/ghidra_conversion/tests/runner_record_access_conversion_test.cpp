@@ -28,6 +28,7 @@ int main() {
                 fields.archetype_index == 0x9BU &&
                 fields.physical_value == 0x4CU &&
                 fields.mental_value == 0x9CU &&
+                fields.magic_force == 0x9DU &&
                 fields.equipped_inventory_slot == 0x56 &&
                 fields.equipped_item_code == 0x57U &&
                 fields.posture == 0x4DU && fields.ammo_rounds == 0x4EU &&
@@ -75,6 +76,7 @@ int main() {
                 destination.bytes[0x89U] == 0x66U &&
                 destination.bytes[0x90U] == 0x01U &&
                 destination.bytes[0x91U] == 0x23U &&
+                destination.bytes[0x9DU] == 0x9DU &&
                 destination.bytes[0x9AU] == 0x12U &&
                 destination.bytes[0xA0U] == 0x45U &&
                 destination.bytes[0xA1U] == 0x67U &&

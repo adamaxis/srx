@@ -36,6 +36,21 @@ struct MagicSpellSelection {
     MagicSpellAvailability availability = MagicSpellAvailability::unavailable;
 };
 
+enum class MagicActionResult {
+    prepared,
+    unavailable_spell,
+};
+
+struct MagicActionPreparation {
+    MagicActionResult result = MagicActionResult::unavailable_spell;
+    std::uint8_t spell_item_code = 0;
+    std::uint8_t force = 0;
+    // ROM 0x125FA clears an auxiliary entity marker when an ordinary
+    // equipped item was active. The marker itself remains an external
+    // boundary, but the source condition is returned to the caller.
+    bool clear_active_item_marker = false;
+};
+
 // ROM 0xFBA6 takes the spell panel only for the source magic-capable class
 // (record +0x9B < 2) when its +0x7F magic resource is nonzero. Other records
 // take the ordinary one-row menu fallback.
@@ -70,5 +85,15 @@ std::optional<MagicSpellSelection> select_magic_spell(
 std::optional<std::int8_t> read_magic_spell_availability(
     const std::vector<std::uint8_t>& spell_records,
     std::uint8_t spell_code);
+
+// ROM 0x100A8 clamps force to 1..table_parameter and publishes +0x9D.
+std::uint8_t clamp_magic_force(std::uint8_t current, std::int8_t delta,
+                               std::uint8_t table_parameter);
+
+// ROM 0xFF5A's source mutation after the force/posture selection boundary.
+// The target/effect loop at 0x10016 remains outside this preparation helper.
+MagicActionPreparation prepare_magic_action(
+    RunnerRecordFields& record, const MagicSpellSelection& selection,
+    std::uint8_t force);
 
 } // namespace shadowrun::ghidra_conversion

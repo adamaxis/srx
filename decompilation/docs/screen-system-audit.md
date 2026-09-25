@@ -394,11 +394,11 @@ of a port.
 | Equipment action | `0x11740`..`0x118C6`, `0x12148`, `0x12168`..`0x125F8`, `0x12634`..`0x129FE` | Partial | Two-step source action loop, Equip/Unequip, armor, Discard, Trade, and First Aid target/effect/result paths are present; later item handlers remain |
 | Posture and bars | `0x119CE`, `0x11ABE`, `0x11AE4`, `0x12CEE` | Partial | Normal equipped-item attack/defense calculation is source-derived; special negative `+0x56` path and combat consumers are pending |
 | Clips | `0x11B58`, `0x11CCA`, `0x11D86`, `0x11DD2`, `0x11E7E`, `0x11FDE`, `0x12014`, `0x12062`, `0x1209A`, `0x120E4`, `0x36FC` | Partial | Source top-level/nested selectors, ammo gates, Reload confirmation/consumption/clamp, recipient selection, quantity wrap, clip transfer, and Distribute average are present; final panel art remains |
-| Attributes/skills | `0xD01C` | Partial | Read-only display is present; mutation branches are pending |
+| Attributes/skills | `0xD01C` | Partial | Source grid, cursor, species limits, Karma costs, class gate, confirmation, and record mutation are converted; presentation callbacks remain |
 | Cyberware | `0x11950` | Partial | Installed-bit display is present; mutation flows are pending |
 | Runner switching | `0x391A` | Partial | No-eligible-runner behavior is covered; recruited roster is pending |
 | Pocket Secretary / Notebook | `0xC2A6`, `0xC3E6`, `0xC376`, `0xC8C8`, `0xF236`, `0xF2E2`, `0xF312`, `0x18150`, `0xC448` | Partial | Source five-row order, cursor wrap, caller-specific Save/Load return, Notebook base labels and no-current-run response, Group Items catalog/empty path, any-edge return, Cyberdeck no-deck feedback, and active-runner Dismiss path are present; Tips & Clues, conditional Notebook screens, deck-present Matrix path, and restricted-mode gates remain |
-| Magic | `0xFBA6` | Partial | Source class/resource gate and two-row spell cursor bounds are converted; spell state/presentation and use side effects remain |
+| Magic | `0xFBA6` | Partial | Source class/resource gate, two-row cursor, spell table/code/availability selection, force clamp, and action preparation are converted; target/effect use remains |
 | Matrix/cyberdeck | source deck/program loop | Pending | Separate from Magic and command overview |
 | Field combat | source target/action loops | Pending | Posture consumers, damage, ammo/spell drain, and animation are pending |
 
