@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001D048
-// Name: convert_world_routine_0x0001d048
+// Name: advance_world_effect_record
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_world_routine_0x0001d048(void)
+void advance_world_effect_record(void)
 
 {
   short sVar1;
@@ -51,5 +51,4 @@ void convert_world_routine_0x0001d048(void)
   }
   return;
 }
-
 

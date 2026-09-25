@@ -611,9 +611,9 @@ entry	name	size	callingConvention	decompileStatus	file
 0001CD5A	convert_world_routine_0x0001cd5a	416	unknown	ok	ghidra-c/fn_0001CD5A.cpp
 0001CEFA	advance_title_effect_position	60	unknown	ok	ghidra-c/fn_0001CEFA.cpp
 0001CF36	build_title_sprites	20	unknown	ok	ghidra-c/fn_0001CF36.cpp
-0001CF4A	convert_world_routine_0x0001cf4a	254	unknown	ok	ghidra-c/fn_0001CF4A.cpp
-0001D048	convert_world_routine_0x0001d048	150	unknown	ok	ghidra-c/fn_0001D048.cpp
-0001D0DE	convert_world_routine_0x0001d0de	62	unknown	ok	ghidra-c/fn_0001D0DE.cpp
+0001CF4A	advance_title_effect_sprites	254	unknown	ok	ghidra-c/fn_0001CF4A.cpp
+0001D048	advance_world_effect_record	150	unknown	ok	ghidra-c/fn_0001D048.cpp
+0001D0DE	resolve_world_effect_sprite	62	unknown	ok	ghidra-c/fn_0001D0DE.cpp
 0001D1A4	advance_effect_vertical_position	16	unknown	ok	ghidra-c/fn_0001D1A4.cpp
 0001D1B4	retreat_effect_vertical_position	16	unknown	ok	ghidra-c/fn_0001D1B4.cpp
 0001D1C4	advance_effect_horizontal_position	12	unknown	ok	ghidra-c/fn_0001D1C4.cpp

@@ -5,8 +5,8 @@
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
 //   0x00019EA6 run_menu_selection_variant
-//   0x0001D048 convert_world_routine_0x0001d048
-//   0x0001D0DE convert_world_routine_0x0001d0de
+//   0x0001D048 advance_world_effect_record
+//   0x0001D0DE resolve_world_effect_sprite
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -27,8 +27,8 @@ void convert_world_routine_0x0001cc24(void)
   undefined4 unaff_A2;
   
   if (DAT_00ff15b8 != '\0') {
-    convert_world_routine_0x0001d048();
-    convert_world_routine_0x0001d0de();
+    advance_world_effect_record();
+    resolve_world_effect_sprite();
     bVar2 = *(byte *)(extraout_A0 + 8);
     if ((DAT_00ffdf88 & 3) == 0) {
       bVar2 = bVar2 + 1;
@@ -75,5 +75,4 @@ void convert_world_routine_0x0001cc24(void)
   }
   return;
 }
-
 

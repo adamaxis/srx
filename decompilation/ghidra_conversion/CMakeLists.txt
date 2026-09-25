@@ -709,6 +709,32 @@ target_link_libraries(shadowrun_ghidra_world_effect_motion_test
 add_test(NAME shadowrun_ghidra_world_effect_motion
          COMMAND shadowrun_ghidra_world_effect_motion_test)
 
+add_library(shadowrun_ghidra_world_effect_record STATIC
+    src/world_effect_record_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_world_effect_record PUBLIC include)
+
+add_executable(shadowrun_ghidra_world_effect_record_test
+    tests/world_effect_record_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_world_effect_record_test
+    PRIVATE shadowrun_ghidra_world_effect_record)
+add_test(NAME shadowrun_ghidra_world_effect_record
+         COMMAND shadowrun_ghidra_world_effect_record_test)
+
+add_library(shadowrun_ghidra_title_effect_sprites STATIC
+    src/title_effect_sprites_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_title_effect_sprites PUBLIC include)
+
+add_executable(shadowrun_ghidra_title_effect_sprites_test
+    tests/title_effect_sprites_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_title_effect_sprites_test
+    PRIVATE shadowrun_ghidra_title_effect_sprites)
+add_test(NAME shadowrun_ghidra_title_effect_sprites
+         COMMAND shadowrun_ghidra_title_effect_sprites_test)
+
 add_library(shadowrun_ghidra_entity_template STATIC
     src/entity_template_conversion.cpp
 )

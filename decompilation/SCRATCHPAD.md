@@ -578,6 +578,12 @@ block primitive.
 countdown finalizer, direction-dependent source-table callback, fixed Y
 subtraction, shifted sprite placement, and menu-service boundary.
 
+`0x1D048` is now `advance_world_effect_record`: it models the mixed world-
+effect record's lifetime/frame timers, `0x15E56` easing lookup, fixed-point
+motion, direction mirror, and three-phase animation counter. `0x1D0DE` is now
+`resolve_world_effect_sprite`, selecting the three source-table families and
+returning shifted host coordinates through an explicit asset callback.
+
 The paired layer entries `0x1C3FA`/`0x1C506` are now separated into
 `advance_title_sprite_layers` and `render_title_sprite_layers`. Their phase
 timers, alternate source pointers, two base sprites, optional status overlays,

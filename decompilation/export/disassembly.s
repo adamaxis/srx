@@ -17981,8 +17981,8 @@
 0001CC2A: tst.b (0x6,A0)
 0001CC2E: bne.w 0x0001cc34
 0001CC32: rts
-0001CC34: bsr.w 0x0001d048 ; call 0001D048 convert_world_routine_0x0001d048
-0001CC38: bsr.w 0x0001d0de ; call 0001D0DE convert_world_routine_0x0001d0de
+0001CC34: bsr.w 0x0001d048 ; call 0001D048 advance_world_effect_record
+0001CC38: bsr.w 0x0001d0de ; call 0001D0DE resolve_world_effect_sprite
 0001CC3C: move.b (0x8,A0),D0b
 0001CC40: move.w (0x00ffdf88).l,D6w
 0001CC46: andi.w #0x3,D6w
@@ -18034,8 +18034,8 @@
 0001CCE2: tst.b (0x6,A0)
 0001CCE6: bne.w 0x0001ccec
 0001CCEA: rts
-0001CCEC: bsr.w 0x0001d048 ; call 0001D048 convert_world_routine_0x0001d048
-0001CCF0: bsr.w 0x0001d0de ; call 0001D0DE convert_world_routine_0x0001d0de
+0001CCEC: bsr.w 0x0001d048 ; call 0001D048 advance_world_effect_record
+0001CCF0: bsr.w 0x0001d0de ; call 0001D0DE resolve_world_effect_sprite
 0001CCF4: move.w #0x6000,D6w
 0001CCF8: jsr 0x00001378.l ; call 00001378 build_title_sprite_records
 0001CCFE: tst.b (0x6,A0)
@@ -18136,7 +18136,7 @@
 0001CEE2: beq.w 0x0001cef8
 0001CEE6: cmpi.b #0x1,(0x5,A0)
 0001CEEC: beq.w 0x0001cef4
-0001CEF0: bsr.w 0x0001cf4a ; call 0001CF4A convert_world_routine_0x0001cf4a
+0001CEF0: bsr.w 0x0001cf4a ; call 0001CF4A advance_title_effect_sprites
 0001CEF4: bsr.w 0x0001cefa ; call 0001CEFA advance_title_effect_position
 0001CEF8: rts
 0001CEFA: addi.w #0x9,(0x00ffe088).l

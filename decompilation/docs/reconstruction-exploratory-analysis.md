@@ -1031,6 +1031,15 @@ phase, selects the `0x1CA8C`/`0x1CAAC` source entry according to the sign of
 `FFE06C`, subtracts `0x1A` from `FFE068`, and builds at the shifted position
 with attributes `0x2000`.
 
+The record helpers behind the adjacent title/world path are now typed as
+`0x1D048` `advance_world_effect_record` and `0x1D0DE`
+`resolve_world_effect_sprite`. The first owns the mixed byte/word record's
+60-step lifetime, 20-frame source-table timer, `0x15E56` easing lookup,
+fixed-point movement, and three-phase animation counter. The second selects
+the `0x1D134`/`0x1D11C`/`0x1D128` source table from the record variant and
+returns shifted host coordinates; neither helper exposes a ROM-backed runtime
+memory model.
+
 The next title/world-effect pair is also no longer generic. `0x1A818` starts
 the descriptor transition, choosing between its six-frame loading path and the
 active descriptor-token path; its source word `0xD280` is recorded as such

@@ -6,7 +6,7 @@
 //   0x00001378 build_title_sprite_records
 //   0x00019F18 run_menu_progression_variant
 //   0x0001CEFA advance_title_effect_position
-//   0x0001CF4A convert_world_routine_0x0001cf4a
+//   0x0001CF4A advance_title_effect_sprites
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -77,11 +77,10 @@ void convert_world_routine_0x0001cd5a(void)
   }
   if (*(char *)((int)extraout_A0 + 5) != '\0') {
     if (*(char *)((int)extraout_A0 + 5) != '\x01') {
-      convert_world_routine_0x0001cf4a();
+      advance_title_effect_sprites();
     }
     advance_title_effect_position();
   }
   return;
 }
-
 
