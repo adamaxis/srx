@@ -2464,3 +2464,16 @@ target_link_libraries(shadowrun_ghidra_field_action_cost_test
     PRIVATE shadowrun_ghidra_field_action_cost)
 add_test(NAME shadowrun_ghidra_field_action_cost
          COMMAND shadowrun_ghidra_field_action_cost_test)
+
+add_library(shadowrun_ghidra_field_action_application STATIC
+    src/field_action_application_conversion.cpp)
+target_include_directories(shadowrun_ghidra_field_action_application PUBLIC include)
+target_link_libraries(shadowrun_ghidra_field_action_application
+    PRIVATE shadowrun_ghidra_field_action_cost)
+
+add_executable(shadowrun_ghidra_field_action_application_test
+    tests/field_action_application_conversion_test.cpp)
+target_link_libraries(shadowrun_ghidra_field_action_application_test
+    PRIVATE shadowrun_ghidra_field_action_application)
+add_test(NAME shadowrun_ghidra_field_action_application
+         COMMAND shadowrun_ghidra_field_action_application_test)

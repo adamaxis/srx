@@ -1,81 +1,76 @@
 // Ghidra headless export
 // Entry: 0x0005794E
-// Name: convert_intro_routine_0x0005794e
+// Name: apply_selected_field_action
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D94 wait_for_controller_event
 //   0x0000C0DA render_encoded_title_text
 //   0x00057A44 calculate_field_action_record_cost
 //   0x00057A6E apply_field_action_cost_discounts
-//   0x00057B8C convert_intro_routine_0x00057b8c
-//   0x00057C5E convert_intro_routine_0x00057c5e
+//   0x00057B8C run_field_action_quantity_chooser
+//   0x00057C5E refresh_field_action_detail_panel
+//
+// A0 is the selected action-record table base and D0 is the source record
+// group. The routine selects group*0x18 + primary_cursor*3 before applying
+// one record to the active runner.
 
-
-void convert_intro_routine_0x0005794e(void)
-
+void apply_selected_field_action(void)
 {
-  char *pcVar1;
-  uint in_D0;
-  int extraout_D1;
-  int extraout_D1_00;
-  int extraout_D1_01;
-  short unaff_D6w;
-  short sVar2;
-  int in_A0;
-  char *extraout_A0;
-  char *extraout_A0_00;
-  int iVar3;
-  
-  if (*(char *)((uint)DAT_00fff0d0 * 3 + (in_D0 & 0xffff) * 0x18 + in_A0) < '\0') {
+  A0 += (D0 & 0xffff) * 0x18;
+  A0 += (uint)DAT_00fff0d0 * 3;
+  if ((char)*A0 < 0) {
     DAT_00fff112 = 0xff;
     return;
   }
-  convert_intro_routine_0x00057c5e();
-  if (*extraout_A0 == 'E') {
+
+  refresh_field_action_detail_panel();
+  const bool special_action = *A0 == 'E';
+  short inventory_slot = 0;
+  if (!special_action) {
+    while (inventory_slot < 8 &&
+           *(char *)(DAT_00fffc04 + 0x66 + inventory_slot) != 0) {
+      ++inventory_slot;
+    }
+    if (inventory_slot == 8) {
+      render_encoded_title_text(); // no empty runner action slot
+      wait_for_controller_event();
+      return;
+    }
+  }
+
+  if (special_action) {
+    D1 = (uint)(unsigned char)A0[2];
     apply_field_action_cost_discounts();
-    iVar3 = extraout_D1;
   }
   else {
-    sVar2 = 7;
-    iVar3 = DAT_00fffc04;
-    while (*(char *)(iVar3 + 0x66) != '\0') {
-      iVar3 = iVar3 + 1;
-      sVar2 = sVar2 + -1;
-      if (sVar2 == -1) {
-        render_encoded_title_text();
-        wait_for_controller_event();
-        return;
-      }
-    }
-    unaff_D6w = -(sVar2 + -7);
     calculate_field_action_record_cost();
-    iVar3 = extraout_D1_00;
   }
-  if (DAT_00fffbfe < iVar3) {
-LAB_000579dc:
-    render_encoded_title_text();
+
+  if (DAT_00fffbfe < D1) {
+    render_encoded_title_text(); // insufficient funds
     wait_for_controller_event();
     return;
   }
-  convert_intro_routine_0x00057b8c();
-  iVar3 = DAT_00fffc04;
-  if (DAT_00fff0dc == '\0') {
-    if (*extraout_A0_00 == 'E') {
-      *(char *)(DAT_00fffc04 + 0x4f) = *(char *)(DAT_00fffc04 + 0x4f) + '\x01';
-      if (-1 < (char)(*(char *)(iVar3 + 0x4f) + -0x15)) {
-        *(undefined1 *)(iVar3 + 0x4f) = 0x14;
-        convert_intro_routine_0x00057c5e();
-        goto LAB_000579dc;
-      }
-    }
-    else {
-      *(char *)(DAT_00fffc04 + 0x66 + (int)unaff_D6w) = *extraout_A0_00;
-      pcVar1 = (char *)(iVar3 + 0x66 + (int)unaff_D6w);
-      *pcVar1 = *pcVar1 + '\x01';
-      *(char *)(iVar3 + 0x6e + (int)unaff_D6w) = extraout_A0_00[1];
-    }
-    DAT_00fffbfe = DAT_00fffbfe - extraout_D1_01;
-  }
-  return;
-}
 
+  run_field_action_quantity_chooser();
+  if (DAT_00fff0dc != 0) {
+    return; // cancel path leaves runner state and funds untouched
+  }
+
+  if (special_action) {
+    ++*(char *)(DAT_00fffc04 + 0x4f);
+    if (*(char *)(DAT_00fffc04 + 0x4f) >= 0x15) {
+      *(char *)(DAT_00fffc04 + 0x4f) = 0x14;
+      refresh_field_action_detail_panel();
+      render_encoded_title_text(); // special-action capacity reached
+      return;
+    }
+  }
+  else {
+    // The source writes the selected marker and immediately increments the
+    // stored byte; the companion record byte is copied without modification.
+    *(char *)(DAT_00fffc04 + 0x66 + inventory_slot) = *A0 + 1;
+    *(char *)(DAT_00fffc04 + 0x6e + inventory_slot) = A0[1];
+  }
+  DAT_00fffbfe -= D1;
+}

@@ -6,7 +6,7 @@
 //   0x00000D94 wait_for_controller_event
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
-//   0x00057B8C convert_intro_routine_0x00057b8c
+//   0x00057B8C run_field_action_quantity_chooser
 //   0x00057C46 convert_intro_routine_0x00057c46
 
 
@@ -39,7 +39,7 @@ LAB_0005770c:
       _DAT_00fff0be = (uint)*(ushort *)(&DAT_001ac8e0 + (uint)DAT_00fff0d0 * 2);
       render_encoded_title_text();
       build_grouped_decimal_glyphs();
-      convert_intro_routine_0x00057b8c();
+      run_field_action_quantity_chooser();
       if (DAT_00fff0dc == '\0') {
         DAT_00fffbfe = DAT_00fffbfe - extraout_D1;
         if (DAT_00fff0d0 == 0) {
@@ -64,5 +64,4 @@ LAB_0005770c:
   wait_for_controller_event();
   return;
 }
-
 

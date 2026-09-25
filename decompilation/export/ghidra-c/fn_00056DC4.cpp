@@ -10,10 +10,10 @@
 //   0x000575F8 convert_intro_routine_0x000575f8
 //   0x00057628 select_menu_resource_entry
 //   0x0005766A convert_intro_routine_0x0005766a
-//   0x0005794E convert_intro_routine_0x0005794e
-//   0x00057B8C convert_intro_routine_0x00057b8c
+//   0x0005794E apply_selected_field_action
+//   0x00057B8C run_field_action_quantity_chooser
 //   0x00057C46 convert_intro_routine_0x00057c46
-//   0x00057C5E convert_intro_routine_0x00057c5e
+//   0x00057C5E refresh_field_action_detail_panel
 //   0x00057C66 convert_intro_routine_0x00057c66
 //   0x00058D7E convert_intro_routine_0x00058d7e
 
@@ -73,7 +73,7 @@ uint convert_intro_routine_0x00056dc4(void)
             uVar6 = wait_for_controller_event();
             return uVar6;
           }
-          uVar6 = convert_intro_routine_0x00057b8c();
+          uVar6 = run_field_action_quantity_chooser();
           if (DAT_00fff0dc == '\0') {
             DAT_00fffbfe = DAT_00fffbfe - _DAT_00fff0be;
             select_menu_resource_entry();
@@ -102,7 +102,7 @@ uint convert_intro_routine_0x00056dc4(void)
               uVar6 = wait_for_controller_event();
               return uVar6;
             }
-            uVar14 = convert_intro_routine_0x00057b8c();
+            uVar14 = run_field_action_quantity_chooser();
             uVar6 = (uint)((ulonglong)uVar14 >> 0x20);
             if (DAT_00fff0dc == '\0') {
               DAT_00fffbfe = DAT_00fffbfe - (int)uVar14;
@@ -140,7 +140,7 @@ uint convert_intro_routine_0x00056dc4(void)
         }
         render_encoded_title_text();
         build_grouped_decimal_glyphs();
-        uVar14 = convert_intro_routine_0x00057b8c();
+        uVar14 = run_field_action_quantity_chooser();
         if (DAT_00fff0dc == '\0') {
           DAT_00fffbfe = DAT_00fffbfe - (int)uVar14;
           sVar10 = (short)((ulonglong)uVar14 >> 0x20);
@@ -216,7 +216,7 @@ uint convert_intro_routine_0x00056dc4(void)
         if (((uVar6 & 1 << (DAT_00fff0d5 & 0x1f)) == 0) && (_DAT_00fff0be <= DAT_00fffbfe)) {
           render_encoded_title_text();
           build_grouped_decimal_glyphs();
-          uVar14 = convert_intro_routine_0x00057b8c();
+          uVar14 = run_field_action_quantity_chooser();
           iVar4 = DAT_00fffc04;
           bVar2 = DAT_00fff0d5;
           uVar6 = (uint)((ulonglong)uVar14 >> 0x20);
@@ -293,14 +293,14 @@ LAB_000572f8:
       return uVar6;
     }
 LAB_00056e54:
-    uVar6 = convert_intro_routine_0x0005794e();
+    uVar6 = apply_selected_field_action();
     return uVar6;
   }
   if (((DAT_00fff0b8 == '\0') || ((char)(DAT_00fff0b8 + -2) < '\0')) || (DAT_00fff0b8 == '\x02'))
   goto LAB_00056e54;
   if (-1 < (char)(DAT_00fff0b8 + -4)) {
     if (DAT_00fff0b8 == '\x04') {
-      convert_intro_routine_0x00057c5e();
+      refresh_field_action_detail_panel();
       bVar2 = *(byte *)(DAT_00fffc04 + 0x66 + (int)(short)(ushort)DAT_00fff0d0);
       if ((char)bVar2 < '\x01') {
         DAT_00fff112 = 0xff;
@@ -318,7 +318,7 @@ LAB_00056e54:
       return uVar6;
     }
 LAB_00056f4a:
-    convert_intro_routine_0x00057c5e();
+    refresh_field_action_detail_panel();
     bVar2 = *(byte *)(DAT_00fffc04 + 0x66 + (int)(short)(ushort)DAT_00fff0d0);
     if ((char)bVar2 < '\x01') {
       DAT_00fff112 = 0xff;
@@ -327,7 +327,7 @@ LAB_00056f4a:
     if (((bVar2 != 0x29) && (bVar2 != 0x2a)) && (bVar2 != 0x2b)) {
       render_encoded_title_text();
       build_grouped_decimal_glyphs();
-      uVar6 = convert_intro_routine_0x00057b8c();
+      uVar6 = run_field_action_quantity_chooser();
       iVar4 = DAT_00fffc04;
       bVar2 = DAT_00fff0d0;
       if (DAT_00fff0dc == '\0') {
@@ -371,7 +371,7 @@ LAB_00056f4a:
     }
     render_encoded_title_text();
     build_grouped_decimal_glyphs();
-    uVar14 = convert_intro_routine_0x00057b8c();
+    uVar14 = run_field_action_quantity_chooser();
     iVar4 = DAT_00fffc04;
     uVar6 = (uint)((ulonglong)uVar14 >> 0x20);
     if (DAT_00fff0dc == '\0') {

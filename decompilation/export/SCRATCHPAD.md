@@ -386,6 +386,39 @@ the runtime/emulator. The exact game-facing names of the four mode categories
 and the active-runner `+0x8C` stat remain data-table work; the cost behavior
 itself is now explicit and tested.
 
+## Selected field action application: 0x5794E / 0x57B8C / 0x57C5E
+
+`0x5794E` is the mutation half of the field-menu action path, not another
+intro helper. Its caller has already selected a record group; the routine
+adds `group * 0x18` and `primary_cursor * 3` to reach one three-byte record.
+The native conversion is `apply_selected_field_action()` in the separate
+`shadowrun_ghidra_field_action_application` library:
+
+* A high-bit first byte is the disabled/invalid marker and sets the source
+  failure result before any state mutation.
+* The detail panel refresh (`0x57C5E`) happens before pricing. The ordinary
+  record path scans active-runner `+0x66..+0x6D` in ascending slot order and
+  rejects the action if all eight slots are occupied.
+* Marker `E` is a separate path: its price starts from record byte 2 and it
+  increments active-runner `+0x4F` after the quantity prompt. The source caps
+  the visible count at `0x14` and rejects the transaction when the increment
+  would reach `0x15`.
+* Ordinary records use the `0xD4540`-backed cost calculation, then store the
+  selected marker as marker+1 in the empty action slot and copy record byte 1
+  into the companion `+0x6E` slot. This marker+1 write is intentional source
+  behavior, not a normalization invented by the host layer.
+* Funds are checked before the quantity chooser and deducted only after the
+  chooser returns a cost. Cancel, no-slot, insufficient-funds, and special
+  capacity outcomes leave the runner record and funds unchanged.
+
+`0x57B8C` is now labeled `run_field_action_quantity_chooser`: it draws the
+quantity prompt, services vblank/controller input, uses the shared wrapped
+cursor for movement bits 8/9, and exits on the source bits 12/14. It remains
+an explicit presentation/input callback in the native application module;
+the conversion does not emulate its VDP writes. `0x57C5E` is labeled
+`refresh_field_action_detail_panel` and is the five-row repeated grid at
+origin `0xC484`.
+
 ## Call annotation policy
 
 Direct calls are annotated with the target address and reviewed symbol.
