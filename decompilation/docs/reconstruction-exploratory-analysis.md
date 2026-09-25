@@ -751,7 +751,10 @@ The `0x19238` program-slot path now exposes its record lookup: it searches
 the five source slot bytes for an exact selected-program match, otherwise
 chooses the first negative/free slot, and reports no available slot when all
 five are unavailable. The subsequent load/execute and visual-refresh paths
-remain separate boundaries.
+remain separate boundaries. Its concrete outcomes are now typed as already
+loaded, no available slot, insufficient memory, or ready to install; the
+loaded-program Yes/No prompt routes Yes to the existing slot command and No
+back to the Matrix panel.
 The source HUD-mode leaf at `0x19BAE` is now converted separately from the
 Matrix UI: a selected 0x14-byte record is eligible only when `+0x0F` is
 positive and signed `+0x13` is nonnegative; alternate mode interleaves a

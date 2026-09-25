@@ -574,6 +574,11 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The program-slot branch at `0x19238` is now typed as real Matrix outcomes:
+already loaded, no available slot, insufficient memory, or ready to install.
+The source's two-entry Yes/No prompt is also converted; Yes reaches the
+existing slot-command mutation boundary, while No returns to the panel.
+
 The CyberInfo routine at `0x18AA6` is now named and split into its actual
 screen semantics. The shared two-entry cursor selects Deck Stats or Run Info;
 the Run Info branch at `0x18C28` classifies the run as absent, active, or

@@ -1638,6 +1638,21 @@ target_link_libraries(shadowrun_ghidra_matrix_retreat_test
 add_test(NAME shadowrun_ghidra_matrix_retreat
          COMMAND shadowrun_ghidra_matrix_retreat_test)
 
+add_library(shadowrun_ghidra_matrix_program_slot STATIC
+    src/matrix_program_slot_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_matrix_program_slot PUBLIC include)
+target_link_libraries(shadowrun_ghidra_matrix_program_slot
+    PRIVATE shadowrun_ghidra_selection)
+
+add_executable(shadowrun_ghidra_matrix_program_slot_test
+    tests/matrix_program_slot_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_matrix_program_slot_test
+    PRIVATE shadowrun_ghidra_matrix_program_slot)
+add_test(NAME shadowrun_ghidra_matrix_program_slot
+         COMMAND shadowrun_ghidra_matrix_program_slot_test)
+
 add_library(shadowrun_ghidra_hud_mode STATIC
     src/hud_mode_conversion.cpp
 )
