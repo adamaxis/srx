@@ -107,5 +107,25 @@ int main() {
         return 14;
     }
 
+    MagicForceSelection force_state{1U};
+    if (!expect(apply_magic_force_input(force_state, 0x0800U, 3U) ==
+                    MagicForceLoopResult::adjusted &&
+                force_state.force == 2U &&
+                apply_magic_force_input(force_state, 0x0400U, 3U) ==
+                    MagicForceLoopResult::adjusted &&
+                force_state.force == 1U &&
+                apply_magic_force_input(force_state, 0x0400U, 3U) ==
+                    MagicForceLoopResult::adjusted &&
+                force_state.force == 1U &&
+                apply_magic_force_input(force_state, 0x0800U, 1U) ==
+                    MagicForceLoopResult::adjusted &&
+                force_state.force == 1U &&
+                apply_magic_force_input(force_state, 0x0200U, 3U) ==
+                    MagicForceLoopResult::finished &&
+                apply_magic_force_input(force_state, 0U, 3U) ==
+                    MagicForceLoopResult::waiting)) {
+        return 15;
+    }
+
     return 0;
 }

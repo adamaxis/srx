@@ -1107,6 +1107,11 @@ record `+0x9D`. The `0xFF5A` preparation boundary now publishes the source
 spell item code (`spell_code + 1`), reloads the ordinary equipped-item value
 only when the source had an active item, and records the selected force. The
 target/effect application loop at `0x10016` remains a separate boundary.
+The `0x10016` input boundary is now converted too: source bit `0x0800`
+raises force, `0x0400` lowers it, and `0x0200`, `0x4000`, `0x1000`, or
+`0x2000` finish the loop. All adjustments use the same inclusive clamp, so
+the host state cannot diverge at the force edges; VDP redraws remain outside
+this state conversion.
 
 The Matrix entry at `0x1817E` is an inline branch of `0x18150`, not a missing
 standalone Ghidra function. The ROM bytes now have a typed conversion that

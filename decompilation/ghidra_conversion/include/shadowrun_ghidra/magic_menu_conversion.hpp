@@ -51,6 +51,16 @@ struct MagicActionPreparation {
     bool clear_active_item_marker = false;
 };
 
+enum class MagicForceLoopResult {
+    waiting,
+    adjusted,
+    finished,
+};
+
+struct MagicForceSelection {
+    std::uint8_t force = 1;
+};
+
 // ROM 0xFBA6 takes the spell panel only for the source magic-capable class
 // (record +0x9B < 2) when its +0x7F magic resource is nonzero. Other records
 // take the ordinary one-row menu fallback.
@@ -95,5 +105,12 @@ std::uint8_t clamp_magic_force(std::uint8_t current, std::int8_t delta,
 MagicActionPreparation prepare_magic_action(
     RunnerRecordFields& record, const MagicSpellSelection& selection,
     std::uint8_t force);
+
+// ROM 0x10016: B raises force, A lowers it, and the source confirm/cancel
+// edges leave the force/posture loop. This models the input/state boundary;
+// the source's VDP redraw helpers remain outside the conversion.
+MagicForceLoopResult apply_magic_force_input(
+    MagicForceSelection& state, std::uint16_t input,
+    std::uint8_t table_parameter);
 
 } // namespace shadowrun::ghidra_conversion

@@ -154,4 +154,25 @@ MagicActionPreparation prepare_magic_action(
     return result;
 }
 
+MagicForceLoopResult apply_magic_force_input(
+    MagicForceSelection& state, const std::uint16_t input,
+    const std::uint8_t table_parameter) {
+    constexpr std::uint16_t kRaiseForce = 0x0800U;
+    constexpr std::uint16_t kLowerForce = 0x0400U;
+    constexpr std::uint16_t kFinishInput = 0x0200U | 0x4000U | 0x1000U |
+                                            0x2000U;
+    if ((input & kRaiseForce) != 0U) {
+        state.force = clamp_magic_force(state.force, 1, table_parameter);
+        return MagicForceLoopResult::adjusted;
+    }
+    if ((input & kLowerForce) != 0U) {
+        state.force = clamp_magic_force(state.force, -1, table_parameter);
+        return MagicForceLoopResult::adjusted;
+    }
+    if ((input & kFinishInput) != 0U) {
+        return MagicForceLoopResult::finished;
+    }
+    return MagicForceLoopResult::waiting;
+}
+
 } // namespace shadowrun::ghidra_conversion
