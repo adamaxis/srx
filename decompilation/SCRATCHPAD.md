@@ -574,6 +574,18 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The first executable portion of the Matrix loop at `0x1822C` is now separated
+from the native runtime in `matrix_loop_conversion`. Its setup preserves the
+source callback order for transfer preparation, Plane A clearing, the D9376
+Matrix stream, mode/HUD rendering, and the initial panel redraw. The Matrix
+cursor is a typed 4x4 state: the setup writes row 3 as a staging transfer and
+then clears the live selection to row 0; source input bits 8/9 move row with
+priority, bits 10/11 move column, both wrap from 0 through 3, and the source
+highlight positions are exposed as `0x94 + row * 0x28` and
+`0x8C + column * 0x20`.
+Confirm/cancel/program actions remain intentionally unresolved callbacks; this
+slice does not claim that the Matrix program loop is complete.
+
 The Attributes/Skills screen is now separated into a typed record/layout
 conversion. `0x0D82A` maps the twenty source label slots into two columns of
 ten rows: attributes use live-record bytes `+0x77..+0x7E`, skills use

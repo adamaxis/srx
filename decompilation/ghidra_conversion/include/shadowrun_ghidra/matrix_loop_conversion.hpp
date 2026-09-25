@@ -1,0 +1,78 @@
+#pragma once
+
+#include <cstdint>
+#include <functional>
+
+namespace shadowrun::ghidra_conversion {
+
+// The Matrix deck is a four-column by four-row program grid.  The source
+// stores the selected row and column as bytes at FFF0D1 and FFF0D0.
+struct MatrixCursorState {
+    std::uint8_t column = 0;
+    std::uint8_t row = 0;
+    std::uint16_t row_marker = 0x0094;
+    std::uint16_t column_marker = 0x008C;
+    bool redraw_requested = false;
+};
+
+// These are the controller-event bits tested by 0x1822C after the common
+// input latch/sample path has completed.
+enum MatrixInput : std::uint16_t {
+    move_up = 1U << 8,
+    move_down = 1U << 9,
+    move_left = 1U << 10,
+    move_right = 1U << 11,
+    cancel = 1U << 12,
+    confirm = 1U << 13,
+    exit = 1U << 14,
+};
+
+// ROM 0x1822C writes the row highlight at 0x94 + row * 0x28 and the column
+// highlight at 0x8C + column * 0x20.  These helpers expose the source result
+// as ordinary host coordinates without carrying the original RAM addresses.
+void update_matrix_cursor(MatrixCursorState& state,
+                          std::uint16_t input_events);
+
+struct MatrixLoopState {
+    // Saved by 0x1822C on entry and restored by its return path.  They are
+    // opaque mode state here; their source-specific consumers remain outside
+    // this conversion slice.
+    std::uint8_t saved_overlay_marker = 0;
+    std::uint32_t saved_field_state = 0;
+    std::uint8_t overlay_marker = 0;
+    std::uint32_t field_state = 0;
+
+    // FFF0D0/FFF0D1 and their derived highlight positions.
+    MatrixCursorState cursor{};
+    bool display_dirty = false;
+};
+
+struct MatrixLoopCallbacks {
+    std::function<void()> write_transfer_header;
+    std::function<void()> write_fixed_transfer_pair;
+    std::function<void(std::uint16_t)> set_display_command;
+    std::function<void()> clear_plane_a;
+    std::function<void()> reset_upload_state;
+    std::function<void(std::uint32_t source_address,
+                       std::uint32_t destination_command)>
+        decode_and_upload_source_stream;
+    std::function<void()> refresh_mode_metadata;
+    std::function<void()> render_hud_sprite_stream;
+    std::function<void()> render_field_hud;
+    std::function<void()> build_title_sprite_records;
+    std::function<void()> write_hud_panel_grid;
+    std::function<void()> render_hud_indicator_grids;
+    std::function<void()> write_two_hud_grids;
+    // 0x1882E redraws the selected Matrix program/panel.  Program execution
+    // remains a separate boundary until its action branches are converted.
+    std::function<void()> redraw_matrix_panel;
+};
+
+// Converts the deterministic setup at 0x1822C through its first redraw.  The
+// source briefly draws the staging row 3, then clears FFF0D1 to row 0 before
+// the first panel redraw. It deliberately does not execute a program or
+// emulate Genesis VDP state.
+void initialize_matrix_loop(MatrixLoopState& state,
+                            const MatrixLoopCallbacks& callbacks);
+
+} // namespace shadowrun::ghidra_conversion

@@ -729,10 +729,15 @@ resolved against the bytecode.
 
 Matrix is a separate state family from Magic and from the command overview.
 The deck-present entry/return shell at `0x1817E` is now converted, including
-its source resource addresses and `0x1822C` loop boundary. The Matrix state
-table, program actions, cursor rules, and rendered resources inside the loop
-must still be recovered before claiming the Matrix panel complete. Until then
-the Matrix hill remains `PENDING`, rather than represented by a generic
+its source resource addresses and `0x1822C` loop boundary. The deterministic
+opening of `0x1822C` is also converted in the separate Ghidra conversion
+module: it preserves the source upload/HUD callback order, performs the
+source row-3 staging write before clearing the live selection to column 0 /
+row 0, and translates row/column moves to ordinary host coordinates
+(`0x94 + row * 0x28` and `0x8C + column * 0x20`).
+The Matrix state table, program actions, and rendered resources inside the
+loop must still be recovered before claiming the Matrix panel complete. Until
+then the Matrix hill remains `PENDING`, rather than represented by a generic
 screen.
 
 ## 10. Interaction, story, shops, and combat
