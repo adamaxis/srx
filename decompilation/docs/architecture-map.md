@@ -2,10 +2,11 @@
 
 This is the architecture implied by the ROM, the regenerated Ghidra callgraph,
 the typed conversion work, and the existing native source. It is the shape the
-port should converge on. The 906 exported functions are not 906 original
-source modules: they are mostly leaf routines, table-dispatch targets, transfer
-wrappers, animation variants, and small record helpers. The export currently
-has 2,978 resolved direct call sites and 16 indirect/unresolved boundaries.
+port should converge on; it is not a claim that every named native layer exists
+yet. The 909 exported functions are not 909 original source modules: they are
+mostly leaf routines, table-dispatch targets, transfer wrappers, animation
+variants, and small record helpers. The export currently has 2,978 resolved
+direct call sites and 16 indirect/unresolved boundaries.
 
 ## The short version
 
@@ -15,11 +16,13 @@ Windows / Qt frontend
         v
 NativeGameController ---- InputState / FrameClock
         |
-        +--> GameSession (typed runner, world, inventory, story, save state)
+        +--> GameSession (mutable runner, world, story, save state)
         |        |
         |        +--> SceneState: Boot -> Title -> Startup -> Field -> Menu
         |        |                         \-> Dialog / Combat / Matrix / Shop
         |        |
+        |        +--> RunnerRoster / CharacterRecords
+        |        +--> RulesDatabase / ExtractedGameData (read-only)
         |        +--> FieldWorld (area map, terrain, collision, entities)
         |        +--> MenuSystem (command focus, inventory, equipment, dialogs)
         |        +--> IntroDirector (sprite choreography and timed text)
@@ -29,13 +32,15 @@ NativeGameController ---- InputState / FrameClock
         |                     object ordering, text, RGBA presentation)
         +--> ResourceManifest / AssetStore (direct assets only)
 
-Offline only: ROM/resource extractors, audio conversion, manifest generation
+Offline only: ROM/data extractors, image/palette decoding, audio conversion,
+              manifest generation
 Reference only: one Ghidra project/export, ROM traces, scratchpad, captures
 ```
 
 The arrow direction is ownership. The renderer and Qt widgets present typed
 state; they do not own a second game state machine. The extractor creates host
-assets; the runtime never decodes ROM pointers or reads Genesis RAM addresses.
+assets and typed game data; the runtime never decodes ROM pointers or reads
+Genesis RAM addresses.
 
 ## 1. Runtime layers
 
@@ -88,13 +93,79 @@ transitions. They are not generic function-pointer tables copied from the
 ROM. The known state-pair and handler-table families around `0x1F580` and
 `0x214B0` should become named transition policies as each hill is traced.
 
+### Extracted game data and rules boundary
+
+The ROM is not only an image and audio source. It also contains the static game
+database: fixed-size records, pointer tables, text catalogs, archetype
+templates, item/equipment definitions, spell definitions, field/event data,
+and other lookup tables consumed by the original routines. These must be
+extracted and typed before the native systems can be considered complete.
+
+The offline extraction side should produce an `ExtractedGameData` package,
+separate from the runtime image manifest. It is read-only at runtime and is
+the native equivalent of the source tables, not a ROM address map:
+
+```text
+ExtractedGameData / RulesDatabase
+  +-- runner/archetype templates
+  +-- roster and character-record defaults
+  +-- inventory, weapon, armor, and equipment definitions
+  +-- cyberware definitions and installed-effect metadata
+  +-- spell/magic definitions and costs/effects
+  +-- attribute and skill definitions
+  +-- field maps, entity templates, event cells, and transition records
+  +-- dialogue, menu, notebook, and other text catalogs
+  +-- source-derived animation/audio event definitions
+```
+
+Each table needs a source address/stride/pointer-table note in the extraction
+catalog and a typed native representation. The runtime may use ordinary IDs,
+enums, vectors, and records; it must not retain source pointers or perform
+ROM-address arithmetic. `assets/native/state.bin` remains the small mutable
+startup-state payload; static rules/data should have an explicit separate
+generated data boundary rather than being hidden in graphics assets or the
+runtime manifest.
+
+The already-confirmed extraction families include:
+
+- runner/archetype templates at `0x7291A`, with `0x100`-byte records, and the
+  recruited roster table beginning at `0x72C1A`;
+- the live runner record fields consumed by the inventory, posture, HUD,
+  attributes, skills, cyberware, and combat-bar routines;
+- 50 inventory/equipment records at `0xD4540`, with a `0x30`-byte stride;
+- armor/detail and attack/defense lookup data at `0xD4D50`, `0xCF3D4`, and
+  `0xCF610`, plus the associated timing/animation lookup families;
+- fifteen cyberware names/effect slots through the pointer table at `0xD2072`;
+- twenty attribute/skill labels through the pointer table at `0xC1A2A`;
+- field mode, terrain, entity-template, event, and transition tables behind
+  the field-mode and entity dispatch pointers;
+- save/roster compact records and the projections used by `0x59172` through
+  `0x598B0`;
+- the spell/magic records and availability/effect rules reached by `0xFBA6`,
+  which remain an explicit extraction task rather than being inferred from the
+  menu image.
+
+This list is a starting inventory, not permission to treat every constant in
+`rom_layout.hpp` as understood. Every family still needs a source consumer,
+record shape, pointer/stride rule, and native use documented before it is
+called complete.
+
+The distinction is:
+
+```text
+ExtractedGameData / RulesDatabase = immutable definitions and lookup tables
+GameSession / RunnerRoster         = mutable play state and record instances
+SaveStore                          = persistence of the mutable state
+```
+
 ### Authoritative session model
 
-`GameSession` owns the data that changes during play:
+`GameSession` owns the data that changes during play and refers to the
+read-only `RulesDatabase` for definitions:
 
 - current scene/mode and scene-local cursor/focus;
 - the active runner and roster eligibility;
-- the 0x100-byte-equivalent typed runner record, including the distinction
+- typed runner records, including the distinction
   between possession, equipped weapon/gear, and equipped armor;
 - area/world identity, camera, terrain/event cells, and collision state;
 - pending interactions, dialog/combat state, timers, and animation phases;
@@ -182,11 +253,13 @@ of the runtime asset manifest and never replaces sprite extraction.
 
 ### AudioService
 
-The source audio functions around `0x52D..0x53` are a command/bus producer,
-not the Windows playback backend. Native `AudioService` should receive named
-music/effect events and play complete files in a Windows-supported format
-(for example WAV for effects and an appropriate complete-track format for
-music). It must not expose or consume the old broken fragments.
+The source audio functions around `0x52D..0x53` are a command/bus producer and
+the source sound driver is an extraction reference, not the Windows playback
+backend. Offline audio extraction must decode the source resources into
+complete named music/effect files in a Windows-supported format. Native
+`AudioService` receives named music/effect events and plays those files; it
+does not reproduce Z80 command sequencing, waveform uploads, driver state, or
+fragment catalogs. It must not expose or consume the old broken fragments.
 
 The emulator/bus transcription may remain as a museum/reference path. It is
 not a dependency of native gameplay.
@@ -204,16 +277,42 @@ assets["field.entity.walk.0.1"];
 assets["audio.title"];
 ```
 
-The manifest is the complete runtime allowlist. It should point directly to
-individual extracted images, maps, sprites, text tables, and complete audio
-files. A runtime load loop iterates manifest rows; it does not contain one
-assert or one hard-coded loader branch per asset.
+The manifest is the complete runtime allowlist for host resources. It should
+point directly to individual extracted RGBA images, maps, sprites, text/data
+resources, and complete audio files. A runtime load loop iterates manifest
+rows; it does not contain one assert or one hard-coded loader branch per
+asset. Static rules/data are a separate generated data package and are not
+smuggled into this image/audio manifest.
 
-The current direct-assets boundary is already represented by
-`assets/manifest.tsv`, `assets/catalog.tsv`, `assets/resources.tsv`, and the
-runtime manifest reader. The next cleanup is data quality: late-ammo assets,
-all moving intro sprites, and complete Windows-playable audio must be corrected
-at the extractor/source-data boundary, not hidden by runtime fallbacks.
+`assets/resources.tsv` is the runtime manifest and alias table. `manifest.tsv`
+and `catalog.tsv` are extraction/audit metadata and must not become additional
+runtime authorities. The next cleanup is data quality: late-ammo assets, all
+moving intro sprites, and complete Windows-playable audio must be corrected at
+the extractor/source-data boundary, not hidden by runtime fallbacks.
+
+### Native image and effect model
+
+Genesis graphics routines often combine tile decoding, palette selection,
+CRAM updates, VDP transfers, sprite-table construction, and timing effects.
+Those are source-decoding concerns. The offline image importer resolves the
+source tiles and palette into ordinary host RGBA images. The native renderer
+loads those images directly:
+
+```text
+source tiles + source palette
+        -> offline decoder
+        -> individually named RGBA image/sprite files
+        -> runtime image loader
+        -> ordered sprite instances / background images
+```
+
+The runtime should not have a palette animator, VDP upload queue, tile-plane
+reconstructor, Genesis address arithmetic, or source palette mutation path.
+When a scene needs a flash, fade, tint, glow, or other special effect, use a
+Qt/native compositor effect or an authored alternate image. When a scene needs
+animation, use a named sequence of individual images with source-derived
+timing and placement. Do not recreate a palette-shift mechanism merely because
+the Genesis used one to produce the original pixels.
 
 ### NativeRenderer
 
@@ -245,27 +344,30 @@ decompilation/ghidra_conversion/
 decompilation/src/graphics_import.cpp
 decompilation/src/graphics_extract.cpp
 decompilation/src/audio_extract.cpp
-  ROM -> direct host assets; no native game state
+decompilation/src/game_data_extract.cpp (or equivalent split)
+  ROM -> host RGBA assets, complete audio, and typed ExtractedGameData
+  no native gameplay state or runtime ROM access
 decompilation/assets/
   manifest and bare runtime assets only
 decompilation/webm_ffmpeg_microframes/
   isolated visual reference breakdown; never a runtime source
 ```
 
-The Ghidra conversion layer is not linked into `shadowrun_port`. It records
+The Ghidra conversion layer is not linked into the native runtime. It records
 what the ROM does and supplies tests/evidence for the native rewrite. The
 emulator/bus code is likewise a verification museum, not a second gameplay
-implementation.
+implementation. The current `shadowrun_port` still contains bus-shaped code;
+that is an implementation gap to remove, not part of this target architecture.
 
-## 5. What the 906 entries become
+## 5. What the 909 entries become
 
-The current export/ledger pass is complete in the narrow source-coverage
-sense: all 906 exported functions are named and represented, with the ledger
-also retaining nine non-function ROM anchors used by the native audit. The
-conversion tests now group the remaining leaf entries into typed subsystem
-contracts. That does **not** mean the game is fully playable or every hill is
-defended: the ledger still has 908 `partial`, four `defended`, one `ported`,
-and two `pending` rows.
+The current export/ledger pass is complete only in the narrow source-coverage
+sense: all 909 exported functions are represented, with the ledger also
+retaining non-function ROM anchors used by the native audit. The conversion
+tests now group some leaf entries into typed subsystem contracts. That does
+**not** mean the game is fully playable or every hill is defended: the ledger
+currently has 907 `partial`, four `defended`, one `ported`, and five `pending`
+rows, and 258 exported names remain generic pending stronger evidence.
 
 The realistic native source count is therefore roughly a dozen ownership
 areas, not 900 files:
@@ -293,14 +395,22 @@ as a source-trace test; they should not be linked wholesale into the game.
 
 1. Keep the current native startup/field slice stable and preserve the source
    audit tests.
-2. Finish the direct asset regeneration and manifest cleanup, especially audio
-   and individually extracted intro sprites.
-3. Turn `SceneState` and `GameSession` into the single authoritative native
-   state owner; move any remaining screen logic out of frontend code.
-4. Complete one hill at a time: trace, typed state, focused CTest, independent
+2. Split source-data extraction from graphics extraction and enumerate every
+   ROM table consumed by gameplay: records, rules, equipment, spells, events,
+   text, and persistence data.
+3. Define the generated `ExtractedGameData`/`RulesDatabase` boundary and the
+   mutable `RunnerRoster`/`GameSession` boundary. Do not route native gameplay
+   through ROM offsets or conversion helpers.
+4. Finish direct asset regeneration and manifest cleanup, especially audio and
+   individually extracted intro sprites. Resolve Genesis palettes during
+   extraction and emit ordinary host images; do not carry palette/VDP logic
+   into the runtime.
+5. Turn `SceneState` and `GameSession` into the single authoritative native
+   state owner; move remaining screen logic out of frontend code.
+6. Complete one hill at a time: trace, typed state, focused CTest, independent
    image dump, then fold the corresponding conversion contract into native.
-5. Add the remaining field interactions, menus, save/load, combat, Matrix,
-   and audio only when their ROM entry, data tables, exit paths, and captures
-   are traced. Do not fill pending hills with invented content.
-6. Keep Ghidra and the emulator buildable as reference tools, but prevent both
+7. Add remaining field interactions, menus, save/load, combat, Matrix, and
+   audio only when their ROM entry, data tables, exit paths, and captures are
+   traced. Do not fill pending hills with invented content.
+8. Keep Ghidra and the emulator buildable as reference tools, but prevent both
    from becoming runtime dependencies.
