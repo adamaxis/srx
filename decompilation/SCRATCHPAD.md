@@ -574,6 +574,16 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+`0x1BCE8` is now `advance_title_profile_motion`. It carries the typed profile
+phase, movement countdown/easing boundary, moving X/Y state, secondary phase,
+and source finalization flags into a separate module; both profile and moving
+sprite data remain callback-resolved rather than becoming runtime ROM pointers.
+
+`0x1BCE8` is now `advance_title_profile_motion`. It carries the typed profile
+phase, movement countdown/easing boundary, moving X/Y state, secondary phase,
+and source finalization flags into a separate module; both profile and moving
+sprite data remain callback-resolved rather than becoming runtime ROM pointers.
+
 The runner animation timing leaves at `0x1A4EA` and `0x1A538` were corrected
 against the ROM disassembly. They do not read the 0x100-byte live runner
 record: both select `FF1100 + (FFF118 * 0x14)`, with `0x1A4EA` reading byte

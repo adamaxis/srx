@@ -16975,7 +16975,7 @@
 0001B0B4: bsr.w 0x0001beba ; call 0001BEBA advance_title_profile_transition
 0001B0B8: tst.w (0x00ffe058).l
 0001B0BE: beq.w 0x0001b0c6
-0001B0C2: bsr.w 0x0001bce8 ; call 0001BCE8 convert_world_routine_0x0001bce8
+0001B0C2: bsr.w 0x0001bce8 ; call 0001BCE8 advance_title_profile_motion
 0001B0C6: tst.w (0x00ffe05e).l
 0001B0CC: beq.w 0x0001b0d4
 0001B0D0: bsr.w 0x0001c866 ; call 0001C866 convert_world_routine_0x0001c866

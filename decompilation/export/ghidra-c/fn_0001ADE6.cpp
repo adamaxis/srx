@@ -30,7 +30,7 @@
 //   0x0001B87A dispatch_title_phase_handler
 //   0x0001BA6E advance_title_burst_animation
 //   0x0001BB6A advance_title_noise_effect
-//   0x0001BCE8 convert_world_routine_0x0001bce8
+//   0x0001BCE8 advance_title_profile_motion
 //   0x0001BEBA advance_title_profile_transition
 //   0x0001BF7A advance_profile_copy_timer
 //   0x0001C0C2 advance_alternating_profile
@@ -192,7 +192,7 @@ LAB_0001afc0:
         advance_title_profile_transition();
       }
       if (DAT_00ffe058 != 0) {
-        convert_world_routine_0x0001bce8();
+        advance_title_profile_motion();
       }
       if (_DAT_00ffe05e != 0) {
         convert_world_routine_0x0001c866();

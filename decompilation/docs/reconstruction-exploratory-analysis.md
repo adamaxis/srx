@@ -1007,6 +1007,8 @@ The adjacent title profile pair is now typed. `0x1BEBA` copies the source profil
 
 `0x1BB6A` is now `advance_title_noise_effect`. Its bit-2 active branch decrements `FFE0CA`, renders only when the low three bits are at least four, and finalizes by clearing source bits 2 and 0 before the behavior/menu callbacks. Its inactive branch arms bit 2 with a `0x3C` countdown at expiry; otherwise it consumes one source PRNG word, performs the exact two 16-bit rotates used by the ROM selector, and emits seven `0xE8,0xEC` sprites from the four source tables at `0x1DAB8`/`0x1DAC2`/`0x1DACC`/`0x1DAD6`.
 
+`0x1BCE8` is now `advance_title_profile_motion`. The conversion separates the 13-frame profile phase selected from the `0x1BE4E` records from the later 60-step movement path. The movement path preserves the source `0x15E56` easing lookup, signed fixed-point scaling, `0x1BE3E` four-frame sprite selection, the `0x0F` secondary countdown, and the two finalization entry points that clear `FFE058`/`FFE0D6` and conditionally publish `FFE0F4` before the menu refresh boundary.
+
 The next title/world-effect pair is also no longer generic. `0x1A818` starts
 the descriptor transition, choosing between its six-frame loading path and the
 active descriptor-token path; its source word `0xD280` is recorded as such
