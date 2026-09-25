@@ -1104,6 +1104,13 @@ and invokes the selected initializer through the `F3DC6` table boundary. The
 native conversion represents those records as typed host data and leaves the
 initializer as an explicit callback.
 
+`0x1DF34` resolves nearby projected world effects. It scans ten 0x12-byte
+records with strict +/-0x100 coordinate bounds, delegates the interaction
+code to `0x133A`, clears the active flag and services audio command `0x24`
+for non-negative records, and routes interaction code `0x65` to the effect
+slot cleanup boundary. The native version keeps those source decisions in a
+typed record loop instead of exposing the original record addresses.
+
 The larger `0x1AA40` leaf is now named `tick_world_effect_animation` and
 converted separately. Its normal path chooses runner-derived timing versus the
 fixed descriptor-state cadence, its loading/transition path uses the six-phase

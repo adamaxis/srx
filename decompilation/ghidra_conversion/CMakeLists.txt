@@ -2046,6 +2046,19 @@ target_link_libraries(shadowrun_ghidra_world_effect_initializer_test
 add_test(NAME shadowrun_ghidra_world_effect_initializer
          COMMAND shadowrun_ghidra_world_effect_initializer_test)
 
+add_library(shadowrun_ghidra_nearby_effect STATIC
+    src/nearby_effect_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_nearby_effect PUBLIC include)
+
+add_executable(shadowrun_ghidra_nearby_effect_test
+    tests/nearby_effect_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_nearby_effect_test
+    PRIVATE shadowrun_ghidra_nearby_effect)
+add_test(NAME shadowrun_ghidra_nearby_effect
+         COMMAND shadowrun_ghidra_nearby_effect_test)
+
 add_library(shadowrun_ghidra_audio_command_batch STATIC
     src/audio_command_batch_conversion.cpp
 )

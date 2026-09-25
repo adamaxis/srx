@@ -18619,9 +18619,9 @@
 0001DF14: dbf D7w,0x0001df0a
 0001DF18: rts
 0001DF1A: movea.l #0xff0100,A0
-0001DF20: bsr.w 0x0001df34 ; call 0001DF34 convert_world_routine_0x0001df34
+0001DF20: bsr.w 0x0001df34 ; call 0001DF34 resolve_nearby_world_effects
 0001DF24: movea.l #0xff0200,A0
-0001DF2A: bsr.w 0x0001df34 ; call 0001DF34 convert_world_routine_0x0001df34
+0001DF2A: bsr.w 0x0001df34 ; call 0001DF34 resolve_nearby_world_effects
 0001DF2E: movea.l #0xff0300,A0
 0001DF34: move.w (A0),D0w
 0001DF36: move.w (0x4,A0),D1w

@@ -633,7 +633,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0001DED8	clear_high_effect_slots	40	unknown	ok	ghidra-c/fn_0001DED8.cpp
 0001DF00	clear_entity_effect_pending_flags	26	unknown	ok	ghidra-c/fn_0001DF00.cpp
 0001DF1A	resolve_nearby_effects	26	unknown	ok	ghidra-c/fn_0001DF1A.cpp
-0001DF34	convert_world_routine_0x0001df34	144	unknown	ok	ghidra-c/fn_0001DF34.cpp
+0001DF34	resolve_nearby_world_effects	144	unknown	ok	ghidra-c/fn_0001DF34.cpp
 0001DFC4	advance_world_effect_trigger	164	unknown	ok	ghidra-c/fn_0001DFC4.cpp
 0001E04A	begin_world_effect_transition	80	unknown	ok	ghidra-c/fn_0001E04A.cpp
 0001E0B8	promote_entity_effect_flags	36	unknown	ok	ghidra-c/fn_0001E0B8.cpp
