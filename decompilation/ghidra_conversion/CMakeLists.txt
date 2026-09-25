@@ -680,6 +680,21 @@ target_link_libraries(shadowrun_ghidra_save_field_restore_test
 add_test(NAME shadowrun_ghidra_save_field_restore
          COMMAND shadowrun_ghidra_save_field_restore_test)
 
+add_library(shadowrun_ghidra_world_activity_routine STATIC
+    src/world_activity_routine_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_world_activity_routine PUBLIC include)
+target_link_libraries(shadowrun_ghidra_world_activity_routine
+    PRIVATE shadowrun_ghidra_scene_profile)
+
+add_executable(shadowrun_ghidra_world_activity_routine_test
+    tests/world_activity_routine_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_world_activity_routine_test
+    PRIVATE shadowrun_ghidra_world_activity_routine)
+add_test(NAME shadowrun_ghidra_world_activity_routine
+         COMMAND shadowrun_ghidra_world_activity_routine_test)
+
 add_library(shadowrun_ghidra_world_effect_selection STATIC
     src/world_effect_selection_conversion.cpp
 )

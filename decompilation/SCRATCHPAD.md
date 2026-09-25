@@ -574,6 +574,20 @@ profile enum. A pending `FFFC3C` effect is exposed through the separate
 world-effect callback. The conversion has no dependency on the emulator or
 native runtime; only the two still-independent source leaves remain callbacks.
 
+The world activity coordinator at `0x167AE` is now a separate typed
+conversion. It resets the activity decision state, applies the `FFE186`
+timeout scene override and `FFE162` descriptor-publish override in source
+order, snapshots/prepares the field, and handles the `0x15..0x2B` resource
+branch, `0x2C..0x37` scripted-activity branch, and `0x38+` stop boundary.
+The field branch preserves the existing-activity early return, the
+`FFFC2C` bit-26 timeout gate for scene `0x14`, the `FFFC1E` bit-19/bit-29
+gates for scenes `0x0D`/`0x0F`, the scene-to-runner table lookup, and the
+primary/secondary marker comparison before selecting a host script-table
+entry. The resource branch preserves the PRNG-derived slot and all three
+source override switches, then uses the typed scene cursor and upload
+boundary. No ROM pointer table or Genesis RAM address is used as runtime
+state.
+
 The recruited roster data path is now explicit. ROM `0x72C1A` contains ten
 named `0x100`-byte templates: Ricky, Winston Marrs, Trent, Petr Uvehr,
 Walking Bear, Phantom, Two Fists, Freya, Rianna, and Stark. The next
