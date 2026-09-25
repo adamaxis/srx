@@ -573,6 +573,10 @@ the original pointer arithmetic into host code. `0x0CEC` now installs the
 four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
+The next Matrix/menu service batch is isolated in `matrix_menu_service_conversion`.
+`0x19632` clears one loaded program slot, applies the source code-specific flag/status cleanup, stores the empty code and visual state, and submits the repeated-grid, grid, and row refreshes in source order.
+`0x19788` models the unsigned overlay countdown wrap, the unconditional overlay-timer service, the signed five-slot progression delay, and the first-incomplete-slot grid/completion publication.
+`0x1989A` normalizes the signed HUD variant, preserves the high-side completion fade/world-effect/wait sequence, and publishes audio only when the normalized variant differs from the source's last-published value. All three are reference-only typed C++ with callbacks for presentation, audio, and waits.
 
 The program-slot branch at `0x19238` is now typed as real Matrix outcomes:
 already loaded, no available slot, insufficient memory, or ready to install.

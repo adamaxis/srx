@@ -993,3 +993,8 @@ surface area:
 No later item should be used to mask an earlier unresolved transition. When a
 source path is unknown, the code and this document must label it `PENDING` and
 capture the missing evidence needed to close it.
+Matrix/menu service leaves converted.
+The next three Matrix/menu leaves are now typed in `matrix_menu_service_conversion`.
+`0x19632` clears one loaded slot using the source program-code-specific flag cleanup, writes the empty program/status values, and preserves the repeated-grid/grid/row refresh order.
+`0x19788` decrements the unsigned overlay countdown, services the overlay timer, then advances only the first non-complete one of five visual slot states when the signed inter-step delay expires; completion publishes the selected slot and renders its text.
+`0x1989A` normalizes the signed HUD variant to `-1`, `0`, or `1`, exposes the upward completion fade/world-effect/vblank/controller sequence, and publishes audio only when the source's last-published variant changes. These callbacks are source-service boundaries and are not linked to the emulator or native renderer.

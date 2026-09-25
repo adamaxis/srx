@@ -721,9 +721,9 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x000195A6L, "calculate_selected_matrix_program_load_steps");
         names.put(0x000195AAL, "calculate_matrix_program_load_steps");
         names.put(0x000195D8L, "refresh_matrix_program_slot");
-        names.put(0x00019632L, "convert_world_routine_0x00019632");
-        names.put(0x00019788L, "convert_world_routine_0x00019788");
-        names.put(0x0001989AL, "convert_world_routine_0x0001989a");
+        names.put(0x00019632L, "clear_matrix_program_slot");
+        names.put(0x00019788L, "advance_matrix_program_loading");
+        names.put(0x0001989AL, "update_hud_mode_transition");
         names.put(0x00019976L, "convert_world_routine_0x00019976");
         names.put(0x00019B40L, "select_run_hud_mode");
         names.put(0x00019BF6L, "select_hud_mode_auxiliary_value");

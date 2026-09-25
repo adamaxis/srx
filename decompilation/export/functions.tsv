@@ -511,13 +511,13 @@ entry	name	size	callingConvention	decompileStatus	file
 000195AA	calculate_matrix_program_load_steps	46	unknown	ok	ghidra-c/fn_000195AA.cpp
 000195D8	refresh_matrix_program_slot	82	unknown	ok	ghidra-c/fn_000195D8.cpp
 0001962A	apply_menu_slot_command	8	unknown	ok	ghidra-c/fn_0001962A.cpp
-00019632	convert_world_routine_0x00019632	192	unknown	ok	ghidra-c/fn_00019632.cpp
+00019632	clear_matrix_program_slot	192	unknown	ok	ghidra-c/fn_00019632.cpp
 000196F2	rotate_hud_history	68	unknown	ok	ghidra-c/fn_000196F2.cpp
 00019736	clear_ready_menu_slot_timer	44	unknown	ok	ghidra-c/fn_00019736.cpp
 00019762	clear_menu_status_at	38	unknown	ok	ghidra-c/fn_00019762.cpp
-00019788	convert_world_routine_0x00019788	206	unknown	ok	ghidra-c/fn_00019788.cpp
+00019788	advance_matrix_program_loading	206	unknown	ok	ghidra-c/fn_00019788.cpp
 00019856	refresh_field_hud	68	unknown	ok	ghidra-c/fn_00019856.cpp
-0001989A	convert_world_routine_0x0001989a	220	unknown	ok	ghidra-c/fn_0001989A.cpp
+0001989A	update_hud_mode_transition	220	unknown	ok	ghidra-c/fn_0001989A.cpp
 00019976	convert_world_routine_0x00019976	376	unknown	ok	ghidra-c/fn_00019976.cpp
 00019AEE	refresh_mode_glyph	70	unknown	ok	ghidra-c/fn_00019AEE.cpp
 00019B34	publish_menu_selection_then_text	12	unknown	ok	ghidra-c/fn_00019B34.cpp
