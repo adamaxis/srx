@@ -593,6 +593,11 @@ source's seven exact scene/submode cases into five typed host resource
 profiles, preserves the scene-5 any-submode case, and intentionally leaves
 the existing selection unchanged for all other routes.
 
+The `0x26972` title refresh gate is now `refresh_title_sprite_records`. It
+decrements the pending animation countdown, defers only while the source
+low-two-bit render phase is above one, clears an expired pending marker, and
+then invokes the existing host sprite-record builder.
+
 `0x1CA12` is now `advance_world_effect_motion`, preserving the negative-
 countdown finalizer, direction-dependent source-table callback, fixed Y
 subtraction, shifted sprite placement, and menu-service boundary.

@@ -1593,6 +1593,18 @@ target_link_libraries(shadowrun_ghidra_mode_entry_resource_test PRIVATE
 add_test(NAME shadowrun_ghidra_mode_entry_resource
     COMMAND shadowrun_ghidra_mode_entry_resource_test)
 
+add_library(shadowrun_ghidra_title_sprite_refresh STATIC
+    src/title_sprite_refresh_conversion.cpp)
+target_include_directories(shadowrun_ghidra_title_sprite_refresh PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+add_executable(shadowrun_ghidra_title_sprite_refresh_test
+    tests/title_sprite_refresh_conversion_test.cpp)
+target_link_libraries(shadowrun_ghidra_title_sprite_refresh_test PRIVATE
+    shadowrun_ghidra_title_sprite_refresh)
+add_test(NAME shadowrun_ghidra_title_sprite_refresh
+    COMMAND shadowrun_ghidra_title_sprite_refresh_test)
+
 add_library(shadowrun_ghidra_mode_optional_resource STATIC
     src/mode_optional_resource_conversion.cpp
 )

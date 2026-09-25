@@ -683,7 +683,7 @@ entry	name	size	callingConvention	decompileStatus	file
 000268E6	append_world_sprite_records	82	unknown	ok	ghidra-c/fn_000268E6.cpp
 00026938	copy_two_word_rows	32	unknown	ok	ghidra-c/fn_00026938.cpp
 00026958	upload_decoded_source_stream	26	unknown	ok	ghidra-c/fn_00026958.cpp
-00026972	convert_world_routine_0x00026972	142	unknown	ok	ghidra-c/fn_00026972.cpp
+00026972	refresh_title_sprite_records	142	unknown	ok	ghidra-c/fn_00026972.cpp
 00026A00	convert_world_routine_0x00026a00	510	unknown	ok	ghidra-c/fn_00026A00.cpp
 00026BFE	write_masked_transfer	40	unknown	ok	ghidra-c/fn_00026BFE.cpp
 00026C26	write_masked_transfer_with_display_control	56	unknown	ok	ghidra-c/fn_00026C26.cpp
