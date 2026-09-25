@@ -39,7 +39,7 @@
 //   0x0001C61C advance_title_sweep_animation
 //   0x0001C754 convert_world_routine_0x0001c754
 //   0x0001C866 advance_title_effect_motion
-//   0x0001CA12 convert_world_routine_0x0001ca12
+//   0x0001CA12 advance_world_effect_motion
 //   0x0001CC24 convert_world_routine_0x0001cc24
 //   0x0001CCDC update_persistent_title_effect
 //   0x0001CD5A convert_world_routine_0x0001cd5a
@@ -198,7 +198,7 @@ LAB_0001afc0:
       advance_title_effect_motion();
       }
       if (_DAT_00ffe06e != 0) {
-        convert_world_routine_0x0001ca12();
+        advance_world_effect_motion();
       }
       if (DAT_00ffe076 != 0) {
         convert_world_routine_0x0001a5a0();

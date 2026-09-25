@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001CA12
-// Name: convert_world_routine_0x0001ca12
+// Name: advance_world_effect_motion
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
@@ -9,7 +9,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_world_routine_0x0001ca12(void)
+void advance_world_effect_motion(void)
 
 {
   DAT_00ffe070 = DAT_00ffe070 + -1;
@@ -25,5 +25,4 @@ void convert_world_routine_0x0001ca12(void)
   build_title_sprite_records();
   return;
 }
-
 

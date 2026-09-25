@@ -574,6 +574,10 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+`0x1CA12` is now `advance_world_effect_motion`, preserving the negative-
+countdown finalizer, direction-dependent source-table callback, fixed Y
+subtraction, shifted sprite placement, and menu-service boundary.
+
 The paired layer entries `0x1C3FA`/`0x1C506` are now separated into
 `advance_title_sprite_layers` and `render_title_sprite_layers`. Their phase
 timers, alternate source pointers, two base sprites, optional status overlays,

@@ -1025,6 +1025,12 @@ mode/position split between `0x1C926` and `0x1C956`, and builds at the current
 installs `0x1C288` or `0x1C28E` into the correct record slot based on the
 `0x120` position boundary, clears `FFE0D6`/`FFE05E`, and services the menu.
 
+`0x1CA12` is now `advance_world_effect_motion`. It finalizes when the
+decremented `FFE070` word is negative; otherwise it advances the `FFE072`
+phase, selects the `0x1CA8C`/`0x1CAAC` source entry according to the sign of
+`FFE06C`, subtracts `0x1A` from `FFE068`, and builds at the shifted position
+with attributes `0x2000`.
+
 The next title/world-effect pair is also no longer generic. `0x1A818` starts
 the descriptor transition, choosing between its six-frame loading path and the
 active descriptor-token path; its source word `0xD280` is recorded as such
