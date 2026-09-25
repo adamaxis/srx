@@ -16992,7 +16992,7 @@
 0001B106: beq.w 0x0001b10e
 0001B10A: bsr.w 0x0001b282 ; call 0001B282 advance_matrix_program_transition
 0001B10E: bsr.w 0x0001ccdc ; call 0001CCDC update_persistent_title_effect
-0001B112: bsr.w 0x0001cc24 ; call 0001CC24 convert_world_routine_0x0001cc24
+0001B112: bsr.w 0x0001cc24 ; call 0001CC24 advance_persistent_world_effect
 0001B116: tst.w (0x00ffe080).l
 0001B11C: bne.w 0x0001b126
 0001B120: jsr 0x0001aa40.l ; call 0001AA40 tick_world_effect_animation

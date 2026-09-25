@@ -592,6 +592,10 @@ offsets, destination coordinates, and 60-step fixed-point velocity setup.
 branches for the secondary seed record, special `0x1C27C` setup, motion
 initialization, spawn offsets, and the pending-transition Y adjustment.
 
+`0x1CC24` is now `advance_persistent_world_effect`, including the actual
+record tick, six-slot circular sprite work area, seven-build wrapped draw
+pass, and completion/menu transition.
+
 The paired layer entries `0x1C3FA`/`0x1C506` are now separated into
 `advance_title_sprite_layers` and `render_title_sprite_layers`. Their phase
 timers, alternate source pointers, two base sprites, optional status overlays,

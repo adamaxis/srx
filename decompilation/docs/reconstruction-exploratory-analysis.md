@@ -1047,6 +1047,13 @@ fixed-point velocity from the offset source position to the destination
 record. The native model exposes those record fields directly instead of
 recreating the original address-selected A1 record.
 
+`0x1CC24` is now `advance_persistent_world_effect`. It advances the shared
+effect record, updates the six-slot work ring on the source's `FFDF88 & 3 == 0`
+cadence, writes the selected sprite source and shifted coordinates, then
+draws seven wrapped entries beginning after the selected slot with attributes
+`0x6000`. Expiry clears `FFE0D6` and returns through the menu-selection
+variant boundary.
+
 `0x1CB20` is now `advance_world_effect_activation`. Its typed state preserves
 the bit-6 secondary-record seed (`0x1400/0x1070`, `-8/-14`, and the source
 timers), the negative setup-marker path (`0x134`/`0x102`, behavior token
