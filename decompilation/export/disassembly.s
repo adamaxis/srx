@@ -2348,7 +2348,7 @@
 000039DC: beq.w 0x000039e6
 000039E0: jsr 0x0001e540.l ; call 0001E540 initialize_effect_fade_marker
 000039E6: movea.l (0x00fffc04).l,A0
-000039EC: jsr 0x0001dc4c.l ; call 0001DC4C convert_world_routine_0x0001dc4c
+000039EC: jsr 0x0001dc4c.l ; call 0001DC4C select_world_entity_service_target
 000039F2: movea.l #0x6aade,A1
 000039F8: movea.l (0x00fffc04).l,A0
 000039FE: move.w (0x3e,A0),D4w
@@ -4431,7 +4431,7 @@
 0000AD04: bra.w 0x0000ae50
 0000AD08: btst.b #0xc,(0x00ffdd22).l
 0000AD10: beq.w 0x0000ad1a
-0000AD14: jsr 0x0001dc4c.l ; call 0001DC4C convert_world_routine_0x0001dc4c
+0000AD14: jsr 0x0001dc4c.l ; call 0001DC4C select_world_entity_service_target
 0000AD1A: tst.w (0xdc,A0)
 0000AD1E: bmi.w 0x0000ad3a
 0000AD22: btst.b #0xe,(0x00ffdd22).l
@@ -18570,7 +18570,7 @@
 0001DE3E: movea.l (0x00fffc04).l,A0
 0001DE44: move.l (0xa2,A0),D0
 0001DE48: bne.w 0x0001de56
-0001DE4C: jsr 0x0001dc4c.l ; call 0001DC4C convert_world_routine_0x0001dc4c
+0001DE4C: jsr 0x0001dc4c.l ; call 0001DC4C select_world_entity_service_target
 0001DE52: bra.w 0x0001de7c
 0001DE56: movea.l D0,A2
 0001DE58: btst.b #0x0,(0x10,A2)

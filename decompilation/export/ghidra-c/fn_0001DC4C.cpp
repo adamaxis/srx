@@ -1,93 +1,55 @@
 // Ghidra headless export
 // Entry: 0x0001DC4C
-// Name: convert_world_routine_0x0001dc4c
+// Name: select_world_entity_service_target
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
+/*
+ * A0 is the owner entity and D1 selects whether the source cursor advances.
+ * The normal path accepts active, unlocked, unselected, non-high-effect
+ * records with a nonzero action field. Modes 0x0B/0x04/0x0C use the source's
+ * special active-only path. The native conversion is in
+ * ghidra_conversion/entity_service_target_conversion.cpp.
+ */
 
-undefined2 * convert_world_routine_0x0001dc4c(void)
-
+void select_world_entity_service_target(void)
 {
-  char cVar1;
-  undefined *in_D1;
-  short unaff_D7w;
-  short sVar2;
-  int in_A0;
-  undefined2 *puVar3;
-  undefined2 *puVar4;
-  
-  if ((*(char *)(in_A0 + 0x56) < '\0') &&
-     (((cVar1 = *(char *)(in_A0 + 0x57), cVar1 == '\f' || (cVar1 == '\x04')) || (cVar1 == '\v')))) {
-    puVar3 = *(undefined2 **)(in_A0 + 0xa2);
-    puVar4 = DAT_00fffc04;
-    if (puVar3 != (undefined2 *)0x0) {
-      *(byte *)((int)puVar3 + 0x11) = *(byte *)((int)puVar3 + 0x11) & 0xef;
-      *(undefined4 *)(in_A0 + 0xa2) = 0;
-      puVar4 = puVar3;
-    }
-    while( true ) {
-      if (in_D1 == &UNK_000678cc) {
-        in_D1 = (undefined *)0x60000;
-      }
-      else {
-        puVar4 = puVar4 + 0x80;
-      }
-      puVar3 = (undefined2 *)CONCAT22((short)((uint)puVar3 >> 0x10),puVar4[0x1f]);
-      if (2 < (short)puVar4[0x1f]) {
-        puVar4 = &DAT_00ff0100;
-      }
-      if ((*(byte *)(puVar4 + 8) & 1) != 0) break;
-      unaff_D7w = unaff_D7w + -1;
-      if (unaff_D7w == -1) {
-        return puVar3;
-      }
-    }
-    *(byte *)((int)puVar4 + 0x11) = *(byte *)((int)puVar4 + 0x11) | 0x10;
-    *(undefined2 **)(in_A0 + 0xa2) = puVar4;
-    puVar4[0x53] = 0x8009;
-    return puVar3;
+  ushort index;
+  ushort count;
+  bool special_path;
+  undefined2 *candidate;
+
+  if (DAT_00fffc04[0x51] != 0) {
+    *(byte *)(DAT_00fffc04[0x51] + 0x11) &= 0xef;
+    DAT_00fffc04[0x51] = 0;
   }
-  sVar2 = 7;
-  puVar3 = *(undefined2 **)(in_A0 + 0xa2);
-  if (puVar3 != (undefined2 *)0x0) {
-    *(byte *)((int)puVar3 + 0x11) = *(byte *)((int)puVar3 + 0x11) & 0xef;
-    *(undefined4 *)(in_A0 + 0xa2) = 0;
-    if ((undefined2 *)0xff09ff < puVar3) goto LAB_0001dcd4;
-    puVar4 = puVar3;
-    if (in_D1 == &UNK_000678cc) goto LAB_0001dcb8;
-    puVar4 = puVar3 + 0x80;
-    goto LAB_0001dcb8;
+
+  special_path = ((char)DAT_00fffc04[0x2b] < 0) &&
+                 (DAT_00fffc04[0x57] == 0x0b ||
+                  DAT_00fffc04[0x57] == 4 || DAT_00fffc04[0x57] == 0x0c);
+  index = source_target_index;
+  if (D1 != 0x678cc && source_target_index != 0) {
+    ++index;
   }
-  puVar4 = *(undefined2 **)(in_A0 + 0xac);
-  puVar3 = puVar4;
-  if (puVar4 == (undefined2 *)0x0) goto LAB_0001dcd4;
-  puVar3 = (undefined2 *)CONCAT22((short)((uint)puVar4 >> 0x10),puVar4[0x1f]);
-  while ((((*(byte *)(puVar4 + 8) & 1) == 0 || ((*(byte *)(puVar4 + 8) & 0x40) != 0)) ||
-         (((*(byte *)(puVar4 + 8) & 0x10) != 0 ||
-          (((*(byte *)(puVar4 + 0x58) & 0x80) != 0 || (puVar4[6] == 0))))))) {
-    sVar2 = sVar2 + -1;
-    puVar4 = puVar4 + 0x80;
-    if (sVar2 == -1) {
-      return puVar3;
+  count = 0;
+  while (count < 8) {
+    candidate = entity_service_record(index);
+    if ((*(byte *)(candidate + 8) & 1) != 0 &&
+        (special_path ||
+         ((*(byte *)(candidate + 8) & 0x40) == 0 &&
+          (*(byte *)(candidate + 8) & 0x10) == 0 &&
+          (*(byte *)(candidate + 0x58) & 0x80) == 0 &&
+          candidate[6] != 0))) {
+      *(byte *)(candidate + 0x11) |= 0x10;
+      DAT_00fffc04[0x51] = candidate;
+      candidate[0x53] = 0x8009;
+      if (!special_path) {
+        candidate[0x56] = DAT_00fffc04;
+      }
+      return;
     }
-LAB_0001dcb8:
-    puVar3 = puVar4;
-    if ((short)puVar4[0x1f] < 3) {
-      puVar3 = (undefined2 *)&DAT_00ff0400;
-    }
-    puVar4 = puVar3;
-    if ((undefined2 *)0xff0aff < puVar3) {
-LAB_0001dcd4:
-      puVar4 = (undefined2 *)&DAT_00ff0400;
-    }
+    ++index;
+    ++count;
   }
-  *(undefined1 *)(in_A0 + 0x43) = 0;
-  *(byte *)((int)puVar4 + 0x11) = *(byte *)((int)puVar4 + 0x11) | 0x10;
-  *(undefined2 **)(in_A0 + 0xa2) = puVar4;
-  *(int *)(puVar4 + 0x56) = in_A0;
-  puVar4[0x53] = 0x8009;
-  return puVar3;
 }
-
-

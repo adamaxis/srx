@@ -632,6 +632,12 @@ record reset versus target-selection branch, inactive-effect cleanup, terrain
 and world-effect trigger ordering, and the final nearby-effect pass. Each
 subsystem remains an explicit callback and no emulator state is involved.
 
+`0x1DC4C` is now `select_world_entity_service_target`. It releases the
+owner's previous selection, preserves the source's eight-record scan, uses
+the normal active/unlocked/unselected/non-high-effect/action filters, and
+keeps the active-only path for modes `0x0B`, `0x04`, and `0x0C`. A successful
+selection publishes the source `0x8009` code and an explicit host target link.
+
 The paired layer entries `0x1C3FA`/`0x1C506` are now separated into
 `advance_title_sprite_layers` and `render_title_sprite_layers`. Their phase
 timers, alternate source pointers, two base sprites, optional status overlays,

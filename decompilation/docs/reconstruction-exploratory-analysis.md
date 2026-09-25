@@ -1117,6 +1117,12 @@ target selection, inactive-effect cleanup, optional terrain/trigger work,
 world-effect triggering, and nearby-effect resolution. The calls are typed
 service boundaries rather than a runtime copy of the original RAM schedule.
 
+`0x1DC4C` selects the service target for the current entity. The native
+conversion releases the previous selected record, scans at most eight records,
+uses the source normal-path filters, and retains the special active-only path
+for modes `0x0B`, `0x04`, and `0x0C`; successful selection publishes the
+`0x8009` action code through typed record state.
+
 The larger `0x1AA40` leaf is now named `tick_world_effect_animation` and
 converted separately. Its normal path chooses runner-derived timing versus the
 fixed descriptor-state cadence, its loading/transition path uses the six-phase

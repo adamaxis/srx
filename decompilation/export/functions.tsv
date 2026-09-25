@@ -627,7 +627,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0001DBAA	schedule_world_activity_timeout	70	unknown	ok	ghidra-c/fn_0001DBAA.cpp
 0001DBF0	reset_entity_service_records	50	unknown	ok	ghidra-c/fn_0001DBF0.cpp
 0001DC22	select_next_entity	42	unknown	ok	ghidra-c/fn_0001DC22.cpp
-0001DC4C	convert_world_routine_0x0001dc4c	328	unknown	ok	ghidra-c/fn_0001DC4C.cpp
+0001DC4C	select_world_entity_service_target	328	unknown	ok	ghidra-c/fn_0001DC4C.cpp
 0001DD94	advance_world_frame_logic	268	unknown	ok	ghidra-c/fn_0001DD94.cpp
 0001DEA0	clear_inactive_entity_effects	56	unknown	ok	ghidra-c/fn_0001DEA0.cpp
 0001DED8	clear_high_effect_slots	40	unknown	ok	ghidra-c/fn_0001DED8.cpp

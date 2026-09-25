@@ -2072,6 +2072,19 @@ target_link_libraries(shadowrun_ghidra_world_frame_logic_test
 add_test(NAME shadowrun_ghidra_world_frame_logic
          COMMAND shadowrun_ghidra_world_frame_logic_test)
 
+add_library(shadowrun_ghidra_entity_service_target STATIC
+    src/entity_service_target_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_service_target PUBLIC include)
+
+add_executable(shadowrun_ghidra_entity_service_target_test
+    tests/entity_service_target_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_service_target_test
+    PRIVATE shadowrun_ghidra_entity_service_target)
+add_test(NAME shadowrun_ghidra_entity_service_target
+         COMMAND shadowrun_ghidra_entity_service_target_test)
+
 add_library(shadowrun_ghidra_audio_command_batch STATIC
     src/audio_command_batch_conversion.cpp
 )

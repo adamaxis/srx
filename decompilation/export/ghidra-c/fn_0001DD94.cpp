@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001DBF0 reset_entity_service_records
-//   0x0001DC4C convert_world_routine_0x0001dc4c
+//   0x0001DC4C select_world_entity_service_target
 //   0x0001DEA0 clear_inactive_entity_effects
 //   0x0001DF1A resolve_nearby_effects
 //   0x0001DFC4 advance_world_effect_trigger
@@ -41,7 +41,7 @@ void advance_world_frame_logic(void)
       }
     }
     else if (current_entity_target_is_missing_or_locked()) {
-      convert_world_routine_0x0001dc4c();
+      select_world_entity_service_target();
     }
   }
 

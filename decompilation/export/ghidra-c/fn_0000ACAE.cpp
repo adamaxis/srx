@@ -13,7 +13,7 @@
 //   0x0000B3FE set_entity_heading_with_alternate_animation
 //   0x0001514E process_entity_spawn_cycle
 //   0x00015646 convert_entity_routine_0x00015646
-//   0x0001DC4C convert_world_routine_0x0001dc4c
+//   0x0001DC4C select_world_entity_service_target
 //   0x000530DE service_audio_if_enabled
 
 
@@ -48,7 +48,7 @@ void convert_graphics_routine_0x0000acae(void)
     goto LAB_0000ae50;
   }
   if ((DAT_00ffdd22 & 0x1000) != 0) {
-    convert_world_routine_0x0001dc4c();
+    select_world_entity_service_target();
     in_A0 = extraout_A0;
   }
   if (*(short *)(in_A0 + 0xdc) < 0) {
@@ -126,5 +126,4 @@ LAB_0000ae40:
   *(undefined4 *)(in_A0 + 0x3a) = 0xb45c;
   return;
 }
-
 
