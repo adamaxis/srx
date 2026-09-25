@@ -351,6 +351,41 @@ So the useful native abstraction is a shared active-runner HUD panel layout,
 with the caller supplying the surrounding menu state; it is not three
 different “variant B” menus.
 
+## Field action cost conversion: 0x5787C / 0x57A44 / 0x57A6E / 0x57AF6 / 0x57B04 / 0x57B42
+
+The routines around `0x5787C` were mislabeled as an intro family. They are
+field-menu cost logic called by the selected-action presentation/handler
+cluster around `0x5794E` and `0x57C7A`. They are now represented by the
+separate `shadowrun_ghidra_field_action_cost` conversion library in
+`field_action_cost_conversion.*`:
+
+* `0x5787C` calculates a quantity cost from the primary action category:
+  category 0 is `quantity^3 * 25`, categories 1 and 2 are
+  `quantity^2 * 3 * 100`, and category 3+ is `quantity^2 * 2 * 100`.
+* `0x57A44` reads a selected three-byte action record. Its first byte indexes
+  the source record table at `0xD4540`, where the base rate is the word at
+  record offset `+0x22`. A nonzero third byte scales that rate by
+  `quantity / 10`, with the source low-word truncation preserved explicitly.
+* `0x57A6E` applies the mode-specific feature flags before charging/display:
+  mode 4 plus `FF018F` bit `0x40` removes 10%, mode 5 plus bit `0x80` removes
+  25%, mode 2 plus bit `0x04` halves the amount, and mode 8 plus bit `0x02`
+  halves it. It then subtracts the runner adjustment and publishes `FFF0BE`.
+* `0x57B04` is the shared runner adjustment that Ghidra failed to recover
+  because its result stays in D3. It compares active-runner record `+0x8C`
+  with `1AAC6E[FFF0B6]`, caps the positive margin at ten, and calculates
+  `(cost >> 5) * margin`.
+* `0x57AF6` is the companion display path that adds that adjustment instead
+  of subtracting it.
+* `0x57B42` is selected by the large-cost callers after their amount reaches
+  `0x10000`. It calculates `(cost >> 8) * margin` once and subtracts that
+  same value ten times; it does not recompute the shifting amount each pass.
+
+The native code takes typed mode/feature/runner values and a base-rate lookup
+callback. It has no ROM-address reads, emulated registers, or dependency on
+the runtime/emulator. The exact game-facing names of the four mode categories
+and the active-runner `+0x8C` stat remain data-table work; the cost behavior
+itself is now explicit and tested.
+
 ## Call annotation policy
 
 Direct calls are annotated with the target address and reviewed symbol.

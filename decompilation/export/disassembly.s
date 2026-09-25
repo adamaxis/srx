@@ -25750,7 +25750,7 @@
 0005797A: bne.w 0x0005798c
 0005797E: clr.l D1
 00057980: move.b (0x2,A0),D1b
-00057984: bsr.w 0x00057a6e ; call 00057A6E convert_intro_routine_0x00057a6e
+00057984: bsr.w 0x00057a6e ; call 00057A6E apply_field_action_cost_discounts
 00057988: bra.w 0x000579c6
 0005798C: movea.l (0x00fffc04).l,A1
 00057992: moveq #0x7,D6
@@ -25765,7 +25765,7 @@
 000579B8: jmp 0x00000d94.l ; call 00000D94 wait_for_controller_event
 000579BE: subq.w #0x7,D6w
 000579C0: neg.w D6w
-000579C2: bsr.w 0x00057a44 ; call 00057A44 convert_intro_routine_0x00057a44
+000579C2: bsr.w 0x00057a44 ; call 00057A44 calculate_field_action_record_cost
 000579C6: cmp.l (0x00fffbfe).l,D1
 000579CC: ble.w 0x000579ec
 000579D0: movea.l #0xc58e,A2
@@ -25829,11 +25829,11 @@
 00057ADA: btst.b #0x1,(0x00ff018f).l
 00057AE2: beq.w 0x00057ae8
 00057AE6: lsr.l #0x1,D1
-00057AE8: bsr.w 0x00057b04 ; call 00057B04 convert_intro_routine_0x00057b04
+00057AE8: bsr.w 0x00057b04 ; call 00057B04 calculate_runner_cost_adjustment
 00057AEC: sub.l D3,D1
 00057AEE: move.l D1,(0x00fff0be).l
 00057AF4: rts
-00057AF6: bsr.w 0x00057b04 ; call 00057B04 convert_intro_routine_0x00057b04
+00057AF6: bsr.w 0x00057b04 ; call 00057B04 calculate_runner_cost_adjustment
 00057AFA: add.l D3,D1
 00057AFC: move.l D1,(0x00fff0be).l
 00057B02: rts
@@ -26045,7 +26045,7 @@
 00057E7A: clr.l D1
 00057E7C: move.l (0x00fff0be).l,D1
 00057E82: move.l A2,-(SP) ; data Stack[-0x8]
-00057E84: bsr.w 0x00057a6e ; call 00057A6E convert_intro_routine_0x00057a6e
+00057E84: bsr.w 0x00057a6e ; call 00057A6E apply_field_action_cost_discounts
 00057E88: movea.l (SP)+,A2
 00057E8A: move.w #0x6000,D2w
 00057E8E: movea.l #0xc734,A2
@@ -26098,7 +26098,7 @@
 00057F56: move.b (0x00fff0d0).l,D0b
 00057F5C: mulu.w #0x4,D0
 00057F60: move.l (0x0,A0,D0w*0x1),D1
-00057F64: bsr.w 0x00057a6e ; call 00057A6E convert_intro_routine_0x00057a6e
+00057F64: bsr.w 0x00057a6e ; call 00057A6E apply_field_action_cost_discounts
 00057F68: movea.l #0xc72c,A2
 00057F6E: move.w #0x6000,D2w
 00057F72: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
@@ -26169,9 +26169,9 @@
 00058086: mulu.w #0x1e,D1
 0005808A: cmpi.l #0x10000,D1
 00058090: bpl.w 0x0005809c
-00058094: bsr.w 0x00057a6e ; call 00057A6E convert_intro_routine_0x00057a6e
+00058094: bsr.w 0x00057a6e ; call 00057A6E apply_field_action_cost_discounts
 00058098: bra.w 0x000580a0
-0005809C: bsr.w 0x00057b42 ; call 00057B42 convert_intro_routine_0x00057b42
+0005809C: bsr.w 0x00057b42 ; call 00057B42 apply_large_field_action_cost_discount
 000580A0: lea (0x1ab3f0).l,A1 ; data 001ab3f0
 000580A6: lea (0x1ab378).l,A3 ; data 001ab378
 000580AC: clr.l D0
@@ -26306,9 +26306,9 @@
 000582EA: move.l (0x2,A0),D1
 000582EE: cmpi.l #0x10000,D1
 000582F4: bpl.w 0x00058300
-000582F8: bsr.w 0x00057a6e ; call 00057A6E convert_intro_routine_0x00057a6e
+000582F8: bsr.w 0x00057a6e ; call 00057A6E apply_field_action_cost_discounts
 000582FC: bra.w 0x00058304
-00058300: bsr.w 0x00057b42 ; call 00057B42 convert_intro_routine_0x00057b42
+00058300: bsr.w 0x00057b42 ; call 00057B42 apply_large_field_action_cost_discount
 00058304: move.w #0x6000,D2w
 00058308: movea.l #0xc738,A2
 0005830E: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
@@ -26375,7 +26375,7 @@
 00058418: move.b #-0x1,(0x00fff0b3).l
 00058420: bra.w 0x0005842e
 00058424: addq.b #0x1,(0x00fff0d6).l
-0005842A: bsr.w 0x0005787c ; call 0005787C convert_intro_routine_0x0005787c
+0005842A: bsr.w 0x0005787c ; call 0005787C calculate_field_action_quantity_cost
 0005842E: move.w #0x6000,D1w
 00058432: move.b (0x00fff0d0).l,D0b
 00058438: bne.w 0x00058464
@@ -26467,7 +26467,7 @@
 000585C4: clr.l D1
 000585C6: move.w (0x22,A1),D1w ; data 000d4562
 000585CA: lsr.w #0x1,D1w
-000585CC: bsr.w 0x00057af6 ; call 00057AF6 convert_intro_routine_0x00057af6
+000585CC: bsr.w 0x00057af6 ; call 00057AF6 apply_runner_cost_surcharge
 000585D0: movea.l #0xc736,A2
 000585D6: move.w #0x6000,D2w
 000585DA: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
@@ -26494,7 +26494,7 @@
 00058640: mulu.w #0x2,D0
 00058644: clr.l D1
 00058646: move.w (0x0,A0,D0w*0x1),D1w
-0005864A: bsr.w 0x00057a6e ; call 00057A6E convert_intro_routine_0x00057a6e
+0005864A: bsr.w 0x00057a6e ; call 00057A6E apply_field_action_cost_discounts
 0005864E: movea.l #0xc72c,A2
 00058654: move.w #0x6000,D2w
 00058658: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
@@ -26546,7 +26546,7 @@
 00058724: jsr 0x0000c0da.l ; call 0000C0DA render_encoded_title_text
 0005872A: clr.l D1
 0005872C: move.b (0x2,A0),D1b
-00058730: bsr.w 0x00057a6e ; call 00057A6E convert_intro_routine_0x00057a6e
+00058730: bsr.w 0x00057a6e ; call 00057A6E apply_field_action_cost_discounts
 00058734: movea.l #0xc730,A2
 0005873A: move.w #0x6000,D2w
 0005873E: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
@@ -26559,7 +26559,7 @@
 0005875C: lea (0x1ab4d8).l,A1 ; data 001ab4d8
 00058762: movea.l #0xc714,A2
 00058768: jsr 0x0000c0da.l ; call 0000C0DA render_encoded_title_text
-0005876E: bsr.w 0x00057a44 ; call 00057A44 convert_intro_routine_0x00057a44
+0005876E: bsr.w 0x00057a44 ; call 00057A44 calculate_field_action_record_cost
 00058772: movea.l #0xc72c,A2
 00058778: move.w #0x6000,D2w
 0005877C: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs

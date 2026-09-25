@@ -7,8 +7,8 @@
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x000130C0 convert_menu_routine_0x000130c0
-//   0x00057A44 convert_intro_routine_0x00057a44
-//   0x00057A6E convert_intro_routine_0x00057a6e
+//   0x00057A44 calculate_field_action_record_cost
+//   0x00057A6E apply_field_action_cost_discounts
 //   0x0005878E convert_intro_routine_0x0005878e
 
 
@@ -24,7 +24,7 @@ void convert_intro_routine_0x000586ca(void)
     if (*pcVar1 == 'E') {
       write_vdp_grid();
       render_encoded_title_text();
-      convert_intro_routine_0x00057a6e();
+      apply_field_action_cost_discounts();
       build_grouped_decimal_glyphs();
       render_encoded_title_text();
       return;
@@ -32,11 +32,10 @@ void convert_intro_routine_0x000586ca(void)
     convert_menu_routine_0x000130c0();
     convert_intro_routine_0x0005878e();
     render_encoded_title_text();
-    convert_intro_routine_0x00057a44();
+    calculate_field_action_record_cost();
     build_grouped_decimal_glyphs();
   }
   render_encoded_title_text();
   return;
 }
-
 

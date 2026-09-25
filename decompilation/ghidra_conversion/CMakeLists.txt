@@ -2453,3 +2453,14 @@ target_link_libraries(shadowrun_ghidra_field_mode_selection_presentation_test
     PRIVATE shadowrun_ghidra_field_mode_selection_presentation)
 add_test(NAME shadowrun_ghidra_field_mode_selection_presentation
          COMMAND shadowrun_ghidra_field_mode_selection_presentation_test)
+
+add_library(shadowrun_ghidra_field_action_cost STATIC
+    src/field_action_cost_conversion.cpp)
+target_include_directories(shadowrun_ghidra_field_action_cost PUBLIC include)
+
+add_executable(shadowrun_ghidra_field_action_cost_test
+    tests/field_action_cost_conversion_test.cpp)
+target_link_libraries(shadowrun_ghidra_field_action_cost_test
+    PRIVATE shadowrun_ghidra_field_action_cost)
+add_test(NAME shadowrun_ghidra_field_action_cost
+         COMMAND shadowrun_ghidra_field_action_cost_test)

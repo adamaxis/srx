@@ -6,7 +6,7 @@
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x00011190 transfer_menu_glyph_triple
-//   0x00057A6E convert_intro_routine_0x00057a6e
+//   0x00057A6E apply_field_action_cost_discounts
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -42,7 +42,7 @@ LAB_00057e38:
     render_encoded_title_text();
     render_encoded_title_text();
     build_grouped_decimal_glyphs();
-    convert_intro_routine_0x00057a6e(0xc428);
+    apply_field_action_cost_discounts();
     build_grouped_decimal_glyphs();
 LAB_00057e9a:
     transfer_menu_glyph_triple();
@@ -52,5 +52,4 @@ LAB_00057e9a:
   }
   return;
 }
-
 

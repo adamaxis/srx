@@ -9,10 +9,10 @@
 //   0x00013228 convert_menu_routine_0x00013228
 //   0x00057610 convert_intro_routine_0x00057610
 //   0x00057628 select_menu_resource_entry
-//   0x0005787C convert_intro_routine_0x0005787c
-//   0x00057A6E convert_intro_routine_0x00057a6e
-//   0x00057AF6 convert_intro_routine_0x00057af6
-//   0x00057B42 convert_intro_routine_0x00057b42
+//   0x0005787C calculate_field_action_quantity_cost
+//   0x00057A6E apply_field_action_cost_discounts
+//   0x00057AF6 apply_runner_cost_surcharge
+//   0x00057B42 apply_large_field_action_cost_discount
 //   0x00057C46 convert_intro_routine_0x00057c46
 //   0x00057C52 convert_intro_routine_0x00057c52
 //   0x00057D7E convert_intro_routine_0x00057d7e
@@ -47,7 +47,7 @@ void convert_intro_routine_0x00057c7a(void)
     if ((char)(DAT_00fff0b8 + -4) < '\0') {
       if ((char)(DAT_00fff0d0 - 6) < '\0') {
         render_encoded_title_text();
-        convert_intro_routine_0x00057a6e();
+        apply_field_action_cost_discounts();
         build_grouped_decimal_glyphs();
         write_vdp_grid();
         render_encoded_title_text();
@@ -65,7 +65,7 @@ void convert_intro_routine_0x00057c7a(void)
         write_vdp_grid();
         render_encoded_title_text();
         render_encoded_title_text();
-        convert_intro_routine_0x00057a6e();
+        apply_field_action_cost_discounts();
         build_grouped_decimal_glyphs();
         build_grouped_decimal_glyphs();
         build_grouped_decimal_glyphs();
@@ -80,11 +80,11 @@ void convert_intro_routine_0x00057c7a(void)
         DAT_00fff0d6 = (&DAT_00fffbcc)[(short)(ushort)*extraout_A0] + 1;
         convert_intro_routine_0x00057610();
         if ((int)(((extraout_D1 & 0xffff) * (uint)DAT_00fff0d6 & 0xffff) * 0x1e + -0x10000) < 0) {
-          convert_intro_routine_0x00057a6e();
+          apply_field_action_cost_discounts();
           pcVar5 = extraout_A0_00;
         }
         else {
-          convert_intro_routine_0x00057b42();
+          apply_large_field_action_cost_discount();
           pcVar5 = extraout_A0_01;
         }
         if (-1 < *pcVar5) {
@@ -129,7 +129,7 @@ LAB_00058412:
         bVar1 = DAT_00fff0d6 + 1;
 LAB_0005842a:
         DAT_00fff0d6 = bVar1;
-        uVar2 = convert_intro_routine_0x0005787c();
+        uVar2 = calculate_field_action_quantity_cost();
       }
       if (DAT_00fff0d0 == 0) {
         render_encoded_title_text();
@@ -178,7 +178,7 @@ LAB_00057d08:
       uVar3 = render_encoded_title_text();
     }
     if (DAT_00fff0b1 == '\0') {
-      convert_intro_routine_0x00057af6(&DAT_000d4540 + (uVar3 & 0xffff) * 0x30);
+      apply_runner_cost_surcharge();
       build_grouped_decimal_glyphs();
     }
     DAT_00fff0b1 = '\0';

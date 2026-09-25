@@ -5,8 +5,8 @@
 // Calls recovered from direct call instructions:
 //   0x00000D94 wait_for_controller_event
 //   0x0000C0DA render_encoded_title_text
-//   0x00057A44 convert_intro_routine_0x00057a44
-//   0x00057A6E convert_intro_routine_0x00057a6e
+//   0x00057A44 calculate_field_action_record_cost
+//   0x00057A6E apply_field_action_cost_discounts
 //   0x00057B8C convert_intro_routine_0x00057b8c
 //   0x00057C5E convert_intro_routine_0x00057c5e
 
@@ -32,7 +32,7 @@ void convert_intro_routine_0x0005794e(void)
   }
   convert_intro_routine_0x00057c5e();
   if (*extraout_A0 == 'E') {
-    convert_intro_routine_0x00057a6e();
+    apply_field_action_cost_discounts();
     iVar3 = extraout_D1;
   }
   else {
@@ -48,7 +48,7 @@ void convert_intro_routine_0x0005794e(void)
       }
     }
     unaff_D6w = -(sVar2 + -7);
-    convert_intro_routine_0x00057a44();
+    calculate_field_action_record_cost();
     iVar3 = extraout_D1_00;
   }
   if (DAT_00fffbfe < iVar3) {
@@ -78,5 +78,4 @@ LAB_000579dc:
   }
   return;
 }
-
 
