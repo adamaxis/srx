@@ -785,8 +785,8 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00026972L, "refresh_title_sprite_records");
         names.put(0x00026A00L, "run_display_transition");
         names.put(0x000532BCL, "initialize_runner_selection_screen");
-        names.put(0x000533EEL, "convert_audio_routine_0x000533ee");
-        names.put(0x00053434L, "convert_audio_routine_0x00053434");
+        names.put(0x000533EEL, "initialize_runner_animation_grid");
+        names.put(0x00053434L, "expand_runner_animation_grid");
         names.put(0x00053704L, "run_runner_selection_screen");
         names.put(0x000537FAL, "refresh_runner_selection_sprites");
         names.put(0x00054662L, "convert_graphics_routine_0x00054662");

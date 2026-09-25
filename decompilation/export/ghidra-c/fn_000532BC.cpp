@@ -18,7 +18,7 @@
 //   0x0000C0DA render_encoded_title_text
 //   0x00053200 select_primary_runner_record_table
 //   0x0005322C prepare_audio_title
-//   0x000533EE convert_audio_routine_0x000533ee
+//   0x000533EE initialize_runner_animation_grid
 
 void initialize_runner_selection_screen(void)
 {

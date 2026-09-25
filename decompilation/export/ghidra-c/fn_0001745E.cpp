@@ -31,7 +31,7 @@
 //   0x00053126 prepare_mode_entry_service
 //   0x000531EA copy_audio_state
 //   0x00053290 reset_audio_menu_arrays
-//   0x000533EE convert_audio_routine_0x000533ee
+//   0x000533EE initialize_runner_animation_grid
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -67,7 +67,7 @@ void convert_world_routine_0x0001745e(void)
     DAT_00fff0a3 = 1;
     DAT_00fff0e4 = 0xc;
     DAT_00fff0ac = 0x28;
-    convert_audio_routine_0x000533ee();
+    initialize_runner_animation_grid();
     if (DAT_00ffdf40 != 0) {
       DAT_00ffe171 = 0xff;
     }
@@ -117,5 +117,4 @@ void convert_world_routine_0x0001745e(void)
   prepare_mode_entry_service();
   return;
 }
-
 

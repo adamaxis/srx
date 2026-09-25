@@ -2389,3 +2389,16 @@ target_link_libraries(shadowrun_ghidra_runner_record_selection_test
     PRIVATE shadowrun_ghidra_runner_record_selection)
 add_test(NAME shadowrun_ghidra_runner_record_selection
          COMMAND shadowrun_ghidra_runner_record_selection_test)
+
+add_library(shadowrun_ghidra_runner_animation_grid STATIC
+    src/runner_animation_grid_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_runner_animation_grid PUBLIC include)
+
+add_executable(shadowrun_ghidra_runner_animation_grid_test
+    tests/runner_animation_grid_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_runner_animation_grid_test
+    PRIVATE shadowrun_ghidra_runner_animation_grid)
+add_test(NAME shadowrun_ghidra_runner_animation_grid
+         COMMAND shadowrun_ghidra_runner_animation_grid_test)

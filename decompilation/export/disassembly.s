@@ -13967,7 +13967,7 @@
 000174FC: move.b #0x1,(0x00fff0a3).l
 00017504: move.b #0xc,(0x00fff0e4).l
 0001750C: move.b #0x28,(0x00fff0ac).l
-00017514: jsr 0x000533ee.l ; call 000533EE convert_audio_routine_0x000533ee
+00017514: jsr 0x000533ee.l ; call 000533EE initialize_runner_animation_grid
 0001751A: tst.w (0x00ffdf40).l
 00017520: beq.w 0x0001752c
 00017524: move.b #-0x1,(0x00ffe171).l
@@ -23064,7 +23064,7 @@
 0005331A: movea.l #0xc204,A2
 00053320: move.w #0x2000,D1w
 00053324: jsr 0x0000c0da.l ; call 0000C0DA render_encoded_title_text
-0005332A: bsr.w 0x000533ee ; call 000533EE convert_audio_routine_0x000533ee
+0005332A: bsr.w 0x000533ee ; call 000533EE initialize_runner_animation_grid
 0005332E: jsr 0x0005322c.l ; call 0005322C prepare_audio_title
 00053334: bsr.w 0x00053200 ; call 00053200 select_primary_runner_record_table
 00053338: lea (0xfffaa4).l,A3 ; data 00fffaa4
@@ -23149,7 +23149,7 @@
 00053488: move.w (0x00fffbfc).l,-(SP)
 0005348E: clr.w (0x00fffbfc).l
 00053494: bset.b #0x3,(0x00fffbfc).l
-0005349C: bsr.b 0x00053434 ; call 00053434 convert_audio_routine_0x00053434
+0005349C: bsr.b 0x00053434 ; call 00053434 expand_runner_animation_grid
 0005349E: move.w (SP)+,(0x00fffbfc).l
 000534A4: addi.w #0xe,(0x00fff104).l
 000534AC: bra.w 0x000534e8
@@ -23188,7 +23188,7 @@
 00053544: move.w (0x00fffbfc).l,-(SP)
 0005354A: clr.w (0x00fffbfc).l
 00053550: bset.b #0x4,(0x00fffbfc).l
-00053558: bsr.w 0x00053434 ; call 00053434 convert_audio_routine_0x00053434
+00053558: bsr.w 0x00053434 ; call 00053434 expand_runner_animation_grid
 0005355C: move.w (SP)+,(0x00fffbfc).l
 00053562: subq.w #0x1,(0x00fff104).l
 00053568: bra.w 0x0005359c
@@ -23227,7 +23227,7 @@
 000535FC: move.w (0x00fffbfc).l,-(SP)
 00053602: clr.w (0x00fffbfc).l
 00053608: bset.b #0x1,(0x00fffbfc).l
-00053610: bsr.w 0x00053434 ; call 00053434 convert_audio_routine_0x00053434
+00053610: bsr.w 0x00053434 ; call 00053434 expand_runner_animation_grid
 00053614: move.w (SP)+,(0x00fffbfc).l
 0005361A: subi.w #0xe,(0x00fff104).l
 00053622: bra.w 0x0005365e
@@ -23265,7 +23265,7 @@
 000536AE: move.w (0x00fffbfc).l,-(SP)
 000536B4: clr.w (0x00fffbfc).l
 000536BA: bset.b #0x2,(0x00fffbfc).l
-000536C2: bsr.w 0x00053434 ; call 00053434 convert_audio_routine_0x00053434
+000536C2: bsr.w 0x00053434 ; call 00053434 expand_runner_animation_grid
 000536C6: move.w (SP)+,(0x00fffbfc).l
 000536CC: addq.w #0x1,(0x00fff104).l
 000536D2: rts

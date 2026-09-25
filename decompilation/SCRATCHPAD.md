@@ -593,6 +593,16 @@ aliases (`RunnerRecordTableSelection`) instead of inheriting the old
 pointer/no-op fiction. This is scene/runner data, not an audio playback
 asset; actual Windows audio remains in the separate audio-service boundary.
 
+The compact-record animation helpers are now named as well. `0x533EE` is
+`initialize_runner_animation_grid`: it selects the primary record bank,
+converts the selected record's +3/+4 coordinates into a 14-by-10 cell index,
+marks the initial cell, and starts the walker. `0x53434` is
+`expand_runner_animation_grid`; its four directional deltas, row-wrap checks,
+reverse recursion guards, and marker publication are native. The source tile
+transition predicate remains an explicit callback pending verified names for
+the four ROM type tables, rather than being guessed or hidden in a generic
+runtime decoder.
+
 The `0x2679E` world-entry loop is now `run_world_entry_sequence`. It consumes
 an extracted command/delay stream, preserves the three-cycle timing cadence,
 handles signed origin corrections and delayed horizontal/vertical pairs, and
