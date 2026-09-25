@@ -227,6 +227,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00057628U, "select_menu_resource_entry", RoutineFamily::world, 20U},
     {0x0005763CU, "select_menu_resource", RoutineFamily::world, 46U},
     {0x0005766AU, "apply_field_resource_purchase", RoutineFamily::menu, 336U},
+    {0x000577BAU, "apply_field_quantity_purchase", RoutineFamily::menu, 194U},
     {0x0005787CU, "calculate_field_action_quantity_cost", RoutineFamily::menu, 72U},
     {0x0005794EU, "apply_selected_field_action", RoutineFamily::menu, 246U},
     {0x00057A44U, "calculate_field_action_record_cost", RoutineFamily::menu, 42U},

@@ -445,6 +445,30 @@ The native model deliberately leaves the exact UI text/category labels at the
 data/UI boundary. The ROM proves the four distinct counter/cost behaviors;
 it does not justify inventing user-facing names from the generic Ghidra output.
 
+## Recovered field quantity branch: 0x577BA
+
+The field-service dispatcher at `0x56DC4` has a separate `beq 0x577BA`
+branch when the secondary service selector is five. The original exported
+function list skipped this branch target because it was folded into the
+preceding `0x5766A` range, even though `0x577BA` has its own control flow and
+returns at `0x5787A`. It is now recorded as `apply_field_quantity_purchase`.
+
+This path is distinct from the progress-counter purchase above:
+
+* It accepts primary categories 0 through 4 and rejects category 5 or above.
+* A negative `FFF0B3` availability marker exits immediately and clears the
+  marker. Otherwise it refreshes the detail panel and presents the selected
+  quantity `FFF0D6` and already-computed cost `FFF0BE`.
+* Insufficient funds and confirmation cancellation both leave funds and the
+  quantity slots unchanged, then clear `FFF0B3`.
+* An accepted purchase deducts `FFF0BE`, writes `FFF0D6` to `FFFBBE` for
+  category 0 or `FFFBC6..FFFBC9` for categories 1 through 4, and clears the
+  marker.
+
+Because this target was missing from the generated function inventory, the
+Ghidra export plugin's address-name map, function table, call graph, call-site
+annotations, and status ledger were updated together with the native module.
+
 ## Call annotation policy
 
 Direct calls are annotated with the target address and reviewed symbol.
