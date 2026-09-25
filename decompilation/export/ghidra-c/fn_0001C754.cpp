@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00019976 convert_world_routine_0x00019976
 //   0x0001CAD4 update_interaction_state
-//   0x0001CB20 convert_world_routine_0x0001cb20
+//   0x0001CB20 advance_world_effect_activation
 //   0x000530DE service_audio_if_enabled
 
 
@@ -27,7 +27,7 @@ void convert_world_routine_0x0001c754(void)
   }
   if (DAT_00ff1584 == &PTR_DAT_0001c36a) {
     if ((DAT_00ff158d == '\x03') && (DAT_00ff1583 == '\x03')) {
-      convert_world_routine_0x0001cb20();
+      advance_world_effect_activation();
       return;
     }
     if (DAT_00ff158d != '\x05') {

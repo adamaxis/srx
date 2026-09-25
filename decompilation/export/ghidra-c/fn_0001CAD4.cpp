@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001C9A2 initialize_effect_motion_seed
-//   0x0001CB6A convert_world_routine_0x0001cb6a
+//   0x0001CB6A spawn_world_effect_record
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -48,12 +48,11 @@ void update_interaction_state(void)
       return;
     }
   }
-  convert_world_routine_0x0001cb6a();
+  spawn_world_effect_record();
   if (_DAT_00ffe0e2 == 0) {
     return;
   }
   *(short *)(extraout_A1 + 0xe) = *(short *)(extraout_A1 + 0xe) + -6;
   return;
 }
-
 

@@ -17786,7 +17786,7 @@
 0001C7B2: bne.w 0x0001c7c4
 0001C7B6: cmpi.b #0x3,(0x3,A0)
 0001C7BC: bne.w 0x0001c7c4
-0001C7C0: bra.w 0x0001cb20 ; call 0001CB20 convert_world_routine_0x0001cb20
+0001C7C0: bra.w 0x0001cb20 ; call 0001CB20 advance_world_effect_activation
 0001C7C4: cmpi.b #0x5,(0xd,A0)
 0001C7CA: beq.w 0x0001c7d0
 0001C7CE: rts
@@ -17906,7 +17906,7 @@
 0001CAFC: move.w #-0x20,D5w
 0001CB00: move.w #-0x28,D6w
 0001CB04: move.w #-0x1,D1w
-0001CB08: bsr.w 0x0001cb6a ; call 0001CB6A convert_world_routine_0x0001cb6a
+0001CB08: bsr.w 0x0001cb6a ; call 0001CB6A spawn_world_effect_record
 0001CB0C: tst.w (0x00ffe0e2).l
 0001CB12: bne.w 0x0001cb18
 0001CB16: rts

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001CB20
-// Name: convert_world_routine_0x0001cb20
+// Name: advance_world_effect_activation
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001CA00 initialize_world_effect_motion
@@ -9,7 +9,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_world_routine_0x0001cb20(void)
+void advance_world_effect_activation(void)
 
 {
   int in_A0;

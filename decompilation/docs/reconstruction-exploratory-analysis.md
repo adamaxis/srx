@@ -1047,6 +1047,13 @@ fixed-point velocity from the offset source position to the destination
 record. The native model exposes those record fields directly instead of
 recreating the original address-selected A1 record.
 
+`0x1CB20` is now `advance_world_effect_activation`. Its typed state preserves
+the bit-6 secondary-record seed (`0x1400/0x1070`, `-8/-14`, and the source
+timers), the negative setup-marker path (`0x134`/`0x102`, behavior token
+`0x1C27C`, audio command `0x16`), the motion-initializer branch, and the
+`D5=0x20`, `D6=-0x28`, `D1=0` spawn boundary. The source's cross-entry tail
+adjustment remains an explicit callback rather than a hidden address alias.
+
 The next title/world-effect pair is also no longer generic. `0x1A818` starts
 the descriptor transition, choosing between its six-frame loading path and the
 active descriptor-token path; its source word `0xD280` is recorded as such
