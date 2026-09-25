@@ -597,6 +597,13 @@ It also exposes the `0x18F5E` reverse five-slot datafile walk as a bounded
 source slot, and display row. Slot selection and text rendering remain
 explicit boundaries.
 
+The neighboring helpers were corrected from the ROM trace: `0x1957E` is the
+loaded-program capacity check over the five `FFFBD8` program codes, `0x195A6`
+is the footprint/divisor load timing calculation, and `0x195D8` writes the
+selected program code, pending byte, ten-times step offset, and source refresh
+boundaries. The former generic field-menu visual-slot conversion was removed;
+its label was not supported by the source control flow.
+
 The adjacent Matrix utility routine at `0x19018` now has its real menu logic:
 the shared two-entry cursor selects Show Map or Retreat, and the Retreat path
 is redirected to the source combat warning when `FFDF84` is active. The map

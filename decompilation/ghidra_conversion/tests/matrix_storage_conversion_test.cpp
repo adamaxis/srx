@@ -46,6 +46,15 @@ int main() {
         return 4;
     }
 
+    usage.loaded_program_memory = 20U;
+    const auto loaded_capacity = calculate_loaded_program_capacity(
+        usage, std::array<std::int8_t, 5>{0, -1, 2, 11, -1});
+    if (!expect(loaded_capacity.total_memory == 20U &&
+                loaded_capacity.used_memory == 9U &&
+                loaded_capacity.available_memory == 11)) {
+        return 5;
+    }
+
     const auto datafiles = collect_matrix_storage_datafiles(
         std::array<MatrixDataFileRecord, 5>{
             MatrixDataFileRecord{3, 7}, MatrixDataFileRecord{-1, 0},
@@ -58,12 +67,12 @@ int main() {
                 datafiles.entries[0].display_row == 0U &&
                 datafiles.entries[1].slot == 2U &&
                 datafiles.entries[2].slot == 0U)) {
-        return 5;
+        return 6;
     }
     const auto empty = collect_matrix_storage_datafiles(
         std::array<MatrixDataFileRecord, 5>{});
     if (!expect(!empty.has_entries && empty.count == 0U)) {
-        return 6;
+        return 7;
     }
     return 0;
 }

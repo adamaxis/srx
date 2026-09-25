@@ -72,13 +72,7 @@ int main() {
                dirty));
     assert(boundaries == 2 && copied && dirty);
 
-    MenuSlotVisualState menu{{}, {}, {}};
     std::vector<int> events;
-    refresh_menu_slot_visual(menu, 1, 7, 3, [&] { events.push_back(1); },
-                             [&] { events.push_back(2); }, [&] { events.push_back(3); });
-    assert(menu.status[1] == 7 && menu.pending[1] == 0 && menu.offsets[1] == 30 &&
-           events == std::vector<int>({1, 2, 3}));
-
     int grids = 0;
     refresh_field_hud([&] { events.push_back(4); }, [&] { ++grids; });
     assert(grids == 5);

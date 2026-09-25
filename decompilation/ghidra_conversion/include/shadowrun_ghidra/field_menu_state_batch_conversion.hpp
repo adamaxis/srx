@@ -92,21 +92,6 @@ bool process_terrain_work_batch(
     const TerrainWorkCallbacks& callbacks,
     bool& render_dirty);
 
-struct MenuSlotVisualState {
-    std::vector<std::uint8_t> status;
-    std::vector<std::uint8_t> pending;
-    std::vector<std::int16_t> offsets;
-};
-
-void refresh_menu_slot_visual(
-    MenuSlotVisualState& state,
-    std::size_t slot,
-    std::uint8_t status,
-    std::int16_t delay,
-    const std::function<void()>& refresh_pair,
-    const std::function<void()>& write_grid,
-    const std::function<void()>& render_hud);
-
 void refresh_field_hud(
     const std::function<void()>& advance_footer,
     const std::function<void()>& write_grid);

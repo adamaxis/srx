@@ -180,31 +180,6 @@ bool process_terrain_work_batch(
     return processed;
 }
 
-void refresh_menu_slot_visual(
-    MenuSlotVisualState& state,
-    const std::size_t slot,
-    const std::uint8_t status,
-    const std::int16_t delay,
-    const std::function<void()>& refresh_pair,
-    const std::function<void()>& write_grid,
-    const std::function<void()>& render_hud) {
-    call_once(refresh_pair);
-    if (slot >= state.status.size()) {
-        state.status.resize(slot + 1U);
-    }
-    if (slot >= state.pending.size()) {
-        state.pending.resize(slot + 1U);
-    }
-    if (slot >= state.offsets.size()) {
-        state.offsets.resize(slot + 1U);
-    }
-    state.status[slot] = status;
-    state.pending[slot] = 0U;
-    state.offsets[slot] = static_cast<std::int16_t>(delay * 10);
-    call_once(write_grid);
-    call_once(render_hud);
-}
-
 void refresh_field_hud(const std::function<void()>& advance_footer,
                        const std::function<void()>& write_grid) {
     call_once(advance_footer);

@@ -41,6 +41,24 @@ MatrixStorageCapacity calculate_matrix_storage_capacity(
     return result;
 }
 
+MatrixLoadedProgramCapacity calculate_loaded_program_capacity(
+    const MatrixStorageUsage& usage,
+    const std::array<std::int8_t, 5>& slot_programs) {
+    MatrixLoadedProgramCapacity result{};
+    result.total_memory = usage.loaded_program_memory;
+    for (const auto slot_program : slot_programs) {
+        if (slot_program < 0) {
+            continue;
+        }
+        result.used_memory += matrix_program_storage_usage(
+            usage, static_cast<std::size_t>(slot_program));
+    }
+    result.available_memory =
+        static_cast<std::int32_t>(result.total_memory) -
+        static_cast<std::int32_t>(result.used_memory);
+    return result;
+}
+
 MatrixDataFileList collect_matrix_storage_datafiles(
     const std::array<MatrixDataFileRecord, 5>& records) {
     MatrixDataFileList result{};

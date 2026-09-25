@@ -313,15 +313,6 @@ void advance_hud_selection_row(
 
 void write_hud_panel_grid(const std::function<void()>& write_grid);
 
-void reset_menu_visual_slots(const std::function<void()>& reset_five,
-                             const std::function<void()>& reset_twelve);
-void clear_ready_menu_visual_slots(
-    const std::array<std::int8_t, 5>& row_status,
-    const std::function<void(std::size_t row)>& clear_slot);
-void refresh_menu_slot_pair(const std::function<void()>& refresh_pair,
-                            const std::function<void()>& clear_visual);
-void clear_menu_slot_visual(const std::function<void()>& clear_visual);
-
 struct HudHistoryState {
     std::int8_t countdown = 0;
     std::array<std::uint16_t, 4> values{};

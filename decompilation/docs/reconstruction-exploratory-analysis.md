@@ -775,6 +775,13 @@ the twelve availability flags by the source E2DF2 footprint table, and
 integers. The same module now models the `0x18F5E` reverse five-slot datafile
 walk, preserving each occupied record's signed type, usage byte, source slot,
 and display order; only slot selection and text rendering remain unresolved.
+The neighboring helpers were corrected from the ROM trace: `0x1957E` measures
+capacity consumed by the five programs already present in the loaded-program
+slots, while `0x195A6` computes a selected program's load-step count from its
+footprint and deck divisor. `0x195D8` publishes that program code, clears its
+pending flag, stores the ten-times step offset, and refreshes the source grid
+and row-render boundaries. The earlier generic visual-slot helper in the field
+batch was removed because the ROM trace does not support that interpretation.
 The utility handler at `0x19018` now has a named two-entry selector: source
 selection zero dispatches “Show Map,” while selection one dispatches “Retreat”
 unless `FFDF84` reports combat, in which case it takes the explicit “Retreat

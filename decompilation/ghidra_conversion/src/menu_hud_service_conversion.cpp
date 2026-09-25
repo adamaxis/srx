@@ -552,49 +552,6 @@ void write_hud_panel_grid(const std::function<void()>& write_grid) {
     }
 }
 
-void reset_menu_visual_slots(const std::function<void()>& reset_five,
-                             const std::function<void()>& reset_twelve) {
-    if (reset_five) {
-        for (int count = 0; count < 5; ++count) {
-            reset_five();
-        }
-    }
-    if (reset_twelve) {
-        for (int count = 0; count < 12; ++count) {
-            reset_twelve();
-        }
-    }
-}
-
-void clear_ready_menu_visual_slots(
-    const std::array<std::int8_t, 5>& row_status,
-    const std::function<void(std::size_t row)>& clear_slot) {
-    if (!clear_slot) {
-        return;
-    }
-    for (std::size_t row = row_status.size(); row-- > 0;) {
-        if (row_status[row] >= 0) {
-            clear_slot(row);
-        }
-    }
-}
-
-void refresh_menu_slot_pair(const std::function<void()>& refresh_pair,
-                            const std::function<void()>& clear_visual) {
-    if (refresh_pair) {
-        refresh_pair();
-    }
-    if (clear_visual) {
-        clear_visual();
-    }
-}
-
-void clear_menu_slot_visual(const std::function<void()>& clear_visual) {
-    if (clear_visual) {
-        clear_visual();
-    }
-}
-
 void rotate_hud_history(HudHistoryState& state) {
     state.countdown = static_cast<std::int8_t>(state.countdown - 1);
     if (state.countdown >= 0) {

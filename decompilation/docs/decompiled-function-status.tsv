@@ -413,10 +413,9 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x19432	menu directional input handler	ghidra_conversion::handle_menu_directional_input	shadowrun_ghidra_menu_hud_service	partial		Typed input-bit gate, row eligibility filters, selection publication, and refresh order
 0x194AC	HUD selection row advance	ghidra_conversion::advance_hud_selection_row	shadowrun_ghidra_menu_hud_service	partial		Typed signed row delta, five-row wrapping, grid write, and row render
 0x19504	HUD panel grid writer	ghidra_conversion::write_hud_panel_grid	shadowrun_ghidra_menu_hud_service	partial		Typed single-grid presentation boundary
-0x19558	Matrix storage capacity and menu visual reset	ghidra_conversion::calculate_matrix_storage_capacity / reset_menu_visual_slots	shadowrun_ghidra_matrix_storage + shadowrun_ghidra_menu_hud_service	partial		Typed storage subtraction and existing five-slot/twelve-slot visual reset callbacks
-0x1957E	ready menu visual cleanup	ghidra_conversion::clear_ready_menu_visual_slots	shadowrun_ghidra_menu_hud_service	partial		Typed reverse five-row signed-status cleanup scan
-0x195A6	menu slot pair refresh	ghidra_conversion::refresh_menu_slot_pair	shadowrun_ghidra_menu_hud_service	partial		Typed optional-hook and visual-clear order
-0x195AA	menu visual clear leaf	ghidra_conversion::clear_menu_slot_visual	shadowrun_ghidra_menu_hud_service	partial		Typed visual-clear service boundary
+0x19558	Matrix storage capacity	ghidra_conversion::calculate_matrix_storage_capacity	shadowrun_ghidra_matrix_storage	partial		Typed total-minus-loaded-slot-minus-installed-program storage calculation
+0x1957E	Loaded Matrix program capacity	ghidra_conversion::calculate_loaded_program_capacity	shadowrun_ghidra_matrix_storage	partial		Typed FFFBC0 capacity minus occupied FFFBD8 program footprints
+0x195A6	Matrix program load timing	ghidra_conversion::calculate_matrix_program_load_steps	shadowrun_ghidra_matrix_program_timing	partial		Source footprint/divisor ceiling capped at six load steps; zero divisor remains invalid host input
 0x196F2	HUD history rotation	ghidra_conversion::rotate_hud_history	shadowrun_ghidra_menu_hud_service	partial		Typed countdown expiry, four-word history rotation, and dirty publication
 0x1070	display service wrapper	ghidra_conversion::service_display_frame_wrapper	shadowrun_ghidra_display_service_batch	partial		Typed wrapper over the display dirty-bit service
 0x1080	alternating word-pair wrapper	ghidra_conversion::write_alternating_word_pair_wrapper	shadowrun_ghidra_display_service_batch	partial		Explicit host transfer boundary
@@ -546,7 +545,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x16760	projected terrain cell mark	ghidra_conversion::mark_projected_terrain_cell	shadowrun_ghidra_field_menu_state_batch	partial		Projection callback marks terrain word 0x000B and dirty state
 0x16A26	world activity descriptor publish	ghidra_conversion::publish_world_activity_descriptors	shadowrun_ghidra_field_menu_state_batch	partial		Publishes six-byte-spaced descriptors and clears source list
 0x16ECA	terrain work batch	ghidra_conversion::process_terrain_work_batch	shadowrun_ghidra_terrain_workflow	partial		Typed pending-entry scan, boundary acceptance, first-region copy, and dirty transition
-0x195D8	menu slot visual refresh	ghidra_conversion::refresh_menu_slot_visual	shadowrun_ghidra_field_menu_state_batch	partial		Slot status/pending/offset updates with display callbacks
+0x195D8	Matrix program slot refresh	ghidra_conversion::refresh_matrix_program_slot	shadowrun_ghidra_matrix_program_timing	partial		Selected program code, pending reset, ten-times load offset, and grid/row refresh order converted
 0x19856	field HUD refresh	ghidra_conversion::refresh_field_hud	shadowrun_ghidra_field_menu_state_batch	partial		Footer advance followed by five grid writes
 0x19AEE	mode glyph refresh	ghidra_conversion::refresh_mode_glyph	shadowrun_ghidra_field_menu_state_batch	partial		Typed mode remap and grid write boundary
 0x19BAE	HUD mode selection	ghidra_conversion::select_hud_mode	shadowrun_ghidra_field_menu_state_batch	partial		Checked display-mode table selection

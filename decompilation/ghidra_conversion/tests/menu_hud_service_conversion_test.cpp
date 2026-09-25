@@ -345,33 +345,11 @@ int main() {
         return 29;
     }
 
-    int reset_five = 0;
-    int reset_twelve = 0;
-    reset_menu_visual_slots([&reset_five] { ++reset_five; },
-                            [&reset_twelve] { ++reset_twelve; });
-    if (reset_five != 5 || reset_twelve != 12) {
-        return 30;
-    }
-    std::vector<std::size_t> cleared;
-    clear_ready_menu_visual_slots(
-        {-1, 0, -1, 2, -1},
-        [&cleared](const std::size_t row) { cleared.push_back(row); });
-    if (cleared != std::vector<std::size_t>{3, 1}) {
-        return 31;
-    }
-    events.clear();
-    refresh_menu_slot_pair([&events] { events.push_back(10); },
-                           [&events] { events.push_back(11); });
-    clear_menu_slot_visual([&events] { events.push_back(12); });
-    if (events != std::vector<int>{10, 11, 12}) {
-        return 32;
-    }
-
     HudHistoryState history{0, {1, 2, 3, 4}, false};
     rotate_hud_history(history);
     if (history.countdown != 4 || !history.dirty ||
         history.values != std::array<std::uint16_t, 4>{2, 3, 4, 1}) {
-        return 33;
+        return 30;
     }
 
     return 0;
