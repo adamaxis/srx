@@ -765,7 +765,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0001D048L, "advance_world_effect_record");
         names.put(0x0001D0DEL, "resolve_world_effect_sprite");
         names.put(0x0001D1F4L, "convert_world_routine_0x0001d1f4");
-        names.put(0x0001D280L, "convert_world_routine_0x0001d280");
+        names.put(0x0001D280L, "initialize_world_sequence");
         names.put(0x0001D33AL, "convert_world_routine_0x0001d33a");
         names.put(0x0001DC4CL, "convert_world_routine_0x0001dc4c");
         names.put(0x0001DD94L, "convert_world_routine_0x0001dd94");

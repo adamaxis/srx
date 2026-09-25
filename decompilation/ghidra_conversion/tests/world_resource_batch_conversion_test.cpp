@@ -5,6 +5,18 @@
 using namespace shadowrun::ghidra_conversion;
 
 int main() {
+    WorldSequenceState sequence{};
+    initialize_world_sequence(sequence);
+    if (sequence.animation_phase != 0U || sequence.frame_countdown != 4U ||
+        !sequence.active || sequence.source_start != 0x70U ||
+        sequence.source_end != 0xAFU || sequence.source_cursor != 0xAFU ||
+        sequence.sequence_table_token != 0x1D428U ||
+        sequence.source_buffer_token != 0xDA038U ||
+        sequence.destination_base != 0x811BU ||
+        sequence.current_row != 0x51U || sequence.substage != 0U) {
+        return 1;
+    }
+
     int calls = 0;
     transfer_world_word_block([&] { ++calls; });
     std::int16_t countdown = 1;

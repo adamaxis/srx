@@ -16879,7 +16879,7 @@
 0001AECA: bne.w 0x0001aedc
 0001AECE: tst.w (0x00ffe080).l
 0001AED4: beq.w 0x0001af22
-0001AED8: bsr.w 0x0001d280 ; call 0001D280 convert_world_routine_0x0001d280
+0001AED8: bsr.w 0x0001d280 ; call 0001D280 initialize_world_sequence
 0001AEDC: bsr.w 0x0001d2e6 ; call 0001D2E6 advance_world_sequence
 0001AEE0: bcs.w 0x0001aee8
 0001AEE4: bra.w 0x0001afc0

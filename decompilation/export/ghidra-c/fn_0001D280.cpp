@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001D280
-// Name: convert_world_routine_0x0001d280
+// Name: initialize_world_sequence
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_world_routine_0x0001d280(void)
+void initialize_world_sequence(void)
 
 {
   DAT_00ffe0ae = 0;
@@ -24,5 +24,4 @@ void convert_world_routine_0x0001d280(void)
   DAT_00ffdf82 = 0;
   return;
 }
-
 

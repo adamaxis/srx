@@ -596,6 +596,10 @@ initialization, spawn offsets, and the pending-transition Y adjustment.
 record tick, six-slot circular sprite work area, seven-build wrapped draw
 pass, and completion/menu transition.
 
+`0x1D280` is now `initialize_world_sequence`; its fixed sequence/source
+tokens, row range, destination, and initial counters feed the already-typed
+sentinel-bounded `0x1D2E6` advance routine.
+
 The paired layer entries `0x1C3FA`/`0x1C506` are now separated into
 `advance_title_sprite_layers` and `render_title_sprite_layers`. Their phase
 timers, alternate source pointers, two base sprites, optional status overlays,

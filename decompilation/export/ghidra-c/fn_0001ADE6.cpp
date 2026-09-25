@@ -44,7 +44,7 @@
 //   0x0001CCDC update_persistent_title_effect
 //   0x0001CD5A convert_world_routine_0x0001cd5a
 //   0x0001D1F4 convert_world_routine_0x0001d1f4
-//   0x0001D280 convert_world_routine_0x0001d280
+//   0x0001D280 initialize_world_sequence
 //   0x0001D2E6 advance_world_sequence
 //   0x000268E6 append_world_sprite_records
 //   0x00026958 upload_decoded_source_stream
@@ -105,7 +105,7 @@ void convert_world_routine_0x0001ade6(void)
     if (_DAT_00ffdf8c == 0) {
       uVar1 = 0;
       if (_DAT_00ffe080 != 0) {
-        convert_world_routine_0x0001d280();
+        initialize_world_sequence();
         goto LAB_0001aedc;
       }
       if (_DAT_00ffe084 == 0) {

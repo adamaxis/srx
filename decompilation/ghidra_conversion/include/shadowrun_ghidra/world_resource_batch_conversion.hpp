@@ -13,6 +13,24 @@ struct WorldSequenceEntry {
     std::int16_t marker = 0;
 };
 
+struct WorldSequenceState {
+    std::uint16_t animation_phase = 0; // FFE0AE
+    std::uint16_t frame_countdown = 0; // FFE0B0
+    bool active = false;               // FFDF8C
+    std::uint16_t source_start = 0;   // FFDF76
+    std::uint16_t source_end = 0;     // FFDF78
+    std::uint16_t source_cursor = 0;  // FFDF72
+    std::uint32_t sequence_table_token = 0; // FFDF7A
+    std::uint32_t source_buffer_token = 0;  // FFDF7E
+    std::uint16_t destination_base = 0; // FFDF74
+    std::uint16_t current_row = 0;    // FFDF70
+    std::uint16_t substage = 0;       // FFDF82
+};
+
+// ROM 0x1D280: install the fixed world-sequence table, source buffer,
+// destination, row range, and initial counters used by 0x1D2E6.
+void initialize_world_sequence(WorldSequenceState& state);
+
 void advance_world_sequence(
     const std::vector<WorldSequenceEntry>& entries,
     std::int16_t& countdown,

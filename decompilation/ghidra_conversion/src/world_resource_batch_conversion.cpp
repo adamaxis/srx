@@ -15,6 +15,20 @@ void call_once(const std::function<void()>& callback) {
 
 } // namespace
 
+void initialize_world_sequence(WorldSequenceState& state) {
+    state.animation_phase = 0U;
+    state.frame_countdown = 4U;
+    state.active = true;
+    state.source_start = 0x70U;
+    state.source_end = 0xAFU;
+    state.source_cursor = 0xAFU;
+    state.sequence_table_token = 0x0001D428U;
+    state.source_buffer_token = 0x000DA038U;
+    state.destination_base = 0x811BU;
+    state.current_row = 0x51U;
+    state.substage = 0U;
+}
+
 void transfer_world_word_block(const std::function<void()>& transfer) {
     call_once(transfer);
 }
