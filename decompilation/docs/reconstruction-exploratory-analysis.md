@@ -1096,6 +1096,14 @@ marker gate and its separate position shift. Their phase-table selections are
 callbacks returning host data tokens; the conversion does not make the native
 runtime decode or dereference the Genesis tables.
 
+`0x1E69C` is the world-effect initializer preceding the indirect state
+dispatcher. It clears the setup marker and effect globals, chooses one of
+eight records in the current context group, derives the second random bound
+from the record weight and `FF018C`, publishes the selected handler fields,
+and invokes the selected initializer through the `F3DC6` table boundary. The
+native conversion represents those records as typed host data and leaves the
+initializer as an explicit callback.
+
 The larger `0x1AA40` leaf is now named `tick_world_effect_animation` and
 converted separately. Its normal path chooses runner-derived timing versus the
 fixed descriptor-state cadence, its loading/transition path uses the six-phase

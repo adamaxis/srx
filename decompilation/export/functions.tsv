@@ -652,7 +652,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0001E514	clear_effect_slot_state	44	unknown	ok	ghidra-c/fn_0001E514.cpp
 0001E540	initialize_effect_fade_marker	18	unknown	ok	ghidra-c/fn_0001E540.cpp
 0001E68C	reset_world_effect_globals	16	unknown	ok	ghidra-c/fn_0001E68C.cpp
-0001E69C	convert_world_routine_0x0001e69c	144	unknown	ok	ghidra-c/fn_0001E69C.cpp
+0001E69C	initialize_world_effect_selection	144	unknown	ok	ghidra-c/fn_0001E69C.cpp
 0001EEDC	dispatch_world_effect	80	unknown	ok	ghidra-c/fn_0001EEDC.cpp
 0001F1E0	advance_eight_step_counter	14	unknown	ok	ghidra-c/fn_0001F1E0.cpp
 0001F246	run_mode_exit_services	76	unknown	ok	ghidra-c/fn_0001F246.cpp

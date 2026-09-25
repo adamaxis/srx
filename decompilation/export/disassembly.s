@@ -20308,7 +20308,7 @@
 0002147A: move.b #-0x1,(0x00fff10d).l
 00021482: lea (0xf5ab8).l,A0 ; data 000f5ab8
 00021488: rts
-0002148A: jsr 0x0001e69c.l ; call 0001E69C convert_world_routine_0x0001e69c
+0002148A: jsr 0x0001e69c.l ; call 0001E69C initialize_world_effect_selection
 00021490: cmpi.w #0x6,D6w
 00021494: bmi.w 0x000214b0
 00021498: cmpi.w #0x9,D6w

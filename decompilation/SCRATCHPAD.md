@@ -614,6 +614,12 @@ the source's 16-bit arithmetic, probes `0x1E41E` ten times, and retains only
 coordinates whose compact world-tile lookup returns zero. The native boundary
 uses a typed optional tile callback; it does not read ROM or Genesis RAM.
 
+`0x1E69C` is now `initialize_world_effect_selection`. It clears the setup
+marker and shared effect globals, selects one of eight records for the current
+context, derives the second bounded roll from the record weight and
+`FF018C`, publishes the handler/auxiliary/base/randomized fields, and crosses
+the `F3DC6[FFFBED]` initializer boundary through a typed callback.
+
 The paired layer entries `0x1C3FA`/`0x1C506` are now separated into
 `advance_title_sprite_layers` and `render_title_sprite_layers`. Their phase
 timers, alternate source pointers, two base sprites, optional status overlays,

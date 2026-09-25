@@ -2080,10 +2080,10 @@ caller	caller_name	instruction	text	target	callee	status
 0001E4AC	spawn_world_effect_at_player_position	0001E4BE	jsr 0x0001a2cc.l	0001A2CC	allocate_first_free_effect_slot	resolved
 0001E4AC	spawn_world_effect_at_player_position	0001E4CE	jsr 0x000044bc.l	000044BC	initialize_entity_record_from_template	resolved
 0001E514	clear_effect_slot_state	0001E538	jsr 0x0001a304.l	0001A304	clear_effect_slot	resolved
-0001E69C	convert_world_routine_0x0001e69c	0001E6A2	bsr.b 0x0001e68c	0001E68C	reset_world_effect_globals	resolved
-0001E69C	convert_world_routine_0x0001e69c	0001E6BC	jsr 0x00000d3a.l	00000D3A	sample_source_random_bound	resolved
-0001E69C	convert_world_routine_0x0001e69c	0001E6FE	jsr 0x00000d3a.l	00000D3A	sample_source_random_bound	resolved
-0001E69C	convert_world_routine_0x0001e69c	0001E728	jsr (A0)			indirect/unresolved
+0001E69C	initialize_world_effect_selection	0001E6A2	bsr.b 0x0001e68c	0001E68C	reset_world_effect_globals	resolved
+0001E69C	initialize_world_effect_selection	0001E6BC	jsr 0x00000d3a.l	00000D3A	sample_source_random_bound	resolved
+0001E69C	initialize_world_effect_selection	0001E6FE	jsr 0x00000d3a.l	00000D3A	sample_source_random_bound	resolved
+0001E69C	initialize_world_effect_selection	0001E728	jsr (A0)			indirect/unresolved
 0001EEDC	dispatch_world_effect	0001EF28	jsr (A1)			indirect/unresolved
 0001F246	run_mode_exit_services	0001F252	jsr 0x0000c0c2.l	0000C0C2	load_title_font	resolved
 0001F246	run_mode_exit_services	0001F258	jsr 0x00010984.l	00010984	transfer_menu_asset_batch_nine_optional	resolved

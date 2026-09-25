@@ -2033,6 +2033,19 @@ target_link_libraries(shadowrun_ghidra_world_effect_edge_test
 add_test(NAME shadowrun_ghidra_world_effect_edge
          COMMAND shadowrun_ghidra_world_effect_edge_test)
 
+add_library(shadowrun_ghidra_world_effect_initializer STATIC
+    src/world_effect_initializer_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_world_effect_initializer PUBLIC include)
+
+add_executable(shadowrun_ghidra_world_effect_initializer_test
+    tests/world_effect_initializer_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_world_effect_initializer_test
+    PRIVATE shadowrun_ghidra_world_effect_initializer)
+add_test(NAME shadowrun_ghidra_world_effect_initializer
+         COMMAND shadowrun_ghidra_world_effect_initializer_test)
+
 add_library(shadowrun_ghidra_audio_command_batch STATIC
     src/audio_command_batch_conversion.cpp
 )
