@@ -9,7 +9,7 @@ inline constexpr std::string_view kManifestFile = "resources.tsv";
 
 // Stable aliases are derived once from the relative asset path.  Directory
 // separators and filename separators become dots, so for example
-// field/menu/action-focus-2.bmp becomes field.menu.action.focus.2.
+// menu/field/action-focus-2.bmp becomes menu.field.action.focus.2.
 inline std::string alias_for_path(std::string_view relative_path) {
     std::string alias;
     const auto extension = relative_path.find_last_of('.');

@@ -39,9 +39,9 @@ title/animation-2.bmp	background	0	0	320	224	native title source composition[2]	
 title/animation-3.bmp	background	0	0	320	224	native title source composition[3]	extracted
 title/animation-4.bmp	background	0	0	320	224	native title source composition[4]	extracted
 title/animation-5.bmp	background	0	0	320	224	native title source composition[5]	extracted
-startup/background.bmp	background	0	0	320	224	0x10B5A/0xCDCE6	extracted
-startup/font.bmp	sprite	0	0	128	48	0xC1320	extracted
-startup/cursor.bmp	sprite	4	0	4	7	0xD29F6	extracted
+menu/startup/background.bmp	background	0	0	320	224	0x10B5A/0xCDCE6	extracted
+menu/startup/font.bmp	sprite	0	0	128	48	0xC1320	extracted
+menu/startup/cursor.bmp	sprite	4	0	4	7	0xD29F6	extracted
 intro/aircraft-plane-a.bmp	sprite	0	0	216	64	0x5B528/0x5B7D8	extracted
 intro/trivid-background.bmp	background	0	0	320	224	0x5AA96	extracted
 intro/background-0.bmp	background	0	0	320	224	0x59C5E	extracted
@@ -312,577 +312,577 @@ field/hud/ammo-counter-60.bmp	sprite	0	0	8	8	0x36FC[60]	extracted
 field/hud/ammo-counter-61.bmp	sprite	0	0	16	8	0x36FC[61]	extracted-empty
 field/hud/ammo-counter-62.bmp	sprite	0	0	8	8	0x36FC[62]	extracted
 field/hud/ammo-counter-63.bmp	sprite	0	0	16	8	0x36FC[63]	extracted-empty
-field/menu/pocket-secretary-background.bmp	background	0	0	320	224	0x10A7E	extracted
-field/menu/background.bmp	background	0	0	320	224	0x10F50	extracted
-field/menu/action-background.bmp	background	0	0	120	16	0x117A0	extracted
-field/menu/attributes-background.bmp	background	0	0	320	224	0x10C96	extracted
-field/menu/inventory-boxes.bmp	background	0	0	320	224	0x10F50/0x1232	extracted
-field/menu/font.bmp	sprite	0	0	128	48	0xC1064	extracted
-field/menu/runner-portrait-0.bmp	sprite	0	0	64	80	0x7291A[0]	extracted
-field/menu/runner-portrait-1.bmp	sprite	0	0	64	80	0x7291A[1]	extracted
-field/menu/runner-portrait-2.bmp	sprite	0	0	64	80	0x7291A[2]	extracted
-field/menu/selected-cell-0.bmp	sprite	0	0	40	32	0x11678[0]	extracted
-field/menu/selected-cell-1.bmp	sprite	0	0	40	32	0x11678[1]	extracted
-field/menu/command-focus-0.bmp	sprite	0	0	16	16	0x11454[0]	extracted
-field/menu/command-focus-1.bmp	sprite	0	0	16	16	0x11454[1]	extracted
-field/menu/command-focus-2.bmp	sprite	0	0	16	16	0x11454[2]	extracted
-field/menu/command-focus-3.bmp	sprite	0	0	16	16	0x11454[3]	extracted
-field/menu/command-focus-4.bmp	sprite	0	0	16	16	0x11454[4]	extracted
-field/menu/action-focus-0.bmp	sprite	0	0	16	16	0x117A4[0]	extracted
-field/menu/action-focus-1.bmp	sprite	0	0	16	16	0x117A4[1]	extracted
-field/menu/action-focus-2.bmp	sprite	0	0	16	16	0x117A4[2]	extracted
-field/menu/action-focus-3.bmp	sprite	0	0	16	16	0x117A4[3]	extracted
-field/menu/clips-focus-0.bmp	sprite	0	0	16	16	0x11B58[0]	extracted
-field/menu/clips-focus-1.bmp	sprite	0	0	16	16	0x11B58[1]	extracted
-field/menu/clips-focus-2.bmp	sprite	0	0	16	16	0x11B58[2]	extracted
-field/menu/clips-focus-3.bmp	sprite	0	0	16	16	0x11B58[3]	extracted
-field/menu/clips-trade-focus-0.bmp	sprite	0	0	16	16	0x11E7E[0]	extracted
-field/menu/clips-trade-focus-1.bmp	sprite	0	0	16	16	0x11E7E[1]	extracted
-field/menu/clips-trade-focus-2.bmp	sprite	0	0	16	16	0x11E7E[2]	extracted
-field/menu/clips-trade-focus-3.bmp	sprite	0	0	16	16	0x11E7E[3]	extracted
-field/menu/posture-focus.bmp	sprite	0	0	48	8	0x119CE	extracted
-field/menu/cursor.bmp	sprite	0	0	24	32	0x11592	extracted
-field/menu/item-art-0.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[0]	extracted
-field/menu/item-art-1.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[1]	extracted
-field/menu/item-art-2.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[2]	extracted
-field/menu/item-art-3.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[3]	extracted
-field/menu/item-art-4.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[4]	extracted
-field/menu/item-art-5.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[5]	extracted
-field/menu/item-art-6.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[6]	extracted
-field/menu/item-art-7.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[7]	extracted
-field/menu/item-art-8.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[8]	extracted
-field/menu/item-art-9.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[9]	extracted
-field/menu/item-art-10.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[10]	extracted
-field/menu/item-art-11.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[11]	extracted
-field/menu/item-art-12.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[12]	extracted
-field/menu/item-art-13.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[13]	extracted
-field/menu/item-art-14.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[14]	extracted
-field/menu/item-art-15.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[15]	extracted
-field/menu/item-art-16.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[16]	extracted
-field/menu/item-art-17.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[17]	extracted
-field/menu/item-art-18.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[18]	extracted
-field/menu/item-art-19.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[19]	extracted
-field/menu/item-art-20.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[20]	extracted
-field/menu/item-art-21.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[21]	extracted
-field/menu/item-art-22.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[22]	extracted
-field/menu/item-art-23.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[23]	extracted
-field/menu/item-art-24.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[24]	extracted
-field/menu/item-art-25.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[25]	extracted
-field/menu/item-art-26.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[26]	extracted
-field/menu/item-art-27.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[27]	extracted
-field/menu/item-art-28.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[28]	extracted
-field/menu/item-art-29.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[29]	extracted
-field/menu/item-art-30.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[30]	extracted
-field/menu/item-art-31.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[31]	extracted
-field/menu/item-art-32.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[32]	extracted
-field/menu/item-art-33.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[33]	extracted
-field/menu/item-art-34.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[34]	extracted
-field/menu/item-art-35.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[35]	extracted
-field/menu/item-art-36.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[36]	extracted
-field/menu/item-art-37.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[37]	extracted
-field/menu/item-art-38.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[38]	extracted
-field/menu/item-art-39.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[39]	extracted
-field/menu/item-art-40.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[40]	extracted-empty
-field/menu/item-art-41.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[41]	extracted-empty
-field/menu/item-art-42.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[42]	extracted-empty
-field/menu/item-art-43.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[43]	extracted
-field/menu/item-art-44.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[44]	extracted
-field/menu/item-art-45.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[45]	extracted
-field/menu/item-art-46.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[46]	extracted
-field/menu/item-art-47.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[47]	extracted
-field/menu/item-art-48.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[48]	extracted
-field/menu/item-art-49.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[49]	extracted
-field/menu/inventory-icon-0-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-0-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-1-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-1-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-2-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-2-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-3-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-3-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-4-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-4-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-5-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-5-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-6-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-6-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-7-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-7-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-8-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-8-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-9-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-9-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-10-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-10-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-11-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-11-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-12-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-12-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-13-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-13-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-14-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-14-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-15-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-15-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-16-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-16-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-17-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-17-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-18-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-18-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-19-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-19-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-20-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-20-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-21-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-21-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-22-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-22-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-23-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-23-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-24-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-24-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-25-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-25-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-26-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-26-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-27-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-27-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-28-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-28-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-29-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-29-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-30-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-30-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-31-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-31-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-32-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-32-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-33-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-33-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-34-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-34-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-35-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-35-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-36-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-36-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-37-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-37-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-38-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-38-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-39-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-39-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-40-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-40-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-41-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-41-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-42-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-42-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-43-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-43-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-44-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-44-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-45-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-45-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-46-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-46-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-47-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-47-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-48-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-48-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-49-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/inventory-icon-49-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540	extracted
-field/menu/status-bar-0.bmp	sprite	0	0	64	8	0x11928[0]	extracted
-field/menu/status-bar-1.bmp	sprite	0	0	64	8	0x11928[1]	extracted
-field/menu/status-bar-2.bmp	sprite	0	0	64	8	0x11928[2]	extracted
-field/menu/status-bar-3.bmp	sprite	0	0	64	8	0x11928[3]	extracted
-field/menu/status-bar-4.bmp	sprite	0	0	64	8	0x11928[4]	extracted
-field/menu/damage-bar-0.bmp	sprite	0	0	56	8	0x12F70[0]	extracted
-field/menu/damage-bar-1.bmp	sprite	0	0	56	8	0x12F70[1]	extracted
-field/menu/damage-bar-2.bmp	sprite	0	0	56	8	0x12F70[2]	extracted
-field/menu/damage-bar-3.bmp	sprite	0	0	56	8	0x12F70[3]	extracted
-field/menu/damage-bar-4.bmp	sprite	0	0	56	8	0x12F70[4]	extracted
-field/menu/damage-bar-5.bmp	sprite	0	0	56	8	0x12F70[5]	extracted
-field/menu/damage-bar-6.bmp	sprite	0	0	56	8	0x12F70[6]	extracted
-field/menu/damage-bar-7.bmp	sprite	0	0	56	8	0x12F70[7]	extracted
-field/menu/damage-bar-8.bmp	sprite	0	0	56	8	0x12F70[8]	extracted
-field/menu/damage-bar-9.bmp	sprite	0	0	56	8	0x12F70[9]	extracted
-field/menu/damage-bar-10.bmp	sprite	0	0	56	8	0x12F70[10]	extracted
-field/menu/damage-bar-11.bmp	sprite	0	0	56	8	0x12F70[11]	extracted
-field/menu/damage-bar-12.bmp	sprite	0	0	56	8	0x12F70[12]	extracted
-field/menu/damage-bar-13.bmp	sprite	0	0	56	8	0x12F70[13]	extracted
-field/menu/drain-bar-0.bmp	sprite	0	0	56	8	0x12FA4[0]	extracted
-field/menu/drain-bar-1.bmp	sprite	0	0	56	8	0x12FA4[1]	extracted
-field/menu/drain-bar-2.bmp	sprite	0	0	56	8	0x12FA4[2]	extracted
-field/menu/drain-bar-3.bmp	sprite	0	0	56	8	0x12FA4[3]	extracted
-field/menu/drain-bar-4.bmp	sprite	0	0	56	8	0x12FA4[4]	extracted
-field/menu/drain-bar-5.bmp	sprite	0	0	56	8	0x12FA4[5]	extracted
-field/menu/drain-bar-6.bmp	sprite	0	0	56	8	0x12FA4[6]	extracted
-field/menu/drain-bar-7.bmp	sprite	0	0	56	8	0x12FA4[7]	extracted
-field/menu/drain-bar-8.bmp	sprite	0	0	56	8	0x12FA4[8]	extracted
-field/menu/drain-bar-9.bmp	sprite	0	0	56	8	0x12FA4[9]	extracted
-field/menu/drain-bar-10.bmp	sprite	0	0	56	8	0x12FA4[10]	extracted
-field/menu/drain-bar-11.bmp	sprite	0	0	56	8	0x12FA4[11]	extracted
-field/menu/drain-bar-12.bmp	sprite	0	0	56	8	0x12FA4[12]	extracted
-field/menu/drain-bar-13.bmp	sprite	0	0	56	8	0x12FA4[13]	extracted
-field/menu/detail-value-0.bmp	sprite	0	0	16	8	0x13000[0]	extracted
-field/menu/detail-value-1.bmp	sprite	0	0	16	8	0x13000[1]	extracted
-field/menu/detail-value-2.bmp	sprite	0	0	16	8	0x13000[2]	extracted
-field/menu/detail-value-3.bmp	sprite	0	0	16	8	0x13000[3]	extracted
-field/menu/detail-value-4.bmp	sprite	0	0	16	8	0x13000[4]	extracted
-field/menu/detail-value-5.bmp	sprite	0	0	16	8	0x13000[5]	extracted
-field/menu/detail-value-6.bmp	sprite	0	0	16	8	0x13000[6]	extracted
-field/menu/detail-value-7.bmp	sprite	0	0	16	8	0x13000[7]	extracted
-field/menu/detail-value-8.bmp	sprite	0	0	16	8	0x13000[8]	extracted
-field/menu/detail-value-9.bmp	sprite	0	0	16	8	0x13000[9]	extracted
-field/menu/detail-value-10.bmp	sprite	0	0	16	8	0x13000[10]	extracted
-field/menu/detail-value-11.bmp	sprite	0	0	16	8	0x13000[11]	extracted
-field/menu/detail-value-12.bmp	sprite	0	0	16	8	0x13000[12]	extracted
-field/menu/detail-value-13.bmp	sprite	0	0	16	8	0x13000[13]	extracted
-field/menu/detail-value-14.bmp	sprite	0	0	16	8	0x13000[14]	extracted
-field/menu/detail-value-15.bmp	sprite	0	0	16	8	0x13000[15]	extracted
-field/menu/detail-value-16.bmp	sprite	0	0	16	8	0x13000[16]	extracted
-field/menu/detail-value-17.bmp	sprite	0	0	16	8	0x13000[17]	extracted
-field/menu/detail-value-18.bmp	sprite	0	0	16	8	0x13000[18]	extracted
-field/menu/detail-value-19.bmp	sprite	0	0	16	8	0x13000[19]	extracted
-field/menu/detail-value-20.bmp	sprite	0	0	16	8	0x13000[20]	extracted
-field/menu/detail-value-21.bmp	sprite	0	0	16	8	0x13000[21]	extracted
-field/menu/detail-value-22.bmp	sprite	0	0	16	8	0x13000[22]	extracted
-field/menu/detail-value-23.bmp	sprite	0	0	16	8	0x13000[23]	extracted
-field/menu/detail-value-24.bmp	sprite	0	0	16	8	0x13000[24]	extracted
-field/menu/detail-value-25.bmp	sprite	0	0	16	8	0x13000[25]	extracted
-field/menu/detail-value-26.bmp	sprite	0	0	16	8	0x13000[26]	extracted
-field/menu/detail-value-27.bmp	sprite	0	0	16	8	0x13000[27]	extracted
-field/menu/detail-value-28.bmp	sprite	0	0	16	8	0x13000[28]	extracted
-field/menu/detail-value-29.bmp	sprite	0	0	16	8	0x13000[29]	extracted
-field/menu/detail-value-30.bmp	sprite	0	0	16	8	0x13000[30]	extracted
-field/menu/detail-value-31.bmp	sprite	0	0	16	8	0x13000[31]	extracted
-field/menu/detail-value-32.bmp	sprite	0	0	16	8	0x13000[32]	extracted
-field/menu/detail-value-33.bmp	sprite	0	0	16	8	0x13000[33]	extracted
-field/menu/detail-value-34.bmp	sprite	0	0	16	8	0x13000[34]	extracted
-field/menu/detail-value-35.bmp	sprite	0	0	16	8	0x13000[35]	extracted
-field/menu/detail-value-36.bmp	sprite	0	0	16	8	0x13000[36]	extracted
-field/menu/detail-value-37.bmp	sprite	0	0	16	8	0x13000[37]	extracted
-field/menu/detail-value-38.bmp	sprite	0	0	16	8	0x13000[38]	extracted
-field/menu/detail-value-39.bmp	sprite	0	0	16	8	0x13000[39]	extracted
-field/menu/detail-value-40.bmp	sprite	0	0	16	8	0x13000[40]	extracted
-field/menu/detail-value-41.bmp	sprite	0	0	16	8	0x13000[41]	extracted
-field/menu/detail-value-42.bmp	sprite	0	0	16	8	0x13000[42]	extracted
-field/menu/detail-value-43.bmp	sprite	0	0	16	8	0x13000[43]	extracted
-field/menu/detail-value-44.bmp	sprite	0	0	16	8	0x13000[44]	extracted
-field/menu/detail-value-45.bmp	sprite	0	0	16	8	0x13000[45]	extracted
-field/menu/detail-value-46.bmp	sprite	0	0	16	8	0x13000[46]	extracted
-field/menu/detail-value-47.bmp	sprite	0	0	16	8	0x13000[47]	extracted
-field/menu/detail-value-48.bmp	sprite	0	0	16	8	0x13000[48]	extracted
-field/menu/detail-value-49.bmp	sprite	0	0	16	8	0x13000[49]	extracted
-field/menu/detail-value-50.bmp	sprite	0	0	16	8	0x13000[50]	extracted
-field/menu/detail-value-51.bmp	sprite	0	0	16	8	0x13000[51]	extracted
-field/menu/detail-value-52.bmp	sprite	0	0	16	8	0x13000[52]	extracted
-field/menu/detail-value-53.bmp	sprite	0	0	16	8	0x13000[53]	extracted
-field/menu/detail-value-54.bmp	sprite	0	0	16	8	0x13000[54]	extracted
-field/menu/detail-value-55.bmp	sprite	0	0	16	8	0x13000[55]	extracted
-field/menu/detail-value-56.bmp	sprite	0	0	16	8	0x13000[56]	extracted
-field/menu/detail-value-57.bmp	sprite	0	0	16	8	0x13000[57]	extracted
-field/menu/detail-value-58.bmp	sprite	0	0	16	8	0x13000[58]	extracted
-field/menu/detail-value-59.bmp	sprite	0	0	16	8	0x13000[59]	extracted
-field/menu/detail-value-60.bmp	sprite	0	0	16	8	0x13000[60]	extracted
-field/menu/detail-value-61.bmp	sprite	0	0	16	8	0x13000[61]	extracted
-field/menu/detail-value-62.bmp	sprite	0	0	16	8	0x13000[62]	extracted
-field/menu/detail-value-63.bmp	sprite	0	0	16	8	0x13000[63]	extracted
-field/menu/detail-value-64.bmp	sprite	0	0	16	8	0x13000[64]	extracted
-field/menu/detail-value-65.bmp	sprite	0	0	16	8	0x13000[65]	extracted
-field/menu/detail-value-66.bmp	sprite	0	0	16	8	0x13000[66]	extracted
-field/menu/detail-value-67.bmp	sprite	0	0	16	8	0x13000[67]	extracted
-field/menu/detail-value-68.bmp	sprite	0	0	16	8	0x13000[68]	extracted
-field/menu/detail-value-69.bmp	sprite	0	0	16	8	0x13000[69]	extracted
-field/menu/detail-value-70.bmp	sprite	0	0	16	8	0x13000[70]	extracted
-field/menu/detail-value-71.bmp	sprite	0	0	16	8	0x13000[71]	extracted
-field/menu/detail-value-72.bmp	sprite	0	0	16	8	0x13000[72]	extracted
-field/menu/detail-value-73.bmp	sprite	0	0	16	8	0x13000[73]	extracted
-field/menu/detail-value-74.bmp	sprite	0	0	16	8	0x13000[74]	extracted
-field/menu/detail-value-75.bmp	sprite	0	0	16	8	0x13000[75]	extracted
-field/menu/detail-value-76.bmp	sprite	0	0	16	8	0x13000[76]	extracted
-field/menu/detail-value-77.bmp	sprite	0	0	16	8	0x13000[77]	extracted
-field/menu/detail-value-78.bmp	sprite	0	0	16	8	0x13000[78]	extracted
-field/menu/detail-value-79.bmp	sprite	0	0	16	8	0x13000[79]	extracted
-field/menu/detail-value-80.bmp	sprite	0	0	16	8	0x13000[80]	extracted
-field/menu/detail-value-81.bmp	sprite	0	0	16	8	0x13000[81]	extracted
-field/menu/detail-value-82.bmp	sprite	0	0	16	8	0x13000[82]	extracted
-field/menu/detail-value-83.bmp	sprite	0	0	16	8	0x13000[83]	extracted
-field/menu/detail-value-84.bmp	sprite	0	0	16	8	0x13000[84]	extracted
-field/menu/detail-value-85.bmp	sprite	0	0	16	8	0x13000[85]	extracted
-field/menu/detail-value-86.bmp	sprite	0	0	16	8	0x13000[86]	extracted
-field/menu/detail-value-87.bmp	sprite	0	0	16	8	0x13000[87]	extracted
-field/menu/detail-value-88.bmp	sprite	0	0	16	8	0x13000[88]	extracted
-field/menu/detail-value-89.bmp	sprite	0	0	16	8	0x13000[89]	extracted
-field/menu/detail-value-90.bmp	sprite	0	0	16	8	0x13000[90]	extracted
-field/menu/detail-value-91.bmp	sprite	0	0	16	8	0x13000[91]	extracted
-field/menu/detail-value-92.bmp	sprite	0	0	16	8	0x13000[92]	extracted
-field/menu/detail-value-93.bmp	sprite	0	0	16	8	0x13000[93]	extracted
-field/menu/detail-value-94.bmp	sprite	0	0	16	8	0x13000[94]	extracted
-field/menu/detail-value-95.bmp	sprite	0	0	16	8	0x13000[95]	extracted
-field/menu/detail-value-96.bmp	sprite	0	0	16	8	0x13000[96]	extracted
-field/menu/detail-value-97.bmp	sprite	0	0	16	8	0x13000[97]	extracted
-field/menu/detail-value-98.bmp	sprite	0	0	16	8	0x13000[98]	extracted
-field/menu/detail-value-99.bmp	sprite	0	0	16	8	0x13000[99]	extracted
-field/menu/detail-value-100.bmp	sprite	0	0	16	8	0x13000[100]	extracted
-field/menu/detail-value-101.bmp	sprite	0	0	16	8	0x13000[101]	extracted
-field/menu/detail-value-102.bmp	sprite	0	0	16	8	0x13000[102]	extracted
-field/menu/detail-value-103.bmp	sprite	0	0	16	8	0x13000[103]	extracted
-field/menu/detail-value-104.bmp	sprite	0	0	16	8	0x13000[104]	extracted
-field/menu/detail-value-105.bmp	sprite	0	0	16	8	0x13000[105]	extracted
-field/menu/detail-value-106.bmp	sprite	0	0	16	8	0x13000[106]	extracted
-field/menu/detail-value-107.bmp	sprite	0	0	16	8	0x13000[107]	extracted
-field/menu/detail-value-108.bmp	sprite	0	0	16	8	0x13000[108]	extracted
-field/menu/detail-value-109.bmp	sprite	0	0	16	8	0x13000[109]	extracted
-field/menu/detail-value-110.bmp	sprite	0	0	16	8	0x13000[110]	extracted
-field/menu/detail-value-111.bmp	sprite	0	0	16	8	0x13000[111]	extracted
-field/menu/detail-value-112.bmp	sprite	0	0	16	8	0x13000[112]	extracted
-field/menu/detail-value-113.bmp	sprite	0	0	16	8	0x13000[113]	extracted
-field/menu/detail-value-114.bmp	sprite	0	0	16	8	0x13000[114]	extracted
-field/menu/detail-value-115.bmp	sprite	0	0	16	8	0x13000[115]	extracted
-field/menu/detail-value-116.bmp	sprite	0	0	16	8	0x13000[116]	extracted
-field/menu/detail-value-117.bmp	sprite	0	0	16	8	0x13000[117]	extracted
-field/menu/detail-value-118.bmp	sprite	0	0	16	8	0x13000[118]	extracted
-field/menu/detail-value-119.bmp	sprite	0	0	16	8	0x13000[119]	extracted
-field/menu/detail-value-120.bmp	sprite	0	0	16	8	0x13000[120]	extracted
-field/menu/detail-value-121.bmp	sprite	0	0	16	8	0x13000[121]	extracted
-field/menu/detail-value-122.bmp	sprite	0	0	16	8	0x13000[122]	extracted
-field/menu/detail-value-123.bmp	sprite	0	0	16	8	0x13000[123]	extracted
-field/menu/detail-value-124.bmp	sprite	0	0	16	8	0x13000[124]	extracted
-field/menu/detail-value-125.bmp	sprite	0	0	16	8	0x13000[125]	extracted
-field/menu/detail-value-126.bmp	sprite	0	0	16	8	0x13000[126]	extracted
-field/menu/detail-value-127.bmp	sprite	0	0	16	8	0x13000[127]	extracted
-field/menu/detail-value-128.bmp	sprite	0	0	16	8	0x13000[128]	extracted
-field/menu/detail-value-129.bmp	sprite	0	0	16	8	0x13000[129]	extracted
-field/menu/detail-value-130.bmp	sprite	0	0	16	8	0x13000[130]	extracted
-field/menu/detail-value-131.bmp	sprite	0	0	16	8	0x13000[131]	extracted
-field/menu/detail-value-132.bmp	sprite	0	0	16	8	0x13000[132]	extracted
-field/menu/detail-value-133.bmp	sprite	0	0	16	8	0x13000[133]	extracted
-field/menu/detail-value-134.bmp	sprite	0	0	16	8	0x13000[134]	extracted
-field/menu/detail-value-135.bmp	sprite	0	0	16	8	0x13000[135]	extracted
-field/menu/detail-value-136.bmp	sprite	0	0	16	8	0x13000[136]	extracted
-field/menu/detail-value-137.bmp	sprite	0	0	16	8	0x13000[137]	extracted
-field/menu/detail-value-138.bmp	sprite	0	0	16	8	0x13000[138]	extracted
-field/menu/detail-value-139.bmp	sprite	0	0	16	8	0x13000[139]	extracted
-field/menu/detail-value-140.bmp	sprite	0	0	16	8	0x13000[140]	extracted
-field/menu/detail-value-141.bmp	sprite	0	0	16	8	0x13000[141]	extracted
-field/menu/detail-value-142.bmp	sprite	0	0	16	8	0x13000[142]	extracted
-field/menu/detail-value-143.bmp	sprite	0	0	16	8	0x13000[143]	extracted
-field/menu/detail-value-144.bmp	sprite	0	0	16	8	0x13000[144]	extracted
-field/menu/detail-value-145.bmp	sprite	0	0	16	8	0x13000[145]	extracted
-field/menu/detail-value-146.bmp	sprite	0	0	16	8	0x13000[146]	extracted
-field/menu/detail-value-147.bmp	sprite	0	0	16	8	0x13000[147]	extracted
-field/menu/detail-value-148.bmp	sprite	0	0	16	8	0x13000[148]	extracted
-field/menu/detail-value-149.bmp	sprite	0	0	16	8	0x13000[149]	extracted
-field/menu/detail-value-150.bmp	sprite	0	0	16	8	0x13000[150]	extracted
-field/menu/detail-value-151.bmp	sprite	0	0	16	8	0x13000[151]	extracted
-field/menu/detail-value-152.bmp	sprite	0	0	16	8	0x13000[152]	extracted
-field/menu/detail-value-153.bmp	sprite	0	0	16	8	0x13000[153]	extracted
-field/menu/detail-value-154.bmp	sprite	0	0	16	8	0x13000[154]	extracted
-field/menu/detail-value-155.bmp	sprite	0	0	16	8	0x13000[155]	extracted
-field/menu/detail-value-156.bmp	sprite	0	0	16	8	0x13000[156]	extracted
-field/menu/detail-value-157.bmp	sprite	0	0	16	8	0x13000[157]	extracted
-field/menu/detail-value-158.bmp	sprite	0	0	16	8	0x13000[158]	extracted
-field/menu/detail-value-159.bmp	sprite	0	0	16	8	0x13000[159]	extracted
-field/menu/detail-value-160.bmp	sprite	0	0	16	8	0x13000[160]	extracted
-field/menu/detail-value-161.bmp	sprite	0	0	16	8	0x13000[161]	extracted
-field/menu/detail-value-162.bmp	sprite	0	0	16	8	0x13000[162]	extracted
-field/menu/detail-value-163.bmp	sprite	0	0	16	8	0x13000[163]	extracted
-field/menu/detail-value-164.bmp	sprite	0	0	16	8	0x13000[164]	extracted
-field/menu/detail-value-165.bmp	sprite	0	0	16	8	0x13000[165]	extracted
-field/menu/detail-value-166.bmp	sprite	0	0	16	8	0x13000[166]	extracted
-field/menu/detail-value-167.bmp	sprite	0	0	16	8	0x13000[167]	extracted
-field/menu/detail-value-168.bmp	sprite	0	0	16	8	0x13000[168]	extracted
-field/menu/detail-value-169.bmp	sprite	0	0	16	8	0x13000[169]	extracted
-field/menu/detail-value-170.bmp	sprite	0	0	16	8	0x13000[170]	extracted
-field/menu/detail-value-171.bmp	sprite	0	0	16	8	0x13000[171]	extracted
-field/menu/detail-value-172.bmp	sprite	0	0	16	8	0x13000[172]	extracted
-field/menu/detail-value-173.bmp	sprite	0	0	16	8	0x13000[173]	extracted
-field/menu/detail-value-174.bmp	sprite	0	0	16	8	0x13000[174]	extracted
-field/menu/detail-value-175.bmp	sprite	0	0	16	8	0x13000[175]	extracted
-field/menu/detail-value-176.bmp	sprite	0	0	16	8	0x13000[176]	extracted
-field/menu/detail-value-177.bmp	sprite	0	0	16	8	0x13000[177]	extracted
-field/menu/detail-value-178.bmp	sprite	0	0	16	8	0x13000[178]	extracted
-field/menu/detail-value-179.bmp	sprite	0	0	16	8	0x13000[179]	extracted
-field/menu/detail-value-180.bmp	sprite	0	0	16	8	0x13000[180]	extracted
-field/menu/detail-value-181.bmp	sprite	0	0	16	8	0x13000[181]	extracted
-field/menu/detail-value-182.bmp	sprite	0	0	16	8	0x13000[182]	extracted
-field/menu/detail-value-183.bmp	sprite	0	0	16	8	0x13000[183]	extracted
-field/menu/detail-value-184.bmp	sprite	0	0	16	8	0x13000[184]	extracted
-field/menu/detail-value-185.bmp	sprite	0	0	16	8	0x13000[185]	extracted
-field/menu/detail-value-186.bmp	sprite	0	0	16	8	0x13000[186]	extracted
-field/menu/detail-value-187.bmp	sprite	0	0	16	8	0x13000[187]	extracted
-field/menu/detail-value-188.bmp	sprite	0	0	16	8	0x13000[188]	extracted
-field/menu/detail-value-189.bmp	sprite	0	0	16	8	0x13000[189]	extracted
-field/menu/detail-value-190.bmp	sprite	0	0	16	8	0x13000[190]	extracted
-field/menu/detail-value-191.bmp	sprite	0	0	16	8	0x13000[191]	extracted
-field/menu/detail-value-192.bmp	sprite	0	0	16	8	0x13000[192]	extracted
-field/menu/detail-value-193.bmp	sprite	0	0	16	8	0x13000[193]	extracted
-field/menu/detail-value-194.bmp	sprite	0	0	16	8	0x13000[194]	extracted
-field/menu/detail-value-195.bmp	sprite	0	0	16	8	0x13000[195]	extracted
-field/menu/detail-value-196.bmp	sprite	0	0	16	8	0x13000[196]	extracted
-field/menu/detail-value-197.bmp	sprite	0	0	16	8	0x13000[197]	extracted
-field/menu/detail-value-198.bmp	sprite	0	0	16	8	0x13000[198]	extracted
-field/menu/detail-value-199.bmp	sprite	0	0	16	8	0x13000[199]	extracted
-field/menu/detail-value-200.bmp	sprite	0	0	16	8	0x13000[200]	extracted
-field/menu/detail-value-201.bmp	sprite	0	0	16	8	0x13000[201]	extracted
-field/menu/detail-value-202.bmp	sprite	0	0	16	8	0x13000[202]	extracted
-field/menu/detail-value-203.bmp	sprite	0	0	16	8	0x13000[203]	extracted
-field/menu/detail-value-204.bmp	sprite	0	0	16	8	0x13000[204]	extracted
-field/menu/detail-value-205.bmp	sprite	0	0	16	8	0x13000[205]	extracted
-field/menu/detail-value-206.bmp	sprite	0	0	16	8	0x13000[206]	extracted
-field/menu/detail-value-207.bmp	sprite	0	0	16	8	0x13000[207]	extracted
-field/menu/detail-value-208.bmp	sprite	0	0	16	8	0x13000[208]	extracted
-field/menu/detail-value-209.bmp	sprite	0	0	16	8	0x13000[209]	extracted
-field/menu/detail-value-210.bmp	sprite	0	0	16	8	0x13000[210]	extracted
-field/menu/detail-value-211.bmp	sprite	0	0	16	8	0x13000[211]	extracted
-field/menu/detail-value-212.bmp	sprite	0	0	16	8	0x13000[212]	extracted
-field/menu/detail-value-213.bmp	sprite	0	0	16	8	0x13000[213]	extracted
-field/menu/detail-value-214.bmp	sprite	0	0	16	8	0x13000[214]	extracted
-field/menu/detail-value-215.bmp	sprite	0	0	16	8	0x13000[215]	extracted
-field/menu/detail-value-216.bmp	sprite	0	0	16	8	0x13000[216]	extracted
-field/menu/detail-value-217.bmp	sprite	0	0	16	8	0x13000[217]	extracted
-field/menu/detail-value-218.bmp	sprite	0	0	16	8	0x13000[218]	extracted
-field/menu/detail-value-219.bmp	sprite	0	0	16	8	0x13000[219]	extracted
-field/menu/detail-value-220.bmp	sprite	0	0	16	8	0x13000[220]	extracted
-field/menu/detail-value-221.bmp	sprite	0	0	16	8	0x13000[221]	extracted
-field/menu/detail-value-222.bmp	sprite	0	0	16	8	0x13000[222]	extracted
-field/menu/detail-value-223.bmp	sprite	0	0	16	8	0x13000[223]	extracted
-field/menu/detail-value-224.bmp	sprite	0	0	16	8	0x13000[224]	extracted
-field/menu/detail-value-225.bmp	sprite	0	0	16	8	0x13000[225]	extracted
-field/menu/detail-value-226.bmp	sprite	0	0	16	8	0x13000[226]	extracted
-field/menu/detail-value-227.bmp	sprite	0	0	16	8	0x13000[227]	extracted
-field/menu/detail-value-228.bmp	sprite	0	0	16	8	0x13000[228]	extracted
-field/menu/detail-value-229.bmp	sprite	0	0	16	8	0x13000[229]	extracted
-field/menu/detail-value-230.bmp	sprite	0	0	16	8	0x13000[230]	extracted
-field/menu/detail-value-231.bmp	sprite	0	0	16	8	0x13000[231]	extracted
-field/menu/detail-value-232.bmp	sprite	0	0	16	8	0x13000[232]	extracted
-field/menu/detail-value-233.bmp	sprite	0	0	16	8	0x13000[233]	extracted
-field/menu/detail-value-234.bmp	sprite	0	0	16	8	0x13000[234]	extracted
-field/menu/detail-value-235.bmp	sprite	0	0	16	8	0x13000[235]	extracted
-field/menu/detail-value-236.bmp	sprite	0	0	16	8	0x13000[236]	extracted
-field/menu/detail-value-237.bmp	sprite	0	0	16	8	0x13000[237]	extracted
-field/menu/detail-value-238.bmp	sprite	0	0	16	8	0x13000[238]	extracted
-field/menu/detail-value-239.bmp	sprite	0	0	16	8	0x13000[239]	extracted
-field/menu/detail-value-240.bmp	sprite	0	0	16	8	0x13000[240]	extracted
-field/menu/detail-value-241.bmp	sprite	0	0	16	8	0x13000[241]	extracted
-field/menu/detail-value-242.bmp	sprite	0	0	16	8	0x13000[242]	extracted
-field/menu/detail-value-243.bmp	sprite	0	0	16	8	0x13000[243]	extracted
-field/menu/detail-value-244.bmp	sprite	0	0	16	8	0x13000[244]	extracted
-field/menu/detail-value-245.bmp	sprite	0	0	16	8	0x13000[245]	extracted
-field/menu/detail-value-246.bmp	sprite	0	0	16	8	0x13000[246]	extracted
-field/menu/detail-value-247.bmp	sprite	0	0	16	8	0x13000[247]	extracted
-field/menu/detail-value-248.bmp	sprite	0	0	16	8	0x13000[248]	extracted
-field/menu/detail-value-249.bmp	sprite	0	0	16	8	0x13000[249]	extracted
-field/menu/detail-value-250.bmp	sprite	0	0	16	8	0x13000[250]	extracted
-field/menu/detail-value-251.bmp	sprite	0	0	16	8	0x13000[251]	extracted
-field/menu/detail-value-252.bmp	sprite	0	0	16	8	0x13000[252]	extracted
-field/menu/detail-value-253.bmp	sprite	0	0	16	8	0x13000[253]	extracted
-field/menu/detail-value-254.bmp	sprite	0	0	16	8	0x13000[254]	extracted
-field/menu/detail-value-255.bmp	sprite	0	0	16	8	0x13000[255]	extracted
-field/menu/attack-bar-0.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[0]	extracted
-field/menu/attack-bar-1.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[1]	extracted
-field/menu/attack-bar-2.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[2]	extracted
-field/menu/attack-bar-3.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[3]	extracted
-field/menu/attack-bar-4.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[4]	extracted
-field/menu/attack-bar-5.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[5]	extracted
-field/menu/attack-bar-6.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[6]	extracted
-field/menu/attack-bar-7.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[7]	extracted
-field/menu/attack-bar-8.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[8]	extracted
-field/menu/attack-bar-9.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[9]	extracted
-field/menu/attack-bar-10.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[10]	extracted
-field/menu/attack-bar-11.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[11]	extracted
-field/menu/attack-bar-12.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[12]	extracted
-field/menu/attack-bar-13.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[13]	extracted
-field/menu/attack-bar-14.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[14]	extracted
-field/menu/attack-bar-15.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[15]	extracted
-field/menu/attack-bar-16.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[16]	extracted
-field/menu/attack-bar-17.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[17]	extracted
-field/menu/attack-bar-18.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[18]	extracted
-field/menu/attack-bar-19.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[19]	extracted
-field/menu/attack-bar-20.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[20]	extracted
-field/menu/attack-bar-21.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[21]	extracted
-field/menu/attack-bar-22.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[22]	extracted
-field/menu/defense-bar-0.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[0]	extracted
-field/menu/defense-bar-1.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[1]	extracted
-field/menu/defense-bar-2.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[2]	extracted
-field/menu/defense-bar-3.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[3]	extracted
-field/menu/defense-bar-4.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[4]	extracted
-field/menu/defense-bar-5.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[5]	extracted
-field/menu/defense-bar-6.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[6]	extracted
-field/menu/defense-bar-7.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[7]	extracted
-field/menu/defense-bar-8.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[8]	extracted
-field/menu/defense-bar-9.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[9]	extracted
-field/menu/defense-bar-10.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[10]	extracted
-field/menu/defense-bar-11.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[11]	extracted
-field/menu/defense-bar-12.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[12]	extracted
-field/menu/defense-bar-13.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[13]	extracted
-field/menu/defense-bar-14.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[14]	extracted
-field/menu/defense-bar-15.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[15]	extracted
-field/menu/defense-bar-16.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[16]	extracted
-field/menu/defense-bar-17.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[17]	extracted
-field/menu/defense-bar-18.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[18]	extracted
-field/menu/defense-bar-19.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[19]	extracted
-field/menu/defense-bar-20.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[20]	extracted
-field/menu/defense-bar-21.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[21]	extracted
-field/menu/defense-bar-22.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[22]	extracted
-field/map/mode-2.bmp	background	0	0	1920	1344	mode resource catalog	extracted
-field/map/mode-0.bmp	background	0	0	1920	960	mode resource catalog	extracted
-field/map/mode-1.bmp	background	0	0	1600	1504	mode resource catalog	extracted
-field/map/mode-3.bmp	background	0	0	2016	1344	mode resource catalog	extracted
-field/map/mode-4.bmp	background	0	0	1920	960	mode resource catalog	extracted
-field/map/mode-5.bmp	background	0	0	1600	1056	mode resource catalog	extracted
-field/map/mode-6.bmp	background	0	0	1920	1920	mode resource catalog	extracted
-field/map/mode-7.bmp	background	0	0	1920	1920	mode resource catalog	extracted
-field/map/mode-8.bmp	background	0	0	1920	1920	mode resource catalog	extracted
-field/map/mode-9.bmp	background	0	0	1920	1920	mode resource catalog	extracted
-field/map/mode-10.bmp	background	0	0	320	224	mode resource catalog	extracted
-field/map/mode-11.bmp	background	0	0	320	672	mode resource catalog	extracted
-field/map/mode-12.bmp	background	0	0	320	224	mode resource catalog	extracted
-field/map/mode-13.bmp	background	0	0	320	224	mode resource catalog	extracted
-field/map/mode-14.bmp	background	0	0	320	224	mode resource catalog	extracted
-field/map/mode-15.bmp	background	0	0	320	224	mode resource catalog	extracted
-field/map/mode-16.bmp	background	0	0	320	224	mode resource catalog	extracted
-field/map/mode-17.bmp	background	0	0	320	224	mode resource catalog	extracted
-field/map/mode-18.bmp	background	0	0	320	224	mode resource catalog	extracted
-field/map/mode-19.bmp	background	0	0	320	224	mode resource catalog	extracted
-field/map/mode-20.bmp	background	0	0	1600	960	mode resource catalog	extracted
-field/map/mode-21.bmp	background	0	0	1216	1312	mode resource catalog	extracted
-field/map/mode-22.bmp	background	0	0	1216	1312	mode resource catalog	extracted
-field/map/mode-23.bmp	background	0	0	1216	1312	mode resource catalog	extracted
-field/map/mode-24.bmp	background	0	0	1216	1312	mode resource catalog	extracted
-field/map/mode-25.bmp	background	0	0	1216	1120	mode resource catalog	extracted
-field/map/mode-26.bmp	background	0	0	1504	960	mode resource catalog	extracted
-field/map/mode-27.bmp	background	0	0	1504	1088	mode resource catalog	extracted
-field/map/mode-28.bmp	background	0	0	1504	1088	mode resource catalog	extracted
-field/map/mode-29.bmp	background	0	0	1504	1088	mode resource catalog	extracted
-field/map/mode-30.bmp	background	0	0	992	1312	mode resource catalog	extracted
-field/map/mode-31.bmp	background	0	0	992	1312	mode resource catalog	extracted
-field/map/mode-32.bmp	background	0	0	992	1312	mode resource catalog	extracted
-field/map/mode-33.bmp	background	0	0	992	1312	mode resource catalog	extracted
-field/map/mode-34.bmp	background	0	0	992	1312	mode resource catalog	extracted
-field/map/mode-35.bmp	background	0	0	1600	1088	mode resource catalog	extracted
-field/map/mode-36.bmp	background	0	0	1600	1088	mode resource catalog	extracted
-field/map/mode-37.bmp	background	0	0	1600	1088	mode resource catalog	extracted
-field/map/mode-38.bmp	background	0	0	1600	1088	mode resource catalog	extracted
-field/map/mode-39.bmp	background	0	0	960	960	mode resource catalog	extracted
-field/map/mode-40.bmp	background	0	0	960	960	mode resource catalog	extracted
-field/map/mode-41.bmp	background	0	0	992	1376	mode resource catalog	extracted
-field/map/mode-42.bmp	background	0	0	992	1184	mode resource catalog	extracted
-field/map/mode-43.bmp	background	0	0	992	1184	mode resource catalog	extracted
-field/map/mode-44.bmp	background	0	0	1600	960	mode resource catalog	extracted
-field/map/mode-45.bmp	background	0	0	1600	960	mode resource catalog	extracted
-field/map/mode-46.bmp	background	0	0	1600	960	mode resource catalog	extracted
-field/map/mode-47.bmp	background	0	0	1600	960	mode resource catalog	extracted
-field/map/mode-48.bmp	background	0	0	960	1600	mode resource catalog	extracted
-field/map/mode-49.bmp	background	0	0	1600	960	mode resource catalog	extracted
-field/map/mode-50.bmp	background	0	0	896	1248	mode resource catalog	extracted
-field/map/mode-51.bmp	background	0	0	1056	1248	mode resource catalog	extracted
-field/map/mode-52.bmp	background	0	0	960	768	mode resource catalog	extracted
-field/map/mode-53.bmp	background	0	0	960	768	mode resource catalog	extracted
-field/map/mode-54.bmp	background	0	0	320	1344	mode resource catalog	extracted
-field/map/mode-55.bmp	background	0	0	512	288	mode resource catalog	extracted
+menu/pocket-secretary/background.bmp	background	0	0	320	224	0x10A7E	extracted
+menu/field/background.bmp	background	0	0	320	224	0x10F50	extracted
+menu/field/action-background.bmp	background	0	0	120	16	0x117A0	extracted
+menu/field/attributes-background.bmp	background	0	0	320	224	0x10C96	extracted
+menu/field/inventory-boxes.bmp	background	0	0	320	224	0x10F50/0x1232	extracted
+menu/field/font.bmp	sprite	0	0	128	48	0xC1064	extracted
+menu/field/runner-portrait-0.bmp	sprite	0	0	64	80	0x7291A[0]	extracted
+menu/field/runner-portrait-1.bmp	sprite	0	0	64	80	0x7291A[1]	extracted
+menu/field/runner-portrait-2.bmp	sprite	0	0	64	80	0x7291A[2]	extracted
+menu/field/selected-cell-0.bmp	sprite	0	0	40	32	0x11678[0]	extracted
+menu/field/selected-cell-1.bmp	sprite	0	0	40	32	0x11678[1]	extracted
+menu/field/command-focus-0.bmp	sprite	0	0	16	16	0x11454[0]	extracted
+menu/field/command-focus-1.bmp	sprite	0	0	16	16	0x11454[1]	extracted
+menu/field/command-focus-2.bmp	sprite	0	0	16	16	0x11454[2]	extracted
+menu/field/command-focus-3.bmp	sprite	0	0	16	16	0x11454[3]	extracted
+menu/field/command-focus-4.bmp	sprite	0	0	16	16	0x11454[4]	extracted
+menu/field/action-focus-0.bmp	sprite	0	0	16	16	0x117A4[0]	extracted
+menu/field/action-focus-1.bmp	sprite	0	0	16	16	0x117A4[1]	extracted
+menu/field/action-focus-2.bmp	sprite	0	0	16	16	0x117A4[2]	extracted
+menu/field/action-focus-3.bmp	sprite	0	0	16	16	0x117A4[3]	extracted
+menu/field/clips-focus-0.bmp	sprite	0	0	16	16	0x11B58[0]	extracted
+menu/field/clips-focus-1.bmp	sprite	0	0	16	16	0x11B58[1]	extracted
+menu/field/clips-focus-2.bmp	sprite	0	0	16	16	0x11B58[2]	extracted
+menu/field/clips-focus-3.bmp	sprite	0	0	16	16	0x11B58[3]	extracted
+menu/field/clips-trade-focus-0.bmp	sprite	0	0	16	16	0x11E7E[0]	extracted
+menu/field/clips-trade-focus-1.bmp	sprite	0	0	16	16	0x11E7E[1]	extracted
+menu/field/clips-trade-focus-2.bmp	sprite	0	0	16	16	0x11E7E[2]	extracted
+menu/field/clips-trade-focus-3.bmp	sprite	0	0	16	16	0x11E7E[3]	extracted
+menu/field/posture-focus.bmp	sprite	0	0	48	8	0x119CE	extracted
+menu/field/cursor.bmp	sprite	0	0	24	32	0x11592	extracted
+items/weapons/detail/item-01.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=1]	extracted
+items/weapons/detail/item-02.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=2]	extracted
+items/weapons/detail/item-03.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=3]	extracted
+items/weapons/detail/item-04.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=4]	extracted
+items/weapons/detail/item-05.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=5]	extracted
+items/weapons/detail/item-06.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=6]	extracted
+items/weapons/detail/item-07.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=7]	extracted
+items/weapons/detail/item-08.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=8]	extracted
+items/weapons/detail/item-09.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=9]	extracted
+items/weapons/detail/item-10.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=10]	extracted
+items/weapons/detail/item-11.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=11]	extracted
+items/weapons/detail/item-12.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=12]	extracted
+items/weapons/detail/item-13.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=13]	extracted
+items/weapons/detail/item-14.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=14]	extracted
+items/weapons/detail/item-15.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=15]	extracted
+items/first-aid/detail/item-16.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=16]	extracted
+items/first-aid/detail/item-17.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=17]	extracted
+items/first-aid/detail/item-18.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=18]	extracted
+items/miscellaneous/detail/item-19.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=19]	extracted
+items/miscellaneous/detail/item-20.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=20]	extracted
+items/miscellaneous/detail/item-21.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=21]	extracted
+items/miscellaneous/detail/item-22.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=22]	extracted
+items/magic/detail/item-23.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=23]	extracted
+items/magic/detail/item-24.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=24]	extracted
+items/magic/detail/item-25.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=25]	extracted
+items/magic/detail/item-26.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=26]	extracted
+items/magic/detail/item-27.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=27]	extracted
+items/magic/detail/item-28.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=28]	extracted
+items/magic/detail/item-29.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=29]	extracted
+items/magic/detail/item-30.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=30]	extracted
+items/magic/detail/item-31.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=31]	extracted
+items/magic/detail/item-32.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=32]	extracted
+items/magic/detail/item-33.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=33]	extracted
+items/magic/detail/item-34.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=34]	extracted
+items/magic/detail/item-35.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=35]	extracted
+items/magic/detail/item-36.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=36]	extracted
+items/magic/detail/item-37.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=37]	extracted
+items/magic/detail/item-38.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=38]	extracted
+items/magic/detail/item-39.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=39]	extracted
+items/magic/detail/item-40.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=40]	extracted
+items/magic/detail/item-41.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=41]	extracted-empty
+items/magic/detail/item-42.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=42]	extracted-empty
+items/magic/detail/item-43.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=43]	extracted-empty
+items/armor/detail/item-44.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=44]	extracted
+items/armor/detail/item-45.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=45]	extracted
+items/armor/detail/item-46.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=46]	extracted
+items/armor/detail/item-47.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=47]	extracted
+items/armor/detail/item-48.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=48]	extracted
+items/armor/detail/item-49.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=49]	extracted
+items/armor/detail/item-50.bmp	sprite	0	0	72	40	0x12A8C/0xD4540[item=50]	extracted
+items/weapons/icons/item-01-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=1][variant=0]	extracted
+items/weapons/icons/item-01-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=1][variant=1]	extracted
+items/weapons/icons/item-02-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=2][variant=0]	extracted
+items/weapons/icons/item-02-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=2][variant=1]	extracted
+items/weapons/icons/item-03-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=3][variant=0]	extracted
+items/weapons/icons/item-03-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=3][variant=1]	extracted
+items/weapons/icons/item-04-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=4][variant=0]	extracted
+items/weapons/icons/item-04-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=4][variant=1]	extracted
+items/weapons/icons/item-05-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=5][variant=0]	extracted
+items/weapons/icons/item-05-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=5][variant=1]	extracted
+items/weapons/icons/item-06-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=6][variant=0]	extracted
+items/weapons/icons/item-06-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=6][variant=1]	extracted
+items/weapons/icons/item-07-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=7][variant=0]	extracted
+items/weapons/icons/item-07-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=7][variant=1]	extracted
+items/weapons/icons/item-08-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=8][variant=0]	extracted
+items/weapons/icons/item-08-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=8][variant=1]	extracted
+items/weapons/icons/item-09-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=9][variant=0]	extracted
+items/weapons/icons/item-09-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=9][variant=1]	extracted
+items/weapons/icons/item-10-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=10][variant=0]	extracted
+items/weapons/icons/item-10-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=10][variant=1]	extracted
+items/weapons/icons/item-11-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=11][variant=0]	extracted
+items/weapons/icons/item-11-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=11][variant=1]	extracted
+items/weapons/icons/item-12-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=12][variant=0]	extracted
+items/weapons/icons/item-12-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=12][variant=1]	extracted
+items/weapons/icons/item-13-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=13][variant=0]	extracted
+items/weapons/icons/item-13-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=13][variant=1]	extracted
+items/weapons/icons/item-14-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=14][variant=0]	extracted
+items/weapons/icons/item-14-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=14][variant=1]	extracted
+items/weapons/icons/item-15-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=15][variant=0]	extracted
+items/weapons/icons/item-15-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=15][variant=1]	extracted
+items/first-aid/icons/item-16-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=16][variant=0]	extracted
+items/first-aid/icons/item-16-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=16][variant=1]	extracted
+items/first-aid/icons/item-17-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=17][variant=0]	extracted
+items/first-aid/icons/item-17-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=17][variant=1]	extracted
+items/first-aid/icons/item-18-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=18][variant=0]	extracted
+items/first-aid/icons/item-18-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=18][variant=1]	extracted
+items/miscellaneous/icons/item-19-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=19][variant=0]	extracted
+items/miscellaneous/icons/item-19-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=19][variant=1]	extracted
+items/miscellaneous/icons/item-20-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=20][variant=0]	extracted
+items/miscellaneous/icons/item-20-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=20][variant=1]	extracted
+items/miscellaneous/icons/item-21-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=21][variant=0]	extracted
+items/miscellaneous/icons/item-21-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=21][variant=1]	extracted
+items/miscellaneous/icons/item-22-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=22][variant=0]	extracted
+items/miscellaneous/icons/item-22-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=22][variant=1]	extracted
+items/magic/icons/item-23-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=23][variant=0]	extracted
+items/magic/icons/item-23-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=23][variant=1]	extracted
+items/magic/icons/item-24-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=24][variant=0]	extracted
+items/magic/icons/item-24-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=24][variant=1]	extracted
+items/magic/icons/item-25-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=25][variant=0]	extracted
+items/magic/icons/item-25-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=25][variant=1]	extracted
+items/magic/icons/item-26-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=26][variant=0]	extracted
+items/magic/icons/item-26-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=26][variant=1]	extracted
+items/magic/icons/item-27-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=27][variant=0]	extracted
+items/magic/icons/item-27-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=27][variant=1]	extracted
+items/magic/icons/item-28-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=28][variant=0]	extracted
+items/magic/icons/item-28-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=28][variant=1]	extracted
+items/magic/icons/item-29-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=29][variant=0]	extracted
+items/magic/icons/item-29-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=29][variant=1]	extracted
+items/magic/icons/item-30-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=30][variant=0]	extracted
+items/magic/icons/item-30-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=30][variant=1]	extracted
+items/magic/icons/item-31-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=31][variant=0]	extracted
+items/magic/icons/item-31-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=31][variant=1]	extracted
+items/magic/icons/item-32-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=32][variant=0]	extracted
+items/magic/icons/item-32-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=32][variant=1]	extracted
+items/magic/icons/item-33-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=33][variant=0]	extracted
+items/magic/icons/item-33-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=33][variant=1]	extracted
+items/magic/icons/item-34-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=34][variant=0]	extracted
+items/magic/icons/item-34-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=34][variant=1]	extracted
+items/magic/icons/item-35-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=35][variant=0]	extracted
+items/magic/icons/item-35-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=35][variant=1]	extracted
+items/magic/icons/item-36-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=36][variant=0]	extracted
+items/magic/icons/item-36-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=36][variant=1]	extracted
+items/magic/icons/item-37-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=37][variant=0]	extracted
+items/magic/icons/item-37-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=37][variant=1]	extracted
+items/magic/icons/item-38-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=38][variant=0]	extracted
+items/magic/icons/item-38-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=38][variant=1]	extracted
+items/magic/icons/item-39-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=39][variant=0]	extracted
+items/magic/icons/item-39-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=39][variant=1]	extracted
+items/magic/icons/item-40-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=40][variant=0]	extracted
+items/magic/icons/item-40-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=40][variant=1]	extracted
+items/magic/icons/item-41-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=41][variant=0]	extracted
+items/magic/icons/item-41-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=41][variant=1]	extracted
+items/magic/icons/item-42-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=42][variant=0]	extracted
+items/magic/icons/item-42-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=42][variant=1]	extracted
+items/magic/icons/item-43-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=43][variant=0]	extracted
+items/magic/icons/item-43-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=43][variant=1]	extracted
+items/armor/icons/item-44-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=44][variant=0]	extracted
+items/armor/icons/item-44-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=44][variant=1]	extracted
+items/armor/icons/item-45-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=45][variant=0]	extracted
+items/armor/icons/item-45-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=45][variant=1]	extracted
+items/armor/icons/item-46-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=46][variant=0]	extracted
+items/armor/icons/item-46-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=46][variant=1]	extracted
+items/armor/icons/item-47-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=47][variant=0]	extracted
+items/armor/icons/item-47-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=47][variant=1]	extracted
+items/armor/icons/item-48-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=48][variant=0]	extracted
+items/armor/icons/item-48-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=48][variant=1]	extracted
+items/armor/icons/item-49-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=49][variant=0]	extracted
+items/armor/icons/item-49-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=49][variant=1]	extracted
+items/armor/icons/item-50-0.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=50][variant=0]	extracted
+items/armor/icons/item-50-1.bmp	sprite	0	0	24	16	0x35D4/0xD4540[item=50][variant=1]	extracted
+menu/field/status-bar-0.bmp	sprite	0	0	64	8	0x11928[0]	extracted
+menu/field/status-bar-1.bmp	sprite	0	0	64	8	0x11928[1]	extracted
+menu/field/status-bar-2.bmp	sprite	0	0	64	8	0x11928[2]	extracted
+menu/field/status-bar-3.bmp	sprite	0	0	64	8	0x11928[3]	extracted
+menu/field/status-bar-4.bmp	sprite	0	0	64	8	0x11928[4]	extracted
+menu/field/damage-bar-0.bmp	sprite	0	0	56	8	0x12F70[0]	extracted
+menu/field/damage-bar-1.bmp	sprite	0	0	56	8	0x12F70[1]	extracted
+menu/field/damage-bar-2.bmp	sprite	0	0	56	8	0x12F70[2]	extracted
+menu/field/damage-bar-3.bmp	sprite	0	0	56	8	0x12F70[3]	extracted
+menu/field/damage-bar-4.bmp	sprite	0	0	56	8	0x12F70[4]	extracted
+menu/field/damage-bar-5.bmp	sprite	0	0	56	8	0x12F70[5]	extracted
+menu/field/damage-bar-6.bmp	sprite	0	0	56	8	0x12F70[6]	extracted
+menu/field/damage-bar-7.bmp	sprite	0	0	56	8	0x12F70[7]	extracted
+menu/field/damage-bar-8.bmp	sprite	0	0	56	8	0x12F70[8]	extracted
+menu/field/damage-bar-9.bmp	sprite	0	0	56	8	0x12F70[9]	extracted
+menu/field/damage-bar-10.bmp	sprite	0	0	56	8	0x12F70[10]	extracted
+menu/field/damage-bar-11.bmp	sprite	0	0	56	8	0x12F70[11]	extracted
+menu/field/damage-bar-12.bmp	sprite	0	0	56	8	0x12F70[12]	extracted
+menu/field/damage-bar-13.bmp	sprite	0	0	56	8	0x12F70[13]	extracted
+menu/field/drain-bar-0.bmp	sprite	0	0	56	8	0x12FA4[0]	extracted
+menu/field/drain-bar-1.bmp	sprite	0	0	56	8	0x12FA4[1]	extracted
+menu/field/drain-bar-2.bmp	sprite	0	0	56	8	0x12FA4[2]	extracted
+menu/field/drain-bar-3.bmp	sprite	0	0	56	8	0x12FA4[3]	extracted
+menu/field/drain-bar-4.bmp	sprite	0	0	56	8	0x12FA4[4]	extracted
+menu/field/drain-bar-5.bmp	sprite	0	0	56	8	0x12FA4[5]	extracted
+menu/field/drain-bar-6.bmp	sprite	0	0	56	8	0x12FA4[6]	extracted
+menu/field/drain-bar-7.bmp	sprite	0	0	56	8	0x12FA4[7]	extracted
+menu/field/drain-bar-8.bmp	sprite	0	0	56	8	0x12FA4[8]	extracted
+menu/field/drain-bar-9.bmp	sprite	0	0	56	8	0x12FA4[9]	extracted
+menu/field/drain-bar-10.bmp	sprite	0	0	56	8	0x12FA4[10]	extracted
+menu/field/drain-bar-11.bmp	sprite	0	0	56	8	0x12FA4[11]	extracted
+menu/field/drain-bar-12.bmp	sprite	0	0	56	8	0x12FA4[12]	extracted
+menu/field/drain-bar-13.bmp	sprite	0	0	56	8	0x12FA4[13]	extracted
+menu/field/detail-value-0.bmp	sprite	0	0	16	8	0x13000[0]	extracted
+menu/field/detail-value-1.bmp	sprite	0	0	16	8	0x13000[1]	extracted
+menu/field/detail-value-2.bmp	sprite	0	0	16	8	0x13000[2]	extracted
+menu/field/detail-value-3.bmp	sprite	0	0	16	8	0x13000[3]	extracted
+menu/field/detail-value-4.bmp	sprite	0	0	16	8	0x13000[4]	extracted
+menu/field/detail-value-5.bmp	sprite	0	0	16	8	0x13000[5]	extracted
+menu/field/detail-value-6.bmp	sprite	0	0	16	8	0x13000[6]	extracted
+menu/field/detail-value-7.bmp	sprite	0	0	16	8	0x13000[7]	extracted
+menu/field/detail-value-8.bmp	sprite	0	0	16	8	0x13000[8]	extracted
+menu/field/detail-value-9.bmp	sprite	0	0	16	8	0x13000[9]	extracted
+menu/field/detail-value-10.bmp	sprite	0	0	16	8	0x13000[10]	extracted
+menu/field/detail-value-11.bmp	sprite	0	0	16	8	0x13000[11]	extracted
+menu/field/detail-value-12.bmp	sprite	0	0	16	8	0x13000[12]	extracted
+menu/field/detail-value-13.bmp	sprite	0	0	16	8	0x13000[13]	extracted
+menu/field/detail-value-14.bmp	sprite	0	0	16	8	0x13000[14]	extracted
+menu/field/detail-value-15.bmp	sprite	0	0	16	8	0x13000[15]	extracted
+menu/field/detail-value-16.bmp	sprite	0	0	16	8	0x13000[16]	extracted
+menu/field/detail-value-17.bmp	sprite	0	0	16	8	0x13000[17]	extracted
+menu/field/detail-value-18.bmp	sprite	0	0	16	8	0x13000[18]	extracted
+menu/field/detail-value-19.bmp	sprite	0	0	16	8	0x13000[19]	extracted
+menu/field/detail-value-20.bmp	sprite	0	0	16	8	0x13000[20]	extracted
+menu/field/detail-value-21.bmp	sprite	0	0	16	8	0x13000[21]	extracted
+menu/field/detail-value-22.bmp	sprite	0	0	16	8	0x13000[22]	extracted
+menu/field/detail-value-23.bmp	sprite	0	0	16	8	0x13000[23]	extracted
+menu/field/detail-value-24.bmp	sprite	0	0	16	8	0x13000[24]	extracted
+menu/field/detail-value-25.bmp	sprite	0	0	16	8	0x13000[25]	extracted
+menu/field/detail-value-26.bmp	sprite	0	0	16	8	0x13000[26]	extracted
+menu/field/detail-value-27.bmp	sprite	0	0	16	8	0x13000[27]	extracted
+menu/field/detail-value-28.bmp	sprite	0	0	16	8	0x13000[28]	extracted
+menu/field/detail-value-29.bmp	sprite	0	0	16	8	0x13000[29]	extracted
+menu/field/detail-value-30.bmp	sprite	0	0	16	8	0x13000[30]	extracted
+menu/field/detail-value-31.bmp	sprite	0	0	16	8	0x13000[31]	extracted
+menu/field/detail-value-32.bmp	sprite	0	0	16	8	0x13000[32]	extracted
+menu/field/detail-value-33.bmp	sprite	0	0	16	8	0x13000[33]	extracted
+menu/field/detail-value-34.bmp	sprite	0	0	16	8	0x13000[34]	extracted
+menu/field/detail-value-35.bmp	sprite	0	0	16	8	0x13000[35]	extracted
+menu/field/detail-value-36.bmp	sprite	0	0	16	8	0x13000[36]	extracted
+menu/field/detail-value-37.bmp	sprite	0	0	16	8	0x13000[37]	extracted
+menu/field/detail-value-38.bmp	sprite	0	0	16	8	0x13000[38]	extracted
+menu/field/detail-value-39.bmp	sprite	0	0	16	8	0x13000[39]	extracted
+menu/field/detail-value-40.bmp	sprite	0	0	16	8	0x13000[40]	extracted
+menu/field/detail-value-41.bmp	sprite	0	0	16	8	0x13000[41]	extracted
+menu/field/detail-value-42.bmp	sprite	0	0	16	8	0x13000[42]	extracted
+menu/field/detail-value-43.bmp	sprite	0	0	16	8	0x13000[43]	extracted
+menu/field/detail-value-44.bmp	sprite	0	0	16	8	0x13000[44]	extracted
+menu/field/detail-value-45.bmp	sprite	0	0	16	8	0x13000[45]	extracted
+menu/field/detail-value-46.bmp	sprite	0	0	16	8	0x13000[46]	extracted
+menu/field/detail-value-47.bmp	sprite	0	0	16	8	0x13000[47]	extracted
+menu/field/detail-value-48.bmp	sprite	0	0	16	8	0x13000[48]	extracted
+menu/field/detail-value-49.bmp	sprite	0	0	16	8	0x13000[49]	extracted
+menu/field/detail-value-50.bmp	sprite	0	0	16	8	0x13000[50]	extracted
+menu/field/detail-value-51.bmp	sprite	0	0	16	8	0x13000[51]	extracted
+menu/field/detail-value-52.bmp	sprite	0	0	16	8	0x13000[52]	extracted
+menu/field/detail-value-53.bmp	sprite	0	0	16	8	0x13000[53]	extracted
+menu/field/detail-value-54.bmp	sprite	0	0	16	8	0x13000[54]	extracted
+menu/field/detail-value-55.bmp	sprite	0	0	16	8	0x13000[55]	extracted
+menu/field/detail-value-56.bmp	sprite	0	0	16	8	0x13000[56]	extracted
+menu/field/detail-value-57.bmp	sprite	0	0	16	8	0x13000[57]	extracted
+menu/field/detail-value-58.bmp	sprite	0	0	16	8	0x13000[58]	extracted
+menu/field/detail-value-59.bmp	sprite	0	0	16	8	0x13000[59]	extracted
+menu/field/detail-value-60.bmp	sprite	0	0	16	8	0x13000[60]	extracted
+menu/field/detail-value-61.bmp	sprite	0	0	16	8	0x13000[61]	extracted
+menu/field/detail-value-62.bmp	sprite	0	0	16	8	0x13000[62]	extracted
+menu/field/detail-value-63.bmp	sprite	0	0	16	8	0x13000[63]	extracted
+menu/field/detail-value-64.bmp	sprite	0	0	16	8	0x13000[64]	extracted
+menu/field/detail-value-65.bmp	sprite	0	0	16	8	0x13000[65]	extracted
+menu/field/detail-value-66.bmp	sprite	0	0	16	8	0x13000[66]	extracted
+menu/field/detail-value-67.bmp	sprite	0	0	16	8	0x13000[67]	extracted
+menu/field/detail-value-68.bmp	sprite	0	0	16	8	0x13000[68]	extracted
+menu/field/detail-value-69.bmp	sprite	0	0	16	8	0x13000[69]	extracted
+menu/field/detail-value-70.bmp	sprite	0	0	16	8	0x13000[70]	extracted
+menu/field/detail-value-71.bmp	sprite	0	0	16	8	0x13000[71]	extracted
+menu/field/detail-value-72.bmp	sprite	0	0	16	8	0x13000[72]	extracted
+menu/field/detail-value-73.bmp	sprite	0	0	16	8	0x13000[73]	extracted
+menu/field/detail-value-74.bmp	sprite	0	0	16	8	0x13000[74]	extracted
+menu/field/detail-value-75.bmp	sprite	0	0	16	8	0x13000[75]	extracted
+menu/field/detail-value-76.bmp	sprite	0	0	16	8	0x13000[76]	extracted
+menu/field/detail-value-77.bmp	sprite	0	0	16	8	0x13000[77]	extracted
+menu/field/detail-value-78.bmp	sprite	0	0	16	8	0x13000[78]	extracted
+menu/field/detail-value-79.bmp	sprite	0	0	16	8	0x13000[79]	extracted
+menu/field/detail-value-80.bmp	sprite	0	0	16	8	0x13000[80]	extracted
+menu/field/detail-value-81.bmp	sprite	0	0	16	8	0x13000[81]	extracted
+menu/field/detail-value-82.bmp	sprite	0	0	16	8	0x13000[82]	extracted
+menu/field/detail-value-83.bmp	sprite	0	0	16	8	0x13000[83]	extracted
+menu/field/detail-value-84.bmp	sprite	0	0	16	8	0x13000[84]	extracted
+menu/field/detail-value-85.bmp	sprite	0	0	16	8	0x13000[85]	extracted
+menu/field/detail-value-86.bmp	sprite	0	0	16	8	0x13000[86]	extracted
+menu/field/detail-value-87.bmp	sprite	0	0	16	8	0x13000[87]	extracted
+menu/field/detail-value-88.bmp	sprite	0	0	16	8	0x13000[88]	extracted
+menu/field/detail-value-89.bmp	sprite	0	0	16	8	0x13000[89]	extracted
+menu/field/detail-value-90.bmp	sprite	0	0	16	8	0x13000[90]	extracted
+menu/field/detail-value-91.bmp	sprite	0	0	16	8	0x13000[91]	extracted
+menu/field/detail-value-92.bmp	sprite	0	0	16	8	0x13000[92]	extracted
+menu/field/detail-value-93.bmp	sprite	0	0	16	8	0x13000[93]	extracted
+menu/field/detail-value-94.bmp	sprite	0	0	16	8	0x13000[94]	extracted
+menu/field/detail-value-95.bmp	sprite	0	0	16	8	0x13000[95]	extracted
+menu/field/detail-value-96.bmp	sprite	0	0	16	8	0x13000[96]	extracted
+menu/field/detail-value-97.bmp	sprite	0	0	16	8	0x13000[97]	extracted
+menu/field/detail-value-98.bmp	sprite	0	0	16	8	0x13000[98]	extracted
+menu/field/detail-value-99.bmp	sprite	0	0	16	8	0x13000[99]	extracted
+menu/field/detail-value-100.bmp	sprite	0	0	16	8	0x13000[100]	extracted
+menu/field/detail-value-101.bmp	sprite	0	0	16	8	0x13000[101]	extracted
+menu/field/detail-value-102.bmp	sprite	0	0	16	8	0x13000[102]	extracted
+menu/field/detail-value-103.bmp	sprite	0	0	16	8	0x13000[103]	extracted
+menu/field/detail-value-104.bmp	sprite	0	0	16	8	0x13000[104]	extracted
+menu/field/detail-value-105.bmp	sprite	0	0	16	8	0x13000[105]	extracted
+menu/field/detail-value-106.bmp	sprite	0	0	16	8	0x13000[106]	extracted
+menu/field/detail-value-107.bmp	sprite	0	0	16	8	0x13000[107]	extracted
+menu/field/detail-value-108.bmp	sprite	0	0	16	8	0x13000[108]	extracted
+menu/field/detail-value-109.bmp	sprite	0	0	16	8	0x13000[109]	extracted
+menu/field/detail-value-110.bmp	sprite	0	0	16	8	0x13000[110]	extracted
+menu/field/detail-value-111.bmp	sprite	0	0	16	8	0x13000[111]	extracted
+menu/field/detail-value-112.bmp	sprite	0	0	16	8	0x13000[112]	extracted
+menu/field/detail-value-113.bmp	sprite	0	0	16	8	0x13000[113]	extracted
+menu/field/detail-value-114.bmp	sprite	0	0	16	8	0x13000[114]	extracted
+menu/field/detail-value-115.bmp	sprite	0	0	16	8	0x13000[115]	extracted
+menu/field/detail-value-116.bmp	sprite	0	0	16	8	0x13000[116]	extracted
+menu/field/detail-value-117.bmp	sprite	0	0	16	8	0x13000[117]	extracted
+menu/field/detail-value-118.bmp	sprite	0	0	16	8	0x13000[118]	extracted
+menu/field/detail-value-119.bmp	sprite	0	0	16	8	0x13000[119]	extracted
+menu/field/detail-value-120.bmp	sprite	0	0	16	8	0x13000[120]	extracted
+menu/field/detail-value-121.bmp	sprite	0	0	16	8	0x13000[121]	extracted
+menu/field/detail-value-122.bmp	sprite	0	0	16	8	0x13000[122]	extracted
+menu/field/detail-value-123.bmp	sprite	0	0	16	8	0x13000[123]	extracted
+menu/field/detail-value-124.bmp	sprite	0	0	16	8	0x13000[124]	extracted
+menu/field/detail-value-125.bmp	sprite	0	0	16	8	0x13000[125]	extracted
+menu/field/detail-value-126.bmp	sprite	0	0	16	8	0x13000[126]	extracted
+menu/field/detail-value-127.bmp	sprite	0	0	16	8	0x13000[127]	extracted
+menu/field/detail-value-128.bmp	sprite	0	0	16	8	0x13000[128]	extracted
+menu/field/detail-value-129.bmp	sprite	0	0	16	8	0x13000[129]	extracted
+menu/field/detail-value-130.bmp	sprite	0	0	16	8	0x13000[130]	extracted
+menu/field/detail-value-131.bmp	sprite	0	0	16	8	0x13000[131]	extracted
+menu/field/detail-value-132.bmp	sprite	0	0	16	8	0x13000[132]	extracted
+menu/field/detail-value-133.bmp	sprite	0	0	16	8	0x13000[133]	extracted
+menu/field/detail-value-134.bmp	sprite	0	0	16	8	0x13000[134]	extracted
+menu/field/detail-value-135.bmp	sprite	0	0	16	8	0x13000[135]	extracted
+menu/field/detail-value-136.bmp	sprite	0	0	16	8	0x13000[136]	extracted
+menu/field/detail-value-137.bmp	sprite	0	0	16	8	0x13000[137]	extracted
+menu/field/detail-value-138.bmp	sprite	0	0	16	8	0x13000[138]	extracted
+menu/field/detail-value-139.bmp	sprite	0	0	16	8	0x13000[139]	extracted
+menu/field/detail-value-140.bmp	sprite	0	0	16	8	0x13000[140]	extracted
+menu/field/detail-value-141.bmp	sprite	0	0	16	8	0x13000[141]	extracted
+menu/field/detail-value-142.bmp	sprite	0	0	16	8	0x13000[142]	extracted
+menu/field/detail-value-143.bmp	sprite	0	0	16	8	0x13000[143]	extracted
+menu/field/detail-value-144.bmp	sprite	0	0	16	8	0x13000[144]	extracted
+menu/field/detail-value-145.bmp	sprite	0	0	16	8	0x13000[145]	extracted
+menu/field/detail-value-146.bmp	sprite	0	0	16	8	0x13000[146]	extracted
+menu/field/detail-value-147.bmp	sprite	0	0	16	8	0x13000[147]	extracted
+menu/field/detail-value-148.bmp	sprite	0	0	16	8	0x13000[148]	extracted
+menu/field/detail-value-149.bmp	sprite	0	0	16	8	0x13000[149]	extracted
+menu/field/detail-value-150.bmp	sprite	0	0	16	8	0x13000[150]	extracted
+menu/field/detail-value-151.bmp	sprite	0	0	16	8	0x13000[151]	extracted
+menu/field/detail-value-152.bmp	sprite	0	0	16	8	0x13000[152]	extracted
+menu/field/detail-value-153.bmp	sprite	0	0	16	8	0x13000[153]	extracted
+menu/field/detail-value-154.bmp	sprite	0	0	16	8	0x13000[154]	extracted
+menu/field/detail-value-155.bmp	sprite	0	0	16	8	0x13000[155]	extracted
+menu/field/detail-value-156.bmp	sprite	0	0	16	8	0x13000[156]	extracted
+menu/field/detail-value-157.bmp	sprite	0	0	16	8	0x13000[157]	extracted
+menu/field/detail-value-158.bmp	sprite	0	0	16	8	0x13000[158]	extracted
+menu/field/detail-value-159.bmp	sprite	0	0	16	8	0x13000[159]	extracted
+menu/field/detail-value-160.bmp	sprite	0	0	16	8	0x13000[160]	extracted
+menu/field/detail-value-161.bmp	sprite	0	0	16	8	0x13000[161]	extracted
+menu/field/detail-value-162.bmp	sprite	0	0	16	8	0x13000[162]	extracted
+menu/field/detail-value-163.bmp	sprite	0	0	16	8	0x13000[163]	extracted
+menu/field/detail-value-164.bmp	sprite	0	0	16	8	0x13000[164]	extracted
+menu/field/detail-value-165.bmp	sprite	0	0	16	8	0x13000[165]	extracted
+menu/field/detail-value-166.bmp	sprite	0	0	16	8	0x13000[166]	extracted
+menu/field/detail-value-167.bmp	sprite	0	0	16	8	0x13000[167]	extracted
+menu/field/detail-value-168.bmp	sprite	0	0	16	8	0x13000[168]	extracted
+menu/field/detail-value-169.bmp	sprite	0	0	16	8	0x13000[169]	extracted
+menu/field/detail-value-170.bmp	sprite	0	0	16	8	0x13000[170]	extracted
+menu/field/detail-value-171.bmp	sprite	0	0	16	8	0x13000[171]	extracted
+menu/field/detail-value-172.bmp	sprite	0	0	16	8	0x13000[172]	extracted
+menu/field/detail-value-173.bmp	sprite	0	0	16	8	0x13000[173]	extracted
+menu/field/detail-value-174.bmp	sprite	0	0	16	8	0x13000[174]	extracted
+menu/field/detail-value-175.bmp	sprite	0	0	16	8	0x13000[175]	extracted
+menu/field/detail-value-176.bmp	sprite	0	0	16	8	0x13000[176]	extracted
+menu/field/detail-value-177.bmp	sprite	0	0	16	8	0x13000[177]	extracted
+menu/field/detail-value-178.bmp	sprite	0	0	16	8	0x13000[178]	extracted
+menu/field/detail-value-179.bmp	sprite	0	0	16	8	0x13000[179]	extracted
+menu/field/detail-value-180.bmp	sprite	0	0	16	8	0x13000[180]	extracted
+menu/field/detail-value-181.bmp	sprite	0	0	16	8	0x13000[181]	extracted
+menu/field/detail-value-182.bmp	sprite	0	0	16	8	0x13000[182]	extracted
+menu/field/detail-value-183.bmp	sprite	0	0	16	8	0x13000[183]	extracted
+menu/field/detail-value-184.bmp	sprite	0	0	16	8	0x13000[184]	extracted
+menu/field/detail-value-185.bmp	sprite	0	0	16	8	0x13000[185]	extracted
+menu/field/detail-value-186.bmp	sprite	0	0	16	8	0x13000[186]	extracted
+menu/field/detail-value-187.bmp	sprite	0	0	16	8	0x13000[187]	extracted
+menu/field/detail-value-188.bmp	sprite	0	0	16	8	0x13000[188]	extracted
+menu/field/detail-value-189.bmp	sprite	0	0	16	8	0x13000[189]	extracted
+menu/field/detail-value-190.bmp	sprite	0	0	16	8	0x13000[190]	extracted
+menu/field/detail-value-191.bmp	sprite	0	0	16	8	0x13000[191]	extracted
+menu/field/detail-value-192.bmp	sprite	0	0	16	8	0x13000[192]	extracted
+menu/field/detail-value-193.bmp	sprite	0	0	16	8	0x13000[193]	extracted
+menu/field/detail-value-194.bmp	sprite	0	0	16	8	0x13000[194]	extracted
+menu/field/detail-value-195.bmp	sprite	0	0	16	8	0x13000[195]	extracted
+menu/field/detail-value-196.bmp	sprite	0	0	16	8	0x13000[196]	extracted
+menu/field/detail-value-197.bmp	sprite	0	0	16	8	0x13000[197]	extracted
+menu/field/detail-value-198.bmp	sprite	0	0	16	8	0x13000[198]	extracted
+menu/field/detail-value-199.bmp	sprite	0	0	16	8	0x13000[199]	extracted
+menu/field/detail-value-200.bmp	sprite	0	0	16	8	0x13000[200]	extracted
+menu/field/detail-value-201.bmp	sprite	0	0	16	8	0x13000[201]	extracted
+menu/field/detail-value-202.bmp	sprite	0	0	16	8	0x13000[202]	extracted
+menu/field/detail-value-203.bmp	sprite	0	0	16	8	0x13000[203]	extracted
+menu/field/detail-value-204.bmp	sprite	0	0	16	8	0x13000[204]	extracted
+menu/field/detail-value-205.bmp	sprite	0	0	16	8	0x13000[205]	extracted
+menu/field/detail-value-206.bmp	sprite	0	0	16	8	0x13000[206]	extracted
+menu/field/detail-value-207.bmp	sprite	0	0	16	8	0x13000[207]	extracted
+menu/field/detail-value-208.bmp	sprite	0	0	16	8	0x13000[208]	extracted
+menu/field/detail-value-209.bmp	sprite	0	0	16	8	0x13000[209]	extracted
+menu/field/detail-value-210.bmp	sprite	0	0	16	8	0x13000[210]	extracted
+menu/field/detail-value-211.bmp	sprite	0	0	16	8	0x13000[211]	extracted
+menu/field/detail-value-212.bmp	sprite	0	0	16	8	0x13000[212]	extracted
+menu/field/detail-value-213.bmp	sprite	0	0	16	8	0x13000[213]	extracted
+menu/field/detail-value-214.bmp	sprite	0	0	16	8	0x13000[214]	extracted
+menu/field/detail-value-215.bmp	sprite	0	0	16	8	0x13000[215]	extracted
+menu/field/detail-value-216.bmp	sprite	0	0	16	8	0x13000[216]	extracted
+menu/field/detail-value-217.bmp	sprite	0	0	16	8	0x13000[217]	extracted
+menu/field/detail-value-218.bmp	sprite	0	0	16	8	0x13000[218]	extracted
+menu/field/detail-value-219.bmp	sprite	0	0	16	8	0x13000[219]	extracted
+menu/field/detail-value-220.bmp	sprite	0	0	16	8	0x13000[220]	extracted
+menu/field/detail-value-221.bmp	sprite	0	0	16	8	0x13000[221]	extracted
+menu/field/detail-value-222.bmp	sprite	0	0	16	8	0x13000[222]	extracted
+menu/field/detail-value-223.bmp	sprite	0	0	16	8	0x13000[223]	extracted
+menu/field/detail-value-224.bmp	sprite	0	0	16	8	0x13000[224]	extracted
+menu/field/detail-value-225.bmp	sprite	0	0	16	8	0x13000[225]	extracted
+menu/field/detail-value-226.bmp	sprite	0	0	16	8	0x13000[226]	extracted
+menu/field/detail-value-227.bmp	sprite	0	0	16	8	0x13000[227]	extracted
+menu/field/detail-value-228.bmp	sprite	0	0	16	8	0x13000[228]	extracted
+menu/field/detail-value-229.bmp	sprite	0	0	16	8	0x13000[229]	extracted
+menu/field/detail-value-230.bmp	sprite	0	0	16	8	0x13000[230]	extracted
+menu/field/detail-value-231.bmp	sprite	0	0	16	8	0x13000[231]	extracted
+menu/field/detail-value-232.bmp	sprite	0	0	16	8	0x13000[232]	extracted
+menu/field/detail-value-233.bmp	sprite	0	0	16	8	0x13000[233]	extracted
+menu/field/detail-value-234.bmp	sprite	0	0	16	8	0x13000[234]	extracted
+menu/field/detail-value-235.bmp	sprite	0	0	16	8	0x13000[235]	extracted
+menu/field/detail-value-236.bmp	sprite	0	0	16	8	0x13000[236]	extracted
+menu/field/detail-value-237.bmp	sprite	0	0	16	8	0x13000[237]	extracted
+menu/field/detail-value-238.bmp	sprite	0	0	16	8	0x13000[238]	extracted
+menu/field/detail-value-239.bmp	sprite	0	0	16	8	0x13000[239]	extracted
+menu/field/detail-value-240.bmp	sprite	0	0	16	8	0x13000[240]	extracted
+menu/field/detail-value-241.bmp	sprite	0	0	16	8	0x13000[241]	extracted
+menu/field/detail-value-242.bmp	sprite	0	0	16	8	0x13000[242]	extracted
+menu/field/detail-value-243.bmp	sprite	0	0	16	8	0x13000[243]	extracted
+menu/field/detail-value-244.bmp	sprite	0	0	16	8	0x13000[244]	extracted
+menu/field/detail-value-245.bmp	sprite	0	0	16	8	0x13000[245]	extracted
+menu/field/detail-value-246.bmp	sprite	0	0	16	8	0x13000[246]	extracted
+menu/field/detail-value-247.bmp	sprite	0	0	16	8	0x13000[247]	extracted
+menu/field/detail-value-248.bmp	sprite	0	0	16	8	0x13000[248]	extracted
+menu/field/detail-value-249.bmp	sprite	0	0	16	8	0x13000[249]	extracted
+menu/field/detail-value-250.bmp	sprite	0	0	16	8	0x13000[250]	extracted
+menu/field/detail-value-251.bmp	sprite	0	0	16	8	0x13000[251]	extracted
+menu/field/detail-value-252.bmp	sprite	0	0	16	8	0x13000[252]	extracted
+menu/field/detail-value-253.bmp	sprite	0	0	16	8	0x13000[253]	extracted
+menu/field/detail-value-254.bmp	sprite	0	0	16	8	0x13000[254]	extracted
+menu/field/detail-value-255.bmp	sprite	0	0	16	8	0x13000[255]	extracted
+menu/field/attack-bar-0.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[0]	extracted
+menu/field/attack-bar-1.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[1]	extracted
+menu/field/attack-bar-2.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[2]	extracted
+menu/field/attack-bar-3.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[3]	extracted
+menu/field/attack-bar-4.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[4]	extracted
+menu/field/attack-bar-5.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[5]	extracted
+menu/field/attack-bar-6.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[6]	extracted
+menu/field/attack-bar-7.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[7]	extracted
+menu/field/attack-bar-8.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[8]	extracted
+menu/field/attack-bar-9.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[9]	extracted
+menu/field/attack-bar-10.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[10]	extracted
+menu/field/attack-bar-11.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[11]	extracted
+menu/field/attack-bar-12.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[12]	extracted
+menu/field/attack-bar-13.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[13]	extracted
+menu/field/attack-bar-14.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[14]	extracted
+menu/field/attack-bar-15.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[15]	extracted
+menu/field/attack-bar-16.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[16]	extracted
+menu/field/attack-bar-17.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[17]	extracted
+menu/field/attack-bar-18.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[18]	extracted
+menu/field/attack-bar-19.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[19]	extracted
+menu/field/attack-bar-20.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[20]	extracted
+menu/field/attack-bar-21.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[21]	extracted
+menu/field/attack-bar-22.bmp	sprite	0	0	104	8	0x12CEE/0xCF3D4[22]	extracted
+menu/field/defense-bar-0.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[0]	extracted
+menu/field/defense-bar-1.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[1]	extracted
+menu/field/defense-bar-2.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[2]	extracted
+menu/field/defense-bar-3.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[3]	extracted
+menu/field/defense-bar-4.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[4]	extracted
+menu/field/defense-bar-5.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[5]	extracted
+menu/field/defense-bar-6.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[6]	extracted
+menu/field/defense-bar-7.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[7]	extracted
+menu/field/defense-bar-8.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[8]	extracted
+menu/field/defense-bar-9.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[9]	extracted
+menu/field/defense-bar-10.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[10]	extracted
+menu/field/defense-bar-11.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[11]	extracted
+menu/field/defense-bar-12.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[12]	extracted
+menu/field/defense-bar-13.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[13]	extracted
+menu/field/defense-bar-14.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[14]	extracted
+menu/field/defense-bar-15.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[15]	extracted
+menu/field/defense-bar-16.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[16]	extracted
+menu/field/defense-bar-17.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[17]	extracted
+menu/field/defense-bar-18.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[18]	extracted
+menu/field/defense-bar-19.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[19]	extracted
+menu/field/defense-bar-20.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[20]	extracted
+menu/field/defense-bar-21.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[21]	extracted
+menu/field/defense-bar-22.bmp	sprite	0	0	104	8	0x12CEE/0xCF610[22]	extracted
+field/maps/mode-2.bmp	background	0	0	1920	1344	mode resource catalog	extracted
+field/maps/mode-0.bmp	background	0	0	1920	960	mode resource catalog	extracted
+field/maps/mode-1.bmp	background	0	0	1600	1504	mode resource catalog	extracted
+field/maps/mode-3.bmp	background	0	0	2016	1344	mode resource catalog	extracted
+field/maps/mode-4.bmp	background	0	0	1920	960	mode resource catalog	extracted
+field/maps/mode-5.bmp	background	0	0	1600	1056	mode resource catalog	extracted
+field/maps/mode-6.bmp	background	0	0	1920	1920	mode resource catalog	extracted
+field/maps/mode-7.bmp	background	0	0	1920	1920	mode resource catalog	extracted
+field/maps/mode-8.bmp	background	0	0	1920	1920	mode resource catalog	extracted
+field/maps/mode-9.bmp	background	0	0	1920	1920	mode resource catalog	extracted
+field/maps/mode-10.bmp	background	0	0	320	224	mode resource catalog	extracted
+field/maps/mode-11.bmp	background	0	0	320	672	mode resource catalog	extracted
+field/maps/mode-12.bmp	background	0	0	320	224	mode resource catalog	extracted
+field/maps/mode-13.bmp	background	0	0	320	224	mode resource catalog	extracted
+field/maps/mode-14.bmp	background	0	0	320	224	mode resource catalog	extracted
+field/maps/mode-15.bmp	background	0	0	320	224	mode resource catalog	extracted
+field/maps/mode-16.bmp	background	0	0	320	224	mode resource catalog	extracted
+field/maps/mode-17.bmp	background	0	0	320	224	mode resource catalog	extracted
+field/maps/mode-18.bmp	background	0	0	320	224	mode resource catalog	extracted
+field/maps/mode-19.bmp	background	0	0	320	224	mode resource catalog	extracted
+field/maps/mode-20.bmp	background	0	0	1600	960	mode resource catalog	extracted
+field/maps/mode-21.bmp	background	0	0	1216	1312	mode resource catalog	extracted
+field/maps/mode-22.bmp	background	0	0	1216	1312	mode resource catalog	extracted
+field/maps/mode-23.bmp	background	0	0	1216	1312	mode resource catalog	extracted
+field/maps/mode-24.bmp	background	0	0	1216	1312	mode resource catalog	extracted
+field/maps/mode-25.bmp	background	0	0	1216	1120	mode resource catalog	extracted
+field/maps/mode-26.bmp	background	0	0	1504	960	mode resource catalog	extracted
+field/maps/mode-27.bmp	background	0	0	1504	1088	mode resource catalog	extracted
+field/maps/mode-28.bmp	background	0	0	1504	1088	mode resource catalog	extracted
+field/maps/mode-29.bmp	background	0	0	1504	1088	mode resource catalog	extracted
+field/maps/mode-30.bmp	background	0	0	992	1312	mode resource catalog	extracted
+field/maps/mode-31.bmp	background	0	0	992	1312	mode resource catalog	extracted
+field/maps/mode-32.bmp	background	0	0	992	1312	mode resource catalog	extracted
+field/maps/mode-33.bmp	background	0	0	992	1312	mode resource catalog	extracted
+field/maps/mode-34.bmp	background	0	0	992	1312	mode resource catalog	extracted
+field/maps/mode-35.bmp	background	0	0	1600	1088	mode resource catalog	extracted
+field/maps/mode-36.bmp	background	0	0	1600	1088	mode resource catalog	extracted
+field/maps/mode-37.bmp	background	0	0	1600	1088	mode resource catalog	extracted
+field/maps/mode-38.bmp	background	0	0	1600	1088	mode resource catalog	extracted
+field/maps/mode-39.bmp	background	0	0	960	960	mode resource catalog	extracted
+field/maps/mode-40.bmp	background	0	0	960	960	mode resource catalog	extracted
+field/maps/mode-41.bmp	background	0	0	992	1376	mode resource catalog	extracted
+field/maps/mode-42.bmp	background	0	0	992	1184	mode resource catalog	extracted
+field/maps/mode-43.bmp	background	0	0	992	1184	mode resource catalog	extracted
+field/maps/mode-44.bmp	background	0	0	1600	960	mode resource catalog	extracted
+field/maps/mode-45.bmp	background	0	0	1600	960	mode resource catalog	extracted
+field/maps/mode-46.bmp	background	0	0	1600	960	mode resource catalog	extracted
+field/maps/mode-47.bmp	background	0	0	1600	960	mode resource catalog	extracted
+field/maps/mode-48.bmp	background	0	0	960	1600	mode resource catalog	extracted
+field/maps/mode-49.bmp	background	0	0	1600	960	mode resource catalog	extracted
+field/maps/mode-50.bmp	background	0	0	896	1248	mode resource catalog	extracted
+field/maps/mode-51.bmp	background	0	0	1056	1248	mode resource catalog	extracted
+field/maps/mode-52.bmp	background	0	0	960	768	mode resource catalog	extracted
+field/maps/mode-53.bmp	background	0	0	960	768	mode resource catalog	extracted
+field/maps/mode-54.bmp	background	0	0	320	1344	mode resource catalog	extracted
+field/maps/mode-55.bmp	background	0	0	512	288	mode resource catalog	extracted
 field/entities/idle-0.bmp	sprite	0	0	24	31	0x5A62/0x5FDC	extracted
 field/entities/idle-1.bmp	sprite	0	0	22	30	0x5A62/0x5FDC	extracted
 field/entities/idle-2.bmp	sprite	0	2	15	30	0x5A62/0x5FDC	extracted

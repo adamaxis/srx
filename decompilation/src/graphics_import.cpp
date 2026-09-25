@@ -2674,7 +2674,7 @@ decode_genesis_field_menu_item_art(const std::vector<std::uint8_t>& rom) {
         rom, kArtworkPatternStreamOffset, kArtworkPatternVramOffset);
     // ROM 0x12A54 selects the alternate item-art upload at 0xC9B7C when
     // the one-based item number reaches 13. The native catalog is
-    // zero-based, so item-art-12 is the first resource in that bank.
+    // zero-based, so the item-13 resource is the first resource in that bank.
     const auto alternate_pattern_vram = decode_genesis_1530_vram(
         rom, 0xC9B7CU, kArtworkPatternVramOffset);
     const auto palette = read_genesis_command_palette_set(rom);

@@ -124,12 +124,29 @@ int main() {
         listed.find("intro/background-0.bmp") == listed.end() ||
         listed.find("intro/sprites/ambush-michael-0-0.bmp") == listed.end() ||
         listed.find("title/circuit-background-0.bmp") == listed.end() ||
-        listed.find("field/map/mode-55.bmp") == listed.end()) {
+        listed.find("field/maps/mode-55.bmp") == listed.end() ||
+        listed.find("menu/startup/background.bmp") == listed.end() ||
+        listed.find("menu/field/background.bmp") == listed.end() ||
+        listed.find("menu/pocket-secretary/background.bmp") == listed.end() ||
+        listed.find("items/weapons/detail/item-01.bmp") == listed.end() ||
+        listed.find("items/first-aid/detail/item-16.bmp") == listed.end() ||
+        listed.find("items/miscellaneous/detail/item-19.bmp") == listed.end() ||
+        listed.find("items/magic/detail/item-23.bmp") == listed.end() ||
+        listed.find("items/armor/detail/item-44.bmp") == listed.end()) {
         return fail("required opening background or sprite resource is absent")
             ? 0
             : 1;
     }
     for (const auto& relative : listed) {
+        if (relative.rfind("startup/", 0) == 0U ||
+            relative.rfind("field/menu/", 0) == 0U ||
+            relative.rfind("field/map/", 0) == 0U ||
+            relative.find("item-art-") != std::string::npos ||
+            relative.find("inventory-icon-") != std::string::npos) {
+            return fail("legacy unsorted asset path remains: " + relative)
+                ? 0
+                : 1;
+        }
         if (relative.find("title/circuit-light-") == 0U) {
             return fail("legacy circuit-light fragment remains: " + relative)
                 ? 0
@@ -147,7 +164,7 @@ int main() {
         }
     }
 
-    std::ifstream map_index(root / "field/map/index.tsv", std::ios::binary);
+    std::ifstream map_index(root / "field/maps/index.tsv", std::ios::binary);
     if (!map_index) {
         return fail("field map resource index is missing") ? 0 : 1;
     }

@@ -3,6 +3,7 @@
 
 #include "shadowrun/graphics.hpp"
 #include "shadowrun/rom_layout.hpp"
+#include "shadowrun/asset_taxonomy.hpp"
 #include "shadowrun/resource_manifest.hpp"
 
 #include <algorithm>
@@ -417,9 +418,9 @@ native::NativePortAssets read_native_asset_directory(const std::string& root) {
             load("boot/sega-strobe-" + std::to_string(index) + ".bmp");
     }
     assets.boot_fasa = load("boot/fasa.bmp");
-    assets.startup_background = load("startup/background.bmp");
-    assets.startup_font = load("startup/font.bmp");
-    assets.startup_cursor = load("startup/cursor.bmp");
+    assets.startup_background = load("menu/startup/background.bmp");
+    assets.startup_font = load("menu/startup/font.bmp");
+    assets.startup_cursor = load("menu/startup/cursor.bmp");
     for (std::size_t index = 0; index < assets.intro_stages.size(); ++index) {
         assets.intro_stages[index] =
             load("intro/background-" + std::to_string(index) + ".bmp");
@@ -485,72 +486,71 @@ native::NativePortAssets read_native_asset_directory(const std::string& root) {
             "field/hud/ammo-counter-" + std::to_string(index) + ".bmp");
     }
     assets.pocket_secretary_background =
-        load("field/menu/pocket-secretary-background.bmp");
-    assets.field_menu_background = load("field/menu/background.bmp");
+        load("menu/pocket-secretary/background.bmp");
+    assets.field_menu_background = load("menu/field/background.bmp");
     assets.field_menu_action_background =
-        load("field/menu/action-background.bmp");
+        load("menu/field/action-background.bmp");
     assets.field_menu_attributes_background =
-        load("field/menu/attributes-background.bmp");
-    assets.field_menu_inventory_boxes = load("field/menu/inventory-boxes.bmp");
-    assets.field_menu_font = load("field/menu/font.bmp");
+        load("menu/field/attributes-background.bmp");
+    assets.field_menu_inventory_boxes = load("menu/field/inventory-boxes.bmp");
+    assets.field_menu_font = load("menu/field/font.bmp");
     for (std::size_t index = 0; index < assets.field_menu_runner_portraits.size(); ++index) {
         assets.field_menu_runner_portraits[index] = load(
-            "field/menu/runner-portrait-" + std::to_string(index) + ".bmp");
+            "menu/field/runner-portrait-" + std::to_string(index) + ".bmp");
     }
     for (std::size_t index = 0; index < assets.field_menu_selected_cells.size(); ++index) {
         assets.field_menu_selected_cells[index] = load(
-            "field/menu/selected-cell-" + std::to_string(index) + ".bmp");
+            "menu/field/selected-cell-" + std::to_string(index) + ".bmp");
     }
     for (std::size_t index = 0; index < assets.field_menu_command_focus.size(); ++index) {
         assets.field_menu_command_focus[index] = load(
-            "field/menu/command-focus-" + std::to_string(index) + ".bmp");
+            "menu/field/command-focus-" + std::to_string(index) + ".bmp");
     }
     for (std::size_t index = 0; index < assets.field_menu_action_focus.size(); ++index) {
         assets.field_menu_action_focus[index] = load(
-            "field/menu/action-focus-" + std::to_string(index) + ".bmp");
+            "menu/field/action-focus-" + std::to_string(index) + ".bmp");
     }
     for (std::size_t index = 0; index < assets.field_menu_clips_focus.size(); ++index) {
         assets.field_menu_clips_focus[index] = load(
-            "field/menu/clips-focus-" + std::to_string(index) + ".bmp");
+            "menu/field/clips-focus-" + std::to_string(index) + ".bmp");
         assets.field_menu_clips_trade_focus[index] = load(
-            "field/menu/clips-trade-focus-" + std::to_string(index) + ".bmp");
+            "menu/field/clips-trade-focus-" + std::to_string(index) + ".bmp");
     }
-    assets.field_menu_posture_focus = load("field/menu/posture-focus.bmp");
-    assets.field_menu_cursor = load("field/menu/cursor.bmp");
+    assets.field_menu_posture_focus = load("menu/field/posture-focus.bmp");
+    assets.field_menu_cursor = load("menu/field/cursor.bmp");
     for (std::size_t index = 0; index < assets.field_menu_item_art.size(); ++index) {
         assets.field_menu_item_art[index] = load(
-            "field/menu/item-art-" + std::to_string(index) + ".bmp");
+            resources::item_detail_asset_path(index + 1U));
         for (std::size_t variant = 0;
              variant < assets.field_menu_inventory_icons[index].size(); ++variant) {
             assets.field_menu_inventory_icons[index][variant] = load(
-                "field/menu/inventory-icon-" + std::to_string(index) + "-" +
-                std::to_string(variant) + ".bmp");
+                resources::item_icon_asset_path(index + 1U, variant));
         }
     }
     for (std::size_t index = 0; index < assets.field_menu_status_bars.size(); ++index) {
         assets.field_menu_status_bars[index] = load(
-            "field/menu/status-bar-" + std::to_string(index) + ".bmp");
+            "menu/field/status-bar-" + std::to_string(index) + ".bmp");
     }
     for (std::size_t index = 0; index < assets.field_menu_damage_bars.size(); ++index) {
         assets.field_menu_damage_bars[index] = load(
-            "field/menu/damage-bar-" + std::to_string(index) + ".bmp");
+            "menu/field/damage-bar-" + std::to_string(index) + ".bmp");
         assets.field_menu_drain_bars[index] = load(
-            "field/menu/drain-bar-" + std::to_string(index) + ".bmp");
+            "menu/field/drain-bar-" + std::to_string(index) + ".bmp");
     }
     for (std::size_t index = 0; index < assets.field_menu_detail_values.size(); ++index) {
         assets.field_menu_detail_values[index] = load(
-            "field/menu/detail-value-" + std::to_string(index) + ".bmp");
+            "menu/field/detail-value-" + std::to_string(index) + ".bmp");
     }
     for (std::size_t index = 0; index < assets.field_menu_attack_bars.size(); ++index) {
         assets.field_menu_attack_bars[index] = load(
-            "field/menu/attack-bar-" + std::to_string(index) + ".bmp");
+            "menu/field/attack-bar-" + std::to_string(index) + ".bmp");
         assets.field_menu_defense_bars[index] = load(
-            "field/menu/defense-bar-" + std::to_string(index) + ".bmp");
+            "menu/field/defense-bar-" + std::to_string(index) + ".bmp");
     }
 
-    assets.field_map = load("field/map/mode-2.bmp");
+    assets.field_map = load("field/maps/mode-2.bmp");
     for (auto& area : assets.field_areas) {
-        area.map = load("field/map/mode-" + std::to_string(area.mode_id) + ".bmp");
+        area.map = load("field/maps/mode-" + std::to_string(area.mode_id) + ".bmp");
     }
     for (std::size_t index = 0; index < assets.entity_frames.size(); ++index) {
         const auto image = load("field/entities/idle-" + std::to_string(index) + ".bmp");

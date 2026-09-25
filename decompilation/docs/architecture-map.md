@@ -348,7 +348,9 @@ decompilation/src/game_data_extract.cpp (or equivalent split)
   ROM -> host RGBA assets, complete audio, and typed ExtractedGameData
   no native gameplay state or runtime ROM access
 decompilation/assets/
-  manifest and bare runtime assets only
+  resources.tsv plus bare runtime assets organized by semantic ownership:
+    boot/ title/ intro/ movies/ menu/ field/ items/ audio/ native/
+  item art is further split into weapons/first-aid/miscellaneous/magic/armor
 decompilation/webm_ffmpeg_microframes/
   isolated visual reference breakdown; never a runtime source
 ```

@@ -1,5 +1,6 @@
 #include "shadowrun/graphics.hpp"
 #include "shadowrun/rom_layout.hpp"
+#include "shadowrun/asset_taxonomy.hpp"
 #include "shadowrun/resource_manifest.hpp"
 
 #include <algorithm>
@@ -290,9 +291,14 @@ void write_asset_readme(const std::filesystem::path& root) {
               "shadowrun_graphics_extract --all-assets.\n\n"
            << "The native runtime consumes these individually named BMPs and "
               "native/state.bin and resources.tsv directly. This tree deliberately contains "
-              "static intro plates and independently extracted intro sprites; "
+              "semantic folders: menu, intro, field, and item categories. "
+              "Static intro plates and independently extracted intro sprites "
+              "remain separate; "
               "it does not contain full-screen flipbook samples or an aggregate "
-              "serializer.\n\n"
+              "serializer. Item art is grouped under items/weapons, "
+              "items/first-aid, items/miscellaneous, items/magic, and items/armor. "
+              "Separately traced cinematic resources belong under movies/<scene>; "
+              "they must not be mixed into intro or field assets.\n\n"
            << "Genesis audio is not emitted here until its Z80 event format is "
               "decoded into complete usable files. Raw ROM slices and split "
               "event fragments are analysis inputs, not runtime assets.\n";
@@ -392,10 +398,10 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     // Startup and opening source layers.
     write_array("title/animation-", assets.title_animation_frames, "background",
                 "native title source composition", false);
-    write("startup/background.bmp", assets.startup_background, "background",
+    write("menu/startup/background.bmp", assets.startup_background, "background",
           "0x10B5A/0xCDCE6", false);
-    write("startup/font.bmp", assets.startup_font, "sprite", "0xC1320", true);
-    write("startup/cursor.bmp", assets.startup_cursor, "sprite", "0xD29F6", true);
+    write("menu/startup/font.bmp", assets.startup_font, "sprite", "0xC1320", true);
+    write("menu/startup/cursor.bmp", assets.startup_cursor, "sprite", "0xD29F6", true);
     write("intro/aircraft-plane-a.bmp", assets.intro_aircraft_plane_a, "sprite",
           "0x5B528/0x5B7D8", true);
     write("intro/trivid-background.bmp", assets.intro_trivid_background,
@@ -450,57 +456,61 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 assets.field_hud_horizontal_counters, "sprite", "0x35D4", true);
     write_array("field/hud/ammo-counter-", assets.field_hud_ammo_counters,
                 "sprite", "0x36FC", true);
-    write("field/menu/pocket-secretary-background.bmp",
+    write("menu/pocket-secretary/background.bmp",
           assets.pocket_secretary_background, "background", "0x10A7E", false);
-    write("field/menu/background.bmp", assets.field_menu_background, "background",
+    write("menu/field/background.bmp", assets.field_menu_background, "background",
           "0x10F50", false);
-    write("field/menu/action-background.bmp",
+    write("menu/field/action-background.bmp",
           assets.field_menu_action_background, "background", "0x117A0", false);
-    write("field/menu/attributes-background.bmp",
+    write("menu/field/attributes-background.bmp",
           assets.field_menu_attributes_background, "background", "0x10C96", false);
-    write("field/menu/inventory-boxes.bmp", assets.field_menu_inventory_boxes,
+    write("menu/field/inventory-boxes.bmp", assets.field_menu_inventory_boxes,
           "background", "0x10F50/0x1232", false);
-    write("field/menu/font.bmp", assets.field_menu_font, "sprite", "0xC1064",
+    write("menu/field/font.bmp", assets.field_menu_font, "sprite", "0xC1064",
           true);
-    write_array("field/menu/runner-portrait-", assets.field_menu_runner_portraits,
+    write_array("menu/field/runner-portrait-", assets.field_menu_runner_portraits,
                 "sprite", "0x7291A", true);
-    write_array("field/menu/selected-cell-", assets.field_menu_selected_cells,
+    write_array("menu/field/selected-cell-", assets.field_menu_selected_cells,
                 "sprite", "0x11678", true);
-    write_array("field/menu/command-focus-", assets.field_menu_command_focus,
+    write_array("menu/field/command-focus-", assets.field_menu_command_focus,
                 "sprite", "0x11454", true);
-    write_array("field/menu/action-focus-", assets.field_menu_action_focus,
+    write_array("menu/field/action-focus-", assets.field_menu_action_focus,
                 "sprite", "0x117A4", true);
-    write_array("field/menu/clips-focus-", assets.field_menu_clips_focus, "sprite",
+    write_array("menu/field/clips-focus-", assets.field_menu_clips_focus, "sprite",
                 "0x11B58", true);
-    write_array("field/menu/clips-trade-focus-", assets.field_menu_clips_trade_focus,
+    write_array("menu/field/clips-trade-focus-", assets.field_menu_clips_trade_focus,
                 "sprite", "0x11E7E", true);
-    write("field/menu/posture-focus.bmp", assets.field_menu_posture_focus, "sprite",
+    write("menu/field/posture-focus.bmp", assets.field_menu_posture_focus, "sprite",
           "0x119CE", true);
-    write("field/menu/cursor.bmp", assets.field_menu_cursor, "sprite", "0x11592",
+    write("menu/field/cursor.bmp", assets.field_menu_cursor, "sprite", "0x11592",
           true);
-    write_array("field/menu/item-art-", assets.field_menu_item_art, "sprite",
-                "0x12A8C/0xD4540", true);
+    for (std::size_t item = 0; item < assets.field_menu_item_art.size(); ++item) {
+        const auto item_code = item + 1U;
+        write(shadowrun::resources::item_detail_asset_path(item_code),
+              assets.field_menu_item_art[item], "sprite",
+              "0x12A8C/0xD4540[item=" + std::to_string(item_code) + "]", true);
+    }
     for (std::size_t item = 0; item < assets.field_menu_inventory_icons.size();
          ++item) {
         for (std::size_t variant = 0;
              variant < assets.field_menu_inventory_icons[item].size(); ++variant) {
-            write("field/menu/inventory-icon-" + std::to_string(item) + "-" +
-                      std::to_string(variant) + ".bmp",
+            write(shadowrun::resources::item_icon_asset_path(item + 1U, variant),
                   assets.field_menu_inventory_icons[item][variant], "sprite",
-                  "0x35D4/0xD4540", true);
+                  "0x35D4/0xD4540[item=" + std::to_string(item + 1U) +
+                      "][variant=" + std::to_string(variant) + "]", true);
         }
     }
-    write_array("field/menu/status-bar-", assets.field_menu_status_bars, "sprite",
+    write_array("menu/field/status-bar-", assets.field_menu_status_bars, "sprite",
                 "0x11928", true);
-    write_array("field/menu/damage-bar-", assets.field_menu_damage_bars, "sprite",
+    write_array("menu/field/damage-bar-", assets.field_menu_damage_bars, "sprite",
                 "0x12F70", true);
-    write_array("field/menu/drain-bar-", assets.field_menu_drain_bars, "sprite",
+    write_array("menu/field/drain-bar-", assets.field_menu_drain_bars, "sprite",
                 "0x12FA4", true);
-    write_array("field/menu/detail-value-", assets.field_menu_detail_values, "sprite",
+    write_array("menu/field/detail-value-", assets.field_menu_detail_values, "sprite",
                 "0x13000", true);
-    write_array("field/menu/attack-bar-", assets.field_menu_attack_bars, "sprite",
+    write_array("menu/field/attack-bar-", assets.field_menu_attack_bars, "sprite",
                 "0x12CEE/0xCF3D4", true);
-    write_array("field/menu/defense-bar-", assets.field_menu_defense_bars, "sprite",
+    write_array("menu/field/defense-bar-", assets.field_menu_defense_bars, "sprite",
                 "0x12CEE/0xCF610", true);
 
     // Field maps are backgrounds; entity and walking frames are sprites.
@@ -508,14 +518,14 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     // legacy field_map field as a second row would overwrite the same asset
     // path and make the catalog appear to contain a duplicate resource.
     for (const auto& area : assets.field_areas) {
-        write("field/map/mode-" + std::to_string(area.mode_id) + ".bmp",
+        write("field/maps/mode-" + std::to_string(area.mode_id) + ".bmp",
               area.map, "background", "mode resource catalog", false);
     }
 
     // Keep each rendered map tied to the descriptor that selected it. This is
     // separate from catalog.tsv: that file describes host images, while this
     // index audits the complete ROM table used by 0x3074.
-    std::ofstream map_index(root / "field/map/index.tsv", std::ios::binary);
+    std::ofstream map_index(root / "field/maps/index.tsv", std::ios::binary);
     if (!map_index) {
         throw std::runtime_error("cannot create field map resource index");
     }
@@ -572,7 +582,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                           : "compressed-resource")
                   << '\t';
         write_hex(resources.event_table_offset);
-        map_index << "\tfield/map/mode-" << mode_id << ".bmp\t"
+        map_index << "\tfield/maps/mode-" << mode_id << ".bmp\t"
                   << area->map.width << '\t' << area->map.height << '\n';
     }
     map_index.flush();
