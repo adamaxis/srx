@@ -1118,6 +1118,13 @@ The Cyberware screen at `0x11950` is now a concrete menu model: a zero
 bits `0..14` into ascending visible rows. Bit 15 affects the source's empty
 versus nonempty branch but has no row of its own. The text assets and common
 menu-row input service remain separate.
+
+The Pocket Secretary entry at `0xC2A6` is now separated from the native menu
+shell as a source conversion. It resets the cursor, chooses five entries when
+`+0x101` is zero or six when it is nonzero, gives previous-selection input
+priority over next-selection input, wraps over the exact source maximum, and
+dispatches action, mode-action, and exit edges in source order. The indirect
+handler table at `0xC1400` remains an explicit boundary.
 The posture companion at `0x10722` is also now explicit: source `0x0800`
 and `0x0400` adjust posture by `+1`/`-1` through the existing `0..4` clamp;
 `0x0100`, `0x4000`, and `0x1000` finish the sub-loop, while other input is a

@@ -281,7 +281,7 @@ at `0xD2A0A` routes the five non-inventory commands as follows:
 | 3 | Attributes/Skills | `0xD01C` | native read-only two-column view |
 | 4 | Cyberware | `0x11950` | native installed-bit display |
 | 5 | Magic | `0xFBA6` | source class/resource gate, cursor bounds, spell-table entry selection, and `+0x25` availability gate converted; target/effect use path remains |
-| 6 | Pocket Secretary | `0xC2A6` | source handler still to be decoded |
+| 6 | Pocket Secretary | `0xC2A6` | five/six-entry cursor loop, source-priority wrapping, handler/mode-action dispatch, and exit masks converted; handler table and presentation remain |
 
 The second indirect table at `0xD2A1E` is the selected-inventory action
 dispatch. `0x12168` is the item/armor path; `0x12634`, `0x12836`, and

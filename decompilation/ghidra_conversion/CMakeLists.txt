@@ -1955,6 +1955,19 @@ target_link_libraries(shadowrun_ghidra_cyberware_menu_test
 add_test(NAME shadowrun_ghidra_cyberware_menu
          COMMAND shadowrun_ghidra_cyberware_menu_test)
 
+add_library(shadowrun_ghidra_pocket_secretary_menu STATIC
+    src/pocket_secretary_menu_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_pocket_secretary_menu PUBLIC include)
+
+add_executable(shadowrun_ghidra_pocket_secretary_menu_test
+    tests/pocket_secretary_menu_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_pocket_secretary_menu_test
+    PRIVATE shadowrun_ghidra_pocket_secretary_menu)
+add_test(NAME shadowrun_ghidra_pocket_secretary_menu
+         COMMAND shadowrun_ghidra_pocket_secretary_menu_test)
+
 add_library(shadowrun_ghidra_matrix_entry STATIC
     src/matrix_entry_conversion.cpp
 )
