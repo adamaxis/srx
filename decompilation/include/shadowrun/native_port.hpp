@@ -489,7 +489,7 @@ struct NativePortAssets {
     // alias namespace; audio_path() is the native playback boundary.
     std::unordered_map<std::string, std::filesystem::path> audio_resources;
     // Only source-verified repeating resources have entries here. A missing
-    // entry means the host must treat the WAV as a finite/persistent clip and
+    // entry means the host must treat the audio file as a finite/persistent clip and
     // use gameplay lifetime control rather than guessing a loop boundary.
     std::unordered_map<std::string, NativeAudioLoop> audio_loop_points;
 

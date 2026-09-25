@@ -1,8 +1,10 @@
 # Extracted Windows audio
 
-These are rendered PCM WAV files for the native Windows port. They are not
-raw Z80 fragments, split event records, or screen-capture audio. Every file
-is 44.1 kHz, 16-bit, stereo PCM and can be played directly by Windows and Qt.
+These are rendered lossless FLAC files for the native Windows port. They are
+not raw Z80 fragments, split event records, or screen-capture audio. Every
+file decodes to 44.1 kHz, 16-bit, stereo PCM and can be played by current
+Windows audio players and Qt multimedia backends without shipping the Genesis
+driver.
 Finite resources with a verified end are exported through their complete
 source event lifetime; persistent or ambiguous streams have an explicit
 observation-capture policy below.
@@ -22,7 +24,7 @@ list, for example `assets.audio_path("audio.intro.title.stage-1")`.
 The source command IDs that have been identified in the ROM are kept in the
 aliases and directory names where the evidence is specific: title intro
 stages, menu commands, field effects, and world effects. Other entries remain
-under `sound-effects/resource-NNN.wav` until a calling screen gives them a
+under `sound-effects/resource-NNN.flac` until a calling screen gives them a
 more specific semantic name.
 
 Offline sources:
@@ -34,8 +36,8 @@ Offline sources:
 The intermediate VGM files belong in a temporary extraction directory and
 must not be copied into this runtime asset tree.
 
-`loop-points.tsv` records the exact exclusive PCM loop endpoints for resources
-whose source stream has two successive restarts. The first part of those WAVs
+`loop-points.tsv` records the exact exclusive decoded-PCM loop endpoints for
+resources whose source stream has two successive restarts. The first part of those FLACs
 is an intro; playback starts at frame zero and repeats only the recorded
 `loop_start_frame..loop_end_frame` interval. Do not loop the entire file or
 reconstruct these points from rounded seconds. These are source-driver timing
@@ -47,14 +49,15 @@ different synthesized state at the loop start and call that seamless.
 ## Duration policy
 
 The extractor's trace window is only an observation window; it is never used
-as the WAV length. Resources with verified repeatable source boundaries are
-traced through two successive source-driver stream restarts; their WAV retains
+as an arbitrary short audio crop. Resources with verified repeatable source
+boundaries are traced through two successive source-driver stream restarts;
+their FLAC retains
 the intro and `loop-points.tsv` identifies the exact repeat interval. One-shot
 resources are exported through their final traced chip event plus a two-second
 release tail.
-The renderer is given extra time and the resulting PCM is then cropped to the
-measured source boundary, avoiding the renderer's coarse duration quantizing
-from cutting a loop short.
+The renderer is given the complete observation window for music captures, so
+an internal channel restart cannot cut the file short. The final PCM is
+encoded losslessly as FLAC; loop metadata remains in decoded sample frames.
 
 Resources 012, 013, and 048 continue producing source chip events without a
 standalone stop or repeat boundary during a ten-minute extraction probe. They

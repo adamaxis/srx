@@ -86,8 +86,8 @@ int main() {
                 ++image_count;
             } else if (kind == "audio") {
                 require(std::filesystem::path(relative_path).extension() ==
-                            ".wav",
-                        "audio resource is not a WAV: " + relative_path);
+                            ".flac",
+                        "audio resource is not a FLAC: " + relative_path);
                 require(assets.audio_resources.find(alias) !=
                             assets.audio_resources.end(),
                         "audio manifest alias was not loaded: " + alias);

@@ -4,12 +4,13 @@
 This tool is intentionally outside the native game and Ghidra conversion
 targets.  It boots the ROM's uploaded Z80 sound driver in an offline Z80
 machine, supplies the Genesis ROM bank window, records YM2612/SN76489 writes,
-and emits standard VGM command streams.  A normal VGM renderer can then turn
-those streams into WAV files for the Windows port.
+and emits standard VGM command streams. A normal VGM renderer can then turn
+those streams into PCM for the offline FLAC asset pack used by the Windows
+port.
 
 The native executable never imports this module, the Z80 driver, or the VGM
-files.  The only runtime-facing result is the completed WAV tree under the
-assets directory.
+files. The only runtime-facing result is the completed lossless audio asset
+tree under the assets directory.
 """
 
 from __future__ import annotations

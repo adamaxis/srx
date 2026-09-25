@@ -392,11 +392,12 @@ native::NativePortAssets read_native_asset_directory(const std::string& root) {
         }
         const auto path = asset_root / entry.relative_path;
         if (entry.kind == "audio") {
+            const auto extension = path.extension();
             if (!std::filesystem::is_regular_file(path) ||
-                path.extension() != ".wav") {
+                (extension != ".flac" && extension != ".wav")) {
                 throw std::runtime_error(
                     "cannot load direct audio resource " + path.string() +
-                    ": expected a regular .wav file");
+                    ": expected a regular .flac or .wav file");
             }
             if (!assets.audio_resources.emplace(entry.alias, path).second) {
                 throw std::runtime_error("duplicate loaded audio alias: " +

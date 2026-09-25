@@ -591,10 +591,10 @@ exclusive PCM frame ranges for the eleven resources with two verified source
 restarts; the intro remains outside the loop range.
 
 Standalone one-shot resources are rendered through their final traced chip
-event plus a two-second release tail. The VGM renderer is given extra time and
-the PCM is cropped afterward to the measured endpoint because its duration
-argument is coarser than the source tick boundary. This keeps the resulting
-Windows-playable WAVs complete without retaining temporary VGM files in
+event plus a two-second release tail. Music captures are rendered through the
+complete observation window; the old first-restart crop was what caused
+audible tracks to end early. The decoded PCM is packed losslessly as FLAC,
+preserving exact sample positions without retaining temporary VGM files in
 `assets/`.
 
 Resources `005`, `014`, `015`, and `040` have internal or per-channel restarts
@@ -624,11 +624,12 @@ The offline extractor in `tools/audio/extract_genesis_audio.py` boots the
 uploaded sound driver, applies the Genesis serial bank-register rule at Z80
 port `0x6000` (`bank = (bank >> 1) | ((value & 1) << 8)`), and records YM2612
 and SN76489 writes. It writes temporary VGM, which is rendered to 44.1 kHz
-16-bit stereo PCM WAV outside the repository asset tree. This is extraction
+16-bit stereo PCM and packed as lossless FLAC outside the repository asset
+tree. This is extraction
 evidence only; the game runtime has no Z80, VGM, ROM-address, or chip-driver
 dependency.
 
-The resulting direct asset catalog contains 65 non-silent WAVs under
+The resulting direct asset catalog contains 65 non-silent FLACs under
 `assets/audio/music`, `intro`, `menu`, `field`, and `sound-effects`. The other
 29 of the 94 table slots were verified silent/no-op under the traced command
 sequence and are omitted rather than represented by empty files. Their stable
