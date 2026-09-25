@@ -695,6 +695,21 @@ target_link_libraries(shadowrun_ghidra_world_activity_routine_test
 add_test(NAME shadowrun_ghidra_world_activity_routine
          COMMAND shadowrun_ghidra_world_activity_routine_test)
 
+add_library(shadowrun_ghidra_world_scene_entity STATIC
+    src/world_scene_entity_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_world_scene_entity PUBLIC include)
+target_link_libraries(shadowrun_ghidra_world_scene_entity
+    PRIVATE shadowrun_ghidra_menu_transfer_batch)
+
+add_executable(shadowrun_ghidra_world_scene_entity_test
+    tests/world_scene_entity_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_world_scene_entity_test
+    PRIVATE shadowrun_ghidra_world_scene_entity)
+add_test(NAME shadowrun_ghidra_world_scene_entity
+         COMMAND shadowrun_ghidra_world_scene_entity_test)
+
 add_library(shadowrun_ghidra_world_effect_selection STATIC
     src/world_effect_selection_conversion.cpp
 )

@@ -588,6 +588,17 @@ source override switches, then uses the typed scene cursor and upload
 boundary. No ROM pointer table or Genesis RAM address is used as runtime
 state.
 
+The neighboring world/entity pair is now concrete in
+`world_scene_entity_conversion`. `0x1651E` handles the scene-14 two-cell
+write, the mode-2 three-cell horizontal or two-cell vertical effect writes,
+the scene-4 special resource selection, and the mode-0 auxiliary entity
+fields. `0x16B98` now applies the record-kind and world-mode gates, the
+`FFFC40` scene-event bits, pending/occupied scene-record checks, `+0x80`
+positioning, mode/scene weighted tables, and the `0x5A` equipped-item and
+`0x5B` clear sentinels. The source's entity/map records are represented by
+typed results and extracted weighted data rather than pointer identity or
+Genesis RAM addresses.
+
 The recruited roster data path is now explicit. ROM `0x72C1A` contains ten
 named `0x100`-byte templates: Ricky, Winston Marrs, Trent, Petr Uvehr,
 Walking Bear, Phantom, Two Fists, Freya, Rianna, and Stark. The next
