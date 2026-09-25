@@ -757,6 +757,13 @@ Matrix UI: a selected 0x14-byte record is eligible only when `+0x0F` is
 positive and signed `+0x13` is nonnegative; alternate mode interleaves a
 second table entry only for codes 7..16. The unresolved `0x17C3C` adjustment
 used by the larger `0x19B40` wrapper remains an explicit boundary.
+The CyberInfo screen at `0x18AA6` is no longer a generic world routine:
+selection zero is Deck Stats and selection one is Run Info. Its Run Info
+branch at `0x18C28` now classifies the run as not-present, active, or complete,
+then resolves the active node to CPU or Datastore and the source action table
+to Delete File, Upload File, Crash System, or Download File. The remaining
+text/number placement and underlying deck-stat field reads stay presentation
+boundaries.
 The storage screen path at `0x18D1A` now has its first concrete record math:
 `0x1954A` reads the five loaded-slot usage bytes, `0x1952C` multiplies each of
 the twelve availability flags by the source E2DF2 footprint table, and

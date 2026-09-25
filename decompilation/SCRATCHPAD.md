@@ -574,6 +574,13 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The CyberInfo routine at `0x18AA6` is now named and split into its actual
+screen semantics. The shared two-entry cursor selects Deck Stats or Run Info;
+the Run Info branch at `0x18C28` classifies the run as absent, active, or
+complete, chooses CPU versus Datastore, and resolves the proven action table
+to Delete File, Upload File, Crash System, or Download File. Text placement
+and deck-stat field rendering remain separate presentation boundaries.
+
 The Matrix storage branch is no longer a generic catalog label. The source
 `0x1954A` reads one of five loaded-slot usage bytes, and `0x1952C` multiplies
 one of twelve availability flags by its E2DF2 footprint. The new

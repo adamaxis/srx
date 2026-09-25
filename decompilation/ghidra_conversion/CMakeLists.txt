@@ -1595,6 +1595,21 @@ target_link_libraries(shadowrun_ghidra_matrix_storage_test
 add_test(NAME shadowrun_ghidra_matrix_storage
          COMMAND shadowrun_ghidra_matrix_storage_test)
 
+add_library(shadowrun_ghidra_matrix_cyber_info STATIC
+    src/matrix_cyber_info_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_matrix_cyber_info PUBLIC include)
+target_link_libraries(shadowrun_ghidra_matrix_cyber_info
+    PRIVATE shadowrun_ghidra_selection)
+
+add_executable(shadowrun_ghidra_matrix_cyber_info_test
+    tests/matrix_cyber_info_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_matrix_cyber_info_test
+    PRIVATE shadowrun_ghidra_matrix_cyber_info)
+add_test(NAME shadowrun_ghidra_matrix_cyber_info
+         COMMAND shadowrun_ghidra_matrix_cyber_info_test)
+
 add_library(shadowrun_ghidra_hud_mode STATIC
     src/hud_mode_conversion.cpp
 )
