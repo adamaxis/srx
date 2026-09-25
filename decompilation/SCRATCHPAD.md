@@ -608,6 +608,12 @@ slot bytes for the selected program first, falls back to the first negative
 free slot when the program is not loaded, and reports a full five-slot
 table without fabricating a load or execute operation.
 
+The related `0x19BAE` HUD-mode leaf is now a separate record conversion. It
+exposes the source `+0x0F` eligibility and signed `+0x13` mode fields, uses
+the `0x45` unavailable sentinel, and applies the alternate table interleave
+only to mode codes 7..16. The larger `0x19B40` path still has an unresolved
+`0x17C3C` adjustment callback and is not claimed complete.
+
 The Attributes/Skills screen is now separated into a typed record/layout
 conversion. `0x0D82A` maps the twenty source label slots into two columns of
 ten rows: attributes use live-record bytes `+0x77..+0x7E`, skills use
