@@ -560,6 +560,20 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The save-to-field restore routine at `0x594E0` is now a concrete conversion in
+`ghidra_conversion/save_field_restore_conversion`. It copies the `0x248`-byte
+field payload from the save-work image's source offset `0x3D6`, reads the
+signed primary/secondary roster markers from payload offsets `0x212`/`0x213`,
+and invokes the existing roster-template conversions with marker-minus-one and
+the source's cleared `D7` value (`0`). It calls the field-scene preparation
+boundary before those template loads, restores the scene word, camera pair,
+and three runner position pairs from the following `0x12`-byte tail, refreshes
+the projected records, sets the two `0x0D` effect flags, and selects the
+`0x720FA`/`0x7223A`/`0x7219A` field profile choice from `FF019B` as a typed
+profile enum. A pending `FFFC3C` effect is exposed through the separate
+world-effect callback. The conversion has no dependency on the emulator or
+native runtime; only the two still-independent source leaves remain callbacks.
+
 The recruited roster data path is now explicit. ROM `0x72C1A` contains ten
 named `0x100`-byte templates: Ricky, Winston Marrs, Trent, Petr Uvehr,
 Walking Bear, Phantom, Two Fists, Freya, Rianna, and Stark. The next

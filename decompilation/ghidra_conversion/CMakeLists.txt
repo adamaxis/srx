@@ -665,6 +665,21 @@ target_link_libraries(shadowrun_ghidra_save_restore_test
 add_test(NAME shadowrun_ghidra_save_restore
          COMMAND shadowrun_ghidra_save_restore_test)
 
+add_library(shadowrun_ghidra_save_field_restore STATIC
+    src/save_field_restore_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_save_field_restore PUBLIC include)
+target_link_libraries(shadowrun_ghidra_save_field_restore
+    PRIVATE shadowrun_ghidra_runner_roster)
+
+add_executable(shadowrun_ghidra_save_field_restore_test
+    tests/save_field_restore_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_save_field_restore_test
+    PRIVATE shadowrun_ghidra_save_field_restore)
+add_test(NAME shadowrun_ghidra_save_field_restore
+         COMMAND shadowrun_ghidra_save_field_restore_test)
+
 add_library(shadowrun_ghidra_world_effect_selection STATIC
     src/world_effect_selection_conversion.cpp
 )
