@@ -45,6 +45,24 @@ struct TerrainWorkRegionRequest {
 using TerrainWorkRegionResolveBoundary =
     std::function<TerrainWorkRegionRequest(const TerrainWorkRegionRequest&)>;
 
+// ROM 0x16EA0: fill a rectangular work-map region with terrain value 2.
+void fill_terrain_work_region(
+    std::vector<std::uint16_t>& destination,
+    std::size_t width,
+    std::size_t height,
+    std::size_t row_stride,
+    std::size_t destination_index);
+
+// ROM 0x16FA8: copy a rectangular source region into the work map.
+void copy_terrain_work_region(
+    std::vector<std::uint16_t>& destination,
+    const std::vector<std::uint16_t>& source,
+    std::size_t width,
+    std::size_t height,
+    std::size_t row_stride,
+    std::size_t destination_index,
+    std::size_t source_index);
+
 // ROM 0x16F8E: optionally resolve a negative-mode region, then copy its
 // bounded rows from the decoded source into the terrain work map.
 void copy_terrain_work_region_rows(

@@ -1,5 +1,6 @@
 #include "shadowrun_ghidra/terrain_workflow_conversion.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <vector>
 
@@ -26,6 +27,21 @@ int main() {
         source[index] = static_cast<std::uint16_t>(index + 10U);
     }
     std::vector<std::uint16_t> destination(20U, 0U);
+    fill_terrain_work_region(destination, 2U, 2U, 5U, 0U);
+    if (destination[0] != 2U || destination[1] != 2U ||
+        destination[5] != 2U || destination[6] != 2U ||
+        destination[2] != 0U) {
+        return 2;
+    }
+
+    std::fill(destination.begin(), destination.end(), 0U);
+    copy_terrain_work_region(destination, source, 2U, 2U, 5U, 10U, 1U);
+    if (destination[10] != 11U || destination[11] != 12U ||
+        destination[15] != 16U || destination[16] != 17U) {
+        return 2;
+    }
+
+    std::fill(destination.begin(), destination.end(), 0U);
     copy_terrain_work_region_rows(
         destination, source, {2, 2, 5, 1, 6, -1},
         [](const TerrainWorkRegionRequest&) {

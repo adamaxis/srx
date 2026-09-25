@@ -11,6 +11,18 @@ bool expect(const bool condition) {
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
+    const SceneEntityRecord source_record{0x0120U, 0x0340U, 0U, 0U};
+    if (spawn_scene_record_offset(source_record, 0x0065U, true).has_value()) {
+        return 1;
+    }
+    const auto offset_record =
+        spawn_scene_record_offset(source_record, 0x0065U, false);
+    if (!offset_record.has_value() || offset_record->x != 0x01A0U ||
+        offset_record->y != 0x03C0U || offset_record->kind != 0x0065U ||
+        offset_record->flags != 1U) {
+        return 1;
+    }
+
     WorldMapEffectInput special{};
     special.world_mode = 1U;
     special.scene_id = 0x14U;

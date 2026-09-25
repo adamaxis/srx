@@ -90,6 +90,22 @@ WorldMapEffectResult apply_world_map_effect(
     return result;
 }
 
+std::optional<SceneEntityRecord> spawn_scene_record_offset(
+    const SceneEntityRecord& source,
+    const std::uint16_t selected_kind,
+    const bool all_slots_active) {
+    if (all_slots_active) {
+        return std::nullopt;
+    }
+
+    SceneEntityRecord record{};
+    record.x = static_cast<std::uint16_t>(source.x + 0x80U);
+    record.y = static_cast<std::uint16_t>(source.y + 0x80U);
+    record.kind = selected_kind;
+    record.flags = 0x01U;
+    return record;
+}
+
 SceneEntitySpawnResult spawn_world_scene_entity(
     const SceneEntitySpawnInput& input) {
     SceneEntitySpawnResult result{};

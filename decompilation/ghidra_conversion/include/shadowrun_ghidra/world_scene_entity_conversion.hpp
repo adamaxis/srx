@@ -113,6 +113,13 @@ struct SceneEntitySpawnResult {
     std::optional<SceneEntityRecord> record;
 };
 
+// ROM 0x16D8A: reserve a scene record unless all ten slots are active, then
+// publish the source position offset by one scene tile and the selected kind.
+std::optional<SceneEntityRecord> spawn_scene_record_offset(
+    const SceneEntityRecord& source,
+    std::uint16_t selected_kind,
+    bool all_slots_active);
+
 // ROM 0x16B98: apply the scene-record gates, offset the source position,
 // choose the mode/scene weighted table, and handle item-driven 0x5A/0x5B
 // results. The weighted tables are extracted host data, not ROM pointers.

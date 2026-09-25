@@ -560,6 +560,21 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The leaf routines behind the terrain/scene boundary are concrete now.
+`0x16EA0` fills a bounded work-map rectangle with terrain value `2`,
+`0x16FA8` copies a bounded source rectangle using its row stride, and
+`0x16D8A` returns an optional typed scene record with both coordinates offset
+by `0x80`, the selected kind, and the active flag. Full-table or occupied-slot
+cases return an empty result instead of exposing scene-record pointer math.
+
+`0x1745E` is now represented by `world_mode_routine_conversion`, not a
+generic world-family placeholder. Its typed state captures the copied resource
+token, audio-generation reset, menu-delay setup, field-mode marker, per-pass
+initialization, behavior range, and repeat-until-exit condition. The callback
+sequence preserves the source order from plane clears through HUD/resource
+services and the final field-asset refresh, while leaving each concrete host
+service independently replaceable.
+
 The save-to-field restore routine at `0x594E0` is now a concrete conversion in
 `ghidra_conversion/save_field_restore_conversion`. It copies the `0x248`-byte
 field payload from the save-work image's source offset `0x3D6`, reads the

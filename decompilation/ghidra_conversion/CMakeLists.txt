@@ -1738,3 +1738,15 @@ target_link_libraries(shadowrun_ghidra_world_entity_test
     PRIVATE shadowrun_ghidra_world_entity)
 add_test(NAME shadowrun_ghidra_world_entity
          COMMAND shadowrun_ghidra_world_entity_test)
+
+add_library(shadowrun_ghidra_world_mode_routine STATIC
+    src/world_mode_routine_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_world_mode_routine PUBLIC include)
+add_executable(shadowrun_ghidra_world_mode_routine_test
+    tests/world_mode_routine_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_world_mode_routine_test
+    PRIVATE shadowrun_ghidra_world_mode_routine)
+add_test(NAME shadowrun_ghidra_world_mode_routine
+         COMMAND shadowrun_ghidra_world_mode_routine_test)
