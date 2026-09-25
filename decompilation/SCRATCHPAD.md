@@ -626,6 +626,12 @@ the interaction code to `0x133A`, consumes non-negative records, services
 audio command `0x24`, and sends interaction code `0x65` through the effect-slot
 clear boundary.
 
+`0x1DD94` is now `advance_world_frame_logic`. Its native coordinator preserves
+the scene transition gate, activity/resource timer order, low-mode service
+record reset versus target-selection branch, inactive-effect cleanup, terrain
+and world-effect trigger ordering, and the final nearby-effect pass. Each
+subsystem remains an explicit callback and no emulator state is involved.
+
 The paired layer entries `0x1C3FA`/`0x1C506` are now separated into
 `advance_title_sprite_layers` and `render_title_sprite_layers`. Their phase
 timers, alternate source pointers, two base sprites, optional status overlays,

@@ -1111,6 +1111,12 @@ for non-negative records, and routes interaction code `0x65` to the effect
 slot cleanup boundary. The native version keeps those source decisions in a
 typed record loop instead of exposing the original record addresses.
 
+`0x1DD94` is the frame-level world coordinator. Its native conversion keeps
+the source order: scene/activity gates and timers, low-mode service cleanup or
+target selection, inactive-effect cleanup, optional terrain/trigger work,
+world-effect triggering, and nearby-effect resolution. The calls are typed
+service boundaries rather than a runtime copy of the original RAM schedule.
+
 The larger `0x1AA40` leaf is now named `tick_world_effect_animation` and
 converted separately. Its normal path chooses runner-derived timing versus the
 fixed descriptor-state cadence, its loading/transition path uses the six-phase

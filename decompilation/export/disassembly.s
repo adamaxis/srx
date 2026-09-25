@@ -351,7 +351,7 @@
 00000ABA: jsr 0x00003a1c.l ; call 00003A1C update_field_camera
 00000AC0: jsr 0x00004618.l ; call 00004618 update_entity_render_pass
 00000AC6: jsr 0x00016396.l ; call 00016396 advance_palette_fade
-00000ACC: jsr 0x0001dd94.l ; call 0001DD94 convert_world_routine_0x0001dd94
+00000ACC: jsr 0x0001dd94.l ; call 0001DD94 advance_world_frame_logic
 00000AD2: bset.b #0x1,(0x00ffef14).l
 00000ADA: bset.b #0x2,(0x00ffef14).l
 00000AE2: bset.b #0x3,(0x00ffef14).l

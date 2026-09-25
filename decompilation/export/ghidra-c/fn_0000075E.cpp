@@ -28,7 +28,7 @@
 //   0x00016396 advance_palette_fade
 //   0x000167AE convert_world_routine_0x000167ae
 //   0x0001DC22 select_next_entity
-//   0x0001DD94 convert_world_routine_0x0001dd94
+//   0x0001DD94 advance_world_frame_logic
 //   0x0001E2EC begin_world_activity
 //   0x0001E43C convert_world_routine_0x0001e43c
 //   0x0001E68C reset_world_effect_globals
@@ -212,7 +212,7 @@ LAB_00000a72:
           update_field_camera();
           update_entity_render_pass();
           advance_palette_fade();
-          convert_world_routine_0x0001dd94();
+          advance_world_frame_logic();
           DAT_00ffef14 = DAT_00ffef14 | 0xe;
         } while (((DAT_00ffe18b != '\0') || (DAT_00ffe166 != 0)) || (_DAT_00ffdfe8 != 0));
         if ((DAT_00ffdd22 & 0x2000) != 0) {
@@ -354,5 +354,4 @@ LAB_00000b9c:
                     /* WARNING: Do nothing block with infinite loop */
   } while( true );
 }
-
 
