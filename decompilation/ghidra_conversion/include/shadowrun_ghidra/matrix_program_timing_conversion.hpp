@@ -11,10 +11,17 @@ struct MatrixProgramLoadTiming {
     std::uint8_t steps = 0;
 };
 
-// ROM 0x195A6: divide the selected program footprint by the deck's load/IO
+// ROM 0x195AA: divide the selected program footprint by the deck's load/IO
 // divisor, round up when there is a remainder, and cap the result at six.
 MatrixProgramLoadTiming calculate_matrix_program_load_steps(
     std::uint32_t program_memory, std::uint8_t load_io_divisor);
+
+// ROM 0x195A6: select the program's already-computed 0x1952C memory value,
+// then enter the common 0x195AA timing arithmetic.
+MatrixProgramLoadTiming calculate_selected_matrix_program_load_steps(
+    std::uint8_t program_index,
+    const std::array<std::uint32_t, 12>& program_memory,
+    std::uint8_t load_io_divisor);
 
 struct MatrixProgramSlotVisualState {
     std::array<std::int8_t, 5> program_codes{};

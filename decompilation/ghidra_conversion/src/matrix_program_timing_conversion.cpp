@@ -21,6 +21,17 @@ MatrixProgramLoadTiming calculate_matrix_program_load_steps(
     return {true, static_cast<std::uint8_t>(steps)};
 }
 
+MatrixProgramLoadTiming calculate_selected_matrix_program_load_steps(
+    const std::uint8_t program_index,
+    const std::array<std::uint32_t, 12>& program_memory,
+    const std::uint8_t load_io_divisor) {
+    if (program_index >= program_memory.size()) {
+        return {};
+    }
+    return calculate_matrix_program_load_steps(program_memory[program_index],
+                                               load_io_divisor);
+}
+
 bool refresh_matrix_program_slot(
     MatrixProgramSlotVisualState& state, const std::size_t slot,
     const std::uint8_t program_index, const std::uint32_t program_memory,

@@ -15,9 +15,16 @@ int main() {
     const auto rounded = calculate_matrix_program_load_steps(13U, 3U);
     const auto capped = calculate_matrix_program_load_steps(100U, 1U);
     const auto invalid = calculate_matrix_program_load_steps(5U, 0U);
+    std::array<std::uint32_t, 12> program_memory{};
+    program_memory[4] = 13U;
+    const auto selected = calculate_selected_matrix_program_load_steps(
+        4U, program_memory, 3U);
+    const auto selected_invalid = calculate_selected_matrix_program_load_steps(
+        12U, program_memory, 3U);
     if (!expect(exact.valid && exact.steps == 4U && rounded.valid &&
                 rounded.steps == 5U && capped.valid && capped.steps == 6U &&
-                !invalid.valid)) {
+                !invalid.valid && selected.valid && selected.steps == 5U &&
+                !selected_invalid.valid)) {
         return 1;
     }
 

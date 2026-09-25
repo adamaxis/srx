@@ -786,6 +786,10 @@ the native conversion preserves the source operation, and
 integers. The same module now models the `0x18F5E` reverse five-slot datafile
 walk, preserving each occupied record's signed type, usage byte, source slot,
 and display order; only slot selection and text rendering remain unresolved.
+The callable sub-entries are retained separately in the ledger: `0x195A6`
+selects the current program before entering timing arithmetic at `0x195AA`,
+`0x19538` is the callable footprint-multiplier tail of `0x1952C`, and
+`0x19C54` enters the shared slot lookup at `0x19C5C`.
 The neighboring helpers were corrected from the ROM trace: `0x1957E` measures
 capacity consumed by the five programs already present in the loaded-program
 slots, while `0x195A6` computes a selected program's load-step count from its

@@ -14,14 +14,18 @@ int main() {
     const std::array<std::int8_t, 5> slots{2, -1, 7, -1, -1};
     const std::array<std::uint8_t, 12> availability{0, 0, 1, 0, 0, 0,
                                                      0, 1, 0, 0, 0, 0};
+    const auto slot_entry = read_matrix_program_availability_for_slot(
+        2U, slots, availability);
     const auto selected = read_selected_matrix_program_availability(
         2U, slots, availability);
     const auto empty = read_selected_matrix_program_availability(
         1U, slots, availability);
     const auto invalid = read_selected_matrix_program_availability(
         5U, slots, availability);
-    if (!expect(selected.slot_valid && selected.program_index == 7 &&
-                selected.available && empty.slot_valid &&
+    if (!expect(slot_entry.slot_valid && slot_entry.program_index == 7 &&
+                slot_entry.available && selected.slot_valid &&
+                selected.program_index == 7 && selected.available &&
+                empty.slot_valid &&
                 empty.program_index == -1 && !empty.available &&
                 !invalid.slot_valid)) {
         return 1;

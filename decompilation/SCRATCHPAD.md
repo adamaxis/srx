@@ -604,6 +604,10 @@ is the footprint/divisor load timing calculation, and `0x195D8` writes the
 selected program code, pending byte, ten-times step offset, and source refresh
 boundaries. The former generic field-menu visual-slot conversion was removed;
 its label was not supported by the source control flow.
+The callable sub-entries remain separate: `0x195A6` selects the current
+program before entering timing arithmetic at `0x195AA`, `0x19538` is the
+footprint-multiplier tail of `0x1952C`, and `0x19C54` enters the shared slot
+lookup at `0x19C5C`.
 
 The adjacent Matrix utility routine at `0x19018` now has its real menu logic:
 the shared two-entry cursor selects Show Map or Retreat, and the Retreat path

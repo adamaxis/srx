@@ -25,9 +25,14 @@ struct SelectedMatrixProgramAvailability {
     bool available = false;
 };
 
-// ROM 0x19C54: follow FFF0D4 to its loaded-program slot, then read that
-// program's FFBCC availability byte. 0x19C5C is an interior address in this
-// same leaf, not a second function.
+// ROM 0x19C5C: read a caller-supplied loaded-program slot's FFBCC
+// availability byte. This is a callable shared entry used by the source.
+SelectedMatrixProgramAvailability read_matrix_program_availability_for_slot(
+    std::uint8_t selected_slot,
+    const std::array<std::int8_t, 5>& slot_programs,
+    const std::array<std::uint8_t, 12>& availability_flags);
+
+// ROM 0x19C54: load FFF0D4 as the slot index, then enter 0x19C5C.
 SelectedMatrixProgramAvailability read_selected_matrix_program_availability(
     std::uint8_t selected_slot,
     const std::array<std::int8_t, 5>& slot_programs,
