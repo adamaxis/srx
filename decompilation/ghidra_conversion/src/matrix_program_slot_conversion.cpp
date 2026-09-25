@@ -4,6 +4,23 @@
 
 namespace shadowrun::ghidra_conversion {
 
+SelectedMatrixProgramAvailability read_selected_matrix_program_availability(
+    const std::uint8_t selected_slot,
+    const std::array<std::int8_t, 5>& slot_programs,
+    const std::array<std::uint8_t, 12>& availability_flags) {
+    if (selected_slot >= slot_programs.size()) {
+        return {};
+    }
+
+    const auto program_index = slot_programs[selected_slot];
+    if (program_index < 0 ||
+        static_cast<std::size_t>(program_index) >= availability_flags.size()) {
+        return {true, program_index, false};
+    }
+    return {true, program_index,
+            availability_flags[static_cast<std::size_t>(program_index)] != 0U};
+}
+
 MatrixProgramSlotDecision prepare_matrix_program_slot(
     const std::uint8_t program_index,
     const std::array<std::int8_t, 5>& slot_programs,

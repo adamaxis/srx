@@ -651,8 +651,15 @@ table without fabricating a load or execute operation.
 The related `0x19BAE` HUD-mode leaf is now a separate record conversion. It
 exposes the source `+0x0F` eligibility and signed `+0x13` mode fields, uses
 the `0x45` unavailable sentinel, and applies the alternate table interleave
-only to mode codes 7..16. The larger `0x19B40` path still has an unresolved
-`0x17C3C` adjustment callback and is not claimed complete.
+only to mode codes 7..16. The larger `0x19B40` path now preserves its record
+eligibility and FFDF84 branch: negative gate state uses the record mode, while
+other states require a positive `0x17C3C` resolver result before the same table
+lookup. That resolver remains an explicit source boundary.
+
+The adjacent `0x19C54` leaf follows the selected slot through its loaded
+program code and reads the corresponding FFBCC availability byte. The apparent
+`0x19C5C` entry is an interior instruction address in that same leaf, not a
+second empty function; the conversion keeps one bounded lookup.
 
 The Attributes/Skills screen is now separated into a typed record/layout
 conversion. `0x0D82A` maps the twenty source label slots into two columns of

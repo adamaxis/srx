@@ -19,6 +19,20 @@ struct MatrixProgramSlotDecision {
     bool slot_available = false;
 };
 
+struct SelectedMatrixProgramAvailability {
+    bool slot_valid = false;
+    std::int8_t program_index = -1;
+    bool available = false;
+};
+
+// ROM 0x19C54: follow FFF0D4 to its loaded-program slot, then read that
+// program's FFBCC availability byte. 0x19C5C is an interior address in this
+// same leaf, not a second function.
+SelectedMatrixProgramAvailability read_selected_matrix_program_availability(
+    std::uint8_t selected_slot,
+    const std::array<std::int8_t, 5>& slot_programs,
+    const std::array<std::uint8_t, 12>& availability_flags);
+
 // ROM 0x19238: after the selected-program gate, find an existing slot or the
 // first free slot, then compare the selected program's footprint with the
 // available Matrix memory.

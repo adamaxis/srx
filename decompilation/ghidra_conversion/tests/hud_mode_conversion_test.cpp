@@ -40,5 +40,23 @@ int main() {
         return 4;
     }
 
+    const auto direct_run = select_run_hud_mode(
+        {1U, 8}, true, false, table, {});
+    int resolver_calls = 0;
+    const auto resolved_run = select_run_hud_mode(
+        {1U, 8}, false, true, table,
+        {[&] {
+            ++resolver_calls;
+            return 9;
+        }});
+    const auto blocked_run = select_run_hud_mode(
+        {1U, 8}, false, false, table, {[&] { return 0; }});
+    if (!expect(direct_run.available && direct_run.table_index == 16U &&
+                direct_run.value == 16U && resolved_run.available &&
+                resolved_run.table_index == 19U && resolved_run.value == 19U &&
+                resolver_calls == 1 && !blocked_run.available)) {
+        return 5;
+    }
+
     return 0;
 }

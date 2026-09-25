@@ -761,8 +761,14 @@ back to the Matrix panel.
 The source HUD-mode leaf at `0x19BAE` is now converted separately from the
 Matrix UI: a selected 0x14-byte record is eligible only when `+0x0F` is
 positive and signed `+0x13` is nonnegative; alternate mode interleaves a
-second table entry only for codes 7..16. The unresolved `0x17C3C` adjustment
-used by the larger `0x19B40` wrapper remains an explicit boundary.
+second table entry only for codes 7..16. The larger `0x19B40` wrapper now
+applies the record eligibility gate, uses the record mode when `FFDF84` is
+negative, and otherwise requires a positive `0x17C3C` result before the same
+table lookup; that resolver remains an explicit boundary.
+The adjacent `0x19C54` leaf is also no longer treated as two empty exported
+functions: it follows the selected slot through its loaded program code and
+reads that program's availability byte. `0x19C5C` is an interior instruction
+address in the same leaf, so the native conversion exposes one bounded lookup.
 The CyberInfo screen at `0x18AA6` is no longer a generic world routine:
 selection zero is Deck Stats and selection one is Run Info. Its Run Info
 branch at `0x18C28` now classifies the run as not-present, active, or complete,
