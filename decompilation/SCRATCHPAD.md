@@ -1166,6 +1166,14 @@ Batch 1 adds `0x1F5A8` as `prepare_mode_text_prompt`, preserving its exact
 two-call preparation wrapper without carrying the underlying source pointer
 or VDP behavior into the host model.
 
+The `0x1F3C4` prompt loop is now `run_mode_text_prompt`. Its descriptor is
+modeled as a title, three host text keys, and three command values. The first
+controller choice has priority (`0x40`), then the optional second (`0x10`) and
+third (`0x20`) choices. Commands below `0xFA` cross an explicit dispatch
+callback and return to the prompt; commands at or above `0xFA` return to the
+caller. A negative first-option entry waits thirty frames and returns `0xFB`.
+The native module has no VDP, ROM pointer, or runtime emulator dependency.
+
 Batch 2 converts `0x1F32E` as `clear_optional_mode_resource`, an explicit
 typed clear of the optional mode-resource marker.
 

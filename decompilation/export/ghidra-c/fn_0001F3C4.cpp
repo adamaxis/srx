@@ -1,7 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001F3C4
 // Name: run_mode_text_prompt
-// Decompile status: ok
+// Decompile status: source-shaped annotation
+//
+// This is the mode-exit prompt loop. The native conversion lives in
+// ghidra_conversion::run_mode_text_prompt; this file preserves the ROM order
+// and the source-derived controller/command semantics for cross-checking.
+//
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
 //   0x00000BF2 latch_controller_events
@@ -12,87 +17,59 @@
 //   0x0000C134 normalize_source_text_line
 //   0x0000C168 convert_graphics_routine_0x0000c168
 //   0x0001F5A8 prepare_mode_text_prompt
+//   indirect 0x0012CCB4 mode-command dispatch table
 
-
-/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
-
-int * run_mode_text_prompt(void)
-
+void run_mode_text_prompt(void)
 {
-  int *in_A0;
-  int *extraout_A0;
-  int *extraout_A0_00;
-  int *extraout_A0_01;
-  undefined4 *extraout_A0_02;
-  int *extraout_A0_03;
-  
-  do {
-    if (DAT_00fff10c == '\0') {
+  // A0 points at four text entries followed by three longword commands.
+  // FFF10C means that the caller has already prepared the prompt display.
+  for (;;) {
+    if (DAT_00fff10c == 0) {
       prepare_mode_text_prompt();
-      normalize_source_text_line();
-      DAT_00ffb740 = 0xff;
-      convert_graphics_routine_0x0000c168();
-      in_A0 = extraout_A0;
+      render_mode_prompt_text(/* title entry */, /* title layout */);
     }
-    else {
-      DAT_00fff10c = '\0';
-    }
-    if (*in_A0 < 0) {
-      wait_for_vblank_frames();
+    DAT_00fff10c = 0;
+
+    if (first_option_text_entry_is_negative()) {
+      wait_for_vblank_frames(/* D5 = 0x1E */);
       wait_for_controller_event();
-      return (int *)((int)&VectorsTable_00000000.Reserv3E + 3);
+      return_command(/* 0xFB */);
     }
-    normalize_source_text_line();
-    DAT_00ffb740 = 0xff;
-    convert_graphics_routine_0x0000c168();
-    write_vdp_grid();
-    if (*extraout_A0_00 == 0) {
-      _DAT_00fff0d2 = -1;
+
+    render_mode_prompt_text(/* first option */, /* first option layout */);
+    write_vdp_grid(/* first option grid */);
+
+    const bool second_option_available =
+        render_mode_prompt_option_if_present(/* second option */);
+    const bool third_option_available =
+        render_mode_prompt_option_if_present(/* third option */);
+
+    wait_for_vblank_frames(/* D5 = 0x0A */);
+    for (;;) {
+      wait_for_vblank();
+      latch_controller_events();
+      sample_controller_input();
+
+      // btst.b #0xE/#0xC/#0xD on FFDD22 maps to masks 0x40/0x10/0x20.
+      // First has priority; the other two require a present option.
+      if (controller_mask() & 0x40) {
+        break_with_command(/* command 0 */);
+      }
+      if ((controller_mask() & 0x10) && second_option_available) {
+        break_with_command(/* command 1 */);
+      }
+      if ((controller_mask() & 0x20) && third_option_available) {
+        break_with_command(/* command 2 */);
+      }
     }
-    else {
-      _DAT_00fff0d2 = 0;
-      normalize_source_text_line();
-      DAT_00ffb740 = 0xff;
-      convert_graphics_routine_0x0000c168();
-      write_vdp_grid();
-      if (*extraout_A0_01 == 0) {
-        _DAT_00fff0d2 = CONCAT11(DAT_00fff0d2,0xff);
-      }
-      else {
-        _DAT_00fff0d2 = (ushort)DAT_00fff0d2 << 8;
-        normalize_source_text_line();
-        DAT_00ffb740 = 0xff;
-        convert_graphics_routine_0x0000c168();
-        write_vdp_grid();
-      }
+
+    const uint32_t command = selected_command();
+    if (command >= 0xFA) {
+      return_command(command);
     }
-    wait_for_vblank_frames();
-    do {
-      while( true ) {
-        wait_for_vblank();
-        latch_controller_events();
-        sample_controller_input();
-        if ((DAT_00ffdd22._0_1_ & 0x40) != 0) {
-          in_A0 = (int *)*extraout_A0_02;
-          goto LAB_0001f530;
-        }
-        if ((DAT_00ffdd22._0_1_ & 0x10) == 0) break;
-        if (-1 < _DAT_00fff0d2) {
-          in_A0 = (int *)extraout_A0_02[1];
-          goto LAB_0001f530;
-        }
-      }
-    } while (((DAT_00ffdd22._0_1_ & 0x20) == 0) || (DAT_00fff0d3 < '\0'));
-    in_A0 = (int *)extraout_A0_02[2];
-LAB_0001f530:
-    if ((int)in_A0 + -0xfa < 0) {
-      if (-1 < (int)in_A0 + -0xfa) {
-        return in_A0;
-      }
-      (**(code **)((int)&PTR_DAT_0012ccb4 + (int)(short)((short)in_A0 << 2)))();
-      in_A0 = extraout_A0_03;
-    }
-  } while( true );
+
+    // The command table is an explicit native callback boundary. After its
+    // handler returns, the source branches back to the prompt entry.
+    dispatch_mode_command(command);
+  }
 }
-
-

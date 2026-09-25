@@ -1491,6 +1491,19 @@ target_link_libraries(shadowrun_ghidra_mode_prompt_prepare_test
 add_test(NAME shadowrun_ghidra_mode_prompt_prepare
          COMMAND shadowrun_ghidra_mode_prompt_prepare_test)
 
+add_library(shadowrun_ghidra_mode_text_prompt STATIC
+    src/mode_text_prompt_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_mode_text_prompt PUBLIC include)
+
+add_executable(shadowrun_ghidra_mode_text_prompt_test
+    tests/mode_text_prompt_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_mode_text_prompt_test
+    PRIVATE shadowrun_ghidra_mode_text_prompt)
+add_test(NAME shadowrun_ghidra_mode_text_prompt
+         COMMAND shadowrun_ghidra_mode_text_prompt_test)
+
 add_library(shadowrun_ghidra_mode_optional_resource STATIC
     src/mode_optional_resource_conversion.cpp
 )
