@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <array>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -18,6 +19,16 @@ struct MatrixCursorState {
 // ROM 0x18A92: convert the two byte selections at FFF0D1/FFF0D0 into the
 // linear Matrix program slot used by the panel/resource helpers.
 std::uint8_t matrix_program_index(std::uint8_t row, std::uint8_t column);
+
+// ROM 0x1882E: program slots 0..11 consult FFFBCC, while the four extended
+// slots (12..15) are not gated by that table.
+bool matrix_program_is_available(
+    std::uint8_t program_index,
+    const std::array<std::uint8_t, 12>& availability_flags);
+
+// ROM 0x1882E: only the first twelve slots enter the runner-detail/stat path
+// before their description is rendered.
+bool matrix_program_uses_runner_details(std::uint8_t program_index);
 
 // These are the controller-event bits tested by 0x1822C after the common
 // input latch/sample path has completed.

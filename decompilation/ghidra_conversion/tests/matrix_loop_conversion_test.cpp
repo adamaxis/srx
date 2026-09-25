@@ -1,6 +1,7 @@
 #include "shadowrun_ghidra/matrix_loop_conversion.hpp"
 
 #include <cstdint>
+#include <array>
 #include <string>
 #include <vector>
 
@@ -18,6 +19,17 @@ int main() {
                 matrix_program_index(3, 3) == 15)) {
         return 1;
     }
+    const std::array<std::uint8_t, 12> availability{1, 0, 0, 0, 0, 0,
+                                                     0, 0, 0, 0, 0, 0};
+    if (!expect(matrix_program_is_available(0, availability) &&
+                !matrix_program_is_available(1, availability) &&
+                matrix_program_is_available(12, availability) &&
+                matrix_program_is_available(15, availability) &&
+                matrix_program_uses_runner_details(0) &&
+                matrix_program_uses_runner_details(11) &&
+                !matrix_program_uses_runner_details(12))) {
+        return 2;
+    }
 
     MatrixCursorState cursor{};
     cursor.row = 3;
@@ -25,26 +37,26 @@ int main() {
     if (!expect(cursor.row == 2 && cursor.column == 0 &&
                 cursor.row_marker == 0xE4 && cursor.column_marker == 0x8C &&
                 cursor.redraw_requested)) {
-        return 2;
+        return 3;
     }
     cursor.redraw_requested = false;
     update_matrix_cursor(cursor, move_left);
     if (!expect(cursor.column == 3 && cursor.column_marker == 0xEC &&
                 cursor.redraw_requested)) {
-        return 3;
+        return 4;
     }
     cursor.redraw_requested = false;
     update_matrix_cursor(cursor, move_down | move_right);
     if (!expect(cursor.row == 3 && cursor.column == 3 &&
                 cursor.row_marker == 0x10C && cursor.column_marker == 0xEC &&
                 cursor.redraw_requested)) {
-        return 4;
+        return 5;
     }
     cursor.redraw_requested = false;
     update_matrix_cursor(cursor, confirm);
     if (!expect(cursor.row == 3 && cursor.column == 3 &&
                 !cursor.redraw_requested)) {
-        return 5;
+        return 6;
     }
 
     MatrixLoopState state{};
@@ -88,7 +100,7 @@ int main() {
                 events[9] == "title-sprites" && events[10] == "display:33140" &&
                 events[13] == "two-grids" && events[14] == "display:33140" &&
                 events[15] == "matrix-panel")) {
-        return 6;
+        return 7;
     }
 
     return 0;

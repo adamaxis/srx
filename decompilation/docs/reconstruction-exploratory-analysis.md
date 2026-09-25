@@ -738,6 +738,9 @@ row 0, and translates row/column moves to ordinary host coordinates
 The adjacent `0x18A92` leaf is now named as the Matrix program-key helper:
 it linearizes the selected row/column as `row * 4 + column`, without exposing
 the original FFF0D0/FFF0D1 addresses to host code.
+The `0x1882E` panel path now has the corresponding typed gate: indices 0..11
+are available only when their FFFBCC flag is nonzero, while indices 12..15
+bypass that table; only the first twelve enter the runner-detail/stat branch.
 The Matrix state table, program actions, and rendered resources inside the
 loop must still be recovered before claiming the Matrix panel complete. Until
 then the Matrix hill remains `PENDING`, rather than represented by a generic

@@ -35,6 +35,17 @@ std::uint8_t matrix_program_index(const std::uint8_t row,
     return static_cast<std::uint8_t>(row * 4U + column);
 }
 
+bool matrix_program_is_available(
+    const std::uint8_t program_index,
+    const std::array<std::uint8_t, 12>& availability_flags) {
+    return program_index >= availability_flags.size() ||
+           availability_flags[program_index] != 0U;
+}
+
+bool matrix_program_uses_runner_details(const std::uint8_t program_index) {
+    return program_index < 12U;
+}
+
 void update_matrix_cursor(MatrixCursorState& state,
                           const std::uint16_t input_events) {
     // 0x1833C gives vertical movement priority over horizontal movement.
