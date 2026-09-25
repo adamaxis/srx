@@ -1572,3 +1572,16 @@ target_link_libraries(shadowrun_ghidra_field_entity_render_batch_test
     PRIVATE shadowrun_ghidra_field_entity_render_batch)
 add_test(NAME shadowrun_ghidra_field_entity_render_batch
          COMMAND shadowrun_ghidra_field_entity_render_batch_test)
+
+add_library(shadowrun_ghidra_field_menu_state_batch STATIC
+    src/field_menu_state_batch_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_field_menu_state_batch PUBLIC include)
+
+add_executable(shadowrun_ghidra_field_menu_state_batch_test
+    tests/field_menu_state_batch_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_field_menu_state_batch_test
+    PRIVATE shadowrun_ghidra_field_menu_state_batch)
+add_test(NAME shadowrun_ghidra_field_menu_state_batch
+         COMMAND shadowrun_ghidra_field_menu_state_batch_test)
