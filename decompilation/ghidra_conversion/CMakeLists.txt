@@ -5,6 +5,21 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+enable_testing()
+
+add_library(shadowrun_ghidra_inventory_action STATIC
+    src/inventory_action_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_inventory_action PUBLIC include)
+
+add_executable(shadowrun_ghidra_inventory_action_test
+    tests/inventory_action_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_inventory_action_test
+    PRIVATE shadowrun_ghidra_inventory_action)
+add_test(NAME shadowrun_ghidra_inventory_action
+         COMMAND shadowrun_ghidra_inventory_action_test)
+
 add_library(shadowrun_ghidra_conversion STATIC
     src/title_loop_conversion.cpp
 )
@@ -16,7 +31,6 @@ add_executable(shadowrun_ghidra_conversion_test
 target_link_libraries(shadowrun_ghidra_conversion_test
     PRIVATE shadowrun_ghidra_conversion)
 
-enable_testing()
 add_test(NAME shadowrun_ghidra_conversion
          COMMAND shadowrun_ghidra_conversion_test)
 

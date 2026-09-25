@@ -574,6 +574,40 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+## Inventory command and selected-item conversion
+
+The `0x11740` dispatcher is now represented in the isolated
+`inventory_action_conversion` library. This is conversion/reference code only;
+it is not included by the native runtime or emulator. The source command
+selector is explicit: `0` and `1` are the left and right inventory columns,
+`2` is Clips, `3` is Attributes/Skills, `4` is Cyberware, `5` is Magic, and
+`6` is Pocket Secretary.
+
+The selected-cell read is no longer a source-address label. `0x12148`'s
+observable operation is `slot = 2 * row + column`, followed by the item and
+phase bytes from the typed runner record. Empty cells return no selection.
+The action loop preserves the source's two-confirm sequence: the first confirm
+opens the four choices `Equip/Use`, `Discard`, `Trade`, and `Cancel`; a later
+confirm dispatches the selected choice, while left/right wraps the selector
+through source values `2..5` and cancel/start restores the parent cell.
+
+The selected-item dispatcher now has source-derived branches rather than a
+generic item handler. Medical codes `0x10..0x12` use the pending First Aid
+path; `0x13`, `0x14`, and `0x16` use the automatic-use acknowledgement path;
+other codes below `0x18` are weapon/gear equipment; `0x18..0x2B` are the
+separate item-action path; and `0x2C+` are armor. Equipment mutation keeps
+possession cells, weapon fields `+0x56/+0x57/+0x4E`, and armor `+0x76`
+separate. The ammo conversion preserves the source old-factor/new-factor
+quotient and half-up remainder behavior.
+
+The same slice covers the guarded discard and trade mutations. Cell seven's
+`0x29..0x2B` items reject discard, trade rejects the inclusive special-item
+range `0x17..0x2B`, ordinary phase bytes travel with a traded item, armor
+phase is cleared, and transferring live equipment clears the source's
+equipped weapon or armor state. Focused tests cover the cell mapping, action
+loop, branch boundaries, ammo scaling, armor toggle, protected discard, and
+trade transfer.
+
 ## 2026-09-25 audio duration correction
 
 The first committed audio pass was wrong: the VGM trace window was allowed to
