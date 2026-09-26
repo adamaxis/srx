@@ -707,7 +707,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0001745EL, "convert_world_routine_0x0001745e");
         names.put(0x00017A5EL, "convert_world_routine_0x00017a5e");
         names.put(0x00017C3CL, "read_menu_entry_profile_eligibility");
-        names.put(0x000181F8L, "convert_world_routine_0x000181f8");
+        names.put(0x000181F8L, "run_matrix_session_entry");
         names.put(0x0001822CL, "run_matrix_interaction_loop");
         names.put(0x0001882EL, "render_matrix_panel");
         names.put(0x00018A92L, "matrix_program_index");

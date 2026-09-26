@@ -104,7 +104,11 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x0001745EU, "convert_world_routine_0x0001745e", RoutineFamily::world, 604U},
     {0x00017A5EU, "convert_world_routine_0x00017a5e", RoutineFamily::world, 354U},
     {0x00017C3CU, "read_menu_entry_profile_eligibility", RoutineFamily::menu, 22U},
-    {0x000181F8U, "convert_world_routine_0x000181f8", RoutineFamily::world, 52U},
+    // The catalog's legacy routing families do not yet expose a cyberspace
+    // bucket. Keep the source-backed alias here while the entry is dispatched
+    // through the existing world/session boundary; the actual conversion is
+    // implemented in the cyberspace domain module.
+    {0x000181F8U, "run_matrix_session_entry", RoutineFamily::world, 52U},
     {0x0001822CU, "run_matrix_interaction_loop", RoutineFamily::world, 1230U},
     {0x0001882EU, "convert_world_routine_0x0001882e", RoutineFamily::world, 334U},
     {0x00018A92U, "convert_world_routine_0x00018a92", RoutineFamily::world, 20U},

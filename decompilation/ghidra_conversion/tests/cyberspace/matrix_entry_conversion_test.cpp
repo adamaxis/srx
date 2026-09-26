@@ -36,14 +36,13 @@ int main() {
                 state.overlay_marker == 0U && state.returned_to_field &&
                 copied_sources == std::vector<std::uint32_t>{0xE2E3AU,
                                                               0xD29D6U} &&
-                display_commands.size() == 5U &&
+                display_commands.size() == 4U &&
                 display_commands[0] == MatrixDisplayCommand::prepare_matrix &&
                 display_commands[1] ==
                     MatrixDisplayCommand::prepare_resource_upload &&
-                display_commands[2] == MatrixDisplayCommand::matrix_loop &&
-                display_commands[3] ==
+                display_commands[2] ==
                     MatrixDisplayCommand::prepare_field_return &&
-                display_commands[4] == MatrixDisplayCommand::field_return &&
+                display_commands[3] == MatrixDisplayCommand::field_return &&
                 events == std::vector<int>{1, 2, 3, 4, 5, 6})) {
         return 1;
     }
@@ -54,6 +53,32 @@ int main() {
                 no_callbacks.display_dirty_flags == 0x01U &&
                 no_callbacks.returned_to_field)) {
         return 2;
+    }
+
+    MatrixEntryState preparation{};
+    std::vector<MatrixDisplayCommand> preparation_commands;
+    std::vector<std::uint32_t> preparation_sources;
+    prepare_matrix_session_entry(
+        preparation,
+        {[&](const MatrixDisplayCommand command) {
+             preparation_commands.push_back(command);
+         },
+         [&](const std::uint32_t source) { preparation_sources.push_back(source); },
+         [] {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {}});
+    if (!expect(preparation.menu_slot_count == 10U &&
+                preparation.display_dirty_flags == 0x01U &&
+                preparation_sources == std::vector<std::uint32_t>{0xE2E3AU} &&
+                preparation_commands.size() == 2U &&
+                preparation_commands[0] == MatrixDisplayCommand::prepare_matrix &&
+                preparation_commands[1] ==
+                    MatrixDisplayCommand::prepare_resource_upload)) {
+        return 3;
     }
 
     return 0;

@@ -6517,7 +6517,7 @@
 0000E47E: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
 0000E484: move.w #0x14,D5w
 0000E488: jsr 0x00000c24.l ; call 00000C24 wait_for_vblank_frames
-0000E48E: jsr 0x000181f8.l ; call 000181F8 convert_world_routine_0x000181f8
+0000E48E: jsr 0x000181f8.l ; call 000181F8 run_matrix_session_entry
 0000E494: tst.b (0x00fff0b1).l
 0000E49A: bne.w 0x0000e4c0
 0000E49E: jsr 0x000173f2.l ; call 000173F2 prepare_menu_mode_resources

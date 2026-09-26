@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000181F8
-// Name: convert_world_routine_0x000181f8
+// Name: run_matrix_session_entry
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001358 copy_source_word_block
@@ -9,7 +9,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_world_routine_0x000181f8(void)
+void run_matrix_session_entry(void)
 
 {
   char cVar1;

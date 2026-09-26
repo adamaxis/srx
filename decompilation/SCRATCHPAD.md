@@ -1499,6 +1499,13 @@ field-asset upload, field-animation refresh, and the final mode return. The
 actual deck/program loop remains a separate boundary and is not replaced by a
 generic Matrix screen.
 
+The separately exported `0x181F8` entry is named `run_matrix_session_entry`.
+Its confirmed prelude is represented by `prepare_matrix_session_entry` in the
+cyberspace entry module: source display commands, the `0xE2E3A` resource copy,
+`FFEF14` dirty-bit publication, menu-resource upload, and `FFFBCA=10` slot
+initialization are converted. The fall-through session loop and finalizer stay
+explicit boundaries until their state is source-traced.
+
 The leaf routines behind the terrain/scene boundary are concrete now.
 `0x16EA0` fills a bounded work-map rectangle with terrain value `2`,
 `0x16FA8` copies a bounded source rectangle using its row stride, and

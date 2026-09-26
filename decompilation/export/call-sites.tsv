@@ -1559,8 +1559,8 @@ caller	caller_name	instruction	text	target	callee	status
 00017FDA	advance_menu_random_glitch	000180F0	jsr 0x00000d3a.l	00000D3A	sample_source_random_bound	resolved
 00017FDA	advance_menu_random_glitch	00018114	jsr 0x000011f6.l	000011F6	write_linear_vdp_grid	resolved
 00017FDA	advance_menu_random_glitch	00018142	jsr 0x00001232.l	00001232	write_vdp_grid	resolved
-000181F8	convert_world_routine_0x000181f8	0001820E	jsr 0x00001358.l	00001358	copy_source_word_block	resolved
-000181F8	convert_world_routine_0x000181f8	0001821C	bsr.w 0x000177cc	000177CC	upload_menu_resource_pair	resolved
+000181F8	run_matrix_session_entry	0001820E	jsr 0x00001358.l	00001358	copy_source_word_block	resolved
+000181F8	run_matrix_session_entry	0001821C	bsr.w 0x000177cc	000177CC	upload_menu_resource_pair	resolved
 0001822C	run_matrix_interaction_loop	00018246	jsr 0x00000f1c.l	00000F1C	write_transfer_header	resolved
 0001822C	run_matrix_interaction_loop	0001824C	jsr 0x00000f3c.l	00000F3C	write_fixed_transfer_pair	resolved
 0001822C	run_matrix_interaction_loop	0001825A	jsr 0x00000ffe.l	00000FFE	clear_and_fill_plane_a	resolved

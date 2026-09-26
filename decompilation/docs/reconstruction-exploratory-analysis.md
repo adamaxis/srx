@@ -669,6 +669,15 @@ mode data/palette and restores field resources. The `0x1822C` deck/program loop
 and its state tables remain a separate audit target; a generic Matrix
 placeholder is not an acceptable substitute.
 
+The separately exported `0x181F8` path is now named
+`run_matrix_session_entry`. Its confirmed prelude is represented by
+`prepare_matrix_session_entry` in the cyberspace entry module: the source
+display commands, `0xE2E3A` copy, `FFEF14` dirty bit, menu-resource upload, and
+`FFFBCA=10` slot initialization are preserved before the `0x1822C` fall-through.
+The remaining session loop/finalizer is kept as an explicit boundary until its
+source state is converted rather than being conflated with the `0x1817E`
+inline caller shell.
+
 Dismiss Runner dispatches to `0xC448`. It writes the fixed lines at `0xC1499`
 (`Dismiss`), `0xC14A4` (`Who??`), and `0xC14BD` (`Abort`), then checks the
 active-record bit at `+0x10` while enumerating the source runner records. The

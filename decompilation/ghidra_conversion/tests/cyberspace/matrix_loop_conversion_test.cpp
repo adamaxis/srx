@@ -288,12 +288,12 @@ int main() {
                 state.cursor.row == 0 && state.cursor.row_marker == 0x94 &&
                 state.cursor.column_marker == 0x8C &&
                 !state.cursor.redraw_requested &&
-                events.size() == 16U && events[0] == "header" &&
+                events.size() == 15U && events[0] == "header" &&
                 events[1] == "fixed" && events[2] == "display:33076" &&
                 events[4] == "upload-reset" && events[5] == "stream:889718:33120" &&
-                events[9] == "title-sprites" && events[10] == "display:33140" &&
-                events[13] == "two-grids" && events[14] == "display:33140" &&
-                events[15] == "matrix-panel")) {
+                events[9] == "title-sprites" && events[10] == "panel" &&
+                events[12] == "two-grids" && events[13] == "display:33140" &&
+                events[14] == "matrix-panel")) {
         return 15;
     }
 

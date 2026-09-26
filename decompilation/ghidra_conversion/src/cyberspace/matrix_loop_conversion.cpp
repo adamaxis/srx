@@ -271,7 +271,6 @@ void initialize_matrix_loop(MatrixLoopState& state,
     // 0x182B0..0x1831A establishes the Matrix panel and its initial cursor.
     call_if_present(callbacks.build_title_sprite_records);
     state.display_dirty = true;
-    call_if_present(callbacks.set_display_command, 0x8174U);
     call_if_present(callbacks.write_hud_panel_grid);
     call_if_present(callbacks.render_hud_indicator_grids);
     state.cursor.column = 0;
@@ -279,6 +278,8 @@ void initialize_matrix_loop(MatrixLoopState& state,
     state.cursor.redraw_requested = true;
     refresh_cursor_markers(state.cursor);
     call_if_present(callbacks.write_two_hud_grids);
+    // 0x18308 writes the staged row-3 grids, then 0x1830C selects the Matrix
+    // display command before the first selected-panel redraw.
     call_if_present(callbacks.set_display_command, 0x8174U);
     // 0x18314 clears FFF0D1 before the first 0x1882E redraw. The temporary
     // row-3 write above is only part of the panel's setup transfer.
