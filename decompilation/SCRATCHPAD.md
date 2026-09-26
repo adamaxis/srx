@@ -205,6 +205,26 @@ order. `0x10660` uses the selected `0xD4EA0` action row and decoded
 spawn (`0x15830`), special result publication, and phase-consumption tail
 remain explicit boundaries for the next `0x1033E` pass.
 
+The next `0x1033E` caller layer is now typed too. `0x1047E` is not an
+animation renderer in this path: it scans the three party records, admits
+only active class `0`/`1` records, and contributes `floor(item18_value / 4)`
+plus one when the remainder is at least three. `0x55786` gives bit 0 of
+actor `+0xDF` priority over bit 1, selects the source special-record pair
+(`+0x1E/+0x1F` or `+0x20/+0x21`), chooses actor `+0x77` versus `+0x7C` from
+the signed action-row `+0x27`, performs the thresholded roll, subtracts its
+successes from the special roll budget, and halves the remainder only when
+actor bit 1 is set. The `0x55828` pointer walk is represented as a typed
+special-record input instead of a RAM-address lookup.
+
+The positive residual tail at `0x1033E` is represented by
+`consume_item13_residual`: it scans item code `0x13` phases from slot `6`
+down to `0`, keeps a partially consumed phase, clears a phase and its item
+code at zero, and reports inventory exhaustion without inventing a new item.
+This is the exact state mutation before the source `0x37EC` behavior-meter
+service. The top-level roll/effect/behavior orchestration remains the next
+slice; its service boundaries are now explicit rather than hidden behind the
+old “first aid” label.
+
 The caller-side `0x55C76` transition is now directly executable as
 `run_entity_reaction_0x55C76`. It preserves the three `0x0DBA` threshold
 passes, the `0x55740`/`0x55786` timing calculations, the `0x55E62`/modifier

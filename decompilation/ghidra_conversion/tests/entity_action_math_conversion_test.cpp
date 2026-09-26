@@ -81,5 +81,83 @@ int main() {
         return 11;
     }
 
+    EntityActionRecord ready{};
+    ready.flags_10 = 0x01U;
+    ready.class_code = 1U;
+    ready.item18_base = 9U;
+    ready.item_codes[6] = 0x18U;
+    ready.item_phases[6] = 2U;
+    EntityActionDynamicModifierContext dynamic{};
+    dynamic.actor_flags_df = 0x01U;
+    dynamic.actor_record_type = 2U;
+    dynamic.actor_attribute_77 = 3U;
+    dynamic.actor_attribute_7c = 8U;
+    dynamic.ready_entities[0] = ready;
+    dynamic.special_modifiers[0] = {8U, 4U};
+    dynamic.attribute_selectors[0] = -1;
+    std::uint16_t dynamic_difficulty = 4U;
+    const auto dynamic_result = apply_dynamic_status_modifier(
+        dynamic_difficulty, dynamic,
+        [](const std::uint16_t roll_count, const std::uint16_t difficulty) {
+            return static_cast<std::uint8_t>(roll_count == 6U &&
+                                             difficulty == 4U ? 2U : 0U);
+        });
+    if (!expect(dynamic_result.selected &&
+                dynamic_result.selected_action_table_index == 5U &&
+                dynamic_result.ready_roll_count == 6U &&
+                dynamic_result.added_difficulty == 6U &&
+                dynamic_difficulty == 10U)) {
+        return 12;
+    }
+
+    dynamic.actor_flags_df = 0x02U;
+    dynamic.actor_record_type = 3U;
+    dynamic.actor_attribute_7c = 2U;
+    dynamic.special_modifiers[1] = {7U, 3U};
+    dynamic.attribute_selectors[1] = 1;
+    dynamic_difficulty = 4U;
+    const auto defensive_result = apply_dynamic_status_modifier(
+        dynamic_difficulty, dynamic,
+        [](const std::uint16_t roll_count, const std::uint16_t difficulty) {
+            return static_cast<std::uint8_t>(roll_count == 2U &&
+                                             difficulty == 3U ? 1U : 0U);
+        });
+    if (!expect(defensive_result.selected &&
+                defensive_result.selected_action_table_index == 12U &&
+                defensive_result.ready_roll_count == 2U &&
+                defensive_result.added_difficulty == 3U &&
+                dynamic_difficulty == 7U)) {
+        return 13;
+    }
+
+    dynamic.actor_flags_df = 0U;
+    dynamic_difficulty = 4U;
+    if (!expect(!apply_dynamic_status_modifier(dynamic_difficulty, dynamic,
+                                               {}).selected &&
+                dynamic_difficulty == 4U)) {
+        return 14;
+    }
+
+    EntityActionRecord consumable{};
+    consumable.item_codes[6] = 0x13U;
+    consumable.item_phases[6] = 2U;
+    consumable.item_codes[2] = 0x13U;
+    consumable.item_phases[2] = 5U;
+    const auto partial = consume_item13_residual(consumable, 3U);
+    if (!expect(partial.result ==
+                    EntityActionPhaseConsumptionResult::consumed_partially &&
+                partial.remaining == 0U && consumable.item_phases[6] == 0U &&
+                consumable.item_codes[6] == 0x00U &&
+                consumable.item_phases[2] == 4U)) {
+        return 15;
+    }
+    const auto exhausted = consume_item13_residual(consumable, 7U);
+    if (!expect(exhausted.result ==
+                    EntityActionPhaseConsumptionResult::inventory_exhausted &&
+                exhausted.remaining == 3U && consumable.item_codes[2] == 0U &&
+                consumable.item_phases[2] == 0U)) {
+        return 16;
+    }
+
     return 0;
 }

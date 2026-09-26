@@ -42,6 +42,22 @@ std::uint16_t add_first_matching_item_phase(
     return value;
 }
 
+std::uint16_t calculate_ready_entity_action_bonus(
+    const std::array<EntityActionRecord, 3>& ready_entities) {
+    std::uint16_t bonus = 0U;
+    for (const auto& entity : ready_entities) {
+        if ((entity.flags_10 & 0x01U) == 0U || entity.class_code > 1U) {
+            continue;
+        }
+        const auto value = calculate_item18_skill_value(entity);
+        bonus = static_cast<std::uint16_t>(bonus + value / 4U);
+        if ((value % 4U) >= 3U) {
+            ++bonus;
+        }
+    }
+    return bonus;
+}
+
 std::uint16_t add_wound_difficulty_penalty(
     std::uint16_t difficulty,
     const std::uint8_t physical_meter,
@@ -77,6 +93,96 @@ std::uint16_t apply_target_condition_modifier(
         return difficulty;
     }
     return static_cast<std::uint16_t>(difficulty + 4U);
+}
+
+EntityActionDynamicModifierResult apply_dynamic_status_modifier(
+    std::uint16_t& difficulty,
+    const EntityActionDynamicModifierContext& context,
+    const EntityActionRollService& roll_service) {
+    EntityActionDynamicModifierResult result{};
+    std::size_t modifier_index = 0U;
+    if ((context.actor_flags_df & 0x01U) != 0U) {
+        modifier_index = 0U;
+        result.selected_action_table_index = 5U;
+    } else if ((context.actor_flags_df & 0x02U) != 0U) {
+        modifier_index = 1U;
+        result.selected_action_table_index = 12U;
+    } else {
+        return result;
+    }
+    result.selected = true;
+
+    if (context.actor_record_type < 3U) {
+        result.ready_roll_count = calculate_ready_entity_action_bonus(
+            context.ready_entities);
+    }
+    const auto attribute = context.attribute_selectors[modifier_index] < 0
+                               ? context.actor_attribute_77
+                               : context.actor_attribute_7c;
+    result.ready_roll_count = static_cast<std::uint16_t>(
+        result.ready_roll_count + attribute);
+
+    if (!roll_service) {
+        return result;
+    }
+    result.roll_service_available = true;
+    const auto& special = context.special_modifiers[modifier_index];
+    result.special_successes = roll_service(result.ready_roll_count,
+                                             special.difficulty);
+    auto remaining = static_cast<int>(special.roll_count) -
+                     static_cast<int>(result.special_successes);
+    if (remaining <= 0) {
+        return result;
+    }
+    if ((context.actor_flags_df & 0x02U) != 0U) {
+        remaining /= 2;
+    }
+    result.added_difficulty = static_cast<std::uint16_t>(remaining);
+    difficulty = static_cast<std::uint16_t>(difficulty + remaining);
+    return result;
+}
+
+EntityActionPhaseConsumption consume_item13_residual(
+    EntityActionRecord& entity,
+    const std::uint16_t residual) {
+    EntityActionPhaseConsumption result{};
+    result.requested = residual;
+    result.remaining = residual;
+    if (residual == 0U) {
+        return result;
+    }
+
+    for (std::size_t slot = entity.item_codes.size(); slot-- > 0U;) {
+        if (entity.item_codes[slot] != 0x13U) {
+            continue;
+        }
+
+        const auto phase = entity.item_phases[slot];
+        if (result.remaining <= phase) {
+            entity.item_phases[slot] = static_cast<std::uint8_t>(
+                phase - result.remaining);
+            result.remaining = 0U;
+            if (entity.item_phases[slot] == 0U) {
+                entity.item_codes[slot] = 0U;
+                ++result.cleared_slots;
+                result.result = EntityActionPhaseConsumptionResult::
+                    consumed_exactly;
+            } else {
+                result.result = EntityActionPhaseConsumptionResult::
+                    consumed_partially;
+            }
+            return result;
+        }
+
+        result.remaining = static_cast<std::uint16_t>(
+            result.remaining - phase);
+        entity.item_codes[slot] = 0U;
+        entity.item_phases[slot] = 0U;
+        ++result.cleared_slots;
+    }
+
+    result.result = EntityActionPhaseConsumptionResult::inventory_exhausted;
+    return result;
 }
 
 EntityActionResidual calculate_action_residual(
