@@ -137,13 +137,15 @@ ObstructionRouteSelection select_obstruction_route(
     const std::vector<std::uint8_t>& obstruction_map);
 
 // ROM 0x149C0: consume a packed route queue entry, decode its next target,
-// and expose the source's path-blocked/replan exits as typed actions.
+// and expose the source's path-blocked/replan exits as typed actions. The
+// source tests record +0xB0 bits 3/1 directly; the host therefore accepts the
+// record's low movement-flags byte rather than the Ghidra C export's
+// endian-confused 0x0800 word mask.
 RouteQueueAdvance advance_obstruction_route_queue(
     std::uint16_t entity_x,
     std::uint16_t entity_y,
     std::uint16_t target_x,
     std::uint16_t target_y,
-    std::uint16_t route_flags,
     std::uint8_t movement_flags,
     RouteQueueState& route,
     const std::vector<std::uint8_t>& obstruction_map);

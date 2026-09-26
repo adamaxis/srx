@@ -164,7 +164,6 @@ int main() {
         0x0100U,
         0x0400U,
         0x0100U,
-        0x0000U,
         0x02U,
         queued_route,
         std::vector<std::uint8_t>(128, 0U));
@@ -180,8 +179,7 @@ int main() {
         0x0100U,
         0x0600U,
         0x0100U,
-        0x0000U,
-        0x0AU,
+        0x02U,
         completed_route,
         std::vector<std::uint8_t>(128, 0U));
     if (!expect(completed.action == RouteQueueAction::target_reached &&
@@ -197,7 +195,6 @@ int main() {
         0x0100U,
         0x0600U,
         0x0100U,
-        0x0800U,
         0x0AU,
         blocked_route_queue,
         path_blocked_map);
@@ -212,8 +209,7 @@ int main() {
         0x0100U,
         0x0600U,
         0x0100U,
-        0x0800U,
-        0x00U,
+        0x08U,
         replan_route,
         std::vector<std::uint8_t>(128, 0U));
     if (!expect(replan.action ==

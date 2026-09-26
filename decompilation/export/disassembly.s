@@ -11299,7 +11299,7 @@
 00013D4A: rts
 00013D4C: movea.l D0,A1
 00013D4E: bsr.w 0x00013a40 ; call 00013A40 copy_entity_anchor_position
-00013D52: bra.w 0x000145a2 ; call 000145A2 convert_entity_routine_0x000145a2
+00013D52: bra.w 0x000145a2 ; call 000145A2 advance_entity_animation_target_route
 00013D56: move.l (0xa2,A0),D0
 00013D5A: bne.w 0x00013d60
 00013D5E: rts
@@ -11360,7 +11360,7 @@
 00013E90: bne.w 0x00013e96
 00013E94: bra.b 0x00013e40
 00013E96: bsr.w 0x00013e9e ; call 00013E9E reposition_entity_at_boundary
-00013E9A: bra.w 0x000145a2 ; call 000145A2 convert_entity_routine_0x000145a2
+00013E9A: bra.w 0x000145a2 ; call 000145A2 advance_entity_animation_target_route
 00013E9E: bset.b #0x6,(0xb0,A0)
 00013EA4: beq.w 0x00013eaa
 00013EA8: rts

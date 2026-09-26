@@ -380,7 +380,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00014492	select_entity_animation_link	166	unknown	ok	ghidra-c/fn_00014492.cpp
 000144E8	apply_entity_close_range_state	18	unknown	ok	ghidra-c/fn_000144E8.cpp
 00014508	prepare_entity_animation_fallback_target	154	unknown	ok	ghidra-c/fn_00014508.cpp
-000145A2	convert_entity_routine_0x000145a2	108	unknown	ok	ghidra-c/fn_000145A2.cpp
+000145A2	advance_entity_animation_target_route	108	unknown	ok	ghidra-c/fn_000145A2.cpp
 0001460E	apply_close_range_entity_state	50	unknown	ok	ghidra-c/fn_0001460E.cpp
 00014640	map_world_delta_to_tile_pair	38	unknown	ok	ghidra-c/fn_00014640.cpp
 00014682	select_obstruction_route	154	unknown	ok	ghidra-c/fn_00014682.cpp

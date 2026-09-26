@@ -658,6 +658,22 @@ target_link_libraries(shadowrun_ghidra_entity_route_primitives_test
 add_test(NAME shadowrun_ghidra_entity_route_primitives
          COMMAND shadowrun_ghidra_entity_route_primitives_test)
 
+add_library(shadowrun_ghidra_entity_animation_route STATIC
+    src/entity_animation_route_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_animation_route PUBLIC include)
+target_link_libraries(shadowrun_ghidra_entity_animation_route
+    PRIVATE shadowrun_ghidra_entity_route_primitives
+            shadowrun_ghidra_movement_metric)
+
+add_executable(shadowrun_ghidra_entity_animation_route_test
+    tests/entity_animation_route_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_animation_route_test
+    PRIVATE shadowrun_ghidra_entity_animation_route)
+add_test(NAME shadowrun_ghidra_entity_animation_route
+         COMMAND shadowrun_ghidra_entity_animation_route_test)
+
 add_library(shadowrun_ghidra_entity_target_motion STATIC
     src/entity_target_motion_conversion.cpp
 )

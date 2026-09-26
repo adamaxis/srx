@@ -122,7 +122,7 @@ LAB_00013e40:
     if (in_A0[6] != 0) {
       local_4 = 0x13e9a;
       reposition_entity_at_boundary();
-      convert_entity_routine_0x000145a2();
+      advance_entity_animation_target_route();
       return;
     }
     goto LAB_00013e40;

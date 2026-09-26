@@ -692,7 +692,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0001438CL, "collect_entity_action_primary_candidates");
         names.put(0x00014492L, "select_entity_animation_link");
         names.put(0x00014508L, "prepare_entity_animation_fallback_target");
-        names.put(0x000145A2L, "convert_entity_routine_0x000145a2");
+        names.put(0x000145A2L, "advance_entity_animation_target_route");
         names.put(0x00014D8EL, "probe_entity_spawn_collision_window");
         names.put(0x00015554L, "convert_entity_routine_0x00015554");
         names.put(0x00015646L, "convert_entity_routine_0x00015646");

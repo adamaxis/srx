@@ -631,6 +631,44 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+## Entity animation target-route conversion: 0x145A2 / 0x149C0
+
+The next movement slice is now represented by the isolated
+`shadowrun_ghidra_entity_animation_route` library. It is reference/conversion
+code only; it is not linked into the native runtime or the emulator.
+
+The authoritative `export/disassembly.s` trace resolves `0x145A2` as the
+continuation after the `0x144E8` position gate. The routine rejects a record
+whose `+0x16` frame counter is above `0x3C`. Otherwise it first checks
+`+0xB0` bit 1 for an already pending route. If that bit is clear, it clears
+bit 2; a set bit 2 immediately rebuilds the `+0xB1` axis-relation byte through
+`0x14C2E`. When the marker was clear and `+0xB8 != 0x1000`, it calls
+`0x14BA6`, which may set the pending-route bit through `0x14682`; the routine
+then enters the route queue if that bit became set, otherwise it derives the
+axis flags and measures the current-to-`+0x96/+0x98` target. The common terminal
+writes are `+0x34 = heading`, `+0xC8 = distance`, and `+0x3A = 0xB574`.
+
+`0x149C0` is now consumed as a typed route-queue service rather than a ROM
+address callback. Its direct disassembly tests `+0xB0` bit 3, checks the
+bidirectional packed-grid path, clears bits 1 and 3 on a blocked path, then
+uses the word cursor at `+0xBA` to consume `+0xBC` route entries. A matching
+entry advances by two bytes; the `0xFFFF` sentinel takes the `0x14A36` branch.
+Without bit 3 that branch clears route bits, rebuilds axis flags, and returns
+through the common `0x15D3C` measurement. With bit 3 it enters `0x14A54`,
+which probes the heading-relative obstruction strip, rotates through five
+alternate directions using `0x14764`, and writes a fresh two-word route
+(`candidate`, `0xFFFF`) at cursor zero. An exhausted search clears route bits.
+
+The typed state keeps world coordinates, the separate `+0xB0` movement byte
+and `+0xB1` axis byte, the signed movement mode, route cursor, route words,
+extracted FF1700 obstruction data, metrics, and the B574 continuation. The
+focused test covers the timer cutoff, direct measurement, marker/axis rebuild,
+route cursor advance, blocked-path clearing, sentinel completion, successful
+five-way replan, and exhausted replan. During this pass the older route helper
+was corrected from the Ghidra C export's endian-confused `0x0800` word tests to
+the actual disassembly's low-byte bits 1/3; its existing focused test was
+updated accordingly.
+
 ## Entity spawn collision probe: 0x14D8E / 0x15ABA
 
 The `0x14D8E` entry is now named `probe_entity_spawn_collision_window`. It is

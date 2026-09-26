@@ -301,12 +301,11 @@ RouteQueueAdvance advance_obstruction_route_queue(
     const std::uint16_t entity_y,
     const std::uint16_t target_x,
     const std::uint16_t target_y,
-    const std::uint16_t route_flags,
     const std::uint8_t movement_flags,
     RouteQueueState& route,
     const std::vector<std::uint8_t>& obstruction_map) {
     const auto cleared_flags = clear_entity_route_flags(movement_flags);
-    if ((route_flags & 0x0800U) != 0U &&
+    if ((movement_flags & 0x08U) != 0U &&
         is_entity_path_blocked(
             entity_x, entity_y, target_x, target_y, obstruction_map)) {
         return RouteQueueAdvance{
@@ -335,7 +334,7 @@ RouteQueueAdvance advance_obstruction_route_queue(
     if (current_tile == route.tiles[route.cursor]) {
         const auto next = route.cursor + 1U;
         if (next >= route.tiles.size() || route.tiles[next] == 0xFFFFU) {
-            if ((route_flags & 0x0800U) != 0U) {
+            if ((movement_flags & 0x08U) != 0U) {
                 return RouteQueueAdvance{
                     RouteQueueAction::obstruction_replan_required,
                     movement_flags,

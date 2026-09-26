@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00013A40 copy_entity_anchor_position
 //   0x000144E8 apply_entity_close_range_state
-//   0x000145A2 convert_entity_routine_0x000145a2
+//   0x000145A2 advance_entity_animation_target_route
 //   0x00014D6A select_entity_animation_table_row
 //   0x00015D3C measure_relative_heading_and_distance
 //   0x00015DCC transform_entity_heading_vector
@@ -60,7 +60,7 @@ ushort * run_entity_animation_motion(void)
       return *(ushort **)(in_A0 + 0x51);
     }
     copy_entity_anchor_position();
-    puVar3 = (ushort *)convert_entity_routine_0x000145a2();
+    puVar3 = (ushort *)advance_entity_animation_target_route();
     return puVar3;
   }
   puVar3 = *(ushort **)(in_A0 + 0x51);

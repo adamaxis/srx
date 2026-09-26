@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000145A2
-// Name: convert_entity_routine_0x000145a2
+// Name: advance_entity_animation_target_route
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00014BA6 update_entity_axis_relation_state
@@ -8,7 +8,7 @@
 //   0x00015D3C measure_relative_heading_and_distance
 
 
-void convert_entity_routine_0x000145a2(void)
+void advance_entity_animation_target_route(void)
 
 {
   byte bVar1;
@@ -119,5 +119,4 @@ advance_obstruction_route_queue:
   *(undefined1 **)(iVar7 + 0x3a) = &LAB_0000b574;
   return;
 }
-
 
