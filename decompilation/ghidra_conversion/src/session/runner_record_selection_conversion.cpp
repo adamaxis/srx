@@ -3,7 +3,7 @@
 namespace shadowrun::ghidra_conversion {
 
 std::optional<RunnerRecordTableSelection> select_primary_runner_record_table(
-    const std::vector<RunnerRecordTableEntry>& table,
+    const RunnerRecordTable& table,
     const std::uint8_t table_index) {
     if (table_index >= table.size() || table[table_index].primary_alias.empty()) {
         return std::nullopt;
@@ -13,7 +13,7 @@ std::optional<RunnerRecordTableSelection> select_primary_runner_record_table(
 }
 
 std::optional<RunnerRecordTableSelection> select_secondary_runner_record_table(
-    const std::vector<RunnerRecordTableEntry>& table,
+    const RunnerRecordTable& table,
     const std::uint8_t table_index) {
     if (table_index >= table.size() || table[table_index].secondary_alias.empty()) {
         return std::nullopt;

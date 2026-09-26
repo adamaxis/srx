@@ -1103,12 +1103,13 @@ roster movement, HUD redraw, assets, and input are native callbacks. The
 conversion contains no Genesis bus or address arithmetic.
 
 The former `audio_noop_hook_a/b` labels at `0x53200`/`0x53216` were verified
-against the ROM and corrected. They index the immutable compact
-runner-record table at `0x15DB48` and return its primary/secondary banks for
-the current scene/resource id. The native conversion now returns named data
-aliases (`RunnerRecordTableSelection`) instead of inheriting the old
-pointer/no-op fiction. This is scene/runner data, not an audio playback
-asset; actual Windows audio remains in the separate audio-service boundary.
+against the ROM and corrected. They index exactly sixteen immutable compact
+runner-record primary/secondary pointer pairs at `0x15DB48` and return the
+selected bank for the current scene/resource id. The native conversion now
+uses a fixed-size `RunnerRecordTable` and returns named data aliases
+(`RunnerRecordTableSelection`) instead of inheriting the old pointer/no-op
+fiction. This is scene/runner data, not an audio playback asset; actual
+Windows audio remains in the separate audio-service boundary.
 
 The compact-record animation helpers are now named as well. `0x533EE` is
 `initialize_runner_animation_grid`: it selects the primary record bank,
