@@ -128,7 +128,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00003FD8	calculate_field_tile_source_layout	40	unknown	ok	ghidra-c/fn_00003FD8.cpp
 00004000	compose_field_tile_destination_offset	24	unknown	ok	ghidra-c/fn_00004000.cpp
 00004018	render_field_tile_edge	202	unknown	ok	ghidra-c/fn_00004018.cpp
-000040E2	convert_field_routine_0x000040e2	212	unknown	ok	ghidra-c/fn_000040E2.cpp
+000040E2	render_field_tile_row_edge	212	unknown	ok	ghidra-c/fn_000040E2.cpp
 000041B6	fold_field_coordinate	58	unknown	ok	ghidra-c/fn_000041B6.cpp
 000041F0	prepare_field_vertical_origin	38	unknown	ok	ghidra-c/fn_000041F0.cpp
 00004216	offset_field_coordinate	38	unknown	ok	ghidra-c/fn_00004216.cpp

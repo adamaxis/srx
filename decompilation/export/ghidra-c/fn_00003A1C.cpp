@@ -64,7 +64,7 @@ void update_field_camera(void)
     if (uVar1 != DAT_00ffdf38) {
       uStack_4 = CONCAT22(uVar3,uStack_4._2_2_);
       DAT_00ffdf38 = uVar1;
-      convert_field_routine_0x000040e2();
+      render_field_tile_row_edge();
       register0x0000003c = (BADSPACEBASE *)auStack_6;
       uVar3 = uVar1;
     }

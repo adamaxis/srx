@@ -620,7 +620,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00003E14L, "convert_field_routine_0x00003e14");
         names.put(0x00003FD8L, "calculate_field_tile_source_layout");
         names.put(0x00004000L, "compose_field_tile_destination_offset");
-        names.put(0x000040E2L, "convert_field_routine_0x000040e2");
+        names.put(0x000040E2L, "render_field_tile_row_edge");
         names.put(0x000041F0L, "prepare_field_vertical_origin");
         names.put(0x000049A0L, "convert_field_routine_0x000049a0");
         names.put(0x0000A8EAL, "convert_graphics_routine_0x0000a8ea");

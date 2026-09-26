@@ -80,6 +80,63 @@ std::size_t emit_field_tile_row_words(
                       callbacks, 0x20U);
 }
 
+FieldTileRowEdgeResult render_field_tile_row_edge(
+    const FieldTileRowEdgeState& state,
+    const FieldTileRowEdgeCallbacks& callbacks) {
+    FieldTileRowEdgeResult result{};
+    const bool rendering_negative_edge = state.horizontal_direction < 0;
+    const auto x_coordinate = static_cast<std::int16_t>(
+        static_cast<std::int16_t>(state.camera_x >> 4U) +
+        (rendering_negative_edge ? 8 : -8));
+
+    if ((!rendering_negative_edge && x_coordinate < 0) ||
+        (rendering_negative_edge && x_coordinate > state.camera_x_limit)) {
+        result.action = FieldTileRowEdgeAction::outside_visible_window;
+        return result;
+    }
+
+    const auto vertical_origin = prepare_field_vertical_origin(
+        state.camera_y, state.field_y);
+    const auto destination_row = static_cast<std::int16_t>(
+        static_cast<std::int16_t>(state.base_destination) +
+        (rendering_negative_edge ? static_cast<std::int16_t>(-0x0148)
+                                 : static_cast<std::int16_t>(8)));
+    const auto base_destination = compose_field_tile_destination_offset(
+        destination_row, vertical_origin.camera_y);
+    const auto source_layout = calculate_field_tile_source_layout(
+        static_cast<std::uint16_t>(x_coordinate),
+        static_cast<std::uint16_t>(vertical_origin.row),
+        state.row_stride_bytes);
+
+    const auto make_request =
+        [&](const std::uint16_t plane_offset,
+            const std::uint16_t palette_or_flip) {
+            const auto destination_word = static_cast<std::uint16_t>(
+                static_cast<std::uint16_t>(base_destination) + plane_offset);
+            return FieldTileRowEdgeRequest{
+                x_coordinate,
+                vertical_origin.row,
+                static_cast<std::int32_t>(static_cast<std::int16_t>(
+                    destination_word)),
+                plane_offset,
+                palette_or_flip,
+                source_layout};
+        };
+
+    result.first_request = make_request(state.plane_a_offset, 0U);
+    result.second_request = make_request(state.plane_b_offset, 0x8000U);
+    if (!callbacks.render_row) {
+        result.action = FieldTileRowEdgeAction::boundary_unresolved;
+        return result;
+    }
+
+    callbacks.render_row(*result.first_request);
+    callbacks.render_row(*result.second_request);
+    result.rows_rendered = 2U;
+    result.action = FieldTileRowEdgeAction::rows_rendered;
+    return result;
+}
+
 void update_entity_render_pass(
     std::array<RenderEntityState, 16>& entities,
     const EntityRenderPassCallbacks& callbacks) {

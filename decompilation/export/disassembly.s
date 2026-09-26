@@ -2519,7 +2519,7 @@
 00003CA4: beq.w 0x00003cba
 00003CA8: move.w D1w,(0x00ffdf38).l
 00003CAE: movem.w {  D2w D1w D0w},-(SP)
-00003CB2: bsr.w 0x000040e2 ; call 000040E2 convert_field_routine_0x000040e2
+00003CB2: bsr.w 0x000040e2 ; call 000040E2 render_field_tile_row_edge
 00003CB6: movem.w (SP)+,{ D0 D1 D2}
 00003CBA: move.w D2w,D0w
 00003CBC: lsl.w #0x4,D2w

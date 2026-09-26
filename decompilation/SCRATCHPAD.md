@@ -333,6 +333,12 @@ contracts, not VDP or ROM-memory accessors. The `0x3BAC` camera
 tail is now direct as well: `0x15D3C`/`0x15D4E` read the direction and
 correction tables, then changed axes call the `0x4018`/`0x40E2` edge refreshes,
 whose `0x3D4A`/`0x3DDE` spans retain the VDP increment control writes.
+The `0x40E2` vertical edge entry is now separately typed as
+`render_field_tile_row_edge`: it applies the positive/negative camera-window
+gate, prepares the `0x41F0` row origin, composes the `0x4000` destination, and
+emits two named row requests with plane offsets and `0x0000`/`0x8000` palette
+modes. The callback is the presentation boundary; the conversion does not
+write a VDP register.
 
 The record loops at ROM `0x1378` and `0x13BE` are translated as
 `build_object_list`. They are the first typed map/entity boundary: four-word

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000040E2
-// Name: convert_field_routine_0x000040e2
+// Name: render_field_tile_row_edge
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003DDE emit_field_tile_row_words
@@ -10,7 +10,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-short convert_field_routine_0x000040e2(void)
+short render_field_tile_row_edge(void)
 
 {
   short in_D0w;

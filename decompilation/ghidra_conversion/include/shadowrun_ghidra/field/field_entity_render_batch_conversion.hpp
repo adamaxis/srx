@@ -1,5 +1,7 @@
 #pragma once
 
+#include "shadowrun_ghidra/field/field_coordinate_conversion.hpp"
+
 #include <array>
 #include <cstdint>
 #include <functional>
@@ -48,6 +50,51 @@ std::size_t emit_field_tile_row_words(
     std::size_t word_offset,
     std::uint16_t palette_or_flip,
     const TileWordStreamCallbacks& callbacks);
+
+struct FieldTileRowEdgeState {
+    std::int16_t horizontal_direction = 0; // 0x40E2 D0 input
+    std::uint16_t camera_x = 0; // FFDDC6
+    std::int16_t camera_x_limit = 0; // FFDDCE
+    std::uint16_t camera_y = 0; // FFDD0A
+    std::uint16_t field_y = 0; // FFDDC8
+    std::uint16_t base_destination = 0; // FFDD08
+    std::uint16_t plane_a_offset = 0; // FFDD14
+    std::uint16_t plane_b_offset = 0; // FFDD16
+    std::uint16_t row_stride_bytes = 0; // FFDDEA
+};
+
+struct FieldTileRowEdgeRequest {
+    std::int16_t x_coordinate = 0;
+    std::int16_t row_coordinate = 0;
+    std::int32_t destination_offset = 0;
+    std::uint16_t plane_offset = 0;
+    std::uint16_t palette_or_flip = 0;
+    FieldTileSourceLayout source_layout{};
+};
+
+struct FieldTileRowEdgeCallbacks {
+    std::function<void(const FieldTileRowEdgeRequest&)> render_row;
+};
+
+enum class FieldTileRowEdgeAction {
+    outside_visible_window,
+    rows_rendered,
+    boundary_unresolved,
+};
+
+struct FieldTileRowEdgeResult {
+    FieldTileRowEdgeAction action =
+        FieldTileRowEdgeAction::boundary_unresolved;
+    std::uint8_t rows_rendered = 0;
+    std::optional<FieldTileRowEdgeRequest> first_request;
+    std::optional<FieldTileRowEdgeRequest> second_request;
+};
+
+// ROM 0x040E2: select a vertical camera edge, prepare its source/destination
+// coordinates, and submit the ordinary and XOR-flipped map-plane row passes.
+FieldTileRowEdgeResult render_field_tile_row_edge(
+    const FieldTileRowEdgeState& state,
+    const FieldTileRowEdgeCallbacks& callbacks);
 
 struct RenderEntityState {
     bool active = false;

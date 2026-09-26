@@ -31,6 +31,41 @@ int main() {
         return 2;
     }
 
+    FieldTileRowEdgeState edge_state{};
+    edge_state.horizontal_direction = -1;
+    edge_state.camera_x = 0x0200U;
+    edge_state.camera_x_limit = 50;
+    edge_state.camera_y = 0x0100U;
+    edge_state.field_y = 0x0080U;
+    edge_state.base_destination = 0x0200U;
+    edge_state.plane_a_offset = 0x0010U;
+    edge_state.plane_b_offset = 0x0020U;
+    edge_state.row_stride_bytes = 0x0040U;
+    std::vector<FieldTileRowEdgeRequest> edge_requests;
+    const auto edge_result = render_field_tile_row_edge(
+        edge_state,
+        {[&edge_requests](const FieldTileRowEdgeRequest& request) {
+            edge_requests.push_back(request);
+        }});
+    if (edge_result.action != FieldTileRowEdgeAction::rows_rendered ||
+        edge_result.rows_rendered != 2U || edge_requests.size() != 2U ||
+        edge_requests[0].palette_or_flip != 0U ||
+        edge_requests[1].palette_or_flip != 0x8000U ||
+        edge_requests[0].x_coordinate != 40 ||
+        edge_requests[0].row_coordinate != 0 ||
+        edge_requests[0].source_layout.row_table_byte_offset != 2U ||
+        edge_requests[0].source_layout.tile_word_byte_offset != 2U) {
+        return 3;
+    }
+    edge_state.horizontal_direction = 1;
+    edge_state.camera_x = 0x0070U;
+    const auto outside_result =
+        render_field_tile_row_edge(edge_state, {});
+    if (outside_result.action !=
+        FieldTileRowEdgeAction::outside_visible_window) {
+        return 4;
+    }
+
     std::array<RenderEntityState, 16> entities{};
     entities[2].active = true;
     int pass_events = 0;
@@ -41,24 +76,24 @@ int main() {
          [&](RenderEntityState&) { ++pass_events; },
          [&] { ++pass_events; }});
     if (pass_events != 4) {
-        return 3;
+        return 5;
     }
 
     EffectRecordState effect{9, 0xFF, {1, 2, 3, 4, 5}};
     int clears = 0;
     reset_effect_record(effect, [&] { ++clears; });
     if (effect.coordinate != 0 || effect.tile_bytes[4] != 0 || clears != 1) {
-        return 4;
+        return 6;
     }
     EntitySpawnRecord source{1, 2, 3, 4, 5};
     EntitySpawnRecord destination{};
     clone_entity_spawn_variant_a(destination, source);
     if (destination.mode != 5 || destination.variant != 0x0D || destination.x != 3) {
-        return 5;
+        return 7;
     }
     clone_entity_spawn_variant_b(destination, source);
     if (destination.variant != 6) {
-        return 6;
+        return 8;
     }
 
     TitleSpriteTimerState timer{0, 3};
@@ -69,12 +104,12 @@ int main() {
         }
     });
     if (timer.countdown != 3 || timer.phase != 0 || timer_builds != 1) {
-        return 7;
+        return 9;
     }
     int burst = 0;
     emit_title_sprite_burst(4, 8, [&] { ++burst; });
     if (burst != 16) {
-        return 8;
+        return 10;
     }
 
     SpriteExpansionState sprite{0x80, 2, 0, 0, false};
@@ -85,25 +120,25 @@ int main() {
             {[&](SpriteExpansionState&) { ++expanded; },
              [&](SpriteExpansionState&) { ++appended; }}) ||
         expanded != 1 || appended != 1 || !sprite.appended) {
-        return 9;
+        return 11;
     }
 
     EntityRuntimeState runtime{};
     int initialized = 0;
     initialize_entity_runtime(runtime, [&] { ++initialized; });
     if (!runtime.entity_table_ready || runtime.sprite_count != 0 || initialized != 1) {
-        return 10;
+        return 12;
     }
     int actions = 0;
     if (!dispatch_player_action_if_ready(0, 2, -1, [&] { ++actions; }) ||
         actions != 1 || dispatch_player_action_if_ready(0, 2, 0, {})) {
-        return 11;
+        return 13;
     }
     std::uint8_t flags = 0x28;
     int world_effects = 0;
     if (!clear_entity_effect_if_forced(flags, -1, [&] { ++world_effects; }) ||
         (flags & 0x20U) != 0 || world_effects != 1) {
-        return 12;
+        return 14;
     }
 
     TargetHeadingState heading{0, true, 0, false};
@@ -113,19 +148,19 @@ int main() {
         {[&] { return static_cast<std::uint16_t>(12); }, [] { return false; },
          [&] { ++heading_events; }, [&] { ++heading_events; }});
     if (heading.target_heading != 12 || heading_events != 1) {
-        return 13;
+        return 15;
     }
 
     std::vector<std::uint16_t> glyphs;
     if (render_encoded_title_text({0x20, 0x3D, 0x80}, [&](const std::uint16_t glyph) {
             glyphs.push_back(glyph);
         }) != 2 || glyphs[0] != 0 || glyphs[1] != 0x1D) {
-        return 14;
+        return 16;
     }
     MenuValueState menu{};
     select_menu_value(menu, {4, 8, 10, 12}, 1, true, 99);
     if (menu.primary != 12 || menu.selected != 12) {
-        return 15;
+        return 17;
     }
 
     std::vector<int> events;
@@ -135,7 +170,7 @@ int main() {
          [&] { events.push_back(3); }, [&] { events.push_back(4); },
          [&](const std::uint32_t offset) { events.push_back(static_cast<int>(offset)); }});
     if (events != std::vector<int>{1, 2, 3, 3, 3, 3, 0x60, 4}) {
-        return 16;
+        return 18;
     }
     std::vector<std::size_t> refreshed;
     std::vector<std::uint8_t> animation_states{1, 0, 1};
@@ -143,13 +178,13 @@ int main() {
         refreshed.push_back(index);
     });
     if (refreshed != std::vector<std::size_t>{0, 2}) {
-        return 17;
+        return 19;
     }
     int blocks = 0;
     std::uint8_t marker = 3;
     write_repeated_asset_batch(3, 2, [&] { ++blocks; }, marker);
     if (blocks != 6 || marker != 0) {
-        return 18;
+        return 20;
     }
     int triples = 0;
     if (transfer_menu_glyph_triple(
@@ -160,7 +195,7 @@ int main() {
                 return std::nullopt;
             },
             0x8000, [&](const std::uint16_t word) { words.push_back(word); }) != 3) {
-        return 19;
+        return 21;
     }
     return 0;
 }

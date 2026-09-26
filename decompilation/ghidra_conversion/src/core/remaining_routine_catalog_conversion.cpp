@@ -20,7 +20,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00003E14U, "convert_field_routine_0x00003e14", RoutineFamily::field, 114U},
     {0x00003FD8U, "calculate_field_tile_source_layout", RoutineFamily::field, 40U},
     {0x00004000U, "compose_field_tile_destination_offset", RoutineFamily::field, 24U},
-    {0x000040E2U, "convert_field_routine_0x000040e2", RoutineFamily::field, 212U},
+    {0x000040E2U, "render_field_tile_row_edge", RoutineFamily::field, 212U},
     {0x000041F0U, "prepare_field_vertical_origin", RoutineFamily::field, 38U},
     {0x000049A0U, "convert_field_routine_0x000049a0", RoutineFamily::field, 2U},
     {0x0000A8EAU, "convert_graphics_routine_0x0000a8ea", RoutineFamily::graphics, 488U},
