@@ -513,6 +513,19 @@ target_link_libraries(shadowrun_ghidra_entity_effect_dispatch_test
 add_test(NAME shadowrun_ghidra_entity_effect_dispatch
          COMMAND shadowrun_ghidra_entity_effect_dispatch_test)
 
+add_library(shadowrun_ghidra_entity_auxiliary_proximity STATIC
+    src/entity_auxiliary_proximity_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_auxiliary_proximity PUBLIC include)
+
+add_executable(shadowrun_ghidra_entity_auxiliary_proximity_test
+    tests/entity_auxiliary_proximity_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_auxiliary_proximity_test
+    PRIVATE shadowrun_ghidra_entity_auxiliary_proximity)
+add_test(NAME shadowrun_ghidra_entity_auxiliary_proximity
+         COMMAND shadowrun_ghidra_entity_auxiliary_proximity_test)
+
 add_library(shadowrun_ghidra_movement_fallback STATIC
     src/movement_fallback_conversion.cpp
 )
