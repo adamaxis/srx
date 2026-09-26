@@ -94,9 +94,10 @@ struct EquipmentActionSkillMergeResult {
     std::uint8_t selected_skill = 0;
 };
 
-// ROM 0x12C74: choose max(+0x81, +0x82/+0x83/+0x84) according to the
-// temporary action code, retain min(D6, selected_skill), add selected_skill,
-// and replace a zero result with one. The source selection is part of this
+// ROM 0x12C74: select +0x82, +0x83, or +0x84 according to the temporary
+// action-code CMP.B/BPL bands, compare the candidate with +0x81 using the
+// source wrapped byte subtraction, then perform the wrapped word merge with
+// D6 and replace a zero result with one. The source selection is part of this
 // function; callers must not pre-collapse it into a generic skill argument.
 EquipmentActionSkillMergeResult merge_equipment_action_skill_value(
     const EquipmentActionSkillMergeInput& input);

@@ -53,6 +53,18 @@ int main() {
         return 2;
     }
 
+    // Slot 7 is not part of either ROM phase scan; it is reserved for the
+    // separate special-item branch.
+    EntityActionRecord slot7_only{};
+    slot7_only.item18_base = 7U;
+    slot7_only.item_codes[7] = 0x18U;
+    slot7_only.item_phases[7] = 0x40U;
+    if (!expect(calculate_item18_skill_value(slot7_only) == 7U &&
+                add_first_matching_item_phase(5U, slot7_only, 0x18U) ==
+                    5U)) {
+        return 9;
+    }
+
     if (!expect(select_posture_adjusted_value(20U, 2U, true) == 10U &&
                 select_posture_adjusted_value(20U, 2U, false) == 10U &&
                 select_posture_adjusted_value(9U, 1U, true) == 2U &&
@@ -80,6 +92,17 @@ int main() {
     if (!expect(extended_phase.value == 7U && extended_phase.phase_found &&
                 extended_phase.special_item_applied)) {
         return 5;
+    }
+
+    EntityActionRecord slot7_special{};
+    slot7_special.item_codes[7] = 0x29U;
+    slot7_special.item_phases[7] = 0x64U;
+    const auto slot7_modifier_only = apply_action_item_phase_modifiers(
+        5U, slot7_special, 0x29U, 5U, &item_modifiers);
+    if (!expect(slot7_modifier_only.value == 3U &&
+                !slot7_modifier_only.phase_found &&
+                slot7_modifier_only.special_item_applied)) {
+        return 10;
     }
     const auto extended_high_byte = apply_action_item_phase_modifiers(
         0x1200U, entity, 0x1AU, 5U, &item_modifiers);

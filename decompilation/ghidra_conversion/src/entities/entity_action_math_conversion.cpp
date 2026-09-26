@@ -6,6 +6,8 @@ namespace shadowrun::ghidra_conversion {
 
 namespace {
 
+constexpr std::size_t kActionPhaseScanSlotCount = 7U;
+
 std::uint16_t add_source_byte_to_word(const std::uint16_t value,
                                       const std::uint8_t addition) {
     // 68000 ADD.B changes only the low byte of the data register. The host
@@ -20,7 +22,10 @@ std::uint16_t add_source_byte_to_word(const std::uint16_t value,
 
 std::uint16_t calculate_item18_skill_value(const EntityActionRecord& entity) {
     auto value = static_cast<std::uint16_t>(entity.item18_base);
-    for (std::size_t slot = entity.item_codes.size(); slot-- > 0U;) {
+    // ROM 0x55F02 initializes D7 to 6, so slot 7 is deliberately excluded.
+    const auto scan_count = std::min<std::size_t>(
+        kActionPhaseScanSlotCount, entity.item_codes.size());
+    for (std::size_t slot = scan_count; slot-- > 0U;) {
         if (entity.item_codes[slot] != 0x18U) {
             continue;
         }
@@ -45,7 +50,11 @@ std::uint16_t add_first_matching_item_phase(
     const std::uint16_t value,
     const EntityActionRecord& entity,
     const std::uint8_t item_code) {
-    for (std::size_t slot = entity.item_codes.size(); slot-- > 0U;) {
+    // ROM 0x104F6 also scans only slots 6..0; slot 7 is consumed by its
+    // separate 0x29..0x2B modifier branch below.
+    const auto scan_count = std::min<std::size_t>(
+        kActionPhaseScanSlotCount, entity.item_codes.size());
+    for (std::size_t slot = scan_count; slot-- > 0U;) {
         if (entity.item_codes[slot] != item_code) {
             continue;
         }
@@ -62,7 +71,9 @@ EntityActionPhaseModifierResult apply_action_item_phase_modifiers(
     const EntityActionSpecialItemModifierTable* table) {
     EntityActionPhaseModifierResult result{};
     result.value = value;
-    for (std::size_t slot = entity.item_codes.size(); slot-- > 0U;) {
+    const auto scan_count = std::min<std::size_t>(
+        kActionPhaseScanSlotCount, entity.item_codes.size());
+    for (std::size_t slot = scan_count; slot-- > 0U;) {
         if (entity.item_codes[slot] != item_code) {
             continue;
         }

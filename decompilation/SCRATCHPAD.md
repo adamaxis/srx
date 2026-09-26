@@ -185,7 +185,9 @@ phase/clamp rules, the `0x6AB3E`/`0x6AB96`/`0x6ABEE` source tables, the
 The calculation leaves used by the field entity target/action path are now
 isolated in `ghidra_conversion/entity_action_math_conversion`. `0x55F02`
 starts with record `+0x80`, scans possession slots `6..0`, and adds only the
-first matching item-code `0x18` phase. `0x55F20` applies the record `+0x4D`
+first matching item-code `0x18` phase. Both this lookup and `0x104F6` scan
+only possession slots 6 down to 0; slot 7 is reserved for the separate
+special-item branch and is not a phase-scan candidate. `0x55F20` applies the record `+0x4D`
 posture as a 25-percent-per-step factor and selects either the reduction or
 remaining component from the source D7 sign. `0x104F6` performs the same
 descending slot scan for a caller-supplied item code and adds the first
@@ -568,7 +570,10 @@ not a final name.
   the separate bit-15 concern, enumerates installed bits 14..0 in source order,
   and preserves the panel/row/input choreography in
   `menu_service_sequence_conversion`.
-- `0x12CEE` now has a separate typed conversion in
+- `0x12C74` is now audited against the ROM's raw-byte branch semantics: its
+  action bands and candidate skill comparisons use the sign bit of wrapped
+  `CMP.B` subtraction, and its final D6 merge preserves the wrapped `CMP.W`
+  test and word addition. `0x12CEE` now has a separate typed conversion in
   `equipment_combat_bar_conversion`: it byte-wraps the `0x55ED6` command
   average, applies the `0x55F20` posture component and `0x12C74` skill merge,
   selects the source-mode action gate, applies `0x55E62`'s flag/item-`0x27`
@@ -1405,8 +1410,10 @@ Confirm/cancel/program actions remain intentionally unresolved callbacks; this
 slice does not claim that the Matrix program loop is complete.
 
 The adjacent `0x18A92` leaf is now converted as `matrix_program_index`.
-It is the source's direct `row * 4 + column` linearization, producing the
-0..15 Matrix program key used by the surrounding resource and action paths.
+The source clears D7, loads the row into the low byte, performs `MULU.W #4`,
+and then performs `ADD.B` with the column. Normal cursor values produce the
+0..15 Matrix program key, while the typed conversion preserves the full D7
+result and the low-byte-only wrap for malformed/restored cursor values.
 
 The `0x1882E` Matrix panel renderer is now typed as well. It writes the common
 header, returns through the unavailable-message branch for locked keys 0..11,

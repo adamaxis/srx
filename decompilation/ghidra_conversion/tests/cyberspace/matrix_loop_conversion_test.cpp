@@ -19,6 +19,12 @@ int main() {
                 matrix_program_index(3, 3) == 15)) {
         return 1;
     }
+    // ROM ADD.B changes only D7's low byte after MULU.W.  These cases keep
+    // the upper product bits instead of silently narrowing the result.
+    if (!expect(matrix_program_index(0x40U, 0x03U) == 0x103U &&
+                matrix_program_index(0xFFU, 0xFFU) == 0x3FBU)) {
+        return 8;
+    }
     const std::array<std::uint8_t, 12> availability{1, 0, 0, 0, 0, 0,
                                                      0, 0, 0, 0, 0, 0};
     auto available = availability;

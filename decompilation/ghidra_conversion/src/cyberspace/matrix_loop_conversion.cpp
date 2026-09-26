@@ -32,9 +32,15 @@ void refresh_cursor_markers(MatrixCursorState& cursor) {
 
 } // namespace
 
-std::uint8_t matrix_program_index(const std::uint8_t row,
-                                  const std::uint8_t column) {
-    return static_cast<std::uint8_t>(row * 4U + column);
+std::uint32_t matrix_program_index(const std::uint8_t row,
+                                   const std::uint8_t column) {
+    // 0x18A92 uses MULU.W on D7 and ADD.B for the column.  ADD.B wraps only
+    // the low byte; narrowing the ordinary row*4+column expression to a byte
+    // would lose the upper product bits for malformed or partially restored
+    // cursor state.
+    const auto product = static_cast<std::uint32_t>(row) * 4U;
+    return (product & 0xFFFFFF00U) |
+           ((product + static_cast<std::uint32_t>(column)) & 0xFFU);
 }
 
 bool matrix_program_is_available(

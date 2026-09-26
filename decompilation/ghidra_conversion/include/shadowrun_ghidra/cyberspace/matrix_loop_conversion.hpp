@@ -19,9 +19,12 @@ struct MatrixCursorState {
     bool redraw_requested = false;
 };
 
-// ROM 0x18A92: convert the two byte selections at FFF0D1/FFF0D0 into the
-// linear Matrix program slot used by the panel/resource helpers.
-std::uint8_t matrix_program_index(std::uint8_t row, std::uint8_t column);
+// ROM 0x18A92: clear D7, load FFF0D1 into its low byte, multiply the word by
+// four, then add FFF0D0 to the low byte only.  The source returns the full D7
+// register; the normal cursor domain (rows/columns 0..3) therefore produces
+// 0..15, but the wider result preserves the source operation for audit and
+// malformed-state cases too.
+std::uint32_t matrix_program_index(std::uint8_t row, std::uint8_t column);
 
 // ROM 0x1882E: program slots 0..11 consult FFFBCC, while the four extended
 // slots (12..15) are not gated by that table.

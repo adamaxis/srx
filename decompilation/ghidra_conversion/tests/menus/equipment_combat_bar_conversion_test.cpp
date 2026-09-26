@@ -21,6 +21,20 @@ int main() {
         return 100;
     }
 
+    // 0x12C74 uses wrapped CMP.B predicates. 0xFF falls through the first
+    // action band, and 0x01 - 0x80 has its byte sign bit set, selecting 0x80.
+    const auto wrapped_action = merge_equipment_action_skill_value(
+        EquipmentActionSkillMergeInput{4U, 0xFFU, 1U, 2U, 3U, 4U});
+    const auto wrapped_skill = merge_equipment_action_skill_value(
+        EquipmentActionSkillMergeInput{1U, 0U, 1U, 0x80U, 3U, 4U});
+    const auto wrapped_word = merge_equipment_action_skill_value(
+        EquipmentActionSkillMergeInput{0xFFFFU, 0x0BU, 0xFFU, 0U, 0U, 0xFFU});
+    if (wrapped_action.selected_skill != 2U || wrapped_action.value != 4U ||
+        wrapped_skill.selected_skill != 0x80U || wrapped_skill.value != 0x81U ||
+        wrapped_word.value != 0x00FEU) {
+        return 101;
+    }
+
     EquipmentCombatInput input{};
     input.attributes = {2U, 4U, 0U, 0U, 4U, 4U, 0U, 0U};
     input.skills[1] = 2U;
