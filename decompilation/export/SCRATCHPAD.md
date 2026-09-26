@@ -622,3 +622,27 @@ runner-selection branch is controlled separately by `FFF0A9`; it must not be
 inferred from the audio track. The conversion has a host-only frame bound for
 tests, but the unbounded form follows the source return paths. It does not
 enter the emulator or native Qt runtime.
+
+## Title/world interaction service: 0x1C754
+
+`0x1C754` is the input/behavior dispatcher reached once per active scene
+frame. Its source-specific behavior is now
+`ghidra_conversion::advance_title_world_interaction_service()`:
+
+* `FFE084` installs behavior E as draw `0x1C2A8` / update `0x1C2AE` after a
+  fresh behavior-record initialization;
+* title-service flag bit 0 blocks the interaction path while the sweep effect
+  owns the frame;
+* primary behavior descriptor `0x1C36A` advances world-effect activation only
+  at stage/phase `3/3`, and otherwise waits unless its stage is the terminal
+  value `5`;
+* secondary descriptor `0x1C350` uses the same `3/3` gate for the interaction
+  update and the same terminal-stage fallthrough;
+* only world-effect modes below 3, controller event bits `0x40/0x10/0x20`,
+  and an inactive descriptor transition reach the `0x19976` Matrix
+  program-action service.
+
+The descriptor values and stage/phase tests are source evidence. The native
+conversion exposes behavior installation, world activation, interaction, and
+Matrix action as typed boundaries; it does not reproduce the behavior record
+or VDP implementation.

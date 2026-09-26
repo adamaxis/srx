@@ -830,6 +830,19 @@ target_link_libraries(shadowrun_ghidra_world_effect_scene_loop_test
 add_test(NAME shadowrun_ghidra_world_effect_scene_loop
          COMMAND shadowrun_ghidra_world_effect_scene_loop_test)
 
+add_library(shadowrun_ghidra_title_world_interaction STATIC
+    src/title_world_interaction_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_title_world_interaction PUBLIC include)
+
+add_executable(shadowrun_ghidra_title_world_interaction_test
+    tests/title_world_interaction_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_title_world_interaction_test
+    PRIVATE shadowrun_ghidra_title_world_interaction)
+add_test(NAME shadowrun_ghidra_title_world_interaction
+         COMMAND shadowrun_ghidra_title_world_interaction_test)
+
 add_library(shadowrun_ghidra_world_effect_mode_animation STATIC
     src/world_effect_mode_animation_conversion.cpp
 )

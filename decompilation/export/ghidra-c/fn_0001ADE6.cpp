@@ -37,7 +37,7 @@
 //   0x0001C1F6 advance_audio_menu_countdown
 //   0x0001C3FA advance_title_sprite_layers
 //   0x0001C61C advance_title_sweep_animation
-//   0x0001C754 convert_world_routine_0x0001c754
+//   0x0001C754 advance_title_world_interaction_service
 //   0x0001C866 advance_title_effect_motion
 //   0x0001CA12 advance_world_effect_motion
 //   0x0001CC24 advance_persistent_world_effect
@@ -126,7 +126,7 @@ void run_world_effect_scene_loop(void)
         }
       }
       convert_world_routine_0x00019788();
-      convert_world_routine_0x0001c754();
+      advance_title_world_interaction_service();
       handle_menu_directional_input();
       advance_world_effect_controller();
       if (DAT_00fff0b1 < '\0') {

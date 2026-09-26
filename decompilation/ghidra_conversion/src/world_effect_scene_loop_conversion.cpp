@@ -111,7 +111,7 @@ WorldEffectSceneLoopResult run_world_effect_scene_loop(
             }
 
             call_if_present(callbacks.advance_world_menu_service);
-            call_if_present(callbacks.advance_title_resource_service);
+            call_if_present(callbacks.advance_title_world_interaction_service);
             call_if_present(callbacks.handle_menu_directional_input);
             call_if_present(callbacks.advance_world_effect_controller);
             if (state.hud_abort) {

@@ -79,7 +79,7 @@ struct WorldEffectSceneLoopCallbacks {
 
     // Main active-scene services through 0x1A370.
     std::function<void()> advance_world_menu_service; // 0x19788
-    std::function<void()> advance_title_resource_service; // 0x1C754
+    std::function<void()> advance_title_world_interaction_service; // 0x1C754
     std::function<void()> handle_menu_directional_input; // 0x19432
     std::function<void()> advance_world_effect_controller; // 0x1A370
     std::function<void(std::uint16_t command)> service_audio_if_enabled; // 0x530DE

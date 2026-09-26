@@ -52,7 +52,7 @@ int main() {
         [&] { order.emplace_back("glitch"); };
     callbacks.advance_world_menu_service =
         [&] { order.emplace_back("world-menu"); };
-    callbacks.advance_title_resource_service =
+    callbacks.advance_title_world_interaction_service =
         [&] { order.emplace_back("title-resource"); };
     callbacks.handle_menu_directional_input =
         [&] { order.emplace_back("input"); };

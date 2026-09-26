@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001C754
-// Name: convert_world_routine_0x0001c754
+// Name: advance_title_world_interaction_service
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00019976 convert_world_routine_0x00019976
@@ -11,7 +11,9 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_world_routine_0x0001c754(void)
+// Native conversion: shadowrun_ghidra::advance_title_world_interaction_service
+// keeps the source behavior-descriptor and controller-input gates typed.
+void advance_title_world_interaction_service(void)
 
 {
   int extraout_A0;
