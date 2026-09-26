@@ -14,7 +14,7 @@ add_executable(shadowrun_rom_analyzer
     src/rom_analyzer.cpp
 )
 
-add_library(shadowrun_port STATIC
+add_library(shadowrun_native_game STATIC
     src/boot.cpp
     src/compression.cpp
     src/entity_projection.cpp
@@ -34,7 +34,11 @@ add_library(shadowrun_port STATIC
     src/terrain.cpp
     src/z80_transport.cpp
 )
-target_include_directories(shadowrun_port PUBLIC include)
+target_include_directories(shadowrun_native_game PUBLIC include)
+# Compatibility name for the existing source-analysis and visual tests.  The
+# executable-facing target is deliberately named for the native game rather
+# than the old port/test-shell terminology.
+add_library(shadowrun_port ALIAS shadowrun_native_game)
 # The ROM/tilemap/palette importer is an offline tool boundary.  It remains
 # available to extraction and source-analysis tests, but is not compiled into
 # the native/Qt runtime library.
@@ -150,6 +154,16 @@ target_compile_definitions(shadowrun_native_asset_directory_test PRIVATE
 add_test(NAME shadowrun_native_asset_directory
          COMMAND shadowrun_native_asset_directory_test)
 
+add_executable(shadowrun_native_game_smoke_test
+    tests/native_game_smoke_test.cpp
+)
+target_link_libraries(shadowrun_native_game_smoke_test PRIVATE
+    shadowrun_graphics_import shadowrun_native_game)
+target_compile_definitions(shadowrun_native_game_smoke_test PRIVATE
+    SHADOWRUN_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/assets")
+add_test(NAME shadowrun_native_game_smoke
+         COMMAND shadowrun_native_game_smoke_test)
+
 set(SHADOWRUN_ROM "${CMAKE_CURRENT_SOURCE_DIR}/input/shadowrun_genesis_us.bin")
 if (EXISTS "${SHADOWRUN_ROM}")
     # Extraction is an explicit import step. A normal compile must never
@@ -204,7 +218,8 @@ if (WIN32)
     add_executable(shadowrun_native
         src/native_main.cpp
     )
-    target_link_libraries(shadowrun_native PRIVATE shadowrun_port user32 gdi32)
+    target_link_libraries(shadowrun_native PRIVATE
+        shadowrun_native_game user32 gdi32)
 
     if (SHADOWRUN_QT_FRONTEND)
         find_package(Qt6 REQUIRED COMPONENTS Widgets)
@@ -215,7 +230,7 @@ if (WIN32)
             src/qt_native_main.cpp
         )
         target_link_libraries(shadowrun_qt PRIVATE
-            shadowrun_port Qt6::Widgets
+            shadowrun_native_game Qt6::Widgets
         )
         if (CMAKE_BUILD_TYPE STREQUAL "Release")
             find_program(SHADOWRUN_WINDEPLOYQT
@@ -246,8 +261,8 @@ endif()
 
 if (MSVC)
     target_compile_options(shadowrun_rom_analyzer PRIVATE /W4 /permissive-)
-    target_compile_options(shadowrun_port PRIVATE /W4 /permissive-)
+    target_compile_options(shadowrun_native_game PRIVATE /W4 /permissive-)
 else()
     target_compile_options(shadowrun_rom_analyzer PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(shadowrun_port PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(shadowrun_native_game PRIVATE -Wall -Wextra -Wpedantic)
 endif()
