@@ -767,11 +767,9 @@ private:
     std::uint64_t presented_frames_ = 0;
 };
 
-// Native update/render controller. It owns the single native scene/state graph
-// and software frame; Qt or Win32 only forwards focus/input and presents this
-// frame. The historical class name remains as a compatibility name while the
-// implementation is progressively split into the ownership modules listed in
-// docs/architecture-map.md.
+// Small native update/render shell. It exists to make the controls and screen
+// boundary executable now; reconstructed gameplay systems will replace its
+// bootstrap scene as their typed state becomes available.
 class NativePortShell {
 public:
     explicit NativePortShell(std::string title = "SHADOWRUN");

@@ -1,7 +1,7 @@
 #ifdef _WIN32
 
 #include "shadowrun/graphics.hpp"
-#include "shadowrun/native_game.hpp"
+#include "shadowrun/native_port.hpp"
 
 #include <windows.h>
 
@@ -16,7 +16,7 @@
 namespace {
 
 using shadowrun::native::InputState;
-using shadowrun::native::NativeGameController;
+using shadowrun::native::NativePortShell;
 using shadowrun::native::SoftwareScreen;
 
 struct WindowContext {
@@ -114,7 +114,7 @@ int main(int argc, char** argv) {
     }
 
     SoftwareScreen screen;
-    NativeGameController game("SHADOWRUN");
+    NativePortShell game("SHADOWRUN");
     bool loaded_assets = false;
     if (argc > 1) {
         const std::filesystem::path explicit_root(argv[1]);
@@ -123,7 +123,7 @@ int main(int argc, char** argv) {
                          "ROM input is accepted only by explicit analysis tools.\n";
             return 1;
         }
-        game = NativeGameController(
+        game = NativePortShell(
             "SHADOWRUN",
             shadowrun::graphics::read_native_asset_directory(
                 explicit_root.string()));
@@ -142,7 +142,7 @@ int main(int argc, char** argv) {
                                                    "state.bin")) {
                 continue;
             }
-            game = NativeGameController(
+            game = NativePortShell(
                 "SHADOWRUN",
                 shadowrun::graphics::read_native_asset_directory(
                     candidate.string()));

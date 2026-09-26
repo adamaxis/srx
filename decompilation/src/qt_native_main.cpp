@@ -1,7 +1,7 @@
 #ifdef _WIN32
 
 #include "shadowrun/graphics.hpp"
-#include "shadowrun/native_game.hpp"
+#include "shadowrun/native_port.hpp"
 
 #include <QApplication>
 #include <QCoreApplication>
@@ -27,7 +27,7 @@ namespace {
 using shadowrun::native::Button;
 using shadowrun::native::InputState;
 using shadowrun::native::NativePortAssets;
-using shadowrun::native::NativeGameController;
+using shadowrun::native::NativePortShell;
 using shadowrun::native::SoftwareScreen;
 using shadowrun::native::NativeImage;
 
@@ -90,7 +90,7 @@ std::uint16_t key_mask(int key) {
 
 class ShadowrunWidget final : public QWidget {
 public:
-    explicit ShadowrunWidget(NativeGameController game, QWidget* parent = nullptr)
+    explicit ShadowrunWidget(NativePortShell game, QWidget* parent = nullptr)
         : QWidget(parent), game_(std::move(game)), screen_() {
         setWindowTitle(QStringLiteral("Shadowrun - Native C++ Port (Qt)"));
         setFocusPolicy(Qt::StrongFocus);
@@ -444,7 +444,7 @@ private:
         update();
     }
 
-    NativeGameController game_;
+    NativePortShell game_;
     SoftwareScreen screen_;
     QTimer timer_;
     std::uint16_t held_ = 0;
@@ -465,7 +465,7 @@ int main(int argc, char** argv) {
                 "shadowrun_graphics_extract <rom.bin> <asset-dir> --all-assets.");
         }
         ShadowrunWidget window(
-            NativeGameController("SHADOWRUN",
+            NativePortShell("SHADOWRUN",
                             shadowrun::graphics::read_native_asset_directory(
                                 asset_root->string())));
         window.show();
