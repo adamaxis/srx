@@ -3,7 +3,7 @@
 // Name: run_entity_animation_resource_gate
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00014D8E convert_entity_routine_0x00014d8e
+//   0x00014D8E probe_entity_spawn_collision_window
 //   0x0001DBAA schedule_world_activity_timeout
 //   0x0001E2E0 begin_world_activity_if_idle
 
@@ -27,7 +27,7 @@ void run_entity_animation_resource_gate(void)
       return;
     }
     if ((((*(byte *)(in_A0 + 0x9e) & 1) == 0) && ((*(byte *)(in_A0 + 0x10) & 0x20) != 0)) &&
-       (convert_entity_routine_0x00014d8e(), !bVar3)) {
+       (probe_entity_spawn_collision_window(), !bVar3)) {
       uVar1 = *(short *)(extraout_A0 + 0x2e) - DAT_00ff13ae;
       if ((short)uVar1 < 0) {
         uVar1 = -uVar1;

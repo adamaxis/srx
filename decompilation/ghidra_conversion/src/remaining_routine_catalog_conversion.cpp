@@ -90,7 +90,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00014492U, "select_entity_animation_link", RoutineFamily::entity, 166U},
     {0x00014508U, "convert_entity_routine_0x00014508", RoutineFamily::entity, 154U},
     {0x000145A2U, "convert_entity_routine_0x000145a2", RoutineFamily::entity, 108U},
-    {0x00014D8EU, "convert_entity_routine_0x00014d8e", RoutineFamily::entity, 124U},
+    {0x00014D8EU, "probe_entity_spawn_collision_window", RoutineFamily::entity, 124U},
     {0x00015554U, "convert_entity_routine_0x00015554", RoutineFamily::entity, 218U},
     {0x00015646U, "convert_entity_routine_0x00015646", RoutineFamily::entity, 484U},
     {0x00015830U, "convert_entity_routine_0x00015830", RoutineFamily::entity, 256U},

@@ -212,6 +212,25 @@ target_link_libraries(shadowrun_ghidra_entity_animation_dispatch_test
 add_test(NAME shadowrun_ghidra_entity_animation_dispatch
          COMMAND shadowrun_ghidra_entity_animation_dispatch_test)
 
+add_library(shadowrun_ghidra_entity_animation_spawn_probe STATIC
+    src/entity_animation_spawn_probe_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_animation_spawn_probe PUBLIC include)
+target_link_libraries(shadowrun_ghidra_entity_animation_spawn_probe
+    PRIVATE
+        shadowrun_ghidra_collision_state
+        shadowrun_ghidra_entity_coordinate
+        shadowrun_ghidra_entity_transition
+)
+
+add_executable(shadowrun_ghidra_entity_animation_spawn_probe_test
+    tests/entity_animation_spawn_probe_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_animation_spawn_probe_test
+    PRIVATE shadowrun_ghidra_entity_animation_spawn_probe)
+add_test(NAME shadowrun_ghidra_entity_animation_spawn_probe
+         COMMAND shadowrun_ghidra_entity_animation_spawn_probe_test)
+
 add_library(shadowrun_ghidra_entity_coordinate STATIC
     src/entity_coordinate_conversion.cpp
 )

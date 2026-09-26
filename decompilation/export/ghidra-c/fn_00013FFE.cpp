@@ -16,7 +16,7 @@
 //   0x00014492 select_entity_animation_link
 //   0x00014508 convert_entity_routine_0x00014508
 //   0x00014C7C resolve_entity_target_motion
-//   0x00014D8E convert_entity_routine_0x00014d8e
+//   0x00014D8E probe_entity_spawn_collision_window
 //   0x0001514E process_entity_spawn_cycle
 //   0x00015646 convert_entity_routine_0x00015646
 
@@ -60,7 +60,7 @@ uint dispatch_entity_animation_state(void)
            (bVar6 = *(byte *)(extraout_A0 + 0x57) < 0xb, *(byte *)(extraout_A0 + 0x57) == 0xb)) {
           return uVar2;
         }
-        convert_entity_routine_0x00014d8e();
+    probe_entity_spawn_collision_window();
         if (bVar6) {
           return 0x12345678;
         }
@@ -81,7 +81,7 @@ uint dispatch_entity_animation_state(void)
       if (('\f' < *(char *)(extraout_A0 + 0x57)) &&
          (bVar6 = *(byte *)(extraout_A0 + 0x57) < 0x10, (char)*(byte *)(extraout_A0 + 0x57) < '\x10'
          )) {
-        convert_entity_routine_0x00014d8e();
+        probe_entity_spawn_collision_window();
         if (bVar6) {
           return 0x12345678;
         }
@@ -94,7 +94,7 @@ uint dispatch_entity_animation_state(void)
       }
       uVar5 = false;
       if (*(char *)(extraout_A0 + 0x57) == '\0') goto LAB_000141a0;
-      uVar2 = convert_entity_routine_0x00014d8e();
+      uVar2 = probe_entity_spawn_collision_window();
       if ((bool)uVar5) {
         _DAT_00ffdfde = 0;
         return 0x12345678;
@@ -113,7 +113,7 @@ uint dispatch_entity_animation_state(void)
     }
     bVar6 = false;
     if (*(char *)(iVar4 + 0x4e) != '\0') {
-      uVar2 = convert_entity_routine_0x00014d8e();
+      uVar2 = probe_entity_spawn_collision_window();
       if (bVar6) {
         uVar2 = 0x12345678;
       }

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00014D8E
-// Name: convert_entity_routine_0x00014d8e
+// Name: probe_entity_spawn_collision_window
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00014F26 probe_entity_world_position
@@ -10,7 +10,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_entity_routine_0x00014d8e(void)
+void probe_entity_spawn_collision_window(void)
 
 {
   short sVar1;
@@ -52,5 +52,4 @@ void convert_entity_routine_0x00014d8e(void)
   _DAT_00ffdfd8 = 0;
   return;
 }
-
 

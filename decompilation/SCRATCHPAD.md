@@ -628,6 +628,49 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+## Entity spawn collision probe: 0x14D8E / 0x15ABA
+
+The `0x14D8E` entry is now named `probe_entity_spawn_collision_window`. It is
+not a generic entity routine and it is not an animation renderer. Its callers
+use its carry result as a terrain/collision gate before continuing the linked
+entity animation path.
+
+The ROM sequence is compact and exact:
+
+1. Set global `FFDFD8` to `-1` and preserve the incoming source record in
+   `FFDD3C`.
+2. Use `FF1380` as a temporary record and call `0x14FF8` with source identifier
+   `-1`. The source marker is still active during initialization, so the
+   `0x55640` preparation side effect is suppressed.
+3. Seed `D7` with `0x1A`; the `DBF` makes this 27 attempts. Each pass calls
+   `0x14F26`, which adds the record's signed `+0x4C/+0x4E` heading offsets
+   shifted by eight to its current fixed-point position. The returned fixed
+   coordinates are written back to the scratch record before the branch, so
+   an unresolved pass advances the next projected probe.
+4. If terrain reports a nonzero result while `FFDFE2` is clear, clear
+   `FFDFD8` and return with carry set. Otherwise call `0x15ABA` with the
+   swapped high words as the collision-search coordinates.
+5. A carry from `0x15ABA` clears `FFDFD8` and is deliberately cleared before
+   `0x14D8E` returns. Exhausting all 27 attempts has the same cleared-carry
+   result.
+
+`ghidra_conversion::probe_entity_spawn_collision_window` now represents that
+flow with a typed scratch record, fixed-point probe position, explicit
+terrain and collision callbacks, an explicit `FFDFE2` policy field, and an
+ordinary result enum. It calls the existing typed
+`initialize_entity_spawn_record` and `probe_entity_world_position`
+conversions; it does not expose a ROM pointer, address array, or emulator
+state. The focused test covers terrain carry, 27-attempt exhaustion, the
+inner collision carry being cleared by the outer routine, and the shared typed
+collision search boundary.
+
+The related `0x15ABA` conversion now preserves its source carry separately
+from `candidate_index`. The protected-record path and the source collision
+mode have carry-setting exits even when no candidate position is copied; a
+normal compatible candidate sets both the candidate and carry. This matters
+to `0x14D8E`, whose outer result intentionally consumes that carry and returns
+clear. The conversion test now checks those distinctions.
+
 The primary candidate builder at `0x1438C` now exposes the seven-record filter
 that feeds the primary linked-target table. It requires behavior bit 0, rejects
 behavior bits 6/4, route bit 7, status bits 5/3, and a zero collision/action

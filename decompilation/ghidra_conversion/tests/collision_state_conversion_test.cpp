@@ -45,6 +45,7 @@ int main() {
             0x1000U, 0x2000U, 0x08U, false, false, std::nullopt},
         candidates);
     if (expect(found.candidate_index.has_value() &&
+               found.source_carry &&
                found.candidate_index.value() == 0U &&
                found.source_position_updated && found.source_x == 0x1000U &&
                found.source_y == 0x2010U) != 0) {
@@ -63,7 +64,8 @@ int main() {
         EntityCollisionSearchContext{
             0x1000U, 0x2000U, 0U, true, false, std::nullopt},
         candidates);
-    if (expect(!override_exit.candidate_index.has_value()) != 0) {
+    if (expect(!override_exit.candidate_index.has_value() &&
+               override_exit.source_carry) != 0) {
         return 4;
     }
 

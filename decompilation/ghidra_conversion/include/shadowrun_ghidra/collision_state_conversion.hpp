@@ -51,6 +51,9 @@ struct EntityCollisionSearchContext {
 
 struct EntityCollisionSearchResult {
     std::optional<std::size_t> candidate_index;
+    // 0x15ABA communicates terminal decisions through CCR independently of
+    // whether it copied a candidate position into the source record.
+    bool source_carry = false;
     bool source_position_updated = false;
     std::uint16_t source_x = 0;
     std::uint16_t source_y = 0;

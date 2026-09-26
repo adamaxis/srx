@@ -35,7 +35,7 @@ EntityCollisionSearchResult find_colliding_entity(
     const EntityCollisionSearchContext& context,
     const std::vector<CollisionCandidate>& candidates) {
     EntityCollisionSearchResult result{
-        std::nullopt, false, context.probe_x, context.probe_y};
+        std::nullopt, false, false, context.probe_x, context.probe_y};
     const auto scan_count = std::min<std::size_t>(candidates.size(), 10U);
     for (std::size_t index = 0; index < scan_count; ++index) {
         const auto& candidate = candidates[index];
@@ -51,6 +51,9 @@ EntityCollisionSearchResult find_colliding_entity(
         if (context.collision_gate_active) {
             if (context.excluded_candidate.has_value() &&
                 context.excluded_candidate.value() == index) {
+                // 0x15B18-0x15B2E: the protected source record is a terminal
+                // carry exit, not a selected collision candidate.
+                result.source_carry = true;
                 return result;
             }
             continue;
@@ -58,10 +61,15 @@ EntityCollisionSearchResult find_colliding_entity(
 
         if (context.source_collision_override) {
             if ((context.source_flags & 0x08U) == 0U) {
+                // 0x15B78-0x15B80: source mode exits with carry before the
+                // candidate compatibility checks.
+                result.source_carry = true;
                 return result;
             }
             if (candidate_is_compatible(candidate)) {
-                return result;
+                // 0x15B96-0x15B9C: a compatible candidate takes the source
+                // scan continuation path; it is not a native collision.
+                continue;
             }
             continue;
         }
@@ -69,6 +77,7 @@ EntityCollisionSearchResult find_colliding_entity(
         if ((context.source_flags & 0x08U) == 0U ||
             candidate_is_compatible(candidate)) {
             result.candidate_index = index;
+            result.source_carry = true;
             result.source_position_updated = true;
             result.source_x = candidate.world_x;
             result.source_y = static_cast<std::uint16_t>(

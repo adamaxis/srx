@@ -4515,7 +4515,7 @@
 0000AE9A: move.l A0,D0
 0000AE9C: cmp.l D0,D1
 0000AE9E: beq.w 0x0000aeb4
-0000AEA2: jsr 0x00014d8e.l ; call 00014D8E convert_entity_routine_0x00014d8e
+0000AEA2: jsr 0x00014d8e.l ; call 00014D8E probe_entity_spawn_collision_window
 0000AEA8: bcc.w 0x0000aeb4
 0000AEAC: clr.b (0x00fff0dd).l
 0000AEB2: rts
@@ -11427,7 +11427,7 @@
 00013FA0: bne.w 0x00013fa6
 00013FA4: rts
 00013FA6: movea.l (0x00fffc04).l,A1
-00013FAC: jsr 0x00014d8e.l ; call 00014D8E convert_entity_routine_0x00014d8e
+00013FAC: jsr 0x00014d8e.l ; call 00014D8E probe_entity_spawn_collision_window
 00013FB2: bcs.b 0x00013fa4
 00013FB4: move.w (0x00ff13ae).l,D0w
 00013FBA: move.w (0x2e,A0),D1w
@@ -11468,12 +11468,12 @@
 00014054: blt.w 0x00014078
 00014058: tst.b (0x57,A0)
 0001405C: beq.w 0x000141a0
-00014060: jsr 0x00014d8e.l ; call 00014D8E convert_entity_routine_0x00014d8e
+00014060: jsr 0x00014d8e.l ; call 00014D8E probe_entity_spawn_collision_window
 00014066: bcc.w 0x0001411e
 0001406A: clr.w (0x00ffdfde).l
 00014070: move.l #0x12345678,D0
 00014076: rts
-00014078: jsr 0x00014d8e.l ; call 00014D8E convert_entity_routine_0x00014d8e
+00014078: jsr 0x00014d8e.l ; call 00014D8E probe_entity_spawn_collision_window
 0001407E: bcc.w 0x0001408a
 00014082: move.l #0x12345678,D0
 00014088: rts
@@ -11486,7 +11486,7 @@
 000140A6: beq.w 0x0001411c
 000140AA: cmpi.b #0xb,(0x57,A0)
 000140B0: beq.w 0x0001411c
-000140B4: jsr 0x00014d8e.l ; call 00014D8E convert_entity_routine_0x00014d8e
+000140B4: jsr 0x00014d8e.l ; call 00014D8E probe_entity_spawn_collision_window
 000140BA: bcc.w 0x000140c6
 000140BE: move.l #0x12345678,D0
 000140C4: rts
@@ -11518,7 +11518,7 @@
 00014142: bcc.w 0x000141e8
 00014146: tst.b (0x4e,A0)
 0001414A: beq.w 0x00014160
-0001414E: jsr 0x00014d8e.l ; call 00014D8E convert_entity_routine_0x00014d8e
+0001414E: jsr 0x00014d8e.l ; call 00014D8E probe_entity_spawn_collision_window
 00014154: bcc.w 0x0001415e
 00014158: move.l #0x12345678,D0
 0001415E: rts
