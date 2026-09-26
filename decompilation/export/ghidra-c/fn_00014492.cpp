@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00014492
-// Name: convert_entity_routine_0x00014492
+// Name: select_entity_animation_link
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
 //   0x0001DBF0 reset_entity_service_records
 
 
-void convert_entity_routine_0x00014492(void)
+void select_entity_animation_link(void)
 
 {
   int iVar1;
@@ -64,5 +64,4 @@ void convert_entity_routine_0x00014492(void)
   *(undefined4 *)(in_A0 + 0xa2) = 0;
   return;
 }
-
 

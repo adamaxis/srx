@@ -8,8 +8,8 @@
 //   0x0000AFAE prepare_entity_delayed_animation_alternate
 //   0x00013D0C convert_menu_routine_0x00013d0c
 //   0x00013E8C service_entity_boundary_transition
-//   0x00013FFE convert_menu_routine_0x00013ffe
-//   0x00014492 convert_entity_routine_0x00014492
+//   0x00013FFE dispatch_entity_animation_state
+//   0x00014492 select_entity_animation_link
 //   0x00014508 convert_entity_routine_0x00014508
 //   0x00015D3C measure_relative_heading_and_distance
 //   0x0001DBAA schedule_world_activity_timeout
@@ -85,7 +85,7 @@ void convert_menu_routine_0x00013904(void)
        (DAT_00ffe188 = DAT_00ffe188 - 1, (short)((ushort)DAT_00ffe188 << 8) < 0)) {
       DAT_00ffe188 = 8;
       local_4 = 0x13a72;
-      convert_entity_routine_0x00014492();
+      select_entity_animation_link();
       local_4 = 0x13a78;
       update_entity_target_heading();
       if (DAT_00fff0dd == '\0') {
@@ -206,7 +206,7 @@ LAB_0001450e:
 LAB_000139d8:
           if (*(int *)(in_A0 + 0x56) == 0) {
             local_4 = 0x139e4;
-            iVar2 = convert_menu_routine_0x00013ffe();
+            iVar2 = dispatch_entity_animation_state();
             in_A0 = extraout_A0_00;
           }
           else {
@@ -214,7 +214,7 @@ LAB_000139d8:
             measure_relative_heading_and_distance();
             uStack_8 = 0x13a10;
             local_4 = extraout_A1;
-            iVar2 = convert_menu_routine_0x00013ffe();
+            iVar2 = dispatch_entity_animation_state();
             in_A0 = extraout_A0_01;
           }
           if (iVar2 != 0x12345678) {
@@ -373,5 +373,4 @@ advance_obstruction_route_queue:
   *(undefined1 **)(iVar2 + 0x3a) = &LAB_0000b574;
   return;
 }
-
 

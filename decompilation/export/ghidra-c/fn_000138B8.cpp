@@ -80,7 +80,7 @@ void run_entity_animation_entry(void)
   }
   if (*(int *)(in_A0 + 0xac) == 0) {
     uStack_4 = 0x139e4;
-    iVar3 = convert_menu_routine_0x00013ffe();
+    iVar3 = dispatch_entity_animation_state();
     iVar10 = extraout_A0_00;
   }
   else {
@@ -88,7 +88,7 @@ void run_entity_animation_entry(void)
     measure_relative_heading_and_distance();
     uStack_8 = 0x13a10;
     uStack_4 = extraout_A1;
-    iVar3 = convert_menu_routine_0x00013ffe();
+    iVar3 = dispatch_entity_animation_state();
     iVar10 = extraout_A0_01;
   }
   if (iVar3 != 0x12345678) {

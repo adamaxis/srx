@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00013FFE
-// Name: convert_menu_routine_0x00013ffe
+// Name: dispatch_entity_animation_state
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003404 upload_field_asset_setup
@@ -12,8 +12,8 @@
 //   0x0000B1DC configure_entity_target_transition
 //   0x0000B39A set_entity_heading_with_field_animation
 //   0x0000B3FE set_entity_heading_with_alternate_animation
-//   0x00014226 convert_entity_routine_0x00014226
-//   0x00014492 convert_entity_routine_0x00014492
+//   0x00014226 service_entity_animation_action
+//   0x00014492 select_entity_animation_link
 //   0x00014508 convert_entity_routine_0x00014508
 //   0x00014C7C resolve_entity_target_motion
 //   0x00014D8E convert_entity_routine_0x00014d8e
@@ -23,7 +23,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-uint convert_menu_routine_0x00013ffe(void)
+uint dispatch_entity_animation_state(void)
 
 {
   ushort uVar1;
@@ -39,7 +39,7 @@ uint convert_menu_routine_0x00013ffe(void)
   bool bVar6;
   
   DAT_00ffdfe0 = 0;
-  convert_entity_routine_0x00014492();
+  select_entity_animation_link();
   uVar2 = *(uint *)(extraout_A0 + 0xa2);
   if (uVar2 == 0) {
     if ((*(byte *)(extraout_A0 + 0x10) & 8) == 0) {
@@ -121,7 +121,7 @@ uint convert_menu_routine_0x00013ffe(void)
     }
     if (((*(byte *)(iVar4 + 0x10) & 8) != 0) && (*(char *)(iVar4 + 0x4f) != '\0')) {
       if (*(short *)(iVar4 + 0xdc) < 0) {
-        uVar2 = convert_entity_routine_0x00014226();
+        uVar2 = service_entity_animation_action();
         return uVar2;
       }
       return uVar2;
@@ -157,5 +157,4 @@ LAB_000141a0:
   }
   return (uint)uVar1;
 }
-
 

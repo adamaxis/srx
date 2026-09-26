@@ -628,6 +628,35 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The entity animation cluster at `0x14492`/`0x13FFE`/`0x14226` is now named by
+behavior instead of the old generic menu/entity placeholders. `0x14492`
+selects a linked entity identity from the primary or alternate source table,
+keeps an existing table member, clears an empty table, resets the service list
+when the primary table is unavailable, and rearms the alternate animation
+delay to six when it selects a new target. The table picker and service-record
+reset are host boundaries; the conversion carries identities rather than ROM
+pointers.
+
+`0x13FFE` is the central per-entity animation/target dispatcher. It clears the
+animation mode, refreshes the linked target, handles an unlinked fallback, and
+then distinguishes the source phase paths: phase 4/11 holds a negative-frame
+animation; phases 13..15 run the resource gate and alternate animation gate;
+other active phases use the resource gate, global phase/route-bit spawn window,
+and the entity-action cleanup path. A successful spawn-window pass applies the
+linked heading; a carried pass enters cleanup, including the `0x14226` audio,
+delay, pending-action decrement, and asset-meter sequence. The source
+`0x12345678` return is a typed `source_failure_boundary` result, never a host
+sentinel.
+
+After cleanup or phase zero, the dispatcher calls the typed target-motion
+boundary. A non-carry result enters animation mode 2 (waiting); a carry copies
+the current position to the target destination and chooses mode 3/finish for a
+nonnegative transition marker, mode 1/synchronized behavior for record flag
+bit 6, or mode 1/configured target transition otherwise. Resource allocation,
+collision probing, heading preparation, audio, and rendering remain callbacks
+so this conversion module stays separate from both the emulator and the native
+runtime.
+
 The animation-transition cluster is now separated from the menu catalog. ROM
 `0x138B8` is the entity animation timer entry: it decrements `+0xB6`, honors
 the global frame lock at `FFE175`, rearms the timer to `0x14`, sends records

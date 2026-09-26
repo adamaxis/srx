@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00014226
-// Name: convert_entity_routine_0x00014226
+// Name: service_entity_animation_action
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000036FC advance_entity_asset_meter
@@ -8,7 +8,7 @@
 //   0x000530DE service_audio_if_enabled
 
 
-void convert_entity_routine_0x00014226(void)
+void service_entity_animation_action(void)
 
 {
   int extraout_A0;
@@ -19,5 +19,4 @@ void convert_entity_routine_0x00014226(void)
   advance_entity_asset_meter();
   return;
 }
-
 

@@ -4311,7 +4311,7 @@
 0000AAE4: beq.w 0x0000aafc
 0000AAE8: tst.w (0xdc,A0)
 0000AAEC: bpl.w 0x0000aafc
-0000AAF0: jsr 0x00014226.l ; call 00014226 convert_entity_routine_0x00014226
+0000AAF0: jsr 0x00014226.l ; call 00014226 service_entity_animation_action
 0000AAF6: ori #0x1,CCR
 0000AAFA: rts
 0000AAFC: andi #0x1e,CCR
@@ -11085,7 +11085,7 @@
 000139D4: beq.w 0x00013ef4
 000139D8: move.l (0xac,A0),D0
 000139DC: bne.w 0x000139f6
-000139E0: bsr.w 0x00013ffe ; call 00013FFE convert_menu_routine_0x00013ffe
+000139E0: bsr.w 0x00013ffe ; call 00013FFE dispatch_entity_animation_state
 000139E4: cmpi.l #0x12345678,D0
 000139EA: beq.w 0x000144fa
 000139EE: bra.w 0x00013a1c
@@ -11096,7 +11096,7 @@
 00013A00: move.w (0x4,A1),D2w
 00013A04: jsr 0x00015d3c.l ; call 00015D3C measure_relative_heading_and_distance
 00013A0A: move.l A1,-(SP) ; data Stack[-0x4]
-00013A0C: bsr.w 0x00013ffe ; call 00013FFE convert_menu_routine_0x00013ffe
+00013A0C: bsr.w 0x00013ffe ; call 00013FFE dispatch_entity_animation_state
 00013A10: movea.l (SP)+,A1
 00013A12: cmpi.l #0x12345678,D0
 00013A18: beq.w 0x000144fa
@@ -11111,7 +11111,7 @@
 00013A5C: subq.b #0x1,(0x00ffe188).l
 00013A62: bpl.w 0x00013a8e
 00013A66: move.b #0x8,(0x00ffe188).l
-00013A6E: bsr.w 0x00014492 ; call 00014492 convert_entity_routine_0x00014492
+00013A6E: bsr.w 0x00014492 ; call 00014492 select_entity_animation_link
 00013A72: jsr 0x0000ae6e.l ; call 0000AE6E update_entity_target_heading
 00013A78: tst.b (0x00fff0dd).l
 00013A7E: beq.w 0x00013a88
@@ -11446,7 +11446,7 @@
 00013FF6: bset.b #0x0,(0x9e,A0)
 00013FFC: rts
 00013FFE: clr.w (0x00ffdfe0).l
-00014004: bsr.w 0x00014492 ; call 00014492 convert_entity_routine_0x00014492
+00014004: bsr.w 0x00014492 ; call 00014492 select_entity_animation_link
 00014008: move.l (0xa2,A0),D0
 0001400C: bne.w 0x00014020
 00014010: btst.b #0x3,(0x10,A0)
@@ -11535,7 +11535,7 @@
 0001418A: jsr 0x0000abfc.l ; call 0000ABFC update_entity_animation_delay
 00014190: jsr 0x00003404.l ; call 00003404 upload_field_asset_setup
 00014196: bra.w 0x000141a0
-0001419A: jmp 0x00014226.l ; call 00014226 convert_entity_routine_0x00014226
+0001419A: jmp 0x00014226.l ; call 00014226 service_entity_animation_action
 000141A0: bsr.w 0x00014c7c ; call 00014C7C resolve_entity_target_motion
 000141A4: bcc.w 0x000141de
 000141A8: move.w (A0),(0x96,A0)
