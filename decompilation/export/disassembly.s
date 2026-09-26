@@ -14038,7 +14038,7 @@
 00017676: move.w D7w,D5w
 00017678: addq.w #0x1,D5w
 0001767A: jsr 0x00001728.l ; call 00001728 render_hud_sprite_stream
-00017680: jsr 0x0001ade6.l ; call 0001ADE6 convert_world_routine_0x0001ade6
+00017680: jsr 0x0001ade6.l ; call 0001ADE6 run_world_effect_scene_loop
 00017686: tst.b (0x00fff0b1).l
 0001768C: beq.w 0x000174c6
 00017690: move.w #-0x7ecc,(0x00c00004).l

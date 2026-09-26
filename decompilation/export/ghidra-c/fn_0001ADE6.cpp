@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001ADE6
-// Name: convert_world_routine_0x0001ade6
+// Name: run_world_effect_scene_loop
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -59,7 +59,10 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_world_routine_0x0001ade6(void)
+// Native conversion: shadowrun_ghidra::run_world_effect_scene_loop preserves
+// this routine's scene-owned state transitions and callback order without
+// carrying VDP registers, ROM pointers, or 68000 control flow into runtime.
+void run_world_effect_scene_loop(void)
 
 {
   short unaff_D7w;

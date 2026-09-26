@@ -589,3 +589,36 @@ are recorded in `call-sites.tsv` at `0x0B42`, `0x4658`, `0xC444`, `0x11884`,
 
 Resolve these only when ROM/data-flow evidence identifies the target. Do not
 replace them with guessed aliases.
+
+## World-effect scene driver: 0x1ADE6
+
+`0x1ADE6` is the title/world scene driver, not an unexplained generic world
+routine. Its ROM entry performs the scene-owned reset, uploads the decoded
+scene source, initializes the selected world-effect mode, attaches descriptor
+E, and then enters the frame loop at `0x1AEAC`.
+
+The native reference conversion is
+`ghidra_conversion::run_world_effect_scene_loop()` in
+`world_effect_scene_loop_conversion.*`. It preserves the source decisions in
+typed state and leaves presentation/input work at named callbacks:
+
+* each tick samples vblank/controller/menu-glitch services first;
+* an active world sequence (`FFDF8C`) advances until the carry/result from
+  `0x1D2E6` hands control to runner selection (`FFF0A9 != 0`) or the mode
+  action loop, with audio command `0x05` and the second mode-entry prepare;
+* a completed scene (`FFE084`) runs the bounded jitter service and then the HUD
+  fade/display-transition return path;
+* the ordinary title path gates world-menu, title-resource, directional-input,
+  and `0x1A370` world-effect services, then follows the `FF1592` title-service
+  bits and the independently active burst/noise/profile/motion/matrix effects;
+* world-effect animation is ticked only while `FFE080` is clear, followed by
+  the common world-sprite append;
+* controller bit 15 takes the Matrix/field refresh branch through `0x1822C`,
+  then uses audio commands `0x04` and `0x03`; the resource refresh result is
+  an explicit exit condition.
+
+`source_audio_track` is only copied to `FFE189` during the prologue. The
+runner-selection branch is controlled separately by `FFF0A9`; it must not be
+inferred from the audio track. The conversion has a host-only frame bound for
+tests, but the unbounded form follows the source return paths. It does not
+enter the emulator or native Qt runtime.

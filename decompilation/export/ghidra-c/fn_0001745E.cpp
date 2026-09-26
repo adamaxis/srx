@@ -21,7 +21,7 @@
 //   0x0001789C prepare_menu_hud_sequence
 //   0x00017EB4 calculate_menu_delay_offset
 //   0x00019856 refresh_field_hud
-//   0x0001ADE6 convert_world_routine_0x0001ade6
+//   0x0001ADE6 run_world_effect_scene_loop
 //   0x0001B5A6 reset_word_stream_area
 //   0x0001B628 attach_behavior_descriptor_c
 //   0x0001C4EE copy_eleven_words
@@ -107,7 +107,7 @@ void convert_world_routine_0x0001745e(void)
     service_audio_if_enabled_variant();
     service_audio_command_frame();
     render_hud_sprite_stream();
-    convert_world_routine_0x0001ade6();
+    run_world_effect_scene_loop();
   } while (DAT_00fff0b1 == '\0');
   VDP_CTRL = 0x8134;
   VDP_CTRL = 0x9191;

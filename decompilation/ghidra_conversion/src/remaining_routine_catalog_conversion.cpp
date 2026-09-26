@@ -132,7 +132,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x0001AB6EU, "advance_primary_world_effect_overlay", RoutineFamily::world, 226U},
     {0x0001AC6AU, "advance_secondary_world_effect_overlay", RoutineFamily::world, 216U},
     {0x0001AD42U, "advance_background_world_effect_overlay", RoutineFamily::world, 164U},
-    {0x0001ADE6U, "convert_world_routine_0x0001ade6", RoutineFamily::world, 990U},
+    {0x0001ADE6U, "run_world_effect_scene_loop", RoutineFamily::world, 990U},
     {0x0001B282U, "advance_matrix_program_transition", RoutineFamily::world, 128U},
     {0x0001B364U, "advance_title_figure_animation", RoutineFamily::world, 248U},
     {0x0001B45CU, "advance_title_noise_stream", RoutineFamily::world, 310U},
