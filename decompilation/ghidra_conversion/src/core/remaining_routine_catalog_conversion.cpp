@@ -78,7 +78,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00013228U, "build_inventory_action_detail_plan", RoutineFamily::menu, 382U},
     {0x000133A6U, "apply_world_effect_reward", RoutineFamily::world, 192U},
     {0x000138B8U, "run_entity_animation_entry", RoutineFamily::entity, 76U},
-    {0x00013904U, "convert_menu_routine_0x00013904", RoutineFamily::menu, 344U},
+    {0x00013904U, "run_entity_animation_update_coordinator", RoutineFamily::entity, 344U},
     {0x00013A92U, "run_entity_animation_branch", RoutineFamily::entity, 84U},
     {0x00013B12U, "run_entity_animation_transition", RoutineFamily::entity, 168U},
     {0x00013BBAU, "check_entity_animation_transition", RoutineFamily::entity, 102U},

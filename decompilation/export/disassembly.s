@@ -4405,7 +4405,7 @@
 0000AC8A: beq.w 0x0000ac98
 0000AC8E: jsr 0x000138b8.l ; call 000138B8 run_entity_animation_entry
 0000AC94: bra.w 0x0000ac9e
-0000AC98: jsr 0x00013904.l ; call 00013904 convert_menu_routine_0x00013904
+0000AC98: jsr 0x00013904.l ; call 00013904 run_entity_animation_update_coordinator
 0000AC9E: tst.b (0x00ffe18a).l
 0000ACA4: beq.w 0x0000acac
 0000ACA8: bsr.w 0x0000ae5e ; call 0000AE5E schedule_entity_collision_recheck

@@ -263,5 +263,198 @@ int main() {
         return 14;
     }
 
+    EntityAnimationCoordinatorState coordinator_waiting{};
+    coordinator_waiting.timer = 2U;
+    const auto coordinator_wait_result =
+        run_entity_animation_update_coordinator(coordinator_waiting, {});
+    if (!expect(coordinator_wait_result.action ==
+                    EntityAnimationCoordinatorAction::waiting_for_timer &&
+                coordinator_waiting.timer == 1U)) {
+        return 15;
+    }
+
+    EntityAnimationCoordinatorState coordinator_locked{};
+    coordinator_locked.global_frame_lock = true;
+    const auto coordinator_locked_result =
+        run_entity_animation_update_coordinator(coordinator_locked, {});
+    if (!expect(coordinator_locked_result.action ==
+                    EntityAnimationCoordinatorAction::suppressed_by_frame_lock &&
+                coordinator_locked_result.timer_expired &&
+                !coordinator_locked_result.timer_rearmed)) {
+        return 16;
+    }
+
+    EntityAnimationCoordinatorState special_waiting{};
+    special_waiting.record_type = 0x0FU;
+    special_waiting.animation_elapsed = 0x20U;
+    special_waiting.special_tick = 2U;
+    bool continuation_called = false;
+    EntityAnimationCoordinatorCallbacks special_waiting_callbacks{};
+    special_waiting_callbacks.schedule_target_continuation =
+        [&continuation_called]() { continuation_called = true; };
+    const auto special_waiting_result = run_entity_animation_update_coordinator(
+        special_waiting, special_waiting_callbacks);
+    if (!expect(
+            special_waiting_result.action ==
+                EntityAnimationCoordinatorAction::
+                    special_animation_continuation_scheduled &&
+            continuation_called && special_waiting.timer == 0x14U &&
+            special_waiting.special_tick == 1U)) {
+        return 17;
+    }
+
+    EntityAnimationCoordinatorState special_primary{};
+    special_primary.record_type = 0x0FU;
+    special_primary.animation_elapsed = 0x20U;
+    std::vector<char> special_order;
+    EntityAnimationCoordinatorCallbacks special_primary_callbacks{};
+    special_primary_callbacks.select_special_link =
+        [&special_order](std::optional<EntityAnimationCoordinatorAnchor>& link) {
+            special_order.push_back('s');
+            link = EntityAnimationCoordinatorAnchor{3U, 0x1000U, 0x1100U,
+                                                     0x4000U};
+        };
+    special_primary_callbacks.update_special_heading =
+        [&special_order]() { special_order.push_back('h'); };
+    special_primary_callbacks.prepare_primary_animation =
+        [&special_order]() { special_order.push_back('p'); };
+    const auto special_primary_result = run_entity_animation_update_coordinator(
+        special_primary, special_primary_callbacks);
+    if (!expect(
+            special_primary_result.action ==
+                EntityAnimationCoordinatorAction::
+                    special_animation_primary_prepared &&
+            special_order == std::vector<char>{'s', 'h', 'p'} &&
+            special_primary.special_tick == 8U &&
+            special_primary.linked_anchor.has_value())) {
+        return 18;
+    }
+
+    EntityAnimationCoordinatorState fallback_coordinator{};
+    fallback_coordinator.route_flags = 0x80U;
+    bool fallback_target_called = false;
+    EntityAnimationCoordinatorCallbacks fallback_coordinator_callbacks{};
+    fallback_coordinator_callbacks.prepare_fallback_target =
+        [&fallback_target_called]() { fallback_target_called = true; };
+    const auto fallback_coordinator_result =
+        run_entity_animation_update_coordinator(
+            fallback_coordinator, fallback_coordinator_callbacks);
+    if (!expect(
+            fallback_coordinator_result.action ==
+                EntityAnimationCoordinatorAction::fallback_target_prepared &&
+            fallback_target_called)) {
+        return 19;
+    }
+
+    EntityAnimationCoordinatorState boundary_coordinator{};
+    boundary_coordinator.transition_flags = 0x20U;
+    boundary_coordinator.world_resource_active = true;
+    bool boundary_called = false;
+    EntityAnimationCoordinatorCallbacks boundary_callbacks{};
+    boundary_callbacks.service_boundary_transition =
+        [&boundary_called]() { boundary_called = true; };
+    const auto boundary_result = run_entity_animation_update_coordinator(
+        boundary_coordinator, boundary_callbacks);
+    if (!expect(
+            boundary_result.action ==
+                EntityAnimationCoordinatorAction::
+                    boundary_transition_serviced &&
+            boundary_called)) {
+        return 20;
+    }
+
+    EntityAnimationCoordinatorState effect_coordinator{};
+    effect_coordinator.collision_state = 0;
+    effect_coordinator.transition_flags = 0x04U;
+    bool effect_clear_called = false;
+    EntityAnimationCoordinatorCallbacks effect_callbacks{};
+    effect_callbacks.clear_effect_slot =
+        [&effect_clear_called]() { effect_clear_called = true; };
+    const auto effect_result = run_entity_animation_update_coordinator(
+        effect_coordinator, effect_callbacks);
+    if (!expect(effect_result.action ==
+                    EntityAnimationCoordinatorAction::effect_slot_cleared &&
+                effect_clear_called)) {
+        return 21;
+    }
+
+    EntityAnimationCoordinatorState linked_coordinator{};
+    linked_coordinator.collision_state = 1;
+    linked_coordinator.world_resource_active = true;
+    linked_coordinator.current_x = 0x0100U;
+    linked_coordinator.current_y = 0x0200U;
+    linked_coordinator.linked_anchor =
+        EntityAnimationCoordinatorAnchor{9U, 0x0300U, 0x0400U, 0x5000U};
+    bool motion_called = false;
+    EntityAnimationCoordinatorCallbacks linked_callbacks{};
+    linked_callbacks.measure_relative_heading_distance =
+        [](const std::uint16_t current_x,
+           const std::uint16_t current_y,
+           const std::uint16_t linked_x,
+           const std::uint16_t linked_y)
+        -> std::optional<EntityAnimationHeadingDistance> {
+        if (current_x != 0x0100U || current_y != 0x0200U ||
+            linked_x != 0x0300U || linked_y != 0x0400U) {
+            return std::nullopt;
+        }
+        return EntityAnimationHeadingDistance{0x5000U, 0x0123U};
+    };
+    linked_callbacks.dispatch_animation_state =
+        [](EntityAnimationCoordinatorState& state) {
+            if (state.relative_heading != 0x5000U ||
+                state.relative_distance != 0x0123U) {
+                return EntityAnimationDispatchResult{
+                    EntityAnimationDispatchAction::target_motion_unresolved,
+                    false, true, true, false, false, std::nullopt};
+            }
+            return EntityAnimationDispatchResult{
+                EntityAnimationDispatchAction::target_motion_waiting,
+                false, false, false, false, false, std::nullopt};
+        };
+    linked_callbacks.run_animation_motion =
+        [&motion_called](EntityAnimationCoordinatorState&) {
+            motion_called = true;
+        };
+    const auto linked_result = run_entity_animation_update_coordinator(
+        linked_coordinator, linked_callbacks);
+    if (!expect(
+            linked_result.action == EntityAnimationCoordinatorAction::
+                linked_animation_dispatched_to_motion &&
+            linked_result.relative_measurement_called &&
+            linked_result.dispatch_called && linked_result.motion_called &&
+            linked_result.linked_anchor_copied && motion_called &&
+            linked_coordinator.target_x == 0x0300U &&
+            linked_coordinator.target_y == 0x0400U)) {
+        return 22;
+    }
+
+    EntityAnimationCoordinatorState dispatch_failure{};
+    dispatch_failure.collision_state = 1;
+    dispatch_failure.world_resource_active = true;
+    EntityAnimationCoordinatorTargetRouteReason failure_reason =
+        EntityAnimationCoordinatorTargetRouteReason::active_world_idle;
+    EntityAnimationCoordinatorCallbacks failure_callbacks{};
+    failure_callbacks.dispatch_animation_state =
+        [](EntityAnimationCoordinatorState&) {
+            return EntityAnimationDispatchResult{
+                EntityAnimationDispatchAction::cleanup_resource_blocked,
+                true, true, false, false, false, std::nullopt};
+        };
+    failure_callbacks.prepare_target_route =
+        [&failure_reason](EntityAnimationCoordinatorState&,
+                          const EntityAnimationCoordinatorTargetRouteReason reason) {
+            failure_reason = reason;
+        };
+    const auto failure_result = run_entity_animation_update_coordinator(
+        dispatch_failure, failure_callbacks);
+    if (!expect(
+            failure_result.action == EntityAnimationCoordinatorAction::
+                animation_dispatch_failure_routed &&
+            failure_result.source_dispatch_failure &&
+            failure_reason == EntityAnimationCoordinatorTargetRouteReason::
+                                  animation_dispatch_failure)) {
+        return 23;
+    }
+
     return 0;
 }

@@ -681,7 +681,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00013228L, "build_inventory_action_detail_plan");
         names.put(0x000133A6L, "apply_world_effect_reward");
         names.put(0x000138B8L, "run_entity_animation_entry");
-        names.put(0x00013904L, "convert_menu_routine_0x00013904");
+        names.put(0x00013904L, "run_entity_animation_update_coordinator");
         names.put(0x00013A92L, "run_entity_animation_branch");
         names.put(0x00013B12L, "run_entity_animation_transition");
         names.put(0x00013BBAL, "check_entity_animation_transition");

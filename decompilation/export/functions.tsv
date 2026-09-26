@@ -358,7 +358,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00013726	render_mode_selection	334	unknown	ok	ghidra-c/completed/fn_00013726.cpp
 00013874	dispatch_entity_action_candidates	68	unknown	ok	ghidra-c/fn_00013874.cpp
 000138B8	run_entity_animation_entry	76	unknown	ok	ghidra-c/fn_000138B8.cpp
-00013904	convert_menu_routine_0x00013904	344	unknown	ok	ghidra-c/fn_00013904.cpp
+00013904	run_entity_animation_update_coordinator	344	unknown	ok	ghidra-c/fn_00013904.cpp
 00013A40	copy_entity_anchor_position	12	unknown	ok	ghidra-c/fn_00013A40.cpp
 00013A92	run_entity_animation_branch	84	unknown	ok	ghidra-c/fn_00013A92.cpp
 00013AE6	advance_entity_action_threshold	12	unknown	ok	ghidra-c/fn_00013AE6.cpp

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00013904
-// Name: convert_menu_routine_0x00013904
+// Name: run_entity_animation_update_coordinator
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000AE6E update_entity_target_heading
 //   0x0000AF7C prepare_entity_delayed_animation_primary
 //   0x0000AFAE prepare_entity_delayed_animation_alternate
-//   0x00013D0C convert_menu_routine_0x00013d0c
+//   0x00013D0C run_entity_animation_motion
 //   0x00013E8C service_entity_boundary_transition
 //   0x00013FFE dispatch_entity_animation_state
 //   0x00014492 select_entity_animation_link
@@ -18,7 +18,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_menu_routine_0x00013904(void)
+void run_entity_animation_update_coordinator(void)
 
 {
   byte bVar1;
@@ -189,7 +189,7 @@ LAB_0001450e:
     }
     if (_DAT_00ffdf84 != 0) goto LAB_000139d8;
     local_4 = 0x13ef8;
-    convert_menu_routine_0x00013f76();
+    run_entity_animation_resource_gate();
     bVar10 = *(byte *)((int)extraout_A0_02 + 0x4d) < 2;
     in_A0 = extraout_A0_02;
     if ('\x02' < (char)*(byte *)((int)extraout_A0_02 + 0x4d)) {
@@ -218,7 +218,7 @@ LAB_000139d8:
             in_A0 = extraout_A0_01;
           }
           if (iVar2 != 0x12345678) {
-            convert_menu_routine_0x00013d0c();
+            run_entity_animation_motion();
             return;
           }
           puVar7 = DAT_00fffc04;

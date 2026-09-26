@@ -2,8 +2,8 @@
 
 ## Current handoff
 
-Latest handoff, 2026-09-24: the canonical Ghidra pass reports 906 functions,
-2,978 resolved direct call sites, and 16 unresolved/indirect call sites. Every
+Latest handoff, 2026-09-26: the canonical Ghidra pass reports 910 functions,
+2,986 resolved direct call sites, and 16 unresolved/indirect call sites. Every
 exported function now has a reviewed semantic name and every exported address
 is represented in `docs/decompiled-function-status.tsv`; nine additional
 non-function ROM anchors remain in that ledger because native screen audits
@@ -13,8 +13,9 @@ The remaining-entry conversion pass added typed source-analysis contracts in
 `ghidra_conversion/` for field/resource/camera work, the world/entity frame
 service, effect lifetimes, and the remaining subsystem families. This is not a
 runtime dependency and does not change the emulator/native path. Conversion
-tests currently pass 124/124. The next native work is still hill-based: the
-ledger contains 908 partial, four defended, one ported, and two pending rows.
+tests currently pass 225/225. The next native work is still hill-based: the
+ledger contains 936 partial and four defended rows; none of those counts means
+that the native game is playable.
 
 The architecture target is recorded in
 `docs/architecture-map.md`: one native session/controller/state graph, field
@@ -457,6 +458,19 @@ The shared `0x13EF4` tail and `0x13F76` resource gate are direct as well.
 `0x13F76` preserves the FFDF84/FFE16F/record-flag gates, the FF13AE distance
 cutoff, and the direct `0x1E2E0` queue leaf. The larger `0x14D8E` decision is
 an explicit typed continuation with a mutable carry result.
+
+The `0x13904` coordinator is now a typed source contract in
+`entities/entity_animation_dispatch_conversion.*`. Its entry decrements the
+record `+0xB6` timer and honors `FFE175`; the type-`0x0F` path uses the
+`+0x16` cutoff and `FFE188` cadence before selecting a link at `0x14492`,
+updating heading at `0x0AE6E`, and choosing the `0x0AF7C` or `0x0AFAE`
+delayed-animation preparation. The ordinary path now records the exact
+`+0xB0`/`+0x9E`/`+0x0C` route, transition, and effect gates, the stationary
+type-`0x28` continuation, the `FFDF84` resource boundary, and the linked
+`0x15D3C` measurement before entering the typed `0x13FFE` dispatch and
+`0x13D0C` motion callbacks. The source-failure fall-through at `0x144FA`
+and the two target-route tails remain named callbacks rather than hidden
+memory emulation.
 
 The `0xACAE` animation/reaction state machine is now direct through its
 lock, transition, FFE18B/FFE18C, controller-input, phase, and terminal
