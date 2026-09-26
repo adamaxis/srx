@@ -10,7 +10,7 @@
 //   0x00013E8C service_entity_boundary_transition
 //   0x00013FFE dispatch_entity_animation_state
 //   0x00014492 select_entity_animation_link
-//   0x00014508 convert_entity_routine_0x00014508
+//   0x00014508 prepare_entity_animation_fallback_target
 //   0x00015D3C measure_relative_heading_and_distance
 //   0x0001DBAA schedule_world_activity_timeout
 //   0x0001E514 clear_effect_slot_state
@@ -104,7 +104,7 @@ LAB_00013e40:
     return;
   }
   if ((in_A0[0x58] & 0x8000) != 0) {
-    convert_entity_routine_0x00014508();
+    prepare_entity_animation_fallback_target();
     return;
   }
   if ((in_A0[0x4f] & 0x800) != 0) {

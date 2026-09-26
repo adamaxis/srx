@@ -14,7 +14,7 @@
 //   0x0000B3FE set_entity_heading_with_alternate_animation
 //   0x00014226 service_entity_animation_action
 //   0x00014492 select_entity_animation_link
-//   0x00014508 convert_entity_routine_0x00014508
+//   0x00014508 prepare_entity_animation_fallback_target
 //   0x00014C7C resolve_entity_target_motion
 //   0x00014D8E probe_entity_spawn_collision_window
 //   0x0001514E process_entity_spawn_cycle
@@ -45,7 +45,7 @@ uint dispatch_entity_animation_state(void)
     if ((*(byte *)(extraout_A0 + 0x10) & 8) == 0) {
       return uVar2;
     }
-    uVar2 = convert_entity_routine_0x00014508();
+    uVar2 = prepare_entity_animation_fallback_target();
     return uVar2;
   }
   uVar5 = 0;

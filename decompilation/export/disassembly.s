@@ -11033,7 +11033,7 @@
 000138E0: beq.w 0x000138ee
 000138E4: tst.w (0x00ffdf84).l
 000138EA: bne.w 0x000138f4
-000138EE: bsr.w 0x00014508 ; call 00014508 convert_entity_routine_0x00014508
+000138EE: bsr.w 0x00014508 ; call 00014508 prepare_entity_animation_fallback_target
 000138F2: rts
 000138F4: tst.w (0xdc,A0)
 000138F8: bpl.w 0x00013900
@@ -11050,7 +11050,7 @@
 00013926: beq.w 0x00013a4c
 0001392A: btst.b #0x7,(0xb0,A0)
 00013930: beq.w 0x0001393c
-00013934: bra.w 0x00014508 ; call 00014508 convert_entity_routine_0x00014508
+00013934: bra.w 0x00014508 ; call 00014508 prepare_entity_animation_fallback_target
 0001393C: btst.b #0x3,(0x9e,A0)
 00013942: beq.w 0x0001394a
 00013946: rts
@@ -11451,7 +11451,7 @@
 0001400C: bne.w 0x00014020
 00014010: btst.b #0x3,(0x10,A0)
 00014016: beq.w 0x0001401e
-0001401A: bra.w 0x00014508 ; call 00014508 convert_entity_routine_0x00014508
+0001401A: bra.w 0x00014508 ; call 00014508 prepare_entity_animation_fallback_target
 0001401E: rts
 00014020: movea.l (0xa2,A0),A1
 00014024: tst.b (0x57,A0)

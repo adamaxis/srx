@@ -244,6 +244,21 @@ target_link_libraries(shadowrun_ghidra_entity_coordinate_test
 add_test(NAME shadowrun_ghidra_entity_coordinate
          COMMAND shadowrun_ghidra_entity_coordinate_test)
 
+add_library(shadowrun_ghidra_entity_animation_fallback STATIC
+    src/entity_animation_fallback_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_animation_fallback PUBLIC include)
+target_link_libraries(shadowrun_ghidra_entity_animation_fallback
+    PRIVATE shadowrun_ghidra_entity_coordinate)
+
+add_executable(shadowrun_ghidra_entity_animation_fallback_test
+    tests/entity_animation_fallback_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_animation_fallback_test
+    PRIVATE shadowrun_ghidra_entity_animation_fallback)
+add_test(NAME shadowrun_ghidra_entity_animation_fallback
+         COMMAND shadowrun_ghidra_entity_animation_fallback_test)
+
 add_library(shadowrun_ghidra_text_line STATIC
     src/text_line_conversion.cpp
 )

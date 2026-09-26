@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00013A92 run_entity_animation_branch
-//   0x00014508 convert_entity_routine_0x00014508
+//   0x00014508 prepare_entity_animation_fallback_target
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -70,7 +70,7 @@ void run_entity_animation_entry(void)
   *(undefined2 *)(in_A0 + 0xb6) = 0x14;
   if ((*(char *)(in_A0 + 0x4d) == '\0') || (_DAT_00ffdf84 == 0)) {
     uStack_4 = 0x138f2;
-    convert_entity_routine_0x00014508();
+    prepare_entity_animation_fallback_target();
     return;
   }
   if (*(short *)(in_A0 + 0xdc) < 0) {

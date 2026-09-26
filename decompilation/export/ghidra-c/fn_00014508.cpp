@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00014508
-// Name: convert_entity_routine_0x00014508
+// Name: prepare_entity_animation_fallback_target
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000E7C8 evaluate_terrain_collision
@@ -8,7 +8,7 @@
 //   0x00015DCC transform_entity_heading_vector
 
 
-void convert_entity_routine_0x00014508(void)
+void prepare_entity_animation_fallback_target(void)
 
 {
   byte bVar1;

@@ -88,7 +88,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00014226U, "service_entity_animation_action", RoutineFamily::entity, 136U},
     {0x0001438CU, "collect_entity_action_primary_candidates", RoutineFamily::entity, 106U},
     {0x00014492U, "select_entity_animation_link", RoutineFamily::entity, 166U},
-    {0x00014508U, "convert_entity_routine_0x00014508", RoutineFamily::entity, 154U},
+    {0x00014508U, "prepare_entity_animation_fallback_target", RoutineFamily::entity, 154U},
     {0x000145A2U, "convert_entity_routine_0x000145a2", RoutineFamily::entity, 108U},
     {0x00014D8EU, "probe_entity_spawn_collision_window", RoutineFamily::entity, 124U},
     {0x00015554U, "convert_entity_routine_0x00015554", RoutineFamily::entity, 218U},

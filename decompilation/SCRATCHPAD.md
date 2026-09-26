@@ -693,6 +693,35 @@ offsets, signed south projection, and the zero-magnitude branch. The
 canonical export/callgraph labels and every recovered call site now use the
 meaningful name instead of the generic routine placeholder.
 
+## Entity animation fallback target: 0x14508
+
+The `0x14508` entry is now named `prepare_entity_animation_fallback_target`.
+It is the target constructor used when the dispatcher has no linked target,
+not a menu or renderer routine. The source first chooses the linked record at
+`A0+0xA2`, falling back to the player record at `FFFC04`. It reads the chosen
+record's heading, then applies the source offset rule: subtract `0x6000` when
+the current entity mode is zero, or when it is one and the reference mode is
+zero; otherwise add `0x6000`.
+
+The adjusted heading and fixed magnitude `0xE0` go through `0x15DCC`. The
+returned vector is added to the reference position and sent to terrain
+collision. A positive result causes a second probe with the vector negated. A
+non-positive reverse result selects that reverse position; two positive
+results select the reference position itself. Zero and negative terrain
+results are accepted by the source and select the forward projection. The
+chosen coordinates are written to record `+0x96/+0x98`, then the `0x144E8`
+close-range boundary runs; its carry returns immediately and otherwise the
+routine falls into the separate `0x145A2` obstruction continuation.
+
+`ghidra_conversion::prepare_entity_animation_fallback_target` now models the
+reference choice, 16-bit coordinate wrapping, signed heading offset,
+forward/reverse terrain probes, target selection, and close-range carry as
+typed host state and callbacks. It does not call the native runtime or create
+a ROM-shaped terrain implementation. The focused test covers forward
+projection, reverse selection after a blocked forward probe, reference fallback
+with a close-range carry, and an unresolved callback boundary. `0x145A2` is
+intentionally left as the next separate movement-route conversion hill.
+
 The primary candidate builder at `0x1438C` now exposes the seven-record filter
 that feeds the primary linked-target table. It requires behavior bit 0, rejects
 behavior bits 6/4, route bit 7, status bits 5/3, and a zero collision/action
