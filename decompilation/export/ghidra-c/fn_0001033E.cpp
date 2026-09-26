@@ -6,13 +6,13 @@
 //   0x00000D5A guard_entity_phase_window
 //   0x00000DBA count_thresholded_random_rolls
 //   0x000037EC advance_entity_behavior_meter
-//   0x000104F6 convert_menu_routine_0x000104f6
-//   0x00010660 convert_menu_routine_0x00010660
-//   0x00015830 convert_entity_routine_0x00015830
-//   0x00055740 convert_intro_routine_0x00055740
-//   0x00055786 convert_intro_routine_0x00055786
-//   0x00055F02 convert_intro_routine_0x00055f02
-//   0x00055F20 convert_intro_routine_0x00055f20
+//   0x000104F6 apply_action_item_phase_modifiers
+//   0x00010660 calculate_action_residual
+//   0x00015830 dispatch_entity_effect
+//   0x00055740 apply_target_condition_modifier
+//   0x00055786 apply_dynamic_status_modifier
+//   0x00055F02 calculate_item18_skill_value
+//   0x00055F20 select_posture_adjusted_value
 
 
 /* WARNING: Removing unreachable block (ram,0x000103a8) */
@@ -44,17 +44,17 @@ void resolve_first_aid_item_use(void)
     }
     return;
   }
-  convert_intro_routine_0x00055f02();
-  convert_intro_routine_0x00055f20();
-  convert_menu_routine_0x000104f6();
-  convert_intro_routine_0x00055740();
-  convert_intro_routine_0x00055786();
+  calculate_item18_skill_value();
+  select_posture_adjusted_value();
+  apply_action_item_phase_modifiers();
+  apply_target_condition_modifier();
+  apply_dynamic_status_modifier();
   guard_entity_phase_window();
   count_thresholded_random_rolls();
   cVar6 = DAT_00fff0dd;
   *(char *)(extraout_A0 + 0x9f) = DAT_00fff0dd;
   if (cVar6 != '\0') {
-    convert_entity_routine_0x00015830();
+    dispatch_entity_effect();
     iVar5 = DAT_00fff10e;
     sVar4 = *(byte *)(extraout_A0_00 + 0x57) - 1;
     if (sVar4 == 5) {
@@ -78,7 +78,7 @@ void resolve_first_aid_item_use(void)
         cVar8 = false;
       }
     }
-    convert_menu_routine_0x00010660();
+    calculate_action_residual();
     iVar5 = extraout_A0_01;
     if (bVar7 || cVar8 != cVar6) goto LAB_0001046e;
     sVar4 = 6;

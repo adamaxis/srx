@@ -9,7 +9,7 @@
 //
 // Calls recovered from direct call instructions:
 //   0x0001F246 run_mode_exit_services
-//   0x00056AC0 run_field_intro_stage
+//   0x00056AC0 run_field_mode_service
 
 void select_field_mode_service(void)
 {
@@ -29,7 +29,7 @@ void select_field_mode_service(void)
     run_mode_exit_services();
     if (DAT_00fff112 == 0) return;
     DAT_00fff0b7 = ((signed char)DAT_00fff112 < 0) ? -1 : 2;
-    run_field_intro_stage();
+    run_field_mode_service();
     return;
   }
   else if (DAT_00fffbf8 == 1 && DAT_00fffbf9 == 3) {
@@ -49,7 +49,7 @@ void select_field_mode_service(void)
       run_mode_exit_services();
       if (DAT_00fff112 == 0) return;
       DAT_00fff0b7 = ((signed char)DAT_00fff112 < 0) ? -1 : 2;
-      run_field_intro_stage();
+      run_field_mode_service();
       return;
     }
     run_mode_exit_services();
@@ -67,5 +67,5 @@ void select_field_mode_service(void)
     return;
   }
   run_mode_exit_services();
-  run_field_intro_stage();
+  run_field_mode_service();
 }

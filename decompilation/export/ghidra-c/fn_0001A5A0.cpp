@@ -10,7 +10,7 @@
 //   0x0001B7D0 initialize_behavior_record
 //   0x000530EA service_audio_command_frame
 //   0x000562EC resolve_world_effect_transition
-//   0x0005668C convert_intro_routine_0x0005668c
+//   0x0005668C advance_menu_selection_service_and_refresh
 //
 // Direct disassembly is authoritative for the shared labels at 0x1A64C,
 // 0x1A6AC, and 0x1A6F8. The typed host state machine is in
@@ -68,7 +68,7 @@ LAB_0001a6e6:
     if (DAT_00ffe076 == 6) {
       DAT_00ffe07c = DAT_00ffe07c + -1;
       if (DAT_00ffe07c < 0) {
-        convert_intro_routine_0x0005668c();
+        advance_menu_selection_service_and_refresh();
         DAT_00ffe076 = 0;
         return;
       }

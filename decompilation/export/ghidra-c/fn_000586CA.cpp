@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000586CA
-// Name: convert_intro_routine_0x000586ca
+// Name: render_field_action_detail
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
@@ -9,10 +9,10 @@
 //   0x000130C0 build_field_action_detail_plan
 //   0x00057A44 calculate_field_action_record_cost
 //   0x00057A6E apply_field_action_cost_discounts
-//   0x0005878E convert_intro_routine_0x0005878e
+//   0x0005878E render_field_action_detail_text
 
 
-void convert_intro_routine_0x000586ca(void)
+void render_field_action_detail(void)
 
 {
   uint in_D0;
@@ -30,7 +30,7 @@ void convert_intro_routine_0x000586ca(void)
       return;
     }
     build_field_action_detail_plan();
-    convert_intro_routine_0x0005878e();
+    render_field_action_detail_text();
     render_encoded_title_text();
     calculate_field_action_record_cost();
     build_grouped_decimal_glyphs();

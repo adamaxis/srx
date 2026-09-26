@@ -10,4 +10,4 @@
 //
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
-//   0x00057C7A advance_field_mode_sprite_service
+//   0x00057C7A render_field_action_selection

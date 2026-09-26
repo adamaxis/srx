@@ -4,8 +4,8 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003A90 accept_camera_delta
-//   0x00003B1E convert_field_routine_0x00003b1e
-//   0x00003BAC convert_field_routine_0x00003bac
+//   0x00003B1E classify_field_camera_vertical_delta
+//   0x00003BAC advance_field_camera_scroll
 //   0x00015DCC transform_entity_heading_vector
 
 
@@ -26,7 +26,7 @@ void update_field_camera(void)
   if (DAT_00ffe186 == '\x03') {
     DAT_00ffdf5e = 0;
     DAT_00ffdf5c = 0x600;
-    convert_field_routine_0x00003bac();
+    advance_field_camera_scroll();
     return;
   }
   sVar2 = *(short *)(DAT_00fffc04 + 0x2e);
@@ -40,7 +40,7 @@ void update_field_camera(void)
   accept_camera_delta();
   uStack_4 = 0x3a86;
   DAT_00ffe173 = extraout_D1b;
-  convert_field_routine_0x00003b1e();
+  classify_field_camera_vertical_delta();
   DAT_00ffe174 = (undefined1)uVar3;
   if (_DAT_00ffe100 != 0) {
     return;

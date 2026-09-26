@@ -1,23 +1,23 @@
 // Ghidra headless export
 // Entry: 0x00055C76
-// Name: convert_intro_routine_0x00055c76
+// Name: advance_entity_action_resolution
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000DBA count_thresholded_random_rolls
 //   0x00003674 advance_entity_delay_meter
 //   0x000037EC advance_entity_behavior_meter
-//   0x00055740 convert_intro_routine_0x00055740
-//   0x00055786 convert_intro_routine_0x00055786
-//   0x00055E62 convert_intro_routine_0x00055e62
-//   0x00055EB4 convert_intro_routine_0x00055eb4
-//   0x00055ED6 convert_intro_routine_0x00055ed6
-//   0x00055F20 convert_intro_routine_0x00055f20
+//   0x00055740 apply_target_condition_modifier
+//   0x00055786 apply_dynamic_status_modifier
+//   0x00055E62 apply_equipment_defense_action_modifier
+//   0x00055EB4 subtract_armor_secondary_modifier
+//   0x00055ED6 calculate_equipment_command_average
+//   0x00055F20 select_posture_adjusted_value
 
 
 /* WARNING: Removing unreachable block (ram,0x00055caa) */
 /* WARNING: Removing unreachable block (ram,0x00055d12) */
 
-void convert_intro_routine_0x00055c76(void)
+void advance_entity_action_resolution(void)
 
 {
   byte bVar1;
@@ -35,10 +35,10 @@ void convert_intro_routine_0x00055c76(void)
   bool bVar6;
   char cVar7;
   
-  convert_intro_routine_0x00055ed6();
-  convert_intro_routine_0x00055f20();
-  convert_intro_routine_0x00055740();
-  convert_intro_routine_0x00055786();
+  calculate_equipment_command_average();
+  select_posture_adjusted_value();
+  apply_target_condition_modifier();
+  apply_dynamic_status_modifier();
   count_thresholded_random_rolls();
   sVar4 = CONCAT11((char)((ushort)unaff_D5w >> 8),DAT_00fff0dd);
   if (DAT_00fff0dd == '\0') {
@@ -48,18 +48,18 @@ void convert_intro_routine_0x00055c76(void)
   sVar4 = sVar4 + 3;
   cVar5 = sVar4 < 0;
   bVar6 = sVar4 == 0;
-  convert_intro_routine_0x00055eb4();
+  subtract_armor_secondary_modifier();
   if (bVar6 || cVar7 != cVar5) {
     return;
   }
-  convert_intro_routine_0x00055e62();
+  apply_equipment_defense_action_modifier();
   if (bVar6 || cVar7 != cVar5) {
     return;
   }
-  convert_intro_routine_0x00055ed6();
-  convert_intro_routine_0x00055f20();
-  convert_intro_routine_0x00055740();
-  convert_intro_routine_0x00055786();
+  calculate_equipment_command_average();
+  select_posture_adjusted_value();
+  apply_target_condition_modifier();
+  apply_dynamic_status_modifier();
   count_thresholded_random_rolls();
   bVar1 = (char)sVar4 - DAT_00fff0dd;
   if (bVar1 == 0 || SBORROW1((char)sVar4,DAT_00fff0dd) != (short)((ushort)bVar1 << 8) < 0) {
@@ -73,9 +73,9 @@ void convert_intro_routine_0x00055c76(void)
     uVar3 = (uint)(ushort)((short)uVar3 + 1);
     sVar4 = sVar4 + -1;
   } while (sVar4 != -1);
-  convert_intro_routine_0x00055ed6();
-  convert_intro_routine_0x00055f20();
-  convert_intro_routine_0x00055786();
+  calculate_equipment_command_average();
+  select_posture_adjusted_value();
+  apply_dynamic_status_modifier();
   sVar4 = 2;
   uVar3 = 9;
   do {

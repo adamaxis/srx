@@ -7,7 +7,7 @@
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x00057B8C run_menu_confirmation_prompt
-//   0x00057C46 refresh_field_action_detail_panel
+//   0x00057C46 write_field_action_grid_variant_b
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -21,7 +21,7 @@ void apply_field_resource_purchase(void)
     DAT_00fff112 = 0xff;
     return;
   }
-  refresh_field_action_detail_panel();
+  write_field_action_grid_variant_b();
   if (DAT_00fff0d0 == 2) {
     if (DAT_00fffbc4 < (char)(DAT_00fffbbe * '\n')) goto LAB_0005770c;
   }

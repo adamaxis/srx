@@ -15,9 +15,9 @@
 //   0x000111D0 upload_menu_tile_block
 //   0x000111E8 render_equipment_details
 //   0x00011454 reset_menu_upload_cursor_and_upload
-//   0x000114A0 convert_menu_routine_0x000114a0
-//   0x00011506 convert_menu_routine_0x00011506
-//   0x00011592 convert_menu_routine_0x00011592
+//   0x000114A0 advance_command_overview_primary_page
+//   0x00011506 advance_command_overview_secondary_page
+//   0x00011592 refresh_command_overview_action_details
 //   0x00011624 render_equipment_highlights
 //   0x0001170C render_title_text_source_leaf
 //   0x00011740 run_inventory_actions
@@ -73,7 +73,7 @@ LAB_00010e2e:
       if ((DAT_00ffdd22._0_1_ & 4) != 0) break;
       if ((DAT_00ffdd22._0_1_ & 1) != 0) {
 LAB_00010e20:
-        convert_menu_routine_0x00011506();
+        advance_command_overview_secondary_page();
         if (DAT_00fff0b1 != '\0') goto LAB_00010f22;
         goto LAB_00010e2e;
       }
@@ -84,9 +84,9 @@ LAB_00010e20:
           handle_mode_action_event();
           reset_vdp_upload_state();
           _DAT_00fff0d0 = 0x600;
-          convert_menu_routine_0x000114a0();
+          advance_command_overview_primary_page();
           DAT_00fff115 = 0xff;
-          convert_menu_routine_0x00011506();
+          advance_command_overview_secondary_page();
           uVar1 = _DAT_00fff0d0;
           goto LAB_00010d90;
         }
@@ -119,10 +119,10 @@ LAB_00010f22:
           goto LAB_00010d90;
           goto code_r0x00010d30;
         }
-        convert_menu_routine_0x00011592();
+        refresh_command_overview_action_details();
       }
     }
-    convert_menu_routine_0x000114a0();
+    advance_command_overview_primary_page();
   } while( true );
 }
 

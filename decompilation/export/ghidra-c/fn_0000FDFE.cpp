@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000FDFE
-// Name: convert_graphics_routine_0x0000fdfe
+// Name: advance_menu_sprite_overlay
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
@@ -9,7 +9,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_graphics_routine_0x0000fdfe(void)
+void advance_menu_sprite_overlay(void)
 
 {
   char cVar1;

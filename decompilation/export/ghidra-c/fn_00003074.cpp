@@ -3,7 +3,7 @@
 // Name: prepare_field_scene_buffers
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000C7F8 convert_graphics_routine_0x0000c7f8
+//   0x0000C7F8 prepare_field_scene_runtime
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -17,7 +17,7 @@ void prepare_field_scene_buffers(void)
   undefined2 *puVar4;
   
   if (_DAT_00ffe108 == 0) {
-    convert_graphics_routine_0x0000c7f8();
+    prepare_field_scene_runtime();
   }
   DAT_00fffbf8 = (undefined1)DAT_00ffddc4;
   sVar1 = scene_uses_alternate_profile();

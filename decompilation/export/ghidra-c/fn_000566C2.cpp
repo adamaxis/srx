@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000566C2
-// Name: convert_intro_routine_0x000566c2
+// Name: copy_mode_selection_state_table
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_intro_routine_0x000566c2(void)
+void copy_mode_selection_state_table(void)
 
 {
   short sVar1;

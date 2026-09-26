@@ -3,7 +3,7 @@
 // Name: advance_title_world_interaction_service
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00019976 convert_world_routine_0x00019976
+//   0x00019976 service_matrix_program_action
 //   0x0001CAD4 update_interaction_state
 //   0x0001CB20 advance_world_effect_activation
 //   0x000530DE service_audio_if_enabled
@@ -48,7 +48,7 @@ void advance_title_world_interaction_service(void)
   if (((DAT_00ffe076 < 3) &&
       ((((DAT_00ffdd22._0_1_ & 0x40) != 0 || ((DAT_00ffdd22._0_1_ & 0x10) != 0)) ||
        ((DAT_00ffdd22._0_1_ & 0x20) != 0)))) && (_DAT_00ffe082 == 0)) {
-    convert_world_routine_0x00019976();
+    service_matrix_program_action();
     return;
   }
   return;

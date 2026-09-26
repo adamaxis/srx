@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000ECCC
-// Name: convert_graphics_routine_0x0000eccc
+// Name: resolve_entity_pair_collision_event
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001E2E0 begin_world_activity_if_idle
@@ -9,7 +9,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_graphics_routine_0x0000eccc(void)
+void resolve_entity_pair_collision_event(void)
 
 {
   byte bVar1;

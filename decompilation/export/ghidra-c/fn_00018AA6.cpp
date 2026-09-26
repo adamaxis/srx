@@ -9,7 +9,7 @@
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x0000C376 move_wrapped_menu_cursor
-//   0x0001882E convert_world_routine_0x0001882e
+//   0x0001882E render_matrix_panel
 //   0x0001897C write_hud_repeated_grid_variant_a
 //   0x000196F2 rotate_hud_history
 
@@ -71,7 +71,7 @@ void run_cyber_info_screen(void)
         return;
       }
       if ((DAT_00ffdd22._0_1_ & 0x80) != 0) {
-        convert_world_routine_0x0001882e();
+        render_matrix_panel();
         return;
       }
     }

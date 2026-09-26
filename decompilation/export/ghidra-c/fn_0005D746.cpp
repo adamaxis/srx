@@ -8,9 +8,9 @@
 //   0x0000195C sample_controller_input
 //   0x000530D2 service_audio_if_enabled_variant
 //   0x000530DE service_audio_if_enabled
-//   0x0005D886 convert_intro_routine_0x0005d886
+//   0x0005D886 finalize_pre_title_display
 //   0x0005D8BA step_pre_title_logo_strobe
-//   0x0005D938 convert_intro_routine_0x0005d938
+//   0x0005D938 advance_pre_title_animation
 //   0x0005DA50 setup_pre_title_resources
 //   0x0005DAC4 fill_boot_horizontal_scroll
 
@@ -37,7 +37,7 @@ void run_pre_title_sequence(void)
       step_pre_title_logo_strobe();
     }
     fill_boot_horizontal_scroll();
-    convert_intro_routine_0x0005d938();
+    advance_pre_title_animation();
     if (DAT_00ffdd2e == 0x160) {
 LAB_0005d7c8:
       DAT_00ffdd30 = DAT_00ffdd30 + -1;
@@ -70,7 +70,7 @@ LAB_0005d7c8:
     if (sVar1 == -1) {
       sample_controller_input();
       step_palette_transition();
-      convert_intro_routine_0x0005d886();
+      finalize_pre_title_display();
       sVar1 = 0x78;
       do {
         wait_for_vblank();

@@ -17,7 +17,7 @@
 //   0x00005C7E refresh_delayed_effect_sprites
 //   0x0000622C expand_entity_sprite_descriptors
 //   0x0000AEBA advance_title_sprite_wave
-//   0x0005D29C convert_intro_routine_0x0005d29c
+//   0x0005D29C advance_world_scene_entity_effect
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -133,7 +133,7 @@ LAB_0000479c:
         advance_title_sprite_wave();
       }
       refresh_projected_entity_sprites();
-      convert_intro_routine_0x0005d29c();
+      advance_world_scene_entity_effect();
       _DAT_00ffd980 = _DAT_00ffd980 & 0xff00;
       return;
     }

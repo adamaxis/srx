@@ -1,26 +1,26 @@
 // Ghidra headless export
 // Entry: 0x00056DC4
-// Name: convert_intro_routine_0x00056dc4
+// Name: run_field_action_selection
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D94 wait_for_controller_event
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x0001275C clear_menu_slot
-//   0x000575F8 convert_intro_routine_0x000575f8
+//   0x000575F8 prepare_field_action_resource_selection
 //   0x00057628 select_menu_resource_entry
 //   0x0005766A apply_field_resource_purchase
 //   0x0005794E apply_selected_field_action
 //   0x00057B8C run_menu_confirmation_prompt
-//   0x00057C46 convert_intro_routine_0x00057c46
+//   0x00057C46 write_field_action_grid_variant_b
 //   0x00057C5E refresh_field_action_detail_panel
-//   0x00057C66 convert_intro_routine_0x00057c66
-//   0x00058D7E convert_intro_routine_0x00058d7e
+//   0x00057C66 write_field_action_detail_grid
+//   0x00058D7E reset_field_action_cost_state
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-uint convert_intro_routine_0x00056dc4(void)
+uint run_field_action_selection(void)
 
 {
   byte *pbVar1;
@@ -57,7 +57,7 @@ uint convert_intro_routine_0x00056dc4(void)
             DAT_00fff112 = 0xff;
             return uVar6;
           }
-          convert_intro_routine_0x00057c46();
+          write_field_action_grid_variant_b();
           render_encoded_title_text();
           build_grouped_decimal_glyphs();
           build_grouped_decimal_glyphs();
@@ -67,7 +67,7 @@ uint convert_intro_routine_0x00056dc4(void)
             uVar6 = wait_for_controller_event();
             return uVar6;
           }
-          convert_intro_routine_0x000575f8();
+          prepare_field_action_resource_selection();
           if (bVar13) {
             render_encoded_title_text();
             uVar6 = wait_for_controller_event();
@@ -78,7 +78,7 @@ uint convert_intro_routine_0x00056dc4(void)
             DAT_00fffbfe = DAT_00fffbfe - _DAT_00fff0be;
             select_menu_resource_entry();
             bVar2 = *extraout_A0_01;
-            uVar6 = convert_intro_routine_0x00058d7e();
+            uVar6 = reset_field_action_cost_state();
             *(char *)(unaff_A3 + 0xe + (int)(short)(ushort)bVar2) = DAT_00fff0d6;
           }
           return uVar6;
@@ -93,7 +93,7 @@ uint convert_intro_routine_0x00056dc4(void)
             return uVar6;
           }
           if (-1 < DAT_00fff0b3) {
-            convert_intro_routine_0x00057c46();
+            write_field_action_grid_variant_b();
             render_encoded_title_text();
             build_grouped_decimal_glyphs();
             build_grouped_decimal_glyphs();
@@ -118,7 +118,7 @@ uint convert_intro_routine_0x00056dc4(void)
           DAT_00fff0b3 = 0;
           return uVar6;
         }
-        convert_intro_routine_0x00057c46();
+        write_field_action_grid_variant_b();
         uVar8 = DAT_00fff0b6 - 6;
         if (uVar8 != 0) {
           uVar8 = 1;
@@ -158,7 +158,7 @@ uint convert_intro_routine_0x00056dc4(void)
         }
         return (uint)((ulonglong)uVar14 >> 0x20);
       }
-      convert_intro_routine_0x00057c46();
+      write_field_action_grid_variant_b();
       _DAT_00ffef96 = 0;
       uVar6 = CONCAT22(extraout_D0u,*(ushort *)(DAT_00fffc04 + 0x90));
       DAT_00fff0d5 = DAT_00fff0d0;
@@ -230,7 +230,7 @@ uint convert_intro_routine_0x00056dc4(void)
               uVar6 = (uint)(ushort)((short)uVar6 + 1);
             }
             if ((char)uVar6 < '\x01') {
-              convert_intro_routine_0x00057c46();
+              write_field_action_grid_variant_b();
               goto LAB_000572f8;
             }
             *(char *)(DAT_00fffc04 + 0x7e) = (char)(uVar6 / 10);
@@ -264,7 +264,7 @@ LAB_000572f8:
     }
     if (DAT_00fff0b8 == '\x03') goto LAB_00056f4a;
     if (-1 < (char)(*(char *)(DAT_00fffc04 + 0x9b) + -2)) {
-      convert_intro_routine_0x00057c46();
+      write_field_action_grid_variant_b();
       render_encoded_title_text();
       uVar6 = wait_for_controller_event();
       return uVar6;
@@ -277,7 +277,7 @@ LAB_000572f8:
       }
       if (DAT_00fff0c2[1] != '\x06') {
         if (DAT_00fffbfe < _DAT_00fff0be) {
-          convert_intro_routine_0x00057c46();
+          write_field_action_grid_variant_b();
           render_encoded_title_text();
           uVar6 = wait_for_controller_event();
           return uVar6;
@@ -347,7 +347,7 @@ LAB_00056f4a:
     uVar6 = wait_for_controller_event();
     return uVar6;
   }
-  convert_intro_routine_0x00057c66();
+  write_field_action_detail_grid();
   if (-1 < (char)(DAT_00fff0d0 - 6)) {
     DAT_00fff112 = 0xff;
     return (uint)DAT_00fff0b6 * 0x10;

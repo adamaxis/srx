@@ -1,16 +1,16 @@
 // Ghidra headless export
 // Entry: 0x000195A6
-// Name: refresh_menu_slot_pair
+// Name: calculate_selected_matrix_program_load_steps
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00018A92 convert_world_routine_0x00018a92
+//   0x00018A92 matrix_program_index
 
 
-void refresh_menu_slot_pair(void)
+void calculate_selected_matrix_program_load_steps(void)
 
 {
-  convert_world_routine_0x00018a92();
-  convert_world_routine_0x0001952c();
+  matrix_program_index();
+  matrix_program_storage_usage();
   return;
 }
 

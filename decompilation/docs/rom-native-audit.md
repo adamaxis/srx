@@ -11,23 +11,38 @@ address reads, a 68000 interpreter, or a VDP-shaped runtime.
 | Exported function entries | 910 | Canonical Ghidra function inventory |
 | Resolved direct call sites | 2,986 | Calls with a concrete target in `call-sites.tsv` |
 | Indirect/unresolved call sites | 16 | Explicit dispatch boundaries still needing table/handler proof |
-| Generic export labels | 119 | Functions still named by address/family rather than behavior |
-| Conversion implementation files | 225 | Leaf source-trace contracts, not proposed runtime files |
+| Generic export labels | 0 | All 119 formerly generic exports now have reviewed semantic names |
+| Reviewed generic labels | 119 | Per-entry behavior/evidence ledger in `ghidra-function-label-review.tsv` |
+| Conversion implementation files | 227 | Leaf source-trace contracts, not proposed runtime files |
 | Behavioral conversion modules | 28 | The reviewed ownership boundaries in `conversion-source-modules.tsv` |
-| Conversion tests | 225 | Focused source-trace tests; all currently pass |
+| Conversion tests | 229 | Runner plus focused source-trace tests; all currently pass |
 
-Generic labels are not evenly distributed. The manual naming backlog is:
+The generic-label naming backlog is closed as a naming task. It is not a
+behavioral-fidelity claim: the review ledger records confidence and evidence,
+and the unresolved/partial behavior remains tracked below.
 
-| Family | Generic labels | Immediate question |
+| Review family | Reviewed labels | Remaining verification question |
 | --- | ---: | --- |
-| intro/title | 56 | Which stage, actor, text batch, or effect does each call serve? |
-| menu | 21 | Which concrete menu owns the record/table access and mutation? |
-| graphics/data presentation | 18 | Is this a sprite record, text/resource reader, HUD panel, or importer boundary? |
-| interrupt/timing | 8 | Which host scheduling or input service is actually required? |
-| entity | 6 | Which record fields and behavior transition are read or mutated? |
-| world/effects | 5 | Which effect record, mode, or event transition owns it? |
-| field | 4 | Which field mode, terrain, camera, or exit path owns it? |
-| save/session | 1 | Which compact record projection owns it? |
+| pre-title/scene effects | 40 | Verify stage ownership and effect-table targets |
+| action/combat | 18 | Verify record fields and indirect action handlers |
+| menu/field presentation | 37 | Verify concrete menu ownership and table selectors |
+| entity/world | 16 | Verify entity/effect dispatch and world activity tables |
+| interrupt/field callbacks | 8 | Keep reserved/no-op boundaries from becoming runtime systems |
+
+Run the structural audit with:
+
+```text
+powershell -NoProfile -ExecutionPolicy Bypass -File decompilation/tools/verify_rom_conversion.ps1 -Strict
+```
+
+The current audit passes export-name, status-ledger, source-file ownership,
+and evidence-file checks: 910 exported entries, 932 unique ledger rows, 2,986
+resolved direct call sites, 227 conversion implementation files, and 229 CTest
+cases. The behavioral fidelity gate remains OPEN: 16 indirect/unresolved call
+sites are still explicit boundaries, 928 ledger rows are partial, and only 4
+are defended. The generated Ghidra C also omits meaningful disassembly in
+0x104F6 and 0x12C74, so the ROM disassembly remains the tie-breaker for those
+conversions.
 
 ## Indirect dispatches that still need source proof
 
@@ -41,7 +56,7 @@ owner identified from the ROM and its callers:
 | `update_entity_frame` | `0x46F6` via `A1` | Entity kind dispatch |
 | `dispatch_menu_handler` | `0xC444` via `A0` | Concrete menu action handler |
 | `run_inventory_actions` | `0x11884` via `A0` | Inventory action table |
-| `convert_entity_routine_0x15830` | `0x15928` via `A2` | Entity effect/action service |
+| `dispatch_entity_effect` | `0x15928` via `A2` | Entity effect/action service |
 | `service_active_effect_slots` | `0x1640A` via `A1` | Active world-effect handler |
 | `service_matrix_program_action` | `0x19A1C` via `A4` | Selected Matrix program action |
 | `dispatch_title_phase_handler` | `0x1B892` via `A1` | Title/world phase handler |

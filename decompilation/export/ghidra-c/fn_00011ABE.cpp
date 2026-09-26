@@ -3,7 +3,7 @@
 // Name: prepare_menu_dialog
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00011AE4 convert_menu_routine_0x00011ae4
+//   0x00011AE4 adjust_menu_dialog_posture
 //   0x00012CEE update_equipment_combat_bars
 
 
@@ -12,7 +12,7 @@ undefined8 prepare_menu_dialog(void)
 {
   undefined8 uVar1;
   
-  uVar1 = convert_menu_routine_0x00011ae4();
+  uVar1 = adjust_menu_dialog_posture();
   update_equipment_combat_bars();
   update_equipment_combat_bars();
   return uVar1;

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005DAE8
-// Name: convert_intro_routine_0x0005dae8
+// Name: clear_pre_title_resource_workspace
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0005DAFC convert_intro_routine_0x0005dafc
+//   0x0005DAFC write_pre_title_resource_stream
 
 
-void convert_intro_routine_0x0005dae8(void)
+void clear_pre_title_resource_workspace(void)
 
 {
   short sVar1;
@@ -19,7 +19,7 @@ void convert_intro_routine_0x0005dae8(void)
     sVar1 = sVar1 + -1;
     puVar2 = puVar2 + 1;
   } while (sVar1 != -1);
-  convert_intro_routine_0x0005dafc();
+  write_pre_title_resource_stream();
   return;
 }
 

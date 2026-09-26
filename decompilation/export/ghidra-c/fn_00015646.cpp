@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00015646
-// Name: convert_entity_routine_0x00015646
+// Name: spawn_entity_effect_record
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000036FC advance_entity_asset_meter
@@ -9,12 +9,12 @@
 //   0x00015D3C measure_relative_heading_and_distance
 //   0x0001A2CC allocate_first_free_effect_slot
 //   0x0001DBAA schedule_world_activity_timeout
-//   0x00055848 convert_intro_routine_0x00055848
+//   0x00055848 calculate_effect_target_offset
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_entity_routine_0x00015646(void)
+void spawn_entity_effect_record(void)
 
 {
   short *psVar1;
@@ -87,7 +87,7 @@ void convert_entity_routine_0x00015646(void)
         }
         sVar2 = *psVar1;
         sVar4 = psVar1[2];
-        convert_intro_routine_0x00055848(psVar1,uVar3);
+        calculate_effect_target_offset(psVar1,uVar3);
         *(undefined1 *)((int)extraout_A1_00 + 0x9f) = DAT_00fff0dd;
         uVar3 = unaff_D5w * 0x10 + sVar4;
         uVar6 = sVar7 * 0x10 + sVar2;

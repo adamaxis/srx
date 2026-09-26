@@ -18,7 +18,7 @@
 //   0x00014C7C resolve_entity_target_motion
 //   0x00014D8E probe_entity_spawn_collision_window
 //   0x0001514E process_entity_spawn_cycle
-//   0x00015646 convert_entity_routine_0x00015646
+//   0x00015646 spawn_entity_effect_record
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -85,7 +85,7 @@ uint dispatch_entity_animation_state(void)
         if (bVar6) {
           return 0x12345678;
         }
-        uVar2 = convert_entity_routine_0x00015646();
+        uVar2 = spawn_entity_effect_record();
         if (!bVar6) {
           uVar2 = set_entity_heading_with_alternate_animation();
           return uVar2;

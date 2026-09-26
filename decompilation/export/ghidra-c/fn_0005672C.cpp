@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005672C
-// Name: convert_intro_routine_0x0005672c
+// Name: service_field_mode_display_frame
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-ushort convert_intro_routine_0x0005672c(void)
+ushort service_field_mode_display_frame(void)
 
 {
   ushort in_D0w;

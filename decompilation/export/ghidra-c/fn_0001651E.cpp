@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001651E
-// Name: convert_world_routine_0x0001651e
+// Name: project_entity_world_interaction
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000164F2 entity_table_has_free_slot
@@ -10,7 +10,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_world_routine_0x0001651e(void)
+void project_entity_world_interaction(void)
 
 {
   short in_D0w;

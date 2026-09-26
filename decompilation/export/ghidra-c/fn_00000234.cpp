@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00000234
-// Name: convert_interrupt_routine_0x00000234
+// Name: return_from_interrupt
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_interrupt_routine_0x00000234(void)
+void return_from_interrupt(void)
 
 {
   return;

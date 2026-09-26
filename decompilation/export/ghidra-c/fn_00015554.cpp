@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00015554
-// Name: convert_entity_routine_0x00015554
+// Name: service_nearby_entity_auxiliary_behavior
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001562E service_entity_auxiliary_behavior
 
 
-void convert_entity_routine_0x00015554(void)
+void service_nearby_entity_auxiliary_behavior(void)
 
 {
   ushort uVar1;

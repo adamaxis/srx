@@ -3,7 +3,7 @@
 // Name: clear_entity_effect_if_forced
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0000B7B8 convert_graphics_routine_0x0000b7b8
+//   0x0000B7B8 advance_entity_movement_and_mode_transition
 
 
 void clear_entity_effect_if_forced(void)
@@ -17,7 +17,7 @@ void clear_entity_effect_if_forced(void)
      (((bVar2 = DAT_00ffdf64 < 0, DAT_00ffdf64 != 0 ||
        (bVar1 = *(byte *)(in_A0 + 0xb0), *(byte *)(in_A0 + 0xb0) = bVar1 & 0xdf, (bVar1 & 0x20) != 0
        )) && (bVar2)))) {
-    convert_graphics_routine_0x0000b7b8();
+    advance_entity_movement_and_mode_transition();
   }
   return;
 }

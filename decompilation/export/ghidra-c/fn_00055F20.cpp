@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00055F20
-// Name: convert_intro_routine_0x00055f20
+// Name: select_posture_adjusted_value
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_intro_routine_0x00055f20(void)
+void select_posture_adjusted_value(void)
 
 {
   short unaff_D7w;

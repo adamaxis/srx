@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000049A0
-// Name: convert_field_routine_0x000049a0
+// Name: noop_effect_callback
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_field_routine_0x000049a0(void)
+void noop_effect_callback(void)
 
 {
   return;

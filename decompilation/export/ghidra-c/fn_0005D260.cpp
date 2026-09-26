@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005D260
-// Name: convert_intro_routine_0x0005d260
+// Name: reset_world_frame_service_state
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_intro_routine_0x0005d260(void)
+void reset_world_frame_service_state(void)
 
 {
   short sVar1;

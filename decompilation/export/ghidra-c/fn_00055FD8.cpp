@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00055FD8
-// Name: convert_intro_routine_0x00055fd8
+// Name: calculate_and_publish_runner_action_result
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00019C54 convert_world_routine_0x00019c54
+//   0x00019C54 read_selected_matrix_program_availability
 //   0x00055F44 calculate_runner_action_delay
 
 
-void convert_intro_routine_0x00055fd8(void)
+void calculate_and_publish_runner_action_result(void)
 
 {
   char cVar1;
@@ -18,7 +18,7 @@ void convert_intro_routine_0x00055fd8(void)
   
   DAT_00fff0dd = '\0';
   calculate_runner_action_delay();
-  convert_world_routine_0x00019c54();
+  read_selected_matrix_program_availability();
   if ((short)(unaff_D7w - unaff_D6w) < 0) {
     unaff_D6w = unaff_D7w;
   }

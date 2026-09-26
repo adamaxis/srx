@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000104F6
-// Name: convert_menu_routine_0x000104f6
+// Name: apply_action_item_phase_modifiers
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_menu_routine_0x000104f6(void)
+void apply_action_item_phase_modifiers(void)
 
 {
   short sVar1;

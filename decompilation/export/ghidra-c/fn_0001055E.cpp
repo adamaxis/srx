@@ -1,16 +1,16 @@
 // Ghidra headless export
 // Entry: 0x0001055E
-// Name: convert_menu_routine_0x0001055e
+// Name: refresh_equipment_combat_values
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 //   0x0001047E refresh_ready_entity_animations
 //   0x000104C8 find_matching_menu_metric
-//   0x00055F02 convert_intro_routine_0x00055f02
-//   0x00055F20 convert_intro_routine_0x00055f20
+//   0x00055F02 calculate_item18_skill_value
+//   0x00055F20 select_posture_adjusted_value
 
 
-void convert_menu_routine_0x0001055e(void)
+void refresh_equipment_combat_values(void)
 
 {
   short in_D0w;
@@ -18,8 +18,8 @@ void convert_menu_routine_0x0001055e(void)
   int extraout_A0;
   
   if (in_D0w == 0) {
-    convert_intro_routine_0x00055f02();
-    convert_intro_routine_0x00055f20();
+    calculate_item18_skill_value();
+    select_posture_adjusted_value();
     find_matching_menu_metric();
     cVar1 = '\0';
   }

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00016B98
-// Name: convert_world_routine_0x00016b98
+// Name: spawn_scene_entity_from_weighted_table
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
@@ -10,7 +10,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_world_routine_0x00016b98(void)
+void spawn_scene_entity_from_weighted_table(void)
 
 {
   ushort uVar1;
@@ -55,7 +55,7 @@ void convert_world_routine_0x00016b98(void)
         *(short *)(extraout_A1_01 + 6) = (short)extraout_A0_01;
         *(undefined2 *)(extraout_A0_01 + 0x16) = 0x80;
         *(byte *)(extraout_A0_01 + 0x11) = *(byte *)(extraout_A0_01 + 0x11) | 1;
-        *(code **)(extraout_A0_01 + 0x3a) = convert_field_routine_0x000049a0;
+        *(code **)(extraout_A0_01 + 0x3a) = noop_effect_callback;
       }
       return;
     }

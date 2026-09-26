@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001406 prepare_title_resources
-//   0x0001745E convert_world_routine_0x0001745e
+//   0x0001745E run_field_mode_hud_scene
 
 
 void prepare_menu_mode_resources(void)
@@ -17,7 +17,7 @@ void prepare_menu_mode_resources(void)
     DAT_00fff0a0 = '\x01';
   }
   DAT_00fff0b0 = 0xff;
-  convert_world_routine_0x0001745e();
+  run_field_mode_hud_scene();
   DAT_00fff0e3 = 0;
   DAT_00fff0b0 = 0;
   VDP_CTRL = 0x8134;

@@ -13,8 +13,8 @@
 //   0x000039F2 refresh_field_animation_assets
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
-//   0x0000D4C8 convert_graphics_routine_0x0000d4c8
-//   0x0000D53C convert_graphics_routine_0x0000d53c
+//   0x0000D4C8 reset_field_mode_entity_selection
+//   0x0000D53C run_attributes_skills_menu_prompt
 //   0x0000D5DC render_cyberware_detail
 //   0x0000D82A render_attributes_and_skills
 //   0x00010C96 transfer_menu_asset_batch_eight
@@ -135,7 +135,7 @@ LAB_0000d25e:
       if (((DAT_00ffdd22._0_1_ & 0x40) == 0) && ((DAT_00ffdd22._0_1_ & 0x10) == 0)) {
         if ((DAT_00ffdd22._0_1_ & 0x20) != 0) {
           render_cyberware_detail();
-          convert_graphics_routine_0x0000d4c8();
+          reset_field_mode_entity_selection();
           goto LAB_0000d0d6;
         }
         if ((DAT_00ffdd22._0_1_ & 0x80) != 0) {
@@ -160,7 +160,7 @@ LAB_0000d4a0:
               pbVar5 = (byte *)(DAT_00fffc04 + 0x8d);
               sVar4 = (ushort)*pbVar5 - (ushort)DAT_00fff0b8;
               if (-1 < sVar4) {
-                convert_graphics_routine_0x0000d53c();
+                run_attributes_skills_menu_prompt();
                 if (DAT_00fff0dc == '\0') {
                   *pbVar5 = (byte)sVar4;
                   sVar4 = CONCAT11((char)((ushort)sVar4 >> 8),DAT_00fff0b7);

@@ -9,8 +9,8 @@
 //   0x00017FDA advance_menu_random_glitch
 //   0x000194AC advance_hud_selection_row
 //   0x0001C3FA advance_title_sprite_layers
-//   0x000266E4 convert_world_routine_0x000266e4
-//   0x0002679E convert_world_routine_0x0002679e
+//   0x000266E4 initialize_world_tile_buffers
+//   0x0002679E run_world_entry_sequence
 //   0x000268E6 append_world_sprite_records
 
 
@@ -36,8 +36,8 @@ void run_menu_hud_tick_loop(void)
     DAT_00ffef14 = DAT_00ffef14 | 2;
     sVar1 = sVar1 + -1;
   } while (sVar1 != -1);
-  convert_world_routine_0x000266e4();
-  convert_world_routine_0x0002679e();
+  initialize_world_tile_buffers();
+  run_world_entry_sequence();
   DAT_00fff0d4 = 0;
   advance_hud_selection_row();
   return;

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00011592
-// Name: convert_menu_routine_0x00011592
+// Name: refresh_command_overview_action_details
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
@@ -14,7 +14,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_menu_routine_0x00011592(void)
+void refresh_command_overview_action_details(void)
 
 {
   char cVar1;

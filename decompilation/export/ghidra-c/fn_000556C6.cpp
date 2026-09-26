@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000556C6
-// Name: convert_intro_routine_0x000556c6
+// Name: check_entity_action_eligibility
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_intro_routine_0x000556c6(void)
+void check_entity_action_eligibility(void)
 
 {
   byte bVar1;

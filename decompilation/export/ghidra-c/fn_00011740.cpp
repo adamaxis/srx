@@ -31,11 +31,11 @@
 //   0x00011900 prepare_menu_row_grid
 //   0x00011928 render_menu_row
 //   0x00012148 read_entity_action_code
-//   0x0001253E convert_menu_routine_0x0001253e
+//   0x0001253E reset_inventory_action_target_state
 //   0x000125FA clear_entity_auxiliary_marker
 //   0x0001275C clear_menu_slot
 //   0x000127B0 refresh_menu_panel
-//   0x000129FE convert_menu_routine_0x000129fe
+//   0x000129FE transfer_inventory_action_slot
 //   0x00012C1E prepare_menu_grid_variant_a
 //   0x00012C36 prepare_menu_grid_variant_b
 //   0x00012C42 prepare_menu_grid_variant_c
@@ -400,7 +400,7 @@ LAB_0000d25e:
         if (((DAT_00ffdd22._0_1_ & 0x40) == 0) && ((DAT_00ffdd22._0_1_ & 0x10) == 0)) {
           if ((DAT_00ffdd22._0_1_ & 0x20) != 0) {
             render_cyberware_detail();
-            convert_graphics_routine_0x0000d4c8();
+            reset_field_mode_entity_selection();
             goto LAB_0000d0d6;
           }
           if ((DAT_00ffdd22._0_1_ & 0x80) != 0) {
@@ -427,7 +427,7 @@ LAB_0000d4a0:
                 if (-1 < (int)((uint)uVar10 << 0x10)) {
                   uVar20 = (undefined2)((uint)pbVar12 >> 0x10);
                   local_2 = SUB42(pbVar12,0);
-                  convert_graphics_routine_0x0000d53c();
+                  run_attributes_skills_menu_prompt();
                   if (DAT_00fff0dc == '\0') {
                     *(char *)CONCAT22(uVar20,local_2) = (char)uVar10;
                     sVar11 = CONCAT11((char)(uVar10 >> 8),DAT_00fff0b7);
@@ -506,7 +506,7 @@ LAB_0000d4a0:
         while( true ) {
           while( true ) {
             while( true ) {
-              convert_graphics_routine_0x0000fdfe();
+              advance_menu_sprite_overlay();
               wait_for_vblank();
               latch_controller_events();
               sample_controller_input();
@@ -669,7 +669,7 @@ LAB_0001296a:
               (((DAT_00ffdd22._0_1_ & 0x20) == 0 && ((DAT_00ffdd22._0_1_ & 0x10) == 0))));
       service_audio_if_enabled();
     } while ((DAT_00fff096 < 0) || (DAT_00fff114 < '\0'));
-    convert_menu_routine_0x000129fe();
+    transfer_inventory_action_slot();
     render_equipment_highlights();
     prepare_menu_grid_variant_b();
 LAB_000129dc:
@@ -782,7 +782,7 @@ LAB_000118b6:
           sVar6 = read_entity_action_code();
           bVar18 = (int)((uint)(ushort)(sVar6 - 0x11U) << 0x10) < 0;
           if (bVar18) {
-            convert_menu_routine_0x0001253e();
+            reset_inventory_action_target_state();
             if (!bVar18) {
               pbVar12 = (byte *)(extraout_A0_04 + 0x6e + (int)sVar11);
               bVar1 = *pbVar12;

@@ -7,7 +7,7 @@
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x00057B8C run_menu_confirmation_prompt
-//   0x00057C46 refresh_field_action_detail_panel
+//   0x00057C46 write_field_action_grid_variant_b
 
 /*
  * Ghidra's original function inventory folded this routine into the preceding
@@ -26,7 +26,7 @@ void apply_field_quantity_purchase(void)
     DAT_00fff0b3 = 0;
     return;
   }
-  refresh_field_action_detail_panel();
+  write_field_action_grid_variant_b();
   render_encoded_title_text();
   build_grouped_decimal_glyphs();
   build_grouped_decimal_glyphs();

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00019C5C
-// Name: convert_world_routine_0x00019c5c
+// Name: read_matrix_program_availability_for_slot
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_world_routine_0x00019c5c(void)
+void read_matrix_program_availability_for_slot(void)
 
 {
   return;

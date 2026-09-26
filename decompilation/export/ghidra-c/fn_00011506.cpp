@@ -1,17 +1,17 @@
 // Ghidra headless export
 // Entry: 0x00011506
-// Name: convert_menu_routine_0x00011506
+// Name: advance_command_overview_secondary_page
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00011442 reset_and_upload_menu_tile_block
 //   0x00011454 reset_menu_upload_cursor_and_upload
-//   0x00011592 convert_menu_routine_0x00011592
-//   0x000119CE convert_menu_routine_0x000119ce
+//   0x00011592 refresh_command_overview_action_details
+//   0x000119CE run_command_overview_action_dialog
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_menu_routine_0x00011506(void)
+void advance_command_overview_secondary_page(void)
 
 {
   char cVar1;
@@ -22,7 +22,7 @@ void convert_menu_routine_0x00011506(void)
       if (-1 < DAT_00fff115) {
         reset_and_upload_menu_tile_block();
         DAT_00fff115 = 0xff;
-        convert_menu_routine_0x000119ce();
+        run_command_overview_action_dialog();
         DAT_00fff115 = 0;
         reset_menu_upload_cursor_and_upload();
         return;
@@ -35,7 +35,7 @@ void convert_menu_routine_0x00011506(void)
   DAT_00fff0d1 = cVar1 + DAT_00fff0d1;
   if (DAT_00fff0d1 < '\0') {
     DAT_00fff0d1 = 0;
-    convert_menu_routine_0x00011592();
+    refresh_command_overview_action_details();
     return;
   }
   if (DAT_00fff0d1 == '\x04') {

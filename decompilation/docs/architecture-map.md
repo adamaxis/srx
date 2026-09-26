@@ -1,6 +1,7 @@
 # Native architecture map
 
-This is the architecture implied by the ROM, the regenerated Ghidra callgraph,
+This is the architecture implied by the ROM, the canonical Ghidra callgraph
+snapshot,
 the typed conversion work, and the existing native source. It is the shape the
 port should converge on; it is not a claim that every named native layer exists
 yet. The 910 exported functions are not 910 original source modules: they are
@@ -378,9 +379,10 @@ sense: all 910 exported functions are represented, with the ledger also
 retaining non-function ROM anchors used by the native audit. The conversion
 tests now group some leaf entries into typed subsystem contracts. That does
 **not** mean the game is fully playable or every hill is defended: the ledger
-currently has 936 `partial` and four `defended` rows, with no `pending` rows in
-the current ledger snapshot. Ninety exported names remain generic pending
-stronger evidence.
+currently has 928 `partial` and four `defended` rows, with no `pending` rows in
+the current ledger snapshot. The 119 formerly generic exported names now have
+reviewed semantic labels; that naming pass does not close their behavioral
+verification hills.
 
 The realistic native source count is therefore roughly a dozen ownership
 areas, not 900 files:
@@ -399,10 +401,10 @@ offline extraction tools
 tests / visual dumps
 ```
 
-The existing 225 conversion test targets are evidence fixtures, not a proposed
-runtime file layout. As a hill becomes native and defended, its conversion
-helpers should be folded into the relevant native subsystem or retained only
-as a source-trace test; they should not be linked wholesale into the game.
+The existing 229 CTest cases are evidence fixtures, not a proposed runtime file
+layout. As a hill becomes native and defended, its conversion helpers should
+be folded into the relevant native subsystem or retained only as a source-trace
+test; they should not be linked wholesale into the game.
 
 ## 6. Migration order
 

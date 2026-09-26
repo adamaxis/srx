@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00003BAC
-// Name: convert_field_routine_0x00003bac
+// Name: advance_field_camera_scroll
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00004018 render_field_tile_edge
@@ -10,7 +10,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_field_routine_0x00003bac(void)
+void advance_field_camera_scroll(void)
 
 {
   ushort uVar1;

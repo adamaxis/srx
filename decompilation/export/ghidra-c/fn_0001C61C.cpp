@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
-//   0x00019CB2 convert_world_routine_0x00019cb2
+//   0x00019CB2 run_menu_selection_code_four
 //   0x0001B612 attach_behavior_descriptor_b
 
 
@@ -22,7 +22,7 @@ void advance_title_sweep_animation(void)
       DAT_00ff1592 = DAT_00ff1592 & 0xf6;
       attach_behavior_descriptor_b();
       _DAT_00ffe0d6 = 0;
-      convert_world_routine_0x00019cb2();
+      run_menu_selection_code_four();
       return;
     }
   }

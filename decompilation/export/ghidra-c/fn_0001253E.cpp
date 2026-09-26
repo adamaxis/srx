@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001253E
-// Name: convert_menu_routine_0x0001253e
+// Name: reset_inventory_action_target_state
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000DBA count_thresholded_random_rolls
@@ -8,7 +8,7 @@
 //   0x000037EC advance_entity_behavior_meter
 
 
-void convert_menu_routine_0x0001253e(void)
+void reset_inventory_action_target_state(void)
 
 {
   int extraout_A0;

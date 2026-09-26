@@ -1,17 +1,17 @@
 // Ghidra headless export
 // Entry: 0x00057610
-// Name: convert_intro_routine_0x00057610
+// Name: prepare_field_action_selection_context
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00019538 convert_world_routine_0x00019538
+//   0x00019538 matrix_program_storage_weight
 //   0x00057628 select_menu_resource_entry
 
 
-void convert_intro_routine_0x00057610(void)
+void prepare_field_action_selection_context(void)
 
 {
   select_menu_resource_entry();
-  convert_world_routine_0x00019538();
+  matrix_program_storage_weight();
   return;
 }
 

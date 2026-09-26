@@ -12,7 +12,7 @@
 //   0x00001728 render_hud_sprite_stream
 //   0x0000195C sample_controller_input
 //   0x0000C0DA render_encoded_title_text
-//   0x0000FDFE convert_graphics_routine_0x0000fdfe
+//   0x0000FDFE advance_menu_sprite_overlay
 //   0x0000FEBE move_selection_column
 //   0x0000FF06 move_selection_row
 //   0x0000FF5A run_equipment_selection
@@ -55,7 +55,7 @@ void run_magic_menu(void)
       while( true ) {
         while( true ) {
           while( true ) {
-            convert_graphics_routine_0x0000fdfe();
+            advance_menu_sprite_overlay();
             wait_for_vblank();
             latch_controller_events();
             sample_controller_input();

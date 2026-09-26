@@ -6,7 +6,7 @@
 //   0x00000BD2 wait_for_vblank
 //   0x00000E9C make_vdp_transfer_command
 //   0x00017E78 calculate_menu_row_offset
-//   0x0001A538 convert_world_routine_0x0001a538
+//   0x0001A538 runner_record_has_active_effect
 //   0x0001A54E initialize_effect_defaults
 //   0x0001A818 begin_world_effect_descriptor_transition
 //   0x0001A8F4 reset_effect_entity
@@ -57,7 +57,7 @@ void advance_world_effect_controller(void)
     } while (sVar3 != -1);
     return;
   }
-  convert_world_routine_0x0001a538();
+  runner_record_has_active_effect();
   if (!bVar4) {
     if (((DAT_00ffdf84 != '\0') && (DAT_00ffe076 == 0)) &&
        (DAT_00ffe074 = DAT_00ffe074 + -1, DAT_00ffe074 < 0)) {

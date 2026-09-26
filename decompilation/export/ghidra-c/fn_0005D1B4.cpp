@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0005D1B4
-// Name: convert_intro_routine_0x0005d1b4
+// Name: prepare_pre_title_audio_variant_b
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000530EA service_audio_command_frame
@@ -8,7 +8,7 @@
 //   0x00059C34 adjust_runner_source_byte_triplet
 
 
-void convert_intro_routine_0x0005d1b4(void)
+void prepare_pre_title_audio_variant_b(void)
 
 {
   prepare_mode_entry_service();

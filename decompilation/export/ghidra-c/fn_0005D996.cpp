@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005D996
-// Name: convert_intro_routine_0x0005d996
+// Name: advance_pre_title_animation_phase
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
 
 
-void convert_intro_routine_0x0005d996(void)
+void advance_pre_title_animation_phase(void)
 
 {
   if (-1 < DAT_00ffdd30) {

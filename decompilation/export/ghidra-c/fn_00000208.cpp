@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00000208
-// Name: convert_interrupt_routine_0x00000208
+// Name: unused_stop_stub_2703
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_interrupt_routine_0x00000208(void)
+void unused_stop_stub_2703(void)
 
 {
   stop();

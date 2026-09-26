@@ -4,9 +4,9 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000DBA count_thresholded_random_rolls
-//   0x00017A5E convert_world_routine_0x00017a5e
-//   0x0001989A convert_world_routine_0x0001989a
-//   0x00019BF6 pass_through_value
+//   0x00017A5E render_menu_slot_status
+//   0x0001989A update_hud_mode_transition
+//   0x00019BF6 select_hud_mode_auxiliary_value
 //   0x0001A908 initialize_world_effect_mode
 //   0x00055F44 calculate_runner_action_delay
 //   0x000562DE add_world_effect_phase_modifier
@@ -28,7 +28,7 @@ undefined4 advance_world_effect_intro_gate(void)
   
   uVar2 = (undefined2)((uint)in_D0 >> 0x10);
   if (DAT_00fff0a3 < '\0') {
-    pass_through_value();
+    select_hud_mode_auxiliary_value();
     add_world_effect_phase_modifier();
     count_thresholded_random_rolls();
     cVar1 = DAT_00fff0dd;
@@ -36,9 +36,9 @@ undefined4 advance_world_effect_intro_gate(void)
     add_world_effect_phase_modifier();
     count_thresholded_random_rolls();
     if ((DAT_00fff0dd < cVar1) &&
-       (convert_world_routine_0x0001989a(), uVar2 = extraout_D0u, DAT_00fff0b1 < '\0'))
+       (update_hud_mode_transition(), uVar2 = extraout_D0u, DAT_00fff0b1 < '\0'))
     goto LAB_000561e2;
-    convert_world_routine_0x00017a5e();
+    render_menu_slot_status();
     if (DAT_00fff0a0 < '\x01') {
       DAT_00ffdf84 = 0;
       uVar2 = extraout_D0u_00;

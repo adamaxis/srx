@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00012C74
-// Name: convert_menu_routine_0x00012c74
+// Name: merge_equipment_action_skill_value
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_menu_routine_0x00012c74(void)
+void merge_equipment_action_skill_value(void)
 
 {
   return;

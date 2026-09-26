@@ -1,0 +1,120 @@
+rom_entry	export_label	reviewed_name	family	confidence	behavior	evidence
+0x0200	convert_interrupt_routine_0x00000200	unused_stop_stub_2702	interrupt	reserved	Unused vector stub executing STOP #2702	disassembly.s;fn_00000200.cpp
+0x0208	convert_interrupt_routine_0x00000208	unused_stop_stub_2703	interrupt	reserved	Unused vector stub executing STOP #2703	disassembly.s;fn_00000208.cpp
+0x0210	convert_interrupt_routine_0x00000210	unused_stop_stub_2704	interrupt	reserved	Unused vector stub executing STOP #2704	disassembly.s;fn_00000210.cpp
+0x0218	convert_interrupt_routine_0x00000218	unused_stop_stub_2705	interrupt	reserved	Unused vector stub executing STOP #2705	disassembly.s;fn_00000218.cpp
+0x0220	convert_interrupt_routine_0x00000220	unused_stop_stub_2700	interrupt	reserved	Unused vector stub executing STOP #2700	disassembly.s;fn_00000220.cpp
+0x0228	convert_interrupt_routine_0x00000228	interrupt_stub_write_alternating_word_pair	interrupt	medium	Vector stub writing the alternating interrupt word pair	disassembly.s;fn_00000228.cpp
+0x022E	convert_interrupt_routine_0x0000022e	interrupt_stub_service_display_frame	interrupt	medium	Vector stub entering the display-frame service	disassembly.s;fn_0000022E.cpp
+0x0234	convert_interrupt_routine_0x00000234	return_from_interrupt	interrupt	high	RTE vector return	disassembly.s;fn_00000234.cpp
+0x03B1E	convert_field_routine_0x00003b1e	classify_field_camera_vertical_delta	field	high	Classifies vertical camera movement from the accepted field delta and direction state	disassembly.s;fn_00003B1E.cpp;caller 0x3A90
+0x03BAC	convert_field_routine_0x00003bac	advance_field_camera_scroll	field	high	Advances camera coordinates and renders newly exposed field tile edges	disassembly.s;fn_00003BAC.cpp
+0x03E14	convert_field_routine_0x00003e14	upload_field_tile_row	field	high	Uploads one decoded field tile row to the VDP destination	disassembly.s;fn_00003E14.cpp
+0x049A0	convert_field_routine_0x000049a0	noop_effect_callback	field	high	Empty callback target stored in the effect dispatch table	disassembly.s;fn_000049A0.cpp;table 0x4964
+0x0A8EA	convert_graphics_routine_0x0000a8ea	service_entity_behavior_frames	entity	high	Services the 16 entity behavior/frame records including action, collision, movement, and mode transitions	disassembly.s;fn_0000A8EA.cpp
+0x0AB02	convert_graphics_routine_0x0000ab02	complete_entity_behavior_transition	entity	high	Finalizes an entity behavior transition, resets service records, and publishes runner flags	disassembly.s;fn_0000AB02.cpp;caller 0xA8EA
+0x0ACAE	convert_graphics_routine_0x0000acae	advance_entity_behavior_action	entity	high	Dispatches entity action targets, delays, headings, spawn cycles, and action audio	disassembly.s;fn_0000ACAE.cpp
+0x0B7B8	convert_graphics_routine_0x0000b7b8	advance_entity_movement_and_mode_transition	entity	high	Applies movement and collision results before entering the next entity mode	disassembly.s;fn_0000B7B8.cpp
+0x0C168	convert_graphics_routine_0x0000c168	render_wrapped_encoded_text	graphics	high	Renders wrapped signed encoded text lines through the VDP text path	disassembly.s;fn_0000C168.cpp
+0x0C64C	convert_graphics_routine_0x0000c64c	finalize_field_mode_exit_transition	field	high	Clears field effects and completes the field-mode exit service chain	disassembly.s;fn_0000C64C.cpp
+0x0C7F8	convert_graphics_routine_0x0000c7f8	prepare_field_scene_runtime	field	high	Prepares serialized runner state, field assets, effects, and animation for a field scene	disassembly.s;fn_0000C7F8.cpp
+0x0C802	convert_graphics_routine_0x0000c802	refresh_field_runner_state_and_assets	field	high	Refreshes field runner records and their uploaded scene assets	disassembly.s;fn_0000C802.cpp
+0x0C928	convert_graphics_routine_0x0000c928	run_field_exit_selection_menu	menu	high	Runs the field exit selection loop with cursor input and menu dispatch	disassembly.s;fn_0000C928.cpp
+0x0CF38	convert_graphics_routine_0x0000cf38	run_field_exit_prompt_menu	menu	high	Runs the field exit confirmation prompt and its display setup	disassembly.s;fn_0000CF38.cpp
+0x0D4C8	convert_graphics_routine_0x0000d4c8	reset_field_mode_entity_selection	field	high	Resets field entity-selection bits, grid state, and current selection flags	disassembly.s;fn_0000D4C8.cpp
+0x0D53C	convert_graphics_routine_0x0000d53c	run_attributes_skills_menu_prompt	menu	high	Renders and services the attributes-and-skills prompt until controller completion	disassembly.s;fn_0000D53C.cpp;caller 0xD01C
+0x0EA36	convert_graphics_routine_0x0000ea36	evaluate_entity_terrain_collision_directions	entity	high	Combines the four directional terrain collision bits into an entity boundary result	disassembly.s;fn_0000EA36.cpp
+0x0EB92	convert_graphics_routine_0x0000eb92	resolve_entity_proximity_interactions	entity	high	Scans entity pairs for proximity and publishes collision or reaction flags	disassembly.s;fn_0000EB92.cpp
+0x0ECCC	convert_graphics_routine_0x0000eccc	resolve_entity_pair_collision_event	entity	high	Chooses the active participant and starts the pair collision activity/effect	disassembly.s;fn_0000ECCC.cpp
+0x0EF08	convert_graphics_routine_0x0000ef08	service_exit_prompt_entities	menu	high	Services prompt-time entity delay meters and renders the exit feedback text	disassembly.s;fn_0000EF08.cpp
+0x0F5F4	convert_graphics_routine_0x0000f5f4	render_bitmask_text_batch	graphics	high	Builds and renders the text records selected by a display bitmask	disassembly.s;fn_0000F5F4.cpp
+0x0FDFE	convert_graphics_routine_0x0000fdfe	advance_menu_sprite_overlay	menu	high	Advances the timed menu sprite overlay and writes its grid records	disassembly.s;fn_0000FDFE.cpp
+0x10016	convert_menu_routine_0x00010016	run_magic_force_selection_loop	menu	high	Runs the magic-force raise/lower/confirm/cancel controller loop	disassembly.s;fn_00010016.cpp;magic_menu_conversion.hpp
+0x100A8	convert_menu_routine_0x000100a8	adjust_magic_force	menu	high	Clamps the selected magic force to the spell-specific one-through-maximum range	disassembly.s;fn_000100A8.cpp;magic_menu_conversion.hpp
+0x10172	convert_menu_routine_0x00010172	refresh_magic_force_display	menu	high	Rewrites the repeated-grid force display and its decimal glyphs	disassembly.s;fn_00010172.cpp
+0x102D4	convert_menu_routine_0x000102d4	prepare_magic_action_details	menu	high	Builds magic action detail text, posture state, availability, and decimal values	disassembly.s;fn_000102D4.cpp
+0x104F6	convert_menu_routine_0x000104f6	apply_action_item_phase_modifiers	menu	high	Adds inventory phase modifiers, including the slot-seven item 0x29-0x2B table path	disassembly.s;fn_000104F6.cpp;action_math_conversion.hpp
+0x1055E	convert_menu_routine_0x0001055e	refresh_equipment_combat_values	menu	medium	Refreshes the equipment/combat strip values for normal and ready-display modes	disassembly.s;fn_0001055E.cpp
+0x105E6	convert_menu_routine_0x000105e6	refresh_equipment_action_metric	menu	medium	Calculates the action metric and selects its text/grid presentation	disassembly.s;fn_000105E6.cpp
+0x10660	convert_menu_routine_0x00010660	calculate_action_residual	menu	high	Calculates adjusted roll count, difficulty, and residual action effect	disassembly.s;fn_00010660.cpp;action_math_conversion.hpp
+0x10722	convert_menu_routine_0x00010722	run_runner_posture_adjustment	menu	high	Runs the runner posture adjustment input loop and clamps its value	disassembly.s;fn_00010722.cpp
+0x1088C	convert_menu_routine_0x0001088c	render_magic_spell_availability	menu	high	Reads the spell record availability byte and renders the available/unavailable panel	disassembly.s;fn_0001088C.cpp;magic_menu_conversion.hpp
+0x1098E	convert_menu_routine_0x0001098e	clear_magic_menu_grids	menu	high	Clears and refreshes the repeated magic-menu grid planes	disassembly.s;fn_0001098E.cpp
+0x10A82	convert_menu_routine_0x00010a82	refresh_menu_grid_quadruple	menu	high	Writes the four-grid menu refresh used by field exit/menu transitions	disassembly.s;fn_00010A82.cpp
+0x114A0	convert_menu_routine_0x000114a0	advance_command_overview_primary_page	menu	medium	Advances the primary command-overview page and uploads its action detail	disassembly.s;fn_000114A0.cpp
+0x11506	convert_menu_routine_0x00011506	advance_command_overview_secondary_page	menu	medium	Advances the secondary command-overview page and uploads its action detail	disassembly.s;fn_00011506.cpp
+0x11592	convert_menu_routine_0x00011592	refresh_command_overview_action_details	menu	medium	Builds the shared command-overview action detail/dialog presentation	disassembly.s;fn_00011592.cpp
+0x119CE	convert_menu_routine_0x000119ce	run_command_overview_action_dialog	menu	medium	Services command-overview dialog input, audio, and final equipment bars	disassembly.s;fn_000119CE.cpp
+0x11AE4	convert_menu_routine_0x00011ae4	adjust_menu_dialog_posture	menu	high	Adjusts the dialog runner posture field and redraws the affected row	disassembly.s;fn_00011AE4.cpp
+0x1253E	convert_menu_routine_0x0001253e	reset_inventory_action_target_state	menu	high	Resets the first-aid/inventory action target state after delay and behavior completion	disassembly.s;fn_0001253E.cpp
+0x129FE	convert_menu_routine_0x000129fe	transfer_inventory_action_slot	menu	high	Transfers an inventory action code and phase between slots with equipped cleanup	disassembly.s;fn_000129FE.cpp;inventory_action_conversion.hpp
+0x12C74	convert_menu_routine_0x00012c74	merge_equipment_action_skill_value	menu	high	Selects the action-class skill bucket and merges it into the running combat-strip value	disassembly.s;fn_00012C74.cpp;caller 0x12CEE
+0x12EAE	convert_menu_routine_0x00012eae	render_equipment_action_detail_row	menu	medium	Renders the selected equipment action detail row and advances its action menu	disassembly.s;fn_00012EAE.cpp
+0x15554	convert_entity_routine_0x00015554	service_nearby_entity_auxiliary_behavior	entity	high	Scans nearby active entities and invokes the auxiliary behavior window	disassembly.s;fn_00015554.cpp;entity_auxiliary_proximity_conversion.hpp
+0x15646	convert_entity_routine_0x00015646	spawn_entity_effect_record	entity	high	Allocates and initializes a short-lived effect/projectile entity record	disassembly.s;fn_00015646.cpp;entity_effect_dispatch_conversion.hpp
+0x15830	convert_entity_routine_0x00015830	dispatch_entity_effect	entity	high	Dispatches an effect from its linked target and selects its phase/audio handler	disassembly.s;fn_00015830.cpp;entity_effect_dispatch_conversion.hpp
+0x15930	convert_entity_routine_0x00015930	apply_entity_secondary_effect	entity	high	Initializes a generic secondary effect on the selected target	disassembly.s;fn_00015930.cpp;entity_effect_dispatch_conversion.hpp
+0x1597E	convert_entity_routine_0x0001597e	scan_entity_effect_targets	entity	high	Scans nearby entities and publishes effect source/target links	disassembly.s;fn_0001597E.cpp;entity_effect_dispatch_conversion.hpp
+0x15BB4	convert_entity_routine_0x00015bb4	noop_entity_action_hook	entity	high	Empty entity action hook retained as an explicit callback boundary	disassembly.s;fn_00015BB4.cpp
+0x1651E	convert_world_routine_0x0001651e	project_entity_world_interaction	world	high	Projects entity position into terrain/world interaction cells and allocates the record	disassembly.s;fn_0001651E.cpp
+0x167AE	convert_world_routine_0x000167ae	initialize_world_activity_mode	world	high	Selects world activity tables and initializes scene/event mode globals	disassembly.s;fn_000167AE.cpp
+0x16B98	convert_world_routine_0x00016b98	spawn_scene_entity_from_weighted_table	world	high	Spawns a scene entity from the weighted activity table	disassembly.s;fn_00016B98.cpp
+0x1745E	convert_world_routine_0x0001745e	run_field_mode_hud_scene	world	high	Runs the field-mode HUD/world-effect service loop	disassembly.s;fn_0001745E.cpp
+0x17A5E	convert_world_routine_0x00017a5e	render_menu_slot_status	menu	medium	Renders one menu slot status marker, flags, text, and decimal value	disassembly.s;fn_00017A5E.cpp;menu_hud_service_conversion.hpp
+0x55640	convert_intro_routine_0x00055640	resolve_entity_action_pair	action	high	Resolves the paired entity action inputs and publishes each action result seed	disassembly.s;fn_00055640.cpp
+0x556C6	convert_intro_routine_0x000556c6	check_entity_action_eligibility	action	medium	Checks action item, armor, and entity flags before action resolution	disassembly.s;fn_000556C6.cpp
+0x55740	convert_intro_routine_0x00055740	apply_target_condition_modifier	action	high	Applies the target condition modifier to the pending action value	disassembly.s;fn_00055740.cpp;action_math_conversion.hpp
+0x55786	convert_intro_routine_0x00055786	apply_dynamic_status_modifier	action	high	Applies dynamic status modifiers to the pending action value	disassembly.s;fn_00055786.cpp;action_math_conversion.hpp
+0x55828	convert_intro_routine_0x00055828	noop_dynamic_modifier_hook	action	high	Empty dynamic-modifier callback boundary reached by the action resolver	disassembly.s;fn_00055828.cpp
+0x55848	convert_intro_routine_0x00055848	calculate_effect_target_offset	action	high	Calculates the random transform offset used when linking an effect target	disassembly.s;fn_00055848.cpp;caller 0x15646
+0x55900	convert_intro_routine_0x00055900	resolve_entity_action_status	action	medium	Resolves entity action status, armor/item modifiers, counters, and result meters	disassembly.s;fn_00055900.cpp
+0x55948	convert_intro_routine_0x00055948	resolve_equipment_action_status	action	medium	Resolves the equipment/action variant of the entity status path	disassembly.s;fn_00055948.cpp
+0x559BC	convert_intro_routine_0x000559bc	resolve_dynamic_entity_action	action	medium	Runs the shared action-resolution path after dynamic status modifiers	disassembly.s;fn_000559BC.cpp
+0x55B16	convert_intro_routine_0x00055b16	resolve_entity_action_with_default_bonus	action	medium	Seeds the default action bonus and enters common entity action resolution	disassembly.s;fn_00055B16.cpp
+0x55C76	convert_intro_routine_0x00055c76	advance_entity_action_resolution	action	medium	Advances multi-stage action, condition, and physical/mental meter resolution	disassembly.s;fn_00055C76.cpp
+0x55E62	convert_intro_routine_0x00055e62	apply_equipment_defense_action_modifier	action	high	Subtracts the defense flag or item-0x27 phase modifier	disassembly.s;fn_00055E62.cpp;equipment_combat_bar_conversion.hpp
+0x55E92	convert_intro_routine_0x00055e92	subtract_armor_primary_modifier	action	high	Subtracts the primary armor modifier from the action value	disassembly.s;fn_00055E92.cpp
+0x55EB4	convert_intro_routine_0x00055eb4	subtract_armor_secondary_modifier	action	high	Subtracts the secondary armor modifier from the action value	disassembly.s;fn_00055EB4.cpp
+0x55ED6	convert_intro_routine_0x00055ed6	calculate_equipment_command_average	action	high	Calculates the byte-wrapped equipment command average	disassembly.s;fn_00055ED6.cpp;equipment_combat_bar_conversion.hpp
+0x55F02	convert_intro_routine_0x00055f02	calculate_item18_skill_value	action	high	Calculates the item-0x18 skill value from the typed entity record	disassembly.s;fn_00055F02.cpp;action_math_conversion.hpp
+0x55F20	convert_intro_routine_0x00055f20	select_posture_adjusted_value	action	high	Applies posture to the attack/defense value using the source branch	disassembly.s;fn_00055F20.cpp;action_math_conversion.hpp
+0x55FD8	convert_intro_routine_0x00055fd8	calculate_and_publish_runner_action_result	action	medium	Calculates runner action delay/effect result and publishes the entity result byte	disassembly.s;fn_00055FD8.cpp
+0x5668C	convert_intro_routine_0x0005668c	advance_menu_selection_service_and_refresh	menu	medium	Advances menu-selection timing and refreshes its HUD presentation	disassembly.s;fn_0005668C.cpp
+0x566A2	convert_intro_routine_0x000566a2	copy_menu_selection_record_table	menu	high	Copies the menu selection record table into the working buffer	disassembly.s;fn_000566A2.cpp
+0x566C2	convert_intro_routine_0x000566c2	copy_mode_selection_state_table	menu	high	Copies the mode-selection state table into the working buffer	disassembly.s;fn_000566C2.cpp
+0x566D8	convert_intro_routine_0x000566d8	copy_mode_resource_metadata	menu	high	Copies mode-resource metadata and marks the destination dirty	disassembly.s;fn_000566D8.cpp
+0x5672C	convert_intro_routine_0x0005672c	service_field_mode_display_frame	field	medium	Services field display status tiles and frame counters by scene mode	disassembly.s;fn_0005672C.cpp
+0x56DC4	convert_intro_routine_0x00056dc4	run_field_action_selection	field	medium	Runs the field action/item selection handler and its callbacks	disassembly.s;fn_00056DC4.cpp;field_mode_service_loop_conversion.hpp
+0x575F8	convert_intro_routine_0x000575f8	prepare_field_action_resource_selection	field	high	Resets field action resource slots, selection, and storage usage	disassembly.s;fn_000575F8.cpp
+0x57610	convert_intro_routine_0x00057610	prepare_field_action_selection_context	field	high	Selects the field action resource entry and storage context	disassembly.s;fn_00057610.cpp
+0x57C3A	convert_intro_routine_0x00057c3a	write_field_action_grid_variant_a	field	high	Writes the first field-action detail grid variant	disassembly.s;fn_00057C3A.cpp
+0x57C46	convert_intro_routine_0x00057c46	write_field_action_grid_variant_b	field	high	Writes the second field-action detail grid variant	disassembly.s;fn_00057C46.cpp
+0x57C52	convert_intro_routine_0x00057c52	write_field_action_grid_variant_c	field	high	Writes the third field-action detail grid variant	disassembly.s;fn_00057C52.cpp
+0x57C66	convert_intro_routine_0x00057c66	write_field_action_detail_grid	field	high	Writes the shared field-action detail grid	disassembly.s;fn_00057C66.cpp
+0x57C7A	convert_intro_routine_0x00057c7a	render_field_action_selection	field	medium	Renders field action availability, costs, and selection state	disassembly.s;fn_00057C7A.cpp
+0x57D7E	convert_intro_routine_0x00057d7e	render_field_action_quantity	field	high	Renders field action quantity, cost, and availability	disassembly.s;fn_00057D7E.cpp
+0x580FE	convert_intro_routine_0x000580fe	render_field_action_description	field	high	Renders normalized field action description text and cost	disassembly.s;fn_000580FE.cpp
+0x5825C	convert_intro_routine_0x0005825c	render_field_action_cost_summary	field	high	Renders field action cost, discount, and summary glyphs	disassembly.s;fn_0005825C.cpp
+0x58316	convert_intro_routine_0x00058316	render_field_action_feedback	field	high	Renders field action result/quantity feedback and its grid	disassembly.s;fn_00058316.cpp
+0x586CA	convert_intro_routine_0x000586ca	render_field_action_detail	field	medium	Builds and renders the field action detail plan and costs	disassembly.s;fn_000586CA.cpp
+0x5878E	convert_intro_routine_0x0005878e	render_field_action_detail_text	field	high	Selects conditional field action detail text by action code	disassembly.s;fn_0005878E.cpp
+0x58D7E	convert_intro_routine_0x00058d7e	reset_field_action_cost_state	field	high	Resets field action cost and marker globals	disassembly.s;fn_00058D7E.cpp
+0x594E0	convert_save_routine_0x000594e0	restore_saved_field_state	save	medium	Restores saved field roster, templates, positions, and field state	disassembly.s;fn_000594E0.cpp
+0x5C8C6	convert_intro_routine_0x0005c8c6	upload_title_or_field_word_stream	graphics	high	Transfers a raw word stream to the title/field VDP destination	disassembly.s;fn_0005C8C6.cpp
+0x5D172	convert_intro_routine_0x0005d172	prepare_pre_title_audio_variant_a	pre_title	medium	Prepares mode entry and audio command variant A before the title sequence	disassembly.s;fn_0005D172.cpp
+0x5D1B4	convert_intro_routine_0x0005d1b4	prepare_pre_title_audio_variant_b	pre_title	medium	Prepares mode entry and audio command variant B before the title sequence	disassembly.s;fn_0005D1B4.cpp
+0x5D260	convert_intro_routine_0x0005d260	reset_world_frame_service_state	pre_title	high	Clears and seeds the world-scene frame service record	disassembly.s;fn_0005D260.cpp
+0x5D29C	convert_intro_routine_0x0005d29c	advance_world_scene_entity_effect	pre_title	high	Advances staged scene entity/effect timers and resource transitions	disassembly.s;fn_0005D29C.cpp
+0x5D3E6	convert_intro_routine_0x0005d3e6	spawn_world_scene_secondary_effect	pre_title	high	Marks the selected scene entity and applies its secondary effect	disassembly.s;fn_0005D3E6.cpp
+0x5D416	convert_intro_routine_0x0005d416	advance_world_scene_effect_phase	pre_title	high	Selects scene-effect phase actions for timer milestones and audio cues	disassembly.s;fn_0005D416.cpp
+0x5D55C	convert_intro_routine_0x0005d55c	advance_world_scene_effect_frame	pre_title	high	Advances the scene effect frame counter modulo eight	disassembly.s;fn_0005D55C.cpp
+0x5D57E	convert_intro_routine_0x0005d57e	refresh_world_scene_effect_sprites	pre_title	high	Builds scene effect sprite records from the current frame table	disassembly.s;fn_0005D57E.cpp
+0x5D5A2	convert_intro_routine_0x0005d5a2	advance_world_scene_effect_timer_a	pre_title	high	Advances the primary scene effect animation timer and sprite frame	disassembly.s;fn_0005D5A2.cpp
+0x5D5FC	convert_intro_routine_0x0005d5fc	advance_world_scene_effect_timer_b	pre_title	high	Advances the secondary scene effect animation timer and sprite frame	disassembly.s;fn_0005D5FC.cpp
+0x5D65A	convert_intro_routine_0x0005d65a	advance_world_scene_effect_timer_c	pre_title	high	Advances the tertiary scene effect animation timer and sprite frame	disassembly.s;fn_0005D65A.cpp
+0x5D6BC	convert_intro_routine_0x0005d6bc	spawn_scene_special_effect	pre_title	high	Allocates the fixed-position special scene effect entity	disassembly.s;fn_0005D6BC.cpp
+0x5D886	convert_intro_routine_0x0005d886	finalize_pre_title_display	pre_title	high	Clears planes, uploads title resources, and starts the pre-title fade/display state	disassembly.s;fn_0005D886.cpp
+0x5D938	convert_intro_routine_0x0005d938	advance_pre_title_animation	pre_title	high	Advances pre-title sprite timing and dirty display markers	disassembly.s;fn_0005D938.cpp
+0x5D996	convert_intro_routine_0x0005d996	advance_pre_title_animation_phase	pre_title	high	Advances pre-title phase cadence and rebuilds sprite records	disassembly.s;fn_0005D996.cpp
+0x5DAE8	convert_intro_routine_0x0005dae8	clear_pre_title_resource_workspace	pre_title	high	Clears the pre-title resource workspace before the next stream	disassembly.s;fn_0005DAE8.cpp
+0x5DAFC	convert_intro_routine_0x0005dafc	write_pre_title_resource_stream	pre_title	high	Writes the pre-title word stream into the prepared workspace	disassembly.s;fn_0005DAFC.cpp

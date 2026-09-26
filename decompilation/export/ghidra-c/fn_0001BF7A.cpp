@@ -3,7 +3,7 @@
 // Name: advance_profile_copy_timer
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00017C3C convert_world_routine_0x00017c3c
+//   0x00017C3C read_menu_entry_profile_eligibility
 //   0x0001C012 copy_seven_words
 
 
@@ -21,7 +21,7 @@ void advance_profile_copy_timer(void)
     }
     else {
       DAT_00fff11e = sVar1;
-      convert_world_routine_0x00017c3c();
+      read_menu_entry_profile_eligibility();
       copy_seven_words();
       DAT_00ffef14 = DAT_00ffef14 | 1;
       sVar1 = DAT_00fff11e;

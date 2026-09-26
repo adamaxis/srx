@@ -689,3 +689,52 @@ actual scene branch: `FFE16B != 0` installs the fixed world-sequence state used
 by `0x1D280/0x1D2E6`, otherwise control is handed to `0x1A01E` menu-selection
 and text setup. The native boundary exposes both outcomes as typed actions and
 keeps the decoded source asset behind callbacks.
+
+## Generic export label pass and ROM verification baseline: 2026-09-26
+
+The canonical export had 119 family/address labels left at
+`convert_*_routine_0x...`. Those labels have now been replaced in the exporter
+name table and synchronized export snapshots, including every generated C
+function header, direct-call annotation, call-site row, and call-graph edge.
+The review ledger is
+`decompilation/docs/ghidra-function-label-review.tsv`; it records the behavior
+claim, confidence, and disassembly/Ghidra-C evidence for every one of the 119
+entries. Interrupt-vector STOP stubs and empty callback targets are explicitly
+classified as reserved/no-op boundaries rather than being promoted into game
+systems.
+
+This checkout does not contain a Ghidra `analyzeHeadless` installation, so the
+snapshot synchronization changed names/comments only; it did not regenerate
+the ROM disassembly or function bytes. A fresh headless export remains a
+separate environment-dependent check before treating the snapshot as newly
+generated evidence.
+
+Important source checks from this pass:
+
+* `0x104F6` is `apply_action_item_phase_modifiers`. The generated Ghidra C
+  stops after the slot-6..0 scan, but the ROM disassembly continues into the
+  slot-7 item `0x29..0x2B` lookup at `0x1050E..0x1055A`. The typed conversion
+  already includes that continuation; generated C alone is not sufficient
+  evidence.
+* `0x12C74` is `merge_equipment_action_skill_value`. The generated Ghidra C
+  is a return-only body even though the ROM selects the action-class skill
+  bucket and performs the lower-value merge plus zero-to-one correction. The
+  typed equipment conversion follows the disassembly; this is recorded as a
+  decompiler omission, not treated as a no-op.
+* The status ledger is now one row per ROM entry. Eight duplicate rows were
+  removed, including the old catalog duplicates for the magic-force functions
+  and the duplicate HUD-mode/runner-record entries.
+* The callgraph snapshot had two stale aggregate counts for
+  `apply_field_quantity_purchase` (`0x577BA`); they were reconciled against
+  the 2,986 resolved rows in `call-sites.tsv`, and the audit now checks every
+  caller/target pair rather than trusting the aggregate blindly.
+
+`decompilation/tools/verify_rom_conversion.ps1` is the structural gate. The
+current baseline is 910 exported entries, 0 generic export labels, 119 reviewed
+labels, 932 unique status rows, 2,986 resolved direct call sites, 16 explicit
+indirect/unresolved call boundaries, 227 conversion implementation files, 28
+behavioral modules, and 229 CTest cases. The gate passes the structural checks,
+but behavioral fidelity remains OPEN: 928 status rows are partial and only 4
+are defended. The audit therefore does not authorize a true-to-source claim
+until the 16 indirect boundaries and the partial hills have been traced and
+defended against ROM behavior.

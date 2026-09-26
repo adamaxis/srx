@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00019B40
-// Name: convert_world_routine_0x00019b40
+// Name: select_run_hud_mode
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00017C3C convert_world_routine_0x00017c3c
+//   0x00017C3C read_menu_entry_profile_eligibility
 
 
-uint convert_world_routine_0x00019b40(void)
+uint select_run_hud_mode(void)
 
 {
   uint uVar1;
@@ -22,7 +22,7 @@ uint convert_world_routine_0x00019b40(void)
     cVar3 = DAT_00ffdf84 < '\0';
     bVar4 = DAT_00ffdf84 == '\0';
     if (!(bool)cVar3) {
-      uVar1 = convert_world_routine_0x00017c3c();
+      uVar1 = read_menu_entry_profile_eligibility();
       if (bVar4 || cVar5 != cVar3) {
         return 0xffffffff;
       }

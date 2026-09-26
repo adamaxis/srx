@@ -3,8 +3,8 @@
 // Name: calculate_menu_hud_row_meter
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00019BF6 pass_through_value
-//   0x00019C5C convert_world_routine_0x00019c5c
+//   0x00019BF6 select_hud_mode_auxiliary_value
+//   0x00019C5C read_matrix_program_availability_for_slot
 //   0x00055F44 calculate_runner_action_delay
 //   0x000562DE add_world_effect_phase_modifier
 //   0x00056632 scale_menu_hud_value_by_difficulty
@@ -35,18 +35,18 @@ void calculate_menu_hud_row_meter(void)
   cVar1 = *(char *)(in_A0 + 0x1a + (int)unaff_D3w);
   if (-1 < (char)(cVar1 + -4)) {
     if (cVar1 == '\x04') {
-      convert_world_routine_0x00019c5c();
+      read_matrix_program_availability_for_slot();
       scale_menu_hud_value_by_difficulty();
       return;
     }
     if ((char)(*(char *)(in_A0 + 0x1a + (int)unaff_D3w) + -8) < '\0') {
-      convert_world_routine_0x00019c5c();
+      read_matrix_program_availability_for_slot();
       return;
     }
   }
   calculate_runner_action_delay();
   cVar1 = DAT_00fffbbe + (char)unaff_D6;
-  convert_world_routine_0x00019c5c();
+  read_matrix_program_availability_for_slot();
   sVar7 = (short)CONCAT31((int3)((uint)unaff_D6 >> 8),cVar1);
   if ((short)(unaff_D7w - sVar7) < 0) {
     sVar7 = unaff_D7w;
@@ -69,7 +69,7 @@ void calculate_menu_hud_row_meter(void)
     uVar5 = (ushort)DAT_00fffbc9;
   }
   else {
-    pass_through_value();
+    select_hud_mode_auxiliary_value();
     if ((char)(*(char *)(extraout_A0_00 + 0x1a + (int)unaff_D3w) + -4) < '\0') {
       uVar5 = (ushort)DAT_00fffbc7;
     }

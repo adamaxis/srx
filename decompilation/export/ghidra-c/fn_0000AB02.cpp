@@ -1,16 +1,16 @@
 // Ghidra headless export
 // Entry: 0x0000AB02
-// Name: convert_graphics_routine_0x0000ab02
+// Name: complete_entity_behavior_transition
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00016B98 convert_world_routine_0x00016b98
+//   0x00016B98 spawn_scene_entity_from_weighted_table
 //   0x0001DBF0 reset_entity_service_records
 //   0x0001E2EC begin_world_activity
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_graphics_routine_0x0000ab02(void)
+void complete_entity_behavior_transition(void)
 
 {
   short sVar1;
@@ -25,7 +25,7 @@ void convert_graphics_routine_0x0000ab02(void)
     begin_world_activity();
   }
   if (((((*(byte *)(in_A0 + 0x10) & 8) == 0) &&
-       (convert_world_routine_0x00016b98(), in_A0 = extraout_A0,
+       (spawn_scene_entity_from_weighted_table(), in_A0 = extraout_A0,
        (*(byte *)(extraout_A0 + 0x9e) & 0x40) != 0)) &&
       (DAT_00ffe177 = DAT_00ffe177 + -1, DAT_00ffe177 == '\0')) &&
      (reset_entity_service_records(), in_A0 = extraout_A0_00, DAT_00ffe12e != (undefined *)0x0)) {

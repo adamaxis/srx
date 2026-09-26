@@ -23,16 +23,16 @@
 //   0x00017F80 refresh_mode_metadata_wrapper
 //   0x00018776 advance_hud_fade_service
 //   0x000187AA render_hud_indicator_grids
-//   0x0001882E convert_world_routine_0x0001882e
+//   0x0001882E render_matrix_panel
 //   0x0001897C write_hud_repeated_grid_variant_a
 //   0x000189D8 write_two_hud_grids
 //   0x00018AA6 run_cyber_info_screen
 //   0x00019238 run_matrix_program_slot_screen
 //   0x00019504 write_hud_panel_grid
 //   0x000196F2 rotate_hud_history
-//   0x00019B40 convert_world_routine_0x00019b40
-//   0x00019BF6 pass_through_value
-//   0x00026A00 convert_world_routine_0x00026a00
+//   0x00019B40 select_run_hud_mode
+//   0x00019BF6 select_hud_mode_auxiliary_value
+//   0x00026A00 run_display_transition
 //   0x000530DE service_audio_if_enabled
 
 
@@ -81,7 +81,7 @@ void run_matrix_interaction_loop(void)
   DAT_00fff0d1 = 0;
   uVar7 = unaff_D7 & 0xffff0000;
 LAB_0001831a:
-  convert_world_routine_0x0001882e();
+  render_matrix_panel();
   DAT_00fff10c = 0xff;
 LAB_00018326:
   while( true ) {
@@ -103,7 +103,7 @@ LAB_00018326:
 LAB_000183e0:
     DAT_00ffd98c = (short)CONCAT31((int3)(uVar6 >> 8),DAT_00fff0d0) * 0x20 + 0x8c;
     DAT_00ffef14 = DAT_00ffef14 | 2;
-    convert_world_routine_0x0001882e();
+    render_matrix_panel();
   }
   if ((DAT_00ffdd22._0_1_ & 4) != 0) {
     uVar6 = 0xffff;
@@ -128,7 +128,7 @@ LAB_0001842e:
       if (DAT_00fff0d0 == 3) {
         if (DAT_00fff0b0 != '\0') {
           write_hud_repeated_grid_variant_a();
-          sVar8 = convert_world_routine_0x00019b40();
+          sVar8 = select_run_hud_mode();
           if ((sVar8 == 8) && (DAT_00ffdf84 != '\0')) {
             render_encoded_title_text();
           }
@@ -147,9 +147,9 @@ LAB_0001842e:
                  (((DAT_00ffdd22._0_1_ & 0x10) != 0 || ((DAT_00ffdd22._0_1_ & 0x20) != 0)))) {
                 uVar7 = 0;
                 if (DAT_00fff0dc != '\0') goto LAB_0001831a;
-                sVar8 = convert_world_routine_0x00019b40();
+                sVar8 = select_run_hud_mode();
                 if ((sVar8 == 8) && (DAT_00ffdf84 != '\0')) {
-                  pass_through_value();
+                  select_hud_mode_auxiliary_value();
                   count_thresholded_random_rolls();
                   if (DAT_00fff0dd == '\0') {
                     advance_hud_panel();
@@ -172,7 +172,7 @@ LAB_0001842e:
                 }
                 DAT_00fff0dc = -1;
                 advance_hud_fade_service();
-                convert_world_routine_0x00026a00();
+                run_display_transition();
                 goto LAB_00018694;
               }
             }

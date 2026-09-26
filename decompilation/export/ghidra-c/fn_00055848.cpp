@@ -1,17 +1,17 @@
 // Ghidra headless export
 // Entry: 0x00055848
-// Name: convert_intro_routine_0x00055848
+// Name: calculate_effect_target_offset
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
 //   0x00000DBA count_thresholded_random_rolls
-//   0x00055740 convert_intro_routine_0x00055740
-//   0x00055786 convert_intro_routine_0x00055786
-//   0x00055ED6 convert_intro_routine_0x00055ed6
-//   0x00055F20 convert_intro_routine_0x00055f20
+//   0x00055740 apply_target_condition_modifier
+//   0x00055786 apply_dynamic_status_modifier
+//   0x00055ED6 calculate_equipment_command_average
+//   0x00055F20 select_posture_adjusted_value
 
 
-short convert_intro_routine_0x00055848(void)
+short calculate_effect_target_offset(void)
 
 {
   byte bVar1;
@@ -19,10 +19,10 @@ short convert_intro_routine_0x00055848(void)
   short sVar3;
   short sVar4;
   
-  convert_intro_routine_0x00055ed6();
-  convert_intro_routine_0x00055f20();
-  convert_intro_routine_0x00055740();
-  convert_intro_routine_0x00055786();
+  calculate_equipment_command_average();
+  select_posture_adjusted_value();
+  apply_target_condition_modifier();
+  apply_dynamic_status_modifier();
   count_thresholded_random_rolls();
   bVar1 = DAT_00fff0dd >> 1;
   sVar2 = sample_source_random_bound();

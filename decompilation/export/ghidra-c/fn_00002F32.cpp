@@ -6,7 +6,7 @@
 //   0x00002BD2 advance_field_scene_transition
 //   0x0000301E upload_scene_profile_block
 //   0x00003032 scene_uses_alternate_profile
-//   0x0000C7F8 convert_graphics_routine_0x0000c7f8
+//   0x0000C7F8 prepare_field_scene_runtime
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -22,7 +22,7 @@ uint initialize_field_scene_state(void)
   undefined2 *puVar5;
   undefined2 *puVar6;
   
-  convert_graphics_routine_0x0000c7f8();
+  prepare_field_scene_runtime();
   DAT_00ffdf40 = 0;
   _DAT_00ffdf8a = 0xffff;
   sVar3 = 0x30;

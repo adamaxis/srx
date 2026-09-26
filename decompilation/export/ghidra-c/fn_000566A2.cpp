@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000566A2
-// Name: convert_intro_routine_0x000566a2
+// Name: copy_menu_selection_record_table
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_intro_routine_0x000566a2(void)
+void copy_menu_selection_record_table(void)
 
 {
   short sVar1;

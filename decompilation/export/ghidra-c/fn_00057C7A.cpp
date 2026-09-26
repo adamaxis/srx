@@ -1,29 +1,29 @@
 // Ghidra headless export
 // Entry: 0x00057C7A
-// Name: convert_intro_routine_0x00057c7a
+// Name: render_field_action_selection
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x00013228 build_inventory_action_detail_plan
-//   0x00057610 convert_intro_routine_0x00057610
+//   0x00057610 prepare_field_action_selection_context
 //   0x00057628 select_menu_resource_entry
 //   0x0005787C calculate_field_action_quantity_cost
 //   0x00057A6E apply_field_action_cost_discounts
 //   0x00057AF6 apply_runner_cost_surcharge
 //   0x00057B42 apply_large_field_action_cost_discount
-//   0x00057C46 convert_intro_routine_0x00057c46
-//   0x00057C52 convert_intro_routine_0x00057c52
-//   0x00057D7E convert_intro_routine_0x00057d7e
-//   0x000580FE convert_intro_routine_0x000580fe
-//   0x0005825C convert_intro_routine_0x0005825c
-//   0x00058316 convert_intro_routine_0x00058316
-//   0x000586CA convert_intro_routine_0x000586ca
-//   0x0005878E convert_intro_routine_0x0005878e
+//   0x00057C46 write_field_action_grid_variant_b
+//   0x00057C52 write_field_action_grid_variant_c
+//   0x00057D7E render_field_action_quantity
+//   0x000580FE render_field_action_description
+//   0x0005825C render_field_action_cost_summary
+//   0x00058316 render_field_action_feedback
+//   0x000586CA render_field_action_detail
+//   0x0005878E render_field_action_detail_text
 
 
-void convert_intro_routine_0x00057c7a(void)
+void render_field_action_selection(void)
 
 {
   byte bVar1;
@@ -39,8 +39,8 @@ void convert_intro_routine_0x00057c7a(void)
   undefined4 extraout_A1_00;
   undefined4 extraout_A1_01;
   
-  convert_intro_routine_0x00057c46();
-  convert_intro_routine_0x00057c52();
+  write_field_action_grid_variant_b();
+  write_field_action_grid_variant_c();
   if (DAT_00fff0b7 < '\0') {
     if (((DAT_00fff0b8 == '\0') || ((char)(DAT_00fff0b8 + -2) < '\0')) || (DAT_00fff0b8 == '\x02'))
     goto LAB_00057d08;
@@ -78,7 +78,7 @@ void convert_intro_routine_0x00057c7a(void)
       if ((char)(DAT_00fff0b8 + -3) < '\0') {
         select_menu_resource_entry();
         DAT_00fff0d6 = (&DAT_00fffbcc)[(short)(ushort)*extraout_A0] + 1;
-        convert_intro_routine_0x00057610();
+        prepare_field_action_selection_context();
         if ((int)(((extraout_D1 & 0xffff) * (uint)DAT_00fff0d6 & 0xffff) * 0x1e + -0x10000) < 0) {
           apply_field_action_cost_discounts();
           pcVar5 = extraout_A0_00;
@@ -90,7 +90,7 @@ void convert_intro_routine_0x00057c7a(void)
         if (-1 < *pcVar5) {
           render_encoded_title_text();
           render_encoded_title_text();
-          convert_intro_routine_0x000580fe(extraout_A1);
+          render_field_action_description(extraout_A1);
         }
         goto LAB_000580ec;
       }
@@ -100,7 +100,7 @@ void convert_intro_routine_0x00057c7a(void)
           uVar4 = 1;
         }
         if (-1 < (char)(&DAT_001ab196)[(uint)DAT_00fff0d0 * 0xe + (uint)uVar4 * 0x70]) {
-          convert_intro_routine_0x0005825c
+          render_field_action_cost_summary
                     (&DAT_001ab118 +
                      (uint)(byte)(&DAT_001ab196)[(uint)DAT_00fff0d0 * 0xe + (uint)uVar4 * 0x70] *
                      0x18);
@@ -108,7 +108,7 @@ void convert_intro_routine_0x00057c7a(void)
         goto LAB_0005804a;
       }
       if (DAT_00fff0b8 != '\x05') {
-        convert_intro_routine_0x00058316();
+        render_field_action_feedback();
         return;
       }
       if (-1 < (char)(DAT_00fff0d0 - 5)) {
@@ -159,13 +159,13 @@ LAB_000580ec:
     }
     if (DAT_00fff0b8 == '\x01') {
 LAB_00057d08:
-      convert_intro_routine_0x000586ca();
+      render_field_action_detail();
       return;
     }
     if ((char)(DAT_00fff0b8 + -1) < '\0') {
       if ((char)(&DAT_001aaf40)[(uint)DAT_00fff0d0 * 4 + (uint)(ushort)(DAT_00fff0b6 - 3) * 0x20] <
           '\0') goto LAB_0005804a;
-      convert_intro_routine_0x00057d7e();
+      render_field_action_quantity();
       goto LAB_000585e8;
     }
     if (DAT_00fff0b8 != '\x03') goto LAB_00057d08;
@@ -173,7 +173,7 @@ LAB_00057d08:
   uVar4 = (ushort)*(byte *)((uint)DAT_00fff0d0 + DAT_00fffc04 + 0x66);
   if ((-1 < (short)(uVar4 - 1)) && (((short)(uVar4 - 0x29) < 0 || (-1 < (short)(uVar4 - 0x2c))))) {
     uVar3 = build_inventory_action_detail_plan();
-    convert_intro_routine_0x0005878e();
+    render_field_action_detail_text();
     if (DAT_00fff0b1 == '\0') {
       uVar3 = render_encoded_title_text();
     }

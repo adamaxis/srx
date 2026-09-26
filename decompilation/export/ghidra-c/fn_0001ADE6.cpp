@@ -13,7 +13,7 @@
 //   0x000186FA refresh_field_hud_assets
 //   0x00018776 advance_hud_fade_service
 //   0x00019432 handle_menu_directional_input
-//   0x00019788 convert_world_routine_0x00019788
+//   0x00019788 advance_matrix_program_loading
 //   0x0001A370 advance_world_effect_controller
 //   0x0001A48A advance_title_animation_cycle
 //   0x0001A5A0 advance_world_effect_mode_animation
@@ -48,8 +48,8 @@
 //   0x0001D2E6 advance_world_sequence
 //   0x000268E6 append_world_sprite_records
 //   0x00026958 upload_decoded_source_stream
-//   0x00026972 convert_world_routine_0x00026972
-//   0x00026A00 convert_world_routine_0x00026a00
+//   0x00026972 refresh_title_sprite_records
+//   0x00026A00 run_display_transition
 //   0x000530DE service_audio_if_enabled
 //   0x000530EA service_audio_command_frame
 //   0x00053126 prepare_mode_entry_service
@@ -121,11 +121,11 @@ void run_world_effect_scene_loop(void)
         advance_title_jitter();
         if (_DAT_00ffe084 == 0) {
           advance_hud_fade_service();
-          convert_world_routine_0x00026a00();
+          run_display_transition();
           return;
         }
       }
-      convert_world_routine_0x00019788();
+      advance_matrix_program_loading();
       advance_title_world_interaction_service();
       handle_menu_directional_input();
       advance_world_effect_controller();
@@ -165,7 +165,7 @@ LAB_0001afc0:
       if (_DAT_00ffe0f6 != 0) {
         advance_title_phase_cycle();
       }
-      convert_world_routine_0x00026972();
+      refresh_title_sprite_records();
       advance_title_sprite_layers();
       if ((DAT_00ff1592 & 1) != 0) {
         advance_title_sweep_animation();

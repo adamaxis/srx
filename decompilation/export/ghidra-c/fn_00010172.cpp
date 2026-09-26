@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00010172
-// Name: convert_menu_routine_0x00010172
+// Name: refresh_magic_force_display
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000011C0 write_repeated_vdp_grid
 //   0x00001232 write_vdp_grid
 
 
-undefined8 convert_menu_routine_0x00010172(void)
+undefined8 refresh_magic_force_display(void)
 
 {
   undefined4 in_D0;

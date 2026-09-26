@@ -1,15 +1,15 @@
 // Ghidra headless export
 // Entry: 0x00057C52
-// Name: convert_intro_routine_0x00057c52
+// Name: write_field_action_grid_variant_c
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00057C66 convert_intro_routine_0x00057c66
+//   0x00057C66 write_field_action_detail_grid
 
 
-void convert_intro_routine_0x00057c52(void)
+void write_field_action_grid_variant_c(void)
 
 {
-  convert_intro_routine_0x00057c66();
+  write_field_action_detail_grid();
   return;
 }
 

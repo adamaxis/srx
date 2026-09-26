@@ -32,7 +32,7 @@ undefined8 render_matrix_runner_detail_panel(void)
   write_vdp_grid();
   write_vdp_grid();
   if (DAT_00fff0b0 < '\0') {
-    convert_world_routine_0x00018a92();
+    matrix_program_index();
     write_repeated_vdp_grid();
     calculate_runner_action_delay();
     write_repeated_vdp_grid();

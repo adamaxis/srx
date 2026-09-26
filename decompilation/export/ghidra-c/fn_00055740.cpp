@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00055740
-// Name: convert_intro_routine_0x00055740
+// Name: apply_target_condition_modifier
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_intro_routine_0x00055740(void)
+void apply_target_condition_modifier(void)
 
 {
   int in_A0;

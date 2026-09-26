@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00015118 initialize_entity_behavior_record
 //   0x00015D3C measure_relative_heading_and_distance
-//   0x00055640 convert_intro_routine_0x00055640
+//   0x00055640 resolve_entity_action_pair
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -24,7 +24,7 @@ void initialize_entity_spawn_record(void)
   
   initialize_entity_behavior_record();
   if (_DAT_00ffdfd8 == 0) {
-    convert_intro_routine_0x00055640();
+    resolve_entity_action_pair();
   }
   in_A1[0x16] = 0x4000;
   *in_A1 = *in_A0;

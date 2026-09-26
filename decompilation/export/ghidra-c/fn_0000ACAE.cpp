@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000ACAE
-// Name: convert_graphics_routine_0x0000acae
+// Name: advance_entity_behavior_action
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000AAD2 dispatch_player_action_if_ready
@@ -12,14 +12,14 @@
 //   0x0000B39A set_entity_heading_with_field_animation
 //   0x0000B3FE set_entity_heading_with_alternate_animation
 //   0x0001514E process_entity_spawn_cycle
-//   0x00015646 convert_entity_routine_0x00015646
+//   0x00015646 spawn_entity_effect_record
 //   0x0001DC4C select_world_entity_service_target
 //   0x000530DE service_audio_if_enabled
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_graphics_routine_0x0000acae(void)
+void advance_entity_behavior_action(void)
 
 {
   short sVar1;
@@ -80,7 +80,7 @@ void convert_graphics_routine_0x0000acae(void)
     }
     if (('\f' < *(char *)(in_A0 + 0x57)) &&
        (bVar2 = *(byte *)(in_A0 + 0x57) < 0x10, (char)(*(byte *)(in_A0 + 0x57) - 0x10) < '\0')) {
-      convert_entity_routine_0x00015646();
+      spawn_entity_effect_record();
       if (bVar2) {
         return;
       }

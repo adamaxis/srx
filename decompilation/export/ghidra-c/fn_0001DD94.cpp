@@ -26,7 +26,7 @@ void advance_world_frame_logic(void)
 
   if (DAT_00ffe166 != 0 && --DAT_00ffe166 == 0) {
     prepare_mode_entry_service();
-    DAT_00ffdd2c = convert_graphics_routine_0x0000c64c;
+    DAT_00ffdd2c = finalize_field_mode_exit_transition;
     begin_world_activity();
   }
   if (DAT_00ffe11c != 0) {

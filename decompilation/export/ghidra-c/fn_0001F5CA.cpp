@@ -8,23 +8,23 @@
 // making each converted scene policy an explicit native callback.
 //
 // Calls recovered from direct call instructions:
-//   0x0000C64C route_to_graphics_service
+//   0x0000C64C finalize_field_mode_exit_transition
 //   0x0001EEDC dispatch_world_effect
 //   0x0001F65A select_field_exit_prompt
 //   0x0001F830 prepare_field_mode_exit
 //   0x0001FA78 select_field_mode_service
 //   0x0001FD80 finalize_field_mode_exit
-//   0x00020634 prepare_world_exit
+//   0x00020634 select_mode_entry_resource
 //   0x00053A78 run_indexed_title_services
 
 void run_field_exit_orchestrator(void)
 {
   if ((DAT_00ff0110 & 0x40) != 0 || (DAT_00ff0110 & 0x10) != 0) {
-    route_to_graphics_service();
+    finalize_field_mode_exit_transition();
     return;
   }
 
-  prepare_world_exit();
+  select_mode_entry_resource();
   DAT_00fff10c = 0;
   DAT_00fff0cc = 0;
 

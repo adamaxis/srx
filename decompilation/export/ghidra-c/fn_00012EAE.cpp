@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00012EAE
-// Name: convert_menu_routine_0x00012eae
+// Name: render_equipment_action_detail_row
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_encoded_title_text
 //   0x00012FA4 advance_entity_action_menu
 
 
-void convert_menu_routine_0x00012eae(void)
+void render_equipment_action_detail_row(void)
 
 {
   short sVar1;

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001957E
-// Name: clear_ready_menu_visual_slots
+// Name: calculate_loaded_program_capacity
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001952C convert_world_routine_0x0001952c
+//   0x0001952C matrix_program_storage_usage
 
 
-void clear_ready_menu_visual_slots(void)
+void calculate_loaded_program_capacity(void)
 
 {
   short sVar1;
@@ -17,7 +17,7 @@ void clear_ready_menu_visual_slots(void)
   sVar1 = 4;
   do {
     if (-1 < (char)puVar2[sVar1 + 0x1a]) {
-      convert_world_routine_0x0001952c();
+      matrix_program_storage_usage();
       puVar2 = extraout_A1;
     }
     sVar1 = sVar1 + -1;

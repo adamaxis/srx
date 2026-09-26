@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005D5FC
-// Name: convert_intro_routine_0x0005d5fc
+// Name: advance_world_scene_effect_timer_b
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
 
 
-void convert_intro_routine_0x0005d5fc(void)
+void advance_world_scene_effect_timer_b(void)
 
 {
   short sVar1;

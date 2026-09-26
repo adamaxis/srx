@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00019788
-// Name: convert_world_routine_0x00019788
+// Name: advance_matrix_program_loading
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
@@ -10,7 +10,7 @@
 //   0x00017EEE advance_menu_overlay_timer
 
 
-void convert_world_routine_0x00019788(void)
+void advance_matrix_program_loading(void)
 
 {
   short sVar1;

@@ -6,8 +6,8 @@
 //   0x00000DBA count_thresholded_random_rolls
 //   0x00017D72 draw_hud_panel
 //   0x00017D90 advance_hud_panel
-//   0x00019B40 convert_world_routine_0x00019b40
-//   0x00019BF6 pass_through_value
+//   0x00019B40 select_run_hud_mode
+//   0x00019BF6 select_hud_mode_auxiliary_value
 //   0x00053216 select_secondary_runner_record_table
 //   0x00056116 advance_world_effect_intro_gate
 //   0x000562D4 add_world_effect_timer_modifier
@@ -43,7 +43,7 @@ LAB_000560aa:
         DAT_00fff0e7 = DAT_00fff0e7 + -1;
       }
       else {
-        pass_through_value();
+        select_hud_mode_auxiliary_value();
         add_world_effect_timer_modifier();
         count_thresholded_random_rolls();
         DAT_00fff0dd = DAT_00fff0dd + -1;
@@ -68,10 +68,10 @@ LAB_000560aa:
         return uVar3;
       }
 LAB_00056268:
-      pass_through_value();
+      select_hud_mode_auxiliary_value();
       add_world_effect_timer_modifier();
       count_thresholded_random_rolls();
-      sVar4 = convert_world_routine_0x00019b40();
+      sVar4 = select_run_hud_mode();
       if (sVar4 == 8) {
         draw_hud_panel();
         advance_hud_panel();
@@ -87,7 +87,7 @@ LAB_00056268:
     if (-1 < (char)(cVar1 + -0x15)) goto LAB_00056268;
   }
   if (DAT_00fff0a3 < '\0') {
-    pass_through_value();
+    select_hud_mode_auxiliary_value();
     add_world_effect_phase_modifier();
     count_thresholded_random_rolls();
     cVar1 = DAT_00fff0dd;
@@ -95,9 +95,9 @@ LAB_00056268:
     add_world_effect_phase_modifier();
     count_thresholded_random_rolls();
     if ((DAT_00fff0dd < cVar1) &&
-       (convert_world_routine_0x0001989a(), uVar2 = extraout_D0u, DAT_00fff0b1 < '\0'))
+       (update_hud_mode_transition(), uVar2 = extraout_D0u, DAT_00fff0b1 < '\0'))
     goto LAB_000561e2;
-    convert_world_routine_0x00017a5e();
+    render_menu_slot_status();
     if (DAT_00fff0a0 < '\x01') {
       DAT_00ffdf84 = 0;
       uVar2 = extraout_D0u_00;

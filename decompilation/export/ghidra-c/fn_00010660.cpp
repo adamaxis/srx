@@ -1,17 +1,17 @@
 // Ghidra headless export
 // Entry: 0x00010660
-// Name: convert_menu_routine_0x00010660
+// Name: calculate_action_residual
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00055F02 convert_intro_routine_0x00055f02
-//   0x00055F20 convert_intro_routine_0x00055f20
+//   0x00055F02 calculate_item18_skill_value
+//   0x00055F20 select_posture_adjusted_value
 
 
-void convert_menu_routine_0x00010660(void)
+void calculate_action_residual(void)
 
 {
-  convert_intro_routine_0x00055f02();
-  convert_intro_routine_0x00055f20();
+  calculate_item18_skill_value();
+  select_posture_adjusted_value();
   return;
 }
 

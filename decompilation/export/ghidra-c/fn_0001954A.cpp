@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001954A
-// Name: convert_world_routine_0x0001954a
+// Name: matrix_loaded_slot_usage
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_world_routine_0x0001954a(void)
+void matrix_loaded_slot_usage(void)
 
 {
   return;

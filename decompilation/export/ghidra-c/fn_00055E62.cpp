@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00055E62
-// Name: convert_intro_routine_0x00055e62
+// Name: apply_equipment_defense_action_modifier
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_intro_routine_0x00055e62(void)
+void apply_equipment_defense_action_modifier(void)
 
 {
   short sVar1;

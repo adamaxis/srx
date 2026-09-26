@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000EF08
-// Name: convert_graphics_routine_0x0000ef08
+// Name: service_exit_prompt_entities
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003674 advance_entity_delay_meter
@@ -10,7 +10,7 @@
 //   0x0000F312 wait_for_controller_event
 
 
-void convert_graphics_routine_0x0000ef08(void)
+void service_exit_prompt_entities(void)
 
 {
   short sVar1;

@@ -1,14 +1,14 @@
 // Ghidra headless export
 // Entry: 0x000195D8
-// Name: refresh_menu_slot_visual
+// Name: refresh_matrix_program_slot
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 //   0x0001792E render_menu_hud_rows
-//   0x000195A6 refresh_menu_slot_pair
+//   0x000195A6 calculate_selected_matrix_program_load_steps
 
 
-void refresh_menu_slot_visual(void)
+void refresh_matrix_program_slot(void)
 
 {
   short extraout_D1w;
@@ -16,7 +16,7 @@ void refresh_menu_slot_visual(void)
   undefined1 unaff_D7b;
   int extraout_A1;
   
-  refresh_menu_slot_pair();
+  calculate_selected_matrix_program_load_steps();
   uVar1 = (ushort)DAT_00fff0d4;
   *(undefined1 *)(extraout_A1 + 0x1a + (int)(short)uVar1) = unaff_D7b;
   (&DAT_00fff0e8)[(short)uVar1] = 0;

@@ -1,6 +1,6 @@
 # Ghidra conversion source layout
 
-The 225 leaf contracts are now assigned to 28 behavioral build modules. The
+The 227 leaf contracts are now assigned to 28 behavioral build modules. The
 assignment is explicit in [`conversion-source-modules.tsv`](conversion-source-modules.tsv)
 and is checked by `tools/audit_conversion_modules.ps1`. The leaf files remain
 temporarily because each one has a focused source-trace test and a direct ROM
@@ -39,8 +39,9 @@ tests/<domain>/                      focused source-trace evidence
 
 The conversion CMake project builds one
 `shadowrun_ghidra_conversion_modules` archive from all domain implementations.
-The 225 focused test executables remain separate so a regression still points
-at a specific behavior contract; they are not 225 proposed game-runtime
+The 229 CTest cases (the runner plus 228 focused test executables) remain
+separate so a regression still points at a specific behavior contract; they
+are not proposed game-runtime
 libraries. The conversion archive is never linked into the native game.
 
 The standalone `shadowrun_ghidra_conversion_runner` is a conversion-side

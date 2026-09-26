@@ -1,19 +1,19 @@
 // Ghidra headless export
 // Entry: 0x000575F8
-// Name: convert_intro_routine_0x000575f8
+// Name: prepare_field_action_resource_selection
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001952C convert_world_routine_0x0001952c
-//   0x00019558 reset_menu_visual_slots
-//   0x00057610 convert_intro_routine_0x00057610
+//   0x0001952C matrix_program_storage_usage
+//   0x00019558 calculate_matrix_storage_capacity
+//   0x00057610 prepare_field_action_selection_context
 
 
-void convert_intro_routine_0x000575f8(void)
+void prepare_field_action_resource_selection(void)
 
 {
-  reset_menu_visual_slots();
-  convert_intro_routine_0x00057610();
-  convert_world_routine_0x0001952c();
+  calculate_matrix_storage_capacity();
+  prepare_field_action_selection_context();
+  matrix_program_storage_usage();
   return;
 }
 

@@ -8,5 +8,5 @@
 // FFF0B7 is the special result-one mode.
 //
 // Calls recovered from direct call instructions:
-//   0x00057C46 prepare_field_mode_selection_data
+//   0x00057C46 write_field_action_grid_variant_b
 //   0x00001232 write_vdp_grid

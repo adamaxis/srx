@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000EA36
-// Name: convert_graphics_routine_0x0000ea36
+// Name: evaluate_entity_terrain_collision_directions
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000EAD2 evaluate_terrain_direction_boundary
 
 
-void convert_graphics_routine_0x0000ea36(void)
+void evaluate_entity_terrain_collision_directions(void)
 
 {
   ushort unaff_D5w;

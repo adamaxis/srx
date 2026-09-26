@@ -7,9 +7,9 @@
 //   0x00003548 draw_hud_panel_triplet
 //   0x000036FC advance_entity_asset_meter
 //   0x000037EC advance_entity_behavior_meter
-//   0x00010016 convert_menu_routine_0x00010016
-//   0x000102D4 convert_menu_routine_0x000102d4
-//   0x00010722 convert_menu_routine_0x00010722
+//   0x00010016 run_magic_force_selection_loop
+//   0x000102D4 prepare_magic_action_details
+//   0x00010722 run_runner_posture_adjustment
 //   0x000125FA clear_entity_auxiliary_marker
 
 
@@ -22,7 +22,7 @@ void run_equipment_selection(void)
   int iVar1;
   int extraout_A0_00;
   
-  convert_menu_routine_0x000102d4();
+  prepare_magic_action_details();
   iVar1 = DAT_00fffc04;
   if ((-1 < *(char *)(DAT_00fffc04 + 0x56)) && (*(char *)(DAT_00fffc04 + 0x57) != '\0')) {
     clear_entity_auxiliary_marker();
@@ -31,9 +31,9 @@ void run_equipment_selection(void)
   }
   *(undefined1 *)(iVar1 + 0x57) = unaff_D7b;
   *(char *)(iVar1 + 0x57) = *(char *)(iVar1 + 0x57) + '\x01';
-  while (((convert_menu_routine_0x00010016(), (DAT_00ffdd22._0_1_ & 0x20) == 0 &&
+  while (((run_magic_force_selection_loop(), (DAT_00ffdd22._0_1_ & 0x20) == 0 &&
           ((DAT_00ffdd22._0_1_ & 0x10) == 0)) && ((DAT_00ffdd22._0_1_ & 0x40) == 0))) {
-    convert_menu_routine_0x00010722();
+    run_runner_posture_adjustment();
     if ((((DAT_00ffdd22._0_1_ & 0x20) != 0) || ((DAT_00ffdd22._0_1_ & 0x10) != 0)) ||
        ((DAT_00ffdd22._0_1_ & 0x40) != 0)) break;
   }

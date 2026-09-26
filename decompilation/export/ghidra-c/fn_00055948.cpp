@@ -1,17 +1,17 @@
 // Ghidra headless export
 // Entry: 0x00055948
-// Name: convert_intro_routine_0x00055948
+// Name: resolve_equipment_action_status
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00055786 convert_intro_routine_0x00055786
-//   0x000559BC convert_intro_routine_0x000559bc
-//   0x00055ED6 convert_intro_routine_0x00055ed6
-//   0x00055F20 convert_intro_routine_0x00055f20
+//   0x00055786 apply_dynamic_status_modifier
+//   0x000559BC resolve_dynamic_entity_action
+//   0x00055ED6 calculate_equipment_command_average
+//   0x00055F20 select_posture_adjusted_value
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_intro_routine_0x00055948(void)
+void resolve_equipment_action_status(void)
 
 {
   byte bVar1;
@@ -33,14 +33,14 @@ void convert_intro_routine_0x00055948(void)
   bVar3 = -(&DAT_00166ad4)
            [(short)(ushort)(byte)(&DAT_000d4565)[(short)((*(byte *)(in_A0 + 0x57) - 1) * 0x30)]];
   _DAT_00fff112 = 0;
-  convert_intro_routine_0x00055ed6();
-  convert_intro_routine_0x00055f20();
-  convert_intro_routine_0x00055786();
+  calculate_equipment_command_average();
+  select_posture_adjusted_value();
+  apply_dynamic_status_modifier();
   sVar6 = 2;
   uVar4 = 9;
   do {
     if ((CONCAT22(extraout_D0u,*(undefined2 *)(extraout_A0 + 0x90)) & 1 << (uVar4 & 0x1f)) != 0) {
-      convert_intro_routine_0x000559bc();
+      resolve_dynamic_entity_action();
       return;
     }
     uVar4 = (uint)(ushort)((short)uVar4 + 1);
@@ -65,16 +65,16 @@ void convert_intro_routine_0x00055948(void)
   cVar7 = _DAT_00fff112 < 0;
   uVar8 = _DAT_00fff112 == 0;
   if ((bool)uVar8) {
-    convert_intro_routine_0x00055e92();
+    subtract_armor_primary_modifier();
     if ((bool)uVar8 || cVar9 != cVar7) {
       return;
     }
   }
   else if ((_DAT_00fff112 < 1) &&
-          (convert_intro_routine_0x00055eb4(), (bool)uVar8 || cVar9 != cVar7)) {
+          (subtract_armor_secondary_modifier(), (bool)uVar8 || cVar9 != cVar7)) {
     return;
   }
-  convert_intro_routine_0x00055e62();
+  apply_equipment_defense_action_modifier();
   if (!(bool)uVar8 && cVar9 == cVar7) {
     cVar7 = -(char)uVar5;
     if ((short)(*(short *)(extraout_A1 + 0x3e) + -3) < 0) {

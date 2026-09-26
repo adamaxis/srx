@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x0000E8A0 sample_terrain_collision_tiles
 //   0x0000E9EE contains_terrain_object_bounds
-//   0x0000EA36 convert_graphics_routine_0x0000ea36
+//   0x0000EA36 evaluate_entity_terrain_collision_directions
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -59,7 +59,7 @@ ushort evaluate_terrain_collision(void)
         return 0x7f;
       }
     }
-    convert_graphics_routine_0x0000ea36();
+    evaluate_entity_terrain_collision_directions();
     if (bVar2) {
       return 0x7f;
     }

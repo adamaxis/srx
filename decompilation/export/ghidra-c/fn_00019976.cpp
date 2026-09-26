@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00019976
-// Name: convert_world_routine_0x00019976
+// Name: service_matrix_program_action
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001792E render_menu_hud_rows
@@ -8,11 +8,11 @@
 //   0x00017C84 set_hud_selection_value
 //   0x00017C8E hud_selection_value_matches
 //   0x00017EE4 reset_menu_overlay_and_upload_two
-//   0x0001989A convert_world_routine_0x0001989a
+//   0x0001989A update_hud_mode_transition
 //   0x0001B1C4 initialize_world_effect_seed
 
 
-void convert_world_routine_0x00019976(void)
+void service_matrix_program_action(void)
 
 {
   undefined4 uVar1;
@@ -77,7 +77,7 @@ void convert_world_routine_0x00019976(void)
                 uVar3 = CONCAT22(uVar2,4);
               }
               DAT_00fff0a0 = 1;
-              convert_world_routine_0x0001989a(uVar1,uVar3);
+              update_hud_mode_transition(uVar1,uVar3);
               initialize_world_effect_seed();
               return;
             }

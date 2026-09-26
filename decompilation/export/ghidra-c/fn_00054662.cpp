@@ -31,7 +31,7 @@
 //   0x000549F6 select_mode_display_status
 //   0x00054A28 render_mode_status_summary
 //   0x00054A8E advance_random_mode_event
-//   0x00055F44 run_mode_action_preamble
+//   0x00055F44 calculate_runner_action_delay
 //   0x000566F6 refresh_mode_resource_state
 
 // Source order, expressed as native operations:
@@ -47,7 +47,7 @@
 //           wait_and_sample_controller();
 //           if (directional_edge()) continue;
 //           if (action_edge()) {
-//               run_mode_action_preamble();
+//               calculate_runner_action_delay();
 //               if (action_gate_passes())
 //                   dispatch_mode_action(record_kind, cursor);
 //               else

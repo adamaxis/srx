@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00019632
-// Name: convert_world_routine_0x00019632
+// Name: clear_matrix_program_slot
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000011C0 write_repeated_vdp_grid
@@ -8,7 +8,7 @@
 //   0x0001792E render_menu_hud_rows
 
 
-void convert_world_routine_0x00019632(void)
+void clear_matrix_program_slot(void)
 
 {
   short unaff_D4w;

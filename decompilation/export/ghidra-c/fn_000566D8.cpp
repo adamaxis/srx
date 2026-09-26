@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000566D8
-// Name: convert_intro_routine_0x000566d8
+// Name: copy_mode_resource_metadata
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_intro_routine_0x000566d8(void)
+void copy_mode_resource_metadata(void)
 
 {
   short sVar1;

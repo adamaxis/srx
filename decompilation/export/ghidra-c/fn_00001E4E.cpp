@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000530DE service_audio_if_enabled
-//   0x0005C8C6 convert_intro_routine_0x0005c8c6
+//   0x0005C8C6 upload_title_or_field_word_stream
 
 
 ushort reveal_title_logo_column(void)
@@ -20,7 +20,7 @@ ushort reveal_title_logo_column(void)
     uVar1 = service_audio_if_enabled();
   }
   if (DAT_00fff1e6 < 0x26) {
-    uVar1 = convert_intro_routine_0x0005c8c6();
+    uVar1 = upload_title_or_field_word_stream();
     DAT_00fff1e6 = DAT_00fff1e6 + 1;
     DAT_00fff1e2 = DAT_00fff1e2 + 2;
   }

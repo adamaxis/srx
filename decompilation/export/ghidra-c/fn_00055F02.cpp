@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00055F02
-// Name: convert_intro_routine_0x00055f02
+// Name: calculate_item18_skill_value
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_intro_routine_0x00055f02(void)
+void calculate_item18_skill_value(void)
 
 {
   short sVar1;

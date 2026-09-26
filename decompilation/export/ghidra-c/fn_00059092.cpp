@@ -14,7 +14,7 @@
 //   0x00010B5A transfer_menu_asset_batch_four
 //   0x0001F34A prepare_mode_resource_variant_b
 //   0x0001F38A prepare_mode_resource_variant_a
-//   0x000566D8 convert_intro_routine_0x000566d8
+//   0x000566D8 copy_mode_resource_metadata
 //   0x000566E2 refresh_mode_resource_metadata
 //   0x00059172 run_save_load
 
@@ -22,7 +22,7 @@
 void run_start_options(void)
 
 {
-  convert_intro_routine_0x000566d8();
+  copy_mode_resource_metadata();
   refresh_mode_resource_metadata();
   transfer_menu_asset_batch_four();
   load_title_font();

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00057D7E
-// Name: convert_intro_routine_0x00057d7e
+// Name: render_field_action_quantity
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_encoded_title_text
@@ -11,7 +11,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_intro_routine_0x00057d7e(void)
+void render_field_action_quantity(void)
 
 {
   short sVar1;

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000CF38
-// Name: convert_graphics_routine_0x0000cf38
+// Name: run_field_exit_prompt_menu
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -13,17 +13,17 @@
 //   0x0000C436 dispatch_menu_handler
 //   0x0000CFFE prepare_title_mode_display
 //   0x0000E660 advance_random_grid_effect
-//   0x0000EF08 convert_graphics_routine_0x0000ef08
+//   0x0000EF08 service_exit_prompt_entities
 //   0x00010952 reset_mode_display_buffers
 
 
-void convert_graphics_routine_0x0000cf38(void)
+void run_field_exit_prompt_menu(void)
 
 {
   DAT_00fff10d = 0;
   reset_mode_display_buffers();
   prepare_title_mode_display();
-  convert_graphics_routine_0x0000ef08();
+  service_exit_prompt_entities();
   do {
     prepare_title_mode_display();
     write_menu_grid_with_metadata();

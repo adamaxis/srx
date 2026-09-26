@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00003B1E
-// Name: convert_field_routine_0x00003b1e
+// Name: classify_field_camera_vertical_delta
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_field_routine_0x00003b1e(void)
+void classify_field_camera_vertical_delta(void)
 
 {
   ushort uVar1;

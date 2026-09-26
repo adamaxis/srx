@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00017BC0 refresh_menu_number_or_grid
-//   0x000195AA clear_menu_slot_visual
+//   0x000195AA calculate_matrix_program_load_steps
 //   0x00019762 clear_menu_status_at
 
 
@@ -17,7 +17,7 @@ void clear_first_ready_menu_slot(void)
   sVar1 = 4;
   do {
     if ((&DAT_00fffbd8)[sVar1] == '\a') {
-      clear_menu_slot_visual();
+      calculate_matrix_program_load_steps();
       (&DAT_00fff0e8)[sVar1] = 0;
       *(short *)((int)&DAT_00fff0f2 + (int)(short)(sVar1 << 1)) = extraout_D1w * 10;
       refresh_menu_number_or_grid();

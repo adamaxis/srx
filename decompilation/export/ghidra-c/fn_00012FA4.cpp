@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 //   0x0000C0DA render_encoded_title_text
-//   0x00010660 convert_menu_routine_0x00010660
+//   0x00010660 calculate_action_residual
 
 
 void advance_entity_action_menu(void)
@@ -22,7 +22,7 @@ void advance_entity_action_menu(void)
   cVar4 = SBORROW2(uVar1,1);
   cVar2 = (short)(uVar1 - 1) < 0;
   bVar3 = uVar1 == 1;
-  convert_menu_routine_0x00010660();
+  calculate_action_residual();
   if (!bVar3 && cVar4 == cVar2) {
     write_vdp_grid();
   }

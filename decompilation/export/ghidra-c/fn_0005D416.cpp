@@ -1,14 +1,14 @@
 // Ghidra headless export
 // Entry: 0x0005D416
-// Name: convert_intro_routine_0x0005d416
+// Name: advance_world_scene_effect_phase
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000530DE service_audio_if_enabled
-//   0x000566D8 convert_intro_routine_0x000566d8
-//   0x0005D6BC convert_intro_routine_0x0005d6bc
+//   0x000566D8 copy_mode_resource_metadata
+//   0x0005D6BC spawn_scene_special_effect
 
 
-void convert_intro_routine_0x0005d416(void)
+void advance_world_scene_effect_phase(void)
 
 {
   int in_A0;
@@ -18,12 +18,12 @@ void convert_intro_routine_0x0005d416(void)
   }
   if (*(short *)(in_A0 + 0x24) == 0x14) {
     service_audio_if_enabled();
-    convert_intro_routine_0x0005d6bc();
+    spawn_scene_special_effect();
     goto LAB_0005d522;
   }
   if (*(short *)(in_A0 + 0x24) == 0x16) {
 LAB_0005d516:
-    convert_intro_routine_0x000566d8();
+    copy_mode_resource_metadata();
     goto LAB_0005d522;
   }
   if (*(short *)(in_A0 + 0x24) == 0x18) {
@@ -43,7 +43,7 @@ LAB_0005d506:
           if ((*(short *)(in_A0 + 0x24) != 0x25) && (*(short *)(in_A0 + 0x24) != 0x26)) {
             if (*(short *)(in_A0 + 0x24) == 0x27) goto LAB_0005d506;
             if ((*(short *)(in_A0 + 0x24) != 0x28) && (*(short *)(in_A0 + 0x24) != 0x29)) {
-              convert_intro_routine_0x000566d8();
+              copy_mode_resource_metadata();
               goto LAB_0005d522;
             }
           }

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000119CE
-// Name: convert_menu_routine_0x000119ce
+// Name: run_command_overview_action_dialog
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -11,7 +11,7 @@
 //   0x000530DE service_audio_if_enabled
 
 
-undefined8 convert_menu_routine_0x000119ce(void)
+undefined8 run_command_overview_action_dialog(void)
 
 {
   undefined4 uVar1;
@@ -77,7 +77,7 @@ LAB_00011a5c:
   DAT_00fff0b1 = 0xff;
 LAB_00011a9a:
   write_vdp_grid();
-  uVar7 = convert_menu_routine_0x00011ae4();
+  uVar7 = adjust_menu_dialog_posture();
   update_equipment_combat_bars
             (uVar7,uVar2 & 0xffff0000,unaff_D3,&UNK_0000ca9e,unaff_D5,unaff_D6,5,extraout_A0_01,
              extraout_A1_01,unaff_A2,unaff_A3,unaff_A4,unaff_A5,unaff_A6);

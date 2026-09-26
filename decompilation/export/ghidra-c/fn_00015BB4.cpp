@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00015BB4
-// Name: convert_entity_routine_0x00015bb4
+// Name: noop_entity_action_hook
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_entity_routine_0x00015bb4(void)
+void noop_entity_action_hook(void)
 
 {
   return;

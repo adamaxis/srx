@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001088C
-// Name: convert_menu_routine_0x0001088c
+// Name: render_magic_spell_availability
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000011C0 write_repeated_vdp_grid
@@ -8,7 +8,7 @@
 //   0x0000C0DA render_encoded_title_text
 
 
-void convert_menu_routine_0x0001088c(void)
+void render_magic_spell_availability(void)
 
 {
   if ((char)(&DAT_000d4ec5)

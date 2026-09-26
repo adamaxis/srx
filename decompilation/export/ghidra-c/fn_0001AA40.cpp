@@ -31,7 +31,7 @@ void tick_world_effect_animation(void)
       if ((_DAT_00ffdf8c == 0) || (DAT_00ffe0bc != 0)) {
         DAT_00ff1642 = DAT_00ff1642 - 1;
         if ((short)((ushort)DAT_00ff1642 << 8) < 0) {
-          cVar1 = convert_world_routine_0x0001a4ea();
+          cVar1 = lookup_runner_animation_delta();
           bVar2 = extraout_D1b + cVar1;
           if ((short)((ushort)bVar2 << 8) < 0) {
             bVar2 = 0;
@@ -87,7 +87,7 @@ void tick_world_effect_animation(void)
       bVar3 = false;
       arm_effect_after_threshold();
       if (!bVar3) {
-        convert_intro_routine_0x000563cc();
+        advance_primary_world_effect_pending_roll();
         return;
       }
     }

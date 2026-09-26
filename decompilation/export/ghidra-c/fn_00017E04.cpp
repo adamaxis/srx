@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
-//   0x00017C3C convert_world_routine_0x00017c3c
+//   0x00017C3C read_menu_entry_profile_eligibility
 
 
 void refresh_hud_grid_if_ready(void)
@@ -14,7 +14,7 @@ void refresh_hud_grid_if_ready(void)
   undefined1 in_ZF;
   char in_VF;
   
-  convert_world_routine_0x00017c3c();
+  read_menu_entry_profile_eligibility();
   if (!(bool)in_ZF && in_VF == in_NF) {
     write_vdp_grid();
     write_vdp_grid();

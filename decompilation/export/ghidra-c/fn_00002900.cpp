@@ -19,7 +19,7 @@
 //   0x0001E04A begin_world_effect_transition
 //   0x000530EA service_audio_command_frame
 //   0x0005BA50 load_scene_resources
-//   0x0005D260 convert_intro_routine_0x0005d260
+//   0x0005D260 reset_world_frame_service_state
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -45,7 +45,7 @@ void run_world_frame_services(void)
     clear_scene_record_pending_flags();
     finalize_pending_entity_template_update();
     if (DAT_00ffe186 != '\x03') {
-      convert_intro_routine_0x0005d260();
+      reset_world_frame_service_state();
     }
     if (DAT_00ffe171 == '\0') {
       copy_terrain_layers();

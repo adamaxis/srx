@@ -8,14 +8,14 @@
 //   0x0000195C sample_controller_input
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C376 move_wrapped_menu_cursor
-//   0x0001882E convert_world_routine_0x0001882e
+//   0x0001882E render_matrix_panel
 //   0x00018998 write_hud_repeated_grid_variant_b
-//   0x00018A92 convert_world_routine_0x00018a92
+//   0x00018A92 matrix_program_index
 //   0x000194AC advance_hud_selection_row
 //   0x00019504 write_hud_panel_grid
-//   0x0001952C convert_world_routine_0x0001952c
-//   0x0001957E clear_ready_menu_visual_slots
-//   0x000195D8 refresh_menu_slot_visual
+//   0x0001952C matrix_program_storage_usage
+//   0x0001957E calculate_loaded_program_capacity
+//   0x000195D8 refresh_matrix_program_slot
 //   0x0001962A apply_menu_slot_command
 //   0x000196F2 rotate_hud_history
 //   0x00019736 clear_ready_menu_slot_timer
@@ -30,12 +30,12 @@ void run_matrix_program_slot_screen(void)
   short sVar1;
   undefined1 *puVar2;
   
-  convert_world_routine_0x00018a92();
+  matrix_program_index();
   if ((&DAT_00fffbcc)[unaff_D7w] != '\0') {
     DAT_00ffdd50 = 0;
     DAT_00fff0dc = '\0';
     write_hud_repeated_grid_variant_b();
-    convert_world_routine_0x00018a92();
+    matrix_program_index();
     puVar2 = &DAT_00fffbbe;
     sVar1 = 4;
     do {
@@ -82,9 +82,9 @@ void run_matrix_program_slot_screen(void)
       }
     }
     DAT_00fff0d4 = '\x04' - (char)sVar1;
-    clear_ready_menu_visual_slots();
-    convert_world_routine_0x00018a92();
-    convert_world_routine_0x0001952c();
+    calculate_loaded_program_capacity();
+    matrix_program_index();
+    matrix_program_storage_usage();
     if ((short)(unaff_D6w - extraout_D1w) < 0) {
       render_encoded_title_text();
       render_encoded_title_text();
@@ -92,10 +92,10 @@ void run_matrix_program_slot_screen(void)
     }
 LAB_00019410:
     clear_ready_menu_slot_timer();
-    refresh_menu_slot_visual();
+    refresh_matrix_program_slot();
 LAB_00019428:
     write_hud_panel_grid();
-    convert_world_routine_0x0001882e();
+    render_matrix_panel();
   }
   return;
 }

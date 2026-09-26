@@ -6,7 +6,7 @@
 //   0x00001378 build_title_sprite_records
 //   0x0001792E render_menu_hud_rows
 //   0x00017BC0 refresh_menu_number_or_grid
-//   0x00019632 convert_world_routine_0x00019632
+//   0x00019632 clear_matrix_program_slot
 //   0x00019AEE refresh_mode_glyph
 //   0x0001A908 initialize_world_effect_mode
 
@@ -21,7 +21,7 @@ void advance_matrix_program_transition(void)
     DAT_00ffe0da = 0xc;
     DAT_00ffe0dc = DAT_00ffe0dc + 1;
     if (DAT_00ffe0dc == 6) {
-      convert_world_routine_0x00019632();
+      clear_matrix_program_slot();
       refresh_menu_number_or_grid();
     }
     if (0xb < DAT_00ffe0dc) {

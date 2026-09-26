@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000022E
-// Name: convert_interrupt_routine_0x0000022e
+// Name: interrupt_stub_service_display_frame
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-undefined8 convert_interrupt_routine_0x0000022e(void)
+undefined8 interrupt_stub_service_display_frame(void)
 
 {
   undefined4 in_D0;

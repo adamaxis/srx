@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0001A4EA
-// Name: convert_world_routine_0x0001a4ea
+// Name: lookup_runner_animation_delta
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_world_routine_0x0001a4ea(void)
+void lookup_runner_animation_delta(void)
 
 {
   return;

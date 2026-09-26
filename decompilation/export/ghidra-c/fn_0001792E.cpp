@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
-//   0x00017C3C convert_world_routine_0x00017c3c
+//   0x00017C3C read_menu_entry_profile_eligibility
 //   0x00056506 calculate_menu_hud_row_meter
 
 
@@ -19,7 +19,7 @@ void render_menu_hud_rows(void)
   iVar3 = 0xebc0;
   do {
     sVar1 = sVar2;
-    if (((DAT_00fff0b0 != '\0') && (convert_world_routine_0x00017c3c(sVar2,iVar3), sVar2 != 0)) &&
+    if (((DAT_00fff0b0 != '\0') && (read_menu_entry_profile_eligibility(sVar2,iVar3), sVar2 != 0)) &&
        (-1 < (char)(&DAT_00fffbd8)[sVar1])) {
       calculate_menu_hud_row_meter();
     }

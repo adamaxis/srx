@@ -3,7 +3,7 @@
 // Name: initialize_world_effect_mode
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00019B40 convert_world_routine_0x00019b40
+//   0x00019B40 select_run_hud_mode
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -17,7 +17,7 @@ void initialize_world_effect_mode(void)
   DAT_00ff164a = 1;
   sVar1 = DAT_00ffe0e0;
   if (_DAT_00ffe0de == 0) {
-    sVar1 = convert_world_routine_0x00019b40();
+    sVar1 = select_run_hud_mode();
   }
   DAT_00ffe0bc = sVar1;
   if (sVar1 < 0) {

@@ -15,7 +15,7 @@
 //   0x00001232 write_vdp_grid
 //   0x0000195C sample_controller_input
 //   0x0000C134 normalize_source_text_line
-//   0x0000C168 convert_graphics_routine_0x0000c168
+//   0x0000C168 render_wrapped_encoded_text
 //   0x0001F5A8 prepare_mode_text_prompt
 //   indirect 0x0012CCB4 mode-command dispatch table
 

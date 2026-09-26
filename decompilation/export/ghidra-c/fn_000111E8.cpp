@@ -9,7 +9,7 @@
 //   0x00011928 render_menu_row
 //   0x00011ABE prepare_menu_dialog
 //   0x00012C36 prepare_menu_grid_variant_b
-//   0x00012EAE convert_menu_routine_0x00012eae
+//   0x00012EAE render_equipment_action_detail_row
 
 
 void render_equipment_details(void)
@@ -56,7 +56,7 @@ LAB_00011304:
     }
     render_encoded_title_text();
   }
-  convert_menu_routine_0x00012eae();
+  render_equipment_action_detail_row();
 LAB_00011312:
   build_grouped_decimal_glyphs();
   build_grouped_decimal_glyphs();

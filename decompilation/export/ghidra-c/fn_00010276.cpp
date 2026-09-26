@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_encoded_title_text
-//   0x00010172 convert_menu_routine_0x00010172
+//   0x00010172 refresh_magic_force_display
 //   0x00010260 prepare_menu_grid_then_service
 //   0x00011190 transfer_menu_glyph_triple
 
@@ -15,14 +15,14 @@ void run_menu_text_display_sequence(void)
   uint unaff_D7;
   
   prepare_menu_grid_then_service();
-  convert_menu_routine_0x00010172();
+  refresh_magic_force_display();
   transfer_menu_glyph_triple();
   render_encoded_title_text();
   render_encoded_title_text();
   render_encoded_title_text();
   render_encoded_title_text();
   adjust_runner_posture((unaff_D7 & 0xffff) * 0x30);
-  convert_menu_routine_0x0001088c();
+  render_magic_spell_availability();
   build_grouped_decimal_glyphs();
   return;
 }

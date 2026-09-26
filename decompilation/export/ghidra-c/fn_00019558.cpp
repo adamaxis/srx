@@ -1,25 +1,25 @@
 // Ghidra headless export
 // Entry: 0x00019558
-// Name: reset_menu_visual_slots
+// Name: calculate_matrix_storage_capacity
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x0001952C convert_world_routine_0x0001952c
-//   0x0001954A convert_world_routine_0x0001954a
+//   0x0001952C matrix_program_storage_usage
+//   0x0001954A matrix_loaded_slot_usage
 
 
-void reset_menu_visual_slots(void)
+void calculate_matrix_storage_capacity(void)
 
 {
   short sVar1;
   
   sVar1 = 4;
   do {
-    convert_world_routine_0x0001954a();
+    matrix_loaded_slot_usage();
     sVar1 = sVar1 + -1;
   } while (sVar1 != -1);
   sVar1 = 0xb;
   do {
-    convert_world_routine_0x0001952c();
+    matrix_program_storage_usage();
     sVar1 = sVar1 + -1;
   } while (sVar1 != -1);
   return;

@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00058316
-// Name: convert_intro_routine_0x00058316
+// Name: render_field_action_feedback
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 //   0x0000C0DA render_encoded_title_text
 
 
-void convert_intro_routine_0x00058316(void)
+void render_field_action_feedback(void)
 
 {
   undefined4 extraout_A1;

@@ -5,8 +5,8 @@
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 //   0x0000C0DA render_encoded_title_text
-//   0x00055E92 convert_intro_routine_0x00055e92
-//   0x00055EB4 convert_intro_routine_0x00055eb4
+//   0x00055E92 subtract_armor_primary_modifier
+//   0x00055EB4 subtract_armor_secondary_modifier
 
 
 void apply_armor_selection(void)
@@ -29,9 +29,9 @@ void apply_armor_selection(void)
   }
   render_encoded_title_text();
   render_encoded_title_text();
-  convert_intro_routine_0x00055eb4();
+  subtract_armor_secondary_modifier();
   write_vdp_grid();
-  convert_intro_routine_0x00055e92();
+  subtract_armor_primary_modifier();
   write_vdp_grid();
   if (DAT_00fff0b1 < '\0') {
     DAT_00fff0b1 = '\0';

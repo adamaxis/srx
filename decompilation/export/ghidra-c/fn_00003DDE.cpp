@@ -3,7 +3,7 @@
 // Name: emit_field_tile_row_words
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00003E14 convert_field_routine_0x00003e14
+//   0x00003E14 upload_field_tile_row
 //   0x00003FD8 calculate_field_tile_source_layout
 
 
@@ -26,7 +26,7 @@ void emit_field_tile_row_words(void)
   calculate_field_tile_source_layout();
   uVar4 = (ushort)-((unaff_D4w & 0xf80) - 0x1000) >> 7;
   if ((short)(uVar4 - 1) < 0x1f) {
-    convert_field_routine_0x00003e14();
+    upload_field_tile_row();
     sVar5 = -(uVar4 - 0x1f);
     VDP_CTRL = 0x8f80;
     make_vdp_transfer_command();
@@ -53,7 +53,7 @@ void emit_field_tile_row_words(void)
     VDP_CTRL = 0x8f02;
     return;
   }
-  convert_field_routine_0x00003e14();
+  upload_field_tile_row();
   return;
 }
 

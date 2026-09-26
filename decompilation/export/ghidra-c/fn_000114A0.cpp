@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000114A0
-// Name: convert_menu_routine_0x000114a0
+// Name: advance_command_overview_primary_page
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E34 reset_vdp_upload_state
@@ -10,7 +10,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_menu_routine_0x000114a0(void)
+void advance_command_overview_primary_page(void)
 
 {
   char cVar1;

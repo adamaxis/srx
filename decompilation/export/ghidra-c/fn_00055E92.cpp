@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00055E92
-// Name: convert_intro_routine_0x00055e92
+// Name: subtract_armor_primary_modifier
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-undefined1 convert_intro_routine_0x00055e92(void)
+undefined1 subtract_armor_primary_modifier(void)
 
 {
   undefined1 uVar1;

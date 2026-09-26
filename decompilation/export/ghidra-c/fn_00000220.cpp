@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00000220
-// Name: convert_interrupt_routine_0x00000220
+// Name: unused_stop_stub_2700
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_interrupt_routine_0x00000220(void)
+void unused_stop_stub_2700(void)
 
 {
   stop();

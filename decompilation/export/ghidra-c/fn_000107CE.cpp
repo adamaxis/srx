@@ -5,8 +5,8 @@
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 //   0x0000C0DA render_encoded_title_text
-//   0x0001055E convert_menu_routine_0x0001055e
-//   0x000105E6 convert_menu_routine_0x000105e6
+//   0x0001055E refresh_equipment_combat_values
+//   0x000105E6 refresh_equipment_action_metric
 //   0x00010854 write_three_grids_then_service
 
 
@@ -29,9 +29,9 @@ void adjust_runner_posture(void)
   write_vdp_grid();
   render_encoded_title_text();
   write_three_grids_then_service();
-  convert_menu_routine_0x000105e6();
-  convert_menu_routine_0x0001055e();
-  convert_menu_routine_0x0001055e();
+  refresh_equipment_action_metric();
+  refresh_equipment_combat_values();
+  refresh_equipment_combat_values();
   return;
 }
 

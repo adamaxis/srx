@@ -92,7 +92,7 @@ void run_entity_animation_entry(void)
     iVar10 = extraout_A0_01;
   }
   if (iVar3 != 0x12345678) {
-    convert_menu_routine_0x00013d0c();
+    run_entity_animation_motion();
     return;
   }
   iVar3 = DAT_00fffc04;

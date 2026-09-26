@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001745E
-// Name: convert_world_routine_0x0001745e
+// Name: run_field_mode_hud_scene
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E34 reset_vdp_upload_state
@@ -36,7 +36,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_world_routine_0x0001745e(void)
+void run_field_mode_hud_scene(void)
 
 {
   int extraout_A0;

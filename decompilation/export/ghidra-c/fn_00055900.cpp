@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00055900
-// Name: convert_intro_routine_0x00055900
+// Name: resolve_entity_action_status
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_intro_routine_0x00055900(void)
+void resolve_entity_action_status(void)
 
 {
   byte bVar1;
@@ -37,14 +37,14 @@ void convert_intro_routine_0x00055900(void)
     sVar4 = 6;
   }
   _DAT_00fff112 = -1;
-  convert_intro_routine_0x00055ed6();
-  convert_intro_routine_0x00055f20();
-  convert_intro_routine_0x00055786();
+  calculate_equipment_command_average();
+  select_posture_adjusted_value();
+  apply_dynamic_status_modifier();
   sVar6 = 2;
   uVar3 = 9;
   do {
     if ((CONCAT22(extraout_D0u,*(undefined2 *)(extraout_A0 + 0x90)) & 1 << (uVar3 & 0x1f)) != 0) {
-      convert_intro_routine_0x000559bc();
+      resolve_dynamic_entity_action();
       return;
     }
     uVar3 = (uint)(ushort)((short)uVar3 + 1);
@@ -69,16 +69,16 @@ void convert_intro_routine_0x00055900(void)
   cVar7 = _DAT_00fff112 < 0;
   uVar8 = _DAT_00fff112 == 0;
   if ((bool)uVar8) {
-    convert_intro_routine_0x00055e92();
+    subtract_armor_primary_modifier();
     if ((bool)uVar8 || cVar9 != cVar7) {
       return;
     }
   }
   else if ((_DAT_00fff112 < 1) &&
-          (convert_intro_routine_0x00055eb4(), (bool)uVar8 || cVar9 != cVar7)) {
+          (subtract_armor_secondary_modifier(), (bool)uVar8 || cVar9 != cVar7)) {
     return;
   }
-  convert_intro_routine_0x00055e62();
+  apply_equipment_defense_action_modifier();
   if (!(bool)uVar8 && cVar9 == cVar7) {
     cVar7 = -(char)uVar5;
     if ((short)(*(short *)(extraout_A1 + 0x3e) + -3) < 0) {

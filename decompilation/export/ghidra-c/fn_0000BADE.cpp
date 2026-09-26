@@ -6,7 +6,7 @@
 //   0x0000B442 reset_entity_movement_state
 //   0x0000B732 apply_movement_result_policy
 //   0x0000B77E probe_entity_directional_collision
-//   0x0000B7B8 convert_graphics_routine_0x0000b7b8
+//   0x0000B7B8 advance_entity_movement_and_mode_transition
 //   0x0000BB86 evaluate_entity_movement_route
 //   0x0000BBE4 commit_entity_position
 
@@ -33,7 +33,7 @@ void advance_entity_movement_step(void)
   iVar2 = extraout_A0;
   if ((sVar1 == 0) ||
      ((sVar1 < 0 &&
-      (convert_graphics_routine_0x0000b7b8(), iVar2 = extraout_A0_00,
+      (advance_entity_movement_and_mode_transition(), iVar2 = extraout_A0_00,
       (*(byte *)(extraout_A0_00 + 0xb0) & 1) == 0)))) {
     *(undefined2 *)(iVar2 + 0xb8) = 0x1000;
     commit_entity_position();

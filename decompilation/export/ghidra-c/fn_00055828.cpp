@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00055828
-// Name: convert_intro_routine_0x00055828
+// Name: noop_dynamic_modifier_hook
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_intro_routine_0x00055828(void)
+void noop_dynamic_modifier_hook(void)
 
 {
   return;

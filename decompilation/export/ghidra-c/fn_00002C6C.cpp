@@ -7,14 +7,14 @@
 //   0x00002C92 render_normal_field_viewport
 //   0x00002CB2 render_alternate_field_viewport
 //   0x00016AFA upload_mode_word_block
-//   0x000566C2 convert_intro_routine_0x000566c2
+//   0x000566C2 copy_mode_selection_state_table
 
 
 void prepare_field_viewports(void)
 
 {
   prepare_title_resources();
-  convert_intro_routine_0x000566c2();
+  copy_mode_selection_state_table();
   if (DAT_00ffdf40 == 2) {
     upload_mode_word_block();
   }

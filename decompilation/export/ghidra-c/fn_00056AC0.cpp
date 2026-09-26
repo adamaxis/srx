@@ -22,7 +22,7 @@
 //   0x0000C0C2 load_title_font
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C406 prepare_numeric_menu_block
-//   0x0000D4C8 convert_graphics_routine_0x0000d4c8
+//   0x0000D4C8 reset_field_mode_entity_selection
 //   0x00010BC4 transfer_menu_asset_batch_eight_after_copy
 //   0x00011048 upload_resource_then_write_two_blocks
 //   0x000110EC draw_active_runner_hud_panel
@@ -31,7 +31,7 @@
 //   0x000566EC copy_field_mode_palette_bank
 //   0x000566F6 refresh_mode_resource_state
 //   0x0005670E refresh_mode_palette_data
-//   0x00056DC4 convert_intro_routine_0x00056dc4
+//   0x00056DC4 run_field_action_selection
 //   0x000587DA render_field_mode_selection_presentation
 //   0x00058B5E refresh_field_mode_panel_grid
 //   0x00058BB6 render_field_mode_selection
@@ -120,7 +120,7 @@ LAB_00056cd4:
     if (((DAT_00ffdd22._0_1_ & 0x40) == 0) && ((DAT_00ffdd22._0_1_ & 0x10) == 0)) {
       if ((DAT_00ffdd22._0_1_ & 0x20) != 0) {
         service_audio_if_enabled();
-        convert_graphics_routine_0x0000d4c8();
+        reset_field_mode_entity_selection();
         goto LAB_00056b66;
       }
       if ((DAT_00ffdd22._0_1_ & 0x80) != 0) goto LAB_00056da8;
@@ -136,7 +136,7 @@ LAB_00056cd4:
       }
       goto LAB_00056c54;
     }
-    convert_intro_routine_0x00056dc4();
+    run_field_action_selection();
     if (DAT_00fff112 < '\0') goto LAB_00056c54;
     reset_vdp_upload_state();
     DAT_00fff0d0 = DAT_00fff0b8;

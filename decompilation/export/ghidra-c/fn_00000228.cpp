@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00000228
-// Name: convert_interrupt_routine_0x00000228
+// Name: interrupt_stub_write_alternating_word_pair
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_interrupt_routine_0x00000228(void)
+void interrupt_stub_write_alternating_word_pair(void)
 
 {
   write_alternating_word_pair();

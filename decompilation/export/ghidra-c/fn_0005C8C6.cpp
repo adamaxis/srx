@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005C8C6
-// Name: convert_intro_routine_0x0005c8c6
+// Name: upload_title_or_field_word_stream
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000E9C make_vdp_transfer_command
 
 
-undefined8 convert_intro_routine_0x0005c8c6(void)
+undefined8 upload_title_or_field_word_stream(void)
 
 {
   undefined4 in_D0;

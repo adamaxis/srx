@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0005D55C
-// Name: convert_intro_routine_0x0005d55c
+// Name: advance_world_scene_effect_frame
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_intro_routine_0x0005d55c(void)
+void advance_world_scene_effect_frame(void)
 
 {
   short sVar1;
