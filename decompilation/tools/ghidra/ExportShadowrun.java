@@ -731,7 +731,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00019C5CL, "read_matrix_program_availability_for_slot");
         names.put(0x00019CB2L, "run_menu_selection_code_four");
         names.put(0x0001A16AL, "render_matrix_runner_detail_panel");
-        names.put(0x0001A370L, "convert_world_routine_0x0001a370");
+        names.put(0x0001A370L, "advance_world_effect_controller");
         names.put(0x0001A4EAL, "lookup_runner_animation_delta");
         names.put(0x0001A538L, "runner_record_has_active_effect");
         names.put(0x0001A5A0L, "convert_world_routine_0x0001a5a0");

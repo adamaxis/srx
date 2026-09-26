@@ -804,6 +804,19 @@ target_link_libraries(shadowrun_ghidra_world_effect_animation_test
 add_test(NAME shadowrun_ghidra_world_effect_animation
          COMMAND shadowrun_ghidra_world_effect_animation_test)
 
+add_library(shadowrun_ghidra_world_effect_controller STATIC
+    src/world_effect_controller_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_world_effect_controller PUBLIC include)
+
+add_executable(shadowrun_ghidra_world_effect_controller_test
+    tests/world_effect_controller_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_world_effect_controller_test
+    PRIVATE shadowrun_ghidra_world_effect_controller)
+add_test(NAME shadowrun_ghidra_world_effect_controller
+         COMMAND shadowrun_ghidra_world_effect_controller_test)
+
 add_library(shadowrun_ghidra_title_world_helpers STATIC
     src/title_world_helpers_conversion.cpp
 )

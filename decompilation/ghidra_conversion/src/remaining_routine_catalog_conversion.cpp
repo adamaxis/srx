@@ -122,7 +122,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00019C5CU, "convert_world_routine_0x00019c5c", RoutineFamily::world, 16U},
     {0x00019CB2U, "convert_world_routine_0x00019cb2", RoutineFamily::world, 116U},
     {0x0001A16AU, "render_matrix_runner_detail_panel", RoutineFamily::menu, 354U},
-    {0x0001A370U, "convert_world_routine_0x0001a370", RoutineFamily::world, 350U},
+    {0x0001A370U, "advance_world_effect_controller", RoutineFamily::world, 350U},
     {0x0001A4EAU, "lookup_runner_animation_delta", RoutineFamily::world, 36U},
     {0x0001A538U, "runner_record_has_active_effect", RoutineFamily::world, 22U},
     {0x0001A5A0U, "convert_world_routine_0x0001a5a0", RoutineFamily::world, 568U},

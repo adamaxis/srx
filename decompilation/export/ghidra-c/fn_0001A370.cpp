@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001A370
-// Name: convert_world_routine_0x0001a370
+// Name: advance_world_effect_controller
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -12,11 +12,16 @@
 //   0x0001A8F4 reset_effect_entity
 //   0x0001D3F4 expand_random_nibble_mask
 //   0x000561E8 convert_intro_routine_0x000561e8
+//
+// Direct disassembly is authoritative for the branch at 0x1A380: FFE082
+// selects the inline descriptor-transition/noise path, while a clear FFE082
+// performs the runner-effect and countdown selection below. The typed host
+// conversion is in ghidra_conversion/world_effect_controller_conversion.
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_world_routine_0x0001a370(void)
+void advance_world_effect_controller(void)
 
 {
   ushort uVar2;

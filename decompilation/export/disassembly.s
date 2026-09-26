@@ -16910,7 +16910,7 @@
 0001AF64: jsr 0x00019788.l ; call 00019788 convert_world_routine_0x00019788
 0001AF6A: bsr.w 0x0001c754 ; call 0001C754 convert_world_routine_0x0001c754
 0001AF6E: jsr 0x00019432.l ; call 00019432 handle_menu_directional_input
-0001AF74: bsr.w 0x0001a370 ; call 0001A370 convert_world_routine_0x0001a370
+0001AF74: bsr.w 0x0001a370 ; call 0001A370 advance_world_effect_controller
 0001AF78: tst.b (0x00fff0b1).l
 0001AF7E: bmi.w 0x0001b1b6
 0001AF82: tst.b (0x00ffe16d).l
