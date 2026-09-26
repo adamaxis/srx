@@ -427,7 +427,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00015CC0	compute_diagonal_step_cost	36	unknown	ok	ghidra-c/fn_00015CC0.cpp
 00015D3C	measure_relative_heading_and_distance	18	unknown	ok	ghidra-c/fn_00015D3C.cpp
 00015D4E	measure_heading_and_distance	126	unknown	ok	ghidra-c/fn_00015D4E.cpp
-00015DCC	convert_entity_routine_0x00015dcc	42	unknown	ok	ghidra-c/fn_00015DCC.cpp
+00015DCC	transform_entity_heading_vector	42	unknown	ok	ghidra-c/fn_00015DCC.cpp
 00016396	advance_palette_fade	68	unknown	ok	ghidra-c/fn_00016396.cpp
 000163DA	service_active_effect_slots	64	unknown	ok	ghidra-c/fn_000163DA.cpp
 000164A8	populate_entity_table	52	unknown	ok	ghidra-c/fn_000164A8.cpp

@@ -142,7 +142,7 @@ LAB_0001450e:
       uVar5 = puVar7[0x17] + 0x6000;
     }
     local_4 = 0x14540;
-    convert_entity_routine_0x00015dcc();
+    transform_entity_heading_vector();
     local_4 = CONCAT22(uVar5 + extraout_A1_01[2],local_4._2_2_);
     uStack_8 = CONCAT22(*extraout_A1_01 + 0xe0,uStack_8._2_2_);
     uStack_14 = 0xe0;

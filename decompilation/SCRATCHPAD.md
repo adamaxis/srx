@@ -477,9 +477,12 @@ preserve the D3/D4 minus D6/D7 word subtraction, carry/borrow branch, reflected
 thresholds at `3` and `0x180`, and mode-byte selections from `FFE173`/`FFE174`.
 
 Their `0x15DCC` numeric dependency is now direct as well: the original D2 word
-selects a pair of signed factors in the `0x15E16` table, signed D3 is the
-magnitude, and the high words of the two `MULS` products are returned. A zero
-magnitude clears both result words.
+selects the signed X factor from `0x15E56` and the Y factor from its 96-entry
+rotation at `0x15E16`, signed D3 is the magnitude, and the doubled high words
+of the two `MULS` products are returned. A zero magnitude clears both result
+words. The heading-offset conversion now uses the same source orientation:
+`+0x4C` is the direct `0x15E56` sample and `+0x4E` is the rotated companion;
+the prior host conversion had these axes reversed.
 
 `object_update.cpp` now composes the reviewed `0x4ADC` flow: decrement the
 record timer, use `0x1A304` plus `0x4B9A`-`0x4BAA` on expiry, otherwise run the
@@ -670,6 +673,25 @@ mode have carry-setting exits even when no candidate position is copied; a
 normal compatible candidate sets both the candidate and carry. This matters
 to `0x14D8E`, whose outer result intentionally consumes that carry and returns
 clear. The conversion test now checks those distinctions.
+
+## Heading-vector leaf: 0x15DCC
+
+The Ghidra C export for `0x15DCC` was a false no-op. The ROM disassembly is
+the authority here: it copies D2 (heading) into D4, copies the signed D3 word
+into D2 as the magnitude, and returns zero words immediately for magnitude
+zero. Otherwise it selects an even byte offset from the heading high byte,
+multiplies the signed `0x15E56` X sample and the 96-entry-rotated `0x15E16` Y
+sample by the signed magnitude, doubles each 32-bit product, and swaps the
+result so the product high words are returned in D2/D3.
+
+`ghidra_conversion::transform_entity_heading_vector` now exposes that as a
+typed coordinate leaf. It uses the verified table already shared by
+`derive_entity_heading_offsets`, preserves the source's doubled-product
+semantics, and does not emulate registers or address-space reads. The
+coordinate test now covers the corrected axis orientation, cardinal heading
+offsets, signed south projection, and the zero-magnitude branch. The
+canonical export/callgraph labels and every recovered call site now use the
+meaningful name instead of the generic routine placeholder.
 
 The primary candidate builder at `0x1438C` now exposes the seven-record filter
 that feeds the primary linked-target table. It requires behavior bit 0, rejects

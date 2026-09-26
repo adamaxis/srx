@@ -107,7 +107,7 @@ void run_entity_animation_entry(void)
     sVar6 = *(short *)(iVar3 + 0x2e) + 0x6000;
   }
   uStack_4 = 0x14540;
-  convert_entity_routine_0x00015dcc();
+  transform_entity_heading_vector();
   uStack_4 = CONCAT22(sVar6 + extraout_A1_00[2],uStack_4._2_2_);
   uStack_8 = CONCAT22(*extraout_A1_00 + 0xe0,uStack_8._2_2_);
   uStack_14 = 0xe0;

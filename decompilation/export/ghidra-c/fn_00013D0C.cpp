@@ -8,7 +8,7 @@
 //   0x000145A2 convert_entity_routine_0x000145a2
 //   0x00014D6A select_entity_animation_table_row
 //   0x00015D3C measure_relative_heading_and_distance
-//   0x00015DCC convert_entity_routine_0x00015dcc
+//   0x00015DCC transform_entity_heading_vector
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -85,7 +85,7 @@ ushort * run_entity_animation_motion(void)
 LAB_00013dca:
     *(byte *)(in_A0 + 0x58) = *(byte *)(in_A0 + 0x58) | 0x10;
     if (_DAT_00ffdfde != 0) goto LAB_00013e40;
-    convert_entity_routine_0x00015dcc();
+    transform_entity_heading_vector();
     uVar7 = extraout_A0_01[2] + uVar7 + 0x4000;
     extraout_A0_01[0x4b] = *extraout_A0_01 + uVar5 * 2;
     extraout_A0_01[0x4c] = uVar7;

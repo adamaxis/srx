@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x0000E7C8 evaluate_terrain_collision
 //   0x000144E8 apply_entity_close_range_state
-//   0x00015DCC convert_entity_routine_0x00015dcc
+//   0x00015DCC transform_entity_heading_vector
 
 
 void convert_entity_routine_0x00014508(void)
@@ -60,7 +60,7 @@ void convert_entity_routine_0x00014508(void)
     sVar5 = *(short *)(DAT_00fffc04 + 0x2e) + 0x6000;
   }
   uStack_4 = 0x14540;
-  convert_entity_routine_0x00015dcc();
+  transform_entity_heading_vector();
   sStack_8 = *extraout_A1 + 0xe0;
   uStack_4 = CONCAT22(sVar5 + extraout_A1[2],uStack_4._2_2_);
   local_14 = 0xe0;
@@ -211,5 +211,4 @@ advance_obstruction_route_queue:
   *(undefined1 **)(iVar9 + 0x3a) = &LAB_0000b574;
   return;
 }
-
 

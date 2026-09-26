@@ -2367,7 +2367,7 @@
 00003A3C: movea.l (0x00fffc04).l,A0
 00003A42: move.w (0x2e,A0),D2w
 00003A46: move.w #0x3c0,D3w
-00003A4A: jsr 0x00015dcc.l ; call 00015DCC convert_entity_routine_0x00015dcc
+00003A4A: jsr 0x00015dcc.l ; call 00015DCC transform_entity_heading_vector
 00003A50: add.w (A0),D3w
 00003A52: bpl.w 0x00003a58
 00003A56: clr.w D3w
@@ -11339,7 +11339,7 @@
 00013DE2: bra.b 0x00013dca
 00013E0C: addi.w #0x4000,D2w
 00013E10: lsl.w #0x1,D3w
-00013E12: jsr 0x00015dcc.l ; call 00015DCC convert_entity_routine_0x00015dcc
+00013E12: jsr 0x00015dcc.l ; call 00015DCC transform_entity_heading_vector
 00013E18: add.w (A0),D3w
 00013E1A: add.w (0x4,A0),D2w
 00013E1E: move.w D3w,(0x96,A0)
@@ -11715,7 +11715,7 @@
 00014532: tst.w (0x3e,A1)
 00014536: bne.b 0x0001452a
 00014538: subi.w #0x6000,D2w
-0001453C: bsr.w 0x00015dcc ; call 00015DCC convert_entity_routine_0x00015dcc
+0001453C: bsr.w 0x00015dcc ; call 00015DCC transform_entity_heading_vector
 00014540: exg D2,D3
 00014542: move.w (A1),D5w
 00014544: move.w (0x4,A1),D6w

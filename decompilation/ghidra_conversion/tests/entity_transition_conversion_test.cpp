@@ -124,8 +124,8 @@ int main() {
                spawned_record.behavior_code == 0x0014U &&
                spawned_record.directional_probe_x == 0x0E80U &&
                spawned_record.directional_probe_y == 0x1FC0U &&
-               spawned_record.heading_offset_x == 0 &&
-               spawned_record.heading_offset_y == -24576) != 0) {
+               spawned_record.heading_offset_x == -24576 &&
+               spawned_record.heading_offset_y == 0) != 0) {
         return 14;
     }
 

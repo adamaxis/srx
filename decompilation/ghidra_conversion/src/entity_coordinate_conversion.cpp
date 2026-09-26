@@ -92,10 +92,44 @@ EntityHeadingOffsets derive_entity_heading_offsets(
     const auto table_byte_index = static_cast<std::uint16_t>(
         (heading >> 8U) & 0x00FEU);
     const auto table_index = static_cast<std::size_t>(table_byte_index >> 1U);
-    const auto horizontal_index = (table_index + 96U) & 0x7FU;
+    const auto vertical_index = (table_index + 96U) & 0x7FU;
     return EntityHeadingOffsets{
-        scale_heading_sample(kHeadingWaveTable[horizontal_index]),
-        scale_heading_sample(kHeadingWaveTable[table_index])};
+        scale_heading_sample(kHeadingWaveTable[table_index]),
+        scale_heading_sample(kHeadingWaveTable[vertical_index])};
+}
+
+namespace {
+
+std::int16_t heading_product_high_word(
+    const std::int16_t magnitude,
+    const std::uint16_t raw_sample) {
+    const auto sample = static_cast<std::int16_t>(raw_sample);
+    const auto doubled_product =
+        static_cast<std::int64_t>(magnitude) * sample * 2;
+
+    // 0x15DE2/0x15DEA are 32-bit ADD.L operations. Keep the source's
+    // high-word result explicit while avoiding a host signed-overflow path.
+    const auto product_bits = static_cast<std::uint32_t>(doubled_product);
+    return static_cast<std::int16_t>(product_bits >> 16U);
+}
+
+} // namespace
+
+EntityHeadingVector transform_entity_heading_vector(
+    const std::uint16_t heading,
+    const std::int16_t magnitude) {
+    if (magnitude == 0) {
+        return {};
+    }
+
+    const auto table_byte_index = static_cast<std::uint16_t>(
+        (heading >> 8U) & 0x00FEU);
+    const auto table_index = static_cast<std::size_t>(table_byte_index >> 1U);
+    const auto vertical_index = (table_index + 96U) & 0x7FU;
+    return EntityHeadingVector{
+        heading_product_high_word(magnitude, kHeadingWaveTable[table_index]),
+        heading_product_high_word(magnitude,
+                                  kHeadingWaveTable[vertical_index])};
 }
 
 } // namespace shadowrun::ghidra_conversion

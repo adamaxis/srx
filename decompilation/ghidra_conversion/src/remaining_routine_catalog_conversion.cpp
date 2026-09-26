@@ -97,7 +97,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00015930U, "convert_entity_routine_0x00015930", RoutineFamily::entity, 78U},
     {0x0001597EU, "convert_entity_routine_0x0001597e", RoutineFamily::entity, 206U},
     {0x00015BB4U, "convert_entity_routine_0x00015bb4", RoutineFamily::entity, 2U},
-    {0x00015DCCU, "convert_entity_routine_0x00015dcc", RoutineFamily::entity, 42U},
+    {0x00015DCCU, "transform_entity_heading_vector", RoutineFamily::entity, 42U},
     {0x0001651EU, "convert_world_routine_0x0001651e", RoutineFamily::world, 348U},
     {0x000167AEU, "convert_world_routine_0x000167ae", RoutineFamily::world, 632U},
     {0x00016B98U, "convert_world_routine_0x00016b98", RoutineFamily::world, 346U},

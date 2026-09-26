@@ -82,16 +82,35 @@ int main() {
     }
 
     const auto north = derive_entity_heading_offsets(0x4000U);
-    if (!expect(north.horizontal == 0 && north.vertical == 24575)) {
+    if (!expect(north.horizontal == 24575 && north.vertical == 0)) {
         return 10;
     }
     const auto diagonal = derive_entity_heading_offsets(0x0200U);
-    if (!expect(diagonal.horizontal == -24546 && diagonal.vertical == 1205)) {
+    if (!expect(diagonal.horizontal == 1205 && diagonal.vertical == -24546)) {
         return 11;
     }
     const auto east = derive_entity_heading_offsets(0x8000U);
-    if (!expect(east.horizontal == 24575 && east.vertical == 0)) {
+    if (!expect(east.horizontal == 0 && east.vertical == 24575)) {
         return 12;
+    }
+
+    const auto projected_north = transform_entity_heading_vector(
+        0x4000U, static_cast<std::int16_t>(0x00E0U));
+    if (!expect(projected_north.horizontal == 223 &&
+                projected_north.vertical == 0)) {
+        return 13;
+    }
+    const auto projected_south = transform_entity_heading_vector(
+        0xC000U, static_cast<std::int16_t>(0x00E0U));
+    if (!expect(projected_south.horizontal == -224 &&
+                projected_south.vertical == 0)) {
+        return 14;
+    }
+    const auto projected_zero = transform_entity_heading_vector(
+        0x1234U, static_cast<std::int16_t>(0));
+    if (!expect(projected_zero.horizontal == 0 &&
+                projected_zero.vertical == 0)) {
+        return 15;
     }
 
     return 0;

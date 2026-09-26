@@ -59,4 +59,16 @@ struct EntityHeadingOffsets {
 // and return the offsets stored at record fields 0x4C and 0x4E.
 EntityHeadingOffsets derive_entity_heading_offsets(std::uint16_t heading);
 
+struct EntityHeadingVector {
+    std::int16_t horizontal = 0;
+    std::int16_t vertical = 0;
+};
+
+// ROM 0x15DCC: use the heading table as signed Q15 factors, multiply the
+// signed word magnitude, double the products, and return their high words.
+// A zero magnitude follows the source's explicit zero-vector branch.
+EntityHeadingVector transform_entity_heading_vector(
+    std::uint16_t heading,
+    std::int16_t magnitude);
+
 } // namespace shadowrun::ghidra_conversion
