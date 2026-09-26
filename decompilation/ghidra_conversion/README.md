@@ -24,3 +24,8 @@ cmake -S decompilation/ghidra_conversion -B decompilation/ghidra_conversion/buil
 cmake --build decompilation/ghidra_conversion/build
 ctest --test-dir decompilation/ghidra_conversion/build --output-on-failure
 ```
+
+The source-understanding layer is organized by game subsystem under
+`include/shadowrun_ghidra/<domain>/`, `src/<domain>/`, and `tests/<domain>/`.
+See [`../docs/ghidra-conversion-source-layout.md`](../docs/ghidra-conversion-source-layout.md)
+for the domain boundaries and the rule for adding or consolidating files.

@@ -344,6 +344,10 @@ decompilation/export/
   ghidra-c/completed/ (only fully converted and independently verified exports)
 decompilation/ghidra_conversion/
   typed source-understanding tests and conversion contracts only
+  include/shadowrun_ghidra/{core,entities,field,world,menus,cyberspace,
+    title_intro,session,audio,rendering}/
+  src/<domain>/ and tests/<domain>/ follow the same ownership boundaries
+  one conversion archive; focused tests remain individually runnable
 decompilation/src/graphics_import.cpp
 decompilation/src/graphics_extract.cpp
 decompilation/src/audio_extract.cpp
@@ -363,6 +367,9 @@ what the ROM does and supplies tests/evidence for the native rewrite. The
 emulator/bus code is likewise a verification museum, not a second gameplay
 implementation. The current `shadowrun_port` still contains bus-shaped code;
 that is an implementation gap to remove, not part of this target architecture.
+The conversion tree is grouped by these ownership domains rather than one
+library or source directory per exported address; its detailed layout is in
+`docs/ghidra-conversion-source-layout.md`.
 
 ## 5. What the 910 entries become
 
