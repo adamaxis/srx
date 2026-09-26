@@ -1,5 +1,7 @@
 #include "shadowrun_ghidra/entity_action_math_conversion.hpp"
 
+#include <vector>
+
 namespace {
 
 bool expect(const bool condition) { return condition; }
@@ -157,6 +159,69 @@ int main() {
                 exhausted.remaining == 3U && consumable.item_codes[2] == 0U &&
                 consumable.item_phases[2] == 0U)) {
         return 16;
+    }
+
+    EntityActionActorState actor{};
+    actor.record.item18_base = 8U;
+    actor.record.posture = 1U;
+    actor.record.attribute_7c = 4U;
+    actor.record.physical_meter = 8U;
+    actor.record.mental_meter = 8U;
+    actor.roll_count_cap = 7U;
+    actor.auxiliary_roll_bonus = 1U;
+    actor.equipped_action_code = 6U;
+    actor.record.item_codes[6] = 0x1EU;
+    actor.record.item_phases[6] = 4U;
+    actor.record.item_codes[5] = 0x13U;
+    actor.record.item_phases[5] = 5U;
+    actor.first_item_code = 0x22U;
+    actor.record_type = 2U;
+    EntityActionTarget action_target{};
+    action_target.flags = 0U;
+    const EntityActionCatalogRecord action_row{0U, 10};
+    std::uint8_t spawn_count = 0U;
+    std::uint8_t published_successes = 0U;
+    std::uint8_t published_auxiliary = 0U;
+    std::vector<std::int16_t> behavior_deltas;
+    const EntityTargetActionServices action_services{
+        [](const std::uint16_t roll_count, const std::uint16_t difficulty) {
+            return static_cast<std::uint8_t>(roll_count == 7U &&
+                                             difficulty == 4U ? 1U : 0U);
+        },
+        [&spawn_count](EntityActionActorState&) { ++spawn_count; },
+        [&published_successes, &published_auxiliary](
+            const std::uint8_t successes, const std::uint8_t auxiliary) {
+            published_successes = successes;
+            published_auxiliary = auxiliary;
+        },
+        [&behavior_deltas](EntityActionActorState&, const std::int16_t delta) {
+            behavior_deltas.push_back(delta);
+        }};
+    const auto action_resolution = resolve_entity_target_action(
+        actor, action_target, action_row, nullptr, action_services);
+    if (!expect(action_resolution.outcome ==
+                    EntityTargetActionOutcome::residual_consumed_exactly &&
+                action_resolution.initial_roll_count == 7U &&
+                action_resolution.difficulty == 4U &&
+                action_resolution.successes == 1U && spawn_count == 1U &&
+                published_successes == 1U && published_auxiliary == 1U &&
+                actor.action_result == 1U && actor.record.item_codes[5] == 0U)) {
+        return 17;
+    }
+
+    EntityActionActorState gated_actor{};
+    gated_actor.record.mental_meter = 1U;
+    gated_actor.record_type = 3U;
+    gated_actor.equipped_slot = 0x7F;
+    gated_actor.equipped_action_code = 0U;
+    gated_actor.first_item_code = 0x1AU;
+    const auto gated = resolve_entity_target_action(
+        gated_actor, action_target, action_row, nullptr, {});
+    if (!expect(gated.outcome == EntityTargetActionOutcome::target_state_gate &&
+                gated_actor.action_result == 0U &&
+                gated_actor.equipped_slot == 0 &&
+                gated_actor.equipped_action_code == 0x1AU)) {
+        return 18;
     }
 
     return 0;

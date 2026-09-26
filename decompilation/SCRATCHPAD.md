@@ -221,9 +221,13 @@ The positive residual tail at `0x1033E` is represented by
 down to `0`, keeps a partially consumed phase, clears a phase and its item
 code at zero, and reports inventory exhaustion without inventing a new item.
 This is the exact state mutation before the source `0x37EC` behavior-meter
-service. The top-level roll/effect/behavior orchestration remains the next
-slice; its service boundaries are now explicit rather than hidden behind the
-old “first aid” label.
+service. `resolve_entity_target_action` now orchestrates the source gate,
+initial byte-sized roll count, `0x55740` then `0x55786` then `0x0D5A` order,
+`0x0DBA` result publication, `0x15830` effect boundary, the special action
+result writes for action codes `6` and `0x0D`, the separate `0x10660` effect
+roll count, and this phase tail. The remaining boundaries are intentionally
+typed callbacks: RNG, effect allocation/audio, and `0x37EC` behavior-meter
+state/display work. No ROM address lookup or emulator call was introduced.
 
 The caller-side `0x55C76` transition is now directly executable as
 `run_entity_reaction_0x55C76`. It preserves the three `0x0DBA` threshold
