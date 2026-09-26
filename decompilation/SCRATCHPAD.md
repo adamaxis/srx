@@ -188,7 +188,10 @@ first matching item-code `0x18` phase. `0x55F20` applies the record `+0x4D`
 posture as a 25-percent-per-step factor and selects either the reduction or
 remaining component from the source D7 sign. `0x104F6` performs the same
 descending slot scan for a caller-supplied item code and adds the first
-matching phase. These are source lookups, not generic inventory sums.
+matching phase, then checks slot 7 for item codes `0x29..0x2B`. Its decoded
+`C8AE0` action selector chooses one of the `D4540` row words at `+0x22`,
+`+0x24`, or `+0x26`; a nonpositive word result becomes one. The conversion
+passes this table as typed data rather than reaching into ROM memory.
 
 The former Ghidra name for `0x1033E` ("first aid item use") is wrong: the ROM
 reaches it from the field entity target-heading/attack path when the entity

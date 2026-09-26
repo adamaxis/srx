@@ -60,9 +60,14 @@ int main() {
     input.inventory_item_codes[6] = 0x10U;
     input.active_item_code = 6U;
     input.special_action_record = EntityActionCatalogRecord{1U, 30};
+    EntityActionSpecialItemModifierTable special_item_modifiers{};
+    special_item_modifiers.action_offsets[5] = 1;
+    special_item_modifiers.slot7_item_modifiers[0][1] = -2;
+    input.inventory_item_codes[7] = 0x29U;
+    input.special_item_modifier_table = special_item_modifiers;
     const auto special_mode = compute_equipment_combat_bars(input);
     if (!special_mode.attack_written || !special_mode.defense_written ||
-        special_mode.attack_value != 18U || special_mode.attack_bar != 17U ||
+        special_mode.attack_value != 16U || special_mode.attack_bar != 15U ||
         !special_mode.special_action.menu_service_called ||
         !special_mode.special_action.residual_calculated ||
         !special_mode.special_action.effect_written ||

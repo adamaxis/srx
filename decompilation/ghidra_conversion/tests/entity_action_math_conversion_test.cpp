@@ -41,28 +41,46 @@ int main() {
         return 4;
     }
 
+    EntityActionSpecialItemModifierTable item_modifiers{};
+    item_modifiers.action_offsets[5] = 1;
+    item_modifiers.slot7_item_modifiers[0][1] = -2;
+    entity.item_codes[7] = 0x29U;
+    const auto extended_phase = apply_action_item_phase_modifiers(
+        5U, entity, 0x1AU, 5U, &item_modifiers);
+    if (!expect(extended_phase.value == 7U && extended_phase.phase_found &&
+                extended_phase.special_item_applied)) {
+        return 5;
+    }
+    item_modifiers.action_offsets[5] = -1;
+    const auto skipped_special = apply_action_item_phase_modifiers(
+        5U, entity, 0x1AU, 5U, &item_modifiers);
+    if (!expect(skipped_special.value == 9U &&
+                !skipped_special.special_item_applied)) {
+        return 6;
+    }
+
     if (!expect(add_wound_difficulty_penalty(4U, 0U, 4U) == 8U &&
                 add_wound_difficulty_penalty(4U, 5U, 7U) == 6U &&
                 add_wound_difficulty_penalty(4U, 8U, 10U) == 4U)) {
-        return 5;
+        return 7;
     }
 
     EntityActionTarget target{};
     entity.cyberware_flags = 0x0002U;
     target.class_code = 0x16U;
     if (!expect(apply_target_condition_modifier(4U, entity, target) == 5U)) {
-        return 6;
+        return 8;
     }
     entity.cyberware_flags = 0U;
     entity.race_or_state = 0U;
     target.class_code = 0U;
     target.flags = 0x80U;
     if (!expect(apply_target_condition_modifier(4U, entity, target) == 8U)) {
-        return 7;
+        return 9;
     }
     target.flags = 0U;
     if (!expect(apply_target_condition_modifier(4U, entity, target) == 4U)) {
-        return 8;
+        return 10;
     }
 
     const EntityActionCatalogRecord action{1U, 10};
@@ -70,17 +88,17 @@ int main() {
     if (!expect(residual.valid && residual.effective_difficulty == 4U &&
                 residual.adjusted_roll_count == 2U &&
                 residual.residual_effect == 8)) {
-        return 9;
+        return 11;
     }
     const auto hard_residual = calculate_action_residual(6U, 14U, 8U,
                                                           {0U, 10});
     if (!expect(hard_residual.effective_difficulty == 7U &&
                 hard_residual.adjusted_roll_count == 0U &&
                 hard_residual.residual_effect == 10)) {
-        return 10;
+        return 12;
     }
     if (!expect(!calculate_action_residual(0U, 4U, 8U, action).valid)) {
-        return 11;
+        return 13;
     }
 
     EntityActionRecord ready{};
@@ -109,7 +127,7 @@ int main() {
                 dynamic_result.ready_roll_count == 6U &&
                 dynamic_result.added_difficulty == 6U &&
                 dynamic_difficulty == 10U)) {
-        return 12;
+        return 14;
     }
 
     dynamic.actor_flags_df = 0x02U;
@@ -129,7 +147,7 @@ int main() {
                 defensive_result.ready_roll_count == 2U &&
                 defensive_result.added_difficulty == 3U &&
                 dynamic_difficulty == 7U)) {
-        return 13;
+        return 15;
     }
 
     dynamic.actor_flags_df = 0U;
@@ -137,7 +155,7 @@ int main() {
     if (!expect(!apply_dynamic_status_modifier(dynamic_difficulty, dynamic,
                                                {}).selected &&
                 dynamic_difficulty == 4U)) {
-        return 14;
+        return 16;
     }
 
     EntityActionRecord consumable{};
@@ -151,14 +169,14 @@ int main() {
                 partial.remaining == 0U && consumable.item_phases[6] == 0U &&
                 consumable.item_codes[6] == 0x00U &&
                 consumable.item_phases[2] == 4U)) {
-        return 15;
+        return 17;
     }
     const auto exhausted = consume_item13_residual(consumable, 7U);
     if (!expect(exhausted.result ==
                     EntityActionPhaseConsumptionResult::inventory_exhausted &&
                 exhausted.remaining == 3U && consumable.item_codes[2] == 0U &&
                 consumable.item_phases[2] == 0U)) {
-        return 16;
+        return 18;
     }
 
     EntityActionActorState actor{};
@@ -206,7 +224,7 @@ int main() {
                 action_resolution.successes == 1U && spawn_count == 1U &&
                 published_successes == 1U && published_auxiliary == 1U &&
                 actor.action_result == 1U && actor.record.item_codes[5] == 0U)) {
-        return 17;
+        return 19;
     }
 
     EntityActionActorState gated_actor{};
@@ -221,7 +239,7 @@ int main() {
                 gated_actor.action_result == 0U &&
                 gated_actor.equipped_slot == 0 &&
                 gated_actor.equipped_action_code == 0x1AU)) {
-        return 18;
+        return 20;
     }
 
     return 0;

@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <optional>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -38,6 +39,15 @@ struct EntityActionCatalogRecord {
     std::int16_t base_effect = 0;           // +0x24 -> 0x166AD4, negated
 };
 
+// ROM 0x104F6's data-dependent tail. C8AE0 supplies a signed selector for
+// the action index; the selected word is then read from the slot-7 item's
+// D4540 row at +0x22, +0x24, or +0x26. The table is passed as decoded data,
+// not accessed through a ROM address at runtime.
+struct EntityActionSpecialItemModifierTable {
+    std::array<std::int8_t, 0x18> action_offsets{};
+    std::array<std::array<std::int16_t, 3>, 3> slot7_item_modifiers{};
+};
+
 struct EntityActionActorState {
     EntityActionRecord record{};
     std::uint16_t record_type = 0;       // +0x3E
@@ -47,6 +57,8 @@ struct EntityActionActorState {
     std::uint8_t roll_count_cap = 0;        // +0x7F
     std::uint8_t auxiliary_roll_bonus = 0;  // +0x9D
     std::uint8_t action_result = 0;         // +0x9F
+    std::optional<EntityActionSpecialItemModifierTable>
+        special_item_modifier_table;
 };
 
 struct EntityActionSpecialModifier {
@@ -103,6 +115,23 @@ std::uint16_t add_first_matching_item_phase(
     std::uint16_t value,
     const EntityActionRecord& entity,
     std::uint8_t item_code);
+
+struct EntityActionPhaseModifierResult {
+    std::uint16_t value = 0;
+    bool phase_found = false;
+    bool special_item_applied = false;
+};
+
+// ROM 0x104F6 in full: apply the first matching phase, then apply the
+// slot-7 0x29..0x2B modifier when the decoded C8AE0 selector is nonnegative.
+// The source uses ADD.B for the phase and ADD.W for the special table word;
+// nonpositive final words become one.
+EntityActionPhaseModifierResult apply_action_item_phase_modifiers(
+    std::uint16_t value,
+    const EntityActionRecord& entity,
+    std::uint8_t item_code,
+    std::uint8_t action_index,
+    const EntityActionSpecialItemModifierTable* table);
 
 // ROM 0x1047E. For each of the three party records, active class codes 0 and
 // 1 contribute floor(item18_value / 4), plus one only when the remainder is

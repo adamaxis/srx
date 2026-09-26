@@ -42,6 +42,47 @@ std::uint16_t add_first_matching_item_phase(
     return value;
 }
 
+EntityActionPhaseModifierResult apply_action_item_phase_modifiers(
+    const std::uint16_t value,
+    const EntityActionRecord& entity,
+    const std::uint8_t item_code,
+    const std::uint8_t action_index,
+    const EntityActionSpecialItemModifierTable* table) {
+    EntityActionPhaseModifierResult result{};
+    result.value = value;
+    for (std::size_t slot = entity.item_codes.size(); slot-- > 0U;) {
+        if (entity.item_codes[slot] != item_code) {
+            continue;
+        }
+        result.value = static_cast<std::uint8_t>(
+            result.value + static_cast<std::uint16_t>(entity.item_phases[slot]));
+        result.phase_found = true;
+        break;
+    }
+
+    // The source always inspects the eighth possession cell after the phase
+    // scan, even when no matching action item was found.
+    const auto slot7_item = entity.item_codes[7];
+    if (table == nullptr || slot7_item < 0x29U || slot7_item > 0x2BU ||
+        action_index >= table->action_offsets.size()) {
+        return result;
+    }
+    const auto row = static_cast<std::size_t>(slot7_item - 0x29U);
+    const auto column = table->action_offsets[action_index];
+    if (column < 0 || column >= 3) {
+        return result;
+    }
+
+    result.value = static_cast<std::uint16_t>(
+        result.value + static_cast<std::int16_t>(
+            table->slot7_item_modifiers[row][column]));
+    result.special_item_applied = true;
+    if (static_cast<std::int16_t>(result.value) <= 0) {
+        result.value = 1U;
+    }
+    return result;
+}
+
 std::uint16_t calculate_ready_entity_action_bonus(
     const std::array<EntityActionRecord, 3>& ready_entities) {
     std::uint16_t bonus = 0U;
@@ -262,8 +303,13 @@ EntityTargetActionResolution resolve_entity_target_action(
         roll_count + static_cast<std::uint16_t>(actor.auxiliary_roll_bonus));
     const auto matching_item_code = static_cast<std::uint8_t>(
         static_cast<std::uint16_t>(actor.equipped_action_code) - 1U + 0x19U);
-    roll_count = add_first_matching_item_phase(
-        roll_count, actor.record, matching_item_code);
+    const auto phase_modifiers = apply_action_item_phase_modifiers(
+        roll_count, actor.record, matching_item_code,
+        static_cast<std::uint8_t>(actor.equipped_action_code - 1U),
+        actor.special_item_modifier_table.has_value()
+            ? &*actor.special_item_modifier_table
+            : nullptr);
+    roll_count = phase_modifiers.value;
     resolution.initial_roll_count = roll_count;
 
     auto difficulty = static_cast<std::uint16_t>(4U);

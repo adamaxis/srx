@@ -177,8 +177,13 @@ EquipmentCombatBarResult compute_equipment_combat_bars(
         const auto matching_item_code = static_cast<std::uint8_t>(
             static_cast<std::uint16_t>(input.active_item_code) - 1U +
             0x19U);
-        special_value = add_first_matching_item_phase(
-            special_byte, special_action_record(input), matching_item_code);
+        const auto phase_modifiers = apply_action_item_phase_modifiers(
+            special_byte, special_action_record(input), matching_item_code,
+            static_cast<std::uint8_t>(input.active_item_code - 1U),
+            input.special_item_modifier_table.has_value()
+                ? &*input.special_item_modifier_table
+                : nullptr);
+        special_value = phase_modifiers.value;
         result.attack_value = special_value;
         result.attack_bar = bar_index(result.attack_value);
     } else {

@@ -41,6 +41,8 @@ struct EquipmentCombatInput {
     // Decoded D4EA0/166AD4 row consumed by the special action effect path.
     // Keeping it optional makes the unresolved data-table boundary explicit.
     std::optional<EntityActionCatalogRecord> special_action_record;
+    std::optional<EntityActionSpecialItemModifierTable>
+        special_item_modifier_table;
 };
 
 struct EquipmentCombatSpecialActionResult {

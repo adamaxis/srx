@@ -49,7 +49,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00010172U, "convert_menu_routine_0x00010172", RoutineFamily::menu, 140U},
     {0x000102D4U, "convert_menu_routine_0x000102d4", RoutineFamily::menu, 106U},
     {0x0001033EU, "resolve_entity_target_action", RoutineFamily::menu, 320U},
-    {0x000104F6U, "add_first_matching_item_phase", RoutineFamily::menu, 104U},
+    {0x000104F6U, "apply_action_item_phase_modifiers", RoutineFamily::menu, 104U},
     {0x0001055EU, "convert_menu_routine_0x0001055e", RoutineFamily::menu, 136U},
     {0x000105E6U, "convert_menu_routine_0x000105e6", RoutineFamily::menu, 122U},
     {0x00010660U, "calculate_action_residual", RoutineFamily::menu, 122U},
