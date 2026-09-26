@@ -1,13 +1,17 @@
 // Ghidra headless export
 // Entry: 0x00056482
-// Name: convert_intro_routine_0x00056482
+// Name: advance_menu_selection_variant_timer
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0001A154 clear_selected_menu_record
 //   0x0001A468 initialize_audio_frame
 
 
-void convert_intro_routine_0x00056482(void)
+// Direct disassembly subtracts the variant delta from the selected record's
+// +0x10 byte, clears the selected menu record on signed-byte expiry, and
+// shares the FFF0CE phase rollover. The typed host conversion is in
+// ghidra_conversion/menu_selection_timing_conversion.
+void advance_menu_selection_variant_timer(void)
 
 {
   char cVar1;
@@ -32,5 +36,4 @@ void convert_intro_routine_0x00056482(void)
   }
   return;
 }
-
 

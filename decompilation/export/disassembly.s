@@ -16057,7 +16057,7 @@
 00019E5E: move.b (0x00fff0d5).l,D1b
 00019E64: ble.w 0x00019e78
 00019E68: jsr 0x0001b706.l ; call 0001B706 prepare_menu_offset_once
-00019E6E: jsr 0x00056434.l ; call 00056434 convert_intro_routine_0x00056434
+00019E6E: jsr 0x00056434.l ; call 00056434 advance_menu_selection_service_timer
 00019E74: bsr.w 0x00017e04 ; call 00017E04 refresh_hud_grid_if_ready
 00019E78: movem.l (SP)+,{ D0 D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 00019E7C: jsr 0x0001b706.l ; call 0001B706 prepare_menu_offset_once
@@ -16083,7 +16083,7 @@
 00019EE8: lsr.w #0x1,D7w
 00019EEA: lsl.w #0x1,D1w
 00019EEC: add.w D7w,D1w
-00019EEE: jsr 0x00056482.l ; call 00056482 convert_intro_routine_0x00056482
+00019EEE: jsr 0x00056482.l ; call 00056482 advance_menu_selection_variant_timer
 00019EF4: movem.l (SP)+,{ D0 D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 00019EF8: jsr 0x0001b706.l ; call 0001B706 prepare_menu_offset_once
 00019EFE: rts
@@ -16103,7 +16103,7 @@
 00019F4A: clr.l D1
 00019F4C: move.b (0x00fff0d7).l,D1b
 00019F52: ble.w 0x00019f60
-00019F56: jsr 0x000564d6.l ; call 000564D6 convert_intro_routine_0x000564d6
+00019F56: jsr 0x000564d6.l ; call 000564D6 reduce_menu_progression_timing
 00019F5C: bsr.w 0x00017998 ; call 00017998 render_menu_text_progression
 00019F60: movem.l (SP)+,{ D0 D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 00019F64: jsr 0x0001b706.l ; call 0001B706 prepare_menu_offset_once
@@ -24755,7 +24755,7 @@
 0005668C: clr.l D1
 0005668E: move.b (0x00fff0a4).l,D1b
 00056694: lsr.w #0x1,D1w
-00056696: bsr.w 0x00056434 ; call 00056434 convert_intro_routine_0x00056434
+00056696: bsr.w 0x00056434 ; call 00056434 advance_menu_selection_service_timer
 0005669A: jsr 0x00017e04.l ; call 00017E04 refresh_hud_grid_if_ready
 000566A0: rts
 000566A2: lea (0xfff9fa).l,A1 ; data 00fff9fa

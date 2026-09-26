@@ -96,6 +96,22 @@ selected-record lookup, action-delay calculation, HUD services, menu entry,
 and world-mode initialization as typed boundaries. It is conversion/reference
 code only; it is not linked into the emulator or native runtime.
 
+## Menu selection timing
+
+The three timing helpers called by the menu services are now represented by
+one typed conversion slice:
+
+| ROM entry | Caller | Recovered behavior | Typed conversion |
+| --- | --- | --- | --- |
+| `0x56434` | `0x19E32 run_menu_selection_service` | Clears `FFF0A3`, subtracts the service delta from selected record `+0x0F`, and on signed-byte expiry decrements `FFF0CE` by two; a negative rollover resets it to `0x0F` and increments `FF018D`, `FF028D`, and `FF038D`. | `advance_menu_selection_service_timer()` |
+| `0x56482` | `0x19EA6 run_menu_selection_variant` | Clears `FFF0A3`, subtracts the variant delta from selected record `+0x10`, clears the selected menu record on signed-byte expiry, then uses the same phase-counter rollover. | `advance_menu_selection_variant_timer()` |
+| `0x564D6` | `0x19F18 run_menu_progression_variant` | Halves D1 with a logical shift, clamps the delta to one, subtracts it from selected record `+0x06`, and clamps that timing byte to two. | `reduce_menu_progression_timing()` |
+
+The conversion keeps audio-frame initialization and selected-record clearing
+as callbacks. The record vector and phase counters are host state, not a ROM
+addressed runtime structure; an unavailable selected record returns an
+explicit result instead of asserting or reading arbitrary memory.
+
 The importer has a separate ROM-only reader at
 `src/graphics_import.cpp::read_genesis_field_entity_template()`. That reader
 feeds extracted host assets/state; it is not the game runtime and is not a

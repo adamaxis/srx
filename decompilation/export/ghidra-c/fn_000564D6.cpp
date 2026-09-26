@@ -1,12 +1,15 @@
 // Ghidra headless export
 // Entry: 0x000564D6
-// Name: convert_intro_routine_0x000564d6
+// Name: reduce_menu_progression_timing
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_intro_routine_0x000564d6(void)
+// Direct disassembly halves D1, clamps the delta to one, subtracts it from
+// record +0x06, and clamps the resulting timing byte to two. The typed host
+// conversion is in ghidra_conversion/menu_selection_timing_conversion.
+void reduce_menu_progression_timing(void)
 
 {
   char *pcVar1;
@@ -26,5 +29,4 @@ void convert_intro_routine_0x000564d6(void)
   }
   return;
 }
-
 

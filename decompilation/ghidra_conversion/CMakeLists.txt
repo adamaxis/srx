@@ -843,6 +843,19 @@ target_link_libraries(shadowrun_ghidra_world_effect_mode_selection_test
 add_test(NAME shadowrun_ghidra_world_effect_mode_selection
          COMMAND shadowrun_ghidra_world_effect_mode_selection_test)
 
+add_library(shadowrun_ghidra_menu_selection_timing STATIC
+    src/menu_selection_timing_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_menu_selection_timing PUBLIC include)
+
+add_executable(shadowrun_ghidra_menu_selection_timing_test
+    tests/menu_selection_timing_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_menu_selection_timing_test
+    PRIVATE shadowrun_ghidra_menu_selection_timing)
+add_test(NAME shadowrun_ghidra_menu_selection_timing
+         COMMAND shadowrun_ghidra_menu_selection_timing_test)
+
 add_library(shadowrun_ghidra_title_world_helpers STATIC
     src/title_world_helpers_conversion.cpp
 )
