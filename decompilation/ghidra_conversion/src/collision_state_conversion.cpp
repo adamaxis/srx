@@ -67,9 +67,11 @@ EntityCollisionSearchResult find_colliding_entity(
                 return result;
             }
             if (candidate_is_compatible(candidate)) {
-                // 0x15B96-0x15B9C: a compatible candidate takes the source
-                // scan continuation path; it is not a native collision.
-                continue;
+                // 0x15B96-0x15BA0: the compatible candidate takes the
+                // source's carry-only continuation; it does not overwrite
+                // the source coordinates in this mode.
+                result.source_carry = true;
+                return result;
             }
             continue;
         }
@@ -107,18 +109,21 @@ EntityCollisionRecoveryResult advance_entity_collision_recovery(
         state.position, terrain_probe);
     EntityCollisionRecoveryResult result{
         EntityCollisionRecoveryAction::terrain_probe_blocked,
+        false,
         probe.terrain_result,
         probe.world_x,
         probe.world_y,
         std::nullopt};
 
     if (probe.terrain_result != 0U && !terrain_boundary_active) {
+        result.source_carry = true;
         return result;
     }
 
     --state.retry_counter;
     if (state.retry_counter < 0) {
         result.action = EntityCollisionRecoveryAction::retry_exhausted;
+        result.source_carry = true;
         return result;
     }
 
@@ -129,6 +134,7 @@ EntityCollisionRecoveryResult advance_entity_collision_recovery(
     result.action = EntityCollisionRecoveryAction::collision_search;
     result.collision_search = find_colliding_entity(
         collision_context, candidates);
+    result.source_carry = result.collision_search->source_carry;
     return result;
 }
 

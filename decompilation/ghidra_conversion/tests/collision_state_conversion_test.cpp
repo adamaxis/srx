@@ -69,6 +69,15 @@ int main() {
         return 4;
     }
 
+    const auto override_compatible = find_colliding_entity(
+        EntityCollisionSearchContext{
+            0x1000U, 0x2000U, 0x08U, true, false, std::nullopt},
+        candidates);
+    if (expect(!override_compatible.candidate_index.has_value() &&
+               override_compatible.source_carry) != 0) {
+        return 8;
+    }
+
     EntityCollisionRecoveryState recovery{
         EntityFixedPointPosition{0x10000000, 0x20000000, 1, 0}, 2};
     const auto recovered = advance_entity_collision_recovery(
@@ -86,6 +95,7 @@ int main() {
             {0x1000U, 0x2000U, 0x01U, true, 0U, 0U}});
     if (expect(recovered.action ==
                    EntityCollisionRecoveryAction::collision_search &&
+               recovered.source_carry &&
                recovered.collision_search.has_value() &&
                recovered.collision_search->candidate_index.has_value() &&
                recovered.collision_search->candidate_index.value() == 0U &&
@@ -106,6 +116,7 @@ int main() {
         {});
     if (expect(exhausted_result.action ==
                    EntityCollisionRecoveryAction::retry_exhausted &&
+               exhausted_result.source_carry &&
                exhausted.retry_counter == -1) != 0) {
         return 6;
     }
@@ -122,6 +133,7 @@ int main() {
         {});
     if (expect(terrain_result.action ==
                    EntityCollisionRecoveryAction::terrain_probe_blocked &&
+               terrain_result.source_carry &&
                terrain_blocked.retry_counter == 2) != 0) {
         return 7;
     }

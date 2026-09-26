@@ -80,6 +80,10 @@ enum class EntityCollisionRecoveryAction {
 struct EntityCollisionRecoveryResult {
     EntityCollisionRecoveryAction action =
         EntityCollisionRecoveryAction::terrain_probe_blocked;
+    // 0x14F50 preserves the collision/terrain routine's CCR boundary for its
+    // caller: terrain rejection and retry exhaustion carry, while an inner
+    // 0x15ABA result is forwarded as-is.
+    bool source_carry = false;
     std::uint16_t terrain_result = 0;
     std::int32_t probed_world_x = 0;
     std::int32_t probed_world_y = 0;
@@ -89,7 +93,7 @@ struct EntityCollisionRecoveryResult {
 // ROM 0x14F50: retry the fixed-point terrain position while the source
 // terrain result is empty or its boundary flag is active, decrement the
 // bounded retry counter, commit the probed position, and run the typed
-// collision scan. The source carry/exhaustion branch is an explicit action.
+// collision scan. The source carry/exhaustion branch is retained explicitly.
 EntityCollisionRecoveryResult advance_entity_collision_recovery(
     EntityCollisionRecoveryState& state,
     bool terrain_boundary_active,

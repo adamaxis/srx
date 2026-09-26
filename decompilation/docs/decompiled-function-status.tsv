@@ -159,13 +159,13 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x14D6A	entity animation table selector	ghidra_conversion::select_entity_animation_table_row	shadowrun_native_port	partial		Typed signed-bank selection and one-based row offset
 0x14C7C	entity target motion policy	ghidra_conversion::resolve_entity_target_motion	shadowrun_native_port	partial		Typed +0x2E/+0x34 field writes for type 0xC distance bands, type 0xD/E projection and linked-target carry, restricted movement timer, and D0/D1 effect allocation
 0x14F26	entity fixed-point terrain probe	ghidra_conversion::probe_entity_world_position	shadowrun_native_port	partial		Typed fixed-point coordinate assembly and terrain-probe boundary
-0x14F50	entity collision recovery	ghidra_conversion::advance_entity_collision_recovery	shadowrun_native_port	partial		Typed terrain retry counter, fixed-point position commit, and collision scan
+0x14F50	entity collision recovery	ghidra_conversion::advance_entity_collision_recovery	shadowrun_native_port	partial		Typed +0x89 retry decrement, carry on terrain rejection/exhaustion, fixed-point position commit, and forwarded 0x15ABA carry
 0x150E8	entity heading offsets	ghidra_conversion::derive_entity_heading_offsets	shadowrun_native_port	partial		Extracted direction tables and signed scale/shift conversion
 0x14FF8	entity spawn record initialization	ghidra_conversion::initialize_entity_spawn_record	shadowrun_native_port	partial		Typed child seeding, linked heading resolution, placement tables, and heading offsets
 0x1514E	entity spawn cycle	ghidra_conversion::process_entity_spawn_cycle	shadowrun_native_port	partial		Typed +0x10 late-window flag gate, ordinary/alternate 0x15318/0x15336 resource tables, paired allocation, world-transition gate, and exact secondary clone field writes
 0x15118	entity behavior record initialization	ghidra_conversion::initialize_entity_behavior_record	shadowrun_native_port	partial		Typed default movement fields and behavior-update continuation
 0x152FA	special spawn preparation	ghidra_conversion::prepare_special_spawn_record	shadowrun_native_port	partial		Typed special follow-up state and placed-coordinate preservation
-0x15ABA	entity collision search	ghidra_conversion::find_colliding_entity	shadowrun_native_port	partial		Typed ten-record scan, window filters, collision-mode gate, and source position handoff
+0x15ABA	entity collision search	ghidra_conversion::find_colliding_entity	shadowrun_native_port	partial		Typed ten-record scan, window filters, ordinary position handoff, collision-gate carry, and source-override carry-only branch
 0x14BA6	axis relation update	ghidra_conversion::update_entity_axis_relation_state	shadowrun_native_port	partial		Typed relation flags and explicit route-advance boundary
 0x14902	obstruction grid index	ghidra_conversion::compute_obstruction_grid_index	shadowrun_native_port	partial		Typed world-coordinate to obstruction-grid index conversion
 0x14B4E	obstruction tile projection	ghidra_conversion::decode_obstruction_tile_projection	shadowrun_native_port	partial		Typed packed-tile coordinate decode and relative direction selection
