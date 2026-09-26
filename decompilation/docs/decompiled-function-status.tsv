@@ -134,10 +134,10 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0xC376	shared menu cursor movement	ghidra_conversion::move_wrapped_menu_cursor	shadowrun_native_port	partial		Typed signed-byte cursor movement and upper/lower wrapping; VDP cursor writes remain a presentation boundary
 0xC8B0	entity counter delta	ghidra_conversion::apply_byte_counter_delta_with_negative_floor	shadowrun_native_port	partial		Typed low-byte update with the source negative-result 0xFF sentinel
 0xC134	source text line normalization	ghidra_conversion::normalize_source_text_line	shadowrun_native_port	partial		Typed high-bit glyph mapping, terminator detection, and bounded space padding
-0x15CA4	movement distance metric	ghidra_conversion::compute_diagonal_step_cost	shadowrun_native_port	partial		Typed max-axis plus rounded-minor movement cost; source register arithmetic is replaced by host coordinates
+0x15CA4	movement distance metric	ghidra_conversion::compute_diagonal_step_cost	shadowrun_native_port	partial		Typed low-word SUB.W/NEG.W, unsigned CMP.W/BCC major-axis selection, ASR.W carry rounding, and ADD.W metric; record loads remain at the caller boundary
 0x15C58	linked target range gate	ghidra_conversion::is_entity_target_within_range	shadowrun_native_port	partial		Typed target flag and distance gate
 0x15C84	linked target heading update	ghidra_conversion::update_entity_heading_from_linked_target	shadowrun_native_port	partial		Optional heading result replaces pointer and carry state
-0x15CC0	point-pair distance metric	ghidra_conversion::compute_diagonal_step_cost	shadowrun_native_port	partial		Same typed movement metric after the source record coordinates are loaded
+0x15CC0	point-pair distance metric	ghidra_conversion::compute_diagonal_step_cost	shadowrun_native_port	partial		Same source-word movement metric after the two source record coordinate pairs are loaded
 0x148D2	dominant movement directions	ghidra_conversion::choose_dominant_axis_directions	shadowrun_native_port	partial		Typed dominant-axis selection with the source horizontal and vertical direction slots
 0xE00A	controller event wait	ghidra_conversion::wait_for_controller_event	shadowrun_native_port	partial		Typed frame/input/update loop with high-byte event termination and final sample
 0xF312	menu controller event wait	ghidra_conversion::wait_for_controller_event	shadowrun_native_port	partial		Same typed event loop with caller-provided update work

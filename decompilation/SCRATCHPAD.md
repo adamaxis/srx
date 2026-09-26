@@ -495,10 +495,13 @@ already execute directly when no replacement continuation is supplied. The
 the first set state bit in the 0xC..0xE range, applies the `0xD81C` byte
 average, preserves the mode-specific shift, and clamps the signed delay.
 
-The pure `0x15CA4` distance leaf is now direct too. It preserves the high
-word through the word-only subtractions, swaps complete D0/D1 longwords when
-the second magnitude is larger, then uses the ASR carry to round the smaller
-axis before the final ADD.W.
+The pure `0x15CA4` movement metric is now audited at the source-word level.
+Both it and the record-based `0x15CC0` entry subtract and normalize only the
+low words, choose the major axis with the unsigned `CMP.W`/`BCC` predicate,
+then round the smaller word with `ASR.W` and the carry before `ADD.W`. The
+typed host helper therefore truncates caller deltas to source words and
+returns the wrapped word metric; it does not widen Genesis coordinates into a
+different x86 distance calculation.
 
 The pure register leaves at `0x3A90` and `0x3B1E` are also bus-backed. They
 preserve the D3/D4 minus D6/D7 word subtraction, carry/borrow branch, reflected

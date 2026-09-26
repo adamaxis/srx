@@ -1,20 +1,48 @@
 #include "shadowrun_ghidra/entities/movement_metric_conversion.hpp"
 
-#include <algorithm>
 #include <cstdint>
+#include <utility>
 
 namespace shadowrun::ghidra_conversion {
+
+namespace {
+
+std::uint16_t source_absolute_word(const std::int32_t value) {
+    const auto word = static_cast<std::uint16_t>(value);
+    if ((word & 0x8000U) == 0U) {
+        return word;
+    }
+    return static_cast<std::uint16_t>(0U - word);
+}
+
+std::uint16_t source_arithmetic_shift_right_one(
+    const std::uint16_t value) {
+    auto shifted = static_cast<std::uint16_t>(value >> 1U);
+    if ((value & 0x8000U) != 0U) {
+        shifted = static_cast<std::uint16_t>(shifted | 0x8000U);
+    }
+    return shifted;
+}
+
+} // namespace
 
 std::uint32_t compute_diagonal_step_cost(
     const std::int32_t delta_x,
     const std::int32_t delta_y) {
-    const auto x = static_cast<std::uint32_t>(
-        delta_x < 0 ? -static_cast<std::int64_t>(delta_x) : delta_x);
-    const auto y = static_cast<std::uint32_t>(
-        delta_y < 0 ? -static_cast<std::int64_t>(delta_y) : delta_y);
-    const auto major = std::max(x, y);
-    const auto minor = std::min(x, y);
-    return major + ((minor + 1U) / 2U);
+    // Both source entries subtract .w registers, normalize with BPL/NEG.W,
+    // choose the unsigned-major axis with CMP.W/BCC, then use ASR.W and
+    // ADD.W. Normalize the host inputs to those same words before doing the
+    // metric; a wider x86 coordinate must not change a Genesis word result.
+    auto major = source_absolute_word(delta_x);
+    auto minor = source_absolute_word(delta_y);
+    if (major < minor) {
+        std::swap(major, minor);
+    }
+    auto half_minor = source_arithmetic_shift_right_one(minor);
+    if ((minor & 0x0001U) != 0U) {
+        half_minor = static_cast<std::uint16_t>(half_minor + 1U);
+    }
+    return static_cast<std::uint16_t>(major + half_minor);
 }
 
 RelativeHeadingMeasurement measure_heading_and_distance(

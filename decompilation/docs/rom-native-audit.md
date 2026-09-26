@@ -114,6 +114,15 @@ footprint through `D1.w` before division and uses `CMP.W #7`/`BMI`, so the
 conversion no longer lets a wider host footprint or unsigned cap comparison
 change the source result.
 
+The movement pass found the same width issue in the shared distance leaves.
+`0x15CA4` subtracts with `SUB.W`, normalizes with `BPL`/`NEG.W`, selects the
+major axis with unsigned `CMP.W`/`BCC`, and finishes with `ASR.W`, carry-based
+rounding, and `ADD.W`. `0x15CC0` loads two record point pairs and repeats that
+word sequence. The typed helper now truncates host deltas to source words and
+returns the wrapped word metric; adversarial tests cover values outside the
+word range and the unrepresentable `0x8000` negation case. This is a source
+fidelity correction, not a new movement rule.
+
 The next manual slice corrected three source-owned details. The field-column
 renderer at `0x3D4A` emits a partial segment and then continues through the
 shared `0x3D80` transfer body; it is now represented as two typed host

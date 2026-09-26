@@ -29,6 +29,15 @@ int main() {
     if (!expect(compute_diagonal_step_cost(7, 2) == 8U)) {
         return 6;
     }
+    if (!expect(compute_diagonal_step_cost(0x1000AU, 4) == 12U &&
+                compute_diagonal_step_cost(-65526, 4) == 12U)) {
+        return 18;
+    }
+    // NEG.W cannot represent the positive magnitude of 0x8000.  The source
+    // therefore ASR.Ws the wrapped word and ADD.Ws the result back into D0.
+    if (!expect(compute_diagonal_step_cost(-32768, -32768) == 0x4000U)) {
+        return 19;
+    }
 
     const auto negative_vertical = measure_heading_and_distance(0, -100);
     if (!expect(negative_vertical.heading == 0x4000U &&
