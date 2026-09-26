@@ -647,6 +647,28 @@ refreshes `+0x4E`, then calls the delay-reset and asset-refresh boundaries in
 source order. RNG, rate calculation, marker clearing, delay, and graphics
 refresh remain callbacks; no Genesis bus or runtime emulator code was added.
 
+The resource handoff at `0x13F76` is now isolated as a typed gate. It exits
+when the shared entity gate is active, schedules the world-activity timeout
+for the special reaction gate, rejects records with status bit zero or without
+entity flag bit five, and preserves the `0x14D8E` carry boundary as an
+explicit callback. The signed 16-bit distance from record `+0x2E` to the
+global `0xFF13AE` reference is compared against `0x4000`; ordinary resource
+mode marks status bit zero, while mode two rejects an object with bit seven,
+starts the host resource-load boundary, and then marks the entity ready. No
+source pointer or `0x20FEC` address is carried into the host conversion.
+
+The linked-motion body at `0x13D0C` is now typed separately. Its active-phase
+type-`0x28` early cutoff, animation-mode-2 linked-position copy, null-link
+return, and `0x15D3C` direction/distance boundary are explicit. The type
+flag selects the entity-type distance table; otherwise a nonzero delay is
+decremented and the signed-frame phase row selects the phase distance table.
+Distances below the lower bound and inside the lower/upper interval both use
+the one-step route construction, but the middle interval clears the delay;
+distances at or above the upper bound copy the linked position directly.
+The route bit, terrain-gate finish, `0x15DCC` direction-plus-`0x4000` vector,
+`0x144E8` carry, delay clear, `0x13E40` frame cutoff, and `0x145A2`
+continuation are all represented by typed state/callback boundaries.
+
 ## Inventory command and selected-item conversion
 
 The `0x11740` dispatcher is now represented in the isolated

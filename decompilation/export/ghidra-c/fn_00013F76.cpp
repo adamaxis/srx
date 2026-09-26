@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00013F76
-// Name: convert_menu_routine_0x00013f76
+// Name: run_entity_animation_resource_gate
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00014D8E convert_entity_routine_0x00014d8e
@@ -10,7 +10,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_menu_routine_0x00013f76(void)
+void run_entity_animation_resource_gate(void)
 
 {
   ushort uVar1;
@@ -49,5 +49,4 @@ void convert_menu_routine_0x00013f76(void)
   }
   return;
 }
-
 

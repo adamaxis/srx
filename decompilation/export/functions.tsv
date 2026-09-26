@@ -369,10 +369,10 @@ entry	name	size	callingConvention	decompileStatus	file
 00013C74	collect_entity_action_records	96	unknown	ok	ghidra-c/fn_00013C74.cpp
 00013CD4	evaluate_entity_animation_rate_from_phase	10	unknown	ok	ghidra-c/fn_00013CD4.cpp
 00013CDE	evaluate_entity_animation_rate	46	unknown	ok	ghidra-c/fn_00013CDE.cpp
-00013D0C	convert_menu_routine_0x00013d0c	292	unknown	ok	ghidra-c/fn_00013D0C.cpp
+00013D0C	run_entity_animation_motion	292	unknown	ok	ghidra-c/fn_00013D0C.cpp
 00013E8C	service_entity_boundary_transition	18	unknown	ok	ghidra-c/fn_00013E8C.cpp
 00013E9E	reposition_entity_at_boundary	86	unknown	ok	ghidra-c/fn_00013E9E.cpp
-00013F76	convert_menu_routine_0x00013f76	136	unknown	ok	ghidra-c/fn_00013F76.cpp
+00013F76	run_entity_animation_resource_gate	136	unknown	ok	ghidra-c/fn_00013F76.cpp
 00013FFE	convert_menu_routine_0x00013ffe	506	unknown	ok	ghidra-c/fn_00013FFE.cpp
 00014226	convert_entity_routine_0x00014226	136	unknown	ok	ghidra-c/fn_00014226.cpp
 0001438C	convert_entity_routine_0x0001438c	106	unknown	ok	ghidra-c/fn_0001438C.cpp

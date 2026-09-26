@@ -11100,7 +11100,7 @@
 00013A10: movea.l (SP)+,A1
 00013A12: cmpi.l #0x12345678,D0
 00013A18: beq.w 0x000144fa
-00013A1C: bra.w 0x00013d0c ; call 00013D0C convert_menu_routine_0x00013d0c
+00013A1C: bra.w 0x00013d0c ; call 00013D0C run_entity_animation_motion
 00013A40: move.w (A1),(0x96,A0)
 00013A44: move.w (0x4,A1),(0x98,A0)
 00013A4A: rts
@@ -11385,7 +11385,7 @@
 00013EEA: move.w D2w,(0x96,A0)
 00013EEE: move.w D3w,(0x98,A0)
 00013EF2: rts
-00013EF4: bsr.w 0x00013f76 ; call 00013F76 convert_menu_routine_0x00013f76
+00013EF4: bsr.w 0x00013f76 ; call 00013F76 run_entity_animation_resource_gate
 00013EF8: cmpi.b #0x2,(0x4d,A0)
 00013EFE: ble.w 0x000142ae
 00013F02: cmpi.b #0x4,(0x4d,A0)

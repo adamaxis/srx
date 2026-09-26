@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00013D0C
-// Name: convert_menu_routine_0x00013d0c
+// Name: run_entity_animation_motion
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00013A40 copy_entity_anchor_position
@@ -13,7 +13,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-ushort * convert_menu_routine_0x00013d0c(void)
+ushort * run_entity_animation_motion(void)
 
 {
   byte bVar1;
@@ -208,5 +208,4 @@ advance_obstruction_route_queue:
   *(undefined1 **)(iVar8 + 0x3a) = &LAB_0000b574;
   return puVar3;
 }
-
 
