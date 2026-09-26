@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001D1F4
-// Name: convert_world_routine_0x0001d1f4
+// Name: advance_title_reveal_transfer_service
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
@@ -12,7 +12,10 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_world_routine_0x0001d1f4(void)
+// Native conversion: shadowrun_ghidra::advance_title_reveal_transfer_service
+// represents the reveal writes as typed host records and keeps the world/menu
+// handoff explicit; it does not carry VDP commands into the native runtime.
+void advance_title_reveal_transfer_service(void)
 
 {
   ushort uVar2;
@@ -55,5 +58,4 @@ void convert_world_routine_0x0001d1f4(void)
   publish_menu_selection_then_text_variant();
   return;
 }
-
 

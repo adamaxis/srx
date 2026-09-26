@@ -16954,7 +16954,7 @@
 0001B042: btst.b #0x4,(0x00ff1592).l
 0001B04A: beq.w 0x0001b058
 0001B04E: lea (0xff1580).l,A0 ; data 00ff1580
-0001B054: bsr.w 0x0001d1f4 ; call 0001D1F4 convert_world_routine_0x0001d1f4
+0001B054: bsr.w 0x0001d1f4 ; call 0001D1F4 advance_title_reveal_transfer_service
 0001B058: btst.b #0x6,(0x00ff1592).l
 0001B060: beq.w 0x0001b06e
 0001B064: lea (0xff1580).l,A0 ; data 00ff1580

@@ -155,7 +155,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x0001CF4AU, "advance_title_effect_sprites", RoutineFamily::world, 254U},
     {0x0001D048U, "advance_world_effect_record", RoutineFamily::world, 150U},
     {0x0001D0DEU, "resolve_world_effect_sprite", RoutineFamily::world, 62U},
-    {0x0001D1F4U, "convert_world_routine_0x0001d1f4", RoutineFamily::world, 140U},
+    {0x0001D1F4U, "advance_title_reveal_transfer_service", RoutineFamily::world, 140U},
     {0x0001D280U, "initialize_world_sequence", RoutineFamily::world, 102U},
     {0x0001D33AU, "render_world_sequence_tile_rows", RoutineFamily::world, 186U},
     {0x0001DC4CU, "select_world_entity_service_target", RoutineFamily::world, 328U},

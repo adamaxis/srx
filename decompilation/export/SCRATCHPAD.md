@@ -672,3 +672,20 @@ resets `FFE0D6`, optionally arms `FFE0AA=0x0A` for the alternate motion, and
 hands control to `0x19F18` menu progression after the final sprite build. The
 conversion exposes that handoff as a callback and resolves the nine source
 sequences to host assets; it does not perform ROM/VDP lookups at runtime.
+
+## Title/world reveal transfer service: 0x1D1F4
+
+`0x1D1F4` is the service reached by `FF1592` bit `0x10`, not an unidentified
+world routine. It progressively reveals the title/world resource by writing
+`0x47` masked longwords per active frame. The random source index is bounded by
+`FFE006`, aligned to an even four-byte source offset, and added to the
+`FFDF76` destination base. The mask is the source `0x1D3F4` expansion with
+selector `5`; the host conversion emits each result as a
+`TitleRevealWordWrite` record rather than recreating a VDP command/data port.
+
+When `FFE008` crosses below zero, the service clears behavior-record flag
+`+0x12` bit `0x10`, refreshes the source block once, and then follows the
+actual scene branch: `FFE16B != 0` installs the fixed world-sequence state used
+by `0x1D280/0x1D2E6`, otherwise control is handed to `0x1A01E` menu-selection
+and text setup. The native boundary exposes both outcomes as typed actions and
+keeps the decoded source asset behind callbacks.

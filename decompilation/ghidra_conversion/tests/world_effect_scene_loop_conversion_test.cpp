@@ -89,7 +89,7 @@ int main() {
         [&] { order.emplace_back("audio-menu"); };
     callbacks.advance_title_noise_stream =
         [&] { order.emplace_back("noise-stream"); };
-    callbacks.advance_title_phase_service =
+    callbacks.advance_title_reveal_transfer_service =
         [&] { order.emplace_back("phase-service"); };
     callbacks.advance_title_secondary_effect_service =
         [&] { order.emplace_back("profile-service"); };
