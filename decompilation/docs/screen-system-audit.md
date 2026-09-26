@@ -389,7 +389,7 @@ of a port.
 | Opening | `0x59C5E` and timed groups | Partial | Text/timing/skip are present; animated art and music are pending |
 | Field movement | `0x3084`, `0x2B34`, `0xE7C8`, `0x5FDC`, `0x600E` | Partial | Reviewed player collision and animation path is present; movement step/timing, source camera transitions, right-side HUD/entity presentation, and NPC/entity logic remain pending |
 | Area transitions | `0x5A62`, `0x172CDC`, `0x20E48` | Partial | The reviewed mode-2 C0/event-0 tuple loads mode `0x14` and enters the source Stoker dialogue state; every building reaction and reverse transition is not |
-| Command overview | `0x10D30`, `0x10F50`, `0x111E8`, `0x11454` | Partial | Normal overview, source command-tab focus blocks, and selector are present; Magic and remaining Pocket Secretary row handlers remain pending |
+| Command overview | `0x10D30`, `0x10F50`, `0x111E8`, `0x11454` | Partial | Normal overview, source command-tab focus blocks, and selector are present; Magic target/effect and remaining Pocket Secretary row handlers remain pending |
 | Inventory navigation | `0x11506`..`0x11678` | Implemented | Eight-cell cursor and source column/row semantics are covered |
 | Equipment action | `0x11740`..`0x118C6`, `0x12148`, `0x12168`..`0x125F8`, `0x12634`..`0x129FE` | Partial | Two-step source action loop, Equip/Unequip, armor, Discard, Trade, and First Aid target/effect/result paths are present; later item handlers remain |
 | Posture and bars | `0x119CE`, `0x11ABE`, `0x11AE4`, `0x12CEE` | Partial | Normal equipped-item attack/defense calculation is source-derived; special negative `+0x56` path and combat consumers are pending |
@@ -433,7 +433,7 @@ The next system passes should be completed in this order:
 
 1. Finish source-authentic startup/title visual comparison, including the
    animated intro artwork and audio timing.
-2. Extract and implement Magic and Pocket Secretary as stateful screens.
+2. Finish Magic target/effect behavior and Pocket Secretary row handlers as stateful screens.
 3. Decode the recruited roster at `0x72C1A` and populate runtime party slots;
    only then should C-switching expose additional runners.
 4. Trace posture consumers in field/combat logic so posture changes affect
