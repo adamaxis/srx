@@ -628,6 +628,13 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The primary candidate builder at `0x1438C` now exposes the seven-record filter
+that feeds the primary linked-target table. It requires behavior bit 0, rejects
+behavior bits 6/4, route bit 7, status bits 5/3, and a zero collision/action
+word, then appends the record identity in source order. This is the concrete
+field-entity eligibility pass behind the later animation link selection, not a
+generic list wrapper.
+
 The entity animation cluster at `0x14492`/`0x13FFE`/`0x14226` is now named by
 behavior instead of the old generic menu/entity placeholders. `0x14492`
 selects a linked entity identity from the primary or alternate source table,

@@ -86,7 +86,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00013F76U, "run_entity_animation_resource_gate", RoutineFamily::entity, 136U},
     {0x00013FFEU, "dispatch_entity_animation_state", RoutineFamily::entity, 506U},
     {0x00014226U, "service_entity_animation_action", RoutineFamily::entity, 136U},
-    {0x0001438CU, "convert_entity_routine_0x0001438c", RoutineFamily::entity, 106U},
+    {0x0001438CU, "collect_entity_action_primary_candidates", RoutineFamily::entity, 106U},
     {0x00014492U, "select_entity_animation_link", RoutineFamily::entity, 166U},
     {0x00014508U, "convert_entity_routine_0x00014508", RoutineFamily::entity, 154U},
     {0x000145A2U, "convert_entity_routine_0x000145a2", RoutineFamily::entity, 108U},

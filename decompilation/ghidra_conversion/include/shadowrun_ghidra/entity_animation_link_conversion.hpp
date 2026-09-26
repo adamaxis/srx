@@ -1,11 +1,25 @@
 #pragma once
 
 #include <cstdint>
+#include <array>
 #include <functional>
 #include <optional>
 #include <vector>
 
 namespace shadowrun::ghidra_conversion {
+
+struct EntityAnimationCandidateRecord {
+    std::uint32_t identity = 0;
+    std::uint8_t behavior_flags = 0; // record +0x10
+    std::uint8_t route_flags = 0; // record +0xB0
+    std::uint8_t status_flags = 0; // record +0x9E
+    std::int16_t collision_state = 0; // record +0x0C
+};
+
+// ROM 0x1438C: scan the seven primary field records and retain identities
+// eligible for the action/animation target table at FFDF96.
+std::vector<std::uint32_t> collect_entity_action_primary_candidates(
+    const std::array<EntityAnimationCandidateRecord, 7>& entities);
 
 // The ROM stores these as pointers in FFDF96/FFDFCA.  The conversion keeps
 // the identity of the selected record without making the host runtime depend

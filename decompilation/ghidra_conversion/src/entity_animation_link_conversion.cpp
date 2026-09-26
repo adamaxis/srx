@@ -4,6 +4,24 @@
 
 namespace shadowrun::ghidra_conversion {
 
+std::vector<std::uint32_t> collect_entity_action_primary_candidates(
+    const std::array<EntityAnimationCandidateRecord, 7>& entities) {
+    std::vector<std::uint32_t> result;
+    for (const auto& entity : entities) {
+        if ((entity.behavior_flags & 0x01U) == 0U ||
+            (entity.behavior_flags & 0x40U) != 0U ||
+            (entity.behavior_flags & 0x10U) != 0U ||
+            (entity.route_flags & 0x80U) != 0U ||
+            (entity.status_flags & 0x20U) != 0U ||
+            (entity.status_flags & 0x08U) != 0U ||
+            entity.collision_state == 0) {
+            continue;
+        }
+        result.push_back(entity.identity);
+    }
+    return result;
+}
+
 namespace {
 
 bool contains_target(const std::vector<std::uint32_t>& targets,

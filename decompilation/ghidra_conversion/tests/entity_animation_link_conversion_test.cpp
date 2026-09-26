@@ -13,6 +13,20 @@ bool expect(const bool condition) {
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
+    const std::array<EntityAnimationCandidateRecord, 7> candidates{
+        EntityAnimationCandidateRecord{100U, 0x01U, 0U, 0U, 1},
+        EntityAnimationCandidateRecord{101U, 0x41U, 0U, 0U, 1},
+        EntityAnimationCandidateRecord{102U, 0x11U, 0U, 0U, 1},
+        EntityAnimationCandidateRecord{103U, 0x01U, 0x80U, 0U, 1},
+        EntityAnimationCandidateRecord{104U, 0x01U, 0U, 0x20U, 1},
+        EntityAnimationCandidateRecord{105U, 0x01U, 0U, 0x08U, 1},
+        EntityAnimationCandidateRecord{106U, 0x01U, 0U, 0U, 0},
+    };
+    if (!expect(collect_entity_action_primary_candidates(candidates) ==
+                std::vector<std::uint32_t>{100U})) {
+        return 1;
+    }
+
     EntityAnimationLinkSelectionState primary{};
     primary.use_primary_table = true;
     primary.primary_targets = {11U, 22U, 33U};
@@ -29,7 +43,7 @@ int main() {
                     existing_primary_target_kept &&
                 kept.existing_target_found && !random_called &&
                 primary.linked_target == std::optional<std::uint32_t>{22U})) {
-        return 1;
+        return 2;
     }
 
     primary.linked_target = 99U;
@@ -43,7 +57,7 @@ int main() {
     if (!expect(selected.action == EntityAnimationLinkSelectionAction::
                     primary_target_selected &&
                 primary.linked_target == std::optional<std::uint32_t>{33U})) {
-        return 2;
+        return 3;
     }
 
     EntityAnimationLinkSelectionState empty_primary{};
@@ -54,7 +68,7 @@ int main() {
     if (!expect(cleared.action == EntityAnimationLinkSelectionAction::
                     primary_table_cleared &&
                 reset_called && !empty_primary.linked_target.has_value())) {
-        return 3;
+        return 4;
     }
 
     EntityAnimationLinkSelectionState alternate{};
@@ -72,7 +86,7 @@ int main() {
                 alternate_selected.target_changed &&
                 alternate.animation_delay == 6U &&
                 alternate.linked_target == std::optional<std::uint32_t>{55U})) {
-        return 4;
+        return 5;
     }
 
     EntityAnimationLinkSelectionState empty_alternate{};
@@ -82,7 +96,7 @@ int main() {
     if (!expect(alternate_cleared.action == EntityAnimationLinkSelectionAction::
                     alternate_table_cleared &&
                 !empty_alternate.linked_target.has_value())) {
-        return 5;
+        return 6;
     }
 
     return 0;

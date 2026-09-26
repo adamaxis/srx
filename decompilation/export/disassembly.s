@@ -11008,14 +11008,14 @@
 00013874: clr.b (0x00ffe175).l
 0001387A: tst.w (0x00ffdfe8).l
 00013880: beq.w 0x00013890
-00013884: bsr.w 0x0001438c ; call 0001438C convert_entity_routine_0x0001438c
+00013884: bsr.w 0x0001438c ; call 0001438C collect_entity_action_primary_candidates
 00013888: bsr.w 0x00014446 ; call 00014446 collect_entity_action_candidates
 0001388C: bra.w 0x000138b6
 00013890: move.w (0x00ffdf88).l,D0w
 00013896: andi.w #0x3f,D0w
 0001389A: cmpi.w #0xb,D0w
 0001389E: bne.w 0x000138aa
-000138A2: bsr.w 0x0001438c ; call 0001438C convert_entity_routine_0x0001438c
+000138A2: bsr.w 0x0001438c ; call 0001438C collect_entity_action_primary_candidates
 000138A6: bra.w 0x000138b6
 000138AA: cmpi.w #0xf,D0w
 000138AE: bne.w 0x000138b6
