@@ -1357,6 +1357,13 @@ lookups remain explicit host callbacks. This corrects the old Ghidra output's
 unresolved D-register/A-register values without making those registers part of
 the host runtime.
 
+The follow-up source audit caught one remaining width mismatch in that tick.
+At `0x1AAAC` the runner delta is combined with the frame value by `ADD.B`, and
+`BPL` tests the wrapped byte before the result is stored. The native conversion
+now models that byte operation directly; a regression case proves that a
+wrapped `0x80` byte takes the source zero path instead of surviving a widened
+x86 addition.
+
 The compact title/world helpers are now converted in one
 `title_world_helpers_conversion` module. `0x1B282` is the Matrix transition
 counter: it reloads every `0x0C` frames, clears the selected program at stage 6,

@@ -123,6 +123,12 @@ returns the wrapped word metric; adversarial tests cover values outside the
 word range and the unrepresentable `0x8000` negation case. This is a source
 fidelity correction, not a new movement rule.
 
+The world-effect animation audit found an analogous byte-width boundary at
+`0x1AAAC`. The ROM performs `ADD.B D1b,D0b`, then uses `BPL` on the wrapped
+frame byte before storing it. The conversion now preserves that operation
+instead of adding the signed table word in a widened host integer; the focused
+test uses a wrapped high-bit result to distinguish the two behaviors.
+
 The next manual slice corrected three source-owned details. The field-column
 renderer at `0x3D4A` emits a partial segment and then continues through the
 shared `0x3D80` transfer body; it is now represented as two typed host

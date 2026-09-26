@@ -10,6 +10,19 @@ bool decrement_source_byte(std::uint16_t& value) {
     return (byte_value & 0x80U) != 0U;
 }
 
+std::uint8_t add_runner_delta_as_source_byte(
+    const std::uint8_t frame_value,
+    const std::int16_t delta) {
+    // 0x1AAAC loads the frame as a byte and performs ADD.B D1b,D0b. The
+    // following BPL tests the wrapped byte, not the widened signed table
+    // value. Keep that distinction explicit for malformed/custom table
+    // boundaries as well as the normal ROM delta table.
+    const auto wrapped = static_cast<std::uint8_t>(
+        static_cast<std::uint16_t>(frame_value) +
+        static_cast<std::uint8_t>(delta));
+    return (wrapped & 0x80U) == 0U ? wrapped : 0U;
+}
+
 WorldEffectAnimationAction render_animation_sprite(
     WorldEffectAnimationState& state,
     const WorldEffectAnimationCallbacks& callbacks,
@@ -61,13 +74,8 @@ WorldEffectAnimationAction tick_world_effect_animation(
                 if (!delta.has_value()) {
                     return WorldEffectAnimationAction::animation_delta_unresolved;
                 }
-                auto next_frame = static_cast<int>(
-                    static_cast<std::uint8_t>(state.work.descriptor_state));
-                next_frame += static_cast<int>(*delta);
-                if (next_frame < 0) {
-                    next_frame = 0;
-                }
-                state.work.frame_counter = static_cast<std::uint8_t>(next_frame);
+                state.work.frame_counter = add_runner_delta_as_source_byte(
+                    state.work.descriptor_state, *delta);
                 state.work.phase_or_descriptor_index = static_cast<std::uint8_t>(
                     state.work.phase_or_descriptor_index + 1U);
                 if (state.work.phase_or_descriptor_index >=

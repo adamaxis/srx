@@ -49,6 +49,24 @@ int main() {
         return 1;
     }
 
+    // The ROM adds the runner delta with ADD.B and then applies BPL to the
+    // wrapped byte. A widened host addition would incorrectly keep 1 + 127
+    // as 128 instead of taking the source negative-byte path to zero.
+    WorldEffectAnimationState byte_wrapped{};
+    byte_wrapped.animation_active = true;
+    byte_wrapped.work.frame_counter = 0U;
+    byte_wrapped.work.descriptor_state = 1U;
+    byte_wrapped.work.descriptor_phase = 1U;
+    byte_wrapped.work.descriptor_pointer = 0x3333U;
+    auto byte_callbacks = callbacks;
+    byte_callbacks.read_runner_animation_delta =
+        []() -> std::optional<std::int16_t> { return 127; };
+    if (tick_world_effect_animation(byte_wrapped, byte_callbacks) !=
+            WorldEffectAnimationAction::rendered ||
+        byte_wrapped.work.frame_counter != 0U) {
+        return 6;
+    }
+
     WorldEffectAnimationState simple{};
     simple.animation_active = true;
     simple.ffdf8c_nonzero = true;
