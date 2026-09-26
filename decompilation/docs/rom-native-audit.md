@@ -13,9 +13,9 @@ address reads, a 68000 interpreter, or a VDP-shaped runtime.
 | Indirect/unresolved call sites | 16 | Explicit dispatch boundaries still needing table/handler proof |
 | Generic export labels | 0 | All 119 formerly generic exports now have reviewed semantic names |
 | Reviewed generic labels | 119 | Per-entry behavior/evidence ledger in `ghidra-function-label-review.tsv` |
-| Conversion implementation files | 228 | Leaf source-trace contracts, not proposed runtime files |
+| Conversion implementation files | 229 | Leaf source-trace contracts, not proposed runtime files |
 | Behavioral conversion modules | 28 | The reviewed ownership boundaries in `conversion-source-modules.tsv` |
-| Conversion tests | 229 | Runner plus focused source-trace tests; all currently pass |
+| Conversion tests | 230 | Runner plus focused source-trace tests; all currently pass |
 
 The generic-label naming backlog is closed as a naming task. It is not a
 behavioral-fidelity claim: the review ledger records confidence and evidence,
@@ -37,7 +37,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File decompilation/tools/verify_r
 
 The current audit passes export-name, status-ledger, source-file ownership,
 and evidence-file checks: 910 exported entries, 932 unique ledger rows, 2,986
-resolved direct call sites, 228 conversion implementation files, and 229 CTest
+resolved direct call sites, 229 conversion implementation files, and 230 CTest
 cases. The behavioral fidelity gate remains OPEN: 16 indirect/unresolved call
 sites are still explicit boundaries, 928 ledger rows are partial, and only 4
 are defended. The generated Ghidra C also omits meaningful disassembly in
@@ -59,7 +59,7 @@ is behaviorally complete.
 The indexed pass currently reports 910 ROM entries, no missing disassembly
 spans, 18 direct-call substitutions needing native-owner review, 27 generated
 Ghidra-C return-only omission risks, 20 linear adjacent-export boundary
-reviews, and 292 entries without an explicit ROM address in a typed conversion
+reviews, and 287 entries without an explicit ROM address in a typed conversion
 source. The boundary audit now separates true linear continuation from
 adjacent exports reached by an explicit branch/call; the latter remain in the
 row-level report as context instead of being misreported as fall-through.
@@ -110,6 +110,14 @@ eight-record forward scanning, previous-target release, and the asymmetric
 normal/special publication of `+0xAC`, `+0xA2`, `+0xA6`, and `+0x43`. The
 adjacent `0x1DEA0` pass now clears only records with `+0x10` bit 6 set, bit 3
 clear, and a zero `+0x0C` action word before invoking the clear-slot boundary.
+
+The field-action grid family is now one grouped conversion instead of five
+generic leftovers. `0x57C3A`, `0x57C46`, `0x57C52`, and `0x57C5E` select the
+`0xC604/3`, `0xC184/12`, `0xC904/2`, and `0xC484/6` destination/row presets;
+all enter `0x57C66`, which repeats the 31-word row at `0xC1320` with `0x80`
+destination strides. The detail panel is six rows, not five: the source uses
+`D1 = 5` with `DBF`. The host contract requires the complete 31-word source
+row and emits typed transfer events for each repeated row.
 
 The generated Ghidra C remains an evidence snapshot and still omits meaningful
 logic for some of these entries, including `0x3602` and `0x55828`; the typed

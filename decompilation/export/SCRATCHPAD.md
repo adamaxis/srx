@@ -526,9 +526,11 @@ two-choice prompt, services vblank/controller input, uses the shared wrapped
 0/1 cursor for movement bits 8/9, and exits on the source bits 12/14. Option
 0 is the accepting choice; option 1 leaves the action unapplied. It remains
 an explicit presentation/input callback in the native application module;
-the conversion does not emulate its VDP writes. `0x57C5E` is labeled
-`refresh_field_action_detail_panel` and is the five-row repeated grid at
-origin `0xC484`.
+the conversion does not emulate its VDP writes. The grouped field-action grid
+conversion now models `0x57C3A/46/52/5E` as the `0xC604/3`, `0xC184/12`,
+`0xC904/2`, and `0xC484/6` presets entering shared `0x57C66`; the source row
+is 31 words from `0xC1320`, and the detail panel is six rows because `D1 = 5`
+is consumed by `DBF`.
 
 ## Field-service resource purchase conversion: 0x5766A
 
@@ -732,8 +734,8 @@ Important source checks from this pass:
 `decompilation/tools/verify_rom_conversion.ps1` is the structural gate. The
 current baseline is 910 exported entries, 0 generic export labels, 119 reviewed
 labels, 932 unique status rows, 2,986 resolved direct call sites, 16 explicit
-indirect/unresolved call boundaries, 228 conversion implementation files, 28
-behavioral modules, and 229 CTest cases. The gate passes the structural checks,
+indirect/unresolved call boundaries, 229 conversion implementation files, 28
+behavioral modules, and 230 CTest cases. The gate passes the structural checks,
 but behavioral fidelity remains OPEN: 928 status rows are partial and only 4
 are defended. The audit therefore does not authorize a true-to-source claim
 until the 16 indirect boundaries and the partial hills have been traced and
@@ -752,7 +754,7 @@ row-level result is `decompilation/docs/rom-conversion-audit.tsv`.
 
 The current indexed result is 910 entries, 29,141 disassembly instructions,
 zero missing ROM spans, 18 native-substitution review rows, 27 generated-C
-return-only risks, 20 linear adjacent-export boundary reviews, and 292 entries
+return-only risks, 20 linear adjacent-export boundary reviews, and 287 entries
 without explicit ROM-address evidence in a conversion source. The boundary
 classifier also records adjacent entries reached by an explicit branch or
 call, but does not mislabel those as linear fall-through. These numbers
