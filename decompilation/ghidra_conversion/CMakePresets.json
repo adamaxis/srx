@@ -1,0 +1,78 @@
+{
+  "version": 6,
+  "vendor": {
+    "shadowrun": {
+      "toolchainPolicy": "The Ghidra conversion workbench uses the MSYS2 UCRT64 toolchain and never shares a build directory with the native port."
+    }
+  },
+  "configurePresets": [
+    {
+      "name": "ghidra-conversion-debug",
+      "displayName": "Ghidra Conversion Workbench (Debug, MSYS2 UCRT64)",
+      "description": "Debug build of the standalone ROM-to-readable-C++ conversion workbench.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-ghidra-conversion-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe"
+      }
+    },
+    {
+      "name": "ghidra-conversion-release",
+      "displayName": "Ghidra Conversion Workbench (Release, MSYS2 UCRT64)",
+      "description": "Release build of the standalone ROM-to-readable-C++ conversion workbench.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-ghidra-conversion-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "ghidra-conversion-debug",
+      "displayName": "Build Ghidra Conversion Workbench (Debug)",
+      "configurePreset": "ghidra-conversion-debug",
+      "targets": [
+        "shadowrun_ghidra_conversion_runner"
+      ]
+    },
+    {
+      "name": "ghidra-conversion-debug-all",
+      "displayName": "Build All Ghidra Conversion Tests (Debug)",
+      "configurePreset": "ghidra-conversion-debug"
+    },
+    {
+      "name": "ghidra-conversion-release",
+      "displayName": "Build Ghidra Conversion Workbench (Release)",
+      "configurePreset": "ghidra-conversion-release",
+      "targets": [
+        "shadowrun_ghidra_conversion_runner"
+      ]
+    },
+    {
+      "name": "ghidra-conversion-release-all",
+      "displayName": "Build All Ghidra Conversion Tests (Release)",
+      "configurePreset": "ghidra-conversion-release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "ghidra-conversion-debug",
+      "displayName": "Test Ghidra Conversion Workbench (Debug)",
+      "configurePreset": "ghidra-conversion-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "ghidra-conversion-release",
+      "displayName": "Test Ghidra Conversion Workbench (Release)",
+      "configurePreset": "ghidra-conversion-release",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

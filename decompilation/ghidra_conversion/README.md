@@ -17,19 +17,28 @@ transitions at `0x131C`/`0x12F6`, and the title state shared by `0x1A9E`,
 waits, prompt drawing, resource setup, and unresolved hardware calls remain
 explicit boundaries until their source inputs are understood.
 
-Build this directory independently when validating the conversion slice:
+Build this directory independently when validating the conversion slice. The
+presets intentionally use build-ghidra-conversion-* directories and the
+shadowrun_ghidra_* target prefix, so this workbench cannot be confused with
+the separate native-port builds under decompilation/build-*:
 
 ```text
-cmake -S decompilation/ghidra_conversion -B decompilation/ghidra_conversion/build
-cmake --build decompilation/ghidra_conversion/build
-ctest --test-dir decompilation/ghidra_conversion/build --output-on-failure
+C:/msys64/ucrt64/bin/cmake.exe --preset ghidra-conversion-debug
+C:/msys64/ucrt64/bin/cmake.exe --build --preset ghidra-conversion-debug
+C:/msys64/ucrt64/bin/ctest.exe --preset ghidra-conversion-debug
 ```
+
+Run those commands from decompilation/ghidra_conversion. The release variants
+are ghidra-conversion-release in each command. To build every conversion test
+executable instead of only the workbench runner, use
+ghidra-conversion-debug-all or ghidra-conversion-release-all as the build
+preset.
 
 The standalone conversion runner can be built and run with:
 
 ```text
-cmake --build decompilation/ghidra_conversion/build --target shadowrun_ghidra_conversion_runner
-decompilation/ghidra_conversion/build/shadowrun_ghidra_conversion_runner.exe --assets decompilation/assets
+C:/msys64/ucrt64/bin/cmake.exe --build --preset ghidra-conversion-debug
+build-ghidra-conversion-debug/shadowrun_ghidra_conversion_runner.exe --assets ../assets
 ```
 
 This runner is a conversion-workbench startup probe, not the native game and

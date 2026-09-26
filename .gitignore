@@ -2,6 +2,8 @@
 /decompilation/build/
 /decompilation/build-*/
 /decompilation/ghidra_conversion/build/
+/decompilation/ghidra_conversion/build-ghidra-conversion-*/
+/decompilation/ghidra_conversion/Testing/
 
 # Ghidra project databases are large, host-specific working state. The
 # exported listings and C++ evidence under export/ remain versioned.

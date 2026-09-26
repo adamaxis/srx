@@ -150,6 +150,76 @@
         "panel": "shared"
       },
       "problemMatcher": []
+    },
+    {
+      "label": "CMake: Configure Ghidra Conversion (Debug)",
+      "type": "shell",
+      "command": "C:/msys64/ucrt64/bin/cmake.exe",
+      "args": ["--preset", "ghidra-conversion-debug"],
+      "options": {
+        "cwd": "${workspaceFolder}/decompilation/ghidra_conversion"
+      },
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "Shadowrun Conversion: Build (Debug)",
+      "type": "shell",
+      "command": "C:/msys64/ucrt64/bin/cmake.exe",
+      "args": ["--build", "--preset", "ghidra-conversion-debug"],
+      "options": {
+        "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
+        "env": {
+          "PATH": "C:\\msys64\\ucrt64\\bin;${env:PATH}"
+        }
+      },
+      "dependsOn": ["CMake: Configure Ghidra Conversion (Debug)"],
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "Shadowrun Conversion: Build Tests (Debug)",
+      "type": "shell",
+      "command": "C:/msys64/ucrt64/bin/cmake.exe",
+      "args": ["--build", "--preset", "ghidra-conversion-debug-all"],
+      "options": {
+        "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
+        "env": {
+          "PATH": "C:\\msys64\\ucrt64\\bin;${env:PATH}"
+        }
+      },
+      "dependsOn": ["CMake: Configure Ghidra Conversion (Debug)"],
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "Shadowrun Conversion: Test (Debug)",
+      "type": "shell",
+      "command": "C:/msys64/ucrt64/bin/ctest.exe",
+      "args": ["--preset", "ghidra-conversion-debug"],
+      "options": {
+        "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
+        "env": {
+          "PATH": "C:\\msys64\\ucrt64\\bin;${env:PATH}"
+        }
+      },
+      "dependsOn": ["Shadowrun Conversion: Build Tests (Debug)"],
+      "group": {
+        "kind": "test",
+        "isDefault": false
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
     }
   ]
 }
