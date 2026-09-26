@@ -13,6 +13,11 @@ int main() {
         add_world_effect_phase_modifier(4U, 2U) != 8U) {
         return 8;
     }
+    if (add_world_effect_timer_modifier(0xFFFEU, 3U) != 0x0001U ||
+        add_world_effect_phase_modifier(0xFFFEU, 2U) != 0x0002U ||
+        apply_world_effect_timing_modifiers(0xFFFEU, 3U, 2U) != 0x0005U) {
+        return 9;
+    }
 
     WorldEffectModeSelectionState start{};
     start.mode_variant = 0;

@@ -16,6 +16,14 @@ std::uint8_t subtract_low_byte(const std::uint16_t value,
         static_cast<std::uint8_t>(value) - subtraction);
 }
 
+bool source_cmp_word_bpl(const std::uint16_t minuend,
+                         const std::uint16_t subtrahend) {
+    // 0x5653A executes CMP.W D6,D7 followed by BPL.  This is the source
+    // sign-bit test of the wrapped D7-D6 word, not an unsigned host max.
+    const auto difference = static_cast<std::uint16_t>(minuend - subtrahend);
+    return (difference & 0x8000U) == 0U;
+}
+
 std::uint16_t clamp_display_level(std::uint16_t level) {
     if (static_cast<std::int16_t>(level) <= 0) {
         return 1U;
@@ -91,7 +99,9 @@ MenuHudMeterResult calculate_menu_hud_row_meter(
     }
 
     auto level = add_low_byte(*action_delay, inputs.active_runner_modifier);
-    level = std::max(level, *availability);
+    if (source_cmp_word_bpl(*availability, level)) {
+        level = *availability;
+    }
     level = static_cast<std::uint16_t>(level + *availability);
     if (level == 0U) {
         level = 1U;

@@ -98,6 +98,15 @@ receive phase-only timing. The conversion now models those as separate paths,
 and the action-count and transition tests use non-zero timer/phase values to
 verify the distinction.
 
+The follow-up audit of `0x562EC` and `0x563CC` found no additional control-flow
+loss: the transition path preserves the source signed-byte difference tests,
+the footer callback order, and the phase-only difficulty entry, while the
+pending-roll path preserves the `BLE` reduction gate, wrapped byte subtraction,
+depletion clear, and reset callback. The new tests also exercise 16-bit timing
+wrap at the modifier helpers and the `CMP.W D6,D7`/`BPL` predicate in `0x56506`.
+That predicate is intentionally not an unsigned `std::max`; the ROM tests the
+sign bit of the wrapped word difference before adding the availability value.
+
 The next manual slice corrected three source-owned details. The field-column
 renderer at `0x3D4A` emits a partial segment and then continues through the
 shared `0x3D80` transfer body; it is now represented as two typed host

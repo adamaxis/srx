@@ -871,3 +871,21 @@ evidence and typed source contracts only. The generated Ghidra C for the first
 three routines is still incomplete in places; the ROM disassembly remains the
 tie-breaker, and no entry is marked defended merely because this helper now
 exists.
+
+### World-effect/menu arithmetic audit continuation
+
+The direct ROM pass over `0x562EC` and `0x563CC` found the existing typed
+control flow faithful. `0x562EC` enters `0x562DE` directly, applies the phase
+modifier, then uses the source signed-byte difference and comparison-byte
+branches to choose HUD-panel, countdown/footer, pending-roll, or row-redraw
+services. `0x563CC` clamps the pending amount to two, returns without a
+reduction for a signed-byte `BLE` result, and otherwise performs wrapped byte
+subtraction before the depletion/reset follow-up. No source-shaped runtime
+memory access was added.
+
+The meter caller at `0x56506` did expose a conversion mismatch. Its
+`CMP.W D6,D7` followed by `BPL` tests the sign bit of wrapped `D7-D6`; it is
+not an unsigned maximum. `calculate_menu_hud_row_meter()` now preserves that
+predicate, with a high-bit availability regression case. The service/variant
+timers at `0x56434`/`0x56482` also have explicit wrapped-result tests: their
+`BGT`/`BPL` behavior is retained for a zero byte minus `0xFF`.

@@ -662,6 +662,20 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+### Current ROM audit slice: world-effect and menu arithmetic
+
+The audit of `0x562D4`/`0x562DE` confirms the timer entry falls through into
+the phase entry, so the combined path is `base + timer + 2*phase` with 16-bit
+wrap; direct callers use phase only. The immediate consumers `0x562EC` and
+`0x563CC` retain their signed-byte branch predicates, wrapped reductions, and
+callback order in the typed conversion. Their Ghidra C bodies remain
+decompiler evidence only where they collapse to return-only stubs.
+
+The same pass corrected `0x56506`: `CMP.W D6,D7` followed by `BPL` is a
+wrapped sign-bit test, not an unsigned `max`. The menu timing conversions at
+`0x56434` and `0x56482` now have explicit wrapped `BGT`/`BPL` regression cases.
+These changes are conversion/audit work only and do not alter the native port.
+
 The CyberInfo handler at `0x18AA6` is now `run_cyber_info_screen`. Its host
 conversion resets the two-entry page cursor, emits the `CyberInfo` setup, and
 preserves the exact per-frame wait/latch/sample/history order. Up wins over

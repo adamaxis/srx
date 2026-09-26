@@ -38,6 +38,16 @@ int main() {
         return 2;
     }
 
+    // The source tests the wrapped result with BGT.  0 - 0xFF produces one,
+    // so this does not expire the service timer.
+    state.records[1].service_timer = 0U;
+    const auto wrapped_service =
+        advance_menu_selection_service_timer(state, 0xFFU, callbacks);
+    if (wrapped_service.action != MenuSelectionTimingAction::updated ||
+        state.records[1].service_timer != 1U) {
+        return 10;
+    }
+
     state.phase_counter = 1U;
     state.records[1].service_timer = 1U;
     const auto rollover =
@@ -62,6 +72,15 @@ int main() {
         !variant_expired.selected_record_cleared ||
         state.records[1].variant_timer != 0U || cleared_records != 1) {
         return 5;
+    }
+
+    // The variant path uses BPL, so the same wrapped result remains active.
+    state.records[1].variant_timer = 0U;
+    const auto wrapped_variant =
+        advance_menu_selection_variant_timer(state, 0xFFU, callbacks);
+    if (wrapped_variant.action != MenuSelectionTimingAction::updated ||
+        state.records[1].variant_timer != 1U || cleared_records != 1) {
+        return 11;
     }
 
     const auto progression = reduce_menu_progression_timing(state, 4U);

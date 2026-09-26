@@ -105,6 +105,31 @@ int main() {
         return 5;
     }
 
+    // The ROM uses CMP.W D6,D7 followed by BPL before adding D7 to D6.
+    // For a malformed high-bit availability word, that wrapped sign-bit
+    // predicate deliberately differs from std::max<unsigned>.
+    MenuHudMeterInputs wrapped_compare{};
+    wrapped_compare.row_status = 3;
+    wrapped_compare.runner_action_cost = 0U;
+    wrapped_compare.runner_timing_difficulty = 3U;
+    wrapped_compare.profile_low_status = 2U;
+    MenuHudMeterCallbacks wrapped_callbacks{};
+    wrapped_callbacks.calculate_action_delay = [] {
+        return std::optional<std::uint16_t>(0U);
+    };
+    wrapped_callbacks.read_row_availability_value = [] {
+        return std::optional<std::uint16_t>(0x8000U);
+    };
+    wrapped_callbacks.select_status_adjusted_scale = [] {
+        return std::optional<std::uint16_t>(0U);
+    };
+    const auto wrapped_result =
+        calculate_menu_hud_row_meter(wrapped_compare, wrapped_callbacks);
+    if (wrapped_result.action != MenuHudMeterAction::level_calculated ||
+        wrapped_result.level != 8U) {
+        return 9;
+    }
+
     MenuHudMeterCallbacks unavailable{};
     if (calculate_menu_hud_row_meter(direct, unavailable).action !=
         MenuHudMeterAction::dependency_unavailable) {
