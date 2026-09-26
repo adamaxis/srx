@@ -762,8 +762,8 @@ entry	name	size	callingConvention	decompileStatus	file
 00056434	advance_menu_selection_service_timer	78	unknown	ok	ghidra-c/fn_00056434.cpp
 00056482	advance_menu_selection_variant_timer	84	unknown	ok	ghidra-c/fn_00056482.cpp
 000564D6	reduce_menu_progression_timing	48	unknown	ok	ghidra-c/fn_000564D6.cpp
-00056506	convert_intro_routine_0x00056506	300	unknown	ok	ghidra-c/fn_00056506.cpp
-00056632	convert_intro_routine_0x00056632	38	unknown	ok	ghidra-c/fn_00056632.cpp
+00056506	calculate_menu_hud_row_meter	300	unknown	ok	ghidra-c/fn_00056506.cpp
+00056632	scale_menu_hud_value_by_difficulty	38	unknown	ok	ghidra-c/fn_00056632.cpp
 0005668C	convert_intro_routine_0x0005668c	22	unknown	ok	ghidra-c/fn_0005668C.cpp
 000566A2	convert_intro_routine_0x000566a2	32	unknown	ok	ghidra-c/fn_000566A2.cpp
 000566C2	convert_intro_routine_0x000566c2	22	unknown	ok	ghidra-c/fn_000566C2.cpp

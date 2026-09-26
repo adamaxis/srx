@@ -856,6 +856,19 @@ target_link_libraries(shadowrun_ghidra_menu_selection_timing_test
 add_test(NAME shadowrun_ghidra_menu_selection_timing
          COMMAND shadowrun_ghidra_menu_selection_timing_test)
 
+add_library(shadowrun_ghidra_menu_hud_meter STATIC
+    src/menu_hud_meter_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_menu_hud_meter PUBLIC include)
+
+add_executable(shadowrun_ghidra_menu_hud_meter_test
+    tests/menu_hud_meter_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_menu_hud_meter_test
+    PRIVATE shadowrun_ghidra_menu_hud_meter)
+add_test(NAME shadowrun_ghidra_menu_hud_meter
+         COMMAND shadowrun_ghidra_menu_hud_meter_test)
+
 add_library(shadowrun_ghidra_title_world_helpers STATIC
     src/title_world_helpers_conversion.cpp
 )

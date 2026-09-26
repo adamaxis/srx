@@ -820,8 +820,8 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00056434L, "advance_menu_selection_service_timer");
         names.put(0x00056482L, "advance_menu_selection_variant_timer");
         names.put(0x000564D6L, "reduce_menu_progression_timing");
-        names.put(0x00056506L, "convert_intro_routine_0x00056506");
-        names.put(0x00056632L, "convert_intro_routine_0x00056632");
+        names.put(0x00056506L, "calculate_menu_hud_row_meter");
+        names.put(0x00056632L, "scale_menu_hud_value_by_difficulty");
         names.put(0x0005668CL, "convert_intro_routine_0x0005668c");
         names.put(0x000566A2L, "convert_intro_routine_0x000566a2");
         names.put(0x000566C2L, "convert_intro_routine_0x000566c2");

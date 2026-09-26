@@ -112,6 +112,22 @@ as callbacks. The record vector and phase counters are host state, not a ROM
 addressed runtime structure; an unavailable selected record returns an
 explicit result instead of asserting or reading arbitrary memory.
 
+## Field HUD row meter
+
+`0x1792E render_menu_hud_rows` calls `0x56506` once for each eligible row.
+The result is multiplied by the row-glyph stride, so this is the numeric HUD
+meter value rather than a generic introductory helper:
+
+| ROM entry | Recovered behavior | Typed conversion |
+| --- | --- | --- |
+| `0x56632` | Scales D6 by the source difficulty table after clamping D4 to 2: 100% at difficulty 2, then 80/60/40/20%, and 10% for 7 or higher. | `scale_menu_hud_value_by_difficulty()` |
+| `0x56506` | Status 4 reads row availability and scales it from the profile's special status bucket; statuses 5--7 return row availability directly; all other statuses combine action delay, the row availability value, the current record's cost/timing, the phase modifier, and the status-adjusted scale before clamping the display level. | `calculate_menu_hud_row_meter()` |
+
+The conversion exposes `0x19C5C` row-availability reads,
+`0x19BF6` status-adjusted scale selection, and `0x55F44` action-delay
+calculation as typed callbacks. It does not pretend that those unresolved
+source services are a runtime memory interface.
+
 The importer has a separate ROM-only reader at
 `src/graphics_import.cpp::read_genesis_field_entity_template()`. That reader
 feeds extracted host assets/state; it is not the game runtime and is not a

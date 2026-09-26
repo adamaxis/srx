@@ -1,16 +1,19 @@
 // Ghidra headless export
 // Entry: 0x00056506
-// Name: convert_intro_routine_0x00056506
+// Name: calculate_menu_hud_row_meter
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00019BF6 pass_through_value
 //   0x00019C5C convert_world_routine_0x00019c5c
 //   0x00055F44 calculate_runner_action_delay
 //   0x000562DE add_world_effect_phase_modifier
-//   0x00056632 convert_intro_routine_0x00056632
+//   0x00056632 scale_menu_hud_value_by_difficulty
 
+// Direct disassembly distinguishes status 4, statuses 5..7, and the full
+// delay/difficulty path. The typed host conversion is in
+// ghidra_conversion/menu_hud_meter_conversion.
 
-void convert_intro_routine_0x00056506(void)
+void calculate_menu_hud_row_meter(void)
 
 {
   char cVar1;
@@ -33,7 +36,7 @@ void convert_intro_routine_0x00056506(void)
   if (-1 < (char)(cVar1 + -4)) {
     if (cVar1 == '\x04') {
       convert_world_routine_0x00019c5c();
-      convert_intro_routine_0x00056632();
+      scale_menu_hud_value_by_difficulty();
       return;
     }
     if ((char)(*(char *)(in_A0 + 0x1a + (int)unaff_D3w) + -8) < '\0') {
@@ -60,7 +63,7 @@ void convert_intro_routine_0x00056506(void)
     return;
   }
   add_world_effect_phase_modifier();
-  convert_intro_routine_0x00056632();
+  scale_menu_hud_value_by_difficulty();
   if (*(char *)(extraout_A0 + 0x1a + (int)unaff_D3w) == '\v') {
     uVar6 = (uint)*(byte *)(extraout_A1 + 6 + (int)extraout_D1w);
     uVar5 = (ushort)DAT_00fffbc9;

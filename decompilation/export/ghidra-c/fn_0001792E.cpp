@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
 //   0x00017C3C convert_world_routine_0x00017c3c
-//   0x00056506 convert_intro_routine_0x00056506
+//   0x00056506 calculate_menu_hud_row_meter
 
 
 void render_menu_hud_rows(void)
@@ -21,7 +21,7 @@ void render_menu_hud_rows(void)
     sVar1 = sVar2;
     if (((DAT_00fff0b0 != '\0') && (convert_world_routine_0x00017c3c(sVar2,iVar3), sVar2 != 0)) &&
        (-1 < (char)(&DAT_00fffbd8)[sVar1])) {
-      convert_intro_routine_0x00056506();
+      calculate_menu_hud_row_meter();
     }
     write_vdp_grid();
     iVar3 = iVar3 + -0xc;
@@ -29,5 +29,4 @@ void render_menu_hud_rows(void)
   } while (sVar2 != -1);
   return;
 }
-
 

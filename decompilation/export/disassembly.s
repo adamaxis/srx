@@ -14203,7 +14203,7 @@
 00017962: clr.l D6
 00017964: bra.w 0x00017970
 00017968: move.w D3w,D7w
-0001796A: jsr 0x00056506.l ; call 00056506 convert_intro_routine_0x00056506
+0001796A: jsr 0x00056506.l ; call 00056506 calculate_menu_hud_row_meter
 00017970: mulu.w #0x8,D6
 00017974: lea (0xd866a).l,A1 ; data 000d866a
 0001797A: adda.l D6,A1
@@ -24685,7 +24685,7 @@
 00056566: ble.w 0x000565e8
 0005656A: move.b (0x6,A1,D1w*0x1),D4b ; data 00ff1106
 0005656E: bsr.w 0x000562de ; call 000562DE add_world_effect_phase_modifier
-00056572: bsr.w 0x00056632 ; call 00056632 convert_intro_routine_0x00056632
+00056572: bsr.w 0x00056632 ; call 00056632 scale_menu_hud_value_by_difficulty
 00056576: lea (0xfffbbe).l,A2 ; data 00fffbbe
 0005657C: cmpi.b #0xb,(0x1a,A0,D3w*0x1)
 00056582: beq.w 0x000565a4
@@ -24735,7 +24735,7 @@
 0005661C: moveq #0x5,D4
 0005661E: bra.w 0x00056624
 00056622: moveq #0x6,D4
-00056624: bsr.w 0x00056632 ; call 00056632 convert_intro_routine_0x00056632
+00056624: bsr.w 0x00056632 ; call 00056632 scale_menu_hud_value_by_difficulty
 00056628: tst.w D6w
 0005662A: bgt.b 0x000565ec
 0005662C: move.w #0x1,D6w
