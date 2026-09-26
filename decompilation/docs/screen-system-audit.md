@@ -191,6 +191,9 @@ The target-effect leaf at `0x1253E` is also converted separately in
 `first_aid_conversion`: its full-target gate, difficulty formula, roll-result
 fallback, meter order, status transition, and `0xB45C` continuation are
 covered without importing ROM state into the runtime.
+The armor-selection leaf at `0x11352` is separately represented in
+`armor_selection_conversion`; its preview write/rollback, no-armor gate, and
+text/effect/grid ordering remain outside the native runtime.
 Discard now follows `0x12634`/`0x1275C`: it opens the source Yes/No
 confirmation with No selected, shows the equipped-item warning, protects item
 codes `0x29..0x2B` in slot 7, and clears the possession cell only after Yes.

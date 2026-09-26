@@ -617,6 +617,13 @@ uses one point when the source success byte is zero, preserves the
 and installs continuation `0xB45C`. The target model is source-field typed;
 it does not carry a ROM address or a renderer callback.
 
+The armor-selection leaf at 0x11352 is now isolated in
+armor_selection_conversion. The source preview gate writes the selected
+armor index to +0x76 and the selected inventory phase, runs the exact
+text/effect/grid refresh order, and restores both values afterward. The
+ordinary refresh rejects an active record with no equipped armor and keeps the
+effect services as explicit callbacks.
+
 ## Clips command conversion
 
 The `0x11B58` Clips command is now represented in the separate
