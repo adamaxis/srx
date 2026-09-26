@@ -368,12 +368,12 @@ still has unresolved downstream calls or hardware presentation work.
 | `0x26D0` | `advance_title_animation_timer` | Advances the title animation timer and sets the source update flag on wrap. | `ghidra_conversion::advance_title_animation_timer()` | partial |
 | `0x1A9E` | `run_title_loop` | Title reveal/update loop, Start edge transition, palette fade, and handoff to startup menus. | `ghidra_conversion::advance_title_prompt_schedule()` for prompt cadence; draw calls remain explicit boundaries | partial |
 | `0x3084` | `run_field_loop` | Field update loop around movement, entity state, camera, and object output. | `NativePortShell::update()` field branch | partial |
-| `0x5D746` | `run_pre_title_sequence` | Pre-title SEGA sequence: resource setup, rising figure, logo phases, horizontal-scroll noise, and timed fades. | `NativePortShell::update_boot()` | partial |
-| `0x5DA50` | `setup_pre_title_resources` | Loads the pre-title planes, tile data, and source SAT/palette resources. | `decode_genesis_native_assets()` / boot asset catalog | partial |
-| `0x5DAC4` | `fill_boot_horizontal_scroll` | Generates one horizontal-scroll word per visible line from the source PRNG. | `NativePortShell::update_boot()` | partial |
-| `0x5D8BA` | `step_pre_title_logo_strobe` | Advances the pre-title logo palette strobe and figure fade cadence. | `NativePortShell::update_boot()` | partial |
-| `0x5D938` | `advance_pre_title_animation` | Updates the pre-title SAT/timer state around the logo phase. | `NativePortShell::update_boot()` | partial |
-| `0x5D996` | `advance_pre_title_logo_phase` | Advances the timed SEGA logo phase and its completion gate. | `NativePortShell::update_boot()` | partial |
+| `0x5D746` | `run_pre_title_sequence` | Runs the source startup loop: typed resource setup, vblank cadence, logo strobe, 224-line scroll generation, sprite projection, audio gates, palette/input checkpoints, final cleanup, and the settling wait. | `ghidra_conversion::run_pre_title_sequence()`; unresolved child operations remain explicit callbacks | partial |
+| `0x5DA50` | `setup_pre_title_resources` | Performs the recovered clear/prepare/zeroed-stream/field-refresh/decode/palette/grid child calls in source order and marks the typed dirty flags. | `ghidra_conversion::setup_pre_title_resources()`; host transfer callbacks remain explicit | partial |
+| `0x5DAC4` | `fill_boot_horizontal_scroll` | Advances the converted PRNG 224 times, stores `(random >> 5) & 0x1f` per line, and invokes the typed horizontal-scroll stream boundary. | `ghidra_conversion::fill_pre_title_horizontal_scroll()` | partial |
+| `0x5D8BA` | `step_pre_title_logo_strobe` | Decrements the five-tick strobe cadence, wraps the eight-phase palette selection, marks the dirty flag, or steps the entity color words at cadence two. | `ghidra_conversion::advance_pre_title_logo_strobe()` | partial |
+| `0x5D938` | `advance_pre_title_animation` | Sets the source sprite markers, builds the two ordinary title records, delegates the six-phase projection gate, and sets the projection marker. | `ghidra_conversion::advance_pre_title_animation()` | partial |
+| `0x5D996` | `advance_pre_title_logo_phase` | Checks the `FFDD30`/`FFDD3C` gates, advances typed `FFE066`/`FFE064` phase state, and builds two projection records on every open gate. | `ghidra_conversion::advance_pre_title_animation()`; source phase state remains caller-owned | partial |
 
 ## Initial coherent C++ conversions
 

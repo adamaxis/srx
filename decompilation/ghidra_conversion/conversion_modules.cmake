@@ -10,6 +10,7 @@ file(GLOB SHADOWRUN_MODULE_PLATFORM_INPUT_TIMING CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/selection_conversion.cpp"
 )
 file(GLOB SHADOWRUN_MODULE_SOURCE_DATA CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/core/asset_catalog_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/compressed_data_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/coordinate_data_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/packed_data_conversion.cpp"
@@ -186,6 +187,7 @@ file(GLOB SHADOWRUN_MODULE_MENU_SERVICES_HUD CONFIGURE_DEPENDS
 )
 
 file(GLOB SHADOWRUN_MODULE_INTRO_DIRECTOR_STAGES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/title_intro/boot_sequence_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/title_intro/title_intro_*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/title_intro/title_loop_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/title_intro/title_resource_sequence_conversion.cpp"

@@ -29,13 +29,22 @@ The standalone conversion runner can be built and run with:
 
 ```text
 cmake --build decompilation/ghidra_conversion/build --target shadowrun_ghidra_conversion_runner
-decompilation/ghidra_conversion/build/shadowrun_ghidra_conversion_runner.exe
+decompilation/ghidra_conversion/build/shadowrun_ghidra_conversion_runner.exe --assets decompilation/assets
 ```
 
-This runner is a conversion-workbench probe, not the native game and not an
-emulator. It composes typed source-derived contracts from the conversion
-modules and prints their deterministic results. The native port has no link
-or source dependency on this target.
+This runner is a conversion-workbench startup probe, not the native game and
+not an emulator. It loads the direct-asset alias table, verifies the boot/title
+asset set, composes the typed `0x0236 -> 0x073A -> 0x5D746` startup ordering,
+and reports the source-derived vblank, sprite, scroll, and resource-stream
+counts. Its resource, transfer, palette, audio, and sprite-record callbacks
+are explicit conversion boundaries; a `title_ready` result means the parent
+control flow and asset requirements were exercised, not that the native port
+is playable or that those child systems have been source-verified.
+
+When a callback cannot yet be grounded in the canonical ROM/Ghidra export, it
+must remain an explicit reported boundary. Treat an apparently missing field,
+resource, or behavior as evidence of an incomplete conversion sweep and
+re-audit the source before inventing a replacement routine.
 
 The source-understanding layer is organized by game subsystem under
 `include/shadowrun_ghidra/<domain>/`, `src/<domain>/`, and `tests/<domain>/`.
