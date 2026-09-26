@@ -272,7 +272,14 @@ int main() {
         select_hud_glyph_attribute_flags({15U, 2U, 0}) != 0x2000U ||
         select_hud_glyph_attribute_flags({-1, 0, -1}) != 0x2000U ||
         select_hud_glyph_attribute_flags({-1, 2, -1}) != 0x6000U ||
-        select_hud_glyph_attribute_flags({6, -1, -1}) != 0x6000U) {
+        select_hud_glyph_attribute_flags({6, -1, -1}) != 0x6000U ||
+        select_hud_glyph_attribute_flags(
+            {static_cast<std::int8_t>(0x80),
+             static_cast<std::int8_t>(0x80), -1}) != 0x2000U ||
+        select_hud_glyph_attribute_flags(
+            {static_cast<std::int8_t>(0x80), 1, -1}) != 0x6000U ||
+        select_hud_glyph_attribute_flags(
+            {static_cast<std::int8_t>(0xFF), 1, -1}) != 0x2000U) {
         return 25;
     }
 

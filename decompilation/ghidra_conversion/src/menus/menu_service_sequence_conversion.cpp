@@ -2,6 +2,17 @@
 
 namespace shadowrun::ghidra_conversion {
 
+namespace {
+
+bool cmpi_byte_result_is_nonnegative(const std::int8_t value,
+                                    const std::uint8_t immediate) {
+    const auto raw_value = static_cast<std::uint8_t>(value);
+    const auto result = static_cast<std::uint8_t>(raw_value - immediate);
+    return (result & 0x80U) == 0U;
+}
+
+} // namespace
+
 void draw_command_overview_hud_panel(
     const CommandOverviewHudPanelInput& input,
     const std::function<void(const CommandOverviewHudPanelPlan&)>& draw_panel) {
@@ -71,10 +82,23 @@ std::uint16_t select_hud_glyph_attribute_flags(
         return 0x2000U;
     }
 
-    if (input.class_code < 2 && input.equipped_slot < 0) {
-        return input.action_code >= 6 ? 0x6000U : 0x2000U;
+    // CMP.B #2,record+0x9B / BPL takes the nonnegative branch at 0x362A.
+    // TST.B record+0x56 / BPL takes the same branch when the slot sign bit
+    // is clear. The first branch therefore requires both negative flags.
+    if (!cmpi_byte_result_is_nonnegative(input.class_code, 2U) &&
+        input.equipped_slot < 0) {
+        // CMP.B #6,record+0x57 / BPL selects 0x6000; a negative result
+        // falls through to the 0x2000 return.
+        return cmpi_byte_result_is_nonnegative(input.action_code, 6U)
+                   ? 0x6000U
+                   : 0x2000U;
     }
-    return input.action_code < 0x0F ? 0x6000U : 0x2000U;
+
+    // CMP.B #0x0F / BMI selects 0x6000; the nonnegative result selects
+    // 0x2000.
+    return cmpi_byte_result_is_nonnegative(input.action_code, 0x0FU)
+               ? 0x2000U
+               : 0x6000U;
 }
 
 std::uint16_t render_menu_tile_rows(

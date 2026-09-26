@@ -83,9 +83,10 @@ as typed conversion code:
   native boundary returns unresolved for an absent/out-of-range host row;
   it does not silently use a guessed modifier.
 * `0x3602` computes the HUD glyph attribute word (`0x2000` or `0x6000`) from
-  the signed action/class byte branches and signed equipped-slot field. The
-  ordinary and high-bit boundary cases are covered by a focused conversion
-  test; transfer integration into the menu renderer remains open.
+  the ROM's raw-byte `CMP.B` sign-bit branches for action/class and the signed
+  equipped-slot field. Ordinary, wrapped high-bit, and sentinel cases are
+  covered by a focused conversion test; transfer integration into the menu
+  renderer remains open.
 * `0x60F4` is not a no-op: the ROM executes `ORI #1,CCR` and returns with the
   carry flag set. The typed conversion exposes that carry result; the caller's
   descriptor branch still needs its complete native integration.

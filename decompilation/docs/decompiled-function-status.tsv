@@ -438,7 +438,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x1080	alternating word-pair wrapper	ghidra_conversion::write_alternating_word_pair_wrapper	shadowrun_ghidra_display_service_batch	partial		Explicit host transfer boundary
 0x1872	display frame service	ghidra_conversion::service_display_frame	shadowrun_ghidra_display_service_batch	partial		Typed dirty-bit, viewport, and queued-transfer order
 0x3074	field scene buffer preparation	ghidra_conversion::prepare_field_scene_buffers	shadowrun_ghidra_display_service_batch	partial		Typed profile selection, camera recenter, and layer snapshots
-0x3602	HUD glyph attribute selector	ghidra_conversion::select_hud_glyph_attribute_flags	shadowrun_ghidra_menu_services_hud	partial		Typed signed-byte action/class/equipped-slot branch returns the source 0x2000 or 0x6000 glyph attribute word; transfer integration remains to trace
+0x3602	HUD glyph attribute selector	ghidra_conversion::select_hud_glyph_attribute_flags	shadowrun_ghidra_menu_services_hud	partial		Typed raw-byte CMP.B sign-bit branches for action/class/equipped-slot state return the source 0x2000 or 0x6000 glyph attribute word; transfer integration remains to trace
 0x3648	HUD panel transfer	ghidra_conversion::write_hud_panel_transfer	shadowrun_ghidra_display_service_batch	partial		Typed incrementing word blocks behind transfer callbacks
 0x3D18	field tile row renderer	ghidra_conversion::render_field_tile_rows	shadowrun_ghidra_display_service_batch	partial		Typed thirty-one-column traversal and fold boundary
 0x3D4A	field tile column renderer	ghidra_conversion::render_field_tile_column	shadowrun_ghidra_display_service_batch	partial		Typed visible-word count, tile-row stride, and palette transform

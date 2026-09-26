@@ -109,8 +109,9 @@ std::optional<MenuTitleTextPlan> select_command_overview_title_text(
     std::uint8_t selector);
 
 struct HudGlyphAttributeInput {
-    // 0x03602 uses byte-sized signed branches for both comparisons. Keep the
-    // source sign bit instead of turning sentinel values into large codes.
+    // 0x03602 compares raw bytes and branches on the sign bit of the wrapped
+    // CMP.B result. Keep the original byte patterns instead of converting
+    // sentinel values into ordinary host ordering.
     std::int8_t action_code = 0; // source record +0x57
     std::int8_t class_code = 0;  // source record +0x9B
     std::int8_t equipped_slot = -1; // signed source record +0x56
