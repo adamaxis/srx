@@ -86,27 +86,27 @@ int main() {
 
     RunnerTimingRosterState timing_roster{};
     timing_roster.records.resize(2U);
-    timing_roster.current_index = 1U;
-    timing_roster.records[1U].bytes[0x10U] = 0U;
+    timing_roster.current_record_index = 1U;
+    timing_roster.records[1U].animation_index = 0U;
     if (!lookup_runner_animation_delta(timing_roster).has_value() ||
         *lookup_runner_animation_delta(timing_roster) != 100) {
         return 3;
     }
-    timing_roster.records[1U].bytes[0x10U] = 14U;
+    timing_roster.records[1U].animation_index = 14U;
     if (!lookup_runner_animation_delta(timing_roster).has_value() ||
         *lookup_runner_animation_delta(timing_roster) != -1) {
         return 4;
     }
-    timing_roster.records[1U].bytes[0x10U] = 20U;
+    timing_roster.records[1U].animation_index = 20U;
     if (!lookup_runner_animation_delta(timing_roster).has_value() ||
         *lookup_runner_animation_delta(timing_roster) != -8) {
         return 7;
     }
-    timing_roster.records[1U].bytes[0x0FU] = 1U;
+    timing_roster.records[1U].active_effect = true;
     if (!runner_record_has_active_effect(timing_roster)) {
         return 5;
     }
-    timing_roster.current_index = 2U;
+    timing_roster.current_record_index = 2U;
     if (lookup_runner_animation_delta(timing_roster).has_value() ||
         runner_record_has_active_effect(timing_roster)) {
         return 6;
