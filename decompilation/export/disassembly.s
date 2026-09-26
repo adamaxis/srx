@@ -14885,7 +14885,7 @@
 0001861C: clr.b (0x00fff0ad).l
 00018622: clr.l D7
 00018624: bra.w 0x00018670
-00018628: bsr.w 0x00019238 ; call 00019238 convert_world_routine_0x00019238
+00018628: bsr.w 0x00019238 ; call 00019238 run_matrix_program_slot_screen
 0001862C: bra.w 0x00018326
 00018630: btst.b #0xc,(0x00ffdd22).l
 00018638: beq.w 0x00018648

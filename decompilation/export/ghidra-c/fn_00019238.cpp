@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00019238
-// Name: convert_world_routine_0x00019238
+// Name: run_matrix_program_slot_screen
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -21,7 +21,7 @@
 //   0x00019736 clear_ready_menu_slot_timer
 
 
-void convert_world_routine_0x00019238(void)
+void run_matrix_program_slot_screen(void)
 
 {
   short extraout_D1w;
@@ -99,5 +99,4 @@ LAB_00019428:
   }
   return;
 }
-
 

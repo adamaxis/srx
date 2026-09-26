@@ -165,7 +165,7 @@ LAB_0001842e:
       }
     }
     else {
-      convert_world_routine_0x00019238();
+      run_matrix_program_slot_screen();
     }
     goto LAB_00018326;
   }
@@ -207,5 +207,4 @@ LAB_00018694:
   VDP_CTRL = 0x8174;
   return;
 }
-
 

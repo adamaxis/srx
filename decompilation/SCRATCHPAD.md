@@ -641,6 +641,15 @@ tests, so it does not carry the original VDP writes or ROM text pointers into
 runtime code. The existing Run Info classifier remains the source-backed
 boundary for absent/active/complete runs and CPU/Datastore action labels.
 
+The Matrix program-slot routine at `0x19238` is now named
+`run_matrix_program_slot_screen`. The source's Yes/No loop enters with No
+selected, services up/down through the shared cursor, gives the three action
+bits priority over bit 15, and always redraws the Matrix panel on an action or
+return. Yes applies `apply_menu_slot_command` only when the ready timer is
+active; otherwise it clears the timer and refreshes the selected slot. No is a
+non-mutating return. The host conversion keeps those branches as typed
+callbacks and bounds only the test/input sequence.
+
 ## Entity animation target-route conversion: 0x145A2 / 0x149C0
 
 The next movement slice is now represented by the isolated

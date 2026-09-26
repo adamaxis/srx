@@ -27,7 +27,7 @@
 //   0x0001897C write_hud_repeated_grid_variant_a
 //   0x000189D8 write_two_hud_grids
 //   0x00018AA6 run_cyber_info_screen
-//   0x00019238 convert_world_routine_0x00019238
+//   0x00019238 run_matrix_program_slot_screen
 //   0x00019504 write_hud_panel_grid
 //   0x000196F2 rotate_hud_history
 //   0x00019B40 convert_world_routine_0x00019b40
@@ -188,7 +188,7 @@ LAB_0001842e:
       }
     }
     else {
-      convert_world_routine_0x00019238();
+      run_matrix_program_slot_screen();
     }
     goto LAB_00018326;
   }

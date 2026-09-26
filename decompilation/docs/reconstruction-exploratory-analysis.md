@@ -782,6 +782,13 @@ not-present, active, or complete, then resolves the active node to CPU or
 Datastore and the source action table to Delete File, Upload File, Crash
 System, or Download File. Text/number placement and underlying deck-stat field
 reads remain presentation/data callbacks.
+The adjacent Matrix program-slot path at `0x19238` now has its complete
+interactive prompt control flow in `matrix_program_slot_screen_conversion`:
+the source enters on No, wraps the two-entry cursor, prioritizes activation
+over return, applies the slot mutation only for Yes with a live ready timer,
+and otherwise performs the clear-timer/slot-refresh branch before the common
+Matrix redraw. This is separate from the existing typed slot/memory planner;
+the remaining resource/text presentation is still an explicit callback.
 The storage screen path at `0x18D1A` now has its first concrete record math:
 `0x1954A` reads the five loaded-slot usage bytes, `0x1952C` loads each of the
 twelve availability flags, and its `0x19538` arithmetic tail squares the flag

@@ -2425,6 +2425,21 @@ target_link_libraries(shadowrun_ghidra_matrix_program_slot_test
 add_test(NAME shadowrun_ghidra_matrix_program_slot
          COMMAND shadowrun_ghidra_matrix_program_slot_test)
 
+add_library(shadowrun_ghidra_matrix_program_slot_screen STATIC
+    src/matrix_program_slot_screen_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_matrix_program_slot_screen PUBLIC include)
+target_link_libraries(shadowrun_ghidra_matrix_program_slot_screen
+    PRIVATE shadowrun_ghidra_matrix_program_slot)
+
+add_executable(shadowrun_ghidra_matrix_program_slot_screen_test
+    tests/matrix_program_slot_screen_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_matrix_program_slot_screen_test
+    PRIVATE shadowrun_ghidra_matrix_program_slot_screen)
+add_test(NAME shadowrun_ghidra_matrix_program_slot_screen
+         COMMAND shadowrun_ghidra_matrix_program_slot_screen_test)
+
 add_library(shadowrun_ghidra_matrix_program_timing STATIC
     src/matrix_program_timing_conversion.cpp
 )
