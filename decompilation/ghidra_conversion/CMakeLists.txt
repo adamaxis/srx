@@ -8,21 +8,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 enable_testing()
 
 # This is an offline source-understanding library, not a game-runtime
-# dependency. The files are grouped by game ownership under src/<domain>/:
-# core, entities, field, world, menus, cyberspace, title_intro, session,
-# audio, and rendering. Individual source entries remain independently
-# traceable in their comments and focused tests, but they are not separate
-# runtime libraries.
-file(GLOB_RECURSE SHADOWRUN_CONVERSION_SOURCES CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
-)
-
-add_library(shadowrun_ghidra_conversion_modules STATIC
-    ${SHADOWRUN_CONVERSION_SOURCES}
-)
-target_include_directories(shadowrun_ghidra_conversion_modules PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-)
+# dependency. The leaf contracts remain traceable, but they are built through
+# the reviewed behavioral modules in conversion_modules.cmake rather than as
+# one undifferentiated export-shaped target.
+include(conversion_modules.cmake)
 
 # Keep each source-trace contract as a separately runnable test so a failing
 # ROM behavior remains easy to identify. They all link the one domain-grouped
