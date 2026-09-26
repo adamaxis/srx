@@ -3,7 +3,7 @@
 // Name: refresh_hud_panel_variant
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00003602 run_hud_panel_post_hook
+//   0x00003602 select_hud_glyph_attribute_flags
 //   0x00003648 draw_hud_panel
 
 
@@ -28,9 +28,8 @@ void refresh_hud_panel_variant(void)
     puVar2 = (undefined1 *)0xfc48;
   }
   draw_hud_panel(puVar2,puVar1);
-  run_hud_panel_post_hook();
+  select_hud_glyph_attribute_flags();
   draw_hud_panel();
   return;
 }
-
 

@@ -38,7 +38,7 @@
 //   0x00053156 service_audio_tick_wrapper
 //   0x0005315E run_fixed_audio_transaction_wrapper
 //   0x00053290 reset_audio_menu_arrays
-//   0x000566A2 copy_menu_selection_record_table
+//   0x000566A2 copy_action_selection_profile_table
 //   0x00059092 run_start_options
 //   0x00059318 initialize_save_roster_buffer
 //   0x000594E0 restore_saved_field_state
@@ -117,7 +117,7 @@ LAB_000007f0:
     DAT_00fff0a0 = 0xff;
     initialize_entity_runtime();
     reset_world_effect_globals();
-    copy_menu_selection_record_table();
+    copy_action_selection_profile_table();
     copy_two_word_rows();
     initialize_field_scene_entry();
     if (_DAT_00ffe108 != 0) {

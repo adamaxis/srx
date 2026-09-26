@@ -10,12 +10,16 @@ std::optional<std::uint8_t> run_thresholded_roll(
     const WorldEffectModeSelectionCallbacks& callbacks,
     const std::uint8_t base_value,
     const std::uint16_t trial_count,
-    const bool phase_modifier) {
-    const auto modified = phase_modifier
+    const bool phase_only) {
+    // ROM 0x562D4 has no return before 0x562DE: callers entering at the
+    // timer entry receive both the timer and phase modifiers. The transition
+    // routine enters 0x562DE directly and receives phase only.
+    const auto modified = phase_only
                               ? add_world_effect_phase_modifier(
                                     base_value, state.effect_phase)
-                              : add_world_effect_timer_modifier(
-                                    base_value, state.effect_timer);
+                              : apply_world_effect_timing_modifiers(
+                                    base_value, state.effect_timer,
+                                    state.effect_phase);
     const auto difficulty = std::max<std::uint16_t>(2U, modified);
     if (!callbacks.count_thresholded_random_rolls) {
         return std::nullopt;
@@ -139,7 +143,7 @@ WorldEffectModeSelectionResult run_delayed_effect(
 
     const auto result = run_thresholded_roll(
         state, callbacks, state.current_record.delayed_timing_value,
-        state.initial_trial_count, false);
+        state.initial_trial_count, true);
     if (!result.has_value()) {
         return {-1, WorldEffectModeSelectionAction::random_result_unresolved};
     }

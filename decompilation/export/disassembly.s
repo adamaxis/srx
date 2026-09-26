@@ -252,7 +252,7 @@
 00000876: move.b #-0x1,(0x00fff0a0).l
 0000087E: jsr 0x0000a7b4.l ; call 0000A7B4 initialize_entity_runtime
 00000884: jsr 0x0001e68c.l ; call 0001E68C reset_world_effect_globals
-0000088A: jsr 0x000566a2.l ; call 000566A2 copy_menu_selection_record_table
+0000088A: jsr 0x000566a2.l ; call 000566A2 copy_action_selection_profile_table
 00000890: jsr 0x00026938.l ; call 00026938 copy_two_word_rows
 00000896: jsr 0x0000281e.l ; call 0000281E initialize_field_scene_entry
 0000089C: tst.w (0x00ffe108).l
@@ -2109,7 +2109,7 @@
 000035EC: movem.l (SP)+,{  D4 D5}
 000035F0: move.w #0x2,D7w
 000035F4: move.w #0x1,D1w
-000035F8: bsr.w 0x00003602 ; call 00003602 run_hud_panel_post_hook
+000035F8: bsr.w 0x00003602 ; call 00003602 select_hud_glyph_attribute_flags
 000035FC: bsr.w 0x00003648 ; call 00003648 draw_hud_panel
 00003600: rts
 00003602: tst.b (0x57,A0)
@@ -4018,7 +4018,7 @@
 000060B8: bne.w 0x000060ee
 000060BC: btst.b #0x0,(0x11,A0)
 000060C2: beq.w 0x000060ee
-000060C6: bsr.w 0x000060f4 ; call 000060F4 noop_sprite_descriptor_hook
+000060C6: bsr.w 0x000060f4 ; call 000060F4 set_sprite_descriptor_carry
 000060CA: bcc.w 0x000060dc
 000060CE: bclr.b #0x0,(0x11,A0)
 000060D4: bsr.w 0x000060fa ; call 000060FA append_entity_render_sprite
@@ -8722,7 +8722,7 @@
 0001115C: subq.w #0x1,D0w
 0001115E: mulu.w #0x30,D0
 00011162: movea.l (0x1a,A4,D0w*0x1),A1 ; data 000d455a
-00011166: jsr 0x00003602.l ; call 00003602 run_hud_panel_post_hook
+00011166: jsr 0x00003602.l ; call 00003602 select_hud_glyph_attribute_flags
 0001116C: bsr.w 0x00011190 ; call 00011190 transfer_menu_glyph_triple
 00011170: addi.l #0xa,D4
 00011176: addq.l #0x1,A0
@@ -23872,7 +23872,7 @@
 00055786: btst.b #0x0,(0xdf,A0)
 0005578C: beq.w 0x00055804
 00055790: movem.l {  D6 D4},-(SP)
-00055794: bsr.w 0x00055828 ; call 00055828 noop_dynamic_modifier_hook
+00055794: bsr.w 0x00055828 ; call 00055828 select_entity_action_profile_row
 00055798: clr.l D0
 0005579A: clr.l D4
 0005579C: move.b (0x1e,A5),D0b
@@ -23904,7 +23904,7 @@
 00055804: btst.b #0x1,(0xdf,A0)
 0005580A: beq.w 0x00055826
 0005580E: movem.l {  D6 D4},-(SP)
-00055812: bsr.w 0x00055828 ; call 00055828 noop_dynamic_modifier_hook
+00055812: bsr.w 0x00055828 ; call 00055828 select_entity_action_profile_row
 00055816: clr.l D0
 00055818: clr.l D4
 0005581A: move.b (0x20,A5),D0b

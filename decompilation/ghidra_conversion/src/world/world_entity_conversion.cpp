@@ -265,7 +265,7 @@ void refresh_delayed_effect_sprites(
     call_once(append_sprite);
 }
 
-void noop_sprite_descriptor_hook() {}
+bool set_sprite_descriptor_carry() { return true; }
 
 void advance_jitter_effect(
     JitterEffectState& state,

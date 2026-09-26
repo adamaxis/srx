@@ -13,7 +13,7 @@ address reads, a 68000 interpreter, or a VDP-shaped runtime.
 | Indirect/unresolved call sites | 16 | Explicit dispatch boundaries still needing table/handler proof |
 | Generic export labels | 0 | All 119 formerly generic exports now have reviewed semantic names |
 | Reviewed generic labels | 119 | Per-entry behavior/evidence ledger in `ghidra-function-label-review.tsv` |
-| Conversion implementation files | 227 | Leaf source-trace contracts, not proposed runtime files |
+| Conversion implementation files | 228 | Leaf source-trace contracts, not proposed runtime files |
 | Behavioral conversion modules | 28 | The reviewed ownership boundaries in `conversion-source-modules.tsv` |
 | Conversion tests | 229 | Runner plus focused source-trace tests; all currently pass |
 
@@ -37,12 +37,62 @@ powershell -NoProfile -ExecutionPolicy Bypass -File decompilation/tools/verify_r
 
 The current audit passes export-name, status-ledger, source-file ownership,
 and evidence-file checks: 910 exported entries, 932 unique ledger rows, 2,986
-resolved direct call sites, 227 conversion implementation files, and 229 CTest
+resolved direct call sites, 228 conversion implementation files, and 229 CTest
 cases. The behavioral fidelity gate remains OPEN: 16 indirect/unresolved call
 sites are still explicit boundaries, 928 ledger rows are partial, and only 4
 are defended. The generated Ghidra C also omits meaningful disassembly in
 0x104F6 and 0x12C74, so the ROM disassembly remains the tie-breaker for those
 conversions.
+
+## Instruction-level conversion audit: 2026-09-26
+
+`decompilation/tools/audit_rom_conversion.ps1` is the source-fidelity audit
+layer. It indexes every instruction in `export/disassembly.s` against the
+exported function spans, compares each exported function's resolved direct
+calls with its generated Ghidra-C body, records explicit ROM-address evidence
+in the typed conversion sources, and joins the result to
+`docs/decompiled-function-status.tsv`. Its report is
+`docs/rom-conversion-audit.tsv`, one row per exported ROM entry. This is a
+review queue, not a claim that a generated-C body or a passing structural test
+is behaviorally complete.
+
+The indexed pass currently reports 910 ROM entries, no missing disassembly
+spans, 18 direct-call substitutions needing native-owner review, 27 generated
+Ghidra-C return-only omission risks, 27 adjacent-export fall-through reviews,
+and 299 entries without an explicit ROM address in a typed conversion source.
+The last categories are the remaining conversion-evidence sweep; they are not
+permission to invent a replacement.
+
+The first concrete omission slice recovered from the ROM is now represented
+as typed conversion code:
+
+* `0x566A2` copies five 0x22-byte action-profile rows from ROM `0x166AD8`
+  into the working table at `FFF9FA`. The conversion decodes the event rows
+  and their mutable primary/secondary modifier fields.
+* `0x55828` follows the current actor's linked record at `+0xD8`, reads its
+  profile index at `+0xA0`, and selects the indexed working-table row. The
+  native boundary returns unresolved for an absent/out-of-range host row;
+  it does not silently use a guessed modifier.
+* `0x3602` computes the HUD glyph attribute word (`0x2000` or `0x6000`) from
+  the action code, class code, and signed equipped-slot field. The five branch
+  cases are covered by a focused conversion test; transfer integration into
+  the menu renderer remains open.
+* `0x60F4` is not a no-op: the ROM executes `ORI #1,CCR` and returns with the
+  carry flag set. The typed conversion exposes that carry result; the caller's
+  descriptor branch still needs its complete native integration.
+
+The same pass caught a caller-sensitive fall-through error in the world-effect
+timing helpers. `0x562D4` has no return before `0x562DE`, so its callers receive
+`base + FFE169 + (2 * FFE16A)`; callers that branch directly to `0x562DE`
+receive phase-only timing. The conversion now models those as separate paths,
+and the action-count and transition tests use non-zero timer/phase values to
+verify the distinction.
+
+The generated Ghidra C remains an evidence snapshot and still omits meaningful
+logic for some of these entries, including `0x3602` and `0x55828`; the typed
+conversion is accepted only where the ROM instruction trace and focused test
+agree. A fresh headless Ghidra regeneration is still unavailable in this
+checkout, so this audit does not close the behavioral-fidelity gate.
 
 ## Indirect dispatches that still need source proof
 

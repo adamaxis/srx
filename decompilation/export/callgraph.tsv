@@ -37,7 +37,7 @@ caller	caller_name	callee	callee_name	call_sites
 0000075E	run_game_loop	00053156	service_audio_tick_wrapper	1
 0000075E	run_game_loop	0005315E	run_fixed_audio_transaction_wrapper	1
 0000075E	run_game_loop	00053290	reset_audio_menu_arrays	1
-0000075E	run_game_loop	000566A2	copy_menu_selection_record_table	1
+0000075E	run_game_loop	000566A2	copy_action_selection_profile_table	1
 0000075E	run_game_loop	00059092	run_start_options	1
 0000075E	run_game_loop	00059318	initialize_save_roster_buffer	1
 0000075E	run_game_loop	000594E0	restore_saved_field_state	1
@@ -202,7 +202,7 @@ caller	caller_name	callee	callee_name	call_sites
 00003404	upload_field_asset_setup	00000F5C	write_vdp_word_block_with_source_wrap	2
 00003404	upload_field_asset_setup	00003548	draw_hud_panel_triplet	1
 00003548	draw_hud_panel_triplet	00003560	refresh_hud_panel_variant	1
-00003560	refresh_hud_panel_variant	00003602	run_hud_panel_post_hook	1
+00003560	refresh_hud_panel_variant	00003602	select_hud_glyph_attribute_flags	1
 00003560	refresh_hud_panel_variant	00003648	draw_hud_panel	2
 00003648	draw_hud_panel	00000E9C	make_vdp_transfer_command	1
 00003674	advance_entity_delay_meter	00001232	write_vdp_grid	1
@@ -306,7 +306,7 @@ caller	caller_name	callee	callee_name	call_sites
 000059EA	advance_title_sprite_timer	00001378	build_title_sprite_records	1
 00005B98	emit_title_sprite_burst	00001378	build_title_sprite_records	1
 00005C7E	refresh_delayed_effect_sprites	00001378	build_title_sprite_records	5
-0000600E	advance_entity_sprite_descriptor	000060F4	noop_sprite_descriptor_hook	1
+0000600E	advance_entity_sprite_descriptor	000060F4	set_sprite_descriptor_carry	1
 0000600E	advance_entity_sprite_descriptor	000060FA	append_entity_render_sprite	1
 000060FA	append_entity_render_sprite	00003E86	expand_packed_nibbles	1
 000060FA	append_entity_render_sprite	00003EFE	decode_field_tile_sample	1
@@ -664,7 +664,7 @@ caller	caller_name	callee	callee_name	call_sites
 000110BC	draw_menu_hud_panel_variant_a	00003648	draw_hud_panel	1
 000110EC	draw_active_runner_hud_panel	00003648	draw_hud_panel	1
 0001111A	render_title_text_source_wrapper	0000C0DA	render_encoded_title_text	1
-00011136	render_menu_tile_rows	00003602	run_hud_panel_post_hook	1
+00011136	render_menu_tile_rows	00003602	select_hud_glyph_attribute_flags	1
 00011136	render_menu_tile_rows	00011190	transfer_menu_glyph_triple	1
 00011190	transfer_menu_glyph_triple	00000E9C	make_vdp_transfer_command	1
 000111D0	upload_menu_tile_block	00001232	write_vdp_grid	1
@@ -1700,7 +1700,7 @@ caller	caller_name	callee	callee_name	call_sites
 00055640	resolve_entity_action_pair	00055F20	select_posture_adjusted_value	1
 00055786	apply_dynamic_status_modifier	00000DBA	count_thresholded_random_rolls	1
 00055786	apply_dynamic_status_modifier	0001047E	refresh_ready_entity_animations	1
-00055786	apply_dynamic_status_modifier	00055828	noop_dynamic_modifier_hook	2
+00055786	apply_dynamic_status_modifier	00055828	select_entity_action_profile_row	2
 00055848	calculate_effect_target_offset	00000D3A	sample_source_random_bound	4
 00055848	calculate_effect_target_offset	00000DBA	count_thresholded_random_rolls	1
 00055848	calculate_effect_target_offset	00055740	apply_target_condition_modifier	1

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000566A2
-// Name: copy_menu_selection_record_table
+// Name: copy_action_selection_profile_table
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void copy_menu_selection_record_table(void)
+void copy_action_selection_profile_table(void)
 
 {
   short sVar1;
@@ -35,5 +35,4 @@ void copy_menu_selection_record_table(void)
   } while (sVar1 != -1);
   return;
 }
-
 

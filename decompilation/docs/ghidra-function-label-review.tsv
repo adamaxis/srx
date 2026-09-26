@@ -65,7 +65,7 @@ rom_entry	export_label	reviewed_name	family	confidence	behavior	evidence
 0x556C6	convert_intro_routine_0x000556c6	check_entity_action_eligibility	action	medium	Checks action item, armor, and entity flags before action resolution	disassembly.s;fn_000556C6.cpp
 0x55740	convert_intro_routine_0x00055740	apply_target_condition_modifier	action	high	Applies the target condition modifier to the pending action value	disassembly.s;fn_00055740.cpp;action_math_conversion.hpp
 0x55786	convert_intro_routine_0x00055786	apply_dynamic_status_modifier	action	high	Applies dynamic status modifiers to the pending action value	disassembly.s;fn_00055786.cpp;action_math_conversion.hpp
-0x55828	convert_intro_routine_0x00055828	noop_dynamic_modifier_hook	action	high	Empty dynamic-modifier callback boundary reached by the action resolver	disassembly.s;fn_00055828.cpp
+0x55828	convert_intro_routine_0x00055828	select_entity_action_profile_row	action	high	Selects the five-row action profile by following the linked record +0xA0 index; the generated C incorrectly reduced this to an empty function	disassembly.s;fn_00055828.cpp;entity_action_profile_conversion.hpp
 0x55848	convert_intro_routine_0x00055848	calculate_effect_target_offset	action	high	Calculates the random transform offset used when linking an effect target	disassembly.s;fn_00055848.cpp;caller 0x15646
 0x55900	convert_intro_routine_0x00055900	resolve_entity_action_status	action	medium	Resolves entity action status, armor/item modifiers, counters, and result meters	disassembly.s;fn_00055900.cpp
 0x55948	convert_intro_routine_0x00055948	resolve_equipment_action_status	action	medium	Resolves the equipment/action variant of the entity status path	disassembly.s;fn_00055948.cpp
@@ -80,7 +80,7 @@ rom_entry	export_label	reviewed_name	family	confidence	behavior	evidence
 0x55F20	convert_intro_routine_0x00055f20	select_posture_adjusted_value	action	high	Applies posture to the attack/defense value using the source branch	disassembly.s;fn_00055F20.cpp;action_math_conversion.hpp
 0x55FD8	convert_intro_routine_0x00055fd8	calculate_and_publish_runner_action_result	action	medium	Calculates runner action delay/effect result and publishes the entity result byte	disassembly.s;fn_00055FD8.cpp
 0x5668C	convert_intro_routine_0x0005668c	advance_menu_selection_service_and_refresh	menu	medium	Advances menu-selection timing and refreshes its HUD presentation	disassembly.s;fn_0005668C.cpp
-0x566A2	convert_intro_routine_0x000566a2	copy_menu_selection_record_table	menu	high	Copies the menu selection record table into the working buffer	disassembly.s;fn_000566A2.cpp
+0x566A2	convert_intro_routine_0x000566a2	copy_action_selection_profile_table	menu	high	Copies five 0x22-byte action-profile rows from source table 0x166AD8 into the working table used by menu, animation, and action consumers	disassembly.s;fn_000566A2.cpp;entity_action_profile_conversion.hpp
 0x566C2	convert_intro_routine_0x000566c2	copy_mode_selection_state_table	menu	high	Copies the mode-selection state table into the working buffer	disassembly.s;fn_000566C2.cpp
 0x566D8	convert_intro_routine_0x000566d8	copy_mode_resource_metadata	menu	high	Copies mode-resource metadata and marks the destination dirty	disassembly.s;fn_000566D8.cpp
 0x5672C	convert_intro_routine_0x0005672c	service_field_mode_display_frame	field	medium	Services field display status tiles and frame counters by scene mode	disassembly.s;fn_0005672C.cpp

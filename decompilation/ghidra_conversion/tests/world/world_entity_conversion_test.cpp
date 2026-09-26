@@ -55,5 +55,8 @@ int main() {
     if (jitter_builds != 1) {
         return 4;
     }
+    if (!set_sprite_descriptor_carry()) {
+        return 5;
+    }
     return 0;
 }

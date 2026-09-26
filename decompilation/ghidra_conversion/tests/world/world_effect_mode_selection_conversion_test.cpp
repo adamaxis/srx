@@ -54,7 +54,7 @@ int main() {
         [&](const std::uint16_t trials,
             const std::uint16_t difficulty) -> std::optional<std::uint8_t> {
         ++roll_calls;
-            return trials == 0U && difficulty == 5U
+            return trials == 0U && difficulty == 22U
                    ? std::optional<std::uint8_t>(2U)
                    : std::nullopt;
     };
@@ -73,6 +73,8 @@ int main() {
     WorldEffectModeSelectionState action{};
     action.current_record.effect_status = 3;
     action.mode_variant = 1;
+    action.effect_timer = 3U;
+    action.effect_phase = 2U;
     int draws = 0;
     int advances = 0;
     WorldEffectModeSelectionCallbacks action_callbacks{};
@@ -80,8 +82,10 @@ int main() {
         return std::optional<std::uint8_t>(0U);
     };
     action_callbacks.count_thresholded_random_rolls =
-        [](const std::uint16_t, const std::uint16_t) {
-            return std::optional<std::uint8_t>(1U);
+        [](const std::uint16_t, const std::uint16_t difficulty) {
+            return difficulty == 7U
+                       ? std::optional<std::uint8_t>(1U)
+                       : std::nullopt;
         };
     action_callbacks.select_run_hud_mode = [] {
         return std::optional<std::uint8_t>(8U);

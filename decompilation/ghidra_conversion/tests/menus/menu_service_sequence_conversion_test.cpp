@@ -220,5 +220,13 @@ int main() {
         return 22;
     }
 
+    if (select_hud_glyph_attribute_flags({0U, 0U, -1}) != 0x2000U ||
+        select_hud_glyph_attribute_flags({5U, 1U, -1}) != 0x2000U ||
+        select_hud_glyph_attribute_flags({6U, 1U, -1}) != 0x6000U ||
+        select_hud_glyph_attribute_flags({14U, 2U, 0}) != 0x6000U ||
+        select_hud_glyph_attribute_flags({15U, 2U, 0}) != 0x2000U) {
+        return 25;
+    }
+
     return 0;
 }

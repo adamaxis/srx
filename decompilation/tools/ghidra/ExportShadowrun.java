@@ -470,7 +470,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00001080L, "write_alternating_word_pair_wrapper");
         names.put(0x00001872L, "service_display_frame");
         names.put(0x00003074L, "prepare_field_scene_buffers");
-        names.put(0x00003602L, "run_hud_panel_post_hook");
+        names.put(0x00003602L, "select_hud_glyph_attribute_flags");
         names.put(0x00003D18L, "render_field_tile_rows");
         names.put(0x00003D4AL, "render_field_tile_column");
         names.put(0x00003F9EL, "calculate_field_tile_source_offset");
@@ -601,7 +601,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00005662L, "advance_effect_animation_variant");
         names.put(0x00005936L, "advance_entity_animation_effect");
         names.put(0x00005C7EL, "refresh_delayed_effect_sprites");
-        names.put(0x000060F4L, "noop_sprite_descriptor_hook");
+        names.put(0x000060F4L, "set_sprite_descriptor_carry");
         names.put(0x0000E7C8L, "evaluate_terrain_collision");
         names.put(0x00010F50L, "prepare_command_overview");
         names.put(0x00011740L, "run_inventory_actions");
@@ -796,7 +796,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x000556C6L, "check_entity_action_eligibility");
         names.put(0x00055740L, "apply_target_condition_modifier");
         names.put(0x00055786L, "apply_dynamic_status_modifier");
-        names.put(0x00055828L, "noop_dynamic_modifier_hook");
+        names.put(0x00055828L, "select_entity_action_profile_row");
         names.put(0x00055848L, "calculate_effect_target_offset");
         names.put(0x00055900L, "resolve_entity_action_status");
         names.put(0x00055948L, "resolve_equipment_action_status");
@@ -823,7 +823,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00056506L, "calculate_menu_hud_row_meter");
         names.put(0x00056632L, "scale_menu_hud_value_by_difficulty");
         names.put(0x0005668CL, "advance_menu_selection_service_and_refresh");
-        names.put(0x000566A2L, "copy_menu_selection_record_table");
+        names.put(0x000566A2L, "copy_action_selection_profile_table");
         names.put(0x000566C2L, "copy_mode_selection_state_table");
         names.put(0x000566D8L, "copy_mode_resource_metadata");
         names.put(0x000566ECL, "copy_field_mode_palette_bank");

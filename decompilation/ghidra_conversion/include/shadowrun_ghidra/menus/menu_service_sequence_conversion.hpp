@@ -33,6 +33,18 @@ void draw_active_runner_hud_panel(
     const ActiveRunnerHudPanelInput& input,
     const std::function<void(const ActiveRunnerHudPanelPlan&)>& draw_panel);
 
+struct HudGlyphAttributeInput {
+    std::uint8_t action_code = 0; // source record +0x57
+    std::uint8_t class_code = 0;  // source record +0x9B
+    std::int8_t equipped_slot = -1; // signed source record +0x56
+};
+
+// ROM 0x03602: select the palette/attribute word ORed into each menu glyph.
+// The source uses the action code, class code, and signed equipped-slot state;
+// it is not an empty post-panel callback.
+std::uint16_t select_hud_glyph_attribute_flags(
+    const HudGlyphAttributeInput& input);
+
 // ROM 0x11136: repeat the menu row transfer seven times and return the final
 // source countdown value (the source returns three after the loop).
 std::uint16_t render_menu_tile_rows(const std::function<void()>& clear_row,

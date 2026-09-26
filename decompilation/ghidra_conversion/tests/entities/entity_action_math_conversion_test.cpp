@@ -11,6 +11,34 @@ bool expect(const bool condition) { return condition; }
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
+    std::vector<std::uint8_t> profile_bytes(
+        kEntityActionProfileCount * kEntityActionProfileRowSize, 0U);
+    const auto profile_offset = 2U * kEntityActionProfileRowSize;
+    profile_bytes[profile_offset + 1U] = 3U;
+    profile_bytes[profile_offset + 2U] = 5U;
+    profile_bytes[profile_offset + 3U] = 3U;
+    profile_bytes[profile_offset + 0x1EU] = 8U;
+    profile_bytes[profile_offset + 0x1FU] = 4U;
+    profile_bytes[profile_offset + 0x20U] = 7U;
+    profile_bytes[profile_offset + 0x21U] = 3U;
+    EntityActionProfileTable profiles{};
+    if (!expect(copy_action_selection_profile_table(profile_bytes, profiles))) {
+        return 101;
+    }
+    const auto* selected_profile =
+        select_entity_action_profile_row(profiles, 2U);
+    if (!expect(selected_profile != nullptr &&
+                selected_profile->event_count_last_index == 3U &&
+                selected_profile->events[0].code == 5U &&
+                selected_profile->events[0].value == 3U &&
+                selected_profile->primary_modifier().roll_count == 8U &&
+                selected_profile->primary_modifier().difficulty == 4U &&
+                selected_profile->secondary_modifier().roll_count == 7U &&
+                selected_profile->secondary_modifier().difficulty == 3U &&
+                select_entity_action_profile_row(profiles, 5U) == nullptr)) {
+        return 102;
+    }
+
     EntityActionRecord entity{};
     entity.item18_base = 7U;
     entity.item_codes[1] = 0x18U;
@@ -113,7 +141,8 @@ int main() {
     dynamic.actor_attribute_77 = 3U;
     dynamic.actor_attribute_7c = 8U;
     dynamic.ready_entities[0] = ready;
-    dynamic.special_modifiers[0] = {8U, 4U};
+    dynamic.action_profile_table = &profiles;
+    dynamic.linked_profile_index = 2U;
     dynamic.attribute_selectors[0] = -1;
     std::uint16_t dynamic_difficulty = 4U;
     const auto dynamic_result = apply_dynamic_status_modifier(
@@ -123,6 +152,8 @@ int main() {
                                              difficulty == 4U ? 2U : 0U);
         });
     if (!expect(dynamic_result.selected &&
+                dynamic_result.action_profile_available &&
+                dynamic_result.selected_profile_index == 2U &&
                 dynamic_result.selected_action_table_index == 5U &&
                 dynamic_result.ready_roll_count == 6U &&
                 dynamic_result.added_difficulty == 6U &&
@@ -133,7 +164,6 @@ int main() {
     dynamic.actor_flags_df = 0x02U;
     dynamic.actor_record_type = 3U;
     dynamic.actor_attribute_7c = 2U;
-    dynamic.special_modifiers[1] = {7U, 3U};
     dynamic.attribute_selectors[1] = 1;
     dynamic_difficulty = 4U;
     const auto defensive_result = apply_dynamic_status_modifier(
@@ -150,7 +180,22 @@ int main() {
         return 15;
     }
 
+    dynamic.action_profile_table = nullptr;
+    dynamic_difficulty = 4U;
+    const auto unresolved_profile = apply_dynamic_status_modifier(
+        dynamic_difficulty, dynamic,
+        [](const std::uint16_t, const std::uint16_t) {
+            return static_cast<std::uint8_t>(99U);
+        });
+    if (!expect(unresolved_profile.selected &&
+                !unresolved_profile.action_profile_available &&
+                !unresolved_profile.roll_service_available &&
+                dynamic_difficulty == 4U)) {
+        return 160;
+    }
+
     dynamic.actor_flags_df = 0U;
+    dynamic.action_profile_table = &profiles;
     dynamic_difficulty = 4U;
     if (!expect(!apply_dynamic_status_modifier(dynamic_difficulty, dynamic,
                                                {}).selected &&

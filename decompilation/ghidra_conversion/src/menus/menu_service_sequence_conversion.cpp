@@ -23,6 +23,18 @@ void draw_active_runner_hud_panel(
     }
 }
 
+std::uint16_t select_hud_glyph_attribute_flags(
+    const HudGlyphAttributeInput& input) {
+    if (input.action_code == 0U) {
+        return 0x2000U;
+    }
+
+    if (input.class_code < 2U && input.equipped_slot < 0) {
+        return input.action_code >= 6U ? 0x6000U : 0x2000U;
+    }
+    return input.action_code < 0x0FU ? 0x6000U : 0x2000U;
+}
+
 std::uint16_t render_menu_tile_rows(
     const std::function<void()>& clear_row,
     const std::function<void()>& write_row) {

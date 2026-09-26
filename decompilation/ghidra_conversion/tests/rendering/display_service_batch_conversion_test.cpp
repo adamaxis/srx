@@ -53,12 +53,6 @@ int main() {
         return 4;
     }
 
-    int hook_calls = 0;
-    run_hud_panel_post_hook([&] { ++hook_calls; });
-    if (hook_calls != 1) {
-        return 5;
-    }
-
     std::vector<std::uint16_t> words;
     int transfer = 0;
     write_hud_panel_transfer(

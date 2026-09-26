@@ -109,18 +109,21 @@ WorldEffectModeSelectionResult select_world_effect_animation_mode(
     WorldEffectModeSelectionState& state,
     const WorldEffectModeSelectionCallbacks& callbacks);
 
-// ROM 0x562D4/0x562DE: add FFE169 or twice FFE16A to a source difficulty
-// word. The source operates on unsigned bytes and a word accumulator.
+// ROM 0x562D4 prefix: add FFE169 to D4. The entry then falls through into
+// 0x562DE; use apply_world_effect_timing_modifiers() to model the complete
+// callable path. This helper isolates the prefix arithmetic for composition.
 std::uint16_t add_world_effect_timer_modifier(
     std::uint16_t base_value,
     std::uint8_t effect_timer);
 
+// ROM 0x562DE: add twice the unsigned FFE16A phase byte to D4 and return.
 std::uint16_t add_world_effect_phase_modifier(
     std::uint16_t base_value,
     std::uint8_t effect_phase);
 
-// Host convenience for callers whose source path performs both helpers in
-// sequence. The selector itself uses the exact helper-specific paths.
+// ROM 0x562D4 entry path: add FFE169, fall through to 0x562DE, add twice
+// FFE16A, and return. This is the callable behavior used by the action-count
+// branch.
 std::uint16_t apply_world_effect_timing_modifiers(
     std::uint16_t base_value,
     std::uint8_t effect_timer,

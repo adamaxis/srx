@@ -104,7 +104,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00003404	upload_field_asset_setup	244	unknown	ok	ghidra-c/fn_00003404.cpp
 00003548	draw_hud_panel_triplet	24	unknown	ok	ghidra-c/fn_00003548.cpp
 00003560	refresh_hud_panel_variant	162	unknown	ok	ghidra-c/fn_00003560.cpp
-00003602	run_hud_panel_post_hook	70	unknown	ok	ghidra-c/fn_00003602.cpp
+00003602	select_hud_glyph_attribute_flags	70	unknown	ok	ghidra-c/fn_00003602.cpp
 00003648	draw_hud_panel	44	unknown	ok	ghidra-c/fn_00003648.cpp
 00003674	advance_entity_delay_meter	136	unknown	ok	ghidra-c/fn_00003674.cpp
 000036FC	advance_entity_asset_meter	240	unknown	ok	ghidra-c/fn_000036FC.cpp
@@ -167,7 +167,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00005C7E	refresh_delayed_effect_sprites	260	unknown	ok	ghidra-c/fn_00005C7E.cpp
 00005FDC	advance_entity_animation_accumulator	50	unknown	ok	ghidra-c/fn_00005FDC.cpp
 0000600E	advance_entity_sprite_descriptor	230	unknown	ok	ghidra-c/fn_0000600E.cpp
-000060F4	noop_sprite_descriptor_hook	6	unknown	ok	ghidra-c/fn_000060F4.cpp
+000060F4	set_sprite_descriptor_carry	6	unknown	ok	ghidra-c/fn_000060F4.cpp
 000060FA	append_entity_render_sprite	78	unknown	ok	ghidra-c/fn_000060FA.cpp
 00006148	flush_primary_queued_transfers	88	unknown	ok	ghidra-c/fn_00006148.cpp
 000061A0	append_entity_sprite_record	44	unknown	ok	ghidra-c/fn_000061A0.cpp
@@ -738,7 +738,7 @@ entry	name	size	callingConvention	decompileStatus	file
 000556C6	check_entity_action_eligibility	122	unknown	ok	ghidra-c/fn_000556C6.cpp
 00055740	apply_target_condition_modifier	70	unknown	ok	ghidra-c/fn_00055740.cpp
 00055786	apply_dynamic_status_modifier	162	unknown	ok	ghidra-c/fn_00055786.cpp
-00055828	noop_dynamic_modifier_hook	32	unknown	ok	ghidra-c/fn_00055828.cpp
+00055828	select_entity_action_profile_row	32	unknown	ok	ghidra-c/fn_00055828.cpp
 00055848	calculate_effect_target_offset	184	unknown	ok	ghidra-c/fn_00055848.cpp
 00055900	resolve_entity_action_status	72	unknown	ok	ghidra-c/fn_00055900.cpp
 00055948	resolve_equipment_action_status	116	unknown	ok	ghidra-c/fn_00055948.cpp
@@ -765,7 +765,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00056506	calculate_menu_hud_row_meter	300	unknown	ok	ghidra-c/fn_00056506.cpp
 00056632	scale_menu_hud_value_by_difficulty	38	unknown	ok	ghidra-c/fn_00056632.cpp
 0005668C	advance_menu_selection_service_and_refresh	22	unknown	ok	ghidra-c/fn_0005668C.cpp
-000566A2	copy_menu_selection_record_table	32	unknown	ok	ghidra-c/fn_000566A2.cpp
+000566A2	copy_action_selection_profile_table	32	unknown	ok	ghidra-c/fn_000566A2.cpp
 000566C2	copy_mode_selection_state_table	22	unknown	ok	ghidra-c/fn_000566C2.cpp
 000566D8	copy_mode_resource_metadata	10	unknown	ok	ghidra-c/fn_000566D8.cpp
 000566E2	refresh_mode_resource_metadata	10	unknown	ok	ghidra-c/fn_000566E2.cpp

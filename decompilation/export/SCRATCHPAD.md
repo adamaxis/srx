@@ -732,9 +732,80 @@ Important source checks from this pass:
 `decompilation/tools/verify_rom_conversion.ps1` is the structural gate. The
 current baseline is 910 exported entries, 0 generic export labels, 119 reviewed
 labels, 932 unique status rows, 2,986 resolved direct call sites, 16 explicit
-indirect/unresolved call boundaries, 227 conversion implementation files, 28
+indirect/unresolved call boundaries, 228 conversion implementation files, 28
 behavioral modules, and 229 CTest cases. The gate passes the structural checks,
 but behavioral fidelity remains OPEN: 928 status rows are partial and only 4
 are defended. The audit therefore does not authorize a true-to-source claim
 until the 16 indirect boundaries and the partial hills have been traced and
 defended against ROM behavior.
+
+## Instruction-level ROM conversion audit: 2026-09-26
+
+The naming pass exposed a more important problem: a generated function can
+have a plausible name and still be a return-only decompiler stub while the
+ROM contains the actual behavior. `decompilation/tools/audit_rom_conversion.ps1`
+now performs the next audit layer. It indexes the instruction spans in
+`disassembly.s`, checks every resolved direct call against the generated C
+body, finds explicit `ROM 0x...` evidence in the typed conversion sources,
+and joins those results to the one-row-per-entry status ledger. The complete
+row-level result is `decompilation/docs/rom-conversion-audit.tsv`.
+
+The initial indexed result was 910 entries, 29,141 disassembly instructions,
+zero missing ROM spans, 18 native-substitution review rows, 27 generated-C
+return-only risks, 27 adjacent-export fall-through reviews, and 299 entries
+without explicit ROM-address evidence in a conversion source. Those numbers
+describe audit exposure, not percent converted. The structural gate still
+passes, but source fidelity remains open.
+
+### Recovered behavior slice
+
+The following entries were traced from the ROM rather than inferred from the
+generic label or the generated C:
+
+* `0x566A2` is the action-profile table loader. It copies 5 rows x 17 words
+  (0x22 bytes per row) from ROM `0x166AD8` to the working table at `FFF9FA`.
+  `entity_action_profile_conversion.cpp` decodes those rows into typed event
+  records and two mutable roll-modifier slots.
+* `0x55828` is the action-profile selector. It follows the actor record pointer
+  at `+0xD8`, reads the linked record's profile index at `+0xA0`, multiplies by
+  the 0x22-byte row stride, and selects that row from `FFF9FA`. The typed
+  `EntityActionDynamicModifierContext` now carries the table and linked index;
+  if either is unavailable, the conversion reports an unresolved profile and
+  does not substitute a fabricated roll count or difficulty.
+* `0x3602` computes the HUD glyph attribute word from record fields at `+0x57`,
+  `+0x9B`, and signed `+0x56`. It returns `0x2000` for the low/ordinary path
+  and `0x6000` for the highlighted path. The branch matrix is now a tested
+  `select_hud_glyph_attribute_flags` helper; the renderer wiring remains a
+  separate audit item.
+* `0x60F4` executes `ORI #1,CCR; RTS`, so its observable result is a carry-set
+  return used by the descriptor branch at `0x600E`. It is represented by the
+  typed `set_sprite_descriptor_carry()` boundary rather than the former empty
+  hook. The caller branch still needs a complete native behavior trace.
+
+### Caller-sensitive fall-through correction
+
+The audit of the world-effect selector found a real conversion error in the
+timing helpers. `0x562D4` contains the timer addition and then falls directly
+into `0x562DE`; there is no return at `0x562DC`. Therefore the action-count
+caller at `0x56284` receives both `FFE169` and twice `FFE16A`. The transition
+caller at `0x56316`, and the intro callers at `0x5614C`/`0x5618A`, enter
+`0x562DE` directly and receive phase only.
+
+The old `run_thresholded_roll` conversion treated its non-phase branch as
+timer-only, which was wrong for both the action-count path and the transition
+path. It now calls the combined native timing helper for the `0x562D4`
+entry-path and phase-only for direct `0x562DE` callers. The focused test uses
+action timer 3/phase 2 and expects difficulty 7, and delayed transition phase
+9/base 4 and expects difficulty 22. This is a source-fidelity correction,
+not a new game rule.
+
+The audit also records 25 additional adjacent-export boundaries whose final
+instruction is not an explicit control transfer. They may be source chunks or
+intentional tail paths, so they remain manual trace work; the two confirmed
+arithmetic fall-throughs are `0x1952C -> 0x19538` and `0x562D4 -> 0x562DE`.
+
+These changes deliberately do not modify the native port. They are conversion
+evidence and typed source contracts only. The generated Ghidra C for the first
+three routines is still incomplete in places; the ROM disassembly remains the
+tie-breaker, and no entry is marked defended merely because this helper now
+exists.

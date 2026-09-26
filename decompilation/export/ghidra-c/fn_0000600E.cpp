@@ -3,7 +3,7 @@
 // Name: advance_entity_sprite_descriptor
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000060F4 noop_sprite_descriptor_hook
+//   0x000060F4 set_sprite_descriptor_carry
 //   0x000060FA append_entity_render_sprite
 
 
@@ -61,7 +61,7 @@ void advance_entity_sprite_descriptor(void)
   uVar2 = *puVar1;
   bVar5 = uVar2 < 0x8002;
   if ((uVar2 == 0x8002) && ((*(byte *)(in_A0 + 0x11) & 1) != 0)) {
-    noop_sprite_descriptor_hook();
+    set_sprite_descriptor_carry();
     if (!bVar5) {
       *(undefined2 *)(extraout_A0 + 0x1e) = DAT_00ffdd3e;
       *(undefined2 *)(extraout_A0 + 0x1a) = DAT_00ffdd3c;
@@ -74,5 +74,4 @@ void advance_entity_sprite_descriptor(void)
   *(ushort **)(in_A0 + 0x12) = puVar1;
   return;
 }
-
 

@@ -153,6 +153,22 @@ EntityActionDynamicModifierResult apply_dynamic_status_modifier(
     }
     result.selected = true;
 
+    const auto* profile =
+        context.action_profile_table != nullptr &&
+                context.linked_profile_index.has_value()
+            ? select_entity_action_profile_row(
+                  *context.action_profile_table,
+                  *context.linked_profile_index)
+            : nullptr;
+    if (profile == nullptr) {
+        // ROM 0x55828 always returns a selected row for valid source data.
+        // Do not substitute caller-provided modifier bytes when that source
+        // relationship has not been recovered.
+        return result;
+    }
+    result.action_profile_available = true;
+    result.selected_profile_index = *context.linked_profile_index;
+
     if (context.actor_record_type < 3U) {
         result.ready_roll_count = calculate_ready_entity_action_bonus(
             context.ready_entities);
@@ -167,7 +183,9 @@ EntityActionDynamicModifierResult apply_dynamic_status_modifier(
         return result;
     }
     result.roll_service_available = true;
-    const auto& special = context.special_modifiers[modifier_index];
+    const auto special = modifier_index == 0U
+                             ? profile->primary_modifier()
+                             : profile->secondary_modifier();
     result.special_successes = roll_service(result.ready_roll_count,
                                              special.difficulty);
     auto remaining = static_cast<int>(special.roll_count) -

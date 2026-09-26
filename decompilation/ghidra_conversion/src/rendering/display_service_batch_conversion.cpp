@@ -93,12 +93,6 @@ void prepare_field_scene_buffers(
     state.initialized = true;
 }
 
-void run_hud_panel_post_hook(const std::function<void()>& hook) {
-    if (hook) {
-        hook();
-    }
-}
-
 void write_hud_panel_transfer(
     const std::uint16_t initial_word,
     const HudPanelTransferCallbacks& callbacks) {

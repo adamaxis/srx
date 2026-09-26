@@ -75,10 +75,6 @@ void prepare_field_scene_buffers(
     const std::vector<std::uint16_t>& layer_b,
     const FieldScenePreparationCallbacks& callbacks);
 
-// ROM 0x03602: preserve the explicit post-panel hook without importing the
-// source's empty implementation into the native renderer.
-void run_hud_panel_post_hook(const std::function<void()>& hook);
-
 struct HudPanelTransferCallbacks {
     // Each optional result represents one source transfer block and contains
     // the number of words emitted by that block.

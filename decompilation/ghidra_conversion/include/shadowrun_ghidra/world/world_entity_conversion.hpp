@@ -148,7 +148,11 @@ void refresh_delayed_effect_sprites(
     EffectSlotState& effect,
     const std::function<void()>& build_sprite_records,
     const std::function<void()>& append_sprite);
-void noop_sprite_descriptor_hook();
+
+// ROM 0x060F4: set the source carry condition used by the descriptor caller
+// to take its terminal/append branch. It has no data payload, but it is not a
+// no-op and is represented as an explicit host decision.
+bool set_sprite_descriptor_carry();
 
 struct JitterEffectState {
     EffectAnimationState animation;

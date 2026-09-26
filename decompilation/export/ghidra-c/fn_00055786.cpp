@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00000DBA count_thresholded_random_rolls
 //   0x0001047E refresh_ready_entity_animations
-//   0x00055828 noop_dynamic_modifier_hook
+//   0x00055828 select_entity_action_profile_row
 
 
 void apply_dynamic_status_modifier(void)
@@ -20,11 +20,11 @@ void apply_dynamic_status_modifier(void)
     if ((*(byte *)(in_A0 + 0xdf) & 2) == 0) {
       return;
     }
-    noop_dynamic_modifier_hook();
+    select_entity_action_profile_row();
     iVar1 = extraout_A0_00;
   }
   else {
-    noop_dynamic_modifier_hook();
+    select_entity_action_profile_row();
     iVar1 = extraout_A0;
   }
   if ((short)(*(short *)(iVar1 + 0x3e) + -3) < 0) {
@@ -33,5 +33,4 @@ void apply_dynamic_status_modifier(void)
   count_thresholded_random_rolls();
   return;
 }
-
 

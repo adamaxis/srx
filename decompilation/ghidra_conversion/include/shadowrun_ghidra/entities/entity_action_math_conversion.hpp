@@ -1,5 +1,7 @@
 #pragma once
 
+#include "shadowrun_ghidra/entities/entity_action_profile_conversion.hpp"
+
 #include <array>
 #include <cstdint>
 #include <functional>
@@ -61,22 +63,19 @@ struct EntityActionActorState {
         special_item_modifier_table;
 };
 
-struct EntityActionSpecialModifier {
-    std::uint8_t roll_count = 0;
-    std::uint8_t difficulty = 0;
-};
-
 // Typed inputs for ROM 0x55786. The two special records are the source
 // +0x1E/+0x1F and +0x20/+0x21 pairs selected by actor +0xDF bits 0 and 1.
-// `attribute_selector` is the signed +0x27 byte from the corresponding
-// D4EA0 action row: negative selects +0x77, otherwise +0x7C.
+// ROM 0x55828 resolves the profile row from the linked record's +0xA0
+// selector. `attribute_selector` is the signed +0x27 byte from the
+// corresponding D4EA0 action row: negative selects +0x77, otherwise +0x7C.
 struct EntityActionDynamicModifierContext {
     std::uint8_t actor_flags_df = 0;
     std::uint16_t actor_record_type = 0;
     std::uint8_t actor_attribute_77 = 0;
     std::uint8_t actor_attribute_7c = 0;
     std::array<EntityActionRecord, 3> ready_entities{};
-    std::array<EntityActionSpecialModifier, 2> special_modifiers{};
+    const EntityActionProfileTable* action_profile_table = nullptr;
+    std::optional<std::uint16_t> linked_profile_index;
     std::array<std::int8_t, 2> attribute_selectors{};
 };
 
@@ -89,8 +88,10 @@ using EntityActionBehaviorService =
 
 struct EntityActionDynamicModifierResult {
     bool selected = false;
+    bool action_profile_available = false;
     bool roll_service_available = false;
     std::uint8_t selected_action_table_index = 0;
+    std::uint16_t selected_profile_index = 0;
     std::uint16_t ready_roll_count = 0;
     std::uint8_t special_successes = 0;
     std::uint16_t added_difficulty = 0;
