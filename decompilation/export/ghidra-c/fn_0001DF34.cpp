@@ -3,7 +3,7 @@
 // Name: resolve_nearby_world_effects
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x000133A6 convert_menu_routine_0x000133a6
+//   0x000133A6 apply_world_effect_reward
 //   0x0001E514 clear_effect_slot_state
 //   0x000530DE service_audio_if_enabled
 
@@ -36,7 +36,7 @@ void resolve_nearby_world_effects(void)
     }
 
     const bool negative_marker = (short)record[1] < 0;
-    probe_x = convert_menu_routine_0x000133a6(record[1]);
+    probe_x = apply_world_effect_reward(record[1]);
     probe_y = extraout_D1w;
     if (negative_marker) {
       continue;

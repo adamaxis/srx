@@ -26,6 +26,7 @@ void resolve_nearby_world_effects(
     const NearbyEffectResolutionCallbacks& callbacks) {
     state.probe_x = probe_x;
     state.probe_y = probe_y;
+    state.interaction_attempts = 0U;
     state.interactions_resolved = 0U;
     state.effects_consumed = 0U;
 
@@ -34,21 +35,18 @@ void resolve_nearby_world_effects(
         auto& record = records[index];
         if (!record.active || !within_effect_radius(record.x, state.probe_x) ||
             !within_effect_radius(record.y, state.probe_y) ||
-            !callbacks.resolve_interaction) {
+            !callbacks.apply_interaction) {
             continue;
         }
 
-        const auto result = callbacks.resolve_interaction(record, index);
-        if (!result.has_value()) {
+        ++state.interaction_attempts;
+        const auto result = callbacks.apply_interaction(record.interaction_code);
+        if (!result.succeeded()) {
+            // 0x1DF34 branches back to the next record on D7 < 0.  It does
+            // not consume or audio-service a full-inventory interaction.
             continue;
         }
         ++state.interactions_resolved;
-        state.probe_x = result->next_probe_x;
-        state.probe_y = result->next_probe_y;
-
-        if (record.negative_marker) {
-            continue;
-        }
         if (callbacks.service_audio) {
             callbacks.service_audio();
         }
@@ -57,6 +55,10 @@ void resolve_nearby_world_effects(
         if (record.interaction_code == 0x65U && callbacks.clear_effect_slot) {
             callbacks.clear_effect_slot(record.slot_offset);
         }
+
+        // The source returns after any successfully consumed effect.  Only a
+        // negative D7 result reaches the next record.
+        break;
     }
 }
 

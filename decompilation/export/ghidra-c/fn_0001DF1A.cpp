@@ -29,7 +29,7 @@ void resolve_nearby_effects(void)
         (uVar1 <= (ushort)(*psVar4 + 0x100U))) &&
        (((ushort)(psVar4[2] - 0x100U) < uVar2 && (uVar2 <= (ushort)(psVar4[2] + 0x100U))))) {
       bVar5 = psVar4[1] < 0;
-      uVar1 = convert_menu_routine_0x000133a6();
+      uVar1 = apply_world_effect_reward();
       uVar2 = extraout_D1w;
       psVar4 = extraout_A0;
       if (!bVar5) {
@@ -47,5 +47,4 @@ void resolve_nearby_effects(void)
   } while (sVar3 != -1);
   return;
 }
-
 

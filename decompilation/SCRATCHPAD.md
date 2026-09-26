@@ -925,11 +925,26 @@ context, derives the second bounded roll from the record weight and
 `FF018C`, publishes the handler/auxiliary/base/randomized fields, and crosses
 the `F3DC6[FFFBED]` initializer boundary through a typed callback.
 
+`0x133A6` is now `apply_world_effect_reward`, the command protocol used by the
+nearby-effect resolver rather than a menu routine. A `0xCxxx` command adds its
+low byte to the active runner's special-action counter with the source's
+signed-byte `0x15` clamp; a `0x8xxx` command adds its low twelve bits to funds;
+`0x64` and `0x65` set status bits 4 and 3; and every other positive command
+inserts item code `command + 1` into the first empty one of eight slots. Item
+commands at or above `0x0D` cross an explicit bound-5 random callback and store
+the sample plus two as the phase. A full inventory returns the source `D7=-1`
+sentinel without changing a slot. The native model exposes the runner record
+and global state as typed fields, leaving the PRNG as a host boundary.
+
 `0x1DF34` is now `resolve_nearby_world_effects`. It scans the ten projected
-effect records with the source's strict +/-0x100 coordinate tests, delegates
-the interaction code to `0x133A`, consumes non-negative records, services
-audio command `0x24`, and sends interaction code `0x65` through the effect-slot
-clear boundary.
+effect records with the source's strict +/-0x100 coordinate tests, passes the
+record command to `0x133A6`, and only treats its `D7=0` result as a successful
+interaction. Successful commands—including signed `0xCxxx` commands—service
+audio command `0x24`, clear the active bit, optionally send `0x65` through the
+effect-slot clear boundary, and return after the first consumed record. The
+`D7=-1` full-inventory result leaves the record active and continues the scan.
+The old conversion's fabricated probe-coordinate return and signed-command
+skip are not source behavior.
 
 `0x1DD94` is now `advance_world_frame_logic`. Its native coordinator preserves
 the scene transition gate, activity/resource timer order, low-mode service

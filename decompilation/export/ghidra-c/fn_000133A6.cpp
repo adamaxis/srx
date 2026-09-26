@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x000133A6
-// Name: convert_menu_routine_0x000133a6
+// Name: apply_world_effect_reward
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000D3A sample_source_random_bound
 
 
-undefined8 convert_menu_routine_0x000133a6(void)
+undefined8 apply_world_effect_reward(void)
 
 {
   undefined4 in_D0;
@@ -58,5 +58,4 @@ LAB_00013432:
 LAB_0001345e:
   return CONCAT44(in_D0,in_D1);
 }
-
 

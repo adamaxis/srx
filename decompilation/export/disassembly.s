@@ -10717,7 +10717,7 @@
 0001339A: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000133A0: movem.l (SP)+,{ D0 D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 000133A4: rts
-000133A6: movem.l {  A6 A5 A4 A3 A2 A1 A0 D7 D6 D5 D4 D3 D2 D1 D0},-(SP)
+000133A6: movem.l {  A6 A5 A4 A3 A2 A1 A0 D7 D6 D5 D4 D3 D2 D1 D0},-(SP) ; apply_world_effect_reward
 000133AA: move.w D0w,D1w
 000133AC: bpl.w 0x000133e4
 000133B0: movea.l (0x00fffc04).l,A0

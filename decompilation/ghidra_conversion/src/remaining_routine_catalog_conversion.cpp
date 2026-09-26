@@ -76,7 +76,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00013000U, "convert_menu_routine_0x00013000", RoutineFamily::menu, 192U},
     {0x000130C0U, "convert_menu_routine_0x000130c0", RoutineFamily::menu, 360U},
     {0x00013228U, "convert_menu_routine_0x00013228", RoutineFamily::menu, 382U},
-    {0x000133A6U, "convert_menu_routine_0x000133a6", RoutineFamily::menu, 192U},
+    {0x000133A6U, "apply_world_effect_reward", RoutineFamily::world, 192U},
     {0x000138B8U, "convert_menu_routine_0x000138b8", RoutineFamily::menu, 76U},
     {0x00013904U, "convert_menu_routine_0x00013904", RoutineFamily::menu, 344U},
     {0x00013A92U, "convert_menu_routine_0x00013a92", RoutineFamily::menu, 84U},

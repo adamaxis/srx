@@ -351,7 +351,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00013000	convert_menu_routine_0x00013000	192	unknown	ok	ghidra-c/fn_00013000.cpp
 000130C0	convert_menu_routine_0x000130c0	360	unknown	ok	ghidra-c/fn_000130C0.cpp
 00013228	convert_menu_routine_0x00013228	382	unknown	ok	ghidra-c/fn_00013228.cpp
-000133A6	convert_menu_routine_0x000133a6	192	unknown	ok	ghidra-c/fn_000133A6.cpp
+000133A6	apply_world_effect_reward	192	unknown	ok	ghidra-c/fn_000133A6.cpp
 00013466	set_entity_action_state	108	unknown	ok	ghidra-c/fn_00013466.cpp
 000134D2	run_post_intro_mode	524	unknown	ok	ghidra-c/fn_000134D2.cpp
 000136DE	initialize_scene_mode_state	72	unknown	ok	ghidra-c/fn_000136DE.cpp

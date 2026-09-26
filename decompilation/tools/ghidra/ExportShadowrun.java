@@ -679,7 +679,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00013000L, "convert_menu_routine_0x00013000");
         names.put(0x000130C0L, "convert_menu_routine_0x000130c0");
         names.put(0x00013228L, "convert_menu_routine_0x00013228");
-        names.put(0x000133A6L, "convert_menu_routine_0x000133a6");
+        names.put(0x000133A6L, "apply_world_effect_reward");
         names.put(0x000138B8L, "convert_menu_routine_0x000138b8");
         names.put(0x00013904L, "convert_menu_routine_0x00013904");
         names.put(0x00013A92L, "convert_menu_routine_0x00013a92");

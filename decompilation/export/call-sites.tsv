@@ -1210,7 +1210,7 @@ caller	caller_name	instruction	text	target	callee	status
 00013228	convert_menu_routine_0x00013228	0001336A	bsr.w 0x00012148	00012148	read_entity_action_code	resolved
 00013228	convert_menu_routine_0x00013228	0001337A	jsr 0x0000c0da.l	0000C0DA	render_encoded_title_text	resolved
 00013228	convert_menu_routine_0x00013228	0001339A	jsr 0x00001232.l	00001232	write_vdp_grid	resolved
-000133A6	convert_menu_routine_0x000133a6	00013452	jsr 0x00000d3a.l	00000D3A	sample_source_random_bound	resolved
+000133A6	apply_world_effect_reward	00013452	jsr 0x00000d3a.l	00000D3A	sample_source_random_bound	resolved
 00013466	set_entity_action_state	000134C4	jsr 0x000036fc.l	000036FC	advance_entity_asset_meter	resolved
 00013466	set_entity_action_state	000134CA	jsr 0x00003404.l	00003404	upload_field_asset_setup	resolved
 000134D2	run_post_intro_mode	000134FA	jsr 0x00001530.l	00001530	decode_and_upload_source_stream	resolved
@@ -2038,7 +2038,7 @@ caller	caller_name	instruction	text	target	callee	status
 0001DED8	clear_high_effect_slots	0001DEF2	bsr.w 0x0001e514	0001E514	clear_effect_slot_state	resolved
 0001DF1A	resolve_nearby_effects	0001DF20	bsr.w 0x0001df34	0001DF34	resolve_nearby_world_effects	resolved
 0001DF1A	resolve_nearby_effects	0001DF2A	bsr.w 0x0001df34	0001DF34	resolve_nearby_world_effects	resolved
-0001DF34	resolve_nearby_world_effects	0001DF80	jsr 0x000133a6.l	000133A6	convert_menu_routine_0x000133a6	resolved
+0001DF34	resolve_nearby_world_effects	0001DF80	jsr 0x000133a6.l	000133A6	apply_world_effect_reward	resolved
 0001DF34	resolve_nearby_world_effects	0001DF8E	jsr 0x000530de.l	000530DE	service_audio_if_enabled	resolved
 0001DF34	resolve_nearby_world_effects	0001DFB0	jsr 0x0001e514.l	0001E514	clear_effect_slot_state	resolved
 0001DFC4	advance_world_effect_trigger	0001DFF8	jsr 0x00000d44.l	00000D44	advance_source_prng	resolved

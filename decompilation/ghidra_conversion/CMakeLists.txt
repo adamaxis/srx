@@ -2288,10 +2288,25 @@ target_link_libraries(shadowrun_ghidra_world_effect_initializer_test
 add_test(NAME shadowrun_ghidra_world_effect_initializer
          COMMAND shadowrun_ghidra_world_effect_initializer_test)
 
+add_library(shadowrun_ghidra_world_effect_reward STATIC
+    src/world_effect_reward_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_world_effect_reward PUBLIC include)
+
+add_executable(shadowrun_ghidra_world_effect_reward_test
+    tests/world_effect_reward_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_world_effect_reward_test
+    PRIVATE shadowrun_ghidra_world_effect_reward)
+add_test(NAME shadowrun_ghidra_world_effect_reward
+         COMMAND shadowrun_ghidra_world_effect_reward_test)
+
 add_library(shadowrun_ghidra_nearby_effect STATIC
     src/nearby_effect_conversion.cpp
 )
 target_include_directories(shadowrun_ghidra_nearby_effect PUBLIC include)
+target_link_libraries(shadowrun_ghidra_nearby_effect
+    PRIVATE shadowrun_ghidra_world_effect_reward)
 
 add_executable(shadowrun_ghidra_nearby_effect_test
     tests/nearby_effect_conversion_test.cpp
