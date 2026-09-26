@@ -107,6 +107,13 @@ wrap at the modifier helpers and the `CMP.W D6,D7`/`BPL` predicate in `0x56506`.
 That predicate is intentionally not an unsigned `std::max`; the ROM tests the
 sign bit of the wrapped word difference before adding the availability value.
 
+The Matrix storage/timing pass found two more width-sensitive conversions.
+`0x19558` and `0x1957E` accumulate and subtract in word registers, so their
+typed capacity results now wrap at 16 bits. `0x195AA` copies the selected
+footprint through `D1.w` before division and uses `CMP.W #7`/`BMI`, so the
+conversion no longer lets a wider host footprint or unsigned cap comparison
+change the source result.
+
 The next manual slice corrected three source-owned details. The field-column
 renderer at `0x3D4A` emits a partial segment and then continues through the
 shared `0x3D80` transfer body; it is now represented as two typed host

@@ -1403,6 +1403,17 @@ program before entering timing arithmetic at `0x195AA`, `0x19538` is the
 footprint-multiplier tail of `0x1952C`, and `0x19C54` enters the shared slot
 lookup at `0x19C5C`.
 
+The capacity audit also follows the source word widths. `0x19558` and
+`0x1957E` accumulate with `ADD.W` and return their total-minus-used values
+through `SUB.W`; the typed capacity results now preserve 16-bit wrap instead
+of converting an over-capacity word into a host signed deficit. The overflowing
+footprint case is covered separately from the normal Matrix totals.
+
+The adjacent load-timing leaf at `0x195AA` now uses the source low word before
+division and the wrapped `CMP.W #7`/`BMI` cap predicate. Normal data still
+produces the expected 0..6 load steps, while high-word and high-quotient
+regressions ensure a widened host value cannot silently change the ROM result.
+
 The adjacent Matrix utility routine at `0x19018` now has its real menu logic:
 the shared two-entry cursor selects Show Map or Retreat, and the Retreat path
 is redirected to the source combat warning when `FFDF84` is active. The map

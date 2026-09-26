@@ -11,14 +11,20 @@ MatrixProgramLoadTiming calculate_matrix_program_load_steps(
         return {};
     }
 
-    auto steps = program_memory / load_io_divisor;
-    if ((program_memory % load_io_divisor) != 0U) {
+    // 0x195B4 copies D1.w into D0.w before DIVU.W.  Do not let a wider host
+    // value change the source's selected-program word.
+    const auto source_memory = static_cast<std::uint16_t>(program_memory);
+    auto steps = static_cast<std::uint16_t>(
+        source_memory / static_cast<std::uint16_t>(load_io_divisor));
+    if ((source_memory % load_io_divisor) != 0U) {
         ++steps;
     }
-    if (steps >= 7U) {
+    // The ROM uses BMI after CMP.W #7, so this is a wrapped sign-bit test of
+    // (steps - 7), not an unsigned `steps >= 7` comparison.
+    if ((static_cast<std::uint16_t>(steps - 7U) & 0x8000U) == 0U) {
         steps = 6U;
     }
-    return {true, static_cast<std::uint8_t>(steps)};
+    return {true, steps};
 }
 
 MatrixProgramLoadTiming calculate_selected_matrix_program_load_steps(

@@ -20,15 +20,17 @@ struct MatrixStorageUsage {
 
 struct MatrixStorageCapacity {
     std::uint16_t total_memory = 0;
-    std::uint32_t loaded_memory = 0;
-    std::uint32_t installed_program_memory = 0;
-    std::int32_t available_memory = 0;
+    // 0x19558 keeps both accumulators and the final subtraction in D5/D6.w.
+    std::uint16_t loaded_memory = 0;
+    std::uint16_t installed_program_memory = 0;
+    std::uint16_t available_memory = 0;
 };
 
 struct MatrixLoadedProgramCapacity {
     std::uint16_t total_memory = 0;
-    std::uint32_t used_memory = 0;
-    std::int32_t available_memory = 0;
+    // 0x1957E likewise uses a wrapped D5.w accumulator and D6.w result.
+    std::uint16_t used_memory = 0;
+    std::uint16_t available_memory = 0;
 };
 
 // The storage screen's five datafile records are addressed through a compact
@@ -73,13 +75,16 @@ std::uint32_t matrix_program_storage_weight(std::uint8_t availability,
 std::uint32_t matrix_program_storage_usage(const MatrixStorageUsage& usage,
                                            std::size_t program);
 
-// ROM 0x19558, as used by the Matrix storage screen at 0x18D1A: subtract
-// loaded slots and installed available programs from total storage.
+// ROM 0x19558, as used by the Matrix storage screen at 0x18D1A: accumulate
+// loaded slots and installed available programs with ADD.W, then subtract
+// both from total storage with SUB.W. The returned values retain source-word
+// wrap rather than becoming host signed deficits.
 MatrixStorageCapacity calculate_matrix_storage_capacity(
     const MatrixStorageUsage& usage);
 
-// ROM 0x1957E: subtract only the footprints of programs already present in
-// the five FFFBD8 slot records from the FFFBC0 program-memory capacity.
+// ROM 0x1957E: accumulate only the footprints of programs already present in
+// the five FFFBD8 slot records with ADD.W, then subtract from the FFFBC0
+// program-memory capacity with SUB.W.
 MatrixLoadedProgramCapacity calculate_loaded_program_capacity(
     const MatrixStorageUsage& usage,
     const std::array<std::int8_t, 5>& slot_programs);

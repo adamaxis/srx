@@ -137,6 +137,19 @@ difficulty scaling. `read_matrix_program_availability_for_slot()` therefore
 returns `availability_byte`, not `bool`. The old host conversion's truth-value
 collapse was not source-faithful and is now covered by a test using `0xA5`.
 
+The storage consumers at `0x19558` and `0x1957E` were audited against their
+word instructions as well. Their D5 accumulators use `ADD.W`, and the final
+D6 values use `SUB.W`; the host capacity results now retain 16-bit wrap rather
+than widening the sums and publishing a signed deficit. This matters even
+though normal Matrix data keeps the totals small, and is covered by an
+overflowing availability/footprint test.
+
+The load-timing leaf at `0x195AA` was audited in the same pass. `D1.w` is
+copied to `D0.w` before `DIVU.W`, and the cap is controlled by the source
+`CMP.W #7` followed by `BMI`; the conversion now preserves both the low-word
+input and that wrapped sign-bit predicate. The normal Matrix range remains
+0..6 steps, with malformed high-word/high-quotient cases covered explicitly.
+
 ## Primary world-effect pending roll
 
 `0x1AB6E advance_primary_world_effect_overlay` calls `0x563CC` when the

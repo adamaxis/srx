@@ -32,18 +32,20 @@ MatrixStorageCapacity calculate_matrix_storage_capacity(
     result.total_memory = usage.total_memory;
 
     for (std::size_t slot = 0; slot < usage.loaded_slot_usage.size(); ++slot) {
-        result.loaded_memory += matrix_loaded_slot_usage(usage, slot);
+        result.loaded_memory = static_cast<std::uint16_t>(
+            result.loaded_memory + matrix_loaded_slot_usage(usage, slot));
     }
     for (std::size_t program = 0;
          program < usage.availability_flags.size(); ++program) {
-        result.installed_program_memory +=
-            matrix_program_storage_usage(usage, program);
+        result.installed_program_memory = static_cast<std::uint16_t>(
+            result.installed_program_memory +
+            static_cast<std::uint16_t>(matrix_program_storage_usage(
+                usage, program)));
     }
 
-    result.available_memory =
-        static_cast<std::int32_t>(result.total_memory) -
-        static_cast<std::int32_t>(result.loaded_memory) -
-        static_cast<std::int32_t>(result.installed_program_memory);
+    result.available_memory = static_cast<std::uint16_t>(
+        result.total_memory - result.loaded_memory -
+        result.installed_program_memory);
     return result;
 }
 
@@ -56,12 +58,13 @@ MatrixLoadedProgramCapacity calculate_loaded_program_capacity(
         if (slot_program < 0) {
             continue;
         }
-        result.used_memory += matrix_program_storage_usage(
-            usage, static_cast<std::size_t>(slot_program));
+        result.used_memory = static_cast<std::uint16_t>(
+            result.used_memory +
+            static_cast<std::uint16_t>(matrix_program_storage_usage(
+                usage, static_cast<std::size_t>(slot_program))));
     }
-    result.available_memory =
-        static_cast<std::int32_t>(result.total_memory) -
-        static_cast<std::int32_t>(result.used_memory);
+    result.available_memory = static_cast<std::uint16_t>(
+        result.total_memory - result.used_memory);
     return result;
 }
 

@@ -8,11 +8,15 @@ namespace shadowrun::ghidra_conversion {
 
 struct MatrixProgramLoadTiming {
     bool valid = false;
-    std::uint8_t steps = 0;
+    // The source publishes D1.w after the DIVU/round/cap sequence. Normal
+    // program data produces 0..6, but the word width remains part of the
+    // conversion contract.
+    std::uint16_t steps = 0;
 };
 
-// ROM 0x195AA: divide the selected program footprint by the deck's load/IO
-// divisor, round up when there is a remainder, and cap the result at six.
+// ROM 0x195AA: use the low word of the selected footprint, divide by the
+// deck's load/IO divisor, round up when there is a remainder, and apply the
+// source CMP.W #7/BMI cap predicate before returning D1.w.
 MatrixProgramLoadTiming calculate_matrix_program_load_steps(
     std::uint32_t program_memory, std::uint8_t load_io_divisor);
 

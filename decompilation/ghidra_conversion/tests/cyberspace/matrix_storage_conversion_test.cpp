@@ -42,8 +42,20 @@ int main() {
     usage.loaded_slot_usage = {2U, 2U, 0U, 0U, 0U};
     usage.availability_flags.fill(0U);
     const auto exhausted = calculate_matrix_storage_capacity(usage);
-    if (!expect(exhausted.available_memory == -1)) {
+    if (!expect(exhausted.available_memory == 0xFFFFU)) {
         return 4;
+    }
+
+    // 0x19558 uses ADD.W/SUB.W.  The source returns a wrapped word when the
+    // loaded total exceeds capacity; it does not publish a signed -1.
+    usage.total_memory = 0U;
+    usage.loaded_slot_usage = {0U, 0U, 0U, 0U, 0U};
+    usage.availability_flags.fill(0U);
+    usage.availability_flags[0] = 0xFFU;
+    const auto wrapped_installed = calculate_matrix_storage_capacity(usage);
+    if (!expect(wrapped_installed.installed_program_memory == 0xFC02U &&
+                wrapped_installed.available_memory == 0x03FEU)) {
+        return 8;
     }
 
     usage.availability_flags = {1U, 0U, 1U, 0U, 1U, 0U,

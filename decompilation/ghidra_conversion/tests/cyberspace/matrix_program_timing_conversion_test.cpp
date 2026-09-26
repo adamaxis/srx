@@ -14,6 +14,10 @@ int main() {
     const auto exact = calculate_matrix_program_load_steps(12U, 3U);
     const auto rounded = calculate_matrix_program_load_steps(13U, 3U);
     const auto capped = calculate_matrix_program_load_steps(100U, 1U);
+    const auto source_word =
+        calculate_matrix_program_load_steps(0x10005U, 3U);
+    const auto wrapped_cap =
+        calculate_matrix_program_load_steps(0xFFFFU, 1U);
     const auto invalid = calculate_matrix_program_load_steps(5U, 0U);
     std::array<std::uint32_t, 12> program_memory{};
     program_memory[4] = 13U;
@@ -23,6 +27,8 @@ int main() {
         12U, program_memory, 3U);
     if (!expect(exact.valid && exact.steps == 4U && rounded.valid &&
                 rounded.steps == 5U && capped.valid && capped.steps == 6U &&
+                source_word.valid && source_word.steps == 2U &&
+                wrapped_cap.valid && wrapped_cap.steps == 0xFFFFU &&
                 !invalid.valid && selected.valid && selected.steps == 5U &&
                 !selected_invalid.valid)) {
         return 1;
