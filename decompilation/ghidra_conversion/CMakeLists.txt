@@ -2602,3 +2602,14 @@ target_link_libraries(shadowrun_ghidra_field_quantity_purchase_test
     PRIVATE shadowrun_ghidra_field_quantity_purchase)
 add_test(NAME shadowrun_ghidra_field_quantity_purchase
          COMMAND shadowrun_ghidra_field_quantity_purchase_test)
+
+add_library(shadowrun_ghidra_entity_action_math STATIC
+    src/entity_action_math_conversion.cpp)
+target_include_directories(shadowrun_ghidra_entity_action_math PUBLIC include)
+
+add_executable(shadowrun_ghidra_entity_action_math_test
+    tests/entity_action_math_conversion_test.cpp)
+target_link_libraries(shadowrun_ghidra_entity_action_math_test
+    PRIVATE shadowrun_ghidra_entity_action_math)
+add_test(NAME shadowrun_ghidra_entity_action_math
+         COMMAND shadowrun_ghidra_entity_action_math_test)

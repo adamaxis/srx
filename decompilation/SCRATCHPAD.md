@@ -181,6 +181,30 @@ phase/clamp rules, the `0x6AB3E`/`0x6AB96`/`0x6ABEE` source tables, the
 `0xF1C4`/`0xF5C4`/`0xF9C4` and `0xF3C6`/`0xF7C6`/`0xFBC6` commands, the
 `0x1232` DBF counts, the `+0x10` BSET mask, and the `+0x3A` constant write.
 
+The calculation leaves used by the field entity target/action path are now
+isolated in `ghidra_conversion/entity_action_math_conversion`. `0x55F02`
+starts with record `+0x80`, scans possession slots `6..0`, and adds only the
+first matching item-code `0x18` phase. `0x55F20` applies the record `+0x4D`
+posture as a 25-percent-per-step factor and selects either the reduction or
+remaining component from the source D7 sign. `0x104F6` performs the same
+descending slot scan for a caller-supplied item code and adds the first
+matching phase. These are source lookups, not generic inventory sums.
+
+The former Ghidra name for `0x1033E` ("first aid item use") is wrong: the ROM
+reaches it from the field entity target-heading/attack path when the entity
+has no equipped weapon. Its exact pure callees are now described as
+`add_wound_difficulty_penalty` (`0x0D5A`),
+`apply_target_condition_modifier` (`0x55740`), and
+`calculate_action_residual` (`0x10660`). The wound leaf adds two points for
+meters `0..4`, one for `5..7`, and zero for `8..10`, independently for
+physical and mental state. The target-condition leaf preserves the source
+cyberware-bit, target-class `0x16`, race/state, and target-flag-bit-7 branch
+order. `0x10660` uses the selected `0xD4EA0` action row and decoded
+`0x166AD4` effect value, applies the source rounded half-threshold and
+20-percent scaling, then returns the residual effect. The RNG, entity-effect
+spawn (`0x15830`), special result publication, and phase-consumption tail
+remain explicit boundaries for the next `0x1033E` pass.
+
 The caller-side `0x55C76` transition is now directly executable as
 `run_entity_reaction_0x55C76`. It preserves the three `0x0DBA` threshold
 passes, the `0x55740`/`0x55786` timing calculations, the `0x55E62`/modifier
