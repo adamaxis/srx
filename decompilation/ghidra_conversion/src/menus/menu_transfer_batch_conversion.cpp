@@ -42,11 +42,17 @@ void write_three_grids_then_service(
 
 std::optional<MenuMetricLookupResult> resolve_menu_metric_action(
     const MenuMetricLookupInput& input) {
-    const auto table_offset =
-        (static_cast<std::size_t>(input.menu_row) * 6U +
-         static_cast<std::size_t>(input.menu_column)) *
-            2U +
-        2U;
+    // 0x104C8 performs MULU.W on D0 and then ADD.B for the column. Preserve
+    // that byte-only addition before the later word shift; using a host-wide
+    // row*6+column expression silently changes wrapped source indices.
+    const auto row_product = static_cast<std::uint32_t>(input.menu_row) * 6U;
+    const auto low_byte = static_cast<std::uint8_t>(
+        static_cast<std::uint8_t>(row_product) + input.menu_column);
+    const auto indexed_product = (row_product & 0xFFFFFF00U) | low_byte;
+    const auto shifted_index = static_cast<std::uint16_t>(
+        static_cast<std::uint16_t>(indexed_product) << 1U);
+    const auto table_offset = static_cast<std::size_t>(
+        static_cast<std::uint16_t>(shifted_index + 2U));
     if (table_offset >= input.source_action_indices.size()) {
         return std::nullopt;
     }
@@ -73,24 +79,6 @@ void upload_resource_then_write_two_blocks(
 
 void upload_resource_stream(const std::function<void()>& upload_stream) {
     call_once(upload_stream);
-}
-
-void draw_hud_panel_wrapper(const std::function<void()>& draw_panel) {
-    call_once(draw_panel);
-}
-
-void render_title_text_source_wrapper(
-    const std::function<void()>& render_text) {
-    call_once(render_text);
-}
-
-void render_title_text_source_leaf(const std::function<void()>& render_text) {
-    call_once(render_text);
-}
-
-void render_title_text_source_variant(
-    const std::function<void()>& render_text) {
-    call_once(render_text);
 }
 
 void clear_entity_auxiliary_marker(EntityAuxiliaryState& state) {

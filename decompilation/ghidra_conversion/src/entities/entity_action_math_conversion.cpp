@@ -4,14 +4,27 @@
 
 namespace shadowrun::ghidra_conversion {
 
+namespace {
+
+std::uint16_t add_source_byte_to_word(const std::uint16_t value,
+                                      const std::uint8_t addition) {
+    // 68000 ADD.B changes only the low byte of the data register. The host
+    // conversion must not accidentally discard a nonzero high byte while
+    // retaining the source's low-byte wrap.
+    const auto low = static_cast<std::uint8_t>(
+        static_cast<std::uint8_t>(value) + addition);
+    return static_cast<std::uint16_t>((value & 0xFF00U) | low);
+}
+
+} // namespace
+
 std::uint16_t calculate_item18_skill_value(const EntityActionRecord& entity) {
     auto value = static_cast<std::uint16_t>(entity.item18_base);
     for (std::size_t slot = entity.item_codes.size(); slot-- > 0U;) {
         if (entity.item_codes[slot] != 0x18U) {
             continue;
         }
-        return static_cast<std::uint8_t>(
-            value + static_cast<std::uint16_t>(entity.item_phases[slot]));
+        return add_source_byte_to_word(value, entity.item_phases[slot]);
     }
     return value;
 }
@@ -36,8 +49,7 @@ std::uint16_t add_first_matching_item_phase(
         if (entity.item_codes[slot] != item_code) {
             continue;
         }
-        return static_cast<std::uint8_t>(
-            value + static_cast<std::uint16_t>(entity.item_phases[slot]));
+        return add_source_byte_to_word(value, entity.item_phases[slot]);
     }
     return value;
 }
@@ -54,8 +66,8 @@ EntityActionPhaseModifierResult apply_action_item_phase_modifiers(
         if (entity.item_codes[slot] != item_code) {
             continue;
         }
-        result.value = static_cast<std::uint8_t>(
-            result.value + static_cast<std::uint16_t>(entity.item_phases[slot]));
+        result.value = add_source_byte_to_word(result.value,
+                                               entity.item_phases[slot]);
         result.phase_found = true;
         break;
     }

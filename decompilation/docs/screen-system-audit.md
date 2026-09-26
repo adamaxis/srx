@@ -140,8 +140,10 @@ and Right wrap the seven selector values:
 | 6 | Pocket Secretary | source pocket-secretary handler |
 
 The source writes only the selected command label at the bottom command
-position; it is not a vertical checklist of all seven commands. The overview
-reads the active record's race, archetype, physical/mental values, active
+position; it is not a vertical checklist of all seven commands. `0x110BC`
+submits the command-overview HUD as ten rows of eight words at `0xE104`, with
+the tile word derived from the active record's `+0x3E` and its `+0x2C` passed
+as the panel parameter. The overview reads the active record's race, archetype, physical/mental values, active
 item, attack/defense tables, armor record, weapon/gun bars, five-state
 posture, and inventory cells.
 

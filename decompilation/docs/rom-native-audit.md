@@ -41,8 +41,9 @@ resolved direct call sites, 229 conversion implementation files, and 230 CTest
 cases. The behavioral fidelity gate remains OPEN: 16 indirect/unresolved call
 sites are still explicit boundaries, 928 ledger rows are partial, and only 4
 are defended. The generated Ghidra C also omits meaningful disassembly in
-0x104F6 and 0x12C74, so the ROM disassembly remains the tie-breaker for those
-conversions.
+0x104F6 and 0x12C74. Their typed conversions now carry the recovered slot-7
+phase tail and action-class skill selector respectively; the ROM disassembly
+remains the tie-breaker for these generated-C omissions.
 
 ## Instruction-level conversion audit: 2026-09-26
 
@@ -59,12 +60,17 @@ is behaviorally complete.
 The indexed pass currently reports 910 ROM entries, no missing disassembly
 spans, 18 direct-call substitutions needing native-owner review, 27 generated
 Ghidra-C return-only omission risks, 20 linear adjacent-export boundary
-reviews, and 287 entries without an explicit ROM address in a typed conversion
+reviews, and 284 entries without an explicit ROM address in a typed conversion
 source. The boundary audit now separates true linear continuation from
 adjacent exports reached by an explicit branch/call; the latter remain in the
 row-level report as context instead of being misreported as fall-through.
 These are remaining conversion-evidence sweeps, not permission to invent a
 replacement.
+
+The slot-availability audit also corrected a semantic narrowing in the typed
+conversion: `0x19C54 -> 0x19C5C` preserves the raw `FFFBCC` byte because the
+source callers use it as a numeric action/HUD value. A nonzero boolean is not
+an equivalent representation for that boundary.
 
 The first concrete omission slice recovered from the ROM is now represented
 as typed conversion code:
@@ -77,9 +83,9 @@ as typed conversion code:
   native boundary returns unresolved for an absent/out-of-range host row;
   it does not silently use a guessed modifier.
 * `0x3602` computes the HUD glyph attribute word (`0x2000` or `0x6000`) from
-  the action code, class code, and signed equipped-slot field. The five branch
-  cases are covered by a focused conversion test; transfer integration into
-  the menu renderer remains open.
+  the signed action/class byte branches and signed equipped-slot field. The
+  ordinary and high-bit boundary cases are covered by a focused conversion
+  test; transfer integration into the menu renderer remains open.
 * `0x60F4` is not a no-op: the ROM executes `ORI #1,CCR` and returns with the
   carry flag set. The typed conversion exposes that carry result; the caller's
   descriptor branch still needs its complete native integration.

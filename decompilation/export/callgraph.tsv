@@ -638,8 +638,8 @@ caller	caller_name	callee	callee_name	call_sites
 00010D30	run_command_overview	0000391A	handle_mode_action_event	3
 00010D30	run_command_overview	0000C0C2	load_title_font	1
 00010D30	run_command_overview	00010F50	prepare_command_overview	1
-00010D30	run_command_overview	000110BC	draw_menu_hud_panel_variant_a	1
-00010D30	run_command_overview	0001111A	render_title_text_source_wrapper	1
+00010D30	run_command_overview	000110BC	draw_command_overview_hud_panel	1
+00010D30	run_command_overview	0001111A	render_active_runner_name_text	1
 00010D30	run_command_overview	000111D0	upload_menu_tile_block	1
 00010D30	run_command_overview	000111E8	render_equipment_details	1
 00010D30	run_command_overview	00011454	reset_menu_upload_cursor_and_upload	1
@@ -647,7 +647,7 @@ caller	caller_name	callee	callee_name	call_sites
 00010D30	run_command_overview	00011506	advance_command_overview_secondary_page	2
 00010D30	run_command_overview	00011592	refresh_command_overview_action_details	1
 00010D30	run_command_overview	00011624	render_equipment_highlights	1
-00010D30	run_command_overview	0001170C	render_title_text_source_leaf	1
+00010D30	run_command_overview	0001170C	select_command_overview_title_text	1
 00010D30	run_command_overview	00011740	run_inventory_actions	1
 00010D30	run_command_overview	00011928	render_menu_row	1
 00010D30	run_command_overview	000530DE	service_audio_if_enabled	2
@@ -661,9 +661,9 @@ caller	caller_name	callee	callee_name	call_sites
 00011048	upload_resource_then_write_two_blocks	00000F5C	write_vdp_word_block_with_source_wrap	2
 00011048	upload_resource_then_write_two_blocks	0001107E	upload_resource_stream	1
 0001107E	upload_resource_stream	00001530	decode_and_upload_source_stream	2
-000110BC	draw_menu_hud_panel_variant_a	00003648	draw_hud_panel	1
+000110BC	draw_command_overview_hud_panel	00003648	draw_hud_panel	1
 000110EC	draw_active_runner_hud_panel	00003648	draw_hud_panel	1
-0001111A	render_title_text_source_wrapper	0000C0DA	render_encoded_title_text	1
+0001111A	render_active_runner_name_text	0000C0DA	render_encoded_title_text	1
 00011136	render_menu_tile_rows	00003602	select_hud_glyph_attribute_flags	1
 00011136	render_menu_tile_rows	00011190	transfer_menu_glyph_triple	1
 00011190	transfer_menu_glyph_triple	00000E9C	make_vdp_transfer_command	1
@@ -702,7 +702,7 @@ caller	caller_name	callee	callee_name	call_sites
 00011678	write_menu_grid	00001232	write_vdp_grid	1
 000116C4	write_menu_grid_quad	00001232	write_vdp_grid	4
 000116C4	write_menu_grid_quad	00012C5A	write_menu_repeated_grid_with_metadata	1
-00011712	render_title_text_source_variant	0000C0DA	render_encoded_title_text	1
+00011712	select_menu_title_text	0000C0DA	render_encoded_title_text	1
 00011740	run_inventory_actions	00000BD2	wait_for_vblank	5
 00011740	run_inventory_actions	00000BF2	latch_controller_events	5
 00011740	run_inventory_actions	00000D94	wait_for_controller_event	4
@@ -721,12 +721,12 @@ caller	caller_name	callee	callee_name	call_sites
 00011740	run_inventory_actions	0000C436	dispatch_menu_handler	1
 00011740	run_inventory_actions	0000E660	advance_random_grid_effect	1
 00011740	run_inventory_actions	00010A7E	transfer_menu_asset_batch_four_post_prepare	1
-00011740	run_inventory_actions	000110E8	draw_hud_panel_wrapper	2
+00011740	run_inventory_actions	000110E8	enter_active_runner_hud_panel	2
 00011740	run_inventory_actions	000111D0	upload_menu_tile_block	5
 00011740	run_inventory_actions	00011454	reset_menu_upload_cursor_and_upload	2
 00011740	run_inventory_actions	00011624	render_equipment_highlights	5
-00011740	run_inventory_actions	0001170C	render_title_text_source_leaf	1
-00011740	run_inventory_actions	00011712	render_title_text_source_variant	2
+00011740	run_inventory_actions	0001170C	select_command_overview_title_text	1
+00011740	run_inventory_actions	00011712	select_menu_title_text	2
 00011740	run_inventory_actions	000118C6	cycle_inventory_action_selector	1
 00011740	run_inventory_actions	00011900	prepare_menu_row_grid	2
 00011740	run_inventory_actions	00011928	render_menu_row	2
@@ -769,7 +769,7 @@ caller	caller_name	callee	callee_name	call_sites
 00011B58	caseD_2	0000C216	build_grouped_decimal_glyphs	2
 00011B58	caseD_2	000111D0	upload_menu_tile_block	6
 00011B58	caseD_2	00011454	reset_menu_upload_cursor_and_upload	4
-00011B58	caseD_2	00011712	render_title_text_source_variant	4
+00011B58	caseD_2	00011712	select_menu_title_text	4
 00011B58	caseD_2	000118C6	cycle_inventory_action_selector	2
 00011B58	caseD_2	00011900	prepare_menu_row_grid	1
 00011B58	caseD_2	00011928	render_menu_row	1
@@ -782,7 +782,7 @@ caller	caller_name	callee	callee_name	call_sites
 00012062	refresh_menu_text	0000C0DA	render_encoded_title_text	2
 00012062	refresh_menu_text	00012C36	prepare_menu_grid_variant_b	1
 0001209A	advance_menu_text_cursor	0000C0DA	render_encoded_title_text	1
-0001209A	advance_menu_text_cursor	000110E8	draw_hud_panel_wrapper	1
+0001209A	advance_menu_text_cursor	000110E8	enter_active_runner_hud_panel	1
 000120E4	render_menu_number	00000E9C	make_vdp_transfer_command	1
 000120E4	render_menu_number	0000C216	build_grouped_decimal_glyphs	1
 0001253E	reset_inventory_action_target_state	00000DBA	count_thresholded_random_rolls	1

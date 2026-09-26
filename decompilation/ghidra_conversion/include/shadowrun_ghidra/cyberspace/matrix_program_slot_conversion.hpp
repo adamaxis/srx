@@ -22,11 +22,14 @@ struct MatrixProgramSlotDecision {
 struct SelectedMatrixProgramAvailability {
     bool slot_valid = false;
     std::int8_t program_index = -1;
-    bool available = false;
+    // ROM 0x19C5C leaves the source FFBCC byte in D7. It is not a boolean:
+    // callers feed this value into action-delay and HUD-meter arithmetic.
+    std::uint8_t availability_byte = 0;
 };
 
 // ROM 0x19C5C: read a caller-supplied loaded-program slot's FFBCC
-// availability byte. This is a callable shared entry used by the source.
+// availability byte without reducing it to a truth value. This is a callable
+// shared entry used by the source.
 SelectedMatrixProgramAvailability read_matrix_program_availability_for_slot(
     std::uint8_t selected_slot,
     const std::array<std::int8_t, 5>& slot_programs,

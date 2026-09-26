@@ -21,12 +21,12 @@
 //   0x0000C436 dispatch_menu_handler
 //   0x0000E660 advance_random_grid_effect
 //   0x00010A7E transfer_menu_asset_batch_four_post_prepare
-//   0x000110E8 draw_hud_panel_wrapper
+//   0x000110E8 enter_active_runner_hud_panel
 //   0x000111D0 upload_menu_tile_block
 //   0x00011454 reset_menu_upload_cursor_and_upload
 //   0x00011624 render_equipment_highlights
-//   0x0001170C render_title_text_source_leaf
-//   0x00011712 render_title_text_source_variant
+//   0x0001170C select_command_overview_title_text
+//   0x00011712 select_menu_title_text
 //   0x000118C6 cycle_inventory_action_selector
 //   0x00011900 prepare_menu_row_grid
 //   0x00011928 render_menu_row
@@ -102,7 +102,7 @@ void run_inventory_actions(void)
     upload_menu_tile_block();
     _DAT_00fff116 = 0xffff;
     reset_menu_upload_cursor_and_upload();
-    render_title_text_source_variant();
+    select_menu_title_text();
     do {
       while( true ) {
         wait_for_vblank();
@@ -116,7 +116,7 @@ LAB_00011be6:
         cycle_inventory_action_selector();
         _DAT_00fff116 = 0xffff;
         reset_menu_upload_cursor_and_upload();
-        render_title_text_source_variant();
+        select_menu_title_text();
       }
       if ((DAT_00ffdd22._0_1_ & 8) != 0) {
         uVar5 = 1;
@@ -205,7 +205,7 @@ LAB_00011be6:
       upload_menu_tile_block();
       _DAT_00fff116 = 0xffff;
       reset_menu_upload_cursor_and_upload();
-      render_title_text_source_variant();
+      select_menu_title_text();
 LAB_00011ea4:
       do {
         while( true ) {
@@ -220,7 +220,7 @@ LAB_00011ec4:
           cycle_inventory_action_selector();
           _DAT_00fff116 = 0xffff;
           reset_menu_upload_cursor_and_upload();
-          render_title_text_source_variant();
+          select_menu_title_text();
         }
         if ((DAT_00ffdd22._0_1_ & 8) != 0) {
           uVar5 = 1;
@@ -640,7 +640,7 @@ LAB_0000c2aa:
           prepare_menu_grid_variant_c();
           render_encoded_title_text();
           render_encoded_title_text();
-          draw_hud_panel_wrapper();
+          enter_active_runner_hud_panel();
           read_entity_action_code();
           puVar17 = extraout_A0_06;
           if ((char)puVar4 == *(char *)(extraout_A0_07 + 0x56)) {
@@ -694,7 +694,7 @@ LAB_000129dc:
     upload_menu_tile_block();
     _DAT_00fff116 = 0xffff;
     reset_menu_upload_cursor_and_upload();
-    render_title_text_source_variant();
+    select_menu_title_text();
     do {
       while( true ) {
         wait_for_vblank();
@@ -708,7 +708,7 @@ LAB_000117f6:
         cycle_inventory_action_selector();
         _DAT_00fff116 = 0xffff;
         reset_menu_upload_cursor_and_upload();
-        render_title_text_source_variant();
+        select_menu_title_text();
       }
       if ((DAT_00ffdd22._0_1_ & 8) != 0) {
         uVar5 = 1;
@@ -726,7 +726,7 @@ LAB_000117f6:
 LAB_000118b6:
         _DAT_00fff0d0 = uVar20;
         upload_menu_tile_block();
-        render_title_text_source_leaf();
+        select_command_overview_title_text();
         return;
       }
     } while( true );
@@ -767,7 +767,7 @@ LAB_000118b6:
         write_repeated_vdp_grid();
       }
       else {
-        draw_hud_panel_wrapper();
+        enter_active_runner_hud_panel();
       }
       while( true ) {
         wait_for_vblank();

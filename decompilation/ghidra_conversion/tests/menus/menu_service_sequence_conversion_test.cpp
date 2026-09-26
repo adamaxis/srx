@@ -32,28 +32,73 @@ int main() {
     }
 
     std::vector<int> order;
-    draw_menu_hud_panel_variant_a([&order] { order.push_back(1); });
-    ActiveRunnerHudPanelPlan panel_plan;
-    draw_active_runner_hud_panel(
-        ActiveRunnerHudPanelInput{2, 0x1234U},
-        [&](const ActiveRunnerHudPanelPlan& plan) { panel_plan = plan; order.push_back(2); });
-    if (order != std::vector<int>{1, 2} || panel_plan.tile_origin != -0x7940 ||
-        panel_plan.field_parameter != 0x1234U || panel_plan.rows != 4 ||
-        panel_plan.words_per_row != 4) {
+    CommandOverviewHudPanelPlan overview_panel;
+    draw_command_overview_hud_panel(
+        CommandOverviewHudPanelInput{2U, 0x1234U},
+        [&](const CommandOverviewHudPanelPlan& plan) {
+            overview_panel = plan;
+            order.push_back(1);
+        });
+    if (order != std::vector<int>{1} ||
+        overview_panel.tile_origin != static_cast<std::int16_t>(0x80A1U) ||
+        overview_panel.destination_tile_base != 0xE104U ||
+        overview_panel.field_parameter != 0x1234U || overview_panel.rows != 10U ||
+        overview_panel.words_per_row != 8U) {
         return 1;
     }
 
+    ActiveRunnerHudPanelPlan panel_plan;
     draw_active_runner_hud_panel(
-        ActiveRunnerHudPanelInput{0, 0},
+        ActiveRunnerHudPanelInput{2U, 0x1234U, 0xC928U},
+        [&](const ActiveRunnerHudPanelPlan& plan) { panel_plan = plan; order.push_back(2); });
+    if (order != std::vector<int>{1, 2} || panel_plan.tile_origin != -0x7940 ||
+        panel_plan.field_parameter != 0x1234U ||
+        panel_plan.destination_tile_base != 0xC928U || panel_plan.rows != 4 ||
+        panel_plan.words_per_row != 4) {
+        return 2;
+    }
+
+    draw_active_runner_hud_panel(
+        ActiveRunnerHudPanelInput{0U, 0U, 0xE132U},
         [&](const ActiveRunnerHudPanelPlan& plan) { panel_plan = plan; });
     if (panel_plan.tile_origin != -0x796C) {
         return 23;
     }
     draw_active_runner_hud_panel(
-        ActiveRunnerHudPanelInput{1, 0},
+        ActiveRunnerHudPanelInput{1U, 0U, 0x1CBAU},
         [&](const ActiveRunnerHudPanelPlan& plan) { panel_plan = plan; });
-    if (panel_plan.tile_origin != -0x7956) {
+    if (panel_plan.tile_origin != -0x7956 ||
+        panel_plan.destination_tile_base != 0x1CBAU) {
         return 24;
+    }
+
+    ActiveRunnerNameTextPlan name_plan;
+    render_active_runner_name_text(
+        [&name_plan](const ActiveRunnerNameTextPlan& plan) { name_plan = plan; });
+    if (name_plan.source_record_offset != 0x58U ||
+        name_plan.destination_tile_base != 0xC0A0U ||
+        name_plan.palette_flags != 0x6000U) {
+        return 25;
+    }
+
+    const auto inventory_title = select_command_overview_title_text(0U);
+    const auto clips_title = select_command_overview_title_text(2U);
+    const auto magic_title = select_menu_title_text(
+        MenuTitleTextInput{5U, MenuTextTableRef{"menu.magic.labels"}});
+    if (!inventory_title.has_value() ||
+        inventory_title->source_alias != "menu.inventory.labels" ||
+        inventory_title->record_index != 0U ||
+        inventory_title->record_offset_bytes != 0U ||
+        !inventory_title->used_inventory_fallback || !clips_title.has_value() ||
+        clips_title->source_alias != "menu.command.labels" ||
+        clips_title->record_index != 0U ||
+        clips_title->record_offset_bytes != 0U ||
+        clips_title->used_inventory_fallback || !magic_title.has_value() ||
+        magic_title->source_alias != "menu.magic.labels" ||
+        magic_title->record_index != 3U ||
+        magic_title->record_offset_bytes != 0x36U ||
+        select_menu_title_text(MenuTitleTextInput{2U, {}}).has_value()) {
+        return 26;
     }
 
     order.clear();
@@ -224,7 +269,10 @@ int main() {
         select_hud_glyph_attribute_flags({5U, 1U, -1}) != 0x2000U ||
         select_hud_glyph_attribute_flags({6U, 1U, -1}) != 0x6000U ||
         select_hud_glyph_attribute_flags({14U, 2U, 0}) != 0x6000U ||
-        select_hud_glyph_attribute_flags({15U, 2U, 0}) != 0x2000U) {
+        select_hud_glyph_attribute_flags({15U, 2U, 0}) != 0x2000U ||
+        select_hud_glyph_attribute_flags({-1, 0, -1}) != 0x2000U ||
+        select_hud_glyph_attribute_flags({-1, 2, -1}) != 0x6000U ||
+        select_hud_glyph_attribute_flags({6, -1, -1}) != 0x6000U) {
         return 25;
     }
 

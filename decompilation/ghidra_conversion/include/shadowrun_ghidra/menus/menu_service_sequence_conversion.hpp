@@ -4,38 +4,115 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <optional>
+#include <string_view>
+#include <vector>
 
 namespace shadowrun::ghidra_conversion {
 
-// ROM 0x110BC: menu path A submits one HUD-panel draw operation.
-void draw_menu_hud_panel_variant_a(const std::function<void()>& draw_panel);
+struct CommandOverviewHudPanelInput {
+    // Source active record +0x3E. The ROM multiplies this word by 0x50
+    // before adding the signed base tile word.
+    std::uint16_t panel_variant = 0;
+    // Source active record +0x2C, passed as the panel draw's D2 parameter.
+    std::uint16_t field_parameter = 0;
+};
+
+struct CommandOverviewHudPanelPlan {
+    std::int16_t tile_origin = 0;
+    std::uint32_t destination_tile_base = 0;
+    std::uint16_t field_parameter = 0;
+    std::uint8_t rows = 10;
+    std::uint8_t words_per_row = 8;
+};
+
+// ROM 0x110BC: the command-overview entry reads +0x3E/+0x2C, selects the
+// panel tile word, and submits ten rows of eight words at D4=0xE104.
+void draw_command_overview_hud_panel(
+    const CommandOverviewHudPanelInput& input,
+    const std::function<void(const CommandOverviewHudPanelPlan&)>& draw_panel);
 
 struct ActiveRunnerHudPanelInput {
     // Source active record +0x3E. The three source ranges select the panel's
     // tile origin; this is a panel-layout discriminator, not a menu ID.
-    std::int16_t panel_variant = 0;
-    // Source active record +0x2C, passed as the panel draw's D2 parameter.
+    std::uint16_t panel_variant = 0;
+    // Caller-provided D2. The ROM 0x110E8 entry loads active record +0x2C;
+    // direct 0x110EC callers prepare this parameter themselves.
     std::uint16_t field_parameter = 0;
+    // Caller-provided D4. The shared entry does not initialize the panel
+    // destination; its callers select the destination for their menu.
+    std::uint32_t destination_tile_base = 0;
 };
 
 struct ActiveRunnerHudPanelPlan {
     std::int16_t tile_origin = 0;
     std::uint16_t field_parameter = 0;
+    std::uint32_t destination_tile_base = 0;
     std::uint8_t rows = 4;
     std::uint8_t words_per_row = 4;
 };
 
-// ROM 0x110EC: choose the active runner HUD panel tile origin from +0x3E,
-// pass +0x2C through as the field parameter, and submit a 4x4 panel. The
-// attributes/skills, field-service, and inventory/action paths own the
-// surrounding menu state and share this panel layout.
+// ROM 0x110E8 -> 0x110EC: 0x110E8 loads active record +0x2C into D2 and
+// enters the shared 0x110EC panel builder. 0x110EC selects the tile origin
+// from +0x3E, preserves the caller's D4 destination, and submits a 4x4
+// panel. The attributes/skills, field-service, and inventory/action paths
+// own the surrounding menu state and share this panel layout.
 void draw_active_runner_hud_panel(
     const ActiveRunnerHudPanelInput& input,
     const std::function<void(const ActiveRunnerHudPanelPlan&)>& draw_panel);
 
+struct ActiveRunnerNameTextPlan {
+    // ROM 0x1111A passes the active record's encoded name at +0x58 to the
+    // common text writer.
+    std::uint16_t source_record_offset = 0x58;
+    std::uint16_t destination_tile_base = 0xC0A0;
+    std::uint16_t palette_flags = 0x6000;
+};
+
+// ROM 0x1111A: render the selected runner's name source into the command
+// overview title area. The text decoder remains the separate converted
+// 0xC0DA boundary; this function only owns the source/layout selection.
+void render_active_runner_name_text(
+    const std::function<void(const ActiveRunnerNameTextPlan&)>& render_text);
+
+struct MenuTextTableRef {
+    // Host asset alias supplied by the caller; no ROM address is required by
+    // the conversion boundary.
+    std::string_view alias;
+};
+
+struct MenuTitleTextInput {
+    // Source FFF0D0 selector. Values below two use the fixed Inventory
+    // fallback record; values two and above index the caller's table.
+    std::uint8_t selector = 0;
+    MenuTextTableRef caller_table{};
+};
+
+struct MenuTitleTextPlan {
+    std::string_view source_alias;
+    std::size_t record_index = 0;
+    std::size_t record_offset_bytes = 0;
+    std::uint16_t destination_tile_base = 0xEC9C;
+    std::uint16_t palette_flags = 0x6000;
+    bool used_inventory_fallback = false;
+};
+
+// ROM 0x11712: select the caller-supplied 0x12-byte text record for selectors
+// two and above, or the first Inventory record from 0xD1D28 for selectors
+// zero and one. This models the source-table choice before 0xC0DA.
+std::optional<MenuTitleTextPlan> select_menu_title_text(
+    const MenuTitleTextInput& input);
+
+// ROM 0x1170C -> 0x11712: supply the command-overview label table at
+// 0xD1D3A, then apply the shared selector above.
+std::optional<MenuTitleTextPlan> select_command_overview_title_text(
+    std::uint8_t selector);
+
 struct HudGlyphAttributeInput {
-    std::uint8_t action_code = 0; // source record +0x57
-    std::uint8_t class_code = 0;  // source record +0x9B
+    // 0x03602 uses byte-sized signed branches for both comparisons. Keep the
+    // source sign bit instead of turning sentinel values into large codes.
+    std::int8_t action_code = 0; // source record +0x57
+    std::int8_t class_code = 0;  // source record +0x9B
     std::int8_t equipped_slot = -1; // signed source record +0x56
 };
 

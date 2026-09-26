@@ -128,6 +128,15 @@ The conversion exposes `0x19C5C` row-availability reads,
 calculation as typed callbacks. It does not pretend that those unresolved
 source services are a runtime memory interface.
 
+The direct slot lookup audit found an important conversion constraint. `0x19C54`
+loads `FFF0D4` as the slot selector, then `0x19C5C` reads the loaded program
+index from `FFFBD8 + slot*0x1` and uses that index to read the availability
+byte at `FFFBCC + program`. The result remains in D7 as a byte; the callers
+at `0x55FD8` and `0x56506` use it numerically in comparisons, addition, and
+difficulty scaling. `read_matrix_program_availability_for_slot()` therefore
+returns `availability_byte`, not `bool`. The old host conversion's truth-value
+collapse was not source-faithful and is now covered by a test using `0xA5`.
+
 ## Primary world-effect pending roll
 
 `0x1AB6E advance_primary_world_effect_overlay` calls `0x563CC` when the
@@ -444,14 +453,23 @@ The focused tests `shadowrun_ghidra_field_mode_service_loop` and
 `shadowrun_ghidra_field_mode_selection_presentation` cover the palette dirty
 publication, service-loop input precedence, and every presentation branch.
 
-## Shared active-runner HUD panel: 0x110BC / 0x110E8 / 0x110EC
+## Command-overview and shared active-runner HUD panels: 0x110BC / 0x110E8 / 0x110EC
+
+`0x110BC` is the command-overview panel entry, not a generic wrapper. It reads
+the active record's `+0x3E` and `+0x2C`, computes `D5 = (+0x3E * 0x50) +
+0x8001` (word arithmetic), sets `D4=0xE104`, `D7=7`, and `D1=9`, then calls
+`0x03648`. Because `0x03648` uses DBF counters, this is ten rows of eight
+words. The native conversion exposes that as `CommandOverviewHudPanelPlan`.
 
 `0x110EC` is not meaningfully “menu HUD panel wrapper B.” Its body prepares
 the common active-runner HUD panel draw and then calls `0x03648`:
 
 * The active record's `+0x3E` value selects one of three tile origins (`-0x796C`,
   `-0x7956`, or `-0x7940`).
-* Its `+0x2C` value is passed as the panel's second draw parameter.
+* The preceding `0x110E8` shared-entry prelude loads `+0x2C` into D2. Direct
+  callers of `0x110EC` prepare D2 themselves.
+* The caller's D4 is preserved as the panel destination; `0x110EC` does not
+  initialize it.
 * The draw submits four rows of four words through the shared HUD-panel leaf.
 
 The callers identify where the resulting panel is used: `0x0D01C` is the
@@ -460,6 +478,17 @@ attributes-and-skills menu, `0x56AC0` is the field-mode service menu, and the
 So the useful native abstraction is a shared active-runner HUD panel layout,
 with the caller supplying the surrounding menu state; it is not three
 different “variant B” menus.
+
+`0x1111A` is the active-runner name presentation: it uses the active record's
+`+0x58` encoded text source, destination `0xC0A0`, and `0x6000` attributes.
+The text decoder remains the separate `0xC0DA` conversion boundary.
+
+`0x1170C` supplies the command-label table at `0xD1D3A` and enters `0x11712`.
+`0x11712` selects a caller-supplied table at 0x12-byte records when
+`FFF0D0 >= 2`; selectors 0 and 1 instead use the first Inventory record at
+`0xD1D28`. The conversion now exposes the table alias, record index, byte
+offset, destination `0xEC9C`, and `0x6000` attributes instead of a callback
+with no source/layout information.
 
 ## Field action cost conversion: 0x5787C / 0x57A44 / 0x57A6E / 0x57AF6 / 0x57B04 / 0x57B42
 
@@ -713,16 +742,26 @@ generated evidence.
 
 Important source checks from this pass:
 
+* `0x104C8` computes its action-table byte offset with `MULU.W #6` followed
+  by `ADD.B` for the menu column, then enters the shared `0x104F6` phase/item
+  path. The typed lookup now preserves the product's upper byte while wrapping
+  only the byte-sized addition; a high-row test covers the distinction.
 * `0x104F6` is `apply_action_item_phase_modifiers`. The generated Ghidra C
   stops after the slot-6..0 scan, but the ROM disassembly continues into the
   slot-7 item `0x29..0x2B` lookup at `0x1050E..0x1055A`. The typed conversion
   already includes that continuation; generated C alone is not sufficient
   evidence.
 * `0x12C74` is `merge_equipment_action_skill_value`. The generated Ghidra C
-  is a return-only body even though the ROM selects the action-class skill
-  bucket and performs the lower-value merge plus zero-to-one correction. The
-  typed equipment conversion follows the disassembly; this is recorded as a
-  decompiler omission, not treated as a no-op.
+  is a return-only body even though the ROM selects the maximum of `+0x81` and
+  the action-class bucket `+0x82/+0x83/+0x84`, then performs the lower-value
+  merge plus zero-to-one correction. The typed equipment conversion now takes
+  the action code and all four source skill bytes, so the selector is not
+  hidden in a precomputed generic skill. This is recorded as a decompiler
+  omission, not treated as a no-op.
+* `0x12148` uses the same source shape with `MULU.W #2` and `ADD.B`: the row
+  product's high byte survives while the column wraps the low byte. The typed
+  action-code lookup now preserves that word index and tests the `0x80` row
+  boundary instead of narrowing the entire selector to eight bits.
 * The status ledger is now one row per ROM entry. Eight duplicate rows were
   removed, including the old catalog duplicates for the magic-force functions
   and the duplicate HUD-mode/runner-record entries.

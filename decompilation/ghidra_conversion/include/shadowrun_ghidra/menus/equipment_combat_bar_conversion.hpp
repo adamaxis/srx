@@ -77,12 +77,29 @@ std::uint16_t apply_equipment_defense_action_modifier(
     const EquipmentCombatInput& input,
     std::uint16_t value);
 
-// ROM 0x12C74: merge the selected skill into the running strip value. The
-// lower of the two values is retained before the skill is added, and zero is
-// replaced by one.
-std::uint16_t merge_equipment_action_skill_value(
-    std::uint16_t current,
-    std::uint16_t skill);
+struct EquipmentActionSkillMergeInput {
+    // D6 at entry to ROM 0x12C74.
+    std::uint16_t current_value = 0;
+    // Active record +0x57. The source selects the comparison skill from
+    // +0x81..+0x84 using these action-code ranges.
+    std::uint8_t action_code = 0;
+    std::uint8_t skill_81 = 0;
+    std::uint8_t skill_82 = 0;
+    std::uint8_t skill_83 = 0;
+    std::uint8_t skill_84 = 0;
+};
+
+struct EquipmentActionSkillMergeResult {
+    std::uint16_t value = 0;
+    std::uint8_t selected_skill = 0;
+};
+
+// ROM 0x12C74: choose max(+0x81, +0x82/+0x83/+0x84) according to the
+// temporary action code, retain min(D6, selected_skill), add selected_skill,
+// and replace a zero result with one. The source selection is part of this
+// function; callers must not pre-collapse it into a generic skill argument.
+EquipmentActionSkillMergeResult merge_equipment_action_skill_value(
+    const EquipmentActionSkillMergeInput& input);
 
 // ROM 0x12CEE and its helpers 0x55ED6/0x55F20/0x55E62/0x12C74:
 // calculate the command-screen attack/defense strips from typed runner

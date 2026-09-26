@@ -2,10 +2,20 @@
 
 namespace shadowrun::ghidra_conversion {
 
-void draw_menu_hud_panel_variant_a(const std::function<void()>& draw_panel) {
-    if (draw_panel) {
-        draw_panel();
+void draw_command_overview_hud_panel(
+    const CommandOverviewHudPanelInput& input,
+    const std::function<void(const CommandOverviewHudPanelPlan&)>& draw_panel) {
+    if (!draw_panel) {
+        return;
     }
+
+    const auto tile_word = static_cast<std::uint16_t>(
+        static_cast<std::uint32_t>(input.panel_variant) * 0x50U + 0x8001U);
+    CommandOverviewHudPanelPlan plan;
+    plan.tile_origin = static_cast<std::int16_t>(tile_word);
+    plan.field_parameter = input.field_parameter;
+    plan.destination_tile_base = 0xE104U;
+    draw_panel(plan);
 }
 
 void draw_active_runner_hud_panel(
@@ -14,6 +24,7 @@ void draw_active_runner_hud_panel(
     if (draw_panel) {
         ActiveRunnerHudPanelPlan plan;
         plan.field_parameter = input.field_parameter;
+        plan.destination_tile_base = input.destination_tile_base;
         plan.tile_origin = input.panel_variant > 1
                                ? static_cast<std::int16_t>(-0x7940)
                                : input.panel_variant == 1
@@ -23,16 +34,47 @@ void draw_active_runner_hud_panel(
     }
 }
 
+void render_active_runner_name_text(
+    const std::function<void(const ActiveRunnerNameTextPlan&)>& render_text) {
+    if (render_text) {
+        render_text(ActiveRunnerNameTextPlan{});
+    }
+}
+
+std::optional<MenuTitleTextPlan> select_menu_title_text(
+    const MenuTitleTextInput& input) {
+    MenuTitleTextPlan plan;
+    if (input.selector < 2U) {
+        plan.source_alias = "menu.inventory.labels";
+        plan.record_index = 0U;
+        plan.used_inventory_fallback = true;
+    } else {
+        if (input.caller_table.alias.empty()) {
+            return std::nullopt;
+        }
+        plan.source_alias = input.caller_table.alias;
+        plan.record_index = static_cast<std::size_t>(input.selector - 2U);
+    }
+    plan.record_offset_bytes = plan.record_index * 0x12U;
+    return plan;
+}
+
+std::optional<MenuTitleTextPlan> select_command_overview_title_text(
+    const std::uint8_t selector) {
+    return select_menu_title_text(
+        MenuTitleTextInput{selector, MenuTextTableRef{"menu.command.labels"}});
+}
+
 std::uint16_t select_hud_glyph_attribute_flags(
     const HudGlyphAttributeInput& input) {
-    if (input.action_code == 0U) {
+    if (input.action_code == 0) {
         return 0x2000U;
     }
 
-    if (input.class_code < 2U && input.equipped_slot < 0) {
-        return input.action_code >= 6U ? 0x6000U : 0x2000U;
+    if (input.class_code < 2 && input.equipped_slot < 0) {
+        return input.action_code >= 6 ? 0x6000U : 0x2000U;
     }
-    return input.action_code < 0x0FU ? 0x6000U : 0x2000U;
+    return input.action_code < 0x0F ? 0x6000U : 0x2000U;
 }
 
 std::uint16_t render_menu_tile_rows(

@@ -10,8 +10,8 @@
 //   0x0000391A handle_mode_action_event
 //   0x0000C0C2 load_title_font
 //   0x00010F50 prepare_command_overview
-//   0x000110BC draw_menu_hud_panel_variant_a
-//   0x0001111A render_title_text_source_wrapper
+//   0x000110BC draw_command_overview_hud_panel
+//   0x0001111A render_active_runner_name_text
 //   0x000111D0 upload_menu_tile_block
 //   0x000111E8 render_equipment_details
 //   0x00011454 reset_menu_upload_cursor_and_upload
@@ -19,7 +19,7 @@
 //   0x00011506 advance_command_overview_secondary_page
 //   0x00011592 refresh_command_overview_action_details
 //   0x00011624 render_equipment_highlights
-//   0x0001170C render_title_text_source_leaf
+//   0x0001170C select_command_overview_title_text
 //   0x00011740 run_inventory_actions
 //   0x00011928 render_menu_row
 //   0x000530DE service_audio_if_enabled
@@ -54,8 +54,8 @@ code_r0x00010d30:
 LAB_00010d90:
   _DAT_00fff0d0 = uVar1;
   DAT_00fff0e0 = 0;
-  draw_menu_hud_panel_variant_a();
-  render_title_text_source_wrapper();
+  draw_command_overview_hud_panel();
+  render_active_runner_name_text();
   render_menu_row();
   render_equipment_highlights();
   upload_menu_tile_block();
@@ -64,7 +64,7 @@ LAB_00010d90:
 LAB_00010e2e:
   do {
     service_audio_if_enabled();
-    render_title_text_source_leaf();
+    select_command_overview_title_text();
     render_equipment_details();
     while( true ) {
       wait_for_vblank();
@@ -125,5 +125,4 @@ LAB_00010f22:
     advance_command_overview_primary_page();
   } while( true );
 }
-
 

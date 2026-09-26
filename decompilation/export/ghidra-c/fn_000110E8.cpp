@@ -1,16 +1,15 @@
 // Ghidra headless export
 // Entry: 0x000110E8
-// Name: draw_hud_panel_wrapper
+// Name: enter_active_runner_hud_panel
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void draw_hud_panel_wrapper(void)
+void enter_active_runner_hud_panel(void)
 
 {
   draw_hud_panel();
   return;
 }
-
 

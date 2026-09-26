@@ -834,8 +834,8 @@ caller	caller_name	instruction	text	target	callee	status
 00010D30	run_command_overview	00010D78	bsr.w 0x00010f50	00010F50	prepare_command_overview	resolved
 00010D30	run_command_overview	00010D7C	jsr 0x0005670e.l	0005670E	refresh_mode_palette_data	resolved
 00010D30	run_command_overview	00010D82	jsr 0x0000c0c2.l	0000C0C2	load_title_font	resolved
-00010D30	run_command_overview	00010D96	bsr.w 0x000110bc	000110BC	draw_menu_hud_panel_variant_a	resolved
-00010D30	run_command_overview	00010D9A	bsr.w 0x0001111a	0001111A	render_title_text_source_wrapper	resolved
+00010D30	run_command_overview	00010D96	bsr.w 0x000110bc	000110BC	draw_command_overview_hud_panel	resolved
+00010D30	run_command_overview	00010D9A	bsr.w 0x0001111a	0001111A	render_active_runner_name_text	resolved
 00010D30	run_command_overview	00010D9E	bsr.w 0x00011928	00011928	render_menu_row	resolved
 00010D30	run_command_overview	00010DA2	bsr.w 0x00011624	00011624	render_equipment_highlights	resolved
 00010D30	run_command_overview	00010DAC	bsr.w 0x000111d0	000111D0	upload_menu_tile_block	resolved
@@ -846,7 +846,7 @@ caller	caller_name	instruction	text	target	callee	status
 00010D30	run_command_overview	00010E0A	bsr.w 0x000114a0	000114A0	advance_command_overview_primary_page	resolved
 00010D30	run_command_overview	00010E20	bsr.w 0x00011506	00011506	advance_command_overview_secondary_page	resolved
 00010D30	run_command_overview	00010E32	jsr 0x000530de.l	000530DE	service_audio_if_enabled	resolved
-00010D30	run_command_overview	00010E38	bsr.w 0x0001170c	0001170C	render_title_text_source_leaf	resolved
+00010D30	run_command_overview	00010E38	bsr.w 0x0001170c	0001170C	select_command_overview_title_text	resolved
 00010D30	run_command_overview	00010E3C	bsr.w 0x000111e8	000111E8	render_equipment_details	resolved
 00010D30	run_command_overview	00010E52	jsr 0x000530de.l	000530DE	service_audio_if_enabled	resolved
 00010D30	run_command_overview	00010E5E	bsr.w 0x00011740	00011740	run_inventory_actions	resolved
@@ -870,9 +870,9 @@ caller	caller_name	instruction	text	target	callee	status
 00011048	upload_resource_then_write_two_blocks	00011076	jsr 0x00000f5c.l	00000F5C	write_vdp_word_block_with_source_wrap	resolved
 0001107E	upload_resource_stream	0001109A	jsr 0x00001530.l	00001530	decode_and_upload_source_stream	resolved
 0001107E	upload_resource_stream	000110B4	jsr 0x00001530.l	00001530	decode_and_upload_source_stream	resolved
-000110BC	draw_menu_hud_panel_variant_a	000110E0	jsr 0x00003648.l	00003648	draw_hud_panel	resolved
+000110BC	draw_command_overview_hud_panel	000110E0	jsr 0x00003648.l	00003648	draw_hud_panel	resolved
 000110EC	draw_active_runner_hud_panel	00011112	jsr 0x00003648.l	00003648	draw_hud_panel	resolved
-0001111A	render_title_text_source_wrapper	0001112E	jsr 0x0000c0da.l	0000C0DA	render_encoded_title_text	resolved
+0001111A	render_active_runner_name_text	0001112E	jsr 0x0000c0da.l	0000C0DA	render_encoded_title_text	resolved
 00011136	render_menu_tile_rows	00011166	jsr 0x00003602.l	00003602	select_hud_glyph_attribute_flags	resolved
 00011136	render_menu_tile_rows	0001116C	bsr.w 0x00011190	00011190	transfer_menu_glyph_triple	resolved
 00011190	transfer_menu_glyph_triple	000111AA	jsr 0x00000e9c.l	00000E9C	make_vdp_transfer_command	resolved
@@ -927,7 +927,7 @@ caller	caller_name	instruction	text	target	callee	status
 000116C4	write_menu_grid_quad	000116EA	jsr 0x00001232.l	00001232	write_vdp_grid	resolved
 000116C4	write_menu_grid_quad	000116F4	jsr 0x00001232.l	00001232	write_vdp_grid	resolved
 000116C4	write_menu_grid_quad	00011706	bsr.w 0x00012c5a	00012C5A	write_menu_repeated_grid_with_metadata	resolved
-00011712	render_title_text_source_variant	00011738	jsr 0x0000c0da.l	0000C0DA	render_encoded_title_text	resolved
+00011712	select_menu_title_text	00011738	jsr 0x0000c0da.l	0000C0DA	render_encoded_title_text	resolved
 00011740	run_inventory_actions	0000C2A6	bsr.w 0x00010a7e	00010A7E	transfer_menu_asset_batch_four_post_prepare	resolved
 00011740	run_inventory_actions	0000C2AA	bsr.w 0x0000c3e6	0000C3E6	write_menu_grid_with_metadata	resolved
 00011740	run_inventory_actions	0000C2BE	jsr 0x0000c0da.l	0000C0DA	render_encoded_title_text	resolved
@@ -942,7 +942,7 @@ caller	caller_name	instruction	text	target	callee	status
 00011740	run_inventory_actions	00011770	bsr.w 0x00012148	00012148	read_entity_action_code	resolved
 00011740	run_inventory_actions	000117A4	bsr.w 0x000111d0	000111D0	upload_menu_tile_block	resolved
 00011740	run_inventory_actions	000117B6	bsr.w 0x00011454	00011454	reset_menu_upload_cursor_and_upload	resolved
-00011740	run_inventory_actions	000117D0	bsr.w 0x00011712	00011712	render_title_text_source_variant	resolved
+00011740	run_inventory_actions	000117D0	bsr.w 0x00011712	00011712	select_menu_title_text	resolved
 00011740	run_inventory_actions	000117D4	jsr 0x00000bd2.l	00000BD2	wait_for_vblank	resolved
 00011740	run_inventory_actions	000117DA	jsr 0x00000bf2.l	00000BF2	latch_controller_events	resolved
 00011740	run_inventory_actions	000117E0	jsr 0x0000195c.l	0000195C	sample_controller_input	resolved
@@ -950,11 +950,11 @@ caller	caller_name	instruction	text	target	callee	status
 00011740	run_inventory_actions	0001180A	bsr.w 0x000111d0	000111D0	upload_menu_tile_block	resolved
 00011740	run_inventory_actions	0001180E	bsr.w 0x000118c6	000118C6	cycle_inventory_action_selector	resolved
 00011740	run_inventory_actions	00011820	bsr.w 0x00011454	00011454	reset_menu_upload_cursor_and_upload	resolved
-00011740	run_inventory_actions	0001183A	bsr.w 0x00011712	00011712	render_title_text_source_variant	resolved
+00011740	run_inventory_actions	0001183A	bsr.w 0x00011712	00011712	select_menu_title_text	resolved
 00011740	run_inventory_actions	00011862	jsr 0x000530de.l	000530DE	service_audio_if_enabled	resolved
 00011740	run_inventory_actions	00011884	jsr (A0)			indirect/unresolved
 00011740	run_inventory_actions	000118BC	bsr.w 0x000111d0	000111D0	upload_menu_tile_block	resolved
-00011740	run_inventory_actions	000118C0	bsr.w 0x0001170c	0001170C	render_title_text_source_leaf	resolved
+00011740	run_inventory_actions	000118C0	bsr.w 0x0001170c	0001170C	select_command_overview_title_text	resolved
 00011740	run_inventory_actions	00012168	bsr.b 0x00012148	00012148	read_entity_action_code	resolved
 00011740	run_inventory_actions	000121C0	bsr.w 0x00012c42	00012C42	prepare_menu_grid_variant_c	resolved
 00011740	run_inventory_actions	000121D4	jsr 0x0000c0da.l	0000C0DA	render_encoded_title_text	resolved
@@ -976,7 +976,7 @@ caller	caller_name	instruction	text	target	callee	status
 00011740	run_inventory_actions	00012392	jsr 0x000530de.l	000530DE	service_audio_if_enabled	resolved
 00011740	run_inventory_actions	000123B2	bsr.w 0x0000c376	0000C376	move_wrapped_menu_cursor	resolved
 00011740	run_inventory_actions	000123DC	jsr 0x000011c0.l	000011C0	write_repeated_vdp_grid	resolved
-00011740	run_inventory_actions	000123FA	bsr.w 0x000110e8	000110E8	draw_hud_panel_wrapper	resolved
+00011740	run_inventory_actions	000123FA	bsr.w 0x000110e8	000110E8	enter_active_runner_hud_panel	resolved
 00011740	run_inventory_actions	00012412	jsr 0x000530de.l	000530DE	service_audio_if_enabled	resolved
 00011740	run_inventory_actions	00012418	bsr.w 0x00012c1e	00012C1E	prepare_menu_grid_variant_a	resolved
 00011740	run_inventory_actions	0001243C	bsr.w 0x00012148	00012148	read_entity_action_code	resolved
@@ -1023,7 +1023,7 @@ caller	caller_name	instruction	text	target	callee	status
 00011740	run_inventory_actions	00012908	bsr.w 0x00012c42	00012C42	prepare_menu_grid_variant_c	resolved
 00011740	run_inventory_actions	0001291C	jsr 0x0000c0da.l	0000C0DA	render_encoded_title_text	resolved
 00011740	run_inventory_actions	00012930	jsr 0x0000c0da.l	0000C0DA	render_encoded_title_text	resolved
-00011740	run_inventory_actions	0001293E	bsr.w 0x000110e8	000110E8	draw_hud_panel_wrapper	resolved
+00011740	run_inventory_actions	0001293E	bsr.w 0x000110e8	000110E8	enter_active_runner_hud_panel	resolved
 00011740	run_inventory_actions	00012944	bsr.w 0x00012148	00012148	read_entity_action_code	resolved
 00011740	run_inventory_actions	00012960	jsr 0x0000c0da.l	0000C0DA	render_encoded_title_text	resolved
 00011740	run_inventory_actions	0001296A	jsr 0x00000bd2.l	00000BD2	wait_for_vblank	resolved
@@ -1066,7 +1066,7 @@ caller	caller_name	instruction	text	target	callee	status
 00011B58	caseD_2	00011B8C	jsr 0x0000c216.l	0000C216	build_grouped_decimal_glyphs	resolved
 00011B58	caseD_2	00011BA6	bsr.w 0x000111d0	000111D0	upload_menu_tile_block	resolved
 00011B58	caseD_2	00011BB8	bsr.w 0x00011454	00011454	reset_menu_upload_cursor_and_upload	resolved
-00011B58	caseD_2	00011BC2	bsr.w 0x00011712	00011712	render_title_text_source_variant	resolved
+00011B58	caseD_2	00011BC2	bsr.w 0x00011712	00011712	select_menu_title_text	resolved
 00011B58	caseD_2	00011BC6	jsr 0x00000bd2.l	00000BD2	wait_for_vblank	resolved
 00011B58	caseD_2	00011BCC	jsr 0x00000bf2.l	00000BF2	latch_controller_events	resolved
 00011B58	caseD_2	00011BD2	jsr 0x0000195c.l	0000195C	sample_controller_input	resolved
@@ -1074,7 +1074,7 @@ caller	caller_name	instruction	text	target	callee	status
 00011B58	caseD_2	00011BFA	bsr.w 0x000111d0	000111D0	upload_menu_tile_block	resolved
 00011B58	caseD_2	00011BFE	bsr.w 0x000118c6	000118C6	cycle_inventory_action_selector	resolved
 00011B58	caseD_2	00011C10	bsr.w 0x00011454	00011454	reset_menu_upload_cursor_and_upload	resolved
-00011B58	caseD_2	00011C1A	bsr.w 0x00011712	00011712	render_title_text_source_variant	resolved
+00011B58	caseD_2	00011C1A	bsr.w 0x00011712	00011712	select_menu_title_text	resolved
 00011B58	caseD_2	00011C40	jsr 0x000530de.l	000530DE	service_audio_if_enabled	resolved
 00011B58	caseD_2	00011C46	bsr.w 0x00012062	00012062	refresh_menu_text	resolved
 00011B58	caseD_2	00011C9C	bsr.w 0x00012c36	00012C36	prepare_menu_grid_variant_b	resolved
@@ -1103,7 +1103,7 @@ caller	caller_name	instruction	text	target	callee	status
 00011B58	caseD_2	00011E6C	bsr.w 0x0001209a	0001209A	advance_menu_text_cursor	resolved
 00011B58	caseD_2	00011E84	bsr.w 0x000111d0	000111D0	upload_menu_tile_block	resolved
 00011B58	caseD_2	00011E96	bsr.w 0x00011454	00011454	reset_menu_upload_cursor_and_upload	resolved
-00011B58	caseD_2	00011EA0	bsr.w 0x00011712	00011712	render_title_text_source_variant	resolved
+00011B58	caseD_2	00011EA0	bsr.w 0x00011712	00011712	select_menu_title_text	resolved
 00011B58	caseD_2	00011EA4	jsr 0x00000bd2.l	00000BD2	wait_for_vblank	resolved
 00011B58	caseD_2	00011EAA	jsr 0x00000bf2.l	00000BF2	latch_controller_events	resolved
 00011B58	caseD_2	00011EB0	jsr 0x0000195c.l	0000195C	sample_controller_input	resolved
@@ -1111,7 +1111,7 @@ caller	caller_name	instruction	text	target	callee	status
 00011B58	caseD_2	00011ED8	bsr.w 0x000111d0	000111D0	upload_menu_tile_block	resolved
 00011B58	caseD_2	00011EDC	bsr.w 0x000118c6	000118C6	cycle_inventory_action_selector	resolved
 00011B58	caseD_2	00011EEE	bsr.w 0x00011454	00011454	reset_menu_upload_cursor_and_upload	resolved
-00011B58	caseD_2	00011EF8	bsr.w 0x00011712	00011712	render_title_text_source_variant	resolved
+00011B58	caseD_2	00011EF8	bsr.w 0x00011712	00011712	select_menu_title_text	resolved
 00011B58	caseD_2	00011F1E	jsr 0x000530de.l	000530DE	service_audio_if_enabled	resolved
 00011B58	caseD_2	00011F34	bsr.w 0x000120e4	000120E4	render_menu_number	resolved
 00011B58	caseD_2	00011F46	bsr.w 0x000120e4	000120E4	render_menu_number	resolved
@@ -1125,7 +1125,7 @@ caller	caller_name	instruction	text	target	callee	status
 00012062	refresh_menu_text	00012082	jsr 0x0000c0da.l	0000C0DA	render_encoded_title_text	resolved
 00012062	refresh_menu_text	0001208E	jsr 0x0000c0da.l	0000C0DA	render_encoded_title_text	resolved
 0001209A	advance_menu_text_cursor	000120D2	jsr 0x0000c0da.l	0000C0DA	render_encoded_title_text	resolved
-0001209A	advance_menu_text_cursor	000120DE	bsr.w 0x000110e8	000110E8	draw_hud_panel_wrapper	resolved
+0001209A	advance_menu_text_cursor	000120DE	bsr.w 0x000110e8	000110E8	enter_active_runner_hud_panel	resolved
 000120E4	render_menu_number	00012100	jsr 0x00000e9c.l	00000E9C	make_vdp_transfer_command	resolved
 000120E4	render_menu_number	00012140	jsr 0x0000c216.l	0000C216	build_grouped_decimal_glyphs	resolved
 0001253E	reset_inventory_action_target_state	000125B2	jsr 0x00000dba.l	00000DBA	count_thresholded_random_rolls	resolved

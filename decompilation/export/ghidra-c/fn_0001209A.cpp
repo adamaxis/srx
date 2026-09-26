@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_encoded_title_text
-//   0x000110E8 draw_hud_panel_wrapper
+//   0x000110E8 enter_active_runner_hud_panel
 
 
 void advance_menu_text_cursor(void)
@@ -23,8 +23,7 @@ void advance_menu_text_cursor(void)
     }
   } while (*psVar1 < 0);
   render_encoded_title_text();
-  draw_hud_panel_wrapper();
+  enter_active_runner_hud_panel();
   return;
 }
-
 

@@ -780,8 +780,12 @@ its incoming value in D0 while selecting the current or adjacent record's
 the bounded host conversion now exposes both results.
 The adjacent `0x19C54` leaf is also no longer treated as two empty exported
 functions: it follows the selected slot through its loaded program code and
-reads that program's availability byte. `0x19C5C` is an interior instruction
-address in the same leaf, so the native conversion exposes one bounded lookup.
+reads that program's raw availability byte. That byte is deliberately kept as
+an integer because the callers at `0x55FD8` and `0x56506` compare, add, and
+scale it; reducing it to `bool` would change the action/HUD behavior whenever
+the source value is greater than one. `0x19C5C` is an interior instruction
+address in the same leaf, so the native conversion exposes one bounded lookup
+with the original byte value intact.
 The CyberInfo screen at `0x18AA6` is no longer a generic world routine:
 selection zero is Deck Stats and selection one is Run Info. The new native
 screen driver preserves the source setup, per-frame VBlank/latch/sample/history

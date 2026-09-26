@@ -65,7 +65,9 @@ int main() {
     entity.item_codes[2] = 0x1AU;
     entity.item_phases[2] = 9U;
     if (!expect(add_first_matching_item_phase(5U, entity, 0x1AU) == 9U &&
-                add_first_matching_item_phase(5U, entity, 0x1BU) == 5U)) {
+                add_first_matching_item_phase(5U, entity, 0x1BU) == 5U &&
+                add_first_matching_item_phase(0x1200U, entity, 0x1AU) ==
+                    0x1204U)) {
         return 4;
     }
 
@@ -78,6 +80,13 @@ int main() {
     if (!expect(extended_phase.value == 7U && extended_phase.phase_found &&
                 extended_phase.special_item_applied)) {
         return 5;
+    }
+    const auto extended_high_byte = apply_action_item_phase_modifiers(
+        0x1200U, entity, 0x1AU, 5U, &item_modifiers);
+    if (!expect(extended_high_byte.value == 0x1202U &&
+                extended_high_byte.phase_found &&
+                extended_high_byte.special_item_applied)) {
+        return 14;
     }
     item_modifiers.action_offsets[5] = -1;
     const auto skipped_special = apply_action_item_phase_modifiers(

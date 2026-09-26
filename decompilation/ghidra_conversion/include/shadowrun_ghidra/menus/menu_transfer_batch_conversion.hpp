@@ -23,8 +23,8 @@ struct MenuMetricLookupInput {
     // ROM FFF0D1 selects the six-entry action row; FFF0D0 selects its column.
     std::uint8_t menu_row = 0;
     std::uint8_t menu_column = 0;
-    // Host copy of the byte table reached through FFF10E. The source selects
-    // byte ((row * 6 + column) * 2) + 2.
+    // Host copy of the byte table reached through FFF10E. The source performs
+    // MULU.W row*6, ADD.B column, then LSL.W/ADDQ.W to select the byte.
     std::vector<std::uint8_t> source_action_indices;
     std::uint16_t value = 0;
     EntityActionRecord entity{};
@@ -48,10 +48,6 @@ void upload_resource_then_write_two_blocks(
     const std::function<void()>& upload_resource,
     const std::function<void()>& write_block);
 void upload_resource_stream(const std::function<void()>& upload_stream);
-void draw_hud_panel_wrapper(const std::function<void()>& draw_panel);
-void render_title_text_source_wrapper(const std::function<void()>& render_text);
-void render_title_text_source_leaf(const std::function<void()>& render_text);
-void render_title_text_source_variant(const std::function<void()>& render_text);
 
 struct EntityAuxiliaryState {
     std::uint8_t marker = 0;

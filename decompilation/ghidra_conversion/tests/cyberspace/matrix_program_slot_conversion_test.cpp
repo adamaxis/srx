@@ -13,7 +13,7 @@ int main() {
 
     const std::array<std::int8_t, 5> slots{2, -1, 7, -1, -1};
     const std::array<std::uint8_t, 12> availability{0, 0, 1, 0, 0, 0,
-                                                     0, 1, 0, 0, 0, 0};
+                                                     0, 0xA5, 0, 0, 0, 0};
     const auto slot_entry = read_matrix_program_availability_for_slot(
         2U, slots, availability);
     const auto selected = read_selected_matrix_program_availability(
@@ -23,10 +23,11 @@ int main() {
     const auto invalid = read_selected_matrix_program_availability(
         5U, slots, availability);
     if (!expect(slot_entry.slot_valid && slot_entry.program_index == 7 &&
-                slot_entry.available && selected.slot_valid &&
-                selected.program_index == 7 && selected.available &&
+                slot_entry.availability_byte == 0xA5U && selected.slot_valid &&
+                selected.program_index == 7 &&
+                selected.availability_byte == 0xA5U &&
                 empty.slot_valid &&
-                empty.program_index == -1 && !empty.available &&
+                empty.program_index == -1 && empty.availability_byte == 0U &&
                 !invalid.slot_valid)) {
         return 1;
     }

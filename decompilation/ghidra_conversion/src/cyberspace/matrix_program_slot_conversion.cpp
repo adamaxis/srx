@@ -15,10 +15,10 @@ SelectedMatrixProgramAvailability read_matrix_program_availability_for_slot(
     const auto program_index = slot_programs[selected_slot];
     if (program_index < 0 ||
         static_cast<std::size_t>(program_index) >= availability_flags.size()) {
-        return {true, program_index, false};
+        return {true, program_index, 0U};
     }
     return {true, program_index,
-            availability_flags[static_cast<std::size_t>(program_index)] != 0U};
+            availability_flags[static_cast<std::size_t>(program_index)]};
 }
 
 SelectedMatrixProgramAvailability read_selected_matrix_program_availability(

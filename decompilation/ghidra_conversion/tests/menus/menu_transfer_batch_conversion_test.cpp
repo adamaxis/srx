@@ -34,6 +34,20 @@ int main() {
         return 2;
     }
 
+    // Source 0x104C8 adds the column with ADD.B after MULU.W. For a wrapped
+    // low byte this differs from a host-wide row*6+column calculation.
+    MenuMetricLookupInput wrapped_metric{};
+    wrapped_metric.menu_row = 0xFFU;
+    wrapped_metric.menu_column = 0x0AU;
+    wrapped_metric.source_action_indices.resize(0xA0BU, 0U);
+    wrapped_metric.source_action_indices[0xA0AU] = 1U;
+    const auto wrapped = resolve_menu_metric_action(wrapped_metric);
+    if (!wrapped.has_value() || wrapped->source_table_offset != 0xA0AU ||
+        wrapped->action_index != 1U ||
+        wrapped->matching_item_code != 0x1AU) {
+        return 14;
+    }
+
     events.clear();
     upload_resource_then_write_two_blocks([&] { events.push_back(1); },
                                           [&] { events.push_back(2); });
@@ -41,11 +55,7 @@ int main() {
         return 3;
     }
     upload_resource_stream([&] { events.push_back(3); });
-    draw_hud_panel_wrapper([&] { events.push_back(4); });
-    render_title_text_source_wrapper([&] { events.push_back(5); });
-    render_title_text_source_leaf([&] { events.push_back(6); });
-    render_title_text_source_variant([&] { events.push_back(7); });
-    if (events != std::vector<int>{1, 2, 2, 3, 4, 5, 6, 7}) {
+    if (events != std::vector<int>{1, 2, 2, 3}) {
         return 4;
     }
 

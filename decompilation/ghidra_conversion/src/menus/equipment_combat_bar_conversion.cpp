@@ -52,12 +52,29 @@ std::uint16_t posture_value(const std::uint16_t base,
 
 } // namespace
 
-std::uint16_t merge_equipment_action_skill_value(
-    const std::uint16_t current,
-    const std::uint16_t skill) {
-    const auto lower = std::min(current, skill);
-    const auto result = static_cast<std::uint16_t>(lower + skill);
-    return result == 0U ? 1U : result;
+EquipmentActionSkillMergeResult merge_equipment_action_skill_value(
+    const EquipmentActionSkillMergeInput& input) {
+    // 0x12C74 uses signed BPL comparisons on the source bytes. The skill
+    // values in the runner records are normally nonnegative, but retaining
+    // the signed comparison preserves the ROM branch for every byte value.
+    const auto signed_skill = [](const std::uint8_t value) {
+        return static_cast<std::int8_t>(value);
+    };
+    auto selected_skill = input.skill_81;
+    const auto candidate = input.action_code < 0x08U
+                               ? input.skill_82
+                               : input.action_code < 0x0BU ? input.skill_83
+                                                           : input.skill_84;
+    if (signed_skill(candidate) > signed_skill(selected_skill)) {
+        selected_skill = candidate;
+    }
+
+    const auto lower = std::min(input.current_value,
+                                static_cast<std::uint16_t>(selected_skill));
+    const auto result = static_cast<std::uint16_t>(
+        lower + static_cast<std::uint16_t>(selected_skill));
+    return {static_cast<std::uint16_t>(result == 0U ? 1U : result),
+            selected_skill};
 }
 
 namespace {
@@ -65,29 +82,6 @@ namespace {
 std::uint8_t bar_index(const std::uint16_t value) {
     return static_cast<std::uint8_t>(
         std::min<unsigned>(22U, value == 0U ? 0U : value - 1U));
-}
-
-std::optional<std::uint16_t> selected_skill_for_action(
-    const EquipmentCombatInput& input,
-    const std::uint8_t action_code) {
-    if (action_code < 0x0DU) {
-        auto skill = static_cast<std::uint16_t>(input.skills[1]);
-        if (action_code < 0x08U) {
-            skill = std::max(skill, static_cast<std::uint16_t>(input.skills[2]));
-        } else if (action_code < 0x0BU) {
-            skill = std::max(skill, static_cast<std::uint16_t>(input.skills[3]));
-        } else {
-            skill = std::max(skill, static_cast<std::uint16_t>(input.skills[4]));
-        }
-        return skill;
-    }
-    if (action_code < 0x10U) {
-        return input.skills[6];
-    }
-    if (action_code == 0x17U) {
-        return input.skills[5];
-    }
-    return std::nullopt;
 }
 
 std::uint8_t selected_action_code(const EquipmentCombatInput& input) {
@@ -98,6 +92,14 @@ std::uint8_t selected_action_code(const EquipmentCombatInput& input) {
         return input.inventory_item_codes[input.selected_inventory_slot];
     }
     return input.active_item_code;
+}
+
+std::uint16_t merge_direct_equipment_skill(const std::uint16_t current,
+                                           const std::uint8_t skill) {
+    const auto lower = std::min(current, static_cast<std::uint16_t>(skill));
+    const auto result = static_cast<std::uint16_t>(
+        lower + static_cast<std::uint16_t>(skill));
+    return result == 0U ? 1U : result;
 }
 
 EntityActionRecord special_action_record(const EquipmentCombatInput& input) {
@@ -192,18 +194,38 @@ EquipmentCombatBarResult compute_equipment_combat_bars(
         const auto action_code = input.source_mode >= 2U
                                      ? input.active_item_code
                                      : selected_action_code(input);
-        std::optional<std::uint16_t> attack_skill;
         if (input.source_mode >= 2U && input.display_state == 0x7F) {
-            attack_skill = input.skills[5];
-        } else {
-            attack_skill = selected_skill_for_action(input, action_code);
-        }
-        if (!attack_skill.has_value()) {
-            result.attack_written = false;
-        } else {
-            result.attack_value = merge_equipment_action_skill_value(
-                attack_base, *attack_skill);
+            // 0x12DD2 reads record +0x85, which is skills[4], not the
+            // neighboring +0x86 byte.
+            result.attack_value = merge_direct_equipment_skill(
+                attack_base, input.skills[4]);
             result.attack_bar = bar_index(result.attack_value);
+        } else if (action_code < 0x0DU) {
+            const auto merged = merge_equipment_action_skill_value(
+                {attack_base, action_code, input.skills[0], input.skills[1],
+                 input.skills[2], input.skills[3]});
+            result.attack_value = merged.value;
+            result.attack_bar = bar_index(result.attack_value);
+        } else if (action_code < 0x10U) {
+            // 0x12D46 selects record +0x87 directly.
+            result.attack_value = merge_direct_equipment_skill(
+                attack_base, input.skills[6]);
+            result.attack_bar = bar_index(result.attack_value);
+        } else if (input.source_mode < 2U && action_code == 0x17U) {
+            // 0x12DD2 selects record +0x85 for the special action row.
+            result.attack_value = merge_direct_equipment_skill(
+                attack_base, input.skills[4]);
+            result.attack_bar = bar_index(result.attack_value);
+        } else if (input.source_mode >= 2U) {
+            // 0x12D46 is also the higher-mode fallback for an equipped
+            // action code at or above thirteen.
+            result.attack_value = merge_direct_equipment_skill(
+                attack_base, input.skills[6]);
+            result.attack_bar = bar_index(result.attack_value);
+        } else {
+            // The ROM exits the lower-mode attack path for 0x10..0x16 and
+            // does not publish an attack strip for those action codes.
+            result.attack_written = false;
         }
     }
 

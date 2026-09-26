@@ -296,10 +296,10 @@ entry	name	size	callingConvention	decompileStatus	file
 00010FF4	write_repeated_asset_batch	84	unknown	ok	ghidra-c/fn_00010FF4.cpp
 00011048	upload_resource_then_write_two_blocks	54	unknown	ok	ghidra-c/fn_00011048.cpp
 0001107E	upload_resource_stream	62	unknown	ok	ghidra-c/fn_0001107E.cpp
-000110BC	draw_menu_hud_panel_variant_a	44	unknown	ok	ghidra-c/fn_000110BC.cpp
-000110E8	draw_hud_panel_wrapper	4	unknown	ok	ghidra-c/fn_000110E8.cpp
+000110BC	draw_command_overview_hud_panel	44	unknown	ok	ghidra-c/fn_000110BC.cpp
+000110E8	enter_active_runner_hud_panel	4	unknown	ok	ghidra-c/fn_000110E8.cpp
 000110EC	draw_active_runner_hud_panel	46	unknown	ok	ghidra-c/fn_000110EC.cpp
-0001111A	render_title_text_source_wrapper	28	unknown	ok	ghidra-c/fn_0001111A.cpp
+0001111A	render_active_runner_name_text	28	unknown	ok	ghidra-c/fn_0001111A.cpp
 00011136	render_menu_tile_rows	90	unknown	ok	ghidra-c/fn_00011136.cpp
 00011190	transfer_menu_glyph_triple	64	unknown	ok	ghidra-c/fn_00011190.cpp
 000111D0	upload_menu_tile_block	24	unknown	ok	ghidra-c/fn_000111D0.cpp
@@ -313,8 +313,8 @@ entry	name	size	callingConvention	decompileStatus	file
 00011624	render_equipment_highlights	84	unknown	ok	ghidra-c/fn_00011624.cpp
 00011678	write_menu_grid	76	unknown	ok	ghidra-c/fn_00011678.cpp
 000116C4	write_menu_grid_quad	72	unknown	ok	ghidra-c/fn_000116C4.cpp
-0001170C	render_title_text_source_leaf	6	unknown	ok	ghidra-c/fn_0001170C.cpp
-00011712	render_title_text_source_variant	46	unknown	ok	ghidra-c/fn_00011712.cpp
+0001170C	select_command_overview_title_text	6	unknown	ok	ghidra-c/fn_0001170C.cpp
+00011712	select_menu_title_text	46	unknown	ok	ghidra-c/fn_00011712.cpp
 00011740	run_inventory_actions	2332	unknown	ok	ghidra-c/fn_00011740.cpp
 000118C6	cycle_inventory_action_selector	58	unknown	ok	ghidra-c/fn_000118C6.cpp
 00011900	prepare_menu_row_grid	40	unknown	ok	ghidra-c/fn_00011900.cpp

@@ -8515,8 +8515,8 @@
 00010D82: jsr 0x0000c0c2.l ; call 0000C0C2 load_title_font
 00010D88: move.w #-0x7e8c,(0x00c00004).l
 00010D90: clr.b (0x00fff0e0).l
-00010D96: bsr.w 0x000110bc ; call 000110BC draw_menu_hud_panel_variant_a
-00010D9A: bsr.w 0x0001111a ; call 0001111A render_title_text_source_wrapper
+00010D96: bsr.w 0x000110bc ; call 000110BC draw_command_overview_hud_panel
+00010D9A: bsr.w 0x0001111a ; call 0001111A render_active_runner_name_text
 00010D9E: bsr.w 0x00011928 ; call 00011928 render_menu_row
 00010DA2: bsr.w 0x00011624 ; call 00011624 render_equipment_highlights
 00010DA6: movea.l #0xcd2c6,A1
@@ -8549,7 +8549,7 @@
 00010E2A: bne.w 0x00010f22
 00010E2E: move.w #0x25,D0w
 00010E32: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
-00010E38: bsr.w 0x0001170c ; call 0001170C render_title_text_source_leaf
+00010E38: bsr.w 0x0001170c ; call 0001170C select_command_overview_title_text
 00010E3C: bsr.w 0x000111e8 ; call 000111E8 render_equipment_details
 00010E40: bra.b 0x00010dc6
 00010E42: btst.b #0xe,(0x00ffdd22).l
@@ -9096,7 +9096,7 @@
 000117C0: tst.b (0x00fff09f).l
 000117C6: beq.w 0x000117d0
 000117CA: lea (0xd1e6c).l,A1 ; data 000d1e6c
-000117D0: bsr.w 0x00011712 ; call 00011712 render_title_text_source_variant
+000117D0: bsr.w 0x00011712 ; call 00011712 select_menu_title_text
 000117D4: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 000117DA: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 000117E0: jsr 0x0000195c.l ; call 0000195C sample_controller_input
@@ -9117,7 +9117,7 @@
 0001182A: tst.b (0x00fff09f).l
 00011830: beq.w 0x0001183a
 00011834: lea (0xd1e6c).l,A1 ; data 000d1e6c
-0001183A: bsr.w 0x00011712 ; call 00011712 render_title_text_source_variant
+0001183A: bsr.w 0x00011712 ; call 00011712 select_menu_title_text
 0001183E: bra.b 0x000117d4
 00011840: btst.b #0xb,(0x00ffdd22).l
 00011848: beq.w 0x00011852
@@ -9147,7 +9147,7 @@
 000118B0: move.w (SP)+,(0x00fff0d0).l
 000118B6: movea.l #0xcd2c6,A1
 000118BC: bsr.w 0x000111d0 ; call 000111D0 upload_menu_tile_block
-000118C0: bsr.w 0x0001170c ; call 0001170C render_title_text_source_leaf
+000118C0: bsr.w 0x0001170c ; call 0001170C select_command_overview_title_text
 000118C4: rts
 000118C6: add.b D0b,(0x00fff0d0).l
 000118CC: cmpi.b #0x2,(0x00fff0d0).l
@@ -9317,7 +9317,7 @@
 00011BB0: move.w #-0x1,(0x00fff116).l
 00011BB8: bsr.w 0x00011454 ; call 00011454 reset_menu_upload_cursor_and_upload
 00011BBC: lea (0xd1ddc).l,A1 ; data 000d1ddc
-00011BC2: bsr.w 0x00011712 ; call 00011712 render_title_text_source_variant
+00011BC2: bsr.w 0x00011712 ; call 00011712 select_menu_title_text
 00011BC6: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 00011BCC: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 00011BD2: jsr 0x0000195c.l ; call 0000195C sample_controller_input
@@ -9335,7 +9335,7 @@
 00011C08: move.w #-0x1,(0x00fff116).l
 00011C10: bsr.w 0x00011454 ; call 00011454 reset_menu_upload_cursor_and_upload
 00011C14: lea (0xd1ddc).l,A1 ; data 000d1ddc
-00011C1A: bsr.w 0x00011712 ; call 00011712 render_title_text_source_variant
+00011C1A: bsr.w 0x00011712 ; call 00011712 select_menu_title_text
 00011C1E: bra.b 0x00011bc6
 00011C20: btst.b #0xb,(0x00ffdd22).l
 00011C28: beq.w 0x00011c30
@@ -9469,7 +9469,7 @@
 00011E8E: move.w #-0x1,(0x00fff116).l
 00011E96: bsr.w 0x00011454 ; call 00011454 reset_menu_upload_cursor_and_upload
 00011E9A: lea (0xd1e24).l,A1 ; data 000d1e24
-00011EA0: bsr.w 0x00011712 ; call 00011712 render_title_text_source_variant
+00011EA0: bsr.w 0x00011712 ; call 00011712 select_menu_title_text
 00011EA4: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 00011EAA: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
 00011EB0: jsr 0x0000195c.l ; call 0000195C sample_controller_input
@@ -9487,7 +9487,7 @@
 00011EE6: move.w #-0x1,(0x00fff116).l
 00011EEE: bsr.w 0x00011454 ; call 00011454 reset_menu_upload_cursor_and_upload
 00011EF2: lea (0xd1e24).l,A1 ; data 000d1e24
-00011EF8: bsr.w 0x00011712 ; call 00011712 render_title_text_source_variant
+00011EF8: bsr.w 0x00011712 ; call 00011712 select_menu_title_text
 00011EFC: bra.b 0x00011ea4
 00011EFE: btst.b #0xb,(0x00ffdd22).l
 00011F06: beq.w 0x00011f0e
@@ -9598,7 +9598,7 @@
 000120CE: move.w #0x6000,D1w
 000120D2: jsr 0x0000c0da.l ; call 0000C0DA render_encoded_title_text
 000120D8: move.l #0xc928,D4
-000120DE: bsr.w 0x000110e8 ; call 000110E8 draw_hud_panel_wrapper
+000120DE: bsr.w 0x000110e8 ; call 000110E8 enter_active_runner_hud_panel
 000120E2: rts
 000120E4: move.w #-0x3b50,D4w
 000120E8: clr.w D1w
@@ -9785,7 +9785,7 @@
 000123F0: adda.l D0,A0
 000123F2: movea.l (A0),A0
 000123F4: move.l #0xc928,D4
-000123FA: bsr.w 0x000110e8 ; call 000110E8 draw_hud_panel_wrapper
+000123FA: bsr.w 0x000110e8 ; call 000110E8 enter_active_runner_hud_panel
 000123FE: bra.w 0x0001235c
 00012402: btst.b #0xe,(0x00ffdd22).l
 0001240A: beq.w 0x0001250c
@@ -10089,7 +10089,7 @@
 00012930: jsr 0x0000c0da.l ; call 0000C0DA render_encoded_title_text
 00012936: exg A0,A6
 00012938: move.l #0xc928,D4
-0001293E: bsr.w 0x000110e8 ; call 000110E8 draw_hud_panel_wrapper
+0001293E: bsr.w 0x000110e8 ; call 000110E8 enter_active_runner_hud_panel
 00012942: exg A0,A6
 00012944: bsr.w 0x00012148 ; call 00012148 read_entity_action_code
 00012948: cmp.b (0x56,A0),D7b

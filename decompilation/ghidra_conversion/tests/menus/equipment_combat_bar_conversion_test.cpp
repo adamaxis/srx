@@ -5,6 +5,22 @@
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
+    const auto action_skill = merge_equipment_action_skill_value(
+        EquipmentActionSkillMergeInput{4U, 7U, 1U, 3U, 8U, 2U});
+    const auto action_skill_next_band = merge_equipment_action_skill_value(
+        EquipmentActionSkillMergeInput{4U, 8U, 1U, 3U, 8U, 2U});
+    const auto action_skill_final_band = merge_equipment_action_skill_value(
+        EquipmentActionSkillMergeInput{4U, 11U, 1U, 3U, 8U, 2U});
+    const auto action_skill_zero = merge_equipment_action_skill_value(
+        EquipmentActionSkillMergeInput{0U, 0U, 0U, 0U, 0U, 0U});
+    if (action_skill.selected_skill != 3U || action_skill.value != 6U ||
+        action_skill_next_band.selected_skill != 8U ||
+        action_skill_next_band.value != 12U ||
+        action_skill_final_band.selected_skill != 2U ||
+        action_skill_final_band.value != 4U || action_skill_zero.value != 1U) {
+        return 100;
+    }
+
     EquipmentCombatInput input{};
     input.attributes = {2U, 4U, 0U, 0U, 4U, 4U, 0U, 0U};
     input.skills[1] = 2U;
@@ -18,8 +34,8 @@ int main() {
     input.selected_inventory_slot = 6U;
 
     const auto result = compute_equipment_combat_bars(input);
-    if (result.command_average != 8U || result.attack_value != 6U ||
-        result.attack_bar != 5U || result.defense_value != 18U ||
+    if (result.command_average != 8U || result.attack_value != 4U ||
+        result.attack_bar != 3U || result.defense_value != 18U ||
         result.defense_bar != 17U || !result.attack_written ||
         !result.defense_written) {
         return 1;
@@ -27,7 +43,7 @@ int main() {
 
     input.source_mode = 2U;
     input.display_state = 0x7F;
-    input.skills[5] = 4U;
+    input.skills[4] = 4U;
     const auto unarmed = compute_equipment_combat_bars(input);
     if (unarmed.attack_value != 8U || unarmed.attack_bar != 7U) {
         return 2;
@@ -79,7 +95,9 @@ int main() {
     input.display_state = 0;
     input.active_item_code = 0x10U;
     const auto unsupported_action = compute_equipment_combat_bars(input);
-    if (unsupported_action.attack_written ||
+    if (!unsupported_action.attack_written ||
+        unsupported_action.attack_value != 1U ||
+        unsupported_action.attack_bar != 0U ||
         !unsupported_action.defense_written) {
         return 6;
     }
