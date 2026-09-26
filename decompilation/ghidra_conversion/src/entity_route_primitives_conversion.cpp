@@ -20,16 +20,17 @@ std::optional<ObstructionSearchResult> find_first_occupied_obstruction_tile(
     }
 
     const auto step = kDirectionSteps[direction_slot];
-    auto tile = starting_tile;
+    auto last_open_tile = starting_tile;
     while (true) {
-        tile += step;
-        if (tile < 0 ||
-            tile >= static_cast<std::int32_t>(obstruction_map.size())) {
+        const auto candidate = last_open_tile + step;
+        if (candidate < 0 ||
+            candidate >= static_cast<std::int32_t>(obstruction_map.size())) {
             return std::nullopt;
         }
-        if (obstruction_map[static_cast<std::size_t>(tile)] != 0U) {
-            return ObstructionSearchResult{tile, step};
+        if (obstruction_map[static_cast<std::size_t>(candidate)] != 0U) {
+            return ObstructionSearchResult{last_open_tile, step};
         }
+        last_open_tile = candidate;
     }
 }
 
@@ -50,27 +51,32 @@ ObstructionStripProbe probe_obstruction_strip(
 
     const auto primary_step = kDirectionSteps[primary_direction_slot];
     const auto secondary_step = kDirectionSteps[secondary_direction_slot];
-    auto tile = starting_tile;
+    auto last_open_tile = starting_tile;
     while (true) {
-        tile += primary_step;
-        if (tile < 0 ||
-            tile >= static_cast<std::int32_t>(obstruction_map.size())) {
-            return ObstructionStripProbe{starting_tile, tile, true};
+        const auto candidate = last_open_tile + primary_step;
+        if (candidate < 0 ||
+            candidate >= static_cast<std::int32_t>(obstruction_map.size())) {
+            return ObstructionStripProbe{starting_tile, last_open_tile, true};
         }
-        if (obstruction_map[static_cast<std::size_t>(tile)] != 0U) {
-            return ObstructionStripProbe{starting_tile, tile, false};
+        if (obstruction_map[static_cast<std::size_t>(candidate)] != 0U) {
+            return ObstructionStripProbe{starting_tile, last_open_tile, false};
         }
+        last_open_tile = candidate;
 
-        const auto side_tile = tile + secondary_step;
+        const auto side_tile = last_open_tile + secondary_step;
         if (side_tile < 0 ||
             side_tile >= static_cast<std::int32_t>(obstruction_map.size()) ||
             obstruction_map[static_cast<std::size_t>(side_tile)] == 0U) {
-            return ObstructionStripProbe{starting_tile, tile, false};
+            return ObstructionStripProbe{starting_tile, last_open_tile,
+                                         side_tile < 0 ||
+                                             side_tile >= static_cast<
+                                                 std::int32_t>(
+                                                 obstruction_map.size())};
         }
     }
 }
 
-bool can_bypass_obstruction(
+std::optional<ObstructionBypassRoute> find_bypass_route(
     const std::int32_t starting_tile,
     const std::uint8_t primary_direction_slot,
     const std::uint8_t secondary_direction_slot,
@@ -82,7 +88,7 @@ bool can_bypass_obstruction(
     };
     if (!valid_direction(primary_direction_slot) ||
         !valid_direction(secondary_direction_slot)) {
-        return true;
+        return std::nullopt;
     }
 
     const auto primary_step = kDirectionSteps[primary_direction_slot];
@@ -95,23 +101,36 @@ bool can_bypass_obstruction(
     };
 
     auto candidate = starting_tile + primary_step;
-    if (!occupied(candidate)) {
+    while (!occupied(candidate)) {
         const auto side = candidate + secondary_step;
         if (!occupied(side)) {
-            return false;
+            return ObstructionBypassRoute{candidate, side};
         }
+        candidate += primary_step;
     }
 
-    candidate = starting_tile;
-    while (true) {
+    candidate = starting_tile + opposite_step;
+    while (!occupied(candidate)) {
+        const auto side = candidate + secondary_step;
+        if (!occupied(side)) {
+            return ObstructionBypassRoute{candidate, side};
+        }
         candidate += opposite_step;
-        if (occupied(candidate)) {
-            return true;
-        }
-        if (!occupied(candidate + secondary_step)) {
-            return false;
-        }
     }
+    return std::nullopt;
+}
+
+bool can_bypass_obstruction(
+    const std::int32_t starting_tile,
+    const std::uint8_t primary_direction_slot,
+    const std::uint8_t secondary_direction_slot,
+    const std::vector<std::uint8_t>& obstruction_map) {
+    return !find_bypass_route(
+                starting_tile,
+                primary_direction_slot,
+                secondary_direction_slot,
+                obstruction_map)
+                .has_value();
 }
 
 std::int32_t find_alternate_route_tile(
@@ -172,8 +191,6 @@ std::optional<std::int32_t> find_rotating_route_strip_target(
     const std::uint16_t world_y,
     const std::uint16_t heading,
     const std::vector<std::uint8_t>& obstruction_map) {
-    static constexpr std::array<std::int16_t, 8> kDirectionSteps{
-        -64, 0, 1, 0, 64, 0, -1, 0};
     const auto starting_tile = static_cast<std::int32_t>(
         compute_obstruction_grid_index(world_x, world_y));
     auto primary_direction = static_cast<std::uint8_t>(
@@ -183,31 +200,14 @@ std::optional<std::int32_t> find_rotating_route_strip_target(
     auto secondary_direction = static_cast<std::uint8_t>(
         (primary_direction + 2U) & 0x06U);
 
-    const auto open = [&obstruction_map](const std::int32_t tile) {
-        return tile >= 0 &&
-            tile < static_cast<std::int32_t>(obstruction_map.size()) &&
-            obstruction_map[static_cast<std::size_t>(tile)] == 0U;
-    };
-    const auto probe = [&](const std::uint8_t primary,
-                           const std::uint8_t secondary) {
-        const auto primary_step = static_cast<std::int32_t>(
-            kDirectionSteps[primary]);
-        const auto secondary_step = static_cast<std::int32_t>(
-            kDirectionSteps[secondary]);
-        auto candidate = starting_tile + primary_step;
-        while (open(candidate)) {
-            if (open(candidate + secondary_step)) {
-                return candidate;
-            }
-            candidate += primary_step;
-        }
-        return candidate - primary_step;
-    };
-
     for (int attempt = 0; attempt < 5; ++attempt) {
-        const auto candidate = probe(primary_direction, secondary_direction);
-        if (candidate != starting_tile) {
-            return candidate;
+        const auto probe = probe_obstruction_strip(
+            starting_tile,
+            primary_direction,
+            secondary_direction,
+            obstruction_map);
+        if (probe.last_open_tile != starting_tile) {
+            return probe.last_open_tile;
         }
         primary_direction = static_cast<std::uint8_t>(
             (primary_direction + 6U) & 0x06U);
@@ -223,16 +223,16 @@ ObstructionRouteSelection select_obstruction_route(
     const std::uint16_t target_x,
     const std::uint16_t target_y,
     const std::uint8_t movement_flags,
-    const std::vector<std::uint8_t>& obstruction_map) {
+    const std::vector<std::uint8_t>& obstruction_map,
+    const std::uint16_t heading) {
     const auto pending_flags = static_cast<std::uint8_t>(
         movement_flags | 0x02U);
     if ((movement_flags & 0x08U) != 0U) {
-        return ObstructionRouteSelection{
-            pending_flags,
-            ObstructionRouteAction::already_retrying,
-            0,
-            0,
-            false};
+        ObstructionRouteSelection result{};
+        result.movement_flags = pending_flags;
+        result.action = ObstructionRouteAction::already_retrying;
+        result.route_queue_requested = true;
+        return result;
     }
 
     const auto directions = choose_dominant_axis_directions(
@@ -245,55 +245,71 @@ ObstructionRouteSelection select_obstruction_route(
             obstruction_map[static_cast<std::size_t>(tile)] == 0U;
     };
     if (!open(target_tile)) {
-        return ObstructionRouteSelection{
-            clear_entity_route_flags(pending_flags),
-            ObstructionRouteAction::target_blocked,
-            0,
-            0,
-            false};
+        ObstructionRouteSelection result{};
+        result.movement_flags = clear_entity_route_flags(pending_flags);
+        result.action = ObstructionRouteAction::target_blocked;
+        return result;
     }
 
-    const auto secondary_step = static_cast<std::int16_t>(
-        std::array<std::int16_t, 8>{-64, 0, 1, 0, 64, 0, -1, 0}[
-            static_cast<std::uint8_t>(directions.secondary)]);
-    auto obstruction_tile = target_tile + secondary_step;
-    if (!open(obstruction_tile)) {
-        obstruction_tile = target_tile;
+    static constexpr std::array<std::int16_t, 8> kDirectionSteps{
+        -64, 0, 1, 0, 64, 0, -1, 0};
+    const auto primary_slot = static_cast<std::uint8_t>(directions.primary);
+    const auto secondary_slot =
+        static_cast<std::uint8_t>(directions.secondary);
+    const auto first_open = find_first_occupied_obstruction_tile(
+        target_tile, secondary_slot, obstruction_map);
+    if (!first_open.has_value()) {
+        ObstructionRouteSelection result{};
+        result.movement_flags = clear_entity_route_flags(pending_flags);
+        result.action = ObstructionRouteAction::no_obstruction_found;
+        return result;
+    }
+
+    if (first_open->last_open_tile != target_tile) {
+        ObstructionRouteSelection result{};
+        result.movement_flags = pending_flags;
+        result.action = ObstructionRouteAction::direct_step;
+        result.route_tile = target_tile + first_open->step;
+        result.route_step = first_open->step;
+        result.has_route_tile = true;
+        result.route_cursor_reset = true;
+        return result;
+    }
+
+    const auto bypass = find_bypass_route(
+        target_tile, primary_slot, secondary_slot, obstruction_map);
+    if (bypass.has_value()) {
+        ObstructionRouteSelection result{};
+        result.movement_flags = pending_flags;
+        result.action = ObstructionRouteAction::bypass_available;
+        result.route_tile = bypass->primary_tile;
+        result.route_step = kDirectionSteps[primary_slot];
+        result.secondary_route_tile = bypass->secondary_tile;
+        result.secondary_route_step = kDirectionSteps[secondary_slot];
+        result.has_route_tile = true;
+        result.has_secondary_route_tile = true;
+        result.route_cursor_reset = true;
+        return result;
+    }
+
+    ObstructionRouteSelection result{};
+    result.action = ObstructionRouteAction::retry_around_obstruction;
+    result.route_queue_requested = true;
+    const auto rotating_target = find_rotating_route_strip_target(
+        entity_x, entity_y, heading, obstruction_map);
+    if (rotating_target.has_value()) {
+        result.movement_flags = static_cast<std::uint8_t>(
+            pending_flags | 0x08U);
+        result.route_tile = *rotating_target;
+        result.has_route_tile = true;
+        result.route_cursor_reset = true;
     } else {
-        while (open(obstruction_tile)) {
-            obstruction_tile += secondary_step;
-        }
+        // 0x14AF4 calls 0x14756 when all five strip probes return the
+        // starting tile.  0x149C0 is still reached by the source, but the
+        // pending/retry bits have already been cleared.
+        result.movement_flags = clear_entity_route_flags(pending_flags);
     }
-
-    if (obstruction_tile != target_tile) {
-        return ObstructionRouteSelection{
-            pending_flags,
-            ObstructionRouteAction::direct_step,
-            target_tile + secondary_step,
-            secondary_step,
-            true};
-    }
-
-    const auto primary_slot = static_cast<std::uint8_t>(
-        directions.primary);
-    const auto secondary_slot = static_cast<std::uint8_t>(
-        directions.secondary);
-    if (!can_bypass_obstruction(
-            target_tile, primary_slot, secondary_slot, obstruction_map)) {
-        return ObstructionRouteSelection{
-            pending_flags,
-            ObstructionRouteAction::bypass_available,
-            0,
-            0,
-            false};
-    }
-
-    return ObstructionRouteSelection{
-        static_cast<std::uint8_t>(pending_flags | 0x08U),
-        ObstructionRouteAction::retry_around_obstruction,
-        0,
-        0,
-        false};
+    return result;
 }
 
 RouteQueueAdvance advance_obstruction_route_queue(

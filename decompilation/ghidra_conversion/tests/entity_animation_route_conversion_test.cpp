@@ -71,7 +71,7 @@ int main() {
     queued.current_y = 0U;
     queued.target_x = 0x0400U;
     queued.target_y = 0U;
-    queued.movement_flags = 0U;
+    queued.movement_flags = 0x02U;
     queued.movement_mode = 0;
     queued.route.tiles = {0U, 1U, 0xFFFFU};
     queued.obstruction_map.assign(128U, 0U);
@@ -85,6 +85,44 @@ int main() {
                 queued.heading_metric == 0x4000U &&
                 queued.continuation == 0xB574U)) {
         return 4;
+    }
+
+    EntityAnimationRouteState selected{};
+    selected.current_x = 0x0200U;
+    selected.current_y = 0U;
+    selected.target_x = 0x0400U;
+    selected.target_y = 0x0100U;
+    selected.movement_mode = 0;
+    selected.obstruction_map.assign(256U, 0U);
+    selected.obstruction_map[130U] = 1U;
+    const auto selected_result =
+        advance_entity_animation_target_route(selected);
+    if (!expect(selected_result.route_selection_called &&
+                selected_result.route_selection_action ==
+                    ObstructionRouteAction::direct_step &&
+                selected.route.tiles[0] == 66U &&
+                selected.route.tiles[1] == 0xFFFFU &&
+                selected_result.route_queue_entered &&
+                selected_result.continuation_installed)) {
+        return 5;
+    }
+
+    EntityAnimationRouteState blocked_target{};
+    blocked_target.current_x = 0x0200U;
+    blocked_target.current_y = 0U;
+    blocked_target.target_x = 0x0400U;
+    blocked_target.target_y = 0x0100U;
+    blocked_target.movement_mode = 0;
+    blocked_target.obstruction_map.assign(128U, 0U);
+    blocked_target.obstruction_map[2U] = 1U;
+    const auto blocked_target_result =
+        advance_entity_animation_target_route(blocked_target);
+    if (!expect(blocked_target_result.route_selection_called &&
+                blocked_target_result.route_selection_action ==
+                    ObstructionRouteAction::target_blocked &&
+                blocked_target.movement_flags == 0U &&
+                blocked_target_result.continuation_installed)) {
+        return 6;
     }
 
     EntityAnimationRouteState blocked{};
@@ -103,7 +141,7 @@ int main() {
                     EntityAnimationRouteAction::route_path_cleared &&
                 blocked.movement_flags == 0U &&
                 blocked.continuation == 0U)) {
-        return 5;
+        return 7;
     }
 
     EntityAnimationRouteState completed{};
@@ -121,7 +159,7 @@ int main() {
                 completed.movement_flags == 0U &&
                 completed.axis_flags == 0x03U &&
                 completed_result.continuation_installed)) {
-        return 6;
+        return 8;
     }
 
     EntityAnimationRouteState replanned{};
@@ -143,7 +181,7 @@ int main() {
                 replanned.route_cursor_bytes == 0U &&
                 replanned.route.tiles[0] == 74U &&
                 replanned.route.tiles[1] == 0xFFFFU)) {
-        return 7;
+        return 9;
     }
 
     EntityAnimationRouteState exhausted{};
@@ -162,7 +200,7 @@ int main() {
     if (!expect(exhausted_result.action ==
                     EntityAnimationRouteAction::route_replan_exhausted &&
                 exhausted.movement_flags == 0U)) {
-        return 8;
+        return 10;
     }
 
     return 0;

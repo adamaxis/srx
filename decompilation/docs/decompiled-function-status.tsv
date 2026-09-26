@@ -146,12 +146,12 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0xAE5E	entity collision recheck scheduling	ghidra_conversion::schedule_entity_collision_recheck	shadowrun_native_port	partial		Typed pending-reaction bit and collision-recheck continuation
 0x1A2CC	first free effect slot	ghidra_conversion::allocate_first_free_effect_slot	shadowrun_native_port	partial		Typed eighteen-slot allocation with full-table sentinel
 0x14756	entity route flag cleanup	ghidra_conversion::clear_entity_route_flags	shadowrun_native_port	partial		Typed movement flag cleanup for completed or failed route selection
-0x14682	obstruction route selection	ghidra_conversion::select_obstruction_route	shadowrun_native_port	partial		Typed route branch policy with explicit bypass and replan boundaries
+0x14682	obstruction route selection	ghidra_conversion::select_obstruction_route	shadowrun_ghidra_entity_animation_route	partial		Sets +0xB0 bit 1, rejects occupied targets, writes direct or two-tile bypass routes, and carries the heading-driven 0x14AF4 retry into the typed 0x149C0 queue
 0x14764	alternate route tile	ghidra_conversion::find_alternate_route_tile	shadowrun_native_port	partial		Bounded primary accumulation with source side-open stop behavior
 0x14AF4	rotating strip route target	ghidra_conversion::find_rotating_route_strip_target	shadowrun_native_port	partial		Typed five-direction strip retry
-0x148AA	first occupied obstruction tile	ghidra_conversion::find_first_occupied_obstruction_tile	shadowrun_native_port	partial		Bounded typed cardinal scan replacing source obstruction-map pointer walking
-0x14800	obstruction strip probe	ghidra_conversion::probe_obstruction_strip	shadowrun_native_port	partial		Typed primary/secondary obstruction scan with explicit map-edge result
-0x14854	obstruction bypass test	ghidra_conversion::can_bypass_obstruction	shadowrun_native_port	partial		Typed primary/opposite-primary obstruction route test
+0x148AA	last open obstruction tile	ghidra_conversion::find_first_occupied_obstruction_tile	shadowrun_ghidra_entity_animation_route	partial		Disassembly-backed cardinal scan returning the last open tile and source step before the first occupied tile
+0x14800	obstruction strip probe	ghidra_conversion::probe_obstruction_strip	shadowrun_ghidra_entity_animation_route	partial		Disassembly-backed primary/secondary scan returning the last open candidate and explicit map-edge result
+0x14854	obstruction bypass route	ghidra_conversion::find_bypass_route	shadowrun_ghidra_entity_animation_route	partial		Typed primary/opposite-primary search producing the two route tiles written by the source
 0x1494C	obstruction path test	ghidra_conversion::is_obstruction_path_blocked	shadowrun_native_port	partial		Typed packed-grid line walk with source traversal behavior
 0x14914	entity obstruction path test	ghidra_conversion::is_entity_path_blocked	shadowrun_native_port	partial		Bidirectional packed-grid path check
 0x149C0	obstruction route queue	ghidra_conversion::advance_obstruction_route_queue	shadowrun_native_port	partial		Typed queue cursor, target projection, movement cost, and explicit replan exits

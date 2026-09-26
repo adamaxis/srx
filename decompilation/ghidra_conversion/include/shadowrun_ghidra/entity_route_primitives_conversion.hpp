@@ -13,13 +13,13 @@ struct HeadingProjection {
 };
 
 struct ObstructionSearchResult {
-    std::int32_t tile_index = 0;
+    std::int32_t last_open_tile = 0;
     std::int16_t step = 0;
 };
 
 struct ObstructionStripProbe {
     std::int32_t starting_tile = 0;
-    std::int32_t final_tile = 0;
+    std::int32_t last_open_tile = 0;
     bool left_map = false;
 };
 
@@ -50,7 +50,17 @@ struct ObstructionRouteSelection {
         ObstructionRouteAction::no_obstruction_found;
     std::int32_t route_tile = 0;
     std::int16_t route_step = 0;
+    std::int32_t secondary_route_tile = 0;
+    std::int16_t secondary_route_step = 0;
     bool has_route_tile = false;
+    bool has_secondary_route_tile = false;
+    bool route_cursor_reset = false;
+    bool route_queue_requested = false;
+};
+
+struct ObstructionBypassRoute {
+    std::int32_t primary_tile = 0;
+    std::int32_t secondary_tile = 0;
 };
 
 struct RouteQueueState {
@@ -81,17 +91,29 @@ struct RouteQueueAdvance {
 std::uint8_t clear_entity_route_flags(std::uint8_t movement_flags);
 
 // ROM 0x148AA: walk in one of the four cardinal obstruction-map directions
-// until a nonzero tile is found. The bounded host form returns no result at a
-// map edge instead of allowing the source pointer walk to escape its table.
+// until a nonzero tile is found. The source returns the last open tile in D1
+// and the step in D0; it does not return the occupied tile. The bounded host
+// form returns no result at a map edge instead of allowing the source pointer
+// walk to escape its table.
 std::optional<ObstructionSearchResult> find_first_occupied_obstruction_tile(
     std::int32_t starting_tile,
     std::uint8_t direction_slot,
     const std::vector<std::uint8_t>& obstruction_map);
 
 // ROM 0x14800: advance through open tiles along a primary direction while
-// the adjacent secondary tile remains occupied. The host reports the source
-// starting/final pair and makes a map-edge exit explicit.
+// the adjacent secondary tile remains occupied. The source returns the last
+// open candidate in D1, including the starting tile when the first step is
+// blocked; the host reports that candidate and makes a map-edge exit explicit.
 ObstructionStripProbe probe_obstruction_strip(
+    std::int32_t starting_tile,
+    std::uint8_t primary_direction_slot,
+    std::uint8_t secondary_direction_slot,
+    const std::vector<std::uint8_t>& obstruction_map);
+
+// ROM 0x14854: return the two open route tiles used by the source's
+// alternate-side obstruction path. The first tile is on the primary side and
+// the second is its open secondary-side companion.
+std::optional<ObstructionBypassRoute> find_bypass_route(
     std::int32_t starting_tile,
     std::uint8_t primary_direction_slot,
     std::uint8_t secondary_direction_slot,
@@ -125,16 +147,18 @@ std::optional<std::int32_t> find_rotating_route_strip_target(
     std::uint16_t heading,
     const std::vector<std::uint8_t>& obstruction_map);
 
-// ROM 0x14682: select the understood obstruction-route branch while leaving
-// the source's register-only bypass payload and 0x149C0 replan handoff as
-// explicit action values.
+// ROM 0x14682: set the pending-route bit, reject an occupied target, write a
+// one- or two-tile route for a clear/bypass path, or request the five-way
+// 0x14AF4 retry followed by 0x149C0. The heading is the record +0x34 metric
+// used by that retry branch.
 ObstructionRouteSelection select_obstruction_route(
     std::uint16_t entity_x,
     std::uint16_t entity_y,
     std::uint16_t target_x,
     std::uint16_t target_y,
     std::uint8_t movement_flags,
-    const std::vector<std::uint8_t>& obstruction_map);
+    const std::vector<std::uint8_t>& obstruction_map,
+    std::uint16_t heading = 0U);
 
 // ROM 0x149C0: consume a packed route queue entry, decode its next target,
 // and expose the source's path-blocked/replan exits as typed actions. The

@@ -25,7 +25,7 @@ int main() {
     const auto horizontal_obstruction =
         find_first_occupied_obstruction_tile(10, 2, obstruction_map);
     if (!expect(horizontal_obstruction.has_value() &&
-                horizontal_obstruction->tile_index == 12 &&
+                horizontal_obstruction->last_open_tile == 11 &&
                 horizontal_obstruction->step == 1)) {
         return 3;
     }
@@ -34,7 +34,7 @@ int main() {
     const auto vertical_obstruction =
         find_first_occupied_obstruction_tile(70, 0, vertical_map);
     if (!expect(vertical_obstruction.has_value() &&
-                vertical_obstruction->tile_index == 6 &&
+                vertical_obstruction->last_open_tile == 70 &&
                 vertical_obstruction->step == -64)) {
         return 4;
     }
@@ -47,13 +47,13 @@ int main() {
     std::vector<std::uint8_t> strip_map(128, 0U);
     strip_map[75] = 1U;
     const auto strip = probe_obstruction_strip(10, 2, 4, strip_map);
-    if (!expect(strip.starting_tile == 10 && strip.final_tile == 12 &&
+    if (!expect(strip.starting_tile == 10 && strip.last_open_tile == 12 &&
                 !strip.left_map)) {
         return 6;
     }
     const auto edge_strip = probe_obstruction_strip(0, 0, 2, strip_map);
     if (!expect(edge_strip.starting_tile == 0 &&
-                edge_strip.final_tile == -64 && edge_strip.left_map)) {
+                edge_strip.last_open_tile == 0 && edge_strip.left_map)) {
         return 7;
     }
 
@@ -129,7 +129,11 @@ int main() {
     const auto bypass_route = select_obstruction_route(
         0x0200U, 0x0000U, 0x0400U, 0x0100U, 0x00U, bypass_map);
     if (!expect(bypass_route.action ==
-                    ObstructionRouteAction::bypass_available)) {
+                    ObstructionRouteAction::bypass_available &&
+                bypass_route.has_route_tile &&
+                bypass_route.has_secondary_route_tile &&
+                bypass_route.route_tile == 3 &&
+                bypass_route.secondary_route_tile == 67)) {
         return 43;
     }
     std::vector<std::uint8_t> retry_map(128, 1U);
@@ -138,7 +142,9 @@ int main() {
         0x0200U, 0x0000U, 0x0400U, 0x0100U, 0x00U, retry_map);
     if (!expect(retry_route.action ==
                     ObstructionRouteAction::retry_around_obstruction &&
-                retry_route.movement_flags == 0x0AU)) {
+                retry_route.movement_flags == 0x0AU &&
+                retry_route.route_queue_requested &&
+                retry_route.has_route_tile)) {
         return 44;
     }
     std::vector<std::uint8_t> blocked_target_map(128, 0U);

@@ -669,6 +669,27 @@ was corrected from the Ghidra C export's endian-confused `0x0800` word tests to
 the actual disassembly's low-byte bits 1/3; its existing focused test was
 updated accordingly.
 
+The selector portion of that movement hill is now source-backed as well. The
+direct `0x14682` trace sets `+0xB0` bit 1, leaves an already-retrying bit 3
+alone, checks the target obstruction tile, then clears `+0xBA` and asks
+`0x148AA` to scan from the target along the secondary dominant-axis direction.
+The source D1 result is the last open tile before the first occupied tile, so
+an open strip writes `target + step` followed by `0xFFFF`. When the first step
+is occupied, `0x14854` now exposes the actual two open route tiles that the
+source writes as `[primary, secondary, 0xFFFF]`; the old boolean helper remains
+as a wrapper over that typed result. If neither side can bypass the
+obstruction, the selector uses the record heading through `0x14AF4`, requests
+the retry bit, and hands the resulting route to `0x149C0`.
+
+The previous `0x148AA`/`0x14800` host translations had called their first
+occupied candidate the return tile. The ROM instructions subtract one source
+step before returning, which is why the conversion now names and tests the
+last-open result explicitly. `0x145A2` invokes the selector after
+`0x14BA6` requests a route, installs the typed one-/two-tile route, and then
+services the queue. The focused coordinator test now covers this direct route
+creation and the occupied-target cancellation in addition to the prebuilt
+queue and replan paths.
+
 ## Entity spawn collision probe: 0x14D8E / 0x15ABA
 
 The `0x14D8E` entry is now named `probe_entity_spawn_collision_window`. It is

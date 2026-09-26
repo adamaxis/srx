@@ -49,6 +49,9 @@ struct EntityAnimationRouteResult {
     bool route_cursor_advanced = false;
     bool continuation_installed = false;
     bool route_replan_attempted = false;
+    bool route_selection_called = false;
+    ObstructionRouteAction route_selection_action =
+        ObstructionRouteAction::no_obstruction_found;
 };
 
 // ROM 0x145A2: finish the entity movement continuation after the animation

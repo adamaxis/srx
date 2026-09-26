@@ -74,7 +74,7 @@ std::optional<std::int32_t> choose_replanned_tile(
         const auto occupied = find_first_occupied_obstruction_tile(
             current_tile, primary, state.obstruction_map);
         if (occupied.has_value()) {
-            return occupied->tile_index;
+            return occupied->last_open_tile;
         }
     }
 
@@ -119,6 +119,33 @@ EntityAnimationRouteResult replan_obstruction_route(
     state.route.tiles[1] = 0xFFFFU;
     result.action = EntityAnimationRouteAction::route_replanned;
     return result;
+}
+
+void install_selected_route(EntityAnimationRouteState& state,
+                            const ObstructionRouteSelection& selection) {
+    if (!selection.route_cursor_reset) {
+        return;
+    }
+
+    state.route_cursor_bytes = 0U;
+    state.route.cursor = 0U;
+    if (!selection.has_route_tile) {
+        return;
+    }
+
+    const auto required_words = selection.has_secondary_route_tile ? 3U : 2U;
+    if (state.route.tiles.size() < required_words) {
+        state.route.tiles.resize(required_words, 0xFFFFU);
+    }
+    state.route.tiles[0] = static_cast<std::uint16_t>(
+        selection.route_tile);
+    if (selection.has_secondary_route_tile) {
+        state.route.tiles[1] = static_cast<std::uint16_t>(
+            selection.secondary_route_tile);
+        state.route.tiles[2] = 0xFFFFU;
+    } else {
+        state.route.tiles[1] = 0xFFFFU;
+    }
 }
 
 EntityAnimationRouteResult service_route_queue(
@@ -218,6 +245,20 @@ EntityAnimationRouteResult advance_entity_animation_target_route(
         state.axis_flags = axis_update.axis_flags;
         state.movement_flags = axis_update.movement_flags;
         result.axis_state_updated = true;
+        if ((state.movement_flags & 0x02U) != 0U) {
+            const auto selection = select_obstruction_route(
+                state.current_x,
+                state.current_y,
+                state.target_x,
+                state.target_y,
+                state.movement_flags,
+                state.obstruction_map,
+                state.heading_metric);
+            result.route_selection_called = true;
+            result.route_selection_action = selection.action;
+            state.movement_flags = selection.movement_flags;
+            install_selected_route(state, selection);
+        }
         if ((state.movement_flags & 0x02U) != 0U) {
             return service_route_queue(state, result);
         }
