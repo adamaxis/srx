@@ -101,4 +101,104 @@ FirstAidResolution apply_first_aid_menu_effect(
     return resolution;
 }
 
+FirstAidTargetList build_first_aid_target_list(
+    const std::array<std::uint8_t, 3>& record_flags) {
+    FirstAidTargetList list;
+    for (std::size_t index = 0; index < record_flags.size(); ++index) {
+        if ((record_flags[index] & 0x01U) == 0U ||
+            list.active_count >= list.active_record_indices.size()) {
+            continue;
+        }
+        list.active_record_indices[list.active_count++] = index;
+    }
+    return list;
+}
+
+std::size_t advance_first_aid_target_cursor(
+    const std::size_t current_row,
+    const std::size_t active_count,
+    const std::int8_t delta) {
+    const auto row_count = active_count + 1U;
+    if (row_count == 0U) {
+        return 0U;
+    }
+
+    auto row = current_row < row_count ? current_row : 0U;
+    if (delta < 0) {
+        row = row == 0U ? row_count - 1U : row - 1U;
+    } else if (delta > 0) {
+        row = (row + 1U) % row_count;
+    }
+    return row;
+}
+
+namespace {
+
+void consume_first_aid_phase(std::uint8_t& item_code,
+                             std::uint8_t& phase) {
+    if (phase > 1U) {
+        --phase;
+        return;
+    }
+    item_code = 0U;
+    phase = 0U;
+}
+
+} // namespace
+
+FirstAidItemResolution use_first_aid_item(
+    std::uint8_t& item_code,
+    std::uint8_t& phase,
+    const FirstAidUserState& user,
+    FirstAidTargetState& target,
+    const FirstAidRollService& roll_service) {
+    if (item_code < 0x10U || item_code > 0x13U) {
+        return {FirstAidItemResult::invalid_item, FirstAidMessage::none, 0U};
+    }
+    if (phase == 0U) {
+        return {FirstAidItemResult::empty_item, FirstAidMessage::none, 0U};
+    }
+
+    if (item_code == 0x10U) {
+        const auto resolution = apply_first_aid_menu_effect(
+            user, target, roll_service);
+        if (resolution.result == FirstAidResult::target_already_full) {
+            return {FirstAidItemResult::target_not_injured,
+                    FirstAidMessage::target_not_injured, 0U};
+        }
+        if (resolution.result == FirstAidResult::roll_service_unavailable) {
+            return {FirstAidItemResult::roll_service_unavailable,
+                    FirstAidMessage::none, 0U};
+        }
+        consume_first_aid_phase(item_code, phase);
+        return {FirstAidItemResult::used, FirstAidMessage::medkit_used,
+                resolution.applied_delta};
+    }
+
+    if (item_code == 0x11U) {
+        if (target.mental_meter == 10U) {
+            return {FirstAidItemResult::target_not_injured,
+                    FirstAidMessage::target_not_injured, 0U};
+        }
+        advance_mental_meter(target, 2);
+        if (target.physical_meter != 0U) {
+            target.flags = static_cast<std::uint8_t>(
+                (target.flags & ~0x50U) | 0x01U);
+        }
+    } else {
+        if (target.physical_meter == 10U) {
+            return {FirstAidItemResult::target_not_injured,
+                    FirstAidMessage::target_not_injured, 0U};
+        }
+        advance_physical_meter(target, 2);
+        if (target.mental_meter != 0U) {
+            target.flags = static_cast<std::uint8_t>(
+                (target.flags & ~0x50U) | 0x01U);
+        }
+    }
+
+    consume_first_aid_phase(item_code, phase);
+    return {FirstAidItemResult::used, FirstAidMessage::slap_patch_used, 2U};
+}
+
 } // namespace shadowrun::ghidra_conversion

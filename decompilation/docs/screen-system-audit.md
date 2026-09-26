@@ -190,7 +190,9 @@ equipment. This behavior is covered by `test_automatic_use_item_handler`.
 The target-effect leaf at `0x1253E` is also converted separately in
 `first_aid_conversion`: its full-target gate, difficulty formula, roll-result
 fallback, meter order, status transition, and `0xB45C` continuation are
-covered without importing ROM state into the runtime.
+covered without importing ROM state into the runtime. The same isolated module
+now includes the `0x12298` active-target/CANCEL list, wrapped target cursor,
+the `0x12466`/`0x1247E` patch branches, and `0x124AE` phase consumption.
 The armor-selection leaf at `0x11352` is separately represented in
 `armor_selection_conversion`; its preview write/rollback, no-armor gate, and
 text/effect/grid ordering remain outside the native runtime.

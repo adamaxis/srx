@@ -616,6 +616,11 @@ uses one point when the source success byte is zero, preserves the
 `0x3674`/`0x37EC` meter-call order, clears status bits 6 and 4, sets bit 0,
 and installs continuation `0xB45C`. The target model is source-field typed;
 it does not carry a ROM address or a renderer callback.
+The same module now covers the surrounding menu behavior: `0x12298`'s
+active-record list plus `CANCEL` row, wrapped target cursor, the fixed `+2`
+mental/physical patch branches at `0x1247E`/`0x12466`, and `0x124AE` phase
+consumption. A medical phase reaches zero by clearing its item code; failed
+or unavailable effects leave the item untouched.
 
 The armor-selection leaf at 0x11352 is now isolated in
 armor_selection_conversion. The source preview gate writes the selected

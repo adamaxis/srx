@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <array>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -53,6 +54,59 @@ using FirstAidRollService =
 // when it is zero), advance the two target meters, clear status bits 6 and 4,
 // set bit 0, and install continuation 0xB45C.
 FirstAidResolution apply_first_aid_menu_effect(
+    const FirstAidUserState& user,
+    FirstAidTargetState& target,
+    const FirstAidRollService& roll_service);
+
+// ROM 0x12298/0x1231C: the target panel enumerates the three live party
+// records in source order and appends one CANCEL row. Only +0x10 bit 0 is
+// consumed by this list builder.
+struct FirstAidTargetList {
+    std::array<std::size_t, 3> active_record_indices{};
+    std::size_t active_count = 0;
+
+    std::size_t row_count() const { return active_count + 1U; }
+    std::size_t cancel_row() const { return active_count; }
+};
+
+FirstAidTargetList build_first_aid_target_list(
+    const std::array<std::uint8_t, 3>& record_flags);
+
+// The source C376 cursor wraps over active targets plus the appended CANCEL
+// row. The input delta is the signed Up/Down step supplied by the controller.
+std::size_t advance_first_aid_target_cursor(
+    std::size_t current_row,
+    std::size_t active_count,
+    std::int8_t delta);
+
+enum class FirstAidItemResult {
+    used,
+    target_not_injured,
+    invalid_item,
+    empty_item,
+    roll_service_unavailable,
+};
+
+enum class FirstAidMessage {
+    none,
+    medkit_used,
+    slap_patch_used,
+    target_not_injured,
+};
+
+struct FirstAidItemResolution {
+    FirstAidItemResult result = FirstAidItemResult::invalid_item;
+    FirstAidMessage message = FirstAidMessage::none;
+    std::uint8_t applied_delta = 0;
+};
+
+// ROM 0x12466/0x1247E/0x124AE plus the 0x1253E medkit leaf. Item codes
+// 0x10..0x13 are the four source First Aid entries. A phase byte is consumed
+// only after a target effect succeeds; a final phase clears the item code as
+// 0x1275C does for a medical cell.
+FirstAidItemResolution use_first_aid_item(
+    std::uint8_t& item_code,
+    std::uint8_t& phase,
     const FirstAidUserState& user,
     FirstAidTargetState& target,
     const FirstAidRollService& roll_service);
