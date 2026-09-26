@@ -44,8 +44,12 @@ struct AudioCommandQueueState {
     std::uint8_t write_index = 0;
 };
 
+// ROM 0x52E96: write the 0xFF queue marker, append the command through the
+// shared 0x52EA2 body, and wrap the 6-bit queue index.
 void flush_audio_command(AudioCommandQueueState& state,
                          std::uint8_t command);
+// ROM 0x52EA2: append one command byte and wrap the 6-bit queue index. This
+// is also the inner entry reached by the 0x52E96 body.
 void append_audio_command(AudioCommandQueueState& state,
                           std::uint8_t command);
 
@@ -61,6 +65,9 @@ bool append_three_with_audio_bus(const AudioCommandSequenceCallbacks& callbacks)
 bool service_audio_command_queue_batch(
     const AudioCommandSequenceCallbacks& callbacks);
 bool flush_with_audio_bus(const AudioCommandSequenceCallbacks& callbacks);
+// ROM 0x52FD2: append a marker-prefixed command and two payload bytes. The
+// source routine is entered after its caller has opened the audio bus; it does
+// not open the bus itself.
 bool flush_append_pair(const AudioCommandSequenceCallbacks& callbacks);
 bool begin_bus_then_flush_append_pair(
     const AudioCommandSequenceCallbacks& callbacks);

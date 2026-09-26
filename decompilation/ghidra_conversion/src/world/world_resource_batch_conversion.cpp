@@ -87,40 +87,36 @@ void reset_entity_service_records(std::vector<EntityServiceRecord>& records,
     }
 }
 
-std::optional<std::size_t> select_next_entity(
-    std::vector<EntityCycleRecord>& records,
-    const std::size_t current,
-    const bool special_input,
-    const std::function<bool(const EntityCycleRecord&)>& eligible) {
-    if (records.empty()) {
-        return std::nullopt;
+EntitySelectionResult select_next_entity(
+    EntityServiceTargetOwner& owner,
+    std::vector<EntityServiceTargetRecord>& records,
+    const EntityServiceTargetCallbacks& callbacks) {
+    // ROM 0x1DC22 scans ten 0x100-byte records at FF0100 and only enters the
+    // shared selector if one already carries +0x11 bit 4. The conversion
+    // keeps the table bounded by the supplied typed records.
+    const auto scan_limit = std::min<std::size_t>(10U, records.size());
+    const auto marked = std::find_if(
+        records.begin(), records.begin() + static_cast<std::ptrdiff_t>(scan_limit),
+        [](const EntityServiceTargetRecord& record) { return record.selected; });
+    if (marked == records.begin() + static_cast<std::ptrdiff_t>(scan_limit)) {
+        return EntitySelectionResult::no_marked_record;
     }
-    const auto start = current < records.size() ? current + 1U : 0U;
-    for (std::size_t offset = 0; offset < records.size(); ++offset) {
-        const auto index = (start + offset) % records.size();
-        auto& record = records[index];
-        if (special_input && record.busy) {
-            record.busy = false;
-        }
-        if (!record.input_enabled || record.reserved || record.linked ||
-            (eligible && !eligible(record))) {
-            continue;
-        }
-        record.busy = true;
-        return index;
-    }
-    return std::nullopt;
+    const auto action = select_world_entity_service_target(owner, records, false, callbacks);
+    return action == EntityServiceTargetAction::selected
+               ? EntitySelectionResult::selected_target
+               : EntitySelectionResult::no_available_target;
 }
 
 std::size_t clear_inactive_entity_effects(
-    std::vector<EntityCycleRecord>& records,
+    const std::vector<EntityServiceTargetRecord>& records,
     const std::function<void(std::size_t)>& clear_slot) {
     std::size_t cleared = 0U;
     const auto limit = std::min<std::size_t>(10U, records.size());
     for (std::size_t index = 0; index < limit; ++index) {
-        auto& record = records[index];
-        if (!record.reserved && record.busy && record.priority == 0) {
-            record.busy = false;
+        const auto& record = records[index];
+        // ROM 0x1DEA0 clears only +0x10 bit 6 records whose +0x10 bit 3 is
+        // clear and whose +0x0C action word is zero.
+        if (record.effect_locked && !record.effect_pending && !record.has_action) {
             if (clear_slot) {
                 clear_slot(index);
             }

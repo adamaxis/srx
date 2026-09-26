@@ -51,7 +51,6 @@ ConversionWorkbenchReport run_conversion_workbench() {
     storage.loaded_slot_usage = {2U, 4U, 1U, 0U, 0U};
     storage.availability_flags[1] = 1U;
     storage.availability_flags[2] = 1U;
-    storage.program_footprints = kMatrixProgramFootprints;
     const auto capacity = calculate_matrix_storage_capacity(storage);
     report.matrix_loaded_memory = capacity.loaded_memory;
     report.matrix_installed_program_memory = capacity.installed_program_memory;

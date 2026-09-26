@@ -18,6 +18,12 @@ bool valid_sequence(const AudioCommandSequenceCallbacks& callbacks) {
            static_cast<bool>(callbacks.append);
 }
 
+bool valid_append_sequence(const AudioCommandSequenceCallbacks& callbacks) {
+    return static_cast<bool>(callbacks.end) &&
+           static_cast<bool>(callbacks.flush) &&
+           static_cast<bool>(callbacks.append);
+}
+
 } // namespace
 
 void begin_controller_bus_access(
@@ -121,7 +127,7 @@ bool flush_with_audio_bus(const AudioCommandSequenceCallbacks& callbacks) {
 }
 
 bool flush_append_pair(const AudioCommandSequenceCallbacks& callbacks) {
-    if (!valid_sequence(callbacks)) {
+    if (!valid_append_sequence(callbacks)) {
         return false;
     }
     callbacks.flush();

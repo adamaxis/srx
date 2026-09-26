@@ -16,7 +16,6 @@ struct MatrixStorageUsage {
     std::uint16_t loaded_program_memory = 0;
     std::array<std::uint8_t, 5> loaded_slot_usage{};
     std::array<std::uint8_t, 12> availability_flags{};
-    std::array<std::uint8_t, 12> program_footprints{};
 };
 
 struct MatrixStorageCapacity {
@@ -53,9 +52,9 @@ struct MatrixDataFileList {
     bool has_entries = false;
 };
 
-// ROM E2DF2: the twelve Matrix program footprints used by 0x1952C. Keeping
-// this table named makes the source-derived record layout visible without
-// making the runtime depend on a ROM address.
+// ROM E2DF2: the twelve Matrix program footprints used by 0x1952C. This is
+// source-owned data, not mutable session state; the conversion must not let a
+// caller silently replace it with an invented table.
 constexpr std::array<std::uint8_t, 12> kMatrixProgramFootprints{
     2U, 4U, 4U, 3U, 4U, 4U, 2U, 3U, 3U, 2U, 2U, 3U};
 
@@ -63,7 +62,8 @@ constexpr std::array<std::uint8_t, 12> kMatrixProgramFootprints{
 std::uint8_t matrix_loaded_slot_usage(const MatrixStorageUsage& usage,
                                       std::size_t slot);
 
-// ROM 0x1952C: multiply a program's availability flag by its source footprint.
+// ROM 0x1952C: multiply a program's availability flag by its source footprint
+// from E2DF2.
 // The 0x19538 arithmetic tail squares the flag before applying the footprint;
 // normal source flags are 0/1, but the host model preserves that operation.
 std::uint32_t matrix_program_storage_weight(std::uint8_t availability,

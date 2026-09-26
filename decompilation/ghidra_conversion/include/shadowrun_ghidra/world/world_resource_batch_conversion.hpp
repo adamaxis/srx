@@ -1,5 +1,7 @@
 #pragma once
 
+#include "shadowrun_ghidra/entities/entity_service_target_conversion.hpp"
+
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -54,22 +56,22 @@ struct EntityServiceRecord {
 void reset_entity_service_records(std::vector<EntityServiceRecord>& records,
                                   std::uint8_t& global_state);
 
-struct EntityCycleRecord {
-    bool input_enabled = false;
-    bool reserved = false;
-    bool busy = false;
-    bool linked = false;
-    std::int16_t priority = 0;
+enum class EntitySelectionResult {
+    no_marked_record,
+    selected_target,
+    no_available_target,
 };
 
-std::optional<std::size_t> select_next_entity(
-    std::vector<EntityCycleRecord>& records,
-    std::size_t current,
-    bool special_input,
-    const std::function<bool(const EntityCycleRecord&)>& eligible);
+// ROM 0x1DC22: find a selected bit in the ten-record entity table, then enter
+// 0x1DC4C with D1 set to the 0x678CC sentinel. This is the wrapper/gate around
+// the typed service-target selector, not a generic circular entity iterator.
+EntitySelectionResult select_next_entity(
+    EntityServiceTargetOwner& owner,
+    std::vector<EntityServiceTargetRecord>& records,
+    const EntityServiceTargetCallbacks& callbacks = {});
 
 std::size_t clear_inactive_entity_effects(
-    std::vector<EntityCycleRecord>& records,
+    const std::vector<EntityServiceTargetRecord>& records,
     const std::function<void(std::size_t)>& clear_slot);
 
 struct EffectHighFlagRecord {

@@ -116,32 +116,54 @@ std::size_t render_field_tile_column(
     const FieldTileColumnCallbacks& callbacks) {
     const auto half_visible = static_cast<std::size_t>(
         (0x80U - (input.source_coordinate & 0x7FU)) >> 1U);
-    if (half_visible >= 0x2BU || !callbacks.read_word ||
-        !callbacks.write_word) {
+    if (!callbacks.read_word || !callbacks.write_word) {
         return 0;
     }
-    if (callbacks.begin_transfer) {
-        callbacks.begin_transfer();
-    }
-    const auto word_count = 0x2CU - half_visible;
-    std::size_t word_offset = input.source_word_offset;
-    std::uint16_t tile_key = input.tile_key;
-    for (std::size_t index = 0; index < word_count; ++index) {
-        auto word = callbacks.read_word(tile_key, word_offset);
-        if ((input.palette_or_flip & 0x8000U) != 0U) {
-            word = static_cast<std::uint16_t>(word ^ 0x8000U);
-        } else {
-            word = static_cast<std::uint16_t>(word |
-                                              (input.palette_or_flip & 0x7FFFU));
+
+    // ROM 0x3D4A calculates D7 as the number of words before the next
+    // 0x80-aligned destination, then calls the shared 0x3D80 body.  When the
+    // source is not already at the clamp boundary, the body is entered once
+    // for that partial segment and then again by linear continuation after
+    // D4 is aligned.  The old conversion only modeled the second segment.
+    struct Cursor {
+        std::uint16_t tile_key;
+        std::size_t word_offset;
+    } cursor{input.tile_key, input.source_word_offset};
+
+    const auto emit_segment = [&](const std::size_t word_count) {
+        if (callbacks.begin_transfer) {
+            callbacks.begin_transfer();
         }
-        callbacks.write_word(word);
-        word_offset += 2U;
-        if ((word_offset & 7U) == 0U) {
-            word_offset -= 6U;
-            tile_key = static_cast<std::uint16_t>(tile_key + 2U);
+        for (std::size_t index = 0; index < word_count; ++index) {
+            auto word = callbacks.read_word(cursor.tile_key, cursor.word_offset);
+            if ((input.palette_or_flip & 0x8000U) != 0U) {
+                word = static_cast<std::uint16_t>(word ^ 0x8000U);
+            } else {
+                word = static_cast<std::uint16_t>(
+                    word | (input.palette_or_flip & 0x7FFFU));
+            }
+            callbacks.write_word(word);
+            cursor.word_offset += 2U;
+            if ((cursor.word_offset & 7U) == 0U) {
+                cursor.word_offset -= 6U;
+                cursor.tile_key =
+                    static_cast<std::uint16_t>(cursor.tile_key + 2U);
+            }
         }
+    };
+
+    // The source clamps D7 to 0x2B, so the common tail always contains 44
+    // words.  A zero half-visible value is an invalid source alignment for
+    // the original routine; treating it as the already-aligned case keeps
+    // the host boundary total and avoids exposing a 68000 DBF underflow.
+    if (half_visible == 0U || half_visible >= 0x2CU) {
+        emit_segment(0x2CU);
+        return 0x2CU;
     }
-    return word_count;
+
+    emit_segment(half_visible);
+    emit_segment(0x2CU - half_visible);
+    return 0x2CU;
 }
 
 void render_field_tile_rows(const std::uint16_t initial_column_key,

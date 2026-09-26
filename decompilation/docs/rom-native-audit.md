@@ -58,10 +58,13 @@ is behaviorally complete.
 
 The indexed pass currently reports 910 ROM entries, no missing disassembly
 spans, 18 direct-call substitutions needing native-owner review, 27 generated
-Ghidra-C return-only omission risks, 27 adjacent-export fall-through reviews,
-and 299 entries without an explicit ROM address in a typed conversion source.
-The last categories are the remaining conversion-evidence sweep; they are not
-permission to invent a replacement.
+Ghidra-C return-only omission risks, 20 linear adjacent-export boundary
+reviews, and 292 entries without an explicit ROM address in a typed conversion
+source. The boundary audit now separates true linear continuation from
+adjacent exports reached by an explicit branch/call; the latter remain in the
+row-level report as context instead of being misreported as fall-through.
+These are remaining conversion-evidence sweeps, not permission to invent a
+replacement.
 
 The first concrete omission slice recovered from the ROM is now represented
 as typed conversion code:
@@ -87,6 +90,26 @@ timing helpers. `0x562D4` has no return before `0x562DE`, so its callers receive
 receive phase-only timing. The conversion now models those as separate paths,
 and the action-count and transition tests use non-zero timer/phase values to
 verify the distinction.
+
+The next manual slice corrected three source-owned details. The field-column
+renderer at `0x3D4A` emits a partial segment and then continues through the
+shared `0x3D80` transfer body; it is now represented as two typed host
+segments when the source is not aligned, rather than emitting only the tail.
+The Matrix storage conversion now reads the twelve footprints from the ROM
+`0xE2DF2` table as immutable conversion data instead of accepting a caller-
+supplied replacement. Finally, the audio `0x52FD2` inner entry no longer
+requires a second bus-begin callback: its caller opens the bus before entering
+the marker-plus-two-payload sequence, matching the ROM call boundary.
+
+The world-service trace corrected three generic conversions. `0x1DC22` first
+checks the selected bit in the ten-record `FF0100` entity table and only then
+enters `0x1DC4C` with the `0x678CC` cursor sentinel; it is not a circular
+eligible-entity iterator. `0x1DC4C` now models the source's normal and special
+candidate starts, descriptor-class fallback to `FF0400`/`FF0100`, bounded
+eight-record forward scanning, previous-target release, and the asymmetric
+normal/special publication of `+0xAC`, `+0xA2`, `+0xA6`, and `+0x43`. The
+adjacent `0x1DEA0` pass now clears only records with `+0x10` bit 6 set, bit 3
+clear, and a zero `+0x0C` action word before invoking the clear-slot boundary.
 
 The generated Ghidra C remains an evidence snapshot and still omits meaningful
 logic for some of these entries, including `0x3602` and `0x55828`; the typed

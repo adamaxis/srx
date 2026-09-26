@@ -155,11 +155,28 @@ foreach ($function in $functions) {
         [void]$issues.Add("No disassembly instructions for $address")
     }
 
+    $adjacentEntryTarget = ''
+    $adjacentEntryKind = ''
     $fallthroughTarget = ''
-    if ($nextFunctionByEntry.ContainsKey($address) -and
-        $asm.Count -gt 0 -and
-        $asm[-1].text -notmatch '\b(?:rts|rte|rtr|bra(?:\.[bwl])?|b[a-z]+(?:\.[bwl])?|jmp|jsr|bsr(?:\.[bwl])?|db[a-z]+|trap|stop)\b') {
-        $fallthroughTarget = "$($nextFunctionByEntry[$address].entry) $($nextFunctionByEntry[$address].name)"
+    if ($nextFunctionByEntry.ContainsKey($address) -and $asm.Count -gt 0) {
+        $nextEntry = $nextFunctionByEntry[$address]
+        $nextStart = $nextEntry.start
+        $directTransfersToNext = @($asm | Where-Object {
+            $_.text -match '\b(?:bra|bsr|jsr|jmp)(?:\.[bwl])?\s+0x([0-9A-Fa-f]+)' -and
+            (Convert-RomAddressToInt $matches[1]) -eq $nextStart
+        })
+        $adjacentEntryTarget = "$($nextEntry.entry) $($nextEntry.name)"
+        if ($directTransfersToNext.Count -gt 0) {
+            # The exported spans are adjacent, but this entry explicitly
+            # calls/branches to the next entry. It is a shared-entry review,
+            # not evidence that execution falls through the boundary.
+            $adjacentEntryKind = 'direct-transfer-to-adjacent-entry'
+        } elseif ($asm[-1].text -notmatch '\b(?:rts|rte|rtr|bra(?:\.[bwl])?|b[a-z]+(?:\.[bwl])?|jmp|jsr|bsr(?:\.[bwl])?|db[a-z]+|trap|stop)\b') {
+            $adjacentEntryKind = 'linear-fallthrough'
+            $fallthroughTarget = $adjacentEntryTarget
+        } else {
+            $adjacentEntryKind = 'adjacent-span-with-explicit-exit'
+        }
     }
 
     $sourcePath = Join-Path $exportRoot ($function.file.Replace('/', '\'))
@@ -222,7 +239,7 @@ foreach ($function in $functions) {
     $risk = New-Object System.Collections.Generic.List[string]
     if ($asm.Count -eq 0) { [void]$risk.Add('missing_rom_span') }
     if (-not (Test-Path -LiteralPath $sourcePath)) { [void]$risk.Add('missing_ghidra_c') }
-    if (-not [string]::IsNullOrWhiteSpace($fallthroughTarget)) {
+    if ($adjacentEntryKind -eq 'linear-fallthrough') {
         [void]$risk.Add('fallthrough_to_next_export')
     }
     if ($returnOnly -and $size -gt 8) { [void]$risk.Add('ghidra_c_return_only') }
@@ -259,6 +276,8 @@ foreach ($function in $functions) {
         direct_call_count = $directCalls.Count
         missing_direct_calls = ($missingDirectCalls -join '; ')
         ghidra_c_return_only = [int]$returnOnly
+        adjacent_entry_target = $adjacentEntryTarget
+        adjacent_entry_kind = $adjacentEntryKind
         fallthrough_target = $fallthroughTarget
         conversion_evidence_files = ($evidenceFiles -join ';')
         status = if ($null -ne $status) { $status.status } else { '' }
@@ -290,6 +309,9 @@ $decompilerRisk = @($report | Where-Object {
 $fallthroughRisk = @($report | Where-Object {
     $_.risk_flags -match 'fallthrough_to_next_export'
 })
+$adjacentEntryRisk = @($report | Where-Object {
+    $_.risk_flags -match 'fallthrough_to_next_export'
+})
 $noEvidence = @($report | Where-Object {
     $_.risk_flags -match 'no_conversion_rom_evidence'
 })
@@ -303,7 +325,8 @@ $defended = @($report | Where-Object { $_.status -eq 'defended' })
 "Source-coverage risks: $($sourceRisk.Count)"
 "Native substitution reviews: $($nativeSubstitutionReview.Count)"
 "Generated-C omission risks: $($decompilerRisk.Count)"
-"Fall-through boundary reviews: $($fallthroughRisk.Count)"
+"Linear adjacent-export boundary reviews: $($adjacentEntryRisk.Count)"
+"Linear fall-through risks: $($fallthroughRisk.Count)"
 "Entries without explicit conversion ROM evidence: $($noEvidence.Count)"
 "Defended status rows: $($defended.Count)"
 "Structural issues: $($issues.Count)"
@@ -314,10 +337,10 @@ if ($decompilerRisk.Count -gt 0) {
     $decompilerRisk | Select-Object rom_entry, name, rom_size, disassembly_lines, direct_call_count, missing_direct_calls, risk_flags | Format-Table -AutoSize
 }
 
-if ($fallthroughRisk.Count -gt 0) {
+if ($adjacentEntryRisk.Count -gt 0) {
     ""
-    "Fall-through boundary reviews (entry continues into adjacent export):"
-    $fallthroughRisk | Select-Object rom_entry, name, fallthrough_target, risk_flags | Format-Table -Wrap -AutoSize
+    "Linear adjacent-export boundary reviews (classify shared entries before merging):"
+    $adjacentEntryRisk | Select-Object rom_entry, name, adjacent_entry_target, adjacent_entry_kind, fallthrough_target, risk_flags | Format-Table -Wrap -AutoSize
 }
 
 if ($nativeSubstitutionReview.Count -gt 0) {

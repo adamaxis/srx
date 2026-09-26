@@ -1142,11 +1142,16 @@ target selection, inactive-effect cleanup, optional terrain/trigger work,
 world-effect triggering, and nearby-effect resolution. The calls are typed
 service boundaries rather than a runtime copy of the original RAM schedule.
 
-`0x1DC4C` selects the service target for the current entity. The native
-conversion releases the previous selected record, scans at most eight records,
-uses the source normal-path filters, and retains the special active-only path
-for modes `0x0B`, `0x04`, and `0x0C`; successful selection publishes the
-`0x8009` action code through typed record state.
+`0x1DC22` is the outer entity-service gate: it scans ten `0x100`-byte records
+for `+0x11` bit 4 and only then enters `0x1DC4C` with the `0x678CC` cursor
+sentinel. It is not a circular iterator. `0x1DC4C` releases the owner's
+previous `+0xA2` target, derives a descriptor-aware start at `FF0400` or
+`FF0100`, scans at most eight consecutive records without wrapping, and uses
+different publication rules for normal and special modes. Normal selection
+requires active/unlocked/unselected/non-high-effect/nonzero-action records and
+writes the owner back-link; modes `0x0B`, `0x04`, and `0x0C` use the active-only
+path and preserve the service marker. `0x1DEA0` independently clears only
+bit-6, non-bit-3 records with a zero action word.
 
 The larger `0x1AA40` leaf is now named `tick_world_effect_animation` and
 converted separately. Its normal path chooses runner-derived timing versus the

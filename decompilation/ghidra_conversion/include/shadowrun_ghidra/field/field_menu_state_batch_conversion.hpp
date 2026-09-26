@@ -11,10 +11,17 @@ struct WrappedTextCallbacks {
     std::function<void()> begin_transfer;
     std::function<std::uint16_t(std::uint8_t)> glyph_for_byte;
     std::function<void(std::uint16_t)> write_glyph;
+    // Optional host presentation boundary retaining the source line/column
+    // that the Genesis transfer address represented.
+    std::function<void(std::size_t line, std::size_t column,
+                       std::uint16_t)> write_glyph_at;
 };
 
-// ROM 0x0C160: stream a bounded line of encoded text, stopping at a high-bit
-// terminator and wrapping at the supplied character width.
+// ROM 0x0C160 -> 0x0C168: select the normalized alternate text buffer and
+// render it through the shared wrapped-text body. The host receives the
+// already selected buffer as encoded input; 0x80 is a line break and 0xFF is
+// the final terminator. Wrapping chooses the last source space that fits the
+// requested width, matching the source scan rather than hard-wrapping bytes.
 std::size_t render_wrapped_text(const std::vector<std::uint8_t>& encoded,
                                 std::size_t line_width,
                                 const WrappedTextCallbacks& callbacks);
@@ -124,10 +131,27 @@ void run_menu_slot_service(
     std::uint8_t pending_mask,
     const MenuServiceCallbacks& callbacks);
 
-void merge_menu_pending_flags(
-    std::uint8_t& pending_flags,
-    std::uint8_t source_flags,
-    const std::function<void()>& service_display);
+struct MenuPendingFlagState {
+    // FFFB30 indexed by FFF102.
+    std::vector<std::uint8_t> pending_flags;
+    std::size_t selected_mode_index = 0;
+    // FF1100 compact runner records, each 0x14 bytes; FFF118 selects one.
+    std::vector<std::uint8_t> runner_records;
+    std::size_t selected_runner_index = 0;
+};
+
+struct MenuPendingFlagMergeResult {
+    std::uint8_t source_flags = 0;
+    std::size_t metadata_offset = 0;
+    std::uint8_t merged_flags = 0;
+};
+
+// ROM 0x19DAC -> 0x19DD8: read runner-record byte +0x5, merge it into the
+// selected pending-mode byte, and select the E2D52 metadata row by flags*0x20.
+// Missing host records are unresolved rather than treated as zero.
+std::optional<MenuPendingFlagMergeResult> merge_menu_pending_flags(
+    MenuPendingFlagState& state,
+    const std::function<void(std::size_t metadata_offset)>& refresh_metadata);
 
 void run_menu_metadata_service(const MenuServiceCallbacks& callbacks);
 

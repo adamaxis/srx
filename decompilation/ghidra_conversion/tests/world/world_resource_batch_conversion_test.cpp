@@ -35,11 +35,27 @@ int main() {
            (service_records[0].flags & 0x40U) == 0U &&
            (service_records[0].mode_flags & 0x10U) == 0U);
 
-    std::vector<EntityCycleRecord> cycle{{true, false, false, false, 0},
-                                         {true, false, false, false, 1}};
-    assert(select_next_entity(cycle, 0, false, {}) == std::optional<std::size_t>(1));
-    cycle[0].busy = true;
+    std::vector<EntityServiceTargetRecord> cycle(10U);
+    cycle[0].selected = true;
+    cycle[3].active = true;
+    cycle[3].has_action = true;
+    EntityServiceTargetOwner cycle_owner{};
+    assert(select_next_entity(cycle_owner, cycle) ==
+           EntitySelectionResult::selected_target);
+    assert(cycle_owner.selected_target == 3U && cycle[3].selected);
+    std::vector<EntityServiceTargetRecord> unmarked(10U);
+    unmarked[3].active = true;
+    unmarked[3].has_action = true;
+    assert(select_next_entity(cycle_owner, unmarked) ==
+           EntitySelectionResult::no_marked_record);
     int cleared = 0;
+    cycle[0].selected = false;
+    cycle[0].effect_locked = true;
+    cycle[0].has_action = false;
+    cycle[1].effect_locked = true;
+    cycle[1].effect_pending = true;
+    cycle[2].effect_locked = true;
+    cycle[2].has_action = true;
     assert(clear_inactive_entity_effects(cycle, [&](std::size_t) { ++cleared; }) == 1);
     assert(cleared == 1);
 

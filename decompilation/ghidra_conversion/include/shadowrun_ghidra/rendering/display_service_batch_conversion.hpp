@@ -101,8 +101,11 @@ struct FieldTileColumnCallbacks {
     std::function<void(std::uint16_t)> write_word;
 };
 
-// ROM 0x03D4A: emit the visible portion of a tile column, changing tile rows
-// every four words and applying the source palette/flip transform.
+// ROM 0x03D4A/0x03D80: emit the visible portion of a tile column. The source
+// writes a partial pre-alignment segment when needed, then continues through
+// the shared 0x03D80 transfer body after aligning the destination; each body
+// entry changes tile rows every four words and applies the palette/flip
+// transform.
 std::size_t render_field_tile_column(
     const FieldTileColumnInput& input,
     const FieldTileColumnCallbacks& callbacks);

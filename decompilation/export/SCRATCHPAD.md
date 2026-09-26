@@ -750,10 +750,12 @@ body, finds explicit `ROM 0x...` evidence in the typed conversion sources,
 and joins those results to the one-row-per-entry status ledger. The complete
 row-level result is `decompilation/docs/rom-conversion-audit.tsv`.
 
-The initial indexed result was 910 entries, 29,141 disassembly instructions,
+The current indexed result is 910 entries, 29,141 disassembly instructions,
 zero missing ROM spans, 18 native-substitution review rows, 27 generated-C
-return-only risks, 27 adjacent-export fall-through reviews, and 299 entries
-without explicit ROM-address evidence in a conversion source. Those numbers
+return-only risks, 20 linear adjacent-export boundary reviews, and 292 entries
+without explicit ROM-address evidence in a conversion source. The boundary
+classifier also records adjacent entries reached by an explicit branch or
+call, but does not mislabel those as linear fall-through. These numbers
 describe audit exposure, not percent converted. The structural gate still
 passes, but source fidelity remains open.
 
@@ -782,6 +784,14 @@ generic label or the generated C:
   typed `set_sprite_descriptor_carry()` boundary rather than the former empty
   hook. The caller branch still needs a complete native behavior trace.
 
+* `0x1DC22` is a ten-record selected-bit gate, not a generic circular entity
+  iterator. When a selected record exists it enters `0x1DC4C` with the
+  `0x678CC` cursor sentinel. The typed service conversion now preserves the
+  normal/special candidate starts, descriptor fallbacks, eight-record
+  non-wrapping scan, previous-target release, and the normal-only `+0x43` clear
+  and `+0xAC` back-link publication. `0x1DEA0` now uses its actual `+0x10`
+  bit-6/bit-3 and `+0x0C` predicate before invoking `0x1E514`.
+
 ### Caller-sensitive fall-through correction
 
 The audit of the world-effect selector found a real conversion error in the
@@ -799,10 +809,21 @@ action timer 3/phase 2 and expects difficulty 7, and delayed transition phase
 9/base 4 and expects difficulty 22. This is a source-fidelity correction,
 not a new game rule.
 
-The audit also records 25 additional adjacent-export boundaries whose final
-instruction is not an explicit control transfer. They may be source chunks or
-intentional tail paths, so they remain manual trace work; the two confirmed
-arithmetic fall-throughs are `0x1952C -> 0x19538` and `0x562D4 -> 0x562DE`.
+The audit now records 20 adjacent-export boundaries whose final instruction is
+not an explicit control transfer. Boundaries such as `0x3D4A -> 0x3D80` and
+`0x3DDE -> 0x3E14` contain explicit branch/call entries into the adjacent
+shared transfer bodies and are therefore not linear fall-through risks. The
+two confirmed arithmetic fall-throughs remain `0x1952C -> 0x19538` and
+`0x562D4 -> 0x562DE`; `0x52E96 -> 0x52EA2` is a shared inner audio entry with
+the same source-level boundary shape, now documented and tested separately.
+
+The field-column trace also corrected a conversion omission. `0x3D4A`
+calculates the pre-alignment count, emits that segment through `0x3D80`,
+aligns `D4`, and then continues into the common tail for the remainder. The
+typed host renderer now preserves both transfer segments and its focused test
+checks the two-entry case. Matrix storage similarly treats the ROM `0xE2DF2`
+footprint table as immutable source data, and the audio `0x52FD2` inner entry
+is callable without a redundant bus-begin operation.
 
 These changes deliberately do not modify the native port. They are conversion
 evidence and typed source contracts only. The generated Ghidra C for the first

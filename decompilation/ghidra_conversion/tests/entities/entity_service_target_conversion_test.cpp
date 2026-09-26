@@ -12,7 +12,7 @@ int main() {
     EntityServiceTargetOwner owner{};
     owner.service_marker = 7U;
     owner.selected_target = 2U;
-    owner.source_target = 2U;
+    owner.linked_target = 2U;
     std::size_t selected = 99U;
     if (select_world_entity_service_target(
             owner, records, true,
@@ -33,7 +33,7 @@ int main() {
     owner = {};
     owner.special_marker = true;
     owner.mode = 0x0CU;
-    owner.source_target = 1U;
+    owner.owner_record = 1U;
     if (select_world_entity_service_target(owner, records, true) !=
             EntityServiceTargetAction::selected ||
         owner.selected_target != 2U || !records[2].selected ||
@@ -41,11 +41,43 @@ int main() {
         return 2;
     }
 
+    // The special branch does not clear +0x43, and its active-only scan does
+    // not reject a locked/high-effect candidate.
+    records.assign(8U, {});
+    records[1].active = true;
+    records[1].descriptor_class = 1U;
+    owner = {};
+    owner.special_marker = true;
+    owner.mode = 0x0BU;
+    owner.service_marker = 9U;
+    owner.owner_record = 1U;
+    if (select_world_entity_service_target(owner, records, false) !=
+            EntityServiceTargetAction::selected ||
+        owner.service_marker != 9U || owner.selected_target != 1U ||
+        records[1].owner_linked) {
+        return 4;
+    }
+
     records.assign(8U, {});
     owner = {};
     if (select_world_entity_service_target(owner, records, false) !=
         EntityServiceTargetAction::no_available_target) {
         return 3;
+    }
+
+    // A source target at the end of the table advances only forward; the ROM
+    // does not wrap an eight-record scan back to FF0100.
+    records.assign(10U, {});
+    records[0].active = true;
+    records[0].has_action = true;
+    records[9].descriptor_class = 3U;
+    owner = {};
+    owner.selected_target = 9U;
+    records[9].selected = true;
+    if (select_world_entity_service_target(owner, records, false) !=
+            EntityServiceTargetAction::no_available_target ||
+        records[0].selected) {
+        return 5;
     }
     return 0;
 }

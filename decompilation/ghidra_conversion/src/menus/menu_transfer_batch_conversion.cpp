@@ -40,17 +40,25 @@ void write_three_grids_then_service(
     call_once(service_once);
 }
 
-bool find_matching_menu_metric(
-    const std::function<bool(std::int16_t slot)>& matches_slot) {
-    if (!matches_slot) {
-        return false;
+std::optional<MenuMetricLookupResult> resolve_menu_metric_action(
+    const MenuMetricLookupInput& input) {
+    const auto table_offset =
+        (static_cast<std::size_t>(input.menu_row) * 6U +
+         static_cast<std::size_t>(input.menu_column)) *
+            2U +
+        2U;
+    if (table_offset >= input.source_action_indices.size()) {
+        return std::nullopt;
     }
-    for (std::int16_t slot = 6; slot >= 0; --slot) {
-        if (matches_slot(slot)) {
-            return true;
-        }
-    }
-    return false;
+
+    const auto action_index = input.source_action_indices[table_offset];
+    const auto matching_item_code = static_cast<std::uint8_t>(
+        static_cast<std::uint16_t>(action_index) + 0x19U);
+    const auto modifiers = apply_action_item_phase_modifiers(
+        input.value, input.entity, matching_item_code, action_index,
+        input.special_item_table);
+    return MenuMetricLookupResult{action_index, matching_item_code, modifiers,
+                                  table_offset};
 }
 
 void upload_resource_then_write_two_blocks(

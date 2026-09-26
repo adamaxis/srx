@@ -18,12 +18,19 @@ int main() {
         return 1;
     }
 
-    std::vector<std::int16_t> scanned;
-    if (!find_matching_menu_metric([&](const std::int16_t slot) {
-            scanned.push_back(slot);
-            return slot == 3;
-        }) ||
-        scanned != std::vector<std::int16_t>{6, 5, 4, 3}) {
+    MenuMetricLookupInput metric_input{};
+    metric_input.menu_row = 1U;
+    metric_input.menu_column = 2U;
+    metric_input.source_action_indices.resize(20U, 0U);
+    metric_input.source_action_indices[18U] = 2U;
+    metric_input.value = 5U;
+    metric_input.entity.item_codes[3] = 0x1BU;
+    metric_input.entity.item_phases[3] = 4U;
+    const auto metric = resolve_menu_metric_action(metric_input);
+    if (!metric.has_value() || metric->source_table_offset != 18U ||
+        metric->action_index != 2U || metric->matching_item_code != 0x1BU ||
+        metric->modifiers.value != 9U || !metric->modifiers.phase_found ||
+        resolve_menu_metric_action(MenuMetricLookupInput{}) .has_value()) {
         return 2;
     }
 

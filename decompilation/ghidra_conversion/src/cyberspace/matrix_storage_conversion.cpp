@@ -19,11 +19,11 @@ std::uint32_t matrix_program_storage_weight(
 std::uint32_t matrix_program_storage_usage(const MatrixStorageUsage& usage,
                                            const std::size_t program) {
     if (program >= usage.availability_flags.size() ||
-        program >= usage.program_footprints.size()) {
+        program >= kMatrixProgramFootprints.size()) {
         return 0;
     }
     return matrix_program_storage_weight(usage.availability_flags[program],
-                                         usage.program_footprints[program]);
+                                         kMatrixProgramFootprints[program]);
 }
 
 MatrixStorageCapacity calculate_matrix_storage_capacity(

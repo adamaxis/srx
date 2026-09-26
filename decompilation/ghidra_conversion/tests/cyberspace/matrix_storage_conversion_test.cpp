@@ -17,7 +17,6 @@ int main() {
     usage.loaded_slot_usage = {2U, 4U, 0U, 3U, 1U};
     usage.availability_flags = {1U, 0U, 1U, 0U, 1U, 0U,
                                 0U, 1U, 0U, 0U, 0U, 1U};
-    usage.program_footprints = kMatrixProgramFootprints;
 
     if (!expect(matrix_loaded_slot_usage(usage, 0U) == 2U &&
                 matrix_loaded_slot_usage(usage, 4U) == 1U &&

@@ -18,27 +18,88 @@ std::size_t render_wrapped_text(
     const std::vector<std::uint8_t>& encoded,
     const std::size_t line_width,
     const WrappedTextCallbacks& callbacks) {
-    call_once(callbacks.begin_transfer);
-    if (line_width == 0U) {
+    if (line_width == 0U || encoded.empty()) {
         return 0U;
     }
+
     std::size_t written = 0U;
-    std::size_t line_length = 0U;
-    for (const auto value : encoded) {
-        if ((value & 0x80U) != 0U) {
+    std::size_t source_offset = 0U;
+    std::size_t line = 0U;
+    while (source_offset < encoded.size()) {
+        call_once(callbacks.begin_transfer);
+
+        // ROM 0xC168 scans through the next source space and remembers the
+        // last one that still fits. A high-bit marker ends the scan. The host
+        // guard for an overlong word keeps malformed extracted input from
+        // looping forever; normal source strings have a fitting space or
+        // terminator and follow the exact selected-count path.
+        std::size_t scan_offset = source_offset;
+        std::size_t scanned = 0U;
+        std::size_t last_fitting_space = 0U;
+        while (scan_offset < encoded.size()) {
+            const auto value = encoded[scan_offset++];
+            ++scanned;
+            if ((value & 0x80U) != 0U) {
+                break;
+            }
+            if (value == 0x20U) {
+                if (scanned < line_width) {
+                    last_fitting_space = scanned;
+                    continue;
+                }
+                break;
+            }
+        }
+
+        std::size_t line_length = scanned;
+        if (scanned > line_width && last_fitting_space != 0U) {
+            line_length = last_fitting_space;
+        } else if (scanned > line_width && last_fitting_space == 0U) {
+            // The ROM data keeps words within the width. If an external host
+            // asset violates that contract, consume one bounded line instead
+            // of reproducing a 68000 DBF underflow.
+            line_length = line_width;
+        }
+        if (line_length == 0U) {
             break;
         }
-        if (line_length == line_width) {
-            line_length = 0U;
+
+        for (std::size_t column = 0U; column < line_length &&
+                                      source_offset < encoded.size();
+             ++column, ++source_offset) {
+            const auto value = encoded[source_offset];
+            if ((value & 0x80U) != 0U) {
+                // 0x80 is a source line break; 0xFF is the final marker.
+                // Both occupy the scanned source span but neither is a glyph.
+                break;
+            }
+            const auto glyph = callbacks.glyph_for_byte
+                                   ? callbacks.glyph_for_byte(value)
+                                   : static_cast<std::uint16_t>(value);
+            if (callbacks.write_glyph_at) {
+                callbacks.write_glyph_at(line, column, glyph);
+            } else if (callbacks.write_glyph) {
+                callbacks.write_glyph(glyph);
+            }
+            ++written;
         }
-        const auto glyph = callbacks.glyph_for_byte
-                               ? callbacks.glyph_for_byte(value)
-                               : static_cast<std::uint16_t>(value);
-        if (callbacks.write_glyph) {
-            callbacks.write_glyph(glyph);
+
+        ++line;
+        if (source_offset >= encoded.size()) {
+            break;
         }
-        ++written;
-        ++line_length;
+
+        // If the selected span ended before the marker, the next iteration
+        // starts at the first unconsumed source byte. Otherwise consume the
+        // marker now and either continue at the next line (0x80) or finish
+        // (0xFF). The source distinguishes these by testing marker << 1.
+        const auto marker = encoded[source_offset];
+        if ((marker & 0x80U) != 0U) {
+            ++source_offset;
+            if ((marker & 0x40U) != 0U) {
+                break;
+            }
+        }
     }
     return written;
 }
@@ -237,11 +298,27 @@ void run_menu_slot_service(std::uint8_t& pending_flags,
     call_once(callbacks.prepare_offset);
 }
 
-void merge_menu_pending_flags(std::uint8_t& pending_flags,
-                              const std::uint8_t source_flags,
-                              const std::function<void()>& service_display) {
-    pending_flags = static_cast<std::uint8_t>(pending_flags | source_flags);
-    call_once(service_display);
+std::optional<MenuPendingFlagMergeResult> merge_menu_pending_flags(
+    MenuPendingFlagState& state,
+    const std::function<void(std::size_t metadata_offset)>& refresh_metadata) {
+    if (state.selected_mode_index >= state.pending_flags.size()) {
+        return std::nullopt;
+    }
+    const auto record_offset = state.selected_runner_index * 0x14U + 0x05U;
+    if (record_offset >= state.runner_records.size()) {
+        return std::nullopt;
+    }
+
+    const auto source_flags = state.runner_records[record_offset];
+    state.pending_flags[state.selected_mode_index] = static_cast<std::uint8_t>(
+        state.pending_flags[state.selected_mode_index] | source_flags);
+    const auto metadata_offset = static_cast<std::size_t>(source_flags) * 0x20U;
+    if (refresh_metadata) {
+        refresh_metadata(metadata_offset);
+    }
+    return MenuPendingFlagMergeResult{source_flags, metadata_offset,
+                                      state.pending_flags[
+                                          state.selected_mode_index]};
 }
 
 void run_menu_metadata_service(const MenuServiceCallbacks& callbacks) {

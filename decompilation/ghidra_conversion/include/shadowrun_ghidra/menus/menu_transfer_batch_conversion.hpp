@@ -1,7 +1,11 @@
 #pragma once
 
+#include "shadowrun_ghidra/entities/entity_action_math_conversion.hpp"
+
 #include <cstdint>
 #include <functional>
+#include <optional>
+#include <vector>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -15,10 +19,30 @@ void write_three_grids_then_service(
     const std::function<void()>& write_grid,
     const std::function<void()>& service_once);
 
-// ROM 0x104C8: scan six menu slots from slot six down to zero and report the
-// first source-metric match.
-bool find_matching_menu_metric(
-    const std::function<bool(std::int16_t slot)>& matches_slot);
+struct MenuMetricLookupInput {
+    // ROM FFF0D1 selects the six-entry action row; FFF0D0 selects its column.
+    std::uint8_t menu_row = 0;
+    std::uint8_t menu_column = 0;
+    // Host copy of the byte table reached through FFF10E. The source selects
+    // byte ((row * 6 + column) * 2) + 2.
+    std::vector<std::uint8_t> source_action_indices;
+    std::uint16_t value = 0;
+    EntityActionRecord entity{};
+    const EntityActionSpecialItemModifierTable* special_item_table = nullptr;
+};
+
+struct MenuMetricLookupResult {
+    std::uint8_t action_index = 0;
+    std::uint8_t matching_item_code = 0;
+    EntityActionPhaseModifierResult modifiers{};
+    std::size_t source_table_offset = 0;
+};
+
+// ROM 0x104C8 -> 0x104F6: select the source action index from the menu table,
+// derive its item code, and run the shared phase/special-item continuation.
+// A missing host table is unresolved rather than a fabricated action.
+std::optional<MenuMetricLookupResult> resolve_menu_metric_action(
+    const MenuMetricLookupInput& input);
 
 void upload_resource_then_write_two_blocks(
     const std::function<void()>& upload_resource,

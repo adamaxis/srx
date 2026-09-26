@@ -60,19 +60,31 @@ int main() {
         return 6;
     }
 
+    // The ROM 0x52FD2 body is called by 0x53094 after the bus is already
+    // open. It must not require a second begin callback merely to model that
+    // inner entry.
+    int pair_flushes = 0;
+    int pair_appends = 0;
+    const AudioCommandSequenceCallbacks inner_pair{
+        {}, [&] {}, [&] { ++pair_flushes; }, [&] { ++pair_appends; }};
+    if (!flush_append_pair(inner_pair) || pair_flushes != 1 ||
+        pair_appends != 2) {
+        return 7;
+    }
+
     if (service_audio_if_enabled_variant(false, sequence) ||
         !service_audio_if_enabled_variant(true, sequence)) {
-        return 7;
+        return 8;
     }
     int prepared = 0;
     if (!service_audio_command_frame_variant(
-            true, {[&] { ++prepared; }, sequence}) || prepared != 1 ||
+        true, {[&] { ++prepared; }, sequence}) || prepared != 1 ||
         service_audio_command_frame_variant(false, {[&] { ++prepared; }, sequence})) {
-        return 8;
+        return 9;
     }
     if (!service_audio_command_wrapper(sequence) ||
         !service_audio_tick_wrapper(sequence)) {
-        return 9;
+        return 10;
     }
 
     int ticks = 0;
@@ -83,7 +95,7 @@ int main() {
         {[&] { ++ticks; }, [&] { ++waits; }, [&] { ++flushes; },
          [&] { ++finalizes; }});
     if (ticks != 6 || waits != 6 || flushes != 1 || finalizes != 1) {
-        return 10;
+        return 11;
     }
     return 0;
 }

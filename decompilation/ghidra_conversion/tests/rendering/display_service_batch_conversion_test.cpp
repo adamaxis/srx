@@ -79,6 +79,22 @@ int main() {
         return 7;
     }
 
+    std::vector<std::uint16_t> split_column_words;
+    int split_transfers = 0;
+    const auto split_column_count = render_field_tile_column(
+        {118, 4, 0x0000, 0},
+        {[&] { ++split_transfers; },
+         [](const std::uint16_t key, const std::size_t offset) {
+             return static_cast<std::uint16_t>(key + offset);
+         },
+         [&split_column_words](const std::uint16_t word) {
+             split_column_words.push_back(word);
+         }});
+    if (split_column_count != 44 || split_column_words.size() != 44U ||
+        split_transfers != 2 || split_column_words.front() != 4U) {
+        return 8;
+    }
+
     int rendered_rows = 0;
     render_field_tile_rows(
         0x0010, 0x2345,
@@ -86,23 +102,23 @@ int main() {
          [&rendered_rows](const std::int16_t, const std::uint16_t,
                           const std::int16_t) { ++rendered_rows; }});
     if (rendered_rows != 32) {
-        return 8;
+        return 9;
     }
 
     std::vector<std::uint16_t> map(17U, 0U);
     map[16] = 0x0301;
     if (calculate_field_tile_source_offset({0, 1}, 1, 0, map).value_or(-1) !=
         0x2000) {
-        return 9;
+        return 10;
     }
 
     ControllerDelayState delay{0x40, {0, 0}, 0};
     if (!arm_controller_activity_delay(delay) || delay.delay != 0x3C) {
-        return 10;
+        return 11;
     }
     delay.entity_flags[0] = 1;
     if (arm_controller_activity_delay(delay)) {
-        return 11;
+        return 12;
     }
 
     events.clear();

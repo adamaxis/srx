@@ -2,21 +2,43 @@
 
 #include <cassert>
 #include <array>
+#include <tuple>
 
 using namespace shadowrun::ghidra_conversion;
 
 int main() {
     std::vector<std::uint16_t> glyphs;
+    std::vector<std::tuple<std::size_t, std::size_t, std::uint16_t>> placements;
     int begins = 0;
     assert(render_wrapped_text(
-               {1, 2, 3, 0x80}, 2,
+               {0x21, 0x22, 0x20, 0x23, 0xFF}, 4,
                {[&] { ++begins; },
                 [](const std::uint8_t value) {
                     return static_cast<std::uint16_t>(value + 0x100U);
                 },
-                [&](const std::uint16_t glyph) { glyphs.push_back(glyph); }}) ==
-           3U);
-    assert(begins == 1 && glyphs == std::vector<std::uint16_t>({0x101, 0x102, 0x103}));
+                [&](const std::uint16_t glyph) { glyphs.push_back(glyph); },
+                [&](const std::size_t line, const std::size_t column,
+                    const std::uint16_t glyph) {
+                    placements.emplace_back(line, column, glyph);
+                }}) == 4U);
+    const std::vector<std::tuple<std::size_t, std::size_t, std::uint16_t>>
+        expected_wrapped_placements{
+            {0, 0, 0x121}, {0, 1, 0x122}, {0, 2, 0x120}, {1, 0, 0x123}};
+    assert(begins == 2 && glyphs.empty() &&
+           placements == expected_wrapped_placements);
+
+    begins = 0;
+    placements.clear();
+    assert(render_wrapped_text(
+               {0x21, 0x80, 0x22, 0xFF}, 4,
+               {[&] { ++begins; }, {}, {},
+                [&](const std::size_t line, const std::size_t column,
+                    const std::uint16_t glyph) {
+                    placements.emplace_back(line, column, glyph);
+                }}) == 2U);
+    const std::vector<std::tuple<std::size_t, std::size_t, std::uint16_t>>
+        expected_break_placements{{0, 0, 0x21}, {1, 0, 0x22}};
+    assert(begins == 2 && placements == expected_break_placements);
 
     int dispatched = 0;
     assert(dispatch_menu_handler(1, {{}, [&] { ++dispatched; }}) && dispatched == 1);
@@ -89,14 +111,27 @@ int main() {
         [&] { events.push_back(7); }, [&] { events.push_back(8); },
         [&] { events.push_back(9); }, [&] { events.push_back(10); },
         [&] { events.push_back(11); }};
-    std::uint8_t pending = 1;
+    MenuPendingFlagState pending_state{};
+    pending_state.pending_flags = {1, 0, 0, 0};
+    pending_state.selected_mode_index = 2U;
+    pending_state.runner_records.resize(0x14U * 3U, 0U);
+    pending_state.selected_runner_index = 1U;
+    pending_state.runner_records[0x14U + 0x05U] = 3U;
+    std::uint8_t pending = 1U;
     run_menu_slot_service(pending, 1, callbacks);
-    merge_menu_pending_flags(pending, 2, [&] { events.push_back(12); });
+    std::size_t metadata_offset = 0U;
+    const auto pending_merge = merge_menu_pending_flags(
+        pending_state, [&](const std::size_t offset) {
+            metadata_offset = offset;
+            events.push_back(12);
+        });
     run_menu_metadata_service(callbacks);
     run_menu_selection_service(1, callbacks);
     run_menu_selection_variant(1, callbacks);
     run_menu_progression_variant(1, callbacks);
-    assert((pending & 3U) == 3U);
+    assert(pending_merge.has_value() && pending_merge->source_flags == 3U &&
+           pending_merge->metadata_offset == 0x60U && metadata_offset == 0x60U &&
+           pending_state.pending_flags[2] == 3U);
 
     std::vector<std::size_t> cleared;
     assert(clear_first_ready_menu_slot({1, 7, 2, 7}, [&](const std::size_t slot) {
