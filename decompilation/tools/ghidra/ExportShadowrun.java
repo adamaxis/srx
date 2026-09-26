@@ -410,8 +410,8 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00013AE6L, "advance_entity_action_threshold");
         names.put(0x00013C20L, "select_entity_action_lane");
         names.put(0x00013C74L, "collect_entity_action_records");
-        names.put(0x00013CD4L, "passes_entity_action_threshold");
-        names.put(0x00013CDEL, "pass_entity_action_threshold_variant");
+        names.put(0x00013CD4L, "evaluate_entity_animation_rate_from_phase");
+        names.put(0x00013CDEL, "evaluate_entity_animation_rate");
         names.put(0x000144E8L, "apply_entity_close_range_state");
         names.put(0x00014640L, "map_world_delta_to_tile_pair");
         names.put(0x00015354L, "activate_entity_audio_state");
@@ -680,11 +680,11 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x000130C0L, "build_field_action_detail_plan");
         names.put(0x00013228L, "build_inventory_action_detail_plan");
         names.put(0x000133A6L, "apply_world_effect_reward");
-        names.put(0x000138B8L, "convert_menu_routine_0x000138b8");
+        names.put(0x000138B8L, "run_entity_animation_entry");
         names.put(0x00013904L, "convert_menu_routine_0x00013904");
-        names.put(0x00013A92L, "convert_menu_routine_0x00013a92");
-        names.put(0x00013B12L, "convert_menu_routine_0x00013b12");
-        names.put(0x00013BBAL, "convert_menu_routine_0x00013bba");
+        names.put(0x00013A92L, "run_entity_animation_branch");
+        names.put(0x00013B12L, "run_entity_animation_transition");
+        names.put(0x00013BBAL, "check_entity_animation_transition");
         names.put(0x00013D0CL, "convert_menu_routine_0x00013d0c");
         names.put(0x00013F76L, "convert_menu_routine_0x00013f76");
         names.put(0x00013FFEL, "convert_menu_routine_0x00013ffe");

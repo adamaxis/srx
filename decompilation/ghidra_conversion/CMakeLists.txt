@@ -151,6 +151,19 @@ target_link_libraries(shadowrun_ghidra_entity_animation_test
 add_test(NAME shadowrun_ghidra_entity_animation
          COMMAND shadowrun_ghidra_entity_animation_test)
 
+add_library(shadowrun_ghidra_entity_animation_transition STATIC
+    src/entity_animation_transition_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_animation_transition PUBLIC include)
+
+add_executable(shadowrun_ghidra_entity_animation_transition_test
+    tests/entity_animation_transition_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_animation_transition_test
+    PRIVATE shadowrun_ghidra_entity_animation_transition)
+add_test(NAME shadowrun_ghidra_entity_animation_transition
+         COMMAND shadowrun_ghidra_entity_animation_transition_test)
+
 add_library(shadowrun_ghidra_entity_coordinate STATIC
     src/entity_coordinate_conversion.cpp
 )

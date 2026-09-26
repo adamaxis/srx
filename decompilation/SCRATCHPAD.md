@@ -628,6 +628,25 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The animation-transition cluster is now separated from the menu catalog. ROM
+`0x138B8` is the entity animation timer entry: it decrements `+0xB6`, honors
+the global frame lock at `FFE175`, rearms the timer to `0x14`, sends records
+without both animation gates to the unresolved `0x14508` fallback, and only
+enters `0x13A92` when the signed `+0xDC` transition marker is negative.
+
+The isolated conversion for `0x13A92`, `0x13B12`, and `0x13BBA` now models the
+actual event state machine. `0x13C74` retains event types `0/1/7/8` for the
+bounded random choice and keeps the last type-`0x0B` argument as the special
+event. `0x13CDE` compares the signed `+0x9D` argument and signed event code
+through the explicit rate-calculation boundary, with the `+0x9C == 1`
+bypass; `0x13CD4` enters the same gate with `(phase - 1)`. `0x13BBA` uses the
+special-event/lane carry rules, and `0x13B12` prefers a rate-eligible special
+event on an available lane before selecting an accepted event. A successful
+selection publishes `+0x56 = -1`, `+0x57 = event + 1`, `+0x9D`, conditionally
+refreshes `+0x4E`, then calls the delay-reset and asset-refresh boundaries in
+source order. RNG, rate calculation, marker clearing, delay, and graphics
+refresh remain callbacks; no Genesis bus or runtime emulator code was added.
+
 ## Inventory command and selected-item conversion
 
 The `0x11740` dispatcher is now represented in the isolated

@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00013CDE
-// Name: pass_entity_action_threshold_variant
+// Name: evaluate_entity_animation_rate
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00010660 convert_menu_routine_0x00010660
 
 
-void pass_entity_action_threshold_variant(void)
+void evaluate_entity_animation_rate(void)
 
 {
   short unaff_D2w;
@@ -21,5 +21,4 @@ void pass_entity_action_threshold_variant(void)
   }
   return;
 }
-
 

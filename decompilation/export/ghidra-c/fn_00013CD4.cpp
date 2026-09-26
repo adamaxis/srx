@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x00013CD4
-// Name: passes_entity_action_threshold
+// Name: evaluate_entity_animation_rate_from_phase
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void passes_entity_action_threshold(void)
+void evaluate_entity_animation_rate_from_phase(void)
 
 {
   short unaff_D2w;
@@ -21,5 +21,4 @@ void passes_entity_action_threshold(void)
   }
   return;
 }
-
 

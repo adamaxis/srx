@@ -1,15 +1,15 @@
 // Ghidra headless export
 // Entry: 0x000138B8
-// Name: convert_menu_routine_0x000138b8
+// Name: run_entity_animation_entry
 // Decompile status: ok
 // Calls recovered from direct call instructions:
-//   0x00013A92 convert_menu_routine_0x00013a92
+//   0x00013A92 run_entity_animation_branch
 //   0x00014508 convert_entity_routine_0x00014508
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_menu_routine_0x000138b8(void)
+void run_entity_animation_entry(void)
 
 {
   byte bVar1;
@@ -75,7 +75,7 @@ void convert_menu_routine_0x000138b8(void)
   }
   if (*(short *)(in_A0 + 0xdc) < 0) {
     uStack_4 = 0x13900;
-    convert_menu_routine_0x00013a92();
+    run_entity_animation_branch();
     in_A0 = extraout_A0;
   }
   if (*(int *)(in_A0 + 0xac) == 0) {
@@ -258,5 +258,4 @@ advance_obstruction_route_queue:
   *(undefined1 **)(iVar10 + 0x3a) = &LAB_0000b574;
   return;
 }
-
 

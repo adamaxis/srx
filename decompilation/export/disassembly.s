@@ -4403,7 +4403,7 @@
 0000AC82: bra.b 0x0000ac68
 0000AC84: btst.b #0x3,(0x10,A0)
 0000AC8A: beq.w 0x0000ac98
-0000AC8E: jsr 0x000138b8.l ; call 000138B8 convert_menu_routine_0x000138b8
+0000AC8E: jsr 0x000138b8.l ; call 000138B8 run_entity_animation_entry
 0000AC94: bra.w 0x0000ac9e
 0000AC98: jsr 0x00013904.l ; call 00013904 convert_menu_routine_0x00013904
 0000AC9E: tst.b (0x00ffe18a).l
@@ -11037,7 +11037,7 @@
 000138F2: rts
 000138F4: tst.w (0xdc,A0)
 000138F8: bpl.w 0x00013900
-000138FC: bsr.w 0x00013a92 ; call 00013A92 convert_menu_routine_0x00013a92
+000138FC: bsr.w 0x00013a92 ; call 00013A92 run_entity_animation_branch
 00013900: bra.w 0x000139d8
 00013904: subq.w #0x1,(0xb6,A0)
 00013908: bmi.w 0x0001390e
@@ -11122,14 +11122,14 @@
 00013A98: bge.w 0x00013ae4
 00013A9C: tst.b (0x56,A0)
 00013AA0: bpl.w 0x00013aac
-00013AA4: bsr.w 0x00013bba ; call 00013BBA convert_menu_routine_0x00013bba
+00013AA4: bsr.w 0x00013bba ; call 00013BBA check_entity_animation_transition
 00013AA8: bcs.w 0x00013ac0
 00013AAC: cmpi.b #0x5,(0x9c,A0)
 00013AB2: blt.w 0x00013ae4
-00013AB6: bsr.w 0x00013b12 ; call 00013B12 convert_menu_routine_0x00013b12
+00013AB6: bsr.w 0x00013b12 ; call 00013B12 run_entity_animation_transition
 00013ABA: bcs.w 0x00013ae6
 00013ABE: rts
-00013AC0: bsr.w 0x00013cd4 ; call 00013CD4 passes_entity_action_threshold
+00013AC0: bsr.w 0x00013cd4 ; call 00013CD4 evaluate_entity_animation_rate_from_phase
 00013AC4: bcc.w 0x00013ae4
 00013AC8: tst.b (0x56,A0)
 00013ACC: bmi.w 0x00013ae0
@@ -11163,7 +11163,7 @@
 00013B2C: move.b #0xb,D7b
 00013B30: move.b (0x00ffdd66).l,D4b
 00013B36: movem.w {  D7w D4w},-(SP)
-00013B3A: bsr.w 0x00013cde ; call 00013CDE pass_entity_action_threshold_variant
+00013B3A: bsr.w 0x00013cde ; call 00013CDE evaluate_entity_animation_rate
 00013B3E: movem.w (SP)+,{  D4 D7}
 00013B42: bcs.w 0x00013b4e
 00013B46: bsr.w 0x00013c20 ; call 00013C20 select_entity_action_lane
@@ -11176,7 +11176,7 @@
 00013B62: move.b (0x0,A3,D0w*0x1),D7b ; data 00ffdd2a
 00013B66: move.b (0x1,A3,D0w*0x1),D4b ; data 00ffdd2b
 00013B6A: movem.w {  D7w D4w},-(SP)
-00013B6E: bsr.w 0x00013cde ; call 00013CDE pass_entity_action_threshold_variant
+00013B6E: bsr.w 0x00013cde ; call 00013CDE evaluate_entity_animation_rate
 00013B72: movem.w (SP)+,{  D4 D7}
 00013B76: bcs.w 0x00013bb8
 00013B7A: move.b (0x57,A0),D0b
