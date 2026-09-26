@@ -1968,6 +1968,19 @@ target_link_libraries(shadowrun_ghidra_pocket_secretary_menu_test
 add_test(NAME shadowrun_ghidra_pocket_secretary_menu
          COMMAND shadowrun_ghidra_pocket_secretary_menu_test)
 
+add_library(shadowrun_ghidra_runner_switch STATIC
+    src/runner_switch_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_runner_switch PUBLIC include)
+
+add_executable(shadowrun_ghidra_runner_switch_test
+    tests/runner_switch_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_runner_switch_test
+    PRIVATE shadowrun_ghidra_runner_switch)
+add_test(NAME shadowrun_ghidra_runner_switch
+         COMMAND shadowrun_ghidra_runner_switch_test)
+
 add_library(shadowrun_ghidra_matrix_entry STATIC
     src/matrix_entry_conversion.cpp
 )

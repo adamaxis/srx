@@ -1125,6 +1125,13 @@ shell as a source conversion. It resets the cursor, chooses five entries when
 priority over next-selection input, wraps over the exact source maximum, and
 dispatches action, mode-action, and exit edges in source order. The indirect
 handler table at `0xC1400` remains an explicit boundary.
+
+The runner-switch leaf at `0x391A` is now represented separately from the
+native field shell. Its typed scan advances after the current record, wraps at
+source record type `2`, requires the active bit, applies the `FFF09D`
+suppression override, and publishes the transient selection marker. A scan
+with no different eligible record returns a no-eligible result without
+installing an archetype or changing the active runner.
 The posture companion at `0x10722` is also now explicit: source `0x0800`
 and `0x0400` adjust posture by `+1`/`-1` through the existing `0..4` clamp;
 `0x0100`, `0x4000`, and `0x1000` finish the sub-loop, while other input is a
