@@ -557,7 +557,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0001A538	runner_record_has_active_effect	22	unknown	ok	ghidra-c/fn_0001A538.cpp
 0001A54E	initialize_effect_defaults	34	unknown	ok	ghidra-c/fn_0001A54E.cpp
 0001A570	build_title_sprites_twice	48	unknown	ok	ghidra-c/fn_0001A570.cpp
-0001A5A0	convert_world_routine_0x0001a5a0	568	unknown	ok	ghidra-c/fn_0001A5A0.cpp
+0001A5A0	advance_world_effect_mode_animation	568	unknown	ok	ghidra-c/fn_0001A5A0.cpp
 0001A7BE	append_title_vertical_sprite	90	unknown	ok	ghidra-c/fn_0001A7BE.cpp
 0001A818	begin_world_effect_descriptor_transition	118	unknown	ok	ghidra-c/fn_0001A818.cpp
 0001A8F4	reset_effect_entity	20	unknown	ok	ghidra-c/fn_0001A8F4.cpp

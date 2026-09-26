@@ -125,7 +125,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x0001A370U, "advance_world_effect_controller", RoutineFamily::world, 350U},
     {0x0001A4EAU, "lookup_runner_animation_delta", RoutineFamily::world, 36U},
     {0x0001A538U, "runner_record_has_active_effect", RoutineFamily::world, 22U},
-    {0x0001A5A0U, "convert_world_routine_0x0001a5a0", RoutineFamily::world, 568U},
+    {0x0001A5A0U, "advance_world_effect_mode_animation", RoutineFamily::world, 568U},
     {0x0001A818U, "begin_world_effect_descriptor_transition", RoutineFamily::world, 118U},
     {0x0001A908U, "initialize_world_effect_mode", RoutineFamily::world, 198U},
     {0x0001AA40U, "tick_world_effect_animation", RoutineFamily::world, 302U},

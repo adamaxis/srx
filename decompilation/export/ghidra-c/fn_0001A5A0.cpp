@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001A5A0
-// Name: convert_world_routine_0x0001a5a0
+// Name: advance_world_effect_mode_animation
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000013BE build_title_sprite_records_with_attribute_offset
@@ -11,11 +11,15 @@
 //   0x000530EA service_audio_command_frame
 //   0x000562EC convert_intro_routine_0x000562ec
 //   0x0005668C convert_intro_routine_0x0005668c
+//
+// Direct disassembly is authoritative for the shared labels at 0x1A64C,
+// 0x1A6AC, and 0x1A6F8. The typed host state machine is in
+// ghidra_conversion/world_effect_mode_animation_conversion.
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_world_routine_0x0001a5a0(void)
+void advance_world_effect_mode_animation(void)
 
 {
   short extraout_D1w;

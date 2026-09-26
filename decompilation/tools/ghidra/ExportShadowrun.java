@@ -734,7 +734,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0001A370L, "advance_world_effect_controller");
         names.put(0x0001A4EAL, "lookup_runner_animation_delta");
         names.put(0x0001A538L, "runner_record_has_active_effect");
-        names.put(0x0001A5A0L, "convert_world_routine_0x0001a5a0");
+        names.put(0x0001A5A0L, "advance_world_effect_mode_animation");
         names.put(0x0001A818L, "begin_world_effect_descriptor_transition");
         names.put(0x0001A908L, "initialize_world_effect_mode");
         names.put(0x0001AA40L, "tick_world_effect_animation");

@@ -16,7 +16,7 @@
 //   0x00019788 convert_world_routine_0x00019788
 //   0x0001A370 advance_world_effect_controller
 //   0x0001A48A advance_title_animation_cycle
-//   0x0001A5A0 convert_world_routine_0x0001a5a0
+//   0x0001A5A0 advance_world_effect_mode_animation
 //   0x0001A7BE append_title_vertical_sprite
 //   0x0001A908 initialize_world_effect_mode
 //   0x0001AA40 tick_world_effect_animation
@@ -201,7 +201,7 @@ LAB_0001afc0:
         advance_world_effect_motion();
       }
       if (DAT_00ffe076 != 0) {
-        convert_world_routine_0x0001a5a0();
+        advance_world_effect_mode_animation();
       }
       if (_DAT_00ffe0d4 != 0) {
         advance_title_animation_cycle();

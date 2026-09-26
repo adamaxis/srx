@@ -16984,7 +16984,7 @@
 0001B0DE: bsr.w 0x0001ca12 ; call 0001CA12 advance_world_effect_motion
 0001B0E2: tst.w (0x00ffe076).l
 0001B0E8: beq.w 0x0001b0f0
-0001B0EC: bsr.w 0x0001a5a0 ; call 0001A5A0 convert_world_routine_0x0001a5a0
+0001B0EC: bsr.w 0x0001a5a0 ; call 0001A5A0 advance_world_effect_mode_animation
 0001B0F0: tst.w (0x00ffe0d4).l
 0001B0F6: beq.w 0x0001b100
 0001B0FA: jsr 0x0001a48a.l ; call 0001A48A advance_title_animation_cycle
