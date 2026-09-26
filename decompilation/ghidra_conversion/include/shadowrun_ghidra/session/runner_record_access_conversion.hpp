@@ -94,8 +94,8 @@ struct RunnerTimingRosterState {
 };
 
 // ROM 0x1A4EA: use the selected compact record's +0x10 as an index into the
-// signed animation delta table at ROM 0x1A50E. Invalid host indexes and an
-// out-of-range current record are explicit no-results.
+// 21-word signed animation delta table at ROM 0x1A50E..0x1A536. Invalid host
+// indexes and an out-of-range current record are explicit no-results.
 std::optional<std::int16_t> lookup_runner_animation_delta(
     const RunnerTimingRosterState& roster);
 

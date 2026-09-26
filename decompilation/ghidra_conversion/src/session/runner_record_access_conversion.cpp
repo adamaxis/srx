@@ -133,8 +133,12 @@ void write_runner_record_fields(const RunnerRecordFields& fields,
 
 std::optional<std::int16_t> lookup_runner_animation_delta(
     const RunnerTimingRosterState& roster) {
-    static constexpr std::array<std::int16_t, 16> kAnimationDeltas{
-        100, 20, 10, 9, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, -1, -2};
+    // ROM 0x1A50E through 0x1A536 contains 21 words.  The function starts
+    // at 0x1A538, so stopping after the first 16 words loses the valid
+    // negative tail used by later timing records.
+    static constexpr std::array<std::int16_t, 21> kAnimationDeltas{
+        100, 20, 10, 9, 9, 8, 7, 6, 5, 4, 3,
+        2,   1,  0,  -1, -2, -3, -5, -6, -7, -8};
     const auto record_index = static_cast<std::size_t>(roster.current_index);
     if (record_index >= roster.records.size()) {
         return std::nullopt;

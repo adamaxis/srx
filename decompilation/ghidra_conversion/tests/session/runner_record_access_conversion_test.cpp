@@ -97,6 +97,11 @@ int main() {
         *lookup_runner_animation_delta(timing_roster) != -1) {
         return 4;
     }
+    timing_roster.records[1U].bytes[0x10U] = 20U;
+    if (!lookup_runner_animation_delta(timing_roster).has_value() ||
+        *lookup_runner_animation_delta(timing_roster) != -8) {
+        return 7;
+    }
     timing_roster.records[1U].bytes[0x0FU] = 1U;
     if (!runner_record_has_active_effect(timing_roster)) {
         return 5;
