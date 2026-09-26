@@ -12,6 +12,20 @@ bool expect(const bool condition) { return condition; }
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
+    ArmorModifierTable modifiers{};
+    modifiers.primary[1] = 3U;
+    modifiers.secondary[1] = 5U;
+    if (!expect(subtract_armor_primary_modifier(0x120AU, 2U, modifiers) ==
+                    0x1207U &&
+                subtract_armor_secondary_modifier(0x120AU, 2U, modifiers) ==
+                    0x1205U &&
+                subtract_armor_primary_modifier(0x120AU, 0U, modifiers) ==
+                    0x120AU &&
+                subtract_armor_secondary_modifier(0x1202U, 2U, modifiers) ==
+                    0x12FDU)) {
+        return 1;
+    }
+
     ArmorSelectionState state{2U, 4U};
     std::vector<std::string> order;
     const ArmorSelectionCallbacks callbacks{
@@ -28,7 +42,7 @@ int main() {
                 state.selected_inventory_phase == 4U &&
                 order == std::vector<std::string>{"text", "text", "first",
                                                    "grid", "second", "grid"})) {
-        return 1;
+        return 2;
     }
 
     order.clear();
@@ -37,7 +51,7 @@ int main() {
     if (!expect(refresh == ArmorSelectionResult::refreshed_current &&
                 order == std::vector<std::string>{"text", "text", "first",
                                                    "grid", "second", "grid"})) {
-        return 2;
+        return 3;
     }
 
     ArmorSelectionState empty{};
@@ -47,14 +61,14 @@ int main() {
         ArmorSelectionCallbacks{ {}, {}, {}, {}, [&] { ++empty_messages; } });
     if (!expect(rejected == ArmorSelectionResult::rejected_no_equipped_armor &&
                 empty_messages == 1)) {
-        return 3;
+        return 4;
     }
 
     if (!expect(apply_armor_selection(state, 0x2BU, true, {}) ==
                     ArmorSelectionResult::rejected_item_code &&
                 state.equipped_armor_index == 2U &&
                 state.selected_inventory_phase == 4U)) {
-        return 4;
+        return 5;
     }
     return 0;
 }

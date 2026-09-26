@@ -682,6 +682,10 @@ armor index to +0x76 and the selected inventory phase, runs the exact
 text/effect/grid refresh order, and restores both values afterward. The
 ordinary refresh rejects an active record with no equipped armor and keeps the
 effect services as explicit callbacks.
+The adjacent source leaves `0x55E92` and `0x55EB4` are now typed in the same
+module: they select the one-based `+0x76` row's `D4540 +0x25` or `+0x26`
+byte, subtract it from only the low byte of the running word, and preserve
+the high byte. Zero armor remains an unchanged value.
 
 ## Clips command conversion
 
