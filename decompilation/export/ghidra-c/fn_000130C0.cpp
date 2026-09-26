@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000130C0
-// Name: convert_menu_routine_0x000130c0
+// Name: build_field_action_detail_plan
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
@@ -8,7 +8,7 @@
 //   0x00012A54 update_resource_variant
 
 
-undefined8 convert_menu_routine_0x000130c0(void)
+undefined8 build_field_action_detail_plan(void)
 
 {
   undefined4 in_D0;
@@ -59,5 +59,4 @@ undefined8 convert_menu_routine_0x000130c0(void)
   }
   return CONCAT44(in_D0,in_D1);
 }
-
 

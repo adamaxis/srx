@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00013228
-// Name: convert_menu_routine_0x00013228
+// Name: build_inventory_action_detail_plan
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001232 write_vdp_grid
@@ -9,7 +9,7 @@
 //   0x00012A54 update_resource_variant
 
 
-undefined8 convert_menu_routine_0x00013228(void)
+undefined8 build_inventory_action_detail_plan(void)
 
 {
   byte bVar1;
@@ -66,5 +66,4 @@ undefined8 convert_menu_routine_0x00013228(void)
 LAB_000133a0:
   return CONCAT44(in_D0,in_D1);
 }
-
 

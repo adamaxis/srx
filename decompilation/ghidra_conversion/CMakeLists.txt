@@ -2629,5 +2629,18 @@ target_link_libraries(shadowrun_ghidra_entity_action_math_test
 add_test(NAME shadowrun_ghidra_entity_action_math
          COMMAND shadowrun_ghidra_entity_action_math_test)
 
+add_library(shadowrun_ghidra_action_detail STATIC
+    src/action_detail_conversion.cpp)
+target_include_directories(shadowrun_ghidra_action_detail PUBLIC include)
+target_link_libraries(shadowrun_ghidra_action_detail
+    PRIVATE shadowrun_ghidra_menu_transfer_batch)
+
+add_executable(shadowrun_ghidra_action_detail_test
+    tests/action_detail_conversion_test.cpp)
+target_link_libraries(shadowrun_ghidra_action_detail_test
+    PRIVATE shadowrun_ghidra_action_detail)
+add_test(NAME shadowrun_ghidra_action_detail
+         COMMAND shadowrun_ghidra_action_detail_test)
+
 target_link_libraries(shadowrun_ghidra_equipment_combat_bar
     PRIVATE shadowrun_ghidra_entity_action_math)

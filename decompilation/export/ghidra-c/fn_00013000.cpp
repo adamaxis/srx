@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x00013000
-// Name: convert_menu_routine_0x00013000
+// Name: select_entity_action_detail
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_encoded_title_text
 //   0x00012148 read_entity_action_code
 
 
-void convert_menu_routine_0x00013000(void)
+void select_entity_action_detail(void)
 
 {
   uint uVar1;
@@ -40,5 +40,4 @@ LAB_00013094:
   render_encoded_title_text();
   return;
 }
-
 

@@ -10460,7 +10460,7 @@
 00012F56: clr.l D6
 00012F58: mulu.w #0x30,D7
 00012F5C: move.b (0x25,A4,D7w*0x1),D6b ; data 000d4565
-00012F60: bsr.w 0x00013000 ; call 00013000 convert_menu_routine_0x00013000
+00012F60: bsr.w 0x00013000 ; call 00013000 select_entity_action_detail
 00012F64: lea (0xcf84c).l,A3 ; data 000cf84c
 00012F6A: movea.l #0xc51c,A2
 00012F70: lea (0xd19b0).l,A1 ; data 000d19b0
@@ -26448,7 +26448,7 @@
 00058570: bpl.w 0x0005857e
 00058574: lea (0x1aa5b2).l,A1 ; data 001aa5b2
 0005857A: bra.w 0x0005804a
-0005857E: jsr 0x00013228.l ; call 00013228 convert_menu_routine_0x00013228
+0005857E: jsr 0x00013228.l ; call 00013228 build_inventory_action_detail_plan
 00058584: move.l D0,D7
 00058586: bsr.w 0x0005878e ; call 0005878E convert_intro_routine_0x0005878e
 0005858A: move.l D7,D0
@@ -26552,7 +26552,7 @@
 0005873E: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 00058744: lea (0x1aacce).l,A1 ; data 001aacce
 0005874A: bra.w 0x000580ec
-0005874E: jsr 0x000130c0.l ; call 000130C0 convert_menu_routine_0x000130c0
+0005874E: jsr 0x000130c0.l ; call 000130C0 build_field_action_detail_plan
 00058754: clr.l D0
 00058756: move.b (A0),D0b
 00058758: bsr.w 0x0005878e ; call 0005878E convert_intro_routine_0x0005878e

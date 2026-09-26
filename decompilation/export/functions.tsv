@@ -348,9 +348,9 @@ entry	name	size	callingConvention	decompileStatus	file
 00012EAE	convert_menu_routine_0x00012eae	162	unknown	ok	ghidra-c/fn_00012EAE.cpp
 00012F50	render_entity_action_menu	84	unknown	ok	ghidra-c/fn_00012F50.cpp
 00012FA4	advance_entity_action_menu	92	unknown	ok	ghidra-c/fn_00012FA4.cpp
-00013000	convert_menu_routine_0x00013000	192	unknown	ok	ghidra-c/fn_00013000.cpp
-000130C0	convert_menu_routine_0x000130c0	360	unknown	ok	ghidra-c/fn_000130C0.cpp
-00013228	convert_menu_routine_0x00013228	382	unknown	ok	ghidra-c/fn_00013228.cpp
+00013000	select_entity_action_detail	192	unknown	ok	ghidra-c/fn_00013000.cpp
+000130C0	build_field_action_detail_plan	360	unknown	ok	ghidra-c/fn_000130C0.cpp
+00013228	build_inventory_action_detail_plan	382	unknown	ok	ghidra-c/fn_00013228.cpp
 000133A6	apply_world_effect_reward	192	unknown	ok	ghidra-c/fn_000133A6.cpp
 00013466	set_entity_action_state	108	unknown	ok	ghidra-c/fn_00013466.cpp
 000134D2	run_post_intro_mode	524	unknown	ok	ghidra-c/fn_000134D2.cpp

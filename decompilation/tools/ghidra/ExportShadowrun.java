@@ -676,9 +676,9 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00012C74L, "convert_menu_routine_0x00012c74");
         names.put(0x00012CEEL, "update_equipment_combat_bars");
         names.put(0x00012EAEL, "convert_menu_routine_0x00012eae");
-        names.put(0x00013000L, "convert_menu_routine_0x00013000");
-        names.put(0x000130C0L, "convert_menu_routine_0x000130c0");
-        names.put(0x00013228L, "convert_menu_routine_0x00013228");
+        names.put(0x00013000L, "select_entity_action_detail");
+        names.put(0x000130C0L, "build_field_action_detail_plan");
+        names.put(0x00013228L, "build_inventory_action_detail_plan");
         names.put(0x000133A6L, "apply_world_effect_reward");
         names.put(0x000138B8L, "convert_menu_routine_0x000138b8");
         names.put(0x00013904L, "convert_menu_routine_0x00013904");

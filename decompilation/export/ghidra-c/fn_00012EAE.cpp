@@ -28,10 +28,9 @@ void convert_menu_routine_0x00012eae(void)
       return;
     }
   }
-  convert_menu_routine_0x00013000();
+  select_entity_action_detail();
   render_encoded_title_text();
   write_vdp_grid();
   return;
 }
-
 

@@ -6,7 +6,7 @@
 //   0x00001232 write_vdp_grid
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
-//   0x00013228 convert_menu_routine_0x00013228
+//   0x00013228 build_inventory_action_detail_plan
 //   0x00057610 convert_intro_routine_0x00057610
 //   0x00057628 select_menu_resource_entry
 //   0x0005787C calculate_field_action_quantity_cost
@@ -172,7 +172,7 @@ LAB_00057d08:
   }
   uVar4 = (ushort)*(byte *)((uint)DAT_00fff0d0 + DAT_00fffc04 + 0x66);
   if ((-1 < (short)(uVar4 - 1)) && (((short)(uVar4 - 0x29) < 0 || (-1 < (short)(uVar4 - 0x2c))))) {
-    uVar3 = convert_menu_routine_0x00013228();
+    uVar3 = build_inventory_action_detail_plan();
     convert_intro_routine_0x0005878e();
     if (DAT_00fff0b1 == '\0') {
       uVar3 = render_encoded_title_text();
