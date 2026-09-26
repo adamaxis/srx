@@ -14,15 +14,26 @@ void schedule_entity_collision_recheck(EntityReactionState& state) {
     state.reevaluate_collision = true;
 }
 
-std::uint8_t allocate_first_free_effect_slot(
+EffectSlotAllocation allocate_first_free_effect_slot_record(
     std::array<std::uint8_t, 18>& slot_state) {
+    std::uint8_t slot = 0;
+    std::uint16_t record_parameter = 0x0049U;
     for (std::size_t index = 0; index < slot_state.size(); ++index) {
         if (slot_state[index] == 0U) {
             slot_state[index] = 1U;
-            return static_cast<std::uint8_t>(index);
+            return EffectSlotAllocation{
+                static_cast<std::uint8_t>(index), record_parameter, false};
         }
+        slot = static_cast<std::uint8_t>(index + 1U);
+        record_parameter = static_cast<std::uint16_t>(
+            record_parameter + 0x0018U);
     }
-    return static_cast<std::uint8_t>(slot_state.size());
+    return EffectSlotAllocation{slot, record_parameter, true};
+}
+
+std::uint8_t allocate_first_free_effect_slot(
+    std::array<std::uint8_t, 18>& slot_state) {
+    return allocate_first_free_effect_slot_record(slot_state).slot;
 }
 
 std::uint8_t allocate_first_free_effect_slot_local(

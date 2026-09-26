@@ -37,6 +37,19 @@ void schedule_entity_collision_recheck(EntityReactionState& state);
 
 // ROM 0x1A2CC: claim the first free byte-sized effect slot. The source scans
 // eighteen slots and returns 18 as the full-table sentinel.
+struct EffectSlotAllocation {
+    std::uint8_t slot = 0;
+    std::uint16_t record_parameter = 0;
+    bool table_full = false;
+};
+
+// The source also leaves D1 pointing at the effect-record parameter associated
+// with the selected slot. Keep that second return value explicit for callers
+// such as 0x14C7C; the simpler wrapper below retains the slot-only contract
+// used by other converted callers.
+EffectSlotAllocation allocate_first_free_effect_slot_record(
+    std::array<std::uint8_t, 18>& slot_state);
+
 std::uint8_t allocate_first_free_effect_slot(
     std::array<std::uint8_t, 18>& slot_state);
 

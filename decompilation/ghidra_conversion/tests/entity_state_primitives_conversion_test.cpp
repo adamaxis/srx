@@ -45,6 +45,25 @@ int main() {
         return 5;
     }
 
+    std::array<std::uint8_t, 18> record_effects{};
+    record_effects[0] = 1U;
+    const auto record_allocation =
+        allocate_first_free_effect_slot_record(record_effects);
+    if (!expect(record_allocation.slot == 1U &&
+                record_allocation.record_parameter == 0x0061U &&
+                !record_allocation.table_full && record_effects[1] == 1U)) {
+        return 12;
+    }
+
+    record_effects.fill(1U);
+    const auto full_record_allocation =
+        allocate_first_free_effect_slot_record(record_effects);
+    if (!expect(full_record_allocation.slot == 18U &&
+                full_record_allocation.record_parameter == 0x01F9U &&
+                full_record_allocation.table_full)) {
+        return 13;
+    }
+
     std::array<std::uint8_t, 18> local_effects{};
     local_effects[0] = 1U;
     if (!expect(allocate_first_free_effect_slot_local(local_effects) == 1U &&

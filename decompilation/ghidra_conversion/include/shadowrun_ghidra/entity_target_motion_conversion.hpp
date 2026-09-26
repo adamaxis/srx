@@ -18,15 +18,15 @@ struct LinkedEntityTarget {
 struct EntityTargetMotionState {
     std::uint16_t world_x = 0;
     std::uint16_t world_y = 0;
-    std::uint16_t heading = 0;
-    std::uint16_t target_heading = 0;
-    std::uint16_t movement_timer = 0;
-    std::uint16_t entity_type = 0;
-    std::int16_t movement_mode = 0;
-    std::int16_t effect_gate = 0;
-    std::uint8_t flags = 0;
-    std::uint16_t effect_auxiliary_value = 0;
-    std::uint8_t effect_slot = 0;
+    std::uint16_t heading = 0; // source record +0x2E
+    std::uint16_t target_heading = 0; // source record +0x34
+    std::uint16_t movement_timer = 0; // source record +0x1A
+    std::uint16_t entity_type = 0; // source record +0x0E
+    std::int16_t movement_mode = 0; // source record +0x1E
+    std::int16_t effect_gate = 0; // source record +0xDC
+    std::uint8_t flags = 0; // source record +0x11
+    std::uint16_t effect_record_parameter = 0; // source record +0x2A
+    std::uint8_t effect_slot = 0; // source record +0x32
 };
 
 enum class EntityTargetMotionAction {
@@ -56,7 +56,6 @@ struct EntityTargetMotionResult {
 EntityTargetMotionResult resolve_entity_target_motion(
     EntityTargetMotionState& entity,
     const std::optional<LinkedEntityTarget>& target,
-    std::array<std::uint8_t, 18>& effect_slots,
-    std::uint16_t effect_auxiliary_value);
+    std::array<std::uint8_t, 18>& effect_slots);
 
 } // namespace shadowrun::ghidra_conversion

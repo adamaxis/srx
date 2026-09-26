@@ -17,8 +17,7 @@ EntityTargetMotionResult no_target_result() {
 EntityTargetMotionResult resolve_entity_target_motion(
     EntityTargetMotionState& entity,
     const std::optional<LinkedEntityTarget>& target,
-    std::array<std::uint8_t, 18>& effect_slots,
-    const std::uint16_t effect_auxiliary_value) {
+    std::array<std::uint8_t, 18>& effect_slots) {
     if (!target.has_value()) {
         return no_target_result();
     }
@@ -50,28 +49,29 @@ EntityTargetMotionResult resolve_entity_target_motion(
             entity.target_heading = measurement.heading;
             return EntityTargetMotionResult{
                 EntityTargetMotionAction::close_heading_applied,
-                false,
+                true,
                 measurement};
         }
 
-        const auto slot = allocate_first_free_effect_slot(effect_slots);
-        if (slot == effect_slots.size()) {
+        const auto allocation = allocate_first_free_effect_slot_record(effect_slots);
+        if (allocation.table_full) {
             return EntityTargetMotionResult{
                 EntityTargetMotionAction::close_effect_table_full,
                 false,
                 measurement};
         }
 
-        entity.effect_slot = slot;
+        entity.effect_slot = allocation.slot;
         entity.flags = static_cast<std::uint8_t>(entity.flags | 0x40U);
+        entity.heading = measurement.heading;
         entity.target_heading = measurement.heading;
-        entity.effect_auxiliary_value = effect_auxiliary_value;
+        entity.effect_record_parameter = allocation.record_parameter;
         const auto result = EntityTargetMotionResult{
             EntityTargetMotionAction::close_effect_started,
-            false,
+            true,
             measurement,
             std::nullopt,
-            slot};
+            allocation.slot};
         return result;
     }
 
@@ -110,9 +110,9 @@ EntityTargetMotionResult resolve_entity_target_motion(
             projection};
     }
 
-    entity.heading = *linked_heading;
-    entity.target_heading = *linked_heading;
     if (entity.entity_type == 0x000EU || entity.movement_mode != 2) {
+        entity.heading = *linked_heading;
+        entity.target_heading = *linked_heading;
         return EntityTargetMotionResult{
             EntityTargetMotionAction::linked_heading_applied,
             true,
@@ -120,6 +120,10 @@ EntityTargetMotionResult resolve_entity_target_motion(
             projection};
     }
 
+    // 0x15C84 has written +0x34, while 0x14CD2 restores +0x2E to the
+    // pre-projection heading. Type 0xD in movement mode 2 keeps the old
+    // current heading but retains the requested heading.
+    entity.target_heading = *linked_heading;
     entity.movement_timer = 0x1000U;
     return EntityTargetMotionResult{
         EntityTargetMotionAction::linked_heading_rejected,
