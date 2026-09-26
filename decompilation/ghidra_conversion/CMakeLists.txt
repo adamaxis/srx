@@ -1981,6 +1981,19 @@ target_link_libraries(shadowrun_ghidra_runner_switch_test
 add_test(NAME shadowrun_ghidra_runner_switch
          COMMAND shadowrun_ghidra_runner_switch_test)
 
+add_library(shadowrun_ghidra_first_aid STATIC
+    src/first_aid_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_first_aid PUBLIC include)
+
+add_executable(shadowrun_ghidra_first_aid_test
+    tests/first_aid_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_first_aid_test
+    PRIVATE shadowrun_ghidra_first_aid)
+add_test(NAME shadowrun_ghidra_first_aid
+         COMMAND shadowrun_ghidra_first_aid_test)
+
 add_library(shadowrun_ghidra_matrix_entry STATIC
     src/matrix_entry_conversion.cpp
 )

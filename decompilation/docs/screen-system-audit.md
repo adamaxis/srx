@@ -187,6 +187,10 @@ The remaining reviewed utility/magic branch is also source-specific:
 which writes `D202F` (`This item is automatically used.`), waits for the
 common acknowledgement edge, and returns without changing possession or
 equipment. This behavior is covered by `test_automatic_use_item_handler`.
+The target-effect leaf at `0x1253E` is also converted separately in
+`first_aid_conversion`: its full-target gate, difficulty formula, roll-result
+fallback, meter order, status transition, and `0xB45C` continuation are
+covered without importing ROM state into the runtime.
 Discard now follows `0x12634`/`0x1275C`: it opens the source Yes/No
 confirmation with No selected, shows the equipped-item warning, protects item
 codes `0x29..0x2B` in slot 7, and clears the possession cell only after Yes.

@@ -608,6 +608,15 @@ equipped weapon or armor state. Focused tests cover the cell mapping, action
 loop, branch boundaries, ammo scaling, armor toggle, protected discard, and
 trade transfer.
 
+The First Aid target-effect leaf at `0x1253E` is now isolated in
+`first_aid_conversion`. It rejects a target whose physical and mental meters
+are both ten, derives the source difficulty from target `+0x4C` and `+0x77`,
+passes the active runner's `+0x89` roll count to an explicit `0x0DBA` service,
+uses one point when the source success byte is zero, preserves the
+`0x3674`/`0x37EC` meter-call order, clears status bits 6 and 4, sets bit 0,
+and installs continuation `0xB45C`. The target model is source-field typed;
+it does not carry a ROM address or a renderer callback.
+
 ## Clips command conversion
 
 The `0x11B58` Clips command is now represented in the separate
