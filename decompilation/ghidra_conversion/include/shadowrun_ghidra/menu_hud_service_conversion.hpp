@@ -110,8 +110,14 @@ MenuEntryRenderAction render_menu_entry(
     bool number_variant_available,
     const MenuEntryRenderCallbacks& callbacks);
 
-// ROM 0x17C3C: an intentionally empty intermediate service boundary.
-void advance_menu_entry_intermediate_service();
+// ROM 0x17C3C: index the source FFFB30 byte table with FFF102, sign-extend
+// the selected byte to a word, and logically shift that word right by four.
+// The native boundary supplies the source table explicitly instead of
+// reaching into emulated RAM. An out-of-range host index is invalid rather
+// than an accidental read past the extracted table.
+std::optional<std::uint16_t> read_menu_entry_profile_eligibility(
+    std::uint16_t table_index,
+    const std::vector<std::uint8_t>& eligibility_table);
 
 // ROM 0x17C52: render one title-text source through the host text boundary.
 void render_menu_text_followup(const std::function<void()>& render_title_text);

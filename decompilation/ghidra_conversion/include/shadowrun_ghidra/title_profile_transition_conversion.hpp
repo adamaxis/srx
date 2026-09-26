@@ -57,7 +57,8 @@ struct ProfileCopyTimerCallbacks {
     // ROM 0x1BFFC is indexed by the signed current-record byte.
     std::function<std::optional<std::int16_t>(std::int8_t timing_value)>
         resolve_reload_countdown;
-    // ROM 0x17C3C returns the source profile-copy eligibility value.
+    // ROM 0x17C3C returns the indexed FFFB30 profile-copy eligibility value
+    // after sign extension and a logical four-bit shift.
     std::function<std::optional<std::uint16_t>()> read_copy_eligibility;
     // ROM 0x1C012 copies seven words from 0x1C022 plus the signed byte offset.
     std::function<void(std::int32_t signed_byte_offset)> copy_profile_words;

@@ -153,7 +153,21 @@ MenuEntryRenderAction render_menu_entry(
     return MenuEntryRenderAction::text_only;
 }
 
-void advance_menu_entry_intermediate_service() {}
+std::optional<std::uint16_t> read_menu_entry_profile_eligibility(
+    const std::uint16_t table_index,
+    const std::vector<std::uint8_t>& eligibility_table) {
+    if (table_index >= eligibility_table.size()) {
+        return std::nullopt;
+    }
+
+    // The source writes a byte into D3, EXT.W sign-extends it, then uses
+    // LSR.W. Preserve that exact distinction: negative source bytes become
+    // a 16-bit unsigned value before the logical shift.
+    const auto signed_value = static_cast<std::int16_t>(
+        static_cast<std::int8_t>(eligibility_table[table_index]));
+    return static_cast<std::uint16_t>(
+        static_cast<std::uint16_t>(signed_value) >> 4U);
+}
 
 void render_menu_text_followup(
     const std::function<void()>& render_title_text) {

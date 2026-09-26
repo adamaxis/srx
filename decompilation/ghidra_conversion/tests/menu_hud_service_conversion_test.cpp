@@ -43,7 +43,15 @@ int main() {
         zero_text_calls != 1) {
         return 102;
     }
-    advance_menu_entry_intermediate_service();
+    const std::vector<std::uint8_t> eligibility_table{0x00U, 0x10U, 0xF0U,
+                                                       0x2FU};
+    if (read_menu_entry_profile_eligibility(1U, eligibility_table) != 1U ||
+        read_menu_entry_profile_eligibility(2U, eligibility_table) !=
+            0x0FFFU ||
+        read_menu_entry_profile_eligibility(3U, eligibility_table) != 2U ||
+        read_menu_entry_profile_eligibility(4U, eligibility_table).has_value()) {
+        return 103;
+    }
 
     MenuModeResourceState mode{};
     std::vector<int> events;

@@ -1505,11 +1505,11 @@ caller	caller_name	instruction	text	target	callee	status
 000178C8	write_menu_hud_grid_batch	000178FA	jsr 0x00001232.l	00001232	write_vdp_grid	resolved
 000178C8	write_menu_hud_grid_batch	00017910	jsr 0x00001232.l	00001232	write_vdp_grid	resolved
 000178C8	write_menu_hud_grid_batch	00017926	jsr 0x00001232.l	00001232	write_vdp_grid	resolved
-0001792E	render_menu_hud_rows	00017946	bsr.w 0x00017c3c	00017C3C	convert_world_routine_0x00017c3c	resolved
+0001792E	render_menu_hud_rows	00017946	bsr.w 0x00017c3c	00017C3C	read_menu_entry_profile_eligibility	resolved
 0001792E	render_menu_hud_rows	0001796A	jsr 0x00056506.l	00056506	convert_intro_routine_0x00056506	resolved
 0001792E	render_menu_hud_rows	00017986	jsr 0x00001232.l	00001232	write_vdp_grid	resolved
 00017998	render_menu_text_progression	000179C2	jsr 0x0000c0da.l	0000C0DA	render_encoded_title_text	resolved
-00017998	render_menu_text_progression	000179D4	bsr.w 0x00017c3c	00017C3C	convert_world_routine_0x00017c3c	resolved
+00017998	render_menu_text_progression	000179D4	bsr.w 0x00017c3c	00017C3C	read_menu_entry_profile_eligibility	resolved
 00017998	render_menu_text_progression	000179E4	jsr 0x0000c0da.l	0000C0DA	render_encoded_title_text	resolved
 00017998	render_menu_text_progression	00017A06	jsr 0x0000c0da.l	0000C0DA	render_encoded_title_text	resolved
 00017998	render_menu_text_progression	00017A24	jsr 0x0000c216.l	0000C216	build_grouped_decimal_glyphs	resolved
@@ -1517,7 +1517,7 @@ caller	caller_name	instruction	text	target	callee	status
 00017998	render_menu_text_progression	00017A56	jsr 0x0000c0da.l	0000C0DA	render_encoded_title_text	resolved
 00017A5E	convert_world_routine_0x00017a5e	00017A78	bsr.w 0x00019dac	00019DAC	merge_menu_pending_flags	resolved
 00017A5E	convert_world_routine_0x00017a5e	00017A9E	jsr 0x0000c0da.l	0000C0DA	render_encoded_title_text	resolved
-00017A5E	convert_world_routine_0x00017a5e	00017AB6	bsr.w 0x00017c3c	00017C3C	convert_world_routine_0x00017c3c	resolved
+00017A5E	convert_world_routine_0x00017a5e	00017AB6	bsr.w 0x00017c3c	00017C3C	read_menu_entry_profile_eligibility	resolved
 00017A5E	convert_world_routine_0x00017a5e	00017AD0	bsr.w 0x00017e04	00017E04	refresh_hud_grid_if_ready	resolved
 00017A5E	convert_world_routine_0x00017a5e	00017B04	jsr 0x0000c0da.l	0000C0DA	render_encoded_title_text	resolved
 00017A5E	convert_world_routine_0x00017a5e	00017B3C	jsr 0x0000c216.l	0000C216	build_grouped_decimal_glyphs	resolved
@@ -1538,7 +1538,7 @@ caller	caller_name	instruction	text	target	callee	status
 00017D72	draw_hud_panel	00017D88	jsr 0x00003648.l	00003648	draw_hud_panel	resolved
 00017DB8	advance_hud_footer_offset	00017DF8	jsr 0x00001232.l	00001232	write_vdp_grid	resolved
 00017DB8	advance_hud_footer_offset	00017DFE	bsr.w 0x0001792e	0001792E	render_menu_hud_rows	resolved
-00017E04	refresh_hud_grid_if_ready	00017E08	bsr.w 0x00017c3c	00017C3C	convert_world_routine_0x00017c3c	resolved
+00017E04	refresh_hud_grid_if_ready	00017E08	bsr.w 0x00017c3c	00017C3C	read_menu_entry_profile_eligibility	resolved
 00017E04	refresh_hud_grid_if_ready	00017E28	jsr 0x00001232.l	00001232	write_vdp_grid	resolved
 00017E04	refresh_hud_grid_if_ready	00017E58	jsr 0x00001232.l	00001232	write_vdp_grid	resolved
 00017E04	refresh_hud_grid_if_ready	00017E6C	jsr 0x00001232.l	00001232	write_vdp_grid	resolved
@@ -1742,7 +1742,7 @@ caller	caller_name	instruction	text	target	callee	status
 00019AEE	refresh_mode_glyph	00019B2C	jsr 0x000011c0.l	000011C0	write_repeated_vdp_grid	resolved
 00019B34	publish_menu_selection_then_text	00019B36	bsr.w 0x00017c84	00017C84	set_hud_selection_value	resolved
 00019B34	publish_menu_selection_then_text	00019B3A	bsr.w 0x00017c52	00017C52	render_menu_text_followup	resolved
-00019B40	select_run_hud_mode	00019B72	bsr.w 0x00017c3c	00017C3C	convert_world_routine_0x00017c3c	resolved
+00019B40	select_run_hud_mode	00019B72	bsr.w 0x00017c3c	00017C3C	read_menu_entry_profile_eligibility	resolved
 00019CB2	run_menu_selection_code_four	00019CC0	bsr.w 0x00019b34	00019B34	publish_menu_selection_then_text	resolved
 00019CB2	run_menu_selection_code_four	00019CC8	bsr.w 0x00019bae	00019BAE	select_hud_mode	resolved
 00019CB2	run_menu_selection_code_four	00019D10	bsr.w 0x00017db8	00017DB8	advance_hud_footer_offset	resolved
@@ -1760,7 +1760,7 @@ caller	caller_name	instruction	text	target	callee	status
 00019DD8	refresh_mode_metadata_leaf	00019DE0	jsr 0x000566d8.l	000566D8	convert_intro_routine_0x000566d8	resolved
 00019DE8	run_menu_service_then_prepare	00019DE8	bsr.w 0x00019df2	00019DF2	run_menu_metadata_service	resolved
 00019DE8	run_menu_service_then_prepare	00019DEC	bsr.w 0x0001789c	0001789C	prepare_menu_hud_sequence	resolved
-00019DF2	run_menu_metadata_service	00019DF4	bsr.w 0x00017c3c	00017C3C	convert_world_routine_0x00017c3c	resolved
+00019DF2	run_menu_metadata_service	00019DF4	bsr.w 0x00017c3c	00017C3C	read_menu_entry_profile_eligibility	resolved
 00019DF2	run_menu_metadata_service	00019E16	bsr.b 0x00019dd8	00019DD8	refresh_mode_metadata_leaf	resolved
 00019E32	run_menu_selection_service	00019E56	bsr.w 0x00017c84	00017C84	set_hud_selection_value	resolved
 00019E32	run_menu_selection_service	00019E5A	bsr.w 0x00017c52	00017C52	render_menu_text_followup	resolved
@@ -1799,7 +1799,7 @@ caller	caller_name	instruction	text	target	callee	status
 0001A16A	convert_world_routine_0x0001a16a	0001A1EA	jsr 0x0000c0da.l	0000C0DA	render_encoded_title_text	resolved
 0001A16A	convert_world_routine_0x0001a16a	0001A210	jsr 0x00055f44.l	00055F44	convert_intro_routine_0x00055f44	resolved
 0001A16A	convert_world_routine_0x0001a16a	0001A264	jsr 0x000011c0.l	000011C0	write_repeated_vdp_grid	resolved
-0001A16A	convert_world_routine_0x0001a16a	0001A270	bsr.w 0x00017c3c	00017C3C	convert_world_routine_0x00017c3c	resolved
+0001A16A	convert_world_routine_0x0001a16a	0001A270	bsr.w 0x00017c3c	00017C3C	read_menu_entry_profile_eligibility	resolved
 0001A16A	convert_world_routine_0x0001a16a	0001A288	jsr 0x000011c0.l	000011C0	write_repeated_vdp_grid	resolved
 0001A16A	convert_world_routine_0x0001a16a	0001A292	jsr 0x00055f44.l	00055F44	convert_intro_routine_0x00055f44	resolved
 0001A16A	convert_world_routine_0x0001a16a	0001A2C0	jsr 0x000011c0.l	000011C0	write_repeated_vdp_grid	resolved
@@ -1963,7 +1963,7 @@ caller	caller_name	instruction	text	target	callee	status
 0001BEBA	advance_title_profile_transition	0001BF46	bsr.w 0x0001b612	0001B612	attach_behavior_descriptor_b	resolved
 0001BEBA	advance_title_profile_transition	0001BF50	jsr 0x00019d66.l	00019D66	run_menu_slot_service	resolved
 0001BEBA	advance_title_profile_transition	0001BF56	jmp 0x0001a908.l	0001A908	initialize_world_effect_mode	resolved
-0001BF7A	advance_profile_copy_timer	0001BFC0	bsr.w 0x00017c3c	00017C3C	convert_world_routine_0x00017c3c	resolved
+0001BF7A	advance_profile_copy_timer	0001BFC0	bsr.w 0x00017c3c	00017C3C	read_menu_entry_profile_eligibility	resolved
 0001BF7A	advance_profile_copy_timer	0001BFEE	bsr.w 0x0001c012	0001C012	copy_seven_words	resolved
 0001C0C2	advance_alternating_profile	0001C0D2	jmp 0x00019de8.l	00019DE8	run_menu_service_then_prepare	resolved
 0001C1F6	advance_audio_menu_countdown	0001C218	jsr 0x00053112.l	00053112	service_audio_command_wrapper	resolved

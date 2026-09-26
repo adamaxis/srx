@@ -467,7 +467,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00017998	render_menu_text_progression	198	unknown	ok	ghidra-c/fn_00017998.cpp
 00017A5E	convert_world_routine_0x00017a5e	354	unknown	ok	ghidra-c/fn_00017A5E.cpp
 00017BC0	refresh_menu_number_or_grid	124	unknown	ok	ghidra-c/fn_00017BC0.cpp
-00017C3C	convert_world_routine_0x00017c3c	22	unknown	ok	ghidra-c/fn_00017C3C.cpp
+00017C3C	read_menu_entry_profile_eligibility	22	unknown	ok	ghidra-c/fn_00017C3C.cpp
 00017C52	render_menu_text_followup	50	unknown	ok	ghidra-c/fn_00017C52.cpp
 00017C84	set_hud_selection_value	10	unknown	ok	ghidra-c/fn_00017C84.cpp
 00017C8E	hud_selection_value_matches	10	unknown	ok	ghidra-c/fn_00017C8E.cpp

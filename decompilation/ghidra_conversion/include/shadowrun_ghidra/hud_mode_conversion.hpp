@@ -34,8 +34,9 @@ HudModeSelection select_hud_mode(
 bool hud_mode_record_is_eligible(const HudModeRecordFields& record);
 
 struct HudModeRunCallbacks {
-    // Source 0x17C3C supplies the active-run mode when FFDF84 is not
-    // negative. Its internal rule calculation remains a separate boundary.
+    // Source 0x17C3C reads the indexed FFFB30 eligibility/mode byte and
+    // returns its sign-extended, four-bit logical shift result when FFDF84
+    // is not negative. The caller supplies that typed lookup boundary.
     std::function<int()> resolve_active_run_mode;
 };
 
