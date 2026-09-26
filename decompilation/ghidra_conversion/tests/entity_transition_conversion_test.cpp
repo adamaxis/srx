@@ -150,6 +150,7 @@ int main() {
         0x1000U, 0x2000U, 0x4000U, 0x08U, 0x01U, 0x08U, 0x22U};
     cycle_state.animation_counter = 0x0010U;
     cycle_state.global_mode = 2U;
+    cycle_state.source_status_flags = 0x02U;
     std::vector<char> cycle_events;
     std::vector<std::uint16_t> available_slots{9U, 10U};
     const auto cycle = process_entity_spawn_cycle(
@@ -186,16 +187,38 @@ int main() {
                cycle.primary->field_0x8b == 1U &&
                cycle.secondary->position_x == 0x1180U &&
                cycle.secondary->position_y == 0x1FC0U &&
+               cycle.secondary->behavior_defaults.animation_state == 0U &&
+               cycle.secondary->behavior_defaults.behavior_timer == 0x1000U &&
                cycle.secondary->animation_resource == 0x28U &&
                cycle.secondary->continuation_address == 0xAC4EU &&
                cycle.secondary->record_flags == 1U &&
-               cycle_events == std::vector<char>({'g', 'a', 'r', 'p', 'a', 'e', 'm'})) != 0) {
+               cycle_events == std::vector<char>({'g', 'a', 'r', 'p', 'a', 'e'})) != 0) {
         return 16;
+    }
+
+    EntitySpawnCycleState regular_state = cycle_state;
+    regular_state.source_status_flags = 0U;
+    std::vector<std::uint16_t> regular_slots{9U, 10U};
+    const auto regular_cycle = process_entity_spawn_cycle(
+        regular_state,
+        []() { return true; },
+        [&regular_slots]() -> std::optional<std::uint16_t> {
+            if (regular_slots.empty()) {
+                return std::nullopt;
+            }
+            const auto slot = regular_slots.front();
+            regular_slots.erase(regular_slots.begin());
+            return slot;
+        },
+        {}, {}, {}, {});
+    if (expect(regular_cycle.action == EntitySpawnCycleAction::spawned &&
+               regular_cycle.selected_resource_id == 0x001EU) != 0) {
+        return 18;
     }
 
     EntitySpawnCycleState expired_state = cycle_state;
     expired_state.animation_counter = 0x003DU;
-    expired_state.parent.flags = 0x02U;
+    expired_state.entity_flags = 0x02U;
     bool gate_called = false;
     const auto expired = process_entity_spawn_cycle(
         expired_state,

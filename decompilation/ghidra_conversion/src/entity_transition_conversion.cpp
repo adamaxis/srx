@@ -42,7 +42,13 @@ bool signature_changed(
            before.secondary != after.secondary;
 }
 
-constexpr std::array<std::uint16_t, 15> kSpawnResourceByType{
+// ROM 0x15318 / 0x15336. The byte selected from the source record chooses
+// between the ordinary sound/resource family and the alternate family.
+constexpr std::array<std::uint16_t, 15> kRegularSpawnResources{
+    0x001CU, 0x001CU, 0x001CU, 0x001CU, 0x0051U,
+    0x0051U, 0x0051U, 0x001EU, 0x001EU, 0x001EU,
+    0x001DU, 0x001DU, 0x001EU, 0x001EU, 0x001EU};
+constexpr std::array<std::uint16_t, 15> kAlternateSpawnResources{
     0x003FU, 0x003FU, 0x003FU, 0x003FU, 0x003FU,
     0x003FU, 0x003FU, 0x004AU, 0x004AU, 0x004AU,
     0x003FU, 0x003FU, 0x004AU, 0x004AU, 0x004AU};
@@ -174,7 +180,7 @@ EntitySpawnCycleResult process_entity_spawn_cycle(
 
     if ((state.animation_counter & 0x07FFU) > 0x003CU) {
         result.action = EntitySpawnCycleAction::animation_window_expired;
-        result.overflow_latch_set = (state.parent.flags & 0x02U) != 0U;
+        result.overflow_latch_set = (state.entity_flags & 0x02U) != 0U;
         return result;
     }
 
@@ -224,7 +230,7 @@ EntitySpawnCycleResult process_entity_spawn_cycle(
     }
 
     const auto source_type = state.parent.field_0x57;
-    if (source_type == 0U || source_type > kSpawnResourceByType.size()) {
+    if (source_type == 0U || source_type > kRegularSpawnResources.size()) {
         result.action = EntitySpawnCycleAction::invalid_source_type;
         result.primary_slot = primary_slot;
         result.secondary_slot = secondary_slot;
@@ -232,7 +238,12 @@ EntitySpawnCycleResult process_entity_spawn_cycle(
         return result;
     }
 
-    result.selected_resource_id = kSpawnResourceByType[source_type - 1U];
+    const bool use_alternate_resource_table =
+        (state.source_status_flags & 0x06U) != 0U;
+    const auto& resource_table = use_alternate_resource_table
+                                     ? kAlternateSpawnResources
+                                     : kRegularSpawnResources;
+    result.selected_resource_id = resource_table[source_type - 1U];
     if (apply_resource_effect) {
         apply_resource_effect(result.selected_resource_id);
     }
@@ -250,7 +261,9 @@ EntitySpawnCycleResult process_entity_spawn_cycle(
     secondary.slot_identifier = *secondary_slot;
     secondary.record_flags = static_cast<std::uint8_t>(
         secondary.record_flags | 0x01U);
-    secondary.behavior_defaults.behavior_timer = 0U;
+    // 0x152A2 clears the cloned record's +0x0E animation/behavior type word;
+    // the initialized +0x1C movement timer remains inherited from primary.
+    secondary.behavior_defaults.animation_state = 0U;
     secondary.continuation_address = 0x0000AC4EU;
     secondary.source_marker = static_cast<std::uint8_t>(source_marker);
     select_animation(

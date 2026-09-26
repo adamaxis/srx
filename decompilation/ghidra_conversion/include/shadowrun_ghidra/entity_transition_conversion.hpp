@@ -116,6 +116,10 @@ struct EntitySpawnCycleState {
     std::uint16_t animation_counter = 0;
     std::uint8_t global_mode = 0;
     bool collision_gate_active = false;
+    // The byte at A0 + 0x10. Bit 1 controls the late-window overflow latch.
+    std::uint8_t entity_flags = 0;
+    // The byte selected by (A0 + 0x56) + 0x6E. Bits 1/2 select the alternate
+    // resource table and drive the world-effect marker at FFDD6D.
     std::uint8_t source_status_flags = 0;
 };
 
