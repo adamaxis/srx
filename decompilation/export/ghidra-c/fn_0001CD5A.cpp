@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001CD5A
-// Name: convert_world_routine_0x0001cd5a
+// Name: advance_title_secondary_effect_service
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
@@ -11,7 +11,10 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_world_routine_0x0001cd5a(void)
+// Native conversion: shadowrun_ghidra::advance_title_secondary_effect_service
+// models this as the three-phase secondary title/world effect selected by
+// FF1592 bit 0x40; ROM pointers remain extraction provenance only.
+void advance_title_secondary_effect_service(void)
 
 {
   undefined2 *extraout_A0;

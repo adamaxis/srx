@@ -16958,7 +16958,7 @@
 0001B058: btst.b #0x6,(0x00ff1592).l
 0001B060: beq.w 0x0001b06e
 0001B064: lea (0xff1580).l,A0 ; data 00ff1580
-0001B06A: bsr.w 0x0001cd5a ; call 0001CD5A convert_world_routine_0x0001cd5a
+0001B06A: bsr.w 0x0001cd5a ; call 0001CD5A advance_title_secondary_effect_service
 0001B06E: btst.b #0x5,(0x00ff1592).l
 0001B076: beq.w 0x0001b084
 0001B07A: lea (0xff1580).l,A0 ; data 00ff1580

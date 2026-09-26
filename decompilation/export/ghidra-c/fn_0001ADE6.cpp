@@ -42,7 +42,7 @@
 //   0x0001CA12 advance_world_effect_motion
 //   0x0001CC24 advance_persistent_world_effect
 //   0x0001CCDC update_persistent_title_effect
-//   0x0001CD5A convert_world_routine_0x0001cd5a
+//   0x0001CD5A advance_title_secondary_effect_service
 //   0x0001D1F4 convert_world_routine_0x0001d1f4
 //   0x0001D280 initialize_world_sequence
 //   0x0001D2E6 advance_world_sequence
@@ -180,7 +180,7 @@ LAB_0001afc0:
         convert_world_routine_0x0001d1f4();
       }
       if ((DAT_00ff1592 & 0x40) != 0) {
-        convert_world_routine_0x0001cd5a();
+        advance_title_secondary_effect_service();
       }
       if ((DAT_00ff1592 & 0x20) != 0) {
         dispatch_title_phase_handler();

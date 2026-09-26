@@ -158,7 +158,7 @@ WorldEffectSceneLoopResult run_world_effect_scene_loop(
                 call_if_present(callbacks.advance_title_phase_service);
             }
             if ((state.title_service_flags & 0x40U) != 0U) {
-                call_if_present(callbacks.advance_title_profile_service);
+                call_if_present(callbacks.advance_title_secondary_effect_service);
             }
             if ((state.title_service_flags & 0x20U) != 0U) {
                 call_if_present(callbacks.dispatch_title_phase_handler);

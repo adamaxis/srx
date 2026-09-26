@@ -1051,6 +1051,21 @@ target_link_libraries(shadowrun_ghidra_title_effect_sprites_test
 add_test(NAME shadowrun_ghidra_title_effect_sprites
          COMMAND shadowrun_ghidra_title_effect_sprites_test)
 
+add_library(shadowrun_ghidra_title_secondary_effect STATIC
+    src/title_secondary_effect_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_title_secondary_effect PUBLIC include)
+target_link_libraries(shadowrun_ghidra_title_secondary_effect
+    PRIVATE shadowrun_ghidra_title_effect_sprites)
+
+add_executable(shadowrun_ghidra_title_secondary_effect_test
+    tests/title_secondary_effect_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_title_secondary_effect_test
+    PRIVATE shadowrun_ghidra_title_secondary_effect)
+add_test(NAME shadowrun_ghidra_title_secondary_effect
+         COMMAND shadowrun_ghidra_title_secondary_effect_test)
+
 add_library(shadowrun_ghidra_world_effect_activation STATIC
     src/world_effect_activation_conversion.cpp
 )

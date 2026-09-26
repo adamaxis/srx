@@ -91,7 +91,7 @@ int main() {
         [&] { order.emplace_back("noise-stream"); };
     callbacks.advance_title_phase_service =
         [&] { order.emplace_back("phase-service"); };
-    callbacks.advance_title_profile_service =
+    callbacks.advance_title_secondary_effect_service =
         [&] { order.emplace_back("profile-service"); };
     callbacks.dispatch_title_phase_handler =
         [&] { order.emplace_back("phase-handler"); };

@@ -646,3 +646,29 @@ The descriptor values and stage/phase tests are source evidence. The native
 conversion exposes behavior installation, world activation, interaction, and
 Matrix action as typed boundaries; it does not reproduce the behavior record
 or VDP implementation.
+
+## Secondary title/world effect service: 0x1CD5A
+
+`0x1CD5A` is the per-frame service behind `FF1592` bit `0x40`, seeded by
+`0x1CB20` when the secondary effect path is selected. It is now represented by
+`ghidra_conversion::advance_title_secondary_effect_service()` rather than the
+generic former export label.
+
+The source behavior is a three-phase effect with three source-variant groups:
+
+* variant 0 selects source sequences `0x1D906`, `0x1D918`, `0x1D922`;
+* variant 1 selects `0x1D934`, `0x1D93E`, `0x1D948`;
+* variant 2 selects `0x1D952`, `0x1D95C`, `0x1D966`.
+
+Each frame decrements the lifetime, 20-tick source-variant timer, and 3-tick
+phase timer. The current fixed-point position is converted to host sprite
+coordinates before the named asset is submitted. A zero frame timer seeds the
+paired `FFE088..FFE08E` positions for the title-effect motion; the next source
+variant seeds the six `FFE090..FFE0A6` positions, and variant 2 advances both
+the six-sprite motion (`0x1CF4A`) and paired motion (`0x1CEFA`).
+
+When the lifetime crosses below zero, the service clears the `FF1592` bit,
+resets `FFE0D6`, optionally arms `FFE0AA=0x0A` for the alternate motion, and
+hands control to `0x19F18` menu progression after the final sprite build. The
+conversion exposes that handoff as a callback and resolves the nine source
+sequences to host assets; it does not perform ROM/VDP lookups at runtime.
