@@ -59,6 +59,15 @@ struct EntityHeadingOffsets {
 // and return the offsets stored at record fields 0x4C and 0x4E.
 EntityHeadingOffsets derive_entity_heading_offsets(std::uint16_t heading);
 
+// ROM 0x15646/0x15830: the effect/projectile constructors use the same two
+// heading tables with source-specific signed multipliers and arithmetic
+// shifts. Keeping the scale explicit avoids pretending those records use the
+// ordinary 0xC/0x10 movement offset.
+EntityHeadingOffsets derive_scaled_entity_heading_offsets(
+    std::uint16_t heading,
+    std::int16_t multiplier,
+    std::uint8_t arithmetic_shift);
+
 struct EntityHeadingVector {
     std::int16_t horizontal = 0;
     std::int16_t vertical = 0;

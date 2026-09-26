@@ -480,6 +480,23 @@ target_link_libraries(shadowrun_ghidra_entity_transition_test
 add_test(NAME shadowrun_ghidra_entity_transition
          COMMAND shadowrun_ghidra_entity_transition_test)
 
+add_library(shadowrun_ghidra_entity_effect_spawn STATIC
+    src/entity_effect_spawn_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_entity_effect_spawn PUBLIC include)
+target_link_libraries(shadowrun_ghidra_entity_effect_spawn
+    PRIVATE shadowrun_ghidra_entity_coordinate
+            shadowrun_ghidra_entity_state_primitives
+            shadowrun_ghidra_movement_metric)
+
+add_executable(shadowrun_ghidra_entity_effect_spawn_test
+    tests/entity_effect_spawn_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_effect_spawn_test
+    PRIVATE shadowrun_ghidra_entity_effect_spawn)
+add_test(NAME shadowrun_ghidra_entity_effect_spawn
+         COMMAND shadowrun_ghidra_entity_effect_spawn_test)
+
 add_library(shadowrun_ghidra_movement_fallback STATIC
     src/movement_fallback_conversion.cpp
 )

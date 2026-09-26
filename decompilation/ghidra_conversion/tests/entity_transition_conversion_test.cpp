@@ -117,13 +117,13 @@ int main() {
                spawned_record.behavior_defaults.vertical_offset == -12 &&
                spawned_record.behavior_defaults.flags == 0x09U &&
                spawned_record.flags == 0x09U &&
-               spawned_record.position_x == 0x0F50U &&
+               spawned_record.position_x == 0x1050U &&
                spawned_record.position_y == 0x2000U &&
                spawned_record.heading == 0xC000U &&
                spawned_record.source_identifier == 0xFFFFU &&
                spawned_record.behavior_code == 0x0014U &&
-               spawned_record.directional_probe_x == 0x0E80U &&
-               spawned_record.directional_probe_y == 0x1FC0U &&
+               spawned_record.directional_probe_x == 0x1080U &&
+               spawned_record.directional_probe_y == 0x20C0U &&
                spawned_record.heading_offset_x == -24576 &&
                spawned_record.heading_offset_y == 0) != 0) {
         return 14;
@@ -185,8 +185,8 @@ int main() {
                cycle.primary->saved_position_x == 0x10B0U &&
                cycle.primary->field_0x89 == 0x20U &&
                cycle.primary->field_0x8b == 1U &&
-               cycle.secondary->position_x == 0x1180U &&
-               cycle.secondary->position_y == 0x1FC0U &&
+               cycle.secondary->position_x == 0x1080U &&
+               cycle.secondary->position_y == 0x20C0U &&
                cycle.secondary->behavior_defaults.animation_state == 0U &&
                cycle.secondary->behavior_defaults.behavior_timer == 0x1000U &&
                cycle.secondary->animation_resource == 0x28U &&

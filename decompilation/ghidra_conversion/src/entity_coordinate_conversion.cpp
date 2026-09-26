@@ -28,12 +28,17 @@ constexpr std::array<std::uint16_t, 128> kHeadingWaveTable{
     0xC947U, 0xCF05U, 0xD4E2U, 0xDAD9U, 0xE0E7U, 0xE708U, 0xED39U,
     0xF375U, 0xF9B9U};
 
-std::int16_t scale_heading_sample(const std::uint16_t raw_sample) {
+std::int16_t scale_heading_sample(
+    const std::uint16_t raw_sample,
+    const std::int16_t multiplier,
+    const std::uint8_t arithmetic_shift) {
     const auto signed_sample = static_cast<std::int32_t>(
         static_cast<std::int16_t>(raw_sample));
-    const auto scaled = signed_sample * 0x0C;
-    const auto shifted = scaled >= 0 ? scaled / 0x10
-                                     : -((-scaled + 0x0F) / 0x10);
+    const auto scaled = signed_sample * static_cast<std::int32_t>(multiplier);
+    const auto divisor = static_cast<std::int32_t>(1U << arithmetic_shift);
+    const auto shifted = scaled >= 0
+                             ? scaled / divisor
+                             : -((-scaled + divisor - 1) / divisor);
     return static_cast<std::int16_t>(
         static_cast<std::uint16_t>(shifted));
 }
@@ -89,13 +94,22 @@ EntityWorldProbeResult probe_entity_world_position(
 
 EntityHeadingOffsets derive_entity_heading_offsets(
     const std::uint16_t heading) {
+    return derive_scaled_entity_heading_offsets(heading, 0x000CU, 4U);
+}
+
+EntityHeadingOffsets derive_scaled_entity_heading_offsets(
+    const std::uint16_t heading,
+    const std::int16_t multiplier,
+    const std::uint8_t arithmetic_shift) {
     const auto table_byte_index = static_cast<std::uint16_t>(
         (heading >> 8U) & 0x00FEU);
     const auto table_index = static_cast<std::size_t>(table_byte_index >> 1U);
     const auto vertical_index = (table_index + 96U) & 0x7FU;
     return EntityHeadingOffsets{
-        scale_heading_sample(kHeadingWaveTable[table_index]),
-        scale_heading_sample(kHeadingWaveTable[vertical_index])};
+        scale_heading_sample(kHeadingWaveTable[table_index], multiplier,
+                             arithmetic_shift),
+        scale_heading_sample(kHeadingWaveTable[vertical_index], multiplier,
+                             arithmetic_shift)};
 }
 
 namespace {
