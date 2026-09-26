@@ -125,12 +125,12 @@ entry	name	size	callingConvention	decompileStatus	file
 00003E86	expand_packed_nibbles	86	unknown	ok	ghidra-c/fn_00003E86.cpp
 00003EFE	decode_field_tile_sample	160	unknown	ok	ghidra-c/fn_00003EFE.cpp
 00003F9E	calculate_field_tile_source_offset	58	unknown	ok	ghidra-c/fn_00003F9E.cpp
-00003FD8	convert_field_routine_0x00003fd8	40	unknown	ok	ghidra-c/fn_00003FD8.cpp
-00004000	convert_field_routine_0x00004000	24	unknown	ok	ghidra-c/fn_00004000.cpp
+00003FD8	calculate_field_tile_source_layout	40	unknown	ok	ghidra-c/fn_00003FD8.cpp
+00004000	compose_field_tile_destination_offset	24	unknown	ok	ghidra-c/fn_00004000.cpp
 00004018	render_field_tile_edge	202	unknown	ok	ghidra-c/fn_00004018.cpp
 000040E2	convert_field_routine_0x000040e2	212	unknown	ok	ghidra-c/fn_000040E2.cpp
 000041B6	fold_field_coordinate	58	unknown	ok	ghidra-c/fn_000041B6.cpp
-000041F0	convert_field_routine_0x000041f0	38	unknown	ok	ghidra-c/fn_000041F0.cpp
+000041F0	prepare_field_vertical_origin	38	unknown	ok	ghidra-c/fn_000041F0.cpp
 00004216	offset_field_coordinate	38	unknown	ok	ghidra-c/fn_00004216.cpp
 0000423C	quantize_field_delta	84	unknown	ok	ghidra-c/fn_0000423C.cpp
 000042B0	initialize_joshua_archetype_selection	54	unknown	ok	ghidra-c/fn_000042B0.cpp

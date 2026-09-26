@@ -1,15 +1,14 @@
 // Ghidra headless export
 // Entry: 0x00003FD8
-// Name: convert_field_routine_0x00003fd8
+// Name: calculate_field_tile_source_layout
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_field_routine_0x00003fd8(void)
+void calculate_field_tile_source_layout(void)
 
 {
   return;
 }
-
 

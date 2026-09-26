@@ -1,15 +1,14 @@
 // Ghidra headless export
 // Entry: 0x000041F0
-// Name: convert_field_routine_0x000041f0
+// Name: prepare_field_vertical_origin
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_field_routine_0x000041f0(void)
+void prepare_field_vertical_origin(void)
 
 {
   return;
 }
-
 

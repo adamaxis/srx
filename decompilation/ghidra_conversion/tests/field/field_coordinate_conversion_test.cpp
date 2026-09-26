@@ -28,5 +28,40 @@ int main() {
                 quantize_field_delta(0x007FU, 0U) == 0)) {
         return 1;
     }
+
+    const auto layout = calculate_field_tile_source_layout(
+        0x0128U, 0x00A8U, 0x0040U);
+    if (!expect(layout.row_table_byte_offset == 0x0152U &&
+                layout.tile_word_byte_offset == 0x000AU)) {
+        return 2;
+    }
+
+    if (!expect(compose_field_tile_destination_offset(0, 0x00F8U) ==
+                    0x0F80 &&
+                compose_field_tile_destination_offset(8, 0x00F8U) ==
+                    0x0FFEU &&
+                compose_field_tile_destination_offset(-8, 0x0000U) ==
+                    0x0002)) {
+        return 3;
+    }
+
+    const auto first_vertical_origin =
+        prepare_field_vertical_origin(0x0100U, 0x0070U);
+    if (!expect(first_vertical_origin.row == 7 &&
+                first_vertical_origin.camera_y == 0x0100U)) {
+        return 4;
+    }
+    const auto second_vertical_origin =
+        prepare_field_vertical_origin(0x0100U, 0x0080U);
+    if (!expect(second_vertical_origin.row == 0 &&
+                second_vertical_origin.camera_y == 0x00F8U)) {
+        return 5;
+    }
+    const auto third_vertical_origin =
+        prepare_field_vertical_origin(0x0100U, 0x0100U);
+    if (!expect(third_vertical_origin.row == 0 &&
+                third_vertical_origin.camera_y == 0x00F0U)) {
+        return 6;
+    }
     return 0;
 }

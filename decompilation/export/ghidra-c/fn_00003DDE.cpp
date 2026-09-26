@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003E14 convert_field_routine_0x00003e14
-//   0x00003FD8 convert_field_routine_0x00003fd8
+//   0x00003FD8 calculate_field_tile_source_layout
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -23,7 +23,7 @@ void emit_field_tile_row_words(void)
   int extraout_A0;
   int extraout_A1;
   
-  convert_field_routine_0x00003fd8();
+  calculate_field_tile_source_layout();
   uVar4 = (ushort)-((unaff_D4w & 0xf80) - 0x1000) >> 7;
   if ((short)(uVar4 - 1) < 0x1f) {
     convert_field_routine_0x00003e14();
@@ -56,5 +56,4 @@ void emit_field_tile_row_words(void)
   convert_field_routine_0x00003e14();
   return;
 }
-
 

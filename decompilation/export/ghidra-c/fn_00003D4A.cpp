@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003D80 emit_field_tile_column_words
-//   0x00003FD8 convert_field_routine_0x00003fd8
+//   0x00003FD8 calculate_field_tile_source_layout
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -22,7 +22,7 @@ void render_field_tile_column(void)
   int extraout_A0;
   int extraout_A1;
   
-  convert_field_routine_0x00003fd8();
+  calculate_field_tile_source_layout();
   uVar3 = (ushort)-((unaff_D4w & 0x7f) - 0x80) >> 1;
   if ((short)(uVar3 - 1) < 0x2b) {
     emit_field_tile_column_words();
@@ -53,5 +53,4 @@ void render_field_tile_column(void)
   emit_field_tile_column_words();
   return;
 }
-
 

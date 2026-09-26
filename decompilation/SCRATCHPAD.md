@@ -323,7 +323,13 @@ The two map upload calls at `0x2C92` and `0x2CB2` now use the direct
 `stream_tile_plane` translation of `0x3D18`, `0x3D4A`, `0x3D80`, `0x3FD8`,
 and `0x4000`. It preserves the camera-derived tile indices, the 31 DBF rows,
 the 128-byte VDP command stride, the table-derived 32-byte tile offsets, and
-the negative `FFDF58` XOR mode used by the second plane. The `0x3BAC` camera
+the negative `FFDF58` XOR mode used by the second plane. The three previously
+generic field helpers are now typed as well: `0x3FD8` splits X/Y into the
+row-table byte offset and four-by-four tile byte offset using `FFDDEA` as the
+row stride; `0x4000` composes the even display destination from the signed row
+and masked column; and `0x41F0` performs the two possible eight-unit camera
+subtractions while normalizing the row origin. These are pure coordinate
+contracts, not VDP or ROM-memory accessors. The `0x3BAC` camera
 tail is now direct as well: `0x15D3C`/`0x15D4E` read the direction and
 correction tables, then changed axes call the `0x4018`/`0x40E2` edge refreshes,
 whose `0x3D4A`/`0x3DDE` spans retain the VDP increment control writes.

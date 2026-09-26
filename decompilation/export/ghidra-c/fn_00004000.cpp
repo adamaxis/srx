@@ -1,15 +1,14 @@
 // Ghidra headless export
 // Entry: 0x00004000
-// Name: convert_field_routine_0x00004000
+// Name: compose_field_tile_destination_offset
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void convert_field_routine_0x00004000(void)
+void compose_field_tile_destination_offset(void)
 
 {
   return;
 }
-
 

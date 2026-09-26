@@ -2543,7 +2543,7 @@
 00003D12: bsr.w 0x00004018 ; call 00004018 render_field_tile_edge
 00003D16: rts
 00003D18: bsr.w 0x000041b6 ; call 000041B6 fold_field_coordinate
-00003D1C: bsr.w 0x00004000 ; call 00004000 convert_field_routine_0x00004000
+00003D1C: bsr.w 0x00004000 ; call 00004000 compose_field_tile_destination_offset
 00003D20: add.w D5w,D4w
 00003D22: move.w #0x1e,D2w
 00003D26: movem.l {  D4 D3 D2 D1 D0},-(SP)
@@ -2557,7 +2557,7 @@
 00003D42: addq.w #0x8,D1w
 00003D44: dbf D2w,0x00003d26
 00003D48: rts
-00003D4A: bsr.w 0x00003fd8 ; call 00003FD8 convert_field_routine_0x00003fd8
+00003D4A: bsr.w 0x00003fd8 ; call 00003FD8 calculate_field_tile_source_layout
 00003D4E: move.w D4w,D7w
 00003D50: andi.w #0x7f,D7w
 00003D54: subi.w #0x80,D7w
@@ -2603,7 +2603,7 @@
 00003DD6: dbf D7w,0x00003d9c
 00003DDA: move (SP)+,SR
 00003DDC: rts
-00003DDE: bsr.w 0x00003fd8 ; call 00003FD8 convert_field_routine_0x00003fd8
+00003DDE: bsr.w 0x00003fd8 ; call 00003FD8 calculate_field_tile_source_layout
 00003DE2: move.w D4w,D7w
 00003DE4: andi.w #0xf80,D7w
 00003DE8: subi.w #0x1000,D7w
@@ -2723,7 +2723,7 @@
 00003F98: movem.l (SP)+,{ D0 D1 D2 D3 D4 D5 D6 D7}
 00003F9C: rts
 00003F9E: movem.w {  D3w D2w},-(SP)
-00003FA2: bsr.w 0x00003fd8 ; call 00003FD8 convert_field_routine_0x00003fd8
+00003FA2: bsr.w 0x00003fd8 ; call 00003FD8 calculate_field_tile_source_layout
 00003FA6: lea (0xff2700).l,A1 ; data 00ff2700
 00003FAC: move.w (0x0,A1,D3w*0x1),D0w ; data 00ff2700
 00003FB0: ext.l D0
@@ -2772,7 +2772,7 @@
 0000402C: bsr.w 0x00004216 ; call 00004216 offset_field_coordinate
 00004030: move.w (0x00ffdd0a).l,D4w
 00004036: subq.w #0x8,D4w
-00004038: bsr.b 0x00004000 ; call 00004000 convert_field_routine_0x00004000
+00004038: bsr.b 0x00004000 ; call 00004000 compose_field_tile_destination_offset
 0000403A: movem.w {  D4w D3w D2w D1w D0w},-(SP)
 0000403E: movea.l (0x00ffddde).l,A0
 00004044: lea (0xff2700).l,A1 ; data 00ff2700
@@ -2793,7 +2793,7 @@
 0000408C: addi.w #0xe0,D1w
 00004090: move.w (0x00ffdd0a).l,D4w
 00004096: addi.w #0xe8,D4w
-0000409A: bsr.w 0x00004000 ; call 00004000 convert_field_routine_0x00004000
+0000409A: bsr.w 0x00004000 ; call 00004000 compose_field_tile_destination_offset
 0000409E: movem.w {  D4w D3w D2w D1w D0w},-(SP)
 000040A2: movea.l (0x00ffddde).l,A0
 000040A8: lea (0xff2700).l,A1 ; data 00ff2700
@@ -2813,10 +2813,10 @@
 000040EE: lsr.w #0x4,D0w
 000040F0: subq.w #0x8,D0w
 000040F2: bmi.w 0x00004148
-000040F6: bsr.w 0x000041f0 ; call 000041F0 convert_field_routine_0x000041f0
+000040F6: bsr.w 0x000041f0 ; call 000041F0 prepare_field_vertical_origin
 000040FA: move.w (0x00ffdd08).l,D3w
 00004100: addq.w #0x8,D3w
-00004102: bsr.w 0x00004000 ; call 00004000 convert_field_routine_0x00004000
+00004102: bsr.w 0x00004000 ; call 00004000 compose_field_tile_destination_offset
 00004106: movem.w {  D4w D3w D2w D1w D0w},-(SP)
 0000410A: movea.l (0x00ffddde).l,A0
 00004110: lea (0xff2700).l,A1 ; data 00ff2700
@@ -2835,11 +2835,11 @@
 00004152: addq.w #0x8,D0w
 00004154: cmp.w (0x00ffddce).l,D0w
 0000415A: bgt.b 0x00004148
-0000415C: bsr.w 0x000041f0 ; call 000041F0 convert_field_routine_0x000041f0
+0000415C: bsr.w 0x000041f0 ; call 000041F0 prepare_field_vertical_origin
 00004160: addi.w #0x140,D0w
 00004164: move.w (0x00ffdd08).l,D3w
 0000416A: subi.w #0x148,D3w
-0000416E: bsr.w 0x00004000 ; call 00004000 convert_field_routine_0x00004000
+0000416E: bsr.w 0x00004000 ; call 00004000 compose_field_tile_destination_offset
 00004172: movem.w {  D4w D3w D2w D1w D0w},-(SP)
 00004176: movea.l (0x00ffddde).l,A0
 0000417C: lea (0xff2700).l,A1 ; data 00ff2700
