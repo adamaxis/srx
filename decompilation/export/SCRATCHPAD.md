@@ -144,6 +144,28 @@ The typed conversion is `advance_primary_world_effect_pending_roll()`. The
 overlay conversion's callback is named `advance_pending_roll` to preserve
 that source boundary instead of mislabeling it as a generic intro request.
 
+## World-effect transition resolver
+
+When `0x1A5A0 advance_world_effect_mode_animation` finishes its mode-2
+countdown, it calls `0x562EC`. The resolver first calculates a trial count
+with `0x55F44`, adds the active profile byte, and rolls against the selected
+record's `+0x06` timing plus twice `FFE16A`. It compares the new
+`FFF0DD` result with `FFF0A4`:
+
+- equal results redraw the HUD rows;
+- a larger new result sets `FFE07E` to mode 1 and redraws the rows;
+- a smaller result continues only when the difference exceeds the profile's
+  comparison byte;
+- the continuation advances HUD mode 8 directly, or runs the menu countdown
+  and footer services before querying the mode again;
+- modes 3, 12, 15, 23, and 24 enter the `0x563CC` pending-roll boundary,
+  while all other paths redraw the HUD rows.
+
+`resolve_world_effect_transition()` preserves that order through typed
+callbacks for action delay, random rolls, HUD mode, countdown/footer work,
+pending-roll advancement, and row redraw. It is still reference/conversion
+code and has no dependency on the emulator's memory or VDP paths.
+
 The importer has a separate ROM-only reader at
 `src/graphics_import.cpp::read_genesis_field_entity_template()`. That reader
 feeds extracted host assets/state; it is not the game runtime and is not a

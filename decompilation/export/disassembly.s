@@ -16453,7 +16453,7 @@
 0001A64C: subq.w #0x1,(0x00ffe07c).l
 0001A652: bpl.w 0x0001a72a
 0001A656: movem.l {  A6 A5 A4 A3 A2 A1 A0 D7 D6 D5 D4 D3 D2},-(SP)
-0001A65A: jsr 0x000562ec.l ; call 000562EC convert_intro_routine_0x000562ec
+0001A65A: jsr 0x000562ec.l ; call 000562EC resolve_world_effect_transition
 0001A660: movem.l (SP)+,{  D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 0001A664: tst.w (0x00ffe07e).l
 0001A66A: bne.w 0x0001a6d6

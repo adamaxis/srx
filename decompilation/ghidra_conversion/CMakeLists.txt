@@ -882,6 +882,19 @@ target_link_libraries(shadowrun_ghidra_world_effect_pending_roll_test
 add_test(NAME shadowrun_ghidra_world_effect_pending_roll
          COMMAND shadowrun_ghidra_world_effect_pending_roll_test)
 
+add_library(shadowrun_ghidra_world_effect_transition STATIC
+    src/world_effect_transition_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_world_effect_transition PUBLIC include)
+
+add_executable(shadowrun_ghidra_world_effect_transition_test
+    tests/world_effect_transition_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_world_effect_transition_test
+    PRIVATE shadowrun_ghidra_world_effect_transition)
+add_test(NAME shadowrun_ghidra_world_effect_transition
+         COMMAND shadowrun_ghidra_world_effect_transition_test)
+
 add_library(shadowrun_ghidra_title_world_helpers STATIC
     src/title_world_helpers_conversion.cpp
 )

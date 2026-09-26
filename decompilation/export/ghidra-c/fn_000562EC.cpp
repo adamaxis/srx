@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000562EC
-// Name: convert_intro_routine_0x000562ec
+// Name: resolve_world_effect_transition
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000DBA count_thresholded_random_rolls
@@ -15,7 +15,10 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_intro_routine_0x000562ec(void)
+// Direct disassembly compares the new roll against FFF0A4, then routes the
+// mode-8 HUD, countdown/footer, pending-roll, or row-redraw path. The typed
+// host conversion is in ghidra_conversion/world_effect_transition_conversion.
+void resolve_world_effect_transition(void)
 
 {
   char cVar1;

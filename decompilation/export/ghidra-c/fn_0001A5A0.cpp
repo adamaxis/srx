@@ -9,7 +9,7 @@
 //   0x0001B680 attach_behavior_descriptor_e
 //   0x0001B7D0 initialize_behavior_record
 //   0x000530EA service_audio_command_frame
-//   0x000562EC convert_intro_routine_0x000562ec
+//   0x000562EC resolve_world_effect_transition
 //   0x0005668C convert_intro_routine_0x0005668c
 //
 // Direct disassembly is authoritative for the shared labels at 0x1A64C,
@@ -36,7 +36,7 @@ LAB_0001a62a:
       build_title_sprite_records_with_attribute_offset();
       return;
     }
-    convert_intro_routine_0x000562ec();
+    resolve_world_effect_transition();
     if (_DAT_00ffe07e != 0) {
       DAT_00ffe07c = 0x10;
       DAT_00ffe076 = 4;
