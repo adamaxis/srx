@@ -67,6 +67,35 @@ These are state operations derived from the source routines, not bookkeeping
 labels and not emulator hooks. The VDP/menu calls around the original
 mutations remain outside the typed operations.
 
+## World-effect mode selection
+
+The intro/world-effect selector is now converted as one typed slice rather
+than four address-only labels. The direct source trace is:
+
+| ROM entry | Recovered behavior | Typed conversion |
+| --- | --- | --- |
+| `0x562D4` | Adds the unsigned `FFE169` effect-timer byte to the D4 difficulty word. | `add_world_effect_timer_modifier(base, effect_timer)` |
+| `0x562DE` | Adds twice the unsigned `FFE16A` effect-phase byte to the same difficulty word. | `add_world_effect_phase_modifier(base, effect_phase)` |
+| `0x56116` | Uses `FFF0A3` as a three-state intro marker. A negative marker performs two thresholded rolls, compares them, optionally advances the HUD transition, enters the menu service, and either initializes or disables world effects. A zero marker starts mode 2 unless variant 1 is already active. | `advance_world_effect_intro_gate()` |
+| `0x561E8` | Reads the selected secondary compact record, increments the current animation index when it differs, then routes the signed `+0x13` status into action-count, delayed-effect, or intro-gate behavior. | `select_world_effect_animation_mode()` |
+
+The compact record fields used by this cluster are animation index `+0x10`,
+effect status `+0x13`, intro timing `+0x06`, and delayed-effect timing `+0x09`.
+The selector's status ranges are source-derived: statuses below 2 enter the
+intro gate; 2--4 use the action-count branch; 5--6 use the delayed-effect
+branch; 7--10 and 17--20 enter the intro gate only for the base variant;
+11--16 enter the action-count branch for variant 1 and the intro gate for the
+base variant; statuses 21 and above use the action-count branch. The action
+branch records `FFF0DD` in `FFF0A4`, displays and advances HUD mode 8, and
+returns 0 or -1. The delayed branch decrements `FFF0E7` while gated, or
+subtracts one from the thresholded-roll count, sets `FFF0E7` to `10-count`,
+marks `FFF0E6` negative, and returns mode 3.
+
+`WorldEffectModeSelectionCallbacks` deliberately leaves random rolls,
+selected-record lookup, action-delay calculation, HUD services, menu entry,
+and world-mode initialization as typed boundaries. It is conversion/reference
+code only; it is not linked into the emulator or native runtime.
+
 The importer has a separate ROM-only reader at
 `src/graphics_import.cpp::read_genesis_field_entity_template()`. That reader
 feeds extracted host assets/state; it is not the game runtime and is not a

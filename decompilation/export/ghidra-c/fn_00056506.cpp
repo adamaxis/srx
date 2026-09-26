@@ -6,7 +6,7 @@
 //   0x00019BF6 pass_through_value
 //   0x00019C5C convert_world_routine_0x00019c5c
 //   0x00055F44 calculate_runner_action_delay
-//   0x000562DE convert_intro_routine_0x000562de
+//   0x000562DE add_world_effect_phase_modifier
 //   0x00056632 convert_intro_routine_0x00056632
 
 
@@ -59,7 +59,7 @@ void convert_intro_routine_0x00056506(void)
   if (bVar2 == 0 || SBORROW1((char)sVar7,cVar1) != (short)((ushort)bVar2 << 8) < 0) {
     return;
   }
-  convert_intro_routine_0x000562de();
+  add_world_effect_phase_modifier();
   convert_intro_routine_0x00056632();
   if (*(char *)(extraout_A0 + 0x1a + (int)unaff_D3w) == '\v') {
     uVar6 = (uint)*(byte *)(extraout_A1 + 6 + (int)extraout_D1w);
@@ -74,7 +74,7 @@ void convert_intro_routine_0x00056506(void)
       uVar5 = (ushort)DAT_00fffbc8;
     }
   }
-  convert_intro_routine_0x000562de();
+  add_world_effect_phase_modifier();
   if ((short)(uVar5 - 2) < 0) {
     uVar5 = 2;
   }

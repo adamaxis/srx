@@ -10,7 +10,7 @@
 //   0x00019B40 convert_world_routine_0x00019b40
 //   0x0001A12E advance_menu_countdown
 //   0x00055F44 calculate_runner_action_delay
-//   0x000562DE convert_intro_routine_0x000562de
+//   0x000562DE add_world_effect_phase_modifier
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -24,7 +24,7 @@ void convert_intro_routine_0x000562ec(void)
   char *extraout_A0;
   
   calculate_runner_action_delay();
-  convert_intro_routine_0x000562de();
+  add_world_effect_phase_modifier();
   count_thresholded_random_rolls();
   cVar1 = DAT_00fff0a4 - DAT_00fff0dd;
   if (cVar1 != '\0') {

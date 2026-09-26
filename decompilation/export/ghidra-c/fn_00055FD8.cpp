@@ -27,7 +27,7 @@ void convert_intro_routine_0x00055fd8(void)
     sVar2 = 1;
   }
   if ((char)(*(char *)((int)&DAT_00ff1104 + (short)(DAT_00fff118 * 0x14) + 1) + -1) < (char)sVar2) {
-    convert_intro_routine_0x000562de();
+    add_world_effect_phase_modifier();
     count_thresholded_random_rolls();
   }
   cVar1 = DAT_00fff0dd;

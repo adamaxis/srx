@@ -11,7 +11,7 @@
 //   0x0001A818 begin_world_effect_descriptor_transition
 //   0x0001A8F4 reset_effect_entity
 //   0x0001D3F4 expand_random_nibble_mask
-//   0x000561E8 convert_intro_routine_0x000561e8
+//   0x000561E8 select_world_effect_animation_mode
 //
 // Direct disassembly is authoritative for the branch at 0x1A380: FFE082
 // selects the inline descriptor-transition/noise path, while a clear FFE082
@@ -62,7 +62,7 @@ void advance_world_effect_controller(void)
     if (((DAT_00ffdf84 != '\0') && (DAT_00ffe076 == 0)) &&
        (DAT_00ffe074 = DAT_00ffe074 + -1, DAT_00ffe074 < 0)) {
       DAT_00ffe074 = calculate_menu_row_offset();
-      _DAT_00ffe07e = convert_intro_routine_0x000561e8();
+      _DAT_00ffe07e = select_world_effect_animation_mode();
       if (-1 < _DAT_00ffe07e) {
         if (_DAT_00ffe07e == 2) {
           uVar1 = calculate_menu_row_offset();

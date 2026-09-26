@@ -16328,7 +16328,7 @@
 0001A3B0: bpl.w 0x0001a466
 0001A3B4: jsr 0x00017e78.l ; call 00017E78 calculate_menu_row_offset
 0001A3BA: move.w D0w,(0x00ffe074).l
-0001A3C0: jsr 0x000561e8.l ; call 000561E8 convert_intro_routine_0x000561e8
+0001A3C0: jsr 0x000561e8.l ; call 000561E8 select_world_effect_animation_mode
 0001A3C6: move.w D0w,(0x00ffe07e).l
 0001A3CC: bmi.w 0x0001a466
 0001A3D0: cmpi.w #0x2,D0w
@@ -24416,7 +24416,7 @@
 000560C0: mulu.w #0x14,D1
 000560C4: jsr 0x00019bf6.l ; call 00019BF6 pass_through_value
 000560CA: move.b (0x9,A5),D4b
-000560CE: bsr.w 0x000562d4 ; call 000562D4 convert_intro_routine_0x000562d4
+000560CE: bsr.w 0x000562d4 ; call 000562D4 add_world_effect_timer_modifier
 000560D2: cmpi.w #0x2,D4w
 000560D6: bpl.w 0x000560de
 000560DA: move.w #0x2,D4w
@@ -24444,7 +24444,7 @@
 0005613C: jsr 0x00019bf6.l ; call 00019BF6 pass_through_value
 00056142: lea (0xfffbbe).l,A0 ; data 00fffbbe
 00056148: move.b (0xa,A0),D4b
-0005614C: bsr.w 0x000562de ; call 000562DE convert_intro_routine_0x000562de
+0005614C: bsr.w 0x000562de ; call 000562DE add_world_effect_phase_modifier
 00056150: cmpi.w #0x2,D4w
 00056154: bpl.w 0x0005615c
 00056158: move.w #0x2,D4w
@@ -24458,7 +24458,7 @@
 0005617C: move.w (0x00fff118).l,D1w
 00056182: mulu.w #0x14,D1
 00056186: move.b (0x6,A1,D1w*0x1),D4b
-0005618A: bsr.w 0x000562de ; call 000562DE convert_intro_routine_0x000562de
+0005618A: bsr.w 0x000562de ; call 000562DE add_world_effect_phase_modifier
 0005618E: cmpi.w #0x2,D4w
 00056192: bpl.w 0x0005619a
 00056196: move.w #0x2,D4w
@@ -24500,12 +24500,12 @@
 00056238: bpl.w 0x0005624a
 0005623C: tst.b (0x00fff0a0).l
 00056242: bgt.w 0x000560aa
-00056246: bra.w 0x00056116 ; call 00056116 convert_intro_routine_0x00056116
+00056246: bra.w 0x00056116 ; call 00056116 advance_world_effect_intro_gate
 0005624A: cmpi.b #0x11,D4b
 0005624E: bpl.w 0x00056260
 00056252: tst.b (0x00fff0a0).l
 00056258: bgt.w 0x00056268
-0005625C: bra.w 0x00056116 ; call 00056116 convert_intro_routine_0x00056116
+0005625C: bra.w 0x00056116 ; call 00056116 advance_world_effect_intro_gate
 00056260: cmpi.b #0x15,D4b
 00056264: bmi.w 0x00056116
 00056268: lea (0xff1100).l,A1 ; data 00ff1100
@@ -24514,7 +24514,7 @@
 00056278: jsr 0x00019bf6.l ; call 00019BF6 pass_through_value
 0005627E: clr.l D4
 00056280: move.b (0x8,A5),D4b
-00056284: bsr.w 0x000562d4 ; call 000562D4 convert_intro_routine_0x000562d4
+00056284: bsr.w 0x000562d4 ; call 000562D4 add_world_effect_timer_modifier
 00056288: cmpi.w #0x2,D4w
 0005628C: bpl.w 0x00056294
 00056290: move.w #0x2,D4w
@@ -24548,7 +24548,7 @@
 00056308: bsr.w 0x00055f44 ; call 00055F44 calculate_runner_action_delay
 0005630C: add.b (0x00fffbbe).l,D6b
 00056312: move.b (0x6,A6,D0w*0x1),D4b ; data 00ff1106
-00056316: bsr.b 0x000562de ; call 000562DE convert_intro_routine_0x000562de
+00056316: bsr.b 0x000562de ; call 000562DE add_world_effect_phase_modifier
 00056318: cmpi.w #0x2,D4w
 0005631C: bpl.w 0x00056324
 00056320: move.w #0x2,D4w
@@ -24684,7 +24684,7 @@
 00056564: sub.b D4b,D6b
 00056566: ble.w 0x000565e8
 0005656A: move.b (0x6,A1,D1w*0x1),D4b ; data 00ff1106
-0005656E: bsr.w 0x000562de ; call 000562DE convert_intro_routine_0x000562de
+0005656E: bsr.w 0x000562de ; call 000562DE add_world_effect_phase_modifier
 00056572: bsr.w 0x00056632 ; call 00056632 convert_intro_routine_0x00056632
 00056576: lea (0xfffbbe).l,A2 ; data 00fffbbe
 0005657C: cmpi.b #0xb,(0x1a,A0,D3w*0x1)
@@ -24702,7 +24702,7 @@
 000565AA: move.b (0xb,A2),D4b
 000565AE: bra.w 0x000565b6
 000565B2: move.b (0x9,A2),D4b
-000565B6: bsr.w 0x000562de ; call 000562DE convert_intro_routine_0x000562de
+000565B6: bsr.w 0x000562de ; call 000562DE add_world_effect_phase_modifier
 000565BA: cmpi.w #0x2,D4w
 000565BE: bpl.w 0x000565c4
 000565C2: moveq #0x2,D4

@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000561E8
-// Name: convert_intro_routine_0x000561e8
+// Name: select_world_effect_animation_mode
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000DBA count_thresholded_random_rolls
@@ -9,11 +9,14 @@
 //   0x00019B40 convert_world_routine_0x00019b40
 //   0x00019BF6 pass_through_value
 //   0x00053216 select_secondary_runner_record_table
-//   0x00056116 convert_intro_routine_0x00056116
-//   0x000562D4 convert_intro_routine_0x000562d4
+//   0x00056116 advance_world_effect_intro_gate
+//   0x000562D4 add_world_effect_timer_modifier
 
+// Direct disassembly at 0x561E8 is authoritative for the compact-record
+// status ranges. The typed host conversion is in
+// ghidra_conversion/world_effect_mode_selection_conversion.
 
-undefined4 convert_intro_routine_0x000561e8(void)
+undefined4 select_world_effect_animation_mode(void)
 
 {
   char cVar1;
@@ -41,7 +44,7 @@ LAB_000560aa:
       }
       else {
         pass_through_value();
-        convert_intro_routine_0x000562d4();
+        add_world_effect_timer_modifier();
         count_thresholded_random_rolls();
         DAT_00fff0dd = DAT_00fff0dd + -1;
         if (-1 < DAT_00fff0dd) {
@@ -54,19 +57,19 @@ LAB_000560aa:
     }
     if ((char)(cVar1 + -0xb) < '\0') {
       if (DAT_00fff0a0 < '\x01') {
-        uVar3 = convert_intro_routine_0x00056116();
+        uVar3 = advance_world_effect_intro_gate();
         return uVar3;
       }
       goto LAB_000560aa;
     }
     if ((char)(cVar1 + -0x11) < '\0') {
       if (DAT_00fff0a0 < '\x01') {
-        uVar3 = convert_intro_routine_0x00056116();
+        uVar3 = advance_world_effect_intro_gate();
         return uVar3;
       }
 LAB_00056268:
       pass_through_value();
-      convert_intro_routine_0x000562d4();
+      add_world_effect_timer_modifier();
       count_thresholded_random_rolls();
       sVar4 = convert_world_routine_0x00019b40();
       if (sVar4 == 8) {
@@ -85,11 +88,11 @@ LAB_00056268:
   }
   if (DAT_00fff0a3 < '\0') {
     pass_through_value();
-    convert_intro_routine_0x000562de();
+    add_world_effect_phase_modifier();
     count_thresholded_random_rolls();
     cVar1 = DAT_00fff0dd;
     calculate_runner_action_delay();
-    convert_intro_routine_0x000562de();
+    add_world_effect_phase_modifier();
     count_thresholded_random_rolls();
     if ((DAT_00fff0dd < cVar1) &&
        (convert_world_routine_0x0001989a(), uVar2 = extraout_D0u, DAT_00fff0b1 < '\0'))

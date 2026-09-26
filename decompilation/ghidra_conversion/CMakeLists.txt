@@ -830,6 +830,19 @@ target_link_libraries(shadowrun_ghidra_world_effect_mode_animation_test
 add_test(NAME shadowrun_ghidra_world_effect_mode_animation
          COMMAND shadowrun_ghidra_world_effect_mode_animation_test)
 
+add_library(shadowrun_ghidra_world_effect_mode_selection STATIC
+    src/world_effect_mode_selection_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_world_effect_mode_selection PUBLIC include)
+
+add_executable(shadowrun_ghidra_world_effect_mode_selection_test
+    tests/world_effect_mode_selection_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_world_effect_mode_selection_test
+    PRIVATE shadowrun_ghidra_world_effect_mode_selection)
+add_test(NAME shadowrun_ghidra_world_effect_mode_selection
+         COMMAND shadowrun_ghidra_world_effect_mode_selection_test)
+
 add_library(shadowrun_ghidra_title_world_helpers STATIC
     src/title_world_helpers_conversion.cpp
 )
