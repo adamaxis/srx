@@ -17008,7 +17008,7 @@
 0001B156: move.w #0x4,D0w
 0001B15A: jsr 0x000530ea.l ; call 000530EA service_audio_command_frame
 0001B160: bsr.w 0x0001b5a6 ; call 0001B5A6 reset_word_stream_area
-0001B164: jsr 0x0001822c.l ; call 0001822C convert_world_routine_0x0001822c
+0001B164: jsr 0x0001822c.l ; call 0001822C run_matrix_interaction_loop
 0001B16A: tst.b (0x00fff0b1).l
 0001B170: bne.w 0x0001b1b6
 0001B174: move.w D7w,-(SP) ; data Stack[-0x2]
@@ -23690,7 +23690,7 @@
 000549A6: jsr 0x000176ea.l ; call 000176EA render_menu_footer
 000549AC: jsr 0x000177cc.l ; call 000177CC upload_menu_resource_pair
 000549B2: move.w #-0x7e8c,(0x00c00004).l
-000549BA: jsr 0x0001822c.l ; call 0001822C convert_world_routine_0x0001822c
+000549BA: jsr 0x0001822c.l ; call 0001822C run_matrix_interaction_loop
 000549C0: lea (0xfff0ed).l,A4 ; data 00fff0ed
 000549C6: lea (0xfff0e8).l,A5 ; data 00fff0e8
 000549CC: move.w #0x4,D6w

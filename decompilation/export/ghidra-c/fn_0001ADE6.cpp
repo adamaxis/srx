@@ -9,7 +9,7 @@
 //   0x000176BA refresh_field_resource_streams
 //   0x0001789C prepare_menu_hud_sequence
 //   0x00017FDA advance_menu_random_glitch
-//   0x0001822C convert_world_routine_0x0001822c
+//   0x0001822C run_matrix_interaction_loop
 //   0x000186FA refresh_field_hud_assets
 //   0x00018776 advance_hud_fade_service
 //   0x00019432 handle_menu_directional_input
@@ -227,7 +227,7 @@ LAB_0001afc0:
       prepare_mode_entry_service();
       service_audio_command_frame();
       reset_word_stream_area();
-      convert_world_routine_0x0001822c();
+      run_matrix_interaction_loop();
       if (DAT_00fff0b1 != '\0') {
         return;
       }

@@ -25,7 +25,7 @@
 //   0x000176EA render_menu_footer
 //   0x000177CC upload_menu_resource_pair
 //   0x00017F80 refresh_mode_metadata_wrapper
-//   0x0001822C convert_world_routine_0x0001822c (Matrix program loop)
+//   0x0001822C run_matrix_interaction_loop (Matrix program loop)
 //   0x000532A8 fill_mode_auxiliary_sentinel
 //   0x000549E4 write_mode_repeated_grid_service
 //   0x000549F6 select_mode_display_status

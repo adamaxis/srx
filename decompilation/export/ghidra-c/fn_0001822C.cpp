@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0001822C
-// Name: convert_world_routine_0x0001822c
+// Name: run_matrix_interaction_loop
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -38,7 +38,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void convert_world_routine_0x0001822c(void)
+void run_matrix_interaction_loop(void)
 
 {
   char cVar1;

@@ -2339,6 +2339,21 @@ target_link_libraries(shadowrun_ghidra_matrix_loop_test
 add_test(NAME shadowrun_ghidra_matrix_loop
          COMMAND shadowrun_ghidra_matrix_loop_test)
 
+add_library(shadowrun_ghidra_matrix_interaction STATIC
+    src/matrix_interaction_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_matrix_interaction PUBLIC include)
+target_link_libraries(shadowrun_ghidra_matrix_interaction
+    PRIVATE shadowrun_ghidra_matrix_loop)
+
+add_executable(shadowrun_ghidra_matrix_interaction_test
+    tests/matrix_interaction_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_matrix_interaction_test
+    PRIVATE shadowrun_ghidra_matrix_interaction)
+add_test(NAME shadowrun_ghidra_matrix_interaction
+         COMMAND shadowrun_ghidra_matrix_interaction_test)
+
 add_library(shadowrun_ghidra_matrix_storage STATIC
     src/matrix_storage_conversion.cpp
 )

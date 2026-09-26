@@ -789,6 +789,13 @@ over return, applies the slot mutation only for Yes with a live ready timer,
 and otherwise performs the clear-timer/slot-refresh branch before the common
 Matrix redraw. This is separate from the existing typed slot/memory planner;
 the remaining resource/text presentation is still an explicit callback.
+The parent Matrix loop at `0x1822C` now has the same control-flow treatment:
+the host conversion services VBlank/input/history in source order, gives
+vertical movement priority over horizontal movement, redraws the typed
+four-by-four cursor, routes rows 0..2 to the program-slot screen, preserves
+the row-3 inactive-run gate, and exposes the column-action/disconnect handlers
+as explicit native boundaries. Bit 15 is handled only after the action bits,
+matching the source's Matrix-to-field exit priority.
 The storage screen path at `0x18D1A` now has its first concrete record math:
 `0x1954A` reads the five loaded-slot usage bytes, `0x1952C` loads each of the
 twelve availability flags, and its `0x19538` arithmetic tail squares the flag

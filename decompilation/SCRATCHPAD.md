@@ -650,6 +650,15 @@ active; otherwise it clears the timer and refreshes the selected slot. No is a
 non-mutating return. The host conversion keeps those branches as typed
 callbacks and bounds only the test/input sequence.
 
+The parent Matrix loop at `0x1822C` is now named
+`run_matrix_interaction_loop`. Its native conversion preserves the per-frame
+wait/latch/sample/history order, vertical-before-horizontal movement priority,
+the row-3 route gates, and the action-before-bit-15 exit priority. Rows 0..2
+dispatch to the typed program-slot screen; row 3 exposes the column action and
+active-run disconnect handlers as explicit callbacks, and successful handler
+completion follows the field-return boundary. The conversion does not emulate
+VDP state or silently implement the indirect action routines.
+
 ## Entity animation target-route conversion: 0x145A2 / 0x149C0
 
 The next movement slice is now represented by the isolated

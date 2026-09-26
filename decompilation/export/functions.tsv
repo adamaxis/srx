@@ -487,7 +487,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00017FB4	write_hud_repeated_grid	38	unknown	ok	ghidra-c/fn_00017FB4.cpp
 00017FDA	advance_menu_random_glitch	374	unknown	ok	ghidra-c/fn_00017FDA.cpp
 000181F8	convert_world_routine_0x000181f8	52	unknown	ok	ghidra-c/fn_000181F8.cpp
-0001822C	convert_world_routine_0x0001822c	1230	unknown	ok	ghidra-c/fn_0001822C.cpp
+0001822C	run_matrix_interaction_loop	1230	unknown	ok	ghidra-c/fn_0001822C.cpp
 000186FA	refresh_field_hud_assets	124	unknown	ok	ghidra-c/fn_000186FA.cpp
 00018776	advance_hud_fade_service	52	unknown	ok	ghidra-c/fn_00018776.cpp
 000187AA	render_hud_indicator_grids	132	unknown	ok	ghidra-c/fn_000187AA.cpp

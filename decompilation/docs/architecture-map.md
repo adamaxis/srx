@@ -3,9 +3,9 @@
 This is the architecture implied by the ROM, the regenerated Ghidra callgraph,
 the typed conversion work, and the existing native source. It is the shape the
 port should converge on; it is not a claim that every named native layer exists
-yet. The 909 exported functions are not 909 original source modules: they are
+yet. The 910 exported functions are not 910 original source modules: they are
 mostly leaf routines, table-dispatch targets, transfer wrappers, animation
-variants, and small record helpers. The export currently has 2,978 resolved
+variants, and small record helpers. The export currently has 2,986 resolved
 direct call sites and 16 indirect/unresolved boundaries.
 
 ## The short version
@@ -364,15 +364,16 @@ emulator/bus code is likewise a verification museum, not a second gameplay
 implementation. The current `shadowrun_port` still contains bus-shaped code;
 that is an implementation gap to remove, not part of this target architecture.
 
-## 5. What the 909 entries become
+## 5. What the 910 entries become
 
 The current export/ledger pass is complete only in the narrow source-coverage
-sense: all 909 exported functions are represented, with the ledger also
+sense: all 910 exported functions are represented, with the ledger also
 retaining non-function ROM anchors used by the native audit. The conversion
 tests now group some leaf entries into typed subsystem contracts. That does
 **not** mean the game is fully playable or every hill is defended: the ledger
-currently has 907 `partial`, four `defended`, one `ported`, and five `pending`
-rows, and 260 exported names remain generic pending stronger evidence.
+currently has 936 `partial` and four `defended` rows, with no `pending` rows in
+the current ledger snapshot. Ninety exported names remain generic pending
+stronger evidence.
 
 The realistic native source count is therefore roughly a dozen ownership
 areas, not 900 files:
@@ -391,7 +392,7 @@ offline extraction tools
 tests / visual dumps
 ```
 
-The existing 124 conversion test targets are evidence fixtures, not a proposed
+The existing 225 conversion test targets are evidence fixtures, not a proposed
 runtime file layout. As a hill becomes native and defended, its conversion
 helpers should be folded into the relevant native subsystem or retained only
 as a source-trace test; they should not be linked wholesale into the game.
