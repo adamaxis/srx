@@ -2367,6 +2367,21 @@ target_link_libraries(shadowrun_ghidra_matrix_cyber_info_test
 add_test(NAME shadowrun_ghidra_matrix_cyber_info
          COMMAND shadowrun_ghidra_matrix_cyber_info_test)
 
+add_library(shadowrun_ghidra_matrix_cyber_info_screen STATIC
+    src/matrix_cyber_info_screen_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_matrix_cyber_info_screen PUBLIC include)
+target_link_libraries(shadowrun_ghidra_matrix_cyber_info_screen
+    PRIVATE shadowrun_ghidra_matrix_cyber_info)
+
+add_executable(shadowrun_ghidra_matrix_cyber_info_screen_test
+    tests/matrix_cyber_info_screen_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_matrix_cyber_info_screen_test
+    PRIVATE shadowrun_ghidra_matrix_cyber_info_screen)
+add_test(NAME shadowrun_ghidra_matrix_cyber_info_screen
+         COMMAND shadowrun_ghidra_matrix_cyber_info_screen_test)
+
 add_library(shadowrun_ghidra_matrix_utility STATIC
     src/matrix_utility_conversion.cpp
 )

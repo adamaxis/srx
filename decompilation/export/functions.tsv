@@ -497,7 +497,7 @@ entry	name	size	callingConvention	decompileStatus	file
 000189B4	write_hud_repeated_grid_variant_c	36	unknown	ok	ghidra-c/fn_000189B4.cpp
 000189D8	write_two_hud_grids	136	unknown	ok	ghidra-c/fn_000189D8.cpp
 00018A92	matrix_program_index	20	unknown	ok	ghidra-c/fn_00018A92.cpp
-00018AA6	convert_world_routine_0x00018aa6	628	unknown	ok	ghidra-c/fn_00018AA6.cpp
+00018AA6	run_cyber_info_screen	628	unknown	ok	ghidra-c/fn_00018AA6.cpp
 00019238	convert_world_routine_0x00019238	506	unknown	ok	ghidra-c/fn_00019238.cpp
 00019432	handle_menu_directional_input	122	unknown	ok	ghidra-c/fn_00019432.cpp
 000194AC	advance_hud_selection_row	88	unknown	ok	ghidra-c/fn_000194AC.cpp

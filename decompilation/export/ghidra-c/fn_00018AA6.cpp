@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00018AA6
-// Name: convert_world_routine_0x00018aa6
+// Name: run_cyber_info_screen
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -14,7 +14,7 @@
 //   0x000196F2 rotate_hud_history
 
 
-void convert_world_routine_0x00018aa6(void)
+void run_cyber_info_screen(void)
 
 {
   short sVar1;
@@ -77,5 +77,4 @@ void convert_world_routine_0x00018aa6(void)
     }
   } while( true );
 }
-
 

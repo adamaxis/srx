@@ -774,12 +774,14 @@ functions: it follows the selected slot through its loaded program code and
 reads that program's availability byte. `0x19C5C` is an interior instruction
 address in the same leaf, so the native conversion exposes one bounded lookup.
 The CyberInfo screen at `0x18AA6` is no longer a generic world routine:
-selection zero is Deck Stats and selection one is Run Info. Its Run Info
-branch at `0x18C28` now classifies the run as not-present, active, or complete,
-then resolves the active node to CPU or Datastore and the source action table
-to Delete File, Upload File, Crash System, or Download File. The remaining
-text/number placement and underlying deck-stat field reads stay presentation
-boundaries.
+selection zero is Deck Stats and selection one is Run Info. The new native
+screen driver preserves the source setup, per-frame VBlank/latch/sample/history
+order, up-before-down priority, three-button page activation, and bit-15 return
+to the Matrix panel. Its Run Info branch at `0x18C28` classifies the run as
+not-present, active, or complete, then resolves the active node to CPU or
+Datastore and the source action table to Delete File, Upload File, Crash
+System, or Download File. Text/number placement and underlying deck-stat field
+reads remain presentation/data callbacks.
 The storage screen path at `0x18D1A` now has its first concrete record math:
 `0x1954A` reads the five loaded-slot usage bytes, `0x1952C` loads each of the
 twelve availability flags, and its `0x19538` arithmetic tail squares the flag

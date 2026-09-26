@@ -26,7 +26,7 @@
 //   0x0001882E convert_world_routine_0x0001882e
 //   0x0001897C write_hud_repeated_grid_variant_a
 //   0x000189D8 write_two_hud_grids
-//   0x00018AA6 convert_world_routine_0x00018aa6
+//   0x00018AA6 run_cyber_info_screen
 //   0x00019238 convert_world_routine_0x00019238
 //   0x00019504 write_hud_panel_grid
 //   0x000196F2 rotate_hud_history
@@ -230,5 +230,4 @@ LAB_00018694:
   VDP_CTRL = 0x8174;
   return;
 }
-
 

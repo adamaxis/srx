@@ -14879,7 +14879,7 @@
 00018604: lsl.w #0x2,D1w
 00018606: lea (0xe2dfe).l,A6 ; data 000e2dfe
 0001860C: movea.l (0x0,A6,D1w*0x1),A6
-00018610: jsr (A6) ; call 00018AA6 convert_world_routine_0x00018aa6
+00018610: jsr (A6) ; call 00018AA6 run_cyber_info_screen
 00018612: tst.b (0x00fff0ad).l
 00018618: beq.w 0x00018326
 0001861C: clr.b (0x00fff0ad).l

@@ -631,6 +631,16 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The CyberInfo handler at `0x18AA6` is now `run_cyber_info_screen`. Its host
+conversion resets the two-entry page cursor, emits the `CyberInfo` setup, and
+preserves the exact per-frame wait/latch/sample/history order. Up wins over
+down when both events are latched; the three source activation bits render the
+selected Deck Stats or Run Info page, while bit 15 redraws the Matrix panel.
+The conversion uses typed page callbacks and a bounded input sequence for
+tests, so it does not carry the original VDP writes or ROM text pointers into
+runtime code. The existing Run Info classifier remains the source-backed
+boundary for absent/active/complete runs and CPU/Datastore action labels.
+
 ## Entity animation target-route conversion: 0x145A2 / 0x149C0
 
 The next movement slice is now represented by the isolated
