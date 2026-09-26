@@ -38,8 +38,11 @@ int main() {
     AudioCommandQueueState queue{};
     append_audio_command(queue, 0x11);
     flush_audio_command(queue, 0x22);
-    if (queue.bytes[0] != 0x11 || queue.bytes[1] != 0xFF ||
-        queue.bytes[2] != 0x22 || queue.write_index != 3) {
+    if (queue.entries[0].kind != AudioQueueEntryKind::command ||
+        queue.entries[0].command != 0x11 ||
+        queue.entries[1].kind != AudioQueueEntryKind::flush_marker ||
+        queue.entries[2].kind != AudioQueueEntryKind::command ||
+        queue.entries[2].command != 0x22 || queue.write_index != 3U) {
         return 4;
     }
 

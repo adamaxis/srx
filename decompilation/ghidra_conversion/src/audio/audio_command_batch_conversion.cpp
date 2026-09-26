@@ -67,17 +67,25 @@ void reset_audio_processor(AudioRamState& state,
 
 void flush_audio_command(AudioCommandQueueState& state,
                          const std::uint8_t command) {
-    const auto marker_index = state.write_index & 0x3FU;
-    state.bytes[marker_index] = 0xFFU;
-    state.bytes[(marker_index + 1U) & 0x3FU] = command;
-    state.write_index = static_cast<std::uint8_t>((marker_index + 2U) & 0x3FU);
+    const auto marker_index =
+        state.write_index % AudioCommandQueueState::capacity;
+    state.entries[marker_index] =
+        {AudioQueueEntryKind::flush_marker, 0U};
+    state.entries[(marker_index + 1U) %
+                  AudioCommandQueueState::capacity] =
+        {AudioQueueEntryKind::command, command};
+    state.write_index = (marker_index + 2U) %
+                        AudioCommandQueueState::capacity;
 }
 
 void append_audio_command(AudioCommandQueueState& state,
                           const std::uint8_t command) {
-    state.bytes[state.write_index & 0x3FU] = command;
-    state.write_index = static_cast<std::uint8_t>((state.write_index + 1U) &
-                                                   0x3FU);
+    const auto command_index =
+        state.write_index % AudioCommandQueueState::capacity;
+    state.entries[command_index] =
+        {AudioQueueEntryKind::command, command};
+    state.write_index = (command_index + 1U) %
+                        AudioCommandQueueState::capacity;
 }
 
 bool append_one_with_audio_bus(

@@ -108,6 +108,7 @@ That predicate is intentionally not an unsigned `std::max`; the ROM tests the
 sign bit of the wrapped word difference before adding the availability value.
 
 The Matrix storage/timing pass found two more width-sensitive conversions.
+The audio command-ring audit also removed a source-shaped byte buffer from the conversion model. `0x52E96` now publishes a typed `flush_marker` entry followed by a typed command entry, while `0x52EA2` appends a typed command and wraps a host index at the source 64-entry capacity. The source `0xFF` marker remains provenance; it is not a runtime sentinel in the host model. The opaque audio firmware image is still an extraction boundary and is not being misrepresented as typed gameplay state.
 `0x19558` and `0x1957E` accumulate and subtract in word registers, so their
 typed capacity results now wrap at 16 bits. `0x195AA` copies the selected
 footprint through `D1.w` before division and uses `CMP.W #7`/`BMI`, so the

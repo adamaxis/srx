@@ -520,8 +520,8 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x52E26	audio processor reset	ghidra_conversion::reset_audio_processor	shadowrun_ghidra_audio_command_batch	partial		Typed reset pulse and short-delay sequence
 0x52E4E	audio bus begin	ghidra_conversion::begin_audio_bus_access	shadowrun_ghidra_audio_command_batch	partial		Explicit host audio bus boundary
 0x52E84	audio bus end	ghidra_conversion::end_audio_bus_access	shadowrun_ghidra_audio_command_batch	partial		Explicit host audio bus boundary
-0x52E96	audio command flush	ghidra_conversion::flush_audio_command	shadowrun_ghidra_audio_command_batch	partial		Typed circular command marker and payload write
-0x52EA2	audio command append	ghidra_conversion::append_audio_command	shadowrun_ghidra_audio_command_batch	partial		Typed circular command append
+0x52E96	audio command flush	ghidra_conversion::flush_audio_command	shadowrun_ghidra_audio_command_batch	partial		Typed circular flush-marker entry followed by a command entry; source 0xFF marker is not a host byte sentinel
+0x52EA2	audio command append	ghidra_conversion::append_audio_command	shadowrun_ghidra_audio_command_batch	partial		Typed circular command entry with host-size index; source six-bit wrap is preserved by the 64-entry capacity
 0x52EB0	audio bus single append	ghidra_conversion::append_one_with_audio_bus	shadowrun_ghidra_audio_command_batch	partial		Typed begin/append/end order
 0x52EC6	audio bus triple append	ghidra_conversion::append_three_with_audio_bus	shadowrun_ghidra_audio_command_batch	partial		Typed begin/three-appends/end order
 0x52F3C	audio command queue service	ghidra_conversion::service_audio_command_queue_batch	shadowrun_ghidra_audio_command_batch	partial		Typed begin/flush/append/end order

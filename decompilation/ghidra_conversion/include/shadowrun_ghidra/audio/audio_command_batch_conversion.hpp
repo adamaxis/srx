@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <vector>
@@ -39,17 +40,31 @@ struct AudioResetCallbacks {
 void reset_audio_processor(AudioRamState& state,
                            const AudioResetCallbacks& callbacks);
 
-struct AudioCommandQueueState {
-    std::array<std::uint8_t, 64> bytes{};
-    std::uint8_t write_index = 0;
+enum class AudioQueueEntryKind {
+    empty,
+    command,
+    flush_marker,
 };
 
-// ROM 0x52E96: write the 0xFF queue marker, append the command through the
-// shared 0x52EA2 body, and wrap the 6-bit queue index.
+struct AudioQueueEntry {
+    AudioQueueEntryKind kind = AudioQueueEntryKind::empty;
+    std::uint8_t command = 0;
+};
+
+struct AudioCommandQueueState {
+    static constexpr std::size_t capacity = 64U;
+    std::array<AudioQueueEntry, capacity> entries{};
+    std::size_t write_index = 0;
+};
+
+// ROM 0x52E96: write a typed flush marker, append the command through the
+// shared 0x52EA2 body, and wrap the six-bit queue index. The source's 0xFF
+// marker is represented by AudioQueueEntryKind::flush_marker, not exposed as
+// a magic byte in the host model.
 void flush_audio_command(AudioCommandQueueState& state,
                          std::uint8_t command);
-// ROM 0x52EA2: append one command byte and wrap the 6-bit queue index. This
-// is also the inner entry reached by the 0x52E96 body.
+// ROM 0x52EA2: append one typed command and wrap the six-bit queue index.
+// This is also the inner entry reached by the 0x52E96 body.
 void append_audio_command(AudioCommandQueueState& state,
                           std::uint8_t command);
 
