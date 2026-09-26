@@ -25,6 +25,18 @@ cmake --build decompilation/ghidra_conversion/build
 ctest --test-dir decompilation/ghidra_conversion/build --output-on-failure
 ```
 
+The standalone conversion runner can be built and run with:
+
+```text
+cmake --build decompilation/ghidra_conversion/build --target shadowrun_ghidra_conversion_runner
+decompilation/ghidra_conversion/build/shadowrun_ghidra_conversion_runner.exe
+```
+
+This runner is a conversion-workbench probe, not the native game and not an
+emulator. It composes typed source-derived contracts from the conversion
+modules and prints their deterministic results. The native port has no link
+or source dependency on this target.
+
 The source-understanding layer is organized by game subsystem under
 `include/shadowrun_ghidra/<domain>/`, `src/<domain>/`, and `tests/<domain>/`.
 See [`../docs/ghidra-conversion-source-layout.md`](../docs/ghidra-conversion-source-layout.md)

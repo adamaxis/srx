@@ -13,6 +13,25 @@ enable_testing()
 # one undifferentiated export-shaped target.
 include(conversion_modules.cmake)
 
+# This library is the only composition layer for the standalone conversion
+# workbench. It links the reviewed behavioral modules, but it remains outside
+# the native-port CMake graph and does not own game runtime state.
+add_library(shadowrun_ghidra_conversion_workbench STATIC
+    src/conversion_workbench.cpp
+)
+target_include_directories(shadowrun_ghidra_conversion_workbench PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_link_libraries(shadowrun_ghidra_conversion_workbench
+    PUBLIC shadowrun_ghidra_conversion_modules)
+
+add_executable(shadowrun_ghidra_conversion_runner
+    tools/conversion_runner_main.cpp
+)
+target_link_libraries(shadowrun_ghidra_conversion_runner
+    PRIVATE shadowrun_ghidra_conversion_workbench)
+add_test(NAME shadowrun_ghidra_conversion_runner
+         COMMAND shadowrun_ghidra_conversion_runner)
+
 # Keep each source-trace contract as a separately runnable test so a failing
 # ROM behavior remains easy to identify. They all link the one domain-grouped
 # conversion library; no test target is part of the native game.
@@ -32,9 +51,13 @@ foreach(test_source IN LISTS SHADOWRUN_CONVERSION_TEST_SOURCES)
 
     set(test_target "shadowrun_ghidra_${test_name}_test")
     add_executable(${test_target} "${test_source}")
-    target_link_libraries(${test_target}
-        PRIVATE shadowrun_ghidra_conversion_modules
-    )
+    if(test_name STREQUAL "conversion_workbench")
+        target_link_libraries(${test_target}
+            PRIVATE shadowrun_ghidra_conversion_workbench)
+    else()
+        target_link_libraries(${test_target}
+            PRIVATE shadowrun_ghidra_conversion_modules)
+    endif()
     add_test(NAME "shadowrun_ghidra_${test_name}"
              COMMAND ${test_target})
 endforeach()

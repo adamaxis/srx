@@ -7,8 +7,16 @@ $conversionRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\ghidra_conversion")
 $mapPath = Join-Path $PSScriptRoot "..\docs\conversion-source-modules.tsv"
 $rows = Import-Csv $mapPath -Delimiter "`t"
 
+# Composition entry points are not leaf behavior contracts and therefore do
+# not belong to one of the 28 ownership rows. Keep this exclusion explicit so
+# adding a new conversion implementation still fails the audit unless it is
+# assigned to a behavioral module.
+$compositionSources = @(
+    "src/conversion_workbench.cpp"
+)
 $sourceFiles = Get-ChildItem (Join-Path $conversionRoot "src") -Recurse -Filter *.cpp -File |
-    ForEach-Object { $_.FullName.Substring($conversionRoot.Length + 1).Replace('\', '/') }
+    ForEach-Object { $_.FullName.Substring($conversionRoot.Length + 1).Replace('\', '/') } |
+    Where-Object { $_ -notin $compositionSources }
 
 $owners = @{}
 foreach ($row in $rows) {

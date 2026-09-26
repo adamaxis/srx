@@ -43,6 +43,12 @@ The 225 focused test executables remain separate so a regression still points
 at a specific behavior contract; they are not 225 proposed game-runtime
 libraries. The conversion archive is never linked into the native game.
 
+The standalone `shadowrun_ghidra_conversion_runner` is a conversion-side
+composition probe. Its `src/conversion_workbench.cpp` entry point intentionally
+does not appear in the 28-row leaf ownership map: it exercises several typed
+contracts together to prove the conversion link boundary, but it does not
+claim ownership of their ROM behavior or become native game state.
+
 New work belongs in the existing domain file that owns the behavior. A new
 file is justified only for a real ownership boundary or a materially
 different source contract, not merely because another ROM entry was found.
