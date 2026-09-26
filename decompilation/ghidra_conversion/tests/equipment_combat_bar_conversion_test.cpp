@@ -25,6 +25,7 @@ int main() {
         return 1;
     }
 
+    input.source_mode = 2U;
     input.display_state = 0x7F;
     input.skills[5] = 4U;
     const auto unarmed = compute_equipment_combat_bars(input);
@@ -34,15 +35,59 @@ int main() {
 
     input.inventory_item_codes[6] = 0x10U;
     const auto utility_selected = compute_equipment_combat_bars(input);
-    if (utility_selected.defense_written ||
+    if (!utility_selected.defense_written ||
         utility_selected.attack_bar != unarmed.attack_bar) {
         return 3;
     }
 
+    input.source_mode = 0U;
+    input.source_action_code = 2U;
     input.display_state = -1;
     const auto special = compute_equipment_combat_bars(input);
-    if (special.attack_written || special.defense_written) {
+    if (!special.attack_written || !special.defense_written ||
+        special.special_action.menu_service_called) {
         return 4;
+    }
+
+    input.source_mode = 2U;
+    input.roll_count_cap = 12U;
+    input.auxiliary_roll_bonus = 3U;
+    input.special_item18_base = 20U;
+    input.inventory_item_codes[0] = 0x18U;
+    input.inventory_phase_bytes[0] = 2U;
+    input.inventory_item_codes[1] = 0x1EU;
+    input.inventory_phase_bytes[1] = 4U;
+    input.inventory_item_codes[6] = 0x10U;
+    input.active_item_code = 6U;
+    input.special_action_record = EntityActionCatalogRecord{1U, 30};
+    const auto special_mode = compute_equipment_combat_bars(input);
+    if (!special_mode.attack_written || !special_mode.defense_written ||
+        special_mode.attack_value != 18U || special_mode.attack_bar != 17U ||
+        !special_mode.special_action.menu_service_called ||
+        !special_mode.special_action.residual_calculated ||
+        !special_mode.special_action.effect_written ||
+        special_mode.special_action.adjusted_roll_count != 6U ||
+        special_mode.special_action.residual_effect != 24) {
+        return 5;
+    }
+
+    input.display_state = 0;
+    input.active_item_code = 0x10U;
+    const auto unsupported_action = compute_equipment_combat_bars(input);
+    if (unsupported_action.attack_written ||
+        !unsupported_action.defense_written) {
+        return 6;
+    }
+
+    input.source_mode = 0U;
+    input.action_flags = 0x20U;
+    input.inventory_item_codes[0] = 0U;
+    input.inventory_phase_bytes[0] = 0U;
+    input.selected_inventory_slot = 2U;
+    input.active_item_code = 2U;
+    const auto flagged_defense = compute_equipment_combat_bars(input);
+    if (flagged_defense.defense_value != 15U) {
+        return 7;
     }
 
     return 0;

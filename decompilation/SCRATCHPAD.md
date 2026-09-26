@@ -536,12 +536,15 @@ not a final name.
   the separate bit-15 concern, enumerates installed bits 14..0 in source order,
   and preserves the panel/row/input choreography in
   `menu_service_sequence_conversion`.
-- `0x12CEE` now has a separate typed normal-path conversion in
-  `equipment_combat_bar_conversion`: it reads the attribute/skill/inventory/
-  cyberware fields, applies the source posture penalty and skill merge, maps
-  values to the extracted 23-strip range, and gates defense on the selected
-  item. The negative `+0x56` special-item branch remains an explicit
-  unsupported result until its source helper path is resolved.
+- `0x12CEE` now has a separate typed conversion in
+  `equipment_combat_bar_conversion`: it byte-wraps the `0x55ED6` command
+  average, applies the `0x55F20` posture component and `0x12C74` skill merge,
+  selects the source-mode action gate, applies `0x55E62`'s flag/item-`0x27`
+  defense modifier, and maps values to the extracted 23-strip range. Its
+  higher-mode negative-`+0x56` branch now calls the typed `0x12FA4`/`0x10660`
+  effect calculation and reproduces the `+0x80`, `+0x7F`, `+0x9D`, and
+  matching-phase attack value path. Rendering and source data-table lookup
+  remain explicit host boundaries.
 - `analysis/verified_tables.tsv` now records the byte-checked reset bootstrap,
   region selector/header field, and 19-word VDP configuration table anchors.
 - `analysis/indirect_control_flow.tsv` records register-indirect `JSR/JMP`
@@ -1175,8 +1178,8 @@ the inclusive range `1..table_parameter`, and the result is published to
 record `+0x9D`. The `0xFF5A` preparation boundary now publishes the source
 spell item code (`spell_code + 1`), reloads the ordinary equipped-item value
 only when the source had an active item, and records the selected force. The
-target/effect application loop at `0x10016` remains a separate boundary.
-The `0x10016` input boundary is now converted too: source bit `0x0800`
+target/effect application is not at `0x10016`; that entry is only the
+force-input loop. The `0x10016` input boundary is now converted too: source bit `0x0800`
 raises force, `0x0400` lowers it, and `0x0200`, `0x4000`, `0x1000`, or
 `0x2000` finish the loop. All adjustments use the same inclusive clamp, so
 the host state cannot diverge at the force edges; VDP redraws remain outside

@@ -2613,3 +2613,6 @@ target_link_libraries(shadowrun_ghidra_entity_action_math_test
     PRIVATE shadowrun_ghidra_entity_action_math)
 add_test(NAME shadowrun_ghidra_entity_action_math
          COMMAND shadowrun_ghidra_entity_action_math_test)
+
+target_link_libraries(shadowrun_ghidra_equipment_combat_bar
+    PRIVATE shadowrun_ghidra_entity_action_math)
