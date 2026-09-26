@@ -8,7 +8,7 @@
 //   0x0001989A convert_world_routine_0x0001989a
 //   0x00019BF6 pass_through_value
 //   0x0001A908 initialize_world_effect_mode
-//   0x00055F44 convert_intro_routine_0x00055f44
+//   0x00055F44 calculate_runner_action_delay
 //   0x000562DE convert_intro_routine_0x000562de
 
 
@@ -28,7 +28,7 @@ undefined4 convert_intro_routine_0x00056116(void)
     convert_intro_routine_0x000562de();
     count_thresholded_random_rolls();
     cVar1 = DAT_00fff0dd;
-    convert_intro_routine_0x00055f44();
+    calculate_runner_action_delay();
     convert_intro_routine_0x000562de();
     count_thresholded_random_rolls();
     if ((DAT_00fff0dd < cVar1) &&

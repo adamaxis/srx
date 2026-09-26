@@ -730,7 +730,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00019C54L, "read_selected_matrix_program_availability");
         names.put(0x00019C5CL, "read_matrix_program_availability_for_slot");
         names.put(0x00019CB2L, "run_menu_selection_code_four");
-        names.put(0x0001A16AL, "convert_world_routine_0x0001a16a");
+        names.put(0x0001A16AL, "render_matrix_runner_detail_panel");
         names.put(0x0001A370L, "convert_world_routine_0x0001a370");
         names.put(0x0001A4EAL, "lookup_runner_animation_delta");
         names.put(0x0001A538L, "runner_record_has_active_effect");
@@ -809,7 +809,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00055ED6L, "convert_intro_routine_0x00055ed6");
         names.put(0x00055F02L, "convert_intro_routine_0x00055f02");
         names.put(0x00055F20L, "convert_intro_routine_0x00055f20");
-        names.put(0x00055F44L, "convert_intro_routine_0x00055f44");
+        names.put(0x00055F44L, "calculate_runner_action_delay");
         names.put(0x00055FD8L, "convert_intro_routine_0x00055fd8");
         names.put(0x00056116L, "convert_intro_routine_0x00056116");
         names.put(0x000561E8L, "convert_intro_routine_0x000561e8");

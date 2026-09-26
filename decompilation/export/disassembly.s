@@ -15038,7 +15038,7 @@
 000188A2: jsr 0x00001232.l ; call 00001232 write_vdp_grid
 000188A8: cmpi.w #0xc,D6w
 000188AC: bpl.w 0x000188d0
-000188B0: bsr.w 0x0001a16a ; call 0001A16A convert_world_routine_0x0001a16a
+000188B0: bsr.w 0x0001a16a ; call 0001A16A render_matrix_runner_detail_panel
 000188B4: clr.l D1
 000188B6: lea (0xfffbbe).l,A1 ; data 00fffbbe
 000188BC: move.b (0xe,A1,D6w*0x1),D1b ; data 00fffbcc
@@ -16218,7 +16218,7 @@
 0001A208: moveq #-0x1,D5
 0001A20A: bra.w 0x0001a248
 0001A20E: clr.l D1
-0001A210: jsr 0x00055f44.l ; call 00055F44 convert_intro_routine_0x00055f44
+0001A210: jsr 0x00055f44.l ; call 00055F44 calculate_runner_action_delay
 0001A216: move.b (0xe,A0,D7w*0x1),D7b
 0001A21A: cmp.w D6w,D7w
 0001A21C: bpl.w 0x0001a222
@@ -16253,7 +16253,7 @@
 0001A286: move.w D5w,D7w
 0001A288: jsr 0x000011c0.l ; call 000011C0 write_repeated_vdp_grid
 0001A28E: move.w #-0x1,D1w
-0001A292: jsr 0x00055f44.l ; call 00055F44 convert_intro_routine_0x00055f44
+0001A292: jsr 0x00055f44.l ; call 00055F44 calculate_runner_action_delay
 0001A298: add.b (0x00fffbbe).l,D6b
 0001A29E: move.w D6w,D7w
 0001A2A0: cmpi.w #0xe,D7w
@@ -23632,7 +23632,7 @@
 000548A0: btst.b #0xe,(0x00ffdd22).l
 000548A8: beq.w 0x0005496c
 000548AC: clr.l D1
-000548AE: bsr.w 0x00055f44 ; call 00055F44 convert_intro_routine_0x00055f44
+000548AE: bsr.w 0x00055f44 ; call 00055F44 calculate_runner_action_delay
 000548B2: movea.l (0x00fffc04).l,A0
 000548B8: clr.l D7
 000548BA: move.b (0x88,A0),D7b
@@ -24383,7 +24383,7 @@
 00055FD6: bra.b 0x00055f92
 00055FD8: clr.b (0x00fff0dd).l
 00055FDE: clr.l D1
-00055FE0: bsr.w 0x00055f44 ; call 00055F44 convert_intro_routine_0x00055f44
+00055FE0: bsr.w 0x00055f44 ; call 00055F44 calculate_runner_action_delay
 00055FE4: jsr 0x00019c54.l ; call 00019C54 convert_world_routine_0x00019c54
 00055FEA: cmp.w D6w,D7w
 00055FEC: bpl.w 0x00055ff2
@@ -24451,7 +24451,7 @@
 0005615C: jsr 0x00000dba.l ; call 00000DBA count_thresholded_random_rolls
 00056162: move.b (0x00fff0dd).l,D5b
 00056168: move.w #-0x1,D1w
-0005616C: bsr.w 0x00055f44 ; call 00055F44 convert_intro_routine_0x00055f44
+0005616C: bsr.w 0x00055f44 ; call 00055F44 calculate_runner_action_delay
 00056170: movea.l (0x00fffc04).l,A0
 00056176: add.b (0x88,A0),D6b
 0005617A: clr.l D4
@@ -24545,7 +24545,7 @@
 000562FE: mulu.w #0x14,D0
 00056302: clr.l D4
 00056304: move.w #-0x1,D1w
-00056308: bsr.w 0x00055f44 ; call 00055F44 convert_intro_routine_0x00055f44
+00056308: bsr.w 0x00055f44 ; call 00055F44 calculate_runner_action_delay
 0005630C: add.b (0x00fffbbe).l,D6b
 00056312: move.b (0x6,A6,D0w*0x1),D4b ; data 00ff1106
 00056316: bsr.b 0x000562de ; call 000562DE convert_intro_routine_0x000562de
@@ -24666,7 +24666,7 @@
 00056524: move.w D7w,D6w
 00056526: rts
 00056528: clr.l D1
-0005652A: bsr.w 0x00055f44 ; call 00055F44 convert_intro_routine_0x00055f44
+0005652A: bsr.w 0x00055f44 ; call 00055F44 calculate_runner_action_delay
 0005652E: add.b (0x00fffbbe).l,D6b
 00056534: jsr 0x00019c5c.l ; call 00019C5C convert_world_routine_0x00019c5c
 0005653A: cmp.w D6w,D7w

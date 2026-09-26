@@ -5,7 +5,7 @@
 // Calls recovered from direct call instructions:
 //   0x00019BF6 pass_through_value
 //   0x00019C5C convert_world_routine_0x00019c5c
-//   0x00055F44 convert_intro_routine_0x00055f44
+//   0x00055F44 calculate_runner_action_delay
 //   0x000562DE convert_intro_routine_0x000562de
 //   0x00056632 convert_intro_routine_0x00056632
 
@@ -41,7 +41,7 @@ void convert_intro_routine_0x00056506(void)
       return;
     }
   }
-  convert_intro_routine_0x00055f44();
+  calculate_runner_action_delay();
   cVar1 = DAT_00fffbbe + (char)unaff_D6;
   convert_world_routine_0x00019c5c();
   sVar7 = (short)CONCAT31((int3)((uint)unaff_D6 >> 8),cVar1);
@@ -89,5 +89,4 @@ void convert_intro_routine_0x00056506(void)
   }
   return;
 }
-
 

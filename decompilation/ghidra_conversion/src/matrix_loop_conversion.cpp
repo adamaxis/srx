@@ -1,5 +1,7 @@
 #include "shadowrun_ghidra/matrix_loop_conversion.hpp"
 
+#include <algorithm>
+
 namespace shadowrun::ghidra_conversion {
 namespace {
 
@@ -69,18 +71,107 @@ bool render_matrix_panel(
     }
 
     if (matrix_program_uses_runner_details(program_index) &&
-        callbacks.prepare_runner_details) {
-        callbacks.prepare_runner_details(program_index);
+        callbacks.render_runner_detail_panel) {
+        callbacks.render_runner_detail_panel(program_index);
     }
     if (callbacks.render_description_line) {
         callbacks.render_description_line(program_index);
         callbacks.render_description_line(program_index);
     }
-    if (matrix_program_uses_runner_details(program_index) &&
-        callbacks.render_runner_statistics) {
-        callbacks.render_runner_statistics(program_index);
-    }
     return true;
+}
+
+namespace {
+
+std::uint8_t detail_repeat_count(const std::uint16_t value) {
+    const auto clamped = static_cast<std::uint16_t>(
+        value >= 0x0EU ? 0x0DU : value);
+    return static_cast<std::uint8_t>(clamped == 0U ? 1U : clamped);
+}
+
+std::int16_t wrapped_secondary_counter(const std::uint8_t source_value) {
+    const auto wrapped = static_cast<std::uint8_t>(source_value - 2U);
+    return static_cast<std::int16_t>(static_cast<std::int8_t>(wrapped));
+}
+
+} // namespace
+
+MatrixRunnerDetailPlan render_matrix_runner_details(
+    const MatrixRunnerDetailInput& input,
+    const MatrixRunnerDetailCallbacks& callbacks) {
+    MatrixRunnerDetailPlan plan{};
+    plan.program_index = input.program_index;
+
+    if (callbacks.write_runner_header_grid) {
+        callbacks.write_runner_header_grid();
+        callbacks.write_runner_header_grid();
+    }
+
+    if (!input.matrix_run_active) {
+        if (callbacks.render_no_active_run_text) {
+            callbacks.render_no_active_run_text();
+        }
+        return plan;
+    }
+
+    if (input.program_index == 4U) {
+        plan.branch = MatrixRunnerDetailBranch::direct_status_program;
+        plan.primary_value = input.program_status;
+        plan.primary_repeat_count = detail_repeat_count(plan.primary_value);
+        if (callbacks.write_primary_detail_rows) {
+            callbacks.write_primary_detail_rows(plan.primary_repeat_count);
+        }
+    } else if (input.program_index >= 5U && input.program_index < 8U) {
+        plan.branch = MatrixRunnerDetailBranch::special_program_group;
+        if (callbacks.render_special_program_text) {
+            callbacks.render_special_program_text();
+        }
+    } else {
+        plan.branch = MatrixRunnerDetailBranch::delay_scaled_program;
+        auto primary_delay_input = input.delay_input;
+        primary_delay_input.request = 0;
+        const auto primary_delay =
+            calculate_runner_action_delay(primary_delay_input).delay;
+        plan.primary_value = static_cast<std::uint16_t>(
+            std::min<std::uint16_t>(primary_delay, input.program_status) +
+            input.program_status);
+        plan.primary_repeat_count = detail_repeat_count(plan.primary_value);
+        if (callbacks.write_primary_detail_rows) {
+            callbacks.write_primary_detail_rows(plan.primary_repeat_count);
+        }
+
+        const auto secondary_counter =
+            wrapped_secondary_counter(input.current_record_value);
+        if (secondary_counter >= 0 && callbacks.read_eligibility) {
+            const auto eligibility = callbacks.read_eligibility();
+            plan.eligibility_available = eligibility.has_value();
+            plan.eligibility_positive =
+                eligibility.has_value() && eligibility.value() > 0U;
+            if (plan.eligibility_positive) {
+                plan.secondary_repeat_count = static_cast<std::uint8_t>(
+                    secondary_counter + 1);
+                plan.secondary_destination_delta = static_cast<std::int16_t>(
+                    plan.primary_value - secondary_counter);
+                if (callbacks.write_secondary_detail_rows) {
+                    callbacks.write_secondary_detail_rows(
+                        plan.secondary_repeat_count,
+                        plan.secondary_destination_delta);
+                }
+            }
+        }
+    }
+
+    auto final_delay_input = input.delay_input;
+    final_delay_input.request = -1;
+    const auto final_delay =
+        calculate_runner_action_delay(final_delay_input).delay;
+    plan.final_value = static_cast<std::uint8_t>(
+        final_delay + input.delay_input.profile_floor);
+    plan.final_repeat_count = detail_repeat_count(plan.final_value);
+    if (callbacks.write_final_detail_rows) {
+        callbacks.write_final_detail_rows(plan.final_repeat_count);
+    }
+    return plan;
 }
 
 MatrixProgramSlotSelection select_matrix_program_slot(

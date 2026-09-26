@@ -1,14 +1,16 @@
 // Ghidra headless export
 // Entry: 0x0001A16A
-// Name: convert_world_routine_0x0001a16a
+// Name: render_matrix_runner_detail_panel
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x000011C0 write_repeated_vdp_grid
 //   0x00001232 write_vdp_grid
 //   0x0000C0DA render_encoded_title_text
-//   0x00017C3C convert_world_routine_0x00017c3c
-//   0x00018A92 convert_world_routine_0x00018a92
-//   0x00055F44 convert_intro_routine_0x00055f44
+//   0x00017C3C read_menu_entry_profile_eligibility
+//   0x00018A92 matrix_program_index
+//   0x00055F44 calculate_runner_action_delay
+// Direct disassembly is authoritative for the branches removed by Ghidra's
+// unreachable-block pass; the typed host conversion is in matrix_loop.
 
 
 /* WARNING: Removing unreachable block (ram,0x0001a1d2) */
@@ -21,7 +23,7 @@
 /* WARNING: Removing unreachable block (ram,0x0001a270) */
 /* WARNING: Removing unreachable block (ram,0x0001a278) */
 
-undefined8 convert_world_routine_0x0001a16a(void)
+undefined8 render_matrix_runner_detail_panel(void)
 
 {
   undefined4 in_D0;
@@ -32,7 +34,7 @@ undefined8 convert_world_routine_0x0001a16a(void)
   if (DAT_00fff0b0 < '\0') {
     convert_world_routine_0x00018a92();
     write_repeated_vdp_grid();
-    convert_intro_routine_0x00055f44();
+    calculate_runner_action_delay();
     write_repeated_vdp_grid();
   }
   else {
@@ -40,5 +42,4 @@ undefined8 convert_world_routine_0x0001a16a(void)
   }
   return CONCAT44(in_D0,in_D1);
 }
-
 

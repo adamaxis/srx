@@ -544,7 +544,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0001A106	refresh_menu_selection_or_prepare	40	unknown	ok	ghidra-c/fn_0001A106.cpp
 0001A12E	advance_menu_countdown	38	unknown	ok	ghidra-c/fn_0001A12E.cpp
 0001A154	clear_selected_menu_record	22	unknown	ok	ghidra-c/fn_0001A154.cpp
-0001A16A	convert_world_routine_0x0001a16a	354	unknown	ok	ghidra-c/fn_0001A16A.cpp
+0001A16A	render_matrix_runner_detail_panel	354	unknown	ok	ghidra-c/fn_0001A16A.cpp
 0001A2CC	allocate_first_free_effect_slot	56	unknown	ok	ghidra-c/fn_0001A2CC.cpp
 0001A304	clear_effect_slot	12	unknown	ok	ghidra-c/fn_0001A304.cpp
 0001A310	clear_effect_slots	18	unknown	ok	ghidra-c/fn_0001A310.cpp
@@ -751,7 +751,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00055ED6	convert_intro_routine_0x00055ed6	44	unknown	ok	ghidra-c/fn_00055ED6.cpp
 00055F02	convert_intro_routine_0x00055f02	30	unknown	ok	ghidra-c/fn_00055F02.cpp
 00055F20	convert_intro_routine_0x00055f20	36	unknown	ok	ghidra-c/fn_00055F20.cpp
-00055F44	convert_intro_routine_0x00055f44	148	unknown	ok	ghidra-c/fn_00055F44.cpp
+00055F44	calculate_runner_action_delay	148	unknown	ok	ghidra-c/fn_00055F44.cpp
 00055FD8	convert_intro_routine_0x00055fd8	38	unknown	ok	ghidra-c/fn_00055FD8.cpp
 00056116	convert_intro_routine_0x00056116	210	unknown	ok	ghidra-c/fn_00056116.cpp
 000561E8	convert_intro_routine_0x000561e8	344	unknown	ok	ghidra-c/fn_000561E8.cpp

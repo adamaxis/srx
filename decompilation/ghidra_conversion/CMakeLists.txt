@@ -447,6 +447,21 @@ target_link_libraries(shadowrun_ghidra_entity_delay_test
 add_test(NAME shadowrun_ghidra_entity_delay
          COMMAND shadowrun_ghidra_entity_delay_test)
 
+add_library(shadowrun_ghidra_runner_action_delay STATIC
+    src/runner_action_delay_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_runner_action_delay PUBLIC include)
+target_link_libraries(shadowrun_ghidra_runner_action_delay
+    PRIVATE shadowrun_ghidra_entity_delay)
+
+add_executable(shadowrun_ghidra_runner_action_delay_test
+    tests/runner_action_delay_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_runner_action_delay_test
+    PRIVATE shadowrun_ghidra_runner_action_delay)
+add_test(NAME shadowrun_ghidra_runner_action_delay
+         COMMAND shadowrun_ghidra_runner_action_delay_test)
+
 add_library(shadowrun_ghidra_behavior_animation STATIC
     src/behavior_animation_conversion.cpp
 )
@@ -2181,6 +2196,8 @@ add_library(shadowrun_ghidra_matrix_loop STATIC
     src/matrix_loop_conversion.cpp
 )
 target_include_directories(shadowrun_ghidra_matrix_loop PUBLIC include)
+target_link_libraries(shadowrun_ghidra_matrix_loop
+    PRIVATE shadowrun_ghidra_runner_action_delay)
 
 add_executable(shadowrun_ghidra_matrix_loop_test
     tests/matrix_loop_conversion_test.cpp

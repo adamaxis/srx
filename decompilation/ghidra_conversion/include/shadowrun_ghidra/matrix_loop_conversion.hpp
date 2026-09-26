@@ -3,6 +3,9 @@
 #include <cstdint>
 #include <functional>
 #include <array>
+#include <optional>
+
+#include "shadowrun_ghidra/runner_action_delay_conversion.hpp"
 
 namespace shadowrun::ghidra_conversion {
 
@@ -38,13 +41,11 @@ struct MatrixPanelRenderCallbacks {
     std::function<void()> render_unavailable_message;
     std::function<void(std::uint8_t program_index)> render_program_icon;
     std::function<void(std::uint8_t program_index)> render_program_detail;
-    // 0x1A16A prepares the runner-specific value before the two description
-    // passes. Its source meaning remains a separate conversion boundary.
-    std::function<void(std::uint8_t program_index)> prepare_runner_details;
+    // 0x1A16A renders the runner-detail grids and its program-group text.
+    // The typed detail conversion below supplies the branch and row counts;
+    // this callback is the host presentation boundary.
+    std::function<void(std::uint8_t program_index)> render_runner_detail_panel;
     std::function<void(std::uint8_t program_index)> render_description_line;
-    // The source computes and renders three runner-only values after the
-    // description: load timing, program footprint, and loaded capacity.
-    std::function<void(std::uint8_t program_index)> render_runner_statistics;
 };
 
 // ROM 0x1882E: redraw the selected Matrix program panel. This expresses the
@@ -54,6 +55,53 @@ bool render_matrix_panel(
     std::uint8_t program_index,
     const std::array<std::uint8_t, 12>& availability_flags,
     const MatrixPanelRenderCallbacks& callbacks);
+
+enum class MatrixRunnerDetailBranch {
+    no_active_run,
+    direct_status_program,
+    special_program_group,
+    delay_scaled_program,
+};
+
+struct MatrixRunnerDetailInput {
+    std::uint8_t program_index = 0;        // result of ROM 0x18A92
+    bool matrix_run_active = false;        // signed FFF0B0 is negative
+    std::uint8_t program_status = 0;       // FFFBCC[index]
+    std::uint8_t current_record_value = 0; // FF1100 + FFF118*0x14 + 0x05
+    RunnerActionDelayInput delay_input{};
+};
+
+struct MatrixRunnerDetailPlan {
+    MatrixRunnerDetailBranch branch = MatrixRunnerDetailBranch::no_active_run;
+    std::uint8_t program_index = 0;
+    std::uint16_t primary_value = 0;
+    std::uint16_t final_value = 0;
+    std::uint8_t primary_repeat_count = 0;
+    std::uint8_t secondary_repeat_count = 0;
+    std::uint8_t final_repeat_count = 0;
+    std::int16_t secondary_destination_delta = 0;
+    bool eligibility_available = false;
+    bool eligibility_positive = false;
+};
+
+struct MatrixRunnerDetailCallbacks {
+    // ROM 0x1A16A writes the two common detail-panel grids before branching.
+    std::function<void()> write_runner_header_grid;
+    std::function<void()> render_no_active_run_text;
+    std::function<void()> render_special_program_text;
+    std::function<void(std::uint8_t)> write_primary_detail_rows;
+    std::function<void(std::uint8_t, std::int16_t)> write_secondary_detail_rows;
+    std::function<void(std::uint8_t)> write_final_detail_rows;
+    // ROM 0x17C3C lookup used by the delay-scaled program group.
+    std::function<std::optional<std::uint16_t>()> read_eligibility;
+};
+
+// ROM 0x1A16A: render the runner-specific Matrix detail panel. This keeps the
+// source's program groups and row-count arithmetic as a typed plan while
+// leaving actual host drawing to callbacks.
+MatrixRunnerDetailPlan render_matrix_runner_details(
+    const MatrixRunnerDetailInput& input,
+    const MatrixRunnerDetailCallbacks& callbacks);
 
 struct MatrixProgramSlotSelection {
     std::uint8_t slot = 0;

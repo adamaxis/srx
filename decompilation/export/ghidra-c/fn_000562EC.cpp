@@ -9,7 +9,7 @@
 //   0x00017DB8 advance_hud_footer_offset
 //   0x00019B40 convert_world_routine_0x00019b40
 //   0x0001A12E advance_menu_countdown
-//   0x00055F44 convert_intro_routine_0x00055f44
+//   0x00055F44 calculate_runner_action_delay
 //   0x000562DE convert_intro_routine_0x000562de
 
 
@@ -23,7 +23,7 @@ void convert_intro_routine_0x000562ec(void)
   char extraout_D1b;
   char *extraout_A0;
   
-  convert_intro_routine_0x00055f44();
+  calculate_runner_action_delay();
   convert_intro_routine_0x000562de();
   count_thresholded_random_rolls();
   cVar1 = DAT_00fff0a4 - DAT_00fff0dd;
@@ -66,5 +66,4 @@ void convert_intro_routine_0x000562ec(void)
   render_menu_hud_rows();
   return;
 }
-
 

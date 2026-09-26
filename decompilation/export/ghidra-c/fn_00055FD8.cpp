@@ -4,7 +4,7 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00019C54 convert_world_routine_0x00019c54
-//   0x00055F44 convert_intro_routine_0x00055f44
+//   0x00055F44 calculate_runner_action_delay
 
 
 void convert_intro_routine_0x00055fd8(void)
@@ -17,7 +17,7 @@ void convert_intro_routine_0x00055fd8(void)
   char *pcVar3;
   
   DAT_00fff0dd = '\0';
-  convert_intro_routine_0x00055f44();
+  calculate_runner_action_delay();
   convert_world_routine_0x00019c54();
   if ((short)(unaff_D7w - unaff_D6w) < 0) {
     unaff_D6w = unaff_D7w;
@@ -38,5 +38,4 @@ void convert_intro_routine_0x00055fd8(void)
   }
   return;
 }
-
 

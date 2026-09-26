@@ -13,7 +13,7 @@
 //   0x0001952C convert_world_routine_0x0001952c
 //   0x0001957E clear_ready_menu_visual_slots
 //   0x000195A6 refresh_menu_slot_pair
-//   0x0001A16A convert_world_routine_0x0001a16a
+//   0x0001A16A render_matrix_runner_detail_panel
 
 
 void convert_world_routine_0x0001882e(void)
@@ -30,7 +30,7 @@ void convert_world_routine_0x0001882e(void)
   write_vdp_grid();
   write_vdp_grid();
   if ((short)(unaff_D7w + -0xc) < 0) {
-    convert_world_routine_0x0001a16a();
+    render_matrix_runner_detail_panel();
     build_grouped_decimal_glyphs();
   }
   normalize_source_text_line();
@@ -51,5 +51,4 @@ void convert_world_routine_0x0001882e(void)
   }
   return;
 }
-
 

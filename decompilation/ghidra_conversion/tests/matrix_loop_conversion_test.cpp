@@ -40,9 +40,9 @@ int main() {
                      [&] { panel_events.emplace_back("unavailable"); },
                      [&](const std::uint8_t) { panel_events.emplace_back("icon"); },
                      [&](const std::uint8_t) { panel_events.emplace_back("detail"); },
-                     [&](const std::uint8_t) { panel_events.emplace_back("prepare"); },
-                     [&](const std::uint8_t) { panel_events.emplace_back("line"); },
-                     [&](const std::uint8_t) { panel_events.emplace_back("stats"); }}) &&
+                      [&](const std::uint8_t) { panel_events.emplace_back("detail-panel"); },
+                      [&](const std::uint8_t) { panel_events.emplace_back("line"); },
+                      }) &&
                 panel_events == std::vector<std::string>{"header", "unavailable"})) {
         return 3;
     }
@@ -53,12 +53,11 @@ int main() {
                      [&] { panel_events.emplace_back("unavailable"); },
                      [&](const std::uint8_t) { panel_events.emplace_back("icon"); },
                      [&](const std::uint8_t) { panel_events.emplace_back("detail"); },
-                     [&](const std::uint8_t) { panel_events.emplace_back("prepare"); },
-                     [&](const std::uint8_t) { panel_events.emplace_back("line"); },
-                     [&](const std::uint8_t) { panel_events.emplace_back("stats"); }}) &&
+                      [&](const std::uint8_t) { panel_events.emplace_back("detail-panel"); },
+                      [&](const std::uint8_t) { panel_events.emplace_back("line"); },
+                      }) &&
                 panel_events == std::vector<std::string>{"header", "icon", "detail",
-                                                          "prepare", "line", "line",
-                                                          "stats"})) {
+                                                          "detail-panel", "line", "line"})) {
         return 4;
     }
     panel_events.clear();
@@ -68,13 +67,118 @@ int main() {
                      [&] { panel_events.emplace_back("unavailable"); },
                      [&](const std::uint8_t) { panel_events.emplace_back("icon"); },
                      [&](const std::uint8_t) { panel_events.emplace_back("detail"); },
-                     [&](const std::uint8_t) { panel_events.emplace_back("prepare"); },
-                     [&](const std::uint8_t) { panel_events.emplace_back("line"); },
-                     [&](const std::uint8_t) { panel_events.emplace_back("stats"); }}) &&
+                      [&](const std::uint8_t) { panel_events.emplace_back("detail-panel"); },
+                      [&](const std::uint8_t) { panel_events.emplace_back("line"); },
+                      }) &&
                 panel_events == std::vector<std::string>{"header", "icon", "detail",
                                                           "line", "line"})) {
         return 5;
     }
+
+    MatrixRunnerDetailInput no_run{};
+    no_run.program_index = 2U;
+    std::vector<std::string> detail_events;
+    const auto no_run_plan = render_matrix_runner_details(
+        no_run,
+        {[&] { detail_events.emplace_back("header"); },
+         [&] { detail_events.emplace_back("no-run"); },
+         [&] { detail_events.emplace_back("special"); },
+         [&](const std::uint8_t) { detail_events.emplace_back("primary"); },
+         [&](const std::uint8_t, const std::int16_t) {
+             detail_events.emplace_back("secondary");
+         },
+         [&](const std::uint8_t) { detail_events.emplace_back("final"); },
+         [&] { return std::optional<std::uint16_t>{1U}; }});
+    if (!expect(no_run_plan.branch == MatrixRunnerDetailBranch::no_active_run &&
+                detail_events == std::vector<std::string>{"header", "header",
+                                                           "no-run"})) {
+        return 6;
+    }
+
+    MatrixRunnerDetailInput direct{};
+    direct.program_index = 4U;
+    direct.matrix_run_active = true;
+    direct.program_status = 14U;
+    direct.delay_input.active_record_attribute_a = 60U;
+    direct.delay_input.active_record_attribute_b = 60U;
+    direct.delay_input.profile_floor = 0U;
+    detail_events.clear();
+    const auto direct_plan = render_matrix_runner_details(
+        direct,
+        {[&] { detail_events.emplace_back("header"); }, {},
+         [&] { detail_events.emplace_back("special"); },
+         [&](const std::uint8_t count) {
+             detail_events.emplace_back("primary:" + std::to_string(count));
+         },
+         {},
+         [&](const std::uint8_t count) {
+             detail_events.emplace_back("final:" + std::to_string(count));
+         },
+         {}});
+    if (!expect(direct_plan.branch == MatrixRunnerDetailBranch::direct_status_program &&
+                direct_plan.primary_repeat_count == 13U &&
+                direct_plan.final_repeat_count == 1U &&
+                detail_events == std::vector<std::string>{"header", "header",
+                                                           "primary:13", "final:1"})) {
+        return 7;
+    }
+
+    MatrixRunnerDetailInput special = direct;
+    special.program_index = 6U;
+    special.program_status = 4U;
+    detail_events.clear();
+    const auto special_plan = render_matrix_runner_details(
+        special,
+        {[&] { detail_events.emplace_back("header"); }, {},
+         [&] { detail_events.emplace_back("special"); }, {}, {},
+         [&](const std::uint8_t count) {
+             detail_events.emplace_back("final:" + std::to_string(count));
+         }, {}});
+    if (!expect(special_plan.branch == MatrixRunnerDetailBranch::special_program_group &&
+                detail_events == std::vector<std::string>{"header", "header",
+                                                           "special", "final:1"})) {
+        return 8;
+    }
+
+    MatrixRunnerDetailInput scaled{};
+    scaled.program_index = 2U;
+    scaled.matrix_run_active = true;
+    scaled.program_status = 22U;
+    scaled.current_record_value = 4U;
+    scaled.delay_input.active_record_attribute_a = 63U;
+    scaled.delay_input.active_record_attribute_b = 63U;
+    scaled.delay_input.mode_result = 1;
+    scaled.delay_input.profile_floor = 0U;
+    detail_events.clear();
+    const auto scaled_plan = render_matrix_runner_details(
+        scaled,
+        {[&] { detail_events.emplace_back("header"); }, {}, {},
+         [&](const std::uint8_t count) {
+             detail_events.emplace_back("primary:" + std::to_string(count));
+         },
+         [&](const std::uint8_t count, const std::int16_t delta) {
+             detail_events.emplace_back("secondary:" + std::to_string(count) +
+                                        ":" + std::to_string(delta));
+         },
+         [&](const std::uint8_t count) {
+             detail_events.emplace_back("final:" + std::to_string(count));
+         },
+         [&] { return std::optional<std::uint16_t>{2U}; }});
+    if (!expect(scaled_plan.branch == MatrixRunnerDetailBranch::delay_scaled_program &&
+                scaled_plan.primary_value == 43U &&
+                scaled_plan.primary_repeat_count == 13U &&
+                scaled_plan.eligibility_available &&
+                scaled_plan.eligibility_positive &&
+                scaled_plan.secondary_repeat_count == 3U &&
+                scaled_plan.secondary_destination_delta == 41 &&
+                scaled_plan.final_repeat_count == 1U &&
+                detail_events == std::vector<std::string>{"header", "header",
+                                                           "primary:13",
+                                                           "secondary:3:41",
+                                                           "final:1"})) {
+        return 9;
+    }
+
     const std::array<std::int8_t, 5> loaded_slots{2, -1, 7, -1, -1};
     const auto loaded = select_matrix_program_slot(7, loaded_slots);
     const auto free_slot = select_matrix_program_slot(5, loaded_slots);
@@ -84,7 +188,7 @@ int main() {
                 loaded.program_already_loaded && free_slot.slot == 1 &&
                 free_slot.slot_available && !free_slot.program_already_loaded &&
                 !full.slot_available)) {
-        return 6;
+        return 10;
     }
 
     MatrixCursorState cursor{};

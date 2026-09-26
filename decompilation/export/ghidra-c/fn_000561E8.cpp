@@ -88,7 +88,7 @@ LAB_00056268:
     convert_intro_routine_0x000562de();
     count_thresholded_random_rolls();
     cVar1 = DAT_00fff0dd;
-    convert_intro_routine_0x00055f44();
+    calculate_runner_action_delay();
     convert_intro_routine_0x000562de();
     count_thresholded_random_rolls();
     if ((DAT_00fff0dd < cVar1) &&
