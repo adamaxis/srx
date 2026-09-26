@@ -16734,7 +16734,7 @@
 0001ABD8: move.w (0x00ffe0be).l,D0w
 0001ABDE: bsr.w 0x0001ac50 ; call 0001AC50 arm_effect_after_threshold
 0001ABE2: bcs.w 0x0001abec
-0001ABE6: jmp 0x000563cc.l ; call 000563CC convert_intro_routine_0x000563cc
+0001ABE6: jmp 0x000563cc.l ; call 000563CC advance_primary_world_effect_pending_roll
 0001ABEC: subq.w #0x1,(0x00ffe0b4).l
 0001ABF2: bpl.w 0x0001ac16
 0001ABF6: move.w #0x8,(0x00ffe0b4).l

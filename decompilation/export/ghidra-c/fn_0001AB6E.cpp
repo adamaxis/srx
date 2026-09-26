@@ -7,7 +7,7 @@
 //   0x000061CC append_sprite_record
 //   0x0001A818 begin_world_effect_descriptor_transition
 //   0x0001AC50 arm_effect_after_threshold
-//   0x000563CC convert_intro_routine_0x000563cc
+//   0x000563CC advance_primary_world_effect_pending_roll
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -32,7 +32,7 @@ void advance_primary_world_effect_overlay(void)
     bVar1 = false;
     arm_effect_after_threshold();
     if (!bVar1) {
-      convert_intro_routine_0x000563cc();
+      advance_primary_world_effect_pending_roll();
       return;
     }
   }

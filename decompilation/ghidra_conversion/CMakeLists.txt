@@ -869,6 +869,19 @@ target_link_libraries(shadowrun_ghidra_menu_hud_meter_test
 add_test(NAME shadowrun_ghidra_menu_hud_meter
          COMMAND shadowrun_ghidra_menu_hud_meter_test)
 
+add_library(shadowrun_ghidra_world_effect_pending_roll STATIC
+    src/world_effect_pending_roll_conversion.cpp
+)
+target_include_directories(shadowrun_ghidra_world_effect_pending_roll PUBLIC include)
+
+add_executable(shadowrun_ghidra_world_effect_pending_roll_test
+    tests/world_effect_pending_roll_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_world_effect_pending_roll_test
+    PRIVATE shadowrun_ghidra_world_effect_pending_roll)
+add_test(NAME shadowrun_ghidra_world_effect_pending_roll
+         COMMAND shadowrun_ghidra_world_effect_pending_roll_test)
+
 add_library(shadowrun_ghidra_title_world_helpers STATIC
     src/title_world_helpers_conversion.cpp
 )

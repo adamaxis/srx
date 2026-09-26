@@ -758,7 +758,7 @@ entry	name	size	callingConvention	decompileStatus	file
 000562D4	add_world_effect_timer_modifier	10	unknown	ok	ghidra-c/fn_000562D4.cpp
 000562DE	add_world_effect_phase_modifier	14	unknown	ok	ghidra-c/fn_000562DE.cpp
 000562EC	convert_intro_routine_0x000562ec	224	unknown	ok	ghidra-c/fn_000562EC.cpp
-000563CC	convert_intro_routine_0x000563cc	104	unknown	ok	ghidra-c/fn_000563CC.cpp
+000563CC	advance_primary_world_effect_pending_roll	104	unknown	ok	ghidra-c/fn_000563CC.cpp
 00056434	advance_menu_selection_service_timer	78	unknown	ok	ghidra-c/fn_00056434.cpp
 00056482	advance_menu_selection_variant_timer	84	unknown	ok	ghidra-c/fn_00056482.cpp
 000564D6	reduce_menu_progression_timing	48	unknown	ok	ghidra-c/fn_000564D6.cpp

@@ -89,8 +89,8 @@ WorldEffectOverlayAction advance_primary_world_effect_overlay(
             state.scene_complete = true;
             state.scene_completion_aux = 0U;
         } else {
-            if (callbacks.request_intro_transition) {
-                callbacks.request_intro_transition();
+            if (callbacks.advance_pending_roll) {
+                callbacks.advance_pending_roll();
             }
             return WorldEffectOverlayAction::intro_transition_requested;
         }

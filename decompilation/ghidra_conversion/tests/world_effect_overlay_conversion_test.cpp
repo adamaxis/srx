@@ -30,7 +30,7 @@ int main() {
     int builds = 0;
     callbacks = {};
     callbacks.arm_after_threshold = [](const std::uint16_t) { return false; };
-    callbacks.request_intro_transition = [&] { ++intro_requests; };
+    callbacks.advance_pending_roll = [&] { ++intro_requests; };
     if (advance_primary_world_effect_overlay(primary_motion, callbacks) !=
             WorldEffectOverlayAction::intro_transition_requested ||
         primary_motion.primary_position != 0x1100U || intro_requests != 1) {

@@ -208,7 +208,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x000562D4U, "add_world_effect_timer_modifier", RoutineFamily::intro, 10U},
     {0x000562DEU, "add_world_effect_phase_modifier", RoutineFamily::intro, 14U},
     {0x000562ECU, "convert_intro_routine_0x000562ec", RoutineFamily::intro, 224U},
-    {0x000563CCU, "convert_intro_routine_0x000563cc", RoutineFamily::intro, 104U},
+    {0x000563CCU, "advance_primary_world_effect_pending_roll", RoutineFamily::intro, 104U},
     {0x00056434U, "advance_menu_selection_service_timer", RoutineFamily::intro, 78U},
     {0x00056482U, "advance_menu_selection_variant_timer", RoutineFamily::intro, 84U},
     {0x000564D6U, "reduce_menu_progression_timing", RoutineFamily::intro, 48U},

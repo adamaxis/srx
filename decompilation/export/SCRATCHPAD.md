@@ -128,6 +128,22 @@ The conversion exposes `0x19C5C` row-availability reads,
 calculation as typed callbacks. It does not pretend that those unresolved
 source services are a runtime memory interface.
 
+## Primary world-effect pending roll
+
+`0x1AB6E advance_primary_world_effect_overlay` calls `0x563CC` when the
+primary effect has not yet crossed its threshold. The call is not merely an
+intro transition: `0x563CC` obtains a trial count from the `0x19BF6`
+status-adjusted auxiliary selection, clamps the pending amount to a minimum
+difficulty of two, and calls `0x0DBA`. If the resulting roll count exceeds the
+comparison byte, the excess is subtracted from the pending byte. Signed-byte
+underflow clears both the pending amount and depletion counter; otherwise a
+nonzero depletion counter is decremented. Both successful reduction paths
+reset the title transition through `0x1B1FC`.
+
+The typed conversion is `advance_primary_world_effect_pending_roll()`. The
+overlay conversion's callback is named `advance_pending_roll` to preserve
+that source boundary instead of mislabeling it as a generic intro request.
+
 The importer has a separate ROM-only reader at
 `src/graphics_import.cpp::read_genesis_field_entity_template()`. That reader
 feeds extracted host assets/state; it is not the game runtime and is not a

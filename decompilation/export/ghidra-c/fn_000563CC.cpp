@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x000563CC
-// Name: convert_intro_routine_0x000563cc
+// Name: advance_primary_world_effect_pending_roll
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000DBA count_thresholded_random_rolls
@@ -8,7 +8,11 @@
 //   0x0001B1FC reset_title_transition
 
 
-void convert_intro_routine_0x000563cc(void)
+// Direct disassembly obtains the status-adjusted trial count, rolls against
+// FFFBBE+0x00 with a minimum difficulty of two, subtracts the excess over
+// FFFBBE+0x01, decrements FFFBBE+0x07, and resets the title transition. The
+// typed host conversion is in ghidra_conversion/world_effect_pending_roll_conversion.
+void advance_primary_world_effect_pending_roll(void)
 
 {
   char cVar1;
@@ -31,5 +35,4 @@ void convert_intro_routine_0x000563cc(void)
   }
   return;
 }
-
 

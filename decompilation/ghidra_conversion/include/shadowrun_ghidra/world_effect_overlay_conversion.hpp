@@ -49,7 +49,9 @@ struct WorldEffectOverlayCallbacks {
     // 0x7140 threshold. A true result also publishes FFE084/FFE086.
     std::function<bool(std::uint16_t source_position)>
         arm_after_threshold;
-    std::function<void()> request_intro_transition;
+    // ROM 0x563CC: consume a pending thresholded roll before the primary
+    // overlay's frame cadence continues.
+    std::function<void()> advance_pending_roll;
     std::function<void()> begin_descriptor_transition;
     std::function<void(std::uint16_t sprite_key)> append_sprite_record;
     // Resolve the selected phase in ROM tables 0xF1BDE, 0xF1BCE, or 0xF1BBE.
