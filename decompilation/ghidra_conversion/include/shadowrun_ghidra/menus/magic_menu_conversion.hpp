@@ -67,6 +67,26 @@ struct MagicForceDisplayCallbacks {
     std::function<void()> write_grid;
 };
 
+struct MagicForceAdjustmentCallbacks {
+    std::function<void()> build_grouped_decimal_glyphs;
+    MagicForceDisplayCallbacks display;
+    std::function<void()> write_repeated_grid;
+    std::function<void()> refresh_equipment_combat_values;
+    std::function<void()> write_repeated_menu_grid;
+    std::function<void()> refresh_equipment_action_metric;
+};
+
+struct MagicGridControlCallbacks {
+    std::function<void()> write_grid;
+    std::function<void(std::uint16_t)> set_display_command;
+};
+
+struct MagicSpellAvailabilityCallbacks {
+    std::function<void()> write_repeated_grid;
+    std::function<void()> render_spell_text;
+    std::function<void()> write_grid;
+};
+
 struct MagicActionDetailCallbacks {
     std::function<void()> prepare_menu_grid_then_service;
     std::function<void()> render_spell_text;
@@ -134,9 +154,38 @@ void refresh_magic_force_display(
     std::uint16_t current_force, std::uint16_t maximum_force,
     const MagicForceDisplayCallbacks& callbacks = {});
 
+// ROM 0x100A8: update the typed current force, publish record +0x9D, then
+// preserve the source callback order. The combat refresh is allowed to alter
+// the force state through its host boundary, so the source's saved
+// current/maximum pair is restored before the final menu refreshes.
+struct MagicForceState {
+    std::uint16_t current_force = 1;
+    std::uint16_t maximum_force = 1;
+};
+
+void adjust_magic_force(
+    RunnerRecordFields& record, MagicForceState& state, std::int16_t delta,
+    const MagicForceAdjustmentCallbacks& callbacks = {});
+
 // ROM 0x102D4: prepare the spell detail panel. The text renderer is called
 // three times by the source, not once with an inferred repeat count.
 void prepare_magic_action_details(
     const MagicActionDetailCallbacks& callbacks = {});
+
+// ROM 0x1088C: a negative signed availability byte draws the unavailable
+// marker; otherwise the source renders the spell text and one grid.
+void render_magic_spell_availability(
+    std::int8_t availability_byte,
+    const MagicSpellAvailabilityCallbacks& callbacks = {});
+
+// ROM 0x1098E: clear nine menu grids, optionally clear the tenth source grid,
+// then select the normal display command 0x8174.
+void clear_magic_menu_grids(
+    bool include_extra_grid,
+    const MagicGridControlCallbacks& callbacks = {});
+
+// ROM 0x10A82: select command 0x8134, write four grids, then restore 0x8174.
+void refresh_menu_grid_quadruple(
+    const MagicGridControlCallbacks& callbacks = {});
 
 } // namespace shadowrun::ghidra_conversion

@@ -196,6 +196,32 @@ void refresh_magic_force_display(
     call_once(callbacks.write_repeated_grid);
 }
 
+void adjust_magic_force(
+    RunnerRecordFields& record, MagicForceState& state,
+    const std::int16_t delta, const MagicForceAdjustmentCallbacks& callbacks) {
+    // ROM 0x100A8 performs a word add, clamps to the selected maximum, and
+    // then replaces zero with one before publishing the byte field.
+    auto next = static_cast<std::int32_t>(state.current_force) + delta;
+    next = std::min(next, static_cast<std::int32_t>(state.maximum_force));
+    next = std::max(next, 1);
+    state.current_force = static_cast<std::uint16_t>(next);
+    record.magic_force = static_cast<std::uint8_t>(state.current_force);
+
+    call_once(callbacks.build_grouped_decimal_glyphs);
+    refresh_magic_force_display(state.current_force, state.maximum_force,
+                                callbacks.display);
+    call_once(callbacks.write_repeated_grid);
+
+    const auto saved_current = state.current_force;
+    const auto saved_maximum = state.maximum_force;
+    call_once(callbacks.refresh_equipment_combat_values);
+    state.current_force = saved_current;
+    state.maximum_force = saved_maximum;
+
+    call_once(callbacks.write_repeated_menu_grid);
+    call_once(callbacks.refresh_equipment_action_metric);
+}
+
 void prepare_magic_action_details(
     const MagicActionDetailCallbacks& callbacks) {
     // ROM 0x102D4 preserves three distinct text-render calls between the
@@ -207,6 +233,49 @@ void prepare_magic_action_details(
     call_once(callbacks.adjust_runner_posture);
     call_once(callbacks.render_spell_availability);
     call_once(callbacks.build_grouped_decimal_glyphs);
+}
+
+void render_magic_spell_availability(
+    const std::int8_t availability_byte,
+    const MagicSpellAvailabilityCallbacks& callbacks) {
+    // ROM 0x1088C branches on the signed +0x25 spell-record byte.
+    if (availability_byte < 0) {
+        call_once(callbacks.write_repeated_grid);
+        return;
+    }
+    call_once(callbacks.render_spell_text);
+    call_once(callbacks.write_grid);
+}
+
+void clear_magic_menu_grids(
+    const bool include_extra_grid,
+    const MagicGridControlCallbacks& callbacks) {
+    // ROM 0x1098E writes nine grids unconditionally and a tenth only when
+    // FFF0AF is nonzero.
+    for (int index = 0; index < 9; ++index) {
+        call_once(callbacks.write_grid);
+    }
+    if (include_extra_grid) {
+        call_once(callbacks.write_grid);
+    }
+    if (callbacks.set_display_command) {
+        callbacks.set_display_command(0x8174U);
+    }
+}
+
+void refresh_menu_grid_quadruple(
+    const MagicGridControlCallbacks& callbacks) {
+    // ROM 0x10A82 brackets four grid writes with the two source display
+    // commands; these are typed presentation callbacks on the host.
+    if (callbacks.set_display_command) {
+        callbacks.set_display_command(0x8134U);
+    }
+    for (int index = 0; index < 4; ++index) {
+        call_once(callbacks.write_grid);
+    }
+    if (callbacks.set_display_command) {
+        callbacks.set_display_command(0x8174U);
+    }
 }
 
 } // namespace shadowrun::ghidra_conversion

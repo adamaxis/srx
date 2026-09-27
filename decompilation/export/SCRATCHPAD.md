@@ -905,6 +905,18 @@ remain `partial` because the presentation callback implementations still need
 their own ROM-backed verification; the conversion itself does not modify the
 native port.
 
+The adjacent Magic-menu pass also now covers `0x100A8`, `0x1088C`, `0x1098E`,
+and `0x10A82`. `adjust_magic_force` is a typed word-state mutation that clamps
+the selected force, publishes runner record `+0x9D`, runs the source display and
+combat/action refresh sequence, and restores the current/max pair around the
+combat callback exactly as the source does. Spell availability uses the signed
+`+0x25` record byte: unavailable emits one repeated marker, while available
+emits text then one grid. The two grid helpers preserve their exact counts and
+display commands (`0x8174`, or `0x8134` then `0x8174`). Their callback order and
+branch counts are covered by the Magic-menu test; these remain partial only
+because the host presentation callbacks are still separate conversion
+boundaries.
+
 ### World-effect/menu arithmetic audit continuation
 
 The direct ROM pass over `0x562EC` and `0x563CC` found the existing typed
