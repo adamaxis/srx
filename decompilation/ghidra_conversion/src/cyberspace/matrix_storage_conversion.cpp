@@ -11,9 +11,13 @@ std::uint8_t matrix_loaded_slot_usage(const MatrixStorageUsage& usage,
 }
 
 std::uint32_t matrix_program_storage_weight(
-    const std::uint8_t availability, const std::uint8_t footprint) {
-    const auto flag = static_cast<std::uint32_t>(availability);
-    return flag * flag * static_cast<std::uint32_t>(footprint);
+    const std::uint8_t program, const std::uint8_t amount) {
+    if (program >= kMatrixProgramFootprints.size()) {
+        return 0U;
+    }
+    const auto value = static_cast<std::uint32_t>(amount);
+    return value * value *
+           static_cast<std::uint32_t>(kMatrixProgramFootprints[program]);
 }
 
 std::uint32_t matrix_program_storage_usage(const MatrixStorageUsage& usage,
@@ -22,8 +26,8 @@ std::uint32_t matrix_program_storage_usage(const MatrixStorageUsage& usage,
         program >= kMatrixProgramFootprints.size()) {
         return 0;
     }
-    return matrix_program_storage_weight(usage.availability_flags[program],
-                                         kMatrixProgramFootprints[program]);
+    return matrix_program_storage_weight(
+        static_cast<std::uint8_t>(program), usage.availability_flags[program]);
 }
 
 MatrixStorageCapacity calculate_matrix_storage_capacity(

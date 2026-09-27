@@ -26,7 +26,7 @@ int main() {
                 context->entry.word_offset == 0x06U &&
                 context->resource_record_value == 2U &&
                 context->selected_action_quantity == 4U &&
-                context->selected_storage_weight == 16U)) {
+                context->selected_storage_weight == 64U)) {
         return 1;
     }
 
@@ -38,7 +38,7 @@ int main() {
                 general->entry.resource.record_offset == 0x10U &&
                 general->entry.word_offset == 0x04U &&
                 general->resource_record_value == 3U &&
-                general->selected_storage_weight == 45U)) {
+                general->selected_storage_weight == 75U)) {
         return 2;
     }
 
@@ -55,7 +55,7 @@ int main() {
         storage, tables, 6U, 1, 3, 4U);
     if (!expect(result && result->capacity.available_memory == 86U &&
                 result->selected_program_storage_usage == 4U &&
-                result->adjusted_available_memory == 74U)) {
+                result->adjusted_available_memory == 26U)) {
         return 4;
     }
 
@@ -66,8 +66,14 @@ int main() {
     storage.availability_flags.fill(0U);
     const auto wrapped = prepare_field_action_resource_selection(
         storage, tables, 6U, 1, 3, 4U);
-    if (!expect(wrapped && wrapped->adjusted_available_memory == 0xFFF1U)) {
+    if (!expect(wrapped && wrapped->adjusted_available_memory == 0xFFC1U)) {
         return 5;
+    }
+
+    tables.menu_mode_six_records[0x10U + 0x06U] = 12U;
+    if (!expect(!prepare_field_action_selection_context(
+                     tables, 6U, 1, 3, 4U))) {
+        return 6;
     }
 
     return 0;

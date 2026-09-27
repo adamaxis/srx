@@ -41,12 +41,15 @@ prepare_field_action_selection_context(
         return std::nullopt;
     }
 
+    if (*record_value >= kMatrixProgramFootprints.size()) {
+        return std::nullopt;
+    }
+
     return FieldActionSelectionContext{
         entry,
         *record_value,
         selected_action_quantity,
-        matrix_program_storage_weight(*record_value,
-                                      selected_action_quantity),
+        matrix_program_storage_weight(*record_value, selected_action_quantity),
     };
 }
 

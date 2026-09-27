@@ -124,7 +124,7 @@ canonical disassembly resolves the register flow that the generated C omits:
   selected word.
 * `0x57610` reads the selected word's first byte into D7, loads `FFF0D6` into
   D1, and calls `0x19538`. The resulting weight is therefore
-  `record_byte * record_byte * FFF0D6`; the byte is also retained as the
+  `FFF0D6 * FFF0D6 * footprint[record_byte]`; the byte is also retained as the
   program index for the following storage lookup.
 * `0x575F8` first calls `0x19558` for available Matrix capacity, then keeps
   the `0x57610` weight in D2, calls `0x1952C` for the selected program's

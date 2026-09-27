@@ -27,7 +27,8 @@ int main() {
                 matrix_program_storage_usage(usage, 2U) == 4U &&
                 matrix_program_storage_usage(usage, 11U) == 3U &&
                 matrix_program_storage_usage(usage, 12U) == 0U &&
-                matrix_program_storage_weight(2U, 4U) == 16U)) {
+                matrix_program_storage_weight(2U, 4U) == 64U &&
+                matrix_program_storage_weight(12U, 4U) == 0U)) {
         return 2;
     }
 

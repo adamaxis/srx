@@ -17,9 +17,10 @@ struct FieldActionMenuResourceTables {
     std::array<std::uint8_t, 0x30> menu_mode_six_records{};
 };
 
-// The value read through A0 at 0x57614 is the byte used as D7 by
+// The value read through A0 at 0x57614 is the program index used as D7 by
 // matrix_program_storage_weight and matrix_program_storage_usage.  The
-// quantity is FFF0D6, which is loaded into D1 before the weight helper.
+// quantity is FFF0D6, which is loaded into D1 before the weight helper; the
+// helper squares that quantity and applies the indexed ROM footprint.
 struct FieldActionSelectionContext {
     MenuResourceEntry entry{};
     std::uint8_t resource_record_value = 0;
