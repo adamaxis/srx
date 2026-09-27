@@ -1,8 +1,9 @@
 # Ghidra conversion source layout
 
-The 227 leaf contracts are now assigned to 28 behavioral build modules. The
-assignment is explicit in [`conversion-source-modules.tsv`](conversion-source-modules.tsv)
-and is checked by `tools/audit_conversion_modules.ps1`. The leaf files remain
+The 248 conversion source files are now assigned to 28 behavioral build
+modules. The assignment is explicit in
+[`conversion-source-modules.tsv`](conversion-source-modules.tsv) and is
+checked by `tools/audit_conversion_modules.ps1`. The leaf files remain
 temporarily because each one has a focused source-trace test and a direct ROM
 provenance comment; they are not the target native architecture and should be
 merged into the listed module files as their shared state contracts are
@@ -16,16 +17,16 @@ into the native game one defended hill at a time.
 The tree is organized by game ownership rather than by ROM address. The
 28-module consolidation is the finer boundary used for eventual source merge:
 
-| Domain | Owns | Current source/header/test triplets |
+| Domain | Owns | Current source files |
 | --- | --- | ---: |
-| `core` | shared input, timing, transfer, data, and source-boundary primitives | 15 |
-| `entities` | entity records, movement, collision, animation, actions, and effects | 51 |
-| `field` | field modes, terrain, viewport, HUD, and field transitions | 39 |
+| `core` | shared input, timing, transfer, data, and source-boundary primitives | 16 |
+| `entities` | entity records, movement, collision, animation, actions, and effects | 53 |
+| `field` | field modes, terrain, viewport, HUD, and field transitions | 55 |
 | `world` | world activity, world effects, and world-sequence behavior | 30 |
-| `menus` | inventory, equipment, HUD/menu selection, and menu services | 20 |
-| `cyberspace` | Matrix entry, navigation, programs, storage, and CyberInfo | 13 |
-| `title_intro` | title, intro choreography, title effects, and reveal services | 32 |
-| `session` | runners, runner records, roster, and save/restore state | 13 |
+| `menus` | inventory, equipment, HUD/menu selection, and menu services | 21 |
+| `cyberspace` | Matrix entry, navigation, programs, storage, and CyberInfo | 14 |
+| `title_intro` | title, intro choreography, title effects, and reveal services | 33 |
+| `session` | runners, runner records, roster, and save/restore state | 14 |
 | `audio` | source audio command/service contracts | 3 |
 | `rendering` | sprite records, display/resource boundaries, glyphs, and text | 9 |
 
@@ -39,10 +40,10 @@ tests/<domain>/                      focused source-trace evidence
 
 The conversion CMake project builds one
 `shadowrun_ghidra_conversion_modules` archive from all domain implementations.
-The 229 CTest cases (the runner plus 228 focused test executables) remain
-separate so a regression still points at a specific behavior contract; they
-are not proposed game-runtime
-libraries. The conversion archive is never linked into the native game.
+The current 253 CTest cases (the runner plus 252 focused test executables)
+remain separate so a regression still points at a specific behavior contract;
+they are not proposed game-runtime libraries. The conversion archive is never
+linked into the native game.
 
 The standalone `shadowrun_ghidra_conversion_runner` is a conversion-side
 composition probe. Its `src/conversion_workbench.cpp` entry point intentionally
