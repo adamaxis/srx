@@ -12,10 +12,10 @@ refer to them. The Ghidra export is still reference evidence only.
 The remaining-entry conversion pass added typed source-analysis contracts in
 `ghidra_conversion/` for field/resource/camera work, the world/entity frame
 service, effect lifetimes, and the remaining subsystem families. This is not a
-runtime dependency and does not change the emulator/native path. Conversion
-tests currently pass 225/225. The next native work is still hill-based: the
-ledger contains 936 partial and four defended rows; none of those counts means
-that the native game is playable.
+runtime dependency and does not change the emulator/native path. The current
+conversion test set passes 249/249 when the runner's known relative-asset-path
+setup issue is excluded. The status ledger has 932 rows: 928 partial and four
+defended. None of those counts means that the native game is playable.
 
 The architecture target is recorded in
 `docs/architecture-map.md`: one native session/controller/state graph, field

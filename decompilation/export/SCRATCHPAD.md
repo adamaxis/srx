@@ -256,6 +256,17 @@ data is an explicit `missing_cost_data` result rather than invented behavior.
 
 The remaining field-selection presentation cluster is now explicit as well:
 
+The parent dispatcher at `0x57C7A` is now explicit as
+`field_action_selection_render_conversion.*`. It writes grid variants B and C
+first on every call, then preserves the source's signed result/selection
+matrix: three separate negative-result detail tables, the negative quantity
+and runner/inventory detail branches, the zero-result dynamic/fixed detail
+families, result-1 equipment presentation, positive resource-description and
+cost-summary selectors, the selection-5 quantity cursor cutoff, and the
+feedback-mode boundary. The host plan carries semantic table-family choices,
+the selected menu-resource entry, and the source cursor values; it does not
+retain the original table addresses or turn the renderer into a VDP emulator.
+
 * `0x580FE render_field_action_description` receives the selected
   menu-resource byte as a description-table index into `0xE31F2`. The host
   conversion uses an extracted alias, renders the normalized/wrapped
