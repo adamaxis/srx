@@ -963,9 +963,10 @@ separate `shadowrun_ghidra_field_action_cost` conversion library in
   halves it. It then subtracts the runner adjustment and publishes `FFF0BE`.
 * `0x57B04` is the shared runner adjustment that Ghidra failed to recover
   because its result stays in D3. It subtracts `1AAC6E[FFF0B6]` from active-
-  runner record `+0x8C` as a byte, uses the signed result for the nonpositive
-  branch, caps a positive wrapped margin at ten, and calculates
-  `(cost >> 5) * margin`.
+  runner record `+0x8C` as a byte, preserves the `SUB.B`/`BLE` N/V/Z flags,
+  caps the surviving cleared-word margin at ten, and calculates
+  `(cost >> 5) * margin`. Its overflow case is not equivalent to a host
+  `int8_t` comparison.
 * `0x57AF6` is the companion display path that adds that adjustment instead
   of subtracting it.
 * `0x57B42` is selected by the large-cost callers after their amount reaches

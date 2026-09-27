@@ -2054,6 +2054,13 @@ an N-only wrapped-byte predicate rather than `int8_t(progress) >= 3`. The
 high-bit progress case `0x80 - 3 = 0x7D` reaches the source limit message;
 the typed conversion and regression test now preserve that behavior.
 
+The neighboring field-action cost helpers were checked for the same issue.
+`0x57B04` retains `SUB.B`/`BLE` N/V/Z behavior before the word clamp, so
+`0x00 - 0x80` survives to the ten-point clamp instead of becoming a negative
+host margin. The quantity-cost helper was checked alongside it; its preceding
+`TST.B` gate means high-bit category bytes take the cubic path, so the existing
+typed category condition already matches the source domain.
+
 The title setup module now also owns `0x12F6`: its DBF `0x10` loop is exposed
 as `advance_title_palette_fade`, with the source ordering of frame wait,
 palette-step, and dirty-mark callbacks tested across all 17 passes.

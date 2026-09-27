@@ -196,6 +196,13 @@ host predicate must inspect the wrapped subtraction's N bit. A progress byte
 of `0x80` yields `0x7D` and follows the source category-limit path; treating
 the byte as a signed C++ value incorrectly attempted a purchase.
 
+The field-action cost helper at `0x57B04` had the same class of conversion
+risk. The runner margin uses `SUB.B`/`BLE` before a word-level clamp. The native
+code now evaluates those source flags explicitly, and the `0x00 - 0x80` margin
+case is covered by a focused test. The neighboring `0x5787C` quantity helper
+was checked as well; its preceding `TST.B` gate already makes its typed
+category condition equivalent over the full byte domain.
+
 The generated Ghidra C remains an evidence snapshot and still omits meaningful
 logic for some of these entries, including `0x3602` and `0x55828`; the typed
 conversion is accepted only where the ROM instruction trace and focused test

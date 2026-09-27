@@ -6,15 +6,31 @@
 namespace shadowrun::ghidra_conversion {
 namespace {
 
+bool source_subtract_byte_is_nonpositive(const std::uint8_t minuend,
+                                         const std::uint8_t subtrahend,
+                                         const std::uint8_t result) {
+    // 0x57B22 is SUB.B followed by BLE. Preserve the source N/V/Z flags;
+    // a signed host cast loses the overflow case.
+    const bool negative = (result & 0x80U) != 0U;
+    const bool zero = result == 0U;
+    const bool overflow =
+        (((minuend ^ subtrahend) & 0x80U) != 0U) &&
+        (((minuend ^ result) & 0x80U) != 0U);
+    return zero || (negative != overflow);
+}
+
 std::uint32_t runner_margin(const FieldActionCostContext& context) {
-    // 0x57B04 performs SUB.B and then a signed BLE. Preserve the wrapped
-    // byte result instead of widening the two source bytes before comparing.
-    const auto margin = static_cast<std::int8_t>(static_cast<std::uint8_t>(
-        context.runner_cost_stat - context.runner_discount_threshold));
-    return margin > 0
-               ? std::min<std::uint32_t>(static_cast<std::uint32_t>(margin),
-                                         10U)
-               : 0U;
+    const auto wrapped_margin = static_cast<std::uint8_t>(
+        context.runner_cost_stat - context.runner_discount_threshold);
+    if (source_subtract_byte_is_nonpositive(
+            context.runner_cost_stat, context.runner_discount_threshold,
+            wrapped_margin)) {
+        return 0U;
+    }
+
+    // The following CMP.W #0xB/BMI sees the cleared word containing the
+    // wrapped byte. Values 1..10 retain their value; 11..255 clamp to 10.
+    return std::min<std::uint32_t>(wrapped_margin, 10U);
 }
 
 } // namespace

@@ -45,24 +45,32 @@ int main() {
         return 5;
     }
 
+    // 0x00 - 0x80 wraps to 0x80 with V set. SUB.B/BLE therefore continues
+    // into the clamp path, where the cleared word is capped at ten.
+    context.runner_cost_stat = 0U;
+    context.runner_discount_threshold = 0x80U;
+    if (!expect(calculate_runner_cost_adjustment(3200U, context) == 1000U)) {
+        return 6;
+    }
+
     context = {};
     context.mode = 4U;
     context.feature_flags = 0x40U;
     if (!expect(apply_field_action_cost_discounts(1000U, context) == 900U)) {
-        return 6;
+        return 7;
     }
 
     context.mode = 5U;
     context.feature_flags = 0x80U;
     if (!expect(apply_field_action_cost_discounts(1000U, context) == 750U)) {
-        return 7;
+        return 8;
     }
 
     context = {};
     context.mode = 2U;
     context.feature_flags = 0x04U;
     if (!expect(apply_field_action_cost_discounts(1001U, context) == 500U)) {
-        return 8;
+        return 9;
     }
 
     context = {};
@@ -70,7 +78,7 @@ int main() {
     context.feature_flags = 0x02U;
     if (!expect(apply_field_action_cost_discounts(1000U, context) == 500U &&
                 apply_runner_cost_surcharge(1000U, context) == 1000U)) {
-        return 9;
+        return 10;
     }
 
     context = {};
@@ -82,20 +90,20 @@ int main() {
                     [](const std::uint8_t type) {
                         return type == 7U ? 1000U : 0U;
                     }) == 170U)) {
-        return 10;
+        return 11;
     }
 
     if (!expect(calculate_field_action_record_cost(
                     {7U, 0U, 0U}, context,
                     [](const std::uint8_t) { return 0x10001U; }) == 1U)) {
-        return 11;
+        return 12;
     }
 
     context.runner_cost_stat = 13U;
     context.runner_discount_threshold = 3U;
     if (!expect(apply_large_field_action_cost_discount(0x10000U, context) ==
                 0x9C00U)) {
-        return 12;
+        return 13;
     }
 
     return 0;
