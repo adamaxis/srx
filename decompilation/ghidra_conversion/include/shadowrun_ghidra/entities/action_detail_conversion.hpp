@@ -79,12 +79,17 @@ ActionDetailRenderPlan build_field_action_detail_plan(
 struct InventoryActionDetailInput {
     std::uint8_t item_code = 0; // active record +0x66 + selected slot
     std::uint8_t phase = 0;     // active record +0x6E + selected slot
-    std::optional<std::uint8_t> selected_action_code;
+    // 0x13228 calls 0x12148 for action-dependent item codes. The source
+    // lookup is retained as typed evidence, but 0x13228 restores its original
+    // item code before returning; callers must not use this value as the
+    // detail-text, cost-record, or item-name key.
+    std::optional<std::uint8_t> action_lookup_code;
 };
 
 // ROM 0x13228. Builds the detail plan for the selected inventory item used by
 // the field-service menu. Items 0x14 and 0x18..0x28 request the source
-// 0x12148 action-code lookup; callers may leave that boundary unresolved.
+// 0x12148 action-code lookup; the returned value is a source call result, not
+// the key used by the enclosing 0x58540 renderer.
 std::optional<ActionDetailRenderPlan> build_inventory_action_detail_plan(
     const InventoryActionDetailInput& input,
     const ActionDetailResourceTable& resources,

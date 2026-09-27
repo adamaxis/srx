@@ -30,7 +30,6 @@ enum class FieldInventoryActionDetailRenderKind {
     presented,
     unavailable,
     invalid_cursor,
-    missing_action_code,
     missing_detail_data,
     missing_cost_data,
 };
@@ -39,7 +38,10 @@ struct FieldInventoryActionDetailRenderResult {
     FieldInventoryActionDetailRenderKind kind =
         FieldInventoryActionDetailRenderKind::invalid_cursor;
     std::uint8_t item_code = 0;
-    std::uint8_t resolved_action_code = 0;
+    // The source 0x12148 result is recorded for auditability, but 0x13228
+    // restores the item code before returning and the enclosing renderer
+    // continues to key text, cost, and name presentation by item_code.
+    std::optional<std::uint8_t> action_lookup_code;
     std::uint32_t runner_cost = 0;
     std::optional<ActionDetailRenderPlan> detail_plan;
     std::optional<FieldActionDetailTextSelection> detail_text;
@@ -52,20 +54,23 @@ struct FieldInventoryActionDetailRenderCallbacks {
         render_detail_text;
     std::function<void()> render_runner_action_header;
     std::function<void(std::uint32_t)> render_runner_cost;
-    std::function<void(std::uint8_t)> render_common_action_name;
+    // 0x585E8 renders the selected inventory record's encoded name. The
+    // source record index is the item code returned by 0x13228.
+    std::function<void(std::uint8_t)> render_item_name;
     std::function<void()> upload_resource;
 };
 
 // ROM 0x58540. Validate the selected runner inventory item, use the typed
 // 0x13228 plan and 0x5878E detail-text selector, preserve the source's
-// runner-cost suppression flag, and finish through the common action-name
-// presentation. The action-code lookup for dependent inventory items remains
-// an explicit input boundary rather than a fabricated fallback.
+// runner-cost suppression flag, and finish through the selected item's
+// encoded name. The action-code lookup inside 0x13228 is retained as a typed
+// source call boundary, but it does not replace the item-code key used by the
+// enclosing 0x58540 renderer.
 FieldInventoryActionDetailRenderResult render_field_inventory_action_detail(
     const FieldInventoryActionDetailState& state,
     const ActionDetailResourceTable& detail_resources,
     ResourceVariantState& resource_variant,
-    const std::optional<std::uint8_t>& selected_action_code,
+    const std::optional<std::uint8_t>& action_lookup_code,
     const InventoryRunnerCostLookup& runner_cost_lookup,
     const FieldInventoryActionDetailRenderCallbacks& callbacks = {});
 

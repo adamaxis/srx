@@ -22,7 +22,7 @@ int main() {
             events.emplace_back("cost:" + std::to_string(cost));
         },
         [&](const std::uint8_t code) {
-            events.emplace_back("name:" + std::to_string(code));
+            events.emplace_back("item-name:" + std::to_string(code));
         },
         [&] { events.emplace_back("upload"); },
     };
@@ -34,8 +34,9 @@ int main() {
         suppressed, resources, resource_variant, std::nullopt, {}, callbacks);
     if (suppressed_result.kind !=
             FieldInventoryActionDetailRenderKind::presented ||
-        suppressed_result.resolved_action_code != 1U ||
-        events != std::vector<std::string>{"plan", "detail:1", "name:1"}) {
+        suppressed_result.item_code != 1U ||
+        events != std::vector<std::string>{"plan", "detail:1",
+                                           "item-name:1"}) {
         return 1;
     }
 
@@ -43,14 +44,19 @@ int main() {
     FieldInventoryActionDetailState priced{};
     priced.item_codes[0] = 1U;
     priced.suppress_runner_cost = false;
+    std::uint8_t priced_lookup_key = 0;
     const auto priced_result = render_field_inventory_action_detail(
         priced, resources, resource_variant, std::nullopt,
-        [](const std::uint8_t) { return std::optional<std::uint16_t>{100U}; },
+        [&](const std::uint8_t code) {
+            priced_lookup_key = code;
+            return std::optional<std::uint16_t>{100U};
+        },
         callbacks);
     if (priced_result.kind != FieldInventoryActionDetailRenderKind::presented ||
         priced_result.runner_cost != 50U ||
+        priced_lookup_key != 1U ||
         events != std::vector<std::string>{"plan", "detail:1", "header",
-                                           "cost:50", "name:1"}) {
+                                           "cost:50", "item-name:1"}) {
         return 2;
     }
 
@@ -61,10 +67,11 @@ int main() {
     const auto action_result = render_field_inventory_action_detail(
         action_item, resources, resource_variant, 0x27U, {}, callbacks);
     if (action_result.kind != FieldInventoryActionDetailRenderKind::presented ||
-        action_result.resolved_action_code != 0x27U ||
+        action_result.action_lookup_code != 0x27U ||
         !action_result.detail_text ||
-        events != std::vector<std::string>{"upload", "plan", "detail:26",
-                                           "name:39"}) {
+        action_result.detail_text->table_index != 0x14U ||
+        events != std::vector<std::string>{"upload", "plan", "detail:20",
+                                           "item-name:20"}) {
         return 3;
     }
 
@@ -74,8 +81,9 @@ int main() {
     const auto missing_action_result = render_field_inventory_action_detail(
         missing_action, resources, resource_variant, std::nullopt, {}, callbacks);
     if (missing_action_result.kind !=
-            FieldInventoryActionDetailRenderKind::missing_action_code ||
-        events != std::vector<std::string>{"plan"}) {
+            FieldInventoryActionDetailRenderKind::presented ||
+        events != std::vector<std::string>{"plan", "detail:20",
+                                           "item-name:20"}) {
         return 4;
     }
 
@@ -106,7 +114,7 @@ int main() {
     if (missing_cost_result.kind !=
             FieldInventoryActionDetailRenderKind::missing_cost_data ||
         events != std::vector<std::string>{"upload", "plan", "detail:1",
-                                           "header", "name:1"}) {
+                                           "header", "item-name:1"}) {
         return 7;
     }
     return 0;

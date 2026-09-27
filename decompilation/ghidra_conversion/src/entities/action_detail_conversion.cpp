@@ -180,7 +180,7 @@ std::optional<ActionDetailRenderPlan> build_inventory_action_detail_plan(
     plan.label = label_for_inventory_item(input.item_code);
     if (plan.label == ActionDetailLabelVariant::action_dependent) {
         plan.detail_value = input.phase;
-        plan.action_code = input.selected_action_code;
+        plan.action_code = input.action_lookup_code;
     }
     plan.alternate_resource_variant = resource_variant.alternate;
     plan.resource_upload_requested =

@@ -6,7 +6,7 @@ FieldInventoryActionDetailRenderResult render_field_inventory_action_detail(
     const FieldInventoryActionDetailState& state,
     const ActionDetailResourceTable& detail_resources,
     ResourceVariantState& resource_variant,
-    const std::optional<std::uint8_t>& selected_action_code,
+    const std::optional<std::uint8_t>& action_lookup_code,
     const InventoryRunnerCostLookup& runner_cost_lookup,
     const FieldInventoryActionDetailRenderCallbacks& callbacks) {
     FieldInventoryActionDetailRenderResult result{};
@@ -29,7 +29,7 @@ FieldInventoryActionDetailRenderResult render_field_inventory_action_detail(
     const InventoryActionDetailInput input{
         result.item_code,
         state.item_phases[state.primary_cursor],
-        selected_action_code,
+        action_lookup_code,
     };
     result.detail_plan = build_inventory_action_detail_plan(
         input, detail_resources, resource_variant, callbacks.upload_resource);
@@ -41,16 +41,11 @@ FieldInventoryActionDetailRenderResult render_field_inventory_action_detail(
         callbacks.present_detail_plan(*result.detail_plan);
     }
 
-    if (result.detail_plan->label == ActionDetailLabelVariant::action_dependent &&
-        !result.detail_plan->action_code.has_value()) {
-        result.kind = FieldInventoryActionDetailRenderKind::missing_action_code;
-        return result;
-    }
-
-    result.resolved_action_code = result.detail_plan->action_code.value_or(
-        result.detail_plan->source_code);
-    result.detail_text =
-        select_field_action_detail_text(result.resolved_action_code);
+    result.action_lookup_code = result.detail_plan->action_code;
+    // 0x13228 restores the original inventory item code in D0 before
+    // returning to 0x58540. Therefore 0x5878E receives the item code, not
+    // the action-code lookup result.
+    result.detail_text = select_field_action_detail_text(result.item_code);
     if (result.detail_text && callbacks.render_detail_text) {
         callbacks.render_detail_text(*result.detail_text);
     }
@@ -62,7 +57,7 @@ FieldInventoryActionDetailRenderResult render_field_inventory_action_detail(
         if (!runner_cost_lookup) {
             result.kind = FieldInventoryActionDetailRenderKind::missing_cost_data;
         } else {
-            const auto base_cost = runner_cost_lookup(result.resolved_action_code);
+            const auto base_cost = runner_cost_lookup(result.item_code);
             if (!base_cost) {
                 result.kind = FieldInventoryActionDetailRenderKind::missing_cost_data;
             } else {
@@ -78,10 +73,10 @@ FieldInventoryActionDetailRenderResult render_field_inventory_action_detail(
         }
     }
 
-    if (callbacks.render_common_action_name) {
-        callbacks.render_common_action_name(result.resolved_action_code);
+    if (callbacks.render_item_name) {
+        callbacks.render_item_name(result.item_code);
     }
-    // 0x585E0 clears FFF0B1 before the common action-name render. The source
+    // 0x585E0 clears FFF0B1 before the selected item's encoded-name render. The source
     // branch was valid even when pricing data was unavailable on the host.
     result.kind = result.kind == FieldInventoryActionDetailRenderKind::missing_cost_data
                       ? result.kind
