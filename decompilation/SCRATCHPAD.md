@@ -257,6 +257,23 @@ is represented by an injected bounded-random service, while the nested
 code only: it consumes decoded records and returns a typed result; it does
 not read Genesis addresses or become part of the native runtime.
 
+The shared continuation at `0x559BC` is now converted as
+`resolve_dynamic_entity_action`. Its first roll count is compared against the
+actor's previous `+0x9F` result using the source's byte delta branch: negative
+deltas use byte-wrapped addition and the positive path uses word addition with
+the ten-result cap. It then selects primary armor, secondary armor, or no
+armor from the typed resolution state, applies the `0x55E62` defense modifier,
+and stops at the same nonpositive thresholds as the ROM.
+
+After a successful reduction, target records below type three take the
+`FFE186` gate and then the `FFF0CC` behavior-versus-delay service branch.
+Type-three-and-later records consume the physical or mental meter, force a
+signed-negative target state to a one-point decrement, and clear exhausted
+meters. The `0x42` class-B word counter, `FFF0CE` phase rollover and its three
+roll counters, and the class-`0x13` capped counter are all represented in
+`EntityActionResolutionState`. Armor, defense, animation, and meter effects
+remain typed service boundaries; no conversion runtime reads a Genesis address.
+
 The positive residual tail at `0x1033E` is represented by
 `consume_item13_residual`: it scans item code `0x13` phases from slot `6`
 down to `0`, keeps a partially consumed phase, clears a phase and its item

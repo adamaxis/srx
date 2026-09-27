@@ -26,6 +26,7 @@ struct EntityActionRecord {
     std::uint8_t attribute_77 = 0;       // +0x77
     std::uint8_t attribute_87 = 0;       // +0x87
     std::uint8_t flags_10 = 0;           // +0x10
+    std::uint8_t action_flags = 0;        // +0x11
     std::uint8_t class_code = 0;         // +0x9B
     std::array<std::uint8_t, 4> action_skills{}; // +0x81..+0x84
     std::array<std::uint8_t, 8> item_codes{};   // +0x66..+0x6D
@@ -45,6 +46,7 @@ struct EntityActionTarget {
     std::uint8_t physical_meter = 0; // +0x4C
     std::uint8_t mental_meter = 0; // +0x9C
     std::uint8_t attribute_77 = 0; // +0x77
+    std::uint8_t armor_index = 0; // +0x76
     std::uint8_t action_result = 0; // +0x9F
 };
 
