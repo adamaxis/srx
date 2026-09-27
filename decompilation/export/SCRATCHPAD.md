@@ -608,6 +608,32 @@ The importer has a separate ROM-only reader at
 feeds extracted host assets/state; it is not the game runtime and is not a
 replacement for the source-function conversion above.
 
+## Post-startup field bootstrap audit
+
+The common post-menu field path in `0x075E run_game_loop` is now composed in
+the separate conversion-runtime source
+`ghidra_conversion/integration/field_session_bootstrap_conversion`. It is not
+part of `NativePortShell`, `shadowrun_qt`, `shadowrun_native`, or the emulator.
+The central layer consumes typed source-table inputs and requires every still-
+unresolved service as a callback, so a missing conversion fails explicitly.
+
+The manually traced source order is:
+
+| ROM range | Source behavior | Conversion boundary |
+| --- | --- | --- |
+| `0x07F0..0x07F6` | Run the six fixed `0x14` audio transactions with the `0x0C24` source-counter value `2`, then flush and service the zero-command audio tick; clear both 35-entry audio/menu arrays. | `prepare_audio_mode_entry()` plus `reset_audio_menu_arrays()` |
+| `0x07FC..0x0890` | Select field mode `2`, clear the entry latches, initialize entity runtime and world-effect globals, copy the five action-profile rows, and copy one 23-word field/mode selection row from `0x14C1F4`. | `bootstrap_field_session()` typed state |
+| `0x0896..0x08BA` | Enter `0x0281E`; the load branch still delegates save restoration and `0x028C2` re-entry to their separate converted boundaries. | `initialize_field_scene_entry()`; load restoration remains explicit in `startup_integration` |
+| `0x08C0..0x0918` | Load `D7=0x1E`, call entity behavior service, camera update, and entity render pass 31 times, setting display dirty bits 1, 2, and 3 after each iteration. | `bootstrap_field_session()` warm-up loop |
+| `0x0920..0x094C` | Wait for vblank, advance the exported title-palette fade helper, clear the controller/display markers, and sample the controller twice. | `bootstrap_field_session()` warm-up tail |
+
+The conversion test checks the exact six-command audio cadence, one-row
+23-word copy, alternate field profile selection, fixed `0xE10` terrain layer
+copies, 31 warm-up iterations, dirty mask `0x0E`, and two final controller
+samples. The `0x0A8EA` entity-behavior sweep and the field camera service are
+deliberately callback boundaries until their complete source consumers are
+converted; the central layer does not replace them with guessed behavior.
+
 ## Reviewed function map
 
 The native owner names below are the target C++ vocabulary. A `partial` entry
@@ -620,7 +646,7 @@ still has unresolved downstream calls or hardware presentation work.
 | `0x0330` | reset display block | Emits the five initial VDP register commands, clears the first VRAM word, and establishes the text-write command. | `make_startup_display_plan()` | partial |
 | `0x0436` | `write_startup_text_to_vdp` | Builds the destination command and converts a zero-terminated source string into host glyph indices. | `encode_startup_text()` / `ShadowrunBoot::write_startup_text()` adapter | partial |
 | `0x073A` | `wait_for_vdp_ready` | Coalesces the source's 11 × 4096 startup delay, waits at a typed ready boundary, then applies the 256-iteration settle delay. | `ghidra_conversion::wait_for_vdp_ready()`; no host VDP polling loop | partial |
-| `0x075E` | `run_game_loop` | Main coordinator: initializes session state, dispatches boot/title/field work, samples input, and performs indirect state dispatch. | `NativePortShell::update()` | partial |
+| `0x075E` | `run_game_loop` | Main coordinator: initializes session state, dispatches boot/title/field work, samples input, and performs indirect state dispatch. The common post-startup field bootstrap is now separately composed from `0x07F0..0x094C`; title/menu dispatch and save/new-game branches remain separate. | `ghidra_conversion::integration::bootstrap_field_session()` for the traced field-entry slice | partial |
 | `0x0BB6` | `wait_for_even_frame` | Waits for a changed frame sample after clearing its low bit. | `ghidra_conversion::wait_for_even_frame()`; host frame boundary remains a callback | partial |
 | `0x0BD2` | `wait_for_vblank` | Advances the frame counter and requests the next interrupt-side sample through a host frame boundary. | `ghidra_conversion::wait_for_vblank()`; presentation timing remains a callback | partial |
 | `0x0C24` | `wait_for_vblank_frames` | Repeats the vblank boundary `source_counter + 1` times, preserving the source DBF behavior. | `ghidra_conversion::wait_for_vblank_frames()` | partial |

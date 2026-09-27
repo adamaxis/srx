@@ -44,7 +44,7 @@ and a `shadowrun_ghidra_conversion_runtime` archive from the separate
 `src/integration/` composition sources. The runtime archive links the domain
 archive; it is the executable-facing Ghidra conversion runtime, not the native
 game runtime.
-The current 254 CTest cases (the runner plus 253 focused test executables)
+The current 255 CTest cases (the runner plus 254 focused test executables)
 remain separate so a regression still points at a specific behavior contract;
 they are not proposed game-runtime libraries. The conversion archive is never
 linked into the native game.
@@ -55,8 +55,11 @@ the 28-row leaf ownership map: they exercise several typed contracts together
 to prove conversion ordering and handoffs, but they do not claim ownership of
 their ROM behavior or become native game state. The startup integration
 specifically composes direct-asset verification, boot/title setup, the New
-Game/Load Game selector, save validation, and Joshua's archetype handoff; it
-remains a conversion-runtime boundary rather than a native-port dependency.
+Game/Load Game selector, save validation, and Joshua's archetype handoff. The
+separate `field_session_bootstrap_conversion` entry point now composes the
+source-verified common `0x007F0..0x0094C` field-entry sequence and its 31-frame
+warm-up; it remains a conversion-runtime boundary rather than a native-port
+dependency.
 
 New work belongs in the existing domain file that owns the behavior. A new
 file is justified only for a real ownership boundary or a materially

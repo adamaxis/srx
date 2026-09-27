@@ -22,6 +22,7 @@ include(conversion_modules.cmake)
 # graph and does not own native game runtime state.
 add_library(shadowrun_ghidra_conversion_runtime STATIC
     src/integration/conversion_workbench.cpp
+    src/integration/field_session_bootstrap_conversion.cpp
     src/integration/startup_integration_conversion.cpp
 )
 target_include_directories(shadowrun_ghidra_conversion_runtime PUBLIC
@@ -72,6 +73,7 @@ foreach(test_source IN LISTS SHADOWRUN_CONVERSION_TEST_SOURCES)
     set(test_target "shadowrun_ghidra_${test_name}_test")
     add_executable(${test_target} "${test_source}")
     if(test_name STREQUAL "conversion_workbench" OR
+       test_name STREQUAL "field_session_bootstrap" OR
        test_name STREQUAL "startup_integration")
         target_link_libraries(${test_target}
             PRIVATE shadowrun_ghidra_conversion_runtime)
