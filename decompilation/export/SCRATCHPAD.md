@@ -171,6 +171,16 @@ for the `0xD4540` action-description table before rendering the fixed text and
 waiting for input. The conversion deliberately leaves text presentation as a
 callback while retaining the actual slot bounds and source code range.
 
+The negative-result saved-selection-3 branch at `0x57026` is now
+`apply_field_action_detail_purchase()`. It draws the action-detail grid first,
+rejects categories 6 and above, checks the selected runner slot's companion
+bit for an already-owned category, and applies the source compatibility rule:
+action codes below 8 are accepted only for categories 1 or 3, while codes 8
+and above reject only category 1. A confirmed purchase deducts `FFF0BE`, sets
+the selected category bit in the companion byte, and clears companion bit 3
+when category 0 is selected. Invalid, owned, incompatible, insufficient-fund,
+and cancelled paths are explicit typed outcomes.
+
 ## Field HUD row meter
 
 `0x1792E render_menu_hud_rows` calls `0x56506` once for each eligible row.
