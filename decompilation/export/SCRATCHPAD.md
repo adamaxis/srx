@@ -303,6 +303,23 @@ deck's MPCP or one of its four attributes, not a generic quantity screen:
   exposes that as `no_action`, while missing extracted table rows are reported
   explicitly rather than read through an unrelated host object.
 
+The negative-result runner/inventory detail path at `0x58540` is now a separate
+typed renderer, `render_field_inventory_action_detail`. It reads the selected
+active-runner item and phase from typed eight-slot arrays, accepts only source
+item codes 1 through `0x2B`, and routes zero/out-of-range codes to the
+unavailable message. Valid items reuse the `0x13228` inventory detail plan and
+the `0x5878E` action-detail text selector. Action-dependent item codes require
+the resolved `0x12148` action code as an explicit input; the conversion reports
+that boundary as `missing_action_code` instead of inventing one.
+
+The branch sets the source runner-cost suppression marker before rendering.
+When that marker is clear in a host scenario, the typed path reads the selected
+action row's word cost, halves it at the same source point, applies the runner
+surcharge, and emits header/cost/name callbacks in order. The source branch's
+normal path suppresses pricing but still renders detail text and the common
+action-name tail; missing cost data preserves that name step and is reported as
+`missing_cost_data`.
+
 * `0x580FE render_field_action_description` receives the selected
   menu-resource byte as a description-table index into `0xE31F2`. The host
   conversion uses an extracted alias, renders the normalized/wrapped
