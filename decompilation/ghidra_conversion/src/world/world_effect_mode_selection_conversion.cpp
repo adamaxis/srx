@@ -42,6 +42,19 @@ std::uint16_t add_active_modifier(const std::uint16_t value,
     return result;
 }
 
+bool source_subtract_byte_is_nonpositive(const std::uint8_t minuend,
+                                         const std::uint8_t subtrahend,
+                                         const std::uint8_t result) {
+    // 0x561A0 is SUB.B followed by BLE. Preserve the source N/V/Z decision;
+    // a signed C++ cast is wrong when the byte subtraction overflows.
+    const bool negative = (result & 0x80U) != 0U;
+    const bool zero = result == 0U;
+    const bool overflow =
+        (((minuend ^ subtrahend) & 0x80U) != 0U) &&
+        (((minuend ^ result) & 0x80U) != 0U);
+    return zero || (negative != overflow);
+}
+
 WorldEffectIntroGateResult finish_intro_marker(
     WorldEffectModeSelectionState& state,
     const WorldEffectModeSelectionCallbacks& callbacks) {
@@ -85,14 +98,17 @@ WorldEffectIntroGateResult run_intro_transition_rolls(
         return {-1, WorldEffectIntroGateAction::random_result_unresolved};
     }
 
-    const auto signed_difference = static_cast<std::int8_t>(
-        static_cast<std::uint8_t>(first_count - *second));
-    if (signed_difference > 0) {
-        if (state.hud_transition_blocked) {
-            return {-1, WorldEffectIntroGateAction::hud_transition_blocked};
-        }
+    const auto difference = static_cast<std::uint8_t>(first_count - *second);
+    if (!source_subtract_byte_is_nonpositive(
+            first_count, *second, difference)) {
         if (callbacks.update_hud_mode_transition) {
             callbacks.update_hud_mode_transition(1);
+        }
+        // The source checks FFF0B1 after 0x1989A, then branches directly to
+        // the marker-clear exit when that service has blocked the transition.
+        if (state.hud_transition_blocked) {
+            state.intro_marker = 0;
+            return {-1, WorldEffectIntroGateAction::hud_transition_blocked};
         }
     }
 
@@ -141,9 +157,11 @@ WorldEffectModeSelectionResult run_delayed_effect(
         return {-1, WorldEffectModeSelectionAction::delayed_effect};
     }
 
+    // 0x560CE enters 0x562D4, so delayed effects include both FFE169 and
+    // twice FFE16A. Intro rolls enter 0x562DE directly and remain phase-only.
     const auto result = run_thresholded_roll(
         state, callbacks, state.current_record.delayed_timing_value,
-        state.initial_trial_count, true);
+        state.initial_trial_count, false);
     if (!result.has_value()) {
         return {-1, WorldEffectModeSelectionAction::random_result_unresolved};
     }
@@ -219,9 +237,7 @@ WorldEffectModeSelectionResult select_world_effect_animation_mode(
     }
 
     const auto status = state.current_record.effect_status;
-    if (status < 2 || (status >= 7 && status < 11 && state.mode_variant < 1) ||
-        (status >= 11 && status < 17 && state.mode_variant < 1) ||
-        (status >= 17 && status < 21)) {
+    if (status < 2) {
         const auto intro = advance_world_effect_intro_gate(state, callbacks);
         return {intro.selected_mode,
                 intro.action == WorldEffectIntroGateAction::random_result_unresolved
@@ -236,8 +252,38 @@ WorldEffectModeSelectionResult select_world_effect_animation_mode(
     if (status >= 5 && status < 7) {
         return run_delayed_effect(state, callbacks);
     }
+    if (status >= 7 && status < 11) {
+        if (state.mode_variant > 0) {
+            return run_delayed_effect(state, callbacks);
+        }
+        const auto intro = advance_world_effect_intro_gate(state, callbacks);
+        return {intro.selected_mode,
+                intro.action == WorldEffectIntroGateAction::random_result_unresolved
+                    ? WorldEffectModeSelectionAction::random_result_unresolved
+                : intro.action == WorldEffectIntroGateAction::action_delay_unresolved
+                    ? WorldEffectModeSelectionAction::action_delay_unresolved
+                    : WorldEffectModeSelectionAction::intro_gate};
+    }
     if (status >= 11 && status < 17) {
+        if (state.mode_variant < 1) {
+            const auto intro = advance_world_effect_intro_gate(state, callbacks);
+            return {intro.selected_mode,
+                    intro.action == WorldEffectIntroGateAction::random_result_unresolved
+                        ? WorldEffectModeSelectionAction::random_result_unresolved
+                    : intro.action == WorldEffectIntroGateAction::action_delay_unresolved
+                        ? WorldEffectModeSelectionAction::action_delay_unresolved
+                        : WorldEffectModeSelectionAction::intro_gate};
+        }
         return run_action_count(state, callbacks);
+    }
+    if (status >= 17 && status < 21) {
+        const auto intro = advance_world_effect_intro_gate(state, callbacks);
+        return {intro.selected_mode,
+                intro.action == WorldEffectIntroGateAction::random_result_unresolved
+                    ? WorldEffectModeSelectionAction::random_result_unresolved
+                : intro.action == WorldEffectIntroGateAction::action_delay_unresolved
+                    ? WorldEffectModeSelectionAction::action_delay_unresolved
+                    : WorldEffectModeSelectionAction::intro_gate};
     }
     return run_action_count(state, callbacks);
 }

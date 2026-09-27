@@ -83,13 +83,16 @@ The compact record fields used by this cluster are animation index `+0x10`,
 effect status `+0x13`, intro timing `+0x06`, and delayed-effect timing `+0x09`.
 The selector's status ranges are source-derived: statuses below 2 enter the
 intro gate; 2--4 use the action-count branch; 5--6 use the delayed-effect
-branch; 7--10 and 17--20 enter the intro gate only for the base variant;
-11--16 enter the action-count branch for variant 1 and the intro gate for the
-base variant; statuses 21 and above use the action-count branch. The action
-branch records `FFF0DD` in `FFF0A4`, displays and advances HUD mode 8, and
-returns 0 or -1. The delayed branch decrements `FFF0E7` while gated, or
-subtracts one from the thresholded-roll count, sets `FFF0E7` to `10-count`,
-marks `FFF0E6` negative, and returns mode 3.
+branch; 7--10 use the intro gate for the base variant and the delayed-effect
+branch for variant 1; 11--16 use the intro gate for the base variant and the
+action-count branch for variant 1; 17--20 always enter the intro gate; and
+statuses 21 and above use the action-count branch. The action branch records
+`FFF0DD` in `FFF0A4`, displays and advances HUD mode 8, and returns 0 or -1.
+The delayed branch uses the timer-plus-phase difficulty path, decrements
+`FFF0E7` while gated, or subtracts one from the thresholded-roll count, sets
+`FFF0E7` to `10-count`, marks `FFF0E6` negative, and returns mode 3. The intro
+comparison preserves the source `SUB.B`/`BLE` overflow flags; after a positive
+comparison it calls `0x1989A` before honoring a blocked `FFF0B1` exit.
 
 `WorldEffectModeSelectionCallbacks` deliberately leaves random rolls,
 selected-record lookup, action-delay calculation, HUD services, menu entry,

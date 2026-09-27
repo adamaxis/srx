@@ -750,6 +750,14 @@ wrapped sign-bit test, not an unsigned `max`. The menu timing conversions at
 `0x56434` and `0x56482` now have explicit wrapped `BGT`/`BPL` regression cases.
 These changes are conversion/audit work only and do not alter the native port.
 
+The adjacent world-effect selector at `0x56116`/`0x561E8` is now source-audited
+as well. Its intro comparison uses the 68000 overflow-aware `SUB.B`/`BLE`
+predicate, calls the HUD transition service before checking the blocked marker,
+and clears the marker on that blocked exit. Statuses `0x07..0x0A` with the
+positive mode variant route through the delayed-effect path, whose `0x560CE`
+call enters the combined timer-plus-phase modifier; intro rolls remain
+phase-only. The typed conversion and regression tests cover these distinctions.
+
 The CyberInfo handler at `0x18AA6` is now `run_cyber_info_screen`. Its host
 conversion resets the two-entry page cursor, emits the `CyberInfo` setup, and
 preserves the exact per-frame wait/latch/sample/history order. Up wins over

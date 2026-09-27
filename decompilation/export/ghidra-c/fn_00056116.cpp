@@ -15,6 +15,8 @@
 // machine. The typed host conversion is in
 // ghidra_conversion/world_effect_mode_selection_conversion and keeps the
 // random-roll, HUD, menu, and world-mode services as explicit boundaries.
+// The 0x561A0 SUB.B/BLE comparison is overflow-aware, and 0x1989A is called
+// before the source checks FFF0B1 for the blocked-transition exit.
 
 undefined4 advance_world_effect_intro_gate(void)
 
