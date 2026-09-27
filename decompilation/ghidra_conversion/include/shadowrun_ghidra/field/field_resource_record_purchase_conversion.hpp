@@ -56,6 +56,7 @@ struct FieldResourceRecordPurchaseCallbacks {
     std::function<void()> show_insufficient_requirement;
     std::function<void()> show_insufficient_funds;
     std::function<bool()> confirm_purchase;
+    std::function<void()> wait_for_controller_event;
 };
 
 // Positive-result saved-selection-3 branch at ROM 0x573FC. Select the table

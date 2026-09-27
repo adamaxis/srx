@@ -980,6 +980,18 @@ the runtime/emulator. The exact game-facing names of the four mode categories
 and the active-runner `+0x8C` stat remain data-table work; the cost behavior
 itself is now explicit and tested.
 
+## Field resource-record purchase conversion: 0x573FC
+
+`0x573FC` is the positive-result saved-selection-3 resource-record purchase
+leaf. It selects the `0x1AB196` table for menu mode 6 and the other 0x70-byte
+table otherwise, then indexes an 0x0E-byte record by the current category. A
+high-bit record marker sets the service-result failure before presentation.
+The requirement and funds failure messages both enter the shared controller
+wait. The two capacity fields preserve the source word `CMP`/`BMI` result
+instead of becoming host unsigned `>=` tests; the typed record copy updates
+item/flags, capacities, limits, progress, and the availability requirement in
+source order after confirmation.
+
 ## Selected field action application: 0x5794E / 0x57B8C / 0x57C5E
 
 `0x5794E` is the mutation half of the field-menu action path, not another

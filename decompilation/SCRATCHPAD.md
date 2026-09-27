@@ -2074,6 +2074,11 @@ same action application. Only selection 3 is the removal branch. The host
 conversion and test now exercise the previously rejected selection-one
 purchase and reserve the guard for removal.
 
+The `0x573FC` resource-record purchase audit found that both message failures
+also block on the controller wait, which is now an explicit callback. Its two
+capacity writes were changed from host unsigned comparisons to the ROM's word
+`CMP`/`BMI` flag result and now retain the high-bit source case in a test.
+
 The title setup module now also owns `0x12F6`: its DBF `0x10` loop is exposed
 as `advance_title_palette_fade`, with the source ordering of frame wait,
 palette-step, and dirty-mark callbacks tested across all 17 passes.

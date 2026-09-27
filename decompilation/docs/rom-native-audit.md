@@ -216,6 +216,12 @@ application path; only selection 3 branches to removal. The typed progression
 purchase no longer rejects the two fixed offer families as if they were
 unreachable.
 
+The neighboring `0x573FC` resource-record purchase was checked for the same
+presentation and flag boundaries. Insufficient requirement and insufficient
+funds both enter the source controller wait after their message. The primary
+and secondary capacity replacements use the wrapped word `CMP`/`BMI` result;
+they are not plain unsigned greater-than-or-equal comparisons.
+
 The generated Ghidra C remains an evidence snapshot and still omits meaningful
 logic for some of these entries, including `0x3602` and `0x55828`; the typed
 conversion is accepted only where the ROM instruction trace and focused test

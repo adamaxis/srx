@@ -17,6 +17,11 @@ bool source_byte_difference_is_negative(const std::uint8_t left,
     return static_cast<std::uint8_t>(left - right) & 0x80U;
 }
 
+bool source_word_difference_is_negative(const std::uint16_t left,
+                                        const std::uint16_t right) {
+    return (static_cast<std::uint16_t>(left - right) & 0x8000U) != 0U;
+}
+
 } // namespace
 
 FieldResourceRecordPurchaseResult apply_field_resource_record_purchase(
@@ -42,12 +47,18 @@ FieldResourceRecordPurchaseResult apply_field_resource_record_purchase(
         if (callbacks.show_insufficient_requirement) {
             callbacks.show_insufficient_requirement();
         }
+        if (callbacks.wait_for_controller_event) {
+            callbacks.wait_for_controller_event();
+        }
         return FieldResourceRecordPurchaseResult::insufficient_requirement;
     }
 
     if (state.funds < state.cost) {
         if (callbacks.show_insufficient_funds) {
             callbacks.show_insufficient_funds();
+        }
+        if (callbacks.wait_for_controller_event) {
+            callbacks.wait_for_controller_event();
         }
         return FieldResourceRecordPurchaseResult::insufficient_funds;
     }
@@ -59,10 +70,12 @@ FieldResourceRecordPurchaseResult apply_field_resource_record_purchase(
     state.funds -= state.cost;
     state.inventory.installed_item_code = record.installed_item_code;
     state.inventory.installed_item_flags = record.installed_item_flags;
-    if (record.primary_capacity >= state.inventory.primary_capacity) {
+    if (!source_word_difference_is_negative(
+            record.primary_capacity, state.inventory.primary_capacity)) {
         state.inventory.primary_capacity = record.primary_capacity;
     }
-    if (record.secondary_capacity >= state.inventory.secondary_capacity) {
+    if (!source_word_difference_is_negative(
+            record.secondary_capacity, state.inventory.secondary_capacity)) {
         state.inventory.secondary_capacity = record.secondary_capacity;
     }
     state.inventory.resource_limit = record.resource_limit;

@@ -39,6 +39,7 @@ int main() {
     int requirement_failures = 0;
     int fund_failures = 0;
     int confirmations = 0;
+    int waits = 0;
     const FieldResourceRecordPurchaseCallbacks callbacks{
         [&] { ++grids; },
         [&] { ++requirement_failures; },
@@ -47,6 +48,7 @@ int main() {
             ++confirmations;
             return true;
         },
+        [&] { ++waits; },
     };
 
     if (!expect(apply_field_resource_record_purchase(tables, state, callbacks) ==
@@ -65,7 +67,8 @@ int main() {
     state.inventory.availability_marker = 4U;
     if (!expect(apply_field_resource_record_purchase(tables, state, callbacks) ==
                     FieldResourceRecordPurchaseResult::insufficient_requirement &&
-                requirement_failures == 1 && state.funds == 375U)) {
+                requirement_failures == 1 && waits == 1 &&
+                state.funds == 375U)) {
         return 2;
     }
 
@@ -73,7 +76,7 @@ int main() {
     state.funds = 10U;
     if (!expect(apply_field_resource_record_purchase(tables, state, callbacks) ==
                     FieldResourceRecordPurchaseResult::insufficient_funds &&
-                fund_failures == 1 && state.funds == 10U)) {
+                fund_failures == 1 && waits == 2 && state.funds == 10U)) {
         return 3;
     }
 
@@ -113,6 +116,23 @@ int main() {
                 state.inventory.installed_item_code == 0x21U &&
                 state.inventory.resource_limit == 9U)) {
         return 7;
+    }
+
+    FieldResourceRecordTables word_flag_tables = tables;
+    word_flag_tables.general_records[2U].primary_capacity = 0xFFFFU;
+    state.menu_mode = 4U;
+    state.category = 2U;
+    state.inventory.availability_marker = 4U;
+    state.inventory.primary_capacity = 40U;
+    state.inventory.secondary_capacity = 80U;
+    state.funds = 500U;
+    if (!expect(apply_field_resource_record_purchase(
+                    word_flag_tables, state, callbacks) ==
+                    FieldResourceRecordPurchaseResult::applied &&
+                // 0xFFFF - 40 has bit 15 set, so the ROM's BMI skips the
+                // primary-capacity replacement despite the unsigned value.
+                state.inventory.primary_capacity == 40U)) {
+        return 8;
     }
 
     return 0;
