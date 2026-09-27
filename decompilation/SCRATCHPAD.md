@@ -231,6 +231,16 @@ typed `+0x76..+0x7F` extension so action codes `9` and `10` do not get
 silently rejected or turned into an address-style lookup. A zero or
 out-of-domain action code is reported as an explicit typed boundary.
 
+The paired action resolver at `0x55640` now has a typed host result. It
+recreates the `0x55ED6` command average, `0x55F20` posture component,
+`0x12C74` action-skill merge, target-category difficulty (`4/5/6/8`),
+`0x55740`, `0x55786`, `0x556C6`, and `0x0D5A` modifier order, then feeds the
+merged value and clamped difficulty to `0x0DBA`. The resulting thresholded
+byte is published to both action records and the caller's incoming D0 word is
+returned unchanged. The equipment/menu `0x12C74` entry is now only an adapter
+to this single entity-record implementation, so the action rule is not
+duplicated across presentation and behavior modules.
+
 The late effect placement routine at `0x55848` is now converted as
 `calculate_effect_target_offset`. It first reproduces `0x55ED6` from the
 source entity's typed `+0x78/+0x7B/+0x7C` attributes and first item-code

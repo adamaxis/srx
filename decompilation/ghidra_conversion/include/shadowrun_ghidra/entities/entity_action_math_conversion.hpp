@@ -27,6 +27,7 @@ struct EntityActionRecord {
     std::uint8_t attribute_87 = 0;       // +0x87
     std::uint8_t flags_10 = 0;           // +0x10
     std::uint8_t class_code = 0;         // +0x9B
+    std::array<std::uint8_t, 4> action_skills{}; // +0x81..+0x84
     std::array<std::uint8_t, 8> item_codes{};   // +0x66..+0x6D
     std::array<std::uint8_t, 8> item_phases{};  // +0x6E..+0x75
     // The source indexes the same contiguous phase window for action codes
@@ -38,6 +39,13 @@ struct EntityActionRecord {
 struct EntityActionTarget {
     std::uint8_t class_code = 0;  // +0x9B
     std::uint8_t flags = 0;       // +0x11
+    std::uint8_t action_category = 0; // +0xB4
+    std::uint16_t record_type = 0; // +0x3E
+    std::int8_t race_or_state = 0; // +0x9A, signed
+    std::uint8_t physical_meter = 0; // +0x4C
+    std::uint8_t mental_meter = 0; // +0x9C
+    std::uint8_t attribute_77 = 0; // +0x77
+    std::uint8_t action_result = 0; // +0x9F
 };
 
 // The action record is a decoded row from the source 0xD4EA0 table. Its
@@ -85,6 +93,9 @@ struct EntityActionDynamicModifierContext {
     const EntityActionProfileTable* action_profile_table = nullptr;
     std::optional<std::uint16_t> linked_profile_index;
     std::array<std::int8_t, 2> attribute_selectors{};
+    // Source 0x55786 calls the ready-animation refresh while it builds the
+    // ready-entity bonus for records below type three.
+    std::function<void()> refresh_ready_entity_animations;
 };
 
 using EntityActionRollService =
@@ -103,6 +114,7 @@ struct EntityActionDynamicModifierResult {
     std::uint16_t ready_roll_count = 0;
     std::uint8_t special_successes = 0;
     std::uint16_t added_difficulty = 0;
+    bool ready_animation_refresh_called = false;
 };
 
 // ROM 0x55F02. Start with +0x80 and, scanning possession slots from 6 down
@@ -124,6 +136,19 @@ std::uint16_t select_posture_adjusted_value(
 // presentation-input overload with the same source behavior.
 std::uint16_t calculate_equipment_command_average(
     const EntityActionRecord& entity);
+
+struct EntityActionSkillMergeResult {
+    std::uint16_t value = 0;
+    std::uint8_t selected_skill = 0;
+};
+
+// ROM 0x12C74 as an entity-record leaf. Select +0x82/+0x83/+0x84 by the
+// action-code bands, preserve the source wrapped-byte comparison with +0x81,
+// and merge the selected skill into the current word value.
+EntityActionSkillMergeResult merge_entity_action_skill_value(
+    std::uint16_t current_value,
+    const EntityActionRecord& entity,
+    std::uint8_t action_code);
 
 // ROM 0x104F6. Scan possession slots from 6 down to 0 for an exact item code
 // and add that slot's phase to the running value. The first match terminates
@@ -191,6 +216,36 @@ struct EntityActionEligibilityResult {
 EntityActionEligibilityResult check_entity_action_eligibility(
     std::uint16_t difficulty,
     const EntityActionActorState& actor);
+
+struct EntityActionPairServices {
+    // 0x0DBA's bounded six-sided source for the paired action result.
+    BoundedRandomRollBoundary sample_random_bound;
+    // Nested 0x55786 profile roll service.
+    EntityActionRollService dynamic_roll_service;
+};
+
+struct EntityActionPairResult {
+    std::uint16_t returned_value = 0;
+    std::uint16_t command_average = 0;
+    std::uint16_t posture_reduction = 0;
+    EntityActionSkillMergeResult skill_merge{};
+    std::uint16_t initial_difficulty = 0;
+    std::uint16_t effective_difficulty = 0;
+    std::uint8_t thresholded_rolls = 0;
+    bool random_service_available = false;
+    bool dynamic_modifier_selected = false;
+    bool eligibility_applied = false;
+};
+
+// ROM 0x55640. Resolve the paired entity-action difficulty and roll count,
+// publish the same thresholded result to both typed records, and preserve the
+// caller's incoming D0 word as the host return value.
+EntityActionPairResult resolve_entity_action_pair(
+    EntityActionActorState& actor,
+    EntityActionTarget& target,
+    std::uint16_t preserved_return_value,
+    const EntityActionDynamicModifierContext* dynamic_context,
+    const EntityActionPairServices& services);
 
 // ROM 0x55786. Bit 0 has priority over bit 1. The selected special record is
 // rolled with the ready-entity/attribute count; successful rolls reduce its

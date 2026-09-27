@@ -18,6 +18,11 @@ std::uint16_t add_source_byte_to_word(const std::uint16_t value,
     return static_cast<std::uint16_t>((value & 0xFF00U) | low);
 }
 
+bool source_byte_subtraction_is_nonnegative(const std::uint8_t minuend,
+                                            const std::uint8_t subtrahend) {
+    return (static_cast<std::uint8_t>(minuend - subtrahend) & 0x80U) == 0U;
+}
+
 } // namespace
 
 std::uint16_t calculate_item18_skill_value(const EntityActionRecord& entity) {
@@ -64,6 +69,35 @@ std::uint16_t calculate_equipment_command_average(
         break;
     }
     return value;
+}
+
+EntityActionSkillMergeResult merge_entity_action_skill_value(
+    const std::uint16_t current_value,
+    const EntityActionRecord& entity,
+    const std::uint8_t action_code) {
+    // 0x12C74's CMP.B/BPL bands select skill +0x82, +0x83, or +0x84.
+    const auto first_band = !source_byte_subtraction_is_nonnegative(
+        action_code, 0x08U);
+    const auto second_band = !source_byte_subtraction_is_nonnegative(
+        action_code, 0x0BU);
+    auto selected_skill = entity.action_skills[0];
+    const auto candidate = first_band
+                               ? entity.action_skills[1]
+                               : second_band ? entity.action_skills[2]
+                                             : entity.action_skills[3];
+    if (!source_byte_subtraction_is_nonnegative(selected_skill, candidate)) {
+        selected_skill = candidate;
+    }
+    auto lower = current_value;
+    const auto comparison = static_cast<std::uint16_t>(
+        static_cast<std::uint16_t>(selected_skill) - current_value);
+    if ((comparison & 0x8000U) != 0U) {
+        lower = selected_skill;
+    }
+    const auto merged = static_cast<std::uint16_t>(
+        lower + static_cast<std::uint16_t>(selected_skill));
+    return {static_cast<std::uint16_t>(merged == 0U ? 1U : merged),
+            selected_skill};
 }
 
 std::uint16_t add_first_matching_item_phase(
@@ -252,6 +286,65 @@ EntityActionEligibilityResult check_entity_action_eligibility(
     return result;
 }
 
+EntityActionPairResult resolve_entity_action_pair(
+    EntityActionActorState& actor,
+    EntityActionTarget& target,
+    const std::uint16_t preserved_return_value,
+    const EntityActionDynamicModifierContext* dynamic_context,
+    const EntityActionPairServices& services) {
+    EntityActionPairResult result{};
+    result.returned_value = preserved_return_value;
+
+    result.command_average = calculate_equipment_command_average(
+        actor.record);
+    result.posture_reduction = select_posture_adjusted_value(
+        result.command_average, actor.record.posture, true);
+    result.skill_merge = merge_entity_action_skill_value(
+        result.posture_reduction, actor.record,
+        actor.equipped_action_code);
+
+    switch (target.action_category) {
+    case 0U:
+        result.initial_difficulty = 4U;
+        break;
+    case 1U:
+        result.initial_difficulty = 5U;
+        break;
+    case 2U:
+        result.initial_difficulty = 6U;
+        break;
+    default:
+        result.initial_difficulty = 8U;
+        break;
+    }
+    auto difficulty = apply_target_condition_modifier(
+        result.initial_difficulty, actor.record, target);
+    if (dynamic_context != nullptr) {
+        const auto dynamic = apply_dynamic_status_modifier(
+            difficulty, *dynamic_context, services.dynamic_roll_service);
+        result.dynamic_modifier_selected = dynamic.selected;
+    }
+    const auto eligibility = check_entity_action_eligibility(
+        difficulty, actor);
+    difficulty = eligibility.difficulty;
+    result.eligibility_applied = eligibility.action_code_valid;
+    difficulty = add_wound_difficulty_penalty(
+        difficulty, actor.record.physical_meter, actor.record.mental_meter);
+    difficulty = std::max<std::uint16_t>(difficulty, 2U);
+    result.effective_difficulty = difficulty;
+
+    if (!services.sample_random_bound) {
+        return result;
+    }
+    result.random_service_available = true;
+    result.thresholded_rolls = count_thresholded_random_rolls(
+        result.skill_merge.value, static_cast<std::int16_t>(difficulty),
+        services.sample_random_bound);
+    actor.action_result = result.thresholded_rolls;
+    target.action_result = result.thresholded_rolls;
+    return result;
+}
+
 EntityActionDynamicModifierResult apply_dynamic_status_modifier(
     std::uint16_t& difficulty,
     const EntityActionDynamicModifierContext& context,
@@ -286,6 +379,10 @@ EntityActionDynamicModifierResult apply_dynamic_status_modifier(
     result.selected_profile_index = *context.linked_profile_index;
 
     if (context.actor_record_type < 3U) {
+        if (context.refresh_ready_entity_animations) {
+            context.refresh_ready_entity_animations();
+            result.ready_animation_refresh_called = true;
+        }
         result.ready_roll_count = calculate_ready_entity_action_bonus(
             context.ready_entities);
     }

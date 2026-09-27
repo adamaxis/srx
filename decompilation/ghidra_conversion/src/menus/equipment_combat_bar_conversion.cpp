@@ -12,12 +12,6 @@ void call_once(const std::function<void()>& callback) {
     }
 }
 
-bool source_byte_subtraction_is_nonnegative(const std::uint8_t minuend,
-                                            const std::uint8_t subtrahend) {
-    const auto result = static_cast<std::uint8_t>(minuend - subtrahend);
-    return (result & 0x80U) == 0U;
-}
-
 } // namespace
 
 std::uint16_t calculate_equipment_command_average(
@@ -51,35 +45,12 @@ std::uint16_t posture_value(const std::uint16_t base,
 
 EquipmentActionSkillMergeResult merge_equipment_action_skill_value(
     const EquipmentActionSkillMergeInput& input) {
-    // 0x12C74 branches on the sign bit produced by CMP.B, not on a host
-    // signed/unsigned relational comparison. This matters for wrapped byte
-    // differences such as 0x01 - 0x80 = 0x81.
-    auto selected_skill = input.skill_81;
-    const auto first_band = !source_byte_subtraction_is_nonnegative(
-        input.action_code, 0x08U);
-    const auto second_band = !source_byte_subtraction_is_nonnegative(
-        input.action_code, 0x0BU);
-    const auto candidate = first_band
-                               ? input.skill_82
-                               : second_band ? input.skill_83 : input.skill_84;
-    if (!source_byte_subtraction_is_nonnegative(selected_skill, candidate)) {
-        selected_skill = candidate;
-    }
-
-    // The final CMP.W is followed by BPL. Callers clear D7.W before entering
-    // this leaf, so the selected byte is a zero-extended word. Preserve the
-    // source's 16-bit subtraction sign test and addition wrap instead of
-    // replacing it with std::min plus an unbounded sum.
-    const auto selected_word = static_cast<std::uint16_t>(selected_skill);
-    const auto comparison = static_cast<std::uint16_t>(
-        selected_word - input.current_value);
-    auto lower = input.current_value;
-    if ((comparison & 0x8000U) != 0U) {
-        lower = selected_word;
-    }
-    const auto result = static_cast<std::uint16_t>(lower + selected_word);
-    return {static_cast<std::uint16_t>(result == 0U ? 1U : result),
-            selected_skill};
+    EntityActionRecord entity{};
+    entity.action_skills = {input.skill_81, input.skill_82, input.skill_83,
+                            input.skill_84};
+    const auto result = merge_entity_action_skill_value(
+        input.current_value, entity, input.action_code);
+    return {result.value, result.selected_skill};
 }
 
 namespace {

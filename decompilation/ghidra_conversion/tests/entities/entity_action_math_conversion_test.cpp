@@ -254,6 +254,33 @@ int main() {
         return 26;
     }
 
+    EntityActionActorState paired_actor{};
+    paired_actor.equipped_action_code = 5U;
+    paired_actor.record.attribute_78 = 10U;
+    paired_actor.record.attribute_7b = 10U;
+    paired_actor.record.attribute_7c = 10U;
+    paired_actor.record.posture = 1U;
+    paired_actor.record.action_skills = {4U, 6U, 8U, 10U};
+    EntityActionTarget paired_target{};
+    paired_target.action_category = 2U;
+    const auto paired_result = resolve_entity_action_pair(
+        paired_actor, paired_target, 0x1234U, nullptr,
+        {[](const std::uint16_t) { return static_cast<std::int16_t>(0); },
+         {}});
+    if (!expect(paired_result.returned_value == 0x1234U &&
+                paired_result.command_average == 15U &&
+                paired_result.posture_reduction == 3U &&
+                paired_result.skill_merge.selected_skill == 6U &&
+                paired_result.skill_merge.value == 9U &&
+                paired_result.initial_difficulty == 6U &&
+                paired_result.effective_difficulty == 10U &&
+                paired_result.thresholded_rolls == 0U &&
+                paired_result.random_service_available &&
+                paired_actor.action_result == 0U &&
+                paired_target.action_result == 0U)) {
+        return 27;
+    }
+
     const EntityActionCatalogRecord action{1U, 10};
     const auto residual = calculate_action_residual(6U, 5U, 8U, action);
     if (!expect(residual.valid && residual.effective_difficulty == 4U &&
