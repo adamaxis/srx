@@ -2031,6 +2031,13 @@ before the same sampled word can reach confirm, alternate-confirm, restart,
 or return handling. The host loop now uses the same one-event-per-sample
 boundary; a direction plus confirm is not treated as two actions.
 
+The `0x57026` detail-purchase audit found a source-owned category rule that
+the prior host conversion missed: category 3 is blocked when the selected
+runner companion byte already has bit 0 set, even if category 3's own bit is
+clear. The typed purchase path now checks that `0x570EC` gate before charging
+funds, and the fixture was corrected so it no longer claims the ROM accepts
+that purchase.
+
 The title setup module now also owns `0x12F6`: its DBF `0x10` loop is exposed
 as `advance_title_palette_fade`, with the source ordering of frame wait,
 palette-step, and dirty-mark callbacks tested across all 17 passes.

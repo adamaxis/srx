@@ -15,7 +15,7 @@ int main() {
     state.runner_slot = 2U;
     state.category = 3U;
     state.runner.action_codes[2U] = 4U;
-    state.runner.companion_values[2U] = 0x01U;
+    state.runner.companion_values[2U] = 0U;
     state.cost = 120U;
     state.funds = 500U;
     int grids = 0;
@@ -37,7 +37,7 @@ int main() {
     if (!expect(apply_field_action_detail_purchase(state, callbacks) ==
                     FieldActionDetailPurchaseResult::applied &&
                 grids == 1 && state.funds == 380U &&
-                state.runner.companion_values[2U] == 0x09U &&
+                state.runner.companion_values[2U] == 0x08U &&
                 confirmations == 1)) {
         return 1;
     }
@@ -46,6 +46,17 @@ int main() {
                     FieldActionDetailPurchaseResult::already_owned &&
                 owned == 1 && state.funds == 380U)) {
         return 2;
+    }
+
+    // Category 3 has a second source gate at 0x570EC: companion bit 0 blocks
+    // the purchase even when category 3 itself is not set.
+    state.runner.companion_values[2U] = 0x01U;
+    state.category = 3U;
+    if (!expect(apply_field_action_detail_purchase(state, callbacks) ==
+                    FieldActionDetailPurchaseResult::already_owned &&
+                owned == 2 && state.funds == 380U &&
+                state.runner.companion_values[2U] == 0x01U)) {
+        return 9;
     }
 
     state.runner.companion_values[2U] = 0U;

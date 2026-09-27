@@ -193,8 +193,10 @@ bit for an already-owned category, and applies the source compatibility rule:
 action codes below 8 are accepted only for categories 1 or 3, while codes 8
 and above reject only category 1. A confirmed purchase deducts `FFF0BE`, sets
 the selected category bit in the companion byte, and clears companion bit 3
-when category 0 is selected. Invalid, owned, incompatible, insufficient-fund,
-and cancelled paths are explicit typed outcomes.
+when category 0 is selected. Category 3 has the additional source gate at
+`0x570EC`: companion bit 0 blocks the purchase even when category 3's own bit
+is clear. Invalid, owned, incompatible, insufficient-fund, and cancelled paths
+are explicit typed outcomes.
 
 The removal branch at `0x56F4A` is `remove_runner_action()`. It refreshes the
 detail panel, rejects empty slots and protected action codes `0x29..0x2B`,

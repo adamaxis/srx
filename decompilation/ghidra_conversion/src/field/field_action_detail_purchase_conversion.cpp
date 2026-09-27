@@ -23,6 +23,16 @@ FieldActionDetailPurchaseResult apply_field_action_detail_purchase(
         return FieldActionDetailPurchaseResult::already_owned;
     }
 
+    // ROM 0x570EC has an additional category-3 gate: when the companion
+    // action already owns bit 0, the source shows the same blocked/owned
+    // message even though category 3's own bit is clear.
+    if (state.category == 3U && (companion & 0x01U) != 0U) {
+        if (callbacks.show_already_owned) {
+            callbacks.show_already_owned();
+        }
+        return FieldActionDetailPurchaseResult::already_owned;
+    }
+
     const auto action_code = state.runner.action_codes[state.runner_slot];
     const bool action_code_is_low = action_code < 8U;
     const bool compatible = action_code_is_low

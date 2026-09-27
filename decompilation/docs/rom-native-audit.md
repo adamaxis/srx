@@ -174,6 +174,12 @@ destination strides. The detail panel is six rows, not five: the source uses
 `D1 = 5` with `DBF`. The host contract requires the complete 31-word source
 row and emits typed transfer events for each repeated row.
 
+The `0x57026` detail-purchase trace also retains the category-3 special gate:
+after the selected category bit is checked, `0x570EC` rejects the purchase if
+the companion byte already has bit 0 set. The typed purchase conversion and
+focused test now preserve that rule; the earlier test fixture had incorrectly
+treated it as a valid purchase.
+
 The generated Ghidra C remains an evidence snapshot and still omits meaningful
 logic for some of these entries, including `0x3602` and `0x55828`; the typed
 conversion is accepted only where the ROM instruction trace and focused test
