@@ -77,7 +77,7 @@ int main() {
     advance_field_scene_transition(transition, event_counters,
                                    transition_callbacks);
     if (!expect(order == std::vector<char>{'t', 'p', 's', 'a', 'r', 'u', 'g'} &&
-                transition.palette_transition_marker == 0U &&
+            transition.field_transition_marker == 0U &&
                 transition.scene_refresh_marker == 0xFFFFU &&
                 transition.pending_scene_marker == 0xFFFFU)) {
         return 4;
