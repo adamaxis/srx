@@ -2193,6 +2193,18 @@ submission as two explicit host callbacks.
 
 The `0x11928` menu-row wrapper now retains its grid-before-row render order.
 
+The command-overview parent at `0x10D30` is now a typed lifecycle rather than
+a catalog label. It initializes the page state, handles the active-record mode
+action hook, performs the full preparation/palette/font/panel sequence, and
+then runs the source-priority controller loop. Primary and secondary page
+edges dispatch with their signed deltas; inventory/action buttons preserve the
+saved primary page and retain the `<2`, page-3, page-6-exit, class, and page-5
+restart branches; bit 13 resets upload state and re-enters the panel; and bit
+15 performs the source mode-action and marker cleanup. The partial refresh
+shares the panel/name/row/highlight/upload choreography with entry. These are
+typed callbacks and presentation asset aliases, not Genesis memory or VDP
+runtime state.
+
 The command-overview action dialog at `0x119CE` is now a typed controller loop.
 It writes the initial `0xCD514` grid, prepares the dialog at posture delta 0,
 and preserves the source's input priority: bit 11 increments posture, bit 10

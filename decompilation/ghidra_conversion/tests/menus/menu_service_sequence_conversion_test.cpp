@@ -571,5 +571,125 @@ int main() {
         return 44;
     }
 
+    CommandOverviewState overview_state;
+    std::vector<std::uint16_t> overview_events{0x0800U, 0x4000U, 0x8000U};
+    std::size_t overview_event_index = 0U;
+    std::vector<std::string_view> overview_uploads;
+    std::vector<std::uint16_t> overview_display_controls;
+    std::vector<std::uint16_t> overview_audio;
+    std::vector<std::uint8_t> overview_titles;
+    std::vector<std::int8_t> overview_page_deltas;
+    int overview_mode_actions = 0;
+    int overview_prepares = 0;
+    int overview_palette_refreshes = 0;
+    int overview_font_loads = 0;
+    int overview_panels = 0;
+    int overview_names = 0;
+    int overview_rows = 0;
+    int overview_highlights = 0;
+    int overview_vblanks = 0;
+    int overview_latches = 0;
+    int overview_details = 0;
+    int overview_direct_detail_refreshes = 0;
+    int overview_inventory_actions = 0;
+    const auto overview_result = run_command_overview(
+        overview_state,
+        CommandOverviewInput{0x50U, 0},
+        [&] {
+            CommandOverviewCallbacks callbacks;
+            callbacks.handle_mode_action_event = [&] { ++overview_mode_actions; };
+            callbacks.set_display_control = [&](const std::uint16_t control) {
+                overview_display_controls.push_back(control);
+            };
+            callbacks.prepare_command_overview = [&] { ++overview_prepares; };
+            callbacks.refresh_mode_palette_data =
+                [&] { ++overview_palette_refreshes; };
+            callbacks.load_title_font = [&] { ++overview_font_loads; };
+            callbacks.draw_hud_panel = [&] { ++overview_panels; };
+            callbacks.render_active_runner_name = [&] { ++overview_names; };
+            callbacks.render_menu_row = [&] { ++overview_rows; };
+            callbacks.render_equipment_highlights = [&] { ++overview_highlights; };
+            callbacks.upload_menu_tile_block =
+                [&](const CommandOverviewTileUploadPlan& plan) {
+                    overview_uploads.push_back(plan.asset_alias);
+                };
+            callbacks.reset_upload_cursor_and_upload =
+                [&](const CommandOverviewTileUploadPlan& plan) {
+                    overview_uploads.push_back(plan.asset_alias);
+                };
+            callbacks.wait_for_vblank = [&] { ++overview_vblanks; };
+            callbacks.latch_controller_events = [&] { ++overview_latches; };
+            callbacks.sample_controller_events =
+                [&] { return overview_events.at(overview_event_index++); };
+            callbacks.service_audio = [&](const std::uint16_t event) {
+                overview_audio.push_back(event);
+            };
+            callbacks.select_title_text =
+                [&](const std::uint8_t title) { overview_titles.push_back(title); };
+            callbacks.render_equipment_details = [&] { ++overview_details; };
+            callbacks.advance_primary_page =
+                [&](CommandOverviewState& state, const std::int8_t delta) {
+                    overview_page_deltas.push_back(delta);
+                    state.primary_page = static_cast<std::uint8_t>(
+                        (static_cast<int>(state.primary_page) + delta + 7) % 7);
+                };
+            callbacks.advance_secondary_page =
+                [&](CommandOverviewState&, const std::int8_t delta) {
+                    overview_page_deltas.push_back(delta);
+                };
+            callbacks.run_inventory_actions =
+                [&](CommandOverviewState&) { ++overview_inventory_actions; };
+            callbacks.refresh_action_details =
+                [&] { ++overview_direct_detail_refreshes; };
+            return callbacks;
+        }());
+    if (overview_result.exit_reason != CommandOverviewExitReason::controller ||
+        overview_result.controller_iterations != 3U ||
+        overview_result.detail_refreshes != 3U ||
+        overview_result.full_entry_initializations != 1U ||
+        overview_result.partial_refreshes != 0U ||
+        overview_result.inventory_actions != 1U ||
+        !overview_result.mode_action_handled_on_entry ||
+        !overview_result.mode_action_handled_on_exit || overview_mode_actions != 2 ||
+        overview_prepares != 1 || overview_palette_refreshes != 1 ||
+        overview_font_loads != 1 || overview_panels != 1 || overview_names != 1 ||
+        overview_rows != 1 || overview_highlights != 1 || overview_vblanks != 3 ||
+        overview_latches != 3 || overview_details != 2 ||
+        overview_direct_detail_refreshes != 1 || overview_inventory_actions != 1 ||
+        overview_display_controls != std::vector<std::uint16_t>{0x8134U, 0x8174U} ||
+        overview_audio != std::vector<std::uint16_t>{0x25U, 0x25U, 0x24U} ||
+        overview_titles != std::vector<std::uint8_t>{6U, 0U} ||
+        overview_page_deltas != std::vector<std::int8_t>{1} ||
+        overview_uploads !=
+            std::vector<std::string_view>{"menu.field.command_overview.tile_block",
+                                          "menu.field.command_overview.cursor_block"} ||
+        overview_state.primary_page != 0U || overview_state.action_marker != 0 ||
+        overview_state.exit_marker != 0 || overview_inventory_actions != 1) {
+        return 45;
+    }
+
+    CommandOverviewState dialog_exit_state;
+    std::size_t dialog_exit_event_index = 0U;
+    const auto dialog_exit_result = run_command_overview(
+        dialog_exit_state, CommandOverviewInput{},
+        [&] {
+            CommandOverviewCallbacks callbacks;
+            callbacks.sample_controller_events = [&] {
+                ++dialog_exit_event_index;
+                return static_cast<std::uint16_t>(0x0200U);
+            };
+            callbacks.advance_secondary_page =
+                [&](CommandOverviewState& state, const std::int8_t) {
+                    state.exit_marker = -1;
+                };
+            return callbacks;
+        }());
+    if (dialog_exit_result.exit_reason !=
+            CommandOverviewExitReason::action_dialog ||
+        dialog_exit_result.controller_iterations != 1U ||
+        dialog_exit_state.exit_marker != 0 || dialog_exit_event_index != 1U) {
+        return 46;
+    }
+
     return 0;
 }

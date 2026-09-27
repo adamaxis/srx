@@ -258,6 +258,92 @@ void advance_command_overview_secondary_page(
     CommandOverviewSecondaryPageState& state,
     const CommandOverviewSecondaryPageCallbacks& callbacks);
 
+enum class CommandOverviewExitReason {
+    controller,
+    action_dialog,
+    inventory,
+    controller_input_missing,
+};
+
+struct CommandOverviewState {
+    // FFF0D0/FFF0D1: command-overview primary and secondary selectors.
+    std::uint8_t primary_page = 6;
+    std::uint8_t secondary_page = 0;
+    // FFF09D, FFF0B1, FFF0CD, FFF0E0, FFF0E7, FFF100, FFF0F2/FFF112,
+    // and FFF115 are named host state rather than byte-address lookups.
+    std::int8_t action_marker = 0;
+    std::int8_t exit_marker = 0;
+    std::int8_t inventory_exit_marker = 0;
+    std::int8_t panel_marker = 0;
+    std::int8_t graphics_marker = 0;
+    std::int8_t resource_variant = 0;
+    std::int8_t refresh_marker = 0;
+    std::int8_t action_dialog_gate = 0;
+};
+
+struct CommandOverviewInput {
+    // Active record +0x10. Bits 6 and 4 request the source mode-action hook
+    // on both entry and exit.
+    std::uint8_t active_mode_flags = 0;
+    // Active record +0x9B. The signed compare controls the inventory return
+    // path for the class-one equipment panel.
+    std::int8_t active_class_code = 0;
+};
+
+struct CommandOverviewTileUploadPlan {
+    std::string_view asset_alias;
+};
+
+struct CommandOverviewCallbacks {
+    std::function<void()> handle_mode_action_event;
+    std::function<void(std::uint16_t display_control)> set_display_control;
+    std::function<void()> prepare_command_overview;
+    std::function<void()> refresh_mode_palette_data;
+    std::function<void()> load_title_font;
+    std::function<void()> draw_hud_panel;
+    std::function<void()> render_active_runner_name;
+    std::function<void()> render_menu_row;
+    std::function<void()> render_equipment_highlights;
+    std::function<void(const CommandOverviewTileUploadPlan&)>
+        upload_menu_tile_block;
+    std::function<void(const CommandOverviewTileUploadPlan&)>
+        reset_upload_cursor_and_upload;
+    std::function<void()> wait_for_vblank;
+    std::function<void()> latch_controller_events;
+    std::function<std::uint16_t()> sample_controller_events;
+    std::function<void(std::uint16_t audio_event)> service_audio;
+    std::function<void(std::uint8_t selector)> select_title_text;
+    std::function<void()> render_equipment_details;
+    std::function<void(CommandOverviewState&, std::int8_t delta)>
+        advance_primary_page;
+    std::function<void(CommandOverviewState&, std::int8_t delta)>
+        advance_secondary_page;
+    std::function<void(CommandOverviewState&)> run_inventory_actions;
+    std::function<void()> refresh_action_details;
+    std::function<void()> reset_vdp_upload_state;
+};
+
+struct CommandOverviewRunResult {
+    CommandOverviewExitReason exit_reason =
+        CommandOverviewExitReason::controller;
+    std::uint64_t controller_iterations = 0;
+    std::uint64_t detail_refreshes = 0;
+    std::uint64_t full_entry_initializations = 0;
+    std::uint64_t partial_refreshes = 0;
+    std::uint64_t inventory_actions = 0;
+    bool mode_action_handled_on_entry = false;
+    bool mode_action_handled_on_exit = false;
+};
+
+// ROM 0x10D30: own the command-overview lifecycle. Entry and partial refresh
+// are expressed as native presentation callbacks; controller priority,
+// inventory return branches, action-dialog exits, and marker cleanup retain
+// the source control flow without importing Genesis memory or VDP state.
+CommandOverviewRunResult run_command_overview(
+    CommandOverviewState& state,
+    const CommandOverviewInput& input,
+    const CommandOverviewCallbacks& callbacks);
+
 // ROM 0x11678: submit one menu grid asset.
 void write_menu_grid(const std::function<void()>& write_grid);
 

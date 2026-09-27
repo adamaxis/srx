@@ -280,6 +280,226 @@ void advance_command_overview_secondary_page(
     }
 }
 
+CommandOverviewRunResult run_command_overview(
+    CommandOverviewState& state,
+    const CommandOverviewInput& input,
+    const CommandOverviewCallbacks& callbacks) {
+    CommandOverviewRunResult result;
+
+    const auto mode_action_required = [&] {
+        return (input.active_mode_flags & 0x50U) != 0U;
+    };
+
+    const auto render_panel_pass = [&] {
+        // ROM 0x10D90 is shared by the initial entry and every partial panel
+        // refresh. The two upload boundaries receive host aliases instead of
+        // the source A1 values 0xCD2C6 and 0xCD3F2.
+        state.panel_marker = 0;
+        if (callbacks.draw_hud_panel) {
+            callbacks.draw_hud_panel();
+        }
+        if (callbacks.render_active_runner_name) {
+            callbacks.render_active_runner_name();
+        }
+        if (callbacks.render_menu_row) {
+            callbacks.render_menu_row();
+        }
+        if (callbacks.render_equipment_highlights) {
+            callbacks.render_equipment_highlights();
+        }
+        if (callbacks.upload_menu_tile_block) {
+            callbacks.upload_menu_tile_block(
+                {"menu.field.command_overview.tile_block"});
+        }
+        if (callbacks.reset_upload_cursor_and_upload) {
+            callbacks.reset_upload_cursor_and_upload(
+                {"menu.field.command_overview.cursor_block"});
+        }
+        state.refresh_marker = -1;
+    };
+
+    const auto run_full_entry = [&] {
+        if (mode_action_required() && callbacks.handle_mode_action_event) {
+            callbacks.handle_mode_action_event();
+            result.mode_action_handled_on_entry = true;
+        }
+
+        state.primary_page = 6U;
+        state.secondary_page = 0U;
+        state.action_marker = -1;
+        state.exit_marker = 0;
+        state.panel_marker = 0;
+        state.graphics_marker = 0;
+        state.resource_variant = 0;
+        if (callbacks.set_display_control) {
+            callbacks.set_display_control(0x8134U);
+        }
+        if (callbacks.prepare_command_overview) {
+            callbacks.prepare_command_overview();
+        }
+        if (callbacks.refresh_mode_palette_data) {
+            callbacks.refresh_mode_palette_data();
+        }
+        if (callbacks.load_title_font) {
+            callbacks.load_title_font();
+        }
+        if (callbacks.set_display_control) {
+            callbacks.set_display_control(0x8174U);
+        }
+        render_panel_pass();
+        ++result.full_entry_initializations;
+    };
+
+    const auto run_detail_cycle = [&] {
+        if (callbacks.service_audio) {
+            callbacks.service_audio(0x25U);
+        }
+        if (callbacks.select_title_text) {
+            callbacks.select_title_text(state.primary_page);
+        }
+        if (callbacks.render_equipment_details) {
+            callbacks.render_equipment_details();
+        }
+        ++result.detail_refreshes;
+    };
+
+    run_full_entry();
+    run_detail_cycle();
+
+    bool finished = false;
+    while (!finished) {
+        if (callbacks.wait_for_vblank) {
+            callbacks.wait_for_vblank();
+        }
+        if (callbacks.latch_controller_events) {
+            callbacks.latch_controller_events();
+        }
+        if (!callbacks.sample_controller_events) {
+            result.exit_reason = CommandOverviewExitReason::controller_input_missing;
+            return result;
+        }
+
+        const auto events = callbacks.sample_controller_events();
+        ++result.controller_iterations;
+
+        // 0x10DD8..0x10E20: horizontal and vertical page edges have source
+        // priority over inventory, mode, and exit events.
+        if ((events & 0x0400U) != 0U) {
+            if (callbacks.advance_primary_page) {
+                callbacks.advance_primary_page(state, -1);
+            }
+            run_detail_cycle();
+            continue;
+        }
+        if ((events & 0x0100U) != 0U) {
+            if (callbacks.advance_secondary_page) {
+                callbacks.advance_secondary_page(state, -1);
+            }
+            if (state.exit_marker != 0) {
+                result.exit_reason = CommandOverviewExitReason::action_dialog;
+                finished = true;
+            } else {
+                run_detail_cycle();
+            }
+            continue;
+        }
+        if ((events & 0x0800U) != 0U) {
+            if (callbacks.advance_primary_page) {
+                callbacks.advance_primary_page(state, 1);
+            }
+            run_detail_cycle();
+            continue;
+        }
+        if ((events & 0x0200U) != 0U) {
+            if (callbacks.advance_secondary_page) {
+                callbacks.advance_secondary_page(state, 1);
+            }
+            if (state.exit_marker != 0) {
+                result.exit_reason = CommandOverviewExitReason::action_dialog;
+                finished = true;
+            } else {
+                run_detail_cycle();
+            }
+            continue;
+        }
+
+        // 0x10E42 and 0x10EC8 merge the two inventory/action buttons into one
+        // source path. The audio event and saved primary page are shared.
+        if ((events & 0x4000U) != 0U || (events & 0x1000U) != 0U) {
+            if (callbacks.service_audio) {
+                callbacks.service_audio(0x24U);
+            }
+            const auto saved_primary_page = state.primary_page;
+            if (callbacks.run_inventory_actions) {
+                callbacks.run_inventory_actions(state);
+            }
+            state.primary_page = saved_primary_page;
+            ++result.inventory_actions;
+
+            if (state.primary_page < 2U) {
+                if (callbacks.refresh_action_details) {
+                    callbacks.refresh_action_details();
+                }
+                ++result.detail_refreshes;
+                continue;
+            }
+            if (state.primary_page == 3U) {
+                run_full_entry();
+                run_detail_cycle();
+                continue;
+            }
+            if (state.primary_page == 6U && state.inventory_exit_marker != 0) {
+                state.inventory_exit_marker = 0;
+                result.exit_reason = CommandOverviewExitReason::inventory;
+                finished = true;
+                continue;
+            }
+            if (input.active_class_code > 1 || state.primary_page != 5U) {
+                render_panel_pass();
+                ++result.partial_refreshes;
+            } else {
+                run_full_entry();
+                run_detail_cycle();
+            }
+            continue;
+        }
+
+        if ((events & 0x2000U) != 0U) {
+            if (callbacks.handle_mode_action_event) {
+                callbacks.handle_mode_action_event();
+            }
+            if (callbacks.reset_vdp_upload_state) {
+                callbacks.reset_vdp_upload_state();
+            }
+            state.primary_page = 6U;
+            state.secondary_page = 0U;
+            if (callbacks.advance_primary_page) {
+                callbacks.advance_primary_page(state, 0);
+            }
+            state.action_dialog_gate = -1;
+            if (callbacks.advance_secondary_page) {
+                callbacks.advance_secondary_page(state, 0);
+            }
+            render_panel_pass();
+            ++result.partial_refreshes;
+            continue;
+        }
+
+        if ((events & 0x8000U) != 0U) {
+            result.exit_reason = CommandOverviewExitReason::controller;
+            finished = true;
+        }
+    }
+
+    if (mode_action_required() && callbacks.handle_mode_action_event) {
+        callbacks.handle_mode_action_event();
+        result.mode_action_handled_on_exit = true;
+    }
+    state.action_marker = 0;
+    state.exit_marker = 0;
+    return result;
+}
+
 void write_menu_grid(const std::function<void()>& write_grid) {
     if (write_grid) {
         write_grid();
