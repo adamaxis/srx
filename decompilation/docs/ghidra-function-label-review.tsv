@@ -98,7 +98,7 @@ rom_entry	export_label	reviewed_name	family	confidence	behavior	evidence
 0x58316	convert_intro_routine_0x00058316	render_field_action_feedback	field	high	Renders field action result/quantity feedback and its grid	disassembly.s;fn_00058316.cpp
 0x586CA	convert_intro_routine_0x000586ca	render_field_action_detail	field	medium	Builds and renders the field action detail plan and costs	disassembly.s;fn_000586CA.cpp
 0x5878E	convert_intro_routine_0x0005878e	render_field_action_detail_text	field	high	Selects conditional field action detail text by action code	disassembly.s;fn_0005878E.cpp
-0x58D7E	convert_intro_routine_0x00058d7e	reset_field_action_cost_state	field	high	Resets field action cost and marker globals	disassembly.s;fn_00058D7E.cpp
+0x58D7E	convert_intro_routine_0x00058d7e	reset_field_action_cost_state	field	high	Clears the five loaded Matrix program selectors at FFFBD8..FFFBDC before publishing a selected program resource	disassembly.s;fn_00058D7E.cpp;matrix_program_purchase_conversion.hpp
 0x594E0	convert_save_routine_0x000594e0	restore_saved_field_state	save	medium	Restores saved field roster, templates, positions, and field state	disassembly.s;fn_000594E0.cpp
 0x5C8C6	convert_intro_routine_0x0005c8c6	upload_title_or_field_word_stream	graphics	high	Transfers a raw word stream to the title/field VDP destination	disassembly.s;fn_0005C8C6.cpp
 0x5D172	convert_intro_routine_0x0005d172	prepare_pre_title_audio_variant_a	pre_title	medium	Prepares mode entry and audio command variant A before the title sequence	disassembly.s;fn_0005D172.cpp

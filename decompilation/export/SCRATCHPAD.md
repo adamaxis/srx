@@ -201,6 +201,18 @@ replacement. For archetype/status values below 2 it also updates `+0x7F` and
 the tracked minimum meter entries. The ROM's grid/message/confirmation calls
 are explicit callbacks; no Genesis bitfield or address is used at runtime.
 
+The positive-result saved-selection-below-3 branch at `0x5751A` is now
+`install_selected_matrix_program_resource()`. It rejects quantities 9 and
+above, reads the selected menu-resource byte as the Matrix program index,
+checks the preview cost and the signed-word result from `0x575F8`, confirms
+the purchase, deducts funds, clears all five loaded-program selectors, and
+writes the requested quantity into that program's availability byte. The
+source `0x58D7E` helper is represented by
+`reset_field_action_cost_state(std::array<int8_t, 5>&)`, whose only state
+effect is the verified `FFFBD8..FFFBDC = 0xFF` reset. This is grouped with
+Matrix program conversion because the field menu is mutating the Matrix
+program availability model, not a generic resource counter.
+
 ## Field HUD row meter
 
 `0x1792E render_menu_hud_rows` calls `0x56506` once for each eligible row.
