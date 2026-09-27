@@ -65,6 +65,15 @@ FieldModeSelectionRenderPlan plan_field_mode_selection_render(
     return plan;
 }
 
+FieldModeSelectionSpritePlan plan_field_mode_selection_sprites(
+    const std::int8_t primary_cursor) {
+    FieldModeSelectionSpritePlan plan{};
+    plan.primary_cursor = primary_cursor;
+    plan.source_record_offset = static_cast<std::uint16_t>(
+        static_cast<std::uint8_t>(primary_cursor) * 0x20U);
+    return plan;
+}
+
 void refresh_field_mode_panel_grid(
     const FieldModeNavigationState& state,
     const FieldModeNavigationCallbacks& callbacks) {
@@ -102,12 +111,18 @@ void refresh_field_mode_selection_sprites(
     FieldModeNavigationState& state,
     const FieldModeNavigationCallbacks& callbacks) {
     // 0x58D32: set the sprite-list and display dirty markers, build the
-    // records, then call the remaining sprite-selection service.
+    // records, then call 0x57C7A to redraw the action selection.
+    const auto plan = plan_field_mode_selection_sprites(state.primary_cursor);
     state.sprite_records_dirty = true;
     state.sprite_list_dirty = true;
     state.display_dirty_flags = static_cast<std::uint8_t>(
         state.display_dirty_flags | 0x02U);
-    call_if_present(callbacks.build_selection_sprites);
+    if (callbacks.build_selection_sprites_detailed) {
+        callbacks.build_selection_sprites_detailed(plan);
+    } else {
+        call_if_present(callbacks.build_selection_sprites);
+    }
+    call_if_present(callbacks.render_action_selection);
 }
 
 void advance_field_mode_primary_cursor(

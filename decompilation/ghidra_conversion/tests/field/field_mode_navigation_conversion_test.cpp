@@ -32,6 +32,7 @@ int main() {
     const auto negative_selection =
         plan_field_mode_selection_render(-1, 4);
     const auto zero_selection = plan_field_mode_selection_render(0, 3);
+    const auto sprite_plan = plan_field_mode_selection_sprites(-1);
     if (!expect(negative_grid.variant ==
                     FieldModePanelGridVariant::negative_result &&
                 negative_grid.writes_grid &&
@@ -54,8 +55,30 @@ int main() {
                     FieldModeSelectionGridFamily::zero_result &&
                 zero_selection.grid_record_offset == 0x18U &&
                 zero_selection.text_record_offset == 0x7EU &&
-                zero_selection.screen_column_offset == 0x12U)) {
+                zero_selection.screen_column_offset == 0x12U &&
+                sprite_plan.source_record_offset == 0x1FE0U &&
+                sprite_plan.sprite_build_counter == 2U &&
+                sprite_plan.sprite_palette_attribute == 0x4000U &&
+                sprite_plan.clears_trailing_marker &&
+                sprite_plan.renders_action_selection_after_build)) {
         return 10;
+    }
+
+    FieldModeNavigationState sprite_state{};
+    sprite_state.primary_cursor = 2;
+    std::vector<std::string> sprite_order;
+    FieldModeNavigationCallbacks sprite_callbacks{};
+    sprite_callbacks.build_selection_sprites =
+        [&] { sprite_order.emplace_back("sprites"); };
+    sprite_callbacks.render_action_selection =
+        [&] { sprite_order.emplace_back("action_selection"); };
+    refresh_field_mode_selection_sprites(sprite_state, sprite_callbacks);
+    if (!expect(sprite_order ==
+                    std::vector<std::string>{"sprites", "action_selection"} &&
+                sprite_state.sprite_records_dirty &&
+                sprite_state.sprite_list_dirty &&
+                sprite_state.display_dirty_flags == 2U)) {
+        return 11;
     }
     advance_field_mode_primary_cursor(normal, 1, callbacks);
     if (!expect(normal.primary_cursor == 1 && normal.panel_cursor == 0 &&

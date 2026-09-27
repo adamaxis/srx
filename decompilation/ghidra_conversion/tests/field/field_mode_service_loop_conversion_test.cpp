@@ -95,8 +95,13 @@ int main() {
     inputs = {0x0040U, 0x0040U, 0x0080U};
     input_index = 0;
     int action_attempts = 0;
+    int action_selection_renders = 0;
     const auto alternate_callbacks = [&]() {
         auto copy = callbacks;
+        copy.render_action_selection = [&](FieldModeServiceState&) {
+            ++action_selection_renders;
+            order.emplace_back("action_selection");
+        };
         copy.run_selected_action = [&](FieldModeServiceState& state) {
             ++action_attempts;
             state.service_result = action_attempts == 1 ? -1 : 0;
@@ -106,7 +111,7 @@ int main() {
     if (!expect(run_field_mode_service(alternate, alternate_callbacks) ==
                     FieldModeServiceLoopAction::returned_to_field &&
                 alternate.navigation.panel_cursor == 1 && action_attempts == 2 &&
-                alternate.returned_to_field)) {
+                action_selection_renders == 2 && alternate.returned_to_field)) {
         return 3;
     }
 

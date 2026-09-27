@@ -47,6 +47,15 @@ struct FieldModeSelectionRenderPlan {
     std::uint16_t screen_column_offset = 0;
 };
 
+struct FieldModeSelectionSpritePlan {
+    std::int8_t primary_cursor = 0;
+    std::uint16_t source_record_offset = 0;
+    std::uint16_t sprite_build_counter = 2;
+    std::uint16_t sprite_palette_attribute = 0x4000U;
+    bool clears_trailing_marker = true;
+    bool renders_action_selection_after_build = true;
+};
+
 struct FieldModeNavigationCallbacks {
     // 0x57C46 prepares the current selection's source data. Its actual table
     // is still a separate extraction boundary.
@@ -58,6 +67,11 @@ struct FieldModeNavigationCallbacks {
     // source sprite-selection service.
     std::function<void()> build_selection_sprites;
     std::function<void()> reset_upload_state;
+    std::function<void(const FieldModeSelectionSpritePlan&)>
+        build_selection_sprites_detailed;
+    // 0x58D32 calls 0x57C7A after the sprite records and dirty markers are
+    // published. This is separate from the later 0x587DA presentation pass.
+    std::function<void()> render_action_selection;
 };
 
 // ROM 0x58B5E: select the result-specific panel grid asset, destination, and
@@ -69,6 +83,10 @@ FieldModePanelGridPlan plan_field_mode_panel_grid(std::int8_t mode_result);
 // words). Result one suppresses both writes.
 FieldModeSelectionRenderPlan plan_field_mode_selection_render(
     std::int8_t mode_result,
+    std::int8_t primary_cursor);
+
+// ROM 0x58D32: derive the sprite-record source row and post-build actions.
+FieldModeSelectionSpritePlan plan_field_mode_selection_sprites(
     std::int8_t primary_cursor);
 
 // 0x58B5E: refresh only the grid portion used by the alternate panel.

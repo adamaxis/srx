@@ -55,6 +55,13 @@ FieldModeServiceLoopAction run_field_mode_service(
     const FieldModeServiceCallbacks& callbacks) {
     state.returned_to_field = false;
 
+    auto navigation_callbacks = callbacks.navigation_callbacks;
+    if (callbacks.render_action_selection) {
+        navigation_callbacks.render_action_selection = [&] {
+            callbacks.render_action_selection(state);
+        };
+    }
+
     call_if_present(callbacks.set_display_control, 0x9100U);
     call_if_present(callbacks.transfer_menu_asset_batch);
     call_if_present(callbacks.upload_resource_pair);
@@ -98,12 +105,12 @@ FieldModeServiceLoopAction run_field_mode_service(
         if (state.navigation.mode_result == 1) {
             state.navigation.panel_cursor = 1;
             refresh_field_mode_selection_sprites(state.navigation,
-                                                 callbacks.navigation_callbacks);
+                                                 navigation_callbacks);
         } else {
             refresh_field_mode_panel_grid(state.navigation,
-                                          callbacks.navigation_callbacks);
+                                          navigation_callbacks);
             render_field_mode_selection(state.navigation,
-                                        callbacks.navigation_callbacks);
+                                        navigation_callbacks);
         }
         render_current_selection(state, callbacks);
 
@@ -117,7 +124,7 @@ FieldModeServiceLoopAction run_field_mode_service(
             if ((input & bit(FieldModeServiceInput::primary_decrement)) != 0U) {
                 call_if_present(callbacks.service_audio);
                 advance_field_mode_primary_cursor(
-                    state.navigation, -1, callbacks.navigation_callbacks);
+                    state.navigation, -1, navigation_callbacks);
                 // ROM 0x56C54 gives this direction branch its own return to
                 // the vblank loop. Do not consume lower-priority bits from
                 // the same sampled controller word.
@@ -127,21 +134,21 @@ FieldModeServiceLoopAction run_field_mode_service(
                 call_if_present(callbacks.service_audio);
                 if (state.navigation.mode_result != 1) {
                     advance_field_mode_panel_cursor(
-                        state.navigation, -1, callbacks.navigation_callbacks);
+                        state.navigation, -1, navigation_callbacks);
                 }
                 continue;
             }
             if ((input & bit(FieldModeServiceInput::primary_increment)) != 0U) {
                 call_if_present(callbacks.service_audio);
                 advance_field_mode_primary_cursor(
-                    state.navigation, 1, callbacks.navigation_callbacks);
+                    state.navigation, 1, navigation_callbacks);
                 continue;
             }
             if ((input & bit(FieldModeServiceInput::panel_increment)) != 0U) {
                 call_if_present(callbacks.service_audio);
                 if (state.navigation.mode_result != 1) {
                     advance_field_mode_panel_cursor(
-                        state.navigation, 1, callbacks.navigation_callbacks);
+                        state.navigation, 1, navigation_callbacks);
                 }
                 continue;
             }

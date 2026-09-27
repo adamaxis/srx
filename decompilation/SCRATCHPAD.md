@@ -1206,9 +1206,13 @@ normal and alternate panel redraws preserve their separate grid/text passes;
 the primary cursor uses the source result-dependent bounds `0..3`, `0..5`, or
 `0..7`; the panel cursor clamps to `0..1` and resets the primary cursor; and
 the alternate path publishes the source sprite-list/display dirty markers.
-The resource-table selection and sprite-service internals remain callbacks,
-but the cursor mutations and presentation order are no longer generic intro
-labels or raw global writes.
+The `0x58D32` sprite plan now records the primary-cursor `* 0x20` source row,
+the three-record build counter, and the `0x4000` sprite attribute; after the
+build it explicitly invokes the `0x57C7A` action-selection boundary. That
+post-build action redraw is separate from the later `0x587DA` presentation
+pass, matching the ROM call order. The remaining sprite-service internals
+remain callbacks, but the cursor mutations and presentation order are no
+longer generic intro labels or raw global writes.
 
 The adjacent field-mode presentation dispatcher at `0x587DA` is now also
 source-shaped at the behavior level. It saves `FFF0D0` into `FFF0B8`, keeps

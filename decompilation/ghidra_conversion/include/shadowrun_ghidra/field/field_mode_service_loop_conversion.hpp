@@ -83,6 +83,10 @@ struct FieldModeServiceCallbacks {
     // field_action_selection_dispatch_conversion. The selected leaf still
     // owns its own typed state and remains a callback boundary here.
     std::function<void(FieldModeServiceState&)> run_selected_action;
+
+    // 0x58D32's post-build call to 0x57C7A. This is distinct from the
+    // 0x587DA presentation callback above.
+    std::function<void(FieldModeServiceState&)> render_action_selection;
 };
 
 enum class FieldModeServiceLoopAction {

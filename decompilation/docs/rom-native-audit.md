@@ -271,6 +271,14 @@ typed result-specific plans for their panel assets, write counts, grid/text
 families, and cursor strides; the legacy callbacks remain only as host
 presentation boundaries.
 
+The source call order around `0x58D32` is explicit as well: it derives the
+primary-cursor `* 0x20` sprite-record row, builds the three-record selection
+set with the `0x4000` sprite attribute, publishes the sprite/display dirty
+markers, and then calls `0x57C7A` to redraw the field action selection. That
+action-selection callback is distinct from `0x587DA`, which the outer service
+loop invokes afterward; alternate-panel cursor movement now preserves both
+boundaries instead of stopping after the sprite build.
+
 The generated Ghidra C remains an evidence snapshot and still omits meaningful
 logic for some of these entries, including `0x3602` and `0x55828`; the typed
 conversion is accepted only where the ROM instruction trace and focused test
