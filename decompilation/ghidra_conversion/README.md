@@ -66,6 +66,29 @@ are explicit conversion boundaries; a `title_ready` result means the parent
 control flow and asset requirements were exercised, not that the native port
 is playable or that those child systems have been source-verified.
 
+## Separate Qt conversion frontend
+
+The runnable Qt host for the converted code is a separate target from both
+`shadowrun_qt` and `shadowrun_native`. Its source is under `qt_runtime/`, its
+build directories are `build-ghidra-conversion-qt-debug/` and
+`build-ghidra-conversion-qt-release/`, and its only project runtime dependency
+is `shadowrun_ghidra_conversion_runtime` plus Qt Widgets. It does not link the
+native-port library or the emulator.
+
+Build the separate Debug application from this directory:
+
+```text
+C:/msys64/ucrt64/bin/cmake.exe --preset ghidra-conversion-qt-debug
+C:/msys64/ucrt64/bin/cmake.exe --build --preset ghidra-conversion-qt-debug
+build-ghidra-conversion-qt-debug/shadowrun_ghidra_conversion_qt.exe --assets ../assets
+```
+
+The window starts from the converted boot/title integration, presents the
+direct title assets, and routes startup-menu input through the converted New
+Game/Load Game/Joshua menu contracts. The Qt callbacks are presentation
+boundaries; they do not replace unresolved source behavior with a native-port
+implementation. This target is deliberately not registered as a CTest test.
+
 When a callback cannot yet be grounded in the canonical ROM/Ghidra export, it
 must remain an explicit reported boundary. Treat an apparently missing field,
 resource, or behavior as evidence of an incomplete conversion sweep and

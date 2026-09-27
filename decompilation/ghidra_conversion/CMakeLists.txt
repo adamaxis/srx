@@ -5,6 +5,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+option(SHADOWRUN_GHIDRA_QT_FRONTEND
+       "Build the separate Qt frontend for the Ghidra conversion project" OFF)
+
 enable_testing()
 
 # This is an offline source-understanding library, not a game-runtime
@@ -76,3 +79,7 @@ foreach(test_source IN LISTS SHADOWRUN_CONVERSION_TEST_SOURCES)
     add_test(NAME "shadowrun_ghidra_${test_name}"
              COMMAND ${test_target})
 endforeach()
+
+if (SHADOWRUN_GHIDRA_QT_FRONTEND)
+    add_subdirectory(qt_runtime)
+endif()

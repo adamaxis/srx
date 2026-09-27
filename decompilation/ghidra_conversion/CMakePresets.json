@@ -27,6 +27,32 @@
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe"
       }
+    },
+    {
+      "name": "ghidra-conversion-qt-debug",
+      "displayName": "Ghidra Conversion Qt (Debug, MSYS2 UCRT64)",
+      "description": "Separate Qt build of the converted startup/runtime contracts.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-ghidra-conversion-qt-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe",
+        "SHADOWRUN_GHIDRA_QT_FRONTEND": "ON",
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.9.1/mingw_64"
+      }
+    },
+    {
+      "name": "ghidra-conversion-qt-release",
+      "displayName": "Ghidra Conversion Qt (Release, MSYS2 UCRT64)",
+      "description": "Separate release Qt build of the converted startup/runtime contracts.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-ghidra-conversion-qt-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe",
+        "SHADOWRUN_GHIDRA_QT_FRONTEND": "ON",
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.9.1/mingw_64"
+      }
     }
   ],
   "buildPresets": [
@@ -49,6 +75,22 @@
       "configurePreset": "ghidra-conversion-release",
       "targets": [
         "shadowrun_ghidra_conversion_runner"
+      ]
+    },
+    {
+      "name": "ghidra-conversion-qt-debug",
+      "displayName": "Build Ghidra Conversion Qt (Debug)",
+      "configurePreset": "ghidra-conversion-qt-debug",
+      "targets": [
+        "shadowrun_ghidra_conversion_qt"
+      ]
+    },
+    {
+      "name": "ghidra-conversion-qt-release",
+      "displayName": "Build Ghidra Conversion Qt (Release)",
+      "configurePreset": "ghidra-conversion-qt-release",
+      "targets": [
+        "shadowrun_ghidra_conversion_qt"
       ]
     },
     {
