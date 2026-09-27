@@ -1,10 +1,18 @@
 // Ghidra headless export
 // Entry: 0x0000ECCC
 // Name: resolve_entity_pair_collision_event
-// Decompile status: ok
+// Decompile status: reviewed against export/disassembly.s and the US ROM.
 // Calls recovered from direct call instructions:
 //   0x0001E2E0 begin_world_activity_if_idle
 //   0x0001E2EC begin_world_activity
+
+// Source behavior: a bit-4 special record paired with the other record's
+// entity bit 1 selects the idle-gated special activity actor and scene/mode
+// variant. Independently, bit-3 special records set their own +0xB0 bit 7
+// once when the other record carries entity bit 1, then begin ordinary
+// activity. The ordinary handler priority is world-effect active,
+// pending-world-effect, then the default collision handler. The native
+// conversion represents the source handler pointers with a typed enum.
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */

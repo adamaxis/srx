@@ -800,6 +800,26 @@ conversions, including their source corner order and wrapped unsigned
 comparisons. These routines use callbacks for decoded terrain/object records,
 not ROM addresses or emulated RAM.
 
+### Entity proximity and pair-collision audit
+
+The entity interaction pass now covers `0xEB92` and its `0xECCC` callee. The
+proximity scan skips an entity with +`0x10` bit 6 or the special player slot,
+then scans later active records while excluding their bit-6 records. A linked
+pair is recognized through either +`0xA2` or +`0xAC` relationship and gets the
+source +/-`0x100` window; an ordinary pair gets +/-`0x40`, with the same
+word-wrapped lower-inclusive/upper-exclusive comparisons. A hit sets both
++`0x11` bit 1, publishes opposing headings and exchanged +`0x38` values into
++`0x92`/+`0x94`, invokes the pair event, and applies the source `0x7000` PRNG
+mask adjustment.
+
+`0xECCC` is represented with typed entity flags and world-activity state. Bit
+4 special interactions select the idle-gated actor and the mode-six/table
+variant. Bit 3 interactions set the one-shot +`0xB0` bit 7 on the eligible
+record. Ordinary activity copies the source transfer value and chooses the
+world-effect, pending-world-effect, or default collision handler in source
+priority order. The conversion keeps those handlers as enums and callbacks;
+it does not carry the original activity-function pointers into the host.
+
 ### Random grid selection audit
 
 The direct ROM pass over `0xE660` replaced a generic three-callback placeholder

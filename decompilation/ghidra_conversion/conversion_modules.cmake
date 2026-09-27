@@ -119,6 +119,7 @@ file(GLOB SHADOWRUN_MODULE_ENTITY_STATE_PROJECTION CONFIGURE_DEPENDS
 )
 file(GLOB SHADOWRUN_MODULE_ENTITY_MOVEMENT_COLLISION CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/entities/collision_*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/entities/entity_proximity_collision_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/entities/entity_route_primitives_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/entities/movement_*.cpp"
 )

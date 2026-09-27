@@ -1,11 +1,19 @@
 // Ghidra headless export
 // Entry: 0x0000EB92
 // Name: resolve_entity_proximity_interactions
-// Decompile status: ok
+// Decompile status: reviewed against export/disassembly.s and the US ROM.
 // Calls recovered from direct call instructions:
 //   0x00000D44 advance_source_prng
 //   0x0000ECCC resolve_entity_pair_collision_event
 //   0x00015D3C measure_relative_heading_and_distance
+//
+// Source behavior: skip current records with +0x10 bit 6 and the special
+// player record, scan later slots, require candidate +0x10 bit 0 and clear
+// bit 6, and use +/-0x100 only when either source relationship points at the
+// other record; ordinary pairs use +/-0x40. In-range pairs set +0x11 bit 1,
+// measure relative heading, exchange +0x38 values into +0x94, call 0xECCC,
+// then use the 0x7000 PRNG mask to apply the second heading/value adjustment.
+// The native conversion uses stable indices and typed fields.
 
 
 void resolve_entity_proximity_interactions(void)

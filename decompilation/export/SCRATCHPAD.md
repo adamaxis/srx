@@ -1817,3 +1817,13 @@ words by four before bounds checks and sampling, preserves signed negative
 codes, sets the directional marker for bit `0x40`, and routes object versus
 directional codes through typed callbacks. `TerrainCollisionResult` carries
 the result and marker state without exposing source RAM or emulating the VDP.
+
+## Entity proximity and pair-collision audit
+
+`0xEB92` is now a typed stable-index scan: bit-6 exclusions, player-record
+skip, linked +/-`0x100` versus ordinary +/-`0x40` windows, collision-bit
+publication, heading/value exchange, `0xECCC` routing, and the masked PRNG
+adjustment are all explicit. `0xECCC` now exposes the bit-4 idle-gated special
+activity route, the scene/mode variant choice, the bit-3 one-shot activity
+flag, and the world-effect/pending-effect/default handler priority through
+typed state and callbacks rather than generic source-function pointers.
