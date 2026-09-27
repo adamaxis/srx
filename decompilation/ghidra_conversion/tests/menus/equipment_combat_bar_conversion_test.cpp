@@ -161,5 +161,63 @@ int main() {
         return 9;
     }
 
+    EquipmentCombatValuesInput combat_values{};
+    combat_values.current_force = 2U;
+    combat_values.action_cap = 5U;
+    combat_values.active_entity.item18_base = 12U;
+    combat_values.active_entity.posture = 2U;
+    std::vector<int> combat_value_events;
+    EquipmentCombatValuesCallbacks combat_value_callbacks{};
+    combat_value_callbacks.resolve_menu_metric =
+        [&](const std::uint16_t value) {
+            combat_value_events.push_back(1);
+            return std::optional<std::uint16_t>{
+                static_cast<std::uint16_t>(value + 3U)};
+        };
+    combat_value_callbacks.write_grid =
+        [&](const EquipmentCombatGrid grid, const std::uint16_t row) {
+            combat_value_events.push_back(
+                grid == EquipmentCombatGrid::primary
+                    ? static_cast<int>(row + 10U)
+                    : static_cast<int>(row + 20U));
+        };
+    const auto combat_values = refresh_equipment_combat_values(
+        combat_values, combat_value_callbacks);
+    if (!expect(combat_values.menu_metric_available &&
+                combat_values.primary_value == 10U &&
+                combat_values.secondary_value == 0U &&
+                combat_values.grid_requests.size() == 1U &&
+                combat_values.grid_requests[0].second == 9U &&
+                combat_value_events == std::vector<int>{1, 19})) {
+        return 10;
+    }
+
+    combat_values = {};
+    combat_values.alternate_path = true;
+    combat_values.attribute_77 = 4U;
+    combat_values.attribute_7c = 2U;
+    combat_values.ready_entities[0].flags = 1U;
+    combat_values.ready_entities[0].class_code = 0U;
+    combat_values.ready_entities[0].item18_base = 8U;
+    combat_values.ready_entities[1].flags = 1U;
+    combat_values.ready_entities[1].class_code = 1U;
+    combat_values.ready_entities[1].item18_base = 5U;
+    combat_value_events.clear();
+    int ready_refreshes = 0;
+    combat_value_callbacks.resolve_menu_metric = {};
+    combat_value_callbacks.refresh_ready_entity_animations =
+        [&] { ++ready_refreshes; };
+    const auto alternate_values = refresh_equipment_combat_values(
+        combat_values, combat_value_callbacks);
+    if (!expect(ready_refreshes == 1 &&
+                alternate_values.primary_value == 7U &&
+                alternate_values.secondary_value == 5U &&
+                alternate_values.grid_requests.size() == 2U &&
+                alternate_values.grid_requests[0].second == 6U &&
+                alternate_values.grid_requests[1].second == 4U &&
+                combat_value_events == std::vector<int>{16, 24})) {
+        return 11;
+    }
+
     return 0;
 }

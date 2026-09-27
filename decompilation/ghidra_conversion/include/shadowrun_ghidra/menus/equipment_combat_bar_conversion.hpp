@@ -4,7 +4,10 @@
 
 #include <array>
 #include <cstdint>
+#include <functional>
 #include <optional>
+#include <utility>
+#include <vector>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -88,6 +91,40 @@ struct EquipmentActionMetricResult {
     std::uint16_t effect_grid_row = 0;
 };
 
+enum class EquipmentCombatGrid {
+    primary,
+    secondary,
+};
+
+struct EquipmentCombatValuesInput {
+    // D0=0 selects the action-metric path; any nonzero source mode selects
+    // the ready-party/attribute path.
+    bool alternate_path = false;
+    std::uint16_t current_force = 0;
+    std::uint8_t action_cap = 0;  // active record +0x7F
+    EntityActionRecord active_entity{};
+    std::array<EntityActionRecord, 3> ready_entities{};
+    std::uint8_t attribute_77 = 0;
+    std::uint8_t attribute_7c = 0;
+};
+
+struct EquipmentCombatValuesCallbacks {
+    // The source 0x1047E service has a presentation side effect in addition
+    // to the typed three-record bonus calculation.
+    std::function<void()> refresh_ready_entity_animations;
+    // This is the already-converted 0x104C8/0x104F6 menu metric boundary.
+    std::function<std::optional<std::uint16_t>(std::uint16_t)>
+        resolve_menu_metric;
+    std::function<void(EquipmentCombatGrid, std::uint16_t)> write_grid;
+};
+
+struct EquipmentCombatValuesResult {
+    bool menu_metric_available = false;
+    std::uint16_t primary_value = 0;
+    std::uint16_t secondary_value = 0;
+    std::vector<std::pair<EquipmentCombatGrid, std::uint16_t>> grid_requests;
+};
+
 // ROM 0x55ED6: byte-wrapped command overview base from attributes +0x78,
 // +0x7B, +0x7C and the first item-code-0x28 phase.
 std::uint16_t calculate_equipment_command_average(
@@ -138,5 +175,11 @@ EquipmentCombatBarResult compute_equipment_combat_bars(
 EquipmentActionMetricResult refresh_equipment_action_metric(
     const EquipmentActionMetricInput& input,
     const EquipmentActionMetricCallbacks& callbacks = {});
+
+// ROM 0x1055E: choose the normal action-metric branch or the alternate
+// ready-party branch, then publish the source primary/secondary grid rows.
+EquipmentCombatValuesResult refresh_equipment_combat_values(
+    const EquipmentCombatValuesInput& input,
+    const EquipmentCombatValuesCallbacks& callbacks = {});
 
 } // namespace shadowrun::ghidra_conversion

@@ -6,6 +6,12 @@
 namespace shadowrun::ghidra_conversion {
 namespace {
 
+void call_once(const std::function<void()>& callback) {
+    if (callback) {
+        callback();
+    }
+}
+
 std::uint8_t inventory_phase_for_code(
     const EquipmentCombatInput& input,
     const std::uint8_t item_code) {
@@ -295,6 +301,59 @@ EquipmentActionMetricResult refresh_equipment_action_metric(
     if (callbacks.write_effect_grid) {
         callbacks.write_effect_grid(result.effect_grid_row);
         result.effect_grid_written = true;
+    }
+    return result;
+}
+
+EquipmentCombatValuesResult refresh_equipment_combat_values(
+    const EquipmentCombatValuesInput& input,
+    const EquipmentCombatValuesCallbacks& callbacks) {
+    EquipmentCombatValuesResult result{};
+    if (!input.alternate_path) {
+        // ROM 0x1055E/D0=0: D7=0 selects the posture-reduction component.
+        const auto item18 = calculate_item18_skill_value(input.active_entity);
+        auto value = select_posture_adjusted_value(
+            item18, input.active_entity.posture, false);
+        value = std::min<std::uint16_t>(value, input.action_cap);
+        value = static_cast<std::uint16_t>(value + input.current_force);
+        if (callbacks.resolve_menu_metric) {
+            const auto resolved = callbacks.resolve_menu_metric(value);
+            if (resolved.has_value()) {
+                value = *resolved;
+                result.menu_metric_available = true;
+            }
+        }
+        result.primary_value = value;
+    } else {
+        // ROM 0x1055E/D0!=0 enters 0x1047E before adding +0x77/+0x7C.
+        call_once(callbacks.refresh_ready_entity_animations);
+        const auto ready_bonus = calculate_ready_entity_action_bonus(
+            input.ready_entities);
+        result.primary_value = static_cast<std::uint8_t>(
+            ready_bonus + input.attribute_77);
+        result.secondary_value = static_cast<std::uint8_t>(
+            ready_bonus + input.attribute_7c);
+    }
+
+    const auto primary_row = result.primary_value == 0U
+                                 ? 0U
+                                 : static_cast<std::uint16_t>(
+                                       result.primary_value - 1U);
+    result.grid_requests.emplace_back(EquipmentCombatGrid::primary,
+                                      primary_row);
+    if (callbacks.write_grid) {
+        callbacks.write_grid(EquipmentCombatGrid::primary, primary_row);
+    }
+
+    if (result.secondary_value != 0U) {
+        const auto secondary_row = static_cast<std::uint16_t>(
+            result.secondary_value - 1U);
+        result.grid_requests.emplace_back(EquipmentCombatGrid::secondary,
+                                          secondary_row);
+        if (callbacks.write_grid) {
+            callbacks.write_grid(EquipmentCombatGrid::secondary,
+                                 secondary_row);
+        }
     }
     return result;
 }
