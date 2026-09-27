@@ -72,6 +72,7 @@ file(GLOB SHADOWRUN_MODULE_FIELD_NAVIGATION CONFIGURE_DEPENDS
 )
 file(GLOB SHADOWRUN_MODULE_FIELD_RESOURCE_FLOW CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_quantity_purchase_conversion.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_resource_record_purchase_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_resource_purchase_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_resource_sequence_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/mode_entry_resource_conversion.cpp"
