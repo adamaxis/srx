@@ -563,6 +563,18 @@ there are no four duplicated host routines or source-address lookups.
 
 ## Field mode service conversion: 0x56AC0 / 0x566EC
 
+The per-frame display service at `0x5672C` is now separate from the outer
+`0x56AC0` input loop. It first honors the `FFE18A` suppression flag and the
+status-`0x14` early exit, then selects display mode 1, display mode 2, or the
+status-specific mode-0 cadence. The typed conversion preserves the source
+counter resets and wraps: status 0 uses six one-word frames; statuses 6..9
+use three three-word frames; statuses 4 and 5 use their own three-frame
+tables; statuses 44..49 use four overlapping four-word windows; mode 1 uses
+four overlapping four-word windows; and mode 2 advances an eight-position
+direction/index value only when the low nibble of `FFDF88` is `0xF`. The
+result is a named presentation-write record, not a VDP emulator or a random
+address write.
+
 `0x56AC0` is the outer field-mode service controller, not an intro routine.
 Its source-derived flow is now represented by
 `ghidra_conversion::run_field_mode_service()` in the separate conversion
