@@ -97,7 +97,7 @@ touch fields with confirmed consumers; the remaining bytes stay opaque.
 | `0x044BC` `initialize_entity_record_from_template` | copies the template and initializes posture, ammunition, equipment, attributes, skills, and archetype/status fields |
 | `0x036FC` `advance_entity_asset_meter` | updates weapon ammunition or inventory phase bytes and clears exhausted equipment |
 | `0x038AC` `service_entity_ammo` | services the equipped weapon's ammunition/clip state |
-| `0x0D82A` `render_attributes_and_skills` | reads `+0x77..+0x8C`, race `+0x9A`, and class/archetype `+0x9B` for the command display |
+| `0x0D82A` `render_attributes_and_skills` | clears the error marker, submits the Attributes/Skills grid, evaluates the selected attribute/skill upgrade (attribute direct cost; skill 2x or ceil-1.5x branches), then renders the selected label, overlay, and Karma `+0x8D` |
 | `0x0D5DC` `render_attribute_skill_detail_panel` | renders the selected Attributes/Skills detail cell, Essence/Magic special values, and first-match cyberware modifier rows |
 | `0x107CE` `adjust_runner_posture` | clamps the five-state posture byte at `+0x4D` |
 | `0x11740` `run_inventory_actions` | dispatches inventory cell bytes, phase bytes, equipped slot/item, armor, clips, and action branches |

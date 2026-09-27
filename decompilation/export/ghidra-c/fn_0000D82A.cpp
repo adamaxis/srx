@@ -8,6 +8,15 @@
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x0000DA4A render_title_text_wrapper
 //   0x00012C5A write_menu_repeated_grid_with_metadata
+// Behavior annotation from the ROM disassembly:
+//   The entry clears FFF0B3 and submits the fixed Attributes/Skills grid,
+//   then selects column FFF0D0 and row FFF0D1. Attribute cells use record
+//   +0x77..+0x7E and the species-limit table at 0xC22A6; skill cells use
+//   +0x80..+0x85 / +0x87..+0x8C, reject the first skill for archetypes >= 2,
+//   and reject next values >= 0x0D. Valid attributes store next_value
+//   directly as FFF0B8; skills use either 2x or ceil(1.5x) cost branches.
+//   D9DE emits the invalid-upgrade message. The common DA00 tail renders the
+//   selected label, the three-row overlay, and Karma from record +0x8D.
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */

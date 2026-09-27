@@ -82,6 +82,87 @@ AttributeSkillGrid read_attributes_and_skills_grid(
     return build_attributes_and_skills_grid(state);
 }
 
+AttributeSkillRenderResult render_attributes_and_skills(
+    const RunnerRecordFields& record, const AttributeSkillCursor cursor,
+    const bool selection_data_available,
+    const AttributeSkillRenderCallbacks& callbacks) {
+    AttributeSkillRenderResult result{};
+    result.karma_available = record.auxiliary[2U];
+
+    if (callbacks.clear_upgrade_error_marker) {
+        callbacks.clear_upgrade_error_marker();
+    }
+    if (callbacks.write_attributes_skills_grid) {
+        callbacks.write_attributes_skills_grid();
+    }
+
+    const auto grid = read_attributes_and_skills_grid(record, true);
+    const auto clamped_column = std::min<std::size_t>(
+        cursor.column, kAttributesSkillsColumnCount - 1U);
+    const auto clamped_row = std::min<std::size_t>(
+        cursor.row, kAttributesSkillsRowCount - 1U);
+    result.selected_cell = grid[clamped_column][clamped_row];
+
+    if (!selection_data_available) {
+        result.outcome =
+            AttributeSkillRenderOutcome::selection_data_unavailable;
+    } else {
+        const bool attribute_outside_upgrade_table =
+            result.selected_cell.section == AttributeSkillSection::attribute &&
+            result.selected_cell.value_index >= 6U;
+        const bool restricted_first_skill =
+            result.selected_cell.section == AttributeSkillSection::skill &&
+            result.selected_cell.value_index == 0U &&
+            record.archetype_index >= 2U;
+
+        const bool source_suppresses_error_message =
+            attribute_outside_upgrade_table || restricted_first_skill;
+        if (source_suppresses_error_message) {
+            result.outcome =
+                AttributeSkillRenderOutcome::invalid_upgrade_selection;
+        } else {
+            if (callbacks.render_attributes_skills_heading) {
+                callbacks.render_attributes_skills_heading();
+            }
+            result.upgrade = preview_attribute_skill_upgrade(record, cursor);
+            if (result.upgrade.status ==
+                AttributeSkillUpgradeStatus::available) {
+                result.outcome =
+                    AttributeSkillRenderOutcome::rendered_upgrade_preview;
+                if (callbacks.render_upgrade_cost) {
+                    callbacks.render_upgrade_cost(
+                        static_cast<std::uint8_t>(result.upgrade.karma_cost));
+                }
+                if (callbacks.render_next_value) {
+                    callbacks.render_next_value(result.upgrade.next_value);
+                }
+            } else {
+                result.outcome =
+                    AttributeSkillRenderOutcome::invalid_upgrade_selection;
+            }
+        }
+
+        if (!source_suppresses_error_message &&
+            result.outcome ==
+            AttributeSkillRenderOutcome::invalid_upgrade_selection) {
+            if (callbacks.render_invalid_upgrade_message) {
+                callbacks.render_invalid_upgrade_message();
+            }
+        }
+    }
+
+    if (callbacks.render_selected_label) {
+        callbacks.render_selected_label(result.selected_cell);
+    }
+    if (callbacks.render_selection_overlay_grid) {
+        callbacks.render_selection_overlay_grid();
+    }
+    if (callbacks.render_karma_total) {
+        callbacks.render_karma_total(result.karma_available);
+    }
+    return result;
+}
+
 const AttributeSkillCell& selected_attribute_skill_cell(
     const AttributeSkillGrid& grid, const AttributeSkillCursor cursor) {
     const auto column = std::min<std::size_t>(
@@ -138,7 +219,9 @@ AttributeSkillUpgradePreview preview_attribute_skill_upgrade(
             return preview;
         }
         preview.next_value = static_cast<std::uint8_t>(next);
-        preview.karma_cost = static_cast<std::uint16_t>(next * 2U);
+        // D82A leaves D1 as next for attributes; D3EA subtracts FFF0B8
+        // directly from +0x8D. The doubled branch belongs to the skill path.
+        preview.karma_cost = static_cast<std::uint16_t>(next);
         preview.status = AttributeSkillUpgradeStatus::available;
         return preview;
     }

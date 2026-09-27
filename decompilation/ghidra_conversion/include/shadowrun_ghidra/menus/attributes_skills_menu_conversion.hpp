@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cstdint>
+#include <functional>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -90,6 +91,53 @@ AttributeSkillGrid build_attributes_and_skills_grid(
 AttributeSkillGrid read_attributes_and_skills_grid(
     const RunnerRecordFields& record, bool live_record_available = true);
 
+enum class AttributeSkillRenderOutcome {
+    rendered_upgrade_preview,
+    invalid_upgrade_selection,
+    selection_data_unavailable,
+};
+
+struct AttributeSkillRenderResult {
+    AttributeSkillRenderOutcome outcome =
+        AttributeSkillRenderOutcome::selection_data_unavailable;
+    AttributeSkillCell selected_cell{};
+    AttributeSkillUpgradePreview upgrade{};
+    std::uint8_t karma_available = 0;
+};
+
+struct AttributeSkillRenderCallbacks {
+    // ROM 0xD82A starts by clearing FFF0B3 and submitting the fixed
+    // Attributes/Skills background grid (D4=CA86, D1=4, D7=21).
+    std::function<void()> clear_upgrade_error_marker;
+    std::function<void()> write_attributes_skills_grid;
+
+    // ROM 0xDA4A is reached only after the selection-specific source gate;
+    // the callback names the static Attributes/Skills heading it renders.
+    std::function<void()> render_attributes_skills_heading;
+    std::function<void(const AttributeSkillCell&)> render_selected_label;
+
+    // D9DE renders the invalid-upgrade message. On the valid path D9C2 emits
+    // the Karma cost field before D9D4 emits the next value field.
+    std::function<void()> render_invalid_upgrade_message;
+    std::function<void(std::uint8_t)> render_upgrade_cost;
+    std::function<void(std::uint8_t)> render_next_value;
+
+    // The common DA00 tail renders the selected-label pointer, the three-row
+    // overlay grid, and the active record's +0x8D Karma value in that order.
+    std::function<void()> render_selection_overlay_grid;
+    std::function<void(std::uint8_t)> render_karma_total;
+};
+
+// ROM 0x0D82A: rebuild the Attributes/Skills presentation, evaluate the
+// selected upgrade branch, and execute the common selected-label/overlay/Karma
+// tail. This is a typed presentation choreography; it does not reproduce the
+// source's VDP destinations or RAM marker bytes.
+AttributeSkillRenderResult render_attributes_and_skills(
+    const RunnerRecordFields& record,
+    AttributeSkillCursor cursor,
+    bool selection_data_available,
+    const AttributeSkillRenderCallbacks& callbacks = {});
+
 const AttributeSkillCell& selected_attribute_skill_cell(
     const AttributeSkillGrid& grid, AttributeSkillCursor cursor);
 
@@ -100,8 +148,9 @@ AttributeSkillCursor move_attribute_skill_cursor(
     AttributeSkillCursor cursor, bool left, bool right, bool up, bool down);
 
 // ROM 0x0D82A computes the next value/cost shown beside the selected cell.
-// Attribute limits are the five six-byte species rows at 0xC22A6. The
-// available Karma byte is the source record's +0x8D auxiliary byte.
+// Attribute limits are the five six-byte species rows at 0xC22A6. Attribute
+// cost is the next attribute value; skill costs use the source's doubled or
+// left-column 1.5x branches. The available Karma byte is +0x8D.
 AttributeSkillUpgradePreview preview_attribute_skill_upgrade(
     const RunnerRecordFields& record, AttributeSkillCursor cursor);
 

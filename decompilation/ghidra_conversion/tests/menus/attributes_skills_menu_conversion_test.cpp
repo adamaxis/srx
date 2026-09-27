@@ -89,12 +89,12 @@ int main() {
     if (!expect(attribute_preview.status ==
                     AttributeSkillUpgradeStatus::available &&
                 attribute_preview.next_value == 4U &&
-                attribute_preview.karma_cost == 8U &&
+                attribute_preview.karma_cost == 4U &&
                 apply_attribute_skill_upgrade(upgrade, {0U, 0U}, false) ==
                     AttributeSkillUpgradeResult::confirmation_required &&
                 apply_attribute_skill_upgrade(upgrade, {0U, 0U}, true) ==
                     AttributeSkillUpgradeResult::upgraded &&
-                upgrade.attributes[0] == 4U && upgrade.auxiliary[2] == 2U)) {
+                upgrade.attributes[0] == 4U && upgrade.auxiliary[2] == 6U)) {
         return 9;
     }
 
@@ -126,6 +126,67 @@ int main() {
     if (!expect(preview_attribute_skill_upgrade(skill_upgrade, {0U, 4U}).status ==
                 AttributeSkillUpgradeStatus::class_restricted)) {
         return 12;
+    }
+
+    RunnerRecordFields render_record{};
+    render_record.species_index = 0U;
+    render_record.attributes[0] = 3U;
+    render_record.auxiliary[2] = 10U;
+    std::vector<int> render_events;
+    AttributeSkillRenderCallbacks render_callbacks{};
+    render_callbacks.clear_upgrade_error_marker =
+        [&] { render_events.push_back(1); };
+    render_callbacks.write_attributes_skills_grid =
+        [&] { render_events.push_back(2); };
+    render_callbacks.render_attributes_skills_heading =
+        [&] { render_events.push_back(3); };
+    render_callbacks.render_upgrade_cost =
+        [&](const std::uint8_t cost) {
+            render_events.push_back(10 + cost);
+        };
+    render_callbacks.render_next_value =
+        [&](const std::uint8_t value) {
+            render_events.push_back(20 + value);
+        };
+    render_callbacks.render_invalid_upgrade_message =
+        [&] { render_events.push_back(4); };
+    render_callbacks.render_selected_label =
+        [&](const AttributeSkillCell& cell) {
+            render_events.push_back(30 + cell.label_index);
+        };
+    render_callbacks.render_selection_overlay_grid =
+        [&] { render_events.push_back(5); };
+    render_callbacks.render_karma_total =
+        [&](const std::uint8_t karma) {
+            render_events.push_back(40 + karma);
+        };
+    const auto rendered = render_attributes_and_skills(
+        render_record, {0U, 0U}, true, render_callbacks);
+    if (!expect(rendered.outcome ==
+                    AttributeSkillRenderOutcome::rendered_upgrade_preview &&
+                rendered.upgrade.karma_cost == 4U &&
+                render_events == std::vector<int>{1, 2, 3, 14, 24, 30, 5,
+                                                  50})) {
+        return 13;
+    }
+
+    render_record.attributes[0] = 6U;
+    render_events.clear();
+    const auto at_limit = render_attributes_and_skills(
+        render_record, {0U, 0U}, true, render_callbacks);
+    if (!expect(at_limit.outcome ==
+                    AttributeSkillRenderOutcome::invalid_upgrade_selection &&
+                render_events == std::vector<int>{1, 2, 3, 4, 30, 5, 50})) {
+        return 14;
+    }
+
+    render_events.clear();
+    const auto unavailable = render_attributes_and_skills(
+        render_record, {0U, 0U}, false, render_callbacks);
+    if (!expect(unavailable.outcome ==
+                    AttributeSkillRenderOutcome::selection_data_unavailable &&
+                render_events == std::vector<int>{1, 2, 30, 5, 50})) {
+        return 15;
     }
 
     return 0;

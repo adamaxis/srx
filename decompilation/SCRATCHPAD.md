@@ -1736,7 +1736,7 @@ no-live-record gate remain explicit cell states instead of being guessed away.
 and right select columns `0`/`1`, while up and down clamp the row to `0..9`.
 The mutation branch is now source-backed as well. `+0x8D` is the available
 Karma byte; attribute limits are the five six-byte species rows at `0xC22A6`,
-attributes 0..5 cost twice their next value, and non-upgradeable attributes
+attributes 0..5 cost their next value directly, and non-upgradeable attributes
 6..7 are rejected. The skill branch preserves the source class restriction,
 the 2x skill-cost paths, and the left-column middle-skill 1.5x path that uses
 the linked second-skill value when the selected value is zero. A confirmed
