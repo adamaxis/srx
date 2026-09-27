@@ -95,5 +95,27 @@ int main() {
         return 7;
     }
 
+    FieldResourcePurchaseState wrapped_category_two{};
+    wrapped_category_two.category = 2U;
+    wrapped_category_two.requested_quantity = 26U;
+    wrapped_category_two.progress_category_2 = 4U;
+    wrapped_category_two.funds = 100U;
+    // 26 * 10 is compared as the source's low byte: 0x04 is already
+    // satisfied, so no purchase is charged.
+    if (apply_field_resource_purchase(
+            wrapped_category_two, costs, callbacks) !=
+            FieldResourcePurchaseResult::category_satisfied ||
+        wrapped_category_two.funds != 100U) {
+        return 8;
+    }
+
+    FieldResourcePurchaseState malformed_high_bit{};
+    malformed_high_bit.category = 0xFFU;
+    if (apply_field_resource_purchase(
+            malformed_high_bit, costs, callbacks) !=
+            FieldResourcePurchaseResult::invalid_category) {
+        return 9;
+    }
+
     return 0;
 }

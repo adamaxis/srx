@@ -51,6 +51,65 @@ select_field_action_progression_offer(
     return tables.saved_selection_two_or_more[cursor];
 }
 
+FieldActionProgressionQuoteOutcome prepare_field_action_progression_quote(
+    const FieldActionProgressionTables& tables,
+    FieldActionProgressionPurchaseState& state) {
+    const auto offer = select_field_action_progression_offer(
+        tables, state.menu_mode, state.saved_selection, state.primary_cursor);
+    if (!offer) {
+        return {FieldActionProgressionQuoteResult::invalid_offer_selection,
+                std::nullopt};
+    }
+    if (!offer_is_available(*offer)) {
+        return {FieldActionProgressionQuoteResult::offer_unavailable,
+                std::nullopt};
+    }
+
+    std::optional<std::size_t> existing_record_index;
+    for (std::size_t index = 0; index < state.ledger.records.size(); ++index) {
+        if (state.ledger.records[index].action_code == offer->action_code) {
+            existing_record_index = index;
+            break;
+        }
+    }
+
+    std::uint32_t base_cost = offer->base_cost;
+    std::uint16_t next_progression_level = 1U;
+    if (existing_record_index) {
+        const auto& existing = state.ledger.records[*existing_record_index];
+        if (existing.progression_level == 6U) {
+            return {FieldActionProgressionQuoteResult::progression_maxed,
+                    std::nullopt};
+        }
+
+        // The source compares the current level against +0x7F with a signed
+        // byte branch. Valid game levels are small, but keeping the signed
+        // comparison here preserves the source's limit behavior.
+        if (static_cast<std::int8_t>(existing.progression_level) >=
+            state.runner_progression_limit) {
+            return {FieldActionProgressionQuoteResult::progression_limit,
+                    std::nullopt};
+        }
+
+        next_progression_level = static_cast<std::uint16_t>(
+            existing.progression_level) + 1U;
+        base_cost *= next_progression_level;
+    }
+
+    auto cost_context = state.cost_context;
+    // 0x57A6E reads FFF0B6 directly for the mode-specific discount branch.
+    cost_context.mode = state.menu_mode;
+    state.selected_action_code = offer->action_code;
+    state.pending_cost = apply_field_action_cost_discounts(
+        base_cost, cost_context);
+
+    return {
+        FieldActionProgressionQuoteResult::quoted,
+        FieldActionProgressionQuote{
+            *offer, existing_record_index, next_progression_level,
+            state.pending_cost}};
+}
+
 FieldActionProgressionPurchaseResult purchase_field_action_progression(
     const FieldActionProgressionTables& tables,
     FieldActionProgressionPurchaseState& state,
@@ -71,57 +130,30 @@ FieldActionProgressionPurchaseResult purchase_field_action_progression(
         callbacks.render_action_panel();
     }
 
-    const auto offer = select_field_action_progression_offer(
-        tables, state.menu_mode, state.saved_selection, state.primary_cursor);
-    if (!offer) {
+    const auto quote = prepare_field_action_progression_quote(tables, state);
+    switch (quote.result) {
+    case FieldActionProgressionQuoteResult::invalid_offer_selection:
         return FieldActionProgressionPurchaseResult::invalid_offer_selection;
-    }
-    if (!offer_is_available(*offer)) {
+    case FieldActionProgressionQuoteResult::offer_unavailable:
         state.service_result = -1;
         return FieldActionProgressionPurchaseResult::offer_unavailable;
+    case FieldActionProgressionQuoteResult::progression_maxed:
+        if (callbacks.show_progression_maxed) {
+            callbacks.show_progression_maxed();
+        }
+        return FieldActionProgressionPurchaseResult::progression_maxed;
+    case FieldActionProgressionQuoteResult::progression_limit:
+        if (callbacks.show_progression_limit) {
+            callbacks.show_progression_limit();
+        }
+        return FieldActionProgressionPurchaseResult::progression_limit;
+    case FieldActionProgressionQuoteResult::quoted:
+        break;
     }
 
-    auto existing = state.ledger.records.end();
-    for (auto iterator = state.ledger.records.begin();
-         iterator != state.ledger.records.end(); ++iterator) {
-        if (iterator->action_code == offer->action_code) {
-            existing = iterator;
-            break;
-        }
+    if (!quote.quote) {
+        return FieldActionProgressionPurchaseResult::invalid_offer_selection;
     }
-
-    std::uint32_t base_cost = offer->base_cost;
-    std::uint16_t next_progression_level = 1U;
-    if (existing != state.ledger.records.end()) {
-        if (existing->progression_level == 6U) {
-            if (callbacks.show_progression_maxed) {
-                callbacks.show_progression_maxed();
-            }
-            return FieldActionProgressionPurchaseResult::progression_maxed;
-        }
-
-        // The source compares the current level against +0x7F with a signed
-        // byte branch.  Valid game levels are small, but keeping the signed
-        // comparison here preserves the source's limit behavior.
-        if (static_cast<std::int8_t>(existing->progression_level) >=
-            state.runner_progression_limit) {
-            if (callbacks.show_progression_limit) {
-                callbacks.show_progression_limit();
-            }
-            return FieldActionProgressionPurchaseResult::progression_limit;
-        }
-
-        next_progression_level = static_cast<std::uint16_t>(
-            existing->progression_level) + 1U;
-        base_cost *= next_progression_level;
-    }
-
-    auto cost_context = state.cost_context;
-    // 0x57A6E reads FFF0B6 directly for the mode-specific discount branch.
-    cost_context.mode = state.menu_mode;
-    state.selected_action_code = offer->action_code;
-    state.pending_cost = apply_field_action_cost_discounts(
-        base_cost, cost_context);
 
     if (state.pending_cost > state.funds) {
         if (callbacks.show_insufficient_funds) {
@@ -135,7 +167,7 @@ FieldActionProgressionPurchaseResult purchase_field_action_progression(
     }
 
     state.funds -= state.pending_cost;
-    if (existing == state.ledger.records.end()) {
+    if (!quote.quote->existing_record_index) {
         // A newly selected record starts at zero in the source's working
         // record area, then 0x56E5A stores the action and increments it.
         state.ledger.records.push_back(
@@ -143,12 +175,14 @@ FieldActionProgressionPurchaseResult purchase_field_action_progression(
         ++state.ledger.source_record_count_word;
     }
     else {
-        if (static_cast<std::int8_t>(existing->progression_level) <= 0) {
+        auto& existing =
+            state.ledger.records[*quote.quote->existing_record_index];
+        if (static_cast<std::int8_t>(existing.progression_level) <= 0) {
             ++state.ledger.source_record_count_word;
         }
-        existing->action_code = state.selected_action_code;
-        existing->progression_level = static_cast<std::uint8_t>(
-            existing->progression_level + 1U);
+        existing.action_code = state.selected_action_code;
+        existing.progression_level = static_cast<std::uint8_t>(
+            existing.progression_level + 1U);
     }
 
     return FieldActionProgressionPurchaseResult::applied;

@@ -910,6 +910,14 @@ Because this target was missing from the generated function inventory, the
 Ghidra export plugin's address-name map, function table, call graph, call-site
 annotations, and status ledger were updated together with the native module.
 
+The signed-byte audit of the two field-service purchase leaves is now explicit:
+the ROM's `0x5766A` and `0x577BA` category gates use `BMI`, not an unsigned
+host comparison. Valid categories still map to the same typed slots, while a
+malformed high-bit category is rejected at the host boundary instead of being
+used as an unchecked array index. Category 2's `0x5766A` threshold also keeps
+the ROM's low-byte wrap (`requested_quantity * 10` is compared as a signed
+byte), which matters at the 0x19/0x1A boundary.
+
 ## Call annotation policy
 
 Direct calls are annotated with the target address and reviewed symbol.

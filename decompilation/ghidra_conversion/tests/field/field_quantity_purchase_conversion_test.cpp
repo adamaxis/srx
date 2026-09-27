@@ -84,5 +84,14 @@ int main() {
         return 6;
     }
 
+    FieldQuantityPurchaseState malformed_high_bit{};
+    malformed_high_bit.category = 0xFFU;
+    malformed_high_bit.availability_marker = 1;
+    if (apply_field_quantity_purchase(malformed_high_bit, callbacks) !=
+            FieldQuantityPurchaseResult::invalid_category ||
+        malformed_high_bit.availability_marker != 1) {
+        return 7;
+    }
+
     return 0;
 }

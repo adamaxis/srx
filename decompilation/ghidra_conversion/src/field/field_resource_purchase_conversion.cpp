@@ -7,16 +7,24 @@ namespace {
 bool category_is_satisfied(const FieldResourcePurchaseState& state) {
     switch (state.category) {
     case 0:
-        return state.progress_category_0 >=
-               static_cast<std::uint16_t>(state.requested_quantity) * 0x28U;
+        return static_cast<std::int16_t>(state.progress_category_0) >=
+               static_cast<std::int16_t>(
+                   static_cast<std::uint16_t>(state.requested_quantity) *
+                   0x28U);
     case 1:
-        return state.progress_category_1 >=
-               static_cast<std::uint16_t>(state.requested_quantity) * 0x50U;
+        return static_cast<std::int16_t>(state.progress_category_1) >=
+               static_cast<std::int16_t>(
+                   static_cast<std::uint16_t>(state.requested_quantity) *
+                   0x50U);
     case 2:
-        return state.progress_category_2 >=
-               static_cast<std::uint16_t>(state.requested_quantity) * 0x0AU;
+        // The source multiplies in a long register but compares only the
+        // low signed byte at FFFBC4.
+        return static_cast<std::int8_t>(state.progress_category_2) >=
+               static_cast<std::int8_t>(static_cast<std::uint8_t>(
+                   static_cast<std::uint16_t>(state.requested_quantity) *
+                   0x0AU));
     case 3:
-        return state.progress_category_3 >= 3U;
+        return static_cast<std::int8_t>(state.progress_category_3) >= 3;
     default:
         return false;
     }
@@ -51,9 +59,10 @@ FieldResourcePurchaseResult apply_field_resource_purchase(
     FieldResourcePurchaseState& state,
     const std::array<std::uint16_t, 4>& category_costs,
     const FieldResourcePurchaseCallbacks& callbacks) {
-    // 0x5766A rejects categories 4 and above before refreshing the detail
-    // panel and signals the caller through its shared invalid-selection flag.
-    if (state.category >= category_costs.size()) {
+    // 0x5766A uses a signed-byte BMI against four. Keep the typed array bound
+    // as a second guard so malformed high-bit bytes cannot become indexes.
+    if (static_cast<std::int8_t>(state.category) >= 4 ||
+        state.category >= category_costs.size()) {
         return FieldResourcePurchaseResult::invalid_category;
     }
 

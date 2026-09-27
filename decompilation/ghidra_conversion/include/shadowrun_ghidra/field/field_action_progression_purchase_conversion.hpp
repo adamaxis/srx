@@ -3,6 +3,7 @@
 #include "shadowrun_ghidra/field/field_action_cost_conversion.hpp"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -57,6 +58,27 @@ struct FieldActionProgressionPurchaseState {
     FieldActionProgressionLedger ledger{};
 };
 
+struct FieldActionProgressionQuote {
+    FieldActionProgressionOffer offer{};
+    std::optional<std::size_t> existing_record_index;
+    std::uint16_t next_progression_level = 1;
+    std::uint32_t cost = 0;
+};
+
+enum class FieldActionProgressionQuoteResult {
+    quoted,
+    invalid_offer_selection,
+    offer_unavailable,
+    progression_maxed,
+    progression_limit,
+};
+
+struct FieldActionProgressionQuoteOutcome {
+    FieldActionProgressionQuoteResult result =
+        FieldActionProgressionQuoteResult::invalid_offer_selection;
+    std::optional<FieldActionProgressionQuote> quote;
+};
+
 enum class FieldActionProgressionPurchaseResult {
     applied,
     not_neutral_selection,
@@ -81,11 +103,16 @@ struct FieldActionProgressionPurchaseCallbacks {
     std::function<bool()> confirm_purchase;
 };
 
+// ROM 0x57D7E. Select the offer, find the existing runner progression record,
+// enforce its exact level-six and signed +0x7F limit gates, and publish the
+// discounted cost that the purchase branch will charge.
+FieldActionProgressionQuoteOutcome prepare_field_action_progression_quote(
+    const FieldActionProgressionTables& tables,
+    FieldActionProgressionPurchaseState& state);
+
 // ROM 0x56E5A's neutral-result action acquisition branch, together with the
-// 0x57D7E quote preparation that publishes FFF0AE/FFF0BE/FFF0C2.  It selects
-// the source offer by saved panel selection and menu mode, finds the first
-// matching typed progression record, and applies the exact funds/count/level
-// mutation without retaining a source pointer.
+// 0x57D7E quote preparation that publishes FFF0AE/FFF0BE/FFF0C2. It applies
+// the exact funds/count/level mutation without retaining a source pointer.
 FieldActionProgressionPurchaseResult purchase_field_action_progression(
     const FieldActionProgressionTables& tables,
     FieldActionProgressionPurchaseState& state,

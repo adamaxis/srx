@@ -13,7 +13,8 @@ struct FieldQuantityPurchaseState {
     std::uint32_t funds = 0;               // source FFFBFE
     std::int8_t availability_marker = 0;  // source FFF0B3
 
-    // Category 0 writes FFFBBE. Categories 1..4 write FFFBC6..FFFBC9;
+    // Category 0 writes FFFBBE. Categories 1..4 write the source's
+    // FFFBBE+7..FFFBBE+10 byte positions;
     // these are the five quantity slots selected by the source offset rule.
     std::array<std::uint8_t, 5> purchased_quantities{};
 };

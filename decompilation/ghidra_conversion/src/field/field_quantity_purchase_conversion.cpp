@@ -5,9 +5,11 @@ namespace shadowrun::ghidra_conversion {
 FieldQuantityPurchaseResult apply_field_quantity_purchase(
     FieldQuantityPurchaseState& state,
     const FieldQuantityPurchaseCallbacks& callbacks) {
-    // 0x577BA rejects primary categories 5 and above before touching the
-    // purchase marker.
-    if (state.category >= state.purchased_quantities.size()) {
+    // 0x577BA uses a signed-byte BMI against five. Values outside the typed
+    // five-slot model are still rejected here rather than turning a malformed
+    // high-bit source byte into an unchecked host index.
+    if (static_cast<std::int8_t>(state.category) >= 5 ||
+        state.category >= state.purchased_quantities.size()) {
         return FieldQuantityPurchaseResult::invalid_category;
     }
 
