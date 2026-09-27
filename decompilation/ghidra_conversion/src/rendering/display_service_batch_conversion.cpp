@@ -286,10 +286,11 @@ void render_menu_grid_number_pair(const std::function<void()>& write_grid,
     call_once(build_glyphs);
 }
 
-void prepare_title_mode_display(const std::function<void()>& refresh_mode,
-                                const std::function<void()>& refresh_palette,
-                                const std::function<void()>& prepare_display,
-                                const std::function<void()>& load_font) {
+void prepare_hotel_options_display(
+    const std::function<void()>& refresh_mode,
+    const std::function<void()>& refresh_palette,
+    const std::function<void()>& prepare_display,
+    const std::function<void()>& load_font) {
     call_once(refresh_mode);
     call_once(refresh_palette);
     call_once(prepare_display);

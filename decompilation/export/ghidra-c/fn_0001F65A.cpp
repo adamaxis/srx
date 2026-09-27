@@ -10,7 +10,7 @@
 // FFF10D marker.
 //
 // Calls recovered from direct call instructions:
-//   0x0000CF38 run_field_exit_prompt_menu
+//   0x0000CF38 run_hotel_options_menu
 //   0x0001F246 run_mode_exit_services
 
 void select_field_exit_prompt(void)
@@ -71,7 +71,7 @@ void select_field_exit_prompt(void)
 
   run_mode_exit_services();
   if ((signed char)DAT_00fff10d < 0) {
-    run_field_exit_prompt_menu();
+    run_hotel_options_menu();
   }
   return;
 }

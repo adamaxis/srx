@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000CFFE
-// Name: prepare_title_mode_display
+// Name: prepare_hotel_options_display
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0C2 load_title_font
@@ -9,7 +9,7 @@
 //   0x0005670E refresh_mode_palette_data
 
 
-void prepare_title_mode_display(void)
+void prepare_hotel_options_display(void)
 
 {
   copy_mode_resource_metadata();

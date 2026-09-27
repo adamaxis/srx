@@ -228,8 +228,8 @@ entry	name	size	callingConvention	decompileStatus	file
 0000C802	refresh_field_runner_state_and_assets	174	unknown	ok	ghidra-c/fn_0000C802.cpp
 0000C8B0	apply_byte_counter_delta_with_negative_floor	24	unknown	ok	ghidra-c/fn_0000C8B0.cpp
 0000C928	run_field_exit_selection_menu	238	unknown	ok	ghidra-c/fn_0000C928.cpp
-0000CF38	run_field_exit_prompt_menu	198	unknown	ok	ghidra-c/fn_0000CF38.cpp
-0000CFFE	prepare_title_mode_display	30	unknown	ok	ghidra-c/fn_0000CFFE.cpp
+0000CF38	run_hotel_options_menu	198	unknown	ok	ghidra-c/fn_0000CF38.cpp
+0000CFFE	prepare_hotel_options_display	30	unknown	ok	ghidra-c/fn_0000CFFE.cpp
 0000D01C	run_attributes_and_skills_menu	1196	unknown	ok	ghidra-c/fn_0000D01C.cpp
 0000D4C8	reset_field_mode_entity_selection	116	unknown	ok	ghidra-c/fn_0000D4C8.cpp
 0000D53C	run_attributes_skills_menu_prompt	160	unknown	ok	ghidra-c/fn_0000D53C.cpp

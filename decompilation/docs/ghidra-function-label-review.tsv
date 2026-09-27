@@ -20,7 +20,7 @@ rom_entry	export_label	reviewed_name	family	confidence	behavior	evidence
 0x0C7F8	convert_graphics_routine_0x0000c7f8	prepare_field_scene_runtime	field	high	Prepares serialized runner state, field assets, effects, and animation for a field scene	disassembly.s;fn_0000C7F8.cpp
 0x0C802	convert_graphics_routine_0x0000c802	refresh_field_runner_state_and_assets	field	high	Refreshes field runner records and their uploaded scene assets	disassembly.s;fn_0000C802.cpp
 0x0C928	convert_graphics_routine_0x0000c928	run_field_exit_selection_menu	menu	high	Runs the field exit selection loop with cursor input and menu dispatch	disassembly.s;fn_0000C928.cpp
-0x0CF38	convert_graphics_routine_0x0000cf38	run_field_exit_prompt_menu	menu	high	Runs the field exit confirmation prompt and its display setup	disassembly.s;fn_0000CF38.cpp
+0x0CF38	convert_graphics_routine_0x0000cf38	run_hotel_options_menu	menu	high	Runs the Hotel Options menu: Karma Screen and Check Out dispatch, party-status setup, option cursor, and action servicing	disassembly.s;fn_0000CF38.cpp;analysis/strings.tsv;SCRATCHPAD.md
 0x0D4C8	convert_graphics_routine_0x0000d4c8	reset_field_mode_entity_selection	field	high	Resets field entity-selection bits, grid state, and current selection flags	disassembly.s;fn_0000D4C8.cpp
 0x0D53C	convert_graphics_routine_0x0000d53c	run_attributes_skills_menu_prompt	menu	high	Renders and services the attributes-and-skills prompt until controller completion	disassembly.s;fn_0000D53C.cpp;caller 0xD01C
 0x0EA36	convert_graphics_routine_0x0000ea36	evaluate_entity_terrain_collision_directions	entity	high	Combines the four directional terrain collision bits into an entity boundary result	disassembly.s;fn_0000EA36.cpp

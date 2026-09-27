@@ -769,6 +769,37 @@ charge of one. The source caller supplies base tiers eight, six, and four for
 the Hospital Options medical rows. This is a rules calculation, not a VDP or
 runtime-ROM lookup.
 
+## Hotel Options and Check Out route: 0xCF38 / 0xDA6A
+
+The generated name `run_field_exit_prompt_menu` for `0xCF38` was incorrect.
+The title pointer at `0xC14D0` is `Hotel Options`; the option text immediately
+following it is `Karma Screen`, `Check Out`, and `Hospital Options`. The handler
+table at `0xC14C8` contains `0xD024` for Karma Screen and `0xDA6A` for Check
+Out. This is therefore a two-entry Hotel menu, not a generic field-exit
+prompt.
+
+The source sequence is now recorded in the native conversion as a typed loop:
+clear the `0xFFF10D` entity-status marker, reset the mode display, run
+`0xCFFE` once, service the three active entity-status records through `0xEF08`,
+then rebuild the Hotel display. Each frame is vblank, controller latch,
+controller sample, and `0xE660` random-grid servicing. Up takes priority over
+Down but the same frame can still confirm; B/action calls `0x391A` and does not
+create a separate Hotel cancel path.
+
+The Karma handler target `0xD024` is an entry into the existing
+Attributes/Skills/Cyberware routine beginning at `0xD01C`; it is kept as an
+explicit callback until that full screen controller is converted. The Check
+Out target `0xDA6A` is not a stub: it writes the prompt grid, renders
+`Do you wish to check out?`, starts on No, wraps Yes/No through `0xC376`, and
+accepts source controller bits `0x0E`, `0x0C`, or `0x0D`. Selecting Yes causes
+the original routine to unwind both its handler and Hotel-menu return frames;
+the native conversion returns `checked_out`/`returned_to_field` instead of
+reproducing that stack manipulation.
+
+The native names are `run_hotel_options_menu()`,
+`prepare_hotel_options_display()`, and `run_hotel_checkout_prompt()`. Their
+source-specific tests are in `tests/menus/hotel_options_menu_conversion_test.cpp`.
+
 ## Reviewed function map
 
 The native owner names below are the target C++ vocabulary. A `partial` entry

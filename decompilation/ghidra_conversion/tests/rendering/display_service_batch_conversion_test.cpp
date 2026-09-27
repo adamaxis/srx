@@ -193,8 +193,8 @@ int main() {
     write_menu_grid_with_metadata([&] { ++callback_calls; });
     render_menu_grid_number_pair([&] { ++callback_calls; },
                                   [&] { ++callback_calls; });
-    prepare_title_mode_display([&] { ++callback_calls; }, [&] { ++callback_calls; },
-                                [&] { ++callback_calls; }, [&] { ++callback_calls; });
+    prepare_hotel_options_display([&] { ++callback_calls; }, [&] { ++callback_calls; },
+                                  [&] { ++callback_calls; }, [&] { ++callback_calls; });
     render_title_text_wrapper([&] { ++callback_calls; });
     if (callback_calls != 9) {
         return 14;

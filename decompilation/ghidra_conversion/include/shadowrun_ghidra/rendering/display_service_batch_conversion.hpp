@@ -197,10 +197,14 @@ void load_title_font(const std::function<void()>& decode_and_upload);
 void write_menu_grid_with_metadata(const std::function<void()>& write_grid);
 void render_menu_grid_number_pair(const std::function<void()>& write_grid,
                                   const std::function<void()>& build_glyphs);
-void prepare_title_mode_display(const std::function<void()>& refresh_mode,
-                                const std::function<void()>& refresh_palette,
-                                const std::function<void()>& prepare_display,
-                                const std::function<void()>& load_font);
+// ROM 0xCFFE: prepare the Hotel Options presentation.  This source helper is
+// reached only by the Hotel Options flow at 0xCF38; the native name records
+// that context instead of preserving Ghidra's generic title-mode label.
+void prepare_hotel_options_display(
+    const std::function<void()>& refresh_mode,
+    const std::function<void()>& refresh_palette,
+    const std::function<void()>& prepare_display,
+    const std::function<void()>& load_font);
 void render_title_text_wrapper(const std::function<void()>& render_text);
 void advance_random_grid_effect(const std::function<std::int16_t()>& sample,
                                 const std::function<void()>& write_grid);

@@ -5826,9 +5826,9 @@
 0000CDF4: rts
 0000CF38: clr.b (0x00fff10d).l
 0000CF3E: jsr 0x00010952.l ; call 00010952 reset_mode_display_buffers
-0000CF44: bsr.w 0x0000cffe ; call 0000CFFE prepare_title_mode_display
+0000CF44: bsr.w 0x0000cffe ; call 0000CFFE prepare_hotel_options_display
 0000CF48: jsr 0x0000ef08.l ; call 0000EF08 service_exit_prompt_entities
-0000CF4E: bsr.w 0x0000cffe ; call 0000CFFE prepare_title_mode_display
+0000CF4E: bsr.w 0x0000cffe ; call 0000CFFE prepare_hotel_options_display
 0000CF52: bsr.w 0x0000c3e6 ; call 0000C3E6 write_menu_grid_with_metadata
 0000CF56: lea (0xc14d0).l,A1 ; data 000c14d0
 0000CF5C: movea.l #0xc312,A2
@@ -19424,7 +19424,7 @@
 0001F816: bsr.w 0x0001f246 ; call 0001F246 run_mode_exit_services
 0001F81A: tst.b (0x00fff10d).l
 0001F820: bpl.w 0x0001f82a
-0001F824: jsr 0x0000cf38.l ; call 0000CF38 run_field_exit_prompt_menu
+0001F824: jsr 0x0000cf38.l ; call 0000CF38 run_hotel_options_menu
 0001F82A: move.w #-0x1,D6w
 0001F82E: rts
 0001F830: cmpi.b #0x0,(0x00fffbf8).l
@@ -23412,7 +23412,7 @@
 00053B5C: jsr 0x0001f246.l ; call 0001F246 run_mode_exit_services
 00053B62: tst.b (0x00fff10d).l
 00053B68: bpl.w 0x00053b72
-00053B6C: jsr 0x0000cf38.l ; call 0000CF38 run_field_exit_prompt_menu
+00053B6C: jsr 0x0000cf38.l ; call 0000CF38 run_hotel_options_menu
 00053B72: move.w #-0x1,D6w
 00053B76: rts
 00054076: btst.l #0x10,D1
