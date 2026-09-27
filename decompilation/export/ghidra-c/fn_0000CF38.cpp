@@ -13,7 +13,7 @@
 //   0x0000C436 dispatch_menu_handler
 //   0x0000CFFE prepare_hotel_options_display
 //   0x0000E660 advance_random_grid_effect
-//   0x0000EF08 service_exit_prompt_entities
+//   0x0000EF08 service_hotel_entity_status
 //   0x00010952 reset_mode_display_buffers
 
 
@@ -23,7 +23,7 @@ void run_hotel_options_menu(void)
   DAT_00fff10d = 0;
   reset_mode_display_buffers();
   prepare_hotel_options_display();
-  service_exit_prompt_entities();
+  service_hotel_entity_status();
   do {
     prepare_hotel_options_display();
     write_menu_grid_with_metadata();

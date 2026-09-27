@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000EF08
-// Name: service_exit_prompt_entities
+// Name: service_hotel_entity_status
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003674 advance_entity_delay_meter
@@ -10,7 +10,7 @@
 //   0x0000F312 wait_for_controller_event
 
 
-void service_exit_prompt_entities(void)
+void service_hotel_entity_status(void)
 
 {
   short sVar1;

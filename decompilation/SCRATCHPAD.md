@@ -736,6 +736,24 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The Hotel party-status service at `0x0EF08` is now source-verified. The ROM
+enters with `0x0C3E6`, then walks exactly three live records at `FF0100`,
+`FF0200`, and `FF0300` using a `0x100` stride. It tests record flags bit 0 at
+`+0x10` and reads the delay meter at `+0x4C`. Delay values `0..2` advance the
+behavior meter (`+0x9C`) by 10 and render the extracted runner name followed
+by the fixed `" needs medical attention!"` row text. Values `3..4` advance
+the delay meter by 1; values `5..255` advance it by 2. Both recovery branches
+then advance the behavior meter by 10 and clear source flags bit 4 at `+0x10`.
+After all three records, the ROM renders the fixed recovery/soykaf message at
+`0xC265E` and tails into `0xF312` for the controller acknowledgement.
+
+The conversion is `service_hotel_entity_status` in the menu module. It uses a
+three-element typed record array, not Genesis addresses, and keeps the meter
+and text presentation callees as explicit typed boundaries. The shared live
+record field names were corrected at the same time: `+0x4C` is
+`delay_meter`, and `+0x9C` is `behavior_meter`; the prior physical/mental
+labels were not faithful to the ROM consumers.
+
 ### Current ROM audit slice: world-effect and menu arithmetic
 
 The audit of `0x562D4`/`0x562DE` confirms the timer entry falls through into

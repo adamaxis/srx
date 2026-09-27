@@ -36,8 +36,11 @@ struct RunnerRecordFields {
     // at +0x00.
     std::uint8_t species_index = 0;
     std::uint8_t archetype_index = 0;
-    std::uint8_t physical_value = 0;
-    std::uint8_t mental_value = 0;
+    // ROM 0x36FC/0xEF08 use +0x4C as the entity delay meter. It is also the
+    // value classified into the Hotel's medical-attention/recovery branches.
+    std::uint8_t delay_meter = 0;
+    // ROM 0x37EC/0xEF08 use +0x9C as the entity behavior meter.
+    std::uint8_t behavior_meter = 0;
     // Source +0x9D. Magic force selection publishes the selected force here
     // before the target/effect path begins.
     std::uint8_t magic_force = 0;

@@ -43,7 +43,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x0000EA36U, "evaluate_entity_terrain_collision_directions", RoutineFamily::graphics, 156U},
     {0x0000EB92U, "resolve_entity_proximity_interactions", RoutineFamily::graphics, 314U},
     {0x0000ECCCU, "resolve_entity_pair_collision_event", RoutineFamily::graphics, 302U},
-    {0x0000EF08U, "service_exit_prompt_entities", RoutineFamily::graphics, 172U},
+    {0x0000EF08U, "service_hotel_entity_status", RoutineFamily::menu, 172U},
     {0x0000F5F4U, "render_bitmask_text_batch", RoutineFamily::graphics, 232U},
     {0x0000FDFEU, "advance_menu_sprite_overlay", RoutineFamily::graphics, 192U},
     {0x0000FF5AU, "run_equipment_selection", RoutineFamily::graphics, 188U},

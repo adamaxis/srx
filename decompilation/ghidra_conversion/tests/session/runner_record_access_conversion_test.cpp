@@ -26,8 +26,8 @@ int main() {
                 fields.record_type == 0x3E3FU && fields.race_index == 0x00U &&
                 fields.species_index == 0x9AU &&
                 fields.archetype_index == 0x9BU &&
-                fields.physical_value == 0x4CU &&
-                fields.mental_value == 0x9CU &&
+                fields.delay_meter == 0x4CU &&
+                fields.behavior_meter == 0x9CU &&
                 fields.magic_force == 0x9DU &&
                 static_cast<std::uint8_t>(fields.action_result) == 0x9FU &&
                 fields.equipped_inventory_slot == 0x56 &&
