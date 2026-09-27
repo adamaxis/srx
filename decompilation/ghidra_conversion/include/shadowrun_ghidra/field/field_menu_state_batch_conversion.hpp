@@ -1,5 +1,7 @@
 #pragma once
 
+#include "shadowrun_ghidra/rendering/wrapped_encoded_text_conversion.hpp"
+
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -7,24 +9,10 @@
 
 namespace shadowrun::ghidra_conversion {
 
-struct WrappedTextCallbacks {
-    std::function<void()> begin_transfer;
-    std::function<std::uint16_t(std::uint8_t)> glyph_for_byte;
-    std::function<void(std::uint16_t)> write_glyph;
-    // Optional host presentation boundary retaining the source line/column
-    // that the Genesis transfer address represented.
-    std::function<void(std::size_t line, std::size_t column,
-                       std::uint16_t)> write_glyph_at;
-};
-
-// ROM 0x0C160 -> 0x0C168: select the normalized alternate text buffer and
-// render it through the shared wrapped-text body. The host receives the
-// already selected buffer as encoded input; 0x80 is a line break and 0xFF is
-// the final terminator. Wrapping chooses the last source space that fits the
-// requested width, matching the source scan rather than hard-wrapping bytes.
-std::size_t render_wrapped_text(const std::vector<std::uint8_t>& encoded,
-                                std::size_t line_width,
-                                const WrappedTextCallbacks& callbacks);
+// Kept as a source-family alias for existing field-menu conversion callers;
+// the implementation belongs to the rendering/display-text boundary because
+// ROM 0xC168 is a shared encoded-text transfer routine.
+using WrappedTextCallbacks = WrappedEncodedTextCallbacks;
 
 bool dispatch_menu_handler(
     std::size_t selected,

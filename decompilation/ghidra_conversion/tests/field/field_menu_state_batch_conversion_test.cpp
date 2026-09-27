@@ -10,11 +10,11 @@ int main() {
     std::vector<std::uint16_t> glyphs;
     std::vector<std::tuple<std::size_t, std::size_t, std::uint16_t>> placements;
     int begins = 0;
-    assert(render_wrapped_text(
+    assert(render_wrapped_encoded_text(
                {0x21, 0x22, 0x20, 0x23, 0xFF}, 4,
                {[&] { ++begins; },
-                [](const std::uint8_t value) {
-                    return static_cast<std::uint16_t>(value + 0x100U);
+                [](const std::uint16_t index) {
+                    return static_cast<std::uint16_t>(index + 0x100U);
                 },
                 [&](const std::uint16_t glyph) { glyphs.push_back(glyph); },
                 [&](const std::size_t line, const std::size_t column,
@@ -22,10 +22,18 @@ int main() {
                     placements.emplace_back(line, column, glyph);
                 }}) == 4U);
     const std::vector<std::tuple<std::size_t, std::size_t, std::uint16_t>>
-        expected_wrapped_placements{
-            {0, 0, 0x121}, {0, 1, 0x122}, {0, 2, 0x120}, {1, 0, 0x123}};
+        expected_source_index_placements{
+            {0, 0, 0x101}, {0, 1, 0x102}, {0, 2, 0x100}, {1, 0, 0x103}};
     assert(begins == 2 && glyphs.empty() &&
-           placements == expected_wrapped_placements);
+           placements == expected_source_index_placements);
+
+    assert(wrapped_encoded_text_glyph_index(0x20) ==
+           std::optional<std::uint16_t>(0));
+    assert(wrapped_encoded_text_glyph_index(0x5C) ==
+           std::optional<std::uint16_t>(0x3C));
+    assert(wrapped_encoded_text_glyph_index(0x5D) ==
+           std::optional<std::uint16_t>(0x39));
+    assert(!wrapped_encoded_text_glyph_index(0x80).has_value());
 
     begins = 0;
     placements.clear();
@@ -37,7 +45,7 @@ int main() {
                     placements.emplace_back(line, column, glyph);
                 }}) == 2U);
     const std::vector<std::tuple<std::size_t, std::size_t, std::uint16_t>>
-        expected_break_placements{{0, 0, 0x21}, {1, 0, 0x22}};
+        expected_break_placements{{0, 0, 0x1}, {1, 0, 0x2}};
     assert(begins == 2 && placements == expected_break_placements);
 
     int dispatched = 0;

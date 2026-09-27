@@ -31,6 +31,7 @@ file(GLOB SHADOWRUN_MODULE_DISPLAY_TEXT CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/rendering/resource_refresh_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/rendering/startup_vdp_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/rendering/text_line_conversion.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/rendering/wrapped_encoded_text_conversion.cpp"
 )
 file(GLOB SHADOWRUN_MODULE_SPRITE_PIPELINE CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/rendering/sprite_*.cpp"

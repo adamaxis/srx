@@ -14,20 +14,24 @@ int main() {
         return 1;
     }
 
-    if (build_grouped_decimal_glyphs(0U) != std::vector<std::uint8_t>{0U}) {
+    if (build_grouped_decimal_glyphs(0U) !=
+        std::vector<std::uint16_t>{0x10U}) {
         return 2;
     }
 
     if (build_grouped_decimal_glyphs(1234U) !=
-        std::vector<std::uint8_t>{4U, 3U, 2U,
-                                  kDecimalGroupSeparatorGlyph, 1U}) {
+        std::vector<std::uint16_t>{0x14U, 0x13U, 0x12U,
+                                   kDecimalGroupSeparatorGlyphTableIndex,
+                                   0x11U}) {
         return 3;
     }
 
     if (build_grouped_decimal_glyphs(1234567U) !=
-        std::vector<std::uint8_t>{7U, 6U, 5U,
-                                  kDecimalGroupSeparatorGlyph, 4U, 3U, 2U,
-                                  kDecimalGroupSeparatorGlyph, 1U}) {
+        std::vector<std::uint16_t>{0x17U, 0x16U, 0x15U,
+                                   kDecimalGroupSeparatorGlyphTableIndex,
+                                   0x14U, 0x13U, 0x12U,
+                                   kDecimalGroupSeparatorGlyphTableIndex,
+                                   0x11U}) {
         return 4;
     }
 

@@ -637,6 +637,53 @@ callbacks until those downstream consumers are fully connected. The field
 camera service remains an explicit callback; the central layer does not
 replace either boundary with guessed behavior.
 
+## Wrapped encoded text transfer: 0xC160 / 0xC168
+
+The text renderer is a shared display-text boundary, not a field-menu-specific
+memory helper. `0xC160` sets `FFF0B2` to select the alternate normalized buffer
+and falls through to `0xC168`; `0xC168` chooses `FFEF96` when that flag is set or
+`FFB740` otherwise, calls `0x0E9C` for the source transfer command, and writes
+the encoded stream into successive destination lines. The native conversion
+selects the already-normalized buffer as a typed `std::vector<uint8_t>` and
+keeps the source flag out of runtime state.
+
+The source scan preserves the last space whose count is below the requested
+line width. If the scan reaches a marker before the width, the marker is part
+of the consumed span but is not a glyph. Printable bytes map through the source
+glyph table as `byte - 0x20`, with four omitted table entries after index
+`0x3C`; the conversion exposes that mapping as
+`wrapped_encoded_text_glyph_index()` before a host glyph callback runs. Marker
+bytes `0x80..0xBF` consume the current line and begin another transfer, while
+`0xC0..0xFF` terminate the stream. The renderer reports line/column placement
+through callbacks rather than writing a VDP register or a ROM/RAM address.
+
+The two important callers identify the actual game behavior. The Matrix runner
+detail path around `0x188E8..0x18930` normalizes the selected program's
+description and invokes the `0xC160` normal-buffer wrapper; the mode text-prompt
+path around `0x1F3E6..0x1F3FE` normalizes a prompt into the alternate buffer and
+invokes `0xC168` directly. Both paths now share the same rendering conversion
+and the source trace is recorded in the display-text module.
+
+## Grouped decimal glyph stream: 0xC216
+
+`0xC216` is the shared numeric renderer used by Matrix runner detail values,
+menu counters, magic-force values, equipment/action summaries, and other
+status panels. It calls `0x0E9C` for each destination word, extracts the
+least-significant decimal digit from `D1`, looks up that digit through the
+source glyph table, writes it, and subtracts one word from `A2`. A four-state
+counter emits three digits, then the separator glyph at source table byte
+offset `0x18` (word index `0x0C`), before resuming digit extraction. The loop
+ends when the quotient in `D1.w` is zero; zero itself emits one zero glyph.
+
+The conversion returns typed source glyph-table indices rather than raw digit
+bytes or a fake `0xFF` sentinel: digit `n` is table index `0x10 + n`, and the
+separator is `0x0C`. Native presentation can map those indices to its host
+font or authored text layout without reproducing the Genesis VDP destination
+address or the original division helper. The source's overflow-safe 68000
+division path is represented by ordinary bounded `uint32_t` division because
+the host conversion needs the same decimal quotient/remainder result, not the
+processor-specific divide sequence.
+
 ## Reviewed function map
 
 The native owner names below are the target C++ vocabulary. A `partial` entry
