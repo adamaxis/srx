@@ -1573,3 +1573,17 @@ predicate, with a high-bit availability regression case, and its action-cost
 word `7-D4`/`BGT` percentage predicate. The service/variant
 timers at `0x56434`/`0x56482` also have explicit wrapped-result tests: their
 `BGT`/`BPL` behavior is retained for a zero byte minus `0xFF`.
+## Mode-entry audio cadence audit
+
+The source entry at `0x53126` is not an unparameterized generic audio tick.
+Its register setup is explicit:
+
+- `D0 = 0x14`, then `0x5315E` runs the fixed audio transaction wrapper.
+- `D5 = 2`, then `0x0C24` performs `D5 + 1 = 3` vblank waits.
+- `D6 = 5`, so the transaction/wait pair repeats six times through `DBF`.
+- `0x52FA0` flushes the audio bus once after the loop.
+- `0x53156` runs the zero-command audio service wrapper once before return.
+
+The conversion therefore exposes the command value and vblank counter to
+typed host callbacks. It does not model the Genesis bus or substitute a
+different timing cadence.

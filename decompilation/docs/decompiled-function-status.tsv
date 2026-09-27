@@ -532,7 +532,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x530D2	audio enabled variant	ghidra_conversion::service_audio_if_enabled_variant	shadowrun_ghidra_audio_command_batch	partial		Typed enable gate over queue service
 0x530EA	audio command frame variant	ghidra_conversion::service_audio_command_frame_variant	shadowrun_ghidra_audio_command_batch	partial		Typed frame preparation and queue service
 0x53112	audio command wrapper	ghidra_conversion::service_audio_command_wrapper	shadowrun_ghidra_audio_command_batch	partial		Named audio queue wrapper
-0x53126	mode entry audio service	ghidra_conversion::prepare_audio_mode_entry	shadowrun_ghidra_audio_command_batch	partial		Typed six-pass wait/service cadence and finalization
+0x53126	mode entry audio service	ghidra_conversion::prepare_audio_mode_entry	shadowrun_ghidra_audio_command_batch	partial		Six fixed 0x14 audio transactions, each followed by source counter 2 (three vblank waits), then one audio-bus flush and one zero-command service tick; host backend remains a callback
 0x53156	audio tick wrapper	ghidra_conversion::service_audio_tick_wrapper	shadowrun_ghidra_audio_command_batch	partial		Named audio tick service boundary
 0x02FA4	entity anchor snapshot	ghidra_conversion::snapshot_entity_anchors	shadowrun_ghidra_field_entity_render_batch	partial		Typed anchor/profile snapshot with explicit publish callback
 0x03D80	field tile column stream	ghidra_conversion::emit_field_tile_column_words	shadowrun_ghidra_field_entity_render_batch	partial		Host tile-word column stream with source stride

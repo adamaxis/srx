@@ -105,14 +105,20 @@ bool service_audio_command_wrapper(
     const AudioCommandSequenceCallbacks& callbacks);
 
 struct AudioModeEntryCallbacks {
-    std::function<void()> service_tick;
-    std::function<void()> wait_for_vblank;
-    std::function<void()> flush_queue;
-    std::function<void()> finalize;
+    // ROM 0x5312C: D0 is initialized to the fixed mode-entry command 0x14
+    // before each 0x5315E transaction wrapper.
+    std::function<void(std::uint32_t command)> run_fixed_audio_transaction;
+    // ROM 0x53138: D5 is set to 2, so 0x0C24 performs three vblank waits.
+    std::function<void(std::uint16_t source_counter)> wait_for_vblank_frames;
+    // ROM 0x53146/0x5314C: flush the audio bus, then run the zero-command
+    // service wrapper.
+    std::function<void()> flush_audio_bus;
+    std::function<void()> service_audio_tick;
 };
 
-// ROM 0x53126: run six service/wait passes, then flush and finalize mode
-// entry. The host owns the actual audio backend and timing source.
+// ROM 0x53126: run six 0x14 audio transactions, each followed by a three-
+// vblank wait, then flush the bus and service the zero-command audio tick.
+// The host owns the actual audio backend and timing source.
 void prepare_audio_mode_entry(const AudioModeEntryCallbacks& callbacks);
 
 bool service_audio_tick_wrapper(const AudioCommandSequenceCallbacks& callbacks);

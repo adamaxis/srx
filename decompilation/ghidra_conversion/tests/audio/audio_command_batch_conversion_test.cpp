@@ -90,14 +90,20 @@ int main() {
         return 10;
     }
 
-    int ticks = 0;
-    int waits = 0;
+    std::vector<std::uint32_t> commands;
+    std::vector<std::uint16_t> wait_counters;
     int flushes = 0;
-    int finalizes = 0;
+    int service_ticks = 0;
     prepare_audio_mode_entry(
-        {[&] { ++ticks; }, [&] { ++waits; }, [&] { ++flushes; },
-         [&] { ++finalizes; }});
-    if (ticks != 6 || waits != 6 || flushes != 1 || finalizes != 1) {
+        {[&](const std::uint32_t command) { commands.push_back(command); },
+         [&](const std::uint16_t source_counter) {
+             wait_counters.push_back(source_counter);
+         },
+         [&] { ++flushes; },
+         [&] { ++service_ticks; }});
+    if (commands != std::vector<std::uint32_t>(6U, 0x14U) ||
+        wait_counters != std::vector<std::uint16_t>(6U, 2U) ||
+        flushes != 1 || service_ticks != 1) {
         return 11;
     }
     return 0;

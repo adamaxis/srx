@@ -185,12 +185,19 @@ bool service_audio_command_wrapper(
 }
 
 void prepare_audio_mode_entry(const AudioModeEntryCallbacks& callbacks) {
-    for (int pass = 0; pass < 6; ++pass) {
-        call_once(callbacks.service_tick);
-        call_once(callbacks.wait_for_vblank);
+    constexpr std::uint32_t kModeEntryCommand = 0x14U;
+    constexpr std::uint16_t kModeEntryVblankCounter = 2U;
+    constexpr std::size_t kModeEntryPassCount = 6U;
+    for (std::size_t pass = 0; pass < kModeEntryPassCount; ++pass) {
+        if (callbacks.run_fixed_audio_transaction) {
+            callbacks.run_fixed_audio_transaction(kModeEntryCommand);
+        }
+        if (callbacks.wait_for_vblank_frames) {
+            callbacks.wait_for_vblank_frames(kModeEntryVblankCounter);
+        }
     }
-    call_once(callbacks.flush_queue);
-    call_once(callbacks.finalize);
+    call_once(callbacks.flush_audio_bus);
+    call_once(callbacks.service_audio_tick);
 }
 
 bool service_audio_tick_wrapper(
