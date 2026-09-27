@@ -67,21 +67,45 @@ void render_field_mode_grid_pair_batches(
     repeat(2U, callbacks.write_grid);
 }
 
+FieldModeNegativeGlyphTable negative_glyph_table_for_cursor(
+    const std::int8_t primary_cursor) {
+    switch (primary_cursor) {
+    case 0:
+        return FieldModeNegativeGlyphTable::cursor_zero;
+    case 1:
+        return FieldModeNegativeGlyphTable::cursor_one;
+    default:
+        return FieldModeNegativeGlyphTable::cursor_two;
+    }
+}
+
+std::size_t negative_glyph_table_index(
+    const FieldModeNegativeGlyphTable table) {
+    return static_cast<std::size_t>(table);
+}
+
 void render_field_mode_selection_presentation(
     FieldModeSelectionPresentationState& state,
     const FieldModeSelectionPresentationCallbacks& callbacks) {
     state.saved_selection = state.primary_cursor;
 
     if (state.mode_result < 0) {
-        if (state.primary_cursor >= 3) {
-            if (state.primary_cursor == 3) {
-                render_field_mode_grid_pair_batches(callbacks);
-            } else {
-                render_field_mode_glyph_row(state.saved_selection, callbacks);
+        if (state.primary_cursor < 3) {
+            const auto table = negative_glyph_table_for_cursor(
+                state.primary_cursor);
+            if (callbacks.select_negative_glyph_table) {
+                callbacks.select_negative_glyph_table(table, state.menu_mode);
             }
+            render_alternating_field_mode_records(
+                state.negative_glyph_records[negative_glyph_table_index(table)],
+                callbacks);
             return;
         }
-        render_alternating_field_mode_records(state.glyph_records, callbacks);
+        if (state.primary_cursor == 3) {
+            render_field_mode_grid_pair_batches(callbacks);
+        } else {
+            render_field_mode_glyph_row(state.saved_selection, callbacks);
+        }
         return;
     }
 
@@ -116,6 +140,19 @@ void render_field_mode_selection_presentation(
     if (state.primary_cursor == 3) {
         render_field_mode_glyph_row(state.saved_selection, callbacks);
         return;
+    }
+    if (callbacks.select_action_record_table) {
+        if (state.saved_selection == 1) {
+            callbacks.select_action_record_table(
+                FieldModeActionRecordTable::fixed_selection_one, 0);
+        } else if (state.saved_selection < 0) {
+            callbacks.select_action_record_table(
+                FieldModeActionRecordTable::dynamic_menu_mode,
+                static_cast<std::int16_t>(state.menu_mode) - 3);
+        } else {
+            callbacks.select_action_record_table(
+                FieldModeActionRecordTable::fixed_low_menu, 0);
+        }
     }
     render_alternating_field_mode_records(state.glyph_records, callbacks);
 }

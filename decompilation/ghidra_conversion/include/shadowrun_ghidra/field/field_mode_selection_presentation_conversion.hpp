@@ -15,12 +15,28 @@ struct FieldModeSelectionPresentationState {
     std::int8_t mode_result = 0; // FFF0B7
     std::int8_t primary_cursor = 0; // FFF0D0
     std::int8_t saved_selection = 0; // FFF0B8
+    // Source bases 0x1AAC86, 0x1AADBF, and 0x1AAD77 are distinct eight-
+    // record tables for negative-result cursors 0, 1, and 2.
+    std::array<std::array<FieldModeSelectionGlyphRecord, 8>, 3>
+        negative_glyph_records{};
     std::array<FieldModeSelectionGlyphRecord, 8> glyph_records{};
 };
 
 enum class MenuResourceFamily {
     general_menu_records,
     menu_mode_six_records,
+};
+
+enum class FieldModeNegativeGlyphTable {
+    cursor_zero,
+    cursor_one,
+    cursor_two,
+};
+
+enum class FieldModeActionRecordTable {
+    fixed_low_menu,
+    fixed_selection_one,
+    dynamic_menu_mode,
 };
 
 struct MenuResourceRecord {
@@ -38,6 +54,12 @@ struct FieldModeSelectionPresentationCallbacks {
     std::function<void()> transfer_menu_glyph_triple;
     std::function<void()> render_encoded_text;
     std::function<void(const MenuResourceRecord&)> select_resource;
+    // Expose the source data-table choice before the shared marker/glyph
+    // loops. The caller supplies the corresponding typed row in state.
+    std::function<void(FieldModeNegativeGlyphTable, std::uint8_t)>
+        select_negative_glyph_table;
+    std::function<void(FieldModeActionRecordTable, std::int16_t)>
+        select_action_record_table;
 };
 
 // ROM 0x5763C: choose the menu-mode-six table when FFF0B6 == 6, otherwise

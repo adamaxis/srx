@@ -281,6 +281,18 @@ These are presentation plans and callbacks, not emulated VDP calls or ROM
 address reads. Missing extracted description data, Matrix-selection data, or
 pending cost data is reported as an explicit conversion result.
 
+The field-mode dispatcher at `0x587DA` also required a source audit. Its
+negative-result cursor 0, 1, and 2 paths do not share one marker table: they
+select `0x1AAC86`, `0x1AADBF`, and `0x1AAD77` respectively before entering
+the common eight-record loop. Cursor 3 instead writes the six-plus-two grid
+batches, and later cursors transfer the glyph row. In the zero-result branch,
+cursor 0 or 3 uses the glyph row, while the other cursors select the fixed
+`0x1AAEB0` table, the `0x1AAEF8` selection-one table, or the dynamic
+`0x1AAF40 + (menu_mode - 3) * 0x20` table before scanning markers. The
+conversion now carries those table choices as typed callbacks and supplies
+separate extracted marker rows; it no longer silently reuses one array for
+all three negative-result cases.
+
 ## Field HUD row meter
 
 `0x1792E render_menu_hud_rows` calls `0x56506` once for each eligible row.

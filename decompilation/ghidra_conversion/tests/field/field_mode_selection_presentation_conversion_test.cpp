@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -19,12 +20,21 @@ int main() {
     int glyph_triples = 0;
     int text_passes = 0;
     std::vector<MenuResourceRecord> selected_resources;
+    std::vector<FieldModeNegativeGlyphTable> selected_negative_tables;
+    std::vector<std::pair<FieldModeActionRecordTable, std::int16_t>>
+        selected_action_tables;
     const FieldModeSelectionPresentationCallbacks callbacks{
         [&] { ++grids; },
         [&] { ++glyph_triples; },
         [&] { ++text_passes; },
         [&](const MenuResourceRecord& resource) {
             selected_resources.push_back(resource);
+        },
+        [&](const FieldModeNegativeGlyphTable table, const std::uint8_t) {
+            selected_negative_tables.push_back(table);
+        },
+        [&](const FieldModeActionRecordTable table, const std::int16_t selector) {
+            selected_action_tables.emplace_back(table, selector);
         },
     };
 
@@ -58,6 +68,8 @@ int main() {
         [&] { ++record_glyphs; },
         {},
         {},
+        {},
+        {},
     };
     render_alternating_field_mode_records(records, record_callbacks);
     if (!expect(record_grids == 1 && record_glyphs == 7)) {
@@ -73,11 +85,23 @@ int main() {
         return 3;
     }
 
+    FieldModeSelectionPresentationState negative_table{};
+    negative_table.mode_result = -1;
+    negative_table.primary_cursor = 1;
+    negative_table.negative_glyph_records[1][0].marker = 'E';
+    render_field_mode_selection_presentation(negative_table, callbacks);
+    if (!expect(selected_negative_tables.size() == 1U &&
+                selected_negative_tables.back() ==
+                    FieldModeNegativeGlyphTable::cursor_one &&
+                grids == 9 && glyph_triples == 7)) {
+        return 31;
+    }
+
     FieldModeSelectionPresentationState negative_glyphs{};
     negative_glyphs.mode_result = -1;
     negative_glyphs.primary_cursor = 4;
     render_field_mode_selection_presentation(negative_glyphs, callbacks);
-    if (!expect(glyph_triples == 8 && text_passes == 1)) {
+    if (!expect(glyph_triples == 15 && text_passes == 1)) {
         return 4;
     }
 
@@ -85,7 +109,7 @@ int main() {
     result_one.mode_result = 1;
     result_one.primary_cursor = 7;
     render_field_mode_selection_presentation(result_one, callbacks);
-    if (!expect(grids == 16)) {
+    if (!expect(grids == 17)) {
         return 5;
     }
 
@@ -94,7 +118,7 @@ int main() {
     result_two.menu_mode = 6;
     result_two.primary_cursor = 2;
     render_field_mode_selection_presentation(result_two, callbacks);
-    if (!expect(grids == 24 && selected_resources.size() == 1U &&
+    if (!expect(grids == 25 && selected_resources.size() == 1U &&
                 selected_resources.back().family ==
                     MenuResourceFamily::menu_mode_six_records &&
                 selected_resources.back().record_offset == 0x20U)) {
@@ -103,12 +127,12 @@ int main() {
 
     result_two.primary_cursor = 5;
     render_field_mode_selection_presentation(result_two, callbacks);
-    if (!expect(grids == 32)) {
+    if (!expect(grids == 33)) {
         return 7;
     }
     result_two.primary_cursor = 4;
     render_field_mode_selection_presentation(result_two, callbacks);
-    if (!expect(grids == 40)) {
+    if (!expect(grids == 41)) {
         return 8;
     }
 
@@ -116,13 +140,26 @@ int main() {
     normal.mode_result = 0;
     normal.primary_cursor = 0;
     render_field_mode_selection_presentation(normal, callbacks);
-    if (!expect(glyph_triples == 16 && text_passes == 1)) {
+    if (!expect(glyph_triples == 23 && text_passes == 1)) {
         return 9;
     }
     normal.primary_cursor = 3;
     render_field_mode_selection_presentation(normal, callbacks);
-    if (!expect(glyph_triples == 24 && text_passes == 1)) {
+    if (!expect(glyph_triples == 31 && text_passes == 1)) {
         return 10;
+    }
+
+    FieldModeSelectionPresentationState dynamic_action_table{};
+    dynamic_action_table.mode_result = 0;
+    dynamic_action_table.menu_mode = 5;
+    dynamic_action_table.primary_cursor = -1;
+    render_field_mode_selection_presentation(dynamic_action_table, callbacks);
+    if (!expect(selected_action_tables.size() == 1U &&
+                selected_action_tables.back().first ==
+                    FieldModeActionRecordTable::dynamic_menu_mode &&
+                selected_action_tables.back().second == 2 &&
+                glyph_triples == 39)) {
+        return 11;
     }
 
     return 0;
