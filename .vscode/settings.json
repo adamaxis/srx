@@ -7,5 +7,6 @@
     "cmake.defaultConfigurePreset": "debug",
     "cmake.defaultBuildPreset": "debug-native",
     "cmake.configureOnOpen": false,
-    "cmake.buildTask": true
+    "cmake.buildTask": false,
+    "cmake.outputLogEncoding": "utf8"
 }
