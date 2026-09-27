@@ -1745,6 +1745,16 @@ the isolated C++ conversion leaves the prompt/text callbacks outside the
 record mutation. Source `+0x9A` is now exposed as `species_index` rather than
 being confused with the record header byte at `+0x00`.
 
+The surrounding `0x0D01C` entry is now represented by typed setup and
+one-sample input contracts. Setup preserves the source order: plane clear,
+menu batch, record metadata, eight attribute labels, twelve skill labels,
+base grids, active-runner resource/HUD/name/species/archetype/value refresh,
+detail panel, and the Attributes/Skills frame. Input gives left, right, up,
+and down priority over action bits; A/B run the upgrade gates, C prepares the
+detail panel before the `0xD4C8` active-runner selection, and Start exits to
+field mode. The conversion intentionally leaves the outer modern frame loop
+to the caller, but every source branch and callback order is explicit.
+
 The Magic entry at `0xFBA6` now has a typed source gate. The ROM takes the
 spell-panel path only when record `+0x9B < 2` and its magic/resource byte at
 `+0x7F` is nonzero; the three archetype templates confirm Shaman=`1`/`6`,

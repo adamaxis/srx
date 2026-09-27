@@ -163,6 +163,170 @@ AttributeSkillRenderResult render_attributes_and_skills(
     return result;
 }
 
+void initialize_attributes_and_skills_menu(
+    AttributesSkillsMenuState& state,
+    const AttributesSkillsMenuInitializationCallbacks& callbacks) {
+    state.cursor = {};
+    state.selection_data_available = false;
+    state.upgrade_error_marker = false;
+    state.open = true;
+
+    if (callbacks.clear_menu_planes) {
+        callbacks.clear_menu_planes();
+    }
+    if (callbacks.transfer_menu_asset_batch) {
+        callbacks.transfer_menu_asset_batch();
+    }
+    if (callbacks.initialize_menu_record_metadata) {
+        callbacks.initialize_menu_record_metadata();
+    }
+    if (callbacks.render_attribute_labels) {
+        callbacks.render_attribute_labels();
+    }
+    if (callbacks.render_skill_labels) {
+        callbacks.render_skill_labels();
+    }
+    if (callbacks.render_base_attribute_skill_grids) {
+        callbacks.render_base_attribute_skill_grids();
+    }
+    if (callbacks.refresh_active_runner_resource_metadata) {
+        callbacks.refresh_active_runner_resource_metadata();
+    }
+    if (callbacks.render_active_runner_hud_panel) {
+        callbacks.render_active_runner_hud_panel();
+    }
+    if (callbacks.render_active_runner_name) {
+        callbacks.render_active_runner_name();
+    }
+    if (callbacks.render_species_label) {
+        callbacks.render_species_label();
+    }
+    if (callbacks.render_archetype_label) {
+        callbacks.render_archetype_label();
+    }
+    if (callbacks.render_record_values) {
+        callbacks.render_record_values();
+    }
+    if (callbacks.render_detail_panel) {
+        callbacks.render_detail_panel(0x4000U);
+    }
+    if (callbacks.render_attributes_and_skills) {
+        const auto result = callbacks.render_attributes_and_skills();
+        state.selection_data_available =
+            result.outcome !=
+            AttributeSkillRenderOutcome::selection_data_unavailable;
+        state.upgrade_error_marker =
+            result.outcome ==
+            AttributeSkillRenderOutcome::invalid_upgrade_selection;
+    }
+}
+
+AttributesSkillsMenuInputEvent apply_attributes_skills_menu_input(
+    AttributesSkillsMenuState& state,
+    const RunnerRecordFields& active_record,
+    const AttributesSkillsMenuInputFrame& input,
+    const AttributesSkillsMenuInputCallbacks& callbacks) {
+    if (!state.open) {
+        return AttributesSkillsMenuInputEvent::exited_to_field;
+    }
+
+    // The source uses a branch-and-redraw after each direction, so later
+    // directions and action bits in the same sample are not considered.
+    if (input.move_left) {
+        if (callbacks.render_detail_panel) {
+            callbacks.render_detail_panel(0x6000U);
+        }
+        state.cursor.column = 0U;
+        return AttributesSkillsMenuInputEvent::selection_moved;
+    }
+    if (input.move_right) {
+        if (callbacks.render_detail_panel) {
+            callbacks.render_detail_panel(0x6000U);
+        }
+        state.cursor.column = 1U;
+        return AttributesSkillsMenuInputEvent::selection_moved;
+    }
+    if (input.move_up) {
+        if (callbacks.render_detail_panel) {
+            callbacks.render_detail_panel(0x6000U);
+        }
+        if (state.cursor.row > 0U) {
+            --state.cursor.row;
+        }
+        return AttributesSkillsMenuInputEvent::selection_moved;
+    }
+    if (input.move_down) {
+        if (callbacks.render_detail_panel) {
+            callbacks.render_detail_panel(0x6000U);
+        }
+        if (state.cursor.row < 9U) {
+            ++state.cursor.row;
+        }
+        return AttributesSkillsMenuInputEvent::selection_moved;
+    }
+
+    // A and B share the source upgrade path. A negative FFF116 marker exits
+    // the screen, while a negative FFF0B3 marker means D82A already rendered
+    // the rejection and the loop simply waits for the next sample.
+    if (input.upgrade) {
+        if (!state.selection_data_available) {
+            state.open = false;
+            if (callbacks.leave_to_field) {
+                callbacks.leave_to_field();
+            }
+            return AttributesSkillsMenuInputEvent::exited_to_field;
+        }
+        if (state.upgrade_error_marker) {
+            return AttributesSkillsMenuInputEvent::upgrade_blocked;
+        }
+        if (callbacks.write_upgrade_grid) {
+            callbacks.write_upgrade_grid();
+        }
+        if (state.cursor.column == 1U &&
+            (state.cursor.row == 2U || state.cursor.row == 3U)) {
+            if (callbacks.render_unsupported_selection) {
+                callbacks.render_unsupported_selection(
+                    AttributesSkillsUnsupportedSelection::
+                        non_upgradeable_attribute);
+            }
+            return AttributesSkillsMenuInputEvent::upgrade_blocked;
+        }
+        if (state.cursor.column == 0U && state.cursor.row == 4U &&
+            active_record.archetype_index >= 2U) {
+            if (callbacks.render_unsupported_selection) {
+                callbacks.render_unsupported_selection(
+                    AttributesSkillsUnsupportedSelection::
+                        class_restricted_first_skill);
+            }
+            return AttributesSkillsMenuInputEvent::upgrade_blocked;
+        }
+        return AttributesSkillsMenuInputEvent::upgrade_requested;
+    }
+
+    // C takes priority over Start in the source's final branch. The detail
+    // panel is prepared before the active-runner selection service.
+    if (input.active_runner_selection) {
+        if (callbacks.render_detail_panel) {
+            callbacks.render_detail_panel(0x6000U);
+        }
+        state.cursor.column = 0U;
+        if (callbacks.advance_active_runner_selection) {
+            callbacks.advance_active_runner_selection();
+        }
+        return AttributesSkillsMenuInputEvent::
+            active_runner_selection_requested;
+    }
+
+    if (input.exit) {
+        state.open = false;
+        if (callbacks.leave_to_field) {
+            callbacks.leave_to_field();
+        }
+        return AttributesSkillsMenuInputEvent::exited_to_field;
+    }
+    return AttributesSkillsMenuInputEvent::waiting;
+}
+
 const AttributeSkillCell& selected_attribute_skill_cell(
     const AttributeSkillGrid& grid, const AttributeSkillCursor cursor) {
     const auto column = std::min<std::size_t>(
@@ -175,15 +339,15 @@ const AttributeSkillCell& selected_attribute_skill_cell(
 AttributeSkillCursor move_attribute_skill_cursor(
     AttributeSkillCursor cursor, const bool left, const bool right,
     const bool up, const bool down) {
-    if (left && !right) {
+    if (left) {
         cursor.column = 0U;
-    } else if (right && !left) {
+    } else if (right) {
         cursor.column = 1U;
     }
 
-    if (up && !down && cursor.row > 0U) {
+    if (up && cursor.row > 0U) {
         --cursor.row;
-    } else if (down && !up && cursor.row < 9U) {
+    } else if (down && cursor.row < 9U) {
         ++cursor.row;
     }
     return cursor;

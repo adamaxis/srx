@@ -105,6 +105,17 @@ struct AttributeSkillRenderResult {
     std::uint8_t karma_available = 0;
 };
 
+struct AttributesSkillsMenuState {
+    AttributeSkillCursor cursor{};
+    // Source FFF116: negative means the active selection/detail data is not
+    // available and an A/B request leaves the menu for field mode.
+    bool selection_data_available = false;
+    // Source FFF0B3: D82A's invalid-upgrade branch has already presented the
+    // rejection, so a later A/B sample waits instead of repeating it.
+    bool upgrade_error_marker = false;
+    bool open = false;
+};
+
 struct AttributeSkillRenderCallbacks {
     // ROM 0xD82A starts by clearing FFF0B3 and submitting the fixed
     // Attributes/Skills background grid (D4=CA86, D1=4, D7=21).
@@ -137,6 +148,80 @@ AttributeSkillRenderResult render_attributes_and_skills(
     AttributeSkillCursor cursor,
     bool selection_data_available,
     const AttributeSkillRenderCallbacks& callbacks = {});
+
+struct AttributesSkillsMenuInitializationCallbacks {
+    // ROM 0xD01C setup: clear the two planes, transfer the menu batch, seed
+    // the source menu-record metadata, and publish the initial label groups.
+    std::function<void()> clear_menu_planes;
+    std::function<void()> transfer_menu_asset_batch;
+    std::function<void()> initialize_menu_record_metadata;
+    std::function<void()> render_attribute_labels;
+    std::function<void()> render_skill_labels;
+    std::function<void()> render_base_attribute_skill_grids;
+
+    // The active-runner context follows the static label/grid setup and
+    // precedes the first detail panel and Attributes/Skills render.
+    std::function<void()> refresh_active_runner_resource_metadata;
+    std::function<void()> render_active_runner_hud_panel;
+    std::function<void()> render_active_runner_name;
+    std::function<void()> render_species_label;
+    std::function<void()> render_archetype_label;
+    std::function<void()> render_record_values;
+    std::function<void(std::uint16_t)> render_detail_panel;
+    std::function<AttributeSkillRenderResult()> render_attributes_and_skills;
+};
+
+// ROM 0x0D01C setup expressed as source-sized presentation/service steps.
+// FFF116 starts negative in the source; a real render callback may publish a
+// live selection result before the input loop begins.
+void initialize_attributes_and_skills_menu(
+    AttributesSkillsMenuState& state,
+    const AttributesSkillsMenuInitializationCallbacks& callbacks = {});
+
+enum class AttributesSkillsMenuInputEvent {
+    waiting,
+    selection_moved,
+    upgrade_requested,
+    upgrade_blocked,
+    active_runner_selection_requested,
+    exited_to_field,
+};
+
+enum class AttributesSkillsUnsupportedSelection {
+    non_upgradeable_attribute,
+    class_restricted_first_skill,
+};
+
+struct AttributesSkillsMenuInputFrame {
+    bool move_left = false;  // source controller bit 10
+    bool move_right = false; // source controller bit 11
+    bool move_up = false;    // source controller bit 8
+    bool move_down = false;  // source controller bit 9
+    bool upgrade = false;    // source A/B bits 14/12
+    bool active_runner_selection = false; // source C bit 13
+    bool exit = false;       // source Start bit 15
+};
+
+struct AttributesSkillsMenuInputCallbacks {
+    // Cursor changes and runner cycling draw the detail panel with D1=0x6000
+    // before the caller's ordinary 0x4000/detail and D82A redraw pass.
+    std::function<void(std::uint16_t)> render_detail_panel;
+    std::function<void()> write_upgrade_grid;
+    std::function<void(AttributesSkillsUnsupportedSelection)>
+        render_unsupported_selection;
+    std::function<void()> advance_active_runner_selection;
+    std::function<void()> leave_to_field;
+};
+
+// ROM 0x0D01C/0x0D26A input priority as one loop iteration. Directional
+// events are handled left, right, up, down before A/B upgrade, C runner
+// cycling, and Start exit. The caller can cycle this contract in its own
+// modern frame loop; no source input word or RAM marker is retained here.
+AttributesSkillsMenuInputEvent apply_attributes_skills_menu_input(
+    AttributesSkillsMenuState& state,
+    const RunnerRecordFields& active_record,
+    const AttributesSkillsMenuInputFrame& input,
+    const AttributesSkillsMenuInputCallbacks& callbacks = {});
 
 const AttributeSkillCell& selected_attribute_skill_cell(
     const AttributeSkillGrid& grid, AttributeSkillCursor cursor);

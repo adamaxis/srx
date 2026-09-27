@@ -21,6 +21,15 @@
 //   0x000110EC draw_active_runner_hud_panel
 //   0x00012C5A write_menu_repeated_grid_with_metadata
 //   0x000566E2 refresh_mode_resource_metadata
+// Behavior annotation from the ROM disassembly:
+//   Setup clears both planes, transfers the menu batch, emits the eight
+//   attribute labels and twelve skill labels, prepares the two base grids,
+//   refreshes the active runner HUD/name/species/archetype/value fields, and
+//   enters the detail-plus-Attributes/Skills frame. The input loop gives
+//   left/right/up/down priority, then A/B to the upgrade path, C to the
+//   0xD4C8 active-runner selector, and Start to field exit. Attribute cells
+//   6/7 and the archetype-restricted first skill display rejection text;
+//   successful upgrades return through the active-runner refresh setup.
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */

@@ -189,5 +189,148 @@ int main() {
         return 15;
     }
 
+    AttributesSkillsMenuState menu_state{};
+    std::vector<int> setup_events;
+    AttributesSkillsMenuInitializationCallbacks setup_callbacks{};
+    setup_callbacks.clear_menu_planes = [&] { setup_events.push_back(1); };
+    setup_callbacks.transfer_menu_asset_batch =
+        [&] { setup_events.push_back(2); };
+    setup_callbacks.initialize_menu_record_metadata =
+        [&] { setup_events.push_back(3); };
+    setup_callbacks.render_attribute_labels =
+        [&] { setup_events.push_back(4); };
+    setup_callbacks.render_skill_labels =
+        [&] { setup_events.push_back(5); };
+    setup_callbacks.render_base_attribute_skill_grids =
+        [&] { setup_events.push_back(6); };
+    setup_callbacks.refresh_active_runner_resource_metadata =
+        [&] { setup_events.push_back(7); };
+    setup_callbacks.render_active_runner_hud_panel =
+        [&] { setup_events.push_back(8); };
+    setup_callbacks.render_active_runner_name =
+        [&] { setup_events.push_back(9); };
+    setup_callbacks.render_species_label = [&] { setup_events.push_back(10); };
+    setup_callbacks.render_archetype_label =
+        [&] { setup_events.push_back(11); };
+    setup_callbacks.render_record_values =
+        [&] { setup_events.push_back(12); };
+    setup_callbacks.render_detail_panel =
+        [&](const std::uint16_t command) {
+            setup_events.push_back(command == 0x4000U ? 13 : 14);
+        };
+    setup_callbacks.render_attributes_and_skills = [&] {
+        setup_events.push_back(15);
+        AttributeSkillRenderResult result{};
+        result.outcome =
+            AttributeSkillRenderOutcome::rendered_upgrade_preview;
+        return result;
+    };
+    initialize_attributes_and_skills_menu(menu_state, setup_callbacks);
+    if (!expect(menu_state.open && menu_state.selection_data_available &&
+                !menu_state.upgrade_error_marker &&
+                setup_events == std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8,
+                                                 9, 10, 11, 12, 13, 15})) {
+        return 16;
+    }
+
+    RunnerRecordFields active_record{};
+    active_record.archetype_index = 2U;
+    std::vector<int> input_events;
+    AttributesSkillsMenuInputCallbacks input_callbacks{};
+    input_callbacks.render_detail_panel =
+        [&](const std::uint16_t command) {
+            input_events.push_back(command == 0x6000U ? 1 : 2);
+        };
+    input_callbacks.write_upgrade_grid = [&] { input_events.push_back(3); };
+    input_callbacks.render_unsupported_selection =
+        [&](const AttributesSkillsUnsupportedSelection reason) {
+            input_events.push_back(
+                reason == AttributesSkillsUnsupportedSelection::
+                               non_upgradeable_attribute
+                    ? 4
+                    : 5);
+        };
+    input_callbacks.advance_active_runner_selection =
+        [&] { input_events.push_back(6); };
+    input_callbacks.leave_to_field = [&] { input_events.push_back(7); };
+
+    menu_state.cursor = {1U, 9U};
+    const auto left_priority = apply_attributes_skills_menu_input(
+        menu_state, active_record,
+        AttributesSkillsMenuInputFrame{true, true, false, true, true, false,
+                                       false},
+        input_callbacks);
+    if (!expect(left_priority ==
+                    AttributesSkillsMenuInputEvent::selection_moved &&
+                menu_state.cursor.column == 0U && menu_state.cursor.row == 9U &&
+                input_events == std::vector<int>{1})) {
+        return 17;
+    }
+
+    menu_state.cursor = {1U, 2U};
+    input_events.clear();
+    const auto blocked_attribute = apply_attributes_skills_menu_input(
+        menu_state, active_record,
+        AttributesSkillsMenuInputFrame{false, false, false, false, true,
+                                       false, false},
+        input_callbacks);
+    if (!expect(blocked_attribute ==
+                    AttributesSkillsMenuInputEvent::upgrade_blocked &&
+                input_events == std::vector<int>{3, 4})) {
+        return 18;
+    }
+
+    menu_state.cursor = {0U, 4U};
+    input_events.clear();
+    const auto blocked_skill = apply_attributes_skills_menu_input(
+        menu_state, active_record,
+        AttributesSkillsMenuInputFrame{false, false, false, false, true,
+                                       false, false},
+        input_callbacks);
+    if (!expect(blocked_skill ==
+                    AttributesSkillsMenuInputEvent::upgrade_blocked &&
+                input_events == std::vector<int>{3, 5})) {
+        return 19;
+    }
+
+    active_record.archetype_index = 1U;
+    input_events.clear();
+    const auto upgrade_event = apply_attributes_skills_menu_input(
+        menu_state, active_record,
+        AttributesSkillsMenuInputFrame{false, false, false, false, true,
+                                       false, false},
+        input_callbacks);
+    if (!expect(upgrade_event ==
+                    AttributesSkillsMenuInputEvent::upgrade_requested &&
+                input_events == std::vector<int>{3})) {
+        return 20;
+    }
+
+    menu_state.cursor = {1U, 4U};
+    input_events.clear();
+    const auto cycle = apply_attributes_skills_menu_input(
+        menu_state, active_record,
+        AttributesSkillsMenuInputFrame{false, false, false, false, false, true,
+                                       true},
+        input_callbacks);
+    if (!expect(cycle ==
+                    AttributesSkillsMenuInputEvent::
+                        active_runner_selection_requested &&
+                menu_state.cursor.column == 0U &&
+                input_events == std::vector<int>{1, 6})) {
+        return 21;
+    }
+
+    input_events.clear();
+    const auto exit = apply_attributes_skills_menu_input(
+        menu_state, active_record,
+        AttributesSkillsMenuInputFrame{false, false, false, false, false, false,
+                                       true},
+        input_callbacks);
+    if (!expect(exit == AttributesSkillsMenuInputEvent::exited_to_field &&
+                !menu_state.open && input_events == std::vector<int>{7})) {
+        return 22;
+    }
+
     return 0;
 }
