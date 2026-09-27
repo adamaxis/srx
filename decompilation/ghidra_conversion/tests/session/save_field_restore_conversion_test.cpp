@@ -51,7 +51,7 @@ int main() {
     const SaveFieldRestoreCallbacks callbacks{
         [&callback_order](SaveFieldRestoreState& observed) {
             callback_order.push_back(1);
-            if (observed.scene_mode != 0x0014U ||
+            if (observed.world_mode != 0x0014U ||
                 observed.roster.primary_marker != 2U ||
                 observed.roster.secondary_marker != 3U) {
                 callback_order.push_back(99);
@@ -68,7 +68,7 @@ int main() {
                 restored.primary_template_loaded &&
                 restored.secondary_template_loaded &&
                 callback_order == std::vector<int>{1, 2} &&
-                state.scene_mode == 0x0014U && state.camera_x == 0x1234U &&
+                state.world_mode == 0x0014U && state.camera_x == 0x1234U &&
                 state.camera_y == 0x5678U &&
                 state.runner_positions[0].x == 0x0102U &&
                 state.runner_positions[0].y == 0x0304U &&

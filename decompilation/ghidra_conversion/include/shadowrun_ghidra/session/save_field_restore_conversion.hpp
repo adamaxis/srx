@@ -30,9 +30,9 @@ struct SaveFieldRestoreState {
     // Host-owned copy of the source destination at FFF9FA. Unknown save
     // fields remain opaque until another consumer proves their meaning.
     std::array<std::uint8_t, kSaveFieldPayloadSize> work_payload{};
-    std::uint16_t scene_mode = 0;
-    std::uint16_t camera_x = 0;
-    std::uint16_t camera_y = 0;
+    std::uint16_t world_mode = 0; // source FFDDC4
+    std::uint16_t camera_x = 0;   // source FFDDC6
+    std::uint16_t camera_y = 0;   // source FFDDC8
     std::array<RestoredRunnerPosition, 3> runner_positions{};
 
     RunnerRosterState roster{};

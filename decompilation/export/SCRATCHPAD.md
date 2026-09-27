@@ -51,6 +51,31 @@ Joshua record plus the three source selection markers. Missing or malformed
 record assets are reported as an incomplete conversion rather than replaced
 with native-port state or guessed defaults.
 
+The adjacent load-restoration span is also source-mapped before it is exposed
+to a runtime caller. `0x59360` first normalizes the active SRAM pair through
+`0x59456`; only when that succeeds does `0x59372` validate the two work-buffer
+copies. `0x59372` has four observable outcomes: keep a valid primary and
+repair an invalid secondary, keep both valid copies, copy a valid secondary
+back into the primary, or return with no save. There is no ROM-side fallback
+callback after both copies fail, so the conversion does not invent one.
+
+When `0x594E0` receives a validated work buffer, its source order is:
+
+| Source write | Meaning established by consumers | Conversion field |
+| --- | --- | --- |
+| `FFF9FA..+0x247` | copied saved field payload | `SaveFieldRestoreState::work_payload` |
+| `FFDDC4` | world/field mode word | `world_mode` |
+| `FFDDC6`, `FFDDC8` | field camera/origin words | `camera_x`, `camera_y` |
+| `FF0100/04`, `FF0200/04`, `FF0300/04` | Joshua and two recruited-runner positions | `runner_positions[0..2]` |
+| `FFFC0C`, `FFFC0D` | signed recruited-runner template markers | `RunnerRosterState` markers |
+| `FF0110`, `FF0210`, `FF0310` | field/entity flags and recruited-runner effect flags | typed restore flags |
+| `FF0150` | field profile pointer selected by `FF019B` (2, 3, or default) | `FieldProfileSelection` |
+
+The direct callees `0x03074`, `0x042F2`, `0x0431C`, `0x5966E`, and `0x1E4AC`
+remain explicit conversion boundaries. A successful menu callback must not be
+treated as a completed load until this restoration path has a validated host
+save image and the source-derived roster templates.
+
 ## Export files
 
 - `functions.tsv`: one row per function and generated C file.

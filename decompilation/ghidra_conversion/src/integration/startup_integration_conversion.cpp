@@ -199,6 +199,44 @@ StartupIntegrationEvent advance_startup_integration(
         case SaveLoadMenuEvent::no_save_data:
             return StartupIntegrationEvent::no_save_data;
         case SaveLoadMenuEvent::save_loaded:
+            if (!state.startup_records.has_value() ||
+                !state.save_roster_buffer.has_value() ||
+                !callbacks.read_loaded_save_for_restore) {
+                append_event(state, "save_field_restore.missing");
+                set_phase(state, callbacks, StartupIntegrationPhase::failed);
+                return StartupIntegrationEvent::callback_unresolved;
+            }
+            {
+                const auto restore_input =
+                    callbacks.read_loaded_save_for_restore(
+                        state.save_load.selected);
+                if (!restore_input.has_value()) {
+                    append_event(state, "save_field_restore.missing");
+                    set_phase(state, callbacks,
+                              StartupIntegrationPhase::failed);
+                    return StartupIntegrationEvent::callback_unresolved;
+                }
+
+                const std::vector<RunnerRosterTemplate> templates(
+                    state.startup_records->save_roster_templates.begin(),
+                    state.startup_records->save_roster_templates.end());
+                state.restored_field_state.emplace();
+                state.save_field_restore_result = restore_saved_field_state(
+                    restore_input->source_work_buffer, templates,
+                    state.save_roster_buffer->compact_records,
+                    restore_input->world_effect_pending,
+                    restore_input->scene_profile_selector,
+                    *state.restored_field_state,
+                    callbacks.save_field_restore);
+                if (state.save_field_restore_result->action !=
+                    SaveFieldRestoreAction::restored) {
+                    append_event(state, "save_field_restore.failed");
+                    set_phase(state, callbacks,
+                              StartupIntegrationPhase::failed);
+                    return StartupIntegrationEvent::callback_unresolved;
+                }
+            }
+            append_event(state, "save_field_restore.restored");
             set_phase(state, callbacks, StartupIntegrationPhase::field_ready);
             if (callbacks.field_ready) {
                 callbacks.field_ready();

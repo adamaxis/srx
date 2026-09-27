@@ -29,6 +29,13 @@ void record(Observations& observations, const char* callback) {
     observations.callbacks.emplace_back(callback);
 }
 
+void write_big_endian_word(std::vector<std::uint8_t>& bytes,
+                           const std::size_t offset,
+                           const std::uint16_t value) {
+    bytes[offset] = static_cast<std::uint8_t>(value >> 8U);
+    bytes[offset + 1U] = static_cast<std::uint8_t>(value & 0xFFU);
+}
+
 StartupIntegrationCallbacks make_callbacks(
     StartupIntegrationState& state,
     Observations& observations) {
@@ -273,6 +280,86 @@ int main() {
         load_state.save_load.load_flag_published ||
         load_state.phase != StartupIntegrationPhase::save_load) {
         return 5;
+    }
+
+    // A menu callback reporting "loaded" is not enough to enter the field:
+    // the converted 0x594E0 restoration path must have a validated source
+    // image. This guards the central layer against the old false-success path.
+    StartupIntegrationState missing_restore_state{};
+    Observations missing_restore_observations;
+    auto missing_restore_callbacks =
+        make_callbacks(missing_restore_state, missing_restore_observations);
+    missing_restore_callbacks.save_load.try_load_save_slot =
+        [](const SaveSlotChoice) { return SaveLoadAttempt::loaded; };
+    if (start_startup_integration(
+            asset_root, missing_restore_state, missing_restore_callbacks) !=
+            StartupIntegrationStartResult::title_ready ||
+        enter_start_options_integration(
+            missing_restore_state, missing_restore_callbacks) !=
+            StartupIntegrationEvent::entered_start_options ||
+        advance_startup_integration(
+            missing_restore_state, kStartupMenuDown,
+            missing_restore_callbacks) !=
+            StartupIntegrationEvent::selection_moved ||
+        advance_startup_integration(
+            missing_restore_state, kStartupMenuA,
+            missing_restore_callbacks) !=
+            StartupIntegrationEvent::entered_save_load ||
+        advance_startup_integration(
+            missing_restore_state, kStartupMenuA,
+            missing_restore_callbacks) !=
+            StartupIntegrationEvent::callback_unresolved ||
+        missing_restore_state.phase != StartupIntegrationPhase::failed ||
+        !has_event(missing_restore_state, "save_field_restore.missing")) {
+        return 10;
+    }
+
+    StartupIntegrationState restored_state{};
+    Observations restored_observations;
+    auto restored_callbacks = make_callbacks(restored_state, restored_observations);
+    restored_callbacks.save_load.try_load_save_slot =
+        [](const SaveSlotChoice) { return SaveLoadAttempt::loaded; };
+    LoadedSaveRestoreInput restored_input{};
+    restored_input.source_work_buffer.assign(kSaveFieldImageSize, 0U);
+    const auto saved_payload = kSaveFieldSourceOffset;
+    write_big_endian_word(
+        restored_input.source_work_buffer,
+        saved_payload + kSaveFieldPayloadSize, 0x0014U);
+    restored_input.source_work_buffer[saved_payload + 0x212U] = 1U;
+    restored_input.source_work_buffer[saved_payload + 0x213U] = 0xFFU;
+    write_big_endian_word(
+        restored_input.source_work_buffer,
+        saved_payload + kSaveFieldPayloadSize + 2U, 0x1234U);
+    write_big_endian_word(
+        restored_input.source_work_buffer,
+        saved_payload + kSaveFieldPayloadSize + 4U, 0x5678U);
+    restored_callbacks.read_loaded_save_for_restore =
+        [restored_input](const SaveSlotChoice) { return restored_input; };
+    if (start_startup_integration(
+            asset_root, restored_state, restored_callbacks) !=
+            StartupIntegrationStartResult::title_ready ||
+        enter_start_options_integration(
+            restored_state, restored_callbacks) !=
+            StartupIntegrationEvent::entered_start_options ||
+        advance_startup_integration(
+            restored_state, kStartupMenuDown, restored_callbacks) !=
+            StartupIntegrationEvent::selection_moved ||
+        advance_startup_integration(
+            restored_state, kStartupMenuA, restored_callbacks) !=
+            StartupIntegrationEvent::entered_save_load ||
+        advance_startup_integration(
+            restored_state, kStartupMenuA, restored_callbacks) !=
+            StartupIntegrationEvent::save_loaded ||
+        restored_state.phase != StartupIntegrationPhase::field_ready ||
+        !restored_state.restored_field_state.has_value() ||
+        !restored_state.save_field_restore_result.has_value() ||
+        restored_state.save_field_restore_result->action !=
+            SaveFieldRestoreAction::restored ||
+        restored_state.restored_field_state->world_mode != 0x0014U ||
+        restored_state.restored_field_state->camera_x != 0x1234U ||
+        restored_state.restored_field_state->camera_y != 0x5678U ||
+        !has_event(restored_state, "save_field_restore.restored")) {
+        return 11;
     }
 
     StartupIntegrationState new_game_state{};

@@ -49,7 +49,7 @@ SaveFieldRestoreResult restore_saved_field_state(
     state.roster.primary_marker = state.work_payload[kPrimaryMarkerOffset];
     state.roster.secondary_marker = state.work_payload[kSecondaryMarkerOffset];
     const auto tail = kSaveFieldSourceOffset + kSaveFieldPayloadSize;
-    state.scene_mode = read_big_endian_word(source_work_buffer, tail);
+    state.world_mode = read_big_endian_word(source_work_buffer, tail);
 
     if (callbacks.prepare_field_scene_buffers) {
         callbacks.prepare_field_scene_buffers(state);

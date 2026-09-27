@@ -3,6 +3,7 @@
 #include "shadowrun_ghidra/core/asset_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/timing_conversion.hpp"
 #include "shadowrun_ghidra/menus/startup_menu_conversion.hpp"
+#include "shadowrun_ghidra/session/save_field_restore_conversion.hpp"
 #include "shadowrun_ghidra/session/startup_record_assets_conversion.hpp"
 #include "shadowrun_ghidra/title_intro/boot_sequence_conversion.hpp"
 #include "shadowrun_ghidra/title_intro/title_setup_conversion.hpp"
@@ -50,6 +51,16 @@ enum class StartupIntegrationEvent {
 
 const char* startup_integration_phase_name(StartupIntegrationPhase phase);
 
+// The conversion layer accepts a host save image only after the menu's
+// source-derived validation boundary reports it loaded. The image itself is
+// supplied by the future host persistence implementation; its restoration is
+// performed by restore_saved_field_state(), not by a new menu-side shortcut.
+struct LoadedSaveRestoreInput {
+    std::vector<std::uint8_t> source_work_buffer;
+    bool world_effect_pending = false;
+    std::uint8_t scene_profile_selector = 0;
+};
+
 struct StartupIntegrationCallbacks {
     // 0x0236 -> 0x073A display handoff.
     std::function<void()> initialize_display;
@@ -64,6 +75,10 @@ struct StartupIntegrationCallbacks {
     SaveLoadMenuCallbacks save_load;
     JoshuaArchetypeMenuCallbacks joshua_archetype;
 
+    std::function<std::optional<LoadedSaveRestoreInput>(SaveSlotChoice)>
+        read_loaded_save_for_restore;
+    SaveFieldRestoreCallbacks save_field_restore;
+
     // Observation and the final handoff remain host boundaries. They do not
     // replace the converted source routines with invented behavior.
     std::function<void(StartupIntegrationPhase)> phase_changed;
@@ -77,6 +92,8 @@ struct StartupIntegrationState {
     std::vector<std::string> startup_record_asset_errors;
     std::optional<SaveRosterBuffer> save_roster_buffer;
     std::optional<JoshuaArchetypeSelection> joshua_selection;
+    std::optional<SaveFieldRestoreState> restored_field_state;
+    std::optional<SaveFieldRestoreResult> save_field_restore_result;
 
     BootStartupState boot;
     PreTitleSequenceState pre_title;
