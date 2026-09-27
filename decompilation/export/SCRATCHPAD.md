@@ -23,6 +23,13 @@ exported functions; no generated `FUN_<address>` names remain. The six
 hardware-vector entries and the six largest/previously native-owned entries
 are named explicitly as vector, renderer, terrain, menu, or save boundaries.
 
+The reviewed startup-menu trace is modeled in the separate conversion tree:
+`0x59092` owns New Game / Load Game, `0x59172` owns Save Slot 1 / Save Slot 2,
+and `0x59248` owns Joshua's Samurai / Decker / Gator Shaman choices. Their
+typed state and source callback order live in
+`ghidra_conversion/menus/startup_menu_conversion`; this is not runtime wiring
+and does not replace the native port's presentation code.
+
 ## Export files
 
 - `functions.tsv`: one row per function and generated C file.

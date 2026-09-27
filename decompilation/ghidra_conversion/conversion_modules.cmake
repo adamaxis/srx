@@ -188,6 +188,7 @@ file(GLOB SHADOWRUN_MODULE_MENU_SERVICES_HUD CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/menus/hud_*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/menus/menu_*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/menus/pocket_secretary_menu_conversion.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/menus/startup_menu_conversion.cpp"
 )
 
 file(GLOB SHADOWRUN_MODULE_INTRO_DIRECTOR_STAGES CONFIGURE_DEPENDS

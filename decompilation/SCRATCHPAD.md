@@ -1760,6 +1760,17 @@ profile enum. A pending `FFFC3C` effect is exposed through the separate
 world-effect callback. The conversion has no dependency on the emulator or
 native runtime; only the two still-independent source leaves remain callbacks.
 
+The startup menu trace is now also separate from the native port in
+`ghidra_conversion/menus/startup_menu_conversion`. `0x59092` is explicitly
+the New Game / Load Game selector, `0x59172` is the two-slot Save Slot 1 /
+Save Slot 2 screen, and `0x59248` is the three-choice Joshua Samurai / Decker /
+Gator Shaman screen. The conversion preserves each routine's draw/cursor
+ordering, Up-before-Down input precedence, A/B/C activation masks, archetype
+preview callback, and save-load message wait. The shared `0xC376` cursor
+helper remains generic; callers now expose the actual game menu and choice
+instead of labeling the whole path as an anonymous grid selector. These
+functions remain conversion-side callbacks and do not wire the native port.
+
 The world activity coordinator at `0x167AE` is now a separate typed
 conversion. It resets the activity decision state, applies the `FFE186`
 timeout scene override and `FFE162` descriptor-publish override in source
