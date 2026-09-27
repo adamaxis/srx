@@ -8,7 +8,9 @@
 // 0x1ADE6 when the alternate runner presenter is inactive. It prepares the
 // mode resources, redraws the ten source grid services, handles the action
 // gate and unresolved record-kind dispatch, and hands the Start/exit path to
-// the converted Matrix loop at 0x1822C. Host presentation and input are typed
+// the converted Matrix loop at 0x1822C. The source keeps FFF0B7 (menu result)
+// separate from FFF0B1 (HUD/scene abort); the latter is checked after the
+// random-event helper returns. Host presentation and input are typed
 // callbacks; no VDP or ROM address arithmetic is runtime behavior.
 //
 // Calls recovered from direct call instructions:
@@ -39,13 +41,14 @@
 //   initialize_mode_flags();
 //   for (;;) {
 //       redraw_mode_resources_and_grid();
-//       if (advance_random_mode_event()) continue;
-//       if (mode_exit_marker_is_negative()) return;
+//       advance_random_mode_event();
+//       if (hud_abort_marker_is_negative()) return;
 //       render_mode_status_fields();
 //       reset_mode_cursor();
+//       draw_cursor_with_zero_direction();
 //       for (;;) {
 //           wait_and_sample_controller();
-//           if (directional_edge()) continue;
+//           if (directional_edge()) { move_cursor(); continue; }
 //           if (action_edge()) {
 //               calculate_runner_action_delay();
 //               if (action_gate_passes())
@@ -58,6 +61,7 @@
 //           if (start_edge()) {
 //               enter_matrix_program_loop();
 //               reset_matrix_slot_timers();
+//               // The next outer redraw observes FFF0B1 if Matrix set it.
 //               break;
 //           }
 //       }

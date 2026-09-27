@@ -1,5 +1,7 @@
 #include "shadowrun_ghidra/field/mode_action_loop_conversion.hpp"
 
+#include "shadowrun_ghidra/core/selection_conversion.hpp"
+
 #include <algorithm>
 
 namespace shadowrun::ghidra_conversion {
@@ -57,7 +59,7 @@ bool advance_random_mode_event(
     // 0x54A8E clears the counter before changing the mode/HUD state.
     state.mode_random_count = 0;
     call_if_present(callbacks.transition_hud_mode);
-    if (state.display_result == 0) {
+    if (state.hud_abort == 0) {
         call_if_present(callbacks.select_display_status);
         call_if_present(callbacks.render_encoded_text);
         call_if_present(callbacks.wait_for_vblank_frame);
@@ -102,11 +104,12 @@ bool run_mode_action_loop(ModeActionState& state,
         call_if_present(callbacks.select_display_status);
         call_if_present(callbacks.refresh_mode_metadata);
         call_if_present(callbacks.set_display_control, 0x8174U);
-        if (callbacks.advance_random_mode_event &&
-            callbacks.advance_random_mode_event(state)) {
-            continue;
+        if (callbacks.advance_random_mode_event) {
+            callbacks.advance_random_mode_event(state);
         }
-        if (state.display_result < 0) {
+        // 0x547D8 tests FFF0B1 after 0x54A8E returns.  FFF0B7 is the menu
+        // result written by the entry and Matrix paths, not this exit gate.
+        if (state.hud_abort < 0) {
             return true;
         }
 
@@ -118,15 +121,34 @@ bool run_mode_action_loop(ModeActionState& state,
         call_if_present(callbacks.render_mode_status_summary);
         state.cursor = 0;
 
+        const auto publish_cursor = [&](const std::int8_t direction) {
+            state.cursor = static_cast<std::int8_t>(move_wrapped_menu_cursor(
+                static_cast<std::uint8_t>(state.cursor), direction,
+                static_cast<std::uint8_t>(record.cursor_limit)));
+            if (callbacks.move_menu_cursor) {
+                callbacks.move_menu_cursor(direction, state.cursor);
+            }
+        };
+
+        // 0x5482C clears the cursor and 0x5488C performs the initial C376
+        // draw with D2=0 before the first controller wait.
+        publish_cursor(0);
+
         for (;;) {
-            call_if_present(callbacks.move_menu_cursor);
             call_if_present(callbacks.wait_for_vblank);
             call_if_present(callbacks.latch_controller_events);
             const auto input = callbacks.sample_controller_input
                                    ? callbacks.sample_controller_input()
                                    : std::uint16_t{0};
 
-            if ((input & static_cast<std::uint16_t>(ModeActionInput::restart_cursor)) != 0U) {
+            std::int8_t direction = 0;
+            if ((input & static_cast<std::uint16_t>(ModeActionInput::move_previous)) != 0U) {
+                direction = -1;
+            } else if ((input & static_cast<std::uint16_t>(ModeActionInput::move_next)) != 0U) {
+                direction = 1;
+            }
+            if (direction != 0) {
+                publish_cursor(direction);
                 continue;
             }
 
@@ -158,14 +180,14 @@ bool run_mode_action_loop(ModeActionState& state,
                 call_if_present(callbacks.render_menu_footer);
                 call_if_present(callbacks.upload_menu_resource_pair);
                 call_if_present(callbacks.set_display_control, 0x8174U);
-                const bool matrix_exit = callbacks.enter_matrix_mode
-                                             ? callbacks.enter_matrix_mode()
-                                             : false;
+                const bool matrix_abort = callbacks.enter_matrix_mode
+                                               ? callbacks.enter_matrix_mode()
+                                               : false;
                 for (std::size_t slot = 0; slot < 5U; ++slot) {
                     call_if_present(callbacks.reset_matrix_slot_timer, slot);
                 }
-                if (matrix_exit) {
-                    return true;
+                if (matrix_abort) {
+                    state.hud_abort = -1;
                 }
                 break;
             }

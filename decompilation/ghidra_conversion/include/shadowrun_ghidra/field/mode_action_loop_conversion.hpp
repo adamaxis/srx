@@ -9,24 +9,27 @@ namespace shadowrun::ghidra_conversion {
 
 // Controller bits sampled by the mode-action loop at ROM 0x54662.
 enum class ModeActionInput : std::uint16_t {
-    restart_cursor = 0x0003U,
+    move_previous = 0x0001U,
+    move_next = 0x0002U,
     action = 0x0070U,
     leave_to_matrix = 0x0080U,
 };
 
 struct ModeActionRecord {
-    // The compact record is the 0x14-byte entry selected by the source
-    // scene/mode cursor.  The original first byte chooses the indirect action
-    // family; the second byte is the visible action-count boundary.
+    // The selected FF1100 + 0x00 byte chooses the indirect action family and
+    // +0x05 is the action-gate boundary used by 0x54662.
     std::int8_t kind = 0;
     std::int8_t option_count = 0;
     std::uint8_t flags = 0;
     bool clears_auxiliary_menu_state = false;
+    // The separate 0x1664D8 mode table + 0x04 byte bounds the visible cursor.
+    std::int8_t cursor_limit = 0;
 };
 
 struct ModeActionState {
     std::uint8_t mode_flags = 0;       // FFFB30[selected scene]
     std::int8_t display_result = -1;   // FFF0B7
+    std::int8_t hud_abort = 0;          // FFF0B1; 0x54662 does not initialize it
     std::uint8_t mode_random_count = 0; // FFF0A8
     std::int8_t cursor = 0;             // FFF0DC
     std::int8_t auxiliary_marker = -1;  // FFF0A6
@@ -56,7 +59,10 @@ struct ModeActionLoopCallbacks {
     std::function<bool(ModeActionState&)> advance_random_mode_event;
     std::function<void()> render_encoded_text;
     std::function<void()> render_mode_status_summary;
-    std::function<void()> move_menu_cursor;
+    // 0xC376 receives D2=direction and publishes FFF0DC.  The conversion
+    // updates the typed cursor first, then lets the host draw the new cursor.
+    std::function<void(std::int8_t direction, std::int8_t cursor)>
+        move_menu_cursor;
 
     std::function<void()> wait_for_vblank;
     std::function<void()> latch_controller_events;
@@ -74,7 +80,9 @@ struct ModeActionLoopCallbacks {
 
     std::function<void()> render_menu_footer;
     std::function<void()> upload_menu_resource_pair;
-    // Returns true when the Matrix/world routine reports the mode should exit.
+    // The bool reports whether the Matrix boundary published the source's
+    // negative FFF0B1 abort marker.  The ROM still resets five timers and
+    // performs the next outer redraw before observing that marker.
     std::function<bool()> enter_matrix_mode;
     std::function<void(std::size_t slot)> reset_matrix_slot_timer;
 };

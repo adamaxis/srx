@@ -51,6 +51,7 @@ int main() {
     std::vector<std::string> order;
     std::vector<std::uint16_t> controls;
     std::vector<std::pair<std::int8_t, std::int8_t>> dispatched;
+    std::vector<std::pair<std::int8_t, std::int8_t>> cursor_moves;
     std::vector<std::size_t> reset_slots;
     std::vector<std::uint16_t> inputs{0x0001U, 0x0040U, 0x0080U};
     std::size_t input_index = 0;
@@ -59,7 +60,7 @@ int main() {
 
     const auto result = run_mode_action_loop(
         state,
-        ModeActionRecord{3, 2, 0x08U, false},
+        ModeActionRecord{3, 2, 0x08U, false, 2},
         {
             [&](std::uint16_t value) { controls.push_back(value); },
             [&] { order.emplace_back("reset"); },
@@ -76,7 +77,10 @@ int main() {
             },
             [&] { order.emplace_back("text"); },
             [&] { order.emplace_back("summary"); },
-            [&] { order.emplace_back("cursor"); },
+            [&](const std::int8_t direction, const std::int8_t cursor) {
+                order.emplace_back("cursor");
+                cursor_moves.emplace_back(direction, cursor);
+            },
             [&] { order.emplace_back("vblank"); },
             [&] { order.emplace_back("latch"); },
             [&] { return inputs[input_index++]; },
@@ -96,13 +100,17 @@ int main() {
             [&](std::size_t slot) { reset_slots.push_back(slot); },
         });
 
-    if (!expect(result && state.display_result == 0 && state.mode_flags == 0x48U &&
-                state.mode_random_count == 1U && outer_redraws == 2 &&
+    if (!expect(result && state.display_result == 0 && state.hud_abort < 0 &&
+                state.mode_flags == 0x48U && state.mode_random_count == 1U &&
+                outer_redraws == 3 &&
                 controls == std::vector<std::uint16_t>({0x8B00U, 0x8134U, 0x8174U,
                                                         0x8134U, 0x8174U, 0x8134U,
-                                                        0x8174U}) &&
-                dispatched == std::vector<std::pair<std::int8_t, std::int8_t>>{{3, 0}} &&
-                order.size() == 51U &&
+                                                        0x8174U, 0x8134U, 0x8174U}) &&
+                dispatched == std::vector<std::pair<std::int8_t, std::int8_t>>{{3, 2}} &&
+                cursor_moves ==
+                    std::vector<std::pair<std::int8_t, std::int8_t>>{{0, 0}, {-1, 2},
+                                                                       {0, 0}} &&
+                order.size() == 67U &&
                 reset_slots == std::vector<std::size_t>({0, 1, 2, 3, 4}))) {
         return 7;
     }
@@ -114,7 +122,7 @@ int main() {
     std::size_t action_input_index = 0;
     const auto action_result = run_mode_action_loop(
         action_state,
-        ModeActionRecord{7, 5, 0x02U, false},
+        ModeActionRecord{7, 5, 0x02U, false, 4},
         {
             {}, {}, {}, {}, {}, {}, {}, {},
             [&](ModeActionState& current) {
@@ -150,7 +158,7 @@ int main() {
 
     ModeActionState random_state{};
     random_state.mode_random_count = 3;
-    random_state.display_result = 0;
+    random_state.hud_abort = 0;
     std::vector<std::string> random_order;
     const bool random_fired = advance_random_mode_event(
         random_state,

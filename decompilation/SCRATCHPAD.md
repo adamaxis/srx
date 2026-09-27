@@ -1157,7 +1157,13 @@ runner presenter flag is clear: it initializes the selected compact mode
 record's flags, performs two wrapped resource transfers plus ten grid writes
 per redraw, applies the `0x54A8E` random-event gate, renders the two status
 fields and grouped decimal data, handles directional/action/Start edges, and
-hands Start to the `0x1822C` Matrix program loop. The native conversion is in
+hands Start to the `0x1822C` Matrix program loop. The conversion now keeps the
+source's `FFF0B7` menu-result byte separate from the `FFF0B1` HUD/scene-abort
+byte: a random event returns to the status-panel path, while a negative abort
+marker exits only after the redraw. Cursor movement is sampled first and then
+calls the typed `0xC376` behavior with direction and the separate cursor-limit
+record. Matrix still resets its five timers and takes one more outer redraw
+before the abort marker is observed. The native conversion is in
 `mode_action_loop_conversion`, with typed input, record, redraw, event, and
 Matrix callbacks. The indirect handler table indexed by record kind and cursor
 remains an explicit unresolved callback; no fake generic action implementation
