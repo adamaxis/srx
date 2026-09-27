@@ -125,6 +125,26 @@ struct EquipmentCombatValuesResult {
     std::vector<std::pair<EquipmentCombatGrid, std::uint16_t>> grid_requests;
 };
 
+struct EquipmentHighlightInput {
+    // Source record +0x56 is signed; 0x7F is the equipped-item sentinel.
+    std::int8_t equipped_display_state = -1;
+    // Source record +0x76 selects the extra item highlight when nonzero.
+    std::uint8_t highlight_item = 0;
+    std::array<std::uint8_t, 8> inventory_item_codes{};
+};
+
+struct EquipmentHighlightCallbacks {
+    std::function<void()> write_menu_grid_quad;
+    std::function<void()> write_menu_grid;
+    std::function<void()> render_menu_tile_rows;
+};
+
+struct EquipmentHighlightResult {
+    bool equipped_grid_written = false;
+    bool inventory_grid_written = false;
+    std::int8_t matched_inventory_slot = -1;
+};
+
 // ROM 0x55ED6: byte-wrapped command overview base from attributes +0x78,
 // +0x7B, +0x7C and the first item-code-0x28 phase.
 std::uint16_t calculate_equipment_command_average(
@@ -181,5 +201,11 @@ EquipmentActionMetricResult refresh_equipment_action_metric(
 EquipmentCombatValuesResult refresh_equipment_combat_values(
     const EquipmentCombatValuesInput& input,
     const EquipmentCombatValuesCallbacks& callbacks = {});
+
+// ROM 0x11624: write the quad base, conditionally write the equipped-item
+// highlight, scan inventory slots 7..0 for (+0x76 + 0x2B), and render rows.
+EquipmentHighlightResult render_equipment_highlights(
+    const EquipmentHighlightInput& input,
+    const EquipmentHighlightCallbacks& callbacks = {});
 
 } // namespace shadowrun::ghidra_conversion

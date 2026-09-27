@@ -358,4 +358,33 @@ EquipmentCombatValuesResult refresh_equipment_combat_values(
     return result;
 }
 
+EquipmentHighlightResult render_equipment_highlights(
+    const EquipmentHighlightInput& input,
+    const EquipmentHighlightCallbacks& callbacks) {
+    EquipmentHighlightResult result{};
+    // ROM 0x11624 begins with 0x116C4's four-grid/metadata batch.
+    call_once(callbacks.write_menu_grid_quad);
+    if (input.equipped_display_state >= 0 &&
+        input.equipped_display_state != 0x7F) {
+        call_once(callbacks.write_menu_grid);
+        result.equipped_grid_written = true;
+    }
+
+    if (input.highlight_item != 0U) {
+        const auto target = static_cast<std::uint8_t>(
+            static_cast<std::uint16_t>(input.highlight_item) + 0x2BU);
+        for (std::size_t slot = input.inventory_item_codes.size(); slot-- > 0;) {
+            if (input.inventory_item_codes[slot] != target) {
+                continue;
+            }
+            call_once(callbacks.write_menu_grid);
+            result.inventory_grid_written = true;
+            result.matched_inventory_slot = static_cast<std::int8_t>(slot);
+            break;
+        }
+    }
+    call_once(callbacks.render_menu_tile_rows);
+    return result;
+}
+
 } // namespace shadowrun::ghidra_conversion

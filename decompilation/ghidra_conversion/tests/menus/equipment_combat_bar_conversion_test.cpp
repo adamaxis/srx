@@ -219,5 +219,35 @@ int main() {
         return 11;
     }
 
+    EquipmentHighlightInput highlight_input{};
+    highlight_input.equipped_display_state = 2;
+    highlight_input.highlight_item = 1U;
+    highlight_input.inventory_item_codes[1] = 0x2CU;
+    highlight_input.inventory_item_codes[6] = 0x2CU;
+    std::vector<int> highlight_events;
+    const EquipmentHighlightCallbacks highlight_callbacks{
+        [&] { highlight_events.push_back(1); },
+        [&] { highlight_events.push_back(2); },
+        [&] { highlight_events.push_back(3); },
+    };
+    const auto highlights = render_equipment_highlights(
+        highlight_input, highlight_callbacks);
+    if (!expect(highlights.equipped_grid_written &&
+                highlights.inventory_grid_written &&
+                highlights.matched_inventory_slot == 6 &&
+                highlight_events == std::vector<int>{1, 2, 2, 3})) {
+        return 12;
+    }
+    highlight_input.equipped_display_state = -1;
+    highlight_input.highlight_item = 0U;
+    highlight_events.clear();
+    const auto no_highlights = render_equipment_highlights(
+        highlight_input, highlight_callbacks);
+    if (!expect(!no_highlights.equipped_grid_written &&
+                !no_highlights.inventory_grid_written &&
+                highlight_events == std::vector<int>{1, 3})) {
+        return 13;
+    }
+
     return 0;
 }

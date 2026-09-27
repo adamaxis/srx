@@ -131,5 +131,16 @@ int main() {
         return 8;
     }
 
+    record.posture = 1U;
+    std::vector<int> dialog_events;
+    if (!expect(adjust_menu_dialog_posture(
+                    record, -2,
+                    {[&] { dialog_events.push_back(1); },
+                     [&] { dialog_events.push_back(2); }}) == 0U &&
+                record.posture == 0U &&
+                dialog_events == std::vector<int>{1, 2})) {
+        return 9;
+    }
+
     return 0;
 }

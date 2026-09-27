@@ -116,6 +116,17 @@ std::uint8_t adjust_runner_posture_and_refresh(
     return posture;
 }
 
+std::uint8_t adjust_menu_dialog_posture(
+    RunnerRecordFields& record, const std::int8_t delta,
+    const MenuDialogPostureCallbacks& callbacks) {
+    const auto posture = adjust_runner_posture(record, delta);
+    // ROM 0x11AE4 has no combat/action refresh calls; its service tail is
+    // exactly one grid followed by one encoded-text render.
+    call_once(callbacks.write_grid);
+    call_once(callbacks.render_encoded_text);
+    return posture;
+}
+
 RunnerPostureLoopResult apply_runner_posture_input(
     RunnerRecordFields& record, const std::uint16_t input) {
     constexpr std::uint16_t kFinishImmediately = 0x0100U;

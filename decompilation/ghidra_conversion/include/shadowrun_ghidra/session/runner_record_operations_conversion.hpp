@@ -69,6 +69,17 @@ std::uint8_t adjust_runner_posture_and_refresh(
     RunnerRecordFields& record, std::int8_t delta,
     const RunnerPostureRefreshCallbacks& callbacks = {});
 
+struct MenuDialogPostureCallbacks {
+    std::function<void()> write_grid;
+    std::function<void()> render_encoded_text;
+};
+
+// ROM 0x11AE4: adjust the five-state posture and emit only the dialog grid
+// followed by its posture text.
+std::uint8_t adjust_menu_dialog_posture(
+    RunnerRecordFields& record, std::int8_t delta,
+    const MenuDialogPostureCallbacks& callbacks = {});
+
 enum class RunnerPostureLoopResult {
     waiting,
     adjusted,
