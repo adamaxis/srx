@@ -1790,3 +1790,18 @@ Its register setup is explicit:
 The conversion therefore exposes the command value and vblank counter to
 typed host callbacks. It does not model the Genesis bus or substitute a
 different timing cadence.
+
+## Random grid resource selection audit
+
+`0xE660` is now represented by a typed three-draw plan rather than an
+unexplained random-call count. Its first `bound=2` draw chooses the zero branch
+(`C13E8`, then `CE126`/`CE12E`/`CE136`) or the nonzero branch (`C13F8`, then
+indexed `CE13E`). The following bounds are `8,3` or `4,4`, respectively, and
+both branches submit a two-row grid.
+
+`0xE6F4` similarly records its four source draws (`2,2,3,3-or-4`). The first
+two choose the `C13E2`/`C13DC` or `C13D0`/`C13D6` primary table family, including
+the source D5 offsets `4/0/0/2`. The zero-first branch uses a fixed three-entry
+variant and two rows; the nonzero-first branch uses an indexed four-entry
+variant and one row. The converted callbacks receive typed plans and do not
+perform ROM or VDP emulation.

@@ -200,14 +200,55 @@ int main() {
         return 14;
     }
 
-    int samples = 0;
+    std::vector<std::uint16_t> random_bounds;
+    std::vector<std::uint16_t> random_values{0U, 7U, 2U};
+    std::size_t random_index = 0;
     int grids = 0;
-    advance_random_grid_effect([&] { return static_cast<std::int16_t>(++samples); },
-                               [&] { ++grids; });
+    RandomGridEffectState grid_state{};
+    RandomGridEffectPlan submitted_plan{};
+    advance_random_grid_effect(
+        grid_state,
+        {[&](const std::uint16_t bound) {
+             random_bounds.push_back(bound);
+             return random_values[random_index++];
+         },
+         [&](const RandomGridEffectPlan& plan) {
+             ++grids;
+             submitted_plan = plan;
+         }});
     write_menu_footer_grid([&] { ++grids; });
     write_menu_grid_quadruple([&] { ++grids; });
-    if (samples != 3 || grids != 6) {
+    if (grid_state.random_samples != 3U || random_bounds !=
+            std::vector<std::uint16_t>{2U, 8U, 3U} || grids != 6 ||
+        !grid_state.grid_write_requested || submitted_plan.first_selection_nonzero ||
+        submitted_plan.primary_source != RandomGridPrimarySource::branch_zero_table ||
+        submitted_plan.primary_entry_index != 7U ||
+        submitted_plan.variant_source !=
+            RandomGridVariantSource::fixed_three_variant_resources ||
+        submitted_plan.variant_entry_index != 2U ||
+        submitted_plan.grid_row_count != 2U) {
         return 15;
+    }
+
+    random_bounds.clear();
+    random_values = {1U, 3U, 3U};
+    random_index = 0;
+    advance_random_grid_effect(
+        grid_state,
+        {[&](const std::uint16_t bound) {
+             random_bounds.push_back(bound);
+             return random_values[random_index++];
+         },
+         [&](const RandomGridEffectPlan& plan) { submitted_plan = plan; }});
+    if (random_bounds != std::vector<std::uint16_t>{2U, 4U, 4U} ||
+        !submitted_plan.first_selection_nonzero ||
+        submitted_plan.primary_source !=
+            RandomGridPrimarySource::branch_nonzero_table ||
+        submitted_plan.primary_entry_index != 3U ||
+        submitted_plan.variant_source !=
+            RandomGridVariantSource::indexed_four_variant_resources ||
+        submitted_plan.variant_entry_index != 3U) {
+        return 16;
     }
     return 0;
 }

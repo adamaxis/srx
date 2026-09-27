@@ -210,8 +210,47 @@ void prepare_hotel_options_display(
 // and submits it to the host text boundary.
 void render_attributes_skills_heading(
     const std::function<void()>& render_text);
-void advance_random_grid_effect(const std::function<std::int16_t()>& sample,
-                                const std::function<void()>& write_grid);
+
+// ROM 0x0E660: choose the menu/world effect resource using three bounded
+// source-random draws, then submit the selected two-row grid. The native
+// conversion keeps the table-selection result as typed provenance; it does
+// not reproduce Genesis address arithmetic or the VDP write.
+enum class RandomGridPrimarySource {
+    branch_zero_table,
+    branch_nonzero_table,
+};
+
+enum class RandomGridVariantSource {
+    fixed_three_variant_resources,
+    indexed_four_variant_resources,
+};
+
+struct RandomGridEffectPlan {
+    bool first_selection_nonzero = false;
+    RandomGridPrimarySource primary_source =
+        RandomGridPrimarySource::branch_zero_table;
+    std::uint8_t primary_entry_index = 0;
+    RandomGridVariantSource variant_source =
+        RandomGridVariantSource::fixed_three_variant_resources;
+    std::uint8_t variant_entry_index = 0;
+    std::uint8_t variant_byte_offset = 0;
+    std::uint8_t grid_row_count = 2;
+};
+
+struct RandomGridEffectState {
+    std::uint8_t random_samples = 0;
+    bool grid_write_requested = false;
+    RandomGridEffectPlan plan{};
+};
+
+struct RandomGridEffectCallbacks {
+    std::function<std::uint16_t(std::uint16_t bound)> sample_random;
+    std::function<void(const RandomGridEffectPlan& plan)> write_grid;
+};
+
+void advance_random_grid_effect(
+    RandomGridEffectState& state,
+    const RandomGridEffectCallbacks& callbacks);
 void write_menu_footer_grid(const std::function<void()>& write_grid);
 void write_menu_grid_quadruple(const std::function<void()>& write_grid);
 

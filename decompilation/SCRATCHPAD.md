@@ -781,6 +781,29 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+### Random grid selection audit
+
+The direct ROM pass over `0xE660` replaced a generic three-callback placeholder
+with the actual resource-selection behavior. The routine always consumes three
+bounded draws. The first bound is `2`; zero selects the `C13E8` primary table
+with a bound-8 index and then one of the three fixed `CE126`/`CE12E`/`CE136`
+variant resources with a bound-3 index. Nonzero selects the `C13F8` primary
+table with a bound-4 index and then the indexed `CE13E` variant family with a
+bound-4 index. Both branches submit a two-row grid after clearing the source
+write parameters. `advance_random_grid_effect()` now exposes those choices as
+`RandomGridEffectPlan`, while the callback remains the host asset/presentation
+boundary.
+
+The adjacent `0xE6F4` pass is now source-specific as well. It always consumes
+bounds `2, 2, 3, 3-or-4`. The first two draws choose one of four primary table
+families (`C13E2`, `C13DC`, `C13D0`, or `C13D6`) and preserve the source's
+variant offset `4, 0, 0, or 2`. The zero-first branch selects a fixed three-
+variant resource and writes two rows; the nonzero-first branch selects an
+indexed four-variant resource and writes one row. `ModeWorldGridPlan` records
+this typed result, including both selection bits, table family, entry indices,
+offset, and row count. Neither conversion performs ROM-address arithmetic or
+emulates a VDP write.
+
 The delay-factor leaves have now been audited against their direct ROM
 instructions rather than only their exported names. `0xD81C` clears D1, reads
 the active entity's delay bytes at A0+`0x78` and A0+`0x7B`, performs the second

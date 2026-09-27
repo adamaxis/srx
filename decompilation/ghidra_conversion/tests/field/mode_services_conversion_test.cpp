@@ -30,15 +30,53 @@ int main() {
     }
 
     ModeWorldRefreshState world{};
-    int random_calls = 0;
+    std::vector<std::uint16_t> random_bounds;
+    std::vector<std::uint16_t> random_values{0U, 0U, 2U, 1U};
+    std::size_t random_index = 0;
     int grid_calls = 0;
+    ModeWorldGridPlan submitted_plan{};
     ModeWorldRefreshCallbacks world_callbacks{};
-    world_callbacks.sample_random = [&] { ++random_calls; };
-    world_callbacks.write_world_grid = [&] { ++grid_calls; };
+    world_callbacks.sample_random = [&](const std::uint16_t bound) {
+        random_bounds.push_back(bound);
+        return random_values[random_index++];
+    };
+    world_callbacks.write_world_grid = [&](const ModeWorldGridPlan& plan) {
+        ++grid_calls;
+        submitted_plan = plan;
+    };
     service_mode_world_state(world, world_callbacks);
-    if (world.random_samples != 4U || random_calls != 4 ||
-        !world.grid_write_requested || grid_calls != 1) {
+    if (world.random_samples != 4U ||
+        random_bounds != std::vector<std::uint16_t>{2U, 2U, 3U, 3U} ||
+        !world.grid_write_requested || grid_calls != 1 ||
+        submitted_plan.first_selection_nonzero ||
+        submitted_plan.second_selection_nonzero ||
+        submitted_plan.primary_source !=
+            ModeWorldPrimarySource::first_zero_second_zero_table ||
+        submitted_plan.primary_entry_index != 2U ||
+        submitted_plan.variant_source !=
+            ModeWorldVariantSource::fixed_three_variant_resources ||
+        submitted_plan.variant_entry_index != 1U ||
+        submitted_plan.variant_byte_offset != 4U ||
+        submitted_plan.grid_row_count != 2U) {
         return 3;
+    }
+
+    random_bounds.clear();
+    random_values = {1U, 1U, 2U, 3U};
+    random_index = 0;
+    service_mode_world_state(world, world_callbacks);
+    if (random_bounds != std::vector<std::uint16_t>{2U, 2U, 3U, 4U} ||
+        !submitted_plan.first_selection_nonzero ||
+        !submitted_plan.second_selection_nonzero ||
+        submitted_plan.primary_source !=
+            ModeWorldPrimarySource::first_nonzero_second_nonzero_table ||
+        submitted_plan.primary_entry_index != 2U ||
+        submitted_plan.variant_source !=
+            ModeWorldVariantSource::indexed_four_variant_resources ||
+        submitted_plan.variant_entry_index != 3U ||
+        submitted_plan.variant_byte_offset != 2U ||
+        submitted_plan.grid_row_count != 1U) {
+        return 4;
     }
     return 0;
 }

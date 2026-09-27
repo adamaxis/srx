@@ -302,14 +302,45 @@ void render_attributes_skills_heading(
     call_once(render_text);
 }
 
-void advance_random_grid_effect(const std::function<std::int16_t()>& sample,
-                                const std::function<void()>& write_grid) {
-    if (sample) {
-        sample();
-        sample();
-        sample();
+void advance_random_grid_effect(
+    RandomGridEffectState& state,
+    const RandomGridEffectCallbacks& callbacks) {
+    state.random_samples = 0U;
+
+    const auto sample = [&](const std::uint16_t bound) {
+        ++state.random_samples;
+        if (!callbacks.sample_random || bound == 0U) {
+            return static_cast<std::uint16_t>(0U);
+        }
+        return std::min<std::uint16_t>(
+            callbacks.sample_random(bound), static_cast<std::uint16_t>(bound - 1U));
+    };
+
+    const std::uint16_t first = sample(2U);
+    state.plan = {};
+    state.plan.first_selection_nonzero = first != 0U;
+    if (first == 0U) {
+        state.plan.primary_source = RandomGridPrimarySource::branch_zero_table;
+        state.plan.primary_entry_index =
+            static_cast<std::uint8_t>(sample(8U));
+        state.plan.variant_source =
+            RandomGridVariantSource::fixed_three_variant_resources;
+        state.plan.variant_entry_index =
+            static_cast<std::uint8_t>(sample(3U));
+    } else {
+        state.plan.primary_source = RandomGridPrimarySource::branch_nonzero_table;
+        state.plan.primary_entry_index =
+            static_cast<std::uint8_t>(sample(4U));
+        state.plan.variant_source =
+            RandomGridVariantSource::indexed_four_variant_resources;
+        state.plan.variant_entry_index =
+            static_cast<std::uint8_t>(sample(4U));
     }
-    call_once(write_grid);
+
+    state.grid_write_requested = true;
+    if (callbacks.write_grid) {
+        callbacks.write_grid(state.plan);
+    }
 }
 
 void write_menu_footer_grid(const std::function<void()>& write_grid) {
