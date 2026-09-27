@@ -167,13 +167,19 @@ struct MenuDelayOffsetState {
     std::int8_t offset = 0;
 };
 
-using AverageEntityDelayBoundary =
-    std::function<std::array<std::int8_t, 2>()>;
+struct MenuDelayOffsetInput {
+    // ROM 0x17EB8 reads FFFBBE+0x07 and multiplies it by four.
+    std::uint8_t profile_delay_component = 0;
+    // ROM 0xD81C reads these two bytes from the active runner record.
+    std::uint8_t active_record_attribute_a = 0;
+    std::uint8_t active_record_attribute_b = 0;
+};
 
-// ROM 0x17EB4: publish 0x1D minus the two signed components returned by the
-// average-delay service.
+// ROM 0x17EB4: add the fixed six, four times the profile byte, and the
+// byte-wrapped floor average from 0xD81C, then publish the low byte of
+// 0x1D minus that total at FFF0A7.
 void calculate_menu_delay_offset(MenuDelayOffsetState& state,
-                                 const AverageEntityDelayBoundary& average);
+                                 const MenuDelayOffsetInput& input);
 
 // ROM 0x17F80 / 0x17FB4 / 0x1897C / 0x18998: explicit host service wrappers.
 void refresh_mode_metadata_wrapper(const std::function<void()>& refresh);

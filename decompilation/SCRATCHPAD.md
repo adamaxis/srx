@@ -796,6 +796,18 @@ carry A0 or any ROM address into runtime code. The corresponding source
 audit rows are now marked source-trace-complete, while remaining partial until
 their behavior is defended by a native hill test and image dump.
 
+The two direct consumers of `0xD81C` are now source-specific as well.
+`0x17EB4` starts with six, adds four times the profile delay byte at
+`FFFBBE+0x07`, adds the active record's wrapped average, and writes the low
+byte of `0x1D - total` to the menu delay offset. Its conversion now takes a
+typed `MenuDelayOffsetInput` instead of an anonymous pair callback.
+`0x55F44` saves the caller's D1 request across the average call, adds the
+active record `+0x88` byte and the profile byte twice with byte wrap, then
+selects the exact `FFF0B7` zero/positive/negative scaling branches, including
+odd rounding and the request-dependent profile-floor clamp. Both entries are
+source-trace-complete in the audit, but remain partial until a native hill
+defends their presentation behavior.
+
 `0xD4C8` is now converted as `advance_field_active_runner_selection`. It is
 not a generic field reset: both the Attributes/Skills screen and the field
 action service call it when the player uses the source runner-cycle/restart

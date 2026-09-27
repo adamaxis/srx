@@ -7,7 +7,9 @@
 // Direct disassembly is authoritative for the byte modifiers, FFF0B7 mode
 // branches, including the negative-mode request switch from two-thirds to
 // one-third, and the request-dependent profile-floor clamp omitted by this
-// decompiler output; the typed host conversion is in runner_action_delay.
+// decompiler output. D1 is saved across the 0xD81C call, then the source
+// adds A0+0x88 and FFFBBE+0x07 twice as bytes before selecting its scaling
+// branch; the typed host conversion is in runner_action_delay.
 
 
 undefined8 calculate_runner_action_delay(void)

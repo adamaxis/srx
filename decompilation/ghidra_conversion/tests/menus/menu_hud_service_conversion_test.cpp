@@ -180,11 +180,16 @@ int main() {
     }
 
     MenuDelayOffsetState delay{};
-    calculate_menu_delay_offset(delay, [] {
-        return std::array<std::int8_t, 2>{2, 3};
-    });
-    if (delay.offset != 0x18) {
+    calculate_menu_delay_offset(delay, MenuDelayOffsetInput{0U, 2U, 3U});
+    if (delay.offset != 0x15) {
         return 14;
+    }
+
+    // 0xD81C wraps 240 + 32 to 16 before halving. The menu leaf then adds
+    // fixed six and four times the profile component before subtracting 0x1D.
+    calculate_menu_delay_offset(delay, MenuDelayOffsetInput{1U, 240U, 32U});
+    if (delay.offset != 0x0BU) {
+        return 15;
     }
 
     int wrapper_calls = 0;
@@ -193,7 +198,7 @@ int main() {
     write_hud_repeated_grid_variant_a([&wrapper_calls] { ++wrapper_calls; });
     write_hud_repeated_grid_variant_b([&wrapper_calls] { ++wrapper_calls; });
     if (wrapper_calls != 4) {
-        return 15;
+        return 16;
     }
 
     HudFadeServiceState fade{};
@@ -204,7 +209,7 @@ int main() {
         fade, [&waits] { ++waits; }, [&latches] { ++latches; },
         [&palette_steps] { ++palette_steps; });
     if (!fade.dirty || waits != 10 || latches != 10 || palette_steps != 5) {
-        return 16;
+        return 17;
     }
 
     MenuHudTickState tick_state{};

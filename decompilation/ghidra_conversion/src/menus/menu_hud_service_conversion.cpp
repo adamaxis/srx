@@ -1,5 +1,7 @@
 #include "shadowrun_ghidra/menus/menu_hud_service_conversion.hpp"
 
+#include "shadowrun_ghidra/entities/entity_delay_conversion.hpp"
+
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
@@ -269,10 +271,13 @@ std::optional<std::uint32_t> calculate_menu_row_offset(
 }
 
 void calculate_menu_delay_offset(MenuDelayOffsetState& state,
-                                 const AverageEntityDelayBoundary& average) {
-    const auto components = average ? average() : std::array<std::int8_t, 2>{};
-    const auto sum = static_cast<std::int16_t>(components[0]) + components[1];
-    state.offset = static_cast<std::int8_t>(0x1D - sum);
+                                 const MenuDelayOffsetInput& input) {
+    const auto average = average_entity_delay_attributes(
+        input.active_record_attribute_a, input.active_record_attribute_b);
+    const auto total = static_cast<std::int16_t>(6) +
+                       static_cast<std::int16_t>(input.profile_delay_component) *
+                           4 + static_cast<std::int16_t>(average);
+    state.offset = static_cast<std::int8_t>(0x1D - total);
 }
 
 void refresh_mode_metadata_wrapper(const std::function<void()>& refresh) {
