@@ -86,8 +86,9 @@ CommandOverviewActionRefreshResult refresh_command_overview_action_details(
     }
     if (result.action_code != 0U) {
         result.item_details_rendered = true;
+        result.item_details_result = result.action_code;
         if (callbacks.render_item_action_details) {
-            result.item_details_result = callbacks.render_item_action_details();
+            callbacks.render_item_action_details();
         }
 
         // CMP.B #0x10 followed by BPL at 0x115F6 calls the entity-action

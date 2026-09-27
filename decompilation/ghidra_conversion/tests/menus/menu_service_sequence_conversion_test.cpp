@@ -303,7 +303,6 @@ int main() {
              },
              [&] {
                  action_order.push_back(36);
-                 return std::uint8_t{15U};
              },
              [&] { action_order.push_back(37); },
              [&] { action_order.push_back(38); },
@@ -317,7 +316,7 @@ int main() {
         !action_state.sprite_list_ready ||
         action_state.display_dirty_flags != 0x03U ||
         action_result.action_code != 7U ||
-        action_result.item_details_result != 15U ||
+        action_result.item_details_result != 7U ||
         !action_result.item_details_rendered ||
         !action_result.action_menu_serviced || !action_result.dialog_prepared ||
         action_result.action_title_rendered) {

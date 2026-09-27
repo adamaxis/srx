@@ -122,7 +122,9 @@ struct CommandOverviewActionRefreshCallbacks {
     std::function<void()> prepare_menu_grid_variant_b;
     // ROM 0x12148 is represented as a typed record read, not a raw address.
     std::function<std::uint8_t()> read_entity_action_code;
-    std::function<std::uint8_t()> render_item_action_details;
+    // 0x12A8C restores its incoming D0 before returning, so the caller's
+    // action code remains the value used by the 0x10 threshold below.
+    std::function<void()> render_item_action_details;
     std::function<void()> service_entity_action_menu;
     std::function<void()> prepare_menu_dialog;
     std::function<void(const CommandOverviewActionTitleTextPlan&)>
