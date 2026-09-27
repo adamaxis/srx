@@ -3,9 +3,10 @@
 namespace shadowrun::ghidra_conversion {
 
 std::uint16_t average_entity_delay_attributes(
-    const std::uint8_t primary,
-    const std::uint8_t secondary) {
-    const auto wrapped_sum = static_cast<std::uint8_t>(primary + secondary);
+    const std::uint8_t primary_delay_attribute,
+    const std::uint8_t secondary_delay_attribute) {
+    const auto wrapped_sum = static_cast<std::uint8_t>(
+        primary_delay_attribute + secondary_delay_attribute);
     return static_cast<std::uint16_t>(wrapped_sum >> 1U);
 }
 
@@ -21,7 +22,8 @@ std::uint16_t compute_entity_delay_factor(
     }
 
     const auto average = average_entity_delay_attributes(
-        attributes.primary, attributes.secondary);
+        attributes.primary_delay_attribute,
+        attributes.secondary_delay_attribute);
     const auto adjusted = static_cast<std::int32_t>(average) + modifier - 1;
     return adjusted > 0 ? static_cast<std::uint16_t>(adjusted) : 0U;
 }

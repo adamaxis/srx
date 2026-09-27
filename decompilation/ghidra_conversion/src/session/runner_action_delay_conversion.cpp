@@ -9,8 +9,9 @@ namespace shadowrun::ghidra_conversion {
 RunnerActionDelayResult calculate_runner_action_delay(
     const RunnerActionDelayInput& input) {
     auto delay = static_cast<std::uint16_t>(
-        average_entity_delay_attributes(input.active_record_attribute_a,
-                                        input.active_record_attribute_b));
+        average_entity_delay_attributes(
+            input.active_record_attribute_a,
+            input.active_record_attribute_b));
 
     // 0x55F5A/0x55F6C are byte additions to D6. Keep the source wrap before
     // entering the word-sized scaling branches.

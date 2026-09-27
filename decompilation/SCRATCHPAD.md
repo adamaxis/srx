@@ -781,6 +781,21 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+The delay-factor leaves have now been audited against their direct ROM
+instructions rather than only their exported names. `0xD81C` clears D1, reads
+the active entity's delay bytes at A0+`0x78` and A0+`0x7B`, performs the second
+addition as `ADD.B` so the sum wraps at 256, and returns the floor half in D1.
+`0xD7EA` reads the capability word at A0+`0x90`, tests bits 12, 13, and 14 in
+that order, maps the first hit to modifiers 4, 8, or 12, calls `0xD81C`, then
+subtracts one and floors the factor at zero. `0xABFC` consumes that factor,
+computes `0x6A - factor*4`, doubles only for D0 mode 2, halves every other
+nonzero mode, observes a source bit test with no divergent branch, clamps at
+`0x0F`, and writes the animation delay at A0+`0xDC`. The native conversion
+uses a typed `EntityDelayAttributes` record and `EntityDelayState`; it does not
+carry A0 or any ROM address into runtime code. The corresponding source
+audit rows are now marked source-trace-complete, while remaining partial until
+their behavior is defended by a native hill test and image dump.
+
 `0xD4C8` is now converted as `advance_field_active_runner_selection`. It is
 not a generic field reset: both the Attributes/Skills screen and the field
 action service call it when the player uses the source runner-cycle/restart

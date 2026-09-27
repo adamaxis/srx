@@ -4,6 +4,11 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000D7EA compute_entity_delay_factor
+// Behavior annotation from the ROM disassembly:
+//   The entry preserves D1/D2, calls 0xD7EA for the factor in D1, computes
+//   0x6A - factor*4, scales for D0==2 or other nonzero D0, observes the
+//   no-op bit-1 test at A0+0x10, clamps to 0x0F, and stores the result at
+//   A0+0xDC. The typed conversion supplies record fields instead of A0.
 
 
 void update_entity_animation_delay(void)

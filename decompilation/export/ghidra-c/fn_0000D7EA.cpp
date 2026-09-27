@@ -4,6 +4,13 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000D81C average_entity_delay_attributes
+// Behavior annotation from the ROM disassembly:
+//   A0+0x90 is the entity capability word. D2 scans bits 12, 13, and 14 in
+//   that order; the first hit becomes (bit - 11) * 4, otherwise D2 is zero.
+//   0xD81C returns the wrapped average of A0+0x78 and A0+0x7B in D1. The
+//   routine adds D2 to that average, subtracts one, clamps negative values
+//   to zero, and returns the factor in D1. Ghidra's output omits that return
+//   arithmetic, so the disassembly is the source authority for this leaf.
 
 
 void compute_entity_delay_factor(void)
