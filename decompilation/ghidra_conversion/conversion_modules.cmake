@@ -56,7 +56,6 @@ file(GLOB SHADOWRUN_MODULE_FIELD_SCENE_CONTROLLER CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_mode_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_mode_finalizer_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_mode_service*.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_mode_selection_presentation_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_scene_entry_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_viewport_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/scene_profile_conversion.cpp"
@@ -66,7 +65,6 @@ file(GLOB SHADOWRUN_MODULE_FIELD_NAVIGATION CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_coordinate_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_exit_*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_mode_exit_conversion.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_mode_navigation_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/mode_exit*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/mode_nine_conversion.cpp"
 )

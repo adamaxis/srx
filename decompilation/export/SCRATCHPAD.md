@@ -945,7 +945,7 @@ The service's source-derived flow is:
 
 `0x56DC4` remains an explicit typed action-handler callback. `0x587DA` is now
 converted under the explicit field-action presentation names in
-`shadowrun_ghidra_field_mode_selection_presentation` and is no longer
+`shadowrun_ghidra_field_action_selection_result_presentation` and is no longer
 described as an anonymous renderer:
 
 * It first saves the action-row cursor (`FFF0D0`) into the selected-action
@@ -979,7 +979,7 @@ normal grid/text or alternate grid/sprite refresh. This distinction matters
 for the menu's visual update cadence and is covered by the navigation test.
 
 The focused tests `shadowrun_ghidra_field_mode_service_loop` and
-`shadowrun_ghidra_field_mode_selection_presentation` cover the palette dirty
+`shadowrun_ghidra_field_action_selection_result_presentation` cover the palette dirty
 publication, service-loop input precedence, and every presentation branch.
 
 ## Command-overview and shared active-runner HUD panels: 0x110BC / 0x110E8 / 0x110EC

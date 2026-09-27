@@ -1202,7 +1202,7 @@ operations, not audio services.
 
 The field-action menu selector leaves at `0x58B5E`, `0x58BB6`, `0x58C54`,
 `0x58CDE`, and `0x58D32` are now converted in
-`field_mode_navigation_conversion` under explicit `FieldActionSelection*`
+`field_action_selection_navigation_conversion` under explicit `FieldActionSelection*`
 names. The normal and alternate action-panel redraws preserve their separate
 grid/text passes; the action-row cursor uses the source result-dependent bounds
 `0..3`, `0..5`, or `0..7`; the action-panel selector clamps to `0..1` and

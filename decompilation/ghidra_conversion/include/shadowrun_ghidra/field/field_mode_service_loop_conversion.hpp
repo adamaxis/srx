@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shadowrun_ghidra/field/field_mode_navigation_conversion.hpp"
+#include "shadowrun_ghidra/field/field_action_selection_navigation_conversion.hpp"
 
 #include <array>
 #include <cstdint>
