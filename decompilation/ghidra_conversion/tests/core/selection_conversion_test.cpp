@@ -69,21 +69,29 @@ int main() {
     if (!expect(move_wrapped_menu_cursor(1, 0, 2) == 1)) {
         return 13;
     }
+    // The source BGE uses ADD.B's overflow-corrected signed result: positive
+    // overflow does not select the lower wrap, while negative overflow does.
+    if (!expect(move_wrapped_menu_cursor(0x7FU, 1, 2) == 0)) {
+        return 14;
+    }
+    if (!expect(move_wrapped_menu_cursor(0x80U, -1, 2) == 2)) {
+        return 15;
+    }
 
     const auto action_left = cycle_inventory_action_selector(2, -1);
     if (!expect(action_left.selector == 5 &&
                 action_left.redraw_requested)) {
-        return 14;
+        return 16;
     }
     const auto action_right = cycle_inventory_action_selector(5, 1);
     if (!expect(action_right.selector == 2 &&
                 !action_right.redraw_requested)) {
-        return 15;
+        return 17;
     }
     const auto action_middle = cycle_inventory_action_selector(3, -1);
     if (!expect(action_middle.selector == 2 &&
                 !action_middle.redraw_requested)) {
-        return 16;
+        return 18;
     }
 
     return 0;

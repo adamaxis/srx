@@ -684,6 +684,30 @@ division path is represented by ordinary bounded `uint32_t` division because
 the host conversion needs the same decimal quotient/remainder result, not the
 processor-specific divide sequence.
 
+## Field-mode exit transition finalizer: 0xC64C
+
+`0xC64C` is the common field-mode exit finalizer, not an unclassified graphics
+stub. It first clears the three transient effect/prompt markers. The mode gate
+then has three source-specific cleanup families: mode `1` clears the mode-one
+high-effect slots when `FFFC1C` bit 0 is set; modes `2` and `4` clear the
+mode-two/four slots and clear `FFFC22` bit 9 under the same gate; mode `5`
+clears its own marker and high-effect slots only when bit 0 is set and bit 7 is
+clear. Each successful family resets world-effect globals and runs the first
+mode-exit service pass.
+
+All paths then clear the two recruited-runner transition bytes, refresh the
+runner state/assets, clear `FF0110` bits 6/4 while asserting bit 0, clear
+`FF0111` bit 6, install field anchor `0xB45C`, clamp the action/resource
+counters to `6` and `8`, and subtract `min(resource_pool >> 3, 5000)` from the
+resource pool. The final service order is the common mode-exit service,
+three-pass entity animation, mode-action event handling, then profile A when
+`FFFC1E` bit 0 is set or profile B otherwise.
+
+The conversion exposes the three high-effect families and the two service
+phases as typed enums. `0x1F246`, `0xC802`, `0x38FA`, `0x391A`, and the profile
+initializers remain explicit callbacks because their own source hills are
+separate; no source pointer or RAM address is used as runtime state.
+
 ## Reviewed function map
 
 The native owner names below are the target C++ vocabulary. A `partial` entry
@@ -767,7 +791,7 @@ still has unresolved downstream calls or hardware presentation work.
 | `0xEE86` | `replace_nth_terrain_marker` | Replaces the requested zero-based occurrence of a terrain marker, matching the source's first-marker behavior for ordinal zero. | `ghidra_conversion::replace_nth_terrain_marker()` | partial |
 | `0xFEBE` | `move_selection_column` | Moves the active column by a signed step and wraps within the source row's available range. | `ghidra_conversion::move_selection_column()` | partial |
 | `0xFF06` | `move_selection_row` | Changes the two-row selection mode only when at least seven entries exist and clears it when the active column is unavailable. | `ghidra_conversion::move_selection_row()` | partial |
-| `0xC376` | `move_wrapped_menu_cursor` | Adds the signed menu step as a byte, wraps a negative candidate to the supplied upper cursor value, wraps a candidate above that value to zero, and leaves the paired VDP writes explicit. | `ghidra_conversion::move_wrapped_menu_cursor()` | partial |
+| `0xC376` | `move_wrapped_menu_cursor` | Adds the signed menu step with source `ADD.B` flags, uses the overflow-corrected BGE result to wrap negative sums to the supplied upper cursor value, then uses the raw `D3 - cursor` N bit to wrap above-range values to zero; paired cursor-word writes remain a presentation boundary. | `ghidra_conversion::move_wrapped_menu_cursor()` | partial |
 | `0xC8B0` | `apply_byte_counter_delta_with_negative_floor` | Subtracts one from the caller's one-based counter selector, adds the signed byte delta to the selected counter, and replaces a negative result with the source `0xFF` sentinel. | `ghidra_conversion::apply_byte_counter_delta_with_negative_floor()` | partial |
 | `0xC134` | `normalize_source_text_line` | Maps source high-bit glyph markers, stops on the line terminator range, and pads the remaining line width. | `ghidra_conversion::normalize_source_text_line()` | partial |
 | `0x15554` | `service_nearby_entity_auxiliary_behavior` | Scans the ten entity records with active/non-excluded filtering, applies the normal `0x280` radius/`0x500` exclusive window or the type-`0x0E` `0x140`/`0x280` window, clamps lower bounds at zero, and calls the existing `0x1562E` auxiliary service for each match. | `ghidra_conversion::service_nearby_entity_auxiliary_behavior()` | partial |

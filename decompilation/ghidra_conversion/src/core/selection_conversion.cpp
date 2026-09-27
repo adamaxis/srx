@@ -56,10 +56,15 @@ std::uint8_t move_wrapped_menu_cursor(
         static_cast<std::uint16_t>(current) +
         static_cast<std::int16_t>(step));
 
-    // C376 uses ADD.B followed by BGE. A negative signed result means that a
-    // decrement crossed the lower edge, so the source loads D3 as the upper
-    // cursor value.
-    if (static_cast<std::int8_t>(candidate) < 0) {
+    // C376 uses ADD.B followed by BGE.  The branch tests the signed result
+    // with the 68000 overflow correction, so a positive signed overflow (for
+    // example 0x7F + 1) still takes the non-wrap path while a negative
+    // overflow (0x80 - 1) wraps to D3.  Use the mathematical signed-byte sum
+    // for that flag decision, while retaining the byte result for storage.
+    const auto signed_sum = static_cast<std::int16_t>(
+                                static_cast<std::int8_t>(current)) +
+                            static_cast<std::int16_t>(step);
+    if (signed_sum < 0) {
         return maximum;
     }
 
