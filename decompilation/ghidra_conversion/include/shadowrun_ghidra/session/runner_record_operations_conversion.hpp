@@ -75,10 +75,24 @@ enum class RunnerPostureLoopResult {
     finished,
 };
 
+struct RunnerPostureLoopCallbacks {
+    std::function<void()> wait_for_vblank;
+    std::function<void()> latch_controller_events;
+    std::function<std::uint16_t()> sample_controller_input;
+    std::function<void()> advance_menu_sprite_overlay;
+    std::function<void(std::int8_t)> adjust_and_refresh_posture;
+};
+
 // ROM 0x10722: the posture sub-loop gives up/down priority to posture
 // mutation, while the source confirm/cancel masks finish the loop. Rendering
 // and vblank service remain outside this state conversion.
 RunnerPostureLoopResult apply_runner_posture_input(
     RunnerRecordFields& record, std::uint16_t input);
+
+// ROM 0x10722: perform the initial neutral posture refresh, then cycle the
+// source vblank/latch/sample/overlay sequence. Up/down repeat; confirm,
+// cancel, and mode-action masks finish through one final neutral refresh.
+RunnerPostureLoopResult run_runner_posture_adjustment(
+    const RunnerPostureLoopCallbacks& callbacks);
 
 } // namespace shadowrun::ghidra_conversion

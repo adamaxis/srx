@@ -141,4 +141,39 @@ RunnerPostureLoopResult apply_runner_posture_input(
     return RunnerPostureLoopResult::waiting;
 }
 
+RunnerPostureLoopResult run_runner_posture_adjustment(
+    const RunnerPostureLoopCallbacks& callbacks) {
+    if (!callbacks.sample_controller_input ||
+        !callbacks.adjust_and_refresh_posture) {
+        return RunnerPostureLoopResult::waiting;
+    }
+
+    // ROM 0x10722 enters 0x107CE once with D0=0 before sampling input.
+    callbacks.adjust_and_refresh_posture(0);
+    for (;;) {
+        call_once(callbacks.wait_for_vblank);
+        call_once(callbacks.latch_controller_events);
+        const auto input = callbacks.sample_controller_input();
+        call_once(callbacks.advance_menu_sprite_overlay);
+
+        if ((input & 0x0100U) != 0U) {
+            callbacks.adjust_and_refresh_posture(0);
+            return RunnerPostureLoopResult::finished;
+        }
+        if ((input & 0x0800U) != 0U) {
+            callbacks.adjust_and_refresh_posture(1);
+            continue;
+        }
+        if ((input & 0x0400U) != 0U) {
+            callbacks.adjust_and_refresh_posture(-1);
+            continue;
+        }
+        if ((input & 0x4000U) != 0U || (input & 0x1000U) != 0U ||
+            (input & 0x2000U) != 0U) {
+            callbacks.adjust_and_refresh_posture(0);
+            return RunnerPostureLoopResult::finished;
+        }
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion

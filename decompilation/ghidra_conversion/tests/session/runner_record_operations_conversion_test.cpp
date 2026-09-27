@@ -106,5 +106,30 @@ int main() {
         return 7;
     }
 
+    std::vector<int> posture_loop_events;
+    const std::vector<std::uint16_t> sampled_inputs{0x0800U, 0x0400U,
+                                                    0x2000U};
+    std::size_t sample_index = 0;
+    std::vector<std::int8_t> posture_deltas;
+    const RunnerPostureLoopCallbacks loop_callbacks{
+        [&] { posture_loop_events.push_back(1); },
+        [&] { posture_loop_events.push_back(2); },
+        [&]() {
+            posture_loop_events.push_back(3);
+            return sampled_inputs[sample_index++];
+        },
+        [&] { posture_loop_events.push_back(4); },
+        [&](const std::int8_t delta) { posture_deltas.push_back(delta); },
+    };
+    if (!expect(run_runner_posture_adjustment(loop_callbacks) ==
+                    RunnerPostureLoopResult::finished &&
+                sample_index == sampled_inputs.size() &&
+                posture_deltas == std::vector<std::int8_t>{0, 1, -1, 0} &&
+                posture_loop_events ==
+                    std::vector<int>{1, 1, 2, 3, 4, 1, 2, 3, 4,
+                                     1, 2, 3, 4})) {
+        return 8;
+    }
+
     return 0;
 }
