@@ -30,7 +30,8 @@ add_executable(shadowrun_ghidra_conversion_runner
 target_link_libraries(shadowrun_ghidra_conversion_runner
     PRIVATE shadowrun_ghidra_conversion_workbench)
 add_test(NAME shadowrun_ghidra_conversion_runner
-         COMMAND shadowrun_ghidra_conversion_runner)
+         COMMAND shadowrun_ghidra_conversion_runner
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../assets")
 
 # Keep each source-trace contract as a separately runnable test so a failing
 # ROM behavior remains easy to identify. They all link the one domain-grouped
