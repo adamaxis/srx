@@ -1,5 +1,8 @@
 #include "shadowrun_ghidra/field/field_action_progression_purchase_conversion.hpp"
 
+#include <string>
+#include <vector>
+
 namespace {
 
 bool expect(const bool condition) {
@@ -22,21 +25,18 @@ int main() {
     state.menu_mode = 3U;
     state.saved_selection = 0;
     state.primary_cursor = 2;
-    state.runner_archetype_status = 2;
+    state.runner_archetype_status = 1;
     state.runner_progression_limit = 6;
     state.funds = 5000U;
 
-    int panel_renders = 0;
-    int limit_messages = 0;
-    int maxed_messages = 0;
-    int poor_messages = 0;
+    std::vector<std::string> events;
     const FieldActionProgressionPurchaseCallbacks callbacks{
-        [&] { ++panel_renders; },
-        {},
-        [&] { ++limit_messages; },
-        [&] { ++maxed_messages; },
-        [&] { ++poor_messages; },
-        [] { return true; },
+        [&] { events.emplace_back("grid"); },
+        [&] { events.emplace_back("unavailable"); },
+        [&] { events.emplace_back("limit"); },
+        [&] { events.emplace_back("maxed"); },
+        [&] { events.emplace_back("insufficient"); },
+        [&] { events.emplace_back("wait"); },
     };
 
     if (!expect(purchase_field_action_progression(tables, state, callbacks) ==
@@ -46,7 +46,7 @@ int main() {
                 state.ledger.source_record_count_word == 1U &&
                 state.ledger.records.size() == 1U &&
                 state.ledger.records[0].progression_level == 1U &&
-                panel_renders == 1)) {
+                events.empty())) {
         return 1;
     }
 
@@ -56,23 +56,28 @@ int main() {
                     FieldActionProgressionPurchaseResult::applied &&
                 state.funds == 2000U && state.pending_cost == 2000U &&
                 state.ledger.records[0].progression_level == 2U &&
-                state.ledger.source_record_count_word == 1U)) {
+                state.ledger.source_record_count_word == 1U &&
+                events.empty())) {
         return 2;
     }
 
     state.ledger.records[0].progression_level = 2U;
     state.runner_progression_limit = 2;
+    events.clear();
     if (!expect(purchase_field_action_progression(tables, state, callbacks) ==
                     FieldActionProgressionPurchaseResult::progression_limit &&
-                state.funds == 2000U && limit_messages == 1)) {
+                state.funds == 2000U &&
+                events == std::vector<std::string>{"limit"})) {
         return 3;
     }
 
     state.runner_progression_limit = 7;
     state.ledger.records[0].progression_level = 6U;
+    events.clear();
     if (!expect(purchase_field_action_progression(tables, state, callbacks) ==
                     FieldActionProgressionPurchaseResult::progression_maxed &&
-                state.funds == 2000U && maxed_messages == 1)) {
+                state.funds == 2000U &&
+                events == std::vector<std::string>{"maxed"})) {
         return 4;
     }
 
@@ -80,25 +85,27 @@ int main() {
     poor.menu_mode = 3U;
     poor.saved_selection = 0;
     poor.primary_cursor = 2;
-    poor.runner_archetype_status = 2;
+    poor.runner_archetype_status = 1;
     poor.runner_progression_limit = 6;
     poor.funds = 999U;
+    events.clear();
     if (!expect(purchase_field_action_progression(tables, poor, callbacks) ==
                     FieldActionProgressionPurchaseResult::insufficient_funds &&
                 poor.ledger.records.empty() && poor.funds == 999U &&
-                poor_messages == 1)) {
+                events == std::vector<std::string>{"grid", "insufficient",
+                                                   "wait"})) {
         return 5;
     }
 
-    FieldActionProgressionPurchaseState cancelled = poor;
-    cancelled.funds = 5000U;
-    const FieldActionProgressionPurchaseCallbacks cancel_callbacks{
-        {}, {}, {}, {}, {}, [] { return false; },
-    };
+    FieldActionProgressionPurchaseState non_neutral = poor;
+    non_neutral.saved_selection = 1;
+    non_neutral.funds = 5000U;
+    events.clear();
     if (!expect(purchase_field_action_progression(
-                    tables, cancelled, cancel_callbacks) ==
-                    FieldActionProgressionPurchaseResult::cancelled &&
-                cancelled.ledger.records.empty() && cancelled.funds == 5000U)) {
+                    tables, non_neutral, callbacks) ==
+                    FieldActionProgressionPurchaseResult::not_neutral_selection &&
+                non_neutral.ledger.records.empty() &&
+                non_neutral.funds == 5000U && events.empty())) {
         return 6;
     }
 
@@ -106,15 +113,20 @@ int main() {
     unavailable.menu_mode = 3U;
     unavailable.saved_selection = 0;
     unavailable.primary_cursor = 2;
-    unavailable.runner_archetype_status = 1;
-    int unavailable_messages = 0;
+    unavailable.runner_archetype_status = 2;
+    events.clear();
     const FieldActionProgressionPurchaseCallbacks unavailable_callbacks{
-        {}, [&] { ++unavailable_messages; }, {}, {}, {},
+        [&] { events.emplace_back("grid"); },
+        [&] { events.emplace_back("unavailable"); },
+        {}, {}, {},
+        [&] { events.emplace_back("wait"); },
     };
     if (!expect(purchase_field_action_progression(
                     tables, unavailable, unavailable_callbacks) ==
                     FieldActionProgressionPurchaseResult::runner_unavailable &&
-                unavailable_messages == 1 && unavailable.funds == 0U)) {
+                unavailable.funds == 0U &&
+                events == std::vector<std::string>{"grid", "unavailable",
+                                                   "wait"})) {
         return 7;
     }
 

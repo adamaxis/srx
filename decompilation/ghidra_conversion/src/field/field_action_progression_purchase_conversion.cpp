@@ -15,6 +15,12 @@ bool offer_is_available(const FieldActionProgressionOffer& offer) {
     return static_cast<std::int8_t>(offer.action_code) >= 0;
 }
 
+bool runner_action_progression_is_blocked(const std::int8_t status) {
+    const auto delta = static_cast<std::int8_t>(static_cast<std::uint8_t>(
+        static_cast<std::uint8_t>(status) - 2U));
+    return delta >= 0;
+}
+
 } // namespace
 
 std::optional<FieldActionProgressionOffer>
@@ -85,8 +91,10 @@ FieldActionProgressionQuoteOutcome prepare_field_action_progression_quote(
         // The source compares the current level against +0x7F with a signed
         // byte branch. Valid game levels are small, but keeping the signed
         // comparison here preserves the source's limit behavior.
-        if (static_cast<std::int8_t>(existing.progression_level) >=
-            state.runner_progression_limit) {
+        const auto level_delta = static_cast<std::int8_t>(
+            static_cast<std::uint8_t>(existing.progression_level) -
+            static_cast<std::uint8_t>(state.runner_progression_limit));
+        if (level_delta >= 0) {
             return {FieldActionProgressionQuoteResult::progression_limit,
                     std::nullopt};
         }
@@ -114,20 +122,24 @@ FieldActionProgressionPurchaseResult purchase_field_action_progression(
     const FieldActionProgressionTables& tables,
     FieldActionProgressionPurchaseState& state,
     const FieldActionProgressionPurchaseCallbacks& callbacks) {
-    if (state.saved_selection == 3) {
-        // The dispatcher sends this selection to the separate removal leaf.
+    if (state.saved_selection != 0) {
+        // 0x56DC4 enters this acquisition branch only for saved selection 0;
+        // selection 1 and later selections go to their own action/remove
+        // leaves.
         return FieldActionProgressionPurchaseResult::not_neutral_selection;
     }
 
-    if (state.runner_archetype_status < 2) {
+    if (runner_action_progression_is_blocked(state.runner_archetype_status)) {
+        if (callbacks.write_action_feedback_grid) {
+            callbacks.write_action_feedback_grid();
+        }
         if (callbacks.show_runner_unavailable) {
             callbacks.show_runner_unavailable();
         }
+        if (callbacks.wait_for_controller_event) {
+            callbacks.wait_for_controller_event();
+        }
         return FieldActionProgressionPurchaseResult::runner_unavailable;
-    }
-
-    if (callbacks.render_action_panel) {
-        callbacks.render_action_panel();
     }
 
     const auto quote = prepare_field_action_progression_quote(tables, state);
@@ -156,14 +168,16 @@ FieldActionProgressionPurchaseResult purchase_field_action_progression(
     }
 
     if (state.pending_cost > state.funds) {
+        if (callbacks.write_action_feedback_grid) {
+            callbacks.write_action_feedback_grid();
+        }
         if (callbacks.show_insufficient_funds) {
             callbacks.show_insufficient_funds();
         }
+        if (callbacks.wait_for_controller_event) {
+            callbacks.wait_for_controller_event();
+        }
         return FieldActionProgressionPurchaseResult::insufficient_funds;
-    }
-
-    if (callbacks.confirm_purchase && !callbacks.confirm_purchase()) {
-        return FieldActionProgressionPurchaseResult::cancelled;
     }
 
     state.funds -= state.pending_cost;

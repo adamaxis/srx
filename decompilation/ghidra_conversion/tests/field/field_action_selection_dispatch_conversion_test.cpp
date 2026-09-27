@@ -51,12 +51,12 @@ int main() {
 
     state.menu_result = 0;
     state.saved_selection = 0U;
-    state.runner_archetype_status = 1;
+    state.runner_archetype_status = 2;
     if (!expect(classify_field_action_selection(state).kind ==
                 FieldActionSelectionRouteKind::runner_action_unavailable)) {
         return 7;
     }
-    state.runner_archetype_status = 2;
+    state.runner_archetype_status = 1;
     state.saved_selection = 1U;
     if (!expect(classify_field_action_selection(state).record_source ==
                 FieldActionRecordSource::neutral_selection_one)) {

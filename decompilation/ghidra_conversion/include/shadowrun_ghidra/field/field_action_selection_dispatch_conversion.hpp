@@ -71,9 +71,10 @@ struct FieldActionSelectionCallbacks {
         apply_field_equipment_upgrade;
 };
 
-// ROM 0x56DC4's branch matrix, expressed in terms of the menu result and
-// saved panel selection.  The result identifies the exact field/matrix action
-// family that the caller must execute next.
+// ROM 0x56DC4's branch matrix, expressed in terms of the menu result, saved
+// panel selection, and the active runner's signed archetype/status gate. The
+// result identifies the exact field/matrix action family that the caller must
+// execute next.
 FieldActionSelectionRoute classify_field_action_selection(
     const FieldActionSelectionState& state);
 

@@ -2,6 +2,19 @@
 
 namespace shadowrun::ghidra_conversion {
 
+namespace {
+
+bool runner_action_progression_is_blocked(const std::int8_t status) {
+    // The source evaluates BMI/negative-byte arithmetic as
+    // -1 < (char)(status - 2). Preserve the byte wrap instead of reducing
+    // this to a host unsigned comparison.
+    const auto delta = static_cast<std::int8_t>(static_cast<std::uint8_t>(
+        static_cast<std::uint8_t>(status) - 2U));
+    return delta >= 0;
+}
+
+} // namespace
+
 FieldActionSelectionRoute classify_field_action_selection(
     const FieldActionSelectionState& state) {
     if (state.menu_result < 0) {
@@ -32,7 +45,8 @@ FieldActionSelectionRoute classify_field_action_selection(
             return {FieldActionSelectionRouteKind::remove_runner_action,
                     std::nullopt};
         }
-        if (state.runner_archetype_status < 2) {
+        if (runner_action_progression_is_blocked(
+                state.runner_archetype_status)) {
             return {FieldActionSelectionRouteKind::runner_action_unavailable,
                     std::nullopt};
         }

@@ -88,19 +88,17 @@ enum class FieldActionProgressionPurchaseResult {
     progression_maxed,
     progression_limit,
     insufficient_funds,
-    cancelled,
 };
 
 struct FieldActionProgressionPurchaseCallbacks {
-    // 0x56E76/0x56E7A establish the action panel before the offer checks.
-    std::function<void()> render_action_panel;
-    // The source's status gate draws the unavailable message and waits for a
-    // controller event as one presentation path.
+    // The source's blocked-archetype and insufficient-funds paths both write
+    // grid variant B before rendering their message.
+    std::function<void()> write_action_feedback_grid;
     std::function<void()> show_runner_unavailable;
     std::function<void()> show_progression_limit;
     std::function<void()> show_progression_maxed;
     std::function<void()> show_insufficient_funds;
-    std::function<bool()> confirm_purchase;
+    std::function<void()> wait_for_controller_event;
 };
 
 // ROM 0x57D7E. Select the offer, find the existing runner progression record,

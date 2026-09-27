@@ -148,10 +148,13 @@ in `field_action_selection_dispatch_conversion.*`. The source routing is:
   selections 0, 1, or 2; selection 3 enters the field-action detail path,
   selection 4 renders an action description, and later selections enter the
   runner-action removal path.
-* A zero result sends saved selection 3 to removal. Other selections first
-  require the active runner's `+0x9B` archetype/status byte to be at least 2;
-  selection 1 uses its dedicated action table, while the remaining selections
-  choose one of the low-menu-mode, mode-3, or high-menu-mode action tables.
+* A zero result sends saved selection 3 to removal. Neutral action acquisition
+  is blocked when the active runner's signed `+0x9B` archetype/status byte is
+  at least 2; the source writes grid variant B, renders the unavailable
+  message, and waits for a controller event. Status bytes 0 and 1 continue
+  through the action-selection matrix: selection 1 uses its dedicated action
+  table, while selection 0 chooses the low-menu-mode, mode-3, or high-menu-mode
+  offer path.
 * A positive result of 1 enters the equipment-action branch. Other positive
   results route selections below 3 to resource/quantity selection, selection 3
   to resource-record purchase, selection 5 to quantity purchase, and the
@@ -231,9 +234,10 @@ the `FFF0C2` pointer. An existing `(action_code, level)` record pays
 record pays the offer base cost. The source's exact level-six early return,
 signed high-bit offer disable, discounted cost publication, funds deduction,
 record-count increment for a zero-level slot, and level increment are all
-preserved. Status, insufficient-funds, confirmation, disabled-offer, and
-invalid-table boundaries are typed outcomes/callbacks rather than generic
-memory services.
+preserved. The successful `0x56E5A` purchase has no second confirmation
+prompt; insufficient funds writes grid variant B, renders its message, and
+waits. Status, disabled-offer, and invalid-table boundaries are typed
+outcomes/callbacks rather than generic memory services.
 
 The action-detail text helper at `0x5878E` is now
 `select_field_action_detail_text()`. Its source ranges are explicit: codes
