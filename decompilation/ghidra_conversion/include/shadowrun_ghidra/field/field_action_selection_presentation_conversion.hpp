@@ -75,12 +75,12 @@ struct FieldActionDescriptionRenderCallbacks {
     std::function<void(std::uint8_t)> write_description_grid;
 };
 
-// ROM 0x580FE.  Render a menu-resource description.  Quantities whose source
-// byte compares below nine take the Matrix-capacity summary branch; larger
-// quantities render the highest-version notice instead.  The description and
-// final grid write happen on both paths.  The source's 0x575F8 result is
-// supplied as typed data because its own conversion is a separate reusable
-// field-resource boundary.
+// ROM 0x580FE.  Render a menu-resource description.  The source uses
+// CMPI.B #9/BMI on the quantity byte: the Matrix-capacity summary follows
+// the wrapped result's N flag, while the other path renders the highest-
+// version notice.  The description and final grid write happen on both
+// paths.  The source's 0x575F8 result is supplied as typed data because its
+// own conversion is a separate reusable field-resource boundary.
 FieldActionDescriptionRenderResult render_field_action_description(
     const FieldActionDescriptionResourceTable& resources,
     const FieldActionDescriptionInput& input,

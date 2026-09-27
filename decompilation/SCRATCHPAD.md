@@ -2085,6 +2085,19 @@ an unsigned `quantity >= 9` shortcut. Invalid quantity/resource paths publish
 `FFF112 = -1`, funds/storage failures wait for the controller event, and the
 `0x89` accepted-wrap case is covered against the signed word-capacity result.
 
+The field-action description leaf at `0x580FE` was then checked separately.
+Its quantity branch is `CMPI.B #9/BMI`, which is the opposite sign-test shape:
+the wrapped subtraction's N bit selects the capacity summary. The native
+conversion now preserves high-byte cases such as `0x80` taking the
+highest-version notice and `0xFF` returning to the summary path; it no longer
+uses an `int8_t(quantity) < 9` shortcut.
+
+The shared confirmation prompt at `0x57B8C` was audited against its child
+`0xC376` cursor writer. Bits 8/9 first service the move sound, then update and
+draw the bounded 0/1 choice; exit bits 12/14 are only considered when neither
+movement bit was taken. The typed conversion and event-order test now retain
+that source sequence.
+
 The title setup module now also owns `0x12F6`: its DBF `0x10` loop is exposed
 as `advance_title_palette_fade`, with the source ordering of frame wait,
 palette-step, and dirty-mark callbacks tested across all 17 passes.

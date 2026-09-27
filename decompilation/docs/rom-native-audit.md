@@ -230,6 +230,19 @@ and storage failures enter the controller wait. The `0x89` wrapped quantity
 case is covered with a fixture that also preserves the source word-capacity
 branch.
 
+The adjacent field-action description leaf at `0x580FE` has a different
+quantity branch: `CMPI.B #9/BMI`. The native conversion now tests the wrapped
+subtraction's N bit directly. Consequently `0x80` selects the highest-version
+notice (`0x80 - 9` has a clear sign bit), while `0xFF` still selects the
+quantity/capacity summary. The focused presentation test covers this case;
+using `int8_t(quantity) < 9` would misclassify `0x80`.
+
+The shared confirmation prompt at `0x57B8C` was also checked through its
+`0xC376` child. On movement bits 8/9 the ROM services the move sound before
+the wrapped 0/1 cursor writer; only after that branch is skipped does it
+inspect exit bits 12/14. The native callback sequence and focused test now
+preserve that ordering.
+
 The generated Ghidra C remains an evidence snapshot and still omits meaningful
 logic for some of these entries, including `0x3602` and `0x55828`; the typed
 conversion is accepted only where the ROM instruction trace and focused test

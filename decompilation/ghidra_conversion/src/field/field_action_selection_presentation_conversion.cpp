@@ -2,6 +2,17 @@
 
 namespace shadowrun::ghidra_conversion {
 
+namespace {
+
+bool source_quantity_is_below_nine(const std::uint8_t quantity) {
+    // 0x58136 uses CMPI.B #9 followed by BMI.  The branch observes the
+    // wrapped subtraction's N flag, so this is not a host signed comparison
+    // for quantities in the high half of the byte domain.
+    return (static_cast<std::uint8_t>(quantity - 9U) & 0x80U) != 0U;
+}
+
+} // namespace
+
 FieldActionDescriptionRenderResult render_field_action_description(
     const FieldActionDescriptionResourceTable& resources,
     const FieldActionDescriptionInput& input,
@@ -14,7 +25,7 @@ FieldActionDescriptionRenderResult render_field_action_description(
     }
 
     result.description_alias = resources.aliases[input.description_index];
-    const auto quantity_is_small = static_cast<std::int8_t>(input.quantity) < 9;
+    const auto quantity_is_small = source_quantity_is_below_nine(input.quantity);
 
     if (callbacks.render_description_text) {
         callbacks.render_description_text(result.description_alias);

@@ -342,11 +342,14 @@ item-name step; missing cost data preserves that name step and is reported as
   menu-resource byte as a description-table index into `0xE31F2`. The host
   conversion uses an extracted alias, renders the normalized/wrapped
   description, and selects the `0x1AC90C + index * 0x0C` grid record on every
-  path. The source's signed byte comparison makes quantities below nine take
-  the quantity/capacity summary: the `Level`, `Size ... Deck Stg ... Mp`, and
-  `Price` labels, followed by quantity, selected program storage weight, the
-  wrapped `0x575F8` storage total after adding that weight back, and pending
-  `FFF0BE` cost. Larger quantities render the
+  path. The source uses `CMPI.B #9` followed by `BMI`, so the quantity/capacity
+  summary is selected by the wrapped result's N flag, not by a host signed
+  comparison. The `Level`, `Size ... Deck Stg ... Mp`, and `Price` labels are
+  followed by quantity, selected program storage weight, the wrapped
+  `0x575F8` storage total after adding that weight back, and pending `FFF0BE`
+  cost. Values such as `0x80` take the larger-quantity branch because
+  `0x80 - 9` has a clear sign bit, while `0xFF` wraps back into the summary
+  branch. Larger quantities render the
   `You have the highest version of this program.` notice instead. Missing host
   inputs are reported after the source-independent description/label callbacks
   and never suppress the final grid selection.
@@ -1026,8 +1029,10 @@ The native conversion is `apply_selected_field_action()` in the separate
 
 `0x57B8C` is now labeled `run_menu_confirmation_prompt`: it draws the
 two-choice prompt, services vblank/controller input, uses the shared wrapped
-0/1 cursor for movement bits 8/9, and exits on the source bits 12/14. Option
-0 is the accepting choice; option 1 leaves the action unapplied. It remains
+0/1 cursor for movement bits 8/9, and exits on the source bits 12/14. On a
+movement, the source plays its move sound before calling the wrapped cursor
+writer; the typed callback sequence now preserves that order. Option 0 is the
+accepting choice; option 1 leaves the action unapplied. It remains
 an explicit presentation/input callback in the native application module;
 the conversion does not emulate its VDP writes. The grouped field-action grid
 conversion now models `0x57C3A/46/52/5E` as the `0xC604/3`, `0xC184/12`,

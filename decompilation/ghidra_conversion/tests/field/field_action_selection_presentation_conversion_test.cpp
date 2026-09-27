@@ -105,6 +105,15 @@ int main() {
         return 5;
     }
 
+    // 0x80 - 9 wraps to 0x77, so the source BMI takes the highest-version
+    // notice path. A host int8_t comparison would incorrectly treat 0x80 as
+    // a small quantity.
+    if (render_field_action_description(
+            descriptions, FieldActionDescriptionInput{0U, 0x80U, {}, {}},
+            {}).kind != FieldActionDescriptionRenderKind::description_only) {
+        return 6;
+    }
+
     FieldActionCostSummaryRecord summary{};
     summary.availability_marker = 3;
     summary.base_cost = 1000U;
