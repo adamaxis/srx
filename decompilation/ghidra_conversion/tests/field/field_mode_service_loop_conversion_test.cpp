@@ -27,7 +27,9 @@ int main() {
     FieldModeServiceState normal{};
     normal.navigation.mode_result = 0;
     std::vector<std::string> order;
-    std::vector<std::uint16_t> inputs{0x0004U, 0x0008U, 0x0020U, 0x0080U};
+    // The source returns to the vblank loop immediately after a directional
+    // branch. Confirm in the same sample must therefore be ignored here.
+    std::vector<std::uint16_t> inputs{0x0044U, 0x0008U, 0x0020U, 0x0080U};
     std::size_t input_index = 0;
     int actions = 0;
     int restart_calls = 0;

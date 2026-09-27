@@ -2024,6 +2024,13 @@ The typed store now has all 32 words: `0x566E2` writes bank one (words 8-15),
 block into banks one through three (words 8-31), leaving bank zero untouched.
 Each operation still marks the host store dirty, matching `FFEF14` bit 0.
 
+The `0x56AC0` controller sweep also corrected its event precedence. The
+source tests primary decrement, panel decrement, primary increment, and panel
+increment in order, and each directional branch returns to the vblank loop
+before the same sampled word can reach confirm, alternate-confirm, restart,
+or return handling. The host loop now uses the same one-event-per-sample
+boundary; a direction plus confirm is not treated as two actions.
+
 The title setup module now also owns `0x12F6`: its DBF `0x10` loop is exposed
 as `advance_title_palette_fade`, with the source ordering of frame wait,
 palette-step, and dirty-mark callbacks tested across all 17 passes.

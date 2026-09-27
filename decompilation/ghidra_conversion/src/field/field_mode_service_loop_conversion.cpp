@@ -118,6 +118,10 @@ FieldModeServiceLoopAction run_field_mode_service(
                 call_if_present(callbacks.service_audio);
                 advance_field_mode_primary_cursor(
                     state.navigation, -1, callbacks.navigation_callbacks);
+                // ROM 0x56C54 gives this direction branch its own return to
+                // the vblank loop. Do not consume lower-priority bits from
+                // the same sampled controller word.
+                continue;
             }
             if ((input & bit(FieldModeServiceInput::panel_decrement)) != 0U) {
                 call_if_present(callbacks.service_audio);
@@ -125,11 +129,13 @@ FieldModeServiceLoopAction run_field_mode_service(
                     advance_field_mode_panel_cursor(
                         state.navigation, -1, callbacks.navigation_callbacks);
                 }
+                continue;
             }
             if ((input & bit(FieldModeServiceInput::primary_increment)) != 0U) {
                 call_if_present(callbacks.service_audio);
                 advance_field_mode_primary_cursor(
                     state.navigation, 1, callbacks.navigation_callbacks);
+                continue;
             }
             if ((input & bit(FieldModeServiceInput::panel_increment)) != 0U) {
                 call_if_present(callbacks.service_audio);
@@ -137,6 +143,7 @@ FieldModeServiceLoopAction run_field_mode_service(
                     advance_field_mode_panel_cursor(
                         state.navigation, 1, callbacks.navigation_callbacks);
                 }
+                continue;
             }
 
             if (!has_action_input(input)) {

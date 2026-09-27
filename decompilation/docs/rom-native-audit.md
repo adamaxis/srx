@@ -116,6 +116,13 @@ model incorrectly shifted these copies and treated the bulk refresh as if it
 started at bank zero; the focused state-copy test now guards each untouched
 bank boundary.
 
+The `0x56AC0` field-mode loop had a separate control-flow correction. Its
+direction branches at `0x56CB6`/`0x56CD4` return directly to the vblank/sample
+loop, so only the first matching directional bit is consumed from a sampled
+controller word. Confirm, alternate-confirm, restart, and return handling
+must wait for a later sample. The native loop now preserves that priority and
+has a simultaneous direction-plus-confirm regression case.
+
 The Matrix storage/timing pass found two more width-sensitive conversions.
 The audio command-ring audit also removed a source-shaped byte buffer from the conversion model. `0x52E96` now publishes a typed `flush_marker` entry followed by a typed command entry, while `0x52EA2` appends a typed command and wraps a host index at the source 64-entry capacity. The source `0xFF` marker remains provenance; it is not a runtime sentinel in the host model. The opaque audio firmware image is still an extraction boundary and is not being misrepresented as typed gameplay state.
 `0x19558` and `0x1957E` accumulate and subtract in word registers, so their
