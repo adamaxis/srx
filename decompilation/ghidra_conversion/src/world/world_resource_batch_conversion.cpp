@@ -320,24 +320,16 @@ std::size_t append_world_sprite_records(
     return sources.size();
 }
 
-void copy_two_word_rows(const std::vector<std::uint16_t>& source,
-                        std::vector<std::uint16_t>& destination,
-                        const std::size_t row_width,
-                        const std::size_t source_stride,
-                        const std::size_t destination_stride) {
-    for (std::size_t row = 0; row < 2U; ++row) {
-        for (std::size_t column = 0; column < row_width; ++column) {
-            const auto source_index = row * source_stride + column;
-            const auto destination_index = row * destination_stride + column;
-            if (source_index >= source.size()) {
-                continue;
-            }
-            if (destination_index >= destination.size()) {
-                destination.resize(destination_index + 1U);
-            }
-            destination[destination_index] = source[source_index];
-        }
+bool copy_field_mode_selection_state(
+    const std::vector<std::uint16_t>& source,
+    std::vector<std::uint16_t>& destination) {
+    if (source.size() < kFieldModeSelectionStateWordCount) {
+        destination.clear();
+        return false;
     }
+    destination.assign(source.begin(),
+                       source.begin() + kFieldModeSelectionStateWordCount);
+    return true;
 }
 
 void upload_decoded_source_stream(const std::function<void()>& decode_upload) {

@@ -171,11 +171,14 @@ std::size_t append_world_sprite_records(
     std::int16_t origin_y,
     std::uint8_t& next_attribute);
 
-void copy_two_word_rows(const std::vector<std::uint16_t>& source,
-                        std::vector<std::uint16_t>& destination,
-                        std::size_t row_width,
-                        std::size_t source_stride,
-                        std::size_t destination_stride);
+constexpr std::size_t kFieldModeSelectionStateWordCount = 0x17U;
+
+// ROM 0x26938: copy one 23-word field/mode selection state row from the
+// extracted table at 0x14C1F4 into the working state consumed through
+// FFFBBE. The source's outer DBF starts at zero and therefore runs once.
+bool copy_field_mode_selection_state(
+    const std::vector<std::uint16_t>& source,
+    std::vector<std::uint16_t>& destination);
 
 void upload_decoded_source_stream(const std::function<void()>& decode_upload);
 

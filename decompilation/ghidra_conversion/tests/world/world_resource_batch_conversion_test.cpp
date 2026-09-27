@@ -105,9 +105,16 @@ int main() {
                                        attribute) == 2);
     assert(sprites[1].x == 15 && sprites[1].attribute == 1);
 
-    std::vector<std::uint16_t> rows(4);
-    copy_two_word_rows({1, 2, 3, 4}, rows, 2, 2, 2);
-    assert(rows == std::vector<std::uint16_t>({1, 2, 3, 4}));
+    std::vector<std::uint16_t> mode_state;
+    std::vector<std::uint16_t> mode_source(
+        kFieldModeSelectionStateWordCount + 2U, 0U);
+    mode_source.front() = 1U;
+    mode_source[kFieldModeSelectionStateWordCount - 1U] = 23U;
+    assert(copy_field_mode_selection_state(mode_source, mode_state));
+    assert(mode_state.size() == kFieldModeSelectionStateWordCount &&
+           mode_state.front() == 1U && mode_state.back() == 23U);
+    assert(!copy_field_mode_selection_state({1, 2}, mode_state) &&
+           mode_state.empty());
     upload_decoded_source_stream([&] { ++calls; });
     assert(calls > 10);
     return 0;

@@ -612,7 +612,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x26610	sequential asset grid write	ghidra_conversion::write_sequential_asset_grid	shadowrun_ghidra_world_resource_batch	partial		Eight/ten-word repeated asset transfer
 0x26696	tile block copy	ghidra_conversion::copy_tile_blocks	shadowrun_ghidra_world_resource_batch	partial		Stride-aware host tile block copy
 0x268E6	world sprite record append	ghidra_conversion::append_world_sprite_records	shadowrun_ghidra_world_resource_batch	partial		Typed source packets become individual sprite records
-0x26938	two-row word copy	ghidra_conversion::copy_two_word_rows	shadowrun_ghidra_world_resource_batch	partial		Two-row bounded word copy with independent strides
+0x26938	field/mode selection state copy	ghidra_conversion::copy_field_mode_selection_state	shadowrun_ghidra_world_resource_batch	partial		Copies one 23-word row from the extracted table at 0x14C1F4 into typed field/mode selection state; source D6=0 outer DBF runs once
 0x26958	decoded source upload	ghidra_conversion::upload_decoded_source_stream	shadowrun_ghidra_world_resource_batch	partial		Explicit offline decode/upload boundary
 0x26BFE	masked word transfer	ghidra_conversion::write_masked_transfer	shadowrun_ghidra_audio_service_batch	partial		Host masked transfer with optional display blanking
 0x26C26	masked word transfer with display control	ghidra_conversion::write_masked_transfer	shadowrun_ghidra_audio_service_batch	partial		Display-control-wrapped masked transfer variant
