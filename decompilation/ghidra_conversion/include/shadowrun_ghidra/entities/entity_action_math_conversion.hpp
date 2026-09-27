@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shadowrun_ghidra/core/random_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_action_profile_conversion.hpp"
 
 #include <array>
@@ -17,10 +18,13 @@ struct EntityActionRecord {
     std::uint8_t physical_meter = 0;    // +0x4C
     std::uint8_t posture = 0;            // +0x4D
     std::uint8_t item18_base = 0;        // +0x80
+    std::uint8_t attribute_78 = 0;        // +0x78
+    std::uint8_t attribute_7b = 0;        // +0x7B
     std::uint8_t mental_meter = 0;       // +0x9C
     std::uint8_t race_or_state = 0;      // +0x9A
     std::uint8_t attribute_7c = 0;       // +0x7C
     std::uint8_t attribute_77 = 0;       // +0x77
+    std::uint8_t attribute_87 = 0;       // +0x87
     std::uint8_t flags_10 = 0;           // +0x10
     std::uint8_t class_code = 0;         // +0x9B
     std::array<std::uint8_t, 8> item_codes{};   // +0x66..+0x6D
@@ -108,6 +112,14 @@ std::uint16_t select_posture_adjusted_value(
     std::uint16_t input,
     std::uint8_t posture,
     bool select_reduced_component);
+
+// ROM 0x55ED6. Add the source +0x78, +0x7B, and +0x7C command attributes
+// with byte wrapping, shift the sum once, then add the phase of the first
+// item-code-0x28 possession cell. This overload is the entity-record form
+// used by the late effect/action routines; the menu module has a separate
+// presentation-input overload with the same source behavior.
+std::uint16_t calculate_equipment_command_average(
+    const EntityActionRecord& entity);
 
 // ROM 0x104F6. Scan possession slots from 6 down to 0 for an exact item code
 // and add that slot's phase to the running value. The first match terminates
@@ -258,5 +270,52 @@ EntityActionResidual calculate_action_residual(
     std::uint16_t difficulty,
     std::uint16_t roll_count,
     const EntityActionCatalogRecord& action);
+
+struct EffectTargetOffsetInput {
+    // 0x55848 keeps A0 as the source entity while the A1 target record is
+    // used by 0x55740. These are decoded records, never source RAM aliases.
+    EntityActionRecord source{};
+    EntityActionTarget target{};
+    // When present, this is the linked profile/context consumed by 0x55786.
+    // A missing context means the source bit-0/bit-1 dynamic branch is not
+    // selected for this call.
+    const EntityActionDynamicModifierContext* dynamic_modifier_context =
+        nullptr;
+};
+
+struct EffectTargetOffsetServices {
+    // 0x0D3A. The callback returns a value in [0, bound), matching the
+    // source PRNG helper's bounded result.
+    BoundedRandomRollBoundary sample_random_bound;
+    // 0x55786's nested 0x0DBA roll service. The final 0x55848 roll count is
+    // supplied through sample_random_bound, not this action-result service.
+    EntityActionRollService dynamic_roll_service;
+};
+
+struct EffectTargetOffsetResult {
+    std::uint16_t command_average = 0;
+    std::uint16_t posture_reduction = 0;
+    std::uint16_t combined_value = 0;
+    std::uint8_t target_skill = 0;
+    std::uint16_t initial_difficulty = 0;
+    std::uint16_t effective_difficulty = 0;
+    std::uint8_t thresholded_rolls = 0;
+    std::uint16_t half_threshold = 0;
+    std::int16_t first_difference = 0;
+    std::int16_t magnitude = 0;
+    std::int16_t offset = 0;
+    bool random_service_available = false;
+    bool dynamic_modifier_selected = false;
+    bool dynamic_roll_service_available = false;
+};
+
+// ROM 0x55848. Build the source entity's command/posture target value, apply
+// the target and dynamic difficulty branches, then choose the signed random
+// effect-placement offset. The three nested random draws preserve the source
+// sequence: a six-sided threshold sample, a three-way sign sample, and a
+// three-way axis sample with a two-way tie break.
+EffectTargetOffsetResult calculate_effect_target_offset(
+    const EffectTargetOffsetInput& input,
+    const EffectTargetOffsetServices& services);
 
 }  // namespace shadowrun::ghidra_conversion

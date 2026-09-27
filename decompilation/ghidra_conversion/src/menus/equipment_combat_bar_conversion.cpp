@@ -12,18 +12,6 @@ void call_once(const std::function<void()>& callback) {
     }
 }
 
-std::uint8_t inventory_phase_for_code(
-    const EquipmentCombatInput& input,
-    const std::uint8_t item_code) {
-    for (std::size_t slot = 0; slot < input.inventory_item_codes.size();
-         ++slot) {
-        if (input.inventory_item_codes[slot] == item_code) {
-            return input.inventory_phase_bytes[slot];
-        }
-    }
-    return 0U;
-}
-
 bool source_byte_subtraction_is_nonnegative(const std::uint8_t minuend,
                                             const std::uint8_t subtrahend) {
     const auto result = static_cast<std::uint8_t>(minuend - subtrahend);
@@ -34,19 +22,16 @@ bool source_byte_subtraction_is_nonnegative(const std::uint8_t minuend,
 
 std::uint16_t calculate_equipment_command_average(
     const EquipmentCombatInput& input) {
-    // 0x55ED6 uses ADD.B for all three attributes and for the item phase.
-    // Keep the low-byte wrap instead of doing a wider host sum.
-    auto attribute_sum = static_cast<std::uint8_t>(0U);
-    attribute_sum = static_cast<std::uint8_t>(
-        attribute_sum + input.attributes[1]);
-    attribute_sum = static_cast<std::uint8_t>(
-        attribute_sum + input.attributes[4]);
-    attribute_sum = static_cast<std::uint8_t>(
-        attribute_sum + input.attributes[5]);
-    attribute_sum = static_cast<std::uint8_t>(attribute_sum >> 1U);
-    attribute_sum = static_cast<std::uint8_t>(
-        attribute_sum + inventory_phase_for_code(input, 0x28U));
-    return attribute_sum;
+    // Keep one source-faithful 0x55ED6 implementation. This menu-facing
+    // overload only decodes its presentation input into the same typed
+    // entity record consumed by the late action/effect routines.
+    EntityActionRecord entity{};
+    entity.attribute_78 = input.attributes[1];
+    entity.attribute_7b = input.attributes[4];
+    entity.attribute_7c = input.attributes[5];
+    entity.item_codes = input.inventory_item_codes;
+    entity.item_phases = input.inventory_phase_bytes;
+    return calculate_equipment_command_average(entity);
 }
 
 namespace {

@@ -72,6 +72,74 @@ int main() {
         return 3;
     }
 
+    // ROM 0x55848 uses the same typed 0x55ED6/0x55F20 leaves before it
+    // applies the target-condition difficulty and random placement offset.
+    EntityActionRecord effect_source{};
+    effect_source.attribute_78 = 10U;
+    effect_source.attribute_7b = 20U;
+    effect_source.attribute_7c = 30U;
+    effect_source.posture = 2U;
+    effect_source.cyberware_flags = 0x0002U;
+    effect_source.item_codes[0] = 0x28U;
+    effect_source.item_phases[0] = 2U;
+    EntityActionTarget effect_target{};
+    effect_target.class_code = 0x16U;
+    std::vector<std::int16_t> offset_samples(16U, 0);
+    offset_samples.push_back(2); // first 0x558A2 sample: difference = 3
+    offset_samples.push_back(2); // 0x558B6 sign: positive
+    offset_samples.push_back(1); // 0x558D0 middle: preserve zero sign
+    std::size_t offset_cursor = 0U;
+    const auto offset_result = calculate_effect_target_offset(
+        {effect_source, effect_target, nullptr},
+        {[&offset_samples, &offset_cursor](const std::uint16_t) {
+             if (offset_cursor >= offset_samples.size()) {
+                 return static_cast<std::int16_t>(0);
+             }
+             return offset_samples[offset_cursor++];
+         },
+         {}});
+    if (!expect(offset_result.command_average == 32U &&
+                offset_result.posture_reduction == 16U &&
+                offset_result.combined_value == 16U &&
+                offset_result.initial_difficulty == 8U &&
+                offset_result.effective_difficulty == 9U &&
+                offset_result.thresholded_rolls == 0U &&
+                offset_result.half_threshold == 0U &&
+                offset_result.first_difference == 3 &&
+                offset_result.magnitude == 36 && offset_result.offset == 0 &&
+                offset_result.random_service_available)) {
+        return 21;
+    }
+
+    EntityActionRecord tie_source{};
+    tie_source.attribute_78 = 2U;
+    tie_source.attribute_87 = 1U;
+    std::vector<std::int16_t> tie_samples{5, 4, 0, 0, 1, 1, 0};
+    std::size_t tie_cursor = 0U;
+    const auto tie_result = calculate_effect_target_offset(
+        {tie_source, {}, nullptr},
+        {[&tie_samples, &tie_cursor](const std::uint16_t) {
+             return tie_samples[tie_cursor++];
+         },
+         {}});
+    if (!expect(tie_result.command_average == 1U &&
+                tie_result.combined_value == 2U &&
+                tie_result.initial_difficulty == 5U &&
+                tie_result.effective_difficulty == 5U &&
+                tie_result.thresholded_rolls == 1U &&
+                tie_result.first_difference == 1 &&
+                tie_result.magnitude == 12 && tie_result.offset == -12)) {
+        return 22;
+    }
+
+    const auto unresolved_offset = calculate_effect_target_offset(
+        {tie_source, {}, nullptr}, {});
+    if (!expect(!unresolved_offset.random_service_available &&
+                unresolved_offset.offset == 0 &&
+                unresolved_offset.effective_difficulty == 5U)) {
+        return 23;
+    }
+
     entity.item_codes[6] = 0x1AU;
     entity.item_phases[6] = 4U;
     entity.item_codes[2] = 0x1AU;

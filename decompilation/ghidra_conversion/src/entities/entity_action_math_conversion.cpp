@@ -46,6 +46,26 @@ std::uint16_t select_posture_adjusted_value(
     return select_reduced_component ? reduction : remaining;
 }
 
+std::uint16_t calculate_equipment_command_average(
+    const EntityActionRecord& entity) {
+    // 0x55ED6 uses ADD.B for the three attributes and for the first matching
+    // item phase. Preserve the source low-byte wrap before the shift.
+    auto value = static_cast<std::uint8_t>(0U);
+    value = static_cast<std::uint8_t>(value + entity.attribute_78);
+    value = static_cast<std::uint8_t>(value + entity.attribute_7b);
+    value = static_cast<std::uint8_t>(value + entity.attribute_7c);
+    value = static_cast<std::uint8_t>(value >> 1U);
+    for (std::size_t slot = 0; slot < entity.item_codes.size(); ++slot) {
+        if (entity.item_codes[slot] != 0x28U) {
+            continue;
+        }
+        value = static_cast<std::uint8_t>(
+            value + entity.item_phases[slot]);
+        break;
+    }
+    return value;
+}
+
 std::uint16_t add_first_matching_item_phase(
     const std::uint16_t value,
     const EntityActionRecord& entity,
@@ -300,6 +320,102 @@ EntityActionResidual calculate_action_residual(
     return {true, effective_difficulty,
             static_cast<std::uint16_t>(adjusted_roll_count),
             static_cast<std::int16_t>(residual)};
+}
+
+EffectTargetOffsetResult calculate_effect_target_offset(
+    const EffectTargetOffsetInput& input,
+    const EffectTargetOffsetServices& services) {
+    EffectTargetOffsetResult result{};
+    result.command_average = calculate_equipment_command_average(
+        input.source);
+    result.posture_reduction = select_posture_adjusted_value(
+        result.command_average, input.source.posture, true);
+    result.target_skill = input.source.attribute_87;
+
+    // 0x55852..0x55864: D6 becomes max(posture reduction, +0x87) plus
+    // +0x87. The zero correction is observable because it feeds 0x0DBA's
+    // trial-count path.
+    result.combined_value = std::max<std::uint16_t>(
+        result.posture_reduction,
+        static_cast<std::uint16_t>(result.target_skill));
+    result.combined_value = static_cast<std::uint16_t>(
+        result.combined_value + result.target_skill);
+    if (result.combined_value == 0U) {
+        result.combined_value = 1U;
+    }
+
+    // 0x55868..0x55876 uses TST.B/BGT, so a zero or signed-negative byte
+    // selects eight and only a strictly positive signed byte selects five.
+    result.initial_difficulty =
+        static_cast<std::int8_t>(result.target_skill) > 0 ? 5U : 8U;
+    auto difficulty = result.initial_difficulty;
+    difficulty = apply_target_condition_modifier(
+        difficulty, input.source, input.target);
+    if (input.dynamic_modifier_context != nullptr) {
+        const auto dynamic = apply_dynamic_status_modifier(
+            difficulty, *input.dynamic_modifier_context,
+            services.dynamic_roll_service);
+        result.dynamic_modifier_selected = dynamic.selected;
+        result.dynamic_roll_service_available =
+            dynamic.roll_service_available;
+    }
+    difficulty = std::max<std::uint16_t>(difficulty, 2U);
+    result.effective_difficulty = difficulty;
+
+    // 0x5588C enters 0x0DBA with D6=the combined value and D4=the clamped
+    // difficulty. Keep the random source as a deliberate service boundary;
+    // an unbound conversion cannot claim an offset result.
+    if (!services.sample_random_bound) {
+        return result;
+    }
+    result.random_service_available = true;
+    result.thresholded_rolls = count_thresholded_random_rolls(
+        result.combined_value, static_cast<std::int16_t>(difficulty),
+        services.sample_random_bound);
+    result.half_threshold =
+        static_cast<std::uint16_t>(result.thresholded_rolls >> 1U);
+
+    const auto first_sample = static_cast<std::int32_t>(
+        services.sample_random_bound(6U));
+    result.first_difference = static_cast<std::int16_t>(
+        first_sample + 1 - static_cast<std::int32_t>(result.half_threshold));
+    if (result.first_difference <= 0) {
+        return result;
+    }
+
+    result.magnitude = static_cast<std::int16_t>(
+        static_cast<std::int32_t>(result.first_difference) * 0x0CU);
+
+    // 0x558B6..0x558CE: sample 0/1/2 becomes negative/zero/positive.
+    const auto sign_sample = static_cast<std::int32_t>(
+        services.sample_random_bound(3U));
+    if (sign_sample <= 0) {
+        result.offset = static_cast<std::int16_t>(-result.magnitude);
+    } else if (sign_sample == 1) {
+        result.offset = 0;
+    } else {
+        result.offset = result.magnitude;
+    }
+
+    // 0x558D0..0x558FC chooses the final axis. A middle result preserves
+    // zero when the first axis sign was nonzero; only a zero first sign uses
+    // the final two-way tie-break sample.
+    const auto axis_sample = static_cast<std::int32_t>(
+        services.sample_random_bound(3U));
+    if (axis_sample <= 0) {
+        result.offset = static_cast<std::int16_t>(-result.magnitude);
+    } else if (axis_sample >= 2) {
+        result.offset = result.magnitude;
+    } else if (result.offset != 0) {
+        result.offset = 0;
+    } else {
+        const auto tie_sample = static_cast<std::int32_t>(
+            services.sample_random_bound(2U));
+        result.offset = tie_sample == 0
+                            ? static_cast<std::int16_t>(-result.magnitude)
+                            : result.magnitude;
+    }
+    return result;
 }
 
 std::uint16_t calculate_action_effect_roll_count(

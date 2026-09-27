@@ -222,6 +222,22 @@ successes from the special roll budget, and halves the remainder only when
 actor bit 1 is set. The `0x55828` pointer walk is represented as a typed
 special-record input instead of a RAM-address lookup.
 
+The late effect placement routine at `0x55848` is now converted as
+`calculate_effect_target_offset`. It first reproduces `0x55ED6` from the
+source entity's typed `+0x78/+0x7B/+0x7C` attributes and first item-code
+`0x28` phase, then uses `0x55F20`'s posture reduction. The target skill byte
+at `+0x87` is combined with the larger posture/skill component, with the
+source zero-to-one correction preserved. Its difficulty is five only for a
+strictly positive signed skill byte; zero and signed-negative bytes start at
+eight, then pass through `0x55740`, `0x55786`, and the minimum-two clamp.
+
+The final placement offset retains the complete `0x0DBA` threshold count and
+the `0x0D3A` six-sided, three-way, and tie-break draws. The source sequence
+is represented by an injected bounded-random service, while the nested
+`0x55786` action roll remains a separate typed service. This is conversion
+code only: it consumes decoded records and returns a typed result; it does
+not read Genesis addresses or become part of the native runtime.
+
 The positive residual tail at `0x1033E` is represented by
 `consume_item13_residual`: it scans item code `0x13` phases from slot `6`
 down to `0`, keeps a partially consumed phase, clears a phase and its item
