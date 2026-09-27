@@ -179,6 +179,79 @@ std::uint16_t apply_target_condition_modifier(
     return static_cast<std::uint16_t>(difficulty + 4U);
 }
 
+EntityActionEligibilityResult check_entity_action_eligibility(
+    const std::uint16_t difficulty,
+    const EntityActionActorState& actor) {
+    EntityActionEligibilityResult result{};
+    result.difficulty = difficulty;
+    const auto action_code = actor.equipped_action_code;
+    if (action_code == 0U) {
+        // The source subtracts one before indexing the phase bytes. A zero
+        // action is not a valid source menu/action record, so the typed host
+        // boundary reports it instead of forming a wrapped out-of-range
+        // index.
+        return result;
+    }
+    result.action_code_valid = true;
+    const auto phase_index = static_cast<std::size_t>(action_code - 1U);
+    const auto total_phase_count = actor.record.item_phases.size() +
+                                   actor.record.action_phase_extension.size();
+    if (phase_index >= total_phase_count) {
+        // Preserve the source's valid-record domain without inventing a
+        // modulo index for an action code that cannot name a possession cell.
+        result.action_code_valid = false;
+        return result;
+    }
+
+    const auto phase = phase_index < actor.record.item_phases.size()
+                           ? actor.record.item_phases[phase_index]
+                           : actor.record.action_phase_extension[
+                                 phase_index - actor.record.item_phases.size()];
+    if (action_code >= 8U && action_code <= 10U) {
+        result.difficulty = static_cast<std::uint16_t>(
+            result.difficulty + 3U);
+        result.action_band_adjusted = true;
+        if ((phase & 0x10U) != 0U) {
+            result.difficulty = static_cast<std::uint16_t>(
+                result.difficulty - 2U);
+            result.phase_bit_four_adjusted = true;
+        } else if ((phase & 0x20U) != 0U) {
+            result.difficulty = static_cast<std::uint16_t>(
+                result.difficulty - 3U);
+            result.phase_bit_five_adjusted = true;
+        }
+    }
+
+    if ((phase & 0x08U) != 0U) {
+        result.difficulty = static_cast<std::uint16_t>(
+            result.difficulty - 1U);
+        result.phase_bit_three_adjusted = true;
+    }
+    if ((phase & 0x01U) == 0U) {
+        return result;
+    }
+
+    if ((actor.record.cyberware_flags & 0x0010U) != 0U) {
+        result.difficulty = static_cast<std::uint16_t>(
+            result.difficulty - 2U);
+        result.cyberware_adjusted = true;
+        return result;
+    }
+
+    // 0x5572C starts at slot 7 and DBF-scans down to slot 0. Only the first
+    // source match matters because the routine returns immediately.
+    for (std::size_t slot = actor.record.item_codes.size(); slot-- > 0U;) {
+        if (actor.record.item_codes[slot] != 0x16U) {
+            continue;
+        }
+        result.difficulty = static_cast<std::uint16_t>(
+            result.difficulty - 1U);
+        result.item16_slot = static_cast<std::uint8_t>(slot);
+        return result;
+    }
+    return result;
+}
+
 EntityActionDynamicModifierResult apply_dynamic_status_modifier(
     std::uint16_t& difficulty,
     const EntityActionDynamicModifierContext& context,

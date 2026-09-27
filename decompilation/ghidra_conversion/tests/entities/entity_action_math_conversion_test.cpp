@@ -211,6 +211,49 @@ int main() {
         return 10;
     }
 
+    EntityActionActorState eligibility_actor{};
+    eligibility_actor.equipped_action_code = 8U;
+    eligibility_actor.record.item_phases[7] = 0x39U;
+    eligibility_actor.record.cyberware_flags = 0x0010U;
+    const auto action_eight = check_entity_action_eligibility(
+        10U, eligibility_actor);
+    if (!expect(action_eight.action_code_valid &&
+                action_eight.action_band_adjusted &&
+                action_eight.phase_bit_four_adjusted &&
+                action_eight.phase_bit_three_adjusted &&
+                action_eight.cyberware_adjusted &&
+                !action_eight.phase_bit_five_adjusted &&
+                !action_eight.item16_slot.has_value() &&
+                action_eight.difficulty == 8U)) {
+        return 24;
+    }
+
+    eligibility_actor.equipped_action_code = 9U;
+    eligibility_actor.record.cyberware_flags = 0U;
+    eligibility_actor.record.action_phase_extension[0] = 0x21U;
+    eligibility_actor.record.item_codes[2] = 0x16U;
+    eligibility_actor.record.item_codes[7] = 0x16U;
+    const auto action_nine = check_entity_action_eligibility(
+        10U, eligibility_actor);
+    if (!expect(action_nine.action_code_valid &&
+                action_nine.action_band_adjusted &&
+                !action_nine.phase_bit_four_adjusted &&
+                action_nine.phase_bit_five_adjusted &&
+                !action_nine.phase_bit_three_adjusted &&
+                !action_nine.cyberware_adjusted &&
+                action_nine.item16_slot == 7U &&
+                action_nine.difficulty == 9U)) {
+        return 25;
+    }
+
+    eligibility_actor.equipped_action_code = 0U;
+    const auto invalid_action = check_entity_action_eligibility(
+        10U, eligibility_actor);
+    if (!expect(!invalid_action.action_code_valid &&
+                invalid_action.difficulty == 10U)) {
+        return 26;
+    }
+
     const EntityActionCatalogRecord action{1U, 10};
     const auto residual = calculate_action_residual(6U, 5U, 8U, action);
     if (!expect(residual.valid && residual.effective_difficulty == 4U &&

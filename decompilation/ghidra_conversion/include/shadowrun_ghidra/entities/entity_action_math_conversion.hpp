@@ -29,6 +29,10 @@ struct EntityActionRecord {
     std::uint8_t class_code = 0;         // +0x9B
     std::array<std::uint8_t, 8> item_codes{};   // +0x66..+0x6D
     std::array<std::uint8_t, 8> item_phases{};  // +0x6E..+0x75
+    // The source indexes the same contiguous phase window for action codes
+    // above the eight possession cells. This extension decodes +0x76..+0x7F
+    // explicitly for those late action branches.
+    std::array<std::uint8_t, 10> action_phase_extension{};
 };
 
 struct EntityActionTarget {
@@ -167,6 +171,26 @@ std::uint16_t apply_target_condition_modifier(
     std::uint16_t difficulty,
     const EntityActionRecord& attacker,
     const EntityActionTarget& target);
+
+struct EntityActionEligibilityResult {
+    std::uint16_t difficulty = 0;
+    bool action_code_valid = false;
+    bool action_band_adjusted = false;
+    bool phase_bit_four_adjusted = false;
+    bool phase_bit_five_adjusted = false;
+    bool phase_bit_three_adjusted = false;
+    bool cyberware_adjusted = false;
+    std::optional<std::uint8_t> item16_slot;
+};
+
+// ROM 0x556C6. Apply the action-code 8..10 bonus/penalty, the selected
+// inventory phase bits, and the cyberware/item-code-0x16 fallback. The source
+// mutates D4 and returns no value; the host result keeps the typed difficulty
+// plus branch provenance so the conversion can be audited without indexing
+// arbitrary record memory for an invalid zero action code.
+EntityActionEligibilityResult check_entity_action_eligibility(
+    std::uint16_t difficulty,
+    const EntityActionActorState& actor);
 
 // ROM 0x55786. Bit 0 has priority over bit 1. The selected special record is
 // rolled with the ready-entity/attribute count; successful rolls reduce its

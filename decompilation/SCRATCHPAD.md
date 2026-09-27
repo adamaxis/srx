@@ -222,6 +222,15 @@ successes from the special roll budget, and halves the remainder only when
 actor bit 1 is set. The `0x55828` pointer walk is represented as a typed
 special-record input instead of a RAM-address lookup.
 
+The action eligibility leaf at `0x556C6` is now explicit as
+`check_entity_action_eligibility`. It applies the `+3` action-band modifier
+for action codes `8..10`, then preserves the source bit-4-over-bit-5 phase
+priority, the generic phase bit-3 penalty, and the bit-0 cyberware/item-`0x16`
+fallback. The phase window above the eight inventory cells is decoded as a
+typed `+0x76..+0x7F` extension so action codes `9` and `10` do not get
+silently rejected or turned into an address-style lookup. A zero or
+out-of-domain action code is reported as an explicit typed boundary.
+
 The late effect placement routine at `0x55848` is now converted as
 `calculate_effect_target_offset`. It first reproduces `0x55ED6` from the
 source entity's typed `+0x78/+0x7B/+0x7C` attributes and first item-code
