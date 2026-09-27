@@ -66,6 +66,12 @@ FieldActionDetailRenderResult render_field_action_detail(
 
     if (!base_cost_lookup) {
         result.kind = FieldActionDetailRenderKind::missing_cost_data;
+        if (callbacks.render_action_name) {
+            callbacks.render_action_name();
+        }
+        if (callbacks.render_tail_text) {
+            callbacks.render_tail_text();
+        }
         return result;
     }
     result.cost = calculate_field_action_record_cost(
@@ -75,6 +81,9 @@ FieldActionDetailRenderResult render_field_action_detail(
     }
     if (callbacks.render_action_name) {
         callbacks.render_action_name();
+    }
+    if (callbacks.render_tail_text) {
+        callbacks.render_tail_text();
     }
     return result;
 }

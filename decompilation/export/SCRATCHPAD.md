@@ -264,8 +264,9 @@ build the existing typed detail plan, select the `0x5878E` detail text when
 that range has text, render the normal header, and calculate the record cost
 through the typed base-cost lookup and field discount context. Presentation
 steps are callbacks, so this conversion records the source ordering without
-turning the runtime into a VDP or ROM-pointer interpreter; absent base-cost
-data is an explicit `missing_cost_data` result rather than invented behavior.
+turning the runtime into a VDP or ROM-pointer interpreter. Every branch then
+finishes through the common tail text, including ordinary details and the
+host's explicit `missing_cost_data` result; no tail step is silently dropped.
 
 The remaining field-selection presentation cluster is now explicit as well:
 

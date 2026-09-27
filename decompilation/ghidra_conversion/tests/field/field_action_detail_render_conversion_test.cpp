@@ -16,9 +16,9 @@ int main() {
     int normal_headers = 0;
     int decimal_builds = 0;
     int action_names = 0;
+    int tail_renders = 0;
     const FieldActionDetailRenderCallbacks callbacks{
-        {}, {}, {}, {}, {},
-        {},
+        {}, [&] { ++tail_renders; }, {}, {}, {}, {},
         [&](const ActionDetailRenderPlan& plan) {
             if (!plan.valid || plan.source_code != 3U ||
                 plan.detail_value != 0x42U) {
@@ -44,7 +44,7 @@ int main() {
         ordinary_result.cost != 100U || !ordinary_result.detail_plan ||
         !ordinary_result.detail_text || plan_presentations != 1 ||
         detail_text_renders != 1 || normal_headers != 1 ||
-        decimal_builds != 0 || action_names != 1) {
+        decimal_builds != 0 || action_names != 1 || tail_renders != 1) {
         return 1;
     }
 
@@ -52,7 +52,6 @@ int main() {
     int special_grid = 0;
     int special_header = 0;
     int special_label = 0;
-    int tail_renders = 0;
     const FieldActionDetailRenderCallbacks special_callbacks{
         {}, [&] { ++tail_renders; },
         [&] { ++special_grid; }, [&] { ++special_header; },
@@ -64,7 +63,7 @@ int main() {
         {}, special_callbacks);
     if (special_result.kind != FieldActionDetailRenderKind::special_action ||
         special_result.cost != 25U || special_grid != 1 ||
-        special_header != 1 || special_label != 1 || tail_renders != 1 ||
+        special_header != 1 || special_label != 1 || tail_renders != 2 ||
         decimal_builds != 1) {
         return 2;
     }
@@ -77,7 +76,7 @@ int main() {
         {{0xFFU, 0U, 0U}}, resources, variant, state, {},
         unavailable_callbacks);
     if (unavailable_result.kind != FieldActionDetailRenderKind::unavailable ||
-        unavailable_messages != 1 || tail_renders != 2) {
+        unavailable_messages != 1 || tail_renders != 3) {
         return 3;
     }
 
@@ -91,10 +90,11 @@ int main() {
     }
 
     const auto missing_cost_result = render_field_action_detail(
-        ordinary, resources, variant, state, {}, {});
+        ordinary, resources, variant, state, {}, callbacks);
     if (missing_cost_result.kind !=
             FieldActionDetailRenderKind::missing_cost_data ||
-        missing_cost_result.cost != 0U) {
+        missing_cost_result.cost != 0U || action_names != 2 ||
+        tail_renders != 4) {
         return 5;
     }
 

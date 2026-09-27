@@ -34,8 +34,8 @@ struct FieldActionDetailRenderResult {
 };
 
 struct FieldActionDetailRenderCallbacks {
-    // The source's 0x1AA5B2 message and tail render are separate presentation
-    // events even though both ultimately use encoded text.
+    // The source's 0x1AA5B2 message and common tail render are separate
+    // presentation events even though both ultimately use encoded text.
     std::function<void()> show_unavailable;
     std::function<void()> render_tail_text;
 
@@ -46,7 +46,8 @@ struct FieldActionDetailRenderCallbacks {
     std::function<void()> build_grouped_decimal;
 
     // Ordinary records first build the typed detail plan, conditionally select
-    // detail text through 0x5878E, then render the normal header/cost/name.
+    // detail text through 0x5878E, then render the normal header/cost/name and
+    // finish through the same common tail as the other source branches.
     std::function<void(const ActionDetailRenderPlan&)> present_detail_plan;
     std::function<void(const FieldActionDetailTextSelection&)>
         render_detail_text;
