@@ -5,6 +5,12 @@
 namespace shadowrun::ghidra_conversion {
 namespace {
 
+void call_once(const std::function<void()>& callback) {
+    if (callback) {
+        callback();
+    }
+}
+
 std::int16_t maximum_magic_column(const std::uint8_t row,
                                   const std::uint16_t first_entry_count) {
     auto maximum = static_cast<std::int16_t>(first_entry_count);
@@ -173,6 +179,34 @@ MagicForceLoopResult apply_magic_force_input(
         return MagicForceLoopResult::finished;
     }
     return MagicForceLoopResult::waiting;
+}
+
+void refresh_magic_force_display(
+    const std::uint16_t current_force, const std::uint16_t maximum_force,
+    const MagicForceDisplayCallbacks& callbacks) {
+    // ROM 0x10172 calls 0x10156 before the conditional force marker.
+    call_once(callbacks.write_repeated_grid);
+    if (current_force >= 2U) {
+        call_once(callbacks.write_repeated_grid);
+    }
+    call_once(callbacks.write_grid);
+    if (maximum_force != current_force) {
+        call_once(callbacks.write_repeated_grid);
+    }
+    call_once(callbacks.write_repeated_grid);
+}
+
+void prepare_magic_action_details(
+    const MagicActionDetailCallbacks& callbacks) {
+    // ROM 0x102D4 preserves three distinct text-render calls between the
+    // grid preparation and posture/availability services.
+    call_once(callbacks.prepare_menu_grid_then_service);
+    call_once(callbacks.render_spell_text);
+    call_once(callbacks.render_spell_text);
+    call_once(callbacks.render_spell_text);
+    call_once(callbacks.adjust_runner_posture);
+    call_once(callbacks.render_spell_availability);
+    call_once(callbacks.build_grouped_decimal_glyphs);
 }
 
 } // namespace shadowrun::ghidra_conversion

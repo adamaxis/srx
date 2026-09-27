@@ -885,6 +885,26 @@ three routines is still incomplete in places; the ROM disassembly remains the
 tie-breaker, and no entry is marked defended merely because this helper now
 exists.
 
+### Magic force/detail presentation conversion
+
+The ROM pass for `0x10172` (`refresh_magic_force_display`) is now represented by
+`ghidra_conversion::refresh_magic_force_display`. It preserves the five source
+operations and both predicates: the first repeated-grid write is unconditional,
+the second occurs only when the current force is at least two, the normal grid
+write follows, the fourth operation occurs only when maximum and current force
+differ, and the final repeated-grid write is unconditional. The grid operations
+are callbacks because they are presentation services, not ROM-memory operations.
+
+The ROM pass for `0x102D4` (`prepare_magic_action_details`) is now represented by
+`ghidra_conversion::prepare_magic_action_details`. Its typed callback sequence is
+grid preparation, encoded spell text three times, runner posture adjustment,
+spell availability rendering, and grouped decimal glyph construction. The three
+text calls remain explicit to avoid collapsing source behavior into a guessed
+repeat parameter. Focused tests assert both callback sequences. These entries
+remain `partial` because the presentation callback implementations still need
+their own ROM-backed verification; the conversion itself does not modify the
+native port.
+
 ### World-effect/menu arithmetic audit continuation
 
 The direct ROM pass over `0x562EC` and `0x563CC` found the existing typed

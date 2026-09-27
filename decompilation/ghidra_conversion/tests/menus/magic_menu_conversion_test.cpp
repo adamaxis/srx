@@ -1,5 +1,7 @@
 #include "shadowrun_ghidra/menus/magic_menu_conversion.hpp"
 
+#include <vector>
+
 namespace {
 
 bool expect(const bool condition) { return condition; }
@@ -125,6 +127,51 @@ int main() {
                 apply_magic_force_input(force_state, 0U, 3U) ==
                     MagicForceLoopResult::waiting)) {
         return 15;
+    }
+
+    std::vector<int> force_display_events;
+    MagicForceDisplayCallbacks force_display_callbacks{};
+    force_display_callbacks.write_repeated_grid = [&]() {
+        force_display_events.push_back(1);
+    };
+    force_display_callbacks.write_grid = [&]() {
+        force_display_events.push_back(2);
+    };
+    refresh_magic_force_display(1U, 3U, force_display_callbacks);
+    if (!expect(force_display_events == std::vector<int>{1, 2, 1, 1})) {
+        return 16;
+    }
+    force_display_events.clear();
+    refresh_magic_force_display(2U, 2U, force_display_callbacks);
+    if (!expect(force_display_events == std::vector<int>{1, 1, 2, 1})) {
+        return 17;
+    }
+    force_display_events.clear();
+    refresh_magic_force_display(2U, 3U, force_display_callbacks);
+    if (!expect(force_display_events == std::vector<int>{1, 1, 2, 1, 1})) {
+        return 18;
+    }
+
+    std::vector<int> detail_events;
+    MagicActionDetailCallbacks detail_callbacks{};
+    detail_callbacks.prepare_menu_grid_then_service = [&]() {
+        detail_events.push_back(1);
+    };
+    detail_callbacks.render_spell_text = [&]() {
+        detail_events.push_back(2);
+    };
+    detail_callbacks.adjust_runner_posture = [&]() {
+        detail_events.push_back(3);
+    };
+    detail_callbacks.render_spell_availability = [&]() {
+        detail_events.push_back(4);
+    };
+    detail_callbacks.build_grouped_decimal_glyphs = [&]() {
+        detail_events.push_back(5);
+    };
+    prepare_magic_action_details(detail_callbacks);
+    if (!expect(detail_events == std::vector<int>{1, 2, 2, 2, 3, 4, 5})) {
+        return 19;
     }
 
     return 0;

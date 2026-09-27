@@ -3,6 +3,7 @@
 #include "shadowrun_ghidra/session/runner_record_access_conversion.hpp"
 
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <vector>
 
@@ -61,6 +62,19 @@ struct MagicForceSelection {
     std::uint8_t force = 1;
 };
 
+struct MagicForceDisplayCallbacks {
+    std::function<void()> write_repeated_grid;
+    std::function<void()> write_grid;
+};
+
+struct MagicActionDetailCallbacks {
+    std::function<void()> prepare_menu_grid_then_service;
+    std::function<void()> render_spell_text;
+    std::function<void()> adjust_runner_posture;
+    std::function<void()> render_spell_availability;
+    std::function<void()> build_grouped_decimal_glyphs;
+};
+
 // ROM 0xFBA6 takes the spell panel only for the source magic-capable class
 // (record +0x9B < 2) when its +0x7F magic resource is nonzero. Other records
 // take the ordinary one-row menu fallback.
@@ -112,5 +126,17 @@ MagicActionPreparation prepare_magic_action(
 MagicForceLoopResult apply_magic_force_input(
     MagicForceSelection& state, std::uint16_t input,
     std::uint8_t table_parameter);
+
+// ROM 0x10172: refresh the force meter in the exact source order. The
+// repeated-grid and normal-grid operations are host presentation boundaries;
+// the conditionals are source behavior and therefore stay in this contract.
+void refresh_magic_force_display(
+    std::uint16_t current_force, std::uint16_t maximum_force,
+    const MagicForceDisplayCallbacks& callbacks = {});
+
+// ROM 0x102D4: prepare the spell detail panel. The text renderer is called
+// three times by the source, not once with an inferred repeat count.
+void prepare_magic_action_details(
+    const MagicActionDetailCallbacks& callbacks = {});
 
 } // namespace shadowrun::ghidra_conversion
