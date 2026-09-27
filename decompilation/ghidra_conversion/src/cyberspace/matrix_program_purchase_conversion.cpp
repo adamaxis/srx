@@ -4,6 +4,16 @@
 
 namespace shadowrun::ghidra_conversion {
 
+namespace {
+
+bool source_quantity_is_rejected(const std::uint8_t quantity) {
+    // 0x5751A uses CMPI.B #9 followed by BPL. The source branches for a
+    // nonnegative wrapped result; it is not an unsigned quantity >= 9 test.
+    return (static_cast<std::uint8_t>(quantity - 9U) & 0x80U) == 0U;
+}
+
+} // namespace
+
 void reset_field_action_cost_state(
     std::array<std::int8_t, 5>& loaded_program_slots) {
     loaded_program_slots.fill(static_cast<std::int8_t>(-1));
@@ -13,7 +23,8 @@ MatrixProgramPurchaseResult install_selected_matrix_program_resource(
     const FieldActionMenuResourceTables& tables,
     MatrixProgramPurchaseState& state,
     const MatrixProgramPurchaseCallbacks& callbacks) {
-    if (state.selected_quantity >= 9U) {
+    if (source_quantity_is_rejected(state.selected_quantity)) {
+        state.service_result = -1;
         return MatrixProgramPurchaseResult::invalid_quantity;
     }
 
@@ -22,6 +33,7 @@ MatrixProgramPurchaseResult install_selected_matrix_program_resource(
         state.selected_quantity);
     if (!context || context->resource_record_value >=
                         state.storage.availability_flags.size()) {
+        state.service_result = -1;
         return MatrixProgramPurchaseResult::invalid_resource_record;
     }
 
@@ -31,6 +43,9 @@ MatrixProgramPurchaseResult install_selected_matrix_program_resource(
     if (state.funds < state.cost) {
         if (callbacks.show_insufficient_funds) {
             callbacks.show_insufficient_funds();
+        }
+        if (callbacks.wait_for_controller_event) {
+            callbacks.wait_for_controller_event();
         }
         return MatrixProgramPurchaseResult::insufficient_funds;
     }
@@ -42,6 +57,9 @@ MatrixProgramPurchaseResult install_selected_matrix_program_resource(
         static_cast<std::int16_t>(capacity->adjusted_available_memory) < 0) {
         if (callbacks.show_insufficient_storage) {
             callbacks.show_insufficient_storage();
+        }
+        if (callbacks.wait_for_controller_event) {
+            callbacks.wait_for_controller_event();
         }
         return MatrixProgramPurchaseResult::insufficient_storage;
     }

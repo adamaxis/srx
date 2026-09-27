@@ -29,6 +29,7 @@ int main() {
     int poor = 0;
     int no_storage = 0;
     int confirmations = 0;
+    int waits = 0;
     const MatrixProgramPurchaseCallbacks callbacks{
         [&] { ++grids; },
         [&] { ++poor; },
@@ -37,6 +38,7 @@ int main() {
             ++confirmations;
             return true;
         },
+        [&] { ++waits; },
     };
 
     if (!expect(install_selected_matrix_program_resource(tables, state,
@@ -50,10 +52,11 @@ int main() {
     }
 
     state.selected_quantity = 9U;
+    state.service_result = 0;
     if (!expect(install_selected_matrix_program_resource(tables, state,
                                                          callbacks) ==
                     MatrixProgramPurchaseResult::invalid_quantity &&
-                grids == 1)) {
+                grids == 1 && state.service_result == -1)) {
         return 2;
     }
 
@@ -61,19 +64,23 @@ int main() {
     state.storage.total_memory = 1U;
     state.storage.availability_flags.fill(0U);
     state.funds = 400U;
+    state.service_result = 0;
     if (!expect(install_selected_matrix_program_resource(tables, state,
                                                          callbacks) ==
                     MatrixProgramPurchaseResult::insufficient_storage &&
-                no_storage == 1 && grids == 2 && state.funds == 400U)) {
+                no_storage == 1 && waits == 1 && grids == 2 &&
+                state.funds == 400U)) {
         return 3;
     }
 
     state.storage.total_memory = 100U;
     state.funds = 50U;
+    state.service_result = 0;
     if (!expect(install_selected_matrix_program_resource(tables, state,
                                                          callbacks) ==
                     MatrixProgramPurchaseResult::insufficient_funds &&
-                poor == 1 && grids == 3 && state.funds == 50U)) {
+                poor == 1 && waits == 2 && grids == 3 &&
+                state.funds == 50U)) {
         return 4;
     }
 
@@ -92,14 +99,34 @@ int main() {
     if (!expect(install_selected_matrix_program_resource(tables, state,
                                                          callbacks) ==
                     MatrixProgramPurchaseResult::invalid_resource_record &&
-                grids == 3)) {
+                grids == 3 && state.service_result == -1)) {
         return 6;
+    }
+
+    tables.menu_mode_six_records[0x10U + 0x06U] = 2U;
+    state.selected_quantity = 0x89U;
+    // The source uses a signed BPL on the wrapped word result. This total
+    // leaves a positive 16-bit adjusted capacity after the large quantity's
+    // low-word storage weight is subtracted.
+    state.storage.total_memory = 40000U;
+    state.storage.loaded_slot_usage.fill(0U);
+    state.storage.availability_flags.fill(0U);
+    state.funds = 500U;
+    state.cost = 100U;
+    state.service_result = 0;
+    if (!expect(install_selected_matrix_program_resource(
+                    tables, state, callbacks) ==
+                    MatrixProgramPurchaseResult::applied &&
+                state.funds == 400U &&
+                state.storage.availability_flags[2U] == 0x89U &&
+                state.service_result == 0)) {
+        return 7;
     }
 
     std::array<std::int8_t, 5> slots{0, 1, 2, 3, 4};
     reset_field_action_cost_state(slots);
     if (!expect(slots == std::array<std::int8_t, 5>{-1, -1, -1, -1, -1})) {
-        return 7;
+        return 8;
     }
 
     return 0;

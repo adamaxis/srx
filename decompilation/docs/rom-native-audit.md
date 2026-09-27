@@ -222,6 +222,14 @@ funds both enter the source controller wait after their message. The primary
 and secondary capacity replacements use the wrapped word `CMP`/`BMI` result;
 they are not plain unsigned greater-than-or-equal comparisons.
 
+The Matrix-resource install leaf at `0x5751A` was then checked. Its quantity
+gate is `CMPI.B #9/BPL`, so the native conversion preserves the wrapped-byte
+flag behavior instead of using an unsigned `>= 9` test. Invalid quantity and
+resource records publish the source service-result marker, while both funds
+and storage failures enter the controller wait. The `0x89` wrapped quantity
+case is covered with a fixture that also preserves the source word-capacity
+branch.
+
 The generated Ghidra C remains an evidence snapshot and still omits meaningful
 logic for some of these entries, including `0x3602` and `0x55828`; the typed
 conversion is accepted only where the ROM instruction trace and focused test

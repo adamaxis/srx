@@ -18,6 +18,7 @@ struct MatrixProgramPurchaseState {
     std::uint8_t selected_quantity = 0; // FFF0D6
     std::uint32_t cost = 0; // FFF0BE
     std::uint32_t funds = 0; // FFFBFE
+    std::int8_t service_result = 0; // FFF112
 };
 
 enum class MatrixProgramPurchaseResult {
@@ -34,6 +35,7 @@ struct MatrixProgramPurchaseCallbacks {
     std::function<void()> show_insufficient_funds;
     std::function<void()> show_insufficient_storage;
     std::function<bool()> confirm_purchase;
+    std::function<void()> wait_for_controller_event;
 };
 
 // ROM 0x5751A. Install the selected Matrix program resource from the field

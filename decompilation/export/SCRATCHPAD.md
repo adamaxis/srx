@@ -220,11 +220,14 @@ the tracked minimum meter entries. The ROM's grid/message/confirmation calls
 are explicit callbacks; no Genesis bitfield or address is used at runtime.
 
 The positive-result saved-selection-below-3 branch at `0x5751A` is now
-`install_selected_matrix_program_resource()`. It rejects quantities 9 and
-above, reads the selected menu-resource byte as the Matrix program index,
-checks the preview cost and the signed-word result from `0x575F8`, confirms
-the purchase, deducts funds, clears all five loaded-program selectors, and
-writes the requested quantity into that program's availability byte. The
+`install_selected_matrix_program_resource()`. Its quantity gate preserves the
+source `CMPI.B #9/BPL` wrapped-byte behavior, reads the selected menu-resource
+byte as the Matrix program index, checks the preview cost and the signed-word
+result from `0x575F8`, confirms the purchase, deducts funds, clears all five
+loaded-program selectors, and writes the requested quantity into that
+program's availability byte. Invalid quantity/resource records publish
+`FFF112 = -1`; insufficient-funds and insufficient-storage messages wait for
+the controller event before returning. The
 source `0x58D7E` helper is represented by
 `reset_field_action_cost_state(std::array<int8_t, 5>&)`, whose only state
 effect is the verified `FFFBD8..FFFBDC = 0xFF` reset. This is grouped with
