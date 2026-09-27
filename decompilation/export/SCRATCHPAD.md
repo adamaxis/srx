@@ -981,10 +981,15 @@ This path is distinct from the progress-counter purchase above:
 
 * It accepts primary categories 0 through 4 and rejects category 5 or above.
 * A negative `FFF0B3` availability marker exits immediately and clears the
-  marker. Otherwise it refreshes the detail panel and presents the selected
-  quantity `FFF0D6` and already-computed cost `FFF0BE`.
-* Insufficient funds and confirmation cancellation both leave funds and the
-  quantity slots unchanged, then clear `FFF0B3`.
+  marker. Otherwise it writes grid variant B, the purchase title, quantity
+  `FFF0D6`, and already-computed cost `FFF0BE` in that source order.
+* Insufficient funds renders its message, waits for the controller event, and
+  leaves funds and the quantity slots unchanged before clearing `FFF0B3`.
+  Confirmation cancellation also leaves funds and the quantity slots
+  unchanged before clearing the marker.
+* The invalid-category exit writes `-1` to the source service-result marker
+  `FFF112`; the native callbacks expose each source presentation boundary by
+  name instead of collapsing them into a generic detail refresh.
 * An accepted purchase deducts `FFF0BE`, writes `FFF0D6` to `FFFBBE` for
   category 0 or `FFFBC6..FFFBC9` for categories 1 through 4, and clears the
   marker.

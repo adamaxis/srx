@@ -1,14 +1,29 @@
+#include <string>
+#include <vector>
+
 #include "shadowrun_ghidra/field/field_quantity_purchase_conversion.hpp"
 
 using namespace shadowrun::ghidra_conversion;
 
 int main() {
-    int refreshes = 0;
+    std::vector<std::string> events;
     int insufficient_messages = 0;
+    int confirmations = 0;
     const FieldQuantityPurchaseCallbacks callbacks{
-        [&] { ++refreshes; },
-        [&] { ++insufficient_messages; },
-        [] { return true; },
+        [&] { events.emplace_back("grid"); },
+        [&] { events.emplace_back("title"); },
+        [&] { events.emplace_back("quantity"); },
+        [&] { events.emplace_back("cost"); },
+        [&] {
+            ++insufficient_messages;
+            events.emplace_back("insufficient");
+        },
+        [&] { events.emplace_back("wait"); },
+        [&] {
+            ++confirmations;
+            events.emplace_back("confirm");
+            return true;
+        },
     };
 
     FieldQuantityPurchaseState category_zero{};
@@ -20,7 +35,9 @@ int main() {
             FieldQuantityPurchaseResult::applied ||
         category_zero.purchased_quantities[0] != 3U ||
         category_zero.funds != 50U || category_zero.availability_marker != 0 ||
-        refreshes != 1) {
+        confirmations != 1 || events !=
+            std::vector<std::string>{"grid", "title", "quantity", "cost",
+                                     "confirm"}) {
         return 1;
     }
 
@@ -34,7 +51,10 @@ int main() {
             FieldQuantityPurchaseResult::applied ||
         category_four.purchased_quantities[4] != 9U ||
         category_four.purchased_quantities[0] != 0U ||
-        category_four.funds != 0U) {
+        category_four.funds != 0U || confirmations != 2 || events.size() != 10U ||
+        events[5] != "grid" || events[6] != "title" ||
+        events[7] != "quantity" || events[8] != "cost" ||
+        events[9] != "confirm") {
         return 2;
     }
 
@@ -46,7 +66,8 @@ int main() {
     if (apply_field_quantity_purchase(unavailable, callbacks) !=
             FieldQuantityPurchaseResult::unavailable ||
         unavailable.availability_marker != 0 || unavailable.funds != 10U ||
-        unavailable.purchased_quantities[0] != 0U || refreshes != 2) {
+        unavailable.purchased_quantities[0] != 0U || events.size() != 10U ||
+        confirmations != 2) {
         return 3;
     }
 
@@ -57,7 +78,11 @@ int main() {
     if (apply_field_quantity_purchase(poor, callbacks) !=
             FieldQuantityPurchaseResult::insufficient_funds ||
         poor.availability_marker != 0 || poor.funds != 9U ||
-        poor.purchased_quantities[0] != 0U || insufficient_messages != 1) {
+        poor.purchased_quantities[0] != 0U || insufficient_messages != 1 ||
+        events.size() != 16U || events[10] != "grid" ||
+        events[11] != "title" || events[12] != "quantity" ||
+        events[13] != "cost" || events[14] != "insufficient" ||
+        events[15] != "wait") {
         return 4;
     }
 
@@ -67,7 +92,7 @@ int main() {
     cancelled.funds = 10U;
     cancelled.availability_marker = 1;
     const FieldQuantityPurchaseCallbacks cancel_callbacks{
-        {}, {}, [] { return false; }};
+        {}, {}, {}, {}, {}, {}, [] { return false; }};
     if (apply_field_quantity_purchase(cancelled, cancel_callbacks) !=
             FieldQuantityPurchaseResult::cancelled ||
         cancelled.availability_marker != 0 || cancelled.funds != 10U ||
@@ -77,10 +102,11 @@ int main() {
 
     FieldQuantityPurchaseState invalid{};
     invalid.category = 5U;
-    invalid.availability_marker = -1;
+    invalid.availability_marker = 1;
     if (apply_field_quantity_purchase(invalid, callbacks) !=
             FieldQuantityPurchaseResult::invalid_category ||
-        invalid.availability_marker != -1 || refreshes != 3) {
+        invalid.availability_marker != -1 || invalid.service_result != -1 ||
+        confirmations != 2) {
         return 6;
     }
 
@@ -89,7 +115,8 @@ int main() {
     malformed_high_bit.availability_marker = 1;
     if (apply_field_quantity_purchase(malformed_high_bit, callbacks) !=
             FieldQuantityPurchaseResult::invalid_category ||
-        malformed_high_bit.availability_marker != 1) {
+        malformed_high_bit.availability_marker != -1 ||
+        malformed_high_bit.service_result != -1) {
         return 7;
     }
 
