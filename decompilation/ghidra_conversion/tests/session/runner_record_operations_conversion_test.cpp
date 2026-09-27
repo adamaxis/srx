@@ -1,5 +1,7 @@
 #include "shadowrun_ghidra/session/runner_record_operations_conversion.hpp"
 
+#include <vector>
+
 namespace {
 
 bool expect(const bool condition) { return condition; }
@@ -86,6 +88,22 @@ int main() {
                 apply_runner_posture_input(record, 0U) ==
                     RunnerPostureLoopResult::waiting)) {
         return 6;
+    }
+
+    record.posture = 3U;
+    std::vector<int> refresh_events;
+    const RunnerPostureRefreshCallbacks refresh_callbacks{
+        [&] { refresh_events.push_back(1); },
+        [&] { refresh_events.push_back(2); },
+        [&] { refresh_events.push_back(3); },
+        [&] { refresh_events.push_back(4); },
+        [&] { refresh_events.push_back(5); },
+    };
+    if (!expect(adjust_runner_posture_and_refresh(
+                    record, 2, refresh_callbacks) == 4U &&
+                record.posture == 4U &&
+                refresh_events == std::vector<int>{1, 2, 3, 4, 5, 5})) {
+        return 7;
     }
 
     return 0;

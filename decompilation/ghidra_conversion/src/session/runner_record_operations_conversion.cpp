@@ -4,6 +4,16 @@
 
 namespace shadowrun::ghidra_conversion {
 
+namespace {
+
+void call_once(const std::function<void()>& callback) {
+    if (callback) {
+        callback();
+    }
+}
+
+} // namespace
+
 AttributeSkillValues read_attributes_and_skills(
     const RunnerRecordFields& record) {
     AttributeSkillValues result{};
@@ -89,6 +99,21 @@ std::uint8_t adjust_runner_posture(RunnerRecordFields& record,
     const int next = static_cast<int>(record.posture) + delta;
     record.posture = static_cast<std::uint8_t>(std::clamp(next, 0, 4));
     return record.posture;
+}
+
+std::uint8_t adjust_runner_posture_and_refresh(
+    RunnerRecordFields& record, const std::int8_t delta,
+    const RunnerPostureRefreshCallbacks& callbacks) {
+    // ROM 0x107CE performs the record mutation before every presentation
+    // service and calls refresh_equipment_combat_values twice at the end.
+    const auto posture = adjust_runner_posture(record, delta);
+    call_once(callbacks.write_grid);
+    call_once(callbacks.render_encoded_text);
+    call_once(callbacks.write_three_grids_then_service);
+    call_once(callbacks.refresh_equipment_action_metric);
+    call_once(callbacks.refresh_equipment_combat_values);
+    call_once(callbacks.refresh_equipment_combat_values);
+    return posture;
 }
 
 RunnerPostureLoopResult apply_runner_posture_input(

@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cstdint>
+#include <functional>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -52,6 +53,21 @@ RunnerAssetOperationResult service_entity_ammo(
 // ROM 0x107CE's record mutation, without its VDP/menu side effects.
 std::uint8_t adjust_runner_posture(RunnerRecordFields& record,
                                    std::int8_t delta);
+
+struct RunnerPostureRefreshCallbacks {
+    std::function<void()> write_grid;
+    std::function<void()> render_encoded_text;
+    std::function<void()> write_three_grids_then_service;
+    std::function<void()> refresh_equipment_action_metric;
+    std::function<void()> refresh_equipment_combat_values;
+};
+
+// ROM 0x107CE: mutate posture and preserve the complete source refresh order,
+// including the two consecutive combat-value refresh calls. These callbacks
+// are presentation/service boundaries; posture itself remains typed state.
+std::uint8_t adjust_runner_posture_and_refresh(
+    RunnerRecordFields& record, std::int8_t delta,
+    const RunnerPostureRefreshCallbacks& callbacks = {});
 
 enum class RunnerPostureLoopResult {
     waiting,

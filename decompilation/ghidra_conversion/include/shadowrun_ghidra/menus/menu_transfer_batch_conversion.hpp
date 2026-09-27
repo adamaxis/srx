@@ -15,6 +15,7 @@ void prepare_menu_grid_then_service(
     const std::function<void()>& service_menu);
 void prepare_grid_then_write(const std::function<void()>& prepare,
                              const std::function<void()>& write_grid);
+// ROM 0x10854: write three repeated grids, then the source menu-grid service.
 void write_three_grids_then_service(
     const std::function<void()>& write_grid,
     const std::function<void()>& service_once);
