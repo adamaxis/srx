@@ -2193,6 +2193,17 @@ submission as two explicit host callbacks.
 
 The `0x11928` menu-row wrapper now retains its grid-before-row render order.
 
+The command-overview action dialog at `0x119CE` is now a typed controller loop.
+It writes the initial `0xCD514` grid, prepares the dialog at posture delta 0,
+and preserves the source's input priority: bit 11 increments posture, bit 10
+decrements it, each posture change services audio event `0x25`, and the armed
+`FFF115` gate closes on the otherwise-unmodified bit-9 event. The bit-15
+controller exit publishes the source `FFF0B1` exit marker. Both close paths
+write the final `0xCD508` grid, adjust posture through the extracted `0xCF384`
+record boundary, and refresh combat bars at `0xC69C`/`0xC79C` for modes 0/-1.
+The conversion exposes no VDP or RAM address dependency; grid destinations and
+bar destinations are typed presentation plans.
+
 The `0x11ABE` dialog wrapper now preserves the preparation result while
 running the shared service exactly twice.
 

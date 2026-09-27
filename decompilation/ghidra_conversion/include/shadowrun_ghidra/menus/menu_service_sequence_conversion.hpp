@@ -366,6 +366,67 @@ void write_menu_repeated_grid_with_metadata(
 // ROM 0x12CD6: submit one menu text asset.
 void render_menu_text_asset(const std::function<void()>& render_text);
 
+enum class CommandOverviewActionDialogGridKind {
+    initial,
+    final,
+};
+
+struct CommandOverviewActionDialogGridPlan {
+    CommandOverviewActionDialogGridKind kind =
+        CommandOverviewActionDialogGridKind::initial;
+    std::uint32_t destination_tile_base = 0xCA9EU;
+    std::uint8_t outer_count = 0;
+    std::uint8_t inner_count = 5;
+    std::uint16_t palette_flags = 0;
+};
+
+struct CommandOverviewActionDialogPreparationPlan {
+    std::int8_t posture_delta = 0;
+};
+
+struct CommandOverviewActionDialogBarPlan {
+    std::int8_t mode = 0;
+    std::uint32_t destination_tile_base = 0;
+};
+
+struct CommandOverviewActionDialogInput {
+    // Source FFF115. A negative value enables the guarded Down/close path.
+    std::int8_t dialog_gate = 0;
+};
+
+struct CommandOverviewActionDialogCallbacks {
+    std::function<void()> wait_for_vblank;
+    std::function<void()> latch_controller_events;
+    std::function<std::uint16_t()> sample_controller_events;
+    std::function<void(std::uint16_t audio_event)> service_audio;
+    std::function<void(const CommandOverviewActionDialogPreparationPlan&)>
+        prepare_dialog;
+    std::function<void(const CommandOverviewActionDialogGridPlan&)> write_grid;
+    std::function<void()> adjust_dialog_posture;
+    std::function<void(const CommandOverviewActionDialogBarPlan&)>
+        refresh_combat_bars;
+};
+
+struct CommandOverviewActionDialogResult {
+    bool initial_grid_written = false;
+    bool final_grid_written = false;
+    bool closed_by_armed_gate = false;
+    bool closed_by_controller = false;
+    bool exit_marker_set = false;
+    bool controller_input_missing = false;
+    bool dialog_posture_adjusted = false;
+    bool combat_bars_refreshed = false;
+    std::uint64_t iterations = 0;
+    std::vector<std::int8_t> posture_deltas;
+};
+
+// ROM 0x119CE: draw the command-overview action dialog, service left/right
+// posture changes with audio, and close through the source's armed Down or
+// controller-exit path before restoring the shared equipment bars.
+CommandOverviewActionDialogResult run_command_overview_action_dialog(
+    const CommandOverviewActionDialogInput& input,
+    const CommandOverviewActionDialogCallbacks& callbacks);
+
 struct CyberwareMenuState {
     // Source 0x11950 consumes bits 14..0; bit 15 belongs to a separate
     // record concern and is intentionally not treated as an installed entry.

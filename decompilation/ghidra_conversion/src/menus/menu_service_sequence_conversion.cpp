@@ -471,6 +471,117 @@ void render_menu_text_asset(const std::function<void()>& render_text) {
     }
 }
 
+CommandOverviewActionDialogResult run_command_overview_action_dialog(
+    const CommandOverviewActionDialogInput& input,
+    const CommandOverviewActionDialogCallbacks& callbacks) {
+    CommandOverviewActionDialogResult result;
+
+    const CommandOverviewActionDialogGridPlan initial_grid{
+        CommandOverviewActionDialogGridKind::initial, 0xCA9EU, 0U, 5U, 0U};
+    if (callbacks.write_grid) {
+        callbacks.write_grid(initial_grid);
+    }
+    result.initial_grid_written = true;
+
+    if (callbacks.prepare_dialog) {
+        callbacks.prepare_dialog({0});
+    }
+
+    bool closed = false;
+    while (!closed) {
+        if (callbacks.wait_for_vblank) {
+            callbacks.wait_for_vblank();
+        }
+        if (callbacks.latch_controller_events) {
+            callbacks.latch_controller_events();
+        }
+        if (!callbacks.sample_controller_events) {
+            result.controller_input_missing = true;
+            break;
+        }
+
+        const std::uint16_t events = callbacks.sample_controller_events();
+        ++result.iterations;
+        bool check_increment = false;
+        bool check_decrement = false;
+        if ((events & 0x0200U) != 0U) {
+            if ((events & 0x0008U) != 0U) {
+                check_increment = true;
+                if ((events & 0x0800U) != 0U) {
+                    if (callbacks.service_audio) {
+                        callbacks.service_audio(0x25U);
+                    }
+                    if (callbacks.prepare_dialog) {
+                        callbacks.prepare_dialog({1});
+                    }
+                    result.posture_deltas.push_back(1);
+                    continue;
+                }
+            } else if ((events & 0x0004U) != 0U) {
+                check_decrement = true;
+            } else if (input.dialog_gate < 0) {
+                result.closed_by_armed_gate = true;
+                closed = true;
+                continue;
+            } else {
+                check_increment = true;
+            }
+        } else {
+            check_increment = true;
+        }
+
+        if (check_increment) {
+            if ((events & 0x0800U) != 0U) {
+                if (callbacks.service_audio) {
+                    callbacks.service_audio(0x25U);
+                }
+                if (callbacks.prepare_dialog) {
+                    callbacks.prepare_dialog({1});
+                }
+                result.posture_deltas.push_back(1);
+                continue;
+            }
+            check_decrement = true;
+        }
+
+        if (check_decrement && (events & 0x0400U) != 0U) {
+            if (callbacks.service_audio) {
+                callbacks.service_audio(0x25U);
+            }
+            if (callbacks.prepare_dialog) {
+                callbacks.prepare_dialog({-1});
+            }
+            result.posture_deltas.push_back(-1);
+            continue;
+        }
+
+        if ((events & 0x8000U) != 0U) {
+            result.closed_by_controller = true;
+            result.exit_marker_set = true;
+            closed = true;
+        }
+    }
+
+    const CommandOverviewActionDialogGridPlan final_grid{
+        CommandOverviewActionDialogGridKind::final, 0xCA9EU, 0U, 5U, 0U};
+    if (callbacks.write_grid) {
+        callbacks.write_grid(final_grid);
+    }
+    result.final_grid_written = true;
+
+    if (callbacks.adjust_dialog_posture) {
+        callbacks.adjust_dialog_posture();
+    }
+    result.dialog_posture_adjusted = true;
+
+    if (callbacks.refresh_combat_bars) {
+        callbacks.refresh_combat_bars({0, 0xC69CU});
+        callbacks.refresh_combat_bars({-1, 0xC79CU});
+    }
+    result.combat_bars_refreshed = true;
+    return result;
+}
+
 std::uint16_t run_cyberware_menu(
     CyberwareMenuState& state,
     const CyberwareMenuCallbacks& callbacks) {

@@ -480,5 +480,96 @@ int main() {
         return 41;
     }
 
+    std::vector<std::uint16_t> dialog_events{0x0800U, 0x0400U, 0x8000U};
+    std::size_t dialog_event_index = 0U;
+    std::vector<std::int8_t> dialog_preparations;
+    std::vector<std::uint16_t> dialog_audio;
+    std::vector<CommandOverviewActionDialogGridPlan> dialog_grids;
+    std::vector<CommandOverviewActionDialogBarPlan> dialog_bars;
+    int dialog_vblanks = 0;
+    int dialog_latches = 0;
+    int posture_adjustments = 0;
+    const auto dialog_result = run_command_overview_action_dialog(
+        CommandOverviewActionDialogInput{},
+        {[&] { ++dialog_vblanks; },
+         [&] { ++dialog_latches; },
+         [&] { return dialog_events.at(dialog_event_index++); },
+         [&](const std::uint16_t event) { dialog_audio.push_back(event); },
+         [&](const CommandOverviewActionDialogPreparationPlan& plan) {
+             dialog_preparations.push_back(plan.posture_delta);
+         },
+         [&](const CommandOverviewActionDialogGridPlan& plan) {
+             dialog_grids.push_back(plan);
+         },
+         [&] { ++posture_adjustments; },
+         [&](const CommandOverviewActionDialogBarPlan& plan) {
+             dialog_bars.push_back(plan);
+         }});
+    if (!dialog_result.initial_grid_written ||
+        !dialog_result.final_grid_written ||
+        !dialog_result.closed_by_controller ||
+        !dialog_result.exit_marker_set ||
+        dialog_result.closed_by_armed_gate ||
+        dialog_result.controller_input_missing || dialog_result.iterations != 3U ||
+        dialog_result.posture_deltas != std::vector<std::int8_t>{1, -1} ||
+        dialog_preparations != std::vector<std::int8_t>{0, 1, -1} ||
+        dialog_audio != std::vector<std::uint16_t>{0x25U, 0x25U} ||
+        dialog_vblanks != 3 || dialog_latches != 3 || posture_adjustments != 1 ||
+        dialog_grids.size() != 2U ||
+        dialog_grids[0].kind != CommandOverviewActionDialogGridKind::initial ||
+        dialog_grids[1].kind != CommandOverviewActionDialogGridKind::final ||
+        dialog_grids[0].destination_tile_base != 0xCA9EU ||
+        dialog_grids[0].outer_count != 0U || dialog_grids[0].inner_count != 5U ||
+        dialog_grids[0].palette_flags != 0U ||
+        dialog_bars.size() != 2U || dialog_bars[0].mode != 0 ||
+        dialog_bars[0].destination_tile_base != 0xC69CU ||
+        dialog_bars[1].mode != -1 ||
+        dialog_bars[1].destination_tile_base != 0xC79CU) {
+        return 42;
+    }
+
+    dialog_events = {0x0608U, 0x8000U};
+    dialog_event_index = 0U;
+    dialog_preparations.clear();
+    dialog_audio.clear();
+    const auto bit_priority_result = run_command_overview_action_dialog(
+        CommandOverviewActionDialogInput{},
+        {{},
+         {},
+         [&] { return dialog_events.at(dialog_event_index++); },
+         [&](const std::uint16_t event) { dialog_audio.push_back(event); },
+         [&](const CommandOverviewActionDialogPreparationPlan& plan) {
+             dialog_preparations.push_back(plan.posture_delta);
+         },
+         {},
+         {},
+         {}});
+    if (bit_priority_result.posture_deltas != std::vector<std::int8_t>{-1} ||
+        dialog_preparations != std::vector<std::int8_t>{0, -1} ||
+        dialog_audio != std::vector<std::uint16_t>{0x25U} ||
+        !bit_priority_result.closed_by_controller) {
+        return 43;
+    }
+
+    std::vector<std::uint16_t> armed_gate_events{0x0200U};
+    std::size_t armed_gate_index = 0U;
+    int armed_gate_adjustments = 0;
+    const auto armed_gate_result = run_command_overview_action_dialog(
+        CommandOverviewActionDialogInput{-1},
+        {{},
+         {},
+         [&] { return armed_gate_events.at(armed_gate_index++); },
+         {},
+         {},
+         {},
+         [&] { ++armed_gate_adjustments; },
+         {}});
+    if (!armed_gate_result.closed_by_armed_gate ||
+        armed_gate_result.closed_by_controller ||
+        armed_gate_result.exit_marker_set || armed_gate_result.iterations != 1U ||
+        armed_gate_adjustments != 1) {
+        return 44;
+    }
+
     return 0;
 }
