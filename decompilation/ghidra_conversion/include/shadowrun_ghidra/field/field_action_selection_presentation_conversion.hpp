@@ -131,8 +131,8 @@ struct FieldActionCostSummaryRenderCallbacks {
 };
 
 // ROM 0x5825C.  Emit the six row fields, then either select grid variant A
-// when the current cursor is below the row requirement or apply the normal /
-// large cost discount at the source's 0x10000 boundary.
+// when the source byte CMP/BMI cursor gate blocks the row or apply the normal
+// / large cost path selected by the source long CMP/BPL threshold.
 FieldActionCostSummaryRenderResult render_field_action_cost_summary(
     const FieldActionCostSummaryRecord& record,
     std::int8_t current_cursor,

@@ -2098,6 +2098,16 @@ draw the bounded 0/1 choice; exit bits 12/14 are only considered when neither
 movement bit was taken. The typed conversion and event-order test now retain
 that source sequence.
 
+The `0x57C7A` action-selection dispatcher was then checked end to end. Its
+saved-selection and cursor cutoffs are `CMP.B` with N-only `BMI/BPL` branches,
+not signed host comparisons. The native plan now keeps the source routing for
+high-bit bytes: negative selections can fall through to inventory detail,
+neutral high-bit selections use the low detail table, resource-description
+selection requires the wrapped `saved - 3` sign, and the quantity/no-action
+cutoff uses the wrapped `cursor - 5` sign. The adjacent `0x5825C` cost-summary
+renderer now preserves its byte cursor gate and long `0x10000` BPL split as
+well; focused tests cover each overflow-sensitive boundary.
+
 The title setup module now also owns `0x12F6`: its DBF `0x10` loop is exposed
 as `advance_title_palette_fade`, with the source ordering of frame wait,
 palette-step, and dirty-mark callbacks tested across all 17 passes.

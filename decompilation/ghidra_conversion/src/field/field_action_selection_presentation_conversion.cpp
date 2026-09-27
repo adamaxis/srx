@@ -11,6 +11,21 @@ bool source_quantity_is_below_nine(const std::uint8_t quantity) {
     return (static_cast<std::uint8_t>(quantity - 9U) & 0x80U) != 0U;
 }
 
+bool source_cmp_byte_is_negative(const std::int8_t left,
+                                 const std::int8_t right) {
+    return (static_cast<std::uint8_t>(left) -
+            static_cast<std::uint8_t>(right)) &
+           0x80U;
+}
+
+bool source_cost_is_at_least_0x10000(const std::uint32_t cost) {
+    // 0x582E8 uses CMPI.L #0x10000,D1 followed by BPL.  Preserve the
+    // source N-bit test on the wrapped long subtraction instead of treating
+    // every host value at or above the threshold as the large-cost path.
+    return (static_cast<std::uint32_t>(cost - 0x10000U) & 0x80000000U) ==
+           0U;
+}
+
 } // namespace
 
 FieldActionDescriptionRenderResult render_field_action_description(
@@ -118,7 +133,8 @@ FieldActionCostSummaryRenderResult render_field_action_cost_summary(
             FieldActionCostSummaryNumericField::word_at_a, record.word_at_a);
     }
 
-    if (current_cursor < record.availability_marker) {
+    if (source_cmp_byte_is_negative(current_cursor,
+                                    record.availability_marker)) {
         result.kind = FieldActionCostSummaryRenderKind::blocked;
         if (callbacks.write_blocked_grid) {
             callbacks.write_blocked_grid();
@@ -126,7 +142,7 @@ FieldActionCostSummaryRenderResult render_field_action_cost_summary(
         return result;
     }
 
-    if (record.base_cost >= 0x10000U) {
+    if (source_cost_is_at_least_0x10000(record.base_cost)) {
         result.kind = FieldActionCostSummaryRenderKind::large_discounted;
         result.displayed_cost = apply_large_field_action_cost_discount(
             record.base_cost, cost_context);

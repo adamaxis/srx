@@ -155,12 +155,29 @@ int main() {
         discounted.displayed_cost != 1000U || blocked_grid_count != 1) {
         return 7;
     }
+    summary.availability_marker = 0x7F;
+    const auto wrapped_cursor = render_field_action_cost_summary(
+        summary, static_cast<std::int8_t>(0x80U), cost_context,
+        summary_callbacks);
+    if (wrapped_cursor.kind != FieldActionCostSummaryRenderKind::discounted ||
+        wrapped_cursor.displayed_cost != 1000U) {
+        return 24;
+    }
+    summary.availability_marker = 3;
     summary.base_cost = 0x10000U;
     const auto large = render_field_action_cost_summary(
         summary, 3, cost_context, summary_callbacks);
     if (large.kind != FieldActionCostSummaryRenderKind::large_discounted ||
         large.displayed_cost != 0x10000U) {
         return 8;
+    }
+    summary.base_cost = 0xFFFFFFFFU;
+    const auto wrapped_large_cost = render_field_action_cost_summary(
+        summary, 3, cost_context, summary_callbacks);
+    if (wrapped_large_cost.kind !=
+            FieldActionCostSummaryRenderKind::discounted ||
+        wrapped_large_cost.displayed_cost != 0xFFFFFFFFU) {
+        return 25;
     }
 
     int unavailable_count = 0;

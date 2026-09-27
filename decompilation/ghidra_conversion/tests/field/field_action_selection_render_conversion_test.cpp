@@ -55,6 +55,18 @@ int main() {
         FieldActionSelectionRenderKind::negative_inventory_action_detail) {
         return 7;
     }
+    state.saved_selection = static_cast<std::int8_t>(0x80U);
+    state.primary_cursor = 2;
+    if (plan_field_action_selection_render(state).kind !=
+        FieldActionSelectionRenderKind::negative_inventory_action_detail) {
+        return 19;
+    }
+    state.saved_selection = 3;
+    state.primary_cursor = static_cast<std::int8_t>(0x80U);
+    if (plan_field_action_selection_render(state).kind !=
+        FieldActionSelectionRenderKind::unavailable) {
+        return 20;
+    }
 
     state.menu_result = 0;
     state.saved_selection = 0;
@@ -83,6 +95,11 @@ int main() {
     if (plan_field_action_selection_render(state).kind !=
         FieldActionSelectionRenderKind::neutral_inventory_action_detail) {
         return 11;
+    }
+    state.saved_selection = static_cast<std::int8_t>(0x80U);
+    if (plan_field_action_selection_render(state).detail_table->family !=
+        FieldActionDetailTableFamily::neutral_low_menu) {
+        return 21;
     }
 
     state.menu_result = 1;
@@ -127,6 +144,18 @@ int main() {
     if (plan.kind != FieldActionSelectionRenderKind::feedback ||
         !plan.feedback_mode || *plan.feedback_mode != 2U) {
         return 17;
+    }
+    state.saved_selection = static_cast<std::int8_t>(0x80U);
+    plan = plan_field_action_selection_render(state);
+    if (plan.kind != FieldActionSelectionRenderKind::feedback ||
+        !plan.feedback_mode || *plan.feedback_mode != 2U) {
+        return 22;
+    }
+    state.saved_selection = 5;
+    state.primary_cursor = static_cast<std::int8_t>(0x80U);
+    if (plan_field_action_selection_render(state).kind !=
+        FieldActionSelectionRenderKind::no_action) {
+        return 23;
     }
 
     std::vector<FieldActionGridVariant> grids;

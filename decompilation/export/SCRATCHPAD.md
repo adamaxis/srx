@@ -381,6 +381,20 @@ conversion now carries those table choices as typed callbacks and supplies
 separate extracted marker rows; it no longer silently reuses one array for
 all three negative-result cases.
 
+The adjacent action-selection dispatcher at `0x57C7A` had several host
+comparison shortcuts that only worked for ordinary 0..5 menu bytes. Its
+`CMP.B`/`BMI` boundaries for saved selection, the `0x585FA` cursor gate, and
+the positive resource-description branch now use the wrapped source N bit.
+The positive quantity path likewise preserves the `CMP.B #5`/`BPL` cutoff;
+high-bit cursor bytes no longer become ordinary quantity purchases by virtue
+of being negative `int8_t` values.
+
+The `0x5825C` cost-summary leaf was checked in the same pass. Its row gate is
+`CMP.B (marker),D1` followed by `BMI`, and its cost split is
+`CMPI.L #0x10000,D1` followed by `BPL`. The typed renderer now evaluates those
+source flag decisions directly, including the wrapped cursor and `0xFFFFFFFF`
+cost cases, instead of using host `<`/`>=` operators.
+
 ## Field HUD row meter
 
 `0x1792E render_menu_hud_rows` calls `0x56506` once for each eligible row.

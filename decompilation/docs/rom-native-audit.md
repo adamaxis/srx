@@ -243,6 +243,15 @@ the wrapped 0/1 cursor writer; only after that branch is skipped does it
 inspect exit bits 12/14. The native callback sequence and focused test now
 preserve that ordering.
 
+The adjacent `0x57C7A` field-action dispatcher was audited next. Its saved
+selection and primary-cursor cutoffs are byte `CMP` instructions followed by
+N-only `BMI/BPL` branches. The native plan now preserves those wrapped flags
+for negative, neutral, resource-description, and quantity/no-action routing;
+high-bit bytes no longer get reinterpreted through host signed ordering. The
+`0x5825C` cost-summary leaf received the same treatment for its byte row gate,
+and for its long `CMPI.L #0x10000/BPL` cost split. Focused tests cover the
+overflow-sensitive paths.
+
 The generated Ghidra C remains an evidence snapshot and still omits meaningful
 logic for some of these entries, including `0x3602` and `0x55828`; the typed
 conversion is accepted only where the ROM instruction trace and focused test

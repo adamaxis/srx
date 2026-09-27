@@ -67,7 +67,7 @@ struct FieldActionSelectionRenderPlan {
     // 0x57C7A always writes these two panels before dispatching the selected
     // branch. The array makes the source order explicit and keeps the host
     // presentation loop uniform, including the source's positive
-    // selection-5/no-action cursor cutoff.
+    // selection-5/no-action cursor cutoff, including the source byte flags.
     std::array<FieldActionGridVariant, 2> prelude_grids{
         FieldActionGridVariant::variant_b,
         FieldActionGridVariant::variant_c,

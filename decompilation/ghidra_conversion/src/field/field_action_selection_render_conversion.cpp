@@ -3,15 +3,22 @@
 namespace shadowrun::ghidra_conversion {
 namespace {
 
+bool source_cmp_byte_is_negative(const std::int8_t value,
+                                 const std::uint8_t immediate) {
+    // The source uses CMP.B #immediate,value followed by BMI/BPL.  BMI/BPL
+    // inspect the wrapped subtraction's N bit; a signed C++ ordering is not
+    // equivalent for high-bit source bytes.
+    return (static_cast<std::uint8_t>(value) - immediate) & 0x80U;
+}
+
 FieldActionSelectionRenderPlan negative_result_plan(
     const FieldActionSelectionRenderState& state) {
     FieldActionSelectionRenderPlan plan{};
     plan.primary_cursor = state.primary_cursor;
 
-    // These are byte comparisons in the source, so the signed state type is
-    // intentional.  In particular, values below two select the second
-    // negative-result table rather than silently becoming large unsigned
-    // selections on the host.
+    // The source uses CMP.B followed by BMI at each saved-selection boundary;
+    // the conversion preserves those wrapped N-bit decisions rather than
+    // widening source bytes into host signed comparisons.
     if (state.saved_selection == 0) {
         plan.kind = FieldActionSelectionRenderKind::negative_detail;
         plan.detail_table = FieldActionDetailTableSelection{
@@ -21,7 +28,7 @@ FieldActionSelectionRenderPlan negative_result_plan(
         };
         return plan;
     }
-    if (state.saved_selection < 2) {
+    if (source_cmp_byte_is_negative(state.saved_selection, 2U)) {
         plan.kind = FieldActionSelectionRenderKind::negative_detail;
         plan.detail_table = FieldActionDetailTableSelection{
             FieldActionDetailTableFamily::negative_cursor_one,
@@ -39,12 +46,12 @@ FieldActionSelectionRenderPlan negative_result_plan(
         };
         return plan;
     }
-    if (state.saved_selection < 4) {
+    if (source_cmp_byte_is_negative(state.saved_selection, 4U)) {
         // 0x585FA exits through the unavailable text path when the primary
         // cursor is six or higher; otherwise it renders a quantity offer.
-        plan.kind = state.primary_cursor >= 6
-                        ? FieldActionSelectionRenderKind::unavailable
-                        : FieldActionSelectionRenderKind::negative_quantity_purchase;
+        plan.kind = source_cmp_byte_is_negative(state.primary_cursor, 6U)
+                        ? FieldActionSelectionRenderKind::negative_quantity_purchase
+                        : FieldActionSelectionRenderKind::unavailable;
         return plan;
     }
     if (state.saved_selection == 4) {
@@ -74,7 +81,7 @@ FieldActionSelectionRenderPlan neutral_result_plan(
             0,
             state.primary_cursor,
         };
-    } else if (state.saved_selection < 1) {
+    } else if (source_cmp_byte_is_negative(state.saved_selection, 1U)) {
         plan.dynamic_table_index =
             static_cast<std::int16_t>(state.menu_mode) - 3;
         plan.detail_table = FieldActionDetailTableSelection{
@@ -115,7 +122,7 @@ FieldActionSelectionRenderPlan plan_field_action_selection_render(
     // the resource-description branch.  The normal game values are 0..5,
     // but preserving the source predicate keeps malformed extracted state
     // visible instead of silently routing it to a different leaf.
-    if (state.saved_selection < 3) {
+    if (source_cmp_byte_is_negative(state.saved_selection, 3U)) {
         plan.kind = FieldActionSelectionRenderKind::resource_description;
         plan.resource_entry = select_menu_resource_entry(
             state.menu_mode, state.saved_selection, state.primary_cursor);
@@ -132,7 +139,7 @@ FieldActionSelectionRenderPlan plan_field_action_selection_render(
         return plan;
     }
     if (state.saved_selection == 5) {
-        plan.kind = state.primary_cursor >= 5
+        plan.kind = !source_cmp_byte_is_negative(state.primary_cursor, 5U)
                         ? FieldActionSelectionRenderKind::no_action
                         : FieldActionSelectionRenderKind::quantity_purchase;
         return plan;
