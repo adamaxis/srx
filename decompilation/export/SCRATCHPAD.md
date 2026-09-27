@@ -281,6 +281,27 @@ carries semantic table-family choices,
 the selected menu-resource entry, and the source cursor values; it does not
 retain the original table addresses or turn the renderer into a VDP emulator.
 
+The positive selection-5 branch embedded at `0x58394` is now represented by
+`render_field_action_quantity_offer` in
+`field_action_quantity_offer_conversion.*`. It is the panel for upgrading the
+deck's MPCP or one of its four attributes, not a generic quantity screen:
+
+* Category 0 selects the next MPCP rating from the extracted six-byte table at
+  `0x1AB190`, while categories 1..4 select the next attribute rating from the
+  typed current-rating array corresponding to `FFFBC6..FFFBC9`.
+* MPCP equality with the `FFFBBE` capacity emits the `...MPCP checks OK`
+  limit notice; an attribute whose current rating reaches that capacity emits
+  `Maximum attribute rating equals MPCP value.`. Both retain the source's
+  stale-quantity cost calculation and set the negative availability marker.
+* Available categories calculate the exact `0x5787C` cost: cubic `quantity^3 *
+  0x19` for MPCP and quadratic `quantity^2 * 3/2 * 100` for attributes 1/2
+  versus 3/4. The typed callbacks preserve the source order of category label,
+  category heading, upgrade label, quantity, cost, final grid, and the
+  non-MPCP tail text.
+* Category 5 and above never enter this source branch; the parent dispatcher
+  exposes that as `no_action`, while missing extracted table rows are reported
+  explicitly rather than read through an unrelated host object.
+
 * `0x580FE render_field_action_description` receives the selected
   menu-resource byte as a description-table index into `0xE31F2`. The host
   conversion uses an extracted alias, renders the normalized/wrapped
