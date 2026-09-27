@@ -189,6 +189,18 @@ cleared; when the removed slot is the active menu slot, the conversion invokes
 the typed `clear_menu_slot` boundary. The action and companion bytes are then
 cleared, matching the writes performed by `0x1275C`.
 
+The menu-result-1 equipment branch at `0x571B2` is now
+`apply_field_equipment_upgrade()`. It resolves the selected category into a
+target upgrade bit, including the source scans for category 5 (bits 5..8),
+category 6 (bits 9..11), and later categories (bits 12..14). It rejects an
+already-set target, applies the category-2/bit-3 conflict, subtracts the
+target's `0x1AA8A0` meter threshold from the runner's `+0x7E/+0x8E` two-digit
+meter, preserves the source signed-byte availability test, confirms and
+charges the purchase, sets the target bit, and clears the previous bit for a
+replacement. For archetype/status values below 2 it also updates `+0x7F` and
+the tracked minimum meter entries. The ROM's grid/message/confirmation calls
+are explicit callbacks; no Genesis bitfield or address is used at runtime.
+
 ## Field HUD row meter
 
 `0x1792E render_menu_hud_rows` calls `0x56506` once for each eligible row.
