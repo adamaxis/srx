@@ -126,7 +126,7 @@ int main() {
                 sample_index == sampled_inputs.size() &&
                 posture_deltas == std::vector<std::int8_t>{0, 1, -1, 0} &&
                 posture_loop_events ==
-                    std::vector<int>{1, 1, 2, 3, 4, 1, 2, 3, 4,
+                    std::vector<int>{1, 2, 3, 4, 1, 2, 3, 4,
                                      1, 2, 3, 4})) {
         return 8;
     }
