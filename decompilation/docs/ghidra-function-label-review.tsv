@@ -96,8 +96,8 @@ rom_entry	export_label	reviewed_name	family	confidence	behavior	evidence
 0x580FE	convert_intro_routine_0x000580fe	render_field_action_description	field	high	Renders normalized field action description text and cost	disassembly.s;fn_000580FE.cpp
 0x5825C	convert_intro_routine_0x0005825c	render_field_action_cost_summary	field	high	Renders field action cost, discount, and summary glyphs	disassembly.s;fn_0005825C.cpp
 0x58316	convert_intro_routine_0x00058316	render_field_action_feedback	field	high	Renders field action result/quantity feedback and its grid	disassembly.s;fn_00058316.cpp
-0x586CA	convert_intro_routine_0x000586ca	render_field_action_detail	field	medium	Builds and renders the field action detail plan and costs	disassembly.s;fn_000586CA.cpp
-0x5878E	convert_intro_routine_0x0005878e	render_field_action_detail_text	field	high	Selects conditional field action detail text by action code	disassembly.s;fn_0005878E.cpp
+0x586CA	convert_intro_routine_0x000586ca	render_field_action_detail	field	high	Selects a field-action record, handles unavailable and special E branches, builds ordinary detail resources/text, and presents the source-derived cost	disassembly.s;fn_000586CA.cpp;field_action_detail_render_conversion.hpp;field_action_detail_text_conversion.hpp
+0x5878E	convert_intro_routine_0x0005878e	select_field_action_detail_text	field	high	Maps action-code ranges to the 0x1AC7FC detail-text pointer table and returns without a transfer for 0x28..0x2A	disassembly.s;fn_0005878E.cpp;field_action_detail_text_conversion.hpp
 0x58D7E	convert_intro_routine_0x00058d7e	reset_field_action_cost_state	field	high	Clears the five loaded Matrix program selectors at FFFBD8..FFFBDC before publishing a selected program resource	disassembly.s;fn_00058D7E.cpp;matrix_program_purchase_conversion.hpp
 0x594E0	convert_save_routine_0x000594e0	restore_saved_field_state	save	medium	Restores saved field roster, templates, positions, and field state	disassembly.s;fn_000594E0.cpp
 0x5C8C6	convert_intro_routine_0x0005c8c6	upload_title_or_field_word_stream	graphics	high	Transfers a raw word stream to the title/field VDP destination	disassembly.s;fn_0005C8C6.cpp

@@ -232,6 +232,28 @@ preserved. Status, insufficient-funds, confirmation, disabled-offer, and
 invalid-table boundaries are typed outcomes/callbacks rather than generic
 memory services.
 
+The action-detail text helper at `0x5878E` is now
+`select_field_action_detail_text()`. Its source ranges are explicit: codes
+below `0x19` use their code, `0x19..0x24` collapse to table entry `0x18`,
+`0x25..0x27` continue at entries `0x18..0x1A`, `0x28..0x2A` intentionally
+render no detail text, and codes `0x2B..0x2F` select entries `0x1B..0x1F`.
+The typed selector rejects anything beyond the 32 extracted pointers at
+`0x1AC7FC`; it does not carry a ROM pointer or invent a replacement string.
+
+The caller at `0x586CA` is now represented by
+`render_field_action_detail()`. Its input is a typed sequence of the source's
+three-byte action records: record byte 0 is the action type, byte 1 is the
+detail/resource value consumed by the existing `0x130C0` conversion, and byte
+2 is the quantity used by the cost path. A signed high-bit type takes the
+unavailable-message path and then the common tail. Type `'E'` takes the
+special grid/header/label path and discounts byte 2 directly. All other types
+build the existing typed detail plan, select the `0x5878E` detail text when
+that range has text, render the normal header, and calculate the record cost
+through the typed base-cost lookup and field discount context. Presentation
+steps are callbacks, so this conversion records the source ordering without
+turning the runtime into a VDP or ROM-pointer interpreter; absent base-cost
+data is an explicit `missing_cost_data` result rather than invented behavior.
+
 ## Field HUD row meter
 
 `0x1792E render_menu_hud_rows` calls `0x56506` once for each eligible row.
