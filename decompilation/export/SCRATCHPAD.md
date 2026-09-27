@@ -158,10 +158,13 @@ in `field_action_selection_dispatch_conversion.*`. The source routing is:
   remaining selections to the field-resource purchase routine.
 
 `run_field_action_selection()` clears the source service-result byte, returns
-this typed route, and optionally hands it to the corresponding leaf converter.
+this typed route, and dispatches through named leaf callbacks: selected action
+application, field-action detail purchase, runner-action description, removal,
+runner-unavailable handling, Matrix-program installation, resource-record
+purchase, quantity purchase, field-resource purchase, or equipment upgrade.
 The leaf routines still own their own typed records, funds, runner fields, and
-presentation callbacks; this pass does not collapse them into a generic
-command interpreter.
+presentation callbacks; the dispatcher no longer exposes one generic
+`execute_route` hook that hides which game operation is being invoked.
 
 The `0x578C4` description leaf is now `show_runner_action_description()`. It
 refreshes the five-row detail panel, reads the active runner's selected action

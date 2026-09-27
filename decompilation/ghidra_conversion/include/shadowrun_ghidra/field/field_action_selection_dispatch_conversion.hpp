@@ -20,16 +20,16 @@ enum class FieldActionRecordSource {
 };
 
 enum class FieldActionSelectionRouteKind {
-    selected_action_record,
-    field_action_detail_selection,
-    runner_action_description,
+    apply_selected_field_action,
+    purchase_field_action_detail,
+    show_runner_action_description,
     remove_runner_action,
-    neutral_action_unavailable,
-    resource_quantity_selection,
-    resource_record_purchase,
-    quantity_purchase,
-    resource_purchase,
-    equipment_action,
+    runner_action_unavailable,
+    install_matrix_program_resource,
+    purchase_field_resource_record,
+    purchase_field_quantity,
+    purchase_field_resource,
+    apply_field_equipment_upgrade,
 };
 
 struct FieldActionSelectionState {
@@ -42,16 +42,33 @@ struct FieldActionSelectionState {
 
 struct FieldActionSelectionRoute {
     FieldActionSelectionRouteKind kind =
-        FieldActionSelectionRouteKind::neutral_action_unavailable;
+        FieldActionSelectionRouteKind::runner_action_unavailable;
     std::optional<FieldActionRecordSource> record_source;
 };
 
 struct FieldActionSelectionCallbacks {
-    // The dispatcher chooses a concrete leaf path; the leaf conversion owns
-    // its own typed state and callbacks.  This boundary is deliberately not
-    // a generic command interpreter.
-    std::function<void(const FieldActionSelectionRoute&,
-                       FieldActionSelectionState&)> execute_route;
+    // Each callback names the actual 0x56DC4 leaf operation. The leaf
+    // conversion owns its own typed records and presentation callbacks; this
+    // dispatcher only preserves the source branch and hands it off.
+    std::function<void(FieldActionRecordSource,
+                       FieldActionSelectionState&)>
+        apply_selected_field_action;
+    std::function<void(FieldActionSelectionState&)>
+        purchase_field_action_detail;
+    std::function<void(FieldActionSelectionState&)>
+        show_runner_action_description;
+    std::function<void(FieldActionSelectionState&)> remove_runner_action;
+    std::function<void(FieldActionSelectionState&)> runner_action_unavailable;
+    std::function<void(FieldActionSelectionState&)>
+        install_matrix_program_resource;
+    std::function<void(FieldActionSelectionState&)>
+        purchase_field_resource_record;
+    std::function<void(FieldActionSelectionState&)>
+        purchase_field_quantity;
+    std::function<void(FieldActionSelectionState&)>
+        purchase_field_resource;
+    std::function<void(FieldActionSelectionState&)>
+        apply_field_equipment_upgrade;
 };
 
 // ROM 0x56DC4's branch matrix, expressed in terms of the menu result and

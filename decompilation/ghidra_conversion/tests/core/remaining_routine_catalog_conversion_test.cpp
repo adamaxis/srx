@@ -11,6 +11,16 @@ int main() {
         find_remaining_routine(0xFFFFFFFFU) != nullptr) {
         return 1;
     }
+    const auto* field_action = find_remaining_routine(0x56DC4U);
+    const auto* resource_selection = find_remaining_routine(0x575F8U);
+    const auto* selection_context = find_remaining_routine(0x57610U);
+    if (field_action == nullptr || resource_selection == nullptr ||
+        selection_context == nullptr ||
+        field_action->family != RoutineFamily::field ||
+        resource_selection->family != RoutineFamily::field ||
+        selection_context->family != RoutineFamily::field) {
+        return 2;
+    }
     RemainingRoutineCounters counters{};
     std::size_t family_events = 0;
     const RemainingRoutineCallbacks callbacks{
@@ -25,11 +35,11 @@ int main() {
         [&](const RemainingRoutine&) { ++family_events; }};
     for (const auto& routine : catalog) {
         if (!record_remaining_routine(counters, routine.rom_entry, callbacks)) {
-            return 2;
+            return 3;
         }
     }
     if (counters.calls != catalog.size() || family_events != catalog.size()) {
-        return 3;
+        return 4;
     }
     return 0;
 }

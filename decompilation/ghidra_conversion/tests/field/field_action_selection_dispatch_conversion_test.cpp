@@ -17,7 +17,7 @@ int main() {
     state.menu_result = -1;
     state.saved_selection = 0U;
     auto route = classify_field_action_selection(state);
-    if (!expect(route.kind == FieldActionSelectionRouteKind::selected_action_record &&
+    if (!expect(route.kind == FieldActionSelectionRouteKind::apply_selected_field_action &&
                 route.record_source ==
                     FieldActionRecordSource::negative_selection_zero)) {
         return 1;
@@ -35,12 +35,12 @@ int main() {
     }
     state.saved_selection = 3U;
     if (!expect(classify_field_action_selection(state).kind ==
-                FieldActionSelectionRouteKind::field_action_detail_selection)) {
+                FieldActionSelectionRouteKind::purchase_field_action_detail)) {
         return 4;
     }
     state.saved_selection = 4U;
     if (!expect(classify_field_action_selection(state).kind ==
-                FieldActionSelectionRouteKind::runner_action_description)) {
+                FieldActionSelectionRouteKind::show_runner_action_description)) {
         return 5;
     }
     state.saved_selection = 7U;
@@ -53,7 +53,7 @@ int main() {
     state.saved_selection = 0U;
     state.runner_archetype_status = 1;
     if (!expect(classify_field_action_selection(state).kind ==
-                FieldActionSelectionRouteKind::neutral_action_unavailable)) {
+                FieldActionSelectionRouteKind::runner_action_unavailable)) {
         return 7;
     }
     state.runner_archetype_status = 2;
@@ -86,49 +86,54 @@ int main() {
 
     state.menu_result = 1;
     if (!expect(classify_field_action_selection(state).kind ==
-                FieldActionSelectionRouteKind::equipment_action)) {
+                FieldActionSelectionRouteKind::apply_field_equipment_upgrade)) {
         return 13;
     }
 
     state.menu_result = 2;
     state.saved_selection = 0U;
     if (!expect(classify_field_action_selection(state).kind ==
-                FieldActionSelectionRouteKind::resource_quantity_selection)) {
+                FieldActionSelectionRouteKind::install_matrix_program_resource)) {
         return 14;
     }
     state.saved_selection = 3U;
     if (!expect(classify_field_action_selection(state).kind ==
-                FieldActionSelectionRouteKind::resource_record_purchase)) {
+                FieldActionSelectionRouteKind::purchase_field_resource_record)) {
         return 15;
     }
     state.saved_selection = 5U;
     if (!expect(classify_field_action_selection(state).kind ==
-                FieldActionSelectionRouteKind::quantity_purchase)) {
+                FieldActionSelectionRouteKind::purchase_field_quantity)) {
         return 16;
     }
     state.saved_selection = 4U;
     if (!expect(classify_field_action_selection(state).kind ==
-                FieldActionSelectionRouteKind::resource_purchase)) {
+                FieldActionSelectionRouteKind::purchase_field_resource)) {
         return 17;
     }
 
     std::vector<FieldActionSelectionRouteKind> executed;
+    std::vector<FieldActionRecordSource> sources;
     state.menu_result = -1;
     state.saved_selection = 2U;
     const auto executed_route = run_field_action_selection(
         state,
         FieldActionSelectionCallbacks{
-            [&](const FieldActionSelectionRoute& selected,
+            [&](const FieldActionRecordSource source,
                 FieldActionSelectionState& callback_state) {
-                executed.push_back(selected.kind);
+                executed.push_back(
+                    FieldActionSelectionRouteKind::apply_selected_field_action);
+                sources.push_back(source);
                 callback_state.service_result = -1;
             },
         });
     if (!expect(executed_route.kind ==
-                    FieldActionSelectionRouteKind::selected_action_record &&
+                    FieldActionSelectionRouteKind::apply_selected_field_action &&
                 state.service_result == -1 && executed.size() == 1U &&
+                sources.size() == 1U &&
+                sources.front() == FieldActionRecordSource::negative_selection_two &&
                 executed.front() ==
-                    FieldActionSelectionRouteKind::selected_action_record)) {
+                    FieldActionSelectionRouteKind::apply_selected_field_action)) {
         return 18;
     }
 
