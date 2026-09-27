@@ -34,8 +34,9 @@ std::uint32_t calculate_field_action_quantity_cost(
     std::int8_t primary_cursor,
     std::uint8_t quantity);
 
-// ROM 0x57B04.  Positive runner-stat margin is capped at ten points and each
-// point removes cost >> 5 from the amount being adjusted.
+// ROM 0x57B04.  The source subtracts the threshold as a signed byte, then
+// caps a positive wrapped margin at ten points; each point removes cost >> 5
+// from the amount being adjusted.
 std::uint32_t calculate_runner_cost_adjustment(
     std::uint32_t cost,
     const FieldActionCostContext& context);

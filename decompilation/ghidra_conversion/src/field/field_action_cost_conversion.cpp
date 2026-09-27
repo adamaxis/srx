@@ -7,10 +7,14 @@ namespace shadowrun::ghidra_conversion {
 namespace {
 
 std::uint32_t runner_margin(const FieldActionCostContext& context) {
-    const auto margin = static_cast<int>(context.runner_cost_stat) -
-                        static_cast<int>(context.runner_discount_threshold);
-    return margin > 0U ? std::min<std::uint32_t>(static_cast<std::uint32_t>(margin), 10U)
-                      : 0U;
+    // 0x57B04 performs SUB.B and then a signed BLE. Preserve the wrapped
+    // byte result instead of widening the two source bytes before comparing.
+    const auto margin = static_cast<std::int8_t>(static_cast<std::uint8_t>(
+        context.runner_cost_stat - context.runner_discount_threshold));
+    return margin > 0
+               ? std::min<std::uint32_t>(static_cast<std::uint32_t>(margin),
+                                         10U)
+               : 0U;
 }
 
 } // namespace
@@ -68,7 +72,8 @@ std::uint32_t calculate_field_action_record_cost(
         return 0U;
     }
 
-    auto base_cost = base_cost_lookup(record.type);
+    // The source loads a word from +0x22 before doing any quantity scaling.
+    auto base_cost = base_cost_lookup(record.type) & 0xFFFFU;
     if (record.quantity != 0U) {
         // 0x57A62 performs a 68000 word multiply/divide and then keeps the
         // resulting 32-bit value's low word.  Host values are kept wide until
