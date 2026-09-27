@@ -99,6 +99,12 @@ selected-record lookup, action-delay calculation, HUD services, menu entry,
 and world-mode initialization as typed boundaries. It is conversion/reference
 code only; it is not linked into the emulator or native runtime.
 
+The immediate transition resolver at `0x562EC` now preserves the source
+`SUB.B`/`BGT`/`BEQ` flags when comparing the prior and current effect counts.
+Its HUD-mode callback is a late dependency: equal, mode-one, and comparison
+gate exits redraw rows without selecting a HUD mode. The typed test includes
+the `0x80 - 0x01` overflow case that would be misrouted by a signed cast.
+
 ## Menu selection timing
 
 The three timing helpers called by the menu services are now represented by
@@ -410,10 +416,12 @@ primary effect has not yet crossed its threshold. The call is not merely an
 intro transition: `0x563CC` obtains a trial count from the `0x19BF6`
 status-adjusted auxiliary selection, clamps the pending amount to a minimum
 difficulty of two, and calls `0x0DBA`. If the resulting roll count exceeds the
-comparison byte, the excess is subtracted from the pending byte. Signed-byte
-underflow clears both the pending amount and depletion counter; otherwise a
-nonzero depletion counter is decremented. Both successful reduction paths
-reset the title transition through `0x1B1FC`.
+comparison byte, the excess is subtracted from the pending byte. A zero roll
+count exits before that subtraction, and the comparison uses the source
+overflow-aware `SUB.B`/`BLE` flags. Signed-byte underflow clears both the
+pending amount and depletion counter; otherwise a nonzero depletion counter
+is decremented. Both successful reduction paths reset the title transition
+through `0x1B1FC`.
 
 The typed conversion is `advance_primary_world_effect_pending_roll()`. The
 overlay conversion's callback is named `advance_pending_roll` to preserve

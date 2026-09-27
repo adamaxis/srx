@@ -18,6 +18,8 @@
 // Direct disassembly compares the new roll against FFF0A4, then routes the
 // mode-8 HUD, countdown/footer, pending-roll, or row-redraw path. The typed
 // host conversion is in ghidra_conversion/world_effect_transition_conversion.
+// The FFF0A4-FFF0DD SUB.B/BGT/BEQ predicates retain 68000 overflow flags, and
+// HUD-mode selection is only reached after the comparison and footer gates.
 void resolve_world_effect_transition(void)
 
 {

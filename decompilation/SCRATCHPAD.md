@@ -741,7 +741,8 @@ block primitive.
 The audit of `0x562D4`/`0x562DE` confirms the timer entry falls through into
 the phase entry, so the combined path is `base + timer + 2*phase` with 16-bit
 wrap; direct callers use phase only. The immediate consumers `0x562EC` and
-`0x563CC` retain their signed-byte branch predicates, wrapped reductions, and
+`0x563CC` retain their overflow-aware byte branch predicates, zero-roll guard,
+wrapped reductions, and
 callback order in the typed conversion. Their Ghidra C bodies remain
 decompiler evidence only where they collapse to return-only stubs.
 
@@ -757,6 +758,12 @@ and clears the marker on that blocked exit. Statuses `0x07..0x0A` with the
 positive mode variant route through the delayed-effect path, whose `0x560CE`
 call enters the combined timer-plus-phase modifier; intro rolls remain
 phase-only. The typed conversion and regression tests cover these distinctions.
+
+The next transition consumer at `0x562EC` is also source-audited. Its
+`FFF0A4-FFF0DD` byte comparison now models the ROM's overflow-aware
+`BEQ`/`BGT` decisions, and the HUD-mode service is only requested after the
+comparison and footer gates. Early exits therefore remain usable with only
+their required typed callbacks.
 
 The CyberInfo handler at `0x18AA6` is now `run_cyber_info_screen`. Its host
 conversion resets the two-entry page cursor, emits the `CyberInfo` setup, and

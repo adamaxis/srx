@@ -12,6 +12,8 @@
 // FFFBBE+0x00 with a minimum difficulty of two, subtracts the excess over
 // FFFBBE+0x01, decrements FFFBBE+0x07, and resets the title transition. The
 // typed host conversion is in ghidra_conversion/world_effect_pending_roll_conversion.
+// The zero FFF0DD branch precedes SUB.B, and the later SUB.B/BLE gate uses
+// 68000 overflow flags rather than a plain signed-byte comparison.
 void advance_primary_world_effect_pending_roll(void)
 
 {

@@ -98,10 +98,41 @@ int main() {
         return 6;
     }
 
+    // The early equality path reaches the row redraw without selecting a HUD
+    // mode; that service is only required after the comparison gate.
+    WorldEffectTransitionState early{};
+    early.previous_effect_count = 5U;
+    auto early_callbacks = callbacks;
+    early_callbacks.select_run_hud_mode = {};
+    early_callbacks.advance_menu_countdown = {};
+    const auto early_result = resolve_world_effect_transition(
+        early, early_callbacks);
+    if (early_result.action != WorldEffectTransitionAction::rendered_hud_rows ||
+        renders != 5) {
+        return 7;
+    }
+
+    // 0x56330 uses overflow-aware BGT. 0x80 - 0x01 has a wrapped 0x7f
+    // result, but V is set, so the source takes the negative/mode-one path.
+    WorldEffectTransitionState overflow{};
+    overflow.previous_effect_count = 0x80U;
+    overflow.comparison_amount = 0U;
+    auto overflow_callbacks = early_callbacks;
+    overflow_callbacks.count_thresholded_random_rolls =
+        [](const std::uint16_t, const std::uint16_t) {
+            return std::optional<std::uint8_t>(1U);
+        };
+    const auto overflow_result = resolve_world_effect_transition(
+        overflow, overflow_callbacks);
+    if (overflow_result.action != WorldEffectTransitionAction::mode_one_selected ||
+        overflow.transition_result != 1U || renders != 6) {
+        return 8;
+    }
+
     WorldEffectTransitionCallbacks unavailable{};
     if (resolve_world_effect_transition(state, unavailable).action !=
         WorldEffectTransitionAction::dependency_unavailable) {
-        return 7;
+        return 9;
     }
     return 0;
 }

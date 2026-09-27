@@ -14,14 +14,37 @@ bool is_footer_sensitive_mode(const std::uint8_t mode) {
            mode == 24U;
 }
 
+bool source_subtract_byte_is_positive(const std::uint8_t minuend,
+                                      const std::uint8_t subtrahend,
+                                      const std::uint8_t result) {
+    // 0x56330 is SUB.B followed by BGT. BGT is !Z && (N == V), not a
+    // signed interpretation of the wrapped result byte.
+    const bool negative = (result & 0x80U) != 0U;
+    const bool zero = result == 0U;
+    const bool overflow =
+        (((minuend ^ subtrahend) & 0x80U) != 0U) &&
+        (((minuend ^ result) & 0x80U) != 0U);
+    return !zero && (negative == overflow);
+}
+
+bool source_subtract_byte_is_negative(const std::uint8_t minuend,
+                                      const std::uint8_t subtrahend,
+                                      const std::uint8_t result) {
+    const bool negative = (result & 0x80U) != 0U;
+    const bool zero = result == 0U;
+    const bool overflow =
+        (((minuend ^ subtrahend) & 0x80U) != 0U) &&
+        (((minuend ^ result) & 0x80U) != 0U);
+    return !zero && (negative != overflow);
+}
+
 } // namespace
 
 WorldEffectTransitionResult resolve_world_effect_transition(
     WorldEffectTransitionState& state,
     const WorldEffectTransitionCallbacks& callbacks) {
     if (!callbacks.calculate_action_delay ||
-        !callbacks.count_thresholded_random_rolls ||
-        !callbacks.select_run_hud_mode) {
+        !callbacks.count_thresholded_random_rolls) {
         return {};
     }
     const auto action_delay = callbacks.calculate_action_delay();
@@ -46,27 +69,29 @@ WorldEffectTransitionResult resolve_world_effect_transition(
     }
     state.thresholded_rolls = *rolls;
 
-    const auto signed_difference = static_cast<std::int8_t>(
-        static_cast<std::uint8_t>(state.previous_effect_count -
-                                  state.thresholded_rolls));
-    if (signed_difference == 0) {
+    const auto difference = static_cast<std::uint8_t>(
+        state.previous_effect_count - state.thresholded_rolls);
+    if (difference == 0U) {
         render_rows(callbacks);
         return {WorldEffectTransitionAction::rendered_hud_rows};
     }
-    if (signed_difference < 0) {
+    if (source_subtract_byte_is_negative(
+            state.previous_effect_count, state.thresholded_rolls,
+            difference)) {
         state.transition_result = 1U;
         render_rows(callbacks);
         return {WorldEffectTransitionAction::mode_one_selected};
     }
 
-    const auto remaining_check = static_cast<std::int8_t>(
-        static_cast<std::uint8_t>(state.comparison_amount -
-                                  static_cast<std::uint8_t>(signed_difference)));
-    if (remaining_check >= 0) {
+    if ((static_cast<std::uint8_t>(state.comparison_amount - difference) &
+         0x80U) == 0U) {
         render_rows(callbacks);
         return {WorldEffectTransitionAction::rendered_hud_rows};
     }
 
+    if (!callbacks.select_run_hud_mode) {
+        return {};
+    }
     const auto selected_mode = callbacks.select_run_hud_mode();
     if (!selected_mode.has_value()) {
         return {};

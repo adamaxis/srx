@@ -61,10 +61,43 @@ int main() {
         return 3;
     }
 
+    // The source branches on FFF0DD == 0 before subtracting the comparison
+    // byte; zero must not wrap into a reduction even when comparison is 0xff.
+    state.pending_amount = 5U;
+    state.comparison_amount = 0xffU;
+    state.depletion_counter = 4U;
+    callbacks.count_thresholded_random_rolls =
+        [](const std::uint16_t, const std::uint16_t) {
+            return std::optional<std::uint8_t>(0U);
+        };
+    const auto zero_roll =
+        advance_primary_world_effect_pending_roll(state, callbacks);
+    if (zero_roll.action != WorldEffectPendingRollAction::no_reduction ||
+        zero_roll.reduction != 0U || state.pending_amount != 5U ||
+        state.depletion_counter != 4U || reset_calls != 2) {
+        return 4;
+    }
+
+    // 0x80 - 0x01 wraps to 0x7f with V set, so SUB.B/BLE takes the no-roll
+    // reduction path even though a signed cast would look positive.
+    state.pending_amount = 5U;
+    state.comparison_amount = 1U;
+    callbacks.count_thresholded_random_rolls =
+        [](const std::uint16_t, const std::uint16_t) {
+            return std::optional<std::uint8_t>(0x80U);
+        };
+    const auto overflow_roll =
+        advance_primary_world_effect_pending_roll(state, callbacks);
+    if (overflow_roll.action != WorldEffectPendingRollAction::no_reduction ||
+        overflow_roll.reduction != 0U || state.pending_amount != 5U ||
+        reset_calls != 2) {
+        return 5;
+    }
+
     WorldEffectPendingRollCallbacks unavailable{};
     if (advance_primary_world_effect_pending_roll(state, unavailable).action !=
         WorldEffectPendingRollAction::dependency_unavailable) {
-        return 4;
+        return 6;
     }
     return 0;
 }
