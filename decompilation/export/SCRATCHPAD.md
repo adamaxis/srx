@@ -120,6 +120,38 @@ These are state operations derived from the source routines, not bookkeeping
 labels and not emulator hooks. The VDP/menu calls around the original
 mutations remain outside the typed operations.
 
+## Save-roster projection audit
+
+The compact roster record is not a generic blob at the conversion boundary:
+`0x598B0` and `0x597EE` establish the exact bidirectional field map used by
+the save system. The host keeps the source byte order inside the record
+containers, but the projection itself is expressed as ordinary range copies:
+
+| Compact save range | Live runner range | Source meaning currently established |
+| --- | --- | --- |
+| `+0x00..01` | `+0x0E..0F` | live record kind/header word |
+| `+0x02..03` | `+0x2C..2D` | source record word consumed by runner logic |
+| `+0x04..07` | `+0x4C..4F` | physical/mental and ammunition bytes |
+| `+0x08..09` | `+0x56..57` | equipped inventory slot/item |
+| `+0x0A..17` | `+0x58..65` | confirmed live record word/longword fields |
+| `+0x18..27` | `+0x66..75` | inventory item and phase bytes |
+| `+0x28..3F` | `+0x76..8D` | armor, attributes, skills, and auxiliary bytes |
+| `+0x40` | `+0x8E` | auxiliary source byte |
+| `+0x41..43` | `+0x9A..9C` | species/archetype/mental values |
+| `+0x44..45` | `+0x90..91` | cyberware bitfield |
+| `+0x46..47` | `+0xA0..A1` | magic-table selector |
+| `+0x48` | `+0x8F` | post-population byte |
+| `+0x49` | `+0x9D` | magic-force byte |
+
+`0x5966E` always projects compact record zero first, then uses the signed
+`FFFC0C` and `FFFC0D` markers as 1-based compact-record indexes for the
+primary and secondary live records. `0x59798` performs the same sequence in
+reverse when saving. `0x42F2` and `0x431C` install the selected source record,
+write their role metadata (`+0x3E`, `+0x20`, `+0x26`), refresh this
+population, and finally apply the caller's `+0x8F` byte. The conversion tests
+exercise the complete map by projecting a populated record in both directions
+and checking that every compact byte round-trips.
+
 ## World-effect mode selection
 
 The intro/world-effect selector is now converted as one typed slice rather
