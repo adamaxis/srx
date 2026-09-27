@@ -280,6 +280,12 @@ below 3 use the saved resource record with the blank-versus-`0x1AC90C +
 marker * 0x0C` rule. Focused tests now assert these typed plans and exercise
 the cursor-3 renderer path.
 
+Those positive branches now carry their eight source row markers through the
+typed state. Cursor 3 uses the `0x0E`-stride markers only as sign tests for
+blank versus ordinary grid; the sub-three resource path uses eight two-byte
+markers and resolves nonnegative entries to `marker * 0x0C` description rows.
+Focused coverage exercises both detailed row callback paths.
+
 The source call order around `0x58D32` is explicit as well: it derives the
 primary-cursor `* 0x20` sprite-record row, builds the three-record selection
 set with the `0x4000` sprite attribute, publishes the sprite/display dirty

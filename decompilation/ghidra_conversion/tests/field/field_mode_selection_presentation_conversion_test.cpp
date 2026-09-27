@@ -72,6 +72,9 @@ int main() {
         plan_field_mode_positive_grid(5, 2, 1, 2);
     const auto blank_resource_row = plan_field_mode_resource_grid_row(0x80U);
     const auto indexed_resource_row = plan_field_mode_resource_grid_row(7U);
+    const auto blank_positive_row =
+        plan_field_mode_positive_resource_row(0x80U);
+    const auto indexed_positive_row = plan_field_mode_positive_resource_row(7U);
     if (!expect(grid_record.writes_grid &&
                 low_palette_record.glyph_palette ==
                     FieldModeGlyphPalettePlane::low_0x2000 &&
@@ -103,7 +106,9 @@ int main() {
                 resource_plan.selected_resource.record_offset == 0x20U &&
                 blank_resource_row.uses_blank_grid &&
                 !indexed_resource_row.uses_blank_grid &&
-                indexed_resource_row.description_record_offset == 0x54U)) {
+                indexed_resource_row.description_record_offset == 0x54U &&
+                blank_positive_row.uses_blank_grid &&
+                !indexed_positive_row.uses_blank_grid)) {
         return 12;
     }
 
@@ -127,6 +132,42 @@ int main() {
                 observed_positive_plan.resource_table_offset == 0U &&
                 positive_plan_grids == 8)) {
         return 14;
+    }
+
+    std::vector<FieldModePositiveResourceRowPlan> positive_rows;
+    FieldModeSelectionPresentationCallbacks positive_row_callbacks{};
+    positive_row_callbacks.write_positive_resource_row =
+        [&](const std::size_t, const FieldModePositiveResourceRowPlan& row) {
+            positive_rows.push_back(row);
+        };
+    positive_cursor_three.positive_resource_markers[0] = 0x80U;
+    positive_cursor_three.positive_resource_markers[1] = 7U;
+    render_field_mode_selection_presentation(positive_cursor_three,
+                                             positive_row_callbacks);
+    if (!expect(positive_rows.size() == 8U &&
+                positive_rows[0].uses_blank_grid &&
+                !positive_rows[1].uses_blank_grid)) {
+        return 15;
+    }
+
+    std::vector<FieldModeResourceGridRowPlan> resource_rows;
+    FieldModeSelectionPresentationCallbacks resource_row_callbacks{};
+    resource_row_callbacks.write_resource_grid_row =
+        [&](const std::size_t, const FieldModeResourceGridRowPlan& row) {
+            resource_rows.push_back(row);
+        };
+    FieldModeSelectionPresentationState resource_description{};
+    resource_description.mode_result = 2;
+    resource_description.menu_mode = 5;
+    resource_description.primary_cursor = 1;
+    resource_description.resource_grid_markers[0] = 0x80U;
+    resource_description.resource_grid_markers[1] = 7U;
+    render_field_mode_selection_presentation(resource_description,
+                                             resource_row_callbacks);
+    if (!expect(resource_rows.size() == 8U &&
+                resource_rows[0].uses_blank_grid &&
+                resource_rows[1].description_record_offset == 0x54U)) {
+        return 16;
     }
 
     std::vector<std::size_t> inventory_slots;

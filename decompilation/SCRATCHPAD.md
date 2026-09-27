@@ -1247,6 +1247,13 @@ conversion exposes those choices as `FieldModePositiveGridPlan` and
 `FieldModeResourceGridRowPlan` rather than collapsing them into a count of
 eight grid writes.
 
+The two positive row paths now carry their source marker arrays through the
+conversion state: cursor 3 has eight `0x0E`-stride markers whose sign selects
+blank versus ordinary grid, while the sub-three resource path has eight
+two-byte markers whose nonnegative values select `marker * 0x0C` description
+records. Typed row callbacks consume those decisions before the count-only
+fallback is used.
+
 The runner-selection family is now native-shaped. `0x532BC` is
 `initialize_runner_selection_screen`: it exposes the background asset setup,
 header/animation preparation, and exact 10-by-14 grid request sequence.

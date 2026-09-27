@@ -418,6 +418,14 @@ negative-marker/`0x1AC90C + marker * 0x0C` grid rule. These are exposed as
 typed positive-branch and resource-row plans before the compatibility grid
 callbacks run.
 
+The conversion now carries the eight source markers into those plans. The
+cursor-3 path uses one marker per `0x0E` source row and calls the blank grid
+for a negative marker or the ordinary `0xCE29A` grid otherwise. The
+sub-three resource path carries eight two-byte markers and resolves each to
+the blank grid or its `0x1AC90C + marker * 0x0C` record. Detailed row callbacks
+can consume these typed decisions; the old count-only callback remains a
+compatibility fallback.
+
 The adjacent action-selection dispatcher at `0x57C7A` had several host
 comparison shortcuts that only worked for ordinary 0..5 menu bytes. Its
 `CMP.B`/`BMI` boundaries for saved selection, the `0x585FA` cursor gate, and

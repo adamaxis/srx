@@ -114,6 +114,11 @@ FieldModeResourceGridRowPlan plan_field_mode_resource_grid_row(
     return plan;
 }
 
+FieldModePositiveResourceRowPlan plan_field_mode_positive_resource_row(
+    const std::uint8_t marker) {
+    return {marker, (marker & 0x80U) != 0U};
+}
+
 MenuResourceRecord select_menu_resource(
     const std::uint8_t menu_mode,
     const std::int8_t saved_selection) {
@@ -242,8 +247,32 @@ void render_field_mode_selection_presentation(
         if (plan.selects_menu_resource) {
             call_if_present(callbacks.select_resource, plan.selected_resource);
         }
-        repeat(plan.first_grid_count, callbacks.write_grid);
-        repeat(plan.second_grid_count, callbacks.write_grid);
+        if (plan.kind ==
+            FieldModePositiveGridPlanKind::cursor_three_resource_rows) {
+            for (std::size_t index = 0; index < 8U; ++index) {
+                const auto row = plan_field_mode_positive_resource_row(
+                    state.positive_resource_markers[index]);
+                if (callbacks.write_positive_resource_row) {
+                    callbacks.write_positive_resource_row(index, row);
+                } else {
+                    call_if_present(callbacks.write_grid);
+                }
+            }
+        } else if (plan.kind ==
+                   FieldModePositiveGridPlanKind::resource_description) {
+            for (std::size_t index = 0; index < 8U; ++index) {
+                const auto row = plan_field_mode_resource_grid_row(
+                    state.resource_grid_markers[index]);
+                if (callbacks.write_resource_grid_row) {
+                    callbacks.write_resource_grid_row(index, row);
+                } else {
+                    call_if_present(callbacks.write_grid);
+                }
+            }
+        } else {
+            repeat(plan.first_grid_count, callbacks.write_grid);
+            repeat(plan.second_grid_count, callbacks.write_grid);
+        }
         return;
     }
 

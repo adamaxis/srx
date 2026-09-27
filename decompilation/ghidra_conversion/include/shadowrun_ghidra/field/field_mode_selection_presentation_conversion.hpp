@@ -32,6 +32,11 @@ struct FieldModeInventoryGlyphPlan {
         FieldModeGlyphPalettePlane::high_0x6000;
 };
 
+struct FieldModePositiveResourceRowPlan {
+    std::uint8_t marker = 0;
+    bool uses_blank_grid = true;
+};
+
 struct FieldModeSelectionPresentationState {
     std::uint8_t menu_mode = 0; // FFF0B6
     std::int8_t mode_result = 0; // FFF0B7
@@ -45,6 +50,11 @@ struct FieldModeSelectionPresentationState {
     // Eight bytes read from the active runner record at +0x66..+0x6D by
     // 0x58AA4. They are item codes, not already-resolved icon indices.
     std::array<std::uint8_t, 8> inventory_item_codes{};
+    // 0x5898A reads eight marker bytes at stride 0x0E from the selected
+    // 0x1AB196 menu-mode row.
+    std::array<std::uint8_t, 8> positive_resource_markers{};
+    // 0x589E8 reads eight two-byte selected-resource entries.
+    std::array<std::uint8_t, 8> resource_grid_markers{};
 };
 
 enum class MenuResourceFamily {
@@ -129,6 +139,10 @@ struct FieldModeSelectionPresentationCallbacks {
         write_record_grid;
     std::function<void(const FieldModePositiveGridPlan&)>
         select_positive_grid_plan;
+    std::function<void(std::size_t, const FieldModePositiveResourceRowPlan&)>
+        write_positive_resource_row;
+    std::function<void(std::size_t, const FieldModeResourceGridRowPlan&)>
+        write_resource_grid_row;
 };
 
 // ROM 0x58A2E: preserve the marker test, the 'E' grid sentinel, and the
@@ -152,6 +166,11 @@ FieldModePositiveGridPlan plan_field_mode_positive_grid(
 // ROM 0x589E8: a negative selected-resource marker uses the blank grid;
 // otherwise the marker selects a 0x0C-byte description grid record.
 FieldModeResourceGridRowPlan plan_field_mode_resource_grid_row(
+    std::uint8_t marker);
+
+// ROM 0x5898A: only the marker sign chooses the blank versus ordinary grid
+// source; the marker is not an icon/table index.
+FieldModePositiveResourceRowPlan plan_field_mode_positive_resource_row(
     std::uint8_t marker);
 
 // ROM 0x5763C: choose the menu-mode-six table when FFF0B6 == 6, otherwise
