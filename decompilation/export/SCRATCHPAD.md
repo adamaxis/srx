@@ -810,6 +810,14 @@ longer described as an anonymous renderer:
 * A zero result uses the glyph row for cursors 0 and 3, otherwise the
   alternating record path.
 
+The adjacent navigation leaves at `0x58C54` and `0x58CDE` were audited
+against their byte instructions as well. Their deltas are `ADD.B`, so the
+conversion wraps the low byte before testing the source sign and bounds. A
+negative result or a value beyond the panel's upper bound is clamped and
+returns without a redraw; only an in-range primary/panel write invokes the
+normal grid/text or alternate grid/sprite refresh. This distinction matters
+for the menu's visual update cadence and is covered by the navigation test.
+
 The focused tests `shadowrun_ghidra_field_mode_service_loop` and
 `shadowrun_ghidra_field_mode_selection_presentation` cover the palette dirty
 publication, service-loop input precedence, and every presentation branch.

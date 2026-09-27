@@ -32,8 +32,7 @@ int main() {
 
     advance_field_mode_primary_cursor(normal, 9, callbacks);
     if (!expect(normal.primary_cursor == 3 &&
-                order == std::vector<std::string>{"prepare", "grid", "grid", "text",
-                                                   "prepare", "grid", "grid", "text"})) {
+                order == std::vector<std::string>{"prepare", "grid", "grid", "text"})) {
         return 2;
     }
     advance_field_mode_primary_cursor(normal, -9, callbacks);
@@ -45,6 +44,10 @@ int main() {
     advance_field_mode_primary_cursor(normal, 9, callbacks);
     if (!expect(normal.primary_cursor == 5 && order.back() == "text")) {
         return 4;
+    }
+    advance_field_mode_primary_cursor(normal, -4, callbacks);
+    if (!expect(normal.primary_cursor == 1 && order.back() == "text")) {
+        return 41;
     }
 
     advance_field_mode_panel_cursor(normal, 1, callbacks);
@@ -59,6 +62,10 @@ int main() {
                 normal.sprite_list_dirty && normal.display_dirty_flags == 2U &&
                 order.back() == "sprites")) {
         return 6;
+    }
+    advance_field_mode_primary_cursor(normal, 6, callbacks);
+    if (!expect(normal.primary_cursor == 7 && order.back() == "sprites")) {
+        return 61;
     }
     advance_field_mode_panel_cursor(normal, -1, callbacks);
     if (!expect(normal.panel_cursor == 0 && normal.primary_cursor == 0 &&

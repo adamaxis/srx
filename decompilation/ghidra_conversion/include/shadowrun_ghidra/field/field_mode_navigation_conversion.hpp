@@ -40,16 +40,18 @@ void render_field_mode_selection(
     const FieldModeNavigationState& state,
     const FieldModeNavigationCallbacks& callbacks);
 
-// 0x58C54: apply the signed source cursor delta. In panel 0 the bound is
-// 3 when mode_result is zero and 5 otherwise; the alternate panel has a
-// bound of 7. The source redraw follows the cursor write.
+// 0x58C54: apply the byte-wrapped source cursor delta. In panel 0 the bound
+// is 3 when mode_result is zero and 5 otherwise; the alternate panel has a
+// bound of 7. Negative and upper-bound clamps return without redrawing;
+// only an in-range cursor write enters the corresponding refresh path.
 void advance_field_mode_primary_cursor(
     FieldModeNavigationState& state,
     std::int8_t signed_delta,
     const FieldModeNavigationCallbacks& callbacks);
 
-// 0x58CDE: wrap the two-position panel cursor, reset the primary cursor, and
-// refresh the corresponding normal or alternate presentation.
+// 0x58CDE: apply the byte-wrapped two-position panel cursor. An in-range
+// change resets the primary cursor and refreshes the corresponding normal or
+// alternate presentation; a clamp returns without that refresh.
 void advance_field_mode_panel_cursor(
     FieldModeNavigationState& state,
     std::int8_t signed_delta,
