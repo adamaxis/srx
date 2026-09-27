@@ -118,7 +118,7 @@ int main() {
     }
     state.primary_cursor = 5;
     if (plan_field_action_selection_render(state).kind !=
-        FieldActionSelectionRenderKind::unavailable) {
+        FieldActionSelectionRenderKind::no_action) {
         return 16;
     }
     state.saved_selection = 4;

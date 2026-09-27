@@ -133,7 +133,7 @@ FieldActionSelectionRenderPlan plan_field_action_selection_render(
     }
     if (state.saved_selection == 5) {
         plan.kind = state.primary_cursor >= 5
-                        ? FieldActionSelectionRenderKind::unavailable
+                        ? FieldActionSelectionRenderKind::no_action
                         : FieldActionSelectionRenderKind::quantity_purchase;
         return plan;
     }

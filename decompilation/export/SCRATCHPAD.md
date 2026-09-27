@@ -275,8 +275,9 @@ first on every call, then preserves the source's signed result/selection
 matrix: three separate negative-result detail tables, the negative quantity
 and runner/inventory detail branches, the zero-result dynamic/fixed detail
 families, result-1 equipment presentation, positive resource-description and
-cost-summary selectors, the selection-5 quantity cursor cutoff, and the
-feedback-mode boundary. The host plan carries semantic table-family choices,
+cost-summary selectors, the selection-5 quantity branch (with a source no-op
+at primary cursor 5 or above), and the feedback-mode boundary. The host plan
+carries semantic table-family choices,
 the selected menu-resource entry, and the source cursor values; it does not
 retain the original table addresses or turn the renderer into a VDP emulator.
 
