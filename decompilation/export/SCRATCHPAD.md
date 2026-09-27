@@ -163,6 +163,14 @@ The leaf routines still own their own typed records, funds, runner fields, and
 presentation callbacks; this pass does not collapse them into a generic
 command interpreter.
 
+The `0x578C4` description leaf is now `show_runner_action_description()`. It
+refreshes the five-row detail panel, reads the active runner's selected action
+slot at `+0x66`, rejects an empty slot, rejects action codes `0x0B` and above,
+and for codes 1 through 10 exposes `description_record_index = action_code - 1`
+for the `0xD4540` action-description table before rendering the fixed text and
+waiting for input. The conversion deliberately leaves text presentation as a
+callback while retaining the actual slot bounds and source code range.
+
 ## Field HUD row meter
 
 `0x1792E render_menu_hud_rows` calls `0x56506` once for each eligible row.
