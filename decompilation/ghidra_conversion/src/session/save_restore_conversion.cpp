@@ -5,25 +5,23 @@ namespace shadowrun::ghidra_conversion {
 SaveWorkLoadResult load_save_work_buffer(
     SaveSlotPair& backup_slots,
     std::vector<std::uint8_t>& work_buffer,
-    const SaveWorkFallbackBoundary& load_sram_fallback,
     const SaveSlotValidator& validate) {
     const auto validator = validate ? validate : SaveSlotValidator{
                                                      validate_backup_game_save};
     if (validator(backup_slots.first)) {
         work_buffer = backup_slots.first;
+        if (!validator(backup_slots.second)) {
+            backup_slots.second = backup_slots.first;
+            return {SaveWorkLoadAction::
+                        loaded_from_primary_backup_repaired_secondary};
+        }
         return {SaveWorkLoadAction::loaded_from_primary_backup};
     }
     if (validator(backup_slots.second)) {
         work_buffer = backup_slots.second;
         backup_slots.first = backup_slots.second;
-        return {SaveWorkLoadAction::loaded_from_secondary_backup};
-    }
-    if (load_sram_fallback) {
-        const auto fallback = load_sram_fallback();
-        if (fallback.has_value()) {
-            work_buffer = *fallback;
-            return {SaveWorkLoadAction::loaded_from_sram_fallback};
-        }
+        return {SaveWorkLoadAction::
+                    loaded_from_secondary_backup_repaired_primary};
     }
     return {};
 }

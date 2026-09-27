@@ -3,15 +3,15 @@
 #include "shadowrun_ghidra/session/save_slot_conversion.hpp"
 
 #include <functional>
-#include <optional>
 #include <vector>
 
 namespace shadowrun::ghidra_conversion {
 
 enum class SaveWorkLoadAction {
     loaded_from_primary_backup,
+    loaded_from_primary_backup_repaired_secondary,
     loaded_from_secondary_backup,
-    loaded_from_sram_fallback,
+    loaded_from_secondary_backup_repaired_primary,
     no_valid_save,
 };
 
@@ -19,17 +19,13 @@ struct SaveWorkLoadResult {
     SaveWorkLoadAction action = SaveWorkLoadAction::no_valid_save;
 };
 
-using SaveWorkFallbackBoundary =
-    std::function<std::optional<std::vector<std::uint8_t>>()>;
-
 // ROM 0x59372: try the two extracted backup slots in source order, repair the
-// first slot if only the second validates, then use the explicit SRAM fallback
-// boundary when neither backup slot is usable. The selected save is published
-// as the host work buffer.
+// first slot if only the second validates. The selected save is published as
+// the host work buffer; when neither source slot validates, the ROM returns
+// without publishing a save. No host-side fallback is invented here.
 SaveWorkLoadResult load_save_work_buffer(
     SaveSlotPair& backup_slots,
     std::vector<std::uint8_t>& work_buffer,
-    const SaveWorkFallbackBoundary& load_sram_fallback,
     const SaveSlotValidator& validate = validate_backup_game_save);
 
 enum class SaveLoadCoordinatorAction {

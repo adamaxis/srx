@@ -18,42 +18,35 @@ int main() {
     std::vector<std::uint8_t> work;
 
     SaveSlotPair backup{{0x47U, 1U, 2U}, {0U, 3U, 4U}};
-    const auto primary = load_save_work_buffer(backup, work, {}, validate);
+    const auto primary = load_save_work_buffer(backup, work, validate);
     if (!expect(primary.action ==
-                    SaveWorkLoadAction::loaded_from_primary_backup &&
+                    SaveWorkLoadAction::
+                        loaded_from_primary_backup_repaired_secondary &&
                 work == std::vector<std::uint8_t>{0x47U, 1U, 2U} &&
-                backup.second[1] == 3U)) {
+                backup.second == backup.first)) {
         return 1;
     }
 
     backup = {{0U, 1U, 2U}, {0x47U, 9U, 8U}};
-    const auto secondary = load_save_work_buffer(backup, work, {}, validate);
+    const auto secondary = load_save_work_buffer(backup, work, validate);
     if (!expect(secondary.action ==
-                    SaveWorkLoadAction::loaded_from_secondary_backup &&
+                    SaveWorkLoadAction::
+                        loaded_from_secondary_backup_repaired_primary &&
                 work == backup.first && work[1] == 9U)) {
         return 2;
     }
 
-    backup = {{0U, 1U, 2U}, {0U, 9U, 8U}};
-    bool fallback_called = false;
-    const auto fallback = load_save_work_buffer(
-        backup, work,
-        [&fallback_called]() -> std::optional<std::vector<std::uint8_t>> {
-            fallback_called = true;
-            return std::vector<std::uint8_t>{0x47U, 7U, 6U};
-        },
-        validate);
-    if (!expect(fallback_called &&
-                fallback.action == SaveWorkLoadAction::loaded_from_sram_fallback &&
-                work == std::vector<std::uint8_t>{0x47U, 7U, 6U})) {
+    backup = {{0x47U, 1U, 2U}, {0x47U, 9U, 8U}};
+    const auto both_valid = load_save_work_buffer(backup, work, validate);
+    if (!expect(both_valid.action ==
+                    SaveWorkLoadAction::loaded_from_primary_backup &&
+                backup.first == std::vector<std::uint8_t>{0x47U, 1U, 2U} &&
+                backup.second == std::vector<std::uint8_t>{0x47U, 9U, 8U})) {
         return 3;
     }
 
     backup = {{0U, 1U, 2U}, {0U, 9U, 8U}};
-    const auto failed = load_save_work_buffer(
-        backup, work,
-        []() -> std::optional<std::vector<std::uint8_t>> { return std::nullopt; },
-        validate);
+    const auto failed = load_save_work_buffer(backup, work, validate);
     if (!expect(failed.action == SaveWorkLoadAction::no_valid_save)) {
         return 4;
     }
