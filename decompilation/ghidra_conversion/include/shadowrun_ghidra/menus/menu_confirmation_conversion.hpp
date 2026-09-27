@@ -30,7 +30,8 @@ struct MenuConfirmationCallbacks {
 
 // ROM 0x57B8C.  Draws the two-choice prompt, toggles its bounded 0/1 cursor,
 // and returns the selected option when either source exit button is pressed.
-// The native conversion has no VDP or controller-port dependency.
+// Movement services the source audio command before the wrapped cursor-write
+// boundary. The native conversion has no VDP or controller-port dependency.
 MenuConfirmationState run_menu_confirmation_prompt(
     const MenuConfirmationCallbacks& callbacks);
 

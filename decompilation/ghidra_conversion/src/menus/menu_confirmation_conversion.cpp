@@ -44,20 +44,20 @@ MenuConfirmationState run_menu_confirmation_prompt(
                                : std::uint16_t{0};
 
         if ((input & bit(MenuConfirmationInput::option_decrement)) != 0U) {
-            move_binary_option(state, -1);
             if (callbacks.play_move_sound) {
                 callbacks.play_move_sound();
             }
+            move_binary_option(state, -1);
             if (callbacks.draw_prompt_choice) {
                 callbacks.draw_prompt_choice();
             }
             continue;
         }
         if ((input & bit(MenuConfirmationInput::option_increment)) != 0U) {
-            move_binary_option(state, 1);
             if (callbacks.play_move_sound) {
                 callbacks.play_move_sound();
             }
+            move_binary_option(state, 1);
             if (callbacks.draw_prompt_choice) {
                 callbacks.draw_prompt_choice();
             }

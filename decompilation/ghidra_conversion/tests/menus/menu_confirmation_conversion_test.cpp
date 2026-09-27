@@ -1,6 +1,7 @@
 #include "shadowrun_ghidra/menus/menu_confirmation_conversion.hpp"
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace {
@@ -20,18 +21,21 @@ int main() {
     int choices = 0;
     int moves = 0;
     int confirms = 0;
+    std::vector<std::string> events;
     const auto accepted = run_menu_confirmation_prompt(MenuConfirmationCallbacks{
-        [&] { ++labels; },
-        [&] { ++choices; },
+        [&] { ++labels; events.emplace_back("labels"); },
+        [&] { ++choices; events.emplace_back("choice"); },
         {},
         {},
         [&] { return inputs[input_index++]; },
-        [&] { ++moves; },
+        [&] { ++moves; events.emplace_back("move-sound"); },
         [&] { ++confirms; },
     });
     if (!expect(accepted.closed && accepted.accepted &&
                 accepted.selected_option == 0U && labels == 1 && choices == 2 &&
-                moves == 1 && confirms == 1)) {
+                moves == 1 && confirms == 1 &&
+                events == std::vector<std::string>{"labels", "choice",
+                                                   "move-sound", "choice"})) {
         return 1;
     }
 
