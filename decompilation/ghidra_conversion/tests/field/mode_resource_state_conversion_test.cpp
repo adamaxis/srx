@@ -15,16 +15,18 @@ int main() {
 
     refresh_mode_resource_metadata(store, metadata);
     if (!store.dirty || !std::equal(metadata.begin(), metadata.end(),
-                                     store.words.begin()) ||
-        store.words[8] != 0xFFFFFFFFU || store.words[16] != 0xFFFFFFFFU) {
+                                     store.words.begin() + 8) ||
+        store.words[0] != 0xFFFFFFFFU || store.words[16] != 0xFFFFFFFFU ||
+        store.words[24] != 0xFFFFFFFFU) {
         return 1;
     }
 
     store.dirty = false;
     refresh_mode_resource_state(store, state);
     if (!store.dirty || !std::equal(state.begin(), state.end(),
-                                    store.words.begin() + 16) ||
-        store.words[0] != metadata[0]) {
+                                    store.words.begin() + 24) ||
+        store.words[0] != 0xFFFFFFFFU || store.words[8] != metadata[0] ||
+        store.words[16] != 0xFFFFFFFFU) {
         return 2;
     }
 
@@ -34,7 +36,9 @@ int main() {
     }
     store.dirty = false;
     refresh_mode_palette_data(store, palette);
-    if (!store.dirty || store.words != palette) {
+    if (!store.dirty ||
+        !std::equal(palette.begin(), palette.end(), store.words.begin() + 8) ||
+        store.words[0] != 0xFFFFFFFFU) {
         return 3;
     }
 

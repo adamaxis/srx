@@ -107,6 +107,15 @@ wrap at the modifier helpers and the `CMP.W D6,D7`/`BPL` predicate in `0x56506`.
 That predicate is intentionally not an unsigned `std::max`; the ROM tests the
 sign bit of the wrapped word difference before adding the availability value.
 
+The adjacent resource-copy audit found a host-layout error in the mode store.
+The source destinations at `0xFFD87E`, `0xFFD89E`, `0xFFD8BE`, and `0xFFD8DE`
+are four contiguous eight-longword banks. The typed store now exposes all 32
+words: `0x566E2` targets bank one, `0x566F6` targets bank three, and `0x5670E`
+starts at bank one and fills banks one through three. The previous 24-word
+model incorrectly shifted these copies and treated the bulk refresh as if it
+started at bank zero; the focused state-copy test now guards each untouched
+bank boundary.
+
 The Matrix storage/timing pass found two more width-sensitive conversions.
 The audio command-ring audit also removed a source-shaped byte buffer from the conversion model. `0x52E96` now publishes a typed `flush_marker` entry followed by a typed command entry, while `0x52EA2` appends a typed command and wraps a host index at the source 64-entry capacity. The source `0xFF` marker remains provenance; it is not a runtime sentinel in the host model. The opaque audio firmware image is still an extraction boundary and is not being misrepresented as typed gameplay state.
 `0x19558` and `0x1957E` accumulate and subtract in word registers, so their

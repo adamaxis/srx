@@ -2016,11 +2016,13 @@ resource-state refresh followed by HUD-panel draw order.
 Batch 4 adds the `0x1F38A` variant-A loop to the same typed resource module;
 its exact 80 wrapped word-block transfers are now explicit and tested.
 
-The next resource-state slice converts `0x566E2`, `0x566F6`, and `0x5670E`.
-Their source pointer arithmetic is represented by a 24-word typed store: the
-metadata copy targets words 0-7, the state copy targets words 16-23, and the
-palette copy replaces all 24 words. Each operation marks the store dirty,
-matching the shared source invalidation flag.
+The resource-state audit corrected the earlier host-store layout for
+`0x566E2`, `0x566F6`, and `0x5670E`. The four source destinations are four
+contiguous eight-longword banks at `FFD87E`, `FFD89E`, `FFD8BE`, and `FFD8DE`.
+The typed store now has all 32 words: `0x566E2` writes bank one (words 8-15),
+`0x566F6` writes bank three (words 24-31), and `0x5670E` writes the 24-word
+block into banks one through three (words 8-31), leaving bank zero untouched.
+Each operation still marks the host store dirty, matching `FFEF14` bit 0.
 
 The title setup module now also owns `0x12F6`: its DBF `0x10` loop is exposed
 as `advance_title_palette_fade`, with the source ordering of frame wait,

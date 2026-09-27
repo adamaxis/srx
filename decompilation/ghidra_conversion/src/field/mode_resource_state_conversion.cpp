@@ -39,21 +39,25 @@ void copy_mode_palette_block(
 void refresh_mode_resource_metadata(
     ModeResourceStore& store,
     const std::array<std::uint32_t, 8>& source) {
-    std::copy(source.begin(), source.end(), store.words.begin());
+    // 0x566E2 enters the shared loop with A1=FFD89E: bank one, word 8.
+    std::copy(source.begin(), source.end(), store.words.begin() + 8);
     store.dirty = true;
 }
 
 void refresh_mode_resource_state(
     ModeResourceStore& store,
     const std::array<std::uint32_t, 8>& source) {
-    std::copy(source.begin(), source.end(), store.words.begin() + 16);
+    // 0x566F6 enters the shared loop with A1=FFD8DE: bank three, word 24.
+    std::copy(source.begin(), source.end(), store.words.begin() + 24);
     store.dirty = true;
 }
 
 void refresh_mode_palette_data(
     ModeResourceStore& store,
     const std::array<std::uint32_t, 24>& source) {
-    std::copy(source.begin(), source.end(), store.words.begin());
+    // 0x5670E enters the same copy loop with A1=FFD89E, so its 24 words fill
+    // banks one, two, and three while bank zero remains untouched.
+    std::copy(source.begin(), source.end(), store.words.begin() + 8);
     store.dirty = true;
 }
 
