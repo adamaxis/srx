@@ -733,6 +733,31 @@ The roster serialization, effect clearing, action dispatch, asset upload, and
 animation calls are explicit callbacks so this source conversion can be wired
 to their already converted modules without duplicating a second state machine.
 
+## Hospital Options menu and leave-hospital route: 0xC928 / 0xCE7C
+
+`0xC928` is the hospital's three-entry `Hospital Options` menu, not a generic
+field-exit selector. Its source table at `0xC1558` dispatches:
+
+* `Medical Attn.` -> `0xCA2E`, the medical-attention detail/purchase routine;
+* `Cyberware` -> `0xCA16`, which writes mode result `1`, runs the field-mode
+  service, and returns to the mode-exit caller;
+* `Exit` -> `0xCE7C`, the leave-hospital confirmation.
+
+The outer conversion preserves the source choreography: reset display buffers
+once, set the hospital-service result mode, rebuild metadata/palette/grid/font
+and option text, initialize the three-entry cursor, then service each frame in
+the order vblank, input latch, input sample, and random grid effect. Up has
+priority over Down; movement still permits the same frame's confirm test;
+Cyberware's action route wins over Start/cancel. Medical Attn. is an explicit
+callback because its own `0xCA2E..0xCDE6` hill contains the medical percentage,
+cost, affordability, and runner-condition logic.
+
+`0xCE7C` defaults its two-entry Yes/No prompt to No. An accepted Yes does not
+merely set a flag: the ROM deliberately pops the handler and Hospital Options
+return frames before returning to the caller. The native routine exposes this
+as `leave_hospital`, so the host controller can perform the same route without
+reproducing unsafe stack manipulation.
+
 ## Reviewed function map
 
 The native owner names below are the target C++ vocabulary. A `partial` entry
@@ -818,6 +843,8 @@ still has unresolved downstream calls or hardware presentation work.
 | `0xFF06` | `move_selection_row` | Changes the two-row selection mode only when at least seven entries exist and clears it when the active column is unavailable. | `ghidra_conversion::move_selection_row()` | partial |
 | `0xC376` | `move_wrapped_menu_cursor` | Adds the signed menu step with source `ADD.B` flags, uses the overflow-corrected BGE result to wrap negative sums to the supplied upper cursor value, then uses the raw `D3 - cursor` N bit to wrap above-range values to zero; paired cursor-word writes remain a presentation boundary. | `ghidra_conversion::move_wrapped_menu_cursor()` | partial |
 | `0xC802` | `refresh_field_runner_state_and_assets` | Serializes compact roster records, scans primary then secondary field runners through the direct AND gate, consumes the 1-based roster marker with the existing negative-floor counter service, clears effects, dispatches the active-runner action by stable identity, then uploads field assets and runs the animation triplet. | `ghidra_conversion::refresh_field_runner_state_and_assets()` | partial |
+| `0xC928` | `run_hospital_options_menu` | Runs the Hospital Options entries Medical Attn., Cyberware, and Exit with source cursor/input priority; Cyberware routes to field-mode service and Yes on the leave prompt returns an explicit leave-hospital route. | `ghidra_conversion::run_hospital_options_menu()` |
+| `0xCE7C` | `run_leave_hospital_prompt` | Runs the Yes/No leave-hospital prompt, defaulting to No; the accepted Yes path is modeled as a typed non-local return rather than source stack pops. | `ghidra_conversion::run_leave_hospital_prompt()` |
 | `0xC8B0` | `apply_byte_counter_delta_with_negative_floor` | Subtracts one from the caller's one-based counter selector, adds the signed byte delta to the selected counter, and replaces a negative result with the source `0xFF` sentinel. | `ghidra_conversion::apply_byte_counter_delta_with_negative_floor()` | partial |
 | `0xC134` | `normalize_source_text_line` | Maps source high-bit glyph markers, stops on the line terminator range, and pads the remaining line width. | `ghidra_conversion::normalize_source_text_line()` | partial |
 | `0x15554` | `service_nearby_entity_auxiliary_behavior` | Scans the ten entity records with active/non-excluded filtering, applies the normal `0x280` radius/`0x500` exclusive window or the type-`0x0E` `0x140`/`0x280` window, clamps lower bounds at zero, and calls the existing `0x1562E` auxiliary service for each match. | `ghidra_conversion::service_nearby_entity_auxiliary_behavior()` | partial |
