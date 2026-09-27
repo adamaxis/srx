@@ -751,6 +751,9 @@ wrapped sign-bit test, not an unsigned `max`. The menu timing conversions at
 `0x56434` and `0x56482` now have explicit wrapped `BGT`/`BPL` regression cases.
 The service timer's `SUB.B`/`BGT` path preserves the original destination byte
 for its overflow flag, while the variant timer's `BPL` remains sign-bit based.
+The adjacent HUD meter at `0x56506` now also preserves its `SUB.B`/`BLE`
+action-cost gate, and `0x56632` models the source word `7-D4`/`BGT` percentage
+selection explicitly.
 These changes are conversion/audit work only and do not alter the native port.
 
 The adjacent world-effect selector at `0x56116`/`0x561E8` is now source-audited

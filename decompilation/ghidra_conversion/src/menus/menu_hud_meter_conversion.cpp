@@ -24,6 +24,30 @@ bool source_cmp_word_bpl(const std::uint16_t minuend,
     return (difference & 0x8000U) == 0U;
 }
 
+bool source_subtract_byte_is_nonpositive(const std::uint8_t minuend,
+                                         const std::uint8_t subtrahend,
+                                         const std::uint8_t result) {
+    // 0x56564 is SUB.B followed by BLE. Preserve the source N/V/Z flags
+    // instead of treating the wrapped byte as an ordinary signed integer.
+    const bool negative = (result & 0x80U) != 0U;
+    const bool zero = result == 0U;
+    const bool overflow =
+        (((minuend ^ subtrahend) & 0x80U) != 0U) &&
+        (((minuend ^ result) & 0x80U) != 0U);
+    return zero || (negative != overflow);
+}
+
+bool source_word_subtract_seven_is_positive(const std::uint16_t difficulty) {
+    // 0x5663E forms D0=7-D4 and uses BGT before multiplying by twenty.
+    const auto result = static_cast<std::uint16_t>(7U - difficulty);
+    const bool negative = (result & 0x8000U) != 0U;
+    const bool zero = result == 0U;
+    const bool overflow =
+        (((7U ^ difficulty) & 0x8000U) != 0U) &&
+        (((7U ^ result) & 0x8000U) != 0U);
+    return !zero && (negative == overflow);
+}
+
 std::uint16_t clamp_display_level(std::uint16_t level) {
     if (static_cast<std::int16_t>(level) <= 0) {
         return 1U;
@@ -39,10 +63,11 @@ std::uint16_t calculate_menu_action_success_percentage(
     if (static_cast<std::int16_t>(minimum_check) < 0) {
         difficulty = 2U;
     }
-    if (difficulty >= 7U) {
+    if (!source_word_subtract_seven_is_positive(difficulty)) {
         return 10U;
     }
-    return static_cast<std::uint16_t>((7U - difficulty) * 20U);
+    return static_cast<std::uint16_t>(
+        static_cast<std::uint16_t>(7U - difficulty) * 20U);
 }
 
 std::uint16_t scale_menu_hud_value_by_difficulty(
@@ -110,7 +135,8 @@ MenuHudMeterResult calculate_menu_hud_row_meter(
     const auto cost_minus_one = static_cast<std::uint8_t>(
         inputs.runner_action_cost - 1U);
     const auto cost_check = subtract_low_byte(level, cost_minus_one);
-    if (static_cast<std::int8_t>(cost_check) <= 0) {
+    if (source_subtract_byte_is_nonpositive(
+            static_cast<std::uint8_t>(level), cost_minus_one, cost_check)) {
         return {0U, MenuHudMeterAction::level_calculated};
     }
 

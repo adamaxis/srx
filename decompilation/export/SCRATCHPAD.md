@@ -379,8 +379,8 @@ meter value rather than a generic introductory helper:
 
 | ROM entry | Recovered behavior | Typed conversion |
 | --- | --- | --- |
-| `0x56632` | Scales D6 by the source difficulty table after clamping D4 to 2: 100% at difficulty 2, then 80/60/40/20%, and 10% for 7 or higher. | `scale_menu_hud_value_by_difficulty()` |
-| `0x56506` | Status 4 reads row availability and scales it from the profile's special status bucket; statuses 5--7 return row availability directly; all other statuses combine action delay, the row availability value, the current record's cost/timing, the phase modifier, and the status-adjusted scale before clamping the display level. | `calculate_menu_hud_row_meter()` |
+| `0x56632` | Scales D6 by the source difficulty table after clamping D4 to 2: 100% at difficulty 2, then 80/60/40/20%, and 10% when the source word `7-D4` is not positive under `BGT`. | `scale_menu_hud_value_by_difficulty()` |
+| `0x56506` | Status 4 reads row availability and scales it from the profile's special status bucket; statuses 5--7 return row availability directly; all other statuses combine action delay, the row availability value, the current record's cost/timing, the phase modifier, and the status-adjusted scale before clamping the display level. The full path exits on the source overflow-aware `SUB.B`/`BLE` cost gate. | `calculate_menu_hud_row_meter()` |
 
 The conversion exposes `0x19C5C` row-availability reads,
 `0x19BF6` status-adjusted scale selection, and `0x55F44` action-delay
@@ -1385,9 +1385,11 @@ reduction for a signed-byte `BLE` result, and otherwise performs wrapped byte
 subtraction before the depletion/reset follow-up. No source-shaped runtime
 memory access was added.
 
-The meter caller at `0x56506` did expose a conversion mismatch. Its
+The meter caller at `0x56506` did expose conversion mismatches. Its
 `CMP.W D6,D7` followed by `BPL` tests the sign bit of wrapped `D7-D6`; it is
 not an unsigned maximum. `calculate_menu_hud_row_meter()` now preserves that
-predicate, with a high-bit availability regression case. The service/variant
+predicate, with a high-bit availability regression case, and its action-cost
+`SUB.B`/`BLE` gate now preserves overflow. `0x56632` also retains the source
+word `7-D4`/`BGT` percentage predicate. The service/variant
 timers at `0x56434`/`0x56482` also have explicit wrapped-result tests: their
 `BGT`/`BPL` behavior is retained for a zero byte minus `0xFF`.

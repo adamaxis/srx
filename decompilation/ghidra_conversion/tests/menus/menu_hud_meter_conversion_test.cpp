@@ -130,6 +130,37 @@ int main() {
         return 9;
     }
 
+    // The full path's action-cost gate is SUB.B/BLE. 0x80 - 0x01 has a
+    // wrapped 0x7f result with V set, so the ROM exits with a zero meter
+    // instead of continuing into the difficulty scaling path.
+    MenuHudMeterInputs cost_overflow{};
+    cost_overflow.row_status = 3;
+    cost_overflow.runner_action_cost = 2U;
+    cost_overflow.runner_timing_difficulty = 2U;
+    MenuHudMeterCallbacks cost_callbacks{};
+    cost_callbacks.calculate_action_delay = [] {
+        return std::optional<std::uint16_t>(0U);
+    };
+    cost_callbacks.read_row_availability_value = [] {
+        return std::optional<std::uint16_t>(0x80U);
+    };
+    cost_callbacks.select_status_adjusted_scale = [] {
+        return std::optional<std::uint16_t>(0U);
+    };
+    const auto cost_overflow_result = calculate_menu_hud_row_meter(
+        cost_overflow, cost_callbacks);
+    if (cost_overflow_result.action != MenuHudMeterAction::level_calculated ||
+        cost_overflow_result.level != 0U) {
+        return 10;
+    }
+
+    // Keep the uncommon word-BGT behavior explicit even though normal source
+    // difficulties stay in the small 2..7+ range.
+    if (calculate_menu_action_success_percentage(0x8000U) !=
+        static_cast<std::uint16_t>((7U - 0x8000U) * 20U)) {
+        return 11;
+    }
+
     MenuHudMeterCallbacks unavailable{};
     if (calculate_menu_hud_row_meter(direct, unavailable).action !=
         MenuHudMeterAction::dependency_unavailable) {

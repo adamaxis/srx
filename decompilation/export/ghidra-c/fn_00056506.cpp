@@ -12,6 +12,8 @@
 // Direct disassembly distinguishes status 4, statuses 5..7, and the full
 // delay/difficulty path. The typed host conversion is in
 // ghidra_conversion/menu_hud_meter_conversion.
+// The full path's cost gate is SUB.B/BLE; its availability selection is the
+// preceding CMP.W/BPL sign-bit test, not an unsigned maximum.
 
 void calculate_menu_hud_row_meter(void)
 

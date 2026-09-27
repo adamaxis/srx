@@ -9,6 +9,8 @@
 // Direct disassembly clamps D4.w to the source minimum 2, multiplies D6.w by
 // the resulting 100/80/60/40/20/10 percentage, and divides by 100. The typed
 // host conversion is in ghidra_conversion/menu_hud_meter_conversion.
+// The percentage branch is the source word 7-D4 followed by BGT, including
+// its wrapped condition flags for out-of-range host inputs.
 int scale_menu_hud_value_by_difficulty(void)
 
 {
