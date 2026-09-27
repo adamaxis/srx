@@ -190,6 +190,12 @@ its invalid-category branch writes `FFF112 = -1` and returns without touching
 the negative/armed `FFF0B3` availability marker. The typed conversion and
 tests now preserve that marker on the early exit.
 
+The neighboring `0x5766A` resource-purchase threshold also required a flag-
+semantic correction. Category 3 uses `CMP.B #3,(A0)` followed by `BMI`, so the
+host predicate must inspect the wrapped subtraction's N bit. A progress byte
+of `0x80` yields `0x7D` and follows the source category-limit path; treating
+the byte as a signed C++ value incorrectly attempted a purchase.
+
 The generated Ghidra C remains an evidence snapshot and still omits meaningful
 logic for some of these entries, including `0x3602` and `0x55828`; the typed
 conversion is accepted only where the ROM instruction trace and focused test

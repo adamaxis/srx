@@ -87,6 +87,21 @@ int main() {
         return 5;
     }
 
+    FieldResourcePurchaseState category_three_wrapped{};
+    category_three_wrapped.category = 3U;
+    category_three_wrapped.progress_category_3 = 0x80U;
+    category_three_wrapped.funds = 100U;
+    // The ROM's CMP.B #3/BMI sees 0x80 - 3 as 0x7D, so the high-bit
+    // progress value follows the category-limit path rather than purchase.
+    if (apply_field_resource_purchase(
+            category_three_wrapped, costs, callbacks) !=
+            FieldResourcePurchaseResult::category_limit ||
+        category_three_wrapped.funds != 100U || events.size() != 20U ||
+        events[17] != "grid" || events[18] != "limit" ||
+        events[19] != "wait") {
+        return 6;
+    }
+
     FieldResourcePurchaseState cancelled{};
     cancelled.requested_quantity = 1U;
     cancelled.funds = 100U;
@@ -96,15 +111,15 @@ int main() {
             FieldResourcePurchaseResult::cancelled ||
         cancelled.preview_cost != 25U || cancelled.funds != 100U ||
         cancelled.progress_category_0 != 0U) {
-        return 6;
+        return 7;
     }
 
     FieldResourcePurchaseState invalid{};
     invalid.category = 4U;
     if (apply_field_resource_purchase(invalid, costs, callbacks) !=
             FieldResourcePurchaseResult::invalid_category ||
-        invalid.service_result != -1 || events.size() != 17U) {
-        return 7;
+        invalid.service_result != -1 || events.size() != 20U) {
+        return 8;
     }
 
     FieldResourcePurchaseState wrapped_category_two{};
@@ -117,10 +132,10 @@ int main() {
     if (apply_field_resource_purchase(
             wrapped_category_two, costs, callbacks) !=
             FieldResourcePurchaseResult::category_satisfied ||
-        wrapped_category_two.funds != 100U || events.size() != 20U ||
-        events[17] != "grid" || events[18] != "satisfied" ||
-        events[19] != "wait") {
-        return 8;
+        wrapped_category_two.funds != 100U || events.size() != 23U ||
+        events[20] != "grid" || events[21] != "satisfied" ||
+        events[22] != "wait") {
+        return 9;
     }
 
     FieldResourcePurchaseState malformed_high_bit{};
@@ -128,8 +143,8 @@ int main() {
     if (apply_field_resource_purchase(
             malformed_high_bit, costs, callbacks) !=
             FieldResourcePurchaseResult::invalid_category ||
-        malformed_high_bit.service_result != -1 || events.size() != 20U) {
-        return 9;
+        malformed_high_bit.service_result != -1 || events.size() != 23U) {
+        return 10;
     }
 
     return 0;

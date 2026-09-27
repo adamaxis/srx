@@ -2048,6 +2048,12 @@ category branch writes only the service-result marker (`FFF112 = -1`) and
 returns; it does not clear the armed availability marker (`FFF0B3`). The host
 conversion and test now preserve that distinction.
 
+The adjacent `0x5766A` resource-purchase threshold was then checked against
+the raw flags. Category 3 is tested by `CMP.B #3` followed by `BMI`, so this is
+an N-only wrapped-byte predicate rather than `int8_t(progress) >= 3`. The
+high-bit progress case `0x80 - 3 = 0x7D` reaches the source limit message;
+the typed conversion and regression test now preserve that behavior.
+
 The title setup module now also owns `0x12F6`: its DBF `0x10` loop is exposed
 as `advance_title_palette_fade`, with the source ordering of frame wait,
 palette-step, and dirty-mark callbacks tested across all 17 passes.

@@ -24,7 +24,10 @@ bool category_is_satisfied(const FieldResourcePurchaseState& state) {
                    static_cast<std::uint16_t>(state.requested_quantity) *
                    0x0AU));
     case 3:
-        return static_cast<std::int8_t>(state.progress_category_3) >= 3;
+        // 0x576CE uses CMP.B #3 followed by BMI. BMI observes only the
+        // wrapped result's N bit; it is not a host signed-byte comparison.
+        return (static_cast<std::uint8_t>(state.progress_category_3 - 3U) &
+                0x80U) == 0U;
     default:
         return false;
     }

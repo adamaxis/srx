@@ -1032,6 +1032,10 @@ state in `field_resource_purchase_conversion.*`:
   `FFFBC2`, and `FFFBC4` against requested quantity at `FFFBBE` scaled by
   `0x28`, `0x50`, and `0x0A`. Category 3 has a fixed satisfied/limit boundary
   at three units in `FFFBC5`.
+  The category-3 test is the source `CMP.B #3` followed by `BMI`: it observes
+  the wrapped subtraction's N flag, not a host signed-byte comparison. Thus
+  progress `0x80` produces `0x7D` after subtracting three and takes the
+  category-limit path.
 * A satisfied category takes the category-specific message path, waits, and
   does not charge the player. Category 3 uses a distinct limit message.
 * An unsatisfied category reads its word cost from `0x1AC8E0[cursor]`, rejects
@@ -1081,7 +1085,9 @@ host comparison. Valid categories still map to the same typed slots, while a
 malformed high-bit category is rejected at the host boundary instead of being
 used as an unchecked array index. Category 2's `0x5766A` threshold also keeps
 the ROM's low-byte wrap (`requested_quantity * 10` is compared as a signed
-byte), which matters at the 0x19/0x1A boundary.
+byte), which matters at the 0x19/0x1A boundary. The category-3 threshold is a
+separate N-only `CMP.B #3/BMI` predicate; its `0x80` progress case is therefore
+source-satisfied even though a normal signed C++ comparison would not be.
 
 ## Call annotation policy
 
