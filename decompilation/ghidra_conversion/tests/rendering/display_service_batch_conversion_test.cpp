@@ -37,20 +37,63 @@ int main() {
     }
 
     FieldSceneBuffers scene{};
-    scene.recenter_pending = true;
-    std::array<std::uint16_t, 48> normal{};
-    std::array<std::uint16_t, 48> alternate{};
-    normal[3] = 12;
-    alternate[3] = 34;
+    FieldSceneBufferInput scene_input{};
+    scene_input.normal_profile[0] = 0x0100;
+    scene_input.normal_profile[1] = 0x0200;
+    scene_input.normal_profile[3] = 12;
+    scene_input.alternate_profile[0] = 0x0300;
+    scene_input.alternate_profile[1] = 0x0400;
+    scene_input.alternate_profile[3] = 34;
+    scene_input.scene_reference = 0x2C;
+    scene_input.terrain_stream_token = 0x12345678;
+    scene_input.pending_position_available = true;
+    scene_input.pending_position = {0x0B00, 0x0800};
+    scene_input.layer_a.assign(kFieldTerrainLayerWordCount, 1U);
+    scene_input.layer_b.assign(kFieldTerrainLayerWordCount, 3U);
+    scene_input.layer_a[1] = 2U;
+    scene_input.layer_b[1] = 4U;
     int initialized = 0;
-    prepare_field_scene_buffers(
-        scene, normal, alternate, 0x1234, 0x0B00, 0x0800, {1, 2}, {3, 4},
-        {[&] { ++initialized; }, [] { return true; }});
+    prepare_field_scene_buffers(scene, scene_input,
+                                {[&] { ++initialized; }, [] { return true; }});
     if (!scene.initialized || initialized != 1 || scene.scene_mode != 1 ||
-        scene.profile[3] != 34 || scene.camera_x != 0x100 ||
-        scene.camera_y != 0x100 || scene.layer_a != std::vector<std::uint16_t>{1, 2} ||
-        scene.layer_b != std::vector<std::uint16_t>{3, 4}) {
+        scene.field_resource_mode != 0x2C || scene.profile[3] != 34 ||
+        scene.camera_x != 0x100 || scene.camera_y != 0x100 ||
+        scene.terrain_stream_token != 0x12345678 ||
+        scene.pending_field_targets[2].x != 0x0B00 ||
+        scene.pending_field_targets[2].y != 0x0800 ||
+        !scene.pending_position_consumed || !scene.pending_position_cleared ||
+        scene.layer_a.size() != kFieldTerrainLayerWordCount ||
+        scene.layer_b.size() != kFieldTerrainLayerWordCount ||
+        scene.layer_a[0] != 1U || scene.layer_a[1] != 2U ||
+        scene.layer_b[0] != 3U || scene.layer_b[1] != 4U) {
         return 4;
+    }
+
+    FieldSceneBuffers normal_scene{};
+    FieldSceneBufferInput normal_input{};
+    normal_input.normal_profile[0] = 0x1200;
+    normal_input.normal_profile[1] = 0x2300;
+    normal_input.scene_reference = 2;
+    normal_input.pending_position_available = true;
+    normal_input.pending_position_in_use = true;
+    normal_input.layer_a.assign(kFieldTerrainLayerWordCount, 0U);
+    normal_input.layer_b.assign(kFieldTerrainLayerWordCount, 0U);
+    if (!prepare_field_scene_buffers(normal_scene, normal_input,
+                                     {{}, [] { return false; }})) {
+        return 5;
+    }
+    if (normal_scene.scene_mode != 0U ||
+        normal_scene.field_resource_mode != 2U ||
+        normal_scene.camera_x != 0x1200 || normal_scene.camera_y != 0x2300 ||
+        normal_scene.pending_position_consumed ||
+        !normal_scene.pending_position_cleared) {
+        return 6;
+    }
+
+    FieldSceneBuffers incomplete_scene{};
+    if (prepare_field_scene_buffers(incomplete_scene, {}, {}) ||
+        incomplete_scene.initialized) {
+        return 7;
     }
 
     std::vector<std::uint16_t> words;

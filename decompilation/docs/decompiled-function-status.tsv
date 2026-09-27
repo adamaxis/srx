@@ -8,7 +8,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x0BD2	frame/vblank wait	NativePortShell::update	shadowrun_boot_sequence	partial		Typed frame counter and next-vblank boundary conversion; source equality spin removed from host model
 0x0C24	finite vblank wait	ghidra_conversion::wait_for_vblank_frames	shadowrun_boot_sequence	partial		Typed DBF count-plus-one vblank wait
 0x0D94	controller event wait	ghidra_conversion::wait_for_controller_event	shadowrun_boot_sequence	partial		Typed vblank/latch/sample loop with source high-byte event gate and final sample
-0x03032	scene profile predicate	ghidra_conversion::scene_uses_alternate_profile	shadowrun_native_port	partial		Exact accepted scene-ID ranges 6..9 and 0x2C..0x31 converted as a typed predicate
+0x03032	scene profile predicate	ghidra_conversion::scene_uses_alternate_profile	shadowrun_ghidra_display_service_batch	partial		Exact accepted scene-ID ranges 6..9 and 0x2C..0x31 select the alternate field profile
 0x02A32	field mode profile A	ghidra_conversion::initialize_field_mode	shadowrun_native_port	partial		Shared profile selection, entry-service, seven-byte transient reset, and scene-state initialization converted
 0x02A44	field mode profile B	ghidra_conversion::initialize_field_mode	shadowrun_native_port	partial		Shared profile selection, entry-service, seven-byte transient reset, and scene-state initialization converted
 0x02A94	mode 9 entry	ghidra_conversion::initialize_mode_nine	shadowrun_native_port	partial		Typed mode-9 entry service, pending-resource publication, marker reset, and mode flags converted
@@ -53,7 +53,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x16E30	scene state snapshot	ghidra_conversion::snapshot_scene_state	shadowrun_native_port	partial		Typed 0x31-word snapshot followed by pending-record and effect-slot reset boundaries
 0x16EA0	terrain work-map fill	ghidra_conversion::fill_terrain_work_region	shadowrun_ghidra_terrain_workflow	partial		Typed bounded rectangular fill with source value 2 and host bounds
 0x16FA8	terrain work-map copy	ghidra_conversion::copy_terrain_work_region	shadowrun_ghidra_terrain_workflow	partial		Typed bounded rectangular source-to-work-map copy using the source row stride
-0x0313A	terrain layer copies	ghidra_conversion::copy_terrain_layer	shadowrun_native_port	partial		Bounded copy of each 0xE10-word decoded terrain layer into its work buffer
+0x0313A	terrain layer copies	ghidra_conversion::prepare_field_scene_buffers	shadowrun_ghidra_display_service_batch	partial		Copies both fixed 0xE10-word decoded terrain layers into typed host vectors as part of the 0x03074/0x03084 field-scene preparation path
 0x2FF0	ready entity scan	ghidra_conversion::find_ready_entity_slot	shadowrun_native_port	partial		Typed thirteen-slot active/readiness scan replacing the source STOP path
 0x176EA	menu footer render	ghidra_conversion::render_menu_footer	shadowrun_menu_system	partial		Typed source-block copy, dirty marker, metadata refresh, and footer draw order converted
 0x177A4	menu slot initialization	ghidra_conversion::initialize_menu_slot_states	shadowrun_menu_system	partial		Five menu slots initialized through one host loop with status 6 and timer 1
@@ -437,7 +437,8 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x1070	display service wrapper	ghidra_conversion::service_display_frame_wrapper	shadowrun_ghidra_display_service_batch	partial		Typed wrapper over the display dirty-bit service
 0x1080	alternating word-pair wrapper	ghidra_conversion::write_alternating_word_pair_wrapper	shadowrun_ghidra_display_service_batch	partial		Explicit host transfer boundary
 0x1872	display frame service	ghidra_conversion::service_display_frame	shadowrun_ghidra_display_service_batch	partial		Typed dirty-bit, viewport, and queued-transfer order
-0x3074	field scene buffer preparation	ghidra_conversion::prepare_field_scene_buffers	shadowrun_ghidra_display_service_batch	partial		Typed profile selection, camera recenter, and layer snapshots
+0x3074	field scene buffer preparation	ghidra_conversion::prepare_field_scene_buffers	shadowrun_ghidra_display_service_batch	partial		New-scene preparation boundary before 0x03084; typed host input replaces the source runtime pointer handoff
+0x03084	field scene resource loop	ghidra_conversion::prepare_field_scene_buffers	shadowrun_ghidra_display_service_batch	partial		Publishes the low-byte field resource mode, selects one 48-word profile, consumes FFFC0E/FFE10E pending position state, copies its pair to three typed targets, saturates camera recentering, and clears the pending marker
 0x3602	HUD glyph attribute selector	ghidra_conversion::select_hud_glyph_attribute_flags	shadowrun_ghidra_menu_services_hud	partial		Typed raw-byte CMP.B sign-bit branches for action/class/equipped-slot state return the source 0x2000 or 0x6000 glyph attribute word; transfer integration remains to trace
 0x3648	HUD panel transfer	ghidra_conversion::write_hud_panel_transfer	shadowrun_ghidra_display_service_batch	partial		Typed incrementing word blocks behind transfer callbacks
 0x3D18	field tile row renderer	ghidra_conversion::render_field_tile_rows	shadowrun_ghidra_display_service_batch	partial		Typed thirty-one-column traversal and fold boundary

@@ -63,34 +63,45 @@ void write_alternating_word_pair_wrapper(
     }
 }
 
-void prepare_field_scene_buffers(
+bool prepare_field_scene_buffers(
     FieldSceneBuffers& state,
-    const std::array<std::uint16_t, 48>& normal_profile,
-    const std::array<std::uint16_t, 48>& alternate_profile,
-    const std::uint16_t scene_reference,
-    const std::int32_t camera_x,
-    const std::int32_t camera_y,
-    const std::vector<std::uint16_t>& layer_a,
-    const std::vector<std::uint16_t>& layer_b,
+    const FieldSceneBufferInput& input,
     const FieldScenePreparationCallbacks& callbacks) {
+    if (input.layer_a.size() < kFieldTerrainLayerWordCount ||
+        input.layer_b.size() < kFieldTerrainLayerWordCount) {
+        state = FieldSceneBuffers{};
+        return false;
+    }
     if (!state.initialized && callbacks.initialize_scene_profile) {
         callbacks.initialize_scene_profile();
     }
     const bool alternate = callbacks.scene_uses_alternate_profile &&
                            callbacks.scene_uses_alternate_profile();
     state.scene_mode = alternate ? 1U : 0U;
-    state.profile = alternate ? alternate_profile : normal_profile;
-    state.scene_reference = scene_reference;
-    state.camera_x = camera_x;
-    state.camera_y = camera_y;
-    if (state.recenter_pending) {
-        state.camera_x = std::max<std::int32_t>(0, state.camera_x - 0x0A00);
-        state.camera_y = std::max<std::int32_t>(0, state.camera_y - 0x0700);
+    state.field_resource_mode = static_cast<std::uint8_t>(input.scene_reference);
+    state.scene_reference = input.scene_reference;
+    state.profile = alternate ? input.alternate_profile : input.normal_profile;
+    state.camera_x = state.profile[0];
+    state.camera_y = state.profile[1];
+    state.terrain_stream_token = input.terrain_stream_token;
+    state.pending_position_consumed = false;
+    state.pending_position_cleared = false;
+    state.pending_field_targets = {};
+    if (input.pending_position_available && !input.pending_position_in_use) {
+        state.pending_field_targets.fill(input.pending_position);
+        state.camera_x = std::max<std::int32_t>(
+            0, static_cast<std::int32_t>(input.pending_position.x) - 0x0A00);
+        state.camera_y = std::max<std::int32_t>(
+            0, static_cast<std::int32_t>(input.pending_position.y) - 0x0700);
+        state.pending_position_consumed = true;
     }
-    state.recenter_pending = false;
-    state.layer_a = layer_a;
-    state.layer_b = layer_b;
+    state.pending_position_cleared = true;
+    state.layer_a.assign(input.layer_a.begin(),
+                         input.layer_a.begin() + kFieldTerrainLayerWordCount);
+    state.layer_b.assign(input.layer_b.begin(),
+                         input.layer_b.begin() + kFieldTerrainLayerWordCount);
     state.initialized = true;
+    return true;
 }
 
 void write_hud_panel_transfer(

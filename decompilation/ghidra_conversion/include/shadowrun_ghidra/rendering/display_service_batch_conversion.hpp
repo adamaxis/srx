@@ -1,5 +1,7 @@
 #pragma once
 
+#include "shadowrun_ghidra/field/scene_profile_conversion.hpp"
+
 #include <array>
 #include <cstdint>
 #include <functional>
@@ -7,6 +9,8 @@
 #include <vector>
 
 namespace shadowrun::ghidra_conversion {
+
+constexpr std::size_t kFieldTerrainLayerWordCount = 0xE10U;
 
 struct DisplayServiceCallbacks {
     std::function<void()> service_pending_upload;
@@ -47,14 +51,33 @@ void write_alternating_word_pair_wrapper(
 
 struct FieldSceneBuffers {
     bool initialized = false;
-    std::uint8_t scene_mode = 0;
-    std::uint16_t scene_reference = 0;
+    std::uint8_t scene_mode = 0; // selected profile: 0 normal, 1 alternate
+    std::uint8_t field_resource_mode = 0; // ROM FFFBF8: low byte of scene id
+    std::uint16_t scene_reference = 0; // ROM FFDDC4 / 0x03032 input
     std::array<std::uint16_t, 48> profile{};
     std::int32_t camera_x = 0;
     std::int32_t camera_y = 0;
-    bool recenter_pending = false;
+    std::uint32_t terrain_stream_token = 0; // ROM FFDE22 <- FFDDDE
+    std::array<SceneRunnerPosition, 3> pending_field_targets{};
+    bool pending_position_consumed = false;
+    bool pending_position_cleared = false;
     std::vector<std::uint16_t> layer_a;
     std::vector<std::uint16_t> layer_b;
+};
+
+struct FieldSceneBufferInput {
+    std::array<std::uint16_t, 48> normal_profile{};
+    std::array<std::uint16_t, 48> alternate_profile{};
+    std::uint16_t scene_reference = 0;
+    std::uint32_t terrain_stream_token = 0;
+    std::vector<std::uint16_t> layer_a;
+    std::vector<std::uint16_t> layer_b;
+    // ROM FFFC0E: profile-specific pending-position selector.
+    bool pending_position_available = false;
+    // ROM FFE10E: a nonzero value suppresses the pending-position consume.
+    bool pending_position_in_use = false;
+    // ROM FFE10A/FFE10C: the source pair copied to all three target pairs.
+    SceneRunnerPosition pending_position{};
 };
 
 struct FieldScenePreparationCallbacks {
@@ -62,17 +85,14 @@ struct FieldScenePreparationCallbacks {
     std::function<bool()> scene_uses_alternate_profile;
 };
 
-// ROM 0x03074: select/copy the active scene profile, apply the pending camera
-// recenter, and snapshot both field layers into host-owned vectors.
-void prepare_field_scene_buffers(
+// ROM 0x03074 -> 0x03084 -> 0x0313A: prepare the field-scene runtime when the
+// source is entering a new scene, select/copy the active 48-word profile,
+// publish the low-byte field resource mode and terrain-stream token, consume
+// the pending position into three target pairs with the source's saturated
+// camera recenter, and copy both fixed 0xE10-word terrain layers.
+bool prepare_field_scene_buffers(
     FieldSceneBuffers& state,
-    const std::array<std::uint16_t, 48>& normal_profile,
-    const std::array<std::uint16_t, 48>& alternate_profile,
-    std::uint16_t scene_reference,
-    std::int32_t camera_x,
-    std::int32_t camera_y,
-    const std::vector<std::uint16_t>& layer_a,
-    const std::vector<std::uint16_t>& layer_b,
+    const FieldSceneBufferInput& input,
     const FieldScenePreparationCallbacks& callbacks);
 
 struct HudPanelTransferCallbacks {
