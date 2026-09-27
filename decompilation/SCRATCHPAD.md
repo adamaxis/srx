@@ -2038,6 +2038,11 @@ clear. The typed purchase path now checks that `0x570EC` gate before charging
 funds, and the fixture was corrected so it no longer claims the ROM accepts
 that purchase.
 
+The neighboring `0x571B2` equipment-upgrade resolver now also includes the
+source's fourth replacement-bit check. Categories 7 and above scan bits
+12-15, with bit 15 being the terminal unavailable state; the host resolver no
+longer treats a fully exhausted category as a fresh upgrade.
+
 The title setup module now also owns `0x12F6`: its DBF `0x10` loop is exposed
 as `advance_title_palette_fade`, with the source ordering of frame wait,
 palette-step, and dirty-mark callbacks tested across all 17 passes.

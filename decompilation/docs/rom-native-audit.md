@@ -180,6 +180,11 @@ the companion byte already has bit 0 set. The typed purchase conversion and
 focused test now preserve that rule; the earlier test fixture had incorrectly
 treated it as a valid purchase.
 
+The adjacent `0x571B2` equipment-upgrade scan likewise had a missing terminal
+bit. For categories 7 and above, the ROM scans bits 12 through 15; bit 15
+causes the exhausted/unavailable branch at `0x5723C` rather than resolving a
+new target. The typed resolver now scans all four source bits.
+
 The generated Ghidra C remains an evidence snapshot and still omits meaningful
 logic for some of these entries, including `0x3602` and `0x55828`; the typed
 conversion is accepted only where the ROM instruction trace and focused test

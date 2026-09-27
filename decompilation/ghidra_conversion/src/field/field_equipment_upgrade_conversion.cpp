@@ -50,12 +50,14 @@ std::optional<FieldEquipmentUpgradeTarget> resolve_target(
     if (base_bit >= 16U) {
         return std::nullopt;
     }
-    for (std::uint8_t offset = 0; offset < 3U; ++offset) {
+    // ROM 0x5722A scans bits 12..15. Bit 15 is the four-step terminal
+    // marker: it does not produce a target, it makes the category unavailable.
+    for (std::uint8_t offset = 0; offset < 4U; ++offset) {
         const auto previous_bit = static_cast<std::uint8_t>(12U + offset);
         if ((state.upgrade_flags & (1U << previous_bit)) == 0U) {
             continue;
         }
-        if (offset == 2U || base_bit + offset + 1U >= 16U) {
+        if (offset == 3U || base_bit + offset + 1U >= 16U) {
             return std::nullopt;
         }
         return FieldEquipmentUpgradeTarget{

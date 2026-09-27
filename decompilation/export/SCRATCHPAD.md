@@ -209,7 +209,8 @@ cleared, matching the writes performed by `0x1275C`.
 The menu-result-1 equipment branch at `0x571B2` is now
 `apply_field_equipment_upgrade()`. It resolves the selected category into a
 target upgrade bit, including the source scans for category 5 (bits 5..8),
-category 6 (bits 9..11), and later categories (bits 12..14). It rejects an
+category 6 (bits 9..11), and later categories (bits 12..15). Bit 15 is the
+terminal exhausted marker for the later-category scan, not a new target. It rejects an
 already-set target, applies the category-2/bit-3 conflict, subtracts the
 target's `0x1AA8A0` meter threshold from the runner's `+0x7E/+0x8E` two-digit
 meter, preserves the source signed-byte availability test, confirms and

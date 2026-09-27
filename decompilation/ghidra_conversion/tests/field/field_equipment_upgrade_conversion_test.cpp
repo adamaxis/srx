@@ -80,6 +80,20 @@ int main() {
         return 4;
     }
 
+    // Categories 7+ scan the fourth replacement bit as well. Bit 15 is the
+    // source terminal state at 0x5722A/0x5723C and cannot resolve a target.
+    state.selection_category = 7U;
+    state.upgrade_flags = static_cast<std::uint16_t>(1U << 15U);
+    state.meter_tens = 9U;
+    state.meter_ones = 9U;
+    state.funds = 500U;
+    if (!expect(apply_field_equipment_upgrade(table, state, callbacks) ==
+                    FieldEquipmentUpgradeResult::unavailable &&
+                unavailable == 3 && state.upgrade_flags ==
+                    static_cast<std::uint16_t>(1U << 15U))) {
+        return 10;
+    }
+
     state.selection_category = 0U;
     state.upgrade_flags = 0U;
     state.meter_tens = 0U;
@@ -87,7 +101,7 @@ int main() {
     state.funds = 500U;
     if (!expect(apply_field_equipment_upgrade(table, state, callbacks) ==
                     FieldEquipmentUpgradeResult::unavailable &&
-                unavailable == 3)) {
+                unavailable == 4)) {
         return 5;
     }
 
