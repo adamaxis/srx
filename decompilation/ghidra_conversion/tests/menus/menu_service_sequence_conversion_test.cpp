@@ -110,9 +110,10 @@ int main() {
     }
 
     order.clear();
-    reset_and_upload_menu_tile_block([&order] { order.push_back(5); },
-                                     [&order] { order.push_back(6); });
-    if (order != std::vector<int>{5, 6}) {
+    if (reset_and_upload_menu_tile_block(
+            [&order] { order.push_back(5); },
+            [&order] { order.push_back(6); }, -1) != -1 ||
+        order != std::vector<int>{5, 6}) {
         return 3;
     }
 
@@ -352,6 +353,132 @@ int main() {
         title_plan.destination_tile_base != 0xC520U ||
         title_plan.palette_flags != 0x6000U) {
         return 33;
+    }
+
+    CommandOverviewPrimaryPageState primary_page{1U, 0};
+    std::vector<int> primary_order;
+    advance_command_overview_primary_page(
+        primary_page,
+        {[&] {
+             primary_order.push_back(42);
+             return std::int8_t{1};
+         },
+         [&] { primary_order.push_back(43); },
+         [&] { primary_order.push_back(44); },
+         [&] { primary_order.push_back(45); }});
+    if (primary_page.page != 2U || primary_page.auxiliary_marker != -1 ||
+        primary_order != std::vector<int>{42, 43, 44}) {
+        return 34;
+    }
+
+    primary_page = {2U, 0};
+    primary_order.clear();
+    advance_command_overview_primary_page(
+        primary_page,
+        {[&] {
+             primary_order.push_back(46);
+             return std::int8_t{-1};
+         },
+         [&] { primary_order.push_back(47); },
+         [&] { primary_order.push_back(48); },
+         [&] { primary_order.push_back(49); }});
+    if (primary_page.page != 1U ||
+        primary_order != std::vector<int>{46, 49}) {
+        return 35;
+    }
+
+    primary_page = {6U, 0};
+    primary_order.clear();
+    advance_command_overview_primary_page(
+        primary_page,
+        {[&] {
+             primary_order.push_back(50);
+             return std::int8_t{1};
+         },
+         [&] { primary_order.push_back(51); },
+         [&] { primary_order.push_back(52); },
+         [&] { primary_order.push_back(53); }});
+    if (primary_page.page != 0U ||
+        primary_order != std::vector<int>{50, 53}) {
+        return 36;
+    }
+
+    CommandOverviewSecondaryPageState secondary_page{2U, 0U, 0, 0U};
+    std::vector<int> secondary_order;
+    advance_command_overview_secondary_page(
+        secondary_page,
+        {[&] {
+             secondary_order.push_back(54);
+             return std::int8_t{0};
+         },
+         [&] { secondary_order.push_back(55); },
+         [&] { secondary_order.push_back(56); },
+         [&] { secondary_order.push_back(57); }});
+    if (secondary_page.action_dialog_gate != 0 ||
+        secondary_order != std::vector<int>{54, 55, 56}) {
+        return 37;
+    }
+
+    secondary_page = {2U, 0U, -1, 0U};
+    secondary_order.clear();
+    advance_command_overview_secondary_page(
+        secondary_page,
+        {[&] {
+             secondary_order.push_back(58);
+             return std::int8_t{0};
+         },
+         [&] { secondary_order.push_back(59); },
+         [&] { secondary_order.push_back(60); },
+         [&] { secondary_order.push_back(61); }});
+    if (secondary_page.action_dialog_gate != 0 || !secondary_order.empty()) {
+        return 38;
+    }
+
+    secondary_page = {2U, 0U, 7, static_cast<std::uint16_t>(1U << 2U)};
+    secondary_order.clear();
+    advance_command_overview_secondary_page(
+        secondary_page,
+        {[&] {
+             secondary_order.push_back(62);
+             return std::int8_t{0};
+         },
+         [&] { secondary_order.push_back(63); },
+         [&] { secondary_order.push_back(64); },
+         [&] { secondary_order.push_back(65); }});
+    if (secondary_page.action_dialog_gate != 7 || !secondary_order.empty()) {
+        return 39;
+    }
+
+    secondary_page = {1U, 3U, 0, 0U};
+    secondary_order.clear();
+    advance_command_overview_secondary_page(
+        secondary_page,
+        {[&] {
+             secondary_order.push_back(66);
+             return std::int8_t{1};
+         },
+         [&] { secondary_order.push_back(67); },
+         [&] { secondary_order.push_back(68); },
+         [&] { secondary_order.push_back(69); }});
+    if (secondary_page.secondary_page != 3U ||
+        secondary_order != std::vector<int>{66, 69}) {
+        return 40;
+    }
+
+    secondary_page = {1U, 1U, 0, 0U};
+    secondary_order.clear();
+    advance_command_overview_secondary_page(
+        secondary_page,
+        {[&] {
+             secondary_order.push_back(70);
+             return std::int8_t{-2};
+         },
+         {},
+         {},
+         [&] { secondary_order.push_back(71); }});
+    if (secondary_page.secondary_page != 0U ||
+        secondary_order != std::vector<int>{70, 71}) {
+        return 41;
     }
 
     return 0;

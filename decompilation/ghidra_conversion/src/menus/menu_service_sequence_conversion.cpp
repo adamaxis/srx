@@ -181,14 +181,101 @@ std::uint16_t render_menu_tile_rows(
     return static_cast<std::uint16_t>(last_countdown >> 1U);
 }
 
-void reset_and_upload_menu_tile_block(
+std::int8_t reset_and_upload_menu_tile_block(
     const std::function<void()>& reset_upload_state,
-    const std::function<void()>& upload_tile_block) {
+    const std::function<void()>& upload_tile_block,
+    const std::int8_t preserved_d0) {
     if (reset_upload_state) {
         reset_upload_state();
     }
     if (upload_tile_block) {
         upload_tile_block();
+    }
+    return preserved_d0;
+}
+
+void advance_command_overview_primary_page(
+    CommandOverviewPrimaryPageState& state,
+    const CommandOverviewPrimaryPageCallbacks& callbacks) {
+    const auto delta = callbacks.reset_and_upload_menu_tile_block
+                           ? callbacks.reset_and_upload_menu_tile_block()
+                           : std::int8_t{0};
+    const auto updated_page = static_cast<std::uint8_t>(
+        static_cast<std::uint8_t>(state.page) +
+        static_cast<std::uint8_t>(delta));
+    state.page = updated_page;
+
+    // The source uses ADD.B followed by BPL, so the sign test is on the
+    // wrapped byte rather than on a widened host integer.
+    if ((state.page & 0x80U) != 0U) {
+        state.auxiliary_marker = -1;
+        state.page = 6U;
+    }
+    if (state.page == 7U) {
+        state.page = 0U;
+    }
+    if (state.page == 2U && delta >= 0) {
+        state.auxiliary_marker = -1;
+    }
+
+    if (state.page >= 2U) {
+        if (callbacks.reset_vdp_upload_state) {
+            callbacks.reset_vdp_upload_state();
+        }
+        if (callbacks.reset_menu_upload_cursor_and_upload) {
+            callbacks.reset_menu_upload_cursor_and_upload();
+        }
+        return;
+    }
+    if (callbacks.refresh_action_details) {
+        callbacks.refresh_action_details();
+    }
+}
+
+void advance_command_overview_secondary_page(
+    CommandOverviewSecondaryPageState& state,
+    const CommandOverviewSecondaryPageCallbacks& callbacks) {
+    if (state.primary_page >= 2U) {
+        const auto navigation_mask = static_cast<std::uint16_t>(
+            (1U << 1U) | (1U << 3U) | (1U << 2U));
+        if ((state.controller_events & navigation_mask) == 0U) {
+            if (state.action_dialog_gate >= 0) {
+                if (callbacks.reset_and_upload_menu_tile_block) {
+                    callbacks.reset_and_upload_menu_tile_block();
+                }
+                state.action_dialog_gate = -1;
+                if (callbacks.run_action_dialog) {
+                    callbacks.run_action_dialog();
+                }
+                state.action_dialog_gate = 0;
+                if (callbacks.reset_menu_upload_cursor_and_upload) {
+                    callbacks.reset_menu_upload_cursor_and_upload();
+                }
+                return;
+            }
+            state.action_dialog_gate = 0;
+        }
+        return;
+    }
+
+    const auto delta = callbacks.reset_and_upload_menu_tile_block
+                           ? callbacks.reset_and_upload_menu_tile_block()
+                           : std::int8_t{0};
+    state.secondary_page = static_cast<std::uint8_t>(
+        static_cast<std::uint8_t>(state.secondary_page) +
+        static_cast<std::uint8_t>(delta));
+    if ((state.secondary_page & 0x80U) != 0U) {
+        state.secondary_page = 0U;
+        if (callbacks.refresh_action_details) {
+            callbacks.refresh_action_details();
+        }
+        return;
+    }
+    if (state.secondary_page == 4U) {
+        state.secondary_page = 3U;
+    }
+    if (callbacks.refresh_action_details) {
+        callbacks.refresh_action_details();
     }
 }
 

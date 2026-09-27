@@ -202,9 +202,59 @@ std::uint16_t render_menu_tile_rows(const std::function<void()>& clear_row,
                                     const std::function<void()>& write_row);
 
 // ROM 0x11442: reset the upload cursor before submitting one menu tile block.
-void reset_and_upload_menu_tile_block(
+// D0 is preserved by the upload leaf and is returned to the caller; callers
+// use it as the signed page-navigation delta.
+std::int8_t reset_and_upload_menu_tile_block(
     const std::function<void()>& reset_upload_state,
-    const std::function<void()>& upload_tile_block);
+    const std::function<void()>& upload_tile_block,
+    std::int8_t preserved_d0 = 0);
+
+struct CommandOverviewPrimaryPageState {
+    // FFF0D0: command action-page selector, normally 0..6.
+    std::uint8_t page = 0;
+    // FFF112: source marker used when entering the command-overview panel.
+    std::int8_t auxiliary_marker = 0;
+};
+
+struct CommandOverviewPrimaryPageCallbacks {
+    // ROM 0x11442 returns the caller's signed D0 delta after uploading.
+    std::function<std::int8_t()> reset_and_upload_menu_tile_block;
+    std::function<void()> reset_vdp_upload_state;
+    std::function<void()> reset_menu_upload_cursor_and_upload;
+    std::function<void()> refresh_action_details;
+};
+
+// ROM 0x114A0: advance the command-overview action page, wrap the seven-page
+// selector, publish the panel marker at the page-2 boundary, and either
+// refresh the action details or reset the upload path for the larger panels.
+void advance_command_overview_primary_page(
+    CommandOverviewPrimaryPageState& state,
+    const CommandOverviewPrimaryPageCallbacks& callbacks);
+
+struct CommandOverviewSecondaryPageState {
+    // Shared FFF0D0 action-page selector and FFF0D1 item/detail page.
+    std::uint8_t primary_page = 0;
+    std::uint8_t secondary_page = 0;
+    // FFF115: one-shot action-dialog gate; negative means armed/consumed.
+    std::int8_t action_dialog_gate = 0;
+    // FFDD22: source controller edge mask used only by the dialog gate.
+    std::uint16_t controller_events = 0;
+};
+
+struct CommandOverviewSecondaryPageCallbacks {
+    std::function<std::int8_t()> reset_and_upload_menu_tile_block;
+    std::function<void()> run_action_dialog;
+    std::function<void()> reset_menu_upload_cursor_and_upload;
+    std::function<void()> refresh_action_details;
+};
+
+// ROM 0x11506: on action pages two and above, service the one-shot action
+// dialog when no navigation edge is present; on pages zero and one, advance
+// the secondary item page, clamp four back to three, and refresh details at
+// the source underflow/wrap boundary.
+void advance_command_overview_secondary_page(
+    CommandOverviewSecondaryPageState& state,
+    const CommandOverviewSecondaryPageCallbacks& callbacks);
 
 // ROM 0x11678: submit one menu grid asset.
 void write_menu_grid(const std::function<void()>& write_grid);

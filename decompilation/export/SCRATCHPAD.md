@@ -424,6 +424,19 @@ explicit data-extraction gap; no runtime ROM lookup or invented asset is
 being used to hide it. This also corrects the stale Ghidra-C interpretation
 that branches on the prior `FFEF14` bit instead of the action-code read.
 
+The adjacent page drivers are now traced as well. `0x11442` preserves the
+caller's signed `D0` through the upload leaf; that value is the navigation
+delta consumed by `0x114A0` and `0x11506`. The primary driver wraps the
+seven-page action selector, marks page two for the panel path, refreshes
+details only for pages zero and one, and otherwise resets the VDP/menu upload
+cursor. The secondary driver uses `FFDD22` bits 1, 3, and 2 to suppress the
+one-shot action dialog on navigation edges, arms/consumes `FFF115`, wraps a
+negative secondary-page result to zero, and maps page four back to page three.
+These are typed state transitions and callbacks in
+`ghidra_conversion::advance_command_overview_primary_page()` and
+`advance_command_overview_secondary_page()`; they do not emulate the VDP or
+read Genesis memory.
+
 ## Initial coherent C++ conversions
 
 `0x0330` and `0x0436` are no longer represented only as bus traces. The
