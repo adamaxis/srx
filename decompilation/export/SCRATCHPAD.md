@@ -112,6 +112,32 @@ as callbacks. The record vector and phase counters are host state, not a ROM
 addressed runtime structure; an unavailable selected record returns an
 explicit result instead of asserting or reading arbitrary memory.
 
+## Field-action resource selection: 0x575F8 / 0x57610 / 0x57628 / 0x5763C
+
+The four helpers immediately before the field-action purchase routines are a
+Matrix-capacity replacement calculation, not generic menu bookkeeping. The
+canonical disassembly resolves the register flow that the generated C omits:
+
+* `0x5763C` selects one of the two 0x30-byte tables at `0x1AB276`: mode 6
+  selects the first table and every other mode selects the second. `FFF0B8`
+  selects a 0x10-byte record, and `0x57628` adds `FFF0D0 * 2` to point at the
+  selected word.
+* `0x57610` reads the selected word's first byte into D7, loads `FFF0D6` into
+  D1, and calls `0x19538`. The resulting weight is therefore
+  `record_byte * record_byte * FFF0D6`; the byte is also retained as the
+  program index for the following storage lookup.
+* `0x575F8` first calls `0x19558` for available Matrix capacity, then keeps
+  the `0x57610` weight in D2, calls `0x1952C` for the selected program's
+  current usage, and computes `D6 = D6 + D1 - D2` with word arithmetic.
+
+The conversion is `field_action_resource_selection_conversion.*`. It models
+the two extracted resource tables as typed byte arrays, returns the selected
+`MenuResourceEntry` and source byte together, and returns `std::nullopt` when
+the supplied extracted table cannot satisfy the selected record. The outer
+result exposes the unadjusted Matrix capacity, selected-program usage, and
+wrapped adjusted capacity. It does not retain `A0`, ROM addresses, or a
+Genesis memory map.
+
 ## Field HUD row meter
 
 `0x1792E render_menu_hud_rows` calls `0x56506` once for each eligible row.
