@@ -41,6 +41,9 @@ struct RunnerRecordFields {
     // Source +0x9D. Magic force selection publishes the selected force here
     // before the target/effect path begins.
     std::uint8_t magic_force = 0;
+    // Source +0x9F. Action-result routines publish thresholded successes or
+    // -1 here after the compact-runner timing gate.
+    std::int8_t action_result = -1;
     std::int8_t equipped_inventory_slot = -1;
     std::uint8_t equipped_item_code = 0;
     std::uint8_t posture = 0;

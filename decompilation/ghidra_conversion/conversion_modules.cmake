@@ -38,6 +38,7 @@ file(GLOB SHADOWRUN_MODULE_SPRITE_PIPELINE CONFIGURE_DEPENDS
 
 file(GLOB SHADOWRUN_MODULE_RUNNER_RECORDS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/session/runner_action_delay_conversion.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/session/runner_action_result_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/session/runner_record_access_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/session/runner_record_operations_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/session/runner_status_conversion.cpp"
