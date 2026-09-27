@@ -220,8 +220,11 @@ Matrix program conversion because the field menu is mutating the Matrix
 program availability model, not a generic resource counter.
 
 The neutral-result action branch at `0x56E5A` is now represented by
-`purchase_field_action_progression()`, including the quote setup performed
-by `0x57D7E`. The three source offer families are explicit typed tables:
+`purchase_field_action_progression()`. Its preceding screen-preview routine
+`0x57D7E` is represented separately by
+`prepare_field_action_progression_quote()`, which publishes the typed pending
+record slot, action code, and discounted cost consumed by the purchase branch.
+The three source offer families are explicit typed tables:
 `0x1AAEB0` for saved selections two and above, `0x1AAEF8` for saved
 selection one, and the three menu-mode blocks at `0x1AAF40` for saved
 selection zero. Each four-byte offer contributes its signed action marker and
@@ -229,15 +232,18 @@ base cost; the source byte at offer `+1` is retained as metadata because this
 purchase path does not consume it.
 
 The conversion searches a typed runner progression ledger instead of carrying
-the `FFF0C2` pointer. An existing `(action_code, level)` record pays
-`(level + 1) * base_cost`, subject to the signed `+0x7F` runner limit; a new
-record pays the offer base cost. The source's exact level-six early return,
-signed high-bit offer disable, discounted cost publication, funds deduction,
-record-count increment for a zero-level slot, and level increment are all
-preserved. The successful `0x56E5A` purchase has no second confirmation
-prompt; insufficient funds writes grid variant B, renders its message, and
-waits. Status, disabled-offer, and invalid-table boundaries are typed
-outcomes/callbacks rather than generic memory services.
+the `FFF0C2` pointer; its leading word is the source's last DBF-scanned slot
+index, so each scan covers `count + 1` records. An existing `(action_code,
+level)` record pays `(level + 1) * base_cost`, subject to the signed `+0x7F`
+runner limit; a new record pays the offer base cost. The preview preserves the
+source heading, action-name, level/cost, limit-message, and glyph-transfer
+order. The signed high-bit offer disable, discounted cost publication, and
+the `0x56E5A` level-six early return, funds deduction, record-count increment
+for a zero-level slot, and level increment are all preserved. The successful
+purchase has no second confirmation prompt; insufficient funds writes grid
+variant B, renders its message, and waits. Status, disabled-offer, and
+missing-record-slot boundaries are typed outcomes/callbacks rather than
+generic memory services.
 
 The action-detail text helper at `0x5878E` is now
 `select_field_action_detail_text()`. Its source ranges are explicit: codes

@@ -37,8 +37,10 @@ struct FieldActionProgressionRecord {
 };
 
 // FFF9FA's leading word is kept separately because the ROM increments it
-// when a new two-byte action record is published.  The vector is the typed
-// host view of the records that follow that word; it is not a ROM pointer.
+// when a new two-byte action record is published.  It is the last index used
+// by the source DBF scan, so the scan covers count + 1 slots.  The vector is
+// the typed host view of the records that follow that word; it is not a ROM
+// pointer.
 struct FieldActionProgressionLedger {
     std::uint16_t source_record_count_word = 0;
     std::vector<FieldActionProgressionRecord> records;
@@ -53,6 +55,10 @@ struct FieldActionProgressionPurchaseState {
     std::uint32_t funds = 0; // FFFBFE
     std::uint8_t selected_action_code = 0; // FFF0AE
     std::uint32_t pending_cost = 0; // FFF0BE
+    // Typed host equivalent of FFF0C2.  The source keeps a pointer to the
+    // selected two-byte progression record between 0x57D7E and 0x56E5A;
+    // the native conversion keeps its record-slot index instead.
+    std::optional<std::size_t> pending_record_index;
     std::int8_t service_result = 0; // FFF112
     FieldActionCostContext cost_context{};
     FieldActionProgressionLedger ledger{};
@@ -67,9 +73,10 @@ struct FieldActionProgressionQuote {
 
 enum class FieldActionProgressionQuoteResult {
     quoted,
+    runner_unavailable,
     invalid_offer_selection,
+    missing_record_slot,
     offer_unavailable,
-    progression_maxed,
     progression_limit,
 };
 
@@ -79,14 +86,35 @@ struct FieldActionProgressionQuoteOutcome {
     std::optional<FieldActionProgressionQuote> quote;
 };
 
+enum class FieldActionProgressionGlyphVariant {
+    low_action,
+    high_action,
+};
+
+struct FieldActionProgressionQuoteCallbacks {
+    // 0x57D7E's source-order presentation boundaries.  These callbacks
+    // describe what the native renderer should present; they do not decode
+    // ROM text or emulate the VDP.
+    std::function<void()> render_runner_unavailable_title;
+    std::function<void()> render_offer_heading;
+    std::function<void(std::uint8_t)> render_action_name;
+    std::function<void()> render_progression_limit;
+    std::function<void()> render_cost_heading;
+    std::function<void()> render_next_level_label;
+    std::function<void(std::uint16_t)> render_next_level;
+    std::function<void(std::uint32_t)> render_discounted_cost;
+    std::function<void(std::uint8_t, FieldActionProgressionGlyphVariant)>
+        transfer_action_glyph;
+};
+
 enum class FieldActionProgressionPurchaseResult {
     applied,
     not_neutral_selection,
     invalid_offer_selection,
+    missing_record_slot,
     runner_unavailable,
     offer_unavailable,
     progression_maxed,
-    progression_limit,
     insufficient_funds,
 };
 
@@ -95,22 +123,21 @@ struct FieldActionProgressionPurchaseCallbacks {
     // grid variant B before rendering their message.
     std::function<void()> write_action_feedback_grid;
     std::function<void()> show_runner_unavailable;
-    std::function<void()> show_progression_limit;
-    std::function<void()> show_progression_maxed;
     std::function<void()> show_insufficient_funds;
     std::function<void()> wait_for_controller_event;
 };
 
-// ROM 0x57D7E. Select the offer, find the existing runner progression record,
-// enforce its exact level-six and signed +0x7F limit gates, and publish the
-// discounted cost that the purchase branch will charge.
+// ROM 0x57D7E. Render the selected progression offer, find the existing
+// runner progression record, enforce the signed +0x7F limit, and publish the
+// discounted cost plus the typed record slot that 0x56E5A will consume.
 FieldActionProgressionQuoteOutcome prepare_field_action_progression_quote(
     const FieldActionProgressionTables& tables,
-    FieldActionProgressionPurchaseState& state);
+    FieldActionProgressionPurchaseState& state,
+    const FieldActionProgressionQuoteCallbacks& callbacks = {});
 
-// ROM 0x56E5A's neutral-result action acquisition branch, together with the
-// 0x57D7E quote preparation that publishes FFF0AE/FFF0BE/FFF0C2. It applies
-// the exact funds/count/level mutation without retaining a source pointer.
+// ROM 0x56E5A's neutral-result action acquisition branch. It consumes the
+// FFF0AE/FFF0BE/FFF0C2 equivalents published by the preview routine and
+// applies the exact funds/count/level mutation without a second confirmation.
 FieldActionProgressionPurchaseResult purchase_field_action_progression(
     const FieldActionProgressionTables& tables,
     FieldActionProgressionPurchaseState& state,
