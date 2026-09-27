@@ -129,6 +129,95 @@ EntityActionDefaultBonusResult resolve_entity_action_with_default_bonus(
     const EntityActionDynamicModifierContext& dynamic_context,
     const EntityActionDefaultBonusServices& services);
 
+// A full decoded participant used by ROM 0x55C76 after it swaps A0/A1. The
+// record owns the command, posture, cyberware, item, and meter fields; the
+// two fields below are the source record header values used by the reaction
+// gate. This is a host model, not a Genesis memory image.
+struct EntityActionReactionParticipant {
+    EntityActionRecord record{};
+    std::uint16_t record_type = 0; // +0x3E
+    std::uint8_t equipped_action_code = 0; // +0x57
+};
+
+using EntityActionParticipantArmorModifier =
+    std::function<std::int16_t(std::int16_t value,
+                               const EntityActionRecord& target)>;
+using EntityActionParticipantDefenseModifier =
+    std::function<std::int16_t(std::int16_t value,
+                               const EntityActionRecord& attacker,
+                               const EntityActionRecord& target)>;
+
+struct EntityActionReactionServices {
+    // The three 0x0DBA passes in 0x55C76.
+    BoundedRandomRollBoundary sample_random_bound;
+    // 0x55EB4, applied after the first nonzero threshold result.
+    EntityActionParticipantArmorModifier subtract_secondary_armor;
+    // 0x55E62, applied after that armor subtraction.
+    EntityActionParticipantDefenseModifier apply_defense_modifier;
+    // Nested 0x55786 profile rolls for the actor pass and swapped peer pass.
+    EntityActionRollService dynamic_roll_service;
+    // 0x37EC and 0x3674 final meter/display service boundaries.
+    std::function<void(EntityActionReactionParticipant&, std::int16_t)>
+        advance_behavior_meter;
+    std::function<void(EntityActionReactionParticipant&)> advance_delay_meter;
+};
+
+enum class EntityActionReactionOutcome {
+    random_service_unavailable,
+    first_roll_failed,
+    secondary_armor_service_unavailable,
+    first_armor_threshold_failed,
+    defense_service_unavailable,
+    first_defense_threshold_failed,
+    dynamic_modifier_data_unavailable,
+    dynamic_modifier_roll_service_unavailable,
+    second_roll_failed,
+    final_roll_failed,
+    physical_penalty_failed,
+    world_meter_gate,
+    behavior_service_unavailable,
+    delay_service_unavailable,
+    physical_meter_pending,
+    mental_meter_pending,
+    meter_exhausted,
+};
+
+struct EntityActionReactionResult {
+    EntityActionReactionOutcome outcome =
+        EntityActionReactionOutcome::random_service_unavailable;
+    std::uint16_t initial_command_average = 0;
+    std::uint16_t initial_posture_reduction = 0;
+    std::uint16_t initial_trial_count = 0;
+    std::uint16_t initial_difficulty = 0;
+    std::uint8_t first_successes = 0;
+    std::int16_t value_after_first_modifiers = 0;
+    std::uint16_t peer_command_average = 0;
+    std::uint16_t peer_posture_reduction = 0;
+    std::uint16_t peer_trial_count = 0;
+    std::uint16_t peer_difficulty = 0;
+    std::uint8_t second_successes = 0;
+    std::uint16_t final_trial_count = 0;
+    std::uint16_t final_difficulty = 0;
+    std::uint8_t final_successes = 0;
+    std::int16_t remaining_value = 0;
+    std::int16_t meter_delta = 0;
+    bool used_secondary_armor = false;
+    bool used_physical_meter = false;
+    bool used_mental_meter = false;
+    bool counters_advanced = false;
+};
+
+// ROM 0x55C76. Convert the three-pass reaction sequence: attacker command
+// and posture roll, secondary armor/defense reduction, swapped peer roll,
+// cyberware-selected final roll, and the physical/mental target-meter tail.
+EntityActionReactionResult advance_entity_action_resolution(
+    EntityActionReactionParticipant& actor,
+    EntityActionReactionParticipant& target,
+    EntityActionResolutionState& state,
+    const EntityActionDynamicModifierContext& actor_dynamic_context,
+    const EntityActionDynamicModifierContext& target_dynamic_context,
+    const EntityActionReactionServices& services);
+
 // ROM 0x559BC. Convert the shared action-resolution continuation: thresholded
 // result delta, armor/defense reductions, record-type behavior/delay branch,
 // physical/mental meter mutation, and the three source counter updates.

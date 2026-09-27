@@ -18,12 +18,15 @@ struct EntityActionRecord {
     std::uint8_t physical_meter = 0;    // +0x4C
     std::uint8_t posture = 0;            // +0x4D
     std::uint8_t item18_base = 0;        // +0x80
-    std::uint8_t attribute_78 = 0;        // +0x78
+    std::uint8_t attribute_79 = 0;       // +0x79
+    std::uint8_t attribute_78 = 0;       // +0x78
     std::uint8_t attribute_7b = 0;        // +0x7B
     std::uint8_t mental_meter = 0;       // +0x9C
-    std::uint8_t race_or_state = 0;      // +0x9A
+    std::int8_t race_or_state = 0;       // +0x9A, signed
     std::uint8_t attribute_7c = 0;       // +0x7C
     std::uint8_t attribute_77 = 0;       // +0x77
+    std::uint8_t attribute_85 = 0;       // +0x85
+    std::uint8_t armor_index = 0;        // +0x76
     std::uint8_t attribute_87 = 0;       // +0x87
     std::uint8_t flags_10 = 0;           // +0x10
     std::uint8_t action_flags = 0;        // +0x11
@@ -38,8 +41,18 @@ struct EntityActionRecord {
 };
 
 struct EntityActionTarget {
+    std::uint16_t cyberware_flags = 0; // +0x90
     std::uint8_t class_code = 0;  // +0x9B
     std::uint8_t flags = 0;       // +0x11
+    std::uint8_t posture = 0; // +0x4D
+    std::uint8_t attribute_79 = 0; // +0x79
+    std::uint8_t attribute_78 = 0; // +0x78
+    std::uint8_t attribute_7b = 0; // +0x7B
+    std::uint8_t attribute_7c = 0; // +0x7C
+    std::uint8_t attribute_85 = 0; // +0x85
+    std::array<std::uint8_t, 8> item_codes{}; // +0x66..+0x6D
+    std::array<std::uint8_t, 8> item_phases{}; // +0x6E..+0x75
+    std::uint8_t equipped_action_code = 0; // +0x57
     std::uint8_t action_category = 0; // +0xB4
     std::uint16_t record_type = 0; // +0x3E
     std::int8_t race_or_state = 0; // +0x9A, signed
@@ -139,6 +152,12 @@ std::uint16_t select_posture_adjusted_value(
 std::uint16_t calculate_equipment_command_average(
     const EntityActionRecord& entity);
 
+// ROM 0x55ED6's same decoded-record operation for a peer entity in the
+// reaction path. Keeping the overload typed avoids a presentation-only
+// adapter when the source swaps A0 and A1.
+std::uint16_t calculate_equipment_command_average(
+    const EntityActionTarget& entity);
+
 struct EntityActionSkillMergeResult {
     std::uint16_t value = 0;
     std::uint8_t selected_skill = 0;
@@ -198,6 +217,12 @@ std::uint16_t apply_target_condition_modifier(
     std::uint16_t difficulty,
     const EntityActionRecord& attacker,
     const EntityActionTarget& target);
+
+// The 0x55C76 peer pass swaps A0/A1, so both sides are full decoded records.
+std::uint16_t apply_target_condition_modifier(
+    std::uint16_t difficulty,
+    const EntityActionRecord& attacker,
+    const EntityActionRecord& target);
 
 struct EntityActionEligibilityResult {
     std::uint16_t difficulty = 0;

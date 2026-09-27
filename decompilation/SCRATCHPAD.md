@@ -299,10 +299,15 @@ typed callbacks: RNG, effect allocation/audio, and `0x37EC` behavior-meter
 state/display work. No ROM address lookup or emulator call was introduced.
 
 The caller-side `0x55C76` transition is now directly executable as
-`run_entity_reaction_0x55C76`. It preserves the three `0x0DBA` threshold
-passes, the `0x55740`/`0x55786` timing calculations, the `0x55E62`/modifier
-leaf calls, and the final `+0x4C` versus `+0x9C` update including the
-`0xFFF0CE` rollover counters.
+`advance_entity_action_resolution`. It uses a full typed participant record
+for each side instead of swapping source pointers. The conversion preserves
+the actor command/posture trial, the `0x55740`/`0x55786` difficulty order, the
+fixed `+3` result seed, secondary armor and `0x55E62` defense reductions, the
+swapped peer command/posture trial, and the final cyberware-selected trial.
+The final branch is explicit: actor cyberware bits 3/2 select direct physical,
+penalized physical, or mental target state; low-type targets route to the
+matching delay/behavior service, while full records update the typed meter
+with the source signed-negative state override and `FFF0CE` phase rollover.
 
 The self-contained scaling helper at `0xD81C`/`0x55F44` is now directly
 translated as `calculate_entity_half_base_0xD81C` and

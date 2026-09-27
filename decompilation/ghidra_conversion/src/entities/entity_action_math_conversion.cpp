@@ -23,6 +23,27 @@ bool source_byte_subtraction_is_nonnegative(const std::uint8_t minuend,
     return (static_cast<std::uint8_t>(minuend - subtrahend) & 0x80U) == 0U;
 }
 
+std::uint16_t apply_target_condition_modifier_impl(
+    std::uint16_t difficulty,
+    const EntityActionRecord& attacker,
+    const std::uint8_t target_class_code,
+    const std::uint8_t target_flags) {
+    const auto has_cyberware_modifier =
+        (attacker.cyberware_flags & 0x0002U) != 0U;
+    if (has_cyberware_modifier) {
+        --difficulty;
+    }
+
+    if (target_class_code == 0x16U) {
+        return static_cast<std::uint16_t>(difficulty + 2U);
+    }
+    if (has_cyberware_modifier || attacker.race_or_state == 0x04U ||
+        attacker.race_or_state == 0x02U || (target_flags & 0x80U) == 0U) {
+        return difficulty;
+    }
+    return static_cast<std::uint16_t>(difficulty + 4U);
+}
+
 } // namespace
 
 std::uint16_t calculate_item18_skill_value(const EntityActionRecord& entity) {
@@ -66,6 +87,23 @@ std::uint16_t calculate_equipment_command_average(
         }
         value = static_cast<std::uint8_t>(
             value + entity.item_phases[slot]);
+        break;
+    }
+    return value;
+}
+
+std::uint16_t calculate_equipment_command_average(
+    const EntityActionTarget& entity) {
+    auto value = static_cast<std::uint8_t>(0U);
+    value = static_cast<std::uint8_t>(value + entity.attribute_78);
+    value = static_cast<std::uint8_t>(value + entity.attribute_7b);
+    value = static_cast<std::uint8_t>(value + entity.attribute_7c);
+    value = static_cast<std::uint8_t>(value >> 1U);
+    for (std::size_t slot = 0; slot < entity.item_codes.size(); ++slot) {
+        if (entity.item_codes[slot] != 0x28U) {
+            continue;
+        }
+        value = static_cast<std::uint8_t>(value + entity.item_phases[slot]);
         break;
     }
     return value;
@@ -196,21 +234,16 @@ std::uint16_t apply_target_condition_modifier(
     std::uint16_t difficulty,
     const EntityActionRecord& attacker,
     const EntityActionTarget& target) {
-    const auto has_cyberware_modifier =
-        (attacker.cyberware_flags & 0x0002U) != 0U;
-    if (has_cyberware_modifier) {
-        --difficulty;
-    }
+    return apply_target_condition_modifier_impl(
+        difficulty, attacker, target.class_code, target.flags);
+}
 
-    if (target.class_code == 0x16U) {
-        return static_cast<std::uint16_t>(difficulty + 2U);
-    }
-    if (has_cyberware_modifier || attacker.race_or_state == 0x04U ||
-        attacker.race_or_state == 0x02U ||
-        (target.flags & 0x80U) == 0U) {
-        return difficulty;
-    }
-    return static_cast<std::uint16_t>(difficulty + 4U);
+std::uint16_t apply_target_condition_modifier(
+    const std::uint16_t difficulty,
+    const EntityActionRecord& attacker,
+    const EntityActionRecord& target) {
+    return apply_target_condition_modifier_impl(
+        difficulty, attacker, target.class_code, target.action_flags);
 }
 
 EntityActionEligibilityResult check_entity_action_eligibility(
