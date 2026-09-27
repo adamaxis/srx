@@ -27,8 +27,11 @@ The reviewed startup-menu trace is modeled in the separate conversion tree:
 `0x59092` owns New Game / Load Game, `0x59172` owns Save Slot 1 / Save Slot 2,
 and `0x59248` owns Joshua's Samurai / Decker / Gator Shaman choices. Their
 typed state and source callback order live in
-`ghidra_conversion/menus/startup_menu_conversion`; this is not runtime wiring
-and does not replace the native port's presentation code.
+`ghidra_conversion/menus/startup_menu_conversion`; the conversion-runtime
+handoff that composes those contracts lives separately in
+`ghidra_conversion/integration/startup_integration_conversion`. This is not
+native-port runtime wiring and does not replace the native port's presentation
+code.
 
 ## Export files
 

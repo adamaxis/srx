@@ -45,6 +45,11 @@ executable instead of only the workbench runner, use
 ghidra-conversion-debug-all or ghidra-conversion-release-all as the build
 preset.
 
+The `shadowrun_ghidra_conversion_runtime` target is the conversion-side
+composition runtime. Its source files live under `src/integration/`; it links
+the reviewed domain modules and is consumed by the standalone runner. It is
+not the native game runtime and it is not an emulator.
+
 The standalone conversion runner can be built and run with:
 
 ```text

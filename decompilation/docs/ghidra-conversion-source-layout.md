@@ -39,21 +39,24 @@ tests/<domain>/                      focused source-trace evidence
 ```
 
 The conversion CMake project builds one
-`shadowrun_ghidra_conversion_modules` archive from all domain implementations.
+`shadowrun_ghidra_conversion_modules` archive from all domain implementations
+and a `shadowrun_ghidra_conversion_runtime` archive from the separate
+`src/integration/` composition sources. The runtime archive links the domain
+archive; it is the executable-facing Ghidra conversion runtime, not the native
+game runtime.
 The current 254 CTest cases (the runner plus 253 focused test executables)
 remain separate so a regression still points at a specific behavior contract;
 they are not proposed game-runtime libraries. The conversion archive is never
 linked into the native game.
 
-The standalone `shadowrun_ghidra_conversion_runner` is a conversion-side
-composition probe. The `src/integration/` entry points intentionally do not
-appear in the 28-row leaf ownership map: they exercise several typed contracts
-together to prove conversion ordering and handoffs, but they do not claim
-ownership of their ROM behavior or become native game state. The startup
-integration specifically composes direct-asset verification, boot/title setup,
-the New Game/Load Game selector, save validation, and Joshua's archetype
-handoff; it remains a conversion-side verification boundary rather than a
-native-port dependency.
+The standalone `shadowrun_ghidra_conversion_runner` links the conversion
+runtime. The `src/integration/` entry points intentionally do not appear in
+the 28-row leaf ownership map: they exercise several typed contracts together
+to prove conversion ordering and handoffs, but they do not claim ownership of
+their ROM behavior or become native game state. The startup integration
+specifically composes direct-asset verification, boot/title setup, the New
+Game/Load Game selector, save validation, and Joshua's archetype handoff; it
+remains a conversion-runtime boundary rather than a native-port dependency.
 
 New work belongs in the existing domain file that owns the behavior. A new
 file is justified only for a real ownership boundary or a materially
