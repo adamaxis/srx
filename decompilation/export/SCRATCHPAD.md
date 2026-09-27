@@ -231,7 +231,7 @@ effect is the verified `FFFBD8..FFFBDC = 0xFF` reset. This is grouped with
 Matrix program conversion because the field menu is mutating the Matrix
 program availability model, not a generic resource counter.
 
-The neutral-result action branch at `0x56E5A` is now represented by
+The result-zero action branch at `0x56E5A` is now represented by
 `purchase_field_action_progression()`. Its preceding screen-preview routine
 `0x57D7E` is represented separately by
 `prepare_field_action_progression_quote()`, which publishes the typed pending
@@ -239,7 +239,8 @@ record slot, action code, and discounted cost consumed by the purchase branch.
 The three source offer families are explicit typed tables:
 `0x1AAEB0` for saved selections two and above, `0x1AAEF8` for saved
 selection one, and the three menu-mode blocks at `0x1AAF40` for saved
-selection zero. Each four-byte offer contributes its signed action marker and
+selection zero. Saved selections 0, 1, and 2 all enter this application path;
+only selection 3 diverts to the separate removal leaf. Each four-byte offer contributes its signed action marker and
 base cost; the source byte at offer `+1` is retained as metadata because this
 purchase path does not consume it.
 

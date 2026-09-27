@@ -187,15 +187,40 @@ int main() {
         return 7;
     }
 
-    FieldActionProgressionPurchaseState non_neutral = poor;
-    non_neutral.saved_selection = 1;
-    non_neutral.funds = 5000U;
+    FieldActionProgressionPurchaseState selection_one{};
+    selection_one.menu_mode = 3U;
+    selection_one.saved_selection = 1;
+    selection_one.primary_cursor = 0;
+    selection_one.runner_archetype_status = 1;
+    selection_one.runner_progression_limit = 6;
+    selection_one.funds = 1000U;
+    selection_one.ledger.records = {{0U, 0U}, {0U, 0U}};
+    quote_events.clear();
+    quote_values.clear();
+    glyph_transfers.clear();
+    if (!expect(prepare_field_action_progression_quote(
+                    tables, selection_one, quote_callbacks)
+                    .result == FieldActionProgressionQuoteResult::quoted &&
+                selection_one.selected_action_code == 0x12U &&
+                selection_one.pending_cost == 0x26U &&
+                purchase_field_action_progression(
+                    tables, selection_one, purchase_callbacks) ==
+                    FieldActionProgressionPurchaseResult::applied &&
+                selection_one.funds == 0x3C2U &&
+                selection_one.ledger.records[1].action_code == 0x12U &&
+                selection_one.ledger.records[1].progression_level == 1U)) {
+        return 8;
+    }
+
+    FieldActionProgressionPurchaseState removal_selection = selection_one;
+    removal_selection.saved_selection = 3U;
+    removal_selection.funds = 5000U;
     purchase_events.clear();
     if (!expect(purchase_field_action_progression(
-                    tables, non_neutral, purchase_callbacks) ==
-                    FieldActionProgressionPurchaseResult::not_neutral_selection &&
-                non_neutral.funds == 5000U && purchase_events.empty())) {
-        return 8;
+                    tables, removal_selection, purchase_callbacks) ==
+                    FieldActionProgressionPurchaseResult::removal_selection &&
+                removal_selection.funds == 5000U && purchase_events.empty())) {
+        return 9;
     }
 
     FieldActionProgressionPurchaseState unavailable{};
@@ -209,7 +234,7 @@ int main() {
                     tables, unavailable, quote_callbacks)
                     .result == FieldActionProgressionQuoteResult::runner_unavailable &&
                 quote_events == std::vector<std::string>{"runner-unavailable"})) {
-        return 9;
+        return 10;
     }
     purchase_events.clear();
     if (!expect(purchase_field_action_progression(
@@ -217,7 +242,7 @@ int main() {
                     FieldActionProgressionPurchaseResult::runner_unavailable &&
                 purchase_events == std::vector<std::string>{
                                         "grid", "unavailable", "wait"})) {
-        return 10;
+        return 11;
     }
 
     tables.saved_selection_zero_by_menu_mode[0][2].action_code = 0xFFU;
@@ -233,7 +258,7 @@ int main() {
                     tables, state, purchase_callbacks) ==
                     FieldActionProgressionPurchaseResult::offer_unavailable &&
                 state.service_result < 0 && state.funds == 5000U)) {
-        return 11;
+        return 12;
     }
 
     tables.saved_selection_zero_by_menu_mode[0][2].action_code = 0x0CU;
@@ -250,7 +275,7 @@ int main() {
                 purchase_field_action_progression(
                     tables, missing_slot, purchase_callbacks) ==
                     FieldActionProgressionPurchaseResult::missing_record_slot)) {
-        return 12;
+        return 13;
     }
 
     if (!expect(select_field_action_progression_offer(
@@ -258,8 +283,11 @@ int main() {
                 select_field_action_progression_offer(
                     tables, 3U, 1, 0)->action_code == 0x12U &&
                 select_field_action_progression_offer(
-                    tables, 3U, 2, 0)->action_code == 0x1BU)) {
-        return 13;
+                    tables, 3U, 2, 0)->action_code == 0x1BU &&
+                select_field_action_progression_offer(
+                    tables, 3U, static_cast<std::int8_t>(0xFFU), 2)
+                        ->action_code == 0x0CU)) {
+        return 15;
     }
 
     return 0;

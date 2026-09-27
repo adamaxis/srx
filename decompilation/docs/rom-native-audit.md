@@ -209,6 +209,13 @@ refreshes the detail panel, displays the limit feedback, and enters the shared
 controller wait before returning. The typed conversion now preserves that
 callback order.
 
+The result-zero field-action branch at `0x56E5A` was also checked against its
+saved-selection matrix. Selections 0, 1, and 2 choose the dynamic, selection-1,
+and selection-2-plus offer families and all continue into the shared action
+application path; only selection 3 branches to removal. The typed progression
+purchase no longer rejects the two fixed offer families as if they were
+unreachable.
+
 The generated Ghidra C remains an evidence snapshot and still omits meaningful
 logic for some of these entries, including `0x3602` and `0x55828`; the typed
 conversion is accepted only where the ROM instruction trace and focused test

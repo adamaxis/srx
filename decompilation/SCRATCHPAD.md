@@ -2067,6 +2067,13 @@ shows the `0x15` limit feedback, waits for the controller event, and only then
 returns with the count restored to `0x14`; the typed callback sequence now does
 the same.
 
+The neighboring `0x56E5A` progression path was then traced through its saved
+selection matrix. Result zero accepts selections 0, 1, and 2; they select the
+dynamic, selection-one, or selection-two-plus offer tables before entering the
+same action application. Only selection 3 is the removal branch. The host
+conversion and test now exercise the previously rejected selection-one
+purchase and reserve the guard for removal.
+
 The title setup module now also owns `0x12F6`: its DBF `0x10` loop is exposed
 as `advance_title_palette_fade`, with the source ordering of frame wait,
 palette-step, and dirty-mark callbacks tested across all 17 passes.

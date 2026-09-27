@@ -51,7 +51,20 @@ select_field_action_progression_offer(
     }
 
     const auto cursor = static_cast<std::size_t>(primary_cursor);
-    if (saved_selection == 0) {
+    if (saved_selection == 1) {
+        if (cursor >= kFixedOfferCount) {
+            return std::nullopt;
+        }
+        return tables.saved_selection_one[cursor];
+    }
+
+    // 0x56E98 compares the saved-selection byte with one and takes BMI for
+    // the dynamic family. Preserve the wrapped N flag instead of treating
+    // only literal zero as that source branch.
+    const auto selection_byte = static_cast<std::uint8_t>(saved_selection);
+    const bool compare_is_negative =
+        (static_cast<std::uint8_t>(selection_byte - 1U) & 0x80U) != 0U;
+    if (compare_is_negative) {
         if (menu_mode < kFirstDynamicMenuMode ||
             menu_mode > kLastDynamicMenuMode ||
             cursor >= kMenuModeOfferCount) {
@@ -59,13 +72,6 @@ select_field_action_progression_offer(
         }
         return tables.saved_selection_zero_by_menu_mode
             [static_cast<std::size_t>(menu_mode - kFirstDynamicMenuMode)][cursor];
-    }
-
-    if (saved_selection == 1) {
-        if (cursor >= kFixedOfferCount) {
-            return std::nullopt;
-        }
-        return tables.saved_selection_one[cursor];
     }
 
     if (cursor >= kFixedOfferCount) {
@@ -192,11 +198,11 @@ FieldActionProgressionPurchaseResult purchase_field_action_progression(
     const FieldActionProgressionTables& tables,
     FieldActionProgressionPurchaseState& state,
     const FieldActionProgressionPurchaseCallbacks& callbacks) {
-    if (state.saved_selection != 0) {
-        // 0x56DC4 enters this acquisition branch only for saved selection 0;
-        // selection 1 and later selections go to their own action/remove
-        // leaves.
-        return FieldActionProgressionPurchaseResult::not_neutral_selection;
+    if (state.saved_selection == 3U) {
+        // 0x56E5A diverts exactly saved selection 3 to the separate removal
+        // leaf at 0x56F4A. Saved selections 0, 1, and 2 all continue through
+        // the progression offer families and the shared application path.
+        return FieldActionProgressionPurchaseResult::removal_selection;
     }
 
     if (runner_action_progression_is_blocked(state.runner_archetype_status)) {

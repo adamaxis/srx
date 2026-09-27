@@ -109,7 +109,7 @@ struct FieldActionProgressionQuoteCallbacks {
 
 enum class FieldActionProgressionPurchaseResult {
     applied,
-    not_neutral_selection,
+    removal_selection,
     invalid_offer_selection,
     missing_record_slot,
     runner_unavailable,
