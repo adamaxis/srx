@@ -516,6 +516,27 @@ current force, and decoded action record, and reports the exact residual/grid
 plan. An absent decoded action row is reported as an unresolved source-data
 boundary rather than treated as “one action remains.”
 
+### Equipment-details parent dispatcher: `0x111E8`
+
+`0x111E8` is the page-level equipment renderer. When `FFF112` is clear it
+does only the existing `0x11928` menu-row render and returns. When set, it
+clears the marker, prepares menu grid variant B, then renders the heading at
+`0xC2A0`, the active runner race/state row from `0xD19C7` at `0xC1A0`, and
+the class row from `0xD19E5` at `0xC1AC`.
+
+Its action-name branch is also explicit: active action zero selects the
+cyberware-bit-3 text at `0xC422`, then bit 2 at the same destination, or the
+no-action text at `0xC420`; a nonzero action selects the `0xD4EA0` name row
+when `+0x56` is negative and the `0xD4540` row otherwise. The wrapped
+`CMP.B #0x10` gate invokes `0x12EAE` only for the low-action range. The
+dispatcher then builds the physical meter at `0xC2B4`, mental meter at
+`0xC334`, calls armor selection, and prepares the menu dialog in that order.
+
+`ghidra_conversion::render_equipment_details()` now captures this parent
+sequence, returns the nested `0x12EAE` result, and keeps text/meter source
+rows and presentation callbacks typed. It is still a conversion/reference
+module; none of these callbacks are native-port runtime plumbing.
+
 ## Initial coherent C++ conversions
 
 `0x0330` and `0x0436` are no longer represented only as bus traces. The

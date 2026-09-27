@@ -688,4 +688,154 @@ EquipmentActionDetailRowResult render_equipment_action_detail_row(
     return result;
 }
 
+namespace {
+
+void publish_equipment_details_text(
+    EquipmentDetailsResult& result,
+    const EquipmentDetailsTextPlan& plan,
+    const std::function<void(const EquipmentDetailsTextPlan&)>& callback) {
+    result.text_requests.push_back(plan);
+    if (callback) {
+        callback(plan);
+    }
+}
+
+void publish_equipment_meter(
+    EquipmentDetailsResult& result,
+    const EquipmentMeterPlan& plan,
+    const std::function<void(const EquipmentMeterPlan&)>& callback) {
+    result.meter_requests.push_back(plan);
+    if (callback) {
+        callback(plan);
+    }
+}
+
+} // namespace
+
+EquipmentDetailsResult render_equipment_details(
+    const EquipmentDetailsInput& input,
+    const EquipmentDetailsCallbacks& callbacks) {
+    EquipmentDetailsResult result{};
+    if (!input.refresh_requested) {
+        if (callbacks.render_existing_menu_row) {
+            callbacks.render_existing_menu_row();
+        }
+        result.existing_menu_row_rendered = true;
+        return result;
+    }
+
+    result.refresh_flag_cleared = true;
+    if (callbacks.prepare_menu_grid_variant_b) {
+        callbacks.prepare_menu_grid_variant_b();
+    }
+    result.menu_grid_prepared = true;
+
+    publish_equipment_details_text(
+        result,
+        EquipmentDetailsTextPlan{EquipmentDetailsTextKind::heading,
+                                 0U,
+                                 0xC2A0U,
+                                 0x6000U},
+        callbacks.render_text);
+    publish_equipment_details_text(
+        result,
+        EquipmentDetailsTextPlan{EquipmentDetailsTextKind::runner_race,
+                                 input.race_or_state,
+                                 0xC1A0U,
+                                 0x6000U},
+        callbacks.render_text);
+    publish_equipment_details_text(
+        result,
+        EquipmentDetailsTextPlan{EquipmentDetailsTextKind::runner_class,
+                                 input.class_code,
+                                 0xC1ACU,
+                                 0x6000U},
+        callbacks.render_text);
+
+    const auto active_action_code = input.action_row.active_action_code;
+    if (active_action_code == 0U) {
+        const auto cyberware_flags = input.action_row.cyberware_flags;
+        if ((cyberware_flags & (std::uint16_t{1U} << 3U)) != 0U) {
+            publish_equipment_details_text(
+                result,
+                EquipmentDetailsTextPlan{
+                    EquipmentDetailsTextKind::cyberware_action_bit3,
+                    0U,
+                    0xC422U,
+                    0x6000U},
+                callbacks.render_text);
+        } else if ((cyberware_flags & (std::uint16_t{1U} << 2U)) != 0U) {
+            publish_equipment_details_text(
+                result,
+                EquipmentDetailsTextPlan{
+                    EquipmentDetailsTextKind::cyberware_action_bit2,
+                    0U,
+                    0xC422U,
+                    0x6000U},
+                callbacks.render_text);
+        } else {
+            publish_equipment_details_text(
+                result,
+                EquipmentDetailsTextPlan{EquipmentDetailsTextKind::no_action,
+                                         0U,
+                                         0xC420U,
+                                         0x6000U},
+                callbacks.render_text);
+        }
+    } else {
+        const auto item_row = static_cast<std::size_t>(active_action_code -
+                                                       1U);
+        const auto text_kind = input.action_row.display_state < 0
+                                   ? EquipmentDetailsTextKind::
+                                         active_action_alternate
+                                   : EquipmentDetailsTextKind::
+                                         active_action_normal;
+        publish_equipment_details_text(
+            result,
+            EquipmentDetailsTextPlan{text_kind, item_row, 0xC420U, 0x6000U},
+            callbacks.render_text);
+    }
+
+    // 0x11304 uses CMP.B #0x10 followed by BPL. Preserve its wrapped byte
+    // sign test instead of treating the action byte as a host signed int.
+    const auto detail_gate = static_cast<std::uint8_t>(
+        active_action_code - 0x10U);
+    if ((detail_gate & 0x80U) != 0U) {
+        auto row_input = input.action_row;
+        row_input.source_mode = input.action_row.source_mode;
+        row_input.display_state = input.action_row.display_state;
+        row_input.active_action_code = active_action_code;
+        result.action_detail_row = render_equipment_action_detail_row(
+            row_input, callbacks.action_row_callbacks);
+        result.action_detail_row_invoked = true;
+    }
+
+    publish_equipment_meter(
+        result,
+        EquipmentMeterPlan{EquipmentMeterKind::physical,
+                            input.physical_meter,
+                            0xC2B4U,
+                            0x6000U},
+        callbacks.build_meter_glyphs);
+    result.physical_meter_rendered = true;
+    publish_equipment_meter(
+        result,
+        EquipmentMeterPlan{EquipmentMeterKind::mental,
+                            input.mental_meter,
+                            0xC334U,
+                            0x6000U},
+        callbacks.build_meter_glyphs);
+    result.mental_meter_rendered = true;
+
+    if (callbacks.apply_armor_selection) {
+        callbacks.apply_armor_selection();
+    }
+    result.armor_selection_applied = true;
+    if (callbacks.prepare_menu_dialog) {
+        callbacks.prepare_menu_dialog();
+    }
+    result.dialog_prepared = true;
+    return result;
+}
+
 } // namespace shadowrun::ghidra_conversion

@@ -484,5 +484,111 @@ int main() {
         return 22;
     }
 
+    // ROM 0x111E8: an unset refresh marker delegates to the existing menu-row
+    // renderer without touching the equipment-details sequence.
+    EquipmentDetailsCallbacks details_callbacks{};
+    std::vector<int> details_events;
+    details_callbacks.render_existing_menu_row =
+        [&] { details_events.push_back(1); };
+    details_callbacks.prepare_menu_grid_variant_b =
+        [&] { details_events.push_back(2); };
+    details_callbacks.render_text = [&](const EquipmentDetailsTextPlan& plan) {
+        details_events.push_back(10 + static_cast<int>(plan.kind));
+    };
+    details_callbacks.build_meter_glyphs =
+        [&](const EquipmentMeterPlan& plan) {
+            details_events.push_back(
+                plan.kind == EquipmentMeterKind::physical ? 20 : 21);
+        };
+    details_callbacks.apply_armor_selection =
+        [&] { details_events.push_back(30); };
+    details_callbacks.prepare_menu_dialog = [&] { details_events.push_back(31); };
+    details_callbacks.action_row_callbacks.publish_action_selection =
+        [&](const ActionDetailRenderPlan&) { details_events.push_back(40); };
+    details_callbacks.action_row_callbacks.render_detail_text =
+        [&](const EquipmentActionDetailTextPlan&) { details_events.push_back(41); };
+    details_callbacks.action_row_callbacks.write_grid =
+        [&](const EquipmentActionDetailGridPlan&) { details_events.push_back(42); };
+
+    const auto stale_details = render_equipment_details(
+        EquipmentDetailsInput{}, details_callbacks);
+    if (!(stale_details.existing_menu_row_rendered &&
+          !stale_details.menu_grid_prepared && details_events ==
+              std::vector<int>{1})) {
+        return 23;
+    }
+
+    // A refreshed no-action page lays out heading/race/class/cyberware text,
+    // invokes 0x12EAE, then emits both meters and the closing services.
+    details_events.clear();
+    EquipmentDetailsInput details_input{};
+    details_input.refresh_requested = true;
+    details_input.race_or_state = 3U;
+    details_input.class_code = 4U;
+    details_input.physical_meter = 2U;
+    details_input.mental_meter = 6U;
+    details_input.action_row.source_mode = 0U;
+    details_input.action_row.selected_action_code = 0U;
+    details_input.action_row.cyberware_base = 2U;
+    details_input.action_row.cyberware_flags = static_cast<std::uint16_t>(
+        1U << 3U);
+    const auto no_action_details = render_equipment_details(
+        details_input, details_callbacks);
+    if (!(no_action_details.refresh_flag_cleared &&
+          no_action_details.menu_grid_prepared &&
+          no_action_details.action_detail_row_invoked &&
+          no_action_details.action_detail_row.has_value() &&
+          no_action_details.action_detail_row->action_selection.has_value() &&
+          no_action_details.action_detail_row->action_selection->source_code ==
+              2U && no_action_details.text_requests.size() == 4U &&
+          no_action_details.text_requests[3].kind ==
+              EquipmentDetailsTextKind::cyberware_action_bit3 &&
+          no_action_details.meter_requests.size() == 2U &&
+          no_action_details.physical_meter_rendered &&
+          no_action_details.mental_meter_rendered &&
+          no_action_details.armor_selection_applied &&
+          no_action_details.dialog_prepared &&
+          details_events == std::vector<int>{2, 10, 11, 12, 13, 40, 41, 42,
+                                             20, 21, 30, 31})) {
+        return 24;
+    }
+
+    // Action code 0x10 fails the wrapped CMP.B #0x10 detail-row gate while
+    // still completing the meters and dialog sequence.
+    details_events.clear();
+    details_input.action_row.active_action_code = 0x10U;
+    details_input.action_row.display_state = 0;
+    const auto high_action_details = render_equipment_details(
+        details_input, details_callbacks);
+    if (!(high_action_details.text_requests.size() == 4U &&
+          high_action_details.text_requests[3].kind ==
+              EquipmentDetailsTextKind::active_action_normal &&
+          !high_action_details.action_detail_row_invoked &&
+          high_action_details.meter_requests.size() == 2U &&
+          details_events == std::vector<int>{2, 10, 11, 12, 16, 20, 21, 30,
+                                             31})) {
+        return 25;
+    }
+
+    // A low active action selects its +0x26 label row and +0x25 detail asset
+    // through the nested 0x12EAE conversion.
+    details_events.clear();
+    details_input.action_row.active_action_code = 2U;
+    details_input.action_row.selected_action_code = 5U;
+    details_input.action_row.action_detail_code = 4U;
+    details_input.action_row.detail_asset_index = 3;
+    const auto active_action_details = render_equipment_details(
+        details_input, details_callbacks);
+    if (!(active_action_details.action_detail_row_invoked &&
+          active_action_details.action_detail_row.has_value() &&
+          active_action_details.action_detail_row->action_selection.has_value() &&
+          active_action_details.action_detail_row->action_selection->source_code ==
+              4U && active_action_details.text_requests[3].kind ==
+              EquipmentDetailsTextKind::active_action_normal &&
+          details_events == std::vector<int>{2, 10, 11, 12, 16, 40, 41, 42,
+                                             20, 21, 30, 31})) {
+        return 26;
+    }
+
     return 0;
 }

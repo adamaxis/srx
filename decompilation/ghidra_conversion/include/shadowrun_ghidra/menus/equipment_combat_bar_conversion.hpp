@@ -299,6 +299,71 @@ struct EquipmentActionDetailRowResult {
     bool detail_asset_missing = false;
 };
 
+enum class EquipmentDetailsTextKind {
+    heading,
+    runner_race,
+    runner_class,
+    cyberware_action_bit3,
+    cyberware_action_bit2,
+    no_action,
+    active_action_normal,
+    active_action_alternate,
+};
+
+struct EquipmentDetailsTextPlan {
+    EquipmentDetailsTextKind kind = EquipmentDetailsTextKind::heading;
+    std::size_t source_row = 0;
+    std::uint16_t destination_tile_base = 0;
+    std::uint16_t palette_flags = 0x6000U;
+};
+
+enum class EquipmentMeterKind {
+    physical,
+    mental,
+};
+
+struct EquipmentMeterPlan {
+    EquipmentMeterKind kind = EquipmentMeterKind::physical;
+    std::uint8_t value = 0;
+    std::uint16_t destination_tile_base = 0;
+    std::uint16_t palette_flags = 0x6000U;
+};
+
+struct EquipmentDetailsInput {
+    // Global FFF112: zero falls back to the existing menu-row renderer;
+    // nonzero requests a complete equipment-details refresh and is cleared.
+    bool refresh_requested = false;
+    std::uint8_t race_or_state = 0;  // active record +0x9A
+    std::uint8_t class_code = 0;     // active record +0x9B
+    std::uint8_t physical_meter = 0; // active record +0x4C
+    std::uint8_t mental_meter = 0;   // active record +0x9C
+    EquipmentActionDetailRowInput action_row{};
+};
+
+struct EquipmentDetailsCallbacks {
+    std::function<void()> render_existing_menu_row;
+    std::function<void()> prepare_menu_grid_variant_b;
+    std::function<void(const EquipmentDetailsTextPlan&)> render_text;
+    std::function<void(const EquipmentMeterPlan&)> build_meter_glyphs;
+    std::function<void()> apply_armor_selection;
+    std::function<void()> prepare_menu_dialog;
+    EquipmentActionDetailRowCallbacks action_row_callbacks{};
+};
+
+struct EquipmentDetailsResult {
+    bool existing_menu_row_rendered = false;
+    bool refresh_flag_cleared = false;
+    bool menu_grid_prepared = false;
+    bool action_detail_row_invoked = false;
+    bool physical_meter_rendered = false;
+    bool mental_meter_rendered = false;
+    bool armor_selection_applied = false;
+    bool dialog_prepared = false;
+    std::vector<EquipmentDetailsTextPlan> text_requests;
+    std::vector<EquipmentMeterPlan> meter_requests;
+    std::optional<EquipmentActionDetailRowResult> action_detail_row;
+};
+
 // ROM 0x55ED6: byte-wrapped command overview base from attributes +0x78,
 // +0x7B, +0x7C and the first item-code-0x28 phase.
 std::uint16_t calculate_equipment_command_average(
@@ -378,5 +443,12 @@ ItemActionDetailResult render_item_action_details(
 EquipmentActionDetailRowResult render_equipment_action_detail_row(
     const EquipmentActionDetailRowInput& input,
     const EquipmentActionDetailRowCallbacks& callbacks = {});
+
+// ROM 0x111E8: refresh the equipment-details page when FFF112 is set, choose
+// the active/no-action text branch, delegate the low-action detail row to
+// 0x12EAE, then render both meters and finish with armor/dialog services.
+EquipmentDetailsResult render_equipment_details(
+    const EquipmentDetailsInput& input,
+    const EquipmentDetailsCallbacks& callbacks = {});
 
 } // namespace shadowrun::ghidra_conversion
