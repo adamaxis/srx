@@ -271,6 +271,15 @@ typed result-specific plans for their panel assets, write counts, grid/text
 families, and cursor strides; the legacy callbacks remain only as host
 presentation boundaries.
 
+The positive-result branch of `0x587DA` was also corrected at the data-family
+level. Primary cursor 3 selects the `0x1AB196` row table, with menu mode 6 at
+the base row and other menu modes at `+0x70`; each row's marker chooses the
+blank grid or `0xCE29A`. Cursor 5 uses the `0x1AC9B4` five-plus-three split,
+other positive cursors use the `0x1AC9F0` four-plus-four split, and cursors
+below 3 use the saved resource record with the blank-versus-`0x1AC90C +
+marker * 0x0C` rule. Focused tests now assert these typed plans and exercise
+the cursor-3 renderer path.
+
 The source call order around `0x58D32` is explicit as well: it derives the
 primary-cursor `* 0x20` sprite-record row, builds the three-record selection
 set with the `0x4000` sprite attribute, publishes the sprite/display dirty

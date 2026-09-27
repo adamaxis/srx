@@ -408,6 +408,16 @@ and applies primary-cursor strides of 8 bytes, `0x2A` bytes, and six screen
 words. These choices are available as typed plans before the compatibility
 callbacks perform the host presentation work.
 
+The positive branch inside `0x587DA` is no longer represented as one generic
+eight-grid case. Primary cursor 3 selects `0x1AB196` with a `0x70`-byte row
+offset for non-mode-six menus (zero offset for mode six), then uses each row's
+sign bit to choose the blank grid or `0xCE29A`. Cursor 5 uses the `0x1AC9B4`
+five-plus-three split; other positive cursors use the `0x1AC9F0` four-plus-four
+split. Cursors below 3 select the saved menu-resource record and use its
+negative-marker/`0x1AC90C + marker * 0x0C` grid rule. These are exposed as
+typed positive-branch and resource-row plans before the compatibility grid
+callbacks run.
+
 The adjacent action-selection dispatcher at `0x57C7A` had several host
 comparison shortcuts that only worked for ordinary 0..5 menu bytes. Its
 `CMP.B`/`BMI` boundaries for saved selection, the `0x585FA` cursor gate, and

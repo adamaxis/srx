@@ -62,6 +62,16 @@ int main() {
     const auto high_palette_record = plan_field_mode_record(0x0FU);
     const auto blank_inventory = plan_field_mode_inventory_glyph(0);
     const auto item_inventory = plan_field_mode_inventory_glyph(0x10U);
+    const auto cursor_three_plan =
+        plan_field_mode_positive_grid(6, 2, 3, 2);
+    const auto cursor_five_plan =
+        plan_field_mode_positive_grid(5, 2, 5, 2);
+    const auto cursor_other_plan =
+        plan_field_mode_positive_grid(5, 2, 4, 2);
+    const auto resource_plan =
+        plan_field_mode_positive_grid(5, 2, 1, 2);
+    const auto blank_resource_row = plan_field_mode_resource_grid_row(0x80U);
+    const auto indexed_resource_row = plan_field_mode_resource_grid_row(7U);
     if (!expect(grid_record.writes_grid &&
                 low_palette_record.glyph_palette ==
                     FieldModeGlyphPalettePlane::low_0x2000 &&
@@ -72,8 +82,51 @@ int main() {
                 !item_inventory.uses_blank_asset &&
                 item_inventory.item_definition_index == 0x0FU &&
                 item_inventory.glyph_palette ==
-                    FieldModeGlyphPalettePlane::high_0x6000)) {
+                    FieldModeGlyphPalettePlane::high_0x6000 &&
+                cursor_three_plan.kind ==
+                    FieldModePositiveGridPlanKind::cursor_three_resource_rows &&
+                cursor_three_plan.resource_table_family ==
+                    FieldModePositiveResourceTableFamily::menu_mode_six &&
+                cursor_three_plan.resource_table_offset == 0U &&
+                cursor_three_plan.first_grid_count == 8U &&
+                cursor_five_plan.kind ==
+                    FieldModePositiveGridPlanKind::cursor_five_split &&
+                cursor_five_plan.first_grid_count == 5U &&
+                cursor_five_plan.second_grid_count == 3U &&
+                cursor_other_plan.kind ==
+                    FieldModePositiveGridPlanKind::cursor_other_split &&
+                cursor_other_plan.first_grid_count == 4U &&
+                cursor_other_plan.second_grid_count == 4U &&
+                resource_plan.kind ==
+                    FieldModePositiveGridPlanKind::resource_description &&
+                resource_plan.selects_menu_resource &&
+                resource_plan.selected_resource.record_offset == 0x20U &&
+                blank_resource_row.uses_blank_grid &&
+                !indexed_resource_row.uses_blank_grid &&
+                indexed_resource_row.description_record_offset == 0x54U)) {
         return 12;
+    }
+
+    int positive_plan_grids = 0;
+    FieldModePositiveGridPlan observed_positive_plan{};
+    FieldModeSelectionPresentationCallbacks positive_callbacks{};
+    positive_callbacks.write_grid = [&] { ++positive_plan_grids; };
+    positive_callbacks.select_positive_grid_plan =
+        [&](const FieldModePositiveGridPlan& plan) {
+            observed_positive_plan = plan;
+        };
+    FieldModeSelectionPresentationState positive_cursor_three{};
+    positive_cursor_three.mode_result = 2;
+    positive_cursor_three.menu_mode = 6;
+    positive_cursor_three.saved_selection = 2;
+    positive_cursor_three.primary_cursor = 3;
+    render_field_mode_selection_presentation(positive_cursor_three,
+                                             positive_callbacks);
+    if (!expect(observed_positive_plan.kind ==
+                    FieldModePositiveGridPlanKind::cursor_three_resource_rows &&
+                observed_positive_plan.resource_table_offset == 0U &&
+                positive_plan_grids == 8)) {
+        return 14;
     }
 
     std::vector<std::size_t> inventory_slots;

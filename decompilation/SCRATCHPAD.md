@@ -1238,6 +1238,15 @@ grid and encoded-text records. The old callback forms remain available for
 the conversion harness, but the source-derived data can now be consumed by a
 typed native presenter.
 
+The positive-result branch of `0x587DA` is likewise split by source behavior:
+cursor 3 uses the menu-mode-dependent `0x1AB196` resource-row table and its
+marker-selected grid, cursor 5 uses the five-plus-three table pair, and other
+positive cursors use the four-plus-four pair. Cursors below 3 use the selected
+menu-resource record and the blank-versus-`marker * 0x0C` grid rule. The
+conversion exposes those choices as `FieldModePositiveGridPlan` and
+`FieldModeResourceGridRowPlan` rather than collapsing them into a count of
+eight grid writes.
+
 The runner-selection family is now native-shaped. `0x532BC` is
 `initialize_runner_selection_screen`: it exposes the background asset setup,
 header/animation preparation, and exact 10-by-14 grid request sequence.

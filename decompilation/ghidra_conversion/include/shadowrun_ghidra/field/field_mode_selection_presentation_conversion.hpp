@@ -74,6 +74,39 @@ struct MenuResourceEntry {
     std::uint16_t word_offset = 0;
 };
 
+enum class FieldModePositiveGridPlanKind {
+    result_one,
+    cursor_three_resource_rows,
+    cursor_five_split,
+    cursor_other_split,
+    resource_description,
+};
+
+enum class FieldModePositiveResourceTableFamily {
+    menu_mode_six,
+    other_menu_modes,
+};
+
+struct FieldModePositiveGridPlan {
+    FieldModePositiveGridPlanKind kind =
+        FieldModePositiveGridPlanKind::result_one;
+    FieldModePositiveResourceTableFamily resource_table_family =
+        FieldModePositiveResourceTableFamily::other_menu_modes;
+    std::uint8_t menu_mode = 0;
+    std::int8_t primary_cursor = 0;
+    std::uint16_t resource_table_offset = 0;
+    std::uint16_t first_grid_count = 0;
+    std::uint16_t second_grid_count = 0;
+    bool selects_menu_resource = false;
+    MenuResourceRecord selected_resource{};
+};
+
+struct FieldModeResourceGridRowPlan {
+    std::uint8_t marker = 0;
+    bool uses_blank_grid = true;
+    std::uint16_t description_record_offset = 0;
+};
+
 struct FieldModeSelectionPresentationCallbacks {
     std::function<void()> write_grid;
     std::function<void()> transfer_menu_glyph_triple;
@@ -94,6 +127,8 @@ struct FieldModeSelectionPresentationCallbacks {
         transfer_record_glyph;
     std::function<void(std::size_t, const FieldModeRecordPresentationPlan&)>
         write_record_grid;
+    std::function<void(const FieldModePositiveGridPlan&)>
+        select_positive_grid_plan;
 };
 
 // ROM 0x58A2E: preserve the marker test, the 'E' grid sentinel, and the
@@ -105,6 +140,19 @@ FieldModeRecordPresentationPlan plan_field_mode_record(
 // definition row consumed by the glyph transfer. Zero is the blank asset.
 FieldModeInventoryGlyphPlan plan_field_mode_inventory_glyph(
     std::uint8_t item_code);
+
+// ROM 0x587DA positive-result branch: expose the menu-mode resource family,
+// split-grid tables, and the cursor-below-three resource-description path.
+FieldModePositiveGridPlan plan_field_mode_positive_grid(
+    std::uint8_t menu_mode,
+    std::int8_t saved_selection,
+    std::int8_t primary_cursor,
+    std::int8_t mode_result);
+
+// ROM 0x589E8: a negative selected-resource marker uses the blank grid;
+// otherwise the marker selects a 0x0C-byte description grid record.
+FieldModeResourceGridRowPlan plan_field_mode_resource_grid_row(
+    std::uint8_t marker);
 
 // ROM 0x5763C: choose the menu-mode-six table when FFF0B6 == 6, otherwise
 // choose the general table, then select the saved cursor's 0x10-byte record.

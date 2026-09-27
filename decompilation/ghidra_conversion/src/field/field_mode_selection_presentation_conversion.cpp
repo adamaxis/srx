@@ -59,6 +59,61 @@ FieldModeInventoryGlyphPlan plan_field_mode_inventory_glyph(
     return plan;
 }
 
+FieldModePositiveGridPlan plan_field_mode_positive_grid(
+    const std::uint8_t menu_mode,
+    const std::int8_t saved_selection,
+    const std::int8_t primary_cursor,
+    const std::int8_t mode_result) {
+    FieldModePositiveGridPlan plan{};
+    plan.menu_mode = menu_mode;
+    plan.primary_cursor = primary_cursor;
+    if (mode_result == 1) {
+        plan.kind = FieldModePositiveGridPlanKind::result_one;
+        plan.first_grid_count = 8U;
+        return plan;
+    }
+    if (source_cmp_byte_is_negative(primary_cursor, 3U)) {
+        plan.kind = FieldModePositiveGridPlanKind::resource_description;
+        plan.first_grid_count = 8U;
+        plan.selects_menu_resource = true;
+        plan.selected_resource = select_menu_resource(menu_mode,
+                                                      saved_selection);
+        return plan;
+    }
+    if (primary_cursor == 3) {
+        plan.kind = FieldModePositiveGridPlanKind::cursor_three_resource_rows;
+        plan.resource_table_family =
+            menu_mode == 6U
+                ? FieldModePositiveResourceTableFamily::menu_mode_six
+                : FieldModePositiveResourceTableFamily::other_menu_modes;
+        plan.resource_table_offset = menu_mode == 6U ? 0U : 0x70U;
+        plan.first_grid_count = 8U;
+        return plan;
+    }
+    if (primary_cursor == 5) {
+        plan.kind = FieldModePositiveGridPlanKind::cursor_five_split;
+        plan.first_grid_count = 5U;
+        plan.second_grid_count = 3U;
+        return plan;
+    }
+    plan.kind = FieldModePositiveGridPlanKind::cursor_other_split;
+    plan.first_grid_count = 4U;
+    plan.second_grid_count = 4U;
+    return plan;
+}
+
+FieldModeResourceGridRowPlan plan_field_mode_resource_grid_row(
+    const std::uint8_t marker) {
+    FieldModeResourceGridRowPlan plan{};
+    plan.marker = marker;
+    plan.uses_blank_grid = (marker & 0x80U) != 0U;
+    if (!plan.uses_blank_grid) {
+        plan.description_record_offset =
+            static_cast<std::uint16_t>(marker * 0x0CU);
+    }
+    return plan;
+}
+
 MenuResourceRecord select_menu_resource(
     const std::uint8_t menu_mode,
     const std::int8_t saved_selection) {
@@ -180,26 +235,15 @@ void render_field_mode_selection_presentation(
     }
 
     if (state.mode_result != 0) {
-        if (state.mode_result == 1) {
-            repeat(8U, callbacks.write_grid);
-            return;
+        const auto plan = plan_field_mode_positive_grid(
+            state.menu_mode, state.saved_selection, state.primary_cursor,
+            state.mode_result);
+        call_if_present(callbacks.select_positive_grid_plan, plan);
+        if (plan.selects_menu_resource) {
+            call_if_present(callbacks.select_resource, plan.selected_resource);
         }
-        if (!source_cmp_byte_is_negative(state.primary_cursor, 3U)) {
-            if (state.primary_cursor == 3) {
-                repeat(8U, callbacks.write_grid);
-            } else if (state.primary_cursor == 5) {
-                repeat(5U, callbacks.write_grid);
-                repeat(3U, callbacks.write_grid);
-            } else {
-                repeat(4U, callbacks.write_grid);
-                repeat(4U, callbacks.write_grid);
-            }
-            return;
-        }
-        call_if_present(callbacks.select_resource,
-                        select_menu_resource(state.menu_mode,
-                                             state.saved_selection));
-        repeat(8U, callbacks.write_grid);
+        repeat(plan.first_grid_count, callbacks.write_grid);
+        repeat(plan.second_grid_count, callbacks.write_grid);
         return;
     }
 
