@@ -1,6 +1,7 @@
 #include "shadowrun_ghidra/menus/equipment_combat_bar_conversion.hpp"
 
 #include <cstdint>
+#include <vector>
 
 int main() {
     using namespace shadowrun::ghidra_conversion;
@@ -125,6 +126,39 @@ int main() {
     const auto flagged_defense = compute_equipment_combat_bars(input);
     if (flagged_defense.defense_value != 15U) {
         return 7;
+    }
+
+    EquipmentActionMetricInput metric_input{};
+    metric_input.action_code = 1U;
+    metric_input.current_force = 2U;
+    metric_input.entity.item18_base = 10U;
+    metric_input.action.base_effect = 20;
+    std::vector<int> metric_events;
+    const auto metric = refresh_equipment_action_metric(
+        metric_input,
+        {[&] { metric_events.push_back(1); },
+         [&](const std::uint16_t row) {
+             metric_events.push_back(static_cast<int>(row));
+         }});
+    if (!metric.residual_valid || metric.residual_effect != 15 ||
+        !metric.effect_grid_written || metric.no_effect_text_rendered ||
+        metric.effect_grid_row != 14U ||
+        metric_events != std::vector<int>{14}) {
+        return 8;
+    }
+
+    metric_input.action.base_effect = 1;
+    metric_events.clear();
+    const auto no_effect = refresh_equipment_action_metric(
+        metric_input,
+        {[&] { metric_events.push_back(1); },
+         [&](const std::uint16_t row) {
+             metric_events.push_back(static_cast<int>(row));
+         }});
+    if (!no_effect.residual_valid || no_effect.residual_effect != -4 ||
+        !no_effect.no_effect_text_rendered || no_effect.effect_grid_written ||
+        metric_events != std::vector<int>{1}) {
+        return 9;
     }
 
     return 0;

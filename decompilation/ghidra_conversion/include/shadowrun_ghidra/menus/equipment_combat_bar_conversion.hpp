@@ -66,6 +66,28 @@ struct EquipmentCombatBarResult {
     EquipmentCombatSpecialActionResult special_action{};
 };
 
+struct EquipmentActionMetricInput {
+    // ROM 0x105E6 reads the selected action code from the menu action table
+    // before passing it to the 0x10660 residual calculation.
+    std::uint8_t action_code = 0;
+    std::uint16_t current_force = 0;
+    EntityActionRecord entity{};
+    EntityActionCatalogRecord action{};
+};
+
+struct EquipmentActionMetricCallbacks {
+    std::function<void()> render_no_effect_text;
+    std::function<void(std::uint16_t)> write_effect_grid;
+};
+
+struct EquipmentActionMetricResult {
+    bool residual_valid = false;
+    bool no_effect_text_rendered = false;
+    bool effect_grid_written = false;
+    std::int16_t residual_effect = 0;
+    std::uint16_t effect_grid_row = 0;
+};
+
 // ROM 0x55ED6: byte-wrapped command overview base from attributes +0x78,
 // +0x7B, +0x7C and the first item-code-0x28 phase.
 std::uint16_t calculate_equipment_command_average(
@@ -109,5 +131,12 @@ EquipmentActionSkillMergeResult merge_equipment_action_skill_value(
 // +0x7F, +0x9D, and the matching inventory phase.
 EquipmentCombatBarResult compute_equipment_combat_bars(
     const EquipmentCombatInput& input);
+
+// ROM 0x105E6: calculate the selected action's residual through 0x10660;
+// nonpositive residuals use the no-effect text path, while positive residuals
+// select the source effect row (residual - 1) for one grid write.
+EquipmentActionMetricResult refresh_equipment_action_metric(
+    const EquipmentActionMetricInput& input,
+    const EquipmentActionMetricCallbacks& callbacks = {});
 
 } // namespace shadowrun::ghidra_conversion
