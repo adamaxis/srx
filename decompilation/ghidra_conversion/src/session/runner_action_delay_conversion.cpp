@@ -33,7 +33,13 @@ RunnerActionDelayResult calculate_runner_action_delay(
         }
     } else if (input.mode_result < 0) {
         const auto third = static_cast<std::uint16_t>(delay / 3U);
-        delay = static_cast<std::uint16_t>(delay - third);
+        // 0x55FC0 computes both components.  A nonnegative request keeps
+        // the two-thirds D6 value; a negative request takes D5, the original
+        // value minus that two-thirds component, i.e. the one-third value,
+        // before entering the shared profile-floor clamp at 0x55F92.
+        delay = input.request < 0
+                    ? third
+                    : static_cast<std::uint16_t>(delay - third);
     } else {
         const bool shifted_bit = (delay & 1U) != 0U;
         delay = static_cast<std::uint16_t>(delay >> 1U);

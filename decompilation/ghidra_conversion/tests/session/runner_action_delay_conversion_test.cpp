@@ -49,6 +49,11 @@ int main() {
     if (calculate_runner_action_delay(negative_mode).delay != 40U) {
         return 6;
     }
+    negative_mode.request = -1;
+    negative_mode.profile_floor = 30U;
+    if (calculate_runner_action_delay(negative_mode).delay != 20U) {
+        return 7;
+    }
 
     RunnerActionDelayInput wrapped{};
     wrapped.active_record_attribute_a = 250U;
@@ -59,7 +64,7 @@ int main() {
     // (250 + 20) wraps to 14 before the average, then 7 + 10 + 10 + 10
     // produces 37 and the normal branch returns 18.
     if (calculate_runner_action_delay(wrapped).delay != 18U) {
-        return 7;
+        return 8;
     }
 
     return 0;

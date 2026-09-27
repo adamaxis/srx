@@ -312,7 +312,10 @@ with the source signed-negative state override and `FFF0CE` phase rollover.
 The self-contained scaling helper at `0xD81C`/`0x55F44` is now directly
 translated as `calculate_entity_half_base_0xD81C` and
 `scale_entity_value_0x55F44`. The typed result retains the byte-wrapped base,
-the signed three-mode selection, odd rounding, and negative-input cap.
+the signed three-mode selection, odd rounding, and negative-input cap. The
+negative `FFF0B7` mode also preserves the source `0x55FC0` split: nonnegative
+requests keep the two-thirds component, while negative requests select the
+one-third component before the shared profile-floor clamp.
 
 The normal `0x52BE` wrapper path is now covered through
 `emit_entity_state_objects_0x5322`. It uses the `0x5876` descriptor table,
