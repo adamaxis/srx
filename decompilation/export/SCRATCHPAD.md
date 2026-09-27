@@ -283,12 +283,15 @@ retain the original table addresses or turn the renderer into a VDP emulator.
 * `0x580FE render_field_action_description` receives the selected
   menu-resource byte as a description-table index into `0xE31F2`. The host
   conversion uses an extracted alias, renders the normalized/wrapped
-  description, and selects the `0x1AC90C + index * 0x0C` grid record. The
-  source's signed byte comparison makes quantities below nine take the
-  quantity/capacity summary: three fixed text passes, the quantity, the
-  selected program's storage weight, the wrapped `0x575F8` storage total after
-  adding that weight back, and the pending `FFF0BE` cost. Larger quantities
-  intentionally skip that summary rather than being forced through it.
+  description, and selects the `0x1AC90C + index * 0x0C` grid record on every
+  path. The source's signed byte comparison makes quantities below nine take
+  the quantity/capacity summary: the `Level`, `Size ... Deck Stg ... Mp`, and
+  `Price` labels, followed by quantity, selected program storage weight, the
+  wrapped `0x575F8` storage total after adding that weight back, and pending
+  `FFF0BE` cost. Larger quantities render the
+  `You have the highest version of this program.` notice instead. Missing host
+  inputs are reported after the source-independent description/label callbacks
+  and never suppress the final grid selection.
 * `0x5825C render_field_action_cost_summary` reads the used fields of the
   `0x1AB118` 0x18-byte row in source order (`+6`, `+7`, `+C`, `+D`, `+8`,
   `+A`). A signed current-cursor/row-marker comparison selects grid variant A

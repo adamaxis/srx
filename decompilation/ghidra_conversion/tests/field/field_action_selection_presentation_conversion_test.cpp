@@ -16,7 +16,19 @@ int main() {
     std::vector<std::string> events;
     const FieldActionDescriptionRenderCallbacks description_callbacks{
         [&](const std::string& alias) { events.push_back("description:" + alias); },
-        [&] { events.push_back("detail-text"); },
+        [&](const FieldActionQuantityText text) {
+            switch (text) {
+            case FieldActionQuantityText::level_heading:
+                events.push_back("level-heading");
+                break;
+            case FieldActionQuantityText::size_deck_storage_heading:
+                events.push_back("size-deck-storage-heading");
+                break;
+            case FieldActionQuantityText::price_label:
+                events.push_back("price-label");
+                break;
+            }
+        },
         [&](const std::uint8_t quantity) {
             events.push_back("quantity:" + std::to_string(quantity));
         },
@@ -29,6 +41,7 @@ int main() {
         [&](const std::uint32_t cost) {
             events.push_back("cost:" + std::to_string(cost));
         },
+        [&] { events.push_back("highest-version-notice"); },
         [&](const std::uint8_t index) {
             events.push_back("grid:" + std::to_string(index));
         },
@@ -43,18 +56,24 @@ int main() {
         detail_result.displayed_storage_total != 4U ||
         detail_result.displayed_cost != 120U || events.size() != 9U ||
         events[0] != "description:resource.decker" ||
-        events[1] != "detail-text" || events[3] != "detail-text" ||
-        events[4] != "quantity:3" || events[5] != "weight:7" ||
-        events[6] != "storage:4" || events[7] != "cost:120" ||
+        events[1] != "level-heading" ||
+        events[2] != "size-deck-storage-heading" ||
+        events[3] != "price-label" || events[4] != "quantity:3" ||
+        events[5] != "weight:7" || events[6] != "storage:4" ||
+        events[7] != "cost:120" ||
         events[8] != "grid:1") {
         return 1;
     }
 
+    events.clear();
     const auto description_only = render_field_action_description(
-        descriptions, FieldActionDescriptionInput{0U, 9U, {}, {}}, {});
+        descriptions, FieldActionDescriptionInput{0U, 9U, {}, {}},
+        description_callbacks);
     if (description_only.kind !=
             FieldActionDescriptionRenderKind::description_only ||
-        description_only.description_alias != "resource.firewall") {
+        description_only.description_alias != "resource.firewall" ||
+        events.size() != 3U || events[0] != "description:resource.firewall" ||
+        events[1] != "highest-version-notice" || events[2] != "grid:0") {
         return 2;
     }
     if (render_field_action_description(
@@ -62,11 +81,23 @@ int main() {
             {}).kind != FieldActionDescriptionRenderKind::invalid_description) {
         return 3;
     }
+    events.clear();
     if (render_field_action_description(
             descriptions, FieldActionDescriptionInput{0U, 1U, 1U, {}},
-            {}).kind !=
-        FieldActionDescriptionRenderKind::missing_resource_selection) {
+            description_callbacks).kind !=
+            FieldActionDescriptionRenderKind::missing_resource_selection ||
+        events.size() != 6U || events[0] != "description:resource.firewall" ||
+        events[4] != "quantity:1" || events[5] != "grid:0") {
         return 4;
+    }
+    events.clear();
+    selection.adjusted_available_memory = 10U;
+    if (render_field_action_description(
+            descriptions, FieldActionDescriptionInput{0U, 1U, {}, selection},
+            description_callbacks).kind != FieldActionDescriptionRenderKind::missing_cost ||
+        events.size() != 8U || events[6] != "storage:17" ||
+        events[7] != "grid:0") {
+        return 11;
     }
     if (render_field_action_description(
             descriptions, FieldActionDescriptionInput{0U, 0xFFU, 1U, selection},

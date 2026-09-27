@@ -25,6 +25,16 @@ struct FieldActionDescriptionInput {
     std::optional<FieldActionResourceSelectionResult> resource_selection;
 };
 
+// The three fixed labels emitted by 0x580FE before the quantity summary.  The
+// aliases are source text resources at 0x1AB4B4, 0x1AB4BA, and 0x1AB4D8;
+// naming the roles keeps the native presentation boundary independent of ROM
+// addresses while retaining the source call order.
+enum class FieldActionQuantityText {
+    level_heading,
+    size_deck_storage_heading,
+    price_label,
+};
+
 enum class FieldActionDescriptionRenderKind {
     invalid_description,
     description_only,
@@ -48,14 +58,18 @@ struct FieldActionDescriptionRenderCallbacks {
     // 0xE31F2 text resource after 0xC134 normalization and 0xC168 wrapping.
     std::function<void(const std::string&)> render_description_text;
 
-    // In the quantity branch, 0x580FE emits three fixed text resources,
-    // quantity, selected-resource weight, restored storage total, and cost in
-    // that order.  The repeated callback preserves the three source calls.
-    std::function<void()> render_quantity_detail_text;
+    // In the quantity branch, 0x580FE emits the three fixed labels, quantity,
+    // selected-resource weight, restored storage total, and cost in that
+    // order.  The enum retains the identity of each source text resource.
+    std::function<void(FieldActionQuantityText)> render_quantity_detail_text;
     std::function<void(std::uint8_t)> render_quantity;
     std::function<void(std::uint32_t)> render_selected_storage_weight;
     std::function<void(std::uint16_t)> render_storage_total;
     std::function<void(std::uint32_t)> render_cost;
+
+    // The quantity >= 9 path renders the source's highest-version notice
+    // (0x1AB4E7) instead of the quantity summary.
+    std::function<void()> render_highest_version_notice;
 
     // 0x1AC90C + description_index * 0x0C selects the source grid record.
     std::function<void(std::uint8_t)> write_description_grid;
@@ -63,9 +77,10 @@ struct FieldActionDescriptionRenderCallbacks {
 
 // ROM 0x580FE.  Render a menu-resource description.  Quantities whose source
 // byte compares below nine take the Matrix-capacity summary branch; larger
-// quantities only render the description and its grid.  The source's 0x575F8
-// result is supplied as typed data because its own conversion is a separate
-// reusable field-resource boundary.
+// quantities render the highest-version notice instead.  The description and
+// final grid write happen on both paths.  The source's 0x575F8 result is
+// supplied as typed data because its own conversion is a separate reusable
+// field-resource boundary.
 FieldActionDescriptionRenderResult render_field_action_description(
     const FieldActionDescriptionResourceTable& resources,
     const FieldActionDescriptionInput& input,

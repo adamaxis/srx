@@ -15,14 +15,6 @@ FieldActionDescriptionRenderResult render_field_action_description(
 
     result.description_alias = resources.aliases[input.description_index];
     const auto quantity_is_small = static_cast<std::int8_t>(input.quantity) < 9;
-    if (quantity_is_small && !input.resource_selection.has_value()) {
-        result.kind = FieldActionDescriptionRenderKind::missing_resource_selection;
-        return result;
-    }
-    if (quantity_is_small && !input.displayed_cost.has_value()) {
-        result.kind = FieldActionDescriptionRenderKind::missing_cost;
-        return result;
-    }
 
     if (callbacks.render_description_text) {
         callbacks.render_description_text(result.description_alias);
@@ -30,28 +22,38 @@ FieldActionDescriptionRenderResult render_field_action_description(
 
     if (!quantity_is_small) {
         result.kind = FieldActionDescriptionRenderKind::description_only;
+        if (callbacks.render_highest_version_notice) {
+            callbacks.render_highest_version_notice();
+        }
         if (callbacks.write_description_grid) {
             callbacks.write_description_grid(input.description_index);
         }
         return result;
     }
 
-    result.kind = FieldActionDescriptionRenderKind::quantity_summary;
+    if (callbacks.render_quantity_detail_text) {
+        callbacks.render_quantity_detail_text(FieldActionQuantityText::level_heading);
+        callbacks.render_quantity_detail_text(
+            FieldActionQuantityText::size_deck_storage_heading);
+        callbacks.render_quantity_detail_text(FieldActionQuantityText::price_label);
+    }
+    if (callbacks.render_quantity) {
+        callbacks.render_quantity(input.quantity);
+    }
+
+    if (!input.resource_selection.has_value()) {
+        result.kind = FieldActionDescriptionRenderKind::missing_resource_selection;
+        if (callbacks.write_description_grid) {
+            callbacks.write_description_grid(input.description_index);
+        }
+        return result;
+    }
+
     const auto& selection = *input.resource_selection;
     result.selected_storage_weight = selection.selection.selected_storage_weight;
     result.displayed_storage_total = static_cast<std::uint16_t>(
         selection.adjusted_available_memory +
         static_cast<std::uint16_t>(selection.selection.selected_storage_weight));
-    result.displayed_cost = *input.displayed_cost;
-
-    if (callbacks.render_quantity_detail_text) {
-        for (int pass = 0; pass < 3; ++pass) {
-            callbacks.render_quantity_detail_text();
-        }
-    }
-    if (callbacks.render_quantity) {
-        callbacks.render_quantity(input.quantity);
-    }
     if (callbacks.render_selected_storage_weight) {
         callbacks.render_selected_storage_weight(
             result.selected_storage_weight);
@@ -59,6 +61,17 @@ FieldActionDescriptionRenderResult render_field_action_description(
     if (callbacks.render_storage_total) {
         callbacks.render_storage_total(result.displayed_storage_total);
     }
+
+    if (!input.displayed_cost.has_value()) {
+        result.kind = FieldActionDescriptionRenderKind::missing_cost;
+        if (callbacks.write_description_grid) {
+            callbacks.write_description_grid(input.description_index);
+        }
+        return result;
+    }
+
+    result.kind = FieldActionDescriptionRenderKind::quantity_summary;
+    result.displayed_cost = *input.displayed_cost;
     if (callbacks.render_cost) {
         callbacks.render_cost(result.displayed_cost);
     }
