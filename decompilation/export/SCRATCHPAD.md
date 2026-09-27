@@ -181,6 +181,14 @@ the selected category bit in the companion byte, and clears companion bit 3
 when category 0 is selected. Invalid, owned, incompatible, insufficient-fund,
 and cancelled paths are explicit typed outcomes.
 
+The removal branch at `0x56F4A` is `remove_runner_action()`. It refreshes the
+detail panel, rejects empty slots and protected action codes `0x29..0x2B`,
+shows the refund and confirms it, then adds `FFF0BE` back to funds. When the
+removed code equals the active runner suffix marker plus `'+'`, the marker is
+cleared; when the removed slot is the active menu slot, the conversion invokes
+the typed `clear_menu_slot` boundary. The action and companion bytes are then
+cleared, matching the writes performed by `0x1275C`.
+
 ## Field HUD row meter
 
 `0x1792E render_menu_hud_rows` calls `0x56506` once for each eligible row.
