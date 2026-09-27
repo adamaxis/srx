@@ -84,5 +84,26 @@ int main() {
         return 4;
     }
 
+    // 0x56016 uses SUB.B/BLE. For a wrapped byte such as 0x80 - 0x01, the
+    // result is positive-looking (0x7f), but V is set and BLE still exits.
+    // A plain signed cast would incorrectly enter the phase roll.
+    auto overflow_gate = input;
+    overflow_gate.delay_input.active_record_attribute_a = 127U;
+    overflow_gate.delay_input.active_record_attribute_b = 127U;
+    overflow_gate.delay_input.mode_result = -1;
+    overflow_gate.availability_flags[2] = 64U;
+    overflow_gate.compact_record_value = 2U;
+    published = 0;
+    requested_bounds.clear();
+    const auto overflow_result = calculate_and_publish_runner_action_result(
+        overflow_gate, services);
+    if (overflow_result.action_delay != 85U ||
+        overflow_result.combined_roll_count != 128U ||
+        overflow_result.compact_gate_difference != 127 ||
+        overflow_result.published_action_result != -1 || published != -1 ||
+        overflow_result.phase_roll_performed || !requested_bounds.empty()) {
+        return 5;
+    }
+
     return 0;
 }

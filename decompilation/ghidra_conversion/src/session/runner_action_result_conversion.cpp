@@ -14,8 +14,17 @@ std::uint16_t subtract_source_byte(const std::uint16_t value,
     return static_cast<std::uint16_t>((value & 0xFF00U) | result);
 }
 
-bool source_byte_is_nonpositive(const std::uint16_t value) {
-    return static_cast<std::int8_t>(static_cast<std::uint8_t>(value)) <= 0;
+bool source_subtract_byte_is_nonpositive(const std::uint8_t minuend,
+                                         const std::uint8_t subtrahend,
+                                         const std::uint8_t result) {
+    // 0x56016 is SUB.B followed by BLE. BLE is Z || (N xor V); interpreting
+    // the wrapped byte as a C++ signed value loses the 68000 overflow flag.
+    const bool negative = (result & 0x80U) != 0U;
+    const bool zero = result == 0U;
+    const bool overflow =
+        (((minuend ^ subtrahend) & 0x80U) != 0U) &&
+        (((minuend ^ result) & 0x80U) != 0U);
+    return zero || (negative != overflow);
 }
 
 void publish_result(const std::int8_t result,
@@ -72,7 +81,9 @@ RunnerActionResult calculate_and_publish_runner_action_result(
     const auto difference =
         subtract_source_byte(output.combined_roll_count, compact_gate);
     output.compact_gate_difference = static_cast<std::int16_t>(difference);
-    if (source_byte_is_nonpositive(difference)) {
+    if (source_subtract_byte_is_nonpositive(
+            static_cast<std::uint8_t>(output.combined_roll_count),
+            compact_gate, static_cast<std::uint8_t>(difference))) {
         publish_result(-1, services, output);
         return output;
     }

@@ -5,6 +5,11 @@
 // Calls recovered from direct call instructions:
 //   0x00019C54 read_selected_matrix_program_availability
 //   0x00055F44 calculate_runner_action_delay
+//
+// Direct ROM bytes at 0x55FFC..0x5604E continue inline after the exported
+// 38-byte entry. The compact +0x05 gate is a byte SUB.B followed by BLE, so
+// its exit uses the 68000 N/V/Z flags rather than a signed C++ cast. The
+// phase roll is only reached for a strictly positive signed-byte result.
 
 
 void calculate_and_publish_runner_action_result(void)
