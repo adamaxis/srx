@@ -800,6 +800,20 @@ conversions, including their source corner order and wrapped unsigned
 comparisons. These routines use callbacks for decoded terrain/object records,
 not ROM addresses or emulated RAM.
 
+### Terrain collision-map rebuild audit
+
+The existing `0xEE10` conversion is now source-verified against the disassembly:
+the `FFDF8A` rebuild request is consumed before clearing all `0x1000` map
+bytes, each five-word rectangle is rasterized at inclusive `0x20` coordinate
+steps using the source's `0x40` row stride, and the post-process boundary runs
+only after the signed-first-word terminator. `0xEE86` is no longer treated as
+a generic marker helper: its field-mode/effect-context gates, equality between
+`FFE12C` and `FFF0C8`, clear-`FFE180` requirement, signed `FFE185` ordinal, and
+`0xDA` to `0x9A` replacement are represented by
+`TerrainMarkerReplacementState`. A malformed host map returns false instead of
+the ROM's unbounded scan, while valid source maps retain the same first-match
+and ordinal behavior.
+
 ### Entity proximity and pair-collision audit
 
 The entity interaction pass now covers `0xEB92` and its `0xECCC` callee. The

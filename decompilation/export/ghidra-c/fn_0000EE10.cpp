@@ -4,6 +4,10 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000EE86 replace_nth_terrain_marker
+//
+// Source behavior: the FFDF8A request is consumed before the 0x1000-byte
+// collision map is cleared. Five-word rectangle records are rasterized in
+// inclusive 0x20-unit X/Y steps, then 0xEE86 applies its effect-state gate.
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */

@@ -4,6 +4,11 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
+//
+// Source behavior: only field mode 2 reaches the marker swap. At least one of
+// FFE184, FFE187, or FFFBED==4 must be active; FFE12C must equal FFF0C8;
+// FFE180 must be clear. The signed FFE185 ordinal selects a 0xDA marker,
+// which becomes 0x9A.
 
 
 void replace_nth_terrain_marker(void)

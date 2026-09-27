@@ -127,8 +127,8 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0xE9EE	terrain object bounds check	ghidra_conversion::contains_terrain_object_bounds	shadowrun_ghidra_terrain_probe	partial		Source-traced ten-byte object record projection with signed inclusive X +/-12 and Y +/-7 bounds
 0xEAD2	terrain direction boundary evaluation	ghidra_conversion::evaluate_terrain_direction_boundary	shadowrun_ghidra_terrain_probe	partial		Source-traced 0x38 direction mask and wrapped unsigned BCS/BCC comparisons against the selected tile window
 0xEDFA	terrain tile window decode	ghidra_conversion::decode_terrain_tile_window	shadowrun_ghidra_terrain_probe	partial		Source-traced packed-index expansion into horizontal origin, row origin, and inclusive 32-unit row end
-0xEE10	terrain collision map rebuild	ghidra_conversion::rebuild_terrain_collision_map	shadowrun_native_port	partial		Typed 64x64 map clear, bounded rectangle rasterization, and post-process boundary
-0xEE86	terrain marker replacement	ghidra_conversion::replace_nth_terrain_marker	shadowrun_native_port	partial		Typed zero-based marker occurrence replacement
+0xEE10	terrain collision map rebuild	ghidra_conversion::rebuild_terrain_collision_map	shadowrun_ghidra_terrain_map	partial		Source-traced FFDF8A consume/clear, 0x1000-byte collision-map clear, inclusive 0x20-step rectangle rasterization, and 0xEE86 effect-state boundary
+0xEE86	terrain marker replacement	ghidra_conversion::replace_nth_terrain_marker	shadowrun_ghidra_terrain_map	partial		Source-traced field-mode/effect-context gate, signed FFE185 ordinal, and 0xDA-to-0x9A marker replacement
 0xFEBE	selection column movement	ghidra_conversion::move_selection_column	shadowrun_native_port	partial		Typed row-aware column wrapping
 0xFF06	selection row movement	ghidra_conversion::move_selection_row	shadowrun_native_port	partial		Typed two-row availability and column-validity reset
 0xC376	shared menu cursor movement	ghidra_conversion::move_wrapped_menu_cursor	shadowrun_ghidra_platform_input_timing	partial		Typed ADD.B overflow-corrected lower wrap, raw comparison-N upper wrap, and explicit cursor-word presentation boundary

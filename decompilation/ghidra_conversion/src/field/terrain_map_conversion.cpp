@@ -4,6 +4,33 @@
 
 namespace shadowrun::ghidra_conversion {
 
+bool replace_nth_terrain_marker(
+    std::array<std::uint8_t, 0x1000>& map,
+    const TerrainMarkerReplacementState& state) {
+    if (state.field_mode != 2U ||
+        (state.effect_context_active == 0U &&
+         state.alternate_effect_context == 0U &&
+         state.effect_handler_index != 4U) ||
+        state.selected_effect_index != state.active_effect_index ||
+        state.world_effect_active) {
+        return false;
+    }
+
+    auto remaining = static_cast<std::int16_t>(
+        static_cast<std::int8_t>(state.marker_ordinal));
+    for (auto& value : map) {
+        if (value != 0xDAU) {
+            continue;
+        }
+        --remaining;
+        if (remaining < 0) {
+            value = 0x9AU;
+            return true;
+        }
+    }
+    return false;
+}
+
 void replace_nth_terrain_marker(
     std::array<std::uint8_t, 0x1000>& map,
     const std::uint8_t marker,
@@ -23,13 +50,14 @@ void replace_nth_terrain_marker(
 
 void rebuild_terrain_collision_map(
     std::array<std::uint8_t, 0x1000>& map,
-    const bool rebuild_requested,
+    bool& rebuild_requested,
     const std::vector<TerrainCollisionRectangle>& rectangles,
     const TerrainMapPostProcess& post_process) {
     if (!rebuild_requested) {
         return;
     }
 
+    rebuild_requested = false;
     map.fill(0);
     for (const auto& rectangle : rectangles) {
         for (std::uint32_t y = rectangle.top;

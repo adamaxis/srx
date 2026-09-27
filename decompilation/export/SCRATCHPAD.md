@@ -1818,6 +1818,15 @@ codes, sets the directional marker for bit `0x40`, and routes object versus
 directional codes through typed callbacks. `TerrainCollisionResult` carries
 the result and marker state without exposing source RAM or emulating the VDP.
 
+## Terrain collision-map rebuild audit
+
+`0xEE10` now consumes the `FFDF8A` rebuild request, clears the complete
+`0x1000`-byte terrain-code map, rasterizes the source's inclusive `0x20`-step
+rectangle records, and crosses the `0xEE86` post-process boundary. The latter
+now has its actual field/effect gate and signed marker ordinal represented in
+`TerrainMarkerReplacementState`, replacing the former generic marker-only
+description.
+
 ## Entity proximity and pair-collision audit
 
 `0xEB92` is now a typed stable-index scan: bit-6 exclusions, player-record
