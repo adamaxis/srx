@@ -13,6 +13,7 @@ FieldActionApplicationResult apply_selected_field_action(
     // 0x57962 uses a signed-byte test before any panel or cost work.  A high
     // bit in the record marker is the source's disabled/invalid sentinel.
     if (record.type >= 0x80U) {
+        state.service_result = -1;
         return FieldActionApplicationResult::invalid_record;
     }
 
@@ -31,6 +32,9 @@ FieldActionApplicationResult apply_selected_field_action(
             if (callbacks.show_no_inventory_slot) {
                 callbacks.show_no_inventory_slot();
             }
+            if (callbacks.wait_for_controller_event) {
+                callbacks.wait_for_controller_event();
+            }
             return FieldActionApplicationResult::no_inventory_slot;
         }
     }
@@ -44,6 +48,9 @@ FieldActionApplicationResult apply_selected_field_action(
         if (callbacks.show_insufficient_funds) {
             callbacks.show_insufficient_funds();
         }
+        if (callbacks.wait_for_controller_event) {
+            callbacks.wait_for_controller_event();
+        }
         return FieldActionApplicationResult::insufficient_funds;
     }
 
@@ -56,16 +63,19 @@ FieldActionApplicationResult apply_selected_field_action(
 
     if (is_special_action) {
         // 0x57A08 increments first, then rejects 0x15 and restores the
-        // visible count to 0x14.  A typed boundary expresses the resulting
-        // state without retaining that transient overflow.
-        if (state.runner.special_action_count >= 0x14U) {
+        // visible count to 0x14. Preserve that source mutation order before
+        // exposing the capacity-limit presentation boundary.
+        ++state.runner.special_action_count;
+        if (state.runner.special_action_count >= 0x15U) {
             state.runner.special_action_count = 0x14U;
+            if (callbacks.refresh_action_detail_panel) {
+                callbacks.refresh_action_detail_panel();
+            }
             if (callbacks.show_special_action_limit) {
                 callbacks.show_special_action_limit();
             }
             return FieldActionApplicationResult::special_action_limit;
         }
-        ++state.runner.special_action_count;
     }
     else {
         // The source stores the record marker and immediately increments the

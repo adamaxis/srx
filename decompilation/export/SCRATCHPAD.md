@@ -917,10 +917,10 @@ The native conversion is `apply_selected_field_action()` in the separate
 `shadowrun_ghidra_field_action_application` library:
 
 * A high-bit first byte is the disabled/invalid marker and sets the source
-  failure result before any state mutation.
+  failure result `FFF112 = -1` before any state mutation.
 * The detail panel refresh (`0x57C5E`) happens before pricing. The ordinary
   record path scans active-runner `+0x66..+0x6D` in ascending slot order and
-  rejects the action if all eight slots are occupied.
+  renders its no-slot message and waits if all eight slots are occupied.
 * Marker `E` is a separate path: its price starts from record byte 2 and it
   increments active-runner `+0x4F` after the confirmation prompt. The source caps
   the visible count at `0x14` and rejects the transaction when the increment
@@ -929,9 +929,12 @@ The native conversion is `apply_selected_field_action()` in the separate
   selected marker as marker+1 in the empty action slot and copy record byte 1
   into the companion `+0x6E` slot. This marker+1 write is intentional source
   behavior, not a normalization invented by the host layer.
-* Funds are checked before the confirmation prompt and deducted only after the
-  prompt accepts. Cancel, no-slot, insufficient-funds, and special
-  capacity outcomes leave the runner record and funds unchanged.
+* Funds are checked before the confirmation prompt; insufficient funds renders
+  its message and waits, and funds are deducted only after the prompt accepts.
+  Cancel, no-slot, insufficient-funds, and special capacity outcomes leave
+  the runner record and funds unchanged. A special capacity rejection first
+  restores the visible count to `0x14`, refreshes the detail panel again, and
+  renders its limit message.
 
 `0x57B8C` is now labeled `run_menu_confirmation_prompt`: it draws the
 two-choice prompt, services vblank/controller input, uses the shared wrapped

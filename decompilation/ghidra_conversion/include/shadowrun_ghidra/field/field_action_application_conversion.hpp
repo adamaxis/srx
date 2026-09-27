@@ -21,6 +21,7 @@ struct FieldActionRunnerInventory {
 struct FieldActionPurchaseState {
     FieldActionRunnerInventory runner{};
     std::uint32_t funds = 0; // source FFFBFE
+    std::int8_t service_result = 0; // source FFF112
 };
 
 enum class FieldActionApplicationResult {
@@ -33,11 +34,13 @@ enum class FieldActionApplicationResult {
 };
 
 struct FieldActionApplicationCallbacks {
-    // 0x57C5E refreshes the action detail panel before cost handling.
+    // 0x57C5E refreshes the action detail panel before cost handling and
+    // again when a confirmed special action reaches its capacity limit.
     std::function<void()> refresh_action_detail_panel;
     std::function<void()> show_no_inventory_slot;
     std::function<void()> show_insufficient_funds;
     std::function<void()> show_special_action_limit;
+    std::function<void()> wait_for_controller_event;
 
     // 0x57B8C is a two-option confirmation prompt around the cost. The ROM
     // restores the original cost register; it does not calculate a new price.

@@ -1,6 +1,8 @@
 #include "shadowrun_ghidra/field/field_action_application_conversion.hpp"
 
 #include <cstdint>
+#include <string>
+#include <vector>
 
 namespace {
 
@@ -16,16 +18,14 @@ int main() {
     FieldActionCostContext context{};
     FieldActionPurchaseState state{};
     state.funds = 1000U;
-    int detail_refreshes = 0;
-    int no_slot_messages = 0;
-    int insufficient_messages = 0;
-    int limit_messages = 0;
+    std::vector<std::string> events;
     const FieldActionApplicationCallbacks callbacks{
-        [&] { ++detail_refreshes; },
-        [&] { ++no_slot_messages; },
-        [&] { ++insufficient_messages; },
-        [&] { ++limit_messages; },
-        [] { return true; },
+        [&] { events.emplace_back("refresh"); },
+        [&] { events.emplace_back("no-slot"); },
+        [&] { events.emplace_back("insufficient"); },
+        [&] { events.emplace_back("limit"); },
+        [&] { events.emplace_back("wait"); },
+        [&] { events.emplace_back("confirm"); return true; },
     };
 
     const FieldActionCostRecord ordinary{3U, 0x5AU, 0U};
@@ -35,7 +35,8 @@ int main() {
                     FieldActionApplicationResult::applied &&
                 state.runner.action_codes[0] == 4U &&
                 state.runner.companion_values[0] == 0x5AU &&
-                state.funds == 900U && detail_refreshes == 1)) {
+                state.funds == 900U &&
+                events == std::vector<std::string>{"refresh", "confirm"})) {
         return 1;
     }
 
@@ -46,7 +47,8 @@ int main() {
                     special_record, context, special, {}, callbacks) ==
                     FieldActionApplicationResult::applied &&
                 special.runner.special_action_count == 1U &&
-                special.funds == 998U)) {
+                special.funds == 998U && events.size() == 4U &&
+                events[2] == "refresh" && events[3] == "confirm")) {
         return 2;
     }
 
@@ -57,7 +59,8 @@ int main() {
                     ordinary, context, full,
                     [](const std::uint8_t) { return 100U; }, callbacks) ==
                     FieldActionApplicationResult::no_inventory_slot &&
-                no_slot_messages == 1)) {
+                events.size() == 7U && events[4] == "refresh" &&
+                events[5] == "no-slot" && events[6] == "wait")) {
         return 3;
     }
 
@@ -68,14 +71,15 @@ int main() {
                     [](const std::uint8_t) { return 100U; }, callbacks) ==
                     FieldActionApplicationResult::insufficient_funds &&
                 poor.runner.action_codes[0] == 0U &&
-                insufficient_messages == 1)) {
+                events.size() == 10U && events[7] == "refresh" &&
+                events[8] == "insufficient" && events[9] == "wait")) {
         return 4;
     }
 
     FieldActionPurchaseState cancelled{};
     cancelled.funds = 1000U;
     const FieldActionApplicationCallbacks cancel_callbacks{
-        {}, {}, {}, {},
+        {}, {}, {}, {}, {},
         [] { return false; },
     };
     if (!expect(apply_selected_field_action(
@@ -94,7 +98,9 @@ int main() {
                     special_record, context, capped, {}, callbacks) ==
                     FieldActionApplicationResult::special_action_limit &&
                 capped.runner.special_action_count == 0x14U &&
-                limit_messages == 1)) {
+                events.size() == 14U && events[10] == "refresh" &&
+                events[11] == "confirm" && events[12] == "refresh" &&
+                events[13] == "limit")) {
         return 6;
     }
 
@@ -102,7 +108,8 @@ int main() {
     if (!expect(apply_selected_field_action(
                     invalid, context, state,
                     [](const std::uint8_t) { return 0U; }, callbacks) ==
-                FieldActionApplicationResult::invalid_record)) {
+                FieldActionApplicationResult::invalid_record &&
+                state.service_result == -1 && events.size() == 14U)) {
         return 7;
     }
 
