@@ -30,7 +30,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x0000C168U, "render_wrapped_encoded_text", RoutineFamily::graphics, 174U},
     {0x0000C64CU, "finalize_field_mode_exit_transition", RoutineFamily::field, 428U},
     {0x0000C7F8U, "prepare_field_scene_runtime", RoutineFamily::graphics, 10U},
-    {0x0000C802U, "refresh_field_runner_state_and_assets", RoutineFamily::graphics, 174U},
+    {0x0000C802U, "refresh_field_runner_state_and_assets", RoutineFamily::field, 174U},
     {0x0000C928U, "run_field_exit_selection_menu", RoutineFamily::graphics, 238U},
     {0x0000CF38U, "run_field_exit_prompt_menu", RoutineFamily::graphics, 198U},
     {0x0000D4C8U, "reset_field_mode_entity_selection", RoutineFamily::graphics, 116U},

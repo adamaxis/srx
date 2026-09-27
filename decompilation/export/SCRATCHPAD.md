@@ -708,6 +708,31 @@ phases as typed enums. `0x1F246`, `0xC802`, `0x38FA`, `0x391A`, and the profile
 initializers remain explicit callbacks because their own source hills are
 separate; no source pointer or RAM address is used as runtime state.
 
+## Field runner state and asset refresh: 0xC802
+
+`0xC802` is the field-mode refresh immediately adjacent to the exit finalizer.
+It first serializes the default compact roster record and the selected primary
+and secondary records through `0x59798`. It then evaluates the primary runner
+at `FF0200` and the secondary runner at `FF0300` in that order. The direct
+disassembly requires all three conditions: the live record active bit at
+`+0x10` is set, its effect gate at `+0x4C` is zero, and its animation gate at
+`+0x9C` is zero. The generated C used `gate_a == 0 || gate_b == 0`; that was
+wrong and is recorded here as a source-audit correction.
+
+For an eligible runner, the routine saves the 1-based compact roster marker,
+publishes `0xFF` as the absent marker, calls `0xC8B0` with the source delta
+`-2` against the corresponding typed effect-counter entry, and clears the
+runner's effect slot. It dispatches `0x391A` only when that runner's stable
+host identity matches the active runner identity. After both slots, it always
+runs the field asset setup (`0x3404`) and the three-pass animation service
+(`0x38FA`). The conversion uses a two-entry typed runner array and a bounded
+counter vector; an invalid marker returns an explicit status instead of
+indexing arbitrary host memory.
+
+The roster serialization, effect clearing, action dispatch, asset upload, and
+animation calls are explicit callbacks so this source conversion can be wired
+to their already converted modules without duplicating a second state machine.
+
 ## Reviewed function map
 
 The native owner names below are the target C++ vocabulary. A `partial` entry
@@ -792,6 +817,7 @@ still has unresolved downstream calls or hardware presentation work.
 | `0xFEBE` | `move_selection_column` | Moves the active column by a signed step and wraps within the source row's available range. | `ghidra_conversion::move_selection_column()` | partial |
 | `0xFF06` | `move_selection_row` | Changes the two-row selection mode only when at least seven entries exist and clears it when the active column is unavailable. | `ghidra_conversion::move_selection_row()` | partial |
 | `0xC376` | `move_wrapped_menu_cursor` | Adds the signed menu step with source `ADD.B` flags, uses the overflow-corrected BGE result to wrap negative sums to the supplied upper cursor value, then uses the raw `D3 - cursor` N bit to wrap above-range values to zero; paired cursor-word writes remain a presentation boundary. | `ghidra_conversion::move_wrapped_menu_cursor()` | partial |
+| `0xC802` | `refresh_field_runner_state_and_assets` | Serializes compact roster records, scans primary then secondary field runners through the direct AND gate, consumes the 1-based roster marker with the existing negative-floor counter service, clears effects, dispatches the active-runner action by stable identity, then uploads field assets and runs the animation triplet. | `ghidra_conversion::refresh_field_runner_state_and_assets()` | partial |
 | `0xC8B0` | `apply_byte_counter_delta_with_negative_floor` | Subtracts one from the caller's one-based counter selector, adds the signed byte delta to the selected counter, and replaces a negative result with the source `0xFF` sentinel. | `ghidra_conversion::apply_byte_counter_delta_with_negative_floor()` | partial |
 | `0xC134` | `normalize_source_text_line` | Maps source high-bit glyph markers, stops on the line terminator range, and pads the remaining line width. | `ghidra_conversion::normalize_source_text_line()` | partial |
 | `0x15554` | `service_nearby_entity_auxiliary_behavior` | Scans the ten entity records with active/non-excluded filtering, applies the normal `0x280` radius/`0x500` exclusive window or the type-`0x0E` `0x140`/`0x280` window, clamps lower bounds at zero, and calls the existing `0x1562E` auxiliary service for each match. | `ghidra_conversion::service_nearby_entity_auxiliary_behavior()` | partial |

@@ -57,6 +57,7 @@ file(GLOB SHADOWRUN_MODULE_ROSTER_SAVE CONFIGURE_DEPENDS
 file(GLOB SHADOWRUN_MODULE_FIELD_SCENE_CONTROLLER CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_mode_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_mode_exit_transition_finalizer_conversion.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_runner_state_asset_refresh_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_mode_finalizer_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_mode_service*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_scene_entry_conversion.cpp"
