@@ -105,7 +105,7 @@ int main() {
     invalid.availability_marker = 1;
     if (apply_field_quantity_purchase(invalid, callbacks) !=
             FieldQuantityPurchaseResult::invalid_category ||
-        invalid.availability_marker != -1 || invalid.service_result != -1 ||
+        invalid.availability_marker != 1 || invalid.service_result != -1 ||
         confirmations != 2) {
         return 6;
     }
@@ -115,7 +115,7 @@ int main() {
     malformed_high_bit.availability_marker = 1;
     if (apply_field_quantity_purchase(malformed_high_bit, callbacks) !=
             FieldQuantityPurchaseResult::invalid_category ||
-        malformed_high_bit.availability_marker != -1 ||
+        malformed_high_bit.availability_marker != 1 ||
         malformed_high_bit.service_result != -1) {
         return 7;
     }

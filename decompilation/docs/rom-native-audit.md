@@ -185,6 +185,11 @@ bit. For categories 7 and above, the ROM scans bits 12 through 15; bit 15
 causes the exhausted/unavailable branch at `0x5723C` rather than resolving a
 new target. The typed resolver now scans all four source bits.
 
+The recovered `0x577BA` quantity-purchase path also had a mutation mismatch:
+its invalid-category branch writes `FFF112 = -1` and returns without touching
+the negative/armed `FFF0B3` availability marker. The typed conversion and
+tests now preserve that marker on the early exit.
+
 The generated Ghidra C remains an evidence snapshot and still omits meaningful
 logic for some of these entries, including `0x3602` and `0x55828`; the typed
 conversion is accepted only where the ROM instruction trace and focused test

@@ -1064,9 +1064,9 @@ This path is distinct from the progress-counter purchase above:
   leaves funds and the quantity slots unchanged before clearing `FFF0B3`.
   Confirmation cancellation also leaves funds and the quantity slots
   unchanged before clearing the marker.
-* The invalid-category exit writes `-1` to the source service-result marker
-  `FFF112`; the native callbacks expose each source presentation boundary by
-  name instead of collapsing them into a generic detail refresh.
+* The invalid-category exit writes `-1` only to the source service-result
+  marker `FFF112`; it does not clear the armed `FFF0B3` availability marker.
+  The native conversion preserves that early-exit mutation boundary.
 * An accepted purchase deducts `FFF0BE`, writes `FFF0D6` to `FFFBBE` for
   category 0 or `FFFBC6..FFFBC9` for categories 1 through 4, and clears the
   marker.

@@ -10,7 +10,8 @@ FieldQuantityPurchaseResult apply_field_quantity_purchase(
     // high-bit source byte into an unchecked host index.
     if (static_cast<std::int8_t>(state.category) >= 5 ||
         state.category >= state.purchased_quantities.size()) {
-        state.availability_marker = -1;
+        // ROM 0x577BA writes only FFF112 on this early exit. The armed
+        // FFF0B3 marker is not part of the invalid-category mutation.
         state.service_result = -1;
         return FieldQuantityPurchaseResult::invalid_category;
     }
