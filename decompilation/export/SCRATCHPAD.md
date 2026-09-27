@@ -952,14 +952,18 @@ record-action branches. It was incorrectly classified as an intro routine.
 The new `shadowrun_ghidra_field_resource_purchase` library represents its
 state in `field_resource_purchase_conversion.*`:
 
+* The valid-category path writes grid variant B before any threshold decision;
+  category 4 and malformed high-bit values take the `FFF112 = -1` error exit
+  without presentation.
 * Categories 0, 1, and 2 compare their progress counters at `FFFBC0`,
   `FFFBC2`, and `FFFBC4` against requested quantity at `FFFBBE` scaled by
   `0x28`, `0x50`, and `0x0A`. Category 3 has a fixed satisfied/limit boundary
   at three units in `FFFBC5`.
-* A satisfied category takes the category-specific message path and waits;
-  it does not charge the player. Category 3 uses a distinct limit message.
+* A satisfied category takes the category-specific message path, waits, and
+  does not charge the player. Category 3 uses a distinct limit message.
 * An unsatisfied category reads its word cost from `0x1AC8E0[cursor]`, rejects
-  insufficient funds, publishes the preview cost, and enters the shared
+  insufficient funds after its message/wait path, publishes the preview cost,
+  renders the purchase title and grouped cost in order, and enters the shared
   `0x57B8C` confirmation prompt.
 * An accepted purchase deducts the table cost and increments the selected
   progress counter by 10, 25, 5, or 1. Cancellation leaves funds and

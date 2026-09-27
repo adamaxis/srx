@@ -19,19 +19,28 @@ struct FieldResourcePurchaseState {
     std::uint8_t progress_category_3 = 0;  // source FFFBC5
     std::uint32_t funds = 0;               // source FFFBFE
     std::uint32_t preview_cost = 0;        // source FFF0BE
+    std::int8_t service_result = 0;        // source FFF112
 };
 
 struct FieldResourcePurchaseCallbacks {
-    // 0x57C46 refreshes the selected field-service detail panel before the
-    // availability decision.
-    std::function<void()> refresh_detail_panel;
+    // 0x5766A writes the field-service purchase grid before the threshold
+    // decision. The remaining callbacks preserve the source's distinct
+    // title/message and wait boundaries rather than collapsing them into a
+    // generic detail refresh.
+    std::function<void()> write_resource_purchase_grid;
 
-    // These callbacks represent the three user-visible early exits in the
-    // routine.  The exact text remains source-table/UI work; the behavior is
-    // already distinct in the ROM by its message/layout addresses.
+    // These callbacks represent the source's category-specific terminal
+    // messages. Categories 0..2 use the satisfied path; category 3 uses its
+    // separate limit message when its fixed threshold has been reached.
     std::function<void()> show_category_satisfied;
     std::function<void()> show_category_limit;
     std::function<void()> show_insufficient_funds;
+
+    // The cost-bearing branch renders the purchase title, then the grouped
+    // table cost, before entering the shared confirmation prompt.
+    std::function<void()> render_purchase_title;
+    std::function<void()> render_preview_cost;
+    std::function<void()> wait_for_controller_event;
 
     // 0x57B8C is the shared two-choice confirmation prompt.  An absent
     // callback accepts the purchase for non-interactive conversion tests.

@@ -63,11 +63,12 @@ FieldResourcePurchaseResult apply_field_resource_purchase(
     // as a second guard so malformed high-bit bytes cannot become indexes.
     if (static_cast<std::int8_t>(state.category) >= 4 ||
         state.category >= category_costs.size()) {
+        state.service_result = -1;
         return FieldResourcePurchaseResult::invalid_category;
     }
 
-    if (callbacks.refresh_detail_panel) {
-        callbacks.refresh_detail_panel();
+    if (callbacks.write_resource_purchase_grid) {
+        callbacks.write_resource_purchase_grid();
     }
 
     if (category_is_satisfied(state)) {
@@ -75,10 +76,16 @@ FieldResourcePurchaseResult apply_field_resource_purchase(
             if (callbacks.show_category_limit) {
                 callbacks.show_category_limit();
             }
+            if (callbacks.wait_for_controller_event) {
+                callbacks.wait_for_controller_event();
+            }
             return FieldResourcePurchaseResult::category_limit;
         }
         if (callbacks.show_category_satisfied) {
             callbacks.show_category_satisfied();
+        }
+        if (callbacks.wait_for_controller_event) {
+            callbacks.wait_for_controller_event();
         }
         return FieldResourcePurchaseResult::category_satisfied;
     }
@@ -88,12 +95,21 @@ FieldResourcePurchaseResult apply_field_resource_purchase(
         if (callbacks.show_insufficient_funds) {
             callbacks.show_insufficient_funds();
         }
+        if (callbacks.wait_for_controller_event) {
+            callbacks.wait_for_controller_event();
+        }
         return FieldResourcePurchaseResult::insufficient_funds;
     }
 
     // The ROM publishes the cost to FFF0BE before entering the confirmation
     // prompt.  Keep that observable preview even if the user cancels.
     state.preview_cost = cost;
+    if (callbacks.render_purchase_title) {
+        callbacks.render_purchase_title();
+    }
+    if (callbacks.render_preview_cost) {
+        callbacks.render_preview_cost();
+    }
     const bool confirmed = callbacks.confirm_purchase
                                ? callbacks.confirm_purchase()
                                : true;
