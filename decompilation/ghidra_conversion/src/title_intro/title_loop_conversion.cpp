@@ -271,4 +271,110 @@ std::optional<std::uint8_t> advance_title_circuit_lights(
     return state.phase;
 }
 
+TitleLoopFrameResult advance_title_loop_frame(
+    TitleLoopState& state, const TitleLoopCallbacks& callbacks) {
+    // 0x1ABA samples once after setup and before the first vblank loop pass.
+    // The source uses it to seed the controller edge state; it is not a title
+    // input event and therefore is not recorded or latched here.
+    if (!state.initial_controller_sampled) {
+        state.initial_controller_sampled = true;
+        if (callbacks.sample_controller) {
+            callbacks.sample_controller();
+        }
+    }
+
+    // 0x1A9E starts each iteration at the vblank boundary, then services the
+    // already-converted title state before sampling the controller.
+    if (callbacks.wait_for_vblank) {
+        callbacks.wait_for_vblank();
+    }
+
+    const auto text_action = advance_title_text_state(state.text);
+    if (text_action != TitleTextAction::None && callbacks.apply_text_action) {
+        callbacks.apply_text_action(text_action);
+    }
+
+    if (const auto phase = advance_title_circuit_lights(
+            state.circuit_lights, state.text.completion_state);
+        phase.has_value() && callbacks.publish_circuit_light_phase) {
+        callbacks.publish_circuit_light_phase(*phase);
+    }
+
+    if (advance_title_animation_timer(state.animation_timer) &&
+        callbacks.publish_animation_offset) {
+        callbacks.publish_animation_offset(state.animation_timer.animation_offset);
+    }
+
+    // 0x195C -> 0x1BEA -> 0x0BF2. The host supplies the already sampled
+    // controller word; the conversion retains the source edge recording and
+    // event latch behavior without exposing a controller port.
+    const auto sampled_word = callbacks.sample_controller
+        ? callbacks.sample_controller()
+        : static_cast<std::uint16_t>(0U);
+    record_title_input_edge(state.input_history, sampled_word);
+    state.last_controller_events = latch_controller_events(
+        state.controller_events, 0U, sampled_word);
+    if (callbacks.publish_controller_events) {
+        callbacks.publish_controller_events(state.last_controller_events);
+    }
+
+    --state.logo_reveal_delay;
+    if (state.logo_reveal_delay < 0 &&
+        state.logo.columns_revealed < kTitleLogoColumnLimit) {
+        --state.logo_column_cadence;
+        if (state.logo_column_cadence < 0) {
+            state.logo_column_cadence = 1;
+            const auto logo_result = advance_title_logo_column(state.logo);
+            if (logo_result.completed) {
+                state.text.completion_state = 1U;
+                state.text.countdown = 0x5AU;
+            }
+            if (logo_result.completion_palette_copy_requested &&
+                callbacks.copy_completion_palette) {
+                callbacks.copy_completion_palette();
+            }
+            if (callbacks.render_logo_column) {
+                callbacks.render_logo_column(logo_result);
+            }
+        }
+
+        const auto sprite_result = advance_title_sprite_state(state.sprite);
+        if (callbacks.rebuild_sprite_projection) {
+            callbacks.rebuild_sprite_projection(sprite_result);
+        }
+        state.display_dirty_flags = static_cast<std::uint8_t>(
+            state.display_dirty_flags | 0x02U);
+    } else if (callbacks.reset_vdp_upload_state) {
+        callbacks.reset_vdp_upload_state();
+    }
+
+    const auto prompt = advance_title_prompt_schedule(state.prompt);
+    if (prompt.has_value() && callbacks.draw_prompt_variant) {
+        callbacks.draw_prompt_variant(*prompt);
+    }
+
+    const auto finish_title_loop = [&] {
+        // The ROM takes one final controller sample after leaving the loop,
+        // then performs its palette transition and validates the seven-edge
+        // sequence. Do not feed this final sample into the edge buffer.
+        if (callbacks.sample_controller) {
+            callbacks.sample_controller();
+        }
+        if (callbacks.step_palette_transition) {
+            callbacks.step_palette_transition();
+        }
+        finalize_title_input_sequence(state.input_history);
+    };
+
+    if (state.last_controller_events.event_bits != 0U) {
+        finish_title_loop();
+        return TitleLoopFrameResult::start_requested;
+    }
+    if (state.prompt.finished) {
+        finish_title_loop();
+        return TitleLoopFrameResult::source_complete;
+    }
+    return TitleLoopFrameResult::running;
+}
+
 } // namespace shadowrun::ghidra_conversion

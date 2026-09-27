@@ -1,6 +1,7 @@
 #include "shadowrun_ghidra/title_intro/title_loop_conversion.hpp"
 
 #include <cstdint>
+#include <vector>
 
 namespace {
 
@@ -251,6 +252,56 @@ int main() {
     }
     const auto phase = advance_title_circuit_lights(lights, 2U);
     if (!expect(phase.has_value() && *phase == 1U && lights.countdown == 4)) {
+        return 1;
+    }
+
+    TitleLoopState loop;
+    loop.logo_reveal_delay = 0;
+    std::size_t loop_vblanks = 0;
+    std::size_t loop_samples = 0;
+    std::size_t palette_steps = 0;
+    std::vector<TitlePromptVariant> prompt_variants;
+    TitleLoopCallbacks loop_callbacks{};
+    loop_callbacks.wait_for_vblank = [&loop_vblanks] { ++loop_vblanks; };
+    loop_callbacks.sample_controller = [&loop_samples] {
+        ++loop_samples;
+        return loop_samples == 2U ? static_cast<std::uint16_t>(0x4000U)
+                                  : static_cast<std::uint16_t>(0U);
+    };
+    loop_callbacks.draw_prompt_variant =
+        [&prompt_variants](const TitlePromptVariant variant) {
+            prompt_variants.push_back(variant);
+        };
+    loop_callbacks.step_palette_transition = [&palette_steps] {
+        ++palette_steps;
+    };
+
+    if (!expect(advance_title_loop_frame(loop, loop_callbacks) ==
+                    TitleLoopFrameResult::start_requested &&
+                loop_vblanks == 1U && loop_samples == 3U &&
+                loop.logo.columns_revealed == 1U &&
+                loop.sprite.phase == 1U && loop.input_history.count == 0U &&
+                palette_steps == 1U && prompt_variants.empty())) {
+        return 1;
+    }
+
+    TitleLoopState completed_loop;
+    completed_loop.prompt.frames_remaining = 0U;
+    std::size_t completed_samples = 0;
+    std::size_t completed_palette_steps = 0;
+    TitleLoopCallbacks completed_callbacks{};
+    completed_callbacks.sample_controller = [&completed_samples] {
+        ++completed_samples;
+        return static_cast<std::uint16_t>(0U);
+    };
+    completed_callbacks.step_palette_transition = [&completed_palette_steps] {
+        ++completed_palette_steps;
+    };
+    if (!expect(advance_title_loop_frame(
+                    completed_loop, completed_callbacks) ==
+                    TitleLoopFrameResult::source_complete &&
+                completed_samples == 3U && completed_palette_steps == 1U &&
+                completed_loop.prompt.finished)) {
         return 1;
     }
     return 0;

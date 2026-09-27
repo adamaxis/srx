@@ -13,9 +13,12 @@ game and the GenesisBus emulator:
 The first slice covers the controller edge expression at `0x195C`, the 64-word
 palette operations at `0x1088`/`0x10D6`/`0x1368`, the seventeen-pass
 transitions at `0x131C`/`0x12F6`, and the title state shared by `0x1A9E`,
-`0x1BAC`, `0x1BEA`, `0x1C1E`, `0x1C6A`, `0x1E4E`, `0x2634`, and `0x26D0`. The `0x1A9E` prompt cadence, `0x1C1E`/`0x1C6A` text/sprite leaf state, and `0x1E4E` logo-column events are typed separately from unresolved writers, projection, and blitters. Vblank
-waits, prompt drawing, resource setup, and unresolved hardware calls remain
-explicit boundaries until their source inputs are understood.
+`0x1BAC`, `0x1BEA`, `0x1C1E`, `0x1C6A`, `0x1E4E`, `0x2634`, and `0x26D0`. The
+`0x1A9E` source-order frame coordinator now composes those typed leaf states;
+the Qt host consumes its logo-column, sprite-projection, circuit-phase,
+prompt, copyright, controller, and termination requests. Vblank waits,
+resource setup, and unresolved hardware calls remain explicit boundaries until
+their source inputs are understood.
 
 Build this directory independently when validating the conversion slice. The
 presets intentionally use build-ghidra-conversion-* directories and the
@@ -84,10 +87,13 @@ build-ghidra-conversion-qt-debug/shadowrun_ghidra_conversion_qt.exe --assets ../
 ```
 
 The window starts from the converted boot/title integration, presents the
-direct title assets, and routes startup-menu input through the converted New
-Game/Load Game/Joshua menu contracts. The Qt callbacks are presentation
-boundaries; they do not replace unresolved source behavior with a native-port
-implementation. This target is deliberately not registered as a CTest test.
+direct title assets through the converted `0x1A9E` frame coordinator, and
+routes startup-menu input through the converted New Game/Load Game/Joshua menu
+contracts. The Qt callbacks are presentation boundaries; they do not replace
+unresolved source behavior with a native-port implementation. Save-slot
+storage is intentionally reported as unresolved until the converted SRAM
+resource path is wired to an actual host save store. This target is deliberately
+not registered as a CTest test.
 
 When a callback cannot yet be grounded in the canonical ROM/Ghidra export, it
 must remain an explicit reported boundary. Treat an apparently missing field,

@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <optional>
 
 namespace shadowrun::ghidra_conversion {
@@ -198,5 +199,68 @@ struct TitleCircuitLightState {
 // separate source path; no invented initial register values are used here.
 std::optional<std::uint8_t> advance_title_circuit_lights(
     TitleCircuitLightState& state, std::uint16_t completion_state);
+
+enum class TitleLoopFrameResult {
+    running,
+    start_requested,
+    source_complete,
+};
+
+// The state owned by ROM 0x1A9E. Each child state remains typed and
+// independently testable; this coordinator preserves the source call order
+// without carrying Genesis addresses or VDP state into the host runtime.
+struct TitleLoopState {
+    // FFDD2C / FFDD40: initial logo reveal delay and two-column cadence.
+    std::int16_t logo_reveal_delay = 0x5A;
+    std::int16_t logo_column_cadence = 0;
+
+    TitleTextState text{};
+    TitleCircuitLightState circuit_lights{0, 0};
+    TitleAnimationTimer animation_timer{};
+    TitleInputHistory input_history{};
+    ControllerEventLatchState controller_events{};
+    TitleLogoRevealState logo{};
+    TitleSpriteState sprite{};
+    TitlePromptSchedule prompt{};
+
+    std::uint8_t display_dirty_flags = 0;
+    ControllerEventLatchResult last_controller_events{};
+    bool initial_controller_sampled = false;
+};
+
+struct TitleLoopCallbacks {
+    // ROM 0x0BD2 / 0x195C: host frame and controller sampling boundaries.
+    std::function<void()> wait_for_vblank;
+    std::function<std::uint16_t()> sample_controller;
+
+    // ROM 0x1C1E, 0x2634, and 0x26D0: presentation updates resulting from
+    // the already-converted state transitions.
+    std::function<void(TitleTextAction)> apply_text_action;
+    std::function<void(std::uint8_t)> publish_circuit_light_phase;
+    std::function<void(std::uint16_t)> publish_animation_offset;
+
+    // ROM 0x1DCA / 0x1DE0, 0x1E4E, and 0x1C6A: direct host presentation
+    // boundaries. The conversion owns when these requests occur.
+    std::function<void(TitlePromptVariant)> draw_prompt_variant;
+    std::function<void(const TitleLogoRevealResult&)>
+        render_logo_column;
+    std::function<void()> copy_completion_palette;
+    std::function<void(const TitleSpriteAdvanceResult&)>
+        rebuild_sprite_projection;
+    std::function<void(const ControllerEventLatchResult&)>
+        publish_controller_events;
+    std::function<void()> reset_vdp_upload_state;
+
+    // ROM 0x1A9E's post-loop sample/palette/input finalization. The palette
+    // operation is a host boundary; the input sequence itself is converted.
+    std::function<void()> step_palette_transition;
+};
+
+// ROM 0x1A9E: execute one source title-loop frame in source order. This is
+// the conversion-side coordinator the Qt frontend consumes; it is not a
+// Genesis emulator loop. Missing presentation callbacks leave the typed
+// source state advancing while keeping that host boundary explicit.
+TitleLoopFrameResult advance_title_loop_frame(
+    TitleLoopState& state, const TitleLoopCallbacks& callbacks);
 
 } // namespace shadowrun::ghidra_conversion
