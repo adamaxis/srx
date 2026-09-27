@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shadowrun_ghidra/entities/action_detail_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_action_math_conversion.hpp"
 
 #include <array>
@@ -145,6 +146,92 @@ struct EquipmentHighlightResult {
     std::int8_t matched_inventory_slot = -1;
 };
 
+struct ItemActionDetailInput {
+    // D0 at ROM 0x12A8C entry. Item records are one-based in the source;
+    // the item-name row is item_code - 1.
+    std::uint8_t item_code = 0;
+    // Item row +0x1E is the optional art/resource pointer. The source skips
+    // the art grid when its longword is negative.
+    bool item_art_available = false;
+    // Item row +0x24, used by ordinary action labels for the final detail
+    // value grid.
+    std::uint8_t item_detail_value = 0;
+    // Active record +0x6E..+0x76. The source normally selects slot 8 after
+    // an item-art pointer is present; the explicit slot keeps the unresolved
+    // no-art entry boundary visible to the host conversion.
+    std::array<std::uint8_t, 9U> phase_bytes{};
+    std::uint8_t phase_slot = 8U;
+};
+
+enum class ItemActionDetailGridKind {
+    item_art,
+    phase_overlay,
+    detail_value,
+};
+
+struct ItemActionDetailGridPlan {
+    ItemActionDetailGridKind kind = ItemActionDetailGridKind::item_art;
+    // Set for phase_overlay; source tests the active-record byte one bit at a
+    // time in the order 1, 2, 0, 3, 4, 5.
+    std::uint8_t phase_bit = 0;
+    // The source VDP destinations are retained as layout provenance only;
+    // callbacks consume named host resources rather than these addresses.
+    std::uint16_t destination_tile_base = 0;
+    // Source D1 and D7 values passed to the converted grid writer.
+    std::uint16_t outer_loop_counter = 0;
+    std::uint16_t inner_loop_counter = 0;
+    std::uint16_t palette_flags = 0;
+    // Only detail_value uses this; it selects the decoded item-detail asset.
+    std::uint8_t detail_value = 0;
+};
+
+enum class ItemActionDetailTextKind {
+    item_name,
+    action_label,
+};
+
+struct ItemActionDetailTextPlan {
+    ItemActionDetailTextKind kind = ItemActionDetailTextKind::item_name;
+    std::size_t item_record_index = 0;
+    ActionDetailLabelVariant label = ActionDetailLabelVariant::none;
+    std::optional<std::uint8_t> action_code;
+    std::uint16_t destination_tile_base = 0;
+    std::uint16_t palette_flags = 0;
+};
+
+struct ItemActionDetailCallbacks {
+    std::function<void(const ItemActionDetailGridPlan&)> write_grid;
+    std::function<void(const ItemActionDetailTextPlan&)> render_text;
+    // ROM 0x12148: read the selected entity action code. This is an explicit
+    // source boundary because the record/table interpretation is converted
+    // separately from this renderer.
+    std::function<std::uint8_t()> read_entity_action_code;
+    // ROM 0x11352: action codes >= 0x2C transfer to armor selection.
+    std::function<void(bool preview_new_selection)> apply_armor_selection;
+    // ROM 0x12A54: upload the alternate item resource stream when the code
+    // crosses the source threshold at thirteen.
+    std::function<void()> upload_resource_stream;
+};
+
+struct ItemActionDetailResult {
+    // 0x12A8C restores D0 before returning.
+    std::uint8_t returned_item_code = 0;
+    std::optional<std::uint8_t> action_code;
+    std::optional<std::uint8_t> label_action_code;
+    ActionDetailLabelVariant label = ActionDetailLabelVariant::none;
+    std::vector<ItemActionDetailGridPlan> grid_requests;
+    std::vector<ItemActionDetailTextPlan> text_requests;
+    bool resource_variant_changed = false;
+    bool item_art_written = false;
+    bool item_name_rendered = false;
+    bool action_label_rendered = false;
+    bool detail_value_written = false;
+    bool early_return = false;
+    bool armor_selection_requested = false;
+    bool action_lookup_missing = false;
+    std::uint8_t phase_slot_used = 0;
+};
+
 // ROM 0x55ED6: byte-wrapped command overview base from attributes +0x78,
 // +0x7B, +0x7C and the first item-code-0x28 phase.
 std::uint16_t calculate_equipment_command_average(
@@ -207,5 +294,13 @@ EquipmentCombatValuesResult refresh_equipment_combat_values(
 EquipmentHighlightResult render_equipment_highlights(
     const EquipmentHighlightInput& input,
     const EquipmentHighlightCallbacks& callbacks = {});
+
+// ROM 0x12A8C: render one selected item in the equipment/action detail
+// panel. This preserves the source action-code bands and callback order while
+// exposing typed host plans instead of ROM pointers or VDP memory accesses.
+ItemActionDetailResult render_item_action_details(
+    const ItemActionDetailInput& input,
+    ResourceVariantState& resource_variant,
+    const ItemActionDetailCallbacks& callbacks = {});
 
 } // namespace shadowrun::ghidra_conversion

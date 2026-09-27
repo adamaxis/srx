@@ -249,5 +249,135 @@ int main() {
         return 13;
     }
 
+    // ROM 0x12A8C: ordinary item action details render art, the item name,
+    // phase overlays in source order, the action label, and the detail value.
+    ResourceVariantState item_variant{};
+    ItemActionDetailInput item_detail_input{};
+    item_detail_input.item_code = 12U;
+    item_detail_input.item_art_available = true;
+    item_detail_input.item_detail_value = 5U;
+    item_detail_input.phase_bytes[8] = 0x13U; // bits 1, 0, and 4
+    std::vector<int> item_detail_events;
+    int item_action_reads = 0;
+    ItemActionDetailCallbacks item_detail_callbacks{};
+    item_detail_callbacks.write_grid =
+        [&](const ItemActionDetailGridPlan& plan) {
+            item_detail_events.push_back(
+                static_cast<int>(plan.kind) + 1);
+        };
+    item_detail_callbacks.render_text =
+        [&](const ItemActionDetailTextPlan& plan) {
+            item_detail_events.push_back(
+                plan.kind == ItemActionDetailTextKind::item_name ? 10 : 11);
+        };
+    item_detail_callbacks.read_entity_action_code = [&] {
+        ++item_action_reads;
+        return std::uint8_t{5U};
+    };
+    const auto ordinary_item = render_item_action_details(
+        item_detail_input, item_variant, item_detail_callbacks);
+    if (!(ordinary_item.returned_item_code == 12U &&
+          ordinary_item.action_code == std::optional<std::uint8_t>{5U} &&
+          ordinary_item.label == ActionDetailLabelVariant::ordinary &&
+          ordinary_item.phase_slot_used == 8U && item_action_reads == 1 &&
+          ordinary_item.item_art_written && ordinary_item.item_name_rendered &&
+          ordinary_item.action_label_rendered &&
+          ordinary_item.detail_value_written &&
+          ordinary_item.grid_requests.size() == 5U &&
+          ordinary_item.text_requests.size() == 2U &&
+          ordinary_item.grid_requests[1].phase_bit == 1U &&
+          ordinary_item.grid_requests[1].destination_tile_base == 0xC19CU &&
+          ordinary_item.grid_requests[2].phase_bit == 0U &&
+          ordinary_item.grid_requests[2].destination_tile_base == 0xC1B6U &&
+          ordinary_item.grid_requests[3].phase_bit == 4U &&
+          ordinary_item.grid_requests[3].destination_tile_base == 0xC336U &&
+          ordinary_item.grid_requests[4].detail_value == 5U &&
+          ordinary_item.text_requests[0].item_record_index == 11U &&
+          ordinary_item.text_requests[1].label ==
+              ActionDetailLabelVariant::ordinary &&
+          item_detail_events == std::vector<int>{1, 10, 2, 2, 2, 11, 3})) {
+        return 14;
+    }
+
+    // Codes 0x0D..0x13 use the extended label table and perform the second
+    // 0x12148 lookup before selecting the phase byte as the value.
+    item_variant = {};
+    item_detail_input = {};
+    item_detail_input.item_code = 13U;
+    item_detail_input.phase_slot = 2U;
+    item_detail_input.phase_bytes[2] = 0xA5U;
+    item_detail_events.clear();
+    item_action_reads = 0;
+    int item_uploads = 0;
+    item_detail_callbacks.upload_resource_stream = [&] {
+        ++item_uploads;
+    };
+    item_detail_callbacks.read_entity_action_code = [&] {
+        ++item_action_reads;
+        return item_action_reads == 1 ? std::uint8_t{0x0DU}
+                                      : std::uint8_t{0x21U};
+    };
+    const auto extended_item = render_item_action_details(
+        item_detail_input, item_variant, item_detail_callbacks);
+    if (!(extended_item.resource_variant_changed && item_variant.alternate &&
+          item_uploads == 1 && extended_item.action_code ==
+                                    std::optional<std::uint8_t>{0x0DU} &&
+          extended_item.label_action_code ==
+              std::optional<std::uint8_t>{0x21U} &&
+          extended_item.label == ActionDetailLabelVariant::extended &&
+          extended_item.phase_slot_used == 2U && item_action_reads == 2 &&
+          extended_item.grid_requests.size() == 1U &&
+          extended_item.grid_requests[0].kind ==
+              ItemActionDetailGridKind::detail_value &&
+          extended_item.grid_requests[0].detail_value == 0xA5U &&
+          extended_item.text_requests.size() == 2U &&
+          extended_item.text_requests[1].action_code ==
+              std::optional<std::uint8_t>{0x21U})) {
+        return 15;
+    }
+
+    // 0x15..0x17 return after the first action read, without a label/value
+    // pair; the art and name work has already happened.
+    item_variant = {};
+    item_detail_input = {};
+    item_detail_input.item_code = 10U;
+    item_detail_input.item_art_available = true;
+    item_detail_events.clear();
+    item_action_reads = 0;
+    item_detail_callbacks.read_entity_action_code = [&] {
+        ++item_action_reads;
+        return std::uint8_t{0x16U};
+    };
+    const auto early_item = render_item_action_details(
+        item_detail_input, item_variant, item_detail_callbacks);
+    if (!(early_item.early_return && !early_item.action_label_rendered &&
+          !early_item.detail_value_written && item_action_reads == 1 &&
+          early_item.grid_requests.size() == 1U &&
+          early_item.text_requests.size() == 1U)) {
+        return 16;
+    }
+
+    // 0x2C and above transfer to armor selection rather than drawing the
+    // action label/value pair.
+    item_variant = {};
+    item_detail_input = {};
+    item_detail_input.item_code = 20U;
+    item_action_reads = 0;
+    bool armor_preview = false;
+    item_detail_callbacks.read_entity_action_code = [&] {
+        ++item_action_reads;
+        return std::uint8_t{0x2CU};
+    };
+    item_detail_callbacks.apply_armor_selection =
+        [&](const bool preview) { armor_preview = preview; };
+    const auto armor_item = render_item_action_details(
+        item_detail_input, item_variant, item_detail_callbacks);
+    if (!(armor_item.armor_selection_requested && armor_preview &&
+          item_action_reads == 1 && !armor_item.action_label_rendered &&
+          !armor_item.detail_value_written &&
+          armor_item.text_requests.size() == 1U)) {
+        return 17;
+    }
+
     return 0;
 }

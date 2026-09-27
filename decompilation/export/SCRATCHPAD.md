@@ -437,6 +437,40 @@ These are typed state transitions and callbacks in
 `advance_command_overview_secondary_page()`; they do not emulate the VDP or
 read Genesis memory.
 
+### Selected item/action detail renderer: `0x12A8C`
+
+The ROM trace for `0x12A8C` identifies this as the equipment command-overview
+selected-item renderer, not a generic panel copy. It receives the one-based
+item code in `D0`, calls `0x12A54` to select the resource variant at the
+threshold of thirteen, and restores the incoming `D0` before returning. The
+selected row is a `0x30`-byte record from the `0xD4540` item table: `+0x1E`
+is the optional item-art resource and `+0x24` is the ordinary detail value.
+
+When art is present, the routine writes the item art at source tile base
+`0xC1A4` with source loop values `D1=4`, `D7=8`, then always renders the item
+name at `0xC420`/`0x6000`. It reads the selected entity action through
+`0x12148`. For action codes below `0x0D`, it checks the active record byte at
+`+0x6E + D7` in the exact order `1, 2, 0, 3, 4, 5`; the paired overlay
+destinations are `0xC19C`, `0xC19C`, `0xC1B6`, `0xC1B6`, `0xC336`, and
+`0xC336`, using `D1=1`, `D7=3`, and palette flags `0x2000`.
+
+The remaining action bands are behaviorally meaningful: `0x0D..0x13` use
+the extended label table, `0x14` and `0x18..0x28` use the action-dependent
+label table and repeat the `0x12148` lookup, `0x15..0x17` and `0x29..0x2B`
+return before the final label/value pair, and `0x2C+` set the armor-selection
+marker and call `0x11352`. The completed label path renders at `0xC31C` with
+`0x4000`; ordinary actions use the item row's `+0x24` value, while extended
+and action-dependent paths use `+0x6E + D7` for the detail-value grid at
+`0xC39E`/`0x2000` with source loop values `D1=0`, `D7=1`.
+
+`ghidra_conversion::render_item_action_details()` now expresses this as
+typed item-art, text, phase-overlay, label, detail-value, and armor-selection
+plans in `equipment_combat_bar_conversion`. The original `0xD25DC..0xD262C`,
+`0xD29C4..0xD29D0`, and `0x6AC46` tables remain explicit extraction/data
+boundaries; no runtime ROM address lookup or invented asset alias has been
+added. If the `0x12148` record lookup is unavailable, the conversion reports
+that missing source boundary instead of assuming action zero.
+
 ## Initial coherent C++ conversions
 
 `0x0330` and `0x0436` are no longer represented only as bus traces. The

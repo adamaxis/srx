@@ -387,4 +387,204 @@ EquipmentHighlightResult render_equipment_highlights(
     return result;
 }
 
+namespace {
+
+void publish_item_detail_grid(
+    ItemActionDetailResult& result,
+    const ItemActionDetailGridPlan& plan,
+    const std::function<void(const ItemActionDetailGridPlan&)>& callback) {
+    result.grid_requests.push_back(plan);
+    if (callback) {
+        callback(plan);
+    }
+}
+
+void publish_item_detail_text(
+    ItemActionDetailResult& result,
+    const ItemActionDetailTextPlan& plan,
+    const std::function<void(const ItemActionDetailTextPlan&)>& callback) {
+    result.text_requests.push_back(plan);
+    if (callback) {
+        callback(plan);
+    }
+}
+
+ActionDetailLabelVariant item_action_label_for_code(
+    const std::uint8_t action_code) {
+    if (action_code < 0x0DU) {
+        return ActionDetailLabelVariant::ordinary;
+    }
+    if (action_code < 0x14U) {
+        return ActionDetailLabelVariant::extended;
+    }
+    if (action_code == 0x14U ||
+        (action_code >= 0x18U && action_code <= 0x28U)) {
+        return ActionDetailLabelVariant::action_dependent;
+    }
+    return ActionDetailLabelVariant::none;
+}
+
+bool item_action_has_no_label(const std::uint8_t action_code) {
+    return (action_code >= 0x15U && action_code <= 0x17U) ||
+           (action_code >= 0x29U && action_code <= 0x2BU);
+}
+
+} // namespace
+
+ItemActionDetailResult render_item_action_details(
+    const ItemActionDetailInput& input,
+    ResourceVariantState& resource_variant,
+    const ItemActionDetailCallbacks& callbacks) {
+    ItemActionDetailResult result{};
+    result.returned_item_code = input.item_code;
+
+    // 0x12A54 runs before the item row is used. A zero item code is not a
+    // valid one-based item row, so retain the source D0 result but do not
+    // manufacture a wrapped host index.
+    const auto previous_variant = resource_variant.alternate;
+    update_resource_variant(resource_variant,
+                            static_cast<std::int16_t>(input.item_code),
+                            callbacks.upload_resource_stream);
+    result.resource_variant_changed =
+        previous_variant != resource_variant.alternate;
+    if (input.item_code == 0U) {
+        result.early_return = true;
+        return result;
+    }
+
+    const auto item_record_index =
+        static_cast<std::size_t>(input.item_code - 1U);
+    if (input.item_art_available) {
+        // 0x12AA8: item art at row +0x1E, D4=-0x3E5C (0xC1A4),
+        // D1=4, D7=8, palette flags 0x2000.
+        publish_item_detail_grid(
+            result,
+            ItemActionDetailGridPlan{ItemActionDetailGridKind::item_art,
+                                     0U,
+                                     0xC1A4U,
+                                     4U,
+                                     8U,
+                                     0x2000U,
+                                     0U},
+            callbacks.write_grid);
+        result.item_art_written = true;
+    }
+
+    // 0x12AC8 always renders the selected item's name from its 0x30-byte
+    // record, independent of whether an art pointer was present.
+    publish_item_detail_text(
+        result,
+        ItemActionDetailTextPlan{ItemActionDetailTextKind::item_name,
+                                 item_record_index,
+                                 ActionDetailLabelVariant::none,
+                                 std::nullopt,
+                                 0xC420U,
+                                 0x6000U},
+        callbacks.render_text);
+    result.item_name_rendered = true;
+
+    if (!callbacks.read_entity_action_code) {
+        // 0x12148 is a real record lookup, not a safe default of zero. Keep
+        // this incomplete boundary visible to the caller.
+        result.action_lookup_missing = true;
+        return result;
+    }
+    result.action_code = callbacks.read_entity_action_code();
+
+    const auto phase_slot = input.item_art_available ? 8U : input.phase_slot;
+    if (phase_slot >= input.phase_bytes.size()) {
+        result.action_lookup_missing = true;
+        return result;
+    }
+    result.phase_slot_used = static_cast<std::uint8_t>(phase_slot);
+
+    const auto action_code = *result.action_code;
+    if (action_code < 0x0DU) {
+        // 0x12AE4-0x12B86: phase overlays are checked in the source order
+        // 1, 2, 0, 3, 4, 5. Each pair shares a source destination.
+        constexpr std::array<std::uint8_t, 6U> kPhaseBitOrder{
+            1U, 2U, 0U, 3U, 4U, 5U};
+        constexpr std::array<std::uint16_t, 6U> kPhaseDestinations{
+            0xC19CU, 0xC19CU, 0xC1B6U, 0xC1B6U, 0xC336U, 0xC336U};
+        for (std::size_t index = 0; index < kPhaseBitOrder.size();
+             ++index) {
+            const auto phase_bit = kPhaseBitOrder[index];
+            if ((input.phase_bytes[phase_slot] &
+                 (std::uint8_t{1U} << phase_bit)) == 0U) {
+                continue;
+            }
+            publish_item_detail_grid(
+                result,
+                ItemActionDetailGridPlan{
+                    ItemActionDetailGridKind::phase_overlay,
+                    phase_bit,
+                    kPhaseDestinations[index],
+                    1U,
+                    3U,
+                    0x2000U,
+                    0U},
+                callbacks.write_grid);
+        }
+        result.label = ActionDetailLabelVariant::ordinary;
+    } else {
+        if (item_action_has_no_label(action_code)) {
+            // 0x12B8E's 0x15..0x17 and 0x29..0x2B bands return before the
+            // label/value grids are emitted.
+            result.early_return = true;
+            return result;
+        }
+        if (action_code >= 0x2CU) {
+            // The source hands the selection to 0x11352 and returns without
+            // rendering a label/value pair.
+            if (callbacks.apply_armor_selection) {
+                callbacks.apply_armor_selection(true);
+            }
+            result.armor_selection_requested = true;
+            return result;
+        }
+
+        result.label = item_action_label_for_code(action_code);
+        if (!callbacks.read_entity_action_code) {
+            result.action_lookup_missing = true;
+            return result;
+        }
+        // 0x12BE4 repeats 0x12148 for the extended and action-dependent
+        // label tables before selecting active-record +0x6E + D7.
+        result.label_action_code = callbacks.read_entity_action_code();
+    }
+
+    const auto detail_value = result.label == ActionDetailLabelVariant::ordinary
+                                  ? input.item_detail_value
+                                  : input.phase_bytes[phase_slot];
+
+    publish_item_detail_text(
+        result,
+        ItemActionDetailTextPlan{ItemActionDetailTextKind::action_label,
+                                 item_record_index,
+                                 result.label,
+                                 result.label == ActionDetailLabelVariant::ordinary
+                                     ? result.action_code
+                                     : result.label_action_code,
+                                 0xC31CU,
+                                 0x4000U},
+        callbacks.render_text);
+    result.action_label_rendered = true;
+
+    // 0x12BF0 selects the detail-value asset through the source's decoded
+    // table. The host plan carries the value, not the original 0x6AC46
+    // pointer arithmetic.
+    publish_item_detail_grid(
+        result,
+        ItemActionDetailGridPlan{ItemActionDetailGridKind::detail_value,
+                                 0U,
+                                 0xC39EU,
+                                 0U,
+                                 1U,
+                                 0x2000U,
+                                 detail_value},
+        callbacks.write_grid);
+    result.detail_value_written = true;
+    return result;
+}
+
 } // namespace shadowrun::ghidra_conversion
