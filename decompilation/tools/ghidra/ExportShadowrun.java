@@ -480,7 +480,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0000C3E6L, "write_menu_grid_with_metadata");
         names.put(0x0000C3F8L, "render_menu_grid_number_pair");
         names.put(0x0000CFFEL, "prepare_hotel_options_display");
-        names.put(0x0000DA4AL, "render_title_text_wrapper");
+        names.put(0x0000DA4AL, "render_attributes_skills_heading");
         names.put(0x0000E660L, "advance_random_grid_effect");
         names.put(0x0000F404L, "write_menu_footer_grid");
         names.put(0x0000FDAEL, "write_menu_grid_quadruple");

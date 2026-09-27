@@ -237,7 +237,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0000D7EA	compute_entity_delay_factor	50	unknown	ok	ghidra-c/fn_0000D7EA.cpp
 0000D81C	average_entity_delay_attributes	14	unknown	ok	ghidra-c/fn_0000D81C.cpp
 0000D82A	render_attributes_and_skills	544	unknown	ok	ghidra-c/fn_0000D82A.cpp
-0000DA4A	render_title_text_wrapper	32	unknown	ok	ghidra-c/fn_0000DA4A.cpp
+0000DA4A	render_attributes_skills_heading	32	unknown	ok	ghidra-c/fn_0000DA4A.cpp
 0000E00A	wait_for_controller_event	42	unknown	ok	ghidra-c/fn_0000E00A.cpp
 0000E660	advance_random_grid_effect	148	unknown	ok	ghidra-c/fn_0000E660.cpp
 0000E6F4	service_mode_world_state	212	unknown	ok	ghidra-c/fn_0000E6F4.cpp

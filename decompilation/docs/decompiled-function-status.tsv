@@ -450,7 +450,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0xC3E6	menu grid with metadata	ghidra_conversion::write_menu_grid_with_metadata	shadowrun_ghidra_display_service_batch	partial		Named repeated-grid presentation boundary
 0xC3F8	menu grid number pair	ghidra_conversion::render_menu_grid_number_pair	shadowrun_ghidra_display_service_batch	partial		Typed grid then grouped-glyph order
 0xCFFE	Hotel Options display preparation	ghidra_conversion::prepare_hotel_options_display	shadowrun_ghidra_display_service_batch	partial		Typed Hotel Options metadata, palette, grid, and title-font preparation
-0xDA4A	title text wrapper	ghidra_conversion::render_title_text_wrapper	shadowrun_ghidra_display_service_batch	partial		Named title-text presentation boundary
+0xDA4A	Attributes/Skills heading render	ghidra_conversion::render_attributes_skills_heading	shadowrun_ghidra_display_service_batch	partial		Source-verified fixed 0xC1B3B heading resource and 0xCC90 text destination used only by 0xD82A
 0xE660	random grid effect advance	ghidra_conversion::advance_random_grid_effect	shadowrun_ghidra_display_service_batch	partial		Three random samples followed by one grid submission
 0xF404	menu footer grid	ghidra_conversion::write_menu_footer_grid	shadowrun_ghidra_display_service_batch	partial		Named repeated-grid presentation boundary
 0xFDAE	menu grid quadruple	ghidra_conversion::write_menu_grid_quadruple	shadowrun_ghidra_display_service_batch	partial		Exact four-grid submission loop

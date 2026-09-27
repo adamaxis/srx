@@ -195,7 +195,7 @@ int main() {
                                   [&] { ++callback_calls; });
     prepare_hotel_options_display([&] { ++callback_calls; }, [&] { ++callback_calls; },
                                   [&] { ++callback_calls; }, [&] { ++callback_calls; });
-    render_title_text_wrapper([&] { ++callback_calls; });
+    render_attributes_skills_heading([&] { ++callback_calls; });
     if (callback_calls != 9) {
         return 14;
     }

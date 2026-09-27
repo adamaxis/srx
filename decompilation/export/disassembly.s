@@ -6357,7 +6357,7 @@
 0000D88A: move.b (0x0,A0,D0w*0x1),(0x00fff0b6).l
 0000D892: move.b (0x0,A0,D0w*0x1),D1b
 0000D896: addq.b #0x1,D1b
-0000D898: bsr.w 0x0000da4a ; call 0000DA4A render_title_text_wrapper
+0000D898: bsr.w 0x0000da4a ; call 0000DA4A render_attributes_skills_heading
 0000D89C: clr.l D2
 0000D89E: movea.l (0x00fffc04).l,A0
 0000D8A4: move.b (0x9a,A0),D2b
@@ -6382,7 +6382,7 @@
 0000D8EA: adda.l #0x9b,A0
 0000D8F0: cmpi.b #0x2,(A0)
 0000D8F4: bpl.w 0x0000da00
-0000D8F8: bsr.w 0x0000da4a ; call 0000DA4A render_title_text_wrapper
+0000D8F8: bsr.w 0x0000da4a ; call 0000DA4A render_attributes_skills_heading
 0000D8FC: movea.l (0x00fffc04).l,A0
 0000D902: adda.l #0x80,A0
 0000D908: cmpi.w #0x6,D0w
@@ -6458,7 +6458,7 @@
 0000DA3C: movea.l #0xca1e,A2
 0000DA42: jsr 0x0000c216.l ; call 0000C216 build_grouped_decimal_glyphs
 0000DA48: rts
-0000DA4A: movem.l {  A6 A5 A4 A3 A2 A1 A0 D7 D6 D5 D4 D3 D2 D1 D0},-(SP)
+0000DA4A: movem.l {  A6 A5 A4 A3 A2 A1 A0 D7 D6 D5 D4 D3 D2 D1 D0},-(SP) ; render_attributes_skills_heading
 0000DA4E: lea (0xc1b3b).l,A1 ; data 000c1b3b
 0000DA54: movea.l #0xcc90,A2
 0000DA5A: move.w #0x4000,D1w

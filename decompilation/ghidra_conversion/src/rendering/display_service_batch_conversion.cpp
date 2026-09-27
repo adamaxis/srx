@@ -297,7 +297,8 @@ void prepare_hotel_options_display(
     call_once(load_font);
 }
 
-void render_title_text_wrapper(const std::function<void()>& render_text) {
+void render_attributes_skills_heading(
+    const std::function<void()>& render_text) {
     call_once(render_text);
 }
 

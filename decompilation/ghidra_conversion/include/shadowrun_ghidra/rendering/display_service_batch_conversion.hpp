@@ -205,7 +205,11 @@ void prepare_hotel_options_display(
     const std::function<void()>& refresh_palette,
     const std::function<void()>& prepare_display,
     const std::function<void()>& load_font);
-void render_title_text_wrapper(const std::function<void()>& render_text);
+// ROM 0xDA4A: the Attributes/Skills renderer's fixed heading helper. It
+// ignores caller register values, renders the encoded resource at 0xC1B3B,
+// and submits it to the host text boundary.
+void render_attributes_skills_heading(
+    const std::function<void()>& render_text);
 void advance_random_grid_effect(const std::function<std::int16_t()>& sample,
                                 const std::function<void()>& write_grid);
 void write_menu_footer_grid(const std::function<void()>& write_grid);

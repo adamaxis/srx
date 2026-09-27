@@ -6,7 +6,7 @@
 //   0x000011C0 write_repeated_vdp_grid
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
-//   0x0000DA4A render_title_text_wrapper
+//   0x0000DA4A render_attributes_skills_heading
 //   0x00012C5A write_menu_repeated_grid_with_metadata
 // Behavior annotation from the ROM disassembly:
 //   The entry clears FFF0B3 and submits the fixed Attributes/Skills grid,
@@ -46,7 +46,7 @@ void render_attributes_and_skills(void)
     sVar2 = uVar7 + (ushort)DAT_00fff0d0 * 4;
     if ((_DAT_00fff116 < 0) || (-1 < (short)(sVar2 + -6))) goto LAB_0000da00;
     DAT_00fff0b6 = *(char *)(DAT_00fffc04 + 0x77 + (int)sVar2);
-    uVar3 = render_title_text_wrapper();
+    uVar3 = render_attributes_skills_heading();
     uVar10 = extraout_A1;
     cVar1 = extraout_D1b;
     if ((char)(&DAT_000c22a6)[(int)(short)uVar3 + (uint)*(byte *)(DAT_00fffc04 + 0x9a) * 6] <
@@ -62,7 +62,7 @@ LAB_0000d9de:
     if ((_DAT_00fff116 < 0) ||
        (((ushort)(sVar2 + (ushort)DAT_00fff0d0 * 6) == 0 &&
         (-1 < (char)(*(char *)(DAT_00fffc04 + 0x9b) + -2))))) goto LAB_0000da00;
-    uVar11 = render_title_text_wrapper();
+    uVar11 = render_attributes_skills_heading();
     uVar3 = (undefined4)((ulonglong)uVar11 >> 0x20);
     iVar8 = DAT_00fffc04 + 0x80;
     sVar4 = (short)((ulonglong)uVar11 >> 0x20);

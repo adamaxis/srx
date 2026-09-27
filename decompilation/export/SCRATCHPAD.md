@@ -97,7 +97,8 @@ touch fields with confirmed consumers; the remaining bytes stay opaque.
 | `0x044BC` `initialize_entity_record_from_template` | copies the template and initializes posture, ammunition, equipment, attributes, skills, and archetype/status fields |
 | `0x036FC` `advance_entity_asset_meter` | updates weapon ammunition or inventory phase bytes and clears exhausted equipment |
 | `0x038AC` `service_entity_ammo` | services the equipped weapon's ammunition/clip state |
-| `0x0D82A` `render_attributes_and_skills` | clears the error marker, submits the Attributes/Skills grid, evaluates the selected attribute/skill upgrade (attribute direct cost; skill 2x or ceil-1.5x branches), then renders the selected label, overlay, and Karma `+0x8D` |
+| `0x0D82A` `render_attributes_and_skills` | clears the error marker, submits the Attributes/Skills grid, evaluates the selected attribute/skill upgrade (attribute direct cost; skill 2x or ceil-1.5x branches), then renders the selected label, overlay, and Karma `+0x8D`; its fixed heading leaf is `0xDA4A` |
+| `0x0DA4A` `render_attributes_skills_heading` | preserves caller registers and submits the fixed encoded Attributes/Skills heading from `0xC1B3B` to `0xCC90` |
 | `0x0D01C` `run_attributes_and_skills_menu` | initializes the two-column Attributes/Skills screen, then gives directional input priority before A/B upgrade, C active-runner cycling through `0xD4C8`, and Start field exit |
 | `0x0D5DC` `render_attribute_skill_detail_panel` | renders the selected Attributes/Skills detail cell, Essence/Magic special values, and first-match cyberware modifier rows |
 | `0x107CE` `adjust_runner_posture` | clamps the five-state posture byte at `+0x4D` |
