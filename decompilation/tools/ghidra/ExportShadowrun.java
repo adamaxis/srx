@@ -479,7 +479,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0000AEBAL, "advance_title_sprite_wave");
         names.put(0x0000C3E6L, "write_menu_grid_with_metadata");
         names.put(0x0000C3F8L, "render_menu_grid_number_pair");
-        names.put(0x0000CFFEL, "prepare_title_mode_display");
+        names.put(0x0000CFFEL, "prepare_hotel_options_display");
         names.put(0x0000DA4AL, "render_title_text_wrapper");
         names.put(0x0000E660L, "advance_random_grid_effect");
         names.put(0x0000F404L, "write_menu_footer_grid");
@@ -631,8 +631,8 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0000C64CL, "finalize_field_mode_exit_transition");
         names.put(0x0000C7F8L, "prepare_field_scene_runtime");
         names.put(0x0000C802L, "refresh_field_runner_state_and_assets");
-        names.put(0x0000C928L, "run_field_exit_selection_menu");
-        names.put(0x0000CF38L, "run_field_exit_prompt_menu");
+        names.put(0x0000C928L, "run_hospital_options_menu");
+        names.put(0x0000CF38L, "run_hotel_options_menu");
         names.put(0x0000D4C8L, "reset_field_mode_entity_selection");
         names.put(0x0000D53CL, "run_attributes_skills_menu_prompt");
         names.put(0x0000D01CL, "run_attributes_and_skills_menu");
@@ -641,7 +641,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0000EA36L, "evaluate_entity_terrain_collision_directions");
         names.put(0x0000EB92L, "resolve_entity_proximity_interactions");
         names.put(0x0000ECCCL, "resolve_entity_pair_collision_event");
-        names.put(0x0000EF08L, "service_exit_prompt_entities");
+        names.put(0x0000EF08L, "service_hotel_entity_status");
         names.put(0x0000F5F4L, "render_bitmask_text_batch");
         names.put(0x0000FDFEL, "advance_menu_sprite_overlay");
         names.put(0x0000FF5AL, "run_equipment_selection");

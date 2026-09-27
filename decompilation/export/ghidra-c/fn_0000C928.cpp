@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000C928
-// Name: run_field_exit_selection_menu
+// Name: run_hospital_options_menu
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -19,7 +19,7 @@
 //   0x0005670E refresh_mode_palette_data
 
 
-void run_field_exit_selection_menu(void)
+void run_hospital_options_menu(void)
 
 {
   reset_mode_display_buffers();

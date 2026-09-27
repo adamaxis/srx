@@ -5827,7 +5827,7 @@
 0000CF38: clr.b (0x00fff10d).l
 0000CF3E: jsr 0x00010952.l ; call 00010952 reset_mode_display_buffers
 0000CF44: bsr.w 0x0000cffe ; call 0000CFFE prepare_hotel_options_display
-0000CF48: jsr 0x0000ef08.l ; call 0000EF08 service_exit_prompt_entities
+0000CF48: jsr 0x0000ef08.l ; call 0000EF08 service_hotel_entity_status
 0000CF4E: bsr.w 0x0000cffe ; call 0000CFFE prepare_hotel_options_display
 0000CF52: bsr.w 0x0000c3e6 ; call 0000C3E6 write_menu_grid_with_metadata
 0000CF56: lea (0xc14d0).l,A1 ; data 000c14d0
@@ -19538,7 +19538,7 @@
 0001FA64: move.w #-0x1,D6w
 0001FA68: rts
 0001FA6A: clr.b (0x00fff0d5).l
-0001FA70: jsr 0x0000c928.l ; call 0000C928 run_field_exit_selection_menu
+0001FA70: jsr 0x0000c928.l ; call 0000C928 run_hospital_options_menu
 0001FA76: rts
 0001FA78: cmpi.b #0x2,(0x00fffbf8).l
 0001FA80: bne.w 0x0001fad6

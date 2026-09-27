@@ -227,7 +227,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0000C7F8	prepare_field_scene_runtime	10	unknown	ok	ghidra-c/fn_0000C7F8.cpp
 0000C802	refresh_field_runner_state_and_assets	174	unknown	ok	ghidra-c/fn_0000C802.cpp
 0000C8B0	apply_byte_counter_delta_with_negative_floor	24	unknown	ok	ghidra-c/fn_0000C8B0.cpp
-0000C928	run_field_exit_selection_menu	238	unknown	ok	ghidra-c/fn_0000C928.cpp
+0000C928	run_hospital_options_menu	238	unknown	ok	ghidra-c/fn_0000C928.cpp
 0000CF38	run_hotel_options_menu	198	unknown	ok	ghidra-c/fn_0000CF38.cpp
 0000CFFE	prepare_hotel_options_display	30	unknown	ok	ghidra-c/fn_0000CFFE.cpp
 0000D01C	run_attributes_and_skills_menu	1196	unknown	ok	ghidra-c/fn_0000D01C.cpp
@@ -251,7 +251,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0000EDFA	decode_terrain_tile_window	22	unknown	ok	ghidra-c/fn_0000EDFA.cpp
 0000EE10	rebuild_terrain_collision_map	118	unknown	ok	ghidra-c/fn_0000EE10.cpp
 0000EE86	replace_nth_terrain_marker	120	unknown	ok	ghidra-c/fn_0000EE86.cpp
-0000EF08	service_exit_prompt_entities	172	unknown	ok	ghidra-c/fn_0000EF08.cpp
+0000EF08	service_hotel_entity_status	172	unknown	ok	ghidra-c/fn_0000EF08.cpp
 0000F312	wait_for_controller_event	44	unknown	ok	ghidra-c/fn_0000F312.cpp
 0000F404	write_menu_footer_grid	18	unknown	ok	ghidra-c/fn_0000F404.cpp
 0000F5F4	render_bitmask_text_batch	232	unknown	ok	ghidra-c/fn_0000F5F4.cpp

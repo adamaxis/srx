@@ -771,7 +771,8 @@ runtime-ROM lookup.
 
 ## Hotel Options and Check Out route: 0xCF38 / 0xDA6A
 
-The generated name `run_field_exit_prompt_menu` for `0xCF38` was incorrect.
+The generated name `run_hotel_options_menu` for `0xCF38` is the source-backed
+label; the older `run_field_exit_prompt_menu` name was incorrect.
 The title pointer at `0xC14D0` is `Hotel Options`; the option text immediately
 following it is `Karma Screen`, `Check Out`, and `Hospital Options`. The handler
 table at `0xC14C8` contains `0xD024` for Karma Screen and `0xDA6A` for Check

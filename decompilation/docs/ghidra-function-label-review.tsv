@@ -19,14 +19,14 @@ rom_entry	export_label	reviewed_name	family	confidence	behavior	evidence
 0x0C64C	convert_graphics_routine_0x0000c64c	finalize_field_mode_exit_transition	field	high	Clears field effects and completes the field-mode exit service chain	disassembly.s;fn_0000C64C.cpp
 0x0C7F8	convert_graphics_routine_0x0000c7f8	prepare_field_scene_runtime	field	high	Prepares serialized runner state, field assets, effects, and animation for a field scene	disassembly.s;fn_0000C7F8.cpp
 0x0C802	convert_graphics_routine_0x0000c802	refresh_field_runner_state_and_assets	field	high	Refreshes field runner records and their uploaded scene assets	disassembly.s;fn_0000C802.cpp
-0x0C928	convert_graphics_routine_0x0000c928	run_field_exit_selection_menu	menu	high	Runs the field exit selection loop with cursor input and menu dispatch	disassembly.s;fn_0000C928.cpp
+0x0C928	convert_graphics_routine_0x0000c928	run_hospital_options_menu	menu	high	Runs the Hospital Options loop for Medical Attn., Cyberware, and Exit	disassembly.s;fn_0000C928.cpp;analysis/strings.tsv;SCRATCHPAD.md
 0x0CF38	convert_graphics_routine_0x0000cf38	run_hotel_options_menu	menu	high	Runs the Hotel Options menu: Karma Screen and Check Out dispatch, party-status setup, option cursor, and action servicing	disassembly.s;fn_0000CF38.cpp;analysis/strings.tsv;SCRATCHPAD.md
 0x0D4C8	convert_graphics_routine_0x0000d4c8	reset_field_mode_entity_selection	field	high	Resets field entity-selection bits, grid state, and current selection flags	disassembly.s;fn_0000D4C8.cpp
 0x0D53C	convert_graphics_routine_0x0000d53c	run_attributes_skills_menu_prompt	menu	high	Renders and services the attributes-and-skills prompt until controller completion	disassembly.s;fn_0000D53C.cpp;caller 0xD01C
 0x0EA36	convert_graphics_routine_0x0000ea36	evaluate_entity_terrain_collision_directions	entity	high	Combines the four directional terrain collision bits into an entity boundary result	disassembly.s;fn_0000EA36.cpp
 0x0EB92	convert_graphics_routine_0x0000eb92	resolve_entity_proximity_interactions	entity	high	Scans entity pairs for proximity and publishes collision or reaction flags	disassembly.s;fn_0000EB92.cpp
 0x0ECCC	convert_graphics_routine_0x0000eccc	resolve_entity_pair_collision_event	entity	high	Chooses the active participant and starts the pair collision activity/effect	disassembly.s;fn_0000ECCC.cpp
-0x0EF08	convert_graphics_routine_0x0000ef08	service_exit_prompt_entities	menu	high	Services prompt-time entity delay meters and renders the exit feedback text	disassembly.s;fn_0000EF08.cpp
+0x0EF08	convert_graphics_routine_0x0000ef08	service_hotel_entity_status	menu	high	Services the three Hotel party records: medical-attention rows, recovery delay/behavior meters, and the post-service Hotel message	disassembly.s;fn_0000EF08.cpp;analysis/strings.tsv;SCRATCHPAD.md
 0x0F5F4	convert_graphics_routine_0x0000f5f4	render_bitmask_text_batch	graphics	high	Builds and renders the text records selected by a display bitmask	disassembly.s;fn_0000F5F4.cpp
 0x0FDFE	convert_graphics_routine_0x0000fdfe	advance_menu_sprite_overlay	menu	high	Advances the timed menu sprite overlay and writes its grid records	disassembly.s;fn_0000FDFE.cpp
 0x10016	convert_menu_routine_0x00010016	run_magic_force_selection_loop	menu	high	Runs the magic-force raise/lower/confirm/cancel controller loop	disassembly.s;fn_00010016.cpp;magic_menu_conversion.hpp

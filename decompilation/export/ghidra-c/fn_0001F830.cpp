@@ -8,7 +8,7 @@
 // still an explicit mode-exit service boundary.
 //
 // Calls recovered from direct call instructions:
-//   0x0000C928 run_field_exit_selection_menu
+//   0x0000C928 run_hospital_options_menu
 //   0x0001F246 run_mode_exit_services
 //   0x0002196C mark_effect_bit
 
@@ -52,6 +52,6 @@ void prepare_field_mode_exit(void)
   run_mode_exit_services();
   if (DAT_00fff0d5 != 0) {
     DAT_00fff0d5 = 0;
-    run_field_exit_selection_menu();
+    run_hospital_options_menu();
   }
 }
