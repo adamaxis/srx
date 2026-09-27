@@ -32,6 +32,7 @@ struct EntityBehaviorFrameRecord {
     std::uint16_t current_heading = 0; // +0x2E
     std::uint16_t target_heading = 0; // +0x34
     std::uint16_t action_heading_source = 0; // +0xCC
+    std::uint16_t projected_field_code = 0; // +0xC6
     std::int16_t transition_gate = 0; // +0xDC
     std::int8_t target_marker = 0; // +0x56
     std::uint8_t source_type = 0; // +0x57
