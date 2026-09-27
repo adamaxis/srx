@@ -64,8 +64,9 @@ The conversion runtime also exposes
 `integration::bootstrap_field_session()`. It composes the manually traced
 post-menu field-entry slice (`0x007F0..0x0094C`) from the existing typed audio,
 entity, world-effect, scene-entry, resource, and render contracts, including
-the sixteen-slot `0x0A8EA` behavior-frame service and its source-verified
-`0x0AB02` transition-completion callee. Its downstream camera, action,
+the sixteen-slot `0x0A8EA` behavior-frame service, its source-verified
+`0x0AB02` transition-completion callee, and the source-verified `0x0ACAE`
+field-service action router. Its downstream camera, action,
 movement, effect, continuation, and presentation boundaries remain
 explicit callbacks; it does not silently turn missing conversion work into a
 playable-runtime shortcut.

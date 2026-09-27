@@ -16,6 +16,8 @@ enum class EntityBehaviorContinuationKind {
     transition_b0d4,
     transition_b10c,
     fallback_movement,
+    collision_recheck,
+    movement_route,
 };
 
 // The fields here are the confirmed consumers of one 0x100-byte entity slot
@@ -27,6 +29,13 @@ struct EntityBehaviorFrameRecord {
     std::uint8_t record_flags = 0; // +0x11 bits 0..2
     std::int16_t animation_elapsed = 0; // +0x16
     std::uint16_t entity_type = 0; // +0x0E
+    std::uint16_t current_heading = 0; // +0x2E
+    std::uint16_t target_heading = 0; // +0x34
+    std::uint16_t action_heading_source = 0; // +0xCC
+    std::int16_t transition_gate = 0; // +0xDC
+    std::int8_t target_marker = 0; // +0x56
+    std::uint8_t source_type = 0; // +0x57
+    std::uint8_t auxiliary_marker = 0; // +0x43
     std::uint8_t transition_rate_threshold = 0; // +0x9C
     std::uint8_t transition_gate_marker = 0; // +0x4C
     std::uint8_t route_flags = 0; // +0xB0
