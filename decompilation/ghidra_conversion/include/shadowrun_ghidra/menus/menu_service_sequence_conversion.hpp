@@ -75,6 +75,79 @@ struct ActiveRunnerNameTextPlan {
 void render_active_runner_name_text(
     const std::function<void(const ActiveRunnerNameTextPlan&)>& render_text);
 
+struct CommandOverviewSpriteBuildPlan {
+    // ROM 0x11592 uses the extracted 0xD29F6 cursor records. The table is a
+    // source-data boundary here; the callback owns the already-decoded host
+    // sprite records and does not receive a Genesis address.
+    std::string_view source_alias = "menu.field.cursor";
+    // The source multiplies the two command-overview selectors before
+    // entering 0x1378: primary rows are 0x28 pixels apart and secondary
+    // columns are 0x18 pixels apart.
+    std::int16_t y_offset = 0;
+    std::int16_t x_offset = 0;
+    std::uint8_t first_sequence = 2;
+    std::uint16_t attribute_flags = 0x2000;
+};
+
+struct CommandOverviewActionTitleTextPlan {
+    // The action-zero branch supplies the source table at 0xD1CA5 to the
+    // common text writer. Its host extraction alias is still an open data
+    // table boundary, so this symbolic name is not a runtime ROM lookup.
+    std::string_view source_table =
+        "menu.field.command_overview_action_title_table";
+    std::uint16_t destination_tile_base = 0xC520;
+    std::uint16_t palette_flags = 0x6000;
+};
+
+struct CommandOverviewActionRefreshState {
+    // Source FFF0D0/FFF0D1 are the primary action page and secondary item
+    // page, not generic menu counters.
+    std::uint8_t primary_page = 0;
+    std::uint8_t secondary_page = 0;
+    // FFDD02 starts at one before 0x1378 appends cursor records.
+    std::uint16_t sprite_record_count = 1;
+    // FFD980 is the sprite-list-ready marker published after the build.
+    bool sprite_list_ready = false;
+    // FFEF14 bit 1 requests the sprite-record presentation upload.
+    std::uint8_t display_dirty_flags = 0;
+};
+
+struct CommandOverviewActionRefreshCallbacks {
+    // Return the number of typed host records built from the cursor table.
+    std::function<std::size_t(const CommandOverviewSpriteBuildPlan&)>
+        build_title_sprite_records;
+    // The source backs A3 up one record and clears that record's sequence
+    // byte after 0x1378 returns.
+    std::function<void()> clear_last_sprite_sequence;
+    std::function<void()> prepare_menu_grid_variant_b;
+    // ROM 0x12148 is represented as a typed record read, not a raw address.
+    std::function<std::uint8_t()> read_entity_action_code;
+    std::function<std::uint8_t()> render_item_action_details;
+    std::function<void()> service_entity_action_menu;
+    std::function<void()> prepare_menu_dialog;
+    std::function<void(const CommandOverviewActionTitleTextPlan&)>
+        render_action_title_text;
+};
+
+struct CommandOverviewActionRefreshResult {
+    std::uint8_t action_code = 0;
+    std::uint8_t item_details_result = 0x10;
+    bool item_details_rendered = false;
+    bool action_menu_serviced = false;
+    bool dialog_prepared = false;
+    bool action_title_rendered = false;
+    CommandOverviewSpriteBuildPlan sprite_plan{};
+};
+
+// ROM 0x11592: rebuild the command-overview cursor at the selected page and
+// column, publish its sprite-upload flags, then choose either the selected
+// entity action-detail/dialog path or the action-zero title-text path. The
+// Ghidra C export loses this read-result branch; the disassembly at
+// 0x115E6/0x1160C is the source of truth for the typed contract below.
+CommandOverviewActionRefreshResult refresh_command_overview_action_details(
+    CommandOverviewActionRefreshState& state,
+    const CommandOverviewActionRefreshCallbacks& callbacks);
+
 struct MenuTextTableRef {
     // Host asset alias supplied by the caller; no ROM address is required by
     // the conversion boundary.

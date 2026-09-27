@@ -283,5 +283,76 @@ int main() {
         return 25;
     }
 
+    CommandOverviewActionRefreshState action_state{3U, 2U, 0U, false, 0x01U};
+    std::vector<int> action_order;
+    CommandOverviewSpriteBuildPlan sprite_plan;
+    CommandOverviewActionRefreshResult action_result =
+        refresh_command_overview_action_details(
+            action_state,
+            {[&](const CommandOverviewSpriteBuildPlan& plan) {
+                 sprite_plan = plan;
+                 action_order.push_back(32);
+                 return std::size_t{4U};
+             },
+             [&] { action_order.push_back(33); },
+             [&] { action_order.push_back(34); },
+             [&] {
+                 action_order.push_back(35);
+                 return std::uint8_t{7U};
+             },
+             [&] {
+                 action_order.push_back(36);
+                 return std::uint8_t{15U};
+             },
+             [&] { action_order.push_back(37); },
+             [&] { action_order.push_back(38); },
+             {}});
+    if (action_order != std::vector<int>{32, 33, 34, 35, 36, 37, 38} ||
+        sprite_plan.source_alias != "menu.field.cursor" ||
+        sprite_plan.y_offset != 120 || sprite_plan.x_offset != 48 ||
+        sprite_plan.first_sequence != 2U ||
+        sprite_plan.attribute_flags != 0x2000U ||
+        action_state.sprite_record_count != 5U ||
+        !action_state.sprite_list_ready ||
+        action_state.display_dirty_flags != 0x03U ||
+        action_result.action_code != 7U ||
+        action_result.item_details_result != 15U ||
+        !action_result.item_details_rendered ||
+        !action_result.action_menu_serviced || !action_result.dialog_prepared ||
+        action_result.action_title_rendered) {
+        return 32;
+    }
+
+    action_state = CommandOverviewActionRefreshState{0U, 1U, 99U, false, 0U};
+    action_order.clear();
+    CommandOverviewActionTitleTextPlan title_plan;
+    action_result = refresh_command_overview_action_details(
+        action_state,
+        {{},
+         {},
+         [&] { action_order.push_back(39); },
+         [&] {
+             action_order.push_back(40);
+             return std::uint8_t{0U};
+         },
+         {},
+         {},
+         {},
+         [&](const CommandOverviewActionTitleTextPlan& plan) {
+             title_plan = plan;
+             action_order.push_back(41);
+         }});
+    if (action_order != std::vector<int>{39, 40, 41} ||
+        action_state.sprite_record_count != 1U ||
+        action_state.display_dirty_flags != 0x02U ||
+        !action_result.action_title_rendered ||
+        action_result.action_code != 0U ||
+        title_plan.source_table !=
+            "menu.field.command_overview_action_title_table" ||
+        title_plan.destination_tile_base != 0xC520U ||
+        title_plan.palette_flags != 0x6000U) {
+        return 33;
+    }
+
     return 0;
 }

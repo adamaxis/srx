@@ -397,6 +397,33 @@ still has unresolved downstream calls or hardware presentation work.
 | `0x5D938` | `advance_pre_title_animation` | Sets the source sprite markers, builds the two ordinary title records, delegates the six-phase projection gate, and sets the projection marker. | `ghidra_conversion::advance_pre_title_animation()` | partial |
 | `0x5D996` | `advance_pre_title_logo_phase` | Checks the `FFDD30`/`FFDD3C` gates, advances typed `FFE066`/`FFE064` phase state, and builds two projection records on every open gate. | `ghidra_conversion::advance_pre_title_animation()`; source phase state remains caller-owned | partial |
 
+### Command-overview refresh correction: `0x11592`
+
+The Ghidra C export for `0x11592` is not behaviorally reliable at its
+branch. The ROM disassembly is authoritative here. The routine:
+
+1. derives the cursor sprite offsets from the command-overview selectors:
+   `primary * 0x28` in `D1` and `secondary * 0x18` in `D2`;
+2. initializes the sprite-record count to one, expands the `0xD29F6`
+   cursor records with first sequence `2` and attribute flags `0x2000`, backs
+   up to the final record and clears its sequence byte, then publishes the
+   sprite-list-ready marker and `FFEF14` bit 1;
+3. prepares the menu grid and reads the selected entity action through the
+   typed `0x12148` boundary;
+4. for a nonzero action, renders item action details, calls the entity-action
+   service when the `CMP.B #0x10` result is negative, and prepares the menu
+   dialog; and
+5. for action zero, renders the table at source `0xD1CA5` to tile base
+   `0xC520` with flags `0x6000`.
+
+The current conversion is
+`ghidra_conversion::refresh_command_overview_action_details()`. It carries
+the two selector-derived offsets and all branch callbacks as typed values.
+The host extraction alias for the `0xD1CA5` action-title table is still an
+explicit data-extraction gap; no runtime ROM lookup or invented asset is
+being used to hide it. This also corrects the stale Ghidra-C interpretation
+that branches on the prior `FFEF14` bit instead of the action-code read.
+
 ## Initial coherent C++ conversions
 
 `0x0330` and `0x0436` are no longer represented only as bus traces. The

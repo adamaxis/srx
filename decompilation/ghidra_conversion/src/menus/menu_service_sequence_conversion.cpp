@@ -52,6 +52,68 @@ void render_active_runner_name_text(
     }
 }
 
+CommandOverviewActionRefreshResult refresh_command_overview_action_details(
+    CommandOverviewActionRefreshState& state,
+    const CommandOverviewActionRefreshCallbacks& callbacks) {
+    CommandOverviewActionRefreshResult result;
+    result.sprite_plan.y_offset = static_cast<std::int16_t>(
+        static_cast<std::uint16_t>(state.primary_page) * 0x28U);
+    result.sprite_plan.x_offset = static_cast<std::int16_t>(
+        static_cast<std::uint16_t>(state.secondary_page) * 0x18U);
+
+    // ROM 0x115AE initializes the presentation-record count before entering
+    // 0x1378. The callback returns the typed records appended by that build.
+    state.sprite_record_count = 1U;
+    if (callbacks.build_title_sprite_records) {
+        const auto built_count =
+            callbacks.build_title_sprite_records(result.sprite_plan);
+        state.sprite_record_count = static_cast<std::uint16_t>(
+            1U + static_cast<std::uint16_t>(built_count));
+    }
+    if (callbacks.clear_last_sprite_sequence) {
+        callbacks.clear_last_sprite_sequence();
+    }
+    state.sprite_list_ready = true;
+    state.display_dirty_flags = static_cast<std::uint8_t>(
+        state.display_dirty_flags | 0x02U);
+
+    if (callbacks.prepare_menu_grid_variant_b) {
+        callbacks.prepare_menu_grid_variant_b();
+    }
+
+    if (callbacks.read_entity_action_code) {
+        result.action_code = callbacks.read_entity_action_code();
+    }
+    if (result.action_code != 0U) {
+        result.item_details_rendered = true;
+        if (callbacks.render_item_action_details) {
+            result.item_details_result = callbacks.render_item_action_details();
+        }
+
+        // CMP.B #0x10 followed by BPL at 0x115F6 calls the entity-action
+        // service only when the signed byte subtraction is negative. Keeping
+        // the wrapped byte test avoids silently turning the source's byte
+        // condition into a host integer comparison.
+        const auto comparison = static_cast<std::uint8_t>(
+            result.item_details_result - 0x10U);
+        if ((comparison & 0x80U) != 0U) {
+            if (callbacks.service_entity_action_menu) {
+                callbacks.service_entity_action_menu();
+                result.action_menu_serviced = true;
+            }
+        }
+        if (callbacks.prepare_menu_dialog) {
+            callbacks.prepare_menu_dialog();
+            result.dialog_prepared = true;
+        }
+    } else if (callbacks.render_action_title_text) {
+        callbacks.render_action_title_text(CommandOverviewActionTitleTextPlan{});
+        result.action_title_rendered = true;
+    }
+
+    return result;
+}
+
 std::optional<MenuTitleTextPlan> select_menu_title_text(
     const MenuTitleTextInput& input) {
     MenuTitleTextPlan plan;
