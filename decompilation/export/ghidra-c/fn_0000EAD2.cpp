@@ -1,43 +1,15 @@
 // Ghidra headless export
 // Entry: 0x0000EAD2
 // Name: evaluate_terrain_direction_boundary
-// Decompile status: ok
+// Decompile status: reviewed against export/disassembly.s and the US ROM.
 // Calls recovered from direct call instructions:
 //   0x0000EDFA decode_terrain_tile_window
 
 
-void evaluate_terrain_direction_boundary(void)
-
-{
-  short sVar1;
-  ushort uVar2;
-  short extraout_D1w;
-  short unaff_D3w;
-  short unaff_D5w;
-  short unaff_D6w;
-  
-  sVar1 = DAT_00ffdfe4;
-  uVar2 = decode_terrain_tile_window();
-  uVar2 = uVar2 & 0x38;
-  if (uVar2 == 0x20) {
-    if ((ushort)-(extraout_D1w - unaff_D5w) < (ushort)(unaff_D3w - unaff_D6w)) {
-      return;
-    }
-  }
-  else if (uVar2 == 0x28) {
-    if ((ushort)-(sVar1 - unaff_D6w) <= (ushort)-(extraout_D1w - unaff_D5w)) {
-      return;
-    }
-  }
-  else if (uVar2 == 0x38) {
-    if ((ushort)(unaff_D3w - unaff_D6w) <= (ushort)-(extraout_D1w - unaff_D5w)) {
-      return;
-    }
-  }
-  else if ((ushort)-(extraout_D1w - unaff_D5w) < (ushort)-(sVar1 - unaff_D6w)) {
-    return;
-  }
-  return;
-}
+// Source behavior: 0xEDFA expands the selected tile index into origin X,
+// origin Y, and end Y. After masking the code with 0x38, the four branches
+// compare wrapped unsigned word deltas using BCS/BCC. The typed conversion
+// keeps those exact unsigned comparisons in
+// evaluate_terrain_direction_boundary().
 
 

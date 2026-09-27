@@ -58,6 +58,94 @@ TerrainTileSample sample_terrain_collision_tiles(
     return sample;
 }
 
+bool evaluate_entity_terrain_collision_directions(
+    const TerrainTileSample& sample,
+    const std::uint16_t x,
+    const std::uint16_t y) {
+    const auto window = decode_terrain_tile_window(sample.selected_tile_index);
+    const std::array<std::pair<std::int16_t, std::int16_t>, 4> offsets{{
+        {-12, -7}, {12, -7}, {-12, 7}, {12, 7}}};
+    for (std::size_t index = 0; index < sample.values.size(); ++index) {
+        if ((sample.values[index] & 0x20U) == 0U) {
+            continue;
+        }
+        const auto probe_x = add_word(x, offsets[index].first);
+        const auto probe_y = add_word(y, offsets[index].second);
+        if (evaluate_terrain_direction_boundary(
+                sample.values[index], window, probe_x, probe_y)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+TerrainCollisionResult evaluate_terrain_collision(
+    const TerrainCollisionInput& input,
+    const TerrainCollisionCallbacks& callbacks) {
+    TerrainCollisionResult result{};
+    const auto normalized_x = static_cast<std::uint16_t>(input.source_x >> 4U);
+    const auto normalized_y = static_cast<std::uint16_t>(input.source_y >> 4U);
+    const auto& bounds = input.bounds;
+    if (normalized_x < bounds.minimum_x_tile ||
+        normalized_x >= bounds.exclusive_maximum_x_tile ||
+        normalized_y < bounds.minimum_y_tile ||
+        normalized_y >= bounds.exclusive_maximum_y_tile) {
+        result.state.outside_bounds_marker = true;
+        result.state.sample.selected_value = 0x7FU;
+        result.state.sample.values[0] = 0x7FU;
+        result.state.sample.values[2] = 0x7FU;
+        result.code = 0x7F;
+        return result;
+    }
+
+    const bool expanded_probe = (input.entity_flags & 0x04U) != 0U;
+    if (callbacks.sample_tiles) {
+        result.state.sample =
+            callbacks.sample_tiles(normalized_x, normalized_y, expanded_probe);
+    }
+    const auto selected_value = result.state.sample.selected_value;
+    result.state.raw_terrain_code = static_cast<std::int16_t>(
+        static_cast<std::int8_t>(selected_value));
+    result.code = result.state.raw_terrain_code;
+    if (selected_value == 0U || selected_value == 0x7FU ||
+        result.state.raw_terrain_code < 0) {
+        return result;
+    }
+
+    const auto directional_collision = [&] {
+        if (callbacks.evaluate_directions) {
+            return callbacks.evaluate_directions(
+                result.state.sample, normalized_x, normalized_y);
+        }
+        return evaluate_entity_terrain_collision_directions(
+            result.state.sample, normalized_x, normalized_y);
+    };
+    if ((selected_value & 0x40U) != 0U) {
+        result.state.directional_collision_marker = true;
+        if (selected_value == 0x7EU || (selected_value & 0x20U) == 0U ||
+            directional_collision()) {
+            result.code = 0x7F;
+        } else {
+            result.code = 0;
+        }
+        return result;
+    }
+
+    if ((selected_value & 0x20U) == 0U) {
+        const bool contains_object =
+            callbacks.contains_object &&
+            callbacks.contains_object(
+                selected_value,
+                static_cast<std::int16_t>(normalized_x),
+                static_cast<std::int16_t>(normalized_y));
+        result.code = contains_object ? 0x7F : 0;
+        return result;
+    }
+
+    result.code = directional_collision() ? 0x7F : 0;
+    return result;
+}
+
 bool contains_terrain_object_bounds(
     const std::uint16_t object_id,
     const std::int16_t x,

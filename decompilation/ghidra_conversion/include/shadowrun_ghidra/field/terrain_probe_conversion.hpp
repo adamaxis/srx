@@ -25,6 +25,66 @@ TerrainTileSample sample_terrain_collision_tiles(
     bool expanded_probe,
     const TerrainTileLookup& tile_lookup);
 
+// ROM 0xEA36: test each sampled tile carrying the directional bit in source
+// order. Each active corner is evaluated against the selected tile window;
+// the first source carry ends the scan.
+bool evaluate_entity_terrain_collision_directions(
+    const TerrainTileSample& sample,
+    std::uint16_t x,
+    std::uint16_t y);
+
+struct TerrainCollisionBounds {
+    // These are the exclusive/inclusive-word boundaries compared with the
+    // source coordinates after its four-bit normalization.
+    std::uint16_t minimum_x_tile = 0;
+    std::uint16_t exclusive_maximum_x_tile = 0;
+    std::uint16_t minimum_y_tile = 0;
+    std::uint16_t exclusive_maximum_y_tile = 0;
+};
+
+struct TerrainCollisionInput {
+    std::uint16_t source_x = 0;
+    std::uint16_t source_y = 0;
+    std::uint8_t entity_flags = 0;
+    TerrainCollisionBounds bounds{};
+};
+
+struct TerrainCollisionState {
+    bool outside_bounds_marker = false;
+    bool directional_collision_marker = false;
+    std::int16_t raw_terrain_code = 0;
+    TerrainTileSample sample{};
+};
+
+using TerrainCollisionSampleBoundary =
+    std::function<TerrainTileSample(
+        std::uint16_t x, std::uint16_t y, bool expanded_probe)>;
+using TerrainCollisionObjectBoundary =
+    std::function<bool(std::uint8_t object_id, std::int16_t x, std::int16_t y)>;
+using TerrainCollisionDirectionBoundary =
+    std::function<bool(const TerrainTileSample& sample,
+                       std::uint16_t x,
+                       std::uint16_t y)>;
+
+struct TerrainCollisionCallbacks {
+    TerrainCollisionSampleBoundary sample_tiles;
+    TerrainCollisionObjectBoundary contains_object;
+    TerrainCollisionDirectionBoundary evaluate_directions;
+};
+
+struct TerrainCollisionResult {
+    std::int16_t code = 0;
+    TerrainCollisionState state{};
+};
+
+// ROM 0xE7C8: normalize the source coordinate words, reject the four-sided
+// terrain-map boundary, sample the center/four corners, then route the tile
+// code through the object-bounds or directional collision leaf. The callbacks
+// are host boundaries for decoded terrain records; no source RAM is exposed.
+TerrainCollisionResult evaluate_terrain_collision(
+    const TerrainCollisionInput& input,
+    const TerrainCollisionCallbacks& callbacks);
+
 struct TerrainObjectBounds {
     std::int16_t center_x = 0;
     std::int16_t center_y = 0;

@@ -781,6 +781,25 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+### Terrain collision probe audit
+
+The terrain probe family is now source-traced in the conversion project rather
+than being left as a native-port-only boundary. `0xE8A0` samples either the
+center tile or the four corners in source order `(-12,-7)`, `(+12,-7)`,
+`(-12,+7)`, `(+12,+7)`. It preserves later ties when selecting the maximum
+terrain code and returns `0x7F` whenever any sampled tile is `0x7F`.
+
+`0xE7C8` now models the caller-visible behavior with `TerrainCollisionResult`:
+it normalizes the coordinate words by four bits, applies the four exclusive map
+bounds, preserves signed negative terrain codes, routes bit-5-clear positive
+codes to the object-bounds service, and routes directional codes through the
+four-corner `0xEA36` scan. Bit 6 publishes the directional-collision marker;
+code `0x7E`, bit-5-clear bit-6 values, and successful directional boundaries
+produce the source `0x7F` result. `0xEA36` and `0xEAD2` are now explicit typed
+conversions, including their source corner order and wrapped unsigned
+comparisons. These routines use callbacks for decoded terrain/object records,
+not ROM addresses or emulated RAM.
+
 ### Random grid selection audit
 
 The direct ROM pass over `0xE660` replaced a generic three-callback placeholder

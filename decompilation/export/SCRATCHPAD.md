@@ -1805,3 +1805,15 @@ the source D5 offsets `4/0/0/2`. The zero-first branch uses a fixed three-entry
 variant and two rows; the nonzero-first branch uses an indexed four-entry
 variant and one row. The converted callbacks receive typed plans and do not
 perform ROM or VDP emulation.
+
+## Terrain collision probe audit
+
+The conversion now covers the coupled `0xE7C8` terrain probe family. The
+`0xE8A0` sampler keeps the center/four-corner source order, later-equal maximum
+selection, blocked `0x7F` override, and selected tile index. `0xEA36` scans
+only sampled codes with bit `0x20`, calls `0xEAD2` at the exact signed corner
+offsets, and exits on the first carry. `0xE7C8` shifts its incoming coordinate
+words by four before bounds checks and sampling, preserves signed negative
+codes, sets the directional marker for bit `0x40`, and routes object versus
+directional codes through typed callbacks. `TerrainCollisionResult` carries
+the result and marker state without exposing source RAM or emulating the VDP.

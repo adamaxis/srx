@@ -1,29 +1,14 @@
 // Ghidra headless export
 // Entry: 0x0000E9EE
 // Name: contains_terrain_object_bounds
-// Decompile status: ok
+// Decompile status: reviewed against export/disassembly.s and the US ROM.
 // Calls recovered from direct call instructions:
 //   (none)
 
 
-void contains_terrain_object_bounds(void)
-
-{
-  undefined4 uVar1;
-  short in_D0w;
-  short unaff_D5w;
-  short unaff_D6w;
-  undefined4 *puVar2;
-  
-  puVar2 = (undefined4 *)((short)(in_D0w * 10) + DAT_00ffddec);
-  uVar1 = *puVar2;
-  if (((((short)((short)((uint)uVar1 >> 0x10) + -0xc) <= unaff_D5w) &&
-       (unaff_D5w <= (short)((short)uVar1 + 0xc))) &&
-      (uVar1 = puVar2[1], (short)((short)((uint)uVar1 >> 0x10) + -7) <= unaff_D6w)) &&
-     (unaff_D6w <= (short)((short)uVar1 + 7))) {
-    return;
-  }
-  return;
-}
+// Source behavior: select the object record by ten-byte stride, then test
+// signed X within center +/-12 and signed Y within center +/-7, inclusive.
+// The native conversion exposes this through TerrainObjectLookup and does not
+// reproduce the source record pointer arithmetic.
 
 
