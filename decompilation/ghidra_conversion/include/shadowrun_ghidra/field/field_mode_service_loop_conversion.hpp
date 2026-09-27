@@ -79,8 +79,9 @@ struct FieldModeServiceCallbacks {
     // 0xD4C8 restarts the field-mode setup path.
     std::function<void()> restart_graphics_service;
 
-    // 0x56DC4 is the large item/action handler. It remains a typed callback
-    // boundary until that source routine is converted independently.
+    // 0x56DC4's top-level result/selection routing is converted by
+    // field_action_selection_dispatch_conversion. The selected leaf still
+    // owns its own typed state and remains a callback boundary here.
     std::function<void(FieldModeServiceState&)> run_selected_action;
 };
 

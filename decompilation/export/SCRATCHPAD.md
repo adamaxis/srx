@@ -138,6 +138,31 @@ result exposes the unadjusted Matrix capacity, selected-program usage, and
 wrapped adjusted capacity. It does not retain `A0`, ROM addresses, or a
 Genesis memory map.
 
+## Field-action dispatcher routing: 0x56DC4
+
+The large field-action routine is now split at its first meaningful boundary:
+the top-level `FFF0B7` result and `FFF0B8` saved-selection tests are converted
+in `field_action_selection_dispatch_conversion.*`. The source routing is:
+
+* A negative result selects one of three action-record tables for saved
+  selections 0, 1, or 2; selection 3 enters the field-action detail path,
+  selection 4 renders an action description, and later selections enter the
+  runner-action removal path.
+* A zero result sends saved selection 3 to removal. Other selections first
+  require the active runner's `+0x9B` archetype/status byte to be at least 2;
+  selection 1 uses its dedicated action table, while the remaining selections
+  choose one of the low-menu-mode, mode-3, or high-menu-mode action tables.
+* A positive result of 1 enters the equipment-action branch. Other positive
+  results route selections below 3 to resource/quantity selection, selection 3
+  to resource-record purchase, selection 5 to quantity purchase, and the
+  remaining selections to the field-resource purchase routine.
+
+`run_field_action_selection()` clears the source service-result byte, returns
+this typed route, and optionally hands it to the corresponding leaf converter.
+The leaf routines still own their own typed records, funds, runner fields, and
+presentation callbacks; this pass does not collapse them into a generic
+command interpreter.
+
 ## Field HUD row meter
 
 `0x1792E render_menu_hud_rows` calls `0x56506` once for each eligible row.
