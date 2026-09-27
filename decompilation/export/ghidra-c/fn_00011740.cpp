@@ -400,7 +400,7 @@ LAB_0000d25e:
         if (((DAT_00ffdd22._0_1_ & 0x40) == 0) && ((DAT_00ffdd22._0_1_ & 0x10) == 0)) {
           if ((DAT_00ffdd22._0_1_ & 0x20) != 0) {
             render_attribute_skill_detail_panel();
-            reset_field_mode_entity_selection();
+            advance_field_active_runner_selection();
             goto LAB_0000d0d6;
           }
           if ((DAT_00ffdd22._0_1_ & 0x80) != 0) {

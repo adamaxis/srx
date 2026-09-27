@@ -13,7 +13,7 @@
 //   0x000039F2 refresh_field_animation_assets
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
-//   0x0000D4C8 reset_field_mode_entity_selection
+//   0x0000D4C8 advance_field_active_runner_selection
 //   0x0000D53C run_attribute_skill_upgrade_prompt
 //   0x0000D5DC render_attribute_skill_detail_panel
 //   0x0000D82A render_attributes_and_skills
@@ -135,7 +135,7 @@ LAB_0000d25e:
       if (((DAT_00ffdd22._0_1_ & 0x40) == 0) && ((DAT_00ffdd22._0_1_ & 0x10) == 0)) {
         if ((DAT_00ffdd22._0_1_ & 0x20) != 0) {
           render_attribute_skill_detail_panel();
-          reset_field_mode_entity_selection();
+          advance_field_active_runner_selection();
           goto LAB_0000d0d6;
         }
         if ((DAT_00ffdd22._0_1_ & 0x80) != 0) {

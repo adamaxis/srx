@@ -6111,7 +6111,7 @@
 0000D480: beq.w 0x0000d494
 0000D484: move.w #0x6000,D1w
 0000D488: bsr.w 0x0000d5dc ; call 0000D5DC render_attribute_skill_detail_panel
-0000D48C: bsr.w 0x0000d4c8 ; call 0000D4C8 reset_field_mode_entity_selection
+0000D48C: bsr.w 0x0000d4c8 ; call 0000D4C8 advance_field_active_runner_selection
 0000D490: bra.w 0x0000d0d6
 0000D494: btst.b #0xf,(0x00ffdd22).l
 0000D49C: beq.w 0x0000d26a
@@ -25090,7 +25090,7 @@
 00056D84: beq.w 0x00056d9c
 00056D88: move.w #0x24,D0w
 00056D8C: jsr 0x000530de.l ; call 000530DE service_audio_if_enabled
-00056D92: jsr 0x0000d4c8.l ; call 0000D4C8 reset_field_mode_entity_selection
+00056D92: jsr 0x0000d4c8.l ; call 0000D4C8 advance_field_active_runner_selection
 00056D98: bra.w 0x00056b66
 00056D9C: btst.b #0xf,(0x00ffdd22).l
 00056DA4: beq.w 0x00056c54

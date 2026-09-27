@@ -166,7 +166,11 @@ FieldModeServiceLoopAction run_field_mode_service(
                 if ((input & bit(FieldActionSelectionServiceInput::
                                      restart_setup)) != 0U) {
                     call_if_present(callbacks.service_audio);
-                    call_if_present(callbacks.restart_graphics_service);
+                    if (callbacks.advance_active_field_runner_selection) {
+                        callbacks.advance_active_field_runner_selection();
+                    } else {
+                        call_if_present(callbacks.restart_graphics_service);
+                    }
                     break;
                 }
                 if ((input & bit(FieldActionSelectionServiceInput::

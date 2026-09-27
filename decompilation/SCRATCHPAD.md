@@ -781,6 +781,18 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+`0xD4C8` is now converted as `advance_field_active_runner_selection`. It is
+not a generic field reset: both the Attributes/Skills screen and the field
+action service call it when the player uses the source runner-cycle/restart
+input. The routine first refreshes the small three-row/four-word field
+runner-selection grid, clears the current live record's transient selection
+marker, then scans the contiguous live records for the next active runner.
+The source treats current type 2 and the forward type 0 or type 3-plus
+boundaries as a wrap to the first live record; an active candidate gets the
+selection marker and becomes the current record. The host conversion exposes
+those record roles and the grid request as typed state/callbacks, with only a
+bounded malformed-table guard added for host safety.
+
 The Hotel party-status service at `0x0EF08` is now source-verified. The ROM
 enters with `0x0C3E6`, then walks exactly three live records at `FF0100`,
 `FF0200`, and `FF0300` using a `0x100` stride. It tests record flags bit 0 at

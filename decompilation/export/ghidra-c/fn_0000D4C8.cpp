@@ -1,12 +1,12 @@
 // Ghidra headless export
 // Entry: 0x0000D4C8
-// Name: reset_field_mode_entity_selection
+// Name: advance_field_active_runner_selection
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00012C5A write_menu_repeated_grid_with_metadata
 
 
-void reset_field_mode_entity_selection(void)
+void advance_field_active_runner_selection(void)
 
 {
   undefined2 *puVar1;

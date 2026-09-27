@@ -78,7 +78,8 @@ struct FieldModeServiceCallbacks {
     std::function<std::uint16_t()> sample_controller_input;
     std::function<void()> service_audio;
 
-    // 0xD4C8 restarts the field-mode setup path.
+    // Compatibility boundary for callers that still own the complete field
+    // setup restart choreography.
     std::function<void()> restart_graphics_service;
 
     // 0x56DC4's top-level result/selection routing is converted by
@@ -90,6 +91,10 @@ struct FieldModeServiceCallbacks {
     // 0x587DA presentation callback above.
     std::function<void(FieldModeServiceState&)>
         render_field_action_selection;
+
+    // Typed 0xD4C8 runner-cycle behavior. When unset, the compatibility
+    // callback above remains the boundary for older callers.
+    std::function<void()> advance_active_field_runner_selection;
 };
 
 enum class FieldModeServiceLoopAction {
