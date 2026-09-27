@@ -729,6 +729,31 @@ the stream cursor/enabled state. The terrain layer copy at `0x0313A` and the
 thirteen-record readiness scan at `0x2FF0` are likewise isolated from runtime
 memory and covered by focused tests.
 
+### 0xD5DC Attributes/Skills detail panel
+
+The direct ROM trace for `0xD5DC` is now represented by
+`render_attribute_skill_detail_panel()` in the separate Ghidra-conversion
+menu module. It is not the Cyberware list screen at `0x11950`; it is the
+detail pass called by the Attributes/Skills menu at `0xD01C`.
+
+- Column/page `0` or `1` and row `0..3` select one of eight attribute labels;
+  rows `4..9` select one of twelve skill labels.
+- The ordinary numeric paths read the first six attributes from `+0x77..+0x7C`
+  and skills from `+0x80..+0x8C`.
+- The source does not treat the last two attribute rows as a contiguous
+  display array: the Essence row reads `+0x7E` and `+0x8E`, while the Magic
+  row reads `+0x7F`.
+- Installed cyberware bits `5..8` select the first matching bit and render
+  Quickness and Strength plus `(bit - 4)`. Bits `9..11` select the first
+  matching bit and render Body plus `(bit - 8)`. The host conversion keeps
+  those as named modifier fields and preserves the source word arithmetic,
+  including values above `0xFF`.
+
+The callback surface is presentation-only: it receives typed label/value
+meaning and source text mode, not ROM addresses, VDP destinations, or a
+runtime memory image. `read_cyberware_detail()` remains the lower-level
+sixteen-bit bitfield projection used by the separate Cyberware list model.
+
 The next transfer pass adds `0x0F5C` as an explicit source-64K split around
 the `0x0F98` word writer, preserving destination advancement without carrying
 the original pointer arithmetic into host code. `0x0CEC` now installs the

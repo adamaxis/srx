@@ -636,7 +636,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0000D4C8L, "reset_field_mode_entity_selection");
         names.put(0x0000D53CL, "run_attributes_skills_menu_prompt");
         names.put(0x0000D01CL, "run_attributes_and_skills_menu");
-        names.put(0x0000D5DCL, "render_cyberware_detail");
+        names.put(0x0000D5DCL, "render_attribute_skill_detail_panel");
         names.put(0x0000D82AL, "render_attributes_and_skills");
         names.put(0x0000EA36L, "evaluate_entity_terrain_collision_directions");
         names.put(0x0000EB92L, "resolve_entity_proximity_interactions");

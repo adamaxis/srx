@@ -5999,7 +5999,7 @@
 0000D254: adda.l #0x80,A2
 0000D25A: dbf D7w,0x0000d24c
 0000D25E: move.w #0x4000,D1w
-0000D262: bsr.w 0x0000d5dc ; call 0000D5DC render_cyberware_detail
+0000D262: bsr.w 0x0000d5dc ; call 0000D5DC render_attribute_skill_detail_panel
 0000D266: bsr.w 0x0000d82a ; call 0000D82A render_attributes_and_skills
 0000D26A: jsr 0x00000bd2.l ; call 00000BD2 wait_for_vblank
 0000D270: jsr 0x00000bf2.l ; call 00000BF2 latch_controller_events
@@ -6007,7 +6007,7 @@
 0000D27C: btst.b #0xa,(0x00ffdd22).l
 0000D284: beq.w 0x0000d2a0
 0000D288: move.w #0x6000,D1w
-0000D28C: bsr.w 0x0000d5dc ; call 0000D5DC render_cyberware_detail
+0000D28C: bsr.w 0x0000d5dc ; call 0000D5DC render_attribute_skill_detail_panel
 0000D290: tst.b (0x00fff0d0).l
 0000D296: beq.b 0x0000d25e
 0000D298: clr.b (0x00fff0d0).l
@@ -6015,7 +6015,7 @@
 0000D2A0: btst.b #0xb,(0x00ffdd22).l
 0000D2A8: beq.w 0x0000d2c6
 0000D2AC: move.w #0x6000,D1w
-0000D2B0: bsr.w 0x0000d5dc ; call 0000D5DC render_cyberware_detail
+0000D2B0: bsr.w 0x0000d5dc ; call 0000D5DC render_attribute_skill_detail_panel
 0000D2B4: tst.b (0x00fff0d0).l
 0000D2BA: bne.b 0x0000d25e
 0000D2BC: move.b #0x1,(0x00fff0d0).l
@@ -6023,7 +6023,7 @@
 0000D2C6: btst.b #0x8,(0x00ffdd22).l
 0000D2CE: beq.w 0x0000d2ee
 0000D2D2: move.w #0x6000,D1w
-0000D2D6: bsr.w 0x0000d5dc ; call 0000D5DC render_cyberware_detail
+0000D2D6: bsr.w 0x0000d5dc ; call 0000D5DC render_attribute_skill_detail_panel
 0000D2DA: subq.b #0x1,(0x00fff0d1).l
 0000D2E0: bpl.w 0x0000d25e
 0000D2E4: clr.b (0x00fff0d1).l
@@ -6031,7 +6031,7 @@
 0000D2EE: btst.b #0x9,(0x00ffdd22).l
 0000D2F6: beq.w 0x0000d31e
 0000D2FA: move.w #0x6000,D1w
-0000D2FE: bsr.w 0x0000d5dc ; call 0000D5DC render_cyberware_detail
+0000D2FE: bsr.w 0x0000d5dc ; call 0000D5DC render_attribute_skill_detail_panel
 0000D302: addq.b #0x1,(0x00fff0d1).l
 0000D308: cmpi.b #0x9,(0x00fff0d1).l
 0000D310: ble.w 0x0000d25e
@@ -6110,7 +6110,7 @@
 0000D478: btst.b #0xd,(0x00ffdd22).l
 0000D480: beq.w 0x0000d494
 0000D484: move.w #0x6000,D1w
-0000D488: bsr.w 0x0000d5dc ; call 0000D5DC render_cyberware_detail
+0000D488: bsr.w 0x0000d5dc ; call 0000D5DC render_attribute_skill_detail_panel
 0000D48C: bsr.w 0x0000d4c8 ; call 0000D4C8 reset_field_mode_entity_selection
 0000D490: bra.w 0x0000d0d6
 0000D494: btst.b #0xf,(0x00ffdd22).l

@@ -363,7 +363,7 @@ LAB_0000d0d6:
     } while (sVar11 != -1);
 LAB_0000d25e:
     do {
-      render_cyberware_detail();
+      render_attribute_skill_detail_panel();
       render_attributes_and_skills();
       while( true ) {
         wait_for_vblank();
@@ -371,7 +371,7 @@ LAB_0000d25e:
         sample_controller_input();
         if ((DAT_00ffdd22._0_1_ & 4) != 0) break;
         if ((DAT_00ffdd22._0_1_ & 8) != 0) {
-          render_cyberware_detail();
+          render_attribute_skill_detail_panel();
           bVar18 = DAT_00fff0d0 == '\0';
           if (bVar18) {
             _DAT_00fff0d0 = CONCAT11(1,DAT_00fff0d1);
@@ -379,7 +379,7 @@ LAB_0000d25e:
           goto LAB_0000d25e;
         }
         if ((DAT_00ffdd22._0_1_ & 1) != 0) {
-          render_cyberware_detail();
+          render_attribute_skill_detail_panel();
           bVar1 = DAT_00fff0d1 - 1;
           _DAT_00fff0d0 = CONCAT11(DAT_00fff0d0,bVar1);
           if ((int)((uint)bVar1 << 0x18) < 0) {
@@ -388,7 +388,7 @@ LAB_0000d25e:
           goto LAB_0000d25e;
         }
         if ((DAT_00ffdd22._0_1_ & 2) != 0) {
-          render_cyberware_detail();
+          render_attribute_skill_detail_panel();
           uVar10 = _DAT_00fff0d0;
           cVar7 = DAT_00fff0d1 + '\x01';
           _DAT_00fff0d0 = CONCAT11(DAT_00fff0d0,cVar7);
@@ -399,7 +399,7 @@ LAB_0000d25e:
         }
         if (((DAT_00ffdd22._0_1_ & 0x40) == 0) && ((DAT_00ffdd22._0_1_ & 0x10) == 0)) {
           if ((DAT_00ffdd22._0_1_ & 0x20) != 0) {
-            render_cyberware_detail();
+            render_attribute_skill_detail_panel();
             reset_field_mode_entity_selection();
             goto LAB_0000d0d6;
           }
@@ -456,7 +456,7 @@ LAB_0000d4a0:
           }
         }
       }
-      render_cyberware_detail();
+      render_attribute_skill_detail_panel();
       bVar18 = DAT_00fff0d0 != '\0';
       if (bVar18) {
         _DAT_00fff0d0 = _DAT_00fff0d0 & 0xff;

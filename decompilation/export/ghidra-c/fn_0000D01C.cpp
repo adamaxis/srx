@@ -15,7 +15,7 @@
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x0000D4C8 reset_field_mode_entity_selection
 //   0x0000D53C run_attributes_skills_menu_prompt
-//   0x0000D5DC render_cyberware_detail
+//   0x0000D5DC render_attribute_skill_detail_panel
 //   0x0000D82A render_attributes_and_skills
 //   0x00010C96 transfer_menu_asset_batch_eight
 //   0x000110EC draw_active_runner_hud_panel
@@ -98,7 +98,7 @@ LAB_0000d0d6:
   } while (sVar4 != -1);
 LAB_0000d25e:
   do {
-    render_cyberware_detail();
+    render_attribute_skill_detail_panel();
     render_attributes_and_skills();
     while( true ) {
       wait_for_vblank();
@@ -106,7 +106,7 @@ LAB_0000d25e:
       sample_controller_input();
       if ((DAT_00ffdd22._0_1_ & 4) != 0) break;
       if ((DAT_00ffdd22._0_1_ & 8) != 0) {
-        render_cyberware_detail();
+        render_attribute_skill_detail_panel();
         bVar7 = DAT_00fff0d0 == '\0';
         if (bVar7) {
           _DAT_00fff0d0 = CONCAT11(1,DAT_00fff0d1);
@@ -114,7 +114,7 @@ LAB_0000d25e:
         goto LAB_0000d25e;
       }
       if ((DAT_00ffdd22._0_1_ & 1) != 0) {
-        render_cyberware_detail();
+        render_attribute_skill_detail_panel();
         bVar2 = DAT_00fff0d1 - 1;
         _DAT_00fff0d0 = CONCAT11(DAT_00fff0d0,bVar2);
         if ((short)((ushort)bVar2 << 8) < 0) {
@@ -123,7 +123,7 @@ LAB_0000d25e:
         goto LAB_0000d25e;
       }
       if ((DAT_00ffdd22._0_1_ & 2) != 0) {
-        render_cyberware_detail();
+        render_attribute_skill_detail_panel();
         uVar3 = _DAT_00fff0d0;
         cVar1 = DAT_00fff0d1 + '\x01';
         _DAT_00fff0d0 = CONCAT11(DAT_00fff0d0,cVar1);
@@ -134,7 +134,7 @@ LAB_0000d25e:
       }
       if (((DAT_00ffdd22._0_1_ & 0x40) == 0) && ((DAT_00ffdd22._0_1_ & 0x10) == 0)) {
         if ((DAT_00ffdd22._0_1_ & 0x20) != 0) {
-          render_cyberware_detail();
+          render_attribute_skill_detail_panel();
           reset_field_mode_entity_selection();
           goto LAB_0000d0d6;
         }
@@ -189,7 +189,7 @@ LAB_0000d4a0:
         }
       }
     }
-    render_cyberware_detail();
+    render_attribute_skill_detail_panel();
     bVar7 = DAT_00fff0d0 != '\0';
     if (bVar7) {
       _DAT_00fff0d0 = _DAT_00fff0d0 & 0xff;

@@ -98,7 +98,7 @@ touch fields with confirmed consumers; the remaining bytes stay opaque.
 | `0x036FC` `advance_entity_asset_meter` | updates weapon ammunition or inventory phase bytes and clears exhausted equipment |
 | `0x038AC` `service_entity_ammo` | services the equipped weapon's ammunition/clip state |
 | `0x0D82A` `render_attributes_and_skills` | reads `+0x77..+0x8C`, race `+0x9A`, and class/archetype `+0x9B` for the command display |
-| `0x0D5DC` `render_cyberware_detail` | reads the installed-cyberware bitfield at `+0x90` |
+| `0x0D5DC` `render_attribute_skill_detail_panel` | renders the selected Attributes/Skills detail cell, Essence/Magic special values, and first-match cyberware modifier rows |
 | `0x107CE` `adjust_runner_posture` | clamps the five-state posture byte at `+0x4D` |
 | `0x11740` `run_inventory_actions` | dispatches inventory cell bytes, phase bytes, equipped slot/item, armor, clips, and action branches |
 | `0x11B58` clips case | reads `+0x4E/+0x4F` and performs reload, trade, and distribution actions |
@@ -111,7 +111,7 @@ The concrete field-consuming operations are in the separate
 | Source entry | Converted operation | Fields exposed |
 | --- | --- | --- |
 | `0x0D82A` | `read_attributes_and_skills()` | race, archetype, `+0x77..+0x8C` |
-| `0x0D5DC`, `0x11950` | `read_cyberware_detail()` | all sixteen bits at `+0x90` |
+| `0x0D5DC`, `0x11950` | `read_cyberware_detail()` | all sixteen bits at `+0x90`; the `0x0D5DC` panel also consumes typed attribute, skill, auxiliary, and modifier fields |
 | `0x036FC` | `advance_entity_asset_meter()` | flags, equipped slot/item, ammo, inventory code/phase |
 | `0x038AC` | `service_entity_ammo()` | record type, equipped item, ammo; delegates to `0x036FC` |
 | `0x107CE` | `adjust_runner_posture()` | posture `+0x4D` |

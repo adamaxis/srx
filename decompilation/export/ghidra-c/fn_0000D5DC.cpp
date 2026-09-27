@@ -1,13 +1,13 @@
 // Ghidra headless export
 // Entry: 0x0000D5DC
-// Name: render_cyberware_detail
+// Name: render_attribute_skill_detail_panel
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
 
 
-void render_cyberware_detail(void)
+void render_attribute_skill_detail_panel(void)
 
 {
   undefined4 uVar1;
