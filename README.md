@@ -2,13 +2,27 @@
 
 ## Visual Studio Code build
 
-Open `C:\Github\shadowrun` as the VS Code workspace. CMake Tools uses the
-presets in `decompilation/CMakePresets.json`:
+Open `C:\Github\shadowrun\shadowrun.code-workspace` in VS Code. It exposes
+two independent CMake Tools folders in the status bar: `Shadowrun Native Port`
+uses the presets in `decompilation/CMakePresets.json`, and
+`Shadowrun Ghidra Conversion` uses the presets in
+`decompilation/ghidra_conversion/CMakePresets.json`. The conversion project is
+not a native-port target or a runtime dependency.
+
+For the native port:
 
 - select `Debug (MSYS2 UCRT64)` and `Build Native (Debug)` for development;
 - select `Release (MSYS2 UCRT64)` and `Build Native (Release)` for release;
 - use `Run and Debug` -> `Shadowrun Native (Debug)` to build and launch; or
 - run the `Shadowrun: Test (Debug)` task to execute CTest.
+
+For the standalone Ghidra conversion:
+
+- select the `Shadowrun Ghidra Conversion` folder in CMake Tools;
+- select `Ghidra Conversion Workbench (Debug, MSYS2 UCRT64)` and
+  `Build Ghidra Conversion Workbench (Debug)`; or
+- use `Run and Debug` -> `Shadowrun Ghidra Conversion Workbench (Debug)` to
+  build and execute it.
 
 The native frontends consume the checked-in individually named assets under
 `decompilation/assets/` plus `assets/native/state.bin`; extraction is an

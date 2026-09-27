@@ -22,6 +22,11 @@ presets intentionally use build-ghidra-conversion-* directories and the
 shadowrun_ghidra_* target prefix, so this workbench cannot be confused with
 the separate native-port builds under decompilation/build-*:
 
+When using VS Code, open the repository-level `shadowrun.code-workspace` file.
+The `Shadowrun Ghidra Conversion` workspace folder has its own CMake Tools
+status-bar project and exposes these presets alongside, but separately from,
+the native-port project.
+
 ```text
 C:/msys64/ucrt64/bin/cmake.exe --preset ghidra-conversion-debug
 C:/msys64/ucrt64/bin/cmake.exe --build --preset ghidra-conversion-debug

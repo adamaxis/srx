@@ -1,0 +1,8 @@
+{
+  "cmake.useCMakePresets": "always",
+  "cmake.sourceDirectory": "${workspaceFolder}",
+  "cmake.defaultConfigurePreset": "ghidra-conversion-debug",
+  "cmake.defaultBuildPreset": "ghidra-conversion-debug",
+  "cmake.configureOnOpen": false,
+  "cmake.buildTask": true
+}

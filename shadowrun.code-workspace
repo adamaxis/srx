@@ -1,0 +1,15 @@
+{
+  "folders": [
+    {
+      "name": "Shadowrun Native Port",
+      "path": "."
+    },
+    {
+      "name": "Shadowrun Ghidra Conversion",
+      "path": "decompilation/ghidra_conversion"
+    }
+  ],
+  "settings": {
+    "cmake.configureOnOpen": false
+  }
+}
