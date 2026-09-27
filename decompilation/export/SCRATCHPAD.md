@@ -374,12 +374,21 @@ negative-result cursor 0, 1, and 2 paths do not share one marker table: they
 select `0x1AAC86`, `0x1AADBF`, and `0x1AAD77` respectively before entering
 the common eight-record loop. Cursor 3 instead writes the six-plus-two grid
 batches, and later cursors transfer the glyph row. In the zero-result branch,
-cursor 0 or 3 uses the glyph row, while the other cursors select the fixed
-`0x1AAEB0` table, the `0x1AAEF8` selection-one table, or the dynamic
-`0x1AAF40 + (menu_mode - 3) * 0x20` table before scanning markers. The
-conversion now carries those table choices as typed callbacks and supplies
-separate extracted marker rows; it no longer silently reuses one array for
-all three negative-result cases.
+cursor 3 uses the glyph row; cursor 0 enters the dynamic
+`0x1AAF40 + (menu_mode - 3) * 0x20` table after the source
+`CMP.B #1`/`BMI`, while the other cursors select the fixed `0x1AAEB0` table,
+the `0x1AAEF8` selection-one table, or the `0x58B1E` glyph-row path before
+scanning markers. The conversion now carries those table choices as typed
+callbacks and supplies separate extracted marker rows; it no longer silently
+reuses one array for all three negative-result cases.
+
+The same `0x587DA` audit preserves the source N flag for every byte boundary:
+negative-result cursors 0..2 use the three dedicated tables only when the
+wrapped `CMP.B #2`/`BMI` path says so; high-bit cursor bytes fall through to
+the glyph row. Positive results use the wrapped `CMP.B #3`/`BMI` split, so a
+high-bit cursor is not mistaken for a resource-description cursor. The
+zero-result selector preserves `CMP.B #1`/`BMI` as well, including the
+ordinary cursor-0 dynamic-table case and the high-byte fixed-low-table case.
 
 The adjacent action-selection dispatcher at `0x57C7A` had several host
 comparison shortcuts that only worked for ordinary 0..5 menu bytes. Its

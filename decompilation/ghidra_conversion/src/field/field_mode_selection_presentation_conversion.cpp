@@ -3,6 +3,13 @@
 namespace shadowrun::ghidra_conversion {
 namespace {
 
+bool source_cmp_byte_is_negative(const std::int8_t value,
+                                 const std::uint8_t immediate) {
+    // 0x587DA uses CMP.B followed by BMI at its cursor/table boundaries.
+    // Preserve the wrapped N bit instead of applying a host signed ordering.
+    return (static_cast<std::uint8_t>(value) - immediate) & 0x80U;
+}
+
 template <typename Callback, typename... Args>
 void call_if_present(const Callback& callback, Args&&... args) {
     if (callback) {
@@ -90,7 +97,9 @@ void render_field_mode_selection_presentation(
     state.saved_selection = state.primary_cursor;
 
     if (state.mode_result < 0) {
-        if (state.primary_cursor < 3) {
+        if (state.primary_cursor == 0 ||
+            source_cmp_byte_is_negative(state.primary_cursor, 2U) ||
+            state.primary_cursor == 2) {
             const auto table = negative_glyph_table_for_cursor(
                 state.primary_cursor);
             if (callbacks.select_negative_glyph_table) {
@@ -114,7 +123,7 @@ void render_field_mode_selection_presentation(
             repeat(8U, callbacks.write_grid);
             return;
         }
-        if (state.primary_cursor >= 3) {
+        if (!source_cmp_byte_is_negative(state.primary_cursor, 3U)) {
             if (state.primary_cursor == 3) {
                 repeat(8U, callbacks.write_grid);
             } else if (state.primary_cursor == 5) {
@@ -133,10 +142,6 @@ void render_field_mode_selection_presentation(
         return;
     }
 
-    if (state.primary_cursor == 0) {
-        render_field_mode_glyph_row(state.saved_selection, callbacks);
-        return;
-    }
     if (state.primary_cursor == 3) {
         render_field_mode_glyph_row(state.saved_selection, callbacks);
         return;
@@ -145,7 +150,7 @@ void render_field_mode_selection_presentation(
         if (state.saved_selection == 1) {
             callbacks.select_action_record_table(
                 FieldModeActionRecordTable::fixed_selection_one, 0);
-        } else if (state.saved_selection < 0) {
+        } else if (source_cmp_byte_is_negative(state.saved_selection, 1U)) {
             callbacks.select_action_record_table(
                 FieldModeActionRecordTable::dynamic_menu_mode,
                 static_cast<std::int16_t>(state.menu_mode) - 3);

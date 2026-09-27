@@ -105,6 +105,14 @@ int main() {
         return 4;
     }
 
+    FieldModeSelectionPresentationState negative_high_cursor{};
+    negative_high_cursor.mode_result = -1;
+    negative_high_cursor.primary_cursor = static_cast<std::int8_t>(0x80U);
+    render_field_mode_selection_presentation(negative_high_cursor, callbacks);
+    if (!expect(glyph_triples == 23 && text_passes == 1)) {
+        return 32;
+    }
+
     FieldModeSelectionPresentationState result_one{};
     result_one.mode_result = 1;
     result_one.primary_cursor = 7;
@@ -136,16 +144,30 @@ int main() {
         return 8;
     }
 
+    FieldModeSelectionPresentationState positive_high_cursor{};
+    positive_high_cursor.mode_result = 2;
+    positive_high_cursor.menu_mode = 6;
+    positive_high_cursor.primary_cursor = static_cast<std::int8_t>(0x80U);
+    render_field_mode_selection_presentation(positive_high_cursor, callbacks);
+    if (!expect(grids == 49 && selected_resources.size() == 1U)) {
+        return 33;
+    }
+
     FieldModeSelectionPresentationState normal{};
     normal.mode_result = 0;
+    normal.menu_mode = 5;
     normal.primary_cursor = 0;
     render_field_mode_selection_presentation(normal, callbacks);
-    if (!expect(glyph_triples == 23 && text_passes == 1)) {
+    if (!expect(selected_action_tables.size() == 1U &&
+                selected_action_tables.back().first ==
+                    FieldModeActionRecordTable::dynamic_menu_mode &&
+                selected_action_tables.back().second == 2 &&
+                glyph_triples == 31 && text_passes == 1)) {
         return 9;
     }
     normal.primary_cursor = 3;
     render_field_mode_selection_presentation(normal, callbacks);
-    if (!expect(glyph_triples == 31 && text_passes == 1)) {
+    if (!expect(glyph_triples == 39 && text_passes == 1)) {
         return 10;
     }
 
@@ -154,12 +176,24 @@ int main() {
     dynamic_action_table.menu_mode = 5;
     dynamic_action_table.primary_cursor = -1;
     render_field_mode_selection_presentation(dynamic_action_table, callbacks);
-    if (!expect(selected_action_tables.size() == 1U &&
+    if (!expect(selected_action_tables.size() == 2U &&
                 selected_action_tables.back().first ==
                     FieldModeActionRecordTable::dynamic_menu_mode &&
                 selected_action_tables.back().second == 2 &&
-                glyph_triples == 39)) {
+                glyph_triples == 47)) {
         return 11;
+    }
+
+    FieldModeSelectionPresentationState high_zero{};
+    high_zero.mode_result = 0;
+    high_zero.menu_mode = 5;
+    high_zero.primary_cursor = static_cast<std::int8_t>(0x80U);
+    render_field_mode_selection_presentation(high_zero, callbacks);
+    if (!expect(selected_action_tables.size() == 3U &&
+                selected_action_tables.back().first ==
+                    FieldModeActionRecordTable::fixed_low_menu &&
+                glyph_triples == 55)) {
+        return 34;
     }
 
     return 0;

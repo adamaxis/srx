@@ -91,8 +91,9 @@ void render_field_mode_grid_pair_batches(
     const FieldModeSelectionPresentationCallbacks& callbacks);
 
 // ROM 0x587DA: save the selected cursor and choose the field-service
-// presentation branch from the signed result, primary cursor, and the
-// resource family selected by FFF0B6.
+// presentation branch from the signed result, wrapped byte-flag cursor
+// comparisons, and the resource family selected by FFF0B6. The zero-result
+// cursor-0 path selects the dynamic action table; it is not the glyph row.
 void render_field_mode_selection_presentation(
     FieldModeSelectionPresentationState& state,
     const FieldModeSelectionPresentationCallbacks& callbacks);

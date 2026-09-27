@@ -252,6 +252,15 @@ high-bit bytes no longer get reinterpreted through host signed ordering. The
 and for its long `CMPI.L #0x10000/BPL` cost split. Focused tests cover the
 overflow-sensitive paths.
 
+The adjacent field-mode presentation routine at `0x587DA` was audited against
+the same byte-flag rule. Negative cursor values select the dedicated source
+tables at `0x1AAC86`, `0x1AADBF`, and `0x1AAD77`, cursor 3 takes the
+six-plus-two grid batch, and later cursors take the glyph-row transfer. In the
+zero-result path, cursor 0 selects the dynamic action table after
+`CMP.B #1`/`BMI`; it does not use the glyph row. The native conversion keeps
+the `CMP.B #2`, `CMP.B #3`, and `CMP.B #1` N-only boundaries as wrapped byte
+flag tests, with focused coverage for ordinary and high-bit cursor bytes.
+
 The generated Ghidra C remains an evidence snapshot and still omits meaningful
 logic for some of these entries, including `0x3602` and `0x55828`; the typed
 conversion is accepted only where the ROM instruction trace and focused test

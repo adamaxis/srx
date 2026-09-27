@@ -1210,6 +1210,19 @@ The resource-table selection and sprite-service internals remain callbacks,
 but the cursor mutations and presentation order are no longer generic intro
 labels or raw global writes.
 
+The adjacent field-mode presentation dispatcher at `0x587DA` is now also
+source-shaped at the behavior level. It saves `FFF0D0` into `FFF0B8`, keeps
+the three negative-result marker tables separate (`0x1AAC86`, `0x1AADBF`,
+and `0x1AAD77`), and routes cursor 3 to the six-plus-two grid batch while
+later cursors use the glyph-row transfer. Its zero-result path does not treat
+cursor 0 as a glyph row: the source `CMP.B #1`/`BMI` selects the dynamic action
+table `0x1AAF40 + (menu_mode - 3) * 0x20`; cursor 3 alone uses the glyph row,
+with the fixed table and selection-one table retained as separate choices.
+All of these byte cutoffs use the wrapped source N flag, so high-bit cursor
+bytes follow the same table boundaries as the ROM rather than host `int8_t`
+ordering. The native conversion exposes those table families through typed
+callbacks and keeps the marker/grid loops independent of ROM addresses.
+
 The runner-selection family is now native-shaped. `0x532BC` is
 `initialize_runner_selection_screen`: it exposes the background asset setup,
 header/animation preparation, and exact 10-by-14 grid request sequence.
