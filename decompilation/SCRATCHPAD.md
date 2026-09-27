@@ -1223,6 +1223,17 @@ bytes follow the same table boundaries as the ROM rather than host `int8_t`
 ordering. The native conversion exposes those table families through typed
 callbacks and keeps the marker/grid loops independent of ROM addresses.
 
+The helper data is no longer anonymous either. `0x58A2E` exposes the `E`
+grid sentinel and the source low/high glyph-plane split; `0x58AA4` models the
+eight active-runner item bytes at `+0x66..+0x6D`, including zero-to-blank and
+nonzero-to-`(item_code - 1)` item-definition selection before the transfer.
+The panel helpers now expose result-specific plans: `0x58B5E` has 18-grid
+negative/positive panels, a 12-grid zero-result panel, and a suppressed
+result-one path, while `0x58BB6` applies the source cursor strides for its
+grid and encoded-text records. The old callback forms remain available for
+the conversion harness, but the source-derived data can now be consumed by a
+typed native presenter.
+
 The runner-selection family is now native-shaped. `0x532BC` is
 `initialize_runner_selection_screen`: it exposes the background asset setup,
 header/animation preparation, and exact 10-by-14 grid request sequence.

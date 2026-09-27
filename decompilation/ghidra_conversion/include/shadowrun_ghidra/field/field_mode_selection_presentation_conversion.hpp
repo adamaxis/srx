@@ -10,6 +10,28 @@ struct FieldModeSelectionGlyphRecord {
     std::int8_t marker = 0;
 };
 
+enum class FieldModeGlyphPalettePlane {
+    low_0x2000,
+    high_0x6000,
+};
+
+struct FieldModeRecordPresentationPlan {
+    std::uint8_t marker = 0;
+    bool writes_grid = false;
+    FieldModeGlyphPalettePlane glyph_palette =
+        FieldModeGlyphPalettePlane::high_0x6000;
+};
+
+struct FieldModeInventoryGlyphPlan {
+    std::uint8_t item_code = 0;
+    std::uint8_t item_definition_index = 0;
+    bool uses_blank_asset = true;
+    // 0x58AA4 overwrites the provisional palette choice with 0x6000
+    // immediately before transfer_menu_glyph_triple.
+    FieldModeGlyphPalettePlane glyph_palette =
+        FieldModeGlyphPalettePlane::high_0x6000;
+};
+
 struct FieldModeSelectionPresentationState {
     std::uint8_t menu_mode = 0; // FFF0B6
     std::int8_t mode_result = 0; // FFF0B7
@@ -20,6 +42,9 @@ struct FieldModeSelectionPresentationState {
     std::array<std::array<FieldModeSelectionGlyphRecord, 8>, 3>
         negative_glyph_records{};
     std::array<FieldModeSelectionGlyphRecord, 8> glyph_records{};
+    // Eight bytes read from the active runner record at +0x66..+0x6D by
+    // 0x58AA4. They are item codes, not already-resolved icon indices.
+    std::array<std::uint8_t, 8> inventory_item_codes{};
 };
 
 enum class MenuResourceFamily {
@@ -60,7 +85,26 @@ struct FieldModeSelectionPresentationCallbacks {
         select_negative_glyph_table;
     std::function<void(FieldModeActionRecordTable, std::int16_t)>
         select_action_record_table;
+    // Optional detailed boundary for the source's 0x58AA4 item-icon loop.
+    // Existing callers may keep using transfer_menu_glyph_triple.
+    std::function<void(std::size_t, const FieldModeInventoryGlyphPlan&)>
+        transfer_inventory_glyph;
+    // Optional detailed boundary for the source's 0x58A2E marker loop.
+    std::function<void(std::size_t, const FieldModeRecordPresentationPlan&)>
+        transfer_record_glyph;
+    std::function<void(std::size_t, const FieldModeRecordPresentationPlan&)>
+        write_record_grid;
 };
+
+// ROM 0x58A2E: preserve the marker test, the 'E' grid sentinel, and the
+// source palette split used by non-sentinel glyph records.
+FieldModeRecordPresentationPlan plan_field_mode_record(
+    std::uint8_t marker);
+
+// ROM 0x58AA4: resolve one active-runner item byte to the extracted item
+// definition row consumed by the glyph transfer. Zero is the blank asset.
+FieldModeInventoryGlyphPlan plan_field_mode_inventory_glyph(
+    std::uint8_t item_code);
 
 // ROM 0x5763C: choose the menu-mode-six table when FFF0B6 == 6, otherwise
 // choose the general table, then select the saved cursor's 0x10-byte record.
@@ -83,6 +127,13 @@ void render_alternating_field_mode_records(
 
 // ROM 0x58AA4: transfer eight glyph triples and add the result-4 text pass.
 void render_field_mode_glyph_row(
+    std::int8_t saved_selection,
+    const FieldModeSelectionPresentationCallbacks& callbacks);
+
+// Source-faithful overload for 0x58AA4. The compatibility overload above
+// supplies eight blank item bytes for callers that only need the old loop.
+void render_field_mode_glyph_row(
+    const std::array<std::uint8_t, 8>& inventory_item_codes,
     std::int8_t saved_selection,
     const FieldModeSelectionPresentationCallbacks& callbacks);
 

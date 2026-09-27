@@ -390,6 +390,24 @@ high-bit cursor is not mistaken for a resource-description cursor. The
 zero-result selector preserves `CMP.B #1`/`BMI` as well, including the
 ordinary cursor-0 dynamic-table case and the high-byte fixed-low-table case.
 
+The three helpers called by this dispatcher are now represented by their
+actual data decisions as well. `0x58A2E` treats a raw marker of `E` as the
+grid sentinel; other markers transfer glyphs, with negative-byte markers
+using the blank glyph/high plane and the source `CMP.B #0x0F` split selecting
+the low or high glyph plane for ordinary markers. `0x58AA4` reads eight item
+codes from the active runner record at `+0x66..+0x6D`, maps nonzero codes to
+the item-definition row at `(code - 1) * 0x30`, uses the blank asset for zero,
+and performs the result-selection-4 encoded-text pass. The typed conversion
+exposes these as record and inventory-glyph plans rather than hiding them
+behind eight anonymous transfers.
+
+The neighboring panel leaves are also data-specific: `0x58B5E` chooses the
+negative/positive 18-grid panel or the zero-result 12-grid panel, while result
+one suppresses the grid; `0x58BB6` chooses result-specific grid/text families
+and applies primary-cursor strides of 8 bytes, `0x2A` bytes, and six screen
+words. These choices are available as typed plans before the compatibility
+callbacks perform the host presentation work.
+
 The adjacent action-selection dispatcher at `0x57C7A` had several host
 comparison shortcuts that only worked for ordinary 0..5 menu bytes. Its
 `CMP.B`/`BMI` boundaries for saved selection, the `0x585FA` cursor gate, and

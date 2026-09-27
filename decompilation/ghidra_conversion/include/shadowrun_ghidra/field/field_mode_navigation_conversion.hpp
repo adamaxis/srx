@@ -15,6 +15,38 @@ struct FieldModeNavigationState {
     std::uint8_t display_dirty_flags = 0; // FFEF14
 };
 
+enum class FieldModePanelGridVariant {
+    negative_result,
+    zero_result,
+    result_one_suppressed,
+    positive_result,
+};
+
+struct FieldModePanelGridPlan {
+    FieldModePanelGridVariant variant =
+        FieldModePanelGridVariant::zero_result;
+    bool writes_grid = true;
+    std::int16_t destination_word = 0;
+    std::uint16_t grid_write_count = 0;
+};
+
+enum class FieldModeSelectionGridFamily {
+    negative_result,
+    zero_result,
+    result_one_suppressed,
+    positive_result,
+};
+
+struct FieldModeSelectionRenderPlan {
+    FieldModeSelectionGridFamily family =
+        FieldModeSelectionGridFamily::zero_result;
+    bool writes_grid_and_text = true;
+    std::int8_t primary_cursor = 0;
+    std::uint16_t grid_record_offset = 0;
+    std::uint16_t text_record_offset = 0;
+    std::uint16_t screen_column_offset = 0;
+};
+
 struct FieldModeNavigationCallbacks {
     // 0x57C46 prepares the current selection's source data. Its actual table
     // is still a separate extraction boundary.
@@ -27,6 +59,17 @@ struct FieldModeNavigationCallbacks {
     std::function<void()> build_selection_sprites;
     std::function<void()> reset_upload_state;
 };
+
+// ROM 0x58B5E: select the result-specific panel grid asset, destination, and
+// DBF-expanded write count after 0x57C46 prepares the selection data.
+FieldModePanelGridPlan plan_field_mode_panel_grid(std::int8_t mode_result);
+
+// ROM 0x58BB6: select the result-specific grid/text record families and apply
+// the primary cursor's source strides (8 bytes, 0x2A bytes, and six screen
+// words). Result one suppresses both writes.
+FieldModeSelectionRenderPlan plan_field_mode_selection_render(
+    std::int8_t mode_result,
+    std::int8_t primary_cursor);
 
 // 0x58B5E: refresh only the grid portion used by the alternate panel.
 void refresh_field_mode_panel_grid(

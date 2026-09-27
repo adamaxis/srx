@@ -261,6 +261,16 @@ zero-result path, cursor 0 selects the dynamic action table after
 the `CMP.B #2`, `CMP.B #3`, and `CMP.B #1` N-only boundaries as wrapped byte
 flag tests, with focused coverage for ordinary and high-bit cursor bytes.
 
+The helper audit also exposed the data formerly hidden behind generic counts.
+`0x58A2E` uses marker `E` as its grid sentinel and otherwise transfers glyphs
+with the source blank/high-plane and `CMP.B #0x0F` palette split. `0x58AA4`
+reads eight active-runner item bytes at `+0x66..+0x6D`, maps nonzero values to
+the `(item_code - 1)` item-definition row, and uses the blank asset for zero
+before its result-selection-4 text call. `0x58B5E` and `0x58BB6` now expose
+typed result-specific plans for their panel assets, write counts, grid/text
+families, and cursor strides; the legacy callbacks remain only as host
+presentation boundaries.
+
 The generated Ghidra C remains an evidence snapshot and still omits meaningful
 logic for some of these entries, including `0x3602` and `0x55828`; the typed
 conversion is accepted only where the ROM instruction trace and focused test

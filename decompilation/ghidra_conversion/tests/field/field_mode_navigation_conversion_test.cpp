@@ -24,6 +24,39 @@ int main() {
         [&] { order.emplace_back("sprites"); },
         [&] { order.emplace_back("reset"); },
     };
+
+    const auto negative_grid = plan_field_mode_panel_grid(-1);
+    const auto zero_grid = plan_field_mode_panel_grid(0);
+    const auto suppressed_grid = plan_field_mode_panel_grid(1);
+    const auto positive_grid = plan_field_mode_panel_grid(2);
+    const auto negative_selection =
+        plan_field_mode_selection_render(-1, 4);
+    const auto zero_selection = plan_field_mode_selection_render(0, 3);
+    if (!expect(negative_grid.variant ==
+                    FieldModePanelGridVariant::negative_result &&
+                negative_grid.writes_grid &&
+                negative_grid.destination_word == -0x17F0 &&
+                negative_grid.grid_write_count == 0x12U &&
+                zero_grid.variant == FieldModePanelGridVariant::zero_result &&
+                zero_grid.destination_word == -0x17EA &&
+                zero_grid.grid_write_count == 0x0CU &&
+                suppressed_grid.variant ==
+                    FieldModePanelGridVariant::result_one_suppressed &&
+                !suppressed_grid.writes_grid &&
+                positive_grid.variant ==
+                    FieldModePanelGridVariant::positive_result &&
+                negative_selection.family ==
+                    FieldModeSelectionGridFamily::negative_result &&
+                negative_selection.grid_record_offset == 0x20U &&
+                negative_selection.text_record_offset == 0xA8U &&
+                negative_selection.screen_column_offset == 0x18U &&
+                zero_selection.family ==
+                    FieldModeSelectionGridFamily::zero_result &&
+                zero_selection.grid_record_offset == 0x18U &&
+                zero_selection.text_record_offset == 0x7EU &&
+                zero_selection.screen_column_offset == 0x12U)) {
+        return 10;
+    }
     advance_field_mode_primary_cursor(normal, 1, callbacks);
     if (!expect(normal.primary_cursor == 1 && normal.panel_cursor == 0 &&
                 order == std::vector<std::string>{"prepare", "grid", "grid", "text"})) {

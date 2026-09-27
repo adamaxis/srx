@@ -21,11 +21,55 @@ std::int8_t add_source_byte(const std::int8_t value,
 
 } // namespace
 
+FieldModePanelGridPlan plan_field_mode_panel_grid(
+    const std::int8_t mode_result) {
+    FieldModePanelGridPlan plan{};
+    if (mode_result < 0) {
+        plan.variant = FieldModePanelGridVariant::negative_result;
+        plan.destination_word = static_cast<std::int16_t>(-0x17F0);
+        plan.grid_write_count = 0x12U;
+    } else if (mode_result == 0) {
+        plan.variant = FieldModePanelGridVariant::zero_result;
+        plan.destination_word = static_cast<std::int16_t>(-0x17EA);
+        plan.grid_write_count = 0x0CU;
+    } else if (mode_result == 1) {
+        plan.variant = FieldModePanelGridVariant::result_one_suppressed;
+        plan.writes_grid = false;
+    } else {
+        plan.variant = FieldModePanelGridVariant::positive_result;
+        plan.destination_word = static_cast<std::int16_t>(-0x17F0);
+        plan.grid_write_count = 0x12U;
+    }
+    return plan;
+}
+
+FieldModeSelectionRenderPlan plan_field_mode_selection_render(
+    const std::int8_t mode_result,
+    const std::int8_t primary_cursor) {
+    FieldModeSelectionRenderPlan plan{};
+    plan.primary_cursor = primary_cursor;
+    const auto cursor = static_cast<std::uint8_t>(primary_cursor);
+    plan.grid_record_offset = static_cast<std::uint16_t>(cursor * 0x08U);
+    plan.text_record_offset = static_cast<std::uint16_t>(cursor * 0x2AU);
+    plan.screen_column_offset = static_cast<std::uint16_t>(cursor * 0x06U);
+    if (mode_result < 0) {
+        plan.family = FieldModeSelectionGridFamily::negative_result;
+    } else if (mode_result == 0) {
+        plan.family = FieldModeSelectionGridFamily::zero_result;
+    } else if (mode_result == 1) {
+        plan.family = FieldModeSelectionGridFamily::result_one_suppressed;
+        plan.writes_grid_and_text = false;
+    } else {
+        plan.family = FieldModeSelectionGridFamily::positive_result;
+    }
+    return plan;
+}
+
 void refresh_field_mode_panel_grid(
     const FieldModeNavigationState& state,
     const FieldModeNavigationCallbacks& callbacks) {
     call_if_present(callbacks.prepare_selection_data);
-    if (state.mode_result != 1) {
+    if (plan_field_mode_panel_grid(state.mode_result).writes_grid) {
         call_if_present(callbacks.write_selection_grid);
     }
 }
@@ -35,7 +79,9 @@ void render_field_mode_selection(
     const FieldModeNavigationCallbacks& callbacks) {
     // The source skips both writes only for result 1; all other source
     // result values take this normal redraw path.
-    if (state.mode_result != 1) {
+    if (plan_field_mode_selection_render(state.mode_result,
+                                         state.primary_cursor)
+            .writes_grid_and_text) {
         call_if_present(callbacks.write_selection_grid);
         call_if_present(callbacks.render_selection_text);
     }

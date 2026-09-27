@@ -57,13 +57,56 @@ int main() {
         return 11;
     }
 
+    const auto grid_record = plan_field_mode_record('E');
+    const auto low_palette_record = plan_field_mode_record(0x0EU);
+    const auto high_palette_record = plan_field_mode_record(0x0FU);
+    const auto blank_inventory = plan_field_mode_inventory_glyph(0);
+    const auto item_inventory = plan_field_mode_inventory_glyph(0x10U);
+    if (!expect(grid_record.writes_grid &&
+                low_palette_record.glyph_palette ==
+                    FieldModeGlyphPalettePlane::low_0x2000 &&
+                !low_palette_record.writes_grid &&
+                high_palette_record.glyph_palette ==
+                    FieldModeGlyphPalettePlane::high_0x6000 &&
+                blank_inventory.uses_blank_asset &&
+                !item_inventory.uses_blank_asset &&
+                item_inventory.item_definition_index == 0x0FU &&
+                item_inventory.glyph_palette ==
+                    FieldModeGlyphPalettePlane::high_0x6000)) {
+        return 12;
+    }
+
+    std::vector<std::size_t> inventory_slots;
+    std::vector<FieldModeInventoryGlyphPlan> inventory_plans;
+    int inventory_text_passes = 0;
+    FieldModeSelectionPresentationCallbacks inventory_callbacks{};
+    inventory_callbacks.transfer_inventory_glyph =
+        [&](const std::size_t slot, const FieldModeInventoryGlyphPlan& plan) {
+            inventory_slots.push_back(slot);
+            inventory_plans.push_back(plan);
+        };
+    inventory_callbacks.render_encoded_text = [&] { ++inventory_text_passes; };
+    render_field_mode_glyph_row(
+        std::array<std::uint8_t, 8>{0U, 1U, 0x10U, 0x80U, 0U, 0U, 0U, 0U},
+        4,
+        inventory_callbacks);
+    if (!expect(inventory_slots.size() == 8U &&
+                inventory_plans[0].uses_blank_asset &&
+                !inventory_plans[1].uses_blank_asset &&
+                inventory_plans[1].item_definition_index == 0U &&
+                inventory_plans[2].item_definition_index == 0x0FU &&
+                inventory_plans[3].item_definition_index == 0x7FU &&
+                inventory_text_passes == 1)) {
+        return 13;
+    }
+
     std::array<FieldModeSelectionGlyphRecord, 8> records{};
     records[0].marker = 'E';
     records[1].marker = -1;
     records[2].marker = 'X';
     int record_grids = 0;
     int record_glyphs = 0;
-    const FieldModeSelectionPresentationCallbacks record_callbacks{
+    FieldModeSelectionPresentationCallbacks record_callbacks{
         [&] { ++record_grids; },
         [&] { ++record_glyphs; },
         {},
@@ -71,8 +114,26 @@ int main() {
         {},
         {},
     };
+    std::vector<FieldModeRecordPresentationPlan> record_glyph_plans;
+    std::vector<FieldModeRecordPresentationPlan> record_grid_plans;
+    record_callbacks.transfer_record_glyph =
+        [&](const std::size_t, const FieldModeRecordPresentationPlan& plan) {
+            ++record_glyphs;
+            record_glyph_plans.push_back(plan);
+        };
+    record_callbacks.write_record_grid =
+        [&](const std::size_t, const FieldModeRecordPresentationPlan& plan) {
+            ++record_grids;
+            record_grid_plans.push_back(plan);
+        };
     render_alternating_field_mode_records(records, record_callbacks);
-    if (!expect(record_grids == 1 && record_glyphs == 7)) {
+    if (!expect(record_grids == 1 && record_glyphs == 7 &&
+                record_grid_plans.front().writes_grid &&
+                record_grid_plans.front().marker ==
+                    static_cast<std::uint8_t>('E') &&
+                record_glyph_plans[0].marker == 0xFFU &&
+                record_glyph_plans[0].glyph_palette ==
+                    FieldModeGlyphPalettePlane::high_0x6000)) {
         return 2;
     }
 
