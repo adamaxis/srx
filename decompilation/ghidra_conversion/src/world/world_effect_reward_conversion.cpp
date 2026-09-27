@@ -26,13 +26,16 @@ WorldRewardResult apply_world_effect_reward(
             auto result = make_success(
                 WorldRewardOutcome::special_action_count_updated);
 
-            // ADD.B uses the low command byte and wraps before the source's
-            // signed-byte comparison against 0x15.
+            // ADD.B uses the low command byte and wraps.  CMP.B #0x15
+            // followed by BMI branches away when the eight-bit subtraction
+            // is negative; test that result directly instead of comparing a
+            // host signed integer.
             runner.special_action_count = static_cast<std::uint8_t>(
                 runner.special_action_count +
                 static_cast<std::uint8_t>(command & 0x00FFU));
-            if (static_cast<std::int8_t>(runner.special_action_count) >=
-                static_cast<std::int8_t>(0x15)) {
+            const auto comparison_result = static_cast<std::uint8_t>(
+                runner.special_action_count - 0x15U);
+            if ((comparison_result & 0x80U) == 0U) {
                 runner.special_action_count = 0x14U;
             }
             return result;
@@ -66,7 +69,9 @@ WorldRewardResult apply_world_effect_reward(
         runner.item_codes[slot] = result.item_code;
         runner.item_phases[slot] = 0U;
 
-        if (command >= 0x0DU) {
+        // The ROM has already executed ADDQ.W #1,D0 before CMP.W #0x0D.
+        // Therefore original command 0x0C is the first randomized item.
+        if (command >= 0x0CU) {
             result.random_phase_requested = true;
             if (sample_random) {
                 result.item_phase = static_cast<std::uint8_t>(

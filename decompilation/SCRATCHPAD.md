@@ -1302,14 +1302,16 @@ the `F3DC6[FFFBED]` initializer boundary through a typed callback.
 
 `0x133A6` is now `apply_world_effect_reward`, the command protocol used by the
 nearby-effect resolver rather than a menu routine. A `0xCxxx` command adds its
-low byte to the active runner's special-action counter with the source's
-signed-byte `0x15` clamp; a `0x8xxx` command adds its low twelve bits to funds;
-`0x64` and `0x65` set status bits 4 and 3; and every other positive command
-inserts item code `command + 1` into the first empty one of eight slots. Item
-commands at or above `0x0D` cross an explicit bound-5 random callback and store
-the sample plus two as the phase. A full inventory returns the source `D7=-1`
-sentinel without changing a slot. The native model exposes the runner record
-and global state as typed fields, leaving the PRNG as a host boundary.
+low byte to the active runner's special-action counter, then preserves the
+source's wrapped byte subtraction for the `CMP.B #0x15`/`BMI` clamp; a `0x8xxx`
+command adds its low twelve bits to funds; `0x64` and `0x65` set status bits 4
+and 3; and every other positive command inserts item code `command + 1` into
+the first empty one of eight slots. Because the ROM increments D0 before its
+`CMP.W #0x0D`, original commands at or above `0x0C` cross an explicit bound-5
+random callback and store the sample plus two as the phase. A full inventory
+returns the source `D7=-1` sentinel without changing a slot. The native model
+exposes the runner record and global state as typed fields, leaving the PRNG as
+a host boundary.
 
 `0x1DF34` is now `resolve_nearby_world_effects`. It scans the ten projected
 effect records with the source's strict +/-0x100 coordinate tests, passes the

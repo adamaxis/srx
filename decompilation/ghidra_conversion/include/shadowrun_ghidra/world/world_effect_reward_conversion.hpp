@@ -57,7 +57,9 @@ struct WorldRewardResult {
 //   - 0x8xxx adds the low twelve bits to funds;
 //   - 0x64/0x65 set status bits 4/3;
 //   - other positive commands insert item code command+1 and, for commands
-//     >= 0x0D, assign a random phase in [2, 6].
+//     >= 0x0C, assign a random phase in [2, 6].  The source increments D0
+//     before comparing it with 0x0D, so the original command threshold is
+//     one lower than the stored item-code threshold.
 // A full eight-slot inventory returns D7=-1 and leaves the record unchanged.
 WorldRewardResult apply_world_effect_reward(
     std::uint16_t command,
