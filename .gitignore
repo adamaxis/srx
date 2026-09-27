@@ -37,7 +37,11 @@
 /decompilation/*.txt
 /decompilation/*.log
 
-# Local IDE state is machine-specific.
-/.vscode/
+# Keep the project-level VS Code/CMake integration, while ignoring other local
+# editor state.
+/.vscode/*
+!/.vscode/launch.json
+!/.vscode/settings.json
+!/.vscode/tasks.json
 
 decompilation/tools/ffmpeg

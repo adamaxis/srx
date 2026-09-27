@@ -1,12 +1,8 @@
 {
   "folders": [
     {
-      "name": "Shadowrun Native Port",
+      "name": "Shadowrun",
       "path": "."
-    },
-    {
-      "name": "Shadowrun Ghidra Conversion",
-      "path": "decompilation/ghidra_conversion"
     }
   ],
   "settings": {
