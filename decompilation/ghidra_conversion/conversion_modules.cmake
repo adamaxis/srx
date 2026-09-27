@@ -186,6 +186,7 @@ file(GLOB SHADOWRUN_MODULE_MENU_INVENTORY_EQUIPMENT CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/menus/cyberware_menu_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/menus/equipment_combat_bar_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/menus/first_aid_conversion.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/menus/hospital_medical_attention_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/menus/hospital_options_menu_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/menus/inventory_action_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/menus/magic_menu_conversion.cpp"

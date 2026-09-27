@@ -14,11 +14,16 @@ int main() {
     const auto* field_action = find_remaining_routine(0x56DC4U);
     const auto* resource_selection = find_remaining_routine(0x575F8U);
     const auto* selection_context = find_remaining_routine(0x57610U);
+    const auto* hospital_cost = find_remaining_routine(0xCDF6U);
     if (field_action == nullptr || resource_selection == nullptr ||
         selection_context == nullptr ||
         field_action->family != RoutineFamily::field ||
         resource_selection->family != RoutineFamily::field ||
-        selection_context->family != RoutineFamily::field) {
+        selection_context->family != RoutineFamily::field ||
+        hospital_cost == nullptr ||
+        hospital_cost->alias != "calculate_hospital_medical_attention_cost" ||
+        hospital_cost->family != RoutineFamily::menu ||
+        hospital_cost->source_bytes != 134U) {
         return 2;
     }
     RemainingRoutineCounters counters{};

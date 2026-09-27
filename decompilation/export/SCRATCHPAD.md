@@ -758,6 +758,17 @@ return frames before returning to the caller. The native routine exposes this
 as `leave_hospital`, so the host controller can perform the same route without
 reproducing unsafe stack manipulation.
 
+The previously skipped leaf at `0xCDF6` is now converted separately as
+`calculate_hospital_medical_attention_cost()`. Its direct ROM operations are
+specific: `CMP.B #2,(record+0x9B)` adds two to the caller's service tier for
+the under-two class gate; `+0x77` Body and `+0x7C` Willpower each contribute
+`ceil(attribute/3)-1`; the tier is clamped to two; `D4-7` selects either
+`abs(delta)*20` or the fixed factor ten; Body is scaled by that factor over
+100, rounded upward for a remainder of at least 50, and clamped to a minimum
+charge of one. The source caller supplies base tiers eight, six, and four for
+the Hospital Options medical rows. This is a rules calculation, not a VDP or
+runtime-ROM lookup.
+
 ## Reviewed function map
 
 The native owner names below are the target C++ vocabulary. A `partial` entry
@@ -844,6 +855,7 @@ still has unresolved downstream calls or hardware presentation work.
 | `0xC376` | `move_wrapped_menu_cursor` | Adds the signed menu step with source `ADD.B` flags, uses the overflow-corrected BGE result to wrap negative sums to the supplied upper cursor value, then uses the raw `D3 - cursor` N bit to wrap above-range values to zero; paired cursor-word writes remain a presentation boundary. | `ghidra_conversion::move_wrapped_menu_cursor()` | partial |
 | `0xC802` | `refresh_field_runner_state_and_assets` | Serializes compact roster records, scans primary then secondary field runners through the direct AND gate, consumes the 1-based roster marker with the existing negative-floor counter service, clears effects, dispatches the active-runner action by stable identity, then uploads field assets and runs the animation triplet. | `ghidra_conversion::refresh_field_runner_state_and_assets()` | partial |
 | `0xC928` | `run_hospital_options_menu` | Runs the Hospital Options entries Medical Attn., Cyberware, and Exit with source cursor/input priority; Cyberware routes to field-mode service and Yes on the leave prompt returns an explicit leave-hospital route. | `ghidra_conversion::run_hospital_options_menu()` |
+| `0xCDF6` | `calculate_hospital_medical_attention_cost` | Calculates a Hospital Medical Attn. charge from the active runner's class, Body, Willpower, and one of the three caller-selected service tiers, including source rounding and minimum-charge behavior. | `ghidra_conversion::calculate_hospital_medical_attention_cost()` |
 | `0xCE7C` | `run_leave_hospital_prompt` | Runs the Yes/No leave-hospital prompt, defaulting to No; the accepted Yes path is modeled as a typed non-local return rather than source stack pops. | `ghidra_conversion::run_leave_hospital_prompt()` |
 | `0xC8B0` | `apply_byte_counter_delta_with_negative_floor` | Subtracts one from the caller's one-based counter selector, adds the signed byte delta to the selected counter, and replaces a negative result with the source `0xFF` sentinel. | `ghidra_conversion::apply_byte_counter_delta_with_negative_floor()` | partial |
 | `0xC134` | `normalize_source_text_line` | Maps source high-bit glyph markers, stops on the line terminator range, and pads the remaining line width. | `ghidra_conversion::normalize_source_text_line()` | partial |

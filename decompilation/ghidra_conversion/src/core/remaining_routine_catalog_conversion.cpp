@@ -32,6 +32,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x0000C7F8U, "prepare_field_scene_runtime", RoutineFamily::graphics, 10U},
     {0x0000C802U, "refresh_field_runner_state_and_assets", RoutineFamily::field, 174U},
     {0x0000C928U, "run_hospital_options_menu", RoutineFamily::menu, 238U},
+    {0x0000CDF6U, "calculate_hospital_medical_attention_cost", RoutineFamily::menu, 134U},
     {0x0000CF38U, "run_field_exit_prompt_menu", RoutineFamily::graphics, 198U},
     {0x0000D4C8U, "reset_field_mode_entity_selection", RoutineFamily::graphics, 116U},
     {0x0000D53CU, "run_attributes_skills_menu_prompt", RoutineFamily::graphics, 160U},
