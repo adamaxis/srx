@@ -6090,7 +6090,7 @@
 0000D418: jsr 0x0000c0da.l ; call 0000C0DA render_encoded_title_text
 0000D41E: bra.w 0x0000d26a
 0000D422: movem.l {  A0 D0},-(SP)
-0000D426: bsr.w 0x0000d53c ; call 0000D53C run_attributes_skills_menu_prompt
+0000D426: bsr.w 0x0000d53c ; call 0000D53C run_attribute_skill_upgrade_prompt
 0000D42A: movem.l (SP)+,{ D0 A0}
 0000D42E: tst.b (0x00fff0dc).l
 0000D434: bne.w 0x0000d0d6

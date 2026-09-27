@@ -754,6 +754,26 @@ meaning and source text mode, not ROM addresses, VDP destinations, or a
 runtime memory image. `read_cyberware_detail()` remains the lower-level
 sixteen-bit bitfield projection used by the separate Cyberware list model.
 
+### 0xD53C Attributes/Skills upgrade confirmation
+
+ROM `0xD53C` is now converted as
+`run_attribute_skill_upgrade_prompt()`. It is the prompt called after the
+Attributes/Skills menu has calculated a Karma cost; it is not the generic
+field-action confirmation at `0x57B8C`.
+
+- The source renders the upgrade/cost heading, then the two-choice text, and
+  starts `FFF0DC` at option `0` (Accept).
+- Directional input bits `8` and `9` call the shared bounded cursor routine
+  with a two-option maximum. Directional input is tested before exit input,
+  so a simultaneous move and exit sample moves first and remains open.
+- Bits `12`, `13`, and `14` close the prompt. The conversion returns a typed
+  accepted/declined result and leaves the actual record mutation to the
+  already separate upgrade-application routine.
+
+The conversion publishes only the semantic selected option and presentation
+callbacks. It does not expose `FFF0DC`, controller RAM, or the original VDP
+destination addresses.
+
 The next transfer pass adds `0x0F5C` as an explicit source-64K split around
 the `0x0F98` word writer, preserving destination advancement without carrying
 the original pointer arithmetic into host code. `0x0CEC` now installs the

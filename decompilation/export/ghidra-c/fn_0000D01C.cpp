@@ -14,7 +14,7 @@
 //   0x0000C0DA render_encoded_title_text
 //   0x0000C216 build_grouped_decimal_glyphs
 //   0x0000D4C8 reset_field_mode_entity_selection
-//   0x0000D53C run_attributes_skills_menu_prompt
+//   0x0000D53C run_attribute_skill_upgrade_prompt
 //   0x0000D5DC render_attribute_skill_detail_panel
 //   0x0000D82A render_attributes_and_skills
 //   0x00010C96 transfer_menu_asset_batch_eight
@@ -160,7 +160,7 @@ LAB_0000d4a0:
               pbVar5 = (byte *)(DAT_00fffc04 + 0x8d);
               sVar4 = (ushort)*pbVar5 - (ushort)DAT_00fff0b8;
               if (-1 < sVar4) {
-                run_attributes_skills_menu_prompt();
+                run_attribute_skill_upgrade_prompt();
                 if (DAT_00fff0dc == '\0') {
                   *pbVar5 = (byte)sVar4;
                   sVar4 = CONCAT11((char)((ushort)sVar4 >> 8),DAT_00fff0b7);

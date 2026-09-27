@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x0000D53C
-// Name: run_attributes_skills_menu_prompt
+// Name: run_attribute_skill_upgrade_prompt
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00000BD2 wait_for_vblank
@@ -10,7 +10,7 @@
 //   0x0000C376 move_wrapped_menu_cursor
 
 
-void run_attributes_skills_menu_prompt(void)
+void run_attribute_skill_upgrade_prompt(void)
 
 {
   render_encoded_title_text();

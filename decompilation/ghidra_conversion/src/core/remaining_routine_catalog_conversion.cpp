@@ -36,7 +36,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x0000CF38U, "run_hotel_options_menu", RoutineFamily::menu, 198U},
     {0x0000CFFEU, "prepare_hotel_options_display", RoutineFamily::menu, 30U},
     {0x0000D4C8U, "reset_field_mode_entity_selection", RoutineFamily::graphics, 116U},
-    {0x0000D53CU, "run_attributes_skills_menu_prompt", RoutineFamily::graphics, 160U},
+    {0x0000D53CU, "run_attribute_skill_upgrade_prompt", RoutineFamily::menu, 160U},
     {0x0000D5DCU, "render_attribute_skill_detail_panel", RoutineFamily::menu, 526U},
     {0x0000D82AU, "render_attributes_and_skills", RoutineFamily::graphics, 544U},
     {0x0000DA6AU, "run_hotel_checkout_prompt", RoutineFamily::menu, 188U},

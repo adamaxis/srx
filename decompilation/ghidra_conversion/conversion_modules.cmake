@@ -182,6 +182,7 @@ file(GLOB SHADOWRUN_MODULE_MATRIX_CYBER_INFO CONFIGURE_DEPENDS
 file(GLOB SHADOWRUN_MODULE_MENU_INVENTORY_EQUIPMENT CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/menus/armor_selection_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/menus/attributes_skills_menu_conversion.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/menus/attribute_skill_upgrade_prompt_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/menus/clips_menu_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/menus/cyberware_menu_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/menus/cyberware_detail_conversion.cpp"

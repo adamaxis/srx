@@ -232,7 +232,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0000CFFE	prepare_hotel_options_display	30	unknown	ok	ghidra-c/fn_0000CFFE.cpp
 0000D01C	run_attributes_and_skills_menu	1196	unknown	ok	ghidra-c/fn_0000D01C.cpp
 0000D4C8	reset_field_mode_entity_selection	116	unknown	ok	ghidra-c/fn_0000D4C8.cpp
-0000D53C	run_attributes_skills_menu_prompt	160	unknown	ok	ghidra-c/fn_0000D53C.cpp
+0000D53C	run_attribute_skill_upgrade_prompt	160	unknown	ok	ghidra-c/fn_0000D53C.cpp
 0000D5DC	render_attribute_skill_detail_panel	526	unknown	ok	ghidra-c/fn_0000D5DC.cpp
 0000D7EA	compute_entity_delay_factor	50	unknown	ok	ghidra-c/fn_0000D7EA.cpp
 0000D81C	average_entity_delay_attributes	14	unknown	ok	ghidra-c/fn_0000D81C.cpp

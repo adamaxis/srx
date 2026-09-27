@@ -427,7 +427,7 @@ LAB_0000d4a0:
                 if (-1 < (int)((uint)uVar10 << 0x10)) {
                   uVar20 = (undefined2)((uint)pbVar12 >> 0x10);
                   local_2 = SUB42(pbVar12,0);
-                  run_attributes_skills_menu_prompt();
+                  run_attribute_skill_upgrade_prompt();
                   if (DAT_00fff0dc == '\0') {
                     *(char *)CONCAT22(uVar20,local_2) = (char)uVar10;
                     sVar11 = CONCAT11((char)(uVar10 >> 8),DAT_00fff0b7);
