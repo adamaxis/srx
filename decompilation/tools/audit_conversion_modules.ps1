@@ -13,7 +13,8 @@ $rows = Import-Csv $mapPath -Delimiter "`t"
 # assigned to a behavioral module.
 $compositionSources = @(
     "src/integration/conversion_workbench.cpp",
-    "src/integration/startup_integration_conversion.cpp"
+    "src/integration/startup_integration_conversion.cpp",
+    "src/integration/field_session_bootstrap_conversion.cpp"
 )
 $sourceFiles = Get-ChildItem (Join-Path $conversionRoot "src") -Recurse -Filter *.cpp -File |
     ForEach-Object { $_.FullName.Substring($conversionRoot.Length + 1).Replace('\', '/') } |

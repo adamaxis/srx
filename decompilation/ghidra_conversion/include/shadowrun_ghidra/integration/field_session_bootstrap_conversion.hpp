@@ -2,6 +2,7 @@
 
 #include "shadowrun_ghidra/audio/audio_command_batch_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_action_profile_conversion.hpp"
+#include "shadowrun_ghidra/entities/entity_behavior_frame_service_conversion.hpp"
 #include "shadowrun_ghidra/field/field_entity_render_batch_conversion.hpp"
 #include "shadowrun_ghidra/field/field_resource_sequence_conversion.hpp"
 #include "shadowrun_ghidra/field/field_scene_entry_conversion.hpp"
@@ -66,11 +67,9 @@ struct FieldSessionBootstrapCallbacks {
     std::function<void()> guard_world_effect_player_spawn;
 
     // 0x008EE/0x008F6/0x008FC: the three recurring field warm-up services.
-    // The first remains an explicit boundary because its full entity behavior
-    // record sweep has not yet been converted; the latter two are composed
-    // through typed host callbacks/state below.
-    std::function<void(std::uint16_t remaining_counter)>
-        service_entity_behavior_frames;
+    // 0x0A8EA is composed directly; its downstream action/movement/effect
+    // calls remain named callbacks inside the typed entity service contract.
+    EntityBehaviorFrameCallbacks entity_behavior_frames;
     std::function<void()> update_field_camera;
     EntityRenderPassCallbacks entity_render_pass;
 
@@ -95,6 +94,7 @@ struct FieldSessionBootstrapState {
     WorldEffectGlobals world_effect_globals;
     FieldSceneBuffers field_scene_buffers;
     FieldSceneEntryState field_scene_entry;
+    std::array<EntityBehaviorFrameRecord, 16> behavior_entities{};
     std::array<RenderEntityState, 16> render_entities{};
 
     std::vector<std::int32_t> audio_menu_first;

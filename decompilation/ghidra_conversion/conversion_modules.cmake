@@ -129,6 +129,8 @@ file(GLOB SHADOWRUN_MODULE_ENTITY_ACTION_COMBAT CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/entities/entity_transition_conversion.cpp"
 )
 file(GLOB SHADOWRUN_MODULE_ENTITY_ANIMATION CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/entities/entity_behavior_frame_service_conversion.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/entities/entity_behavior_transition_completion_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/entities/animation_*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/entities/behavior_animation_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/entities/entity_animation_*.cpp"

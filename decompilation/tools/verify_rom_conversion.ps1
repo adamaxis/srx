@@ -172,7 +172,8 @@ $sourceFiles = @(Get-ChildItem (Join-Path $conversionRoot "src") -Recurse -Filte
     Where-Object {
         $_ -notin @(
             "src/integration/conversion_workbench.cpp",
-            "src/integration/startup_integration_conversion.cpp"
+            "src/integration/startup_integration_conversion.cpp",
+            "src/integration/field_session_bootstrap_conversion.cpp"
         )
     })
 $owners = @{}

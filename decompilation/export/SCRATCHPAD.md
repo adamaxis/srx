@@ -630,9 +630,12 @@ The manually traced source order is:
 The conversion test checks the exact six-command audio cadence, one-row
 23-word copy, alternate field profile selection, fixed `0xE10` terrain layer
 copies, 31 warm-up iterations, dirty mask `0x0E`, and two final controller
-samples. The `0x0A8EA` entity-behavior sweep and the field camera service are
-deliberately callback boundaries until their complete source consumers are
-converted; the central layer does not replace them with guessed behavior.
+samples. The `0x0A8EA` entity-behavior sweep is now converted as a typed
+sixteen-slot control-flow service. Its action, transition, collision,
+movement, proximity, effect, and dynamic-continuation callees remain named
+callbacks until those downstream consumers are fully connected. The field
+camera service remains an explicit callback; the central layer does not
+replace either boundary with guessed behavior.
 
 ## Reviewed function map
 
@@ -686,6 +689,8 @@ still has unresolved downstream calls or hardware presentation work.
 | `0xB39A` | `set_entity_heading_with_field_animation` | Stores the requested heading, selects the C042 directional animation entry after the source rotate-and-correct step, chooses delay mode `0` for behavior values `0x0B`/`0x0C` and `1` otherwise, then resets animation. | `ghidra_conversion::set_entity_heading_with_field_animation()` | partial |
 | `0xB3FE` | `set_entity_heading_with_alternate_animation` | Stores the requested heading, selects the C092 directional animation entry, resets animation first, and schedules fixed delay mode `0`. | `ghidra_conversion::set_entity_heading_with_alternate_animation()` | partial |
 | `0xAF6C` | `reset_entity_animation_state` | Clears the animation timer and phase, then sets the entity redraw/update bit. This shared helper is used by both heading-selection paths and other behavior transitions. | `ghidra_conversion::reset_entity_animation_state()` | partial |
+| `0xA8EA` | `service_entity_behavior_frames` | Dispatches action candidates once, scans all sixteen active entity slots, decrements the signed animation/transition timer, routes the +0x10 behavior bits through action/collision/transition branches, applies mode-5 boundary and proximity work, temporarily installs fallback movement for +0x11 bit 1, calls the dynamic continuation, clears forced effects, and marks animation changes. | `ghidra_conversion::service_entity_behavior_frames()` | partial |
+| `0xAB02` | `complete_entity_behavior_transition` | Completes the entity transition after `0xA8EA`: starts the route-flag activity, invokes the weighted scene-entity spawn path when behavior bit 3 is clear, decrements the unsigned spawn countdown when the spawned record carries +0x9E bit 6, resets the ten service records and hands off a deferred activity when that countdown reaches zero, marks the six linked records whose +0xA8 owner matches the current entity, and arms the 0x3C-frame activity delay only when FF0110/FF0210/FF0310 pass their source gates. | `ghidra_conversion::complete_entity_behavior_transition()` | partial |
 | `0xABFC` | `update_entity_animation_delay` | Converts the delay factor to `0x6A - factor*4`, doubles for source mode `2`, halves for other nonzero modes, and clamps the signed result to a minimum of `15`. | `ghidra_conversion::update_entity_animation_delay()` | partial |
 | `0xD7EA` | `compute_entity_delay_factor` | Chooses the first active capability bit among 12, 13, and 14 for modifiers `4`, `8`, and `12`, adds it to the wrapped byte-attribute average minus one, and floors at zero. | `ghidra_conversion::compute_entity_delay_factor()` | partial |
 | `0xD81C` | `average_entity_delay_attributes` | Adds the two byte attributes with source byte wrap and returns the floor average. | `ghidra_conversion::average_entity_delay_attributes()` | partial |

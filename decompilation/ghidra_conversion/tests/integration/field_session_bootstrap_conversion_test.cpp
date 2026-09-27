@@ -119,8 +119,32 @@ FieldSessionBootstrapCallbacks make_callbacks(Observations& observations) {
         record(observations, "world.spawn_guard");
     };
 
-    callbacks.service_entity_behavior_frames =
-        [&observations](const std::uint16_t) { ++observations.behavior_calls; };
+    callbacks.entity_behavior_frames.dispatch_entity_action_candidates =
+        [&observations] { ++observations.behavior_calls; };
+    callbacks.entity_behavior_frames.noop_entity_action_hook =
+        [](EntityBehaviorFrameRecord&) { return static_cast<std::uint8_t>(0); };
+    callbacks.entity_behavior_frames.complete_entity_behavior_transition =
+        [](EntityBehaviorFrameRecord&) {};
+    callbacks.entity_behavior_frames.clear_effect_slot_state =
+        [](EntityBehaviorFrameRecord&) {};
+    callbacks.entity_behavior_frames.handle_mode_action_event =
+        [](EntityBehaviorFrameRecord&) {};
+    callbacks.entity_behavior_frames.advance_entity_behavior_action =
+        [](EntityBehaviorFrameRecord&) {};
+    callbacks.entity_behavior_frames.enter_entity_behavior_transition =
+        [](EntityBehaviorFrameRecord&) {};
+    callbacks.entity_behavior_frames.dispatch_entity_collision_behavior =
+        [](EntityBehaviorFrameRecord&) {};
+    callbacks.entity_behavior_frames.apply_mode_five_boundary_motion =
+        [](EntityBehaviorFrameRecord&) {};
+    callbacks.entity_behavior_frames.resolve_entity_proximity_interactions =
+        [](EntityBehaviorFrameRecord&) {};
+    callbacks.entity_behavior_frames.clear_entity_effect_if_forced =
+        [](EntityBehaviorFrameRecord&) {};
+    callbacks.entity_behavior_frames.resolve_entity_fallback_movement =
+        [](EntityBehaviorFrameRecord&) {};
+    callbacks.entity_behavior_frames.run_entity_continuation =
+        [](EntityBehaviorFrameRecord&) {};
     callbacks.update_field_camera =
         [&observations] { ++observations.camera_calls; };
     callbacks.entity_render_pass.project_screen_position =

@@ -58,7 +58,8 @@ bool has_required_callbacks(const FieldSessionBootstrapCallbacks& callbacks) {
            has_field_viewport_callbacks(callbacks.field_viewports) &&
            static_cast<bool>(callbacks.upload_scene_profile_block) &&
            static_cast<bool>(callbacks.guard_world_effect_player_spawn) &&
-           static_cast<bool>(callbacks.service_entity_behavior_frames) &&
+           entity_behavior_frame_callbacks_complete(
+               callbacks.entity_behavior_frames) &&
            static_cast<bool>(callbacks.update_field_camera) &&
            has_entity_render_callbacks(callbacks.entity_render_pass) &&
            static_cast<bool>(callbacks.wait_for_vblank) &&
@@ -182,10 +183,16 @@ FieldSessionBootstrapResult bootstrap_field_session(
     state.field_scene_entry_complete = true;
 
     set_phase(state, callbacks, FieldSessionBootstrapPhase::warmup);
-    // ROM 0x008C0 loads D7 with 0x1E and DBF executes this body 31 times,
-    // passing the decreasing counter to 0x0A8EA on every iteration.
+    // ROM 0x008C0 loads D7 with 0x1E, saves it across the 0x0A8EA call, and
+    // DBF executes this body 31 times. The entity service has no semantic
+    // counter argument; the host loop keeps the source iteration count local.
     for (std::uint16_t remaining_counter = 0x1EU;; --remaining_counter) {
-        callbacks.service_entity_behavior_frames(remaining_counter);
+        if (service_entity_behavior_frames(
+                state.behavior_entities, callbacks.entity_behavior_frames) !=
+            EntityBehaviorFrameServiceResult::completed) {
+            return fail(state, callbacks,
+                        FieldSessionBootstrapResult::callback_unresolved);
+        }
         callbacks.update_field_camera();
         update_entity_render_pass(state.render_entities,
                                   callbacks.entity_render_pass);
