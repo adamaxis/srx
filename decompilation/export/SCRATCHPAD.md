@@ -254,6 +254,33 @@ steps are callbacks, so this conversion records the source ordering without
 turning the runtime into a VDP or ROM-pointer interpreter; absent base-cost
 data is an explicit `missing_cost_data` result rather than invented behavior.
 
+The remaining field-selection presentation cluster is now explicit as well:
+
+* `0x580FE render_field_action_description` receives the selected
+  menu-resource byte as a description-table index into `0xE31F2`. The host
+  conversion uses an extracted alias, renders the normalized/wrapped
+  description, and selects the `0x1AC90C + index * 0x0C` grid record. The
+  source's signed byte comparison makes quantities below nine take the
+  quantity/capacity summary: three fixed text passes, the quantity, the
+  selected program's storage weight, the wrapped `0x575F8` storage total after
+  adding that weight back, and the pending `FFF0BE` cost. Larger quantities
+  intentionally skip that summary rather than being forced through it.
+* `0x5825C render_field_action_cost_summary` reads the used fields of the
+  `0x1AB118` 0x18-byte row in source order (`+6`, `+7`, `+C`, `+D`, `+8`,
+  `+A`). A signed current-cursor/row-marker comparison selects grid variant A
+  without discounting when the row is blocked. Otherwise the exact long-cost
+  boundary is preserved: values below `0x10000` use `0x57A6E`, and values at
+  or above it use `0x57B42`.
+* `0x58316 render_field_action_feedback` treats modes 0..3 as valid feedback:
+  the mode message is indexed directly, the quantity/result message starts
+  at `mode * 5`, and the grid group uses the source `mode / 0x14` quotient.
+  Modes 4 and above select the unavailable message, then both paths finish
+  through the common tail text callback.
+
+These are presentation plans and callbacks, not emulated VDP calls or ROM
+address reads. Missing extracted description data, Matrix-selection data, or
+pending cost data is reported as an explicit conversion result.
+
 ## Field HUD row meter
 
 `0x1792E render_menu_hud_rows` calls `0x56506` once for each eligible row.
