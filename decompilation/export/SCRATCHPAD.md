@@ -112,7 +112,7 @@ one typed conversion slice:
 
 | ROM entry | Caller | Recovered behavior | Typed conversion |
 | --- | --- | --- | --- |
-| `0x56434` | `0x19E32 run_menu_selection_service` | Clears `FFF0A3`, subtracts the service delta from selected record `+0x0F`, and on signed-byte expiry decrements `FFF0CE` by two; a negative rollover resets it to `0x0F` and increments `FF018D`, `FF028D`, and `FF038D`. | `advance_menu_selection_service_timer()` |
+| `0x56434` | `0x19E32 run_menu_selection_service` | Clears `FFF0A3`, subtracts the service delta from selected record `+0x0F`, and applies the source overflow-aware `SUB.B`/`BGT` expiry test before decrementing `FFF0CE` by two; a negative rollover resets it to `0x0F` and increments `FF018D`, `FF028D`, and `FF038D`. | `advance_menu_selection_service_timer()` |
 | `0x56482` | `0x19EA6 run_menu_selection_variant` | Clears `FFF0A3`, subtracts the variant delta from selected record `+0x10`, clears the selected menu record on signed-byte expiry, then uses the same phase-counter rollover. | `advance_menu_selection_variant_timer()` |
 | `0x564D6` | `0x19F18 run_menu_progression_variant` | Halves D1 with a logical shift, clamps the delta to one, subtracts it from selected record `+0x06`, and clamps that timing byte to two. | `reduce_menu_progression_timing()` |
 

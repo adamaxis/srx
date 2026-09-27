@@ -749,6 +749,8 @@ decompiler evidence only where they collapse to return-only stubs.
 The same pass corrected `0x56506`: `CMP.W D6,D7` followed by `BPL` is a
 wrapped sign-bit test, not an unsigned `max`. The menu timing conversions at
 `0x56434` and `0x56482` now have explicit wrapped `BGT`/`BPL` regression cases.
+The service timer's `SUB.B`/`BGT` path preserves the original destination byte
+for its overflow flag, while the variant timer's `BPL` remains sign-bit based.
 These changes are conversion/audit work only and do not alter the native port.
 
 The adjacent world-effect selector at `0x56116`/`0x561E8` is now source-audited

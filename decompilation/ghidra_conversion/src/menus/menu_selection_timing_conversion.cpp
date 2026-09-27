@@ -10,8 +10,17 @@ std::uint8_t subtract_byte(const std::uint8_t value,
     return static_cast<std::uint8_t>(value - delta);
 }
 
-bool source_signed_positive(const std::uint8_t value) {
-    return static_cast<std::int8_t>(value) > 0;
+bool source_subtract_byte_is_positive(const std::uint8_t minuend,
+                                      const std::uint8_t subtrahend,
+                                      const std::uint8_t result) {
+    // 0x56450 is SUB.B followed by BGT. BGT is !Z && (N == V), so a signed
+    // cast is not sufficient for values that overflow the byte operation.
+    const bool negative = (result & 0x80U) != 0U;
+    const bool zero = result == 0U;
+    const bool overflow =
+        (((minuend ^ subtrahend) & 0x80U) != 0U) &&
+        (((minuend ^ result) & 0x80U) != 0U);
+    return !zero && (negative == overflow);
 }
 
 bool source_signed_negative(const std::uint8_t value) {
@@ -50,9 +59,10 @@ MenuSelectionTimingResult advance_menu_selection_service_timer(
         return {MenuSelectionTimingAction::selected_record_unavailable, false};
     }
 
-    const auto updated = subtract_byte(record->service_timer, delta);
+    const auto previous = record->service_timer;
+    const auto updated = subtract_byte(previous, delta);
     record->service_timer = updated;
-    if (source_signed_positive(updated)) {
+    if (source_subtract_byte_is_positive(previous, delta, updated)) {
         return {MenuSelectionTimingAction::updated, false};
     }
 

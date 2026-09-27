@@ -10,6 +10,8 @@
 // selected record's +0x0F byte, clears FFF0A3, and rolls FFF0CE plus the
 // three phase bytes when the timer expires. The typed host conversion is in
 // ghidra_conversion/menu_selection_timing_conversion.
+// The expiry branch is SUB.B/BGT and therefore retains the 68000 overflow
+// flag rather than using only the wrapped result's sign bit.
 void advance_menu_selection_service_timer(void)
 
 {

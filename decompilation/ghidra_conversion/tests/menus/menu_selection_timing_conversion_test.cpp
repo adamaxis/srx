@@ -48,6 +48,22 @@ int main() {
         return 10;
     }
 
+    // 0x56450 is SUB.B/BGT. 0x80 - 0x01 wraps to 0x7f with V set, so the
+    // source expires the service timer instead of accepting the positive byte.
+    state.records[1].service_timer = 0x80U;
+    state.phase_counter = 4U;
+    const auto overflow_service =
+        advance_menu_selection_service_timer(state, 1U, callbacks);
+    if (overflow_service.action != MenuSelectionTimingAction::expired) {
+        return 120;
+    }
+    if (state.records[1].service_timer != 0U) {
+        return 121;
+    }
+    if (state.phase_counter != 2U) {
+        return 122;
+    }
+
     state.phase_counter = 1U;
     state.records[1].service_timer = 1U;
     const auto rollover =
