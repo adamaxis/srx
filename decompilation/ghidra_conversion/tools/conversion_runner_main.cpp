@@ -1,8 +1,6 @@
-#include "shadowrun_ghidra/conversion_workbench.hpp"
+#include "shadowrun_ghidra/integration/conversion_workbench.hpp"
 #include "shadowrun_ghidra/core/asset_catalog_conversion.hpp"
-#include "shadowrun_ghidra/core/timing_conversion.hpp"
-#include "shadowrun_ghidra/title_intro/boot_sequence_conversion.hpp"
-#include "shadowrun_ghidra/title_intro/title_setup_conversion.hpp"
+#include "shadowrun_ghidra/integration/startup_integration_conversion.hpp"
 
 #include <algorithm>
 #include <filesystem>
@@ -11,26 +9,6 @@
 #include <vector>
 
 namespace {
-
-std::string stage_name(
-    const shadowrun::ghidra_conversion::BootStartupStage stage) {
-    using shadowrun::ghidra_conversion::BootStartupStage;
-    switch (stage) {
-    case BootStartupStage::reset:
-        return "reset";
-    case BootStartupStage::vdp_ready:
-        return "vdp_ready";
-    case BootStartupStage::pre_title:
-        return "pre_title";
-    case BootStartupStage::title_setup:
-        return "title_setup";
-    case BootStartupStage::title_ready:
-        return "title_ready";
-    case BootStartupStage::failed:
-        return "failed";
-    }
-    return "unknown";
-}
 
 std::filesystem::path default_asset_root() {
     const std::vector<std::filesystem::path> candidates{
@@ -99,11 +77,7 @@ int main(int argc, char** argv) {
         return 4;
     }
 
-    BootStartupState startup{};
-    PreTitleSequenceState pre_title{};
-    VblankFrameState frame_state{};
-    TitleSetupState title_state{};
-    std::vector<std::string> stages;
+    integration::StartupIntegrationState startup_state{};
     std::size_t sprite_builds = 0;
     std::size_t horizontal_scroll_updates = 0;
     std::size_t audio_variant_calls = 0;
@@ -114,97 +88,81 @@ int main(int argc, char** argv) {
     std::size_t strobe_phase_updates = 0;
     bool resource_work_area_zeroed = false;
     std::uint32_t title_palette_frames = 0;
-    bool pre_title_completed = false;
-
-    PreTitleSequenceCallbacks pre_title_callbacks{};
-    pre_title_callbacks.resources.clear_plane_a = [&] {
-        stages.emplace_back("clear_plane_a");
+    integration::StartupIntegrationCallbacks startup_callbacks{};
+    startup_callbacks.initialize_display = [] {};
+    startup_callbacks.vdp_ready = {
+        [](const std::uint32_t) {},
+        [] {},
+        [](const std::uint32_t) {},
     };
-    pre_title_callbacks.resources.clear_plane_b = [&] {
-        stages.emplace_back("clear_plane_b");
-    };
-    pre_title_callbacks.resources.prepare_title_resources = [&] {
-        stages.emplace_back("prepare_title_resources");
-    };
-    pre_title_callbacks.resources.write_resource_stream =
+    startup_callbacks.pre_title.resources.clear_plane_a = [] {};
+    startup_callbacks.pre_title.resources.clear_plane_b = [] {};
+    startup_callbacks.pre_title.resources.prepare_title_resources = [] {};
+    startup_callbacks.pre_title.resources.write_resource_stream =
         [&resource_stream_writes, &resource_work_area_zeroed](auto& words) {
             ++resource_stream_writes;
             resource_work_area_zeroed = std::all_of(
                 words.begin(), words.end(),
                 [](const std::uint16_t word) { return word == 0U; });
         };
-    pre_title_callbacks.resources.refresh_field_resource_streams = [&] {
-        stages.emplace_back("refresh_field_resource_streams");
-    };
-    pre_title_callbacks.resources.decode_and_upload_source_stream = [&] {
-        stages.emplace_back("decode_and_upload_source_stream");
-    };
-    pre_title_callbacks.resources.advance_title_palette_fade =
+    startup_callbacks.pre_title.resources.refresh_field_resource_streams =
+        [] {};
+    startup_callbacks.pre_title.resources.decode_and_upload_source_stream =
+        [] {};
+    startup_callbacks.pre_title.resources.advance_title_palette_fade =
         [&palette_steps] { ++palette_steps; };
-    pre_title_callbacks.resources.write_vdp_grid = [&] {
-        stages.emplace_back("write_vdp_grid");
+    startup_callbacks.pre_title.resources.write_vdp_grid = [] {};
+    startup_callbacks.pre_title.resources.reset_vdp_upload_state = [] {};
+    startup_callbacks.pre_title.wait_for_vblank = [&startup_state] {
+        wait_for_vblank(startup_state.frame,
+                        [](const std::uint16_t previous) {
+                            return static_cast<std::uint16_t>(previous + 1U);
+                        });
     };
-    pre_title_callbacks.resources.reset_vdp_upload_state = [&] {
-        stages.emplace_back("reset_vdp_upload_state");
-    };
-    pre_title_callbacks.wait_for_vblank = [&] {
-        wait_for_vblank(frame_state, [](const std::uint16_t previous) {
-            return static_cast<std::uint16_t>(previous + 1U);
-        });
-    };
-    pre_title_callbacks.animation.build_title_sprite_records =
+    startup_callbacks.pre_title.animation.build_title_sprite_records =
         [&sprite_builds] { ++sprite_builds; };
-    pre_title_callbacks.animation.publish_logo_strobe_phase =
-        [&strobe_phase_updates](const std::uint8_t) { ++strobe_phase_updates; };
-    pre_title_callbacks.animation.step_entity_color_words = [] {};
-    pre_title_callbacks.write_horizontal_scroll_stream =
+    startup_callbacks.pre_title.animation.publish_logo_strobe_phase =
+        [&strobe_phase_updates](const std::uint8_t) {
+            ++strobe_phase_updates;
+        };
+    startup_callbacks.pre_title.animation.step_entity_color_words = [] {};
+    startup_callbacks.pre_title.write_horizontal_scroll_stream =
         [&horizontal_scroll_updates](const auto&) {
             ++horizontal_scroll_updates;
         };
-    pre_title_callbacks.service_audio_variant = [&] { ++audio_variant_calls; };
-    pre_title_callbacks.service_audio = [&] { ++audio_calls; };
-    pre_title_callbacks.sample_controller = [&] { ++controller_samples; };
-    pre_title_callbacks.step_palette_transition = [&] { ++palette_steps; };
+    startup_callbacks.pre_title.service_audio_variant =
+        [&audio_variant_calls] { ++audio_variant_calls; };
+    startup_callbacks.pre_title.service_audio =
+        [&audio_calls] { ++audio_calls; };
+    startup_callbacks.pre_title.sample_controller =
+        [&controller_samples] { ++controller_samples; };
+    startup_callbacks.pre_title.step_palette_transition =
+        [&palette_steps] { ++palette_steps; };
 
-    BootStartupCallbacks startup_callbacks{};
-    startup_callbacks.enter_stage = [&stages](const BootStartupStage stage) {
-        stages.push_back(stage_name(stage));
-    };
-    startup_callbacks.initialize_display = [&stages] {
-        stages.emplace_back("display_initialized");
-    };
-    startup_callbacks.vdp_ready = {
-        [](const std::uint32_t) {},
+    startup_callbacks.title_setup = {
         [] {},
-        [](const std::uint32_t) {},
-    };
-    startup_callbacks.run_pre_title_sequence = [&] {
-        pre_title_completed =
-            run_pre_title_sequence(pre_title, pre_title_callbacks) ==
-            PreTitleSequenceResult::source_complete;
-        startup.vblank_count = frame_state.frame_count;
-    };
-    startup_callbacks.setup_title_state = [&] {
-        setup_title_state(
-            title_state,
-            {[] {}, [] {}, [] {},
-             [&title_palette_frames](const std::uint16_t frames) {
-                 title_palette_frames += frames;
-             }});
+        [] {},
+        [] {},
+        [&title_palette_frames](const std::uint16_t frames) {
+            title_palette_frames += frames;
+        },
     };
 
     const auto startup_result =
-        run_boot_startup(required, startup, startup_callbacks);
+        integration::start_startup_integration(
+            asset_root, startup_state, startup_callbacks);
     std::cout << "startup.result="
-              << (startup_result == BootStartupResult::title_ready
+              << (startup_result == integration::StartupIntegrationStartResult::title_ready
                       ? "title_ready"
-                      : startup_result == BootStartupResult::assets_missing
+                      : startup_result == integration::StartupIntegrationStartResult::assets_missing
                           ? "assets_missing"
                           : "callback_unresolved")
               << '\n'
               << "startup.pre_title_complete="
-              << (pre_title_completed ? "true" : "false") << '\n'
-              << "startup.vblank_count=" << startup.vblank_count << '\n'
+              << (startup_state.pre_title_complete ? "true" : "false")
+              << '\n'
+              << "startup.vblank_count=" << startup_state.boot.vblank_count
+              << '\n'
               << "startup.sprite_builds=" << sprite_builds << '\n'
               << "startup.horizontal_scroll_updates="
               << horizontal_scroll_updates << '\n'
@@ -221,8 +179,10 @@ int main(int argc, char** argv) {
               << "startup.title_palette_frames=" << title_palette_frames
               << '\n';
 
-    return report.passed && startup_result == BootStartupResult::title_ready &&
-                   pre_title_completed
+    return report.passed &&
+                   startup_result ==
+                       integration::StartupIntegrationStartResult::title_ready &&
+                   startup_state.pre_title_complete
                ? 0
                : 5;
 }

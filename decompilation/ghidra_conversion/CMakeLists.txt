@@ -14,21 +14,28 @@ enable_testing()
 include(conversion_modules.cmake)
 
 # This library is the only composition layer for the standalone conversion
-# workbench. It links the reviewed behavioral modules, but it remains outside
-# the native-port CMake graph and does not own game runtime state.
-add_library(shadowrun_ghidra_conversion_workbench STATIC
-    src/conversion_workbench.cpp
+# workbench and startup integration. It links the reviewed behavioral modules,
+# but it remains outside the native-port CMake graph and does not own game
+# runtime state.
+add_library(shadowrun_ghidra_conversion_integration STATIC
+    src/integration/conversion_workbench.cpp
+    src/integration/startup_integration_conversion.cpp
 )
-target_include_directories(shadowrun_ghidra_conversion_workbench PUBLIC
+target_include_directories(shadowrun_ghidra_conversion_integration PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include")
-target_link_libraries(shadowrun_ghidra_conversion_workbench
+target_link_libraries(shadowrun_ghidra_conversion_integration
     PUBLIC shadowrun_ghidra_conversion_modules)
+
+# Keep the old target name as a compatibility alias for existing local build
+# invocations while making the ownership boundary explicitly integration.
+add_library(shadowrun_ghidra_conversion_workbench ALIAS
+    shadowrun_ghidra_conversion_integration)
 
 add_executable(shadowrun_ghidra_conversion_runner
     tools/conversion_runner_main.cpp
 )
 target_link_libraries(shadowrun_ghidra_conversion_runner
-    PRIVATE shadowrun_ghidra_conversion_workbench)
+    PRIVATE shadowrun_ghidra_conversion_integration)
 add_test(NAME shadowrun_ghidra_conversion_runner
          COMMAND shadowrun_ghidra_conversion_runner
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../assets")
@@ -52,12 +59,17 @@ foreach(test_source IN LISTS SHADOWRUN_CONVERSION_TEST_SOURCES)
 
     set(test_target "shadowrun_ghidra_${test_name}_test")
     add_executable(${test_target} "${test_source}")
-    if(test_name STREQUAL "conversion_workbench")
+    if(test_name STREQUAL "conversion_workbench" OR
+       test_name STREQUAL "startup_integration")
         target_link_libraries(${test_target}
-            PRIVATE shadowrun_ghidra_conversion_workbench)
+            PRIVATE shadowrun_ghidra_conversion_integration)
     else()
         target_link_libraries(${test_target}
             PRIVATE shadowrun_ghidra_conversion_modules)
+    endif()
+    if(test_name STREQUAL "startup_integration")
+        target_compile_definitions(${test_target} PRIVATE
+            SHADOWRUN_CONVERSION_ASSET_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}/../assets\")
     endif()
     add_test(NAME "shadowrun_ghidra_${test_name}"
              COMMAND ${test_target})

@@ -1,4 +1,4 @@
-#include "shadowrun_ghidra/conversion_workbench.hpp"
+#include "shadowrun_ghidra/integration/conversion_workbench.hpp"
 
 #include <cassert>
 #include <string>

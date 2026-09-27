@@ -169,7 +169,12 @@ foreach ($pair in $callGraphPairCounts.Keys) {
 $mapRows = Read-Tsv (Join-Path $docsRoot "conversion-source-modules.tsv")
 $sourceFiles = @(Get-ChildItem (Join-Path $conversionRoot "src") -Recurse -Filter *.cpp -File |
     ForEach-Object { $_.FullName.Substring($conversionRoot.Length + 1).Replace('\', '/') } |
-    Where-Object { $_ -ne "src/conversion_workbench.cpp" })
+    Where-Object {
+        $_ -notin @(
+            "src/integration/conversion_workbench.cpp",
+            "src/integration/startup_integration_conversion.cpp"
+        )
+    })
 $owners = @{}
 foreach ($mapRow in $mapRows) {
     foreach ($glob in ($mapRow.source_globs -split ';')) {
