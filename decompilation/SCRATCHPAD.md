@@ -274,6 +274,17 @@ roll counters, and the class-`0x13` capped counter are all represented in
 `EntityActionResolutionState`. Armor, defense, animation, and meter effects
 remain typed service boundaries; no conversion runtime reads a Genesis address.
 
+Its direct caller at `0x55B16` is now represented by
+`resolve_entity_action_with_default_bonus`. The conversion preserves the
+`0x55740` -> `0x55786` -> `0x0D5A` ordering, uses six initial thresholded
+trials, publishes that result to actor `+0x9F`, publishes the fixed six-roll
+`+0x9D` bonus, and refreshes target-ready animations only for target records
+below type three. It then sets the typed armor mode to one and re-enters the
+shared continuation with difficulty six, target `+0x77` as its trial count,
+and action value two. Missing linked profile data or a missing dynamic-roll
+service is surfaced as a conversion result instead of being replaced by a
+made-up default.
+
 The positive residual tail at `0x1033E` is represented by
 `consume_item13_residual`: it scans item code `0x13` phases from slot `6`
 down to `0`, keeps a partially consumed phase, clears a phase and its item

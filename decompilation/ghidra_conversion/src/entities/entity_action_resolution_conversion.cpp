@@ -21,6 +21,74 @@ std::int16_t signed_source_byte(const std::uint8_t value) {
 
 } // namespace
 
+EntityActionDefaultBonusResult resolve_entity_action_with_default_bonus(
+    EntityActionActorState& actor,
+    EntityActionTarget& target,
+    EntityActionResolutionState& state,
+    const EntityActionDynamicModifierContext& dynamic_context,
+    const EntityActionDefaultBonusServices& services) {
+    EntityActionDefaultBonusResult result{};
+
+    // 0x55B1C/0x55B22/0x55B28: the source applies target conditions, the
+    // selected dynamic profile, and the actor's wound penalty in that order.
+    auto difficulty = apply_target_condition_modifier(
+        result.initial_difficulty, actor.record, target);
+    const auto dynamic = apply_dynamic_status_modifier(
+        difficulty, dynamic_context, services.dynamic_roll_service);
+    result.dynamic_modifier_selected = dynamic.selected;
+    result.dynamic_modifier_available = dynamic.action_profile_available;
+    result.dynamic_roll_service_available = dynamic.roll_service_available;
+    if (dynamic.selected && !dynamic.action_profile_available) {
+        result.outcome = EntityActionDefaultBonusOutcome::
+            dynamic_modifier_data_unavailable;
+        return result;
+    }
+    if (dynamic.selected && !dynamic.roll_service_available) {
+        result.outcome = EntityActionDefaultBonusOutcome::
+            dynamic_modifier_roll_service_unavailable;
+        return result;
+    }
+    difficulty = add_wound_difficulty_penalty(
+        difficulty, actor.record.physical_meter, actor.record.mental_meter);
+    difficulty = std::max<std::uint16_t>(difficulty, 2U);
+    result.effective_difficulty = difficulty;
+
+    // 0x55B3A..0x55B40: D6 is a fixed six, so the source always performs at
+    // least one bounded roll even though the host keeps the count typed.
+    if (!services.sample_random_bound) {
+        result.outcome = EntityActionDefaultBonusOutcome::
+            random_service_unavailable;
+        return result;
+    }
+    result.initial_successes = count_thresholded_random_rolls(
+        result.initial_trial_count, static_cast<std::int16_t>(difficulty),
+        services.sample_random_bound);
+    actor.action_result = result.initial_successes;
+    actor.auxiliary_roll_bonus = 6U;
+
+    // 0x55B54..0x55B64: D5 is reset to two, the target's +0x77 becomes the
+    // continuation trial count, and only low-type targets receive the ready
+    // animation refresh before the shared continuation.
+    result.continuation_trial_count = target.attribute_77;
+    if (target.record_type < 3U && services.refresh_target_ready_animations) {
+        services.refresh_target_ready_animations(target);
+        result.target_animation_refresh_called = true;
+    }
+    state.armor_mode = 1;
+    const EntityActionResolutionServices continuation_services{
+        services.sample_random_bound,
+        {},
+        {},
+        services.apply_defense_modifier,
+        services.advance_behavior_meter,
+        services.advance_delay_meter};
+    result.continuation = resolve_dynamic_entity_action(
+        actor, target, 6U, result.continuation_trial_count, 2, state,
+        continuation_services);
+    result.outcome = EntityActionDefaultBonusOutcome::resolved;
+    return result;
+}
+
 EntityActionResolutionResult resolve_dynamic_entity_action(
     EntityActionActorState& actor,
     EntityActionTarget& target,

@@ -78,6 +78,57 @@ struct EntityActionResolutionResult {
     bool counters_advanced = false;
 };
 
+enum class EntityActionDefaultBonusOutcome {
+    dynamic_modifier_data_unavailable,
+    dynamic_modifier_roll_service_unavailable,
+    random_service_unavailable,
+    resolved,
+};
+
+struct EntityActionDefaultBonusServices {
+    // 0x0DBA used for both the initial six-roll result and the 0x559BC
+    // continuation.
+    BoundedRandomRollBoundary sample_random_bound;
+    // 0x55786's nested profile roll.
+    EntityActionRollService dynamic_roll_service;
+    // 0x55E62, reached by the 0x559BC continuation after armor mode one has
+    // selected the no-armor branch.
+    EntityActionDefenseModifier apply_defense_modifier;
+    // 0x1047E is called for the target record when its type is below three.
+    std::function<void(EntityActionTarget&)> refresh_target_ready_animations;
+    // 0x37EC and 0x3674 are reached by the continuation after target meters
+    // or behavior state are updated.
+    std::function<void(EntityActionTarget&, std::int16_t)>
+        advance_behavior_meter;
+    std::function<void(EntityActionTarget&)> advance_delay_meter;
+};
+
+struct EntityActionDefaultBonusResult {
+    EntityActionDefaultBonusOutcome outcome =
+        EntityActionDefaultBonusOutcome::dynamic_modifier_data_unavailable;
+    std::uint16_t initial_difficulty = 4U;
+    std::uint16_t effective_difficulty = 0;
+    std::uint16_t initial_trial_count = 6U;
+    std::uint16_t continuation_trial_count = 0U;
+    std::uint8_t initial_successes = 0U;
+    bool dynamic_modifier_selected = false;
+    bool dynamic_modifier_available = false;
+    bool dynamic_roll_service_available = false;
+    bool target_animation_refresh_called = false;
+    EntityActionResolutionResult continuation{};
+};
+
+// ROM 0x55B16. Apply the default difficulty-four action path, roll six
+// source trials, publish the first result and +0x9D six-roll bonus, refresh
+// low-type target animations, then enter 0x559BC with difficulty six, the
+// target +0x77 trial count, action value two, and armor mode one.
+EntityActionDefaultBonusResult resolve_entity_action_with_default_bonus(
+    EntityActionActorState& actor,
+    EntityActionTarget& target,
+    EntityActionResolutionState& state,
+    const EntityActionDynamicModifierContext& dynamic_context,
+    const EntityActionDefaultBonusServices& services);
+
 // ROM 0x559BC. Convert the shared action-resolution continuation: thresholded
 // result delta, armor/defense reductions, record-type behavior/delay branch,
 // physical/mental meter mutation, and the three source counter updates.
