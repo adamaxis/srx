@@ -157,7 +157,12 @@ int main() {
                 hard_residual.residual_effect == 10)) {
         return 12;
     }
-    if (!expect(!calculate_action_residual(0U, 4U, 8U, action).valid)) {
+    const auto first_action_row = calculate_action_residual(0U, 4U, 8U,
+                                                            action);
+    if (!expect(first_action_row.valid &&
+                first_action_row.effective_difficulty == 3U &&
+                first_action_row.adjusted_roll_count == 3U &&
+                first_action_row.residual_effect == 7)) {
         return 13;
     }
 

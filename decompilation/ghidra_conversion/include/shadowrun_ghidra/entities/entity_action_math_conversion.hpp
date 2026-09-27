@@ -247,12 +247,14 @@ struct EntityActionResidual {
 };
 
 // ROM 0x10660. Convert the action roll count and threshold into the residual
-// effect value used by the caller. The source halves/rounds the incoming
-// threshold, adds the selected 0xD4EA0 row modifier, clamps at two, scales
-// the roll count by the resulting 20-percent steps, rounds at a 50 remainder,
-// halves it, and subtracts it from the decoded base effect.
+// effect value used by the caller. `action_row_index` is the source's
+// zero-based D4EA0 row selector; zero is a valid first row. The source
+// halves/rounds the incoming threshold, adds the selected row modifier,
+// clamps at two, scales the roll count by the resulting 20-percent steps,
+// rounds at a 50 remainder, halves it, and subtracts it from the decoded base
+// effect.
 EntityActionResidual calculate_action_residual(
-    std::uint8_t action_code,
+    std::uint8_t action_row_index,
     std::uint16_t difficulty,
     std::uint16_t roll_count,
     const EntityActionCatalogRecord& action);

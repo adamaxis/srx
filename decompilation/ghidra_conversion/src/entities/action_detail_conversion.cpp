@@ -59,6 +59,7 @@ std::optional<ActionDetailRenderPlan> select_entity_action_detail(
     const EntityActionDetailInput& input) {
     std::uint8_t detail_selector = 0;
     std::optional<std::uint8_t> selected_action = input.selected_action_code;
+    bool action_uses_detail_table = false;
 
     if (input.source_mode < 2U) {
         if (!selected_action.has_value()) {
@@ -77,10 +78,38 @@ std::optional<ActionDetailRenderPlan> select_entity_action_detail(
                 break;
             }
         }
+        else {
+            action_uses_detail_table = true;
+        }
     } else if (input.display_state < 0) {
         detail_selector = input.auxiliary_value;
     } else {
         detail_selector = input.active_action_code;
+        if (detail_selector != 0U) {
+            action_uses_detail_table = true;
+        } else {
+            detail_selector = input.cyberware_base;
+            for (std::uint8_t bit = 5U; bit <= 8U; ++bit) {
+                if ((input.cyberware_flags & (std::uint16_t{1U} << bit)) ==
+                    0U) {
+                    continue;
+                }
+                detail_selector = static_cast<std::uint8_t>(
+                    detail_selector + static_cast<std::uint8_t>(bit - 4U));
+                break;
+            }
+        }
+    }
+
+    if (action_uses_detail_table) {
+        // ROM 0x13084/0x1308C reads record +0x26 before the one-based
+        // subtraction and thirteen-entry clamp. A missing row is an
+        // unresolved source-data boundary, not permission to reuse the
+        // action code as a fabricated label selector.
+        if (!input.action_detail_code.has_value()) {
+            return std::nullopt;
+        }
+        detail_selector = *input.action_detail_code;
     }
 
     ActionDetailRenderPlan plan{};

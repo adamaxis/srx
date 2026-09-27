@@ -379,5 +379,110 @@ int main() {
         return 17;
     }
 
+    // ROM 0x12EAE: with no active action and no cyberware bit, the source
+    // renders its header, selects asset one, then emits the detail row.
+    EquipmentActionDetailRowCallbacks row_callbacks{};
+    std::vector<int> row_events;
+    row_callbacks.render_action_header =
+        [&](const EquipmentActionDetailHeaderPlan& plan) {
+            row_events.push_back(plan.destination_tile_base == 0xC538U ? 1
+                                                                        : 99);
+        };
+    row_callbacks.advance_entity_action_menu = [&] { row_events.push_back(5); };
+    row_callbacks.publish_action_selection =
+        [&](const ActionDetailRenderPlan& plan) {
+            row_events.push_back(plan.valid ? 2 : 99);
+        };
+    row_callbacks.render_detail_text =
+        [&](const EquipmentActionDetailTextPlan& plan) {
+            row_events.push_back(plan.destination_tile_base == 0xC51CU ? 3
+                                                                        : 99);
+        };
+    row_callbacks.write_grid = [&](const EquipmentActionDetailGridPlan& plan) {
+        row_events.push_back(plan.destination_tile_base == 0xC52AU ? 4 : 99);
+    };
+    EquipmentActionDetailRowInput row_input{};
+    row_input.selected_action_code = 0U;
+    row_input.cyberware_base = 2U;
+    const auto no_active_row = render_equipment_action_detail_row(
+        row_input, row_callbacks);
+    if (!(no_active_row.action_header_rendered &&
+          no_active_row.action_selection.has_value() &&
+          no_active_row.action_selection->source_code == 2U &&
+          no_active_row.detail_grid.has_value() &&
+          no_active_row.detail_grid->source_table ==
+              EquipmentActionDetailAssetTable::no_active_action &&
+          no_active_row.detail_grid->asset_index == 1U &&
+          no_active_row.detail_grid->inner_loop_counter == 6U &&
+          row_events == std::vector<int>{1, 2, 3, 4})) {
+        return 18;
+    }
+
+    // An ordinary active action reads the normal +0x25 asset row and the
+    // separate +0x26 label selector before the final detail text/grid.
+    row_events.clear();
+    row_input = {};
+    row_input.source_mode = 0U;
+    row_input.active_action_code = 2U;
+    row_input.selected_action_code = 5U;
+    row_input.action_detail_code = 4U;
+    row_input.detail_asset_index = 3;
+    const auto normal_row = render_equipment_action_detail_row(
+        row_input, row_callbacks);
+    if (!(normal_row.action_selection.has_value() &&
+          normal_row.action_selection->source_code == 4U &&
+          normal_row.detail_grid.has_value() &&
+          normal_row.detail_grid->source_table ==
+              EquipmentActionDetailAssetTable::normal_item_records &&
+          normal_row.detail_grid->asset_index == 3U &&
+          !normal_row.action_header_rendered && !normal_row.action_menu_advanced &&
+          row_events == std::vector<int>{2, 3, 4})) {
+        return 19;
+    }
+
+    // Higher-mode negative display state uses the alternate action table,
+    // renders the header for active action five, and advances the action menu.
+    row_events.clear();
+    row_input = {};
+    row_input.source_mode = 2U;
+    row_input.display_state = -1;
+    row_input.active_action_code = 5U;
+    row_input.auxiliary_value = 9U;
+    row_input.detail_asset_index = 2;
+    const auto alternate_row = render_equipment_action_detail_row(
+        row_input, row_callbacks);
+    if (!(alternate_row.action_header_rendered &&
+          alternate_row.action_menu_advanced &&
+          alternate_row.action_selection.has_value() &&
+          alternate_row.action_selection->source_code == 9U &&
+          alternate_row.detail_grid.has_value() &&
+          alternate_row.detail_grid->source_table ==
+              EquipmentActionDetailAssetTable::alternate_action_records &&
+          alternate_row.detail_grid->asset_index == 2U &&
+          row_events == std::vector<int>{1, 5, 2, 3, 4})) {
+        return 20;
+    }
+
+    row_input.detail_asset_index = static_cast<std::int8_t>(-1);
+    row_events.clear();
+    const auto skipped_row = render_equipment_action_detail_row(
+        row_input, row_callbacks);
+    if (!(skipped_row.early_return && !skipped_row.action_selection.has_value() &&
+          row_events == std::vector<int>{1, 5})) {
+        return 21;
+    }
+
+    row_input = {};
+    row_input.active_action_code = 2U;
+    row_input.selected_action_code = 5U;
+    row_input.detail_asset_index = 3;
+    const auto missing_label_row = render_equipment_action_detail_row(
+        row_input, row_callbacks);
+    if (!(missing_label_row.action_selection_missing &&
+          !missing_label_row.detail_text_rendered &&
+          !missing_label_row.detail_grid_written)) {
+        return 22;
+    }
+
     return 0;
 }

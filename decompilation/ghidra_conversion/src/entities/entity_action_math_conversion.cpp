@@ -268,14 +268,14 @@ EntityActionPhaseConsumption consume_item13_residual(
 }
 
 EntityActionResidual calculate_action_residual(
-    const std::uint8_t action_code,
+    const std::uint8_t action_row_index,
     const std::uint16_t difficulty,
     const std::uint16_t roll_count,
     const EntityActionCatalogRecord& action) {
-    if (action_code == 0U) {
-        return {};
-    }
-
+    // The caller has already decoded this zero-based row into `action`.
+    // Retain the index in the contract for source auditing without doing a
+    // runtime ROM-table lookup here.
+    static_cast<void>(action_row_index);
     // 0x10678: LSR.W then add one when the discarded bit was set, which is
     // ceil(difficulty / 2), followed by the row's signed-byte modifier.
     auto effective_difficulty = static_cast<std::uint16_t>(

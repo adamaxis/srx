@@ -232,6 +232,73 @@ struct ItemActionDetailResult {
     std::uint8_t phase_slot_used = 0;
 };
 
+enum class EquipmentActionDetailAssetTable {
+    no_active_action,
+    normal_item_records,
+    alternate_action_records,
+};
+
+struct EquipmentActionDetailHeaderPlan {
+    // Source 0xD1AA5 is the no-action/selected-action header text.
+    std::uint16_t destination_tile_base = 0xC538U;
+    std::uint16_t palette_flags = 0x6000U;
+};
+
+struct EquipmentActionDetailTextPlan {
+    // The final detail text from 0x12EAE uses source 0xD19B0 at 0xC51C.
+    std::uint16_t destination_tile_base = 0xC51CU;
+    std::uint16_t palette_flags = 0x6000U;
+};
+
+struct EquipmentActionDetailGridPlan {
+    EquipmentActionDetailAssetTable source_table =
+        EquipmentActionDetailAssetTable::normal_item_records;
+    std::uint8_t asset_index = 0;
+    std::uint16_t destination_tile_base = 0xC52AU;
+    std::uint16_t outer_loop_counter = 0;
+    std::uint16_t inner_loop_counter = 6U;
+    std::uint16_t palette_flags = 0x2000U;
+};
+
+struct EquipmentActionDetailRowInput {
+    std::uint8_t source_mode = 0;          // FFF0D0
+    std::int8_t display_state = 0;         // active record +0x56
+    std::uint8_t active_action_code = 0;  // active record +0x57
+    std::uint16_t cyberware_flags = 0;    // active record +0x90
+    std::uint8_t cyberware_base = 0;      // active record +0x79
+    std::uint8_t auxiliary_value = 0;     // active record +0x9D
+    // Result of the 0x12148 read used by 0x13000 in source modes below two.
+    std::optional<std::uint8_t> selected_action_code;
+    // Item/action row +0x26 consumed by 0x13000 when an action is nonzero.
+    std::optional<std::uint8_t> action_detail_code;
+    // Row +0x25 from 0xD4540 or 0xD4EA0. Its sign controls the early return
+    // before the final detail text/grid.
+    std::optional<std::int8_t> detail_asset_index;
+};
+
+struct EquipmentActionDetailRowCallbacks {
+    std::function<void(const EquipmentActionDetailHeaderPlan&)>
+        render_action_header;
+    std::function<void()> advance_entity_action_menu;
+    std::function<void(const ActionDetailRenderPlan&)>
+        publish_action_selection;
+    std::function<void(const EquipmentActionDetailTextPlan&)>
+        render_detail_text;
+    std::function<void(const EquipmentActionDetailGridPlan&)> write_grid;
+};
+
+struct EquipmentActionDetailRowResult {
+    std::optional<ActionDetailRenderPlan> action_selection;
+    std::optional<EquipmentActionDetailGridPlan> detail_grid;
+    bool action_header_rendered = false;
+    bool action_menu_advanced = false;
+    bool detail_text_rendered = false;
+    bool detail_grid_written = false;
+    bool early_return = false;
+    bool action_selection_missing = false;
+    bool detail_asset_missing = false;
+};
+
 // ROM 0x55ED6: byte-wrapped command overview base from attributes +0x78,
 // +0x7B, +0x7C and the first item-code-0x28 phase.
 std::uint16_t calculate_equipment_command_average(
@@ -302,5 +369,14 @@ ItemActionDetailResult render_item_action_details(
     const ItemActionDetailInput& input,
     ResourceVariantState& resource_variant,
     const ItemActionDetailCallbacks& callbacks = {});
+
+// ROM 0x12EAE: choose the no-active-action or selected-action branch, invoke
+// the 0x13000 typed label selector, then render the equipment detail text and
+// six-row detail grid. The source table choice and signed +0x25 early return
+// remain explicit in the input/result instead of being hidden behind a ROM
+// address lookup.
+EquipmentActionDetailRowResult render_equipment_action_detail_row(
+    const EquipmentActionDetailRowInput& input,
+    const EquipmentActionDetailRowCallbacks& callbacks = {});
 
 } // namespace shadowrun::ghidra_conversion

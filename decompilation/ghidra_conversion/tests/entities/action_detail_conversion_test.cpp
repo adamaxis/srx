@@ -6,6 +6,7 @@ int main() {
     EntityActionDetailInput entity{};
     entity.source_mode = 0U;
     entity.selected_action_code = 5U;
+    entity.action_detail_code = 5U;
     const auto selected = select_entity_action_detail(entity);
     if (!selected.has_value() || !selected->valid ||
         selected->label_index != 4U || selected->source_code != 5U) {
@@ -19,6 +20,12 @@ int main() {
     if (!cyberware.has_value() || cyberware->source_code != 4U ||
         cyberware->label_index != 3U) {
         return 2;
+    }
+
+    entity.selected_action_code = 5U;
+    entity.action_detail_code.reset();
+    if (select_entity_action_detail(entity).has_value()) {
+        return 10;
     }
 
     entity.source_mode = 2U;

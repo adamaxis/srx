@@ -471,6 +471,51 @@ boundaries; no runtime ROM address lookup or invented asset alias has been
 added. If the `0x12148` record lookup is unavailable, the conversion reports
 that missing source boundary instead of assuming action zero.
 
+### Equipment action-row selector and renderer: `0x13000` / `0x12EAE`
+
+The disassembly corrects another misleadingly generic family. `0x13000`
+always renders the action-detail heading, then selects a thirteen-entry label
+row. In source modes below two, the selected action comes from `0x12148`; a
+zero action falls back to active-record `+0x79` plus the first set bit in
+`+0x90` bits 5..8, contributing values 1..4. A nonzero action is not itself
+the label row: the routine reads that action's record `+0x26`, subtracts one,
+and clamps the result to 0..12. Higher modes use `+0x9D` directly when
+`+0x56` is negative; otherwise they use the active `+0x57` action and the
+same `+0x26` detail selector. Missing `+0x26` data is now an explicit source
+boundary in `select_entity_action_detail()` rather than an invented reuse of
+the action code.
+
+`0x12EAE` is the equipment detail-row controller around that selector. With
+no active action (`+0x57 == 0`), cyberware flags bit 3 wins over bit 2 for the
+initial detail asset; with neither set it renders `0xD1AA5` at `0xC538` and
+uses asset index one. For a higher-mode negative display state it renders the
+same header only for active action five, advances `0x12FA4`, then reads the
+alternate `0xD4EA0` row `+0x25`; the ordinary path reads `0xD4540` `+0x25`.
+A signed-negative row value returns before selection/text/grid output.
+
+After the `0x13000` selection, the routine renders the detail text from the
+`0xD19B0` family at `0xC51C`/`0x6000`, then writes six rows from the selected
+detail asset at `0xC52A`/`0x2000` (`D1=0`, `D7=6`). The conversion is now
+`ghidra_conversion::render_equipment_action_detail_row()` in the equipment
+menu module, with explicit source-table enums and typed callbacks for the
+header, action-menu advance, selected label, detail text, and detail grid.
+
+### Action-menu residual advance: `0x12FA4` / `0x10660`
+
+The source `0x12FA4` path is not an available-count test. It renders the
+action-menu heading from `0xD19B7` at `0xC49C`/`0x6000`, loads active-record
+`+0x9D` into `D4`, converts active `+0x57` to the zero-based `D4EA0` row by
+subtracting one, and calls `0x10660`. A positive residual selects the
+`0xCF8F0 + (residual - 1) * 0x0E` effect row and writes six rows at
+`0xC4AA`/`0x2000`; zero or negative residuals stop after the heading.
+
+This also corrected the shared residual conversion: zero is a valid first
+`D4EA0` row for `0x10660`, so `calculate_action_residual()` no longer rejects
+row index zero. `advance_entity_action_menu()` now takes a typed entity,
+current force, and decoded action record, and reports the exact residual/grid
+plan. An absent decoded action row is reported as an unresolved source-data
+boundary rather than treated as “one action remains.”
+
 ## Initial coherent C++ conversions
 
 `0x0330` and `0x0436` are no longer represented only as bus traces. The

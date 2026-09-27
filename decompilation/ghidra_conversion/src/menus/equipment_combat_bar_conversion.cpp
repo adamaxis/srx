@@ -587,4 +587,105 @@ ItemActionDetailResult render_item_action_details(
     return result;
 }
 
+EquipmentActionDetailRowResult render_equipment_action_detail_row(
+    const EquipmentActionDetailRowInput& input,
+    const EquipmentActionDetailRowCallbacks& callbacks) {
+    EquipmentActionDetailRowResult result{};
+    std::uint8_t detail_asset_index = 0U;
+    auto asset_table = EquipmentActionDetailAssetTable::normal_item_records;
+
+    const auto no_active_action = input.active_action_code == 0U;
+    if (no_active_action) {
+        // 0x12EBE-0x12EDE chooses a small detail asset from cyberware flags
+        // before entering 0x13000. Bit 3 wins over bit 2; with neither bit,
+        // the source renders the header and uses asset index one.
+        if ((input.cyberware_flags & (std::uint16_t{1U} << 3U)) != 0U) {
+            detail_asset_index = 1U;
+        } else if ((input.cyberware_flags & (std::uint16_t{1U} << 2U)) !=
+                   0U) {
+            detail_asset_index = 0U;
+        } else {
+            const EquipmentActionDetailHeaderPlan header{};
+            if (callbacks.render_action_header) {
+                callbacks.render_action_header(header);
+            }
+            result.action_header_rendered = true;
+            detail_asset_index = 1U;
+        }
+        asset_table = EquipmentActionDetailAssetTable::no_active_action;
+    } else if (input.display_state < 0 && input.source_mode >= 2U) {
+        // 0x12F00: the higher-mode negative-display path shows the same
+        // header for action index four (active code five), advances the
+        // action menu, then reads the alternate D4EA0 row.
+        if (input.active_action_code == 5U) {
+            const EquipmentActionDetailHeaderPlan header{};
+            if (callbacks.render_action_header) {
+                callbacks.render_action_header(header);
+            }
+            result.action_header_rendered = true;
+        }
+        if (callbacks.advance_entity_action_menu) {
+            callbacks.advance_entity_action_menu();
+        }
+        result.action_menu_advanced = true;
+        asset_table = EquipmentActionDetailAssetTable::alternate_action_records;
+    }
+
+    if (!no_active_action) {
+        if (!input.detail_asset_index.has_value()) {
+            // The row +0x25 read is source data, not a safe default.
+            result.detail_asset_missing = true;
+            return result;
+        }
+        if (*input.detail_asset_index < 0) {
+            // 0x12F46/0x12F4A return before the 0x13000 selection and final
+            // detail row when the signed source byte is negative.
+            result.early_return = true;
+            return result;
+        }
+        detail_asset_index = static_cast<std::uint8_t>(
+            *input.detail_asset_index);
+    }
+
+    EntityActionDetailInput selection_input{};
+    selection_input.source_mode = input.source_mode;
+    selection_input.selected_action_code = input.selected_action_code;
+    selection_input.action_detail_code = input.action_detail_code;
+    selection_input.display_state = input.display_state;
+    selection_input.active_action_code = input.active_action_code;
+    selection_input.auxiliary_value = input.auxiliary_value;
+    selection_input.cyberware_base = input.cyberware_base;
+    selection_input.cyberware_flags = input.cyberware_flags;
+    const auto selection = select_entity_action_detail(selection_input);
+    if (!selection.has_value()) {
+        // 0x13000's record/table lookup is an explicit conversion boundary.
+        result.action_selection_missing = true;
+        return result;
+    }
+    result.action_selection = selection;
+    if (callbacks.publish_action_selection) {
+        callbacks.publish_action_selection(*selection);
+    }
+
+    const EquipmentActionDetailTextPlan text_plan{};
+    if (callbacks.render_detail_text) {
+        callbacks.render_detail_text(text_plan);
+    }
+    result.detail_text_rendered = true;
+
+    const EquipmentActionDetailGridPlan grid_plan{
+        asset_table,
+        detail_asset_index,
+        0xC52AU,
+        0U,
+        6U,
+        0x2000U};
+    result.detail_grid = grid_plan;
+    if (callbacks.write_grid) {
+        callbacks.write_grid(grid_plan);
+    }
+    result.detail_grid_written = true;
+    return result;
+}
+
 } // namespace shadowrun::ghidra_conversion

@@ -1,7 +1,10 @@
 #pragma once
 
+#include "shadowrun_ghidra/entities/entity_action_math_conversion.hpp"
+
 #include <cstdint>
 #include <functional>
+#include <optional>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -15,16 +18,53 @@ void render_entity_action_menu(const std::function<void()>& update_menu,
                                const std::function<void()>& render_text,
                                const std::function<void()>& write_grid);
 
-struct EntityActionMenuState {
-    std::uint8_t available_count = 0;
+struct EntityActionMenuTextPlan {
+    // ROM 0x12FA8 source 0xD19B7 -> tile base 0xC49C.
+    std::uint16_t destination_tile_base = 0xC49CU;
+    std::uint16_t palette_flags = 0x6000U;
 };
 
-// ROM 0x12FA4: render the text, service the action state, and write the grid
-// only when more than one action remains.
-void advance_entity_action_menu(
-    EntityActionMenuState& state,
-    const std::function<void()>& render_text,
-    const std::function<void()>& service_action,
-    const std::function<void()>& write_grid);
+struct EntityActionMenuGridPlan {
+    // ROM 0x12FD6 source 0xCF8F0 + (residual - 1) * 0x0E -> 0xC4AA.
+    std::uint16_t residual_row = 0;
+    std::uint16_t destination_tile_base = 0xC4AAU;
+    std::uint16_t outer_loop_counter = 0;
+    std::uint16_t inner_loop_counter = 6U;
+    std::uint16_t palette_flags = 0x2000U;
+};
+
+struct EntityActionMenuAdvanceInput {
+    EntityActionRecord entity{};
+    // Active record +0x57. The source subtracts one before entering
+    // 0x10660, so action code one selects the valid zero-based row zero.
+    std::uint8_t active_action_code = 0;
+    // Active record +0x9D, copied into D4 as the current action force.
+    std::uint8_t current_force = 0;
+    // Decoded row from the source D4EA0 action table. A missing row is an
+    // unresolved source-data boundary, not a generic available-count gate.
+    std::optional<EntityActionCatalogRecord> action_record;
+};
+
+struct EntityActionMenuAdvanceCallbacks {
+    std::function<void(const EntityActionMenuTextPlan&)> render_text;
+    std::function<void(const EntityActionMenuGridPlan&)> write_grid;
+};
+
+struct EntityActionMenuAdvanceResult {
+    std::optional<std::uint8_t> action_row_index;
+    bool text_rendered = false;
+    bool residual_calculated = false;
+    bool detail_grid_written = false;
+    bool action_record_missing = false;
+    std::int16_t residual_effect = 0;
+    std::optional<EntityActionMenuGridPlan> detail_grid;
+};
+
+// ROM 0x12FA4: render the action-menu heading, calculate the selected
+// action's residual through 0x10660, and write the residual-minus-one detail
+// grid only when that signed result is positive.
+EntityActionMenuAdvanceResult advance_entity_action_menu(
+    const EntityActionMenuAdvanceInput& input,
+    const EntityActionMenuAdvanceCallbacks& callbacks = {});
 
 } // namespace shadowrun::ghidra_conversion

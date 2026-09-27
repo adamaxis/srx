@@ -41,6 +41,10 @@ struct ActionDetailRenderPlan {
 struct EntityActionDetailInput {
     std::uint8_t source_mode = 0;          // FFF0D0
     std::optional<std::uint8_t> selected_action_code;
+    // Item/action record +0x26, read by ROM 0x13000 when the selected action
+    // is nonzero. Keeping this separate from selected_action_code preserves
+    // the source's two table lookups.
+    std::optional<std::uint8_t> action_detail_code;
     std::int8_t display_state = 0;         // active record +0x56
     std::uint8_t active_action_code = 0;   // active record +0x57
     std::uint8_t auxiliary_value = 0;     // active record +0x9D
