@@ -1004,8 +1004,9 @@ The native conversion is `apply_selected_field_action()` in the separate
   its message and waits, and funds are deducted only after the prompt accepts.
   Cancel, no-slot, insufficient-funds, and special capacity outcomes leave
   the runner record and funds unchanged. A special capacity rejection first
-  restores the visible count to `0x14`, refreshes the detail panel again, and
-  renders its limit message.
+  restores the visible count to `0x14`, refreshes the detail panel again,
+  renders its limit message, and waits through the shared controller-wait
+  path before returning.
 
 `0x57B8C` is now labeled `run_menu_confirmation_prompt`: it draws the
 two-choice prompt, services vblank/controller input, uses the shared wrapped

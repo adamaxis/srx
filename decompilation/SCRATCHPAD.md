@@ -2061,6 +2061,12 @@ host margin. The quantity-cost helper was checked alongside it; its preceding
 `TST.B` gate means high-bit category bytes take the cubic path, so the existing
 typed category condition already matches the source domain.
 
+The `0x5794E` action-application audit then found that the special-action
+capacity branch was returning too early. The source refreshes the detail panel,
+shows the `0x15` limit feedback, waits for the controller event, and only then
+returns with the count restored to `0x14`; the typed callback sequence now does
+the same.
+
 The title setup module now also owns `0x12F6`: its DBF `0x10` loop is exposed
 as `advance_title_palette_fade`, with the source ordering of frame wait,
 palette-step, and dirty-mark callbacks tested across all 17 passes.

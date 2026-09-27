@@ -203,6 +203,12 @@ case is covered by a focused test. The neighboring `0x5787C` quantity helper
 was checked as well; its preceding `TST.B` gate already makes its typed
 category condition equivalent over the full byte domain.
 
+The `0x5794E` special-action capacity branch also had a missing blocking
+boundary. After incrementing and restoring the `0x14` visible count, the ROM
+refreshes the detail panel, displays the limit feedback, and enters the shared
+controller wait before returning. The typed conversion now preserves that
+callback order.
+
 The generated Ghidra C remains an evidence snapshot and still omits meaningful
 logic for some of these entries, including `0x3602` and `0x55828`; the typed
 conversion is accepted only where the ROM instruction trace and focused test

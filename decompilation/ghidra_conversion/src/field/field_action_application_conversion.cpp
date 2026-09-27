@@ -74,6 +74,9 @@ FieldActionApplicationResult apply_selected_field_action(
             if (callbacks.show_special_action_limit) {
                 callbacks.show_special_action_limit();
             }
+            if (callbacks.wait_for_controller_event) {
+                callbacks.wait_for_controller_event();
+            }
             return FieldActionApplicationResult::special_action_limit;
         }
     }

@@ -98,9 +98,9 @@ int main() {
                     special_record, context, capped, {}, callbacks) ==
                     FieldActionApplicationResult::special_action_limit &&
                 capped.runner.special_action_count == 0x14U &&
-                events.size() == 14U && events[10] == "refresh" &&
+                events.size() == 15U && events[10] == "refresh" &&
                 events[11] == "confirm" && events[12] == "refresh" &&
-                events[13] == "limit")) {
+                events[13] == "limit" && events[14] == "wait")) {
         return 6;
     }
 
@@ -109,7 +109,7 @@ int main() {
                     invalid, context, state,
                     [](const std::uint8_t) { return 0U; }, callbacks) ==
                 FieldActionApplicationResult::invalid_record &&
-                state.service_result == -1 && events.size() == 14U)) {
+                state.service_result == -1 && events.size() == 15U)) {
         return 7;
     }
 
