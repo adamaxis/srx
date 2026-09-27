@@ -38,3 +38,17 @@ scaling and forwards keyboard edges into the same C++ `InputState` used by the
 tests. Native Qt buttons would introduce platform chrome and a second menu
 state machine, so the Genesis panels, focus blocks, inventory cursor, and
 timing remain source-rendered inside the widget.
+
+## Full Visual Studio CMake build
+
+If using Visual Studio 2022 rather than VS Code, open the repository folder as
+a CMake project. The root `CMakeLists.txt` is an IDE-only umbrella: it keeps
+`decompilation/` and `decompilation/ghidra_conversion/` as separate source
+projects while exposing both target families to Visual Studio's build and
+startup-item bars.
+
+Choose the `Shadowrun IDE (Debug, MSYS2 UCRT64)` configure preset, then choose
+`Build Ghidra Conversion (IDE Debug)`. The startup-item list contains
+`shadowrun_ghidra_conversion_runner`; its debugger arguments already point at
+`decompilation/assets`. The root umbrella does not link the conversion into
+the native port or emulator.

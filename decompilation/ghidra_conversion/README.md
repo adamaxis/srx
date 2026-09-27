@@ -27,6 +27,12 @@ or the repository folder. CMake Tools exposes this directory as a separate
 active project alongside the native-port project. Use `CMake: Select Active
 Folder` to choose this directory before selecting its configure/build preset.
 
+For full Visual Studio 2022, open the repository root as a CMake project and
+choose the `Shadowrun IDE (Debug, MSYS2 UCRT64)` configure preset. The IDE-only
+root umbrella exposes `Build Ghidra Conversion (IDE Debug)` and the
+`shadowrun_ghidra_conversion_runner` startup item without merging this source
+tree into the native-port runtime.
+
 ```text
 C:/msys64/ucrt64/bin/cmake.exe --preset ghidra-conversion-debug
 C:/msys64/ucrt64/bin/cmake.exe --build --preset ghidra-conversion-debug
