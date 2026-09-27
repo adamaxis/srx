@@ -547,6 +547,20 @@ ordinary C++ data construction. `ShadowrunBoot` retains a narrow bus adapter
 for source-verification tests, while the host result is independent of Genesis
 addressed memory.
 
+## Mode resource copy family: 0x566C2 / 0x566D8..0x5670E
+
+The direct ROM sweep corrected several misleading labels in this adjacent
+family. `0x566C2` copies 24 longwords from the fixed source table at
+`0x18AC56` into the mode-selection working table at `FFD91E`; it is not a
+metadata refresh. `0x566D8`, `0x566E2`, `0x566EC`, and `0x566F6` are four
+entry points into one eight-longword copy loop at `0x566FC`, targeting
+`FFD87E`, `FFD89E`, `FFD8BE`, and `FFD8DE` respectively and setting `FFEF14`
+bit 0. `0x5670E` copies the same 24-longword source block into the latter
+three destinations in one pass. The typed conversion is therefore one
+`ModeResourcePaletteBanks` model plus `copy_mode_resource_palette_bank()` and
+`copy_mode_palette_block()`, with the entry-point bank selected explicitly;
+there are no four duplicated host routines or source-address lookups.
+
 ## Field mode service conversion: 0x56AC0 / 0x566EC
 
 `0x56AC0` is the outer field-mode service controller, not an intro routine.

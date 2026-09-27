@@ -1,5 +1,7 @@
 #include "shadowrun_ghidra/menus/menu_selection_timing_conversion.hpp"
 
+#include "shadowrun_ghidra/menus/menu_hud_service_conversion.hpp"
+
 namespace shadowrun::ghidra_conversion {
 namespace {
 
@@ -57,6 +59,18 @@ MenuSelectionTimingResult advance_menu_selection_service_timer(
     record->service_timer = 0;
     roll_shared_phase_counter(state);
     return {MenuSelectionTimingAction::expired, false};
+}
+
+MenuSelectionServiceRefreshResult advance_menu_selection_service_and_refresh(
+    MenuSelectionTimingState& state,
+    const std::uint8_t previous_effect_count,
+    const MenuSelectionServiceRefreshCallbacks& callbacks) {
+    const auto delta = static_cast<std::uint8_t>(previous_effect_count >> 1U);
+    const auto timing = advance_menu_selection_service_timer(
+        state, delta, callbacks.timing_callbacks);
+    const auto refreshed = refresh_hud_grid_if_ready(
+        callbacks.hud_grid_ready, callbacks.write_hud_grid);
+    return {timing, refreshed};
 }
 
 MenuSelectionTimingResult advance_menu_selection_variant_timer(

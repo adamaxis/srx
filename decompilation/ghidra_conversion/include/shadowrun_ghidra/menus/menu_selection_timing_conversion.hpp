@@ -32,6 +32,15 @@ struct MenuSelectionTimingCallbacks {
     std::function<void()> clear_selected_menu_record;
 };
 
+struct MenuSelectionServiceRefreshCallbacks {
+    MenuSelectionTimingCallbacks timing_callbacks;
+    // ROM 0x17E04's recovered readiness predicate and repeated HUD-grid
+    // writer. The source helper performs three writes when the predicate is
+    // true and none when it is false.
+    std::function<bool()> hud_grid_ready;
+    std::function<void()> write_hud_grid;
+};
+
 enum class MenuSelectionTimingAction {
     updated,
     expired,
@@ -50,6 +59,20 @@ MenuSelectionTimingResult advance_menu_selection_service_timer(
     MenuSelectionTimingState& state,
     std::uint8_t delta,
     const MenuSelectionTimingCallbacks& callbacks);
+
+struct MenuSelectionServiceRefreshResult {
+    MenuSelectionTimingResult timing{};
+    bool hud_grid_refreshed = false;
+};
+
+// ROM 0x5668C: derive the service delta as half of the previous world-effect
+// count, advance record +0x0F through 0x56434, then call 0x17E04 for the HUD
+// refresh. This is kept as one typed operation because the source routine is
+// the shared boundary used by the menu-selection countdown.
+MenuSelectionServiceRefreshResult advance_menu_selection_service_and_refresh(
+    MenuSelectionTimingState& state,
+    std::uint8_t previous_effect_count,
+    const MenuSelectionServiceRefreshCallbacks& callbacks);
 
 // ROM 0x56482: clear the intro marker, subtract the variant delta from record
 // +0x10, and clear the selected menu record when the signed byte expires.
