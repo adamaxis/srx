@@ -26,7 +26,7 @@ struct FieldActionDetailTableSelection {
     FieldActionDetailTableFamily family =
         FieldActionDetailTableFamily::negative_cursor_zero;
     std::int16_t menu_mode_delta = 0;
-    std::int8_t primary_cursor = 0;
+    std::int8_t action_cursor = 0;
 };
 
 enum class FieldActionCostSummaryTableFamily {
@@ -37,7 +37,7 @@ enum class FieldActionCostSummaryTableFamily {
 struct FieldActionCostSummarySelection {
     FieldActionCostSummaryTableFamily family =
         FieldActionCostSummaryTableFamily::other_menu_modes;
-    std::int8_t primary_cursor = 0;
+    std::int8_t action_cursor = 0;
 };
 
 enum class FieldActionSelectionRenderKind {
@@ -59,8 +59,8 @@ enum class FieldActionSelectionRenderKind {
 struct FieldActionSelectionRenderState {
     std::uint8_t menu_mode = 0; // FFF0B6
     std::int8_t menu_result = 0; // FFF0B7
-    std::int8_t saved_selection = 0; // FFF0B8
-    std::int8_t primary_cursor = 0; // FFF0D0
+    std::int8_t selected_action = 0; // FFF0B8
+    std::int8_t action_cursor = 0; // FFF0D0
 };
 
 struct FieldActionSelectionRenderPlan {
@@ -79,7 +79,7 @@ struct FieldActionSelectionRenderPlan {
     std::optional<MenuResourceEntry> resource_entry;
     std::optional<FieldActionCostSummarySelection> cost_summary;
     std::optional<std::uint8_t> feedback_mode;
-    std::int8_t primary_cursor = 0;
+    std::int8_t action_cursor = 0;
     std::int16_t dynamic_table_index = 0;
     bool suppress_runner_cost = false;
 };

@@ -8,12 +8,13 @@
 
 namespace shadowrun::ghidra_conversion {
 
-// Controller bits consumed by the field-mode service loop at ROM 0x56AC0.
-enum class FieldModeServiceInput : std::uint16_t {
-    primary_decrement = 0x0004U,
-    panel_decrement = 0x0001U,
-    primary_increment = 0x0008U,
-    panel_increment = 0x0002U,
+// Controller bits consumed by the field-action selection service at ROM
+// 0x56AC0.
+enum class FieldActionSelectionServiceInput : std::uint16_t {
+    action_cursor_decrement = 0x0004U,
+    action_panel_decrement = 0x0001U,
+    action_cursor_increment = 0x0008U,
+    action_panel_increment = 0x0002U,
     restart_setup = 0x0020U,
     confirm = 0x0040U,
     alternate_confirm = 0x0010U,
@@ -32,7 +33,7 @@ void copy_field_mode_palette_bank(
     std::uint8_t& display_dirty_flags);
 
 struct FieldModeServiceState {
-    FieldModeNavigationState navigation{};
+    FieldActionSelectionNavigationState action_selection{};
     std::int8_t service_result = 0; // FFF112
     std::int8_t selection_marker = -1; // low byte of FFF0C2
     bool has_deck = false; // source condition is FF018F bit 0 clear
@@ -67,9 +68,10 @@ struct FieldModeServiceCallbacks {
     // 0x587DA is the converted selection-presentation module. It receives the
     // typed state after the source has saved the current primary selection;
     // the callback keeps the source record table and host renderer separate.
-    std::function<void(FieldModeServiceState&)> render_selection_presentation;
+    std::function<void(FieldModeServiceState&)>
+        render_field_action_selection_presentation;
 
-    FieldModeNavigationCallbacks navigation_callbacks;
+    FieldActionSelectionNavigationCallbacks action_selection_callbacks;
 
     std::function<void()> wait_for_vblank;
     std::function<void()> latch_controller_events;
@@ -82,21 +84,22 @@ struct FieldModeServiceCallbacks {
     // 0x56DC4's top-level result/selection routing is converted by
     // field_action_selection_dispatch_conversion. The selected leaf still
     // owns its own typed state and remains a callback boundary here.
-    std::function<void(FieldModeServiceState&)> run_selected_action;
+    std::function<void(FieldModeServiceState&)> dispatch_selected_field_action;
 
     // 0x58D32's post-build call to 0x57C7A. This is distinct from the
     // 0x587DA presentation callback above.
-    std::function<void(FieldModeServiceState&)> render_action_selection;
+    std::function<void(FieldModeServiceState&)>
+        render_field_action_selection;
 };
 
 enum class FieldModeServiceLoopAction {
     returned_to_field,
 };
 
-// ROM 0x56AC0: initialize the field service presentation, run its panel and
-// selection loop, and restore the field presentation on cancel/return. This
-// is a conversion/reference routine only; the native game runtime does not
-// depend on Genesis VDP state or ROM addresses.
+// ROM 0x56AC0: initialize the field-action menu presentation, run its action
+// panel/selection loop, and restore the field presentation on cancel/return.
+// This is a conversion/reference routine only; the native game runtime does
+// not depend on Genesis VDP state or ROM addresses.
 FieldModeServiceLoopAction run_field_mode_service(
     FieldModeServiceState& state,
     const FieldModeServiceCallbacks& callbacks);

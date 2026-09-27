@@ -1200,13 +1200,15 @@ The adjacent leaves are now named by proven behavior: `0x54A28` is
 conversion batch because their callers and effects are mode-presentation
 operations, not audio services.
 
-The field-mode selector leaves at `0x58B5E`, `0x58BB6`, `0x58C54`, `0x58CDE`,
-and `0x58D32` are now converted in `field_mode_navigation_conversion`. The
-normal and alternate panel redraws preserve their separate grid/text passes;
-the primary cursor uses the source result-dependent bounds `0..3`, `0..5`, or
-`0..7`; the panel cursor clamps to `0..1` and resets the primary cursor; and
-the alternate path publishes the source sprite-list/display dirty markers.
-The `0x58D32` sprite plan now records the primary-cursor `* 0x20` source row,
+The field-action menu selector leaves at `0x58B5E`, `0x58BB6`, `0x58C54`,
+`0x58CDE`, and `0x58D32` are now converted in
+`field_mode_navigation_conversion` under explicit `FieldActionSelection*`
+names. The normal and alternate action-panel redraws preserve their separate
+grid/text passes; the action-row cursor uses the source result-dependent bounds
+`0..3`, `0..5`, or `0..7`; the action-panel selector clamps to `0..1` and
+resets the action-row cursor; and the alternate path publishes the source
+sprite-list/display dirty markers. The `0x58D32` sprite plan now records the
+action-row cursor `* 0x20` source row,
 the three-record build counter, and the `0x4000` sprite attribute; after the
 build it explicitly invokes the `0x57C7A` action-selection boundary. That
 post-build action redraw is separate from the later `0x587DA` presentation
@@ -1214,11 +1216,12 @@ pass, matching the ROM call order. The remaining sprite-service internals
 remain callbacks, but the cursor mutations and presentation order are no
 longer generic intro labels or raw global writes.
 
-The adjacent field-mode presentation dispatcher at `0x587DA` is now also
-source-shaped at the behavior level. It saves `FFF0D0` into `FFF0B8`, keeps
-the three negative-result marker tables separate (`0x1AAC86`, `0x1AADBF`,
-and `0x1AAD77`), and routes cursor 3 to the six-plus-two grid batch while
-later cursors use the glyph-row transfer. Its zero-result path does not treat
+The adjacent field-action presentation dispatcher at `0x587DA` is now also
+source-shaped at the behavior level. It saves the action-row cursor `FFF0D0`
+into the selected-action field `FFF0B8`, keeps the three action-detail marker
+tables separate (`0x1AAC86`, `0x1AADBF`, and `0x1AAD77`), and routes action
+cursor 3 to the six-plus-two detail-grid batch while later cursors use the
+active-runner inventory-item glyph transfer. Its zero-result path does not treat
 cursor 0 as a glyph row: the source `CMP.B #1`/`BMI` selects the dynamic action
 table `0x1AAF40 + (menu_mode - 3) * 0x20`; cursor 3 alone uses the glyph row,
 with the fixed table and selection-one table retained as separate choices.
@@ -1228,24 +1231,27 @@ ordering. The native conversion exposes those table families through typed
 callbacks and keeps the marker/grid loops independent of ROM addresses.
 
 The helper data is no longer anonymous either. `0x58A2E` exposes the `E`
-grid sentinel and the source low/high glyph-plane split; `0x58AA4` models the
-eight active-runner item bytes at `+0x66..+0x6D`, including zero-to-blank and
+sentinel used by field-action detail records to select a detail grid and the
+source low/high glyph-plane split; `0x58AA4` models the eight active-runner
+inventory item bytes at `+0x66..+0x6D`, including zero-to-blank and
 nonzero-to-`(item_code - 1)` item-definition selection before the transfer.
-The panel helpers now expose result-specific plans: `0x58B5E` has 18-grid
-negative/positive panels, a 12-grid zero-result panel, and a suppressed
-result-one path, while `0x58BB6` applies the source cursor strides for its
-grid and encoded-text records. The old callback forms remain available for
-the conversion harness, but the source-derived data can now be consumed by a
-typed native presenter.
+The action-panel helpers now expose result-specific plans: `0x58B5E` has
+detail-result, ordinary-action-result, resource-purchase, and suppressed
+equipment-upgrade paths, while `0x58BB6` applies the selected action cursor's
+source strides for its grid and encoded-text records. The old callback forms
+remain available for the conversion harness, but the source-derived data can
+now be consumed by a typed native presenter.
 
 The positive-result branch of `0x587DA` is likewise split by source behavior:
-cursor 3 uses the menu-mode-dependent `0x1AB196` resource-row table and its
-marker-selected grid, cursor 5 uses the five-plus-three table pair, and other
-positive cursors use the four-plus-four pair. Cursors below 3 use the selected
-menu-resource record and the blank-versus-`marker * 0x0C` grid rule. The
-conversion exposes those choices as `FieldModePositiveGridPlan` and
-`FieldModeResourceGridRowPlan` rather than collapsing them into a count of
-eight grid writes.
+action cursor 3 uses the menu-mode-dependent `0x1AB196` field-resource-record
+purchase table and its marker-selected grid, action cursor 5 uses the
+field-quantity purchase five-plus-three table pair, and other positive action
+cursors use the field-resource purchase four-plus-four pair. Action cursors
+below 3 use the selected menu-resource record and the blank-versus
+`marker * 0x0C` Matrix-program description grid rule. The conversion exposes
+those choices as `FieldActionSelectionPositiveGridPlan` and
+`FieldActionSelectionResourceGridRowPlan` rather than collapsing them into a
+count of eight grid writes.
 
 The two positive row paths now carry their source marker arrays through the
 conversion state: cursor 3 has eight `0x0E`-stride markers whose sign selects

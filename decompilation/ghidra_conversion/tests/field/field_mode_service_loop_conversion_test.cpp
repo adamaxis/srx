@@ -25,7 +25,7 @@ int main() {
     }
 
     FieldModeServiceState normal{};
-    normal.navigation.mode_result = 0;
+    normal.action_selection.menu_result = 0;
     std::vector<std::string> order;
     // The source returns to the vblank loop immediately after a directional
     // branch. Confirm in the same sample must therefore be ignored here.
@@ -58,7 +58,7 @@ int main() {
         [&] { order.emplace_back("field_animation"); },
         [&] { order.emplace_back("field_setup"); },
         [&](FieldModeServiceState&) { ++selection_renders; },
-        FieldModeNavigationCallbacks{
+        FieldActionSelectionNavigationCallbacks{
             [&] { order.emplace_back("prepare_selection"); },
             [&] { order.emplace_back("grid"); },
             [&] { order.emplace_back("selection_text"); },
@@ -82,15 +82,15 @@ int main() {
 
     if (!expect(run_field_mode_service(normal, callbacks) ==
                     FieldModeServiceLoopAction::returned_to_field &&
-                normal.returned_to_field && normal.navigation.primary_cursor == 0 &&
-                normal.navigation.panel_cursor == 0 && restart_calls == 1 &&
+                normal.returned_to_field && normal.action_selection.action_cursor == 0 &&
+                normal.action_selection.action_panel == 0 && restart_calls == 1 &&
                 selection_renders == 2 && normal.palette_bank_words == source &&
-                normal.navigation.display_dirty_flags == 1U && actions == 0)) {
+                normal.action_selection.display_dirty_flags == 1U && actions == 0)) {
         return 2;
     }
 
     FieldModeServiceState alternate{};
-    alternate.navigation.mode_result = 1;
+    alternate.action_selection.menu_result = 1;
     alternate.has_deck = true;
     inputs = {0x0040U, 0x0040U, 0x0080U};
     input_index = 0;
@@ -98,11 +98,11 @@ int main() {
     int action_selection_renders = 0;
     const auto alternate_callbacks = [&]() {
         auto copy = callbacks;
-        copy.render_action_selection = [&](FieldModeServiceState&) {
+        copy.render_field_action_selection = [&](FieldModeServiceState&) {
             ++action_selection_renders;
             order.emplace_back("action_selection");
         };
-        copy.run_selected_action = [&](FieldModeServiceState& state) {
+        copy.dispatch_selected_field_action = [&](FieldModeServiceState& state) {
             ++action_attempts;
             state.service_result = action_attempts == 1 ? -1 : 0;
         };
@@ -110,13 +110,13 @@ int main() {
     }();
     if (!expect(run_field_mode_service(alternate, alternate_callbacks) ==
                     FieldModeServiceLoopAction::returned_to_field &&
-                alternate.navigation.panel_cursor == 1 && action_attempts == 2 &&
+                alternate.action_selection.action_panel == 1 && action_attempts == 2 &&
                 action_selection_renders == 2 && alternate.returned_to_field)) {
         return 3;
     }
 
     FieldModeServiceState no_deck{};
-    no_deck.navigation.mode_result = 2;
+    no_deck.action_selection.menu_result = 2;
     no_deck.has_deck = false;
     inputs = {0x0080U};
     input_index = 0;

@@ -252,33 +252,37 @@ high-bit bytes no longer get reinterpreted through host signed ordering. The
 and for its long `CMPI.L #0x10000/BPL` cost split. Focused tests cover the
 overflow-sensitive paths.
 
-The adjacent field-mode presentation routine at `0x587DA` was audited against
-the same byte-flag rule. Negative cursor values select the dedicated source
-tables at `0x1AAC86`, `0x1AADBF`, and `0x1AAD77`, cursor 3 takes the
-six-plus-two grid batch, and later cursors take the glyph-row transfer. In the
-zero-result path, cursor 0 selects the dynamic action table after
+The adjacent field-action presentation routine at `0x587DA` was audited
+against the same byte-flag rule. Negative action-row cursor values select the
+dedicated action-detail tables at `0x1AAC86`, `0x1AADBF`, and `0x1AAD77`,
+action cursor 3 takes the six-plus-two detail-grid batch, and later cursors
+take the active-runner inventory-item glyph transfer. In the ordinary-action
+result path, action cursor 0 selects the dynamic action table after
 `CMP.B #1`/`BMI`; it does not use the glyph row. The native conversion keeps
 the `CMP.B #2`, `CMP.B #3`, and `CMP.B #1` N-only boundaries as wrapped byte
 flag tests, with focused coverage for ordinary and high-bit cursor bytes.
 
 The helper audit also exposed the data formerly hidden behind generic counts.
-`0x58A2E` uses marker `E` as its grid sentinel and otherwise transfers glyphs
-with the source blank/high-plane and `CMP.B #0x0F` palette split. `0x58AA4`
-reads eight active-runner item bytes at `+0x66..+0x6D`, maps nonzero values to
-the `(item_code - 1)` item-definition row, and uses the blank asset for zero
-before its result-selection-4 text call. `0x58B5E` and `0x58BB6` now expose
-typed result-specific plans for their panel assets, write counts, grid/text
-families, and cursor strides; the legacy callbacks remain only as host
-presentation boundaries.
+`0x58A2E` uses marker `E` as the field-action detail-grid sentinel and
+otherwise transfers glyphs with the source blank/high-plane and
+`CMP.B #0x0F` palette split. `0x58AA4` reads eight active-runner inventory
+item bytes at `+0x66..+0x6D`, maps nonzero values to the `(item_code - 1)`
+item-definition row, and uses the blank asset for zero before its
+selected-action-4 text call. `0x58B5E` and `0x58BB6` now expose typed
+detail-result, ordinary-action-result, equipment-upgrade, resource-purchase,
+grid/text-family, and action-cursor-stride plans; the legacy callbacks remain
+only as host presentation boundaries.
 
 The positive-result branch of `0x587DA` was also corrected at the data-family
-level. Primary cursor 3 selects the `0x1AB196` row table, with menu mode 6 at
-the base row and other menu modes at `+0x70`; each row's marker chooses the
-blank grid or `0xCE29A`. Cursor 5 uses the `0x1AC9B4` five-plus-three split,
-other positive cursors use the `0x1AC9F0` four-plus-four split, and cursors
-below 3 use the saved resource record with the blank-versus-`0x1AC90C +
-marker * 0x0C` rule. Focused tests now assert these typed plans and exercise
-the cursor-3 renderer path.
+level. Action cursor 3 selects the `0x1AB196` field-resource-record purchase
+table, with menu mode 6 at the base row and other menu modes at `+0x70`; each
+row's marker chooses the blank grid or `0xCE29A`. Action cursor 5 uses the
+`0x1AC9B4` field-quantity purchase five-plus-three split, other positive
+action cursors use the `0x1AC9F0` field-resource purchase four-plus-four split,
+and action cursors below 3 use the selected menu-resource record with the
+blank-versus-`0x1AC90C + marker * 0x0C` Matrix-program description rule.
+Focused tests now assert these typed plans and exercise the field-resource
+record-purchase renderer path.
 
 Those positive branches now carry their eight source row markers through the
 typed state. Cursor 3 uses the `0x0E`-stride markers only as sign tests for

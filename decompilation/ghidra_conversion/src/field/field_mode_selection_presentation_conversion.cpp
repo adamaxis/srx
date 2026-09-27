@@ -10,17 +10,17 @@ bool source_cmp_byte_is_negative(const std::int8_t value,
     return (static_cast<std::uint8_t>(value) - immediate) & 0x80U;
 }
 
-FieldModeGlyphPalettePlane glyph_palette_for_marker(
+FieldActionSelectionGlyphPalettePlane glyph_palette_for_marker(
     const std::uint8_t marker) {
     if ((marker & 0x80U) != 0U) {
         // 0x58A2E takes the negative-marker path to the blank glyph and the
         // transfer call without running the #0x0F comparison.
-        return FieldModeGlyphPalettePlane::high_0x6000;
+        return FieldActionSelectionGlyphPalettePlane::high_0x6000;
     }
     return source_cmp_byte_is_negative(static_cast<std::int8_t>(marker),
                                        0x0FU)
-               ? FieldModeGlyphPalettePlane::low_0x2000
-               : FieldModeGlyphPalettePlane::high_0x6000;
+               ? FieldActionSelectionGlyphPalettePlane::low_0x2000
+               : FieldActionSelectionGlyphPalettePlane::high_0x6000;
 }
 
 template <typename Callback, typename... Args>
@@ -39,18 +39,19 @@ void repeat(const std::size_t count,
 
 } // namespace
 
-FieldModeRecordPresentationPlan plan_field_mode_record(
+FieldActionSelectionRecordPresentationPlan plan_field_action_selection_record(
     const std::uint8_t marker) {
-    FieldModeRecordPresentationPlan plan{};
+    FieldActionSelectionRecordPresentationPlan plan{};
     plan.marker = marker;
     plan.writes_grid = marker == static_cast<std::uint8_t>('E');
     plan.glyph_palette = glyph_palette_for_marker(marker);
     return plan;
 }
 
-FieldModeInventoryGlyphPlan plan_field_mode_inventory_glyph(
+FieldActionSelectionInventoryGlyphPlan
+plan_field_action_selection_inventory_glyph(
     const std::uint8_t item_code) {
-    FieldModeInventoryGlyphPlan plan{};
+    FieldActionSelectionInventoryGlyphPlan plan{};
     plan.item_code = item_code;
     plan.uses_blank_asset = item_code == 0U;
     if (!plan.uses_blank_asset) {
@@ -59,52 +60,59 @@ FieldModeInventoryGlyphPlan plan_field_mode_inventory_glyph(
     return plan;
 }
 
-FieldModePositiveGridPlan plan_field_mode_positive_grid(
+FieldActionSelectionPositiveGridPlan plan_field_action_selection_positive_grid(
     const std::uint8_t menu_mode,
-    const std::int8_t saved_selection,
-    const std::int8_t primary_cursor,
-    const std::int8_t mode_result) {
-    FieldModePositiveGridPlan plan{};
+    const std::int8_t selected_action,
+    const std::int8_t action_cursor,
+    const std::int8_t menu_result) {
+    FieldActionSelectionPositiveGridPlan plan{};
     plan.menu_mode = menu_mode;
-    plan.primary_cursor = primary_cursor;
-    if (mode_result == 1) {
-        plan.kind = FieldModePositiveGridPlanKind::result_one;
+    plan.action_cursor = action_cursor;
+    if (menu_result == 1) {
+        plan.kind =
+            FieldActionSelectionPositiveGridPlanKind::equipment_upgrade_result;
         plan.first_grid_count = 8U;
         return plan;
     }
-    if (source_cmp_byte_is_negative(primary_cursor, 3U)) {
-        plan.kind = FieldModePositiveGridPlanKind::resource_description;
+    if (source_cmp_byte_is_negative(action_cursor, 3U)) {
+        plan.kind = FieldActionSelectionPositiveGridPlanKind::
+            matrix_program_resource_description;
         plan.first_grid_count = 8U;
         plan.selects_menu_resource = true;
         plan.selected_resource = select_menu_resource(menu_mode,
-                                                      saved_selection);
+                                                      selected_action);
         return plan;
     }
-    if (primary_cursor == 3) {
-        plan.kind = FieldModePositiveGridPlanKind::cursor_three_resource_rows;
+    if (action_cursor == 3) {
+        plan.kind = FieldActionSelectionPositiveGridPlanKind::
+            field_resource_record_purchase_rows;
         plan.resource_table_family =
             menu_mode == 6U
-                ? FieldModePositiveResourceTableFamily::menu_mode_six
-                : FieldModePositiveResourceTableFamily::other_menu_modes;
+                ? FieldActionSelectionPositiveResourceTableFamily::
+                      mode_six_resource_records
+                : FieldActionSelectionPositiveResourceTableFamily::
+                      other_mode_resource_records;
         plan.resource_table_offset = menu_mode == 6U ? 0U : 0x70U;
         plan.first_grid_count = 8U;
         return plan;
     }
-    if (primary_cursor == 5) {
-        plan.kind = FieldModePositiveGridPlanKind::cursor_five_split;
+    if (action_cursor == 5) {
+        plan.kind = FieldActionSelectionPositiveGridPlanKind::
+            field_quantity_purchase_split;
         plan.first_grid_count = 5U;
         plan.second_grid_count = 3U;
         return plan;
     }
-    plan.kind = FieldModePositiveGridPlanKind::cursor_other_split;
+    plan.kind = FieldActionSelectionPositiveGridPlanKind::field_resource_purchase_split;
     plan.first_grid_count = 4U;
     plan.second_grid_count = 4U;
     return plan;
 }
 
-FieldModeResourceGridRowPlan plan_field_mode_resource_grid_row(
+FieldActionSelectionResourceGridRowPlan
+plan_field_action_selection_resource_grid_row(
     const std::uint8_t marker) {
-    FieldModeResourceGridRowPlan plan{};
+    FieldActionSelectionResourceGridRowPlan plan{};
     plan.marker = marker;
     plan.uses_blank_grid = (marker & 0x80U) != 0U;
     if (!plan.uses_blank_grid) {
@@ -114,38 +122,39 @@ FieldModeResourceGridRowPlan plan_field_mode_resource_grid_row(
     return plan;
 }
 
-FieldModePositiveResourceRowPlan plan_field_mode_positive_resource_row(
+FieldActionSelectionPositiveResourceRowPlan
+plan_field_action_selection_positive_resource_row(
     const std::uint8_t marker) {
     return {marker, (marker & 0x80U) != 0U};
 }
 
 MenuResourceRecord select_menu_resource(
     const std::uint8_t menu_mode,
-    const std::int8_t saved_selection) {
+    const std::int8_t selected_action) {
     return {
         menu_mode == 6U
             ? MenuResourceFamily::menu_mode_six_records
             : MenuResourceFamily::general_menu_records,
         static_cast<std::uint16_t>(
-            static_cast<std::uint8_t>(saved_selection) * 0x10U),
+            static_cast<std::uint8_t>(selected_action) * 0x10U),
     };
 }
 
 MenuResourceEntry select_menu_resource_entry(
     const std::uint8_t menu_mode,
-    const std::int8_t saved_selection,
-    const std::int8_t primary_cursor) {
-    return {select_menu_resource(menu_mode, saved_selection),
+    const std::int8_t selected_action,
+    const std::int8_t action_cursor) {
+    return {select_menu_resource(menu_mode, selected_action),
             static_cast<std::uint16_t>(
-                static_cast<std::uint8_t>(primary_cursor) * 2U)};
+                static_cast<std::uint8_t>(action_cursor) * 2U)};
 }
 
-void render_alternating_field_mode_records(
-    const std::array<FieldModeSelectionGlyphRecord, 8>& records,
-    const FieldModeSelectionPresentationCallbacks& callbacks) {
+void render_alternating_field_action_selection_records(
+    const std::array<FieldActionSelectionGlyphRecord, 8>& records,
+    const FieldActionSelectionPresentationCallbacks& callbacks) {
     for (std::size_t index = 0; index < records.size(); ++index) {
         const auto& record = records[index];
-        const auto plan = plan_field_mode_record(
+        const auto plan = plan_field_action_selection_record(
             static_cast<std::uint8_t>(record.marker));
         if (!plan.writes_grid) {
             if (callbacks.transfer_record_glyph) {
@@ -163,19 +172,19 @@ void render_alternating_field_mode_records(
     }
 }
 
-void render_field_mode_glyph_row(
-    const std::int8_t saved_selection,
-    const FieldModeSelectionPresentationCallbacks& callbacks) {
-    render_field_mode_glyph_row(
-        std::array<std::uint8_t, 8>{}, saved_selection, callbacks);
+void render_field_action_selection_inventory_glyph_row(
+    const std::int8_t selected_action,
+    const FieldActionSelectionPresentationCallbacks& callbacks) {
+    render_field_action_selection_inventory_glyph_row(
+        std::array<std::uint8_t, 8>{}, selected_action, callbacks);
 }
 
-void render_field_mode_glyph_row(
+void render_field_action_selection_inventory_glyph_row(
     const std::array<std::uint8_t, 8>& inventory_item_codes,
-    const std::int8_t saved_selection,
-    const FieldModeSelectionPresentationCallbacks& callbacks) {
+    const std::int8_t selected_action,
+    const FieldActionSelectionPresentationCallbacks& callbacks) {
     for (std::size_t index = 0; index < inventory_item_codes.size(); ++index) {
-        const auto plan = plan_field_mode_inventory_glyph(
+        const auto plan = plan_field_action_selection_inventory_glyph(
             inventory_item_codes[index]);
         if (callbacks.transfer_inventory_glyph) {
             callbacks.transfer_inventory_glyph(index, plan);
@@ -183,85 +192,87 @@ void render_field_mode_glyph_row(
             call_if_present(callbacks.transfer_menu_glyph_triple);
         }
     }
-    if (saved_selection == 4) {
+    if (selected_action == 4) {
         call_if_present(callbacks.render_encoded_text);
     }
 }
 
-void render_field_mode_grid_pair_batches(
-    const FieldModeSelectionPresentationCallbacks& callbacks) {
+void render_field_action_selection_grid_pair_batches(
+    const FieldActionSelectionPresentationCallbacks& callbacks) {
     repeat(6U, callbacks.write_grid);
     repeat(2U, callbacks.write_grid);
 }
 
-FieldModeNegativeGlyphTable negative_glyph_table_for_cursor(
-    const std::int8_t primary_cursor) {
-    switch (primary_cursor) {
+FieldActionSelectionDetailGlyphTable action_detail_glyph_table_for_cursor(
+    const std::int8_t action_cursor) {
+    switch (action_cursor) {
     case 0:
-        return FieldModeNegativeGlyphTable::cursor_zero;
+        return FieldActionSelectionDetailGlyphTable::action_detail_cursor_zero;
     case 1:
-        return FieldModeNegativeGlyphTable::cursor_one;
+        return FieldActionSelectionDetailGlyphTable::action_detail_cursor_one;
     default:
-        return FieldModeNegativeGlyphTable::cursor_two;
+        return FieldActionSelectionDetailGlyphTable::action_detail_cursor_two;
     }
 }
 
-std::size_t negative_glyph_table_index(
-    const FieldModeNegativeGlyphTable table) {
+std::size_t action_detail_glyph_table_index(
+    const FieldActionSelectionDetailGlyphTable table) {
     return static_cast<std::size_t>(table);
 }
 
-void render_field_mode_selection_presentation(
-    FieldModeSelectionPresentationState& state,
-    const FieldModeSelectionPresentationCallbacks& callbacks) {
-    state.saved_selection = state.primary_cursor;
+void render_field_action_selection_presentation(
+    FieldActionSelectionPresentationState& state,
+    const FieldActionSelectionPresentationCallbacks& callbacks) {
+    state.selected_action = state.action_cursor;
 
-    if (state.mode_result < 0) {
-        if (state.primary_cursor == 0 ||
-            source_cmp_byte_is_negative(state.primary_cursor, 2U) ||
-            state.primary_cursor == 2) {
-            const auto table = negative_glyph_table_for_cursor(
-                state.primary_cursor);
-            if (callbacks.select_negative_glyph_table) {
-                callbacks.select_negative_glyph_table(table, state.menu_mode);
+    if (state.menu_result < 0) {
+        if (state.action_cursor == 0 ||
+            source_cmp_byte_is_negative(state.action_cursor, 2U) ||
+            state.action_cursor == 2) {
+            const auto table = action_detail_glyph_table_for_cursor(
+                state.action_cursor);
+            if (callbacks.select_action_detail_glyph_table) {
+                callbacks.select_action_detail_glyph_table(table,
+                                                           state.menu_mode);
             }
-            render_alternating_field_mode_records(
-                state.negative_glyph_records[negative_glyph_table_index(table)],
+            render_alternating_field_action_selection_records(
+                state.action_detail_glyph_records[action_detail_glyph_table_index(table)],
                 callbacks);
             return;
         }
-        if (state.primary_cursor == 3) {
-            render_field_mode_grid_pair_batches(callbacks);
+        if (state.action_cursor == 3) {
+            render_field_action_selection_grid_pair_batches(callbacks);
         } else {
-            render_field_mode_glyph_row(state.inventory_item_codes,
-                                        state.saved_selection, callbacks);
+            render_field_action_selection_inventory_glyph_row(
+                state.inventory_item_codes, state.selected_action, callbacks);
         }
         return;
     }
 
-    if (state.mode_result != 0) {
-        const auto plan = plan_field_mode_positive_grid(
-            state.menu_mode, state.saved_selection, state.primary_cursor,
-            state.mode_result);
+    if (state.menu_result != 0) {
+        const auto plan = plan_field_action_selection_positive_grid(
+            state.menu_mode, state.selected_action, state.action_cursor,
+            state.menu_result);
         call_if_present(callbacks.select_positive_grid_plan, plan);
         if (plan.selects_menu_resource) {
             call_if_present(callbacks.select_resource, plan.selected_resource);
         }
-        if (plan.kind ==
-            FieldModePositiveGridPlanKind::cursor_three_resource_rows) {
+        if (plan.kind == FieldActionSelectionPositiveGridPlanKind::
+                           field_resource_record_purchase_rows) {
             for (std::size_t index = 0; index < 8U; ++index) {
-                const auto row = plan_field_mode_positive_resource_row(
-                    state.positive_resource_markers[index]);
+                const auto row =
+                    plan_field_action_selection_positive_resource_row(
+                        state.positive_resource_markers[index]);
                 if (callbacks.write_positive_resource_row) {
                     callbacks.write_positive_resource_row(index, row);
                 } else {
                     call_if_present(callbacks.write_grid);
                 }
             }
-        } else if (plan.kind ==
-                   FieldModePositiveGridPlanKind::resource_description) {
+        } else if (plan.kind == FieldActionSelectionPositiveGridPlanKind::
+                                      matrix_program_resource_description) {
             for (std::size_t index = 0; index < 8U; ++index) {
-                const auto row = plan_field_mode_resource_grid_row(
+                const auto row = plan_field_action_selection_resource_grid_row(
                     state.resource_grid_markers[index]);
                 if (callbacks.write_resource_grid_row) {
                     callbacks.write_resource_grid_row(index, row);
@@ -276,25 +287,26 @@ void render_field_mode_selection_presentation(
         return;
     }
 
-    if (state.primary_cursor == 3) {
-        render_field_mode_glyph_row(state.inventory_item_codes,
-                                    state.saved_selection, callbacks);
+    if (state.action_cursor == 3) {
+        render_field_action_selection_inventory_glyph_row(
+            state.inventory_item_codes, state.selected_action, callbacks);
         return;
     }
     if (callbacks.select_action_record_table) {
-        if (state.saved_selection == 1) {
+        if (state.selected_action == 1) {
             callbacks.select_action_record_table(
-                FieldModeActionRecordTable::fixed_selection_one, 0);
-        } else if (source_cmp_byte_is_negative(state.saved_selection, 1U)) {
+                FieldActionSelectionActionRecordTable::fixed_selection_one, 0);
+        } else if (source_cmp_byte_is_negative(state.selected_action, 1U)) {
             callbacks.select_action_record_table(
-                FieldModeActionRecordTable::dynamic_menu_mode,
+                FieldActionSelectionActionRecordTable::dynamic_menu_mode,
                 static_cast<std::int16_t>(state.menu_mode) - 3);
         } else {
             callbacks.select_action_record_table(
-                FieldModeActionRecordTable::fixed_low_menu, 0);
+                FieldActionSelectionActionRecordTable::fixed_low_menu, 0);
         }
     }
-    render_alternating_field_mode_records(state.glyph_records, callbacks);
+    render_alternating_field_action_selection_records(state.glyph_records,
+                                                      callbacks);
 }
 
 } // namespace shadowrun::ghidra_conversion

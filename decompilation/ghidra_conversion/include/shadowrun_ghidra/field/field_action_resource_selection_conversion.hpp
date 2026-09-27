@@ -48,8 +48,8 @@ std::optional<FieldActionSelectionContext>
 prepare_field_action_selection_context(
     const FieldActionMenuResourceTables& tables,
     std::uint8_t menu_mode,
-    std::int8_t saved_selection,
-    std::int8_t primary_cursor,
+    std::int8_t selected_action,
+    std::int8_t action_cursor,
     std::uint8_t selected_action_quantity);
 
 // ROM 0x575F8. Calculate available Matrix storage, then replace the selected
@@ -62,8 +62,8 @@ prepare_field_action_resource_selection(
     const MatrixStorageUsage& storage,
     const FieldActionMenuResourceTables& tables,
     std::uint8_t menu_mode,
-    std::int8_t saved_selection,
-    std::int8_t primary_cursor,
+    std::int8_t selected_action,
+    std::int8_t action_cursor,
     std::uint8_t selected_action_quantity);
 
 } // namespace shadowrun::ghidra_conversion

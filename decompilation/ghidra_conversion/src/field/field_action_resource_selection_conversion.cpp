@@ -31,11 +31,11 @@ std::optional<FieldActionSelectionContext>
 prepare_field_action_selection_context(
     const FieldActionMenuResourceTables& tables,
     const std::uint8_t menu_mode,
-    const std::int8_t saved_selection,
-    const std::int8_t primary_cursor,
+    const std::int8_t selected_action,
+    const std::int8_t action_cursor,
     const std::uint8_t selected_action_quantity) {
     const auto entry = select_menu_resource_entry(
-        menu_mode, saved_selection, primary_cursor);
+        menu_mode, selected_action, action_cursor);
     const auto record_value = read_menu_resource_value(tables, entry);
     if (!record_value) {
         return std::nullopt;
@@ -58,11 +58,11 @@ prepare_field_action_resource_selection(
     const MatrixStorageUsage& storage,
     const FieldActionMenuResourceTables& tables,
     const std::uint8_t menu_mode,
-    const std::int8_t saved_selection,
-    const std::int8_t primary_cursor,
+    const std::int8_t selected_action,
+    const std::int8_t action_cursor,
     const std::uint8_t selected_action_quantity) {
     const auto selection = prepare_field_action_selection_context(
-        tables, menu_mode, saved_selection, primary_cursor,
+        tables, menu_mode, selected_action, action_cursor,
         selected_action_quantity);
     if (!selection ||
         selection->resource_record_value >= storage.availability_flags.size() ||

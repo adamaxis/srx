@@ -18,7 +18,7 @@ bool runner_action_progression_is_blocked(const std::int8_t status) {
 FieldActionSelectionRoute classify_field_action_selection(
     const FieldActionSelectionState& state) {
     if (state.menu_result < 0) {
-        switch (state.saved_selection) {
+        switch (state.selected_action) {
         case 0:
             return {FieldActionSelectionRouteKind::apply_selected_field_action,
                     FieldActionRecordSource::negative_selection_zero};
@@ -41,7 +41,7 @@ FieldActionSelectionRoute classify_field_action_selection(
     }
 
     if (state.menu_result == 0) {
-        if (state.saved_selection == 3U) {
+        if (state.selected_action == 3U) {
             return {FieldActionSelectionRouteKind::remove_runner_action,
                     std::nullopt};
         }
@@ -50,7 +50,7 @@ FieldActionSelectionRoute classify_field_action_selection(
             return {FieldActionSelectionRouteKind::runner_action_unavailable,
                     std::nullopt};
         }
-        if (state.saved_selection == 1U) {
+        if (state.selected_action == 1U) {
             return {FieldActionSelectionRouteKind::apply_selected_field_action,
                     FieldActionRecordSource::neutral_selection_one};
         }
@@ -71,15 +71,15 @@ FieldActionSelectionRoute classify_field_action_selection(
                 std::nullopt};
     }
 
-    if (state.saved_selection < 3U) {
+    if (state.selected_action < 3U) {
         return {FieldActionSelectionRouteKind::install_matrix_program_resource,
                 std::nullopt};
     }
-    if (state.saved_selection == 3U) {
+    if (state.selected_action == 3U) {
         return {FieldActionSelectionRouteKind::purchase_field_resource_record,
                 std::nullopt};
     }
-    if (state.saved_selection == 5U) {
+    if (state.selected_action == 5U) {
         return {FieldActionSelectionRouteKind::purchase_field_quantity,
                 std::nullopt};
     }

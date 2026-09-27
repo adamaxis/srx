@@ -944,27 +944,31 @@ The service's source-derived flow is:
    field setup before returning.
 
 `0x56DC4` remains an explicit typed action-handler callback. `0x587DA` is now
-converted in `shadowrun_ghidra_field_mode_selection_presentation` and is no
-longer described as an anonymous renderer:
+converted under the explicit field-action presentation names in
+`shadowrun_ghidra_field_mode_selection_presentation` and is no longer
+described as an anonymous renderer:
 
-* It first saves the primary cursor (`FFF0D0`) into `FFF0B8`.
-* A negative service result dispatches cursor 3 to a six-grid/two-grid batch,
-  cursors 4+ to eight glyph-triple submissions (with the result-selection-4
-  text pass), and lower cursors to the eight three-byte records at the selected
-  source table. Each record uses a glyph triple unless its leading marker is
-  exactly `E`, in which case it writes one grid. The marker's game-facing
-  label is not invented yet; the branch itself is directly traced.
-* A result of 1 writes eight grids. Other positive results use cursor 3 for
-  eight grids, cursor 5 for a five-plus-three split, and other cursors 3/4 for
-  four-plus-four. Cursors below 3 first use `0x5763C`: `FFF0B6 == 6` selects
+* It first saves the action-row cursor (`FFF0D0`) into the selected-action
+  field (`FFF0B8`).
+* A negative service result dispatches action cursor 3 to a six-grid/two-grid
+  action-detail batch, cursors 4+ to eight active-runner inventory-item glyph
+  submissions (with the selected-action-4 text pass), and lower cursors to
+  the eight three-byte action-detail records at the selected source table.
+  Each record uses a glyph triple unless its leading marker is exactly `E`,
+  in which case it writes one detail grid.
+* The equipment-upgrade result writes eight grids. Other positive results use
+  action cursor 3 for field-resource-record purchase rows, cursor 5 for the
+  field-quantity purchase split, and other cursors for the field-resource
+  purchase split. Cursors below 3 first use `0x5763C`: `FFF0B6 == 6` selects
   one menu-resource record table and every other menu mode selects the other,
-  then `FFF0B8` chooses a record at a `0x10` stride. The presentation then
-  writes eight grids. The related `0x57628` helper adds `FFF0D0 * 2` bytes to
-  that record for action-path word access; it is also used by the field-action
-  and matrix/program-storage code, so the native abstraction is a shared menu
-  resource selector rather than a field-only offset helper.
-* A zero result uses the glyph row for cursors 0 and 3, otherwise the
-  alternating record path.
+  then `FFF0B8` chooses a record at a `0x10` stride. The related `0x57628`
+  helper adds the action cursor times two bytes to that record for action-path
+  word access; it is also used by the field-action and Matrix/program-storage
+  code, so the native abstraction is a shared menu-resource selector rather
+  than a field-only offset helper.
+* A zero result uses the active-runner inventory-item glyph row for action
+  cursor 3; otherwise it selects one of the ordinary field-action record
+  tables and runs the alternating glyph/detail-grid loop.
 
 The adjacent navigation leaves at `0x58C54` and `0x58CDE` were audited
 against their byte instructions as well. Their deltas are `ADD.B`, so the

@@ -35,7 +35,7 @@ enum class FieldActionSelectionRouteKind {
 struct FieldActionSelectionState {
     std::uint8_t menu_mode = 0; // FFF0B6
     std::int8_t menu_result = 0; // FFF0B7
-    std::uint8_t saved_selection = 0; // FFF0B8
+    std::uint8_t selected_action = 0; // FFF0B8
     std::int8_t runner_archetype_status = 0; // active record +0x9B
     std::int8_t service_result = 0; // FFF112
 };
