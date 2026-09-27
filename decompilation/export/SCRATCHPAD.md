@@ -33,6 +33,24 @@ handoff that composes those contracts lives separately in
 native-port runtime wiring and does not replace the native port's presentation
 code.
 
+The startup record inputs are now a separate direct-asset slice. The offline
+`shadowrun_ghidra_startup_record_extract` tool copies the exact source ranges
+used by these routines into `assets/records/startup/`:
+
+| Source range | Direct asset | Consumer |
+| --- | --- | --- |
+| `0x7291A..0x72C19` | `records/startup/joshua-archetypes.bin` | `0x42B0`, three selectable Joshua templates |
+| `0x72C1A..0x73719` | `records/startup/recruited-runner-records.bin` | `0x59318`, twelve compact save-roster inputs |
+| `0x59972..0x59985` | `records/startup/save-roster-header.bin` | `0x59318`, fixed save-work-buffer header |
+
+The conversion-side loader combines those named files into typed fixed-size
+records. `enter_start_options_integration()` performs the source-order
+`0x59318` roster initialization before dispatching `0x59092`; selecting New
+Game then runs the converted `0x42B0` copy and publishes the selected live
+Joshua record plus the three source selection markers. Missing or malformed
+record assets are reported as an incomplete conversion rather than replaced
+with native-port state or guessed defaults.
+
 ## Export files
 
 - `functions.tsv`: one row per function and generated C file.

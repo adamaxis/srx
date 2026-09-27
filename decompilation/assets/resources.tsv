@@ -1,5 +1,8 @@
 alias	path	kind	origin_x	origin_y
 state	native/state.bin	state	0	0
+records.startup.joshua.archetypes	records/startup/joshua-archetypes.bin	state	0	0
+records.startup.recruited.runners	records/startup/recruited-runner-records.bin	state	0	0
+records.startup.save.roster.header	records/startup/save-roster-header.bin	state	0	0
 title.background	title/background.bmp	image	0	0
 title.circuit.background.0	title/circuit-background-0.bmp	image	0	0
 title.circuit.background.1	title/circuit-background-1.bmp	image	0	0

@@ -45,6 +45,13 @@ add_test(NAME shadowrun_ghidra_conversion_runner
          COMMAND shadowrun_ghidra_conversion_runner
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../assets")
 
+# Offline extraction helper for the source records consumed by the converted
+# startup/session code. It is intentionally not linked into the Qt frontend or
+# any native runtime target.
+add_executable(shadowrun_ghidra_startup_record_extract
+    tools/extract_startup_record_assets.cpp
+)
+
 # Keep each source-trace contract as a separately runnable test so a failing
 # ROM behavior remains easy to identify. They all link the one domain-grouped
 # conversion library; no test target is part of the native game.

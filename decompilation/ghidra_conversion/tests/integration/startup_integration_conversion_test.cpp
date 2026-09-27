@@ -216,6 +216,8 @@ int main() {
         load_state.phase != StartupIntegrationPhase::title_ready ||
         !load_state.pre_title_complete || !load_state.boot.display_ready ||
         !load_state.boot.title_ready || load_state.boot.vblank_count != 458U ||
+        !load_state.startup_records.has_value() ||
+        load_state.startup_records->joshua_archetypes.size() != 3U ||
         !load_observations.resource_work_area_zeroed ||
         !has_event(load_state, "assets.verified") ||
         !has_event(load_state, "boot.title_ready") ||
@@ -223,10 +225,34 @@ int main() {
         return 1;
     }
 
+    // These are small source anchors, not a second data format. They make
+    // the integration test fail if the named files are replaced by arbitrary
+    // same-sized records: the first ROM archetype is the Samurai template,
+    // and the roster header begins with the source "GAME" signature.
+    const auto& samurai =
+        load_state.startup_records->joshua_archetypes[0].record;
+    const auto& roster_header =
+        load_state.startup_records->save_roster_header;
+    if (samurai[0] != 0x07U || samurai[1] != 0x80U ||
+        samurai[0x0EU] != 0x00U || samurai[0x0FU] != 0x03U ||
+        samurai[0x5BU] != static_cast<std::uint8_t>('J') ||
+        samurai[0x5CU] != static_cast<std::uint8_t>('o') ||
+        samurai[0x5DU] != static_cast<std::uint8_t>('s') ||
+        roster_header[4] != static_cast<std::uint8_t>('G') ||
+        roster_header[5] != static_cast<std::uint8_t>('A') ||
+        roster_header[6] != static_cast<std::uint8_t>('M') ||
+        roster_header[7] != static_cast<std::uint8_t>('E')) {
+        return 9;
+    }
+
     if (enter_start_options_integration(load_state, load_callbacks) !=
             StartupIntegrationEvent::entered_start_options ||
         load_state.phase != StartupIntegrationPhase::start_options ||
-        load_state.start_options.selected != StartOptionsChoice::new_game) {
+        load_state.start_options.selected != StartOptionsChoice::new_game ||
+        !load_state.save_roster_buffer.has_value() ||
+        load_state.save_roster_buffer->compact_records.size() !=
+            kSaveRosterTemplateCount ||
+        !has_event(load_state, "save_roster.initialized")) {
         return 2;
     }
     if (advance_startup_integration(
@@ -279,6 +305,12 @@ int main() {
         new_game_observations.field_ready_count != 1U ||
         new_game_observations.initialized_archetype !=
             JoshuaArchetypeChoice::decker ||
+        !new_game_state.joshua_selection.has_value() ||
+        new_game_state.joshua_selection->live_joshua_record !=
+            new_game_state.startup_records->joshua_archetypes[1].record ||
+        new_game_state.joshua_selection->record_selection_markers !=
+            std::array<std::uint16_t, 3>{0U, 1U, 2U} ||
+        !has_event(new_game_state, "joshua_archetype.initialized") ||
         !has_event(new_game_state, "phase.field_ready")) {
         return 8;
     }

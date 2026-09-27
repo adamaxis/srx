@@ -88,8 +88,19 @@ StartupIntegrationStartResult start_startup_integration(
         state.asset_catalog.catalog, required_boot_asset_aliases());
     append_event(state, "assets.verified");
 
+    const auto startup_records =
+        load_startup_record_assets(state.asset_catalog.catalog);
+    state.startup_record_asset_errors = startup_records.errors;
+    if (startup_records.complete()) {
+        state.startup_records = *startup_records.assets;
+        append_event(state, "startup_records.verified");
+    } else {
+        append_event(state, "startup_records.missing");
+    }
+
     if (!state.asset_catalog.complete() ||
-        !state.required_boot_assets.complete()) {
+        !state.required_boot_assets.complete() ||
+        !state.startup_records.has_value()) {
         set_phase(state, callbacks, StartupIntegrationPhase::failed);
         return StartupIntegrationStartResult::assets_missing;
     }
@@ -133,6 +144,22 @@ StartupIntegrationEvent enter_start_options_integration(
     if (state.phase != StartupIntegrationPhase::title_ready) {
         return StartupIntegrationEvent::invalid_phase;
     }
+    if (!state.startup_records.has_value()) {
+        set_phase(state, callbacks, StartupIntegrationPhase::failed);
+        return StartupIntegrationEvent::callback_unresolved;
+    }
+
+    // The main loop calls 0x59318 immediately before 0x59092. Keep that
+    // source boundary in the integration layer rather than hiding it in a
+    // menu callback: the menu only owns the New Game/Load Game choice.
+    state.save_roster_buffer = initialize_save_roster_buffer(
+        state.startup_records->save_roster_header,
+        state.startup_records->save_roster_templates);
+    if (!state.save_roster_buffer.has_value()) {
+        set_phase(state, callbacks, StartupIntegrationPhase::failed);
+        return StartupIntegrationEvent::callback_unresolved;
+    }
+    state.event_log.emplace_back("save_roster.initialized");
     enter_start_options_menu(state.start_options, callbacks.start_options);
     set_phase(state, callbacks, StartupIntegrationPhase::start_options);
     return StartupIntegrationEvent::entered_start_options;
@@ -193,6 +220,24 @@ StartupIntegrationEvent advance_startup_integration(
         case JoshuaArchetypeMenuEvent::selection_moved:
             return StartupIntegrationEvent::selection_moved;
         case JoshuaArchetypeMenuEvent::joshua_archetype_initialized:
+            if (!state.startup_records.has_value()) {
+                set_phase(state, callbacks, StartupIntegrationPhase::failed);
+                return StartupIntegrationEvent::callback_unresolved;
+            }
+            {
+                const std::vector<JoshuaArchetypeTemplate> templates(
+                    state.startup_records->joshua_archetypes.begin(),
+                    state.startup_records->joshua_archetypes.end());
+                state.joshua_selection = initialize_joshua_archetype_selection(
+                    static_cast<std::uint16_t>(
+                        state.joshua_archetype.selected),
+                    templates);
+            }
+            if (!state.joshua_selection.has_value()) {
+                set_phase(state, callbacks, StartupIntegrationPhase::failed);
+                return StartupIntegrationEvent::callback_unresolved;
+            }
+            state.event_log.emplace_back("joshua_archetype.initialized");
             set_phase(state, callbacks, StartupIntegrationPhase::field_ready);
             if (callbacks.field_ready) {
                 callbacks.field_ready();

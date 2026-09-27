@@ -50,6 +50,7 @@ file(GLOB SHADOWRUN_MODULE_ROSTER_SAVE CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/session/runner_selection_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/session/runner_switch_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/session/save_*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/session/startup_record_assets_conversion.cpp"
 )
 
 file(GLOB SHADOWRUN_MODULE_FIELD_SCENE_CONTROLLER CONFIGURE_DEPENDS

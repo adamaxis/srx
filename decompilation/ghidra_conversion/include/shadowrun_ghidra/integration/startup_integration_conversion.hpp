@@ -3,12 +3,14 @@
 #include "shadowrun_ghidra/core/asset_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/timing_conversion.hpp"
 #include "shadowrun_ghidra/menus/startup_menu_conversion.hpp"
+#include "shadowrun_ghidra/session/startup_record_assets_conversion.hpp"
 #include "shadowrun_ghidra/title_intro/boot_sequence_conversion.hpp"
 #include "shadowrun_ghidra/title_intro/title_setup_conversion.hpp"
 
 #include <cstdint>
 #include <filesystem>
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -71,6 +73,10 @@ struct StartupIntegrationCallbacks {
 struct StartupIntegrationState {
     AssetCatalogLoadResult asset_catalog;
     AssetSetReport required_boot_assets;
+    std::optional<StartupRecordAssets> startup_records;
+    std::vector<std::string> startup_record_asset_errors;
+    std::optional<SaveRosterBuffer> save_roster_buffer;
+    std::optional<JoshuaArchetypeSelection> joshua_selection;
 
     BootStartupState boot;
     PreTitleSequenceState pre_title;
