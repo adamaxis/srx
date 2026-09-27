@@ -280,6 +280,113 @@ void advance_command_overview_secondary_page(
     }
 }
 
+std::size_t write_command_overview_repeated_asset_batch(
+    const CommandOverviewRepeatedAssetInput& input,
+    const std::function<void(const CommandOverviewRepeatedAssetPlan&)>&
+        write_asset) {
+    std::size_t writes = 0U;
+    for (std::size_t group_index = 0U; group_index < input.groups.size();
+         ++group_index) {
+        const auto& group = input.groups[group_index];
+        for (std::size_t entry_index = 0U;
+             entry_index < group.asset_indices.size(); ++entry_index) {
+            if (write_asset) {
+                write_asset(CommandOverviewRepeatedAssetPlan{
+                    group_index,
+                    entry_index,
+                    group.asset_indices[entry_index],
+                    static_cast<std::uint16_t>(0x20U + entry_index * 0x20U),
+                    0x20U,
+                    group.uses_entity_asset_table});
+            }
+            ++writes;
+        }
+    }
+    return writes;
+}
+
+void upload_command_overview_resource(
+    const bool alternate_resource_variant,
+    const std::function<void(const CommandOverviewResourceUploadPlan&)>&
+        upload_resource) {
+    if (!upload_resource) {
+        return;
+    }
+    upload_resource({
+        alternate_resource_variant ? CommandOverviewResourceVariant::alternate
+                                   : CommandOverviewResourceVariant::primary,
+        alternate_resource_variant
+            ? "menu.field.command_overview.resource.alternate"
+            : "menu.field.command_overview.resource.primary",
+        0x5C80U});
+}
+
+std::size_t upload_command_overview_resource_and_blocks(
+    const bool alternate_resource_variant,
+    const CommandOverviewPreparationCallbacks& callbacks) {
+    upload_command_overview_resource(alternate_resource_variant,
+                                     callbacks.upload_resource_stream);
+    constexpr std::array<CommandOverviewBlockTransferPlan, 2> blocks{
+        CommandOverviewBlockTransferPlan{
+            "menu.field.command_overview.panel_tiles", 0x7D20U, 0x1E00U},
+        CommandOverviewBlockTransferPlan{
+            "menu.field.command_overview.detail_tiles", 0x9B20U, 0x0420U}};
+    for (const auto& block : blocks) {
+        if (callbacks.write_block) {
+            callbacks.write_block(block);
+        }
+    }
+    return blocks.size();
+}
+
+CommandOverviewPreparationResult prepare_command_overview(
+    const CommandOverviewPreparationInput& input,
+    const CommandOverviewPreparationCallbacks& callbacks) {
+    CommandOverviewPreparationResult result;
+    result.resource_variant = input.alternate_resource_variant
+                                  ? CommandOverviewResourceVariant::alternate
+                                  : CommandOverviewResourceVariant::primary;
+
+    if (callbacks.prepare_menu_graphics) {
+        callbacks.prepare_menu_graphics();
+    }
+
+    // ROM 0x10F6E..0x10FCC. The source D7/D1 loop values are expressed as
+    // host row/word counts, so the +1 DBF convention is no longer implicit.
+    constexpr std::array<CommandOverviewGridPlan, 4> grids{
+        CommandOverviewGridPlan{
+            "menu.field.command_overview.layout", 0xE000U, 28U, 12U, 0U},
+        CommandOverviewGridPlan{
+            "menu.field.command_overview.panel_frame", 0xE018U, 2U, 21U, 0U},
+        CommandOverviewGridPlan{
+            "menu.field.command_overview.action_grid", 0xE042U, 23U, 1U, 0U},
+        CommandOverviewGridPlan{
+            "menu.field.command_overview.detail_grid", 0xEB98U, 5U, 22U, 0U}};
+    for (const auto& grid : grids) {
+        if (callbacks.write_grid) {
+            callbacks.write_grid(grid);
+        }
+        ++result.grid_writes;
+    }
+
+    result.repeated_asset_writes = write_command_overview_repeated_asset_batch(
+        input.repeated_assets, callbacks.write_repeated_asset);
+
+    result.resource_uploads = 1U;
+    result.block_writes = upload_command_overview_resource_and_blocks(
+        input.alternate_resource_variant,
+        CommandOverviewPreparationCallbacks{
+            {}, {}, {}, callbacks.upload_resource_stream, callbacks.write_block});
+
+    if (callbacks.write_block) {
+        callbacks.write_block(
+            {"menu.field.command_overview.background", 0x5A80U, 0x0200U});
+    }
+    ++result.block_writes;
+    result.refresh_marker_cleared = true;
+    return result;
+}
+
 CommandOverviewRunResult run_command_overview(
     CommandOverviewState& state,
     const CommandOverviewInput& input,

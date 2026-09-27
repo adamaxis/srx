@@ -282,7 +282,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x391A	runner switch	ghidra_conversion::advance_runner_switch	shadowrun_ghidra_runner_switch	partial		Source type-2 wrap, active/suppression eligibility gate, transient selection marker, and no-eligible no-install result converted; roster data remains separate
 0x172CDC	mode-2 events	NativePortShell::update	shadowrun_native_port motel tuple	partial		do not fall through to mode 0x1A
 0x20E48	Stoker dialog	NativePortShell::open_stoker_motel_dialog	shadowrun_native_port	partial		lift to shared dialog scene
-0x10F50	command overview	NativePortShell::render_field_menu	shadowrun_menu_visual_regression	partial	same-source (not a golden)	swap expected to 320x224 capture
+0x10F50	prepare_command_overview	ghidra_conversion::prepare_command_overview	shadowrun_ghidra_menu_service_sequence	partial		ROM-traced four-grid setup, 240-entry repeated asset batch, resource variant, paired blocks, and final background transfer
 0x11740	inventory actions	ghidra_conversion::advance_inventory_action_loop	shadowrun_ghidra_inventory_action	partial		Typed source command routing, two-confirm inventory action loop, item branch classification, and separate equipment/possession mutations; native runtime remains a separate implementation
 0x036FC	entity asset meter advance	ghidra_conversion::advance_entity_asset_meter	shadowrun_ghidra_runner_record_operations	partial		Typed ammunition and inventory-phase mutation with explicit item limit and equipment-clear result
 0x038AC	entity ammunition service	ghidra_conversion::service_entity_ammo	shadowrun_ghidra_runner_record_operations	partial		Typed record-type branch and delegation to the asset-meter operation
@@ -459,8 +459,8 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x104C8	matching menu metric scan	ghidra_conversion::find_matching_menu_metric	shadowrun_ghidra_menu_transfer_batch	partial		MULU.W row stride plus ADD.B column table selection, reverse six-slot predicate scan, and shared 0x104F6 continuation
 0x106DA	grid preparation wrapper	ghidra_conversion::prepare_grid_then_write	shadowrun_ghidra_menu_transfer_batch	partial		Typed preparation then grid boundary
 0x10854	three grids then service	ghidra_conversion::write_three_grids_then_service	shadowrun_ghidra_menu_transfer_batch	partial		Exact three-grid and trailing service order
-0x11048	resource then two blocks	ghidra_conversion::upload_resource_then_write_two_blocks	shadowrun_ghidra_menu_transfer_batch	partial		Typed resource upload and paired block order
-0x1107E	resource stream upload	ghidra_conversion::upload_resource_stream	shadowrun_ghidra_menu_transfer_batch	partial		Named source-stream upload boundary
+0x11048	resource then two blocks	ghidra_conversion::upload_command_overview_resource_and_blocks	shadowrun_ghidra_menu_service_sequence	partial		ROM-traced resource-variant upload followed by the 0x7D20/0x9B20 paired blocks
+0x1107E	resource stream upload	ghidra_conversion::upload_command_overview_resource	shadowrun_ghidra_menu_service_sequence	partial		Typed primary/alternate command-overview resource selection with host asset alias
 0x110E8	active runner HUD panel shared-entry prelude	ghidra_conversion::draw_active_runner_hud_panel	shadowrun_ghidra_menu_service_sequence	partial		Loads active record +0x2C into D2, then falls through into the shared four-by-four active-runner HUD panel builder
 0x1111A	active runner name text	ghidra_conversion::render_active_runner_name_text	shadowrun_ghidra_menu_service_sequence	partial		Passes active record +0x58 to the common text writer at destination 0xC0A0 with 0x6000 attributes
 0x1170C	command overview title text entry	ghidra_conversion::select_command_overview_title_text	shadowrun_ghidra_menu_service_sequence	partial		Supplies the 0xD1D3A command-label table before entering the shared selector
@@ -552,7 +552,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x101FE	menu value selection	ghidra_conversion::select_menu_value	shadowrun_ghidra_field_entity_render_batch	partial		Typed primary/selected menu value resolution
 0x10276	menu text display sequence	ghidra_conversion::run_menu_text_display_sequence	shadowrun_ghidra_field_entity_render_batch	partial		Explicit grid/text/asset/decimal display order
 0x1047E	ready entity action bonus	ghidra_conversion::calculate_ready_entity_action_bonus	shadowrun_ghidra_entity_action_math	partial		Scans exactly three records, accepts active class 0/1 entries, and adds quotient plus remainder threshold from each item-0x18 value
-0x10FF4	repeated asset batch	ghidra_conversion::write_repeated_asset_batch	shadowrun_ghidra_field_entity_render_batch	partial		Nested host asset batch loop with marker reset
+0x10FF4	repeated asset batch	ghidra_conversion::write_command_overview_repeated_asset_batch	shadowrun_ghidra_menu_service_sequence	partial		ROM-traced three-group by-eighty asset loop with fixed/entity table selection and destination stride
 0x11190	menu glyph triple transfer	ghidra_conversion::transfer_menu_glyph_triple	shadowrun_ghidra_field_entity_render_batch	partial		Optional triple lookup and masked glyph writes
 0x0C160	wrapped text stream	ghidra_conversion::render_wrapped_text	shadowrun_ghidra_field_menu_state_batch	partial		Bounded encoded text stream with terminator and line width
 0x0C436	menu handler dispatch	ghidra_conversion::dispatch_menu_handler	shadowrun_ghidra_field_menu_state_batch	partial		Checked host vector replaces indirect handler jump

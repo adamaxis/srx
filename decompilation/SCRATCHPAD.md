@@ -2205,6 +2205,16 @@ shares the panel/name/row/highlight/upload choreography with entry. These are
 typed callbacks and presentation asset aliases, not Genesis memory or VDP
 runtime state.
 
+Its preparation chain is also converted. `0x10F50` now emits four explicit
+source-sized grid plans (28x12, 2x21, 23x1, and 5x22), then invokes the
+three-group by-eighty `0x10FF4` asset loop. That loop receives decoded asset
+indices from either the fixed or entity-provided table and advances the host
+destination by `0x20` per entry. `0x1107E` selects the primary/alternate
+resource alias, `0x11048` follows it with the fixed `0x7D20`/`0x9B20` blocks,
+and `0x10F50` finishes with the `0x5A80` background block. The conversion
+retains the source counts and ordering without carrying A1/A2/A3 pointers into
+the host representation.
+
 The command-overview action dialog at `0x119CE` is now a typed controller loop.
 It writes the initial `0xCD514` grid, prepares the dialog at posture delta 0,
 and preserves the source's input priority: bit 11 increments posture, bit 10

@@ -691,5 +691,83 @@ int main() {
         return 46;
     }
 
+    CommandOverviewPreparationInput preparation_input;
+    for (std::size_t group = 0U;
+         group < preparation_input.repeated_assets.groups.size(); ++group) {
+        preparation_input.repeated_assets.groups[group].uses_entity_asset_table =
+            group == 1U;
+        for (std::size_t entry = 0U;
+             entry < preparation_input.repeated_assets.groups[group]
+                         .asset_indices.size();
+             ++entry) {
+            preparation_input.repeated_assets.groups[group].asset_indices[entry] =
+                static_cast<std::uint16_t>(group * 100U + entry);
+        }
+    }
+    preparation_input.alternate_resource_variant = true;
+    std::vector<CommandOverviewGridPlan> preparation_grids;
+    std::vector<CommandOverviewRepeatedAssetPlan> repeated_assets;
+    std::vector<CommandOverviewResourceUploadPlan> resource_uploads;
+    std::vector<CommandOverviewBlockTransferPlan> preparation_blocks;
+    int preparation_graphics = 0;
+    const auto preparation_result = prepare_command_overview(
+        preparation_input,
+        {[&] { ++preparation_graphics; },
+         [&](const CommandOverviewGridPlan& plan) {
+             preparation_grids.push_back(plan);
+         },
+         [&](const CommandOverviewRepeatedAssetPlan& plan) {
+             repeated_assets.push_back(plan);
+         },
+         [&](const CommandOverviewResourceUploadPlan& plan) {
+             resource_uploads.push_back(plan);
+         },
+         [&](const CommandOverviewBlockTransferPlan& plan) {
+             preparation_blocks.push_back(plan);
+         }});
+    if (preparation_result.primary_page != 6U ||
+        preparation_result.secondary_page != 0U ||
+        preparation_result.resource_variant !=
+            CommandOverviewResourceVariant::alternate ||
+        preparation_result.grid_writes != 4U ||
+        preparation_result.repeated_asset_writes != 240U ||
+        preparation_result.resource_uploads != 1U ||
+        preparation_result.block_writes != 3U ||
+        !preparation_result.refresh_marker_cleared || preparation_graphics != 1 ||
+        preparation_grids.size() != 4U ||
+        preparation_grids[0].destination_tile_base != 0xE000U ||
+        preparation_grids[0].rows != 28U ||
+        preparation_grids[0].words_per_row != 12U ||
+        preparation_grids[1].destination_tile_base != 0xE018U ||
+        preparation_grids[2].destination_tile_base != 0xE042U ||
+        preparation_grids[3].destination_tile_base != 0xEB98U ||
+        repeated_assets.size() != 240U || repeated_assets[0].group_index != 0U ||
+        repeated_assets[0].entry_index != 0U ||
+        repeated_assets[0].asset_index != 0U ||
+        repeated_assets[0].destination_offset != 0x20U ||
+        repeated_assets[79].destination_offset != 0xA00U ||
+        !repeated_assets[80].uses_entity_asset_table ||
+        repeated_assets[80].asset_index != 100U ||
+        repeated_assets[239].asset_index != 279U || resource_uploads.size() != 1U ||
+        resource_uploads[0].variant != CommandOverviewResourceVariant::alternate ||
+        resource_uploads[0].asset_alias !=
+            "menu.field.command_overview.resource.alternate" ||
+        resource_uploads[0].byte_count != 0x5C80U ||
+        preparation_blocks.size() != 3U ||
+        preparation_blocks[0].asset_alias !=
+            "menu.field.command_overview.panel_tiles" ||
+        preparation_blocks[0].destination != 0x7D20U ||
+        preparation_blocks[0].byte_count != 0x1E00U ||
+        preparation_blocks[1].asset_alias !=
+            "menu.field.command_overview.detail_tiles" ||
+        preparation_blocks[1].destination != 0x9B20U ||
+        preparation_blocks[1].byte_count != 0x420U ||
+        preparation_blocks[2].asset_alias !=
+            "menu.field.command_overview.background" ||
+        preparation_blocks[2].destination != 0x5A80U ||
+        preparation_blocks[2].byte_count != 0x200U) {
+        return 47;
+    }
+
     return 0;
 }

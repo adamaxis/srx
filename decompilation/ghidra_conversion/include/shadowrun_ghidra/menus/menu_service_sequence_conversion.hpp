@@ -294,6 +294,106 @@ struct CommandOverviewTileUploadPlan {
     std::string_view asset_alias;
 };
 
+struct CommandOverviewGridPlan {
+    std::string_view asset_alias;
+    std::uint16_t destination_tile_base = 0;
+    // 0x1232 writes D1+1 rows of D7+1 words and ORs D2 into every word.
+    std::uint8_t rows = 0;
+    std::uint8_t words_per_row = 0;
+    std::uint16_t word_mask = 0;
+};
+
+struct CommandOverviewRepeatedAssetGroup {
+    // Source FF0100 + 0x10 bit 0 selects the entity-provided table at +0x50;
+    // otherwise the fixed 0x720FA table is used. Both become typed host data.
+    bool uses_entity_asset_table = false;
+    std::array<std::uint16_t, 80> asset_indices{};
+};
+
+struct CommandOverviewRepeatedAssetInput {
+    std::array<CommandOverviewRepeatedAssetGroup, 3> groups{};
+};
+
+struct CommandOverviewRepeatedAssetPlan {
+    std::size_t group_index = 0;
+    std::size_t entry_index = 0;
+    std::uint16_t asset_index = 0;
+    std::uint16_t destination_offset = 0x20;
+    std::uint16_t byte_count = 0x20;
+    bool uses_entity_asset_table = false;
+};
+
+enum class CommandOverviewResourceVariant {
+    primary,
+    alternate,
+};
+
+struct CommandOverviewResourceUploadPlan {
+    CommandOverviewResourceVariant variant =
+        CommandOverviewResourceVariant::primary;
+    std::string_view asset_alias;
+    std::uint32_t byte_count = 0x5C80;
+};
+
+struct CommandOverviewBlockTransferPlan {
+    std::string_view asset_alias;
+    std::uint32_t destination = 0;
+    std::uint32_t byte_count = 0;
+};
+
+struct CommandOverviewPreparationInput {
+    CommandOverviewRepeatedAssetInput repeated_assets{};
+    bool alternate_resource_variant = false;
+};
+
+struct CommandOverviewPreparationCallbacks {
+    std::function<void()> prepare_menu_graphics;
+    std::function<void(const CommandOverviewGridPlan&)> write_grid;
+    std::function<void(const CommandOverviewRepeatedAssetPlan&)>
+        write_repeated_asset;
+    std::function<void(const CommandOverviewResourceUploadPlan&)>
+        upload_resource_stream;
+    std::function<void(const CommandOverviewBlockTransferPlan&)> write_block;
+};
+
+struct CommandOverviewPreparationResult {
+    std::uint8_t primary_page = 6;
+    std::uint8_t secondary_page = 0;
+    CommandOverviewResourceVariant resource_variant =
+        CommandOverviewResourceVariant::primary;
+    std::size_t grid_writes = 0;
+    std::size_t repeated_asset_writes = 0;
+    std::size_t resource_uploads = 0;
+    std::size_t block_writes = 0;
+    bool refresh_marker_cleared = false;
+};
+
+// ROM 0x10FF4: translate the three 0x100-byte entity groups into 240 typed
+// 0x20-byte asset transfers. No fixed-table or runtime pointer survives.
+std::size_t write_command_overview_repeated_asset_batch(
+    const CommandOverviewRepeatedAssetInput& input,
+    const std::function<void(const CommandOverviewRepeatedAssetPlan&)>&
+        write_asset);
+
+// ROM 0x1107E: select the decoded command-overview resource variant from the
+// source resource marker and submit it to the host asset boundary.
+void upload_command_overview_resource(
+    bool alternate_resource_variant,
+    const std::function<void(const CommandOverviewResourceUploadPlan&)>&
+        upload_resource);
+
+// ROM 0x11048: upload the selected resource, then write the two fixed source
+// blocks used by the command-overview presentation.
+std::size_t upload_command_overview_resource_and_blocks(
+    bool alternate_resource_variant,
+    const CommandOverviewPreparationCallbacks& callbacks);
+
+// ROM 0x10F50: prepare command-overview state and source-derived layout data.
+// The output is an ordered list of typed host presentation requests.
+CommandOverviewPreparationResult prepare_command_overview(
+    const CommandOverviewPreparationInput& input,
+    const CommandOverviewPreparationCallbacks& callbacks);
+
 struct CommandOverviewCallbacks {
     std::function<void()> handle_mode_action_event;
     std::function<void(std::uint16_t display_control)> set_display_control;
