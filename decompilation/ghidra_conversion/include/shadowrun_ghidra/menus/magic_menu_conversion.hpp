@@ -181,7 +181,7 @@ struct MagicForceAdjustmentCallbacks {
 };
 
 struct MagicEquipmentSelectionCallbacks {
-    std::function<void()> prepare_magic_action_details;
+    std::function<void(const MagicSpellDefinition&)> prepare_magic_action_details;
     std::function<void()> clear_entity_auxiliary_marker;
     // Return the sampled input word that caused 0x10016 to return.
     std::function<std::uint16_t()> run_magic_force_selection_loop;
@@ -191,6 +191,12 @@ struct MagicEquipmentSelectionCallbacks {
     std::function<void()> draw_hud_panel_triplet;
     std::function<void()> advance_entity_behavior_meter;
     std::function<void()> advance_entity_asset_meter;
+};
+
+struct MagicEquipmentSelectionResult {
+    bool magic_spell_missing = false;
+    bool detail_preparation_called = false;
+    bool finalized = false;
 };
 
 struct MagicMenuGridPreparationCallbacks {
@@ -218,7 +224,7 @@ struct MagicActionDetailCallbacks {
     std::function<void()> prepare_menu_grid_then_service;
     std::function<void(MagicActionTextRegion region)> render_action_text;
     std::function<void()> adjust_runner_posture;
-    std::function<void()> render_spell_availability;
+    std::function<void(const MagicSpellDefinition&)> render_spell_availability;
     std::function<void()> build_grouped_decimal_glyphs;
 };
 
@@ -232,12 +238,12 @@ struct MagicMenuSelectionDisplayCallbacks {
     std::function<void()> refresh_force_display;
     std::function<void(std::uint8_t spell_code, std::uint16_t tile_mask)>
         transfer_spell_glyph_triple;
-    std::function<void(std::uint8_t spell_code,
+    std::function<void(const MagicSpellDefinition& spell,
                        MagicSpellRecordTextRegion region)>
         render_spell_record_text;
     std::function<void(MagicActionTextRegion region)> render_action_text;
     std::function<void()> adjust_runner_posture;
-    std::function<void()> render_spell_availability;
+    std::function<void(const MagicSpellDefinition&)> render_spell_availability;
     std::function<void()> build_grouped_decimal_glyphs;
 };
 
@@ -318,7 +324,7 @@ std::uint8_t clamp_magic_force(std::uint8_t current, std::int8_t delta,
 // an already-equipped item's rounds when the source +0x56/+0x57 gate allows
 // it, install spell code + 1, route the force/posture input exits, then clear
 // the inventory-slot marker and publish the field/HUD updates.
-void run_magic_equipment_selection(
+MagicEquipmentSelectionResult run_magic_equipment_selection(
     RunnerRecordFields& record, MagicForceState& force_state,
     std::uint8_t spell_code,
     const MagicEquipmentSelectionCallbacks& callbacks = {});
@@ -377,6 +383,7 @@ void adjust_magic_force(
 // ROM 0x102D4: prepare the spell detail panel. The text renderer is called
 // three times by the source, not once with an inferred repeat count.
 void prepare_magic_action_details(
+    const MagicSpellDefinition& spell,
     const MagicActionDetailCallbacks& callbacks = {});
 
 // ROM 0x10276 enters the shared magic-detail tail at 0x102EC. It prepares
@@ -384,7 +391,7 @@ void prepare_magic_action_details(
 // the source class mask, renders the spell name/description, then emits the
 // shared Success/Force labels, posture, availability, and force value.
 void render_magic_menu_selection_display(
-    std::uint8_t spell_code,
+    const MagicSpellDefinition& spell,
     const MagicMenuSelectionDisplayCallbacks& callbacks = {});
 
 // ROM 0x1088C: a negative signed +0x25 spell byte draws the unavailable

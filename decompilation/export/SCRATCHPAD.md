@@ -1756,14 +1756,15 @@ differ, and the final repeated-grid write is unconditional. The grid operations
 are callbacks because they are presentation services, not ROM-memory operations.
 
 The ROM pass for `0x102D4` (`prepare_magic_action_details`) is now represented by
-`ghidra_conversion::prepare_magic_action_details`. Its typed callback sequence is
-grid preparation, encoded spell text three times, runner posture adjustment,
-spell availability rendering, and grouped decimal glyph construction. The three
-text calls remain explicit to avoid collapsing source behavior into a guessed
-repeat parameter. Focused tests assert both callback sequences. These entries
-remain `partial` because the presentation callback implementations still need
-their own ROM-backed verification; the conversion itself does not modify the
-native port.
+`ghidra_conversion::prepare_magic_action_details`. It receives the selected
+typed `MagicSpellDefinition` and passes that row to availability rendering. Its
+typed callback sequence is grid preparation, encoded spell text three times,
+runner posture adjustment, spell availability rendering, and grouped decimal
+glyph construction. The three text calls remain explicit to avoid collapsing
+source behavior into a guessed repeat parameter. Focused tests assert both the
+callback sequence and the spell-row identity. These entries remain `partial`
+because the presentation callback implementations still need their own
+ROM-backed verification; the conversion itself does not modify the native port.
 
 The adjacent Magic-menu pass also now covers `0x100A8`, `0x1088C`, `0x1098E`,
 and `0x10A82`. `adjust_magic_force` is a typed word-state mutation that clamps
@@ -1796,9 +1797,11 @@ these as `UsMagicSpellTableCatalog` and selects from a typed row; the raw
 FFF9FA byte-table helper remains only as an explicit audit boundary.
 
 `0x10276` is also now source-traced as the magic selection display rather than
-a generic text batch: its code-6 tile-mask branch, selected spell name and
-description, shared Success/Force labels, posture/availability calls, and
-grouped force value are explicit in one typed callback sequence.
+a generic text batch: its code-6 tile-mask branch, selected typed spell name
+and description, shared Success/Force labels, posture/availability calls, and
+grouped force value are explicit in one typed callback sequence. The display
+and its shared tail receive the same spell definition, rather than passing a
+bare code to text and availability services.
 
 The neighboring `0x10260` operation now keeps metadata-grid submission ahead
 of selected current/max force publication. `0x102D4` names its three source
@@ -1811,11 +1814,13 @@ resets cursor timing only after navigation, and leaves resource setup and
 target/effect services as explicit callbacks.
 
 The `0xFF5A` equipment-selection boundary is now source-traced as a complete
-typed orchestration routine. It performs detail preparation, conditionally
-carries current force into the active item's rounds, installs `spell_code + 1`,
-routes the force/posture D-C-E edges, clears the source slot marker, runs the
-field/HUD meter tail, and publishes `+0x9D`; the ROM contains no availability
-rejection at this entry.
+typed orchestration routine. It resolves the selected spell from the US
+catalog before detail preparation, then performs the conditional force carry,
+installs `spell_code + 1`, routes the force/posture D-C-E edges, clears the
+source slot marker, runs the field/HUD meter tail, and publishes `+0x9D`. An
+out-of-catalog code returns an explicit missing-spell result; valid source
+selections retain the ROM flow, and the ROM contains no availability rejection
+at this entry.
 
 ### World-effect/menu arithmetic audit continuation
 

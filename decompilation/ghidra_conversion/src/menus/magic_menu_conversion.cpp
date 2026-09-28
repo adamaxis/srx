@@ -430,14 +430,24 @@ std::uint16_t run_magic_force_selection_loop(
     }
 }
 
-void run_magic_equipment_selection(
+MagicEquipmentSelectionResult run_magic_equipment_selection(
     RunnerRecordFields& record, MagicForceState& force_state,
     const std::uint8_t spell_code,
     const MagicEquipmentSelectionCallbacks& callbacks) {
+    MagicEquipmentSelectionResult result{};
+    const auto* spell = find_us_magic_spell(spell_code);
+    if (spell == nullptr) {
+        result.magic_spell_missing = true;
+        return result;
+    }
+
     // ROM 0xFF5A enters through the detail panel before inspecting the
     // currently equipped item. The detail callback is where source 0x102D4
     // establishes the current force shown to the player.
-    call_once(callbacks.prepare_magic_action_details);
+    if (callbacks.prepare_magic_action_details) {
+        callbacks.prepare_magic_action_details(*spell);
+        result.detail_preparation_called = true;
+    }
 
     const bool has_active_item = record.equipped_inventory_slot >= 0 &&
                                  record.equipped_item_code != 0U;
@@ -482,6 +492,8 @@ void run_magic_equipment_selection(
     call_once(callbacks.advance_entity_behavior_meter);
     call_once(callbacks.advance_entity_asset_meter);
     record.magic_force = static_cast<std::uint8_t>(force_state.current_force);
+    result.finalized = true;
+    return result;
 }
 
 void refresh_magic_force_display(
@@ -556,6 +568,7 @@ void adjust_magic_force(
 }
 
 void prepare_magic_action_details(
+    const MagicSpellDefinition& spell,
     const MagicActionDetailCallbacks& callbacks) {
     // ROM 0x102D4 preserves three distinct text-render calls between the
     // grid preparation and posture/availability services.
@@ -567,12 +580,14 @@ void prepare_magic_action_details(
         callbacks.render_action_text(MagicActionTextRegion::force_label);
     }
     call_once(callbacks.adjust_runner_posture);
-    call_once(callbacks.render_spell_availability);
+    if (callbacks.render_spell_availability) {
+        callbacks.render_spell_availability(spell);
+    }
     call_once(callbacks.build_grouped_decimal_glyphs);
 }
 
 void render_magic_menu_selection_display(
-    const std::uint8_t spell_code,
+    const MagicSpellDefinition& spell,
     const MagicMenuSelectionDisplayCallbacks& callbacks) {
     // ROM 0x10276 sets D6 to the source spell-art tile class before the
     // record glyph triple. Codes below six use 0x2000; the remaining spell
@@ -581,13 +596,13 @@ void render_magic_menu_selection_display(
     call_once(callbacks.refresh_force_display);
     if (callbacks.transfer_spell_glyph_triple) {
         callbacks.transfer_spell_glyph_triple(
-            spell_code, spell_code < 6U ? 0x2000U : 0x6000U);
+            spell.spell_code, spell.spell_code < 6U ? 0x2000U : 0x6000U);
     }
     if (callbacks.render_spell_record_text) {
         callbacks.render_spell_record_text(
-            spell_code, MagicSpellRecordTextRegion::spell_name);
+            spell, MagicSpellRecordTextRegion::spell_name);
         callbacks.render_spell_record_text(
-            spell_code, MagicSpellRecordTextRegion::spell_description);
+            spell, MagicSpellRecordTextRegion::spell_description);
     }
 
     // 0x102D4 begins at the shared tail reached by the branch at 0x102D0.
@@ -596,7 +611,9 @@ void render_magic_menu_selection_display(
         callbacks.render_action_text(MagicActionTextRegion::force_label);
     }
     call_once(callbacks.adjust_runner_posture);
-    call_once(callbacks.render_spell_availability);
+    if (callbacks.render_spell_availability) {
+        callbacks.render_spell_availability(spell);
+    }
     call_once(callbacks.build_grouped_decimal_glyphs);
 }
 

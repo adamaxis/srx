@@ -275,9 +275,10 @@ int main() {
     MagicForceState equipment_force{4U, 9U};
     std::vector<int> equipment_events;
     MagicEquipmentSelectionCallbacks equipment_callbacks{};
-    equipment_callbacks.prepare_magic_action_details = [&]() {
-        equipment_events.push_back(1);
-    };
+    equipment_callbacks.prepare_magic_action_details =
+        [&](const MagicSpellDefinition& spell) {
+            equipment_events.push_back(spell.spell_code == 1U ? 1 : 99);
+        };
     equipment_callbacks.clear_entity_auxiliary_marker = [&]() {
         equipment_events.push_back(2);
     };
@@ -301,14 +302,27 @@ int main() {
     equipment_callbacks.advance_entity_asset_meter = [&]() {
         equipment_events.push_back(8);
     };
-    run_magic_equipment_selection(equipment_record, equipment_force, 1U,
-                                  equipment_callbacks);
-    if (!expect(equipment_record.equipped_item_code == 2U &&
+    const auto equipment_result = run_magic_equipment_selection(
+        equipment_record, equipment_force, 1U, equipment_callbacks);
+    if (!expect(!equipment_result.magic_spell_missing &&
+                equipment_result.detail_preparation_called &&
+                equipment_result.finalized &&
+                equipment_record.equipped_item_code == 2U &&
                 equipment_record.ammo_rounds == 4U &&
                 equipment_record.equipped_inventory_slot == -1 &&
                 equipment_record.magic_force == 4U &&
                 equipment_events == std::vector<int>{1, 2, 3, 5, 6, 7, 8})) {
         return 30;
+    }
+
+    RunnerRecordFields missing_spell_record{};
+    MagicForceState missing_spell_force{};
+    const auto missing_spell = run_magic_equipment_selection(
+        missing_spell_record, missing_spell_force, 13U);
+    if (!expect(missing_spell.magic_spell_missing &&
+                !missing_spell.detail_preparation_called &&
+                !missing_spell.finalized)) {
+        return 33;
     }
 
     RunnerRecordFields posture_record{};
@@ -318,9 +332,10 @@ int main() {
     std::vector<std::uint16_t> force_exits{0U, 0x1000U};
     std::size_t force_exit_index = 0U;
     MagicEquipmentSelectionCallbacks posture_callbacks{};
-    posture_callbacks.prepare_magic_action_details = [&]() {
-        posture_events.push_back(1);
-    };
+    posture_callbacks.prepare_magic_action_details =
+        [&](const MagicSpellDefinition& spell) {
+            posture_events.push_back(spell.spell_code == 3U ? 1 : 99);
+        };
     posture_callbacks.run_magic_force_selection_loop = [&]() {
         posture_events.push_back(2);
         return force_exits[force_exit_index++];
@@ -356,13 +371,14 @@ int main() {
     detail_callbacks.adjust_runner_posture = [&]() {
         detail_events.push_back(5);
     };
-    detail_callbacks.render_spell_availability = [&]() {
-        detail_events.push_back(6);
-    };
+    detail_callbacks.render_spell_availability =
+        [&](const MagicSpellDefinition& spell) {
+            detail_events.push_back(spell.spell_code == 0U ? 6 : 99);
+        };
     detail_callbacks.build_grouped_decimal_glyphs = [&]() {
         detail_events.push_back(7);
     };
-    prepare_magic_action_details(detail_callbacks);
+    prepare_magic_action_details(*find_us_magic_spell(0U), detail_callbacks);
     if (!expect(detail_events == std::vector<int>{1, 2, 3, 4, 5, 6, 7})) {
         return 21;
     }
@@ -384,7 +400,16 @@ int main() {
             transferred_mask = tile_mask;
         };
     selection_display_callbacks.render_spell_record_text =
-        [&](const std::uint8_t, const MagicSpellRecordTextRegion region) {
+        [&](const MagicSpellDefinition& spell,
+            const MagicSpellRecordTextRegion region) {
+            if (spell.spell_code != transferred_spell &&
+                (region == MagicSpellRecordTextRegion::spell_name ||
+                 region == MagicSpellRecordTextRegion::spell_description)) {
+                // The transfer callback runs immediately before these text
+                // callbacks, so this catches a stale/detached spell row.
+                selection_display_events.push_back(99);
+                return;
+            }
             selection_display_events.push_back(
                 region == MagicSpellRecordTextRegion::spell_name ? 4 : 5);
         };
@@ -396,20 +421,24 @@ int main() {
     selection_display_callbacks.adjust_runner_posture = [&]() {
         selection_display_events.push_back(8);
     };
-    selection_display_callbacks.render_spell_availability = [&]() {
-        selection_display_events.push_back(9);
-    };
+    selection_display_callbacks.render_spell_availability =
+        [&](const MagicSpellDefinition& spell) {
+            selection_display_events.push_back(
+                spell.spell_code == transferred_spell ? 9 : 99);
+        };
     selection_display_callbacks.build_grouped_decimal_glyphs = [&]() {
         selection_display_events.push_back(10);
     };
-    render_magic_menu_selection_display(5U, selection_display_callbacks);
+    render_magic_menu_selection_display(*find_us_magic_spell(5U),
+                                         selection_display_callbacks);
     if (!expect(selection_display_events ==
                     std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10} &&
                 transferred_spell == 5U && transferred_mask == 0x2000U)) {
         return 22;
     }
     selection_display_events.clear();
-    render_magic_menu_selection_display(6U, selection_display_callbacks);
+    render_magic_menu_selection_display(*find_us_magic_spell(6U),
+                                         selection_display_callbacks);
     if (!expect(selection_display_events ==
                     std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10} &&
                 transferred_spell == 6U && transferred_mask == 0x6000U)) {
