@@ -23,14 +23,17 @@ constexpr std::size_t kFieldSessionTerrainLayerWordCount = 0xE10U;
 constexpr std::size_t kFieldSessionTerrainLayerByteCount =
     kFieldSessionTerrainLayerWordCount * sizeof(std::uint16_t);
 constexpr std::size_t kFieldSessionTerrainStreamByteCount = 0x3500U;
-constexpr std::size_t kFieldMode2DescriptorByteCount = 0x58U;
+constexpr std::size_t kFieldMapDescriptorByteCount = 0x58U;
+constexpr std::size_t kFieldMode0TerrainCollisionRectangleCount = 65U;
+constexpr std::size_t kFieldMode0TerrainCollisionRectangleByteCount =
+    kFieldMode0TerrainCollisionRectangleCount * 10U;
 constexpr std::size_t kFieldMode2TerrainCollisionRectangleCount = 101U;
 constexpr std::size_t kFieldMode2TerrainCollisionRectangleByteCount =
     kFieldMode2TerrainCollisionRectangleCount * 10U;
-constexpr std::size_t kFieldMode2EventTableByteCount = 32U;
+constexpr std::size_t kFieldMapEventTableByteCount = 32U;
 
-struct FieldMode2SourceDescriptor {
-    // ROM 0x172C80, words +0x00/+0x02. These are source fixed-point words;
+struct FieldMapSourceDescriptor {
+    // Map descriptor words +0x00/+0x02. These are source fixed-point words;
     // callers decide how to project them into host coordinates.
     std::uint16_t initial_camera_x_fixed = 0;
     std::uint16_t initial_camera_y_fixed = 0;
@@ -41,8 +44,8 @@ struct FieldMode2SourceDescriptor {
     std::uint16_t terrain_y_exclusive_upper = 0;
     std::uint16_t terrain_x_inclusive_lower = 0;
     std::uint16_t terrain_y_inclusive_lower = 0;
-    // ROM 0x172CDC, copied from the descriptor's event-table pointer.
-    std::array<std::uint8_t, kFieldMode2EventTableByteCount>
+    // Copied from the descriptor's event-table pointer.
+    std::array<std::uint8_t, kFieldMapEventTableByteCount>
         event_mode_table{};
 };
 
@@ -68,8 +71,16 @@ struct FieldSessionSourceAssets {
     // stream at 0x188AFC; this is direct host data, not a runtime decoder
     // input or a ROM address token.
     std::vector<std::uint8_t> mode2_terrain_stream_source;
-    // ROM 0x172C80, interpreted as typed mode-2 startup/terrain metadata.
-    FieldMode2SourceDescriptor mode2_descriptor{};
+    // The normal profile is the map-index-0 descriptor selected by the
+    // startup field-mode path. Its pointed-to collision/event records are
+    // kept separately below; the mode-2 map descriptor remains a distinct
+    // direct record.
+    FieldMapSourceDescriptor mode0_descriptor{};
+    std::vector<TerrainCollisionRectangle>
+        mode0_terrain_collision_rectangles;
+    std::array<std::uint8_t, 0x1000> mode0_terrain_collision_map{};
+    // ROM 0x172C80, interpreted as the distinct map-index-2 metadata record.
+    FieldMapSourceDescriptor mode2_descriptor{};
     // ROM 0x172DAA, five-word records consumed by the terrain-map builder.
     std::vector<TerrainCollisionRectangle>
         mode2_terrain_collision_rectangles;
@@ -86,9 +97,10 @@ struct FieldSessionSourceAssetLoadResult {
     bool complete() const { return assets.has_value() && errors.empty(); }
 };
 
-// Reads the two named records from resources.tsv and decodes only the
-// big-endian words required by FieldSessionBootstrapInput. Missing, malformed,
-// or wrong-sized records are reported; no fallback data is synthesized.
+// Reads the named field-session records from resources.tsv and decodes only
+// the big-endian words required by FieldSessionBootstrapInput. Missing,
+// malformed, or wrong-sized records are reported; no fallback data is
+// synthesized.
 FieldSessionSourceAssetLoadResult load_field_session_source_assets(
     const ConversionAssetCatalog& catalog);
 

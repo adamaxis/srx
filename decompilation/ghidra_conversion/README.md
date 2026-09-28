@@ -121,10 +121,12 @@ records into the converted field-session bootstrap and paints the direct
 field map/HUD assets. The startup field mode is `2`, while its normal
 profile's `0x186EDC/0x187CEC` resources are descriptor row `0`, so the
 initial host map is `field.maps.mode.0`; this is not a fallback to
-`field.maps.mode.2`. The mode-2 descriptor's initial camera, three
-field-record positions, terrain bounds, collision rectangles, and event table
-are now typed conversion inputs; they are not yet a claim that the Qt bridge
-has source-verified runner movement or dynamic entity presentation.
+`field.maps.mode.2`. The startup scene now uses the row-0 descriptor fields
+and its own collision/event records. The separate row-2 descriptor and its
+101 collision records are also loaded as direct conversion inputs for later
+map selection; neither is silently substituted for the startup scene. This
+is not yet a claim that the Qt bridge has source-verified runner movement or
+dynamic entity presentation.
 
 The Qt callbacks remain explicit presentation/source boundaries; they do not
 replace unresolved source behavior with a native-port implementation. Dynamic

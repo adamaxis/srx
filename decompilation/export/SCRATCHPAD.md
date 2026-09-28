@@ -76,7 +76,7 @@ remain explicit conversion boundaries. A successful menu callback must not be
 treated as a completed load until this restoration path has a validated host
 save image and the source-derived roster templates.
 
-## Mode-2 field descriptor and collision records
+## Mode-2 map descriptor and collision records
 
 The field startup record sweep now includes the source data that was missing
 from the first field-session pass. The pointer-table row at `0x323A` resolves
@@ -101,14 +101,15 @@ early sentinel or changed record count instead of silently accepting a
 truncated table.
 
 The event table is consumed indirectly. `0x03074`/`0x03084` select and copy
-the 48-word scene profile and its two `0xE10`-word terrain layers; they do not
-replace the descriptor's mode-2 startup metadata. `0x0BC36` builds the four
+the 48-word scene profile and its two `0xE10`-word terrain layers; this map
+descriptor is not the startup descriptor for the currently selected normal
+profile. `0x0BC36` builds the four
 collision-probe points from the active entity and snapshots the current field
 origin into `FFDF50/FFDF52`. `0x02F32` later uses that live snapshot when
 initializing field-scene state and copying entity anchors. This is why the
-conversion keeps the descriptor camera (`0x3400/0x2280`) separate from the
-currently selected scene-profile words (`0x0A00/0x0280`) instead of forcing
-one into the other.
+conversion keeps the row-2 descriptor camera (`0x3400/0x2280`) separate from
+the currently selected row-0 scene-profile descriptor (`0x0A00/0x0280`)
+instead of forcing one into the other.
 
 The offline extractor writes the three direct records under
 `assets/records/field/` with aliases
@@ -117,9 +118,21 @@ The offline extractor writes the three direct records under
 `records.field.mode.2.event.table`. The conversion loader decodes them into
 `FieldSceneSourceMetadata`, including the typed rectangle list and the host
 collision-map projection. This metadata is now carried through
-`FieldSceneBufferInput`/`FieldSceneBuffers`; movement probes and dynamic
-entity presentation remain the next source-backed consumers rather than
-being guessed in the Qt bridge.
+`FieldSceneBufferInput`/`FieldSceneBuffers`. The current field-mode-2 startup
+input intentionally carries the row-0 descriptor from
+`scene-profile-normal.bin` plus its 65 records at `0x0D55DE` and event table at
+`0x0D54B2`; the row-2 data remains available for a later map-selection path.
+Movement probes and dynamic entity presentation remain the next source-backed
+consumers rather than being guessed in the Qt bridge.
+
+The startup distinction is explicit in the conversion source. The normal
+profile selected by `0x03084` is the first pointer-table row at `0x3232`, and
+its descriptor fields are `0x0A00/0x0280` camera, bounds `0x0770/0x03BC`, and
+initial runner positions `0x1310/0x0980`, `0x1220/0x08C0`, and
+`0x1400/0x08C0`. Its collision records are the 65 records at `0x0D55DE`,
+terminated by the sentinel at `0x0D5868`; its 32-byte event table is at
+`0x0D54B2`. These records are separate direct assets, not a second copy of
+the 48-word normal profile.
 
 ## Export files
 

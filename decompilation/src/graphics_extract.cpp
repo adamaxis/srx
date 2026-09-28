@@ -192,8 +192,18 @@ void extract_field_session_record_assets(
                      0x0D5456U, 48U * sizeof(std::uint16_t));
     write_rom_record(rom, root, "records/field/scene-profile-alternate.bin",
                      0x17D5C4U, 48U * sizeof(std::uint16_t));
-    // The normal mode-2 profile points at two fixed terrain word arrays. The
-    // source copies exactly 0xE10 words from each pointer during field-scene
+    // The normal profile at 0x0D5456 is the map-index-0 descriptor consumed
+    // by the startup field-mode path. Its descriptor bytes are already in
+    // scene-profile-normal.bin; these are the records reached through its
+    // terrain/event pointers.
+    write_rom_record(
+        rom, root, "records/field/mode-0-terrain-collision-rectangles.bin",
+        0x0D55DEU, 65U * 10U);
+    write_rom_record(rom, root, "records/field/mode-0-event-table.bin",
+                     0x0D54B2U, 32U);
+    // Field mode 2 selects the normal scene profile, whose map descriptor row
+    // is 0. That profile points at two fixed terrain word arrays. The source
+    // copies exactly 0xE10 words from each pointer during field-scene
     // preparation; preserve those reads as direct host records.
     write_rom_record(rom, root, "records/field/mode-2-terrain-layer-a.bin",
                      0x186EDCU, 0xE10U * sizeof(std::uint16_t));
@@ -207,10 +217,11 @@ void extract_field_session_record_assets(
     }
     write_host_record(mode2_stream.bytes, root,
                       "records/field/mode-2-terrain-stream.bin");
-    // The mode-2 field descriptor supplies the initial camera/runner state,
-    // terrain bounds, and source pointers used by the field transition. The
-    // pointers themselves remain extraction provenance; the conversion layer
-    // receives the pointed-to records as separate host assets below.
+    // This is the separate map-index-2 descriptor. Its initial camera/runner
+    // state, terrain bounds, and source pointers are useful to later map
+    // selection, but must not be substituted for the row-0 startup profile.
+    // The pointers themselves remain extraction provenance; the conversion
+    // layer receives the pointed-to records as separate host assets below.
     write_rom_record(rom, root, "records/field/mode-2-descriptor.bin",
                      0x172C80U, 0x58U);
     // ROM 0xEE10 consumes five-word collision records until the 0x8000
@@ -502,7 +513,13 @@ void write_asset_readme(const std::filesystem::path& root) {
               "is\n"
               "intentional: the native player must not guess a repeat boundary "
               "from an\n"
-              "internal channel restart.\n";
+              "internal channel restart.\n\n"
+           << "Field startup records remain individually named under "
+              "`records/field/`. The map-index-0 startup collision/event "
+              "records and the separate map-index-2 descriptor/collision/event "
+              "records are direct source records; the conversion loader "
+              "interprets each into typed field state and host collision maps "
+              "without making the runtime read ROM addresses.\n";
 }
 
 void write_runtime_resource_manifest(const std::filesystem::path& root) {
@@ -594,6 +611,12 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
     emit_generated_state_row(
         "records.field.scene.profile.alternate",
         "records/field/scene-profile-alternate.bin");
+    emit_generated_state_row(
+        "records.field.mode.0.terrain.collision.rectangles",
+        "records/field/mode-0-terrain-collision-rectangles.bin");
+    emit_generated_state_row(
+        "records.field.mode.0.event.table",
+        "records/field/mode-0-event-table.bin");
     emit_generated_state_row(
         "records.field.mode.2.terrain.layer.a",
         "records/field/mode-2-terrain-layer-a.bin");

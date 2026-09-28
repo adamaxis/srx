@@ -16,6 +16,10 @@ constexpr const char* kNormalSceneProfileAlias =
     "records.field.scene.profile.normal";
 constexpr const char* kAlternateSceneProfileAlias =
     "records.field.scene.profile.alternate";
+constexpr const char* kMode0TerrainCollisionRectanglesAlias =
+    "records.field.mode.0.terrain.collision.rectangles";
+constexpr const char* kMode0EventTableAlias =
+    "records.field.mode.0.event.table";
 constexpr const char* kMode2TerrainLayerAAlias =
     "records.field.mode.2.terrain.layer.a";
 constexpr const char* kMode2TerrainLayerBAlias =
@@ -82,10 +86,10 @@ decode_scene_profile(const std::vector<std::uint8_t>& bytes) {
     return profile;
 }
 
-FieldMode2SourceDescriptor decode_mode2_descriptor(
+FieldMapSourceDescriptor decode_field_map_descriptor(
     const std::vector<std::uint8_t>& descriptor_bytes,
     const std::vector<std::uint8_t>& event_table_bytes) {
-    FieldMode2SourceDescriptor descriptor;
+    FieldMapSourceDescriptor descriptor;
     descriptor.initial_camera_x_fixed =
         read_big_endian_word(descriptor_bytes, 0x00U);
     descriptor.initial_camera_y_fixed =
@@ -112,16 +116,18 @@ FieldMode2SourceDescriptor decode_mode2_descriptor(
     return descriptor;
 }
 
-std::vector<TerrainCollisionRectangle> decode_mode2_terrain_collision_rectangles(
-    const std::vector<std::uint8_t>& bytes) {
+std::vector<TerrainCollisionRectangle>
+decode_field_terrain_collision_rectangles(
+    const std::vector<std::uint8_t>& bytes,
+    const std::size_t expected_rectangle_count) {
     std::vector<TerrainCollisionRectangle> rectangles;
-    rectangles.reserve(kFieldMode2TerrainCollisionRectangleCount);
+    rectangles.reserve(expected_rectangle_count);
     for (std::size_t offset = 0; offset < bytes.size();
          offset += 10U) {
         const auto x_start = read_big_endian_word(bytes, offset + 0x00U);
         if ((x_start & 0x8000U) != 0U) {
             throw std::runtime_error(
-                "mode-2 terrain collision record stream contains an early sentinel");
+                "terrain collision record stream contains an early sentinel");
         }
         const auto x_end = read_big_endian_word(bytes, offset + 0x02U);
         const auto y_start = read_big_endian_word(bytes, offset + 0x04U);
@@ -130,9 +136,9 @@ std::vector<TerrainCollisionRectangle> decode_mode2_terrain_collision_rectangles
         rectangles.push_back({x_start, x_end, y_start, y_end,
                               static_cast<std::uint8_t>(value)});
     }
-    if (rectangles.size() != kFieldMode2TerrainCollisionRectangleCount) {
+    if (rectangles.size() != expected_rectangle_count) {
         throw std::runtime_error(
-            "mode-2 terrain collision record count changed");
+            "terrain collision record count changed");
     }
     return rectangles;
 }
@@ -155,6 +161,12 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
     const auto alternate_profile = read_record_bytes(
         catalog, kAlternateSceneProfileAlias, kFieldSceneProfileByteCount,
         result.errors);
+    const auto mode0_collision_rectangles = read_record_bytes(
+        catalog, kMode0TerrainCollisionRectanglesAlias,
+        kFieldMode0TerrainCollisionRectangleByteCount, result.errors);
+    const auto mode0_event_table = read_record_bytes(
+        catalog, kMode0EventTableAlias, kFieldMapEventTableByteCount,
+        result.errors);
     const auto terrain_layer_a = read_record_bytes(
         catalog, kMode2TerrainLayerAAlias, kFieldSessionTerrainLayerByteCount,
         result.errors);
@@ -165,16 +177,18 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
         catalog, kMode2TerrainStreamAlias, kFieldSessionTerrainStreamByteCount,
         result.errors);
     const auto mode2_descriptor = read_record_bytes(
-        catalog, kMode2DescriptorAlias, kFieldMode2DescriptorByteCount,
+        catalog, kMode2DescriptorAlias, kFieldMapDescriptorByteCount,
         result.errors);
     const auto mode2_collision_rectangles = read_record_bytes(
         catalog, kMode2TerrainCollisionRectanglesAlias,
         kFieldMode2TerrainCollisionRectangleByteCount, result.errors);
     const auto mode2_event_table = read_record_bytes(
-        catalog, kMode2EventTableAlias, kFieldMode2EventTableByteCount,
+        catalog, kMode2EventTableAlias, kFieldMapEventTableByteCount,
         result.errors);
     if (!action_profiles.has_value() || !mode_selection.has_value() ||
         !normal_profile.has_value() || !alternate_profile.has_value() ||
+        !mode0_collision_rectangles.has_value() ||
+        !mode0_event_table.has_value() ||
         !terrain_layer_a.has_value() || !terrain_layer_b.has_value() ||
         !terrain_stream.has_value() || !mode2_descriptor.has_value() ||
         !mode2_collision_rectangles.has_value() ||
@@ -194,6 +208,16 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
     assets.normal_scene_profile_source = decode_scene_profile(*normal_profile);
     assets.alternate_scene_profile_source =
         decode_scene_profile(*alternate_profile);
+    assets.mode0_descriptor =
+        decode_field_map_descriptor(*normal_profile, *mode0_event_table);
+    assets.mode0_terrain_collision_rectangles =
+        decode_field_terrain_collision_rectangles(
+            *mode0_collision_rectangles,
+            kFieldMode0TerrainCollisionRectangleCount);
+    bool rebuild_requested = true;
+    rebuild_terrain_collision_map(
+        assets.mode0_terrain_collision_map, rebuild_requested,
+        assets.mode0_terrain_collision_rectangles, [](auto&) {});
     assets.mode2_terrain_layer_a_source.reserve(
         kFieldSessionTerrainLayerWordCount);
     assets.mode2_terrain_layer_b_source.reserve(
@@ -207,10 +231,12 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
     }
     assets.mode2_terrain_stream_source = *terrain_stream;
     assets.mode2_descriptor =
-        decode_mode2_descriptor(*mode2_descriptor, *mode2_event_table);
+        decode_field_map_descriptor(*mode2_descriptor, *mode2_event_table);
     assets.mode2_terrain_collision_rectangles =
-        decode_mode2_terrain_collision_rectangles(*mode2_collision_rectangles);
-    bool rebuild_requested = true;
+        decode_field_terrain_collision_rectangles(
+            *mode2_collision_rectangles,
+            kFieldMode2TerrainCollisionRectangleCount);
+    rebuild_requested = true;
     rebuild_terrain_collision_map(
         assets.mode2_terrain_collision_map, rebuild_requested,
         assets.mode2_terrain_collision_rectangles, [](auto&) {});
@@ -228,26 +254,29 @@ FieldSceneBufferInput make_initial_mode2_field_scene_input(
     input.layer_a = assets.mode2_terrain_layer_a_source;
     input.layer_b = assets.mode2_terrain_layer_b_source;
     input.source_metadata.available = true;
+    // Field mode 2 enters the normal scene profile, whose pointer-table row
+    // is map index 0. The separate mode-2 descriptor is a different map
+    // record and must not be projected onto this startup scene.
     input.source_metadata.initial_camera_x_fixed =
-        assets.mode2_descriptor.initial_camera_x_fixed;
+        assets.mode0_descriptor.initial_camera_x_fixed;
     input.source_metadata.initial_camera_y_fixed =
-        assets.mode2_descriptor.initial_camera_y_fixed;
+        assets.mode0_descriptor.initial_camera_y_fixed;
     input.source_metadata.initial_field_records =
-        assets.mode2_descriptor.initial_field_records;
+        assets.mode0_descriptor.initial_field_records;
     input.source_metadata.terrain_x_exclusive_upper =
-        assets.mode2_descriptor.terrain_x_exclusive_upper;
+        assets.mode0_descriptor.terrain_x_exclusive_upper;
     input.source_metadata.terrain_y_exclusive_upper =
-        assets.mode2_descriptor.terrain_y_exclusive_upper;
+        assets.mode0_descriptor.terrain_y_exclusive_upper;
     input.source_metadata.terrain_x_inclusive_lower =
-        assets.mode2_descriptor.terrain_x_inclusive_lower;
+        assets.mode0_descriptor.terrain_x_inclusive_lower;
     input.source_metadata.terrain_y_inclusive_lower =
-        assets.mode2_descriptor.terrain_y_inclusive_lower;
+        assets.mode0_descriptor.terrain_y_inclusive_lower;
     input.source_metadata.event_mode_table =
-        assets.mode2_descriptor.event_mode_table;
+        assets.mode0_descriptor.event_mode_table;
     input.source_metadata.terrain_collision_rectangles =
-        assets.mode2_terrain_collision_rectangles;
+        assets.mode0_terrain_collision_rectangles;
     input.source_metadata.terrain_collision_map =
-        assets.mode2_terrain_collision_map;
+        assets.mode0_terrain_collision_map;
     return input;
 }
 

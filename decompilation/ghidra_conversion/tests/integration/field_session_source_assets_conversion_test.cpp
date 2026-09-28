@@ -83,6 +83,40 @@ int main() {
         descriptor.event_mode_table[1] != 0x1AU) {
         return 9;
     }
+    const auto& mode0_descriptor = source.assets->mode0_descriptor;
+    if (mode0_descriptor.initial_camera_x_fixed != 0x0A00U ||
+        mode0_descriptor.initial_camera_y_fixed != 0x0280U ||
+        mode0_descriptor.initial_field_records[0].x != 0x1310U ||
+        mode0_descriptor.initial_field_records[0].y != 0x0980U ||
+        mode0_descriptor.initial_field_records[1].x != 0x1220U ||
+        mode0_descriptor.initial_field_records[1].y != 0x08C0U ||
+        mode0_descriptor.initial_field_records[2].x != 0x1400U ||
+        mode0_descriptor.initial_field_records[2].y != 0x08C0U ||
+        mode0_descriptor.terrain_x_exclusive_upper != 0x0770U ||
+        mode0_descriptor.terrain_y_exclusive_upper != 0x03BCU ||
+        mode0_descriptor.terrain_x_inclusive_lower != 0x000CU ||
+        mode0_descriptor.terrain_y_inclusive_lower != 0x0020U ||
+        mode0_descriptor.event_mode_table[0] != 0x15U ||
+        mode0_descriptor.event_mode_table[1] != 0x0CU) {
+        return 12;
+    }
+    const auto& mode0_collision_rectangles =
+        source.assets->mode0_terrain_collision_rectangles;
+    if (mode0_collision_rectangles.size() !=
+            kFieldMode0TerrainCollisionRectangleCount ||
+        mode0_collision_rectangles.front().left != 0x0000U ||
+        mode0_collision_rectangles.front().right != 0x005FU ||
+        mode0_collision_rectangles.front().top != 0x0000U ||
+        mode0_collision_rectangles.front().bottom != 0x007FU ||
+        mode0_collision_rectangles.front().value != 0x7FU ||
+        mode0_collision_rectangles.back().left != 0x0740U ||
+        mode0_collision_rectangles.back().right != 0x075FU ||
+        mode0_collision_rectangles.back().top != 0x0360U ||
+        mode0_collision_rectangles.back().bottom != 0x037FU ||
+        mode0_collision_rectangles.back().value != 0xDFU ||
+        source.assets->mode0_terrain_collision_map[0U] != 0x7FU) {
+        return 13;
+    }
     const auto& collision_rectangles =
         source.assets->mode2_terrain_collision_rectangles;
     if (collision_rectangles.size() !=
@@ -110,12 +144,13 @@ int main() {
         scene_input.layer_b != source.assets->mode2_terrain_layer_b_source ||
         scene_input.terrain_stream != source.assets->mode2_terrain_stream_source ||
         !scene_input.source_metadata.available ||
-        scene_input.source_metadata.initial_camera_x_fixed != 0x3400U ||
-        scene_input.source_metadata.initial_field_records[0].x != 0x3CE0U ||
+        scene_input.source_metadata.initial_camera_x_fixed != 0x0A00U ||
+        scene_input.source_metadata.initial_field_records[0].x != 0x1310U ||
+        scene_input.source_metadata.initial_field_records[0].y != 0x0980U ||
         scene_input.source_metadata.terrain_collision_rectangles.size() !=
-            kFieldMode2TerrainCollisionRectangleCount ||
-        scene_input.source_metadata.terrain_collision_map[97U] != 0x7FU ||
-        scene_input.source_metadata.event_mode_table[0] != 0x14U) {
+            kFieldMode0TerrainCollisionRectangleCount ||
+        scene_input.source_metadata.terrain_collision_map[0U] != 0x7FU ||
+        scene_input.source_metadata.event_mode_table[0] != 0x15U) {
         return 11;
     }
     return 0;

@@ -13,7 +13,4 @@ slices or split event fragments here. A missing loop-point entry is
 intentional: the native player must not guess a repeat boundary from an
 internal channel restart.
 
-Field startup records remain individually named under `records/field/`. The
-mode-2 descriptor, collision-record stream, and event table are direct source
-records; the conversion loader interprets them into typed field state and a
-host collision map without making the runtime read ROM addresses.
+Field startup records remain individually named under `records/field/`. The map-index-0 startup collision/event records and the separate map-index-2 descriptor/collision/event records are direct source records; the conversion loader interprets each into typed field state and host collision maps without making the runtime read ROM addresses.

@@ -52,14 +52,14 @@ FieldSessionBootstrapInput make_input() {
     input.field_scene.layer_a.front() = 0xAAAAU;
     input.field_scene.layer_b.back() = 0xBBBBU;
     input.field_scene.source_metadata.available = true;
-    input.field_scene.source_metadata.initial_camera_x_fixed = 0x3400U;
-    input.field_scene.source_metadata.initial_camera_y_fixed = 0x2280U;
+    input.field_scene.source_metadata.initial_camera_x_fixed = 0x0A00U;
+    input.field_scene.source_metadata.initial_camera_y_fixed = 0x0280U;
     input.field_scene.source_metadata.initial_field_records[0] =
-        {0x3CE0U, 0x2D00U};
-    input.field_scene.source_metadata.event_mode_table[0] = 0x14U;
+        {0x1310U, 0x0980U};
+    input.field_scene.source_metadata.event_mode_table[0] = 0x15U;
     input.field_scene.source_metadata.terrain_collision_rectangles.push_back(
-        {0x0420U, 0x043FU, 0x0020U, 0x007FU, 0x7FU});
-    input.field_scene.source_metadata.terrain_collision_map[97U] = 0x7FU;
+        {0x0000U, 0x005FU, 0x0000U, 0x007FU, 0x7FU});
+    input.field_scene.source_metadata.terrain_collision_map[0U] = 0x7FU;
     return input;
 }
 
@@ -202,12 +202,12 @@ int main() {
            state.field_scene_buffers.camera_y == 0x0400 &&
            state.field_scene_buffers.source_metadata.available &&
            state.field_scene_buffers.source_metadata.initial_camera_x_fixed ==
-               0x3400U &&
+               0x0A00U &&
            state.field_scene_buffers.source_metadata.initial_field_records[0].x ==
-               0x3CE0U &&
+               0x1310U &&
            state.field_scene_buffers.source_metadata.event_mode_table[0] ==
-               0x14U &&
-           state.field_scene_buffers.source_metadata.terrain_collision_map[97U] ==
+               0x15U &&
+           state.field_scene_buffers.source_metadata.terrain_collision_map[0U] ==
                0x7FU &&
            state.field_scene_buffers.layer_a.size() ==
                kFieldTerrainLayerWordCount);
