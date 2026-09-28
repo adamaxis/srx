@@ -1090,7 +1090,13 @@ and action-dependent paths use `+0x6E + D7` for the detail-value grid at
 
 `ghidra_conversion::render_item_action_details()` now expresses this as
 typed item-art, text, phase-overlay, label, detail-value, and armor-selection
-plans in `equipment_combat_bar_conversion`. The original `0xD25DC..0xD262C`,
+plans in `equipment_combat_bar_conversion`. Its source-data-bound overload
+resolves the one-based code through `UsItemCatalog`: `has_detail_art` is the
+semantic form of the signed `+0x1E` pointer test, and the ordinary detail grid
+uses the row's typed `+0x24` factor. Rows 41..43 retain the ROM's `-1`
+no-art state, and an invalid or identity-mismatched item code reports a
+missing source row without invoking presentation callbacks. The original
+`0xD25DC..0xD262C`,
 `0xD29C4..0xD29D0`, and `0x6AC46` tables remain explicit extraction/data
 boundaries; no runtime ROM address lookup or invented asset alias has been
 added. If the `0x12148` record lookup is unavailable, the conversion reports

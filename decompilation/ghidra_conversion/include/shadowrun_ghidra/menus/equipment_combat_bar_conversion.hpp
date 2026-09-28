@@ -177,6 +177,9 @@ struct ItemActionDetailResult {
     bool early_return = false;
     bool armor_selection_requested = false;
     bool action_lookup_missing = false;
+    // Source-data-bound overloads stop when the one-based item code does not
+    // identify a matching D4540 record; they do not invent an art/value row.
+    bool item_record_missing = false;
     std::uint8_t phase_slot_used = 0;
 };
 
@@ -373,6 +376,16 @@ EquipmentHighlightResult render_equipment_highlights(
 // exposing typed host plans instead of ROM pointers or VDP memory accesses.
 ItemActionDetailResult render_item_action_details(
     const ItemActionDetailInput& input,
+    ResourceVariantState& resource_variant,
+    const ItemActionDetailCallbacks& callbacks = {});
+
+// Source-data-bound 0x12A8C path. The typed D4540 row supplies the signed
+// +0x1E detail-art presence and ordinary-action +0x24 detail value. Invalid
+// or identity-mismatched one-based item codes return item_record_missing
+// without a presentation callback.
+ItemActionDetailResult render_item_action_details(
+    const ItemActionDetailInput& input,
+    const UsItemCatalog& item_catalog,
     ResourceVariantState& resource_variant,
     const ItemActionDetailCallbacks& callbacks = {});
 

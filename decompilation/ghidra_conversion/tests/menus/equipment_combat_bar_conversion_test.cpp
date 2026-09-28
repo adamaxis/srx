@@ -341,6 +341,63 @@ int main() {
         return 14;
     }
 
+    // The source-bound path ignores caller guesses: item 12 supplies its
+    // D4540 +0x1E art presence and +0x24 value (0x08), not the stale value 5
+    // above.
+    item_variant = {};
+    item_detail_events.clear();
+    item_action_reads = 0;
+    item_detail_input.item_art_available = false;
+    item_detail_input.item_detail_value = 0xEEU;
+    const auto typed_ordinary_item = render_item_action_details(
+        item_detail_input, us_item_catalog(), item_variant,
+        item_detail_callbacks);
+    if (!(typed_ordinary_item.item_art_written &&
+          typed_ordinary_item.grid_requests.size() == 5U &&
+          typed_ordinary_item.grid_requests.back().detail_value ==
+              us_item_catalog()[11].source_combat_factor &&
+          typed_ordinary_item.grid_requests.back().detail_value == 0x08U &&
+          typed_ordinary_item.text_requests.size() == 2U &&
+          item_action_reads == 1 &&
+          item_detail_events == std::vector<int>{1, 10, 2, 2, 2, 11, 3})) {
+        return 30;
+    }
+
+    // Rows 41..43 have a source +0x1E pointer of -1. The typed path must not
+    // render detail art even if the generic adapter input claims it exists.
+    item_variant = {};
+    item_detail_events.clear();
+    item_action_reads = 0;
+    ItemActionDetailInput no_art_input{};
+    no_art_input.item_code = 42U;
+    no_art_input.item_art_available = true;
+    no_art_input.item_detail_value = 0xEEU;
+    const auto typed_no_art_item = render_item_action_details(
+        no_art_input, us_item_catalog(), item_variant, item_detail_callbacks);
+    if (!(typed_no_art_item.item_name_rendered &&
+          !typed_no_art_item.item_art_written &&
+          typed_no_art_item.grid_requests.size() == 1U &&
+          typed_no_art_item.grid_requests.back().detail_value == 0U &&
+          item_action_reads == 1)) {
+        return 31;
+    }
+
+    // A code outside the typed catalog is an explicit missing source row; it
+    // must not enter the resource-variant or presentation path.
+    item_variant = {};
+    item_detail_events.clear();
+    item_action_reads = 0;
+    ItemActionDetailInput missing_item_input{};
+    missing_item_input.item_code = 51U;
+    const auto missing_item = render_item_action_details(
+        missing_item_input, us_item_catalog(), item_variant,
+        item_detail_callbacks);
+    if (!(missing_item.item_record_missing &&
+          missing_item.returned_item_code == 51U && item_action_reads == 0 &&
+          item_detail_events.empty() && !item_variant.alternate)) {
+        return 32;
+    }
+
     // Codes 0x0D..0x13 use the extended label table and perform the second
     // 0x12148 lookup before selecting the phase byte as the value.
     item_variant = {};

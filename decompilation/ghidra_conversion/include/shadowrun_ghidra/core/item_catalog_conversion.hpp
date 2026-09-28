@@ -14,6 +14,10 @@ constexpr std::size_t kUsItemDefinitionCount = 50U;
 // zero-based before reaching the same record.
 struct UsItemDefinition {
     std::uint8_t item_code = 0;
+    // D4540 +0x1E is a signed resource pointer. The native conversion keeps
+    // the source meaning (present versus -1) rather than carrying a ROM
+    // address into runtime code.
+    bool has_detail_art = false;
     std::uint16_t base_cost = 0; // D4540 +0x22
     std::uint8_t source_combat_factor = 0; // D4540 +0x24
     std::int8_t signed_detail_asset_index = 0; // D4540 +0x25

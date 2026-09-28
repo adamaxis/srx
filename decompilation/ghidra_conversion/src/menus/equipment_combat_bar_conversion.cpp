@@ -469,6 +469,37 @@ ItemActionDetailResult render_item_action_details(
     return result;
 }
 
+ItemActionDetailResult render_item_action_details(
+    const ItemActionDetailInput& input,
+    const UsItemCatalog& item_catalog,
+    ResourceVariantState& resource_variant,
+    const ItemActionDetailCallbacks& callbacks) {
+    ItemActionDetailResult missing{};
+    missing.returned_item_code = input.item_code;
+
+    // 0x12A8C is reached with an ordinary one-based inventory/item code. A
+    // missing row is a source-data problem, not permission to wrap a host
+    // index or reuse the caller's guessed art/value fields.
+    if (input.item_code == 0U ||
+        static_cast<std::size_t>(input.item_code) > item_catalog.size()) {
+        missing.item_record_missing = true;
+        return missing;
+    }
+
+    const auto& item = item_catalog[static_cast<std::size_t>(
+        input.item_code - 1U)];
+    if (item.item_code != input.item_code) {
+        missing.item_record_missing = true;
+        return missing;
+    }
+
+    auto source_bound_input = input;
+    source_bound_input.item_art_available = item.has_detail_art;
+    source_bound_input.item_detail_value = item.source_combat_factor;
+    return render_item_action_details(source_bound_input, resource_variant,
+                                      callbacks);
+}
+
 EquipmentActionDetailRowResult render_equipment_action_detail_row(
     const EquipmentActionDetailRowInput& input,
     const EquipmentActionDetailRowCallbacks& callbacks) {

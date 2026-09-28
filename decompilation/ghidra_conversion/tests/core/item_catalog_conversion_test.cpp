@@ -8,6 +8,7 @@ int main() {
     const auto& catalog = us_item_catalog();
     if (catalog.size() != kUsItemDefinitionCount ||
         catalog.front().item_code != 1U ||
+        !catalog.front().has_detail_art ||
         catalog.front().base_cost != 0x0064U ||
         catalog.front().source_combat_factor != 0x06U ||
         catalog.front().signed_detail_asset_index != 0 ||
@@ -25,6 +26,7 @@ int main() {
 
     const auto& item_forty_one = catalog[40];
     if (item_forty_one.item_code != 41U ||
+        item_forty_one.has_detail_art ||
         item_forty_one.base_cost != 0x0002U ||
         item_forty_one.source_combat_factor != 0xFFU ||
         item_forty_one.signed_detail_asset_index != -1 ||
@@ -32,7 +34,9 @@ int main() {
         return 3;
     }
 
-    if (catalog[42].base_cost != 0U || catalog[42].detail_selector != 2U ||
+    if (catalog[42].has_detail_art || catalog[42].base_cost != 0U ||
+        catalog[42].detail_selector != 2U ||
+        !catalog[43].has_detail_art ||
         catalog.back().item_code != 50U || catalog.back().base_cost != 0x20U ||
         catalog.back().detail_selector != 6U) {
         return 4;
