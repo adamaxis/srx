@@ -409,7 +409,7 @@ of a port.
 | Cyberware | `0x11950` | Partial | Empty branch and source bit 0..14 installed-row scan are converted; text/input service and mutation flows remain |
 | Runner switching | `0x391A` | Partial | Source type-2 wrap, eligibility/suppression gate, and no-eligible no-install behavior are converted; recruited roster data and native integration remain |
 | Pocket Secretary / Notebook | `0xC2A6`, `0xC3E6`, `0xC376`, `0xC8C8`, `0xF236`, `0xF2E2`, `0xF312`, `0x18150`, `0xC448` | Partial | Source five-row order, cursor wrap, caller-specific Save/Load return, Notebook base labels and no-current-run response, Group Items catalog/empty path, any-edge return, Cyberdeck no-deck feedback, and active-runner Dismiss path are present; Tips & Clues, conditional Notebook screens, deck-present Matrix path, and restricted-mode gates remain |
-| Magic | `0xFBA6` | Partial | Source class/resource gate, two-row cursor, spell table/code/availability selection, force clamp, and action preparation are converted; target/effect use remains |
+| Magic | `0xFBA6` | Partial | Source class/resource gate, two-row cursor, spell table/code/availability selection, force clamp, spell selection display, and equipment-selection routing are converted; target/effect use remains |
 | Matrix/cyberdeck | source deck/program loop | Pending | Separate from Magic and command overview |
 | Field combat | source target/action loops | Pending | Posture consumers, damage, ammo/spell drain, and animation are pending |
 

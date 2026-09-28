@@ -37,21 +37,6 @@ struct MagicSpellSelection {
     MagicSpellAvailability availability = MagicSpellAvailability::unavailable;
 };
 
-enum class MagicActionResult {
-    prepared,
-    unavailable_spell,
-};
-
-struct MagicActionPreparation {
-    MagicActionResult result = MagicActionResult::unavailable_spell;
-    std::uint8_t spell_item_code = 0;
-    std::uint8_t force = 0;
-    // ROM 0x125FA clears an auxiliary entity marker when an ordinary
-    // equipped item was active. The marker itself remains an external
-    // boundary, but the source condition is returned to the caller.
-    bool clear_active_item_marker = false;
-};
-
 enum class MagicForceLoopResult {
     waiting,
     adjusted,
@@ -61,6 +46,8 @@ enum class MagicForceLoopResult {
 struct MagicForceSelection {
     std::uint8_t force = 1;
 };
+
+struct MagicForceState;
 
 // ROM 0x10016 is a frame-driven controller loop. Hardware sampling and the
 // presentation services are explicit host boundaries, while the loop keeps
@@ -89,6 +76,19 @@ struct MagicForceAdjustmentCallbacks {
     std::function<void()> refresh_equipment_combat_values;
     std::function<void()> write_repeated_menu_grid;
     std::function<void()> refresh_equipment_action_metric;
+};
+
+struct MagicEquipmentSelectionCallbacks {
+    std::function<void()> prepare_magic_action_details;
+    std::function<void()> clear_entity_auxiliary_marker;
+    // Return the sampled input word that caused 0x10016 to return.
+    std::function<std::uint16_t()> run_magic_force_selection_loop;
+    // Return the sampled input word that caused 0x10722 to return.
+    std::function<std::uint16_t()> run_runner_posture_adjustment;
+    std::function<void()> upload_field_asset_setup;
+    std::function<void()> draw_hud_panel_triplet;
+    std::function<void()> advance_entity_behavior_meter;
+    std::function<void()> advance_entity_asset_meter;
 };
 
 struct MagicGridControlCallbacks {
@@ -173,11 +173,14 @@ std::optional<std::int8_t> read_magic_spell_availability(
 std::uint8_t clamp_magic_force(std::uint8_t current, std::int8_t delta,
                                std::uint8_t table_parameter);
 
-// ROM 0xFF5A's source mutation after the force/posture selection boundary.
-// The target/effect loop at 0x10016 remains outside this preparation helper.
-MagicActionPreparation prepare_magic_action(
-    RunnerRecordFields& record, const MagicSpellSelection& selection,
-    std::uint8_t force);
+// ROM 0xFF5A: prepare the magic detail panel, carry the selected force into
+// an already-equipped item's rounds when the source +0x56/+0x57 gate allows
+// it, install spell code + 1, route the force/posture input exits, then clear
+// the inventory-slot marker and publish the field/HUD updates.
+void run_magic_equipment_selection(
+    RunnerRecordFields& record, MagicForceState& force_state,
+    std::uint8_t spell_code,
+    const MagicEquipmentSelectionCallbacks& callbacks = {});
 
 // ROM 0x10016's input boundary: B raises force, A lowers it, and the source
 // confirm/cancel edges leave the force/posture loop. Bit D is deliberately not
@@ -191,7 +194,7 @@ MagicForceLoopResult apply_magic_force_input(
 // adjustment priority, and the bit-9/E/C exit redraw. The host controller
 // owns the event loop; this function is the source behavior for one bounded
 // selection interaction and returns only on one of the source exit edges.
-void run_magic_force_selection_loop(
+std::uint16_t run_magic_force_selection_loop(
     const MagicForceSelectionLoopCallbacks& callbacks = {});
 
 // ROM 0x10172: refresh the force meter in the exact source order. The

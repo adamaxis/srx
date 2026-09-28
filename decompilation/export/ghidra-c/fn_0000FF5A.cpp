@@ -11,6 +11,11 @@
 //   0x000102D4 prepare_magic_action_details
 //   0x00010722 run_runner_posture_adjustment
 //   0x000125FA clear_entity_auxiliary_marker
+//
+// Source correction: this entry does not test the spell availability byte.
+// It prepares the detail panel, conditionally copies the current force into
+// an active item's +0x4E, installs D7+1 at +0x57, routes D/C/E through the
+// force and posture loops, then finalizes +0x56, field/HUD meters, and +0x9D.
 
 
 void run_equipment_selection(void)

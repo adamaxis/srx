@@ -91,25 +91,6 @@ int main() {
                 clamp_magic_force(3U, -1, 9U) == 2U)) {
         return 12;
     }
-    RunnerRecordFields action_record{};
-    action_record.equipped_inventory_slot = 2;
-    action_record.equipped_item_code = 7U;
-    const auto preparation = prepare_magic_action(
-        action_record, *available, 4U);
-    if (!expect(preparation.result == MagicActionResult::prepared &&
-                preparation.spell_item_code == 2U && preparation.force == 4U &&
-                preparation.clear_active_item_marker &&
-                action_record.equipped_item_code == 2U &&
-                action_record.ammo_rounds == 4U &&
-                action_record.magic_force == 4U)) {
-        return 13;
-    }
-    const auto rejected = prepare_magic_action(action_record, *unavailable, 4U);
-    if (!expect(rejected.result == MagicActionResult::unavailable_spell &&
-                action_record.equipped_item_code == 2U)) {
-        return 14;
-    }
-
     MagicForceSelection force_state{1U};
     if (!expect(apply_magic_force_input(force_state, 0x0800U, 3U) ==
                     MagicForceLoopResult::adjusted &&
@@ -129,7 +110,7 @@ int main() {
                     MagicForceLoopResult::finished &&
                 apply_magic_force_input(force_state, 0U, 3U) ==
                     MagicForceLoopResult::waiting)) {
-        return 15;
+        return 13;
     }
 
     std::vector<int> loop_events;
@@ -149,11 +130,12 @@ int main() {
         loop_events.push_back(delta > 0 ? 7 : 8);
     };
     loop_callbacks.refresh_final_display = [&]() { loop_events.push_back(9); };
-    run_magic_force_selection_loop(loop_callbacks);
+    const auto loop_exit = run_magic_force_selection_loop(loop_callbacks);
     if (!expect(loop_events == std::vector<int>{1, 2, 3, 4, 5, 6, 7,
                                                  2, 3, 4, 5, 6,
-                                                 2, 3, 4, 5, 6, 9})) {
-        return 26;
+                                                 2, 3, 4, 5, 6, 9} &&
+                loop_exit == 0x0200U)) {
+        return 14;
     }
 
     std::vector<int> force_display_events;
@@ -166,17 +148,17 @@ int main() {
     };
     refresh_magic_force_display(1U, 3U, force_display_callbacks);
     if (!expect(force_display_events == std::vector<int>{1, 2, 1, 1})) {
-        return 16;
+        return 15;
     }
     force_display_events.clear();
     refresh_magic_force_display(2U, 2U, force_display_callbacks);
     if (!expect(force_display_events == std::vector<int>{1, 1, 2, 1})) {
-        return 17;
+        return 16;
     }
     force_display_events.clear();
     refresh_magic_force_display(2U, 3U, force_display_callbacks);
     if (!expect(force_display_events == std::vector<int>{1, 1, 2, 1, 1})) {
-        return 18;
+        return 17;
     }
 
     MagicForceState selected_force{99U, 99U};
@@ -187,20 +169,95 @@ int main() {
     select_magic_force(selected_force, *available, selected_record);
     if (!expect(selected_force.maximum_force == 9U &&
                 selected_force.current_force == 3U)) {
-        return 19;
+        return 18;
     }
     selected_record.equipped_item_code = 4U;
     select_magic_force(selected_force, *available, selected_record);
     if (!expect(selected_force.maximum_force == 9U &&
                 selected_force.current_force == 9U)) {
-        return 20;
+        return 19;
     }
     selected_record.equipped_item_code = 2U;
     selected_record.equipped_inventory_slot = 0;
     select_magic_force(selected_force, *available, selected_record);
     if (!expect(selected_force.maximum_force == 9U &&
                 selected_force.current_force == 9U)) {
-        return 21;
+        return 20;
+    }
+
+    RunnerRecordFields equipment_record{};
+    equipment_record.equipped_inventory_slot = 2;
+    equipment_record.equipped_item_code = 7U;
+    MagicForceState equipment_force{4U, 9U};
+    std::vector<int> equipment_events;
+    MagicEquipmentSelectionCallbacks equipment_callbacks{};
+    equipment_callbacks.prepare_magic_action_details = [&]() {
+        equipment_events.push_back(1);
+    };
+    equipment_callbacks.clear_entity_auxiliary_marker = [&]() {
+        equipment_events.push_back(2);
+    };
+    equipment_callbacks.run_magic_force_selection_loop = [&]() {
+        equipment_events.push_back(3);
+        return static_cast<std::uint16_t>(0x4000U);
+    };
+    equipment_callbacks.run_runner_posture_adjustment = [&]() {
+        equipment_events.push_back(4);
+        return static_cast<std::uint16_t>(0U);
+    };
+    equipment_callbacks.upload_field_asset_setup = [&]() {
+        equipment_events.push_back(5);
+    };
+    equipment_callbacks.draw_hud_panel_triplet = [&]() {
+        equipment_events.push_back(6);
+    };
+    equipment_callbacks.advance_entity_behavior_meter = [&]() {
+        equipment_events.push_back(7);
+    };
+    equipment_callbacks.advance_entity_asset_meter = [&]() {
+        equipment_events.push_back(8);
+    };
+    run_magic_equipment_selection(equipment_record, equipment_force, 1U,
+                                  equipment_callbacks);
+    if (!expect(equipment_record.equipped_item_code == 2U &&
+                equipment_record.ammo_rounds == 4U &&
+                equipment_record.equipped_inventory_slot == -1 &&
+                equipment_record.magic_force == 4U &&
+                equipment_events == std::vector<int>{1, 2, 3, 5, 6, 7, 8})) {
+        return 30;
+    }
+
+    RunnerRecordFields posture_record{};
+    posture_record.equipped_inventory_slot = -1;
+    MagicForceState posture_force{2U, 6U};
+    std::vector<int> posture_events;
+    std::vector<std::uint16_t> force_exits{0U, 0x1000U};
+    std::size_t force_exit_index = 0U;
+    MagicEquipmentSelectionCallbacks posture_callbacks{};
+    posture_callbacks.prepare_magic_action_details = [&]() {
+        posture_events.push_back(1);
+    };
+    posture_callbacks.run_magic_force_selection_loop = [&]() {
+        posture_events.push_back(2);
+        return force_exits[force_exit_index++];
+    };
+    posture_callbacks.run_runner_posture_adjustment = [&]() {
+        posture_events.push_back(3);
+        return static_cast<std::uint16_t>(0U);
+    };
+    posture_callbacks.upload_field_asset_setup = [&]() {
+        posture_events.push_back(4);
+    };
+    posture_callbacks.draw_hud_panel_triplet = [&]() { posture_events.push_back(5); };
+    posture_callbacks.advance_entity_behavior_meter = [&]() { posture_events.push_back(6); };
+    posture_callbacks.advance_entity_asset_meter = [&]() { posture_events.push_back(7); };
+    run_magic_equipment_selection(posture_record, posture_force, 3U,
+                                  posture_callbacks);
+    if (!expect(posture_record.equipped_item_code == 4U &&
+                posture_record.equipped_inventory_slot == -1 &&
+                posture_record.magic_force == 2U &&
+                posture_events == std::vector<int>{1, 2, 3, 2, 4, 5, 6, 7})) {
+        return 31;
     }
 
     std::vector<int> detail_events;
@@ -222,7 +279,7 @@ int main() {
     };
     prepare_magic_action_details(detail_callbacks);
     if (!expect(detail_events == std::vector<int>{1, 2, 2, 2, 3, 4, 5})) {
-        return 22;
+        return 21;
     }
 
     std::vector<int> selection_display_events;
@@ -264,14 +321,14 @@ int main() {
     if (!expect(selection_display_events ==
                     std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10} &&
                 transferred_spell == 5U && transferred_mask == 0x2000U)) {
-        return 29;
+        return 22;
     }
     selection_display_events.clear();
     render_magic_menu_selection_display(6U, selection_display_callbacks);
     if (!expect(selection_display_events ==
                     std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10} &&
                 transferred_spell == 6U && transferred_mask == 0x6000U)) {
-        return 30;
+        return 23;
     }
 
     MagicForceState force_state_values{3U, 5U};
@@ -308,7 +365,7 @@ int main() {
                 force_record.magic_force == 4U &&
                 adjustment_events == std::vector<int>{1, 2, 2, 3, 2, 2, 4,
                                                       5, 6, 7})) {
-        return 31;
+        return 24;
     }
 
     std::vector<int> availability_events;
@@ -324,12 +381,12 @@ int main() {
     };
     render_magic_spell_availability(-1, availability_callbacks);
     if (!expect(availability_events == std::vector<int>{1})) {
-        return 32;
+        return 25;
     }
     availability_events.clear();
     render_magic_spell_availability(0, availability_callbacks);
     if (!expect(availability_events == std::vector<int>{2, 3})) {
-        return 33;
+        return 26;
     }
 
     std::vector<int> grid_events;
@@ -342,19 +399,19 @@ int main() {
     clear_magic_menu_grids(false, grid_callbacks);
     if (!expect(grid_events.size() == 10U && grid_events[9] == 0x8174 &&
                 std::count(grid_events.begin(), grid_events.end(), 1) == 9)) {
-        return 34;
+        return 27;
     }
     grid_events.clear();
     clear_magic_menu_grids(true, grid_callbacks);
     if (!expect(grid_events.size() == 11U && grid_events[10] == 0x8174 &&
                 std::count(grid_events.begin(), grid_events.end(), 1) == 10)) {
-        return 35;
+        return 28;
     }
     grid_events.clear();
     refresh_menu_grid_quadruple(grid_callbacks);
     if (!expect(grid_events ==
                 std::vector<int>{0x8134, 1, 1, 1, 1, 0x8174})) {
-        return 36;
+        return 29;
     }
 
     return 0;

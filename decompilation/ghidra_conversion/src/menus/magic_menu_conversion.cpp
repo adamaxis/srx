@@ -137,29 +137,6 @@ std::uint8_t clamp_magic_force(const std::uint8_t current,
     return static_cast<std::uint8_t>(next);
 }
 
-MagicActionPreparation prepare_magic_action(
-    RunnerRecordFields& record, const MagicSpellSelection& selection,
-    const std::uint8_t force) {
-    MagicActionPreparation result{};
-    if (selection.availability != MagicSpellAvailability::available) {
-        return result;
-    }
-
-    result.result = MagicActionResult::prepared;
-    result.spell_item_code = static_cast<std::uint8_t>(
-        static_cast<unsigned>(selection.spell_code) + 1U);
-    result.force = clamp_magic_force(force, 0, selection.table_parameter);
-    result.clear_active_item_marker =
-        record.equipped_inventory_slot >= 0 &&
-        record.equipped_item_code != 0U;
-    if (result.clear_active_item_marker) {
-        record.ammo_rounds = result.force;
-    }
-    record.equipped_item_code = result.spell_item_code;
-    record.magic_force = result.force;
-    return result;
-}
-
 MagicForceLoopResult apply_magic_force_input(
     MagicForceSelection& state, const std::uint16_t input,
     const std::uint8_t table_parameter) {
@@ -182,7 +159,7 @@ MagicForceLoopResult apply_magic_force_input(
     return MagicForceLoopResult::waiting;
 }
 
-void run_magic_force_selection_loop(
+std::uint16_t run_magic_force_selection_loop(
     const MagicForceSelectionLoopCallbacks& callbacks) {
     // ROM 0x10016 enters with the C85A8 force-display variant, then redraws
     // with C85AC only after bit 9, E, or C returns from the frame loop.
@@ -211,10 +188,64 @@ void run_magic_force_selection_loop(
         }
         if ((input & (0x0200U | 0x4000U | 0x1000U)) != 0U) {
             call_once(callbacks.refresh_final_display);
-            return;
+            return input;
         }
         // Bit D and an empty input word both follow the source loop-back edge.
     }
+}
+
+void run_magic_equipment_selection(
+    RunnerRecordFields& record, MagicForceState& force_state,
+    const std::uint8_t spell_code,
+    const MagicEquipmentSelectionCallbacks& callbacks) {
+    // ROM 0xFF5A enters through the detail panel before inspecting the
+    // currently equipped item. The detail callback is where source 0x102D4
+    // establishes the current force shown to the player.
+    call_once(callbacks.prepare_magic_action_details);
+
+    const bool has_active_item = record.equipped_inventory_slot >= 0 &&
+                                 record.equipped_item_code != 0U;
+    if (has_active_item) {
+        call_once(callbacks.clear_entity_auxiliary_marker);
+        record.ammo_rounds = static_cast<std::uint8_t>(force_state.current_force);
+    }
+    record.equipped_item_code = static_cast<std::uint8_t>(
+        static_cast<unsigned>(spell_code) + 1U);
+
+    // The source checks D, C, then E after force selection. An E edge enters
+    // posture adjustment only when it was absent from the force-loop result.
+    for (;;) {
+        const auto force_input = callbacks.run_magic_force_selection_loop
+                                     ? callbacks.run_magic_force_selection_loop()
+                                     : 0U;
+        if ((force_input & 0x2000U) != 0U ||
+            (force_input & 0x1000U) != 0U ||
+            (force_input & 0x4000U) != 0U) {
+            break;
+        }
+
+        const auto posture_input = callbacks.run_runner_posture_adjustment
+                                       ? callbacks.run_runner_posture_adjustment()
+                                       : 0U;
+        if ((posture_input & 0x2000U) != 0U ||
+            (posture_input & 0x1000U) != 0U) {
+            break;
+        }
+        // Only the absence of E after posture returns to the force selector;
+        // D/C already exited above, and the source falls through on E.
+        if ((posture_input & 0x4000U) != 0U) {
+            break;
+        }
+    }
+
+    // 0xFFB6 finalizes the selected spell and publishes the field-facing
+    // meters before storing the selected force in record +0x9D.
+    record.equipped_inventory_slot = -1;
+    call_once(callbacks.upload_field_asset_setup);
+    call_once(callbacks.draw_hud_panel_triplet);
+    call_once(callbacks.advance_entity_behavior_meter);
+    call_once(callbacks.advance_entity_asset_meter);
+    record.magic_force = static_cast<std::uint8_t>(force_state.current_force);
 }
 
 void refresh_magic_force_display(

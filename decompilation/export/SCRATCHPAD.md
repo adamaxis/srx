@@ -1769,6 +1769,13 @@ a generic text batch: its code-6 tile-mask branch, selected spell name and
 description, shared Success/Force labels, posture/availability calls, and
 grouped force value are explicit in one typed callback sequence.
 
+The `0xFF5A` equipment-selection boundary is now source-traced as a complete
+typed orchestration routine. It performs detail preparation, conditionally
+carries current force into the active item's rounds, installs `spell_code + 1`,
+routes the force/posture D-C-E edges, clears the source slot marker, runs the
+field/HUD meter tail, and publishes `+0x9D`; the ROM contains no availability
+rejection at this entry.
+
 ### World-effect/menu arithmetic audit continuation
 
 The direct ROM pass over `0x562EC` and `0x563CC` found the existing typed

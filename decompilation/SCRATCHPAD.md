@@ -1882,9 +1882,11 @@ record byte `+0x25` as the availability gate. `magic_menu_conversion` now
 returns that typed selection and distinguishes available from unavailable
 spells. `0x100A8` now has a typed force clamp: the selected value stays in
 the inclusive range `1..table_parameter`, and the result is published to
-record `+0x9D`. The `0xFF5A` preparation boundary now publishes the source
-spell item code (`spell_code + 1`), reloads the ordinary equipped-item value
-only when the source had an active item, and records the selected force. The
+record `+0x9D`. The `0xFF5A` equipment-selection boundary now prepares the
+detail panel, copies the current force into an active item's `+0x4E`, publishes
+the source spell item code (`spell_code + 1`), routes the force/posture exits,
+clears the source inventory-slot marker, runs the field/HUD meter tail, and
+records the selected force. It has no availability gate in the ROM. The
 target/effect application is not at `0x10016`; that entry is only the
 force-input loop. The `0x10016` input boundary is now converted too: source bit `0x0800`
 raises force, `0x0400` lowers it, and `0x0200`, `0x4000`, or `0x1000` leave the
