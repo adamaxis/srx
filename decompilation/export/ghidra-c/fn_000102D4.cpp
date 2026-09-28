@@ -8,6 +8,9 @@
 //   0x00010260 prepare_menu_grid_then_service
 //   0x000107CE adjust_runner_posture
 //   0x0001088C render_magic_spell_availability
+//
+// Source text roles are distinct: C8A4A is the `Set Force & Posture.`
+// heading, C89FC is the `Success` label, and C8A3A is the `Force` label.
 
 
 void prepare_magic_action_details(void)

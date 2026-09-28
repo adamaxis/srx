@@ -282,6 +282,16 @@ void select_magic_force(MagicForceState& state,
     state.current_force = state.maximum_force;
 }
 
+void prepare_magic_menu_grid_and_select_force(
+    MagicForceState& state, const MagicSpellSelection& selection,
+    const RunnerRecordFields& record,
+    const MagicMenuGridPreparationCallbacks& callbacks) {
+    // ROM 0x10260 submits the metadata grid before 0x101FE mutates the
+    // selected current/max force pair.
+    call_once(callbacks.write_menu_repeated_grid_with_metadata);
+    select_magic_force(state, selection, record);
+}
+
 void adjust_magic_force(
     RunnerRecordFields& record, MagicForceState& state,
     const std::int16_t delta, const MagicForceAdjustmentCallbacks& callbacks) {
@@ -314,9 +324,12 @@ void prepare_magic_action_details(
     // ROM 0x102D4 preserves three distinct text-render calls between the
     // grid preparation and posture/availability services.
     call_once(callbacks.prepare_menu_grid_then_service);
-    call_once(callbacks.render_spell_text);
-    call_once(callbacks.render_spell_text);
-    call_once(callbacks.render_spell_text);
+    if (callbacks.render_action_text) {
+        callbacks.render_action_text(
+            MagicActionTextRegion::set_force_and_posture_heading);
+        callbacks.render_action_text(MagicActionTextRegion::success_label);
+        callbacks.render_action_text(MagicActionTextRegion::force_label);
+    }
     call_once(callbacks.adjust_runner_posture);
     call_once(callbacks.render_spell_availability);
     call_once(callbacks.build_grouped_decimal_glyphs);

@@ -185,6 +185,16 @@ int main() {
         return 20;
     }
 
+    int metadata_grid_writes = 0;
+    prepare_magic_menu_grid_and_select_force(
+        selected_force, *available, selected_record,
+        {[&]() { ++metadata_grid_writes; }});
+    if (!expect(metadata_grid_writes == 1 &&
+                selected_force.maximum_force == 9U &&
+                selected_force.current_force == 9U)) {
+        return 32;
+    }
+
     RunnerRecordFields equipment_record{};
     equipment_record.equipped_inventory_slot = 2;
     equipment_record.equipped_item_code = 7U;
@@ -265,20 +275,21 @@ int main() {
     detail_callbacks.prepare_menu_grid_then_service = [&]() {
         detail_events.push_back(1);
     };
-    detail_callbacks.render_spell_text = [&]() {
-        detail_events.push_back(2);
-    };
+    detail_callbacks.render_action_text =
+        [&](const MagicActionTextRegion region) {
+            detail_events.push_back(static_cast<int>(region) + 2);
+        };
     detail_callbacks.adjust_runner_posture = [&]() {
-        detail_events.push_back(3);
-    };
-    detail_callbacks.render_spell_availability = [&]() {
-        detail_events.push_back(4);
-    };
-    detail_callbacks.build_grouped_decimal_glyphs = [&]() {
         detail_events.push_back(5);
     };
+    detail_callbacks.render_spell_availability = [&]() {
+        detail_events.push_back(6);
+    };
+    detail_callbacks.build_grouped_decimal_glyphs = [&]() {
+        detail_events.push_back(7);
+    };
     prepare_magic_action_details(detail_callbacks);
-    if (!expect(detail_events == std::vector<int>{1, 2, 2, 2, 3, 4, 5})) {
+    if (!expect(detail_events == std::vector<int>{1, 2, 3, 4, 5, 6, 7})) {
         return 21;
     }
 

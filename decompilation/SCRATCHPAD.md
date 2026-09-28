@@ -1909,6 +1909,11 @@ the selected spell glyph triple, renders the name and description, and follows
 the shared `0x102EC` tail for Success/Force labels, posture, availability, and
 the grouped force value.
 
+The `0x10260` preparation boundary now submits its metadata grid before
+selecting current/max force. `0x102D4` also exposes its actual labels instead
+of a generic three-call text batch: `Set Force & Posture.`, `Success`, and
+`Force`, followed by posture, availability, and grouped force rendering.
+
 The `0x101FE` selector is now recorded under the magic-menu module rather than
 the generic field renderer. It publishes the selected spell's low-byte force
 maximum and preserves the runner's current force only on the source's

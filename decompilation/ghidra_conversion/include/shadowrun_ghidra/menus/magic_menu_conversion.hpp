@@ -91,6 +91,10 @@ struct MagicEquipmentSelectionCallbacks {
     std::function<void()> advance_entity_asset_meter;
 };
 
+struct MagicMenuGridPreparationCallbacks {
+    std::function<void()> write_menu_repeated_grid_with_metadata;
+};
+
 struct MagicGridControlCallbacks {
     std::function<void()> write_grid;
     std::function<void(std::uint16_t)> set_display_command;
@@ -102,9 +106,15 @@ struct MagicSpellAvailabilityCallbacks {
     std::function<void()> write_grid;
 };
 
+enum class MagicActionTextRegion {
+    set_force_and_posture_heading,
+    success_label,
+    force_label,
+};
+
 struct MagicActionDetailCallbacks {
     std::function<void()> prepare_menu_grid_then_service;
-    std::function<void()> render_spell_text;
+    std::function<void(MagicActionTextRegion region)> render_action_text;
     std::function<void()> adjust_runner_posture;
     std::function<void()> render_spell_availability;
     std::function<void()> build_grouped_decimal_glyphs;
@@ -113,11 +123,6 @@ struct MagicActionDetailCallbacks {
 enum class MagicSpellRecordTextRegion {
     spell_name,
     spell_description,
-};
-
-enum class MagicActionTextRegion {
-    success_label,
-    force_label,
 };
 
 struct MagicMenuSelectionDisplayCallbacks {
@@ -221,6 +226,13 @@ struct MagicForceState {
 void select_magic_force(MagicForceState& state,
                         const MagicSpellSelection& selection,
                         const RunnerRecordFields& record);
+
+// ROM 0x10260: submit the magic menu's metadata grid, then select the current
+// and maximum force for the cursor's spell entry.
+void prepare_magic_menu_grid_and_select_force(
+    MagicForceState& state, const MagicSpellSelection& selection,
+    const RunnerRecordFields& record,
+    const MagicMenuGridPreparationCallbacks& callbacks = {});
 
 void adjust_magic_force(
     RunnerRecordFields& record, MagicForceState& state, std::int16_t delta,
