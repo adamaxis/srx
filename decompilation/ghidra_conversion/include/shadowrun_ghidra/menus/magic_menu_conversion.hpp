@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shadowrun_ghidra/core/magic_spell_catalog_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_action_math_conversion.hpp"
 #include "shadowrun_ghidra/session/runner_record_access_conversion.hpp"
 
@@ -42,10 +43,9 @@ struct MagicMenuLoopCallbacks {
 // ROM 0x105E6 reads the selected magic action and sends the current force,
 // runner record, and decoded D4EA0 action row through 0x10660.
 struct MagicActionEffectValueInput {
-    std::uint8_t action_code = 0;
     std::uint16_t current_force = 0;
     EntityActionRecord entity{};
-    EntityActionCatalogRecord action{};
+    MagicSpellDefinition spell{};
 };
 
 // The positive branch selects a six-tile Damage row. The host renderer uses
@@ -287,6 +287,14 @@ std::optional<MagicSpellSelection> select_magic_spell(
     const std::vector<std::uint8_t>& spell_table,
     MagicMenuSelection selection,
     const std::vector<std::uint8_t>& spell_records);
+
+// Native conversion boundary: use the typed US catalog for runtime-facing
+// spell selection. The byte-vector overload above remains an explicit
+// source-table/reference helper for ROM audit tests.
+std::optional<MagicSpellSelection> select_magic_spell(
+    const std::vector<std::uint8_t>& spell_table,
+    MagicMenuSelection selection,
+    const UsMagicSpellCatalog& spell_catalog);
 
 // Read the source signed availability byte directly from one 0x30-byte spell
 // record. This is an offline/reference conversion helper; the runtime does

@@ -114,9 +114,11 @@ MagicActionEffectValueResult refresh_magic_action_effect_value(
     const MagicActionEffectValueCallbacks& callbacks) {
     MagicActionEffectValueResult result{};
     // ROM 0x105E6 enters 0x10660 with D4=current force and D7=action code.
+    const EntityActionCatalogRecord action{
+        input.spell.difficulty_modifier, input.spell.base_effect};
     const auto residual = calculate_action_residual(
-        input.action_code, input.current_force,
-        calculate_action_effect_roll_count(input.entity), input.action);
+        input.spell.spell_code, input.current_force,
+        calculate_action_effect_roll_count(input.entity), action);
     result.residual_valid = residual.valid;
     result.residual_effect = residual.residual_effect;
     if (!residual.valid || residual.residual_effect <= 0) {
@@ -284,6 +286,49 @@ std::optional<MagicSpellSelection> select_magic_spell(
     result.table_parameter = spell_table[entry_offset + 1U];
     result.availability_byte = *availability;
     result.availability = *availability >= 0
+                              ? MagicSpellAvailability::available
+                              : MagicSpellAvailability::unavailable;
+    return result;
+}
+
+std::optional<MagicSpellSelection> select_magic_spell(
+    const std::vector<std::uint8_t>& spell_table,
+    const MagicMenuSelection selection,
+    const UsMagicSpellCatalog& spell_catalog) {
+    if (spell_table.size() < 2U || selection.row > 1U ||
+        selection.column >= 7U) {
+        return std::nullopt;
+    }
+    const auto count = static_cast<std::uint16_t>(
+        (static_cast<std::uint16_t>(spell_table[0]) << 8U) |
+        spell_table[1]);
+    const auto entry_index = static_cast<std::uint16_t>(
+        static_cast<std::uint16_t>(selection.row) * 7U + selection.column);
+    if (entry_index >= count) {
+        return std::nullopt;
+    }
+    const auto entry_offset = static_cast<std::size_t>(2U) +
+                              static_cast<std::size_t>(entry_index) * 2U;
+    if (entry_offset + 1U >= spell_table.size()) {
+        return std::nullopt;
+    }
+
+    const auto spell_code = spell_table[entry_offset];
+    const auto spell = std::find_if(
+        spell_catalog.begin(), spell_catalog.end(),
+        [spell_code](const MagicSpellDefinition& candidate) {
+            return candidate.spell_code == spell_code;
+        });
+    if (spell == spell_catalog.end()) {
+        return std::nullopt;
+    }
+
+    MagicSpellSelection result{};
+    result.table_entry_index = entry_index;
+    result.spell_code = spell_code;
+    result.table_parameter = spell_table[entry_offset + 1U];
+    result.availability_byte = spell->availability_byte;
+    result.availability = spell->availability_byte >= 0
                               ? MagicSpellAvailability::available
                               : MagicSpellAvailability::unavailable;
     return result;

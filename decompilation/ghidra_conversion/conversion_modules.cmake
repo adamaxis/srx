@@ -13,6 +13,7 @@ file(GLOB SHADOWRUN_MODULE_SOURCE_DATA CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/asset_catalog_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/compressed_data_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/coordinate_data_conversion.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/core/magic_spell_catalog_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/packed_data_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/random_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/source_buffer_conversion.cpp"

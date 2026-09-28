@@ -130,10 +130,9 @@ int main() {
     }
 
     MagicActionEffectValueInput metric_input{};
-    metric_input.action_code = 1U;
     metric_input.current_force = 2U;
     metric_input.entity.item18_base = 10U;
-    metric_input.action.base_effect = 20;
+    metric_input.spell = *find_us_magic_spell(2U);
     std::vector<int> metric_events;
     const auto metric = refresh_magic_action_effect_value(
         metric_input,
@@ -143,18 +142,18 @@ int main() {
          [&](const MagicActionEffectDamageGridPlan& plan) {
              metric_events.push_back(static_cast<int>(plan.effect_row));
          }});
-    if (!metric.residual_valid || metric.residual_effect != 15 ||
+    if (!metric.residual_valid || metric.residual_effect != 7 ||
         !metric.damage_grid_written || metric.none_damage_value_rendered ||
         !metric.damage_grid.has_value() ||
-        metric.damage_grid->effect_row != 14U ||
+        metric.damage_grid->effect_row != 6U ||
         metric.damage_grid->source_row_stride != 0x0EU ||
         metric.damage_grid->destination_tile_base != 0xC688U ||
         metric.damage_grid->tile_count != 6U ||
-        metric_events != std::vector<int>{14}) {
+        metric_events != std::vector<int>{6}) {
         return 8;
     }
 
-    metric_input.action.base_effect = 1;
+    metric_input.spell = *find_us_magic_spell(0U);
     metric_events.clear();
     const auto no_effect = refresh_magic_action_effect_value(
         metric_input,

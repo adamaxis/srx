@@ -121,6 +121,29 @@ int main() {
         return 11;
     }
 
+    const std::vector<std::uint8_t> typed_spell_table{
+        0x00U, 0x02U, // two entries
+        0x02U, 0x07U, // Hellblast, source table parameter 7
+        0x03U, 0x04U, // Invisibility, unavailable in the typed catalog
+    };
+    const auto typed_available = select_magic_spell(
+        typed_spell_table, {0U, 0U}, us_magic_spell_catalog());
+    const auto typed_unavailable = select_magic_spell(
+        typed_spell_table, {1U, 0U}, us_magic_spell_catalog());
+    if (!expect(typed_available.has_value() &&
+                    typed_available->spell_code == 2U &&
+                    typed_available->table_parameter == 7U &&
+                    typed_available->availability_byte == 3 &&
+                    typed_available->availability ==
+                        MagicSpellAvailability::available &&
+                    typed_unavailable.has_value() &&
+                    typed_unavailable->spell_code == 3U &&
+                    typed_unavailable->availability_byte == -1 &&
+                    typed_unavailable->availability ==
+                        MagicSpellAvailability::unavailable)) {
+        return 15;
+    }
+
     if (!expect(clamp_magic_force(1U, -1, 9U) == 1U &&
                 clamp_magic_force(8U, 1, 9U) == 9U &&
                 clamp_magic_force(3U, -1, 9U) == 2U)) {
