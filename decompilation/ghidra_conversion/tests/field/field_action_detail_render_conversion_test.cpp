@@ -116,5 +116,15 @@ int main() {
         typed_result.detail_plan->resource_row != 4U) {
         return 7;
     }
+
+    const auto typed_missing_result = render_field_action_detail(
+        {{50U, 0U, 0U}}, us_item_catalog(), typed_variant, typed_state,
+        callbacks);
+    if (typed_missing_result.kind !=
+            FieldActionDetailRenderKind::missing_source_data ||
+        typed_missing_result.detail_plan.has_value() ||
+        typed_missing_result.detail_text.has_value()) {
+        return 8;
+    }
     return 0;
 }

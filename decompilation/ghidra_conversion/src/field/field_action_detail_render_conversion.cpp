@@ -131,6 +131,24 @@ FieldActionDetailRenderResult render_field_action_detail(
     ResourceVariantState& resource_variant,
     FieldActionDetailRenderState& state,
     const FieldActionDetailRenderCallbacks& callbacks) {
+    if (state.primary_cursor >= 0 &&
+        static_cast<std::size_t>(state.primary_cursor) < records.size()) {
+        const auto& record =
+            records[static_cast<std::size_t>(state.primary_cursor)];
+        const auto unavailable = static_cast<std::int8_t>(record.type) < 0;
+        const auto special_action =
+            record.type == static_cast<std::uint8_t>('E');
+        if (!unavailable && !special_action &&
+            (record.type >= item_catalog.size() ||
+             item_catalog[record.type].item_code !=
+                 static_cast<std::uint8_t>(record.type + 1U))) {
+            FieldActionDetailRenderResult missing{};
+            missing.kind = FieldActionDetailRenderKind::missing_source_data;
+            missing.record = record;
+            return missing;
+        }
+    }
+
     const FieldActionDetailPlanBuilder build_detail_plan =
         [&item_catalog](const FieldActionDetailInput& input,
                         ResourceVariantState& variant,

@@ -372,7 +372,12 @@ finishes through the common tail text, including ordinary details and the
 host's explicit `missing_cost_data` result; no tail step is silently dropped.
 The source-bound overload feeds both the `0x130C0` +0x24 detail factor and the
 `0x57A44` +0x22 cost word from the same zero-based `UsItemCatalog` row; the
-older resource-table/cost-callback form remains an audit adapter.
+older resource-table/cost-callback form remains an audit adapter. If the
+typed record is neither unavailable nor special `E` and its D4540 row is
+missing or has the wrong one-based identity, the typed path returns
+`missing_source_data` before building a detail plan, calculating a price, or
+calling presentation callbacks. It does not turn a missing row into an empty
+plan or zero-cost action.
 
 The remaining field-selection presentation cluster is now explicit as well:
 

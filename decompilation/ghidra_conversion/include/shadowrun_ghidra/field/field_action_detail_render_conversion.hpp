@@ -18,6 +18,7 @@ struct FieldActionDetailRenderState {
 
 enum class FieldActionDetailRenderKind {
     invalid_selection,
+    missing_source_data,
     unavailable,
     special_action,
     ordinary_action,
