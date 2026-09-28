@@ -410,8 +410,11 @@ The negative-result runner/inventory detail path at `0x58540` is now a separate
 typed renderer, `render_field_inventory_action_detail`. It reads the selected
 active-runner item and phase from typed eight-slot arrays, accepts only source
 item codes 1 through `0x2B`, and routes zero/out-of-range codes to the
-unavailable message. Valid items reuse the `0x13228` inventory detail plan and
-the `0x5878E` action-detail text selector. Action-dependent item codes still
+unavailable message. Its source-bound overload uses the typed D4540 row for
+the `+0x24` detail value and `+0x22` cost word; the older resource-table and
+cost-callback form remains an explicit audit adapter. Valid items reuse the
+`0x13228` inventory detail plan and the `0x5878E` action-detail text selector.
+Action-dependent item codes still
 perform the source `0x12148` lookup, but `0x13228` restores the original item
 code before returning; that lookup result is retained as audit data and does
 not replace the item-code key used by the detail-text, cost-record, or name
@@ -419,8 +422,8 @@ presentation.
 
 The branch sets the source runner-cost suppression marker before rendering.
 When that marker is clear in a host scenario, the typed path reads the selected
-action row's word cost, halves it at the same source point, applies the runner
-surcharge, and emits header/cost/name callbacks in order. The source branch's
+D4540 row's `+0x22` word cost, halves it at the same source point, applies the
+runner surcharge, and emits header/cost/name callbacks in order. The source branch's
 normal path suppresses pricing but still renders detail text and the common
 item-name step; missing cost data preserves that name step and is reported as
 `missing_cost_data`.

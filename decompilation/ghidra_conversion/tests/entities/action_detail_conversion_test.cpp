@@ -104,5 +104,34 @@ int main() {
         return 9;
     }
 
+    const auto& item_catalog = us_item_catalog();
+    ResourceVariantState typed_variant{};
+    const auto typed_field = build_field_action_detail_plan(
+        FieldActionDetailInput{4U, 0U}, item_catalog, typed_variant);
+    if (!typed_field.valid || typed_field.resource_row != 4U ||
+        typed_field.detail_value != 0x06U ||
+        typed_field.label != ActionDetailLabelVariant::ordinary) {
+        return 11;
+    }
+
+    const auto typed_item = build_inventory_action_detail_plan(
+        InventoryActionDetailInput{5U, 0x06U, std::nullopt}, item_catalog,
+        typed_variant);
+    if (!typed_item.has_value() || typed_item->resource_row != 4U ||
+        typed_item->detail_value != 0x06U ||
+        typed_item->label != ActionDetailLabelVariant::ordinary) {
+        return 12;
+    }
+
+    if (build_field_action_detail_plan(
+            FieldActionDetailInput{50U, 0U}, item_catalog, typed_variant)
+            .valid ||
+        build_inventory_action_detail_plan(
+            InventoryActionDetailInput{51U, 0U, std::nullopt}, item_catalog,
+            typed_variant)
+            .has_value()) {
+        return 13;
+    }
+
     return 0;
 }

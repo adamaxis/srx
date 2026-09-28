@@ -2767,14 +2767,15 @@ by caller rather than left as generic menu routines. `0x13000` selects the
 thirteen-entry entity-action detail label from the active action, the negative
 display-state auxiliary value, or the first matching cyberware bit (bits 5..8
 with source contributions 1..4). `0x130C0` plans a field-action detail entry:
-it selects the resource row, toggles the alternate resource set at the source
+zero-based D4540 resource row, reads its typed +0x24 detail value, and toggles the alternate resource set at the source
 threshold of 13, preserves the six phase-flag overlays in the ROM order
 2/4/1/8/16/32, and chooses the ordinary/extended/action-dependent label
 ranges. `0x13228` does the corresponding selected-inventory-item read for the
-field-service menu, using item code minus one for the resource row, the item
-phase byte for those same overlays, and the `0x12148` action-code boundary for
-items `0x14` and `0x18..0x28`. These conversions produce typed render plans;
-they do not reproduce VDP writes or treat the detail panel as a flipbook.
+field-service menu, using one-based item code minus one for the typed D4540 row
+and its +0x24 value, the item phase byte for those same overlays, and the
+`0x12148` action-code boundary for items `0x14` and `0x18..0x28`. These
+conversions produce typed render plans; they do not reproduce VDP writes or
+treat the detail panel as a flipbook.
 
 The action-state setter at `0x13466` is now native-shaped: it publishes typed
 action/state fields, clears only the source branch's reset markers, and keeps

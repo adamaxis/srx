@@ -74,4 +74,14 @@ FieldInventoryActionDetailRenderResult render_field_inventory_action_detail(
     const InventoryRunnerCostLookup& runner_cost_lookup,
     const FieldInventoryActionDetailRenderCallbacks& callbacks = {});
 
+// Source-data-bound 0x58540 path. The typed catalog supplies both the
+// selected row's +0x24 detail value and its +0x22 cost word; no generic ROM
+// table callback is needed.
+FieldInventoryActionDetailRenderResult render_field_inventory_action_detail(
+    const FieldInventoryActionDetailState& state,
+    const UsItemCatalog& item_catalog,
+    ResourceVariantState& resource_variant,
+    const std::optional<std::uint8_t>& action_lookup_code,
+    const FieldInventoryActionDetailRenderCallbacks& callbacks = {});
+
 } // namespace shadowrun::ghidra_conversion

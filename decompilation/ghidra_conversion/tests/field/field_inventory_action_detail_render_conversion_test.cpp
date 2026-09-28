@@ -117,5 +117,23 @@ int main() {
                                            "header", "item-name:1"}) {
         return 7;
     }
+
+    events.clear();
+    ResourceVariantState typed_variant{};
+    FieldInventoryActionDetailState typed_state{};
+    typed_state.item_codes[0] = 5U;
+    typed_state.item_phases[0] = 0x06U;
+    typed_state.suppress_runner_cost = false;
+    const auto typed_result = render_field_inventory_action_detail(
+        typed_state, us_item_catalog(), typed_variant, std::nullopt, callbacks);
+    if (typed_result.kind != FieldInventoryActionDetailRenderKind::presented ||
+        typed_result.item_code != 5U || typed_result.runner_cost != 0x7AU ||
+        !typed_result.detail_plan ||
+        typed_result.detail_plan->detail_value != 0x06U ||
+        events != std::vector<std::string>{"plan", "detail:5", "header",
+                                           "cost:122", "item-name:5"}) {
+        return 8;
+    }
+
     return 0;
 }

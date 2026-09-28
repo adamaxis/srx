@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/menus/menu_transfer_batch_conversion.hpp"
 
 #include <array>
@@ -76,6 +77,14 @@ ActionDetailRenderPlan build_field_action_detail_plan(
     ResourceVariantState& resource_variant,
     const std::function<void()>& upload_resource = {});
 
+// Source-data-bound 0x130C0 path. The action byte is the zero-based D4540
+// row index; the typed row supplies the source +0x24 detail value.
+ActionDetailRenderPlan build_field_action_detail_plan(
+    const FieldActionDetailInput& input,
+    const UsItemCatalog& items,
+    ResourceVariantState& resource_variant,
+    const std::function<void()>& upload_resource = {});
+
 struct InventoryActionDetailInput {
     std::uint8_t item_code = 0; // active record +0x66 + selected slot
     std::uint8_t phase = 0;     // active record +0x6E + selected slot
@@ -93,6 +102,14 @@ struct InventoryActionDetailInput {
 std::optional<ActionDetailRenderPlan> build_inventory_action_detail_plan(
     const InventoryActionDetailInput& input,
     const ActionDetailResourceTable& resources,
+    ResourceVariantState& resource_variant,
+    const std::function<void()>& upload_resource = {});
+
+// Source-data-bound 0x13228 path. Inventory item codes are one-based and
+// select the corresponding typed D4540 row before the source +0x24 read.
+std::optional<ActionDetailRenderPlan> build_inventory_action_detail_plan(
+    const InventoryActionDetailInput& input,
+    const UsItemCatalog& items,
     ResourceVariantState& resource_variant,
     const std::function<void()>& upload_resource = {});
 

@@ -1,12 +1,19 @@
 #include "shadowrun_ghidra/field/field_inventory_action_detail_render_conversion.hpp"
 
 namespace shadowrun::ghidra_conversion {
+namespace {
 
-FieldInventoryActionDetailRenderResult render_field_inventory_action_detail(
+using InventoryDetailPlanBuilder = std::function<
+    std::optional<ActionDetailRenderPlan>(
+        const InventoryActionDetailInput&,
+        ResourceVariantState&,
+        const std::function<void()>&)>;
+
+FieldInventoryActionDetailRenderResult render_field_inventory_action_detail_impl(
     const FieldInventoryActionDetailState& state,
-    const ActionDetailResourceTable& detail_resources,
     ResourceVariantState& resource_variant,
     const std::optional<std::uint8_t>& action_lookup_code,
+    const InventoryDetailPlanBuilder& build_detail_plan,
     const InventoryRunnerCostLookup& runner_cost_lookup,
     const FieldInventoryActionDetailRenderCallbacks& callbacks) {
     FieldInventoryActionDetailRenderResult result{};
@@ -31,8 +38,8 @@ FieldInventoryActionDetailRenderResult render_field_inventory_action_detail(
         state.item_phases[state.primary_cursor],
         action_lookup_code,
     };
-    result.detail_plan = build_inventory_action_detail_plan(
-        input, detail_resources, resource_variant, callbacks.upload_resource);
+    result.detail_plan = build_detail_plan(
+        input, resource_variant, callbacks.upload_resource);
     if (!result.detail_plan || !result.detail_plan->valid) {
         result.kind = FieldInventoryActionDetailRenderKind::missing_detail_data;
         return result;
@@ -76,12 +83,60 @@ FieldInventoryActionDetailRenderResult render_field_inventory_action_detail(
     if (callbacks.render_item_name) {
         callbacks.render_item_name(result.item_code);
     }
-    // 0x585E0 clears FFF0B1 before the selected item's encoded-name render. The source
-    // branch was valid even when pricing data was unavailable on the host.
+    // 0x585E0 clears FFF0B1 before the selected item's encoded-name render.
+    // The source branch was valid even when pricing data was unavailable.
     result.kind = result.kind == FieldInventoryActionDetailRenderKind::missing_cost_data
                       ? result.kind
                       : FieldInventoryActionDetailRenderKind::presented;
     return result;
+}
+
+} // namespace
+
+FieldInventoryActionDetailRenderResult render_field_inventory_action_detail(
+    const FieldInventoryActionDetailState& state,
+    const ActionDetailResourceTable& detail_resources,
+    ResourceVariantState& resource_variant,
+    const std::optional<std::uint8_t>& action_lookup_code,
+    const InventoryRunnerCostLookup& runner_cost_lookup,
+    const FieldInventoryActionDetailRenderCallbacks& callbacks) {
+    const InventoryDetailPlanBuilder build_detail_plan =
+        [&](const InventoryActionDetailInput& input,
+            ResourceVariantState& variant,
+            const std::function<void()>& upload_resource) {
+            return build_inventory_action_detail_plan(
+                input, detail_resources, variant, upload_resource);
+        };
+    return render_field_inventory_action_detail_impl(
+        state, resource_variant, action_lookup_code, build_detail_plan,
+        runner_cost_lookup, callbacks);
+}
+
+FieldInventoryActionDetailRenderResult render_field_inventory_action_detail(
+    const FieldInventoryActionDetailState& state,
+    const UsItemCatalog& item_catalog,
+    ResourceVariantState& resource_variant,
+    const std::optional<std::uint8_t>& action_lookup_code,
+    const FieldInventoryActionDetailRenderCallbacks& callbacks) {
+    const InventoryDetailPlanBuilder build_detail_plan =
+        [&item_catalog](const InventoryActionDetailInput& input,
+                        ResourceVariantState& variant,
+                        const std::function<void()>& upload_resource) {
+            return build_inventory_action_detail_plan(
+                input, item_catalog, variant, upload_resource);
+        };
+    const InventoryRunnerCostLookup runner_cost_lookup =
+        [&item_catalog](const std::uint8_t item_code)
+        -> std::optional<std::uint16_t> {
+        if (item_code == 0U || item_code > item_catalog.size()) {
+            return std::nullopt;
+        }
+        return item_catalog[static_cast<std::size_t>(item_code - 1U)]
+            .base_cost;
+    };
+    return render_field_inventory_action_detail_impl(
+        state, resource_variant, action_lookup_code, build_detail_plan,
+        runner_cost_lookup, callbacks);
 }
 
 } // namespace shadowrun::ghidra_conversion
