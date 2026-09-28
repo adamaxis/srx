@@ -126,5 +126,26 @@ int main() {
         return 7;
     }
 
+    if (!expect(kSceneFourteenMapWordA == 0x03ADU &&
+                kSceneFourteenMapWordB == 0x03AEU)) {
+        return 8;
+    }
+    WorldMapEffectInput carry_set{};
+    carry_set.world_mode = 1U;
+    if (!expect(world_map_effect_sets_carry(carry_set) &&
+                !world_map_effect_sets_carry(
+                    WorldMapEffectInput{1U, 2U, 0U, true}))) {
+        return 9;
+    }
+    if (!expect(select_scene_interaction_mode(2U) == 1U &&
+                select_scene_interaction_mode(0x14U) == 1U &&
+                select_scene_interaction_mode(0x15U) == 2U &&
+                select_scene_interaction_mode(0x2BU) == 2U &&
+                select_scene_interaction_mode(0x2CU) == 3U &&
+                select_scene_interaction_mode(0x37U) == 3U &&
+                !select_scene_interaction_mode(0x38U).has_value())) {
+        return 10;
+    }
+
     return 0;
 }

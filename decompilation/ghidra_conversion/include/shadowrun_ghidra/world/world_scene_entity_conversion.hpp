@@ -58,11 +58,26 @@ struct WorldMapEffectResult {
     std::optional<AuxiliaryWorldEntity> auxiliary_entity;
 };
 
+// ROM 0x1CD296 / 0x1CD298. Scene 0x14 copies these words into the FF2700 layer.
+constexpr std::uint16_t kSceneFourteenMapWordA = 0x03ADU;
+constexpr std::uint16_t kSceneFourteenMapWordB = 0x03AEU;
+
 // ROM 0x1651E: handle the mode-14/mode-2 projected map effects and the mode-0
 // auxiliary entity setup. The source's A0/A2 records become typed inputs and
 // indexed map writes; no VDP/RAM address is part of the result.
 WorldMapEffectResult apply_world_map_effect(
     const WorldMapEffectInput& input);
+
+// ROM 0x1651E carry. Mode 0 and a zero action word take the 0x1666E set-carry
+// return. Any requested action with a nonzero mode takes the 0x16674 clear,
+// including the FF2700 and FF4700 word writes.
+bool world_map_effect_sets_carry(const WorldMapEffectInput& input);
+
+// ROM 0x167AE after FFDDC4 is published: scene < 0x15 selects interaction
+// mode 1, scene < 0x2C selects 2, and scene < 0x38 selects 3. Scene >= 0x38
+// is the source stop, not a mode.
+std::optional<std::uint16_t> select_scene_interaction_mode(
+    std::uint16_t scene_id);
 
 struct WeightedWorldSelection {
     std::uint16_t result = 0;

@@ -123,6 +123,73 @@ void FieldSceneRuntime::run_field_mode_exit_transition() {
     field_action_counter_ = field_mode_exit_transition_state_.action_counter;
 }
 
+bool FieldSceneRuntime::project_field_world_interaction() {
+    const auto& profile = state_.field_scene_buffers.profile;
+    WorldMapEffectInput input{};
+    input.world_mode = field_movement_transition_state_.world_mode;
+    input.scene_id = field_movement_transition_state_.scene_id;
+    input.entity_flags = field_movement_behavior_record_.projected_field_code;
+    input.action_requested =
+        field_movement_transition_state_.mode_event_code != 0U;
+    input.map_marker_index =
+        field_movement_transition_state_.world_activity_source_word;
+    input.row_stride = profile.size() > 18U ? profile[18U] : 0;
+    input.map_value_a = kSceneFourteenMapWordA;
+    input.map_value_b = kSceneFourteenMapWordB;
+    // FFDD16 is profile word 40. The 48-word block starts at FFDDC6.
+    input.auxiliary_world_y = profile.size() > 40U ? profile[40U] : 0U;
+    const auto rotated_slot =
+        field_movement_behavior_record_.action_heading_source;
+    input.auxiliary_world_y_delta = static_cast<std::int16_t>(
+        static_cast<std::uint16_t>(rotated_slot << 2U) |
+        static_cast<std::uint16_t>(rotated_slot >> 14U));
+    input.coordinate = CoordinateProjectionInput{
+        field_entity_.world_position.x, field_entity_.world_position.y,
+        field_movement_state_.heading};
+    input.auxiliary_entity_slot_available =
+        entity_table_has_free_slot(field_entity_table_occupancy_);
+
+    const auto effect = apply_world_map_effect(input);
+    if (effect.map_marker_cleared) {
+        // 0x1651E clears one byte through the caller's A2 table. That base
+        // is not either terrain layer, so the clear stays a boundary.
+        source_boundary("field.world.interaction_marker_unresolved");
+    }
+    if (effect.special_resource_selected) {
+        source_boundary("field.world.special_resource_unresolved");
+    }
+    if (effect.world_effect_x_dirty || effect.world_effect_y_dirty) {
+        auto& layer = effect.world_effect_y_dirty
+                          ? state_.field_scene_buffers.layer_b
+                          : state_.field_scene_buffers.layer_a;
+        for (const auto& write : effect.map_writes) {
+            if (write.offset < 0 || (write.offset & 1) != 0) {
+                source_boundary("field.world.layer_write_misaligned");
+                continue;
+            }
+            const auto word_index = static_cast<std::size_t>(write.offset / 2);
+            if (word_index >= layer.size()) {
+                source_boundary("field.world.layer_write_out_of_range");
+                continue;
+            }
+            layer[word_index] = write.value;
+        }
+    }
+    if (effect.auxiliary_entity.has_value()) {
+        for (std::size_t index = 0; index < field_entity_table_occupancy_.size();
+             ++index) {
+            if (field_entity_table_occupancy_[index] != 0U) {
+                continue;
+            }
+            // ROM writes -1 into the free slot's leading word.
+            field_entity_table_occupancy_[index] = 0xFFFFU;
+            field_entity_table_[index] = *effect.auxiliary_entity;
+            break;
+        }
+    }
+    return world_map_effect_sets_carry(input);
+}
+
 bool FieldSceneRuntime::load_image(
     const ConversionAssetCatalog& catalog,
     const std::string_view alias,
@@ -475,6 +542,8 @@ bool FieldSceneRuntime::bootstrap(
     field_entity_selection_state_ = RunnerSwitchState{};
     field_runner_refresh_state_ = FieldRunnerRefreshState{};
     field_mode_exit_transition_state_ = FieldModeExitTransitionState{};
+    field_entity_table_occupancy_ = {};
+    field_entity_table_ = {};
     input_ = integration::FieldSessionBootstrapInput{};
     input_.action_selection_profile_source =
         assets.action_selection_profile_source;
@@ -538,7 +607,14 @@ bool FieldSceneRuntime::bootstrap(
         field_entity_behavior_flags_;
     field_movement_behavior_record_.current_heading = 0U;
     field_movement_behavior_record_.target_heading = 0U;
-    field_movement_transition_state_.world_mode = 0U;
+    const auto interaction_mode = select_scene_interaction_mode(
+        state_.field_scene_buffers.scene_reference);
+    if (interaction_mode.has_value()) {
+        field_movement_transition_state_.world_mode = *interaction_mode;
+    } else {
+        field_movement_transition_state_.world_mode = 0U;
+        source_boundary("field.world.interaction_mode_terminal");
+    }
     field_movement_transition_state_.scene_id =
         state_.field_scene_buffers.scene_reference;
     field_movement_transition_state_.field_origin_x =
@@ -658,10 +734,7 @@ bool FieldSceneRuntime::recover_blocked_field_movement(
         return true;
     };
     transition_callbacks.project_entity_world_interaction = [this] {
-        // ROM 0x1651E still needs its entity-table spawn and world-layer
-        // records connected. Do not claim a successful interaction here.
-        source_boundary("field.world.interaction_projection_unresolved");
-        return false;
+        return project_field_world_interaction();
     };
     transition_callbacks.prepare_mode_entry_service = [this] {
         prepare_audio_mode_entry(callbacks_.mode_entry_audio);

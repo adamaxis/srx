@@ -250,8 +250,16 @@ the converted `0x391A` walk publishes the bit-1 marker even when the recruited
 primary/secondary slots are not active. The Qt callback also runs the already
 converted `0xC64C` finalizer, whose `0xC802` refresh remains typed and bounded.
 The recruited roster-selection path is still unresolved, so the composition
-does not invent active companions. Likewise, `0x1651E` remains unresolved
-until its entity-table and world-layer records are traced.
+does not invent active companions. `0x1651E` now runs from the blocked-movement
+callback. `0x167AE` publishes FFDF40 as mode 1, 2, or 3 from the scene id
+(`< 0x15`, `< 0x2C`, `< 0x38`); scene `>= 0x38` stays the source `stop`.
+Carry is set for mode 0 and for a zero action word, and clear for every
+requested action in a nonzero mode. Word writes use the two `0xE10`-word
+layers `0x03074` copies to FF2700 and FF4700. Scene `0x14` writes the traced
+ROM words `0x03AD`/`0x03AE` from `0x1CD296`. Mode 0 still installs an auxiliary
+slot in the ten-record FFD740 table when `+0xC6` matches `0xC0` and a leading
+word is free. The caller A2 marker-byte clear and the `0x1667A` resource
+pointer remain explicit boundaries.
 
 ### Field scene runtime dispatcher: 0xC7F8
 

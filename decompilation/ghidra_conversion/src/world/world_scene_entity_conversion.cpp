@@ -1,6 +1,7 @@
 #include "shadowrun_ghidra/world/world_scene_entity_conversion.hpp"
 
 #include <cstddef>
+#include <optional>
 
 namespace shadowrun::ghidra_conversion {
 namespace {
@@ -88,6 +89,24 @@ WorldMapEffectResult apply_world_map_effect(
     result.world_effect_x_dirty = true;
     result.action = WorldMapEffectAction::vertical_effect_map_updated;
     return result;
+}
+
+bool world_map_effect_sets_carry(const WorldMapEffectInput& input) {
+    return input.world_mode == 0U || !input.action_requested;
+}
+
+std::optional<std::uint16_t> select_scene_interaction_mode(
+    const std::uint16_t scene_id) {
+    if (scene_id < 0x15U) {
+        return 1U;
+    }
+    if (scene_id < 0x2CU) {
+        return 2U;
+    }
+    if (scene_id < 0x38U) {
+        return 3U;
+    }
+    return std::nullopt;
 }
 
 std::optional<SceneEntityRecord> spawn_scene_record_offset(

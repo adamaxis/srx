@@ -20,8 +20,10 @@
 #include "shadowrun_ghidra/session/runner_switch_conversion.hpp"
 #include "shadowrun_ghidra/integration/startup_integration_conversion.hpp"
 #include "shadowrun_ghidra/menus/menu_transfer_batch_conversion.hpp"
+#include "shadowrun_ghidra/entities/entity_table_conversion.hpp"
 #include "shadowrun_ghidra/world/world_entity_conversion.hpp"
 #include "shadowrun_ghidra/world/world_effect_batch_conversion.hpp"
+#include "shadowrun_ghidra/world/world_scene_entity_conversion.hpp"
 
 #include <QImage>
 
@@ -70,6 +72,7 @@ private:
     void refresh_field_runner_state_and_assets();
     void handle_field_mode_action_event();
     void run_field_mode_exit_transition();
+    bool project_field_world_interaction();
     bool recover_blocked_field_movement(
         const MovementProbeResult& initial_probe);
     std::optional<std::size_t> projected_terrain_cell() const;
@@ -127,6 +130,8 @@ private:
     RunnerSwitchState field_entity_selection_state_{};
     FieldRunnerRefreshState field_runner_refresh_state_{};
     FieldModeExitTransitionState field_mode_exit_transition_state_{};
+    std::array<std::uint16_t, 10> field_entity_table_occupancy_{};
+    std::array<AuxiliaryWorldEntity, 10> field_entity_table_{};
     EntityMovementModeTransitionState field_movement_transition_state_{};
     WorldActivityState field_world_activity_state_{};
     MovementModeTransitionContinuation field_activity_continuation_ =
