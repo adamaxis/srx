@@ -4,6 +4,13 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x0000C0DA render_encoded_title_text
+//
+// Source behavior: when FFF112 is clear, scan the DBF-expanded source list
+// through the D0 selection mask into parallel FFEF16/FFEF56 records. The
+// seventh selected slot inserts 0xC661D; exactly nine records duplicate slot 8
+// over slot 7, while larger lists append 0xC662B. Render the first eight
+// records, or the continuation records beginning at slot 8, with a 0x100
+// destination stride through 0xC0DA.
 
 
 void render_bitmask_text_batch(void)

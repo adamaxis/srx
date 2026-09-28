@@ -1827,6 +1827,14 @@ now has its actual field/effect gate and signed marker ordinal represented in
 `TerrainMarkerReplacementState`, replacing the former generic marker-only
 description.
 
+## Bitmask-selected menu text audit
+
+`0xF5F4` now builds the selected field/menu text records from the D0 bitmask,
+preserving the seventh-slot special entry, exact-nine slot duplication,
+larger-list overflow entry, first/continuation page split, and 0x100 text
+destination stride. The C661D/C662B strings and parallel layout values are
+decoded host records supplied at the asset boundary.
+
 ## Menu cursor-sprite overlay audit
 
 `0xFDFE` now owns a typed six-frame countdown and four-phase C8B3E source

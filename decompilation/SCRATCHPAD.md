@@ -814,6 +814,17 @@ a generic marker helper: its field-mode/effect-context gates, equality between
 the ROM's unbounded scan, while valid source maps retain the same first-match
 and ordinal behavior.
 
+### Bitmask-selected menu text audit
+
+`0xF5F4` now models the source's parallel text/layout record construction for
+the field/menu selection pages. With `FFF112` clear it scans the DBF-expanded
+source count through the D0 mask, inserts the `0xC661D` special entry at the
+seventh selected slot, duplicates slot 8 over slot 7 for exactly nine records,
+and appends the `0xC662B` overflow entry for larger lists. The first page is
+limited to eight records; continuation starts at slot 8, and both use the
+source `0x100` destination stride into the common text renderer. Source strings
+and layout values are named host records, not ROM pointers.
+
 ### Menu cursor-sprite overlay audit
 
 `0xFDFE` is now converted as the shared command/magic/equipment menu overlay
