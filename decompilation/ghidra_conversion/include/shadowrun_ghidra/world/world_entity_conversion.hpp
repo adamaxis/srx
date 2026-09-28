@@ -77,7 +77,7 @@ void refresh_projected_entity_sprites(
     const std::function<void(const EntityFrameRecord&)>& project_entity,
     const std::function<void(const EntityFrameRecord&)>& build_sprite);
 
-struct EffectSlotState {
+struct EntityEffectSlotState {
     bool active = false;
     std::uint16_t tile_index = 0;
     std::uint16_t source_entity = 0;
@@ -95,21 +95,21 @@ struct EntityEffectSource {
 };
 
 void spawn_entity_effect(
-    EffectSlotState& effect,
+    EntityEffectSlotState& effect,
     const EntityEffectSource& source,
     std::uint16_t slot_index,
     const std::function<std::uint16_t(std::uint16_t, std::uint16_t)>&
         project_tile,
-    const std::function<void(const EffectSlotState&)>& append_sprite,
+    const std::function<void(const EntityEffectSlotState&)>& append_sprite,
     const std::function<void()>& service_audio);
 
 void advance_entity_effect_timer(
-    EffectSlotState& effect,
+    EntityEffectSlotState& effect,
     const std::function<void()>& clear_slot,
     const std::function<void()>& restore_tiles,
     const std::function<void()>& project_entity,
     const std::function<void(std::uint8_t)>& build_sprite_records,
-    const std::function<void(const EffectSlotState&)>& append_sprite);
+    const std::function<void(const EntityEffectSlotState&)>& append_sprite);
 
 struct EffectAnimationState {
     std::int16_t countdown = 0;
@@ -131,12 +131,12 @@ bool advance_effect_animation_variant(
     const std::function<void()>& build_sprite_records);
 
 void run_effect_variant_a(
-    EffectSlotState& effect,
+    EntityEffectSlotState& effect,
     const std::function<void()>& clone_variant,
     const std::function<void()>& prepare_auxiliary,
     const std::function<void()>& clear_slot);
 void run_effect_variant_b(
-    EffectSlotState& effect,
+    EntityEffectSlotState& effect,
     const std::function<void()>& clone_variant,
     const std::function<void()>& prepare_auxiliary,
     const std::function<void()>& clear_slot);
@@ -145,7 +145,7 @@ void advance_entity_animation_effect(
     const std::function<void()>& build_special_sprite,
     const std::function<void()>& build_sprite_records);
 void refresh_delayed_effect_sprites(
-    EffectSlotState& effect,
+    EntityEffectSlotState& effect,
     const std::function<void()>& build_sprite_records,
     const std::function<void()>& append_sprite);
 

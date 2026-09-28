@@ -107,23 +107,36 @@ Build the separate Debug application from this directory:
 C:/msys64/ucrt64/bin/cmake.exe --preset ghidra-conversion-qt-debug
 C:/msys64/ucrt64/bin/cmake.exe --build --preset ghidra-conversion-qt-debug
 build-ghidra-conversion-qt-debug/shadowrun_ghidra_conversion_qt.exe --assets ../assets
+# Directly exercise the converted field-entry bridge without opening a window.
+build-ghidra-conversion-qt-debug/shadowrun_ghidra_conversion_qt.exe --field-smoke --assets ../assets
 ```
 
 The window starts from the converted boot/title integration, presents the
 direct title assets through the converted `0x1A9E` frame coordinator, and
 routes startup-menu input through the converted New Game/Load Game/Joshua menu
-contracts. The Qt callbacks are presentation boundaries; they do not replace
-unresolved source behavior with a native-port implementation. Save-slot
-storage is intentionally reported as unresolved until the converted SRAM
-resource path is wired to an actual host save store. This target is deliberately
-not registered as a CTest test.
+contracts. On the New Game path, `field_ready` now invokes the separate
+`qt_runtime/src/field_scene_runtime.cpp` composition adapter. That adapter
+feeds the extracted action/mode/profile/terrain records into the converted
+field-session bootstrap and paints the direct field map/HUD assets. The
+startup field mode is `2`, while its normal profile's `0x186EDC/0x187CEC`
+resources are descriptor row `0`, so the initial host map is
+`field.maps.mode.0`; this is not a fallback to `field.maps.mode.2`.
+
+The Qt callbacks remain explicit presentation/source boundaries; they do not
+replace unresolved source behavior with a native-port implementation. Dynamic
+runner records, field input/movement, and save-slot restoration are still
+reported as incomplete conversion boundaries. `--field-smoke` loads the
+direct catalog, runs the converted field bootstrap, and paints one 320x224
+host frame without writing an artifact. This target is deliberately not
+registered as a CTest test.
 
 Before the startup menu is entered, the conversion integration now loads the
 ROM-derived startup records and runs the converted `0x59318` save-roster seed.
 New Game then publishes the selected `0x42B0` Joshua record into conversion
-state. The Qt host still stops at the explicit field handoff boundary; it does
-not claim that the field renderer has been reconstructed by reaching that
-phase.
+state before the field-session bootstrap. Reaching the field screen now proves
+that the direct source records and common `0x007F0..0x0094C` entry sequence
+were accepted; it does not claim that movement, dynamic runner records, or
+the complete field renderer are source-verified yet.
 
 When a callback cannot yet be grounded in the canonical ROM/Ghidra export, it
 must remain an explicit reported boundary. Treat an apparently missing field,

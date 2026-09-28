@@ -61,6 +61,13 @@ source-verified common `0x007F0..0x0094C` field-entry sequence and its 31-frame
 warm-up; it remains a conversion-runtime boundary rather than a native-port
 dependency.
 
+The Qt executable's `ghidra_conversion/qt_runtime/` directory is a separate
+composition layer. `field_scene_runtime.cpp` owns only the host callbacks and
+direct-asset painting needed to present the converted field handoff; it does
+not add leaf conversion behavior, read the ROM, or link the native-port
+runtime. Its `--field-smoke` path is a direct bootstrap/render check, not a
+second game implementation.
+
 New work belongs in the existing domain file that owns the behavior. A new
 file is justified only for a real ownership boundary or a materially
 different source contract, not merely because another ROM entry was found.

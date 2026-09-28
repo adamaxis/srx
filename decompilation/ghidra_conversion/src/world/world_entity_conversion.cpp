@@ -115,12 +115,12 @@ void refresh_projected_entity_sprites(
 }
 
 void spawn_entity_effect(
-    EffectSlotState& effect,
+    EntityEffectSlotState& effect,
     const EntityEffectSource& source,
     const std::uint16_t slot_index,
     const std::function<std::uint16_t(std::uint16_t, std::uint16_t)>&
         project_tile,
-    const std::function<void(const EffectSlotState&)>& append_sprite,
+    const std::function<void(const EntityEffectSlotState&)>& append_sprite,
     const std::function<void()>& service_audio) {
     effect.active = true;
     effect.source_entity = source.x;
@@ -136,12 +136,12 @@ void spawn_entity_effect(
 }
 
 void advance_entity_effect_timer(
-    EffectSlotState& effect,
+    EntityEffectSlotState& effect,
     const std::function<void()>& clear_slot,
     const std::function<void()>& restore_tiles,
     const std::function<void()>& project_entity,
     const std::function<void(std::uint8_t)>& build_sprite_records,
-    const std::function<void(const EffectSlotState&)>& append_sprite) {
+    const std::function<void(const EntityEffectSlotState&)>& append_sprite) {
     if (!effect.active) {
         return;
     }
@@ -195,7 +195,7 @@ bool advance_effect_animation_variant(
 }
 
 void run_effect_variant_a(
-    EffectSlotState& effect,
+    EntityEffectSlotState& effect,
     const std::function<void()>& clone_variant,
     const std::function<void()>& prepare_auxiliary,
     const std::function<void()>& clear_slot) {
@@ -215,7 +215,7 @@ void run_effect_variant_a(
 }
 
 void run_effect_variant_b(
-    EffectSlotState& effect,
+    EntityEffectSlotState& effect,
     const std::function<void()>& clone_variant,
     const std::function<void()>& prepare_auxiliary,
     const std::function<void()>& clear_slot) {
@@ -250,7 +250,7 @@ void advance_entity_animation_effect(
 }
 
 void refresh_delayed_effect_sprites(
-    EffectSlotState& effect,
+    EntityEffectSlotState& effect,
     const std::function<void()>& build_sprite_records,
     const std::function<void()>& append_sprite) {
     if (!effect.active) {

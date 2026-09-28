@@ -6,7 +6,10 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets)
 # shadowrun_qt, GenesisBus, or the native asset decoder.
 add_executable(shadowrun_ghidra_conversion_qt
     src/ghidra_conversion_qt_main.cpp
+    src/field_scene_runtime.cpp
 )
+target_include_directories(shadowrun_ghidra_conversion_qt
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set_target_properties(shadowrun_ghidra_conversion_qt PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 target_link_libraries(shadowrun_ghidra_conversion_qt

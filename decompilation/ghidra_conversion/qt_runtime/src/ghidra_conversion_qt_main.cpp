@@ -2,6 +2,7 @@
 #include "shadowrun_ghidra/integration/startup_integration_conversion.hpp"
 #include "shadowrun_ghidra/title_intro/title_loop_conversion.hpp"
 #include "shadowrun_ghidra/title_intro/title_setup_conversion.hpp"
+#include "field_scene_runtime.hpp"
 
 #include <QApplication>
 #include <QColor>
@@ -45,8 +46,11 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
         if (argument == "--help") {
             std::cout
                 << "usage: shadowrun_ghidra_conversion_qt"
-                   " [--assets <decompilation/assets>]\n";
+                   " [--assets <decompilation/assets>] [--field-smoke]\n";
             return {};
+        }
+        if (argument == "--field-smoke") {
+            continue;
         }
         throw std::invalid_argument("unknown or incomplete argument: " +
                                     argument);
@@ -91,7 +95,11 @@ class GhidraConversionWindow final : public QWidget {
 public:
     explicit GhidraConversionWindow(std::filesystem::path asset_root,
                                     QWidget* parent = nullptr)
-        : QWidget(parent), asset_root_(std::move(asset_root)) {
+        : QWidget(parent),
+          asset_root_(std::move(asset_root)),
+          field_scene_runtime_([this](const std::string_view boundary) {
+              note_presentation_boundary(boundary);
+          }) {
         setWindowTitle(QStringLiteral("Shadowrun - Ghidra Conversion Qt"));
         setFixedSize(kSceneWidth * kSceneScale, kSceneHeight * kSceneScale);
         setFocusPolicy(Qt::StrongFocus);
@@ -131,9 +139,15 @@ protected:
             state_.phase == StartupIntegrationPhase::joshua_archetype) {
             draw_alias(scene_painter, "menu.startup.background");
             draw_menu_overlay(scene_painter);
-        } else if (state_.phase == StartupIntegrationPhase::opening_intro ||
-                   state_.phase == StartupIntegrationPhase::field_ready) {
+        } else if (state_.phase == StartupIntegrationPhase::opening_intro) {
             draw_opening_scene(scene_painter);
+        } else if (state_.phase == StartupIntegrationPhase::field_ready) {
+            if (field_scene_runtime_.ready()) {
+                field_scene_runtime_.paint(scene_painter);
+            } else {
+                draw_alias(scene_painter, "menu.startup.background");
+                draw_conversion_boundary_error(scene_painter);
+            }
         } else if (state_.phase == StartupIntegrationPhase::failed) {
             draw_alias(scene_painter, "menu.startup.background");
             draw_conversion_boundary_error(scene_painter);
@@ -446,7 +460,10 @@ private:
             [this](const StartupIntegrationPhase phase) {
                 setWindowTitle(phase_title(phase));
             };
-        startup_callbacks_.field_ready = [this] { update(); };
+        startup_callbacks_.field_ready = [this] {
+            field_scene_runtime_.bootstrap(state_);
+            update();
+        };
     }
 
     void configure_title_loop_callbacks() {
@@ -1002,6 +1019,7 @@ private:
     std::filesystem::path asset_root_;
     StartupIntegrationState state_;
     StartupIntegrationCallbacks startup_callbacks_;
+    qt_runtime::FieldSceneRuntime field_scene_runtime_;
     TitleLoopState title_loop_;
     TitleLoopCallbacks title_loop_callbacks_;
     QTimer title_timer_;
@@ -1057,12 +1075,16 @@ private:
 
 int main(int argc, char** argv) {
     try {
+        bool field_smoke = false;
         for (int index = 1; index < argc; ++index) {
             if (std::string(argv[index]) == "--help") {
                 std::cout
                     << "usage: shadowrun_ghidra_conversion_qt"
-                       " [--assets <decompilation/assets>]\n";
+                       " [--assets <decompilation/assets>] [--field-smoke]\n";
                 return 0;
+            }
+            if (std::string(argv[index]) == "--field-smoke") {
+                field_smoke = true;
             }
         }
         const auto asset_root = find_asset_root(argc, argv);
@@ -1073,6 +1095,38 @@ int main(int argc, char** argv) {
         }
 
         QApplication application(argc, argv);
+        if (field_smoke) {
+            StartupIntegrationState smoke_state;
+            smoke_state.asset_catalog =
+                load_conversion_asset_catalog(asset_root);
+            if (!smoke_state.asset_catalog.complete()) {
+                std::cerr << "field smoke: direct asset catalog is incomplete\n";
+                return 3;
+            }
+            const auto source = load_field_session_source_assets(
+                smoke_state.asset_catalog.catalog);
+            if (!source.complete()) {
+                std::cerr << "field smoke: source records are incomplete\n";
+                return 3;
+            }
+            smoke_state.field_session_source_assets = *source.assets;
+            qt_runtime::FieldSceneRuntime field_scene([](const auto&) {});
+            if (!field_scene.bootstrap(smoke_state)) {
+                std::cerr << "field smoke: " << field_scene.failure() << '\n';
+                return 3;
+            }
+            QImage scene(kSceneWidth, kSceneHeight,
+                         QImage::Format_ARGB32_Premultiplied);
+            scene.fill(Qt::black);
+            QPainter painter(&scene);
+            field_scene.paint(painter);
+            painter.end();
+            const auto& buffers = field_scene.state().field_scene_buffers;
+            std::cout << "field_smoke=ready scene_reference="
+                      << buffers.scene_reference << " camera="
+                      << buffers.camera_x << ',' << buffers.camera_y << '\n';
+            return 0;
+        }
         GhidraConversionWindow window(asset_root);
         window.show();
         return application.exec();
