@@ -108,6 +108,7 @@ FieldSessionBootstrapResult bootstrap_field_session(
             action_profile_source_size ||
         input.field_mode_selection_state_source.size() <
             kFieldModeSelectionStateWordCount ||
+        input.field_scene.terrain_stream.empty() ||
         input.field_scene.layer_a.size() < kFieldTerrainLayerWordCount ||
         input.field_scene.layer_b.size() < kFieldTerrainLayerWordCount) {
         return fail(state, callbacks,

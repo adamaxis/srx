@@ -57,6 +57,122 @@ void write_rom_record(const std::vector<std::uint8_t>& rom,
     }
 }
 
+void write_host_record(const std::vector<std::uint8_t>& bytes,
+                       const std::filesystem::path& root,
+                       const std::string& relative_name) {
+    const auto path = root / relative_name;
+    std::filesystem::create_directories(path.parent_path());
+    std::ofstream output(path, std::ios::binary | std::ios::trunc);
+    if (!output) {
+        throw std::runtime_error("cannot create host record: " + path.string());
+    }
+    output.write(reinterpret_cast<const char*>(bytes.data()),
+                 static_cast<std::streamsize>(bytes.size()));
+    if (!output) {
+        throw std::runtime_error("cannot write host record: " + path.string());
+    }
+}
+
+struct DecodedSourceByteStream {
+    std::vector<std::uint8_t> bytes;
+    std::size_t source_end = 0;
+};
+
+DecodedSourceByteStream decode_source_byte_stream_record(
+    const std::vector<std::uint8_t>& rom, const std::size_t source_offset) {
+    // ROM 0x01610 uses a DBF count: the leading word describes the number of
+    // decrements, so a valid stream produces count + 1 output bytes. Literal,
+    // repeat, and back-reference commands are kept here as an offline import
+    // operation; no source decoder belongs in the native runtime.
+    const auto read_byte = [&rom](const std::size_t offset) -> std::uint8_t {
+        if (offset >= rom.size()) {
+            throw std::runtime_error("source byte stream exceeds ROM");
+        }
+        return rom[offset];
+    };
+    const auto read_word = [&read_byte](const std::size_t offset) {
+        return static_cast<std::uint16_t>(
+            (static_cast<std::uint16_t>(read_byte(offset)) << 8U) |
+            static_cast<std::uint16_t>(read_byte(offset + 1U)));
+    };
+
+    std::size_t cursor = source_offset;
+    int remaining = static_cast<int>(read_word(cursor++));
+    cursor++;
+    if (remaining < 0) {
+        throw std::runtime_error("source byte stream count is invalid");
+    }
+    DecodedSourceByteStream result;
+    result.bytes.reserve(static_cast<std::size_t>(remaining) + 1U);
+
+    std::uint8_t flag_byte = 0;
+    int flag_bits_remaining = 0;
+    const auto emit = [&result](const std::uint8_t value) {
+        result.bytes.push_back(value);
+    };
+    const auto finish_dbf = [&remaining]() {
+        if (remaining == 0) {
+            return true;
+        }
+        --remaining;
+        return false;
+    };
+
+    while (true) {
+        if (flag_bits_remaining == 0) {
+            flag_byte = read_byte(cursor++);
+            flag_bits_remaining = 8;
+        }
+        const bool compressed = (flag_byte & 0x80U) != 0U;
+        flag_byte = static_cast<std::uint8_t>(flag_byte << 1U);
+        --flag_bits_remaining;
+
+        if (!compressed) {
+            emit(read_byte(cursor++));
+            if (finish_dbf()) {
+                break;
+            }
+            continue;
+        }
+
+        const auto control = read_byte(cursor++);
+        if ((control & 0x80U) == 0U) {
+            const auto run_length = static_cast<int>((control & 0x7FU) + 2U);
+            remaining -= run_length;
+            if (remaining < 0) {
+                throw std::runtime_error(
+                    "source byte stream repeat exceeds declared output");
+            }
+            const auto value = read_byte(cursor++);
+            for (int index = 0; index <= run_length; ++index) {
+                emit(value);
+            }
+        } else {
+            const auto distance_high = read_byte(cursor++);
+            const auto distance = static_cast<std::size_t>(
+                (((static_cast<std::uint16_t>(distance_high) << 3U) |
+                  static_cast<std::uint16_t>((control >> 4U) & 0x07U)) &
+                 0x07FFU));
+            const auto run_length = static_cast<int>((control & 0x0FU) + 2U);
+            remaining -= run_length;
+            if (remaining < 0 || distance == 0U ||
+                distance > result.bytes.size()) {
+                throw std::runtime_error(
+                    "source byte stream back-reference is invalid");
+            }
+            for (int index = 0; index <= run_length; ++index) {
+                emit(result.bytes[result.bytes.size() - distance]);
+            }
+        }
+        if (finish_dbf()) {
+            break;
+        }
+    }
+
+    result.source_end = cursor;
+    return result;
+}
+
 void extract_field_session_record_assets(
     const std::vector<std::uint8_t>& rom,
     const std::filesystem::path& root) {
@@ -76,6 +192,21 @@ void extract_field_session_record_assets(
                      0x0D5456U, 48U * sizeof(std::uint16_t));
     write_rom_record(rom, root, "records/field/scene-profile-alternate.bin",
                      0x17D5C4U, 48U * sizeof(std::uint16_t));
+    // The normal mode-2 profile points at two fixed terrain word arrays. The
+    // source copies exactly 0xE10 words from each pointer during field-scene
+    // preparation; preserve those reads as direct host records.
+    write_rom_record(rom, root, "records/field/mode-2-terrain-layer-a.bin",
+                     0x186EDCU, 0xE10U * sizeof(std::uint16_t));
+    write_rom_record(rom, root, "records/field/mode-2-terrain-layer-b.bin",
+                     0x187CECU, 0xE10U * sizeof(std::uint16_t));
+    const auto mode2_stream =
+        decode_source_byte_stream_record(rom, 0x188AFCU);
+    if (mode2_stream.source_end != 0x18A678U ||
+        mode2_stream.bytes.size() != 0x3500U) {
+        throw std::runtime_error("mode-2 terrain stream boundary changed");
+    }
+    write_host_record(mode2_stream.bytes, root,
+                      "records/field/mode-2-terrain-stream.bin");
 }
 
 struct CroppedAsset {
@@ -448,6 +579,15 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
     emit_generated_state_row(
         "records.field.scene.profile.alternate",
         "records/field/scene-profile-alternate.bin");
+    emit_generated_state_row(
+        "records.field.mode.2.terrain.layer.a",
+        "records/field/mode-2-terrain-layer-a.bin");
+    emit_generated_state_row(
+        "records.field.mode.2.terrain.layer.b",
+        "records/field/mode-2-terrain-layer-b.bin");
+    emit_generated_state_row(
+        "records.field.mode.2.terrain.stream",
+        "records/field/mode-2-terrain-stream.bin");
     std::string line;
     std::getline(catalog, line);
     while (std::getline(catalog, line)) {

@@ -7,6 +7,9 @@ records.field.action.selection.profiles	records/field/action-selection-profiles.
 records.field.mode.selection.state	records/field/mode-selection-state.bin	state	0	0
 records.field.scene.profile.normal	records/field/scene-profile-normal.bin	state	0	0
 records.field.scene.profile.alternate	records/field/scene-profile-alternate.bin	state	0	0
+records.field.mode.2.terrain.layer.a	records/field/mode-2-terrain-layer-a.bin	state	0	0
+records.field.mode.2.terrain.layer.b	records/field/mode-2-terrain-layer-b.bin	state	0	0
+records.field.mode.2.terrain.stream	records/field/mode-2-terrain-stream.bin	state	0	0
 title.background	title/background.bmp	image	0	0
 title.circuit.background.0	title/circuit-background-0.bmp	image	0	0
 title.circuit.background.1	title/circuit-background-1.bmp	image	0	0

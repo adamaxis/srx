@@ -46,7 +46,7 @@ FieldSessionBootstrapInput make_input() {
     input.field_scene.alternate_profile[0] = 0x0300U;
     input.field_scene.alternate_profile[1] = 0x0400U;
     input.field_scene.scene_reference = 6U;
-    input.field_scene.terrain_stream_token = 0xCAFEBABEU;
+    input.field_scene.terrain_stream = {0xCA, 0xFE, 0xBA, 0xBE};
     input.field_scene.layer_a.resize(kFieldTerrainLayerWordCount, 0x11U);
     input.field_scene.layer_b.resize(kFieldTerrainLayerWordCount, 0x22U);
     input.field_scene.layer_a.front() = 0xAAAAU;

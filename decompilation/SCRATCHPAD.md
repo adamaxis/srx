@@ -2300,6 +2300,22 @@ the alternate profile at `0x17D5C4`. The offline importer emits their exact
 into fixed typed 48-word arrays for `FieldSceneBufferInput`; it does not make
 the Qt runtime read the pointer table or ROM addresses.
 
+The mode-2 normal profile's terrain pointers were then followed. The source
+copies `0xE10` words from `0x186EDC` into the first work layer and `0xE10`
+words from `0x187CEC` into the second; the importer now preserves those exact
+big-endian word streams as `mode-2-terrain-layer-a.bin` and
+`mode-2-terrain-layer-b.bin`, exposed through
+`records.field.mode.2.terrain.layer.a` and
+`records.field.mode.2.terrain.layer.b`. The same profile's odd pointer
+`0x188AFD` is the separate flagged source stream copied to `FFDE22` and later
+passed to `decode_source_byte_stream`. The offline implementation now follows
+the actual `0x01610` DBF counts, 0x7FF distance mask, overlap-copy behavior,
+and command lengths; it consumes `0x188AFC..0x18A677` and produces exactly
+`0x3500` bytes. That decoded host stream is emitted as
+`records/field/mode-2-terrain-stream.bin` and loaded through
+`records.field.mode.2.terrain.stream`; no runtime decoder or ROM address is
+needed.
+
 The `0x13726` mode-selection renderer is now
 `render_mode_selection_panels`. It preserves the four source panel passes,
 the two vblank/latch/world-service passes after each upload, the trailing

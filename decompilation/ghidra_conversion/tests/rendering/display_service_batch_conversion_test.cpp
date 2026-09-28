@@ -45,7 +45,7 @@ int main() {
     scene_input.alternate_profile[1] = 0x0400;
     scene_input.alternate_profile[3] = 34;
     scene_input.scene_reference = 0x2C;
-    scene_input.terrain_stream_token = 0x12345678;
+    scene_input.terrain_stream = {0x12, 0x34, 0x56, 0x78};
     scene_input.pending_position_available = true;
     scene_input.pending_position = {0x0B00, 0x0800};
     scene_input.layer_a.assign(kFieldTerrainLayerWordCount, 1U);
@@ -58,7 +58,7 @@ int main() {
     if (!scene.initialized || initialized != 1 || scene.scene_mode != 1 ||
         scene.field_resource_mode != 0x2C || scene.profile[3] != 34 ||
         scene.camera_x != 0x100 || scene.camera_y != 0x100 ||
-        scene.terrain_stream_token != 0x12345678 ||
+        scene.terrain_stream != scene_input.terrain_stream ||
         scene.pending_field_targets[2].x != 0x0B00 ||
         scene.pending_field_targets[2].y != 0x0800 ||
         !scene.pending_position_consumed || !scene.pending_position_cleared ||

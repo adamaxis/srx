@@ -14,6 +14,12 @@ constexpr const char* kNormalSceneProfileAlias =
     "records.field.scene.profile.normal";
 constexpr const char* kAlternateSceneProfileAlias =
     "records.field.scene.profile.alternate";
+constexpr const char* kMode2TerrainLayerAAlias =
+    "records.field.mode.2.terrain.layer.a";
+constexpr const char* kMode2TerrainLayerBAlias =
+    "records.field.mode.2.terrain.layer.b";
+constexpr const char* kMode2TerrainStreamAlias =
+    "records.field.mode.2.terrain.stream";
 
 std::optional<std::vector<std::uint8_t>> read_record_bytes(
     const ConversionAssetCatalog& catalog, const char* alias,
@@ -86,8 +92,19 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
     const auto alternate_profile = read_record_bytes(
         catalog, kAlternateSceneProfileAlias, kFieldSceneProfileByteCount,
         result.errors);
+    const auto terrain_layer_a = read_record_bytes(
+        catalog, kMode2TerrainLayerAAlias, kFieldSessionTerrainLayerByteCount,
+        result.errors);
+    const auto terrain_layer_b = read_record_bytes(
+        catalog, kMode2TerrainLayerBAlias, kFieldSessionTerrainLayerByteCount,
+        result.errors);
+    const auto terrain_stream = read_record_bytes(
+        catalog, kMode2TerrainStreamAlias, kFieldSessionTerrainStreamByteCount,
+        result.errors);
     if (!action_profiles.has_value() || !mode_selection.has_value() ||
-        !normal_profile.has_value() || !alternate_profile.has_value()) {
+        !normal_profile.has_value() || !alternate_profile.has_value() ||
+        !terrain_layer_a.has_value() || !terrain_layer_b.has_value() ||
+        !terrain_stream.has_value()) {
         return result;
     }
 
@@ -103,8 +120,32 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
     assets.normal_scene_profile_source = decode_scene_profile(*normal_profile);
     assets.alternate_scene_profile_source =
         decode_scene_profile(*alternate_profile);
+    assets.mode2_terrain_layer_a_source.reserve(
+        kFieldSessionTerrainLayerWordCount);
+    assets.mode2_terrain_layer_b_source.reserve(
+        kFieldSessionTerrainLayerWordCount);
+    for (std::size_t offset = 0; offset < terrain_layer_a->size();
+         offset += sizeof(std::uint16_t)) {
+        assets.mode2_terrain_layer_a_source.push_back(
+            read_big_endian_word(*terrain_layer_a, offset));
+        assets.mode2_terrain_layer_b_source.push_back(
+            read_big_endian_word(*terrain_layer_b, offset));
+    }
+    assets.mode2_terrain_stream_source = *terrain_stream;
     result.assets = std::move(assets);
     return result;
+}
+
+FieldSceneBufferInput make_initial_mode2_field_scene_input(
+    const FieldSessionSourceAssets& assets) {
+    FieldSceneBufferInput input;
+    input.normal_profile = assets.normal_scene_profile_source;
+    input.alternate_profile = assets.alternate_scene_profile_source;
+    input.scene_reference = 2U;
+    input.terrain_stream = assets.mode2_terrain_stream_source;
+    input.layer_a = assets.mode2_terrain_layer_a_source;
+    input.layer_b = assets.mode2_terrain_layer_b_source;
+    return input;
 }
 
 } // namespace shadowrun::ghidra_conversion::integration

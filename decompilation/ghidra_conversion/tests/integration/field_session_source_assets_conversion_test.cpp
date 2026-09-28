@@ -49,5 +49,33 @@ int main() {
         alternate_profile.back() != 0x1A0DU) {
         return 6;
     }
+    const auto& terrain_a = source.assets->mode2_terrain_layer_a_source;
+    const auto& terrain_b = source.assets->mode2_terrain_layer_b_source;
+    if (terrain_a.size() != kFieldSessionTerrainLayerWordCount ||
+        terrain_b.size() != kFieldSessionTerrainLayerWordCount ||
+        terrain_a.front() != 0x0013U || terrain_a[0x708U] != 0x013BU ||
+        terrain_a.back() != 0x013BU || terrain_b.front() != 0x013BU ||
+        terrain_b[0x708U] != 0x34FFU || terrain_b.back() != 0x8664U) {
+        return 7;
+    }
+    const auto& terrain_stream = source.assets->mode2_terrain_stream_source;
+    if (terrain_stream.size() != kFieldSessionTerrainStreamByteCount ||
+        terrain_stream[0] != 0x02U || terrain_stream[1] != 0x4CU ||
+        terrain_stream[2] != 0x02U || terrain_stream[3] != 0x4DU ||
+        terrain_stream[terrain_stream.size() - 2U] != 0x04U ||
+        terrain_stream.back() != 0x65U) {
+        return 8;
+    }
+    const auto scene_input =
+        make_initial_mode2_field_scene_input(*source.assets);
+    if (scene_input.scene_reference != 2U ||
+        scene_input.normal_profile != source.assets->normal_scene_profile_source ||
+        scene_input.alternate_profile !=
+            source.assets->alternate_scene_profile_source ||
+        scene_input.layer_a != source.assets->mode2_terrain_layer_a_source ||
+        scene_input.layer_b != source.assets->mode2_terrain_layer_b_source ||
+        scene_input.terrain_stream != source.assets->mode2_terrain_stream_source) {
+        return 9;
+    }
     return 0;
 }

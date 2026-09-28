@@ -57,7 +57,9 @@ struct FieldSceneBuffers {
     std::array<std::uint16_t, 48> profile{};
     std::int32_t camera_x = 0;
     std::int32_t camera_y = 0;
-    std::uint32_t terrain_stream_token = 0; // ROM FFDE22 <- FFDDDE
+    // Offline-decoded host bytes from the source stream published through
+    // ROM FFDE22. The runtime never carries the source pointer itself.
+    std::vector<std::uint8_t> terrain_stream;
     std::array<SceneRunnerPosition, 3> pending_field_targets{};
     bool pending_position_consumed = false;
     bool pending_position_cleared = false;
@@ -69,7 +71,7 @@ struct FieldSceneBufferInput {
     std::array<std::uint16_t, 48> normal_profile{};
     std::array<std::uint16_t, 48> alternate_profile{};
     std::uint16_t scene_reference = 0;
-    std::uint32_t terrain_stream_token = 0;
+    std::vector<std::uint8_t> terrain_stream;
     std::vector<std::uint16_t> layer_a;
     std::vector<std::uint16_t> layer_b;
     // ROM FFFC0E: profile-specific pending-position selector.

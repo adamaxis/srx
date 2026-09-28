@@ -83,7 +83,7 @@ bool prepare_field_scene_buffers(
     state.profile = alternate ? input.alternate_profile : input.normal_profile;
     state.camera_x = state.profile[0];
     state.camera_y = state.profile[1];
-    state.terrain_stream_token = input.terrain_stream_token;
+    state.terrain_stream = input.terrain_stream;
     state.pending_position_consumed = false;
     state.pending_position_cleared = false;
     state.pending_field_targets = {};
