@@ -481,6 +481,7 @@ int main() {
     row_input.display_state = -1;
     row_input.active_action_code = 5U;
     row_input.auxiliary_value = 9U;
+    row_input.magic_spell = *find_us_magic_spell(4U);
     row_input.detail_asset_index = 2;
     const auto alternate_row = render_equipment_action_detail_row(
         row_input, row_callbacks);
@@ -491,18 +492,33 @@ int main() {
           alternate_row.detail_grid.has_value() &&
           alternate_row.detail_grid->source_table ==
               EquipmentActionDetailAssetTable::alternate_action_records &&
-          alternate_row.detail_grid->asset_index == 2U &&
+          alternate_row.detail_grid->asset_index == 1U &&
           row_events == std::vector<int>{1, 5, 2, 3, 4})) {
         return 20;
     }
 
-    row_input.detail_asset_index = static_cast<std::int8_t>(-1);
+    row_input.active_action_code = 4U;
+    row_input.magic_spell = *find_us_magic_spell(3U);
+    row_input.detail_asset_index = 1;
     row_events.clear();
     const auto skipped_row = render_equipment_action_detail_row(
         row_input, row_callbacks);
     if (!(skipped_row.early_return && !skipped_row.action_selection.has_value() &&
-          row_events == std::vector<int>{1, 5})) {
+          !skipped_row.action_header_rendered &&
+          row_events == std::vector<int>{5})) {
         return 21;
+    }
+
+    row_input.active_action_code = 5U;
+    row_input.magic_spell = *find_us_magic_spell(3U);
+    row_input.detail_asset_index = 1;
+    row_events.clear();
+    const auto mismatched_magic_row = render_equipment_action_detail_row(
+        row_input, row_callbacks);
+    if (!(mismatched_magic_row.detail_asset_missing &&
+          !mismatched_magic_row.action_selection.has_value() &&
+          row_events == std::vector<int>{1, 5})) {
+        return 27;
     }
 
     row_input = {};

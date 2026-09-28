@@ -17,8 +17,12 @@ int main() {
     using namespace shadowrun::ghidra_conversion;
 
     std::vector<BitmaskTextSourceEntry> entries;
+    std::vector<std::string> aliases;
+    aliases.reserve(13U);
+    entries.reserve(13U);
     for (std::size_t index = 0; index < 13U; ++index) {
-        entries.push_back({"menu.field.action." + std::to_string(index),
+        aliases.push_back("menu.field.action." + std::to_string(index));
+        entries.push_back({aliases.back(),
                            {static_cast<std::uint8_t>(index)},
                            static_cast<std::uint32_t>(0x100U + index)});
     }

@@ -1112,6 +1112,13 @@ same header only for active action five, advances `0x12FA4`, then reads the
 alternate `0xD4EA0` row `+0x25`; the ordinary path reads `0xD4540` `+0x25`.
 A signed-negative row value returns before selection/text/grid output.
 
+The alternate branch now consumes a matching typed `MagicSpellDefinition`
+instead of an arbitrary signed byte. The source derives the spell code as
+active record `+0x57 - 1`, reads that row's `D4EA0 +0x25` availability value,
+and uses it as the alternate detail asset index; a missing or mismatched typed
+row is reported as an unresolved source-data boundary. Ordinary item detail
+rows continue to receive their signed `D4540 +0x25` value separately.
+
 After the `0x13000` selection, the routine renders the detail text from the
 `0xD19B0` family at `0xC51C`/`0x6000`, then writes six rows from the selected
 detail asset at `0xC52A`/`0x2000` (`D1=0`, `D7=6`). The conversion is now

@@ -469,6 +469,8 @@ EquipmentActionDetailRowResult render_equipment_action_detail_row(
     EquipmentActionDetailRowResult result{};
     std::uint8_t detail_asset_index = 0U;
     auto asset_table = EquipmentActionDetailAssetTable::normal_item_records;
+    std::optional<std::int8_t> source_detail_asset_index =
+        input.detail_asset_index;
 
     const auto no_active_action = input.active_action_code == 0U;
     if (no_active_action) {
@@ -505,22 +507,34 @@ EquipmentActionDetailRowResult render_equipment_action_detail_row(
         }
         result.action_menu_advanced = true;
         asset_table = EquipmentActionDetailAssetTable::alternate_action_records;
+
+        const auto expected_spell_code = static_cast<std::uint8_t>(
+            input.active_action_code - 1U);
+        if (!input.magic_spell.has_value() ||
+            input.magic_spell->spell_code != expected_spell_code) {
+            // ROM 0x12F36 indexes D4EA0 by the active action code. A missing
+            // or mismatched typed row is an unresolved source-data boundary;
+            // do not fall back to a caller-provided byte from another table.
+            result.detail_asset_missing = true;
+            return result;
+        }
+        source_detail_asset_index = input.magic_spell->availability_byte;
     }
 
     if (!no_active_action) {
-        if (!input.detail_asset_index.has_value()) {
+        if (!source_detail_asset_index.has_value()) {
             // The row +0x25 read is source data, not a safe default.
             result.detail_asset_missing = true;
             return result;
         }
-        if (*input.detail_asset_index < 0) {
+        if (*source_detail_asset_index < 0) {
             // 0x12F46/0x12F4A return before the 0x13000 selection and final
             // detail row when the signed source byte is negative.
             result.early_return = true;
             return result;
         }
         detail_asset_index = static_cast<std::uint8_t>(
-            *input.detail_asset_index);
+            *source_detail_asset_index);
     }
 
     EntityActionDetailInput selection_input{};

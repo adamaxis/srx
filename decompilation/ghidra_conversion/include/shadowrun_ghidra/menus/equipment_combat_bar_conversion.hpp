@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shadowrun_ghidra/core/magic_spell_catalog_conversion.hpp"
 #include "shadowrun_ghidra/entities/action_detail_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_action_math_conversion.hpp"
 
@@ -215,8 +216,14 @@ struct EquipmentActionDetailRowInput {
     std::optional<std::uint8_t> selected_action_code;
     // Item/action row +0x26 consumed by 0x13000 when an action is nonzero.
     std::optional<std::uint8_t> action_detail_code;
+    // Higher-mode negative display state selects the D4EA0 row by
+    // active_action_code - 1 and consumes its signed +0x25 availability.
+    // The definition must match that derived spell code; there is no raw
+    // ROM-record lookup in the native conversion.
+    std::optional<MagicSpellDefinition> magic_spell;
     // Row +0x25 from 0xD4540 or 0xD4EA0. Its sign controls the early return
-    // before the final detail text/grid.
+    // before the final detail text/grid for ordinary item rows. The typed
+    // magic_spell field supplies this value for the alternate magic path.
     std::optional<std::int8_t> detail_asset_index;
 };
 
