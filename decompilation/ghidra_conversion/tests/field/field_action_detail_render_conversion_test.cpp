@@ -105,5 +105,16 @@ int main() {
     if (invalid_result.kind != FieldActionDetailRenderKind::invalid_selection) {
         return 6;
     }
+
+    ResourceVariantState typed_variant{};
+    FieldActionDetailRenderState typed_state{};
+    const auto typed_result = render_field_action_detail(
+        {{4U, 0U, 2U}}, us_item_catalog(), typed_variant, typed_state);
+    if (typed_result.kind != FieldActionDetailRenderKind::ordinary_action ||
+        typed_result.cost != 48U || !typed_result.detail_plan ||
+        typed_result.detail_plan->detail_value != 0x06U ||
+        typed_result.detail_plan->resource_row != 4U) {
+        return 7;
+    }
     return 0;
 }

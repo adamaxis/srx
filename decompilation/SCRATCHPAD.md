@@ -2783,6 +2783,10 @@ and its +0x24 value, the item phase byte for those same overlays, and the
 `0x12148` action-code boundary for items `0x14` and `0x18..0x28`. These
 conversions produce typed render plans; they do not reproduce VDP writes or
 treat the detail panel as a flipbook.
+The source-bound `0x586CA` renderer now feeds both its `0x130C0` +0x24 detail
+factor and its `0x57A44` +0x22 cost word from that same zero-based
+`UsItemCatalog` row; generic resource/cost callbacks remain explicit audit
+adapters only.
 
 The action-state setter at `0x13466` is now native-shaped: it publishes typed
 action/state fields, clears only the source branch's reset markers, and keeps

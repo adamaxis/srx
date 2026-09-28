@@ -69,4 +69,13 @@ FieldActionDetailRenderResult render_field_action_detail(
     const FieldActionBaseCostLookup& base_cost_lookup,
     const FieldActionDetailRenderCallbacks& callbacks = {});
 
+// Source-data-bound 0x586CA path. The typed catalog supplies both the
+// zero-based 0x130C0 detail row and the zero-based 0x57A44 cost row.
+FieldActionDetailRenderResult render_field_action_detail(
+    const std::vector<FieldActionCostRecord>& records,
+    const UsItemCatalog& item_catalog,
+    ResourceVariantState& resource_variant,
+    FieldActionDetailRenderState& state,
+    const FieldActionDetailRenderCallbacks& callbacks = {});
+
 } // namespace shadowrun::ghidra_conversion

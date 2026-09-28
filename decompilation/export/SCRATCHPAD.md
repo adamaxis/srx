@@ -370,6 +370,9 @@ steps are callbacks, so this conversion records the source ordering without
 turning the runtime into a VDP or ROM-pointer interpreter. Every branch then
 finishes through the common tail text, including ordinary details and the
 host's explicit `missing_cost_data` result; no tail step is silently dropped.
+The source-bound overload feeds both the `0x130C0` +0x24 detail factor and the
+`0x57A44` +0x22 cost word from the same zero-based `UsItemCatalog` row; the
+older resource-table/cost-callback form remains an audit adapter.
 
 The remaining field-selection presentation cluster is now explicit as well:
 
