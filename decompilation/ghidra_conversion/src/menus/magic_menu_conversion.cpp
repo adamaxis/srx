@@ -11,6 +11,30 @@ void call_once(const std::function<void()>& callback) {
     }
 }
 
+std::optional<MagicSpellSelection> make_typed_magic_spell_selection(
+    const std::uint16_t entry_index, const std::uint8_t spell_code,
+    const std::uint8_t table_parameter,
+    const UsMagicSpellCatalog& spell_catalog) {
+    const auto spell = std::find_if(
+        spell_catalog.begin(), spell_catalog.end(),
+        [spell_code](const MagicSpellDefinition& candidate) {
+            return candidate.spell_code == spell_code;
+        });
+    if (spell == spell_catalog.end()) {
+        return std::nullopt;
+    }
+
+    MagicSpellSelection result{};
+    result.table_entry_index = entry_index;
+    result.spell_code = spell_code;
+    result.table_parameter = table_parameter;
+    result.availability_byte = spell->availability_byte;
+    result.availability = spell->availability_byte >= 0
+                              ? MagicSpellAvailability::available
+                              : MagicSpellAvailability::unavailable;
+    return result;
+}
+
 std::int16_t maximum_magic_column(const std::uint8_t row,
                                   const std::uint16_t first_entry_count) {
     auto maximum = static_cast<std::int16_t>(first_entry_count);
@@ -313,25 +337,27 @@ std::optional<MagicSpellSelection> select_magic_spell(
         return std::nullopt;
     }
 
-    const auto spell_code = spell_table[entry_offset];
-    const auto spell = std::find_if(
-        spell_catalog.begin(), spell_catalog.end(),
-        [spell_code](const MagicSpellDefinition& candidate) {
-            return candidate.spell_code == spell_code;
-        });
-    if (spell == spell_catalog.end()) {
+    return make_typed_magic_spell_selection(
+        entry_index, spell_table[entry_offset], spell_table[entry_offset + 1U],
+        spell_catalog);
+}
+
+std::optional<MagicSpellSelection> select_magic_spell(
+    const MagicSpellTable& spell_table,
+    const MagicMenuSelection selection,
+    const UsMagicSpellCatalog& spell_catalog) {
+    if (selection.row > 1U || selection.column >= 7U) {
         return std::nullopt;
     }
-
-    MagicSpellSelection result{};
-    result.table_entry_index = entry_index;
-    result.spell_code = spell_code;
-    result.table_parameter = spell_table[entry_offset + 1U];
-    result.availability_byte = spell->availability_byte;
-    result.availability = spell->availability_byte >= 0
-                              ? MagicSpellAvailability::available
-                              : MagicSpellAvailability::unavailable;
-    return result;
+    const auto entry_index = static_cast<std::uint16_t>(
+        static_cast<std::uint16_t>(selection.row) * 7U + selection.column);
+    if (entry_index >= spell_table.entry_count ||
+        entry_index >= kMagicSpellTableEntryCapacity) {
+        return std::nullopt;
+    }
+    const auto& entry = spell_table.entries[entry_index];
+    return make_typed_magic_spell_selection(
+        entry_index, entry.spell_code, entry.force_limit, spell_catalog);
 }
 
 std::uint8_t clamp_magic_force(const std::uint8_t current,

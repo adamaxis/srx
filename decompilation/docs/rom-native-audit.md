@@ -347,7 +347,7 @@ alone is not sufficient:
 | `0xD4D50`, `0xCF3D4`, `0xCF610` | Weapon, armor, attack, defense, and timing tables | Consumers identified; full typed extraction still incomplete |
 | `0xD2072` | Cyberware names/effect slots | Names extracted; effect semantics still need rule consumers |
 | `0xC1A2A` | Attribute/skill labels and definitions | Labels extracted; upgrade/derived-rule data still needs a typed table |
-| `0xD4EA0`, reached by `0xFBA6`/`0x1088C` | 13 typed US spell definitions: names, signed availability, difficulty modifier, effect-table index, decoded base effect, and attribute selector | Typed catalog extracted; runner-specific FFF9FA spell lists and remaining cost/force consumers still need integration |
+| `0xD4EA0`, reached by `0xFBA6`/`0x1088C` | 13 typed US spell definitions: names, signed availability, difficulty modifier, effect-table index, decoded base effect, and attribute selector | Typed spell definitions and all five `0x166AD8` runner spell rows extracted; remaining cost/force consumers still need integration |
 | field mode/terrain/entity/event tables | `AreaResource`, `TerrainMap`, `EntityTemplate`, event/exit records | Modes and terrain partially typed; all event/transition records not yet pulled |
 | `0x59318` and `0x597EE..0x598B0` | `SaveStore` compact records and projections | Projection behavior converted; complete save data package not yet native |
 | text pointer/catalog families | `TextCatalog` / dialog/menu/notebook data | Several screens extracted; complete catalog ownership still under audit |

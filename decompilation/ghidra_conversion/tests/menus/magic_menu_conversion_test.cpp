@@ -144,6 +144,22 @@ int main() {
         return 15;
     }
 
+    const auto typed_table = find_us_magic_spell_table(0U);
+    const auto typed_table_selection = typed_table == nullptr
+                                           ? std::nullopt
+                                           : select_magic_spell(
+                                                 *typed_table, {1U, 0U},
+                                                 us_magic_spell_catalog());
+    if (!expect(typed_table_selection.has_value() &&
+                    typed_table_selection->table_entry_index == 1U &&
+                    typed_table_selection->spell_code == 1U &&
+                    typed_table_selection->table_parameter == 1U &&
+                    typed_table_selection->availability_byte == 2 &&
+                    typed_table_selection->availability ==
+                        MagicSpellAvailability::available)) {
+        return 16;
+    }
+
     if (!expect(clamp_magic_force(1U, -1, 9U) == 1U &&
                 clamp_magic_force(8U, 1, 9U) == 9U &&
                 clamp_magic_force(3U, -1, 9U) == 2U)) {

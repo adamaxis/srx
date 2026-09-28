@@ -37,5 +37,26 @@ int main() {
         find_us_magic_spell(13U) != nullptr) {
         return 3;
     }
+
+    const auto& tables = us_magic_spell_table_catalog();
+    if (tables.size() != kUsMagicSpellTableCount ||
+        tables[0].entry_count != 3U ||
+        tables[0].entries[0].spell_code != 5U ||
+        tables[0].entries[0].force_limit != 3U ||
+        tables[0].entries[2].spell_code != 3U ||
+        tables[1].entry_count != 2U ||
+        tables[1].entries[0].spell_code != 0U ||
+        tables[1].entries[1].force_limit != 2U ||
+        tables[2].entry_count != 4U ||
+        tables[2].entries[1].spell_code != 9U ||
+        tables[2].entries[1].force_limit != 4U ||
+        tables[3].entry_count != 5U ||
+        tables[3].entries[4].spell_code != 4U ||
+        tables[4].entry_count != 2U ||
+        tables[4].entries[1].spell_code != 10U ||
+        find_us_magic_spell_table(4U) != &tables[4] ||
+        find_us_magic_spell_table(5U) != nullptr) {
+        return 4;
+    }
     return 0;
 }

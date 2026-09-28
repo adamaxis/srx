@@ -1764,6 +1764,16 @@ existing current force only when the runner has no inventory slot and still
 holds the selected spell item code (`spell code + 1`); otherwise it resets
 current force to the selected maximum.
 
+The source table feeding that selector is now typed as well. `0x566A2` copies
+five 0x22-byte rows from ROM `0x166AD8` into the working table at `FFF9FA`,
+and `0xFBA6` chooses a row with the runner record's big-endian `+0xA0` table
+index. The extracted rows contain 3, 2, 4, 5, and 2 selectable entries:
+`(5,3),(1,1),(3,1)`; `(0,2),(11,2)`; `(7,1),(9,4),(4,3),(11,2)`;
+`(8,3),(2,3),(6,2),(3,3),(4,4)`; and `(7,3),(10,3)`. Each pair is
+`(D4EA0 spell code, force/value limit)`. The native conversion now exposes
+these as `UsMagicSpellTableCatalog` and selects from a typed row; the raw
+FFF9FA byte-table helper remains only as an explicit audit boundary.
+
 `0x10276` is also now source-traced as the magic selection display rather than
 a generic text batch: its code-6 tile-mask branch, selected spell name and
 description, shared Success/Force labels, posture/availability calls, and

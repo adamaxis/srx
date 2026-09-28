@@ -296,6 +296,13 @@ std::optional<MagicSpellSelection> select_magic_spell(
     MagicMenuSelection selection,
     const UsMagicSpellCatalog& spell_catalog);
 
+// Native conversion boundary: the +0xA0-selected runner row is already a
+// typed list of spell/force entries, so no ROM table bytes are needed here.
+std::optional<MagicSpellSelection> select_magic_spell(
+    const MagicSpellTable& spell_table,
+    MagicMenuSelection selection,
+    const UsMagicSpellCatalog& spell_catalog);
+
 // Read the source signed availability byte directly from one 0x30-byte spell
 // record. This is an offline/reference conversion helper; the runtime does
 // not carry the ROM catalog or perform address arithmetic.

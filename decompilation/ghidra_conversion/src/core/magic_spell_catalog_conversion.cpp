@@ -19,6 +19,43 @@ const UsMagicSpellCatalog kUsMagicSpells{
     MagicSpellDefinition{12U, "Confusion", -1, 0U, 2U, 6, -1},
 };
 
+const UsMagicSpellTableCatalog kUsMagicSpellTables = [] {
+    UsMagicSpellTableCatalog tables{};
+
+    // ROM 0x166AD8, row 0: count 3, codes 5/1/3.
+    tables[0].entry_count = 3U;
+    tables[0].entries[0] = {5U, 3U};
+    tables[0].entries[1] = {1U, 1U};
+    tables[0].entries[2] = {3U, 1U};
+
+    // ROM 0x166AFA, row 1: count 2, codes 0/11.
+    tables[1].entry_count = 2U;
+    tables[1].entries[0] = {0U, 2U};
+    tables[1].entries[1] = {11U, 2U};
+
+    // ROM 0x166B1C, row 2: count 4, codes 7/9/4/11.
+    tables[2].entry_count = 4U;
+    tables[2].entries[0] = {7U, 1U};
+    tables[2].entries[1] = {9U, 4U};
+    tables[2].entries[2] = {4U, 3U};
+    tables[2].entries[3] = {11U, 2U};
+
+    // ROM 0x166B3E, row 3: count 5, codes 8/2/6/3/4.
+    tables[3].entry_count = 5U;
+    tables[3].entries[0] = {8U, 3U};
+    tables[3].entries[1] = {2U, 3U};
+    tables[3].entries[2] = {6U, 2U};
+    tables[3].entries[3] = {3U, 3U};
+    tables[3].entries[4] = {4U, 4U};
+
+    // ROM 0x166B60, row 4: count 2, codes 7/10.
+    tables[4].entry_count = 2U;
+    tables[4].entries[0] = {7U, 3U};
+    tables[4].entries[1] = {10U, 3U};
+
+    return tables;
+}();
+
 } // namespace
 
 const UsMagicSpellCatalog& us_magic_spell_catalog() {
@@ -31,6 +68,18 @@ const MagicSpellDefinition* find_us_magic_spell(
         return nullptr;
     }
     return &kUsMagicSpells[spell_code];
+}
+
+const UsMagicSpellTableCatalog& us_magic_spell_table_catalog() {
+    return kUsMagicSpellTables;
+}
+
+const MagicSpellTable* find_us_magic_spell_table(
+    const std::uint16_t table_index) {
+    if (table_index >= kUsMagicSpellTableCount) {
+        return nullptr;
+    }
+    return &kUsMagicSpellTables[table_index];
 }
 
 } // namespace shadowrun::ghidra_conversion
