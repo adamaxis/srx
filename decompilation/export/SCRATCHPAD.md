@@ -235,6 +235,12 @@ An accepted step publishes the walking selector and copies the list auxiliary
 `0x600E` keeps the last of the two walk poses until `0xAF6C` restarts the
 clock on a selector change. No input returns the idle table.
 
+Field HUD overlays follow the `$F000` nametable writes: `0x35D4` portrait at
+`F1C6`, `0x3674` physical bar at `F1C4`, mental bar at `F3C6`, `0x35F0` item
+at `F448`, and `0x36FC` ammo at `F4C4`. Slot stride is `0x400` (64px). Only
+records with live `+0x10` bit 0 emit overlays, so the new-game composition
+keeps companion frames empty.
+
 The separate smoke command
 `shadowrun_ghidra_conversion_qt --field-smoke-move-right` verifies the
 connected path without opening a window. With the US-ROM startup records it

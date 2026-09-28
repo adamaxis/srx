@@ -23,6 +23,16 @@ namespace {
 
 constexpr std::string_view kInitialFieldMapAlias = "field.maps.mode.0";
 constexpr std::string_view kFieldHudAlias = "field.hud.background";
+constexpr std::string_view kFieldHudFaceAliasPrefix = "field.hud.face.";
+constexpr std::string_view kFieldHudItemAliasPrefix = "field.hud.item.";
+constexpr std::string_view kFieldHudUnarmedItemAliasPrefix =
+    "field.hud.unarmed.item.";
+constexpr std::string_view kFieldHudVerticalCounterAliasPrefix =
+    "field.hud.vertical.counter.";
+constexpr std::string_view kFieldHudHorizontalCounterAliasPrefix =
+    "field.hud.horizontal.counter.";
+constexpr std::string_view kFieldHudAmmoCounterAliasPrefix =
+    "field.hud.ammo.counter.";
 constexpr std::string_view kFieldEntityIdleAliasPrefix = "field.entities.idle.";
 constexpr std::string_view kFieldEntityWalkAliasPrefix = "field.entities.walk.";
 constexpr int kGenesisSpriteOrigin = 0x80;
@@ -254,6 +264,45 @@ bool FieldSceneRuntime::load_sprite_image(
                 pixel.setAlpha(0);
                 destination.setPixelColor(x, y, pixel);
             }
+        }
+    }
+    return true;
+}
+
+bool FieldSceneRuntime::load_field_hud_overlays(
+    const ConversionAssetCatalog& catalog) {
+    int origin_x = 0;
+    int origin_y = 0;
+    const auto load_slot = [this, &catalog, &origin_x, &origin_y](
+                               const std::string_view prefix,
+                               std::array<QImage, kFieldHudSlotCount>&
+                                   images) {
+        for (std::size_t slot = 0; slot < images.size(); ++slot) {
+            const auto alias = std::string(prefix) + std::to_string(slot);
+            if (!load_sprite_image(catalog, alias, images[slot], origin_x,
+                                   origin_y)) {
+                return false;
+            }
+        }
+        return true;
+    };
+    if (!load_slot(kFieldHudFaceAliasPrefix, field_hud_faces_) ||
+        !load_slot(kFieldHudItemAliasPrefix, field_hud_items_) ||
+        !load_slot(kFieldHudUnarmedItemAliasPrefix,
+                   field_hud_unarmed_items_) ||
+        !load_slot(kFieldHudVerticalCounterAliasPrefix,
+                   field_hud_vertical_counters_) ||
+        !load_slot(kFieldHudHorizontalCounterAliasPrefix,
+                   field_hud_horizontal_counters_)) {
+        return false;
+    }
+    for (std::size_t ammo = 0; ammo < field_hud_ammo_counters_.size();
+         ++ammo) {
+        const auto alias = std::string(kFieldHudAmmoCounterAliasPrefix) +
+                           std::to_string(ammo);
+        if (!load_sprite_image(catalog, alias, field_hud_ammo_counters_[ammo],
+                               origin_x, origin_y)) {
+            return false;
         }
     }
     return true;
@@ -610,6 +659,7 @@ bool FieldSceneRuntime::bootstrap(
     field_pending_scene_profile_.reset();
     field_camera_follow_ = {};
     field_camera_alignment_ready_ = false;
+    field_hud_slots_ = {};
     field_entity_animation_ = {};
     field_entity_animation_.increment = kFieldEntityAnimationPeriod;
     field_entity_animation_.period = kFieldEntityAnimationPeriod;
@@ -638,11 +688,22 @@ bool FieldSceneRuntime::bootstrap(
     // field-buffer preparation can invoke 0xC7F8.
     field_entity_behavior_flags_ = field_entity_.active ? 0x05U : 0U;
     initialize_field_entity_selection_state();
+    if (startup_state.joshua_selection.has_value()) {
+        const auto& record =
+            startup_state.joshua_selection->typed_live_joshua_record;
+        field_hud_slots_[0].flags_byte =
+            static_cast<std::uint8_t>(record.flags >> 8U);
+        field_hud_slots_[0].equipped_inventory_slot =
+            record.equipped_inventory_slot;
+        field_hud_slots_[0].equipped_item_code = record.equipped_item_code;
+        field_hud_slots_[0].ammo_rounds = record.ammo_rounds;
+    }
 
     if (!load_image(startup_state.asset_catalog.catalog,
                     kInitialFieldMapAlias, field_map_) ||
         !load_image(startup_state.asset_catalog.catalog, kFieldHudAlias,
-                    field_hud_)) {
+                    field_hud_) ||
+        !load_field_hud_overlays(startup_state.asset_catalog.catalog)) {
         source_boundary("field.bootstrap.direct_assets_missing");
         return false;
     }
@@ -1099,6 +1160,34 @@ void FieldSceneRuntime::paint_field_entity(QPainter& painter) const {
     painter.drawImage(x, y, image);
 }
 
+void FieldSceneRuntime::paint_field_hud_overlays(QPainter& painter) const {
+    const auto image_for = [this](const FieldHudOverlay& overlay)
+        -> const QImage* {
+        switch (overlay.kind) {
+        case FieldHudOverlayKind::portrait:
+            return &field_hud_faces_[overlay.slot];
+        case FieldHudOverlayKind::physical_bar:
+            return &field_hud_vertical_counters_[overlay.slot];
+        case FieldHudOverlayKind::mental_bar:
+            return &field_hud_horizontal_counters_[overlay.slot];
+        case FieldHudOverlayKind::item:
+            return &field_hud_items_[overlay.slot];
+        case FieldHudOverlayKind::unarmed_item:
+            return &field_hud_unarmed_items_[overlay.slot];
+        case FieldHudOverlayKind::ammo:
+            return &field_hud_ammo_counters_[overlay.asset_index];
+        }
+        return nullptr;
+    };
+    for (const auto& overlay : compose_field_hud_overlays(field_hud_slots_)) {
+        const auto* image = image_for(overlay);
+        if (image == nullptr || image->isNull()) {
+            continue;
+        }
+        painter.drawImage(overlay.x, overlay.y, *image);
+    }
+}
+
 void FieldSceneRuntime::paint(QPainter& painter) const {
     painter.fillRect(0, 0, 320, 224, QColor(4, 8, 20));
     if (!ready_ || field_map_.isNull()) {
@@ -1117,10 +1206,11 @@ void FieldSceneRuntime::paint(QPainter& painter) const {
     painter.drawImage(-viewport_x, -viewport_y, field_map_);
     paint_field_entity(painter);
 
-    // This is the source HUD plate at 0x334C/0x39F2, not a Qt-drawn
-    // substitute. Dynamic faces/items remain separate source callbacks until
-    // their runner-record consumers are connected.
+    // 0x334C supplies the static chrome. 0x35D4/0x35F0/0x36FC/0x3674 stamp
+    // the live face, item, and counter overlays at the $F000 nametable
+    // cells. New-game keeps slots 1 and 2 inactive.
     painter.drawImage(0, 0, field_hud_);
+    paint_field_hud_overlays(painter);
 }
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime

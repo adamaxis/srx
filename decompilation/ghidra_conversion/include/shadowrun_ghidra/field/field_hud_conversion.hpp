@@ -1,9 +1,69 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <functional>
+#include <vector>
 
 namespace shadowrun::ghidra_conversion {
+
+constexpr std::size_t kFieldHudSlotCount = 3U;
+constexpr std::size_t kFieldHudAmmoCounterCount = 64U;
+constexpr std::uint16_t kFieldHudPlaneBase = 0xF000U;
+constexpr std::uint16_t kFieldHudPlaneWidthTiles = 64U;
+constexpr std::uint16_t kFieldHudSlotVramStride = 0x0400U;
+// 0x35D4 4x4 portrait at F1C6. 0x3674 one-column bar at F1C4. 0x35F0 3x2
+// item at F448. 0x36FC two-tile ammo at F4C4. Horizontal bar is F3C6.
+constexpr std::uint16_t kFieldHudPortraitVram = 0xF1C6U;
+constexpr std::uint16_t kFieldHudPhysicalBarVram = 0xF1C4U;
+constexpr std::uint16_t kFieldHudMentalBarVram = 0xF3C6U;
+constexpr std::uint16_t kFieldHudItemVram = 0xF448U;
+constexpr std::uint16_t kFieldHudAmmoVram = 0xF4C4U;
+
+constexpr int field_hud_vram_x(const std::uint16_t vram) {
+    const auto word =
+        static_cast<unsigned>((vram - kFieldHudPlaneBase) / 2U);
+    return static_cast<int>((word % kFieldHudPlaneWidthTiles) * 8U);
+}
+
+constexpr int field_hud_vram_y(const std::uint16_t vram) {
+    const auto word =
+        static_cast<unsigned>((vram - kFieldHudPlaneBase) / 2U);
+    return static_cast<int>((word / kFieldHudPlaneWidthTiles) * 8U);
+}
+
+enum class FieldHudOverlayKind {
+    portrait,
+    physical_bar,
+    mental_bar,
+    item,
+    unarmed_item,
+    ammo,
+};
+
+struct FieldHudOverlay {
+    FieldHudOverlayKind kind = FieldHudOverlayKind::portrait;
+    std::uint8_t slot = 0;
+    int x = 0;
+    int y = 0;
+    std::uint8_t asset_index = 0;
+};
+
+struct FieldHudSlotState {
+    // Live record +0x10. Bit 0 is the 0x3674/0x36FC/0x35D4 draw gate.
+    std::uint8_t flags_byte = 0;
+    // Live record +0x56. 0x7F is the source unarmed sentinel.
+    std::int8_t equipped_inventory_slot = 0;
+    std::uint8_t equipped_item_code = 0;
+    std::uint8_t ammo_rounds = 0;
+};
+
+// ROM 0x35D4/0x35F0/0x36FC/0x3674: emit the nametable-backed overlays for
+// each live field record whose +0x10 bit 0 is set. Inactive companion slots
+// produce no overlays.
+std::vector<FieldHudOverlay> compose_field_hud_overlays(
+    const std::array<FieldHudSlotState, kFieldHudSlotCount>& slots);
+
 
 struct FieldHudRenderCallbacks {
     std::function<void()> prepare_display;

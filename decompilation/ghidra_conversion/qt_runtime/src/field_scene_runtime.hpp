@@ -5,6 +5,7 @@
 #include "shadowrun_ghidra/entities/collision_probe_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_behavior_frame_service_conversion.hpp"
 #include "shadowrun_ghidra/field/field_camera_conversion.hpp"
+#include "shadowrun_ghidra/field/field_hud_conversion.hpp"
 #include "shadowrun_ghidra/field/field_viewport_conversion.hpp"
 #include "shadowrun_ghidra/field/field_coordinate_conversion.hpp"
 #include "shadowrun_ghidra/field/field_movement_input_conversion.hpp"
@@ -94,6 +95,8 @@ private:
                            int& origin_x,
                            int& origin_y);
     void paint_field_entity(QPainter& painter) const;
+    void paint_field_hud_overlays(QPainter& painter) const;
+    bool load_field_hud_overlays(const ConversionAssetCatalog& catalog);
 
     struct FieldEntityPresentation {
         bool active = false;
@@ -112,6 +115,13 @@ private:
     FieldViewportState viewport_state_;
     QImage field_map_;
     QImage field_hud_;
+    std::array<QImage, kFieldHudSlotCount> field_hud_faces_{};
+    std::array<QImage, kFieldHudSlotCount> field_hud_items_{};
+    std::array<QImage, kFieldHudSlotCount> field_hud_unarmed_items_{};
+    std::array<QImage, kFieldHudSlotCount> field_hud_vertical_counters_{};
+    std::array<QImage, kFieldHudSlotCount> field_hud_horizontal_counters_{};
+    std::array<QImage, kFieldHudAmmoCounterCount> field_hud_ammo_counters_{};
+    std::array<FieldHudSlotState, kFieldHudSlotCount> field_hud_slots_{};
     std::array<QImage, 8> field_entity_idle_images_{};
     std::array<int, 8> field_entity_idle_origin_x_{};
     std::array<int, 8> field_entity_idle_origin_y_{};

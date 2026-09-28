@@ -1,6 +1,69 @@
 #include "shadowrun_ghidra/field/field_hud_conversion.hpp"
 
 namespace shadowrun::ghidra_conversion {
+namespace {
+
+bool slot_is_active(const FieldHudSlotState& slot) {
+    return (slot.flags_byte & 0x01U) != 0U;
+}
+
+bool slot_is_armed(const FieldHudSlotState& slot) {
+    return slot.equipped_inventory_slot >= 0 &&
+           static_cast<std::uint8_t>(slot.equipped_inventory_slot) !=
+               0x7FU &&
+           slot.equipped_item_code != 0U;
+}
+
+std::uint16_t slot_vram(const std::uint16_t base, const std::uint8_t slot) {
+    return static_cast<std::uint16_t>(
+        base + static_cast<std::uint16_t>(slot) * kFieldHudSlotVramStride);
+}
+
+FieldHudOverlay make_overlay(const FieldHudOverlayKind kind,
+                             const std::uint8_t slot,
+                             const std::uint16_t vram,
+                             const std::uint8_t asset_index) {
+    return FieldHudOverlay{kind, slot, field_hud_vram_x(vram),
+                           field_hud_vram_y(vram), asset_index};
+}
+
+} // namespace
+
+std::vector<FieldHudOverlay> compose_field_hud_overlays(
+    const std::array<FieldHudSlotState, kFieldHudSlotCount>& slots) {
+    std::vector<FieldHudOverlay> overlays;
+    for (std::uint8_t slot = 0; slot < kFieldHudSlotCount; ++slot) {
+        if (!slot_is_active(slots[slot])) {
+            continue;
+        }
+        overlays.push_back(make_overlay(FieldHudOverlayKind::portrait, slot,
+                                        slot_vram(kFieldHudPortraitVram, slot),
+                                        slot));
+        overlays.push_back(
+            make_overlay(FieldHudOverlayKind::physical_bar, slot,
+                         slot_vram(kFieldHudPhysicalBarVram, slot), slot));
+        overlays.push_back(
+            make_overlay(FieldHudOverlayKind::mental_bar, slot,
+                         slot_vram(kFieldHudMentalBarVram, slot), slot));
+        if (slot_is_armed(slots[slot])) {
+            overlays.push_back(
+                make_overlay(FieldHudOverlayKind::item, slot,
+                             slot_vram(kFieldHudItemVram, slot), slot));
+        } else {
+            overlays.push_back(
+                make_overlay(FieldHudOverlayKind::unarmed_item, slot,
+                             slot_vram(kFieldHudItemVram, slot), slot));
+        }
+        if (slots[slot].ammo_rounds < kFieldHudAmmoCounterCount) {
+            overlays.push_back(make_overlay(
+                FieldHudOverlayKind::ammo, slot,
+                slot_vram(kFieldHudAmmoVram, slot),
+                slots[slot].ammo_rounds));
+        }
+    }
+    return overlays;
+}
+
 
 void upload_field_asset_sequence(
     const FieldHudAssetTransferCallbacks& callbacks) {
