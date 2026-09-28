@@ -4,6 +4,7 @@
 #include "shadowrun_ghidra/entities/collision_state_conversion.hpp"
 #include "shadowrun_ghidra/entities/collision_probe_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_behavior_frame_service_conversion.hpp"
+#include "shadowrun_ghidra/field/field_camera_conversion.hpp"
 #include "shadowrun_ghidra/field/field_viewport_conversion.hpp"
 #include "shadowrun_ghidra/field/field_coordinate_conversion.hpp"
 #include "shadowrun_ghidra/field/field_movement_input_conversion.hpp"
@@ -73,6 +74,7 @@ private:
     void handle_field_mode_action_event();
     void run_field_mode_exit_transition();
     bool project_field_world_interaction();
+    void update_source_field_camera();
     bool recover_blocked_field_movement(
         const MovementProbeResult& initial_probe);
     std::optional<std::size_t> projected_terrain_cell() const;
@@ -143,6 +145,8 @@ private:
     // sample. 0x1651E clears that byte; 0xE9EE may leak A2, but the index is
     // only defined for the collision table.
     std::uint16_t field_collision_marker_index_ = 0;
+    FieldCameraFollowState field_camera_follow_{};
+    bool field_camera_alignment_ready_ = false;
     // FFE114 when 0x1651E selects the scene-4 interaction record. 0x2B34
     // consumes it on the next scene entry.
     std::optional<std::array<std::uint16_t, 8>> field_pending_scene_profile_;

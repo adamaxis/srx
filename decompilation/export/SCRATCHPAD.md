@@ -221,6 +221,14 @@ the outside-bounds path publishes the source `00 7F 00 7F` pair. The Qt bridge
 keeps that typed sample state between candidate probes instead of flattening
 it into a fresh synthetic record on every call.
 
+Field camera follow is ROM `0x3A1C`. The ordinary path looks `0x3C0` ahead of
+the entity heading, compares that point with the camera plus `0x880`/`0x700`,
+and steps by one or two coordinate units with the `0x180`/`0x300` hysteresis.
+`0x3C36` shifts the step by four and rejects a sum outside profile words 2
+through 5. `FFE186 == 3` instead chases the fixed point `(0x600, 0)` through
+the `0x4290` direction table. Dirty layer words and the interaction lock skip
+the write. The tile-edge uploads `0x4018` and `0x40E2` stay callbacks.
+
 The separate smoke command
 `shadowrun_ghidra_conversion_qt --field-smoke-move-right` verifies the
 connected path without opening a window. With the US-ROM startup records it

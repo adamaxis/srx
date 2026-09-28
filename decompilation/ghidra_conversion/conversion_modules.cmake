@@ -71,6 +71,7 @@ file(GLOB SHADOWRUN_MODULE_FIELD_SCENE_CONTROLLER CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/scene_record_reset_conversion.cpp"
 )
 file(GLOB SHADOWRUN_MODULE_FIELD_NAVIGATION CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_camera_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_coordinate_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_movement_input_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_exit_*.cpp"

@@ -165,6 +165,12 @@ bool FieldSceneRuntime::project_field_world_interaction() {
     if (effect.special_resource_selected) {
         field_pending_scene_profile_ = kSceneFourInteractionProfile;
     }
+    if (effect.world_effect_x_dirty) {
+        field_camera_follow_.layer_x_dirty = true;
+    }
+    if (effect.world_effect_y_dirty) {
+        field_camera_follow_.layer_y_dirty = true;
+    }
     if (effect.world_effect_x_dirty || effect.world_effect_y_dirty) {
         auto& layer = effect.world_effect_y_dirty
                           ? state_.field_scene_buffers.layer_b
@@ -416,11 +422,15 @@ void FieldSceneRuntime::configure_callbacks() {
         source_boundary("field.viewport.service_special_effects");
     };
     callbacks_.field_viewports.render_normal_viewport = [this] {
+        // ROM 0x2C92 clears FFE100 before drawing the normal viewport.
+        field_camera_follow_.layer_x_dirty = false;
         render_normal_field_viewport(
             viewport_state_,
             [this] { source_boundary("field.viewport.render_normal"); });
     };
     callbacks_.field_viewports.render_alternate_viewport = [this] {
+        // ROM 0x2CB2 clears FFE102 before drawing the alternate viewport.
+        field_camera_follow_.layer_y_dirty = false;
         render_alternate_field_viewport(
             viewport_state_,
             [this] { source_boundary("field.viewport.render_alternate"); });
@@ -487,9 +497,7 @@ void FieldSceneRuntime::configure_callbacks() {
             observe_entity_boundary("field.entities.run_continuation", record);
         };
 
-    callbacks_.update_field_camera = [this] {
-        source_boundary("field.camera.update");
-    };
+    callbacks_.update_field_camera = [this] { update_source_field_camera(); };
     callbacks_.entity_render_pass.project_screen_position =
         [this](RenderEntityState& entity) {
             source_boundary("field.entities.project_screen_position");
@@ -594,6 +602,8 @@ bool FieldSceneRuntime::bootstrap(
     field_entity_table_ = {};
     field_collision_marker_index_ = 0U;
     field_pending_scene_profile_.reset();
+    field_camera_follow_ = {};
+    field_camera_alignment_ready_ = false;
     input_ = integration::FieldSessionBootstrapInput{};
     input_.action_selection_profile_source =
         assets.action_selection_profile_source;
@@ -971,11 +981,50 @@ void FieldSceneRuntime::advance_field_movement() {
     }
 }
 
+void FieldSceneRuntime::update_source_field_camera() {
+    const auto& profile = state_.field_scene_buffers.profile;
+    if (profile.size() < 6U) {
+        source_boundary("field.camera.bounds_missing");
+        return;
+    }
+    const auto camera_x = static_cast<std::uint16_t>(
+        state_.field_scene_buffers.camera_x);
+    const auto camera_y = static_cast<std::uint16_t>(
+        state_.field_scene_buffers.camera_y);
+    if (!field_camera_alignment_ready_) {
+        field_camera_follow_.aligned_x =
+            static_cast<std::uint16_t>(camera_x & 0xFF80U);
+        field_camera_follow_.aligned_y =
+            static_cast<std::uint16_t>(camera_y & 0xFF80U);
+        field_camera_alignment_ready_ = true;
+    }
+    field_camera_follow_.camera_x = camera_x;
+    field_camera_follow_.camera_y = camera_y;
+    field_camera_follow_.minimum_x = profile[2];
+    field_camera_follow_.minimum_y = profile[3];
+    field_camera_follow_.maximum_x = profile[4];
+    field_camera_follow_.maximum_y = profile[5];
+    field_camera_follow_.interaction_locked =
+        field_movement_transition_state_.world_interaction_lock;
+    field_camera_follow_ = follow_field_camera(
+        field_camera_follow_, field_entity_.world_position.x,
+        field_entity_.world_position.y, field_movement_state_.heading, false);
+    state_.field_scene_buffers.camera_x = field_camera_follow_.camera_x;
+    state_.field_scene_buffers.camera_y = field_camera_follow_.camera_y;
+    if (field_camera_follow_.horizontal_edge) {
+        source_boundary("field.camera.row_edge");
+    }
+    if (field_camera_follow_.vertical_edge) {
+        source_boundary("field.camera.column_edge");
+    }
+}
+
 void FieldSceneRuntime::advance_frame() {
     if (!ready_) {
         return;
     }
     advance_field_movement();
+    update_source_field_camera();
     update_entity_render_pass(state_.render_entities,
                               callbacks_.entity_render_pass);
 }
