@@ -741,6 +741,9 @@ private:
                  std::string("menu.startup.cursor")}) {
             cache_asset(alias);
         }
+        for (int index = 0; index < 3; ++index) {
+            cache_asset("menu.field.runner.portrait." + std::to_string(index));
+        }
         for (int index = 0; index < 7; ++index) {
             cache_asset("title.circuit.background." + std::to_string(index));
         }
@@ -771,6 +774,7 @@ private:
             image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
             if (alias == "title.logo" || alias == "title.text" ||
                 alias == "menu.startup.cursor" ||
+                alias.rfind("menu.field.runner.portrait.", 0) == 0 ||
                 alias.rfind("title.sprite.", 0) == 0 ||
                 alias.rfind("intro.sprites.", 0) == 0 ||
                 alias.rfind("intro.background.patch.", 0) == 0 ||
@@ -1038,47 +1042,58 @@ private:
 
     void draw_menu_overlay(QPainter& painter) const {
         if (state_.phase == StartupIntegrationPhase::start_options) {
-            draw_startup_text(
-                painter, 104, 56,
-                start_options_choice_name(StartOptionsChoice::new_game));
-            draw_startup_text(
-                painter, 104, 72,
-                start_options_choice_name(StartOptionsChoice::load_game));
-            draw_cursor(painter, 88,
-                        56 + 16 * static_cast<int>(
-                                  state_.start_options.selected));
+            draw_startup_layout(painter, kStartOptionsPlaneVram,
+                                kStartOptionsLayout);
+            draw_cursor(painter, startup_menu_vram_x(kStartOptionsCursorVram),
+                        startup_menu_cursor_y(
+                            kStartOptionsCursorVram,
+                            static_cast<std::uint8_t>(
+                                state_.start_options.selected)));
             return;
         }
 
         if (state_.phase == StartupIntegrationPhase::save_load) {
             if (state_.save_load.message == SaveLoadMessage::no_save_data) {
-                draw_startup_text(painter, 72, 72, "No Save Data");
+                draw_startup_layout(painter, kSaveLoadMessagePlaneVram,
+                                    kNoSaveDataLayout);
                 return;
             }
-            draw_startup_text(
-                painter, 152, 112,
-                save_slot_choice_name(SaveSlotChoice::slot_one));
-            draw_startup_text(
-                painter, 152, 128,
-                save_slot_choice_name(SaveSlotChoice::slot_two));
-            draw_cursor(painter, 136,
-                        112 + 16 * static_cast<int>(
-                                   state_.save_load.selected));
+            draw_startup_layout(painter, kSaveLoadPlaneVram, kSaveLoadLayout);
+            draw_cursor(painter, startup_menu_vram_x(kSaveLoadCursorVram),
+                        startup_menu_cursor_y(
+                            kSaveLoadCursorVram,
+                            static_cast<std::uint8_t>(
+                                state_.save_load.selected)));
             return;
         }
 
-        draw_startup_text(
-            painter, 152, 56,
-            joshua_archetype_choice_name(JoshuaArchetypeChoice::samurai));
-        draw_startup_text(
-            painter, 152, 72,
-            joshua_archetype_choice_name(JoshuaArchetypeChoice::decker));
-        draw_startup_text(
-            painter, 152, 88,
-            joshua_archetype_choice_name(JoshuaArchetypeChoice::gator_shaman));
-        draw_cursor(painter, 136,
-                    56 + 16 * static_cast<int>(
-                              state_.joshua_archetype.selected));
+        const auto portrait_index = static_cast<int>(
+            state_.joshua_archetype.selected);
+        const auto portrait_alias =
+            "menu.field.runner.portrait." + std::to_string(portrait_index);
+        const auto portrait = draw_asset_cache_.find(portrait_alias);
+        if (portrait != draw_asset_cache_.end()) {
+            painter.drawImage(80, 56, portrait->second);
+        }
+        draw_startup_layout(painter, kJoshuaArchetypePlaneVram,
+                            kJoshuaArchetypeLayout);
+        draw_cursor(painter, startup_menu_vram_x(kJoshuaArchetypeCursorVram),
+                    startup_menu_cursor_y(
+                        kJoshuaArchetypeCursorVram,
+                        static_cast<std::uint8_t>(
+                            state_.joshua_archetype.selected)));
+    }
+
+    template <std::size_t N>
+    void draw_startup_layout(
+        QPainter& painter, const std::uint16_t plane_vram,
+        const std::array<StartupMenuTextLine, N>& lines) const {
+        const auto x = startup_menu_vram_x(plane_vram);
+        for (const auto& line : lines) {
+            draw_startup_text(painter, x,
+                              startup_menu_line_y(plane_vram, line.row),
+                              line.text);
+        }
     }
 
     void draw_conversion_boundary_error(QPainter& painter) const {
@@ -1102,12 +1117,9 @@ private:
     }
 
     void draw_cursor(QPainter& painter, const int x, const int y) const {
-        const auto* record =
-            state_.asset_catalog.catalog.find("menu.startup.cursor");
         const auto image = draw_asset_cache_.find("menu.startup.cursor");
-        if (record != nullptr && image != draw_asset_cache_.end()) {
-            painter.drawImage(x + record->origin_x, y + record->origin_y,
-                              image->second);
+        if (image != draw_asset_cache_.end()) {
+            painter.drawImage(x, y, image->second);
         } else {
             painter.drawText(x, y + 10, QStringLiteral(">"));
         }

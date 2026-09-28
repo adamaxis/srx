@@ -1,7 +1,9 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <functional>
+#include <string_view>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -15,6 +17,90 @@ constexpr std::uint8_t kStartupMenuC = 0x20U;
 constexpr std::uint8_t kStartupMenuA = 0x40U;
 constexpr std::uint8_t kStartupMenuActionMask =
     kStartupMenuB | kStartupMenuC | kStartupMenuA;
+
+// ROM 0xC0DA writes 0x80-delimited layouts into plane VRAM from 0xC000,
+// 64 tiles (0x80 bytes) per row. 0xC376 places the cursor at D7 plus
+// selector * 0x100 when FFF0FC is non-negative.
+constexpr std::uint16_t kStartupMenuPlaneVram = 0xC000U;
+constexpr std::uint16_t kStartupMenuRowStrideVram = 0x80U;
+constexpr std::uint16_t kStartupMenuCursorStrideVram = 0x100U;
+constexpr int kStartupMenuTilePixels = 8;
+constexpr int kStartupMenuPlaneWidthTiles = 64;
+
+constexpr int startup_menu_vram_x(const std::uint16_t vram) {
+    const auto words = static_cast<int>(
+        (vram - kStartupMenuPlaneVram) / 2U);
+    return (words % kStartupMenuPlaneWidthTiles) * kStartupMenuTilePixels;
+}
+
+constexpr int startup_menu_vram_y(const std::uint16_t vram) {
+    const auto words = static_cast<int>(
+        (vram - kStartupMenuPlaneVram) / 2U);
+    return (words / kStartupMenuPlaneWidthTiles) * kStartupMenuTilePixels;
+}
+
+constexpr int startup_menu_cursor_y(const std::uint16_t cursor_vram,
+                                    const std::uint8_t selected) {
+    return startup_menu_vram_y(static_cast<std::uint16_t>(
+        cursor_vram + selected * kStartupMenuCursorStrideVram));
+}
+
+constexpr int startup_menu_line_y(const std::uint16_t plane_vram,
+                                  const std::uint8_t row) {
+    return startup_menu_vram_y(static_cast<std::uint16_t>(
+        plane_vram + row * kStartupMenuRowStrideVram));
+}
+
+struct StartupMenuTextLine {
+    std::uint8_t row = 0;
+    std::string_view text;
+};
+
+// 0x590BE A2=0xC39A, D7=0xC51A, layout 0x1B6498.
+constexpr std::uint16_t kStartOptionsPlaneVram = 0xC39AU;
+constexpr std::uint16_t kStartOptionsCursorVram = 0xC51AU;
+inline constexpr std::array<StartupMenuTextLine, 4> kStartOptionsLayout{{
+    {0, " Start Options"},
+    {1, R"([\\\\\\\\\\\\\)"},
+    {3, "  New Game"},
+    {5, "  Load Game"},
+}};
+
+// 0x59250 A2=0xC3A6, D7=0xC5A6, layout 0x1B64CF. Gator and Shaman are two
+// rows of one selector index.
+constexpr std::uint16_t kJoshuaArchetypePlaneVram = 0xC3A6U;
+constexpr std::uint16_t kJoshuaArchetypeCursorVram = 0xC5A6U;
+inline constexpr std::array<StartupMenuTextLine, 7> kJoshuaArchetypeLayout{{
+    {0, "  Choose"},
+    {1, " Archetype"},
+    {2, R"([\\\\\\\\\\)"},
+    {4, "  Samurai"},
+    {6, "  Decker"},
+    {8, "  Gator"},
+    {9, "    Shaman"},
+}};
+
+// 0x59174 A2=0xC726, D7=0xC722, layout 0x1B6518.
+constexpr std::uint16_t kSaveLoadPlaneVram = 0xC726U;
+constexpr std::uint16_t kSaveLoadCursorVram = 0xC722U;
+inline constexpr std::array<StartupMenuTextLine, 2> kSaveLoadLayout{{
+    {0, "Game 1"},
+    {2, "Game 2"},
+}};
+
+// 0x59240 A2=0xC492, layouts 0x1B6527 / 0x1B6577.
+constexpr std::uint16_t kSaveLoadMessagePlaneVram = 0xC492U;
+inline constexpr std::array<StartupMenuTextLine, 4> kNoSaveDataLayout{{
+    {0, "Jack out and smell the"},
+    {1, "   soycaf, chummer!"},
+    {3, "   There's no game"},
+    {4, "     saved here!"},
+}};
+inline constexpr std::array<StartupMenuTextLine, 3> kSaveSuccessLayout{{
+    {0, " Successful download!"},
+    {2, "   Press any button"},
+    {3, "to run in the shadows."},
+}};
 
 enum class StartOptionsChoice : std::uint8_t {
     new_game = 0,

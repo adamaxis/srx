@@ -24,6 +24,40 @@ int main() {
         return 1;
     }
 
+    if (!expect(startup_menu_vram_x(kStartOptionsPlaneVram) == 104 &&
+                startup_menu_vram_y(kStartOptionsPlaneVram) == 56 &&
+                startup_menu_vram_x(kStartOptionsCursorVram) == 104 &&
+                startup_menu_cursor_y(kStartOptionsCursorVram, 0) == 80 &&
+                startup_menu_cursor_y(kStartOptionsCursorVram, 1) == 96 &&
+                kStartOptionsLayout[2].row == 3 &&
+                kStartOptionsLayout[2].text == "  New Game" &&
+                kStartOptionsLayout[1].text.size() == 14U)) {
+        return 13;
+    }
+    if (!expect(startup_menu_vram_x(kJoshuaArchetypePlaneVram) == 152 &&
+                startup_menu_vram_y(kJoshuaArchetypePlaneVram) == 56 &&
+                startup_menu_cursor_y(kJoshuaArchetypeCursorVram, 0) == 88 &&
+                startup_menu_cursor_y(kJoshuaArchetypeCursorVram, 1) == 104 &&
+                startup_menu_cursor_y(kJoshuaArchetypeCursorVram, 2) == 120 &&
+                kJoshuaArchetypeLayout[5].text == "  Gator" &&
+                kJoshuaArchetypeLayout[6].row == 9 &&
+                kJoshuaArchetypeLayout[6].text == "    Shaman" &&
+                startup_menu_line_y(kJoshuaArchetypePlaneVram, 8) == 120 &&
+                startup_menu_line_y(kJoshuaArchetypePlaneVram, 9) == 128)) {
+        return 14;
+    }
+    if (!expect(startup_menu_vram_x(kSaveLoadPlaneVram) == 152 &&
+                startup_menu_vram_y(kSaveLoadPlaneVram) == 112 &&
+                startup_menu_vram_x(kSaveLoadCursorVram) == 136 &&
+                startup_menu_cursor_y(kSaveLoadCursorVram, 1) == 128 &&
+                kSaveLoadLayout[0].text == "Game 1" &&
+                kSaveLoadLayout[1].text == "Game 2" &&
+                startup_menu_vram_x(kSaveLoadMessagePlaneVram) == 72 &&
+                startup_menu_vram_y(kSaveLoadMessagePlaneVram) == 72 &&
+                kNoSaveDataLayout[0].text == "Jack out and smell the")) {
+        return 15;
+    }
+
     std::vector<std::string> start_entry_order;
     StartOptionsMenuState start{};
     enter_start_options_menu(
