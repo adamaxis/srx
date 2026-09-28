@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/session/runner_record_access_conversion.hpp"
 
 #include <array>
@@ -14,6 +15,7 @@ enum class RunnerAssetOperationResult {
     inventory_phase_changed,
     equipment_cleared,
     invalid_equipped_slot,
+    missing_source_data,
 };
 
 // ROM 0x0D82A reads these values from the active live record while building
@@ -44,11 +46,27 @@ RunnerAssetOperationResult advance_entity_asset_meter(
     RunnerRecordFields& record, std::int8_t delta,
     std::uint8_t ammo_limit);
 
+// Source-data-bound 0x036FC path. Weapon action codes 1..12 select the
+// corresponding D4540 row's +0x24 ammunition ceiling. The scalar overload
+// above remains an audit adapter for callers that already own a traced limit;
+// this overload refuses to substitute a guessed ceiling for missing or
+// identity-mismatched source data.
+RunnerAssetOperationResult advance_entity_asset_meter(
+    RunnerRecordFields& record, std::int8_t delta,
+    const UsItemCatalog& item_catalog);
+
 // ROM 0x038AC. Record types below three delegate to 0x036FC; other record
 // types consume one round directly.
 RunnerAssetOperationResult service_entity_ammo(
     RunnerRecordFields& record, std::int8_t meter_delta,
     std::uint8_t ammo_limit);
+
+// Source-data-bound 0x038AC path. The type-three-and-later clip branch does
+// not read D4540, while the low record-type weapon branch resolves its limit
+// through the typed item catalog before delegating to 0x036FC.
+RunnerAssetOperationResult service_entity_ammo(
+    RunnerRecordFields& record, std::int8_t meter_delta,
+    const UsItemCatalog& item_catalog);
 
 // ROM 0x107CE's record mutation, without its VDP/menu side effects.
 std::uint8_t adjust_runner_posture(RunnerRecordFields& record,

@@ -1957,3 +1957,24 @@ adjustment are all explicit. `0xECCC` now exposes the bit-4 idle-gated special
 activity route, the scene/mode variant choice, the bit-3 one-shot activity
 flag, and the world-effect/pending-effect/default handler priority through
 typed state and callbacks rather than generic source-function pointers.
+
+## Runner ammunition catalog binding audit
+
+The source `0x036FC advance_entity_asset_meter` weapon branch does not receive
+an arbitrary maximum. After validating the active/equipped record state, it
+uses the one-based action code at `+0x57` to select a `0x30`-byte row from the
+US item table at `0xD4540`, then reads that row's `+0x24` byte as the weapon's
+ammunition ceiling. The `0x0D..0x0F` action band is the separate inventory-phase
+branch and does not read D4540. `0x038AC service_entity_ammo` delegates to this
+path only for record types below three; its type-three-and-later branch consumes
+one round directly and therefore has no catalog dependency.
+
+`advance_entity_asset_meter(record, delta, item_catalog)` and
+`service_entity_ammo(record, delta, item_catalog)` now expose that source
+relationship through `UsItemCatalog`. A weapon code outside the catalog or a
+row whose one-based identity no longer matches returns
+`missing_source_data` before changing ammunition. The scalar-limit overloads
+remain available as explicit audit adapters for callers that have already
+traced a limit; the conversion does not silently substitute a zero or a
+neighboring item's value. Regression coverage exercises the source row 4
+ceiling of `0x19`, an identity mismatch, and the type-three clip bypass.

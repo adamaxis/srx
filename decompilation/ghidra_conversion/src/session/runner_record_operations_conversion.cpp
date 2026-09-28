@@ -81,6 +81,26 @@ RunnerAssetOperationResult advance_entity_asset_meter(
     return RunnerAssetOperationResult::no_change;
 }
 
+RunnerAssetOperationResult advance_entity_asset_meter(
+    RunnerRecordFields& record, const std::int8_t delta,
+    const UsItemCatalog& item_catalog) {
+    // 0x036FC only reaches D4540 for the low action-code weapon branch. Keep
+    // the source's empty/sentinel state behavior separate from a genuinely
+    // missing catalog row.
+    if (record.equipped_item_code >= 1U &&
+        record.equipped_item_code < 0x0DU) {
+        const auto row = static_cast<std::size_t>(
+            record.equipped_item_code - 1U);
+        if (row >= item_catalog.size() ||
+            item_catalog[row].item_code != record.equipped_item_code) {
+            return RunnerAssetOperationResult::missing_source_data;
+        }
+        return advance_entity_asset_meter(
+            record, delta, item_catalog[row].source_combat_factor);
+    }
+    return advance_entity_asset_meter(record, delta, 0U);
+}
+
 RunnerAssetOperationResult service_entity_ammo(
     RunnerRecordFields& record, const std::int8_t meter_delta,
     const std::uint8_t ammo_limit) {
@@ -90,6 +110,21 @@ RunnerAssetOperationResult service_entity_ammo(
     if (record.record_type < 3U) {
         return advance_entity_asset_meter(record, meter_delta, ammo_limit);
     }
+    --record.ammo_rounds;
+    return RunnerAssetOperationResult::ammo_changed;
+}
+
+RunnerAssetOperationResult service_entity_ammo(
+    RunnerRecordFields& record, const std::int8_t meter_delta,
+    const UsItemCatalog& item_catalog) {
+    if (record.ammo_rounds == 0U || record.equipped_item_code == 0U) {
+        return RunnerAssetOperationResult::no_change;
+    }
+    if (record.record_type < 3U) {
+        return advance_entity_asset_meter(record, meter_delta, item_catalog);
+    }
+    // 0x038AC's non-runner branch consumes one round directly and therefore
+    // never consults the item catalog.
     --record.ammo_rounds;
     return RunnerAssetOperationResult::ammo_changed;
 }

@@ -47,6 +47,41 @@ int main() {
         return 3;
     }
 
+    const auto& item_catalog = us_item_catalog();
+    record.equipped_item_code = 4U;
+    record.ammo_rounds = 1U;
+    if (!expect(advance_entity_asset_meter(record, 50, item_catalog) ==
+                    RunnerAssetOperationResult::ammo_changed &&
+                record.ammo_rounds == 25U)) {
+        return 10;
+    }
+
+    auto mismatched_catalog = item_catalog;
+    mismatched_catalog[3].item_code = 0U;
+    record.ammo_rounds = 7U;
+    if (!expect(advance_entity_asset_meter(record, 1, mismatched_catalog) ==
+                    RunnerAssetOperationResult::missing_source_data &&
+                record.ammo_rounds == 7U)) {
+        return 11;
+    }
+
+    record.record_type = 0U;
+    record.equipped_item_code = 3U;
+    record.ammo_rounds = 2U;
+    if (!expect(service_entity_ammo(record, 10, item_catalog) ==
+                    RunnerAssetOperationResult::ammo_changed &&
+                record.ammo_rounds == 11U)) {
+        return 12;
+    }
+
+    record.record_type = 3U;
+    record.ammo_rounds = 2U;
+    if (!expect(service_entity_ammo(record, 10, mismatched_catalog) ==
+                    RunnerAssetOperationResult::ammo_changed &&
+                record.ammo_rounds == 1U)) {
+        return 13;
+    }
+
     record.equipped_item_code = 0x0DU;
     record.inventory_item_codes[2] = 0x0DU;
     record.inventory_phase_bytes[2] = 1U;
