@@ -48,6 +48,10 @@ struct EquipmentCombatInput {
     // path. The active item code must equal spell_code + 1; keeping it
     // optional makes the unresolved source-data boundary explicit.
     std::optional<MagicSpellDefinition> special_magic_spell;
+    // Source-bound 0x104F6 data. When both pointers are present, the special
+    // action attack value reads the actual C8AE0 selector and D4540 row.
+    const UsItemCatalog* item_catalog = nullptr;
+    const UsSpecialItemModifierSelectorTable* selector_table = nullptr;
     std::optional<EntityActionSpecialItemModifierTable>
         special_item_modifier_table;
 };
@@ -71,6 +75,9 @@ struct EquipmentCombatBarResult {
     std::uint16_t command_average = 0;
     std::uint16_t attack_value = 0;
     std::uint16_t defense_value = 0;
+    // The attack path reached a source-data boundary before it could claim
+    // that its C8AE0/D4540 special-item modifier was faithfully resolved.
+    bool source_data_missing = false;
     EquipmentCombatSpecialActionResult special_action{};
 };
 

@@ -2049,3 +2049,10 @@ conversion returns `source_data_missing` before random rolls or action state
 mutation when that path is reached. The old matrix overload remains only as an
 explicit audit adapter for tests and callers that have already supplied decoded
 values; it is not the source-of-truth path.
+
+The source-bound path is threaded through both direct conversion callers:
+`resolve_menu_metric_action` and the special attack-value branch of
+`compute_equipment_combat_bars`. Both require the decoded C8AE0 selector and
+D4540 item catalog together. A half-supplied pair preserves the phase-only
+value but reports `source_data_missing`; it does not reuse the caller-owned
+matrix as an implicit compatibility fallback.

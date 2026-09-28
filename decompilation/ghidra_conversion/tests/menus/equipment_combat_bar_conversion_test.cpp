@@ -110,6 +110,30 @@ int main() {
         return 5;
     }
 
+    // Source-bound equipment bars use item 41's actual D4540 +0x22 word
+    // through C8AE0 action index 5, rather than the caller-owned -2 matrix.
+    auto source_bound_input = input;
+    source_bound_input.item_catalog = &us_item_catalog();
+    source_bound_input.selector_table =
+        &us_special_item_modifier_selector_table();
+    const auto source_bound_mode =
+        compute_equipment_combat_bars(source_bound_input);
+    if (!source_bound_mode.attack_written ||
+        source_bound_mode.source_data_missing ||
+        source_bound_mode.attack_value != 20U ||
+        source_bound_mode.attack_bar != 19U) {
+        return 30;
+    }
+
+    auto incomplete_source_input = source_bound_input;
+    incomplete_source_input.selector_table = nullptr;
+    const auto incomplete_source_mode =
+        compute_equipment_combat_bars(incomplete_source_input);
+    if (!incomplete_source_mode.source_data_missing ||
+        incomplete_source_mode.attack_value != 18U) {
+        return 31;
+    }
+
     input.special_magic_spell->spell_code = 4U;
     const auto mismatched_special = compute_equipment_combat_bars(input);
     if (!mismatched_special.special_action.magic_spell_missing ||

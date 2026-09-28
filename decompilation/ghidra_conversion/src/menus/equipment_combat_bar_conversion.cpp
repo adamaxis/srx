@@ -160,13 +160,36 @@ EquipmentCombatBarResult compute_equipment_combat_bars(
         const auto matching_item_code = static_cast<std::uint8_t>(
             static_cast<std::uint16_t>(input.active_item_code) - 1U +
             0x19U);
-        const auto phase_modifiers = apply_action_item_phase_modifiers(
-            special_byte, special_action_entity_record(input),
-            matching_item_code,
-            static_cast<std::uint8_t>(input.active_item_code - 1U),
-            input.special_item_modifier_table.has_value()
-                ? &*input.special_item_modifier_table
-                : nullptr);
+        const auto special_record = special_action_entity_record(input);
+        const auto action_index = static_cast<std::uint8_t>(
+            input.active_item_code - 1U);
+        EntityActionPhaseModifierResult phase_modifiers{};
+        const auto has_item_catalog = input.item_catalog != nullptr;
+        const auto has_selector_table = input.selector_table != nullptr;
+        if (has_item_catalog && has_selector_table) {
+            phase_modifiers = apply_action_item_phase_modifiers(
+                special_byte, special_record, matching_item_code, action_index,
+                *input.item_catalog, *input.selector_table);
+        } else if (has_item_catalog != has_selector_table) {
+            // Do not silently fall back to the caller-owned matrix when only
+            // half of the source pair is present. Preserve the phase result
+            // and publish the unresolved special-item dependency.
+            phase_modifiers = apply_action_item_phase_modifiers(
+                special_byte, special_record, matching_item_code, action_index,
+                static_cast<const EntityActionSpecialItemModifierTable*>(
+                    nullptr));
+            const auto slot7_item = special_record.item_codes[7];
+            if (slot7_item >= 0x29U && slot7_item <= 0x2BU) {
+                phase_modifiers.source_data_missing = true;
+            }
+        } else {
+            phase_modifiers = apply_action_item_phase_modifiers(
+                special_byte, special_record, matching_item_code, action_index,
+                input.special_item_modifier_table.has_value()
+                    ? &*input.special_item_modifier_table
+                    : nullptr);
+        }
+        result.source_data_missing = phase_modifiers.source_data_missing;
         special_value = phase_modifiers.value;
         result.attack_value = special_value;
         result.attack_bar = bar_index(result.attack_value);
