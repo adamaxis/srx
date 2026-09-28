@@ -48,6 +48,21 @@ std::array<std::uint8_t, 4> field_sample_state_from_result(
         static_cast<std::uint8_t>(packed_state)};
 }
 
+void punch_color_zero(QImage& image) {
+    // Genesis color index 0 is transparent. Direct BMPs keep that RGB, so
+    // restore host alpha here instead of stamping an opaque black plane.
+    for (int y = 0; y < image.height(); ++y) {
+        for (int x = 0; x < image.width(); ++x) {
+            auto pixel = image.pixelColor(x, y);
+            if (pixel.red() == 0 && pixel.green() == 0 &&
+                pixel.blue() == 0) {
+                pixel.setAlpha(0);
+                image.setPixelColor(x, y, pixel);
+            }
+        }
+    }
+}
+
 } // namespace
 
 FieldSceneRuntime::FieldSceneRuntime(
@@ -251,21 +266,7 @@ bool FieldSceneRuntime::load_sprite_image(
     }
     origin_x = record->origin_x;
     origin_y = record->origin_y;
-
-    // The extracted Genesis color index zero is the sprite transparency
-    // value. The direct BMP keeps the RGB palette, so restore that source
-    // transparency at the presentation boundary rather than painting a
-    // black rectangle behind every runner.
-    for (int y = 0; y < destination.height(); ++y) {
-        for (int x = 0; x < destination.width(); ++x) {
-            auto pixel = destination.pixelColor(x, y);
-            if (pixel.red() == 0 && pixel.green() == 0 &&
-                pixel.blue() == 0) {
-                pixel.setAlpha(0);
-                destination.setPixelColor(x, y, pixel);
-            }
-        }
-    }
+    punch_color_zero(destination);
     return true;
 }
 
@@ -707,6 +708,7 @@ bool FieldSceneRuntime::bootstrap(
         source_boundary("field.bootstrap.direct_assets_missing");
         return false;
     }
+    punch_color_zero(field_hud_);
     for (std::size_t direction = 0;
          direction < field_entity_idle_images_.size(); ++direction) {
         const auto alias = std::string(kFieldEntityIdleAliasPrefix) +
@@ -1204,7 +1206,7 @@ void FieldSceneRuntime::paint(QPainter& painter) const {
     const auto max_y = std::max(0, field_map_.height() - 224);
     const auto viewport_x = std::min(camera_x, max_x);
     const auto viewport_y = std::min(camera_y, max_y);
-    painter.drawImage(-viewport_x, -viewport_y, field_map_);
+    painter.drawImage(0, 0, field_map_, viewport_x, viewport_y, 320, 224);
     paint_field_entity(painter);
 
     // 0x334C supplies the static chrome. 0x35D4/0x35F0/0x36FC/0x3674 stamp

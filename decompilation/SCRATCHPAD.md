@@ -2265,6 +2265,16 @@ final-overlay families were actually emitted. The opening hill remains
 are not yet part of this conversion target; the source fill/palette/audio
 operations remain explicit presentation boundaries.
 
+The incremental `0x5AA96`/`0x5AD1A` adapters now call `begin_frame` each
+vblank so the host SAT list is rebuilt instead of accumulated, and they
+advance `orchestrator_loop_frame`/`stage_loop_frame` once per pass
+(`0x115`/`0x529`). `run_title_intro_stage_loop` copies the `0x5B00A` scroll
+word into the `0x5B100` pulse x origin. Qt presents an opaque 320x224 buffer
+with `CompositionMode_Source`, clips SAT cells (`sat - $80` + dump origin),
+punches HUD index 0, and crops the field map to the 320x224 window. New Game
+still hands off to field bootstrap after the opening; a failed bootstrap
+prints `field bootstrap:` and the typed failure string.
+
 The post-intro handoff at `0x134D2` is now `run_post_intro_mode`. Its typed
 state preserves the initial resource/HUD frame, the alternate branch's mode
 `4`/mode `2` selection and exact `0x41`/`0x61` frame windows, the normal

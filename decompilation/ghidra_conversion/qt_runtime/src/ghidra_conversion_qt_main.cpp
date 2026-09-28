@@ -144,8 +144,11 @@ public:
 
 protected:
     void paintEvent(QPaintEvent*) override {
-        QImage scene(kSceneWidth, kSceneHeight,
-                     QImage::Format_ARGB32_Premultiplied);
+        // Genesis rebuilds the visible frame during vblank. The host has no
+        // SAT/VDP, so each tick composites into an opaque 320x224 buffer and
+        // replaces the widget pixels. SourceOver onto WA_OpaquePaintEvent
+        // would keep previous widget pixels in any alpha hole.
+        QImage scene(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
         scene.fill(Qt::black);
 
         QPainter scene_painter(&scene);
@@ -174,6 +177,7 @@ protected:
         scene_painter.end();
 
         QPainter painter(this);
+        painter.setCompositionMode(QPainter::CompositionMode_Source);
         painter.setRenderHint(QPainter::SmoothPixmapTransform, false);
         painter.drawImage(rect(), scene);
     }
@@ -512,7 +516,10 @@ private:
             };
         startup_callbacks_.field_ready = [this] {
             field_controller_nibble_ = 0U;
-            field_scene_runtime_.bootstrap(state_);
+            if (!field_scene_runtime_.bootstrap(state_)) {
+                std::cerr << "field bootstrap: "
+                          << field_scene_runtime_.failure() << '\n';
+            }
             field_scene_runtime_.set_controller_nibble(0U);
             update();
         };
@@ -756,50 +763,19 @@ private:
         }
     }
 
-    static int wrap_opening_coordinate(int coordinate, const int extent) {
-        // build_title_sprite_records receives Genesis SAT coordinates. The
-        // extracted record origin is relative to SAT origin $80, while the
-        // host scene is 320x224. Preserve the source's 256-pixel wrap when a
-        // coordinate crosses the visible plane edge.
-        while (coordinate >= extent) {
-            coordinate -= 256;
-        }
-        while (coordinate < -128) {
-            coordinate += 256;
-        }
-        return coordinate;
-    }
-
     void draw_opening_scene(QPainter& painter) const {
         switch (opening_scene_) {
         case OpeningIntroScene::seattle:
             draw_alias(painter, "intro.background.0");
             break;
         case OpeningIntroScene::wilderness:
-            if (opening_stage_ == OpeningIntroStage::stage2_first_loop ||
-                opening_stage_ == OpeningIntroStage::stage2_entry) {
-                const auto pan = std::min<std::uint16_t>(
-                    state_.opening_intro.stage2_first_loop_frame, 0x0040U);
-                const auto vertical_pan = std::min<std::uint16_t>(
-                    static_cast<std::uint16_t>(pan / 2U), 0x0020U);
-                const auto* record = state_.asset_catalog.catalog.find(
-                    "intro.background.1");
-                const auto image = draw_asset_cache_.find(
-                    "intro.background.1");
-                if (record != nullptr && image != draw_asset_cache_.end()) {
-                    painter.drawImage(-0x40 + static_cast<int>(pan),
-                                      0x20 - static_cast<int>(vertical_pan),
-                                      image->second);
-                }
-            } else {
-                draw_alias(painter, "intro.background.1");
-            }
+            draw_alias(painter, "intro.background.1");
             break;
         case OpeningIntroScene::trivid:
             draw_alias(painter, "intro.trivid.background");
             break;
         case OpeningIntroScene::airport:
-            draw_airport_background(painter);
+            draw_alias(painter, "intro.background.3");
             break;
         case OpeningIntroScene::cab_map:
             draw_alias(painter, "intro.cab.map");
@@ -819,20 +795,6 @@ private:
         const auto group = opening_intro_sprite_group(request.sprite_descriptor);
         const auto prefix = opening_intro_sprite_alias_prefix(group);
         if (prefix.empty()) {
-            return;
-        }
-
-        if (group.family == OpeningIntroSpriteFamily::aircraft_plane_a) {
-            const auto* record = state_.asset_catalog.catalog.find(prefix);
-            const auto image = draw_asset_cache_.find(prefix);
-            if (record != nullptr && image != draw_asset_cache_.end()) {
-                const auto x = static_cast<int>(
-                    static_cast<std::int16_t>(request.x));
-                const auto y = static_cast<int>(
-                    static_cast<std::int16_t>(request.y));
-                painter.drawImage(x + record->origin_x,
-                                  y + record->origin_y, image->second);
-            }
             return;
         }
 
@@ -856,6 +818,23 @@ private:
             return;
         }
 
+        // SAT cells are host RGBA crops. Live SAT x/y is origin $80; the
+        // catalog origin is the cell's dump offset. Clip instead of wrapping
+        // at 256: H40 is 320 wide, and Qt has no sprite-link terminator.
+        const auto sat_x =
+            static_cast<int>(static_cast<std::int16_t>(request.x)) - 0x80;
+        const auto sat_y =
+            static_cast<int>(static_cast<std::int16_t>(request.y)) - 0x80;
+        if (group.family == OpeningIntroSpriteFamily::aircraft_plane_a) {
+            const auto* record = state_.asset_catalog.catalog.find(prefix);
+            const auto image = draw_asset_cache_.find(prefix);
+            if (record != nullptr && image != draw_asset_cache_.end()) {
+                painter.drawImage(sat_x + record->origin_x,
+                                  sat_y + record->origin_y, image->second);
+            }
+            return;
+        }
+
         for (const auto& record : state_.asset_catalog.catalog.records) {
             if (record.alias.rfind(prefix, 0) != 0) {
                 continue;
@@ -864,39 +843,9 @@ private:
             if (image == draw_asset_cache_.end()) {
                 continue;
             }
-            const auto x = wrap_opening_coordinate(
-                record.origin_x +
-                    static_cast<int>(static_cast<std::int16_t>(request.x)) -
-                    0x80,
-                kSceneWidth);
-            const auto y = wrap_opening_coordinate(
-                record.origin_y +
-                    static_cast<int>(static_cast<std::int16_t>(request.y)) -
-                    0x80,
-                kSceneHeight);
-            painter.drawImage(x, y, image->second);
+            painter.drawImage(sat_x + record.origin_x, sat_y + record.origin_y,
+                              image->second);
         }
-    }
-
-    void draw_airport_background(QPainter& painter) const {
-        const auto* record = state_.asset_catalog.catalog.find(
-            "intro.background.3");
-        const auto image = draw_asset_cache_.find("intro.background.3");
-        if (record == nullptr || image == draw_asset_cache_.end()) {
-            return;
-        }
-
-        // 0x5AD1A starts the Plane-B airport plate at source y=$78. It
-        // scrolls upward after the $D8 lead-in while Plane-A and the rotor
-        // overlays remain separate source layers.
-        const auto elapsed = state_.opening_intro.stage_loop_frame;
-        const auto plane_b_scroll = elapsed <= 0x00D8U
-            ? 0U
-            : std::min<std::uint16_t>(
-                  static_cast<std::uint16_t>(elapsed - 0x00D8U), 0x0078U);
-        painter.drawImage(record->origin_x,
-                          record->origin_y + 0x78 - plane_b_scroll,
-                          image->second);
     }
 
     void draw_opening_text(
@@ -985,8 +934,8 @@ private:
             draw_startup_text(
                 painter, 104, 72,
                 start_options_choice_name(StartOptionsChoice::load_game));
-            draw_cursor(painter, 104,
-                        80 + 16 * static_cast<int>(
+            draw_cursor(painter, 88,
+                        56 + 16 * static_cast<int>(
                                   state_.start_options.selected));
             return;
         }
@@ -1014,10 +963,11 @@ private:
         draw_startup_text(
             painter, 152, 72,
             joshua_archetype_choice_name(JoshuaArchetypeChoice::decker));
-        draw_startup_text(painter, 152, 88, "Gator");
-        draw_startup_text(painter, 152, 96, "Shaman");
-        draw_cursor(painter, 152,
-                    88 + 16 * static_cast<int>(
+        draw_startup_text(
+            painter, 152, 88,
+            joshua_archetype_choice_name(JoshuaArchetypeChoice::gator_shaman));
+        draw_cursor(painter, 136,
+                    56 + 16 * static_cast<int>(
                               state_.joshua_archetype.selected));
     }
 
@@ -1026,11 +976,16 @@ private:
         painter.setFont(QFont(QStringLiteral("Courier New"), 9,
                               QFont::Bold));
         painter.drawText(42, 92, QStringLiteral("CONVERSION BOUNDARY"));
-        painter.drawText(
-            42, 112,
-            save_load_boundary_unresolved_
-                ? QStringLiteral("SAVE SLOT DATA NOT AVAILABLE")
-                : QStringLiteral("NOT YET RESOLVED"));
+        const auto& field_failure = field_scene_runtime_.failure();
+        if (save_load_boundary_unresolved_) {
+            painter.drawText(42, 112,
+                             QStringLiteral("SAVE SLOT DATA NOT AVAILABLE"));
+        } else if (!field_failure.empty()) {
+            painter.drawText(42, 112,
+                             QString::fromStdString(field_failure));
+        } else {
+            painter.drawText(42, 112, QStringLiteral("NOT YET RESOLVED"));
+        }
         painter.setPen(QColor(255, 255, 255));
         painter.drawText(42, 184,
                          QStringLiteral("SOURCE DATA REQUIRED"));
@@ -1199,12 +1154,24 @@ int main(int argc, char** argv) {
                 field_scene.set_controller_nibble(0x08U);
                 field_scene.advance_frame();
             }
-            QImage scene(kSceneWidth, kSceneHeight,
-                         QImage::Format_ARGB32_Premultiplied);
+            QImage scene(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
             scene.fill(Qt::black);
             QPainter painter(&scene);
             field_scene.paint(painter);
             painter.end();
+            int playfield_lit = 0;
+            for (int y = 80; y < 160; ++y) {
+                for (int x = 80; x < 240; ++x) {
+                    const auto pixel = scene.pixelColor(x, y);
+                    if ((pixel.red() | pixel.green() | pixel.blue()) != 0) {
+                        ++playfield_lit;
+                    }
+                }
+            }
+            if (playfield_lit < 100) {
+                std::cerr << "field smoke: playfield buried under opaque HUD\n";
+                return 3;
+            }
             const auto& buffers = field_scene.state().field_scene_buffers;
             std::cout << "field_smoke=ready scene_reference="
                       << buffers.scene_reference << " camera="
