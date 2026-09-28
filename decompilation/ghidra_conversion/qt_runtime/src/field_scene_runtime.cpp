@@ -24,6 +24,7 @@ namespace {
 constexpr std::string_view kInitialFieldMapAlias = "field.maps.mode.0";
 constexpr std::string_view kFieldHudAlias = "field.hud.background";
 constexpr std::string_view kFieldEntityIdleAliasPrefix = "field.entities.idle.";
+constexpr std::string_view kFieldEntityWalkAliasPrefix = "field.entities.walk.";
 constexpr int kGenesisSpriteOrigin = 0x80;
 // FFDE08 is profile word 33. The 48-word block starts at FFDDC6.
 constexpr std::size_t kSceneProfileEntityPositionWord = 33U;
@@ -519,8 +520,13 @@ void FieldSceneRuntime::configure_callbacks() {
         };
     callbacks_.entity_render_pass.advance_animation =
         [this](RenderEntityState& entity) {
-            source_boundary("field.entities.advance_animation");
             (void)entity;
+            if (!field_entity_walking_) {
+                return;
+            }
+            advance_entity_animation_accumulator(field_entity_animation_);
+            field_entity_animation_.frame = bound_field_walk_animation_frame(
+                field_entity_animation_.frame);
         };
     callbacks_.entity_render_pass.finish_entity =
         [this](RenderEntityState& entity) {
@@ -604,6 +610,12 @@ bool FieldSceneRuntime::bootstrap(
     field_pending_scene_profile_.reset();
     field_camera_follow_ = {};
     field_camera_alignment_ready_ = false;
+    field_entity_animation_ = {};
+    field_entity_animation_.increment = kFieldEntityAnimationPeriod;
+    field_entity_animation_.period = kFieldEntityAnimationPeriod;
+    field_entity_animation_selector_ =
+        select_field_entity_animation_selector(0, false);
+    field_entity_walking_ = false;
     input_ = integration::FieldSessionBootstrapInput{};
     input_.action_selection_profile_source =
         assets.action_selection_profile_source;
@@ -644,6 +656,20 @@ bool FieldSceneRuntime::bootstrap(
                                field_entity_idle_origin_y_[direction])) {
             source_boundary("field.bootstrap.entity_assets_missing");
             return false;
+        }
+        for (std::size_t frame = 0; frame < kFieldWalkAnimationFrameCount;
+             ++frame) {
+            const auto walk_alias =
+                std::string(kFieldEntityWalkAliasPrefix) +
+                std::to_string(direction) + "." + std::to_string(frame);
+            if (!load_sprite_image(
+                    startup_state.asset_catalog.catalog, walk_alias,
+                    field_entity_walk_images_[direction][frame],
+                    field_entity_walk_origin_x_[direction][frame],
+                    field_entity_walk_origin_y_[direction][frame])) {
+                source_boundary("field.bootstrap.entity_assets_missing");
+                return false;
+            }
         }
     }
 
@@ -978,7 +1004,26 @@ void FieldSceneRuntime::advance_field_movement() {
     if (previous_x != field_movement_state_.position_x ||
         previous_y != field_movement_state_.position_y) {
         source_boundary("field.movement.accepted_step");
+        apply_field_entity_animation(true);
+    } else {
+        apply_field_entity_animation(false);
     }
+}
+
+void FieldSceneRuntime::apply_field_entity_animation(const bool walking) {
+    const auto selector = select_field_entity_animation_selector(
+        field_entity_.direction, walking);
+    if (selector != field_entity_animation_selector_) {
+        field_entity_animation_selector_ = selector;
+        field_entity_animation_.frame = 0;
+        field_entity_animation_.accumulator = 0;
+        field_entity_animation_.redraw_requested = true;
+        field_entity_animation_.increment =
+            walking ? kFieldWalkAnimationIncrement
+                    : kFieldEntityAnimationPeriod;
+        field_entity_animation_.period = kFieldEntityAnimationPeriod;
+    }
+    field_entity_walking_ = walking;
 }
 
 void FieldSceneRuntime::update_source_field_camera() {
@@ -1035,13 +1080,22 @@ void FieldSceneRuntime::paint_field_entity(QPainter& painter) const {
     }
     const auto direction = static_cast<std::size_t>(
         field_entity_.direction % field_entity_idle_images_.size());
-    const auto& image = field_entity_idle_images_[direction];
+    const auto walking = field_entity_walking_;
+    const auto frame = bound_field_walk_animation_frame(
+        field_entity_animation_.frame);
+    const auto& image =
+        walking ? field_entity_walk_images_[direction][frame]
+                : field_entity_idle_images_[direction];
+    const auto origin_x =
+        walking ? field_entity_walk_origin_x_[direction][frame]
+                : field_entity_idle_origin_x_[direction];
+    const auto origin_y =
+        walking ? field_entity_walk_origin_y_[direction][frame]
+                : field_entity_idle_origin_y_[direction];
     const auto x = static_cast<int>(field_entity_.projection.screen_x) -
-                   kGenesisSpriteOrigin +
-                   field_entity_idle_origin_x_[direction];
+                   kGenesisSpriteOrigin + origin_x;
     const auto y = static_cast<int>(field_entity_.projection.screen_y) -
-                   kGenesisSpriteOrigin +
-                   field_entity_idle_origin_y_[direction];
+                   kGenesisSpriteOrigin + origin_y;
     painter.drawImage(x, y, image);
 }
 

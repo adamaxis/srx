@@ -51,5 +51,32 @@ int main() {
         return 6;
     }
 
+    if (!expect(select_field_entity_animation_selector(0, false) == 0x0000U &&
+                select_field_entity_animation_selector(4, false) == 0x0010U &&
+                select_field_entity_animation_selector(0, true) == 0x0060U &&
+                select_field_entity_animation_selector(2, true) == 0x0068U &&
+                select_field_entity_animation_selector(7, true) == 0x007CU)) {
+        return 7;
+    }
+    if (!expect(bound_field_walk_animation_frame(0) == 0U &&
+                bound_field_walk_animation_frame(1) == 1U &&
+                bound_field_walk_animation_frame(2) == 1U)) {
+        return 8;
+    }
+
+    EntityAnimationState walk{0U, 0, kFieldWalkAnimationIncrement,
+                              kFieldEntityAnimationPeriod, false};
+    for (int tick = 0; tick < 5; ++tick) {
+        advance_entity_animation_accumulator(walk);
+    }
+    if (!expect(walk.frame == 0U && !walk.redraw_requested)) {
+        return 9;
+    }
+    advance_entity_animation_accumulator(walk);
+    if (!expect(walk.frame == 1U && walk.redraw_requested &&
+                bound_field_walk_animation_frame(walk.frame) == 1U)) {
+        return 10;
+    }
+
     return 0;
 }

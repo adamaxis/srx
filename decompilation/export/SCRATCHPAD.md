@@ -229,6 +229,12 @@ through 5. `FFE186 == 3` instead chases the fixed point `(0x600, 0)` through
 the `0x4290` direction table. Dirty layer words and the interaction lock skip
 the write. The tile-edge uploads `0x4018` and `0x40E2` stay callbacks.
 
+Field walk/idle sprites follow the ROM selector tables `0xC052` and `0xC072`.
+An accepted step publishes the walking selector and copies the list auxiliary
+`0x0300` into the `0x5FDC` increment; the template period `0x1000` stays.
+`0x600E` keeps the last of the two walk poses until `0xAF6C` restarts the
+clock on a selector change. No input returns the idle table.
+
 The separate smoke command
 `shadowrun_ghidra_conversion_qt --field-smoke-move-right` verifies the
 connected path without opening a window. With the US-ROM startup records it

@@ -8,6 +8,7 @@
 #include "shadowrun_ghidra/field/field_viewport_conversion.hpp"
 #include "shadowrun_ghidra/field/field_coordinate_conversion.hpp"
 #include "shadowrun_ghidra/field/field_movement_input_conversion.hpp"
+#include "shadowrun_ghidra/entities/entity_animation_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_projection_conversion.hpp"
 #include "shadowrun_ghidra/entities/movement_probe_conversion.hpp"
 #include "shadowrun_ghidra/entities/movement_route_conversion.hpp"
@@ -75,6 +76,7 @@ private:
     void run_field_mode_exit_transition();
     bool project_field_world_interaction();
     void update_source_field_camera();
+    void apply_field_entity_animation(bool walking);
     bool recover_blocked_field_movement(
         const MovementProbeResult& initial_probe);
     std::optional<std::size_t> projected_terrain_cell() const;
@@ -113,6 +115,15 @@ private:
     std::array<QImage, 8> field_entity_idle_images_{};
     std::array<int, 8> field_entity_idle_origin_x_{};
     std::array<int, 8> field_entity_idle_origin_y_{};
+    std::array<std::array<QImage, kFieldWalkAnimationFrameCount>, 8>
+        field_entity_walk_images_{};
+    std::array<std::array<int, kFieldWalkAnimationFrameCount>, 8>
+        field_entity_walk_origin_x_{};
+    std::array<std::array<int, kFieldWalkAnimationFrameCount>, 8>
+        field_entity_walk_origin_y_{};
+    EntityAnimationState field_entity_animation_{};
+    std::uint16_t field_entity_animation_selector_ = 0;
+    bool field_entity_walking_ = false;
     std::array<MovementOffset, integration::kFieldMovementDirectionCount>
         field_movement_direction_offsets_{};
     CollisionProbeOffsetBank field_collision_probe_offset_banks_{};
