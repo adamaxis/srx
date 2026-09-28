@@ -43,9 +43,10 @@ struct EquipmentCombatInput {
     std::uint8_t special_item18_base = 0;
     std::uint8_t roll_count_cap = 0;
     std::uint8_t auxiliary_roll_bonus = 0;
-    // Decoded D4EA0/166AD4 row consumed by the special action effect path.
-    // Keeping it optional makes the unresolved data-table boundary explicit.
-    std::optional<EntityActionCatalogRecord> special_action_record;
+    // Decoded D4EA0/166AD4 spell row consumed by the special action effect
+    // path. The active item code must equal spell_code + 1; keeping it
+    // optional makes the unresolved source-data boundary explicit.
+    std::optional<MagicSpellDefinition> special_magic_spell;
     std::optional<EntityActionSpecialItemModifierTable>
         special_item_modifier_table;
 };
@@ -53,6 +54,7 @@ struct EquipmentCombatInput {
 struct EquipmentCombatSpecialActionResult {
     // ROM 0x12D7C calls 0x12FA4 before it calculates the attack strip.
     bool menu_service_called = false;
+    bool magic_spell_missing = false;
     bool residual_calculated = false;
     bool effect_written = false;
     std::uint16_t adjusted_roll_count = 0;

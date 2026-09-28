@@ -1126,6 +1126,15 @@ detail asset at `0xC52A`/`0x2000` (`D1=0`, `D7=6`). The conversion is now
 menu module, with explicit source-table enums and typed callbacks for the
 header, action-menu advance, selected label, detail text, and detail grid.
 
+The higher-mode negative-display branch in `0x12CEE` now consumes the same
+typed spell row as `0x12FA4`: active item code six selects D4EA0 row five
+(`Stink`), and the residual calculation validates that relationship before
+entering `0x10660`. The entity record assembled for the attack-strip math is
+named separately from the spell definition, so a missing or mismatched spell
+row is visible as a source-data boundary instead of being silently treated as
+an arbitrary action record. The remaining attack/defense-bar branches still
+need their own full source audit.
+
 ### Action-menu residual advance: `0x12FA4` / `0x10660`
 
 The source `0x12FA4` path is not an available-count test. It renders the

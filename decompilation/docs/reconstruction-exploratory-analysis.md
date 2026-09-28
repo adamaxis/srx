@@ -592,8 +592,10 @@ attack:   3  4  5  6  7
 defense: 19 18 17 16 15
 ```
 
-The negative `+0x56` special attack branch at `0x12D7C`/`0x12FA4` and the
-field AI/combat consumers remain `PENDING`.
+The negative `+0x56` special attack branch at `0x12D7C`/`0x12FA4` now has a
+typed D4EA0 spell-row boundary and source-matched residual test coverage, but
+the complete attack-strip branch and the field AI/combat consumers remain
+`PENDING`.
 
 ## 9. The remaining command panels
 

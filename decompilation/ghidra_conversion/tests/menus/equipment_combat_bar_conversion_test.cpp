@@ -91,7 +91,7 @@ int main() {
     input.inventory_phase_bytes[1] = 4U;
     input.inventory_item_codes[6] = 0x10U;
     input.active_item_code = 6U;
-    input.special_action_record = EntityActionCatalogRecord{1U, 30};
+    input.special_magic_spell = *find_us_magic_spell(5U);
     EntityActionSpecialItemModifierTable special_item_modifiers{};
     special_item_modifiers.action_offsets[5] = 1;
     special_item_modifiers.slot7_item_modifiers[0][1] = -2;
@@ -102,10 +102,19 @@ int main() {
         special_mode.attack_value != 16U || special_mode.attack_bar != 15U ||
         !special_mode.special_action.menu_service_called ||
         !special_mode.special_action.residual_calculated ||
-        !special_mode.special_action.effect_written ||
-        special_mode.special_action.adjusted_roll_count != 6U ||
-        special_mode.special_action.residual_effect != 24) {
+        special_mode.special_action.effect_written ||
+        special_mode.special_action.adjusted_roll_count != 7U ||
+        special_mode.special_action.effective_difficulty != 2U ||
+        special_mode.special_action.residual_effect != -1 ||
+        special_mode.special_action.magic_spell_missing) {
         return 5;
+    }
+
+    input.special_magic_spell->spell_code = 4U;
+    const auto mismatched_special = compute_equipment_combat_bars(input);
+    if (!mismatched_special.special_action.magic_spell_missing ||
+        mismatched_special.special_action.residual_calculated) {
+        return 10;
     }
 
     input.display_state = 0;

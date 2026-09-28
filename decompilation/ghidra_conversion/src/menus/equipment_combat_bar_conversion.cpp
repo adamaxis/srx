@@ -78,7 +78,8 @@ std::uint16_t merge_direct_equipment_skill(const std::uint16_t current,
     return result == 0U ? 1U : result;
 }
 
-EntityActionRecord special_action_record(const EquipmentCombatInput& input) {
+EntityActionRecord special_action_entity_record(
+    const EquipmentCombatInput& input) {
     EntityActionRecord record{};
     record.posture = input.posture;
     record.item18_base = input.special_item18_base;
@@ -123,13 +124,17 @@ EquipmentCombatBarResult compute_equipment_combat_bars(
     // 0x12FA4 call is a real action/effect service, not a bar-only shortcut.
     if (input.source_mode >= 2U && input.display_state < 0) {
         result.special_action.menu_service_called = true;
-        if (input.special_action_record.has_value() &&
-            input.active_item_code != 0U) {
-            const auto record = special_action_record(input);
+        if (input.active_item_code == 0U ||
+            !input.special_magic_spell.has_value() ||
+            input.special_magic_spell->spell_code !=
+                static_cast<std::uint8_t>(input.active_item_code - 1U)) {
+            result.special_action.magic_spell_missing = true;
+        } else {
+            const auto record = special_action_entity_record(input);
             const auto residual = calculate_action_residual(
                 input.active_item_code, input.auxiliary_roll_bonus,
                 calculate_action_effect_roll_count(record),
-                *input.special_action_record);
+                *input.special_magic_spell);
             if (residual.valid) {
                 result.special_action.residual_calculated = true;
                 result.special_action.effect_written =
@@ -144,7 +149,7 @@ EquipmentCombatBarResult compute_equipment_combat_bars(
         }
 
         auto special_value = calculate_item18_skill_value(
-            special_action_record(input));
+            special_action_entity_record(input));
         special_value = select_posture_adjusted_value(
             special_value, input.posture, true);
         special_value = std::min<std::uint16_t>(special_value,
@@ -156,7 +161,8 @@ EquipmentCombatBarResult compute_equipment_combat_bars(
             static_cast<std::uint16_t>(input.active_item_code) - 1U +
             0x19U);
         const auto phase_modifiers = apply_action_item_phase_modifiers(
-            special_byte, special_action_record(input), matching_item_code,
+            special_byte, special_action_entity_record(input),
+            matching_item_code,
             static_cast<std::uint8_t>(input.active_item_code - 1U),
             input.special_item_modifier_table.has_value()
                 ? &*input.special_item_modifier_table
