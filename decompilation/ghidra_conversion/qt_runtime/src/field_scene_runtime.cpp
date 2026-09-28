@@ -25,6 +25,8 @@ constexpr std::string_view kInitialFieldMapAlias = "field.maps.mode.0";
 constexpr std::string_view kFieldHudAlias = "field.hud.background";
 constexpr std::string_view kFieldEntityIdleAliasPrefix = "field.entities.idle.";
 constexpr int kGenesisSpriteOrigin = 0x80;
+// FFDE08 is profile word 33. The 48-word block starts at FFDDC6.
+constexpr std::size_t kSceneProfileEntityPositionWord = 33U;
 
 std::array<std::uint8_t, 4> field_sample_state_from_result(
     const std::uint32_t packed_state) {
@@ -357,34 +359,49 @@ void FieldSceneRuntime::configure_callbacks() {
         run_world_frame_services(world_frame_state_, world_frame_callbacks_);
     };
 
-    callbacks_.apply_scene_profile_selection = [this] {
-        if (!field_pending_scene_profile_.has_value()) {
-            // The empty-pointer path copies the six FFDE08 position words.
-            // Those records are not the scene-4 interaction profile.
-            source_boundary("field.scene.apply_profile_selection");
+    const auto publish_runner_positions =
+        [this](const std::array<SceneRunnerPosition, 3>& positions) {
+            auto& records = state_.field_scene_buffers.source_metadata
+                                .initial_field_records;
+            for (std::size_t index = 0; index < positions.size() &&
+                                        index < records.size();
+                 ++index) {
+                records[index] = positions[index];
+            }
+            field_entity_.world_position.x = positions[0].x;
+            field_entity_.world_position.y = positions[0].y;
+            field_movement_state_.position_x = positions[0].x;
+            field_movement_state_.position_y = positions[0].y;
+        };
+    callbacks_.apply_scene_profile_selection = [this, publish_runner_positions] {
+        if (field_pending_scene_profile_.has_value()) {
+            SceneProfileState profile{};
+            SceneProfileDefaults defaults{};
+            apply_scene_profile_selection(
+                profile, field_pending_scene_profile_, defaults);
+            state_.field_scene_buffers.camera_x = profile.camera_x;
+            state_.field_scene_buffers.camera_y = profile.camera_y;
+            publish_runner_positions(profile.runner_positions);
             return;
         }
-        SceneProfileState profile{};
-        SceneProfileDefaults defaults{};
-        apply_scene_profile_selection(
-            profile, field_pending_scene_profile_, defaults);
-        state_.field_scene_buffers.camera_x = profile.camera_x;
-        state_.field_scene_buffers.camera_y = profile.camera_y;
-        auto& records =
-            state_.field_scene_buffers.source_metadata.initial_field_records;
-        for (std::size_t index = 0;
-             index < profile.runner_positions.size() && index < records.size();
-             ++index) {
-            records[index] = SceneRunnerPosition{
-                profile.runner_positions[index].x,
-                profile.runner_positions[index].y};
+
+        // ROM 0x2B3E copies the six FFDE08 words into the three entity slots.
+        // It does not move the camera.
+        const auto& scene_profile = state_.field_scene_buffers.profile;
+        if (scene_profile.size() < kSceneProfileEntityPositionWord + 6U) {
+            source_boundary("field.scene.profile_positions_missing");
+            return;
         }
-        if (!profile.runner_positions.empty()) {
-            field_entity_.world_position.x = profile.runner_positions[0].x;
-            field_entity_.world_position.y = profile.runner_positions[0].y;
-            field_movement_state_.position_x = field_entity_.world_position.x;
-            field_movement_state_.position_y = field_entity_.world_position.y;
-        }
+        publish_runner_positions({
+            SceneRunnerPosition{
+                scene_profile[kSceneProfileEntityPositionWord],
+                scene_profile[kSceneProfileEntityPositionWord + 1U]},
+            SceneRunnerPosition{
+                scene_profile[kSceneProfileEntityPositionWord + 2U],
+                scene_profile[kSceneProfileEntityPositionWord + 3U]},
+            SceneRunnerPosition{
+                scene_profile[kSceneProfileEntityPositionWord + 4U],
+                scene_profile[kSceneProfileEntityPositionWord + 5U]}});
     };
     callbacks_.field_viewports.prepare_scene_resources = [this] {
         source_boundary("field.viewport.prepare_scene_resources");

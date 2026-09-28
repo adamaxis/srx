@@ -263,7 +263,10 @@ word is free. The marker clear uses the FF1700 collision byte selected by
 is only defined for the collision map, so the host clears the map byte.
 Scene 4 with low bits 6 publishes the eight ROM words at `0x1667A` as the
 pending profile `0x2B34` consumes on the next scene entry. The empty-pointer
-branch of `0x2B34`, which copies the six FFDE08 position words, is still open.
+branch copies profile words 33 through 38 (FFDE08) into the three entity
+slots and leaves the camera where `0x03074` put it. Slots 1 and 2 are stored
+with the field records; the recruited roster path still decides whether they
+are active.
 
 ### Field scene runtime dispatcher: 0xC7F8
 
