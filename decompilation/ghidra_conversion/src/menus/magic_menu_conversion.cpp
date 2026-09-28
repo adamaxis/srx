@@ -109,6 +109,95 @@ std::uint16_t run_magic_menu_loop(MagicMenuLoopState& state,
     }
 }
 
+MagicActionEffectValueResult refresh_magic_action_effect_value(
+    const MagicActionEffectValueInput& input,
+    const MagicActionEffectValueCallbacks& callbacks) {
+    MagicActionEffectValueResult result{};
+    // ROM 0x105E6 enters 0x10660 with D4=current force and D7=action code.
+    const auto residual = calculate_action_residual(
+        input.action_code, input.current_force,
+        calculate_action_effect_roll_count(input.entity), input.action);
+    result.residual_valid = residual.valid;
+    result.residual_effect = residual.residual_effect;
+    if (!residual.valid || residual.residual_effect <= 0) {
+        const MagicActionEffectNoneValuePlan plan{};
+        result.none_damage_value = plan;
+        if (callbacks.render_none_damage_value) {
+            callbacks.render_none_damage_value(plan);
+            result.none_damage_value_rendered = true;
+        }
+        return result;
+    }
+
+    MagicActionEffectDamageGridPlan plan{};
+    plan.effect_row = static_cast<std::uint16_t>(
+        static_cast<std::uint16_t>(residual.residual_effect) - 1U);
+    result.damage_grid = plan;
+    if (callbacks.write_damage_grid) {
+        callbacks.write_damage_grid(plan);
+        result.damage_grid_written = true;
+    }
+    return result;
+}
+
+MagicMenuValueRefreshResult refresh_magic_menu_success_or_defense_values(
+    const MagicMenuValueRefreshInput& input,
+    const MagicMenuValueRefreshCallbacks& callbacks) {
+    MagicMenuValueRefreshResult result{};
+    if (!input.refresh_defense_strips) {
+        // ROM 0x1055E/D0=0: D7=0 selects the posture-reduction component
+        // used for the magic action's Success strip.
+        const auto item18 = calculate_item18_skill_value(input.active_entity);
+        auto value = select_posture_adjusted_value(
+            item18, input.active_entity.posture, false);
+        value = std::min<std::uint16_t>(value, input.action_cap);
+        value = static_cast<std::uint16_t>(value + input.current_force);
+        if (callbacks.resolve_menu_metric) {
+            const auto resolved = callbacks.resolve_menu_metric(value);
+            if (resolved.has_value()) {
+                value = *resolved;
+                result.menu_metric_available = true;
+            }
+        }
+        result.success_value = value;
+    } else {
+        // ROM 0x1055E/D0!=0 enters 0x1047E before adding +0x77/+0x7C for
+        // the physical and mana Defense strips.
+        call_once(callbacks.refresh_ready_entity_animations);
+        const auto ready_bonus = calculate_ready_entity_action_bonus(
+            input.ready_entities);
+        result.defense_physical_value = static_cast<std::uint8_t>(
+            ready_bonus + input.attribute_77);
+        result.defense_mana_value = static_cast<std::uint8_t>(
+            ready_bonus + input.attribute_7c);
+    }
+
+    const auto publish_grid = [&](const MagicMenuValueStrip strip,
+                                  const std::uint16_t value,
+                                  const std::uint16_t destination) {
+        const auto row = static_cast<std::uint16_t>(
+            value == 0U ? 0U : static_cast<std::uint16_t>(value - 1U));
+        const MagicMenuValueGridPlan plan{strip, value, row, destination};
+        result.grid_requests.push_back(plan);
+        if (callbacks.write_grid) {
+            callbacks.write_grid(plan);
+        }
+    };
+
+    if (!input.refresh_defense_strips) {
+        publish_grid(MagicMenuValueStrip::success, result.success_value,
+                     0xC588U);
+    } else {
+        publish_grid(MagicMenuValueStrip::defense_physical,
+                     result.defense_physical_value, 0xC808U);
+        if (result.defense_mana_value != 0U) {
+            publish_grid(MagicMenuValueStrip::defense_mana,
+                         result.defense_mana_value, 0xC908U);
+        }
+    }
+    return result;
+}
+
 MagicMenuSelection move_magic_selection_column(
     MagicMenuSelection selection, const std::int8_t delta,
     const std::uint16_t first_entry_count) {
@@ -388,7 +477,7 @@ void adjust_magic_force(
     // may replace the selected maximum at FFF098; that replacement is part
     // of the source state and must not be silently rolled back here.
     const auto saved_current = state.current_force;
-    call_once(callbacks.refresh_equipment_combat_values);
+    call_once(callbacks.refresh_magic_menu_success_or_defense_values);
     state.current_force = saved_current;
 
     call_once(callbacks.write_repeated_menu_grid);

@@ -393,7 +393,7 @@ int main() {
     adjustment_callbacks.write_repeated_grid = [&]() {
         adjustment_events.push_back(4);
     };
-    adjustment_callbacks.refresh_equipment_combat_values = [&]() {
+    adjustment_callbacks.refresh_magic_menu_success_or_defense_values = [&]() {
         adjustment_events.push_back(5);
         force_state_values.current_force = 99U;
         force_state_values.maximum_force = 100U;

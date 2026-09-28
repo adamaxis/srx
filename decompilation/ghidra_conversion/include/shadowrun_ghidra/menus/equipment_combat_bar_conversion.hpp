@@ -70,85 +70,6 @@ struct EquipmentCombatBarResult {
     EquipmentCombatSpecialActionResult special_action{};
 };
 
-struct MagicActionEffectValueInput {
-    // ROM 0x105E6 reads the selected action code from the menu action table
-    // before passing it to the 0x10660 residual calculation.
-    std::uint8_t action_code = 0;
-    std::uint16_t current_force = 0;
-    EntityActionRecord entity{};
-    EntityActionCatalogRecord action{};
-};
-
-// The source calls the positive branch's six-tile row writer after calculating
-// a magic action's residual effect. These fields describe the source row and
-// layout without making a native renderer depend on ROM or VDP memory.
-struct MagicActionEffectDamageGridPlan {
-    // 0x10638 decrements the positive residual before selecting the row.
-    std::uint16_t effect_row = 0;
-    // The source advances the decoded six-word row table by fourteen bytes.
-    std::uint16_t source_row_stride = 0x0EU;
-    // Source 0x10646/0x1064C presentation layout provenance.
-    std::uint16_t destination_tile_base = 0xC688U;
-    std::uint16_t tile_count = 6U;
-    std::uint16_t palette_flags = 0;
-};
-
-struct MagicActionEffectNoneValuePlan {
-    // Source 0xC8A2C is the literal `None` value used when the magic action
-    // has no positive residual damage.
-    std::uint16_t destination_tile_base = 0xC68CU;
-};
-
-struct MagicActionEffectValueCallbacks {
-    std::function<void(const MagicActionEffectNoneValuePlan&)>
-        render_none_damage_value;
-    std::function<void(const MagicActionEffectDamageGridPlan&)>
-        write_damage_grid;
-};
-
-struct MagicActionEffectValueResult {
-    bool residual_valid = false;
-    bool none_damage_value_rendered = false;
-    bool damage_grid_written = false;
-    std::int16_t residual_effect = 0;
-    std::optional<MagicActionEffectNoneValuePlan> none_damage_value;
-    std::optional<MagicActionEffectDamageGridPlan> damage_grid;
-};
-
-enum class EquipmentCombatGrid {
-    primary,
-    secondary,
-};
-
-struct EquipmentCombatValuesInput {
-    // D0=0 selects the action-metric path; any nonzero source mode selects
-    // the ready-party/attribute path.
-    bool alternate_path = false;
-    std::uint16_t current_force = 0;
-    std::uint8_t action_cap = 0;  // active record +0x7F
-    EntityActionRecord active_entity{};
-    std::array<EntityActionRecord, 3> ready_entities{};
-    std::uint8_t attribute_77 = 0;
-    std::uint8_t attribute_7c = 0;
-};
-
-struct EquipmentCombatValuesCallbacks {
-    // The source 0x1047E service has a presentation side effect in addition
-    // to the typed three-record bonus calculation.
-    std::function<void()> refresh_ready_entity_animations;
-    // This is the already-converted 0x104C8/0x104F6 menu metric boundary.
-    std::function<std::optional<std::uint16_t>(std::uint16_t)>
-        resolve_menu_metric;
-    std::function<void(EquipmentCombatGrid, std::uint16_t)> write_grid;
-};
-
-struct EquipmentCombatValuesResult {
-    bool menu_metric_available = false;
-    std::uint16_t primary_value = 0;
-    std::uint16_t secondary_value = 0;
-    std::vector<std::pair<EquipmentCombatGrid, std::uint16_t>> grid_requests;
-};
-
 struct EquipmentHighlightInput {
     // Source record +0x56 is signed; 0x7F is the equipped-item sentinel.
     std::int8_t equipped_display_state = -1;
@@ -430,20 +351,6 @@ EquipmentActionSkillMergeResult merge_equipment_action_skill_value(
 // +0x7F, +0x9D, and the matching inventory phase.
 EquipmentCombatBarResult compute_equipment_combat_bars(
     const EquipmentCombatInput& input);
-
-// ROM 0x105E6: refresh the magic action's Damage value. It calculates the
-// selected spell's residual through 0x10660; nonpositive residuals render the
-// literal None value, while positive residuals select source damage row
-// (residual - 1) and submit its six-tile grid.
-MagicActionEffectValueResult refresh_magic_action_effect_value(
-    const MagicActionEffectValueInput& input,
-    const MagicActionEffectValueCallbacks& callbacks = {});
-
-// ROM 0x1055E: choose the normal action-metric branch or the alternate
-// ready-party branch, then publish the source primary/secondary grid rows.
-EquipmentCombatValuesResult refresh_equipment_combat_values(
-    const EquipmentCombatValuesInput& input,
-    const EquipmentCombatValuesCallbacks& callbacks = {});
 
 // ROM 0x11624: write the quad base, conditionally write the equipped-item
 // highlight, scan inventory slots 7..0 for (+0x76 + 0x2B), and render rows.

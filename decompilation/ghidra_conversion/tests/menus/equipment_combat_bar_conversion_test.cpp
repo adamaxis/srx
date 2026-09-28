@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/menus/equipment_combat_bar_conversion.hpp"
+#include "shadowrun_ghidra/menus/magic_menu_conversion.hpp"
 
 #include <cstdint>
 #include <vector>
@@ -172,13 +173,13 @@ int main() {
         return 9;
     }
 
-    EquipmentCombatValuesInput combat_value_input{};
+    MagicMenuValueRefreshInput combat_value_input{};
     combat_value_input.current_force = 2U;
     combat_value_input.action_cap = 5U;
     combat_value_input.active_entity.item18_base = 12U;
     combat_value_input.active_entity.posture = 2U;
     std::vector<int> combat_value_events;
-    EquipmentCombatValuesCallbacks combat_value_callbacks{};
+    MagicMenuValueRefreshCallbacks combat_value_callbacks{};
     combat_value_callbacks.resolve_menu_metric =
         [&](const std::uint16_t value) {
             combat_value_events.push_back(1);
@@ -186,25 +187,37 @@ int main() {
                 static_cast<std::uint16_t>(value + 3U)};
         };
     combat_value_callbacks.write_grid =
-        [&](const EquipmentCombatGrid grid, const std::uint16_t row) {
+        [&](const MagicMenuValueGridPlan& plan) {
+            const auto offset = plan.strip == MagicMenuValueStrip::success
+                                     ? 10U
+                                     : plan.strip ==
+                                               MagicMenuValueStrip::defense_physical
+                                           ? 20U
+                                           : 30U;
             combat_value_events.push_back(
-                grid == EquipmentCombatGrid::primary
-                    ? static_cast<int>(row + 10U)
-                    : static_cast<int>(row + 20U));
+                static_cast<int>(plan.row + offset));
         };
-    const auto combat_value_result = refresh_equipment_combat_values(
+    const auto combat_value_result =
+        refresh_magic_menu_success_or_defense_values(
         combat_value_input, combat_value_callbacks);
     if (!(combat_value_result.menu_metric_available &&
-          combat_value_result.primary_value == 10U &&
-          combat_value_result.secondary_value == 0U &&
+          combat_value_result.success_value == 10U &&
+          combat_value_result.defense_physical_value == 0U &&
+          combat_value_result.defense_mana_value == 0U &&
           combat_value_result.grid_requests.size() == 1U &&
-          combat_value_result.grid_requests[0].second == 9U &&
+          combat_value_result.grid_requests[0].strip ==
+              MagicMenuValueStrip::success &&
+          combat_value_result.grid_requests[0].row == 9U &&
+          combat_value_result.grid_requests[0].destination_tile_base ==
+              0xC588U &&
+          combat_value_result.grid_requests[0].source_row_stride == 0x1AU &&
+          combat_value_result.grid_requests[0].tile_count == 13U &&
           combat_value_events == std::vector<int>{1, 19})) {
         return 10;
     }
 
     combat_value_input = {};
-    combat_value_input.alternate_path = true;
+    combat_value_input.refresh_defense_strips = true;
     combat_value_input.attribute_77 = 4U;
     combat_value_input.attribute_7c = 2U;
     combat_value_input.ready_entities[0].flags_10 = 1U;
@@ -218,15 +231,25 @@ int main() {
     combat_value_callbacks.resolve_menu_metric = {};
     combat_value_callbacks.refresh_ready_entity_animations =
         [&] { ++ready_refreshes; };
-    const auto alternate_values = refresh_equipment_combat_values(
+    const auto alternate_values =
+        refresh_magic_menu_success_or_defense_values(
         combat_value_input, combat_value_callbacks);
     if (!(ready_refreshes == 1 &&
-          alternate_values.primary_value == 7U &&
-          alternate_values.secondary_value == 5U &&
+          alternate_values.success_value == 0U &&
+          alternate_values.defense_physical_value == 7U &&
+          alternate_values.defense_mana_value == 5U &&
           alternate_values.grid_requests.size() == 2U &&
-          alternate_values.grid_requests[0].second == 6U &&
-          alternate_values.grid_requests[1].second == 4U &&
-          combat_value_events == std::vector<int>{16, 24})) {
+          alternate_values.grid_requests[0].strip ==
+              MagicMenuValueStrip::defense_physical &&
+          alternate_values.grid_requests[0].row == 6U &&
+          alternate_values.grid_requests[0].destination_tile_base ==
+              0xC808U &&
+          alternate_values.grid_requests[1].strip ==
+              MagicMenuValueStrip::defense_mana &&
+          alternate_values.grid_requests[1].row == 4U &&
+          alternate_values.grid_requests[1].destination_tile_base ==
+              0xC908U &&
+          combat_value_events == std::vector<int>{26, 34})) {
         return 11;
     }
 

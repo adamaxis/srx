@@ -105,14 +105,14 @@ std::uint8_t adjust_runner_posture_and_refresh(
     RunnerRecordFields& record, const std::int8_t delta,
     const RunnerPostureRefreshCallbacks& callbacks) {
     // ROM 0x107CE performs the record mutation before every presentation
-    // service and calls refresh_equipment_combat_values twice at the end.
+    // service and calls the magic Success/Defense refresh twice at the end.
     const auto posture = adjust_runner_posture(record, delta);
     call_once(callbacks.write_grid);
     call_once(callbacks.render_encoded_text);
     call_once(callbacks.write_three_grids_then_service);
     call_once(callbacks.refresh_magic_action_effect_value);
-    call_once(callbacks.refresh_equipment_combat_values);
-    call_once(callbacks.refresh_equipment_combat_values);
+    call_once(callbacks.refresh_magic_menu_success_or_defense_values);
+    call_once(callbacks.refresh_magic_menu_success_or_defense_values);
     return posture;
 }
 

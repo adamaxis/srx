@@ -53,7 +53,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x000102D4U, "prepare_magic_action_details", RoutineFamily::menu, 106U},
     {0x0001033EU, "resolve_entity_target_action", RoutineFamily::menu, 320U},
     {0x000104F6U, "apply_action_item_phase_modifiers", RoutineFamily::menu, 104U},
-    {0x0001055EU, "refresh_equipment_combat_values", RoutineFamily::menu, 136U},
+    {0x0001055EU, "refresh_magic_menu_success_or_defense_values", RoutineFamily::menu, 136U},
     {0x000105E6U, "refresh_magic_action_effect_value", RoutineFamily::menu, 122U},
     {0x00010660U, "calculate_action_residual", RoutineFamily::menu, 122U},
     {0x00010722U, "run_runner_posture_adjustment", RoutineFamily::menu, 172U},

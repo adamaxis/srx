@@ -1,7 +1,9 @@
 #pragma once
 
+#include "shadowrun_ghidra/entities/entity_action_math_conversion.hpp"
 #include "shadowrun_ghidra/session/runner_record_access_conversion.hpp"
 
+#include <array>
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -35,6 +37,89 @@ struct MagicMenuLoopCallbacks {
     std::function<std::uint16_t()> read_sampled_input;
     std::function<void(const MagicMenuSelection&)> run_equipment_selection;
     std::function<void()> reset_cursor_animation_timer;
+};
+
+// ROM 0x105E6 reads the selected magic action and sends the current force,
+// runner record, and decoded D4EA0 action row through 0x10660.
+struct MagicActionEffectValueInput {
+    std::uint8_t action_code = 0;
+    std::uint16_t current_force = 0;
+    EntityActionRecord entity{};
+    EntityActionCatalogRecord action{};
+};
+
+// The positive branch selects a six-tile Damage row. The host renderer uses
+// the typed row and layout plan rather than ROM or VDP memory.
+struct MagicActionEffectDamageGridPlan {
+    std::uint16_t effect_row = 0;
+    std::uint16_t source_row_stride = 0x0EU;
+    std::uint16_t destination_tile_base = 0xC688U;
+    std::uint16_t tile_count = 6U;
+    std::uint16_t palette_flags = 0;
+};
+
+struct MagicActionEffectNoneValuePlan {
+    // Source 0xC8A2C is the literal `None` value for nonpositive damage.
+    std::uint16_t destination_tile_base = 0xC68CU;
+};
+
+struct MagicActionEffectValueCallbacks {
+    std::function<void(const MagicActionEffectNoneValuePlan&)>
+        render_none_damage_value;
+    std::function<void(const MagicActionEffectDamageGridPlan&)>
+        write_damage_grid;
+};
+
+struct MagicActionEffectValueResult {
+    bool residual_valid = false;
+    bool none_damage_value_rendered = false;
+    bool damage_grid_written = false;
+    std::int16_t residual_effect = 0;
+    std::optional<MagicActionEffectNoneValuePlan> none_damage_value;
+    std::optional<MagicActionEffectDamageGridPlan> damage_grid;
+};
+
+// ROM 0x1055E's D0=0 branch refreshes Success. Its nonzero branch refreshes
+// Defense values for vs. Phys and vs. Mana using the ready-party bonus.
+enum class MagicMenuValueStrip {
+    success,
+    defense_physical,
+    defense_mana,
+};
+
+struct MagicMenuValueRefreshInput {
+    bool refresh_defense_strips = false;
+    std::uint16_t current_force = 0;
+    std::uint8_t action_cap = 0;  // active record +0x7F
+    EntityActionRecord active_entity{};
+    std::array<EntityActionRecord, 3> ready_entities{};
+    std::uint8_t attribute_77 = 0;
+    std::uint8_t attribute_7c = 0;
+};
+
+struct MagicMenuValueGridPlan {
+    MagicMenuValueStrip strip = MagicMenuValueStrip::success;
+    std::uint16_t value = 0;
+    std::uint16_t row = 0;
+    std::uint16_t destination_tile_base = 0;
+    std::uint16_t source_row_stride = 0x1AU;
+    std::uint16_t tile_count = 13U;
+    std::uint16_t palette_flags = 0;
+};
+
+struct MagicMenuValueRefreshCallbacks {
+    std::function<void()> refresh_ready_entity_animations;
+    std::function<std::optional<std::uint16_t>(std::uint16_t)>
+        resolve_menu_metric;
+    std::function<void(const MagicMenuValueGridPlan&)> write_grid;
+};
+
+struct MagicMenuValueRefreshResult {
+    bool menu_metric_available = false;
+    std::uint16_t success_value = 0;
+    std::uint16_t defense_physical_value = 0;
+    std::uint16_t defense_mana_value = 0;
+    std::vector<MagicMenuValueGridPlan> grid_requests;
 };
 
 constexpr std::size_t kMagicSpellRecordSize = 0x30U;
@@ -90,7 +175,7 @@ struct MagicForceAdjustmentCallbacks {
     std::function<void()> build_grouped_decimal_glyphs;
     MagicForceDisplayCallbacks display;
     std::function<void()> write_repeated_grid;
-    std::function<void()> refresh_equipment_combat_values;
+    std::function<void()> refresh_magic_menu_success_or_defense_values;
     std::function<void()> write_repeated_menu_grid;
     std::function<void()> refresh_magic_action_effect_value;
 };
@@ -166,6 +251,19 @@ MagicMenuPath select_magic_menu_path(const RunnerRecordFields& record);
 // countdown, action redraw does not, and bit 7 exits only after those checks.
 std::uint16_t run_magic_menu_loop(
     MagicMenuLoopState& state, const MagicMenuLoopCallbacks& callbacks = {});
+
+// ROM 0x105E6: refresh the selected magic action's Damage value. Nonpositive
+// residuals render the literal None value; positive residuals select source
+// damage row (residual - 1) and submit its six-tile grid.
+MagicActionEffectValueResult refresh_magic_action_effect_value(
+    const MagicActionEffectValueInput& input,
+    const MagicActionEffectValueCallbacks& callbacks = {});
+
+// ROM 0x1055E: refresh the magic menu's Success strip when D0=0, or its
+// ready-party Defense strips (vs. Phys and vs. Mana) when D0 is nonzero.
+MagicMenuValueRefreshResult refresh_magic_menu_success_or_defense_values(
+    const MagicMenuValueRefreshInput& input,
+    const MagicMenuValueRefreshCallbacks& callbacks = {});
 
 // ROM 0xFEBE. `first_entry_count` is the first word at the selected spell
 // table entry (`record +0xA0` selects that entry). The source uses that count
