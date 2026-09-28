@@ -61,6 +61,8 @@ TitleIntroStageLoopStopReason run_title_intro_stage_loop(
         advance_title_intro_scroll(state.scroll, callbacks.fill_transition_tiles);
         advance_title_intro_scroll_fade(state.scroll,
                                         callbacks.render_transition_text);
+        // ROM 0x5B100 reads the DD08 scroll word that 0x5B00A advances.
+        state.pulse.x_offset = state.scroll.x_offset;
         service_title_intro_animation(
             state.animation_service, state.pulse, pulse_descriptors,
             state.landing, landing_phases, special_landing_descriptor,

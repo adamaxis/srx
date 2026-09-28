@@ -885,10 +885,8 @@ void begin_orchestrator(OpeningIntroState& state,
 void advance_orchestrator_frame(OpeningIntroState& state,
                                 const OpeningIntroSourcePlan& plan,
                                 const OpeningIntroCallbacks& callbacks) {
-    callbacks.wait_for_vblank();
-    ++state.source_frame;
-    callbacks.sample_controller();
-    callbacks.latch_controller_events();
+    begin_source_frame(state, callbacks);
+    sample_and_latch(callbacks);
     state.orchestrator.current_frame =
         static_cast<std::uint16_t>(state.source_frame);
     state.orchestrator.timed_state.current_frame =
@@ -906,7 +904,6 @@ void advance_orchestrator_frame(OpeningIntroState& state,
         [&callbacks](const std::uint16_t) {
             source_boundary(callbacks, "0x5AB96.service_trivid_color_step");
         });
-    ++state.orchestrator_loop_frame;
 }
 
 void begin_stage_loop(OpeningIntroState& state,
@@ -951,10 +948,8 @@ void begin_stage_loop(OpeningIntroState& state,
 void advance_stage_loop_frame(OpeningIntroState& state,
                               const OpeningIntroSourcePlan& plan,
                               const OpeningIntroCallbacks& callbacks) {
-    callbacks.wait_for_vblank();
-    ++state.source_frame;
-    callbacks.sample_controller();
-    callbacks.latch_controller_events();
+    begin_source_frame(state, callbacks);
+    sample_and_latch(callbacks);
     if (state.stage_loop_frame == kTitleIntroStageFinalTextFrame) {
         render_stage_loop_final_text(callbacks);
     }
@@ -976,13 +971,10 @@ void advance_stage_loop_frame(OpeningIntroState& state,
     // 0x5B00A. Keep the converted leaf's typed pulse state on that source
     // value instead of leaving the helicopter fixed at its entry position.
     state.stage_loop.pulse.x_offset = state.stage_loop.scroll.x_offset;
-    const auto plane_scroll = static_cast<std::uint16_t>(std::min<std::uint32_t>(
-        static_cast<std::uint32_t>(state.stage_loop_frame) * 2U, 0x0200U));
     emit_sprite(callbacks,
                 opening_intro_sprite_handle(
                     OpeningIntroSpriteFamily::aircraft_plane_a, 0),
-                static_cast<std::uint16_t>(0x0128U - plane_scroll),
-                0x0070U, 0x2000U);
+                0x0128U, 0x0070U, 0x2000U);
     service_title_intro_animation(
         state.stage_loop.animation_service, state.stage_loop.pulse,
         plan.pulse_descriptors, state.stage_loop.landing,
@@ -990,7 +982,6 @@ void advance_stage_loop_frame(OpeningIntroState& state,
         opening_intro_sprite_handle(OpeningIntroSpriteFamily::aircraft_movement,
                                     1),
         [&callbacks](const auto& request) { emit_late_sprite(callbacks, request); });
-    ++state.stage_loop_frame;
 }
 
 } // namespace

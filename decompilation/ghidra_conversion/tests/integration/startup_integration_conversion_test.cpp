@@ -512,7 +512,9 @@ int main() {
                                   StartupIntegrationPhase::field_ready ||
         new_game_observations.field_ready_count != 1U ||
         !has_event(new_game_state, "opening_intro.complete") ||
-        !has_event(new_game_state, "phase.field_ready")) {
+        !has_event(new_game_state, "phase.field_ready") ||
+        new_game_state.opening_intro.orchestrator_loop_frame != 0x0115U ||
+        new_game_state.opening_intro.stage_loop_frame != 0x0529U) {
         return 13;
     }
     const auto has_sprite_family =
