@@ -1893,6 +1893,18 @@ The typed conversion now includes the complete frame service order and keeps
 the initial/final display variants explicit; all adjustments use the same
 inclusive clamp, so the host state cannot diverge at the force edges.
 
+The adjacent selector at `0x101FE` is now typed as `select_magic_force`.
+The selected spell table word supplies the maximum force; the current force is
+preserved only for a no-inventory-slot runner whose existing item code still
+matches the selected spell code plus one. A different spell or an ordinary
+inventory slot resets current force to the selected maximum, matching the
+source byte comparison and its wraparound.
+
+The `0x101FE` selector is now recorded under the magic-menu module rather than
+the generic field renderer. It publishes the selected spell's low-byte force
+maximum and preserves the runner's current force only on the source's
+negative-`+0x56`, same-spell path; all other selections reset to maximum.
+
 The Cyberware screen at `0x11950` is now a concrete menu model: a zero
 `+0x90` bitfield selects the no-cyberware message, while a nonzero field scans
 bits `0..14` into ascending visible rows. Bit 15 affects the source's empty

@@ -1758,6 +1758,12 @@ branch counts are covered by the Magic-menu test; these remain partial only
 because the host presentation callbacks are still separate conversion
 boundaries.
 
+The neighboring `0x101FE` selector is now a typed magic-menu operation. It
+publishes the selected table word's low-byte force maximum and preserves the
+existing current force only when the runner has no inventory slot and still
+holds the selected spell item code (`spell code + 1`); otherwise it resets
+current force to the selected maximum.
+
 ### World-effect/menu arithmetic audit continuation
 
 The direct ROM pass over `0x562EC` and `0x563CC` found the existing typed

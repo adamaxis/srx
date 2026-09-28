@@ -4,6 +4,11 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
+//
+// Source behavior: select the low byte of the cursor's FFF9FA table word as
+// FFF098. Preserve record +0x9D only when +0x56 is negative and the selected
+// high-byte spell code plus one equals record +0x57; otherwise initialize
+// FFF096 from the selected maximum.
 
 
 void select_menu_value(void)

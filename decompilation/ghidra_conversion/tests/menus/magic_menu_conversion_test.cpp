@@ -179,6 +179,30 @@ int main() {
         return 18;
     }
 
+    MagicForceState selected_force{99U, 99U};
+    RunnerRecordFields selected_record{};
+    selected_record.equipped_inventory_slot = -1;
+    selected_record.equipped_item_code = 2U;
+    selected_record.magic_force = 3U;
+    select_magic_force(selected_force, *available, selected_record);
+    if (!expect(selected_force.maximum_force == 9U &&
+                selected_force.current_force == 3U)) {
+        return 19;
+    }
+    selected_record.equipped_item_code = 4U;
+    select_magic_force(selected_force, *available, selected_record);
+    if (!expect(selected_force.maximum_force == 9U &&
+                selected_force.current_force == 9U)) {
+        return 20;
+    }
+    selected_record.equipped_item_code = 2U;
+    selected_record.equipped_inventory_slot = 0;
+    select_magic_force(selected_force, *available, selected_record);
+    if (!expect(selected_force.maximum_force == 9U &&
+                selected_force.current_force == 9U)) {
+        return 21;
+    }
+
     std::vector<int> detail_events;
     MagicActionDetailCallbacks detail_callbacks{};
     detail_callbacks.prepare_menu_grid_then_service = [&]() {
@@ -198,7 +222,7 @@ int main() {
     };
     prepare_magic_action_details(detail_callbacks);
     if (!expect(detail_events == std::vector<int>{1, 2, 2, 2, 3, 4, 5})) {
-        return 19;
+        return 22;
     }
 
     MagicForceState force_state_values{3U, 5U};
@@ -235,7 +259,7 @@ int main() {
                 force_record.magic_force == 4U &&
                 adjustment_events == std::vector<int>{1, 2, 2, 3, 2, 2, 4,
                                                       5, 6, 7})) {
-        return 20;
+        return 23;
     }
 
     std::vector<int> availability_events;
@@ -251,12 +275,12 @@ int main() {
     };
     render_magic_spell_availability(-1, availability_callbacks);
     if (!expect(availability_events == std::vector<int>{1})) {
-        return 21;
+        return 24;
     }
     availability_events.clear();
     render_magic_spell_availability(0, availability_callbacks);
     if (!expect(availability_events == std::vector<int>{2, 3})) {
-        return 22;
+        return 25;
     }
 
     std::vector<int> grid_events;
@@ -269,19 +293,19 @@ int main() {
     clear_magic_menu_grids(false, grid_callbacks);
     if (!expect(grid_events.size() == 10U && grid_events[9] == 0x8174 &&
                 std::count(grid_events.begin(), grid_events.end(), 1) == 9)) {
-        return 23;
+        return 26;
     }
     grid_events.clear();
     clear_magic_menu_grids(true, grid_callbacks);
     if (!expect(grid_events.size() == 11U && grid_events[10] == 0x8174 &&
                 std::count(grid_events.begin(), grid_events.end(), 1) == 10)) {
-        return 24;
+        return 27;
     }
     grid_events.clear();
     refresh_menu_grid_quadruple(grid_callbacks);
     if (!expect(grid_events ==
                 std::vector<int>{0x8134, 1, 1, 1, 1, 0x8174})) {
-        return 25;
+        return 28;
     }
 
     return 0;

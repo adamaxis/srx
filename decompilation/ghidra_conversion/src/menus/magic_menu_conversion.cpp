@@ -232,6 +232,25 @@ void refresh_magic_force_display(
     call_once(callbacks.write_repeated_grid);
 }
 
+void select_magic_force(MagicForceState& state,
+                        const MagicSpellSelection& selection,
+                        const RunnerRecordFields& record) {
+    // 0x101FE stores the low byte of the selected FFF9FA word in FFF098.
+    state.maximum_force = selection.table_parameter;
+
+    // The source compares the selected high byte plus one with record +0x57
+    // only on the negative +0x56 (no inventory slot) path. The byte compare
+    // deliberately wraps, matching the source's low-byte comparison.
+    const auto selected_item_code = static_cast<std::uint8_t>(
+        static_cast<unsigned>(selection.spell_code) + 1U);
+    if (record.equipped_inventory_slot < 0 &&
+        selected_item_code == record.equipped_item_code) {
+        state.current_force = record.magic_force;
+        return;
+    }
+    state.current_force = state.maximum_force;
+}
+
 void adjust_magic_force(
     RunnerRecordFields& record, MagicForceState& state,
     const std::int16_t delta, const MagicForceAdjustmentCallbacks& callbacks) {

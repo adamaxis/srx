@@ -187,6 +187,14 @@ struct MagicForceState {
     std::uint16_t maximum_force = 1;
 };
 
+// ROM 0x101FE: the selected table word supplies the force maximum. The
+// current force survives only while the source record has no inventory slot
+// and still carries the selected spell item code; every other selection
+// starts at that spell's maximum.
+void select_magic_force(MagicForceState& state,
+                        const MagicSpellSelection& selection,
+                        const RunnerRecordFields& record);
+
 void adjust_magic_force(
     RunnerRecordFields& record, MagicForceState& state, std::int16_t delta,
     const MagicForceAdjustmentCallbacks& callbacks = {});

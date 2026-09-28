@@ -549,7 +549,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x0AC5E	forced entity effect clear	ghidra_conversion::clear_entity_effect_if_forced	shadowrun_ghidra_field_entity_render_batch	partial		Clears forced-effect bit and publishes cleanup
 0x0AE6E	entity target heading update	ghidra_conversion::update_entity_target_heading	shadowrun_ghidra_field_entity_render_batch	partial		Typed target measurement, relation rejection, and fallback
 0x0C0DA	encoded title text render	ghidra_conversion::render_encoded_title_text	shadowrun_ghidra_field_entity_render_batch	partial		Converts encoded title bytes to glyph callbacks
-0x101FE	menu value selection	ghidra_conversion::select_menu_value	shadowrun_ghidra_field_entity_render_batch	partial		Typed primary/selected menu value resolution
+0x101FE	magic force selection	ghidra_conversion::select_magic_force	shadowrun_ghidra_magic_menu	partial		Selected spell table maximum, no-inventory same-spell current-force preservation, and reset-to-maximum branch converted
 0x10276	menu text display sequence	ghidra_conversion::run_menu_text_display_sequence	shadowrun_ghidra_field_entity_render_batch	partial		Explicit grid/text/asset/decimal display order
 0x1047E	ready entity action bonus	ghidra_conversion::calculate_ready_entity_action_bonus	shadowrun_ghidra_entity_action_math	partial		Scans exactly three records, accepts active class 0/1 entries, and adds quotient plus remainder threshold from each item-0x18 value
 0x10FF4	repeated asset batch	ghidra_conversion::write_command_overview_repeated_asset_batch	shadowrun_ghidra_menu_service_sequence	partial		ROM-traced three-group by-eighty asset loop with fixed/entity table selection and destination stride
