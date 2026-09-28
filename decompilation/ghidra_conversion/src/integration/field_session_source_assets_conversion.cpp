@@ -24,6 +24,8 @@ constexpr const char* kFieldMovementDirectionTableAlias =
     "records.field.entity.movement.direction.table";
 constexpr const char* kFieldControllerHeadingTableAlias =
     "records.field.entity.controller.heading.table";
+constexpr const char* kFieldMovementRouteTableAlias =
+    "records.field.entity.movement.route.table";
 constexpr const char* kMode2TerrainLayerAAlias =
     "records.field.mode.2.terrain.layer.a";
 constexpr const char* kMode2TerrainLayerBAlias =
@@ -171,6 +173,27 @@ decode_field_controller_heading_table(
     return table;
 }
 
+std::array<FieldMovementRouteSourceRecord, kFieldMovementRouteCount>
+decode_field_movement_routes(const std::vector<std::uint8_t>& bytes) {
+    std::array<FieldMovementRouteSourceRecord, kFieldMovementRouteCount>
+        routes{};
+    for (std::size_t index = 0; index < routes.size(); ++index) {
+        const auto byte_offset = index * 6U;
+        const auto primary_sample_index = bytes[byte_offset];
+        const auto secondary_sample_index = bytes[byte_offset + 1U];
+        if (primary_sample_index >= 4U || secondary_sample_index >= 4U) {
+            throw std::runtime_error(
+                "field movement route sample index changed");
+        }
+        routes[index] = FieldMovementRouteSourceRecord{
+            primary_sample_index,
+            secondary_sample_index,
+            read_big_endian_word(bytes, byte_offset + 2U),
+            read_big_endian_word(bytes, byte_offset + 4U)};
+    }
+    return routes;
+}
+
 } // namespace
 
 FieldSessionSourceAssetLoadResult load_field_session_source_assets(
@@ -201,6 +224,9 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
     const auto controller_heading_table = read_record_bytes(
         catalog, kFieldControllerHeadingTableAlias,
         kFieldControllerHeadingTableByteCount, result.errors);
+    const auto movement_route_table = read_record_bytes(
+        catalog, kFieldMovementRouteTableAlias, kFieldMovementRouteByteCount,
+        result.errors);
     const auto terrain_layer_a = read_record_bytes(
         catalog, kMode2TerrainLayerAAlias, kFieldSessionTerrainLayerByteCount,
         result.errors);
@@ -225,6 +251,7 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
         !mode0_event_table.has_value() ||
         !movement_direction_table.has_value() ||
         !controller_heading_table.has_value() ||
+        !movement_route_table.has_value() ||
         !terrain_layer_a.has_value() || !terrain_layer_b.has_value() ||
         !terrain_stream.has_value() || !mode2_descriptor.has_value() ||
         !mode2_collision_rectangles.has_value() ||
@@ -258,6 +285,8 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
         decode_field_movement_direction_offsets(*movement_direction_table);
     assets.field_controller_heading_table =
         decode_field_controller_heading_table(*controller_heading_table);
+    assets.field_movement_routes =
+        decode_field_movement_routes(*movement_route_table);
     assets.mode2_terrain_layer_a_source.reserve(
         kFieldSessionTerrainLayerWordCount);
     assets.mode2_terrain_layer_b_source.reserve(

@@ -3,6 +3,7 @@
 #include "shadowrun_ghidra/core/asset_catalog_conversion.hpp"
 #include "shadowrun_ghidra/field/field_movement_input_conversion.hpp"
 #include "shadowrun_ghidra/entities/movement_probe_conversion.hpp"
+#include "shadowrun_ghidra/entities/movement_route_conversion.hpp"
 #include "shadowrun_ghidra/field/scene_profile_conversion.hpp"
 #include "shadowrun_ghidra/field/terrain_map_conversion.hpp"
 #include "shadowrun_ghidra/rendering/display_service_batch_conversion.hpp"
@@ -39,6 +40,19 @@ constexpr std::size_t kFieldMovementDirectionTableByteCount =
 constexpr std::size_t kFieldControllerHeadingTableCount = 16U;
 constexpr std::size_t kFieldControllerHeadingTableByteCount =
     kFieldControllerHeadingTableCount * sizeof(std::uint16_t);
+constexpr std::size_t kFieldMovementRouteCount = 4U;
+constexpr std::size_t kFieldMovementRouteByteCount =
+    kFieldMovementRouteCount * 6U;
+
+struct FieldMovementRouteSourceRecord {
+    // Indexes into the source collision sample bytes FFEF10..13. The ROM
+    // stores pointers to those four bytes; extraction resolves them into
+    // these semantic indexes so runtime code never follows a RAM pointer.
+    std::uint8_t primary_sample_index = 0;
+    std::uint8_t secondary_sample_index = 0;
+    std::uint16_t primary_fallback_slot = 0;
+    std::uint16_t secondary_fallback_slot = 0;
+};
 
 struct FieldMapSourceDescriptor {
     // Map descriptor words +0x00/+0x02. These are source fixed-point words;
@@ -94,6 +108,11 @@ struct FieldSessionSourceAssets {
     // ROM 0x019D2, normalized D-pad nibble to target heading.
     std::array<std::uint16_t, kFieldControllerHeadingTableCount>
         field_controller_heading_table{};
+    // ROM 0xBBF6, the four aligned-heading route descriptors used by
+    // 0xBB86. Each descriptor is six host bytes: two collision-sample
+    // indexes followed by two big-endian fallback direction slots.
+    std::array<FieldMovementRouteSourceRecord, kFieldMovementRouteCount>
+        field_movement_routes{};
     // ROM 0x172C80, interpreted as the distinct map-index-2 metadata record.
     FieldMapSourceDescriptor mode2_descriptor{};
     // ROM 0x172DAA, five-word records consumed by the terrain-map builder.

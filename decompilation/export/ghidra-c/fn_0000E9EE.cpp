@@ -6,9 +6,11 @@
 //   (none)
 
 
-// Source behavior: select the object record by ten-byte stride, then test
-// signed X within center +/-12 and signed Y within center +/-7, inclusive.
-// The native conversion exposes this through TerrainObjectLookup and does not
-// reproduce the source record pointer arithmetic.
+// Source behavior: select the same five-word field terrain record used by
+// 0xEE10 through its ten-byte object-id stride. The first long supplies the
+// inclusive left/right X boundaries and the second long supplies the
+// inclusive top/bottom Y boundaries; the probe expands them by +/-12 and
+// +/-7 before the signed word comparisons. The native conversion resolves
+// that record into TerrainObjectBounds rather than exposing the RAM pointer.
 
 

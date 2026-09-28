@@ -205,13 +205,14 @@ the typed `MovementOffset[8]` array from the direct record.
 
 The current startup field input uses the row-0 normal-profile metadata already
 selected by the field-entry conversion. Terrain collision is evaluated from
-that metadata's typed `0x1000` collision map and bounds. If a positive terrain
-code reaches the object branch, the Qt boundary fails closed and reports
-`field.movement.terrain_object_lookup` because the source object-center table
-behind `0xE9EE` has not yet been extracted. Likewise, a blocked aligned step
-reports `field.movement.aligned_route_lookup` and resets rather than allowing
-movement through a route table that has not been recovered. These are explicit
-audit markers, not guessed behavior.
+that metadata's typed `0x1000` collision map and bounds. A positive terrain
+code reaches `0xE9EE` by using the same row-`terrain_code` five-word record
+stream that `0xEE10` rasterizes; the conversion now supplies its left/right and
+top/bottom words to the source's +/-12 and +/-7 comparison. The aligned
+blocked-step route table is likewise now extracted from `0xBBF6` as four rows
+of collision-sample indexes and fallback direction slots, so the Qt bridge
+passes those records through `evaluate_entity_movement_route` instead of
+failing closed at an invented boundary.
 
 The `0xE7C8` conversion now also carries the four source sample bytes that
 `0xB48C` copies into the entity collision record. Expanded probes replace all
@@ -1033,7 +1034,7 @@ still has unresolved downstream calls or hardware presentation work.
 | `0xB1DC` | `configure_entity_target_transition` | Dispatches the initial action, resolves a linked heading, selects C0A2, resets animation, and conditionally performs the follow-up action and related-child path. | `ghidra_conversion::configure_entity_target_transition()` | partial |
 | `0xB49C` | `resolve_entity_fallback_movement` | Selects the source heading, probes base/quarter-turn/half-turn direction slots through the movement-result policy, commits a failed candidate position when needed, and restores the saved continuation. | `ghidra_conversion::resolve_entity_fallback_movement()` | partial |
 | `0xB7B8` | `advance_entity_movement_and_mode_transition` | Consumes a blocked movement probe once per pending record, requires behavior bit 1 and at least two negative directional probe bytes, rotates the selected 0xBC36 direction slot into the entity heading, quantizes the candidate field coordinate, routes event codes 0x1A/0x18/0x19/0x1B-0x1F to typed terrain, dialogue, activity, and mode-exit continuations, and preserves the source's world-interaction retry when the projection callback returns carry. | `ghidra_conversion::advance_entity_movement_and_mode_transition()` | partial |
-| `0xBB86` | `evaluate_entity_movement_route` | Derives the even heading route key, accepts two active route markers immediately, or selects and probes the appropriate fallback direction slot through the movement-result policy. | `ghidra_conversion::evaluate_entity_movement_route()` | partial |
+| `0xBB86` | `evaluate_entity_movement_route` | Derives the even heading route key, reads one of four extracted `0xBBF6` descriptors, treats two positive sampled terrain bytes as the source blocked-route carry, or selects and probes the descriptor's fallback direction slot through the movement-result policy. | `ghidra_conversion::evaluate_entity_movement_route()` | partial |
 | `0xBADE` | `advance_entity_movement_step` | Transfers linked collision context, probes the requested direction, handles negative recovery, branches through aligned or diagonal movement checks, updates animation state, and commits or resets the step. | `ghidra_conversion::advance_entity_movement_step()` | partial |
 | `0xB442` | `reset_entity_movement_state` | Clears movement flag bit 1, restores the desired heading, replaces the raw `0xB45C` continuation with `ReevaluateCollision`, marks animation refresh, selects the rotated heading's animation entry, and rechecks the current position. | `ghidra_conversion::reset_entity_movement_state()` | partial |
 | `0xB48C` | `evaluate_entity_collision` | Sends the candidate coordinates through the field-collision boundary, copies the returned four-byte collision state to the entity record, and returns the collision code. | `ghidra_conversion::evaluate_entity_collision()` | partial |
@@ -1043,7 +1044,7 @@ still has unresolved downstream calls or hardware presentation work.
 | `0xBC36` | `build_collision_probe_points` | Selects one of four three-point collision-offset banks from the signed probe bytes, expands it, and snapshots the camera words unless the source mode gate is active. | `ghidra_conversion::build_collision_probe_points()` | partial |
 | `0xBCAE` | `apply_mode_five_boundary_motion` | Applies the mode-5 vertical adjustment in the source's strict coordinate windows at the two field edges. | `ghidra_conversion::apply_mode_five_boundary_motion()` | partial |
 | `0xE8A0` | `sample_terrain_collision_tiles` | Samples the center tile or four ±12/±7 corner tiles, retains the highest unsigned code with later ties winning, and overrides it with `0x7F` when any corner is blocked. | `ghidra_conversion::sample_terrain_collision_tiles()` | partial |
-| `0xE9EE` | `contains_terrain_object_bounds` | Tests a point against the selected terrain object's center with horizontal bounds of ±12 and vertical bounds of ±7. | `ghidra_conversion::contains_terrain_object_bounds()` | partial |
+| `0xE9EE` | `contains_terrain_object_bounds` | Uses `terrain_code * 10` to select the same five-word field collision record used by `0xEE10`, then tests normalized X against record left/right expanded by ±12 and Y against top/bottom expanded by ±7. | `ghidra_conversion::contains_terrain_object_bounds()` | partial |
 | `0xEAD2` | `evaluate_terrain_direction_boundary` | Applies the terrain-code `0x38` direction relation to unsigned word deltas within the decoded tile window. | `ghidra_conversion::evaluate_terrain_direction_boundary()` | partial |
 | `0xEDFA` | `decode_terrain_tile_window` | Expands the packed terrain tile index into its horizontal origin, row origin, and 32-unit row end. | `ghidra_conversion::decode_terrain_tile_window()` | partial |
 | `0xEE10` | `rebuild_terrain_collision_map` | Clears the bounded 64x64 terrain map, rasterizes inclusive 32-unit rectangle records, and invokes the explicit post-processing boundary. | `ghidra_conversion::rebuild_terrain_collision_map()` | partial |

@@ -4,6 +4,8 @@
 #include "shadowrun/resource_manifest.hpp"
 
 #include <algorithm>
+#include <array>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -24,6 +26,29 @@ std::uint64_t parse_number(const std::string& value) {
         throw std::invalid_argument("invalid numeric argument: " + value);
     }
     return number;
+}
+
+std::uint16_t read_big_endian_word(
+    const std::vector<std::uint8_t>& bytes,
+    const std::size_t offset) {
+    if (offset > bytes.size() || bytes.size() - offset < 2U) {
+        throw std::runtime_error("source word exceeds input image");
+    }
+    return static_cast<std::uint16_t>(
+        (static_cast<std::uint16_t>(bytes[offset]) << 8U) |
+        static_cast<std::uint16_t>(bytes[offset + 1U]));
+}
+
+std::uint32_t read_big_endian_long(
+    const std::vector<std::uint8_t>& bytes,
+    const std::size_t offset) {
+    if (offset > bytes.size() || bytes.size() - offset < 4U) {
+        throw std::runtime_error("source long exceeds input image");
+    }
+    return (static_cast<std::uint32_t>(bytes[offset]) << 24U) |
+           (static_cast<std::uint32_t>(bytes[offset + 1U]) << 16U) |
+           (static_cast<std::uint32_t>(bytes[offset + 2U]) << 8U) |
+           static_cast<std::uint32_t>(bytes[offset + 3U]);
 }
 
 std::vector<std::uint8_t> read_file(const std::string& path) {
@@ -212,6 +237,58 @@ void extract_field_session_record_assets(
     write_rom_record(
         rom, root, "records/field/entity-controller-heading-table.bin",
         0x019D2U, 16U * sizeof(std::uint16_t));
+    // ROM 0xBB86 selects one of four descriptors through the long-pointer
+    // table at 0xBBF6. Each descriptor stores pointers to FFEF10..13 and two
+    // fallback direction slots. Resolve those pointers once during offline
+    // extraction into four six-byte semantic records:
+    // primary sample index, secondary sample index, primary fallback, and
+    // secondary fallback. The runtime never follows the source RAM pointers.
+    const std::array<std::uint32_t, 4> route_sample_pointers{
+        0xFFEF10U, 0xFFEF11U, 0xFFEF12U, 0xFFEF13U};
+    std::vector<std::uint8_t> movement_route_table;
+    movement_route_table.reserve(4U * 6U);
+    for (std::size_t route_index = 0; route_index < 4U; ++route_index) {
+        const auto descriptor_pointer = read_big_endian_long(
+            rom, 0x0BBF6U + route_index * sizeof(std::uint32_t));
+        if (descriptor_pointer < 0x0BC06U ||
+            descriptor_pointer + 12U > rom.size()) {
+            throw std::runtime_error(
+                "field movement route descriptor pointer changed");
+        }
+        const auto primary_pointer =
+            read_big_endian_long(rom, descriptor_pointer);
+        const auto secondary_pointer =
+            read_big_endian_long(rom, descriptor_pointer + 4U);
+        const auto primary = std::find(
+            route_sample_pointers.begin(), route_sample_pointers.end(),
+            primary_pointer);
+        const auto secondary = std::find(
+            route_sample_pointers.begin(), route_sample_pointers.end(),
+            secondary_pointer);
+        if (primary == route_sample_pointers.end() ||
+            secondary == route_sample_pointers.end()) {
+            throw std::runtime_error(
+                "field movement route sample pointer changed");
+        }
+        movement_route_table.push_back(static_cast<std::uint8_t>(
+            std::distance(route_sample_pointers.begin(), primary)));
+        movement_route_table.push_back(static_cast<std::uint8_t>(
+            std::distance(route_sample_pointers.begin(), secondary)));
+        const auto primary_fallback =
+            read_big_endian_word(rom, descriptor_pointer + 8U);
+        const auto secondary_fallback =
+            read_big_endian_word(rom, descriptor_pointer + 10U);
+        movement_route_table.push_back(
+            static_cast<std::uint8_t>(primary_fallback >> 8U));
+        movement_route_table.push_back(
+            static_cast<std::uint8_t>(primary_fallback));
+        movement_route_table.push_back(
+            static_cast<std::uint8_t>(secondary_fallback >> 8U));
+        movement_route_table.push_back(
+            static_cast<std::uint8_t>(secondary_fallback));
+    }
+    write_host_record(movement_route_table, root,
+                      "records/field/entity-movement-route-table.bin");
     // Field mode 2 selects the normal scene profile, whose map descriptor row
     // is 0. That profile points at two fixed terrain word arrays. The source
     // copies exactly 0xE10 words from each pointer during field-scene
@@ -533,8 +610,10 @@ void write_asset_readme(const std::filesystem::path& root) {
               "without making the runtime read ROM addresses. The source "
               "movement vector table at `0xC002` is likewise one named direct "
               "record consumed as typed directional offsets by the conversion "
-              "layer. The `0x19D2` controller-heading table is kept beside it "
-              "as one sixteen-word direct record.\n";
+               "layer. The `0x19D2` controller-heading table is kept beside it "
+               "as one sixteen-word direct record. The `0xBBF6` aligned-route "
+               "table is kept as four six-byte semantic records after its "
+               "FFEF10..13 sample pointers are resolved offline.\n";
 }
 
 void write_runtime_resource_manifest(const std::filesystem::path& root) {
@@ -638,6 +717,9 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
     emit_generated_state_row(
         "records.field.entity.controller.heading.table",
         "records/field/entity-controller-heading-table.bin");
+      emit_generated_state_row(
+          "records.field.entity.movement.route.table",
+          "records/field/entity-movement-route-table.bin");
     emit_generated_state_row(
         "records.field.mode.2.terrain.layer.a",
         "records/field/mode-2-terrain-layer-a.bin");

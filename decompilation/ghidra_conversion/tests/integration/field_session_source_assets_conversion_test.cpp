@@ -143,6 +143,24 @@ int main() {
             return 15;
         }
     }
+    const std::array<FieldMovementRouteSourceRecord,
+                     kFieldMovementRouteCount>
+        expected_routes{{
+            {0U, 1U, 0x0006U, 0x0002U},
+            {1U, 3U, 0x0000U, 0x0004U},
+            {2U, 3U, 0x0006U, 0x0002U},
+            {0U, 2U, 0x0000U, 0x0004U},
+        }};
+    for (std::size_t index = 0; index < expected_routes.size(); ++index) {
+        const auto& actual = source.assets->field_movement_routes[index];
+        const auto& expected = expected_routes[index];
+        if (actual.primary_sample_index != expected.primary_sample_index ||
+            actual.secondary_sample_index != expected.secondary_sample_index ||
+            actual.primary_fallback_slot != expected.primary_fallback_slot ||
+            actual.secondary_fallback_slot != expected.secondary_fallback_slot) {
+            return 16;
+        }
+    }
     const auto& collision_rectangles =
         source.assets->mode2_terrain_collision_rectangles;
     if (collision_rectangles.size() !=

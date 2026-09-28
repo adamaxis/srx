@@ -6,9 +6,11 @@
 #include "shadowrun_ghidra/field/field_movement_input_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_projection_conversion.hpp"
 #include "shadowrun_ghidra/entities/movement_probe_conversion.hpp"
+#include "shadowrun_ghidra/entities/movement_route_conversion.hpp"
 #include "shadowrun_ghidra/entities/movement_step_conversion.hpp"
 #include "shadowrun_ghidra/field/terrain_probe_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_session_bootstrap_conversion.hpp"
+#include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
 #include "shadowrun_ghidra/integration/startup_integration_conversion.hpp"
 #include "shadowrun_ghidra/world/world_entity_conversion.hpp"
 
@@ -92,6 +94,12 @@ private:
     std::array<std::uint16_t,
                integration::kFieldControllerHeadingTableCount>
         field_controller_heading_table_{};
+    std::array<DirectionalMovementRoute,
+               integration::kFieldMovementRouteCount>
+        field_movement_routes_{};
+    std::array<integration::FieldMovementRouteSourceRecord,
+               integration::kFieldMovementRouteCount>
+        field_movement_route_sources_{};
     EntityMovementStepState field_movement_state_{};
     EntityCollisionRecord field_collision_record_{};
     std::array<std::uint8_t, 4> field_terrain_sample_state_{};

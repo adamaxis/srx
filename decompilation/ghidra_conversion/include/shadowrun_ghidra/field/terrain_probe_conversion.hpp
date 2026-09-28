@@ -92,15 +92,22 @@ TerrainCollisionResult evaluate_terrain_collision(
     const TerrainCollisionCallbacks& callbacks);
 
 struct TerrainObjectBounds {
-    std::int16_t center_x = 0;
-    std::int16_t center_y = 0;
+    // ROM 0xE9EE reads the first four words of the selected ten-byte
+    // terrain record directly. They are the inclusive source left/right and
+    // top/bottom boundaries; the routine expands those boundaries by its
+    // horizontal/vertical probe margins.
+    std::int16_t left = 0;
+    std::int16_t right = 0;
+    std::int16_t top = 0;
+    std::int16_t bottom = 0;
 };
 
 using TerrainObjectLookup =
     std::function<TerrainObjectBounds(std::uint16_t object_id)>;
 
-// ROM 0xE9EE: test whether a point is within the selected terrain object's
-// center +/-12 horizontal and +/-7 vertical bounds.
+// ROM 0xE9EE: select the object record by ten-byte stride and test whether a
+// normalized probe point is within its left/right bounds expanded by +/-12
+// and top/bottom bounds expanded by +/-7.
 bool contains_terrain_object_bounds(
     std::uint16_t object_id,
     std::int16_t x,

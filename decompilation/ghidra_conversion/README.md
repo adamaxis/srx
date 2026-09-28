@@ -130,13 +130,14 @@ loads the extracted `0x19D2` heading table and `0x0C002` movement vectors,
 and drives the converted heading-slew, terrain-probe, directional-probe, and
 movement-step functions. A right-input smoke pass advances the selected
 Joshua record by the extracted `(+40,0)` vector. This is still not a claim
-that the complete field behavior is source-verified: the terrain-object
-center table, blocked-route table, event transitions, and walking animation
-records remain explicit conversion boundaries.
+that the complete field behavior is source-verified: the converted terrain
+object bounds and aligned route descriptors are now connected, while event
+transitions and walking animation records remain explicit conversion
+boundaries.
 
 The Qt callbacks remain explicit presentation/source boundaries; they do not
 replace unresolved source behavior with a native-port implementation. Dynamic
-runner records, route/object collision consumers, walking animation, and
+runner records, event-driven field transitions, walking animation, and
 save-slot restoration are still incomplete conversion boundaries.
 `--field-smoke` loads the direct catalog, runs the converted field bootstrap,
 and paints one 320x224 host frame without writing an artifact.

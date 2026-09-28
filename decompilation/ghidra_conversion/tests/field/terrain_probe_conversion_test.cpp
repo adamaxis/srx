@@ -151,12 +151,14 @@ int main() {
     const auto object_lookup = [](const std::uint16_t object_id) {
         return TerrainObjectBounds{
             static_cast<std::int16_t>(0x1000 + object_id),
-            static_cast<std::int16_t>(0x2000 + object_id)};
+            static_cast<std::int16_t>(0x1010 + object_id),
+            static_cast<std::int16_t>(0x2000 + object_id),
+            static_cast<std::int16_t>(0x2010 + object_id)};
     };
     if (!expect(contains_terrain_object_bounds(
-            4, 0x1000 + 4 + 12, 0x2000 + 4 - 7, object_lookup)) ||
+            4, 0x1010 + 4 + 12, 0x2000 + 4 - 7, object_lookup)) ||
         !expect(!contains_terrain_object_bounds(
-            4, 0x1000 + 4 + 13, 0x2000 + 4, object_lookup))) {
+            4, 0x1010 + 4 + 13, 0x2000 + 4, object_lookup))) {
         return 9;
     }
 

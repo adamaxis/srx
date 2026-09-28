@@ -171,8 +171,15 @@ bool contains_terrain_object_bounds(
     const std::int16_t y,
     const TerrainObjectLookup& object_lookup) {
     const auto object = object_lookup(object_id);
-    return x >= object.center_x - 12 && x <= object.center_x + 12 &&
-           y >= object.center_y - 7 && y <= object.center_y + 7;
+    const auto expand_word = [](const std::int16_t value,
+                                const std::int16_t amount) {
+        return static_cast<std::int16_t>(
+            static_cast<std::int32_t>(value) + amount);
+    };
+    return x >= expand_word(object.left, -12) &&
+           x <= expand_word(object.right, 12) &&
+           y >= expand_word(object.top, -7) &&
+           y <= expand_word(object.bottom, 7);
 }
 
 TerrainTileWindow decode_terrain_tile_window(

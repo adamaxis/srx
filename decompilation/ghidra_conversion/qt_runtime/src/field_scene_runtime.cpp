@@ -358,6 +358,16 @@ bool FieldSceneRuntime::bootstrap(
     const auto& assets = *startup_state.field_session_source_assets;
     field_movement_direction_offsets_ = assets.field_movement_direction_offsets;
     field_controller_heading_table_ = assets.field_controller_heading_table;
+    field_movement_route_sources_ = assets.field_movement_routes;
+    for (std::size_t index = 0; index < field_movement_routes_.size();
+         ++index) {
+        const auto& source_route = assets.field_movement_routes[index];
+        field_movement_routes_[index] = DirectionalMovementRoute{
+            0,
+            0,
+            source_route.primary_fallback_slot,
+            source_route.secondary_fallback_slot};
+    }
     field_controller_nibble_ = 0U;
     field_target_heading_ = 0U;
     field_movement_state_ = EntityMovementStepState{};
@@ -468,15 +478,28 @@ std::int16_t FieldSceneRuntime::evaluate_field_collision(
                     [this](const std::uint8_t object_id,
                            const std::int16_t object_x,
                            const std::int16_t object_y) {
-                        // The object-center table behind 0xE9EE has not yet
-                        // been extracted. Unknown positive terrain records
-                        // must block until that source record exists.
-                        source_boundary(
-                            "field.movement.terrain_object_lookup");
-                        (void)object_id;
-                        (void)object_x;
-                        (void)object_y;
-                        return true;
+                        const auto& rectangles =
+                            state_.field_scene_buffers.source_metadata
+                                .terrain_collision_rectangles;
+                        if (object_id >= rectangles.size()) {
+                            source_boundary(
+                                "field.movement.terrain_object_record_missing");
+                            return true;
+                        }
+                        const auto object_lookup =
+                            [&rectangles](const std::uint16_t lookup_id) {
+                                if (lookup_id >= rectangles.size()) {
+                                    return TerrainObjectBounds{};
+                                }
+                                const auto& record = rectangles[lookup_id];
+                                return TerrainObjectBounds{
+                                    static_cast<std::int16_t>(record.left),
+                                    static_cast<std::int16_t>(record.right),
+                                    static_cast<std::int16_t>(record.top),
+                                    static_cast<std::int16_t>(record.bottom)};
+                            };
+                        return contains_terrain_object_bounds(
+                            object_id, object_x, object_y, object_lookup);
                     },
                     {}});
             field_terrain_sample_state_ = field_sample_state_from_result(
@@ -540,12 +563,35 @@ void FieldSceneRuntime::advance_field_movement() {
             source_boundary("field.movement.negative_collision_recovery");
             return false;
         },
-        [this] {
-            // The route table used by the blocked aligned path is still an
-            // unresolved source record. Fail closed so the player cannot
-            // walk through a collision while that table is being extracted.
-            source_boundary("field.movement.aligned_route_lookup");
-            return true;
+        [this, &result_policy, &policy_probe] {
+            const auto route_lookup = [this](const std::uint16_t route_key) {
+                if ((route_key & 0x03U) != 0U ||
+                    route_key / 4U >= field_movement_routes_.size()) {
+                    source_boundary("field.movement.route_key_out_of_range");
+                    return DirectionalMovementRoute{};
+                }
+                auto route = field_movement_routes_[route_key / 4U];
+                const auto& source_route =
+                    field_movement_route_sources_[route_key / 4U];
+                const auto sample_value = [this](
+                                              const std::uint8_t sample_index) {
+                    if (sample_index >= field_terrain_sample_state_.size()) {
+                        source_boundary(
+                            "field.movement.route_sample_out_of_range");
+                        return static_cast<std::int8_t>(-1);
+                    }
+                    return static_cast<std::int8_t>(
+                        field_terrain_sample_state_[sample_index]);
+                };
+                route.primary_marker =
+                    sample_value(source_route.primary_sample_index);
+                route.secondary_marker =
+                    sample_value(source_route.secondary_sample_index);
+                return route;
+            };
+            return evaluate_entity_movement_route(
+                field_movement_state_.heading, result_policy, route_lookup,
+                policy_probe);
         },
         policy_probe,
         [this] { source_boundary("field.movement.reset_blocked_step"); });
