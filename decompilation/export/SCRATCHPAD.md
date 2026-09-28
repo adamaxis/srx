@@ -258,8 +258,12 @@ requested action in a nonzero mode. Word writes use the two `0xE10`-word
 layers `0x03074` copies to FF2700 and FF4700. Scene `0x14` writes the traced
 ROM words `0x03AD`/`0x03AE` from `0x1CD296`. Mode 0 still installs an auxiliary
 slot in the ten-record FFD740 table when `+0xC6` matches `0xC0` and a leading
-word is free. The caller A2 marker-byte clear and the `0x1667A` resource
-pointer remain explicit boundaries.
+word is free. The marker clear uses the FF1700 collision byte selected by
+`0xE8A0` (`FFDFE4`). `0xE9EE` can leave A2 on the object table, but that index
+is only defined for the collision map, so the host clears the map byte.
+Scene 4 with low bits 6 publishes the eight ROM words at `0x1667A` as the
+pending profile `0x2B34` consumes on the next scene entry. The empty-pointer
+branch of `0x2B34`, which copies the six FFDE08 position words, is still open.
 
 ### Field scene runtime dispatcher: 0xC7F8
 

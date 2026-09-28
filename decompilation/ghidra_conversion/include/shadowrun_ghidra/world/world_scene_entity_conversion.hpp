@@ -2,6 +2,7 @@
 
 #include "shadowrun_ghidra/menus/menu_transfer_batch_conversion.hpp"
 
+#include <array>
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -61,6 +62,12 @@ struct WorldMapEffectResult {
 // ROM 0x1CD296 / 0x1CD298. Scene 0x14 copies these words into the FF2700 layer.
 constexpr std::uint16_t kSceneFourteenMapWordA = 0x03ADU;
 constexpr std::uint16_t kSceneFourteenMapWordB = 0x03AEU;
+
+// ROM 0x1667A. Eight words consumed by 0x2B78: camera X/Y, then three
+// entity X/Y pairs. 0x1651E publishes this record when mode 0, scene 4, and
+// the entity word at +0xC6 has low bits 6.
+constexpr std::array<std::uint16_t, 8> kSceneFourInteractionProfile{{
+    0x4600U, 0x0000U, 0x5000U, 0x0880U, 0x5100U, 0x0900U, 0x5200U, 0x0980U}};
 
 // ROM 0x1651E: handle the mode-14/mode-2 projected map effects and the mode-0
 // auxiliary entity setup. The source's A0/A2 records become typed inputs and

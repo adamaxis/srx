@@ -127,7 +127,11 @@ int main() {
     }
 
     if (!expect(kSceneFourteenMapWordA == 0x03ADU &&
-                kSceneFourteenMapWordB == 0x03AEU)) {
+                kSceneFourteenMapWordB == 0x03AEU &&
+                kSceneFourInteractionProfile ==
+                    std::array<std::uint16_t, 8>{
+                        0x4600U, 0x0000U, 0x5000U, 0x0880U, 0x5100U, 0x0900U,
+                        0x5200U, 0x0980U})) {
         return 8;
     }
     WorldMapEffectInput carry_set{};

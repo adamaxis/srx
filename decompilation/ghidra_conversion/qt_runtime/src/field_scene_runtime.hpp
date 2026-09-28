@@ -139,6 +139,13 @@ private:
     std::uint8_t field_projected_terrain_mark_count_ = 0;
     bool field_terrain_render_dirty_ = false;
     std::array<std::uint8_t, 4> field_terrain_sample_state_{};
+    // FFDFE4. Index of the FF1700 collision byte selected by the last 0xE8A0
+    // sample. 0x1651E clears that byte; 0xE9EE may leak A2, but the index is
+    // only defined for the collision table.
+    std::uint16_t field_collision_marker_index_ = 0;
+    // FFE114 when 0x1651E selects the scene-4 interaction record. 0x2B34
+    // consumes it on the next scene entry.
+    std::optional<std::array<std::uint16_t, 8>> field_pending_scene_profile_;
     std::uint8_t field_controller_nibble_ = 0;
     std::uint16_t field_target_heading_ = 0;
     // Typed source field corresponding to FF014C, consumed only by the

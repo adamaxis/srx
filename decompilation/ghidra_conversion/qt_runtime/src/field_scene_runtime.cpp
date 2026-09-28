@@ -1,5 +1,7 @@
 #include "field_scene_runtime.hpp"
 
+#include "shadowrun_ghidra/field/scene_profile_conversion.hpp"
+
 #include "shadowrun_ghidra/audio/audio_command_batch_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_coordinate_conversion.hpp"
 #include "shadowrun_ghidra/field/field_mode_scene_runtime_preparation_conversion.hpp"
@@ -131,8 +133,7 @@ bool FieldSceneRuntime::project_field_world_interaction() {
     input.entity_flags = field_movement_behavior_record_.projected_field_code;
     input.action_requested =
         field_movement_transition_state_.mode_event_code != 0U;
-    input.map_marker_index =
-        field_movement_transition_state_.world_activity_source_word;
+    input.map_marker_index = field_collision_marker_index_;
     input.row_stride = profile.size() > 18U ? profile[18U] : 0;
     input.map_value_a = kSceneFourteenMapWordA;
     input.map_value_b = kSceneFourteenMapWordB;
@@ -151,12 +152,16 @@ bool FieldSceneRuntime::project_field_world_interaction() {
 
     const auto effect = apply_world_map_effect(input);
     if (effect.map_marker_cleared) {
-        // 0x1651E clears one byte through the caller's A2 table. That base
-        // is not either terrain layer, so the clear stays a boundary.
-        source_boundary("field.world.interaction_marker_unresolved");
+        auto& collision_map =
+            state_.field_scene_buffers.source_metadata.terrain_collision_map;
+        if (field_collision_marker_index_ < collision_map.size()) {
+            collision_map[field_collision_marker_index_] = 0U;
+        } else {
+            source_boundary("field.world.interaction_marker_out_of_range");
+        }
     }
     if (effect.special_resource_selected) {
-        source_boundary("field.world.special_resource_unresolved");
+        field_pending_scene_profile_ = kSceneFourInteractionProfile;
     }
     if (effect.world_effect_x_dirty || effect.world_effect_y_dirty) {
         auto& layer = effect.world_effect_y_dirty
@@ -353,7 +358,33 @@ void FieldSceneRuntime::configure_callbacks() {
     };
 
     callbacks_.apply_scene_profile_selection = [this] {
-        source_boundary("field.scene.apply_profile_selection");
+        if (!field_pending_scene_profile_.has_value()) {
+            // The empty-pointer path copies the six FFDE08 position words.
+            // Those records are not the scene-4 interaction profile.
+            source_boundary("field.scene.apply_profile_selection");
+            return;
+        }
+        SceneProfileState profile{};
+        SceneProfileDefaults defaults{};
+        apply_scene_profile_selection(
+            profile, field_pending_scene_profile_, defaults);
+        state_.field_scene_buffers.camera_x = profile.camera_x;
+        state_.field_scene_buffers.camera_y = profile.camera_y;
+        auto& records =
+            state_.field_scene_buffers.source_metadata.initial_field_records;
+        for (std::size_t index = 0;
+             index < profile.runner_positions.size() && index < records.size();
+             ++index) {
+            records[index] = SceneRunnerPosition{
+                profile.runner_positions[index].x,
+                profile.runner_positions[index].y};
+        }
+        if (!profile.runner_positions.empty()) {
+            field_entity_.world_position.x = profile.runner_positions[0].x;
+            field_entity_.world_position.y = profile.runner_positions[0].y;
+            field_movement_state_.position_x = field_entity_.world_position.x;
+            field_movement_state_.position_y = field_entity_.world_position.y;
+        }
     };
     callbacks_.field_viewports.prepare_scene_resources = [this] {
         source_boundary("field.viewport.prepare_scene_resources");
@@ -544,6 +575,8 @@ bool FieldSceneRuntime::bootstrap(
     field_mode_exit_transition_state_ = FieldModeExitTransitionState{};
     field_entity_table_occupancy_ = {};
     field_entity_table_ = {};
+    field_collision_marker_index_ = 0U;
+    field_pending_scene_profile_.reset();
     input_ = integration::FieldSessionBootstrapInput{};
     input_.action_selection_profile_source =
         assets.action_selection_profile_source;
@@ -814,6 +847,12 @@ std::int16_t FieldSceneRuntime::evaluate_field_collision(
                     {}});
             field_terrain_sample_state_ = field_sample_state_from_result(
                 result.packed_sample_state);
+            // Outside the map, 0xE7C8 returns before 0xE8A0, so FFDFE4 stays
+            // at the previous sample.
+            if (!result.state.outside_bounds_marker) {
+                field_collision_marker_index_ =
+                    result.state.sample.selected_tile_index;
+            }
             return CollisionEvaluation{
                 result.code, result.packed_sample_state};
         };
