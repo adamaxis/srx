@@ -2,6 +2,7 @@
 
 #include "shadowrun_ghidra/core/asset_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/timing_conversion.hpp"
+#include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
 #include "shadowrun_ghidra/integration/opening_intro_conversion.hpp"
 #include "shadowrun_ghidra/menus/startup_menu_conversion.hpp"
 #include "shadowrun_ghidra/session/save_field_restore_conversion.hpp"
@@ -103,6 +104,8 @@ struct StartupIntegrationState {
     std::optional<StartupRecordAssets> startup_records;
     std::vector<std::string> startup_record_asset_errors;
     std::optional<SaveRosterBuffer> save_roster_buffer;
+    std::optional<FieldSessionSourceAssets> field_session_source_assets;
+    std::vector<std::string> field_session_source_asset_errors;
     std::optional<JoshuaArchetypeSelection> joshua_selection;
     std::optional<SaveFieldRestoreState> restored_field_state;
     std::optional<SaveFieldRestoreResult> save_field_restore_result;

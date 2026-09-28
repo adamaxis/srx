@@ -273,9 +273,11 @@ int main() {
         !load_state.pre_title_complete || !load_state.boot.display_ready ||
         !load_state.boot.title_ready || load_state.boot.vblank_count != 458U ||
         !load_state.startup_records.has_value() ||
+        !load_state.field_session_source_assets.has_value() ||
         load_state.startup_records->joshua_archetypes.size() != 3U ||
         !load_observations.resource_work_area_zeroed ||
         !has_event(load_state, "assets.verified") ||
+        !has_event(load_state, "field_session_source_records.verified") ||
         !has_event(load_state, "boot.title_ready") ||
         !has_event(load_state, "phase.title_ready")) {
         return 1;

@@ -2274,6 +2274,20 @@ seven-entry cursor's `0x09`/`0x06` directional wrapping, the `0x50` exit,
 `0x13726`, `0x20714`, `0x0391A`, and `0x0E6F4` now have reviewed aliases;
 rendering, world updates, and resource transfers remain explicit callbacks.
 
+The field-session bootstrap now has its two previously implicit source tables as
+direct extracted records. The offline importer writes the five `0x22`-byte
+action-selection profile rows copied by `0x566A2` from ROM `0x166AD8` to
+`records/field/action-selection-profiles.bin`, and the 23 big-endian words
+copied by `0x26938` from `0x14C1F4` to
+`records/field/mode-selection-state.bin`. The runtime conversion addresses
+both through the aliases `records.field.action.selection.profiles` and
+`records.field.mode.selection.state`; it validates the resource kind and exact
+byte size, decodes the mode words, and reports missing or malformed records as
+an incomplete startup rather than inventing defaults. These are the typed
+inputs for `bootstrap_field_session`; the downstream field scene, entity, and
+world callbacks remain separate conversion boundaries and are not implied to be
+complete by the extraction test.
+
 The `0x13726` mode-selection renderer is now
 `render_mode_selection_panels`. It preserves the four source panel passes,
 the two vblank/latch/world-service passes after each upload, the trailing

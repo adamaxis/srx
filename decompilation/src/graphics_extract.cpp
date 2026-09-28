@@ -35,6 +35,41 @@ std::vector<std::uint8_t> read_file(const std::string& path) {
         std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
 }
 
+void write_rom_record(const std::vector<std::uint8_t>& rom,
+                      const std::filesystem::path& root,
+                      const std::string& relative_name,
+                      const std::size_t source_offset,
+                      const std::size_t byte_count) {
+    if (source_offset > rom.size() || byte_count > rom.size() - source_offset) {
+        throw std::runtime_error("ROM record exceeds input image: " +
+                                 relative_name);
+    }
+    const auto path = root / relative_name;
+    std::filesystem::create_directories(path.parent_path());
+    std::ofstream output(path, std::ios::binary | std::ios::trunc);
+    if (!output) {
+        throw std::runtime_error("cannot create ROM record: " + path.string());
+    }
+    output.write(reinterpret_cast<const char*>(rom.data() + source_offset),
+                 static_cast<std::streamsize>(byte_count));
+    if (!output) {
+        throw std::runtime_error("cannot write ROM record: " + path.string());
+    }
+}
+
+void extract_field_session_record_assets(
+    const std::vector<std::uint8_t>& rom,
+    const std::filesystem::path& root) {
+    // These are source records consumed by the converted field-session
+    // bootstrap. They remain raw, individually named host records; the
+    // conversion layer owns their typed interpretation.
+    write_rom_record(rom, root,
+                     "records/field/action-selection-profiles.bin",
+                     0x166AD8U, 5U * 0x22U);
+    write_rom_record(rom, root, "records/field/mode-selection-state.bin",
+                     0x14C1F4U, 0x17U * sizeof(std::uint16_t));
+}
+
 struct CroppedAsset {
     shadowrun::graphics::RgbaImage image;
     std::int32_t origin_x = 0;
@@ -382,6 +417,23 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
         }
     };
     emit_preserved_rows(preserved_state_rows);
+    const auto emit_generated_state_row = [&output, &aliases, &root](
+                                              const char* alias,
+                                              const char* relative) {
+        if (!std::filesystem::is_regular_file(root / relative)) {
+            throw std::runtime_error("generated source record is missing: " +
+                                     std::string(relative));
+        }
+        if (aliases.insert(alias).second) {
+            output << alias << '\t' << relative << "\tstate\t0\t0\n";
+        }
+    };
+    emit_generated_state_row(
+        "records.field.action.selection.profiles",
+        "records/field/action-selection-profiles.bin");
+    emit_generated_state_row(
+        "records.field.mode.selection.state",
+        "records/field/mode-selection-state.bin");
     std::string line;
     std::getline(catalog, line);
     while (std::getline(catalog, line)) {
@@ -667,6 +719,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         }
     }
 
+    extract_field_session_record_assets(rom, root);
     manifest.flush();
     std::filesystem::create_directories(root / "native");
     shadowrun::graphics::write_native_asset_state(

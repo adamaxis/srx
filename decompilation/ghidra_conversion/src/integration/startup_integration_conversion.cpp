@@ -71,9 +71,20 @@ StartupIntegrationStartResult load_startup_assets(
         append_event(state, "startup_records.missing");
     }
 
+    const auto field_session_source =
+        load_field_session_source_assets(state.asset_catalog.catalog);
+    state.field_session_source_asset_errors = field_session_source.errors;
+    if (field_session_source.complete()) {
+        state.field_session_source_assets = *field_session_source.assets;
+        append_event(state, "field_session_source_records.verified");
+    } else {
+        append_event(state, "field_session_source_records.missing");
+    }
+
     if (!state.asset_catalog.complete() ||
         !state.required_boot_assets.complete() ||
-        !state.startup_records.has_value()) {
+        !state.startup_records.has_value() ||
+        !state.field_session_source_assets.has_value()) {
         return StartupIntegrationStartResult::assets_missing;
     }
     return StartupIntegrationStartResult::boot_in_progress;
