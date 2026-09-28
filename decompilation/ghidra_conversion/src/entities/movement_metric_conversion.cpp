@@ -58,12 +58,19 @@ RelativeHeadingMeasurement measure_heading_and_distance(
     if (!x_is_smaller) {
         std::swap(major, minor);
     }
-    const auto distance = static_cast<std::uint32_t>(major + minor / 2U);
+    // 0x15D68..0x15D6C build D0's distance with word operations. Keep the
+    // source low-word wrap even though the native result is carried in a
+    // wider host field for callers that use it in comparisons.
+    const auto distance = static_cast<std::uint32_t>(static_cast<std::uint16_t>(
+        static_cast<std::uint32_t>(major + minor / 2U)));
 
     while (major >= 0x20U) {
         major >>= 1U;
         minor >>= 1U;
     }
+    // 0x15D7E tests the carry left by CMP.W D4,D5. With the source mapping
+    // D4 = delta_x and D5 = delta_y, that carry is true when the y magnitude
+    // is smaller; this is the same branch represented by !x_is_smaller.
     if (!x_is_smaller) {
         std::swap(major, minor);
     }

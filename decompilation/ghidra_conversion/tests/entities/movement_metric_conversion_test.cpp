@@ -72,6 +72,13 @@ int main() {
         return 12;
     }
 
+    // D0 is a word result in 0x15D6C, so the host representation must wrap
+    // the distance before exposing it to callers.
+    if (!expect(measure_heading_and_distance(0x7FFF, 0x7FFF).distance ==
+                0xBFFEU)) {
+        return 21;
+    }
+
     if (!expect(is_entity_target_within_range(
                     0x01U, 0, 0, 100, 0))) {
         return 13;

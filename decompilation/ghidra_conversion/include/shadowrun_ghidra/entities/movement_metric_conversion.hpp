@@ -7,6 +7,8 @@ namespace shadowrun::ghidra_conversion {
 
 struct RelativeHeadingMeasurement {
     std::uint16_t heading = 0;
+    // The source publishes this as D3.w. The host keeps a wider comparison
+    // type for callers, but the conversion wraps the computed word first.
     std::uint32_t distance = 0;
 };
 
