@@ -2093,6 +2093,15 @@ codes, sets the directional marker for bit `0x40`, and routes object versus
 directional codes through typed callbacks. `TerrainCollisionResult` carries
 the result and marker state without exposing source RAM or emulating the VDP.
 
+The blocked-movement continuation also now has the complete source input for
+`0xBC36`: ROM `0x0BD34` is a 48-byte table of four banks, each containing
+three signed `(x,y)` probe offsets. The first negative byte among
+`FFEF10..12` is rotated left three bits and masked to select the bank; the
+converted loader exposes those offsets as `CollisionProbeOffsetBank` data and
+the runtime must pass the typed terrain samples to `build_collision_probe_points`
+before invoking `0xB7B8`. This is a direct extracted record, not a runtime ROM
+lookup.
+
 ## Terrain collision-map rebuild audit
 
 `0xEE10` now consumes the `FFDF8A` rebuild request, clears the complete

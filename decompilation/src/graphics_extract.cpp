@@ -232,6 +232,13 @@ void extract_field_session_record_assets(
     write_rom_record(
         rom, root, "records/field/entity-movement-direction-table.bin",
         0x0C002U, 8U * 4U);
+    // ROM 0xBC36 selects one of four three-point collision-probe banks from
+    // the signed FFEF10..12 sample bytes. Keep the complete 4 x 3 x 2-word
+    // source table as one direct record; the conversion loader interprets the
+    // big-endian signed offsets and the runtime never reads ROM addresses.
+    write_rom_record(
+        rom, root, "records/field/entity-collision-probe-offset-banks.bin",
+        0x0BD34U, 4U * 3U * 2U * sizeof(std::uint16_t));
     // ROM 0x195C indexes this sixteen-word D-pad/heading table before the
     // movement heading is slewed and converted to a vector-table ordinal.
     write_rom_record(
@@ -608,9 +615,11 @@ void write_asset_readme(const std::filesystem::path& root) {
               "records are direct source records; the conversion loader "
               "interprets each into typed field state and host collision maps "
               "without making the runtime read ROM addresses. The source "
-              "movement vector table at `0xC002` is likewise one named direct "
-              "record consumed as typed directional offsets by the conversion "
-               "layer. The `0x19D2` controller-heading table is kept beside it "
+               "movement vector table at `0xC002` is likewise one named direct "
+               "record consumed as typed directional offsets by the conversion "
+               "layer. The `0xBD34` collision-probe offset banks are kept as "
+               "one four-bank direct record beside it. The `0x19D2` "
+               "controller-heading table is kept beside it "
                "as one sixteen-word direct record. The `0xBBF6` aligned-route "
                "table is kept as four six-byte semantic records after its "
                "FFEF10..13 sample pointers are resolved offline.\n";
@@ -714,6 +723,9 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
     emit_generated_state_row(
         "records.field.entity.movement.direction.table",
         "records/field/entity-movement-direction-table.bin");
+    emit_generated_state_row(
+        "records.field.entity.collision.probe.offset.banks",
+        "records/field/entity-collision-probe-offset-banks.bin");
     emit_generated_state_row(
         "records.field.entity.controller.heading.table",
         "records/field/entity-controller-heading-table.bin");

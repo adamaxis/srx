@@ -1,6 +1,7 @@
 #pragma once
 
 #include "shadowrun_ghidra/core/asset_catalog_conversion.hpp"
+#include "shadowrun_ghidra/entities/collision_probe_conversion.hpp"
 #include "shadowrun_ghidra/field/field_movement_input_conversion.hpp"
 #include "shadowrun_ghidra/entities/movement_probe_conversion.hpp"
 #include "shadowrun_ghidra/entities/movement_route_conversion.hpp"
@@ -37,6 +38,11 @@ constexpr std::size_t kFieldMapEventTableByteCount = 32U;
 constexpr std::size_t kFieldMovementDirectionCount = 8U;
 constexpr std::size_t kFieldMovementDirectionTableByteCount =
     kFieldMovementDirectionCount * 2U * sizeof(std::uint16_t);
+constexpr std::size_t kFieldCollisionProbeOffsetBankCount = 4U;
+constexpr std::size_t kFieldCollisionProbePointCount = 3U;
+constexpr std::size_t kFieldCollisionProbeOffsetBankByteCount =
+    kFieldCollisionProbeOffsetBankCount * kFieldCollisionProbePointCount *
+    2U * sizeof(std::uint16_t);
 constexpr std::size_t kFieldControllerHeadingTableCount = 16U;
 constexpr std::size_t kFieldControllerHeadingTableByteCount =
     kFieldControllerHeadingTableCount * sizeof(std::uint16_t);
@@ -105,6 +111,10 @@ struct FieldSessionSourceAssets {
     // the converted 0x0BABC/0x0B77E movement probe path.
     std::array<MovementOffset, kFieldMovementDirectionCount>
         field_movement_direction_offsets{};
+    // ROM 0x0BC36 selects one of four three-point banks at 0x0BD34 after
+    // rotating the signed terrain-probe bytes. These are typed signed
+    // offsets, not source pointers or runtime address tokens.
+    CollisionProbeOffsetBank field_collision_probe_offset_banks{};
     // ROM 0x019D2, normalized D-pad nibble to target heading.
     std::array<std::uint16_t, kFieldControllerHeadingTableCount>
         field_controller_heading_table{};

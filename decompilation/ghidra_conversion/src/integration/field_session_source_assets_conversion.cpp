@@ -22,6 +22,8 @@ constexpr const char* kMode0EventTableAlias =
     "records.field.mode.0.event.table";
 constexpr const char* kFieldMovementDirectionTableAlias =
     "records.field.entity.movement.direction.table";
+constexpr const char* kFieldCollisionProbeOffsetBanksAlias =
+    "records.field.entity.collision.probe.offset.banks";
 constexpr const char* kFieldControllerHeadingTableAlias =
     "records.field.entity.controller.heading.table";
 constexpr const char* kFieldMovementRouteTableAlias =
@@ -163,6 +165,23 @@ decode_field_movement_direction_offsets(
     return offsets;
 }
 
+CollisionProbeOffsetBank decode_field_collision_probe_offset_banks(
+    const std::vector<std::uint8_t>& bytes) {
+    CollisionProbeOffsetBank banks{};
+    std::size_t offset = 0;
+    for (auto& bank : banks) {
+        for (auto& point : bank) {
+            point.x = static_cast<std::int16_t>(
+                read_big_endian_word(bytes, offset));
+            offset += sizeof(std::uint16_t);
+            point.y = static_cast<std::int16_t>(
+                read_big_endian_word(bytes, offset));
+            offset += sizeof(std::uint16_t);
+        }
+    }
+    return banks;
+}
+
 std::array<std::uint16_t, kFieldControllerHeadingTableCount>
 decode_field_controller_heading_table(
     const std::vector<std::uint8_t>& bytes) {
@@ -221,6 +240,9 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
     const auto movement_direction_table = read_record_bytes(
         catalog, kFieldMovementDirectionTableAlias,
         kFieldMovementDirectionTableByteCount, result.errors);
+    const auto collision_probe_offset_banks = read_record_bytes(
+        catalog, kFieldCollisionProbeOffsetBanksAlias,
+        kFieldCollisionProbeOffsetBankByteCount, result.errors);
     const auto controller_heading_table = read_record_bytes(
         catalog, kFieldControllerHeadingTableAlias,
         kFieldControllerHeadingTableByteCount, result.errors);
@@ -250,6 +272,7 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
         !mode0_collision_rectangles.has_value() ||
         !mode0_event_table.has_value() ||
         !movement_direction_table.has_value() ||
+        !collision_probe_offset_banks.has_value() ||
         !controller_heading_table.has_value() ||
         !movement_route_table.has_value() ||
         !terrain_layer_a.has_value() || !terrain_layer_b.has_value() ||
@@ -283,6 +306,8 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
         assets.mode0_terrain_collision_rectangles, [](auto&) {});
     assets.field_movement_direction_offsets =
         decode_field_movement_direction_offsets(*movement_direction_table);
+    assets.field_collision_probe_offset_banks =
+        decode_field_collision_probe_offset_banks(*collision_probe_offset_banks);
     assets.field_controller_heading_table =
         decode_field_controller_heading_table(*controller_heading_table);
     assets.field_movement_routes =

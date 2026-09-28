@@ -130,6 +130,24 @@ int main() {
             return 14;
         }
     }
+    const auto& collision_probe_banks =
+        source.assets->field_collision_probe_offset_banks;
+    const CollisionProbeOffsetBank expected_collision_probe_banks{{
+        {{{0, -320}, {-320, -320}, {320, -320}}},
+        {{{480, 0}, {320, 320}, {320, -320}}},
+        {{{0, 320}, {320, 320}, {-320, 320}}},
+        {{{-480, 0}, {-256, 320}, {-256, -256}}}}};
+    for (std::size_t bank = 0; bank < collision_probe_banks.size(); ++bank) {
+        for (std::size_t point = 0;
+             point < collision_probe_banks[bank].size(); ++point) {
+            if (collision_probe_banks[bank][point].x !=
+                    expected_collision_probe_banks[bank][point].x ||
+                collision_probe_banks[bank][point].y !=
+                    expected_collision_probe_banks[bank][point].y) {
+                return 17;
+            }
+        }
+    }
     const std::array<std::uint16_t, kFieldControllerHeadingTableCount>
         expected_heading_table{{
             0xFFFFU, 0x0000U, 0x8000U, 0xFFFFU,
