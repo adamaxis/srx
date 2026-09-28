@@ -1,5 +1,7 @@
 #pragma once
 
+#include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
+
 #include <cstdint>
 #include <functional>
 
@@ -60,6 +62,14 @@ std::uint32_t calculate_field_action_record_cost(
     const FieldActionCostRecord& record,
     const FieldActionCostContext& context,
     const FieldActionBaseCostLookup& base_cost_lookup);
+
+// Source-data-bound overload for the US ROM.  Unlike the ordinary item-code
+// helper, 0x57A44 uses record.type as a zero-based D4540 row index, so byte 0
+// selects catalog[0] and byte 49 selects catalog[49].
+std::uint32_t calculate_field_action_record_cost(
+    const FieldActionCostRecord& record,
+    const FieldActionCostContext& context,
+    const UsItemCatalog& catalog);
 
 // ROM 0x57B42.  Large costs use a byte-scaled adjustment ten times instead of
 // the normal cost >> 5 path.  The source selects this after the cost exceeds

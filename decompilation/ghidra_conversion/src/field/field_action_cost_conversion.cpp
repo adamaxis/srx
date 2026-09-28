@@ -33,6 +33,24 @@ std::uint32_t runner_margin(const FieldActionCostContext& context) {
     return std::min<std::uint32_t>(wrapped_margin, 10U);
 }
 
+std::uint32_t calculate_field_action_record_cost_from_base_cost(
+    const std::uint16_t source_base_cost,
+    const FieldActionCostRecord& record,
+    const FieldActionCostContext& context) {
+    auto base_cost = static_cast<std::uint32_t>(source_base_cost);
+    if (record.quantity != 0U) {
+        // 0x57A62 performs a 68000 word multiply/divide and then keeps the
+        // resulting 32-bit value's low word. Host values remain wide until
+        // this explicit source-visible truncation point.
+        const auto scaled =
+            (static_cast<std::uint64_t>(base_cost) *
+             static_cast<std::uint32_t>(record.quantity)) /
+            10U;
+        base_cost = static_cast<std::uint32_t>(scaled & 0xFFFFU);
+    }
+    return apply_field_action_cost_discounts(base_cost, context);
+}
+
 } // namespace
 
 std::uint32_t calculate_field_action_quantity_cost(
@@ -89,17 +107,23 @@ std::uint32_t calculate_field_action_record_cost(
     }
 
     // The source loads a word from +0x22 before doing any quantity scaling.
-    auto base_cost = base_cost_lookup(record.type) & 0xFFFFU;
-    if (record.quantity != 0U) {
-        // 0x57A62 performs a 68000 word multiply/divide and then keeps the
-        // resulting 32-bit value's low word.  Host values are kept wide until
-        // this explicit source-visible truncation point.
-        const auto scaled = (static_cast<std::uint64_t>(base_cost) *
-                             static_cast<std::uint32_t>(record.quantity)) /
-                            10U;
-        base_cost = static_cast<std::uint32_t>(scaled & 0xFFFFU);
+    return calculate_field_action_record_cost_from_base_cost(
+        static_cast<std::uint16_t>(base_cost_lookup(record.type) & 0xFFFFU),
+        record, context);
+}
+
+std::uint32_t calculate_field_action_record_cost(
+    const FieldActionCostRecord& record,
+    const FieldActionCostContext& context,
+    const UsItemCatalog& catalog) {
+    // 0x57A44 multiplies the source byte by 0x30 before reading D4540 +0x22.
+    // This is deliberately not find_us_item_definition(), whose public item
+    // code is one-based for ordinary inventory consumers.
+    if (record.type >= catalog.size()) {
+        return 0U;
     }
-    return apply_field_action_cost_discounts(base_cost, context);
+    return calculate_field_action_record_cost_from_base_cost(
+        catalog[record.type].base_cost, record, context);
 }
 
 std::uint32_t apply_large_field_action_cost_discount(

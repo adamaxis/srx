@@ -99,11 +99,24 @@ int main() {
         return 12;
     }
 
+    context = {};
+    const auto& item_catalog = us_item_catalog();
+    // 0x57A44 treats byte 0 as a zero-based D4540 row.  Type 0 therefore
+    // consumes the one-based item 1 cost of 100, not item 0 or item 2.
+    if (!expect(calculate_field_action_record_cost(
+                    {0U, 0U, 2U}, context, item_catalog) == 20U &&
+                calculate_field_action_record_cost(
+                    {4U, 0U, 0U}, context, item_catalog) == 0x00F4U &&
+                calculate_field_action_record_cost(
+                    {50U, 0U, 0U}, context, item_catalog) == 0U)) {
+        return 13;
+    }
+
     context.runner_cost_stat = 13U;
     context.runner_discount_threshold = 3U;
     if (!expect(apply_large_field_action_cost_discount(0x10000U, context) ==
                 0x9C00U)) {
-        return 13;
+        return 14;
     }
 
     return 0;

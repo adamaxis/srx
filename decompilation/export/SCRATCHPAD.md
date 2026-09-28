@@ -1331,10 +1331,13 @@ separate `shadowrun_ghidra_field_action_cost` conversion library in
 * `0x5787C` calculates a quantity cost from the primary action category:
   category 0 is `quantity^3 * 25`, categories 1 and 2 are
   `quantity^2 * 3 * 100`, and category 3+ is `quantity^2 * 2 * 100`.
-* `0x57A44` reads a selected three-byte action record. Its first byte indexes
-  the source record table at `0xD4540`, where the base rate is the word at
-  record offset `+0x22`. A nonzero third byte scales that rate by
-  `quantity / 10`, with the source low-word truncation preserved explicitly.
+* `0x57A44` reads a selected three-byte action record. Its first byte is a
+  zero-based row index into the fifty `0x30`-byte US records at `0xD4540`,
+  where the base rate is the word at record offset `+0x22`. The conversion now
+  exposes that complete confirmed item slice as `UsItemCatalog`; ordinary
+  one-based item lookup remains a separate helper. A nonzero third byte scales
+  the selected rate by `quantity / 10`, with the source low-word truncation
+  preserved explicitly.
 * `0x57A6E` applies the mode-specific feature flags before charging/display:
   mode 4 plus `FF018F` bit `0x40` removes 10%, mode 5 plus bit `0x80` removes
   25%, mode 2 plus bit `0x04` halves the amount, and mode 8 plus bit `0x02`
@@ -1351,11 +1354,12 @@ separate `shadowrun_ghidra_field_action_cost` conversion library in
   `0x10000`. It calculates `(cost >> 8) * margin` once and subtracts that
   same value ten times; it does not recompute the shifting amount each pass.
 
-The native code takes typed mode/feature/runner values and a base-rate lookup
-callback. It has no ROM-address reads, emulated registers, or dependency on
-the runtime/emulator. The exact game-facing names of the four mode categories
-and the active-runner `+0x8C` stat remain data-table work; the cost behavior
-itself is now explicit and tested.
+The native code takes typed mode/feature/runner values and the conversion-owned
+US item catalog. The callback overload remains only as an explicit audit
+adapter for alternate tables. It has no ROM-address reads, emulated registers,
+or dependency on the runtime/emulator. The exact game-facing names of the four
+mode categories and the active-runner `+0x8C` stat remain data-table work; the
+cost behavior and its confirmed D4540 source data are now explicit and tested.
 
 ## Field resource-record purchase conversion: 0x573FC
 
