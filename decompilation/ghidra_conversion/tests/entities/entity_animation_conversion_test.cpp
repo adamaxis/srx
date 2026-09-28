@@ -34,17 +34,19 @@ int main() {
         return 3;
     }
 
-    const auto standard = select_entity_animation_table_row(0, 3U);
-    if (!expect(standard.bank == EntityAnimationTableBank::Standard &&
-                standard.row_byte_offset == 0x60U)) {
+    const auto equipment = select_entity_motion_action_row(0, 3U);
+    if (!expect(equipment.table == EntityMotionActionTable::EquipmentItem &&
+                equipment.one_based_action_code == 3U &&
+                equipment.row_byte_offset == 0x60U)) {
         return 4;
     }
-    const auto alternate = select_entity_animation_table_row(-1, 1U);
-    if (!expect(alternate.bank == EntityAnimationTableBank::Alternate &&
-                alternate.row_byte_offset == 0U)) {
+    const auto magic = select_entity_motion_action_row(-1, 1U);
+    if (!expect(magic.table == EntityMotionActionTable::MagicSpell &&
+                magic.one_based_action_code == 1U &&
+                magic.row_byte_offset == 0U)) {
         return 5;
     }
-    const auto zero_id = select_entity_animation_table_row(0, 0U);
+    const auto zero_id = select_entity_motion_action_row(0, 0U);
     if (!expect(zero_id.row_byte_offset == 0xFFD0U)) {
         return 6;
     }

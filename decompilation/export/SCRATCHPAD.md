@@ -917,7 +917,7 @@ still has unresolved downstream calls or hardware presentation work.
 | `0x15CC0` | `compute_diagonal_step_cost` | Loads two record coordinate pairs, performs the same low-word absolute-difference, unsigned-major-axis, `ASR.W`/carry-round, and `ADD.W` sequence as `0x15CA4`; the host API exposes deltas only after the record loads have been modeled. | `ghidra_conversion::compute_diagonal_step_cost()` | partial |
 | `0x15D3C` | `measure_relative_heading_and_distance` | Subtracts two world positions and derives the source fixed-point heading plus half-major-axis distance. | `ghidra_conversion::measure_relative_heading_and_distance()` | partial |
 | `0x14D58` | `measure_entity_target_heading_and_distance` | Loads the current and linked entity positions before applying the shared relative heading/distance metric; the source preserves unrelated caller registers. | `ghidra_conversion::measure_entity_target_heading_and_distance()` | partial |
-| `0x14D6A` | `select_entity_animation_table_row` | Selects the standard or alternate table from the signed entity variant and converts the one-based animation id into a `0x30`-byte row offset. | `ghidra_conversion::select_entity_animation_table_row()` | partial |
+| `0x14D6A` | `select_entity_motion_action_row` | Selects D4540 for a nonnegative active action state or D4EA0 for a negative one, then converts the one-based action code into a `0x30`-byte row whose `+0x27` motion-distance profile is consumed by `0x13D0C`. | `ghidra_conversion::select_entity_motion_action_row()` | partial |
 | `0x14C7C` | `resolve_entity_target_motion` | Dispatches entity types `0xC`, `0xD`, and `0xE`: type `0xC` applies the `<0x300`, `0x300..0x5FF`, and far bands, allocates the close-effect slot when `+0xDC` is negative, and writes its D0/D1 slot record fields; types `0xD/E` temporarily project `+0x2E`, use `0x15C84`'s `+0x34` carry, restore the old current heading, and only commit both heading fields when the mode gate allows it. | `ghidra_conversion::resolve_entity_target_motion()` | partial |
 | `0x14F26` | `probe_entity_world_position` | Combines a record's fixed-point world coordinates with signed `0x100` tile offsets before invoking the terrain-probe boundary. | `ghidra_conversion::probe_entity_world_position()` | partial |
 | `0x14F50` | `advance_entity_collision_recovery` | Retries an empty/boundary terrain result through `+0x89`, returns carry on terrain rejection or retry exhaustion, commits D5/D6 only for a live retry, and forwards the `0x15ABA` collision carry. | `ghidra_conversion::advance_entity_collision_recovery()` | partial |
@@ -1675,6 +1675,13 @@ Important source checks from this pass:
   the action code and all four source skill bytes, so the selector is not
   hidden in a precomputed generic skill. This is recorded as a decompiler
   omission, not treated as a no-op.
+* `0x14D6A` is not an animation-frame-table selector. `0x13D0C` calls it while
+  advancing entity motion, then reads the selected D4540 equipment-item or
+  D4EA0 magic-spell row's `+0x27` byte and uses it to choose a pair of movement
+  distance thresholds from `0x13E7C`. The typed conversion therefore names
+  the result as an action row selection and records the source table family;
+  it does not pretend that a Genesis ROM pointer is a runtime animation
+  object.
 * `0x12148` uses the same source shape with `MULU.W #2` and `ADD.B`: the row
   product's high byte survives while the column wraps the low byte. The typed
   action-code lookup now preserves that word index and tests the `0x80` row

@@ -6,7 +6,7 @@
 //   0x00013A40 copy_entity_anchor_position
 //   0x000144E8 apply_entity_close_range_state
 //   0x000145A2 advance_entity_animation_target_route
-//   0x00014D6A select_entity_animation_table_row
+//   0x00014D6A select_entity_motion_action_row
 //   0x00015D3C measure_relative_heading_and_distance
 //   0x00015DCC transform_entity_heading_vector
 
@@ -75,7 +75,7 @@ ushort * run_entity_animation_motion(void)
   if ((extraout_A0[8] & 0x800) == 0) {
     if (*(char *)((int)extraout_A0 + 0xb5) != '\0') {
       *(char *)((int)extraout_A0 + 0xb5) = *(char *)((int)extraout_A0 + 0xb5) + -1;
-      select_entity_animation_table_row();
+      select_entity_motion_action_row();
       bVar1 = *(byte *)(unaff_A2 + 0x27);
       puVar10 = &DAT_00013e7c;
       in_A0 = extraout_A0_00;

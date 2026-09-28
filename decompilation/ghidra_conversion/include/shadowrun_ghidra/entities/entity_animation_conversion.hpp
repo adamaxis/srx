@@ -12,13 +12,16 @@ struct EntityAnimationState {
     bool redraw_requested = false;
 };
 
-enum class EntityAnimationTableBank {
-    Standard,
-    Alternate,
+enum class EntityMotionActionTable {
+    EquipmentItem,
+    MagicSpell,
 };
 
-struct EntityAnimationTableSelection {
-    EntityAnimationTableBank bank = EntityAnimationTableBank::Standard;
+struct EntityMotionActionRowSelection {
+    // 0x14D6A selects D4540 for ordinary equipment actions and D4EA0 for
+    // the signed alternate/magic action state before 0x13D0C reads +0x27.
+    EntityMotionActionTable table = EntityMotionActionTable::EquipmentItem;
+    std::uint8_t one_based_action_code = 0;
     std::uint16_t row_byte_offset = 0;
 };
 
@@ -26,11 +29,13 @@ struct EntityAnimationTableSelection {
 // period is reached, and request a redraw for that frame transition.
 void advance_entity_animation_accumulator(EntityAnimationState& state);
 
-// ROM 0x14D6A: select the standard or alternate 0x30-byte animation table
-// from the signed entity variant and convert the one-based animation id into
-// the source row byte offset.
-EntityAnimationTableSelection select_entity_animation_table_row(
-    std::int8_t entity_variant,
-    std::uint8_t animation_id);
+// ROM 0x14D6A: select the active equipment-item or magic-spell 0x30-byte
+// action row for the entity-motion distance profile. The source chooses the
+// table from +0x56's sign and converts +0x57's one-based code into the row
+// byte offset; 0x13D0C then consumes that row's +0x27 byte as its threshold
+// profile index.
+EntityMotionActionRowSelection select_entity_motion_action_row(
+    std::int8_t active_action_state,
+    std::uint8_t one_based_action_code);
 
 } // namespace shadowrun::ghidra_conversion
