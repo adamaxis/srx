@@ -105,26 +105,60 @@ EntityAnimationMotionResult run_entity_animation_motion(
             state.distance_type);
     } else if (state.delay != 0U) {
         state.delay = static_cast<std::uint8_t>(state.delay - 1U);
-        if (!callbacks.select_phase_distance) {
-            result.distance_table_unresolved = true;
-            return result;
-        }
-        const auto selection = callbacks.select_phase_distance(
-            state.animation_frame < 0, state.animation_phase);
-        if (!selection.has_value()) {
-            result.distance_table_unresolved = true;
-            return result;
-        }
         result.distance_table_used = true;
-        result.distance_table_index = selection->distance_index;
-        result.phase_source_row = selection->source_row;
+        std::optional<std::uint8_t> distance_index;
+        if (callbacks.item_catalog != nullptr &&
+            callbacks.magic_spell_catalog != nullptr) {
+            const auto selection = select_entity_motion_action_row(
+                state.animation_frame, state.animation_phase);
+            result.phase_source_row = selection.row_byte_offset;
+            const auto row_index = static_cast<std::size_t>(
+                static_cast<std::uint16_t>(state.animation_phase) - 1U);
+            if (selection.table == EntityMotionActionTable::EquipmentItem) {
+                if (row_index >= callbacks.item_catalog->size() ||
+                    (*callbacks.item_catalog)[row_index].item_code !=
+                        state.animation_phase) {
+                    result.source_data_missing = true;
+                    result.distance_table_unresolved = true;
+                    return result;
+                }
+                distance_index = (*callbacks.item_catalog)[row_index]
+                                     .source_action_parameter_tail;
+            } else {
+                if (row_index >= callbacks.magic_spell_catalog->size() ||
+                    (*callbacks.magic_spell_catalog)[row_index].spell_code !=
+                        static_cast<std::uint8_t>(
+                            state.animation_phase - 1U)) {
+                    result.source_data_missing = true;
+                    result.distance_table_unresolved = true;
+                    return result;
+                }
+                distance_index = static_cast<std::uint8_t>(
+                    (*callbacks.magic_spell_catalog)[row_index]
+                        .attribute_selector);
+            }
+        } else {
+            if (!callbacks.select_phase_distance) {
+                result.distance_table_unresolved = true;
+                return result;
+            }
+            const auto selection = callbacks.select_phase_distance(
+                state.animation_frame < 0, state.animation_phase);
+            if (!selection.has_value()) {
+                result.distance_table_unresolved = true;
+                return result;
+            }
+            distance_index = selection->distance_index;
+            result.phase_source_row = selection->source_row;
+        }
+        result.distance_table_index = *distance_index;
         if (!callbacks.distance_bounds) {
             result.distance_table_unresolved = true;
             return result;
         }
         bounds = callbacks.distance_bounds(
             EntityAnimationDistanceTable::by_animation_phase,
-            selection->distance_index);
+            *distance_index);
     }
 
     if (bounds.has_value()) {

@@ -7,8 +7,8 @@ using namespace shadowrun::ghidra_conversion;
 
 int main() {
     std::vector<int> calls;
-    EntityAnimationMotionCallbacks finish_callbacks{
-        {}, {}, {}, {}, {}, [&] { calls.push_back(1); }, {}};
+    EntityAnimationMotionCallbacks finish_callbacks{};
+    finish_callbacks.continue_to_target_update = [&] { calls.push_back(1); };
 
     EntityAnimationMotionState early{};
     early.global_phase_active = true;
@@ -31,8 +31,10 @@ int main() {
     mode_two.animation_mode = 2U;
     mode_two.linked_position = EntityAnimationPoint{0x1234U, 0x5678U};
     int continued = 0;
+    EntityAnimationMotionCallbacks mode_two_callbacks{};
+    mode_two_callbacks.continue_to_target_update = [&] { ++continued; };
     const auto mode_two_result = run_entity_animation_motion(
-        mode_two, {{}, {}, {}, {}, {}, [&] { ++continued; }, {}});
+        mode_two, mode_two_callbacks);
     assert(mode_two_result.linked_position_copied && mode_two_result.routed_to_target_update &&
            mode_two.target_position.x == 0x1234U &&
            mode_two.target_position.y == 0x5678U && continued == 1);
@@ -44,25 +46,28 @@ int main() {
     normal.route_flags = 0x10U;
     normal.distance_type = 3U;
     normal.frame_counter = 0x0030U;
-    EntityAnimationMotionCallbacks normal_callbacks{
+    EntityAnimationMotionCallbacks normal_callbacks{};
+    normal_callbacks.measure_heading_distance =
         [](const EntityAnimationPoint&, const EntityAnimationPoint&) {
             return std::optional<EntityAnimationHeadingDistance>(
                 EntityAnimationHeadingDistance{0x1000U, 0x0020U});
-        },
+        };
+    normal_callbacks.distance_bounds =
         [](const EntityAnimationDistanceTable table, const std::uint8_t index) {
             assert(table == EntityAnimationDistanceTable::by_entity_type && index == 3U);
             return std::optional<EntityAnimationDistanceBounds>(
                 EntityAnimationDistanceBounds{0x0030U, 0x0040U});
-        },
-        {},
+        };
+    normal_callbacks.transform_vector =
         [](const std::uint16_t direction, const std::uint16_t magnitude) {
             assert(direction == 0x5000U && magnitude == 0x0040U);
             return std::optional<EntityAnimationVectorDelta>(
                 EntityAnimationVectorDelta{0x0010U, 0xFFF0U});
-        },
-        [] { return std::optional<bool>(false); },
-        [&] { ++continued; },
-        {}};
+        };
+    normal_callbacks.evaluate_position_gate = [] {
+        return std::optional<bool>(false);
+    };
+    normal_callbacks.continue_to_target_update = [&] { ++continued; };
     const auto normal_result = run_entity_animation_motion(
         normal, normal_callbacks);
     assert(normal_result.distance_table_used && normal_result.target_position_built &&
@@ -104,32 +109,91 @@ int main() {
     phase_table.animation_phase = 3U;
     phase_table.frame_counter = 0x0040U;
     bool phase_selector_called = false;
+    EntityAnimationMotionCallbacks phase_callbacks{};
+    phase_callbacks.measure_heading_distance =
+        [](const EntityAnimationPoint&, const EntityAnimationPoint&) {
+            return std::optional<EntityAnimationHeadingDistance>(
+                EntityAnimationHeadingDistance{0U, 1U});
+        };
+    phase_callbacks.distance_bounds =
+        [&](const EntityAnimationDistanceTable table, const std::uint8_t index) {
+            assert(table == EntityAnimationDistanceTable::by_animation_phase && index == 5U);
+            return std::optional<EntityAnimationDistanceBounds>(
+                EntityAnimationDistanceBounds{2U, 3U});
+        };
+    phase_callbacks.select_phase_distance =
+        [&](const bool negative, const std::uint8_t phase)
+            -> std::optional<EntityAnimationPhaseDistanceSelection> {
+            phase_selector_called = true;
+            assert(negative && phase == 3U);
+            return EntityAnimationPhaseDistanceSelection{5U, 7U};
+        };
+    phase_callbacks.transform_vector =
+        [](const std::uint16_t, const std::uint16_t) {
+            return std::optional<EntityAnimationVectorDelta>(
+                EntityAnimationVectorDelta{0U, 0U});
+        };
+    phase_callbacks.evaluate_position_gate = [] {
+        return std::optional<bool>(false);
+    };
     const auto phase_result = run_entity_animation_motion(
-        phase_table,
-        {[](const EntityAnimationPoint&, const EntityAnimationPoint&) {
-             return std::optional<EntityAnimationHeadingDistance>(
-                 EntityAnimationHeadingDistance{0U, 1U});
-         },
-         [](const EntityAnimationDistanceTable table, const std::uint8_t index) {
-             assert(table == EntityAnimationDistanceTable::by_animation_phase && index == 5U);
-             return std::optional<EntityAnimationDistanceBounds>(
-                 EntityAnimationDistanceBounds{2U, 3U});
-         },
-         [&](const bool negative, const std::uint8_t phase)
-             -> std::optional<EntityAnimationPhaseDistanceSelection> {
-             phase_selector_called = true;
-             assert(negative && phase == 3U);
-             return EntityAnimationPhaseDistanceSelection{5U, 7U};
-         },
-         [](const std::uint16_t, const std::uint16_t) {
-             return std::optional<EntityAnimationVectorDelta>(
-                 EntityAnimationVectorDelta{0U, 0U});
-         },
-         [] { return std::optional<bool>(false); },
-         {},
-         {}});
+        phase_table, phase_callbacks);
     assert(phase_selector_called && phase_result.distance_table_used &&
            phase_result.phase_source_row == 7U && phase_table.delay == 1U);
+
+    // Source-bound delay selection follows 0x14D6A into D4540 and consumes
+    // item 43's actual +0x27 profile byte. No generic phase selector is used.
+    EntityAnimationMotionState source_phase_table{};
+    source_phase_table.current_position = {1U, 2U};
+    source_phase_table.linked_position = EntityAnimationPoint{4U, 6U};
+    source_phase_table.delay = 2U;
+    source_phase_table.animation_frame = 0;
+    source_phase_table.animation_phase = 43U;
+    source_phase_table.frame_counter = 0x0040U;
+    EntityAnimationMotionCallbacks source_phase_callbacks{};
+    source_phase_callbacks.measure_heading_distance =
+        [](const EntityAnimationPoint&, const EntityAnimationPoint&) {
+            return std::optional<EntityAnimationHeadingDistance>(
+                EntityAnimationHeadingDistance{0U, 1U});
+        };
+    source_phase_callbacks.distance_bounds =
+        [](const EntityAnimationDistanceTable table, const std::uint8_t index) {
+            assert(table == EntityAnimationDistanceTable::by_animation_phase &&
+                   index == 2U);
+            return std::optional<EntityAnimationDistanceBounds>(
+                EntityAnimationDistanceBounds{2U, 3U});
+        };
+    source_phase_callbacks.item_catalog = &us_item_catalog();
+    source_phase_callbacks.magic_spell_catalog = &us_magic_spell_catalog();
+    source_phase_callbacks.transform_vector =
+        [](const std::uint16_t, const std::uint16_t) {
+            return std::optional<EntityAnimationVectorDelta>(
+                EntityAnimationVectorDelta{0U, 0U});
+        };
+    source_phase_callbacks.evaluate_position_gate = [] {
+        return std::optional<bool>(false);
+    };
+    const auto source_phase_result = run_entity_animation_motion(
+        source_phase_table, source_phase_callbacks);
+    assert(source_phase_result.distance_table_used &&
+           !source_phase_result.source_data_missing &&
+           source_phase_result.distance_table_index == 2U &&
+           source_phase_result.phase_source_row == 0x07E0U &&
+           source_phase_table.delay == 1U);
+
+    auto missing_source_phase = source_phase_table;
+    missing_source_phase.animation_phase = 51U;
+    EntityAnimationMotionCallbacks missing_source_callbacks =
+        source_phase_callbacks;
+    missing_source_callbacks.item_catalog = &us_item_catalog();
+    missing_source_callbacks.magic_spell_catalog = &us_magic_spell_catalog();
+    missing_source_callbacks.distance_bounds = {};
+    missing_source_callbacks.transform_vector = {};
+    missing_source_callbacks.evaluate_position_gate = {};
+    const auto missing_source_result = run_entity_animation_motion(
+        missing_source_phase, missing_source_callbacks);
+    assert(missing_source_result.source_data_missing &&
+           missing_source_result.distance_table_unresolved);
 
     EntityAnimationMotionState terrain = normal;
     terrain.terrain_gate = 1U;

@@ -1,5 +1,9 @@
 #pragma once
 
+#include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
+#include "shadowrun_ghidra/core/magic_spell_catalog_conversion.hpp"
+#include "shadowrun_ghidra/entities/entity_animation_conversion.hpp"
+
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -77,6 +81,12 @@ struct EntityAnimationMotionCallbacks {
     EntityAnimationHeadingDistanceCalculator measure_heading_distance;
     EntityAnimationDistanceBoundsProvider distance_bounds;
     EntityAnimationPhaseDistanceSelector select_phase_distance;
+    // Source-bound callers provide both decoded action tables. The motion
+    // path then calls 0x14D6A and reads the selected row's +0x27 profile
+    // directly; the selector callback remains an explicit audit adapter when
+    // source records have not yet been supplied.
+    const UsItemCatalog* item_catalog = nullptr;
+    const UsMagicSpellCatalog* magic_spell_catalog = nullptr;
     EntityAnimationVectorTransformer transform_vector;
     // The callback returns the source 0x144E8 carry. A true result enters the
     // 0x13E40 frame cutoff; false continues through 0x145A2.
@@ -94,6 +104,7 @@ struct EntityAnimationMotionResult {
     bool linked_position_copied = false;
     bool distance_table_used = false;
     bool distance_table_unresolved = false;
+    bool source_data_missing = false;
     bool target_position_copied = false;
     bool target_position_built = false;
     bool position_gate_called = false;
