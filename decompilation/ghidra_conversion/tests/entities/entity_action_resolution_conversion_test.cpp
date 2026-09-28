@@ -178,5 +178,85 @@ int main() {
                 typed_target.physical_meter == 4U)) {
         return 8;
     }
+
+    // ROM 0x55948: active item 5 selects D4540 +0x25 == 1, which NEG.Bs
+    // through the typed 0x166AD4 table to an action value of three; +0x26 is
+    // the initial difficulty. The opposing target supplies the command,
+    // posture, +0x77, and cyberware-bit trial count.
+    EntityActionActorState equipment_actor{};
+    equipment_actor.equipped_action_code = 5U;
+    equipment_actor.action_result = 0U;
+    EntityActionTarget equipment_target{};
+    equipment_target.record_type = 3U;
+    equipment_target.armor_index = 1U;
+    equipment_target.physical_meter = 5U;
+    equipment_target.attribute_78 = 10U;
+    equipment_target.attribute_7b = 10U;
+    equipment_target.attribute_7c = 10U;
+    equipment_target.posture = 1U;
+    equipment_target.attribute_77 = 2U;
+    EntityActionResolutionState equipment_state{};
+    equipment_state.alternate_meter = 1U;
+    equipment_state.armor_mode = -1;
+    EntityActionResolutionServices equipment_resolution{};
+    equipment_resolution.sample_random_bound =
+        [](const std::uint16_t) { return static_cast<std::int16_t>(0); };
+    equipment_resolution.apply_defense_modifier =
+        [](const std::int16_t value, const EntityActionActorState&,
+           const EntityActionTarget&) { return value; };
+    equipment_resolution = bind_entity_action_armor_catalog(
+        us_armor_catalog(), equipment_resolution);
+    const auto equipment_result = resolve_equipment_action_status(
+        equipment_actor, equipment_target, equipment_state, {},
+        us_item_catalog(),
+        {[](const std::uint16_t, const std::uint16_t) {
+             return static_cast<std::uint8_t>(0U);
+         },
+         equipment_resolution});
+    if (!expect(equipment_result.outcome ==
+                    EquipmentActionStatusOutcome::resolved &&
+                equipment_result.source_item_resolved &&
+                equipment_result.source_effect_resolved &&
+                equipment_result.effect_table_index == 1U &&
+                equipment_result.action_effect_value == 3U &&
+                equipment_result.initial_difficulty == 10U &&
+                equipment_result.effective_difficulty == 10U &&
+                equipment_result.target_command_average == 15U &&
+                equipment_result.target_posture_remaining == 12U &&
+                equipment_result.trial_count == 14U &&
+                equipment_result.continuation_invoked &&
+                equipment_result.continuation.successes == 0U &&
+                equipment_result.continuation.used_primary_armor &&
+                equipment_target.physical_meter == 4U &&
+                equipment_state.alternate_meter == 0U &&
+                equipment_state.armor_mode == 0)) {
+        return 9;
+    }
+
+    auto mismatched_item_catalog = us_item_catalog();
+    mismatched_item_catalog[4].item_code = 6U;
+    equipment_actor.action_result = 3U;
+    equipment_target.physical_meter = 5U;
+    equipment_state = {};
+    const auto missing_item = resolve_equipment_action_status(
+        equipment_actor, equipment_target, equipment_state, {},
+        mismatched_item_catalog, {});
+    if (!expect(missing_item.outcome ==
+                    EquipmentActionStatusOutcome::source_item_missing &&
+                !missing_item.continuation_invoked &&
+                equipment_target.physical_meter == 5U)) {
+        return 10;
+    }
+
+    equipment_actor.equipped_action_code = 41U;
+    const auto missing_effect = resolve_equipment_action_status(
+        equipment_actor, equipment_target, equipment_state, {},
+        us_item_catalog(), {});
+    if (!expect(missing_effect.outcome ==
+                    EquipmentActionStatusOutcome::source_effect_missing &&
+                missing_effect.source_item_resolved &&
+                !missing_effect.source_effect_resolved)) {
+        return 11;
+    }
     return 0;
 }

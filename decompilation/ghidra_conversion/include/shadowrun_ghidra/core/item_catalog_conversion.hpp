@@ -21,7 +21,14 @@ struct UsItemDefinition {
     std::uint16_t base_cost = 0; // D4540 +0x22
     std::uint8_t source_combat_factor = 0; // D4540 +0x24
     std::int8_t signed_detail_asset_index = 0; // D4540 +0x25
-    std::uint8_t detail_selector = 0; // D4540 +0x26
+    // D4540 +0x26.  0x130C0 treats this as a detail selector; 0x55948
+    // consumes the same byte as the initial equipment-action difficulty.
+    std::uint8_t detail_selector = 0;
+
+    // Name the 0x55948 interpretation without duplicating the source byte.
+    std::uint8_t source_action_difficulty() const {
+        return detail_selector;
+    }
 };
 
 using UsItemCatalog = std::array<UsItemDefinition, kUsItemDefinitionCount>;

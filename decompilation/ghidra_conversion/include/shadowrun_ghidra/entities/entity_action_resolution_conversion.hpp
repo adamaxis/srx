@@ -1,6 +1,7 @@
 #pragma once
 
 #include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
+#include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_action_math_conversion.hpp"
 
 #include <array>
@@ -129,6 +130,57 @@ EntityActionDefaultBonusResult resolve_entity_action_with_default_bonus(
     EntityActionResolutionState& state,
     const EntityActionDynamicModifierContext& dynamic_context,
     const EntityActionDefaultBonusServices& services);
+
+enum class EquipmentActionStatusOutcome {
+    source_item_missing,
+    source_effect_missing,
+    dynamic_modifier_data_unavailable,
+    dynamic_modifier_roll_service_unavailable,
+    resolution_service_unavailable,
+    resolved,
+};
+
+struct EquipmentActionStatusServices {
+    // 0x55786's nested 0x0DBA roll. This is separate from the random service
+    // used by the 0x559BC continuation because the source performs the two
+    // phases as distinct calls.
+    EntityActionRollService dynamic_roll_service;
+    // 0x559BC and its typed armor/defense/meter boundaries.
+    EntityActionResolutionServices resolution;
+};
+
+struct EquipmentActionStatusResult {
+    EquipmentActionStatusOutcome outcome =
+        EquipmentActionStatusOutcome::source_item_missing;
+    std::uint8_t active_action_code = 0;
+    std::uint8_t effect_table_index = 0;
+    std::uint8_t action_effect_value = 0;
+    std::uint16_t target_command_average = 0;
+    std::uint16_t target_posture_remaining = 0;
+    std::uint16_t trial_count = 0;
+    std::uint16_t initial_difficulty = 0;
+    std::uint16_t effective_difficulty = 0;
+    EntityActionDynamicModifierResult dynamic_modifier{};
+    bool source_item_resolved = false;
+    bool source_effect_resolved = false;
+    bool continuation_invoked = false;
+    EntityActionResolutionResult continuation{};
+};
+
+// ROM 0x55948. Resolve an ordinary equipment action against the opposing
+// entity: select A0 +0x57's one-based D4540 record, decode its +0x25 effect
+// index through the typed 0x166AD4 table, use +0x26 as the initial difficulty,
+// derive the target's trial count from 0x55ED6/0x55F20/+0x77/cyberware bits,
+// then enter the shared 0x559BC action-resolution continuation. The source
+// catalogs and all service seams are explicit; a missing row never becomes a
+// guessed action value or an address-shaped fallback.
+EquipmentActionStatusResult resolve_equipment_action_status(
+    EntityActionActorState& actor,
+    EntityActionTarget& target,
+    EntityActionResolutionState& state,
+    const EntityActionDynamicModifierContext& target_dynamic_context,
+    const UsItemCatalog& item_catalog,
+    const EquipmentActionStatusServices& services);
 
 // A full decoded participant used by ROM 0x55C76 after it swaps A0/A1. The
 // record owns the command, posture, cyberware, item, and meter fields; the

@@ -19,6 +19,19 @@ const UsMagicSpellCatalog kUsMagicSpells{
     MagicSpellDefinition{12U, "Confusion", -1, 0U, 2U, 6, -1},
 };
 
+const UsActionEffectCatalog kUsActionEffects = [] {
+    constexpr std::array<std::uint8_t, kUsActionEffectCount> kSourceBytes{
+        0xFFU, 0xFDU, 0xFAU, 0xF6U, 0x00U, 0x03U, 0x05U, 0x03U,
+        0x01U, 0x01U, 0x03U, 0x01U, 0x0AU, 0x02U, 0xFFU, 0x00U};
+
+    UsActionEffectCatalog effects{};
+    for (std::size_t index = 0; index < effects.size(); ++index) {
+        effects[index] = {kSourceBytes[index],
+                          static_cast<std::uint8_t>(0U - kSourceBytes[index])};
+    }
+    return effects;
+}();
+
 const UsMagicSpellTableCatalog kUsMagicSpellTables = [] {
     UsMagicSpellTableCatalog tables{};
 
@@ -60,6 +73,18 @@ const UsMagicSpellTableCatalog kUsMagicSpellTables = [] {
 
 const UsMagicSpellCatalog& us_magic_spell_catalog() {
     return kUsMagicSpells;
+}
+
+const UsActionEffectCatalog& us_action_effect_catalog() {
+    return kUsActionEffects;
+}
+
+const UsActionEffectDefinition* find_us_action_effect(
+    const std::uint8_t effect_table_index) {
+    if (effect_table_index >= kUsActionEffectCount) {
+        return nullptr;
+    }
+    return &kUsActionEffects[effect_table_index];
 }
 
 const MagicSpellDefinition* find_us_magic_spell(

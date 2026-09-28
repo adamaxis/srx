@@ -15,6 +15,17 @@ std::uint8_t add_source_byte(const std::uint8_t left,
         left + static_cast<std::uint8_t>(right));
 }
 
+std::uint16_t add_source_byte_to_word(const std::uint16_t value,
+                                      const std::uint8_t addition) {
+    // ADD.B changes only the low byte of the source data register. The
+    // target trial count starts as a zero-extended word, but keeping this
+    // operation explicit prevents a future caller from silently replacing it
+    // with ordinary host integer addition.
+    const auto low = static_cast<std::uint8_t>(
+        static_cast<std::uint8_t>(value) + addition);
+    return static_cast<std::uint16_t>((value & 0xFF00U) | low);
+}
+
 std::int16_t signed_source_byte(const std::uint8_t value) {
     return static_cast<std::int8_t>(value);
 }
@@ -101,6 +112,117 @@ EntityActionReactionServices bind_entity_action_armor_catalog(
                     catalog));
         };
     return services;
+}
+
+namespace {
+
+bool is_resolution_service_unavailable(
+    const EntityActionResolutionOutcome outcome) {
+    switch (outcome) {
+    case EntityActionResolutionOutcome::random_service_unavailable:
+    case EntityActionResolutionOutcome::armor_modifier_unavailable:
+    case EntityActionResolutionOutcome::defense_modifier_unavailable:
+    case EntityActionResolutionOutcome::behavior_service_unavailable:
+    case EntityActionResolutionOutcome::delay_service_unavailable:
+        return true;
+    default:
+        return false;
+    }
+}
+
+} // namespace
+
+EquipmentActionStatusResult resolve_equipment_action_status(
+    EntityActionActorState& actor,
+    EntityActionTarget& target,
+    EntityActionResolutionState& state,
+    const EntityActionDynamicModifierContext& target_dynamic_context,
+    const UsItemCatalog& item_catalog,
+    const EquipmentActionStatusServices& services) {
+    EquipmentActionStatusResult result{};
+    result.active_action_code = actor.equipped_action_code;
+
+    // 0x55954..0x55968 uses a one-based active action code and a 0x30-byte
+    // D4540 stride. The host catalog must preserve that identity; accepting a
+    // caller-sized row here would hide a missing source record.
+    if (result.active_action_code == 0U ||
+        static_cast<std::size_t>(result.active_action_code) >
+            item_catalog.size()) {
+        return result;
+    }
+    const auto& item = item_catalog[static_cast<std::size_t>(
+        result.active_action_code - 1U)];
+    if (item.item_code != result.active_action_code) {
+        return result;
+    }
+    result.source_item_resolved = true;
+
+    // 0x55964 loads D4540 +0x25 as the index into 166AD4 and 0x55978
+    // performs NEG.B. Negative typed indices represent records for which this
+    // routine's source lookup cannot be reconstructed from the captured table;
+    // do not wrap them into an unrelated host entry.
+    if (item.signed_detail_asset_index < 0) {
+        result.outcome = EquipmentActionStatusOutcome::source_effect_missing;
+        return result;
+    }
+    result.effect_table_index = static_cast<std::uint8_t>(
+        item.signed_detail_asset_index);
+    const auto* effect = find_us_action_effect(result.effect_table_index);
+    if (effect == nullptr) {
+        result.outcome = EquipmentActionStatusOutcome::source_effect_missing;
+        return result;
+    }
+    result.action_effect_value = effect->negated_source_byte;
+    result.source_effect_resolved = true;
+
+    // 0x55948 clears the alternate meter and selects primary armor before it
+    // enters the common 0x559BC continuation.
+    state.alternate_meter = 0U;
+    state.armor_mode = 0;
+
+    auto difficulty = static_cast<std::uint16_t>(
+        item.source_action_difficulty());
+    result.initial_difficulty = difficulty;
+    result.dynamic_modifier = apply_dynamic_status_modifier(
+        difficulty, target_dynamic_context, services.dynamic_roll_service);
+    if (result.dynamic_modifier.selected &&
+        !result.dynamic_modifier.action_profile_available) {
+        result.outcome = EquipmentActionStatusOutcome::
+            dynamic_modifier_data_unavailable;
+        return result;
+    }
+    if (result.dynamic_modifier.selected &&
+        !result.dynamic_modifier.roll_service_available) {
+        result.outcome = EquipmentActionStatusOutcome::
+            dynamic_modifier_roll_service_unavailable;
+        return result;
+    }
+    result.effective_difficulty = difficulty;
+
+    // 0x55984..0x5599A swaps A0/A1 while calculating the opposing entity's
+    // command/posture value, then adds its +0x77 byte. The three cyberware
+    // bits at 9..11 add 1, 2, or 3 using the first set bit in source order.
+    result.target_command_average =
+        calculate_equipment_command_average(target);
+    result.target_posture_remaining = select_posture_adjusted_value(
+        result.target_command_average, target.posture, false);
+    result.trial_count = add_source_byte_to_word(
+        result.target_posture_remaining, target.attribute_77);
+    result.trial_count = static_cast<std::uint16_t>(
+        result.trial_count +
+        first_cyberware_modifier(target.cyberware_flags, 9U, 3U));
+
+    result.continuation = resolve_dynamic_entity_action(
+        actor, target, difficulty, result.trial_count,
+        static_cast<std::int16_t>(result.action_effect_value), state,
+        services.resolution);
+    result.continuation_invoked = true;
+    result.outcome = is_resolution_service_unavailable(
+                         result.continuation.outcome)
+                         ? EquipmentActionStatusOutcome::
+                               resolution_service_unavailable
+                         : EquipmentActionStatusOutcome::resolved;
+    return result;
 }
 
 EntityActionDefaultBonusResult resolve_entity_action_with_default_bonus(

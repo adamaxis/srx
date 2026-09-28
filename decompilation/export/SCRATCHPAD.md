@@ -1978,3 +1978,22 @@ remain available as explicit audit adapters for callers that have already
 traced a limit; the conversion does not silently substitute a zero or a
 neighboring item's value. Regression coverage exercises the source row 4
 ceiling of `0x19`, an identity mismatch, and the type-three clip bypass.
+
+## Equipment action status catalog audit
+
+The source `0x55948 resolve_equipment_action_status` is an ordinary equipment
+action path, not a generic wrapper around `0x559BC`. It selects the active
+record's one-based `+0x57` code in the US `0xD4540` table, reads `+0x25` as an
+index into `0x166AD4`, applies the source `NEG.B`, and uses `+0x26` as the
+initial difficulty. The opposing record supplies the `0x55ED6` command
+average, the remaining `0x55F20` posture component, `+0x77`, and the first set
+bit in cyberware flags 9..11 for the continuation trial count.
+
+The sixteen bytes at `0x166AD4` are now an explicit typed effect catalog. It
+retains each source byte and its zero-extended wrapped `NEG.B` result, which
+matters for records whose source byte is not one of the ordinary positive
+spell-effect entries. The new typed resolver rejects an absent or identity-
+mismatched D4540 row and rejects a negative/out-of-range effect index before
+mutating resolution state. It then applies the existing typed dynamic-status,
+armor, defense, meter, and counter services and enters `0x559BC`; it does not
+reimplement those leaves or substitute a guessed action value.

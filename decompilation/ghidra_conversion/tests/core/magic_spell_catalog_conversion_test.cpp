@@ -38,6 +38,19 @@ int main() {
         return 3;
     }
 
+    const auto& effects = us_action_effect_catalog();
+    if (effects.size() != kUsActionEffectCount ||
+        effects[0].source_byte != 0xFFU ||
+        effects[0].negated_source_byte != 0x01U ||
+        effects[1].source_byte != 0xFDU ||
+        effects[1].negated_source_byte != 0x03U ||
+        effects[3].negated_source_byte != 0x0AU ||
+        effects[5].negated_source_byte != 0xFDU ||
+        find_us_action_effect(15U) != &effects[15] ||
+        find_us_action_effect(16U) != nullptr) {
+        return 5;
+    }
+
     const auto& tables = us_magic_spell_table_catalog();
     if (tables.size() != kUsMagicSpellTableCount ||
         tables[0].entry_count != 3U ||
