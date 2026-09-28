@@ -230,6 +230,23 @@ not full Genesis fidelity; the field hill remains partial until the missing
 route/object/event/animation consumers are source-traced and independently
 verified.
 
+The current blocked-probe bridge now carries the source `0x0BC36` four-bank
+collision offsets into the converted `0x0B7B8` transition routine. The Qt
+composition keeps the entity `+0x10` behavior byte (`0x05` from template
+initializer `0x044BC`) separate from the movement record's `+0xB0` route flags;
+the latter starts at the extracted template's zero value rather than being
+invented from the behavior byte. `0x0B7B8` also preserves the source write
+boundary for `FFFBF9`: only the ordinary fall-through path publishes the
+mode-event byte, while the early `0x1A`, `0x18`, and `0x1B..0x1F` activity
+branches leave the previous value intact. The `0x1E2E0/0x1E2EC` host bridge
+therefore records only the typed activity continuation and timer start; the
+event-table lookup remains the separate `0x167AE` conversion and is not
+pretended to be a return value from the timer helper. The active-entity
+selection path `0x0C7F8 -> 0x0C802 -> 0x0391A`, which supplies the live
+`+0x10` bit-1 state required for the negative-collision branch, is still an
+explicit source boundary in the Qt composition. Likewise, `0x1651E` remains
+unresolved until its entity-table and world-layer records are traced.
+
 ## Export files
 
 - `functions.tsv`: one row per function and generated C file.

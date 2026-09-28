@@ -99,7 +99,7 @@ int main() {
     callbacks.begin_world_activity_if_idle =
         [&](const MovementModeTransitionContinuation continuation) {
             last_continuation = continuation;
-            return static_cast<std::uint8_t>(7U);
+            return true;
         };
     callbacks.begin_world_activity =
         [&](const MovementModeTransitionContinuation continuation) {
@@ -109,6 +109,7 @@ int main() {
     {
         auto record = make_record();
         auto state = make_state();
+        state.mode_event_code = 0x12U;
         const auto result = advance_entity_movement_and_mode_transition(
             record, 0x1234U, 0x5678U, state, callbacks);
         assert(result.kind ==
@@ -116,7 +117,9 @@ int main() {
                        world_activity_started &&
                result.continuation ==
                    MovementModeTransitionContinuation::event_31_world_activity &&
-               state.activity_selection == 7U &&
+               state.activity_selection == 0U &&
+               !result.mode_event_code_published &&
+               state.mode_event_code == 0x12U &&
                record.action_heading_source == 0xC000U &&
                (record.route_flags & 0x21U) == 1U);
     }
@@ -172,6 +175,7 @@ int main() {
         assert(result.kind ==
                    EntityMovementModeTransitionResultKind::
                        field_dialogue_started &&
+               state.activity_selection == 3U &&
                state.activity_source_word == 0xCAFEU &&
                result.continuation ==
                    MovementModeTransitionContinuation::field_dialogue_event);
@@ -214,6 +218,7 @@ int main() {
         assert(result.kind == EntityMovementModeTransitionResultKind::
                                   projected_field_code_updated &&
                result.event_code == 8U && state.mode_event_code == 8U &&
+               result.mode_event_code_published &&
                record.projected_field_code == 0xA8U &&
                !result.record_released && (record.route_flags & 0x20U) != 0U);
     }
@@ -223,6 +228,7 @@ int main() {
         auto record = make_record();
         auto state = make_state();
         state.field_global_flags = 0x10U;
+        state.mode_event_code = 0x0EU;
         callbacks.prepare_mode_entry_service = [] {};
         const auto result = advance_entity_movement_and_mode_transition(
             record, 0x200U, 0x400U, state, callbacks);
@@ -230,6 +236,7 @@ int main() {
                    EntityMovementModeTransitionResultKind::mode_exit_started &&
                result.continuation ==
                    MovementModeTransitionContinuation::field_mode_exit_finalizer &&
+               !result.mode_event_code_published && state.mode_event_code == 0x0EU &&
                result.record_released);
     }
 

@@ -30,7 +30,8 @@ int main() {
                 state.points[1].y == 0x1FF8U &&
                 state.points[2].x == 0x100CU &&
                 state.points[2].y == 0x2012U &&
-                state.camera_x == 0x3456U && state.camera_y == 0x789AU)) {
+                state.camera_x == 0x3456U && state.camera_y == 0x789AU &&
+                state.selected_offset_bank == 3U)) {
         return 1;
     }
 

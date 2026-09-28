@@ -2,23 +2,30 @@
 
 #include "shadowrun_ghidra/entities/entity_coordinate_conversion.hpp"
 #include "shadowrun_ghidra/entities/collision_state_conversion.hpp"
+#include "shadowrun_ghidra/entities/collision_probe_conversion.hpp"
+#include "shadowrun_ghidra/entities/entity_behavior_frame_service_conversion.hpp"
 #include "shadowrun_ghidra/field/field_viewport_conversion.hpp"
+#include "shadowrun_ghidra/field/field_coordinate_conversion.hpp"
 #include "shadowrun_ghidra/field/field_movement_input_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_projection_conversion.hpp"
 #include "shadowrun_ghidra/entities/movement_probe_conversion.hpp"
 #include "shadowrun_ghidra/entities/movement_route_conversion.hpp"
 #include "shadowrun_ghidra/entities/movement_step_conversion.hpp"
+#include "shadowrun_ghidra/entities/movement_mode_transition_conversion.hpp"
 #include "shadowrun_ghidra/field/terrain_probe_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_session_bootstrap_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
 #include "shadowrun_ghidra/integration/startup_integration_conversion.hpp"
+#include "shadowrun_ghidra/menus/menu_transfer_batch_conversion.hpp"
 #include "shadowrun_ghidra/world/world_entity_conversion.hpp"
+#include "shadowrun_ghidra/world/world_effect_batch_conversion.hpp"
 
 #include <QImage>
 
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -56,6 +63,11 @@ public:
 private:
     void configure_callbacks();
     void advance_field_movement();
+    bool recover_blocked_field_movement(
+        const MovementProbeResult& initial_probe);
+    std::optional<std::size_t> projected_terrain_cell() const;
+    void record_field_activity_start(
+        MovementModeTransitionContinuation continuation);
     std::int16_t evaluate_field_collision(std::uint16_t candidate_x,
                                           std::uint16_t candidate_y);
     void source_boundary(std::string_view boundary) const;
@@ -91,6 +103,7 @@ private:
     std::array<int, 8> field_entity_idle_origin_y_{};
     std::array<MovementOffset, integration::kFieldMovementDirectionCount>
         field_movement_direction_offsets_{};
+    CollisionProbeOffsetBank field_collision_probe_offset_banks_{};
     std::array<std::uint16_t,
                integration::kFieldControllerHeadingTableCount>
         field_controller_heading_table_{};
@@ -102,10 +115,18 @@ private:
         field_movement_route_sources_{};
     EntityMovementStepState field_movement_state_{};
     EntityCollisionRecord field_collision_record_{};
+    CollisionProbeState field_collision_probe_state_{};
+    EntityBehaviorFrameRecord field_movement_behavior_record_{};
+    EntityMovementModeTransitionState field_movement_transition_state_{};
+    WorldActivityState field_world_activity_state_{};
+    MovementModeTransitionContinuation field_activity_continuation_ =
+        MovementModeTransitionContinuation::none;
+    std::uint8_t field_projected_terrain_mark_count_ = 0;
+    bool field_terrain_render_dirty_ = false;
     std::array<std::uint8_t, 4> field_terrain_sample_state_{};
     std::uint8_t field_controller_nibble_ = 0;
     std::uint16_t field_target_heading_ = 0;
-    std::uint8_t field_entity_source_flags_ = 0;
+    std::uint8_t field_entity_behavior_flags_ = 0;
     FieldEntityPresentation field_entity_{};
     std::string failure_;
     bool ready_ = false;

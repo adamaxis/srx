@@ -19,6 +19,7 @@ struct CollisionProbeState {
     std::array<CollisionProbePoint, 3> points{};
     std::uint16_t camera_x = 0;
     std::uint16_t camera_y = 0;
+    std::uint8_t selected_offset_bank = 0;
 };
 
 using CollisionProbeOffsetBank =

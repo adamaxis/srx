@@ -103,8 +103,7 @@ advance_entity_movement_and_mode_transition(
                     EntityMovementModeTransitionResultKind::callback_unresolved;
                 return result;
             }
-            state.activity_selection =
-                callbacks.begin_world_activity_if_idle(continuation);
+            callbacks.begin_world_activity_if_idle(continuation);
             return release_record(kind);
         };
 
@@ -184,9 +183,16 @@ advance_entity_movement_and_mode_transition(
         event_code >= 2U && event_code <= 5U &&
         !state.terrain_event_suppressed) {
         state.activity_source_word = state.world_activity_source_word;
-        return begin_idle(
+        const auto result = begin_idle(
             MovementModeTransitionContinuation::field_dialogue_event,
             EntityMovementModeTransitionResultKind::field_dialogue_started);
+        // ROM 0xB994 stores the event byte left in D0 by 0x1E2E0. The other
+        // begin-activity branches return without touching FFE16E.
+        if (result.kind !=
+            EntityMovementModeTransitionResultKind::callback_unresolved) {
+            state.activity_selection = event_code;
+        }
+        return result;
     }
 
     if (event_code == 0x18U) {
@@ -207,7 +213,6 @@ advance_entity_movement_and_mode_transition(
         result.event_code = 8U;
     }
 
-    state.mode_event_code = result.event_code;
     if ((state.field_global_flags & 0x50U) != 0U) {
         result.continuation =
             MovementModeTransitionContinuation::field_mode_exit_finalizer;
@@ -222,6 +227,12 @@ advance_entity_movement_and_mode_transition(
         return release_record(
             EntityMovementModeTransitionResultKind::mode_exit_started);
     }
+
+    // ROM 0xBA3A is the only point in this routine that publishes FFFBF9.
+    // The early 0x1A/0x18/0x1B..0x1F activity returns intentionally leave the
+    // previous global event code intact.
+    state.mode_event_code = result.event_code;
+    result.mode_event_code_published = true;
 
     const bool skip_projection =
         state.world_mode == 2U && state.scene_id != 0x14U &&

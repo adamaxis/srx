@@ -357,6 +357,8 @@ bool FieldSceneRuntime::bootstrap(
 
     const auto& assets = *startup_state.field_session_source_assets;
     field_movement_direction_offsets_ = assets.field_movement_direction_offsets;
+    field_collision_probe_offset_banks_ =
+        assets.field_collision_probe_offset_banks;
     field_controller_heading_table_ = assets.field_controller_heading_table;
     field_movement_route_sources_ = assets.field_movement_routes;
     for (std::size_t index = 0; index < field_movement_routes_.size();
@@ -372,8 +374,15 @@ bool FieldSceneRuntime::bootstrap(
     field_target_heading_ = 0U;
     field_movement_state_ = EntityMovementStepState{};
     field_collision_record_ = EntityCollisionRecord{};
+    field_collision_probe_state_ = CollisionProbeState{};
+    field_movement_behavior_record_ = EntityBehaviorFrameRecord{};
+    field_movement_transition_state_ = EntityMovementModeTransitionState{};
+    field_world_activity_state_ = WorldActivityState{};
+    field_activity_continuation_ = MovementModeTransitionContinuation::none;
+    field_projected_terrain_mark_count_ = 0U;
+    field_terrain_render_dirty_ = false;
     field_terrain_sample_state_ = {};
-    field_entity_source_flags_ = 0U;
+    field_entity_behavior_flags_ = 0U;
     input_ = integration::FieldSessionBootstrapInput{};
     input_.action_selection_profile_source =
         assets.action_selection_profile_source;
@@ -390,8 +399,6 @@ bool FieldSceneRuntime::bootstrap(
         field_entity_.projection.sprite_offset_y =
             startup_state.joshua_selection->typed_live_joshua_record
                 .projection_word_08;
-        field_entity_source_flags_ = static_cast<std::uint8_t>(
-            startup_state.joshua_selection->typed_live_joshua_record.flags);
     }
 
     if (!load_image(startup_state.asset_catalog.catalog,
@@ -427,7 +434,21 @@ bool FieldSceneRuntime::bootstrap(
     field_movement_state_.position_x = field_entity_.world_position.x;
     field_movement_state_.position_y = field_entity_.world_position.y;
     field_movement_state_.heading = 0U;
-    field_movement_state_.movement_flags = field_entity_source_flags_;
+    // ROM 0x44BC initializes a field entity's +0x10 behavior byte to 0x05.
+    // This is distinct from the live runner record's +0x10 flags word used by
+    // menu/status code; movement and terrain probes consume the entity slot.
+    field_entity_behavior_flags_ = 0x05U;
+    field_movement_behavior_record_.active = field_entity_.active;
+    field_movement_behavior_record_.behavior_flags =
+        field_entity_behavior_flags_;
+    field_movement_behavior_record_.current_heading = 0U;
+    field_movement_behavior_record_.target_heading = 0U;
+    field_movement_transition_state_.world_mode = 0U;
+    field_movement_transition_state_.scene_id =
+        state_.field_scene_buffers.scene_reference;
+    field_movement_transition_state_.field_origin_x =
+        static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x);
+    field_movement_transition_state_.world_activity_source_word = 0U;
     field_entity_.direction =
         field_movement_direction_from_heading(field_movement_state_.heading);
 
@@ -439,6 +460,127 @@ bool FieldSceneRuntime::bootstrap(
 void FieldSceneRuntime::set_controller_nibble(
     const std::uint8_t dpad_nibble) noexcept {
     field_controller_nibble_ = static_cast<std::uint8_t>(dpad_nibble & 0x0FU);
+}
+
+std::optional<std::size_t> FieldSceneRuntime::projected_terrain_cell() const {
+    const auto& profile = state_.field_scene_buffers.profile;
+    const auto row_stride_bytes = profile[18U];
+    if (row_stride_bytes == 0U) {
+        return std::nullopt;
+    }
+    const auto offset = project_entity_y_axis(
+        CoordinateProjectionInput{field_entity_.world_position.x,
+                                   field_entity_.world_position.y,
+                                   field_movement_state_.heading},
+        row_stride_bytes);
+    const auto byte_offset = offset + static_cast<std::int32_t>(row_stride_bytes);
+    if (byte_offset < 0 || (byte_offset & 1) != 0) {
+        return std::nullopt;
+    }
+    const auto word_index = static_cast<std::size_t>(byte_offset / 2);
+    if (word_index >= state_.field_scene_buffers.layer_a.size()) {
+        return std::nullopt;
+    }
+    return word_index;
+}
+
+void FieldSceneRuntime::record_field_activity_start(
+    const MovementModeTransitionContinuation continuation) {
+    field_activity_continuation_ = continuation;
+    // ROM 0x1E2E0/0x1E2EC stores the typed continuation in the activity
+    // timer. Scene-table selection belongs to the later 0x167AE dispatcher;
+    // it is not a return value of the timer helper.
+    source_boundary("field.world.activity.started");
+}
+
+bool FieldSceneRuntime::recover_blocked_field_movement(
+    const MovementProbeResult& initial_probe) {
+    field_movement_behavior_record_.current_heading =
+        field_movement_state_.heading;
+    field_movement_behavior_record_.target_heading = field_target_heading_;
+    for (std::size_t index = 0;
+         index < field_movement_transition_state_.directional_probe_signs.size();
+         ++index) {
+        field_movement_transition_state_.directional_probe_signs[index] =
+            static_cast<std::int8_t>(field_terrain_sample_state_[index]);
+    }
+    field_movement_transition_state_.scene_id =
+        state_.field_scene_buffers.scene_reference;
+    field_movement_transition_state_.field_origin_x =
+        static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x);
+
+    EntityMovementModeTransitionCallbacks transition_callbacks{};
+    transition_callbacks.build_collision_probe_points = [this](
+                                                               EntityBehaviorFrameRecord&) {
+        const std::array<std::uint8_t, 3> probe_bytes{
+            field_terrain_sample_state_[0], field_terrain_sample_state_[1],
+            field_terrain_sample_state_[2]};
+        build_collision_probe_points(
+            field_collision_probe_state_,
+            field_movement_transition_state_.world_mode != 0U,
+            field_entity_.world_position.x, field_entity_.world_position.y,
+            probe_bytes, field_collision_probe_offset_banks_,
+            static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x),
+            static_cast<std::uint16_t>(state_.field_scene_buffers.camera_y));
+        return MovementProjectionPreparation{
+            field_collision_probe_state_.selected_offset_bank};
+    };
+    transition_callbacks.quantize_field_delta =
+        [](const std::int16_t target, const std::uint16_t origin) {
+            return quantize_field_delta(target, origin);
+        };
+    transition_callbacks.begin_world_activity_if_idle =
+        [this](const MovementModeTransitionContinuation continuation) {
+            const auto started = begin_world_activity_if_idle(
+                field_world_activity_state_,
+                static_cast<std::uint16_t>(continuation));
+            if (started) {
+                record_field_activity_start(continuation);
+            }
+            return started;
+        };
+    transition_callbacks.begin_world_activity =
+        [this](const MovementModeTransitionContinuation continuation) {
+            begin_world_activity(
+                field_world_activity_state_,
+                static_cast<std::uint16_t>(continuation));
+            record_field_activity_start(continuation);
+        };
+    transition_callbacks.mark_projected_terrain_cell = [this] {
+        // ROM 0x16760 marks the projected field work cell in the active
+        // terrain layer. Keep this bridge local: the older menu conversion
+        // header owns a legacy TerrainWorkEntry name that is unrelated to
+        // this runtime's source-backed field scene state.
+        const auto cell = projected_terrain_cell();
+        if (!cell.has_value() ||
+            *cell >= state_.field_scene_buffers.layer_a.size() ||
+            state_.field_scene_buffers.layer_a[*cell] == 0x000BU) {
+            return false;
+        }
+        ++field_projected_terrain_mark_count_;
+        state_.field_scene_buffers.layer_a[*cell] = 0x000BU;
+        field_terrain_render_dirty_ = true;
+        return true;
+    };
+    transition_callbacks.project_entity_world_interaction = [this] {
+        // ROM 0x1651E still needs its entity-table spawn and world-layer
+        // records connected. Do not claim a successful interaction here.
+        source_boundary("field.world.interaction_projection_unresolved");
+        return false;
+    };
+    transition_callbacks.prepare_mode_entry_service = [this] {
+        prepare_audio_mode_entry(callbacks_.mode_entry_audio);
+    };
+
+    const auto result = advance_entity_movement_and_mode_transition(
+        field_movement_behavior_record_, initial_probe.candidate_x,
+        initial_probe.candidate_y, field_movement_transition_state_,
+        transition_callbacks);
+    if (result.mode_event_code_published) {
+        source_boundary("field.world.activity.mode_event_published");
+    }
+    source_boundary("field.movement.blocked_transition");
+    return (field_movement_behavior_record_.route_flags & 0x01U) != 0U;
 }
 
 std::int16_t FieldSceneRuntime::evaluate_field_collision(
@@ -456,7 +598,7 @@ std::int16_t FieldSceneRuntime::evaluate_field_collision(
             const auto result = evaluate_terrain_collision(
                 TerrainCollisionInput{evaluated_x,
                                       evaluated_y,
-                                      field_entity_source_flags_,
+                                      field_entity_behavior_flags_,
                                       bounds,
                                       field_terrain_sample_state_},
                 TerrainCollisionCallbacks{
@@ -528,20 +670,22 @@ void FieldSceneRuntime::advance_field_movement() {
     approach_entity_fixed_point_target(heading);
     field_movement_state_.heading = heading.current;
 
-    const auto probe = [this](const std::uint16_t direction_slot) {
+    MovementProbeResult last_probe{};
+    const auto probe = [this, &last_probe](const std::uint16_t direction_slot) {
         const auto direction = static_cast<std::uint8_t>(
             (direction_slot >> 1U) & 0x07U);
-        return probe_entity_directional_collision(
+        last_probe = probe_entity_directional_collision(
             MovementProbeInput{
                 field_movement_state_.position_x,
                 field_movement_state_.position_y,
                 direction,
-                field_entity_source_flags_},
+                field_entity_behavior_flags_},
             field_movement_direction_offsets_,
             [this](const std::uint16_t candidate_x,
                    const std::uint16_t candidate_y) {
                 return evaluate_field_collision(candidate_x, candidate_y);
             });
+        return last_probe;
     };
     const auto policy_probe = [probe](const std::uint16_t direction_slot) {
         return probe(direction_slot).collision_code;
@@ -552,17 +696,14 @@ void FieldSceneRuntime::advance_field_movement() {
     const MovementResultPolicy result_policy{
         false,
         state_.field_scene_buffers.scene_reference,
-        state_.field_scene_buffers.field_resource_mode};
+        field_movement_transition_state_.world_mode};
     advance_entity_movement_step(
         field_movement_state_,
         0U,
         input.direction_slot,
         result_policy,
         probe,
-        [this] {
-            source_boundary("field.movement.negative_collision_recovery");
-            return false;
-        },
+        [this, &last_probe] { return recover_blocked_field_movement(last_probe); },
         [this, &result_policy, &policy_probe] {
             const auto route_lookup = [this](const std::uint16_t route_key) {
                 if ((route_key & 0x03U) != 0U ||

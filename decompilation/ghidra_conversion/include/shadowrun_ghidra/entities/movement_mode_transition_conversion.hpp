@@ -68,8 +68,9 @@ struct EntityMovementModeTransitionCallbacks {
         quantize_field_delta;
 
     // ROM 0x1E2E0 / 0x1E2EC: bind the typed continuation to an activity
-    // scheduler. The idle variant returns the source selection byte.
-    std::function<std::uint8_t(MovementModeTransitionContinuation)>
+    // scheduler. The source routine does not return a selection value; the
+    // bool only reports whether the host timer was started for this call.
+    std::function<bool(MovementModeTransitionContinuation)>
         begin_world_activity_if_idle;
     std::function<void(MovementModeTransitionContinuation)>
         begin_world_activity;
@@ -108,6 +109,7 @@ struct EntityMovementModeTransitionResult {
         MovementModeTransitionContinuation::none;
     std::uint8_t negative_probe_count = 0;
     std::uint8_t event_code = 0;
+    bool mode_event_code_published = false;
     bool record_released = false;
 };
 

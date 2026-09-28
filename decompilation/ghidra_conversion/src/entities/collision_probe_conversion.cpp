@@ -46,7 +46,9 @@ void build_collision_probe_points(
         return;
     }
 
-    const auto& offsets = offset_banks[select_offset_bank(probe_bytes)];
+    const auto selected_bank = select_offset_bank(probe_bytes);
+    state.selected_offset_bank = static_cast<std::uint8_t>(selected_bank);
+    const auto& offsets = offset_banks[selected_bank];
     for (std::size_t index = 0; index < state.points.size(); ++index) {
         state.points[index] = CollisionProbePoint{
             add_coordinate(entity_x, offsets[index].x),
