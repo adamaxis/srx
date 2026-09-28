@@ -1,5 +1,7 @@
 #pragma once
 
+#include "shadowrun_ghidra/session/runner_record_access_conversion.hpp"
+
 #include <array>
 #include <cstdint>
 #include <functional>
@@ -25,6 +27,11 @@ struct JoshuaArchetypeTemplate {
 
 struct JoshuaArchetypeSelection {
     std::array<std::uint8_t, kRunnerRecordTemplateSize> live_joshua_record{};
+    // The same 0x42B0 copy is immediately exposed through the confirmed
+    // runner-record field reader for consumers that need typed gameplay
+    // values such as the field projection offset. The raw copy remains for
+    // source-audit comparisons and save/record transfer tests.
+    RunnerRecordFields typed_live_joshua_record{};
     std::array<std::uint16_t, 3> record_selection_markers{};
 };
 

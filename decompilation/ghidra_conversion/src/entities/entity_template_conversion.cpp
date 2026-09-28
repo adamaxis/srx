@@ -11,6 +11,9 @@ std::optional<JoshuaArchetypeSelection> initialize_joshua_archetype_selection(
 
     JoshuaArchetypeSelection selection{};
     selection.live_joshua_record = templates[selected_index].record;
+    LiveRunnerRecord live_record{};
+    live_record.bytes = selection.live_joshua_record;
+    selection.typed_live_joshua_record = read_runner_record_fields(live_record);
     selection.record_selection_markers = {0U, 1U, 2U};
     return selection;
 }

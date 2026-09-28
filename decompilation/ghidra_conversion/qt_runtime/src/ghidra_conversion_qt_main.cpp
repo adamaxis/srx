@@ -536,6 +536,11 @@ private:
             update();
             return;
         }
+        if (state_.phase == StartupIntegrationPhase::field_ready) {
+            field_scene_runtime_.advance_frame();
+            update();
+            return;
+        }
         if (state_.phase != StartupIntegrationPhase::title_ready) {
             return;
         }
@@ -1110,6 +1115,22 @@ int main(int argc, char** argv) {
                 return 3;
             }
             smoke_state.field_session_source_assets = *source.assets;
+            const auto startup_records = load_startup_record_assets(
+                smoke_state.asset_catalog.catalog);
+            if (!startup_records.complete()) {
+                std::cerr << "field smoke: startup records are incomplete\n";
+                return 3;
+            }
+            smoke_state.startup_records = *startup_records.assets;
+            const std::vector<JoshuaArchetypeTemplate> joshua_templates(
+                smoke_state.startup_records->joshua_archetypes.begin(),
+                smoke_state.startup_records->joshua_archetypes.end());
+            smoke_state.joshua_selection =
+                initialize_joshua_archetype_selection(0U, joshua_templates);
+            if (!smoke_state.joshua_selection.has_value()) {
+                std::cerr << "field smoke: Joshua source record is unavailable\n";
+                return 3;
+            }
             qt_runtime::FieldSceneRuntime field_scene([](const auto&) {});
             if (!field_scene.bootstrap(smoke_state)) {
                 std::cerr << "field smoke: " << field_scene.failure() << '\n';
@@ -1124,7 +1145,9 @@ int main(int argc, char** argv) {
             const auto& buffers = field_scene.state().field_scene_buffers;
             std::cout << "field_smoke=ready scene_reference="
                       << buffers.scene_reference << " camera="
-                      << buffers.camera_x << ',' << buffers.camera_y << '\n';
+                      << buffers.camera_x << ',' << buffers.camera_y
+                      << " entity_visible="
+                      << (field_scene.field_entity_visible() ? 1 : 0) << '\n';
             return 0;
         }
         GhidraConversionWindow window(asset_root);

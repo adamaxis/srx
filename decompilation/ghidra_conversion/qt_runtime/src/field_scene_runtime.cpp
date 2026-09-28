@@ -19,6 +19,8 @@ namespace {
 
 constexpr std::string_view kInitialFieldMapAlias = "field.maps.mode.0";
 constexpr std::string_view kFieldHudAlias = "field.hud.background";
+constexpr std::string_view kFieldEntityIdleAliasPrefix = "field.entities.idle.";
+constexpr int kGenesisSpriteOrigin = 0x80;
 
 } // namespace
 
@@ -56,6 +58,40 @@ bool FieldSceneRuntime::load_image(
     return true;
 }
 
+bool FieldSceneRuntime::load_sprite_image(
+    const ConversionAssetCatalog& catalog,
+    const std::string_view alias,
+    QImage& destination,
+    int& origin_x,
+    int& origin_y) {
+    const auto* record = catalog.find(std::string(alias));
+    if (record == nullptr) {
+        failure_ = "missing direct field sprite alias: " + std::string(alias);
+        return false;
+    }
+    if (!load_image(catalog, alias, destination)) {
+        return false;
+    }
+    origin_x = record->origin_x;
+    origin_y = record->origin_y;
+
+    // The extracted Genesis color index zero is the sprite transparency
+    // value. The direct BMP keeps the RGB palette, so restore that source
+    // transparency at the presentation boundary rather than painting a
+    // black rectangle behind every runner.
+    for (int y = 0; y < destination.height(); ++y) {
+        for (int x = 0; x < destination.width(); ++x) {
+            auto pixel = destination.pixelColor(x, y);
+            if (pixel.red() == 0 && pixel.green() == 0 &&
+                pixel.blue() == 0) {
+                pixel.setAlpha(0);
+                destination.setPixelColor(x, y, pixel);
+            }
+        }
+    }
+    return true;
+}
+
 void FieldSceneRuntime::configure_callbacks() {
     callbacks_.mode_entry_audio.run_fixed_audio_transaction =
         [this](const std::uint32_t command) {
@@ -76,6 +112,8 @@ void FieldSceneRuntime::configure_callbacks() {
 
     callbacks_.initialize_entity_order = [this] {
         source_boundary("field.entities.initialize_order");
+        state_.render_entities[0].active = field_entity_.active;
+        state_.render_entities[0].id = 0U;
     };
     callbacks_.initialize_scene_profile = [this] {
         source_boundary("field.scene.initialize_profile");
@@ -242,7 +280,21 @@ void FieldSceneRuntime::configure_callbacks() {
     callbacks_.entity_render_pass.project_screen_position =
         [this](RenderEntityState& entity) {
             source_boundary("field.entities.project_screen_position");
-            (void)entity;
+            if (!field_entity_.active || entity.id != 0U) {
+                field_entity_.visible = false;
+                return;
+            }
+            field_entity_.projection.world_x =
+                field_entity_.world_position.x;
+            field_entity_.projection.world_y =
+                field_entity_.world_position.y;
+            const auto projection = project_entity_screen_position_standard(
+                field_entity_.projection,
+                static_cast<std::uint16_t>(
+                    state_.field_scene_buffers.camera_x),
+                static_cast<std::uint16_t>(
+                    state_.field_scene_buffers.camera_y));
+            field_entity_.visible = projection.visible;
         };
     callbacks_.entity_render_pass.advance_animation =
         [this](RenderEntityState& entity) {
@@ -302,12 +354,34 @@ bool FieldSceneRuntime::bootstrap(
     input_.field_scene =
         integration::make_initial_mode2_field_scene_input(assets);
 
+    field_entity_ = FieldEntityPresentation{};
+    field_entity_.active = startup_state.joshua_selection.has_value();
+    field_entity_.world_position =
+        input_.field_scene.source_metadata.initial_field_records[0];
+    if (field_entity_.active) {
+        field_entity_.projection.sprite_offset_y =
+            startup_state.joshua_selection->typed_live_joshua_record
+                .projection_word_08;
+    }
+
     if (!load_image(startup_state.asset_catalog.catalog,
                     kInitialFieldMapAlias, field_map_) ||
         !load_image(startup_state.asset_catalog.catalog, kFieldHudAlias,
                     field_hud_)) {
         source_boundary("field.bootstrap.direct_assets_missing");
         return false;
+    }
+    for (std::size_t direction = 0;
+         direction < field_entity_idle_images_.size(); ++direction) {
+        const auto alias = std::string(kFieldEntityIdleAliasPrefix) +
+                           std::to_string(direction);
+        if (!load_sprite_image(startup_state.asset_catalog.catalog, alias,
+                               field_entity_idle_images_[direction],
+                               field_entity_idle_origin_x_[direction],
+                               field_entity_idle_origin_y_[direction])) {
+            source_boundary("field.bootstrap.entity_assets_missing");
+            return false;
+        }
     }
 
     const auto result = integration::bootstrap_field_session(
@@ -323,6 +397,30 @@ bool FieldSceneRuntime::bootstrap(
     ready_ = true;
     source_boundary("field.bootstrap.ready");
     return true;
+}
+
+void FieldSceneRuntime::advance_frame() {
+    if (!ready_) {
+        return;
+    }
+    update_entity_render_pass(state_.render_entities,
+                              callbacks_.entity_render_pass);
+}
+
+void FieldSceneRuntime::paint_field_entity(QPainter& painter) const {
+    if (!field_entity_.active || !field_entity_.visible) {
+        return;
+    }
+    const auto direction = static_cast<std::size_t>(
+        field_entity_.direction % field_entity_idle_images_.size());
+    const auto& image = field_entity_idle_images_[direction];
+    const auto x = static_cast<int>(field_entity_.projection.screen_x) -
+                   kGenesisSpriteOrigin +
+                   field_entity_idle_origin_x_[direction];
+    const auto y = static_cast<int>(field_entity_.projection.screen_y) -
+                   kGenesisSpriteOrigin +
+                   field_entity_idle_origin_y_[direction];
+    painter.drawImage(x, y, image);
 }
 
 void FieldSceneRuntime::paint(QPainter& painter) const {
@@ -341,6 +439,7 @@ void FieldSceneRuntime::paint(QPainter& painter) const {
     const auto viewport_x = std::min(camera_x, max_x);
     const auto viewport_y = std::min(camera_y, max_y);
     painter.drawImage(-viewport_x, -viewport_y, field_map_);
+    paint_field_entity(painter);
 
     // This is the source HUD plate at 0x334C/0x39F2, not a Qt-drawn
     // substitute. Dynamic faces/items remain separate source callbacks until

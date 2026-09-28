@@ -20,6 +20,11 @@ int main() {
     if (!expect(selected_archetype.has_value() &&
                 selected_archetype->live_joshua_record[0] == 0x30U &&
                 selected_archetype->live_joshua_record[0xFFU] == 0x30U &&
+                selected_archetype->typed_live_joshua_record.projection_word_08 ==
+                    0x3030U &&
+                selected_archetype->typed_live_joshua_record.kind == 0x3030U &&
+                selected_archetype->typed_live_joshua_record.archetype_index ==
+                    0x30U &&
                 selected_archetype->record_selection_markers ==
                     std::array<std::uint16_t, 3>{0U, 1U, 2U} &&
                 !initialize_joshua_archetype_selection(3U,
