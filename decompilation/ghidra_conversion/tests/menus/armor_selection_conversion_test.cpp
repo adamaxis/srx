@@ -26,6 +26,18 @@ int main() {
         return 1;
     }
 
+    const auto& armor_catalog = us_armor_catalog();
+    if (!expect(subtract_armor_primary_modifier(
+                    0x120AU, 2U, armor_catalog) == 0x1209U &&
+                subtract_armor_secondary_modifier(
+                    0x120AU, 2U, armor_catalog) == 0x1208U &&
+                subtract_armor_primary_modifier(
+                    0x120AU, 0U, armor_catalog) == 0x120AU &&
+                subtract_armor_secondary_modifier(
+                    0x120AU, 8U, armor_catalog) == 0x120AU)) {
+        return 6;
+    }
+
     ArmorSelectionState state{2U, 4U};
     std::vector<std::string> order;
     const ArmorSelectionCallbacks callbacks{
@@ -42,7 +54,7 @@ int main() {
                 state.selected_inventory_phase == 4U &&
                 order == std::vector<std::string>{"text", "text", "first",
                                                    "grid", "second", "grid"})) {
-        return 2;
+        return 3;
     }
 
     order.clear();
@@ -51,7 +63,7 @@ int main() {
     if (!expect(refresh == ArmorSelectionResult::refreshed_current &&
                 order == std::vector<std::string>{"text", "text", "first",
                                                    "grid", "second", "grid"})) {
-        return 3;
+        return 4;
     }
 
     ArmorSelectionState empty{};
@@ -61,14 +73,14 @@ int main() {
         ArmorSelectionCallbacks{ {}, {}, {}, {}, [&] { ++empty_messages; } });
     if (!expect(rejected == ArmorSelectionResult::rejected_no_equipped_armor &&
                 empty_messages == 1)) {
-        return 4;
+        return 5;
     }
 
     if (!expect(apply_armor_selection(state, 0x2BU, true, {}) ==
                     ArmorSelectionResult::rejected_item_code &&
                 state.equipped_armor_index == 2U &&
                 state.selected_inventory_phase == 4U)) {
-        return 5;
+        return 7;
     }
     return 0;
 }

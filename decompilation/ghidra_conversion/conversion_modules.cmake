@@ -11,6 +11,7 @@ file(GLOB SHADOWRUN_MODULE_PLATFORM_INPUT_TIMING CONFIGURE_DEPENDS
 )
 file(GLOB SHADOWRUN_MODULE_SOURCE_DATA CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/asset_catalog_conversion.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/core/armor_catalog_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/compressed_data_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/coordinate_data_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/item_catalog_conversion.cpp"

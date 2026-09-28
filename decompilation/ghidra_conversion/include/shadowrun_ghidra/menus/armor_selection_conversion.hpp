@@ -1,5 +1,7 @@
 #pragma once
 
+#include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
+
 #include <array>
 #include <cstdint>
 #include <functional>
@@ -13,7 +15,7 @@ struct ArmorSelectionState {
     std::uint8_t selected_inventory_phase = 0;
 };
 
-// Decoded +0x25/+0x26 bytes from the 0xD4540 armor/item records. The source
+// Audit adapter for decoded +0x25/+0x26 modifier bytes. The source
 // helpers index rows by the one-based runner +0x76 armor ordinal.
 struct ArmorModifierTable {
     std::array<std::uint8_t, 0x32> primary{};
@@ -30,6 +32,16 @@ std::uint16_t subtract_armor_secondary_modifier(
     std::uint16_t value,
     std::uint8_t armor_index,
     const ArmorModifierTable& table);
+
+// Source-data-bound overloads for the US ROM's seven-row D4D50 armor table.
+std::uint16_t subtract_armor_primary_modifier(
+    std::uint16_t value,
+    std::uint8_t armor_index,
+    const UsArmorCatalog& catalog);
+std::uint16_t subtract_armor_secondary_modifier(
+    std::uint16_t value,
+    std::uint8_t armor_index,
+    const UsArmorCatalog& catalog);
 
 struct ArmorSelectionCallbacks {
     // 0xC0DA is called twice before the two source effect services.
