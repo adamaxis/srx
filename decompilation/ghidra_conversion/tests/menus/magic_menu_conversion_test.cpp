@@ -458,18 +458,25 @@ int main() {
     availability_callbacks.write_repeated_grid = [&]() {
         availability_events.push_back(1);
     };
-    availability_callbacks.render_spell_text = [&]() {
-        availability_events.push_back(2);
-    };
+    availability_callbacks.render_spell_text =
+        [&](const MagicSpellDefinition& spell) {
+            if (spell.spell_code != 0U || spell.display_name != "Flame Dart") {
+                availability_events.push_back(99);
+                return;
+            }
+            availability_events.push_back(2);
+        };
     availability_callbacks.write_grid = [&]() {
         availability_events.push_back(3);
     };
-    render_magic_spell_availability(-1, availability_callbacks);
+    render_magic_spell_availability(*find_us_magic_spell(3U),
+                                    availability_callbacks);
     if (!expect(availability_events == std::vector<int>{1})) {
         return 25;
     }
     availability_events.clear();
-    render_magic_spell_availability(0, availability_callbacks);
+    render_magic_spell_availability(*find_us_magic_spell(0U),
+                                    availability_callbacks);
     if (!expect(availability_events == std::vector<int>{2, 3})) {
         return 26;
     }

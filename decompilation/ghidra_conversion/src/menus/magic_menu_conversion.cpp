@@ -601,14 +601,16 @@ void render_magic_menu_selection_display(
 }
 
 void render_magic_spell_availability(
-    const std::int8_t availability_byte,
+    const MagicSpellDefinition& spell,
     const MagicSpellAvailabilityCallbacks& callbacks) {
     // ROM 0x1088C branches on the signed +0x25 spell-record byte.
-    if (availability_byte < 0) {
+    if (spell.availability_byte < 0) {
         call_once(callbacks.write_repeated_grid);
         return;
     }
-    call_once(callbacks.render_spell_text);
+    if (callbacks.render_spell_text) {
+        callbacks.render_spell_text(spell);
+    }
     call_once(callbacks.write_grid);
 }
 

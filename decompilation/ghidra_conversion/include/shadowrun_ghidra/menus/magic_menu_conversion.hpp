@@ -204,7 +204,7 @@ struct MagicGridControlCallbacks {
 
 struct MagicSpellAvailabilityCallbacks {
     std::function<void()> write_repeated_grid;
-    std::function<void()> render_spell_text;
+    std::function<void(const MagicSpellDefinition&)> render_spell_text;
     std::function<void()> write_grid;
 };
 
@@ -387,10 +387,11 @@ void render_magic_menu_selection_display(
     std::uint8_t spell_code,
     const MagicMenuSelectionDisplayCallbacks& callbacks = {});
 
-// ROM 0x1088C: a negative signed availability byte draws the unavailable
-// marker; otherwise the source renders the spell text and one grid.
+// ROM 0x1088C: a negative signed +0x25 spell byte draws the unavailable
+// marker; otherwise the source renders the selected spell's text and one
+// grid. The runtime receives the typed D4EA0 row, not a detached byte.
 void render_magic_spell_availability(
-    std::int8_t availability_byte,
+    const MagicSpellDefinition& spell,
     const MagicSpellAvailabilityCallbacks& callbacks = {});
 
 // ROM 0x1098E: clear nine menu grids, optionally clear the tenth source grid,
