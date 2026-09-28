@@ -1,6 +1,8 @@
 #pragma once
 
 #include "shadowrun_ghidra/core/asset_catalog_conversion.hpp"
+#include "shadowrun_ghidra/field/scene_profile_conversion.hpp"
+#include "shadowrun_ghidra/field/terrain_map_conversion.hpp"
 #include "shadowrun_ghidra/rendering/display_service_batch_conversion.hpp"
 
 #include <array>
@@ -21,6 +23,28 @@ constexpr std::size_t kFieldSessionTerrainLayerWordCount = 0xE10U;
 constexpr std::size_t kFieldSessionTerrainLayerByteCount =
     kFieldSessionTerrainLayerWordCount * sizeof(std::uint16_t);
 constexpr std::size_t kFieldSessionTerrainStreamByteCount = 0x3500U;
+constexpr std::size_t kFieldMode2DescriptorByteCount = 0x58U;
+constexpr std::size_t kFieldMode2TerrainCollisionRectangleCount = 101U;
+constexpr std::size_t kFieldMode2TerrainCollisionRectangleByteCount =
+    kFieldMode2TerrainCollisionRectangleCount * 10U;
+constexpr std::size_t kFieldMode2EventTableByteCount = 32U;
+
+struct FieldMode2SourceDescriptor {
+    // ROM 0x172C80, words +0x00/+0x02. These are source fixed-point words;
+    // callers decide how to project them into host coordinates.
+    std::uint16_t initial_camera_x_fixed = 0;
+    std::uint16_t initial_camera_y_fixed = 0;
+    // ROM words +0x42..+0x4C, the three initial field-record positions.
+    std::array<SceneRunnerPosition, 3> initial_field_records{};
+    // ROM words +0x0C..+0x12, used as the field terrain collision bounds.
+    std::uint16_t terrain_x_exclusive_upper = 0;
+    std::uint16_t terrain_y_exclusive_upper = 0;
+    std::uint16_t terrain_x_inclusive_lower = 0;
+    std::uint16_t terrain_y_inclusive_lower = 0;
+    // ROM 0x172CDC, copied from the descriptor's event-table pointer.
+    std::array<std::uint8_t, kFieldMode2EventTableByteCount>
+        event_mode_table{};
+};
 
 // Direct source records extracted from the US ROM. These are host-owned
 // inputs for the existing field-session conversion, not a runtime ROM view.
@@ -44,6 +68,15 @@ struct FieldSessionSourceAssets {
     // stream at 0x188AFC; this is direct host data, not a runtime decoder
     // input or a ROM address token.
     std::vector<std::uint8_t> mode2_terrain_stream_source;
+    // ROM 0x172C80, interpreted as typed mode-2 startup/terrain metadata.
+    FieldMode2SourceDescriptor mode2_descriptor{};
+    // ROM 0x172DAA, five-word records consumed by the terrain-map builder.
+    std::vector<TerrainCollisionRectangle>
+        mode2_terrain_collision_rectangles;
+    // Host projection of the same source rectangles through the converted
+    // ROM 0xEE10 rasterization contract. This is derived conversion state,
+    // not another extracted asset.
+    std::array<std::uint8_t, 0x1000> mode2_terrain_collision_map{};
 };
 
 struct FieldSessionSourceAssetLoadResult {

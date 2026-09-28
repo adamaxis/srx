@@ -207,6 +207,21 @@ void extract_field_session_record_assets(
     }
     write_host_record(mode2_stream.bytes, root,
                       "records/field/mode-2-terrain-stream.bin");
+    // The mode-2 field descriptor supplies the initial camera/runner state,
+    // terrain bounds, and source pointers used by the field transition. The
+    // pointers themselves remain extraction provenance; the conversion layer
+    // receives the pointed-to records as separate host assets below.
+    write_rom_record(rom, root, "records/field/mode-2-descriptor.bin",
+                     0x172C80U, 0x58U);
+    // ROM 0xEE10 consumes five-word collision records until the 0x8000
+    // sentinel. Mode 2 has 101 records followed by that sentinel at
+    // 0x17319C, so retain the complete source table including no terminator
+    // byte in the record stream itself.
+    write_rom_record(
+        rom, root, "records/field/mode-2-terrain-collision-rectangles.bin",
+        0x172DAAU, 101U * 10U);
+    write_rom_record(rom, root, "records/field/mode-2-event-table.bin",
+                     0x172CDCU, 32U);
 }
 
 struct CroppedAsset {
@@ -588,6 +603,15 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
     emit_generated_state_row(
         "records.field.mode.2.terrain.stream",
         "records/field/mode-2-terrain-stream.bin");
+    emit_generated_state_row(
+        "records.field.mode.2.descriptor",
+        "records/field/mode-2-descriptor.bin");
+    emit_generated_state_row(
+        "records.field.mode.2.terrain.collision.rectangles",
+        "records/field/mode-2-terrain-collision-rectangles.bin");
+    emit_generated_state_row(
+        "records.field.mode.2.event.table",
+        "records/field/mode-2-event-table.bin");
     std::string line;
     std::getline(catalog, line);
     while (std::getline(catalog, line)) {

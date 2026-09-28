@@ -1,6 +1,8 @@
 #include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
 
+#include <algorithm>
 #include <fstream>
+#include <stdexcept>
 #include <utility>
 
 namespace shadowrun::ghidra_conversion::integration {
@@ -20,6 +22,12 @@ constexpr const char* kMode2TerrainLayerBAlias =
     "records.field.mode.2.terrain.layer.b";
 constexpr const char* kMode2TerrainStreamAlias =
     "records.field.mode.2.terrain.stream";
+constexpr const char* kMode2DescriptorAlias =
+    "records.field.mode.2.descriptor";
+constexpr const char* kMode2TerrainCollisionRectanglesAlias =
+    "records.field.mode.2.terrain.collision.rectangles";
+constexpr const char* kMode2EventTableAlias =
+    "records.field.mode.2.event.table";
 
 std::optional<std::vector<std::uint8_t>> read_record_bytes(
     const ConversionAssetCatalog& catalog, const char* alias,
@@ -74,6 +82,61 @@ decode_scene_profile(const std::vector<std::uint8_t>& bytes) {
     return profile;
 }
 
+FieldMode2SourceDescriptor decode_mode2_descriptor(
+    const std::vector<std::uint8_t>& descriptor_bytes,
+    const std::vector<std::uint8_t>& event_table_bytes) {
+    FieldMode2SourceDescriptor descriptor;
+    descriptor.initial_camera_x_fixed =
+        read_big_endian_word(descriptor_bytes, 0x00U);
+    descriptor.initial_camera_y_fixed =
+        read_big_endian_word(descriptor_bytes, 0x02U);
+    descriptor.initial_field_records[0] = {
+        read_big_endian_word(descriptor_bytes, 0x42U),
+        read_big_endian_word(descriptor_bytes, 0x44U)};
+    descriptor.initial_field_records[1] = {
+        read_big_endian_word(descriptor_bytes, 0x46U),
+        read_big_endian_word(descriptor_bytes, 0x48U)};
+    descriptor.initial_field_records[2] = {
+        read_big_endian_word(descriptor_bytes, 0x4AU),
+        read_big_endian_word(descriptor_bytes, 0x4CU)};
+    descriptor.terrain_x_exclusive_upper =
+        read_big_endian_word(descriptor_bytes, 0x0CU);
+    descriptor.terrain_y_exclusive_upper =
+        read_big_endian_word(descriptor_bytes, 0x0EU);
+    descriptor.terrain_x_inclusive_lower =
+        read_big_endian_word(descriptor_bytes, 0x10U);
+    descriptor.terrain_y_inclusive_lower =
+        read_big_endian_word(descriptor_bytes, 0x12U);
+    std::copy(event_table_bytes.begin(), event_table_bytes.end(),
+              descriptor.event_mode_table.begin());
+    return descriptor;
+}
+
+std::vector<TerrainCollisionRectangle> decode_mode2_terrain_collision_rectangles(
+    const std::vector<std::uint8_t>& bytes) {
+    std::vector<TerrainCollisionRectangle> rectangles;
+    rectangles.reserve(kFieldMode2TerrainCollisionRectangleCount);
+    for (std::size_t offset = 0; offset < bytes.size();
+         offset += 10U) {
+        const auto x_start = read_big_endian_word(bytes, offset + 0x00U);
+        if ((x_start & 0x8000U) != 0U) {
+            throw std::runtime_error(
+                "mode-2 terrain collision record stream contains an early sentinel");
+        }
+        const auto x_end = read_big_endian_word(bytes, offset + 0x02U);
+        const auto y_start = read_big_endian_word(bytes, offset + 0x04U);
+        const auto y_end = read_big_endian_word(bytes, offset + 0x06U);
+        const auto value = read_big_endian_word(bytes, offset + 0x08U);
+        rectangles.push_back({x_start, x_end, y_start, y_end,
+                              static_cast<std::uint8_t>(value)});
+    }
+    if (rectangles.size() != kFieldMode2TerrainCollisionRectangleCount) {
+        throw std::runtime_error(
+            "mode-2 terrain collision record count changed");
+    }
+    return rectangles;
+}
+
 } // namespace
 
 FieldSessionSourceAssetLoadResult load_field_session_source_assets(
@@ -101,10 +164,21 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
     const auto terrain_stream = read_record_bytes(
         catalog, kMode2TerrainStreamAlias, kFieldSessionTerrainStreamByteCount,
         result.errors);
+    const auto mode2_descriptor = read_record_bytes(
+        catalog, kMode2DescriptorAlias, kFieldMode2DescriptorByteCount,
+        result.errors);
+    const auto mode2_collision_rectangles = read_record_bytes(
+        catalog, kMode2TerrainCollisionRectanglesAlias,
+        kFieldMode2TerrainCollisionRectangleByteCount, result.errors);
+    const auto mode2_event_table = read_record_bytes(
+        catalog, kMode2EventTableAlias, kFieldMode2EventTableByteCount,
+        result.errors);
     if (!action_profiles.has_value() || !mode_selection.has_value() ||
         !normal_profile.has_value() || !alternate_profile.has_value() ||
         !terrain_layer_a.has_value() || !terrain_layer_b.has_value() ||
-        !terrain_stream.has_value()) {
+        !terrain_stream.has_value() || !mode2_descriptor.has_value() ||
+        !mode2_collision_rectangles.has_value() ||
+        !mode2_event_table.has_value()) {
         return result;
     }
 
@@ -132,6 +206,14 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
             read_big_endian_word(*terrain_layer_b, offset));
     }
     assets.mode2_terrain_stream_source = *terrain_stream;
+    assets.mode2_descriptor =
+        decode_mode2_descriptor(*mode2_descriptor, *mode2_event_table);
+    assets.mode2_terrain_collision_rectangles =
+        decode_mode2_terrain_collision_rectangles(*mode2_collision_rectangles);
+    bool rebuild_requested = true;
+    rebuild_terrain_collision_map(
+        assets.mode2_terrain_collision_map, rebuild_requested,
+        assets.mode2_terrain_collision_rectangles, [](auto&) {});
     result.assets = std::move(assets);
     return result;
 }

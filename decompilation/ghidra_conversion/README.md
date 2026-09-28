@@ -116,11 +116,15 @@ direct title assets through the converted `0x1A9E` frame coordinator, and
 routes startup-menu input through the converted New Game/Load Game/Joshua menu
 contracts. On the New Game path, `field_ready` now invokes the separate
 `qt_runtime/src/field_scene_runtime.cpp` composition adapter. That adapter
-feeds the extracted action/mode/profile/terrain records into the converted
-field-session bootstrap and paints the direct field map/HUD assets. The
-startup field mode is `2`, while its normal profile's `0x186EDC/0x187CEC`
-resources are descriptor row `0`, so the initial host map is
-`field.maps.mode.0`; this is not a fallback to `field.maps.mode.2`.
+feeds the extracted action/mode/profile/descriptor/collision/event/terrain
+records into the converted field-session bootstrap and paints the direct
+field map/HUD assets. The startup field mode is `2`, while its normal
+profile's `0x186EDC/0x187CEC` resources are descriptor row `0`, so the
+initial host map is `field.maps.mode.0`; this is not a fallback to
+`field.maps.mode.2`. The mode-2 descriptor's initial camera, three
+field-record positions, terrain bounds, collision rectangles, and event table
+are now typed conversion inputs; they are not yet a claim that the Qt bridge
+has source-verified runner movement or dynamic entity presentation.
 
 The Qt callbacks remain explicit presentation/source boundaries; they do not
 replace unresolved source behavior with a native-port implementation. Dynamic

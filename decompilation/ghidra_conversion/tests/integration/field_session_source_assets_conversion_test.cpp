@@ -66,6 +66,40 @@ int main() {
         terrain_stream.back() != 0x65U) {
         return 8;
     }
+    const auto& descriptor = source.assets->mode2_descriptor;
+    if (descriptor.initial_camera_x_fixed != 0x3400U ||
+        descriptor.initial_camera_y_fixed != 0x2280U ||
+        descriptor.initial_field_records[0].x != 0x3CE0U ||
+        descriptor.initial_field_records[0].y != 0x2D00U ||
+        descriptor.initial_field_records[1].x != 0x3BA0U ||
+        descriptor.initial_field_records[1].y != 0x2D00U ||
+        descriptor.initial_field_records[2].x != 0x3DA0U ||
+        descriptor.initial_field_records[2].y != 0x2D00U ||
+        descriptor.terrain_x_exclusive_upper != 0x0754U ||
+        descriptor.terrain_y_exclusive_upper != 0x0518U ||
+        descriptor.terrain_x_inclusive_lower != 0x002CU ||
+        descriptor.terrain_y_inclusive_lower != 0x002CU ||
+        descriptor.event_mode_table[0] != 0x14U ||
+        descriptor.event_mode_table[1] != 0x1AU) {
+        return 9;
+    }
+    const auto& collision_rectangles =
+        source.assets->mode2_terrain_collision_rectangles;
+    if (collision_rectangles.size() !=
+            kFieldMode2TerrainCollisionRectangleCount ||
+        collision_rectangles.front().left != 0x0420U ||
+        collision_rectangles.front().right != 0x043FU ||
+        collision_rectangles.front().top != 0x0020U ||
+        collision_rectangles.front().bottom != 0x007FU ||
+        collision_rectangles.front().value != 0x7FU ||
+        collision_rectangles.back().left != 0x0200U ||
+        collision_rectangles.back().right != 0x021FU ||
+        collision_rectangles.back().top != 0x0080U ||
+        collision_rectangles.back().bottom != 0x009FU ||
+        collision_rectangles.back().value != 0xDFU ||
+        source.assets->mode2_terrain_collision_map[97U] != 0x7FU) {
+        return 10;
+    }
     const auto scene_input =
         make_initial_mode2_field_scene_input(*source.assets);
     if (scene_input.scene_reference != 2U ||
@@ -75,7 +109,7 @@ int main() {
         scene_input.layer_a != source.assets->mode2_terrain_layer_a_source ||
         scene_input.layer_b != source.assets->mode2_terrain_layer_b_source ||
         scene_input.terrain_stream != source.assets->mode2_terrain_stream_source) {
-        return 9;
+        return 11;
     }
     return 0;
 }

@@ -12,3 +12,8 @@ such as `assets.audio_path("audio.intro.title.stage-1")`; do not add raw ROM
 slices or split event fragments here. A missing loop-point entry is
 intentional: the native player must not guess a repeat boundary from an
 internal channel restart.
+
+Field startup records remain individually named under `records/field/`. The
+mode-2 descriptor, collision-record stream, and event table are direct source
+records; the conversion loader interprets them into typed field state and a
+host collision map without making the runtime read ROM addresses.

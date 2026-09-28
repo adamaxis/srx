@@ -10,6 +10,9 @@ records.field.scene.profile.alternate	records/field/scene-profile-alternate.bin	
 records.field.mode.2.terrain.layer.a	records/field/mode-2-terrain-layer-a.bin	state	0	0
 records.field.mode.2.terrain.layer.b	records/field/mode-2-terrain-layer-b.bin	state	0	0
 records.field.mode.2.terrain.stream	records/field/mode-2-terrain-stream.bin	state	0	0
+records.field.mode.2.descriptor	records/field/mode-2-descriptor.bin	state	0	0
+records.field.mode.2.terrain.collision.rectangles	records/field/mode-2-terrain-collision-rectangles.bin	state	0	0
+records.field.mode.2.event.table	records/field/mode-2-event-table.bin	state	0	0
 title.background	title/background.bmp	image	0	0
 title.circuit.background.0	title/circuit-background-0.bmp	image	0	0
 title.circuit.background.1	title/circuit-background-1.bmp	image	0	0
