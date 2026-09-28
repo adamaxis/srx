@@ -62,6 +62,21 @@ struct MagicForceSelection {
     std::uint8_t force = 1;
 };
 
+// ROM 0x10016 is a frame-driven controller loop. Hardware sampling and the
+// presentation services are explicit host boundaries, while the loop keeps
+// the source ordering and its three exit edges. A caller supplies the
+// already-sampled input word; no Genesis memory or VDP state is required.
+struct MagicForceSelectionLoopCallbacks {
+    std::function<void()> refresh_initial_display;
+    std::function<void()> advance_menu_sprite_overlay;
+    std::function<void()> wait_for_vblank;
+    std::function<void()> latch_controller_events;
+    std::function<void()> sample_controller_input;
+    std::function<std::uint16_t()> read_sampled_input;
+    std::function<void(std::int16_t)> adjust_force;
+    std::function<void()> refresh_final_display;
+};
+
 struct MagicForceDisplayCallbacks {
     std::function<void()> write_repeated_grid;
     std::function<void()> write_grid;
@@ -140,12 +155,20 @@ MagicActionPreparation prepare_magic_action(
     RunnerRecordFields& record, const MagicSpellSelection& selection,
     std::uint8_t force);
 
-// ROM 0x10016: B raises force, A lowers it, and the source confirm/cancel
-// edges leave the force/posture loop. This models the input/state boundary;
-// the source's VDP redraw helpers remain outside the conversion.
+// ROM 0x10016's input boundary: B raises force, A lowers it, and the source
+// confirm/cancel edges leave the force/posture loop. Bit D is deliberately not
+// an exit edge; it returns to the next frame. The redraw service remains a
+// separate host boundary.
 MagicForceLoopResult apply_magic_force_input(
     MagicForceSelection& state, std::uint16_t input,
     std::uint8_t table_parameter);
+
+// ROM 0x10016: initial force display, overlay/frame/input services, B/A
+// adjustment priority, and the bit-9/E/C exit redraw. The host controller
+// owns the event loop; this function is the source behavior for one bounded
+// selection interaction and returns only on one of the source exit edges.
+void run_magic_force_selection_loop(
+    const MagicForceSelectionLoopCallbacks& callbacks = {});
 
 // ROM 0x10172: refresh the force meter in the exact source order. The
 // repeated-grid and normal-grid operations are host presentation boundaries;
@@ -156,8 +179,9 @@ void refresh_magic_force_display(
 
 // ROM 0x100A8: update the typed current force, publish record +0x9D, then
 // preserve the source callback order. The combat refresh is allowed to alter
-// the force state through its host boundary, so the source's saved
-// current/maximum pair is restored before the final menu refreshes.
+// the maximum-force state through its host boundary: the source saves only
+// current force (+0xFFF096), restores that word, and leaves maximum force
+// (+0xFFF098) as refreshed.
 struct MagicForceState {
     std::uint16_t current_force = 1;
     std::uint16_t maximum_force = 1;

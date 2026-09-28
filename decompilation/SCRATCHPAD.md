@@ -1887,10 +1887,11 @@ spell item code (`spell_code + 1`), reloads the ordinary equipped-item value
 only when the source had an active item, and records the selected force. The
 target/effect application is not at `0x10016`; that entry is only the
 force-input loop. The `0x10016` input boundary is now converted too: source bit `0x0800`
-raises force, `0x0400` lowers it, and `0x0200`, `0x4000`, `0x1000`, or
-`0x2000` finish the loop. All adjustments use the same inclusive clamp, so
-the host state cannot diverge at the force edges; VDP redraws remain outside
-this state conversion.
+raises force, `0x0400` lowers it, and `0x0200`, `0x4000`, or `0x1000` leave the
+loop. `0x2000` is the source loop-back edge and does not finish the interaction.
+The typed conversion now includes the complete frame service order and keeps
+the initial/final display variants explicit; all adjustments use the same
+inclusive clamp, so the host state cannot diverge at the force edges.
 
 The Cyberware screen at `0x11950` is now a concrete menu model: a zero
 `+0x90` bitfield selects the no-cyberware message, while a nonzero field scans

@@ -165,8 +165,9 @@ MagicForceLoopResult apply_magic_force_input(
     const std::uint8_t table_parameter) {
     constexpr std::uint16_t kRaiseForce = 0x0800U;
     constexpr std::uint16_t kLowerForce = 0x0400U;
-    constexpr std::uint16_t kFinishInput = 0x0200U | 0x4000U | 0x1000U |
-                                            0x2000U;
+    // ROM 0x10016 exits on bits 9, E, or C. Bit D is the explicit loop-back
+    // edge at 0x10092 and must not be folded into the finish mask.
+    constexpr std::uint16_t kFinishInput = 0x0200U | 0x4000U | 0x1000U;
     if ((input & kRaiseForce) != 0U) {
         state.force = clamp_magic_force(state.force, 1, table_parameter);
         return MagicForceLoopResult::adjusted;
@@ -179,6 +180,41 @@ MagicForceLoopResult apply_magic_force_input(
         return MagicForceLoopResult::finished;
     }
     return MagicForceLoopResult::waiting;
+}
+
+void run_magic_force_selection_loop(
+    const MagicForceSelectionLoopCallbacks& callbacks) {
+    // ROM 0x10016 enters with the C85A8 force-display variant, then redraws
+    // with C85AC only after bit 9, E, or C returns from the frame loop.
+    call_once(callbacks.refresh_initial_display);
+    for (;;) {
+        call_once(callbacks.advance_menu_sprite_overlay);
+        call_once(callbacks.wait_for_vblank);
+        call_once(callbacks.latch_controller_events);
+        call_once(callbacks.sample_controller_input);
+
+        const auto input = callbacks.read_sampled_input
+                               ? callbacks.read_sampled_input()
+                               : 0U;
+        if ((input & 0x0800U) != 0U) {
+            // Source tests B before A when both edges are present.
+            if (callbacks.adjust_force) {
+                callbacks.adjust_force(1);
+            }
+            continue;
+        }
+        if ((input & 0x0400U) != 0U) {
+            if (callbacks.adjust_force) {
+                callbacks.adjust_force(-1);
+            }
+            continue;
+        }
+        if ((input & (0x0200U | 0x4000U | 0x1000U)) != 0U) {
+            call_once(callbacks.refresh_final_display);
+            return;
+        }
+        // Bit D and an empty input word both follow the source loop-back edge.
+    }
 }
 
 void refresh_magic_force_display(
@@ -212,11 +248,12 @@ void adjust_magic_force(
                                 callbacks.display);
     call_once(callbacks.write_repeated_grid);
 
+    // ROM 0x100A8 saves only FFF096 around 0x1055E.  The equipment refresh
+    // may replace the selected maximum at FFF098; that replacement is part
+    // of the source state and must not be silently rolled back here.
     const auto saved_current = state.current_force;
-    const auto saved_maximum = state.maximum_force;
     call_once(callbacks.refresh_equipment_combat_values);
     state.current_force = saved_current;
-    state.maximum_force = saved_maximum;
 
     call_once(callbacks.write_repeated_menu_grid);
     call_once(callbacks.refresh_equipment_action_metric);

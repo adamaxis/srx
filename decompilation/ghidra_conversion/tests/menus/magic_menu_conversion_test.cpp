@@ -123,11 +123,37 @@ int main() {
                 apply_magic_force_input(force_state, 0x0800U, 1U) ==
                     MagicForceLoopResult::adjusted &&
                 force_state.force == 1U &&
+                apply_magic_force_input(force_state, 0x2000U, 3U) ==
+                    MagicForceLoopResult::waiting &&
                 apply_magic_force_input(force_state, 0x0200U, 3U) ==
                     MagicForceLoopResult::finished &&
                 apply_magic_force_input(force_state, 0U, 3U) ==
                     MagicForceLoopResult::waiting)) {
         return 15;
+    }
+
+    std::vector<int> loop_events;
+    std::vector<std::uint16_t> loop_inputs{0x0800U, 0x2000U, 0x0200U};
+    std::size_t loop_input_index = 0U;
+    MagicForceSelectionLoopCallbacks loop_callbacks{};
+    loop_callbacks.refresh_initial_display = [&]() { loop_events.push_back(1); };
+    loop_callbacks.advance_menu_sprite_overlay = [&]() { loop_events.push_back(2); };
+    loop_callbacks.wait_for_vblank = [&]() { loop_events.push_back(3); };
+    loop_callbacks.latch_controller_events = [&]() { loop_events.push_back(4); };
+    loop_callbacks.sample_controller_input = [&]() { loop_events.push_back(5); };
+    loop_callbacks.read_sampled_input = [&]() {
+        loop_events.push_back(6);
+        return loop_inputs[loop_input_index++];
+    };
+    loop_callbacks.adjust_force = [&](const std::int16_t delta) {
+        loop_events.push_back(delta > 0 ? 7 : 8);
+    };
+    loop_callbacks.refresh_final_display = [&]() { loop_events.push_back(9); };
+    run_magic_force_selection_loop(loop_callbacks);
+    if (!expect(loop_events == std::vector<int>{1, 2, 3, 4, 5, 6, 7,
+                                                 2, 3, 4, 5, 6,
+                                                 2, 3, 4, 5, 6, 9})) {
+        return 26;
     }
 
     std::vector<int> force_display_events;
@@ -205,7 +231,7 @@ int main() {
     adjust_magic_force(force_record, force_state_values, 1,
                        adjustment_callbacks);
     if (!expect(force_state_values.current_force == 4U &&
-                force_state_values.maximum_force == 5U &&
+                force_state_values.maximum_force == 100U &&
                 force_record.magic_force == 4U &&
                 adjustment_events == std::vector<int>{1, 2, 2, 3, 2, 2, 4,
                                                       5, 6, 7})) {

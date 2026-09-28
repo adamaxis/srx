@@ -9,6 +9,11 @@
 //   0x00010172 refresh_magic_force_display
 //   0x0001055E refresh_equipment_combat_values
 //   0x000105E6 refresh_equipment_action_metric
+//
+// Source correction: the disassembly pushes only FFF096 before
+// refresh_equipment_combat_values and restores only that word afterward.
+// The generated locals below incorrectly preserve FFF098 as well; the typed
+// conversion intentionally leaves the refreshed maximum-force value intact.
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */

@@ -1748,8 +1748,9 @@ native port.
 The adjacent Magic-menu pass also now covers `0x100A8`, `0x1088C`, `0x1098E`,
 and `0x10A82`. `adjust_magic_force` is a typed word-state mutation that clamps
 the selected force, publishes runner record `+0x9D`, runs the source display and
-combat/action refresh sequence, and restores the current/max pair around the
-combat callback exactly as the source does. Spell availability uses the signed
+combat/action refresh sequence, and restores only the current-force word
+around the combat callback, matching the source stack save. The refreshed
+maximum is retained. Spell availability uses the signed
 `+0x25` record byte: unavailable emits one repeated marker, while available
 emits text then one grid. The two grid helpers preserve their exact counts and
 display commands (`0x8174`, or `0x8134` then `0x8174`). Their callback order and
