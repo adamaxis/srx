@@ -584,6 +584,32 @@ EquipmentActionDetailRowResult render_equipment_action_detail_row(
     return result;
 }
 
+EquipmentActionDetailRowResult render_equipment_action_detail_row(
+    const EquipmentActionDetailRowInput& input,
+    const UsItemCatalog& item_catalog,
+    const EquipmentActionDetailRowCallbacks& callbacks) {
+    auto source_bound_input = input;
+    const auto ordinary_active_action =
+        input.active_action_code != 0U &&
+        !(input.display_state < 0 && input.source_mode >= 2U);
+    if (ordinary_active_action) {
+        if (input.active_action_code > item_catalog.size()) {
+            EquipmentActionDetailRowResult missing{};
+            missing.detail_asset_missing = true;
+            return missing;
+        }
+        const auto& item = item_catalog[static_cast<std::size_t>(
+            input.active_action_code - 1U)];
+        if (item.item_code != input.active_action_code) {
+            EquipmentActionDetailRowResult missing{};
+            missing.detail_asset_missing = true;
+            return missing;
+        }
+        source_bound_input.detail_asset_index = item.signed_detail_asset_index;
+    }
+    return render_equipment_action_detail_row(source_bound_input, callbacks);
+}
+
 namespace {
 
 void publish_equipment_details_text(

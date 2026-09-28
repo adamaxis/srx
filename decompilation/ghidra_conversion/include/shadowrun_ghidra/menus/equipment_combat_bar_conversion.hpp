@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/magic_spell_catalog_conversion.hpp"
 #include "shadowrun_ghidra/entities/action_detail_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_action_math_conversion.hpp"
@@ -382,6 +383,14 @@ ItemActionDetailResult render_item_action_details(
 // address lookup.
 EquipmentActionDetailRowResult render_equipment_action_detail_row(
     const EquipmentActionDetailRowInput& input,
+    const EquipmentActionDetailRowCallbacks& callbacks = {});
+
+// Source-data-bound 0x12EAE path. Ordinary active actions use the one-based
+// +0x57 code to select the corresponding D4540 row's signed +0x25 value;
+// higher-mode magic rows continue through their typed D4EA0 input.
+EquipmentActionDetailRowResult render_equipment_action_detail_row(
+    const EquipmentActionDetailRowInput& input,
+    const UsItemCatalog& item_catalog,
     const EquipmentActionDetailRowCallbacks& callbacks = {});
 
 // ROM 0x111E8: refresh the equipment-details page when FFF112 is set, choose

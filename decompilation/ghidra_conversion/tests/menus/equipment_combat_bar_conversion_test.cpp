@@ -482,6 +482,27 @@ int main() {
         return 19;
     }
 
+    row_events.clear();
+    const auto typed_normal_row = render_equipment_action_detail_row(
+        row_input, us_item_catalog(), row_callbacks);
+    if (!(typed_normal_row.action_selection.has_value() &&
+          typed_normal_row.detail_grid.has_value() &&
+          typed_normal_row.detail_grid->asset_index == 0U &&
+          !typed_normal_row.detail_asset_missing &&
+          row_events == std::vector<int>{2, 3, 4})) {
+        return 28;
+    }
+
+    row_input.active_action_code = 51U;
+    row_events.clear();
+    const auto missing_typed_item = render_equipment_action_detail_row(
+        row_input, us_item_catalog(), row_callbacks);
+    if (!(missing_typed_item.detail_asset_missing &&
+          !missing_typed_item.action_selection.has_value() &&
+          row_events.empty())) {
+        return 29;
+    }
+
     // Higher-mode negative display state uses the alternate action table,
     // renders the header for active action five, and advances the action menu.
     row_events.clear();

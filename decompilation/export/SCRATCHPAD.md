@@ -1124,6 +1124,11 @@ active record `+0x57 - 1`, reads that row's `D4EA0 +0x25` availability value,
 and uses it as the alternate detail asset index; a missing or mismatched typed
 row is reported as an unresolved source-data boundary. Ordinary item detail
 rows continue to receive their signed `D4540 +0x25` value separately.
+The source-bound overload now resolves ordinary active action `+0x57` codes
+through the typed `UsItemCatalog` (one-based code to zero-based row) and uses
+that row's signed `+0x25` value. Out-of-range or identity-mismatched rows stop
+with an explicit missing-detail result; the generic signed-byte input remains
+an audit adapter.
 
 After the `0x13000` selection, the routine renders the detail text from the
 `0xD19B0` family at `0xC51C`/`0x6000`, then writes six rows from the selected
