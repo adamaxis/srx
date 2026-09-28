@@ -2,6 +2,7 @@
 
 #include "shadowrun_ghidra/core/asset_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/timing_conversion.hpp"
+#include "shadowrun_ghidra/integration/opening_intro_conversion.hpp"
 #include "shadowrun_ghidra/menus/startup_menu_conversion.hpp"
 #include "shadowrun_ghidra/session/save_field_restore_conversion.hpp"
 #include "shadowrun_ghidra/session/startup_record_assets_conversion.hpp"
@@ -22,10 +23,12 @@ namespace shadowrun::ghidra_conversion::integration {
 // state and it is not linked into shadowrun_port.
 enum class StartupIntegrationPhase {
     not_started,
+    pre_title,
     title_ready,
     start_options,
     save_load,
     joshua_archetype,
+    opening_intro,
     field_ready,
     failed,
 };
@@ -33,14 +36,19 @@ enum class StartupIntegrationPhase {
 enum class StartupIntegrationStartResult {
     assets_missing,
     callback_unresolved,
+    boot_in_progress,
     title_ready,
 };
 
 enum class StartupIntegrationEvent {
     invalid_phase,
+    boot_frame_advanced,
+    title_ready,
     entered_start_options,
     entered_save_load,
     entered_joshua_archetype,
+    opening_started,
+    opening_frame_advanced,
     waiting,
     selection_moved,
     no_save_data,
@@ -75,6 +83,10 @@ struct StartupIntegrationCallbacks {
     SaveLoadMenuCallbacks save_load;
     JoshuaArchetypeMenuCallbacks joshua_archetype;
 
+    // 0x59C5E timed opening. This remains a conversion-side source
+    // coordinator and is not part of the native-port runtime.
+    OpeningIntroCallbacks opening_intro;
+
     std::function<std::optional<LoadedSaveRestoreInput>(SaveSlotChoice)>
         read_loaded_save_for_restore;
     SaveFieldRestoreCallbacks save_field_restore;
@@ -97,6 +109,7 @@ struct StartupIntegrationState {
 
     BootStartupState boot;
     PreTitleSequenceState pre_title;
+    OpeningIntroState opening_intro;
     VblankFrameState frame;
     TitleSetupState title_setup;
 
@@ -115,6 +128,29 @@ struct StartupIntegrationState {
 // being hidden by the void callback shape of run_boot_startup().
 StartupIntegrationStartResult start_startup_integration(
     const std::filesystem::path& asset_root,
+    StartupIntegrationState& state,
+    const StartupIntegrationCallbacks& callbacks);
+
+// Non-blocking counterpart used by the separate Qt conversion frontend. It
+// performs reset/display/VBlank setup and the source 0x5D746 resource setup,
+// then leaves the pre-title frame loop at a visible boundary. The caller must
+// advance_startup_boot_frame() once per host frame before the title loop can
+// begin.
+StartupIntegrationStartResult begin_startup_integration(
+    const std::filesystem::path& asset_root,
+    StartupIntegrationState& state,
+    const StartupIntegrationCallbacks& callbacks);
+
+// Advances the source pre-title loop by one VBlank-sized step and publishes
+// title setup when the direct Sega/guy/FASA sequence reaches its handoff.
+StartupIntegrationEvent advance_startup_boot_frame(
+    StartupIntegrationState& state,
+    const StartupIntegrationCallbacks& callbacks);
+
+// Advances the converted 0x59C5E opening by one source VBlank-sized pass.
+// New Game enters this phase after the archetype record is initialized; it
+// does not jump directly to a synthetic field screen.
+StartupIntegrationEvent advance_startup_opening_frame(
     StartupIntegrationState& state,
     const StartupIntegrationCallbacks& callbacks);
 

@@ -2240,6 +2240,31 @@ sets the display-dirty bit. The eight child implementations remain typed
 boundaries; this conversion captures the dispatcher rather than duplicating
 the native port's already-defended SAT/map choreography.
 
+The opening integration now consumes the complete converted `0x59C5E` chain
+through `opening_intro_conversion`. New Game enters a typed schedule, the
+`0x59D7C` wilderness stage, the `0x5AA96` tri-vid orchestrator, and the
+`0x5AD1A` airport stage before publishing the post-intro handoff; it no longer
+jumps directly to a synthetic field screen. The source text records retain
+their destinations and the controller/audio/palette callback order.
+
+The missing tri-vid resources were traced rather than approximated. ROM table
+`0x5AD02` contains three timed SAT lists at `0x1DF2A2`, `0x1DF2BC`, and
+`0x1DF2CE`, with source placements `(0x128,0x113)`, `(0x11F,0x129)`, and
+`(0x113,0x145)`; the offline importer now emits six individually named
+`intro.sprites.trivid.timed.*` images. Table `0x5A080` contains six compressed
+17-by-16 name-table overlays at destination `0x600`, and the final stream at
+`0x1E2E3E` is a 20-by-13 overlay at destination `0x786`; these are emitted as
+`trivid.overlay.*` and `trivid.final.overlay.*` assets with source-plane origins.
+The Qt conversion draws those direct assets at their catalog origins. It does
+not decode a Genesis name table at runtime or replay a bitmap flipbook.
+
+The conversion startup integration test now drives the source-sized opening
+until the `field_ready` handoff and asserts that the timed, six-overlay, and
+final-overlay families were actually emitted. The opening hill remains
+`partial` because independent Genesis visual comparison and the audio player
+are not yet part of this conversion target; the source fill/palette/audio
+operations remain explicit presentation boundaries.
+
 The post-intro handoff at `0x134D2` is now `run_post_intro_mode`. Its typed
 state preserves the initial resource/HUD frame, the alternate branch's mode
 `4`/mode `2` selection and exact `0x41`/`0x61` frame windows, the normal

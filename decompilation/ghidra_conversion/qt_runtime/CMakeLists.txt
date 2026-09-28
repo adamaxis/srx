@@ -15,16 +15,22 @@ target_link_libraries(shadowrun_ghidra_conversion_qt
         Qt6::Widgets
 )
 
-if (WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Release")
+if (WIN32)
     find_program(SHADOWRUN_GHIDRA_QT_WINDEPLOYQT
         NAMES windeployqt windeployqt.exe
         HINTS "${CMAKE_PREFIX_PATH}/bin")
     if (SHADOWRUN_GHIDRA_QT_WINDEPLOYQT)
+        # The installed Qt MinGW kit supplies release Qt libraries and the
+        # release qwindows platform plugin even for a Debug application build.
+        # CMAKE_BUILD_TYPE describes our symbols, not the Qt ABI selected by
+        # find_package(Qt6).
+        set(SHADOWRUN_GHIDRA_QT_DEPLOY_CONFIGURATION --release)
         add_custom_command(TARGET shadowrun_ghidra_conversion_qt POST_BUILD
             COMMAND "${SHADOWRUN_GHIDRA_QT_WINDEPLOYQT}"
-                    --release --no-translations --no-compiler-runtime
+                    ${SHADOWRUN_GHIDRA_QT_DEPLOY_CONFIGURATION}
+                    --no-translations --no-compiler-runtime
                     "$<TARGET_FILE:shadowrun_ghidra_conversion_qt>"
-            COMMENT "Deploying Qt 6 runtime beside the Ghidra conversion frontend"
+            COMMENT "Deploying Qt 6 ${CMAKE_BUILD_TYPE} runtime beside the Ghidra conversion frontend"
             VERBATIM)
     endif()
 

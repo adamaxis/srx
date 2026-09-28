@@ -23,6 +23,7 @@ struct Observations {
     bool resource_work_area_zeroed = false;
     JoshuaArchetypeChoice initialized_archetype =
         JoshuaArchetypeChoice::samurai;
+    std::vector<OpeningIntroSpriteGroup> opening_sprite_groups;
 };
 
 void record(Observations& observations, const char* callback) {
@@ -195,6 +196,54 @@ StartupIntegrationCallbacks make_callbacks(
             observations.initialized_archetype = choice;
             record(observations, "initialize_joshua_archetype");
         };
+
+    callbacks.opening_intro.wait_for_vblank = [&state] {
+        wait_for_vblank(state.frame, [](const std::uint16_t previous) {
+            return static_cast<std::uint16_t>(previous + 1U);
+        });
+    };
+    callbacks.opening_intro.sample_controller = [&observations] {
+        record(observations, "opening_sample_controller");
+    };
+    callbacks.opening_intro.latch_controller_events = [&observations] {
+        record(observations, "opening_latch_controller_events");
+    };
+    callbacks.opening_intro.prepare_mode_entry = [&observations] {
+        record(observations, "opening_prepare_mode_entry");
+    };
+    callbacks.opening_intro.service_audio_command = [&observations](
+                                                        const std::uint16_t) {
+        record(observations, "opening_service_audio_command");
+    };
+    callbacks.opening_intro.service_audio = [&observations] {
+        record(observations, "opening_service_audio");
+    };
+    callbacks.opening_intro.step_palette_transition = [&observations] {
+        record(observations, "opening_step_palette_transition");
+    };
+    callbacks.opening_intro.enter_post_intro_mode = [&observations] {
+        record(observations, "opening_enter_post_intro_mode");
+    };
+    callbacks.opening_intro.stage_changed = [&observations](
+                                                const OpeningIntroStage stage) {
+        observations.callbacks.emplace_back(
+            std::string("opening_stage:") + opening_intro_stage_name(stage));
+    };
+    callbacks.opening_intro.scene_changed = [&observations](
+                                                const OpeningIntroScene scene) {
+        observations.callbacks.emplace_back(
+            std::string("opening_scene:") + opening_intro_scene_name(scene));
+    };
+    callbacks.opening_intro.draw_sprite =
+        [&observations](const OpeningIntroSpriteRequest& request) {
+            observations.opening_sprite_groups.push_back(
+                opening_intro_sprite_group(request.sprite_descriptor));
+        };
+    callbacks.opening_intro.source_boundary = [&observations](
+                                                  const std::string_view boundary) {
+        observations.callbacks.emplace_back(boundary);
+    };
+    callbacks.opening_intro.stop_requested = [] { return false; };
 
     callbacks.phase_changed = [&observations](const StartupIntegrationPhase phase) {
         observations.phases.push_back(phase);
@@ -387,9 +436,8 @@ int main() {
     }
     if (advance_startup_integration(
             new_game_state, kStartupMenuA, new_game_callbacks) !=
-            StartupIntegrationEvent::field_ready ||
-        new_game_state.phase != StartupIntegrationPhase::field_ready ||
-        new_game_observations.field_ready_count != 1U ||
+            StartupIntegrationEvent::opening_started ||
+        new_game_state.phase != StartupIntegrationPhase::opening_intro ||
         new_game_observations.initialized_archetype !=
             JoshuaArchetypeChoice::decker ||
         !new_game_state.joshua_selection.has_value() ||
@@ -398,8 +446,86 @@ int main() {
         new_game_state.joshua_selection->record_selection_markers !=
             std::array<std::uint16_t, 3>{0U, 1U, 2U} ||
         !has_event(new_game_state, "joshua_archetype.initialized") ||
-        !has_event(new_game_state, "phase.field_ready")) {
+        !has_event(new_game_state, "opening_intro.started")) {
         return 8;
+    }
+
+    const auto& opening_plan = opening_intro_source_plan();
+    const auto timed_phase_0 = opening_intro_sprite_group(
+        opening_plan.stage_timed_phases[0].sprite_descriptor);
+    const auto timed_phase_1 = opening_intro_sprite_group(
+        opening_plan.stage_timed_phases[1].sprite_descriptor);
+    const auto timed_phase_2 = opening_intro_sprite_group(
+        opening_plan.stage_timed_phases[2].sprite_descriptor);
+    if (opening_plan.stage_timed_phases.size() != 3U ||
+        timed_phase_0.family != OpeningIntroSpriteFamily::trivid_timed ||
+        timed_phase_0.variant != 0U || timed_phase_1.variant != 1U ||
+        timed_phase_2.variant != 2U ||
+        opening_plan.stage_timed_phases[0].x != 0x0128U ||
+        opening_plan.stage_timed_phases[0].y != 0x0113U ||
+        opening_plan.stage_timed_phases[1].x != 0x011FU ||
+        opening_plan.stage_timed_phases[1].y != 0x0129U ||
+        opening_plan.stage_timed_phases[2].x != 0x0113U ||
+        opening_plan.stage_timed_phases[2].y != 0x0145U ||
+        opening_plan.stage_timed_phases[0].delay_frames != 6U ||
+        opening_plan.stage_timed_phases[1].delay_frames != 6U ||
+        opening_plan.stage_timed_phases[2].delay_frames != 6U) {
+        return 9;
+    }
+
+    for (const auto* alias : {"intro.sprites.trivid.timed.0.0",
+                              "intro.sprites.trivid.overlay.0.0",
+                              "intro.sprites.trivid.final.overlay.0.0"}) {
+        if (new_game_state.asset_catalog.catalog.find(alias) == nullptr) {
+            return 14;
+        }
+    }
+    const auto expect_origin = [&new_game_state](const char* alias,
+                                                  const int x, const int y) {
+        const auto* record = new_game_state.asset_catalog.catalog.find(alias);
+        return record != nullptr && record->origin_x == x && record->origin_y == y;
+    };
+    if (!expect_origin("intro.sprites.trivid.timed.0.0", 120, 128) ||
+        !expect_origin("intro.sprites.trivid.overlay.0.0", 4, 96) ||
+        !expect_origin("intro.sprites.trivid.final.overlay.0.0", 24, 120)) {
+        return 10;
+    }
+
+    // New Game now follows the complete converted 0x59C5E opening chain. It
+    // must not silently jump from the archetype menu to a synthetic field
+    // screen or stop after the first title/tri-vid boundary.
+    bool opening_completed = false;
+    for (std::size_t frame = 0; frame < 5000U; ++frame) {
+        const auto event = advance_startup_integration(
+            new_game_state, 0U, new_game_callbacks);
+        if (event == StartupIntegrationEvent::field_ready) {
+            opening_completed = true;
+            break;
+        }
+        if (event != StartupIntegrationEvent::opening_frame_advanced) {
+            return 12;
+        }
+    }
+    if (!opening_completed || new_game_state.phase !=
+                                  StartupIntegrationPhase::field_ready ||
+        new_game_observations.field_ready_count != 1U ||
+        !has_event(new_game_state, "opening_intro.complete") ||
+        !has_event(new_game_state, "phase.field_ready")) {
+        return 13;
+    }
+    const auto has_sprite_family =
+        [&new_game_observations](const OpeningIntroSpriteFamily family) {
+            return std::any_of(
+                new_game_observations.opening_sprite_groups.begin(),
+                new_game_observations.opening_sprite_groups.end(),
+                [family](const OpeningIntroSpriteGroup group) {
+                    return group.family == family;
+                });
+        };
+    if (!has_sprite_family(OpeningIntroSpriteFamily::trivid_timed) ||
+        !has_sprite_family(OpeningIntroSpriteFamily::trivid_overlay) ||
+        !has_sprite_family(OpeningIntroSpriteFamily::trivid_final_overlay)) {
+        return 15;
     }
 
     return 0;

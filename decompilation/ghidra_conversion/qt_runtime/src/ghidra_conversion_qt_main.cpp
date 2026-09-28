@@ -5,9 +5,9 @@
 
 #include <QApplication>
 #include <QColor>
-#include <QFont>
 #include <QImage>
 #include <QKeyEvent>
+#include <QFont>
 #include <QPainter>
 #include <QPaintEvent>
 #include <QString>
@@ -98,11 +98,11 @@ public:
         setAttribute(Qt::WA_OpaquePaintEvent);
 
         configure_startup_callbacks();
-        const auto result = start_startup_integration(
+        const auto result = begin_startup_integration(
             asset_root_, state_, startup_callbacks_);
-        if (result != StartupIntegrationStartResult::title_ready) {
+        if (result != StartupIntegrationStartResult::boot_in_progress) {
             throw std::runtime_error(
-                "converted startup did not reach title_ready; phase=" +
+                "converted startup did not enter pre_title; phase=" +
                 std::string(startup_integration_phase_name(state_.phase)));
         }
 
@@ -124,11 +124,16 @@ protected:
         scene.fill(Qt::black);
 
         QPainter scene_painter(&scene);
-        if (state_.phase == StartupIntegrationPhase::start_options ||
+        if (state_.phase == StartupIntegrationPhase::pre_title) {
+            draw_boot_scene(scene_painter);
+        } else if (state_.phase == StartupIntegrationPhase::start_options ||
             state_.phase == StartupIntegrationPhase::save_load ||
             state_.phase == StartupIntegrationPhase::joshua_archetype) {
             draw_alias(scene_painter, "menu.startup.background");
             draw_menu_overlay(scene_painter);
+        } else if (state_.phase == StartupIntegrationPhase::opening_intro ||
+                   state_.phase == StartupIntegrationPhase::field_ready) {
+            draw_opening_scene(scene_painter);
         } else if (state_.phase == StartupIntegrationPhase::failed) {
             draw_alias(scene_painter, "menu.startup.background");
             draw_conversion_boundary_error(scene_painter);
@@ -364,6 +369,79 @@ private:
                     "archetype.initialize_joshua_record");
             },
         };
+        startup_callbacks_.opening_intro.wait_for_vblank = [this] {
+            wait_for_vblank(
+                state_.frame,
+                [](const std::uint16_t previous) {
+                    return static_cast<std::uint16_t>(previous + 1U);
+                });
+        };
+        startup_callbacks_.opening_intro.sample_controller = [this] {
+            note_presentation_boundary("opening.sample_controller");
+        };
+        startup_callbacks_.opening_intro.latch_controller_events = [this] {
+            note_presentation_boundary("opening.latch_controller_events");
+        };
+        startup_callbacks_.opening_intro.prepare_mode_entry = [this] {
+            note_presentation_boundary("opening.prepare_mode_entry");
+        };
+        startup_callbacks_.opening_intro.service_audio_command =
+            [this](const std::uint16_t command) {
+                opening_audio_commands_.push_back(command);
+                note_presentation_boundary("opening.service_audio_command");
+            };
+        startup_callbacks_.opening_intro.service_audio = [this] {
+            note_presentation_boundary("opening.service_audio");
+        };
+        startup_callbacks_.opening_intro.step_palette_transition = [this] {
+            ++palette_transition_steps_;
+            note_presentation_boundary("opening.step_palette_transition");
+        };
+        startup_callbacks_.opening_intro.enter_post_intro_mode = [this] {
+            note_presentation_boundary("opening.enter_post_intro_mode");
+        };
+        startup_callbacks_.opening_intro.clear_presentation = [this] {
+            opening_sprites_.clear();
+            opening_text_.clear();
+            note_presentation_boundary("opening.clear_presentation");
+        };
+        startup_callbacks_.opening_intro.begin_frame = [this] {
+            opening_sprites_.clear();
+        };
+        startup_callbacks_.opening_intro.stage_changed =
+            [this](const OpeningIntroStage stage) {
+                opening_stage_ = stage;
+                note_presentation_boundary("opening.stage_changed");
+            };
+        startup_callbacks_.opening_intro.scene_changed =
+            [this](const OpeningIntroScene scene) {
+                opening_scene_ = scene;
+                opening_text_.clear();
+                note_presentation_boundary("opening.scene_changed");
+            };
+        startup_callbacks_.opening_intro.draw_sprite =
+            [this](const OpeningIntroSpriteRequest& request) {
+                opening_sprites_.push_back(request);
+            };
+        startup_callbacks_.opening_intro.render_text =
+            [this](const OpeningIntroTextRequest& request) {
+                const auto existing = std::find_if(
+                    opening_text_.begin(), opening_text_.end(),
+                    [&request](const OpeningIntroTextRequest& current) {
+                        return current.destination_word ==
+                               request.destination_word;
+                    });
+                if (existing == opening_text_.end()) {
+                    opening_text_.push_back(request);
+                } else {
+                    *existing = request;
+                }
+            };
+        startup_callbacks_.opening_intro.source_boundary =
+            [this](const std::string_view boundary) {
+                note_presentation_boundary(boundary);
+            };
+        startup_callbacks_.opening_intro.stop_requested = [] { return false; };
         startup_callbacks_.phase_changed =
             [this](const StartupIntegrationPhase phase) {
                 setWindowTitle(phase_title(phase));
@@ -429,6 +507,18 @@ private:
     }
 
     void advance_title_frame() {
+        if (state_.phase == StartupIntegrationPhase::pre_title) {
+            advance_startup_boot_frame(state_, startup_callbacks_);
+            setWindowTitle(phase_title(state_.phase));
+            update();
+            return;
+        }
+        if (state_.phase == StartupIntegrationPhase::opening_intro) {
+            advance_startup_opening_frame(state_, startup_callbacks_);
+            setWindowTitle(phase_title(state_.phase));
+            update();
+            return;
+        }
         if (state_.phase != StartupIntegrationPhase::title_ready) {
             return;
         }
@@ -448,6 +538,10 @@ private:
     void load_direct_title_assets() {
         draw_asset_cache_.clear();
         for (const auto& alias : {
+                 std::string("boot.snow"),
+                 std::string("boot.sega.background"),
+                 std::string("boot.guy"),
+                 std::string("boot.fasa"),
                  std::string("title.background"),
                  std::string("title.logo"),
                  std::string("title.text"),
@@ -461,6 +555,18 @@ private:
         }
         for (int index = 0; index < 6; ++index) {
             cache_asset("title.sprite." + std::to_string(index));
+            cache_asset("boot.sega.lightning." + std::to_string(index));
+        }
+        for (int index = 0; index < 8; ++index) {
+            cache_asset("boot.sega.strobe." + std::to_string(index));
+        }
+        // The opening director publishes source SAT-list identities. Cache
+        // every individually extracted intro record so a list is composed at
+        // paint time; no full-frame intro bitmap is introduced here.
+        for (const auto& record : state_.asset_catalog.catalog.records) {
+            if (record.alias.rfind("intro.", 0) == 0) {
+                cache_asset(record.alias);
+            }
         }
     }
 
@@ -474,7 +580,10 @@ private:
             image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
             if (alias == "title.logo" || alias == "title.text" ||
                 alias == "menu.startup.cursor" ||
-                alias.rfind("title.sprite.", 0) == 0) {
+                alias.rfind("title.sprite.", 0) == 0 ||
+                alias.rfind("intro.sprites.", 0) == 0 ||
+                alias.rfind("intro.background.patch.", 0) == 0 ||
+                alias == "intro.aircraft.plane.a") {
                 for (int y = 0; y < image.height(); ++y) {
                     for (int x = 0; x < image.width(); ++x) {
                         auto pixel = image.pixelColor(x, y);
@@ -516,6 +625,219 @@ private:
         draw_title_logo(painter);
         draw_title_sprites(painter);
         draw_title_text(painter);
+    }
+
+    void draw_boot_snow(QPainter& painter) const {
+        const auto image = draw_asset_cache_.find("boot.snow");
+        if (image == draw_asset_cache_.end()) {
+            return;
+        }
+        const auto& scroll = state_.pre_title.horizontal_scroll;
+        for (int row = 0; row < image->second.height() &&
+                          row < static_cast<int>(scroll.size());
+             ++row) {
+            const auto offset = std::min(
+                static_cast<int>(scroll[static_cast<std::size_t>(row)]),
+                image->second.width());
+            if (offset >= image->second.width()) {
+                continue;
+            }
+            painter.drawImage(0, row, image->second, offset, row,
+                              image->second.width() - offset, 1);
+        }
+    }
+
+    void draw_boot_scene(QPainter& painter) const {
+        using PresentationStage =
+            PreTitleSequenceState::PresentationStage;
+        const auto stage = state_.pre_title.presentation_stage;
+        if (stage == PresentationStage::fasa) {
+            draw_alias(painter, "boot.fasa");
+            return;
+        }
+
+        draw_boot_snow(painter);
+        if (stage == PresentationStage::sega_strobe) {
+            const auto phase = static_cast<int>(
+                state_.pre_title.strobe_phase % 8U);
+            draw_alias(painter,
+                       "boot.sega.strobe." + std::to_string(phase));
+        } else {
+            draw_alias(painter, "boot.sega.background");
+        }
+
+        if (stage == PresentationStage::sega_shock) {
+            const auto phase = static_cast<int>(
+                state_.pre_title.sega_lightning_phase % 6U);
+            draw_alias(painter,
+                       "boot.sega.lightning." + std::to_string(phase));
+        }
+
+        const auto* record = state_.asset_catalog.catalog.find("boot.guy");
+        const auto image = draw_asset_cache_.find("boot.guy");
+        if (record != nullptr && image != draw_asset_cache_.end()) {
+            const auto y = static_cast<int>(state_.pre_title.figure_y) -
+                           0xD0 + record->origin_y;
+            painter.drawImage(record->origin_x, y, image->second);
+        }
+    }
+
+    static int wrap_opening_coordinate(int coordinate, const int extent) {
+        // build_title_sprite_records receives Genesis SAT coordinates. The
+        // extracted record origin is relative to SAT origin $80, while the
+        // host scene is 320x224. Preserve the source's 256-pixel wrap when a
+        // coordinate crosses the visible plane edge.
+        while (coordinate >= extent) {
+            coordinate -= 256;
+        }
+        while (coordinate < -128) {
+            coordinate += 256;
+        }
+        return coordinate;
+    }
+
+    void draw_opening_scene(QPainter& painter) const {
+        switch (opening_scene_) {
+        case OpeningIntroScene::seattle:
+            draw_alias(painter, "intro.background.0");
+            break;
+        case OpeningIntroScene::wilderness:
+            if (opening_stage_ == OpeningIntroStage::stage2_first_loop ||
+                opening_stage_ == OpeningIntroStage::stage2_entry) {
+                const auto pan = std::min<std::uint16_t>(
+                    state_.opening_intro.stage2_first_loop_frame, 0x0040U);
+                const auto vertical_pan = std::min<std::uint16_t>(
+                    static_cast<std::uint16_t>(pan / 2U), 0x0020U);
+                const auto* record = state_.asset_catalog.catalog.find(
+                    "intro.background.1");
+                const auto image = draw_asset_cache_.find(
+                    "intro.background.1");
+                if (record != nullptr && image != draw_asset_cache_.end()) {
+                    painter.drawImage(-0x40 + static_cast<int>(pan),
+                                      0x20 - static_cast<int>(vertical_pan),
+                                      image->second);
+                }
+            } else {
+                draw_alias(painter, "intro.background.1");
+            }
+            break;
+        case OpeningIntroScene::trivid:
+            draw_alias(painter, "intro.trivid.background");
+            break;
+        case OpeningIntroScene::airport:
+            draw_airport_background(painter);
+            break;
+        case OpeningIntroScene::cab_map:
+            draw_alias(painter, "intro.cab.map");
+            break;
+        }
+
+        for (const auto& request : opening_sprites_) {
+            draw_opening_sprite(painter, request);
+        }
+        for (const auto& request : opening_text_) {
+            draw_opening_text(painter, request);
+        }
+    }
+
+    void draw_opening_sprite(
+        QPainter& painter, const OpeningIntroSpriteRequest& request) const {
+        const auto group = opening_intro_sprite_group(request.sprite_descriptor);
+        const auto prefix = opening_intro_sprite_alias_prefix(group);
+        if (prefix.empty()) {
+            return;
+        }
+
+        if (group.family == OpeningIntroSpriteFamily::aircraft_plane_a) {
+            const auto* record = state_.asset_catalog.catalog.find(prefix);
+            const auto image = draw_asset_cache_.find(prefix);
+            if (record != nullptr && image != draw_asset_cache_.end()) {
+                const auto x = static_cast<int>(
+                    static_cast<std::int16_t>(request.x));
+                const auto y = static_cast<int>(
+                    static_cast<std::int16_t>(request.y));
+                painter.drawImage(x + record->origin_x,
+                                  y + record->origin_y, image->second);
+            }
+            return;
+        }
+
+        // Name-table overlays and wilderness map patches are already
+        // extracted in their source-plane positions, unlike SAT entries
+        // whose origin is relative to $80. The resource importer crops them
+        // individually but preserves that source origin in resources.tsv.
+        if (group.family == OpeningIntroSpriteFamily::background_patch ||
+            group.family == OpeningIntroSpriteFamily::trivid_overlay ||
+            group.family == OpeningIntroSpriteFamily::trivid_final_overlay) {
+            for (const auto& record : state_.asset_catalog.catalog.records) {
+                if (record.alias.rfind(prefix, 0) != 0) {
+                    continue;
+                }
+                const auto image = draw_asset_cache_.find(record.alias);
+                if (image != draw_asset_cache_.end()) {
+                    painter.drawImage(record.origin_x, record.origin_y,
+                                      image->second);
+                }
+            }
+            return;
+        }
+
+        for (const auto& record : state_.asset_catalog.catalog.records) {
+            if (record.alias.rfind(prefix, 0) != 0) {
+                continue;
+            }
+            const auto image = draw_asset_cache_.find(record.alias);
+            if (image == draw_asset_cache_.end()) {
+                continue;
+            }
+            const auto x = wrap_opening_coordinate(
+                record.origin_x +
+                    static_cast<int>(static_cast<std::int16_t>(request.x)) -
+                    0x80,
+                kSceneWidth);
+            const auto y = wrap_opening_coordinate(
+                record.origin_y +
+                    static_cast<int>(static_cast<std::int16_t>(request.y)) -
+                    0x80,
+                kSceneHeight);
+            painter.drawImage(x, y, image->second);
+        }
+    }
+
+    void draw_airport_background(QPainter& painter) const {
+        const auto* record = state_.asset_catalog.catalog.find(
+            "intro.background.3");
+        const auto image = draw_asset_cache_.find("intro.background.3");
+        if (record == nullptr || image == draw_asset_cache_.end()) {
+            return;
+        }
+
+        // 0x5AD1A starts the Plane-B airport plate at source y=$78. It
+        // scrolls upward after the $D8 lead-in while Plane-A and the rotor
+        // overlays remain separate source layers.
+        const auto elapsed = state_.opening_intro.stage_loop_frame;
+        const auto plane_b_scroll = elapsed <= 0x00D8U
+            ? 0U
+            : std::min<std::uint16_t>(
+                  static_cast<std::uint16_t>(elapsed - 0x00D8U), 0x0078U);
+        painter.drawImage(record->origin_x,
+                          record->origin_y + 0x78 - plane_b_scroll,
+                          image->second);
+    }
+
+    void draw_opening_text(
+        QPainter& painter, const OpeningIntroTextRequest& request) const {
+        const auto text_asset = opening_intro_text_asset(request.text_asset);
+        const auto text = opening_intro_text(text_asset);
+        constexpr std::uint16_t kPlaneBase = 0x2000U;
+        if (request.destination_word < kPlaneBase) {
+            return;
+        }
+        const auto offset = static_cast<std::uint16_t>(
+            request.destination_word - kPlaneBase);
+        const auto x = static_cast<int>(((offset % 0x80U) / 2U) * 8U);
+        const auto y = static_cast<int>((offset / 0x80U) * 8U);
+        draw_startup_text(painter, x, y, text);
     }
 
     void draw_title_logo(QPainter& painter) const {
@@ -582,65 +904,47 @@ private:
     }
 
     void draw_menu_overlay(QPainter& painter) const {
-        painter.setPen(QColor(255, 255, 255));
-        painter.setFont(QFont(QStringLiteral("Courier New"), 10,
-                              QFont::Bold));
-
         if (state_.phase == StartupIntegrationPhase::start_options) {
-            painter.drawText(
-                90, 90,
-                QString::fromUtf8(start_options_choice_name(
-                    StartOptionsChoice::new_game)));
-            painter.drawText(
-                90, 112,
-                QString::fromUtf8(start_options_choice_name(
-                    StartOptionsChoice::load_game)));
-            const int y = state_.start_options.selected ==
-                                  StartOptionsChoice::new_game
-                              ? 86
-                              : 108;
-            draw_cursor(painter, 72, y);
-            painter.drawText(68, 184,
-                             QStringLiteral("Z/X/C OR ENTER: SELECT"));
+            draw_startup_text(
+                painter, 104, 56,
+                start_options_choice_name(StartOptionsChoice::new_game));
+            draw_startup_text(
+                painter, 104, 72,
+                start_options_choice_name(StartOptionsChoice::load_game));
+            draw_cursor(painter, 104,
+                        80 + 16 * static_cast<int>(
+                                  state_.start_options.selected));
             return;
         }
 
         if (state_.phase == StartupIntegrationPhase::save_load) {
-            painter.drawText(
-                84, 86,
-                QString::fromUtf8(save_slot_choice_name(
-                    SaveSlotChoice::slot_one)));
-            painter.drawText(
-                84, 108,
-                QString::fromUtf8(save_slot_choice_name(
-                    SaveSlotChoice::slot_two)));
-            const int y = state_.save_load.selected == SaveSlotChoice::slot_one
-                              ? 82
-                              : 104;
-            draw_cursor(painter, 66, y);
             if (state_.save_load.message == SaveLoadMessage::no_save_data) {
-                painter.drawText(64, 184,
-                                 QStringLiteral("NO SAVE DATA"));
+                draw_startup_text(painter, 72, 72, "No Save Data");
+                return;
             }
+            draw_startup_text(
+                painter, 152, 112,
+                save_slot_choice_name(SaveSlotChoice::slot_one));
+            draw_startup_text(
+                painter, 152, 128,
+                save_slot_choice_name(SaveSlotChoice::slot_two));
+            draw_cursor(painter, 136,
+                        112 + 16 * static_cast<int>(
+                                   state_.save_load.selected));
             return;
         }
 
-        painter.drawText(
-            82, 78,
-            QString::fromUtf8(joshua_archetype_choice_name(
-                JoshuaArchetypeChoice::samurai)));
-        painter.drawText(
-            82, 100,
-            QString::fromUtf8(joshua_archetype_choice_name(
-                JoshuaArchetypeChoice::decker)));
-        painter.drawText(
-            82, 122,
-            QString::fromUtf8(joshua_archetype_choice_name(
-                JoshuaArchetypeChoice::gator_shaman)));
-        const int y = 74 +
-                      22 * static_cast<int>(state_.joshua_archetype.selected);
-        draw_cursor(painter, 64, y);
-        painter.drawText(64, 184, QStringLiteral("Z/X/C OR ENTER: SELECT"));
+        draw_startup_text(
+            painter, 152, 56,
+            joshua_archetype_choice_name(JoshuaArchetypeChoice::samurai));
+        draw_startup_text(
+            painter, 152, 72,
+            joshua_archetype_choice_name(JoshuaArchetypeChoice::decker));
+        draw_startup_text(painter, 152, 88, "Gator");
+        draw_startup_text(painter, 152, 96, "Shaman");
+        draw_cursor(painter, 152,
+                    88 + 16 * static_cast<int>(
+                              state_.joshua_archetype.selected));
     }
 
     void draw_conversion_boundary_error(QPainter& painter) const {
@@ -670,6 +974,31 @@ private:
         }
     }
 
+    void draw_startup_text(QPainter& painter, const int x, const int y,
+                           const std::string_view text) const {
+        const auto image = draw_asset_cache_.find("menu.startup.font");
+        if (image == draw_asset_cache_.end() || image->second.width() < 8 ||
+            image->second.height() < 8) {
+            return;
+        }
+        auto cursor = x;
+        for (const auto character : text) {
+            const auto code = static_cast<unsigned char>(character);
+            if (code < 0x20U || code > 0x7FU) {
+                cursor += 8;
+                continue;
+            }
+            const auto glyph = static_cast<int>(code - 0x20U);
+            const auto source_x = (glyph % 16) * 8;
+            const auto source_y = (glyph / 16) * 8;
+            if (source_y + 8 <= image->second.height()) {
+                painter.drawImage(cursor, y, image->second, source_x,
+                                  source_y, 8, 8);
+            }
+            cursor += 8;
+        }
+    }
+
     std::filesystem::path asset_root_;
     StartupIntegrationState state_;
     StartupIntegrationCallbacks startup_callbacks_;
@@ -677,6 +1006,11 @@ private:
     TitleLoopCallbacks title_loop_callbacks_;
     QTimer title_timer_;
     std::map<std::string, QImage> draw_asset_cache_;
+    OpeningIntroScene opening_scene_ = OpeningIntroScene::seattle;
+    OpeningIntroStage opening_stage_ = OpeningIntroStage::not_started;
+    std::vector<OpeningIntroSpriteRequest> opening_sprites_;
+    std::vector<OpeningIntroTextRequest> opening_text_;
+    std::vector<std::uint16_t> opening_audio_commands_;
 
     std::uint8_t logo_strobe_phase_ = 0;
     JoshuaArchetypeChoice selected_archetype_ =

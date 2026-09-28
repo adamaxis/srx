@@ -43,6 +43,22 @@ struct PreTitleSequenceState {
     std::int16_t strobe_countdown = 0;
     std::uint8_t strobe_phase = 0;
 
+    // Host presentation phase derived from the source boundaries in
+    // 0x5D746/0x5D886. These are not Genesis hardware states: they tell a
+    // host renderer which already-extracted boot layer is currently visible.
+    enum class PresentationStage {
+        uninitialized,
+        sega_entry,
+        sega_shock,
+        sega_strobe,
+        fasa,
+        complete,
+    };
+    PresentationStage presentation_stage = PresentationStage::uninitialized;
+    std::uint16_t sega_lightning_phase = 0;
+    std::uint16_t sega_shock_frames = 0;
+    std::uint16_t fasa_hold_frames = 0;
+
     std::uint32_t random_state = 0;
     std::int16_t frame_counter = 0;
     std::uint8_t dirty_flags = 0;
@@ -130,6 +146,20 @@ void fill_pre_title_horizontal_scroll(
 // loop, perform the final 0x78 DBF wait, and return at the title handoff.
 // Hardware writes and unresolved child routines stay explicit callbacks.
 PreTitleSequenceResult run_pre_title_sequence(
+    PreTitleSequenceState& state,
+    const PreTitleSequenceCallbacks& callbacks);
+
+// Incremental form used by the separate Qt conversion runner. It preserves
+// the same source call order as run_pre_title_sequence(), but lets the host
+// present the direct Sega/guy/FASA assets between source frame boundaries.
+PreTitleSequenceResult begin_pre_title_sequence(
+    PreTitleSequenceState& state,
+    const PreTitleSequenceCallbacks& callbacks);
+
+// Advances one source VBlank-sized pre-title step. Returns source_complete
+// only after the final post-FASA wait and palette transition; callers may
+// render state.presentation_stage after every call.
+PreTitleSequenceResult advance_pre_title_sequence_frame(
     PreTitleSequenceState& state,
     const PreTitleSequenceCallbacks& callbacks);
 

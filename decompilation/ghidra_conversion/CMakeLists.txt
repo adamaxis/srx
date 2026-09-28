@@ -23,6 +23,7 @@ include(conversion_modules.cmake)
 add_library(shadowrun_ghidra_conversion_runtime STATIC
     src/integration/conversion_workbench.cpp
     src/integration/field_session_bootstrap_conversion.cpp
+    src/integration/opening_intro_conversion.cpp
     src/integration/startup_integration_conversion.cpp
 )
 target_include_directories(shadowrun_ghidra_conversion_runtime PUBLIC

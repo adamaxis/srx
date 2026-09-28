@@ -299,16 +299,65 @@ void write_asset_readme(const std::filesystem::path& root) {
               "items/first-aid, items/miscellaneous, items/magic, and items/armor. "
               "Separately traced cinematic resources belong under movies/<scene>; "
               "they must not be mixed into intro or field assets.\n\n"
-           << "Complete Windows-playable audio is imported separately by the "
-              "offline Z80/VGM extraction tool into assets/audio. Raw ROM "
-              "slices and split event fragments remain analysis inputs, not "
-              "runtime assets.\n";
+           << "Audio is emitted here only as complete Windows-playable lossless "
+              "FLAC files under\n"
+              "`audio/`. The offline Z80/VGM extraction sources and intermediate "
+              "event data\n"
+              "remain outside this runtime asset tree. Verified repeating audio "
+              "uses\n"
+              "`audio/loop-points.tsv` for exact PCM frame boundaries. Use "
+              "`resources.tsv` for stable aliases,\n"
+              "such as `assets.audio_path(\"audio.intro.title.stage-1\")`; do "
+              "not add raw ROM\n"
+              "slices or split event fragments here. A missing loop-point entry "
+              "is\n"
+              "intentional: the native player must not guess a repeat boundary "
+              "from an\n"
+              "internal channel restart.\n";
 }
 
 void write_runtime_resource_manifest(const std::filesystem::path& root) {
     std::ifstream catalog(root / "catalog.tsv", std::ios::binary);
     if (!catalog) {
         throw std::runtime_error("cannot read generated asset catalog");
+    }
+    // Graphics extraction is an explicit import step, but it must not erase
+    // independently imported runtime resources. Preserve existing state and
+    // audio rows while regenerating the image aliases from catalog.tsv.
+    std::vector<std::string> preserved_state_rows;
+    std::vector<std::string> preserved_runtime_rows;
+    std::ifstream prior_manifest(
+        root / std::string(shadowrun::resources::kManifestFile),
+        std::ios::binary);
+    if (prior_manifest) {
+        std::string prior_line;
+        std::getline(prior_manifest, prior_line);
+        while (std::getline(prior_manifest, prior_line)) {
+            if (prior_line.empty()) {
+                continue;
+            }
+            std::vector<std::string> fields;
+            std::size_t start = 0;
+            for (;;) {
+                const auto end = prior_line.find('\t', start);
+                fields.push_back(prior_line.substr(
+                    start, end == std::string::npos ? std::string::npos
+                                                     : end - start));
+                if (end == std::string::npos) {
+                    break;
+                }
+                start = end + 1U;
+            }
+            if (fields.size() == 5U && fields[0] != "state" &&
+                fields[2] != "image" &&
+                std::filesystem::is_regular_file(root / fields[1])) {
+                if (fields[2] == "state") {
+                    preserved_state_rows.push_back(prior_line);
+                } else {
+                    preserved_runtime_rows.push_back(prior_line);
+                }
+            }
+        }
     }
     std::ofstream output(root / std::string(
                               shadowrun::resources::kManifestFile),
@@ -319,6 +368,20 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
     output << "alias\tpath\tkind\torigin_x\torigin_y\n"
            << "state\tnative/state.bin\tstate\t0\t0\n";
     std::unordered_set<std::string> aliases{"state"};
+    const auto emit_preserved_rows = [&output, &aliases](
+                                         const std::vector<std::string>& rows) {
+        for (const auto& preserved : rows) {
+            const auto separator = preserved.find('\t');
+            if (separator == std::string::npos) {
+                continue;
+            }
+            const auto alias = preserved.substr(0, separator);
+            if (aliases.insert(alias).second) {
+                output << preserved << '\n';
+            }
+        }
+    };
+    emit_preserved_rows(preserved_state_rows);
     std::string line;
     std::getline(catalog, line);
     while (std::getline(catalog, line)) {
@@ -353,6 +416,7 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
         output << alias << '\t' << relative << "\timage\t" << fields[2]
                << '\t' << fields[3] << '\n';
     }
+    emit_preserved_rows(preserved_runtime_rows);
 }
 
 void extract_all_assets(const std::vector<std::uint8_t>& rom,

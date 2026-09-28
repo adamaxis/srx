@@ -166,6 +166,28 @@ PreTitleSequenceResult run_pre_title_sequence(
         return PreTitleSequenceResult::callback_unresolved;
     }
 
+    if (begin_pre_title_sequence(state, callbacks) !=
+        PreTitleSequenceResult::source_complete) {
+        return PreTitleSequenceResult::callback_unresolved;
+    }
+
+    while (state.presentation_stage !=
+           PreTitleSequenceState::PresentationStage::complete) {
+        if (advance_pre_title_sequence_frame(state, callbacks) ==
+            PreTitleSequenceResult::callback_unresolved) {
+            return PreTitleSequenceResult::callback_unresolved;
+        }
+    }
+    return PreTitleSequenceResult::source_complete;
+}
+
+PreTitleSequenceResult begin_pre_title_sequence(
+    PreTitleSequenceState& state,
+    const PreTitleSequenceCallbacks& callbacks) {
+    if (!has_pre_title_callbacks(callbacks)) {
+        return PreTitleSequenceResult::callback_unresolved;
+    }
+
     // These are the direct source writes at 0x5D746. The strobe cadence and
     // PRNG state remain caller-owned because their setup lives in other source
     // entries.
@@ -178,62 +200,105 @@ PreTitleSequenceResult run_pre_title_sequence(
     state.logo_strobe_active = false;
     state.frame_counter = 0x0150;
     state.strobe_phase = 9U;
+    state.presentation_stage =
+        PreTitleSequenceState::PresentationStage::sega_entry;
+    state.sega_lightning_phase = 0;
+    state.sega_shock_frames = 0;
+    state.fasa_hold_frames = 0;
+    return PreTitleSequenceResult::source_complete;
+}
 
-    while (true) {
-        callbacks.wait_for_vblank();
-        if (state.logo_strobe_active) {
-            advance_pre_title_logo_strobe(state, callbacks);
+PreTitleSequenceResult advance_pre_title_sequence_frame(
+    PreTitleSequenceState& state,
+    const PreTitleSequenceCallbacks& callbacks) {
+    if (!has_pre_title_callbacks(callbacks)) {
+        return PreTitleSequenceResult::callback_unresolved;
+    }
+    if (state.presentation_stage ==
+        PreTitleSequenceState::PresentationStage::uninitialized) {
+        return PreTitleSequenceResult::callback_unresolved;
+    }
+    if (state.presentation_stage ==
+        PreTitleSequenceState::PresentationStage::complete) {
+        return PreTitleSequenceResult::source_complete;
+    }
+
+    if (state.presentation_stage ==
+        PreTitleSequenceState::PresentationStage::fasa) {
+        if (state.fasa_hold_frames != 0U) {
+            callbacks.wait_for_vblank();
+            --state.fasa_hold_frames;
+            return PreTitleSequenceResult::source_complete;
         }
-        fill_pre_title_horizontal_scroll(state, callbacks);
-        advance_pre_title_animation(state, callbacks);
+        callbacks.sample_controller();
+        callbacks.step_palette_transition();
+        state.presentation_stage =
+            PreTitleSequenceState::PresentationStage::complete;
+        return PreTitleSequenceResult::source_complete;
+    }
 
-        if (state.figure_y == 0x0160) {
-            --state.sega_phase_delay;
-            if (state.sega_phase_delay < 0) {
-                ++state.sega_delay_cadence;
-                if ((state.sega_delay_cadence & 1) == 0) {
-                    if (state.logo_effect_counter < 6) {
+    callbacks.wait_for_vblank();
+    if (state.logo_strobe_active) {
+        advance_pre_title_logo_strobe(state, callbacks);
+    }
+    fill_pre_title_horizontal_scroll(state, callbacks);
+    advance_pre_title_animation(state, callbacks);
+
+    if (state.figure_y == 0x0160) {
+        --state.sega_phase_delay;
+        if (state.sega_phase_delay < 0) {
+            ++state.sega_delay_cadence;
+            if ((state.sega_delay_cadence & 1) == 0) {
+                if (state.logo_effect_counter < 6) {
+                    callbacks.service_audio_variant();
+                }
+                --state.logo_effect_counter;
+                if (state.logo_effect_counter >= 0) {
+                    if (state.logo_effect_counter == 0) {
                         callbacks.service_audio_variant();
+                        state.logo_strobe_active = true;
                     }
-                    --state.logo_effect_counter;
-                    if (state.logo_effect_counter >= 0) {
-                        if (state.logo_effect_counter == 0) {
-                            callbacks.service_audio_variant();
-                            state.logo_strobe_active = true;
-                        }
-                        --state.secondary_effect_counter;
-                        if (state.logo_effect_counter > 4) {
-                            callbacks.service_audio();
-                        }
+                    --state.secondary_effect_counter;
+                    if (state.logo_effect_counter > 4) {
+                        callbacks.service_audio();
                     }
                 }
             }
-        } else {
-            --state.figure_y;
-            if (state.figure_y == 0x0160) {
-                state.sega_phase_delay = 0x0014;
-            }
         }
-
-        state.dirty_flags = static_cast<std::uint8_t>(
-            state.dirty_flags | 0x0EU);
-        --state.frame_counter;
-        if (state.frame_counter != -1) {
-            continue;
+    } else {
+        --state.figure_y;
+        if (state.figure_y == 0x0160) {
+            state.sega_phase_delay = 0x0014;
+            state.sega_shock_frames = 0x0078;
         }
+    }
 
-        callbacks.sample_controller();
-        callbacks.step_palette_transition();
-        finalize_pre_title_display(state, callbacks.resources);
-        state.frame_counter = 0x0078;
-        do {
-            callbacks.wait_for_vblank();
-            --state.frame_counter;
-        } while (state.frame_counter != -1);
-        callbacks.sample_controller();
-        callbacks.step_palette_transition();
+    if (state.logo_strobe_active) {
+        state.presentation_stage =
+            PreTitleSequenceState::PresentationStage::sega_strobe;
+    } else if (state.sega_phase_delay < 0 && state.figure_y == 0x0160) {
+        state.presentation_stage =
+            PreTitleSequenceState::PresentationStage::sega_shock;
+        state.sega_lightning_phase = static_cast<std::uint16_t>(
+            state.logo_phase % 6U);
+    } else {
+        state.presentation_stage =
+            PreTitleSequenceState::PresentationStage::sega_entry;
+    }
+
+    state.dirty_flags = static_cast<std::uint8_t>(
+        state.dirty_flags | 0x0EU);
+    --state.frame_counter;
+    if (state.frame_counter != -1) {
         return PreTitleSequenceResult::source_complete;
     }
+
+    callbacks.sample_controller();
+    callbacks.step_palette_transition();
+    finalize_pre_title_display(state, callbacks.resources);
+    state.fasa_hold_frames = 0x0079;
+    state.presentation_stage = PreTitleSequenceState::PresentationStage::fasa;
+    return PreTitleSequenceResult::source_complete;
 }
 
 BootStartupResult run_boot_startup(

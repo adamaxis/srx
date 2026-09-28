@@ -5914,6 +5914,49 @@ decode_genesis_intro_sprite_resources_impl(
     add_list(trivid, "trivid-left", 0x1DF1D6U, 0, 0x1DF1D6U, 0xC000U);
     add_list(trivid, "trivid-right", 0x1DF238U, 0, 0x1DF238U, 0x6000U);
 
+    // 0x5ACAE selects these three tri-vid SAT lists after the 0x3C lead-in.
+    // The records are eight bytes each: a source list pointer followed by
+    // the signed presentation coordinates consumed by 0x5ACFA. Keep the
+    // lists separate from the projection families above so the conversion
+    // layer can select the exact six-frame phase without a composite frame.
+    add_table(trivid, "trivid-timed", 0x5AD02U, 3, 8, 0x2000U);
+
+    // 0x59F8E's six-entry overlay table feeds the same 0x1728 stream writer
+    // with a 17x16 name-table patch at $0600. Decode each stream offline
+    // against the tri-vid pattern set and retain the source-plane origin in
+    // the transparent image; the Qt conversion never interprets these bytes.
+    const auto add_overlay = [&](const std::string& role,
+                                 const std::size_t table,
+                                 const std::size_t table_index,
+                                 const std::size_t source,
+                                 const std::size_t columns,
+                                 const std::size_t rows,
+                                 const std::uint32_t destination) {
+        GenesisGraphicsResource resource;
+        resource.role = role;
+        resource.table_offset = table;
+        resource.table_index = table_index;
+        resource.sprite_index = 0;
+        resource.source_offset = source;
+        resource.attr_or = 0x4000U;
+        resource.image = make_transparent_title_layer();
+        blit_genesis_1728_name_table(rom, trivid, resource.image, source,
+                                     columns, rows, destination, 0U, 0x4000U,
+                                     true);
+        resources.push_back(std::move(resource));
+    };
+    for (std::size_t index = 0; index < 6U; ++index) {
+        const auto source = static_cast<std::size_t>(read_rom_u32(
+            rom, 0x5A080U + index * 6U,
+            "Genesis tri-vid overlay pointer table is truncated"));
+        add_overlay("trivid-overlay", 0x5A080U, index, source, 17U, 16U,
+                    0x0600U);
+    }
+    // 0x59FAE's terminal overlay is a 20x13 stream at $0786, distinct from
+    // the six repeating overlays above.
+    add_overlay("trivid-final-overlay", 0x1E2E3EU, 0, 0x1E2E3EU, 20U, 13U,
+                0x0786U);
+
     // These tables are the exact 0x5Axxx pointer selections used by the
     // ambush loop: actor, muzzle, flash, body/death, three projectile paths,
     // and the terminal Michael hit sequence.

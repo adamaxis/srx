@@ -101,8 +101,11 @@ stage DBF counters: Seattle hold `0x3C` then lines 0/1/2-4, wilderness from
 Sea-Tac at `0x956`; the sequence ends at `0xB37`.
 
 Native status: source text, 0x5AF62/0x59D7C/0x5AA96/0x5AD1A stage switch,
-skip, and the four 0x1406/0x5AA96 stills are implemented. Per-frame SAT
-choreography, camera pan, 0x5B378, and music are not yet reconstructed.
+skip, direct per-frame SAT choreography, source-positioned tri-vid overlays,
+camera pan, and the airport/cab layers are implemented in the separate Ghidra
+conversion Qt target. Independent Genesis visual comparison, source audio
+playback, and the remaining fill/palette presentation leaves are not yet
+defended.
 
 ## Field and command screens
 
@@ -397,7 +400,7 @@ of a port.
 | Startup options | `0x59092`, `0xC376` | Implemented | Source layout and New/Load dispatch are covered |
 | Save/load | `0x59172` | Partial | Empty-slot result is covered; SRAM restore is pending |
 | Archetype selection | `0x59248`, `0x42B0` | Implemented | Only the three Joshua templates are selectable |
-| Opening | `0x59C5E` and timed groups | Partial | Text/timing/skip are present; animated art and music are pending |
+| Opening | `0x59C5E` and timed groups | Partial | Typed stage chain and direct timed/overlay assets are present in the separate conversion target; independent visual comparison and source audio playback remain pending |
 | Field movement | `0x3084`, `0x2B34`, `0xE7C8`, `0x5FDC`, `0x600E` | Partial | Reviewed player collision and animation path is present; movement step/timing, source camera transitions, right-side HUD/entity presentation, and NPC/entity logic remain pending |
 | Area transitions | `0x5A62`, `0x172CDC`, `0x20E48` | Partial | The reviewed mode-2 C0/event-0 tuple loads mode `0x14` and enters the source Stoker dialogue state; every building reaction and reverse transition is not |
 | Command overview | `0x10D30`, `0x10F50`, `0x111E8`, `0x11454` | Partial | Normal overview, source command-tab focus blocks, and selector are present; Magic target/effect and remaining Pocket Secretary row handlers remain pending |
