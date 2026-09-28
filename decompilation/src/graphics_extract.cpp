@@ -68,6 +68,14 @@ void extract_field_session_record_assets(
                      0x166AD8U, 5U * 0x22U);
     write_rom_record(rom, root, "records/field/mode-selection-state.bin",
                      0x14C1F4U, 0x17U * sizeof(std::uint16_t));
+    // The field-scene preparation routine selects one of these two 48-word
+    // profiles through the pointer table at ROM 0x3232. They are source
+    // records, not Genesis name-table data; the conversion layer interprets
+    // the big-endian words as a typed scene profile.
+    write_rom_record(rom, root, "records/field/scene-profile-normal.bin",
+                     0x0D5456U, 48U * sizeof(std::uint16_t));
+    write_rom_record(rom, root, "records/field/scene-profile-alternate.bin",
+                     0x17D5C4U, 48U * sizeof(std::uint16_t));
 }
 
 struct CroppedAsset {
@@ -434,6 +442,12 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
     emit_generated_state_row(
         "records.field.mode.selection.state",
         "records/field/mode-selection-state.bin");
+    emit_generated_state_row(
+        "records.field.scene.profile.normal",
+        "records/field/scene-profile-normal.bin");
+    emit_generated_state_row(
+        "records.field.scene.profile.alternate",
+        "records/field/scene-profile-alternate.bin");
     std::string line;
     std::getline(catalog, line);
     while (std::getline(catalog, line)) {

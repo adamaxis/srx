@@ -2,6 +2,7 @@
 
 #include "shadowrun_ghidra/core/asset_catalog_conversion.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -12,6 +13,9 @@ namespace shadowrun::ghidra_conversion::integration {
 
 constexpr std::size_t kFieldSessionActionProfileByteCount = 5U * 0x22U;
 constexpr std::size_t kFieldSessionModeSelectionWordCount = 0x17U;
+constexpr std::size_t kFieldSceneProfileWordCount = 48U;
+constexpr std::size_t kFieldSceneProfileByteCount =
+    kFieldSceneProfileWordCount * sizeof(std::uint16_t);
 
 // Direct source records extracted from the US ROM. These are host-owned
 // inputs for the existing field-session conversion, not a runtime ROM view.
@@ -20,6 +24,12 @@ struct FieldSessionSourceAssets {
     std::vector<std::uint8_t> action_selection_profile_source;
     // ROM 0x14C1F4, copied by 0x26938.
     std::vector<std::uint16_t> field_mode_selection_state_source;
+    // ROM 0x0D5456, first pointer-table profile at 0x3232.
+    std::array<std::uint16_t, kFieldSceneProfileWordCount>
+        normal_scene_profile_source{};
+    // ROM 0x17D5C4, second pointer-table profile at 0x3232.
+    std::array<std::uint16_t, kFieldSceneProfileWordCount>
+        alternate_scene_profile_source{};
 };
 
 struct FieldSessionSourceAssetLoadResult {

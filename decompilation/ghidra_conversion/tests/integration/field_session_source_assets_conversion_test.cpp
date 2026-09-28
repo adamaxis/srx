@@ -36,5 +36,18 @@ int main() {
         mode_state[2] != 0x0064U || mode_state.back() != 0x0000U) {
         return 4;
     }
+    const auto& normal_profile = source.assets->normal_scene_profile_source;
+    if (normal_profile[0] != 0x0A00U || normal_profile[1] != 0x0280U ||
+        normal_profile[4] != 0x6700U || normal_profile[15] != 0x7CECU ||
+        normal_profile.back() != 0x1215U) {
+        return 5;
+    }
+    const auto& alternate_profile =
+        source.assets->alternate_scene_profile_source;
+    if (alternate_profile[0] != 0x4080U || alternate_profile[1] != 0x4C80U ||
+        alternate_profile[4] != 0x5300U || alternate_profile[15] != 0xAD3AU ||
+        alternate_profile.back() != 0x1A0DU) {
+        return 6;
+    }
     return 0;
 }

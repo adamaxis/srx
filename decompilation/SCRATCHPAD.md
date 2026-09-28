@@ -2288,6 +2288,18 @@ inputs for `bootstrap_field_session`; the downstream field scene, entity, and
 world callbacks remain separate conversion boundaries and are not implied to be
 complete by the extraction test.
 
+The same field-scene boundary now has its two 48-word profile records. The
+`0x03084`/`0x03074` preparation path indexes the pointer table at `0x3232`;
+entry zero points to the normal profile at `0x0D5456`, and entry one points to
+the alternate profile at `0x17D5C4`. The offline importer emits their exact
+96-byte big-endian records as
+`records/field/scene-profile-normal.bin` and
+`records/field/scene-profile-alternate.bin`, with aliases
+`records.field.scene.profile.normal` and
+`records.field.scene.profile.alternate`. The conversion loader decodes them
+into fixed typed 48-word arrays for `FieldSceneBufferInput`; it does not make
+the Qt runtime read the pointer table or ROM addresses.
+
 The `0x13726` mode-selection renderer is now
 `render_mode_selection_panels`. It preserves the four source panel passes,
 the two vblank/latch/world-service passes after each upload, the trailing

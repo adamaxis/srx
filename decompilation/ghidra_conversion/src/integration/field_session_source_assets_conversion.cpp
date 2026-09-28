@@ -10,6 +10,10 @@ constexpr const char* kActionProfilesAlias =
     "records.field.action.selection.profiles";
 constexpr const char* kModeSelectionAlias =
     "records.field.mode.selection.state";
+constexpr const char* kNormalSceneProfileAlias =
+    "records.field.scene.profile.normal";
+constexpr const char* kAlternateSceneProfileAlias =
+    "records.field.scene.profile.alternate";
 
 std::optional<std::vector<std::uint8_t>> read_record_bytes(
     const ConversionAssetCatalog& catalog, const char* alias,
@@ -55,6 +59,15 @@ std::uint16_t read_big_endian_word(const std::vector<std::uint8_t>& bytes,
         static_cast<std::uint16_t>(bytes[offset + 1U]));
 }
 
+std::array<std::uint16_t, kFieldSceneProfileWordCount>
+decode_scene_profile(const std::vector<std::uint8_t>& bytes) {
+    std::array<std::uint16_t, kFieldSceneProfileWordCount> profile{};
+    for (std::size_t index = 0; index < profile.size(); ++index) {
+        profile[index] = read_big_endian_word(bytes, index * sizeof(std::uint16_t));
+    }
+    return profile;
+}
+
 } // namespace
 
 FieldSessionSourceAssetLoadResult load_field_session_source_assets(
@@ -67,7 +80,14 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
         catalog, kModeSelectionAlias,
         kFieldSessionModeSelectionWordCount * sizeof(std::uint16_t),
         result.errors);
-    if (!action_profiles.has_value() || !mode_selection.has_value()) {
+    const auto normal_profile = read_record_bytes(
+        catalog, kNormalSceneProfileAlias, kFieldSceneProfileByteCount,
+        result.errors);
+    const auto alternate_profile = read_record_bytes(
+        catalog, kAlternateSceneProfileAlias, kFieldSceneProfileByteCount,
+        result.errors);
+    if (!action_profiles.has_value() || !mode_selection.has_value() ||
+        !normal_profile.has_value() || !alternate_profile.has_value()) {
         return result;
     }
 
@@ -80,6 +100,9 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
         assets.field_mode_selection_state_source.push_back(
             read_big_endian_word(*mode_selection, offset));
     }
+    assets.normal_scene_profile_source = decode_scene_profile(*normal_profile);
+    assets.alternate_scene_profile_source =
+        decode_scene_profile(*alternate_profile);
     result.assets = std::move(assets);
     return result;
 }

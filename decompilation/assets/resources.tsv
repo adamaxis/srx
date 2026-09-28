@@ -5,6 +5,8 @@ records.startup.recruited.runners	records/startup/recruited-runner-records.bin	s
 records.startup.save.roster.header	records/startup/save-roster-header.bin	state	0	0
 records.field.action.selection.profiles	records/field/action-selection-profiles.bin	state	0	0
 records.field.mode.selection.state	records/field/mode-selection-state.bin	state	0	0
+records.field.scene.profile.normal	records/field/scene-profile-normal.bin	state	0	0
+records.field.scene.profile.alternate	records/field/scene-profile-alternate.bin	state	0	0
 title.background	title/background.bmp	image	0	0
 title.circuit.background.0	title/circuit-background-0.bmp	image	0	0
 title.circuit.background.1	title/circuit-background-1.bmp	image	0	0
