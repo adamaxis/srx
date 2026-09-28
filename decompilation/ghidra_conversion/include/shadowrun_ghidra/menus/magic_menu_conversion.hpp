@@ -92,7 +92,7 @@ struct MagicForceAdjustmentCallbacks {
     std::function<void()> write_repeated_grid;
     std::function<void()> refresh_equipment_combat_values;
     std::function<void()> write_repeated_menu_grid;
-    std::function<void()> refresh_equipment_action_metric;
+    std::function<void()> refresh_magic_action_effect_value;
 };
 
 struct MagicEquipmentSelectionCallbacks {

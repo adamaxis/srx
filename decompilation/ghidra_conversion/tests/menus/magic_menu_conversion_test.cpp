@@ -401,7 +401,7 @@ int main() {
     adjustment_callbacks.write_repeated_menu_grid = [&]() {
         adjustment_events.push_back(6);
     };
-    adjustment_callbacks.refresh_equipment_action_metric = [&]() {
+    adjustment_callbacks.refresh_magic_action_effect_value = [&]() {
         adjustment_events.push_back(7);
     };
     adjust_magic_force(force_record, force_state_values, 1,

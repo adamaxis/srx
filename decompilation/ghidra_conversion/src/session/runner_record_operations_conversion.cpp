@@ -110,7 +110,7 @@ std::uint8_t adjust_runner_posture_and_refresh(
     call_once(callbacks.write_grid);
     call_once(callbacks.render_encoded_text);
     call_once(callbacks.write_three_grids_then_service);
-    call_once(callbacks.refresh_equipment_action_metric);
+    call_once(callbacks.refresh_magic_action_effect_value);
     call_once(callbacks.refresh_equipment_combat_values);
     call_once(callbacks.refresh_equipment_combat_values);
     return posture;

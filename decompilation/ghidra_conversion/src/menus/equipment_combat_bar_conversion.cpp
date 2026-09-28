@@ -234,10 +234,10 @@ EquipmentCombatBarResult compute_equipment_combat_bars(
     return result;
 }
 
-EquipmentActionMetricResult refresh_equipment_action_metric(
-    const EquipmentActionMetricInput& input,
-    const EquipmentActionMetricCallbacks& callbacks) {
-    EquipmentActionMetricResult result{};
+MagicActionEffectValueResult refresh_magic_action_effect_value(
+    const MagicActionEffectValueInput& input,
+    const MagicActionEffectValueCallbacks& callbacks) {
+    MagicActionEffectValueResult result{};
     // ROM 0x105E6 enters 0x10660 with D4=current force and D7=action code.
     const auto residual = calculate_action_residual(
         input.action_code, input.current_force,
@@ -245,18 +245,22 @@ EquipmentActionMetricResult refresh_equipment_action_metric(
     result.residual_valid = residual.valid;
     result.residual_effect = residual.residual_effect;
     if (!residual.valid || residual.residual_effect <= 0) {
-        if (callbacks.render_no_effect_text) {
-            callbacks.render_no_effect_text();
-            result.no_effect_text_rendered = true;
+        const MagicActionEffectNoneValuePlan plan{};
+        result.none_damage_value = plan;
+        if (callbacks.render_none_damage_value) {
+            callbacks.render_none_damage_value(plan);
+            result.none_damage_value_rendered = true;
         }
         return result;
     }
 
-    result.effect_grid_row = static_cast<std::uint16_t>(
+    MagicActionEffectDamageGridPlan plan{};
+    plan.effect_row = static_cast<std::uint16_t>(
         static_cast<std::uint16_t>(residual.residual_effect) - 1U);
-    if (callbacks.write_effect_grid) {
-        callbacks.write_effect_grid(result.effect_grid_row);
-        result.effect_grid_written = true;
+    result.damage_grid = plan;
+    if (callbacks.write_damage_grid) {
+        callbacks.write_damage_grid(plan);
+        result.damage_grid_written = true;
     }
     return result;
 }

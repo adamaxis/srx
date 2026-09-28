@@ -58,7 +58,7 @@ struct RunnerPostureRefreshCallbacks {
     std::function<void()> write_grid;
     std::function<void()> render_encoded_text;
     std::function<void()> write_three_grids_then_service;
-    std::function<void()> refresh_equipment_action_metric;
+    std::function<void()> refresh_magic_action_effect_value;
     std::function<void()> refresh_equipment_combat_values;
 };
 

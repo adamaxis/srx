@@ -128,35 +128,46 @@ int main() {
         return 7;
     }
 
-    EquipmentActionMetricInput metric_input{};
+    MagicActionEffectValueInput metric_input{};
     metric_input.action_code = 1U;
     metric_input.current_force = 2U;
     metric_input.entity.item18_base = 10U;
     metric_input.action.base_effect = 20;
     std::vector<int> metric_events;
-    const auto metric = refresh_equipment_action_metric(
+    const auto metric = refresh_magic_action_effect_value(
         metric_input,
-        {[&] { metric_events.push_back(1); },
-         [&](const std::uint16_t row) {
-             metric_events.push_back(static_cast<int>(row));
+        {[&](const MagicActionEffectNoneValuePlan&) {
+             metric_events.push_back(1);
+         },
+         [&](const MagicActionEffectDamageGridPlan& plan) {
+             metric_events.push_back(static_cast<int>(plan.effect_row));
          }});
     if (!metric.residual_valid || metric.residual_effect != 15 ||
-        !metric.effect_grid_written || metric.no_effect_text_rendered ||
-        metric.effect_grid_row != 14U ||
+        !metric.damage_grid_written || metric.none_damage_value_rendered ||
+        !metric.damage_grid.has_value() ||
+        metric.damage_grid->effect_row != 14U ||
+        metric.damage_grid->source_row_stride != 0x0EU ||
+        metric.damage_grid->destination_tile_base != 0xC688U ||
+        metric.damage_grid->tile_count != 6U ||
         metric_events != std::vector<int>{14}) {
         return 8;
     }
 
     metric_input.action.base_effect = 1;
     metric_events.clear();
-    const auto no_effect = refresh_equipment_action_metric(
+    const auto no_effect = refresh_magic_action_effect_value(
         metric_input,
-        {[&] { metric_events.push_back(1); },
-         [&](const std::uint16_t row) {
-             metric_events.push_back(static_cast<int>(row));
+        {[&](const MagicActionEffectNoneValuePlan& plan) {
+             metric_events.push_back(
+                 plan.destination_tile_base == 0xC68CU ? 1 : 2);
+         },
+         [&](const MagicActionEffectDamageGridPlan& plan) {
+             metric_events.push_back(static_cast<int>(plan.effect_row));
          }});
     if (!no_effect.residual_valid || no_effect.residual_effect != -4 ||
-        !no_effect.no_effect_text_rendered || no_effect.effect_grid_written ||
+        !no_effect.none_damage_value_rendered ||
+        no_effect.damage_grid_written || !no_effect.none_damage_value.has_value() ||
+        no_effect.none_damage_value->destination_tile_base != 0xC68CU ||
         metric_events != std::vector<int>{1}) {
         return 9;
     }

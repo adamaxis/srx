@@ -70,7 +70,7 @@ struct EquipmentCombatBarResult {
     EquipmentCombatSpecialActionResult special_action{};
 };
 
-struct EquipmentActionMetricInput {
+struct MagicActionEffectValueInput {
     // ROM 0x105E6 reads the selected action code from the menu action table
     // before passing it to the 0x10660 residual calculation.
     std::uint8_t action_code = 0;
@@ -79,17 +79,40 @@ struct EquipmentActionMetricInput {
     EntityActionCatalogRecord action{};
 };
 
-struct EquipmentActionMetricCallbacks {
-    std::function<void()> render_no_effect_text;
-    std::function<void(std::uint16_t)> write_effect_grid;
+// The source calls the positive branch's six-tile row writer after calculating
+// a magic action's residual effect. These fields describe the source row and
+// layout without making a native renderer depend on ROM or VDP memory.
+struct MagicActionEffectDamageGridPlan {
+    // 0x10638 decrements the positive residual before selecting the row.
+    std::uint16_t effect_row = 0;
+    // The source advances the decoded six-word row table by fourteen bytes.
+    std::uint16_t source_row_stride = 0x0EU;
+    // Source 0x10646/0x1064C presentation layout provenance.
+    std::uint16_t destination_tile_base = 0xC688U;
+    std::uint16_t tile_count = 6U;
+    std::uint16_t palette_flags = 0;
 };
 
-struct EquipmentActionMetricResult {
+struct MagicActionEffectNoneValuePlan {
+    // Source 0xC8A2C is the literal `None` value used when the magic action
+    // has no positive residual damage.
+    std::uint16_t destination_tile_base = 0xC68CU;
+};
+
+struct MagicActionEffectValueCallbacks {
+    std::function<void(const MagicActionEffectNoneValuePlan&)>
+        render_none_damage_value;
+    std::function<void(const MagicActionEffectDamageGridPlan&)>
+        write_damage_grid;
+};
+
+struct MagicActionEffectValueResult {
     bool residual_valid = false;
-    bool no_effect_text_rendered = false;
-    bool effect_grid_written = false;
+    bool none_damage_value_rendered = false;
+    bool damage_grid_written = false;
     std::int16_t residual_effect = 0;
-    std::uint16_t effect_grid_row = 0;
+    std::optional<MagicActionEffectNoneValuePlan> none_damage_value;
+    std::optional<MagicActionEffectDamageGridPlan> damage_grid;
 };
 
 enum class EquipmentCombatGrid {
@@ -408,12 +431,13 @@ EquipmentActionSkillMergeResult merge_equipment_action_skill_value(
 EquipmentCombatBarResult compute_equipment_combat_bars(
     const EquipmentCombatInput& input);
 
-// ROM 0x105E6: calculate the selected action's residual through 0x10660;
-// nonpositive residuals use the no-effect text path, while positive residuals
-// select the source effect row (residual - 1) for one grid write.
-EquipmentActionMetricResult refresh_equipment_action_metric(
-    const EquipmentActionMetricInput& input,
-    const EquipmentActionMetricCallbacks& callbacks = {});
+// ROM 0x105E6: refresh the magic action's Damage value. It calculates the
+// selected spell's residual through 0x10660; nonpositive residuals render the
+// literal None value, while positive residuals select source damage row
+// (residual - 1) and submit its six-tile grid.
+MagicActionEffectValueResult refresh_magic_action_effect_value(
+    const MagicActionEffectValueInput& input,
+    const MagicActionEffectValueCallbacks& callbacks = {});
 
 // ROM 0x1055E: choose the normal action-metric branch or the alternate
 // ready-party branch, then publish the source primary/secondary grid rows.

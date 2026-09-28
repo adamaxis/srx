@@ -392,7 +392,7 @@ void adjust_magic_force(
     state.current_force = saved_current;
 
     call_once(callbacks.write_repeated_menu_grid);
-    call_once(callbacks.refresh_equipment_action_metric);
+    call_once(callbacks.refresh_magic_action_effect_value);
 }
 
 void prepare_magic_action_details(
