@@ -48,6 +48,81 @@ void FieldSceneRuntime::source_boundary(
     }
 }
 
+void FieldSceneRuntime::initialize_field_entity_selection_state() {
+    // ROM 0x42B0 publishes the three field-record types in slot order. The
+    // current new-game composition has Joshua in slot zero; the recruited
+    // primary and secondary slots remain inactive until their own source
+    // selection path is connected.
+    field_entity_selection_state_ = RunnerSwitchState{
+        {{0U, field_entity_behavior_flags_}, {1U, 0U}, {2U, 0U}}, 0U,
+        false};
+    field_runner_refresh_state_ = FieldRunnerRefreshState{};
+    field_mode_exit_transition_state_ = FieldModeExitTransitionState{};
+    field_mode_exit_transition_state_.action_counter = field_action_counter_;
+}
+
+void FieldSceneRuntime::refresh_field_runner_state_and_assets() {
+    const auto result =
+        ::shadowrun::ghidra_conversion::refresh_field_runner_state_and_assets(
+            field_runner_refresh_state_, 0U,
+            {[this] {
+                 source_boundary("field.runners.serialize_population");
+             },
+             [this](const FieldRunnerSlot slot) {
+                 source_boundary(slot == FieldRunnerSlot::primary
+                                     ? "field.runners.clear_primary_effect"
+                                     : "field.runners.clear_secondary_effect");
+             },
+             [this](const FieldRunnerSlot) {
+                 handle_field_mode_action_event();
+             },
+             [this] { source_boundary("field.resources.upload_asset_setup"); },
+             [this] {
+                 source_boundary("field.resources.run_animation_triplet");
+             }});
+    if (result.processed[0] || result.processed[1]) {
+        source_boundary("field.runners.refresh_processed");
+    }
+}
+
+void FieldSceneRuntime::handle_field_mode_action_event() {
+    const auto decision = advance_runner_switch(field_entity_selection_state_);
+    if (field_entity_selection_state_.active_index <
+        field_entity_selection_state_.records.size()) {
+        field_entity_behavior_flags_ = static_cast<std::uint8_t>(
+            field_entity_selection_state_
+                .records[field_entity_selection_state_.active_index]
+                .flags);
+    }
+    field_movement_behavior_record_.behavior_flags =
+        field_entity_behavior_flags_;
+    source_boundary("field.entities.handle_mode_action_event");
+    if (decision.result == RunnerSwitchResult::switched) {
+        source_boundary("field.entities.active_runner_changed");
+    }
+}
+
+void FieldSceneRuntime::run_field_mode_exit_transition() {
+    ::shadowrun::ghidra_conversion::finalize_field_mode_exit_transition(
+        field_mode_exit_transition_state_,
+        {[this](const ExitEffectSlotGroup) {
+             source_boundary("field.effects.clear_high_slots");
+         },
+         [this] { source_boundary("field.world.reset_effect_globals"); },
+         [this](const FieldModeExitServicePhase phase) {
+             source_boundary(phase == FieldModeExitServicePhase::
+                                         mode_specific_cleanup
+                                     ? "field.mode_exit.service_cleanup"
+                                     : "field.mode_exit.service_refresh");
+         },
+         [this] { refresh_field_runner_state_and_assets(); },
+         [this] { source_boundary("field.resources.run_animation_triplet"); },
+         [this] { handle_field_mode_action_event(); },
+         [this] { source_boundary("field.mode_exit.initialize_profile_a"); },
+         [this] { source_boundary("field.mode_exit.initialize_profile_b"); }});
+    field_action_counter_ = field_mode_exit_transition_state_.action_counter;
+}
+
 bool FieldSceneRuntime::load_image(
     const ConversionAssetCatalog& catalog,
     const std::string_view alias,
@@ -129,14 +204,8 @@ void FieldSceneRuntime::configure_callbacks() {
     callbacks_.prepare_field_scene_runtime = [this] {
         const auto decision = prepare_field_scene_runtime(
             field_action_counter_,
-            {[this] {
-                 source_boundary(
-                     "field.scene.refresh_runner_state_and_assets");
-             },
-             [this] {
-                 source_boundary(
-                     "field.scene.finalize_mode_exit_transition");
-             }});
+            {[this] { refresh_field_runner_state_and_assets(); },
+             [this] { run_field_mode_exit_transition(); }});
         source_boundary(
             decision.path ==
                     FieldSceneRuntimePreparationPath::
@@ -403,6 +472,9 @@ bool FieldSceneRuntime::bootstrap(
     field_terrain_sample_state_ = {};
     field_action_counter_ = 0U;
     field_entity_behavior_flags_ = 0U;
+    field_entity_selection_state_ = RunnerSwitchState{};
+    field_runner_refresh_state_ = FieldRunnerRefreshState{};
+    field_mode_exit_transition_state_ = FieldModeExitTransitionState{};
     input_ = integration::FieldSessionBootstrapInput{};
     input_.action_selection_profile_source =
         assets.action_selection_profile_source;
@@ -420,6 +492,11 @@ bool FieldSceneRuntime::bootstrap(
             startup_state.joshua_selection->typed_live_joshua_record
                 .projection_word_08;
     }
+    // ROM 0x44BC installs behavior byte 0x05 in a field entity before the
+    // source 0xC64C/0x391A handoff. Keep the typed state initialized before
+    // field-buffer preparation can invoke 0xC7F8.
+    field_entity_behavior_flags_ = field_entity_.active ? 0x05U : 0U;
+    initialize_field_entity_selection_state();
 
     if (!load_image(startup_state.asset_catalog.catalog,
                     kInitialFieldMapAlias, field_map_) ||
@@ -454,10 +531,8 @@ bool FieldSceneRuntime::bootstrap(
     field_movement_state_.position_x = field_entity_.world_position.x;
     field_movement_state_.position_y = field_entity_.world_position.y;
     field_movement_state_.heading = 0U;
-    // ROM 0x44BC initializes a field entity's +0x10 behavior byte to 0x05.
     // This is distinct from the live runner record's +0x10 flags word used by
     // menu/status code; movement and terrain probes consume the entity slot.
-    field_entity_behavior_flags_ = 0x05U;
     field_movement_behavior_record_.active = field_entity_.active;
     field_movement_behavior_record_.behavior_flags =
         field_entity_behavior_flags_;

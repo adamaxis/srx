@@ -243,9 +243,15 @@ therefore records only the typed activity continuation and timer start; the
 event-table lookup remains the separate `0x167AE` conversion and is not
 pretended to be a return value from the timer helper. The active-entity
 selection path `0x0C7F8 -> 0x0C802 -> 0x0391A`, which supplies the live
-`+0x10` bit-1 state required for the negative-collision branch, is still an
-explicit source boundary in the Qt composition. Likewise, `0x1651E` remains
-unresolved until its entity-table and world-layer records are traced.
+`+0x10` bit-1 state required for the negative-collision branch, is now
+connected in the separate Qt composition through the typed `RunnerSwitchState`:
+source types `0, 1, 2` are installed, Joshua starts active in slot zero, and
+the converted `0x391A` walk publishes the bit-1 marker even when the recruited
+primary/secondary slots are not active. The Qt callback also runs the already
+converted `0xC64C` finalizer, whose `0xC802` refresh remains typed and bounded.
+The recruited roster-selection path is still unresolved, so the composition
+does not invent active companions. Likewise, `0x1651E` remains unresolved
+until its entity-table and world-layer records are traced.
 
 ### Field scene runtime dispatcher: 0xC7F8
 

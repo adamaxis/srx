@@ -13,8 +13,11 @@
 #include "shadowrun_ghidra/entities/movement_step_conversion.hpp"
 #include "shadowrun_ghidra/entities/movement_mode_transition_conversion.hpp"
 #include "shadowrun_ghidra/field/terrain_probe_conversion.hpp"
+#include "shadowrun_ghidra/field/field_mode_exit_transition_finalizer_conversion.hpp"
+#include "shadowrun_ghidra/field/field_runner_state_asset_refresh_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_session_bootstrap_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
+#include "shadowrun_ghidra/session/runner_switch_conversion.hpp"
 #include "shadowrun_ghidra/integration/startup_integration_conversion.hpp"
 #include "shadowrun_ghidra/menus/menu_transfer_batch_conversion.hpp"
 #include "shadowrun_ghidra/world/world_entity_conversion.hpp"
@@ -63,6 +66,10 @@ public:
 private:
     void configure_callbacks();
     void advance_field_movement();
+    void initialize_field_entity_selection_state();
+    void refresh_field_runner_state_and_assets();
+    void handle_field_mode_action_event();
+    void run_field_mode_exit_transition();
     bool recover_blocked_field_movement(
         const MovementProbeResult& initial_probe);
     std::optional<std::size_t> projected_terrain_cell() const;
@@ -117,6 +124,9 @@ private:
     EntityCollisionRecord field_collision_record_{};
     CollisionProbeState field_collision_probe_state_{};
     EntityBehaviorFrameRecord field_movement_behavior_record_{};
+    RunnerSwitchState field_entity_selection_state_{};
+    FieldRunnerRefreshState field_runner_refresh_state_{};
+    FieldModeExitTransitionState field_mode_exit_transition_state_{};
     EntityMovementModeTransitionState field_movement_transition_state_{};
     WorldActivityState field_world_activity_state_{};
     MovementModeTransitionContinuation field_activity_continuation_ =
