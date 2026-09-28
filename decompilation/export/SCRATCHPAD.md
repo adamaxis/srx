@@ -2005,3 +2005,32 @@ other entries use value six/difficulty eight. It always selects secondary
 armor before entering `0x559BC`; the typed conversion shares the continuation
 builder with `0x55948` and the regression test verifies the `0x0F` mental-meter
 branch without introducing a second combat implementation.
+
+## 0x104F6 special-item modifier audit
+
+The complete `0x104F6` tail is now tied to source data rather than a
+caller-invented modifier matrix. The routine scans possession slots 6 through
+0 for the selected action item and adds the first matching phase with `ADD.B`.
+It then always examines slot 7. Only item codes `0x29`, `0x2A`, and `0x2B`
+enter the special branch.
+
+For that branch, `D7` is the original action index selected by `0x104C8` and
+`C8AE0[D7]` is a signed selector. The US selector bytes decoded for indices
+0 through 15 are:
+
+`1, 1, 1, 0, 1, 0, -1, 1, 1, 1, -1, 2, 0, -1, 0, 12`
+
+A negative selector skips the special word. Selectors 0, 1, and 2 address the
+matching one-based `D4540` item record at `+0x22`, `+0x24`, and `+0x26`,
+respectively. The `+0x24` and `+0x26` reads are aligned source words, so the
+typed rows retain the adjacent bytes (`+0x25` and `+0x27`) instead of reducing
+them to a single guessed field. The result is a word addition followed by the
+source signed-positive test; values at or below zero become one.
+
+The selector value 12 at index 15 is intentionally not guessed. The traced
+instruction would read another word in the same `0x30`-byte record, but no
+semantic D4540 field has been established for that offset. The source-bound
+conversion returns `source_data_missing` before random rolls or action state
+mutation when that path is reached. The old matrix overload remains only as an
+explicit audit adapter for tests and callers that have already supplied decoded
+values; it is not the source-of-truth path.

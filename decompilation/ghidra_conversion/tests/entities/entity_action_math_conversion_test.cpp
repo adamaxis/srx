@@ -187,6 +187,59 @@ int main() {
         return 6;
     }
 
+    const auto& source_item_catalog = us_item_catalog();
+    const auto& source_selectors = us_special_item_modifier_selector_table();
+    EntityActionRecord source_bound_special{};
+    source_bound_special.item_codes[7] = 0x29U;
+    const auto source_item41 = apply_action_item_phase_modifiers(
+        5U, source_bound_special, 0x1AU, 5U, source_item_catalog,
+        source_selectors);
+    if (!expect(source_item41.value == 7U &&
+                source_item41.special_item_applied &&
+                !source_item41.source_data_missing)) {
+        return 28;
+    }
+
+    source_bound_special.item_codes[7] = 0x2AU;
+    const auto source_item42 = apply_action_item_phase_modifiers(
+        5U, source_bound_special, 0x1AU, 4U, source_item_catalog,
+        source_selectors);
+    if (!expect(source_item42.value == 7U &&
+                source_item42.special_item_applied &&
+                !source_item42.source_data_missing)) {
+        return 29;
+    }
+
+    source_bound_special.item_codes[7] = 0x2BU;
+    const auto source_item43 = apply_action_item_phase_modifiers(
+        5U, source_bound_special, 0x1AU, 11U, source_item_catalog,
+        source_selectors);
+    if (!expect(source_item43.value == 0x0207U &&
+                source_item43.special_item_applied &&
+                !source_item43.source_data_missing)) {
+        return 30;
+    }
+
+    source_bound_special.item_codes[7] = 0x29U;
+    const auto unresolved_selector = apply_action_item_phase_modifiers(
+        5U, source_bound_special, 0x1AU, 15U, source_item_catalog,
+        source_selectors);
+    if (!expect(unresolved_selector.value == 5U &&
+                !unresolved_selector.special_item_applied &&
+                unresolved_selector.source_data_missing)) {
+        return 31;
+    }
+
+    auto mismatched_catalog = source_item_catalog;
+    mismatched_catalog[40].item_code = 0U;
+    const auto mismatched_source_row = apply_action_item_phase_modifiers(
+        5U, source_bound_special, 0x1AU, 5U, mismatched_catalog,
+        source_selectors);
+    if (!expect(mismatched_source_row.value == 5U &&
+                mismatched_source_row.source_data_missing)) {
+        return 32;
+    }
+
     if (!expect(add_wound_difficulty_penalty(4U, 0U, 4U) == 8U &&
                 add_wound_difficulty_penalty(4U, 5U, 7U) == 6U &&
                 add_wound_difficulty_penalty(4U, 8U, 10U) == 4U)) {
@@ -460,6 +513,46 @@ int main() {
                 gated_actor.equipped_slot == 0 &&
                 gated_actor.equipped_action_code == 0x1AU)) {
         return 20;
+    }
+
+    EntityActionActorState source_bound_actor = actor;
+    source_bound_actor.record.item_codes[7] = 0x29U;
+    source_bound_actor.record.item_codes[5] = 0x13U;
+    source_bound_actor.record.item_phases[5] = 5U;
+    const EntityTargetActionServices source_action_services{
+        [](const std::uint16_t roll_count, const std::uint16_t difficulty) {
+            return static_cast<std::uint8_t>(roll_count == 9U &&
+                                             difficulty == 4U ? 1U : 0U);
+        },
+        [&spawn_count](EntityActionActorState&) { ++spawn_count; },
+        [&published_successes, &published_auxiliary](
+            const std::uint8_t successes, const std::uint8_t auxiliary) {
+            published_successes = successes;
+            published_auxiliary = auxiliary;
+        },
+        [&behavior_deltas](EntityActionActorState&, const std::int16_t delta) {
+            behavior_deltas.push_back(delta);
+        }};
+    const auto source_bound_resolution = resolve_entity_target_action(
+        source_bound_actor, action_target, action_row, nullptr,
+        source_action_services, source_item_catalog, source_selectors);
+    if (!expect(source_bound_resolution.outcome ==
+                    EntityTargetActionOutcome::residual_consumed_exactly &&
+                source_bound_resolution.initial_roll_count == 9U)) {
+        return 33;
+    }
+
+    EntityActionActorState unavailable_actor = source_bound_actor;
+    unavailable_actor.equipped_action_code = 0x10U;
+    unavailable_actor.action_result = 0U;
+    const auto unavailable = resolve_entity_target_action(
+        unavailable_actor, action_target, action_row, nullptr, {},
+        source_item_catalog, source_selectors);
+    if (!expect(unavailable.outcome ==
+                    EntityTargetActionOutcome::source_data_unavailable &&
+                unavailable.initial_roll_count != 0U &&
+                unavailable_actor.action_result == 0U)) {
+        return 34;
     }
 
     return 0;

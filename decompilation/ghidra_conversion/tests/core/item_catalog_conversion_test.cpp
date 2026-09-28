@@ -42,6 +42,24 @@ int main() {
         return 4;
     }
 
+    // 0x104F6 reads aligned words from the late special-item rows rather
+    // than a generic modifier matrix: item 41 +0x22, item 42 +0x24, and
+    // item 43 +0x26/+0x27 are each independently source-backed.
+    if (catalog[40].source_action_modifier_word(0) != 0x0002U ||
+        catalog[41].source_action_modifier_word(1) != 0x0002U ||
+        catalog[42].source_action_modifier_word(2) != 0x0202U ||
+        catalog[42].source_action_parameter_tail != 0x02U) {
+        return 6;
+    }
+
+    const auto& selectors = us_special_item_modifier_selector_table();
+    if (selectors.field_selectors.size() != 16U ||
+        selectors.field_selectors[5] != 0 ||
+        selectors.field_selectors[11] != 2 ||
+        selectors.field_selectors[15] != 12) {
+        return 7;
+    }
+
     const auto* first = find_us_item_definition(1U);
     const auto* last = find_us_item_definition(50U);
     if (first != &catalog.front() || last != &catalog.back() ||

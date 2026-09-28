@@ -24,17 +24,52 @@ struct UsItemDefinition {
     // D4540 +0x26.  0x130C0 treats this as a detail selector; 0x55948
     // consumes the same byte as the initial equipment-action difficulty.
     std::uint8_t detail_selector = 0;
+    std::uint8_t source_action_parameter_tail = 0; // D4540 +0x27
 
     // Name the 0x55948 interpretation without duplicating the source byte.
     std::uint8_t source_action_difficulty() const {
         return detail_selector;
     }
+
+    // ROM 0x104F6 reads one of these three aligned source words when a
+    // slot-7 special item is present: +0x22, +0x24, or +0x26.
+    std::uint16_t source_action_modifier_word(
+        const std::int8_t source_field_selector) const {
+        switch (source_field_selector) {
+        case 0:
+            return base_cost;
+        case 1:
+            return static_cast<std::uint16_t>(
+                (static_cast<std::uint16_t>(source_combat_factor) << 8U) |
+                static_cast<std::uint8_t>(signed_detail_asset_index));
+        case 2:
+            return static_cast<std::uint16_t>(
+                (static_cast<std::uint16_t>(detail_selector) << 8U) |
+                source_action_parameter_tail);
+        default:
+            return 0U;
+        }
+    }
 };
 
 using UsItemCatalog = std::array<UsItemDefinition, kUsItemDefinitionCount>;
 
+constexpr std::size_t kUsSpecialItemSelectorCount = 16U;
+
+// ROM C8AE0. The source indexes this signed byte table with the selected
+// action index. Nonnegative values select D4540 words +0x22/+0x24/+0x26;
+// negative values skip the slot-7 special-item adjustment. Values outside
+// that three-word range are retained as source evidence and reported as an
+// unresolved source-data boundary by the typed consumer.
+struct UsSpecialItemModifierSelectorTable {
+    std::array<std::int8_t, kUsSpecialItemSelectorCount> field_selectors{};
+};
+
 // Typed US-ROM data extracted from D4540 with its 0x30-byte record stride.
 const UsItemCatalog& us_item_catalog();
+
+const UsSpecialItemModifierSelectorTable&
+us_special_item_modifier_selector_table();
 
 // Ordinary item references are one-based.  This helper intentionally does
 // not model 0x57A44's zero-based field-action table index; that caller uses

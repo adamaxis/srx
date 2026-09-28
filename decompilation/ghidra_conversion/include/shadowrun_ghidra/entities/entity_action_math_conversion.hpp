@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/magic_spell_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/random_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_action_profile_conversion.hpp"
@@ -78,7 +79,13 @@ struct EntityActionCatalogRecord {
 // D4540 row at +0x22, +0x24, or +0x26. The table is passed as decoded data,
 // not accessed through a ROM address at runtime.
 struct EntityActionSpecialItemModifierTable {
-    std::array<std::int8_t, 0x18> action_offsets{};
+    // The first sixteen bytes of C8AE0 are the selector bytes used by
+    // 0x104F6. The remaining source object is pointer/data material, not a
+    // second selector array. Keep this adapter bounded to the decoded field.
+    std::array<std::int8_t, kUsSpecialItemSelectorCount> action_offsets{};
+    // Legacy caller-supplied words remain available only for tests and
+    // already-decoded audit callers. The source-bound overload below reads
+    // the actual D4540 record words instead.
     std::array<std::array<std::int16_t, 3>, 3> slot7_item_modifiers{};
 };
 
@@ -184,6 +191,7 @@ struct EntityActionPhaseModifierResult {
     std::uint16_t value = 0;
     bool phase_found = false;
     bool special_item_applied = false;
+    bool source_data_missing = false;
 };
 
 // ROM 0x104F6 in full: apply the first matching phase, then apply the
@@ -196,6 +204,18 @@ EntityActionPhaseModifierResult apply_action_item_phase_modifiers(
     std::uint8_t item_code,
     std::uint8_t action_index,
     const EntityActionSpecialItemModifierTable* table);
+
+// Source-bound 0x104F6 form. C8AE0 supplies the selector and the one-based
+// slot-7 item code selects a typed D4540 row. A selector outside the three
+// words proven by the ROM trace is reported as missing source data instead of
+// reading an invented field or silently substituting a neighboring value.
+EntityActionPhaseModifierResult apply_action_item_phase_modifiers(
+    std::uint16_t value,
+    const EntityActionRecord& entity,
+    std::uint8_t item_code,
+    std::uint8_t action_index,
+    const UsItemCatalog& item_catalog,
+    const UsSpecialItemModifierSelectorTable& selector_table);
 
 // ROM 0x1047E. For each of the three party records, active class codes 0 and
 // 1 contribute floor(item18_value / 4), plus one only when the remainder is
@@ -315,6 +335,7 @@ EntityActionPhaseConsumption consume_item13_residual(
 
 enum class EntityTargetActionOutcome {
     target_state_gate,
+    source_data_unavailable,
     roll_service_unavailable,
     roll_failed,
     residual_not_positive,
@@ -357,6 +378,18 @@ EntityTargetActionResolution resolve_entity_target_action(
     const EntityActionCatalogRecord& action,
     const EntityActionDynamicModifierContext* dynamic_context,
     const EntityTargetActionServices& services);
+
+// Source-bound overload of the same 0x1033E path. Its 0x104F6 continuation
+// uses the extracted C8AE0/D4540 records and stops before random or gameplay
+// mutation when that source data cannot be represented safely.
+EntityTargetActionResolution resolve_entity_target_action(
+    EntityActionActorState& actor,
+    const EntityActionTarget& target,
+    const EntityActionCatalogRecord& action,
+    const EntityActionDynamicModifierContext* dynamic_context,
+    const EntityTargetActionServices& services,
+    const UsItemCatalog& item_catalog,
+    const UsSpecialItemModifierSelectorTable& selector_table);
 
 struct EntityActionResidual {
     bool valid = false;

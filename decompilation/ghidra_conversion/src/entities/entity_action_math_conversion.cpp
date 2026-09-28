@@ -198,6 +198,70 @@ EntityActionPhaseModifierResult apply_action_item_phase_modifiers(
     return result;
 }
 
+EntityActionPhaseModifierResult apply_action_item_phase_modifiers(
+    const std::uint16_t value,
+    const EntityActionRecord& entity,
+    const std::uint8_t item_code,
+    const std::uint8_t action_index,
+    const UsItemCatalog& item_catalog,
+    const UsSpecialItemModifierSelectorTable& selector_table) {
+    EntityActionPhaseModifierResult result{};
+    result.value = value;
+    const auto scan_count = std::min<std::size_t>(
+        kActionPhaseScanSlotCount, entity.item_codes.size());
+    for (std::size_t slot = scan_count; slot-- > 0U;) {
+        if (entity.item_codes[slot] != item_code) {
+            continue;
+        }
+        result.value = add_source_byte_to_word(result.value,
+                                               entity.item_phases[slot]);
+        result.phase_found = true;
+        break;
+    }
+
+    // 0x104F6 always examines slot 7 after the six-through-zero phase scan.
+    // The source C8AE0 read is itself a data dependency, so an index beyond
+    // the decoded selector object is not treated as a harmless no-op.
+    const auto slot7_item = entity.item_codes[7];
+    if (slot7_item < 0x29U || slot7_item > 0x2BU) {
+        return result;
+    }
+    if (action_index >= selector_table.field_selectors.size()) {
+        result.source_data_missing = true;
+        return result;
+    }
+
+    const auto item_index = static_cast<std::size_t>(slot7_item - 1U);
+    if (item_index >= item_catalog.size() ||
+        item_catalog[item_index].item_code != slot7_item) {
+        result.source_data_missing = true;
+        return result;
+    }
+
+    const auto source_field_selector =
+        selector_table.field_selectors[action_index];
+    if (source_field_selector < 0) {
+        return result;
+    }
+    if (source_field_selector > 2) {
+        // C8AE0[15] is 12 in the US data. The traced code would continue
+        // into the 0x30-byte row at that word offset, but no named D4540
+        // field has been established there. Stop at that evidence boundary.
+        result.source_data_missing = true;
+        return result;
+    }
+
+    result.value = static_cast<std::uint16_t>(
+        result.value +
+        item_catalog[item_index].source_action_modifier_word(
+            source_field_selector));
+    result.special_item_applied = true;
+    if (static_cast<std::int16_t>(result.value) <= 0) {
+        result.value = 1U;
+    }
+    return result;
+}
+
 std::uint16_t calculate_ready_entity_action_bonus(
     const std::array<EntityActionRecord, 3>& ready_entities) {
     std::uint16_t bonus = 0U;
@@ -641,12 +705,16 @@ std::uint16_t calculate_action_effect_roll_count(
         remaining + static_cast<std::uint16_t>(entity.attribute_7c));
 }
 
-EntityTargetActionResolution resolve_entity_target_action(
+namespace {
+
+EntityTargetActionResolution resolve_entity_target_action_impl(
     EntityActionActorState& actor,
     const EntityActionTarget& target,
     const EntityActionCatalogRecord& action,
     const EntityActionDynamicModifierContext* dynamic_context,
-    const EntityTargetActionServices& services) {
+    const EntityTargetActionServices& services,
+    const UsItemCatalog* item_catalog,
+    const UsSpecialItemModifierSelectorTable* selector_table) {
     EntityTargetActionResolution resolution{};
 
     // 0x10344..0x10356: an actor already in source behavior state one does
@@ -674,14 +742,25 @@ EntityTargetActionResolution resolve_entity_target_action(
         roll_count + static_cast<std::uint16_t>(actor.auxiliary_roll_bonus));
     const auto matching_item_code = static_cast<std::uint8_t>(
         static_cast<std::uint16_t>(actor.equipped_action_code) - 1U + 0x19U);
-    const auto phase_modifiers = apply_action_item_phase_modifiers(
-        roll_count, actor.record, matching_item_code,
-        static_cast<std::uint8_t>(actor.equipped_action_code - 1U),
-        actor.special_item_modifier_table.has_value()
-            ? &*actor.special_item_modifier_table
-            : nullptr);
+    const auto action_index = static_cast<std::uint8_t>(
+        actor.equipped_action_code - 1U);
+    const auto phase_modifiers =
+        item_catalog != nullptr && selector_table != nullptr
+            ? apply_action_item_phase_modifiers(
+                  roll_count, actor.record, matching_item_code, action_index,
+                  *item_catalog, *selector_table)
+            : apply_action_item_phase_modifiers(
+                  roll_count, actor.record, matching_item_code, action_index,
+                  actor.special_item_modifier_table.has_value()
+                      ? &*actor.special_item_modifier_table
+                      : nullptr);
     roll_count = phase_modifiers.value;
     resolution.initial_roll_count = roll_count;
+    if (phase_modifiers.source_data_missing) {
+        resolution.outcome = EntityTargetActionOutcome::
+            source_data_unavailable;
+        return resolution;
+    }
 
     auto difficulty = static_cast<std::uint16_t>(4U);
     difficulty = apply_target_condition_modifier(
@@ -787,6 +866,31 @@ EntityTargetActionResolution resolve_entity_target_action(
 
     resolution.outcome = EntityTargetActionOutcome::residual_not_positive;
     return resolution;
+}
+
+}  // namespace
+
+EntityTargetActionResolution resolve_entity_target_action(
+    EntityActionActorState& actor,
+    const EntityActionTarget& target,
+    const EntityActionCatalogRecord& action,
+    const EntityActionDynamicModifierContext* dynamic_context,
+    const EntityTargetActionServices& services) {
+    return resolve_entity_target_action_impl(
+        actor, target, action, dynamic_context, services, nullptr, nullptr);
+}
+
+EntityTargetActionResolution resolve_entity_target_action(
+    EntityActionActorState& actor,
+    const EntityActionTarget& target,
+    const EntityActionCatalogRecord& action,
+    const EntityActionDynamicModifierContext* dynamic_context,
+    const EntityTargetActionServices& services,
+    const UsItemCatalog& item_catalog,
+    const UsSpecialItemModifierSelectorTable& selector_table) {
+    return resolve_entity_target_action_impl(
+        actor, target, action, dynamic_context, services, &item_catalog,
+        &selector_table);
 }
 
 }  // namespace shadowrun::ghidra_conversion
