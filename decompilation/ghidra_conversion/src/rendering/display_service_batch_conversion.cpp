@@ -100,6 +100,7 @@ bool prepare_field_scene_buffers(
                          input.layer_a.begin() + kFieldTerrainLayerWordCount);
     state.layer_b.assign(input.layer_b.begin(),
                          input.layer_b.begin() + kFieldTerrainLayerWordCount);
+    state.source_metadata = input.source_metadata;
     state.initialized = true;
     return true;
 }

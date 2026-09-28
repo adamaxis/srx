@@ -108,7 +108,14 @@ int main() {
             source.assets->alternate_scene_profile_source ||
         scene_input.layer_a != source.assets->mode2_terrain_layer_a_source ||
         scene_input.layer_b != source.assets->mode2_terrain_layer_b_source ||
-        scene_input.terrain_stream != source.assets->mode2_terrain_stream_source) {
+        scene_input.terrain_stream != source.assets->mode2_terrain_stream_source ||
+        !scene_input.source_metadata.available ||
+        scene_input.source_metadata.initial_camera_x_fixed != 0x3400U ||
+        scene_input.source_metadata.initial_field_records[0].x != 0x3CE0U ||
+        scene_input.source_metadata.terrain_collision_rectangles.size() !=
+            kFieldMode2TerrainCollisionRectangleCount ||
+        scene_input.source_metadata.terrain_collision_map[97U] != 0x7FU ||
+        scene_input.source_metadata.event_mode_table[0] != 0x14U) {
         return 11;
     }
     return 0;

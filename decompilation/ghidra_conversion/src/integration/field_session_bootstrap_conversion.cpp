@@ -110,7 +110,9 @@ FieldSessionBootstrapResult bootstrap_field_session(
             kFieldModeSelectionStateWordCount ||
         input.field_scene.terrain_stream.empty() ||
         input.field_scene.layer_a.size() < kFieldTerrainLayerWordCount ||
-        input.field_scene.layer_b.size() < kFieldTerrainLayerWordCount) {
+        input.field_scene.layer_b.size() < kFieldTerrainLayerWordCount ||
+        !input.field_scene.source_metadata.available ||
+        input.field_scene.source_metadata.terrain_collision_rectangles.empty()) {
         return fail(state, callbacks,
                     FieldSessionBootstrapResult::source_data_missing);
     }

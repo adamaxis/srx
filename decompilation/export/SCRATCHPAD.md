@@ -76,6 +76,51 @@ remain explicit conversion boundaries. A successful menu callback must not be
 treated as a completed load until this restoration path has a validated host
 save image and the source-derived roster templates.
 
+## Mode-2 field descriptor and collision records
+
+The field startup record sweep now includes the source data that was missing
+from the first field-session pass. The pointer-table row at `0x323A` resolves
+mode 2 to the `0x172C80` descriptor. Its fields are not a generic blob:
+
+| Descriptor field | Source meaning | US-ROM value |
+| --- | --- | --- |
+| `+0x00/+0x02` | initial mode-2 camera fixed-point pair | `0x3400, 0x2280` |
+| `+0x0C/+0x0E` | terrain X/Y exclusive upper bounds | `0x0754, 0x0518` |
+| `+0x10/+0x12` | terrain X/Y inclusive lower bounds | `0x002C, 0x002C` |
+| `+0x26` | pointer to five-word terrain collision records | `0x172DAA` |
+| `+0x42..+0x4C` | three initial field-record position pairs | `0x3CE0/0x2D00`, `0x3BA0/0x2D00`, `0x3DA0/0x2D00` |
+| `+0x4E` | pointer to the 32-byte field event-mode table | `0x172CDC` |
+
+`0x0EE10` is the consumer of the collision record stream. It clears the
+64-by-64 status map, reads five words per record, rasterizes inclusive
+`0x20`-unit X/Y steps, and stops when the first word has its signed high bit
+set. Mode 2 contains 101 records from `0x172DAA` through `0x17319B`; the
+`0xFFFF` sentinel is at `0x17319C`. The direct asset intentionally contains
+the 101 records without the sentinel, and the conversion loader rejects an
+early sentinel or changed record count instead of silently accepting a
+truncated table.
+
+The event table is consumed indirectly. `0x03074`/`0x03084` select and copy
+the 48-word scene profile and its two `0xE10`-word terrain layers; they do not
+replace the descriptor's mode-2 startup metadata. `0x0BC36` builds the four
+collision-probe points from the active entity and snapshots the current field
+origin into `FFDF50/FFDF52`. `0x02F32` later uses that live snapshot when
+initializing field-scene state and copying entity anchors. This is why the
+conversion keeps the descriptor camera (`0x3400/0x2280`) separate from the
+currently selected scene-profile words (`0x0A00/0x0280`) instead of forcing
+one into the other.
+
+The offline extractor writes the three direct records under
+`assets/records/field/` with aliases
+`records.field.mode.2.descriptor`,
+`records.field.mode.2.terrain.collision.rectangles`, and
+`records.field.mode.2.event.table`. The conversion loader decodes them into
+`FieldSceneSourceMetadata`, including the typed rectangle list and the host
+collision-map projection. This metadata is now carried through
+`FieldSceneBufferInput`/`FieldSceneBuffers`; movement probes and dynamic
+entity presentation remain the next source-backed consumers rather than
+being guessed in the Qt bridge.
+
 ## Export files
 
 - `functions.tsv`: one row per function and generated C file.

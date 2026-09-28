@@ -1,6 +1,7 @@
 #pragma once
 
 #include "shadowrun_ghidra/field/scene_profile_conversion.hpp"
+#include "shadowrun_ghidra/field/terrain_map_conversion.hpp"
 
 #include <array>
 #include <cstdint>
@@ -49,6 +50,25 @@ void service_display_frame_wrapper(DisplayServiceState& state,
 void write_alternating_word_pair_wrapper(
     const std::function<void()>& write_pair);
 
+// Host-owned interpretation of the mode-2 records that sit beside the
+// selected scene profile. The descriptor/event values and the collision
+// rectangles are direct source data; the rasterized map is the converted
+// 0xEE10 result. Keeping them together makes the field-scene handoff explicit
+// without carrying ROM pointers into the runtime.
+struct FieldSceneSourceMetadata {
+    bool available = false;
+    std::uint16_t initial_camera_x_fixed = 0;
+    std::uint16_t initial_camera_y_fixed = 0;
+    std::array<SceneRunnerPosition, 3> initial_field_records{};
+    std::uint16_t terrain_x_exclusive_upper = 0;
+    std::uint16_t terrain_y_exclusive_upper = 0;
+    std::uint16_t terrain_x_inclusive_lower = 0;
+    std::uint16_t terrain_y_inclusive_lower = 0;
+    std::array<std::uint8_t, 32> event_mode_table{};
+    std::vector<TerrainCollisionRectangle> terrain_collision_rectangles;
+    std::array<std::uint8_t, 0x1000> terrain_collision_map{};
+};
+
 struct FieldSceneBuffers {
     bool initialized = false;
     std::uint8_t scene_mode = 0; // selected profile: 0 normal, 1 alternate
@@ -65,6 +85,7 @@ struct FieldSceneBuffers {
     bool pending_position_cleared = false;
     std::vector<std::uint16_t> layer_a;
     std::vector<std::uint16_t> layer_b;
+    FieldSceneSourceMetadata source_metadata{};
 };
 
 struct FieldSceneBufferInput {
@@ -80,6 +101,7 @@ struct FieldSceneBufferInput {
     bool pending_position_in_use = false;
     // ROM FFE10A/FFE10C: the source pair copied to all three target pairs.
     SceneRunnerPosition pending_position{};
+    FieldSceneSourceMetadata source_metadata{};
 };
 
 struct FieldScenePreparationCallbacks {

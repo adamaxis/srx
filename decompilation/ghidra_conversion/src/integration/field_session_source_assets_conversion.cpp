@@ -227,6 +227,27 @@ FieldSceneBufferInput make_initial_mode2_field_scene_input(
     input.terrain_stream = assets.mode2_terrain_stream_source;
     input.layer_a = assets.mode2_terrain_layer_a_source;
     input.layer_b = assets.mode2_terrain_layer_b_source;
+    input.source_metadata.available = true;
+    input.source_metadata.initial_camera_x_fixed =
+        assets.mode2_descriptor.initial_camera_x_fixed;
+    input.source_metadata.initial_camera_y_fixed =
+        assets.mode2_descriptor.initial_camera_y_fixed;
+    input.source_metadata.initial_field_records =
+        assets.mode2_descriptor.initial_field_records;
+    input.source_metadata.terrain_x_exclusive_upper =
+        assets.mode2_descriptor.terrain_x_exclusive_upper;
+    input.source_metadata.terrain_y_exclusive_upper =
+        assets.mode2_descriptor.terrain_y_exclusive_upper;
+    input.source_metadata.terrain_x_inclusive_lower =
+        assets.mode2_descriptor.terrain_x_inclusive_lower;
+    input.source_metadata.terrain_y_inclusive_lower =
+        assets.mode2_descriptor.terrain_y_inclusive_lower;
+    input.source_metadata.event_mode_table =
+        assets.mode2_descriptor.event_mode_table;
+    input.source_metadata.terrain_collision_rectangles =
+        assets.mode2_terrain_collision_rectangles;
+    input.source_metadata.terrain_collision_map =
+        assets.mode2_terrain_collision_map;
     return input;
 }
 
