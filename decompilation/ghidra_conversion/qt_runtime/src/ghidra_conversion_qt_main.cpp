@@ -46,10 +46,12 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
         if (argument == "--help") {
             std::cout
                 << "usage: shadowrun_ghidra_conversion_qt"
-                   " [--assets <decompilation/assets>] [--field-smoke]\n";
+                   " [--assets <decompilation/assets>] [--field-smoke]"
+                   " [--field-smoke-move-right]\n";
             return {};
         }
-        if (argument == "--field-smoke") {
+        if (argument == "--field-smoke" ||
+            argument == "--field-smoke-move-right") {
             continue;
         }
         throw std::invalid_argument("unknown or incomplete argument: " +
@@ -81,6 +83,21 @@ std::uint8_t sampled_menu_byte(const int key) {
     case Qt::Key_Return:
     case Qt::Key_Enter:
         return kStartupMenuA;
+    default:
+        return 0U;
+    }
+}
+
+std::uint8_t sampled_field_direction_bit(const int key) {
+    switch (key) {
+    case Qt::Key_Up:
+        return 0x01U;
+    case Qt::Key_Down:
+        return 0x02U;
+    case Qt::Key_Left:
+        return 0x04U;
+    case Qt::Key_Right:
+        return 0x08U;
     default:
         return 0U;
     }
@@ -162,6 +179,20 @@ protected:
     }
 
     void keyPressEvent(QKeyEvent* event) override {
+        if (state_.phase == StartupIntegrationPhase::field_ready) {
+            const auto direction_bit =
+                sampled_field_direction_bit(event->key());
+            if (direction_bit != 0U) {
+                field_controller_nibble_ = static_cast<std::uint8_t>(
+                    field_controller_nibble_ | direction_bit);
+                field_scene_runtime_.set_controller_nibble(
+                    field_controller_nibble_);
+                update();
+                event->accept();
+                return;
+            }
+        }
+
         const auto sample = sampled_menu_byte(event->key());
         if (sample == 0U) {
             QWidget::keyPressEvent(event);
@@ -184,6 +215,25 @@ protected:
         setWindowTitle(phase_title(state_.phase));
         update();
         event->accept();
+    }
+
+    void keyReleaseEvent(QKeyEvent* event) override {
+        if (state_.phase == StartupIntegrationPhase::field_ready &&
+            !event->isAutoRepeat()) {
+            const auto direction_bit =
+                sampled_field_direction_bit(event->key());
+            if (direction_bit != 0U) {
+                field_controller_nibble_ = static_cast<std::uint8_t>(
+                    field_controller_nibble_ &
+                    static_cast<std::uint8_t>(~direction_bit));
+                field_scene_runtime_.set_controller_nibble(
+                    field_controller_nibble_);
+                update();
+                event->accept();
+                return;
+            }
+        }
+        QWidget::keyReleaseEvent(event);
     }
 
 private:
@@ -461,7 +511,9 @@ private:
                 setWindowTitle(phase_title(phase));
             };
         startup_callbacks_.field_ready = [this] {
+            field_controller_nibble_ = 0U;
             field_scene_runtime_.bootstrap(state_);
+            field_scene_runtime_.set_controller_nibble(0U);
             update();
         };
     }
@@ -1058,6 +1110,7 @@ private:
     std::int16_t title_sprite_x_ = 0x98;
     std::uint16_t title_controller_events_ = 0;
     std::uint16_t pending_title_controller_word_ = 0;
+    std::uint8_t field_controller_nibble_ = 0;
     std::uint32_t title_vblanks_ = 0;
     std::size_t title_palette_steps_ = 0;
     std::size_t resource_stream_words_ = 0;
@@ -1081,15 +1134,21 @@ private:
 int main(int argc, char** argv) {
     try {
         bool field_smoke = false;
+        bool field_smoke_move_right = false;
         for (int index = 1; index < argc; ++index) {
             if (std::string(argv[index]) == "--help") {
                 std::cout
                     << "usage: shadowrun_ghidra_conversion_qt"
-                       " [--assets <decompilation/assets>] [--field-smoke]\n";
+                       " [--assets <decompilation/assets>] [--field-smoke]"
+                       " [--field-smoke-move-right]\n";
                 return 0;
             }
             if (std::string(argv[index]) == "--field-smoke") {
                 field_smoke = true;
+            }
+            if (std::string(argv[index]) == "--field-smoke-move-right") {
+                field_smoke = true;
+                field_smoke_move_right = true;
             }
         }
         const auto asset_root = find_asset_root(argc, argv);
@@ -1136,6 +1195,10 @@ int main(int argc, char** argv) {
                 std::cerr << "field smoke: " << field_scene.failure() << '\n';
                 return 3;
             }
+            if (field_smoke_move_right) {
+                field_scene.set_controller_nibble(0x08U);
+                field_scene.advance_frame();
+            }
             QImage scene(kSceneWidth, kSceneHeight,
                          QImage::Format_ARGB32_Premultiplied);
             scene.fill(Qt::black);
@@ -1146,6 +1209,9 @@ int main(int argc, char** argv) {
             std::cout << "field_smoke=ready scene_reference="
                       << buffers.scene_reference << " camera="
                       << buffers.camera_x << ',' << buffers.camera_y
+                      << " field_position="
+                      << field_scene.field_entity_world_position().x << ','
+                      << field_scene.field_entity_world_position().y
                       << " entity_visible="
                       << (field_scene.field_entity_visible() ? 1 : 0) << '\n';
             return 0;

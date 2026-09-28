@@ -1,6 +1,7 @@
 #pragma once
 
 #include "shadowrun_ghidra/core/asset_catalog_conversion.hpp"
+#include "shadowrun_ghidra/field/field_movement_input_conversion.hpp"
 #include "shadowrun_ghidra/entities/movement_probe_conversion.hpp"
 #include "shadowrun_ghidra/field/scene_profile_conversion.hpp"
 #include "shadowrun_ghidra/field/terrain_map_conversion.hpp"
@@ -35,6 +36,9 @@ constexpr std::size_t kFieldMapEventTableByteCount = 32U;
 constexpr std::size_t kFieldMovementDirectionCount = 8U;
 constexpr std::size_t kFieldMovementDirectionTableByteCount =
     kFieldMovementDirectionCount * 2U * sizeof(std::uint16_t);
+constexpr std::size_t kFieldControllerHeadingTableCount = 16U;
+constexpr std::size_t kFieldControllerHeadingTableByteCount =
+    kFieldControllerHeadingTableCount * sizeof(std::uint16_t);
 
 struct FieldMapSourceDescriptor {
     // Map descriptor words +0x00/+0x02. These are source fixed-point words;
@@ -87,6 +91,9 @@ struct FieldSessionSourceAssets {
     // the converted 0x0BABC/0x0B77E movement probe path.
     std::array<MovementOffset, kFieldMovementDirectionCount>
         field_movement_direction_offsets{};
+    // ROM 0x019D2, normalized D-pad nibble to target heading.
+    std::array<std::uint16_t, kFieldControllerHeadingTableCount>
+        field_controller_heading_table{};
     // ROM 0x172C80, interpreted as the distinct map-index-2 metadata record.
     FieldMapSourceDescriptor mode2_descriptor{};
     // ROM 0x172DAA, five-word records consumed by the terrain-map builder.

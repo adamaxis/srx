@@ -127,8 +127,25 @@ int main() {
     const auto outside_collision = evaluate_terrain_collision(
         {0x0FFFU, 0x3000U, 0x00U, collision_bounds}, {});
     if (!expect(outside_collision.code == 0x7F &&
-                outside_collision.state.outside_bounds_marker)) {
+                outside_collision.state.outside_bounds_marker &&
+                outside_collision.packed_sample_state == 0x007F007FU)) {
         return 7;
+    }
+
+    const auto center_state = evaluate_terrain_collision(
+        {0x2000U, 0x3000U, 0x00U, collision_bounds,
+         {0x01U, 0x02U, 0x03U, 0x04U}},
+        {[](const std::uint16_t, const std::uint16_t, const bool) {
+             TerrainTileSample result{};
+             result.values[0] = 0x12U;
+             result.selected_value = 0x12U;
+             return result;
+         },
+         {},
+         {}});
+    if (!expect(center_state.code == 0 &&
+                center_state.packed_sample_state == 0x12020304U)) {
+        return 8;
     }
 
     const auto object_lookup = [](const std::uint16_t object_id) {
@@ -140,14 +157,14 @@ int main() {
             4, 0x1000 + 4 + 12, 0x2000 + 4 - 7, object_lookup)) ||
         !expect(!contains_terrain_object_bounds(
             4, 0x1000 + 4 + 13, 0x2000 + 4, object_lookup))) {
-        return 8;
+        return 9;
     }
 
     const auto window = decode_terrain_tile_window(0x0845);
     if (!expect(window.origin_x == 0x00A0 &&
                 window.origin_y == 0x0420 &&
                 window.end_y == 0x043F)) {
-        return 9;
+        return 10;
     }
     if (!expect(evaluate_terrain_direction_boundary(
                     0x20, window, 0x00A1, 0x0425)) ||
@@ -157,7 +174,7 @@ int main() {
                     0x28, window, 0x00B0, 0x0420)) ||
         !expect(!evaluate_terrain_direction_boundary(
                     0x38, window, 0x00A1, 0x0425))) {
-        return 10;
+        return 11;
     }
 
     return 0;

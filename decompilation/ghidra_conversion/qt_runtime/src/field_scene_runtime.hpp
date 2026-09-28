@@ -1,7 +1,13 @@
 #pragma once
 
+#include "shadowrun_ghidra/entities/entity_coordinate_conversion.hpp"
+#include "shadowrun_ghidra/entities/collision_state_conversion.hpp"
 #include "shadowrun_ghidra/field/field_viewport_conversion.hpp"
+#include "shadowrun_ghidra/field/field_movement_input_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_projection_conversion.hpp"
+#include "shadowrun_ghidra/entities/movement_probe_conversion.hpp"
+#include "shadowrun_ghidra/entities/movement_step_conversion.hpp"
+#include "shadowrun_ghidra/field/terrain_probe_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_session_bootstrap_conversion.hpp"
 #include "shadowrun_ghidra/integration/startup_integration_conversion.hpp"
 #include "shadowrun_ghidra/world/world_entity_conversion.hpp"
@@ -30,6 +36,7 @@ public:
     bool bootstrap(
         const integration::StartupIntegrationState& startup_state);
     void advance_frame();
+    void set_controller_nibble(std::uint8_t dpad_nibble) noexcept;
     void paint(QPainter& painter) const;
 
     bool ready() const noexcept { return ready_; }
@@ -40,9 +47,15 @@ public:
     const integration::FieldSessionBootstrapState& state() const noexcept {
         return state_;
     }
+    const SceneRunnerPosition& field_entity_world_position() const noexcept {
+        return field_entity_.world_position;
+    }
 
 private:
     void configure_callbacks();
+    void advance_field_movement();
+    std::int16_t evaluate_field_collision(std::uint16_t candidate_x,
+                                          std::uint16_t candidate_y);
     void source_boundary(std::string_view boundary) const;
     bool load_image(const ConversionAssetCatalog& catalog,
                     std::string_view alias,
@@ -74,6 +87,17 @@ private:
     std::array<QImage, 8> field_entity_idle_images_{};
     std::array<int, 8> field_entity_idle_origin_x_{};
     std::array<int, 8> field_entity_idle_origin_y_{};
+    std::array<MovementOffset, integration::kFieldMovementDirectionCount>
+        field_movement_direction_offsets_{};
+    std::array<std::uint16_t,
+               integration::kFieldControllerHeadingTableCount>
+        field_controller_heading_table_{};
+    EntityMovementStepState field_movement_state_{};
+    EntityCollisionRecord field_collision_record_{};
+    std::array<std::uint8_t, 4> field_terrain_sample_state_{};
+    std::uint8_t field_controller_nibble_ = 0;
+    std::uint16_t field_target_heading_ = 0;
+    std::uint8_t field_entity_source_flags_ = 0;
     FieldEntityPresentation field_entity_{};
     std::string failure_;
     bool ready_ = false;

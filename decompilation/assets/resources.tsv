@@ -16,6 +16,7 @@ records.field.mode.2.event.table	records/field/mode-2-event-table.bin	state	0	0
 records.field.mode.0.terrain.collision.rectangles	records/field/mode-0-terrain-collision-rectangles.bin	state	0	0
 records.field.mode.0.event.table	records/field/mode-0-event-table.bin	state	0	0
 records.field.entity.movement.direction.table	records/field/entity-movement-direction-table.bin	state	0	0
+records.field.entity.controller.heading.table	records/field/entity-controller-heading-table.bin	state	0	0
 title.background	title/background.bmp	image	0	0
 title.circuit.background.0	title/circuit-background-0.bmp	image	0	0
 title.circuit.background.1	title/circuit-background-1.bmp	image	0	0

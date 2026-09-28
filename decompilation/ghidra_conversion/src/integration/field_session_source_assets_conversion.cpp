@@ -22,6 +22,8 @@ constexpr const char* kMode0EventTableAlias =
     "records.field.mode.0.event.table";
 constexpr const char* kFieldMovementDirectionTableAlias =
     "records.field.entity.movement.direction.table";
+constexpr const char* kFieldControllerHeadingTableAlias =
+    "records.field.entity.controller.heading.table";
 constexpr const char* kMode2TerrainLayerAAlias =
     "records.field.mode.2.terrain.layer.a";
 constexpr const char* kMode2TerrainLayerBAlias =
@@ -159,6 +161,16 @@ decode_field_movement_direction_offsets(
     return offsets;
 }
 
+std::array<std::uint16_t, kFieldControllerHeadingTableCount>
+decode_field_controller_heading_table(
+    const std::vector<std::uint8_t>& bytes) {
+    std::array<std::uint16_t, kFieldControllerHeadingTableCount> table{};
+    for (std::size_t index = 0; index < table.size(); ++index) {
+        table[index] = read_big_endian_word(bytes, index * 2U);
+    }
+    return table;
+}
+
 } // namespace
 
 FieldSessionSourceAssetLoadResult load_field_session_source_assets(
@@ -186,6 +198,9 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
     const auto movement_direction_table = read_record_bytes(
         catalog, kFieldMovementDirectionTableAlias,
         kFieldMovementDirectionTableByteCount, result.errors);
+    const auto controller_heading_table = read_record_bytes(
+        catalog, kFieldControllerHeadingTableAlias,
+        kFieldControllerHeadingTableByteCount, result.errors);
     const auto terrain_layer_a = read_record_bytes(
         catalog, kMode2TerrainLayerAAlias, kFieldSessionTerrainLayerByteCount,
         result.errors);
@@ -209,6 +224,7 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
         !mode0_collision_rectangles.has_value() ||
         !mode0_event_table.has_value() ||
         !movement_direction_table.has_value() ||
+        !controller_heading_table.has_value() ||
         !terrain_layer_a.has_value() || !terrain_layer_b.has_value() ||
         !terrain_stream.has_value() || !mode2_descriptor.has_value() ||
         !mode2_collision_rectangles.has_value() ||
@@ -240,6 +256,8 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
         assets.mode0_terrain_collision_rectangles, [](auto&) {});
     assets.field_movement_direction_offsets =
         decode_field_movement_direction_offsets(*movement_direction_table);
+    assets.field_controller_heading_table =
+        decode_field_controller_heading_table(*controller_heading_table);
     assets.mode2_terrain_layer_a_source.reserve(
         kFieldSessionTerrainLayerWordCount);
     assets.mode2_terrain_layer_b_source.reserve(

@@ -207,6 +207,11 @@ void extract_field_session_record_assets(
     write_rom_record(
         rom, root, "records/field/entity-movement-direction-table.bin",
         0x0C002U, 8U * 4U);
+    // ROM 0x195C indexes this sixteen-word D-pad/heading table before the
+    // movement heading is slewed and converted to a vector-table ordinal.
+    write_rom_record(
+        rom, root, "records/field/entity-controller-heading-table.bin",
+        0x019D2U, 16U * sizeof(std::uint16_t));
     // Field mode 2 selects the normal scene profile, whose map descriptor row
     // is 0. That profile points at two fixed terrain word arrays. The source
     // copies exactly 0xE10 words from each pointer during field-scene
@@ -528,7 +533,8 @@ void write_asset_readme(const std::filesystem::path& root) {
               "without making the runtime read ROM addresses. The source "
               "movement vector table at `0xC002` is likewise one named direct "
               "record consumed as typed directional offsets by the conversion "
-              "layer.\n";
+              "layer. The `0x19D2` controller-heading table is kept beside it "
+              "as one sixteen-word direct record.\n";
 }
 
 void write_runtime_resource_manifest(const std::filesystem::path& root) {
@@ -629,6 +635,9 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
     emit_generated_state_row(
         "records.field.entity.movement.direction.table",
         "records/field/entity-movement-direction-table.bin");
+    emit_generated_state_row(
+        "records.field.entity.controller.heading.table",
+        "records/field/entity-controller-heading-table.bin");
     emit_generated_state_row(
         "records.field.mode.2.terrain.layer.a",
         "records/field/mode-2-terrain-layer-a.bin");

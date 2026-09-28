@@ -124,17 +124,25 @@ initial host map is `field.maps.mode.0`; this is not a fallback to
 `field.maps.mode.2`. The startup scene now uses the row-0 descriptor fields
 and its own collision/event records. The separate row-2 descriptor and its
 101 collision records are also loaded as direct conversion inputs for later
-map selection; neither is silently substituted for the startup scene. This
-is not yet a claim that the Qt bridge has source-verified runner movement or
-dynamic entity presentation.
+map selection; neither is silently substituted for the startup scene. The Qt
+field bridge now also accepts held arrow keys as the source D-pad nibble,
+loads the extracted `0x19D2` heading table and `0x0C002` movement vectors,
+and drives the converted heading-slew, terrain-probe, directional-probe, and
+movement-step functions. A right-input smoke pass advances the selected
+Joshua record by the extracted `(+40,0)` vector. This is still not a claim
+that the complete field behavior is source-verified: the terrain-object
+center table, blocked-route table, event transitions, and walking animation
+records remain explicit conversion boundaries.
 
 The Qt callbacks remain explicit presentation/source boundaries; they do not
 replace unresolved source behavior with a native-port implementation. Dynamic
-runner records, field input/movement, and save-slot restoration are still
-reported as incomplete conversion boundaries. `--field-smoke` loads the
-direct catalog, runs the converted field bootstrap, and paints one 320x224
-host frame without writing an artifact. This target is deliberately not
-registered as a CTest test.
+runner records, route/object collision consumers, walking animation, and
+save-slot restoration are still incomplete conversion boundaries.
+`--field-smoke` loads the direct catalog, runs the converted field bootstrap,
+and paints one 320x224 host frame without writing an artifact.
+`--field-smoke-move-right` additionally submits one held right D-pad sample
+and reports the resulting typed field position. These smoke commands are
+deliberately not registered as CTest tests.
 
 Before the startup menu is entered, the conversion integration now loads the
 ROM-derived startup records and runs the converted `0x59318` save-roster seed.

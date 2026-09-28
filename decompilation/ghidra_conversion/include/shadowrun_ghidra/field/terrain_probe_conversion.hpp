@@ -47,6 +47,10 @@ struct TerrainCollisionInput {
     std::uint16_t source_y = 0;
     std::uint8_t entity_flags = 0;
     TerrainCollisionBounds bounds{};
+    // ROM FFEF10..13 persists the four tile bytes published by the previous
+    // terrain sampler call. The center probe updates only byte zero; the
+    // expanded probe updates all four bytes.
+    std::array<std::uint8_t, 4> prior_sample_state{};
 };
 
 struct TerrainCollisionState {
@@ -75,6 +79,8 @@ struct TerrainCollisionCallbacks {
 struct TerrainCollisionResult {
     std::int16_t code = 0;
     TerrainCollisionState state{};
+    // The four bytes copied by ROM 0xB48C into the entity collision record.
+    std::uint32_t packed_sample_state = 0;
 };
 
 // ROM 0xE7C8: normalize the source coordinate words, reject the four-sided

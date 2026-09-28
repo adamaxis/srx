@@ -20,6 +20,14 @@ std::uint16_t add_word(
         static_cast<std::int32_t>(value) + offset);
 }
 
+std::uint32_t pack_sample_state(
+    const std::array<std::uint8_t, 4>& values) {
+    return (static_cast<std::uint32_t>(values[0]) << 24U) |
+           (static_cast<std::uint32_t>(values[1]) << 16U) |
+           (static_cast<std::uint32_t>(values[2]) << 8U) |
+           static_cast<std::uint32_t>(values[3]);
+}
+
 } // namespace
 
 TerrainTileSample sample_terrain_collision_tiles(
@@ -83,6 +91,7 @@ TerrainCollisionResult evaluate_terrain_collision(
     const TerrainCollisionInput& input,
     const TerrainCollisionCallbacks& callbacks) {
     TerrainCollisionResult result{};
+    result.packed_sample_state = pack_sample_state(input.prior_sample_state);
     const auto normalized_x = static_cast<std::uint16_t>(input.source_x >> 4U);
     const auto normalized_y = static_cast<std::uint16_t>(input.source_y >> 4U);
     const auto& bounds = input.bounds;
@@ -94,6 +103,9 @@ TerrainCollisionResult evaluate_terrain_collision(
         result.state.sample.selected_value = 0x7FU;
         result.state.sample.values[0] = 0x7FU;
         result.state.sample.values[2] = 0x7FU;
+        // MOVE.W #$7F,(FFEF10) and MOVE.W #$7F,(FFEF12) publish
+        // 00 7F 00 7F before the 0xB48C wrapper copies the state.
+        result.packed_sample_state = 0x007F007FU;
         result.code = 0x7F;
         return result;
     }
@@ -103,6 +115,13 @@ TerrainCollisionResult evaluate_terrain_collision(
         result.state.sample =
             callbacks.sample_tiles(normalized_x, normalized_y, expanded_probe);
     }
+    auto sample_state = input.prior_sample_state;
+    if (expanded_probe) {
+        sample_state = result.state.sample.values;
+    } else {
+        sample_state[0] = result.state.sample.values[0];
+    }
+    result.packed_sample_state = pack_sample_state(sample_state);
     const auto selected_value = result.state.sample.selected_value;
     result.state.raw_terrain_code = static_cast<std::int16_t>(
         static_cast<std::int8_t>(selected_value));

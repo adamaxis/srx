@@ -156,10 +156,78 @@ reviewed collision leaf at `0x0B48C`. The US-ROM table is:
 The offline graphics/resource extractor now copies exactly these 32 bytes to
 `assets/records/field/entity-movement-direction-table.bin`, exposed through
 the alias `records.field.entity.movement.direction.table`. The conversion
-loader decodes them into `MovementOffset[8]`; the Qt conversion runtime must
-use that typed table when it wires field input to the already converted
-`probe_entity_directional_collision()` and `advance_entity_movement_step()`.
+loader decodes them into `MovementOffset[8]`; the separate Qt conversion
+runtime now uses that typed table when it wires field input to the already
+converted `probe_entity_directional_collision()` and
+`advance_entity_movement_step()`.
 No runtime path reads `0x0C002` or any other ROM address.
+
+The controller side of the same path is also a source record, not a host
+guess. `0x195C` masks the sampled controller word to its D-pad nibble and
+indexes the sixteen-word table at `0x19D2`; `0xFFFF` entries reject neutral,
+opposing, or unsupported combinations. The valid US-ROM mappings are:
+
+| D-pad nibble | Target heading | Movement ordinal |
+| ---: | ---: | ---: |
+| `0x1` | `0x0000` | `0` |
+| `0x2` | `0x8000` | `4` |
+| `0x4` | `0xC000` | `6` |
+| `0x5` | `0xE000` | `7` |
+| `0x6` | `0xA000` | `5` |
+| `0x8` | `0x4000` | `2` |
+| `0x9` | `0x2000` | `1` |
+| `0xA` | `0x6000` | `3` |
+
+The offline extractor writes the complete table to
+`assets/records/field/entity-controller-heading-table.bin`, exposed as
+`records.field.entity.controller.heading.table`. The conversion helper keeps
+the source `0xBABC` rotate/add-one rule in
+`field_movement_input_conversion`, returning both the movement ordinal and
+the doubled source slot used by `0xBADE`/`0xB77E`.
+
+## Converted field input/movement handoff
+
+The separate Qt conversion composition layer now consumes both named movement
+records. Its field-ready path is:
+
+`held Qt D-pad -> 0x195C/0x19D2 target heading -> 0xB530 heading slew ->
+0x0BABC movement ordinal -> 0xBADE step -> 0xB77E vector probe -> 0xB48C
+collision-record wrapper -> 0xE7C8 terrain result -> typed position commit ->
+0x5A62 projection`.
+
+This is a conversion-runtime connection only. It is under
+`ghidra_conversion/qt_runtime/` and has no dependency on the native-port or
+GenesisBus targets. The host input layer maintains a four-bit D-pad mask so
+the source diagonal entries (`0x5`, `0x6`, `0x9`, and `0xA`) remain available;
+neutral and unsupported table entries remain invalid just as in the source.
+The source vectors are not duplicated in the Qt layer: the loader supplies
+the typed `MovementOffset[8]` array from the direct record.
+
+The current startup field input uses the row-0 normal-profile metadata already
+selected by the field-entry conversion. Terrain collision is evaluated from
+that metadata's typed `0x1000` collision map and bounds. If a positive terrain
+code reaches the object branch, the Qt boundary fails closed and reports
+`field.movement.terrain_object_lookup` because the source object-center table
+behind `0xE9EE` has not yet been extracted. Likewise, a blocked aligned step
+reports `field.movement.aligned_route_lookup` and resets rather than allowing
+movement through a route table that has not been recovered. These are explicit
+audit markers, not guessed behavior.
+
+The `0xE7C8` conversion now also carries the four source sample bytes that
+`0xB48C` copies into the entity collision record. Expanded probes replace all
+four bytes; center probes replace only `FFEF10` and preserve `FFEF11..13`, and
+the outside-bounds path publishes the source `00 7F 00 7F` pair. The Qt bridge
+keeps that typed sample state between candidate probes instead of flattening
+it into a fresh synthetic record on every call.
+
+The separate smoke command
+`shadowrun_ghidra_conversion_qt --field-smoke-move-right` verifies the
+connected path without opening a window. With the US-ROM startup records it
+advances Joshua from `0x1310/0x0980` (`4880,2432`) to `4920,2432`, matching
+the extracted right vector. This proves the typed handoff and host execution,
+not full Genesis fidelity; the field hill remains partial until the missing
+route/object/event/animation consumers are source-traced and independently
+verified.
 
 ## Export files
 
