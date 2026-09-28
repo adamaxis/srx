@@ -344,7 +344,7 @@ alone is not sufficient:
 | `0x7291A`, `0x72C1A` | Archetype defaults and ten recruited runner templates | Confirmed fields; recruitment writers remain to trace |
 | live `0x100`-byte runner record | `RunnerRecord` / `RunnerRoster` | Confirmed consumed offsets; opaque bytes remain until a consumer is proven |
 | `0xD4540`, stride `0x30` | `ItemDefinition` inventory/equipment records | Conversion now has all 50 rows for the confirmed +0x22 cost, +0x24 factor, +0x25 signed detail index, and +0x26 selector fields; remaining category/effect semantics still need consumers |
-| `0xD4D50`, `0xCF3D4`, `0xCF610` | Weapon, armor, attack, defense, and timing tables | Conversion now has all seven D4D50 armor rows for the confirmed +0x25/+0x26 modifiers/selectors; CF3D4, CF610, and remaining weapon/timing semantics still need typed extraction |
+| `0xD4D50`, `0xCF3D4`, `0xCF610` | Weapon, armor, attack, defense, and timing tables | Conversion now has all seven D4D50 armor rows for the confirmed +0x25/+0x26 modifiers/selectors, and entity-action resolution binds the typed rows at the 0x559BC/0x55C76 armor seams; CF3D4, CF610, and remaining weapon/timing semantics still need typed extraction |
 | `0xD2072` | Cyberware names/effect slots | Names extracted; effect semantics still need rule consumers |
 | `0xC1A2A` | Attribute/skill labels and definitions | Labels extracted; upgrade/derived-rule data still needs a typed table |
 | `0xD4EA0`, reached by `0xFBA6`/`0x1088C` | 13 typed US spell definitions: names, signed availability, difficulty modifier, effect-table index, decoded base effect, and attribute selector | Typed spell definitions and all five `0x166AD8` runner spell rows extracted; remaining cost/force consumers still need integration |

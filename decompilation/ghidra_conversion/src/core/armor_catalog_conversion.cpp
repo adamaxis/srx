@@ -30,4 +30,38 @@ const UsArmorDefinition* find_us_armor_definition(
     return &kUsArmors[static_cast<std::size_t>(armor_index - 1U)];
 }
 
+namespace {
+
+std::uint16_t subtract_modifier(
+    const std::uint16_t value,
+    const std::uint8_t armor_index,
+    const UsArmorCatalog& catalog,
+    const bool primary) {
+    if (armor_index == 0U || armor_index > catalog.size()) {
+        return value;
+    }
+    const auto& armor = catalog[static_cast<std::size_t>(armor_index - 1U)];
+    const auto modifier =
+        primary ? armor.primary_modifier : armor.secondary_modifier;
+    const auto low_byte = static_cast<std::uint8_t>(
+        static_cast<std::uint8_t>(value) - modifier);
+    return static_cast<std::uint16_t>((value & 0xFF00U) | low_byte);
+}
+
+} // namespace
+
+std::uint16_t subtract_us_armor_primary_modifier(
+    const std::uint16_t value,
+    const std::uint8_t armor_index,
+    const UsArmorCatalog& catalog) {
+    return subtract_modifier(value, armor_index, catalog, true);
+}
+
+std::uint16_t subtract_us_armor_secondary_modifier(
+    const std::uint16_t value,
+    const std::uint8_t armor_index,
+    const UsArmorCatalog& catalog) {
+    return subtract_modifier(value, armor_index, catalog, false);
+}
+
 } // namespace shadowrun::ghidra_conversion

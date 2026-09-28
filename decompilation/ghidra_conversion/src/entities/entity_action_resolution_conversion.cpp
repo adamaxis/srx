@@ -67,6 +67,42 @@ void advance_reaction_phase_counters(EntityActionResolutionState& state) {
 
 } // namespace
 
+EntityActionResolutionServices bind_entity_action_armor_catalog(
+    const UsArmorCatalog& catalog,
+    EntityActionResolutionServices services) {
+    services.subtract_primary_armor =
+        [&catalog](const std::int16_t value,
+                   const EntityActionTarget& target) {
+            return static_cast<std::int16_t>(
+                subtract_us_armor_primary_modifier(
+                    static_cast<std::uint16_t>(value), target.armor_index,
+                    catalog));
+        };
+    services.subtract_secondary_armor =
+        [&catalog](const std::int16_t value,
+                   const EntityActionTarget& target) {
+            return static_cast<std::int16_t>(
+                subtract_us_armor_secondary_modifier(
+                    static_cast<std::uint16_t>(value), target.armor_index,
+                    catalog));
+        };
+    return services;
+}
+
+EntityActionReactionServices bind_entity_action_armor_catalog(
+    const UsArmorCatalog& catalog,
+    EntityActionReactionServices services) {
+    services.subtract_secondary_armor =
+        [&catalog](const std::int16_t value,
+                   const EntityActionRecord& target) {
+            return static_cast<std::int16_t>(
+                subtract_us_armor_secondary_modifier(
+                    static_cast<std::uint16_t>(value), target.armor_index,
+                    catalog));
+        };
+    return services;
+}
+
 EntityActionDefaultBonusResult resolve_entity_action_with_default_bonus(
     EntityActionActorState& actor,
     EntityActionTarget& target,

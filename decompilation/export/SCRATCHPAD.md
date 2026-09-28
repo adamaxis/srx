@@ -1179,6 +1179,13 @@ sequence, returns the nested `0x12EAE` result, and keeps text/meter source
 rows and presentation callbacks typed. It is still a conversion/reference
 module; none of these callbacks are native-port runtime plumbing.
 
+The combat conversion now binds the extracted seven-row `D4D50` armor catalog
+at the entity-action service boundary. `0x559BC` reads the target's typed
+`+0x76` armor ordinal for primary/secondary subtraction, while `0x55C76`
+uses the reaction target record for its secondary pass. The binding preserves
+the source low-byte subtraction and keeps the catalog dependency in core data,
+separate from menu presentation code.
+
 ## Initial coherent C++ conversions
 
 `0x0330` and `0x0436` are no longer represented only as bus traces. The

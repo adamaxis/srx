@@ -10,7 +10,11 @@ int main() {
         catalog.front().secondary_modifier != 1U ||
         catalog.back().armor_index != 7U ||
         catalog.back().primary_modifier != 8U ||
-        catalog.back().secondary_modifier != 6U) {
+        catalog.back().secondary_modifier != 6U ||
+        subtract_us_armor_primary_modifier(0x120AU, 2U, catalog) != 0x1209U ||
+        subtract_us_armor_secondary_modifier(0x120AU, 2U, catalog) !=
+            0x1208U ||
+        subtract_us_armor_primary_modifier(0x120AU, 0U, catalog) != 0x120AU) {
         return 1;
     }
 

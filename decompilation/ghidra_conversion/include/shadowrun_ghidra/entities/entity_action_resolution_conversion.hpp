@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_action_math_conversion.hpp"
 
 #include <array>
@@ -161,6 +162,17 @@ struct EntityActionReactionServices {
         advance_behavior_meter;
     std::function<void(EntityActionReactionParticipant&)> advance_delay_meter;
 };
+
+// Bind the verified US D4D50 rows to the source armor call sites. The
+// returned service objects retain all caller-supplied callbacks and replace
+// only the 0x55E92/0x55EB4 armor seams. `catalog` must outlive the returned
+// services because the source data is referenced by the callbacks.
+EntityActionResolutionServices bind_entity_action_armor_catalog(
+    const UsArmorCatalog& catalog,
+    EntityActionResolutionServices services);
+EntityActionReactionServices bind_entity_action_armor_catalog(
+    const UsArmorCatalog& catalog,
+    EntityActionReactionServices services);
 
 enum class EntityActionReactionOutcome {
     random_service_unavailable,

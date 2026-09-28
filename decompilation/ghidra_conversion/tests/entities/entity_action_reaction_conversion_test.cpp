@@ -32,6 +32,16 @@ shadowrun::ghidra_conversion::EntityActionReactionServices make_services(
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
+    EntityActionReactionServices typed_services =
+        bind_entity_action_armor_catalog(us_armor_catalog(),
+                                         EntityActionReactionServices{});
+    EntityActionRecord typed_target_record{};
+    typed_target_record.armor_index = 7U;
+    if (typed_services.subtract_secondary_armor(10, typed_target_record) !=
+        4) {
+        return 1;
+    }
+
     EntityActionReactionParticipant actor{};
     actor.record.attribute_78 = 2U;
     actor.record.attribute_79 = 2U;
@@ -67,7 +77,7 @@ int main() {
         pending.meter_delta != -2 || !pending.used_mental_meter ||
         pending.used_physical_meter || target.record.mental_meter != 3U ||
         cursor != 3U) {
-        return 1;
+        return 2;
     }
 
     target.record.mental_meter = 1U;
@@ -81,7 +91,7 @@ int main() {
         state.phase_roll_counters[0] != 1U ||
         state.phase_roll_counters[1] != 1U ||
         state.phase_roll_counters[2] != 1U) {
-        return 2;
+        return 3;
     }
 
     actor.record.cyberware_flags = 0x0008U;
@@ -94,7 +104,7 @@ int main() {
     if (physical.outcome !=
             EntityActionReactionOutcome::physical_meter_pending ||
         !physical.used_physical_meter || target.record.physical_meter != 3U) {
-        return 3;
+        return 4;
     }
 
     actor.record.cyberware_flags = 0U;
@@ -109,7 +119,7 @@ int main() {
             EntityActionReactionOutcome::mental_meter_pending ||
         signed_state.meter_delta != -1 ||
         target.record.mental_meter != 4U) {
-        return 4;
+        return 5;
     }
     return 0;
 }

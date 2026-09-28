@@ -1284,6 +1284,13 @@ byte, subtract it from only the low byte of the running word, and preserve
 the high byte. Zero armor remains an unchanged value. The seven-row
 `UsArmorCatalog` is source data for these leaves; the earlier D4540
 provenance was incorrect and has been removed.
+The entity-action resolver now binds that catalog directly at its armor
+service boundary: `0x559BC` selects the target record's `+0x76` ordinal for
+primary or secondary armor, and `0x55C76` selects the reaction target record's
+same ordinal for its secondary-armor pass. The binding preserves the caller's
+random, defense, and meter callbacks; it only supplies the verified D4D50
+subtraction leaves, so no combat path reaches through a menu module or a ROM
+address lookup.
 
 ## Clips command conversion
 

@@ -136,5 +136,47 @@ int main() {
                 EntityActionResolutionOutcome::world_meter_gate)) {
         return 6;
     }
+
+    EntityActionActorState typed_actor{};
+    EntityActionTarget typed_target{};
+    typed_target.armor_index = 7U;
+    typed_target.record_type = 3U;
+    typed_target.physical_meter = 5U;
+    EntityActionResolutionState typed_state{};
+    typed_state.armor_mode = 0;
+    EntityActionResolutionServices typed_services{};
+    typed_services.sample_random_bound =
+        [](const std::uint16_t) { return static_cast<std::int16_t>(0); };
+    typed_services.apply_defense_modifier =
+        [](const std::int16_t value, const EntityActionActorState&,
+           const EntityActionTarget&) { return value; };
+    typed_services = bind_entity_action_armor_catalog(
+        us_armor_catalog(), typed_services);
+    const auto typed_primary = resolve_dynamic_entity_action(
+        typed_actor, typed_target, 2U, 1U, 10, typed_state, typed_services);
+    if (!expect(typed_primary.outcome ==
+                    EntityActionResolutionOutcome::target_meter_pending &&
+                typed_primary.used_primary_armor &&
+                typed_primary.action_value_after_modifiers == 2 &&
+                typed_target.physical_meter == 3U)) {
+        return 7;
+    }
+
+    typed_actor = {};
+    typed_target = {};
+    typed_target.armor_index = 7U;
+    typed_target.record_type = 3U;
+    typed_target.physical_meter = 5U;
+    typed_state = {};
+    typed_state.armor_mode = -1;
+    const auto typed_secondary = resolve_dynamic_entity_action(
+        typed_actor, typed_target, 2U, 1U, 7, typed_state, typed_services);
+    if (!expect(typed_secondary.outcome ==
+                    EntityActionResolutionOutcome::target_meter_pending &&
+                typed_secondary.used_secondary_armor &&
+                typed_secondary.action_value_after_modifiers == 1 &&
+                typed_target.physical_meter == 4U)) {
+        return 8;
+    }
     return 0;
 }

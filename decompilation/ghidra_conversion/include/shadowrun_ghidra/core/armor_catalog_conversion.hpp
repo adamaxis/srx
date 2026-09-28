@@ -26,4 +26,16 @@ const UsArmorCatalog& us_armor_catalog();
 const UsArmorDefinition* find_us_armor_definition(
     std::uint8_t armor_index);
 
+// ROM 0x55E92/0x55EB4. Apply the selected one-based D4D50 modifier to the
+// low byte of a source word while preserving its high byte. These are core
+// data-bound leaves so entity resolution does not depend on a menu module.
+std::uint16_t subtract_us_armor_primary_modifier(
+    std::uint16_t value,
+    std::uint8_t armor_index,
+    const UsArmorCatalog& catalog);
+std::uint16_t subtract_us_armor_secondary_modifier(
+    std::uint16_t value,
+    std::uint8_t armor_index,
+    const UsArmorCatalog& catalog);
+
 } // namespace shadowrun::ghidra_conversion
