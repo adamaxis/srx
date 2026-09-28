@@ -814,6 +814,16 @@ a generic marker helper: its field-mode/effect-context gates, equality between
 the ROM's unbounded scan, while valid source maps retain the same first-match
 and ordinal behavior.
 
+### Menu cursor-sprite overlay audit
+
+`0xFDFE` is now converted as the shared command/magic/equipment menu overlay
+service, not as a generic graphics leaf. Every call decrements `FFF0DA` and
+performs the four-grid write; an expired countdown reloads to six, advances the
+four-phase `C8B3E` cursor-sprite source, applies the `FFF0D0*0x20` and
+`FFF0D1*0x18` offsets, resets the sprite record count before `0x1378`, clears
+the trailing sequence byte, publishes `FFD980`, and sets `FFEF14` bit 1.
+Decoded sprite records remain a host asset/build callback.
+
 ### Entity proximity and pair-collision audit
 
 The entity interaction pass now covers `0xEB92` and its `0xECCC` callee. The

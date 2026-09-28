@@ -5,6 +5,12 @@
 // Calls recovered from direct call instructions:
 //   0x00001378 build_title_sprite_records
 //   0x0000FDAE write_menu_grid_quadruple
+//
+// Source behavior: FFF0DA is a six-frame countdown; on expiry FFF0DB advances
+// through four C8B3E cursor-sprite source lists, applies FFF0D0*0x20 and
+// FFF0D1*0x18 position offsets, resets FFDD02 to one before the sprite build,
+// clears the trailing sequence byte, publishes FFD980, and sets FFEF14 bit 1.
+// The four-grid write at 0xFDAE occurs on every call.
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */

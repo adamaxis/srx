@@ -1827,6 +1827,13 @@ now has its actual field/effect gate and signed marker ordinal represented in
 `TerrainMarkerReplacementState`, replacing the former generic marker-only
 description.
 
+## Menu cursor-sprite overlay audit
+
+`0xFDFE` now owns a typed six-frame countdown and four-phase C8B3E source
+selection for the command/magic/equipment menu cursor overlay. The conversion
+preserves the source position offsets, record-list reset/trailing-sequence
+clear, FFD980/FFEF14 publication, and unconditional 0xFDAE four-grid write.
+
 ## Entity proximity and pair-collision audit
 
 `0xEB92` is now a typed stable-index scan: bit-6 exclusions, player-record
