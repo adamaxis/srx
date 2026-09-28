@@ -756,12 +756,13 @@ bool FieldSceneRuntime::bootstrap(
     field_movement_behavior_record_.target_heading = 0U;
     const auto interaction_mode = select_scene_interaction_mode(
         state_.field_scene_buffers.scene_reference);
-    if (interaction_mode.has_value()) {
-        field_movement_transition_state_.world_mode = *interaction_mode;
-    } else {
-        field_movement_transition_state_.world_mode = 0U;
-        source_boundary("field.world.interaction_mode_terminal");
+    if (!interaction_mode.has_value()) {
+        // ROM 0x167AE stop. Scene >= 0x38 is not mode 0.
+        failure_ = "ROM 0x167AE stop: scene id >= 0x38";
+        source_boundary("field.world.interaction_mode_stop");
+        return false;
     }
+    field_movement_transition_state_.world_mode = *interaction_mode;
     field_movement_transition_state_.scene_id =
         state_.field_scene_buffers.scene_reference;
     field_movement_transition_state_.field_origin_x =

@@ -273,6 +273,7 @@ The recruited roster-selection path is still unresolved, so the composition
 does not invent active companions. `0x1651E` now runs from the blocked-movement
 callback. `0x167AE` publishes FFDF40 as mode 1, 2, or 3 from the scene id
 (`< 0x15`, `< 0x2C`, `< 0x38`); scene `>= 0x38` stays the source `stop`.
+The Qt bootstrap now returns that stop instead of writing world mode 0.
 Carry is set for mode 0 and for a zero action word, and clear for every
 requested action in a nonzero mode. Word writes use the two `0xE10`-word
 layers `0x03074` copies to FF2700 and FF4700. Scene `0x14` writes the traced
