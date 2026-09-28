@@ -291,6 +291,35 @@ void prepare_magic_action_details(
     call_once(callbacks.build_grouped_decimal_glyphs);
 }
 
+void render_magic_menu_selection_display(
+    const std::uint8_t spell_code,
+    const MagicMenuSelectionDisplayCallbacks& callbacks) {
+    // ROM 0x10276 sets D6 to the source spell-art tile class before the
+    // record glyph triple. Codes below six use 0x2000; the remaining spell
+    // rows use 0x6000.
+    call_once(callbacks.prepare_menu_grid_then_service);
+    call_once(callbacks.refresh_force_display);
+    if (callbacks.transfer_spell_glyph_triple) {
+        callbacks.transfer_spell_glyph_triple(
+            spell_code, spell_code < 6U ? 0x2000U : 0x6000U);
+    }
+    if (callbacks.render_spell_record_text) {
+        callbacks.render_spell_record_text(
+            spell_code, MagicSpellRecordTextRegion::spell_name);
+        callbacks.render_spell_record_text(
+            spell_code, MagicSpellRecordTextRegion::spell_description);
+    }
+
+    // 0x102D4 begins at the shared tail reached by the branch at 0x102D0.
+    if (callbacks.render_action_text) {
+        callbacks.render_action_text(MagicActionTextRegion::success_label);
+        callbacks.render_action_text(MagicActionTextRegion::force_label);
+    }
+    call_once(callbacks.adjust_runner_posture);
+    call_once(callbacks.render_spell_availability);
+    call_once(callbacks.build_grouped_decimal_glyphs);
+}
+
 void render_magic_spell_availability(
     const std::int8_t availability_byte,
     const MagicSpellAvailabilityCallbacks& callbacks) {

@@ -1900,6 +1900,13 @@ matches the selected spell code plus one. A different spell or an ordinary
 inventory slot resets current force to the selected maximum, matching the
 source byte comparison and its wraparound.
 
+The `0x10276` magic selection display is now represented as an explicit
+source-order operation. It prepares the menu and force meter, chooses the
+`0x2000`/`0x6000` spell-art tile class at the source code-6 boundary, transfers
+the selected spell glyph triple, renders the name and description, and follows
+the shared `0x102EC` tail for Success/Force labels, posture, availability, and
+the grouped force value.
+
 The `0x101FE` selector is now recorded under the magic-menu module rather than
 the generic field renderer. It publishes the selected spell's low-byte force
 maximum and preserves the runner's current force only on the source's

@@ -1764,6 +1764,11 @@ existing current force only when the runner has no inventory slot and still
 holds the selected spell item code (`spell code + 1`); otherwise it resets
 current force to the selected maximum.
 
+`0x10276` is also now source-traced as the magic selection display rather than
+a generic text batch: its code-6 tile-mask branch, selected spell name and
+description, shared Success/Force labels, posture/availability calls, and
+grouped force value are explicit in one typed callback sequence.
+
 ### World-effect/menu arithmetic audit continuation
 
 The direct ROM pass over `0x562EC` and `0x563CC` found the existing typed

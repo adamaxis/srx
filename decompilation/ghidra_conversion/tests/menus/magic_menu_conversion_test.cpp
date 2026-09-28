@@ -225,6 +225,55 @@ int main() {
         return 22;
     }
 
+    std::vector<int> selection_display_events;
+    std::uint8_t transferred_spell = 0U;
+    std::uint16_t transferred_mask = 0U;
+    MagicMenuSelectionDisplayCallbacks selection_display_callbacks{};
+    selection_display_callbacks.prepare_menu_grid_then_service = [&]() {
+        selection_display_events.push_back(1);
+    };
+    selection_display_callbacks.refresh_force_display = [&]() {
+        selection_display_events.push_back(2);
+    };
+    selection_display_callbacks.transfer_spell_glyph_triple =
+        [&](const std::uint8_t spell_code, const std::uint16_t tile_mask) {
+            selection_display_events.push_back(3);
+            transferred_spell = spell_code;
+            transferred_mask = tile_mask;
+        };
+    selection_display_callbacks.render_spell_record_text =
+        [&](const std::uint8_t, const MagicSpellRecordTextRegion region) {
+            selection_display_events.push_back(
+                region == MagicSpellRecordTextRegion::spell_name ? 4 : 5);
+        };
+    selection_display_callbacks.render_action_text =
+        [&](const MagicActionTextRegion region) {
+            selection_display_events.push_back(
+                region == MagicActionTextRegion::success_label ? 6 : 7);
+        };
+    selection_display_callbacks.adjust_runner_posture = [&]() {
+        selection_display_events.push_back(8);
+    };
+    selection_display_callbacks.render_spell_availability = [&]() {
+        selection_display_events.push_back(9);
+    };
+    selection_display_callbacks.build_grouped_decimal_glyphs = [&]() {
+        selection_display_events.push_back(10);
+    };
+    render_magic_menu_selection_display(5U, selection_display_callbacks);
+    if (!expect(selection_display_events ==
+                    std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10} &&
+                transferred_spell == 5U && transferred_mask == 0x2000U)) {
+        return 29;
+    }
+    selection_display_events.clear();
+    render_magic_menu_selection_display(6U, selection_display_callbacks);
+    if (!expect(selection_display_events ==
+                    std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10} &&
+                transferred_spell == 6U && transferred_mask == 0x6000U)) {
+        return 30;
+    }
+
     MagicForceState force_state_values{3U, 5U};
     RunnerRecordFields force_record{};
     std::vector<int> adjustment_events;
@@ -259,7 +308,7 @@ int main() {
                 force_record.magic_force == 4U &&
                 adjustment_events == std::vector<int>{1, 2, 2, 3, 2, 2, 4,
                                                       5, 6, 7})) {
-        return 23;
+        return 31;
     }
 
     std::vector<int> availability_events;
@@ -275,12 +324,12 @@ int main() {
     };
     render_magic_spell_availability(-1, availability_callbacks);
     if (!expect(availability_events == std::vector<int>{1})) {
-        return 24;
+        return 32;
     }
     availability_events.clear();
     render_magic_spell_availability(0, availability_callbacks);
     if (!expect(availability_events == std::vector<int>{2, 3})) {
-        return 25;
+        return 33;
     }
 
     std::vector<int> grid_events;
@@ -293,19 +342,19 @@ int main() {
     clear_magic_menu_grids(false, grid_callbacks);
     if (!expect(grid_events.size() == 10U && grid_events[9] == 0x8174 &&
                 std::count(grid_events.begin(), grid_events.end(), 1) == 9)) {
-        return 26;
+        return 34;
     }
     grid_events.clear();
     clear_magic_menu_grids(true, grid_callbacks);
     if (!expect(grid_events.size() == 11U && grid_events[10] == 0x8174 &&
                 std::count(grid_events.begin(), grid_events.end(), 1) == 10)) {
-        return 27;
+        return 35;
     }
     grid_events.clear();
     refresh_menu_grid_quadruple(grid_callbacks);
     if (!expect(grid_events ==
                 std::vector<int>{0x8134, 1, 1, 1, 1, 0x8174})) {
-        return 28;
+        return 36;
     }
 
     return 0;

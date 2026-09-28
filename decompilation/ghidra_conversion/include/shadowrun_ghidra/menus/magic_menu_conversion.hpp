@@ -110,6 +110,30 @@ struct MagicActionDetailCallbacks {
     std::function<void()> build_grouped_decimal_glyphs;
 };
 
+enum class MagicSpellRecordTextRegion {
+    spell_name,
+    spell_description,
+};
+
+enum class MagicActionTextRegion {
+    success_label,
+    force_label,
+};
+
+struct MagicMenuSelectionDisplayCallbacks {
+    std::function<void()> prepare_menu_grid_then_service;
+    std::function<void()> refresh_force_display;
+    std::function<void(std::uint8_t spell_code, std::uint16_t tile_mask)>
+        transfer_spell_glyph_triple;
+    std::function<void(std::uint8_t spell_code,
+                       MagicSpellRecordTextRegion region)>
+        render_spell_record_text;
+    std::function<void(MagicActionTextRegion region)> render_action_text;
+    std::function<void()> adjust_runner_posture;
+    std::function<void()> render_spell_availability;
+    std::function<void()> build_grouped_decimal_glyphs;
+};
+
 // ROM 0xFBA6 takes the spell panel only for the source magic-capable class
 // (record +0x9B < 2) when its +0x7F magic resource is nonzero. Other records
 // take the ordinary one-row menu fallback.
@@ -203,6 +227,14 @@ void adjust_magic_force(
 // three times by the source, not once with an inferred repeat count.
 void prepare_magic_action_details(
     const MagicActionDetailCallbacks& callbacks = {});
+
+// ROM 0x10276 enters the shared magic-detail tail at 0x102EC. It prepares
+// the selected spell's force display, transfers the spell glyph triple with
+// the source class mask, renders the spell name/description, then emits the
+// shared Success/Force labels, posture, availability, and force value.
+void render_magic_menu_selection_display(
+    std::uint8_t spell_code,
+    const MagicMenuSelectionDisplayCallbacks& callbacks = {});
 
 // ROM 0x1088C: a negative signed availability byte draws the unavailable
 // marker; otherwise the source renders the spell text and one grid.

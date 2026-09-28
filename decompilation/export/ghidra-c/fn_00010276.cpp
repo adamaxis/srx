@@ -7,6 +7,12 @@
 //   0x00010172 refresh_magic_force_display
 //   0x00010260 prepare_menu_grid_then_service
 //   0x00011190 transfer_menu_glyph_triple
+//
+// Source behavior: after the grid/force refresh, choose tile mask 0x2000 for
+// spell codes below six or 0x6000 otherwise, transfer the selected record's
+// glyph triple, render its name and description, then branch into the shared
+// 0x102EC tail for Success/Force labels, posture, availability, and force
+// value construction.
 
 
 void run_menu_text_display_sequence(void)
