@@ -75,4 +75,24 @@ FieldVerticalOrigin prepare_field_vertical_origin(
     return {row, adjusted_camera_y};
 }
 
+FieldHorizontalOrigin prepare_field_horizontal_origin(
+    const std::uint16_t camera_x, const std::uint16_t vdp_data_word) {
+    auto column = static_cast<std::int16_t>((camera_x >> 4U) - 8);
+    auto vdp_data = vdp_data_word;
+    if (column < 0) {
+        column = static_cast<std::int16_t>(column + 8);
+        return {column, vdp_data};
+    }
+
+    vdp_data = static_cast<std::uint16_t>(vdp_data + 8U);
+    column = static_cast<std::int16_t>(column - 8);
+    if (column < 0) {
+        column = static_cast<std::int16_t>(column + 8);
+        return {column, vdp_data};
+    }
+
+    vdp_data = static_cast<std::uint16_t>(vdp_data + 8U);
+    return {column, vdp_data};
+}
+
 } // namespace shadowrun::ghidra_conversion

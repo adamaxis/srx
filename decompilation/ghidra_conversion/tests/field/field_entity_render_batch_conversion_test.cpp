@@ -66,6 +66,40 @@ int main() {
         return 4;
     }
 
+    FieldTileColumnEdgeState column_state{};
+    column_state.vertical_direction = -1;
+    column_state.field_y = 0x0100U;
+    column_state.field_y_limit = 0x0040;
+    column_state.camera_x = 0x0070U;
+    column_state.camera_y = 0x0100U;
+    column_state.vdp_data_word = 0x0200U;
+    column_state.plane_a_offset = 0x0010U;
+    column_state.plane_b_offset = 0x0020U;
+    column_state.row_stride_bytes = 0x0040U;
+    std::vector<FieldTileColumnEdgeRequest> column_requests;
+    const auto column_result = render_field_tile_column_edge(
+        column_state,
+        {[&column_requests](const FieldTileColumnEdgeRequest& request) {
+            column_requests.push_back(request);
+        }});
+    if (column_result.action != FieldTileColumnEdgeAction::columns_rendered ||
+        column_result.columns_rendered != 2U || column_requests.size() != 2U ||
+        column_requests[0].palette_or_flip != 0U ||
+        column_requests[1].palette_or_flip != 0x8000U ||
+        column_requests[0].y_coordinate != 8 ||
+        column_requests[0].x_coordinate != 7) {
+        return 17;
+    }
+    column_state.vertical_direction = 1;
+    column_state.field_y = 0x0070U;
+    column_state.field_y_limit = 8;
+    const auto column_outside =
+        render_field_tile_column_edge(column_state, {});
+    if (column_outside.action !=
+        FieldTileColumnEdgeAction::outside_visible_window) {
+        return 18;
+    }
+
     std::array<RenderEntityState, 16> entities{};
     entities[2].active = true;
     int pass_events = 0;

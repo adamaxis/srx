@@ -43,4 +43,14 @@ struct FieldVerticalOrigin {
 FieldVerticalOrigin prepare_field_vertical_origin(std::uint16_t camera_y,
                                                   std::uint16_t field_y);
 
+struct FieldHorizontalOrigin {
+    std::int16_t column = 0;
+    std::uint16_t vdp_data = 0;
+};
+
+// ROM 0x4216: consume camera X and FFDD08 in the same three eight-unit
+// stages, returning the column origin and the adjusted destination word.
+FieldHorizontalOrigin prepare_field_horizontal_origin(
+    std::uint16_t camera_x, std::uint16_t vdp_data_word);
+
 } // namespace shadowrun::ghidra_conversion

@@ -137,6 +137,66 @@ FieldTileRowEdgeResult render_field_tile_row_edge(
     return result;
 }
 
+FieldTileColumnEdgeResult render_field_tile_column_edge(
+    const FieldTileColumnEdgeState& state,
+    const FieldTileColumnEdgeCallbacks& callbacks) {
+    FieldTileColumnEdgeResult result{};
+    const bool rendering_negative_edge = state.vertical_direction < 0;
+    auto y_coordinate = static_cast<std::int16_t>(
+        static_cast<std::int16_t>(state.field_y >> 4U) +
+        (rendering_negative_edge ? -8 : 8));
+
+    if ((rendering_negative_edge && y_coordinate < 0) ||
+        (!rendering_negative_edge && y_coordinate > state.field_y_limit)) {
+        result.action = FieldTileColumnEdgeAction::outside_visible_window;
+        return result;
+    }
+
+    const auto horizontal_origin = prepare_field_horizontal_origin(
+        state.camera_x, state.vdp_data_word);
+    if (!rendering_negative_edge) {
+        y_coordinate = static_cast<std::int16_t>(y_coordinate + 0x00E0);
+    }
+    const auto destination_row = static_cast<std::int16_t>(
+        static_cast<std::int16_t>(state.camera_y) +
+        (rendering_negative_edge ? static_cast<std::int16_t>(-8)
+                                 : static_cast<std::int16_t>(0x00E8)));
+    const auto base_destination = compose_field_tile_destination_offset(
+        destination_row, horizontal_origin.vdp_data);
+    const auto source_layout = calculate_field_tile_source_layout(
+        static_cast<std::uint16_t>(horizontal_origin.column),
+        static_cast<std::uint16_t>(y_coordinate),
+        state.row_stride_bytes);
+
+    const auto make_request =
+        [&](const std::uint16_t plane_offset,
+            const std::uint16_t palette_or_flip) {
+            const auto destination_word = static_cast<std::uint16_t>(
+                static_cast<std::uint16_t>(base_destination) + plane_offset);
+            return FieldTileColumnEdgeRequest{
+                horizontal_origin.column,
+                y_coordinate,
+                static_cast<std::int32_t>(static_cast<std::int16_t>(
+                    destination_word)),
+                plane_offset,
+                palette_or_flip,
+                source_layout};
+        };
+
+    result.first_request = make_request(state.plane_a_offset, 0U);
+    result.second_request = make_request(state.plane_b_offset, 0x8000U);
+    if (!callbacks.render_column) {
+        result.action = FieldTileColumnEdgeAction::boundary_unresolved;
+        return result;
+    }
+
+    callbacks.render_column(*result.first_request);
+    callbacks.render_column(*result.second_request);
+    result.columns_rendered = 2U;
+    result.action = FieldTileColumnEdgeAction::columns_rendered;
+    return result;
+}
+
 void update_entity_render_pass(
     std::array<RenderEntityState, 16>& entities,
     const EntityRenderPassCallbacks& callbacks) {

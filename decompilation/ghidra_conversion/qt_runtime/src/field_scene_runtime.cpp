@@ -7,6 +7,7 @@
 #include "shadowrun_ghidra/field/field_mode_scene_runtime_preparation_conversion.hpp"
 #include "shadowrun_ghidra/field/field_resource_sequence_conversion.hpp"
 #include "shadowrun_ghidra/field/field_scene_entry_conversion.hpp"
+#include "shadowrun_ghidra/field/field_entity_render_batch_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
 
 #include <QPainter>
@@ -1120,11 +1121,34 @@ void FieldSceneRuntime::update_source_field_camera() {
         field_entity_.world_position.y, field_movement_state_.heading, false);
     state_.field_scene_buffers.camera_x = field_camera_follow_.camera_x;
     state_.field_scene_buffers.camera_y = field_camera_follow_.camera_y;
+    const auto row_stride = profile.size() > 18U ? profile[18U] : 0U;
     if (field_camera_follow_.horizontal_edge) {
-        source_boundary("field.camera.row_edge");
+        FieldTileRowEdgeState row_edge{};
+        row_edge.horizontal_direction = field_camera_follow_.horizontal_step;
+        row_edge.camera_x = field_camera_follow_.camera_x;
+        row_edge.camera_x_limit = static_cast<std::int16_t>(
+            field_camera_follow_.maximum_x);
+        row_edge.camera_y = field_camera_follow_.camera_y;
+        row_edge.field_y = field_camera_follow_.camera_y;
+        row_edge.row_stride_bytes = row_stride;
+        render_field_tile_row_edge(
+            row_edge, {[this](const FieldTileRowEdgeRequest&) {
+                source_boundary("field.camera.row_edge");
+            }});
     }
     if (field_camera_follow_.vertical_edge) {
-        source_boundary("field.camera.column_edge");
+        FieldTileColumnEdgeState column_edge{};
+        column_edge.vertical_direction = field_camera_follow_.vertical_step;
+        column_edge.field_y = field_camera_follow_.camera_y;
+        column_edge.field_y_limit = static_cast<std::int16_t>(
+            field_camera_follow_.maximum_y >> 4U);
+        column_edge.camera_x = field_camera_follow_.camera_x;
+        column_edge.camera_y = field_camera_follow_.camera_y;
+        column_edge.row_stride_bytes = row_stride;
+        render_field_tile_column_edge(
+            column_edge, {[this](const FieldTileColumnEdgeRequest&) {
+                source_boundary("field.camera.column_edge");
+            }});
     }
 }
 

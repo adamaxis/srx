@@ -96,6 +96,52 @@ FieldTileRowEdgeResult render_field_tile_row_edge(
     const FieldTileRowEdgeState& state,
     const FieldTileRowEdgeCallbacks& callbacks);
 
+struct FieldTileColumnEdgeState {
+    std::int16_t vertical_direction = 0; // 0x4018 D0 input
+    std::uint16_t field_y = 0; // FFDDC8
+    std::int16_t field_y_limit = 0; // FFDDD0, already in >>4 units
+    std::uint16_t camera_x = 0; // FFDDC6, 0x4216
+    std::uint16_t camera_y = 0; // FFDD0A destination base
+    std::uint16_t vdp_data_word = 0; // FFDD08, 0x4216 D3
+    std::uint16_t plane_a_offset = 0; // FFDD14
+    std::uint16_t plane_b_offset = 0; // FFDD16
+    std::uint16_t row_stride_bytes = 0; // FFDDEA
+};
+
+struct FieldTileColumnEdgeRequest {
+    std::int16_t x_coordinate = 0;
+    std::int16_t y_coordinate = 0;
+    std::int32_t destination_offset = 0;
+    std::uint16_t plane_offset = 0;
+    std::uint16_t palette_or_flip = 0;
+    FieldTileSourceLayout source_layout{};
+};
+
+struct FieldTileColumnEdgeCallbacks {
+    std::function<void(const FieldTileColumnEdgeRequest&)> render_column;
+};
+
+enum class FieldTileColumnEdgeAction {
+    outside_visible_window,
+    columns_rendered,
+    boundary_unresolved,
+};
+
+struct FieldTileColumnEdgeResult {
+    FieldTileColumnEdgeAction action =
+        FieldTileColumnEdgeAction::boundary_unresolved;
+    std::uint8_t columns_rendered = 0;
+    std::optional<FieldTileColumnEdgeRequest> first_request;
+    std::optional<FieldTileColumnEdgeRequest> second_request;
+};
+
+// ROM 0x04018: select a horizontal camera edge, prepare 0x4216/0x4000
+// coordinates, and submit the ordinary and XOR-flipped map-plane column
+// passes. Positive and negative D0 each emit one edge; the source RTS.
+FieldTileColumnEdgeResult render_field_tile_column_edge(
+    const FieldTileColumnEdgeState& state,
+    const FieldTileColumnEdgeCallbacks& callbacks);
+
 struct RenderEntityState {
     bool active = false;
     std::uint32_t id = 0;

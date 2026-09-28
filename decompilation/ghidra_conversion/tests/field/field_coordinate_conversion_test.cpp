@@ -63,5 +63,24 @@ int main() {
                 third_vertical_origin.camera_y == 0x00F0U)) {
         return 6;
     }
+
+    const auto first_horizontal_origin =
+        prepare_field_horizontal_origin(0x0070U, 0x0200U);
+    if (!expect(first_horizontal_origin.column == 7 &&
+                first_horizontal_origin.vdp_data == 0x0200U)) {
+        return 7;
+    }
+    const auto second_horizontal_origin =
+        prepare_field_horizontal_origin(0x0080U, 0x0200U);
+    if (!expect(second_horizontal_origin.column == 0 &&
+                second_horizontal_origin.vdp_data == 0x0208U)) {
+        return 8;
+    }
+    const auto third_horizontal_origin =
+        prepare_field_horizontal_origin(0x0100U, 0x0200U);
+    if (!expect(third_horizontal_origin.column == 0 &&
+                third_horizontal_origin.vdp_data == 0x0210U)) {
+        return 9;
+    }
     return 0;
 }
