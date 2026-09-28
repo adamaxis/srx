@@ -1138,9 +1138,13 @@ subtracting one, and calls `0x10660`. A positive residual selects the
 This also corrected the shared residual conversion: zero is a valid first
 `D4EA0` row for `0x10660`, so `calculate_action_residual()` no longer rejects
 row index zero. `advance_entity_action_menu()` now takes a typed entity,
-current force, and decoded action record, and reports the exact residual/grid
-plan. An absent decoded action row is reported as an unresolved source-data
-boundary rather than treated as “one action remains.”
+current force, and the matching `MagicSpellDefinition` from the US D4EA0
+catalog. The active action code must equal `spell_code + 1`; this prevents a
+caller from silently pairing the residual math with the wrong spell row. The
+typed spell row exposes the decoded difficulty modifier and 166AD4 effect
+directly, while the generic action-record overload remains for other audited
+action paths. A missing or mismatched spell row is reported as an unresolved
+source-data boundary rather than treated as “one action remains.”
 
 ### Equipment-details parent dispatcher: `0x111E8`
 

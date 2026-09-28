@@ -381,7 +381,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x12CD6	menu text asset renderer	ghidra_conversion::render_menu_text_asset	shadowrun_ghidra_menu_service_sequence	partial		Typed single menu-text presentation boundary
 0x12E9E	entity action menu service	ghidra_conversion::service_entity_action_menu	shadowrun_ghidra_entity_action_sequence	partial		Typed action read followed by menu/render service
 0x12F50	entity action menu renderer	ghidra_conversion::render_entity_action_menu	shadowrun_ghidra_entity_action_sequence	partial		Typed menu update, text render, and grid submission order
-0x12FA4	entity action menu advance	ghidra_conversion::advance_entity_action_menu	shadowrun_ghidra_entity_action_sequence	partial		ROM-traced action heading, zero-based D4EA0 residual calculation, positive residual-minus-one row, and six-row detail grid
+0x12FA4	entity action menu advance	ghidra_conversion::advance_entity_action_menu	shadowrun_ghidra_entity_action_sequence	partial		ROM-traced action heading, active +0x57 - 1 validation against the typed D4EA0 spell row, 0x10660 residual, positive residual-minus-one row, and six-row detail grid
 0x13466	entity action state setter	ghidra_conversion::set_entity_action_state	shadowrun_ghidra_entity_action_state	partial		Typed action/state publication, reset-marker handling, and asset refresh
 0x13874	entity action candidate dispatcher	ghidra_conversion::dispatch_entity_action_candidates	shadowrun_ghidra_entity_action_state	partial		Typed mode/low-six-bit dispatch with service marker reset
 0x13AE6	entity action threshold advance	ghidra_conversion::advance_entity_action_threshold	shadowrun_ghidra_entity_action_state	partial		Typed threshold search followed by action-state publication

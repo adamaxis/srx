@@ -525,6 +525,17 @@ EntityActionResidual calculate_action_residual(
             static_cast<std::int16_t>(residual)};
 }
 
+EntityActionResidual calculate_action_residual(
+    const std::uint8_t action_row_index,
+    const std::uint16_t difficulty,
+    const std::uint16_t roll_count,
+    const MagicSpellDefinition& spell) {
+    return calculate_action_residual(
+        action_row_index, difficulty, roll_count,
+        EntityActionCatalogRecord{spell.difficulty_modifier,
+                                  spell.base_effect});
+}
+
 EffectTargetOffsetResult calculate_effect_target_offset(
     const EffectTargetOffsetInput& input,
     const EffectTargetOffsetServices& services) {

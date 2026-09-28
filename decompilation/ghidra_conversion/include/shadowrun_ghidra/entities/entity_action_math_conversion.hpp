@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shadowrun_ghidra/core/magic_spell_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/random_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_action_profile_conversion.hpp"
 
@@ -376,6 +377,16 @@ EntityActionResidual calculate_action_residual(
     std::uint16_t difficulty,
     std::uint16_t roll_count,
     const EntityActionCatalogRecord& action);
+
+// Typed D4EA0 spell-row form used by the action-menu and magic-menu callers.
+// The source row's difficulty modifier and decoded 166AD4 effect are already
+// named fields, so this overload avoids making those callers reconstruct a
+// generic action record just to enter 0x10660.
+EntityActionResidual calculate_action_residual(
+    std::uint8_t action_row_index,
+    std::uint16_t difficulty,
+    std::uint16_t roll_count,
+    const MagicSpellDefinition& spell);
 
 struct EffectTargetOffsetInput {
     // 0x55848 keeps A0 as the source entity while the A1 target record is

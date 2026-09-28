@@ -16,10 +16,10 @@ int main() {
     }
 
     EntityActionMenuAdvanceInput advance_input{};
-    advance_input.active_action_code = 1U;
+    advance_input.active_action_code = 3U;
     advance_input.current_force = 2U;
     advance_input.entity.item18_base = 10U;
-    advance_input.action_record = EntityActionCatalogRecord{1U, 20};
+    advance_input.magic_spell = *find_us_magic_spell(2U);
     std::vector<int> advance_events;
     const auto advance = advance_entity_action_menu(
         advance_input,
@@ -39,7 +39,7 @@ int main() {
         return 2;
     }
 
-    advance_input.action_record->base_effect = 1;
+    advance_input.magic_spell->base_effect = 1;
     advance_events.clear();
     const auto no_grid = advance_entity_action_menu(
         advance_input,
@@ -52,9 +52,17 @@ int main() {
 
     advance_input.active_action_code = 0U;
     const auto missing = advance_entity_action_menu(advance_input);
-    if (!(missing.text_rendered && missing.action_record_missing &&
+    if (!(missing.text_rendered && missing.magic_spell_missing &&
           !missing.residual_calculated)) {
         return 4;
+    }
+
+    advance_input.active_action_code = 1U;
+    advance_input.magic_spell->spell_code = 2U;
+    const auto mismatched = advance_entity_action_menu(advance_input);
+    if (!(mismatched.text_rendered && mismatched.magic_spell_missing &&
+          !mismatched.residual_calculated)) {
+        return 5;
     }
     return 0;
 }

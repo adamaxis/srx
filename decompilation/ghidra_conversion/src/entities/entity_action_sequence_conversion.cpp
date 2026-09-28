@@ -36,8 +36,10 @@ EntityActionMenuAdvanceResult advance_entity_action_menu(
     }
     result.text_rendered = true;
 
-    if (input.active_action_code == 0U || !input.action_record.has_value()) {
-        result.action_record_missing = true;
+    if (input.active_action_code == 0U || !input.magic_spell.has_value() ||
+        input.magic_spell->spell_code !=
+            static_cast<std::uint8_t>(input.active_action_code - 1U)) {
+        result.magic_spell_missing = true;
         return result;
     }
 
@@ -47,7 +49,7 @@ EntityActionMenuAdvanceResult advance_entity_action_menu(
     const auto residual = calculate_action_residual(
         action_row_index, input.current_force,
         calculate_action_effect_roll_count(input.entity),
-        *input.action_record);
+        *input.magic_spell);
     result.residual_calculated = true;
     result.residual_effect = residual.residual_effect;
     if (residual.residual_effect <= 0) {

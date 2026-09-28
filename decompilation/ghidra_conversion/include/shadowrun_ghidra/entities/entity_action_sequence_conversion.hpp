@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shadowrun_ghidra/core/magic_spell_catalog_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_action_math_conversion.hpp"
 
 #include <cstdint>
@@ -40,9 +41,10 @@ struct EntityActionMenuAdvanceInput {
     std::uint8_t active_action_code = 0;
     // Active record +0x9D, copied into D4 as the current action force.
     std::uint8_t current_force = 0;
-    // Decoded row from the source D4EA0 action table. A missing row is an
-    // unresolved source-data boundary, not a generic available-count gate.
-    std::optional<EntityActionCatalogRecord> action_record;
+    // Decoded row from the source D4EA0 magic-spell table. The source uses
+    // active +0x57 - 1 as the row index; callers must provide that exact
+    // typed spell rather than a generic available-count/action record.
+    std::optional<MagicSpellDefinition> magic_spell;
 };
 
 struct EntityActionMenuAdvanceCallbacks {
@@ -55,7 +57,7 @@ struct EntityActionMenuAdvanceResult {
     bool text_rendered = false;
     bool residual_calculated = false;
     bool detail_grid_written = false;
-    bool action_record_missing = false;
+    bool magic_spell_missing = false;
     std::int16_t residual_effect = 0;
     std::optional<EntityActionMenuGridPlan> detail_grid;
 };
