@@ -39,11 +39,12 @@ The current audit passes export-name, status-ledger, source-file ownership,
 and evidence-file checks: 910 exported entries, 932 unique ledger rows, 2,986
 resolved direct call sites, 229 conversion implementation files, and 230 CTest
 cases. The behavioral fidelity gate remains OPEN: 16 indirect/unresolved call
-sites are still explicit boundaries, 928 ledger rows are partial, and only 4
-are defended. The generated Ghidra C also omits meaningful disassembly in
-0x104F6 and 0x12C74. Their typed conversions now carry the recovered slot-7
-phase tail and action-class skill selector respectively; the ROM disassembly
-remains the tie-breaker for these generated-C omissions.
+sites are still explicit boundaries, 930 ledger rows are partial, and only 4
+are defended. The generated Ghidra C omits meaningful disassembly in 0x104F6
+and 0x12C74. Their typed conversions now carry the recovered slot-7 phase tail
+and action-class skill selector respectively; both have instruction-level
+source audits, while the ROM disassembly remains the tie-breaker for the
+generated-C omissions.
 
 ## Instruction-level conversion audit: 2026-09-26
 

@@ -1674,7 +1674,12 @@ Important source checks from this pass:
   merge plus zero-to-one correction. The typed equipment conversion now takes
   the action code and all four source skill bytes, so the selector is not
   hidden in a precomputed generic skill. This is recorded as a decompiler
-  omission, not treated as a no-op.
+  omission, not treated as a no-op. The source trace is complete: `BPL` after
+  `CMP.B #8` and `CMP.B #11` selects the action bands, `CMP.B` against `+0x81`
+  selects the candidate only when its wrapped byte difference is negative,
+  and `CMP.W`/`ADD.W` merges the selected skill with the incoming D6 word.
+  The conversion tests cover the band boundaries, signed-byte wrap, word
+  overflow, and the zero-to-one result correction.
 * `0x14D6A` is not an animation-frame-table selector. `0x13D0C` calls it while
   advancing entity motion, then reads the selected D4540 equipment-item or
   D4EA0 magic-spell row's `+0x27` byte and uses it to choose a pair of movement
