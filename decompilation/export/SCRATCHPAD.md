@@ -1774,6 +1774,11 @@ of selected current/max force publication. `0x102D4` names its three source
 text roles explicitly as `Set Force & Posture.`, `Success`, and `Force` before
 the posture, availability, and grouped-force services.
 
+The top-level `0xFBA6` Magic controller is now represented as a typed frame
+loop. It preserves column-before-row-before-action-before-exit input priority,
+resets cursor timing only after navigation, and leaves resource setup and
+target/effect services as explicit callbacks.
+
 The `0xFF5A` equipment-selection boundary is now source-traced as a complete
 typed orchestration routine. It performs detail preparation, conditionally
 carries current force into the active item's rounds, installs `spell_code + 1`,

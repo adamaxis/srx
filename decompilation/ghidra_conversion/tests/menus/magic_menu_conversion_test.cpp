@@ -32,6 +32,41 @@ int main() {
         return 3;
     }
 
+    MagicMenuLoopState menu_loop_state{{0U, 0U}, 14U};
+    std::vector<std::uint16_t> menu_inputs{0x0C00U, 0x0300U, 0x2080U,
+                                           0x0080U};
+    std::size_t menu_input_index = 0U;
+    std::vector<int> menu_loop_events;
+    MagicMenuLoopCallbacks menu_loop_callbacks{};
+    menu_loop_callbacks.prepare_magic_menu = [&]() { menu_loop_events.push_back(1); };
+    menu_loop_callbacks.render_selection =
+        [&](const MagicMenuSelection&) { menu_loop_events.push_back(2); };
+    menu_loop_callbacks.advance_menu_sprite_overlay =
+        [&]() { menu_loop_events.push_back(3); };
+    menu_loop_callbacks.wait_for_vblank = [&]() { menu_loop_events.push_back(4); };
+    menu_loop_callbacks.latch_controller_events = [&]() { menu_loop_events.push_back(5); };
+    menu_loop_callbacks.sample_controller_input = [&]() { menu_loop_events.push_back(6); };
+    menu_loop_callbacks.read_sampled_input = [&]() {
+        menu_loop_events.push_back(7);
+        return menu_inputs[menu_input_index++];
+    };
+    menu_loop_callbacks.run_equipment_selection =
+        [&](const MagicMenuSelection&) { menu_loop_events.push_back(8); };
+    menu_loop_callbacks.reset_cursor_animation_timer =
+        [&]() { menu_loop_events.push_back(9); };
+    const auto menu_exit = run_magic_menu_loop(menu_loop_state,
+                                               menu_loop_callbacks);
+    if (!expect(menu_exit == 0x0080U && menu_input_index == 4U &&
+                menu_loop_state.selection.column == 6U &&
+                menu_loop_state.selection.row == 1U &&
+                menu_loop_events ==
+                    std::vector<int>{1, 2, 3, 4, 5, 6, 7, 2, 9,
+                                     3, 4, 5, 6, 7, 2, 9,
+                                     3, 4, 5, 6, 7, 8, 2,
+                                     3, 4, 5, 6, 7})) {
+        return 37;
+    }
+
     MagicMenuSelection selection{6U, 0U};
     selection = move_magic_selection_column(selection, 1, 7U);
     if (!expect(selection.column == 0U && selection.row == 0U)) {

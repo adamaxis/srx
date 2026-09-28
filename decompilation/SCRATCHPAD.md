@@ -1914,6 +1914,12 @@ selecting current/max force. `0x102D4` also exposes its actual labels instead
 of a generic three-call text batch: `Set Force & Posture.`, `Success`, and
 `Force`, followed by posture, availability, and grouped force rendering.
 
+The Magic entry at `0xFBA6` now has a typed central interaction loop. It keeps
+the source priority order of column movement, row movement, action dispatch,
+and bit-7 exit; navigation redraws and resets the cursor animation timer,
+while action redraws leave that timer state intact. Resource setup and the
+target/effect path remain injected boundaries.
+
 The `0x101FE` selector is now recorded under the magic-menu module rather than
 the generic field renderer. It publishes the selected spell's low-byte force
 maximum and preserves the runner's current force only on the source's

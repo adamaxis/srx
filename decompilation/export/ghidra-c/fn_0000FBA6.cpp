@@ -22,6 +22,11 @@
 //   0x00011900 prepare_menu_row_grid
 //   0x00011928 render_menu_row
 //   0x00012C36 prepare_menu_grid_variant_b
+//
+// Source behavior: the spell-panel branch performs one-time setup, then the
+// frame loop gives column navigation priority over row navigation, action,
+// and bit-7 exit. Navigation redraws and clears the cursor timer; action
+// redraws without that timer reset. The fallback branch is separate.
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */

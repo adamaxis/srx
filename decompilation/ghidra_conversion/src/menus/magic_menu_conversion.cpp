@@ -33,6 +33,82 @@ MagicMenuPath select_magic_menu_path(const RunnerRecordFields& record) {
     return MagicMenuPath::fallback_menu;
 }
 
+std::uint16_t run_magic_menu_loop(MagicMenuLoopState& state,
+                                  const MagicMenuLoopCallbacks& callbacks) {
+    // ROM 0xFBA6 performs its one-time resource/panel setup before the
+    // controller loop and renders the initial selected spell immediately.
+    call_once(callbacks.prepare_magic_menu);
+    if (callbacks.render_selection) {
+        callbacks.render_selection(state.selection);
+    }
+
+    for (;;) {
+        call_once(callbacks.advance_menu_sprite_overlay);
+        call_once(callbacks.wait_for_vblank);
+        call_once(callbacks.latch_controller_events);
+        call_once(callbacks.sample_controller_input);
+        const auto input = callbacks.read_sampled_input
+                               ? callbacks.read_sampled_input()
+                               : 0U;
+
+        // 0xFD02 checks column-left before column-right. Preserve that
+        // priority if both source edges arrive in one sampled word.
+        if ((input & 0x0400U) != 0U) {
+            state.selection = move_magic_selection_column(
+                state.selection, -1, state.first_entry_count);
+            if (callbacks.render_selection) {
+                callbacks.render_selection(state.selection);
+            }
+            call_once(callbacks.reset_cursor_animation_timer);
+            continue;
+        }
+        if ((input & 0x0800U) != 0U) {
+            state.selection = move_magic_selection_column(
+                state.selection, 1, state.first_entry_count);
+            if (callbacks.render_selection) {
+                callbacks.render_selection(state.selection);
+            }
+            call_once(callbacks.reset_cursor_animation_timer);
+            continue;
+        }
+
+        // 0xFD32 checks row-up before row-down, with the same redraw/reset
+        // sequence as horizontal navigation.
+        if ((input & 0x0100U) != 0U) {
+            state.selection = move_magic_selection_row(
+                state.selection, -1, state.first_entry_count);
+            if (callbacks.render_selection) {
+                callbacks.render_selection(state.selection);
+            }
+            call_once(callbacks.reset_cursor_animation_timer);
+            continue;
+        }
+        if ((input & 0x0200U) != 0U) {
+            state.selection = move_magic_selection_row(
+                state.selection, 1, state.first_entry_count);
+            if (callbacks.render_selection) {
+                callbacks.render_selection(state.selection);
+            }
+            call_once(callbacks.reset_cursor_animation_timer);
+            continue;
+        }
+
+        // Action edges are checked before the source bit-7 exit condition.
+        if ((input & (0x2000U | 0x1000U | 0x4000U)) != 0U) {
+            if (callbacks.run_equipment_selection) {
+                callbacks.run_equipment_selection(state.selection);
+            }
+            if (callbacks.render_selection) {
+                callbacks.render_selection(state.selection);
+            }
+            continue;
+        }
+        if ((input & 0x0080U) != 0U) {
+            return input;
+        }
+    }
+}
+
 MagicMenuSelection move_magic_selection_column(
     MagicMenuSelection selection, const std::int8_t delta,
     const std::uint16_t first_entry_count) {

@@ -20,6 +20,23 @@ struct MagicMenuSelection {
     std::uint8_t row = 0;
 };
 
+struct MagicMenuLoopState {
+    MagicMenuSelection selection{};
+    std::uint16_t first_entry_count = 0;
+};
+
+struct MagicMenuLoopCallbacks {
+    std::function<void()> prepare_magic_menu;
+    std::function<void(const MagicMenuSelection&)> render_selection;
+    std::function<void()> advance_menu_sprite_overlay;
+    std::function<void()> wait_for_vblank;
+    std::function<void()> latch_controller_events;
+    std::function<void()> sample_controller_input;
+    std::function<std::uint16_t()> read_sampled_input;
+    std::function<void(const MagicMenuSelection&)> run_equipment_selection;
+    std::function<void()> reset_cursor_animation_timer;
+};
+
 constexpr std::size_t kMagicSpellRecordSize = 0x30U;
 
 enum class MagicSpellAvailability {
@@ -143,6 +160,12 @@ struct MagicMenuSelectionDisplayCallbacks {
 // (record +0x9B < 2) when its +0x7F magic resource is nonzero. Other records
 // take the ordinary one-row menu fallback.
 MagicMenuPath select_magic_menu_path(const RunnerRecordFields& record);
+
+// ROM 0xFBA6's spell-panel interaction loop. Navigation has source priority
+// over action and exit edges; each navigation redraw resets the cursor-sprite
+// countdown, action redraw does not, and bit 7 exits only after those checks.
+std::uint16_t run_magic_menu_loop(
+    MagicMenuLoopState& state, const MagicMenuLoopCallbacks& callbacks = {});
 
 // ROM 0xFEBE. `first_entry_count` is the first word at the selected spell
 // table entry (`record +0xA0` selects that entry). The source uses that count
