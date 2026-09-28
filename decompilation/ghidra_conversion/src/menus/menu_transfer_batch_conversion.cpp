@@ -60,9 +60,30 @@ std::optional<MenuMetricLookupResult> resolve_menu_metric_action(
     const auto action_index = input.source_action_indices[table_offset];
     const auto matching_item_code = static_cast<std::uint8_t>(
         static_cast<std::uint16_t>(action_index) + 0x19U);
-    const auto modifiers = apply_action_item_phase_modifiers(
-        input.value, input.entity, matching_item_code, action_index,
-        input.special_item_table);
+    EntityActionPhaseModifierResult modifiers{};
+    const auto has_item_catalog = input.item_catalog != nullptr;
+    const auto has_selector_table = input.selector_table != nullptr;
+    if (has_item_catalog != has_selector_table) {
+        // A source-bound call cannot silently fall back to the caller-owned
+        // matrix when only half of C8AE0/D4540 is available. Preserve the
+        // phase result, then expose the missing dependency if slot 7 would
+        // enter the special branch.
+        modifiers = apply_action_item_phase_modifiers(
+            input.value, input.entity, matching_item_code, action_index,
+            static_cast<const EntityActionSpecialItemModifierTable*>(nullptr));
+        const auto slot7_item = input.entity.item_codes[7];
+        if (slot7_item >= 0x29U && slot7_item <= 0x2BU) {
+            modifiers.source_data_missing = true;
+        }
+    } else if (has_item_catalog) {
+        modifiers = apply_action_item_phase_modifiers(
+            input.value, input.entity, matching_item_code, action_index,
+            *input.item_catalog, *input.selector_table);
+    } else {
+        modifiers = apply_action_item_phase_modifiers(
+            input.value, input.entity, matching_item_code, action_index,
+            input.special_item_table);
+    }
     return MenuMetricLookupResult{action_index, matching_item_code, modifiers,
                                   table_offset};
 }

@@ -29,6 +29,11 @@ struct MenuMetricLookupInput {
     std::vector<std::uint8_t> source_action_indices;
     std::uint16_t value = 0;
     EntityActionRecord entity{};
+    // Source-bound callers provide the decoded C8AE0/D4540 data used by the
+    // 0x104F6 continuation. Both pointers must be present together; the
+    // matrix pointer below remains an explicit audit adapter.
+    const UsItemCatalog* item_catalog = nullptr;
+    const UsSpecialItemModifierSelectorTable* selector_table = nullptr;
     const EntityActionSpecialItemModifierTable* special_item_table = nullptr;
 };
 

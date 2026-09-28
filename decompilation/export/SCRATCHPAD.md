@@ -1659,7 +1659,10 @@ Important source checks from this pass:
 * `0x104C8` computes its action-table byte offset with `MULU.W #6` followed
   by `ADD.B` for the menu column, then enters the shared `0x104F6` phase/item
   path. The typed lookup now preserves the product's upper byte while wrapping
-  only the byte-sized addition; a high-row test covers the distinction.
+  only the byte-sized addition; it scans possession slots 6 through 0 for the
+  selected action item and can now pass the decoded C8AE0/D4540 tables into
+  the source-bound slot-7 continuation. A high-row test covers the index
+  distinction, while a typed menu test covers the actual item-41 word path.
 * `0x104F6` is `apply_action_item_phase_modifiers`. The generated Ghidra C
   stops after the slot-6..0 scan, but the ROM disassembly continues into the
   slot-7 item `0x29..0x2B` lookup at `0x1050E..0x1055A`. The typed conversion

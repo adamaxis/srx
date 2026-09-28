@@ -456,7 +456,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0xFDAE	menu grid quadruple	ghidra_conversion::write_menu_grid_quadruple	shadowrun_ghidra_display_service_batch	partial		Exact four-grid submission loop
 0x10156	repeated menu grid	ghidra_conversion::write_repeated_menu_grid	shadowrun_ghidra_menu_transfer_batch	partial		Named repeated-grid boundary
 0x10260	magic menu grid and force selection	ghidra_conversion::prepare_magic_menu_grid_and_select_force	shadowrun_ghidra_magic_menu	partial		Metadata-grid write followed by selected spell maximum/current-force selection
-0x104C8	matching menu metric scan	ghidra_conversion::find_matching_menu_metric	shadowrun_ghidra_menu_transfer_batch	partial		MULU.W row stride plus ADD.B column table selection, reverse six-slot predicate scan, and shared 0x104F6 continuation
+0x104C8	matching menu metric scan	ghidra_conversion::find_matching_menu_metric	shadowrun_ghidra_menu_transfer_batch	partial		MULU.W row stride plus ADD.B column table selection, reverse six-slot predicate scan, and source-bound C8AE0/D4540 continuation when decoded tables are supplied
 0x106DA	grid preparation wrapper	ghidra_conversion::prepare_grid_then_write	shadowrun_ghidra_menu_transfer_batch	partial		Typed preparation then grid boundary
 0x10854	three grids then service	ghidra_conversion::write_three_grids_then_service	shadowrun_ghidra_menu_transfer_batch	partial		Exact three-grid and trailing service order
 0x11048	resource then two blocks	ghidra_conversion::upload_command_overview_resource_and_blocks	shadowrun_ghidra_menu_service_sequence	partial		ROM-traced resource-variant upload followed by the 0x7D20/0x9B20 paired blocks

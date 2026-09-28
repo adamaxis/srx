@@ -34,6 +34,31 @@ int main() {
         return 2;
     }
 
+    // The same 0x104C8 selection can enter the source-bound 0x104F6 tail.
+    // Action index 2 selects D4540 +0x24 for slot-7 item 0x29 (item 41),
+    // whose aligned source word is 0xFFFF.
+    auto source_metric = metric_input;
+    source_metric.entity.item_codes[7] = 0x29U;
+    source_metric.item_catalog = &us_item_catalog();
+    source_metric.selector_table = &us_special_item_modifier_selector_table();
+    const auto typed_metric = resolve_menu_metric_action(source_metric);
+    if (!typed_metric.has_value() || typed_metric->modifiers.value != 8U ||
+        !typed_metric->modifiers.special_item_applied ||
+        typed_metric->modifiers.source_data_missing) {
+        return 15;
+    }
+
+    auto incomplete_source_metric = source_metric;
+    incomplete_source_metric.selector_table = nullptr;
+    const auto incomplete_metric =
+        resolve_menu_metric_action(incomplete_source_metric);
+    if (!incomplete_metric.has_value() ||
+        incomplete_metric->modifiers.value != 9U ||
+        incomplete_metric->modifiers.special_item_applied ||
+        !incomplete_metric->modifiers.source_data_missing) {
+        return 16;
+    }
+
     // Source 0x104C8 adds the column with ADD.B after MULU.W. For a wrapped
     // low byte this differs from a host-wide row*6+column calculation.
     MenuMetricLookupInput wrapped_metric{};
