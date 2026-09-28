@@ -258,5 +258,32 @@ int main() {
                 !missing_effect.source_effect_resolved)) {
         return 11;
     }
+
+    // ROM 0x55900's special action sibling uses fixed pairs instead of
+    // D4540. Action 0x0F selects effect three/difficulty ten, secondary armor,
+    // and the mental meter through FFF0CC.
+    equipment_actor.equipped_action_code = 0x0FU;
+    equipment_actor.action_result = 0U;
+    equipment_target.physical_meter = 5U;
+    equipment_target.mental_meter = 5U;
+    equipment_state = {};
+    const auto fixed_action = resolve_entity_action_status(
+        equipment_actor, equipment_target, equipment_state, {},
+        { {}, equipment_resolution });
+    if (!expect(fixed_action.outcome ==
+                    EquipmentActionStatusOutcome::resolved &&
+                fixed_action.active_action_code == 0x0FU &&
+                fixed_action.effect_table_index == 1U &&
+                fixed_action.action_effect_value == 3U &&
+                fixed_action.initial_difficulty == 10U &&
+                fixed_action.effective_difficulty == 10U &&
+                fixed_action.continuation.used_secondary_armor &&
+                fixed_action.continuation.used_mental_meter &&
+                equipment_target.mental_meter == 3U &&
+                equipment_target.physical_meter == 5U &&
+                equipment_state.alternate_meter == 0U &&
+                equipment_state.armor_mode == -1)) {
+        return 12;
+    }
     return 0;
 }

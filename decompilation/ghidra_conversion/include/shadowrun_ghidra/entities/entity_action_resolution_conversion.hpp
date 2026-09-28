@@ -167,6 +167,18 @@ struct EquipmentActionStatusResult {
     EntityActionResolutionResult continuation{};
 };
 
+// ROM 0x55900. The special action-status entry selects fixed source pairs:
+// code 0x0F uses effect three/difficulty ten and the mental meter, code 0x0E
+// uses effect three/difficulty six, and all other entries use effect
+// six/difficulty eight. These cases enter the same 0x55980/0x559BC tail as
+// the D4540-backed equipment path, with secondary armor selected.
+EquipmentActionStatusResult resolve_entity_action_status(
+    EntityActionActorState& actor,
+    EntityActionTarget& target,
+    EntityActionResolutionState& state,
+    const EntityActionDynamicModifierContext& target_dynamic_context,
+    const EquipmentActionStatusServices& services);
+
 // ROM 0x55948. Resolve an ordinary equipment action against the opposing
 // entity: select A0 +0x57's one-based D4540 record, decode its +0x25 effect
 // index through the typed 0x166AD4 table, use +0x26 as the initial difficulty,

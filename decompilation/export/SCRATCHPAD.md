@@ -1997,3 +1997,11 @@ mismatched D4540 row and rejects a negative/out-of-range effect index before
 mutating resolution state. It then applies the existing typed dynamic-status,
 armor, defense, meter, and counter services and enters `0x559BC`; it does not
 reimplement those leaves or substitute a guessed action value.
+
+`0x55900 resolve_entity_action_status` is the fixed-parameter sibling that
+feeds the same tail. Action code `0x0F` uses value three/difficulty ten and
+sets the alternate-meter flag, `0x0E` uses value three/difficulty six, and all
+other entries use value six/difficulty eight. It always selects secondary
+armor before entering `0x559BC`; the typed conversion shares the continuation
+builder with `0x55948` and the regression test verifies the `0x0F` mental-meter
+branch without introducing a second combat implementation.

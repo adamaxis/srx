@@ -130,7 +130,99 @@ bool is_resolution_service_unavailable(
     }
 }
 
+EquipmentActionStatusResult continue_equipment_action_status(
+    EntityActionActorState& actor,
+    EntityActionTarget& target,
+    EntityActionResolutionState& state,
+    const EntityActionDynamicModifierContext& target_dynamic_context,
+    const EquipmentActionStatusServices& services,
+    EquipmentActionStatusResult result,
+    const std::uint16_t initial_difficulty,
+    const std::uint8_t action_effect_value,
+    const std::int8_t armor_mode,
+    const std::uint8_t alternate_meter) {
+    // 0x55900/0x55948 establish these two globals before their shared
+    // 0x55980 tail. They are typed state selections, not a RAM image.
+    state.alternate_meter = alternate_meter;
+    state.armor_mode = armor_mode;
+
+    auto difficulty = initial_difficulty;
+    result.initial_difficulty = difficulty;
+    result.action_effect_value = action_effect_value;
+    result.dynamic_modifier = apply_dynamic_status_modifier(
+        difficulty, target_dynamic_context, services.dynamic_roll_service);
+    if (result.dynamic_modifier.selected &&
+        !result.dynamic_modifier.action_profile_available) {
+        result.outcome = EquipmentActionStatusOutcome::
+            dynamic_modifier_data_unavailable;
+        return result;
+    }
+    if (result.dynamic_modifier.selected &&
+        !result.dynamic_modifier.roll_service_available) {
+        result.outcome = EquipmentActionStatusOutcome::
+            dynamic_modifier_roll_service_unavailable;
+        return result;
+    }
+    result.effective_difficulty = difficulty;
+
+    // 0x55984..0x5599A swaps A0/A1 while calculating the opposing entity's
+    // command/posture value, then adds its +0x77 byte. The three cyberware
+    // bits at 9..11 add 1, 2, or 3 using the first set bit in source order.
+    result.target_command_average =
+        calculate_equipment_command_average(target);
+    result.target_posture_remaining = select_posture_adjusted_value(
+        result.target_command_average, target.posture, false);
+    result.trial_count = add_source_byte_to_word(
+        result.target_posture_remaining, target.attribute_77);
+    result.trial_count = static_cast<std::uint16_t>(
+        result.trial_count +
+        first_cyberware_modifier(target.cyberware_flags, 9U, 3U));
+
+    result.continuation = resolve_dynamic_entity_action(
+        actor, target, difficulty, result.trial_count,
+        static_cast<std::int16_t>(result.action_effect_value), state,
+        services.resolution);
+    result.continuation_invoked = true;
+    result.outcome = is_resolution_service_unavailable(
+                         result.continuation.outcome)
+                         ? EquipmentActionStatusOutcome::
+                               resolution_service_unavailable
+                         : EquipmentActionStatusOutcome::resolved;
+    return result;
+}
+
 } // namespace
+
+EquipmentActionStatusResult resolve_entity_action_status(
+    EntityActionActorState& actor,
+    EntityActionTarget& target,
+    EntityActionResolutionState& state,
+    const EntityActionDynamicModifierContext& target_dynamic_context,
+    const EquipmentActionStatusServices& services) {
+    EquipmentActionStatusResult result{};
+    result.active_action_code = actor.equipped_action_code;
+
+    std::uint8_t action_effect_value = 6U;
+    std::uint16_t initial_difficulty = 8U;
+    std::uint8_t alternate_meter = 0U;
+    if (result.active_action_code == 0x0FU) {
+        action_effect_value = 3U;
+        initial_difficulty = 10U;
+        alternate_meter = 1U;
+    } else if (result.active_action_code == 0x0EU) {
+        action_effect_value = 3U;
+        initial_difficulty = 6U;
+    }
+
+    // 0x55900's fixed action pair has no D4540 row to validate. Its +0x25/
+    // +0x26-equivalent values are the explicit source constants above.
+    result.source_effect_resolved = true;
+    result.effect_table_index = action_effect_value == 3U ? 1U : 2U;
+    return continue_equipment_action_status(
+        actor, target, state, target_dynamic_context, services,
+        result, initial_difficulty, action_effect_value, -1,
+        alternate_meter);
+}
 
 EquipmentActionStatusResult resolve_equipment_action_status(
     EntityActionActorState& actor,
@@ -177,52 +269,9 @@ EquipmentActionStatusResult resolve_equipment_action_status(
 
     // 0x55948 clears the alternate meter and selects primary armor before it
     // enters the common 0x559BC continuation.
-    state.alternate_meter = 0U;
-    state.armor_mode = 0;
-
-    auto difficulty = static_cast<std::uint16_t>(
-        item.source_action_difficulty());
-    result.initial_difficulty = difficulty;
-    result.dynamic_modifier = apply_dynamic_status_modifier(
-        difficulty, target_dynamic_context, services.dynamic_roll_service);
-    if (result.dynamic_modifier.selected &&
-        !result.dynamic_modifier.action_profile_available) {
-        result.outcome = EquipmentActionStatusOutcome::
-            dynamic_modifier_data_unavailable;
-        return result;
-    }
-    if (result.dynamic_modifier.selected &&
-        !result.dynamic_modifier.roll_service_available) {
-        result.outcome = EquipmentActionStatusOutcome::
-            dynamic_modifier_roll_service_unavailable;
-        return result;
-    }
-    result.effective_difficulty = difficulty;
-
-    // 0x55984..0x5599A swaps A0/A1 while calculating the opposing entity's
-    // command/posture value, then adds its +0x77 byte. The three cyberware
-    // bits at 9..11 add 1, 2, or 3 using the first set bit in source order.
-    result.target_command_average =
-        calculate_equipment_command_average(target);
-    result.target_posture_remaining = select_posture_adjusted_value(
-        result.target_command_average, target.posture, false);
-    result.trial_count = add_source_byte_to_word(
-        result.target_posture_remaining, target.attribute_77);
-    result.trial_count = static_cast<std::uint16_t>(
-        result.trial_count +
-        first_cyberware_modifier(target.cyberware_flags, 9U, 3U));
-
-    result.continuation = resolve_dynamic_entity_action(
-        actor, target, difficulty, result.trial_count,
-        static_cast<std::int16_t>(result.action_effect_value), state,
-        services.resolution);
-    result.continuation_invoked = true;
-    result.outcome = is_resolution_service_unavailable(
-                         result.continuation.outcome)
-                         ? EquipmentActionStatusOutcome::
-                               resolution_service_unavailable
-                         : EquipmentActionStatusOutcome::resolved;
-    return result;
+    return continue_equipment_action_status(
+        actor, target, state, target_dynamic_context, services, result,
+        item.source_action_difficulty(), result.action_effect_value, 0U, 0U);
 }
 
 EntityActionDefaultBonusResult resolve_entity_action_with_default_bonus(
