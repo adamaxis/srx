@@ -70,4 +70,13 @@ std::uint32_t wait_for_palette_frame(
     const NextVblankBoundary& next_vblank,
     const ControllerLatchBoundary& latch_controller_events);
 
+// Host cadence that replaces the Genesis vblank byte poll (FFF9F0 / VDP
+// status). 60 Hz is the NTSC source frame rate. A Qt timer (or any other
+// wake-up) consumes elapsed time as whole source frames; converted
+// animation periods stay in those frames.
+constexpr std::int64_t kHostFrameNanoseconds = 16666667;
+constexpr int kHostFrameCatchUpLimit = 4;
+
+int consume_host_frames(std::int64_t& deadline_ns, std::int64_t elapsed_ns);
+
 } // namespace shadowrun::ghidra_conversion

@@ -100,5 +100,29 @@ int main() {
         return 7;
     }
 
+    std::int64_t deadline = 0;
+    if (!expect(consume_host_frames(deadline, 0) == 0 && deadline == 0)) {
+        return 8;
+    }
+    if (!expect(consume_host_frames(deadline, kHostFrameNanoseconds) == 1 &&
+                deadline == kHostFrameNanoseconds)) {
+        return 9;
+    }
+    deadline = 0;
+    if (!expect(consume_host_frames(deadline, 3 * kHostFrameNanoseconds) ==
+                    3 &&
+                deadline == 3 * kHostFrameNanoseconds)) {
+        return 10;
+    }
+    deadline = 0;
+    if (!expect(consume_host_frames(deadline, 10 * kHostFrameNanoseconds) ==
+                    kHostFrameCatchUpLimit &&
+                deadline == kHostFrameCatchUpLimit * kHostFrameNanoseconds)) {
+        return 11;
+    }
+    if (!expect(consume_host_frames(deadline, deadline - 1) == 0)) {
+        return 12;
+    }
+
     return 0;
 }

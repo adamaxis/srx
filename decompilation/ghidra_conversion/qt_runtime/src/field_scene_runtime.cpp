@@ -1192,7 +1192,7 @@ void FieldSceneRuntime::paint_field_hud_overlays(QPainter& painter) const {
 }
 
 void FieldSceneRuntime::paint(QPainter& painter) const {
-    painter.fillRect(0, 0, 320, 224, QColor(4, 8, 20));
+    painter.fillRect(0, 0, 320, 224, Qt::black);
     if (!ready_ || field_map_.isNull()) {
         return;
     }

@@ -6,6 +6,7 @@
 
 #include <QApplication>
 #include <QColor>
+#include <QElapsedTimer>
 #include <QImage>
 #include <QKeyEvent>
 #include <QFont>
@@ -47,11 +48,12 @@ std::filesystem::path find_asset_root(int argc, char** argv) {
             std::cout
                 << "usage: shadowrun_ghidra_conversion_qt"
                    " [--assets <decompilation/assets>] [--field-smoke]"
-                   " [--field-smoke-move-right]\n";
+                   " [--field-smoke-move-right] [--intro-to-field-smoke]\n";
             return {};
         }
         if (argument == "--field-smoke" ||
-            argument == "--field-smoke-move-right") {
+            argument == "--field-smoke-move-right" ||
+            argument == "--intro-to-field-smoke") {
             continue;
         }
         throw std::invalid_argument("unknown or incomplete argument: " +
@@ -108,6 +110,19 @@ QString phase_title(const StartupIntegrationPhase phase) {
         .arg(QString::fromLatin1(startup_integration_phase_name(phase)));
 }
 
+int count_playfield_lit(const QImage& scene) {
+    int lit = 0;
+    for (int y = 80; y < 160; ++y) {
+        for (int x = 80; x < 240; ++x) {
+            const auto pixel = scene.pixelColor(x, y);
+            if ((pixel.red() | pixel.green() | pixel.blue()) != 0) {
+                ++lit;
+            }
+        }
+    }
+    return lit;
+}
+
 class GhidraConversionWindow final : public QWidget {
 public:
     explicit GhidraConversionWindow(std::filesystem::path asset_root,
@@ -133,13 +148,104 @@ public:
 
         load_direct_title_assets();
         configure_title_loop_callbacks();
-        title_timer_.setInterval(1000 / 60);
-        QObject::connect(&title_timer_, &QTimer::timeout, this, [this] {
-            advance_title_frame();
+        host_clock_.start();
+        host_frame_timer_.setTimerType(Qt::PreciseTimer);
+        host_frame_timer_.setInterval(16);
+        QObject::connect(&host_frame_timer_, &QTimer::timeout, this, [this] {
+            on_host_frame_timeout();
         });
-        title_timer_.start();
+        host_frame_timer_.start();
         setWindowTitle(phase_title(state_.phase));
 
+    }
+
+    int run_intro_to_field_smoke() {
+        host_frame_timer_.stop();
+        constexpr int kMaxFrames = 8000;
+        int frames = 0;
+        const auto pump = [this, &frames] {
+            if (frames >= kMaxFrames) {
+                return false;
+            }
+            advance_one_source_frame();
+            ++frames;
+            return true;
+        };
+
+        while (state_.phase == StartupIntegrationPhase::pre_title) {
+            if (!pump()) {
+                std::cerr << "intro-to-field: boot did not reach title\n";
+                return 3;
+            }
+        }
+        if (state_.phase != StartupIntegrationPhase::title_ready) {
+            std::cerr << "intro-to-field: phase after boot="
+                      << startup_integration_phase_name(state_.phase) << '\n';
+            return 3;
+        }
+
+        while (state_.phase == StartupIntegrationPhase::title_ready) {
+            pending_title_controller_word_ = static_cast<std::uint16_t>(
+                static_cast<std::uint16_t>(kStartupMenuA) << 8U);
+            if (!pump()) {
+                std::cerr << "intro-to-field: title did not accept Start\n";
+                return 3;
+            }
+        }
+        if (state_.phase != StartupIntegrationPhase::start_options) {
+            std::cerr << "intro-to-field: phase after title="
+                      << startup_integration_phase_name(state_.phase) << '\n';
+            return 3;
+        }
+
+        advance_startup_integration(
+            state_, kStartupMenuA, startup_callbacks_);
+        if (state_.phase != StartupIntegrationPhase::joshua_archetype) {
+            std::cerr << "intro-to-field: New Game did not reach Joshua\n";
+            return 3;
+        }
+        advance_startup_integration(
+            state_, kStartupMenuA, startup_callbacks_);
+        if (state_.phase != StartupIntegrationPhase::opening_intro) {
+            std::cerr << "intro-to-field: Joshua did not start opening\n";
+            return 3;
+        }
+        while (state_.phase == StartupIntegrationPhase::opening_intro) {
+            if (!pump()) {
+                std::cerr << "intro-to-field: opening did not complete\n";
+                return 3;
+            }
+        }
+        if (state_.phase != StartupIntegrationPhase::field_ready ||
+            !field_scene_runtime_.ready()) {
+            std::cerr << "intro-to-field: field not ready phase="
+                      << startup_integration_phase_name(state_.phase)
+                      << " bootstrap=" << field_scene_runtime_.failure()
+                      << '\n';
+            return 3;
+        }
+
+        QImage scene(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        scene.fill(Qt::black);
+        QPainter painter(&scene);
+        field_scene_runtime_.paint(painter);
+        painter.end();
+        if (count_playfield_lit(scene) < 100) {
+            std::cerr << "intro-to-field: playfield buried under opaque HUD\n";
+            return 3;
+        }
+        const auto& buffers = field_scene_runtime_.state().field_scene_buffers;
+        std::cout << "intro_to_field=ready scene_reference="
+                  << buffers.scene_reference << " camera="
+                  << buffers.camera_x << ',' << buffers.camera_y
+                  << " field_position="
+                  << field_scene_runtime_.field_entity_world_position().x
+                  << ','
+                  << field_scene_runtime_.field_entity_world_position().y
+                  << " entity_visible="
+                  << (field_scene_runtime_.field_entity_visible() ? 1 : 0)
+                  << " opening_frames=" << frames << '\n';
+        return 0;
     }
 
 protected:
@@ -582,22 +688,28 @@ private:
         };
     }
 
-    void advance_title_frame() {
+    void on_host_frame_timeout() {
+        const auto frames = consume_host_frames(
+            host_frame_deadline_ns_, host_clock_.nsecsElapsed());
+        for (int frame = 0; frame < frames; ++frame) {
+            advance_one_source_frame();
+        }
+        if (frames > 0) {
+            update();
+        }
+    }
+
+    void advance_one_source_frame() {
         if (state_.phase == StartupIntegrationPhase::pre_title) {
             advance_startup_boot_frame(state_, startup_callbacks_);
-            setWindowTitle(phase_title(state_.phase));
-            update();
             return;
         }
         if (state_.phase == StartupIntegrationPhase::opening_intro) {
             advance_startup_opening_frame(state_, startup_callbacks_);
-            setWindowTitle(phase_title(state_.phase));
-            update();
             return;
         }
         if (state_.phase == StartupIntegrationPhase::field_ready) {
             field_scene_runtime_.advance_frame();
-            update();
             return;
         }
         if (state_.phase != StartupIntegrationPhase::title_ready) {
@@ -608,8 +720,6 @@ private:
         if (result == TitleLoopFrameResult::start_requested) {
             enter_start_options_integration(state_, startup_callbacks_);
         }
-        setWindowTitle(phase_title(state_.phase));
-        update();
     }
 
     void note_presentation_boundary(const std::string_view boundary) {
@@ -1034,7 +1144,9 @@ private:
     qt_runtime::FieldSceneRuntime field_scene_runtime_;
     TitleLoopState title_loop_;
     TitleLoopCallbacks title_loop_callbacks_;
-    QTimer title_timer_;
+    QTimer host_frame_timer_;
+    QElapsedTimer host_clock_;
+    std::int64_t host_frame_deadline_ns_ = 0;
     std::map<std::string, QImage> draw_asset_cache_;
     OpeningIntroScene opening_scene_ = OpeningIntroScene::seattle;
     OpeningIntroStage opening_stage_ = OpeningIntroStage::not_started;
@@ -1090,12 +1202,13 @@ int main(int argc, char** argv) {
     try {
         bool field_smoke = false;
         bool field_smoke_move_right = false;
+        bool intro_to_field_smoke = false;
         for (int index = 1; index < argc; ++index) {
             if (std::string(argv[index]) == "--help") {
                 std::cout
                     << "usage: shadowrun_ghidra_conversion_qt"
                        " [--assets <decompilation/assets>] [--field-smoke]"
-                       " [--field-smoke-move-right]\n";
+                       " [--field-smoke-move-right] [--intro-to-field-smoke]\n";
                 return 0;
             }
             if (std::string(argv[index]) == "--field-smoke") {
@@ -1104,6 +1217,9 @@ int main(int argc, char** argv) {
             if (std::string(argv[index]) == "--field-smoke-move-right") {
                 field_smoke = true;
                 field_smoke_move_right = true;
+            }
+            if (std::string(argv[index]) == "--intro-to-field-smoke") {
+                intro_to_field_smoke = true;
             }
         }
         const auto asset_root = find_asset_root(argc, argv);
@@ -1159,16 +1275,7 @@ int main(int argc, char** argv) {
             QPainter painter(&scene);
             field_scene.paint(painter);
             painter.end();
-            int playfield_lit = 0;
-            for (int y = 80; y < 160; ++y) {
-                for (int x = 80; x < 240; ++x) {
-                    const auto pixel = scene.pixelColor(x, y);
-                    if ((pixel.red() | pixel.green() | pixel.blue()) != 0) {
-                        ++playfield_lit;
-                    }
-                }
-            }
-            if (playfield_lit < 100) {
+            if (count_playfield_lit(scene) < 100) {
                 std::cerr << "field smoke: playfield buried under opaque HUD\n";
                 return 3;
             }
@@ -1184,6 +1291,9 @@ int main(int argc, char** argv) {
             return 0;
         }
         GhidraConversionWindow window(asset_root);
+        if (intro_to_field_smoke) {
+            return window.run_intro_to_field_smoke();
+        }
         window.show();
         return application.exec();
     } catch (const std::exception& error) {

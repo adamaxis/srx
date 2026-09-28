@@ -82,4 +82,14 @@ std::uint32_t wait_for_palette_frame(
     return iterations;
 }
 
+int consume_host_frames(std::int64_t& deadline_ns,
+                        const std::int64_t elapsed_ns) {
+    int frames = 0;
+    while (deadline_ns < elapsed_ns && frames < kHostFrameCatchUpLimit) {
+        deadline_ns += kHostFrameNanoseconds;
+        ++frames;
+    }
+    return frames;
+}
+
 } // namespace shadowrun::ghidra_conversion
