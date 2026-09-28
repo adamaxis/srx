@@ -726,5 +726,22 @@ int main() {
         return 26;
     }
 
+    // The page-level source-bound overload passes the same active-action row
+    // into 0x12EAE, so item 2 supplies D4540 +0x25 == 0 instead of the stale
+    // adapter value 3 above.
+    details_events.clear();
+    const auto typed_active_action_details = render_equipment_details(
+        details_input, us_item_catalog(), details_callbacks);
+    if (!(typed_active_action_details.action_detail_row_invoked &&
+          typed_active_action_details.action_detail_row.has_value() &&
+          typed_active_action_details.action_detail_row->detail_grid.has_value() &&
+          typed_active_action_details.action_detail_row->detail_grid->asset_index ==
+              0U &&
+          !typed_active_action_details.action_detail_row->detail_asset_missing &&
+          details_events == std::vector<int>{2, 10, 11, 12, 16, 40, 41, 42,
+                                             20, 21, 30, 31})) {
+        return 33;
+    }
+
     return 0;
 }

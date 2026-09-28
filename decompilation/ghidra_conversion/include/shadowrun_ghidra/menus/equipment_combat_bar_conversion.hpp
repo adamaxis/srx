@@ -413,4 +413,12 @@ EquipmentDetailsResult render_equipment_details(
     const EquipmentDetailsInput& input,
     const EquipmentDetailsCallbacks& callbacks = {});
 
+// Source-data-bound 0x111E8 path. The nested low-action 0x12EAE renderer
+// resolves ordinary active-action codes through the typed D4540 catalog
+// instead of consuming a caller-supplied +0x25 detail index.
+EquipmentDetailsResult render_equipment_details(
+    const EquipmentDetailsInput& input,
+    const UsItemCatalog& item_catalog,
+    const EquipmentDetailsCallbacks& callbacks = {});
+
 } // namespace shadowrun::ghidra_conversion

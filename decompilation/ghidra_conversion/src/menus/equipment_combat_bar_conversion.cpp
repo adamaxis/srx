@@ -665,9 +665,12 @@ void publish_equipment_meter(
 
 } // namespace
 
-EquipmentDetailsResult render_equipment_details(
+namespace {
+
+EquipmentDetailsResult render_equipment_details_impl(
     const EquipmentDetailsInput& input,
-    const EquipmentDetailsCallbacks& callbacks) {
+    const EquipmentDetailsCallbacks& callbacks,
+    const UsItemCatalog* item_catalog) {
     EquipmentDetailsResult result{};
     if (!input.refresh_requested) {
         if (callbacks.render_existing_menu_row) {
@@ -758,8 +761,13 @@ EquipmentDetailsResult render_equipment_details(
         row_input.source_mode = input.action_row.source_mode;
         row_input.display_state = input.action_row.display_state;
         row_input.active_action_code = active_action_code;
-        result.action_detail_row = render_equipment_action_detail_row(
-            row_input, callbacks.action_row_callbacks);
+        if (item_catalog != nullptr) {
+            result.action_detail_row = render_equipment_action_detail_row(
+                row_input, *item_catalog, callbacks.action_row_callbacks);
+        } else {
+            result.action_detail_row = render_equipment_action_detail_row(
+                row_input, callbacks.action_row_callbacks);
+        }
         result.action_detail_row_invoked = true;
     }
 
@@ -789,6 +797,21 @@ EquipmentDetailsResult render_equipment_details(
     }
     result.dialog_prepared = true;
     return result;
+}
+
+} // namespace
+
+EquipmentDetailsResult render_equipment_details(
+    const EquipmentDetailsInput& input,
+    const EquipmentDetailsCallbacks& callbacks) {
+    return render_equipment_details_impl(input, callbacks, nullptr);
+}
+
+EquipmentDetailsResult render_equipment_details(
+    const EquipmentDetailsInput& input,
+    const UsItemCatalog& item_catalog,
+    const EquipmentDetailsCallbacks& callbacks) {
+    return render_equipment_details_impl(input, callbacks, &item_catalog);
 }
 
 } // namespace shadowrun::ghidra_conversion

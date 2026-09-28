@@ -1190,8 +1190,12 @@ dispatcher then builds the physical meter at `0xC2B4`, mental meter at
 
 `ghidra_conversion::render_equipment_details()` now captures this parent
 sequence, returns the nested `0x12EAE` result, and keeps text/meter source
-rows and presentation callbacks typed. It is still a conversion/reference
-module; none of these callbacks are native-port runtime plumbing.
+rows and presentation callbacks typed. Its source-data-bound overload passes
+the `UsItemCatalog` into the nested renderer, so ordinary low-action detail
+rows resolve their signed `D4540 +0x25` value at the page boundary instead of
+relying on a stale `EquipmentDetailsInput` field. It is still a
+conversion/reference module; none of these callbacks are native-port runtime
+plumbing.
 
 The combat conversion now binds the extracted seven-row `D4D50` armor catalog
 at the entity-action service boundary. `0x559BC` reads the target's typed
