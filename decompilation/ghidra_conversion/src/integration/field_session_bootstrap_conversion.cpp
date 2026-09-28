@@ -51,6 +51,7 @@ bool has_entity_render_callbacks(const EntityRenderPassCallbacks& callbacks) {
 bool has_required_callbacks(const FieldSessionBootstrapCallbacks& callbacks) {
     return has_audio_callbacks(callbacks.mode_entry_audio) &&
            static_cast<bool>(callbacks.initialize_entity_order) &&
+           static_cast<bool>(callbacks.prepare_field_scene_runtime) &&
            static_cast<bool>(callbacks.initialize_scene_profile) &&
            has_field_resource_callbacks(callbacks.field_resources) &&
            static_cast<bool>(callbacks.run_world_frame_services) &&
@@ -147,6 +148,8 @@ FieldSessionBootstrapResult bootstrap_field_session(
     set_phase(state, callbacks,
               FieldSessionBootstrapPhase::field_scene_entry);
     FieldScenePreparationCallbacks scene_preparation_callbacks{};
+    scene_preparation_callbacks.prepare_field_scene_runtime =
+        callbacks.prepare_field_scene_runtime;
     scene_preparation_callbacks.initialize_scene_profile =
         callbacks.initialize_scene_profile;
     scene_preparation_callbacks.scene_uses_alternate_profile =

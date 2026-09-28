@@ -247,6 +247,19 @@ selection path `0x0C7F8 -> 0x0C802 -> 0x0391A`, which supplies the live
 explicit source boundary in the Qt composition. Likewise, `0x1651E` remains
 unresolved until its entity-table and world-layer records are traced.
 
+### Field scene runtime dispatcher: 0xC7F8
+
+The direct disassembly makes `0xC7F8` a small but important dispatcher rather
+than a generic scene hook. It tests the typed field-action counter that was
+`FF014C` in the ROM. A nonzero counter enters `0xC802`
+(`refresh_field_runner_state_and_assets`); a zero counter branches to `0xC64C`
+(`finalize_field_mode_exit_transition`). The conversion now exposes this as
+`prepare_field_scene_runtime()` and invokes it from the `0x03074` field-buffer
+preparation path before the selected profile is copied. The two callees remain
+separate contracts: the dispatcher does not duplicate their runner/effect
+state, and the Qt composition records which typed path was selected without
+introducing a ROM-address lookup.
+
 ## Export files
 
 - `functions.tsv`: one row per function and generated C file.

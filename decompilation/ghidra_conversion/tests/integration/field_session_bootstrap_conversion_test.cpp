@@ -84,6 +84,9 @@ FieldSessionBootstrapCallbacks make_callbacks(Observations& observations) {
     callbacks.initialize_entity_order = [&observations] {
         record(observations, "entity.order");
     };
+    callbacks.prepare_field_scene_runtime = [&observations] {
+        record(observations, "scene.prepare_runtime");
+    };
     callbacks.initialize_scene_profile = [&observations] {
         record(observations, "scene.profile");
     };

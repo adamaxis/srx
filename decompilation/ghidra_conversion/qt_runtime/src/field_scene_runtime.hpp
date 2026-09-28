@@ -126,6 +126,9 @@ private:
     std::array<std::uint8_t, 4> field_terrain_sample_state_{};
     std::uint8_t field_controller_nibble_ = 0;
     std::uint16_t field_target_heading_ = 0;
+    // Typed source field corresponding to FF014C, consumed only by the
+    // 0xC7F8 scene-runtime dispatcher.
+    std::uint8_t field_action_counter_ = 0;
     std::uint8_t field_entity_behavior_flags_ = 0;
     FieldEntityPresentation field_entity_{};
     std::string failure_;

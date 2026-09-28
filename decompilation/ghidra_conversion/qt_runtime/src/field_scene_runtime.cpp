@@ -2,6 +2,7 @@
 
 #include "shadowrun_ghidra/audio/audio_command_batch_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_coordinate_conversion.hpp"
+#include "shadowrun_ghidra/field/field_mode_scene_runtime_preparation_conversion.hpp"
 #include "shadowrun_ghidra/field/field_resource_sequence_conversion.hpp"
 #include "shadowrun_ghidra/field/field_scene_entry_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
@@ -124,6 +125,24 @@ void FieldSceneRuntime::configure_callbacks() {
         source_boundary("field.entities.initialize_order");
         state_.render_entities[0].active = field_entity_.active;
         state_.render_entities[0].id = 0U;
+    };
+    callbacks_.prepare_field_scene_runtime = [this] {
+        const auto decision = prepare_field_scene_runtime(
+            field_action_counter_,
+            {[this] {
+                 source_boundary(
+                     "field.scene.refresh_runner_state_and_assets");
+             },
+             [this] {
+                 source_boundary(
+                     "field.scene.finalize_mode_exit_transition");
+             }});
+        source_boundary(
+            decision.path ==
+                    FieldSceneRuntimePreparationPath::
+                        refresh_runner_state_and_assets
+                ? "field.scene.runtime_path.refresh"
+                : "field.scene.runtime_path.finalize");
     };
     callbacks_.initialize_scene_profile = [this] {
         source_boundary("field.scene.initialize_profile");
@@ -382,6 +401,7 @@ bool FieldSceneRuntime::bootstrap(
     field_projected_terrain_mark_count_ = 0U;
     field_terrain_render_dirty_ = false;
     field_terrain_sample_state_ = {};
+    field_action_counter_ = 0U;
     field_entity_behavior_flags_ = 0U;
     input_ = integration::FieldSessionBootstrapInput{};
     input_.action_selection_profile_source =

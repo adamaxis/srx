@@ -72,6 +72,9 @@ bool prepare_field_scene_buffers(
         state = FieldSceneBuffers{};
         return false;
     }
+    if (!state.initialized && callbacks.prepare_field_scene_runtime) {
+        callbacks.prepare_field_scene_runtime();
+    }
     if (!state.initialized && callbacks.initialize_scene_profile) {
         callbacks.initialize_scene_profile();
     }

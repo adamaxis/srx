@@ -105,6 +105,9 @@ struct FieldSceneBufferInput {
 };
 
 struct FieldScenePreparationCallbacks {
+    // ROM 0x03074 invokes 0xC7F8 before copying the selected scene profile
+    // when the scene buffers are not already initialized.
+    std::function<void()> prepare_field_scene_runtime;
     std::function<void()> initialize_scene_profile;
     std::function<bool()> scene_uses_alternate_profile;
 };
