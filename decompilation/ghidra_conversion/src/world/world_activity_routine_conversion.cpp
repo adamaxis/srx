@@ -16,6 +16,15 @@ void clear_effect_words(WorldActivityRoutineState& state) {
 
 } // namespace
 
+std::optional<std::uint16_t> resolve_world_activity_scene_id(
+    const std::uint8_t mode_event_code,
+    const std::array<std::uint8_t, 32>& event_mode_table) {
+    if (mode_event_code >= event_mode_table.size()) {
+        return std::nullopt;
+    }
+    return static_cast<std::uint16_t>(event_mode_table[mode_event_code]);
+}
+
 WorldActivityResult run_world_activity_routine(
     const WorldActivityRoutineInput& input,
     WorldActivityRoutineState& state,

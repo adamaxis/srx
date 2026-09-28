@@ -14,6 +14,18 @@ bool expect(const bool condition) {
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
+    std::array<std::uint8_t, 32> event_mode_table{};
+    event_mode_table[0] = 0x15U;
+    event_mode_table[0x1AU] = 0x14U;
+    if (!expect(resolve_world_activity_scene_id(0U, event_mode_table) ==
+                    std::optional<std::uint16_t>(0x15U) &&
+                resolve_world_activity_scene_id(0x1AU, event_mode_table) ==
+                    std::optional<std::uint16_t>(0x14U) &&
+                !resolve_world_activity_scene_id(32U, event_mode_table)
+                     .has_value())) {
+        return 7;
+    }
+
     WorldActivityRoutineInput resource_input{};
     resource_input.initial_scene_id = 0x20U;
     resource_input.default_resource_word = 0x1234U;

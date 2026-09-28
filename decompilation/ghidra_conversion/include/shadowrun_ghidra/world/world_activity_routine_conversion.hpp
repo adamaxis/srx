@@ -2,6 +2,7 @@
 
 #include "shadowrun_ghidra/field/scene_profile_conversion.hpp"
 
+#include <array>
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -75,6 +76,14 @@ struct WorldActivityRoutineCallbacks {
     std::function<void()> prepare_field_scene_buffers;
     std::function<void()> upload_mode_word_block;
 };
+
+// ROM 0x167AE: read the scene/mode byte selected by FFFBF9 from the active
+// 32-byte table published through FFDE14. The host receives the extracted
+// table directly; event codes outside that source table are rejected instead
+// of becoming unchecked pointer arithmetic.
+std::optional<std::uint16_t> resolve_world_activity_scene_id(
+    std::uint8_t mode_event_code,
+    const std::array<std::uint8_t, 32>& event_mode_table);
 
 // ROM 0x167AE: choose the current scene/activity branch, perform the source
 // flag gates, select a runner-dependent world script, and prepare the
