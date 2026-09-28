@@ -1,5 +1,6 @@
 #include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
 
+#include <array>
 #include <cstdint>
 #include <filesystem>
 
@@ -116,6 +117,18 @@ int main() {
         mode0_collision_rectangles.back().value != 0xDFU ||
         source.assets->mode0_terrain_collision_map[0U] != 0x7FU) {
         return 13;
+    }
+    const auto& movement_offsets =
+        source.assets->field_movement_direction_offsets;
+    const std::array<MovementOffset, kFieldMovementDirectionCount>
+        expected_movement_offsets{{
+            {0, -40}, {40, -40}, {40, 0}, {40, 40},
+            {0, 40}, {-40, 40}, {-40, 0}, {-40, -40}}};
+    for (std::size_t index = 0; index < movement_offsets.size(); ++index) {
+        if (movement_offsets[index].x != expected_movement_offsets[index].x ||
+            movement_offsets[index].y != expected_movement_offsets[index].y) {
+            return 14;
+        }
     }
     const auto& collision_rectangles =
         source.assets->mode2_terrain_collision_rectangles;

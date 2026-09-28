@@ -1,6 +1,7 @@
 #pragma once
 
 #include "shadowrun_ghidra/core/asset_catalog_conversion.hpp"
+#include "shadowrun_ghidra/entities/movement_probe_conversion.hpp"
 #include "shadowrun_ghidra/field/scene_profile_conversion.hpp"
 #include "shadowrun_ghidra/field/terrain_map_conversion.hpp"
 #include "shadowrun_ghidra/rendering/display_service_batch_conversion.hpp"
@@ -31,6 +32,9 @@ constexpr std::size_t kFieldMode2TerrainCollisionRectangleCount = 101U;
 constexpr std::size_t kFieldMode2TerrainCollisionRectangleByteCount =
     kFieldMode2TerrainCollisionRectangleCount * 10U;
 constexpr std::size_t kFieldMapEventTableByteCount = 32U;
+constexpr std::size_t kFieldMovementDirectionCount = 8U;
+constexpr std::size_t kFieldMovementDirectionTableByteCount =
+    kFieldMovementDirectionCount * 2U * sizeof(std::uint16_t);
 
 struct FieldMapSourceDescriptor {
     // Map descriptor words +0x00/+0x02. These are source fixed-point words;
@@ -79,6 +83,10 @@ struct FieldSessionSourceAssets {
     std::vector<TerrainCollisionRectangle>
         mode0_terrain_collision_rectangles;
     std::array<std::uint8_t, 0x1000> mode0_terrain_collision_map{};
+    // ROM 0x0C002, the eight signed fixed-point direction vectors consumed by
+    // the converted 0x0BABC/0x0B77E movement probe path.
+    std::array<MovementOffset, kFieldMovementDirectionCount>
+        field_movement_direction_offsets{};
     // ROM 0x172C80, interpreted as the distinct map-index-2 metadata record.
     FieldMapSourceDescriptor mode2_descriptor{};
     // ROM 0x172DAA, five-word records consumed by the terrain-map builder.

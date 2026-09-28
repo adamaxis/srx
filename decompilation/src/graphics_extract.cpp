@@ -201,6 +201,12 @@ void extract_field_session_record_assets(
         0x0D55DEU, 65U * 10U);
     write_rom_record(rom, root, "records/field/mode-0-event-table.bin",
                      0x0D54B2U, 32U);
+    // ROM 0x0BABC loads the eight signed fixed-point movement vectors from
+    // 0x0C002 before 0x0B77E probes the candidate position. Keep this as one
+    // direct source record; the conversion loader owns its typed pairs.
+    write_rom_record(
+        rom, root, "records/field/entity-movement-direction-table.bin",
+        0x0C002U, 8U * 4U);
     // Field mode 2 selects the normal scene profile, whose map descriptor row
     // is 0. That profile points at two fixed terrain word arrays. The source
     // copies exactly 0xE10 words from each pointer during field-scene
@@ -519,7 +525,10 @@ void write_asset_readme(const std::filesystem::path& root) {
               "records and the separate map-index-2 descriptor/collision/event "
               "records are direct source records; the conversion loader "
               "interprets each into typed field state and host collision maps "
-              "without making the runtime read ROM addresses.\n";
+              "without making the runtime read ROM addresses. The source "
+              "movement vector table at `0xC002` is likewise one named direct "
+              "record consumed as typed directional offsets by the conversion "
+              "layer.\n";
 }
 
 void write_runtime_resource_manifest(const std::filesystem::path& root) {
@@ -617,6 +626,9 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
     emit_generated_state_row(
         "records.field.mode.0.event.table",
         "records/field/mode-0-event-table.bin");
+    emit_generated_state_row(
+        "records.field.entity.movement.direction.table",
+        "records/field/entity-movement-direction-table.bin");
     emit_generated_state_row(
         "records.field.mode.2.terrain.layer.a",
         "records/field/mode-2-terrain-layer-a.bin");

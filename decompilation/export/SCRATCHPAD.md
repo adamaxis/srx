@@ -134,6 +134,33 @@ terminated by the sentinel at `0x0D5868`; its 32-byte event table is at
 `0x0D54B2`. These records are separate direct assets, not a second copy of
 the 48-word normal profile.
 
+## Field movement direction table
+
+The field movement entry at `0x0BABC` derives an eight-way ordinal from the
+active heading, then passes the doubled ordinal into `0x0BADE`. The probe at
+`0x0B77E` uses that ordinal to read one signed `(x,y)` pair from the source
+table at `0x0C002`, adds the pair to the active entity position, and calls the
+reviewed collision leaf at `0x0B48C`. The US-ROM table is:
+
+| Direction ordinal | X offset | Y offset | Source bytes |
+| ---: | ---: | ---: | --- |
+| 0 | `0` | `-40` | `00 00 FF D8` |
+| 1 | `40` | `-40` | `00 28 FF D8` |
+| 2 | `40` | `0` | `00 28 00 00` |
+| 3 | `40` | `40` | `00 28 00 28` |
+| 4 | `0` | `40` | `00 00 00 28` |
+| 5 | `-40` | `40` | `FF D8 00 28` |
+| 6 | `-40` | `0` | `FF D8 00 00` |
+| 7 | `-40` | `-40` | `FF D8 FF D8` |
+
+The offline graphics/resource extractor now copies exactly these 32 bytes to
+`assets/records/field/entity-movement-direction-table.bin`, exposed through
+the alias `records.field.entity.movement.direction.table`. The conversion
+loader decodes them into `MovementOffset[8]`; the Qt conversion runtime must
+use that typed table when it wires field input to the already converted
+`probe_entity_directional_collision()` and `advance_entity_movement_step()`.
+No runtime path reads `0x0C002` or any other ROM address.
+
 ## Export files
 
 - `functions.tsv`: one row per function and generated C file.
