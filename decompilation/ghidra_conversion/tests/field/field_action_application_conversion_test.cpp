@@ -44,7 +44,8 @@ int main() {
     special.funds = 1000U;
     const FieldActionCostRecord special_record{'E', 0U, 2U};
     if (!expect(apply_selected_field_action(
-                    special_record, context, special, {}, callbacks) ==
+                    special_record, context, special,
+                    FieldActionBaseCostLookup{}, callbacks) ==
                     FieldActionApplicationResult::applied &&
                 special.runner.special_action_count == 1U &&
                 special.funds == 998U && events.size() == 4U &&
@@ -95,7 +96,8 @@ int main() {
     capped.funds = 1000U;
     capped.runner.special_action_count = 0x14U;
     if (!expect(apply_selected_field_action(
-                    special_record, context, capped, {}, callbacks) ==
+                    special_record, context, capped, FieldActionBaseCostLookup{},
+                    callbacks) ==
                     FieldActionApplicationResult::special_action_limit &&
                 capped.runner.special_action_count == 0x14U &&
                 events.size() == 15U && events[10] == "refresh" &&
@@ -111,6 +113,53 @@ int main() {
                 FieldActionApplicationResult::invalid_record &&
                 state.service_result == -1 && events.size() == 15U)) {
         return 7;
+    }
+
+    // The source-bound path treats ordinary record.type as a zero-based
+    // D4540 row. Type 2 therefore uses item 3's verified 0x2C base cost,
+    // rather than a caller-provided lookup value.
+    FieldActionPurchaseState typed{};
+    typed.funds = 1000U;
+    events.clear();
+    const FieldActionCostRecord typed_record{2U, 0x5AU, 0U};
+    if (!expect(apply_selected_field_action(
+                    typed_record, context, typed, us_item_catalog(),
+                    callbacks) == FieldActionApplicationResult::applied &&
+                typed.runner.action_codes[0] == 3U &&
+                typed.runner.companion_values[0] == 0x5AU &&
+                typed.funds == 0x03BCU &&
+                events == std::vector<std::string>{"refresh", "confirm"})) {
+        return 8;
+    }
+
+    // An ordinary record beyond the fifty-row source catalog is not a free
+    // action. The typed path reports missing source data before refreshing or
+    // mutating the runner state.
+    FieldActionPurchaseState missing{};
+    missing.funds = 1000U;
+    events.clear();
+    const FieldActionCostRecord missing_record{50U, 0U, 0U};
+    if (!expect(apply_selected_field_action(
+                    missing_record, context, missing, us_item_catalog(),
+                    callbacks) ==
+                    FieldActionApplicationResult::missing_source_data &&
+                missing.funds == 1000U &&
+                missing.runner.action_codes[0] == 0U && events.empty())) {
+        return 9;
+    }
+
+    // Special record E follows its quantity-priced branch and does not need
+    // an ordinary D4540 row.
+    FieldActionPurchaseState typed_special{};
+    typed_special.funds = 1000U;
+    events.clear();
+    if (!expect(apply_selected_field_action(
+                    special_record, context, typed_special, us_item_catalog(),
+                    callbacks) == FieldActionApplicationResult::applied &&
+                typed_special.runner.special_action_count == 1U &&
+                typed_special.funds == 998U &&
+                events == std::vector<std::string>{"refresh", "confirm"})) {
+        return 10;
     }
 
     return 0;

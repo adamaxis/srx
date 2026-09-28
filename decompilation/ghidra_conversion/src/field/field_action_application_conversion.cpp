@@ -93,4 +93,38 @@ FieldActionApplicationResult apply_selected_field_action(
     return FieldActionApplicationResult::applied;
 }
 
+FieldActionApplicationResult apply_selected_field_action(
+    const FieldActionCostRecord& record,
+    const FieldActionCostContext& cost_context,
+    FieldActionPurchaseState& state,
+    const UsItemCatalog& item_catalog,
+    const FieldActionApplicationCallbacks& callbacks) {
+    // Preserve the source high-bit disabled marker before applying the
+    // zero-based D4540 identity check. This keeps the typed path's result
+    // distinct from a valid-looking record with missing source data.
+    if (record.type >= 0x80U) {
+        return apply_selected_field_action(record, cost_context, state,
+                                           FieldActionBaseCostLookup{},
+                                           callbacks);
+    }
+
+    const auto special_action = record.type == static_cast<std::uint8_t>('E');
+    if (!special_action) {
+        if (record.type >= item_catalog.size()) {
+            return FieldActionApplicationResult::missing_source_data;
+        }
+        const auto& item = item_catalog[record.type];
+        if (item.item_code != static_cast<std::uint8_t>(record.type + 1U)) {
+            return FieldActionApplicationResult::missing_source_data;
+        }
+    }
+
+    const FieldActionBaseCostLookup lookup =
+        [&item_catalog](const std::uint8_t record_type) -> std::uint32_t {
+        return item_catalog[record_type].base_cost;
+    };
+    return apply_selected_field_action(record, cost_context, state, lookup,
+                                       callbacks);
+}
+
 } // namespace shadowrun::ghidra_conversion

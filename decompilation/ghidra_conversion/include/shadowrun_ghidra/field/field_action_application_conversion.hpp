@@ -27,6 +27,7 @@ struct FieldActionPurchaseState {
 enum class FieldActionApplicationResult {
     applied,
     invalid_record,
+    missing_source_data,
     no_inventory_slot,
     insufficient_funds,
     cancelled,
@@ -57,6 +58,18 @@ FieldActionApplicationResult apply_selected_field_action(
     const FieldActionCostContext& cost_context,
     FieldActionPurchaseState& state,
     const FieldActionBaseCostLookup& base_cost_lookup,
+    const FieldActionApplicationCallbacks& callbacks = {});
+
+// Source-data-bound 0x5794E path. Ordinary record.type values are zero-based
+// D4540 row indices; the typed overload rejects an out-of-range or
+// identity-mismatched row instead of allowing a missing base cost to become a
+// fabricated zero-price purchase. Special record 'E' remains the separate
+// quantity-priced source branch and does not require an item row.
+FieldActionApplicationResult apply_selected_field_action(
+    const FieldActionCostRecord& record,
+    const FieldActionCostContext& cost_context,
+    FieldActionPurchaseState& state,
+    const UsItemCatalog& item_catalog,
     const FieldActionApplicationCallbacks& callbacks = {});
 
 } // namespace shadowrun::ghidra_conversion

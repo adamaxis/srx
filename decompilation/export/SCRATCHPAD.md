@@ -1422,6 +1422,10 @@ The native conversion is `apply_selected_field_action()` in the separate
   selected marker as marker+1 in the empty action slot and copy record byte 1
   into the companion `+0x6E` slot. This marker+1 write is intentional source
   behavior, not a normalization invented by the host layer.
+  The source-data-bound overload validates the zero-based record type against
+  the typed fifty-row catalog and resolves `+0x22` directly. An out-of-range
+  or identity-mismatched row returns `missing_source_data` before the detail
+  refresh, cost check, or runner mutation; it cannot become a free purchase.
 * Funds are checked before the confirmation prompt; insufficient funds renders
   its message and waits, and funds are deducted only after the prompt accepts.
   Cancel, no-slot, insufficient-funds, and special capacity outcomes leave
