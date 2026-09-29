@@ -40,10 +40,49 @@ int main() {
            delayed_record.continuation_kind ==
                EntityBehaviorContinuationKind::movement_route);
 
+    EntityBehaviorFrameRecord heading_record{};
+    heading_record.transition_gate = -1;
+    heading_record.auxiliary_marker = 3U;
+    heading_record.target_marker = -1;
+    EntityBehaviorActionWorldState heading_world{};
+    heading_world.controller_action = 3;
+    int heading_type_calls = 0;
+    EntityBehaviorActionCallbacks heading_callbacks{};
+    heading_callbacks.update_entity_target_heading =
+        [&](EntityBehaviorFrameRecord&) { ++heading_type_calls; };
+    const auto heading_result = advance_entity_behavior_action(
+        heading_record, heading_world, heading_callbacks);
+    assert(heading_result.kind ==
+               EntityBehaviorActionResultKind::controller_heading_prepared &&
+           heading_record.target_heading == 3U &&
+           heading_record.auxiliary_marker == 0U &&
+           heading_type_calls == 0 &&
+           heading_record.continuation_kind ==
+               EntityBehaviorContinuationKind::movement_route);
+
+    EntityBehaviorFrameRecord delay_record{};
+    delay_record.transition_gate = -1;
+    delay_record.auxiliary_marker = 4U;
+    EntityBehaviorActionWorldState delay_world{};
+    int idle_delay_mode = -1;
+    EntityBehaviorActionCallbacks delay_callbacks{};
+    delay_callbacks.update_entity_animation_delay =
+        [&](EntityBehaviorFrameRecord&, const std::uint16_t mode) {
+            idle_delay_mode = static_cast<int>(mode);
+        };
+    const auto delay_result = advance_entity_behavior_action(
+        delay_record, delay_world, delay_callbacks);
+    assert(delay_result.kind ==
+               EntityBehaviorActionResultKind::collision_recheck_prepared &&
+           idle_delay_mode == 1 && delay_record.auxiliary_marker == 5U &&
+           delay_record.continuation_kind ==
+               EntityBehaviorContinuationKind::collision_recheck);
+
     EntityBehaviorFrameRecord target_record{};
     target_record.transition_gate = -1;
     target_record.target_marker = -1;
     EntityBehaviorActionWorldState target_world{};
+    target_world.controller_events = 0x0040U;
     target_world.controller_action = 1;
     EntityBehaviorActionCallbacks target_callbacks{};
     int target_heading_calls = 0;
@@ -64,6 +103,7 @@ int main() {
     effect_record.transition_gate = -1;
     effect_record.source_type = 0x0DU;
     EntityBehaviorActionWorldState effect_world{};
+    effect_world.controller_events = 0x0040U;
     effect_world.controller_action = 1;
     EntityBehaviorActionCallbacks effect_callbacks{};
     int alternate_heading_calls = 0;
@@ -86,6 +126,7 @@ int main() {
     spawn_record.transition_gate = -1;
     spawn_record.source_type = 1U;
     EntityBehaviorActionWorldState spawn_world{};
+    spawn_world.controller_events = 0x0040U;
     spawn_world.controller_action = 1;
     EntityBehaviorActionCallbacks spawn_callbacks{};
     int field_heading_calls = 0;
@@ -113,6 +154,7 @@ int main() {
     action_record.transition_gate = -1;
     action_record.source_type = 1U;
     EntityBehaviorActionWorldState action_world{};
+    action_world.controller_events = 0x0040U;
     action_world.controller_action = 4;
     EntityBehaviorActionCallbacks action_callbacks{};
     int audio_event = 0;
@@ -144,6 +186,7 @@ int main() {
     missing_record.transition_gate = -1;
     missing_record.source_type = 1U;
     EntityBehaviorActionWorldState missing_world{};
+    missing_world.controller_events = 0x0040U;
     const auto unresolved = advance_entity_behavior_action(
         missing_record, missing_world, {});
     assert(unresolved.kind ==

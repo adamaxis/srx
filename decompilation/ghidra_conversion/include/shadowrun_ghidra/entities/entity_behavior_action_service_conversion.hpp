@@ -85,10 +85,8 @@ struct EntityBehaviorActionResult {
 };
 
 // ROM 0x0ACAE: route one entity's behavior action through the field-service
-// gates and its type-specific target/spawn/animation branches. The source
-// continuations are represented by enum values on the typed entity record;
-// source function addresses and Genesis global-memory reads do not cross this
-// API.
+// gates and its type-specific target/spawn/animation branches. Override==0
+// and FFDD22 bit 6 clear skip those branches and finish at 0xAE26.
 EntityBehaviorActionResult advance_entity_behavior_action(
     EntityBehaviorFrameRecord& record,
     EntityBehaviorActionWorldState& world,

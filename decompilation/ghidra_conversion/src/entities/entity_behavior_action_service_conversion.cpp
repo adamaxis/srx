@@ -60,11 +60,12 @@ bool entity_behavior_action_callbacks_complete(
         return true;
     }
 
+    // ROM 0xAD4C: override==0 and FFDD22 bit 6 clear skip the type
+    // branches and finish at 0xAE26. Heading -1 still needs 0xABFC.
     if (world.action_override == 0 &&
-        (world.controller_events & 0x0040U) == 0U &&
-        world.controller_action == -1 &&
-        !callbacks.update_entity_animation_delay) {
-        return false;
+        (world.controller_events & 0x0040U) == 0U) {
+        return world.controller_action != -1 ||
+               static_cast<bool>(callbacks.update_entity_animation_delay);
     }
     if (record.target_marker < 0) {
         return callbacks.update_entity_target_heading &&
@@ -154,7 +155,9 @@ EntityBehaviorActionResult advance_entity_behavior_action(
             return finish_with_controller_action(record, world);
         }
         record.auxiliary_marker = 0U;
-    } else if (world.action_override != 0) {
+        return finish_with_controller_action(record, world);
+    }
+    if (world.action_override != 0) {
         world.action_override = 0;
     }
     record.auxiliary_marker = 0U;
