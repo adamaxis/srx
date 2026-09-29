@@ -767,6 +767,10 @@ bool refresh_menu_text(
     return true;
 }
 
+MenuTextCursorPlan advance_menu_text_cursor_plan() {
+    return {};
+}
+
 void advance_menu_text_cursor(
     MenuTextCursorState& state,
     const std::function<void()>& render_text,

@@ -245,6 +245,13 @@ int main() {
     if (cursor.selector != 0 || order != std::vector<int>{20, 21}) {
         return 11;
     }
+    const auto cursor_plan = advance_menu_text_cursor_plan();
+    if (cursor_plan.name_destination != 0xC59EU ||
+        cursor_plan.name_source_offset != 0x58U ||
+        cursor_plan.hud_destination != 0xC928U ||
+        cursor_plan.palette != 0x6000U) {
+        return 58;
+    }
 
     MenuNumberRenderState number{2, 5};
     std::vector<std::int16_t> values;

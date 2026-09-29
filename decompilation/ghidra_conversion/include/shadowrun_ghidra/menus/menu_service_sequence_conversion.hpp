@@ -582,13 +582,21 @@ bool refresh_menu_text(
     const std::function<void()>& render_text);
 
 struct MenuTextCursorState {
-    std::int8_t selector = 0;
+    std::int8_t selector = 0; // FFDD28: 0 uses FFDD48, else FFDD4C
     std::int16_t primary_marker = 0;
     std::int16_t secondary_marker = 0;
 };
 
-// ROM 0x1209A: alternate the two text slots until one is available, then
-// render through the text boundary and run the cursor-service leaf.
+struct MenuTextCursorPlan {
+    std::uint32_t name_destination = 0xC59EU;
+    std::uint16_t name_source_offset = 0x58;
+    std::uint16_t palette = 0x6000;
+    std::uint32_t hud_destination = 0xC928U; // 0x110E8 D4
+};
+
+// ROM 0x1209A: FFDD28 toggles FFDD48/FFDD4C until the occupancy word is
+// nonnegative, then 0xC0DA dest C59E from +0x58 and 0x110E8 at C928.
+MenuTextCursorPlan advance_menu_text_cursor_plan();
 void advance_menu_text_cursor(
     MenuTextCursorState& state,
     const std::function<void()>& render_text,
