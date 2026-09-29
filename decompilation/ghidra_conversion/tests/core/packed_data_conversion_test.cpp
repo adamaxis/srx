@@ -14,24 +14,21 @@ bool expect(bool condition) {
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
-    NibbleLookup identity{};
-    for (std::uint8_t index = 0; index < identity.size(); ++index) {
-        identity[index] = index;
-    }
-    const auto unchanged = expand_packed_nibbles(
-        {0x00U, 0x1AU, 0xF3U}, identity);
-    if (!expect(unchanged == std::vector<std::uint8_t>{
-                    0x00U, 0x1AU, 0xF3U})) {
+    if (!expect(kPackedNibbleTable[0x06] == 0x04 &&
+                kPackedNibbleTable[0x07] == 0x03 &&
+                kPackedNibbleTable[0x0D] == 0x04 &&
+                kPackedNibbleTable[0x0F] == 0x02)) {
         return 1;
     }
 
-    NibbleLookup reversed{};
-    for (std::uint8_t index = 0; index < reversed.size(); ++index) {
-        reversed[index] = static_cast<std::uint8_t>(0x0FU - index);
+    const auto remapped = expand_packed_nibbles(
+        {0x00U, 0x1AU, 0xF3U, 0x65U, 0x7DU, 0xFFU});
+    if (!expect(remapped == std::vector<std::uint8_t>{
+                    0x00U, 0x13U, 0x23U, 0x45U, 0x34U, 0x22U})) {
+        return 2;
     }
-    const auto remapped = expand_packed_nibbles({0x12U, 0xA0U}, reversed);
-    if (!expect(remapped == std::vector<std::uint8_t>{0xEDU, 0x5FU})) {
-        return 1;
+    if (!expect(expand_packed_nibbles({}).empty())) {
+        return 3;
     }
     return 0;
 }

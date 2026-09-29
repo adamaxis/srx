@@ -365,10 +365,15 @@ void emit_title_sprite_burst(
 
 bool append_entity_render_sprite(SpriteExpansionState& state,
                                  const SpriteExpansionCallbacks& callbacks) {
-    if ((state.flags & 0x80U) != 0U && state.source_count == 0U) {
-        return false;
+    if ((state.flags & 0x80U) != 0U) {
+        if (state.source_count == 0U) {
+            return false;
+        }
+        if (callbacks.decode_field_tile_sample) {
+            callbacks.decode_field_tile_sample(state);
+        }
     }
-    if ((state.flags & 0x80U) != 0U && callbacks.expand_packed_nibbles) {
+    if ((state.flags & 0x20U) != 0U && callbacks.expand_packed_nibbles) {
         callbacks.expand_packed_nibbles(state);
     }
     if (callbacks.append_sprite) {

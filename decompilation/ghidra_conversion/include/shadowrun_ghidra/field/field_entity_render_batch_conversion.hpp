@@ -257,10 +257,15 @@ struct SpriteExpansionState {
 };
 
 struct SpriteExpansionCallbacks {
+    // ROM 0x60FA BTST #7 of +0x11: JSR 0x3EFE.
+    std::function<void(SpriteExpansionState&)> decode_field_tile_sample;
+    // ROM 0x60FA BTST #5 of +0x11: JSR 0x3E86.
     std::function<void(SpriteExpansionState&)> expand_packed_nibbles;
     std::function<void(SpriteExpansionState&)> append_sprite;
 };
 
+// ROM 0x60FA: bit 7 of +0x11 runs 0x3EFE unless +0xC is 0; bit 5 runs 0x3E86;
+// then queue the record at FFDF2C.
 bool append_entity_render_sprite(SpriteExpansionState& state,
                                  const SpriteExpansionCallbacks& callbacks);
 

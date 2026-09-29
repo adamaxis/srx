@@ -230,14 +230,34 @@ int main() {
     }
 
     SpriteExpansionState sprite{0x80, 2, 0, 0, false};
+    int decoded = 0;
     int expanded = 0;
     int appended = 0;
-    if (!append_entity_render_sprite(
-            sprite,
-            {[&](SpriteExpansionState&) { ++expanded; },
-             [&](SpriteExpansionState&) { ++appended; }}) ||
-        expanded != 1 || appended != 1 || !sprite.appended) {
+    const SpriteExpansionCallbacks sprite_callbacks{
+        [&](SpriteExpansionState&) { ++decoded; },
+        [&](SpriteExpansionState&) { ++expanded; },
+        [&](SpriteExpansionState&) { ++appended; }};
+    if (!append_entity_render_sprite(sprite, sprite_callbacks) ||
+        decoded != 1 || expanded != 0 || appended != 1 || !sprite.appended) {
         return 11;
+    }
+    sprite = SpriteExpansionState{0x20, 2, 0, 0, false};
+    decoded = expanded = appended = 0;
+    if (!append_entity_render_sprite(sprite, sprite_callbacks) ||
+        decoded != 0 || expanded != 1 || appended != 1) {
+        return 27;
+    }
+    sprite = SpriteExpansionState{0xA0, 2, 0, 0, false};
+    decoded = expanded = appended = 0;
+    if (!append_entity_render_sprite(sprite, sprite_callbacks) ||
+        decoded != 1 || expanded != 1 || appended != 1) {
+        return 28;
+    }
+    sprite = SpriteExpansionState{0x80, 0, 0, 0, false};
+    decoded = expanded = appended = 0;
+    if (append_entity_render_sprite(sprite, sprite_callbacks) ||
+        decoded != 0 || expanded != 0 || appended != 0 || sprite.appended) {
+        return 29;
     }
 
     EntityRuntimeState runtime{};

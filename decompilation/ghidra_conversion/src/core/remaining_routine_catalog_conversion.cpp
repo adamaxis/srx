@@ -35,6 +35,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x000041F0U, "prepare_field_vertical_origin", RoutineFamily::field, 38U},
     {0x00004216U, "prepare_field_horizontal_origin", RoutineFamily::field, 38U},
     {0x000049A0U, "noop_effect_callback", RoutineFamily::field, 2U},
+    {0x000060FAU, "append_entity_render_sprite", RoutineFamily::field, 78U},
     {0x0000A8EAU, "service_entity_behavior_frames", RoutineFamily::graphics, 488U},
     {0x0000AB02U, "complete_entity_behavior_transition", RoutineFamily::graphics, 180U},
     {0x0000ACAEU, "advance_entity_behavior_action", RoutineFamily::graphics, 426U},
