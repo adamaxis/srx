@@ -30,20 +30,31 @@ void reset_world_frame_service_state(WorldFrameServiceState& state) {
     state.words[0x12] = 0x00B4U;
 }
 
-WorldSceneEffectSpriteBuild advance_world_scene_effect_timer_a(
-    WorldFrameServiceState& state) {
-    auto countdown = static_cast<std::int16_t>(state.words[3]);
-    --countdown;
-    if (countdown < 0) {
-        countdown = 0x14;
-        auto frame = static_cast<std::uint16_t>(state.words[0x0B] + 1U);
-        if (frame >= 9U) {
-            frame = 0U;
-        }
-        state.words[0x0B] = frame;
-    }
-    state.words[3] = static_cast<std::uint16_t>(countdown);
+namespace {
 
+void tick_world_scene_effect_timer(
+    std::uint16_t& countdown,
+    std::uint16_t& frame,
+    const std::int16_t reload,
+    const std::uint16_t wrap) {
+    auto remaining = static_cast<std::int16_t>(countdown);
+    --remaining;
+    if (remaining < 0) {
+        remaining = reload;
+        auto next = static_cast<std::uint16_t>(frame + 1U);
+        if (next >= wrap) {
+            next = 0U;
+        }
+        frame = next;
+    }
+    countdown = static_cast<std::uint16_t>(remaining);
+}
+
+WorldSceneEffectSpriteBuild build_world_scene_effect_sprite(
+    const WorldFrameServiceState& state,
+    const std::int16_t extra_x,
+    const std::int16_t extra_y,
+    const std::uint32_t source) {
     WorldSceneEffectSpriteBuild build{};
     const auto heading =
         static_cast<std::size_t>(state.words[0x0C] %
@@ -51,15 +62,49 @@ WorldSceneEffectSpriteBuild advance_world_scene_effect_timer_a(
     const auto origin_x = static_cast<std::int16_t>(state.words[5]);
     const auto origin_y = static_cast<std::int16_t>(state.words[6]);
     build.x = static_cast<std::int16_t>(
-        origin_x + kWorldSceneEffectHeadingOffsets[heading][0]);
+        origin_x + kWorldSceneEffectHeadingOffsets[heading][0] + extra_x);
     build.y = static_cast<std::int16_t>(
-        origin_y + kWorldSceneEffectHeadingOffsets[heading][1]);
+        origin_y + kWorldSceneEffectHeadingOffsets[heading][1] + extra_y);
     build.flags = 0x4000U;
-    const auto frame = static_cast<std::size_t>(state.words[0x0B]);
-    if (frame < kWorldSceneEffectTimerALists.size()) {
-        build.source = kWorldSceneEffectTimerALists[frame];
-    }
+    build.source = source;
     return build;
+}
+
+} // namespace
+
+WorldSceneEffectSpriteBuild advance_world_scene_effect_timer_a(
+    WorldFrameServiceState& state) {
+    tick_world_scene_effect_timer(state.words[3], state.words[0x0B], 0x14, 9U);
+    const auto frame = static_cast<std::size_t>(state.words[0x0B]);
+    return build_world_scene_effect_sprite(
+        state, 0, 0,
+        frame < kWorldSceneEffectTimerALists.size()
+            ? kWorldSceneEffectTimerALists[frame]
+            : 0U);
+}
+
+WorldSceneEffectSpriteBuild advance_world_scene_effect_timer_b(
+    WorldFrameServiceState& state) {
+    tick_world_scene_effect_timer(
+        state.words[0x0D], state.words[0x0E], 0x0A, 10U);
+    const auto frame = static_cast<std::size_t>(state.words[0x0E]);
+    return build_world_scene_effect_sprite(
+        state, 0, -0x18,
+        frame < kWorldSceneEffectTimerBLists.size()
+            ? kWorldSceneEffectTimerBLists[frame]
+            : 0U);
+}
+
+WorldSceneEffectSpriteBuild advance_world_scene_effect_timer_c(
+    WorldFrameServiceState& state) {
+    tick_world_scene_effect_timer(
+        state.words[0x10], state.words[0x0F], 0x04, 0x28U);
+    const auto frame = static_cast<std::size_t>(state.words[0x0F]);
+    return build_world_scene_effect_sprite(
+        state, 0x12, 0x30,
+        frame < kWorldSceneEffectTimerCLists.size()
+            ? kWorldSceneEffectTimerCLists[frame]
+            : 0U);
 }
 
 } // namespace shadowrun::ghidra_conversion

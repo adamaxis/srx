@@ -51,5 +51,21 @@ int main() {
         sprite.source != 0x0001FEB38U) {
         return 5;
     }
+
+    frame.words[0x0D] = 0U;
+    frame.words[0x0E] = 9U;
+    sprite = advance_world_scene_effect_timer_b(frame);
+    if (frame.words[0x0D] != 0x0AU || frame.words[0x0E] != 0U ||
+        sprite.y != 37 || sprite.source != 0x0001FEADEU) {
+        return 6;
+    }
+
+    frame.words[0x10] = 0U;
+    frame.words[0x0F] = 39U;
+    sprite = advance_world_scene_effect_timer_c(frame);
+    if (frame.words[0x10] != 4U || frame.words[0x0F] != 0U || sprite.x != 30 ||
+        sprite.y != 109 || sprite.source != 0x0001FEC34U) {
+        return 7;
+    }
     return 0;
 }

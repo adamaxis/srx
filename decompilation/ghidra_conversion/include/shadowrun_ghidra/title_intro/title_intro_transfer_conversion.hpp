@@ -65,4 +65,26 @@ struct WorldSceneEffectSpriteBuild {
 WorldSceneEffectSpriteBuild advance_world_scene_effect_timer_a(
     WorldFrameServiceState& state);
 
+constexpr std::array<std::uint32_t, 10> kWorldSceneEffectTimerBLists{
+    0x0001FEADEU, 0x0001FEB02U, 0x0001FEB26U, 0x0001FEB14U, 0x0001FEAF0U,
+    0x0001FEAF0U, 0x0001FEB14U, 0x0001FEB26U, 0x0001FEB02U, 0x0001FEADEU};
+
+// ROM 0x5D5FC: +0x1A reload 0xA, +0x1C wrap 0..9, D2-0x18.
+WorldSceneEffectSpriteBuild advance_world_scene_effect_timer_b(
+    WorldFrameServiceState& state);
+
+constexpr std::array<std::uint32_t, 40> kWorldSceneEffectTimerCLists{
+    0x0001FEC34U, 0x0001FEC02U, 0x0001FEBD0U, 0x0001FEB8EU, 0x00001D47CU,
+    0x00001D47CU, 0x00001D47CU, 0x00001D47CU, 0x00001D47CU, 0x00001D47CU,
+    0x00001D47CU, 0x00001D47CU, 0x00001D47CU, 0x00001D47CU, 0x0001FEB7AU,
+    0x0001FEB7AU, 0x0001FEB66U, 0x0001FEB66U, 0x0001FEB52U, 0x0001FEB52U,
+    0x00001D47CU, 0x00001D47CU, 0x00001D47CU, 0x00001D47CU, 0x00001D47CU,
+    0x00001D47CU, 0x00001D47CU, 0x0001FEB84U, 0x0001FEB84U, 0x0001FEB70U,
+    0x0001FEB70U, 0x0001FEB5CU, 0x0001FEB5CU, 0x00001D47CU, 0x00001D47CU,
+    0x00001D47CU, 0x00001D47CU, 0x00001D47CU, 0x00001D47CU, 0x00001D47CU};
+
+// ROM 0x5D65A: +0x20 reload 4, +0x1E wrap 0..0x27, D2+0x30 D1+0x12.
+WorldSceneEffectSpriteBuild advance_world_scene_effect_timer_c(
+    WorldFrameServiceState& state);
+
 } // namespace shadowrun::ghidra_conversion
