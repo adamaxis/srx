@@ -80,4 +80,9 @@ EntityHeadingVector transform_entity_heading_vector(
     std::uint16_t heading,
     std::int16_t magnitude);
 
+// ROM 0xAEBA: MULS.W of 0x15E56[index & 127] by factor, then SWAP (high word).
+std::int16_t muls_heading_wave_high_word(
+    std::size_t table_index,
+    std::int16_t factor);
+
 } // namespace shadowrun::ghidra_conversion

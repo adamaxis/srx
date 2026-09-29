@@ -1,5 +1,7 @@
 #include "shadowrun_ghidra/rendering/display_service_batch_conversion.hpp"
 
+#include "shadowrun_ghidra/entities/entity_coordinate_conversion.hpp"
+
 #include <algorithm>
 #include <cstddef>
 
@@ -260,8 +262,15 @@ bool advance_title_sprite_wave(
         return true;
     }
     const auto palette = palettes[(state.palette_selector >> 2U) & 3U];
+    const auto factor = static_cast<std::int16_t>(state.timer);
     for (std::uint16_t offset = 0; offset < 0x100U; offset += 8U) {
-        callbacks.build(state.base_x, state.base_y, offset, palette);
+        const auto word_index = static_cast<std::size_t>(offset >> 1U);
+        const auto dx = muls_heading_wave_high_word(word_index + 96U, factor);
+        const auto dy = muls_heading_wave_high_word(word_index, factor);
+        callbacks.build(
+            static_cast<std::uint16_t>(state.base_x + static_cast<std::uint16_t>(dx)),
+            static_cast<std::uint16_t>(state.base_y + static_cast<std::uint16_t>(dy)),
+            offset, palette);
     }
     return true;
 }

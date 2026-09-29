@@ -146,4 +146,15 @@ EntityHeadingVector transform_entity_heading_vector(
                                   kHeadingWaveTable[vertical_index])};
 }
 
+std::int16_t muls_heading_wave_high_word(
+    const std::size_t table_index,
+    const std::int16_t factor) {
+    const auto sample = static_cast<std::int16_t>(
+        kHeadingWaveTable[table_index & 0x7FU]);
+    const auto product =
+        static_cast<std::int32_t>(sample) * static_cast<std::int32_t>(factor);
+    return static_cast<std::int16_t>(
+        static_cast<std::uint32_t>(product) >> 16U);
+}
+
 } // namespace shadowrun::ghidra_conversion

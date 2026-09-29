@@ -54,7 +54,8 @@ int main() {
     scene_input.layer_b[1] = 4U;
     int initialized = 0;
     prepare_field_scene_buffers(scene, scene_input,
-                                {[&] { ++initialized; }, [] { return true; }});
+                                {[&] { ++initialized; }, {},
+                                 [] { return true; }});
     if (!scene.initialized || initialized != 1 || scene.scene_mode != 1 ||
         scene.field_resource_mode != 0x2C || scene.profile[3] != 34 ||
         scene.camera_x != 0x100 || scene.camera_y != 0x100 ||
@@ -175,16 +176,23 @@ int main() {
 
     TitleSpriteWaveState wave{0, 10, 20, 4, true};
     int sprites = 0;
+    std::uint16_t first_x = 0;
+    std::uint16_t first_y = 0;
     if (!advance_title_sprite_wave(
             wave, {1, 2, 3, 4},
-            {[&](const std::uint16_t, const std::uint16_t,
-                 const std::uint16_t, const std::uint32_t palette) {
+            {[&](const std::uint16_t x, const std::uint16_t y,
+                 const std::uint16_t offset, const std::uint32_t palette) {
                  ++sprites;
+                 if (offset == 0U) {
+                     first_x = x;
+                     first_y = y;
+                 }
                  if (palette != 2) {
                      sprites = -100;
                  }
              }}) ||
-        wave.timer != 8 || sprites != 32) {
+        wave.timer != 8 || sprites != 32 ||
+        first_x != 6U || first_y != 20U) {
         return 13;
     }
 
