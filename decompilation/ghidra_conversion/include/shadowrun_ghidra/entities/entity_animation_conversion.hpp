@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <vector>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -47,6 +48,30 @@ std::uint16_t select_field_entity_animation_selector(std::uint8_t direction,
 // ROM 0x600E negative-list bound: after the last pose, the frame stays on
 // count-1 until 0xAF6C clears it.
 std::uint16_t bound_field_walk_animation_frame(std::uint16_t frame);
+
+struct EntitySpriteDescriptorList {
+    std::int16_t marker = 0;
+    std::uint16_t auxiliary = 0;
+    std::vector<std::uint32_t> frame_pointers;
+};
+
+struct EntitySpriteDescriptorState {
+    std::uint16_t kind = 0; // +0x0E
+    std::uint16_t selector = 0; // +0x16
+    std::uint8_t flags = 0; // +0x11
+    std::uint16_t frame = 0; // +0x1E
+    std::uint16_t increment = 0; // +0x18
+    std::uint16_t timing_word = 0; // +0xCA
+    std::uint32_t descriptor = 0; // +0x12
+};
+
+// ROM 0x600E: resolve the kind/+0x16 list, copy cadence into +0x18, select
+// the frame pointer, and run 0x60FA when that descriptor is 0x8002 and +0x11
+// bit 0 is set. 0x60F4 always sets carry, so the FFDD3E restore is dead.
+bool advance_entity_sprite_descriptor(
+    EntitySpriteDescriptorState& state,
+    const EntitySpriteDescriptorList& list,
+    std::uint16_t descriptor_word);
 
 // ROM 0x14D6A: select the active equipment-item or magic-spell 0x30-byte
 // action row for the entity-motion distance profile. The source chooses the

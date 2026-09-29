@@ -78,5 +78,76 @@ int main() {
         return 10;
     }
 
+    const EntitySpriteDescriptorList walk_list{
+        static_cast<std::int16_t>(0x8002), 0x0300U, {0x1000U, 0x1004U}};
+    EntitySpriteDescriptorState descriptor{
+        0x0003U, 0x0060U, 0x01U, 0U, 0U, 0x0010U, 0U};
+    if (!expect(advance_entity_sprite_descriptor(
+                    descriptor, walk_list, 0x8002U) &&
+                descriptor.frame == 0U &&
+                descriptor.increment == 0x0300U &&
+                (descriptor.selector & 0x8000U) == 0U &&
+                (descriptor.flags & 0x01U) == 0U &&
+                descriptor.descriptor == 0x1000U)) {
+        return 11;
+    }
+
+    descriptor = EntitySpriteDescriptorState{
+        0x0003U, 0x0060U, 0x01U, 2U, 0U, 0x0010U, 0U};
+    if (!expect(advance_entity_sprite_descriptor(
+                    descriptor, walk_list, 0x8002U) &&
+                descriptor.frame == 1U &&
+                descriptor.increment == 0x0300U &&
+                (descriptor.selector & 0x8000U) != 0U &&
+                descriptor.descriptor == 0x1004U)) {
+        return 12;
+    }
+
+    const EntitySpriteDescriptorList positive_list{
+        4, 0x00FFU, {0x2000U, 0x2004U, 0x2008U, 0x200CU}};
+    descriptor = EntitySpriteDescriptorState{
+        0x0001U, 0U, 0U, 4U, 0U, 0x0015U, 0U};
+    if (!expect(!advance_entity_sprite_descriptor(
+                     descriptor, positive_list, 0U) &&
+                descriptor.frame == 0U &&
+                descriptor.increment == 0x024CU &&
+                descriptor.descriptor == 0x2000U &&
+                descriptor.increment != 0x00FFU)) {
+        return 13;
+    }
+
+    descriptor = EntitySpriteDescriptorState{
+        0x0001U, 0U, 0U, 1U, 0U, 0x0016U, 0U};
+    if (!expect(!advance_entity_sprite_descriptor(
+                     descriptor, positive_list, 0U) &&
+                descriptor.frame == 1U &&
+                descriptor.increment == 0x0160U &&
+                descriptor.descriptor == 0x2004U)) {
+        return 14;
+    }
+
+    descriptor = EntitySpriteDescriptorState{
+        0x000DU, 0U, 0U, 2U, 0U, 0x0016U, 0U};
+    if (!expect(!advance_entity_sprite_descriptor(
+                     descriptor, positive_list, 0U) &&
+                descriptor.increment == 0x0090U)) {
+        return 15;
+    }
+    descriptor = EntitySpriteDescriptorState{
+        0x000DU, 0U, 0U, 1U, 0U, 0x0016U, 0U};
+    if (!expect(!advance_entity_sprite_descriptor(
+                     descriptor, positive_list, 0U) &&
+                descriptor.increment == 0x0180U)) {
+        return 16;
+    }
+
+    descriptor = EntitySpriteDescriptorState{
+        0x0003U, 0x0060U, 0U, 0U, 0U, 0U, 0U};
+    if (!expect(!advance_entity_sprite_descriptor(
+                     descriptor, walk_list, 0x8002U) &&
+                (descriptor.flags & 0x01U) == 0U &&
+                descriptor.descriptor == 0x1000U)) {
+        return 17;
+    }
     return 0;
 }

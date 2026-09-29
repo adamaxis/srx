@@ -206,6 +206,7 @@ struct EntityRenderPassCallbacks {
     std::function<void(RenderEntityState&)> advance_animation;
     std::function<void(RenderEntityState&)> finish_entity;
     std::function<void()> finish_pass;
+    std::function<void(RenderEntityState&)> advance_sprite_descriptor;
 };
 
 // ROM 0x04618: run the sixteen-slot active-entity projection/animation pass.

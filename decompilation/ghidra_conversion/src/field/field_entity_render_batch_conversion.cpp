@@ -309,6 +309,9 @@ void update_entity_render_pass(
         if (callbacks.advance_animation) {
             callbacks.advance_animation(entity);
         }
+        if (callbacks.advance_sprite_descriptor) {
+            callbacks.advance_sprite_descriptor(entity);
+        }
         if (callbacks.finish_entity) {
             callbacks.finish_entity(entity);
         }
