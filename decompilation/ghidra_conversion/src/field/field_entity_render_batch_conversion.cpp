@@ -365,6 +365,18 @@ void clone_entity_spawn_variant_a(EntitySpawnRecord& destination,
     destination.variant = 0x0D;
 }
 
+void clone_entity_spawn_variant_a(EntitySpawnCloneRecord& destination,
+                                  const EntitySpawnCloneRecord& source,
+                                  std::uint16_t& phase_gate) {
+    phase_gate = 4;
+    destination.auxiliary = 0x0D;
+    destination.slot = source.slot;
+    destination.attribute = source.attribute;
+    destination.countdown = 5;
+    destination.phase = 0;
+    destination.script = source.script;
+}
+
 void clone_entity_spawn_variant_b(EntitySpawnRecord& destination,
                                   const EntitySpawnRecord& source) {
     destination = source;

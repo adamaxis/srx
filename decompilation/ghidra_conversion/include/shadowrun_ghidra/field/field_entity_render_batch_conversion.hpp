@@ -264,6 +264,20 @@ void clone_entity_spawn_variant_a(EntitySpawnRecord& destination,
 void clone_entity_spawn_variant_b(EntitySpawnRecord& destination,
                                   const EntitySpawnRecord& source);
 
+struct EntitySpawnCloneRecord {
+    std::uint8_t countdown = 0;
+    std::uint8_t phase = 0;
+    std::int16_t attribute = 0;
+    std::uint16_t slot = 0;
+    std::uint8_t auxiliary = 0;
+    std::uint32_t script = 0;
+};
+
+// ROM 0x5468: FFFE004=4, dest +0xB2=0xD, copy +0x32/+0x2A/+0xD8, +2=5, +3=0.
+void clone_entity_spawn_variant_a(EntitySpawnCloneRecord& destination,
+                                  const EntitySpawnCloneRecord& source,
+                                  std::uint16_t& phase_gate);
+
 struct TitleSpriteTimerState {
     std::int8_t countdown = 0;
     std::uint8_t phase = 0;

@@ -249,6 +249,16 @@ int main() {
     if (destination.variant != 6) {
         return 8;
     }
+    EntitySpawnCloneRecord clone_source{1, 2, 0x2A, 3, 4, 0xD8U};
+    EntitySpawnCloneRecord clone_destination{9, 9, 9, 9, 9, 9};
+    std::uint16_t phase_gate = 0;
+    clone_entity_spawn_variant_a(clone_destination, clone_source, phase_gate);
+    if (phase_gate != 4U || clone_destination.auxiliary != 0x0D ||
+        clone_destination.slot != 3 || clone_destination.attribute != 0x2A ||
+        clone_destination.countdown != 5 || clone_destination.phase != 0 ||
+        clone_destination.script != 0xD8U) {
+        return 20;
+    }
 
     TitleSpriteTimerState timer{0, 3};
     int timer_builds = 0;

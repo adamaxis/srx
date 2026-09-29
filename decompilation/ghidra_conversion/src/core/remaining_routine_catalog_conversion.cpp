@@ -71,6 +71,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00004ADCU, "advance_entity_effect_timer", RoutineFamily::field, 144U},
     {0x00004B6CU, "reset_effect_record", RoutineFamily::field, 68U},
     {0x00004E86U, "advance_effect_animation", RoutineFamily::field, 156U},
+    {0x00005468U, "clone_entity_spawn_variant_a", RoutineFamily::field, 44U},
     {0x00005494U, "advance_jitter_effect", RoutineFamily::field, 234U},
     {0x00005662U, "advance_effect_animation_variant", RoutineFamily::field, 124U},
     {0x00005A56U, "project_entity_screen_position", RoutineFamily::entity, 200U},
