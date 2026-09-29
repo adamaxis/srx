@@ -23,6 +23,10 @@ std::uint16_t select_field_entity_animation_selector(
                    : kFieldIdleAnimationSelectors[slot];
 }
 
+std::uint32_t entity_kind_state_table(const std::uint16_t kind) {
+    return kEntityKindStateTables[static_cast<std::size_t>(kind & 0x0FU)];
+}
+
 std::uint16_t bound_field_walk_animation_frame(const std::uint16_t frame) {
     if (frame < kFieldWalkAnimationFrameCount) {
         return frame;

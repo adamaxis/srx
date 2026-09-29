@@ -576,8 +576,22 @@ void FieldSceneRuntime::configure_callbacks() {
                 return;
             }
             advance_entity_animation_accumulator(field_entity_animation_);
-            field_entity_animation_.frame = bound_field_walk_animation_frame(
-                field_entity_animation_.frame);
+            const EntitySpriteDescriptorList walk_list{
+                static_cast<std::int16_t>(0x8002), 0x0300U, {0U, 1U}};
+            EntitySpriteDescriptorState descriptor{
+                kFieldEntityKind,
+                field_entity_animation_selector_,
+                0U,
+                field_entity_animation_.frame,
+                static_cast<std::uint16_t>(
+                    field_entity_animation_.increment),
+                0U,
+                0U};
+            advance_entity_sprite_descriptor(descriptor, walk_list, 0U);
+            field_entity_animation_.frame = descriptor.frame;
+            field_entity_animation_.increment =
+                static_cast<std::int16_t>(descriptor.increment);
+            field_entity_animation_selector_ = descriptor.selector;
         };
     callbacks_.entity_render_pass.finish_entity =
         [this](RenderEntityState& entity) {

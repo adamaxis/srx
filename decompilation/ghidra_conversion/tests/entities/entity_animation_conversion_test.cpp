@@ -55,7 +55,9 @@ int main() {
                 select_field_entity_animation_selector(4, false) == 0x0010U &&
                 select_field_entity_animation_selector(0, true) == 0x0060U &&
                 select_field_entity_animation_selector(2, true) == 0x0068U &&
-                select_field_entity_animation_selector(7, true) == 0x007CU)) {
+                select_field_entity_animation_selector(7, true) == 0x007CU &&
+                entity_kind_state_table(kFieldEntityKind) == 0x00006378U &&
+                entity_kind_state_table(0x000DU) == 0x00006BB8U)) {
         return 7;
     }
     if (!expect(bound_field_walk_animation_frame(0) == 0U &&

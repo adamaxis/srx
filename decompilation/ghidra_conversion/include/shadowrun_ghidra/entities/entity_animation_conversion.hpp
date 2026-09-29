@@ -31,6 +31,14 @@ struct EntityMotionActionRowSelection {
 // period is reached, and request a redraw for that frame transition.
 void advance_entity_animation_accumulator(EntityAnimationState& state);
 
+// ROM 0x62AC: kind word +0x0E indexes this long table. Kind 3 is 0x6378.
+constexpr std::array<std::uint32_t, 16> kEntityKindStateTables{{
+    0x0000630CU, 0x0000634CU, 0x00006364U, 0x00006378U, 0x00006FD8U,
+    0x00006480U, 0x00006588U, 0x00006690U, 0x00006ED0U, 0x00006798U,
+    0x000068A0U, 0x000069A8U, 0x00006AB0U, 0x00006BB8U, 0x00006CC0U,
+    0x00006DC8U}};
+constexpr std::uint16_t kFieldEntityKind = 0x0003U;
+
 // ROM 0xC052 idle and 0xC072 walk. Direction is the 0-7 heading slot.
 constexpr std::array<std::uint16_t, 8> kFieldIdleAnimationSelectors{{
     0x0000U, 0x0004U, 0x0008U, 0x000CU, 0x0010U, 0x0014U, 0x0018U, 0x001CU}};
@@ -44,6 +52,7 @@ constexpr std::uint16_t kFieldWalkAnimationFrameCount = 2U;
 
 std::uint16_t select_field_entity_animation_selector(std::uint8_t direction,
                                                      bool walking);
+std::uint32_t entity_kind_state_table(std::uint16_t kind);
 
 // ROM 0x600E negative-list bound: after the last pose, the frame stays on
 // count-1 until 0xAF6C clears it.
