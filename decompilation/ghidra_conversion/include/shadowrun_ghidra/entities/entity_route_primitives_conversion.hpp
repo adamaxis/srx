@@ -147,10 +147,11 @@ std::optional<std::int32_t> find_rotating_route_strip_target(
     std::uint16_t heading,
     const std::vector<std::uint8_t>& obstruction_map);
 
-// ROM 0x14682: set the pending-route bit, reject an occupied target, write a
-// one- or two-tile route for a clear/bypass path, or request the five-way
-// 0x14AF4 retry followed by 0x149C0. The heading is the record +0x34 metric
-// used by that retry branch.
+// ROM 0x14682: BSET +0xB0 bit 1. Bit 3 already set RTS. 0x148D2 falls into
+// 0x14902 so D5 is the packed entity tile; occupied entity tile takes 0x14756.
+// 0x148AA walks from that tile along D7. Last-open != entity stores entity+step;
+// else 0x14854 bypass from the entity tile. Carry from bypass BSET bit 3, 0x14AF4,
+// then 0x149C0. Heading is record +0x34 for the retry branch.
 ObstructionRouteSelection select_obstruction_route(
     std::uint16_t entity_x,
     std::uint16_t entity_y,

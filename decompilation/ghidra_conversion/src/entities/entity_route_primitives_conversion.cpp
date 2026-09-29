@@ -231,20 +231,19 @@ ObstructionRouteSelection select_obstruction_route(
         ObstructionRouteSelection result{};
         result.movement_flags = pending_flags;
         result.action = ObstructionRouteAction::already_retrying;
-        result.route_queue_requested = true;
         return result;
     }
 
     const auto directions = choose_dominant_axis_directions(
         entity_x, entity_y, target_x, target_y);
-    const auto target_tile = static_cast<std::int32_t>(
-        compute_obstruction_grid_index(target_x, target_y));
+    const auto entity_tile = static_cast<std::int32_t>(
+        compute_obstruction_grid_index(entity_x, entity_y));
     const auto open = [&obstruction_map](const std::int32_t tile) {
         return tile >= 0 &&
             tile < static_cast<std::int32_t>(obstruction_map.size()) &&
             obstruction_map[static_cast<std::size_t>(tile)] == 0U;
     };
-    if (!open(target_tile)) {
+    if (!open(entity_tile)) {
         ObstructionRouteSelection result{};
         result.movement_flags = clear_entity_route_flags(pending_flags);
         result.action = ObstructionRouteAction::target_blocked;
@@ -257,7 +256,7 @@ ObstructionRouteSelection select_obstruction_route(
     const auto secondary_slot =
         static_cast<std::uint8_t>(directions.secondary);
     const auto first_open = find_first_occupied_obstruction_tile(
-        target_tile, secondary_slot, obstruction_map);
+        entity_tile, secondary_slot, obstruction_map);
     if (!first_open.has_value()) {
         ObstructionRouteSelection result{};
         result.movement_flags = clear_entity_route_flags(pending_flags);
@@ -265,11 +264,11 @@ ObstructionRouteSelection select_obstruction_route(
         return result;
     }
 
-    if (first_open->last_open_tile != target_tile) {
+    if (first_open->last_open_tile != entity_tile) {
         ObstructionRouteSelection result{};
         result.movement_flags = pending_flags;
         result.action = ObstructionRouteAction::direct_step;
-        result.route_tile = target_tile + first_open->step;
+        result.route_tile = entity_tile + first_open->step;
         result.route_step = first_open->step;
         result.has_route_tile = true;
         result.route_cursor_reset = true;
@@ -277,7 +276,7 @@ ObstructionRouteSelection select_obstruction_route(
     }
 
     const auto bypass = find_bypass_route(
-        target_tile, primary_slot, secondary_slot, obstruction_map);
+        entity_tile, primary_slot, secondary_slot, obstruction_map);
     if (bypass.has_value()) {
         ObstructionRouteSelection result{};
         result.movement_flags = pending_flags;

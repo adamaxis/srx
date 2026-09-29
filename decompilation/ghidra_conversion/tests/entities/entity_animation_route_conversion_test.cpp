@@ -94,13 +94,13 @@ int main() {
     selected.target_y = 0x0100U;
     selected.movement_mode = 0;
     selected.obstruction_map.assign(256U, 0U);
-    selected.obstruction_map[130U] = 1U;
+    selected.obstruction_map[129U] = 1U;
     const auto selected_result =
         advance_entity_animation_target_route(selected);
     if (!expect(selected_result.route_selection_called &&
                 selected_result.route_selection_action ==
                     ObstructionRouteAction::direct_step &&
-                selected.route.tiles[0] == 66U &&
+                selected.route.tiles[0] == 65U &&
                 selected.route.tiles[1] == 0xFFFFU &&
                 selected_result.route_queue_entered &&
                 selected_result.continuation_installed)) {
@@ -114,7 +114,7 @@ int main() {
     blocked_target.target_y = 0x0100U;
     blocked_target.movement_mode = 0;
     blocked_target.obstruction_map.assign(128U, 0U);
-    blocked_target.obstruction_map[2U] = 1U;
+    blocked_target.obstruction_map[1U] = 1U;
     const auto blocked_target_result =
         advance_entity_animation_target_route(blocked_target);
     if (!expect(blocked_target_result.route_selection_called &&
