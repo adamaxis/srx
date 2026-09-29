@@ -6,7 +6,7 @@ using namespace shadowrun::ghidra_conversion;
 
 int main() {
     const auto& catalog = remaining_routine_catalog();
-    if (catalog.size() < 299U ||
+    if (catalog.size() < 300U ||
         find_remaining_routine(catalog.front().rom_entry) == nullptr ||
         find_remaining_routine(0xFFFFFFFFU) != nullptr) {
         return 1;
@@ -230,6 +230,12 @@ int main() {
         clone_b->alias != "clone_entity_spawn_variant_b" ||
         clone_b->source_bytes != 36U) {
         return 24;
+    }
+    const auto* effect_variant_b = find_remaining_routine(0x557EU);
+    if (effect_variant_b == nullptr ||
+        effect_variant_b->alias != "run_effect_variant_b" ||
+        effect_variant_b->source_bytes != 164U) {
+        return 25;
     }
     return 0;
 }

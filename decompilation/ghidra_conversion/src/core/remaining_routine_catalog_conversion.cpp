@@ -74,6 +74,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x000053C4U, "run_effect_variant_a", RoutineFamily::field, 164U},
     {0x00005468U, "clone_entity_spawn_variant_a", RoutineFamily::field, 44U},
     {0x00005494U, "advance_jitter_effect", RoutineFamily::field, 234U},
+    {0x0000557EU, "run_effect_variant_b", RoutineFamily::field, 164U},
     {0x00005622U, "clear_entity_runtime_fields", RoutineFamily::field, 28U},
     {0x0000563EU, "clone_entity_spawn_variant_b", RoutineFamily::field, 36U},
     {0x00005662U, "advance_effect_animation_variant", RoutineFamily::field, 124U},

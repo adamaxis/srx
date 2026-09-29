@@ -504,6 +504,63 @@ void run_effect_variant_b(
     }
 }
 
+EffectVariantScanOutput run_effect_variant_b(
+    EffectVariantRecord& self,
+    std::array<EffectVariantRecord, 9>& neighbors,
+    EffectVariantRecord& auxiliary,
+    EffectVariantSharedState& shared,
+    const std::uint8_t first_sequence) {
+    EffectVariantScanOutput output{};
+    if (shared.gate >= 0) {
+        --shared.gate;
+        if (shared.gate >= 0) {
+            return output;
+        }
+        --shared.delay;
+    }
+    EffectAnimationVariantState variant{};
+    variant.animation.countdown = self.spawn.countdown;
+    variant.animation.phase = self.spawn.phase;
+    variant.screen_x = self.screen_x;
+    variant.screen_y = self.screen_y;
+    variant.attribute_offset = self.spawn.attribute;
+    variant.auxiliary = self.spawn.auxiliary;
+    variant.jitter_bit = static_cast<std::uint16_t>(shared.seed & 1U);
+    output.sprites = advance_effect_animation_variant(variant, first_sequence);
+    self.spawn.countdown =
+        static_cast<std::uint8_t>(variant.animation.countdown);
+    self.spawn.phase = variant.animation.phase;
+    self.spawn.auxiliary = variant.auxiliary;
+    if (self.spawn.auxiliary != 0) {
+        output.result = EffectVariantScanResult::jitter_live;
+        return output;
+    }
+    for (std::size_t index = 0; index < neighbors.size(); ++index) {
+        auto& neighbor = neighbors[index];
+        if (neighbor.kind >= 9) {
+            break;
+        }
+        if (neighbor.discriminator != 6U || (neighbor.flags & 1U) == 0 ||
+            (neighbor.flags & 0x40U) != 0) {
+            continue;
+        }
+        clone_entity_spawn_variant_b(neighbor.spawn, self.spawn);
+        output.result = EffectVariantScanResult::child_cloned;
+        output.cloned_index = index;
+        return output;
+    }
+    if (shared.delay < 0) {
+        clear_effect_slot(shared.slots, self.spawn.slot);
+        clear_entity_runtime_fields(shared.cleanup, 0xFEU);
+        output.result = EffectVariantScanResult::expired;
+        return output;
+    }
+    shared.gate = 0x1E;
+    clone_entity_spawn_variant_b(auxiliary.spawn, self.spawn);
+    output.result = EffectVariantScanResult::auxiliary_cloned;
+    return output;
+}
+
 void advance_entity_animation_effect(
     EffectAnimationState& state,
     const std::function<void()>& build_special_sprite,

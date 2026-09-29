@@ -262,5 +262,52 @@ int main() {
         auxiliary.spawn.script != 0xD800U) {
         return 23;
     }
+
+    self = {};
+    neighbors = {};
+    auxiliary = {};
+    shared = {};
+    self.spawn.auxiliary = 6;
+    self.spawn.countdown = 1;
+    self.screen_x = 0x0088U;
+    self.screen_y = 0x0098U;
+    shared.gate = -1;
+    scan = run_effect_variant_b(self, neighbors, auxiliary, shared, 0U);
+    if (scan.result != EffectVariantScanResult::jitter_live ||
+        scan.sprites.size() != 1U || scan.sprites[0].y != 0x7A ||
+        scan.sprites[0].x != 0x7D || scan.sprites[0].size != 15U ||
+        scan.sprites[0].attributes != 0x6000U) {
+        return 24;
+    }
+    self.spawn.auxiliary = 0;
+    self.spawn.countdown = 1;
+    self.spawn.slot = 4;
+    self.spawn.script = 0xABU;
+    neighbors[2].kind = 1;
+    neighbors[2].discriminator = 6;
+    neighbors[2].flags = 1;
+    scan = run_effect_variant_b(self, neighbors, auxiliary, shared, 0U);
+    if (scan.result != EffectVariantScanResult::child_cloned ||
+        scan.cloned_index != 2U || neighbors[2].spawn.auxiliary != 6 ||
+        neighbors[2].spawn.script != 0xABU) {
+        return 25;
+    }
+    neighbors = {};
+    neighbors[0].kind = 9;
+    shared.delay = -1;
+    shared.slots[4] = 1;
+    shared.cleanup.transient_flags.fill(0xFFU);
+    shared.cleanup.masked_flags.fill(0xFFU);
+    scan = run_effect_variant_b(self, neighbors, auxiliary, shared, 0U);
+    if (scan.result != EffectVariantScanResult::expired ||
+        shared.slots[4] != 0 || shared.cleanup.masked_flags[0] != 0xFEU) {
+        return 26;
+    }
+    shared.delay = 0;
+    scan = run_effect_variant_b(self, neighbors, auxiliary, shared, 0U);
+    if (scan.result != EffectVariantScanResult::auxiliary_cloned ||
+        shared.gate != 0x1E || auxiliary.spawn.auxiliary != 6) {
+        return 27;
+    }
     return 0;
 }

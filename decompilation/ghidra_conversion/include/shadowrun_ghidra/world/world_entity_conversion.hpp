@@ -330,6 +330,14 @@ void run_effect_variant_b(
     const std::function<void()>& clone_variant,
     const std::function<void()>& prepare_auxiliary,
     const std::function<void()>& clear_slot);
+
+// ROM 0x557E: FFDFF2/FFDFF4 gate, 0x5662, nine +0x100 scan, 0x563E/0x1A304/0x5622.
+EffectVariantScanOutput run_effect_variant_b(
+    EffectVariantRecord& self,
+    std::array<EffectVariantRecord, 9>& neighbors,
+    EffectVariantRecord& auxiliary,
+    EffectVariantSharedState& shared,
+    std::uint8_t first_sequence);
 void advance_entity_animation_effect(
     EffectAnimationState& state,
     const std::function<void()>& build_special_sprite,
