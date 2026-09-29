@@ -510,8 +510,11 @@ private:
             },
             [this](const SaveSlotChoice choice) {
                 save_load_requested_slot_ = choice;
-                save_load_boundary_unresolved_ = true;
-                return SaveLoadAttempt::unresolved;
+                // Host has no SRAM image. ROM 0x59456 carry-set (no valid
+                // slot) publishes the 0x1B6527 no-save copy and returns to
+                // Start Options after 0xD94.
+                save_load_boundary_unresolved_ = false;
+                return SaveLoadAttempt::empty_or_invalid;
             },
             [this](const SaveLoadMessage message) {
                 save_load_message_ = message;
@@ -795,7 +798,8 @@ private:
         }
     }
 
-    void draw_alias(QPainter& painter, const std::string_view alias) const {
+    void draw_alias(QPainter& painter, const std::string_view alias,
+                    const int dx = 0, const int dy = 0) const {
         const auto* record = state_.asset_catalog.catalog.find(alias);
         if (record == nullptr) {
             return;
@@ -804,7 +808,8 @@ private:
         if (image == draw_asset_cache_.end()) {
             return;
         }
-        painter.drawImage(record->origin_x, record->origin_y, image->second);
+        painter.drawImage(record->origin_x + dx, record->origin_y + dy,
+                          image->second);
     }
 
     void draw_title(QPainter& painter) const {
@@ -878,18 +883,25 @@ private:
     }
 
     void draw_opening_scene(QPainter& painter) const {
+        const auto& opening = state_.opening_intro;
         switch (opening_scene_) {
         case OpeningIntroScene::seattle:
             draw_alias(painter, "intro.background.0");
             break;
         case OpeningIntroScene::wilderness:
-            draw_alias(painter, "intro.background.1");
+            // ROM 0x59DA2 FFDD08 starts -0x40 and 0x59DBA FFDD0A starts
+            // -0x20. Host blit origin is that HSCROLL/VSCROLL pair.
+            draw_alias(painter, "intro.background.1",
+                       opening.stage2.x_offset, -opening.stage2.y_offset);
             break;
         case OpeningIntroScene::trivid:
             draw_alias(painter, "intro.trivid.background");
             break;
         case OpeningIntroScene::airport:
-            draw_alias(painter, "intro.background.3");
+            // ROM 0x5B056 FFDD0E is plane-B VSCROLL 0..0x78. Plane-A HSCROLL
+            // is the 0x5B00A word applied to the aircraft SAT below.
+            draw_alias(painter, "intro.background.3", 0,
+                       -static_cast<int>(opening.stage_loop.scroll.fade_counter));
             break;
         case OpeningIntroScene::cab_map:
             draw_alias(painter, "intro.cab.map");
@@ -943,7 +955,10 @@ private:
             const auto* record = state_.asset_catalog.catalog.find(prefix);
             const auto image = draw_asset_cache_.find(prefix);
             if (record != nullptr && image != draw_asset_cache_.end()) {
-                painter.drawImage(sat_x + record->origin_x,
+                // 0x5B00A FFDD08 is the Plane-A HSCROLL consumed by 0x5B100.
+                const auto scroll_x = static_cast<int>(
+                    state_.opening_intro.stage_loop.scroll.x_offset);
+                painter.drawImage(sat_x + scroll_x + record->origin_x,
                                   sat_y + record->origin_y, image->second);
             }
             return;
@@ -1056,6 +1071,11 @@ private:
             if (state_.save_load.message == SaveLoadMessage::no_save_data) {
                 draw_startup_layout(painter, kSaveLoadMessagePlaneVram,
                                     kNoSaveDataLayout);
+                return;
+            }
+            if (state_.save_load.message == SaveLoadMessage::save_loaded) {
+                draw_startup_layout(painter, kSaveLoadMessagePlaneVram,
+                                    kSaveSuccessLayout);
                 return;
             }
             draw_startup_layout(painter, kSaveLoadPlaneVram, kSaveLoadLayout);

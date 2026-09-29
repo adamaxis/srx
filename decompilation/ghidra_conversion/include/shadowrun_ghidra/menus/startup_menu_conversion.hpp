@@ -193,6 +193,7 @@ enum class SaveLoadMenuEvent {
     selection_moved,
     save_loaded,
     no_save_data,
+    message_acknowledged,
     callback_unresolved,
 };
 

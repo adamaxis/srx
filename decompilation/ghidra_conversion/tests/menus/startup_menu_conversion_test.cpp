@@ -170,6 +170,16 @@ int main() {
                 save_load_order[6] == "wait_for_event")) {
         return 7;
     }
+    if (!expect(advance_save_load_menu(save_load, 0U, save_load_callbacks) ==
+                    SaveLoadMenuEvent::waiting &&
+                save_load.message == SaveLoadMessage::no_save_data)) {
+        return 16;
+    }
+    if (!expect(advance_save_load_menu(save_load, kStartupMenuA,
+                                       save_load_callbacks) ==
+                    SaveLoadMenuEvent::message_acknowledged)) {
+        return 17;
+    }
 
     JoshuaArchetypeMenuState archetype{};
     std::vector<JoshuaArchetypeChoice> previews;

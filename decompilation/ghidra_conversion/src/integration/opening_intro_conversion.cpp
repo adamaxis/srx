@@ -403,6 +403,8 @@ const char* opening_intro_stage_name(const OpeningIntroStage stage) {
         return "stage_loop_entry";
     case OpeningIntroStage::stage_loop:
         return "stage_loop";
+    case OpeningIntroStage::post_intro:
+        return "post_intro";
     case OpeningIntroStage::complete:
         return "complete";
     case OpeningIntroStage::interrupted:
@@ -984,6 +986,16 @@ void advance_stage_loop_frame(OpeningIntroState& state,
         [&callbacks](const auto& request) { emit_late_sprite(callbacks, request); });
 }
 
+void begin_post_intro(OpeningIntroState& state,
+                      const OpeningIntroCallbacks& callbacks) {
+    set_stage(state, callbacks, OpeningIntroStage::post_intro);
+    set_scene(state, callbacks, OpeningIntroScene::cab_map);
+    source_boundary(callbacks, "0x59D12.enter_post_intro_mode");
+    invoke(callbacks.enter_post_intro_mode);
+    invoke(callbacks.clear_presentation);
+    state.post_intro_frame = 0;
+}
+
 } // namespace
 
 OpeningIntroStartResult begin_opening_intro(
@@ -1143,11 +1155,20 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
             source_boundary(callbacks, "0x59CDE.clear_intro_stop_marker");
             invoke(callbacks.step_palette_transition);
             source_boundary(callbacks, "0x59CF0.publish_post_intro_mode");
-            invoke(callbacks.enter_post_intro_mode);
+            begin_post_intro(state, callbacks);
+        }
+        return OpeningIntroAdvanceResult::frame_advanced;
+
+    case OpeningIntroStage::post_intro:
+        begin_source_frame(state, callbacks);
+        sample_and_latch(callbacks);
+        ++state.post_intro_frame;
+        if (state.post_intro_frame >=
+            static_cast<std::uint16_t>(kPostIntroCabModeFourFrames +
+                                       kPostIntroCabModeTwoFrames)) {
             callbacks.sample_controller();
             invoke(callbacks.step_palette_transition);
             invoke(callbacks.prepare_mode_entry);
-            set_scene(state, callbacks, OpeningIntroScene::cab_map);
             set_stage(state, callbacks, OpeningIntroStage::complete);
             return OpeningIntroAdvanceResult::source_complete;
         }

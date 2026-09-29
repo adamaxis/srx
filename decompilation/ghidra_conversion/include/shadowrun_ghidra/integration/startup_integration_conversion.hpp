@@ -54,6 +54,7 @@ enum class StartupIntegrationEvent {
     selection_moved,
     no_save_data,
     save_loaded,
+    returned_to_start_options,
     field_ready,
     callback_unresolved,
 };

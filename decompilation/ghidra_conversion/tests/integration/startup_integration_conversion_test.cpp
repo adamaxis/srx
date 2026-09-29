@@ -332,6 +332,11 @@ int main() {
         load_state.phase != StartupIntegrationPhase::save_load) {
         return 5;
     }
+    if (advance_startup_integration(load_state, kStartupMenuA, load_callbacks) !=
+            StartupIntegrationEvent::returned_to_start_options ||
+        load_state.phase != StartupIntegrationPhase::start_options) {
+        return 16;
+    }
 
     // A menu callback reporting "loaded" is not enough to enter the field:
     // the converted 0x594E0 restoration path must have a validated source
@@ -514,7 +519,10 @@ int main() {
         !has_event(new_game_state, "opening_intro.complete") ||
         !has_event(new_game_state, "phase.field_ready") ||
         new_game_state.opening_intro.orchestrator_loop_frame != 0x0115U ||
-        new_game_state.opening_intro.stage_loop_frame != 0x0529U) {
+        new_game_state.opening_intro.stage_loop_frame != 0x0529U ||
+        new_game_state.opening_intro.scene != OpeningIntroScene::cab_map ||
+        new_game_state.opening_intro.post_intro_frame !=
+            kPostIntroCabModeFourFrames + kPostIntroCabModeTwoFrames) {
         return 13;
     }
     const auto has_sprite_family =

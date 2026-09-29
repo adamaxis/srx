@@ -309,6 +309,15 @@ StartupIntegrationEvent advance_startup_integration(
             return StartupIntegrationEvent::selection_moved;
         case SaveLoadMenuEvent::no_save_data:
             return StartupIntegrationEvent::no_save_data;
+        case SaveLoadMenuEvent::message_acknowledged:
+            if (state.save_load.message == SaveLoadMessage::no_save_data) {
+                enter_start_options_menu(
+                    state.start_options, callbacks.start_options);
+                set_phase(state, callbacks,
+                          StartupIntegrationPhase::start_options);
+                return StartupIntegrationEvent::returned_to_start_options;
+            }
+            return StartupIntegrationEvent::waiting;
         case SaveLoadMenuEvent::save_loaded:
             if (!state.startup_records.has_value() ||
                 !state.save_roster_buffer.has_value() ||

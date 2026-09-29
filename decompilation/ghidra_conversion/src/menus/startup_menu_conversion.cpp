@@ -106,6 +106,16 @@ SaveLoadMenuEvent advance_save_load_menu(
     SaveLoadMenuState& state,
     const std::uint8_t sampled_controller_byte,
     const SaveLoadMenuCallbacks& callbacks) {
+    // ROM 0x59242 JMP 0xD94: after the no-save or success copy, any new
+    // controller event returns to 0x59092. Empty SRAM (FFF0DC = 0xFF) then
+    // BRA 0x590B6 back to New Game/Load Game.
+    if (state.message != SaveLoadMessage::none) {
+        if (sampled_controller_byte == 0U) {
+            return SaveLoadMenuEvent::waiting;
+        }
+        return SaveLoadMenuEvent::message_acknowledged;
+    }
+
     const auto step = vertical_step(sampled_controller_byte);
     if (step != 0) {
         state.selected = static_cast<SaveSlotChoice>(
