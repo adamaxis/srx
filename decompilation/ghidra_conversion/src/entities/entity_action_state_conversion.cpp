@@ -78,19 +78,27 @@ void advance_entity_action_threshold(
                             service_action, prepare_assets);
 }
 
-std::uint8_t select_entity_action_lane(
+EntityActionLaneResult select_entity_action_lane(
     const EntityActionLaneAvailability& availability) {
-    std::uint8_t lane = 0U;
-    if (availability.primary_occupancy > 3U &&
-        (availability.secondary_override ||
-         availability.secondary_occupancy > 3U)) {
-        lane = 1U;
-        if (availability.tertiary_override ||
-            availability.tertiary_occupancy > 3U) {
-            lane = 2U;
-        }
+    EntityActionLaneResult result{};
+    if (availability.primary_occupancy < 4U) {
+        result.available = true;
+        return result;
     }
-    return lane;
+    result.lane = 1U;
+    if (!availability.secondary_marker_negative &&
+        availability.secondary_occupancy < 4U) {
+        result.available = true;
+        return result;
+    }
+    if (availability.tertiary_marker_negative) {
+        return result;
+    }
+    result.lane = 2U;
+    if (availability.tertiary_occupancy < 4U) {
+        result.available = true;
+    }
+    return result;
 }
 
 void collect_entity_action_records(

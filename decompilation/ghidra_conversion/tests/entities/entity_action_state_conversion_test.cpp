@@ -65,10 +65,21 @@ int main() {
         return 5;
     }
 
-    if (select_entity_action_lane({4U, 4U, 0U, false, false}) != 1U ||
-        select_entity_action_lane({4U, 4U, 4U, false, false}) != 2U ||
-        select_entity_action_lane({2U, 9U, 9U, false, false}) != 0U ||
-        select_entity_action_lane({4U, 0U, 0U, true, true}) != 2U) {
+    const auto lane_tertiary = select_entity_action_lane(
+        {4U, 4U, 0U, false, false});
+    const auto lane_full = select_entity_action_lane(
+        {4U, 4U, 4U, false, false});
+    const auto lane_primary = select_entity_action_lane(
+        {2U, 9U, 9U, false, false});
+    const auto lane_vacant = select_entity_action_lane(
+        {4U, 0U, 0U, true, true});
+    const auto lane_second = select_entity_action_lane(
+        {5U, 1U, 0U, false, false});
+    if (!lane_tertiary.available || lane_tertiary.lane != 2U ||
+        lane_full.available || lane_full.lane != 2U ||
+        !lane_primary.available || lane_primary.lane != 0U ||
+        lane_vacant.available || lane_vacant.lane != 1U ||
+        !lane_second.available || lane_second.lane != 1U) {
         return 6;
     }
     EntityActionRecordTable records;

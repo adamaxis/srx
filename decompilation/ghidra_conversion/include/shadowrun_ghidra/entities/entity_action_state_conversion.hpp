@@ -53,16 +53,21 @@ void advance_entity_action_threshold(
     const std::function<void()>& prepare_assets);
 
 struct EntityActionLaneAvailability {
-    std::uint8_t primary_occupancy = 0;
-    std::uint8_t secondary_occupancy = 0;
-    std::uint8_t tertiary_occupancy = 0;
-    bool secondary_override = false;
-    bool tertiary_override = false;
+    std::uint8_t primary_occupancy = 0;   // FF014C
+    std::uint8_t secondary_occupancy = 0; // FF024C
+    std::uint8_t tertiary_occupancy = 0;  // FF034C
+    bool secondary_marker_negative = false; // FFFC0C BMI skips lane 1
+    bool tertiary_marker_negative = false;  // FFFC0D BMI fails
 };
 
-// ROM 0x13C20: choose lane 0, 1, or 2 from the three occupancy checks and
-// their source override flags.
-std::uint8_t select_entity_action_lane(
+struct EntityActionLaneResult {
+    std::uint8_t lane = 0; // D0; FFE190 when available
+    bool available = false; // ORI/ANDI CCR carry
+};
+
+// ROM 0x13C20: first slot whose unsigned +0x4C < 4. FFFC0C BMI skips lane 1;
+// FFFC0D BMI returns carry clear with D0 still 1.
+EntityActionLaneResult select_entity_action_lane(
     const EntityActionLaneAvailability& availability);
 
 struct EntityActionSourceRecord {
