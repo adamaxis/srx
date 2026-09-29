@@ -48,6 +48,35 @@ void run_field_loop(
     FieldSceneLoopState& state,
     const std::array<std::uint16_t, kFieldSceneProfileWordCount>& source);
 
+// ROM 0x2F32 DBF from D7=#0x30 copies 49 words FFDE26 → FFDDC4, then
+// overwrites words 1-2 from FFDF50/FFDF52. Falls into 0x2FA4.
+constexpr std::size_t kFieldSceneRuntimeStateWordCount = 49;
+
+struct FieldSceneRuntimeState {
+    std::uint16_t scene_gate = 0; // FFDF40, always cleared
+    std::array<std::uint16_t, kFieldSceneRuntimeStateWordCount> profile{};
+    std::uint8_t scene_byte = 0; // FFFBF8
+    std::uint16_t alternate_profile = 0; // FFFC0E from 0x3032
+    std::int16_t fade_marker = 0; // FFDF8A
+};
+
+struct FieldSceneRuntimeStateCallbacks {
+    std::function<void()> prepare_field_scene_runtime; // 0xC7F8
+    std::function<void()> advance_field_scene_transition; // 0x2BD2
+    std::function<void()> upload_scene_profile_block; // 0x301E
+};
+
+// ROM 0x2F32: JSR 0xC7F8, CLR FFDF40, FFDF8A=-1, copy 49 backup words,
+// MOVE.B scene into FFFBF8, BSR 0x3032, write FFDF50/52 into FFDDC6/C8,
+// BSR 0x2BD2 then 0x301E. FFDF40==2 samples FFFC22 bit 10 with no effect
+// on 0xC7F8 (TST.B FF014C overwrites CCR).
+void initialize_field_scene_state(
+    FieldSceneRuntimeState& state,
+    const std::array<std::uint16_t, kFieldSceneRuntimeStateWordCount>& backup,
+    std::uint16_t saved_camera_x,
+    std::uint16_t saved_camera_y,
+    const FieldSceneRuntimeStateCallbacks& callbacks);
+
 using FieldTerrainLayerCopy = std::function<void(
     std::uint32_t source, std::uint32_t destination, std::size_t words)>;
 

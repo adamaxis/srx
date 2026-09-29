@@ -185,5 +185,47 @@ int main() {
                 !variant.pending_profile.has_value())) {
         return 18;
     }
+
+    std::array<std::uint16_t, kFieldSceneRuntimeStateWordCount> backup{};
+    backup[0] = 2U;
+    backup[1] = 0x3400U;
+    backup[2] = 0x2280U;
+    backup[48] = 0xABCDU;
+    FieldSceneRuntimeState runtime{2U, {}, 0xFFU, 0xFFFFU, 0};
+    std::vector<int> order;
+    initialize_field_scene_state(
+        runtime, backup, 0x0A00U, 0x0700U,
+        {[&order] { order.push_back(1); }, [&order] { order.push_back(2); },
+         [&order] { order.push_back(3); }});
+    if (!expect(runtime.scene_gate == 0U && runtime.fade_marker == -1 &&
+                runtime.scene_byte == 2U && runtime.alternate_profile == 0U &&
+                runtime.profile[0] == 2U && runtime.profile[1] == 0x0A00U &&
+                runtime.profile[2] == 0x0700U &&
+                runtime.profile[48] == 0xABCDU &&
+                order == std::vector<int>{1, 2, 3})) {
+        return 19;
+    }
+
+    backup[0] = 6U;
+    initialize_field_scene_state(runtime, backup, 0x1000U, 0x2000U, {});
+    if (!expect(runtime.scene_byte == 6U && runtime.alternate_profile == 1U &&
+                runtime.profile[1] == 0x1000U &&
+                runtime.profile[2] == 0x2000U)) {
+        return 20;
+    }
+
+    backup[0] = 5U;
+    initialize_field_scene_state(runtime, backup, 1U, 2U, {});
+    if (!expect(runtime.alternate_profile == 0U && runtime.scene_byte == 5U)) {
+        return 21;
+    }
+
+    backup[0] = 0x2CU;
+    initialize_field_scene_state(runtime, backup, 3U, 4U, {});
+    if (!expect(runtime.alternate_profile == 1U &&
+                runtime.scene_byte == 0x2CU)) {
+        return 22;
+    }
+
     return 0;
 }

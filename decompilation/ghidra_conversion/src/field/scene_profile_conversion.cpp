@@ -39,6 +39,34 @@ void run_field_loop(
     state.override_lock = 0U;
 }
 
+void initialize_field_scene_state(
+    FieldSceneRuntimeState& state,
+    const std::array<std::uint16_t, kFieldSceneRuntimeStateWordCount>& backup,
+    const std::uint16_t saved_camera_x,
+    const std::uint16_t saved_camera_y,
+    const FieldSceneRuntimeStateCallbacks& callbacks) {
+    if (callbacks.prepare_field_scene_runtime) {
+        callbacks.prepare_field_scene_runtime();
+    }
+    state.scene_gate = 0U;
+    state.fade_marker = -1;
+    state.profile = backup;
+    state.scene_byte = static_cast<std::uint8_t>(state.profile[0]);
+    state.alternate_profile =
+        scene_uses_alternate_profile(
+            static_cast<std::int16_t>(state.profile[0]))
+            ? 1U
+            : 0U;
+    state.profile[1] = saved_camera_x;
+    state.profile[2] = saved_camera_y;
+    if (callbacks.advance_field_scene_transition) {
+        callbacks.advance_field_scene_transition();
+    }
+    if (callbacks.upload_scene_profile_block) {
+        callbacks.upload_scene_profile_block();
+    }
+}
+
 std::size_t copy_terrain_layers(
     const std::uint32_t source_a,
     const std::uint32_t source_b,
