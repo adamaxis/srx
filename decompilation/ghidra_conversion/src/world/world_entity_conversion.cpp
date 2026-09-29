@@ -371,6 +371,32 @@ bool advance_effect_animation_variant(
                                     build_sprite_records);
 }
 
+std::vector<BuiltSpriteRecord> advance_effect_animation_variant(
+    EffectAnimationVariantState& state,
+    const std::uint8_t first_sequence) {
+    --state.animation.countdown;
+    if (state.animation.countdown < 0) {
+        state.animation.countdown = 6;
+        ++state.animation.phase;
+    }
+    if (state.animation.phase >= 5U) {
+        state.auxiliary = 0;
+        state.animation.active = false;
+        return {};
+    }
+    auto y = static_cast<std::int16_t>(state.screen_x);
+    auto x = static_cast<std::int16_t>(state.screen_y);
+    if (state.animation.phase >= 4U) {
+        x = static_cast<std::int16_t>(
+            x + static_cast<std::int16_t>((state.animation.phase - 4U) * 4U));
+        y = static_cast<std::int16_t>(
+            y + static_cast<std::int16_t>(state.jitter_bit & 1U));
+    }
+    return build_title_sprite_records_with_attribute_offset(
+        {kEffectAnimationVariantSprites[state.animation.phase]}, y, x,
+        first_sequence, 0x6000U, state.attribute_offset);
+}
+
 void run_effect_variant_a(
     EntityEffectSlotState& effect,
     const std::function<void()>& clone_variant,

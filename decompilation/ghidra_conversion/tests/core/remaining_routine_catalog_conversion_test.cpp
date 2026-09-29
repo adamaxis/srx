@@ -6,7 +6,7 @@ using namespace shadowrun::ghidra_conversion;
 
 int main() {
     const auto& catalog = remaining_routine_catalog();
-    if (catalog.size() < 293U ||
+    if (catalog.size() < 294U ||
         find_remaining_routine(catalog.front().rom_entry) == nullptr ||
         find_remaining_routine(0xFFFFFFFFU) != nullptr) {
         return 1;
@@ -195,6 +195,12 @@ int main() {
         effect_anim->alias != "advance_effect_animation" ||
         effect_anim->source_bytes != 156U) {
         return 18;
+    }
+    const auto* anim_variant = find_remaining_routine(0x5662U);
+    if (anim_variant == nullptr ||
+        anim_variant->alias != "advance_effect_animation_variant" ||
+        anim_variant->source_bytes != 124U) {
+        return 19;
     }
     return 0;
 }

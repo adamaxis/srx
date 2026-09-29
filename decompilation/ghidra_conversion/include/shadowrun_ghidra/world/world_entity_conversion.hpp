@@ -253,6 +253,28 @@ bool advance_effect_animation_variant(
     const std::function<void()>& append_sprite,
     const std::function<void()>& build_sprite_records);
 
+struct EffectAnimationVariantState {
+    EffectAnimationState animation{};
+    std::uint16_t screen_x = 0;
+    std::uint16_t screen_y = 0;
+    std::int16_t attribute_offset = 0;
+    std::uint8_t auxiliary = 0;
+    std::uint16_t jitter_bit = 0;
+};
+
+constexpr std::array<SpriteSourceRecord, 5> kEffectAnimationVariantSprites{{
+    {-14, -27, 15, 0},
+    {-14, -27, 15, 0},
+    {-11, -24, 10, 0},
+    {-14, -27, 15, 0},
+    {-13, -27, 15, 0},
+}};
+
+// ROM 0x5662: +2 cadence 6, phase expire at 5 clears +0xB2, 0x584A, D6 0x6000.
+std::vector<BuiltSpriteRecord> advance_effect_animation_variant(
+    EffectAnimationVariantState& state,
+    std::uint8_t first_sequence);
+
 void run_effect_variant_a(
     EntityEffectSlotState& effect,
     const std::function<void()>& clone_variant,

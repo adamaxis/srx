@@ -139,5 +139,30 @@ int main() {
         anim_sprites[0].attributes != 0x2000U) {
         return 11;
     }
+
+    EffectAnimationVariantState variant{};
+    variant.animation = {0, 4, 4, 0, true};
+    auto variant_sprites = advance_effect_animation_variant(variant, 0U);
+    if (variant.animation.active || variant.auxiliary != 0 ||
+        !variant_sprites.empty()) {
+        return 12;
+    }
+    variant = {};
+    variant.animation = {1, 0, 4, 0, true};
+    variant.screen_x = 0x0088U;
+    variant.screen_y = 0x0098U;
+    variant_sprites = advance_effect_animation_variant(variant, 0U);
+    if (variant.animation.countdown != 0 || variant_sprites.size() != 1U ||
+        variant_sprites[0].y != 0x7A || variant_sprites[0].x != 0x7D ||
+        variant_sprites[0].size != 15U ||
+        variant_sprites[0].attributes != 0x6000U) {
+        return 13;
+    }
+    variant.animation = {1, 4, 4, 0, true};
+    variant.jitter_bit = 1;
+    variant_sprites = advance_effect_animation_variant(variant, 0U);
+    if (variant_sprites[0].y != 0x7C || variant_sprites[0].x != 0x7D) {
+        return 14;
+    }
     return 0;
 }
