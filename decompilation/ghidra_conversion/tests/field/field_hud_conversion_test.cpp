@@ -242,5 +242,44 @@ int main() {
         return 23;
     }
 
+    FieldHudAmmoMeterState ammo{};
+    ammo.flags_byte = 0x01U;
+    ammo.equipped_inventory_slot = 0;
+    ammo.source_type = 1;
+    auto ammo_plan = advance_field_hud_ammo_meter(ammo, 4);
+    if (!expect(ammo.ammo == 4 && ammo_plan.nametable == 0xF4C4U &&
+                ammo_plan.tiles == kFieldHudAmmoMeterTiles[4] &&
+                !ammo_plan.reload_assets)) {
+        return 24;
+    }
+    ammo_plan = advance_field_hud_ammo_meter(ammo, 10);
+    if (!expect(ammo.ammo == 6 &&
+                ammo_plan.tiles == kFieldHudAmmoMeterTiles[6])) {
+        return 25;
+    }
+    ammo.equipped_inventory_slot = static_cast<std::int8_t>(0x7F);
+    ammo_plan = advance_field_hud_ammo_meter(ammo, 1);
+    if (!expect(ammo_plan.tiles == kFieldHudAmmoMeterTiles[0])) {
+        return 26;
+    }
+    ammo = FieldHudAmmoMeterState{};
+    ammo.flags_byte = 0x01U;
+    ammo.equipped_inventory_slot = 2;
+    ammo.source_type = 0x0EU;
+    ammo.clip_counts[2] = 3;
+    ammo.slot_word = 1;
+    ammo_plan = advance_field_hud_ammo_meter(ammo, -1);
+    if (!expect(ammo.clip_counts[2] == 2 && ammo_plan.nametable == 0xF8C4U &&
+                ammo_plan.tiles == kFieldHudAmmoMeterTiles[2])) {
+        return 27;
+    }
+    ammo_plan = advance_field_hud_ammo_meter(ammo, -5);
+    if (!expect(ammo.clip_counts[2] == 0 &&
+                ammo.equipped_inventory_slot == static_cast<std::int8_t>(0x7F) &&
+                ammo.source_type == 0U && ammo_plan.reload_assets &&
+                ammo_plan.tiles == kFieldHudAmmoMeterTiles[0])) {
+        return 28;
+    }
+
     return 0;
 }

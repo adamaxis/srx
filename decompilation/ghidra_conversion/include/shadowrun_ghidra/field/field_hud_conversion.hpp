@@ -168,4 +168,46 @@ FieldHudDelayMeterPlan advance_field_hud_delay_meter(
     FieldHudDelayMeterState& state,
     std::int8_t delta);
 
+constexpr std::array<std::uint8_t, 12> kFieldHudAmmoTypeCaps{{
+    0x06U, 0x0CU, 0x0BU, 0x19U, 0x06U, 0x0AU, 0x0FU, 0x1EU, 0x1CU, 0x18U,
+    0x05U, 0x08U}};
+
+constexpr std::array<std::array<std::uint16_t, 2>, 31> kFieldHudAmmoMeterTiles{{
+    {{0x86D7U, 0x8ED7U}}, {{0x86D7U, 0x86D8U}}, {{0x86D7U, 0x86D9U}},
+    {{0x86D7U, 0x86DAU}}, {{0x86D7U, 0x86DBU}}, {{0x86D7U, 0x86DCU}},
+    {{0x86D7U, 0x86DDU}}, {{0x86D7U, 0x86DEU}}, {{0x86D7U, 0x86DFU}},
+    {{0x86D7U, 0x86E0U}}, {{0x86E1U, 0x8ED7U}}, {{0x86E1U, 0x86D8U}},
+    {{0x86E1U, 0x86D9U}}, {{0x86E1U, 0x86DAU}}, {{0x86E1U, 0x86DBU}},
+    {{0x86E1U, 0x86DCU}}, {{0x86E1U, 0x86DDU}}, {{0x86E1U, 0x86DEU}},
+    {{0x86E1U, 0x86DFU}}, {{0x86E1U, 0x86E0U}}, {{0x86E2U, 0x8ED7U}},
+    {{0x86E2U, 0x86D8U}}, {{0x86E2U, 0x86D9U}}, {{0x86E2U, 0x86DAU}},
+    {{0x86E2U, 0x86DBU}}, {{0x86E2U, 0x86DCU}}, {{0x86E2U, 0x86DDU}},
+    {{0x86E2U, 0x86DEU}}, {{0x86E2U, 0x86DFU}}, {{0x86E2U, 0x86E0U}},
+    {{0x86E3U, 0x8ED7U}},
+}};
+
+struct FieldHudAmmoMeterState {
+    std::uint16_t slot_word = 0; // +0x3E
+    std::uint8_t flags_byte = 0; // +0x10
+    std::int8_t equipped_inventory_slot = 0; // +0x56
+    std::uint8_t source_type = 0; // +0x57
+    std::uint8_t ammo = 0; // +0x4E
+    std::array<std::uint8_t, 8> clip_counts{}; // +0x6E
+    std::array<std::uint8_t, 8> clip_aux{}; // +0x66
+};
+
+struct FieldHudAmmoMeterPlan {
+    std::uint32_t nametable = 0;
+    std::uint8_t displayed = 0;
+    std::array<std::uint16_t, 2> tiles{};
+    bool reload_assets = false;
+};
+
+// ROM 0x36FC: F4C4/F8C4/FCC4. Unarmed or +0x10 bit 0 clear uses table
+// 0x6AC46. Type < 0xD adds D1 into +0x4E and caps from 0xD4540+0x24.
+// Type 0xD..0xF adds into +0x6E[slot] and reloads assets on underflow.
+FieldHudAmmoMeterPlan advance_field_hud_ammo_meter(
+    FieldHudAmmoMeterState& state,
+    std::int8_t delta);
+
 } // namespace shadowrun::ghidra_conversion

@@ -193,4 +193,80 @@ FieldHudDelayMeterPlan advance_field_hud_delay_meter(
     return plan;
 }
 
+namespace {
+
+std::array<std::uint16_t, 2> ammo_tiles_for(const std::uint8_t displayed) {
+    const auto index = displayed < kFieldHudAmmoMeterTiles.size()
+                           ? displayed
+                           : static_cast<std::uint8_t>(
+                                 kFieldHudAmmoMeterTiles.size() - 1U);
+    return kFieldHudAmmoMeterTiles[index];
+}
+
+} // namespace
+
+FieldHudAmmoMeterPlan advance_field_hud_ammo_meter(
+    FieldHudAmmoMeterState& state,
+    const std::int8_t delta) {
+    FieldHudAmmoMeterPlan plan{};
+    if (state.slot_word == 0U) {
+        plan.nametable = 0xF4C4U;
+    } else if (state.slot_word == 1U) {
+        plan.nametable = 0xF8C4U;
+    } else {
+        plan.nametable = 0xFCC4U;
+    }
+    const auto unarmed =
+        (state.flags_byte & 0x01U) == 0U ||
+        state.equipped_inventory_slot < 0 ||
+        static_cast<std::uint8_t>(state.equipped_inventory_slot) == 0x7FU;
+    if (unarmed) {
+        plan.tiles = kFieldHudAmmoMeterTiles[0];
+        return plan;
+    }
+    if (state.source_type < 0x0DU) {
+        state.ammo = static_cast<std::uint8_t>(
+            static_cast<std::int8_t>(state.ammo) + delta);
+        if (static_cast<std::int8_t>(state.ammo) <= 0) {
+            state.ammo = 0U;
+            plan.tiles = kFieldHudAmmoMeterTiles[0];
+            return plan;
+        }
+        if (state.source_type >= 1U &&
+            state.source_type <= kFieldHudAmmoTypeCaps.size()) {
+            const auto cap = kFieldHudAmmoTypeCaps[state.source_type - 1U];
+            if (state.ammo > cap) {
+                state.ammo = cap;
+            }
+        }
+        plan.displayed = state.ammo;
+        plan.tiles = ammo_tiles_for(plan.displayed);
+        return plan;
+    }
+    if (state.source_type >= 0x10U) {
+        plan.tiles = kFieldHudAmmoMeterTiles[0];
+        return plan;
+    }
+    const auto slot =
+        static_cast<std::uint8_t>(state.equipped_inventory_slot);
+    if (slot >= state.clip_counts.size()) {
+        plan.tiles = kFieldHudAmmoMeterTiles[0];
+        return plan;
+    }
+    state.clip_counts[slot] = static_cast<std::uint8_t>(
+        static_cast<std::int8_t>(state.clip_counts[slot]) + delta);
+    if (static_cast<std::int8_t>(state.clip_counts[slot]) <= 0) {
+        state.clip_counts[slot] = 0U;
+        state.clip_aux[slot] = 0U;
+        state.equipped_inventory_slot = static_cast<std::int8_t>(0x7F);
+        state.source_type = 0U;
+        plan.reload_assets = true;
+        plan.tiles = kFieldHudAmmoMeterTiles[0];
+        return plan;
+    }
+    plan.displayed = state.clip_counts[slot];
+    plan.tiles = ammo_tiles_for(plan.displayed);
+    return plan;
+}
+
 } // namespace shadowrun::ghidra_conversion
