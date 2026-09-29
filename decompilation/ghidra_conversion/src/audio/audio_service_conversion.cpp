@@ -44,4 +44,65 @@ void activate_entity_audio_state(
     }
 }
 
+namespace {
+
+std::uint16_t signed_jitter(const std::uint16_t magnitude) {
+    auto value = static_cast<std::int16_t>(magnitude & 0x7FU);
+    if ((value & 1) != 0) {
+        value = static_cast<std::int16_t>(-value);
+    }
+    return static_cast<std::uint16_t>(value);
+}
+
+} // namespace
+
+EntityAudioEffectResult advance_entity_audio_effect(
+    EntityAudioEffectRecord& state,
+    const std::uint16_t random_word,
+    const std::function<void()>& expire,
+    const std::function<void()>& retrigger,
+    const std::function<void()>& motion) {
+    if ((state.flags & 0x80U) == 0U) {
+        --state.lifetime;
+        if (state.lifetime >= 0) {
+            return EntityAudioEffectResult::waiting;
+        }
+        --state.bounce;
+        if (state.bounce >= 0) {
+            if (motion) {
+                motion();
+            }
+            return EntityAudioEffectResult::motion;
+        }
+        if (retrigger) {
+            retrigger();
+        }
+        return EntityAudioEffectResult::retriggered;
+    }
+
+    ++state.jitter_count;
+    if (state.timer >= 0) {
+        return EntityAudioEffectResult::waiting;
+    }
+    --state.phase;
+    if (static_cast<std::int8_t>(state.phase) < 0) {
+        state.flags = static_cast<std::uint8_t>(state.flags & ~0x01U);
+        if (expire) {
+            expire();
+        }
+        return EntityAudioEffectResult::expired;
+    }
+
+    state.x = static_cast<std::uint16_t>(
+        state.dest_x + signed_jitter(random_word));
+    state.y = static_cast<std::uint16_t>(
+        state.dest_y + signed_jitter(static_cast<std::uint16_t>(random_word >> 4U)));
+    state.aux = 0U;
+    state.timer = static_cast<std::int16_t>(
+        static_cast<std::uint16_t>(state.timer) & 0x7FFFU);
+    state.rate = 0U;
+    state.flags2 = static_cast<std::uint8_t>(state.flags2 | 0x01U);
+    return EntityAudioEffectResult::jittered;
+}
+
 } // namespace shadowrun::ghidra_conversion

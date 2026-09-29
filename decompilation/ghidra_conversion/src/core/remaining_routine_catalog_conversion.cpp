@@ -291,6 +291,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x0001514EU, "process_entity_spawn_cycle", RoutineFamily::entity, 428U},
     {0x000152FAU, "prepare_special_spawn_record", RoutineFamily::entity, 30U},
     {0x00015354U, "activate_entity_audio_state", RoutineFamily::entity, 60U},
+    {0x00015390U, "advance_entity_audio_effect", RoutineFamily::entity, 150U},
     {0x00015554U, "service_nearby_entity_auxiliary_behavior", RoutineFamily::entity, 218U},
     {0x00015646U, "spawn_entity_effect_record", RoutineFamily::entity, 484U},
     {0x00015830U, "dispatch_entity_effect", RoutineFamily::entity, 256U},

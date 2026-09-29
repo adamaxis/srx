@@ -56,5 +56,59 @@ int main() {
         return 4;
     }
 
+    EntityAudioEffectRecord jitter{0x80U, 0U, -1, 0x1111U, 0x2222U,
+                                   0U, 0U, 0x0100U, 0x0200U, 2U, 0U, 0, 0};
+    int expire_count = 0;
+    int retrigger_count = 0;
+    int motion_count = 0;
+    const auto jittered = advance_entity_audio_effect(
+        jitter, 0x0011U,
+        [&expire_count] { ++expire_count; },
+        [&retrigger_count] { ++retrigger_count; },
+        [&motion_count] { ++motion_count; });
+    // 0x11 bit 0 set → NEG 0x11 = -0x11. LSR#4 of 0x11 is 1, bit 0 set → -1.
+    if (jittered != EntityAudioEffectResult::jittered ||
+        jitter.x != static_cast<std::uint16_t>(0x0100U - 0x11U) ||
+        jitter.y != static_cast<std::uint16_t>(0x0200U - 1U) ||
+        jitter.phase != 1U || jitter.aux != 0U || jitter.rate != 0U ||
+        (jitter.flags2 & 0x01U) == 0U || jitter.timer != 0x7FFFU ||
+        expire_count != 0 || retrigger_count != 0 || motion_count != 0) {
+        return 5;
+    }
+
+    EntityAudioEffectRecord dying{0x81U, 0U, -1, 0U, 0U, 0U, 0U, 0U, 0U,
+                                  0U, 0U, 0, 0};
+    if (advance_entity_audio_effect(
+            dying, 0U, [&expire_count] { ++expire_count; }, {}, {}) !=
+            EntityAudioEffectResult::expired ||
+        (dying.flags & 0x01U) != 0U || expire_count != 1) {
+        return 6;
+    }
+
+    EntityAudioEffectRecord hold{0U, 0U, 0, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U,
+                                 1, 0};
+    if (advance_entity_audio_effect(hold, 0U, {}, {}, {}) !=
+            EntityAudioEffectResult::waiting ||
+        hold.lifetime != 0) {
+        return 7;
+    }
+    EntityAudioEffectRecord bounce{0U, 0U, 0, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U,
+                                   0, 1};
+    if (advance_entity_audio_effect(
+            bounce, 0U, {}, {}, [&motion_count] { ++motion_count; }) !=
+            EntityAudioEffectResult::motion ||
+        motion_count != 1) {
+        return 8;
+    }
+    EntityAudioEffectRecord retrigger{0U, 0U, 0, 0U, 0U, 0U, 0U, 0U, 0U, 0U,
+                                      0U, 0, 0};
+    if (advance_entity_audio_effect(
+            retrigger, 0U, {},
+            [&retrigger_count] { ++retrigger_count; }, {}) !=
+            EntityAudioEffectResult::retriggered ||
+        retrigger_count != 1) {
+        return 9;
+    }
+
     return 0;
 }
