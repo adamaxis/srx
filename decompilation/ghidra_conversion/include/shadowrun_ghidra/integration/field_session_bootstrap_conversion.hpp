@@ -105,6 +105,13 @@ struct FieldSessionBootstrapState {
     std::uint8_t display_dirty_flags = 0;
     std::uint8_t controller_marker = 0;
     std::uint8_t display_service_marker = 0;
+    std::uint8_t field_lock = 0; // FFE18A
+    std::int16_t camera_transition_x = 0; // FFDD04
+    std::int16_t camera_transition_y = 0; // FFDD06
+    std::uint16_t controller_word = 0; // FFDD22
+    std::uint16_t controller_aux = 0; // FFDD26
+    std::uint16_t display_service_word = 0; // FFDFE8
+    std::uint16_t display_service_aux = 0; // FFDFE6
     std::uint32_t warmup_iterations = 0;
     std::uint32_t controller_samples = 0;
     bool scene_buffers_prepared = false;

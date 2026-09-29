@@ -216,9 +216,12 @@ int main() {
                kFieldTerrainLayerWordCount);
     assert(state.warmup_iterations == 31U && observations.behavior_calls == 31U &&
            observations.camera_calls == 31U && observations.render_passes == 31U);
-    assert(state.display_dirty_flags == 0x0EU && observations.vblank_calls == 1U &&
+    assert(state.display_dirty_flags == 0x0EU && observations.vblank_calls == 2U &&
            observations.palette_calls == 1U &&
            observations.controller_samples == 2U);
+    assert(state.field_lock == 0U && state.camera_transition_x == -1 &&
+           state.camera_transition_y == -1 &&
+           state.display_service_word == 0U);
     assert(observations.audio_commands.size() == 6U &&
            std::all_of(observations.audio_commands.begin(),
                        observations.audio_commands.end(),

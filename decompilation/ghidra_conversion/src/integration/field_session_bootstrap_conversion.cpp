@@ -189,6 +189,13 @@ FieldSessionBootstrapResult bootstrap_field_session(
     state.field_scene_entry_complete = true;
 
     set_phase(state, callbacks, FieldSessionBootstrapPhase::warmup);
+    // ROM 0x008C0: CLR FFDFE8, FFE18A=#1, CLR FFDD22/26, FFDD04/06=#-1.
+    state.display_service_word = 0U;
+    state.field_lock = 1U;
+    state.controller_word = 0U;
+    state.controller_aux = 0U;
+    state.camera_transition_x = -1;
+    state.camera_transition_y = -1;
     // ROM 0x008C0 loads D7 with 0x1E, saves it across the 0x0A8EA call, and
     // DBF executes this body 31 times. The entity service has no semantic
     // counter argument; the host loop keeps the source iteration count local.
@@ -211,11 +218,16 @@ FieldSessionBootstrapResult bootstrap_field_session(
     }
 
     callbacks.wait_for_vblank();
+    state.display_service_word = 0xFFFFU;
     callbacks.advance_title_palette_fade();
+    state.field_lock = 0U;
     state.controller_marker = 0U;
+    callbacks.sample_controller_input();
+    callbacks.sample_controller_input();
+    state.display_service_aux = 0U;
+    state.display_service_word = 0U;
     state.display_service_marker = 0U;
-    callbacks.sample_controller_input();
-    callbacks.sample_controller_input();
+    callbacks.wait_for_vblank();
     state.controller_samples = 2U;
     state.warmup_complete = true;
     set_phase(state, callbacks, FieldSessionBootstrapPhase::field_ready);
