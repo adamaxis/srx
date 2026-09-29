@@ -2,6 +2,8 @@
 
 #include <cstdint>
 #include <map>
+#include <utility>
+#include <vector>
 
 namespace {
 
@@ -179,5 +181,36 @@ int main() {
         return 11;
     }
 
+    const auto origin = compose_field_tile_sample_origin(
+        0x0800U, 0x0800U, 0, 0, 0, 0);
+    if (!expect(origin.x == 0U && origin.y == 0U) ||
+        !expect(field_tile_sample_nibble_mask(0) == 0U &&
+                field_tile_sample_nibble_mask(0x05) == 0x0FU &&
+                field_tile_sample_nibble_mask(0x50) == 0xF0U &&
+                field_tile_sample_nibble_mask(0x55) == 0xFFU)) {
+        return 12;
+    }
+    std::vector<std::pair<std::uint16_t, std::uint16_t>> seeks;
+    std::vector<std::uint8_t> masked;
+    std::size_t pattern_index = 0;
+    const std::vector<std::uint8_t> pattern{0x05, 0x00};
+    const auto written = decode_field_tile_sample(
+        {0x10, 0x20}, 1,
+        {[&](const std::uint16_t x, const std::uint16_t y) {
+             seeks.emplace_back(x, y);
+         },
+         [&] {
+             const auto value = pattern[pattern_index & 1U];
+             ++pattern_index;
+             return value;
+         },
+         [] { return static_cast<std::uint8_t>(0xFF); },
+         [&](const std::uint8_t value) { masked.push_back(value); }});
+    if (!expect(written == 64U && seeks.size() == 2U &&
+                seeks[0].first == 0x10 && seeks[0].second == 0x20 &&
+                seeks[1].first == 0x10 && seeks[1].second == 0x28 &&
+                masked.front() == 0x0FU && masked[1] == 0U)) {
+        return 13;
+    }
     return 0;
 }

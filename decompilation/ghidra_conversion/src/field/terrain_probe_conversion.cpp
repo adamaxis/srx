@@ -213,4 +213,71 @@ bool evaluate_terrain_direction_boundary(
     }
 }
 
+FieldTileSampleOrigin compose_field_tile_sample_origin(
+    const std::uint16_t camera_x,
+    const std::uint16_t camera_y,
+    const std::int16_t entity_offset_x,
+    const std::int16_t entity_offset_y,
+    const std::int16_t stamp_x,
+    const std::int16_t stamp_y) {
+    const auto x = static_cast<std::uint16_t>(
+        static_cast<std::uint16_t>(stamp_x) +
+        static_cast<std::uint16_t>(entity_offset_x) - 0x0080U +
+        (camera_x >> 4U));
+    const auto y = static_cast<std::uint16_t>(
+        static_cast<std::uint16_t>(stamp_y) +
+        static_cast<std::uint16_t>(entity_offset_y) - 0x0080U +
+        (camera_y >> 4U));
+    return {x, y};
+}
+
+std::uint8_t field_tile_sample_nibble_mask(const std::uint8_t packed) {
+    if (packed == 0U) {
+        return 0U;
+    }
+    if ((packed & 0xF0U) == 0U) {
+        return 0x0FU;
+    }
+    if ((packed & 0x0FU) == 0U) {
+        return 0xF0U;
+    }
+    return 0xFFU;
+}
+
+std::size_t decode_field_tile_sample(
+    const FieldTileSampleOrigin origin,
+    const std::uint16_t size_word,
+    const FieldTileSampleDecodeCallbacks& callbacks) {
+    if (!callbacks.seek_tile || !callbacks.read_pattern ||
+        !callbacks.read_sample || !callbacks.write_masked) {
+        return 0;
+    }
+    auto x = origin.x;
+    const auto saved_y = origin.y;
+    auto rows = static_cast<std::int16_t>(size_word >> 2U);
+    const auto saved_columns = static_cast<std::int16_t>(size_word & 3U);
+    std::size_t written = 0;
+    do {
+        auto columns = saved_columns;
+        auto y = saved_y;
+        do {
+            callbacks.seek_tile(x, y);
+            auto remaining = static_cast<std::int16_t>(0x001F);
+            do {
+                const auto packed = callbacks.read_pattern();
+                const auto sample = callbacks.read_sample();
+                callbacks.write_masked(static_cast<std::uint8_t>(
+                    field_tile_sample_nibble_mask(packed) & sample));
+                ++written;
+                remaining = static_cast<std::int16_t>(remaining - 1);
+            } while (remaining != -1);
+            y = static_cast<std::uint16_t>(y + 8U);
+            columns = static_cast<std::int16_t>(columns - 1);
+        } while (columns != -1);
+        x = static_cast<std::uint16_t>(x + 8U);
+        rows = static_cast<std::int16_t>(rows - 1);
+    } while (rows != -1);
+    return written;
+}
+
 } // namespace shadowrun::ghidra_conversion

@@ -133,4 +133,35 @@ bool evaluate_terrain_direction_boundary(
     std::uint16_t x,
     std::uint16_t y);
 
+struct FieldTileSampleOrigin {
+    std::uint16_t x = 0;
+    std::uint16_t y = 0;
+};
+
+// ROM 0x3EFE D0/D1 setup: stamp + entity - 0x80 + camera>>4.
+FieldTileSampleOrigin compose_field_tile_sample_origin(
+    std::uint16_t camera_x,
+    std::uint16_t camera_y,
+    std::int16_t entity_offset_x,
+    std::int16_t entity_offset_y,
+    std::int16_t stamp_x,
+    std::int16_t stamp_y);
+
+// ROM 0x3EFE nibble mask: 0, low-only 0x0F, high-only 0xF0, both 0xFF.
+std::uint8_t field_tile_sample_nibble_mask(std::uint8_t packed);
+
+struct FieldTileSampleDecodeCallbacks {
+    std::function<void(std::uint16_t x, std::uint16_t y)> seek_tile;
+    std::function<std::uint8_t()> read_pattern;
+    std::function<std::uint8_t()> read_sample;
+    std::function<void(std::uint8_t)> write_masked;
+};
+
+// ROM 0x3EFE: (size>>2)+1 X tiles and (size&3)+1 Y tiles of 32 masked
+// sample bytes. Inner DBF walks Y by 8; outer walks X by 8.
+std::size_t decode_field_tile_sample(
+    FieldTileSampleOrigin origin,
+    std::uint16_t size_word,
+    const FieldTileSampleDecodeCallbacks& callbacks);
+
 } // namespace shadowrun::ghidra_conversion
