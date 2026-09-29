@@ -613,6 +613,26 @@ std::vector<BuiltSpriteRecord> advance_entity_animation_effect(
     return records;
 }
 
+std::vector<BuiltSpriteRecord> refresh_delayed_effect_sprites(
+    EntityAnimationEffectState& state,
+    const std::uint8_t first_sequence) {
+    --state.countdown;
+    if (state.countdown < 0) {
+        state.countdown = 3;
+        ++state.phase;
+        if (state.phase >= 4U) {
+            state.phase = 0;
+        }
+    }
+    const auto phase = static_cast<std::uint8_t>(state.phase & 3U);
+    return build_title_sprite_records(
+        {kDelayedEffectSprites[phase]},
+        static_cast<std::int16_t>(state.screen_x),
+        static_cast<std::int16_t>(
+            static_cast<std::int16_t>(state.screen_y) + 0x0C),
+        first_sequence, 0x2000U);
+}
+
 void refresh_delayed_effect_sprites(
     EntityEffectSlotState& effect,
     const std::function<void()>& build_sprite_records,

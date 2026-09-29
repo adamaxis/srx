@@ -332,5 +332,16 @@ int main() {
         anim_effect_sprites[1].sequence != 1U) {
         return 29;
     }
+    EntityAnimationEffectState delayed{};
+    delayed.countdown = 1;
+    delayed.screen_x = 0x0088U;
+    delayed.screen_y = 0x0098U;
+    auto delayed_sprites = refresh_delayed_effect_sprites(delayed, 0U);
+    if (delayed.countdown != 0 || delayed_sprites.size() != 1U ||
+        delayed_sprites[0].y != 0x7C || delayed_sprites[0].x != 0x84 ||
+        delayed_sprites[0].size != 13U ||
+        delayed_sprites[0].attributes != 0x245FU) {
+        return 30;
+    }
     return 0;
 }

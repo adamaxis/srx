@@ -367,6 +367,18 @@ void refresh_delayed_effect_sprites(
     const std::function<void()>& build_sprite_records,
     const std::function<void()>& append_sprite);
 
+constexpr std::array<SpriteSourceRecord, 4> kDelayedEffectSprites{{
+    {-12, -32, 13, 0x045FU},
+    {-12, -29, 12, 0x0467U},
+    {-20, -32, 13, 0x0C5FU},
+    {-20, -29, 12, 0x0C67U},
+}};
+
+// ROM 0x59EA: +6 cadence 3, phase +7 wrap 4, 0x5A36, D2+0xC, D6 0x2000.
+std::vector<BuiltSpriteRecord> refresh_delayed_effect_sprites(
+    EntityAnimationEffectState& state,
+    std::uint8_t first_sequence);
+
 // ROM 0x060F4: set the source carry condition used by the descriptor caller
 // to take its terminal/append branch. It has no data payload, but it is not a
 // no-op and is represented as an explicit host decision.
