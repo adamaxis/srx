@@ -95,7 +95,13 @@ int main() {
         return 8;
     }
 
-    if (!expect(find_first_entity_action_below_threshold(
+    const auto found = scan_entity_action_threshold(
+        {0x15U, 0x12U, 0x0CU, 0x04U, 0x01U, 0x00U, 0x00U, 0x00U});
+    const auto none = scan_entity_action_threshold(
+        {0x15U, 0x12U, 0x0DU, 0x20U, 0xFFU, 0x20U, 0x20U, 0x20U});
+    if (!expect(found.action_code == 0x0CU && found.skipped == 2U &&
+                none.action_code == 0U && none.skipped == 8U &&
+                find_first_entity_action_below_threshold(
                     {0x15U, 0x12U, 0x0CU, 0x04U, 0x01U, 0x00U, 0x00U,
                      0x00U}) == 0x0CU &&
                 find_first_entity_action_below_threshold(

@@ -1,22 +1,36 @@
 #include "shadowrun_ghidra/entities/entity_action_state_conversion.hpp"
+#include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 
 namespace shadowrun::ghidra_conversion {
 
 void set_entity_action_state(
     EntityActionState& state,
     const std::uint8_t action_code,
-    const std::uint8_t default_state_code,
     const std::uint8_t nonzero_state_code,
     const std::function<void()>& service_action,
     const std::function<void()>& prepare_assets) {
     state.action_code = action_code;
+    state.scaled_ammo = 0U;
     if (action_code == 0U) {
         state.action_code = 0U;
         state.reset_marker = 0U;
-        state.state_code = default_state_code;
+        state.state_code = kUnequippedActionType;
     } else {
         state.state_code = nonzero_state_code;
         if (state.active_marker != 0U) {
+            const auto row = static_cast<std::uint8_t>(action_code - 1U);
+            const auto& catalog = us_item_catalog();
+            const auto factor =
+                row < catalog.size() ? catalog[row].source_combat_factor
+                                     : std::uint8_t{0};
+            const auto product =
+                static_cast<std::uint32_t>(state.active_marker) * factor;
+            auto quotient = static_cast<std::uint16_t>(product / 100U);
+            const auto remainder = static_cast<std::uint16_t>(product % 100U);
+            if (remainder >= 0x32U) {
+                quotient = static_cast<std::uint16_t>(quotient + 1U);
+            }
+            state.scaled_ammo = quotient;
             state.active_marker = 0U;
             state.reset_marker = 0U;
         }
@@ -55,14 +69,13 @@ void dispatch_entity_action_candidates(
 }
 
 void advance_entity_action_threshold(
-    const std::function<void()>& find_action,
-    const std::function<void()>& set_action_state) {
-    if (find_action) {
-        find_action();
-    }
-    if (set_action_state) {
-        set_action_state();
-    }
+    EntityActionState& state,
+    const std::array<std::uint8_t, 8>& action_values,
+    const std::function<void()>& service_action,
+    const std::function<void()>& prepare_assets) {
+    const auto scan = scan_entity_action_threshold(action_values);
+    set_entity_action_state(state, scan.action_code, scan.skipped,
+                            service_action, prepare_assets);
 }
 
 std::uint8_t select_entity_action_lane(

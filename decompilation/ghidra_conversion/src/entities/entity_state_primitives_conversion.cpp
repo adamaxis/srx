@@ -61,15 +61,24 @@ void clear_entity_effect_pending_records(
     }
 }
 
+EntityActionThresholdScan scan_entity_action_threshold(
+    const std::array<std::uint8_t, 8>& action_values,
+    const std::uint8_t threshold) {
+    EntityActionThresholdScan scan{};
+    for (const auto value : action_values) {
+        if (value < threshold) {
+            scan.action_code = value;
+            return scan;
+        }
+        scan.skipped = static_cast<std::uint8_t>(scan.skipped + 1U);
+    }
+    return scan;
+}
+
 std::uint8_t find_first_entity_action_below_threshold(
     const std::array<std::uint8_t, 8>& action_values,
     const std::uint8_t threshold) {
-    for (const auto value : action_values) {
-        if (value < threshold) {
-            return value;
-        }
-    }
-    return 0U;
+    return scan_entity_action_threshold(action_values, threshold).action_code;
 }
 
 void clear_entity_runtime_fields(

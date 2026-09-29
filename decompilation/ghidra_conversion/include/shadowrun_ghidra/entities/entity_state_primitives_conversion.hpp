@@ -76,8 +76,16 @@ struct EntityEffectPendingTableState {
 // entity records used by the effect update pass.
 void clear_entity_effect_pending_records(EntityEffectPendingTableState& state);
 
-// ROM 0x13AF2: scan the eight-byte entity action/item area and return the
-// first value below the source threshold, or zero when no value qualifies.
+struct EntityActionThresholdScan {
+    std::uint8_t action_code = 0; // D0; CLR.W when none qualify
+    std::uint8_t skipped = 0;     // D7 ADDQ count of bytes >= 0xD
+};
+
+// ROM 0x13AF2: scan eight bytes at +0x66. CMPI.W #0xD, BLT return, else
+// ADDQ D7 and DBF from 7. Exhaustion CLR.W D0.
+EntityActionThresholdScan scan_entity_action_threshold(
+    const std::array<std::uint8_t, 8>& action_values,
+    std::uint8_t threshold = 0x0DU);
 std::uint8_t find_first_entity_action_below_threshold(
     const std::array<std::uint8_t, 8>& action_values,
     std::uint8_t threshold = 0x0DU);
