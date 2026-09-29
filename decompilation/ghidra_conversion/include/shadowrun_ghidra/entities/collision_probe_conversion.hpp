@@ -25,11 +25,9 @@ struct CollisionProbeState {
 using CollisionProbeOffsetBank =
     std::array<std::array<CollisionProbeOffset, 3>, 4>;
 
-// ROM 0xBC36: add three source-table offsets to an entity position and copy
-// the current camera words. The bank is selected from the first negative byte
-// among the three source probe bytes; the selected byte is rotated left by
-// three and masked to two bits. The source leaves the existing probe state
-// alone while its collision-mode gate is active.
+// ROM 0xBC36: D4 is the first negative FFEF10..12 byte, ROL.B #3 and AND #3,
+// written before TST.W FFDF40. A nonzero FFDF40 RTS with D4 set and leaves
+// FFDF44/camera words. Zero copies three 0xBD34 bank offsets and FFDDC6/C8.
 void build_collision_probe_points(
     CollisionProbeState& state,
     bool collision_mode_active,

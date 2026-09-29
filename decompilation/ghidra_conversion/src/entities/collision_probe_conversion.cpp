@@ -42,12 +42,14 @@ void build_collision_probe_points(
     const CollisionProbeOffsetBank& offset_banks,
     const std::uint16_t camera_x,
     const std::uint16_t camera_y) {
+    // ROM 0xBC36 writes D4 from FFEF10..12 before TST.W FFDF40. The gate
+    // skips the FFDF44/camera copy and leaves the existing probe points.
+    const auto selected_bank = select_offset_bank(probe_bytes);
+    state.selected_offset_bank = static_cast<std::uint8_t>(selected_bank);
     if (collision_mode_active) {
         return;
     }
 
-    const auto selected_bank = select_offset_bank(probe_bytes);
-    state.selected_offset_bank = static_cast<std::uint8_t>(selected_bank);
     const auto& offsets = offset_banks[selected_bank];
     for (std::size_t index = 0; index < state.points.size(); ++index) {
         state.points[index] = CollisionProbePoint{

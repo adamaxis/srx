@@ -84,6 +84,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x0000AFF2U, "prepare_entity_auxiliary_behavior", RoutineFamily::graphics, 72U},
     {0x0000B330U, "enter_entity_behavior_transition", RoutineFamily::graphics, 90U},
     {0x0000B7B8U, "advance_entity_movement_and_mode_transition", RoutineFamily::graphics, 772U},
+    {0x0000BC36U, "build_collision_probe_points", RoutineFamily::graphics, 120U},
     {0x0000C168U, "render_wrapped_encoded_text", RoutineFamily::graphics, 174U},
     {0x0000C376U, "move_wrapped_menu_cursor", RoutineFamily::graphics, 60U},
     {0x0000C64CU, "finalize_field_mode_exit_transition", RoutineFamily::field, 428U},

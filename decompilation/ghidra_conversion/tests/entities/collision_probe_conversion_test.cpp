@@ -46,8 +46,19 @@ int main() {
                 state.points[2].x == before.points[2].x &&
                 state.points[2].y == before.points[2].y &&
                 state.camera_x == before.camera_x &&
-                state.camera_y == before.camera_y)) {
+                state.camera_y == before.camera_y &&
+                state.selected_offset_bank == 3U)) {
         return 2;
+    }
+
+    CollisionProbeState gated{};
+    const std::array<std::uint8_t, 3> first_negative{0x90U, 0x10U, 0x20U};
+    build_collision_probe_points(
+        gated, true, 0x1000U, 0x2000U, first_negative, offset_banks,
+        0x1111U, 0x2222U);
+    if (!expect(gated.selected_offset_bank == 0U &&
+                gated.points[0].x == 0U && gated.camera_x == 0U)) {
+        return 3;
     }
 
     return 0;
