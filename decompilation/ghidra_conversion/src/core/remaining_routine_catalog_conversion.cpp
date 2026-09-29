@@ -281,6 +281,8 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00014D58U, "measure_entity_target_heading_and_distance", RoutineFamily::entity, 18U},
     {0x00014D6AU, "select_entity_motion_action_row", RoutineFamily::entity, 36U},
     {0x00014D8EU, "probe_entity_spawn_collision_window", RoutineFamily::entity, 124U},
+    {0x00014F26U, "probe_entity_world_position", RoutineFamily::entity, 42U},
+    {0x00014F50U, "advance_entity_collision_recovery", RoutineFamily::entity, 54U},
     {0x00015554U, "service_nearby_entity_auxiliary_behavior", RoutineFamily::entity, 218U},
     {0x00015646U, "spawn_entity_effect_record", RoutineFamily::entity, 484U},
     {0x00015830U, "dispatch_entity_effect", RoutineFamily::entity, 256U},
