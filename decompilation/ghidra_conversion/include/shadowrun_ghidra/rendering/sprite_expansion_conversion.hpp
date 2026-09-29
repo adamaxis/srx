@@ -44,4 +44,27 @@ SpriteExpansionStatus expand_entity_sprite_descriptors(
     std::uint8_t& next_sequence,
     std::vector<ExpandedSpriteRecord>& output);
 
+struct QueuedSpriteRecord {
+    std::uint32_t source = 0; // A2+2
+    std::uint16_t length = 0; // A2+6
+    std::uint16_t tile_base = 0; // word << 5
+};
+
+struct SpriteRecordQueue {
+    std::vector<QueuedSpriteRecord> records;
+};
+
+// ROM 0x61A0: enqueue A2+2/+6 and (record+0x2A)<<5, then FFDF32 += 8.
+void append_entity_sprite_record(
+    SpriteRecordQueue& queue,
+    std::uint32_t source,
+    std::uint16_t length,
+    std::uint16_t record_word_2a);
+// ROM 0x61CC: same queue, tile base from D0<<5.
+void append_sprite_record(
+    SpriteRecordQueue& queue,
+    std::uint32_t source,
+    std::uint16_t length,
+    std::uint16_t tile_index);
+
 } // namespace shadowrun::ghidra_conversion

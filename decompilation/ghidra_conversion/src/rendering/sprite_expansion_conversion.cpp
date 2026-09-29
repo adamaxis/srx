@@ -52,4 +52,34 @@ SpriteExpansionStatus expand_entity_sprite_descriptors(
     return status;
 }
 
+namespace {
+
+void enqueue_sprite_record(
+    SpriteRecordQueue& queue,
+    const std::uint32_t source,
+    const std::uint16_t length,
+    const std::uint16_t shifted_word) {
+    queue.records.push_back(QueuedSpriteRecord{
+        source, length,
+        static_cast<std::uint16_t>(shifted_word << 5U)});
+}
+
+} // namespace
+
+void append_entity_sprite_record(
+    SpriteRecordQueue& queue,
+    const std::uint32_t source,
+    const std::uint16_t length,
+    const std::uint16_t record_word_2a) {
+    enqueue_sprite_record(queue, source, length, record_word_2a);
+}
+
+void append_sprite_record(
+    SpriteRecordQueue& queue,
+    const std::uint32_t source,
+    const std::uint16_t length,
+    const std::uint16_t tile_index) {
+    enqueue_sprite_record(queue, source, length, tile_index);
+}
+
 } // namespace shadowrun::ghidra_conversion

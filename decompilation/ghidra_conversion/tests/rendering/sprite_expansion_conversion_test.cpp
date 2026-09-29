@@ -60,5 +60,16 @@ int main() {
         return 3;
     }
 
+    SpriteRecordQueue queue{};
+    append_entity_sprite_record(queue, 0x00A30EU, 0x0020U, 0x0004U);
+    append_sprite_record(queue, 0x00A320U, 0x0010U, 0x0002U);
+    if (!expect(queue.records.size() == 2U &&
+                queue.records[0].source == 0x00A30EU &&
+                queue.records[0].length == 0x0020U &&
+                queue.records[0].tile_base == 0x0080U &&
+                queue.records[1].source == 0x00A320U &&
+                queue.records[1].tile_base == 0x0040U)) {
+        return 4;
+    }
     return 0;
 }
