@@ -309,5 +309,28 @@ int main() {
         shared.gate != 0x1E || auxiliary.spawn.auxiliary != 6) {
         return 27;
     }
+
+    EntityAnimationEffectState anim_effect{};
+    anim_effect.countdown = 1;
+    anim_effect.screen_x = 0x0088U;
+    anim_effect.screen_y = 0x0098U;
+    auto anim_effect_sprites = advance_entity_animation_effect(anim_effect, 0U);
+    if (anim_effect.countdown != 0 || anim_effect_sprites.size() != 1U ||
+        anim_effect_sprites[0].y != 0x7A || anim_effect_sprites[0].x != 0x78 ||
+        anim_effect_sprites[0].size != 14U ||
+        anim_effect_sprites[0].attributes != 0x4580U) {
+        return 28;
+    }
+    anim_effect.countdown = 0;
+    anim_effect.phase = 3;
+    anim_effect.marker = 0x000FU;
+    anim_effect_sprites = advance_entity_animation_effect(anim_effect, 0U);
+    if (anim_effect.countdown != 3 || anim_effect.phase != 0 ||
+        anim_effect_sprites.size() != 2U ||
+        anim_effect_sprites[0].y != 0x4C || anim_effect_sprites[0].x != 0x58 ||
+        anim_effect_sprites[1].y != 0xA3 || anim_effect_sprites[1].x != 0x58 ||
+        anim_effect_sprites[1].sequence != 1U) {
+        return 29;
+    }
     return 0;
 }

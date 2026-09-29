@@ -342,6 +342,26 @@ void advance_entity_animation_effect(
     EffectAnimationState& state,
     const std::function<void()>& build_special_sprite,
     const std::function<void()>& build_sprite_records);
+
+struct EntityAnimationEffectState {
+    std::int8_t countdown = 0;
+    std::uint8_t phase = 0;
+    std::uint16_t screen_x = 0;
+    std::uint16_t screen_y = 0;
+    std::uint16_t marker = 0;
+};
+
+constexpr std::array<SpriteSourceRecord, 4> kEntityAnimationEffectSprites{{
+    {-14, -32, 14, 0x0580U},
+    {-14, -32, 14, 0x058CU},
+    {-14, -32, 14, 0x0598U},
+    {-14, -32, 14, 0x05A4U},
+}};
+
+// ROM 0x5936: +6 cadence 3, phase +7 wrap 4, 0x5A46, D6 0x4000; +0xE==0xF dual.
+std::vector<BuiltSpriteRecord> advance_entity_animation_effect(
+    EntityAnimationEffectState& state,
+    std::uint8_t first_sequence);
 void refresh_delayed_effect_sprites(
     EntityEffectSlotState& effect,
     const std::function<void()>& build_sprite_records,

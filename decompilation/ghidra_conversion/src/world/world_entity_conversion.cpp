@@ -576,6 +576,43 @@ void advance_entity_animation_effect(
     call_once(build_sprite_records);
 }
 
+std::vector<BuiltSpriteRecord> advance_entity_animation_effect(
+    EntityAnimationEffectState& state,
+    const std::uint8_t first_sequence) {
+    --state.countdown;
+    if (state.countdown < 0) {
+        state.countdown = 3;
+        ++state.phase;
+        if (state.phase >= 4U) {
+            state.phase = 0;
+        }
+    }
+    const auto phase = static_cast<std::uint8_t>(state.phase & 3U);
+    const auto& sprite = kEntityAnimationEffectSprites[phase];
+    if (state.marker != 0x000FU) {
+        return build_title_sprite_records(
+            {sprite}, static_cast<std::int16_t>(state.screen_x),
+            static_cast<std::int16_t>(state.screen_y), first_sequence,
+            0x4000U);
+    }
+    auto records = build_title_sprite_records(
+        {sprite},
+        static_cast<std::int16_t>(
+            static_cast<std::int16_t>(state.screen_x) - 0x2E),
+        static_cast<std::int16_t>(
+            static_cast<std::int16_t>(state.screen_y) - 0x20),
+        first_sequence, 0x4000U);
+    const auto second = build_title_sprite_records(
+        {sprite},
+        static_cast<std::int16_t>(
+            static_cast<std::int16_t>(state.screen_x) + 0x29),
+        static_cast<std::int16_t>(
+            static_cast<std::int16_t>(state.screen_y) - 0x20),
+        static_cast<std::uint8_t>(first_sequence + records.size()), 0x4000U);
+    records.insert(records.end(), second.begin(), second.end());
+    return records;
+}
+
 void refresh_delayed_effect_sprites(
     EntityEffectSlotState& effect,
     const std::function<void()>& build_sprite_records,

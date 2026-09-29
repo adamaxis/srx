@@ -78,6 +78,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00005622U, "clear_entity_runtime_fields", RoutineFamily::field, 28U},
     {0x0000563EU, "clone_entity_spawn_variant_b", RoutineFamily::field, 36U},
     {0x00005662U, "advance_effect_animation_variant", RoutineFamily::field, 124U},
+    {0x00005936U, "advance_entity_animation_effect", RoutineFamily::field, 180U},
     {0x00005A56U, "project_entity_screen_position", RoutineFamily::entity, 200U},
     {0x00005FDCU, "advance_entity_animation_accumulator", RoutineFamily::field, 50U},
     {0x0000600EU, "advance_entity_sprite_descriptor", RoutineFamily::field, 230U},
