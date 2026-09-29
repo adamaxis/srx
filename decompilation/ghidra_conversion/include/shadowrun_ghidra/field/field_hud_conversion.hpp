@@ -261,4 +261,24 @@ FieldHudMentalMeterPlan advance_field_hud_mental_meter(
     FieldHudMentalMeterState& state,
     std::int8_t delta);
 
+// ROM 0x38AC: empty ammo or type 0 returns. Slot word > 2 decrements +0x4E.
+// Types 8..10 feed 0x36FC with D1=-3, others with D1=-1.
+FieldHudAmmoMeterPlan service_field_hud_ammo(FieldHudAmmoMeterState& state);
+
+struct FieldHudMeterBundle {
+    FieldHudDelayMeterState delay;
+    FieldHudMentalMeterState mental;
+    FieldHudAmmoMeterState ammo;
+};
+
+struct FieldHudMeterTripletPlan {
+    std::array<FieldHudDelayMeterPlan, 3> delay{};
+    std::array<FieldHudMentalMeterPlan, 3> mental{};
+    std::array<FieldHudAmmoMeterPlan, 3> ammo{};
+};
+
+// ROM 0x38FA: three records from FF0100, D1=0, 0x3674 then 0x37EC then 0x36FC.
+FieldHudMeterTripletPlan refresh_field_hud_meter_triplet(
+    std::array<FieldHudMeterBundle, 3>& slots);
+
 } // namespace shadowrun::ghidra_conversion

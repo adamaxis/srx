@@ -305,5 +305,54 @@ int main() {
         return 31;
     }
 
+    FieldHudAmmoMeterState fired{};
+    fired.flags_byte = 0x01U;
+    fired.equipped_inventory_slot = 0;
+    fired.source_type = 1;
+    fired.ammo = 5;
+    auto fired_plan = service_field_hud_ammo(fired);
+    if (!expect(fired.ammo == 4 &&
+                fired_plan.tiles == kFieldHudAmmoMeterTiles[4])) {
+        return 32;
+    }
+    fired.source_type = 8;
+    fired.ammo = 5;
+    fired_plan = service_field_hud_ammo(fired);
+    if (!expect(fired.ammo == 2 &&
+                fired_plan.tiles == kFieldHudAmmoMeterTiles[2])) {
+        return 33;
+    }
+    fired.source_type = 0;
+    fired.ammo = 5;
+    fired_plan = service_field_hud_ammo(fired);
+    if (!expect(fired.ammo == 5 && fired_plan.displayed == 0)) {
+        return 34;
+    }
+    fired.source_type = 1;
+    fired.slot_word = 3;
+    fired_plan = service_field_hud_ammo(fired);
+    if (!expect(fired.ammo == 4 && fired_plan.displayed == 4)) {
+        return 35;
+    }
+
+    std::array<FieldHudMeterBundle, 3> meters{};
+    meters[0].delay.flags_byte = 0x01U;
+    meters[0].delay.meter = 4;
+    meters[0].mental.flags_byte = 0x01U;
+    meters[0].mental.meter = 3;
+    meters[0].mental.primary_runner = true;
+    meters[0].ammo.flags_byte = 0x01U;
+    meters[0].ammo.equipped_inventory_slot = 0;
+    meters[0].ammo.source_type = 1;
+    meters[0].ammo.ammo = 6;
+    const auto triplet = refresh_field_hud_meter_triplet(meters);
+    if (!expect(meters[0].delay.meter == 4 && meters[0].mental.meter == 3 &&
+                meters[0].ammo.ammo == 6 &&
+                triplet.delay[0].tiles == kFieldHudDelayMeterTiles[4] &&
+                triplet.mental[0].tiles == kFieldHudPrimaryMentalMeterTiles[3] &&
+                triplet.ammo[0].tiles == kFieldHudAmmoMeterTiles[6])) {
+        return 36;
+    }
+
     return 0;
 }

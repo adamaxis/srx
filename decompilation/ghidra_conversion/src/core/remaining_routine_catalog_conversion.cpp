@@ -29,6 +29,8 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00003674U, "advance_entity_delay_meter", RoutineFamily::field, 136U},
     {0x000036FCU, "advance_entity_asset_meter", RoutineFamily::field, 240U},
     {0x000037ECU, "advance_entity_behavior_meter", RoutineFamily::field, 192U},
+    {0x000038ACU, "service_entity_ammo", RoutineFamily::field, 78U},
+    {0x000038FAU, "run_entity_animation_triplet", RoutineFamily::field, 32U},
     {0x00003B1EU, "classify_field_camera_vertical_delta", RoutineFamily::field, 142U},
     {0x00003BACU, "advance_field_camera_scroll", RoutineFamily::field, 364U},
     {0x00003D18U, "render_field_tile_rows", RoutineFamily::field, 50U},

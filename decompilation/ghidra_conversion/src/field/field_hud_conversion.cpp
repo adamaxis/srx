@@ -301,4 +301,39 @@ FieldHudMentalMeterPlan advance_field_hud_mental_meter(
     return plan;
 }
 
+FieldHudAmmoMeterPlan service_field_hud_ammo(FieldHudAmmoMeterState& state) {
+    if (state.ammo == 0U || state.source_type == 0U) {
+        FieldHudAmmoMeterPlan plan{};
+        if (state.slot_word == 0U) {
+            plan.nametable = 0xF4C4U;
+        } else if (state.slot_word == 1U) {
+            plan.nametable = 0xF8C4U;
+        } else {
+            plan.nametable = 0xFCC4U;
+        }
+        return plan;
+    }
+    if (state.slot_word > 2U) {
+        state.ammo = static_cast<std::uint8_t>(state.ammo - 1U);
+        FieldHudAmmoMeterPlan plan{};
+        plan.displayed = state.ammo;
+        return plan;
+    }
+    const auto delta =
+        (state.source_type >= 8U && state.source_type < 0x0BU) ? -3 : -1;
+    return advance_field_hud_ammo_meter(state, static_cast<std::int8_t>(delta));
+}
+
+FieldHudMeterTripletPlan refresh_field_hud_meter_triplet(
+    std::array<FieldHudMeterBundle, 3>& slots) {
+    FieldHudMeterTripletPlan plan{};
+    for (std::size_t index = 0; index < slots.size(); ++index) {
+        plan.delay[index] = advance_field_hud_delay_meter(slots[index].delay, 0);
+        plan.mental[index] =
+            advance_field_hud_mental_meter(slots[index].mental, 0);
+        plan.ammo[index] = advance_field_hud_ammo_meter(slots[index].ammo, 0);
+    }
+    return plan;
+}
+
 } // namespace shadowrun::ghidra_conversion
