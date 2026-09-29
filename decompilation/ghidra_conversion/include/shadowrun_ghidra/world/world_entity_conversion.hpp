@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shadowrun_ghidra/field/field_entity_render_batch_conversion.hpp"
 #include "shadowrun_ghidra/rendering/sprite_record_builder_conversion.hpp"
 
 #include <array>
@@ -280,6 +281,50 @@ void run_effect_variant_a(
     const std::function<void()>& clone_variant,
     const std::function<void()>& prepare_auxiliary,
     const std::function<void()>& clear_slot);
+
+enum class EffectVariantScanResult {
+    gated,
+    jitter_live,
+    child_cloned,
+    auxiliary_cloned,
+    expired,
+};
+
+struct EffectVariantRecord {
+    EntitySpawnCloneRecord spawn{};
+    std::uint16_t screen_x = 0;
+    std::uint16_t screen_y = 0;
+    std::uint8_t flags = 0;
+    std::int16_t kind = 0;
+    std::uint8_t discriminator = 0;
+    std::uint8_t generation = 0;
+};
+
+struct EffectVariantSharedState {
+    std::int16_t gate = 0;
+    std::int16_t delay = 0;
+    std::int16_t phase_gate = 0;
+    std::int16_t offset_x = 0;
+    std::int16_t offset_y = 0;
+    std::uint16_t random_word = 0;
+    std::uint16_t seed = 0;
+    std::array<std::uint8_t, 18> slots{};
+    EntityRuntimeCleanupState cleanup{};
+};
+
+struct EffectVariantScanOutput {
+    EffectVariantScanResult result = EffectVariantScanResult::gated;
+    std::vector<BuiltSpriteRecord> sprites;
+    std::size_t cloned_index = 0;
+};
+
+// ROM 0x53C4: FFDFF6/FFDFF8 gate, 0x5494, nine +0x100 scan, 0x5468/0x1A304/0x5622.
+EffectVariantScanOutput run_effect_variant_a(
+    EffectVariantRecord& self,
+    std::array<EffectVariantRecord, 9>& neighbors,
+    EffectVariantRecord& auxiliary,
+    EffectVariantSharedState& shared,
+    std::uint8_t first_sequence);
 void run_effect_variant_b(
     EntityEffectSlotState& effect,
     const std::function<void()>& clone_variant,

@@ -276,7 +276,7 @@ struct EntitySpawnCloneRecord {
 // ROM 0x5468: FFFE004=4, dest +0xB2=0xD, copy +0x32/+0x2A/+0xD8, +2=5, +3=0.
 void clone_entity_spawn_variant_a(EntitySpawnCloneRecord& destination,
                                   const EntitySpawnCloneRecord& source,
-                                  std::uint16_t& phase_gate);
+                                  std::int16_t& phase_gate);
 
 struct TitleSpriteTimerState {
     std::int8_t countdown = 0;

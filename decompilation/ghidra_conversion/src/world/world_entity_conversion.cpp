@@ -2,7 +2,6 @@
 
 #include "shadowrun_ghidra/core/random_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_projection_conversion.hpp"
-#include "shadowrun_ghidra/field/field_entity_render_batch_conversion.hpp"
 
 namespace shadowrun::ghidra_conversion {
 
@@ -416,6 +415,73 @@ void run_effect_variant_a(
         effect.active = false;
         call_once(clear_slot);
     }
+}
+
+EffectVariantScanOutput run_effect_variant_a(
+    EffectVariantRecord& self,
+    std::array<EffectVariantRecord, 9>& neighbors,
+    EffectVariantRecord& auxiliary,
+    EffectVariantSharedState& shared,
+    const std::uint8_t first_sequence) {
+    EffectVariantScanOutput output{};
+    if (shared.gate >= 0) {
+        --shared.gate;
+        if (shared.gate >= 0) {
+            return output;
+        }
+        --shared.delay;
+    }
+    JitterEffectSpriteState jitter{};
+    jitter.animation.countdown = self.spawn.countdown;
+    jitter.animation.phase = self.spawn.phase;
+    jitter.screen_x = self.screen_x;
+    jitter.screen_y = self.screen_y;
+    jitter.attribute_offset = self.spawn.attribute;
+    jitter.auxiliary = self.spawn.auxiliary;
+    jitter.remaining = shared.phase_gate;
+    jitter.offset_x = shared.offset_x;
+    jitter.offset_y = shared.offset_y;
+    jitter.random_word = shared.random_word;
+    jitter.seed = shared.seed;
+    output.sprites = advance_jitter_effect(jitter, first_sequence);
+    self.spawn.countdown =
+        static_cast<std::uint8_t>(jitter.animation.countdown);
+    self.spawn.phase = jitter.animation.phase;
+    self.spawn.auxiliary = jitter.auxiliary;
+    shared.phase_gate = jitter.remaining;
+    shared.offset_x = jitter.offset_x;
+    shared.offset_y = jitter.offset_y;
+    shared.random_word = jitter.random_word;
+    shared.seed = jitter.seed;
+    if (self.spawn.auxiliary != 0) {
+        output.result = EffectVariantScanResult::jitter_live;
+        return output;
+    }
+    for (std::size_t index = 0; index < neighbors.size(); ++index) {
+        auto& neighbor = neighbors[index];
+        if (neighbor.kind >= 9) {
+            break;
+        }
+        if (neighbor.discriminator != 0x0DU || (neighbor.flags & 1U) == 0 ||
+            (neighbor.flags & 0x40U) != 0) {
+            continue;
+        }
+        clone_entity_spawn_variant_a(neighbor.spawn, self.spawn,
+                                     shared.phase_gate);
+        output.result = EffectVariantScanResult::child_cloned;
+        output.cloned_index = index;
+        return output;
+    }
+    if (shared.delay < 0) {
+        clear_effect_slot(shared.slots, self.spawn.slot);
+        clear_entity_runtime_fields(shared.cleanup, 0xFDU);
+        output.result = EffectVariantScanResult::expired;
+        return output;
+    }
+    shared.gate = 0x1E;
+    clone_entity_spawn_variant_a(auxiliary.spawn, self.spawn, shared.phase_gate);
+    output.result = EffectVariantScanResult::auxiliary_cloned;
+    return output;
 }
 
 void run_effect_variant_b(

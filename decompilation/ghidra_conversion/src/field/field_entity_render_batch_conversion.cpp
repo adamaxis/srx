@@ -367,7 +367,7 @@ void clone_entity_spawn_variant_a(EntitySpawnRecord& destination,
 
 void clone_entity_spawn_variant_a(EntitySpawnCloneRecord& destination,
                                   const EntitySpawnCloneRecord& source,
-                                  std::uint16_t& phase_gate) {
+                                  std::int16_t& phase_gate) {
     phase_gate = 4;
     destination.auxiliary = 0x0D;
     destination.slot = source.slot;

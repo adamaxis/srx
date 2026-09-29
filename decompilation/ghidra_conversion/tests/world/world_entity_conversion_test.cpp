@@ -204,5 +204,63 @@ int main() {
         jitter_sprites[0].y != 0x7F || jitter_sprites[0].x != 0x7C) {
         return 18;
     }
+
+    EffectVariantRecord self{};
+    std::array<EffectVariantRecord, 9> neighbors{};
+    EffectVariantRecord auxiliary{};
+    EffectVariantSharedState shared{};
+    shared.gate = 2;
+    auto scan = run_effect_variant_a(self, neighbors, auxiliary, shared, 0U);
+    if (scan.result != EffectVariantScanResult::gated || shared.gate != 1 ||
+        !scan.sprites.empty()) {
+        return 19;
+    }
+    self.spawn.auxiliary = 0x0D;
+    self.spawn.countdown = 1;
+    self.screen_x = 0x0088U;
+    self.screen_y = 0x0098U;
+    shared.gate = 0;
+    shared.delay = 1;
+    scan = run_effect_variant_a(self, neighbors, auxiliary, shared, 0U);
+    if (scan.result != EffectVariantScanResult::jitter_live ||
+        shared.gate != -1 || shared.delay != 0 || scan.sprites.size() != 1U ||
+        scan.sprites[0].y != 0x85 || scan.sprites[0].x != 0x82) {
+        return 20;
+    }
+    self.spawn.auxiliary = 0;
+    self.spawn.countdown = 1;
+    self.spawn.slot = 3;
+    self.spawn.attribute = 0x2A;
+    self.spawn.script = 0xD800U;
+    neighbors[1].kind = 1;
+    neighbors[1].discriminator = 0x0D;
+    neighbors[1].flags = 1;
+    shared.gate = -1;
+    scan = run_effect_variant_a(self, neighbors, auxiliary, shared, 0U);
+    if (scan.result != EffectVariantScanResult::child_cloned ||
+        scan.cloned_index != 1U || neighbors[1].spawn.auxiliary != 0x0D ||
+        neighbors[1].spawn.countdown != 5 || neighbors[1].spawn.slot != 3 ||
+        shared.phase_gate != 4) {
+        return 21;
+    }
+    neighbors = {};
+    neighbors[0].kind = 9;
+    shared.delay = -1;
+    shared.slots[3] = 1;
+    shared.cleanup.transient_flags.fill(0xFFU);
+    shared.cleanup.masked_flags.fill(0xFFU);
+    scan = run_effect_variant_a(self, neighbors, auxiliary, shared, 0U);
+    if (scan.result != EffectVariantScanResult::expired ||
+        shared.slots[3] != 0 || shared.cleanup.transient_flags[0] != 0 ||
+        shared.cleanup.masked_flags[0] != 0xFDU) {
+        return 22;
+    }
+    shared.delay = 0;
+    scan = run_effect_variant_a(self, neighbors, auxiliary, shared, 0U);
+    if (scan.result != EffectVariantScanResult::auxiliary_cloned ||
+        shared.gate != 0x1E || auxiliary.spawn.auxiliary != 0x0D ||
+        auxiliary.spawn.script != 0xD800U) {
+        return 23;
+    }
     return 0;
 }
