@@ -208,6 +208,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00012062U, "refresh_menu_text", RoutineFamily::menu, 56U},
     {0x00012148U, "read_entity_action_code", RoutineFamily::menu, 32U},
     {0x0001253EU, "reset_inventory_action_target_state", RoutineFamily::menu, 188U},
+    {0x000125FAU, "scale_and_clear_entity_auxiliary", RoutineFamily::menu, 58U},
     {0x000127B0U, "refresh_menu_panel", RoutineFamily::menu, 76U},
     {0x000127FCU, "write_single_grid", RoutineFamily::menu, 58U},
     {0x000129FEU, "transfer_inventory_action_slot", RoutineFamily::menu, 86U},

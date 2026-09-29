@@ -89,6 +89,15 @@ int main() {
     if (auxiliary.marker != 0) {
         return 5;
     }
+    const auto scaled = scale_and_clear_entity_auxiliary(0U, 3U);
+    const auto remainder = scale_and_clear_entity_auxiliary(0U, 1U);
+    const auto wide = scale_and_clear_entity_auxiliary(0U, 18U);
+    const auto zero_factor = scale_and_clear_entity_auxiliary(18U, 32U);
+    if (scaled.scaled_value != 50U || scaled.auxiliary != 0U ||
+        remainder.scaled_value != 17U || wide.scaled_value != 301U ||
+        zero_factor.scaled_value != 3201U) {
+        return 17;
+    }
     write_single_grid([&] { events.push_back(8); });
     if (events.back() != 8) {
         return 6;

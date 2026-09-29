@@ -56,11 +56,20 @@ void upload_resource_then_write_two_blocks(
 void upload_resource_stream(const std::function<void()>& upload_stream);
 
 struct EntityAuxiliaryState {
-    std::uint8_t marker = 0;
+    std::uint8_t marker = 0; // +0x4E
 };
 
-// ROM 0x125FA: clear the auxiliary entity marker at source offset 0x4E.
+struct EntityAuxiliaryScaleResult {
+    std::uint8_t auxiliary = 0;
+    std::uint16_t scaled_value = 0;
+};
+
+// ROM 0x125FA: CLR +0x4E after scaling it. D5 indexes 0xD4540*0x30, D2=+0x24,
+// D1=+0x4E*100, DIVU when factor!=0, LSR.L #8 then ADDQ.W if nonzero.
 void clear_entity_auxiliary_marker(EntityAuxiliaryState& state);
+EntityAuxiliaryScaleResult scale_and_clear_entity_auxiliary(
+    std::uint8_t item_row,
+    std::uint8_t auxiliary);
 
 void write_single_grid(const std::function<void()>& write_grid);
 

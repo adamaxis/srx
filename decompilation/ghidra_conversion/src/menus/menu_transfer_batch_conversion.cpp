@@ -106,6 +106,28 @@ void clear_entity_auxiliary_marker(EntityAuxiliaryState& state) {
     state.marker = 0;
 }
 
+EntityAuxiliaryScaleResult scale_and_clear_entity_auxiliary(
+    const std::uint8_t item_row,
+    const std::uint8_t auxiliary) {
+    EntityAuxiliaryScaleResult result{};
+    const auto& catalog = us_item_catalog();
+    const auto factor =
+        item_row < catalog.size() ? catalog[item_row].source_combat_factor
+                                  : std::uint8_t{0};
+    auto value = static_cast<std::uint32_t>(auxiliary) * 100U;
+    if (factor != 0U) {
+        const auto quotient = static_cast<std::uint16_t>(value / factor);
+        const auto remainder = static_cast<std::uint16_t>(value % factor);
+        value = (static_cast<std::uint32_t>(remainder) << 16U) | quotient;
+    }
+    auto scaled = static_cast<std::uint16_t>(value);
+    if ((value >> 8U) != 0U) {
+        scaled = static_cast<std::uint16_t>(scaled + 1U);
+    }
+    result.scaled_value = scaled;
+    return result;
+}
+
 void write_single_grid(const std::function<void()>& write_grid) {
     call_once(write_grid);
 }
