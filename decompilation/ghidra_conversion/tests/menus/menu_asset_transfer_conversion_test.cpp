@@ -66,5 +66,15 @@ int main() {
         return 3;
     }
 
+    if (kMenuAssetBatchFourA[2].destination != 0xE23AU ||
+        kMenuAssetBatchFourA[2].height != 0x04U ||
+        kMenuAssetBatchFourB[0].destination != 0xE006U ||
+        kMenuAssetBatchFourB[3].destination != 0xEA86U ||
+        kMenuAssetBatchSeven.size() != 7U ||
+        kMenuAssetBatchSeven[6].destination != 0xED04U ||
+        kMenuAssetBatchSeven[1].height != 0x13U) {
+        return 4;
+    }
+
     return 0;
 }

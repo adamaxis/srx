@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -50,5 +51,39 @@ void transfer_menu_asset_batch(
     MenuGraphicsState& state,
     const MenuAssetBatchPlan& plan,
     const MenuAssetBatchCallbacks& callbacks);
+
+struct MenuAssetGridWrite {
+    std::uint32_t glyph_source = 0;
+    std::uint16_t destination = 0;
+    std::uint16_t height = 0; // D7
+    std::uint16_t width = 0;  // D1
+};
+
+// ROM 0x10AF0: four 0x1232 writes after 0x10918, then VDP command 0x8174.
+constexpr std::array<MenuAssetGridWrite, 4> kMenuAssetBatchFourA{{
+    {0x000CDCE6U, 0xE000U, 0x21U, 0x03U},
+    {0x000CDDF6U, 0xE200U, 0x04U, 0x10U},
+    {0x000CDEA0U, 0xE23AU, 0x04U, 0x10U},
+    {0x000CDF4AU, 0xEA80U, 0x21U, 0x06U},
+}};
+
+// ROM 0x10B5A: same sources, destinations +6.
+constexpr std::array<MenuAssetGridWrite, 4> kMenuAssetBatchFourB{{
+    {0x000CDCE6U, 0xE006U, 0x21U, 0x03U},
+    {0x000CDDF6U, 0xE206U, 0x04U, 0x10U},
+    {0x000CDEA0U, 0xE240U, 0x04U, 0x10U},
+    {0x000CDF4AU, 0xEA86U, 0x21U, 0x06U},
+}};
+
+// ROM 0x10C96: seven 0x1232 writes, D7/D1 persist across pairs.
+constexpr std::array<MenuAssetGridWrite, 7> kMenuAssetBatchSeven{{
+    {0x000CE850U, 0xE000U, 0x13U, 0x06U},
+    {0x000CE968U, 0xE028U, 0x13U, 0x06U},
+    {0x000CEA80U, 0xE380U, 0x01U, 0x14U},
+    {0x000CEAD4U, 0xE3CCU, 0x01U, 0x14U},
+    {0x000CEB28U, 0xE584U, 0x23U, 0x01U},
+    {0x000CEBB8U, 0xE984U, 0x23U, 0x01U},
+    {0x000CEC48U, 0xED04U, 0x23U, 0x01U},
+}};
 
 } // namespace shadowrun::ghidra_conversion
