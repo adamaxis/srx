@@ -190,6 +190,49 @@ void write_hud_repeated_grid(const std::function<void()>& write_grid);
 void write_hud_repeated_grid_variant_a(const std::function<void()>& write_grid);
 void write_hud_repeated_grid_variant_b(const std::function<void()>& write_grid);
 
+constexpr std::array<std::uint16_t, 19> kHudRepeatedGridWideRow{
+    0x0070U, 0x0070U, 0x0070U, 0x0076U, 0x007AU, 0x007EU, 0x0077U, 0x007BU,
+    0x007FU, 0x0078U, 0x007CU, 0x0080U, 0x0079U, 0x007DU, 0x0081U, 0x00B6U,
+    0x0098U, 0x08B6U, 0x00B0U};
+
+void write_hud_repeated_grid_variant_a(const WordTransferCallbacks& callbacks);
+void write_hud_repeated_grid_variant_b(const WordTransferCallbacks& callbacks);
+void write_hud_repeated_grid_variant_c(const WordTransferCallbacks& callbacks);
+
+constexpr std::array<std::array<std::array<std::uint16_t, 9>, 2>, 4>
+    kTwoHudGridTiles{{{{{{0x041AU, 0x041BU, 0x045CU, 0x045DU, 0x045EU, 0x045FU,
+                          0x0460U, 0x0C1BU, 0x0421U}},
+                       {{0x041AU, 0x041BU, 0x041CU, 0x041DU, 0x041EU, 0x041FU,
+                         0x0420U, 0x0C1BU, 0x0421U}}}},
+                     {{{{0x041AU, 0x041BU, 0x044DU, 0x044EU, 0x044FU, 0x0450U,
+                         0x0451U, 0x0452U, 0x0453U}},
+                       {{0x041AU, 0x041BU, 0x046CU, 0x046DU, 0x046EU, 0x046FU,
+                         0x0470U, 0x0471U, 0x0453U}}}},
+                     {{{{0x0476U, 0x0477U, 0x0478U, 0x0479U, 0x047AU, 0x0451U,
+                         0x047BU, 0x047CU, 0x047DU}},
+                       {{0x0482U, 0x0483U, 0x0484U, 0x0485U, 0x0486U, 0x0470U,
+                         0x0487U, 0x0488U, 0x0489U}}}},
+                     {{{{0x041AU, 0x048FU, 0x0490U, 0x0491U, 0x0491U, 0x0492U,
+                         0x0493U, 0x0494U, 0x0453U}},
+                       {{0x041AU, 0x0499U, 0x049AU, 0x049BU, 0x049CU, 0x049DU,
+                         0x049EU, 0x049FU, 0x0453U}}}}}};
+
+// ROM 0x189D8: two 9-wide grids from 0xD9FA8+FFF0D1*0x24 at 0xE08A+idx*0x280.
+// FFDD22 bit 8 decrements the second index, wrapping 0..3.
+void write_two_hud_grids(
+    std::uint8_t index,
+    bool wrap_decrement,
+    const WordTransferCallbacks& callbacks);
+
+constexpr std::array<std::uint16_t, 3> kHudPanelGridRow{
+    0x00B0U, 0x00B0U, 0x00B0U};
+constexpr std::uint16_t kHudPanelGridBase = 0xEC94U;
+
+// ROM 0x19504: dest FFF0D4*0xC-0x136C, 3x1 mask 0x6000 from 0xD8478.
+void write_hud_panel_grid(
+    std::uint8_t selector,
+    const WordTransferCallbacks& callbacks);
+
 constexpr std::uint16_t kHudRepeatedGridBase = 0xC300U;
 constexpr std::uint16_t kHudRepeatedGridMask = 0x6000U;
 constexpr std::array<std::uint16_t, 3> kHudRepeatedGridRow{

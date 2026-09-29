@@ -302,6 +302,76 @@ void write_hud_repeated_grid_variant_b(
     write_hud_repeated_grid(write_grid);
 }
 
+namespace {
+
+void write_hud_repeated_grid_plan(
+    const std::uint16_t destination,
+    const std::size_t width,
+    const std::size_t height,
+    const WordTransferCallbacks& callbacks) {
+    write_repeated_vdp_grid(
+        destination, width, height, kHudRepeatedGridMask,
+        {kHudRepeatedGridWideRow.begin(),
+         kHudRepeatedGridWideRow.begin() +
+             static_cast<std::ptrdiff_t>(width)},
+        callbacks);
+}
+
+} // namespace
+
+void write_hud_repeated_grid_variant_a(const WordTransferCallbacks& callbacks) {
+    write_hud_repeated_grid_plan(0xC126U, 19U, 18U, callbacks);
+}
+
+void write_hud_repeated_grid_variant_b(const WordTransferCallbacks& callbacks) {
+    write_hud_repeated_grid_plan(0xC628U, 19U, 9U, callbacks);
+}
+
+void write_hud_repeated_grid_variant_c(const WordTransferCallbacks& callbacks) {
+    write_hud_repeated_grid_plan(0xC4A6U, 19U, 11U, callbacks);
+}
+
+void write_two_hud_grids(
+    const std::uint8_t index,
+    const bool wrap_decrement,
+    const WordTransferCallbacks& callbacks) {
+    const auto stamp = [&](const std::size_t slot, const std::size_t half) {
+        if (slot >= kTwoHudGridTiles.size()) {
+            return;
+        }
+        write_vdp_grid(
+            static_cast<std::uint16_t>(0xE08AU + slot * 0x280U), 9U, 1U,
+            0x2000U,
+            {kTwoHudGridTiles[slot][half].begin(),
+             kTwoHudGridTiles[slot][half].end()},
+            callbacks);
+    };
+    stamp(index, 0U);
+    auto second = static_cast<int>(index);
+    if (wrap_decrement) {
+        --second;
+        if (second < 0) {
+            second = 3;
+        }
+    } else {
+        ++second;
+        if (second > 3) {
+            second = 0;
+        }
+    }
+    stamp(static_cast<std::size_t>(second), 1U);
+}
+
+void write_hud_panel_grid(
+    const std::uint8_t selector,
+    const WordTransferCallbacks& callbacks) {
+    const auto destination = static_cast<std::uint16_t>(
+        kHudPanelGridBase + static_cast<std::uint16_t>(selector) * 0x0CU);
+    write_vdp_grid(
+        destination, 3U, 1U, 0x6000U,
+        {kHudPanelGridRow.begin(), kHudPanelGridRow.end()}, callbacks);
+}
+
 void write_hud_repeated_grid(
     const std::uint16_t scroll_word,
     const WordTransferCallbacks& callbacks) {

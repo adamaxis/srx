@@ -394,5 +394,42 @@ int main() {
         return 33;
     }
 
+    grid_commands.clear();
+    grid_words.clear();
+    write_hud_repeated_grid_variant_a(grid_callbacks);
+    if (grid_commands.size() != 18U ||
+        grid_commands[0] != make_vdp_transfer_command(0xC126U).low_word ||
+        grid_commands[1] != make_vdp_transfer_command(0xC1A6U).low_word ||
+        grid_words.size() != 342U || grid_words[0] != 0x6070U ||
+        grid_words[3] != 0x6076U) {
+        return 34;
+    }
+
+    grid_commands.clear();
+    grid_words.clear();
+    write_two_hud_grids(0U, false, grid_callbacks);
+    if (grid_commands.size() != 2U ||
+        grid_commands[0] != make_vdp_transfer_command(0xE08AU).low_word ||
+        grid_commands[1] != make_vdp_transfer_command(0xE30AU).low_word ||
+        grid_words.size() != 18U || grid_words[0] != 0x241AU ||
+        grid_words[9] != 0x241AU || grid_words[11] != 0x246CU) {
+        return 35;
+    }
+    grid_commands.clear();
+    grid_words.clear();
+    write_two_hud_grids(0U, true, grid_callbacks);
+    if (grid_commands[1] != make_vdp_transfer_command(0xE80AU).low_word ||
+        grid_words[9] != 0x241AU || grid_words[10] != 0x2499U) {
+        return 36;
+    }
+
+    grid_commands.clear();
+    grid_words.clear();
+    write_hud_panel_grid(0U, grid_callbacks);
+    if (grid_commands[0] != make_vdp_transfer_command(0xEC94U).low_word ||
+        grid_words != std::vector<std::uint16_t>{0x60B0U, 0x60B0U, 0x60B0U}) {
+        return 37;
+    }
+
     return 0;
 }
