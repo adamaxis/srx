@@ -33,7 +33,7 @@ enum class MovementModeTransitionContinuation {
 };
 
 struct EntityMovementModeTransitionState {
-    bool world_interaction_lock = false; // FFE8 != 0
+    bool world_interaction_lock = false; // FFDFE8 != 0
     std::uint16_t world_mode = 0; // FFDF40
     std::uint16_t scene_id = 0; // FFDDC4
     std::uint16_t field_transition_context = 0; // FFFC10

@@ -6,12 +6,13 @@
 namespace shadowrun::ghidra_conversion {
 
 struct SceneModeInitializationState {
-    std::uint8_t current_mode = 0;
-    std::uint16_t scene_transition_value = 0;
-    std::uint8_t scene_mode_marker = 0;
-    std::uint16_t camera_state = 0;
-    std::uint8_t special_mode_flag = 0;
-    std::uint8_t special_mode_indicator = 0;
+    std::uint8_t current_mode = 0;            // FFDDC4
+    std::uint16_t scene_transition_value = 0;  // FFDF40
+    std::uint8_t scene_mode_marker = 0;        // FFF0A0
+    std::uint16_t camera_state = 0;            // FFDF8E
+    std::uint8_t special_mode_flag = 0;        // FFFC0E
+    std::uint8_t special_mode_indicator = 0;   // FFE10E
+    std::uint16_t table_select = 0;            // FFFC10
 };
 
 struct SceneModeInitializationCallbacks {
@@ -24,16 +25,28 @@ void initialize_scene_mode_state(
     SceneModeInitializationState& state,
     const SceneModeInitializationCallbacks& callbacks);
 
+enum class ModeExitScriptFamily {
+    world_flags_bit0_clear,
+    scene_table_match,
+    scene_table_mismatch,
+};
+
 struct ModeExitState {
-    std::uint8_t exit_service_marker = 0;
+    std::uint8_t exit_service_marker = 0; // FFF10C
+    std::uint32_t world_mode_flags = 0;   // FFFC1E
+    std::uint8_t scene_compare_index = 0; // FFF09C
+    std::uint8_t scene_id_byte = 0;       // FFFBF8
+    ModeExitScriptFamily selected_script =
+        ModeExitScriptFamily::world_flags_bit0_clear;
 };
 
 struct ModeExitCallbacks {
     std::function<void()> service_mode_exit;
+    std::function<std::uint8_t(std::uint8_t)> scene_compare_byte;
 };
 
-// ROM 0x20714: clear the exit-service marker and enter the existing exit
-// service boundary at 0x1F246.
+// ROM 0x20714: choose 0xFE620 / 0xFE628 / 0xFE5D4 from FFFC1E bit 0 and
+// 0xD445D[FFF09C] vs FFFBF8, CLR FFF10C, then BRA 0x1F246 (VDP callback).
 void finalize_mode_exit(ModeExitState& state,
                         const ModeExitCallbacks& callbacks);
 

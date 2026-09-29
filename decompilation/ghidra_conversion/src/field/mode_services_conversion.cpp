@@ -12,12 +12,25 @@ void initialize_scene_mode_state(
     state.scene_mode_marker = 0xFFU;
     state.camera_state = 0xFFFFU;
     state.special_mode_flag = 0U;
-    state.special_mode_indicator =
-        static_cast<std::uint8_t>(state.current_mode == 6U);
+    state.special_mode_indicator = 0U;
+    if (state.current_mode == 6U) {
+        state.table_select = 0U;
+        state.special_mode_flag = 1U;
+        state.special_mode_indicator = 1U;
+    }
 }
 
 void finalize_mode_exit(ModeExitState& state,
                         const ModeExitCallbacks& callbacks) {
+    if ((state.world_mode_flags & 1U) == 0U) {
+        state.selected_script = ModeExitScriptFamily::world_flags_bit0_clear;
+    } else if (callbacks.scene_compare_byte &&
+               callbacks.scene_compare_byte(state.scene_compare_index) ==
+                   state.scene_id_byte) {
+        state.selected_script = ModeExitScriptFamily::scene_table_match;
+    } else {
+        state.selected_script = ModeExitScriptFamily::scene_table_mismatch;
+    }
     state.exit_service_marker = 0U;
     if (callbacks.service_mode_exit) {
         callbacks.service_mode_exit();

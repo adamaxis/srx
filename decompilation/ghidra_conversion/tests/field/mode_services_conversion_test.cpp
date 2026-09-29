@@ -12,12 +12,23 @@ int main() {
         ++prepared;
         return static_cast<std::uint8_t>(6U);
     };
+    scene.table_select = 0xABU;
     initialize_scene_mode_state(scene, scene_callbacks);
     if (prepared != 1 || scene.current_mode != 6U ||
         scene.scene_transition_value != 0U || scene.scene_mode_marker != 0xFFU ||
-        scene.camera_state != 0xFFFFU || scene.special_mode_flag != 0U ||
-        scene.special_mode_indicator != 1U) {
+        scene.camera_state != 0xFFFFU || scene.special_mode_flag != 1U ||
+        scene.special_mode_indicator != 1U || scene.table_select != 0U) {
         return 1;
+    }
+
+    SceneModeInitializationState other{};
+    other.table_select = 0xABU;
+    SceneModeInitializationCallbacks other_callbacks{};
+    other_callbacks.prepare_mode_entry = [] { return static_cast<std::uint8_t>(5U); };
+    initialize_scene_mode_state(other, other_callbacks);
+    if (other.current_mode != 5U || other.special_mode_flag != 0U ||
+        other.special_mode_indicator != 0U || other.table_select != 0xABU) {
+        return 8;
     }
 
     ModeExitState exit_state{7U};
@@ -25,8 +36,33 @@ int main() {
     ModeExitCallbacks exit_callbacks{};
     exit_callbacks.service_mode_exit = [&] { ++exit_calls; };
     finalize_mode_exit(exit_state, exit_callbacks);
-    if (exit_state.exit_service_marker != 0U || exit_calls != 1) {
+    if (exit_state.exit_service_marker != 0U || exit_calls != 1 ||
+        exit_state.selected_script !=
+            ModeExitScriptFamily::world_flags_bit0_clear) {
         return 2;
+    }
+
+    ModeExitState match_state{};
+    match_state.world_mode_flags = 1U;
+    match_state.scene_compare_index = 3U;
+    match_state.scene_id_byte = 0x05U;
+    ModeExitCallbacks match_callbacks{};
+    match_callbacks.scene_compare_byte = [](const std::uint8_t index) {
+        return index == 3U ? static_cast<std::uint8_t>(0x05U)
+                           : static_cast<std::uint8_t>(0U);
+    };
+    finalize_mode_exit(match_state, match_callbacks);
+    if (match_state.selected_script != ModeExitScriptFamily::scene_table_match ||
+        match_state.exit_service_marker != 0U) {
+        return 9;
+    }
+
+    ModeExitState mismatch_state = match_state;
+    mismatch_state.scene_id_byte = 0x06U;
+    finalize_mode_exit(mismatch_state, match_callbacks);
+    if (mismatch_state.selected_script !=
+        ModeExitScriptFamily::scene_table_mismatch) {
+        return 10;
     }
 
     ModeWorldRefreshState world{};
