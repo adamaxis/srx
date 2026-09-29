@@ -66,7 +66,10 @@ int main() {
     assert(cleared == 1);
 
     std::vector<EffectHighFlagRecord> high{{0x80}, {0}, {0x80}};
-    assert(clear_high_effect_slots(high, [&](std::size_t) { ++cleared; }) == 2);
+    bool companion_restore = true;
+    assert(clear_high_effect_slots(high, companion_restore,
+                                   [&](std::size_t) { ++cleared; }) == 2 &&
+           !companion_restore);
 
     std::vector<NearbyEffectRecord> nearby{{true, 100, 100, 1, 0x65, 1}};
     assert(resolve_nearby_effects(nearby, 100, 100,

@@ -78,11 +78,14 @@ std::size_t clear_inactive_entity_effects(
     const std::function<void(std::size_t)>& clear_slot);
 
 struct EffectHighFlagRecord {
-    std::uint8_t flags = 0;
+    std::uint8_t flags = 0; // +0xB0
 };
 
+// ROM 0x1DED8: CLR.L FFFC3C, then seven FF0400 records. +0xB0 bit 7
+// JSRs 0x1E510 (BCLR #7 then the 0x1A304 slot clear).
 std::size_t clear_high_effect_slots(
     std::vector<EffectHighFlagRecord>& records,
+    bool& companion_restore,
     const std::function<void(std::size_t)>& clear_slot);
 
 struct NearbyEffectRecord {

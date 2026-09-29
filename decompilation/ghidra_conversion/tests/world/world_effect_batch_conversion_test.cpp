@@ -94,6 +94,12 @@ int main() {
         return 11;
     }
 
+    std::uint8_t selected_lock = 0x1FU;
+    clear_entity_selected_lock(selected_lock);
+    if (selected_lock != 0x0FU) {
+        return 21;
+    }
+
     EffectSlotState effect{0x80, 0x08, true};
     int clears = 0;
     if (clear_effect_slot_state(effect, [&] { ++clears; }) || clears != 0) {

@@ -122,8 +122,12 @@ struct EffectSlotState {
     bool global_dirty = false;
 };
 
-// ROM 0x1E514: clear the effect's high/active bits and clear the slot when
-// the collision flag is no longer present.
+// ROM 0x1E50C: BCLR #4 of +0x10, then RTS.
+void clear_entity_selected_lock(std::uint8_t& flags_byte);
+
+// ROM 0x1E510: BCLR #7 of +0xB0, CLR FFFC3C when that bit was set, BCLR #0
+// of +0x10, then JSR 0x1A304 when +0x10 bit 3 is clear. Ghidra labeled the
+// body 0x1E514.
 bool clear_effect_slot_state(EffectSlotState& state,
                              const std::function<void()>& clear_slot);
 

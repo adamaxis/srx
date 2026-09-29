@@ -130,14 +130,15 @@ std::size_t clear_inactive_entity_effects(
 
 std::size_t clear_high_effect_slots(
     std::vector<EffectHighFlagRecord>& records,
+    bool& companion_restore,
     const std::function<void(std::size_t)>& clear_slot) {
+    companion_restore = false;
     std::size_t cleared = 0U;
     const auto limit = std::min<std::size_t>(7U, records.size());
     for (std::size_t index = 0; index < limit; ++index) {
         if ((records[index].flags & 0x80U) == 0U) {
             continue;
         }
-        records[index].flags = static_cast<std::uint8_t>(records[index].flags & ~0x80U);
         if (clear_slot) {
             clear_slot(index);
         }

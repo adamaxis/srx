@@ -168,6 +168,10 @@ std::optional<std::uint8_t> lookup_world_effect_tile(
     return tile_table[index];
 }
 
+void clear_entity_selected_lock(std::uint8_t& flags_byte) {
+    flags_byte = static_cast<std::uint8_t>(flags_byte & ~0x10U);
+}
+
 bool clear_effect_slot_state(EffectSlotState& state,
                              const std::function<void()>& clear_slot) {
     const bool was_high = (state.effect_flags & 0x80U) != 0U;
