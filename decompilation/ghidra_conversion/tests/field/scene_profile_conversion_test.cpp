@@ -140,5 +140,50 @@ int main() {
                               0x00FF4700U, 0x0E10U})) {
         return 12;
     }
+
+    FieldSceneVariantState variant{};
+    variant.field_mode = 2;
+    variant.scene_id = 2;
+    variant.camera_x = 0x1000U;
+    if (!expect(!toggle_field_scene_variant(variant) &&
+                variant.scene_id == 2 && !variant.pending_profile.has_value())) {
+        return 13;
+    }
+
+    variant.field_mode = 0x10U;
+    variant.scene_id = 0;
+    variant.camera_x = 0x13FFU;
+    if (!expect(toggle_field_scene_variant(variant) && variant.scene_id == 3U &&
+                variant.pending_profile == kFieldSceneVariantProfile0x3222)) {
+        return 14;
+    }
+
+    variant.scene_id = 0;
+    variant.camera_x = 0x1400U;
+    if (!expect(toggle_field_scene_variant(variant) && variant.scene_id == 5U &&
+                variant.pending_profile == kFieldSceneVariantProfile0x3212)) {
+        return 15;
+    }
+
+    variant.scene_id = 5U;
+    if (!expect(toggle_field_scene_variant(variant) && variant.scene_id == 0U &&
+                variant.pending_profile == kFieldSceneVariantProfile0x31F2)) {
+        return 16;
+    }
+
+    variant.scene_id = 3U;
+    if (!expect(toggle_field_scene_variant(variant) && variant.scene_id == 0U &&
+                variant.pending_profile == kFieldSceneVariantProfile0x3202)) {
+        return 17;
+    }
+
+    SceneProfileState applied{};
+    apply_scene_profile_selection(applied, variant.pending_profile, defaults);
+    if (!expect(applied.camera_x == 0x0000U && applied.camera_y == 0x2380U &&
+                applied.runner_positions[0].x == 0x0300U &&
+                applied.runner_positions[2].y == 0x2B80U &&
+                !variant.pending_profile.has_value())) {
+        return 18;
+    }
     return 0;
 }

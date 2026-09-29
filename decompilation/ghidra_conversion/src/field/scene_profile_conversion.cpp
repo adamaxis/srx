@@ -51,6 +51,30 @@ std::size_t copy_terrain_layers(
     return 0x1C20U;
 }
 
+bool toggle_field_scene_variant(FieldSceneVariantState& state) {
+    if (state.field_mode != 0x10U) {
+        return false;
+    }
+    if (state.scene_id == 0U) {
+        if (state.camera_x < 0x1400U) {
+            state.scene_id = 3U;
+            state.pending_profile = kFieldSceneVariantProfile0x3222;
+        } else {
+            state.scene_id = 5U;
+            state.pending_profile = kFieldSceneVariantProfile0x3212;
+        }
+        return true;
+    }
+    if (state.scene_id == 5U) {
+        state.scene_id = 0U;
+        state.pending_profile = kFieldSceneVariantProfile0x31F2;
+        return true;
+    }
+    state.scene_id = 0U;
+    state.pending_profile = kFieldSceneVariantProfile0x3202;
+    return true;
+}
+
 void apply_scene_profile_selection(
     SceneProfileState& state,
     std::optional<std::array<std::uint16_t, 8>>& pending_profile,

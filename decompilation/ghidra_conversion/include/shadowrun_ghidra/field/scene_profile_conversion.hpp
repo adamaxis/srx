@@ -76,6 +76,28 @@ struct SceneProfileState {
     std::int16_t camera_transition_y = 0;
 };
 
+// ROM 0x31F2/0x3202/0x3212/0x3222: eight-word pending profiles published by
+// 0x3168 into FFE114 and consumed by 0x2B34 / 0x2FA4.
+constexpr std::array<std::uint16_t, 8> kFieldSceneVariantProfile0x31F2{{
+    0x6680U, 0x2500U, 0x7400U, 0x2C00U, 0x7380U, 0x2C80U, 0x7480U, 0x2C80U}};
+constexpr std::array<std::uint16_t, 8> kFieldSceneVariantProfile0x3202{{
+    0x0000U, 0x2380U, 0x0300U, 0x2A80U, 0x0300U, 0x2B00U, 0x0300U, 0x2B80U}};
+constexpr std::array<std::uint16_t, 8> kFieldSceneVariantProfile0x3212{{
+    0x0000U, 0x3200U, 0x0600U, 0x3A00U, 0x0600U, 0x3A80U, 0x0600U, 0x3B00U}};
+constexpr std::array<std::uint16_t, 8> kFieldSceneVariantProfile0x3222{{
+    0x6CF0U, 0x2400U, 0x7880U, 0x2B00U, 0x7880U, 0x2B00U, 0x7880U, 0x2B00U}};
+
+struct FieldSceneVariantState {
+    std::uint8_t field_mode = 0; // FFFBF9
+    std::uint16_t scene_id = 0; // FFDDC4
+    std::uint16_t camera_x = 0; // FFDDC6
+    std::optional<std::array<std::uint16_t, 8>> pending_profile;
+};
+
+// ROM 0x3168: mode 0x10 publishes one pending profile and sets CCR carry.
+// Other modes ANDI CCR #0x1E (clear carry) and leave scene/profile alone.
+bool toggle_field_scene_variant(FieldSceneVariantState& state);
+
 // ROM 0x2B34: apply either the six default profile words or one pending
 // eight-word profile. Pending camera coordinates are aligned to 0x80 and
 // reset both source transition markers to -1.
