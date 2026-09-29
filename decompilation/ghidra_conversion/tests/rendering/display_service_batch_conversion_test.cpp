@@ -237,6 +237,16 @@ int main() {
         submitted_plan.grid_row_count != 2U) {
         return 15;
     }
+    const auto metadata_grid = write_menu_grid_with_metadata();
+    const auto footer_grid = write_menu_footer_grid();
+    if (metadata_grid.destination != kMenuMetadataGridDestination ||
+        metadata_grid.width != kMenuMetadataGridWidth ||
+        metadata_grid.height != kMenuMetadataGridHeight ||
+        footer_grid.destination != kMenuFooterGridDestination ||
+        footer_grid.width != kMenuFooterGridWidth ||
+        footer_grid.height != kMenuFooterGridHeight) {
+        return 18;
+    }
 
     random_bounds.clear();
     random_values = {1U, 3U, 3U};

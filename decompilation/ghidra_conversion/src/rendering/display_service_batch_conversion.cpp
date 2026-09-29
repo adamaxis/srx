@@ -289,6 +289,14 @@ void load_title_font(const std::function<void()>& decode_and_upload) {
     call_once(decode_and_upload);
 }
 
+MenuMetadataGridPlan write_menu_grid_with_metadata() {
+    MenuMetadataGridPlan plan{};
+    plan.destination = kMenuMetadataGridDestination;
+    plan.width = kMenuMetadataGridWidth;
+    plan.height = kMenuMetadataGridHeight;
+    return plan;
+}
+
 void write_menu_grid_with_metadata(const std::function<void()>& write_grid) {
     call_once(write_grid);
 }
@@ -354,6 +362,14 @@ void advance_random_grid_effect(
     if (callbacks.write_grid) {
         callbacks.write_grid(state.plan);
     }
+}
+
+MenuMetadataGridPlan write_menu_footer_grid() {
+    MenuMetadataGridPlan plan{};
+    plan.destination = kMenuFooterGridDestination;
+    plan.width = kMenuFooterGridWidth;
+    plan.height = kMenuFooterGridHeight;
+    return plan;
 }
 
 void write_menu_footer_grid(const std::function<void()>& write_grid) {

@@ -221,6 +221,24 @@ bool advance_title_sprite_wave(
     const TitleSpriteWaveCallbacks& callbacks);
 
 void load_title_font(const std::function<void()>& decode_and_upload);
+
+struct MenuMetadataGridPlan {
+    std::uint32_t destination = 0;
+    std::uint16_t width = 0;  // D1
+    std::uint16_t height = 0; // D7
+    std::uint16_t palette = 0x6000;
+    std::uint32_t glyph_source = 0x000C1320U;
+};
+
+constexpr std::uint32_t kMenuMetadataGridDestination = 0x0000C186U;
+constexpr std::uint16_t kMenuMetadataGridWidth = 0x0014U;
+constexpr std::uint16_t kMenuMetadataGridHeight = 0x001BU;
+constexpr std::uint32_t kMenuFooterGridDestination = 0x0000C306U;
+constexpr std::uint16_t kMenuFooterGridWidth = 0x0010U;
+constexpr std::uint16_t kMenuFooterGridHeight = 0x001BU;
+
+// ROM 0xC3E6: D4=0xC186 D1=0x14 D7=0x1B, then 0x12C5A.
+MenuMetadataGridPlan write_menu_grid_with_metadata();
 void write_menu_grid_with_metadata(const std::function<void()>& write_grid);
 void render_menu_grid_number_pair(const std::function<void()>& write_grid,
                                   const std::function<void()>& build_glyphs);
@@ -278,6 +296,8 @@ struct RandomGridEffectCallbacks {
 void advance_random_grid_effect(
     RandomGridEffectState& state,
     const RandomGridEffectCallbacks& callbacks);
+// ROM 0xF404: D4=0xC306 D1=0x10 D7=0x1B, then 0x12C5A.
+MenuMetadataGridPlan write_menu_footer_grid();
 void write_menu_footer_grid(const std::function<void()>& write_grid);
 void write_menu_grid_quadruple(const std::function<void()>& write_grid);
 
