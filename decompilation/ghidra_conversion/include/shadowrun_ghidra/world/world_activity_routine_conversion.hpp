@@ -94,4 +94,26 @@ WorldActivityResult run_world_activity_routine(
     WorldActivityRoutineState& state,
     const WorldActivityRoutineCallbacks& callbacks = {});
 
+struct WorldActivityStartState {
+    std::uint16_t timer_frames = 0; // FFE11C
+    std::uint32_t activity_pointer = 0; // FFE104
+};
+
+// ROM 0x1E2EC: MOVE.W #0x3C into FFE11C, then copy FFDD2C into FFE104.
+void begin_world_activity(
+    WorldActivityStartState& state,
+    std::uint32_t descriptor);
+
+struct WorldActivityTimeoutState {
+    std::uint16_t scene_id = 0; // FFDDC4
+    std::uint8_t scene_36_gate = 0; // FFE177
+    std::int16_t timeout_marker = 0; // FFDF84
+    std::uint16_t timeout_frames = 0; // FFDF86
+    std::uint32_t extended_timeout = 0; // FFE162
+};
+
+// ROM 0x1DBAA: scene 0x36 with FFE177==0 RTS. Else if FFDF84==0 write -1,
+// set FFDF86 to 0x78, or 0x258 when FFE162!=0.
+bool schedule_world_activity_timeout(WorldActivityTimeoutState& state);
+
 } // namespace shadowrun::ghidra_conversion

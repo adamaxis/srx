@@ -110,5 +110,37 @@ int main() {
         return 6;
     }
 
+    WorldActivityStartState started{};
+    begin_world_activity(started, 0x00053EE2U);
+    if (!expect(started.timer_frames == 0x3CU &&
+                started.activity_pointer == 0x00053EE2U)) {
+        return 8;
+    }
+
+    WorldActivityTimeoutState skipped{0x36U, 0U, 0, 0U, 0U};
+    if (!expect(!schedule_world_activity_timeout(skipped) &&
+                skipped.timeout_marker == 0 && skipped.timeout_frames == 0U)) {
+        return 9;
+    }
+
+    WorldActivityTimeoutState armed{2U, 0U, 0, 0U, 0U};
+    if (!expect(schedule_world_activity_timeout(armed) &&
+                armed.timeout_marker == -1 && armed.timeout_frames == 0x78U)) {
+        return 10;
+    }
+
+    WorldActivityTimeoutState keep{2U, 0U, 5, 0U, 0U};
+    if (!expect(schedule_world_activity_timeout(keep) &&
+                keep.timeout_marker == 5 && keep.timeout_frames == 0x78U)) {
+        return 11;
+    }
+
+    WorldActivityTimeoutState extended{0x36U, 1U, 0, 0U, 1U};
+    if (!expect(schedule_world_activity_timeout(extended) &&
+                extended.timeout_marker == -1 &&
+                extended.timeout_frames == 0x0258U)) {
+        return 12;
+    }
+
     return 0;
 }

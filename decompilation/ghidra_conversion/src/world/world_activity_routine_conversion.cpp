@@ -162,4 +162,22 @@ WorldActivityResult run_world_activity_routine(
     return WorldActivityResult::world_script_selected;
 }
 
+void begin_world_activity(
+    WorldActivityStartState& state,
+    const std::uint32_t descriptor) {
+    state.timer_frames = 0x3CU;
+    state.activity_pointer = descriptor;
+}
+
+bool schedule_world_activity_timeout(WorldActivityTimeoutState& state) {
+    if (state.scene_id == 0x36U && state.scene_36_gate == 0U) {
+        return false;
+    }
+    if (state.timeout_marker == 0) {
+        state.timeout_marker = -1;
+    }
+    state.timeout_frames = state.extended_timeout != 0U ? 0x0258U : 0x0078U;
+    return true;
+}
+
 } // namespace shadowrun::ghidra_conversion
