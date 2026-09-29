@@ -140,4 +140,14 @@ void write_masked_transfer_with_display_control(
     std::size_t word_count,
     const WordTransferCallbacks& callbacks);
 
+// ROM 0x5C8C6: one masked source word per row, dest += 0x80, source skips
+// extra_source_words after each consumed word. row_count is D1+1.
+void upload_title_or_field_word_stream(
+    std::uint16_t destination_address,
+    std::uint16_t word_mask,
+    std::size_t row_count,
+    std::size_t extra_source_words,
+    const std::vector<std::uint16_t>& words,
+    const WordTransferCallbacks& callbacks);
+
 } // namespace shadowrun::ghidra_conversion

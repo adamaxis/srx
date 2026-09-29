@@ -176,5 +176,17 @@ int main() {
         return 14;
     }
 
+    commands.clear();
+    words.clear();
+    upload_title_or_field_word_stream(
+        0x1000U, 0x8000U, 3U, 1U, {1U, 9U, 2U, 9U, 3U, 9U}, row_callbacks);
+    if (commands.size() != 6U ||
+        commands[0] != make_vdp_transfer_command(0x1000U).low_word ||
+        commands[2] != make_vdp_transfer_command(0x1080U).low_word ||
+        commands[4] != make_vdp_transfer_command(0x1100U).low_word ||
+        words != std::vector<std::uint16_t>{0x8001U, 0x8002U, 0x8003U}) {
+        return 15;
+    }
+
     return 0;
 }

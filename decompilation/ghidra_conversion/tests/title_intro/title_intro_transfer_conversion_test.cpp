@@ -25,5 +25,31 @@ int main() {
         rows.front().fill_word != 0x07FFU) {
         return 2;
     }
+
+    WorldFrameServiceState frame{};
+    frame.words[3] = 0x1111U;
+    reset_world_frame_service_state(frame);
+    if (frame.words[0] != 0x11C0U || frame.words[1] != 0U ||
+        frame.words[2] != 0xFE80U || frame.words[3] != 0U ||
+        frame.words[0x11] != 0xFFFFU || frame.words[0x12] != 0x00B4U) {
+        return 3;
+    }
+
+    frame.words[3] = 1U;
+    frame.words[5] = 10U;
+    frame.words[6] = 20U;
+    frame.words[0x0B] = 8U;
+    frame.words[0x0C] = 0U;
+    auto sprite = advance_world_scene_effect_timer_a(frame);
+    if (frame.words[3] != 0U || frame.words[0x0B] != 8U || sprite.x != 12 ||
+        sprite.y != 61 || sprite.flags != 0x4000U ||
+        sprite.source != 0x0001FEA52U) {
+        return 4;
+    }
+    sprite = advance_world_scene_effect_timer_a(frame);
+    if (frame.words[3] != 0x14U || frame.words[0x0B] != 0U ||
+        sprite.source != 0x0001FEB38U) {
+        return 5;
+    }
     return 0;
 }

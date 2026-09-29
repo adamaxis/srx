@@ -265,4 +265,29 @@ void write_masked_transfer_with_display_control(
     }
 }
 
+void upload_title_or_field_word_stream(
+    const std::uint16_t destination_address,
+    const std::uint16_t word_mask,
+    const std::size_t row_count,
+    const std::size_t extra_source_words,
+    const std::vector<std::uint16_t>& words,
+    const WordTransferCallbacks& callbacks) {
+    auto destination = destination_address;
+    std::size_t source_index = 0U;
+    for (std::size_t row = 0; row < row_count; ++row) {
+        if (source_index >= words.size()) {
+            return;
+        }
+        if (callbacks.begin_transfer) {
+            callbacks.begin_transfer(make_vdp_transfer_command(destination));
+        }
+        if (callbacks.write_word) {
+            callbacks.write_word(static_cast<std::uint16_t>(
+                words[source_index] | word_mask));
+        }
+        source_index += 1U + extra_source_words;
+        destination = static_cast<std::uint16_t>(destination + 0x80U);
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion

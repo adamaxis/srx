@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <functional>
 
@@ -34,5 +35,34 @@ struct TitleIntroWordFillPlan {
 void fill_title_intro_word_block(
     const TitleIntroWordFillPlan& plan,
     const std::function<void(const TitleIntroFillRowRequest&)>& write_row);
+
+constexpr std::size_t kWorldFrameServiceWordCount = 34U;
+
+struct WorldFrameServiceState {
+    std::array<std::uint16_t, kWorldFrameServiceWordCount> words{};
+};
+
+// ROM 0x5D260: clear 17 longs at FFF11E, then +0=0x11C0, +4=-0x180,
+// +0x22=-1, +0x24=0xB4.
+void reset_world_frame_service_state(WorldFrameServiceState& state);
+
+constexpr std::array<std::array<std::int16_t, 2>, 8> kWorldSceneEffectHeadingOffsets{{
+    {{2, 41}}, {{5, 41}}, {{4, 41}}, {{7, 41}},
+    {{6, 41}}, {{7, 41}}, {{5, 41}}, {{5, 41}},
+}};
+constexpr std::array<std::uint32_t, 9> kWorldSceneEffectTimerALists{
+    0x0001FEB38U, 0x0001FEB38U, 0x0001FEB38U, 0x0001FEB38U, 0x0001FEA52U,
+    0x0001FEB38U, 0x0001FEA52U, 0x0001FEB38U, 0x0001FEA52U};
+
+struct WorldSceneEffectSpriteBuild {
+    std::int16_t x = 0;
+    std::int16_t y = 0;
+    std::uint16_t flags = 0x4000U;
+    std::uint32_t source = 0;
+};
+
+// ROM 0x5D5A2: +6 countdown reload 0x14, +0x16 wrap 0..8, then 0x1378.
+WorldSceneEffectSpriteBuild advance_world_scene_effect_timer_a(
+    WorldFrameServiceState& state);
 
 } // namespace shadowrun::ghidra_conversion
