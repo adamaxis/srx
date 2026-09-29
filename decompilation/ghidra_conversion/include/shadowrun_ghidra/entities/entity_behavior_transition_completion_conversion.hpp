@@ -34,9 +34,9 @@ struct EntityBehaviorTransitionWorldState {
     // FFE166: delay armed when the field and both runner gates are ready.
     std::uint16_t world_activity_countdown = 0;
 
-    // FF0400: the six linked records checked when the completed entity owns
-    // a link-propagation transition.
-    std::array<EntityBehaviorLinkedRecord, 6> linked_records{};
+    // FF0400: D7=#6 walks seven linked records when the completed entity
+    // owns a link-propagation transition.
+    std::array<EntityBehaviorLinkedRecord, 7> linked_records{};
 };
 
 struct EntityBehaviorTransitionCallbacks {
@@ -71,7 +71,7 @@ struct EntityBehaviorTransitionResult {
 
 // ROM 0x0AB02: finish one entity behavior transition. This is the concrete
 // callee used by 0x0A8EA; it does not emulate the original pointer-backed
-// records. The source's flags, counters, six-record link scan, and runner
+// records. The source's flags, counters, seven-record link scan, and runner
 // readiness gate are represented as typed host state.
 EntityBehaviorTransitionResult complete_entity_behavior_transition(
     EntityBehaviorFrameRecord& record,

@@ -78,7 +78,7 @@ EntityBehaviorTransitionResult complete_entity_behavior_transition(
         }
     }
 
-    // ROM 0xAB6E marks completion before the optional six-record link scan.
+    // ROM 0xAB6E marks completion before the optional seven-record link scan.
     record.behavior_flags = static_cast<std::uint8_t>(
         record.behavior_flags | 0x40U);
 

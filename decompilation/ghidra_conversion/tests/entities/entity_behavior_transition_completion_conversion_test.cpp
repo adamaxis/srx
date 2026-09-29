@@ -19,6 +19,7 @@ int main() {
     world.recruited_runner_flags = 0U;
     world.linked_records[1] = {true, 0x21U, 0U};
     world.linked_records[2] = {true, 0x22U, 0U};
+    world.linked_records[6] = {true, 0x21U, 0U};
 
     int begin_calls = 0;
     int spawn_calls = 0;
@@ -41,9 +42,10 @@ int main() {
                                                    nullptr);
     assert(world.world_activity_countdown == 7U);
     assert((record.behavior_flags & 0x40U) != 0U);
-    assert(result.linked_records_marked == 1U);
+    assert(result.linked_records_marked == 2U);
     assert((world.linked_records[1].behavior_flags & 0x20U) != 0U);
     assert((world.linked_records[2].behavior_flags & 0x20U) == 0U);
+    assert((world.linked_records[6].behavior_flags & 0x20U) != 0U);
 
     EntityBehaviorFrameRecord gate_record{};
     gate_record.behavior_flags = 0x08U;
