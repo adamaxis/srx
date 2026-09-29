@@ -247,6 +247,19 @@ int main() {
         footer_grid.height != kMenuFooterGridHeight) {
         return 18;
     }
+    const auto quad = write_menu_grid_quadruple(0);
+    if (quad[0].destination != 0xC112U || quad[0].glyph_source != 0x000C8650U ||
+        quad[0].height != 4U || quad[1].destination != 0xC292U ||
+        quad[2].destination != 0xC192U || quad[2].width != 1U ||
+        quad[3].destination != 0xC19AU ||
+        quad[3].glyph_source != 0x000C8668U) {
+        return 19;
+    }
+    const auto quad3 = write_menu_grid_quadruple(3);
+    if (quad3[0].glyph_source != 0x000C86A4U ||
+        write_menu_grid_quadruple(4)[0].glyph_source != 0U) {
+        return 20;
+    }
 
     random_bounds.clear();
     random_values = {1U, 3U, 3U};

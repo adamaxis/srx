@@ -146,6 +146,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x0000EF08U, "service_hotel_entity_status", RoutineFamily::menu, 172U},
     {0x0000F404U, "write_menu_footer_grid", RoutineFamily::menu, 18U},
     {0x0000F5F4U, "render_bitmask_text_batch", RoutineFamily::menu, 232U},
+    {0x0000FDAEU, "write_menu_grid_quadruple", RoutineFamily::menu, 80U},
     {0x0000FDFEU, "advance_menu_sprite_overlay", RoutineFamily::menu, 192U},
     {0x0000FEBEU, "move_selection_column", RoutineFamily::menu, 72U},
     {0x0000FF06U, "move_selection_row", RoutineFamily::menu, 84U},

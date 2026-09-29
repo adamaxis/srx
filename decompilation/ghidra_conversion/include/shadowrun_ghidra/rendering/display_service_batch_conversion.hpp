@@ -299,6 +299,25 @@ void advance_random_grid_effect(
 // ROM 0xF404: D4=0xC306 D1=0x10 D7=0x1B, then 0x12C5A.
 MenuMetadataGridPlan write_menu_footer_grid();
 void write_menu_footer_grid(const std::function<void()>& write_grid);
+struct MenuGridQuadrupleWrite {
+    std::uint32_t destination = 0;
+    std::uint32_t glyph_source = 0;
+    std::uint16_t width = 0;  // D1
+    std::uint16_t height = 0; // D7
+};
+
+using MenuGridQuadruplePlan = std::array<MenuGridQuadrupleWrite, 4>;
+
+constexpr std::array<std::array<std::uint32_t, 4>, 4> kMenuGridQuadrupleSources{{
+    {0x000C8650U, 0x000C865AU, 0x000C8664U, 0x000C8668U},
+    {0x000C866CU, 0x000C8676U, 0x000C8680U, 0x000C8684U},
+    {0x000C8688U, 0x000C8692U, 0x000C869CU, 0x000C86A0U},
+    {0x000C86A4U, 0x000C86AEU, 0x000C86B8U, 0x000C86BCU},
+}};
+
+// ROM 0xFDAE: FFF0DB*4 indexes 0xC8AEE. Two writes dest 0xC112/+0x180 D7=4
+// D1=0, then two writes dest 0xC192/+8 D7=0 D1=1. 0x1232 stays a callback.
+MenuGridQuadruplePlan write_menu_grid_quadruple(std::uint8_t frame);
 void write_menu_grid_quadruple(const std::function<void()>& write_grid);
 
 } // namespace shadowrun::ghidra_conversion

@@ -376,6 +376,19 @@ void write_menu_footer_grid(const std::function<void()>& write_grid) {
     call_once(write_grid);
 }
 
+MenuGridQuadruplePlan write_menu_grid_quadruple(const std::uint8_t frame) {
+    MenuGridQuadruplePlan plan{};
+    if (frame >= kMenuGridQuadrupleSources.size()) {
+        return plan;
+    }
+    const auto& sources = kMenuGridQuadrupleSources[frame];
+    plan[0] = {0x0000C112U, sources[0], 0, 4};
+    plan[1] = {0x0000C292U, sources[1], 0, 4};
+    plan[2] = {0x0000C192U, sources[2], 1, 0};
+    plan[3] = {0x0000C19AU, sources[3], 1, 0};
+    return plan;
+}
+
 void write_menu_grid_quadruple(const std::function<void()>& write_grid) {
     if (!write_grid) {
         return;
