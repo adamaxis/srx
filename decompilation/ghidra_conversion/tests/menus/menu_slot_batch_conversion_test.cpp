@@ -30,13 +30,29 @@ int main() {
 
     clear_menu_status_at([&] { events.push_back(6); },
                          [&] { events.push_back(7); });
+    std::vector<std::uint8_t> status{1, 2, 3};
+    std::uint16_t status_destination = 0;
+    std::vector<std::uint16_t> status_words;
+    WordTransferCallbacks status_callbacks{};
+    status_callbacks.begin_transfer = [&](const VdpTransferCommand& command) {
+        status_destination = command.low_word;
+    };
+    status_callbacks.write_word = [&](const std::uint16_t word) {
+        status_words.push_back(word);
+    };
+    if (clear_menu_status_at(1U, status, status_callbacks) != -1 ||
+        status != std::vector<std::uint8_t>{1, 0, 3} ||
+        status_destination != make_vdp_transfer_command(0xED20U).low_word ||
+        status_words != std::vector<std::uint16_t>{0x60B4U, 0x60B4U, 0x60B4U}) {
+        return 3;
+    }
     publish_menu_selection_then_text([&] { events.push_back(8); },
                                      [&] { events.push_back(9); });
     refresh_mode_metadata_leaf([&] { events.push_back(10); });
     run_menu_service_then_prepare([&] { events.push_back(11); },
                                   [&] { events.push_back(12); });
     if (events.back() != 12) {
-        return 3;
+        return 16;
     }
 
     command.slot_codes = {0, 6, 0, 6, 0};

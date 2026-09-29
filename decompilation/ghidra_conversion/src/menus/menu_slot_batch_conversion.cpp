@@ -78,6 +78,21 @@ void clear_menu_status_at(const std::function<void()>& clear_status,
     call_once(write_grid);
 }
 
+std::int16_t clear_menu_status_at(
+    const std::uint16_t index,
+    std::vector<std::uint8_t>& status,
+    const WordTransferCallbacks& callbacks) {
+    if (index < status.size()) {
+        status[index] = 0U;
+    }
+    const auto destination = static_cast<std::uint16_t>(
+        kMenuStatusGridBase + static_cast<std::uint16_t>(index) * 0x0CU);
+    write_vdp_grid(
+        destination, 3U, 1U, 0x6000U,
+        {kMenuStatusGridRow.begin(), kMenuStatusGridRow.end()}, callbacks);
+    return -1;
+}
+
 void publish_menu_selection_then_text(
     const std::function<void()>& set_selection,
     const std::function<void()>& render_text) {

@@ -198,6 +198,11 @@ int main() {
 
     int callback_calls = 0;
     load_title_font([&] { ++callback_calls; });
+    const auto font_plan = load_title_font();
+    if (font_plan.vram_destination != kTitleFontVramDestination ||
+        font_plan.source_stream != kTitleFontSourceStream) {
+        return 14;
+    }
     write_menu_grid_with_metadata([&] { ++callback_calls; });
     render_menu_grid_number_pair([&] { ++callback_calls; },
                                   [&] { ++callback_calls; });

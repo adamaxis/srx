@@ -107,4 +107,14 @@ WorldSceneEffectSpriteBuild advance_world_scene_effect_timer_c(
             : 0U);
 }
 
+std::vector<BuiltSpriteRecord> render_title_intro_scene_entities(
+    const std::int16_t y_offset,
+    const std::int16_t x_offset,
+    const std::uint8_t first_sequence) {
+    return build_title_sprite_records(
+        {kTitleIntroSceneEntitySource.begin(),
+         kTitleIntroSceneEntitySource.end()},
+        y_offset, x_offset, first_sequence, 0x2000U);
+}
+
 } // namespace shadowrun::ghidra_conversion

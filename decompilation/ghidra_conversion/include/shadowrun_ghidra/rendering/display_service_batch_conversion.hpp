@@ -222,6 +222,17 @@ bool advance_title_sprite_wave(
 
 void load_title_font(const std::function<void()>& decode_and_upload);
 
+constexpr std::uint16_t kTitleFontVramDestination = 0xB560U;
+constexpr std::uint32_t kTitleFontSourceStream = 0x000C1064U;
+
+struct TitleFontUploadPlan {
+    std::uint16_t vram_destination = kTitleFontVramDestination;
+    std::uint32_t source_stream = kTitleFontSourceStream;
+};
+
+// ROM 0xC0C2: A1=FFBF40 A3=0xC1064 D0=0xB560, then jmp 0x1530.
+TitleFontUploadPlan load_title_font();
+
 struct MenuMetadataGridPlan {
     std::uint32_t destination = 0;
     std::uint16_t width = 0;  // 0x11C0 columns = D7+1

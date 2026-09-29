@@ -289,6 +289,10 @@ void load_title_font(const std::function<void()>& decode_and_upload) {
     call_once(decode_and_upload);
 }
 
+TitleFontUploadPlan load_title_font() {
+    return {};
+}
+
 MenuMetadataGridPlan write_menu_grid_with_metadata() {
     MenuMetadataGridPlan plan{};
     plan.destination = kMenuMetadataGridDestination;

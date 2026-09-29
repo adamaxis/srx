@@ -67,5 +67,14 @@ int main() {
         sprite.y != 109 || sprite.source != 0x0001FEC34U) {
         return 7;
     }
+
+    const auto entities = render_title_intro_scene_entities(100, 200, 3U);
+    if (entities.size() != 2U || entities[0].y != 106 || entities[0].x != 185 ||
+        entities[0].size != 4U || entities[0].sequence != 3U ||
+        entities[0].attributes != 0x24F6U || entities[1].y != 101 ||
+        entities[1].x != 193 || entities[1].sequence != 4U ||
+        entities[1].attributes != 0x24F8U) {
+        return 8;
+    }
     return 0;
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "shadowrun_ghidra/rendering/sprite_record_builder_conversion.hpp"
+
 #include <array>
 #include <cstdint>
 #include <functional>
@@ -86,5 +88,16 @@ constexpr std::array<std::uint32_t, 40> kWorldSceneEffectTimerCLists{
 // ROM 0x5D65A: +0x20 reload 4, +0x1E wrap 0..0x27, D2+0x30 D1+0x12.
 WorldSceneEffectSpriteBuild advance_world_scene_effect_timer_c(
     WorldFrameServiceState& state);
+
+constexpr std::array<SpriteSourceRecord, 2> kTitleIntroSceneEntitySource{{
+    {6, -15, 4, 0x04F6U},
+    {1, -7, 8, 0x04F8U},
+}};
+
+// ROM 0x5A37C: A2=0x1DF1B2, D1=FFDD46, D2=FFDD48, D6=0x2000, jmp 0x1378.
+std::vector<BuiltSpriteRecord> render_title_intro_scene_entities(
+    std::int16_t y_offset,
+    std::int16_t x_offset,
+    std::uint8_t first_sequence);
 
 } // namespace shadowrun::ghidra_conversion
