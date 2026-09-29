@@ -26,6 +26,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00003548U, "draw_hud_panel_triplet", RoutineFamily::field, 24U},
     {0x00003560U, "refresh_hud_panel_variant", RoutineFamily::field, 162U},
     {0x00003602U, "select_hud_glyph_attribute_flags", RoutineFamily::field, 70U},
+    {0x00003674U, "advance_entity_delay_meter", RoutineFamily::field, 136U},
     {0x00003B1EU, "classify_field_camera_vertical_delta", RoutineFamily::field, 142U},
     {0x00003BACU, "advance_field_camera_scroll", RoutineFamily::field, 364U},
     {0x00003D18U, "render_field_tile_rows", RoutineFamily::field, 50U},

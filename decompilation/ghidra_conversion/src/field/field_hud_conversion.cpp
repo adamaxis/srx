@@ -165,4 +165,32 @@ FieldHudPanelPair refresh_hud_panel_variant(
             {0x86C0U, 0xF9C6U, 3U, 2U, portrait_palette}};
 }
 
+FieldHudDelayMeterPlan advance_field_hud_delay_meter(
+    FieldHudDelayMeterState& state,
+    const std::int8_t delta) {
+    FieldHudDelayMeterPlan plan{};
+    if (state.slot_word == 0U) {
+        plan.nametable = 0xF1C4U;
+    } else if (state.slot_word == 1U) {
+        plan.nametable = 0xF5C4U;
+    } else {
+        plan.nametable = 0xF9C4U;
+    }
+    if ((state.flags_byte & 0x01U) != 0U) {
+        state.meter = static_cast<std::int8_t>(state.meter + delta);
+        if (state.meter > 0) {
+            if (state.meter > 10) {
+                state.meter = 10;
+            }
+            plan.meter = static_cast<std::uint8_t>(state.meter);
+            plan.tiles = kFieldHudDelayMeterTiles[plan.meter];
+            return plan;
+        }
+    }
+    state.meter = 0;
+    plan.meter = 0;
+    plan.tiles = kFieldHudDelayMeterTiles[0];
+    return plan;
+}
+
 } // namespace shadowrun::ghidra_conversion

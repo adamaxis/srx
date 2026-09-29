@@ -215,5 +215,32 @@ int main() {
         return 19;
     }
 
+    FieldHudDelayMeterState delay{};
+    delay.flags_byte = 0x01U;
+    auto delay_plan = advance_field_hud_delay_meter(delay, 4);
+    if (!expect(delay.meter == 4 && delay_plan.nametable == 0xF1C4U &&
+                delay_plan.tiles[3] == 0x86E7U &&
+                delay_plan.tiles[2] == 0x86E6U)) {
+        return 20;
+    }
+    delay_plan = advance_field_hud_delay_meter(delay, 10);
+    if (!expect(delay.meter == 10 &&
+                delay_plan.tiles == kFieldHudDelayMeterTiles[10])) {
+        return 21;
+    }
+    delay.flags_byte = 0;
+    delay.slot_word = 1;
+    delay_plan = advance_field_hud_delay_meter(delay, 4);
+    if (!expect(delay.meter == 0 && delay_plan.nametable == 0xF5C4U &&
+                delay_plan.tiles == kFieldHudDelayMeterTiles[0])) {
+        return 22;
+    }
+    delay.slot_word = 2;
+    delay.flags_byte = 0x01U;
+    delay_plan = advance_field_hud_delay_meter(delay, -1);
+    if (!expect(delay.meter == 0 && delay_plan.nametable == 0xF9C4U)) {
+        return 23;
+    }
+
     return 0;
 }

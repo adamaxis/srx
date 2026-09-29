@@ -135,4 +135,37 @@ FieldHudPanelPair refresh_hud_panel_variant(
     std::uint16_t slot_index,
     const FieldHudPanelSlot& slot);
 
+constexpr std::uint32_t kFieldHudDelayMeterTable = 0x0006AB3EU;
+constexpr std::array<std::array<std::uint16_t, 4>, 11> kFieldHudDelayMeterTiles{{
+    {{0x86E4U, 0x86E4U, 0x86E4U, 0x86E4U}},
+    {{0x86E4U, 0x86E4U, 0x86E4U, 0x86E5U}},
+    {{0x86E4U, 0x86E4U, 0x86E4U, 0x86E6U}},
+    {{0x86E4U, 0x86E4U, 0x86E5U, 0x86E7U}},
+    {{0x86E4U, 0x86E4U, 0x86E6U, 0x86E7U}},
+    {{0x86E4U, 0x86E4U, 0x86E7U, 0x86E7U}},
+    {{0x86E4U, 0x86E5U, 0x86E7U, 0x86E7U}},
+    {{0x86E4U, 0x86E7U, 0x86E7U, 0x86E7U}},
+    {{0x86E4U, 0x86E7U, 0x86E7U, 0x86E7U}},
+    {{0x86E5U, 0x86E7U, 0x86E7U, 0x86E7U}},
+    {{0x86E7U, 0x86E7U, 0x86E7U, 0x86E7U}},
+}};
+
+struct FieldHudDelayMeterState {
+    std::uint16_t slot_word = 0; // +0x3E
+    std::uint8_t flags_byte = 0; // +0x10
+    std::int8_t meter = 0; // +0x4C
+};
+
+struct FieldHudDelayMeterPlan {
+    std::uint32_t nametable = 0;
+    std::uint8_t meter = 0;
+    std::array<std::uint16_t, 4> tiles{};
+};
+
+// ROM 0x3674: +0x10 bit 0 gates ADD.B D1 into +0x4C, cap 10, else clear.
+// Table 0x6AB3E is four words per meter. Slot word 0/1/else -> F1C4/F5C4/F9C4.
+FieldHudDelayMeterPlan advance_field_hud_delay_meter(
+    FieldHudDelayMeterState& state,
+    std::int8_t delta);
+
 } // namespace shadowrun::ghidra_conversion
