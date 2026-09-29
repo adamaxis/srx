@@ -300,6 +300,45 @@ std::vector<BuiltSpriteRecord> advance_entity_effect_timer(
     return records;
 }
 
+std::uint16_t effect_animation_heading(const std::uint16_t facing) {
+    auto rotated = static_cast<std::uint16_t>(
+        (facing << 3U) | (facing >> 13U));
+    if ((rotated & 0x8000U) != 0U) {
+        ++rotated;
+    }
+    return static_cast<std::uint16_t>(rotated & 7U);
+}
+
+std::vector<BuiltSpriteRecord> advance_effect_animation(
+    EffectAnimationSpriteState& state,
+    std::array<std::uint8_t, 18>& slots,
+    const std::uint8_t first_sequence) {
+    --state.animation.countdown;
+    if (state.animation.countdown < 0) {
+        state.animation.countdown = 6;
+        ++state.animation.phase;
+        if (state.animation.phase >= 4U) {
+            clear_effect_slot(slots, state.slot);
+            state.entity_flags = static_cast<std::uint8_t>(
+                state.entity_flags & ~0x40U);
+            state.animation.active = false;
+            return {};
+        }
+    }
+    const auto heading = effect_animation_heading(state.facing);
+    const auto phase =
+        state.animation.phase < 4U ? state.animation.phase : 0U;
+    const auto& origin = kEffectAnimationHeadingOrigins[heading];
+    const auto& sprite = kEffectAnimationSprites[heading][phase];
+    return build_title_sprite_records_with_attribute_offset(
+        {sprite},
+        static_cast<std::int16_t>(
+            static_cast<std::int16_t>(state.screen_x) + origin.first),
+        static_cast<std::int16_t>(
+            static_cast<std::int16_t>(state.screen_y) + origin.second),
+        first_sequence, 0x2000U, state.attribute_offset);
+}
+
 bool advance_effect_animation(
     EffectAnimationState& state,
     const std::function<void()>& clear_slot,

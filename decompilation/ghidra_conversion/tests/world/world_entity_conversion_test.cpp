@@ -116,5 +116,28 @@ int main() {
         effect_sprites[1].sequence != 1U) {
         return 9;
     }
+
+    EffectAnimationSpriteState anim{};
+    anim.animation = {0, 3, 3, 0, true};
+    anim.slot = 4;
+    anim.entity_flags = 0x40;
+    std::array<std::uint8_t, 18> anim_slots{};
+    anim_slots[4] = 1;
+    auto anim_sprites = advance_effect_animation(anim, anim_slots, 0U);
+    if (anim.animation.active || anim_slots[4] != 0 ||
+        (anim.entity_flags & 0x40U) != 0 || !anim_sprites.empty()) {
+        return 10;
+    }
+    anim = {};
+    anim.animation = {1, 0, 3, 0, true};
+    anim.screen_x = 0x0088U;
+    anim.screen_y = 0x0098U;
+    anim_sprites = advance_effect_animation(anim, anim_slots, 0U);
+    if (anim.animation.countdown != 0 || anim.animation.phase != 0 ||
+        anim_sprites.size() != 1U || anim_sprites[0].y != 0x81 ||
+        anim_sprites[0].x != 0x71 || anim_sprites[0].size != 5U ||
+        anim_sprites[0].attributes != 0x2000U) {
+        return 11;
+    }
     return 0;
 }

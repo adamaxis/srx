@@ -195,6 +195,58 @@ bool advance_effect_animation(
     const std::function<void()>& clear_slot,
     const std::function<void()>& append_sprite,
     const std::function<void()>& build_sprite_records);
+
+struct EffectAnimationSpriteState {
+    EffectAnimationState animation{};
+    std::uint16_t facing = 0;
+    std::uint16_t screen_x = 0;
+    std::uint16_t screen_y = 0;
+    std::int16_t attribute_offset = 0;
+    std::uint16_t slot = 0;
+    std::uint8_t entity_flags = 0;
+};
+
+constexpr std::array<std::pair<std::int16_t, std::int16_t>, 8>
+    kEffectAnimationHeadingOrigins{{
+        {-1, -28}, {21, -23}, {24, -5}, {18, 6},
+        {2, 13}, {-17, 6}, {-23, -5}, {-17, -21},
+    }};
+
+constexpr std::array<std::array<SpriteSourceRecord, 4>, 8>
+    kEffectAnimationSprites{{
+        {SpriteSourceRecord{-6, -11, 5, 0}, SpriteSourceRecord{-5, -24, 7, 0},
+         SpriteSourceRecord{-4, -21, 6, 0}, SpriteSourceRecord{-3, -16, 1, 0}},
+        {SpriteSourceRecord{-7, -8, 5, 0}, SpriteSourceRecord{-1, -16, 10, 0},
+         SpriteSourceRecord{0, -15, 9, 0}, SpriteSourceRecord{-3, -17, 10, 0}},
+        {SpriteSourceRecord{1, -7, 5, 0}, SpriteSourceRecord{0, -6, 13, 0},
+         SpriteSourceRecord{1, -4, 8, 0}, SpriteSourceRecord{-4, -7, 9, 0}},
+        {SpriteSourceRecord{-7, -8, 5, 0x1000U},
+         SpriteSourceRecord{-1, -8, 10, 0x1000U},
+         SpriteSourceRecord{0, -1, 9, 0x1000U},
+         SpriteSourceRecord{-3, -7, 10, 0x1000U}},
+        {SpriteSourceRecord{-6, -5, 5, 0x1000U},
+         SpriteSourceRecord{-5, -8, 7, 0x1000U},
+         SpriteSourceRecord{-4, -3, 6, 0x1000U},
+         SpriteSourceRecord{-3, 0, 1, 0x1000U}},
+        {SpriteSourceRecord{-9, -8, 5, 0x1800U},
+         SpriteSourceRecord{-23, -8, 10, 0x1800U},
+         SpriteSourceRecord{-24, -1, 9, 0x1800U},
+         SpriteSourceRecord{-21, -7, 10, 0x1800U}},
+        {SpriteSourceRecord{-17, -7, 5, 0x0800U},
+         SpriteSourceRecord{-32, -6, 13, 0x0800U},
+         SpriteSourceRecord{-25, -4, 8, 0x0800U},
+         SpriteSourceRecord{-20, -7, 9, 0x0800U}},
+        {SpriteSourceRecord{-9, -8, 5, 0x0800U},
+         SpriteSourceRecord{-23, -16, 10, 0x0800U},
+         SpriteSourceRecord{-24, -15, 9, 0x0800U},
+         SpriteSourceRecord{-21, -17, 10, 0x0800U}},
+    }};
+
+// ROM 0x4E86: +2 cadence 6, phase +3 expire at 4, 0x4F42/0x4F22, jmp 0x13BE.
+std::vector<BuiltSpriteRecord> advance_effect_animation(
+    EffectAnimationSpriteState& state,
+    std::array<std::uint8_t, 18>& slots,
+    std::uint8_t first_sequence);
 bool advance_effect_animation_variant(
     EffectAnimationState& state,
     const std::function<void()>& clear_slot,
