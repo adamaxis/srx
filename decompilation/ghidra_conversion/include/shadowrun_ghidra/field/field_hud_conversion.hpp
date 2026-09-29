@@ -1,5 +1,7 @@
 #pragma once
 
+#include "shadowrun_ghidra/core/word_transfer_conversion.hpp"
+
 #include <array>
 #include <cstdint>
 #include <functional>
@@ -126,6 +128,18 @@ struct FieldHudPanelPair {
     FieldHudPanelPlan item;
     FieldHudPanelPlan portrait;
 };
+
+// ROM 0x3648: consecutive (D5|D2) tiles, D7+1 columns, D1+1 rows, dest D4
+// then +0x80 per row.
+void draw_hud_panel(
+    const FieldHudPanelPlan& plan,
+    const WordTransferCallbacks& callbacks);
+
+// ROM 0x17D72: D5=0x801C D4=0xEB84 D7=3 D1=3 D2=0x4000, then 0x3648.
+constexpr FieldHudPanelPlan kMenuHudPanelPlan{
+    0x801CU, 0xEB84U, 4U, 4U, 0x4000U};
+
+void draw_menu_hud_panel(const WordTransferCallbacks& callbacks);
 
 // ROM 0x3602: D2 is 0x2000 or 0x6000 from +0x57/+0x56/+0x9B.
 std::uint16_t select_hud_glyph_attribute_flags(const FieldHudPanelSlot& slot);

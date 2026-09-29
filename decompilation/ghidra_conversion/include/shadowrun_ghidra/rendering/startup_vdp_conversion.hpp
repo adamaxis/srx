@@ -95,4 +95,41 @@ std::size_t write_startup_text_to_vdp(
     const std::vector<std::uint8_t>& text,
     const WordTransferCallbacks& callbacks);
 
+constexpr std::uint32_t kRuntimeResetMagic = 0x12345678U;
+constexpr std::size_t kColdRamLongCount = 0x3FE0U;
+constexpr std::size_t kWarmRamByteCount = 0xE1AU;
+constexpr std::uint16_t kBootVramFillWord = 0x21U;
+constexpr std::size_t kBootVramFillCount = 0x10000U;
+constexpr std::uint16_t kPostTableTransferDestination = 0xFFE0U;
+constexpr std::size_t kPostTableZeroWordCount = 16U;
+constexpr std::uint32_t kBootVscrollWriteCommand = 0x40000010UL;
+constexpr std::size_t kTitleAudioInitCount = 5U;
+constexpr std::array<std::uint16_t, 18> kStartupVdpTableWords{
+    0xC000U, 0xE000U, 0xD000U, 0x0000U, 0x8230U, 0x8407U, 0x8568U, 0x8D00U,
+    0x8B00U, 0x8006U, 0x8174U, 0x833CU, 0x8700U, 0x8A55U, 0x8C81U, 0x8F02U,
+    0x9001U, 0x9100U};
+
+struct RuntimeMemoryAndVdpState {
+    std::uint32_t reset_magic = 0;
+    std::uint16_t checksum_seed = 0;
+    std::uint16_t upload_marker = 0;
+};
+
+struct RuntimeMemoryAndVdpCallbacks {
+    std::function<std::uint16_t(std::size_t)> clear_cold_ram;
+    std::function<void(std::size_t)> clear_warm_ram;
+    RawVdpWriteCallbacks vdp;
+    WordTransferCallbacks transfer;
+    std::function<void()> reset_vdp_upload_state;
+    std::function<void()> initialize_title_audio_assets;
+};
+
+// ROM 0xC2C: cold checksum-clear 0x3FE0 longs or warm 0xE1A bytes, then
+// palette, VRAM fill 0x21, table 0xD14, 8 zero longs at 0xFFE0, VSRAM zero,
+// and five title-audio inits.
+void clear_runtime_memory_and_vdp(
+    RuntimeMemoryAndVdpState& state,
+    const std::array<std::uint16_t, 64>& palette,
+    const RuntimeMemoryAndVdpCallbacks& callbacks);
+
 } // namespace shadowrun::ghidra_conversion

@@ -136,6 +136,30 @@ void draw_hud_panel_triplet(const std::function<void()>& draw_panel) {
     }
 }
 
+void draw_hud_panel(
+    const FieldHudPanelPlan& plan,
+    const WordTransferCallbacks& callbacks) {
+    auto tile = static_cast<std::uint16_t>(
+        plan.tile_base | plan.palette_or_flip);
+    auto destination = static_cast<std::uint16_t>(plan.nametable);
+    for (std::uint16_t row = 0; row < plan.rows; ++row) {
+        if (callbacks.begin_transfer) {
+            callbacks.begin_transfer(make_vdp_transfer_command(destination));
+        }
+        for (std::uint16_t column = 0; column < plan.columns; ++column) {
+            if (callbacks.write_word) {
+                callbacks.write_word(tile);
+            }
+            ++tile;
+        }
+        destination = static_cast<std::uint16_t>(destination + 0x80U);
+    }
+}
+
+void draw_menu_hud_panel(const WordTransferCallbacks& callbacks) {
+    draw_hud_panel(kMenuHudPanelPlan, callbacks);
+}
+
 std::uint16_t select_hud_glyph_attribute_flags(const FieldHudPanelSlot& slot) {
     if (slot.source_type == 0U) {
         return 0x2000U;

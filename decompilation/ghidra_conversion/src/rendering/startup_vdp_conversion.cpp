@@ -137,4 +137,50 @@ std::size_t write_startup_text_to_vdp(
     return written;
 }
 
+void clear_runtime_memory_and_vdp(
+    RuntimeMemoryAndVdpState& state,
+    const std::array<std::uint16_t, 64>& palette,
+    const RuntimeMemoryAndVdpCallbacks& callbacks) {
+    if (state.reset_magic == kRuntimeResetMagic) {
+        if (callbacks.clear_warm_ram) {
+            callbacks.clear_warm_ram(kWarmRamByteCount);
+        }
+    } else if (callbacks.clear_cold_ram) {
+        state.checksum_seed = callbacks.clear_cold_ram(kColdRamLongCount);
+    }
+
+    upload_startup_palette(palette, callbacks.vdp);
+    write_repeated_words(
+        0U, kBootVramFillWord, kBootVramFillCount, callbacks.transfer);
+    state.upload_marker = 1U;
+    if (callbacks.reset_vdp_upload_state) {
+        callbacks.reset_vdp_upload_state();
+    }
+
+    StartupVdpTable table{};
+    install_startup_vdp_table(table, kStartupVdpTableWords, callbacks.vdp);
+
+    if (callbacks.transfer.begin_transfer) {
+        callbacks.transfer.begin_transfer(
+            make_vdp_transfer_command(kPostTableTransferDestination));
+    }
+    if (callbacks.transfer.write_word) {
+        for (std::size_t index = 0; index < kPostTableZeroWordCount; ++index) {
+            callbacks.transfer.write_word(0U);
+        }
+    }
+    if (callbacks.vdp.write_control_long) {
+        callbacks.vdp.write_control_long(kBootVscrollWriteCommand);
+    }
+    if (callbacks.vdp.write_data_word) {
+        callbacks.vdp.write_data_word(0U);
+        callbacks.vdp.write_data_word(0U);
+    }
+    if (callbacks.initialize_title_audio_assets) {
+        for (std::size_t index = 0; index < kTitleAudioInitCount; ++index) {
+            callbacks.initialize_title_audio_assets();
+        }
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion

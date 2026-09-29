@@ -136,5 +136,70 @@ int main() {
         return 10;
     }
 
+    RuntimeMemoryAndVdpState cold{};
+    std::array<std::uint16_t, 64> boot_palette{};
+    boot_palette.front() = 0x0EEEU;
+    std::size_t cold_longs = 0U;
+    std::size_t warm_bytes = 0U;
+    std::size_t fill_words = 0U;
+    std::size_t audio_inits = 0U;
+    std::size_t upload_resets = 0U;
+    std::vector<std::uint16_t> boot_controls;
+    std::vector<std::uint16_t> boot_data;
+    std::vector<std::uint32_t> boot_longs;
+    std::vector<VdpTransferCommand> boot_commands;
+    const RuntimeMemoryAndVdpCallbacks boot_callbacks{
+        [&cold_longs](const std::size_t count) {
+            cold_longs = count;
+            return static_cast<std::uint16_t>(0xABCDU);
+        },
+        [&warm_bytes](const std::size_t count) { warm_bytes = count; },
+        {[&boot_controls](const std::uint16_t word) {
+             boot_controls.push_back(word);
+         },
+         [&boot_longs](const std::uint32_t value) {
+             boot_longs.push_back(value);
+         },
+         [&boot_data](const std::uint16_t word) { boot_data.push_back(word); }},
+        {[&boot_commands](const VdpTransferCommand& command) {
+             boot_commands.push_back(command);
+         },
+         [&fill_words](const std::uint16_t) { ++fill_words; }},
+        [&upload_resets] { ++upload_resets; },
+        [&audio_inits] { ++audio_inits; },
+    };
+    clear_runtime_memory_and_vdp(cold, boot_palette, boot_callbacks);
+    const auto fill_command = make_vdp_transfer_command(0U);
+    const auto post_command =
+        make_vdp_transfer_command(kPostTableTransferDestination);
+    if (cold_longs != kColdRamLongCount || warm_bytes != 0U ||
+        cold.checksum_seed != 0xABCDU || cold.upload_marker != 1U ||
+        fill_words != kBootVramFillCount + kPostTableZeroWordCount ||
+        audio_inits != kTitleAudioInitCount || upload_resets != 1U ||
+        boot_commands.size() != 2U ||
+        boot_commands[0].low_word != fill_command.low_word ||
+        boot_commands[1].low_word != post_command.low_word ||
+        boot_longs != std::vector<std::uint32_t>{kBootVscrollWriteCommand} ||
+        boot_data.size() != 66U || boot_data.front() != 0x0EEEU ||
+        boot_data[64] != 0U || boot_data[65] != 0U ||
+        boot_controls.size() != 128U + 14U ||
+        boot_controls[128] != 0x8230U) {
+        return 11;
+    }
+
+    RuntimeMemoryAndVdpState warm{};
+    warm.reset_magic = kRuntimeResetMagic;
+    warm.checksum_seed = 0x1111U;
+    cold_longs = 0U;
+    warm_bytes = 0U;
+    fill_words = 0U;
+    audio_inits = 0U;
+    clear_runtime_memory_and_vdp(warm, boot_palette, boot_callbacks);
+    if (cold_longs != 0U || warm_bytes != kWarmRamByteCount ||
+        warm.checksum_seed != 0x1111U || warm.upload_marker != 1U ||
+        audio_inits != kTitleAudioInitCount) {
+        return 12;
+    }
+
     return 0;
 }

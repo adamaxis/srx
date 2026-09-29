@@ -18,6 +18,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00000436U, "write_startup_text_to_vdp", RoutineFamily::graphics, 54U},
     {0x00000BD2U, "wait_for_vblank", RoutineFamily::interrupt, 32U},
     {0x00000BF2U, "latch_controller_events", RoutineFamily::interrupt, 50U},
+    {0x00000C2CU, "clear_runtime_memory_and_vdp", RoutineFamily::graphics, 192U},
     {0x00000D3AU, "sample_source_random_bound", RoutineFamily::entity, 10U},
     {0x00000D44U, "advance_source_random_seed", RoutineFamily::entity, 22U},
     {0x00000D5AU, "guard_entity_phase_window", RoutineFamily::entity, 58U},
@@ -39,6 +40,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00003548U, "draw_hud_panel_triplet", RoutineFamily::field, 24U},
     {0x00003560U, "refresh_hud_panel_variant", RoutineFamily::field, 162U},
     {0x00003602U, "select_hud_glyph_attribute_flags", RoutineFamily::field, 70U},
+    {0x00003648U, "draw_hud_panel", RoutineFamily::field, 44U},
     {0x00003674U, "advance_entity_delay_meter", RoutineFamily::field, 136U},
     {0x000036FCU, "advance_entity_asset_meter", RoutineFamily::field, 240U},
     {0x000037ECU, "advance_entity_behavior_meter", RoutineFamily::field, 192U},
@@ -329,6 +331,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x0001745EU, "run_field_mode_hud_scene", RoutineFamily::world, 604U},
     {0x00017A5EU, "render_menu_slot_status", RoutineFamily::world, 354U},
     {0x00017C3CU, "read_menu_entry_profile_eligibility", RoutineFamily::menu, 22U},
+    {0x00017D72U, "draw_menu_hud_panel", RoutineFamily::field, 30U},
     // The catalog's legacy routing families do not yet expose a cyberspace
     // bucket. Keep the source-backed alias here while the entry is dispatched
     // through the existing world/session boundary; the actual conversion is

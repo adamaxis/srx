@@ -6,7 +6,7 @@ using namespace shadowrun::ghidra_conversion;
 
 int main() {
     const auto& catalog = remaining_routine_catalog();
-    if (catalog.size() < 274U ||
+    if (catalog.size() < 277U ||
         find_remaining_routine(catalog.front().rom_entry) == nullptr ||
         find_remaining_routine(0xFFFFFFFFU) != nullptr) {
         return 1;
@@ -120,6 +120,18 @@ int main() {
         masked_column->alias != "write_masked_transfer_with_display_control" ||
         masked_column->source_bytes != 56U) {
         return 9;
+    }
+    const auto* boot_clear = find_remaining_routine(0xC2CU);
+    const auto* hud_panel = find_remaining_routine(0x3648U);
+    const auto* menu_panel = find_remaining_routine(0x17D72U);
+    if (boot_clear == nullptr ||
+        boot_clear->alias != "clear_runtime_memory_and_vdp" ||
+        boot_clear->source_bytes != 192U || hud_panel == nullptr ||
+        hud_panel->alias != "draw_hud_panel" ||
+        hud_panel->source_bytes != 44U || menu_panel == nullptr ||
+        menu_panel->alias != "draw_menu_hud_panel" ||
+        menu_panel->source_bytes != 30U) {
+        return 10;
     }
     return 0;
 }

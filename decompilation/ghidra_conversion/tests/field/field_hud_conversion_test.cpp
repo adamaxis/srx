@@ -354,5 +354,33 @@ int main() {
         return 36;
     }
 
+    std::vector<std::uint16_t> panel_commands;
+    std::vector<std::uint16_t> panel_words;
+    const WordTransferCallbacks panel_callbacks{
+        [&panel_commands](const VdpTransferCommand& command) {
+            panel_commands.push_back(command.low_word);
+            panel_commands.push_back(command.high_word);
+        },
+        [&panel_words](const std::uint16_t word) { panel_words.push_back(word); },
+    };
+    draw_hud_panel({0x801CU, 0xEB84U, 4U, 4U, 0x4000U}, panel_callbacks);
+    if (!expect(panel_commands.size() == 8U &&
+                panel_commands[0] ==
+                    make_vdp_transfer_command(0xEB84U).low_word &&
+                panel_commands[2] ==
+                    make_vdp_transfer_command(0xEC04U).low_word &&
+                panel_words.size() == 16U && panel_words.front() == 0xC01CU &&
+                panel_words.back() == 0xC02BU)) {
+        return 37;
+    }
+    panel_commands.clear();
+    panel_words.clear();
+    draw_menu_hud_panel(panel_callbacks);
+    if (!expect(panel_words.size() == 16U && panel_words.front() == 0xC01CU &&
+                panel_commands[0] ==
+                    make_vdp_transfer_command(0xEB84U).low_word)) {
+        return 38;
+    }
+
     return 0;
 }
