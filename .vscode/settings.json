@@ -1,12 +1,49 @@
 {
     "cmake.useCMakePresets": "always",
     "cmake.sourceDirectory": [
-        "${workspaceFolder}/decompilation",
-        "${workspaceFolder}/decompilation/ghidra_conversion"
+        "${workspaceFolder}/decompilation/ghidra_conversion",
+        "${workspaceFolder}/decompilation"
     ],
-    "cmake.defaultConfigurePreset": "debug",
-    "cmake.defaultBuildPreset": "debug-native",
+    "cmake.defaultConfigurePreset": "ghidra-conversion-qt-release",
+    "cmake.defaultBuildPreset": "ghidra-conversion-qt-release",
+    "cmake.defaultWorkflowPreset": "ghidra-conversion-qt-release",
     "cmake.configureOnOpen": false,
     "cmake.buildTask": false,
-    "cmake.outputLogEncoding": "utf8"
+    "cmake.autoSelectActiveFolder": true,
+    "cmake.outputLogEncoding": "utf8",
+    "cmake.environment": {
+        "PATH": "C:\\msys64\\ucrt64\\bin;C:\\Qt\\6.9.1\\mingw_64\\bin;${env:PATH}"
+    },
+    "cmake.configureEnvironment": {
+        "PATH": "C:\\msys64\\ucrt64\\bin;C:\\Qt\\6.9.1\\mingw_64\\bin;${env:PATH}"
+    },
+    "cmake.buildEnvironment": {
+        "PATH": "C:\\msys64\\ucrt64\\bin;C:\\Qt\\6.9.1\\mingw_64\\bin;${env:PATH}"
+    },
+    "cmake.options.statusBarVisibility": "visible",
+    "cmake.options.advanced": {
+        "workspace": { "statusBarVisibility": "visible" },
+        "preset": { "statusBarVisibility": "visible" },
+        "workflow": { "statusBarVisibility": "visible" },
+        "build": { "statusBarVisibility": "visible" },
+        "launch": { "statusBarVisibility": "visible" }
+    },
+    "cmake.debugConfig": {
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${command:cmake.launchTargetPath}",
+        "args": [
+            "--assets",
+            "${workspaceFolder}/decompilation/assets"
+        ],
+        "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
+        "MIMode": "gdb",
+        "miDebuggerPath": "C:/msys64/ucrt64/bin/gdb.exe",
+        "environment": [
+            {
+                "name": "PATH",
+                "value": "C:\\msys64\\ucrt64\\bin;C:\\Qt\\6.9.1\\mingw_64\\bin;${env:PATH}"
+            }
+        ]
+    }
 }

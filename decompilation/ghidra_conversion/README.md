@@ -106,11 +106,12 @@ The live binary is the build-directory root copy, for example
 Close that process before rebuilding; Windows will not overwrite a running
 exe. Do not launch `qt_runtime/shadowrun_ghidra_conversion_qt.exe`.
 
-CMake Tools must use the matching *build* preset (`ghidra-conversion-qt-release`
-or `ghidra-conversion-qt-debug`). Those presets build only
-`shadowrun_ghidra_conversion_qt`. Selecting the configure preset display name
-"Ghidra Conversion Qt (Release, MSYS2 UCRT64)" and rebuilding `all` is a
-different graph.
+CMake Tools defaults to this folder and the
+`ghidra-conversion-qt-release` configure, build, and workflow presets, so the
+status-bar preset picker and Build button target
+`shadowrun_ghidra_conversion_qt.exe` at the Qt release build-directory root.
+Switch the active folder to `decompilation` for native-port presets. Close the
+running exe before rebuilding.
 
 Build the separate Debug application from this directory:
 
