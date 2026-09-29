@@ -521,12 +521,32 @@ void clear_menu_slot(MenuSlotCleanupState& state,
                      bool asset_load_pending,
                      const std::function<void()>& prepare_assets);
 
-struct MenuPanelRefreshState {
-    std::uint8_t toggle = 0;
+struct MenuToggleGridPlan {
+    std::uint32_t glyph_source = 0x000CD47AU;
+    std::uint32_t destination = 0x0000EBA8U;
+    std::uint16_t column_max = 1;
+    std::uint16_t row_max = 1;
+    std::uint16_t palette = 0;
 };
 
-// ROM 0x127B0: upload the panel, flip its byte toggle, update its layout, and
-// submit the text render in source order.
+struct MenuPanelRefreshState {
+    std::uint8_t toggle = 0; // FFF114
+    MenuToggleGridPlan grid{};
+    std::uint32_t text_source = 0x000D1EB4U;
+    std::uint32_t text_destination = 0x0000EC9CU;
+    std::uint16_t text_palette = 0x6000;
+};
+
+constexpr std::uint32_t kMenuToggleGridGlyphBase = 0x000CD47AU;
+constexpr std::uint32_t kMenuToggleGridDestinationBase = 0x0000EBA2U;
+constexpr std::uint32_t kMenuPanelTextBase = 0x000D1EB4U;
+
+// ROM 0x127FC: FFF114 BMI selects D3=1 D4=2, else D3=0 D4=1. A1 += D3*8,
+// dest = D4*6 + 0xEBA2. D7=1 D1=1 D2=0, then 0x1232.
+MenuToggleGridPlan plan_menu_toggle_grid(std::uint8_t toggle);
+
+// ROM 0x127B0: upload 0xCD3B6, XOR FFF114 with 0xFF, 0x127FC at 0xCD47A,
+// then 0xC0DA at 0xD1EB4 + (negative ? 0x12 : 0) dest 0xEC9C palette 0x6000.
 void refresh_menu_panel(MenuPanelRefreshState& state,
                         const std::function<void()>& upload_panel,
                         const std::function<void()>& update_layout,

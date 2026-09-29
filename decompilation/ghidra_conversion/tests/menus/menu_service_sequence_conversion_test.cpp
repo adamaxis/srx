@@ -225,8 +225,18 @@ int main() {
                        [&panel_events] { panel_events.push_back(24); },
                        [&panel_events] { panel_events.push_back(25); });
     if (panel.toggle != 0xEDU ||
+        panel.grid.destination != 0xEBAEU ||
+        panel.grid.glyph_source != kMenuToggleGridGlyphBase + 8U ||
+        panel.text_source != kMenuPanelTextBase + 0x12U ||
         panel_events != std::vector<int>{23, 24, 25}) {
         return 16;
+    }
+    refresh_menu_panel(panel, {}, {}, {});
+    if (panel.toggle != 0x12U ||
+        panel.grid.destination != 0xEBA8U ||
+        panel.grid.glyph_source != kMenuToggleGridGlyphBase ||
+        panel.text_source != kMenuPanelTextBase) {
+        return 48;
     }
 
     panel_events.clear();

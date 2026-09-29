@@ -742,6 +742,15 @@ void clear_menu_slot(MenuSlotCleanupState& state,
     state.active_slots[index] = 0U;
 }
 
+MenuToggleGridPlan plan_menu_toggle_grid(const std::uint8_t toggle) {
+    const bool negative = static_cast<std::int8_t>(toggle) < 0;
+    MenuToggleGridPlan plan{};
+    plan.glyph_source = kMenuToggleGridGlyphBase + (negative ? 8U : 0U);
+    plan.destination =
+        kMenuToggleGridDestinationBase + (negative ? 12U : 6U);
+    return plan;
+}
+
 void refresh_menu_panel(MenuPanelRefreshState& state,
                         const std::function<void()>& upload_panel,
                         const std::function<void()>& update_layout,
@@ -750,6 +759,9 @@ void refresh_menu_panel(MenuPanelRefreshState& state,
         upload_panel();
     }
     state.toggle = static_cast<std::uint8_t>(state.toggle ^ 0xFFU);
+    state.grid = plan_menu_toggle_grid(state.toggle);
+    const bool negative = static_cast<std::int8_t>(state.toggle) < 0;
+    state.text_source = kMenuPanelTextBase + (negative ? 0x12U : 0U);
     if (update_layout) {
         update_layout();
     }
