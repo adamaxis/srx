@@ -68,10 +68,12 @@ bool entity_behavior_action_callbacks_complete(
                static_cast<bool>(callbacks.update_entity_animation_delay);
     }
     if (record.target_marker < 0) {
-        return callbacks.update_entity_target_heading &&
-               (world.alternate_delayed_animation
-                    ? static_cast<bool>(callbacks.prepare_delayed_animation_alternate)
-                    : static_cast<bool>(callbacks.prepare_delayed_animation_primary));
+        if (!callbacks.update_entity_target_heading) {
+            return false;
+        }
+        // 0xAE6E RTS (then 0xAF7C) only when FFE186==3; else JMP 0x1033E.
+        return world.scene_state != 3U ||
+               static_cast<bool>(callbacks.prepare_delayed_animation_primary);
     }
     if (source_type_uses_alternate_effect_heading(record.source_type)) {
         return callbacks.spawn_entity_effect_record &&
@@ -164,9 +166,7 @@ EntityBehaviorActionResult advance_entity_behavior_action(
 
     if (record.target_marker < 0) {
         callbacks.update_entity_target_heading(record);
-        if (world.alternate_delayed_animation) {
-            callbacks.prepare_delayed_animation_alternate(record);
-        } else {
+        if (world.scene_state == 3U) {
             callbacks.prepare_delayed_animation_primary(record);
         }
         result.kind = EntityBehaviorActionResultKind::target_animation_prepared;

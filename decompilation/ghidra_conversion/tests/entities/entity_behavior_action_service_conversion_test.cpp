@@ -84,13 +84,12 @@ int main() {
     EntityBehaviorActionWorldState target_world{};
     target_world.controller_events = 0x0040U;
     target_world.controller_action = 1;
+    target_world.scene_state = 3U;
     EntityBehaviorActionCallbacks target_callbacks{};
     int target_heading_calls = 0;
     int primary_animation_calls = 0;
     target_callbacks.update_entity_target_heading =
         [&](EntityBehaviorFrameRecord&) { ++target_heading_calls; };
-    target_callbacks.update_entity_animation_delay =
-        [&](EntityBehaviorFrameRecord&, std::uint16_t) {};
     target_callbacks.prepare_delayed_animation_primary =
         [&](EntityBehaviorFrameRecord&) { ++primary_animation_calls; };
     const auto target_result = advance_entity_behavior_action(
@@ -98,6 +97,15 @@ int main() {
     assert(target_result.kind ==
                EntityBehaviorActionResultKind::target_animation_prepared &&
            target_heading_calls == 1 && primary_animation_calls == 1);
+
+    target_world.scene_state = 0U;
+    target_heading_calls = 0;
+    primary_animation_calls = 0;
+    const auto fallback_heading = advance_entity_behavior_action(
+        target_record, target_world, target_callbacks);
+    assert(fallback_heading.kind ==
+               EntityBehaviorActionResultKind::target_animation_prepared &&
+           target_heading_calls == 1 && primary_animation_calls == 0);
 
     EntityBehaviorFrameRecord effect_record{};
     effect_record.transition_gate = -1;

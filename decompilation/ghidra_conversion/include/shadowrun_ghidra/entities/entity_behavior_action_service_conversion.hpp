@@ -15,7 +15,7 @@ struct EntityBehaviorActionWorldState {
     std::uint16_t controller_events = 0; // FFDD22
     std::int16_t controller_action = -1; // FFDD04
     std::int16_t action_override = 0; // FFDFE6
-    bool alternate_delayed_animation = false; // FFF0DD
+    std::uint8_t scene_state = 0; // FFE186; 0xAE6E RTS only when == 3
 };
 
 struct EntityEffectSpawnDispatchResult {
