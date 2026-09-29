@@ -164,5 +164,45 @@ int main() {
     if (variant_sprites[0].y != 0x7C || variant_sprites[0].x != 0x7D) {
         return 14;
     }
+
+    JitterEffectSpriteState jitter_sprite{};
+    jitter_sprite.animation = {0, 3, 3, 0, true};
+    jitter_sprite.remaining = 0;
+    auto jitter_sprites = advance_jitter_effect(jitter_sprite, 0U);
+    if (jitter_sprite.animation.active || jitter_sprite.auxiliary != 0 ||
+        !jitter_sprites.empty()) {
+        return 15;
+    }
+    jitter_sprite = {};
+    jitter_sprite.animation = {1, 0, 3, 0, true};
+    jitter_sprite.screen_x = 0x0088U;
+    jitter_sprite.screen_y = 0x0098U;
+    jitter_sprites = advance_jitter_effect(jitter_sprite, 0U);
+    if (jitter_sprite.animation.countdown != 0 || jitter_sprites.size() != 1U ||
+        jitter_sprites[0].y != 0x85 || jitter_sprites[0].x != 0x82 ||
+        jitter_sprites[0].size != 1U ||
+        jitter_sprites[0].attributes != 0x6000U) {
+        return 16;
+    }
+    jitter_sprite.animation = {1, 1, 3, 0, true};
+    jitter_sprite.random_word = 0x1000U;
+    jitter_sprites = advance_jitter_effect(jitter_sprite, 0U);
+    if (jitter_sprites[0].y != 0x82 || jitter_sprites[0].x != 0x7D ||
+        jitter_sprites[0].size != 5U) {
+        return 17;
+    }
+    jitter_sprite = {};
+    jitter_sprite.animation = {0, 2, 3, 0, true};
+    jitter_sprite.remaining = 1;
+    jitter_sprite.seed = 1;
+    jitter_sprite.screen_x = 0x0088U;
+    jitter_sprite.screen_y = 0x0098U;
+    jitter_sprites = advance_jitter_effect(jitter_sprite, 0U);
+    if (jitter_sprite.animation.phase != 0 ||
+        jitter_sprite.animation.countdown != 5 ||
+        jitter_sprite.offset_x != -6 || jitter_sprite.offset_y != -6 ||
+        jitter_sprites[0].y != 0x7F || jitter_sprites[0].x != 0x7C) {
+        return 18;
+    }
     return 0;
 }

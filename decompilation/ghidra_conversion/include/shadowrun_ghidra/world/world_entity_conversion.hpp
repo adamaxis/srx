@@ -314,4 +314,29 @@ void advance_jitter_effect(
     const std::function<void()>& append_sprite,
     const std::function<void()>& build_sprite_records);
 
+struct JitterEffectSpriteState {
+    EffectAnimationState animation{};
+    std::uint16_t screen_x = 0;
+    std::uint16_t screen_y = 0;
+    std::int16_t attribute_offset = 0;
+    std::uint8_t auxiliary = 0;
+    std::int16_t remaining = 0;
+    std::int16_t offset_x = 0;
+    std::int16_t offset_y = 0;
+    std::uint16_t random_word = 0;
+    std::uint16_t seed = 0;
+};
+
+constexpr std::array<std::array<SpriteSourceRecord, 3>, 2> kJitterEffectSprites{{
+    {SpriteSourceRecord{-3, -22, 1, 0}, SpriteSourceRecord{-10, -28, 10, 0},
+     SpriteSourceRecord{-3, -22, 1, 0}},
+    {SpriteSourceRecord{-3, -22, 1, 0}, SpriteSourceRecord{-6, -27, 5, 0},
+     SpriteSourceRecord{-3, -22, 1, 0}},
+}};
+
+// ROM 0x5494: +2 cadence 6, phase>=3 ticks FFFE004, 0xD44 jitter, D6 0x6000.
+std::vector<BuiltSpriteRecord> advance_jitter_effect(
+    JitterEffectSpriteState& state,
+    std::uint8_t first_sequence);
+
 } // namespace shadowrun::ghidra_conversion

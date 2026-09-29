@@ -1,5 +1,6 @@
 #include "shadowrun_ghidra/world/world_entity_conversion.hpp"
 
+#include "shadowrun_ghidra/core/random_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_projection_conversion.hpp"
 #include "shadowrun_ghidra/field/field_entity_render_batch_conversion.hpp"
 
@@ -502,6 +503,47 @@ void advance_jitter_effect(
         call_once(append_sprite);
     }
     call_once(build_sprite_records);
+}
+
+std::vector<BuiltSpriteRecord> advance_jitter_effect(
+    JitterEffectSpriteState& state,
+    const std::uint8_t first_sequence) {
+    --state.animation.countdown;
+    if (state.animation.countdown < 0) {
+        state.animation.countdown = 6;
+        ++state.animation.phase;
+    }
+    if (state.animation.phase >= 3U) {
+        --state.remaining;
+        if (state.remaining < 0) {
+            state.auxiliary = 0;
+            state.animation.active = false;
+            return {};
+        }
+        state.random_word = advance_source_random_seed(state.seed);
+        auto x = static_cast<std::int16_t>(state.random_word & 7U);
+        if ((x & 2) != 0) {
+            x = static_cast<std::int16_t>(-x);
+        }
+        state.offset_x = x;
+        auto y = static_cast<std::int16_t>(state.random_word & 7U);
+        if ((y & 4) != 0) {
+            y = static_cast<std::int16_t>(-y);
+        }
+        state.offset_y = y;
+        state.animation.phase = 0;
+        state.animation.countdown = 5;
+    }
+    const auto table = (state.random_word & 0x1000U) != 0U ? 1U : 0U;
+    const auto phase =
+        state.animation.phase < 3U ? state.animation.phase : 0U;
+    return build_title_sprite_records_with_attribute_offset(
+        {kJitterEffectSprites[table][phase]},
+        static_cast<std::int16_t>(
+            static_cast<std::int16_t>(state.screen_x) + state.offset_x),
+        static_cast<std::int16_t>(
+            static_cast<std::int16_t>(state.screen_y) + state.offset_y),
+        first_sequence, 0x6000U, state.attribute_offset);
 }
 
 } // namespace shadowrun::ghidra_conversion
