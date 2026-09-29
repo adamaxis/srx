@@ -257,6 +257,19 @@ int main() {
     if (panel_events != std::vector<int>{26, 27, 28}) {
         return 19;
     }
+    const auto variant_a = prepare_menu_grid_variant_a();
+    const auto variant_b = prepare_menu_grid_variant_b();
+    const auto variant_c = prepare_menu_grid_variant_c();
+    if (variant_a.destination != kMenuGridVariantADestination ||
+        variant_a.count != kMenuGridVariantACount ||
+        variant_a.palette != 0x6000U ||
+        variant_a.glyph_source != 0x000C1320U ||
+        variant_b.destination != kMenuGridVariantBDestination ||
+        variant_b.count != kMenuGridVariantBCount ||
+        variant_c.destination != kMenuGridVariantCDestination ||
+        variant_c.count != kMenuGridVariantCCount) {
+        return 49;
+    }
 
     write_menu_repeated_grid(
         [&panel_events] { panel_events.push_back(29); });

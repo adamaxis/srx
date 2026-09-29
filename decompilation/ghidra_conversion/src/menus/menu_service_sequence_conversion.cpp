@@ -770,6 +770,23 @@ void refresh_menu_panel(MenuPanelRefreshState& state,
     }
 }
 
+namespace {
+
+MenuGridVariantPlan make_menu_grid_variant(const std::uint16_t destination,
+                                           const std::uint16_t count) {
+    MenuGridVariantPlan plan{};
+    plan.destination = destination;
+    plan.count = count;
+    return plan;
+}
+
+} // namespace
+
+MenuGridVariantPlan prepare_menu_grid_variant_a() {
+    return make_menu_grid_variant(kMenuGridVariantADestination,
+                                 kMenuGridVariantACount);
+}
+
 void prepare_menu_grid_variant_a(
     const std::function<void()>& prepare_grid) {
     if (prepare_grid) {
@@ -777,11 +794,21 @@ void prepare_menu_grid_variant_a(
     }
 }
 
+MenuGridVariantPlan prepare_menu_grid_variant_b() {
+    return make_menu_grid_variant(kMenuGridVariantBDestination,
+                                 kMenuGridVariantBCount);
+}
+
 void prepare_menu_grid_variant_b(
     const std::function<void()>& prepare_grid) {
     if (prepare_grid) {
         prepare_grid();
     }
+}
+
+MenuGridVariantPlan prepare_menu_grid_variant_c() {
+    return make_menu_grid_variant(kMenuGridVariantCDestination,
+                                 kMenuGridVariantCCount);
 }
 
 void prepare_menu_grid_variant_c(

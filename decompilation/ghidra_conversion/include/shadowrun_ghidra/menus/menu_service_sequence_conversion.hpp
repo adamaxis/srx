@@ -552,13 +552,31 @@ void refresh_menu_panel(MenuPanelRefreshState& state,
                         const std::function<void()>& update_layout,
                         const std::function<void()>& render_text);
 
-// ROM 0x12C1E: prepare one menu grid variant.
+struct MenuGridVariantPlan {
+    std::uint16_t destination = 0;
+    std::uint16_t count = 0;
+    std::uint16_t palette = 0x6000;
+    std::uint32_t glyph_source = 0x000C1320U;
+};
+
+constexpr std::uint16_t kMenuGridVariantADestination = 0xC518U;
+constexpr std::uint16_t kMenuGridVariantACount = 0x0007U;
+constexpr std::uint16_t kMenuGridVariantBDestination = 0xC118U;
+constexpr std::uint16_t kMenuGridVariantBCount = 0x0013U;
+constexpr std::uint16_t kMenuGridVariantCDestination = 0xC518U;
+constexpr std::uint16_t kMenuGridVariantCCount = 0x000BU;
+constexpr std::uint16_t kMenuGridVariantDDestination = 0xC818U;
+
+// ROM 0x12C1E: D4=0xC518 D1=7, then 0x12C5A (A1=0xC1320 D2=0x6000).
+MenuGridVariantPlan prepare_menu_grid_variant_a();
 void prepare_menu_grid_variant_a(const std::function<void()>& prepare_grid);
 
-// ROM 0x12C36: prepare the second menu grid variant.
+// ROM 0x12C36: D4=0xC118 D1=0x13, then 0x12C5A.
+MenuGridVariantPlan prepare_menu_grid_variant_b();
 void prepare_menu_grid_variant_b(const std::function<void()>& prepare_grid);
 
-// ROM 0x12C42: prepare the third menu grid variant.
+// ROM 0x12C42: D4=0xC518 D1=0xB, then 0x12C5A.
+MenuGridVariantPlan prepare_menu_grid_variant_c();
 void prepare_menu_grid_variant_c(const std::function<void()>& prepare_grid);
 
 // ROM 0x12C56: submit one repeated menu-grid write.
