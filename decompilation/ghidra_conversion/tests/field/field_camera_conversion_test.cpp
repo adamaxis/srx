@@ -1,3 +1,4 @@
+#include "shadowrun_ghidra/entities/entity_coordinate_conversion.hpp"
 #include "shadowrun_ghidra/field/field_camera_conversion.hpp"
 
 namespace {
@@ -77,6 +78,31 @@ int main() {
     if (!expect(stopped.chase_stopped && stopped.camera_x == 0x0600U &&
                 stopped.camera_y == 0U)) {
         return 6;
+    }
+
+    // ROM 0x15DCC heading 0: D2 from 0x15E16 (C++ vertical), D3 from 0x15E56
+    // (C++ horizontal, 0). ROM 0x3A50 adds D3 to entity X and D2 to entity Y.
+    const auto heading0 = transform_entity_heading_vector(0, 0x03C0);
+    if (!expect(heading0.horizontal == 0 && heading0.vertical != 0)) {
+        return 7;
+    }
+    FieldCameraFollowState origin{};
+    origin.camera_x = 0x0A00U;
+    origin.camera_y = 0x0A00U;
+    origin.maximum_x = 0x4000U;
+    origin.maximum_y = 0x4000U;
+    origin.aligned_x = 0x0A00U;
+    origin.aligned_y = 0x0A00U;
+    const auto north = follow_field_camera(
+        origin,
+        static_cast<std::uint16_t>(origin.camera_x + 0x0880U),
+        static_cast<std::uint16_t>(origin.camera_y + 0x0700U),
+        0,
+        false);
+    if (!expect(north.horizontal_step == 0 && north.vertical_step < 0 &&
+                north.camera_x == origin.camera_x &&
+                north.camera_y != origin.camera_y)) {
+        return 8;
     }
     return 0;
 }
