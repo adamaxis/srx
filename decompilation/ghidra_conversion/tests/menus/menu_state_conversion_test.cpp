@@ -48,5 +48,31 @@ int main() {
         upload_state.uploaded_blocks != 4U || upload_calls != 4U) {
         return 5;
     }
+
+    const auto block = plan_menu_tile_block(0x000CD3B6U);
+    if (block.glyph_source != 0x000CD3B6U ||
+        block.destination != kMenuTileBlockDestination ||
+        block.column_max != kMenuTileBlockColumnMax ||
+        block.row_max != kMenuTileBlockRowMax) {
+        return 6;
+    }
+    MenuColumnTileUploadState column{};
+    column.column = 2U;
+    column.layout_word = 1;
+    column.glyph_base = 0x1000U;
+    reset_menu_upload_cursor_and_upload(column);
+    if (column.layout_word != 0 || column.grid.glyph_source != 0x1000U ||
+        column.grid.destination != kMenuColumnGridDestinationNonneg ||
+        column.grid.column_max != 1U || column.grid.row_max != 1U) {
+        return 7;
+    }
+    column.column = 3U;
+    column.layout_word = -1;
+    column.glyph_base = 0x1000U;
+    reset_menu_upload_cursor_and_upload(column);
+    if (column.layout_word != 0 || column.grid.glyph_source != 0x1008U ||
+        column.grid.destination != kMenuColumnGridDestinationNeg + 6U) {
+        return 8;
+    }
     return 0;
 }

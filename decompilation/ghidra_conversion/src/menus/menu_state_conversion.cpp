@@ -24,6 +24,15 @@ void render_menu_footer(
     }
 }
 
+MenuTileGridPlan plan_menu_tile_block(const std::uint32_t glyph_source) {
+    MenuTileGridPlan plan{};
+    plan.glyph_source = glyph_source;
+    plan.destination = kMenuTileBlockDestination;
+    plan.column_max = kMenuTileBlockColumnMax;
+    plan.row_max = kMenuTileBlockRowMax;
+    return plan;
+}
+
 void upload_menu_tile_block(
     MenuTileUploadState& state,
     const MenuTileUploadBoundary& upload_tile_block) {
@@ -31,6 +40,21 @@ void upload_menu_tile_block(
         upload_tile_block();
     }
     ++state.uploaded_blocks;
+}
+
+void reset_menu_upload_cursor_and_upload(MenuColumnTileUploadState& state) {
+    const auto slot = static_cast<std::uint16_t>(
+        static_cast<std::uint16_t>(state.column) - 2U);
+    const auto source_delta = static_cast<std::uint32_t>(slot) * 8U;
+    const auto dest_delta = static_cast<std::uint32_t>(slot) * 6U;
+    state.grid.glyph_source = state.glyph_base + source_delta;
+    state.grid.destination =
+        dest_delta + (state.layout_word < 0 ? kMenuColumnGridDestinationNeg
+                                            : kMenuColumnGridDestinationNonneg);
+    state.grid.column_max = 1;
+    state.grid.row_max = 1;
+    state.grid.palette = 0;
+    state.layout_word = 0;
 }
 
 void reset_menu_upload_cursor_and_upload(
