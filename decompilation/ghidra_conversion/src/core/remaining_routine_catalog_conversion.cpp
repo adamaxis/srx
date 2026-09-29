@@ -18,6 +18,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00002B78U, "apply_pending_scene_profile", RoutineFamily::field, 90U},
     {0x00002C92U, "render_normal_field_viewport", RoutineFamily::field, 32U},
     {0x00002CB2U, "render_alternate_field_viewport", RoutineFamily::field, 46U},
+    {0x00002CE0U, "advance_field_mode_transition", RoutineFamily::field, 178U},
     {0x00002FA4U, "snapshot_entity_anchors", RoutineFamily::field, 76U},
     {0x00003032U, "scene_uses_alternate_profile", RoutineFamily::field, 66U},
     {0x00003084U, "run_field_loop", RoutineFamily::field, 182U},
