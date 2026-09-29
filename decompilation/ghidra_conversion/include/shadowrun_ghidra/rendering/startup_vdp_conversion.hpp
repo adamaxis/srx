@@ -5,6 +5,7 @@
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <vector>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -82,6 +83,16 @@ void write_fixed_transfer_pair(
 // 0x800-word plane with the repeated 0x07FF tile value.
 void clear_and_fill_vdp_plane(
     std::uint16_t plane_address,
+    const WordTransferCallbacks& callbacks);
+
+constexpr std::uint16_t kStartupTextPlane = 0xC000U;
+
+// ROM 0x436: VRAM 0xC000 + row*0x80 + column*2, then NUL-terminated
+// source bytes minus 0x20 as tile words.
+std::size_t write_startup_text_to_vdp(
+    std::uint8_t column,
+    std::uint8_t row,
+    const std::vector<std::uint8_t>& text,
     const WordTransferCallbacks& callbacks);
 
 } // namespace shadowrun::ghidra_conversion

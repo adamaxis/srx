@@ -153,5 +153,28 @@ int main() {
         return 12;
     }
 
+    commands.clear();
+    words.clear();
+    controls.clear();
+    write_repeated_masked_word(0x2000U, 0x0011U, 0x8000U, 3U, row_callbacks);
+    if (commands.size() != 2U ||
+        commands[0] != make_vdp_transfer_command(0x2000U).low_word ||
+        words != std::vector<std::uint16_t>{0x8011U, 0x8011U, 0x8011U} ||
+        !controls.empty()) {
+        return 13;
+    }
+
+    commands.clear();
+    words.clear();
+    controls.clear();
+    write_masked_transfer_with_display_control(
+        0x2100U, 0x0007U, 0x4000U, 2U, row_callbacks);
+    if (commands.size() != 2U ||
+        commands[0] != make_vdp_transfer_command(0x2100U).low_word ||
+        words != std::vector<std::uint16_t>{0x4007U, 0x4007U} ||
+        controls != std::vector<std::uint16_t>{0x8F80U, 0x8F02U}) {
+        return 14;
+    }
+
     return 0;
 }

@@ -115,5 +115,26 @@ int main() {
         return 8;
     }
 
+    commands.clear();
+    words.clear();
+    const auto written = write_startup_text_to_vdp(
+        2U, 1U, {0x41U, 0x42U, 0U}, transfer_callbacks);
+    const auto text_command = make_vdp_transfer_command(0xC084U);
+    if (written != 2U || commands.size() != 1U ||
+        commands[0].low_word != text_command.low_word ||
+        commands[0].high_word != text_command.high_word ||
+        words != std::vector<std::uint16_t>{0x21U, 0x22U}) {
+        return 9;
+    }
+    commands.clear();
+    words.clear();
+    if (write_startup_text_to_vdp(0U, 0U, {0U}, transfer_callbacks) != 0U ||
+        commands.size() != 1U ||
+        commands[0].low_word !=
+            make_vdp_transfer_command(kStartupTextPlane).low_word ||
+        !words.empty()) {
+        return 10;
+    }
+
     return 0;
 }

@@ -123,4 +123,21 @@ void write_linear_vdp_grid(
     const std::vector<std::uint16_t>& words,
     const WordTransferCallbacks& callbacks);
 
+// ROM 0x26BFE: repeat (*A1 | D2) D3+1 times. word_count is the host write
+// count. The source pointer is not advanced.
+void write_repeated_masked_word(
+    std::uint16_t destination_address,
+    std::uint16_t source_word,
+    std::uint16_t word_mask,
+    std::size_t word_count,
+    const WordTransferCallbacks& callbacks);
+
+// ROM 0x26C26: same as 0x26BFE, bracketed by auto-increment 0x8F80/0x8F02.
+void write_masked_transfer_with_display_control(
+    std::uint16_t destination_address,
+    std::uint16_t source_word,
+    std::uint16_t word_mask,
+    std::size_t word_count,
+    const WordTransferCallbacks& callbacks);
+
 } // namespace shadowrun::ghidra_conversion

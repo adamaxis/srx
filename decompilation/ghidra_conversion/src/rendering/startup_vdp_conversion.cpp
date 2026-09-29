@@ -112,4 +112,29 @@ void clear_and_fill_vdp_plane(
     }
 }
 
+std::size_t write_startup_text_to_vdp(
+    const std::uint8_t column,
+    const std::uint8_t row,
+    const std::vector<std::uint8_t>& text,
+    const WordTransferCallbacks& callbacks) {
+    const auto destination = static_cast<std::uint16_t>(
+        kStartupTextPlane + (static_cast<std::uint16_t>(row) << 7U) +
+        (static_cast<std::uint16_t>(column) << 1U));
+    if (callbacks.begin_transfer) {
+        callbacks.begin_transfer(make_vdp_transfer_command(destination));
+    }
+    std::size_t written = 0U;
+    for (const auto glyph : text) {
+        if (glyph == 0U) {
+            break;
+        }
+        if (callbacks.write_word) {
+            callbacks.write_word(static_cast<std::uint16_t>(
+                static_cast<std::uint8_t>(glyph - 0x20U)));
+        }
+        ++written;
+    }
+    return written;
+}
+
 } // namespace shadowrun::ghidra_conversion

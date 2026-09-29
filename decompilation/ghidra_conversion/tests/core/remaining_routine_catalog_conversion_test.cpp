@@ -6,7 +6,7 @@ using namespace shadowrun::ghidra_conversion;
 
 int main() {
     const auto& catalog = remaining_routine_catalog();
-    if (catalog.size() < 271U ||
+    if (catalog.size() < 274U ||
         find_remaining_routine(catalog.front().rom_entry) == nullptr ||
         find_remaining_routine(0xFFFFFFFFU) != nullptr) {
         return 1;
@@ -108,6 +108,18 @@ int main() {
         seattle_outline->alias != "stamp_seattle_intro_outline" ||
         seattle_outline->source_bytes != 266U) {
         return 8;
+    }
+    const auto* startup_text = find_remaining_routine(0x436U);
+    const auto* repeated_mask = find_remaining_routine(0x26BFEU);
+    const auto* masked_column = find_remaining_routine(0x26C26U);
+    if (startup_text == nullptr ||
+        startup_text->alias != "write_startup_text_to_vdp" ||
+        startup_text->source_bytes != 54U || repeated_mask == nullptr ||
+        repeated_mask->alias != "write_repeated_masked_word" ||
+        repeated_mask->source_bytes != 40U || masked_column == nullptr ||
+        masked_column->alias != "write_masked_transfer_with_display_control" ||
+        masked_column->source_bytes != 56U) {
+        return 9;
     }
     return 0;
 }

@@ -231,4 +231,38 @@ void write_linear_vdp_grid(
     }
 }
 
+void write_repeated_masked_word(
+    const std::uint16_t destination_address,
+    const std::uint16_t source_word,
+    const std::uint16_t word_mask,
+    const std::size_t word_count,
+    const WordTransferCallbacks& callbacks) {
+    if (callbacks.begin_transfer) {
+        callbacks.begin_transfer(make_vdp_transfer_command(destination_address));
+    }
+    if (!callbacks.write_word) {
+        return;
+    }
+    const auto word = static_cast<std::uint16_t>(source_word | word_mask);
+    for (std::size_t index = 0; index < word_count; ++index) {
+        callbacks.write_word(word);
+    }
+}
+
+void write_masked_transfer_with_display_control(
+    const std::uint16_t destination_address,
+    const std::uint16_t source_word,
+    const std::uint16_t word_mask,
+    const std::size_t word_count,
+    const WordTransferCallbacks& callbacks) {
+    if (callbacks.write_control_word) {
+        callbacks.write_control_word(0x8F80U);
+    }
+    write_repeated_masked_word(
+        destination_address, source_word, word_mask, word_count, callbacks);
+    if (callbacks.write_control_word) {
+        callbacks.write_control_word(0x8F02U);
+    }
+}
+
 } // namespace shadowrun::ghidra_conversion
