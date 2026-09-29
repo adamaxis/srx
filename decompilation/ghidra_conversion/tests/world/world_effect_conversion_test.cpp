@@ -43,44 +43,24 @@ int main() {
         return 3;
     }
 
-    WorldActivityTimeoutState guarded{0x0036U, false, 0, 0, false};
-    if (expect(!schedule_world_activity_timeout(guarded) &&
-               guarded.timer_marker == 0 && guarded.timeout == 0) != 0) {
-        return 4;
-    }
-
-    WorldActivityTimeoutState short_timeout{0, true, 0, 0, false};
-    if (expect(schedule_world_activity_timeout(short_timeout) &&
-               short_timeout.timer_marker == -1 &&
-               short_timeout.timeout == 0x0078U) != 0) {
-        return 5;
-    }
-
-    WorldActivityTimeoutState long_timeout{0, true, 4, 0, true};
-    if (expect(schedule_world_activity_timeout(long_timeout) &&
-               long_timeout.timer_marker == 4 &&
-               long_timeout.timeout == 0x0258U) != 0) {
-        return 6;
-    }
-
-    std::array<std::uint8_t, 6> effect_flags{
-        0xFFU, 0x00U, 0x01U, 0x02U, 0x05U, 0x07U};
+    std::array<std::uint8_t, 7> effect_flags{
+        0xFFU, 0x00U, 0x01U, 0x02U, 0x05U, 0x07U, 0x03U};
     clear_entity_effect_pending_flags(effect_flags);
     if (expect(effect_flags ==
-               std::array<std::uint8_t, 6>{0xFEU, 0x00U, 0x00U,
-                                           0x02U, 0x04U, 0x06U}) != 0) {
+               std::array<std::uint8_t, 7>{0xFEU, 0x00U, 0x00U, 0x02U, 0x04U,
+                                           0x06U, 0x02U}) != 0) {
         return 7;
     }
 
     promote_entity_effect_flags(effect_flags);
     if (expect(effect_flags ==
-               std::array<std::uint8_t, 6>{0xFEU, 0x00U, 0x00U,
-                                           0x06U, 0x04U, 0x06U}) != 0) {
+               std::array<std::uint8_t, 7>{0xFEU, 0x00U, 0x00U, 0x06U, 0x04U,
+                                           0x06U, 0x06U}) != 0) {
         return 8;
     }
 
     WorldEffectTransitionState scene_timeout{0x0014U, 2U, 7U, false};
-    WorldActivityTimeoutState scene_timeout_state{0, true, 0, 0, false};
+    WorldActivityTimeoutState scene_timeout_state{};
     std::vector<char> scene_events;
     const auto timeout_action = begin_world_effect_transition(
         scene_timeout,
@@ -91,8 +71,8 @@ int main() {
     if (expect(timeout_action ==
                WorldEffectTransitionAction::timeout_scheduled &&
                scene_timeout.transition_timer == 7U &&
-               scene_timeout_state.timer_marker == -1 &&
-               scene_timeout_state.timeout == 0x0078U &&
+               scene_timeout_state.timeout_marker == -1 &&
+               scene_timeout_state.timeout_frames == 0x0078U &&
                scene_events.empty()) != 0) {
         return 9;
     }
@@ -267,8 +247,8 @@ int main() {
         return 16;
     }
 
-    std::array<std::uint8_t, 6> finishing_flags{
-        0x02U, 0x00U, 0x06U, 0x01U, 0x04U, 0x00U};
+    std::array<std::uint8_t, 7> finishing_flags{
+        0x02U, 0x00U, 0x06U, 0x01U, 0x04U, 0x00U, 0x00U};
     WorldEffectTriggerState finishing_state{};
     finishing_state.transition.transition_latched = true;
     finishing_state.transition.transition_timer = 0;
@@ -286,8 +266,8 @@ int main() {
     if (expect(finished == WorldEffectTriggerAction::transition_finished &&
                !finishing_state.transition.transition_latched && finish_sound &&
                finishing_flags ==
-                   std::array<std::uint8_t, 6>{0x06U, 0x00U, 0x06U,
-                                               0x01U, 0x04U, 0x00U}) != 0) {
+                   std::array<std::uint8_t, 7>{0x06U, 0x00U, 0x06U, 0x01U,
+                                               0x04U, 0x00U, 0x00U}) != 0) {
         return 17;
     }
 

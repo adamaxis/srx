@@ -1,5 +1,7 @@
 #pragma once
 
+#include "shadowrun_ghidra/world/world_activity_routine_conversion.hpp"
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -10,24 +12,16 @@
 
 namespace shadowrun::ghidra_conversion {
 
-struct WorldActivityTimeoutState {
-    std::uint16_t scene_id = 0;
-    bool scene_ready = false;
-    std::int16_t timer_marker = 0;
-    std::uint16_t timeout = 0;
-    bool long_timeout_source = false;
-};
+// ROM 0x1DF00 / 0x1E0B8: D7=#6 walks seven FF0400 records at +0x9E.
+constexpr std::size_t kWorldEffectFlagSlotCount = 7;
 
-// ROM 0x1DBAA: suppress timeout scheduling for the guarded scene, otherwise
-// arm the source marker and select the short or long timeout value.
-bool schedule_world_activity_timeout(WorldActivityTimeoutState& state);
-
-// ROM 0x1DF00: clear bit 0 in the six world-record effect flag bytes.
+// ROM 0x1DF00: BCLR #0 of +0x9E on each of the seven slots.
 void clear_entity_effect_pending_flags(
-    std::array<std::uint8_t, 6>& effect_flags);
+    std::array<std::uint8_t, kWorldEffectFlagSlotCount>& effect_flags);
 
-// ROM 0x1E0B8: promote every record carrying bit 1 to the bit-2 effect state.
-void promote_entity_effect_flags(std::array<std::uint8_t, 6>& effect_flags);
+// ROM 0x1E0B8: BTST #1 of +0x9E then BSET #2, seven slots.
+void promote_entity_effect_flags(
+    std::array<std::uint8_t, kWorldEffectFlagSlotCount>& effect_flags);
 
 enum class WorldEffectTransitionAction {
     no_action,
@@ -221,7 +215,7 @@ WorldEffectEntitySpawnResult spawn_world_effect_entities(
 // to the 0x1E04A transition policy.
 WorldEffectTriggerAction advance_world_effect_trigger(
     WorldEffectTriggerState& state,
-    std::array<std::uint8_t, 6>& effect_flags,
+    std::array<std::uint8_t, kWorldEffectFlagSlotCount>& effect_flags,
     const std::vector<WorldEffectRegion>& regions,
     const WorldRandomBoundary& next_random,
     WorldActivityTimeoutState& timeout_state,

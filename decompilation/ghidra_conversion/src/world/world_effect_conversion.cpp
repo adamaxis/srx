@@ -12,26 +12,15 @@ std::uint16_t find_first_available_world_effect_entity_slot(
     return 10U;
 }
 
-bool schedule_world_activity_timeout(WorldActivityTimeoutState& state) {
-    if (state.scene_id == 0x0036U && !state.scene_ready) {
-        return false;
-    }
-
-    if (state.timer_marker == 0) {
-        state.timer_marker = -1;
-    }
-    state.timeout = state.long_timeout_source ? 0x0258U : 0x0078U;
-    return true;
-}
-
 void clear_entity_effect_pending_flags(
-    std::array<std::uint8_t, 6>& effect_flags) {
+    std::array<std::uint8_t, kWorldEffectFlagSlotCount>& effect_flags) {
     for (auto& flags : effect_flags) {
         flags = static_cast<std::uint8_t>(flags & 0xFEU);
     }
 }
 
-void promote_entity_effect_flags(std::array<std::uint8_t, 6>& effect_flags) {
+void promote_entity_effect_flags(
+    std::array<std::uint8_t, kWorldEffectFlagSlotCount>& effect_flags) {
     for (auto& flags : effect_flags) {
         if ((flags & 0x02U) != 0U) {
             flags = static_cast<std::uint8_t>(flags | 0x04U);
@@ -258,7 +247,7 @@ WorldEffectTransitionAction begin_world_effect_transition(
 
 WorldEffectTriggerAction advance_world_effect_trigger(
     WorldEffectTriggerState& state,
-    std::array<std::uint8_t, 6>& effect_flags,
+    std::array<std::uint8_t, kWorldEffectFlagSlotCount>& effect_flags,
     const std::vector<WorldEffectRegion>& regions,
     const WorldRandomBoundary& next_random,
     WorldActivityTimeoutState& timeout_state,
