@@ -1,5 +1,7 @@
 #include "shadowrun_ghidra/world/world_entity_conversion.hpp"
 
+#include "shadowrun_ghidra/entities/entity_projection_conversion.hpp"
+
 namespace shadowrun::ghidra_conversion {
 
 namespace {
@@ -112,6 +114,85 @@ void refresh_projected_entity_sprites(
         if (project_entity) project_entity(entity);
         if (entity.mode != 0U && build_sprite) build_sprite(entity);
     }
+}
+
+std::uint32_t select_projected_entity_sprite_source(const std::int16_t type) {
+    if (type < 0) {
+        if ((static_cast<std::uint16_t>(type) & 0xFF00U) == 0xC000U) {
+            return 0x00005F82U;
+        }
+        return 0x00005FA0U;
+    }
+    const auto index = static_cast<std::uint16_t>(type);
+    if (index < 0x63U) {
+        if (index < kProjectedEntitySpriteSources.size()) {
+            return kProjectedEntitySpriteSources[index];
+        }
+        return 0U;
+    }
+    if (index == 0x64U) {
+        return 0x00005FAAU;
+    }
+    return 0x0001D47CU;
+}
+
+namespace {
+
+std::vector<SpriteSourceRecord> projected_entity_sprite_records(
+    const std::uint32_t source) {
+    switch (source) {
+    case 0x00005F78U:
+        return {{-8, -5, 4, 0x07F2U}};
+    case 0x000095A4U:
+        return {{-4, -4, 0, 0x05B2U}};
+    case 0x00005F96U:
+        return {{-5, -5, 4, 0x07F6U}};
+    case 0x00005DEAU:
+        return {{-14, 12, 0, 0x05E7U}};
+    case 0x00005F8CU:
+        return {{-8, -10, 4, 0x07F0U}};
+    case 0x00005FA0U:
+        return {{-3, -6, 1, 0x07F4U}};
+    case 0x00005FAAU:
+        return {{-3, -9, 1, 0x05E3U}};
+    case 0x00005F82U:
+        return {{-4, -5, 1, 0x07F8U}};
+    default:
+        return {};
+    }
+}
+
+} // namespace
+
+std::vector<BuiltSpriteRecord> refresh_projected_entity_sprites(
+    std::array<ProjectedEntitySpriteSlot, 10>& slots,
+    const std::uint16_t camera_x,
+    const std::uint16_t camera_y,
+    const std::uint8_t first_sequence) {
+    std::vector<BuiltSpriteRecord> records;
+    auto sequence = first_sequence;
+    for (auto& slot : slots) {
+        if ((slot.flags & 0x01U) == 0U) {
+            continue;
+        }
+        EntityProjectionState projection{
+            slot.world_x, slot.world_y, slot.sprite_offset_y, slot.screen_x,
+            slot.screen_y};
+        project_entity_screen_position_standard(projection, camera_x, camera_y);
+        slot.screen_x = projection.screen_x;
+        slot.screen_y = projection.screen_y;
+        if (slot.screen_y == 0U) {
+            continue;
+        }
+        const auto built = build_title_sprite_records(
+            projected_entity_sprite_records(
+                select_projected_entity_sprite_source(slot.type)),
+            static_cast<std::int16_t>(slot.screen_y),
+            static_cast<std::int16_t>(slot.screen_x), sequence, 0x4000U);
+        sequence = static_cast<std::uint8_t>(sequence + built.size());
+        records.insert(records.end(), built.begin(), built.end());
+    }
+    return records;
 }
 
 void spawn_entity_effect(

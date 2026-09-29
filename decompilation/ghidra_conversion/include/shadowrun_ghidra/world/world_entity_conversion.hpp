@@ -1,8 +1,11 @@
 #pragma once
 
+#include "shadowrun_ghidra/rendering/sprite_record_builder_conversion.hpp"
+
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <vector>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -76,6 +79,35 @@ void refresh_projected_entity_sprites(
     const std::array<EntityFrameRecord, 16>& entities,
     const std::function<void(const EntityFrameRecord&)>& project_entity,
     const std::function<void(const EntityFrameRecord&)>& build_sprite);
+
+struct ProjectedEntitySpriteSlot {
+    std::uint16_t world_x = 0;
+    std::int16_t type = 0;
+    std::uint16_t world_y = 0;
+    std::uint16_t sprite_offset_y = 0;
+    std::uint16_t screen_x = 0;
+    std::uint16_t screen_y = 0;
+    std::uint8_t flags = 0;
+};
+
+constexpr std::array<std::uint32_t, 22> kProjectedEntitySpriteSources{
+    0x00005F78U, 0x00005F78U, 0x00005F78U, 0x00005F78U, 0x00005F78U,
+    0x00005F78U, 0x00005F78U, 0x00005F78U, 0x00005F78U, 0x00005F78U,
+    0x00005F78U, 0x00005F78U, 0x000095A4U, 0x000095A4U, 0x000095A4U,
+    0x00005F96U, 0x00005F96U, 0x00005F96U, 0x00005DEAU, 0x00005DEAU,
+    0x00005F8CU, 0x00005FA0U,
+};
+
+// ROM 0x481E type word +2: table 0x48B2 when 0..0x62, 0x5FAA at 0x64,
+// 0x1D47C otherwise; negatives use 0x5F82 when high byte is 0xC0.
+std::uint32_t select_projected_entity_sprite_source(std::int16_t type);
+
+// ROM 0x481E: ten FF164C slots, bit 0 of +0x10, project 0x5A62, D6=0x4000.
+std::vector<BuiltSpriteRecord> refresh_projected_entity_sprites(
+    std::array<ProjectedEntitySpriteSlot, 10>& slots,
+    std::uint16_t camera_x,
+    std::uint16_t camera_y,
+    std::uint8_t first_sequence);
 
 struct EntityEffectSlotState {
     bool active = false;

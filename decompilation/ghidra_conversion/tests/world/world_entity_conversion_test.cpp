@@ -58,5 +58,31 @@ int main() {
     if (!set_sprite_descriptor_carry()) {
         return 5;
     }
+
+    if (select_projected_entity_sprite_source(0) != 0x00005F78U ||
+        select_projected_entity_sprite_source(12) != 0x000095A4U ||
+        select_projected_entity_sprite_source(0x64) != 0x00005FAAU ||
+        select_projected_entity_sprite_source(0x65) != 0x0001D47CU ||
+        select_projected_entity_sprite_source(-0x4000) != 0x00005F82U ||
+        select_projected_entity_sprite_source(-1) != 0x00005FA0U) {
+        return 6;
+    }
+
+    std::array<ProjectedEntitySpriteSlot, 10> slots{};
+    slots[0] = {0x0100U, 0, 0x0100U, 0x0010U, 0, 0, 1};
+    slots[1] = {0xFF00U, 0, 0x0100U, 0x0010U, 0, 0, 1};
+    slots[2] = {0x0100U, 0, 0x0100U, 0x0010U, 0, 0, 0};
+    slots[3] = {0x0100U, 12, 0x0100U, 0x0010U, 0, 0, 1};
+    const auto sprites =
+        refresh_projected_entity_sprites(slots, 0x0080U, 0x0080U, 0U);
+    if (slots[0].screen_x != 0x0088U || slots[0].screen_y != 0x0098U ||
+        slots[1].screen_y != 0U || sprites.size() != 2U ||
+        sprites[0].y != 0x90 || sprites[0].x != 0x83 ||
+        sprites[0].size != 4U || sprites[0].sequence != 0U ||
+        sprites[0].attributes != 0x47F2U || sprites[1].y != 0x94 ||
+        sprites[1].x != 0x84 || sprites[1].size != 0U ||
+        sprites[1].sequence != 1U || sprites[1].attributes != 0x45B2U) {
+        return 7;
+    }
     return 0;
 }
