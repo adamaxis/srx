@@ -5,11 +5,14 @@ int main() {
 
     std::array<std::uint16_t, 10> occupancy{};
     occupancy.fill(1U);
-    if (entity_table_has_free_slot(occupancy)) {
+    if (entity_table_has_free_slot(occupancy) ||
+        find_free_entity_table_slot(0x10U, occupancy).has_value()) {
         return 1;
     }
     occupancy[7] = 0U;
-    if (!entity_table_has_free_slot(occupancy)) {
+    const auto found = find_free_entity_table_slot(0x10U, occupancy);
+    if (!entity_table_has_free_slot(occupancy) || !found.has_value() ||
+        *found != 0x17U) {
         return 2;
     }
     std::array<EntityReadinessState, 13> entities{};

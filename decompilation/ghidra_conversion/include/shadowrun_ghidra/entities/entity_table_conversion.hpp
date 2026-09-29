@@ -7,11 +7,16 @@
 
 namespace shadowrun::ghidra_conversion {
 
-// ROM 0x164F2: the source scans ten entity records and sets the carry flag
-// only when every leading occupancy word is nonzero. A native caller needs
-// the semantic result rather than a condition-code side effect.
+constexpr std::size_t kEntityTableSlotCount = 10;
+
+// ROM 0x164F2: D1 starts at FFDF6E, A0 at FFD740, D7=#9. TST.W (A0) BEQ
+// found (ANDI #0x1E,CCR). Else ADDA #0x1E, ADDQ D1, DBF. Full table ORI #1,CCR.
+std::optional<std::uint16_t> find_free_entity_table_slot(
+    std::uint16_t start_cursor,
+    const std::array<std::uint16_t, kEntityTableSlotCount>& occupancy_words);
+
 bool entity_table_has_free_slot(
-    const std::array<std::uint16_t, 10>& occupancy_words);
+    const std::array<std::uint16_t, kEntityTableSlotCount>& occupancy_words);
 
 struct EntityReadinessState {
     bool active = false;
