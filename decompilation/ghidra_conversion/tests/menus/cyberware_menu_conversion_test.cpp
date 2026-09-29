@@ -29,5 +29,23 @@ int main() {
                 high_only.installed_row_indices.empty())) {
         return 3;
     }
+    const auto empty_text = build_cyberware_text_plans(0U);
+    const auto installed_text = build_cyberware_text_plans(
+        static_cast<std::uint16_t>((1U << 0U) | (1U << 2U)));
+    if (!expect(empty_text.size() == 2U &&
+                empty_text[0].source == kCyberwareTitleSource &&
+                empty_text[0].destination == kCyberwareTitleDestination &&
+                empty_text[1].source == kCyberwareEmptySource &&
+                empty_text[1].destination == kCyberwareEmptyDestination &&
+                installed_text.size() == 3U &&
+                installed_text[1].source == kCyberwareEntrySources[0] &&
+                installed_text[1].destination ==
+                    kCyberwareEntryDestinationBase &&
+                installed_text[2].source == kCyberwareEntrySources[2] &&
+                installed_text[2].destination ==
+                    kCyberwareEntryDestinationBase +
+                        kCyberwareEntryDestinationStride)) {
+        return 4;
+    }
     return 0;
 }

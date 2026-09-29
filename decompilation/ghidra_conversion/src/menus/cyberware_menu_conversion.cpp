@@ -17,4 +17,25 @@ CyberwareMenuModel build_cyberware_menu(const std::uint16_t cyberware_flags) {
     return result;
 }
 
+std::vector<CyberwareTextPlan> build_cyberware_text_plans(
+    const std::uint16_t cyberware_flags) {
+    std::vector<CyberwareTextPlan> plans{
+        {kCyberwareTitleSource, kCyberwareTitleDestination}};
+    const auto model = build_cyberware_menu(cyberware_flags);
+    if (model.shows_no_cyberware_message) {
+        plans.push_back({kCyberwareEmptySource, kCyberwareEmptyDestination});
+        return plans;
+    }
+    for (std::size_t index = 0; index < model.installed_row_indices.size();
+         ++index) {
+        const auto bit = model.installed_row_indices[index];
+        plans.push_back(
+            {kCyberwareEntrySources[bit],
+             kCyberwareEntryDestinationBase +
+                 static_cast<std::uint32_t>(index) *
+                     kCyberwareEntryDestinationStride});
+    }
+    return plans;
+}
+
 } // namespace shadowrun::ghidra_conversion

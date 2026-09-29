@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/menus/menu_service_sequence_conversion.hpp"
+#include "shadowrun_ghidra/menus/cyberware_menu_conversion.hpp"
 
 namespace shadowrun::ghidra_conversion {
 
@@ -1056,18 +1057,18 @@ std::uint16_t run_cyberware_menu(
         callbacks.prepare_row_grid();
     }
 
-    state.rendered_entries = 0U;
+    const auto model = build_cyberware_menu(state.installed_flags);
+    state.rendered_entries =
+        static_cast<std::uint16_t>(model.installed_row_indices.size());
+    const auto text_count =
+        static_cast<std::size_t>(1U) +
+        (model.shows_no_cyberware_message
+             ? 1U
+             : model.installed_row_indices.size());
     if (callbacks.render_title_text) {
-        callbacks.render_title_text();
-    }
-    for (std::uint16_t bit = 0U; bit < 15U; ++bit) {
-        if ((state.installed_flags & (std::uint16_t{1U} << bit)) == 0U) {
-            continue;
-        }
-        if (callbacks.render_title_text) {
+        for (std::size_t index = 0; index < text_count; ++index) {
             callbacks.render_title_text();
         }
-        ++state.rendered_entries;
     }
     if (callbacks.wait_for_controller_event) {
         callbacks.wait_for_controller_event();

@@ -27,7 +27,7 @@ int main() {
     if (run_cyberware_menu(
             empty_cyberware,
             {{}, {}, [&] { ++empty_titles; }, {}, {}}) != 0U ||
-        empty_titles != 1) {
+        empty_titles != 2) {
         return 101;
     }
 
