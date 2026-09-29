@@ -159,6 +159,23 @@ void refresh_field_hud(const std::function<void()>& advance_footer,
     }
 }
 
+void refresh_field_hud(
+    HudOffsetState& footer,
+    const std::array<std::uint8_t, 5>& status,
+    const WordTransferCallbacks& callbacks) {
+    advance_hud_footer_offset(footer, 0, {}, {});
+    for (std::size_t index = 0; index < status.size(); ++index) {
+        const auto row_index = static_cast<std::size_t>(status[index]);
+        const auto& row = row_index < kMenuStatusGridRows.size()
+                              ? kMenuStatusGridRows[row_index]
+                              : kMenuStatusGridRow;
+        const auto destination = static_cast<std::uint16_t>(
+            kMenuStatusGridBase + static_cast<std::uint16_t>(index) * 0x0CU);
+        write_vdp_grid(
+            destination, 3U, 1U, 0x6000U, {row.begin(), row.end()}, callbacks);
+    }
+}
+
 void refresh_mode_glyph(
     std::vector<std::uint8_t>& mode_values,
     const std::size_t mode_index,

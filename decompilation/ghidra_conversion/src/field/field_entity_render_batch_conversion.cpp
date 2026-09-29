@@ -340,6 +340,24 @@ void reset_effect_record(EffectRecordState& state,
     call_once(clear_slot);
 }
 
+void reset_effect_record(EffectRecordState& state,
+                         std::array<std::uint8_t, 18>& slots,
+                         std::vector<std::uint8_t>& collision_map) {
+    state.coordinate = 0;
+    clear_effect_slot(slots, state.slot);
+    if (state.heading >= kEffectCollisionRestoreOffsets.size()) {
+        return;
+    }
+    const auto& offsets = kEffectCollisionRestoreOffsets[state.heading];
+    for (std::size_t index = 0; index < offsets.size(); ++index) {
+        const auto map_index = static_cast<std::uint16_t>(
+            state.collision_base + static_cast<std::uint16_t>(offsets[index]));
+        if (map_index < collision_map.size()) {
+            collision_map[map_index] = state.tile_bytes[index];
+        }
+    }
+}
+
 void clone_entity_spawn_variant_a(EntitySpawnRecord& destination,
                                   const EntitySpawnRecord& source) {
     destination = source;

@@ -1,7 +1,10 @@
 #pragma once
 
+#include "shadowrun_ghidra/menus/menu_hud_service_conversion.hpp"
+#include "shadowrun_ghidra/menus/menu_slot_batch_conversion.hpp"
 #include "shadowrun_ghidra/rendering/wrapped_encoded_text_conversion.hpp"
 
+#include <array>
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -90,6 +93,13 @@ bool process_terrain_work_batch(
 void refresh_field_hud(
     const std::function<void()>& advance_footer,
     const std::function<void()>& write_grid);
+
+// ROM 0x19856: footer delta 0, then five 3x1 grids at ED14+i*C from
+// 0xD84D6+FFF0ED[i]*6, mask 0x6000.
+void refresh_field_hud(
+    HudOffsetState& footer,
+    const std::array<std::uint8_t, 5>& status,
+    const WordTransferCallbacks& callbacks);
 
 void refresh_mode_glyph(
     std::vector<std::uint8_t>& mode_values,

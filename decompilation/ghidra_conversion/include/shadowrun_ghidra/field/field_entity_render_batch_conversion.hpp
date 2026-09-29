@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shadowrun_ghidra/entities/entity_state_primitives_conversion.hpp"
 #include "shadowrun_ghidra/field/field_coordinate_conversion.hpp"
 
 #include <array>
@@ -225,10 +226,30 @@ struct EffectRecordState {
     std::uint16_t coordinate = 0;
     std::uint8_t flags = 0;
     std::array<std::uint8_t, 5> tile_bytes{};
+    std::uint16_t heading = 0;
+    std::uint16_t slot = 0;
+    std::uint16_t collision_base = 0;
 };
+
+constexpr std::array<std::array<std::int16_t, 5>, 8> kEffectCollisionRestoreOffsets{{
+    {0, 1, -1, 2, -2},
+    {0, -1, -2, 64, 128},
+    {0, -64, 64, -128, 128},
+    {0, -1, -2, -64, -128},
+    {0, 1, -1, 2, -2},
+    {0, 1, 2, -64, -128},
+    {0, -64, 64, -128, 128},
+    {0, 1, 2, 64, 128},
+}};
 
 void reset_effect_record(EffectRecordState& state,
                          const std::function<void()>& clear_slot);
+
+// ROM 0x4B6C: clr +2, clear FFD86C[+0x32], restore five FF1700 bytes from
+// +0x36 through table 0x4BB0 indexed by +6.
+void reset_effect_record(EffectRecordState& state,
+                         std::array<std::uint8_t, 18>& slots,
+                         std::vector<std::uint8_t>& collision_map);
 
 struct EntitySpawnRecord {
     std::uint8_t mode = 0;

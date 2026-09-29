@@ -6,7 +6,7 @@ using namespace shadowrun::ghidra_conversion;
 
 int main() {
     const auto& catalog = remaining_routine_catalog();
-    if (catalog.size() < 287U ||
+    if (catalog.size() < 289U ||
         find_remaining_routine(catalog.front().rom_entry) == nullptr ||
         find_remaining_routine(0xFFFFFFFFU) != nullptr) {
         return 1;
@@ -163,6 +163,15 @@ int main() {
         status_clear->alias != "clear_menu_status_at" ||
         status_clear->source_bytes != 38U) {
         return 13;
+    }
+    const auto* effect_reset = find_remaining_routine(0x4B6CU);
+    const auto* field_hud = find_remaining_routine(0x19856U);
+    if (effect_reset == nullptr ||
+        effect_reset->alias != "reset_effect_record" ||
+        effect_reset->source_bytes != 68U || field_hud == nullptr ||
+        field_hud->alias != "refresh_field_hud" ||
+        field_hud->source_bytes != 68U) {
+        return 14;
     }
     return 0;
 }

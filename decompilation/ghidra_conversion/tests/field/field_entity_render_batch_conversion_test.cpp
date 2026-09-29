@@ -224,6 +224,21 @@ int main() {
     if (effect.coordinate != 0 || effect.tile_bytes[4] != 0 || clears != 1) {
         return 6;
     }
+    EffectRecordState restore{};
+    restore.coordinate = 1;
+    restore.heading = 0;
+    restore.slot = 3;
+    restore.collision_base = 10;
+    restore.tile_bytes = {9, 8, 7, 6, 5};
+    std::array<std::uint8_t, 18> slots{};
+    slots[3] = 1;
+    std::vector<std::uint8_t> collision(20, 0xFF);
+    reset_effect_record(restore, slots, collision);
+    if (restore.coordinate != 0 || slots[3] != 0 || collision[10] != 9 ||
+        collision[11] != 8 || collision[9] != 7 || collision[12] != 6 ||
+        collision[8] != 5) {
+        return 6;
+    }
     EntitySpawnRecord source{1, 2, 3, 4, 5};
     EntitySpawnRecord destination{};
     clone_entity_spawn_variant_a(destination, source);

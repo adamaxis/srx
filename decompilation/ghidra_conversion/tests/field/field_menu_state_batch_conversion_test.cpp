@@ -1,8 +1,9 @@
 #include "shadowrun_ghidra/field/field_menu_state_batch_conversion.hpp"
 
-#include <cassert>
 #include <array>
+#include <cassert>
 #include <tuple>
+#include <vector>
 
 using namespace shadowrun::ghidra_conversion;
 
@@ -106,6 +107,26 @@ int main() {
     int grids = 0;
     refresh_field_hud([&] { events.push_back(4); }, [&] { ++grids; });
     assert(grids == 5);
+    HudOffsetState footer{-3};
+    std::vector<std::uint16_t> destinations;
+    std::vector<std::uint16_t> hud_words;
+    WordTransferCallbacks hud_callbacks{};
+    hud_callbacks.begin_transfer = [&](const VdpTransferCommand& command) {
+        destinations.push_back(command.low_word);
+    };
+    hud_callbacks.write_word = [&](const std::uint16_t word) {
+        hud_words.push_back(word);
+    };
+    refresh_field_hud(footer, {0, 1, 2, 3, 6}, hud_callbacks);
+    assert(footer.offset == 0);
+    assert(destinations.size() == 5U);
+    assert(destinations[0] == make_vdp_transfer_command(0xED14U).low_word);
+    assert(destinations[4] == make_vdp_transfer_command(0xED44U).low_word);
+    assert(hud_words.size() == 15U);
+    assert((hud_words == std::vector<std::uint16_t>{
+               0x60B4U, 0x60B4U, 0x60B4U, 0x60B5U, 0x60B4U, 0x60B4U, 0x60B2U,
+               0x60B4U, 0x60B4U, 0x60B2U, 0x60B5U, 0x60B4U, 0x60B2U, 0x60B2U,
+               0x60B2U}));
 
     std::vector<std::uint8_t> mode_values{0x12};
     refresh_mode_glyph(mode_values, 0, {5, 6}, [&] { ++grids; });

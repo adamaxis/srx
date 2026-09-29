@@ -37,8 +37,16 @@ bool clear_ready_menu_slot_timer(MenuSlotCommandState& state,
 void clear_menu_status_at(const std::function<void()>& clear_status,
                           const std::function<void()>& write_grid);
 
-constexpr std::array<std::uint16_t, 3> kMenuStatusGridRow{
-    0x00B4U, 0x00B4U, 0x00B4U};
+constexpr std::array<std::array<std::uint16_t, 3>, 7> kMenuStatusGridRows{{
+    {0x00B4U, 0x00B4U, 0x00B4U},
+    {0x00B5U, 0x00B4U, 0x00B4U},
+    {0x00B2U, 0x00B4U, 0x00B4U},
+    {0x00B2U, 0x00B5U, 0x00B4U},
+    {0x00B2U, 0x00B2U, 0x00B4U},
+    {0x00B2U, 0x00B2U, 0x00B5U},
+    {0x00B2U, 0x00B2U, 0x00B2U},
+}};
+constexpr std::array<std::uint16_t, 3> kMenuStatusGridRow = kMenuStatusGridRows[0];
 constexpr std::uint16_t kMenuStatusGridBase = 0xED14U;
 
 // ROM 0x19762: clr A4[D4], 3x1 grid at ED14+D4*0xC from 0xD84D6, D4=-1.
