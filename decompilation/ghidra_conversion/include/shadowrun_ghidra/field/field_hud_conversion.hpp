@@ -107,4 +107,32 @@ FieldHudRenderResult render_field_hud(
 // ROM 0x3548: invoke the source HUD-panel drawing leaf three times.
 void draw_hud_panel_triplet(const std::function<void()>& draw_panel);
 
+struct FieldHudPanelSlot {
+    std::uint16_t palette_word = 0; // +0x2C
+    std::uint8_t source_type = 0; // +0x57
+    std::int8_t equipped_inventory_slot = 0; // +0x56
+    std::uint8_t transition_rate = 0; // +0x9B
+};
+
+struct FieldHudPanelPlan {
+    std::uint16_t tile_base = 0; // D5
+    std::uint32_t nametable = 0; // D4
+    std::uint16_t columns = 0; // D7+1
+    std::uint16_t rows = 0; // D1+1
+    std::uint16_t palette_or_flip = 0; // D2
+};
+
+struct FieldHudPanelPair {
+    FieldHudPanelPlan item;
+    FieldHudPanelPlan portrait;
+};
+
+// ROM 0x3602: D2 is 0x2000 or 0x6000 from +0x57/+0x56/+0x9B.
+std::uint16_t select_hud_glyph_attribute_flags(const FieldHudPanelSlot& slot);
+
+// ROM 0x3560: two nametable stamps per runner slot 0/1/2.
+FieldHudPanelPair refresh_hud_panel_variant(
+    std::uint16_t slot_index,
+    const FieldHudPanelSlot& slot);
+
 } // namespace shadowrun::ghidra_conversion

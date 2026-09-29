@@ -157,5 +157,63 @@ int main() {
         return 11;
     }
 
+    FieldHudPanelSlot empty_panel{};
+    if (!expect(select_hud_glyph_attribute_flags(empty_panel) == 0x2000U)) {
+        return 12;
+    }
+    FieldHudPanelSlot armed_panel{};
+    armed_panel.source_type = 0x0EU;
+    armed_panel.equipped_inventory_slot = 0;
+    armed_panel.transition_rate = 2U;
+    if (!expect(select_hud_glyph_attribute_flags(armed_panel) == 0x6000U)) {
+        return 13;
+    }
+    FieldHudPanelSlot high_type{};
+    high_type.source_type = 0x0FU;
+    high_type.equipped_inventory_slot = 0;
+    high_type.transition_rate = 2U;
+    if (!expect(select_hud_glyph_attribute_flags(high_type) == 0x2000U)) {
+        return 14;
+    }
+    FieldHudPanelSlot unarmed_low{};
+    unarmed_low.source_type = 5U;
+    unarmed_low.equipped_inventory_slot = -1;
+    unarmed_low.transition_rate = 1U;
+    if (!expect(select_hud_glyph_attribute_flags(unarmed_low) == 0x2000U)) {
+        return 15;
+    }
+    unarmed_low.source_type = 6U;
+    if (!expect(select_hud_glyph_attribute_flags(unarmed_low) == 0x6000U)) {
+        return 16;
+    }
+
+    const auto slot0 = refresh_hud_panel_variant(0, empty_panel);
+    if (!expect(slot0.item.tile_base == 0x86A4U &&
+                slot0.item.nametable == 0xF448U && slot0.item.columns == 4U &&
+                slot0.item.rows == 4U && slot0.item.palette_or_flip == 0x2000U &&
+                slot0.portrait.tile_base == 0x8694U &&
+                slot0.portrait.nametable == 0xF1C6U &&
+                slot0.portrait.columns == 3U && slot0.portrait.rows == 2U)) {
+        return 17;
+    }
+    FieldHudPanelSlot paletted{};
+    paletted.palette_word = 0x4000U;
+    paletted.source_type = 0x0EU;
+    paletted.transition_rate = 2U;
+    const auto slot2 = refresh_hud_panel_variant(2, paletted);
+    if (!expect(slot2.item.tile_base == 0x86D0U &&
+                slot2.item.nametable == 0xFC48U &&
+                slot2.item.palette_or_flip == 0x4000U &&
+                slot2.portrait.tile_base == 0x86C0U &&
+                slot2.portrait.nametable == 0xF9C6U &&
+                slot2.portrait.palette_or_flip == 0x6000U)) {
+        return 18;
+    }
+    const auto slot1 = refresh_hud_panel_variant(1, empty_panel);
+    if (!expect(slot1.item.nametable == 0xF848U &&
+                slot1.portrait.nametable == 0xF5C6U)) {
+        return 19;
+    }
+
     return 0;
 }

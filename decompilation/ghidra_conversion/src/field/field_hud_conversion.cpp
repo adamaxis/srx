@@ -136,4 +136,33 @@ void draw_hud_panel_triplet(const std::function<void()>& draw_panel) {
     }
 }
 
+std::uint16_t select_hud_glyph_attribute_flags(const FieldHudPanelSlot& slot) {
+    if (slot.source_type == 0U) {
+        return 0x2000U;
+    }
+    if (slot.transition_rate < 2U && slot.equipped_inventory_slot < 0) {
+        return slot.source_type >= 6U ? 0x6000U : 0x2000U;
+    }
+    return slot.source_type < 0x0FU ? 0x6000U : 0x2000U;
+}
+
+FieldHudPanelPair refresh_hud_panel_variant(
+    const std::uint16_t slot_index,
+    const FieldHudPanelSlot& slot) {
+    const std::uint16_t item_palette =
+        slot.palette_word != 0U ? slot.palette_word : 0x2000U;
+    const std::uint16_t portrait_palette =
+        select_hud_glyph_attribute_flags(slot);
+    if (slot_index == 0U) {
+        return {{0x86A4U, 0xF448U, 4U, 4U, item_palette},
+                {0x8694U, 0xF1C6U, 3U, 2U, portrait_palette}};
+    }
+    if (slot_index == 1U) {
+        return {{0x86BAU, 0xF848U, 4U, 4U, item_palette},
+                {0x86AAU, 0xF5C6U, 3U, 2U, portrait_palette}};
+    }
+    return {{0x86D0U, 0xFC48U, 4U, 4U, item_palette},
+            {0x86C0U, 0xF9C6U, 3U, 2U, portrait_palette}};
+}
+
 } // namespace shadowrun::ghidra_conversion
