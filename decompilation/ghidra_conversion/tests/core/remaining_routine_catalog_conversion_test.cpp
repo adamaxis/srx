@@ -61,5 +61,14 @@ int main() {
     if (counters.calls != catalog.size() || family_events != catalog.size()) {
         return 4;
     }
+    const auto* overview_hud = find_remaining_routine(0x110BCU);
+    const auto* glyph_row = find_remaining_routine(0x11136U);
+    if (overview_hud == nullptr ||
+        overview_hud->alias != "draw_command_overview_hud_panel" ||
+        overview_hud->source_bytes != 44U || glyph_row == nullptr ||
+        glyph_row->alias != "render_inventory_glyph_row" ||
+        glyph_row->source_bytes != 90U) {
+        return 5;
+    }
     return 0;
 }

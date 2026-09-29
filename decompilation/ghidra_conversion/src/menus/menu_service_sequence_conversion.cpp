@@ -164,22 +164,63 @@ std::uint16_t select_hud_glyph_attribute_flags(
                : 0x6000U;
 }
 
-std::uint16_t render_menu_tile_rows(
-    const std::function<void()>& clear_row,
-    const std::function<void()>& write_row) {
-    std::uint16_t countdown = 7U;
-    std::uint16_t last_countdown = 0U;
-    do {
-        if (clear_row) {
-            clear_row();
+namespace {
+
+constexpr std::array<std::uint32_t, 50> kInventoryGlyphSources{{
+    0x000D17DCU, 0x000D17DCU, 0x000D17DCU, 0x000D17DCU, 0x000D17E8U,
+    0x000D17E8U, 0x000D17E8U, 0x000D17F4U, 0x000D17F4U, 0x000D17F4U,
+    0x000D1800U, 0x000D1800U, 0x000D180CU, 0x000D180CU, 0x000D180CU,
+    0x000D1824U, 0x000D1830U, 0x000D1830U, 0x000D189CU, 0x000D1848U,
+    0x000D1854U, 0x000D1818U, 0x000D18CCU, 0x000D1884U, 0x000D1890U,
+    0x000D1890U, 0x000D1890U, 0x000D1890U, 0x000D1890U, 0x000D1890U,
+    0x000D1890U, 0x000D1890U, 0x000D1890U, 0x000D1890U, 0x000D1890U,
+    0x000D1890U, 0x000D1890U, 0x000D1890U, 0x000D18D8U, 0x000D18D8U,
+    0x000D18A8U, 0x000D18C0U, 0x000D18B4U, 0x000D183CU, 0x000D183CU,
+    0x000D183CU, 0x000D183CU, 0x000D183CU, 0x000D183CU, 0x000D183CU,
+}};
+
+std::uint32_t inventory_glyph_source(const std::uint8_t item_code) {
+    if (item_code == 0U) {
+        return kEmptyInventoryGlyphSource;
+    }
+    const auto index = static_cast<std::size_t>(item_code) - 1U;
+    if (index >= kInventoryGlyphSources.size()) {
+        return kEmptyInventoryGlyphSource;
+    }
+    return kInventoryGlyphSources[index];
+}
+
+} // namespace
+
+InventoryGlyphRowPlan render_inventory_glyph_row(
+    const InventoryGlyphRowSlots& slots) {
+    InventoryGlyphRowPlan plan{};
+    auto destination = kInventoryGlyphRowOrigin;
+    auto remaining = static_cast<std::uint16_t>(7U);
+    for (std::size_t index = 0; index < plan.size(); ++index) {
+        plan[index].destination = destination;
+        plan[index].glyph_source = inventory_glyph_source(slots[index].item_code);
+        plan[index].attribute_flags =
+            select_hud_glyph_attribute_flags(slots[index].attributes);
+        destination = static_cast<std::uint16_t>(destination + 0x000AU);
+        if ((remaining & 1U) == 0U) {
+            destination = static_cast<std::uint16_t>(destination + 0x0180U);
+            destination = static_cast<std::uint16_t>(destination - 0x0014U);
         }
-        if (write_row) {
-            write_row();
-        }
-        last_countdown = countdown;
-        countdown = static_cast<std::uint16_t>(countdown - 1U);
-    } while (countdown != 0xFFFFU);
-    return static_cast<std::uint16_t>(last_countdown >> 1U);
+        remaining = static_cast<std::uint16_t>(remaining - 1U);
+    }
+    return plan;
+}
+
+void render_inventory_glyph_row(
+    const InventoryGlyphRowSlots& slots,
+    const std::function<void(const InventoryGlyphWrite&)>& write_glyph) {
+    if (!write_glyph) {
+        return;
+    }
+    for (const auto& write : render_inventory_glyph_row(slots)) {
+        write_glyph(write);
+    }
 }
 
 std::int8_t reset_and_upload_menu_tile_block(

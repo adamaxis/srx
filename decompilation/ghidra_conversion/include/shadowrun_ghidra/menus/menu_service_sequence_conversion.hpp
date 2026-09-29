@@ -198,10 +198,33 @@ struct HudGlyphAttributeInput {
 std::uint16_t select_hud_glyph_attribute_flags(
     const HudGlyphAttributeInput& input);
 
-// ROM 0x11136: repeat the menu row transfer seven times and return the final
-// source countdown value (the source returns three after the loop).
-std::uint16_t render_menu_tile_rows(const std::function<void()>& clear_row,
-                                    const std::function<void()>& write_row);
+struct InventoryGlyphSlot {
+    // Byte at *FFFC04 + 0x66 + i. Zero selects the empty glyph at 0x34F8.
+    std::uint8_t item_code = 0;
+    // 0x3602 reads +0x57/+0x9B/+0x56 from A0. ROM ADDQ.L #1,A0 each pass, so
+    // slot i uses record+i for those offsets.
+    HudGlyphAttributeInput attributes{};
+};
+
+struct InventoryGlyphWrite {
+    std::uint16_t destination = 0; // D4, starts 0xC784
+    std::uint32_t glyph_source = 0; // A1
+    std::uint16_t attribute_flags = 0; // D2 from 0x3602
+};
+
+using InventoryGlyphRowSlots = std::array<InventoryGlyphSlot, 8>;
+using InventoryGlyphRowPlan = std::array<InventoryGlyphWrite, 8>;
+
+constexpr std::uint16_t kInventoryGlyphRowOrigin = 0xC784U;
+constexpr std::uint32_t kEmptyInventoryGlyphSource = 0x000034F8U;
+
+// ROM 0x11136: eight inventory glyphs from record +0x66, dest 0xC784 with
+// column +0xA and even-D3 wrap +0x180-0x14. 0x11190 stays a host write.
+InventoryGlyphRowPlan render_inventory_glyph_row(
+    const InventoryGlyphRowSlots& slots);
+void render_inventory_glyph_row(
+    const InventoryGlyphRowSlots& slots,
+    const std::function<void(const InventoryGlyphWrite&)>& write_glyph);
 
 // ROM 0x11442: reset the upload cursor before submitting one menu tile block.
 // D0 is preserved by the upload leaf and is returned to the caller; callers

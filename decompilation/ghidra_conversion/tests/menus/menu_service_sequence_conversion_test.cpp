@@ -101,12 +101,40 @@ int main() {
         return 26;
     }
 
-    order.clear();
-    if (render_menu_tile_rows([&order] { order.push_back(3); },
-                              [&order] { order.push_back(4); }) != 0U ||
-        order.size() != 16U || order[0] != 3 || order[1] != 4 ||
-        order[14] != 3 || order[15] != 4) {
-        return 2;
+    InventoryGlyphRowSlots glyph_slots{};
+    glyph_slots[0].item_code = 1U;
+    glyph_slots[1].item_code = 5U;
+    glyph_slots[2].item_code = 0U;
+    glyph_slots[3].item_code = 8U;
+    glyph_slots[1].attributes.action_code = 0x10;
+    glyph_slots[1].attributes.class_code = 0;
+    glyph_slots[1].attributes.equipped_slot = -1;
+    const auto glyph_plan = render_inventory_glyph_row(glyph_slots);
+    if (glyph_plan[0].destination != 0xC784U ||
+        glyph_plan[1].destination != 0xC78EU ||
+        glyph_plan[2].destination != 0xC904U ||
+        glyph_plan[3].destination != 0xC90EU ||
+        glyph_plan[4].destination != 0xCA84U ||
+        glyph_plan[5].destination != 0xCA8EU ||
+        glyph_plan[6].destination != 0xCC04U ||
+        glyph_plan[7].destination != 0xCC0EU ||
+        glyph_plan[0].glyph_source != 0x000D17DCU ||
+        glyph_plan[1].glyph_source != 0x000D17E8U ||
+        glyph_plan[2].glyph_source != kEmptyInventoryGlyphSource ||
+        glyph_plan[3].glyph_source != 0x000D17F4U ||
+        glyph_plan[0].attribute_flags != 0x2000U ||
+        glyph_plan[1].attribute_flags != 0x6000U) {
+        return 50;
+    }
+    std::vector<std::uint16_t> glyph_dests;
+    render_inventory_glyph_row(
+        glyph_slots, [&](const InventoryGlyphWrite& write) {
+            glyph_dests.push_back(write.destination);
+        });
+    if (glyph_dests !=
+        std::vector<std::uint16_t>{0xC784U, 0xC78EU, 0xC904U, 0xC90EU, 0xCA84U,
+                                   0xCA8EU, 0xCC04U, 0xCC0EU}) {
+        return 51;
     }
 
     order.clear();
