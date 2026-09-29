@@ -55,7 +55,8 @@ int main() {
         return 1;
     }
     random_state = 0xFFFFFFFFU;
-    if (!expect(advance_source_prng(random_state) == 0xFFFFDF1CU)) {
+    if (!expect(advance_source_prng(random_state) == 0xDF1CU &&
+                random_state == 0xDF1CU)) {
         return 1;
     }
 

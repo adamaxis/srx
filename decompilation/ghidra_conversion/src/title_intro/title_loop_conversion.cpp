@@ -1,5 +1,7 @@
 #include "shadowrun_ghidra/title_intro/title_loop_conversion.hpp"
 
+#include "shadowrun_ghidra/core/random_conversion.hpp"
+
 namespace shadowrun::ghidra_conversion {
 
 ControllerSample derive_controller_sample(std::uint8_t current,
@@ -31,16 +33,17 @@ ControllerEventLatchResult latch_controller_events(
 }
 
 std::uint32_t advance_source_prng(std::uint32_t& state) {
-    state = state * 0x20E5U + 1U;
+    auto seed = static_cast<std::uint16_t>(state);
+    state = advance_source_random_seed(seed);
     return state;
 }
 
 std::int16_t sample_source_random_bound(std::uint32_t& state,
                                         const std::uint16_t bound) {
-    const auto low_word =
-        static_cast<std::uint32_t>(advance_source_prng(state) & 0xFFFFU);
-    const auto scaled = (low_word * static_cast<std::uint32_t>(bound)) >> 16U;
-    return static_cast<std::int16_t>(scaled);
+    auto seed = static_cast<std::uint16_t>(state);
+    const auto rolled = sample_source_random_bound(seed, bound);
+    state = seed;
+    return rolled;
 }
 
 std::uint16_t palette_toward_black(std::uint16_t color) {

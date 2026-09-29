@@ -37,12 +37,11 @@ ControllerEventLatchResult latch_controller_events(
     ControllerEventLatchState& state, std::uint16_t pending_events,
     std::uint16_t sampled_word);
 
-// ROM 0x0D44: advance the source 32-bit linear-congruential state. Unsigned
-// arithmetic intentionally supplies the source's modulo-2^32 wraparound.
+// ROM 0x0D44: MULU #$20E5, ADDQ.W #1, MOVE.W into FFF9F8. Host state may be
+// wider; only the low word is the seed.
 std::uint32_t advance_source_prng(std::uint32_t& state);
 
-// ROM 0x0D3A: advance the source PRNG and scale its low 16 bits into the
-// half-open range [0, bound). The source returns a signed word.
+// ROM 0x0D3A: tick 0x0D44, MULU bound, SWAP, EXT.L.
 std::int16_t sample_source_random_bound(std::uint32_t& state,
                                         std::uint16_t bound);
 
