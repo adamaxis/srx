@@ -54,5 +54,23 @@ int main() {
         return 5;
     }
 
+    ControllerLatchState idle{0x0012U, 0x0034U, 1, 2};
+    if (!expect(latch_controller_events(idle) == 0U &&
+                idle.confirm_latch == 1 && idle.start_latch == 2)) {
+        return 6;
+    }
+
+    ControllerLatchState confirm{0x0100U, 0U, 0, 0};
+    if (!expect(latch_controller_events(confirm) == 0x0100U &&
+                confirm.confirm_latch == -1 && confirm.start_latch == 0)) {
+        return 7;
+    }
+
+    ControllerLatchState start{0x8000U, 0x0100U, 0, 0};
+    if (!expect(latch_controller_events(start) == 0x8100U &&
+                start.confirm_latch == -1 && start.start_latch == -1)) {
+        return 8;
+    }
+
     return 0;
 }

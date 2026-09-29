@@ -17,4 +17,17 @@ std::uint32_t wait_for_controller_event(
     return serviced_frames;
 }
 
+std::uint16_t latch_controller_events(ControllerLatchState& state) {
+    const auto masked = static_cast<std::uint16_t>(
+        (state.events | state.extra_events) & 0xFF00U);
+    if (masked == 0U) {
+        return 0U;
+    }
+    state.confirm_latch = -1;
+    if ((state.events & 0x8000U) != 0U) {
+        state.start_latch = -1;
+    }
+    return masked;
+}
+
 } // namespace shadowrun::ghidra_conversion
