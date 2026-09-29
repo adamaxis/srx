@@ -6,6 +6,17 @@
 using namespace shadowrun::ghidra_conversion;
 
 int main() {
+    if (guard_entity_phase_window(8, 8, 0) != 0 ||
+        guard_entity_phase_window(5, 8, 0) != 1 ||
+        guard_entity_phase_window(4, 8, 0) != 2 ||
+        guard_entity_phase_window(8, 5, 0) != 1 ||
+        guard_entity_phase_window(8, 4, 0) != 2 ||
+        guard_entity_phase_window(7, 7, 0) != 2 ||
+        guard_entity_phase_window(0, 0, 1) != 5 ||
+        guard_entity_phase_window(-1, 9, 0) != 2) {
+        return 9;
+    }
+
     TitleResourcePreparation title{};
     std::vector<std::uint16_t> uploads;
     prepare_title_resources(title, 1, 2, 3, 4, {0x100, 0x103, 0},

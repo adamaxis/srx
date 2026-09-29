@@ -15,6 +15,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00000228U, "interrupt_stub_write_alternating_word_pair", RoutineFamily::interrupt, 6U},
     {0x0000022EU, "interrupt_stub_service_display_frame", RoutineFamily::interrupt, 6U},
     {0x00000234U, "return_from_interrupt", RoutineFamily::interrupt, 2U},
+    {0x00000D5AU, "guard_entity_phase_window", RoutineFamily::entity, 58U},
     {0x00002B78U, "apply_pending_scene_profile", RoutineFamily::field, 90U},
     {0x00002C92U, "render_normal_field_viewport", RoutineFamily::field, 32U},
     {0x00002CB2U, "render_alternate_field_viewport", RoutineFamily::field, 46U},

@@ -19,9 +19,22 @@ std::uint8_t saturating_add(const std::uint8_t value, const std::int16_t delta) 
     return static_cast<std::uint8_t>(std::clamp(result, 0, 10));
 }
 
+std::int16_t add_phase_meter_window(const std::int8_t meter,
+                                    const std::int16_t score) {
+    if (meter >= 8) {
+        return score;
+    }
+    return static_cast<std::int16_t>(score + (meter < 5 ? 2 : 1));
+}
+
 } // namespace
 
-void guard_entity_phase_window() {}
+std::int16_t guard_entity_phase_window(const std::int8_t delay_meter,
+                                       const std::int8_t mental_meter,
+                                       const std::int16_t score) {
+    return add_phase_meter_window(
+        mental_meter, add_phase_meter_window(delay_meter, score));
+}
 
 void prepare_title_resources(
     TitleResourcePreparation& state,

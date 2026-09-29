@@ -7,9 +7,12 @@
 
 namespace shadowrun::ghidra_conversion {
 
-// The source guard at 0x0D5A has no observable action.  Keep it as an
-// explicit source boundary so callers do not grow a fake runtime assertion.
-void guard_entity_phase_window();
+// ROM 0x0D5A: signed windows on +0x4C then +0x9C. Value <5 adds 2 to D4,
+// 5..7 adds 1, >=8 skips that meter.
+std::int16_t guard_entity_phase_window(
+    std::int8_t delay_meter,
+    std::int8_t mental_meter,
+    std::int16_t score);
 
 struct TitleResourceTransfer {
     bool compressed = false;
