@@ -34,11 +34,11 @@ struct EntityProximityInteractionCallbacks {
     std::function<std::uint16_t()> advance_random;
 };
 
-// ROM 0x0EB92: scan later active entity records, use the linked-record radius
-// when either source relationship points at the other record, set collision
-// flags for an in-range pair, publish opposing interaction headings/values,
-// then route the pair through 0xECCC and the source random adjustment. Stable
-// host record indices replace source record pointers.
+// ROM 0x0EB92: scan later active entity records through FF0B00, use the
+// linked-record radius when either source relationship points at the other
+// record, set collision flags for an in-range pair, publish opposing
+// interaction headings/values, then route the pair through 0xECCC. A zero
+// 0xD44 & 0x7000 result ADDI.W into +0x92 only; +0x94 ADD.W is D0 scratch.
 EntityProximityInteractionState resolve_entity_proximity_interactions(
     std::vector<EntityProximityRecord>& records,
     std::size_t current_index,

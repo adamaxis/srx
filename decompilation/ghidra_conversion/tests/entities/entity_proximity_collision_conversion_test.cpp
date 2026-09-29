@@ -46,6 +46,31 @@ int main() {
         return 3;
     }
 
+    records[0].entity_flags = 0U;
+    records[0].primary_link.reset();
+    records[1].x = 1050U;
+    records[1].y = 1030U;
+    auto stable = records;
+    stable[0].collision_flags = 0U;
+    stable[1].collision_flags = 0U;
+    resolve_entity_proximity_interactions(
+        stable, 0U,
+        {{}, [] { return static_cast<std::uint16_t>(0x7000U); }});
+    records[0].collision_flags = 0U;
+    records[1].collision_flags = 0U;
+    const auto rotated = resolve_entity_proximity_interactions(
+        records, 0U,
+        {{}, [] { return static_cast<std::uint16_t>(0); }});
+    if (rotated.pairs_resolved != 1U ||
+        records[1].interaction_value != stable[1].interaction_value ||
+        records[0].interaction_value != stable[0].interaction_value ||
+        records[1].interaction_heading !=
+            static_cast<std::uint16_t>(stable[1].interaction_heading + 0x4000U) ||
+        records[0].interaction_heading !=
+            static_cast<std::uint16_t>(stable[0].interaction_heading + 0xC000U)) {
+        return 6;
+    }
+
     EntityPairCollisionEntity current{};
     current.entity_flags = 0x02U;
     EntityPairCollisionEntity candidate{};

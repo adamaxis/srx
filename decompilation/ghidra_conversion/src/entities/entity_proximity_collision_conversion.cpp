@@ -108,16 +108,14 @@ EntityProximityInteractionState resolve_entity_proximity_interactions(
         }
         ++state.pairs_resolved;
 
+        // ROM 0xEC9C JSR 0xD44; ANDI #0x7000. Zero: ADDI #0x4000/+0xC000
+        // into +0x92. The following ADD.W of +0x94 is D0 scratch only.
         if (callbacks.advance_random &&
             (callbacks.advance_random() & 0x7000U) == 0U) {
             candidate.interaction_heading = static_cast<std::uint16_t>(
                 candidate.interaction_heading + 0x4000U);
             current.interaction_heading = static_cast<std::uint16_t>(
-                current.interaction_heading - 0x4000U);
-            candidate.interaction_value = static_cast<std::uint16_t>(
-                candidate.interaction_value + candidate.interaction_value);
-            current.interaction_value = static_cast<std::uint16_t>(
-                current.interaction_value + current.interaction_value);
+                current.interaction_heading + 0xC000U);
         }
     }
     return state;
