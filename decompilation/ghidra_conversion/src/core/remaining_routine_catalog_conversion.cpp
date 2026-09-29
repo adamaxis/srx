@@ -332,6 +332,8 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00017A5EU, "render_menu_slot_status", RoutineFamily::world, 354U},
     {0x00017C3CU, "read_menu_entry_profile_eligibility", RoutineFamily::menu, 22U},
     {0x00017D72U, "draw_menu_hud_panel", RoutineFamily::field, 30U},
+    {0x00017F8EU, "draw_hud_footer", RoutineFamily::field, 38U},
+    {0x00017FB4U, "write_hud_repeated_grid", RoutineFamily::field, 38U},
     // The catalog's legacy routing families do not yet expose a cyberspace
     // bucket. Keep the source-backed alias here while the entry is dispatched
     // through the existing world/session boundary; the actual conversion is

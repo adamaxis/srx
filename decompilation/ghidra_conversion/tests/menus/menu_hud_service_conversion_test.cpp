@@ -365,5 +365,34 @@ int main() {
         return 30;
     }
 
+    std::vector<std::uint16_t> grid_commands;
+    std::vector<std::uint16_t> grid_words;
+    const WordTransferCallbacks grid_callbacks{
+        [&grid_commands](const VdpTransferCommand& command) {
+            grid_commands.push_back(command.low_word);
+        },
+        [&grid_words](const std::uint16_t word) { grid_words.push_back(word); },
+    };
+    write_hud_repeated_grid(0U, grid_callbacks);
+    if (grid_commands.size() != 8U ||
+        grid_commands[0] != make_vdp_transfer_command(0xC300U).low_word ||
+        grid_commands[1] != make_vdp_transfer_command(0xC380U).low_word ||
+        grid_words.size() != 24U || grid_words.front() != 0x6070U ||
+        grid_words.back() != 0x6070U) {
+        return 31;
+    }
+
+    std::array<std::uint32_t, 8> footer_bank{};
+    std::uint8_t dirty = 0U;
+    draw_hud_footer(0x2000U, footer_bank, dirty);
+    if (footer_bank != kHudFooterPaletteBanks[0] || dirty == 0U) {
+        return 32;
+    }
+    dirty = 0U;
+    draw_hud_footer(0x6000U, footer_bank, dirty);
+    if (footer_bank != kHudFooterPaletteBanks[2] || dirty == 0U) {
+        return 33;
+    }
+
     return 0;
 }

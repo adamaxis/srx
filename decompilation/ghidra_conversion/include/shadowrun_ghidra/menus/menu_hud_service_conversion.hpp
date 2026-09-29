@@ -1,5 +1,8 @@
 #pragma once
 
+#include "shadowrun_ghidra/core/word_transfer_conversion.hpp"
+#include "shadowrun_ghidra/field/field_mode_service_loop_conversion.hpp"
+
 #include <array>
 #include <cstdint>
 #include <functional>
@@ -186,6 +189,31 @@ void refresh_mode_metadata_wrapper(const std::function<void()>& refresh);
 void write_hud_repeated_grid(const std::function<void()>& write_grid);
 void write_hud_repeated_grid_variant_a(const std::function<void()>& write_grid);
 void write_hud_repeated_grid_variant_b(const std::function<void()>& write_grid);
+
+constexpr std::uint16_t kHudRepeatedGridBase = 0xC300U;
+constexpr std::uint16_t kHudRepeatedGridMask = 0x6000U;
+constexpr std::array<std::uint16_t, 3> kHudRepeatedGridRow{
+    0x0070U, 0x0070U, 0x0070U};
+
+// ROM 0x17FB4: dest 0xC300+FFF09A, 3x8, mask 0x6000, row 0xD8454.
+void write_hud_repeated_grid(
+    std::uint16_t scroll_word,
+    const WordTransferCallbacks& callbacks);
+
+constexpr std::array<std::array<std::uint32_t, 8>, 3> kHudFooterPaletteBanks{{
+    {{0x00000000U, 0x02220444U, 0x08880EEEU, 0x08AC046AU, 0x022A048CU,
+      0x0640000EU, 0x02440486U, 0x0CE00226U}},
+    {{0x00000000U, 0x02220444U, 0x08880EEEU, 0x0CA80864U, 0x04AC0068U,
+      0x02440846U, 0x04860264U, 0x08A00642U}},
+    {{0x00000000U, 0x02220444U, 0x08880EEEU, 0x068C0248U, 0x000C0A20U,
+      0x046802C2U, 0x02460042U, 0x0C8C0228U}},
+}};
+
+// ROM 0x17F8E: (record+0x2C)/0x2000-1 indexes table 0x18ACB6, then 0x566EC.
+void draw_hud_footer(
+    std::uint16_t palette_word,
+    std::array<std::uint32_t, 8>& destination,
+    std::uint8_t& display_dirty_flags);
 
 struct HudFadeServiceState {
     bool dirty = false;

@@ -302,6 +302,28 @@ void write_hud_repeated_grid_variant_b(
     write_hud_repeated_grid(write_grid);
 }
 
+void write_hud_repeated_grid(
+    const std::uint16_t scroll_word,
+    const WordTransferCallbacks& callbacks) {
+    write_repeated_vdp_grid(
+        static_cast<std::uint16_t>(kHudRepeatedGridBase + scroll_word),
+        kHudRepeatedGridRow.size(), 8U, kHudRepeatedGridMask,
+        {kHudRepeatedGridRow.begin(), kHudRepeatedGridRow.end()}, callbacks);
+}
+
+void draw_hud_footer(
+    const std::uint16_t palette_word,
+    std::array<std::uint32_t, 8>& destination,
+    std::uint8_t& display_dirty_flags) {
+    const auto index = static_cast<std::uint16_t>(
+        (palette_word / 0x2000U) - 1U);
+    if (index >= kHudFooterPaletteBanks.size()) {
+        return;
+    }
+    copy_field_mode_palette_bank(
+        kHudFooterPaletteBanks[index], destination, display_dirty_flags);
+}
+
 void advance_hud_fade_service(
     HudFadeServiceState& state,
     const std::function<void()>& wait_for_vblank,

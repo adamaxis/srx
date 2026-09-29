@@ -6,7 +6,7 @@ using namespace shadowrun::ghidra_conversion;
 
 int main() {
     const auto& catalog = remaining_routine_catalog();
-    if (catalog.size() < 277U ||
+    if (catalog.size() < 279U ||
         find_remaining_routine(catalog.front().rom_entry) == nullptr ||
         find_remaining_routine(0xFFFFFFFFU) != nullptr) {
         return 1;
@@ -132,6 +132,14 @@ int main() {
         menu_panel->alias != "draw_menu_hud_panel" ||
         menu_panel->source_bytes != 30U) {
         return 10;
+    }
+    const auto* footer = find_remaining_routine(0x17F8EU);
+    const auto* repeated_grid = find_remaining_routine(0x17FB4U);
+    if (footer == nullptr || footer->alias != "draw_hud_footer" ||
+        footer->source_bytes != 38U || repeated_grid == nullptr ||
+        repeated_grid->alias != "write_hud_repeated_grid" ||
+        repeated_grid->source_bytes != 38U) {
+        return 11;
     }
     return 0;
 }
