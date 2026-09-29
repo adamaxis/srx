@@ -195,6 +195,26 @@ void refresh_mode_glyph(
     call_once(write_grid);
 }
 
+void refresh_mode_glyph(
+    std::vector<std::uint8_t>& records,
+    const std::uint16_t selected_index,
+    const WordTransferCallbacks& callbacks) {
+    const auto offset =
+        static_cast<std::size_t>(selected_index) * 0x14U + 0x13U;
+    if (offset < records.size()) {
+        const auto value = records[offset];
+        if (value >= 0x11U) {
+            const auto remap_index = static_cast<std::size_t>(value - 0x11U);
+            if (remap_index < kModeGlyphRemap.size()) {
+                records[offset] = kModeGlyphRemap[remap_index];
+            }
+        }
+    }
+    write_repeated_masked_word(
+        kModeGlyphGridDestination, kModeGlyphGridWord, 0x8000U,
+        kModeGlyphGridWidth, callbacks);
+}
+
 std::optional<std::uint8_t> select_hud_mode(
     const std::uint8_t display_mode,
     const std::uint8_t slot_value,

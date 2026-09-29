@@ -6,7 +6,7 @@ using namespace shadowrun::ghidra_conversion;
 
 int main() {
     const auto& catalog = remaining_routine_catalog();
-    if (catalog.size() < 291U ||
+    if (catalog.size() < 292U ||
         find_remaining_routine(catalog.front().rom_entry) == nullptr ||
         find_remaining_routine(0xFFFFFFFFU) != nullptr) {
         return 1;
@@ -184,6 +184,11 @@ int main() {
         effect_timer->alias != "advance_entity_effect_timer" ||
         effect_timer->source_bytes != 144U) {
         return 16;
+    }
+    const auto* mode_glyph = find_remaining_routine(0x19AEEU);
+    if (mode_glyph == nullptr || mode_glyph->alias != "refresh_mode_glyph" ||
+        mode_glyph->source_bytes != 70U) {
+        return 17;
     }
     return 0;
 }

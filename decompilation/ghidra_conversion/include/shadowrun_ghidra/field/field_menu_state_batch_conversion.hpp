@@ -107,6 +107,18 @@ void refresh_mode_glyph(
     const std::vector<std::uint8_t>& remap_table,
     const std::function<void()>& write_grid);
 
+constexpr std::array<std::uint8_t, 12> kModeGlyphRemap{
+    0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 0, 0};
+constexpr std::uint16_t kModeGlyphGridDestination = 0xC22EU;
+constexpr std::uint16_t kModeGlyphGridWord = 0x05ABU;
+constexpr std::size_t kModeGlyphGridWidth = 14U;
+
+// ROM 0x19AEE: remap FF1100+FFF118*0x14+0x13 via 0xE31DD, then 14x 0x5AB at C22E.
+void refresh_mode_glyph(
+    std::vector<std::uint8_t>& records,
+    std::uint16_t selected_index,
+    const WordTransferCallbacks& callbacks);
+
 std::optional<std::uint8_t> select_hud_mode(
     std::uint8_t display_mode,
     std::uint8_t slot_value,

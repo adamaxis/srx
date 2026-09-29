@@ -363,6 +363,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00019856U, "refresh_field_hud", RoutineFamily::field, 68U},
     {0x0001989AU, "update_hud_mode_transition", RoutineFamily::world, 220U},
     {0x00019976U, "service_matrix_program_action", RoutineFamily::world, 376U},
+    {0x00019AEEU, "refresh_mode_glyph", RoutineFamily::field, 70U},
     {0x00019B40U, "select_run_hud_mode", RoutineFamily::world, 110U},
     {0x00019C54U, "read_selected_matrix_program_availability", RoutineFamily::world, 8U},
     {0x00019C5CU, "read_matrix_program_availability_for_slot", RoutineFamily::world, 16U},

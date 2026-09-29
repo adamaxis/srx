@@ -131,6 +131,23 @@ int main() {
     std::vector<std::uint8_t> mode_values{0x12};
     refresh_mode_glyph(mode_values, 0, {5, 6}, [&] { ++grids; });
     assert(mode_values[0] == 6);
+    std::vector<std::uint8_t> glyph_records(0x14, 0);
+    glyph_records[0x13] = 0x13;
+    std::uint16_t glyph_destination = 0;
+    std::vector<std::uint16_t> glyph_words;
+    WordTransferCallbacks glyph_callbacks{};
+    glyph_callbacks.begin_transfer = [&](const VdpTransferCommand& command) {
+        glyph_destination = command.low_word;
+    };
+    glyph_callbacks.write_word = [&](const std::uint16_t word) {
+        glyph_words.push_back(word);
+    };
+    refresh_mode_glyph(glyph_records, 0, glyph_callbacks);
+    assert(glyph_records[0x13] == 1);
+    assert(glyph_destination == make_vdp_transfer_command(0xC22EU).low_word);
+    assert(glyph_words.size() == 14U);
+    assert(glyph_words.front() == 0x85ABU);
+    assert(glyph_words.back() == 0x85ABU);
     assert(select_hud_mode(1, 7, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}) ==
            std::optional<std::uint8_t>(15));
     assert(pass_through_value(9) == 9);
