@@ -26,10 +26,9 @@ struct WorldEffectEdgeCandidateCallbacks {
         std::uint16_t x, std::uint16_t y)> lookup_tile;
 };
 
-// ROM 0x1E302: choose the map edge opposite the current origin, align two
-// five-point coordinate rings, and retain the coordinates whose world tile
-// lookup returns zero. This is a native candidate builder; no ROM address or
-// Genesis RAM image is required at runtime.
+// ROM 0x1E302: choose the map edge opposite the current origin, align a
+// five-point Y ring on x_anchor+x_step and a five-point X ring on x_anchor
+// at y_anchor+y_step, and keep coordinates whose world tile lookup is zero.
 void build_world_effect_edge_candidates(
     WorldEffectEdgeCandidateState& state,
     const WorldEffectEdgeCandidateCallbacks& callbacks);

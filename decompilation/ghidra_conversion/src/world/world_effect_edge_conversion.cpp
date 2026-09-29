@@ -45,7 +45,8 @@ void build_world_effect_edge_candidates(
         y_step = -0x08C0;
     }
 
-    const auto x = align_coordinate(add_word(x_anchor, x_step));
+    const auto edge_x = align_coordinate(add_word(x_anchor, x_step));
+    const auto origin_x = align_coordinate(x_anchor);
     const auto first_y = align_coordinate(y_anchor);
     const auto second_y = align_coordinate(add_word(y_anchor, y_step));
 
@@ -65,8 +66,10 @@ void build_world_effect_edge_candidates(
         }
     };
 
-    append_ring(x, first_y, false);
-    append_ring(x, second_y, true);
+    // First ring: D5 = aligned x_anchor+x_step, vary D6 from aligned y_anchor.
+    // Second ring: D5 = aligned x_anchor, D6 = aligned y_anchor+y_step, vary D5.
+    append_ring(edge_x, first_y, false);
+    append_ring(origin_x, second_y, true);
 }
 
 } // namespace shadowrun::ghidra_conversion

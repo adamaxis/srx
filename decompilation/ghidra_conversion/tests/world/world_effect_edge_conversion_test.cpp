@@ -24,9 +24,9 @@ int main() {
                                                                     0x1F00U} ||
         lookups[4] != std::pair<std::uint16_t, std::uint16_t>{0x1700U,
                                                                0x1B00U} ||
-        lookups[5] != std::pair<std::uint16_t, std::uint16_t>{0x1700U,
+        lookups[5] != std::pair<std::uint16_t, std::uint16_t>{0x2300U,
                                                                0x1700U} ||
-        lookups.back() != std::pair<std::uint16_t, std::uint16_t>{0x1300U,
+        lookups.back() != std::pair<std::uint16_t, std::uint16_t>{0x1F00U,
                                                                    0x1700U}) {
         return 1;
     }
