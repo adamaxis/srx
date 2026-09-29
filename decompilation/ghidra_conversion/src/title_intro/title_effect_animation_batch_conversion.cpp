@@ -45,6 +45,19 @@ void refresh_menu_selection_after_clear(
     call_once(render_text);
 }
 
+void refresh_menu_selection_after_clear(
+    const MenuSelectionRefreshState& state,
+    const MenuSelectionRefreshExactCallbacks& callbacks) {
+    if (state.pending_marker > 0) {
+        call_once(callbacks.clear_selected_menu_record);
+    }
+    if (callbacks.set_hud_selection) {
+        callbacks.set_hud_selection(9U,
+                                    state.pending_marker > 0 ? 6U : 0x0AU);
+    }
+    call_once(callbacks.render_menu_text_followup);
+}
+
 void refresh_menu_selection_or_prepare(
     const bool has_pending_value,
     const std::function<void()>& prepare_offset,
@@ -58,6 +71,21 @@ void refresh_menu_selection_or_prepare(
     }
     call_once(set_selection);
     call_once(render_text);
+}
+
+void refresh_menu_selection_or_prepare(
+    const MenuSelectionRefreshState& state,
+    const MenuSelectionRefreshExactCallbacks& callbacks) {
+    if (state.pending_marker > 0) {
+        call_once(callbacks.clear_selected_menu_record);
+    } else {
+        call_once(callbacks.prepare_menu_offset);
+    }
+    if (callbacks.set_hud_selection) {
+        callbacks.set_hud_selection(0x0AU,
+                                    state.pending_marker > 0 ? 6U : 0x0AU);
+    }
+    call_once(callbacks.render_menu_text_followup);
 }
 
 void initialize_audio_frame(AudioFrameState& state,

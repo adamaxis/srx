@@ -233,6 +233,46 @@ std::uint32_t pass_through_value(const std::uint32_t value) {
     return value;
 }
 
+namespace {
+
+std::uint8_t selection_value_for_marker(const std::int8_t marker) {
+    if (marker < 0) {
+        return 7U;
+    }
+    if (marker == 0) {
+        return 8U;
+    }
+    return 9U;
+}
+
+} // namespace
+
+MenuSlotServicePath run_menu_slot_service(
+    MenuSlotServiceState& state,
+    const MenuSlotServiceExactCallbacks& callbacks) {
+    if (state.pending_marker < 1) {
+        state.pending_marker = 0;
+        state.pending_marker_cleared = true;
+        if (callbacks.set_hud_selection) {
+            callbacks.set_hud_selection(0x0BU, 0x0AU);
+        }
+        call_once(callbacks.render_menu_text_followup);
+        call_once(callbacks.refresh_hud_grid_if_ready);
+        call_once(callbacks.prepare_menu_offset);
+        return MenuSlotServicePath::cleared_empty_slot;
+    }
+
+    state.pending_marker_cleared = false;
+    if (callbacks.set_hud_selection) {
+        callbacks.set_hud_selection(0x0BU, 0x06U);
+    }
+    call_once(callbacks.render_menu_text_followup);
+    call_once(callbacks.merge_menu_pending_flags);
+    call_once(callbacks.render_menu_text_progression);
+    call_once(callbacks.render_menu_slot_status);
+    return MenuSlotServicePath::pending_slot;
+}
+
 void run_menu_slot_service(std::uint8_t& pending_flags,
                            const std::uint8_t pending_mask,
                            const MenuServiceCallbacks& callbacks) {
@@ -273,6 +313,40 @@ void run_menu_metadata_service(const MenuServiceCallbacks& callbacks) {
     call_once(callbacks.prepare_offset);
 }
 
+bool run_menu_metadata_service(
+    MenuMetadataServiceState& state,
+    const MenuMetadataServiceCallbacks& callbacks) {
+    state.metadata_offset.reset();
+    state.selected_runner_flags = 0U;
+    if (!callbacks.read_profile_eligibility) {
+        return false;
+    }
+    const auto eligibility = callbacks.read_profile_eligibility();
+    if (!eligibility.has_value()) {
+        return false;
+    }
+    state.eligibility_value = *eligibility;
+
+    std::size_t metadata_offset = 0U;
+    if (*eligibility > 0U) {
+        if (!callbacks.read_selected_runner_flags) {
+            return false;
+        }
+        const auto flags = callbacks.read_selected_runner_flags();
+        if (!flags.has_value()) {
+            return false;
+        }
+        state.selected_runner_flags = *flags;
+        metadata_offset = static_cast<std::size_t>(*flags) * 0x20U;
+    }
+    state.metadata_offset = metadata_offset;
+    if (!callbacks.refresh_mode_metadata) {
+        return false;
+    }
+    callbacks.refresh_mode_metadata(metadata_offset);
+    return true;
+}
+
 void run_menu_selection_service(const std::uint8_t display_ready,
                                 const MenuServiceCallbacks& callbacks) {
     call_once(callbacks.set_selection);
@@ -285,6 +359,24 @@ void run_menu_selection_service(const std::uint8_t display_ready,
     call_once(callbacks.prepare_offset);
 }
 
+void run_menu_selection_service(
+    const MenuSelectionServiceState& state,
+    const MenuSelectionServiceExactCallbacks& callbacks) {
+    if (callbacks.set_hud_selection) {
+        callbacks.set_hud_selection(0U, selection_value_for_marker(state.marker));
+    }
+    call_once(callbacks.render_menu_text_followup);
+    if (state.marker > 0) {
+        call_once(callbacks.prepare_menu_offset);
+        if (callbacks.advance_menu_selection_service_timer) {
+            callbacks.advance_menu_selection_service_timer(
+                static_cast<std::uint8_t>(state.marker));
+        }
+        call_once(callbacks.refresh_hud_grid_if_ready);
+    }
+    call_once(callbacks.prepare_menu_offset);
+}
+
 void run_menu_selection_variant(const std::uint8_t display_ready,
                                 const MenuServiceCallbacks& callbacks) {
     call_once(callbacks.set_selection);
@@ -293,6 +385,26 @@ void run_menu_selection_variant(const std::uint8_t display_ready,
         call_once(callbacks.service_secondary);
     }
     call_once(callbacks.prepare_offset);
+}
+
+void run_menu_selection_variant(
+    MenuSelectionVariantState& state,
+    const MenuSelectionVariantExactCallbacks& callbacks) {
+    if (callbacks.set_hud_selection) {
+        callbacks.set_hud_selection(1U, selection_value_for_marker(state.marker));
+    }
+    call_once(callbacks.render_menu_text_followup);
+    state.computed_delta = 0U;
+    if (state.marker > 0) {
+        state.computed_delta = static_cast<std::uint16_t>(
+            static_cast<std::uint16_t>(state.marker) * 2U +
+            static_cast<std::uint16_t>(state.timing_byte >> 1U));
+        if (callbacks.advance_menu_selection_variant_timer) {
+            callbacks.advance_menu_selection_variant_timer(
+                static_cast<std::uint8_t>(state.computed_delta));
+        }
+    }
+    call_once(callbacks.prepare_menu_offset);
 }
 
 void run_menu_progression_variant(const std::uint8_t display_ready,
@@ -304,6 +416,23 @@ void run_menu_progression_variant(const std::uint8_t display_ready,
         call_once(callbacks.render_progression);
     }
     call_once(callbacks.prepare_offset);
+}
+
+void run_menu_progression_variant(
+    const MenuProgressionVariantState& state,
+    const MenuProgressionVariantExactCallbacks& callbacks) {
+    if (callbacks.set_hud_selection) {
+        callbacks.set_hud_selection(2U, selection_value_for_marker(state.marker));
+    }
+    call_once(callbacks.render_menu_text_followup);
+    if (state.marker > 0) {
+        if (callbacks.reduce_menu_progression_timing) {
+            callbacks.reduce_menu_progression_timing(
+                static_cast<std::uint16_t>(state.marker));
+        }
+        call_once(callbacks.render_menu_text_progression);
+    }
+    call_once(callbacks.prepare_menu_offset);
 }
 
 std::optional<std::size_t> clear_first_ready_menu_slot(
@@ -324,6 +453,32 @@ std::optional<std::size_t> clear_first_ready_menu_slot(
         }
         if (clear_status) {
             clear_status(slot);
+        }
+        return slot;
+    }
+    return std::nullopt;
+}
+
+std::optional<std::size_t> clear_first_ready_menu_slot(
+    ReadyMenuSlotState& state,
+    const ReadyMenuSlotCallbacks& callbacks) {
+    for (std::size_t slot = state.slot_codes.size(); slot-- > 0U;) {
+        if (state.slot_codes[slot] != 7U) {
+            continue;
+        }
+        if (!callbacks.calculate_matrix_program_load_steps) {
+            return std::nullopt;
+        }
+        const auto load_steps = callbacks.calculate_matrix_program_load_steps();
+        if (!load_steps.has_value()) {
+            return std::nullopt;
+        }
+        state.active_values[slot] = 0U;
+        state.load_offsets[slot] = static_cast<std::uint16_t>(*load_steps * 10U);
+        call_once(callbacks.refresh_menu_number_or_grid);
+        state.row_status[slot] = 0U;
+        if (callbacks.clear_menu_status) {
+            callbacks.clear_menu_status(slot);
         }
         return slot;
     }

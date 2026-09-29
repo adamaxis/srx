@@ -28,12 +28,38 @@ void refresh_menu_selection_after_clear(
     const std::function<void()>& set_selection,
     const std::function<void()>& render_text);
 
+struct MenuSelectionRefreshState {
+    // Signed source byte FFF0AA.
+    std::int8_t pending_marker = 0;
+};
+
+struct MenuSelectionRefreshExactCallbacks {
+    std::function<void()> clear_selected_menu_record;
+    std::function<void(std::uint8_t source_code, std::uint8_t value)>
+        set_hud_selection;
+    std::function<void()> render_menu_text_followup;
+    std::function<void()> prepare_menu_offset;
+};
+
+// ROM 0x1A09C: D0=9, clear the selected menu record only for a positive
+// marker, and publish D1=6 or D1=0x0A before the text follow-up.
+void refresh_menu_selection_after_clear(
+    const MenuSelectionRefreshState& state,
+    const MenuSelectionRefreshExactCallbacks& callbacks);
+
 void refresh_menu_selection_or_prepare(
     bool has_pending_value,
     const std::function<void()>& prepare_offset,
     const std::function<void()>& clear_selected,
     const std::function<void()>& set_selection,
     const std::function<void()>& render_text);
+
+// ROM 0x1A106: D0=0x0A, prepare the offset for a non-positive marker or
+// clear the selected menu record for a positive marker, then publish D1=0x0A
+// or D1=6 and render the text follow-up.
+void refresh_menu_selection_or_prepare(
+    const MenuSelectionRefreshState& state,
+    const MenuSelectionRefreshExactCallbacks& callbacks);
 
 struct AudioFrameState {
     std::uint16_t field_a = 0;

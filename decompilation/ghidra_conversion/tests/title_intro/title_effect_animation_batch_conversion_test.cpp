@@ -20,6 +20,28 @@ int main() {
                                       [&] { ++service; }, [&] { ++service; });
     assert(clear == 1);
 
+    std::uint8_t selection_code = 0;
+    std::uint8_t selection_value = 0;
+    int exact_clear = 0;
+    int exact_prepare = 0;
+    MenuSelectionRefreshExactCallbacks exact_callbacks{};
+    exact_callbacks.clear_selected_menu_record = [&] { ++exact_clear; };
+    exact_callbacks.set_hud_selection = [&](const std::uint8_t code,
+                                            const std::uint8_t value) {
+        selection_code = code;
+        selection_value = value;
+    };
+    exact_callbacks.render_menu_text_followup = [&] { ++service; };
+    exact_callbacks.prepare_menu_offset = [&] { ++exact_prepare; };
+    refresh_menu_selection_after_clear(MenuSelectionRefreshState{1},
+                                       exact_callbacks);
+    assert(exact_clear == 1 && exact_prepare == 0 && selection_code == 9U &&
+           selection_value == 6U);
+    refresh_menu_selection_or_prepare(MenuSelectionRefreshState{0},
+                                      exact_callbacks);
+    assert(exact_clear == 1 && exact_prepare == 1 && selection_code == 0x0AU &&
+           selection_value == 0x0AU);
+
     AudioFrameState audio{};
     initialize_audio_frame(audio, [&] { ++service; });
     assert(audio.field_a == 0 && audio.field_b == 2 && audio.field_c == 1);

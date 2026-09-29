@@ -179,6 +179,144 @@ int main() {
            pending_merge->metadata_offset == 0x60U && metadata_offset == 0x60U &&
            pending_state.pending_flags[2] == 3U);
 
+    std::vector<int> exact_events;
+    std::uint8_t exact_code = 0;
+    std::uint8_t exact_value = 0;
+    MenuSlotServiceExactCallbacks exact_slot_callbacks{};
+    exact_slot_callbacks.set_hud_selection = [&](const std::uint8_t code,
+                                                  const std::uint8_t value) {
+        exact_code = code;
+        exact_value = value;
+        exact_events.push_back(1);
+    };
+    exact_slot_callbacks.render_menu_text_followup = [&] { exact_events.push_back(2); };
+    exact_slot_callbacks.refresh_hud_grid_if_ready = [&] { exact_events.push_back(3); };
+    exact_slot_callbacks.prepare_menu_offset = [&] { exact_events.push_back(4); };
+    exact_slot_callbacks.merge_menu_pending_flags = [&] { exact_events.push_back(5); };
+    exact_slot_callbacks.render_menu_text_progression = [&] { exact_events.push_back(6); };
+    exact_slot_callbacks.render_menu_slot_status = [&] { exact_events.push_back(7); };
+    MenuSlotServiceState empty_slot{-1, false};
+    assert(run_menu_slot_service(empty_slot, exact_slot_callbacks) ==
+           MenuSlotServicePath::cleared_empty_slot);
+    assert(empty_slot.pending_marker == 0 && empty_slot.pending_marker_cleared &&
+           exact_code == 0x0B && exact_value == 0x0A &&
+           (exact_events == std::vector<int>{1, 2, 3, 4}));
+    exact_events.clear();
+    MenuSlotServiceState pending_slot{2, false};
+    assert(run_menu_slot_service(pending_slot, exact_slot_callbacks) ==
+           MenuSlotServicePath::pending_slot);
+    assert(!pending_slot.pending_marker_cleared && exact_code == 0x0B &&
+           exact_value == 6 &&
+           (exact_events == std::vector<int>{1, 2, 5, 6, 7}));
+
+    MenuMetadataServiceState metadata_state{};
+    bool metadata_flags_read = false;
+    std::size_t exact_metadata_offset = 99U;
+    assert(run_menu_metadata_service(
+        metadata_state,
+        {[&] { return std::optional<std::uint16_t>(0); },
+         [&] {
+             metadata_flags_read = true;
+             return std::optional<std::uint8_t>(3);
+         },
+         [&](const std::size_t offset) { exact_metadata_offset = offset; }}) &&
+           !metadata_flags_read && metadata_state.metadata_offset ==
+               std::optional<std::size_t>(0) && exact_metadata_offset == 0U);
+    assert(run_menu_metadata_service(
+        metadata_state,
+        {[] { return std::optional<std::uint16_t>(1); },
+         [] { return std::optional<std::uint8_t>(3); },
+         [&](const std::size_t offset) { exact_metadata_offset = offset; }}) &&
+           metadata_state.eligibility_value == 1U &&
+           metadata_state.selected_runner_flags == 3U &&
+           metadata_state.metadata_offset == std::optional<std::size_t>(0x60U) &&
+           exact_metadata_offset == 0x60U);
+
+    exact_events.clear();
+    MenuSelectionServiceExactCallbacks selection_callbacks{};
+    selection_callbacks.set_hud_selection = [&](const std::uint8_t code,
+                                                const std::uint8_t value) {
+        exact_code = code;
+        exact_value = value;
+        exact_events.push_back(1);
+    };
+    selection_callbacks.render_menu_text_followup = [&] { exact_events.push_back(2); };
+    selection_callbacks.prepare_menu_offset = [&] { exact_events.push_back(3); };
+    selection_callbacks.advance_menu_selection_service_timer =
+        [&](const std::uint8_t delta) {
+            assert(delta == 2U);
+            exact_events.push_back(4);
+        };
+    selection_callbacks.refresh_hud_grid_if_ready = [&] { exact_events.push_back(5); };
+    run_menu_selection_service(MenuSelectionServiceState{-1}, selection_callbacks);
+    assert(exact_code == 0U && exact_value == 7U &&
+           (exact_events == std::vector<int>{1, 2, 3}));
+    exact_events.clear();
+    run_menu_selection_service(MenuSelectionServiceState{2}, selection_callbacks);
+    assert(exact_code == 0U && exact_value == 9U &&
+           (exact_events == std::vector<int>{1, 2, 3, 4, 5, 3}));
+
+    exact_events.clear();
+    std::uint8_t variant_delta = 0;
+    MenuSelectionVariantExactCallbacks variant_callbacks{};
+    variant_callbacks.set_hud_selection = [&](const std::uint8_t code,
+                                               const std::uint8_t value) {
+        exact_code = code;
+        exact_value = value;
+        exact_events.push_back(1);
+    };
+    variant_callbacks.render_menu_text_followup = [&] { exact_events.push_back(2); };
+    variant_callbacks.advance_menu_selection_variant_timer =
+        [&](const std::uint8_t delta) {
+            variant_delta = delta;
+            exact_events.push_back(3);
+        };
+    variant_callbacks.prepare_menu_offset = [&] { exact_events.push_back(4); };
+    MenuSelectionVariantState variant_state{1, 0x0F, 0};
+    run_menu_selection_variant(variant_state, variant_callbacks);
+    assert(exact_code == 1U && exact_value == 9U &&
+           variant_state.computed_delta == 9U && variant_delta == 9U &&
+           (exact_events == std::vector<int>{1, 2, 3, 4}));
+
+    exact_events.clear();
+    MenuProgressionVariantExactCallbacks progression_callbacks{};
+    progression_callbacks.set_hud_selection = [&](const std::uint8_t code,
+                                                   const std::uint8_t value) {
+        exact_code = code;
+        exact_value = value;
+        exact_events.push_back(1);
+    };
+    progression_callbacks.render_menu_text_followup = [&] { exact_events.push_back(2); };
+    progression_callbacks.reduce_menu_progression_timing =
+        [&](const std::uint16_t delta) {
+            assert(delta == 3U);
+            exact_events.push_back(3);
+        };
+    progression_callbacks.render_menu_text_progression = [&] { exact_events.push_back(4); };
+    progression_callbacks.prepare_menu_offset = [&] { exact_events.push_back(5); };
+    run_menu_progression_variant(MenuProgressionVariantState{3},
+                                 progression_callbacks);
+    assert(exact_code == 2U && exact_value == 9U &&
+           (exact_events == std::vector<int>{1, 2, 3, 4, 5}));
+
+    ReadyMenuSlotState ready_slots{};
+    ready_slots.slot_codes = {1, 7, 2, 7, 3};
+    ready_slots.active_values = {4, 4, 4, 4, 4};
+    ready_slots.row_status = {1, 2, 3, 4, 5};
+    exact_events.clear();
+    const auto cleared_ready_slot = clear_first_ready_menu_slot(
+        ready_slots,
+        {[] { return std::optional<std::uint16_t>(6U); },
+         [&] { exact_events.push_back(1); },
+         [&](const std::size_t slot) {
+             assert(slot == 3U);
+             exact_events.push_back(2);
+         }});
+    assert(cleared_ready_slot == std::optional<std::size_t>(3U) &&
+           ready_slots.active_values[3] == 0U &&
+           ready_slots.load_offsets[3] == 60U && ready_slots.row_status[3] == 0U &&
+           (exact_events == std::vector<int>{1, 2}));
+
     std::vector<std::size_t> cleared;
     assert(clear_first_ready_menu_slot({1, 7, 2, 7}, [&](const std::size_t slot) {
                cleared.push_back(slot);

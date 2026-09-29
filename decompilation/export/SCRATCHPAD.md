@@ -434,6 +434,46 @@ as callbacks. The record vector and phase counters are host state, not a ROM
 addressed runtime structure; an unavailable selected record returns an
 explicit result instead of asserting or reading arbitrary memory.
 
+## HUD/menu service branches: 0x19D66-0x1A106
+
+The contiguous menu-service family is now source-traced beyond its generated
+function names. The canonical disassembly and Ghidra call lists establish the
+following concrete behavior:
+
+* `0x19D66` starts with HUD selection code `0x0B`. A signed
+  `FFFB30[FFF102]` marker below one is cleared, publishes value `0x0A`,
+  renders the selected text, refreshes the eligible HUD grid, and prepares the
+  menu offset. A positive marker publishes value `0x06`, merges the selected
+  runner's flags, renders progression text, and renders the slot status; it
+  does not prepare the offset on that path.
+* `0x19DF2` calls the eligibility-nibble reader. When its result is positive,
+  the selected compact runner record's byte `+0x05` selects metadata at
+  `flags * 0x20`; when it is zero, the metadata leaf receives offset zero.
+  The host conversion requires the extracted table/record values explicitly
+  instead of using a ROM-address fallback.
+* `0x19E32`, `0x19EA6`, and `0x19F18` publish HUD codes `0`, `1`, and `2`.
+  Each maps its signed marker to value `7`, `8`, or `9`. The positive branches
+  use, respectively, the service timer, the low byte of
+  `(marker * 2) + (FFFBBE+0x0F >> 1)`, and the progression-timing reducer;
+  the final menu-offset preparation is unconditional in all three routines.
+* `0x19F7E` scans the five slot codes from slot four down to slot zero for
+  code `7`. It clears that slot's active value, stores
+  `calculate_matrix_program_load_steps() * 10` in its offset word, refreshes
+  the menu number/grid branch, and then clears the corresponding status row.
+* `0x1A09C` and `0x1A106` are distinct selection refreshes, not aliases. The
+  first publishes code `9` with value `6` after a positive `FFF0AA` clear (or
+  `0x0A` otherwise). The second publishes code `0x0A`, prepares the offset
+  for a non-positive marker, and clears the selected record for a positive
+  marker before publishing value `0x0A` or `6`.
+
+These paths are represented by typed state and callback contracts in
+`field_menu_state_batch_conversion.*` and
+`title_effect_animation_batch_conversion.*`, with tests for source constants,
+signed branches, callback order, metadata offsets, and the reverse slot scan.
+They remain `partial` rather than `defended`: the direct behavior is verified
+against `disassembly.s`, but the callers still need to be composed into the
+actual menu controller and exercised by a screen-level hill.
+
 ## Field-action resource selection: 0x575F8 / 0x57610 / 0x57628 / 0x5763C
 
 The four helpers immediately before the field-action purchase routines are a
