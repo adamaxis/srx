@@ -101,6 +101,17 @@ build directories are `build-ghidra-conversion-qt-debug/` and
 is `shadowrun_ghidra_conversion_runtime` plus Qt Widgets. It does not link the
 native-port library or the emulator.
 
+The live binary is the build-directory root copy, for example
+`build-ghidra-conversion-qt-release/shadowrun_ghidra_conversion_qt.exe`.
+Close that process before rebuilding; Windows will not overwrite a running
+exe. Do not launch `qt_runtime/shadowrun_ghidra_conversion_qt.exe`.
+
+CMake Tools must use the matching *build* preset (`ghidra-conversion-qt-release`
+or `ghidra-conversion-qt-debug`). Those presets build only
+`shadowrun_ghidra_conversion_qt`. Selecting the configure preset display name
+"Ghidra Conversion Qt (Release, MSYS2 UCRT64)" and rebuilding `all` is a
+different graph.
+
 Build the separate Debug application from this directory:
 
 ```text
@@ -109,6 +120,14 @@ C:/msys64/ucrt64/bin/cmake.exe --build --preset ghidra-conversion-qt-debug
 build-ghidra-conversion-qt-debug/shadowrun_ghidra_conversion_qt.exe --assets ../assets
 # Directly exercise the converted field-entry bridge without opening a window.
 build-ghidra-conversion-qt-debug/shadowrun_ghidra_conversion_qt.exe --field-smoke --assets ../assets
+```
+
+Release:
+
+```text
+C:/msys64/ucrt64/bin/cmake.exe --preset ghidra-conversion-qt-release
+C:/msys64/ucrt64/bin/cmake.exe --build --preset ghidra-conversion-qt-release
+build-ghidra-conversion-qt-release/shadowrun_ghidra_conversion_qt.exe --assets ../assets
 ```
 
 The window starts from the converted boot/title integration, presents the

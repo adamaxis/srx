@@ -11,7 +11,9 @@ add_executable(shadowrun_ghidra_conversion_qt
 target_include_directories(shadowrun_ghidra_conversion_qt
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set_target_properties(shadowrun_ghidra_conversion_qt PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
 target_link_libraries(shadowrun_ghidra_conversion_qt
     PRIVATE
         shadowrun_ghidra_conversion_runtime
@@ -48,4 +50,12 @@ if (WIN32)
             COMMENT "Deploying matching MSYS2 runtime ${SHADOWRUN_GHIDRA_QT_RUNTIME_DLL}"
             VERBATIM)
     endforeach()
+    # Pre-RUNTIME_OUTPUT_DIRECTORY builds left a copy under qt_runtime/ that
+    # ninja no longer updates. Remove it so a rebuild cannot launch the stale
+    # binary.
+    add_custom_command(TARGET shadowrun_ghidra_conversion_qt POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E rm -f
+                "${CMAKE_CURRENT_BINARY_DIR}/shadowrun_ghidra_conversion_qt.exe"
+        COMMENT "Removing leftover qt_runtime copy of the conversion frontend"
+        VERBATIM)
 endif()

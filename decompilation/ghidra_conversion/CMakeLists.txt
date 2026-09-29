@@ -55,43 +55,46 @@ add_executable(shadowrun_ghidra_startup_record_extract
     tools/extract_startup_record_assets.cpp
 )
 
-# Keep each source-trace contract as a separately runnable test so a failing
-# ROM behavior remains easy to identify. They all link the one domain-grouped
-# conversion library; no test target is part of the native game.
-file(GLOB_RECURSE SHADOWRUN_CONVERSION_TEST_SOURCES CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_SOURCE_DIR}/tests/*_test.cpp"
-)
+# Qt presets exist to link the host binary. The workbench presets own the
+# per-contract test executables; building those 280 targets here makes a
+# "Rebuild All" look finished while shadowrun_ghidra_conversion_qt.exe stays
+# stale, and CONFIGURE_DEPENDS re-runs CMake on every ninja invocation.
+if (NOT SHADOWRUN_GHIDRA_QT_FRONTEND)
+    file(GLOB_RECURSE SHADOWRUN_CONVERSION_TEST_SOURCES CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/*_test.cpp"
+    )
 
-foreach(test_source IN LISTS SHADOWRUN_CONVERSION_TEST_SOURCES)
-    get_filename_component(test_stem "${test_source}" NAME_WE)
-    string(REGEX REPLACE "_conversion_test$" "" test_name "${test_stem}")
+    foreach(test_source IN LISTS SHADOWRUN_CONVERSION_TEST_SOURCES)
+        get_filename_component(test_stem "${test_source}" NAME_WE)
+        string(REGEX REPLACE "_conversion_test$" "" test_name "${test_stem}")
 
-    # Preserve the historical target/CTest name for the original title-loop
-    # harness, whose first target predates the normal naming convention.
-    if(test_name STREQUAL "title_loop")
-        set(test_name "conversion")
-    endif()
+        # Preserve the historical target/CTest name for the original title-loop
+        # harness, whose first target predates the normal naming convention.
+        if(test_name STREQUAL "title_loop")
+            set(test_name "conversion")
+        endif()
 
-    set(test_target "shadowrun_ghidra_${test_name}_test")
-    add_executable(${test_target} "${test_source}")
-    if(test_name STREQUAL "conversion_workbench" OR
-       test_name STREQUAL "field_session_bootstrap" OR
-       test_name STREQUAL "field_session_source_assets" OR
-       test_name STREQUAL "startup_integration")
-        target_link_libraries(${test_target}
-            PRIVATE shadowrun_ghidra_conversion_runtime)
-    else()
-        target_link_libraries(${test_target}
-            PRIVATE shadowrun_ghidra_conversion_modules)
-    endif()
-    if(test_name STREQUAL "startup_integration" OR
-       test_name STREQUAL "field_session_source_assets")
-        target_compile_definitions(${test_target} PRIVATE
-            SHADOWRUN_CONVERSION_ASSET_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}/../assets\")
-    endif()
-    add_test(NAME "shadowrun_ghidra_${test_name}"
-             COMMAND ${test_target})
-endforeach()
+        set(test_target "shadowrun_ghidra_${test_name}_test")
+        add_executable(${test_target} "${test_source}")
+        if(test_name STREQUAL "conversion_workbench" OR
+           test_name STREQUAL "field_session_bootstrap" OR
+           test_name STREQUAL "field_session_source_assets" OR
+           test_name STREQUAL "startup_integration")
+            target_link_libraries(${test_target}
+                PRIVATE shadowrun_ghidra_conversion_runtime)
+        else()
+            target_link_libraries(${test_target}
+                PRIVATE shadowrun_ghidra_conversion_modules)
+        endif()
+        if(test_name STREQUAL "startup_integration" OR
+           test_name STREQUAL "field_session_source_assets")
+            target_compile_definitions(${test_target} PRIVATE
+                SHADOWRUN_CONVERSION_ASSET_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}/../assets\")
+        endif()
+        add_test(NAME "shadowrun_ghidra_${test_name}"
+                 COMMAND ${test_target})
+    endforeach()
+endif()
 
 if (SHADOWRUN_GHIDRA_QT_FRONTEND)
     add_subdirectory(qt_runtime)

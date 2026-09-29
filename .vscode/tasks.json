@@ -210,6 +210,56 @@
       "problemMatcher": "$gcc"
     },
     {
+      "label": "CMake: Configure Ghidra Conversion Qt (Release)",
+      "type": "shell",
+      "command": "C:/msys64/ucrt64/bin/cmake.exe",
+      "args": ["--preset", "ghidra-conversion-qt-release"],
+      "options": {
+        "cwd": "${workspaceFolder}/decompilation/ghidra_conversion"
+      },
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "Shadowrun Conversion Qt: Build (Release)",
+      "type": "shell",
+      "command": "C:/msys64/ucrt64/bin/cmake.exe",
+      "args": ["--build", "--preset", "ghidra-conversion-qt-release"],
+      "options": {
+        "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
+        "env": {
+          "PATH": "C:\\msys64\\ucrt64\\bin;C:\\Qt\\6.9.1\\mingw_64\\bin;${env:PATH}"
+        }
+      },
+      "dependsOn": ["CMake: Configure Ghidra Conversion Qt (Release)"],
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "Shadowrun Conversion Qt: Run (Release)",
+      "type": "process",
+      "command": "${workspaceFolder}/decompilation/ghidra_conversion/build-ghidra-conversion-qt-release/shadowrun_ghidra_conversion_qt.exe",
+      "args": [
+        "--assets",
+        "${workspaceFolder}/decompilation/assets"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
+        "env": {
+          "PATH": "C:\\msys64\\ucrt64\\bin;C:\\Qt\\6.9.1\\mingw_64\\bin;${env:PATH}"
+        }
+      },
+      "dependsOn": ["Shadowrun Conversion Qt: Build (Release)"],
+      "presentation": {
+        "reveal": "never",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Shadowrun Conversion Qt: Run (Debug)",
       "type": "process",
       "command": "${workspaceFolder}/decompilation/ghidra_conversion/build-ghidra-conversion-qt-debug/shadowrun_ghidra_conversion_qt.exe",
