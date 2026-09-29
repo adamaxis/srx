@@ -171,13 +171,17 @@ EntityAnimationBranchResult run_entity_animation_branch(
         result.rate_checked = true;
         const auto rate = evaluate_entity_animation_rate_from_phase(
             state, callbacks.transition.calculate_rate);
-        if (rate.source_carry) {
-            if (callbacks.advance_action_threshold) {
-                callbacks.advance_action_threshold();
-            }
-            result.action_threshold_advanced = true;
+        if (!rate.source_carry) {
             return result;
         }
+        if (state.frame >= 0 && state.phase != 0U &&
+            static_cast<std::int8_t>(state.phase) < 0x0D) {
+            return result;
+        }
+        if (callbacks.advance_action_threshold) {
+            callbacks.advance_action_threshold();
+        }
+        result.action_threshold_advanced = true;
         return result;
     }
 
