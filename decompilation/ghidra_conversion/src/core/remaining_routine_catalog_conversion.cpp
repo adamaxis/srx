@@ -195,6 +195,8 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00011506U, "advance_command_overview_secondary_page", RoutineFamily::menu, 140U},
     {0x00011592U, "refresh_command_overview_action_details", RoutineFamily::menu, 146U},
     {0x00011624U, "render_equipment_highlights", RoutineFamily::menu, 84U},
+    {0x00011678U, "write_inventory_highlight_grid", RoutineFamily::menu, 76U},
+    {0x000116C4U, "write_menu_grid_quad", RoutineFamily::menu, 72U},
     {0x00011712U, "select_menu_title_text", RoutineFamily::menu, 46U},
     {0x000118C6U, "cycle_inventory_action_selector", RoutineFamily::menu, 58U},
     {0x000119CEU, "run_command_overview_action_dialog", RoutineFamily::menu, 240U},

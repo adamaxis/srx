@@ -467,10 +467,50 @@ CommandOverviewRunResult run_command_overview(
     const CommandOverviewInput& input,
     const CommandOverviewCallbacks& callbacks);
 
-// ROM 0x11678: submit one menu grid asset.
-void write_menu_grid(const std::function<void()>& write_grid);
+struct InventoryHighlightGridPlan {
+    std::uint32_t glyph_source = 0;
+    std::uint16_t destination = 0;
+    std::uint16_t height = 4; // D7
+    std::uint16_t width = 3;  // D1
+};
 
-// ROM 0x116C4: write four menu grids, then refresh the shared menu metadata.
+constexpr std::uint32_t kInventoryHighlightGlyphEven = 0x000CD548U;
+constexpr std::uint32_t kInventoryHighlightGlyphOdd = 0x000CD520U;
+constexpr std::uint16_t kInventoryHighlightDestEven = 0xE702U;
+constexpr std::uint16_t kInventoryHighlightDestOdd = 0xC702U;
+
+// ROM 0x11678: DIVU.W #2 of the inventory slot. Quotient 0 or 2 uses
+// 0xCD548/0xE702; else 0xCD520/0xC702. Dest += rem*0xA + quot*0x180, then
+// 0x1232 with D7=4 D1=3.
+InventoryHighlightGridPlan write_inventory_highlight_grid(std::uint8_t slot);
+void write_menu_grid(const std::function<void()>& write_grid);
+void write_menu_grid(
+    std::uint8_t slot,
+    const std::function<void(const InventoryHighlightGridPlan&)>& write_grid);
+
+struct MenuGridQuadWrite {
+    std::uint32_t glyph_source = 0x000CD570U;
+    std::uint16_t destination = 0;
+    std::uint16_t height = 4; // D7
+    std::uint16_t width = 3;  // D1
+};
+
+struct MenuGridQuadMetadata {
+    std::uint16_t destination = 0xC882U;
+    std::uint16_t height = 9; // D7
+    std::uint16_t width = 9;  // D1
+    std::uint16_t palette = 0x6000;
+    std::uint32_t glyph_source = 0x000C1320U;
+};
+
+struct MenuGridQuadPlan {
+    std::array<MenuGridQuadWrite, 4> grids{};
+    MenuGridQuadMetadata metadata{};
+};
+
+// ROM 0x116C4: four 0x1232 writes at E702, E70C, EA0C, EA02 from 0xCD570,
+// then 0x12C5A at C882 D7=9 D1=9.
+MenuGridQuadPlan write_menu_grid_quad();
 void write_menu_grid_quad(const std::function<void()>& write_grid,
                           const std::function<void()>& refresh_metadata);
 

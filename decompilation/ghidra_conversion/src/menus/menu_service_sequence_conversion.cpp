@@ -648,15 +648,50 @@ CommandOverviewRunResult run_command_overview(
     return result;
 }
 
+InventoryHighlightGridPlan write_inventory_highlight_grid(
+    const std::uint8_t slot) {
+    const auto quotient = static_cast<std::uint16_t>(slot / 2U);
+    const auto remainder = static_cast<std::uint16_t>(slot % 2U);
+    InventoryHighlightGridPlan plan;
+    if (quotient == 0U || quotient == 2U) {
+        plan.glyph_source = kInventoryHighlightGlyphEven;
+        plan.destination = kInventoryHighlightDestEven;
+    } else {
+        plan.glyph_source = kInventoryHighlightGlyphOdd;
+        plan.destination = kInventoryHighlightDestOdd;
+    }
+    plan.destination = static_cast<std::uint16_t>(
+        plan.destination + remainder * 0x000AU + quotient * 0x0180U);
+    return plan;
+}
+
 void write_menu_grid(const std::function<void()>& write_grid) {
     if (write_grid) {
         write_grid();
     }
 }
 
+void write_menu_grid(
+    const std::uint8_t slot,
+    const std::function<void(const InventoryHighlightGridPlan&)>& write_grid) {
+    if (write_grid) {
+        write_grid(write_inventory_highlight_grid(slot));
+    }
+}
+
+MenuGridQuadPlan write_menu_grid_quad() {
+    MenuGridQuadPlan plan;
+    plan.grids[0].destination = 0xE702U;
+    plan.grids[1].destination = 0xE70CU;
+    plan.grids[2].destination = 0xEA0CU;
+    plan.grids[3].destination = 0xEA02U;
+    return plan;
+}
+
 void write_menu_grid_quad(const std::function<void()>& write_grid,
                           const std::function<void()>& refresh_metadata) {
-    for (int index = 0; index < 4; ++index) {
+    for (const auto& grid : write_menu_grid_quad().grids) {
+        (void)grid;
         if (write_grid) {
             write_grid();
         }

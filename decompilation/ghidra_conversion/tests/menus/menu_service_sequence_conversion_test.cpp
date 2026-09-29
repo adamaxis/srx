@@ -149,6 +149,33 @@ int main() {
     if (order != std::vector<int>{5, 6, 7}) {
         return 4;
     }
+    const auto slot0 = write_inventory_highlight_grid(0U);
+    const auto slot2 = write_inventory_highlight_grid(2U);
+    const auto slot4 = write_inventory_highlight_grid(4U);
+    const auto slot7 = write_inventory_highlight_grid(7U);
+    if (slot0.glyph_source != kInventoryHighlightGlyphEven ||
+        slot0.destination != 0xE702U || slot0.height != 4U ||
+        slot0.width != 3U ||
+        slot2.glyph_source != kInventoryHighlightGlyphOdd ||
+        slot2.destination != 0xC882U ||
+        slot4.glyph_source != kInventoryHighlightGlyphEven ||
+        slot4.destination != 0xEA02U ||
+        slot7.glyph_source != kInventoryHighlightGlyphOdd ||
+        slot7.destination != 0xCB8CU) {
+        return 52;
+    }
+    const auto quad = write_menu_grid_quad();
+    if (quad.grids[0].destination != 0xE702U ||
+        quad.grids[1].destination != 0xE70CU ||
+        quad.grids[2].destination != 0xEA0CU ||
+        quad.grids[3].destination != 0xEA02U ||
+        quad.grids[0].glyph_source != 0x000CD570U ||
+        quad.metadata.destination != 0xC882U ||
+        quad.metadata.height != 9U || quad.metadata.width != 9U ||
+        quad.metadata.palette != 0x6000U ||
+        quad.metadata.glyph_source != 0x000C1320U) {
+        return 53;
+    }
 
     order.clear();
     write_menu_grid_quad([&order] { order.push_back(8); },
