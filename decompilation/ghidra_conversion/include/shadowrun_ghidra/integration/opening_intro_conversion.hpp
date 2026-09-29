@@ -60,6 +60,25 @@ OpeningIntroSpriteGroup opening_intro_sprite_group(std::uint32_t handle);
 std::string opening_intro_sprite_alias_prefix(
     OpeningIntroSpriteGroup group);
 
+// Intro SAT lists are extracted by blit_genesis_sat_entry at dump origin
+// 0x100. Live 0x1378 SAT is origin $80; host crop top-left is
+// dump_origin + live_sat - 0x100.
+constexpr int kIntroSatExtractOrigin = 0x100;
+
+// Plane-A $074A is a 27x8 nametable (col 37, row 14), not a SAT cell.
+constexpr int kAircraftPlaneNametableX = 0x128;
+constexpr int kAircraftPlaneNametableY = 0x70;
+
+struct OpeningIntroDrawPoint {
+    int x = 0;
+    int y = 0;
+};
+
+OpeningIntroDrawPoint opening_intro_sat_draw_point(
+    std::uint16_t sat_x, std::uint16_t sat_y, int origin_x, int origin_y);
+OpeningIntroDrawPoint opening_intro_aircraft_plane_draw_point(
+    std::int16_t scroll_x);
+
 // The text records are the source strings at 0x5B7D8..0x5BA4C, represented as
 // typed host records. The Qt frontend uses these records with the extracted
 // source font; no runtime ROM text decoder is involved.
@@ -216,6 +235,7 @@ struct OpeningIntroState {
     std::uint8_t post_intro_mode = 4;
     std::uint8_t post_intro_phase = 0;
     bool post_intro_caption_visible = false;
+    bool seattle_plane_cleared = false;
     std::uint16_t scroll_accumulator = 0;
     bool source_stop_marker = false;
 

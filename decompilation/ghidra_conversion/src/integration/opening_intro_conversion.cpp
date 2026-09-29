@@ -317,6 +317,20 @@ std::string opening_intro_sprite_alias_prefix(
     return {};
 }
 
+OpeningIntroDrawPoint opening_intro_sat_draw_point(
+    const std::uint16_t sat_x, const std::uint16_t sat_y, const int origin_x,
+    const int origin_y) {
+    return {origin_x + static_cast<int>(static_cast<std::int16_t>(sat_x)) -
+                kIntroSatExtractOrigin,
+            origin_y + static_cast<int>(static_cast<std::int16_t>(sat_y)) -
+                kIntroSatExtractOrigin};
+}
+
+OpeningIntroDrawPoint opening_intro_aircraft_plane_draw_point(
+    const std::int16_t scroll_x) {
+    return {kAircraftPlaneNametableX + scroll_x, kAircraftPlaneNametableY};
+}
+
 std::uint32_t opening_intro_text_handle(const OpeningIntroTextAsset asset) {
     return kOpeningIntroTextHandleTag |
            static_cast<std::uint32_t>(asset);
@@ -1072,8 +1086,15 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
         sample_and_latch(callbacks);
         if (advance_title_intro_schedule(
                 state.schedule, plan.opening_schedule,
-                [&callbacks](const std::uint32_t action_id) {
+                [&state, &callbacks](const std::uint32_t action_id) {
                     emit_schedule_action(action_id, callbacks);
+                    if (action_id == 0x5B378U) {
+                        // 0x5B378 jsr 0xFFE clears plane A before stamping
+                        // the 0x1DF468 outline. Host has no VDP; drop the
+                        // seattle plate so wilderness does not composite
+                        // over leftover skyline.
+                        state.seattle_plane_cleared = true;
+                    }
                 })) {
             begin_stage2(state, plan, callbacks);
         }

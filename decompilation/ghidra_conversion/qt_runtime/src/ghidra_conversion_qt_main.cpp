@@ -3,6 +3,7 @@
 #include "shadowrun_ghidra/title_intro/title_loop_conversion.hpp"
 #include "shadowrun_ghidra/title_intro/title_setup_conversion.hpp"
 #include "shadowrun_ghidra/world/post_intro_mode_conversion.hpp"
+#include "shadowrun_ghidra/rendering/display_service_batch_conversion.hpp"
 #include "field_scene_runtime.hpp"
 
 #include <QApplication>
@@ -894,7 +895,9 @@ private:
         const auto& opening = state_.opening_intro;
         switch (opening_scene_) {
         case OpeningIntroScene::seattle:
-            draw_alias(painter, "intro.background.0");
+            if (!opening.seattle_plane_cleared) {
+                draw_alias(painter, "intro.background.0");
+            }
             break;
         case OpeningIntroScene::wilderness:
             // ROM 0x59DA2 FFDD08 starts -0x40 and 0x59DBA FFDD0A starts
@@ -906,10 +909,12 @@ private:
             draw_alias(painter, "intro.trivid.background");
             break;
         case OpeningIntroScene::airport:
-            // ROM 0x5B056 FFDD0E is plane-B VSCROLL 0..0x78. Plane-A HSCROLL
-            // is the 0x5B00A word applied to the aircraft SAT below.
+            // background.3 is decoded at Plane-B VSCROLL 0x78. ROM FFDD0E
+            // walks 0..0x78; host blit y = 0x78 - fade so the plate rises
+            // into that settled crop.
             draw_alias(painter, "intro.background.3", 0,
-                       -static_cast<int>(opening.stage_loop.scroll.fade_counter));
+                       0x78 - static_cast<int>(
+                                  opening.stage_loop.scroll.fade_counter));
             break;
         case OpeningIntroScene::cab_map:
             draw_alias(painter, "intro.cab.map");
@@ -977,19 +982,12 @@ private:
         // SAT cells are host RGBA crops. Live SAT x/y is origin $80; the
         // catalog origin is the cell's dump offset. Clip instead of wrapping
         // at 256: H40 is 320 wide, and Qt has no sprite-link terminator.
-        const auto sat_x =
-            static_cast<int>(static_cast<std::int16_t>(request.x)) - 0x80;
-        const auto sat_y =
-            static_cast<int>(static_cast<std::int16_t>(request.y)) - 0x80;
         if (group.family == OpeningIntroSpriteFamily::aircraft_plane_a) {
-            const auto* record = state_.asset_catalog.catalog.find(prefix);
             const auto image = draw_asset_cache_.find(prefix);
-            if (record != nullptr && image != draw_asset_cache_.end()) {
-                // 0x5B00A FFDD08 is the Plane-A HSCROLL consumed by 0x5B100.
-                const auto scroll_x = static_cast<int>(
+            if (image != draw_asset_cache_.end()) {
+                const auto point = opening_intro_aircraft_plane_draw_point(
                     state_.opening_intro.stage_loop.scroll.x_offset);
-                painter.drawImage(sat_x + scroll_x + record->origin_x,
-                                  sat_y + record->origin_y, image->second);
+                painter.drawImage(point.x, point.y, image->second);
             }
             return;
         }
@@ -1002,8 +1000,9 @@ private:
             if (image == draw_asset_cache_.end()) {
                 continue;
             }
-            painter.drawImage(sat_x + record.origin_x, sat_y + record.origin_y,
-                              image->second);
+            const auto point = opening_intro_sat_draw_point(
+                request.x, request.y, record.origin_x, record.origin_y);
+            painter.drawImage(point.x, point.y, image->second);
         }
     }
 
@@ -1098,20 +1097,31 @@ private:
         }
 
         if (state_.phase == StartupIntegrationPhase::save_load) {
-            // 0x59172 C0DA writes Game 1/2 over the live Start Options
-            // nametable; 0xC3E6 is not recalled until the slot action.
+            if (state_.save_load.message != SaveLoadMessage::none) {
+                // 0x59172 calls 0xC3E6 before the 0xC0DA copy, which
+                // restamps the 0xC186 metadata grid and clears leftover
+                // Start Options ink.
+                const auto panel = write_menu_grid_with_metadata();
+                painter.fillRect(
+                    startup_menu_vram_x(
+                        static_cast<std::uint16_t>(panel.destination)),
+                    startup_menu_vram_y(
+                        static_cast<std::uint16_t>(panel.destination)),
+                    static_cast<int>(panel.width) * kStartupMenuTilePixels,
+                    static_cast<int>(panel.height) * kStartupMenuTilePixels,
+                    Qt::black);
+                if (state_.save_load.message == SaveLoadMessage::no_save_data) {
+                    draw_startup_layout(painter, kSaveLoadMessagePlaneVram,
+                                        kNoSaveDataLayout);
+                } else {
+                    draw_startup_layout(painter, kSaveLoadMessagePlaneVram,
+                                        kSaveSuccessLayout);
+                }
+                return;
+            }
+            // 0xC0DA writes Game 1/2 over the live Start Options nametable.
             draw_startup_layout(painter, kStartOptionsPlaneVram,
                                 kStartOptionsLayout);
-            if (state_.save_load.message == SaveLoadMessage::no_save_data) {
-                draw_startup_layout(painter, kSaveLoadMessagePlaneVram,
-                                    kNoSaveDataLayout);
-                return;
-            }
-            if (state_.save_load.message == SaveLoadMessage::save_loaded) {
-                draw_startup_layout(painter, kSaveLoadMessagePlaneVram,
-                                    kSaveSuccessLayout);
-                return;
-            }
             draw_startup_layout(painter, kSaveLoadPlaneVram, kSaveLoadLayout);
             draw_cursor(painter, startup_menu_vram_x(kSaveLoadCursorVram),
                         startup_menu_cursor_y(
