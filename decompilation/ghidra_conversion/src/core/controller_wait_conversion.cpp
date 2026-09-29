@@ -30,4 +30,14 @@ std::uint16_t latch_controller_events(ControllerLatchState& state) {
     return masked;
 }
 
+void sample_controller_input(ControllerSampleState& state,
+                             const std::uint8_t port_byte) {
+    const auto current = static_cast<std::uint16_t>(port_byte);
+    const auto newly = static_cast<std::uint16_t>(
+        (current ^ state.held) & current);
+    state.held = current;
+    state.events = static_cast<std::uint16_t>(current | (newly << 8U));
+    state.heading = kControllerHeadingTable[current & 0x0FU];
+}
+
 } // namespace shadowrun::ghidra_conversion

@@ -72,5 +72,32 @@ int main() {
         return 8;
     }
 
+    ControllerSampleState sample{};
+    sample_controller_input(sample, 0x01U);
+    if (!expect(sample.held == 0x0001U && sample.events == 0x0101U &&
+                sample.heading == 0x0000U)) {
+        return 9;
+    }
+    sample_controller_input(sample, 0x01U);
+    if (!expect(sample.held == 0x0001U && sample.events == 0x0001U &&
+                sample.heading == 0x0000U)) {
+        return 10;
+    }
+    sample_controller_input(sample, 0x00U);
+    if (!expect(sample.held == 0U && sample.events == 0U &&
+                sample.heading == 0xFFFFU)) {
+        return 11;
+    }
+    sample_controller_input(sample, 0x08U);
+    if (!expect(sample.held == 0x0008U && sample.events == 0x0808U &&
+                sample.heading == 0x4000U)) {
+        return 12;
+    }
+    sample_controller_input(sample, 0x03U);
+    if (!expect(sample.held == 0x0003U && sample.events == 0x0303U &&
+                sample.heading == 0xFFFFU)) {
+        return 13;
+    }
+
     return 0;
 }

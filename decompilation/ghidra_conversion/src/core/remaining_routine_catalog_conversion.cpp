@@ -22,6 +22,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00000D5AU, "guard_entity_phase_window", RoutineFamily::entity, 58U},
     {0x00000D94U, "wait_for_controller_event", RoutineFamily::interrupt, 38U},
     {0x00000DBAU, "count_thresholded_random_rolls", RoutineFamily::entity, 66U},
+    {0x0000195CU, "sample_controller_input", RoutineFamily::interrupt, 64U},
     {0x00002B78U, "apply_pending_scene_profile", RoutineFamily::field, 90U},
     {0x00002C92U, "render_normal_field_viewport", RoutineFamily::field, 32U},
     {0x00002CB2U, "render_alternate_field_viewport", RoutineFamily::field, 46U},
