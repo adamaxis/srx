@@ -92,5 +92,45 @@ int main() {
         return 4;
     }
 
+    if (!expect(field_movement_step_context_word(0U) == 0x0028U) ||
+        !expect(field_movement_step_context_word(2U) == 0xFFD8U) ||
+        !expect(field_movement_step_context_word(8U) == 0x0028U) ||
+        !expect(field_movement_step_context_word(14U) == 0x0028U)) {
+        return 5;
+    }
+
+    EntityMovementStepState pass{
+        0x1000, 0x2000, 0x2000, 0, 0, 0, 0, 0, 0, 0, 7};
+    std::uint16_t probed_slot = 0xFFFFU;
+    begin_entity_movement_pass(
+        pass, policy,
+        [&probed_slot](const std::uint16_t slot) {
+            probed_slot = slot;
+            return MovementProbeResult{0, 0x1111, 0x2222, 0};
+        },
+        []() { return false; }, []() { return true; },
+        [](const std::uint16_t) { return static_cast<std::int16_t>(1); },
+        []() {});
+    if (!expect(pass.collision_extent == -12) ||
+        !expect(probed_slot == 2U) ||
+        !expect(pass.collision_context == 0xFFD8U) ||
+        !expect(pass.position_x == 0x1111 && pass.position_y == 0x2222)) {
+        return 6;
+    }
+
+    EntityMovementStepState north{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    begin_entity_movement_pass(
+        north, policy,
+        [](const std::uint16_t) {
+            return MovementProbeResult{0, 1, 2, 0};
+        },
+        []() { return false; }, []() { return true; },
+        [](const std::uint16_t) { return static_cast<std::int16_t>(1); },
+        []() {});
+    if (!expect(north.collision_extent == -12) ||
+        !expect(north.collision_context == 0x0028U)) {
+        return 7;
+    }
+
     return 0;
 }

@@ -1,5 +1,7 @@
 #include "shadowrun_ghidra/entities/movement_step_conversion.hpp"
 
+#include "shadowrun_ghidra/field/field_movement_input_conversion.hpp"
+
 namespace shadowrun::ghidra_conversion {
 namespace {
 
@@ -83,6 +85,24 @@ void advance_entity_movement_step(
     entity.movement_flags = static_cast<std::uint8_t>(
         entity.movement_flags | 0x04U);
     commit_candidate(entity, initial);
+}
+
+void begin_entity_movement_pass(
+    EntityMovementStepState& entity,
+    const MovementResultPolicy& result_policy,
+    const MovementStepProbe& probe,
+    const NegativeCollisionRecovery& recover_negative_collision,
+    const AlignedRouteCheck& check_aligned_route,
+    const MovementPolicyProbe& policy_probe,
+    const MovementReset& reset_movement) {
+    entity.collision_extent = -12;
+    const auto direction = field_movement_direction_from_heading(entity.heading);
+    const auto direction_slot =
+        static_cast<std::uint16_t>(direction * 2U);
+    advance_entity_movement_step(
+        entity, field_movement_step_context_word(direction_slot),
+        direction_slot, result_policy, probe, recover_negative_collision,
+        check_aligned_route, policy_probe, reset_movement);
 }
 
 } // namespace shadowrun::ghidra_conversion

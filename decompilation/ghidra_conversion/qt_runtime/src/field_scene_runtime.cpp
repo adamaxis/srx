@@ -1036,10 +1036,8 @@ void FieldSceneRuntime::advance_field_movement() {
         false,
         state_.field_scene_buffers.scene_reference,
         field_movement_transition_state_.world_mode};
-    advance_entity_movement_step(
+    begin_entity_movement_pass(
         field_movement_state_,
-        0U,
-        input.direction_slot,
         result_policy,
         probe,
         [this, &last_probe] { return recover_blocked_field_movement(last_probe); },
