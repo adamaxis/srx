@@ -116,4 +116,30 @@ struct WorldActivityTimeoutState {
 // set FFDF86 to 0x78, or 0x258 when FFE162!=0.
 bool schedule_world_activity_timeout(WorldActivityTimeoutState& state);
 
+constexpr std::size_t kWorldActivityRequestSlotCount = 13;
+constexpr std::uint32_t kWorldActivityRequestDescriptor = 0x0001F16AU;
+
+struct WorldActivityRequestSlot {
+    std::uint8_t flags_byte = 0; // +0x10
+    std::uint8_t route_flags = 0; // +0xB0
+};
+
+struct WorldActivityRequestState {
+    std::uint8_t request_flag = 0; // FFE183
+    std::uint8_t found_marker = 0; // FFE181
+    std::uint8_t clear_80 = 0; // FFE180
+    std::uint8_t clear_82 = 0; // FFE182
+    std::uint8_t clear_84 = 0; // FFE184
+    std::uint8_t clear_87 = 0; // FFE187
+};
+
+// ROM 0x1E43C: CLR FFE180/82/84/87. FFE183==0 RTS. Else CLR FFE183, scan
+// 13 slots at FF0400 for +0x10 bit 0 and +0xB0 bit 7, write FFE181 0 or
+// 0xFF, publish 0x1F16A into FFDD2C, BRA 0x1E2EC.
+bool handle_world_activity_request(
+    WorldActivityRequestState& state,
+    const std::array<WorldActivityRequestSlot, kWorldActivityRequestSlotCount>&
+        slots,
+    WorldActivityStartState& activity);
+
 } // namespace shadowrun::ghidra_conversion

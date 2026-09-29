@@ -180,4 +180,29 @@ bool schedule_world_activity_timeout(WorldActivityTimeoutState& state) {
     return true;
 }
 
+bool handle_world_activity_request(
+    WorldActivityRequestState& state,
+    const std::array<WorldActivityRequestSlot, kWorldActivityRequestSlotCount>&
+        slots,
+    WorldActivityStartState& activity) {
+    state.clear_80 = 0U;
+    state.clear_82 = 0U;
+    state.clear_84 = 0U;
+    state.clear_87 = 0U;
+    if (state.request_flag == 0U) {
+        return false;
+    }
+    state.request_flag = 0U;
+    state.found_marker = 0xFFU;
+    for (const auto& slot : slots) {
+        if ((slot.flags_byte & 1U) != 0U &&
+            (slot.route_flags & 0x80U) != 0U) {
+            state.found_marker = 0U;
+            break;
+        }
+    }
+    begin_world_activity(activity, kWorldActivityRequestDescriptor);
+    return true;
+}
+
 } // namespace shadowrun::ghidra_conversion
