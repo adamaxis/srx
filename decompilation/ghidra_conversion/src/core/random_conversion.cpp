@@ -2,6 +2,20 @@
 
 namespace shadowrun::ghidra_conversion {
 
+std::uint16_t advance_source_random_seed(std::uint16_t& seed) {
+    seed = static_cast<std::uint16_t>(
+        static_cast<std::uint16_t>(seed * kSourceRandomMultiplier) + 1U);
+    return seed;
+}
+
+std::int16_t sample_source_random_bound(std::uint16_t& seed,
+                                        const std::uint16_t bound) {
+    const auto raw = advance_source_random_seed(seed);
+    const auto high = static_cast<std::uint16_t>(
+        (static_cast<std::uint32_t>(raw) * bound) >> 16U);
+    return static_cast<std::int16_t>(high);
+}
+
 std::uint8_t count_thresholded_random_rolls(
     const std::uint16_t trial_count,
     const std::int16_t threshold,

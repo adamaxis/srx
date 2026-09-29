@@ -38,5 +38,19 @@ int main() {
         return 2;
     }
 
+    std::uint16_t seed = 0;
+    if (!expect(advance_source_random_seed(seed) == 1U && seed == 1U)) {
+        return 3;
+    }
+    seed = 0x8000U;
+    const auto rolled = sample_source_random_bound(seed, 6U);
+    if (!expect(seed == 0x8001U && rolled == 3)) {
+        return 4;
+    }
+    seed = 0xFFFFU;
+    if (!expect(advance_source_random_seed(seed) == 0xDF1CU)) {
+        return 5;
+    }
+
     return 0;
 }
