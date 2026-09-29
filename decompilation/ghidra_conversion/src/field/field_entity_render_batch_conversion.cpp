@@ -422,14 +422,21 @@ bool dispatch_player_action_if_ready(
 }
 
 bool clear_entity_effect_if_forced(
-    std::uint8_t& entity_flags,
-    const std::int16_t global_effect_state,
-    const std::function<void()>& handle_world_effect) {
-    if ((entity_flags & 0x08U) == 0U || global_effect_state >= 0) {
+    const std::uint8_t behavior_flags,
+    std::uint8_t& route_flags,
+    const std::int16_t forced_effect_word,
+    const std::function<void()>& advance_movement_and_mode_transition) {
+    if ((behavior_flags & 0x08U) == 0U) {
         return false;
     }
-    entity_flags = static_cast<std::uint8_t>(entity_flags & ~0x20U);
-    call_once(handle_world_effect);
+    if (forced_effect_word == 0) {
+        route_flags = static_cast<std::uint8_t>(route_flags & ~0x20U);
+        return false;
+    }
+    if (forced_effect_word > 0) {
+        return false;
+    }
+    call_once(advance_movement_and_mode_transition);
     return true;
 }
 

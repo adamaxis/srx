@@ -293,11 +293,23 @@ int main() {
         actions != 1 || dispatch_player_action_if_ready(0, 2, 0, {})) {
         return 13;
     }
-    std::uint8_t flags = 0x28;
+    std::uint8_t route_flags = 0x20;
     int world_effects = 0;
-    if (!clear_entity_effect_if_forced(flags, -1, [&] { ++world_effects; }) ||
-        (flags & 0x20U) != 0 || world_effects != 1) {
+    if (clear_entity_effect_if_forced(0x08U, route_flags, 0,
+                                      [&] { ++world_effects; }) ||
+        (route_flags & 0x20U) != 0 || world_effects != 0) {
         return 14;
+    }
+    route_flags = 0x20;
+    if (!clear_entity_effect_if_forced(0x08U, route_flags, -1,
+                                       [&] { ++world_effects; }) ||
+        (route_flags & 0x20U) == 0 || world_effects != 1) {
+        return 25;
+    }
+    if (clear_entity_effect_if_forced(0x08U, route_flags, 1,
+                                      [&] { ++world_effects; }) ||
+        world_effects != 1) {
+        return 26;
     }
 
     TargetHeadingState heading{0, true, 0, false};

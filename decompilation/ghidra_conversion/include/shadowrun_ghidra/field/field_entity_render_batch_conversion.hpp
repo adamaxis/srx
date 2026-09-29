@@ -294,10 +294,13 @@ bool dispatch_player_action_if_ready(
     std::int16_t status,
     const std::function<void()>& dispatch_action);
 
+// ROM 0xAC5E: +0x10 bit 3 gates the path. FFDF64==0 BCLR +0xB0 bit 5.
+// FFDF64<0 calls 0xB7B8. Positive FFDF64 returns.
 bool clear_entity_effect_if_forced(
-    std::uint8_t& entity_flags,
-    std::int16_t global_effect_state,
-    const std::function<void()>& handle_world_effect);
+    std::uint8_t behavior_flags,
+    std::uint8_t& route_flags,
+    std::int16_t forced_effect_word,
+    const std::function<void()>& advance_movement_and_mode_transition);
 
 struct TargetHeadingState {
     std::uint8_t mode = 0;
