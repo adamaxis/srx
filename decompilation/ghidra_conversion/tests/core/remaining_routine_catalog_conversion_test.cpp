@@ -94,5 +94,20 @@ int main() {
         clear_slots->source_bytes != 22U) {
         return 7;
     }
+    const auto* project_x = find_remaining_routine(0x1669CU);
+    const auto* project_y = find_remaining_routine(0x166D0U);
+    const auto* timed_sprites = find_remaining_routine(0x5A582U);
+    const auto* seattle_outline = find_remaining_routine(0x5B378U);
+    if (project_x == nullptr ||
+        project_x->alias != "project_entity_x_axis" ||
+        project_x->source_bytes != 52U || project_y == nullptr ||
+        project_y->alias != "project_entity_y_axis" ||
+        project_y->source_bytes != 62U || timed_sprites == nullptr ||
+        timed_sprites->alias != "begin_title_intro_timed_sprites" ||
+        timed_sprites->source_bytes != 26U || seattle_outline == nullptr ||
+        seattle_outline->alias != "stamp_seattle_intro_outline" ||
+        seattle_outline->source_bytes != 266U) {
+        return 8;
+    }
     return 0;
 }
