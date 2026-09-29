@@ -64,6 +64,11 @@ struct EntityAudioEffectRecord {
     std::uint16_t jitter_count = 0;  // +0x44
     std::int16_t lifetime = 0;       // +0x46
     std::int16_t bounce = 0;         // +0x40
+    std::int16_t lift = 0;           // +0x36
+    std::int16_t lift_sum = 0;       // +0x34
+    std::int16_t height = 0;         // +0x8
+    std::int16_t heading_x = 0;      // +0x4C
+    std::int16_t heading_y = 0;      // +0x4E
 };
 
 enum class EntityAudioEffectResult {
@@ -83,5 +88,9 @@ EntityAudioEffectResult advance_entity_audio_effect(
     const std::function<void()>& expire,
     const std::function<void()>& retrigger,
     const std::function<void()>& motion);
+
+// ROM 0x15426: ADD 0x20 into +0x36, fold into +0x34, ASR#8 → +0x8. Negative
+// height skips the apex. +0x36>=0x40 halves lift and heading; else park.
+void apply_spawned_effect_bounce(EntityAudioEffectRecord& state);
 
 } // namespace shadowrun::ghidra_conversion

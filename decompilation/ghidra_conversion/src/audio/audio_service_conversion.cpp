@@ -105,4 +105,25 @@ EntityAudioEffectResult advance_entity_audio_effect(
     return EntityAudioEffectResult::jittered;
 }
 
+void apply_spawned_effect_bounce(EntityAudioEffectRecord& state) {
+    state.lift = static_cast<std::int16_t>(state.lift + 0x20);
+    state.lift_sum = static_cast<std::int16_t>(state.lift_sum + state.lift);
+    state.height = static_cast<std::int16_t>(state.lift_sum >> 8);
+    if (state.height < 0) {
+        return;
+    }
+    if (state.lift < 0x40) {
+        state.timer = 4;
+        state.lift_sum = 0;
+        state.lift = 0;
+        state.heading_x = 0;
+        state.heading_y = 0;
+        return;
+    }
+    state.lift = static_cast<std::int16_t>(-(state.lift >> 1));
+    state.heading_x = static_cast<std::int16_t>(state.heading_x >> 1);
+    state.heading_y = static_cast<std::int16_t>(state.heading_y >> 1);
+    state.lift_sum = 0;
+}
+
 } // namespace shadowrun::ghidra_conversion

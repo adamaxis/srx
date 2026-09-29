@@ -110,5 +110,32 @@ int main() {
         return 9;
     }
 
+    EntityAudioEffectRecord rising{};
+    rising.lift = 0x10;
+    rising.lift_sum = 0x1000;
+    apply_spawned_effect_bounce(rising);
+    if (rising.lift != 0 || rising.lift_sum != 0 || rising.height != 0x10 ||
+        rising.timer != 4) {
+        return 10;
+    }
+    EntityAudioEffectRecord apex{};
+    apex.lift = 0x40;
+    apex.lift_sum = 0;
+    apex.heading_x = -8;
+    apex.heading_y = 6;
+    apply_spawned_effect_bounce(apex);
+    if (apex.lift != static_cast<std::int16_t>(-(0x60 >> 1)) ||
+        apex.heading_x != -4 || apex.heading_y != 3 || apex.lift_sum != 0) {
+        return 11;
+    }
+    EntityAudioEffectRecord falling{};
+    falling.lift = -0x40;
+    falling.lift_sum = -0x200;
+    apply_spawned_effect_bounce(falling);
+    if (falling.height >= 0 || falling.lift != static_cast<std::int16_t>(-0x20) ||
+        falling.timer != 0) {
+        return 12;
+    }
+
     return 0;
 }
