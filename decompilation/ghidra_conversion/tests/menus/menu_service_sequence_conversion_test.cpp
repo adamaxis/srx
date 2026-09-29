@@ -272,6 +272,17 @@ int main() {
     if (number.cursor != 1 || values != std::vector<std::int16_t>{3, 1}) {
         return 13;
     }
+    MenuNumberRenderState wrap_zero{1, 5};
+    render_menu_number(wrap_zero, -1, {{}, {}});
+    MenuNumberRenderState wrap_negative{1, 5};
+    render_menu_number(wrap_negative, -2, {{}, {}});
+    const auto number_plan = menu_number_render_plan();
+    if (wrap_zero.cursor != 5 ||
+        wrap_negative.cursor != static_cast<std::int16_t>(0xFF05) ||
+        number_plan.vram_command != 0xC4B0U ||
+        number_plan.glyph_destination != 0xC4B2U) {
+        return 59;
+    }
 
     MenuSlotCleanupState slot;
     slot.pending_actions[3] = 8;

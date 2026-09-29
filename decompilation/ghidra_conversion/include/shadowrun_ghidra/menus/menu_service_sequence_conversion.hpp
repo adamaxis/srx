@@ -603,8 +603,8 @@ void advance_menu_text_cursor(
     const std::function<void()>& service_cursor);
 
 struct MenuNumberRenderState {
-    std::int16_t cursor = 0;
-    std::uint8_t available_count = 0;
+    std::int16_t cursor = 0; // FFDD2A low word
+    std::uint8_t available_count = 0; // +0x4F
 };
 
 struct MenuNumberRenderCallbacks {
@@ -612,8 +612,17 @@ struct MenuNumberRenderCallbacks {
     std::function<void(std::int16_t value)> build_decimal_glyphs;
 };
 
-// ROM 0x120E4: write the number marker, advance the signed cursor with the
-// source zero/overflow wrap rules, clamp past-count values, and build digits.
+struct MenuNumberRenderPlan {
+    std::uint16_t vram_command = 0xC4B0U;
+    std::uint32_t glyph_source = 0x000C1320U;
+    std::uint16_t palette = 0x6000U;
+    std::uint32_t glyph_destination = 0x0000C4B2U;
+};
+
+// ROM 0x120E4: VDP dest C4B0, marker from 0xC1320|0x6000, ADD.W D2 to
+// FFDD2A. BGT keeps a positive result; <=0 or overflow MOVE.B +0x4F into D1.
+// Signed CMP.B vs +0x4F BLE keeps, else MOVEQ #1. Glyphs at C4B2 via 0xC216.
+MenuNumberRenderPlan menu_number_render_plan();
 void render_menu_number(MenuNumberRenderState& state,
                         std::int16_t delta,
                         const MenuNumberRenderCallbacks& callbacks);

@@ -207,6 +207,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00011AE4U, "adjust_menu_dialog_posture", RoutineFamily::menu, 116U},
     {0x00012062U, "refresh_menu_text", RoutineFamily::menu, 56U},
     {0x0001209AU, "advance_menu_text_cursor", RoutineFamily::menu, 74U},
+    {0x000120E4U, "render_menu_number", RoutineFamily::menu, 100U},
     {0x00012148U, "read_entity_action_code", RoutineFamily::menu, 32U},
     {0x0001253EU, "reset_inventory_action_target_state", RoutineFamily::menu, 188U},
     {0x000125FAU, "scale_and_clear_entity_auxiliary", RoutineFamily::menu, 58U},

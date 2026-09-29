@@ -794,6 +794,10 @@ void advance_menu_text_cursor(
     }
 }
 
+MenuNumberRenderPlan menu_number_render_plan() {
+    return {};
+}
+
 void render_menu_number(MenuNumberRenderState& state,
                         const std::int16_t delta,
                         const MenuNumberRenderCallbacks& callbacks) {
@@ -803,13 +807,16 @@ void render_menu_number(MenuNumberRenderState& state,
 
     const auto sum = static_cast<std::int32_t>(state.cursor) + delta;
     const bool overflow = sum > 0x7FFF || sum < -0x8000;
-    state.cursor = static_cast<std::int16_t>(sum);
-    if (state.cursor == 0 || overflow) {
-        state.cursor = static_cast<std::int16_t>(state.available_count);
+    auto result = static_cast<std::uint16_t>(sum);
+    if (static_cast<std::int16_t>(result) <= 0 || overflow) {
+        result = static_cast<std::uint16_t>(
+            (result & 0xFF00U) | state.available_count);
     }
-    if (static_cast<std::int16_t>(state.available_count) < state.cursor) {
-        state.cursor = 1;
+    if (static_cast<std::int8_t>(result) >
+        static_cast<std::int8_t>(state.available_count)) {
+        result = 1U;
     }
+    state.cursor = static_cast<std::int16_t>(result);
     if (callbacks.build_decimal_glyphs) {
         callbacks.build_decimal_glyphs(state.cursor);
     }
