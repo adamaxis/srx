@@ -283,6 +283,34 @@ int main() {
     if (burst != 16) {
         return 10;
     }
+    TitleSpriteBurstState burst_state{0, 0, 8, 0x88, 0x98};
+    auto burst_records = emit_title_sprite_burst(burst_state, 0);
+    if (burst_records.size() != 16 || burst_records[0].y != 0x84 ||
+        burst_records[0].x != 0x94 || burst_records[0].size != 0 ||
+        burst_records[0].attributes != 0x05B5U ||
+        burst_records[1].attributes != 0x0DB5U ||
+        burst_records[2].attributes != 0x1DB5U ||
+        burst_records[3].attributes != 0x15B5U ||
+        burst_records[4].attributes != 0x05B5U) {
+        return 30;
+    }
+    burst_state.progress = 9;
+    burst_records = emit_title_sprite_burst(burst_state, 0);
+    if (burst_records.size() != 16 || burst_records[0].y != 0x84 ||
+        burst_records[0].x != 0x8C || burst_records[0].attributes != 0x0DB5U ||
+        burst_records[1].y != 0x8A || burst_records[1].x != 0x8E ||
+        burst_records[1].attributes != 0x1DB5U) {
+        return 31;
+    }
+    burst_state.marker = 0x002A;
+    if (!emit_title_sprite_burst(burst_state, 0).empty()) {
+        return 32;
+    }
+    burst_state.marker = 0;
+    burst_state.progress = 7;
+    if (!emit_title_sprite_burst(burst_state, 0).empty()) {
+        return 33;
+    }
 
     SpriteExpansionState sprite{0x80, 2, 0, 0, false};
     int decoded = 0;

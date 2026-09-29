@@ -419,6 +419,42 @@ void emit_title_sprite_burst(
     }
 }
 
+std::vector<BuiltSpriteRecord> emit_title_sprite_burst(
+    const TitleSpriteBurstState& state,
+    const std::uint8_t first_sequence) {
+    if (state.marker == 0x002AU) {
+        return {};
+    }
+    const auto scale = static_cast<std::int16_t>(state.progress - 8);
+    if (scale < 0) {
+        return {};
+    }
+    const auto scale_word = static_cast<std::uint16_t>(scale);
+    std::vector<BuiltSpriteRecord> records;
+    auto sequence = first_sequence;
+    const auto start = static_cast<std::size_t>(scale_word & 3U);
+    for (std::size_t index = 0; index < kTitleBurstFactors.size(); ++index) {
+        const auto x_delta = static_cast<std::uint16_t>(
+            static_cast<std::uint32_t>(
+                static_cast<std::uint16_t>(kTitleBurstFactors[index][0])) *
+            scale_word);
+        const auto y_delta = static_cast<std::uint16_t>(
+            static_cast<std::uint32_t>(
+                static_cast<std::uint16_t>(kTitleBurstFactors[index][1])) *
+            scale_word);
+        const auto built = build_title_sprite_records(
+            {kTitleBurstSprites[(start + index) & 3U]},
+            static_cast<std::int16_t>(
+                static_cast<std::uint16_t>(state.screen_x + x_delta)),
+            static_cast<std::int16_t>(
+                static_cast<std::uint16_t>(state.screen_y + y_delta)),
+            sequence, state.attributes);
+        sequence = static_cast<std::uint8_t>(sequence + built.size());
+        records.insert(records.end(), built.begin(), built.end());
+    }
+    return records;
+}
+
 bool append_entity_render_sprite(SpriteExpansionState& state,
                                  const SpriteExpansionCallbacks& callbacks) {
     if ((state.flags & 0x80U) != 0U) {

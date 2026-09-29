@@ -2,6 +2,7 @@
 
 #include "shadowrun_ghidra/entities/entity_state_primitives_conversion.hpp"
 #include "shadowrun_ghidra/field/field_coordinate_conversion.hpp"
+#include "shadowrun_ghidra/rendering/sprite_record_builder_conversion.hpp"
 
 #include <array>
 #include <cstddef>
@@ -294,6 +295,33 @@ void emit_title_sprite_burst(
     std::uint16_t sprite_type,
     std::int16_t progress,
     const std::function<void()>& build_sprite_records);
+
+struct TitleSpriteBurstState {
+    std::uint16_t marker = 0;
+    std::uint16_t attributes = 0;
+    std::int16_t progress = 0;
+    std::uint16_t screen_x = 0;
+    std::uint16_t screen_y = 0;
+};
+
+constexpr std::array<std::array<std::int16_t, 2>, 16> kTitleBurstFactors{{
+    {{0, -8}},  {{6, -6}},  {{8, 0}},   {{6, 6}},
+    {{0, 8}},   {{-6, 6}},  {{-8, 0}},  {{-6, -6}},
+    {{2, -5}},  {{5, -2}},  {{5, 2}},   {{2, 5}},
+    {{-2, 5}},  {{-5, 2}},  {{-5, -2}}, {{-2, -5}},
+}};
+
+constexpr std::array<SpriteSourceRecord, 4> kTitleBurstSprites{{
+    {-4, -4, 0, 0x05B5U},
+    {-4, -4, 0, 0x0DB5U},
+    {-4, -4, 0, 0x1DB5U},
+    {-4, -4, 0, 0x15B5U},
+}};
+
+// ROM 0x5B98: RTS if +0x38==0x2A or +0x44-8<0; 16× 0x1378 from 0x5BEE/0x5C2E.
+std::vector<BuiltSpriteRecord> emit_title_sprite_burst(
+    const TitleSpriteBurstState& state,
+    std::uint8_t first_sequence);
 
 struct SpriteExpansionState {
     std::uint8_t flags = 0;

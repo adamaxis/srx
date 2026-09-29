@@ -82,6 +82,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00005936U, "advance_entity_animation_effect", RoutineFamily::field, 180U},
     {0x000059EAU, "refresh_delayed_effect_sprites", RoutineFamily::field, 76U},
     {0x00005A56U, "project_entity_screen_position", RoutineFamily::entity, 200U},
+    {0x00005B98U, "emit_title_sprite_burst", RoutineFamily::field, 86U},
     {0x00005FDCU, "advance_entity_animation_accumulator", RoutineFamily::field, 50U},
     {0x0000600EU, "advance_entity_sprite_descriptor", RoutineFamily::field, 230U},
     {0x000060F4U, "set_sprite_descriptor_carry", RoutineFamily::field, 6U},
