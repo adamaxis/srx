@@ -24,20 +24,4 @@ struct EntityReadinessState {
 std::optional<std::size_t> find_ready_entity_slot(
     const std::array<EntityReadinessState, 13>& entities);
 
-constexpr std::size_t kEntityServiceRecordCount = 10;
-
-struct EntityServiceRecord {
-    std::uint32_t pair_a2 = 0; // +0xA2
-    std::uint32_t pair_ac = 0; // +0xAC
-    std::uint8_t byte_43 = 0; // +0x43
-    std::uint8_t route_flags = 0; // +0xB0
-    std::uint8_t animation_flags = 0; // +0x11
-};
-
-// ROM 0x1DBF0: CLR FFDF84, then ten records from FF0100 stride 0x100.
-// CLR.L +0xA2/+0xAC, CLR.B +0x43, ANDI.B #0xBF +0xB0, ANDI.B #0xEF +0x11.
-void reset_entity_service_records(
-    std::int16_t& timeout_marker,
-    std::array<EntityServiceRecord, kEntityServiceRecordCount>& records);
-
 } // namespace shadowrun::ghidra_conversion

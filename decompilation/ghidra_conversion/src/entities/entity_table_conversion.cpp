@@ -22,18 +22,4 @@ std::optional<std::size_t> find_ready_entity_slot(
     return std::nullopt;
 }
 
-void reset_entity_service_records(
-    std::int16_t& timeout_marker,
-    std::array<EntityServiceRecord, kEntityServiceRecordCount>& records) {
-    timeout_marker = 0;
-    for (auto& record : records) {
-        record.pair_a2 = 0U;
-        record.pair_ac = 0U;
-        record.byte_43 = 0U;
-        record.route_flags = static_cast<std::uint8_t>(record.route_flags & 0xBFU);
-        record.animation_flags =
-            static_cast<std::uint8_t>(record.animation_flags & 0xEFU);
-    }
-}
-
 } // namespace shadowrun::ghidra_conversion

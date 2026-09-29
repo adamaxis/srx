@@ -74,16 +74,18 @@ std::uint32_t expand_random_nibble_mask(
 }
 
 void reset_entity_service_records(std::vector<EntityServiceRecord>& records,
-                                  std::uint8_t& global_state) {
-    global_state = 0;
+                                  std::int16_t& timeout_marker) {
+    timeout_marker = 0;
     const auto limit = std::min<std::size_t>(10U, records.size());
     for (std::size_t index = 0; index < limit; ++index) {
         auto& record = records[index];
-        record.work_a = 0;
-        record.work_b = 0;
-        record.transient = 0;
-        record.flags = static_cast<std::uint8_t>(record.flags & ~0x40U);
-        record.mode_flags = static_cast<std::uint8_t>(record.mode_flags & ~0x10U);
+        record.pair_a2 = 0U;
+        record.pair_ac = 0U;
+        record.byte_43 = 0U;
+        record.route_flags =
+            static_cast<std::uint8_t>(record.route_flags & 0xBFU);
+        record.animation_flags =
+            static_cast<std::uint8_t>(record.animation_flags & 0xEFU);
     }
 }
 

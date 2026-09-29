@@ -27,13 +27,19 @@ int main() {
 
     assert(expand_random_nibble_mask({{0, 0x80}}, 0, 0, {}) == 0xF0000000U);
     std::vector<EntityServiceRecord> service_records(10);
-    service_records[0].flags = 0xFF;
-    service_records[0].mode_flags = 0xFF;
-    std::uint8_t global_state = 7;
-    reset_entity_service_records(service_records, global_state);
-    assert(global_state == 0 && service_records[0].work_a == 0 &&
-           (service_records[0].flags & 0x40U) == 0U &&
-           (service_records[0].mode_flags & 0x10U) == 0U);
+    service_records[0].route_flags = 0xFF;
+    service_records[0].animation_flags = 0xFF;
+    service_records[0].pair_a2 = 1U;
+    service_records[9].route_flags = 0x40U;
+    service_records[9].animation_flags = 0x10U;
+    std::int16_t timeout_marker = -1;
+    reset_entity_service_records(service_records, timeout_marker);
+    assert(timeout_marker == 0 && service_records[0].pair_a2 == 0 &&
+           service_records[0].byte_43 == 0 &&
+           service_records[0].route_flags == 0xBFU &&
+           service_records[0].animation_flags == 0xEFU &&
+           service_records[9].route_flags == 0U &&
+           service_records[9].animation_flags == 0U);
 
     std::vector<EntityServiceTargetRecord> cycle(10U);
     cycle[0].selected = true;
