@@ -114,5 +114,36 @@ int main() {
         return 5;
     }
 
+    current = {};
+    current.entity_flags = 0x02U;
+    candidate = {};
+    candidate.special_flags = 0x10U;
+    EntityPairCollisionWorldState scene_two{};
+    scene_two.scene_activity_id = 2U;
+    const auto scene_two_special = resolve_entity_pair_collision_event(
+        current, candidate, scene_two);
+    if (!scene_two_special.special_activity_requested ||
+        scene_two_special.handler !=
+            EntityPairActivityHandler::special_scene_table_collision ||
+        scene_two_special.activity_variant != 0x4EU ||
+        !scene_two.world_activity_started) {
+        return 7;
+    }
+
+    current = {};
+    current.entity_flags = 0x02U;
+    candidate = {};
+    candidate.special_flags = 0x10U;
+    EntityPairCollisionWorldState scene_eleven{};
+    scene_eleven.scene_activity_id = 11U;
+    const auto scene_eleven_special = resolve_entity_pair_collision_event(
+        current, candidate, scene_eleven);
+    if (scene_eleven_special.activity_variant !=
+            kEntityPairSceneActivityTable[1] ||
+        scene_eleven_special.handler !=
+            EntityPairActivityHandler::special_scene_table_collision) {
+        return 8;
+    }
+
     return 0;
 }

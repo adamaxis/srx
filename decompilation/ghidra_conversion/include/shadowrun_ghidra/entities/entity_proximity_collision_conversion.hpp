@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -65,6 +66,16 @@ struct EntityPairCollisionEntity {
     std::uint8_t activity_flags = 0; // source record +0xB0
 };
 
+// ROM 0xEEF6: signed (scene-10) bytes before the 0xEEFE table. Scene 2
+// indexes -8 and reads 0x4E from the previous function's RTS.
+constexpr std::array<std::uint8_t, 8> kEntityPairSceneActivityPreamble{
+    0x4E, 0x75, 0x51, 0xCF, 0xFF, 0xE4, 0x60, 0xD6};
+
+// ROM 0xEEFE: MOVE.B (A2,D0) after SUBI.W #0xA of FFDDC4. Scene 10 is the
+// Z path and does not index this table.
+constexpr std::array<std::uint8_t, 10> kEntityPairSceneActivityTable{
+    0x04, 0x01, 0x00, 0x06, 0x03, 0x09, 0x05, 0x07, 0x08, 0x00};
+
 struct EntityPairCollisionWorldState {
     bool activity_in_progress = false;       // FFE176
     bool world_effect_active = false;         // FFE180
@@ -97,7 +108,8 @@ struct EntityPairCollisionResult {
 // ROM 0x0ECCC: route the pair's special flags through the idle activity gate,
 // set the eligible entity's one-shot activity bit for the ordinary path, and
 // select the world-effect/pending-effect handler before beginning activity.
-// The handler enum is the host equivalent of the source callback tokens.
+// Special-path FFF0AE is scene 10's 4/2 split or signed (scene-10) into
+// 0xEEFE; the handler enum is the host equivalent of the source tokens.
 EntityPairCollisionResult resolve_entity_pair_collision_event(
     EntityPairCollisionEntity& current,
     EntityPairCollisionEntity& candidate,

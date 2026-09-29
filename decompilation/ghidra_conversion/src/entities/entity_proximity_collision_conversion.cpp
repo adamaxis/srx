@@ -37,6 +37,31 @@ void publish_pair_interaction(EntityProximityRecord& current,
     current.interaction_value = candidate.behavior_value;
 }
 
+std::optional<std::uint8_t> lookup_scene_activity_variant(
+    const std::int16_t d0,
+    const std::vector<std::uint8_t>& custom_table) {
+    if (d0 >= 0) {
+        const auto index = static_cast<std::size_t>(d0);
+        if (index < custom_table.size()) {
+            return custom_table[index];
+        }
+        if (index < kEntityPairSceneActivityTable.size()) {
+            return kEntityPairSceneActivityTable[index];
+        }
+        return std::nullopt;
+    }
+    const auto preamble_index =
+        static_cast<std::int32_t>(d0) +
+        static_cast<std::int32_t>(kEntityPairSceneActivityPreamble.size());
+    if (preamble_index >= 0 &&
+        static_cast<std::size_t>(preamble_index) <
+            kEntityPairSceneActivityPreamble.size()) {
+        return kEntityPairSceneActivityPreamble[static_cast<std::size_t>(
+            preamble_index)];
+    }
+    return std::nullopt;
+}
+
 void begin_normal_activity(
     EntityPairCollisionWorldState& world,
     const EntityPairCollisionCallbacks& callbacks,
@@ -136,16 +161,19 @@ EntityPairCollisionResult resolve_entity_pair_collision_event(
         }
 
         world.handler = EntityPairActivityHandler::special_collision;
+        // ROM 0xED00: D0 = FFDDC4 - 10. Z path is scene 10 (FFF0AE 4, or 2
+        // when FFFBF9==6). BNE indexes 0xEEFE with that signed D0.
         if (world.scene_activity_id == 10U) {
             world.activity_variant = world.field_mode == 6U ? 2U : 4U;
             world.handler = world.field_mode == 6U
                 ? EntityPairActivityHandler::special_mode_six_collision
                 : EntityPairActivityHandler::special_collision;
-        } else if (world.scene_activity_id >= 10U) {
-            const auto table_index = static_cast<std::size_t>(
-                world.scene_activity_id - 10U);
-            if (table_index < world.scene_activity_table.size()) {
-                world.activity_variant = world.scene_activity_table[table_index];
+        } else {
+            const auto d0 = static_cast<std::int16_t>(
+                static_cast<std::int32_t>(world.scene_activity_id) - 10);
+            if (const auto variant = lookup_scene_activity_variant(
+                    d0, world.scene_activity_table)) {
+                world.activity_variant = *variant;
                 world.handler =
                     EntityPairActivityHandler::special_scene_table_collision;
             }
