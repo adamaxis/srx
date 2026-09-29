@@ -27,13 +27,13 @@ struct EntityBehaviorFrameRecord {
     bool active = false; // +0x10 bit 0
     std::uint8_t behavior_flags = 0; // +0x10 bits 1..6
     std::uint8_t record_flags = 0; // +0x11 bits 0..2
-    std::int16_t animation_elapsed = 0; // +0x16
+    std::int16_t animation_elapsed = 0; // +0x16, compared to 0x3C / 0x80
     std::uint16_t entity_type = 0; // +0x0E
     std::uint16_t current_heading = 0; // +0x2E
     std::uint16_t target_heading = 0; // +0x34
     std::uint16_t action_heading_source = 0; // +0xCC
     std::uint16_t projected_field_code = 0; // +0xC6
-    std::int16_t transition_gate = 0; // +0xDC
+    std::int16_t transition_gate = 0; // +0xDC, SUBQ when >= 0
     std::int8_t target_marker = 0; // +0x56
     std::uint8_t source_type = 0; // +0x57
     std::uint8_t auxiliary_marker = 0; // +0x43

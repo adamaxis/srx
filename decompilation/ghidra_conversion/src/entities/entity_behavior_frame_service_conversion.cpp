@@ -87,8 +87,8 @@ EntityBehaviorFrameServiceResult service_entity_behavior_frames(
             continue;
         }
 
-        if (record.animation_elapsed >= 0) {
-            --record.animation_elapsed;
+        if (record.transition_gate >= 0) {
+            --record.transition_gate;
         }
 
         if ((record.behavior_flags & 0x04U) == 0U) {

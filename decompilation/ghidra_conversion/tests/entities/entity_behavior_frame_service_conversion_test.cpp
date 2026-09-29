@@ -109,6 +109,7 @@ int main() {
     records[0].behavior_flags = 0x04U;
     records[0].record_flags = 0x06U;
     records[0].animation_elapsed = 1;
+    records[0].transition_gate = 5;
 
     // A negative transition timer with B0D4/B10C completion performs the
     // completion/effect-clear branch before the common continuation tail.
@@ -142,11 +143,10 @@ int main() {
     records[4].transition_gate_marker = 1U;
 
     // The negative-source path has the same type-0x0C/0x80 hold when the
-    // nonzero rate gate is active. Seed 0x81 because the service decrements
-    // +0x16 before testing it.
+    // nonzero rate gate is active. ROM compares +0x16 after decrementing +0xDC.
     records[5].active = true;
     records[5].behavior_flags = 0x14U;
-    records[5].animation_elapsed = static_cast<std::int16_t>(0x0081);
+    records[5].animation_elapsed = static_cast<std::int16_t>(0x0080);
     records[5].entity_type = 0x000CU;
     records[5].transition_rate_threshold = 1U;
 
@@ -165,7 +165,8 @@ int main() {
            EntityBehaviorContinuationKind::ordinary);
     assert(records[0].record_flags == 0x00U);
     assert(records[2].action_result == 0xA5U);
-    assert(records[2].animation_elapsed == 1);
+    assert(records[2].animation_elapsed == 2);
+    assert(records[0].transition_gate == 4);
     assert(records[5].animation_elapsed == 0x0080);
 
     auto missing_callbacks = callbacks;
