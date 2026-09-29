@@ -1,5 +1,9 @@
 #include "shadowrun_ghidra/field/scene_profile_conversion.hpp"
 
+#include <array>
+#include <cstdint>
+#include <vector>
+
 namespace {
 
 bool expect(const bool condition) {
@@ -71,5 +75,70 @@ int main() {
         return 6;
     }
 
+    if (!expect(field_scene_profile_table_entry(2) == 0x00172C80U &&
+                field_scene_profile_table_entry(0) == 0x000D5456U &&
+                field_scene_profile_table_entry(0x38U) == 0U)) {
+        return 7;
+    }
+
+    std::array<std::uint16_t, kFieldSceneProfileWordCount> source{};
+    source[12] = 0x0018U;
+    source[13] = 0x8AFDU;
+    source[0] = 0x3400U;
+    source[1] = 0x2280U;
+    FieldSceneLoopState loop{};
+    loop.scene_id = 2;
+    run_field_loop(loop, source);
+    if (!expect(loop.profile[0] == 0x3400U && loop.profile[12] == 0x0018U &&
+                loop.profile[46] == 0x0018U && loop.profile[47] == 0x8AFDU &&
+                loop.override_lock == 0U)) {
+        return 8;
+    }
+
+    loop = FieldSceneLoopState{};
+    loop.alternate_profile = 1;
+    loop.override_lock = 1;
+    loop.override_x = 0x0B00U;
+    loop.override_y = 0x0800U;
+    run_field_loop(loop, source);
+    if (!expect(loop.profile[0] == 0x3400U && loop.override_lock == 0U)) {
+        return 9;
+    }
+
+    loop = FieldSceneLoopState{};
+    loop.alternate_profile = 1;
+    loop.override_x = 0x0B00U;
+    loop.override_y = 0x0800U;
+    run_field_loop(loop, source);
+    if (!expect(loop.profile[0] == 0x0100U && loop.profile[1] == 0x0100U &&
+                loop.profile[33] == 0x0B00U && loop.profile[34] == 0x0800U &&
+                loop.profile[37] == 0x0B00U && loop.profile[38] == 0x0800U)) {
+        return 10;
+    }
+
+    loop = FieldSceneLoopState{};
+    loop.alternate_profile = 1;
+    loop.override_x = 0x0900U;
+    loop.override_y = 0x0600U;
+    run_field_loop(loop, source);
+    if (!expect(loop.profile[0] == 0U && loop.profile[1] == 0U)) {
+        return 11;
+    }
+
+    std::vector<std::uint32_t> copied;
+    if (!expect(copy_terrain_layers(
+                    0x00FFDDDAU, 0x00FFDDE2U,
+                    [&](const std::uint32_t source_pointer,
+                        const std::uint32_t destination,
+                        const std::size_t words) {
+                        copied.push_back(source_pointer);
+                        copied.push_back(destination);
+                        copied.push_back(words);
+                    }) == 0x1C20U &&
+                copied == std::vector<std::uint32_t>{
+                              0x00FFDDDAU, 0x00FF2700U, 0x0E10U, 0x00FFDDE2U,
+                              0x00FF4700U, 0x0E10U})) {
+        return 12;
+    }
     return 0;
 }

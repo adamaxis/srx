@@ -7,6 +7,50 @@ bool scene_uses_alternate_profile(const std::int16_t scene_id) {
            (scene_id >= 0x2C && scene_id <= 0x31);
 }
 
+std::uint32_t field_scene_profile_table_entry(const std::uint16_t scene_id) {
+    if (scene_id >= kFieldSceneProfileCount) {
+        return 0U;
+    }
+    return kFieldSceneProfileTable[scene_id];
+}
+
+void run_field_loop(
+    FieldSceneLoopState& state,
+    const std::array<std::uint16_t, kFieldSceneProfileWordCount>& source) {
+    state.profile = source;
+    state.profile[46] = state.profile[12];
+    state.profile[47] = state.profile[13];
+    if (state.alternate_profile != 0U && state.override_lock == 0U) {
+        state.profile[33] = state.override_x;
+        state.profile[35] = state.override_x;
+        state.profile[37] = state.override_x;
+        state.profile[34] = state.override_y;
+        state.profile[36] = state.override_y;
+        state.profile[38] = state.override_y;
+        state.profile[0] =
+            state.override_x < 0x0A00U
+                ? 0U
+                : static_cast<std::uint16_t>(state.override_x - 0x0A00U);
+        state.profile[1] =
+            state.override_y < 0x0700U
+                ? 0U
+                : static_cast<std::uint16_t>(state.override_y - 0x0700U);
+    }
+    state.override_lock = 0U;
+}
+
+std::size_t copy_terrain_layers(
+    const std::uint32_t source_a,
+    const std::uint32_t source_b,
+    const FieldTerrainLayerCopy& copy_block) {
+    if (!copy_block) {
+        return 0U;
+    }
+    copy_block(source_a, 0x00FF2700U, 0x0E10U);
+    copy_block(source_b, 0x00FF4700U, 0x0E10U);
+    return 0x1C20U;
+}
+
 void apply_scene_profile_selection(
     SceneProfileState& state,
     std::optional<std::array<std::uint16_t, 8>>& pending_profile,
