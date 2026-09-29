@@ -323,6 +323,52 @@ std::vector<BuiltSpriteRecord> emit_title_sprite_burst(
     const TitleSpriteBurstState& state,
     std::uint8_t first_sequence);
 
+struct EntityVariantControlState {
+    std::int8_t vitality = 0;
+    std::uint8_t mode = 0;
+    std::uint8_t flags = 0;
+};
+
+struct EntityVariantSpriteState {
+    std::uint8_t selector = 0;
+    std::uint8_t alternate = 0;
+    std::uint16_t screen_x = 0;
+    std::uint16_t screen_y = 0;
+    std::uint16_t marker = 0;
+    std::int16_t spread = 0;
+};
+
+constexpr std::array<std::uint16_t, 4> kEntityVariantFlags{{
+    0x2000U, 0x2000U, 0x2000U, 0x6000U,
+}};
+
+constexpr std::array<std::array<SpriteSourceRecord, 4>, 4> kEntityVariantSprites{{
+    {{SpriteSourceRecord{-14, -16, 0, 0x15E7U},
+      SpriteSourceRecord{8, -16, 0, 0x1DE7U},
+      SpriteSourceRecord{-14, 12, 0, 0x05E7U},
+      SpriteSourceRecord{8, 12, 0, 0x0DE7U}}},
+    {{SpriteSourceRecord{-14, -16, 0, 0x15E5U},
+      SpriteSourceRecord{8, -16, 0, 0x1DE5U},
+      SpriteSourceRecord{-14, 12, 0, 0x05E5U},
+      SpriteSourceRecord{8, 12, 0, 0x0DE5U}}},
+    {{SpriteSourceRecord{-14, -16, 0, 0x15E6U},
+      SpriteSourceRecord{8, -16, 0, 0x1DE6U},
+      SpriteSourceRecord{-14, 12, 0, 0x05E6U},
+      SpriteSourceRecord{8, 12, 0, 0x0DE6U}}},
+    {{SpriteSourceRecord{-14, -16, 0, 0x15E7U},
+      SpriteSourceRecord{8, -16, 0, 0x1DE7U},
+      SpriteSourceRecord{-14, 12, 0, 0x05E7U},
+      SpriteSourceRecord{8, 12, 0, 0x0DE7U}}},
+}};
+
+constexpr std::array<std::size_t, 4> kEntityVariantSingleOrder{{2, 3, 0, 1}};
+
+// ROM 0x5C7E: FFFC04 +0x56/+0x57/+0x91 pick +0x4C vs +0x9C; 0x1378 one or four.
+std::vector<BuiltSpriteRecord> emit_entity_variant_sprites(
+    EntityVariantSpriteState& state,
+    const EntityVariantControlState& control,
+    std::uint8_t first_sequence);
+
 struct SpriteExpansionState {
     std::uint8_t flags = 0;
     std::uint16_t source_count = 0;

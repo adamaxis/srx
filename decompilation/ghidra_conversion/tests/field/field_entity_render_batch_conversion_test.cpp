@@ -312,6 +312,60 @@ int main() {
         return 33;
     }
 
+    EntityVariantSpriteState variant{0, 9, 0x88, 0x98, 0, 0};
+    EntityVariantControlState control{0, 1, 0};
+    auto variant_records = emit_entity_variant_sprites(variant, control, 0);
+    if (variant_records.size() != 4 || variant_records[0].y != 0x7A ||
+        variant_records[0].x != 0x98 || variant_records[0].size != 0 ||
+        variant_records[0].attributes != 0x25E7U ||
+        variant_records[1].y != 0x90 || variant_records[1].x != 0x98 ||
+        variant_records[1].attributes != 0x2DE7U ||
+        variant_records[2].y != 0x7A || variant_records[2].x != 0x7C ||
+        variant_records[2].attributes != 0x35E7U ||
+        variant_records[3].y != 0x90 || variant_records[3].x != 0x7C ||
+        variant_records[3].attributes != 0x3DE7U) {
+        return 34;
+    }
+    control.mode = 0;
+    variant_records = emit_entity_variant_sprites(variant, control, 0);
+    if (variant_records.size() != 4 ||
+        variant_records[0].attributes != 0x65E7U) {
+        return 35;
+    }
+    variant.selector = 3;
+    control.mode = 1;
+    variant_records = emit_entity_variant_sprites(variant, control, 0);
+    if (variant_records[0].attributes != 0x25E5U) {
+        return 36;
+    }
+    variant.selector = 0;
+    variant.marker = 0x000F;
+    variant_records = emit_entity_variant_sprites(variant, control, 0);
+    if (variant_records[0].x != 0x78) {
+        return 37;
+    }
+    variant.marker = 0;
+    variant.spread = -254;
+    variant_records = emit_entity_variant_sprites(variant, control, 0);
+    if (variant.spread != -255 ||
+        variant_records.size() != 4 || variant_records[0].y != 0x72 ||
+        variant_records[0].x != 0x74 ||
+        variant_records[0].attributes != 0x35E7U ||
+        variant_records[1].y != 0x98 || variant_records[1].x != 0x74 ||
+        variant_records[1].attributes != 0x3DE7U ||
+        variant_records[2].y != 0x72 || variant_records[2].x != 0xA0 ||
+        variant_records[2].attributes != 0x25E7U ||
+        variant_records[3].y != 0x98 || variant_records[3].x != 0xA0 ||
+        variant_records[3].attributes != 0x2DE7U) {
+        return 38;
+    }
+    variant.spread = -32768;
+    variant_records = emit_entity_variant_sprites(variant, control, 0);
+    if (variant.spread != 0 || variant_records.size() != 4 ||
+        variant_records[0].attributes != 0x25E7U) {
+        return 39;
+    }
+
     SpriteExpansionState sprite{0x80, 2, 0, 0, false};
     int decoded = 0;
     int expanded = 0;
