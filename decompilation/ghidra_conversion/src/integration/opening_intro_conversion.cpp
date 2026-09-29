@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/integration/opening_intro_conversion.hpp"
+#include "shadowrun_ghidra/world/post_intro_mode_conversion.hpp"
 
 #include <algorithm>
 #include <array>
@@ -986,6 +987,13 @@ void advance_stage_loop_frame(OpeningIntroState& state,
         [&callbacks](const auto& request) { emit_late_sprite(callbacks, request); });
 }
 
+void sync_post_intro_cab(OpeningIntroState& state) {
+    const auto timeline = post_intro_cab_timeline(state.post_intro_frame);
+    state.post_intro_mode = timeline.mode;
+    state.post_intro_phase = timeline.phase;
+    state.post_intro_caption_visible = timeline.caption_visible;
+}
+
 void begin_post_intro(OpeningIntroState& state,
                       const OpeningIntroCallbacks& callbacks) {
     set_stage(state, callbacks, OpeningIntroStage::post_intro);
@@ -994,6 +1002,8 @@ void begin_post_intro(OpeningIntroState& state,
     invoke(callbacks.enter_post_intro_mode);
     invoke(callbacks.clear_presentation);
     state.post_intro_frame = 0;
+    sync_post_intro_cab(state);
+    source_boundary(callbacks, "0x13726.render_mode_selection");
 }
 
 } // namespace
@@ -1163,15 +1173,14 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
         begin_source_frame(state, callbacks);
         sample_and_latch(callbacks);
         ++state.post_intro_frame;
-        if (state.post_intro_frame >=
-            static_cast<std::uint16_t>(kPostIntroCabModeFourFrames +
-                                       kPostIntroCabModeTwoFrames)) {
+        if (state.post_intro_frame >= kPostIntroCabTotalFrames) {
             callbacks.sample_controller();
             invoke(callbacks.step_palette_transition);
             invoke(callbacks.prepare_mode_entry);
             set_stage(state, callbacks, OpeningIntroStage::complete);
             return OpeningIntroAdvanceResult::source_complete;
         }
+        sync_post_intro_cab(state);
         return OpeningIntroAdvanceResult::frame_advanced;
 
     case OpeningIntroStage::stage2_entry:

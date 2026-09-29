@@ -1,6 +1,93 @@
 #include "shadowrun_ghidra/world/post_intro_mode_conversion.hpp"
 
 namespace shadowrun::ghidra_conversion {
+namespace {
+
+constexpr std::array<std::uint8_t, kPostIntroModeCount> kCabModeRecords{
+    {0x06U, 0x04U, 0x02U, 0x05U, 0x00U, 0x03U, 0x01U}};
+
+constexpr std::array<std::array<std::uint16_t, kCabModeSelectionPhaseCount>,
+                     kPostIntroModeCount>
+    kCabRecordPositions{{{{0x0000U, 0x0184U, 0x030AU, 0x0410U, 0x0514U}},
+                         {{0x0000U, 0x0080U, 0x0180U, 0x0280U, 0x0380U}},
+                         {{0x0000U, 0x010CU, 0x0216U, 0x0322U, 0x03AEU}},
+                         {{0x0000U, 0x0182U, 0x0306U, 0x048AU, 0x058CU}},
+                         {{0x0000U, 0x0108U, 0x0190U, 0x0216U, 0x031CU}},
+                         {{0x0000U, 0x0188U, 0x0310U, 0x0416U, 0x051EU}},
+                         {{0x0000U, 0x0086U, 0x010CU, 0x0190U, 0x0214U}}}};
+
+constexpr std::array<std::uint8_t, kCabModeSelectionPhaseCount> kCabPhaseWidth{
+    {0x17U, 0x11U, 0x0CU, 0x06U, 0x00U}};
+constexpr std::array<std::uint8_t, kCabModeSelectionPhaseCount> kCabPhaseHeight{
+    {0x0EU, 0x0BU, 0x08U, 0x05U, 0x00U}};
+
+constexpr std::array<std::string_view, kPostIntroModeCount> kCabCaptions{{
+    " Downtown Seattle ",
+    " Puyallup Barrens ",
+    "  Redmond Barrens ",
+    " Penumbra District",
+    "  Council Island  ",
+    " Renraku Arcology ",
+    "  Salish-Shidhe   ",
+}};
+
+} // namespace
+
+CabModeSelectionPlan cab_mode_selection_plan(const std::uint8_t mode,
+                                             const std::uint8_t phase) {
+    CabModeSelectionPlan plan{};
+    plan.mode = static_cast<std::uint8_t>(mode % kPostIntroModeCount);
+    plan.phase = static_cast<std::uint8_t>(
+        phase < kCabModeSelectionPhaseCount ? phase
+                                            : kCabModeSelectionPhaseCount - 1U);
+    plan.record_index = kCabModeRecords[plan.mode];
+    plan.nametable_position =
+        kCabRecordPositions[plan.record_index][plan.phase];
+    const auto relative = static_cast<std::uint32_t>(kCabCursorNametableBase) +
+                          plan.nametable_position - 0xC000U;
+    plan.cursor_x = static_cast<int>(((relative % 0x80U) / 2U) * 8U);
+    plan.cursor_y = static_cast<int>((relative / 0x80U) * 8U);
+    plan.cursor_width =
+        static_cast<int>(kCabPhaseWidth[plan.phase] + 3U) * 8;
+    plan.cursor_height =
+        static_cast<int>(kCabPhaseHeight[plan.phase] + 3U) * 8;
+    plan.caption = kCabCaptions[plan.record_index];
+    const auto caption_words =
+        static_cast<int>((kCabCaptionVram - kCabCaptionPlaneBase) / 2U);
+    plan.caption_x = (caption_words % 64) * 8;
+    plan.caption_y = (caption_words / 64) * 8;
+    return plan;
+}
+
+PostIntroCabTimeline post_intro_cab_timeline(const std::uint16_t frame) {
+    // 0x13726: five outline phases, two vblanks each, then 0xC0DA. 0x134D2
+    // holds mode 4 for DBF 0x40 and mode 2 for DBF 0x60 after each call.
+    constexpr std::uint16_t kHoldFour = 0x41U;
+    constexpr std::uint16_t kHoldTwo = 0x61U;
+    const auto shrink = kCabModeSelectionShrinkFrames;
+    PostIntroCabTimeline timeline{};
+    if (frame < shrink) {
+        timeline.mode = 4U;
+        timeline.phase = static_cast<std::uint8_t>(frame / 2U);
+        return timeline;
+    }
+    if (frame < shrink + kHoldFour) {
+        timeline.mode = 4U;
+        timeline.phase = 4U;
+        timeline.caption_visible = true;
+        return timeline;
+    }
+    const auto mode_two = static_cast<std::uint16_t>(frame - shrink - kHoldFour);
+    if (mode_two < shrink) {
+        timeline.mode = 2U;
+        timeline.phase = static_cast<std::uint8_t>(mode_two / 2U);
+        return timeline;
+    }
+    timeline.mode = 2U;
+    timeline.phase = 4U;
+    timeline.caption_visible = true;
+    return timeline;
+}
 
 namespace {
 

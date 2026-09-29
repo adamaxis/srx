@@ -1,7 +1,9 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <functional>
+#include <string_view>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -49,6 +51,39 @@ enum class PostIntroModeResult {
     returned_after_transfer,
     external_stop,
 };
+
+// ROM 0x13726: FFF09C indexes 0xD445D, then 0xD4464 record * 0x1E. Five
+// outline phases consume 0xD4536 (D1+3 by D2+3 tiles) at D4=0xC208, then
+// 0xC0DA caption at 0xEA10 on the 0xE000 plane.
+constexpr std::uint8_t kCabModeSelectionPhaseCount = 5U;
+constexpr std::uint16_t kCabCursorNametableBase = 0xC208U;
+constexpr std::uint16_t kCabCaptionVram = 0xEA10U;
+constexpr std::uint16_t kCabCaptionPlaneBase = 0xE000U;
+constexpr std::uint16_t kCabModeSelectionShrinkFrames = 10U;
+
+struct CabModeSelectionPlan {
+    std::uint8_t mode = 0;
+    std::uint8_t record_index = 0;
+    std::uint8_t phase = 0;
+    std::uint16_t nametable_position = 0;
+    int cursor_x = 0;
+    int cursor_y = 0;
+    int cursor_width = 0;
+    int cursor_height = 0;
+    std::string_view caption;
+    int caption_x = 0;
+    int caption_y = 0;
+};
+
+struct PostIntroCabTimeline {
+    std::uint8_t mode = 4;
+    std::uint8_t phase = 0;
+    bool caption_visible = false;
+};
+
+CabModeSelectionPlan cab_mode_selection_plan(std::uint8_t mode,
+                                             std::uint8_t phase);
+PostIntroCabTimeline post_intro_cab_timeline(std::uint16_t frame);
 
 // ROM 0x134D2: enter the post-intro mode selector and preserve its two input
 // branches. Presentation, world updates, and mode transitions are callbacks;

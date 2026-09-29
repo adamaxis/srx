@@ -57,5 +57,39 @@ int main() {
         alternate_modes != std::vector<std::uint8_t>{4U, 2U}) {
         return 2;
     }
+
+    const auto downtown = cab_mode_selection_plan(4U, 0U);
+    if (downtown.record_index != 0U || downtown.cursor_x != 32 ||
+        downtown.cursor_y != 32 || downtown.cursor_width != 208 ||
+        downtown.cursor_height != 136 ||
+        downtown.caption != " Downtown Seattle " || downtown.caption_x != 64 ||
+        downtown.caption_y != 160) {
+        return 3;
+    }
+    const auto downtown_settled = cab_mode_selection_plan(4U, 4U);
+    if (downtown_settled.nametable_position != 0x0514U ||
+        downtown_settled.cursor_x != 112 || downtown_settled.cursor_y != 112 ||
+        downtown_settled.cursor_width != 24 ||
+        downtown_settled.cursor_height != 24) {
+        return 4;
+    }
+    const auto redmond = cab_mode_selection_plan(2U, 4U);
+    if (redmond.record_index != 2U || redmond.nametable_position != 0x03AEU ||
+        redmond.cursor_x != 216 || redmond.cursor_y != 88 ||
+        redmond.caption != "  Redmond Barrens ") {
+        return 5;
+    }
+    const auto shrink = post_intro_cab_timeline(0U);
+    const auto hold_four = post_intro_cab_timeline(10U);
+    const auto shrink_two = post_intro_cab_timeline(10U + 0x41U);
+    const auto hold_two = post_intro_cab_timeline(20U + 0x41U);
+    if (shrink.mode != 4U || shrink.phase != 0U || shrink.caption_visible ||
+        hold_four.mode != 4U || hold_four.phase != 4U ||
+        !hold_four.caption_visible || shrink_two.mode != 2U ||
+        shrink_two.phase != 0U || shrink_two.caption_visible ||
+        hold_two.mode != 2U || hold_two.phase != 4U ||
+        !hold_two.caption_visible) {
+        return 6;
+    }
     return 0;
 }

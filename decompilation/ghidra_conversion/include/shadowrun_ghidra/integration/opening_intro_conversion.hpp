@@ -117,10 +117,14 @@ enum class OpeningIntroStage : std::uint8_t {
     interrupted,
 };
 
-// ROM 0x134D2 FFE18B!=0: DBF #0x40 then DBF #0x60 of render_mode_selection
-// (cab map) before returning into 0x59C5E's field handoff.
+// ROM 0x134D2 FFE18B!=0: 0x13726 mode 4 (5*2 vblanks) then DBF #0x40, then
+// 0x13726 mode 2 and DBF #0x60, before returning into 0x59C5E's field handoff.
 constexpr std::uint16_t kPostIntroCabModeFourFrames = 0x41U;
 constexpr std::uint16_t kPostIntroCabModeTwoFrames = 0x61U;
+constexpr std::uint16_t kPostIntroCabShrinkFrames = 10U;
+constexpr std::uint16_t kPostIntroCabTotalFrames =
+    kPostIntroCabShrinkFrames + kPostIntroCabModeFourFrames +
+    kPostIntroCabShrinkFrames + kPostIntroCabModeTwoFrames;
 
 const char* opening_intro_stage_name(OpeningIntroStage stage);
 const char* opening_intro_scene_name(OpeningIntroScene scene);
@@ -209,6 +213,9 @@ struct OpeningIntroState {
     std::uint16_t orchestrator_loop_frame = 0;
     std::uint16_t stage_loop_frame = 0;
     std::uint16_t post_intro_frame = 0;
+    std::uint8_t post_intro_mode = 4;
+    std::uint8_t post_intro_phase = 0;
+    bool post_intro_caption_visible = false;
     std::uint16_t scroll_accumulator = 0;
     bool source_stop_marker = false;
 

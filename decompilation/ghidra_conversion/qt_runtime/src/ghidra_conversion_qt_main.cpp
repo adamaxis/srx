@@ -2,6 +2,7 @@
 #include "shadowrun_ghidra/integration/startup_integration_conversion.hpp"
 #include "shadowrun_ghidra/title_intro/title_loop_conversion.hpp"
 #include "shadowrun_ghidra/title_intro/title_setup_conversion.hpp"
+#include "shadowrun_ghidra/world/post_intro_mode_conversion.hpp"
 #include "field_scene_runtime.hpp"
 
 #include <QApplication>
@@ -289,6 +290,13 @@ protected:
     }
 
     void keyPressEvent(QKeyEvent* event) override {
+        if (event->isAutoRepeat() &&
+            state_.phase != StartupIntegrationPhase::field_ready) {
+            // 0x195C publishes newly-pressed bits. Qt auto-repeat is not a
+            // new Genesis edge; treating it as one skipped Load's 0xD94 wait.
+            event->accept();
+            return;
+        }
         if (state_.phase == StartupIntegrationPhase::field_ready) {
             const auto direction_bit =
                 sampled_field_direction_bit(event->key());
@@ -905,6 +913,7 @@ private:
             break;
         case OpeningIntroScene::cab_map:
             draw_alias(painter, "intro.cab.map");
+            draw_cab_mode_selection(painter);
             break;
         }
 
@@ -913,6 +922,27 @@ private:
         }
         for (const auto& request : opening_text_) {
             draw_opening_text(painter, request);
+        }
+    }
+
+    void draw_cab_mode_selection(QPainter& painter) const {
+        const auto plan = cab_mode_selection_plan(
+            state_.opening_intro.post_intro_mode,
+            state_.opening_intro.post_intro_phase);
+        const QColor outline(0xF0, 0xF0, 0xF0);
+        constexpr int kTile = 8;
+        painter.fillRect(plan.cursor_x, plan.cursor_y, plan.cursor_width,
+                         kTile, outline);
+        painter.fillRect(plan.cursor_x,
+                         plan.cursor_y + plan.cursor_height - kTile,
+                         plan.cursor_width, kTile, outline);
+        painter.fillRect(plan.cursor_x, plan.cursor_y, kTile,
+                         plan.cursor_height, outline);
+        painter.fillRect(plan.cursor_x + plan.cursor_width - kTile,
+                         plan.cursor_y, kTile, plan.cursor_height, outline);
+        if (state_.opening_intro.post_intro_caption_visible) {
+            draw_startup_text(painter, plan.caption_x, plan.caption_y,
+                              plan.caption);
         }
     }
 
@@ -1068,6 +1098,10 @@ private:
         }
 
         if (state_.phase == StartupIntegrationPhase::save_load) {
+            // 0x59172 C0DA writes Game 1/2 over the live Start Options
+            // nametable; 0xC3E6 is not recalled until the slot action.
+            draw_startup_layout(painter, kStartOptionsPlaneVram,
+                                kStartOptionsLayout);
             if (state_.save_load.message == SaveLoadMessage::no_save_data) {
                 draw_startup_layout(painter, kSaveLoadMessagePlaneVram,
                                     kNoSaveDataLayout);

@@ -522,7 +522,9 @@ int main() {
         new_game_state.opening_intro.stage_loop_frame != 0x0529U ||
         new_game_state.opening_intro.scene != OpeningIntroScene::cab_map ||
         new_game_state.opening_intro.post_intro_frame !=
-            kPostIntroCabModeFourFrames + kPostIntroCabModeTwoFrames) {
+            kPostIntroCabTotalFrames ||
+        new_game_state.opening_intro.post_intro_mode != 2U ||
+        new_game_state.opening_intro.post_intro_phase != 4U) {
         return 13;
     }
     const auto has_sprite_family =
