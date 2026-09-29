@@ -217,6 +217,65 @@ void spawn_entity_effect(
     call_once(service_audio);
 }
 
+bool spawn_entity_effect(
+    EntityEffectSpawnState& effect,
+    const EntityEffectSource& source,
+    const std::uint8_t lifetime_index,
+    std::array<std::uint8_t, 18>& slots,
+    std::vector<std::uint8_t>& collision_map) {
+    if (effect.active != 0) {
+        EffectRecordState record{};
+        record.heading = effect.heading;
+        record.slot = effect.slot;
+        record.collision_base = effect.collision_base;
+        record.tile_bytes = effect.saved_tiles;
+        record.coordinate = 1;
+        reset_effect_record(record, slots, collision_map);
+    }
+    const auto allocation = allocate_first_free_effect_slot_record(slots);
+    if (allocation.table_full) {
+        return false;
+    }
+    effect.slot = allocation.slot;
+    effect.attribute = static_cast<std::int16_t>(allocation.record_parameter);
+    effect.active = 1;
+    effect.countdown = static_cast<std::uint16_t>(lifetime_index * 0x190U);
+    auto heading = static_cast<std::uint16_t>(
+        (source.heading << 3U) | (source.heading >> 13U));
+    heading = static_cast<std::uint16_t>(heading & 7U);
+    effect.heading = heading;
+    const auto& origin = kEffectSpawnOrigins[heading];
+    const auto snapped_x = static_cast<std::uint16_t>(
+        (static_cast<std::uint16_t>(source.x + origin.first) & 0xFE00U) +
+        0x0100U);
+    const auto snapped_y = static_cast<std::uint16_t>(
+        (static_cast<std::uint16_t>(source.y + origin.second) & 0xFE00U) +
+        0x0100U);
+    effect.world_x = snapped_x;
+    effect.world_y = snapped_y;
+    auto tile_x = static_cast<std::uint16_t>(snapped_x >> 4U);
+    auto tile_y = static_cast<std::uint16_t>(snapped_y >> 4U);
+    tile_y = static_cast<std::uint16_t>((tile_y << 1U) & 0xFFC0U);
+    tile_x = static_cast<std::uint16_t>(tile_x >> 5U);
+    effect.collision_base = static_cast<std::uint16_t>(tile_x + tile_y);
+    const auto fill = static_cast<std::int8_t>(source.item_code) > 9
+                          ? static_cast<std::uint8_t>(0x7E)
+                          : static_cast<std::uint8_t>(0x7F);
+    const auto& offsets = kEffectCollisionRestoreOffsets[heading];
+    for (std::size_t index = 0; index < offsets.size(); ++index) {
+        const auto map_index = static_cast<std::uint16_t>(
+            effect.collision_base +
+            static_cast<std::uint16_t>(offsets[index]));
+        std::uint8_t saved = 0;
+        if (map_index < collision_map.size()) {
+            saved = collision_map[map_index];
+            collision_map[map_index] = fill;
+        }
+        effect.saved_tiles[index] = saved;
+    }
+    return true;
+}
+
 void advance_entity_effect_timer(
     EntityEffectSlotState& effect,
     const std::function<void()>& clear_slot,

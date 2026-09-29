@@ -137,6 +137,32 @@ void spawn_entity_effect(
     const std::function<void(const EntityEffectSlotState&)>& append_sprite,
     const std::function<void()>& service_audio);
 
+struct EntityEffectSpawnState {
+    std::uint16_t world_x = 0;
+    std::uint16_t active = 0;
+    std::uint16_t world_y = 0;
+    std::uint16_t heading = 0;
+    std::uint16_t countdown = 0;
+    std::int16_t attribute = 0;
+    std::uint16_t slot = 0;
+    std::uint16_t collision_base = 0;
+    std::array<std::uint8_t, 5> saved_tiles{};
+};
+
+constexpr std::array<std::pair<std::int16_t, std::int16_t>, 8>
+    kEffectSpawnOrigins{{
+        {0, -1152}, {814, -814}, {1152, 0}, {814, 814},
+        {0, 1152}, {-814, 814}, {-1152, 0}, {-814, -814},
+    }};
+
+// ROM 0x49A2: reset live FFDC9E, 0x1582A, 0x4AAC snap, 0x4BB0 tiles 0x7E/0x7F.
+bool spawn_entity_effect(
+    EntityEffectSpawnState& effect,
+    const EntityEffectSource& source,
+    std::uint8_t lifetime_index,
+    std::array<std::uint8_t, 18>& slots,
+    std::vector<std::uint8_t>& collision_map);
+
 void advance_entity_effect_timer(
     EntityEffectSlotState& effect,
     const std::function<void()>& clear_slot,

@@ -343,5 +343,24 @@ int main() {
         delayed_sprites[0].attributes != 0x245FU) {
         return 30;
     }
+
+    EntityEffectSpawnState spawned{};
+    std::array<std::uint8_t, 18> spawn_slots{};
+    std::vector<std::uint8_t> spawn_map(0x400, 0xAA);
+    if (!spawn_entity_effect(spawned, {0x1000U, 0x2000U, 0, 10}, 1U,
+                             spawn_slots, spawn_map) ||
+        spawned.active != 1 || spawned.slot != 0 ||
+        spawned.attribute != 0x49 || spawned.heading != 0 ||
+        spawned.countdown != 0x190U || spawned.world_x != 0x1100U ||
+        spawned.world_y != 0x1B00U || spawned.collision_base != 0x348U ||
+        spawn_map[0x348] != 0x7E || spawned.saved_tiles[0] != 0xAA) {
+        return 31;
+    }
+    spawn_slots.fill(1);
+    spawned.active = 0;
+    if (spawn_entity_effect(spawned, {0x1000U, 0x2000U, 0, 5}, 1U, spawn_slots,
+                            spawn_map)) {
+        return 32;
+    }
     return 0;
 }
