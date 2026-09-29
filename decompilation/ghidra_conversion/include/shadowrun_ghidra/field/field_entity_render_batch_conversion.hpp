@@ -278,6 +278,10 @@ void clone_entity_spawn_variant_a(EntitySpawnCloneRecord& destination,
                                   const EntitySpawnCloneRecord& source,
                                   std::int16_t& phase_gate);
 
+// ROM 0x563E: dest +0xB2=6, copy +0x32/+0x2A/+0xD8, +2=5, +3=0.
+void clone_entity_spawn_variant_b(EntitySpawnCloneRecord& destination,
+                                  const EntitySpawnCloneRecord& source);
+
 struct TitleSpriteTimerState {
     std::int8_t countdown = 0;
     std::uint8_t phase = 0;

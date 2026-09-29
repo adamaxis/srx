@@ -259,6 +259,14 @@ int main() {
         clone_destination.script != 0xD8U) {
         return 20;
     }
+    clone_destination = {9, 9, 9, 9, 9, 9};
+    clone_entity_spawn_variant_b(clone_destination, clone_source);
+    if (clone_destination.auxiliary != 6 || clone_destination.slot != 3 ||
+        clone_destination.attribute != 0x2A ||
+        clone_destination.countdown != 5 || clone_destination.phase != 0 ||
+        clone_destination.script != 0xD8U) {
+        return 21;
+    }
 
     TitleSpriteTimerState timer{0, 3};
     int timer_builds = 0;

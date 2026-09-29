@@ -377,6 +377,16 @@ void clone_entity_spawn_variant_a(EntitySpawnCloneRecord& destination,
     destination.script = source.script;
 }
 
+void clone_entity_spawn_variant_b(EntitySpawnCloneRecord& destination,
+                                  const EntitySpawnCloneRecord& source) {
+    destination.auxiliary = 6;
+    destination.slot = source.slot;
+    destination.attribute = source.attribute;
+    destination.countdown = 5;
+    destination.phase = 0;
+    destination.script = source.script;
+}
+
 void clone_entity_spawn_variant_b(EntitySpawnRecord& destination,
                                   const EntitySpawnRecord& source) {
     destination = source;
