@@ -38,6 +38,10 @@ int main() {
     if (!expect(compute_diagonal_step_cost(-32768, -32768) == 0x4000U)) {
         return 19;
     }
+    if (!expect(compute_record_diagonal_step_cost(10U, 4U, 0U, 0U) == 12U &&
+                compute_record_diagonal_step_cost(0U, 0U, 10U, 4U) == 12U)) {
+        return 20;
+    }
 
     const auto negative_vertical = measure_heading_and_distance(0, -100);
     if (!expect(negative_vertical.heading == 0x4000U &&

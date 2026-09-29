@@ -45,6 +45,16 @@ std::uint32_t compute_diagonal_step_cost(
     return static_cast<std::uint16_t>(major + half_minor);
 }
 
+std::uint32_t compute_record_diagonal_step_cost(
+    const std::uint16_t origin_x,
+    const std::uint16_t origin_y,
+    const std::uint16_t target_x,
+    const std::uint16_t target_y) {
+    return compute_diagonal_step_cost(
+        static_cast<std::int16_t>(origin_x - target_x),
+        static_cast<std::int16_t>(origin_y - target_y));
+}
+
 RelativeHeadingMeasurement measure_heading_and_distance(
     const std::int32_t delta_x,
     const std::int32_t delta_y) {
