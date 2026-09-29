@@ -70,5 +70,17 @@ int main() {
         glyph_row->source_bytes != 90U) {
         return 5;
     }
+    const auto* auxiliary = find_remaining_routine(0x1562EU);
+    const auto* palette_fade = find_remaining_routine(0x16396U);
+    const auto* effect_slots = find_remaining_routine(0x163DAU);
+    if (auxiliary == nullptr ||
+        auxiliary->alias != "service_entity_auxiliary_behavior" ||
+        auxiliary->source_bytes != 24U || palette_fade == nullptr ||
+        palette_fade->alias != "advance_palette_fade" ||
+        palette_fade->source_bytes != 68U || effect_slots == nullptr ||
+        effect_slots->alias != "service_active_effect_slots" ||
+        effect_slots->source_bytes != 64U) {
+        return 6;
+    }
     return 0;
 }
