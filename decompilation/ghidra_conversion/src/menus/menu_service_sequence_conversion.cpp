@@ -730,6 +730,10 @@ void render_menu_row(const std::function<void()>& write_grid,
     }
 }
 
+MenuDialogPreparePlan prepare_menu_dialog() {
+    return {};
+}
+
 std::uint64_t prepare_menu_dialog(
     const std::function<std::uint64_t()>& prepare_dialog,
     const std::function<void()>& service_dialog) {
@@ -739,6 +743,10 @@ std::uint64_t prepare_menu_dialog(
         service_dialog();
     }
     return result;
+}
+
+MenuTextRefreshPlan refresh_menu_text_plan() {
+    return {};
 }
 
 bool refresh_menu_text(
@@ -928,6 +936,10 @@ void write_menu_repeated_grid_with_metadata(
     if (write_grid) {
         write_grid();
     }
+}
+
+MenuTextAssetPlan render_menu_text_asset() {
+    return {};
 }
 
 void render_menu_text_asset(const std::function<void()>& render_text) {

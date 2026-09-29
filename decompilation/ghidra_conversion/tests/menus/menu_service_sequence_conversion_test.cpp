@@ -208,6 +208,13 @@ int main() {
         order != std::vector<int>{14, 15, 15}) {
         return 8;
     }
+    const auto dialog_plan = prepare_menu_dialog();
+    if (dialog_plan.first_bar_destination != 0xC69CU ||
+        dialog_plan.first_bar_selector != 0 ||
+        dialog_plan.second_bar_destination != 0xC79CU ||
+        dialog_plan.second_bar_selector != -1) {
+        return 55;
+    }
 
     MenuTextRefreshState text_state{-1};
     order.clear();
@@ -217,6 +224,13 @@ int main() {
         text_state.pending_text_count != 0 ||
         order != std::vector<int>{16, 17, 17}) {
         return 9;
+    }
+    const auto text_plan = refresh_menu_text_plan();
+    if (text_plan.name_destination != 0xC51CU ||
+        text_plan.name_source_offset != 0x58U ||
+        text_plan.second_source != 0x000D1AC6U ||
+        text_plan.palette != 0x6000U) {
+        return 56;
     }
     text_state.pending_text_count = 1;
     if (refresh_menu_text(text_state, [&order] { order.push_back(18); },
@@ -361,6 +375,11 @@ int main() {
         [&panel_events] { panel_events.push_back(31); });
     if (panel_events != std::vector<int>{26, 27, 28, 29, 30, 31}) {
         return 22;
+    }
+    const auto text_asset = render_menu_text_asset();
+    if (text_asset.destination != 0xC69CU ||
+        text_asset.source != 0x000D19A8U || text_asset.palette != 0x6000U) {
+        return 57;
     }
 
     if (select_hud_glyph_attribute_flags({0U, 0U, -1}) != 0x2000U ||

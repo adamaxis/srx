@@ -548,18 +548,34 @@ MenuRowRenderPlan render_menu_row();
 void render_menu_row(const std::function<void()>& write_grid,
                      const std::function<void()>& render_row);
 
-// ROM 0x11ABE: preserve the preparation result while applying the shared
-// dialog service twice.
+struct MenuDialogPreparePlan {
+    // ROM 0x11ABE: 0x11AE4 then 0x12CEE at C69C D0=0 and C79C D0=-1.
+    std::uint32_t first_bar_destination = 0xC69CU;
+    std::int16_t first_bar_selector = 0;
+    std::uint32_t second_bar_destination = 0xC79CU;
+    std::int16_t second_bar_selector = -1;
+};
+
+// ROM 0x11ABE: 0x11AE4 once, then two 0x12CEE combat-bar writes.
+MenuDialogPreparePlan prepare_menu_dialog();
 std::uint64_t prepare_menu_dialog(
     const std::function<std::uint64_t()>& prepare_dialog,
     const std::function<void()>& service_dialog);
 
 struct MenuTextRefreshState {
-    std::int8_t pending_text_count = 0;
+    std::int8_t pending_text_count = 0; // record +0x4F; BGT skips
 };
 
-// ROM 0x12062: when no text is pending, prepare and render the text twice,
-// then clear the pending count.
+struct MenuTextRefreshPlan {
+    std::uint32_t name_destination = 0xC51CU;
+    std::uint16_t name_source_offset = 0x58;
+    std::uint32_t second_source = 0x000D1AC6U;
+    std::uint16_t palette = 0x6000;
+};
+
+// ROM 0x12062: +0x4F BGT skip; else 0x12C36, 0xC0DA dest C51C from +0x58,
+// 0xC0DA from 0xD1AC6, CLR +0x4F.
+MenuTextRefreshPlan refresh_menu_text_plan();
 bool refresh_menu_text(
     MenuTextRefreshState& state,
     const std::function<void()>& prepare_text,
@@ -683,7 +699,14 @@ void write_menu_repeated_grid(const std::function<void()>& write_grid);
 void write_menu_repeated_grid_with_metadata(
     const std::function<void()>& write_grid);
 
-// ROM 0x12CD6: submit one menu text asset.
+struct MenuTextAssetPlan {
+    std::uint32_t destination = 0xC69CU;
+    std::uint32_t source = 0x000D19A8U;
+    std::uint16_t palette = 0x6000;
+};
+
+// ROM 0x12CD6: 0xC0DA dest 0xC69C source 0xD19A8 palette 0x6000.
+MenuTextAssetPlan render_menu_text_asset();
 void render_menu_text_asset(const std::function<void()>& render_text);
 
 enum class CommandOverviewActionDialogGridKind {
