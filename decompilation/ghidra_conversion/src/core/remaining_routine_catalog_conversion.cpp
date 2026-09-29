@@ -226,6 +226,8 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00012CEEU, "compute_equipment_combat_bars", RoutineFamily::menu, 432U},
     {0x00012E9EU, "service_entity_action_menu", RoutineFamily::menu, 16U},
     {0x00012EAEU, "render_equipment_action_detail_row", RoutineFamily::menu, 162U},
+    {0x00012F50U, "render_entity_action_menu", RoutineFamily::menu, 84U},
+    {0x00012FA4U, "advance_entity_action_menu", RoutineFamily::menu, 92U},
     {0x00013000U, "select_entity_action_detail", RoutineFamily::menu, 192U},
     {0x000130C0U, "build_field_action_detail_plan", RoutineFamily::menu, 360U},
     {0x00013228U, "build_inventory_action_detail_plan", RoutineFamily::menu, 382U},

@@ -14,7 +14,21 @@ namespace shadowrun::ghidra_conversion {
 void service_entity_action_menu(const std::function<void()>& read_action,
                                 const std::function<void()>& render_menu);
 
-// ROM 0x12F50: update the action menu, render its text, then submit its grid.
+struct EntityActionMenuRenderPlan {
+    std::uint32_t text_source = 0x000D19B0U;
+    std::uint32_t text_destination = 0x0000C51CU;
+    std::uint16_t text_palette = 0x6000;
+    std::uint32_t grid_source = 0x000CF84CU;
+    std::uint32_t grid_destination = 0x0000C52AU;
+    std::uint16_t grid_palette = 0x2000;
+    std::uint16_t grid_height = 6; // D7
+    std::uint16_t grid_width = 0;  // D1
+};
+
+// ROM 0x12F50: 0x13000, 0xC0DA dest C51C source D19B0, then 0x1232 dest C52A
+// from 0xCF84C + unsigned(+0x25)*0xE, D2=0x2000 D7=6 D1=0.
+EntityActionMenuRenderPlan render_entity_action_menu_plan(
+    std::uint8_t action_row);
 void render_entity_action_menu(const std::function<void()>& update_menu,
                                const std::function<void()>& render_text,
                                const std::function<void()>& write_grid);

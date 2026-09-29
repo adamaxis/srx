@@ -14,6 +14,17 @@ int main() {
     if (order != std::vector<int>{1, 2, 3, 4, 5}) {
         return 1;
     }
+    const auto render_plan = render_entity_action_menu_plan(4U);
+    const auto render_plan_zero = render_entity_action_menu_plan(0U);
+    if (render_plan.text_source != 0x000D19B0U ||
+        render_plan.text_destination != 0x0000C51CU ||
+        render_plan.grid_destination != 0x0000C52AU ||
+        render_plan.grid_height != 6U || render_plan.grid_width != 0U ||
+        render_plan.grid_palette != 0x2000U ||
+        render_plan_zero.grid_source != 0x000CF84CU ||
+        render_plan.grid_source != 0x000CF84CU + 0x0EU) {
+        return 4;
+    }
 
     EntityActionMenuAdvanceInput advance_input{};
     advance_input.active_action_code = 3U;

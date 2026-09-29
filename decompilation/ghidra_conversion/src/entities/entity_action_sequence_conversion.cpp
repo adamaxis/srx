@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/entities/entity_action_sequence_conversion.hpp"
+#include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 
 namespace shadowrun::ghidra_conversion {
 
@@ -10,6 +11,19 @@ void service_entity_action_menu(const std::function<void()>& read_action,
     if (render_menu) {
         render_menu();
     }
+}
+
+EntityActionMenuRenderPlan render_entity_action_menu_plan(
+    const std::uint8_t action_row) {
+    EntityActionMenuRenderPlan plan;
+    const auto& catalog = us_item_catalog();
+    const auto detail =
+        action_row < catalog.size()
+            ? static_cast<std::uint8_t>(catalog[action_row].signed_detail_asset_index)
+            : std::uint8_t{0};
+    plan.grid_source =
+        0x000CF84CU + static_cast<std::uint32_t>(detail) * 0x000EU;
+    return plan;
 }
 
 void render_entity_action_menu(const std::function<void()>& update_menu,
