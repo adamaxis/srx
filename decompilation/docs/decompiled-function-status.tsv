@@ -482,8 +482,8 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x19DE8	menu service then prepare	ghidra_conversion::run_menu_service_then_prepare	shadowrun_ghidra_menu_slot_batch	partial		Typed service and menu preparation order
 0x19F72	menu slot code five	ghidra_conversion::finalize_menu_slot_code	shadowrun_ghidra_menu_slot_batch	partial		Reverse slot scan and visual/value cleanup for code five
 0x19F78	menu slot code six	ghidra_conversion::finalize_menu_slot_code	shadowrun_ghidra_menu_slot_batch	partial		Reverse slot scan and visual/value cleanup for code six
-0x1A01E	menu selection/text variant	ghidra_conversion::publish_menu_selection_then_text	shadowrun_ghidra_menu_slot_batch	partial		Typed selection/text sequence variant
-0x1A12E	menu countdown advance	ghidra_conversion::advance_menu_countdown	shadowrun_ghidra_menu_slot_batch	partial		Typed decrement and expiry boundary
+0x1A01E	menu selection/text variant	ghidra_conversion::publish_menu_selection_then_text_variant	shadowrun_ghidra_menu_slot_batch	partial		ROM-traced D0=8/D1=0x0A selection publication followed by the menu-text renderer
+0x1A12E	menu countdown advance	ghidra_conversion::advance_menu_countdown	shadowrun_ghidra_menu_slot_batch	partial		ROM-traced 8-bit D1-plus-countdown arithmetic, signed decrement gate, and code-five expiry value
 0x1A154	selected menu record clear	ghidra_conversion::clear_selected_menu_record	shadowrun_ghidra_menu_slot_batch	partial		Typed 0x14-stride record marker clear
 0x1A54E	effect defaults	ghidra_conversion::initialize_effect_defaults	shadowrun_ghidra_menu_slot_batch	partial		Typed effect origin, velocity, lifetime, and palette defaults
 0x1A8F4	effect entity reset	ghidra_conversion::reset_effect_entity	shadowrun_ghidra_menu_slot_batch	partial		Typed effect accumulator and entity reset

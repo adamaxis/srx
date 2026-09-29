@@ -108,6 +108,14 @@ void publish_menu_selection_then_text(
     call_once(render_text);
 }
 
+void publish_menu_selection_then_text_variant(
+    const MenuSelectionTextVariantCallbacks& callbacks) {
+    if (callbacks.set_hud_selection) {
+        callbacks.set_hud_selection(8U, 0x0AU);
+    }
+    call_once(callbacks.render_menu_text_followup);
+}
+
 void refresh_mode_metadata_leaf(const std::function<void()>& refresh) {
     call_once(refresh);
 }
@@ -217,6 +225,36 @@ bool advance_menu_countdown(MenuCountdownState& state,
     }
     call_once(on_expiry);
     return true;
+}
+
+std::optional<std::int16_t> advance_menu_countdown(
+    MenuCountdownState& state,
+    const std::int16_t incoming_value,
+    const MenuCountdownExactCallbacks& callbacks) {
+    if (state.countdown == 0) {
+        return std::nullopt;
+    }
+
+    const auto sign_extend_byte = [](const std::uint8_t value) {
+        return value < 0x80U
+                   ? static_cast<std::int16_t>(value)
+                   : static_cast<std::int16_t>(
+                         static_cast<std::int16_t>(value) - 0x100);
+    };
+    const auto incoming_low = static_cast<std::uint8_t>(incoming_value);
+    const auto countdown_byte = static_cast<std::uint8_t>(state.countdown);
+    const auto result_byte = static_cast<std::uint8_t>(incoming_low +
+                                                        countdown_byte);
+    const auto result = sign_extend_byte(result_byte);
+    const auto decremented = static_cast<std::uint8_t>(countdown_byte - 1U);
+    state.countdown = static_cast<std::int8_t>(sign_extend_byte(decremented));
+    if (state.countdown > 0) {
+        return std::nullopt;
+    }
+    if (callbacks.finalize_menu_slot_code_five) {
+        callbacks.finalize_menu_slot_code_five(result);
+    }
+    return result;
 }
 
 void clear_selected_menu_record(std::vector<std::uint8_t>& records,

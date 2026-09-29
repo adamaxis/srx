@@ -6,6 +6,7 @@
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <vector>
 
 namespace shadowrun::ghidra_conversion {
@@ -65,6 +66,19 @@ void publish_menu_selection_then_text(
     HudSelectionState& state,
     std::uint8_t code,
     const std::function<void()>& render_text);
+
+struct MenuSelectionTextVariantCallbacks {
+    // ROM 0x17C84 receives D0=8 and D1=0x0A.
+    std::function<void(std::uint8_t source_code, std::uint8_t value)>
+        set_hud_selection;
+    std::function<void()> render_menu_text_followup;
+};
+
+// ROM 0x1A01E: publish the fixed code/value pair for this menu-text variant,
+// then render the follow-up text.
+void publish_menu_selection_then_text_variant(
+    const MenuSelectionTextVariantCallbacks& callbacks);
+
 void refresh_mode_metadata_leaf(const std::function<void()>& refresh);
 void run_menu_service_then_prepare(
     const std::function<void()>& menu_service,
@@ -122,6 +136,19 @@ struct MenuCountdownState {
 // boundary when the counter reaches zero.
 bool advance_menu_countdown(MenuCountdownState& state,
                             const std::function<void()>& on_expiry);
+
+struct MenuCountdownExactCallbacks {
+    // ROM 0x19F72 receives the sign-extended result in D1.
+    std::function<void(std::int16_t)> finalize_menu_slot_code_five;
+};
+
+// ROM 0x1A12E: add the current countdown byte to the caller's D1 low byte,
+// sign-extend that byte, decrement the countdown as a source byte, and call
+// the code-five finalizer only when the post-decrement signed byte is <= 0.
+std::optional<std::int16_t> advance_menu_countdown(
+    MenuCountdownState& state,
+    std::int16_t incoming_value,
+    const MenuCountdownExactCallbacks& callbacks);
 
 void clear_selected_menu_record(std::vector<std::uint8_t>& records,
                                 std::size_t selected_index);

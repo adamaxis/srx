@@ -58,6 +58,18 @@ int main() {
     if (selection.values[2] != 7U || text_calls != 2) {
         return 18;
     }
+    std::uint8_t variant_code = 0;
+    std::uint8_t variant_value = 0;
+    int variant_text = 0;
+    publish_menu_selection_then_text_variant(
+        {[&](const std::uint8_t code, const std::uint8_t value) {
+             variant_code = code;
+             variant_value = value;
+         },
+         [&] { ++variant_text; }});
+    if (variant_code != 8U || variant_value != 0x0AU || variant_text != 1) {
+        return 19;
+    }
     refresh_mode_metadata_leaf([&] { events.push_back(10); });
     run_menu_service_then_prepare([&] { events.push_back(11); },
                                   [&] { events.push_back(12); });
@@ -123,6 +135,26 @@ int main() {
     if (advance_menu_countdown(countdown, [&] { ++expiries; }) ||
         !advance_menu_countdown(countdown, [&] { ++expiries; }) || expiries != 1) {
         return 7;
+    }
+    MenuCountdownState exact_countdown{2};
+    std::int16_t finalized_value = 0;
+    if (advance_menu_countdown(exact_countdown, 3,
+                               {[&](const std::int16_t value) {
+                                    finalized_value = value;
+                                }}) ||
+        exact_countdown.countdown != 1 ||
+        advance_menu_countdown(exact_countdown, 3,
+                               {[&](const std::int16_t value) {
+                                    finalized_value = value;
+                                }}) != std::optional<std::int16_t>(4) ||
+        finalized_value != 4 || exact_countdown.countdown != 0) {
+        return 20;
+    }
+    exact_countdown.countdown = -1;
+    if (advance_menu_countdown(exact_countdown, 0, {}) !=
+            std::optional<std::int16_t>(-1) ||
+        exact_countdown.countdown != -2) {
+        return 21;
     }
 
     std::vector<std::uint8_t> records(0x28U, 1U);

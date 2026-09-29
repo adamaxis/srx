@@ -474,6 +474,25 @@ They remain `partial` rather than `defended`: the direct behavior is verified
 against `disassembly.s`, but the callers still need to be composed into the
 actual menu controller and exercised by a screen-level hill.
 
+## Menu-text variant and countdown handoff: 0x1A01E / 0x1A12E
+
+Two adjacent helpers also had more behavior than their generic wrappers
+exposed:
+
+* `0x1A01E` publishes HUD code `8` with value `0x0A`, then calls the menu
+  text follow-up. The fixed constants are now part of the typed callback
+  contract.
+* `0x1A12E` is called with an incoming D1 value. If `FFF0D2` is nonzero, it
+  adds the current countdown byte to D1's low byte, sign-extends the result,
+  decrements `FFF0D2` as a source byte, and calls `0x19F72` only when the
+  post-decrement signed byte is no longer positive. The computed sign-extended
+  value is passed to the code-five finalizer; a host countdown wrapper that
+  merely decrements and emits a parameterless expiry was not source-faithful.
+
+The exact overload is covered with both the non-expiry and expiry values,
+including the negative-countdown byte path. It remains partial until the
+code-five finalizer and its callers are composed into the menu controller.
+
 ## Field-action resource selection: 0x575F8 / 0x57610 / 0x57628 / 0x5763C
 
 The four helpers immediately before the field-action purchase routines are a
