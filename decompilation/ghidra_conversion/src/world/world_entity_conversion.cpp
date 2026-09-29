@@ -1,6 +1,7 @@
 #include "shadowrun_ghidra/world/world_entity_conversion.hpp"
 
 #include "shadowrun_ghidra/entities/entity_projection_conversion.hpp"
+#include "shadowrun_ghidra/field/field_entity_render_batch_conversion.hpp"
 
 namespace shadowrun::ghidra_conversion {
 
@@ -187,8 +188,8 @@ std::vector<BuiltSpriteRecord> refresh_projected_entity_sprites(
         const auto built = build_title_sprite_records(
             projected_entity_sprite_records(
                 select_projected_entity_sprite_source(slot.type)),
-            static_cast<std::int16_t>(slot.screen_y),
-            static_cast<std::int16_t>(slot.screen_x), sequence, 0x4000U);
+            static_cast<std::int16_t>(slot.screen_x),
+            static_cast<std::int16_t>(slot.screen_y), sequence, 0x4000U);
         sequence = static_cast<std::uint8_t>(sequence + built.size());
         records.insert(records.end(), built.begin(), built.end());
     }
@@ -241,6 +242,62 @@ void advance_entity_effect_timer(
     if (append_sprite) {
         append_sprite(effect);
     }
+}
+
+std::vector<BuiltSpriteRecord> advance_entity_effect_timer(
+    EntityEffectTimerState& state,
+    std::array<std::uint8_t, 18>& slots,
+    std::vector<std::uint8_t>& collision_map,
+    const std::uint16_t camera_x,
+    const std::uint16_t camera_y,
+    const std::uint8_t first_sequence) {
+    --state.countdown;
+    if (state.countdown < 0) {
+        EffectRecordState record{};
+        record.heading = state.heading;
+        record.slot = state.slot;
+        record.collision_base = state.collision_base;
+        record.tile_bytes = state.saved_tiles;
+        record.coordinate = 1;
+        reset_effect_record(record, slots, collision_map);
+        return {};
+    }
+    EntityProjectionState projection{
+        state.world_x, state.world_y, state.sprite_offset_y, state.screen_x,
+        state.screen_y};
+    project_entity_screen_position_standard(projection, camera_x, camera_y);
+    state.screen_x = projection.screen_x;
+    state.screen_y = projection.screen_y;
+    const auto remainder = static_cast<std::uint16_t>(
+        static_cast<std::uint16_t>(state.countdown) % 5U);
+    const auto next = static_cast<std::uint16_t>(
+        remainder + 1U == 5U ? 0U : remainder + 1U);
+    const auto heading =
+        state.heading < kEffectTimerHeadingOffsets.size() ? state.heading : 0U;
+    const auto& pairs = kEffectTimerHeadingOffsets[heading];
+    const auto attributes =
+        kEffectTimerSpriteAttributes[static_cast<std::uint16_t>(state.countdown) &
+                                     3U];
+    const std::vector<SpriteSourceRecord> source{{-16, -16, 15, attributes}};
+    std::vector<BuiltSpriteRecord> records;
+    auto sequence = first_sequence;
+    for (int step = 4; step >= 0; --step) {
+        if (step != static_cast<int>(remainder) &&
+            step != static_cast<int>(next)) {
+            continue;
+        }
+        const auto& pair = pairs[static_cast<std::size_t>(4 - step)];
+        const auto built = build_title_sprite_records_with_attribute_offset(
+            source,
+            static_cast<std::int16_t>(
+                static_cast<std::int16_t>(state.screen_x) + pair.first),
+            static_cast<std::int16_t>(
+                static_cast<std::int16_t>(state.screen_y) + pair.second),
+            sequence, 0x2000U, state.attribute_offset);
+        sequence = static_cast<std::uint8_t>(sequence + built.size());
+        records.insert(records.end(), built.begin(), built.end());
+    }
+    return records;
 }
 
 bool advance_effect_animation(

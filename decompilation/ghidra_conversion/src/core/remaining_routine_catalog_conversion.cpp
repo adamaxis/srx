@@ -68,6 +68,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00004618U, "update_entity_render_pass", RoutineFamily::field, 64U},
     {0x0000481EU, "refresh_projected_entity_sprites", RoutineFamily::field, 148U},
     {0x000049A0U, "noop_effect_callback", RoutineFamily::field, 2U},
+    {0x00004ADCU, "advance_entity_effect_timer", RoutineFamily::field, 144U},
     {0x00004B6CU, "reset_effect_record", RoutineFamily::field, 68U},
     {0x00005A56U, "project_entity_screen_position", RoutineFamily::entity, 200U},
     {0x00005FDCU, "advance_entity_animation_accumulator", RoutineFamily::field, 50U},

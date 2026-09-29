@@ -5,6 +5,7 @@
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <utility>
 #include <vector>
 
 namespace shadowrun::ghidra_conversion {
@@ -142,6 +143,44 @@ void advance_entity_effect_timer(
     const std::function<void()>& project_entity,
     const std::function<void(std::uint8_t)>& build_sprite_records,
     const std::function<void(const EntityEffectSlotState&)>& append_sprite);
+
+struct EntityEffectTimerState {
+    std::int16_t countdown = 0;
+    std::uint16_t heading = 0;
+    std::uint16_t world_x = 0;
+    std::uint16_t world_y = 0;
+    std::uint16_t sprite_offset_y = 0;
+    std::uint16_t screen_x = 0;
+    std::uint16_t screen_y = 0;
+    std::int16_t attribute_offset = 0;
+    std::uint16_t slot = 0;
+    std::uint16_t collision_base = 0;
+    std::array<std::uint8_t, 5> saved_tiles{};
+};
+
+constexpr std::array<std::array<std::pair<std::int16_t, std::int16_t>, 5>, 8>
+    kEffectTimerHeadingOffsets{{
+        {{{0, 0}, {32, 0}, {-32, 0}, {64, 0}, {-64, 0}}},
+        {{{0, 0}, {-32, 0}, {-64, 0}, {0, 32}, {0, 64}}},
+        {{{0, 0}, {0, -32}, {0, 32}, {0, -64}, {0, 64}}},
+        {{{0, 0}, {-32, 0}, {-64, 0}, {0, -32}, {0, -64}}},
+        {{{0, 0}, {32, 0}, {-32, 0}, {64, 0}, {-64, 0}}},
+        {{{0, 0}, {32, 0}, {64, 0}, {0, -32}, {0, -64}}},
+        {{{0, 0}, {0, -32}, {0, 32}, {0, -64}, {0, 64}}},
+        {{{0, 0}, {32, 0}, {64, 0}, {0, 32}, {0, 64}}},
+    }};
+
+constexpr std::array<std::uint16_t, 4> kEffectTimerSpriteAttributes{
+    0x0000U, 0x1800U, 0x1000U, 0x0800U};
+
+// ROM 0x4ADC: sub +0xE, expire to 0x4B6C, else two of five 0x13BE attaches.
+std::vector<BuiltSpriteRecord> advance_entity_effect_timer(
+    EntityEffectTimerState& state,
+    std::array<std::uint8_t, 18>& slots,
+    std::vector<std::uint8_t>& collision_map,
+    std::uint16_t camera_x,
+    std::uint16_t camera_y,
+    std::uint8_t first_sequence);
 
 struct EffectAnimationState {
     std::int16_t countdown = 0;

@@ -77,12 +77,44 @@ int main() {
         refresh_projected_entity_sprites(slots, 0x0080U, 0x0080U, 0U);
     if (slots[0].screen_x != 0x0088U || slots[0].screen_y != 0x0098U ||
         slots[1].screen_y != 0U || sprites.size() != 2U ||
-        sprites[0].y != 0x90 || sprites[0].x != 0x83 ||
+        sprites[0].y != 0x80 || sprites[0].x != 0x93 ||
         sprites[0].size != 4U || sprites[0].sequence != 0U ||
-        sprites[0].attributes != 0x47F2U || sprites[1].y != 0x94 ||
-        sprites[1].x != 0x84 || sprites[1].size != 0U ||
+        sprites[0].attributes != 0x47F2U || sprites[1].y != 0x84 ||
+        sprites[1].x != 0x94 || sprites[1].size != 0U ||
         sprites[1].sequence != 1U || sprites[1].attributes != 0x45B2U) {
         return 7;
+    }
+
+    EntityEffectTimerState timer{};
+    timer.countdown = 0;
+    timer.slot = 2;
+    timer.collision_base = 10;
+    timer.saved_tiles = {1, 2, 3, 4, 5};
+    std::array<std::uint8_t, 18> effect_slots{};
+    effect_slots[2] = 1;
+    std::vector<std::uint8_t> collision(20, 0xAA);
+    auto effect_sprites = advance_entity_effect_timer(
+        timer, effect_slots, collision, 0x0080U, 0x0080U, 0U);
+    if (timer.countdown != -1 || effect_slots[2] != 0 ||
+        !effect_sprites.empty() || collision[10] != 1) {
+        return 8;
+    }
+
+    timer = {};
+    timer.countdown = 5;
+    timer.world_x = 0x0100U;
+    timer.world_y = 0x0100U;
+    timer.sprite_offset_y = 0x0010U;
+    effect_sprites = advance_entity_effect_timer(
+        timer, effect_slots, collision, 0x0080U, 0x0080U, 0U);
+    if (timer.countdown != 4 || timer.screen_x != 0x0088U ||
+        timer.screen_y != 0x0098U || effect_sprites.size() != 2U ||
+        effect_sprites[0].y != 0x78 || effect_sprites[0].x != 0x88 ||
+        effect_sprites[0].size != 15U ||
+        effect_sprites[0].attributes != 0x2000U ||
+        effect_sprites[1].y != 0x38 || effect_sprites[1].x != 0x88 ||
+        effect_sprites[1].sequence != 1U) {
+        return 9;
     }
     return 0;
 }
