@@ -82,5 +82,17 @@ int main() {
         effect_slots->source_bytes != 64U) {
         return 6;
     }
+    const auto* tile_script = find_remaining_routine(0x1641AU);
+    const auto* populate = find_remaining_routine(0x164A8U);
+    const auto* clear_slots = find_remaining_routine(0x164DCU);
+    if (tile_script == nullptr ||
+        tile_script->alias != "advance_effect_slot_tile_script" ||
+        tile_script->source_bytes != 142U || populate == nullptr ||
+        populate->alias != "populate_entity_table" ||
+        populate->source_bytes != 52U || clear_slots == nullptr ||
+        clear_slots->alias != "clear_scene_record_transition_words" ||
+        clear_slots->source_bytes != 22U) {
+        return 7;
+    }
     return 0;
 }
