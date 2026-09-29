@@ -137,5 +137,81 @@ int main() {
         return 12;
     }
 
+    EntityAudioEffectRecord open{};
+    open.x = 0x10;
+    open.dest_x = 0x20;
+    open.heading_x = 2;
+    open.y = 0x30;
+    open.dest_y = 0x40;
+    open.heading_y = -1;
+    std::int32_t probed_x = 0;
+    std::int32_t probed_y = 0;
+    int terrain_expire = 0;
+    if (probe_spawned_effect_terrain(
+            open, {},
+            [&](const std::int32_t x, const std::int32_t y) {
+                probed_x = x;
+                probed_y = y;
+                return SpawnedEffectTerrainSample{};
+            },
+            [&] { ++terrain_expire; }) != SpawnedEffectTerrainResult::committed ||
+        open.x != 0x10 || open.dest_x != 0x0220 || terrain_expire != 0) {
+        return 13;
+    }
+    EntityAudioEffectRecord height_probe{};
+    height_probe.height = 2;
+    height_probe.x = 0x10;
+    height_probe.dest_x = 0x20;
+    height_probe.heading_x = 2;
+    height_probe.y = 0x30;
+    height_probe.dest_y = 0x40;
+    if (probe_spawned_effect_terrain(
+            height_probe, {},
+            [&](const std::int32_t, const std::int32_t y) {
+                probed_y = y;
+                return SpawnedEffectTerrainSample{};
+            },
+            {}) != SpawnedEffectTerrainResult::committed ||
+        (probed_y & 0xFFFF) != 0x0060U) {
+        return 14;
+    }
+    EntityAudioEffectRecord expire{};
+    expire.flags = 0x01;
+    expire.lift_sum = 0;
+    if (probe_spawned_effect_terrain(
+            expire, SpawnedEffectTerrainWorld{true, false, false},
+            [](const std::int32_t, const std::int32_t) {
+                return SpawnedEffectTerrainSample{1U, 0U};
+            },
+            [&] { ++terrain_expire; }) != SpawnedEffectTerrainResult::expired ||
+        (expire.flags & 0x01U) != 0U || terrain_expire != 1) {
+        return 15;
+    }
+    EntityAudioEffectRecord locked_commit{};
+    locked_commit.lift_sum = 1;
+    locked_commit.x = 1;
+    if (probe_spawned_effect_terrain(
+            locked_commit, SpawnedEffectTerrainWorld{true, false, false},
+            [](const std::int32_t, const std::int32_t) {
+                return SpawnedEffectTerrainSample{1U, 0U};
+            },
+            {}) != SpawnedEffectTerrainResult::committed) {
+        return 16;
+    }
+    EntityAudioEffectRecord deflect{};
+    deflect.heading_x = -8;
+    deflect.heading_y = 6;
+    deflect.x = 0;
+    deflect.y = 0;
+    if (probe_spawned_effect_terrain(
+            deflect, {},
+            [](const std::int32_t, const std::int32_t) {
+                return SpawnedEffectTerrainSample{1U, 1U};
+            },
+            {}) != SpawnedEffectTerrainResult::deflected ||
+        deflect.heading_x != 4 || deflect.heading_y != 3) {
+        return 17;
+    }
+
     return 0;
 }

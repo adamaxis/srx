@@ -93,4 +93,32 @@ EntityAudioEffectResult advance_entity_audio_effect(
 // height skips the apex. +0x36>=0x40 halves lift and heading; else park.
 void apply_spawned_effect_bounce(EntityAudioEffectRecord& state);
 
+enum class SpawnedEffectTerrainResult {
+    committed,
+    expired,
+    deflected,
+};
+
+struct SpawnedEffectTerrainWorld {
+    bool collision_lock = false;     // FFDFE2
+    bool effect_mode_active = false; // FFDF40
+    bool skip_deflect = false;       // FFDF68 != 0
+};
+
+struct SpawnedEffectTerrainSample {
+    std::uint16_t collision = 0;
+    std::uint16_t tile = 0;
+};
+
+using SpawnedEffectTerrainProbe =
+    std::function<SpawnedEffectTerrainSample(std::int32_t x, std::int32_t y)>;
+
+// ROM 0x15488: 0x14F26-style heading<<8 add, height<<4 into D6 low before
+// 0xE7C8, then commit / expire / 0x1550E heading deflect.
+SpawnedEffectTerrainResult probe_spawned_effect_terrain(
+    EntityAudioEffectRecord& state,
+    const SpawnedEffectTerrainWorld& world,
+    const SpawnedEffectTerrainProbe& probe,
+    const std::function<void()>& expire);
+
 } // namespace shadowrun::ghidra_conversion

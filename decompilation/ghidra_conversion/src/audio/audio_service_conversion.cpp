@@ -126,4 +126,72 @@ void apply_spawned_effect_bounce(EntityAudioEffectRecord& state) {
     state.lift_sum = 0;
 }
 
+namespace {
+
+std::int32_t packed_axis(const std::uint16_t high, const std::uint16_t low,
+                         const std::int16_t heading) {
+    auto value = (static_cast<std::int32_t>(high) << 16) |
+                 static_cast<std::uint16_t>(low);
+    value += static_cast<std::int32_t>(heading) << 8;
+    return value;
+}
+
+void commit_packed_axis(const std::int32_t packed, std::uint16_t& high,
+                        std::uint16_t& low) {
+    high = static_cast<std::uint16_t>(packed >> 16);
+    low = static_cast<std::uint16_t>(packed);
+}
+
+} // namespace
+
+SpawnedEffectTerrainResult probe_spawned_effect_terrain(
+    EntityAudioEffectRecord& state,
+    const SpawnedEffectTerrainWorld& world,
+    const SpawnedEffectTerrainProbe& probe,
+    const std::function<void()>& expire) {
+    const auto next_x = packed_axis(state.x, state.dest_x, state.heading_x);
+    const auto next_y = packed_axis(state.y, state.dest_y, state.heading_y);
+    auto probe_y = next_y;
+    probe_y = (probe_y & ~0xFFFF) |
+              static_cast<std::uint16_t>(
+                  static_cast<std::uint16_t>(probe_y) +
+                  static_cast<std::uint16_t>(state.height << 4));
+    const auto sample =
+        probe ? probe(next_x, probe_y) : SpawnedEffectTerrainSample{};
+    const auto commit = [&] {
+        commit_packed_axis(next_x, state.x, state.dest_x);
+        commit_packed_axis(next_y, state.y, state.dest_y);
+        return SpawnedEffectTerrainResult::committed;
+    };
+    if (sample.collision == 0U) {
+        return commit();
+    }
+    if (world.collision_lock) {
+        if (state.lift_sum != 0 || world.effect_mode_active) {
+            return commit();
+        }
+        state.flags = static_cast<std::uint8_t>(state.flags & ~0x01U);
+        if (expire) {
+            expire();
+        }
+        return SpawnedEffectTerrainResult::expired;
+    }
+    if (world.skip_deflect) {
+        return commit();
+    }
+    state.heading_y = static_cast<std::int16_t>(state.heading_y >> 1);
+    state.heading_x = static_cast<std::int16_t>(state.heading_x >> 1);
+    auto packed = static_cast<std::uint16_t>(state.y >> 4);
+    packed = static_cast<std::uint16_t>((packed << 1) & 0xFFC0U);
+    packed = static_cast<std::uint16_t>(
+        packed + static_cast<std::uint16_t>((state.x >> 4) >> 5));
+    packed = static_cast<std::uint16_t>(packed & 0x3FU);
+    if ((sample.tile & 0x3FU) == packed) {
+        state.heading_y = static_cast<std::int16_t>(-state.heading_y);
+    } else {
+        state.heading_x = static_cast<std::int16_t>(-state.heading_x);
+    }
+    return SpawnedEffectTerrainResult::deflected;
+}
+
 } // namespace shadowrun::ghidra_conversion
