@@ -83,6 +83,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x0000AF6CU, "reset_entity_animation_state", RoutineFamily::graphics, 16U},
     {0x0000AFF2U, "prepare_entity_auxiliary_behavior", RoutineFamily::graphics, 72U},
     {0x0000B330U, "enter_entity_behavior_transition", RoutineFamily::graphics, 90U},
+    {0x0000B49CU, "resolve_entity_fallback_movement", RoutineFamily::graphics, 148U},
     {0x0000B530U, "approach_entity_fixed_point_target", RoutineFamily::graphics, 58U},
     {0x0000B732U, "apply_movement_result_policy", RoutineFamily::graphics, 76U},
     {0x0000B77EU, "probe_entity_directional_collision", RoutineFamily::graphics, 54U},

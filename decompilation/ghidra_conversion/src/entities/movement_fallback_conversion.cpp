@@ -34,9 +34,9 @@ void resolve_entity_fallback_movement(
         entity.movement_status = 1U;
     }
 
-    const auto source_heading =
+    const auto first_heading =
         use_target_heading ? entity.target_heading : entity.heading;
-    const auto first = probe(rotate_heading_to_direction_slot(source_heading));
+    const auto first = probe(rotate_heading_to_direction_slot(first_heading));
     if (probe_failed(first, result_policy)) {
         entity.position_x = first.candidate_x;
         entity.position_y = first.candidate_y;
@@ -46,7 +46,7 @@ void resolve_entity_fallback_movement(
 
     entity.movement_status = 2U;
     const auto second_heading =
-        static_cast<std::uint16_t>(source_heading + 0x4000U);
+        static_cast<std::uint16_t>(entity.heading + 0x4000U);
     const auto second = probe(rotate_heading_to_direction_slot(second_heading));
     if (probe_failed(second, result_policy)) {
         entity.position_x = second.candidate_x;
@@ -56,7 +56,7 @@ void resolve_entity_fallback_movement(
     }
 
     const auto third_heading =
-        static_cast<std::uint16_t>(source_heading - 0x8000U);
+        static_cast<std::uint16_t>(entity.heading + 0x8000U);
     static_cast<void>(probe(rotate_heading_to_direction_slot(third_heading)));
     entity.continuation = restored_continuation;
 }

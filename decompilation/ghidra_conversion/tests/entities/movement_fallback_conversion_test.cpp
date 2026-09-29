@@ -63,7 +63,7 @@ int main() {
             return MovementFallbackAttempt{1, 0xEEEE, 0xFFFF};
         },
         0x0BADF00DU);
-    if (!expect(all_pass_slots == std::vector<std::uint16_t>({10, 14, 2})) ||
+    if (!expect(all_pass_slots == std::vector<std::uint16_t>({10, 6, 10})) ||
         !expect(all_pass.position_x == 0x5000 &&
                 all_pass.position_y == 0x6000) ||
         !expect(all_pass.movement_status == 2) ||
