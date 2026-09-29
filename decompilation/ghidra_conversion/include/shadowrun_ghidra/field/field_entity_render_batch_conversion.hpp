@@ -86,6 +86,25 @@ std::size_t upload_field_tile_row(
     FieldTileRowUploadState& state,
     const FieldTileRowUploadCallbacks& callbacks);
 
+struct FieldTilePlaneFillState {
+    std::uint16_t y = 0;
+    std::uint16_t destination = 0;
+    std::uint16_t plane_offset = 0;
+};
+
+struct FieldTilePlaneFillCallbacks {
+    std::function<void()> prepare_origin;
+    std::function<std::uint16_t()> compose_destination;
+    std::function<void(std::uint16_t destination, std::uint16_t y)>
+        render_column;
+};
+
+// ROM 0x3D18: 0x41B6, 0x4000, ADD D5, then 31 saved 0x3D4A passes. Each
+// pass wraps D4 by +0x80 in the low 12 bits and adds 8 to D1.
+std::size_t render_field_tile_plane_rows(
+    FieldTilePlaneFillState& state,
+    const FieldTilePlaneFillCallbacks& callbacks);
+
 struct FieldTileRowEdgeState {
     std::int16_t horizontal_direction = 0; // 0x40E2 D0 input
     std::uint16_t camera_x = 0; // FFDDC6

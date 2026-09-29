@@ -77,6 +77,43 @@ int main() {
         return 24;
     }
 
+    FieldTilePlaneFillState plane{};
+    std::vector<std::uint16_t> plane_dest;
+    std::vector<std::uint16_t> plane_y;
+    int prepare = 0;
+    int compose = 0;
+    const auto plane_rows = render_field_tile_plane_rows(
+        plane,
+        {[&] { ++prepare; },
+         [&] {
+             ++compose;
+             return static_cast<std::uint16_t>(0x0F80U);
+         },
+         [&](const std::uint16_t destination, const std::uint16_t y) {
+             plane_dest.push_back(destination);
+             plane_y.push_back(y);
+         }});
+    if (plane_rows != 31U || prepare != 1 || compose != 1 ||
+        plane_dest.size() != 31U || plane_dest.front() != 0x0F80U ||
+        plane_dest[1] != 0U || plane.destination != 0x0F00U ||
+        plane.y != 0x00F8U || plane_y.front() != 0U ||
+        plane_y.back() != 0x00F0U) {
+        return 25;
+    }
+    FieldTilePlaneFillState high_bank{};
+    high_bank.destination = 0xFF80U;
+    std::vector<std::uint16_t> high_dest;
+    render_field_tile_plane_rows(
+        high_bank,
+        {{},
+         {},
+         [&](const std::uint16_t destination, const std::uint16_t) {
+             high_dest.push_back(destination);
+         }});
+    if (high_dest.front() != 0xFF80U || high_dest[1] != 0xF000U) {
+        return 26;
+    }
+
     FieldTileRowEdgeState edge_state{};
     edge_state.horizontal_direction = -1;
     edge_state.camera_x = 0x0200U;

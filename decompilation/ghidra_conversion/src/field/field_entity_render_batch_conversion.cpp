@@ -152,6 +152,33 @@ std::size_t upload_field_tile_row(
     return written;
 }
 
+std::size_t render_field_tile_plane_rows(
+    FieldTilePlaneFillState& state,
+    const FieldTilePlaneFillCallbacks& callbacks) {
+    call_once(callbacks.prepare_origin);
+    if (callbacks.compose_destination) {
+        state.destination = callbacks.compose_destination();
+    }
+    state.destination =
+        static_cast<std::uint16_t>(state.destination + state.plane_offset);
+    std::size_t rows = 0;
+    auto remaining = static_cast<std::int16_t>(0x001E);
+    do {
+        if (callbacks.render_column) {
+            callbacks.render_column(state.destination, state.y);
+        }
+        ++rows;
+        const auto high =
+            static_cast<std::uint16_t>(state.destination & 0xF000U);
+        state.destination = static_cast<std::uint16_t>(
+            high | static_cast<std::uint16_t>(
+                       (state.destination + 0x0080U) & 0x0FFFU));
+        state.y = static_cast<std::uint16_t>(state.y + 8U);
+        remaining = static_cast<std::int16_t>(remaining - 1);
+    } while (remaining != -1);
+    return rows;
+}
+
 FieldTileRowEdgeResult render_field_tile_row_edge(
     const FieldTileRowEdgeState& state,
     const FieldTileRowEdgeCallbacks& callbacks) {

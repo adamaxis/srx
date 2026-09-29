@@ -160,7 +160,7 @@ std::size_t render_field_tile_column(
             callbacks.write_word(word);
             cursor.word_offset += 2U;
             if ((cursor.word_offset & 7U) == 0U) {
-                cursor.word_offset -= 6U;
+                cursor.word_offset -= 8U;
                 cursor.tile_key =
                     static_cast<std::uint16_t>(cursor.tile_key + 2U);
             }

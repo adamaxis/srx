@@ -10,6 +10,31 @@ std::uint16_t fold_field_coordinate(std::uint16_t coordinate) {
     return folded;
 }
 
+FieldPlaneFillOrigin prepare_field_plane_fill_origin(
+    const std::uint16_t camera_x,
+    const std::uint16_t field_y,
+    const std::uint16_t destination_index,
+    const std::uint16_t destination_base) {
+    FieldPlaneFillOrigin origin{
+        static_cast<std::uint16_t>((camera_x >> 4U) - 8U),
+        static_cast<std::uint16_t>((field_y >> 4U) - 8U),
+        destination_index,
+        destination_base};
+    if (static_cast<std::int16_t>(origin.x) < 0) {
+        origin.x = static_cast<std::uint16_t>(origin.x + 8U);
+    } else {
+        origin.destination_index =
+            static_cast<std::uint16_t>(origin.destination_index + 8U);
+    }
+    if (static_cast<std::int16_t>(origin.y) < 0) {
+        origin.y = static_cast<std::uint16_t>(origin.y + 8U);
+    } else {
+        origin.destination_base =
+            static_cast<std::uint16_t>(origin.destination_base - 8U);
+    }
+    return origin;
+}
+
 std::int16_t offset_field_coordinate(std::uint16_t coordinate) {
     const auto folded = static_cast<std::uint16_t>(coordinate >> 4U);
     return static_cast<std::int16_t>(folded - 8U);

@@ -82,5 +82,17 @@ int main() {
                 third_horizontal_origin.vdp_data == 0x0210U)) {
         return 9;
     }
+
+    const auto bounce = prepare_field_plane_fill_origin(
+        0x0070U, 0x0070U, 0x0200U, 0x0100U);
+    const auto shift = prepare_field_plane_fill_origin(
+        0x0080U, 0x0080U, 0x0200U, 0x0100U);
+    if (!expect(bounce.x == 7U && bounce.y == 7U &&
+                bounce.destination_index == 0x0200U &&
+                bounce.destination_base == 0x0100U && shift.x == 0U &&
+                shift.y == 0U && shift.destination_index == 0x0208U &&
+                shift.destination_base == 0x00F8U)) {
+        return 10;
+    }
     return 0;
 }

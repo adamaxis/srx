@@ -4,8 +4,23 @@
 
 namespace shadowrun::ghidra_conversion {
 
-// ROM 0x41B6: fold the high nibble into the source's eight-value field band.
+// ROM 0x41B6 D0/D1 result: fold the high nibble into the eight-value band.
 std::uint16_t fold_field_coordinate(std::uint16_t coordinate);
+
+struct FieldPlaneFillOrigin {
+    std::uint16_t x = 0;
+    std::uint16_t y = 0;
+    std::uint16_t destination_index = 0;
+    std::uint16_t destination_base = 0;
+};
+
+// ROM 0x41B6: >>4 minus 8 on FFDDC6/FFDDC8. Negative bounces back by 8;
+// non-negative adds 8 to FFDD08 (X) or subtracts 8 from FFDD0A (Y).
+FieldPlaneFillOrigin prepare_field_plane_fill_origin(
+    std::uint16_t camera_x,
+    std::uint16_t field_y,
+    std::uint16_t destination_index,
+    std::uint16_t destination_base);
 
 // ROM 0x4216: subtract eight from the high-nibble coordinate.
 std::int16_t offset_field_coordinate(std::uint16_t coordinate);
