@@ -224,6 +224,29 @@ MagicMenuValueRefreshResult refresh_magic_menu_success_or_defense_values(
     return result;
 }
 
+MagicMenuValueGridPlan prepare_magic_fallback_defense_strip(
+    const std::array<EntityActionRecord, 3>& ready_entities,
+    const EntityActionRecord& actor,
+    const bool mana_strip) {
+    const auto bonus = calculate_ready_entity_action_bonus(ready_entities);
+    const auto attribute =
+        mana_strip ? actor.attribute_7c : actor.attribute_77;
+    const auto value = static_cast<std::uint8_t>(
+        static_cast<std::uint8_t>(bonus) + attribute);
+    MagicMenuValueGridPlan plan{};
+    plan.strip = mana_strip ? MagicMenuValueStrip::defense_mana
+                            : MagicMenuValueStrip::defense_physical;
+    plan.value = value;
+    plan.row = static_cast<std::uint16_t>(
+        value == 0U ? 0U : static_cast<std::uint16_t>(value - 1U));
+    plan.destination_tile_base =
+        mana_strip ? kMagicFallbackManaDestination
+                   : kMagicFallbackPhysicalDestination;
+    plan.palette_flags = kMagicFallbackDefensePalette;
+    plan.glyph_source_base = kMagicFallbackDefenseGlyphBase;
+    return plan;
+}
+
 MagicMenuSelection move_magic_selection_column(
     MagicMenuSelection selection, const std::int8_t delta,
     const std::uint16_t first_entry_count) {

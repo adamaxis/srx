@@ -535,5 +535,35 @@ int main() {
         return 29;
     }
 
+    EntityActionRecord fallback_actor{};
+    fallback_actor.attribute_77 = 5U;
+    fallback_actor.attribute_7c = 1U;
+    std::array<EntityActionRecord, 3> idle_party{};
+    const auto physical = prepare_magic_fallback_defense_strip(
+        idle_party, fallback_actor, false);
+    if (!expect(physical.strip == MagicMenuValueStrip::defense_physical &&
+                physical.value == 5U && physical.row == 4U &&
+                physical.destination_tile_base ==
+                    kMagicFallbackPhysicalDestination &&
+                physical.palette_flags == kMagicFallbackDefensePalette &&
+                physical.glyph_source_base == kMagicFallbackDefenseGlyphBase &&
+                physical.source_row_stride == 0x1AU &&
+                physical.tile_count == 13U)) {
+        return 38;
+    }
+    const auto mana = prepare_magic_fallback_defense_strip(
+        idle_party, fallback_actor, true);
+    if (!expect(mana.strip == MagicMenuValueStrip::defense_mana &&
+                mana.value == 1U && mana.row == 0U &&
+                mana.destination_tile_base == kMagicFallbackManaDestination)) {
+        return 39;
+    }
+    fallback_actor.attribute_77 = 0U;
+    const auto empty = prepare_magic_fallback_defense_strip(
+        idle_party, fallback_actor, false);
+    if (!expect(empty.value == 0U && empty.row == 0U)) {
+        return 40;
+    }
+
     return 0;
 }

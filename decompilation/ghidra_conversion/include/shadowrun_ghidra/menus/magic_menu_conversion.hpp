@@ -105,7 +105,13 @@ struct MagicMenuValueGridPlan {
     std::uint16_t source_row_stride = 0x1AU;
     std::uint16_t tile_count = 13U;
     std::uint16_t palette_flags = 0;
+    std::uint32_t glyph_source_base = 0x000C8784U;
 };
+
+constexpr std::uint32_t kMagicFallbackDefenseGlyphBase = 0x000CF610U;
+constexpr std::uint16_t kMagicFallbackPhysicalDestination = 0xC51EU;
+constexpr std::uint16_t kMagicFallbackManaDestination = 0xC69EU;
+constexpr std::uint16_t kMagicFallbackDefensePalette = 0x2000U;
 
 struct MagicMenuValueRefreshCallbacks {
     std::function<void()> refresh_ready_entity_animations;
@@ -270,6 +276,15 @@ MagicActionEffectValueResult refresh_magic_action_effect_value(
 MagicMenuValueRefreshResult refresh_magic_menu_success_or_defense_values(
     const MagicMenuValueRefreshInput& input,
     const MagicMenuValueRefreshCallbacks& callbacks = {});
+
+// ROM 0x106DA: 0x1047E bonus plus record +0x77 (D2==0, dest 0xC51E) or +0x7C
+// (D2!=0, dest 0xC69E). Glyph row is 0 when the sum is 0, otherwise sum-1,
+// at 0xCF610 stride 0x1A. D7=0xC, D1=0, palette 0x2000. 0x1232 stays a
+// write callback.
+MagicMenuValueGridPlan prepare_magic_fallback_defense_strip(
+    const std::array<EntityActionRecord, 3>& ready_entities,
+    const EntityActionRecord& actor,
+    bool mana_strip);
 
 // ROM 0xFEBE. `first_entry_count` is the first word at the selected spell
 // table entry (`record +0xA0` selects that entry). The source uses that count
