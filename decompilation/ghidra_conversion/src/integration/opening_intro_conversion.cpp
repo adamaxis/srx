@@ -116,6 +116,8 @@ void emit_schedule_action(const std::uint32_t action_id,
                   0xA000U);
         break;
     case 0x5B378U:
+        // 0x5B378 jsr 0xFFE clears Plane A, then stamps 0x1DF468 at
+        // D4=0x40E through five 0x5B36E offsets. Plane B seattle stays.
         source_boundary(callbacks, "0x5B378.install_aircraft_scene");
         break;
     case 0x5AE9EU:
@@ -331,6 +333,24 @@ OpeningIntroDrawPoint opening_intro_aircraft_plane_draw_point(
     return {kAircraftPlaneNametableX + scroll_x, kAircraftPlaneNametableY};
 }
 
+OpeningIntroOutlinePlan opening_intro_seattle_outline_plan(
+    const std::uint8_t phase) {
+    constexpr std::array<std::uint16_t, 5> kOffsets{
+        {0x0000U, 0x0184U, 0x030AU, 0x0410U, 0x0514U}};
+    constexpr std::array<std::uint8_t, 5> kD1{
+        {0x17U, 0x11U, 0x0CU, 0x06U, 0x00U}};
+    constexpr std::array<std::uint8_t, 5> kD2{
+        {0x0EU, 0x0BU, 0x08U, 0x05U, 0x00U}};
+    const auto index = static_cast<std::size_t>(
+        phase < kOffsets.size() ? phase : kOffsets.size() - 1U);
+    const auto vram = static_cast<std::uint16_t>(
+        kSeattleOutlineVram + kOffsets[index]);
+    return {static_cast<int>(((vram % 0x80U) / 2U) * 8U),
+            static_cast<int>((vram / 0x80U) * 8U),
+            static_cast<int>(kD1[index] + 1U) * 8,
+            static_cast<int>(kD2[index] + 1U) * 8};
+}
+
 std::uint32_t opening_intro_text_handle(const OpeningIntroTextAsset asset) {
     return kOpeningIntroTextHandleTag |
            static_cast<std::uint32_t>(asset);
@@ -451,7 +471,6 @@ const OpeningIntroSourcePlan& opening_intro_source_plan() {
                                const std::uint8_t variant) {
             return opening_intro_sprite_handle(family, variant);
         };
-        const auto unavailable = [] { return kUnavailableSprite; };
 
         // 0x5ADD0: the four timed records that establish the date, place,
         // team, then hand the screen to 0x5B378.
@@ -502,11 +521,15 @@ const OpeningIntroSourcePlan& opening_intro_source_plan() {
             sprite(OpeningIntroSpriteFamily::ambush_flash, 0),
         };
 
-        // 0x5AD02 points at three tri-vid SAT lists. They are separate from
-        // the two long projection lists at 0x1DF1D6/0x1DF238 and must remain
-        // individually extracted; the stage routine selects one list every
-        // six source frames.
-        result.timed_sprites.fill(unavailable());
+        // 0x5A602: six SAT lists drawn by 0x5A59C after 0x5A582.
+        result.timed_sprites = {{
+            sprite(OpeningIntroSpriteFamily::ambush_body, 0),
+            sprite(OpeningIntroSpriteFamily::ambush_body, 1),
+            sprite(OpeningIntroSpriteFamily::ambush_body, 2),
+            sprite(OpeningIntroSpriteFamily::ambush_body, 3),
+            sprite(OpeningIntroSpriteFamily::ambush_body, 4),
+            sprite(OpeningIntroSpriteFamily::ambush_body, 5),
+        }};
         result.stage_timed_phases = {{
             {sprite(OpeningIntroSpriteFamily::trivid_timed, 0), 0x0128U,
              0x0113U, 0x0006U},
@@ -752,9 +775,10 @@ void advance_animation_services(OpeningIntroState& state,
                  source_boundary(callbacks,
                                  "0x5A328.persistent_repeated_stage");
              },
-             [&callbacks](const std::uint16_t, const std::uint16_t) {
+             [&state, &callbacks](const std::uint16_t x, const std::uint16_t y) {
                  source_boundary(callbacks,
                                  "0x5A338.persistent_stage_nine_anchor");
+                 begin_title_intro_timed_sprites(state.timed, x, y);
              },
              [&callbacks](const auto&) {
                  source_boundary(callbacks,
@@ -1089,14 +1113,16 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
                 [&state, &callbacks](const std::uint32_t action_id) {
                     emit_schedule_action(action_id, callbacks);
                     if (action_id == 0x5B378U) {
-                        // 0x5B378 jsr 0xFFE clears plane A before stamping
-                        // the 0x1DF468 outline. Host has no VDP; drop the
-                        // seattle plate so wilderness does not composite
-                        // over leftover skyline.
                         state.seattle_plane_cleared = true;
                     }
                 })) {
-            begin_stage2(state, plan, callbacks);
+            // 0x5B378's outer dbf from 4 plus two vblanks per pass is ten
+            // frames of Plane-A outline over the still-live seattle plate.
+            if (state.seattle_outline_frame < kSeattleOutlineHoldFrames) {
+                ++state.seattle_outline_frame;
+            } else {
+                begin_stage2(state, plan, callbacks);
+            }
         }
         return OpeningIntroAdvanceResult::frame_advanced;
 
@@ -1147,8 +1173,9 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
              [&callbacks] {
                  source_boundary(callbacks, "0x5A16E.sequence_repeated_stage");
              },
-             [&callbacks](const std::uint16_t, const std::uint16_t) {
+             [&state, &callbacks](const std::uint16_t x, const std::uint16_t y) {
                  source_boundary(callbacks, "0x5A196.sequence_stage_nine_anchor");
+                 begin_title_intro_timed_sprites(state.timed, x, y);
              },
              [&callbacks](const auto&) {
                  source_boundary(callbacks, "0x5A1BE.sequence_final_overlay");

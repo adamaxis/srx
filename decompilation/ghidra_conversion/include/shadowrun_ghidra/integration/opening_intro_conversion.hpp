@@ -79,6 +79,22 @@ OpeningIntroDrawPoint opening_intro_sat_draw_point(
 OpeningIntroDrawPoint opening_intro_aircraft_plane_draw_point(
     std::int16_t scroll_x);
 
+// ROM 0x5B378: D4=0x40E, five 0x5B36E offsets, 0x5B364 D1/D2 pairs, inner
+// dbf so tiles are D1+1 by D2+1. Plane B (seattle) stays; Plane A is the
+// outline. Five passes × two vblanks.
+constexpr std::uint16_t kSeattleOutlineVram = 0x040EU;
+constexpr std::uint16_t kSeattleOutlineHoldFrames = 10U;
+
+struct OpeningIntroOutlinePlan {
+    int x = 0;
+    int y = 0;
+    int width = 0;
+    int height = 0;
+};
+
+OpeningIntroOutlinePlan opening_intro_seattle_outline_plan(
+    std::uint8_t phase);
+
 // The text records are the source strings at 0x5B7D8..0x5BA4C, represented as
 // typed host records. The Qt frontend uses these records with the extracted
 // source font; no runtime ROM text decoder is involved.
@@ -236,6 +252,7 @@ struct OpeningIntroState {
     std::uint8_t post_intro_phase = 0;
     bool post_intro_caption_visible = false;
     bool seattle_plane_cleared = false;
+    std::uint16_t seattle_outline_frame = 0;
     std::uint16_t scroll_accumulator = 0;
     bool source_stop_marker = false;
 

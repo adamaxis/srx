@@ -84,6 +84,7 @@ std::uint8_t sampled_menu_byte(const int key) {
         return kStartupMenuB;
     case Qt::Key_C:
         return kStartupMenuC;
+    case Qt::Key_Space:
     case Qt::Key_Return:
     case Qt::Key_Enter:
         return kStartupMenuA;
@@ -895,8 +896,14 @@ private:
         const auto& opening = state_.opening_intro;
         switch (opening_scene_) {
         case OpeningIntroScene::seattle:
-            if (!opening.seattle_plane_cleared) {
-                draw_alias(painter, "intro.background.0");
+            // 0x5B378 jsr 0xFFE clears Plane A. Plane B seattle stays.
+            draw_alias(painter, "intro.background.0");
+            if (opening.seattle_outline_frame != 0U) {
+                const auto phase = static_cast<std::uint8_t>(
+                    std::min<std::uint16_t>(
+                        (opening.seattle_outline_frame - 1U) / 2U, 4U));
+                draw_intro_outline(
+                    painter, opening_intro_seattle_outline_plan(phase));
             }
             break;
         case OpeningIntroScene::wilderness:
@@ -930,21 +937,30 @@ private:
         }
     }
 
+    void draw_intro_outline(QPainter& painter, const int x, const int y,
+                            const int width, const int height) const {
+        const QColor outline(0xF0, 0xF0, 0xF0);
+        constexpr int kTile = 8;
+        if (width <= 0 || height <= 0) {
+            return;
+        }
+        painter.fillRect(x, y, width, kTile, outline);
+        painter.fillRect(x, y + height - kTile, width, kTile, outline);
+        painter.fillRect(x, y, kTile, height, outline);
+        painter.fillRect(x + width - kTile, y, kTile, height, outline);
+    }
+
+    void draw_intro_outline(QPainter& painter,
+                            const OpeningIntroOutlinePlan& plan) const {
+        draw_intro_outline(painter, plan.x, plan.y, plan.width, plan.height);
+    }
+
     void draw_cab_mode_selection(QPainter& painter) const {
         const auto plan = cab_mode_selection_plan(
             state_.opening_intro.post_intro_mode,
             state_.opening_intro.post_intro_phase);
-        const QColor outline(0xF0, 0xF0, 0xF0);
-        constexpr int kTile = 8;
-        painter.fillRect(plan.cursor_x, plan.cursor_y, plan.cursor_width,
-                         kTile, outline);
-        painter.fillRect(plan.cursor_x,
-                         plan.cursor_y + plan.cursor_height - kTile,
-                         plan.cursor_width, kTile, outline);
-        painter.fillRect(plan.cursor_x, plan.cursor_y, kTile,
-                         plan.cursor_height, outline);
-        painter.fillRect(plan.cursor_x + plan.cursor_width - kTile,
-                         plan.cursor_y, kTile, plan.cursor_height, outline);
+        draw_intro_outline(painter, plan.cursor_x, plan.cursor_y,
+                           plan.cursor_width, plan.cursor_height);
         if (state_.opening_intro.post_intro_caption_visible) {
             draw_startup_text(painter, plan.caption_x, plan.caption_y,
                               plan.caption);
@@ -1084,8 +1100,20 @@ private:
         }
     }
 
+    void draw_menu_metadata_grid(QPainter& painter) const {
+        // 0xC3E6 → 0x11C0: D7+1 columns by D1+1 rows at $C186 (24,24).
+        const auto panel = write_menu_grid_with_metadata();
+        painter.fillRect(
+            startup_menu_vram_x(static_cast<std::uint16_t>(panel.destination)),
+            startup_menu_vram_y(static_cast<std::uint16_t>(panel.destination)),
+            static_cast<int>(panel.width) * kStartupMenuTilePixels,
+            static_cast<int>(panel.height) * kStartupMenuTilePixels,
+            Qt::black);
+    }
+
     void draw_menu_overlay(QPainter& painter) const {
         if (state_.phase == StartupIntegrationPhase::start_options) {
+            draw_menu_metadata_grid(painter);
             draw_startup_layout(painter, kStartOptionsPlaneVram,
                                 kStartOptionsLayout);
             draw_cursor(painter, startup_menu_vram_x(kStartOptionsCursorVram),
@@ -1101,15 +1129,7 @@ private:
                 // 0x59172 calls 0xC3E6 before the 0xC0DA copy, which
                 // restamps the 0xC186 metadata grid and clears leftover
                 // Start Options ink.
-                const auto panel = write_menu_grid_with_metadata();
-                painter.fillRect(
-                    startup_menu_vram_x(
-                        static_cast<std::uint16_t>(panel.destination)),
-                    startup_menu_vram_y(
-                        static_cast<std::uint16_t>(panel.destination)),
-                    static_cast<int>(panel.width) * kStartupMenuTilePixels,
-                    static_cast<int>(panel.height) * kStartupMenuTilePixels,
-                    Qt::black);
+                draw_menu_metadata_grid(painter);
                 if (state_.save_load.message == SaveLoadMessage::no_save_data) {
                     draw_startup_layout(painter, kSaveLoadMessagePlaneVram,
                                         kNoSaveDataLayout);
@@ -1131,6 +1151,7 @@ private:
             return;
         }
 
+        draw_menu_metadata_grid(painter);
         const auto portrait_index = static_cast<int>(
             state_.joshua_archetype.selected);
         const auto portrait_alias =

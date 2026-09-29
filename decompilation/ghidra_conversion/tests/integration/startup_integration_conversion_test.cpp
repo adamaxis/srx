@@ -540,11 +540,14 @@ int main() {
         !has_sprite_family(OpeningIntroSpriteFamily::trivid_overlay) ||
         !has_sprite_family(OpeningIntroSpriteFamily::trivid_final_overlay) ||
         !has_sprite_family(OpeningIntroSpriteFamily::ambush_actor) ||
+        !has_sprite_family(OpeningIntroSpriteFamily::ambush_body) ||
         !has_sprite_family(OpeningIntroSpriteFamily::helicopter) ||
         !has_sprite_family(OpeningIntroSpriteFamily::aircraft_plane_a)) {
         return 15;
     }
-    if (!new_game_state.opening_intro.seattle_plane_cleared) {
+    if (!new_game_state.opening_intro.seattle_plane_cleared ||
+        new_game_state.opening_intro.seattle_outline_frame !=
+            kSeattleOutlineHoldFrames) {
         return 16;
     }
 
@@ -552,9 +555,12 @@ int main() {
     const auto heli = opening_intro_sat_draw_point(0x01FCU, 0x00EFU, 40, 124);
     const auto plane = opening_intro_aircraft_plane_draw_point(0);
     const auto plane_scrolled = opening_intro_aircraft_plane_draw_point(-0x40);
+    const auto outline = opening_intro_seattle_outline_plan(0);
     if (actor.x != 190 || actor.y != 98 || heli.x != 292 || heli.y != 107 ||
         plane.x != 0x128 || plane.y != 0x70 ||
-        plane_scrolled.x != 0x128 - 0x40 || plane_scrolled.y != 0x70) {
+        plane_scrolled.x != 0x128 - 0x40 || plane_scrolled.y != 0x70 ||
+        outline.x != 56 || outline.y != 64 || outline.width != 192 ||
+        outline.height != 120) {
         return 17;
     }
 
