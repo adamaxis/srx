@@ -1,6 +1,7 @@
 #pragma once
 
 #include "shadowrun_ghidra/core/word_transfer_conversion.hpp"
+#include "shadowrun_ghidra/menus/hud_selection_lookup_conversion.hpp"
 
 #include <array>
 #include <cstdint>
@@ -57,6 +58,12 @@ std::int16_t clear_menu_status_at(
 
 void publish_menu_selection_then_text(
     const std::function<void()>& set_selection,
+    const std::function<void()>& render_text);
+
+// ROM 0x19B34: D1=7 into 0x17C84 (caller D0 is the slot code), then 0x17C52.
+void publish_menu_selection_then_text(
+    HudSelectionState& state,
+    std::uint8_t code,
     const std::function<void()>& render_text);
 void refresh_mode_metadata_leaf(const std::function<void()>& refresh);
 void run_menu_service_then_prepare(

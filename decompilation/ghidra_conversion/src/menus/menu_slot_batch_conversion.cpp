@@ -100,6 +100,14 @@ void publish_menu_selection_then_text(
     call_once(render_text);
 }
 
+void publish_menu_selection_then_text(
+    HudSelectionState& state,
+    const std::uint8_t code,
+    const std::function<void()>& render_text) {
+    set_hud_selection_value(state, code, 7U);
+    call_once(render_text);
+}
+
 void refresh_mode_metadata_leaf(const std::function<void()>& refresh) {
     call_once(refresh);
 }

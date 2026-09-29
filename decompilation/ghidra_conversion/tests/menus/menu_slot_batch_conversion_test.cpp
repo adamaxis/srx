@@ -48,6 +48,16 @@ int main() {
     }
     publish_menu_selection_then_text([&] { events.push_back(8); },
                                      [&] { events.push_back(9); });
+    HudSelectionState selection{{0x10, 0x22, 0x34, 0x46, 0x58}, {0, 0, 0, 0, 0}};
+    int text_calls = 0;
+    publish_menu_selection_then_text(selection, 0x34U, [&] { ++text_calls; });
+    if (selection.values[2] != 7U || text_calls != 1) {
+        return 17;
+    }
+    publish_menu_selection_then_text(selection, 0x99U, [&] { ++text_calls; });
+    if (selection.values[2] != 7U || text_calls != 2) {
+        return 18;
+    }
     refresh_mode_metadata_leaf([&] { events.push_back(10); });
     run_menu_service_then_prepare([&] { events.push_back(11); },
                                   [&] { events.push_back(12); });
