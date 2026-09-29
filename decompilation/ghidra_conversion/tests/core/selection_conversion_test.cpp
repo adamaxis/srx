@@ -46,10 +46,15 @@ int main() {
     if (!expect(rows.row == 0)) {
         return 7;
     }
-    rows = SelectionState{4, 0};
+    rows = SelectionState{4, 1};
     move_selection_row(rows, 1, 10);
     if (!expect(rows.row == 0)) {
         return 8;
+    }
+    rows = SelectionState{4, 0};
+    move_selection_row(rows, 1, 10);
+    if (!expect(rows.row == 0)) {
+        return 19;
     }
     rows = SelectionState{0, 0};
     move_selection_row(rows, 1, 6);

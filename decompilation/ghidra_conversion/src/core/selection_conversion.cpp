@@ -34,7 +34,8 @@ void move_selection_row(
     if (next_row < 0) {
         next_row = 1;
     } else if (next_row == 2) {
-        next_row = 0;
+        state.row = 0;
+        return;
     } else if (next_row == 0) {
         state.row = 0;
         return;
