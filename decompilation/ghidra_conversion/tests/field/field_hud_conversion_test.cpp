@@ -281,5 +281,29 @@ int main() {
         return 28;
     }
 
+    FieldHudMentalMeterState mental{};
+    mental.flags_byte = 0x01U;
+    mental.primary_runner = true;
+    auto mental_plan = advance_field_hud_mental_meter(mental, 4);
+    if (!expect(mental.meter == 4 && mental_plan.nametable == 0xF3C6U &&
+                mental_plan.tiles == kFieldHudPrimaryMentalMeterTiles[4] &&
+                !mental_plan.forward_delay_meter)) {
+        return 29;
+    }
+    mental_plan = advance_field_hud_mental_meter(mental, 10);
+    if (!expect(mental.meter == 10 &&
+                mental_plan.tiles == kFieldHudPrimaryMentalMeterTiles[10])) {
+        return 30;
+    }
+    mental.primary_runner = false;
+    mental.slot_word = 1;
+    mental_plan = advance_field_hud_mental_meter(mental, -20);
+    if (!expect(mental.meter == 0 && mental_plan.nametable == 0xF7C6U &&
+                mental_plan.forward_delay_meter &&
+                mental_plan.delay_delta < 0 &&
+                mental_plan.tiles == kFieldHudMentalMeterTiles[0])) {
+        return 31;
+    }
+
     return 0;
 }

@@ -210,4 +210,55 @@ FieldHudAmmoMeterPlan advance_field_hud_ammo_meter(
     FieldHudAmmoMeterState& state,
     std::int8_t delta);
 
+constexpr std::array<std::array<std::uint16_t, 4>, 11>
+    kFieldHudMentalMeterTiles{{
+        {{0x86F3U, 0x86F3U, 0x86F3U, 0x86F3U}},
+        {{0x86F8U, 0x86F3U, 0x86F3U, 0x86F3U}},
+        {{0x86F9U, 0x86F3U, 0x86F3U, 0x86F3U}},
+        {{0x86FAU, 0x86F8U, 0x86F3U, 0x86F3U}},
+        {{0x86FAU, 0x86FAU, 0x86F3U, 0x86F3U}},
+        {{0x86FAU, 0x86FAU, 0x86F8U, 0x86F3U}},
+        {{0x86FAU, 0x86FAU, 0x86F9U, 0x86F3U}},
+        {{0x86FAU, 0x86FAU, 0x86FAU, 0x86F3U}},
+        {{0x86FAU, 0x86FAU, 0x86FAU, 0x86F8U}},
+        {{0x86FAU, 0x86FAU, 0x86FAU, 0x86F9U}},
+        {{0x86FAU, 0x86FAU, 0x86FAU, 0x86FAU}},
+    }};
+
+constexpr std::array<std::array<std::uint16_t, 4>, 11>
+    kFieldHudPrimaryMentalMeterTiles{{
+        {{0x86EEU, 0x86EEU, 0x86EEU, 0x86EEU}},
+        {{0x86EFU, 0x86EEU, 0x86EEU, 0x86EEU}},
+        {{0x86F0U, 0x86EEU, 0x86EEU, 0x86EEU}},
+        {{0x86F1U, 0x86EFU, 0x86EEU, 0x86EEU}},
+        {{0x86F1U, 0x86F1U, 0x86EEU, 0x86EEU}},
+        {{0x86F1U, 0x86F1U, 0x86EFU, 0x86EEU}},
+        {{0x86F1U, 0x86F1U, 0x86F0U, 0x86EEU}},
+        {{0x86F1U, 0x86F1U, 0x86F1U, 0x86EEU}},
+        {{0x86F1U, 0x86F1U, 0x86F1U, 0x86EFU}},
+        {{0x86F1U, 0x86F1U, 0x86F1U, 0x86F0U}},
+        {{0x86F1U, 0x86F1U, 0x86F1U, 0x86F1U}},
+    }};
+
+struct FieldHudMentalMeterState {
+    std::uint16_t slot_word = 0; // +0x3E
+    std::uint8_t flags_byte = 0; // +0x10
+    std::int8_t meter = 0; // +0x9C
+    bool primary_runner = false; // A0 == FFFC04
+};
+
+struct FieldHudMentalMeterPlan {
+    std::uint32_t nametable = 0;
+    std::uint8_t meter = 0;
+    std::array<std::uint16_t, 4> tiles{};
+    std::int8_t delay_delta = 0;
+    bool forward_delay_meter = false;
+};
+
+// ROM 0x37EC: F3C6/F7C6/FBC6. +0x10 bit 0 gates ADD.B into +0x9C, cap 10.
+// Underflow forwards D1 into 0x3674 then clears +0x9C. FFFC04 uses 0x6ABEE.
+FieldHudMentalMeterPlan advance_field_hud_mental_meter(
+    FieldHudMentalMeterState& state,
+    std::int8_t delta);
+
 } // namespace shadowrun::ghidra_conversion

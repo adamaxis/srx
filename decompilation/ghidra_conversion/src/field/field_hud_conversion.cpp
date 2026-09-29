@@ -269,4 +269,36 @@ FieldHudAmmoMeterPlan advance_field_hud_ammo_meter(
     return plan;
 }
 
+FieldHudMentalMeterPlan advance_field_hud_mental_meter(
+    FieldHudMentalMeterState& state,
+    const std::int8_t delta) {
+    FieldHudMentalMeterPlan plan{};
+    if (state.slot_word == 0U) {
+        plan.nametable = 0xF3C6U;
+    } else if (state.slot_word == 1U) {
+        plan.nametable = 0xF7C6U;
+    } else {
+        plan.nametable = 0xFBC6U;
+    }
+    const auto& tiles = state.primary_runner ? kFieldHudPrimaryMentalMeterTiles
+                                             : kFieldHudMentalMeterTiles;
+    if ((state.flags_byte & 0x01U) != 0U) {
+        state.meter = static_cast<std::int8_t>(state.meter + delta);
+        if (state.meter > 0) {
+            if (state.meter > 10) {
+                state.meter = 10;
+            }
+            plan.meter = static_cast<std::uint8_t>(state.meter);
+            plan.tiles = tiles[plan.meter];
+            return plan;
+        }
+        plan.delay_delta = state.meter;
+        plan.forward_delay_meter = true;
+    }
+    state.meter = 0;
+    plan.meter = 0;
+    plan.tiles = tiles[0];
+    return plan;
+}
+
 } // namespace shadowrun::ghidra_conversion
