@@ -32,7 +32,7 @@ std::size_t emit_words(std::size_t word_count,
         callbacks.write_word(word);
         word_offset += 2U;
         if ((word_offset & (tile_stride - 1U)) == 0U) {
-            word_offset -= tile_stride - 2U;
+            word_offset -= tile_stride;
             tile_key = static_cast<std::uint16_t>(tile_key + 2U);
         }
     }
@@ -78,6 +78,78 @@ std::size_t emit_field_tile_row_words(
     const TileWordStreamCallbacks& callbacks) {
     return emit_words(word_count, tile_key, word_offset, palette_or_flip,
                       callbacks, 0x20U);
+}
+
+namespace {
+
+std::uint16_t negate_word(const std::uint16_t value) {
+    return static_cast<std::uint16_t>(0U - value);
+}
+
+} // namespace
+
+FieldTilePlaneRenderPlan plan_field_tile_column(
+    const std::uint16_t destination_word) {
+    const auto folded = static_cast<std::uint16_t>(destination_word & 0x007FU);
+    const auto visible = static_cast<std::uint16_t>(
+        negate_word(static_cast<std::uint16_t>(folded - 0x0080U)) >> 1U);
+    const auto remaining = static_cast<std::int16_t>(visible - 1U);
+    if (remaining >= 0x002B) {
+        return {0x002CU, 0U, destination_word};
+    }
+    return {static_cast<std::size_t>(remaining + 1),
+            static_cast<std::size_t>(0x002A - remaining + 1),
+            static_cast<std::uint16_t>(destination_word & 0xFF80U)};
+}
+
+FieldTilePlaneRenderPlan plan_field_tile_row(
+    const std::uint16_t destination_word) {
+    const auto folded = static_cast<std::uint16_t>(destination_word & 0x0F80U);
+    const auto visible = static_cast<std::uint16_t>(
+        negate_word(static_cast<std::uint16_t>(folded - 0x1000U)) >> 7U);
+    const auto remaining = static_cast<std::int16_t>(visible - 1U);
+    if (remaining >= 0x001F) {
+        return {0x0020U, 0U, destination_word};
+    }
+    return {static_cast<std::size_t>(remaining + 1),
+            static_cast<std::size_t>(0x001E - remaining + 1),
+            static_cast<std::uint16_t>(destination_word & 0xF07FU)};
+}
+
+std::size_t upload_field_tile_row(
+    FieldTileRowUploadState& state,
+    const FieldTileRowUploadCallbacks& callbacks) {
+    if (!callbacks.read_tile_key || !callbacks.read_word ||
+        !callbacks.write_word) {
+        return 0;
+    }
+    call_once(callbacks.begin_transfer);
+    auto tile_key = callbacks.read_tile_key(state.row_table_byte_offset);
+    std::size_t written = 0;
+    auto remaining = state.remaining;
+    do {
+        auto word = callbacks.read_word(tile_key, state.word_offset);
+        if (state.palette_word < 0) {
+            word = static_cast<std::uint16_t>(word ^ 0x8000U);
+        } else {
+            word = static_cast<std::uint16_t>(
+                word | static_cast<std::uint16_t>(state.palette_word));
+        }
+        callbacks.write_word(word);
+        ++written;
+        state.word_offset = static_cast<std::uint16_t>(state.word_offset + 8U);
+        if (static_cast<std::int16_t>(state.word_offset) >= 0x001F) {
+            state.word_offset =
+                static_cast<std::uint16_t>(state.word_offset - 0x0020U);
+            state.row_table_byte_offset = static_cast<std::uint16_t>(
+                state.row_table_byte_offset + state.row_stride_bytes);
+            tile_key = callbacks.read_tile_key(state.row_table_byte_offset);
+        }
+        remaining = static_cast<std::int16_t>(remaining - 1);
+    } while (remaining != -1);
+    call_once(callbacks.end_transfer);
+    state.remaining = remaining;
+    return written;
 }
 
 FieldTileRowEdgeResult render_field_tile_row_edge(

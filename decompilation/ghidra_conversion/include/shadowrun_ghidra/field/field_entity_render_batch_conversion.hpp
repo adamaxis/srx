@@ -51,6 +51,41 @@ std::size_t emit_field_tile_row_words(
     std::uint16_t palette_or_flip,
     const TileWordStreamCallbacks& callbacks);
 
+struct FieldTilePlaneRenderPlan {
+    std::size_t first_word_count = 0;
+    std::size_t second_word_count = 0;
+    std::uint16_t wrapped_destination = 0;
+};
+
+// ROM 0x3D4A: visible column words from D4 bit 0-6, cap 0x2C, wrap D4 & 0xFF80.
+FieldTilePlaneRenderPlan plan_field_tile_column(std::uint16_t destination_word);
+// ROM 0x3DDE: visible row words from D4 bits 7-11, cap 0x20, wrap D4 & 0xF07F.
+FieldTilePlaneRenderPlan plan_field_tile_row(std::uint16_t destination_word);
+
+struct FieldTileRowUploadState {
+    std::uint16_t word_offset = 0; // D1
+    std::int16_t remaining = 0; // D7, DBF so words = remaining + 1
+    std::int16_t palette_word = 0; // FFDF58
+    std::uint16_t row_table_byte_offset = 0; // D3
+    std::uint16_t row_stride_bytes = 0; // FFDDEA
+};
+
+struct FieldTileRowUploadCallbacks {
+    std::function<void()> begin_transfer;
+    std::function<void()> end_transfer;
+    std::function<std::uint16_t(std::uint16_t table_offset)> read_tile_key;
+    std::function<std::uint16_t(std::uint16_t tile_key,
+                                std::uint16_t word_offset)>
+        read_word;
+    std::function<void(std::uint16_t)> write_word;
+};
+
+// ROM 0x3E14: VDP autoincrement 0x80, emit D7+1 nametable words stepping D1
+// by 8, wrap at signed 0x1F with D1 -= 0x20 and D3 += FFDDEA.
+std::size_t upload_field_tile_row(
+    FieldTileRowUploadState& state,
+    const FieldTileRowUploadCallbacks& callbacks);
+
 struct FieldTileRowEdgeState {
     std::int16_t horizontal_direction = 0; // 0x40E2 D0 input
     std::uint16_t camera_x = 0; // FFDDC6

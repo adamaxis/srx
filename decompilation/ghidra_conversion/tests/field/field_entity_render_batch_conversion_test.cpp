@@ -31,6 +31,52 @@ int main() {
         return 2;
     }
 
+    const auto wide_column = plan_field_tile_column(0);
+    const auto wrap_column = plan_field_tile_column(0x0070U);
+    if (wide_column.first_word_count != 0x002CU ||
+        wide_column.second_word_count != 0U ||
+        wrap_column.first_word_count != 8U ||
+        wrap_column.second_word_count != 0x0024U ||
+        wrap_column.wrapped_destination != 0U ||
+        wrap_column.first_word_count + wrap_column.second_word_count !=
+            0x002CU) {
+        return 22;
+    }
+    const auto wide_row = plan_field_tile_row(0);
+    const auto wrap_row = plan_field_tile_row(0x0F80U);
+    if (wide_row.first_word_count != 0x0020U ||
+        wide_row.second_word_count != 0U || wrap_row.first_word_count != 1U ||
+        wrap_row.second_word_count != 0x001FU ||
+        wrap_row.wrapped_destination != 0U) {
+        return 23;
+    }
+
+    std::vector<std::uint16_t> uploaded;
+    std::vector<std::uint16_t> table_reads;
+    FieldTileRowUploadState upload{};
+    upload.remaining = 4;
+    upload.palette_word = -1;
+    upload.row_stride_bytes = 0x0040U;
+    const auto uploaded_count = upload_field_tile_row(
+        upload,
+        {[] {},
+         [] {},
+         [&table_reads](const std::uint16_t table_offset) {
+             table_reads.push_back(table_offset);
+             return static_cast<std::uint16_t>(0x10U + table_offset);
+         },
+         [](const std::uint16_t tile_key, const std::uint16_t word_offset) {
+             return static_cast<std::uint16_t>(tile_key + word_offset);
+         },
+         [&uploaded](const std::uint16_t word) { uploaded.push_back(word); }});
+    if (uploaded_count != 5U || uploaded.size() != 5U ||
+        table_reads.size() != 2U || table_reads[0] != 0U ||
+        table_reads[1] != 0x0040U || uploaded[0] != (0x10U ^ 0x8000U) ||
+        uploaded[4] != (0x0050U ^ 0x8000U) || upload.word_offset != 8U ||
+        upload.remaining != -1) {
+        return 24;
+    }
+
     FieldTileRowEdgeState edge_state{};
     edge_state.horizontal_direction = -1;
     edge_state.camera_x = 0x0200U;
