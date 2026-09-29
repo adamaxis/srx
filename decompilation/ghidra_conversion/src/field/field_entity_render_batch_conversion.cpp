@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/field/field_entity_render_batch_conversion.hpp"
+#include "shadowrun_ghidra/field/scene_profile_conversion.hpp"
 
 #include <algorithm>
 
@@ -44,20 +45,32 @@ std::size_t emit_words(std::size_t word_count,
 void snapshot_entity_anchors(
     EntityAnchorSnapshotState& state,
     const std::array<EntityAnchor, 3>& source_anchors,
-    const std::optional<EntityAnchor>& ready_anchor,
-    const std::array<std::uint16_t, 8>& pending_source,
-    const std::function<void(const EntityAnchor&)>& publish_ready_anchor) {
+    const std::optional<std::size_t>& ready_slot,
+    const std::function<void(std::size_t slot, EntityAnchor)>&
+        publish_ready_anchor) {
     state.anchors = source_anchors;
-    state.pending_anchor = ready_anchor;
-    if (ready_anchor) {
-        if (publish_ready_anchor) {
-            publish_ready_anchor(*ready_anchor);
-        }
-        state.pending_anchor = std::nullopt;
+    if (state.companion_restore && ready_slot.has_value() &&
+        publish_ready_anchor) {
+        publish_ready_anchor(
+            *ready_slot,
+            EntityAnchor{static_cast<std::int16_t>(state.anchors[0].x + 0x80),
+                         state.anchors[0].y});
     }
-    std::copy_n(pending_source.begin(), state.pending_profile.size(),
-                state.pending_profile.begin());
-    state.pending_profile_active = true;
+    if (!state.pending_profile.has_value()) {
+        return;
+    }
+    SceneProfileState profile{};
+    SceneProfileDefaults unused{};
+    apply_scene_profile_selection(profile, state.pending_profile, unused);
+    state.camera_x = profile.camera_x;
+    state.camera_y = profile.camera_y;
+    state.camera_transition_x = profile.camera_transition_x;
+    state.camera_transition_y = profile.camera_transition_y;
+    for (std::size_t index = 0; index < state.anchors.size(); ++index) {
+        state.anchors[index] = {
+            static_cast<std::int16_t>(profile.runner_positions[index].x),
+            static_cast<std::int16_t>(profile.runner_positions[index].y)};
+    }
 }
 
 std::size_t emit_field_tile_column_words(

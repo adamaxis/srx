@@ -3,6 +3,7 @@
 #include "shadowrun_ghidra/field/field_coordinate_conversion.hpp"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -18,17 +19,23 @@ struct EntityAnchor {
 
 struct EntityAnchorSnapshotState {
     std::array<EntityAnchor, 3> anchors{};
-    std::optional<EntityAnchor> pending_anchor;
-    std::array<std::uint16_t, 6> pending_profile{};
-    bool pending_profile_active = false;
+    std::uint16_t camera_x = 0; // FFDDC6
+    std::uint16_t camera_y = 0; // FFDDC8
+    std::int16_t camera_transition_x = 0; // FFDF36
+    std::int16_t camera_transition_y = 0; // FFDF38
+    bool companion_restore = false; // FFFC3C
+    std::optional<std::array<std::uint16_t, 8>> pending_profile;
 };
 
+// ROM 0x2FA4: copy three FFDF44 pairs into FF0100/FF0200/FF0300. When FFFC3C
+// is set, publish Joshua X+0x80 and Y into the 0x2FF0 slot. A live FFE114
+// pointer then falls into 0x2B78 (the 0x2B34 pending-profile consume).
 void snapshot_entity_anchors(
     EntityAnchorSnapshotState& state,
     const std::array<EntityAnchor, 3>& source_anchors,
-    const std::optional<EntityAnchor>& ready_anchor,
-    const std::array<std::uint16_t, 8>& pending_source,
-    const std::function<void(const EntityAnchor&)>& publish_ready_anchor);
+    const std::optional<std::size_t>& ready_slot,
+    const std::function<void(std::size_t slot, EntityAnchor)>&
+        publish_ready_anchor);
 
 struct TileWordStreamCallbacks {
     std::function<void()> begin_transfer;

@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/field/field_entity_render_batch_conversion.hpp"
+#include "shadowrun_ghidra/field/scene_profile_conversion.hpp"
 
 #include <array>
 #include <cstdint>
@@ -10,15 +11,36 @@ int main() {
     EntityAnchorSnapshotState snapshot{};
     int published = 0;
     snapshot_entity_anchors(
-        snapshot, {{{1, 2}, {3, 4}, {5, 6}}}, EntityAnchor{7, 8},
-        {1, 2, 3, 4, 5, 6, 7, 8}, [&](const EntityAnchor& anchor) {
-            if (anchor.x == 7 && anchor.y == 8) {
-                ++published;
-            }
-        });
-    if (snapshot.anchors[2].y != 6 || published != 1 ||
-        snapshot.pending_profile[5] != 6 || !snapshot.pending_profile_active) {
+        snapshot, {{{1, 2}, {3, 4}, {5, 6}}}, std::nullopt,
+        [&](std::size_t, EntityAnchor) { ++published; });
+    if (snapshot.anchors[2].y != 6 || published != 0 ||
+        snapshot.pending_profile.has_value()) {
         return 1;
+    }
+
+    snapshot.companion_restore = true;
+    std::size_t published_slot = 99;
+    EntityAnchor published_anchor{};
+    snapshot_entity_anchors(
+        snapshot, {{{0x0100, 0x0200}, {3, 4}, {5, 6}}}, std::size_t{4},
+        [&](const std::size_t slot, const EntityAnchor anchor) {
+            published_slot = slot;
+            published_anchor = anchor;
+        });
+    if (published_slot != 4 || published_anchor.x != 0x0180 ||
+        published_anchor.y != 0x0200) {
+        return 23;
+    }
+
+    snapshot = EntityAnchorSnapshotState{};
+    snapshot.pending_profile = kFieldSceneVariantProfile0x3202;
+    snapshot_entity_anchors(snapshot, {{{1, 2}, {3, 4}, {5, 6}}}, std::nullopt,
+                            {});
+    if (snapshot.camera_x != 0x0000U || snapshot.camera_y != 0x2380U ||
+        snapshot.anchors[0].x != 0x0300 || snapshot.anchors[2].y != 0x2B80 ||
+        snapshot.camera_transition_x != -1 ||
+        snapshot.pending_profile.has_value()) {
+        return 24;
     }
 
     std::vector<std::uint16_t> words;
