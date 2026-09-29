@@ -202,6 +202,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x0001D280U, "initialize_world_sequence", RoutineFamily::world, 102U},
     {0x0001D33AU, "render_world_sequence_tile_rows", RoutineFamily::world, 186U},
     {0x0001DBAAU, "schedule_world_activity_timeout", RoutineFamily::world, 70U},
+    {0x0001DBF0U, "reset_entity_service_records", RoutineFamily::entity, 50U},
     {0x0001DC4CU, "select_world_entity_service_target", RoutineFamily::world, 328U},
     {0x0001DD94U, "advance_world_frame_logic", RoutineFamily::world, 268U},
     {0x0001DF34U, "resolve_nearby_world_effects", RoutineFamily::world, 144U},
