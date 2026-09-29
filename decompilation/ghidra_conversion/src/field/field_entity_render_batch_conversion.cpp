@@ -480,21 +480,25 @@ std::size_t render_encoded_title_text(
 }
 
 void select_menu_value(MenuValueState& state,
-                       const std::vector<std::uint8_t>& row_table,
-                       const std::size_t row_index,
-                       const bool special_entity_state,
-                       const std::uint8_t special_value) {
-    const auto offset = row_index * 2U;
-    if (offset + 1U >= row_table.size()) {
+                       const std::vector<std::uint8_t>& table,
+                       const MenuValueCursor cursor,
+                       const MenuValueRecord& record) {
+    const auto slot = static_cast<std::size_t>(
+        (static_cast<std::uint16_t>(cursor.row) * 7U + cursor.column + 1U) *
+        2U);
+    if (slot + 1U >= table.size()) {
         state.primary = 0;
         state.selected = 0;
         return;
     }
-    state.primary = row_table[offset + 1U];
-    state.selected = state.primary;
-    if (special_entity_state && row_table[offset] + 1U == special_value) {
-        state.selected = special_value;
+    const auto spell_code = table[slot];
+    state.primary = table[slot + 1U];
+    if (record.inventory_slot < 0 &&
+        static_cast<std::uint8_t>(spell_code + 1U) == record.item_code) {
+        state.selected = record.preserved_force;
+        return;
     }
+    state.selected = state.primary;
 }
 
 void run_menu_text_display_sequence(

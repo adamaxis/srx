@@ -328,10 +328,25 @@ int main() {
         }) != 2 || glyphs[0] != 0 || glyphs[1] != 0x1D) {
         return 16;
     }
+    const std::vector<std::uint8_t> menu_table{
+        0x00, 0x08, 0x01, 0x09, 0x02, 0x0A, 0x03, 0x0B, 0x04, 0x0C,
+        0x05, 0x0D, 0x06, 0x0E, 0x07, 0x0F, 0x0A, 0x0C};
     MenuValueState menu{};
-    select_menu_value(menu, {4, 8, 10, 12}, 1, true, 99);
-    if (menu.primary != 12 || menu.selected != 12) {
+    select_menu_value(menu, menu_table, {0, 1}, {-1, 0x03, 3});
+    if (menu.primary != 0x0A || menu.selected != 3) {
         return 17;
+    }
+    select_menu_value(menu, menu_table, {1, 0}, {-1, 0x0B, 4});
+    if (menu.primary != 0x0C || menu.selected != 4) {
+        return 27;
+    }
+    select_menu_value(menu, menu_table, {1, 0}, {0, 0x0B, 4});
+    if (menu.primary != 0x0C || menu.selected != 0x0C) {
+        return 28;
+    }
+    select_menu_value(menu, menu_table, {1, 0}, {-1, 0x99, 4});
+    if (menu.primary != 0x0C || menu.selected != 0x0C) {
+        return 29;
     }
 
     std::vector<int> events;

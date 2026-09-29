@@ -324,15 +324,28 @@ std::size_t render_encoded_title_text(
     const std::function<void(std::uint16_t glyph_index)>& write_glyph);
 
 struct MenuValueState {
-    std::uint16_t primary = 0;
-    std::uint16_t selected = 0;
+    std::uint16_t primary = 0;  // FFF098 table low byte
+    std::uint16_t selected = 0; // FFF096 current force
 };
 
+struct MenuValueCursor {
+    std::uint8_t row = 0;    // FFF0D1
+    std::uint8_t column = 0; // FFF0D0
+};
+
+struct MenuValueRecord {
+    std::int8_t inventory_slot = 0;     // FFFC04+0x56
+    std::uint8_t item_code = 0;         // FFFC04+0x57
+    std::uint8_t preserved_force = 0;   // FFFC04+0x9D
+};
+
+// ROM 0x101FE: slot = (FFF0D1*7 + FFF0D0 + 1)*2 into *FFF10E. D7 is the
+// table high byte, D3 the low byte published to FFF098. Negative +0x56 and
+// (D7+1)==+0x57 keep +0x9D in FFF096; otherwise FFF096 copies FFF098.
 void select_menu_value(MenuValueState& state,
-                       const std::vector<std::uint8_t>& row_table,
-                       std::size_t row_index,
-                       bool special_entity_state,
-                       std::uint8_t special_value);
+                       const std::vector<std::uint8_t>& table,
+                       MenuValueCursor cursor,
+                       const MenuValueRecord& record);
 
 struct MenuTextDisplayCallbacks {
     std::function<void()> prepare_grid;
