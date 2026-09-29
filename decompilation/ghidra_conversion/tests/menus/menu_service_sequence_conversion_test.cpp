@@ -322,8 +322,27 @@ int main() {
         variant_b.destination != kMenuGridVariantBDestination ||
         variant_b.count != kMenuGridVariantBCount ||
         variant_c.destination != kMenuGridVariantCDestination ||
-        variant_c.count != kMenuGridVariantCCount) {
+        variant_c.count != kMenuGridVariantCCount ||
+        prepare_menu_grid_variant_d().destination !=
+            kMenuGridVariantDDestination ||
+        prepare_menu_grid_variant_d().count != kMenuGridVariantDCount) {
         return 49;
+    }
+    const auto row_grid = prepare_menu_row_grid();
+    const auto row_render = render_menu_row();
+    const auto repeated = write_menu_repeated_grid(0xCB18U, 0U);
+    if (row_grid.title.destination != 0xCB18U ||
+        row_grid.title.height != 0x14U || row_grid.title.width != 0U ||
+        row_grid.title.palette != 0x6000U ||
+        row_grid.body.destination != 0xEA18U || row_grid.body.width != 2U ||
+        row_grid.body.palette != 0U ||
+        row_render.glyph_source != 0x000CD48AU ||
+        row_render.destination != 0x0000EA18U ||
+        row_render.height != 0x14U || row_render.width != 2U ||
+        row_render.posture_source != 0x000CF384U ||
+        repeated.height != kMenuRepeatedGridHeight ||
+        repeated.destination != 0xCB18U || repeated.palette != 0x6000U) {
+        return 54;
     }
 
     write_menu_repeated_grid(

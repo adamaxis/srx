@@ -514,11 +514,37 @@ MenuGridQuadPlan write_menu_grid_quad();
 void write_menu_grid_quad(const std::function<void()>& write_grid,
                           const std::function<void()>& refresh_metadata);
 
-// ROM 0x11900: prepare the menu row, then submit its repeated grid.
+struct MenuRepeatedGridPlan {
+    std::uint16_t destination = 0;
+    std::uint16_t height = 0x0014; // D7 from 0x12C56
+    std::uint16_t width = 0;       // D1
+    std::uint16_t palette = 0x6000;
+    std::uint32_t glyph_source = 0x000C1320U;
+};
+
+struct MenuRowGridPlan {
+    // 0x12C56 at D4=0xCB18 D1=0, then 0x11C0 at D4=0xEA18 D7=0x14 D1=2 D2=0.
+    MenuRepeatedGridPlan title{0xCB18U, 0x0014U, 0U, 0x6000U, 0x000C1320U};
+    MenuRepeatedGridPlan body{0xEA18U, 0x0014U, 2U, 0U, 0x000C1320U};
+};
+
+struct MenuRowRenderPlan {
+    std::uint32_t glyph_source = 0x000CD48AU;
+    std::uint32_t destination = 0x0000EA18U;
+    std::uint16_t height = 0x0014; // D7
+    std::uint16_t width = 2;       // D1
+    std::uint16_t palette = 0;
+    std::uint32_t posture_source = 0x000CF384U;
+};
+
+// ROM 0x11900: 0x12C56 at 0xCB18, then 0x11C0 at 0xEA18 D7=0x14 D1=2 D2=0.
+MenuRowGridPlan prepare_menu_row_grid();
 void prepare_menu_row_grid(const std::function<void()>& prepare_row,
                            const std::function<void()>& write_repeated_grid);
 
-// ROM 0x11928: submit the grid before rendering the corresponding menu row.
+// ROM 0x11928: 0x1232 at 0xEA18 from 0xCD48A D7=0x14 D1=2, then 0x11AE4
+// with A1=0xCF384.
+MenuRowRenderPlan render_menu_row();
 void render_menu_row(const std::function<void()>& write_grid,
                      const std::function<void()>& render_row);
 
@@ -629,6 +655,8 @@ constexpr std::uint16_t kMenuGridVariantBCount = 0x0013U;
 constexpr std::uint16_t kMenuGridVariantCDestination = 0xC518U;
 constexpr std::uint16_t kMenuGridVariantCCount = 0x000BU;
 constexpr std::uint16_t kMenuGridVariantDDestination = 0xC818U;
+constexpr std::uint16_t kMenuGridVariantDCount = 0x0005U;
+constexpr std::uint16_t kMenuRepeatedGridHeight = 0x0014U;
 
 // ROM 0x12C1E: D4=0xC518 D1=7, then 0x12C5A (A1=0xC1320 D2=0x6000).
 MenuGridVariantPlan prepare_menu_grid_variant_a();
@@ -642,7 +670,12 @@ void prepare_menu_grid_variant_b(const std::function<void()>& prepare_grid);
 MenuGridVariantPlan prepare_menu_grid_variant_c();
 void prepare_menu_grid_variant_c(const std::function<void()>& prepare_grid);
 
-// ROM 0x12C56: submit one repeated menu-grid write.
+// ROM 0x12C4E: D4=0xC818 D1=5, then 0x12C56.
+MenuGridVariantPlan prepare_menu_grid_variant_d();
+
+// ROM 0x12C56: MOVE.W #0x14,D7 then 0x12C5A (A1=0xC1320 D2=0x6000).
+MenuRepeatedGridPlan write_menu_repeated_grid(std::uint16_t destination,
+                                              std::uint16_t width);
 void write_menu_repeated_grid(const std::function<void()>& write_grid);
 
 // ROM 0x12C5A: submit the repeated-grid write used by the neighboring menu

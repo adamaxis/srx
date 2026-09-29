@@ -701,6 +701,10 @@ void write_menu_grid_quad(const std::function<void()>& write_grid,
     }
 }
 
+MenuRowGridPlan prepare_menu_row_grid() {
+    return {};
+}
+
 void prepare_menu_row_grid(const std::function<void()>& prepare_row,
                            const std::function<void()>& write_repeated_grid) {
     if (prepare_row) {
@@ -709,6 +713,10 @@ void prepare_menu_row_grid(const std::function<void()>& prepare_row,
     if (write_repeated_grid) {
         write_repeated_grid();
     }
+}
+
+MenuRowRenderPlan render_menu_row() {
+    return {};
 }
 
 void render_menu_row(const std::function<void()>& write_grid,
@@ -892,6 +900,20 @@ void prepare_menu_grid_variant_c(
     if (prepare_grid) {
         prepare_grid();
     }
+}
+
+MenuGridVariantPlan prepare_menu_grid_variant_d() {
+    return make_menu_grid_variant(kMenuGridVariantDDestination,
+                                 kMenuGridVariantDCount);
+}
+
+MenuRepeatedGridPlan write_menu_repeated_grid(const std::uint16_t destination,
+                                              const std::uint16_t width) {
+    MenuRepeatedGridPlan plan;
+    plan.destination = destination;
+    plan.width = width;
+    plan.height = kMenuRepeatedGridHeight;
+    return plan;
 }
 
 void write_menu_repeated_grid(const std::function<void()>& write_grid) {
