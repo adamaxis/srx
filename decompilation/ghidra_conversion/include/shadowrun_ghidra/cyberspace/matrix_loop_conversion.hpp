@@ -82,6 +82,9 @@ struct MatrixRunnerDetailPlan {
     std::uint8_t primary_repeat_count = 0;
     std::uint8_t secondary_repeat_count = 0;
     std::uint8_t final_repeat_count = 0;
+    // Source 0x1A27E computes the secondary row destination from the
+    // primary loop counter restored by 0x11C0 (primary_repeat_count - 1),
+    // then subtracts the compact-record +0x05 value.
     std::int16_t secondary_destination_delta = 0;
     bool eligibility_available = false;
     bool eligibility_positive = false;

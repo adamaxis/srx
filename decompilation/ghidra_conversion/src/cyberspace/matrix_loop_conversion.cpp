@@ -90,9 +90,19 @@ bool render_matrix_panel(
 namespace {
 
 std::uint8_t detail_repeat_count(const std::uint16_t value) {
-    const auto clamped = static_cast<std::uint16_t>(
-        value >= 0x0EU ? 0x0DU : value);
-    return static_cast<std::uint8_t>(clamped == 0U ? 1U : clamped);
+    // The source compares the word with 0x0E and branches on BMI.  A
+    // negative word therefore skips the 0x0D clamp, then the later SUBQ/BPL
+    // pair clears the loop register and still gives the DBF one iteration.
+    // Preserve that signed-flag behavior instead of treating the word as an
+    // unconditionally unsigned count.
+    const auto signed_value = static_cast<std::int16_t>(value);
+    if (signed_value <= 0) {
+        return 1U;
+    }
+    if (signed_value >= 0x0E) {
+        return 0x0DU;
+    }
+    return static_cast<std::uint8_t>(signed_value);
 }
 
 std::int16_t wrapped_secondary_counter(const std::uint8_t source_value) {
@@ -156,8 +166,13 @@ MatrixRunnerDetailPlan render_matrix_runner_details(
             if (plan.eligibility_positive) {
                 plan.secondary_repeat_count = static_cast<std::uint8_t>(
                     secondary_counter + 1);
+                // The primary call receives D7 after SUBQ.W #1.  0x11C0
+                // restores that register, so the source computes the
+                // secondary destination from (primary row count - 1), not
+                // from the raw pre-clamp value used to derive that count.
                 plan.secondary_destination_delta = static_cast<std::int16_t>(
-                    plan.primary_value - secondary_counter);
+                    static_cast<std::int16_t>(plan.primary_repeat_count) -
+                    1 - secondary_counter);
                 if (callbacks.write_secondary_detail_rows) {
                     callbacks.write_secondary_detail_rows(
                         plan.secondary_repeat_count,

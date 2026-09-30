@@ -176,13 +176,41 @@ int main() {
                 scaled_plan.eligibility_available &&
                 scaled_plan.eligibility_positive &&
                 scaled_plan.secondary_repeat_count == 3U &&
-                scaled_plan.secondary_destination_delta == 41 &&
+                scaled_plan.secondary_destination_delta == 10 &&
                 scaled_plan.final_repeat_count == 1U &&
                 detail_events == std::vector<std::string>{"header", "header",
                                                            "primary:13",
-                                                           "secondary:3:41",
+                                                           "secondary:3:10",
                                                            "final:1"})) {
         return 9;
+    }
+
+    MatrixRunnerDetailInput signed_counts = direct;
+    signed_counts.program_index = 2U;
+    signed_counts.program_status = 0xFFU;
+    signed_counts.current_record_value = 0U;
+    signed_counts.delay_input = {};
+    detail_events.clear();
+    const auto signed_count_plan = render_matrix_runner_details(
+        signed_counts,
+        {[&] { detail_events.emplace_back("header"); }, {}, {},
+         [&](const std::uint8_t count) {
+             detail_events.emplace_back("primary:" + std::to_string(count));
+         },
+         [&](const std::uint8_t count, const std::int16_t delta) {
+             detail_events.emplace_back("secondary:" + std::to_string(count) +
+                                        ":" + std::to_string(delta));
+         },
+         [&](const std::uint8_t count) {
+             detail_events.emplace_back("final:" + std::to_string(count));
+         },
+         [&] { return std::optional<std::uint16_t>{1U}; }});
+    if (!expect(signed_count_plan.primary_repeat_count == 13U &&
+                signed_count_plan.secondary_repeat_count == 0U &&
+                detail_events == std::vector<std::string>{"header", "header",
+                                                           "primary:13",
+                                                           "final:1"})) {
+        return 10;
     }
 
     const std::array<std::int8_t, 5> loaded_slots{2, -1, 7, -1, -1};
@@ -194,7 +222,7 @@ int main() {
                 loaded.program_already_loaded && free_slot.slot == 1 &&
                 free_slot.slot_available && !free_slot.program_already_loaded &&
                 !full.slot_available)) {
-        return 10;
+        return 11;
     }
 
     MatrixCursorState cursor{};
@@ -203,33 +231,33 @@ int main() {
     if (!expect(cursor.row == 2 && cursor.column == 0 &&
                 cursor.row_marker == 0xE4 && cursor.column_marker == 0x8C &&
                 cursor.redraw_requested)) {
-        return 7;
+        return 12;
     }
     cursor.redraw_requested = false;
     update_matrix_cursor(cursor, move_left);
     if (!expect(cursor.column == 3 && cursor.column_marker == 0xEC &&
                 cursor.redraw_requested)) {
-        return 8;
+        return 13;
     }
     cursor.redraw_requested = false;
     update_matrix_cursor(cursor, move_down | move_right);
     if (!expect(cursor.row == 3 && cursor.column == 3 &&
                 cursor.row_marker == 0x10C && cursor.column_marker == 0xEC &&
                 cursor.redraw_requested)) {
-        return 9;
+        return 14;
     }
     cursor.redraw_requested = false;
     update_matrix_cursor(cursor, set_overlay_marker_one);
     if (!expect(cursor.row == 3 && cursor.column == 3 &&
                 !cursor.redraw_requested)) {
-        return 10;
+        return 15;
     }
 
     MatrixActionState action{};
     apply_matrix_action_input(action, set_overlay_marker_one);
     if (!expect(action.overlay_marker == 1U && action.action_requested &&
                 !action.exit_requested)) {
-        return 11;
+        return 16;
     }
     action = {};
     apply_matrix_action_input(action, set_overlay_marker_special |
@@ -237,12 +265,12 @@ int main() {
                                          leave_matrix);
     if (!expect(action.overlay_marker == 0xFFU && action.action_requested &&
                 !action.exit_requested)) {
-        return 12;
+        return 17;
     }
     action = {};
     apply_matrix_action_input(action, leave_matrix);
     if (!expect(!action.action_requested && action.exit_requested)) {
-        return 13;
+        return 18;
     }
     if (!expect(choose_matrix_action_route(0, 0, false) ==
                     MatrixActionRoute::program_slot_menu &&
@@ -256,7 +284,7 @@ int main() {
                     MatrixActionRoute::no_action &&
                 choose_matrix_action_route(3, 3, true) ==
                     MatrixActionRoute::disconnect_confirmation)) {
-        return 14;
+        return 19;
     }
 
     MatrixLoopState state{};
@@ -300,7 +328,7 @@ int main() {
                 events[9] == "title-sprites" && events[10] == "panel" &&
                 events[12] == "two-grids" && events[13] == "display:33140" &&
                 events[14] == "matrix-panel")) {
-        return 15;
+        return 20;
     }
 
     return 0;
