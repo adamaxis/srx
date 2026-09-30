@@ -1052,6 +1052,17 @@ shaman pages contain `3/4/3` text segments, the local-area pages contain
 `3/2`, and the Gunderson page contains `3`; the `< MORE >` boundaries remain
 those of the descriptors rather than being inferred from text length.
 
+Winston's subject branch is now traced as its own concrete behavior. The
+continuation descriptor at `0xFEA70` routes command `0xBD` to the subject menu
+at `0xFEA8C`, titled “What do you want?” with Halloweeners, Lone Star, and
+troll-origin choices. The Halloweeners descriptor at `0xFEAA8` returns its
+three-segment terminal stream; the Lone Star descriptor at `0xFEAC4` returns
+its four-segment terminal stream; and the troll descriptor at `0xFEAE0` uses
+`< MORE >` to reach `0xFEAF4`, producing a two-page `2/4`-segment response.
+All three terminal paths return through the common conversation choices. The
+native conversion names those topics and retains the exact subject-specific
+text/cadence rather than treating command `0xBD` as generic dialogue.
+
 ## 2026-09-30 Stoker motel source mapping
 
 The Stoker source mapping is now corrected rather than guessed. `0x1F65A`

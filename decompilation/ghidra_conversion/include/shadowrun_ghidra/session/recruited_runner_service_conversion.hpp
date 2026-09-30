@@ -295,6 +295,41 @@ RickyInformationSubjectPrompt ricky_information_subject_prompt();
 RickyInformationResponse select_ricky_information_response(
     RickyInformationSubject subject);
 
+enum class WinstonInformationSubject {
+    halloweeners,
+    lone_star,
+    troll_origin,
+};
+
+struct WinstonInformationSubjectPrompt {
+    std::string_view title_text;
+    std::array<std::string_view, 3> options{};
+};
+
+enum class WinstonInformationResponseAction {
+    selected,
+    subject_unavailable,
+};
+
+// ROM descriptors 0xFEA8C..0xFEAF4. The troll-origin response is the only
+// branch with a source < MORE > continuation.
+struct WinstonInformationResponse {
+    WinstonInformationResponseAction action =
+        WinstonInformationResponseAction::subject_unavailable;
+    WinstonInformationSubject subject = WinstonInformationSubject::halloweeners;
+    std::array<RecruitedRunnerInformationTextStream, 2> pages{};
+    std::array<bool, 2> more_after_page{};
+    std::size_t page_count = 0;
+    bool returns_to_common_conversation = false;
+};
+
+// ROM data rooted at 0xFEA8C. The subject names and response streams are
+// native text data; descriptor addresses do not enter the runtime.
+WinstonInformationSubjectPrompt winston_information_subject_prompt();
+
+WinstonInformationResponse select_winston_information_response(
+    WinstonInformationSubject subject);
+
 // ROM 0x21318/0x21326/0x21332 plus the common body at 0x2133C.  This converts
 // the recruited-runner dialog's short-term, permanent, and free-permanent
 // choices into typed state mutations.  The source's selected index 9 is the

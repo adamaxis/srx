@@ -257,6 +257,55 @@ int main() {
         return 17;
     }
 
+    const auto winston_subjects = winston_information_subject_prompt();
+    if (!expect(winston_subjects.title_text == "What do you want?" &&
+                winston_subjects.options[0] ==
+                    "Tell me about the Halloweeners." &&
+                winston_subjects.options[1] ==
+                    "What do you know about Lone Star?" &&
+                winston_subjects.options[2] ==
+                    "How is it that you are a troll?")) {
+        return 25;
+    }
+    const auto halloweeners_response = select_winston_information_response(
+        WinstonInformationSubject::halloweeners);
+    if (!expect(halloweeners_response.action ==
+                    WinstonInformationResponseAction::selected &&
+                halloweeners_response.page_count == 1U &&
+                halloweeners_response.more_after_page ==
+                    std::array<bool, 2>{{false, false}} &&
+                halloweeners_response.pages[0].segment_count == 3U &&
+                halloweeners_response.pages[0].segments[2] ==
+                    "Still, they're a lot tougher than the Eye-fivers." &&
+                halloweeners_response.returns_to_common_conversation)) {
+        return 26;
+    }
+    const auto lone_star_response = select_winston_information_response(
+        WinstonInformationSubject::lone_star);
+    if (!expect(lone_star_response.page_count == 1U &&
+                lone_star_response.pages[0].segment_count == 4U &&
+                lone_star_response.pages[0].segments[3] ==
+                    "Don't bring up that subject again!")) {
+        return 27;
+    }
+    const auto troll_response = select_winston_information_response(
+        WinstonInformationSubject::troll_origin);
+    if (!expect(troll_response.page_count == 2U &&
+                troll_response.more_after_page ==
+                    std::array<bool, 2>{{true, false}} &&
+                troll_response.pages[0].segment_count == 2U &&
+                troll_response.pages[1].segment_count == 4U &&
+                troll_response.pages[1].segments[2] ==
+                    "Arrgh, it's enough to make me want to shoot someone!")) {
+        return 28;
+    }
+    if (!expect(select_winston_information_response(
+                    static_cast<WinstonInformationSubject>(3U))
+                    .action == WinstonInformationResponseAction::
+                                   subject_unavailable)) {
+        return 29;
+    }
+
     auto state = make_state();
     std::vector<int> callback_order;
     const RecruitedRunnerServiceCallbacks callbacks{

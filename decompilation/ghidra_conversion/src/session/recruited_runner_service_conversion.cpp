@@ -307,6 +307,35 @@ constexpr RecruitedRunnerInformationTextStream
           {}}},
         3U};
 
+constexpr RecruitedRunnerInformationTextStream
+    kWinstonHalloweenersPage{
+        {{"The Halloweeners's own Redmond.  They're the sort of low-end trash I used to hang with before I got more educated.",
+          "They beat on unsuspecting targets, but flee when things get too hairy.",
+          "Still, they're a lot tougher than the Eye-fivers.",
+          {}}},
+        3U};
+constexpr RecruitedRunnerInformationTextStream
+    kWinstonLoneStarPage{
+        {{"Lone Stars!  I hate them!",
+          "They think they are so wiz, walking the streets in their regulation body armor and shooting at anyone they want!",
+          "I hate them!",
+          "Don't bring up that subject again!"}},
+        4U};
+constexpr RecruitedRunnerInformationTextStream
+    kWinstonTrollOriginPageOne{
+        {{"<He looks like he's going to lose his temper, but stays calm.>",
+          "I didn't ask to be like this, you know.  I was normal, like you, when I was younger.",
+          {},
+          {}}},
+        2U};
+constexpr RecruitedRunnerInformationTextStream
+    kWinstonTrollOriginPageTwo{
+        {{"But now I'm seven feet, four inches of troll.",
+          "Do you know how hard it is to buy clothes that fit?!",
+          "Arrgh, it's enough to make me want to shoot someone!",
+          "<His grip tightens on his pistol.>"}},
+        4U};
+
 bool service_slot_is_active(const LiveRunnerRecord& record) {
     // BTST #0,FF0210/FF0310 reads the first byte of each record's +0x10
     // word.  Do not reinterpret this as the low bit of a host-endian word.
@@ -528,6 +557,42 @@ RickyInformationResponse select_ricky_information_response(
         result.pages = {kRickyJohnsonGundersonPage, {}, {}};
         result.more_after_page = {false, false, false};
         result.page_count = 1U;
+        return result;
+    }
+    return result;
+}
+
+WinstonInformationSubjectPrompt winston_information_subject_prompt() {
+    return {"What do you want?",
+            {"Tell me about the Halloweeners.",
+             "What do you know about Lone Star?",
+             "How is it that you are a troll?"}};
+}
+
+WinstonInformationResponse select_winston_information_response(
+    const WinstonInformationSubject subject) {
+    WinstonInformationResponse result{};
+    result.subject = subject;
+    result.returns_to_common_conversation = true;
+    switch (subject) {
+    case WinstonInformationSubject::halloweeners:
+        result.action = WinstonInformationResponseAction::selected;
+        result.pages = {kWinstonHalloweenersPage, {}};
+        result.more_after_page = {false, false};
+        result.page_count = 1U;
+        return result;
+    case WinstonInformationSubject::lone_star:
+        result.action = WinstonInformationResponseAction::selected;
+        result.pages = {kWinstonLoneStarPage, {}};
+        result.more_after_page = {false, false};
+        result.page_count = 1U;
+        return result;
+    case WinstonInformationSubject::troll_origin:
+        result.action = WinstonInformationResponseAction::selected;
+        result.pages = {kWinstonTrollOriginPageOne,
+                        kWinstonTrollOriginPageTwo};
+        result.more_after_page = {true, false};
+        result.page_count = 2U;
         return result;
     }
     return result;
