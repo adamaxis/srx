@@ -4,6 +4,21 @@
 
 namespace shadowrun::ghidra_conversion {
 
+namespace {
+
+// ROM 0x1D378 performs LSL.W #5 on the tile-origin delta, then 0x1D382's
+// ADDA.W sign-extends the wrapped word. Keep that source arithmetic explicit
+// instead of multiplying an already sign-extended host difference.
+std::int32_t source_horizontal_offset(const std::uint16_t tile_index,
+                                      const std::uint16_t horizontal_origin) {
+    const auto delta_word = static_cast<std::uint16_t>(
+        tile_index - horizontal_origin);
+    return static_cast<std::int32_t>(static_cast<std::int16_t>(
+        static_cast<std::uint16_t>(delta_word << 5U)));
+}
+
+} // namespace
+
 WorldSequenceTileRenderResult render_world_sequence_tile_rows(
     const WorldSequenceTileRenderState& state,
     const std::vector<WorldSequenceTileRecord>& records,
@@ -22,8 +37,8 @@ WorldSequenceTileRenderResult render_world_sequence_tile_rows(
         const auto record_start = static_cast<std::uint16_t>(
             state.vertical_cursor + static_cast<std::uint16_t>(
                                        record.vertical_offset));
-        const auto horizontal_delta = static_cast<std::int32_t>(
-            static_cast<std::int16_t>(tile_index - state.horizontal_origin));
+        const auto horizontal_delta =
+            source_horizontal_offset(tile_index, state.horizontal_origin);
 
         bool record_visible = false;
         for (std::uint16_t frame_slot = 0; frame_slot < 32U; ++frame_slot) {
@@ -46,7 +61,7 @@ WorldSequenceTileRenderResult render_world_sequence_tile_rows(
             }
 
             const auto source_row_base = static_cast<std::int32_t>(
-                horizontal_delta * 0x20 + row_delta * 4U);
+                horizontal_delta + row_delta * 4U);
             const auto destination_row_base = static_cast<std::uint16_t>(
                 tile_index * 0x20U + row_delta * 4U);
             const auto source_mask_selector = static_cast<std::uint16_t>(

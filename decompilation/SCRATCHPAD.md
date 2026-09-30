@@ -2402,6 +2402,12 @@ selects the eight-nibble mask cadence, and emits masked host tile writes.
 `make_vdp_transfer_command` and the source word store are callbacks; no VDP
 register or source buffer address is part of the native routine.
 
+Its horizontal source offset is now also source-word-faithful: the tile-origin
+delta is subtracted as a 16-bit word, shifted with `LSL.W #5`, and sign
+extended only after the shifted word is formed, matching the ROM's `ADDA.W`
+path. This keeps wrapped Genesis word arithmetic out of the host data model
+without turning the renderer into a memory-address emulator.
+
 The adjacent `0x1D1F4` title/world reveal service now preserves the source's
 per-iteration mask call. Its 71 active writes each sample a source offset,
 select mask bank 5 through `0x1D3F4`, read the corresponding decoded

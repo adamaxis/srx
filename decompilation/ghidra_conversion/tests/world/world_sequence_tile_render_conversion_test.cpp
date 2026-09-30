@@ -61,5 +61,26 @@ int main() {
         return 4;
     }
 
+    std::int32_t wrapped_source_offset = 0;
+    bool captured_wrapped_offset = false;
+    render_world_sequence_tile_rows(
+        {0U, 0U, 0x0700U}, {{0, 0U, 0U}},
+        {[](const std::uint16_t) {},
+         [&](const std::int32_t source_byte_offset) {
+             if (!captured_wrapped_offset) {
+                 wrapped_source_offset = source_byte_offset;
+                 captured_wrapped_offset = true;
+             }
+             return 0U;
+         },
+         [](const std::uint16_t) { return 0xFFFFFFFFU; },
+         [](const WorldSequenceTileWrite&) {}});
+    // 0 - 0x0700 wraps to 0xF900, LSL.W #5 produces 0x2000, and ADDA.W
+    // sign-extends that positive word. A direct signed host multiplication
+    // would incorrectly produce -0xE000.
+    if (expect(wrapped_source_offset == 0x2000) != 0) {
+        return 5;
+    }
+
     return 0;
 }

@@ -17,6 +17,9 @@ void render_world_sequence_tile_rows(void)
   //   +0x02 signed vertical offset, +0x04 layout flags, +0x06 tile index.
   // FFDF70 is the first row in the current source window; FFDF72 and FFDF74
   // provide the vertical cursor and horizontal source origin.
+// The horizontal source delta is a 16-bit subtract, 16-bit left shift, then
+// signed word add to A1; the native conversion preserves that wrap before
+// exposing the resulting logical host offset.
   for (uint16_t record_row = 0; record_row < 0x20; ++record_row) {
     const uint16_t visible_row = FFDF70 + record_row;
     const uint16_t record_start = FFDF72 + record->vertical_offset;
