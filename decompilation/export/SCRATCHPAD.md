@@ -1129,6 +1129,37 @@ not retain the source's indirect code pointer.
 Missing transition/activity/handler callbacks return explicit pending or
 unresolved results. They are not silently treated as converted behavior.
 
+### Recurring coordinator transition branch detail: 0x095E..0x0AA4
+
+The high-priority branch is now source-ordered rather than represented by a
+single generic transition callback. `0x095E` clears `FFDF3E`, publishes the
+`FFE172` mode-entry marker, and runs `0x53126`. After that service, the ROM
+checks `FFE186`, then `FFDF40`, then the carry result from `0x3168`; only a
+carry result skips the field-exit orchestrator at `0x1F5CA`.
+
+The non-carry path clears `FFE18B` after the exit orchestrator and consumes its
+caller-visible `D6` result at `0x09B2`. A nonzero result resets the six runner
+transition words at `0x012E/0x0134`, `0x022E/0x0234`, and `0x032E/0x0334`,
+publishes `FFDFE8=-1`, snapshots anchors through `0x2FA4`, and enters
+`0x2BD2`. Otherwise the source preserves the special scene `4`/mode `6`
+skip, selects `0x2CE0` only when `FFFC0E` is set and mode is at least `8`, or
+falls through to `0x167AE`. Scene `0x37` additionally publishes the typed
+scene-37 activity handler and starts `0x1E2EC` before the shared tail writes
+`FFDFE8=-1`, `FFDF8E=-1`, and calls `0x2BD2`.
+
+The `0x0A72` branch is also distinct from ordinary `FFDF42` handling. A
+nonzero `FFE18F` is cleared and sets bit 7 of `FFFC1C`; then the source writes
+`FFDFE8=-1`, calls `0x1E43C`, calls `0x2F32`, clears `FFDF42`, and returns to
+the `0x08C0` field warmup. The conversion exposes those writes and returns
+`world_activity_scene_reentry_requested`; it does not pretend the Qt host has
+implemented a missing child leaf.
+
+The coordinator test now covers the branch preference, scene-runtime-state
+route, FFDF40 re-entry, mode-4/mode-6 skip, D6-driven anchor refresh, mode
+table selection, scene-37 activity start, and unresolved callback retry. The
+exit orchestrator also retains its source D6 result as a typed status for this
+caller instead of throwing it away.
+
 ## Wrapped encoded text transfer: 0xC160 / 0xC168
 
 The text renderer is a shared display-text boundary, not a field-menu-specific

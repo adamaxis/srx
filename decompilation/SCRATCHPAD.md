@@ -72,6 +72,19 @@ palette, and world-frame services precede controller dispatch; action bit
 has a typed resumed-field/title-return result instead of a copied function
 pointer. Missing child branches remain explicit pending/unresolved results.
 
+The coordinator's `FFDF3E` branch is now source-ordered through its actual
+field behavior decisions. It runs mode-entry preparation, checks the
+scene-runtime state and `FFDF40`, consumes the carry result of the mode-`0x10`
+scene-variant toggle, then runs the typed field-exit orchestrator. The
+orchestrator's caller-visible `D6` result controls the six runner transition
+word reset and anchor snapshot; otherwise the scene-4/mode-6 exception,
+`FFFC0E`/mode threshold, world-activity initialization, and scene-37 activity
+start are selected exactly as traced. The `FFDF42` path separately clears the
+`FFE18F` marker/sets the typed `FFFC1C` bit, runs the world-activity request
+service, initializes field scene state, clears the request, and returns to the
+field warmup. These are typed callbacks over converted leaves, not a generic
+transition hook or a copied function-pointer runtime.
+
 ### Qt conversion presentation audit: 2026-09-30
 
 The separate `ghidra_conversion/qt_runtime` now has a source-derived image

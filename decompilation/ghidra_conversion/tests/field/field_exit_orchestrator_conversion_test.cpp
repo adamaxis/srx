@@ -44,12 +44,14 @@ int main() {
         },
         [&](FieldExitOrchestratorState&) {
             order.push_back(7);
+            state.caller_exit_status = -1;
             return false;
         }};
     if (expect(run_field_exit_orchestrator(state, callbacks) ==
                    FieldExitOrchestratorAction::completed &&
                order == std::vector<int>{1, 2, 3, 4, 5, 6, 7} &&
-               !state.prompt_display_prepared && state.service_marker == 0) != 0) {
+               !state.prompt_display_prepared && state.service_marker == 0 &&
+               state.caller_exit_status == -1) != 0) {
         return 1;
     }
 

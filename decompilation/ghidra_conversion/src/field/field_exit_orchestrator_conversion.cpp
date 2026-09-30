@@ -27,6 +27,7 @@ FieldExitOrchestratorAction run_field_exit_orchestrator(
         return FieldExitOrchestratorAction::aborted_after_world_exit;
     }
     state.prompt_display_prepared = false;
+    state.caller_exit_status = 0;
     state.service_marker = 0;
 
     if (run_stage(callbacks.dispatch_world_effect, state) ||

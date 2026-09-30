@@ -23,6 +23,7 @@ enum class FieldRuntimeFrameResult {
     command_overview_dispatched,
     field_session_restart_pending,
     field_session_restart_requested,
+    world_activity_scene_reentry_requested,
     field_scene_reentry_requested,
     returned_to_title,
     callback_unresolved,
@@ -37,13 +38,18 @@ struct FieldRuntimeCoordinatorState {
     bool field_activity_lock = false; // FFE18B
     std::uint16_t world_activity_countdown = 0; // FFE166
     std::uint16_t display_service_word = 0; // FFDFE8
+    std::int16_t mode_entry_marker = 0; // FFE172
+    std::int16_t scene_refresh_marker = 0; // FFDF8E
     std::uint16_t controller_word = 0; // FFDD22
     bool pending_field_scene_handler = false; // FFE104
     bool joshua_archetype_selection_pending = false; // FFE108
     std::uint16_t scene_id = 0; // FFDDC4
     std::uint8_t field_mode = 0; // FFFBF9
     std::uint8_t scene_runtime_state = 0; // FFE186
+    std::uint16_t field_scene_gate = 0; // FFDF40
     std::uint16_t mode_transition_gate = 0; // FFFC0E
+    std::uint8_t world_activity_transition_marker = 0; // FFE18F
+    bool world_activity_scene_reset_bit = false; // FFFC1C bit 7
     std::uint8_t display_dirty_flags = 0; // FFEF14
 
     bool action_event_dispatched = false;
@@ -55,12 +61,32 @@ struct FieldRuntimeCoordinatorCallbacks {
     // 0x0952: every pass begins at a VBlank boundary.
     std::function<void()> wait_for_vblank;
 
-    // 0x095E / 0x0A68: these are the two high-priority request branches.
-    // The callbacks compose the already-converted transition/activity leaves.
+    // 0x0976..0x0A64: the FFDF3E branch is kept in source order here rather
+    // than hidden behind one generic transition callback. A bool returned by
+    // toggle_field_scene_variant is the source carry result. The exit
+    // callback returns the caller-visible D6 != 0 outcome; the native name is
+    // the behavior it controls (whether entity anchors must be refreshed).
+    std::function<void()> prepare_mode_entry_service;
+    std::function<bool(FieldRuntimeCoordinatorState&)>
+        toggle_field_scene_variant;
+    std::function<bool(FieldRuntimeCoordinatorState&)>
+        run_field_exit_orchestrator;
     std::function<void(FieldRuntimeCoordinatorState&)>
-        handle_field_transition_request;
+        reset_field_entity_transition_words;
+    std::function<void(FieldRuntimeCoordinatorState&)> snapshot_entity_anchors;
+    std::function<void(FieldRuntimeCoordinatorState&)>
+        advance_field_mode_transition;
+    std::function<void(FieldRuntimeCoordinatorState&)>
+        initialize_world_activity_mode;
+    std::function<void(FieldRuntimeCoordinatorState&)>
+        begin_scene_37_world_activity;
+
+    // 0x0A72..0x0AA4: world-activity request handling and scene-state
+    // re-entry are distinct converted leaves, followed by the 0x08C0 warmup.
     std::function<void(FieldRuntimeCoordinatorState&)>
         handle_world_activity_request;
+    std::function<void(FieldRuntimeCoordinatorState&)>
+        initialize_field_scene_state;
 
     // 0x0AA8..0x0ACC: ordinary field-frame services, kept in source order.
     std::function<void()> latch_controller_events;

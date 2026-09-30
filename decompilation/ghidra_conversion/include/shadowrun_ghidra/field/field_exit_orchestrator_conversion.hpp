@@ -9,6 +9,10 @@ struct FieldExitOrchestratorState {
     std::uint8_t controller_flags = 0; // FF0110
     bool prompt_display_prepared = false; // FFF10C
     std::int8_t service_marker = 0; // FFF0CC
+    // The caller at ROM 0x09B2 tests the D6 word left by this orchestrator.
+    // Converted route services publish the behaviorally relevant result here
+    // instead of leaking a host register or a source address.
+    std::int16_t caller_exit_status = 0; // D6
 };
 
 using FieldExitOrchestratorStage =

@@ -205,10 +205,16 @@ one class per decompiled function. The source families around `0x2B34`,
 
 The recurring coordinator is a separate integration seam rather than a second
 game-state machine: `advance_field_runtime_frame()` owns the source order for
-VBlank/request priority, normal entity/camera/render/world services, controller
-bit precedence, command overview, and pending scene-handler outcomes. It
-delegates each leaf through typed callbacks so the conversion can be connected
-to the Qt host without copying a 68000 loop or a function-pointer table.
+VBlank/request priority, the `FFDF3E` field-transition decision tree, the
+`FFDF40/FFDF42` world-activity re-entry, normal entity/camera/render/world
+services, controller-bit precedence, command overview, and pending
+scene-handler outcomes. Its transition callbacks are named for the actual
+converted leaves: mode-entry preparation, scene-variant carry, field-exit
+orchestration, anchor reset/snapshot, field-mode transition, world-activity
+initialization, world-activity request handling, and field-scene
+initialization. Missing leaves return explicit pending results, so connecting
+the seam to Qt cannot silently turn an unresolved source branch into a fake
+screen. The runtime contains no ROM function pointer or 68000 loop.
 
 ### EntityWorld and effects
 
