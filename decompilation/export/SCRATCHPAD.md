@@ -889,6 +889,27 @@ input and that wrapped sign-bit predicate. The normal Matrix range remains
 
 ## Primary world-effect pending roll
 
+## Matrix transition initialization and title phase cycle: 0x1B1C4..0x1B270
+
+The old export label for `0x1B1C4` was misleading. Its caller is the Matrix
+program action service at `0x19976`, and the routine writes the transition
+record used by `0x1B282`: selected program slot (`FFE0E4`), requested HUD mode
+(`FFE0E0`), pending request (`FFE0DE`), twelve-frame stage timer (`FFE0DA`),
+zero stage (`FFE0DC`), and a selected resource position from the five-word
+table at `0x1B278` (`0x00D0, 0x0100, 0x0130, 0x0160, 0x0190`). It then tail-calls
+`0x1A908 initialize_world_effect_mode`. The typed conversion is now
+`initialize_matrix_program_transition()` and resolves that table through a
+host-data callback; it does not carry the ROM address into runtime.
+
+`0x1B1FC reset_title_transition` was also over-described. The ROM clears the
+world-effect mode, arms the title-phase activity word, and clears the phase
+countdown and phase. It does not set a dirty byte. `0x1B218` decrements the
+four-frame countdown, wraps phase `0..5`, appends sprite key `0x6E0`, selects
+the six-entry pointer table at `0x1DB92`, adds eight bytes to the selected
+sprite record, and calls the attribute-offset builder with `(D1,D2,D6,D4) =
+(0x10D,0x12E,0x2000,0x6E0)`. The host request exposes the table, phase,
+resolved data token, key, placement, and builder flags as typed fields.
+
 `0x1AB6E advance_primary_world_effect_overlay` calls `0x563CC` when the
 primary effect has not yet crossed its threshold. The call is not merely an
 intro transition: `0x563CC` obtains a trial count from the `0x19BF6`

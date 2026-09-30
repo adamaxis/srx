@@ -1738,7 +1738,7 @@ caller	caller_name	instruction	text	target	callee	status
 00019976	service_matrix_program_action	00019A86	bsr.w 0x00017c52	00017C52	render_menu_text_followup	resolved
 00019976	service_matrix_program_action	00019A8A	jsr 0x0001792e.l	0001792E	render_menu_hud_rows	resolved
 00019976	service_matrix_program_action	00019AD8	bsr.w 0x0001989a	0001989A	update_hud_mode_transition	resolved
-00019976	service_matrix_program_action	00019AE8	jmp 0x0001b1c4.l	0001B1C4	initialize_world_effect_seed	resolved
+00019976	service_matrix_program_action	00019AE8	jmp 0x0001b1c4.l	0001B1C4	initialize_matrix_program_transition	resolved
 00019AEE	refresh_mode_glyph	00019B2C	jsr 0x000011c0.l	000011C0	write_repeated_vdp_grid	resolved
 00019B34	publish_menu_selection_then_text	00019B36	bsr.w 0x00017c84	00017C84	set_hud_selection_value	resolved
 00019B34	publish_menu_selection_then_text	00019B3A	bsr.w 0x00017c52	00017C52	render_menu_text_followup	resolved
@@ -1912,7 +1912,7 @@ caller	caller_name	instruction	text	target	callee	status
 0001ADE6	run_world_effect_scene_loop	0001B1A4	jsr 0x000530ea.l	000530EA	service_audio_command_frame	resolved
 0001ADE6	run_world_effect_scene_loop	0001B1B8	jsr 0x00018776.l	00018776	advance_hud_fade_service	resolved
 0001ADE6	run_world_effect_scene_loop	0001B1BE	jmp 0x00026a00.l	00026A00	run_display_transition	resolved
-0001B1C4	initialize_world_effect_seed	0001B1F6	jmp 0x0001a908.l	0001A908	initialize_world_effect_mode	resolved
+0001B1C4	initialize_matrix_program_transition	0001B1F6	jmp 0x0001a908.l	0001A908	initialize_world_effect_mode	resolved
 0001B218	advance_title_phase_cycle	0001B258	jsr 0x000061cc.l	000061CC	append_sprite_record	resolved
 0001B218	advance_title_phase_cycle	0001B270	jmp 0x000013be.l	000013BE	build_title_sprite_records_with_attribute_offset	resolved
 0001B282	advance_matrix_program_transition	0001B2AC	jsr 0x00019632.l	00019632	clear_matrix_program_slot	resolved

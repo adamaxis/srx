@@ -9,7 +9,7 @@
 //   0x00017C8E hud_selection_value_matches
 //   0x00017EE4 reset_menu_overlay_and_upload_two
 //   0x0001989A update_hud_mode_transition
-//   0x0001B1C4 initialize_world_effect_seed
+//   0x0001B1C4 initialize_matrix_program_transition
 
 
 void service_matrix_program_action(void)
@@ -78,7 +78,7 @@ void service_matrix_program_action(void)
               }
               DAT_00fff0a0 = 1;
               update_hud_mode_transition(uVar1,uVar3);
-              initialize_world_effect_seed();
+              initialize_matrix_program_transition();
               return;
             }
           }

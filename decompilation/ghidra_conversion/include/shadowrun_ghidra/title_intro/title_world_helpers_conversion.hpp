@@ -12,6 +12,7 @@ struct MatrixProgramTransitionState {
     std::uint16_t stage = 0;            // FFE0DC
     std::uint16_t selected_slot = 0;    // FFE0E4
     std::uint16_t resource_token = 0;   // FFE0D8
+    std::uint16_t requested_mode = 0;   // FFE0E0
     bool mode_request_pending = false;  // FFE0DE
 };
 

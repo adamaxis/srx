@@ -6,6 +6,9 @@ namespace shadowrun::ghidra_conversion {
 
 namespace {
 
+constexpr std::array<std::uint16_t, 5> kMatrixProgramResourcePositions{
+    0x00D0U, 0x0100U, 0x0130U, 0x0160U, 0x0190U};
+
 void call_once(const std::function<void()>& callback) {
     if (callback) {
         callback();
@@ -13,6 +16,14 @@ void call_once(const std::function<void()>& callback) {
 }
 
 } // namespace
+
+std::optional<std::uint16_t> resolve_matrix_program_resource_position(
+    const std::uint16_t selected_slot) {
+    if (selected_slot >= kMatrixProgramResourcePositions.size()) {
+        return std::nullopt;
+    }
+    return kMatrixProgramResourcePositions[selected_slot];
+}
 
 void refresh_menu_selection_after_clear(
     const bool has_pending_value,
@@ -139,37 +150,42 @@ bool append_title_vertical_sprite(
     return true;
 }
 
-void initialize_world_effect_seed(
-    WorldEffectSeedState& state,
-    const std::int16_t variant,
-    const std::uint16_t source_y,
-    const std::function<void()>& build_effect,
-    const std::function<void()>& service_audio) {
-    state.variant = variant;
-    state.source_x = 0x10C0U;
-    state.source_y = source_y;
-    state.horizontal_velocity = 10;
-    state.lifetime = -1;
-    state.palette = 0x1E;
-    state.active = true;
-    call_once(service_audio);
-    if (variant != 0) {
-        state.horizontal_velocity = variant < 0 ? -8 : 8;
+MatrixProgramTransitionInitializationAction
+initialize_matrix_program_transition(
+    MatrixProgramTransitionState& state,
+    const std::uint16_t selected_slot,
+    const std::uint16_t requested_mode,
+    const MatrixProgramTransitionInitializationCallbacks& callbacks) {
+    // 0x1B1C4 writes these words in source order before selecting the typed
+    // resource position from 0x1B278.
+    state.selected_slot = selected_slot;
+    state.requested_mode = requested_mode;
+    state.mode_request_pending = true;
+    state.stage = 0U;
+    state.frame_countdown = 0x000CU;
+
+    const auto resource = callbacks.resolve_resource_token
+                              ? callbacks.resolve_resource_token(selected_slot)
+                              : resolve_matrix_program_resource_position(
+                                    selected_slot);
+    if (!resource.has_value()) {
+        return MatrixProgramTransitionInitializationAction::resource_unresolved;
     }
-    call_once(build_effect);
+    state.resource_token = *resource;
+    call_once(callbacks.initialize_world_effect_mode);
+    return MatrixProgramTransitionInitializationAction::initialized;
 }
 
 void reset_title_transition(TitleTransitionState& state) {
-    state.position = 0;
-    state.timer = 1;
+    state.world_effect_mode = 0U;
+    state.title_phase_active = true;
+    state.phase_countdown = 0U;
     state.phase = 0;
-    state.dirty = true;
 }
 
-void advance_title_phase_cycle(
+TitlePhaseCycleAction advance_title_phase_cycle(
     TitlePhaseCycleState& state,
-    const std::function<void()>& append_sprite,
-    const std::function<void()>& build_sprites) {
+    const TitlePhaseCycleCallbacks& callbacks) {
     --state.countdown;
     if (state.countdown < 0) {
         state.countdown = 3;
@@ -178,8 +194,30 @@ void advance_title_phase_cycle(
             state.phase = 0;
         }
     }
-    call_once(append_sprite);
-    call_once(build_sprites);
+    call_once([&] {
+        if (callbacks.append_sprite_record) {
+            callbacks.append_sprite_record(0x06E0U);
+        }
+    });
+    const auto sprite_data = callbacks.resolve_sprite_data
+                                 ? callbacks.resolve_sprite_data(
+                                       0x0001DB92U,
+                                       static_cast<std::uint16_t>(state.phase))
+                                 : std::nullopt;
+    if (!sprite_data.has_value()) {
+        return TitlePhaseCycleAction::sprite_data_unresolved;
+    }
+    if (callbacks.build_sprite) {
+        callbacks.build_sprite(TitlePhaseSpriteBuildRequest{
+            0x0001DB92U,
+            static_cast<std::uint16_t>(state.phase),
+            *sprite_data,
+            0x06E0U,
+            0x010DU,
+            0x012EU,
+            0x2000U});
+    }
+    return TitlePhaseCycleAction::rendered;
 }
 
 bool advance_title_jitter(
@@ -269,7 +307,7 @@ bool advance_audio_menu_countdown(
 }
 
 void initialize_effect_motion_seed(
-    WorldEffectSeedState& state,
+    WorldEffectMotionSeedState& state,
     const bool alternate_direction,
     const std::function<void()>& service_audio) {
     state.source_x = 0x10C0U;

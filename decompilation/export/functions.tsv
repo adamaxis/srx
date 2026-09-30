@@ -568,7 +568,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0001AC6A	advance_secondary_world_effect_overlay	216	unknown	ok	ghidra-c/fn_0001AC6A.cpp
 0001AD42	advance_background_world_effect_overlay	164	unknown	ok	ghidra-c/fn_0001AD42.cpp
 0001ADE6	run_world_effect_scene_loop	990	unknown	ok	ghidra-c/fn_0001ADE6.cpp
-0001B1C4	initialize_world_effect_seed	56	unknown	ok	ghidra-c/fn_0001B1C4.cpp
+0001B1C4	initialize_matrix_program_transition	56	unknown	ok	ghidra-c/fn_0001B1C4.cpp
 0001B1FC	reset_title_transition	28	unknown	ok	ghidra-c/fn_0001B1FC.cpp
 0001B218	advance_title_phase_cycle	94	unknown	ok	ghidra-c/fn_0001B218.cpp
 0001B282	advance_matrix_program_transition	128	unknown	ok	ghidra-c/fn_0001B282.cpp

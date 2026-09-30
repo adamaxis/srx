@@ -15863,7 +15863,7 @@
 00019ADC: movem.l (SP)+,{ D0 D1 D2 D3 D4 D5 D6 D7 A0 A1 A2 A3 A4 A5 A6}
 00019AE0: clr.l D2
 00019AE2: move.b (0x00fff0d4).l,D2b
-00019AE8: jmp 0x0001b1c4.l ; call 0001B1C4 initialize_world_effect_seed
+00019AE8: jmp 0x0001b1c4.l ; call 0001B1C4 initialize_matrix_program_transition
 00019AEE: lea (0xe31dd).l,A5 ; data 000e31dd
 00019AF4: move.w (0x00fff118).l,D1w
 00019AFA: mulu.w #0x14,D1

@@ -7,6 +7,8 @@
 #include <utility>
 #include <vector>
 
+#include "shadowrun_ghidra/title_intro/title_world_helpers_conversion.hpp"
+
 namespace shadowrun::ghidra_conversion {
 
 void refresh_menu_selection_after_clear(
@@ -107,28 +109,41 @@ bool append_title_vertical_sprite(
     const std::function<void(const TitleVerticalSpriteBuildRequest&)>&
         build_sprites);
 
-struct WorldEffectSeedState {
-    std::uint16_t source_x = 0;
-    std::uint16_t source_y = 0;
-    std::int16_t horizontal_velocity = 0;
-    std::int16_t lifetime = 0;
-    std::int16_t palette = 0;
-    std::int16_t variant = 0;
-    bool active = false;
+enum class MatrixProgramTransitionInitializationAction {
+    initialized,
+    resource_unresolved,
 };
 
-void initialize_world_effect_seed(
-    WorldEffectSeedState& state,
-    std::int16_t variant,
-    std::uint16_t source_y,
-    const std::function<void()>& build_effect,
-    const std::function<void()>& service_audio);
+struct MatrixProgramTransitionInitializationCallbacks {
+    // ROM 0x1B278 contains the five typed resource positions selected by D2.
+    // The conversion resolves the selected program through host data rather
+    // than indexing the ROM at runtime.
+    std::function<std::optional<std::uint16_t>(std::uint16_t selected_slot)>
+        resolve_resource_token;
+    std::function<void()> initialize_world_effect_mode;
+};
+
+// Typed extraction of the five words at ROM 0x1B278.
+std::optional<std::uint16_t> resolve_matrix_program_resource_position(
+    std::uint16_t selected_slot);
+
+// ROM 0x1B1C4: initialize the Matrix-program transition record from D1/D2,
+// publish the selected resource position, and tail-call 0x1A908.  The
+// original function was exported with the misleading generic name
+// initialize_world_effect_seed; its writes are the FFE0D8..FFE0E4 Matrix
+// transition fields, not a particle/effect seed.
+MatrixProgramTransitionInitializationAction
+initialize_matrix_program_transition(
+    MatrixProgramTransitionState& state,
+    std::uint16_t selected_slot,
+    std::uint16_t requested_mode,
+    const MatrixProgramTransitionInitializationCallbacks& callbacks);
 
 struct TitleTransitionState {
-    std::uint16_t position = 0;
-    std::uint16_t timer = 0;
+    std::uint16_t world_effect_mode = 0; // FFE076
+    bool title_phase_active = false;     // FFE0F6
+    std::uint16_t phase_countdown = 0;   // FFE0FA
     std::uint16_t phase = 0;
-    bool dirty = false;
 };
 
 void reset_title_transition(TitleTransitionState& state);
@@ -138,10 +153,44 @@ struct TitlePhaseCycleState {
     std::int16_t countdown = 0;
 };
 
-void advance_title_phase_cycle(
+struct TitlePhaseSpriteBuildRequest {
+    std::uint32_t source_table_token = 0x0001DB92U;
+    std::uint16_t phase = 0;
+    std::uint32_t sprite_data_token = 0;
+    std::uint16_t sprite_key = 0x06E0U;
+    std::uint16_t x = 0x010DU;
+    std::uint16_t y = 0x012EU;
+    std::uint16_t build_flags = 0x2000U;
+};
+
+struct TitlePhaseCycleCallbacks {
+    std::function<void(std::uint16_t sprite_key)> append_sprite_record;
+    // ROM 0x1DB92 is a six-entry pointer table. The callback returns the
+    // selected entry plus eight bytes, which is what 0x013BE receives.
+    std::function<std::optional<std::uint32_t>(
+        std::uint32_t source_table_token, std::uint16_t phase)>
+        resolve_sprite_data;
+    std::function<void(const TitlePhaseSpriteBuildRequest&)> build_sprite;
+};
+
+enum class TitlePhaseCycleAction {
+    rendered,
+    sprite_data_unresolved,
+};
+
+TitlePhaseCycleAction advance_title_phase_cycle(
     TitlePhaseCycleState& state,
-    const std::function<void()>& append_sprite,
-    const std::function<void()>& build_sprites);
+    const TitlePhaseCycleCallbacks& callbacks);
+
+struct WorldEffectMotionSeedState {
+    std::uint16_t source_x = 0;
+    std::uint16_t source_y = 0;
+    std::int16_t horizontal_velocity = 0;
+    std::int16_t lifetime = 0;
+    std::int16_t palette = 0;
+    std::int16_t variant = 0;
+    bool active = false;
+};
 
 struct TitleJitterState {
     std::uint16_t frame = 0;
@@ -189,7 +238,7 @@ bool advance_audio_menu_countdown(
     const std::function<void()>& clear_ready_menu_slot);
 
 void initialize_effect_motion_seed(
-    WorldEffectSeedState& state,
+    WorldEffectMotionSeedState& state,
     bool alternate_direction,
     const std::function<void()>& service_audio);
 

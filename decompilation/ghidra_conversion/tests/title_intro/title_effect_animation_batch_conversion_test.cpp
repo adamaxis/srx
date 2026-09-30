@@ -177,16 +177,78 @@ int main() {
         [&](const TitleVerticalSpriteBuildRequest&) { ++cutoff_builds; }));
     assert(vertical_cutoff.y == 0x1280U && cutoff_builds == 0);
 
-    WorldEffectSeedState effect{};
-    initialize_world_effect_seed(effect, -1, 0x1020, [&] { ++service; }, [&] { ++service; });
-    assert(effect.source_x == 0x10C0 && effect.horizontal_velocity == -8 && effect.lifetime == -1);
+    MatrixProgramTransitionState matrix_transition{};
+    int mode_initializations = 0;
+    MatrixProgramTransitionInitializationCallbacks matrix_callbacks{};
+    matrix_callbacks.resolve_resource_token =
+        [](const std::uint16_t slot) -> std::optional<std::uint16_t> {
+        constexpr std::array<std::uint16_t, 5> kResourcePositions{
+            0x00D0U, 0x0100U, 0x0130U, 0x0160U, 0x0190U};
+        if (slot >= kResourcePositions.size()) {
+            return std::nullopt;
+        }
+        return kResourcePositions[slot];
+    };
+    matrix_callbacks.initialize_world_effect_mode = [&] {
+        ++mode_initializations;
+    };
+    assert(initialize_matrix_program_transition(
+               matrix_transition, 2U, 0U, matrix_callbacks) ==
+               MatrixProgramTransitionInitializationAction::initialized);
+    assert(matrix_transition.selected_slot == 2U &&
+           matrix_transition.requested_mode == 0U &&
+           matrix_transition.mode_request_pending &&
+           matrix_transition.resource_token == 0x0130U &&
+           matrix_transition.frame_countdown == 0x0CU &&
+           matrix_transition.stage == 0U && mode_initializations == 1);
+    assert(initialize_matrix_program_transition(
+               matrix_transition, 5U, 0U, matrix_callbacks) ==
+               MatrixProgramTransitionInitializationAction::resource_unresolved);
+    matrix_callbacks.resolve_resource_token = {};
+    assert(initialize_matrix_program_transition(
+               matrix_transition, 4U, 0U, matrix_callbacks) ==
+               MatrixProgramTransitionInitializationAction::initialized);
+    assert(matrix_transition.resource_token == 0x0190U &&
+           mode_initializations == 2);
+
     TitleTransitionState transition{};
     reset_title_transition(transition);
-    assert(transition.timer == 1 && transition.dirty);
+    assert(transition.world_effect_mode == 0U &&
+           transition.title_phase_active && transition.phase_countdown == 0U &&
+           transition.phase == 0U);
 
     TitlePhaseCycleState phase{5, 0};
-    advance_title_phase_cycle(phase, [&] { ++appends; }, [&] { ++service; });
-    assert(phase.phase == 0 && phase.countdown == 3);
+    TitlePhaseCycleCallbacks phase_callbacks{};
+    phase_callbacks.append_sprite_record = [&](const std::uint16_t key) {
+        assert(key == 0x06E0U);
+        ++appends;
+    };
+    phase_callbacks.resolve_sprite_data =
+        [](const std::uint32_t table, const std::uint16_t current_phase)
+        -> std::optional<std::uint32_t> {
+        constexpr std::array<std::uint32_t, 6> kSpriteData{
+            0x000F0936U, 0x000F0BB0U, 0x000F0DEAU,
+            0x000F1044U, 0x000F123EU, 0x000F1498U};
+        assert(table == 0x0001DB92U);
+        if (current_phase >= kSpriteData.size()) {
+            return std::nullopt;
+        }
+        return kSpriteData[current_phase];
+    };
+    TitlePhaseSpriteBuildRequest phase_build{};
+    phase_callbacks.build_sprite =
+        [&](const TitlePhaseSpriteBuildRequest& request) {
+        phase_build = request;
+        ++service;
+    };
+    assert(advance_title_phase_cycle(phase, phase_callbacks) ==
+               TitlePhaseCycleAction::rendered);
+    assert(phase.phase == 0 && phase.countdown == 3 &&
+           phase_build.source_table_token == 0x0001DB92U &&
+           phase_build.phase == 0U &&
+           phase_build.sprite_data_token == 0x000F0936U &&
+           phase_build.sprite_key == 0x06E0U && phase_build.x == 0x010DU &&
+           phase_build.y == 0x012EU && phase_build.build_flags == 0x2000U);
 
     TitleJitterState jitter{};
     int random_calls = 0;
@@ -217,6 +279,7 @@ int main() {
     assert(advance_audio_menu_countdown(countdown, [&] { ++service; }, [&] { ++clear; }));
     assert((countdown.entity_flags & 2U) == 0U);
 
+    WorldEffectMotionSeedState effect{};
     initialize_effect_motion_seed(effect, true, [&] { ++service; });
     assert(effect.source_y == 0x1020 && effect.horizontal_velocity == -18);
 
