@@ -94,11 +94,6 @@ int main() {
     int burst_builds = 0;
     int burst_finished = 0;
     TitleBurstAnimationCallbacks burst_callbacks{};
-    burst_callbacks.resolve_sprite_data =
-        [](const std::uint32_t table, const std::uint16_t phase)
-        -> std::optional<std::uint32_t> {
-        return table + phase + 8U;
-    };
     burst_callbacks.append_sprite_record = [&](const std::uint16_t key) {
         burst_appends += key == 0x0780U ? 1 : 100;
     };
@@ -106,7 +101,7 @@ int main() {
         if (build.source_table_token != 0x1D970U || build.phase != 1U ||
             build.x != 0x004AU || build.y != 0x004CU ||
             build.build_flags != 0x6000U ||
-            build.sprite_data_token != 0x1D979U) {
+            build.sprite_data_token != 0x1D9C2U) {
             burst_builds += 100;
         } else {
             ++burst_builds;
@@ -126,6 +121,11 @@ int main() {
         burst.phase != 4U || burst_appends != 1 || burst_builds != 1 ||
         burst_finished != 1) {
         return 5;
+    }
+    if (resolve_title_burst_sprite_data(0U) != 0x1D988U ||
+        resolve_title_burst_sprite_data(3U) != 0x1DA2EU ||
+        resolve_title_burst_sprite_data(4U).has_value()) {
+        return 6;
     }
 
     TitleNoiseState noise{};

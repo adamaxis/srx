@@ -19,6 +19,8 @@ constexpr std::array<std::uint32_t, 5> kTitleFigureLeftLower{
     0x000EA578U, 0x000EA65CU, 0x000EA720U, 0x000EA7F4U, 0x000EA8E8U};
 constexpr std::array<std::uint32_t, 5> kTitleFigureRightLower{
     0x000EA59AU, 0x000EA67EU, 0x000EA74AU, 0x000EA81EU, 0x000EA90AU};
+constexpr std::array<std::uint32_t, 4> kTitleBurstSpriteData{
+    0x0001D980U, 0x0001D9BAU, 0x0001D9E4U, 0x0001DA26U};
 
 bool decrement_word_until_negative(std::uint16_t& value) {
     value = static_cast<std::uint16_t>(value - 1U);
@@ -153,6 +155,14 @@ std::optional<std::uint32_t> resolve_title_figure_sprite_data(
     return (*table)[phase] + 8U;
 }
 
+std::optional<std::uint32_t> resolve_title_burst_sprite_data(
+    const std::uint16_t phase) {
+    if (phase >= kTitleBurstSpriteData.size()) {
+        return std::nullopt;
+    }
+    return kTitleBurstSpriteData[phase] + 8U;
+}
+
 MatrixProgramTransitionAction advance_matrix_program_transition(
     MatrixProgramTransitionState& state,
     const MatrixProgramTransitionCallbacks& callbacks) {
@@ -237,7 +247,7 @@ TitleBurstAnimationAction advance_title_burst_animation(
     const auto token = callbacks.resolve_sprite_data
                            ? callbacks.resolve_sprite_data(0x0001D970U,
                                                             state.phase)
-                           : std::nullopt;
+                           : resolve_title_burst_sprite_data(state.phase);
     if (!token.has_value()) {
         return TitleBurstAnimationAction::sprite_data_unresolved;
     }

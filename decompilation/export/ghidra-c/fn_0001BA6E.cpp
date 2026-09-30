@@ -5,6 +5,9 @@
 // Calls recovered from direct call instructions:
 //   0x000013BE build_title_sprite_records_with_attribute_offset
 //   0x000061CC append_sprite_record
+// Source data: phase indexes the four-pointer table at ROM 0x001D970:
+//   [0x001D980, 0x001D9BA, 0x001D9E4, 0x001DA26]
+// The selected pointer is advanced by eight bytes before the sprite build.
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -22,7 +25,9 @@ void advance_title_burst_animation(void)
     }
   }
   append_sprite_record();
-  build_title_sprite_records_with_attribute_offset();
+  // build_title_sprite_records_with_attribute_offset(
+  //     0x780, FFE04A, FFE04C, 0x6000,
+  //     ((uint32_t *)0x001D970)[DAT_00ffe0ae] + 8);
   return;
 }
 

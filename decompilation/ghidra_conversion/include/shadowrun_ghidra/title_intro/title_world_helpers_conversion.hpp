@@ -122,6 +122,11 @@ struct TitleBurstAnimationCallbacks {
     std::function<void()> clear_completion_marker;
 };
 
+// Typed extraction of the four pointer entries at ROM 0x1D970. The source
+// advances the selected pointer by eight bytes before the sprite build.
+std::optional<std::uint32_t> resolve_title_burst_sprite_data(
+    std::uint16_t phase);
+
 enum class TitleBurstAnimationAction {
     rendered,
     completed,

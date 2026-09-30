@@ -937,6 +937,13 @@ selected pointer is advanced by eight bytes and built with `D6=0x6000`; the
 host resolver now contains the extracted five-entry table data instead of
 collapsing these into one generic title sprite.
 
+The `0x1BA6E advance_title_burst_animation` pass now uses the actual four-entry
+pointer table at ROM `0x1D970`: [`0x1D980, 0x1D9BA, 0x1D9E4, 0x1DA26`]. The
+source advances the selected pointer by eight bytes before the attribute-offset
+sprite builder, so the phase-one request resolves to `0x1D9C2` rather than a
+synthetic table-plus-phase token. The four-frame countdown still clears
+`FFE0AC` on phase four without appending a sprite on that terminal tick.
+
 The `0x1B45C advance_title_noise_stream` audit preserves the source byte
 semantics that matter to the waveform. `FFE16A` is decremented as a byte; the
 first limit lookup uses its signed value plus one, while the second lookup
