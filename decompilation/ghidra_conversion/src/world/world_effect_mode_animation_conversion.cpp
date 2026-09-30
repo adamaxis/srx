@@ -36,13 +36,15 @@ WorldEffectModeAnimationAction render_sprite(
         return WorldEffectModeAnimationAction::sprite_data_unresolved;
     }
     if (callbacks.build_sprite) {
-        callbacks.build_sprite(WorldEffectModeSpriteBuild{
-            table_index,
-            0x06E0U,
-            static_cast<std::uint16_t>(state.position_x >> 4U),
-            static_cast<std::uint16_t>(state.position_y >> 4U),
-            0x2000U,
-            *token});
+        WorldEffectModeSpriteBuild build{};
+        build.source_table_token = 0x000F1AEEU;
+        build.table_index = table_index;
+        build.sprite_key = 0x06E0U;
+        build.x = static_cast<std::uint16_t>(state.position_x >> 4U);
+        build.y = static_cast<std::uint16_t>(state.position_y >> 4U);
+        build.build_flags = 0x2000U;
+        build.sprite_data_token = *token;
+        callbacks.build_sprite(build);
     }
     return WorldEffectModeAnimationAction::sprite_rendered;
 }
@@ -52,8 +54,8 @@ WorldEffectModeAnimationAction advance_mode_three(
     const WorldEffectModeAnimationCallbacks& callbacks) {
     if (!decrement_word_until_negative(state.frame_countdown)) {
         if (state.audio_transition_result < 0) {
-            if (callbacks.build_title_sprites_twice) {
-                callbacks.build_title_sprites_twice();
+            if (callbacks.build_title_sprite_batch) {
+                build_title_sprites_twice(callbacks.build_title_sprite_batch);
             }
             return WorldEffectModeAnimationAction::title_sprites_rebuilt;
         }
@@ -174,8 +176,8 @@ WorldEffectModeAnimationAction advance_world_effect_mode_animation(
         return advance_mode_four_or_five(state, callbacks);
     case 6:
         if (decrement_word_until_negative(state.frame_countdown)) {
-            if (callbacks.finish_mode_six) {
-                callbacks.finish_mode_six();
+            if (callbacks.advance_menu_selection_service_and_refresh) {
+                callbacks.advance_menu_selection_service_and_refresh();
             }
             state.mode = 0U;
             return WorldEffectModeAnimationAction::mode_finished;

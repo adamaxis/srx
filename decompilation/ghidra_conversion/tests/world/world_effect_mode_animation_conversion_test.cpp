@@ -76,10 +76,18 @@ int main() {
         audio_command = command;
         return -1;
     };
-    callbacks.build_title_sprites_twice = [&] { ++title_rebuilds; };
+    std::vector<TitleSpriteBatchBuildRequest> title_batches;
+    callbacks.build_title_sprite_batch =
+        [&](const TitleSpriteBatchBuildRequest& request) {
+            title_batches.push_back(request);
+            ++title_rebuilds;
+        };
     if (advance_world_effect_mode_animation(mode_two_to_three, callbacks) !=
             WorldEffectModeAnimationAction::title_sprites_rebuilt ||
-        intro_calls != 1 || audio_command != 0x18 || title_rebuilds != 1 ||
+        intro_calls != 1 || audio_command != 0x18 || title_rebuilds != 2 ||
+        title_batches.size() != 2U ||
+        title_batches[0].source_table_token != 0x000F1B1EU ||
+        title_batches[1].source_table_token != 0x000F1B28U ||
         mode_two_to_three.mode != 3U ||
         mode_two_to_three.frame_countdown != 7 ||
         !mode_two_to_three.records_pending ||
@@ -124,7 +132,7 @@ int main() {
     mode_six.frame_countdown = 0;
     int finished = 0;
     callbacks = {};
-    callbacks.finish_mode_six = [&] { ++finished; };
+    callbacks.advance_menu_selection_service_and_refresh = [&] { ++finished; };
     if (advance_world_effect_mode_animation(mode_six, callbacks) !=
             WorldEffectModeAnimationAction::mode_finished || finished != 1 ||
         mode_six.mode != 0U) {

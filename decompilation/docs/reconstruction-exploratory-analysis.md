@@ -1195,3 +1195,24 @@ initializes only the default mode, position, and countdown fields;
 `0x1A8F4` clears the transition latch, requests exit, and clears the active
 work record. The conversion no longer represents those leaves as one generic
 effect structure or invents velocity/lifetime/palette writes.
+
+### Title/world sprite argument correction: 0x1A570, 0x1A5A0, 0x1A7BE
+
+The direct listing shows that `0x1A570` is two distinct calls to the common
+sprite-list builder, not an argument-free repeated rebuild. It passes source
+list `0xF1B1E` at `(0x012A, 0x0100)` and source list `0xF1B28` at
+`(0x0115, 0x0100)`, with builder flags `0x2000` for both. The converted
+world-mode branch now emits two `TitleSpriteBatchBuildRequest` values in that
+order.
+
+`0x1A7BE` selects the eighth-through-eleventh entries of the `0xF1AEE`
+pointer table using `((FFDF88 >> 1) & 3) + 8`, appends `0x6E0`, increments
+the fixed-point Y field by `0x60`, and stops on the unsigned `Y >= 0x1280`
+boundary. The live build coordinates are both shifted right by four and the
+attribute-offset builder receives key `0x6E0` with flags `0xA000`. The typed
+conversion exposes this as `TitleVerticalSpriteBuildRequest` and does not
+replace the source table selection with a generic vertical callback.
+
+Finally, mode 6 of `0x1A5A0` calls the existing `0x5668C`
+`advance_menu_selection_service_and_refresh` service before clearing the
+world-effect mode. That boundary is now named accordingly in the conversion.

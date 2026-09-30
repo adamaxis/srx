@@ -2407,3 +2407,33 @@ unresolved actions instead of silently treating absent callbacks as a false
 runner marker or a completed default initialization. Zero from `0x17E78` is
 retained as the source countdown value; the mode-2 divisor path reports an
 unresolved/invalid boundary rather than dividing by zero in host C++.
+
+## Title/world sprite call audit: 0x1A570, 0x1A5A0, and 0x1A7BE
+
+The first pass over `0x1A570` was too generic: the generated C showed two
+calls but dropped all of the source arguments. The ROM emits two different
+lists through `0x1378 build_title_sprite_records`:
+
+| source list | base X | base Y | builder flags |
+| --- | ---: | ---: | ---: |
+| `0xF1B1E` | `0x012A` | `0x0100` | `0x2000` |
+| `0xF1B28` | `0x0115` | `0x0100` | `0x2000` |
+
+`TitleSpriteBatchBuildRequest` preserves these as two ordered typed requests.
+The world mode conversion now sends those requests when `0x1A5A0` reaches its
+negative `FFE0FC` transition result; it no longer hides the identity of the
+two title groups behind a no-argument “rebuild” callback.
+
+The `0x1A7BE` leaf also carried more behavior than its generated C exposed.
+It selects `((FFDF88 >> 1) & 3) + 8` from the `0xF1AEE` pointer table, appends
+sprite key `0x06E0`, advances `FFE07A` by `0x60`, and only builds while the
+unsigned word remains below `0x1280`. The build uses `FFE078 >> 4`,
+`FFE07A >> 4`, attribute offset/key `0x06E0`, and the 16-bit build flags
+`0xA000` (`D6=-0x6000`). `TitleVerticalSpriteBuildRequest` now carries those
+fields, including the selected table index, and tests cover the fixed-point
+coordinate conversion and strict unsigned cutoff.
+
+The mode-6 completion call at `0x1A770` is now named for its actual callee,
+`advance_menu_selection_service_and_refresh` (`0x5668C`), rather than being
+reported as a generic “finish mode” hook. These changes are conversion/source
+audit work only; the sprite builder remains a host asset/presentation boundary.

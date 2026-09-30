@@ -140,10 +140,42 @@ int main() {
     int appends = 0;
     assert(advance_title_animation_cycle(animation, [&] { ++appends; }, [&] { ++service; }));
     assert(animation.phase == 1 && appends == 1);
-    build_title_sprites_twice([&] { ++service; });
-    TitleVerticalBuildState vertical{0x1200};
-    assert(append_title_vertical_sprite(vertical, [&] { ++appends; }, [&] { ++service; }));
+    std::vector<TitleSpriteBatchBuildRequest> title_batches;
+    build_title_sprites_twice(
+        [&](const TitleSpriteBatchBuildRequest& request) {
+            title_batches.push_back(request);
+        });
+    assert(title_batches.size() == 2U &&
+           title_batches[0].source_table_token == 0x000F1B1EU &&
+           title_batches[0].base_x == 0x012AU &&
+           title_batches[0].base_y == 0x0100U &&
+           title_batches[0].build_flags == 0x2000U &&
+           title_batches[1].source_table_token == 0x000F1B28U &&
+           title_batches[1].base_x == 0x0115U);
+    TitleVerticalBuildState vertical{0x0120U, 0x1200U, 0x0006U};
+    TitleVerticalSpriteBuildRequest vertical_build{};
+    assert(append_title_vertical_sprite(
+        vertical,
+        [&](const std::uint16_t key) {
+            assert(key == 0x06E0U);
+            ++appends;
+        },
+        [&](const TitleVerticalSpriteBuildRequest& request) {
+            vertical_build = request;
+            ++service;
+        }));
     assert(vertical.y == 0x1260);
+    assert(vertical_build.source_table_token == 0x000F1AEEU &&
+           vertical_build.table_index == 11U &&
+           vertical_build.sprite_key == 0x06E0U &&
+           vertical_build.x == 0x012U && vertical_build.y == 0x0126U &&
+           vertical_build.build_flags == 0xA000U);
+    TitleVerticalBuildState vertical_cutoff{0x0120U, 0x1220U, 0};
+    int cutoff_builds = 0;
+    assert(!append_title_vertical_sprite(
+        vertical_cutoff, [](const std::uint16_t) {},
+        [&](const TitleVerticalSpriteBuildRequest&) { ++cutoff_builds; }));
+    assert(vertical_cutoff.y == 0x1280U && cutoff_builds == 0);
 
     WorldEffectSeedState effect{};
     initialize_world_effect_seed(effect, -1, 0x1020, [&] { ++service; }, [&] { ++service; });

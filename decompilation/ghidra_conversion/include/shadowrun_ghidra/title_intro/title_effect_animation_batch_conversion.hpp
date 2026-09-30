@@ -68,16 +68,44 @@ bool advance_title_animation_cycle(
     const std::function<void()>& append_sprite,
     const std::function<void()>& build_sprites);
 
-void build_title_sprites_twice(const std::function<void()>& build_sprites);
+// ROM 0x1A570 passes two different source sprite lists to the common
+// 0x1378 builder.  Keep the source table and fixed-point origin visible at
+// the conversion boundary instead of collapsing both calls into a counter.
+struct TitleSpriteBatchBuildRequest {
+    std::uint32_t source_table_token = 0;
+    std::uint16_t base_x = 0;
+    std::uint16_t base_y = 0;
+    std::uint16_t build_flags = 0;
+};
+
+void build_title_sprites_twice(
+    const std::function<void(const TitleSpriteBatchBuildRequest&)>&
+        build_sprites);
 
 struct TitleVerticalBuildState {
+    std::uint16_t x = 0; // FFE078
+    std::uint16_t y = 0; // FFE07A
+    std::uint16_t render_flags = 0; // FFDF88
+};
+
+// ROM 0x1A7BE selects one of the four +8 title/world sprite lists, appends
+// sprite record 0x6E0, and submits it with the attribute-offset builder.  The
+// host resolves the source table from these typed fields; it does not read a
+// ROM address at runtime.
+struct TitleVerticalSpriteBuildRequest {
+    std::uint32_t source_table_token = 0x000F1AEEU;
+    std::uint8_t table_index = 0;
+    std::uint16_t sprite_key = 0x06E0U;
+    std::uint16_t x = 0;
     std::uint16_t y = 0;
+    std::uint16_t build_flags = 0xA000U;
 };
 
 bool append_title_vertical_sprite(
     TitleVerticalBuildState& state,
-    const std::function<void()>& append_sprite,
-    const std::function<void()>& build_sprites);
+    const std::function<void(std::uint16_t sprite_key)>& append_sprite,
+    const std::function<void(const TitleVerticalSpriteBuildRequest&)>&
+        build_sprites);
 
 struct WorldEffectSeedState {
     std::uint16_t source_x = 0;

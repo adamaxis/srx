@@ -15,6 +15,12 @@
 // Direct disassembly is authoritative for the shared labels at 0x1A64C,
 // 0x1A6AC, and 0x1A6F8. The typed host state machine is in
 // ghidra_conversion/world_effect_mode_animation_conversion.
+//
+// The 0x1A6CA negative-transition branch calls 0x1A570, whose two concrete
+// source-table/origin requests are exposed as
+// TitleSpriteBatchBuildRequest. Mode 6 calls 0x5668C
+// advance_menu_selection_service_and_refresh before clearing FFE076; it is
+// not a generic completion callback.
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */

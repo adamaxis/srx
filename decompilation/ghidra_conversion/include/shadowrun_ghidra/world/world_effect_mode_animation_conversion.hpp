@@ -1,5 +1,7 @@
 #pragma once
 
+#include "shadowrun_ghidra/title_intro/title_effect_animation_batch_conversion.hpp"
+
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -21,6 +23,7 @@ struct WorldEffectModeAnimationState {
 };
 
 struct WorldEffectModeSpriteBuild {
+    std::uint32_t source_table_token = 0x000F1AEEU;
     std::uint8_t table_index = 0;
     std::uint16_t sprite_key = 0x06E0U;
     std::uint16_t x = 0;
@@ -51,8 +54,12 @@ struct WorldEffectModeAnimationCallbacks {
     // saved into FFE0FC for the following mode-3 branch.
     std::function<std::optional<std::int16_t>(
         std::uint16_t command)> service_audio_frame;
-    std::function<void()> build_title_sprites_twice;
-    std::function<void()> finish_mode_six;
+    // ROM 0x1A570.  The callback receives each fixed source-table/origin
+    // request in source order, once for 0xF1B1E and once for 0xF1B28.
+    std::function<void(const TitleSpriteBatchBuildRequest&)>
+        build_title_sprite_batch;
+    // ROM 0x5668C, reached from mode 6 at 0x1A770.
+    std::function<void()> advance_menu_selection_service_and_refresh;
 
     std::function<void()> attach_behavior_descriptor_d;
     std::function<void()> attach_behavior_descriptor_e;

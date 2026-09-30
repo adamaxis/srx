@@ -95,21 +95,47 @@ bool advance_title_animation_cycle(
     return true;
 }
 
-void build_title_sprites_twice(const std::function<void()>& build_sprites) {
-    call_once(build_sprites);
-    call_once(build_sprites);
+void build_title_sprites_twice(
+    const std::function<void(const TitleSpriteBatchBuildRequest&)>&
+        build_sprites) {
+    if (!build_sprites) {
+        return;
+    }
+
+    // 0x1A570: the first list is the 0xF1B1E title sprite group at origin
+    // (0x12A, 0x100), followed by the 0xF1B28 group at (0x115, 0x100).
+    // Both calls pass D6=0x2000 to the no-attribute-offset builder.
+    build_sprites(TitleSpriteBatchBuildRequest{
+        0x000F1B1EU, 0x012AU, 0x0100U, 0x2000U});
+    build_sprites(TitleSpriteBatchBuildRequest{
+        0x000F1B28U, 0x0115U, 0x0100U, 0x2000U});
 }
 
 bool append_title_vertical_sprite(
     TitleVerticalBuildState& state,
-    const std::function<void()>& append_sprite,
-    const std::function<void()>& build_sprites) {
-    call_once(append_sprite);
+    const std::function<void(std::uint16_t sprite_key)>& append_sprite,
+    const std::function<void(const TitleVerticalSpriteBuildRequest&)>&
+        build_sprites) {
+    if (append_sprite) {
+        append_sprite(0x06E0U);
+    }
     state.y = static_cast<std::uint16_t>(state.y + 0x60U);
-    if (state.y > 0x127FU) {
+    // CMP.W #0x1280 followed by BCS: the builder is reached only while the
+    // wrapped unsigned source word is strictly below 0x1280.
+    if (state.y >= 0x1280U) {
         return false;
     }
-    call_once(build_sprites);
+    if (build_sprites) {
+        const auto table_index = static_cast<std::uint8_t>(
+            ((state.render_flags >> 1U) & 0x0003U) + 8U);
+        build_sprites(TitleVerticalSpriteBuildRequest{
+            0x000F1AEEU,
+            table_index,
+            0x06E0U,
+            static_cast<std::uint16_t>(state.x >> 4U),
+            static_cast<std::uint16_t>(state.y >> 4U),
+            0xA000U});
+    }
     return true;
 }
 
