@@ -53,7 +53,7 @@ int main() {
     std::vector<std::pair<std::int8_t, std::int8_t>> dispatched;
     std::vector<std::pair<std::int8_t, std::int8_t>> cursor_moves;
     std::vector<std::size_t> reset_slots;
-    std::vector<std::uint16_t> inputs{0x0001U, 0x0040U, 0x0080U};
+    std::vector<std::uint16_t> inputs{0x0100U, 0x4000U, 0x8000U};
     std::size_t input_index = 0;
     int outer_redraws = 0;
     ModeActionState state{};
@@ -118,7 +118,7 @@ int main() {
     ModeActionState action_state{};
     reset_slots.clear();
     std::vector<std::string> action_order;
-    std::vector<std::uint16_t> action_inputs{0x0040U, 0x0080U};
+    std::vector<std::uint16_t> action_inputs{0x2000U, 0x1000U, 0x8000U};
     std::size_t action_input_index = 0;
     const auto action_result = run_mode_action_loop(
         action_state,
@@ -150,10 +150,18 @@ int main() {
             [&](std::size_t slot) { reset_slots.push_back(slot); },
         });
     if (!expect(action_result && action_order ==
-                std::vector<std::string>{"action", "dispatch", "footer", "upload",
-                                         "matrix"} &&
+                std::vector<std::string>{"action", "dispatch", "action", "dispatch",
+                                         "footer", "upload", "matrix"} &&
                 reset_slots == std::vector<std::size_t>({0, 1, 2, 3, 4}))) {
         return 8;
+    }
+
+    if (!expect(static_cast<std::uint16_t>(ModeActionInput::confirm) == 0x4000U &&
+                static_cast<std::uint16_t>(ModeActionInput::alternate_confirm) ==
+                    0x1000U &&
+                static_cast<std::uint16_t>(ModeActionInput::mode_action) ==
+                    0x2000U)) {
+        return 9;
     }
 
     ModeActionState random_state{};
@@ -174,7 +182,7 @@ int main() {
     if (!expect(random_fired && random_state.mode_random_count == 0 &&
                 random_order == std::vector<std::string>{"transition", "status", "text",
                                                          "vblank", "wait", "grid"})) {
-        return 9;
+        return 10;
     }
 
     return 0;

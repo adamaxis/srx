@@ -7,12 +7,16 @@
 
 namespace shadowrun::ghidra_conversion {
 
-// Controller bits sampled by the mode-action loop at ROM 0x54662.
+// High-byte event bits sampled from FFDD22 by the mode-action loop at ROM
+// 0x54662.  The source tests bit 14 first, then aliases bits 12 and 13 back
+// to the same action preamble before testing the Matrix exit bit.
 enum class ModeActionInput : std::uint16_t {
-    move_previous = 0x0001U,
-    move_next = 0x0002U,
-    action = 0x0070U,
-    leave_to_matrix = 0x0080U,
+    move_previous = 0x0100U,
+    move_next = 0x0200U,
+    confirm = 0x4000U,
+    alternate_confirm = 0x1000U,
+    mode_action = 0x2000U,
+    leave_to_matrix = 0x8000U,
 };
 
 struct ModeActionRecord {

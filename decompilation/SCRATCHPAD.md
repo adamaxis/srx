@@ -1513,8 +1513,11 @@ graphics routine. `0x54662` is the mode-action loop reached when the alternate
 runner presenter flag is clear: it initializes the selected compact mode
 record's flags, performs two wrapped resource transfers plus ten grid writes
 per redraw, applies the `0x54A8E` random-event gate, renders the two status
-fields and grouped decimal data, handles directional/action/Start edges, and
-hands Start to the `0x1822C` Matrix program loop. The conversion now keeps the
+fields and grouped decimal data, and handles the high-byte `FFDD22` event
+edges: `0x0100`/`0x0200` move the cursor, `0x4000`/`0x1000`/`0x2000` enter
+the same action preamble, and `0x8000` hands Start to the `0x1822C` Matrix
+program loop. These are the sampled event-word masks, not the raw low-byte
+controller nibble. The conversion now keeps the
 source's `FFF0B7` menu-result byte separate from the `FFF0B1` HUD/scene-abort
 byte: a random event returns to the status-panel path, while a negative abort
 marker exits only after the redraw. Cursor movement is sampled first and then

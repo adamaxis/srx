@@ -2743,6 +2743,19 @@ branch and omitted the two decoded-stream cursor publications. The current
 `WorldFrameState` names those source decisions explicitly and the focused
 test covers both terrain branches and the decode/cursor-reset/render order.
 
+## Mode-action event-word audit: 0x54662
+
+The direct disassembly resolves the controller input representation for the
+mode-action loop. `0x195C` publishes newly pressed controller events in the
+high byte of `FFDD22`; `0x54662` tests bit 8 (`0x0100`) and bit 9 (`0x0200`)
+for the wrapped cursor movement, bit 14 (`0x4000`) for the primary action,
+then aliases bit 12 (`0x1000`) and bit 13 (`0x2000`) back to that same action
+entry path. Bit 15 (`0x8000`) is the Matrix handoff. The previous conversion
+used low-byte values (`0x0001`, `0x0002`, `0x0040`, and `0x0080`), so it could
+not respond to the event word produced by the converted `0x195C` sampler.
+`ModeActionInput` now names the source edges and the focused test drives the
+high-byte values through cursor, primary-action, mode-action, and Matrix paths.
+
 ## Field viewport preparation audit: 0x02C6C
 
 The direct source path is `0x1406 prepare_title_resources`,

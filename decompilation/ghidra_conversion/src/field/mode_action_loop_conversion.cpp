@@ -152,7 +152,11 @@ bool run_mode_action_loop(ModeActionState& state,
                 continue;
             }
 
-            if ((input & static_cast<std::uint16_t>(ModeActionInput::action)) != 0U) {
+            const auto action_edges =
+                static_cast<std::uint16_t>(ModeActionInput::confirm) |
+                static_cast<std::uint16_t>(ModeActionInput::alternate_confirm) |
+                static_cast<std::uint16_t>(ModeActionInput::mode_action);
+            if ((input & action_edges) != 0U) {
                 call_if_present(callbacks.run_action_preamble);
                 const auto gate = callbacks.read_action_gate_inputs
                                       ? callbacks.read_action_gate_inputs()
