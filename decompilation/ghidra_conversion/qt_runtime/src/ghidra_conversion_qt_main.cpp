@@ -503,11 +503,20 @@ private:
                     "pre_title.reset_vdp_upload_state");
             };
 
-        startup_callbacks_.pre_title.animation.build_title_sprite_records =
-            [this] {
+        startup_callbacks_.pre_title.animation.publish_sprite_batch =
+            [this](const PreTitleSpriteBatch& batch) {
                 ++title_sprite_record_builds_;
+                pre_title_sprite_records_ = batch.records;
                 note_presentation_boundary(
-                    "pre_title.build_title_sprite_records");
+                    "pre_title.publish_sprite_batch");
+            };
+        startup_callbacks_.pre_title.animation.clear_last_sprite_sequence =
+            [this] {
+                if (!pre_title_sprite_records_.empty()) {
+                    pre_title_sprite_records_.back().sequence = 0U;
+                }
+                note_presentation_boundary(
+                    "pre_title.clear_last_sprite_sequence");
             };
         startup_callbacks_.pre_title.animation.publish_logo_strobe_palette =
             [this](const PreTitleLogoStrobePalette& palette) {
@@ -1338,6 +1347,7 @@ private:
 
     std::uint8_t logo_strobe_phase_ = 0;
     std::array<std::uint16_t, 8> logo_strobe_palette_{};
+    std::vector<BuiltSpriteRecord> pre_title_sprite_records_;
     JoshuaArchetypeChoice selected_archetype_ =
         JoshuaArchetypeChoice::samurai;
     StartOptionsChoice start_options_cursor_ = StartOptionsChoice::new_game;

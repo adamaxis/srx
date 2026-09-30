@@ -52,11 +52,13 @@ int main() {
     pre_title.logo_phase_countdown = 0x7FFF;
     std::size_t waits = 0;
     std::size_t sprite_builds = 0;
+    std::size_t cleared_sprite_sequences = 0;
     std::size_t hscroll_updates = 0;
     std::size_t resource_stream_writes = 0;
     std::vector<std::string> resource_events;
     std::vector<PreTitleGridWriteRequest> grid_requests;
     std::vector<PreTitleLogoStrobePalette> strobe_palettes;
+    std::vector<PreTitleSpriteBatch> sprite_batches;
     bool resource_work_area_zeroed = false;
     std::size_t palette_fades = 0;
     PreTitleSequenceCallbacks pre_title_callbacks{};
@@ -91,9 +93,13 @@ int main() {
         resource_events.emplace_back("reset-upload");
     };
     pre_title_callbacks.wait_for_vblank = [&waits] { ++waits; };
-    pre_title_callbacks.animation.build_title_sprite_records = [&sprite_builds] {
-        ++sprite_builds;
-    };
+    pre_title_callbacks.animation.publish_sprite_batch =
+        [&sprite_builds, &sprite_batches](const PreTitleSpriteBatch& batch) {
+            ++sprite_builds;
+            sprite_batches.push_back(batch);
+        };
+    pre_title_callbacks.animation.clear_last_sprite_sequence =
+        [&cleared_sprite_sequences] { ++cleared_sprite_sequences; };
     pre_title_callbacks.animation.publish_logo_strobe_palette =
         [&strobe_palettes](const PreTitleLogoStrobePalette& palette) {
             strobe_palettes.push_back(palette);
@@ -110,6 +116,7 @@ int main() {
         pre_title.startup_marker != 1U || pre_title.resource_marker != 1U ||
         pre_title.figure_x != 0x0119 || pre_title.figure_y != 0x0160 ||
         waits != 458U || sprite_builds != 932U || hscroll_updates != 337U ||
+        cleared_sprite_sequences != 337U || sprite_batches.size() != sprite_builds ||
         resource_stream_writes != 1U || !resource_work_area_zeroed ||
         palette_fades != 2U ||
         resource_events != std::vector<std::string>{
@@ -129,7 +136,21 @@ int main() {
         strobe_palettes.front().color_words !=
             std::array<std::uint16_t, 8>{
                 0x0080U, 0x0060U, 0x0040U, 0x0020U,
-                0x0000U, 0x0000U, 0x0000U, 0x0000U}) {
+                0x0000U, 0x0000U, 0x0000U, 0x0000U} ||
+        sprite_batches.front().source !=
+            PreTitleSpriteBatchSource::sega_guy_primary ||
+        sprite_batches.front().origin_x != 0x0119 ||
+        sprite_batches.front().origin_y != 0x01A8 ||
+        sprite_batches.front().first_sequence != 2U ||
+        sprite_batches.front().attribute_flags != 0x6000U ||
+        sprite_batches.front().records.size() != 5U ||
+        sprite_batches.front().records.front().x != 0x00DA ||
+        sprite_batches.front().records.front().y != 0x0199 ||
+        sprite_batches.front().records.front().sequence != 2U ||
+        sprite_batches[1].source !=
+            PreTitleSpriteBatchSource::sega_guy_secondary ||
+        sprite_batches[1].first_sequence != 7U ||
+        sprite_batches[1].records.size() != 5U) {
         return 2;
     }
 
@@ -138,15 +159,39 @@ int main() {
     phase_state.logo_phase_countdown = 0;
     phase_state.logo_phase = 5U;
     std::size_t phase_builds = 0;
+    std::vector<PreTitleSpriteBatch> phase_batches;
     PreTitleSequenceCallbacks phase_callbacks{};
-    phase_callbacks.animation.build_title_sprite_records = [&phase_builds] {
+    phase_callbacks.animation.publish_sprite_batch =
+        [&phase_builds, &phase_batches](const PreTitleSpriteBatch& batch) {
         ++phase_builds;
+        phase_batches.push_back(batch);
     };
+    phase_callbacks.animation.clear_last_sprite_sequence = [] {};
     advance_pre_title_animation(phase_state, phase_callbacks);
     if (phase_state.sprite_update_marker != 1U ||
         phase_state.sprite_projection_marker != 1U ||
         phase_state.logo_phase != 0U || phase_state.logo_phase_countdown != 3 ||
-        phase_builds != 4U) {
+        phase_builds != 4U || phase_batches.size() != 4U ||
+        phase_batches[0].source !=
+            PreTitleSpriteBatchSource::sega_guy_primary ||
+        phase_batches[0].records.size() != 5U ||
+        phase_batches[0].first_sequence != 2U ||
+        phase_batches[1].source !=
+            PreTitleSpriteBatchSource::sega_guy_secondary ||
+        phase_batches[1].records.size() != 5U ||
+        phase_batches[1].first_sequence != 7U ||
+        phase_batches[2].source !=
+            PreTitleSpriteBatchSource::sega_lightning_primary ||
+        phase_batches[2].phase != 0U || phase_batches[2].origin_x != 0x0158 ||
+        phase_batches[2].origin_y != 0x0120 ||
+        phase_batches[2].first_sequence != 12U ||
+        phase_batches[2].records.size() != 3U ||
+        phase_batches[3].source !=
+            PreTitleSpriteBatchSource::sega_lightning_secondary ||
+        phase_batches[3].first_sequence != 15U ||
+        phase_batches[3].records.size() != 3U ||
+        phase_batches[2].records.front().x != 0x0121 ||
+        phase_batches[2].records.front().y != 0x0109) {
         return 3;
     }
 

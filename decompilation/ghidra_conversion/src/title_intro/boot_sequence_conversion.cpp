@@ -15,6 +15,145 @@ constexpr std::array<std::uint16_t, 15> kPreTitleLogoStrobeColorTable{
     0x0040U, 0x0020U, 0x0000U, 0x0000U, 0x0000U,
 };
 
+const std::vector<SpriteSourceRecord> kPreTitleSegaGuyPrimarySource{
+    {-15, -63, 6, 0x811BU},
+    {-23, -39, 11, 0x8163U},
+    {-15, -7, 4, 0x8161U},
+    {-54, -40, 13, 0x81C5U},
+    {-67, -66, 11, 0x81CDU},
+    {static_cast<std::int16_t>(-0x8000), 0, 0, 0},
+};
+
+const std::vector<SpriteSourceRecord> kPreTitleSegaGuySecondarySource{
+    {-2, -63, 6, 0x891BU},
+    {-2, -39, 11, 0x8963U},
+    {-2, -7, 4, 0x8961U},
+    {21, -40, 13, 0x89C5U},
+    {42, -66, 11, 0x89CDU},
+    {static_cast<std::int16_t>(-0x8000), 0, 0, 0},
+};
+
+const std::array<std::vector<SpriteSourceRecord>, 6>
+    kPreTitleSegaLightningPrimarySources{
+        std::vector<SpriteSourceRecord>{
+            {-23, -55, 15, 0x0051U},
+            {-10, -23, 14, 0x0061U},
+            {9, -48, 11, 0x006DU},
+            {static_cast<std::int16_t>(-0x8000), 0, 0, 0},
+        },
+        std::vector<SpriteSourceRecord>{
+            {-31, -55, 15, 0x0079U},
+            {-20, -23, 14, 0x0089U},
+            {1, -34, 0, 0x0095U},
+            {static_cast<std::int16_t>(-0x8000), 0, 0, 0},
+        },
+        std::vector<SpriteSourceRecord>{
+            {-31, -54, 15, 0x0096U},
+            {-23, -22, 14, 0x00A6U},
+            {-20, -58, 14, 0x00B2U},
+            {static_cast<std::int16_t>(-0x8000), 0, 0, 0},
+        },
+        std::vector<SpriteSourceRecord>{
+            {-20, -42, 15, 0x00BEU},
+            {-17, -58, 15, 0x00CEU},
+            {-12, -18, 14, 0x00DEU},
+            {15, -52, 11, 0x00EAU},
+            {20, -20, 4, 0x00F6U},
+            {static_cast<std::int16_t>(-0x8000), 0, 0, 0},
+        },
+        std::vector<SpriteSourceRecord>{
+            {-31, -54, 15, 0x0096U},
+            {-23, -22, 14, 0x00A6U},
+            {-20, -58, 14, 0x00B2U},
+            {static_cast<std::int16_t>(-0x8000), 0, 0, 0},
+        },
+        std::vector<SpriteSourceRecord>{
+            {-31, -55, 15, 0x0079U},
+            {-20, -23, 14, 0x0089U},
+            {1, -34, 0, 0x0095U},
+            {static_cast<std::int16_t>(-0x8000), 0, 0, 0},
+        },
+    };
+
+const std::array<std::vector<SpriteSourceRecord>, 6>
+    kPreTitleSegaLightningSecondarySources{
+        std::vector<SpriteSourceRecord>{
+            {-9, -55, 15, 0x0851U},
+            {-22, -23, 14, 0x0861U},
+            {-33, -48, 11, 0x086DU},
+            {static_cast<std::int16_t>(-0x8000), 0, 0, 0},
+        },
+        std::vector<SpriteSourceRecord>{
+            {-1, -55, 15, 0x0879U},
+            {-12, -23, 14, 0x0889U},
+            {-9, -34, 0, 0x0895U},
+            {static_cast<std::int16_t>(-0x8000), 0, 0, 0},
+        },
+        std::vector<SpriteSourceRecord>{
+            {-1, -54, 15, 0x0896U},
+            {-9, -22, 14, 0x08A6U},
+            {-12, -58, 14, 0x08B2U},
+            {static_cast<std::int16_t>(-0x8000), 0, 0, 0},
+        },
+        std::vector<SpriteSourceRecord>{
+            {-12, -42, 15, 0x08BEU},
+            {-15, -58, 15, 0x08CEU},
+            {-20, -18, 14, 0x08DEU},
+            {-39, -52, 11, 0x08EAU},
+            {-36, -20, 4, 0x08F6U},
+            {static_cast<std::int16_t>(-0x8000), 0, 0, 0},
+        },
+        std::vector<SpriteSourceRecord>{
+            {-1, -54, 15, 0x0896U},
+            {-9, -22, 14, 0x08A6U},
+            {-12, -58, 14, 0x08B2U},
+            {static_cast<std::int16_t>(-0x8000), 0, 0, 0},
+        },
+        std::vector<SpriteSourceRecord>{
+            {-1, -55, 15, 0x0879U},
+            {-12, -23, 14, 0x0889U},
+            {-9, -34, 0, 0x0895U},
+            {static_cast<std::int16_t>(-0x8000), 0, 0, 0},
+        },
+    };
+
+PreTitleSpriteBatch make_pre_title_sprite_batch(
+    const PreTitleSpriteBatchSource source,
+    const std::uint8_t phase,
+    const std::int16_t origin_x,
+    const std::int16_t origin_y,
+    const std::uint8_t first_sequence,
+    const std::uint16_t attribute_flags,
+    const std::vector<SpriteSourceRecord>& source_records) {
+    PreTitleSpriteBatch batch{};
+    batch.source = source;
+    batch.phase = phase;
+    batch.origin_x = origin_x;
+    batch.origin_y = origin_y;
+    batch.first_sequence = first_sequence;
+    batch.attribute_flags = attribute_flags;
+    batch.records = build_title_sprite_records(
+        source_records, origin_y, origin_x, first_sequence, attribute_flags);
+    return batch;
+}
+
+void publish_pre_title_sprite_batch(
+    const PreTitleSpriteBatchSource source,
+    const std::uint8_t phase,
+    const std::int16_t origin_x,
+    const std::int16_t origin_y,
+    const std::uint16_t attribute_flags,
+    const std::vector<SpriteSourceRecord>& source_records,
+    const PreTitleAnimationCallbacks& callbacks,
+    std::uint8_t& next_sequence) {
+    auto batch = make_pre_title_sprite_batch(
+        source, phase, origin_x, origin_y, next_sequence, attribute_flags,
+        source_records);
+    next_sequence = static_cast<std::uint8_t>(
+        next_sequence + static_cast<std::uint8_t>(batch.records.size()));
+    callbacks.publish_sprite_batch(batch);
+}
+
 void enter_stage(BootStartupState& state,
                  const BootStartupCallbacks& callbacks,
                  const BootStartupStage stage) {
@@ -43,7 +182,8 @@ bool has_pre_title_callbacks(const PreTitleSequenceCallbacks& callbacks) {
            static_cast<bool>(resources.write_pre_title_grid) &&
            static_cast<bool>(resources.reset_vdp_upload_state) &&
            static_cast<bool>(callbacks.wait_for_vblank) &&
-           static_cast<bool>(animation.build_title_sprite_records) &&
+           static_cast<bool>(animation.publish_sprite_batch) &&
+           static_cast<bool>(animation.clear_last_sprite_sequence) &&
            static_cast<bool>(animation.publish_logo_strobe_palette) &&
            static_cast<bool>(animation.step_entity_color_words) &&
            static_cast<bool>(callbacks.write_horizontal_scroll_stream) &&
@@ -121,8 +261,15 @@ void advance_pre_title_animation(
     const PreTitleSequenceCallbacks& callbacks) {
     // 0x5D938.
     state.sprite_update_marker = 1U;
-    callbacks.animation.build_title_sprite_records();
-    callbacks.animation.build_title_sprite_records();
+    std::uint8_t next_sequence = 2U;
+    publish_pre_title_sprite_batch(
+        PreTitleSpriteBatchSource::sega_guy_primary, 0U, state.figure_x,
+        state.figure_y, 0x6000U, kPreTitleSegaGuyPrimarySource,
+        callbacks.animation, next_sequence);
+    publish_pre_title_sprite_batch(
+        PreTitleSpriteBatchSource::sega_guy_secondary, 0U, state.figure_x,
+        state.figure_y, 0x6000U, kPreTitleSegaGuySecondarySource,
+        callbacks.animation, next_sequence);
 
     // 0x5D996. FFDD30 is represented by sega_phase_delay and FFDD3C by
     // logo_strobe_active; FFE066/FFE064 remain typed caller-owned phase state.
@@ -135,9 +282,19 @@ void advance_pre_title_animation(
                 state.logo_phase = 0U;
             }
         }
-        callbacks.animation.build_title_sprite_records();
-        callbacks.animation.build_title_sprite_records();
+        const auto phase = static_cast<std::uint8_t>(state.logo_phase % 6U);
+        publish_pre_title_sprite_batch(
+            PreTitleSpriteBatchSource::sega_lightning_primary, phase, 0x0158,
+            0x0120, 0x2000U,
+            kPreTitleSegaLightningPrimarySources[phase], callbacks.animation,
+            next_sequence);
+        publish_pre_title_sprite_batch(
+            PreTitleSpriteBatchSource::sega_lightning_secondary, phase, 0x00D8,
+            0x0120, 0x2000U,
+            kPreTitleSegaLightningSecondarySources[phase],
+            callbacks.animation, next_sequence);
     }
+    callbacks.animation.clear_last_sprite_sequence();
     state.sprite_projection_marker = 1U;
 }
 

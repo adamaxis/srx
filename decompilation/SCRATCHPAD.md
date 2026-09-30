@@ -132,6 +132,15 @@ all eight words, and the Qt boundary retains that source-derived request
 while continuing to use the individually extracted strobe artwork for the
 host image.
 
+The adjacent `0x5D938 -> 0x5D996` animation path is no longer a counter-only
+callback. It publishes the actual five-record Sega-guy batches from the two
+source lists at `0x1D4E4` and `0x1D50E`, then conditionally publishes both
+phase-selected lightning lists from the six-entry `0x5DA20`/`0x5DA38` tables.
+The conversion preserves the live origins, `0x6000`/`0x2000` attribute flags,
+sequence continuity beginning at `2`, and the source's final clear of the last
+sequence byte. The host receives typed built records and semantic source IDs;
+it does not look up those ROM addresses at runtime.
+
 The display-service audit also corrected `0x1872`: its call to
 `0x5672C` is gated by the field display-service word `FFDFE8 == 0`, not by
 the one-shot `FFDD02`/display-ready latch set after a pending upload. The

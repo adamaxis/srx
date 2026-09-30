@@ -90,8 +90,13 @@ StartupIntegrationCallbacks make_callbacks(
             return static_cast<std::uint16_t>(previous + 1U);
         });
     };
-    callbacks.pre_title.animation.build_title_sprite_records =
-        [&observations] { record(observations, "build_title_sprites"); };
+    callbacks.pre_title.animation.publish_sprite_batch =
+        [&observations](const PreTitleSpriteBatch&) {
+            record(observations, "publish_pre_title_sprite_batch");
+        };
+    callbacks.pre_title.animation.clear_last_sprite_sequence = [&observations] {
+        record(observations, "clear_last_pre_title_sprite_sequence");
+    };
     callbacks.pre_title.animation.publish_logo_strobe_palette =
         [&observations](const PreTitleLogoStrobePalette&) {
             record(observations, "publish_logo_strobe");

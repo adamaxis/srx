@@ -1,11 +1,13 @@
 #pragma once
 
 #include "shadowrun_ghidra/core/asset_catalog_conversion.hpp"
+#include "shadowrun_ghidra/rendering/sprite_record_builder_conversion.hpp"
 #include "shadowrun_ghidra/core/timing_conversion.hpp"
 
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <vector>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -93,6 +95,25 @@ struct PreTitleLogoStrobePalette {
     std::array<std::uint16_t, 8> color_words{};
 };
 
+enum class PreTitleSpriteBatchSource {
+    sega_guy_primary,
+    sega_guy_secondary,
+    sega_lightning_primary,
+    sega_lightning_secondary,
+};
+
+struct PreTitleSpriteBatch {
+    PreTitleSpriteBatchSource source =
+        PreTitleSpriteBatchSource::sega_guy_primary;
+    // The six-entry lightning table phase. Sega-guy batches use zero.
+    std::uint8_t phase = 0;
+    std::int16_t origin_x = 0;
+    std::int16_t origin_y = 0;
+    std::uint8_t first_sequence = 0;
+    std::uint16_t attribute_flags = 0;
+    std::vector<BuiltSpriteRecord> records;
+};
+
 // Direct child-call boundaries recovered from 0x5DA50. The zeroing is
 // performed by setup_pre_title_resources; callbacks expose semantic host
 // requests rather than VDP command words or ROM addresses.
@@ -112,7 +133,8 @@ struct PreTitleResourceCallbacks {
 
 // Direct child-call boundaries recovered from 0x5D938, 0x5D996, and 0x5D8BA.
 struct PreTitleAnimationCallbacks {
-    std::function<void()> build_title_sprite_records;
+    std::function<void(const PreTitleSpriteBatch&)> publish_sprite_batch;
+    std::function<void()> clear_last_sprite_sequence;
     std::function<void(const PreTitleLogoStrobePalette&)>
         publish_logo_strobe_palette;
     std::function<void()> step_entity_color_words;
@@ -144,8 +166,9 @@ void advance_pre_title_logo_strobe(
     const PreTitleSequenceCallbacks& callbacks);
 
 // ROM 0x5D938 -> 0x5D996: set the sprite-update markers, build the two
-// ordinary title records, advance the six-phase logo projection when its
-// delay gate is open, and build that projection twice as the source does.
+// five-record Sega-guy lists, advance the six-phase logo projection when its
+// delay gate is open, build both phase-selected lightning lists, and clear
+// the final sprite sequence byte as the source does.
 void advance_pre_title_animation(
     PreTitleSequenceState& state,
     const PreTitleSequenceCallbacks& callbacks);

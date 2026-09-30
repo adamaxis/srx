@@ -120,8 +120,9 @@ int main(int argc, char** argv) {
                             return static_cast<std::uint16_t>(previous + 1U);
                         });
     };
-    startup_callbacks.pre_title.animation.build_title_sprite_records =
-        [&sprite_builds] { ++sprite_builds; };
+    startup_callbacks.pre_title.animation.publish_sprite_batch =
+        [&sprite_builds](const PreTitleSpriteBatch&) { ++sprite_builds; };
+    startup_callbacks.pre_title.animation.clear_last_sprite_sequence = [] {};
     startup_callbacks.pre_title.animation.publish_logo_strobe_palette =
         [&strobe_phase_updates](const PreTitleLogoStrobePalette&) {
             ++strobe_phase_updates;

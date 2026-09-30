@@ -123,6 +123,18 @@ four blocks of sixteen words with source mask `0x4000` before the palette fade.
 The Qt boundary names those two host operations separately; neither callback
 receives a ROM pointer, VDP command word, or Genesis memory address.
 
+### Pre-title sprite batches: `0x5D938` / `0x5D996`
+
+The pre-title animation path now carries the records that the source actually
+builds. The first child publishes the five records from each Sega-guy source
+list (`0x1D4E4` and `0x1D50E`) at the live figure origin, starting sprite
+sequence values `2` and `7` with attribute base `0x6000`. When the phase gate is
+open, the second child advances its six-phase selector and publishes both
+lightning lists selected from `0x5DA20` and `0x5DA38`, at origins `0x158/0x120`
+and `0xD8/0x120`, with attribute base `0x2000`. Sequence continuity and the
+post-child clear of the last sequence byte are explicit in the typed contract;
+the source table addresses are provenance only.
+
 The slot-availability audit also corrected a semantic narrowing in the typed
 conversion: `0x19C54 -> 0x19C5C` preserves the raw `FFFBCC` byte because the
 source callers use it as a numeric action/HUD value. A nonzero boolean is not
