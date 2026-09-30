@@ -5,6 +5,14 @@
 // Calls recovered from direct call instructions:
 //   0x0001CBF8 clear_world_effect_work
 //   0x000530DE service_audio_if_enabled
+//
+// ROM trace: FFE010 selects the normal FF159E record or clears/selects the
+// work record through 0x1CBF8. An active selected record returns before audio
+// or field writes. Otherwise command 0x17 supplies D1 to +0x12, the record is
+// seeded active with source variant 0, frame delay 0x14, phase delay 0, and
+// lifetime 0x3C, then caller offsets D5/D6 are added to the source position
+// and converted to fixed point. Destination deltas are divided by 0x3C for
+// the two velocity words.
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */

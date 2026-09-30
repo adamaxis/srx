@@ -1548,10 +1548,11 @@ X/Y update, and 0x2000 sprite-build boundary in typed state. The normal path
 no longer needs a source resolver callback.
 
 `0x1D048` is now `advance_world_effect_record`: it models the mixed world-
-effect record's lifetime/frame timers, `0x15E56` easing lookup, fixed-point
-motion, direction mirror, and three-phase animation counter. `0x1D0DE` is now
-`resolve_world_effect_sprite`, selecting the three source-table families and
-returning shifted host coordinates through an explicit asset callback.
+effect record's lifetime/frame timers, exact 64-entry `0x15E56` easing table,
+fixed-point motion, direction mirror, and three-phase animation counter.
+`0x1D0DE` is now `resolve_world_effect_sprite`, selecting the three direct
+source-table families and returning shifted host coordinates. Both have
+callback-free source-data paths.
 
 `0x1CB6A` is now `spawn_world_effect_record`: its typed state captures the
 normal/work-record choice, audio command boundary, active marker, source
@@ -1562,8 +1563,8 @@ branches for the secondary seed record, special `0x1C27C` setup, motion
 initialization, spawn offsets, and the pending-transition Y adjustment.
 
 `0x1CC24` is now `advance_persistent_world_effect`, including the actual
-record tick, six-slot circular sprite work area, seven-build wrapped draw
-pass, and completion/menu transition.
+record tick, record-owned six-slot circular sprite work area, seven-build
+wrapped draw pass, and completion/menu transition.
 
 `0x1D280` is now `initialize_world_sequence`; its fixed sequence/source
 tokens, row range, destination, and initial counters feed the already-typed

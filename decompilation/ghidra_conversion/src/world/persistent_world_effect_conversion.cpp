@@ -20,18 +20,21 @@ PersistentWorldEffectAction advance_persistent_world_effect(
                                  ? callbacks.resolve_sprite_source(
                                        state.record.source_variant,
                                        state.record.animation_phase)
-                                 : std::nullopt;
+                                 : resolve_world_effect_sprite_data(
+                                       state.record.source_variant,
+                                       state.record.animation_phase);
     if (!sprite_data.has_value()) {
         return PersistentWorldEffectAction::sprite_source_unresolved;
     }
 
     if ((state.frame_counter & 0x0003U) == 0U) {
-        state.ring_index = static_cast<std::uint8_t>(state.ring_index + 1U);
-        if (state.ring_index >= 6U) {
-            state.ring_index = 0U;
+        state.record.ring_index = static_cast<std::uint8_t>(
+            state.record.ring_index + 1U);
+        if (state.record.ring_index >= 6U) {
+            state.record.ring_index = 0U;
         }
     }
-    auto& slot = state.slots[state.ring_index];
+    auto& slot = state.slots[state.record.ring_index];
     slot.sprite_data = sprite_data;
     slot.x = static_cast<std::uint16_t>(
         static_cast<std::uint16_t>(state.record.position_x) >> 4U);
@@ -41,7 +44,7 @@ PersistentWorldEffectAction advance_persistent_world_effect(
     if (callbacks.build_sprite) {
         for (std::uint8_t draw = 0; draw < 7U; ++draw) {
             const auto index = static_cast<std::uint8_t>(
-                (state.ring_index + 1U + draw) % 6U);
+                (state.record.ring_index + 1U + draw) % 6U);
             const auto& draw_slot = state.slots[index];
             if (draw_slot.sprite_data.has_value()) {
                 callbacks.build_sprite(*draw_slot.sprite_data, draw_slot.x,

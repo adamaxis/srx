@@ -17,7 +17,6 @@ struct PersistentWorldEffectSpriteSlot {
 
 struct PersistentWorldEffectState {
     WorldEffectRecordState record{};
-    std::uint8_t ring_index = 0;       // record +0x08, six-slot circular index
     std::uint16_t frame_counter = 0;   // FFDF88
     std::uint16_t transition_state = 0; // FFE0D6
     std::array<PersistentWorldEffectSpriteSlot, 6> slots{};

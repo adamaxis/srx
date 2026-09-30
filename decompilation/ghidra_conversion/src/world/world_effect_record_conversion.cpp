@@ -1,6 +1,37 @@
 #include "shadowrun_ghidra/world/world_effect_record_conversion.hpp"
 
+#include <array>
+
 namespace shadowrun::ghidra_conversion {
+
+namespace {
+
+constexpr std::array<std::int16_t, 64> kWorldEffectEasing{
+    0,     3211,  6392,  9511,  12539, 15446, 18204, 20787,
+    23169, 25329, 27244, 28897, 30272, 31356, 32137, 32609,
+    32767, 32609, 32137, 31356, 30272, 28897, 27244, 25329,
+    23169, 20787, 18204, 15446, 12539, 9511,  6392,  3211,
+    0,     -3211, -6392, -9511, -12539, -15446, -18204, -20787,
+    -23169, -25329, -27244, -28897, -30272, -31356, -32137, -32609,
+    -32767, -32609, -32137, -31356, -30272, -28897, -27244, -25329,
+    -23169, -20787, -18204, -15446, -12539, -9511, -6392, -3211};
+
+constexpr std::array<std::array<std::uint32_t, 3>, 3>
+    kWorldEffectSpriteData{{
+        {{0x0001D538U, 0x0001D542U, 0x0001D54CU}},
+        {{0x0001D556U, 0x0001D560U, 0x0001D56AU}},
+        {{0x0001D574U, 0x0001D57EU, 0x0001D588U}},
+    }};
+
+} // namespace
+
+std::optional<std::int16_t> resolve_world_effect_easing(
+    const std::uint8_t easing_index) {
+    if (easing_index >= kWorldEffectEasing.size()) {
+        return std::nullopt;
+    }
+    return kWorldEffectEasing[easing_index];
+}
 
 WorldEffectRecordAction advance_world_effect_record(
     WorldEffectRecordState& state,
@@ -19,11 +50,11 @@ WorldEffectRecordAction advance_world_effect_record(
     }
 
     const auto easing_index = static_cast<std::uint8_t>(
-        (0x3CU - state.lifetime) & 0x3FU);
+        (0x003CU - static_cast<std::uint16_t>(state.lifetime)) & 0x00FFU);
     const auto easing = callbacks.resolve_easing
                             ? std::optional<std::int16_t>(
                                   callbacks.resolve_easing(easing_index))
-                            : std::nullopt;
+                            : resolve_world_effect_easing(easing_index);
     if (!easing.has_value()) {
         return WorldEffectRecordAction::easing_unresolved;
     }
@@ -59,11 +90,13 @@ WorldEffectRecordAction advance_world_effect_record(
 std::optional<WorldEffectSpriteSource> resolve_world_effect_sprite(
     const WorldEffectRecordState& state,
     const WorldEffectSpriteCallbacks& callbacks) {
-    if (!callbacks.resolve_sprite_source) {
-        return std::nullopt;
-    }
-    const auto token = callbacks.resolve_sprite_source(
-        state.source_variant, state.animation_phase);
+    const auto token = callbacks.resolve_sprite_source
+                           ? callbacks.resolve_sprite_source(
+                                 state.source_variant,
+                                 state.animation_phase)
+                           : resolve_world_effect_sprite_data(
+                                 state.source_variant,
+                                 state.animation_phase);
     if (!token.has_value()) {
         return std::nullopt;
     }
@@ -73,6 +106,17 @@ std::optional<WorldEffectSpriteSource> resolve_world_effect_sprite(
             static_cast<std::uint16_t>(state.position_x) >> 4U),
         static_cast<std::uint16_t>(
             static_cast<std::uint16_t>(state.position_y) >> 4U)};
+}
+
+std::optional<std::uint32_t> resolve_world_effect_sprite_data(
+    const std::uint8_t source_variant, const std::uint8_t animation_phase) {
+    if (animation_phase >= 3U) {
+        return std::nullopt;
+    }
+    const auto variant_index = source_variant == 0U
+                                   ? 0U
+                                   : source_variant == 1U ? 1U : 2U;
+    return kWorldEffectSpriteData[variant_index][animation_phase];
 }
 
 WorldEffectSpawnAction spawn_world_effect_record(

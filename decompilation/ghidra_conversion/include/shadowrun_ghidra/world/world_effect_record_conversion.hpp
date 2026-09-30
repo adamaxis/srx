@@ -16,6 +16,7 @@ struct WorldEffectRecordState {
     std::uint8_t frame_delay = 0;      // +0x04
     std::uint8_t source_variant = 0;   // +0x05, 0..2 source table selector
     std::uint8_t active = 0;           // +0x06, source uses 0xFF while active
+    std::uint8_t ring_index = 0;       // +0x08, six-slot persistent draw ring
     std::uint8_t animation_phase = 0;  // +0x09, 0..2 sprite phase
     std::uint8_t phase_delay = 0;      // +0x0A
     std::uint8_t lifetime = 0;         // +0x0B, 60-step movement lifetime
@@ -26,7 +27,9 @@ struct WorldEffectRecordState {
 };
 
 struct WorldEffectRecordCallbacks {
-    // ROM 0x15E56 easing table. The index is (0x3C - lifetime) & 0x3F.
+    // ROM 0x15E56 easing table. The source masks the computed byte index to
+    // 0xFF; the normal 60-step lifetime path therefore uses entries 0..61.
+    // When absent, the exact extracted 64-entry host table is used.
     std::function<std::int16_t(std::uint8_t easing_index)> resolve_easing;
 };
 
@@ -42,6 +45,12 @@ WorldEffectRecordAction advance_world_effect_record(
     WorldEffectRecordState& state,
     const WorldEffectRecordCallbacks& callbacks);
 
+// Typed extraction of the normal 0x15E56 easing entries used by the active
+// world-effect lifetime, including the one post-expiry entry read after the
+// byte countdown wraps from zero to 0xFF.
+std::optional<std::int16_t> resolve_world_effect_easing(
+    std::uint8_t easing_index);
+
 struct WorldEffectSpriteSource {
     std::uint32_t source_table_token = 0;
     std::uint16_t position_x = 0;
@@ -55,6 +64,12 @@ struct WorldEffectSpriteCallbacks {
         std::uint8_t source_variant, std::uint8_t animation_phase)>
         resolve_sprite_source;
 };
+
+// Typed extraction of the three direct source-variant tables at 0x1D134,
+// 0x1D11C, and 0x1D128. Variant 0 selects 0x1D134, variant 1 selects
+// 0x1D11C, and every other source variant selects 0x1D128.
+std::optional<std::uint32_t> resolve_world_effect_sprite_data(
+    std::uint8_t source_variant, std::uint8_t animation_phase);
 
 // ROM 0x1D0DE: resolve the source table/phase for the record and convert its
 // fixed-point position to host sprite coordinates.

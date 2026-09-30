@@ -1087,11 +1087,11 @@ fixed-point Y, shifts both by four, and builds with attributes `0x2000`.
 The record helpers behind the adjacent title/world path are now typed as
 `0x1D048` `advance_world_effect_record` and `0x1D0DE`
 `resolve_world_effect_sprite`. The first owns the mixed byte/word record's
-60-step lifetime, 20-frame source-table timer, `0x15E56` easing lookup,
-fixed-point movement, and three-phase animation counter. The second selects
-the `0x1D134`/`0x1D11C`/`0x1D128` source table from the record variant and
-returns shifted host coordinates; neither helper exposes a ROM-backed runtime
-memory model.
+60-step lifetime, 20-frame source-table timer, exact 64-entry `0x15E56`
+easing data, fixed-point movement, and three-phase animation counter. The
+second selects the direct `0x1D134`/`0x1D11C`/`0x1D128` source table from the
+record variant and returns shifted host coordinates; neither helper exposes a
+ROM-backed runtime memory model.
 
 `0x1CB6A` is now `spawn_world_effect_record`. It chooses the normal or cleared
 work record, issues audio command `0x17` through a callback, marks the record
@@ -1101,11 +1101,11 @@ record. The native model exposes those record fields directly instead of
 recreating the original address-selected A1 record.
 
 `0x1CC24` is now `advance_persistent_world_effect`. It advances the shared
-effect record, updates the six-slot work ring on the source's `FFDF88 & 3 == 0`
-cadence, writes the selected sprite source and shifted coordinates, then
-draws seven wrapped entries beginning after the selected slot with attributes
-`0x6000`. Expiry clears `FFE0D6` and returns through the menu-selection
-variant boundary.
+effect record, updates the record's six-slot ring byte (+0x08) on the source's
+`FFDF88 & 3 == 0` cadence, writes the selected direct sprite stream and
+shifted coordinates, then draws seven wrapped entries beginning after the
+selected slot with attributes `0x6000`. Expiry clears `FFE0D6` and returns
+through the menu-selection variant boundary.
 
 `0x1D280` is now `initialize_world_sequence`, paired with the existing typed
 `advance_world_sequence` implementation. It seeds the source table token

@@ -4,6 +4,12 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
+//
+// ROM trace: decrement lifetime (+0x0B), frame delay (+0x04), and phase delay
+// (+0x0A) as source bytes; the two expired timers reload 0x14/2 and advance
+// source variant/animation phase with their source limits. The 0x15E56 word
+// is indexed by ((0x3C - lifetime) & 0xFF) in the normal active range, then
+// multiplied by lifetime and shifted six bits for the mirrored X easing.
 
 
 void advance_world_effect_record(void)

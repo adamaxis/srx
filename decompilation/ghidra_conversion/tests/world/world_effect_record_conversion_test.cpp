@@ -5,6 +5,19 @@
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
+    if (resolve_world_effect_easing(0U) != 0 ||
+        resolve_world_effect_easing(16U) != 0x7FFF ||
+        resolve_world_effect_easing(33U) != -3211 ||
+        resolve_world_effect_easing(63U) != -3211 ||
+        resolve_world_effect_easing(64U).has_value() ||
+        resolve_world_effect_sprite_data(0U, 0U) != 0x1D538U ||
+        resolve_world_effect_sprite_data(1U, 2U) != 0x1D56AU ||
+        resolve_world_effect_sprite_data(2U, 1U) != 0x1D57EU ||
+        resolve_world_effect_sprite_data(7U, 0U) != 0x1D574U ||
+        resolve_world_effect_sprite_data(0U, 3U).has_value()) {
+        return 1;
+    }
+
     WorldEffectRecordState record{};
     record.position_x = 0x0200;
     record.position_y = 0x1000;
@@ -32,7 +45,20 @@ int main() {
         record.target_x != 0x1002 || record.position_x != 0x1002 ||
         record.position_y != 0x0FFCU || record.phase_delay != 2U ||
         record.animation_phase != 0U || record.active != 0xFFU) {
-        return 1;
+        return 2;
+    }
+
+    WorldEffectRecordState extracted{};
+    extracted.lifetime = 0x3CU;
+    extracted.frame_delay = 1U;
+    extracted.phase_delay = 1U;
+    extracted.source_variant = 2U;
+    extracted.animation_phase = 1U;
+    extracted.direction = 1;
+    if (advance_world_effect_record(extracted, {}) !=
+            WorldEffectRecordAction::advanced ||
+        extracted.lifetime != 0x3BU) {
+        return 3;
     }
 
     record = {};

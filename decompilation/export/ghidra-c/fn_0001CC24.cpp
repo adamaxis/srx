@@ -7,6 +7,11 @@
 //   0x00019EA6 run_menu_selection_variant
 //   0x0001D048 advance_world_effect_record
 //   0x0001D0DE resolve_world_effect_sprite
+//
+// ROM trace: the six-slot ring index is record byte +0x08, not an unrelated
+// controller variable. It advances only when FFDF88 & 3 == 0, wraps at six,
+// stores the current resolved stream/coordinates into that slot, then walks
+// seven wrapped slots beginning at the following entry with 0x6000 builds.
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
