@@ -8,16 +8,17 @@ void initialize_mode_nine(
     if (callbacks.prepare_mode_entry) {
         callbacks.prepare_mode_entry();
     }
-    if (callbacks.select_mode_resource) {
-        callbacks.select_mode_resource();
+    if (callbacks.select_mode_nine_resource) {
+        callbacks.select_mode_nine_resource();
     }
 
-    state.mode = 9U;
-    state.pending_resource = true;
-    state.field_marker = 0xFFFFU;
-    state.hud_mode = 3U;
-    state.input_mode = 1U;
-    state.scene_state_pending = true;
+    state.mode_nine_resource_selected = true;
+    state.world_scene_mode = 9U;
+    state.field_mode_service_state = 0U;
+    state.camera_transition_marker = -1;
+    state.field_mode_transition_index = 3;
+    state.alternate_scene_profile_selected = true;
+    state.scene_profile_override_lock = true;
 }
 
 } // namespace shadowrun::ghidra_conversion

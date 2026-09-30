@@ -13,8 +13,16 @@ bool expect(const bool condition) {
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
-    FieldModeInitializationState state{
-        FieldModeProfile::profile_b, {1U, 2U, 3U, 4U, 5U, 6U, 7U}, true};
+    FieldModeInitializationState state{};
+    state.profile = FieldModeProfile::profile_b;
+    state.entry_transient.pending_world_activity_handler = 0x12345678U;
+    state.entry_transient.world_effect_active = 1U;
+    state.entry_transient.pending_world_effect = 2U;
+    state.entry_transient.effect_context_active = 3U;
+    state.entry_transient.alternate_effect_context = 4U;
+    state.entry_transient.mode_five_effect_marker = 5U;
+    state.entry_transient.world_activity_request = 6U;
+    state.world_effects_active = true;
     std::vector<int> order;
     FieldModeProfile selected = FieldModeProfile::profile_b;
     initialize_field_mode(
@@ -29,16 +37,22 @@ int main() {
         });
     if (!expect(state.profile == FieldModeProfile::profile_a &&
                 selected == FieldModeProfile::profile_a &&
-                state.transient_fields ==
-                    std::array<std::uint8_t, 7>{0U, 0U, 0U, 0U, 0U, 0U,
-                                                0U} &&
-                !state.render_pending && order == std::vector<int>{1, 2, 3})) {
+                state.entry_transient.pending_world_activity_handler == 0U &&
+                state.entry_transient.world_effect_active == 0U &&
+                state.entry_transient.pending_world_effect == 0U &&
+                state.entry_transient.effect_context_active == 0U &&
+                state.entry_transient.alternate_effect_context == 0U &&
+                state.entry_transient.mode_five_effect_marker == 0U &&
+                state.entry_transient.world_activity_request == 0U &&
+                !state.world_effects_active &&
+                order == std::vector<int>{1, 2, 3})) {
         return 1;
     }
 
     initialize_field_mode(state, FieldModeProfile::profile_b, {});
     if (!expect(state.profile == FieldModeProfile::profile_b &&
-                state.transient_fields[0] == 0U && !state.render_pending)) {
+                state.entry_transient.pending_world_activity_handler == 0U &&
+                !state.world_effects_active)) {
         return 2;
     }
 

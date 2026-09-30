@@ -818,6 +818,15 @@ The focused world-entity test verifies the complete callback order and both
 refresh-latch branches; the function remains partial because its resource and
 render callbacks are still host integration boundaries.
 
+The adjacent mode-entry pass is now typed to the source writes rather than
+generic “HUD/input” labels. `0x2A32` and `0x2A44` install their distinct
+profile selections, clear the deferred world-activity handler and the
+FFE180/FFE182/FFE184/FFE187/FFE18F/FFE183 effect/activity fields, clear the
+FFDF84 world/effect gate, and then enter scene-mode initialization. `0x2A94`
+now exposes world mode 9, FFDF40=0, FFDF8E=-1, FFFC10=3, FFFC0E=1, and
+FFE10E=1 as named state. Its source resource installation at `0x2ADA` stays
+an explicit host asset boundary until the direct asset alias is verified.
+
 ### Terrain collision probe audit
 
 The terrain probe family is now source-traced in the conversion project rather

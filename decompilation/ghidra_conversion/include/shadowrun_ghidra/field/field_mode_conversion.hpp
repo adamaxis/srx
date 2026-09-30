@@ -11,10 +11,25 @@ enum class FieldModeProfile {
     profile_b,
 };
 
+struct FieldModeEntryTransientState {
+    // ROM FFE12E: source clears the complete deferred activity handler word.
+    std::uint32_t pending_world_activity_handler = 0;
+    // ROM FFE180/FFE182: active and pending world-effect markers.
+    std::uint8_t world_effect_active = 0;
+    std::uint8_t pending_world_effect = 0;
+    // ROM FFE184/FFE187: effect-context selectors used by terrain/effect work.
+    std::uint8_t effect_context_active = 0;
+    std::uint8_t alternate_effect_context = 0;
+    // ROM FFE18F/FFE183: mode-five marker and world-activity request.
+    std::uint8_t mode_five_effect_marker = 0;
+    std::uint8_t world_activity_request = 0;
+};
+
 struct FieldModeInitializationState {
     FieldModeProfile profile = FieldModeProfile::profile_a;
-    std::array<std::uint8_t, 7> transient_fields{};
-    bool render_pending = false;
+    FieldModeEntryTransientState entry_transient{};
+    // ROM FFDF84: world/effect activity gate cleared by both profile entries.
+    bool world_effects_active = false;
 };
 
 struct FieldModeInitializationCallbacks {
@@ -23,10 +38,12 @@ struct FieldModeInitializationCallbacks {
     std::function<void()> initialize_scene_mode_state;
 };
 
-// ROM 0x2A32 / 0x2A44: select one of two mode profiles, run the common mode
-// entry service, clear the seven transient state bytes and render-pending
-// marker, then initialize scene-mode state. Profile tables stay a host-owned
-// data boundary rather than becoming ROM-addressed runtime state.
+// ROM 0x2A32 / 0x2A44: install one of the two field-mode profile records, run
+// the common mode-entry service, clear the typed FFE12E/FFE18x transient
+// fields and the FFDF84 world/effect activity gate, then initialize
+// scene-mode state.
+// Profile tables stay a host-owned data boundary rather than becoming
+// ROM-addressed runtime state.
 void initialize_field_mode(
     FieldModeInitializationState& state,
     FieldModeProfile profile,

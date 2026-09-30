@@ -13,8 +13,8 @@ void initialize_field_mode(
     if (callbacks.prepare_mode_entry) {
         callbacks.prepare_mode_entry();
     }
-    state.transient_fields.fill(0U);
-    state.render_pending = false;
+    state.entry_transient = {};
+    state.world_effects_active = false;
     if (callbacks.initialize_scene_mode_state) {
         callbacks.initialize_scene_mode_state();
     }

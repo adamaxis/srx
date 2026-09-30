@@ -9,9 +9,9 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x0C24	finite vblank wait	ghidra_conversion::wait_for_vblank_frames	shadowrun_boot_sequence	partial		Typed DBF count-plus-one vblank wait
 0x0D94	controller event wait	ghidra_conversion::wait_for_controller_event	shadowrun_boot_sequence	partial		Typed vblank/latch/sample loop with source high-byte event gate and final sample
 0x03032	scene profile predicate	ghidra_conversion::scene_uses_alternate_profile	shadowrun_ghidra_display_service_batch	partial		Exact accepted scene-ID ranges 6..9 and 0x2C..0x31 select the alternate field profile
-0x02A32	field mode profile A	ghidra_conversion::initialize_field_mode	shadowrun_native_port	partial		Shared profile selection, entry-service, seven-byte transient reset, and scene-state initialization converted
-0x02A44	field mode profile B	ghidra_conversion::initialize_field_mode	shadowrun_native_port	partial		Shared profile selection, entry-service, seven-byte transient reset, and scene-state initialization converted
-0x02A94	mode 9 entry	ghidra_conversion::initialize_mode_nine	shadowrun_native_port	partial		Typed mode-9 entry service, pending-resource publication, marker reset, and mode flags converted
+0x02A32	field mode profile A	ghidra_conversion::initialize_field_mode	shadowrun_native_port	partial		Profile A resource selection, common entry service, typed FFE12E/FFE18x transient clear, FFDF84 world/effect gate clear, and scene-mode initialization
+0x02A44	field mode profile B	ghidra_conversion::initialize_field_mode	shadowrun_native_port	partial		Profile B resource selection, common entry service, typed FFE12E/FFE18x transient clear, FFDF84 world/effect gate clear, and scene-mode initialization
+0x02A94	mode 9 entry	ghidra_conversion::initialize_mode_nine	shadowrun_native_port	partial		Common entry service, source resource 0x2ADA installation boundary, world mode 9, FFDF40 clear, FFDF8E=-1, FFFC10=3, FFFC0E=1, and FFE10E=1
 0x10918	menu graphics preparation	ghidra_conversion::prepare_menu_graphics	shadowrun_menu_system	partial		Typed common menu-buffer preparation, metadata copy, and resource upload boundary converted
 0x10984	menu asset batch (9 + optional)	ghidra_conversion::transfer_menu_asset_batch	shadowrun_menu_system	partial		Nine counted tile uploads plus the source conditional tenth block converted
 0x10A7E	menu asset batch (4, repeated command)	ghidra_conversion::transfer_menu_asset_batch	shadowrun_menu_system	partial		Four counted tile uploads with the source post-preparation transfer command converted
