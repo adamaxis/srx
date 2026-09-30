@@ -126,10 +126,20 @@ int main() {
                     RecruitedRunnerInformationTopic::ricky_glow_city_origin &&
                 ricky_information.changed_flag == 0x0001U &&
                 ricky_information.information_flags == 0x0001U &&
-                ricky_information.opening_text ==
+                ricky_information.opening_text.segment_count == 3U &&
+                ricky_information.opening_text.segments[0] ==
                     "I've lived in Glow City all my life." &&
-                ricky_information.continuation_text ==
+                ricky_information.opening_text.segments[1] ==
+                    "I was slummin' in the sewers, but it got me nowhere, because I had no purpose." &&
+                ricky_information.opening_text.segments[2] ==
+                    "And because everyone was larger than me." &&
+                ricky_information.continuation_text.segment_count == 3U &&
+                ricky_information.continuation_text.segments[0] ==
                     "Then I heard my totem calling.  I have embraced that power, the power of Rat!" &&
+                ricky_information.continuation_text.segments[1] ==
+                    "Rat has shown that force is not the only way to success." &&
+                ricky_information.continuation_text.segments[2] ==
+                    "When I find some companions to work with, I'll be able to use my talents to finally get outta this dump!" &&
                 ricky_information.more_option_text == "< MORE >")) {
         return 8;
     }
@@ -151,12 +161,16 @@ int main() {
                     RecruitedRunnerInformationTopic::stark_amerindian_heritage &&
                 stark_information.changed_flag == 0x0200U &&
                 stark_information.information_flags == 0x0201U &&
-                stark_information.opening_text.find("AmerIndian") !=
+                stark_information.opening_text.segments[0].find("AmerIndian") !=
                     std::string_view::npos)) {
         return 10;
     }
 
     offer_state.runner_information_flags = 0U;
+    const std::array<std::size_t, 10> expected_opening_segment_counts{
+        3U, 3U, 4U, 2U, 3U, 3U, 2U, 2U, 4U, 1U};
+    const std::array<std::size_t, 10> expected_continuation_segment_counts{
+        3U, 3U, 1U, 2U, 2U, 3U, 1U, 3U, 3U, 1U};
     for (std::size_t runner_index = 0U; runner_index < 10U;
          ++runner_index) {
         offer_state.selected_runner_template_index =
@@ -170,8 +184,10 @@ int main() {
                     information.changed_flag == expected_flag &&
                     information.information_flags ==
                         static_cast<std::uint16_t>(expected_flag * 2U - 1U) &&
-                    !information.opening_text.empty() &&
-                    !information.continuation_text.empty() &&
+                    information.opening_text.segment_count ==
+                        expected_opening_segment_counts[runner_index] &&
+                    information.continuation_text.segment_count ==
+                        expected_continuation_segment_counts[runner_index] &&
                     information.more_option_text == "< MORE >")) {
             return 11;
         }
@@ -200,8 +216,15 @@ int main() {
                 shaman_response.page_count == 3U &&
                 shaman_response.more_after_page ==
                     std::array<bool, 3>{{true, true, false}} &&
-                shaman_response.page_text[1] ==
-                    "<He shows you his Rat totem, a dingy block of wood.>" &&
+                shaman_response.pages[0].segment_count == 3U &&
+                shaman_response.pages[0].segments[1] ==
+                    "We use her forces to achieve our ends." &&
+                shaman_response.pages[1].segment_count == 4U &&
+                shaman_response.pages[1].segments[3] ==
+                    "Rat chose me to follow his ways." &&
+                shaman_response.pages[2].segment_count == 3U &&
+                shaman_response.pages[2].segments[1] ==
+                    "To use guile and misdirection in lieu of combat." &&
                 shaman_response.returns_to_common_conversation)) {
         return 14;
     }
@@ -210,16 +233,21 @@ int main() {
     if (!expect(local_response.page_count == 2U &&
                 local_response.more_after_page ==
                     std::array<bool, 3>{{true, false, false}} &&
-                local_response.page_text[1] ==
-                    "Glow City sprung up when they ran out of room in the Rat's Nest.")) {
+                local_response.pages[0].segment_count == 3U &&
+                local_response.pages[0].segments[2] ==
+                    "Even I, a follower of Rat, will not hole up there." &&
+                local_response.pages[1].segment_count == 2U &&
+                local_response.pages[1].segments[1] ==
+                    "Sure, there's some minor radiation leakage from the nuke plant, but it's no big deal.")) {
         return 15;
     }
     const auto johnson_response = select_ricky_information_response(
         RickyInformationSubject::johnson_gunderson);
     if (!expect(johnson_response.page_count == 1U &&
                 !johnson_response.more_after_page[0] &&
-                johnson_response.page_text[0] ==
-                    "Yeah, sure.  Gunderson's a Johnson I've used when I needed some quick nuyen.")) {
+                johnson_response.pages[0].segment_count == 3U &&
+                johnson_response.pages[0].segments[2] ==
+                    "His payout is as bad as his smell, but his runs are a piece of cake so long as you have some firepower handy when things go sour.")) {
         return 16;
     }
     if (!expect(select_ricky_information_response(

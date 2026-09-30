@@ -3,6 +3,7 @@
 #include "shadowrun_ghidra/session/runner_roster_conversion.hpp"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <string_view>
@@ -112,11 +113,22 @@ enum class RecruitedRunnerInformationTopic {
     stark_amerindian_heritage,
 };
 
+// The source text renderer consumes a high-bit encoded stream: 0x80..0xBF
+// separates text segments and 0xC0..0xFF terminates the stream. Native text
+// layout does not need those marker bytes, but it does need every source
+// segment in order. This typed representation retains that complete content
+// without exposing the ROM buffer address or the encoded marker protocol to
+// the runtime.
+struct RecruitedRunnerInformationTextStream {
+    std::array<std::string_view, 4> segments{};
+    std::size_t segment_count = 0;
+};
+
 // The mode-command entries 0xBC..0xC5 are ten copies of the same source
 // operation with different bit numbers and text descriptors. The native
 // conversion keeps those as one table-driven behavior: selecting a runner's
-// information topic marks its knowledge bit and returns the two-page dialog
-// content that the source exposes through its < MORE > continuation.
+// information topic marks its knowledge bit and returns both complete source
+// text streams that the source exposes through its < MORE > continuation.
 struct RecruitedRunnerInformationPromptResult {
     RecruitedRunnerInformationAction action =
         RecruitedRunnerInformationAction::runner_index_unavailable;
@@ -126,8 +138,8 @@ struct RecruitedRunnerInformationPromptResult {
         RecruitedRunnerInformationTopic::ricky_glow_city_origin;
     std::uint16_t information_flags = 0; // source FFFC2A
     std::uint16_t changed_flag = 0;
-    std::string_view opening_text;
-    std::string_view continuation_text;
+    RecruitedRunnerInformationTextStream opening_text;
+    RecruitedRunnerInformationTextStream continuation_text;
     std::string_view more_option_text;
 };
 
@@ -155,7 +167,7 @@ struct RickyInformationResponse {
     RickyInformationResponseAction action =
         RickyInformationResponseAction::subject_unavailable;
     RickyInformationSubject subject = RickyInformationSubject::shaman_magic;
-    std::array<std::string_view, 3> page_text{};
+    std::array<RecruitedRunnerInformationTextStream, 3> pages{};
     std::array<bool, 3> more_after_page{};
     std::size_t page_count = 0;
     bool returns_to_common_conversation = false;
@@ -269,10 +281,9 @@ select_recruited_runner_conversation_prompt(
 
 // ROM 0x2401C..0x24102, mode-command entries 0xBC..0xC5. Each entry sets
 // one runner-specific bit in FFFC2A and returns a title-only first page with
-// the shared < MORE > option; the continuation page then presents that
-// runner's second biographical paragraph before returning to the subject
-// choices. The source text is represented as native text data, not ROM
-// pointer arithmetic.
+// the shared < MORE > option; the continuation page then presents the second
+// complete biographical stream before returning to the subject choices. The
+// source text is represented as native text data, not ROM pointer arithmetic.
 RecruitedRunnerInformationPromptResult
 select_recruited_runner_information_prompt(
     RecruitedRunnerServiceState& state);

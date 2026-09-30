@@ -1021,8 +1021,18 @@ Walking Bear's transformation, Phantom's Matrix background, Two Fists'
 Ares-run story, Freya's Cascade Crow background, Rianna's Heartbane identity,
 and Stark's AmerIndian heritage. The native conversion collapses the
 duplicate handlers into one typed table, preserves idempotent flag setting,
-and carries both exact source paragraphs as host text data; it does not read
+and carries the source text descriptors as host text data; it does not read
 `FFFC2A` or the ROM descriptor pointers at runtime.
+
+The information text itself required a second ROM audit. The first conversion
+had retained only the first printable run from each title pointer, but the
+source renderer consumes the complete high-bit stream: `0x80..0xBF` separates
+segments and `0xC0..0xFF` terminates it. The typed records now retain every
+segment in source order. In runner order, the opening/continuation segment
+counts are Ricky `3/3`, Winston Marrs `3/3`, Trent `4/1`, Petr Uvehr `2/2`,
+Walking Bear `3/2`, Phantom `3/3`, Two Fists `2/1`, Freya `2/3`, Rianna `4/3`,
+and Stark `1/1`. This is host text data for native layout; the marker bytes and
+ROM text addresses do not enter runtime state.
 
 The Ricky descriptor chain is now converted beyond that first biography page.
 The `0x2401C` handler enters `0xFE848` with “I've lived in Glow City all my
@@ -1036,8 +1046,11 @@ for three pages with `< MORE >` after the first two; local area traverses
 Johnson response at `0xFE908` is one terminal page. The final page of each
 chain routes back through the common conversation commands. The native
 conversion exposes this as a typed subject prompt plus typed response pages,
-preserving page count, text, and continuation cadence without carrying the
-descriptor addresses into the runtime.
+preserving each page's complete text segments, page count, and continuation
+cadence without carrying the descriptor addresses into the runtime. The
+shaman pages contain `3/4/3` text segments, the local-area pages contain
+`3/2`, and the Gunderson page contains `3`; the `< MORE >` boundaries remain
+those of the descriptors rather than being inferred from text length.
 
 ## 2026-09-30 Stoker motel source mapping
 

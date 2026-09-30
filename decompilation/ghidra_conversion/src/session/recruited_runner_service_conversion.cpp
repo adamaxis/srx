@@ -75,9 +75,134 @@ struct RecruitedRunnerInformationRecord {
     RecruitedRunnerConversationRunner runner;
     RecruitedRunnerInformationTopic topic;
     std::uint16_t flag;
-    std::string_view opening_text;
-    std::string_view continuation_text;
+    RecruitedRunnerInformationTextStream opening_text;
+    RecruitedRunnerInformationTextStream continuation_text;
 };
+
+// The pointers below are the source stream starts read from the ten
+// descriptors at 0xFE848..0xFF8F0. Each 0x80 marker in the ROM separates one
+// text segment, so dropping everything after the first printable run would
+// silently omit dialogue that the game actually renders.
+constexpr RecruitedRunnerInformationTextStream kRickyInformationOpening{
+    {{"I've lived in Glow City all my life.",
+      "I was slummin' in the sewers, but it got me nowhere, because I had no purpose.",
+      "And because everyone was larger than me.",
+      {}}},
+    3U};
+constexpr RecruitedRunnerInformationTextStream kRickyInformationContinuation{
+    {{"Then I heard my totem calling.  I have embraced that power, the power of Rat!",
+      "Rat has shown that force is not the only way to success.",
+      "When I find some companions to work with, I'll be able to use my talents to finally get outta this dump!",
+      {}}},
+    3U};
+constexpr RecruitedRunnerInformationTextStream kWinstonInformationOpening{
+    {{"The name's Marrs.  Did you know he was the god of war?  I see things different than most.",
+      "The fastest way to solve a problem is to shove a gun in it and shoot!",
+      "Problem is, I can't do this all the time.  I run out of bullets too fast.",
+      {}}},
+    3U};
+constexpr RecruitedRunnerInformationTextStream kWinstonInformationContinuation{
+    {{"So, I started to think.  How can I get paid to shoot at people?",
+      "Then it hit me... join Lone Star!  They can shoot at anyone they like and get free reloads!",
+      "So I studied real hard, but you know what?  I was thrown out, so now I'm here looking for work.",
+      {}}},
+    3U};
+constexpr RecruitedRunnerInformationTextStream kTrentInformationOpening{
+    {{"My name is Trent.",
+      "I've been studying the mystical arts, the powers of magic.",
+      "I was studying at the university, but I quickly tired of the parlor tricks they taught there.",
+      "I aspired to learn so much more."}},
+    4U};
+constexpr RecruitedRunnerInformationTextStream kTrentInformationContinuation{
+    {{"I've decided to add to my experiences by working for those who'll pay for me to have them.",
+      {},
+      {},
+      {}}},
+    1U};
+constexpr RecruitedRunnerInformationTextStream kPetrInformationOpening{
+    {{"I came up here to drown my sorrows.  But I guess you want to talk.",
+      "I'm called Petr.  I worked in the tech division of the Stuffer Shack where I learned my way around a cyberdeck.",
+      {},
+      {}}},
+    2U};
+constexpr RecruitedRunnerInformationTextStream kPetrInformationContinuation{
+    {{"I was jealous of those cyber-cowboys, with their guns and chrome.",
+      "The Matrix got them all they wanted, so I stole me a deck, plugged in, and I've never looked back!",
+      {},
+      {}}},
+    2U};
+constexpr RecruitedRunnerInformationTextStream kWalkingBearInformationOpening{
+    {{"I am Walking Bear.  I was born in the city and was happy until I changed into the form you see now.",
+      "Then no one would talk to me and many made fun of me.",
+      "I ran into the wilderness and never wanted to return.",
+      {}}},
+    3U};
+constexpr RecruitedRunnerInformationTextStream kWalkingBearInformationContinuation{
+    {{"There I met some AmerIndian tribes.  They were nice and taught me the way of the shaman.",
+      "Bear reached out to me because he knew I needed his calm words, and he knew I could take care of my AmerIndian brothers.",
+      {},
+      {}}},
+    2U};
+constexpr RecruitedRunnerInformationTextStream kPhantomInformationOpening{
+    {{"I've been shooting the Matrix for a bit.",
+      "My handle is Phantom.",
+      "Heard of me?",
+      {}}},
+    3U};
+constexpr RecruitedRunnerInformationTextStream kPhantomInformationContinuation{
+    {{"I've been making a name for myself in the Matrix.",
+      "I worked for a company who trained me in cyberspace.",
+      "Then one of those anti-metahuman groups showed up, screaming about purity and them losing jobs and garbage like that.",
+      {}}},
+    3U};
+constexpr RecruitedRunnerInformationTextStream kTwoFistsInformationOpening{
+    {{"I went to the Barrens to find some action. At the time I thought my life needed some adventure.",
+      "Anyway, I get involved with these joyboys who tell me they know how to get their hands on some serious nuyen.",
+      {},
+      {}}},
+    2U};
+constexpr RecruitedRunnerInformationTextStream kTwoFistsInformationContinuation{
+    {{"So I hook up with them on this run against Ares, and what do you know?  My buddies set off the alarm while I was checking ahead. Before I knew what hit me, Corp Strike Teams were swarming all over and I end up in Hollywood Pen.",
+      {},
+      {},
+      {}}},
+    1U};
+constexpr RecruitedRunnerInformationTextStream kFreyaInformationOpening{
+    {{"I hear you're the new golden child.  Number one with a bullet, and all that jazz.  So, I guess I can trust you.  I'm Freya.",
+      "When I was young, I discovered I had latent magical skills.",
+      {},
+      {}}},
+    2U};
+constexpr RecruitedRunnerInformationTextStream kFreyaInformationContinuation{
+    {{"My tribe, the Cascade Crow, viewed hermetic mages as blasphemous, so I ran away and fell in with a radical political group.",
+      "They trained me to become an assassin, using magic as my weapon, with Corporate officials as my targets.",
+      "I did my job, no sweat.",
+      {}}},
+    3U};
+constexpr RecruitedRunnerInformationTextStream kRiannaInformationOpening{
+    {{"Heartbane was an ancient elven leader.",
+      "She prophesied the Matrix, \"a place where everything and nothing exists.",
+      "A place where wars are fought and blood is shed without weapons\".",
+      "She knew it was going to be big!"}},
+    4U};
+constexpr RecruitedRunnerInformationTextStream kRiannaInformationContinuation{
+    {{"So I use Heartbane as my street name, coupled with my true name, Rianna.",
+      "I've been running the Corps since the inception of the Matrix.",
+      "I've seen just about every type of IC and flatlined my share of decker cowboys.",
+      {}}},
+    3U};
+constexpr RecruitedRunnerInformationTextStream kStarkInformationOpening{
+    {{"I was raised in the AmerIndian lands, and I have spent many years as a tribal warrior. I love my AmerIndian heritage, and will allow nothing to mar it.",
+      {},
+      {},
+      {}}},
+    1U};
+constexpr RecruitedRunnerInformationTextStream kStarkInformationContinuation{
+    {{"When I heard strangers were entering our land for some unknown purpose, I went to the city to dig up some clues. It was there I met your brother. We became fast friends, and in the end, he was a blood brother.",
+      {},
+      {},
+      {}}},
+    1U};
 
 constexpr std::array<RecruitedRunnerInformationRecord,
                      kInformationRunnerCount>
@@ -85,56 +210,102 @@ constexpr std::array<RecruitedRunnerInformationRecord,
         {RecruitedRunnerConversationRunner::ricky,
          RecruitedRunnerInformationTopic::ricky_glow_city_origin,
          0x0001U,
-         "I've lived in Glow City all my life.",
-         "Then I heard my totem calling.  I have embraced that power, the power of Rat!"},
+         kRickyInformationOpening,
+         kRickyInformationContinuation},
         {RecruitedRunnerConversationRunner::winston_marrs,
          RecruitedRunnerInformationTopic::winston_marrs_identity,
          0x0002U,
-         "The name's Marrs.  Did you know he was the god of war?  I see things different than most.",
-         "So, I started to think.  How can I get paid to shoot at people?"},
+         kWinstonInformationOpening,
+         kWinstonInformationContinuation},
         {RecruitedRunnerConversationRunner::trent,
          RecruitedRunnerInformationTopic::trent_identity,
          0x0004U,
-         "My name is Trent.",
-         "I've decided to add to my experiences by working for those who'll pay for me to have them."},
+         kTrentInformationOpening,
+         kTrentInformationContinuation},
         {RecruitedRunnerConversationRunner::petr_uvehr,
          RecruitedRunnerInformationTopic::petr_uvehr_cyberware_motivation,
          0x0008U,
-         "I came up here to drown my sorrows.  But I guess you want to talk.",
-         "I was jealous of those cyber-cowboys, with their guns and chrome."},
+         kPetrInformationOpening,
+         kPetrInformationContinuation},
         {RecruitedRunnerConversationRunner::walking_bear,
          RecruitedRunnerInformationTopic::walking_bear_transformation,
          0x0010U,
-         "I am Walking Bear.  I was born in the city and was happy until I changed into the form you see now.",
-         "There I met some AmerIndian tribes.  They were nice and taught me the way of the shaman."},
+         kWalkingBearInformationOpening,
+         kWalkingBearInformationContinuation},
         {RecruitedRunnerConversationRunner::phantom,
          RecruitedRunnerInformationTopic::phantom_matrix_background,
          0x0020U,
-         "I've been shooting the Matrix for a bit.",
-         "I've been making a name for myself in the Matrix."},
+         kPhantomInformationOpening,
+         kPhantomInformationContinuation},
         {RecruitedRunnerConversationRunner::two_fists,
          RecruitedRunnerInformationTopic::two_fists_ares_run,
          0x0040U,
-         "I went to the Barrens to find some action. At the time I thought my life needed some adventure.",
-         "So I hook up with them on this run against Ares, and what do you know?  My buddies set off the alarm while I was checking ahead. Before I knew what hit me, Corp Strike Teams were swarming all over and I end up in Hollywood Pen."},
+         kTwoFistsInformationOpening,
+         kTwoFistsInformationContinuation},
         {RecruitedRunnerConversationRunner::freya,
          RecruitedRunnerInformationTopic::freya_cascade_crow_background,
          0x0080U,
-         "I hear you're the new golden child.  Number one with a bullet, and all that jazz.  So, I guess I can trust you.  I'm Freya.",
-         "My tribe, the Cascade Crow, viewed hermetic mages as blasphemous, so I ran away and fell in with a radical political group."},
+         kFreyaInformationOpening,
+         kFreyaInformationContinuation},
         {RecruitedRunnerConversationRunner::rianna,
          RecruitedRunnerInformationTopic::rianna_heartbane_identity,
          0x0100U,
-         "Heartbane was an ancient elven leader.",
-         "So I use Heartbane as my street name, coupled with my true name, Rianna."},
+         kRiannaInformationOpening,
+         kRiannaInformationContinuation},
         {RecruitedRunnerConversationRunner::stark,
          RecruitedRunnerInformationTopic::stark_amerindian_heritage,
          0x0200U,
-         "I was raised in the AmerIndian lands, and I have spent many years as a tribal warrior. I love my AmerIndian heritage, and will allow nothing to mar it.",
-         "When I heard strangers were entering our land for some unknown purpose, I went to the city to dig up some clues. It was there I met your brother. We became fast friends, and in the end, he was a blood brother."},
+         kStarkInformationOpening,
+         kStarkInformationContinuation},
     }};
 
 constexpr std::string_view kMoreOptionText = "< MORE >";
+
+// Ricky's subject descriptors at 0xFE894..0xFE908 each point at a complete
+// encoded text stream. The source descriptors are the page boundaries; the
+// segment arrays below preserve the text inside each page as well.
+constexpr RecruitedRunnerInformationTextStream
+    kRickyShamanMagicPageOne{
+        {{"Shaman get their powers from nature.",
+          "We use her forces to achieve our ends.",
+          "This is superior to mages, who force the spirits to do their bidding.",
+          {}}},
+        3U};
+constexpr RecruitedRunnerInformationTextStream
+    kRickyShamanMagicPageTwo{
+        {{"<He shows you his Rat totem, a dingy block of wood.>",
+          "Each shaman has a totem that seeks him out.",
+          "This totem represents an animal from nature.",
+          "Rat chose me to follow his ways."}},
+        4U};
+constexpr RecruitedRunnerInformationTextStream
+    kRickyShamanMagicPageThree{
+        {{"Rat wants me to protect myself by looking for opportunities.",
+          "To use guile and misdirection in lieu of combat.",
+          "Rat bestows benefits by means of this totem.",
+          {}}},
+        3U};
+constexpr RecruitedRunnerInformationTextStream
+    kRickyLocalAreaPageOne{
+        {{"The Rat's Nest is a haven for squatters and other transients.",
+          "It used to be the city dump until the city died.",
+          "Even I, a follower of Rat, will not hole up there.",
+          {}}},
+        3U};
+constexpr RecruitedRunnerInformationTextStream
+    kRickyLocalAreaPageTwo{
+        {{"Glow City sprung up when they ran out of room in the Rat's Nest.",
+          "Sure, there's some minor radiation leakage from the nuke plant, but it's no big deal.",
+          {},
+          {}}},
+        2U};
+constexpr RecruitedRunnerInformationTextStream
+    kRickyJohnsonGundersonPage{
+        {{"Yeah, sure.  Gunderson's a Johnson I've used when I needed some quick nuyen.",
+          "Works next door at the Jump House, he does.",
+          "His payout is as bad as his smell, but his runs are a piece of cake so long as you have some firepower handy when things go sour.",
+          {}}},
+        3U};
 
 bool service_slot_is_active(const LiveRunnerRecord& record) {
     // BTST #0,FF0210/FF0310 reads the first byte of each record's +0x10
@@ -340,28 +511,21 @@ RickyInformationResponse select_ricky_information_response(
     switch (subject) {
     case RickyInformationSubject::shaman_magic:
         result.action = RickyInformationResponseAction::selected;
-        result.page_text = {
-            "Shaman get their powers from nature.",
-            "<He shows you his Rat totem, a dingy block of wood.>",
-            "Rat wants me to protect myself by looking for opportunities."};
+        result.pages = {kRickyShamanMagicPageOne,
+                        kRickyShamanMagicPageTwo,
+                        kRickyShamanMagicPageThree};
         result.more_after_page = {true, true, false};
         result.page_count = 3U;
         return result;
     case RickyInformationSubject::local_area:
         result.action = RickyInformationResponseAction::selected;
-        result.page_text = {
-            "The Rat's Nest is a haven for squatters and other transients.",
-            "Glow City sprung up when they ran out of room in the Rat's Nest.",
-            {}};
+        result.pages = {kRickyLocalAreaPageOne, kRickyLocalAreaPageTwo, {}};
         result.more_after_page = {true, false, false};
         result.page_count = 2U;
         return result;
     case RickyInformationSubject::johnson_gunderson:
         result.action = RickyInformationResponseAction::selected;
-        result.page_text = {
-            "Yeah, sure.  Gunderson's a Johnson I've used when I needed some quick nuyen.",
-            {},
-            {}};
+        result.pages = {kRickyJohnsonGundersonPage, {}, {}};
         result.more_after_page = {false, false, false};
         result.page_count = 1U;
         return result;
