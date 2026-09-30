@@ -85,6 +85,13 @@ service, initializes field scene state, clears the request, and returns to the
 field warmup. These are typed callbacks over converted leaves, not a generic
 transition hook or a copied function-pointer runtime.
 
+The separate Qt composition layer now binds the converted mode-entry audio
+service and `0x3168` scene-variant leaf directly. It passes typed field mode,
+scene, camera, and pending-profile state into the variant conversion, applies
+the selected scene back to the host field state, and preserves the source
+carry result. The exit/world-scene leaves remain explicit pending boundaries
+until their source record sets are mapped.
+
 The same recurring frame now consumes the converted controller leaves instead
 of returning a placeholder word. Its latch callback applies `0x0BF2` to the
 previous `0x195C` sample, preserving the typed activity and Start latches;

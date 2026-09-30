@@ -1137,6 +1137,13 @@ single generic transition callback. `0x095E` clears `FFDF3E`, publishes the
 checks `FFE186`, then `FFDF40`, then the carry result from `0x3168`; only a
 carry result skips the field-exit orchestrator at `0x1F5CA`.
 
+The separate Qt conversion composition layer now binds the first two leaves
+of this branch directly: `0x53126` is `prepare_audio_mode_entry`, and
+`0x3168` receives typed field mode/scene/camera state, publishes the selected
+scene and pending eight-word profile, and returns the source carry result.
+The exit orchestrator and world-scene initialization remain explicit pending
+boundaries until their live record sets are mapped.
+
 The non-carry path clears `FFE18B` after the exit orchestrator and consumes its
 caller-visible `D6` result at `0x09B2`. A nonzero result resets the six runner
 transition words at `0x012E/0x0134`, `0x022E/0x0234`, and `0x032E/0x0334`,

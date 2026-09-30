@@ -601,6 +601,28 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
     field_runtime_callbacks_.wait_for_vblank = [this] {
         source_boundary("field.runtime.wait_for_vblank");
     };
+    field_runtime_callbacks_.prepare_mode_entry_service = [this] {
+        // ROM 0x0976 enters the same six-command mode-entry audio service
+        // used by field bootstrap. This is a converted leaf, not a marker for
+        // an unresolved transition callback.
+        prepare_audio_mode_entry(callbacks_.mode_entry_audio);
+    };
+    field_runtime_callbacks_.toggle_field_scene_variant = [this](
+                                                                  auto& runtime) {
+        FieldSceneVariantState variant{};
+        variant.field_mode = runtime.field_mode;
+        variant.scene_id = runtime.scene_id;
+        variant.camera_x = state_.field_scene_buffers.camera_x;
+        variant.pending_profile = field_pending_scene_profile_;
+        const auto carry = toggle_field_scene_variant(variant);
+        runtime.scene_id = variant.scene_id;
+        state_.field_scene_buffers.scene_reference = variant.scene_id;
+        field_pending_scene_profile_ = variant.pending_profile;
+        if (carry) {
+            source_boundary("field.runtime.scene_variant_selected");
+        }
+        return carry;
+    };
     field_runtime_callbacks_.latch_controller_events = [this] {
         source_boundary("field.runtime.latch_controller_events");
         field_controller_latch_state_.events =
