@@ -9,7 +9,17 @@
 
 namespace shadowrun::ghidra_conversion {
 
-void transfer_world_word_block(const std::function<void()>& transfer);
+struct WorldSourceBlockTransferRequest {
+    std::uint32_t source_address = 0;      // FFDF7E -> D0
+    std::uint16_t destination_address = 0; // FFDF76 -> D1.W
+    std::uint16_t byte_count = 0;          // FFE006 -> D2.W
+};
+
+// ROM 0x1D1DC: load the source asset token, destination word, and byte count
+// used by 0x0F5C, then enter the typed wrapped-transfer boundary.
+void transfer_world_word_block(
+    const WorldSourceBlockTransferRequest& request,
+    const std::function<void(const WorldSourceBlockTransferRequest&)>& transfer);
 
 struct WorldSequenceEntry {
     std::int16_t marker = 0;          // record +0x00; -0x8000 terminates

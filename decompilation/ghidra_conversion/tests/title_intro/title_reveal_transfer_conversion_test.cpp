@@ -26,8 +26,13 @@ int main() {
     std::uint16_t random_value = 0x0037U;
     std::uint32_t transferred = 0;
     std::uint32_t mask_samples = 0;
+    WorldSourceBlockTransferRequest last_transfer{};
     TitleRevealTransferCallbacks callbacks{};
-    callbacks.transfer_source_block = [&] { ++transferred; };
+    callbacks.transfer_source_block =
+        [&](const WorldSourceBlockTransferRequest& request) {
+            ++transferred;
+            last_transfer = request;
+        };
     callbacks.sample_random = [&](const std::uint16_t bound) {
         return static_cast<std::uint16_t>(random_value % (bound == 0U ? 1U : bound));
     };
@@ -75,7 +80,10 @@ int main() {
                 state.behavior_flags == 0xEFU &&
                 state.world_sequence.active &&
                 state.world_sequence.sequence_table_token == 0x1D428U &&
-                state.world_sequence.source_buffer_token == 0xDA038U)) {
+                state.world_sequence.source_buffer_token == 0xDA038U &&
+                last_transfer.source_address == 0xDA038U &&
+                last_transfer.destination_address == 0x0070U &&
+                last_transfer.byte_count == 0x0100U)) {
         return 3;
     }
 

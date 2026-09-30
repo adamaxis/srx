@@ -2422,6 +2422,12 @@ marker, calls the row renderer for each record, decrements the signed
 `FFDF82` substage, advances `FFDF70` only on expiry, and returns the source's
 signed `FFDF70 > FFDF78` completion result.
 
+The `0x1D1DC` source-block wrapper now publishes the actual register inputs
+loaded by the ROM: source token `FFDF7E`, destination word `FFDF76`, and byte
+count `FFE006`. The callback then crosses the already converted `0x0F5C`
+64-KiB-wrapped word-transfer boundary with that typed request; no implicit
+Genesis register state remains in the conversion.
+
 The `0x1F830` field-mode exit policy is now `prepare_field_mode_exit`. It
 recognizes the four supported scene/submode routes, selects menu modes 11, 8,
 9, and 10, preserves the guarded `(0,0)` world-state mutation paths including

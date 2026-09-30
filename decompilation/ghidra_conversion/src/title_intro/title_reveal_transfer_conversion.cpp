@@ -10,7 +10,9 @@ TitleRevealTransferAction advance_title_reveal_transfer_service(
         state.behavior_flags = static_cast<std::uint8_t>(
             state.behavior_flags & ~0x10U);
         if (callbacks.transfer_source_block) {
-            callbacks.transfer_source_block();
+            callbacks.transfer_source_block({state.source_buffer_token,
+                                             state.destination_base,
+                                             state.random_bound});
         }
         if (state.world_sequence_requested) {
             initialize_world_sequence(state.world_sequence);
@@ -25,7 +27,9 @@ TitleRevealTransferAction advance_title_reveal_transfer_service(
 
     if ((state.profile_selector & 0x0003U) == 0U &&
         callbacks.transfer_source_block) {
-        callbacks.transfer_source_block();
+        callbacks.transfer_source_block({state.source_buffer_token,
+                                         state.destination_base,
+                                         state.random_bound});
     }
     if (!callbacks.sample_random || !callbacks.expand_mask ||
         !callbacks.read_source_longword || !callbacks.write_reveal_word) {

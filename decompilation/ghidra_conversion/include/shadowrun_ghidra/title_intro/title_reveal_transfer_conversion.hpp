@@ -29,8 +29,10 @@ struct TitleRevealTransferState {
 };
 
 struct TitleRevealTransferCallbacks {
-    // 0x1D1DC/0x0F5C: refresh the source block at the host asset boundary.
-    std::function<void()> transfer_source_block;
+    // 0x1D1DC/0x0F5C: receive the source token, destination, and byte count
+    // loaded by the ROM before entering the wrapped transfer routine.
+    std::function<void(const WorldSourceBlockTransferRequest&)>
+        transfer_source_block;
     // 0x0D3A: return the bounded source-PRNG sample used for one write.
     std::function<std::uint16_t(std::uint16_t bound)> sample_random;
     // 0x1D3F4: resolve the eight-nibble reveal mask. The source always passes

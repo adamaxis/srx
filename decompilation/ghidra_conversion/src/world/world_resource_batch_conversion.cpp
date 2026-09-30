@@ -29,8 +29,12 @@ void initialize_world_sequence(WorldSequenceState& state) {
     state.substage = 0U;
 }
 
-void transfer_world_word_block(const std::function<void()>& transfer) {
-    call_once(transfer);
+void transfer_world_word_block(
+    const WorldSourceBlockTransferRequest& request,
+    const std::function<void(const WorldSourceBlockTransferRequest&)>& transfer) {
+    if (transfer) {
+        transfer(request);
+    }
 }
 
 bool advance_world_sequence(

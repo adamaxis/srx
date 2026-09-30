@@ -18,7 +18,18 @@ int main() {
     }
 
     int calls = 0;
-    transfer_world_word_block([&] { ++calls; });
+    WorldSourceBlockTransferRequest transfer_request{
+        0xDA038U, 0x0070U, 0x0100U};
+    WorldSourceBlockTransferRequest observed_transfer{};
+    transfer_world_word_block(
+        transfer_request,
+        [&](const WorldSourceBlockTransferRequest& request) {
+            ++calls;
+            observed_transfer = request;
+        });
+    assert(observed_transfer.source_address == 0xDA038U &&
+           observed_transfer.destination_address == 0x0070U &&
+           observed_transfer.byte_count == 0x0100U);
     sequence.current_row = 0x51U;
     sequence.source_end = 0xAFU;
     sequence.substage = 0;
