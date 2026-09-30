@@ -33,6 +33,11 @@ struct WorldEffectOverlayState {
     bool descriptor_stream_ready = false; // FFE0F4
 };
 
+// ROM 0x1AC50: arm the overlay scene once its fixed-point position reaches
+// 0x7140, publishing FFE084=1 and FFE086=0.
+bool arm_effect_after_threshold(WorldEffectOverlayState& state,
+                                std::uint16_t source_position);
+
 struct WorldEffectSpriteBuild {
     WorldEffectOverlayKind kind = WorldEffectOverlayKind::primary;
     std::uint16_t sprite_key = 0x07A8U;

@@ -163,28 +163,13 @@ int main() {
         return 8;
     }
 
-    EffectDefaultsState defaults{};
-    initialize_effect_defaults(defaults);
-    if (!defaults.active || defaults.origin_x != 0x1200 ||
-        defaults.origin_y != 0x0D00 || defaults.lifetime != -1) {
-        return 9;
-    }
-    EffectEntityResetState reset{false, 4, 8};
-    reset_effect_entity(reset);
-    if (!reset.active || reset.accumulator != 0 || reset.entity_value != 0) {
-        return 10;
-    }
-    if (arm_effect_after_threshold(defaults, 0x713F) ||
-        !arm_effect_after_threshold(defaults, 0x7140)) {
-        return 11;
-    }
 
     WordStreamResetState stream{{1, 2}, 0};
     int stream_writes = 0;
     reset_word_stream_area(stream, [&] { ++stream_writes; });
     if (stream.words.size() != 0x1C0U || stream.words.front() != 0 ||
         stream_writes != 1 || stream.dirty_flags != 0x0C) {
-        return 12;
+        return 9;
     }
 
     BehaviorRecordState behavior{};
@@ -194,7 +179,7 @@ int main() {
     if (audio != 1 || initialized != 1 || behavior.width != 4 ||
         behavior.update_descriptor != 0x1C33A ||
         behavior.draw_descriptor != 0x1C330) {
-        return 13;
+        return 10;
     }
     attach_behavior_descriptor_b(behavior, {});
     if (behavior.update_descriptor != 0x1C29E) {

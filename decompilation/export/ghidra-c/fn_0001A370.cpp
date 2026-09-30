@@ -17,6 +17,19 @@
 // selects the inline descriptor-transition/noise path, while a clear FFE082
 // performs the runner-effect and countdown selection below. The typed host
 // conversion is in ghidra_conversion/world_effect_controller_conversion.
+//
+// Source-audit corrections to this generated body (ROM
+// decompilation/export/disassembly.s):
+//   * 0x1A370 gates on word [FF163E+0x0C], not FF164A.  FF164A is the
+//     separate animation-active flag consumed by 0x1A908/0x1AA40.
+//   * 0x1A538's condition is the BSR result.  The generated `bVar4` below
+//     incorrectly reuses the FFE082 predicate, making the normal branch
+//     unreachable in the printed C.
+//   * The 0x1A8E2 loop consumes the phase byte at FF163E+6 and expands the
+//     random mask before ANDing each source longword.  The host conversion
+//     leaves that VDP/noise operation at an explicit presentation callback.
+//   * The adjacent 0x1A54E and 0x1AC50 leaves write distinct typed state;
+//     they are not one generic effect record.
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */

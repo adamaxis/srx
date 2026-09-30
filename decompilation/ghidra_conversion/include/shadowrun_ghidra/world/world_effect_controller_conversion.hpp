@@ -36,6 +36,30 @@ struct WorldEffectControllerState {
     bool exit_requested = false; // FFE080, published by 0x1A8F4
 };
 
+// ROM 0x1A54E writes exactly these four world-effect fields.  They are kept
+// separate from the effect-record/threshold state used by 0x1AC50; the two
+// source routines touch different global blocks and must not share a guessed
+// "effect defaults" structure.
+struct WorldEffectDefaultState {
+    std::uint16_t animation_mode = 0; // FFE076
+    std::uint16_t position_x = 0;      // FFE078
+    std::uint16_t position_y = 0;      // FFE07A
+    std::uint16_t frame_countdown = 0; // FFE07C
+};
+
+// ROM 0x1A8F4: finish the transition by clearing FFE082, setting FFE080,
+// and clearing the active-work marker at FF163E+0x0C.
+struct WorldEffectResetState {
+    bool descriptor_transition_active = false; // FFE082
+    bool exit_requested = false;               // FFE080
+    bool work_record_active = false;           // FF163E + 0x0C
+};
+
+// ROM 0x1A54E: initialize the default world-effect mode placement/timing.
+void initialize_effect_defaults(WorldEffectDefaultState& state);
+
+void reset_effect_entity(WorldEffectResetState& state);
+
 struct WorldEffectTransitionCallbacks {
     // 0x00BD2 and 0x00E9C are presentation boundaries.  The conversion
     // exposes the completed transition-noise frame instead of reproducing a
@@ -64,8 +88,9 @@ struct WorldEffectControllerCallbacks {
     std::function<bool()> runner_has_active_effect;
     // ROM 0x1A818: starts descriptor loading or attaches the descriptor.
     std::function<void()> begin_descriptor_transition;
-    // ROM 0x17E78: returns the frame/countdown divisor used by this effect.
-    std::function<std::optional<std::uint16_t>()> calculate_effect_countdown;
+    // ROM 0x17E78: source-named menu-row offset used as this effect's
+    // countdown/divisor.  It is not a generic timer calculation.
+    std::function<std::optional<std::uint16_t>()> calculate_menu_row_offset;
     // ROM 0x561E8: selects the next world-effect mode/result.
     std::function<std::optional<std::int16_t>()> select_effect_mode;
     // ROM 0x1A54E: initializes the default effect placement/timing.
@@ -76,9 +101,11 @@ struct WorldEffectControllerCallbacks {
 enum class WorldEffectControllerAction {
     inactive,
     descriptor_transition_started,
+    descriptor_transition_unresolved,
     descriptor_stream_loading,
     transition_noise_streamed,
     effect_entity_reset,
+    runner_effect_status_unresolved,
     runner_effect_wait,
     world_effects_disabled,
     animation_already_active,
@@ -86,6 +113,7 @@ enum class WorldEffectControllerAction {
     countdown_unresolved,
     effect_mode_unresolved,
     effect_mode_rejected,
+    default_effect_unresolved,
     default_effect_initialized,
     background_effect_initialized,
     motion_effect_initialized,

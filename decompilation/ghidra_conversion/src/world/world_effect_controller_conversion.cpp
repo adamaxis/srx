@@ -16,21 +16,21 @@ bool decrement_source_byte(std::uint8_t& value) {
 }
 
 void reset_effect_entity_locally(WorldEffectControllerState& state) {
-    state.descriptor_transition_active = false;
-    state.exit_requested = true;
-    state.work_record_active = false;
+    WorldEffectResetState reset{state.descriptor_transition_active,
+                                state.exit_requested,
+                                state.work_record_active};
+    reset_effect_entity(reset);
+    state.descriptor_transition_active = reset.descriptor_transition_active;
+    state.exit_requested = reset.exit_requested;
+    state.work_record_active = reset.work_record_active;
 }
 
-std::optional<std::uint16_t> calculate_countdown(
+std::optional<std::uint16_t> calculate_menu_row_offset(
     const WorldEffectControllerCallbacks& callbacks) {
-    if (!callbacks.calculate_effect_countdown) {
+    if (!callbacks.calculate_menu_row_offset) {
         return std::nullopt;
     }
-    const auto countdown = callbacks.calculate_effect_countdown();
-    if (!countdown.has_value() || *countdown == 0U) {
-        return std::nullopt;
-    }
-    return countdown;
+    return callbacks.calculate_menu_row_offset();
 }
 
 std::uint16_t source_motion_step(const std::int8_t source_divisor) {
@@ -45,6 +45,19 @@ std::uint16_t source_motion_step(const std::int8_t source_divisor) {
 }
 
 } // namespace
+
+void initialize_effect_defaults(WorldEffectDefaultState& state) {
+    state.animation_mode = 1U;
+    state.position_x = 0x1200U;
+    state.position_y = 0x0D00U;
+    state.frame_countdown = 0x001EU;
+}
+
+void reset_effect_entity(WorldEffectResetState& state) {
+    state.descriptor_transition_active = false;
+    state.exit_requested = true;
+    state.work_record_active = false;
+}
 
 WorldEffectTransitionAction advance_world_effect_transition(
     WorldEffectControllerState& state,
@@ -99,13 +112,15 @@ WorldEffectControllerAction advance_world_effect_controller(
         }
     }
 
-    const bool runner_has_effect =
-        callbacks.runner_has_active_effect &&
-        callbacks.runner_has_active_effect();
+    if (!callbacks.runner_has_active_effect) {
+        return WorldEffectControllerAction::runner_effect_status_unresolved;
+    }
+    const bool runner_has_effect = callbacks.runner_has_active_effect();
     if (!runner_has_effect) {
-        if (callbacks.begin_descriptor_transition) {
-            callbacks.begin_descriptor_transition();
+        if (!callbacks.begin_descriptor_transition) {
+            return WorldEffectControllerAction::descriptor_transition_unresolved;
         }
+        callbacks.begin_descriptor_transition();
         return WorldEffectControllerAction::descriptor_transition_started;
     }
 
@@ -122,7 +137,7 @@ WorldEffectControllerAction advance_world_effect_controller(
         return WorldEffectControllerAction::countdown_wait;
     }
 
-    const auto countdown = calculate_countdown(callbacks);
+    const auto countdown = calculate_menu_row_offset(callbacks);
     if (!countdown.has_value()) {
         return WorldEffectControllerAction::countdown_unresolved;
     }
@@ -141,8 +156,8 @@ WorldEffectControllerAction advance_world_effect_controller(
     }
 
     if (*selected_mode == 2) {
-        const auto background_divisor = calculate_countdown(callbacks);
-        if (!background_divisor.has_value()) {
+        const auto background_divisor = calculate_menu_row_offset(callbacks);
+        if (!background_divisor.has_value() || *background_divisor == 0U) {
             return WorldEffectControllerAction::countdown_unresolved;
         }
         state.background_step = static_cast<std::uint16_t>(
@@ -164,9 +179,10 @@ WorldEffectControllerAction advance_world_effect_controller(
         return WorldEffectControllerAction::motion_effect_initialized;
     }
 
-    if (callbacks.initialize_effect_defaults) {
-        callbacks.initialize_effect_defaults();
+    if (!callbacks.initialize_effect_defaults) {
+        return WorldEffectControllerAction::default_effect_unresolved;
     }
+    callbacks.initialize_effect_defaults();
     state.animation_mode = 2U;
     state.title_phase_handler_index = 2U;
     return WorldEffectControllerAction::default_effect_initialized;

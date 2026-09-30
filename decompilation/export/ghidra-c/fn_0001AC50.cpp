@@ -4,6 +4,10 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
+//
+// ROM source audit: the 0x7140 BCC gate publishes FFE084=1 and clears
+// FFE086.  These fields are separate from 0x1A54E's defaults; the typed host
+// state is WorldEffectOverlayState in the world-effect overlay module.
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */

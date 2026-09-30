@@ -58,6 +58,16 @@ void publish_threshold_result(WorldEffectOverlayState& state,
 
 } // namespace
 
+bool arm_effect_after_threshold(WorldEffectOverlayState& state,
+                                const std::uint16_t source_position) {
+    if (source_position < 0x7140U) {
+        return false;
+    }
+    state.scene_complete = true;
+    state.scene_completion_aux = 0U;
+    return true;
+}
+
 WorldEffectOverlayAction advance_primary_world_effect_overlay(
     WorldEffectOverlayState& state,
     const WorldEffectOverlayCallbacks& callbacks) {

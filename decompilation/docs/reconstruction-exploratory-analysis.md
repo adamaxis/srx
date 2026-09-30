@@ -1175,3 +1175,23 @@ and `0x1B45C` is the PRNG-driven paired word-stream animation. The latter's
 two loop lengths and ROM limit table are preserved as data behavior, while
 stream writing and menu finalization remain explicit callbacks. `0x1B7D0` now
 uses the existing behavior-record initializer name everywhere in the export.
+
+### World-effect controller source correction: 0x1A370..0x1AC50
+
+The manual ROM pass corrected the generated Ghidra body for `0x1A370`. The
+entry gate is the active-work word at `FF163E+0x0C`, not the animation-active
+flag at `FF164A`. The descriptor-transition branch is selected by `FFE082`;
+its byte cadence decrements `FF163E+0x04` and `+0x06`, streams the current
+phase through the vblank/transfer/noise boundary, and calls `0x1A8F4` when the
+phase expires. The ordinary branch uses the return from `0x1A538`, starts
+`0x1A818` for an inactive compact-runner effect, and calls `0x17E78` before
+mode-specific setup. The generated C reuses the `FFE082` predicate after the
+`0x1A538` call, so its printed normal branch is not a faithful control-flow
+description.
+
+The adjacent leaves were also separated by their actual writes. `0x1A54E`
+initializes only the default mode, position, and countdown fields;
+`0x1AC50` writes the independent `FFE084/FFE086` threshold pair; and
+`0x1A8F4` clears the transition latch, requests exit, and clears the active
+work record. The conversion no longer represents those leaves as one generic
+effect structure or invents velocity/lifetime/palette writes.

@@ -2376,3 +2376,34 @@ The source-bound path is threaded through both direct conversion callers:
 D4540 item catalog together. A half-supplied pair preserves the phase-only
 value but reports `source_data_missing`; it does not reuse the caller-owned
 matrix as an implicit compatibility fallback.
+
+## World-effect controller audit: 0x1A370..0x1AC50
+
+The direct ROM pass over `0x1A370` confirmed two separate per-frame paths.
+When `FF163E+0x0C` is clear the routine returns immediately. When `FFE082`
+is set it services the byte cadence at `FF163E+0x04` and `+0x06`, waits for
+vblank, and streams the transition-noise frame; an expired `+0x06` reaches
+`0x1A8F4`. When `FFE082` is clear it calls `0x1A538`, starts `0x1A818` when
+the selected compact runner has no active effect, and otherwise uses
+`0x17E78` as the world-effect countdown/divisor before selecting mode `2`,
+mode `3`, or the default-effect setup.
+
+The generated Ghidra C for `0x1A370` is not behaviorally reliable here: it
+tests `FF164A` instead of `FF163E+0x0C`, loses the return condition from
+`0x1A538`, and omits the meaningful phase input to the `0x1D3F4` noise-mask
+loop. The typed conversion keeps those decisions explicit and leaves the
+VDP/noise writes at a presentation callback boundary.
+
+This audit also corrected the adjacent state boundaries. `0x1A54E` writes
+only `FFE076=1`, `FFE078=0x1200`, `FFE07A=0x0D00`, and `FFE07C=0x1E`.
+`0x1AC50` independently publishes `FFE084=1` and clears `FFE086`; it does
+not initialize a velocity, lifetime, or palette. `0x1A8F4` clears `FFE082`,
+sets `FFE080`, and clears `FF163E+0x0C`. These now use
+`WorldEffectDefaultState` and `WorldEffectResetState` in the controller, plus
+the source-owned overlay state in `world_effect_overlay_conversion.hpp`.
+
+Missing converted dependencies in the controller now return explicit
+unresolved actions instead of silently treating absent callbacks as a false
+runner marker or a completed default initialization. Zero from `0x17E78` is
+retained as the source countdown value; the mode-2 divisor path reports an
+unresolved/invalid boundary rather than dividing by zero in host C++.

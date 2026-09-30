@@ -153,31 +153,6 @@ std::optional<std::int16_t> advance_menu_countdown(
 void clear_selected_menu_record(std::vector<std::uint8_t>& records,
                                 std::size_t selected_index);
 
-struct EffectDefaultsState {
-    bool active = false;
-    std::uint16_t origin_x = 0;
-    std::uint16_t origin_y = 0;
-    std::int16_t horizontal_step = 0;
-    std::int16_t vertical_step = 0;
-    std::int16_t lifetime = 0;
-    std::int16_t palette = 0;
-};
-
-// ROM 0x1A54E: publish the default world-effect placement and timing values.
-void initialize_effect_defaults(EffectDefaultsState& state);
-
-struct EffectEntityResetState {
-    bool active = false;
-    std::uint16_t accumulator = 0;
-    std::uint16_t entity_value = 0;
-};
-
-// ROM 0x1A8F4: reset the effect accumulator and the entity's auxiliary word.
-void reset_effect_entity(EffectEntityResetState& state);
-
-bool arm_effect_after_threshold(EffectDefaultsState& state,
-                                std::uint16_t source_value);
-
 struct WordStreamResetState {
     std::vector<std::uint16_t> words;
     std::uint8_t dirty_flags = 0;

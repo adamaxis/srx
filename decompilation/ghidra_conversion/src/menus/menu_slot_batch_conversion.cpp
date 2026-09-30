@@ -265,32 +265,6 @@ void clear_selected_menu_record(std::vector<std::uint8_t>& records,
     }
 }
 
-void initialize_effect_defaults(EffectDefaultsState& state) {
-    state.active = true;
-    state.origin_x = 0x1200;
-    state.origin_y = 0x0D00;
-    state.horizontal_step = -10;
-    state.vertical_step = 0x1E;
-    state.lifetime = -1;
-    state.palette = 0;
-}
-
-void reset_effect_entity(EffectEntityResetState& state) {
-    state.active = true;
-    state.accumulator = 0;
-    state.entity_value = 0;
-}
-
-bool arm_effect_after_threshold(EffectDefaultsState& state,
-                                const std::uint16_t source_value) {
-    if (source_value < 0x7140U) {
-        return false;
-    }
-    state.active = true;
-    state.palette = 0;
-    return true;
-}
-
 void reset_word_stream_area(
     WordStreamResetState& state,
     const std::function<void()>& write_word_stream) {
