@@ -2410,6 +2410,12 @@ longword, and publish the masked host write. The nine mask banks from
 preserved as vector lengths; this corrected the previous frame-constant-mask
 conversion.
 
+The `0x1D2E6` world-sequence advance is now record-faithful instead of a
+generic countdown loop. It walks typed eight-byte records until the `0x8000`
+marker, calls the row renderer for each record, decrements the signed
+`FFDF82` substage, advances `FFDF70` only on expiry, and returns the source's
+signed `FFDF70 > FFDF78` completion result.
+
 The `0x1F830` field-mode exit policy is now `prepare_field_mode_exit`. It
 recognizes the four supported scene/submode routes, selects menu modes 11, 8,
 9, and 10, preserves the guarded `(0,0)` world-state mutation paths including

@@ -594,7 +594,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x1CEFA	title effect position advance	ghidra_conversion::advance_title_effect_position	shadowrun_ghidra_title_effect_animation_batch	partial		Typed four-coordinate motion step
 0x1CF36	title sprite build wrapper	ghidra_conversion::build_title_sprites	shadowrun_ghidra_title_effect_animation_batch	partial		Explicit sprite-build boundary
 0x1D1DC	world word-block transfer	ghidra_conversion::transfer_world_word_block	shadowrun_ghidra_world_resource_batch	partial		Typed source word-block transfer boundary
-0x1D2E6	world sequence advance	ghidra_conversion::advance_world_sequence	shadowrun_ghidra_world_resource_batch	partial		Sentinel-bounded sequence processing and stage countdown
+0x1D2E6	world sequence advance	ghidra_conversion::advance_world_sequence	shadowrun_ghidra_world_resource_batch	partial		Typed eight-byte record walk to 0x8000 sentinel, signed FFDF82 expiry, FFDF70 advance, and source completion result
 0x1D3F4	random nibble mask expansion	ghidra_conversion::expand_random_nibble_mask	shadowrun_ghidra_world_resource_batch	partial		Exact nine-bank 0x0F1C5E table, count-bounded PRNG sample, and eight-nibble 0x0F/0x00 expansion
 0x1DBF0	entity service record reset	ghidra_conversion::reset_entity_service_records	shadowrun_ghidra_world_resource_batch	partial		Bounded ten-record cleanup with typed bit masks
 0x1DC22	entity-service selected-bit gate	ghidra_conversion::select_next_entity	shadowrun_ghidra_world_resource_batch	partial		Ten-record +0x11 bit-4 gate into the 0x1DC4C service selector

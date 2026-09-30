@@ -12,7 +12,10 @@ namespace shadowrun::ghidra_conversion {
 void transfer_world_word_block(const std::function<void()>& transfer);
 
 struct WorldSequenceEntry {
-    std::int16_t marker = 0;
+    std::int16_t marker = 0;          // record +0x00; -0x8000 terminates
+    std::int16_t vertical_offset = 0; // record +0x02
+    std::uint16_t layout_flags = 0;  // record +0x04
+    std::uint16_t tile_index = 0;    // record +0x06
 };
 
 struct WorldSequenceState {
@@ -26,18 +29,20 @@ struct WorldSequenceState {
     std::uint32_t source_buffer_token = 0;  // FFDF7E
     std::uint16_t destination_base = 0; // FFDF74
     std::uint16_t current_row = 0;    // FFDF70
-    std::uint16_t substage = 0;       // FFDF82
+    std::int16_t substage = 0;        // FFDF82, signed DBF delay counter
 };
 
 // ROM 0x1D280: install the fixed world-sequence table, source buffer,
 // destination, row range, and initial counters used by 0x1D2E6.
 void initialize_world_sequence(WorldSequenceState& state);
 
-void advance_world_sequence(
+// ROM 0x1D2E6: render every non-sentinel eight-byte world-sequence record,
+// decrement FFDF82 as a signed substage counter, advance FFDF70 only when that
+// counter expires, and report the source's signed current-row/source-end test.
+bool advance_world_sequence(
+    WorldSequenceState& state,
     const std::vector<WorldSequenceEntry>& entries,
-    std::int16_t& countdown,
-    std::int16_t& stage,
-    const std::function<void(const WorldSequenceEntry&)>& process_entry);
+    const std::function<void(const WorldSequenceEntry&)>& render_entry);
 
 // ROM 0x0001D3F4 reads the nine-bank pointer table at 0x0F1C5E. Each host
 // bank contains the bytes after the source bank's leading count byte; the

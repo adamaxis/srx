@@ -33,23 +33,26 @@ void transfer_world_word_block(const std::function<void()>& transfer) {
     call_once(transfer);
 }
 
-void advance_world_sequence(
+bool advance_world_sequence(
+    WorldSequenceState& state,
     const std::vector<WorldSequenceEntry>& entries,
-    std::int16_t& countdown,
-    std::int16_t& stage,
-    const std::function<void(const WorldSequenceEntry&)>& process_entry) {
+    const std::function<void(const WorldSequenceEntry&)>& render_entry) {
     for (const auto& entry : entries) {
         if (entry.marker == static_cast<std::int16_t>(0x8000)) {
             break;
         }
-        if (process_entry) {
-            process_entry(entry);
+        if (render_entry) {
+            render_entry(entry);
         }
     }
-    countdown = std::max<std::int16_t>(0, static_cast<std::int16_t>(countdown - 1));
-    if (countdown == 0) {
-        ++stage;
+    state.substage = static_cast<std::int16_t>(state.substage - 1);
+    if (state.substage >= 0) {
+        return false;
     }
+    state.substage = 0;
+    ++state.current_row;
+    return static_cast<std::int16_t>(state.current_row) >
+           static_cast<std::int16_t>(state.source_end);
 }
 
 const std::vector<std::vector<std::uint8_t>>&

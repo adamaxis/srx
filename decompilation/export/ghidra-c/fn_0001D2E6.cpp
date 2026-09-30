@@ -9,6 +9,9 @@
 void advance_world_sequence(void)
 
 {
+  // Native conversion: the source table is represented by typed eight-byte
+  // records. The host returns the source signed current-row/source-end result
+  // instead of exposing Genesis condition-code state to the runtime.
   short *psVar1;
   
   for (psVar1 = DAT_00ffdf7a; *psVar1 != -0x8000; psVar1 = psVar1 + 4) {

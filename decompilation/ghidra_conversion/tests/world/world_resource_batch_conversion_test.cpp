@@ -19,11 +19,28 @@ int main() {
 
     int calls = 0;
     transfer_world_word_block([&] { ++calls; });
-    std::int16_t countdown = 1;
-    std::int16_t stage = 0;
-    advance_world_sequence({{1}, {2}, {static_cast<std::int16_t>(0x8000)}, {3}}, countdown,
-                            stage, [&](const WorldSequenceEntry&) { ++calls; });
-    assert(calls == 3 && countdown == 0 && stage == 1);
+    sequence.current_row = 0x51U;
+    sequence.source_end = 0xAFU;
+    sequence.substage = 0;
+    int rendered_entries = 0;
+    assert(!advance_world_sequence(
+        sequence,
+        {{1}, {2}, {static_cast<std::int16_t>(0x8000)}, {3}},
+        [&](const WorldSequenceEntry& entry) {
+            ++calls;
+            rendered_entries += entry.marker;
+        }));
+    assert(calls == 3 && rendered_entries == 3 && sequence.current_row == 0x52U &&
+           sequence.substage == 0);
+    sequence.substage = 1;
+    sequence.current_row = 0xAFU;
+    assert(!advance_world_sequence(sequence, {{1}, {static_cast<std::int16_t>(0x8000)}},
+                                    {}));
+    assert(sequence.substage == 0 && sequence.current_row == 0xAFU);
+    sequence.substage = 0;
+    assert(advance_world_sequence(sequence, {{1}, {static_cast<std::int16_t>(0x8000)}},
+                                             {}));
+    assert(sequence.substage == 0 && sequence.current_row == 0xB0U);
 
     const auto& mask_banks = source_random_nibble_mask_banks();
     assert(mask_banks.size() == 9U && mask_banks[0].size() == 1U &&
