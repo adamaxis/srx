@@ -908,7 +908,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x0001B1FCL, "reset_title_transition");
         names.put(0x0001B218L, "advance_title_phase_cycle");
         names.put(0x0001B302L, "advance_title_jitter");
-        names.put(0x0001B87AL, "dispatch_title_phase_handler");
+        names.put(0x0001B87AL, "dispatch_title_world_phase_service");
         names.put(0x0001BF5CL, "copy_title_profile");
         names.put(0x0001C0C2L, "advance_alternating_profile");
         names.put(0x0001C1F6L, "advance_audio_menu_countdown");

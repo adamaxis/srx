@@ -8,11 +8,75 @@ namespace {
 
 constexpr std::array<std::uint16_t, 5> kMatrixProgramResourcePositions{
     0x00D0U, 0x0100U, 0x0130U, 0x0160U, 0x0190U};
+constexpr std::array<std::uint32_t, 4> kTitleWorldPhaseSpriteData{
+    0x0001D72CU, 0x0001D740U, 0x0001D736U, 0x0001D740U};
 
 void call_once(const std::function<void()>& callback) {
     if (callback) {
         callback();
     }
+}
+
+bool advance_title_world_phase_handler(
+    TitleWorldPhaseDispatchState& state,
+    const TitleWorldPhaseDispatchCallbacks& callbacks) {
+    const auto timing_gate = (state.timing_selector & 0x0003U) == 0U;
+    switch (static_cast<TitleWorldPhaseHandler>(state.handler_index)) {
+    case TitleWorldPhaseHandler::move_title_phase_to_center:
+        if (!timing_gate) {
+            return true;
+        }
+        state.position_x = static_cast<std::uint16_t>(state.position_x + 1U);
+        if (state.position_x >= 0x00D0U) {
+            state.handler_index = static_cast<std::uint16_t>(
+                TitleWorldPhaseHandler::move_title_phase_to_left_edge);
+        }
+        return true;
+
+    case TitleWorldPhaseHandler::move_title_phase_to_left_edge:
+        if (!timing_gate) {
+            return true;
+        }
+        state.position_x = static_cast<std::uint16_t>(state.position_x - 1U);
+        if (state.position_x < 0x00B0U) {
+            state.handler_index = static_cast<std::uint16_t>(
+                TitleWorldPhaseHandler::move_title_phase_to_center);
+        }
+        return true;
+
+    case TitleWorldPhaseHandler::move_title_phase_to_right_edge:
+        state.position_x = static_cast<std::uint16_t>(state.position_x + 3U);
+        if (state.position_x >= 0x0120U) {
+            state.handler_index = static_cast<std::uint16_t>(
+                TitleWorldPhaseHandler::advance_title_sprite_bank);
+            if (callbacks.service_audio_command) {
+                callbacks.service_audio_command(0x2AU);
+            }
+        }
+        return true;
+
+    case TitleWorldPhaseHandler::retreat_title_phase_to_left_edge:
+        state.position_x = static_cast<std::uint16_t>(state.position_x - 3U);
+        if (state.position_x < 0x00B0U) {
+            state.handler_index = static_cast<std::uint16_t>(
+                TitleWorldPhaseHandler::move_title_phase_to_center);
+        }
+        return true;
+
+    case TitleWorldPhaseHandler::advance_title_sprite_bank:
+        if (!timing_gate) {
+            return true;
+        }
+        state.sprite_table_index = static_cast<std::uint16_t>(
+            state.sprite_table_index + 1U);
+        if (static_cast<std::int16_t>(state.sprite_table_index) >= 4) {
+            state.sprite_table_index = 0U;
+            state.handler_index = static_cast<std::uint16_t>(
+                TitleWorldPhaseHandler::retreat_title_phase_to_left_edge);
+        }
+        return true;
+    }
+    return false;
 }
 
 } // namespace
@@ -257,16 +321,45 @@ TitleJitterAction advance_title_jitter(
     return TitleJitterAction::updated;
 }
 
-bool dispatch_title_phase_handler(
-    const std::size_t phase,
-    const std::vector<std::function<void()>>& handlers,
-    const std::function<void()>& build_sprites) {
-    if (phase >= handlers.size() || !handlers[phase]) {
-        return false;
+std::optional<std::uint32_t> resolve_title_world_phase_sprite_data(
+    const std::uint16_t table_index) {
+    if (table_index >= kTitleWorldPhaseSpriteData.size()) {
+        return std::nullopt;
     }
-    handlers[phase]();
-    call_once(build_sprites);
-    return true;
+    return kTitleWorldPhaseSpriteData[table_index];
+}
+
+TitleWorldPhaseDispatchAction dispatch_title_world_phase_service(
+    TitleWorldPhaseDispatchState& state,
+    const TitleWorldPhaseDispatchCallbacks& callbacks) {
+    if (state.handler_index > static_cast<std::uint16_t>(
+                                 TitleWorldPhaseHandler::advance_title_sprite_bank)) {
+        return TitleWorldPhaseDispatchAction::handler_unresolved;
+    }
+    // ROM 0x1B892 invokes the selected 0x1BAE4 handler before loading the
+    // build position and sprite-table entry for the common 0x1378 call.
+    if (!advance_title_world_phase_handler(state, callbacks)) {
+        return TitleWorldPhaseDispatchAction::handler_unresolved;
+    }
+    const auto sprite_data = callbacks.resolve_sprite_data
+                                 ? callbacks.resolve_sprite_data(
+                                       0x0001BAD4U,
+                                       state.sprite_table_index)
+                                 : resolve_title_world_phase_sprite_data(
+                                       state.sprite_table_index);
+    if (!sprite_data.has_value()) {
+        return TitleWorldPhaseDispatchAction::sprite_data_unresolved;
+    }
+    if (callbacks.build_sprite) {
+        callbacks.build_sprite(TitleWorldPhaseSpriteBuildRequest{
+            0x0001BAD4U,
+            state.sprite_table_index,
+            *sprite_data,
+            state.position_x,
+            state.position_y,
+            0x6000U});
+    }
+    return TitleWorldPhaseDispatchAction::rendered;
 }
 
 void copy_title_profile(const std::array<std::uint16_t, 7>& source,

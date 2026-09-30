@@ -273,9 +273,50 @@ int main() {
     assert(random_unresolved == TitleJitterAction::prng_unresolved &&
            jitter.frame == 1U);
 
-    int handler = 0;
-    assert(dispatch_title_phase_handler(0, {[&] { ++handler; }}, [&] { ++service; }));
-    assert(handler == 1);
+    TitleWorldPhaseDispatchState phase_dispatch{0U, 2U, 0U, 0x00CFU,
+                                                0x00D0U};
+    TitleWorldPhaseSpriteBuildRequest phase_dispatch_build{};
+    TitleWorldPhaseDispatchCallbacks phase_dispatch_callbacks{};
+    phase_dispatch_callbacks.build_sprite =
+        [&](const TitleWorldPhaseSpriteBuildRequest& request) {
+        phase_dispatch_build = request;
+        ++service;
+    };
+    assert(dispatch_title_world_phase_service(
+               phase_dispatch, phase_dispatch_callbacks) ==
+           TitleWorldPhaseDispatchAction::rendered);
+    assert(phase_dispatch.handler_index == 1U && phase_dispatch.position_x == 0xD0U &&
+           phase_dispatch_build.source_table_token == 0x1BAD4U &&
+           phase_dispatch_build.table_index == 2U &&
+           phase_dispatch_build.sprite_data_token == 0x1D736U &&
+           phase_dispatch_build.x == 0xD0U &&
+           phase_dispatch_build.y == 0xD0U &&
+           phase_dispatch_build.build_flags == 0x6000U);
+    std::uint16_t audio_command = 0;
+    phase_dispatch_callbacks.service_audio_command =
+        [&](const std::uint16_t command) { audio_command = command; };
+    phase_dispatch = {2U, 0U, 1U, 0x011FU, 0x00D0U};
+    assert(dispatch_title_world_phase_service(
+               phase_dispatch, phase_dispatch_callbacks) ==
+           TitleWorldPhaseDispatchAction::rendered);
+    assert(phase_dispatch.handler_index == 4U &&
+           phase_dispatch.position_x == 0x0122U && audio_command == 0x2AU);
+    phase_dispatch = {4U, 3U, 0U, 0x0100U, 0x00D0U};
+    assert(dispatch_title_world_phase_service(
+               phase_dispatch, phase_dispatch_callbacks) ==
+           TitleWorldPhaseDispatchAction::rendered);
+    assert(phase_dispatch.handler_index == 3U &&
+           phase_dispatch.sprite_table_index == 0U);
+    phase_dispatch.handler_index = 5U;
+    assert(dispatch_title_world_phase_service(
+               phase_dispatch, phase_dispatch_callbacks) ==
+           TitleWorldPhaseDispatchAction::handler_unresolved);
+    phase_dispatch.handler_index = 0U;
+    phase_dispatch.sprite_table_index = 9U;
+    phase_dispatch.timing_selector = 1U;
+    assert(dispatch_title_world_phase_service(
+               phase_dispatch, phase_dispatch_callbacks) ==
+           TitleWorldPhaseDispatchAction::sprite_data_unresolved);
 
     std::array<std::uint16_t, 7> profile{1, 2, 3, 4, 5, 6, 7};
     std::array<std::uint16_t, 7> copied{};

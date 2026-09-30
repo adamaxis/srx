@@ -583,7 +583,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0001B680	attach_behavior_descriptor_e	22	unknown	ok	ghidra-c/fn_0001B680.cpp
 0001B706	prepare_menu_offset_once	46	unknown	ok	ghidra-c/fn_0001B706.cpp
 0001B7D0	initialize_behavior_record	28	unknown	ok	ghidra-c/fn_0001B7D0.cpp
-0001B87A	dispatch_title_phase_handler	66	unknown	ok	ghidra-c/fn_0001B87A.cpp
+0001B87A	dispatch_title_world_phase_service	66	unknown	ok	ghidra-c/fn_0001B87A.cpp
 0001BA6E	advance_title_burst_animation	102	unknown	ok	ghidra-c/fn_0001BA6E.cpp
 0001BB6A	advance_title_noise_effect	264	unknown	ok	ghidra-c/fn_0001BB6A.cpp
 0001BCE8	advance_title_profile_motion	342	unknown	ok	ghidra-c/fn_0001BCE8.cpp

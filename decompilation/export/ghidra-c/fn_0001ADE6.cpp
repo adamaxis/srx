@@ -27,7 +27,7 @@
 //   0x0001B45C advance_title_noise_stream
 //   0x0001B5A6 reset_word_stream_area
 //   0x0001B680 attach_behavior_descriptor_e
-//   0x0001B87A dispatch_title_phase_handler
+//   0x0001B87A dispatch_title_world_phase_service
 //   0x0001BA6E advance_title_burst_animation
 //   0x0001BB6A advance_title_noise_effect
 //   0x0001BCE8 advance_title_profile_motion
@@ -192,7 +192,7 @@ LAB_0001afc0:
         advance_title_secondary_effect_service();
       }
       if ((DAT_00ff1592 & 0x20) != 0) {
-        dispatch_title_phase_handler();
+        dispatch_title_world_phase_service();
       }
       if (_DAT_00ffe0ac != 0) {
         advance_title_burst_animation();

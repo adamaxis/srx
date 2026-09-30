@@ -320,7 +320,7 @@ owner identified from the ROM and its callers:
 | `dispatch_entity_effect` | `0x15928` via `A2` | Entity effect/action service |
 | `service_active_effect_slots` | `0x1640A` via `A1` | Active world-effect handler |
 | `service_matrix_program_action` | `0x19A1C` via `A4` | Selected Matrix program action |
-| `dispatch_title_phase_handler` | `0x1B892` via `A1` | Title/world phase handler |
+| `dispatch_title_world_phase_service` | `0x1B892` via `A1` | Five-entry title/world phase handler table; 0x1BAD4 sprite build follows |
 | `initialize_world_effect_selection` | `0x1E728` via `A0` | Effect-selection policy |
 | `dispatch_world_effect` | `0x1EF28` via `A1` | World-effect handler |
 | `run_mode_exit_services` | `0x1F26E` via `A1` | Mode-exit service list |

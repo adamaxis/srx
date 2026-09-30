@@ -214,10 +214,57 @@ TitleJitterAction advance_title_jitter(
     const std::function<void()>& write_word_stream,
     const std::function<void()>& reset_word_stream);
 
-bool dispatch_title_phase_handler(
-    std::size_t phase,
-    const std::vector<std::function<void()>>& handlers,
-    const std::function<void()>& build_sprites);
+struct TitleWorldPhaseDispatchState {
+    std::uint16_t handler_index = 0;      // FFE04E
+    std::uint16_t sprite_table_index = 0; // FFE050
+    std::uint16_t timing_selector = 0;    // FFDF88
+    std::uint16_t position_x = 0;         // FFE04A
+    std::uint16_t position_y = 0;         // FFE04C
+};
+
+struct TitleWorldPhaseSpriteBuildRequest {
+    std::uint32_t source_table_token = 0x0001BAD4U;
+    std::uint16_t table_index = 0;
+    std::uint32_t sprite_data_token = 0;
+    std::uint16_t x = 0;
+    std::uint16_t y = 0;
+    std::uint16_t build_flags = 0x6000U;
+};
+
+struct TitleWorldPhaseDispatchCallbacks {
+    // Handler 0x1B986 calls the source audio boundary with command 0x2A when
+    // the title/world position reaches its right-hand threshold.
+    std::function<void(std::uint16_t command)> service_audio_command;
+    // ROM 0x1BAD4 contains four build-data entries selected by FFE050.
+    std::function<std::optional<std::uint32_t>(
+        std::uint32_t source_table_token, std::uint16_t table_index)>
+        resolve_sprite_data;
+    std::function<void(const TitleWorldPhaseSpriteBuildRequest&)> build_sprite;
+};
+
+enum class TitleWorldPhaseHandler : std::uint16_t {
+    move_title_phase_to_center = 0,       // ROM 0x1B92C
+    move_title_phase_to_left_edge = 1,    // ROM 0x1B95A
+    move_title_phase_to_right_edge = 2,   // ROM 0x1B986
+    retreat_title_phase_to_left_edge = 3, // ROM 0x1B9AE
+    advance_title_sprite_bank = 4,        // ROM 0x1B9CA
+};
+
+enum class TitleWorldPhaseDispatchAction {
+    rendered,
+    handler_unresolved,
+    sprite_data_unresolved,
+};
+
+// Typed conversion of ROM 0x1B87A: run the selected title/world phase
+// handler, then build the selected title/world sprite from FFE04A/FFE04C.
+TitleWorldPhaseDispatchAction dispatch_title_world_phase_service(
+    TitleWorldPhaseDispatchState& state,
+    const TitleWorldPhaseDispatchCallbacks& callbacks);
+
+// Typed extraction of the four pointer entries at ROM 0x1BAD4.
+std::optional<std::uint32_t> resolve_title_world_phase_sprite_data(
+    std::uint16_t table_index);
 
 void copy_title_profile(const std::array<std::uint16_t, 7>& source,
                         std::array<std::uint16_t, 7>& destination,

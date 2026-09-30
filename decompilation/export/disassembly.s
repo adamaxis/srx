@@ -16962,7 +16962,7 @@
 0001B06E: btst.b #0x5,(0x00ff1592).l
 0001B076: beq.w 0x0001b084
 0001B07A: lea (0xff1580).l,A0 ; data 00ff1580
-0001B080: bsr.w 0x0001b87a ; call 0001B87A dispatch_title_phase_handler
+0001B080: bsr.w 0x0001b87a ; call 0001B87A dispatch_title_world_phase_service
 0001B084: tst.w (0x00ffe0ac).l
 0001B08A: beq.w 0x0001b092
 0001B08E: bsr.w 0x0001ba6e ; call 0001BA6E advance_title_burst_animation

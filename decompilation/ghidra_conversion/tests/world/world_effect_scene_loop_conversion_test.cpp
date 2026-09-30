@@ -90,7 +90,7 @@ int main() {
         [&] { order.emplace_back("phase-service"); };
     callbacks.advance_title_secondary_effect_service =
         [&] { order.emplace_back("profile-service"); };
-    callbacks.dispatch_title_phase_handler =
+    callbacks.dispatch_title_world_phase_service =
         [&] { order.emplace_back("phase-handler"); };
     callbacks.advance_title_burst_animation =
         [&] { order.emplace_back("burst"); };

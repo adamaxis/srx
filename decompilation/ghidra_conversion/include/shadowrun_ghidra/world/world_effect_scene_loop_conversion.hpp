@@ -95,7 +95,7 @@ struct WorldEffectSceneLoopCallbacks {
     std::function<void()> advance_title_noise_stream; // 0x1B45C
     std::function<void()> advance_title_reveal_transfer_service; // 0x1D1F4
     std::function<void()> advance_title_secondary_effect_service; // 0x1CD5A
-    std::function<void()> dispatch_title_phase_handler; // 0x1B87A
+    std::function<void()> dispatch_title_world_phase_service; // 0x1B87A
     std::function<void()> advance_title_burst_animation; // 0x1BA6E
     std::function<void()> advance_title_noise_effect; // 0x1BB6A
     std::function<void()> advance_title_profile_transition; // 0x1BEBA

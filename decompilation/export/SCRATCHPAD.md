@@ -948,6 +948,17 @@ as unresolved rather than silently becoming an unsigned frame count.
 Each waveform sample also wraps as a 16-bit word before the signed difference
 comparison, including the `0x7FFF` to `0x8000` transition.
 
+The `0x1B87A dispatch_title_world_phase_service` boundary is now typed as two
+source tables. FFE04E selects one of five handlers from `0x1BAE4`; the known
+handlers are now named for their source behavior: gated +1 movement to 0xD0,
+gated -1 movement back below 0xB0, unconditional +3 movement to 0x120 with
+audio command 0x2A, unconditional -3 movement below 0xB0, and a gated
+FFE050 sprite-bank advance that wraps at four and selects the -3 handler.
+After that service, FFE050 selects one of four build-data pointers from
+`0x1BAD4`, and FFE04A, FFE04C, and `0x6000` supply the common builder request.
+Unresolved handler or sprite-table indexes remain explicit conversion outcomes
+rather than being silently mapped to a generic sprite.
+
 `0x1AB6E advance_primary_world_effect_overlay` calls `0x563CC` when the
 primary effect has not yet crossed its threshold. The call is not merely an
 intro transition: `0x563CC` obtains a trial count from the `0x19BF6`
