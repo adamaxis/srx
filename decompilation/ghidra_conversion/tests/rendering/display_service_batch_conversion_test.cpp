@@ -49,9 +49,13 @@ int main() {
     FieldSceneBufferInput scene_input{};
     scene_input.normal_profile[0] = 0x0100;
     scene_input.normal_profile[1] = 0x0200;
+    scene_input.normal_profile[12] = 0x1234;
+    scene_input.normal_profile[13] = 0x5678;
     scene_input.normal_profile[3] = 12;
     scene_input.alternate_profile[0] = 0x0300;
     scene_input.alternate_profile[1] = 0x0400;
+    scene_input.alternate_profile[12] = 0x9ABC;
+    scene_input.alternate_profile[13] = 0xDEF0;
     scene_input.alternate_profile[3] = 34;
     scene_input.scene_reference = 0x2C;
     scene_input.terrain_stream = {0x12, 0x34, 0x56, 0x78};
@@ -66,6 +70,10 @@ int main() {
                                 {[&] { ++initialized; }});
     if (!scene.initialized || initialized != 1 || scene.scene_mode != 1 ||
         scene.field_resource_mode != 0x2C || scene.profile[3] != 34 ||
+        scene.profile[46] != 0x9ABC || scene.profile[47] != 0xDEF0 ||
+        scene.profile[33] != 0x0B00 || scene.profile[34] != 0x0800 ||
+        scene.profile[35] != 0x0B00 || scene.profile[36] != 0x0800 ||
+        scene.profile[37] != 0x0B00 || scene.profile[38] != 0x0800 ||
         scene.camera_x != 0x100 || scene.camera_y != 0x100 ||
         scene.terrain_stream != scene_input.terrain_stream ||
         scene.pending_field_targets[2].x != 0x0B00 ||

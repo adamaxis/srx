@@ -16,7 +16,7 @@
 //   0x00002CE0 advance_field_mode_transition
 //   0x00002F32 initialize_field_scene_state
 //   0x00002FA4 snapshot_entity_anchors
-//   0x00003084 run_field_loop
+//   0x00003084 load_field_scene_profile_and_terrain
 //   0x00003168 toggle_field_scene_variant
 //   0x0000391A handle_mode_action_event
 //   0x00003A1C update_field_camera
@@ -112,7 +112,7 @@ LAB_000007f0:
     DAT_00fffc30 = 1;
     DAT_00ffddc4 = 2;
     DAT_00fffbf8 = 2;
-    run_field_loop();
+    load_field_scene_profile_and_terrain();
     _DAT_00ffdfe8 = 0xffff;
     DAT_00fff0a0 = 0xff;
     initialize_entity_runtime();

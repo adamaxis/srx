@@ -35,7 +35,7 @@ const std::vector<RemainingRoutine> kCatalog{
     {0x00002FA4U, "snapshot_entity_anchors", RoutineFamily::field, 76U},
     {0x00002FF0U, "find_ready_entity_slot", RoutineFamily::field, 46U},
     {0x00003032U, "scene_uses_alternate_profile", RoutineFamily::field, 66U},
-    {0x00003084U, "run_field_loop", RoutineFamily::field, 182U},
+    {0x00003084U, "load_field_scene_profile_and_terrain", RoutineFamily::field, 182U},
     {0x0000313AU, "copy_terrain_layers", RoutineFamily::field, 46U},
     {0x00003168U, "toggle_field_scene_variant", RoutineFamily::field, 138U},
     {0x00003548U, "draw_hud_panel_triplet", RoutineFamily::field, 24U},

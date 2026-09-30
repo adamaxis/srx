@@ -109,9 +109,9 @@ defended.
 
 ## Field and command screens
 
-### Field loop (`0x3084`, `0x2B34`, `0x391A`, `0x5A62`, `0xB7B8`)
+### Field runtime (`0x075E`, scene load `0x3074`/`0x3084`, `0x2B34`, `0x391A`, `0x5A62`, `0xB7B8`)
 
-The field loop projects the controlled record, probes the four-corner terrain
+The field runtime loop at `0x075E` projects the controlled record, probes the four-corner terrain
 footprint, updates movement state/animation, dispatches raw interaction cells,
 and changes areas through the mode event table. Start enters the command
 screen without resetting the selected record or camera. C calls `0x391A` and
@@ -370,7 +370,7 @@ placeholder UI.
 ## Field interaction, buildings, and area transitions
 
 The field is an entity/collision system, not a free camera over a background
-image. The movement loop at `0x3084`/`0x2B34` projects the active record,
+image. The movement loop at `0x075E`/`0x2B34` projects the active record;
 probes the four corners through `0xE7C8`, advances its directional animation,
 and then dispatches the raw terrain/event byte. A doorway's event index is
 looked up in the active mode table at `0x172CDC`; it is the combination of the
@@ -401,7 +401,7 @@ of a port.
 | Save/load | `0x59172` | Partial | Empty-slot result is covered; SRAM restore is pending |
 | Archetype selection | `0x59248`, `0x42B0` | Implemented | Only the three Joshua templates are selectable |
 | Opening | `0x59C5E` and timed groups | Partial | Typed stage chain and direct timed/overlay assets are present in the separate conversion target; independent visual comparison and source audio playback remain pending |
-| Field movement | `0x3084`, `0x2B34`, `0xE7C8`, `0x5FDC`, `0x600E` | Partial | Reviewed player collision and animation path is present; movement step/timing, source camera transitions, right-side HUD/entity presentation, and NPC/entity logic remain pending |
+| Field movement | `0x075E`, `0x03084`, `0x2B34`, `0xE7C8`, `0x5FDC`, `0x600E` | Partial | Scene descriptor loading is source-traced; reviewed player collision and animation path is present, while movement step/timing, source camera transitions, right-side HUD/entity presentation, and NPC/entity logic remain pending |
 | Area transitions | `0x5A62`, `0x172CDC`, `0x20E48` | Partial | The reviewed mode-2 C0/event-0 tuple loads mode `0x14` and enters the source Stoker dialogue state; every building reaction and reverse transition is not |
 | Command overview | `0x10D30`, `0x10F50`, `0x111E8`, `0x11454` | Partial | Normal overview, source command-tab focus blocks, and selector are present; Magic target/effect and remaining Pocket Secretary row handlers remain pending |
 | Inventory navigation | `0x11506`..`0x11678` | Implemented | Eight-cell cursor and source column/row semantics are covered |

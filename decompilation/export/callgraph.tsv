@@ -15,7 +15,7 @@ caller	caller_name	callee	callee_name	call_sites
 0000075E	run_game_loop	00002CE0	advance_field_mode_transition	1
 0000075E	run_game_loop	00002F32	initialize_field_scene_state	1
 0000075E	run_game_loop	00002FA4	snapshot_entity_anchors	1
-0000075E	run_game_loop	00003084	run_field_loop	1
+0000075E	run_game_loop	00003084	load_field_scene_profile_and_terrain	1
 0000075E	run_game_loop	00003168	toggle_field_scene_variant	1
 0000075E	run_game_loop	0000391A	handle_mode_action_event	1
 0000075E	run_game_loop	00003A1C	update_field_camera	2
@@ -193,7 +193,7 @@ caller	caller_name	callee	callee_name	call_sites
 00002FA4	snapshot_entity_anchors	00002FF0	find_ready_entity_slot	1
 0000301E	upload_scene_profile_block	00000F98	write_vdp_word_block	1
 00003074	prepare_field_scene_buffers	0000C7F8	prepare_field_scene_runtime	1
-00003084	run_field_loop	00003032	scene_uses_alternate_profile	1
+00003084	load_field_scene_profile_and_terrain	00003032	scene_uses_alternate_profile	1
 0000334C	upload_field_asset_sequence	00000F5C	write_vdp_word_block_with_source_wrap	1
 0000334C	upload_field_asset_sequence	00001232	write_vdp_grid	2
 0000334C	upload_field_asset_sequence	000033AA	draw_field_asset_grid	3

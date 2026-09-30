@@ -95,7 +95,7 @@ entry	name	size	callingConvention	decompileStatus	file
 0000301E	upload_scene_profile_block	20	unknown	ok	ghidra-c/fn_0000301E.cpp
 00003032	scene_uses_alternate_profile	66	unknown	ok	ghidra-c/fn_00003032.cpp
 00003074	prepare_field_scene_buffers	16	unknown	ok	ghidra-c/fn_00003074.cpp
-00003084	run_field_loop	182	unknown	ok	ghidra-c/fn_00003084.cpp
+00003084	load_field_scene_profile_and_terrain	182	unknown	ok	ghidra-c/fn_00003084.cpp
 0000313A	copy_terrain_layers	46	unknown	ok	ghidra-c/fn_0000313A.cpp
 00003168	toggle_field_scene_variant	138	unknown	ok	ghidra-c/fn_00003168.cpp
 0000334C	upload_field_asset_sequence	94	unknown	ok	ghidra-c/fn_0000334C.cpp

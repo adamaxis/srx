@@ -124,7 +124,7 @@ Archetype (0x59248)       Save/load slots (0x59172)
 Timed opening (0x59C5E) <--------+             +-- stay on slot screen
     |
     v
-Field area loop (0x3084)
+Field runtime loop (0x075E; scene descriptor load 0x3074 -> 0x3084)
     | Start
     v
 Command overview (0x10D30 / 0x10F50)
@@ -413,8 +413,10 @@ mode/event descriptors remain authoritative for collisions and transitions.
 
 ### Movement and collision
 
-The main field loop at `0x3084` loads the active mode, updates the field state,
-and calls the movement/reaction chain. The relevant pieces are:
+The main field loop at `0x075E` updates the field state and calls the
+movement/reaction chain. The `0x03074 -> 0x03084 -> 0x0313A` path loads the
+selected scene descriptor and terrain layers before that loop runs. The
+relevant pieces are:
 
 | Source | Responsibility |
 | ---: | --- |

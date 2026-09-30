@@ -84,7 +84,8 @@ Boot / region setup
        New Game                  Load Game
        -> Archetype (0x59248)    -> Save/Load (0x59172)
        -> timed opening              valid load / empty-slot stay
-  -> Field area loop (0x3084)
+  -> Field runtime loop (0x075E)
+       scene descriptor load (0x3074 -> 0x3084 -> 0x313A)
        Start -> command overview and submenus
        raw event -> area transition / dialog / combat / special state
 ```
@@ -195,10 +196,10 @@ AreaResource
   -> world effects / raw event reaction
 ```
 
-The field loop combines movement, four-corner terrain probing, camera motion,
+The field runtime loop at `0x075E` combines movement, four-corner terrain probing, camera motion,
 entity projection, animation, and mode transitions. It should not be split into
 one class per decompiled function. The source families around `0x2B34`,
-`0x2CE0`, `0x2F32`, `0x3084`, `0x3A1C`, `0x3BAC`, `0xE7C8`, `0xB7B8`, and
+`0x2CE0`, `0x2F32`, `0x3074`/`0x3084`, `0x3A1C`, `0x3BAC`, `0xE7C8`, `0xB7B8`, and
 `0x167AE` are natural methods/services on this subsystem.
 
 ### EntityWorld and effects

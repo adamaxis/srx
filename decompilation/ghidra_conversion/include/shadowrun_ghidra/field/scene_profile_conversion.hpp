@@ -31,23 +31,7 @@ constexpr std::array<std::uint32_t, kFieldSceneProfileCount>
         0x001E8D3CU, 0x001E911CU, 0x001E94DCU, 0x001E96E4U, 0x001E98ECU,
         0x001EDA28U}};
 
-struct FieldSceneLoopState {
-    std::uint16_t scene_id = 0;
-    std::uint16_t alternate_profile = 0; // FFFC0E
-    std::uint16_t override_lock = 0; // FFE10E
-    std::uint16_t override_x = 0; // FFE10A
-    std::uint16_t override_y = 0; // FFE10C
-    std::array<std::uint16_t, kFieldSceneProfileWordCount> profile{};
-};
-
 std::uint32_t field_scene_profile_table_entry(std::uint16_t scene_id);
-
-// ROM 0x3084: copy 48 profile words, MOVE.L FFDDDE to FFDE22, then when
-// FFFC0E is set and FFE10E is clear write FFE10A/C into words 33-38 and
-// camera words 0-1 (subtract 0xA00/0x700, clamp 0). Always CLR FFE10E.
-void run_field_loop(
-    FieldSceneLoopState& state,
-    const std::array<std::uint16_t, kFieldSceneProfileWordCount>& source);
 
 // ROM 0x2F32 DBF from D7=#0x30 copies 49 words FFDE26 → FFDDC4, then
 // seeds the typed camera state from FFDF50/FFDF52. Falls into 0x2FA4.

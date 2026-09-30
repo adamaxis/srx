@@ -247,7 +247,7 @@
 0000084E: move.l #0x1,(0x00fffc30).l
 00000858: move.w #0x2,(0x00ffddc4).l
 00000860: move.b #0x2,(0x00fffbf8).l
-00000868: jsr 0x00003084.l ; call 00003084 run_field_loop
+00000868: jsr 0x00003084.l ; call 00003084 load_field_scene_profile_and_terrain
 0000086E: move.w #-0x1,(0x00ffdfe8).l
 00000876: move.b #-0x1,(0x00fff0a0).l
 0000087E: jsr 0x0000a7b4.l ; call 0000A7B4 initialize_entity_runtime

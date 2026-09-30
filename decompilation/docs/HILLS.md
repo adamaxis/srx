@@ -17,7 +17,7 @@ composites do not count.
 | 3 Startup | Ambush source choreography | `0x5A1EA` / `0x5A252` / `0x5A59C` / `0x5A8DE` | defended | `shadowrun_native_port` | `visual-regression/intro-hill/intro-1240.bmp`, `intro-1552.bmp`, `intro-2512.bmp` |
 | 3 Startup | Airport helicopter overlays | `0x5B08E` / `0x5B100` / `0x5B1B6` | defended | `shadowrun_native_port` | `visual-regression/intro-hill/intro-3000.bmp`, `intro-3400.bmp` |
 | 3 Startup | Cab destination zoom | `0x13726` / `0xD4464` / `0xD4536` | defended | `shadowrun_native_port` | `visual-regression/cab-hill/cab-map-0.bmp` through `cab-map-89.bmp` |
-| 4 Field | Walk / collide | `0x3084` / `0xE7C8` / `0x3BAC` | partial | `shadowrun_native_port` | `--scene field` (272px playfield, 0x334C 6-tile HUD column) |
+| 4 Field | Walk / collide | `0x075E` / `0x03084` scene load / `0xE7C8` / `0x3BAC` | partial | `shadowrun_native_port` | `--scene field` (272px playfield, 0x334C 6-tile HUD column) |
 | 5 Dialog | Motel doorway | mode 2 `C0`/event 0 → `0x14` + `0x20E48` | partial | `shadowrun_native_port` motel tuple | `--scene field` after C0; shared 0xC3E6 panel |
 | 6 Menu | Command overview pixels | `0x10F50` | partial (same-source composite, not a golden) | `shadowrun_menu_visual_regression` | command-menu actual BMP |
 | 6 Menu | Magic | `0xFBA6` | partial | `shadowrun_native_port` magic open | Magical Defense C0DA 0xC89C0 |

@@ -51,6 +51,18 @@ and classifier callbacks were not source behavior and are gone. The Qt target
 still uses direct source-derived records; this change does not make the field
 hill defended.
 
+### Field scene descriptor loader audit: 2026-09-30
+
+The direct `0x03084` trace is a scene-descriptor/terrain loader reached by the
+`0x075E` game loop, not the recurring field loop itself. Its selected profile
+copy includes the source `FFDDDE -> FFDE22` word pair, represented as typed
+profile words `12/13 -> 46/47`. When the `FFE10E` override marker is set, the
+`FFE10A/FFE10C` position is written into all three live runner-position pairs
+before the saturated camera recentering. Those writes now live in the
+canonical typed display-service path; the duplicate `run_field_loop` helper
+and its misleading name are removed. The remaining `0x075E` orchestration and
+field behavior still require source-audit work.
+
 ### Qt conversion presentation audit: 2026-09-30
 
 The separate `ghidra_conversion/qt_runtime` now has a source-derived image

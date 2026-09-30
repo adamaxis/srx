@@ -81,50 +81,6 @@ int main() {
         return 7;
     }
 
-    std::array<std::uint16_t, kFieldSceneProfileWordCount> source{};
-    source[12] = 0x0018U;
-    source[13] = 0x8AFDU;
-    source[0] = 0x3400U;
-    source[1] = 0x2280U;
-    FieldSceneLoopState loop{};
-    loop.scene_id = 2;
-    run_field_loop(loop, source);
-    if (!expect(loop.profile[0] == 0x3400U && loop.profile[12] == 0x0018U &&
-                loop.profile[46] == 0x0018U && loop.profile[47] == 0x8AFDU &&
-                loop.override_lock == 0U)) {
-        return 8;
-    }
-
-    loop = FieldSceneLoopState{};
-    loop.alternate_profile = 1;
-    loop.override_lock = 1;
-    loop.override_x = 0x0B00U;
-    loop.override_y = 0x0800U;
-    run_field_loop(loop, source);
-    if (!expect(loop.profile[0] == 0x3400U && loop.override_lock == 0U)) {
-        return 9;
-    }
-
-    loop = FieldSceneLoopState{};
-    loop.alternate_profile = 1;
-    loop.override_x = 0x0B00U;
-    loop.override_y = 0x0800U;
-    run_field_loop(loop, source);
-    if (!expect(loop.profile[0] == 0x0100U && loop.profile[1] == 0x0100U &&
-                loop.profile[33] == 0x0B00U && loop.profile[34] == 0x0800U &&
-                loop.profile[37] == 0x0B00U && loop.profile[38] == 0x0800U)) {
-        return 10;
-    }
-
-    loop = FieldSceneLoopState{};
-    loop.alternate_profile = 1;
-    loop.override_x = 0x0900U;
-    loop.override_y = 0x0600U;
-    run_field_loop(loop, source);
-    if (!expect(loop.profile[0] == 0U && loop.profile[1] == 0U)) {
-        return 11;
-    }
-
     std::vector<std::uint32_t> copied;
     if (!expect(copy_terrain_layers(
                     0x00FFDDDAU, 0x00FFDDE2U,
@@ -138,7 +94,7 @@ int main() {
                 copied == std::vector<std::uint32_t>{
                               0x00FFDDDAU, 0x00FF2700U, 0x0E10U, 0x00FFDDE2U,
                               0x00FF4700U, 0x0E10U})) {
-        return 12;
+        return 8;
     }
 
     FieldSceneVariantState variant{};
@@ -147,7 +103,7 @@ int main() {
     variant.camera_x = 0x1000U;
     if (!expect(!toggle_field_scene_variant(variant) &&
                 variant.scene_id == 2 && !variant.pending_profile.has_value())) {
-        return 13;
+        return 9;
     }
 
     variant.field_mode = 0x10U;
@@ -155,26 +111,26 @@ int main() {
     variant.camera_x = 0x13FFU;
     if (!expect(toggle_field_scene_variant(variant) && variant.scene_id == 3U &&
                 variant.pending_profile == kFieldSceneVariantProfile0x3222)) {
-        return 14;
+        return 10;
     }
 
     variant.scene_id = 0;
     variant.camera_x = 0x1400U;
     if (!expect(toggle_field_scene_variant(variant) && variant.scene_id == 5U &&
                 variant.pending_profile == kFieldSceneVariantProfile0x3212)) {
-        return 15;
+        return 11;
     }
 
     variant.scene_id = 5U;
     if (!expect(toggle_field_scene_variant(variant) && variant.scene_id == 0U &&
                 variant.pending_profile == kFieldSceneVariantProfile0x31F2)) {
-        return 16;
+        return 12;
     }
 
     variant.scene_id = 3U;
     if (!expect(toggle_field_scene_variant(variant) && variant.scene_id == 0U &&
                 variant.pending_profile == kFieldSceneVariantProfile0x3202)) {
-        return 17;
+        return 13;
     }
 
     SceneProfileState applied{};
@@ -183,7 +139,7 @@ int main() {
                 applied.runner_positions[0].x == 0x0300U &&
                 applied.runner_positions[2].y == 0x2B80U &&
                 !variant.pending_profile.has_value())) {
-        return 18;
+        return 14;
     }
 
     std::array<std::uint16_t, kFieldSceneRuntimeStateWordCount> backup{};
@@ -210,7 +166,7 @@ int main() {
                 runtime.camera_x == 0x0A00U && runtime.camera_y == 0x0700U &&
                 runtime.runner_positions[2].y == 0x0600U &&
                 order == std::vector<int>{1, 2, 3})) {
-        return 19;
+        return 15;
     }
 
     backup[0] = 6U;
@@ -221,7 +177,7 @@ int main() {
     if (!expect(runtime.scene_byte == 6U && runtime.alternate_profile == 1U &&
                 runtime.camera_x == 0x1000U &&
                 runtime.camera_y == 0x2000U)) {
-        return 20;
+        return 16;
     }
 
     backup[0] = 5U;
@@ -230,7 +186,7 @@ int main() {
     input.prepared_camera_y = 2U;
     initialize_field_scene_state(runtime, backup, input, {});
     if (!expect(runtime.alternate_profile == 0U && runtime.scene_byte == 5U)) {
-        return 21;
+        return 17;
     }
 
     backup[0] = 0x2CU;
@@ -272,7 +228,7 @@ int main() {
                 runtime.camera_transition_y == -1 &&
                 runtime.pending_profile_consumed &&
                 !input.pending_profile.has_value())) {
-        return 22;
+        return 18;
     }
 
     return 0;

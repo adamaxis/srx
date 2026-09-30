@@ -1,6 +1,6 @@
 // Ghidra headless export
 // Entry: 0x00003084
-// Name: run_field_loop
+// Name: load_field_scene_profile_and_terrain
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   0x00003032 scene_uses_alternate_profile
@@ -8,7 +8,7 @@
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-void run_field_loop(void)
+void load_field_scene_profile_and_terrain(void)
 
 {
   short sVar1;

@@ -16,31 +16,6 @@ std::uint32_t field_scene_profile_table_entry(const std::uint16_t scene_id) {
     return kFieldSceneProfileTable[scene_id];
 }
 
-void run_field_loop(
-    FieldSceneLoopState& state,
-    const std::array<std::uint16_t, kFieldSceneProfileWordCount>& source) {
-    state.profile = source;
-    state.profile[46] = state.profile[12];
-    state.profile[47] = state.profile[13];
-    if (state.alternate_profile != 0U && state.override_lock == 0U) {
-        state.profile[33] = state.override_x;
-        state.profile[35] = state.override_x;
-        state.profile[37] = state.override_x;
-        state.profile[34] = state.override_y;
-        state.profile[36] = state.override_y;
-        state.profile[38] = state.override_y;
-        state.profile[0] =
-            state.override_x < 0x0A00U
-                ? 0U
-                : static_cast<std::uint16_t>(state.override_x - 0x0A00U);
-        state.profile[1] =
-            state.override_y < 0x0700U
-                ? 0U
-                : static_cast<std::uint16_t>(state.override_y - 0x0700U);
-    }
-    state.override_lock = 0U;
-}
-
 void initialize_field_scene_state(
     FieldSceneRuntimeState& state,
     const std::array<std::uint16_t, kFieldSceneRuntimeStateWordCount>& backup,

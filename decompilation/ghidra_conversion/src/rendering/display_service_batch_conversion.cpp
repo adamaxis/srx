@@ -86,6 +86,10 @@ bool prepare_field_scene_buffers(
     state.field_resource_mode = static_cast<std::uint8_t>(input.scene_reference);
     state.scene_reference = input.scene_reference;
     state.profile = alternate ? input.alternate_profile : input.normal_profile;
+    // ROM 0x030AE copies the two words at FFDDDE into FFDE22. In the typed
+    // 48-word profile, those are words 12/13 -> 46/47.
+    state.profile[46] = state.profile[12];
+    state.profile[47] = state.profile[13];
     state.camera_x = state.profile[0];
     state.camera_y = state.profile[1];
     state.terrain_stream = input.terrain_stream;
@@ -93,6 +97,15 @@ bool prepare_field_scene_buffers(
     state.pending_position_cleared = false;
     state.pending_field_targets = {};
     if (input.pending_position_available && !input.pending_position_in_use) {
+        // ROM 0x030CC..0x030FE writes FFE10A/FFE10C into the three live
+        // runner-position pairs at FFDE08..FFDE12 before recentering the
+        // camera. These are profile words 33..38, not a side-channel copy.
+        state.profile[33] = input.pending_position.x;
+        state.profile[35] = input.pending_position.x;
+        state.profile[37] = input.pending_position.x;
+        state.profile[34] = input.pending_position.y;
+        state.profile[36] = input.pending_position.y;
+        state.profile[38] = input.pending_position.y;
         state.pending_field_targets.fill(input.pending_position);
         state.camera_x = std::max<std::int32_t>(
             0, static_cast<std::int32_t>(input.pending_position.x) - 0x0A00);
