@@ -356,6 +356,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00020EC2L, "prepare_building_security_terminal_prompt");
         names.put(0x00021616L, "prepare_electromagnetic_lock_resolution");
         names.put(0x000249C4L, "resolve_stoker_motel_arrival_command");
+        names.put(0x00021458L, "resolve_stoker_motel_room_payment");
         names.put(0x0005670EL, "refresh_mode_palette_data");
         names.put(0x000134D2L, "run_post_intro_mode");
         names.put(0x00013726L, "render_mode_selection");
@@ -1033,6 +1034,9 @@ public class ExportShadowrun extends GhidraScript {
         ensureReviewedInlineFunction(
             program, 0x000249C4L, 0x000249FCL,
             "resolve_stoker_motel_arrival_command");
+        ensureReviewedInlineFunction(
+            program, 0x00021458L, 0x0002148AL,
+            "resolve_stoker_motel_room_payment");
     }
 
     private static void applyReviewedNames(Program program) throws Exception {

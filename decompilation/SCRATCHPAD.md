@@ -915,6 +915,24 @@ four-word startup transfer state and emits its fourteen control words, while
 `0x0301E` is the fixed 0x140-byte scene-profile upload using the same typed
 block primitive.
 
+## Stoker motel room payment: 0x21458
+
+The direct ROM listing identifies `0x21458` as dispatch-table command `0x06`
+from the Stoker's Coffin Motel room offer. It loads the 32-bit nuyen balance
+from `FFFBFE`, clears D1, loads the byte-sized charge from `FFF10D`, and
+subtracts the charge from the balance. `BPL` at `0x21468` selects the success
+path, so balances below the charge return the descriptor at `0xF5AF8`
+(`Get me patched and I'll tell you everything.`) without mutating funds.
+
+The nonnegative path writes the new balance back to `FFFBFE`, writes `FF` to
+`FFF10D`, and returns the descriptor at `0xF5AB8` (`Hope you brought your own
+towels.`). The caller `0x1F65A` runs the common prompt service, then tests the
+now-negative marker and enters the source Hotel Options menu. The typed
+conversion is `resolve_stoker_motel_room_payment`; it exposes the two actual
+prompt identities, the remaining funds, and the caller-visible Hotel Options
+consequence without carrying a ROM address or emulated register into the host
+runtime. Exact-cost and insufficient-funds tests cover the source branch.
+
 ## 2026-09-30 Stoker motel source mapping
 
 The Stoker source mapping is now corrected rather than guessed. `0x1F65A`
