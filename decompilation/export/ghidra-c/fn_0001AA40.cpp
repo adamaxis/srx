@@ -10,6 +10,14 @@
 //   0x0001AB6E advance_primary_world_effect_overlay
 //   0x0001AC6A advance_secondary_world_effect_overlay
 //   0x0001AD42 advance_background_world_effect_overlay
+//
+// Direct ROM branch distinction:
+//   FFE0F2 selects the 0xF1C46 transition table and bypasses the normal
+//   overlay calls. FFE082 is a separate gate: when FFE0F2 is clear it skips
+//   only the normal append/timing work, then builds the descriptor-table
+//   sprite and still calls all three overlays.
+// The typed conversion preserves that distinction and exposes the selected
+// source table token on WorldEffectAnimationSpriteBuild.
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */

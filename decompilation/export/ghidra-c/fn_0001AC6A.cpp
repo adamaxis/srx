@@ -7,6 +7,10 @@
 //   0x000061CC append_sprite_record
 //   0x0001A818 begin_world_effect_descriptor_transition
 //   0x0001AC50 arm_effect_after_threshold
+//
+// The secondary source list is 0xF1BCE; its four phases are selected after
+// the 7-frame cadence and the threshold carry is intentionally not used as a
+// branch result.
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */

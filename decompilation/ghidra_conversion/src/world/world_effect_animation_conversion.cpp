@@ -27,6 +27,7 @@ WorldEffectAnimationAction render_animation_sprite(
     WorldEffectAnimationState& state,
     const WorldEffectAnimationCallbacks& callbacks,
     const bool transition_table,
+    const bool append_record,
     const std::uint32_t source_table_token) {
     const auto phase = static_cast<std::uint8_t>(
         state.work.phase_or_descriptor_index);
@@ -38,7 +39,7 @@ WorldEffectAnimationAction render_animation_sprite(
         return WorldEffectAnimationAction::sprite_data_unresolved;
     }
 
-    if (callbacks.append_sprite_record) {
+    if (append_record && callbacks.append_sprite_record) {
         callbacks.append_sprite_record(0x0694U);
     }
     WorldEffectAnimationSpriteBuild build{};
@@ -63,37 +64,48 @@ WorldEffectAnimationAction tick_world_effect_animation(
         return WorldEffectAnimationAction::inactive;
     }
 
-    if (!state.descriptor_loading && !state.transition_active) {
-        const bool use_runner_timing =
-            !state.ffdf8c_nonzero || state.selected_mode != 0;
-        if (use_runner_timing) {
-            if (decrement_source_byte(state.work.frame_counter)) {
-                const auto delta = callbacks.read_runner_animation_delta
-                                       ? callbacks.read_runner_animation_delta()
-                                       : std::nullopt;
-                if (!delta.has_value()) {
-                    return WorldEffectAnimationAction::animation_delta_unresolved;
+    // FFE0F2 is the branch selector for the transition table. FFE082 is a
+    // separate completion/descriptor-transition gate: when it is set while
+    // FFE0F2 is clear, the source skips only the record append and timing
+    // update, then still builds the normal descriptor sprite and advances all
+    // three overlays.
+    if (!state.descriptor_loading) {
+        if (!state.transition_active) {
+            const bool use_runner_timing =
+                !state.ffdf8c_nonzero || state.selected_mode != 0;
+            if (use_runner_timing) {
+                if (decrement_source_byte(state.work.frame_counter)) {
+                    const auto delta =
+                        callbacks.read_runner_animation_delta
+                            ? callbacks.read_runner_animation_delta()
+                            : std::nullopt;
+                    if (!delta.has_value()) {
+                        return WorldEffectAnimationAction::animation_delta_unresolved;
+                    }
+                    state.work.frame_counter = add_runner_delta_as_source_byte(
+                        state.work.descriptor_state, *delta);
+                    state.work.phase_or_descriptor_index =
+                        static_cast<std::uint8_t>(
+                            state.work.phase_or_descriptor_index + 1U);
+                    if (state.work.phase_or_descriptor_index >=
+                        state.work.descriptor_phase) {
+                        state.work.phase_or_descriptor_index = 0U;
+                    }
                 }
-                state.work.frame_counter = add_runner_delta_as_source_byte(
-                    state.work.descriptor_state, *delta);
-                state.work.phase_or_descriptor_index = static_cast<std::uint8_t>(
-                    state.work.phase_or_descriptor_index + 1U);
-                if (state.work.phase_or_descriptor_index >=
-                    state.work.descriptor_phase) {
-                    state.work.phase_or_descriptor_index = 0U;
+            } else if (decrement_source_byte(state.work.frame_counter)) {
+                state.work.frame_counter = state.work.descriptor_state;
+                state.work.phase_or_descriptor_index =
+                    static_cast<std::uint8_t>(
+                        state.work.phase_or_descriptor_index + 1U);
+                if (state.work.phase_or_descriptor_index > 3U) {
+                    state.work.phase_or_descriptor_index = 3U;
                 }
-            }
-        } else if (decrement_source_byte(state.work.frame_counter)) {
-            state.work.frame_counter = state.work.descriptor_state;
-            state.work.phase_or_descriptor_index = static_cast<std::uint8_t>(
-                state.work.phase_or_descriptor_index + 1U);
-            if (state.work.phase_or_descriptor_index > 3U) {
-                state.work.phase_or_descriptor_index = 3U;
             }
         }
 
         const auto rendered = render_animation_sprite(
-            state, callbacks, false, state.work.descriptor_pointer);
+            state, callbacks, false, !state.transition_active,
+            state.work.descriptor_pointer);
         if (rendered != WorldEffectAnimationAction::rendered) {
             return rendered;
         }
@@ -122,7 +134,7 @@ WorldEffectAnimationAction tick_world_effect_animation(
     }
 
     constexpr std::uint32_t kTransitionSpriteTable = 0x000F1C46U;
-    return render_animation_sprite(state, callbacks, true,
+    return render_animation_sprite(state, callbacks, true, true,
                                    kTransitionSpriteTable);
 }
 

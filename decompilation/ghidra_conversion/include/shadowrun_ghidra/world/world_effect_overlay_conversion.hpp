@@ -40,9 +40,13 @@ bool arm_effect_after_threshold(WorldEffectOverlayState& state,
 
 struct WorldEffectSpriteBuild {
     WorldEffectOverlayKind kind = WorldEffectOverlayKind::primary;
+    std::uint32_t source_table_token = 0;
+    std::uint16_t phase = 0;
     std::uint16_t sprite_key = 0x07A8U;
-    std::uint16_t attribute = 0;
-    std::uint16_t projected_position = 0;
+    // These are the D1/D2 origins passed to the attribute-offset builder;
+    // base_x is already shifted from the source fixed-point position.
+    std::uint16_t base_x = 0;
+    std::uint16_t base_y = 0;
     std::uint16_t build_flags = 0x2000U;
     // The source selects one longword table entry and passes entry +8 to the
     // title sprite builder. The token is data, not a native ROM address.
@@ -59,9 +63,11 @@ struct WorldEffectOverlayCallbacks {
     std::function<void()> advance_pending_roll;
     std::function<void()> begin_descriptor_transition;
     std::function<void(std::uint16_t sprite_key)> append_sprite_record;
-    // Resolve the selected phase in ROM tables 0xF1BDE, 0xF1BCE, or 0xF1BBE.
+    // Resolve the selected phase in the source table for the overlay:
+    // primary 0xF1BDE, secondary 0xF1BCE, or background 0xF1BBE.
     std::function<std::optional<std::uint32_t>(
-        WorldEffectOverlayKind kind, std::uint16_t phase)>
+        WorldEffectOverlayKind kind, std::uint32_t source_table_token,
+        std::uint16_t phase)>
         resolve_sprite_data;
     std::function<void(const WorldEffectSpriteBuild&)> build_sprite;
 };
@@ -76,7 +82,7 @@ enum class WorldEffectOverlayAction {
 
 // ROM 0x1AB6E: advance the primary effect overlay, including the 0x6B00
 // descriptor-transition cutoff, threshold gate, 9-frame cadence, and phase
-// table selection.
+// table selection (primary phases 0..0x19).
 WorldEffectOverlayAction advance_primary_world_effect_overlay(
     WorldEffectOverlayState& state,
     const WorldEffectOverlayCallbacks& callbacks);

@@ -2437,3 +2437,27 @@ The mode-6 completion call at `0x1A770` is now named for its actual callee,
 `advance_menu_selection_service_and_refresh` (`0x5668C`), rather than being
 reported as a generic “finish mode” hook. These changes are conversion/source
 audit work only; the sprite builder remains a host asset/presentation boundary.
+
+## World-effect animation/overlay audit: 0x1AA40..0x1AD42
+
+The direct listing exposed a branch distinction that the first typed pass had
+collapsed. `FFE0F2` is the selector for the loading/transition path: only
+that flag selects the fixed `0xF1C46` table, uses the six-phase cadence, and
+skips the three overlay calls. `FFE082` is a separate descriptor/completion
+gate. When `FFE0F2` is clear and `FFE082` is set, the normal descriptor table
+still renders and all three overlays still advance; only the normal timing
+update and `0x0694` append are skipped. The conversion now models those
+branches separately.
+
+The overlay requests are now source-specific. Primary, secondary, and
+background use tables `0xF1BDE`, `0xF1BCE`, and `0xF1BBE`, respectively, and
+the typed build request carries the selected table, phase, shifted X origin,
+and fixed Y origin. The old `attribute`/`projected_position` names obscured
+that these values are the builder's D2/D1 coordinate origins (`0x00B9` for
+the moving overlays and `0x00D0` for the background), not palette metadata.
+
+The primary phase compare is `CMP.W #0x1A` followed by `BCS`, so the valid
+phase range is `0..0x19`; a post-increment value of `0x1A` resets to zero.
+Secondary and background wrap at four phases. The conversion and regression
+tests now retain these exact table identities, origins, branch gates, and
+phase boundaries.

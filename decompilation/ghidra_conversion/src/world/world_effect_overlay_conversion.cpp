@@ -13,19 +13,33 @@ bool decrement_until_negative(std::uint16_t& counter,
     return true;
 }
 
+std::uint32_t source_table_token(const WorldEffectOverlayKind kind) {
+    switch (kind) {
+    case WorldEffectOverlayKind::primary:
+        return 0x000F1BDEU;
+    case WorldEffectOverlayKind::secondary:
+        return 0x000F1BCEU;
+    case WorldEffectOverlayKind::background:
+        return 0x000F1BBEU;
+    }
+    return 0;
+}
+
 WorldEffectOverlayAction render_overlay_sprite(
     WorldEffectOverlayState& state,
     const WorldEffectOverlayCallbacks& callbacks,
     const WorldEffectOverlayKind kind,
     const std::uint16_t position,
     const std::uint16_t position_shift,
-    const std::uint16_t attribute,
+    const std::uint16_t base_y,
     const std::uint16_t phase_limit) {
     if (state.phase > phase_limit) {
         state.phase = 0U;
     }
+    const auto table = source_table_token(kind);
     const auto token = callbacks.resolve_sprite_data
-                           ? callbacks.resolve_sprite_data(kind, state.phase)
+                           ? callbacks.resolve_sprite_data(kind, table,
+                                                            state.phase)
                            : std::nullopt;
     if (!token.has_value()) {
         return WorldEffectOverlayAction::sprite_data_unresolved;
@@ -36,9 +50,11 @@ WorldEffectOverlayAction render_overlay_sprite(
     }
     WorldEffectSpriteBuild build{};
     build.kind = kind;
-    build.attribute = attribute;
-    build.projected_position = static_cast<std::uint16_t>(
+    build.source_table_token = table;
+    build.phase = state.phase;
+    build.base_x = static_cast<std::uint16_t>(
         position >> position_shift);
+    build.base_y = base_y;
     build.sprite_data_token = *token;
     if (callbacks.build_sprite) {
         callbacks.build_sprite(build);
@@ -114,7 +130,7 @@ WorldEffectOverlayAction advance_primary_world_effect_overlay(
     }
     return render_overlay_sprite(state, callbacks,
                                  WorldEffectOverlayKind::primary,
-                                 state.primary_position, 6U, 0x00B9U, 0x1AU);
+                                 state.primary_position, 6U, 0x00B9U, 0x19U);
 }
 
 WorldEffectOverlayAction advance_secondary_world_effect_overlay(

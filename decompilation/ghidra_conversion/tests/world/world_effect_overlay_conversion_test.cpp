@@ -1,5 +1,6 @@
 #include "shadowrun_ghidra/world/world_effect_overlay_conversion.hpp"
 
+#include <cassert>
 #include <cstdint>
 #include <optional>
 
@@ -45,16 +46,20 @@ int main() {
     callbacks = {};
     callbacks.arm_after_threshold = [](const std::uint16_t) { return true; };
     callbacks.resolve_sprite_data =
-        [](const WorldEffectOverlayKind kind, const std::uint16_t phase)
-        -> std::optional<std::uint32_t> {
-        return 0xF1BCEU + static_cast<std::uint32_t>(kind) * 0x100U + phase;
+        [](const WorldEffectOverlayKind kind,
+           const std::uint32_t source_table_token,
+           const std::uint16_t phase) -> std::optional<std::uint32_t> {
+        assert(kind == WorldEffectOverlayKind::secondary &&
+               source_table_token == 0x000F1BCEU);
+        return source_table_token + phase;
     };
     callbacks.append_sprite_record = [&](const std::uint16_t key) {
         appends += key == 0x07A8U ? 1 : 100;
     };
     callbacks.build_sprite = [&](const WorldEffectSpriteBuild& build) {
-        builds += build.attribute == 0x00B9U &&
-                          build.projected_position == (0x2100U >> 6U)
+        builds += build.source_table_token == 0x000F1BCEU &&
+                          build.phase == 0U && build.base_y == 0x00B9U &&
+                          build.base_x == (0x2100U >> 6U)
                       ? 1
                       : 100;
     };
@@ -75,17 +80,43 @@ int main() {
     background.phase = 3U;
     callbacks = {};
     callbacks.resolve_sprite_data =
-        [](const WorldEffectOverlayKind, const std::uint16_t)
-        -> std::optional<std::uint32_t> { return 0xF1BBEU; };
+        [](const WorldEffectOverlayKind kind,
+           const std::uint32_t source_table_token, const std::uint16_t)
+        -> std::optional<std::uint32_t> {
+        assert(kind == WorldEffectOverlayKind::background &&
+               source_table_token == 0x000F1BBEU);
+        return source_table_token;
+    };
     WorldEffectSpriteBuild background_build{};
     callbacks.build_sprite =
         [&](const WorldEffectSpriteBuild& build) { background_build = build; };
     if (advance_background_world_effect_overlay(background, callbacks) !=
             WorldEffectOverlayAction::sprite_rendered ||
         background.background_started || background.background_position != 0x0110U ||
-        background.phase != 0U || background_build.attribute != 0x00D0U ||
-        background_build.projected_position != (0x0110U >> 4U)) {
+        background.phase != 0U ||
+        background_build.source_table_token != 0x000F1BBEU ||
+        background_build.base_y != 0x00D0U ||
+        background_build.base_x != (0x0110U >> 4U)) {
         return 4;
+    }
+
+    WorldEffectOverlayState primary_phase{};
+    primary_phase.primary_started = 1U;
+    primary_phase.frame_delay = 0U;
+    primary_phase.phase = 0x19U;
+    callbacks = {};
+    callbacks.resolve_sprite_data =
+        [](const WorldEffectOverlayKind kind,
+           const std::uint32_t source_table_token, const std::uint16_t phase)
+        -> std::optional<std::uint32_t> {
+        assert(kind == WorldEffectOverlayKind::primary &&
+               source_table_token == 0x000F1BDEU && phase == 0U);
+        return source_table_token + phase;
+    };
+    if (advance_primary_world_effect_overlay(primary_phase, callbacks) !=
+            WorldEffectOverlayAction::sprite_rendered ||
+        primary_phase.phase != 0U || primary_phase.frame_delay != 8U) {
+        return 5;
     }
 
     return 0;

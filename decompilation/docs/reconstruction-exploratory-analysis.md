@@ -1216,3 +1216,19 @@ replace the source table selection with a generic vertical callback.
 Finally, mode 6 of `0x1A5A0` calls the existing `0x5668C`
 `advance_menu_selection_service_and_refresh` service before clearing the
 world-effect mode. That boundary is now named accordingly in the conversion.
+
+### World-effect animation/overlay branch correction: 0x1AA40..0x1AD42
+
+The ROM uses `FFE0F2`, not the combined predicate `FFE0F2 == 0 &&
+FFE082 == 0`, to select the transition-table branch. With `FFE0F2` clear,
+`FFE082` only suppresses the normal frame-cadence update and sprite-record
+append; it does not switch the sprite data to `0xF1C46`, and the source still
+calls the primary, secondary, and background overlay routines. The converted
+animation tick now follows that source control flow.
+
+The overlay sprite builders now expose the exact source table and coordinate
+origins: `0xF1BDE`/`0xF1BCE`/`0xF1BBE` for primary/secondary/background,
+`D1=position>>6` for the moving overlays, `D1=position>>4` for the
+background, `D2=0xB9` or `0xD0`, `D4=0x7A8`, and `D6=0x2000`. The primary
+phase limit is also corrected to the source's valid `0..0x19` range; the
+secondary and background ranges remain `0..3`.

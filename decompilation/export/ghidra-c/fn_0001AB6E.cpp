@@ -8,6 +8,11 @@
 //   0x0001A818 begin_world_effect_descriptor_transition
 //   0x0001AC50 arm_effect_after_threshold
 //   0x000563CC advance_primary_world_effect_pending_roll
+//
+// The primary phase compare is CMP.W #0x1A followed by BCS, so phase values
+// 0 through 0x19 are valid and a post-increment value of 0x1A wraps to zero.
+// Its sprite list is the 0xF1BDE table, with D1=FFE0BE>>6, D2=0x00B9,
+// D4=0x07A8, and D6=0x2000.
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */

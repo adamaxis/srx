@@ -5,6 +5,10 @@
 // Calls recovered from direct call instructions:
 //   0x000013BE build_title_sprite_records_with_attribute_offset
 //   0x000061CC append_sprite_record
+//
+// The background source list is 0xF1BBE. It advances the source position
+// before the 4-frame phase cadence and uses D1=FFE0C6>>4, D2=0x00D0,
+// D4=0x07A8, and D6=0x2000.
 
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
