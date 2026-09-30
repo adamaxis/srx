@@ -9,19 +9,6 @@
 
 namespace shadowrun::ghidra_conversion {
 
-struct MenuEntryCallbacks {
-    std::function<std::uint8_t()> select_hud_mode;
-    std::function<void()> service_entry;
-    std::function<std::uint8_t()> read_entry_value;
-    std::function<void()> set_selection;
-    std::function<void()> render_text;
-    std::function<void()> prepare_offset;
-};
-
-// ROM 0x1A030: choose the title/menu branch and return its source result code.
-std::int16_t select_menu_entry(std::int8_t entry_state,
-                               const MenuEntryCallbacks& callbacks);
-
 void refresh_menu_selection_after_clear(
     bool has_pending_value,
     const std::function<void()>& clear_selected,

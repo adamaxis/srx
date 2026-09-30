@@ -897,7 +897,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00003A90L, "accept_camera_delta");
         names.put(0x00003EFEL, "decode_field_tile_sample");
         names.put(0x00004018L, "render_field_tile_edge");
-        names.put(0x0001A030L, "select_menu_entry");
+        names.put(0x0001A030L, "resolve_title_world_action_selection");
         names.put(0x0001A09CL, "refresh_menu_selection_after_clear");
         names.put(0x0001A106L, "refresh_menu_selection_or_prepare");
         names.put(0x0001A468L, "initialize_audio_frame");
@@ -979,8 +979,16 @@ public class ExportShadowrun extends GhidraScript {
             }
             function = manager.createFunction(name, start,
                 new AddressSet(start, end), SourceType.USER_DEFINED);
-        } else if (!name.equals(function.getName())) {
-            function.setName(name, SourceType.USER_DEFINED);
+        } else {
+            // Some reviewed entries already exist in the imported program but
+            // have a truncated body because Ghidra stopped at an internal
+            // branch island.  Restore the ROM-contiguous body before export;
+            // the end address is exclusive and stops before the next known
+            // function entry.
+            function.setBody(new AddressSet(start, end));
+            if (!name.equals(function.getName())) {
+                function.setName(name, SourceType.USER_DEFINED);
+            }
         }
     }
 
@@ -995,6 +1003,10 @@ public class ExportShadowrun extends GhidraScript {
                                      "run_magic_menu");
         ensureReviewedInlineFunction(program, 0x00011950L, 0x000119CEL,
                                      "run_cyberware_menu");
+        ensureReviewedInlineFunction(program, 0x0001A030L, 0x0001A09CL,
+                                     "resolve_title_world_action_selection");
+        ensureReviewedInlineFunction(program, 0x00056050L, 0x000560AAL,
+                                     "resolve_title_world_action_marker");
     }
 
     private static void applyReviewedNames(Program program) throws Exception {

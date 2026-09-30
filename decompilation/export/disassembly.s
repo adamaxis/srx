@@ -17363,7 +17363,7 @@
 0001BACE: jmp 0x000013be.l ; call 000013BE build_title_sprite_records_with_attribute_offset
 0001BB08: move.w (A6)+,(A0)+
 0001BB0A: move.b #0x3c,(0x00ffe16d).l
-0001BB12: jsr 0x0001a030.l ; call 0001A030 select_menu_entry
+0001BB12: jsr 0x0001a030.l ; call 0001A030 resolve_title_world_action_selection
 0001BB18: bpl.w 0x0001bb38
 0001BB1C: move.w #0x9,D0w
 0001BB20: jsr 0x00019b34.l ; call 00019B34 publish_menu_selection_then_text

@@ -14,25 +14,6 @@ void call_once(const std::function<void()>& callback) {
 
 } // namespace
 
-std::int16_t select_menu_entry(const std::int8_t entry_state,
-                               const MenuEntryCallbacks& callbacks) {
-    const auto hud_mode = callbacks.select_hud_mode ? callbacks.select_hud_mode() : 0U;
-    if (entry_state == 0 && (hud_mode == 0U || hud_mode == 8U || hud_mode < 8U)) {
-        call_once(callbacks.service_entry);
-        if (entry_state < 0) {
-            call_once(callbacks.prepare_offset);
-            return -1;
-        }
-        const auto value = callbacks.read_entry_value ? callbacks.read_entry_value() : 0U;
-        (void)value;
-        return 0;
-    }
-    call_once(callbacks.set_selection);
-    call_once(callbacks.render_text);
-    call_once(callbacks.prepare_offset);
-    return 0x45;
-}
-
 void refresh_menu_selection_after_clear(
     const bool has_pending_value,
     const std::function<void()>& clear_selected,

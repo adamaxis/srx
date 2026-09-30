@@ -539,7 +539,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00019F78	finalize_menu_slot_code_six	6	unknown	ok	ghidra-c/fn_00019F78.cpp
 00019F7E	clear_first_ready_menu_slot	82	unknown	ok	ghidra-c/fn_00019F7E.cpp
 0001A01E	publish_menu_selection_then_text_variant	18	unknown	ok	ghidra-c/fn_0001A01E.cpp
-0001A030	select_menu_entry	28	unknown	ok	ghidra-c/fn_0001A030.cpp
+0001A030	resolve_title_world_action_selection	108	unknown	ok	ghidra-c/fn_0001A030.cpp
 0001A09C	refresh_menu_selection_after_clear	40	unknown	ok	ghidra-c/fn_0001A09C.cpp
 0001A106	refresh_menu_selection_or_prepare	40	unknown	ok	ghidra-c/fn_0001A106.cpp
 0001A12E	advance_menu_countdown	38	unknown	ok	ghidra-c/fn_0001A12E.cpp
@@ -753,6 +753,7 @@ entry	name	size	callingConvention	decompileStatus	file
 00055F20	select_posture_adjusted_value	36	unknown	ok	ghidra-c/fn_00055F20.cpp
 00055F44	calculate_runner_action_delay	148	unknown	ok	ghidra-c/fn_00055F44.cpp
 00055FD8	calculate_and_publish_runner_action_result	38	unknown	ok	ghidra-c/fn_00055FD8.cpp
+00056050	resolve_title_world_action_marker	88	unknown	ok	ghidra-c/fn_00056050.cpp
 00056116	advance_world_effect_intro_gate	210	unknown	ok	ghidra-c/fn_00056116.cpp
 000561E8	select_world_effect_animation_mode	344	unknown	ok	ghidra-c/fn_000561E8.cpp
 000562D4	add_world_effect_timer_modifier	10	unknown	ok	ghidra-c/fn_000562D4.cpp

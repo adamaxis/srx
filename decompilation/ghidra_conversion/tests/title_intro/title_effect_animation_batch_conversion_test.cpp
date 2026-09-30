@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/title_intro/title_effect_animation_batch_conversion.hpp"
+#include "shadowrun_ghidra/menus/title_world_action_selection_conversion.hpp"
 
 #include <cassert>
 
@@ -6,12 +7,101 @@ using namespace shadowrun::ghidra_conversion;
 
 int main() {
     int service = 0;
-    MenuEntryCallbacks menu{
-        [] { return static_cast<std::uint8_t>(0); }, [&] { ++service; },
-        [] { return static_cast<std::uint8_t>(4); }, {}, {}, [&] { ++service; }};
-    assert(select_menu_entry(0, menu) == 0 && service == 1);
-    menu.select_hud_mode = [] { return static_cast<std::uint8_t>(9); };
-    assert(select_menu_entry(0, menu) == 0x45);
+
+    // ROM 0x1A030 enters the title/world mode branch when FFDF84 is already
+    // nonzero.  It publishes D0=9/D1=0x0B, renders text, and tail-calls the
+    // one-time menu-offset preparation in that order.
+    std::vector<int> title_world_order;
+    TitleWorldActionSelectionState world_active{true, 0};
+    const auto world_result = resolve_title_world_action_selection(
+        world_active,
+        {[&]() -> std::optional<std::int8_t> {
+             assert(false && "select_hud_mode must be skipped");
+             return 0;
+         },
+         [&] { assert(false && "action result must be skipped"); }, {},
+         [&](const std::uint8_t code, const std::uint8_t value) {
+             assert(code == 9U && value == 0x0BU);
+             title_world_order.push_back(1);
+         },
+         [&] { title_world_order.push_back(2); },
+         [&] { title_world_order.push_back(3); }});
+    assert(world_result.action ==
+               TitleWorldActionSelectionAction::selected_world_mode &&
+           world_result.return_code == 9 &&
+           title_world_order == std::vector<int>({1, 2, 3}));
+
+    // Modes 1 and 8 take the same title/world publication branch after the
+    // active runner HUD mode lookup.
+    for (const auto mode : {static_cast<std::int8_t>(1),
+                            static_cast<std::int8_t>(8)}) {
+        std::uint8_t selection_value = 0;
+        int action_rolls = 0;
+        TitleWorldActionSelectionState state{};
+        const auto result = resolve_title_world_action_selection(
+            state,
+            {[&] { return std::optional<std::int8_t>(mode); },
+             [&] { ++action_rolls; }, {},
+             [&](const std::uint8_t code, const std::uint8_t value) {
+                 assert(code == 9U);
+                 selection_value = value;
+             },
+             [&] { ++service; }, [&] { ++service; }});
+        assert(result.action ==
+                   TitleWorldActionSelectionAction::selected_world_mode &&
+               result.return_code == 9 && selection_value == 0x0CU &&
+               action_rolls == 0);
+    }
+
+    // A negative selected HUD mode is preserved across 0x55FD8, then routes
+    // to prepare_menu_offset_once and returns -1.
+    int first_roll = 0;
+    int prepared = 0;
+    TitleWorldActionSelectionState rejected_state{};
+    const auto rejected = resolve_title_world_action_selection(
+        rejected_state,
+        {[&] { return std::optional<std::int8_t>(-1); },
+         [&] { ++first_roll; }, {}, {}, {}, [&] { ++prepared; }});
+    assert(rejected.action ==
+               TitleWorldActionSelectionAction::action_roll_rejected &&
+           rejected.return_code == -1 && first_roll == 1 && prepared == 1);
+
+    // A nonnegative, non-1/8 mode runs both action-result continuations and
+    // publishes the raw D4 marker to the typed FFF0AA-equivalent state.
+    TitleWorldActionSelectionState resolved_state{};
+    int second_roll = 0;
+    const auto resolved = resolve_title_world_action_selection(
+        resolved_state,
+        {[&] { return std::optional<std::int8_t>(0); },
+         [&] { ++first_roll; },
+         [&] {
+             ++second_roll;
+             return std::optional<std::uint8_t>(0xFEU);
+         },
+         {}, {}, {}});
+    assert(resolved.action ==
+               TitleWorldActionSelectionAction::action_marker_resolved &&
+           resolved.return_code == 0 && first_roll == 2 && second_roll == 1 &&
+           resolved_state.pending_action_marker == 0xFEU);
+
+    // ROM 0x56050 clamps its difficulty and preserves the raw underflow byte
+    // while clearing the live action result on BPL.
+    TitleWorldActionMarkerState marker_state{1U, 1U, 0U};
+    std::uint16_t trial_count_seen = 0;
+    std::uint16_t difficulty_seen = 0;
+    const auto marker = resolve_title_world_action_marker(
+        marker_state,
+        {[&] { return std::optional<std::uint16_t>(4U); },
+         [&](const std::uint16_t trials, const std::uint16_t difficulty) {
+             trial_count_seen = trials;
+             difficulty_seen = difficulty;
+             return std::optional<std::uint8_t>(2U);
+         }});
+    assert(marker.outcome == TitleWorldActionMarkerOutcome::resolved &&
+           marker.pending_marker == 0xFFU && marker.active_result_cleared &&
+           marker_state.active_runner_action_result == 0U &&
+           marker_state.thresholded_rolls == 2U && trial_count_seen == 4U &&
+           difficulty_seen == 2U);
 
     int clear = 0;
     refresh_menu_selection_after_clear(true, [&] { ++clear; }, [&] { ++service; },

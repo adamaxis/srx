@@ -493,6 +493,32 @@ The exact overload is covered with both the non-expiry and expiry values,
 including the negative-countdown byte path. It remains partial until the
 code-five finalizer and its callers are composed into the menu controller.
 
+## Title/world runner action gate: 0x1A030 and omitted 0x56050 continuation
+
+The old `select_menu_entry` label was not describing the source behavior. The
+routine is called by the title/world transition after the behavior record is
+started; it gates the active runner's action result before the scene hands
+control to the next behavior:
+
+* A nonzero `FFDF84` publishes HUD code `9` with value `0x0B`; a selected HUD
+  mode of `1` or `8` publishes code `9` with value `0x0C`. Both render the
+  follow-up text and tail-call `0x1B706`. The source returns with D0 still
+  equal to `9` because the preparation routine saves and restores D0.
+* Other modes first call `0x55FD8`. That routine preserves the signed HUD-mode
+  D0 value. A negative value prepares the menu offset and returns `-1`; a
+  nonnegative value enters the previously omitted `0x56050` continuation.
+* `0x56050` obtains D6 from `0x19BF6`, clamps the `FFFBBE+0x0A` difficulty to
+  two, runs `0x0DBA`, subtracts the qualifying-roll byte from the live
+  runner-action result, and clears that live result only when BPL sees a set
+  sign bit. The raw post-SUB.B D4 byte is then what `0x1A094` publishes to
+  `FFF0AA`; it is not the same value as the possibly-cleared live result.
+
+This is now `resolve_title_world_action_selection()` plus
+`resolve_title_world_action_marker()` in the menu-services module. The test
+covers the exact branch order, signed D0 preservation, difficulty clamp,
+underflow marker, and BPL-only clear. The entries remain `partial` because
+the surrounding title/world controller is not yet a defended screen hill.
+
 ## Field-action resource selection: 0x575F8 / 0x57610 / 0x57628 / 0x5763C
 
 The four helpers immediately before the field-action purchase routines are a
