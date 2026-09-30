@@ -63,6 +63,15 @@ canonical typed display-service path; the duplicate `run_field_loop` helper
 and its misleading name are removed. The remaining `0x075E` orchestration and
 field behavior still require source-audit work.
 
+The recurring `0x075E` pass is now isolated in
+`integration/field_runtime_coordinator_conversion.*`. It models the exact
+`0x0952..0x0B9C` priority and service order as one host-frame call: transition
+and world-activity requests precede ordinary input; entity/camera/render,
+palette, and world-frame services precede controller dispatch; action bit
+`0x2000` is tested before command bit `0x8000`; and the pending scene handler
+has a typed resumed-field/title-return result instead of a copied function
+pointer. Missing child branches remain explicit pending/unresolved results.
+
 ### Qt conversion presentation audit: 2026-09-30
 
 The separate `ghidra_conversion/qt_runtime` now has a source-derived image

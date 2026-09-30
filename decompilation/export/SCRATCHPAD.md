@@ -1111,6 +1111,24 @@ callbacks until those downstream consumers are fully connected. The field
 camera service remains an explicit callback; the central layer does not
 replace either boundary with guessed behavior.
 
+## Recurring field coordinator audit: 0x0952..0x0B9C
+
+The next slice of `0x075E run_game_loop` is now represented by
+`integration::advance_field_runtime_frame()`. It is deliberately one
+VBlank-sized pass that the host cycles; it is not a processor loop and does
+not retain the source's indirect code pointer.
+
+| Source range | Confirmed order | Typed boundary |
+| --- | --- | --- |
+| `0x0952..0x0A64` | Wait for VBlank; prioritize `FFDF3E` field transition; otherwise route `FFDF42` world activity; do not sample ordinary input before either branch. | `field_transition_requested` / `world_activity_requested` plus explicit callbacks |
+| `0x0AA8..0x0AD2` | Latch controller events, sample input, service entity behavior, update camera, render entities, advance palette fade, advance world-frame logic, then set display dirty bits `1/2/3`. | `advance_field_runtime_frame()` normal-frame sequence |
+| `0x0AEA..0x0B04` | Suppress action/command dispatch while `FFE18B`, `FFE166`, or `FFDFE8` is nonzero. | `field_activity_lock`, `world_activity_countdown`, `display_service_word` |
+| `0x0B08..0x0B80` | Test action bit `0x2000` first, then allow command bit `0x8000` in the same sampled word; command uses fixed audio value `8`, overview, audio tick, and entity selection. | `action_event_dispatched` / `command_overview_dispatched` |
+| `0x0B34..0x0BA6` | Invoke the pending typed scene handler; a title-return result follows the source `0x5BAC4` comparison, while a resumed field handler advances scene transition. | `PendingFieldSceneHandlerResult` |
+
+Missing transition/activity/handler callbacks return explicit pending or
+unresolved results. They are not silently treated as converted behavior.
+
 ## Wrapped encoded text transfer: 0xC160 / 0xC168
 
 The text renderer is a shared display-text boundary, not a field-menu-specific
@@ -1287,7 +1305,7 @@ still has unresolved downstream calls or hardware presentation work.
 | `0x0330` | reset display block | Emits the five initial VDP register commands, clears the first VRAM word, and establishes the text-write command. | `make_startup_display_plan()` | partial |
 | `0x0436` | `write_startup_text_to_vdp` | Builds the destination command and converts a zero-terminated source string into host glyph indices. | `encode_startup_text()` / `ShadowrunBoot::write_startup_text()` adapter | partial |
 | `0x073A` | `wait_for_vdp_ready` | Coalesces the source's 11 × 4096 startup delay, waits at a typed ready boundary, then applies the 256-iteration settle delay. | `ghidra_conversion::wait_for_vdp_ready()`; no host VDP polling loop | partial |
-| `0x075E` | `run_game_loop` | Main coordinator: initializes session state, dispatches boot/title/field work, samples input, and performs indirect state dispatch. The common post-startup field bootstrap is now separately composed from `0x07F0..0x094C`; title/menu dispatch and save/new-game branches remain separate. | `ghidra_conversion::integration::bootstrap_field_session()` for the traced field-entry slice | partial |
+| `0x075E` | `run_game_loop` | Main coordinator: initializes session state, dispatches boot/title/field work, samples input, and performs indirect state dispatch. The common post-startup field bootstrap is composed from `0x07F0..0x094C`; the recurring `0x0952..0x0B9C` frame coordinator is now a separate typed one-pass boundary. Title/menu dispatch and save/new-game branches remain separate. | `ghidra_conversion::integration::bootstrap_field_session()` plus `advance_field_runtime_frame()` | partial |
 | `0x0BB6` | `wait_for_even_frame` | Waits for a changed frame sample after clearing its low bit. | `ghidra_conversion::wait_for_even_frame()`; host frame boundary remains a callback | partial |
 | `0x0BD2` | `wait_for_vblank` | Advances the frame counter and requests the next interrupt-side sample through a host frame boundary. | `ghidra_conversion::wait_for_vblank()`; presentation timing remains a callback | partial |
 | `0x0C24` | `wait_for_vblank_frames` | Repeats the vblank boundary `source_counter + 1` times, preserving the source DBF behavior. | `ghidra_conversion::wait_for_vblank_frames()` | partial |

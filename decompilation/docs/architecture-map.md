@@ -86,6 +86,7 @@ Boot / region setup
        -> timed opening              valid load / empty-slot stay
   -> Field runtime loop (0x075E)
        scene descriptor load (0x3074 -> 0x3084 -> 0x313A)
+       one-pass frame coordinator (0x0952..0x0B9C)
        Start -> command overview and submenus
        raw event -> area transition / dialog / combat / special state
 ```
@@ -201,6 +202,13 @@ entity projection, animation, and mode transitions. It should not be split into
 one class per decompiled function. The source families around `0x2B34`,
 `0x2CE0`, `0x2F32`, `0x3074`/`0x3084`, `0x3A1C`, `0x3BAC`, `0xE7C8`, `0xB7B8`, and
 `0x167AE` are natural methods/services on this subsystem.
+
+The recurring coordinator is a separate integration seam rather than a second
+game-state machine: `advance_field_runtime_frame()` owns the source order for
+VBlank/request priority, normal entity/camera/render/world services, controller
+bit precedence, command overview, and pending scene-handler outcomes. It
+delegates each leaf through typed callbacks so the conversion can be connected
+to the Qt host without copying a 68000 loop or a function-pointer table.
 
 ### EntityWorld and effects
 
