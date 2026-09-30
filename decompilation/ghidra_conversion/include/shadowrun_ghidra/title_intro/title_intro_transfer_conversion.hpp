@@ -3,9 +3,11 @@
 #include "shadowrun_ghidra/rendering/sprite_record_builder_conversion.hpp"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <optional>
+#include <vector>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -120,45 +122,42 @@ constexpr std::array<std::array<std::int16_t, 2>, 8> kWorldSceneEffectHeadingOff
     {{2, 41}}, {{5, 41}}, {{4, 41}}, {{7, 41}},
     {{6, 41}}, {{7, 41}}, {{5, 41}}, {{5, 41}},
 }};
-constexpr std::array<std::uint32_t, 9> kWorldSceneEffectTimerALists{
-    0x0001FEB38U, 0x0001FEB38U, 0x0001FEB38U, 0x0001FEB38U, 0x0001FEA52U,
-    0x0001FEB38U, 0x0001FEA52U, 0x0001FEB38U, 0x0001FEA52U};
 
-struct WorldSceneEffectSpriteBuild {
-    std::int16_t x = 0;
-    std::int16_t y = 0;
-    std::uint16_t flags = 0x4000U;
-    std::uint32_t source = 0;
+struct WorldSceneEffectSpriteBatch {
+    std::uint16_t frame_index = 0;
+    std::uint8_t first_sequence = 0;
+    std::uint8_t next_sequence = 0;
+    std::vector<BuiltSpriteRecord> records;
 };
+
+// ROM 0x1378 consumes each selected sentinel-terminated source list and
+// appends every record, not just the first source pointer. The source lists
+// are represented as typed host data in the implementation file.
 
 // ROM 0x5D55C: advance the shared eight-frame scene-effect animation counter.
 void advance_world_scene_effect_frame(WorldFrameServiceState& state);
 
 // ROM 0x5D5A2: +6 countdown reload 0x14, +0x16 wrap 0..8, then 0x1378.
-WorldSceneEffectSpriteBuild advance_world_scene_effect_timer_a(
-    WorldFrameServiceState& state);
-
-constexpr std::array<std::uint32_t, 10> kWorldSceneEffectTimerBLists{
-    0x0001FEADEU, 0x0001FEB02U, 0x0001FEB26U, 0x0001FEB14U, 0x0001FEAF0U,
-    0x0001FEAF0U, 0x0001FEB14U, 0x0001FEB26U, 0x0001FEB02U, 0x0001FEADEU};
+WorldSceneEffectSpriteBatch advance_world_scene_effect_timer_a(
+    WorldFrameServiceState& state,
+    std::uint8_t first_sequence = 0);
 
 // ROM 0x5D5FC: +0x1A reload 0xA, +0x1C wrap 0..9, D2-0x18.
-WorldSceneEffectSpriteBuild advance_world_scene_effect_timer_b(
-    WorldFrameServiceState& state);
-
-constexpr std::array<std::uint32_t, 40> kWorldSceneEffectTimerCLists{
-    0x0001FEC34U, 0x0001FEC02U, 0x0001FEBD0U, 0x0001FEB8EU, 0x00001D47CU,
-    0x00001D47CU, 0x00001D47CU, 0x00001D47CU, 0x00001D47CU, 0x00001D47CU,
-    0x00001D47CU, 0x00001D47CU, 0x00001D47CU, 0x00001D47CU, 0x0001FEB7AU,
-    0x0001FEB7AU, 0x0001FEB66U, 0x0001FEB66U, 0x0001FEB52U, 0x0001FEB52U,
-    0x00001D47CU, 0x00001D47CU, 0x00001D47CU, 0x00001D47CU, 0x00001D47CU,
-    0x00001D47CU, 0x00001D47CU, 0x0001FEB84U, 0x0001FEB84U, 0x0001FEB70U,
-    0x0001FEB70U, 0x0001FEB5CU, 0x0001FEB5CU, 0x00001D47CU, 0x00001D47CU,
-    0x00001D47CU, 0x00001D47CU, 0x00001D47CU, 0x00001D47CU, 0x00001D47CU};
+WorldSceneEffectSpriteBatch advance_world_scene_effect_timer_b(
+    WorldFrameServiceState& state,
+    std::uint8_t first_sequence = 0);
 
 // ROM 0x5D65A: +0x20 reload 4, +0x1E wrap 0..0x27, D2+0x30 D1+0x12.
-WorldSceneEffectSpriteBuild advance_world_scene_effect_timer_c(
-    WorldFrameServiceState& state);
+WorldSceneEffectSpriteBatch advance_world_scene_effect_timer_c(
+    WorldFrameServiceState& state,
+    std::uint8_t first_sequence = 0);
+
+// ROM 0x5D57E: use the shared scene frame to select the refresh list, then
+// build all of its records at the projected scene origin without the timer
+// leaves' heading offsets.
+WorldSceneEffectSpriteBatch refresh_world_scene_effect_sprites(
+    const WorldFrameServiceState& state,
+    std::uint8_t first_sequence = 0);
 
 struct WorldSceneEffectEntitySlot {
     // Source entity record fields used by the six-slot scan and the
@@ -171,6 +170,7 @@ struct WorldSceneEffectEntitySlot {
 
 struct WorldSceneEntityEffectRuntimeState {
     std::uint8_t scene_mode = 0; // FFE186
+    std::uint8_t sprite_sequence = 0; // D5 entering the 0x1378 call chain
     std::array<WorldSceneEffectEntitySlot, 6> candidate_entities{};
     WorldSceneEffectEntitySlot auxiliary_entity{}; // fixed FF0400 record
     bool terminal_auxiliary_marker = false;
@@ -179,10 +179,12 @@ struct WorldSceneEntityEffectRuntimeState {
 struct WorldSceneEntityEffectCallbacks {
     // ROM 0x5A56: project the scene entity before any sprite-table timer leaf.
     std::function<void()> project_entity_screen_position;
-    // ROM 0x1378: each timer leaf builds one sprite record in source order.
-    std::function<void(const WorldSceneEffectSpriteBuild&)> publish_sprite;
+    // ROM 0x1378: publish every record from each selected source list in
+    // source order; the batch also carries the next D5 sequence value.
+    std::function<void(const WorldSceneEffectSpriteBatch&)> publish_sprites;
     // ROM 0x5D57E: rebuild the remaining scene-effect sprite records.
-    std::function<void()> refresh_world_scene_effect_sprites;
+    std::function<void(const WorldSceneEffectSpriteBatch&)>
+        refresh_world_scene_effect_sprites;
     // ROM 0x5D408: stage-zero phase dispatch.
     WorldSceneEffectPhaseCallbacks phase_callbacks;
     // ROM 0x5BA66: resource-index installation after the initial wait.

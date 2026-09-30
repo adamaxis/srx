@@ -84,17 +84,18 @@ generated catalog previously described only as generic intro contracts:
   effect frame.
 - `0x5D29C` now owns the enclosing coordinator: it gates scene modes `2/3`,
   waits through stage `0`, enters the staged resource pass, publishes the
-  stage-one B/A records and stage-two C/B/A records in ROM order, scans the
-  six candidate entity slots when the shared frame reaches `3`, and either
-  selects an existing effect, installs the fixed auxiliary effect, or hands
-  control back to world activity when its timer expires.
+  complete stage-one B/A lists and stage-two C/B/A lists in ROM order,
+  advances the `0x1378` sequence across every emitted record, scans the six
+  candidate entity slots when the shared frame reaches `3`, and either selects
+  an existing effect, installs the fixed auxiliary effect, or hands control
+  back to world activity when its timer expires.
 
 The host contract uses named audio cues, metadata-source enums, scene-origin
-fields, and callbacks; it does not retain the source VDP command words or ROM
-addresses. The three timer leaves and the coordinator are separately tested.
-`0x5D57E` sprite-record refresh and `0x5D6BC` allocator/template behavior
-remain explicit callback boundaries and are not being claimed as converted by
-this slice.
+fields, typed sprite batches, and callbacks; it does not retain the source VDP
+command words or ROM addresses. The three timer leaves, the raw-origin
+`0x5D57E` refresh list, and the coordinator are separately tested. `0x5D6BC`
+allocator/template behavior remains the one explicit open boundary in this
+cluster and is not being claimed as converted by this slice.
 
 The slot-availability audit also corrected a semantic narrowing in the typed
 conversion: `0x19C54 -> 0x19C5C` preserves the raw `FFFBCC` byte because the

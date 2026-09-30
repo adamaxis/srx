@@ -151,14 +151,21 @@ int main() {
     frame.words[0x0B] = 8U;
     frame.words[0x0C] = 0U;
     auto sprite = advance_world_scene_effect_timer_a(frame);
-    if (frame.words[3] != 0U || frame.words[0x0B] != 8U || sprite.x != 12 ||
-        sprite.y != 61 || sprite.flags != 0x4000U ||
-        sprite.source != 0x0001FEA52U) {
+    if (frame.words[3] != 0U || frame.words[0x0B] != 8U ||
+        sprite.records.size() != 3U || sprite.first_sequence != 0U ||
+        sprite.next_sequence != 3U || sprite.records[0].x != 6 ||
+        sprite.records[0].y != 48 || sprite.records[0].size != 0x0BU ||
+        sprite.records[0].sequence != 0U ||
+        sprite.records[0].attributes != 0x4415U ||
+        sprite.records[2].x != 38 || sprite.records[2].y != 54) {
         return 13;
     }
     sprite = advance_world_scene_effect_timer_a(frame);
     if (frame.words[3] != 0x14U || frame.words[0x0B] != 0U ||
-        sprite.source != 0x0001FEB38U) {
+        sprite.records.size() != 3U || sprite.first_sequence != 0U ||
+        sprite.next_sequence != 3U || sprite.records[0].x != 6 ||
+        sprite.records[0].y != 48 ||
+        sprite.records[0].attributes != 0x4381U) {
         return 14;
     }
 
@@ -166,16 +173,41 @@ int main() {
     frame.words[0x0E] = 9U;
     sprite = advance_world_scene_effect_timer_b(frame);
     if (frame.words[0x0D] != 0x0AU || frame.words[0x0E] != 0U ||
-        sprite.y != 37 || sprite.source != 0x0001FEADEU) {
+        sprite.records.size() != 2U || sprite.records[0].x != -4 ||
+        sprite.records[0].y != 22 || sprite.records[0].size != 0x0FU ||
+        sprite.records[0].attributes != 0x434EU ||
+        sprite.records[1].x != 28 || sprite.records[1].y != 36) {
         return 15;
     }
 
     frame.words[0x10] = 0U;
     frame.words[0x0F] = 39U;
     sprite = advance_world_scene_effect_timer_c(frame);
-    if (frame.words[0x10] != 4U || frame.words[0x0F] != 0U || sprite.x != 30 ||
-        sprite.y != 109 || sprite.source != 0x0001FEC34U) {
+    if (frame.words[0x10] != 4U || frame.words[0x0F] != 0U ||
+        sprite.records.size() != 2U || sprite.records[0].x != -22 ||
+        sprite.records[0].y != 94 || sprite.records[0].size != 0x09U ||
+        sprite.records[0].attributes != 0x440FU ||
+        sprite.records[1].x != -22 || sprite.records[1].y != 60) {
         return 16;
+    }
+
+    frame.words[0x10] = 0U;
+    frame.words[0x0F] = 3U;
+    sprite = advance_world_scene_effect_timer_c(frame, 11U);
+    if (frame.words[0x10] != 4U || frame.words[0x0F] != 4U ||
+        sprite.frame_index != 4U || sprite.first_sequence != 11U ||
+        sprite.next_sequence != 11U || !sprite.records.empty()) {
+        return 17;
+    }
+
+    frame.words[0x0C] = 1U;
+    sprite = refresh_world_scene_effect_sprites(frame, 7U);
+    if (sprite.frame_index != 1U || sprite.first_sequence != 7U ||
+        sprite.next_sequence != 10U || sprite.records.size() != 3U ||
+        sprite.records[0].x != 2 || sprite.records[0].y != 6 ||
+        sprite.records[0].sequence != 7U ||
+        sprite.records[0].attributes != 0x431AU) {
+        return 18;
     }
 
     const auto entities = render_title_intro_scene_entities(100, 200, 3U);
@@ -184,7 +216,7 @@ int main() {
         entities[0].attributes != 0x24F6U || entities[1].y != 101 ||
         entities[1].x != 193 || entities[1].sequence != 4U ||
         entities[1].attributes != 0x24F8U) {
-        return 17;
+        return 19;
     }
 
     WorldFrameServiceState coordinator_frame{};
@@ -193,16 +225,23 @@ int main() {
     WorldSceneEntityEffectCallbacks coordinator_callbacks{};
     std::vector<int> coordinator_order;
     std::vector<WorldSceneEffectPhaseAction> phase_actions;
-    std::vector<WorldSceneEffectSpriteBuild> published_sprites;
+    std::vector<BuiltSpriteRecord> published_sprites;
     coordinator_callbacks.project_entity_screen_position =
         [&coordinator_order] { coordinator_order.push_back(1); };
-    coordinator_callbacks.publish_sprite =
-        [&coordinator_order, &published_sprites](const auto& sprite) {
+    coordinator_callbacks.publish_sprites =
+        [&coordinator_order, &published_sprites](const auto& batch) {
             coordinator_order.push_back(2);
-            published_sprites.push_back(sprite);
+            published_sprites.insert(published_sprites.end(),
+                                     batch.records.begin(),
+                                     batch.records.end());
         };
     coordinator_callbacks.refresh_world_scene_effect_sprites =
-        [&coordinator_order] { coordinator_order.push_back(3); };
+        [&coordinator_order, &published_sprites](const auto& batch) {
+            coordinator_order.push_back(3);
+            published_sprites.insert(published_sprites.end(),
+                                     batch.records.begin(),
+                                     batch.records.end());
+        };
     coordinator_callbacks.phase_callbacks.copy_resource_metadata =
         [&phase_actions](const WorldSceneEffectMetadataSource) {
             phase_actions.push_back(
@@ -229,7 +268,7 @@ int main() {
     if (coordinator_result.action !=
             WorldSceneEntityEffectAction::no_change ||
         !coordinator_order.empty()) {
-        return 18;
+        return 20;
     }
 
     coordinator_runtime.scene_mode = 2U;
@@ -238,7 +277,7 @@ int main() {
         coordinator_frame, coordinator_runtime, coordinator_callbacks);
     if (coordinator_result.action !=
             WorldSceneEntityEffectAction::no_change) {
-        return 19;
+        return 21;
     }
 
     coordinator_order.clear();
@@ -249,7 +288,7 @@ int main() {
     if (coordinator_result.action !=
             WorldSceneEntityEffectAction::advanced_resource_phase ||
         coordinator_frame.words[0x12] != 0U || phase_actions.size() != 1U) {
-        return 20;
+        return 22;
     }
     coordinator_frame.words[0x12] = 0U;
     coordinator_result = advance_world_scene_entity_effect(
@@ -259,7 +298,7 @@ int main() {
         coordinator_frame.words[0x11] != 1U ||
         coordinator_frame.words[0x12] != 0x0100U ||
         coordinator_order != std::vector<int>{4}) {
-        return 21;
+        return 23;
     }
 
     coordinator_order.clear();
@@ -275,9 +314,9 @@ int main() {
         coordinator_frame.words[2] != 0x0248U ||
         coordinator_frame.words[0x11] != 2U ||
         coordinator_frame.words[0x12] != 0x0028U ||
-        published_sprites.size() != 2U ||
+        published_sprites.size() != 7U ||
         coordinator_order != std::vector<int>{1, 2, 2, 3}) {
-        return 22;
+        return 24;
     }
 
     coordinator_order.clear();
@@ -288,7 +327,7 @@ int main() {
     if (coordinator_result.action !=
             WorldSceneEntityEffectAction::rendered_active_effect ||
         coordinator_order != std::vector<int>{1, 2, 2, 2, 3}) {
-        return 23;
+        return 25;
     }
 
     coordinator_order.clear();
@@ -304,7 +343,7 @@ int main() {
         coordinator_result.selected_entity_index.value() != 2U ||
         coordinator_runtime.candidate_entities[2].behavior_flags != 0x01U ||
         coordinator_order != std::vector<int>{1, 2, 2, 2, 3, 7, 8}) {
-        return 24;
+        return 26;
     }
 
     coordinator_runtime.candidate_entities[2] = {};
@@ -322,7 +361,7 @@ int main() {
         coordinator_runtime.auxiliary_entity.secondary_effect_phase != 4U ||
         coordinator_runtime.auxiliary_entity.record_flags != 0x21U ||
         coordinator_order != std::vector<int>{1, 2, 2, 2, 3, 6, 7, 8}) {
-        return 25;
+        return 27;
     }
 
     coordinator_order.clear();
@@ -334,7 +373,7 @@ int main() {
     if (coordinator_result.action !=
             WorldSceneEntityEffectAction::completed_world_activity ||
         coordinator_order != std::vector<int>{1, 2, 2, 2, 3, 5}) {
-        return 26;
+        return 28;
     }
     return 0;
 }
