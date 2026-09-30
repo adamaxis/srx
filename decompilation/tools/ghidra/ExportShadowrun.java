@@ -305,6 +305,7 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x000011C0L, "write_repeated_vdp_grid");
         names.put(0x000011F6L, "write_linear_vdp_grid");
         names.put(0x000042B0L, "initialize_joshua_archetype_selection");
+        names.put(0x000042E6L, "initialize_recruited_runner_live_slot");
         names.put(0x000042F2L, "initialize_primary_roster_template");
         names.put(0x0000431CL, "initialize_secondary_roster_template");
         names.put(0x000593FCL, "validate_backup_game_save");
@@ -355,6 +356,13 @@ public class ExportShadowrun extends GhidraScript {
         names.put(0x00020E92L, "write_electromagnetic_lock_choice_grid");
         names.put(0x00020EC2L, "prepare_building_security_terminal_prompt");
         names.put(0x00021616L, "prepare_electromagnetic_lock_resolution");
+        names.put(0x00021226L, "prepare_recruited_runner_service_offer");
+        names.put(0x00021318L,
+                  "resolve_recruited_runner_free_permanent_hire");
+        names.put(0x00021326L,
+                  "resolve_recruited_runner_short_term_payment");
+        names.put(0x00021332L,
+                  "resolve_recruited_runner_permanent_payment");
         names.put(0x000213CAL, "resolve_stoker_debt_collection_command");
         names.put(0x000213E2L, "resolve_stoker_jump_house_referral_command");
         names.put(0x000213FAL, "resolve_stoker_motel_debt_payment");
@@ -1034,6 +1042,18 @@ public class ExportShadowrun extends GhidraScript {
         ensureReviewedInlineFunction(
             program, 0x00021616L, 0x00021628L,
             "prepare_electromagnetic_lock_resolution");
+        ensureReviewedInlineFunction(
+            program, 0x00021226L, 0x00021318L,
+            "prepare_recruited_runner_service_offer");
+        ensureReviewedInlineFunction(
+            program, 0x00021318L, 0x00021326L,
+            "resolve_recruited_runner_free_permanent_hire");
+        ensureReviewedInlineFunction(
+            program, 0x00021326L, 0x00021332L,
+            "resolve_recruited_runner_short_term_payment");
+        ensureReviewedInlineFunction(
+            program, 0x00021332L, 0x000213CAL,
+            "resolve_recruited_runner_permanent_payment");
         ensureReviewedInlineFunction(
             program, 0x000249C4L, 0x000249FCL,
             "resolve_stoker_motel_arrival_command");

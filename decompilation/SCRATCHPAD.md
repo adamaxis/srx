@@ -967,6 +967,35 @@ stick...` and continues through Michael's package contents and letter
 sequence. `resolve_stoker_motel_debt_payment` now exposes those exact
 mutations as typed state; it does not emulate the source memory addresses.
 
+## Recruited-runner service offer and payment: 0x21226, 0x21318, 0x21326, 0x21332
+
+The mode-command table's entries `0x21318`, `0x21326`, and `0x21332` are not
+Stoker handlers. They are the shared recruited-runner service choices: free
+permanent hire, paid short-term single run, and paid permanent hire. The common
+body compares the selected fee against the nuyen balance, subtracts it, calls
+the live-slot initializer at `0x42E6`, seeds the selected slot's two ten-frame
+service meters, runs the entity-animation triplet, clears bit 0 on the selected
+field entity, copies that entity's `+0x04` position word into the new live
+runner record, and then runs the field asset/HUD setup. The native conversion
+keeps that order as typed roster state plus two presentation callbacks.
+
+The `0x42E6` branch is now named from its actual behavior: `FF0210` bit 0
+selects the secondary live runner slot, otherwise the primary slot is filled.
+The primary and secondary initializers remain the already-converted `0x42F2`
+and `0x431C` boundaries, including compact-record refresh through `0x5966E`.
+The source population byte is `0` for a short-term run and `0xFF` for either
+permanent path. Selected runner index `9` is the extracted Stark record, so
+the success prompt is the source Michael-avenging follow-up; other indices
+return the generic hired-runner follow-up.
+
+The offer-preparation entry at `0x21226` is deliberately not marked complete.
+Its two-slot availability test is converted, but its fee arithmetic still
+needs a direct trace through `FFFC12`, `FFE640`, ROM table `0x12CA54`, and the
+selected runner statistics. Its both-slots-full return at `0xFF988` is raw
+text rather than a normal prompt descriptor, so it also needs a caller-level
+trace before it can be represented as a native prompt. The payment conversion
+accepts the source-computed fees rather than inventing a replacement formula.
+
 ## 2026-09-30 Stoker motel source mapping
 
 The Stoker source mapping is now corrected rather than guessed. `0x1F65A`

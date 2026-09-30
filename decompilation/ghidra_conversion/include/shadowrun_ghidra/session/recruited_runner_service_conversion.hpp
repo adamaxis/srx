@@ -1,0 +1,117 @@
+#pragma once
+
+#include "shadowrun_ghidra/session/runner_roster_conversion.hpp"
+
+#include <cstdint>
+#include <functional>
+#include <vector>
+
+namespace shadowrun::ghidra_conversion {
+
+// The mode-command table routes these three commands to the same source body:
+//   0x21326: pay the short-term single-run fee (D7 = 0)
+//   0x21332: pay the permanent-hire fee (D7 = 0xFF)
+//   0x21318: zero the permanent fee, then take the 0x21332 path
+enum class RecruitedRunnerServiceOffer {
+    short_term_run,
+    permanent_hire,
+    free_permanent_hire,
+};
+
+enum class RecruitedRunnerServiceAvailability {
+    available,
+    roster_full,
+};
+
+enum class RecruitedRunnerServicePrompt {
+    none,
+    insufficient_funds,
+    generic_runner_followup,
+    stark_avenging_michael_followup,
+};
+
+enum class RecruitedRunnerServiceAction {
+    completed,
+    insufficient_funds,
+    invalid_runner_template,
+    selected_entity_missing,
+    runner_record_source_unavailable,
+};
+
+// The command handlers use the selected field entity at FFE128.  The entity's
+// +0x10 bit 0 is cleared after a successful hire, and its +0x04 position word
+// is copied into the selected live runner record.  These are named host fields
+// rather than a pointer into the Genesis work area.
+struct RecruitedRunnerServiceTarget {
+    bool present = false;
+    std::uint8_t service_flags = 0;
+    std::uint16_t source_position_y = 0;
+};
+
+// ROM 0x2138E seeds the selected slot's two ten-frame service meters.  The
+// names describe the native state; the comments retain the exact source
+// consumers for audit purposes.
+struct RecruitedRunnerServiceTimers {
+    std::uint8_t primary_delay = 0;     // FF024C
+    std::uint8_t primary_behavior = 0;  // FF029C
+    std::uint8_t secondary_delay = 0;   // FF034C
+    std::uint8_t secondary_behavior = 0; // FF039C
+};
+
+// The offer-preparation routine at ROM 0x21226 computes these two fees before
+// the command handlers below run.  Its source arithmetic still needs a
+// separate trace of FFFC12, FFE640, 0x12CA54, and the selected runner stats;
+// this state therefore accepts the already-computed values instead of
+// inventing a replacement formula.
+struct RecruitedRunnerServiceState {
+    std::uint32_t funds = 0;             // FFFBFE
+    std::uint32_t short_term_fee = 0;    // FFEF16
+    std::uint32_t permanent_fee = 0;     // FFEF36
+    std::uint8_t selected_runner_template_index = 0; // FFF0AE
+
+    RunnerRosterState roster{};
+    std::vector<RunnerRosterTemplate> templates;
+    std::vector<CompactRunnerRecord> compact_records;
+    RecruitedRunnerServiceTarget selected_entity{};
+    RecruitedRunnerServiceTimers timers{};
+};
+
+// 0x38FA and 0x3404 are presentation/animation boundaries.  They remain
+// callbacks so this session conversion can preserve their source order
+// without pulling field rendering into the roster model.
+struct RecruitedRunnerServiceCallbacks {
+    std::function<void()> run_entity_animation_triplet;
+    std::function<void()> upload_field_asset_setup;
+};
+
+struct RecruitedRunnerServiceResult {
+    RecruitedRunnerServiceAction action =
+        RecruitedRunnerServiceAction::selected_entity_missing;
+    RecruitedRunnerServicePrompt prompt =
+        RecruitedRunnerServicePrompt::none;
+    std::uint32_t charged_amount = 0;
+    RunnerRecordDestination destination = RunnerRecordDestination::default_record;
+    RunnerRosterTemplateAction roster_action =
+        RunnerRosterTemplateAction::invalid_template_index;
+    RunnerRecordPopulationAction population_action =
+        RunnerRecordPopulationAction::no_source_records;
+};
+
+// ROM 0x21226 tests the service-active bit in both live recruited-runner
+// records before presenting the offer.  The returned full state is kept
+// separate because the source's no-capacity return at 0xFF988 is not a normal
+// prompt descriptor and still needs a direct caller trace.
+RecruitedRunnerServiceAvailability recruited_runner_service_availability(
+    const RunnerRosterState& roster);
+
+// ROM 0x21318/0x21326/0x21332 plus the common body at 0x2133C.  This converts
+// the recruited-runner dialog's short-term, permanent, and free-permanent
+// choices into typed state mutations.  The source's selected index 9 is the
+// extracted Stark record, whose success descriptor is the Michael-avenging
+// follow-up rather than the generic hired-runner response.
+RecruitedRunnerServiceResult resolve_recruited_runner_service_payment(
+    RecruitedRunnerServiceState& state,
+    RecruitedRunnerServiceOffer offer,
+    const RecruitedRunnerServiceCallbacks& callbacks = {});
+
+} // namespace shadowrun::ghidra_conversion

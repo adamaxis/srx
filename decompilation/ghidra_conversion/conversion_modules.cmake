@@ -50,6 +50,7 @@ file(GLOB SHADOWRUN_MODULE_RUNNER_RECORDS CONFIGURE_DEPENDS
 file(GLOB SHADOWRUN_MODULE_ROSTER_SAVE CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/session/runner_animation_grid_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/session/runner_record_selection_conversion.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/session/recruited_runner_service_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/session/runner_roster_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/session/runner_selection_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/session/runner_switch_conversion.cpp"
