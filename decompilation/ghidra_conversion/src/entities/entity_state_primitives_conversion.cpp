@@ -18,17 +18,22 @@ EffectSlotAllocation allocate_first_free_effect_slot_record(
     std::array<std::uint8_t, 18>& slot_state) {
     std::uint8_t slot = 0;
     std::uint16_t record_parameter = 0x0049U;
+    std::uint16_t record_auxiliary_offset = 0x0920U;
     for (std::size_t index = 0; index < slot_state.size(); ++index) {
         if (slot_state[index] == 0U) {
             slot_state[index] = 1U;
             return EffectSlotAllocation{
-                static_cast<std::uint8_t>(index), record_parameter, false};
+                static_cast<std::uint8_t>(index), record_parameter,
+                record_auxiliary_offset, false};
         }
         slot = static_cast<std::uint8_t>(index + 1U);
         record_parameter = static_cast<std::uint16_t>(
             record_parameter + 0x0018U);
+        record_auxiliary_offset = static_cast<std::uint16_t>(
+            record_auxiliary_offset + 0x0300U);
     }
-    return EffectSlotAllocation{slot, record_parameter, true};
+    return EffectSlotAllocation{
+        slot, record_parameter, record_auxiliary_offset, true};
 }
 
 std::uint8_t allocate_first_free_effect_slot(

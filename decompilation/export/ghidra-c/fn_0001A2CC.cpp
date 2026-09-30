@@ -4,6 +4,10 @@
 // Decompile status: ok
 // Calls recovered from direct call instructions:
 //   (none)
+// Direct disassembly also seeds the source's secondary outputs before the
+// scan: D1 starts at 0x49 and advances by 0x18 per occupied slot, while A2
+// starts at 0x0920 and advances by 0x0300. Callers consume those registers
+// alongside D0; the typed conversion exposes all three outputs.
 
 
 short allocate_first_free_effect_slot(void)

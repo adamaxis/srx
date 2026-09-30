@@ -39,14 +39,17 @@ void schedule_entity_collision_recheck(EntityReactionState& state);
 // eighteen slots and returns 18 as the full-table sentinel.
 struct EffectSlotAllocation {
     std::uint8_t slot = 0;
+    // D1 = 0x49 + slot * 0x18, consumed by effect records at +0x20/+0x2A.
     std::uint16_t record_parameter = 0;
+    // A2.w = 0x920 + slot * 0x300, consumed by the spawned effect at +0x26.
+    std::uint16_t record_auxiliary_offset = 0;
     bool table_full = false;
 };
 
-// The source also leaves D1 pointing at the effect-record parameter associated
-// with the selected slot. Keep that second return value explicit for callers
-// such as 0x14C7C; the simpler wrapper below retains the slot-only contract
-// used by other converted callers.
+// The source also leaves D1 and A2 pointing at slot-specific effect-record
+// data. Keep both outputs explicit for callers such as 0x15646 and 0x14C7C;
+// the simpler wrapper below retains the slot-only contract used by other
+// converted callers.
 EffectSlotAllocation allocate_first_free_effect_slot_record(
     std::array<std::uint8_t, 18>& slot_state);
 

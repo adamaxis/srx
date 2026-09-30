@@ -19,9 +19,9 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x10B5A	menu asset batch (4)	ghidra_conversion::transfer_menu_asset_batch	shadowrun_menu_system	partial		Shared four-block menu transfer choreography converted
 0x10BC4	menu asset batch (8, buffer copy)	ghidra_conversion::transfer_menu_asset_batch	shadowrun_menu_system	partial		Buffer-copy hook followed by eight counted tile uploads converted
 0x10C96	menu asset batch (8)	ghidra_conversion::transfer_menu_asset_batch	shadowrun_menu_system	partial		Eight counted tile uploads and display-command restore converted
-0x1A304	effect slot clear	ghidra_conversion::clear_effect_slot	shadowrun_native_port	partial		Typed bounded clear of one effect-slot occupancy byte converted
-0x1A310	effect slot table clear	ghidra_conversion::clear_effect_slots	shadowrun_native_port	partial		Typed clear of all eighteen effect-slot occupancy bytes converted
-0x1A322	entity effect pending clear	ghidra_conversion::clear_entity_effect_pending_records	shadowrun_native_port	partial		Global marker reset and thirteen entity pending-flag clears converted
+0x1A304	effect slot clear	ghidra_conversion::clear_effect_slot	shadowrun_ghidra_entity_state_primitives	partial		Typed bounded clear of one effect-slot occupancy byte converted
+0x1A310	effect slot table clear	ghidra_conversion::clear_effect_slots	shadowrun_ghidra_entity_state_primitives	partial		Typed clear of all eighteen effect-slot occupancy bytes converted
+0x1A322	entity effect pending clear	ghidra_conversion::clear_entity_effect_pending_records	shadowrun_ghidra_entity_state_primitives	partial		Global marker reset and thirteen entity pending-flag clears converted
 0x13AF2	entity action threshold scan	ghidra_conversion::find_first_entity_action_below_threshold	shadowrun_native_port	partial		Typed eight-byte first-below-threshold scan converted without source record addressing
 0x13A40	entity anchor position copy	ghidra_conversion::copy_entity_anchor_position	shadowrun_native_port	partial		Typed two-word anchor-position copy converted
 0x05622	entity runtime cleanup	ghidra_conversion::clear_entity_runtime_fields	shadowrun_native_port	partial		Typed ten-record transient clear and caller-mask application converted
@@ -144,7 +144,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x118C6	inventory action selector	ghidra_conversion::cycle_inventory_action_selector	shadowrun_menu_system	partial		Typed 2..5 action wrap with the source underflow redraw request
 0xA7E4	entity slot order initialization	ghidra_conversion::initialize_entity_slot_order	shadowrun_native_port	partial		Typed sixteen-slot initialization replacing source record-pointer arithmetic
 0xAE5E	entity collision recheck scheduling	ghidra_conversion::schedule_entity_collision_recheck	shadowrun_native_port	partial		Typed pending-reaction bit and collision-recheck continuation
-0x1A2CC	first free effect slot	ghidra_conversion::allocate_first_free_effect_slot_record	shadowrun_native_port	partial		Typed eighteen-slot allocation with D0 slot, D1 effect-record parameter, and full-table carry sentinel; slot-only wrapper retained
+0x1A2CC	first free effect slot	ghidra_conversion::allocate_first_free_effect_slot_record	shadowrun_ghidra_entity_state_primitives	partial		Typed eighteen-slot allocation with D0 slot, D1 record parameter, A2.w slot-derived auxiliary offset, and full-table carry sentinel; slot-only wrapper retained
 0x14756	entity route flag cleanup	ghidra_conversion::clear_entity_route_flags	shadowrun_native_port	partial		Typed movement flag cleanup for completed or failed route selection
 0x14682	obstruction route selection	ghidra_conversion::select_obstruction_route	shadowrun_ghidra_entity_animation_route	partial		Sets +0xB0 bit 1, rejects occupied targets, writes direct or two-tile bypass routes, and carries the heading-driven 0x14AF4 retry into the typed 0x149C0 queue
 0x14764	alternate route tile	ghidra_conversion::find_alternate_route_tile	shadowrun_native_port	partial		Bounded primary accumulation with source side-open stop behavior
@@ -173,7 +173,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x14C2E	entity axis relation flags	ghidra_conversion::derive_entity_axis_relation_flags	shadowrun_native_port	partial		Typed X/Y no-greater-than target flags
 0x15A8C	first available entity slot	ghidra_conversion::find_first_available_entity_slot	shadowrun_native_port	partial		Typed six-slot scan returning 9..14 or the source sentinel 15
 0x1DBAA	world activity timeout	ghidra_conversion::schedule_world_activity_timeout	shadowrun_native_port	partial		Typed guarded-scene gate and short/long timeout scheduling
-0x1A342	world effect entity slot	ghidra_conversion::find_first_available_world_effect_entity_slot	shadowrun_native_port	partial		Typed seven-slot scan returning 3..9 or sentinel 10
+0x1A342	world effect entity slot	ghidra_conversion::find_first_available_world_effect_entity_slot	shadowrun_ghidra_world_effects	partial		Typed seven-slot scan returning 3..9 or sentinel 10
 0x1DF00	entity effect pending clear	ghidra_conversion::clear_entity_effect_pending_flags	shadowrun_native_port	partial		Typed six-record bit-0 clear
 0x1DFC4	world effect trigger	ghidra_conversion::advance_world_effect_trigger	shadowrun_native_port	partial		Typed transition countdown, cadence/PRNG gate, region scan, and transition delegation
 0x1E04A	world effect transition	ghidra_conversion::begin_world_effect_transition	shadowrun_native_port	partial		Typed scene/mode gate, transition timer, latch, and explicit effect boundaries

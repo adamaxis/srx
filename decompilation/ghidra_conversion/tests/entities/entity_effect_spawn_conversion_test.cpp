@@ -33,7 +33,7 @@ int main() {
         {}};
     std::array<std::uint8_t, 18> effect_slots{};
     const auto no_target = spawn_entity_effect_record(
-        parent, std::nullopt, effect_slots, 0xABCDU, callbacks);
+        parent, std::nullopt, effect_slots, callbacks);
     if (!expect(no_target.action ==
                     EntityEffectSpawnAction::spawned_without_target &&
                 !no_target.source_carry && no_target.record.has_value() &&
@@ -51,7 +51,7 @@ int main() {
                 no_target_record.animation_resource == 0U &&
                 no_target_record.effect_slot == 0U &&
                 no_target_record.effect_record_parameter == 0x0049U &&
-                no_target_record.effect_auxiliary_value == 0xABCDU &&
+                no_target_record.effect_auxiliary_offset == 0x0920U &&
                 no_target_record.effect_distance_steps == 0x00B4U &&
                 no_target_record.movement_offset == -0x500 &&
                 no_target_record.vertical_velocity == 0xF400U &&
@@ -93,7 +93,7 @@ int main() {
     std::array<std::uint8_t, 18> linked_slots{};
     const auto linked = spawn_entity_effect_record(
         parent, EntityEffectSpawnTarget{0x1800U, 0x2000U}, linked_slots,
-        0x1234U, linked_callbacks);
+        linked_callbacks);
     if (!expect(linked.action ==
                     EntityEffectSpawnAction::spawned_toward_target &&
                 !linked.source_carry && linked.record.has_value())) {
@@ -124,7 +124,7 @@ int main() {
         {}};
     std::array<std::uint8_t, 18> expired_slots{};
     const auto expired = spawn_entity_effect_record(
-        expired_parent, std::nullopt, expired_slots, 0U, expired_callbacks);
+        expired_parent, std::nullopt, expired_slots, expired_callbacks);
     if (!expect(expired.action ==
                     EntityEffectSpawnAction::animation_window_expired &&
                 expired.source_carry && !expired.record.has_value() &&
@@ -135,7 +135,7 @@ int main() {
     EntityEffectSpawnCallbacks empty_allocator{
         []() -> std::optional<std::uint16_t> { return std::nullopt; }, {}, {}, {}};
     const auto no_entity = spawn_entity_effect_record(
-        parent, std::nullopt, expired_slots, 0U, empty_allocator);
+        parent, std::nullopt, expired_slots, empty_allocator);
     if (!expect(no_entity.action == EntityEffectSpawnAction::no_entity_slot &&
                 no_entity.source_carry && !no_entity.record.has_value())) {
         return 7;
@@ -144,7 +144,7 @@ int main() {
     std::array<std::uint8_t, 18> full_slots{};
     full_slots.fill(1U);
     const auto full = spawn_entity_effect_record(
-        parent, std::nullopt, full_slots, 0U, callbacks);
+        parent, std::nullopt, full_slots, callbacks);
     if (!expect(full.action == EntityEffectSpawnAction::effect_table_full &&
                 full.source_carry && full.record.has_value() &&
                 !full.record->active && full.record->effect_slot == 0U &&
@@ -161,7 +161,7 @@ int main() {
     std::array<std::uint8_t, 18> unresolved_slots{};
     const auto unresolved = spawn_entity_effect_record(
         parent, EntityEffectSpawnTarget{0x1800U, 0x2000U}, unresolved_slots,
-        0U, unresolved_callbacks);
+        unresolved_callbacks);
     if (!expect(unresolved.action ==
                     EntityEffectSpawnAction::target_transform_unresolved &&
                 unresolved.source_carry && unresolved.record.has_value() &&

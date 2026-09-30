@@ -51,6 +51,7 @@ int main() {
         allocate_first_free_effect_slot_record(record_effects);
     if (!expect(record_allocation.slot == 1U &&
                 record_allocation.record_parameter == 0x0061U &&
+                record_allocation.record_auxiliary_offset == 0x0C20U &&
                 !record_allocation.table_full && record_effects[1] == 1U)) {
         return 12;
     }
@@ -60,6 +61,7 @@ int main() {
         allocate_first_free_effect_slot_record(record_effects);
     if (!expect(full_record_allocation.slot == 18U &&
                 full_record_allocation.record_parameter == 0x01F9U &&
+                full_record_allocation.record_auxiliary_offset == 0x3F20U &&
                 full_record_allocation.table_full)) {
         return 13;
     }

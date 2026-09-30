@@ -54,7 +54,6 @@ EntityEffectSpawnResult spawn_entity_effect_record(
     const EntityEffectSpawnParent& parent,
     const std::optional<EntityEffectSpawnTarget> linked_target,
     std::array<std::uint8_t, 18>& effect_slots,
-    const std::uint16_t effect_auxiliary_value,
     const EntityEffectSpawnCallbacks& callbacks) {
     // 0x15646: the source masks the parent's animation counter before the
     // unsigned <= 0x3C window test. The host keeps the carry exit explicit.
@@ -98,7 +97,6 @@ EntityEffectSpawnResult spawn_entity_effect_record(
     record.behavior_type = 0x02U;
     record.effect_distance_steps = 0x00B4U;
     record.active = true;
-    record.effect_auxiliary_value = effect_auxiliary_value;
 
     const auto allocation = allocate_first_free_effect_slot_record(effect_slots);
     if (allocation.table_full) {
@@ -111,6 +109,7 @@ EntityEffectSpawnResult spawn_entity_effect_record(
     }
     record.effect_slot = allocation.slot;
     record.effect_record_parameter = allocation.record_parameter;
+    record.effect_auxiliary_offset = allocation.record_auxiliary_offset;
 
     const auto offsets = direction_offsets(record.heading);
     record.directional_probe_x = add_word(record.world_x, offsets.probe_x);

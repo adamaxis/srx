@@ -41,7 +41,7 @@ struct EntityEffectSpawnRecord {
     std::uint16_t animation_resource = 0; // source record +0x16
     std::uint16_t effect_slot = 0; // source record +0x30
     std::uint16_t effect_record_parameter = 0; // source record +0x20
-    std::uint16_t effect_auxiliary_value = 0; // source record +0x26
+    std::uint16_t effect_auxiliary_offset = 0; // source record +0x26, A2.w
     std::uint16_t effect_distance_steps = 0; // source record +0x40
     std::int16_t movement_offset = 0; // source record +0x36
     std::uint16_t vertical_velocity = 0; // source record +0x34
@@ -98,7 +98,6 @@ EntityEffectSpawnResult spawn_entity_effect_record(
     const EntityEffectSpawnParent& parent,
     std::optional<EntityEffectSpawnTarget> linked_target,
     std::array<std::uint8_t, 18>& effect_slots,
-    std::uint16_t effect_auxiliary_value,
     const EntityEffectSpawnCallbacks& callbacks);
 
 } // namespace shadowrun::ghidra_conversion
