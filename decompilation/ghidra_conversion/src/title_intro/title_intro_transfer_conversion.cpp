@@ -1,5 +1,8 @@
 #include "shadowrun_ghidra/title_intro/title_intro_transfer_conversion.hpp"
 
+#include "shadowrun_ghidra/entities/entity_route_primitives_conversion.hpp"
+#include "shadowrun_ghidra/entities/entity_state_primitives_conversion.hpp"
+
 namespace shadowrun::ghidra_conversion {
 
 void clear_title_intro_display_buffer(
@@ -30,6 +33,39 @@ void reset_world_frame_service_state(WorldFrameServiceState& state) {
     state.words[0x12] = 0x00B4U;
 }
 
+WorldSceneSpecialEffectSpawnResult spawn_scene_special_effect(
+    WorldSceneSpecialEffectSpawnState& state) {
+    const auto entity_slot =
+        find_first_available_entity_slot(state.candidate_entity_flags);
+    if (entity_slot >= 15U) {
+        return {WorldSceneSpecialEffectSpawnAction::no_entity_slot,
+                std::nullopt};
+    }
+
+    WorldSceneSpecialEffectRecord record{};
+    record.entity_slot = entity_slot;
+    record.active = true;
+
+    const auto allocation =
+        allocate_first_free_effect_slot_record(state.effect_slot_flags);
+    if (allocation.table_full) {
+        // 0x5D728 clears only bit 0. The copied record's bit 7 remains set,
+        // so expose the failed record rather than pretending no record was
+        // initialized.
+        record.active = false;
+        return {WorldSceneSpecialEffectSpawnAction::effect_table_full,
+                record};
+    }
+
+    state.candidate_entity_flags[entity_slot - 9U] =
+        static_cast<std::uint8_t>(
+            state.candidate_entity_flags[entity_slot - 9U] | 0x01U);
+    record.effect_slot = allocation.slot;
+    record.effect_record_parameter = allocation.record_parameter;
+    record.effect_auxiliary_offset = allocation.record_auxiliary_offset;
+    return {WorldSceneSpecialEffectSpawnAction::spawned, record};
+}
+
 WorldSceneEffectPhaseResult advance_world_scene_effect_phase(
     WorldFrameServiceState& state,
     const WorldSceneEffectPhaseCallbacks& callbacks) {
@@ -40,13 +76,14 @@ WorldSceneEffectPhaseResult advance_world_scene_effect_phase(
 
     WorldSceneEffectPhaseAction action =
         WorldSceneEffectPhaseAction::load_default_resource_metadata;
+    std::optional<WorldSceneSpecialEffectSpawnResult> special_effect_spawn;
     if (phase == 0x14) {
         action = WorldSceneEffectPhaseAction::play_special_effect_audio;
         if (callbacks.play_audio) {
             callbacks.play_audio(WorldSceneEffectAudioCue::special_effect);
         }
         if (callbacks.spawn_special_effect) {
-            callbacks.spawn_special_effect();
+            special_effect_spawn = callbacks.spawn_special_effect();
         }
     } else if (phase == 0x16 || phase == 0x20 || phase == 0x21 ||
                phase == 0x23) {
@@ -81,7 +118,7 @@ WorldSceneEffectPhaseResult advance_world_scene_effect_phase(
     }
 
     state.dirty_flags = static_cast<std::uint8_t>(state.dirty_flags | 0x0DU);
-    return {action, state.dirty_flags};
+    return {action, state.dirty_flags, special_effect_spawn};
 }
 
 void spawn_world_scene_secondary_effect(

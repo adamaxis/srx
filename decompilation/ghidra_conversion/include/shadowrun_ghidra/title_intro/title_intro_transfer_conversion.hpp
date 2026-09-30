@@ -76,12 +76,75 @@ enum class WorldSceneEffectMetadataSource : std::uint8_t {
     transition_blank_resource,
 };
 
+enum class WorldSceneSpecialEffectBehavior {
+    audio_jitter_and_bounce,
+};
+
+enum class WorldSceneSpecialEffectSpawnAction {
+    spawned,
+    no_entity_slot,
+    effect_table_full,
+};
+
+// ROM 0x7361A fields that survive the 0x5D6BC template copy and are consumed
+// by the entity animation/terrain path. The remaining template bytes have no
+// proven consumer in this call chain and are not assigned invented meanings.
+struct WorldSceneSpecialEffectTemplateFields {
+    std::uint16_t animation_accumulator_step = 0x1000U; // +0x18
+    std::uint16_t animation_accumulator_limit = 0x1000U; // +0x1C
+    std::uint16_t movement_scale = 0x2000U; // +0x2C
+    std::int16_t terrain_probe_offset_x = 0x0A02; // +0x4C
+    std::int16_t terrain_probe_offset_y = 0x1E00; // +0x4E
+    std::uint8_t source_entity_variant = 0x03U; // +0x57
+};
+
+struct WorldSceneSpecialEffectRecord {
+    WorldSceneSpecialEffectTemplateFields template_fields{};
+    std::uint8_t entity_slot = 0; // +0x3E, source slot 9..14
+    std::uint16_t world_x = 0x1200U; // +0x00
+    std::uint16_t world_y = 0x02C0U; // +0x04
+    std::uint16_t behavior_type = 0x0002U; // +0x0E
+    bool randomized_motion_enabled = true; // +0x10 bit 7
+    bool active = false; // +0x10 bit 0
+    std::uint16_t animation_resource = 0x000CU; // +0x16
+    std::uint16_t effect_slot = 0; // +0x30
+    std::uint16_t effect_record_parameter = 0; // +0x20
+    std::uint16_t effect_auxiliary_offset = 0; // +0x26
+    std::uint8_t jitter_interval = 0x03U; // +0x41
+    std::uint16_t jitter_counter = 0; // +0x44
+    std::int16_t lifetime = -1; // +0x46
+    WorldSceneSpecialEffectBehavior behavior =
+        WorldSceneSpecialEffectBehavior::audio_jitter_and_bounce; // +0x3A
+    std::uint16_t effect_profile = 0x002AU; // +0x38
+};
+
+struct WorldSceneSpecialEffectSpawnState {
+    // The source scans the six world-scene entity records at slots 9..14 and
+    // tests only bit 0 of each record's +0x10 flags byte.
+    std::array<std::uint8_t, 6> candidate_entity_flags{};
+    // ROM 0x1A2CC scans the shared eighteen-entry effect table.
+    std::array<std::uint8_t, 18> effect_slot_flags{};
+};
+
+struct WorldSceneSpecialEffectSpawnResult {
+    WorldSceneSpecialEffectSpawnAction action =
+        WorldSceneSpecialEffectSpawnAction::no_entity_slot;
+    std::optional<WorldSceneSpecialEffectRecord> record;
+};
+
+// ROM 0x5D6BC: claim one of the six pre-title world-scene entity slots,
+// install the fixed-position special effect state, then claim an effect slot.
+// A full effect table leaves the copied entity record inactive, matching the
+// source's final BCLR of +0x10 bit 0.
+WorldSceneSpecialEffectSpawnResult spawn_scene_special_effect(
+    WorldSceneSpecialEffectSpawnState& state);
+
 struct WorldSceneEffectPhaseCallbacks {
     // ROM 0x530DE: the conversion exposes the source audio command as a
     // named cue; Windows audio playback remains outside this source layer.
     std::function<void(WorldSceneEffectAudioCue)> play_audio;
     // ROM 0x5D6BC: allocate and initialize the fixed-position special effect.
-    std::function<void()> spawn_special_effect;
+    std::function<WorldSceneSpecialEffectSpawnResult()> spawn_special_effect;
     // ROM 0x566D8: copy one of the two source-selected mode-resource blocks.
     std::function<void(WorldSceneEffectMetadataSource)>
         copy_resource_metadata;
@@ -91,6 +154,7 @@ struct WorldSceneEffectPhaseResult {
     WorldSceneEffectPhaseAction action =
         WorldSceneEffectPhaseAction::no_change;
     std::uint8_t dirty_flags = 0;
+    std::optional<WorldSceneSpecialEffectSpawnResult> special_effect_spawn;
 };
 
 // ROM 0x5D416: dispatch the staged pre-title/world-scene effect phase. The

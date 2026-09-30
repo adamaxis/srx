@@ -68,7 +68,7 @@ row-level report as context instead of being misreported as fall-through.
 These are remaining conversion-evidence sweeps, not permission to invent a
 replacement.
 
-### Pre-title world-scene effect slice: `0x5D260` / `0x5D29C` / `0x5D3E6` / `0x5D416` / `0x5D55C`
+### Pre-title world-scene effect slice: `0x5D260` / `0x5D29C` / `0x5D3E6` / `0x5D416` / `0x5D55C` / `0x5D6BC`
 
 The title-intro conversion now owns the concrete phase leaves that the
 generated catalog previously described only as generic intro contracts:
@@ -80,6 +80,12 @@ generated catalog previously described only as generic intro contracts:
   `0x16/0x20/0x21/0x23` transition metadata block, the five backward origin
   phases, the seven forward audio phases, and the default metadata block.
   Every handled phase publishes source dirty bits `0`, `2`, and `3`.
+- `0x5D6BC` now has a typed spawn conversion. It scans the six entity slots
+  `9..14`, installs the fixed world position `0x1200/0x02C0`, behavior type
+  `2`, animation resource `0x0C`, jitter interval `3`, lifetime `-1`, and
+  profile `0x2A`, then consumes the shared effect-slot allocator's slot,
+  parameter, and auxiliary offset. A full effect table returns the copied
+  record inactive, matching the source's `BCLR` of +0x10 bit 0.
 - `0x5D55C` advances the shared cadence counter and wraps its eight-position
   effect frame.
 - `0x5D29C` now owns the enclosing coordinator: it gates scene modes `2/3`,
@@ -91,11 +97,12 @@ generated catalog previously described only as generic intro contracts:
   back to world activity when its timer expires.
 
 The host contract uses named audio cues, metadata-source enums, scene-origin
-fields, typed sprite batches, and callbacks; it does not retain the source VDP
-command words or ROM addresses. The three timer leaves, the raw-origin
-`0x5D57E` refresh list, and the coordinator are separately tested. `0x5D6BC`
-allocator/template behavior remains the one explicit open boundary in this
-cluster and is not being claimed as converted by this slice.
+fields, typed sprite batches, and typed special-effect spawn results; it does
+not retain the source VDP command words or ROM addresses. The three timer
+leaves, the raw-origin `0x5D57E` refresh list, the coordinator, and the three
+`0x5D6BC` allocation exits are separately tested. This cluster remains
+`partial` because the full visual hill still needs an independent Genesis
+capture and defended image dump.
 
 The slot-availability audit also corrected a semantic narrowing in the typed
 conversion: `0x19C54 -> 0x19C5C` preserves the raw `FFFBCC` byte because the

@@ -57,6 +57,7 @@ int main() {
     };
     phase_callbacks.spawn_special_effect = [&phase_order] {
         phase_order.push_back(2);
+        return WorldSceneSpecialEffectSpawnResult{};
     };
     phase_callbacks.copy_resource_metadata = [&phase_order, &metadata_sources](
                                                 const WorldSceneEffectMetadataSource source) {
@@ -73,6 +74,7 @@ int main() {
             WorldSceneEffectPhaseAction::play_special_effect_audio ||
         phase_order != std::vector<int>{1, 2} || audio_cues.size() != 1U ||
         audio_cues[0] != WorldSceneEffectAudioCue::special_effect ||
+        !phase.special_effect_spawn.has_value() ||
         frame.scene_origin_x != 100 || frame.scene_origin_y != 200 ||
         frame.dirty_flags != 0x0DU) {
         return 6;
@@ -143,6 +145,51 @@ int main() {
     if (secondary_effect.behavior_flags != 0x01U ||
         phase_order != std::vector<int>{4, 5}) {
         return 12;
+    }
+
+    WorldSceneSpecialEffectSpawnState special_effect_state{};
+    auto special_effect = spawn_scene_special_effect(special_effect_state);
+    if (special_effect.action != WorldSceneSpecialEffectSpawnAction::spawned ||
+        !special_effect.record.has_value() ||
+        special_effect.record->entity_slot != 9U ||
+        special_effect.record->world_x != 0x1200U ||
+        special_effect.record->world_y != 0x02C0U ||
+        special_effect.record->behavior_type != 2U ||
+        !special_effect.record->randomized_motion_enabled ||
+        !special_effect.record->active ||
+        special_effect.record->animation_resource != 0x000CU ||
+        special_effect.record->effect_slot != 0U ||
+        special_effect.record->effect_record_parameter != 0x0049U ||
+        special_effect.record->effect_auxiliary_offset != 0x0920U ||
+        special_effect.record->jitter_interval != 3U ||
+        special_effect.record->lifetime != -1 ||
+        special_effect.record->effect_profile != 0x002AU ||
+        special_effect_state.candidate_entity_flags[0] != 1U ||
+        special_effect_state.effect_slot_flags[0] != 1U) {
+        return 101;
+    }
+
+    special_effect_state = {};
+    special_effect_state.candidate_entity_flags.fill(1U);
+    special_effect = spawn_scene_special_effect(special_effect_state);
+    if (special_effect.action !=
+            WorldSceneSpecialEffectSpawnAction::no_entity_slot ||
+        special_effect.record.has_value() ||
+        special_effect_state.effect_slot_flags[0] != 0U) {
+        return 102;
+    }
+
+    special_effect_state = {};
+    special_effect_state.effect_slot_flags.fill(1U);
+    special_effect = spawn_scene_special_effect(special_effect_state);
+    if (special_effect.action !=
+            WorldSceneSpecialEffectSpawnAction::effect_table_full ||
+        !special_effect.record.has_value() ||
+        special_effect.record->entity_slot != 9U ||
+        special_effect.record->active ||
+        !special_effect.record->randomized_motion_enabled ||
+        special_effect_state.candidate_entity_flags[0] != 0U) {
+        return 103;
     }
 
     frame.words[3] = 1U;
