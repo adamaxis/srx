@@ -18,6 +18,7 @@
 #include "shadowrun_ghidra/field/terrain_probe_conversion.hpp"
 #include "shadowrun_ghidra/field/field_mode_exit_transition_finalizer_conversion.hpp"
 #include "shadowrun_ghidra/field/field_runner_state_asset_refresh_conversion.hpp"
+#include "shadowrun_ghidra/integration/field_runtime_coordinator_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_session_bootstrap_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
 #include "shadowrun_ghidra/session/runner_switch_conversion.hpp"
@@ -26,6 +27,7 @@
 #include "shadowrun_ghidra/entities/entity_table_conversion.hpp"
 #include "shadowrun_ghidra/world/world_entity_conversion.hpp"
 #include "shadowrun_ghidra/world/world_effect_batch_conversion.hpp"
+#include "shadowrun_ghidra/world/world_frame_logic_conversion.hpp"
 #include "shadowrun_ghidra/world/world_scene_entity_conversion.hpp"
 
 #include <QImage>
@@ -70,6 +72,7 @@ public:
 
 private:
     void configure_callbacks();
+    void configure_runtime_coordinator_callbacks();
     void advance_field_movement();
     void initialize_field_entity_selection_state();
     void refresh_field_runner_state_and_assets();
@@ -110,8 +113,12 @@ private:
     integration::FieldSessionBootstrapInput input_;
     integration::FieldSessionBootstrapState state_;
     integration::FieldSessionBootstrapCallbacks callbacks_;
+    integration::FieldRuntimeCoordinatorState field_runtime_state_;
+    integration::FieldRuntimeCoordinatorCallbacks field_runtime_callbacks_;
     WorldFrameState world_frame_state_;
     WorldFrameCallbacks world_frame_callbacks_;
+    WorldFrameLogicState world_frame_logic_state_;
+    WorldFrameLogicCallbacks world_frame_logic_callbacks_;
     FieldViewportState viewport_state_;
     QImage field_map_;
     QImage field_hud_;

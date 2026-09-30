@@ -589,10 +589,99 @@ void FieldSceneRuntime::configure_callbacks() {
     callbacks_.sample_controller_input = [this] {
         source_boundary("field.controller.sample");
     };
+    configure_runtime_coordinator_callbacks();
     callbacks_.phase_changed = [this](
                                   const integration::FieldSessionBootstrapPhase phase) {
         source_boundary(std::string("field.bootstrap.phase.") +
                         integration::field_session_bootstrap_phase_name(phase));
+    };
+}
+
+void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
+    field_runtime_callbacks_.wait_for_vblank = [this] {
+        source_boundary("field.runtime.wait_for_vblank");
+    };
+    field_runtime_callbacks_.latch_controller_events = [this] {
+        source_boundary("field.runtime.latch_controller_events");
+    };
+    field_runtime_callbacks_.sample_controller_input = [this] {
+        source_boundary("field.runtime.sample_controller_input");
+        // The Qt d-pad remains held in field_controller_nibble_. Command and
+        // action bits are delivered by this typed sample when their input
+        // surface is connected; no Genesis controller word is synthesized
+        // merely to make the coordinator report a complete branch.
+        return static_cast<std::uint16_t>(0U);
+    };
+    field_runtime_callbacks_.service_entity_behavior_frames = [this] {
+        // The converted movement/behavior path is the first active entity
+        // consumer in this host. The remaining entity slots stay owned by the
+        // conversion callback boundary until their source records are wired.
+        advance_field_movement();
+    };
+    field_runtime_callbacks_.update_field_camera = [this] {
+        update_source_field_camera();
+    };
+    field_runtime_callbacks_.update_entity_render_pass = [this] {
+        update_entity_render_pass(state_.render_entities,
+                                  callbacks_.entity_render_pass);
+    };
+    field_runtime_callbacks_.advance_palette_fade = [this] {
+        source_boundary("field.runtime.advance_palette_fade");
+    };
+    field_runtime_callbacks_.advance_world_frame_logic = [this] {
+        advance_world_frame_logic(world_frame_logic_state_,
+                                  world_frame_logic_callbacks_);
+    };
+    field_runtime_callbacks_.handle_mode_action_event = [this] {
+        handle_field_mode_action_event();
+    };
+    field_runtime_callbacks_.run_fixed_audio_transaction =
+        [this](const std::uint16_t command) {
+            source_boundary("field.runtime.command_audio_transaction");
+            (void)command;
+        };
+    field_runtime_callbacks_.run_command_overview = [this] {
+        source_boundary("field.runtime.command_overview");
+    };
+    field_runtime_callbacks_.service_audio_tick = [this] {
+        source_boundary("field.runtime.command_audio_tick");
+    };
+    field_runtime_callbacks_.select_next_entity = [this] {
+        source_boundary("field.runtime.select_next_entity");
+    };
+    field_runtime_callbacks_.restart_field_session = [this] {
+        source_boundary("field.runtime.restart_field_session");
+    };
+    field_runtime_callbacks_.advance_field_scene_transition = [this] {
+        source_boundary("field.runtime.advance_scene_transition");
+    };
+
+    world_frame_logic_callbacks_.prepare_mode_entry = [this] {
+        source_boundary("field.world_logic.prepare_mode_entry");
+    };
+    world_frame_logic_callbacks_.begin_world_activity = [this] {
+        source_boundary("field.world_logic.begin_world_activity");
+    };
+    world_frame_logic_callbacks_.select_entity_service_target = [this] {
+        source_boundary("field.world_logic.select_entity_service_target");
+    };
+    world_frame_logic_callbacks_.reset_entity_service_records = [this] {
+        source_boundary("field.world_logic.reset_entity_service_records");
+    };
+    world_frame_logic_callbacks_.clear_inactive_entity_effects = [this] {
+        source_boundary("field.world_logic.clear_inactive_entity_effects");
+    };
+    world_frame_logic_callbacks_.process_terrain_work_batch = [this] {
+        source_boundary("field.world_logic.process_terrain_work_batch");
+    };
+    world_frame_logic_callbacks_.advance_world_effect_trigger = [this] {
+        source_boundary("field.world_logic.advance_world_effect_trigger");
+    };
+    world_frame_logic_callbacks_.trigger_world_effect_sequence = [this] {
+        source_boundary("field.world_logic.trigger_world_effect_sequence");
+    };
+    world_frame_logic_callbacks_.resolve_nearby_effects = [this] {
+        source_boundary("field.world_logic.resolve_nearby_effects");
     };
 }
 
@@ -768,6 +857,15 @@ bool FieldSceneRuntime::bootstrap(
     field_movement_transition_state_.field_origin_x =
         static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x);
     field_movement_transition_state_.world_activity_source_word = 0U;
+    field_runtime_state_ = integration::FieldRuntimeCoordinatorState{};
+    field_runtime_state_.scene_id =
+        state_.field_scene_buffers.scene_reference;
+    field_runtime_state_.field_mode =
+        state_.field_scene_buffers.field_resource_mode;
+    field_runtime_state_.display_dirty_flags = state_.display_dirty_flags;
+    world_frame_logic_state_ = WorldFrameLogicState{};
+    world_frame_logic_state_.world_mode =
+        state_.field_scene_buffers.scene_reference;
     field_entity_.direction =
         field_movement_direction_from_heading(field_movement_state_.heading);
 
@@ -1151,10 +1249,24 @@ void FieldSceneRuntime::advance_frame() {
     if (!ready_) {
         return;
     }
-    advance_field_movement();
-    update_source_field_camera();
-    update_entity_render_pass(state_.render_entities,
-                              callbacks_.entity_render_pass);
+    field_runtime_state_.field_activity_lock = state_.field_lock != 0U;
+    field_runtime_state_.world_activity_countdown =
+        world_frame_logic_state_.activity_countdown;
+    field_runtime_state_.display_service_word = state_.display_service_word;
+    field_runtime_state_.scene_id =
+        state_.field_scene_buffers.scene_reference;
+    field_runtime_state_.field_mode =
+        state_.field_scene_buffers.field_resource_mode;
+
+    const auto result = integration::advance_field_runtime_frame(
+        field_runtime_state_, field_runtime_callbacks_);
+    state_.display_dirty_flags = field_runtime_state_.display_dirty_flags;
+    state_.display_service_word = field_runtime_state_.display_service_word;
+    world_frame_logic_state_.activity_countdown =
+        field_runtime_state_.world_activity_countdown;
+    if (result == integration::FieldRuntimeFrameResult::callback_unresolved) {
+        source_boundary("field.runtime.callback_unresolved");
+    }
 }
 
 void FieldSceneRuntime::paint_field_entity(QPainter& painter) const {
