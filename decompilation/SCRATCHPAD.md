@@ -988,13 +988,15 @@ permanent path. Selected runner index `9` is the extracted Stark record, so
 the success prompt is the source Michael-avenging follow-up; other indices
 return the generic hired-runner follow-up.
 
-The offer-preparation entry at `0x21226` is deliberately not marked complete.
-Its two-slot availability test is converted, but its fee arithmetic still
-needs a direct trace through `FFFC12`, `FFE640`, ROM table `0x12CA54`, and the
-selected runner statistics. Its both-slots-full return at `0xFF988` is raw
-text rather than a normal prompt descriptor, so it also needs a caller-level
-trace before it can be represented as a native prompt. The payment conversion
-accepts the source-computed fees rather than inventing a replacement formula.
+The offer-preparation entry at `0x21226` is now typed as well. It reads the
+ten fee-base pairs at `0xFE640`, indexes the `0x12CA54` multiplier table with
+the selected runner's `FFFC12` progress byte plus one, and combines the
+`FF017A`/`FF018B`/`FF018C` source bytes with the source's byte-sized wrap,
+logical shift, unsigned divisions, and fee deductions. The two calculated
+values publish the short-term and permanent fees consumed by the dispatch
+family. Its both-slots-full return at `0xFF988` is raw text rather than a
+normal prompt descriptor, so it still needs a caller-level trace before it can
+be represented as a native prompt.
 
 ## 2026-09-30 Stoker motel source mapping
 

@@ -155,8 +155,9 @@ The already-confirmed extraction families include:
 - recruited-runner service state: the short-term single-run and permanent-hire
   command family at `0x21226` through `0x213CA`, with typed fee inputs,
   primary/secondary roster-slot selection, active-entity handoff, and field
-  animation/upload callbacks. The fee-preparation arithmetic and the source's
-  special no-capacity return remain an explicit pending extraction boundary;
+  animation/upload callbacks. The ten-entry fee schedule and source cost
+  arithmetic are typed; the source's special no-capacity return remains an
+  explicit pending prompt boundary;
 - the spell/magic records and availability/effect rules reached by `0xFBA6`,
   which remain an explicit extraction task rather than being inferred from the
   menu image.

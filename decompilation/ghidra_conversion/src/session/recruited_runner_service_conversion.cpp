@@ -1,5 +1,8 @@
 #include "shadowrun_ghidra/session/recruited_runner_service_conversion.hpp"
 
+#include <array>
+#include <cstddef>
+
 namespace shadowrun::ghidra_conversion {
 namespace {
 
@@ -8,6 +11,43 @@ constexpr std::size_t kSourcePositionYOffset = 0x04U;
 constexpr std::uint8_t kServiceActiveBit = 0x01U;
 constexpr std::uint8_t kPermanentPopulationByte = 0xFFU;
 constexpr std::uint8_t kStarkTemplateIndex = 9U;
+
+struct RecruitedRunnerServiceFeeBase {
+    std::uint16_t short_term = 0;
+    std::uint16_t permanent = 0;
+};
+
+// ROM 0xFE640 contains ten 0x10-byte runner service records. The first four
+// bytes are resource pointers; the two words at +0x04/+0x06 are the fee bases
+// consumed by 0x2128E and 0x212E2. Index 9 is Stark's special zero-base entry.
+constexpr std::array<RecruitedRunnerServiceFeeBase, 10>
+    kRecruitedRunnerServiceFeeBases{{
+        {0x0050U, 0x0320U},
+        {0x00C8U, 0x07D0U},
+        {0x0096U, 0x05DCU},
+        {0x0096U, 0x05DCU},
+        {0x015EU, 0x0DACU},
+        {0x012CU, 0x0BB8U},
+        {0x0190U, 0x0FA0U},
+        {0x0258U, 0x1770U},
+        {0x02BCU, 0x1B58U},
+        {0x0000U, 0x0000U},
+    }};
+
+// ROM 0x12CA54. The source indexes this table with the selected runner's
+// FFFC12 progress byte plus one.
+constexpr std::array<std::uint8_t, 26> kServiceProgressMultipliers{{
+    0x1EU, 0x14U, 0x0FU, 0x0AU, 0x0AU, 0x09U, 0x11U, 0x02U, 0x12U,
+    0x02U, 0x0DU, 0x02U, 0x0EU, 0x02U, 0x0FU, 0x02U, 0x11U, 0x04U,
+    0x12U, 0x04U, 0x0DU, 0x04U, 0x0EU, 0x04U, 0x0FU, 0x04U,
+}};
+
+std::uint32_t divide_unsigned_word(const std::uint32_t value,
+                                    const std::uint16_t divisor) {
+    // DIVU.W leaves the quotient in the low word. The source immediately
+    // clears the high word with ANDI.L #$FFFF, so expose that result directly.
+    return (value / divisor) & 0xFFFFU;
+}
 
 bool service_slot_is_active(const LiveRunnerRecord& record) {
     // BTST #0,FF0210/FF0310 reads the first byte of each record's +0x10
@@ -53,6 +93,84 @@ LiveRunnerRecord& selected_destination_record(
 }
 
 } // namespace
+
+RecruitedRunnerServiceOfferPreparationResult
+prepare_recruited_runner_service_offer(
+    RecruitedRunnerServiceState& state,
+    const RecruitedRunnerServiceCostModifiers& modifiers) {
+    RecruitedRunnerServiceOfferPreparationResult result{};
+
+    if (recruited_runner_service_availability(state.roster) ==
+        RecruitedRunnerServiceAvailability::roster_full) {
+        // The source returns A0 = FF988 here. That value is raw text rather
+        // than a normal prompt descriptor, so keep the semantic result while
+        // the caller-level text path remains separately audited.
+        result.action =
+            RecruitedRunnerServiceOfferPreparationAction::roster_full;
+        return result;
+    }
+
+    const auto runner_index = static_cast<std::size_t>(
+        state.selected_runner_template_index);
+    if (runner_index >= kRecruitedRunnerServiceFeeBases.size()) {
+        result.action = RecruitedRunnerServiceOfferPreparationAction::
+            runner_index_unavailable;
+        return result;
+    }
+    if (runner_index >= state.service_progress_counters.size()) {
+        result.action = RecruitedRunnerServiceOfferPreparationAction::
+            progress_counter_unavailable;
+        return result;
+    }
+
+    const auto progress = static_cast<std::size_t>(
+        state.service_progress_counters[runner_index]);
+    const auto multiplier_index = progress + 1U;
+    if (multiplier_index >= kServiceProgressMultipliers.size()) {
+        result.action = RecruitedRunnerServiceOfferPreparationAction::
+            progress_counter_unavailable;
+        return result;
+    }
+
+    const auto multiplier = kServiceProgressMultipliers[multiplier_index];
+    result.progress_multiplier = multiplier;
+    const auto& bases = kRecruitedRunnerServiceFeeBases[runner_index];
+
+    // 0x2128E..0x212A2: each fee base is multiplied by the progress
+    // multiplier, divided by ten, then the first result is divided by 100.
+    const auto scaled_short_term = divide_unsigned_word(
+        static_cast<std::uint32_t>(bases.short_term) * multiplier, 10U);
+    const auto discount_percent = divide_unsigned_word(scaled_short_term, 100U);
+
+    // 0x212AA..0x212C2 uses MOVE.B/ADD.B, so the combined modifier wraps at
+    // eight bits before the long multiply. FF017A is intentionally counted
+    // twice because the source loads it and then adds it again.
+    const auto modifier_sum = static_cast<std::uint8_t>(
+        static_cast<std::uint16_t>(modifiers.source_byte_017A) * 2U +
+        modifiers.source_byte_018B + modifiers.source_byte_018C);
+    // E448 is LSR.W #2,D0, followed by MULU.W #5,D0: floor(sum / 4) * 5.
+    const auto normalized_modifier =
+        (static_cast<std::uint32_t>(modifier_sum) >> 2U) * 5U;
+    const auto discount = normalized_modifier * discount_percent;
+
+    // MULU.W uses the low word of the destination operand. The valid source
+    // fee range stays below that boundary, but preserve the source operation
+    // explicitly for malformed/extracted host records too.
+    const auto source_word_discount =
+        static_cast<std::uint32_t>(static_cast<std::uint16_t>(discount));
+    result.short_term_fee = scaled_short_term - source_word_discount;
+
+    const auto scaled_permanent = divide_unsigned_word(
+        static_cast<std::uint32_t>(bases.permanent) * multiplier, 10U);
+    result.permanent_fee =
+        scaled_permanent - source_word_discount * 10U;
+
+    state.short_term_fee = result.short_term_fee;
+    state.permanent_fee = result.permanent_fee;
+    result.action =
+        RecruitedRunnerServiceOfferPreparationAction::prepared;
+    return result;
+}
 
 RecruitedRunnerServiceAvailability recruited_runner_service_availability(
     const RunnerRosterState& roster) {

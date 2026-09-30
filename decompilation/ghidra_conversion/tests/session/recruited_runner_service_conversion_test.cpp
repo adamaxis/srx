@@ -32,6 +32,7 @@ shadowrun::ghidra_conversion::RecruitedRunnerServiceState make_state(
             static_cast<std::uint8_t>(0x20U + index));
     }
     state.compact_records.resize(13U);
+    state.service_progress_counters.resize(10U);
     state.selected_entity.present = true;
     state.selected_entity.service_flags = 0x01U;
     state.selected_entity.source_position_y = 0x3456U;
@@ -42,6 +43,40 @@ shadowrun::ghidra_conversion::RecruitedRunnerServiceState make_state(
 
 int main() {
     using namespace shadowrun::ghidra_conversion;
+
+    auto offer_state = make_state();
+    const auto prepared = prepare_recruited_runner_service_offer(
+        offer_state,
+        RecruitedRunnerServiceCostModifiers{10U, 20U, 30U});
+    if (!expect(prepared.action ==
+                    RecruitedRunnerServiceOfferPreparationAction::prepared &&
+                prepared.progress_multiplier == 0x14U &&
+                prepared.short_term_fee == 60U &&
+                prepared.permanent_fee == 600U &&
+                offer_state.short_term_fee == 60U &&
+                offer_state.permanent_fee == 600U)) {
+        return 1;
+    }
+
+    offer_state.selected_runner_template_index = 9U;
+    const auto stark_offer = prepare_recruited_runner_service_offer(
+        offer_state, RecruitedRunnerServiceCostModifiers{0U, 0U, 0U});
+    if (!expect(stark_offer.action ==
+                    RecruitedRunnerServiceOfferPreparationAction::prepared &&
+                stark_offer.progress_multiplier == 0x14U &&
+                stark_offer.short_term_fee == 0U &&
+                stark_offer.permanent_fee == 0U)) {
+        return 2;
+    }
+
+    offer_state.roster.primary_record.bytes[0x10U] = 0x01U;
+    offer_state.roster.secondary_record.bytes[0x10U] = 0x01U;
+    const auto full_offer = prepare_recruited_runner_service_offer(
+        offer_state, RecruitedRunnerServiceCostModifiers{});
+    if (!expect(full_offer.action ==
+                RecruitedRunnerServiceOfferPreparationAction::roster_full)) {
+        return 3;
+    }
 
     auto state = make_state();
     std::vector<int> callback_order;
@@ -63,7 +98,7 @@ int main() {
                     0x3456U &&
                 state.roster.primary_record.bytes[0x8FU] == 0U &&
                 callback_order == std::vector<int>{0, 1})) {
-        return 1;
+        return 4;
     }
 
     state = make_state();
@@ -83,7 +118,7 @@ int main() {
                 state.roster.secondary_record.bytes[0x8FU] == 0xFFU &&
                 read_big_endian_word(state.roster.secondary_record, 0x04U) ==
                     0x789AU && callback_order == std::vector<int>{0, 1})) {
-        return 2;
+        return 5;
     }
 
     state = make_state();
@@ -94,7 +129,7 @@ int main() {
                 free_hire.charged_amount == 0U && state.funds == 1000U &&
                 state.permanent_fee == 0U &&
                 state.roster.primary_record.bytes[0x8FU] == 0xFFU)) {
-        return 3;
+        return 6;
     }
 
     state = make_state();
@@ -107,7 +142,7 @@ int main() {
                     RecruitedRunnerServicePrompt::insufficient_funds &&
                 state.funds == 249U && state.roster.primary_marker == 0xFFU &&
                 state.selected_entity.service_flags == 0x01U)) {
-        return 4;
+        return 7;
     }
 
     state = make_state();
@@ -115,12 +150,12 @@ int main() {
     state.roster.secondary_record.bytes[0x10U] = 0x01U;
     if (!expect(recruited_runner_service_availability(state.roster) ==
                 RecruitedRunnerServiceAvailability::roster_full)) {
-        return 5;
+        return 8;
     }
     state.roster.secondary_record.bytes[0x10U] = 0U;
     if (!expect(recruited_runner_service_availability(state.roster) ==
                 RecruitedRunnerServiceAvailability::available)) {
-        return 6;
+        return 9;
     }
 
     state = make_state(1U);
@@ -129,7 +164,7 @@ int main() {
     if (!expect(invalid.action ==
                     RecruitedRunnerServiceAction::invalid_runner_template &&
                 state.funds == 750U)) {
-        return 7;
+        return 10;
     }
 
     return 0;

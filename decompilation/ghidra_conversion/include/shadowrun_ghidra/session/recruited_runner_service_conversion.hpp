@@ -23,6 +23,13 @@ enum class RecruitedRunnerServiceAvailability {
     roster_full,
 };
 
+enum class RecruitedRunnerServiceOfferPreparationAction {
+    prepared,
+    roster_full,
+    runner_index_unavailable,
+    progress_counter_unavailable,
+};
+
 enum class RecruitedRunnerServicePrompt {
     none,
     insufficient_funds,
@@ -59,10 +66,10 @@ struct RecruitedRunnerServiceTimers {
 };
 
 // The offer-preparation routine at ROM 0x21226 computes these two fees before
-// the command handlers below run.  Its source arithmetic still needs a
-// separate trace of FFFC12, FFE640, 0x12CA54, and the selected runner stats;
-// this state therefore accepts the already-computed values instead of
-// inventing a replacement formula.
+// the command handlers below run. The native preparation function below now
+// consumes its typed fee schedule, progress table, and source cost bytes;
+// callers may still supply already-computed values when reproducing a later
+// prompt state.
 struct RecruitedRunnerServiceState {
     std::uint32_t funds = 0;             // FFFBFE
     std::uint32_t short_term_fee = 0;    // FFEF16
@@ -72,8 +79,28 @@ struct RecruitedRunnerServiceState {
     RunnerRosterState roster{};
     std::vector<RunnerRosterTemplate> templates;
     std::vector<CompactRunnerRecord> compact_records;
+    // FFFC12 onward. The selected runner index addresses this table directly
+    // while the field refresh path addresses it through its compact marker.
+    std::vector<std::uint8_t> service_progress_counters;
     RecruitedRunnerServiceTarget selected_entity{};
     RecruitedRunnerServiceTimers timers{};
+};
+
+// These are the three source bytes combined by 0x212AA..0x212C8. Their
+// gameplay names are not proven by another consumer yet, so the native API
+// records their exact source identity instead of inventing stat names.
+struct RecruitedRunnerServiceCostModifiers {
+    std::uint8_t source_byte_017A = 0; // FF017A
+    std::uint8_t source_byte_018B = 0; // FF018B
+    std::uint8_t source_byte_018C = 0; // FF018C
+};
+
+struct RecruitedRunnerServiceOfferPreparationResult {
+    RecruitedRunnerServiceOfferPreparationAction action =
+        RecruitedRunnerServiceOfferPreparationAction::runner_index_unavailable;
+    std::uint8_t progress_multiplier = 0;
+    std::uint32_t short_term_fee = 0;
+    std::uint32_t permanent_fee = 0;
 };
 
 // 0x38FA and 0x3404 are presentation/animation boundaries.  They remain
@@ -103,6 +130,16 @@ struct RecruitedRunnerServiceResult {
 // prompt descriptor and still needs a direct caller trace.
 RecruitedRunnerServiceAvailability recruited_runner_service_availability(
     const RunnerRosterState& roster);
+
+// ROM 0x21226..0x21316. This consumes the already extracted fee schedule at
+// 0xFE640, the source progress counter for the selected runner, and the three
+// cost-modifier bytes. It publishes the two host fee fields used by the three
+// dispatch entries below. The text-render calls at 0xC0DA/0xC216 remain
+// presentation boundaries; the numeric fee arithmetic is converted here.
+RecruitedRunnerServiceOfferPreparationResult
+prepare_recruited_runner_service_offer(
+    RecruitedRunnerServiceState& state,
+    const RecruitedRunnerServiceCostModifiers& modifiers);
 
 // ROM 0x21318/0x21326/0x21332 plus the common body at 0x2133C.  This converts
 // the recruited-runner dialog's short-term, permanent, and free-permanent
