@@ -25,17 +25,28 @@ struct EntityAnchorSnapshotState {
     std::uint16_t camera_y = 0; // FFDDC8
     std::int16_t camera_transition_x = 0; // FFDF36
     std::int16_t camera_transition_y = 0; // FFDF38
-    bool companion_restore = false; // FFFC3C
+    // FFFC3C is a non-null world-effect/player-spawn record marker. The
+    // native conversion keeps the gate, not the original RAM pointer.
+    bool world_effect_player_spawn_pending = false;
     std::optional<std::array<std::uint16_t, 8>> pending_profile;
 };
 
+struct EntityAnchorSnapshotResult {
+    bool ready_entity_repositioned = false;
+    std::optional<std::size_t> ready_entity_slot;
+    std::optional<EntityAnchor> repositioned_anchor;
+    bool pending_profile_consumed = false;
+};
+
 // ROM 0x2FA4: copy three FFDF44 pairs into FF0100/FF0200/FF0300. When FFFC3C
-// is set, publish Joshua X+0x80 and Y into the 0x2FF0 slot. A live FFE114
-// pointer then falls into 0x2B78 (the 0x2B34 pending-profile consume).
-void snapshot_entity_anchors(
+// is set, find the first active/effect-ready entity through 0x2FF0 and publish
+// Joshua X+0x80/Y into that record. A live FFE114 profile then falls into
+// 0x2B78 (the 0x2B34 pending-profile consume). The result reports the
+// behaviorally meaningful effects without exposing source pointers.
+EntityAnchorSnapshotResult snapshot_entity_anchors(
     EntityAnchorSnapshotState& state,
     const std::array<EntityAnchor, 3>& source_anchors,
-    const std::optional<std::size_t>& ready_slot,
+    const std::function<std::optional<std::size_t>()>& find_ready_entity_slot,
     const std::function<void(std::size_t slot, EntityAnchor)>&
         publish_ready_anchor);
 

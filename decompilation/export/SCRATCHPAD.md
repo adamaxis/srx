@@ -5,6 +5,27 @@ Genesis ROM. It is source-analysis evidence. Native code uses typed host state
 and direct assets; it does not execute this decompilation or perform ROM/RAM
 lookups at runtime.
 
+## Field scene entry audit: `0x2F32` / `0x2FA4` / `0x2FF0`
+
+The direct ROM trace confirms that `0x2F32` is the field-scene initializer,
+not a generic profile copy. It calls `0xC7F8`, clears `FFDF40`, sets the field
+fade marker `FFDF8A` to `-1`, copies 49 words from the saved scene profile
+buffer into the active scene profile, derives the scene class through `0x3032`,
+and seeds the live camera from the origin snapshot written by `0x0BC36` at
+`FFDF50/FFDF52`. It then runs `0x2BD2` and `0x301E` before falling through to
+the shared `0x2FA4` span.
+
+The shared span copies the three `FFDF44` position pairs into Joshua and the
+two recruited-runner records. When `FFFC3C` is nonzero, `0x2FF0` scans the
+thirteen entity records for the first active/effect-ready record and moves it
+to Joshua's `x + 0x80` / `y` position. A non-null `FFE114` is not a source
+pointer in the conversion: it is an optional typed eight-word scene profile.
+The `0x2B78` handoff clears that pending profile, aligns its camera pair to
+`0x80`, resets `FFDF36/FFDF38` to `-1`, and replaces all three runner
+positions. The converted field-scene module now uses this exact order and the
+old generic `FieldSceneState` duplicate was removed from the remaining-routine
+module.
+
 ## Regeneration record
 
 - ROM: `../input/shadowrun_genesis_us.bin`

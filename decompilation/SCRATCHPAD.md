@@ -22,6 +22,22 @@ The architecture target is recorded in
 world, entities/effects, menus, intro choreography, renderer, audio service,
 and persistence, with extraction and Ghidra kept outside the runtime.
 
+### Field scene initialization audit: 2026-09-30
+
+The `0x2F32` conversion is now tied to the actual field-entry behavior rather
+than the former generic profile helper. It clears the field gate and fade
+marker, copies the complete 49-word scene profile, derives the scene class,
+seeds camera state from the live `FFDF50/FFDF52` field-origin snapshot, and
+keeps the `0x2BD2` -> `0x301E` transition/upload order. Its adjacent `0x2FA4`
+span now copies the three Joshua/recruited-runner position pairs, conditionally
+repositions the first active/effect-ready entity under the `FFFC3C` world-effect
+gate, and consumes the optional eight-word `FFE114` scene profile with the
+source `0x80` camera alignment and `-1` transition reset. The old duplicate
+`FieldSceneState` implementation was removed from the generic remaining-field
+module; focused tests cover the no-pending, ready-entity, and pending-profile
+paths. This is conversion coverage, not a claim that the Qt executable is
+playable or that the hill is defended.
+
 ### Qt conversion presentation audit: 2026-09-30
 
 The separate `ghidra_conversion/qt_runtime` now has a source-derived image

@@ -11,18 +11,19 @@ int main() {
     EntityAnchorSnapshotState snapshot{};
     int published = 0;
     snapshot_entity_anchors(
-        snapshot, {{{1, 2}, {3, 4}, {5, 6}}}, std::nullopt,
+        snapshot, {{{1, 2}, {3, 4}, {5, 6}}}, {},
         [&](std::size_t, EntityAnchor) { ++published; });
     if (snapshot.anchors[2].y != 6 || published != 0 ||
         snapshot.pending_profile.has_value()) {
         return 1;
     }
 
-    snapshot.companion_restore = true;
+    snapshot.world_effect_player_spawn_pending = true;
     std::size_t published_slot = 99;
     EntityAnchor published_anchor{};
     snapshot_entity_anchors(
-        snapshot, {{{0x0100, 0x0200}, {3, 4}, {5, 6}}}, std::size_t{4},
+        snapshot, {{{0x0100, 0x0200}, {3, 4}, {5, 6}}},
+        [] { return std::optional<std::size_t>{4U}; },
         [&](const std::size_t slot, const EntityAnchor anchor) {
             published_slot = slot;
             published_anchor = anchor;
@@ -34,7 +35,7 @@ int main() {
 
     snapshot = EntityAnchorSnapshotState{};
     snapshot.pending_profile = kFieldSceneVariantProfile0x3202;
-    snapshot_entity_anchors(snapshot, {{{1, 2}, {3, 4}, {5, 6}}}, std::nullopt,
+    snapshot_entity_anchors(snapshot, {{{1, 2}, {3, 4}, {5, 6}}}, {},
                             {});
     if (snapshot.camera_x != 0x0000U || snapshot.camera_y != 0x2380U ||
         snapshot.anchors[0].x != 0x0300 || snapshot.anchors[2].y != 0x2B80 ||

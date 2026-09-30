@@ -43,22 +43,31 @@ std::size_t emit_words(std::size_t word_count,
 
 } // namespace
 
-void snapshot_entity_anchors(
+EntityAnchorSnapshotResult snapshot_entity_anchors(
     EntityAnchorSnapshotState& state,
     const std::array<EntityAnchor, 3>& source_anchors,
-    const std::optional<std::size_t>& ready_slot,
+    const std::function<std::optional<std::size_t>()>& find_ready_entity_slot,
     const std::function<void(std::size_t slot, EntityAnchor)>&
         publish_ready_anchor) {
+    EntityAnchorSnapshotResult result{};
     state.anchors = source_anchors;
-    if (state.companion_restore && ready_slot.has_value() &&
-        publish_ready_anchor) {
-        publish_ready_anchor(
-            *ready_slot,
-            EntityAnchor{static_cast<std::int16_t>(state.anchors[0].x + 0x80),
-                         state.anchors[0].y});
+    std::optional<std::size_t> ready_slot;
+    if (state.world_effect_player_spawn_pending && find_ready_entity_slot) {
+        ready_slot = find_ready_entity_slot();
+    }
+    if (state.world_effect_player_spawn_pending && ready_slot.has_value()) {
+        const EntityAnchor repositioned_anchor{
+            static_cast<std::int16_t>(state.anchors[0].x + 0x80),
+            state.anchors[0].y};
+        result.ready_entity_repositioned = true;
+        result.ready_entity_slot = ready_slot;
+        result.repositioned_anchor = repositioned_anchor;
+        if (publish_ready_anchor) {
+            publish_ready_anchor(*ready_slot, repositioned_anchor);
+        }
     }
     if (!state.pending_profile.has_value()) {
-        return;
+        return result;
     }
     SceneProfileState profile{};
     SceneProfileDefaults unused{};
@@ -72,6 +81,8 @@ void snapshot_entity_anchors(
             static_cast<std::int16_t>(profile.runner_positions[index].x),
             static_cast<std::int16_t>(profile.runner_positions[index].y)};
     }
+    result.pending_profile_consumed = true;
+    return result;
 }
 
 std::size_t emit_field_tile_column_words(

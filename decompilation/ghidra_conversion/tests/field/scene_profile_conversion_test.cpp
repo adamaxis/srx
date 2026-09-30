@@ -191,39 +191,87 @@ int main() {
     backup[1] = 0x3400U;
     backup[2] = 0x2280U;
     backup[48] = 0xABCDU;
-    FieldSceneRuntimeState runtime{2U, {}, 0xFFU, 0xFFFFU, 0};
+    FieldSceneRuntimeState runtime{};
+    FieldSceneRuntimeInput input{};
+    input.prepared_camera_x = 0x0A00U;
+    input.prepared_camera_y = 0x0700U;
+    input.source_runner_positions =
+        {{{0x0100U, 0x0200U}, {0x0300U, 0x0400U}, {0x0500U, 0x0600U}}};
     std::vector<int> order;
     initialize_field_scene_state(
-        runtime, backup, 0x0A00U, 0x0700U,
+        runtime, backup, input,
         {[&order] { order.push_back(1); }, [&order] { order.push_back(2); },
          [&order] { order.push_back(3); }});
     if (!expect(runtime.scene_gate == 0U && runtime.fade_marker == -1 &&
                 runtime.scene_byte == 2U && runtime.alternate_profile == 0U &&
-                runtime.profile[0] == 2U && runtime.profile[1] == 0x0A00U &&
-                runtime.profile[2] == 0x0700U &&
+                runtime.profile[0] == 2U && runtime.profile[1] == 0x3400U &&
+                runtime.profile[2] == 0x2280U &&
                 runtime.profile[48] == 0xABCDU &&
+                runtime.camera_x == 0x0A00U && runtime.camera_y == 0x0700U &&
+                runtime.runner_positions[2].y == 0x0600U &&
                 order == std::vector<int>{1, 2, 3})) {
         return 19;
     }
 
     backup[0] = 6U;
-    initialize_field_scene_state(runtime, backup, 0x1000U, 0x2000U, {});
+    input = {};
+    input.prepared_camera_x = 0x1000U;
+    input.prepared_camera_y = 0x2000U;
+    initialize_field_scene_state(runtime, backup, input, {});
     if (!expect(runtime.scene_byte == 6U && runtime.alternate_profile == 1U &&
-                runtime.profile[1] == 0x1000U &&
-                runtime.profile[2] == 0x2000U)) {
+                runtime.camera_x == 0x1000U &&
+                runtime.camera_y == 0x2000U)) {
         return 20;
     }
 
     backup[0] = 5U;
-    initialize_field_scene_state(runtime, backup, 1U, 2U, {});
+    input = {};
+    input.prepared_camera_x = 1U;
+    input.prepared_camera_y = 2U;
+    initialize_field_scene_state(runtime, backup, input, {});
     if (!expect(runtime.alternate_profile == 0U && runtime.scene_byte == 5U)) {
         return 21;
     }
 
     backup[0] = 0x2CU;
-    initialize_field_scene_state(runtime, backup, 3U, 4U, {});
+    input = {};
+    input.prepared_camera_x = 3U;
+    input.prepared_camera_y = 4U;
+    input.source_runner_positions =
+        {{{0x0100U, 0x0200U}, {0x0300U, 0x0400U}, {0x0500U, 0x0600U}}};
+    input.world_effect_player_spawn_pending = true;
+    input.pending_profile =
+        std::array<std::uint16_t, 8>{0x12FFU, 0x23FFU, 0x1001U, 0x1002U,
+                                     0x2001U, 0x2002U, 0x3001U, 0x3002U};
+    std::size_t published_slot = 99U;
+    SceneRunnerPosition published_position{};
+    bool find_ready_called = false;
+    initialize_field_scene_state(
+        runtime, backup, input,
+        { {}, {}, {},
+          [&find_ready_called] {
+              find_ready_called = true;
+              return std::optional<std::size_t>{4U};
+          },
+          [&published_slot, &published_position](
+              const std::size_t slot, const SceneRunnerPosition position) {
+              published_slot = slot;
+              published_position = position;
+          } });
     if (!expect(runtime.alternate_profile == 1U &&
-                runtime.scene_byte == 0x2CU)) {
+                runtime.scene_byte == 0x2CU && find_ready_called &&
+                runtime.ready_entity_repositioned &&
+                runtime.ready_entity_slot == std::optional<std::size_t>{4U} &&
+                published_slot == 4U && published_position.x == 0x0180U &&
+                published_position.y == 0x0200U &&
+                runtime.camera_x == 0x1280U &&
+                runtime.camera_y == 0x2380U &&
+                runtime.runner_positions[0].x == 0x1001U &&
+                runtime.runner_positions[2].y == 0x3002U &&
+                runtime.camera_transition_x == -1 &&
+                runtime.camera_transition_y == -1 &&
+                runtime.pending_profile_consumed &&
+                !input.pending_profile.has_value())) {
         return 22;
     }
 

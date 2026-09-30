@@ -82,37 +82,6 @@ void advance_field_mode_transition(
     const std::function<void()>& begin_world_activity,
     const std::function<void()>& schedule_timeout);
 
-struct FieldSceneState {
-    std::vector<std::uint16_t> profile_words;
-    std::uint8_t scene = 0;
-    std::uint16_t camera_x = 0;
-    std::uint16_t camera_y = 0;
-    std::uint16_t profile_x = 0;
-    std::uint16_t profile_y = 0;
-    std::uint16_t entity_anchor_x = 0;
-    std::uint16_t entity_anchor_y = 0;
-    std::uint16_t entity_aux_x = 0;
-    std::uint16_t entity_aux_y = 0;
-    std::uint16_t entity_effect_x = 0;
-    std::uint16_t entity_effect_y = 0;
-    std::uint16_t entity_spawn_x = 0;
-    std::uint16_t entity_spawn_y = 0;
-    bool pending_position_consumed = false;
-};
-
-void initialize_field_scene_state(
-    FieldSceneState& state,
-    const std::vector<std::uint16_t>& profile,
-    std::uint8_t scene,
-    std::uint16_t camera_x,
-    std::uint16_t camera_y,
-    const std::optional<std::vector<std::uint16_t>>& pending_position,
-    const std::function<void()>& reset_runtime,
-    const std::function<void()>& advance_transition,
-    const std::function<void()>& upload_profile,
-    const std::function<std::optional<std::pair<std::uint16_t, std::uint16_t>>()>&
-        find_ready_entity);
-
 struct FieldVariantState {
     std::uint8_t scene = 0;
     std::uint16_t display_resource = 0;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -49,8 +50,28 @@ void run_field_loop(
     const std::array<std::uint16_t, kFieldSceneProfileWordCount>& source);
 
 // ROM 0x2F32 DBF from D7=#0x30 copies 49 words FFDE26 → FFDDC4, then
-// overwrites words 1-2 from FFDF50/FFDF52. Falls into 0x2FA4.
+// seeds the typed camera state from FFDF50/FFDF52. Falls into 0x2FA4.
+struct SceneRunnerPosition {
+    std::uint16_t x = 0;
+    std::uint16_t y = 0;
+};
+
 constexpr std::size_t kFieldSceneRuntimeStateWordCount = 49;
+
+struct FieldSceneRuntimeInput {
+    // Written by 0x0BC36 before the scene transition enters 0x2F32.
+    std::uint16_t prepared_camera_x = 0; // FFDF50
+    std::uint16_t prepared_camera_y = 0; // FFDF52
+    // The three source pairs at FFDF44, copied into the live Joshua and
+    // recruited-runner records by the shared 0x2FA4 span.
+    std::array<SceneRunnerPosition, 3> source_runner_positions{};
+    // Nonzero FFFC3C requests repositioning the first active/effect-ready
+    // entity to Joshua's x+0x80/y position.
+    bool world_effect_player_spawn_pending = false;
+    // FFE114 is represented as an optional typed eight-word scene profile;
+    // the 0x2B78 handoff consumes and clears it.
+    std::optional<std::array<std::uint16_t, 8>> pending_profile;
+};
 
 struct FieldSceneRuntimeState {
     std::uint16_t scene_gate = 0; // FFDF40, always cleared
@@ -58,23 +79,37 @@ struct FieldSceneRuntimeState {
     std::uint8_t scene_byte = 0; // FFFBF8
     std::uint16_t alternate_profile = 0; // FFFC0E from 0x3032
     std::int16_t fade_marker = 0; // FFDF8A
+    std::uint16_t camera_x = 0; // FFDDC6
+    std::uint16_t camera_y = 0; // FFDDC8
+    std::int16_t camera_transition_x = 0; // FFDF36
+    std::int16_t camera_transition_y = 0; // FFDF38
+    std::array<SceneRunnerPosition, 3> runner_positions{};
+    bool world_effect_player_spawn_pending = false; // FFFC3C gate
+    bool ready_entity_repositioned = false;
+    std::optional<std::size_t> ready_entity_slot;
+    bool pending_profile_consumed = false;
 };
 
 struct FieldSceneRuntimeStateCallbacks {
     std::function<void()> prepare_field_scene_runtime; // 0xC7F8
     std::function<void()> advance_field_scene_transition; // 0x2BD2
     std::function<void()> upload_scene_profile_block; // 0x301E
+    // 0x2FF0 returns the first active/effect-ready entity. Native code uses
+    // an optional slot instead of the source STOP instruction.
+    std::function<std::optional<std::size_t>()> find_ready_entity_slot;
+    std::function<void(std::size_t slot, SceneRunnerPosition position)>
+        publish_ready_entity_position;
 };
 
 // ROM 0x2F32: JSR 0xC7F8, CLR FFDF40, FFDF8A=-1, copy 49 backup words,
 // MOVE.B scene into FFFBF8, BSR 0x3032, write FFDF50/52 into FFDDC6/C8,
-// BSR 0x2BD2 then 0x301E. FFDF40==2 samples FFFC22 bit 10 with no effect
-// on 0xC7F8 (TST.B FF014C overwrites CCR).
+// BSR 0x2BD2 then 0x301E, and execute the adjacent 0x2FA4 anchor snapshot.
+// FFDF40==2 samples FFFC22 bit 10 with no effect on 0xC7F8 (TST.B FF014C
+// overwrites CCR). The source FFE114 pointer is an optional typed profile.
 void initialize_field_scene_state(
     FieldSceneRuntimeState& state,
     const std::array<std::uint16_t, kFieldSceneRuntimeStateWordCount>& backup,
-    std::uint16_t saved_camera_x,
-    std::uint16_t saved_camera_y,
+    FieldSceneRuntimeInput& input,
     const FieldSceneRuntimeStateCallbacks& callbacks);
 
 using FieldTerrainLayerCopy = std::function<void(
@@ -85,11 +120,6 @@ std::size_t copy_terrain_layers(
     std::uint32_t source_a,
     std::uint32_t source_b,
     const FieldTerrainLayerCopy& copy_block);
-
-struct SceneRunnerPosition {
-    std::uint16_t x = 0;
-    std::uint16_t y = 0;
-};
 
 struct SceneProfileDefaults {
     std::uint16_t camera_x = 0;

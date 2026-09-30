@@ -171,45 +171,6 @@ void advance_field_mode_transition(
     }
 }
 
-void initialize_field_scene_state(
-    FieldSceneState& state,
-    const std::vector<std::uint16_t>& profile,
-    const std::uint8_t scene,
-    const std::uint16_t camera_x,
-    const std::uint16_t camera_y,
-    const std::optional<std::vector<std::uint16_t>>& pending_position,
-    const std::function<void()>& reset_runtime,
-    const std::function<void()>& advance_transition,
-    const std::function<void()>& upload_profile,
-    const std::function<std::optional<std::pair<std::uint16_t, std::uint16_t>>()>&
-        find_ready_entity) {
-    call_once(reset_runtime);
-    state.profile_words.assign(profile.begin(), profile.begin() +
-                                         std::min<std::size_t>(0x31U, profile.size()));
-    state.scene = scene;
-    state.camera_x = camera_x;
-    state.camera_y = camera_y;
-    call_once(advance_transition);
-    call_once(upload_profile);
-    if (find_ready_entity) {
-        if (const auto ready = find_ready_entity()) {
-            state.entity_anchor_x = static_cast<std::uint16_t>(ready->first + 0x80U);
-            state.entity_anchor_y = ready->second;
-        }
-    }
-    if (pending_position && pending_position->size() >= 8U) {
-        state.pending_position_consumed = true;
-        state.camera_x = static_cast<std::uint16_t>((*pending_position)[0] & 0xFF80U);
-        state.camera_y = static_cast<std::uint16_t>((*pending_position)[1] & 0xFF80U);
-        state.entity_anchor_x = (*pending_position)[2];
-        state.entity_anchor_y = (*pending_position)[3];
-        state.entity_aux_x = (*pending_position)[4];
-        state.entity_aux_y = (*pending_position)[5];
-        state.entity_effect_x = (*pending_position)[6];
-        state.entity_effect_y = (*pending_position)[7];
-    }
-}
-
 void toggle_field_scene_variant(
     FieldVariantState& state,
     const std::function<void(std::uint8_t, std::uint16_t)>& select_position) {

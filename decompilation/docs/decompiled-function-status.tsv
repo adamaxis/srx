@@ -54,7 +54,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x16EA0	terrain work-map fill	ghidra_conversion::fill_terrain_work_region	shadowrun_ghidra_terrain_workflow	partial		Typed bounded rectangular fill with source value 2 and host bounds
 0x16FA8	terrain work-map copy	ghidra_conversion::copy_terrain_work_region	shadowrun_ghidra_terrain_workflow	partial		Typed bounded rectangular source-to-work-map copy using the source row stride
 0x0313A	terrain layer copies	ghidra_conversion::prepare_field_scene_buffers	shadowrun_ghidra_display_service_batch	partial		Copies both fixed 0xE10-word decoded terrain layers into typed host vectors as part of the 0x03074/0x03084 field-scene preparation path
-0x2FF0	ready entity scan	ghidra_conversion::find_ready_entity_slot	shadowrun_native_port	partial		Typed thirteen-slot active/readiness scan replacing the source STOP path
+0x2FF0	ready entity scan	ghidra_conversion::find_ready_entity_slot	shadowrun_ghidra_entity_state_projection	partial		Typed thirteen-slot active/readiness scan replacing the source STOP path; called only under the world-effect/player-spawn gate
 0x176EA	menu footer render	ghidra_conversion::render_menu_footer	shadowrun_menu_system	partial		Typed source-block copy, dirty marker, metadata refresh, and footer draw order converted
 0x177A4	menu slot initialization	ghidra_conversion::initialize_menu_slot_states	shadowrun_menu_system	partial		Five menu slots initialized through one host loop with status 6 and timer 1
 0x111D0	menu tile upload	ghidra_conversion::upload_menu_tile_block	shadowrun_menu_system	partial		Typed single menu tile-block upload boundary converted
@@ -534,7 +534,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x53112	audio command wrapper	ghidra_conversion::service_audio_command_wrapper	shadowrun_ghidra_audio_command_batch	partial		Named audio queue wrapper
 0x53126	mode entry audio service	ghidra_conversion::prepare_audio_mode_entry	shadowrun_ghidra_audio_command_batch	partial		Six fixed 0x14 audio transactions, each followed by source counter 2 (three vblank waits), then one audio-bus flush and one zero-command service tick; host backend remains a callback
 0x53156	audio tick wrapper	ghidra_conversion::service_audio_tick_wrapper	shadowrun_ghidra_audio_command_batch	partial		Named audio tick service boundary
-0x02FA4	entity anchor snapshot	ghidra_conversion::snapshot_entity_anchors	shadowrun_ghidra_field_entity_render_batch	partial		Typed anchor/profile snapshot with explicit publish callback
+0x02FA4	entity anchor snapshot	ghidra_conversion::snapshot_entity_anchors	shadowrun_ghidra_field_entity_render_batch	partial		Copies three runner position pairs, applies the FFFC3C world-effect/player-spawn gate, and consumes the optional FFE114 profile
 0x03D80	field tile column stream	ghidra_conversion::emit_field_tile_column_words	shadowrun_ghidra_field_entity_render_batch	partial		Host tile-word column stream with source stride
 0x03DDE	field tile row stream	ghidra_conversion::emit_field_tile_row_words	shadowrun_ghidra_field_entity_render_batch	partial		Host tile-word row stream with source stride
 0x04618	entity render pass	ghidra_conversion::update_entity_render_pass	shadowrun_ghidra_field_entity_render_batch	partial		Typed active-entity projection and animation pass
@@ -637,7 +637,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x1406	title resource preparation	ghidra_conversion::prepare_title_resources	shadowrun_ghidra_remaining_field	partial		Typed terminated resource and seven-word sprite descriptor plan
 0x1728	HUD sprite stream	ghidra_conversion::render_hud_sprite_stream	shadowrun_ghidra_remaining_field	partial		Bounded control/run stream decoder with palette and row-wrap callbacks
 0x2CE0	field mode transition	ghidra_conversion::advance_field_mode_transition	shadowrun_ghidra_remaining_field	partial		Typed mode-table transition, world-activity gate, resource and coordinate selection
-0x2F32	field scene initialization	ghidra_conversion::initialize_field_scene_state	shadowrun_ghidra_remaining_field	partial		Profile copy, camera initialization, ready-entity handoff, and eight-word pending position consume
+0x2F32	field scene initialization	ghidra_conversion::initialize_field_scene_state	shadowrun_ghidra_field_scene_controller	partial		Clears field gate/fade, copies the 49-word scene profile, seeds camera from FFDF50/FFDF52, snapshots runner positions, handles the ready world-effect entity, and consumes FFE114
 0x3168	field scene variant toggle	ghidra_conversion::toggle_field_scene_variant	shadowrun_ghidra_remaining_field	partial		Mode-0x10 variant selection and pending-position publication
 0x3560	HUD panel variant refresh	ghidra_conversion::refresh_hud_panel_variant	shadowrun_ghidra_remaining_field	partial		Source panel selection, post hook, and repeated draw order
 0x3674	entity delay meter	ghidra_conversion::advance_entity_delay_meter	shadowrun_ghidra_remaining_field	partial		Flag-gated signed meter update with source ten-unit saturation

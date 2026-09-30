@@ -1,5 +1,7 @@
 #include "shadowrun_ghidra/field/scene_profile_conversion.hpp"
 
+#include "shadowrun_ghidra/field/field_entity_render_batch_conversion.hpp"
+
 namespace shadowrun::ghidra_conversion {
 
 bool scene_uses_alternate_profile(const std::int16_t scene_id) {
@@ -42,8 +44,7 @@ void run_field_loop(
 void initialize_field_scene_state(
     FieldSceneRuntimeState& state,
     const std::array<std::uint16_t, kFieldSceneRuntimeStateWordCount>& backup,
-    const std::uint16_t saved_camera_x,
-    const std::uint16_t saved_camera_y,
+    FieldSceneRuntimeInput& input,
     const FieldSceneRuntimeStateCallbacks& callbacks) {
     if (callbacks.prepare_field_scene_runtime) {
         callbacks.prepare_field_scene_runtime();
@@ -57,14 +58,63 @@ void initialize_field_scene_state(
             static_cast<std::int16_t>(state.profile[0]))
             ? 1U
             : 0U;
-    state.profile[1] = saved_camera_x;
-    state.profile[2] = saved_camera_y;
+    state.ready_entity_repositioned = false;
+    state.ready_entity_slot.reset();
+    state.pending_profile_consumed = false;
+    state.camera_x = input.prepared_camera_x;
+    state.camera_y = input.prepared_camera_y;
     if (callbacks.advance_field_scene_transition) {
         callbacks.advance_field_scene_transition();
     }
     if (callbacks.upload_scene_profile_block) {
         callbacks.upload_scene_profile_block();
     }
+
+    EntityAnchorSnapshotState snapshot{};
+    snapshot.camera_x = state.camera_x;
+    snapshot.camera_y = state.camera_y;
+    snapshot.camera_transition_x = state.camera_transition_x;
+    snapshot.camera_transition_y = state.camera_transition_y;
+    snapshot.world_effect_player_spawn_pending =
+        input.world_effect_player_spawn_pending;
+    snapshot.pending_profile = input.pending_profile;
+
+    const auto snapshot_result = snapshot_entity_anchors(
+        snapshot,
+        {{{static_cast<std::int16_t>(input.source_runner_positions[0].x),
+           static_cast<std::int16_t>(input.source_runner_positions[0].y)},
+          {static_cast<std::int16_t>(input.source_runner_positions[1].x),
+           static_cast<std::int16_t>(input.source_runner_positions[1].y)},
+          {static_cast<std::int16_t>(input.source_runner_positions[2].x),
+           static_cast<std::int16_t>(input.source_runner_positions[2].y)}}},
+        callbacks.find_ready_entity_slot,
+        [&callbacks](const std::size_t slot, const EntityAnchor position) {
+            if (callbacks.publish_ready_entity_position) {
+                callbacks.publish_ready_entity_position(
+                    slot,
+                    SceneRunnerPosition{
+                        static_cast<std::uint16_t>(position.x),
+                        static_cast<std::uint16_t>(position.y)});
+            }
+        });
+
+    state.camera_x = snapshot.camera_x;
+    state.camera_y = snapshot.camera_y;
+    state.camera_transition_x = snapshot.camera_transition_x;
+    state.camera_transition_y = snapshot.camera_transition_y;
+    for (std::size_t index = 0; index < state.runner_positions.size();
+         ++index) {
+        state.runner_positions[index] = {
+            static_cast<std::uint16_t>(snapshot.anchors[index].x),
+            static_cast<std::uint16_t>(snapshot.anchors[index].y)};
+    }
+    state.world_effect_player_spawn_pending =
+        input.world_effect_player_spawn_pending;
+    state.ready_entity_repositioned =
+        snapshot_result.ready_entity_repositioned;
+    state.ready_entity_slot = snapshot_result.ready_entity_slot;
+    state.pending_profile_consumed = snapshot_result.pending_profile_consumed;
+    input.pending_profile = snapshot.pending_profile;
 }
 
 std::size_t copy_terrain_layers(
