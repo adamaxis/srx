@@ -87,9 +87,6 @@ FieldSessionBootstrapCallbacks make_callbacks(Observations& observations) {
     callbacks.prepare_field_scene_runtime = [&observations] {
         record(observations, "scene.prepare_runtime");
     };
-    callbacks.initialize_scene_profile = [&observations] {
-        record(observations, "scene.profile");
-    };
     callbacks.field_resources.prepare_asset_setup = [&observations] {
         record(observations, "resources.setup");
     };

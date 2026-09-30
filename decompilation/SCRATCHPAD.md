@@ -38,6 +38,19 @@ module; focused tests cover the no-pending, ready-entity, and pending-profile
 paths. This is conversion coverage, not a claim that the Qt executable is
 playable or that the hill is defended.
 
+### Field scene buffer preparation audit: 2026-09-30
+
+The `0x03074 -> 0x03084 -> 0x0313A` preparation path was tightened against the
+direct ROM trace. `0x03074` only gates the `0xC7F8` preparation service on the
+scene-runtime marker; `0x03084` then passes the typed scene reference through
+the converted `0x3032` classifier, copies the selected 48-word descriptor,
+publishes its low-byte resource mode and stream token, applies the saturated
+pending-position recentering, clears the override marker, and copies the two
+fixed `0xE10`-word terrain layers. The previous extra profile-initialization
+and classifier callbacks were not source behavior and are gone. The Qt target
+still uses direct source-derived records; this change does not make the field
+hill defended.
+
 ### Qt conversion presentation audit: 2026-09-30
 
 The separate `ghidra_conversion/qt_runtime` now has a source-derived image

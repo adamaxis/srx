@@ -59,7 +59,6 @@ struct FieldSessionBootstrapCallbacks {
 
     // ROM 0x03074's 0xC7F8 profile/resource preparation boundary.
     std::function<void()> prepare_field_scene_runtime;
-    std::function<void()> initialize_scene_profile;
     FieldResourcePreparationCallbacks field_resources;
     std::function<void()> run_world_frame_services;
     std::function<void()> apply_scene_profile_selection;

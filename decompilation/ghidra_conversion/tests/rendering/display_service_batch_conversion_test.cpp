@@ -63,8 +63,7 @@ int main() {
     scene_input.layer_b[1] = 4U;
     int initialized = 0;
     prepare_field_scene_buffers(scene, scene_input,
-                                {[&] { ++initialized; }, {},
-                                 [] { return true; }});
+                                {[&] { ++initialized; }});
     if (!scene.initialized || initialized != 1 || scene.scene_mode != 1 ||
         scene.field_resource_mode != 0x2C || scene.profile[3] != 34 ||
         scene.camera_x != 0x100 || scene.camera_y != 0x100 ||
@@ -88,8 +87,7 @@ int main() {
     normal_input.pending_position_in_use = true;
     normal_input.layer_a.assign(kFieldTerrainLayerWordCount, 0U);
     normal_input.layer_b.assign(kFieldTerrainLayerWordCount, 0U);
-    if (!prepare_field_scene_buffers(normal_scene, normal_input,
-                                     {{}, [] { return false; }})) {
+    if (!prepare_field_scene_buffers(normal_scene, normal_input, {})) {
         return 5;
     }
     if (normal_scene.scene_mode != 0U ||

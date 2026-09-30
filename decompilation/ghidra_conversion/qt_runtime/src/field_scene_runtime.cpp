@@ -331,10 +331,6 @@ void FieldSceneRuntime::configure_callbacks() {
                 ? "field.scene.runtime_path.refresh"
                 : "field.scene.runtime_path.finalize");
     };
-    callbacks_.initialize_scene_profile = [this] {
-        source_boundary("field.scene.initialize_profile");
-    };
-
     callbacks_.field_resources.prepare_asset_setup = [this] {
         source_boundary("field.resources.prepare_asset_setup");
     };

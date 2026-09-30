@@ -26,6 +26,13 @@ positions. The converted field-scene module now uses this exact order and the
 old generic `FieldSceneState` duplicate was removed from the remaining-routine
 module.
 
+The adjacent `0x03074` audit also removed an invented native callback. The ROM
+only conditionally calls `0xC7F8`, then falls through to `0x03084`, which calls
+the converted `0x3032` scene classifier directly before copying the selected
+48-word profile and both `0xE10`-word terrain layers. The conversion no longer
+requires a separate `initialize_scene_profile` or classifier callback, and Qt
+does not log a behavior that the source never performs.
+
 ## Regeneration record
 
 - ROM: `../input/shadowrun_genesis_us.bin`
