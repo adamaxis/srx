@@ -464,6 +464,43 @@ int main() {
         return 8;
     }
 
+    // The longplay route used for the manual visual audit moves through
+    // Samurai -> Decker -> Gator Shaman before confirming. Keep that captured
+    // route separate from the Decker source-table check above so a generic
+    // three-choice test cannot hide a wrong record/portrait binding.
+    StartupIntegrationState shaman_state{};
+    Observations shaman_observations;
+    const auto shaman_callbacks =
+        make_callbacks(shaman_state, shaman_observations);
+    if (start_startup_integration(
+            asset_root, shaman_state, shaman_callbacks) !=
+            StartupIntegrationStartResult::title_ready ||
+        enter_start_options_integration(shaman_state, shaman_callbacks) !=
+            StartupIntegrationEvent::entered_start_options ||
+        advance_startup_integration(
+            shaman_state, kStartupMenuA, shaman_callbacks) !=
+            StartupIntegrationEvent::entered_joshua_archetype ||
+        advance_startup_integration(
+            shaman_state, kStartupMenuDown, shaman_callbacks) !=
+            StartupIntegrationEvent::selection_moved ||
+        advance_startup_integration(
+            shaman_state, kStartupMenuDown, shaman_callbacks) !=
+            StartupIntegrationEvent::selection_moved ||
+        shaman_state.joshua_archetype.selected !=
+            JoshuaArchetypeChoice::gator_shaman ||
+        advance_startup_integration(
+            shaman_state, kStartupMenuA, shaman_callbacks) !=
+            StartupIntegrationEvent::opening_started ||
+        shaman_observations.initialized_archetype !=
+            JoshuaArchetypeChoice::gator_shaman ||
+        !shaman_state.joshua_selection.has_value() ||
+        shaman_state.joshua_selection->live_joshua_record !=
+            shaman_state.startup_records->joshua_archetypes[2].record ||
+        !has_event(shaman_state, "joshua_archetype.initialized") ||
+        !has_event(shaman_state, "opening_intro.started")) {
+        return 18;
+    }
+
     const auto& opening_plan = opening_intro_source_plan();
     const auto timed_phase_0 = opening_intro_sprite_group(
         opening_plan.stage_timed_phases[0].sprite_descriptor);
