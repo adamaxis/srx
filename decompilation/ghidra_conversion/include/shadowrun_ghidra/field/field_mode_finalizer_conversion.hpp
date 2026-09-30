@@ -63,6 +63,7 @@ struct FieldModeFinalizerState {
     std::uint32_t world_flags = 0; // FFFC1E
     std::uint32_t status_flags = 0; // FFFC22
     std::uint32_t mode_flags = 0; // FFFC30
+    std::int16_t caller_exit_status = 0; // D6
 };
 
 struct FieldModeFinalizerSelection {
@@ -87,7 +88,8 @@ enum class FieldModeFinalizerAction {
 
 // ROM 0x1FD80: handle the remaining scene/submode mode-exit routes after the
 // earlier field-exit selectors miss. The native conversion publishes a typed
-// resource/message choice and leaves the host service boundary injectable.
+// resource/message choice, keeps FFF0D6 separate from caller D6, and leaves
+// the host service boundary injectable.
 FieldModeFinalizerAction finalize_field_mode_exit(
     FieldModeFinalizerState& state,
     const FieldModeFinalizerCallbacks& callbacks);

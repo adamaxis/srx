@@ -1650,7 +1650,10 @@ The `0x1FD80` fallback is now `finalize_field_mode_exit`. It is a typed
 scene/submode policy rather than a pointer walk: it covers the scene 6/7/9
 visit routes, mode/world/status flag mutations, the shared signed-message
 variants, the scene 1 random effect branch, the runner-status reset boundary,
-and the final mode-service callback. The original A0/A5 resource pointers are
+and the final mode-service callback. Its internal `FFF0D6` service-status byte
+is now kept separate from the caller's `D6`: the source clears and tests the
+former in the large route table, while the recognized routes publish `D6=-1`
+only on the same paths as the ROM. The original A0/A5 resource pointers are
 represented by host-facing route/profile identifiers; the source addresses
 remain provenance only in the Ghidra export.
 

@@ -39,7 +39,8 @@ int main() {
     state.mode_flags = (1UL << 9U) | (1UL << 4U);
     if (expect(finalize_field_mode_exit(state, callbacks) ==
                    FieldModeFinalizerAction::handled &&
-               (state.mode_flags & (1UL << 9U)) == 0U && services == 1) !=
+               (state.mode_flags & (1UL << 9U)) == 0U && services == 1 &&
+               state.caller_exit_status == -1) !=
         0) {
         return 1;
     }
@@ -64,10 +65,12 @@ int main() {
     state.scene_id = 1U;
     state.submode = 0U;
     state.alternate_result = 0;
+    state.caller_exit_status = 0;
     next_random = 74U;
     if (expect(finalize_field_mode_exit(state, callbacks) ==
                    FieldModeFinalizerAction::handled &&
                state.service_status < 0 && effects == 0 &&
+               state.caller_exit_status == 0 &&
                observed.message_variant ==
                    FieldModeFinalizerMessageVariant::default_failure_prompt &&
                state.alternate_result == 0) != 0) {
@@ -76,6 +79,7 @@ int main() {
     next_random = 75U;
     if (expect(finalize_field_mode_exit(state, callbacks) ==
                    FieldModeFinalizerAction::handled && effects == 1 &&
+               state.caller_exit_status == -1 &&
                observed.message_variant ==
                    FieldModeFinalizerMessageVariant::default_effect_prompt) !=
         0) {

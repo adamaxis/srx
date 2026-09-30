@@ -36,6 +36,7 @@ FieldModeFinalizerAction finalize_field_mode_exit(
         if (callbacks.run_mode_exit_services) {
             callbacks.run_mode_exit_services(selection, state);
         }
+        state.caller_exit_status = -1;
         return FieldModeFinalizerAction::handled;
     }
     if (matches(state, 7U, 0U)) {
@@ -58,6 +59,7 @@ FieldModeFinalizerAction finalize_field_mode_exit(
         if (callbacks.run_mode_exit_services) {
             callbacks.run_mode_exit_services(selection, state);
         }
+        state.caller_exit_status = -1;
         return FieldModeFinalizerAction::handled;
     }
     if (matches(state, 9U, 0U)) {
@@ -79,9 +81,13 @@ FieldModeFinalizerAction finalize_field_mode_exit(
         if (callbacks.run_mode_exit_services) {
             callbacks.run_mode_exit_services(selection, state);
         }
+        state.caller_exit_status = -1;
         return FieldModeFinalizerAction::handled;
     }
 
+    // ROM 0x1FE86 clears the internal FFF0D6 service-status byte before the
+    // larger scene/submode table. It is not the caller's D6 result.
+    state.service_status = 0;
     bool matched = true;
     bool force_negative_status = false;
 
@@ -231,6 +237,9 @@ FieldModeFinalizerAction finalize_field_mode_exit(
         callbacks.run_mode_exit_services(selection, state);
     }
     state.alternate_result = 0;
+    if (state.service_status >= 0) {
+        state.caller_exit_status = -1;
+    }
     return FieldModeFinalizerAction::handled;
 }
 
