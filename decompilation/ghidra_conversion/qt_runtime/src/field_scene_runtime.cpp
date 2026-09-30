@@ -603,14 +603,28 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
     };
     field_runtime_callbacks_.latch_controller_events = [this] {
         source_boundary("field.runtime.latch_controller_events");
+        field_controller_latch_state_.events =
+            field_controller_sample_state_.events;
+        field_controller_latch_state_.confirm_latch =
+            field_runtime_state_.confirm_latch;
+        field_controller_latch_state_.start_latch =
+            field_runtime_state_.start_latch;
+        (void)::shadowrun::ghidra_conversion::latch_controller_events(
+            field_controller_latch_state_);
+        field_runtime_state_.confirm_latch =
+            field_controller_latch_state_.confirm_latch;
+        field_runtime_state_.start_latch =
+            field_controller_latch_state_.start_latch;
     };
     field_runtime_callbacks_.sample_controller_input = [this] {
         source_boundary("field.runtime.sample_controller_input");
-        // The Qt d-pad remains held in field_controller_nibble_. Command and
-        // action bits are delivered by this typed sample when their input
-        // surface is connected; no Genesis controller word is synthesized
-        // merely to make the coordinator report a complete branch.
-        return static_cast<std::uint16_t>(0U);
+        ::shadowrun::ghidra_conversion::sample_controller_input(
+            field_controller_sample_state_, field_controller_port_byte_);
+        field_runtime_state_.controller_held =
+            field_controller_sample_state_.held;
+        field_runtime_state_.controller_heading =
+            field_controller_sample_state_.heading;
+        return field_controller_sample_state_.events;
     };
     field_runtime_callbacks_.service_entity_behavior_frames = [this] {
         // The converted movement/behavior path is the first active entity
@@ -721,6 +735,9 @@ bool FieldSceneRuntime::bootstrap(
             source_route.secondary_fallback_slot};
     }
     field_controller_nibble_ = 0U;
+    field_controller_port_byte_ = 0U;
+    field_controller_sample_state_ = ControllerSampleState{};
+    field_controller_latch_state_ = ControllerLatchState{};
     field_target_heading_ = 0U;
     field_movement_state_ = EntityMovementStepState{};
     field_collision_record_ = EntityCollisionRecord{};
@@ -876,7 +893,14 @@ bool FieldSceneRuntime::bootstrap(
 
 void FieldSceneRuntime::set_controller_nibble(
     const std::uint8_t dpad_nibble) noexcept {
-    field_controller_nibble_ = static_cast<std::uint8_t>(dpad_nibble & 0x0FU);
+    set_controller_port_byte(static_cast<std::uint8_t>(
+        (field_controller_port_byte_ & 0xF0U) | (dpad_nibble & 0x0FU)));
+}
+
+void FieldSceneRuntime::set_controller_port_byte(
+    const std::uint8_t port_byte) noexcept {
+    field_controller_port_byte_ = port_byte;
+    field_controller_nibble_ = static_cast<std::uint8_t>(port_byte & 0x0FU);
 }
 
 std::optional<std::size_t> FieldSceneRuntime::projected_terrain_cell() const {

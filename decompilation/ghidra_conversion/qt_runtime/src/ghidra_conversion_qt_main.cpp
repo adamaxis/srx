@@ -121,6 +121,21 @@ std::uint8_t sampled_field_direction_bit(const int key) {
     }
 }
 
+// 0x195C publishes Genesis port bit 7 as the high-byte Start edge. Startup
+// menus deliberately treat Space/Enter as A for their own input contract, but
+// the field coordinator must keep Start distinct because ROM 0x0B1A branches
+// on 0x8000 after the edge expansion.
+std::uint8_t sampled_field_button_byte(const int key) {
+    switch (key) {
+    case Qt::Key_Space:
+    case Qt::Key_Return:
+    case Qt::Key_Enter:
+        return 0x80U;
+    default:
+        return sampled_menu_byte(key);
+    }
+}
+
 QString phase_title(const StartupIntegrationPhase phase) {
     return QStringLiteral("Shadowrun - Ghidra Conversion Qt [%1]")
         .arg(QString::fromLatin1(startup_integration_phase_name(phase)));
@@ -350,8 +365,23 @@ protected:
             if (direction_bit != 0U) {
                 field_controller_nibble_ = static_cast<std::uint8_t>(
                     field_controller_nibble_ | direction_bit);
-                field_scene_runtime_.set_controller_nibble(
+                field_controller_port_byte_ = static_cast<std::uint8_t>(
+                    (field_controller_port_byte_ & 0xF0U) |
                     field_controller_nibble_);
+                field_scene_runtime_.set_controller_port_byte(
+                    field_controller_port_byte_);
+                update();
+                event->accept();
+                return;
+            }
+            const auto button_bits = static_cast<std::uint8_t>(
+                sampled_field_button_byte(event->key()) &
+                static_cast<std::uint8_t>(kStartupMenuActionMask | 0x80U));
+            if (button_bits != 0U) {
+                field_controller_port_byte_ = static_cast<std::uint8_t>(
+                    field_controller_port_byte_ | button_bits);
+                field_scene_runtime_.set_controller_port_byte(
+                    field_controller_port_byte_);
                 update();
                 event->accept();
                 return;
@@ -391,8 +421,24 @@ protected:
                 field_controller_nibble_ = static_cast<std::uint8_t>(
                     field_controller_nibble_ &
                     static_cast<std::uint8_t>(~direction_bit));
-                field_scene_runtime_.set_controller_nibble(
+                field_controller_port_byte_ = static_cast<std::uint8_t>(
+                    (field_controller_port_byte_ & 0xF0U) |
                     field_controller_nibble_);
+                field_scene_runtime_.set_controller_port_byte(
+                    field_controller_port_byte_);
+                update();
+                event->accept();
+                return;
+            }
+            const auto button_bits = static_cast<std::uint8_t>(
+                sampled_field_button_byte(event->key()) &
+                static_cast<std::uint8_t>(kStartupMenuActionMask | 0x80U));
+            if (button_bits != 0U) {
+                field_controller_port_byte_ = static_cast<std::uint8_t>(
+                    field_controller_port_byte_ &
+                    static_cast<std::uint8_t>(~button_bits));
+                field_scene_runtime_.set_controller_port_byte(
+                    field_controller_port_byte_);
                 update();
                 event->accept();
                 return;
@@ -680,6 +726,7 @@ private:
             };
         startup_callbacks_.field_ready = [this] {
             field_controller_nibble_ = 0U;
+            field_controller_port_byte_ = 0U;
             if (!field_scene_runtime_.bootstrap(state_)) {
                 std::cerr << "field bootstrap: "
                           << field_scene_runtime_.failure() << '\n';
@@ -1308,6 +1355,7 @@ private:
     std::uint16_t title_controller_events_ = 0;
     std::uint16_t pending_title_controller_word_ = 0;
     std::uint8_t field_controller_nibble_ = 0;
+    std::uint8_t field_controller_port_byte_ = 0;
     std::uint32_t title_vblanks_ = 0;
     std::size_t title_palette_steps_ = 0;
     std::size_t resource_stream_words_ = 0;

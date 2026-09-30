@@ -85,6 +85,16 @@ service, initializes field scene state, clears the request, and returns to the
 field warmup. These are typed callbacks over converted leaves, not a generic
 transition hook or a copied function-pointer runtime.
 
+The same recurring frame now consumes the converted controller leaves instead
+of returning a placeholder word. Its latch callback applies `0x0BF2` to the
+previous `0x195C` sample, preserving the typed activity and Start latches;
+the sample callback applies the current host port byte through `0x195C`,
+publishing held bits, newly pressed high-byte edges, and the `0x19D2` heading
+selection. The Qt composition layer keeps Genesis Start on port bit 7 while
+startup menus retain their separate A/B/C mapping. The second-port word is
+still an explicit boundary because no source second-controller state is
+invented for this field session.
+
 ### Qt conversion presentation audit: 2026-09-30
 
 The separate `ghidra_conversion/qt_runtime` now has a source-derived image

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shadowrun_ghidra/core/controller_wait_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_coordinate_conversion.hpp"
 #include "shadowrun_ghidra/entities/collision_state_conversion.hpp"
 #include "shadowrun_ghidra/entities/collision_probe_conversion.hpp"
@@ -56,6 +57,7 @@ public:
         const integration::StartupIntegrationState& startup_state);
     void advance_frame();
     void set_controller_nibble(std::uint8_t dpad_nibble) noexcept;
+    void set_controller_port_byte(std::uint8_t port_byte) noexcept;
     void paint(QPainter& painter) const;
 
     bool ready() const noexcept { return ready_; }
@@ -115,6 +117,8 @@ private:
     integration::FieldSessionBootstrapCallbacks callbacks_;
     integration::FieldRuntimeCoordinatorState field_runtime_state_;
     integration::FieldRuntimeCoordinatorCallbacks field_runtime_callbacks_;
+    ControllerSampleState field_controller_sample_state_{};
+    ControllerLatchState field_controller_latch_state_{};
     WorldFrameState world_frame_state_;
     WorldFrameCallbacks world_frame_callbacks_;
     WorldFrameLogicState world_frame_logic_state_;
@@ -179,6 +183,7 @@ private:
     // consumes it on the next scene entry.
     std::optional<std::array<std::uint16_t, 8>> field_pending_scene_profile_;
     std::uint8_t field_controller_nibble_ = 0;
+    std::uint8_t field_controller_port_byte_ = 0;
     std::uint16_t field_target_heading_ = 0;
     // Typed source field corresponding to FF014C, consumed only by the
     // 0xC7F8 scene-runtime dispatcher.

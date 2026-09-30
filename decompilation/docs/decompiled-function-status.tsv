@@ -60,7 +60,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x111D0	menu tile upload	ghidra_conversion::upload_menu_tile_block	shadowrun_menu_system	partial		Typed single menu tile-block upload boundary converted
 0x11454	menu upload cursor reset	ghidra_conversion::reset_menu_upload_cursor_and_upload	shadowrun_menu_system	partial		Typed upload-cursor reset followed by one tile-block upload converted
 0x17EE4	menu overlay reset	ghidra_conversion::reset_menu_overlay_and_upload_two	shadowrun_menu_system	partial		Typed overlay reset followed by two tile-block uploads converted
-0x0BF2	controller event latch	ghidra_conversion::latch_controller_events	shadowrun_boot_sequence	partial		High-byte event combination and activity/Start latches converted in isolated typed state
+0x0BF2	controller event latch	ghidra_conversion::latch_controller_events	shadowrun_boot_sequence	partial		High-byte event combination and activity/Start latches converted in typed state; the separate Qt field coordinator now consumes the exact latch result
 0x0D44	source PRNG advance	ghidra_conversion::advance_source_prng	shadowrun_boot_sequence	partial		32-bit modulo-2^32 multiplier/increment converted in isolated typed state
 0x0D3A	bounded source PRNG sample	ghidra_conversion::sample_source_random_bound	shadowrun_native_port	partial		Low-word multiply-and-shift scaling converted without source register state
 0x0DBA	thresholded random rolls	ghidra_conversion::count_thresholded_random_rolls	shadowrun_native_port	partial		Typed repeated six-sided roll, face-6 accumulation, signed threshold comparison, and success count
@@ -183,7 +183,7 @@ rom_entry	subsystem	native_owner	test_name	status	visual_golden	next
 0x1E4AC	world effect player spawn	ghidra_conversion::spawn_world_effect_at_player_position	shadowrun_native_port	partial		Typed player-relative placement and paired allocation boundary
 0x15D3C	relative heading and distance	ghidra_conversion::measure_relative_heading_and_distance	shadowrun_native_port	partial		Typed position delta wrapper for heading and half-major-axis distance
 0x15D4E	heading and distance measurement	ghidra_conversion::measure_heading_and_distance	shadowrun_ghidra_entity_movement_collision	partial		Typed extraction of the source heading correction table and half-major-axis distance with D3.w result wrapping
-0x195C	controller sampling	ghidra_conversion::derive_controller_sample	shadowrun_boot_sequence	partial		Readable edge conversion is isolated from runtime and emulator
+0x195C	controller sampling	ghidra_conversion::sample_controller_input	shadowrun_boot_sequence	partial		Typed held/new-edge/heading publication is consumed by the separate Qt field coordinator; host port delivery remains outside the conversion library
 0x19F2	controller port read	ghidra_conversion::read_controller_port	shadowrun_native_port	partial		Typed two-phase six-button packing and explicit host bus/input boundaries; Windows binding remains separate
 0x1BAC	title input sequence validation	ghidra_conversion::finalize_title_input_sequence	shadowrun_menu_system	partial		Seven-byte match and mismatch reset converted without the FF sentinel
 0x1BEA	title input edge history	ghidra_conversion::record_title_input_edge	shadowrun_menu_system	partial		Bounded eight-entry history is isolated from runtime and emulator

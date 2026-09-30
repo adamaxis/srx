@@ -59,6 +59,14 @@ The frontend must not contain title/menu/field transitions. Those belong to
 `NativeGameController` and `GameSession` so a headless test and Qt display use
 the same behavior.
 
+The separate `ghidra_conversion/qt_runtime` frontend follows the same boundary
+for the conversion executable: Qt owns the Windows key events, while the
+converted field coordinator owns the typed controller state. Its field input
+path is `host port byte -> 0x195C held/new-edge sample -> 0x0BF2 activity and
+Start latches -> 0x0952..0x0B9C dispatch`; Genesis Start remains port bit 7 and
+is not substituted with the startup menu's A action. This adapter is kept out
+of the older native-port and emulator targets.
+
 ### Game session and state graph
 
 The source reset path at `0x0236` enters the main coordinator at `0x075E`.

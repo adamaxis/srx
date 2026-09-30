@@ -41,6 +41,10 @@ struct FieldRuntimeCoordinatorState {
     std::int16_t mode_entry_marker = 0; // FFE172
     std::int16_t scene_refresh_marker = 0; // FFDF8E
     std::uint16_t controller_word = 0; // FFDD22
+    std::uint16_t controller_held = 0; // FFDD20
+    std::uint16_t controller_heading = 0xFFFFU; // FFDD04
+    std::int16_t confirm_latch = 0; // FFDDC0
+    std::int16_t start_latch = 0; // FFDDC2
     bool pending_field_scene_handler = false; // FFE104
     bool joshua_archetype_selection_pending = false; // FFE108
     std::uint16_t scene_id = 0; // FFDDC4
