@@ -67,7 +67,9 @@ struct WorldEffectSceneLoopCallbacks {
     std::function<void()> prepare_mode_entry_service;
     std::function<void(std::uint16_t command)> service_audio_command_frame;
     std::function<void()> run_runner_selection_screen;
-    std::function<void()> run_mode_action_loop;
+    // 0x54662: enter the Matrix node-function action loop after the world
+    // transition completes.
+    std::function<void()> run_matrix_node_action_loop;
 
     // Scene-completion path at 0x1B302/0x18776/0x26A00.
     // Return false when the 0x3C-frame jitter has cleared FFE084.

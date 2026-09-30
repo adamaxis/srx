@@ -1509,11 +1509,12 @@ aliases are in `assets/resources.tsv`; native code resolves them through
 `NativePortAssets::audio_path()`.
 
 The mode-entry branch from `0x1ADE6` is no longer cataloged as a generic
-graphics routine. `0x54662` is the mode-action loop reached when the alternate
-runner presenter flag is clear: it initializes the selected compact mode
-record's flags, performs two wrapped resource transfers plus ten grid writes
-per redraw, applies the `0x54A8E` random-event gate, renders the two status
-fields and grouped decimal data, and handles the high-byte `FFDD22` event
+graphics routine. `0x54662` is the Matrix node-function action loop reached when the alternate
+runner presenter flag is clear: it initializes the selected compact Matrix
+Matrix node-action record's flags, performs two wrapped resource transfers plus ten grid writes
+per redraw, applies the `0x54A8E` random Matrix-alert gate, renders the
+node-function title, action-panel header, alert-band label, file/node
+classification, and action-difficulty number, and handles the high-byte `FFDD22` event
 edges: `0x0100`/`0x0200` move the cursor, `0x4000`/`0x1000`/`0x2000` enter
 the same action preamble, and `0x8000` hands Start to the `0x1822C` Matrix
 program loop. These are the sampled event-word masks, not the raw low-byte
@@ -1524,8 +1525,9 @@ marker exits only after the redraw. Cursor movement is sampled first and then
 calls the typed `0xC376` behavior with direction and the separate cursor-limit
 record. Matrix still resets its five timers and takes one more outer redraw
 before the abort marker is observed. The native conversion is in
-`mode_action_loop_conversion`, with typed input, record, redraw, event, and
-Matrix callbacks. The indirect handler table indexed by record kind and cursor
+`matrix_node_action_loop_conversion`, with typed node-function, alert-band,
+file-category, input, redraw, event, and Matrix callbacks. The indirect handler
+table indexed by node function and cursor
 remains an explicit unresolved callback; no fake generic action implementation
 was inserted.
 
@@ -1537,12 +1539,15 @@ full-word trial count and compact `+0x06` difficulty. It no longer treats
 `+0x05` as a generic option count or compares it to a fabricated action bound.
 
 The adjacent leaves are now named by proven behavior: `0x54A28` is
-`render_mode_status_summary`, `0x54A8E` is `advance_random_mode_event`,
-`0x532A8` is `fill_mode_auxiliary_sentinel`, `0x549E4` is
-`write_mode_repeated_grid_service`, and `0x549F6` is
-`select_mode_display_status`. The last three were removed from the audio
-conversion batch because their callers and effects are mode-presentation
-operations, not audio services.
+`render_matrix_node_status_summary`, `0x54A8E` is
+`advance_random_matrix_alert`, `0x532A8` is
+`fill_matrix_node_auxiliary_sentinel`, `0x549E4` is
+`redraw_matrix_node_action_grid_service`, and `0x549F6` is
+`select_matrix_alert_display`. Their source tables are explicit: `0x1664D8`
+names the six Matrix node functions, `0xE30B6` names the five alert bands, and
+`0xE4060` names the 49 file/node classifications. The last three were removed
+from the audio conversion batch because their callers and effects are Matrix
+presentation operations, not audio services.
 
 The field-action menu selector leaves at `0x58B5E`, `0x58BB6`, `0x58C54`,
 `0x58CDE`, and `0x58D32` are now converted in

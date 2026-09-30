@@ -80,7 +80,7 @@ WorldEffectSceneLoopResult run_world_effect_scene_loop(
                 if (state.runner_selection_mode) {
                     call_if_present(callbacks.run_runner_selection_screen);
                 } else {
-                    call_if_present(callbacks.run_mode_action_loop);
+                    call_if_present(callbacks.run_matrix_node_action_loop);
                 }
                 call_if_present(callbacks.prepare_mode_entry_service);
                 return result(WorldEffectSceneExitReason::handed_to_mode,

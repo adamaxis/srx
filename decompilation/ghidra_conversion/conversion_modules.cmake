@@ -94,7 +94,6 @@ file(GLOB SHADOWRUN_MODULE_FIELD_INTERACTION_ACTIONS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_action_*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_inventory_action_detail_render_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_equipment_upgrade_conversion.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/field/mode_action_loop_conversion.cpp"
 )
 file(GLOB SHADOWRUN_MODULE_FIELD_PRESENTATION_SERVICES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field/field_entity_render_batch_conversion.cpp"
@@ -175,6 +174,7 @@ file(GLOB SHADOWRUN_MODULE_MATRIX_NAVIGATION CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/cyberspace/matrix_entry_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/cyberspace/matrix_interaction_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/cyberspace/matrix_loop_conversion.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/cyberspace/matrix_node_action_loop_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/cyberspace/matrix_retreat_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/cyberspace/matrix_utility_conversion.cpp"
 )

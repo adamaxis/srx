@@ -327,7 +327,7 @@ owner identified from the ROM and its callers:
 | `run_mode_text_prompt` | `0x1F58A` via `A0` | Mode-specific text prompt |
 | `dispatch_indexed_handler` | `0x24E32` via `A0` | Indexed world/event handler |
 | `run_indexed_title_services` | `0x53AA4` via `A1` | Title service sequence |
-| `run_mode_action_loop` | `0x54960` via `A0` | Mode action handler |
+| `run_matrix_node_action_loop` | `0x54960` via `A0` | Matrix node-function action handler |
 | `advance_title_intro_schedule` | `0x5AF48` via `A1` | Intro stage schedule entry |
 
 Known table families to resolve against those calls include `0x12CCB4`,
