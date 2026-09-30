@@ -153,8 +153,10 @@ The already-confirmed extraction families include:
 - save/roster compact records and the projections used by `0x59172` through
   `0x598B0`;
 - recruited-runner conversation/service state: the runner-specific opening
-  prompt at `0x211E8` and the short-term single-run/permanent-hire command
-  family at `0x21226` through `0x213CA`, with typed fee inputs,
+  prompt at `0x211E8`, the ten-entry information-branch table at
+  `0x2401C..0x2410C`, and the short-term single-run/permanent-hire command
+  family at `0x21226` through `0x213CA`, with typed information flags,
+  two-page runner biography prompts, fee inputs,
   primary/secondary roster-slot selection, active-entity handoff, and field
   animation/upload callbacks. The ten-entry fee schedule, source cost
   arithmetic, and title-only roster-full prompt are typed;

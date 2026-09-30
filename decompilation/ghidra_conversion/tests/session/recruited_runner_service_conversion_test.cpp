@@ -114,6 +114,75 @@ int main() {
         return 7;
     }
 
+    offer_state.selected_runner_template_index = 0U;
+    offer_state.runner_information_flags = 0U;
+    const auto ricky_information =
+        select_recruited_runner_information_prompt(offer_state);
+    if (!expect(ricky_information.action ==
+                    RecruitedRunnerInformationAction::selected &&
+                ricky_information.runner ==
+                    RecruitedRunnerConversationRunner::ricky &&
+                ricky_information.topic ==
+                    RecruitedRunnerInformationTopic::ricky_glow_city_origin &&
+                ricky_information.changed_flag == 0x0001U &&
+                ricky_information.information_flags == 0x0001U &&
+                ricky_information.opening_text ==
+                    "I've lived in Glow City all my life." &&
+                ricky_information.continuation_text ==
+                    "Then I heard my totem calling.  I have embraced that power, the power of Rat!" &&
+                ricky_information.more_option_text == "< MORE >")) {
+        return 8;
+    }
+    const auto repeated_ricky_information =
+        select_recruited_runner_information_prompt(offer_state);
+    if (!expect(repeated_ricky_information.changed_flag == 0U &&
+                repeated_ricky_information.information_flags == 0x0001U)) {
+        return 9;
+    }
+
+    offer_state.selected_runner_template_index = 9U;
+    const auto stark_information =
+        select_recruited_runner_information_prompt(offer_state);
+    if (!expect(stark_information.action ==
+                    RecruitedRunnerInformationAction::selected &&
+                stark_information.runner ==
+                    RecruitedRunnerConversationRunner::stark &&
+                stark_information.topic ==
+                    RecruitedRunnerInformationTopic::stark_amerindian_heritage &&
+                stark_information.changed_flag == 0x0200U &&
+                stark_information.information_flags == 0x0201U &&
+                stark_information.opening_text.find("AmerIndian") !=
+                    std::string_view::npos)) {
+        return 10;
+    }
+
+    offer_state.runner_information_flags = 0U;
+    for (std::size_t runner_index = 0U; runner_index < 10U;
+         ++runner_index) {
+        offer_state.selected_runner_template_index =
+            static_cast<std::uint8_t>(runner_index);
+        const auto information =
+            select_recruited_runner_information_prompt(offer_state);
+        const auto expected_flag = static_cast<std::uint16_t>(
+            std::uint16_t{1U} << runner_index);
+        if (!expect(information.action ==
+                        RecruitedRunnerInformationAction::selected &&
+                    information.changed_flag == expected_flag &&
+                    information.information_flags ==
+                        static_cast<std::uint16_t>(expected_flag * 2U - 1U) &&
+                    !information.opening_text.empty() &&
+                    !information.continuation_text.empty() &&
+                    information.more_option_text == "< MORE >")) {
+            return 11;
+        }
+    }
+
+    offer_state.selected_runner_template_index = 10U;
+    if (!expect(select_recruited_runner_information_prompt(offer_state).action ==
+                RecruitedRunnerInformationAction::runner_index_unavailable)) {
+        return 12;
+    }
+
     auto state = make_state();
     std::vector<int> callback_order;
     const RecruitedRunnerServiceCallbacks callbacks{
@@ -134,7 +203,7 @@ int main() {
                     0x3456U &&
                 state.roster.primary_record.bytes[0x8FU] == 0U &&
                 callback_order == std::vector<int>{0, 1})) {
-        return 8;
+        return 13;
     }
 
     state = make_state();
@@ -154,7 +223,7 @@ int main() {
                 state.roster.secondary_record.bytes[0x8FU] == 0xFFU &&
                 read_big_endian_word(state.roster.secondary_record, 0x04U) ==
                     0x789AU && callback_order == std::vector<int>{0, 1})) {
-        return 9;
+        return 14;
     }
 
     state = make_state();
@@ -165,7 +234,7 @@ int main() {
                 free_hire.charged_amount == 0U && state.funds == 1000U &&
                 state.permanent_fee == 0U &&
                 state.roster.primary_record.bytes[0x8FU] == 0xFFU)) {
-        return 10;
+        return 15;
     }
 
     state = make_state();
@@ -178,7 +247,7 @@ int main() {
                     RecruitedRunnerServicePrompt::insufficient_funds &&
                 state.funds == 249U && state.roster.primary_marker == 0xFFU &&
                 state.selected_entity.service_flags == 0x01U)) {
-        return 11;
+        return 16;
     }
 
     state = make_state();
@@ -186,12 +255,12 @@ int main() {
     state.roster.secondary_record.bytes[0x10U] = 0x01U;
     if (!expect(recruited_runner_service_availability(state.roster) ==
                 RecruitedRunnerServiceAvailability::roster_full)) {
-        return 12;
+        return 17;
     }
     state.roster.secondary_record.bytes[0x10U] = 0U;
     if (!expect(recruited_runner_service_availability(state.roster) ==
                 RecruitedRunnerServiceAvailability::available)) {
-        return 13;
+        return 18;
     }
 
     state = make_state(1U);
@@ -200,7 +269,7 @@ int main() {
     if (!expect(invalid.action ==
                     RecruitedRunnerServiceAction::invalid_runner_template &&
                 state.funds == 750U)) {
-        return 14;
+        return 19;
     }
 
     return 0;

@@ -1011,6 +1011,19 @@ separate root descriptor at `0xFE74C`; treating that as a tenth triple would
 return option strings as prompt bases, so index 9/Stark is exposed as an
 explicit story-specific boundary in the conversion.
 
+The information-choice family is now traced instead of being left as ten
+generic dispatch labels. Mode commands `0xBC..0xC5` enter the contiguous
+`0x2401C..0x2410C` handlers; each reads the shared `FFFC2A` word, sets one
+runner-specific knowledge bit, and returns a title-only first page with the
+source `< MORE >` option. The ten bits map to Ricky/Glow City, Winston
+Marrs' identity, Trent's identity, Petr Uvehr's cyberware motivation,
+Walking Bear's transformation, Phantom's Matrix background, Two Fists'
+Ares-run story, Freya's Cascade Crow background, Rianna's Heartbane identity,
+and Stark's AmerIndian heritage. The native conversion collapses the
+duplicate handlers into one typed table, preserves idempotent flag setting,
+and carries both exact source paragraphs as host text data; it does not read
+`FFFC2A` or the ROM descriptor pointers at runtime.
+
 ## 2026-09-30 Stoker motel source mapping
 
 The Stoker source mapping is now corrected rather than guessed. `0x1F65A`

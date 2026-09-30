@@ -365,6 +365,21 @@ public class ExportShadowrun extends GhidraScript {
                   "resolve_recruited_runner_short_term_payment");
         names.put(0x00021332L,
                   "resolve_recruited_runner_permanent_payment");
+        names.put(0x0002401CL, "open_ricky_glow_city_information");
+        names.put(0x00024034L,
+                  "open_winston_marrs_background_information");
+        names.put(0x0002404CL, "open_trent_runner_information");
+        names.put(0x00024064L,
+                  "open_petr_uvehr_cyberware_information");
+        names.put(0x0002407CL,
+                  "open_walking_bear_transformation_information");
+        names.put(0x00024094L, "open_phantom_matrix_information");
+        names.put(0x000240ACL, "open_two_fists_ares_run_information");
+        names.put(0x000240C4L,
+                  "open_freya_cascade_crow_information");
+        names.put(0x000240DCL, "open_rianna_heartbane_information");
+        names.put(0x000240F4L,
+                  "open_stark_amerindian_heritage_information");
         names.put(0x000213CAL, "resolve_stoker_debt_collection_command");
         names.put(0x000213E2L, "resolve_stoker_jump_house_referral_command");
         names.put(0x000213FAL, "resolve_stoker_motel_debt_payment");
@@ -1059,6 +1074,36 @@ public class ExportShadowrun extends GhidraScript {
         ensureReviewedInlineFunction(
             program, 0x00021332L, 0x000213CAL,
             "resolve_recruited_runner_permanent_payment");
+        ensureReviewedInlineFunction(
+            program, 0x0002401CL, 0x00024034L,
+            "open_ricky_glow_city_information");
+        ensureReviewedInlineFunction(
+            program, 0x00024034L, 0x0002404CL,
+            "open_winston_marrs_background_information");
+        ensureReviewedInlineFunction(
+            program, 0x0002404CL, 0x00024064L,
+            "open_trent_runner_information");
+        ensureReviewedInlineFunction(
+            program, 0x00024064L, 0x0002407CL,
+            "open_petr_uvehr_cyberware_information");
+        ensureReviewedInlineFunction(
+            program, 0x0002407CL, 0x00024094L,
+            "open_walking_bear_transformation_information");
+        ensureReviewedInlineFunction(
+            program, 0x00024094L, 0x000240ACL,
+            "open_phantom_matrix_information");
+        ensureReviewedInlineFunction(
+            program, 0x000240ACL, 0x000240C4L,
+            "open_two_fists_ares_run_information");
+        ensureReviewedInlineFunction(
+            program, 0x000240C4L, 0x000240DCL,
+            "open_freya_cascade_crow_information");
+        ensureReviewedInlineFunction(
+            program, 0x000240DCL, 0x000240F4L,
+            "open_rianna_heartbane_information");
+        ensureReviewedInlineFunction(
+            program, 0x000240F4L, 0x0002410CL,
+            "open_stark_amerindian_heritage_information");
         ensureReviewedInlineFunction(
             program, 0x000249C4L, 0x000249FCL,
             "resolve_stoker_motel_arrival_command");

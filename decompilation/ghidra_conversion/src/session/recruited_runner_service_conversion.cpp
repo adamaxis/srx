@@ -13,6 +13,7 @@ constexpr std::uint8_t kServiceActiveBit = 0x01U;
 constexpr std::uint8_t kPermanentPopulationByte = 0xFFU;
 constexpr std::uint8_t kStarkTemplateIndex = 9U;
 constexpr std::size_t kGenericConversationRunnerCount = 9U;
+constexpr std::size_t kInformationRunnerCount = 10U;
 
 struct RecruitedRunnerServiceFeeBase {
     std::uint16_t short_term = 0;
@@ -69,6 +70,69 @@ std::optional<RecruitedRunnerConversationRunner> generic_conversation_runner(
     }
     return kRunners[index];
 }
+
+struct RecruitedRunnerInformationRecord {
+    RecruitedRunnerConversationRunner runner;
+    RecruitedRunnerInformationTopic topic;
+    std::uint16_t flag;
+    std::string_view opening_text;
+    std::string_view continuation_text;
+};
+
+constexpr std::array<RecruitedRunnerInformationRecord,
+                     kInformationRunnerCount>
+    kRecruitedRunnerInformationRecords{{
+        {RecruitedRunnerConversationRunner::ricky,
+         RecruitedRunnerInformationTopic::ricky_glow_city_origin,
+         0x0001U,
+         "I've lived in Glow City all my life.",
+         "Then I heard my totem calling.  I have embraced that power, the power of Rat!"},
+        {RecruitedRunnerConversationRunner::winston_marrs,
+         RecruitedRunnerInformationTopic::winston_marrs_identity,
+         0x0002U,
+         "The name's Marrs.  Did you know he was the god of war?  I see things different than most.",
+         "So, I started to think.  How can I get paid to shoot at people?"},
+        {RecruitedRunnerConversationRunner::trent,
+         RecruitedRunnerInformationTopic::trent_identity,
+         0x0004U,
+         "My name is Trent.",
+         "I've decided to add to my experiences by working for those who'll pay for me to have them."},
+        {RecruitedRunnerConversationRunner::petr_uvehr,
+         RecruitedRunnerInformationTopic::petr_uvehr_cyberware_motivation,
+         0x0008U,
+         "I came up here to drown my sorrows.  But I guess you want to talk.",
+         "I was jealous of those cyber-cowboys, with their guns and chrome."},
+        {RecruitedRunnerConversationRunner::walking_bear,
+         RecruitedRunnerInformationTopic::walking_bear_transformation,
+         0x0010U,
+         "I am Walking Bear.  I was born in the city and was happy until I changed into the form you see now.",
+         "There I met some AmerIndian tribes.  They were nice and taught me the way of the shaman."},
+        {RecruitedRunnerConversationRunner::phantom,
+         RecruitedRunnerInformationTopic::phantom_matrix_background,
+         0x0020U,
+         "I've been shooting the Matrix for a bit.",
+         "I've been making a name for myself in the Matrix."},
+        {RecruitedRunnerConversationRunner::two_fists,
+         RecruitedRunnerInformationTopic::two_fists_ares_run,
+         0x0040U,
+         "I went to the Barrens to find some action. At the time I thought my life needed some adventure.",
+         "So I hook up with them on this run against Ares, and what do you know?  My buddies set off the alarm while I was checking ahead. Before I knew what hit me, Corp Strike Teams were swarming all over and I end up in Hollywood Pen."},
+        {RecruitedRunnerConversationRunner::freya,
+         RecruitedRunnerInformationTopic::freya_cascade_crow_background,
+         0x0080U,
+         "I hear you're the new golden child.  Number one with a bullet, and all that jazz.  So, I guess I can trust you.  I'm Freya.",
+         "My tribe, the Cascade Crow, viewed hermetic mages as blasphemous, so I ran away and fell in with a radical political group."},
+        {RecruitedRunnerConversationRunner::rianna,
+         RecruitedRunnerInformationTopic::rianna_heartbane_identity,
+         0x0100U,
+         "Heartbane was an ancient elven leader.",
+         "So I use Heartbane as my street name, coupled with my true name, Rianna."},
+        {RecruitedRunnerConversationRunner::stark,
+         RecruitedRunnerInformationTopic::stark_amerindian_heritage,
+         0x0200U,
+         "I was raised in the AmerIndian lands, and I have spent many years as a tribal warrior. I love my AmerIndian heritage, and will allow nothing to mar it.",
+         "When I heard strangers were entering our land for some unknown purpose, I went to the city to dig up some clues. It was there I met your brother. We became fast friends, and in the end, he was a blood brother."},
+    }};
 
 bool service_slot_is_active(const LiveRunnerRecord& record) {
     // BTST #0,FF0210/FF0310 reads the first byte of each record's +0x10
@@ -230,6 +294,32 @@ select_recruited_runner_conversation_prompt(
     } else if (signed_progress < 0) {
         result.tone = RecruitedRunnerConversationTone::hostile;
     }
+    return result;
+}
+
+RecruitedRunnerInformationPromptResult
+select_recruited_runner_information_prompt(
+    RecruitedRunnerServiceState& state) {
+    RecruitedRunnerInformationPromptResult result{};
+    const auto runner_index = static_cast<std::size_t>(
+        state.selected_runner_template_index);
+    if (runner_index >= kRecruitedRunnerInformationRecords.size()) {
+        return result;
+    }
+
+    const auto& record = kRecruitedRunnerInformationRecords[runner_index];
+    result.action = RecruitedRunnerInformationAction::selected;
+    result.runner = record.runner;
+    result.topic = record.topic;
+    result.changed_flag = static_cast<std::uint16_t>(
+        record.flag & static_cast<std::uint16_t>(
+                          ~state.runner_information_flags));
+    state.runner_information_flags = static_cast<std::uint16_t>(
+        state.runner_information_flags | record.flag);
+    result.information_flags = state.runner_information_flags;
+    result.opening_text = record.opening_text;
+    result.continuation_text = record.continuation_text;
+    result.more_option_text = "< MORE >";
     return result;
 }
 

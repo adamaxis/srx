@@ -5,6 +5,7 @@
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <string_view>
 #include <vector>
 
 namespace shadowrun::ghidra_conversion {
@@ -93,6 +94,43 @@ struct RecruitedRunnerConversationPromptResult {
     }};
 };
 
+enum class RecruitedRunnerInformationAction {
+    selected,
+    runner_index_unavailable,
+};
+
+enum class RecruitedRunnerInformationTopic {
+    ricky_glow_city_origin,
+    winston_marrs_identity,
+    trent_identity,
+    petr_uvehr_cyberware_motivation,
+    walking_bear_transformation,
+    phantom_matrix_background,
+    two_fists_ares_run,
+    freya_cascade_crow_background,
+    rianna_heartbane_identity,
+    stark_amerindian_heritage,
+};
+
+// The mode-command entries 0xBC..0xC5 are ten copies of the same source
+// operation with different bit numbers and text descriptors. The native
+// conversion keeps those as one table-driven behavior: selecting a runner's
+// information topic marks its knowledge bit and returns the two-page dialog
+// content that the source exposes through its < MORE > continuation.
+struct RecruitedRunnerInformationPromptResult {
+    RecruitedRunnerInformationAction action =
+        RecruitedRunnerInformationAction::runner_index_unavailable;
+    RecruitedRunnerConversationRunner runner =
+        RecruitedRunnerConversationRunner::ricky;
+    RecruitedRunnerInformationTopic topic =
+        RecruitedRunnerInformationTopic::ricky_glow_city_origin;
+    std::uint16_t information_flags = 0; // source FFFC2A
+    std::uint16_t changed_flag = 0;
+    std::string_view opening_text;
+    std::string_view continuation_text;
+    std::string_view more_option_text;
+};
+
 // The command handlers use the selected field entity at FFE128.  The entity's
 // +0x10 bit 0 is cleared after a successful hire, and its +0x04 position word
 // is copied into the selected live runner record.  These are named host fields
@@ -123,6 +161,7 @@ struct RecruitedRunnerServiceState {
     std::uint32_t short_term_fee = 0;    // FFEF16
     std::uint32_t permanent_fee = 0;     // FFEF36
     std::uint8_t selected_runner_template_index = 0; // FFF0AE
+    std::uint16_t runner_information_flags = 0; // FFFC2A
 
     RunnerRosterState roster{};
     std::vector<RunnerRosterTemplate> templates;
@@ -197,6 +236,16 @@ prepare_recruited_runner_service_offer(
 RecruitedRunnerConversationPromptResult
 select_recruited_runner_conversation_prompt(
     const RecruitedRunnerServiceState& state);
+
+// ROM 0x2401C..0x24102, mode-command entries 0xBC..0xC5. Each entry sets
+// one runner-specific bit in FFFC2A and returns a title-only first page with
+// the shared < MORE > option; the continuation page then presents that
+// runner's second biographical paragraph before returning to the subject
+// choices. The source text is represented as native text data, not ROM
+// pointer arithmetic.
+RecruitedRunnerInformationPromptResult
+select_recruited_runner_information_prompt(
+    RecruitedRunnerServiceState& state);
 
 // ROM 0x21318/0x21326/0x21332 plus the common body at 0x2133C.  This converts
 // the recruited-runner dialog's short-term, permanent, and free-permanent
