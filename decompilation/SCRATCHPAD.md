@@ -43,6 +43,12 @@ all CRAM palette transitions or every queued VBlank upload is already a Qt
 renderer feature; those remain explicit presentation boundaries until their
 source inputs are connected.
 
+The display-service audit also corrected `0x1872`: its call to
+`0x5672C` is gated by the field display-service word `FFDFE8 == 0`, not by
+the one-shot `FFDD02`/display-ready latch set after a pending upload. The
+converted callback is consequently named `service_field_mode_display_frame`,
+and the regression covers both the enabled cadence and the transition lockout.
+
 Input: `C:\Github\shadowrun\Shadow Run (U) [!].bin`
 
 Working copy: `input/shadowrun_genesis_us.bin`

@@ -16,7 +16,9 @@ constexpr std::size_t kFieldTerrainLayerWordCount = 0xE10U;
 struct DisplayServiceCallbacks {
     std::function<void()> service_pending_upload;
     std::function<void()> upload_startup_palette;
-    std::function<void()> service_idle;
+    // ROM 0x5672C: advance the mode-specific field display animation when
+    // the display-service word is clear.
+    std::function<void()> service_field_mode_display_frame;
     std::function<void()> write_transfer_header;
     std::function<void()> write_fixed_transfer_pair;
     std::function<void()> render_normal_viewport;
@@ -29,7 +31,12 @@ struct DisplayServiceState {
     std::uint32_t frame_counter = 0;
     std::uint8_t dirty_flags = 0;
     std::uint8_t service_marker = 0;
-    bool display_ready = false;
+    // ROM FFDFE8: zero permits the field display-frame service; a non-zero
+    // word temporarily suppresses it during world/display transitions.
+    bool field_mode_display_service_enabled = true;
+    // ROM FFDD02: set after a pending VDP upload is serviced. This latch is
+    // an output of the dirty-bit path, not the field-frame service gate.
+    bool pending_vdp_upload_completed = false;
     bool render_normal = false;
     bool render_alternate = false;
     bool flush_primary = false;

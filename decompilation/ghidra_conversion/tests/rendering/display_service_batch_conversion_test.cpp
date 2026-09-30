@@ -22,18 +22,27 @@ int main() {
          [&] { events.push_back(7); }, [&] { events.push_back(8); },
          [&] { events.push_back(9); }});
     if (display.frame_counter != 1 || display.dirty_flags != 0 ||
-        events != std::vector<int>{1, 2, 4, 5, 6, 7, 8, 9}) {
+        events != std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9}) {
         return 1;
     }
+    display.field_mode_display_service_enabled = false;
+    events.clear();
+    service_display_frame(display,
+                          {[&] { events.push_back(1); },
+                           [&] { events.push_back(2); },
+                           [&] { events.push_back(3); }});
+    if (!events.empty()) {
+        return 21;
+    }
     service_display_frame_wrapper(display, {});
-    if (display.frame_counter != 2) {
-        return 2;
+    if (display.frame_counter != 3) {
+        return 22;
     }
 
     int pair_calls = 0;
     write_alternating_word_pair_wrapper([&] { ++pair_calls; });
     if (pair_calls != 1) {
-        return 3;
+        return 23;
     }
 
     FieldSceneBuffers scene{};

@@ -30,11 +30,12 @@ void service_display_frame(DisplayServiceState& state,
         if (callbacks.service_pending_upload) {
             callbacks.service_pending_upload();
         }
-        state.display_ready = true;
+        state.pending_vdp_upload_completed = true;
     }
     service_dirty(0x01U, callbacks.upload_startup_palette);
-    if (!state.display_ready && callbacks.service_idle) {
-        callbacks.service_idle();
+    if (state.field_mode_display_service_enabled &&
+        callbacks.service_field_mode_display_frame) {
+        callbacks.service_field_mode_display_frame();
     }
     service_dirty(0x04U, callbacks.write_transfer_header);
     service_dirty(0x08U, callbacks.write_fixed_transfer_pair);
