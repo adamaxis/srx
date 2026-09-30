@@ -1787,6 +1787,14 @@ mode-result-specific resource branches, the numeric-menu setup, result-1
 sprite-panel path, normal grid/text path, and the vblank/latch/input
 precedence. The old “panel snapshot” label for `0x566EC` was wrong:
 
+The controller masks in this loop are the high-byte event bits published in
+`FFDD22` by `0x195C`: primary decrement `0x0400`, panel decrement `0x0100`,
+primary increment `0x0800`, panel increment `0x0200`, confirm `0x4000`,
+alternate confirm `0x1000`, runner restart `0x2000`, and field return
+`0x8000`. They are not the raw low controller nibble. Directional branches
+return to the vblank loop before lower-priority actions consume that sampled
+event word.
+
 * `0x566EC` copies eight longwords (sixteen CRAM colors) into `FFD8BE`, which
   is palette bank 2, colors 32..47 of the 64-word palette upload buffer. It
   then sets `FFEF14` bit 0, publishing that a subsequent palette service must

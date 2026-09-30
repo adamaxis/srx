@@ -11,14 +11,16 @@ namespace shadowrun::ghidra_conversion {
 // Controller bits consumed by the field-action selection service at ROM
 // 0x56AC0.
 enum class FieldActionSelectionServiceInput : std::uint16_t {
-    action_cursor_decrement = 0x0004U,
-    action_panel_decrement = 0x0001U,
-    action_cursor_increment = 0x0008U,
-    action_panel_increment = 0x0002U,
-    restart_setup = 0x0020U,
-    confirm = 0x0040U,
-    alternate_confirm = 0x0010U,
-    return_to_field = 0x0080U,
+    // These are FFDD22 event bits after 0x195C publishes newly pressed
+    // port bits into the high byte. They are not the raw port nibble.
+    action_cursor_decrement = 0x0400U, // source bit 10
+    action_panel_decrement = 0x0100U, // source bit 8
+    action_cursor_increment = 0x0800U, // source bit 11
+    action_panel_increment = 0x0200U, // source bit 9
+    restart_setup = 0x2000U,          // source bit 13
+    confirm = 0x4000U,                // source bit 14
+    alternate_confirm = 0x1000U,     // source bit 12
+    return_to_field = 0x8000U,        // source bit 15
 };
 
 // The source helper at 0x566EC copies exactly eight longwords (sixteen CRAM

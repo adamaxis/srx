@@ -2614,8 +2614,10 @@ The `0x56AC0` controller sweep also corrected its event precedence. The
 source tests primary decrement, panel decrement, primary increment, and panel
 increment in order, and each directional branch returns to the vblank loop
 before the same sampled word can reach confirm, alternate-confirm, restart,
-or return handling. The host loop now uses the same one-event-per-sample
-boundary; a direction plus confirm is not treated as two actions.
+or return handling. Those masks are the high-byte event bits published in
+`FFDD22` by `0x195C` (`0x0400` through `0x8000`), not the raw controller
+nibble. The host loop now uses the same one-event-per-sample boundary; a
+direction plus confirm is not treated as two actions.
 
 The `0x57026` detail-purchase audit found a source-owned category rule that
 the prior host conversion missed: category 3 is blocked when the selected

@@ -29,7 +29,7 @@ int main() {
     std::vector<std::string> order;
     // The source returns to the vblank loop immediately after a directional
     // branch. Confirm in the same sample must therefore be ignored here.
-    std::vector<std::uint16_t> inputs{0x0044U, 0x0008U, 0x0020U, 0x0080U};
+    std::vector<std::uint16_t> inputs{0x4400U, 0x0800U, 0x2000U, 0x8000U};
     std::size_t input_index = 0;
     int actions = 0;
     int restart_calls = 0;
@@ -92,7 +92,7 @@ int main() {
     FieldModeServiceState alternate{};
     alternate.action_selection.menu_result = 1;
     alternate.has_deck = true;
-    inputs = {0x0040U, 0x0040U, 0x0080U};
+    inputs = {0x4000U, 0x4000U, 0x8000U};
     input_index = 0;
     int action_attempts = 0;
     int action_selection_renders = 0;
